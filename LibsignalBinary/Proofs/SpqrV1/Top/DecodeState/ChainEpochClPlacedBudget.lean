@@ -10,21 +10,24 @@ limitations under the License.
 module
 
 meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochClPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochErrClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochClPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochErrClPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.VersionNegotiationLoop
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochErrClPlacedBudgetAux
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochErrPlacedBudget
 
 /-!
 # `spqr::decode_state` (Block `325`): Budget Code-Loaded `ChainEpochPB` Merge Helpers
@@ -33,7 +36,7 @@ Budget-threaded code-loaded `[LibsignalPlacement]` proofs of `ChainEpochPB` tag 
 and `skip_field(depth=98)` (`+964`), re-exporting tag 1 (`send`) from `ChainEpochClPlacedBudgetAux`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -20,7 +20,7 @@ predicates `ValidKindQueries`, `totalQueriesByKind`, and `QueriesBoundedByKind` 
 proved in `KindedCost.lean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,7 +31,7 @@ variable {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
 
 /-- Weighted target queries/samples of `c` starting from `ρ`, charging only the taken arm on
 branches and specializing pure-prefix `bind` continuations. -/
-def Comp.queriesAt (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ) :
+@[expose] def Comp.queriesAt (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ) :
     {Γ : List (Ty S)} → {t : Ty S} → Comp O I Γ t → Env Γ → ℕ
   | _, _, .ret _, _ => 0
   | _, _, .bind c k, ρ =>
@@ -54,35 +54,35 @@ def Comp.queriesAt (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ) :
   | _, _, .consumeFirstM K _ p _, _ => K * p.queries w ws
   | _, _, .foldM K _ _ f, _ => K * f.queries w ws
 
-def CostedReduction.ValidKindQueries (R : CostedReduction O I G C rIn aIn aOut out)
+@[expose] def CostedReduction.ValidKindQueries (R : CostedReduction O I G C rIn aIn aOut out)
     (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ) {n : ℕ} (kind : κ → Fin n) (hQ : Fin n → ℕ) : Prop :=
   ∀ (s : R.σ.denote) (t : κ),
     R.handle.queriesAt w ws (.cons s (.cons (C.qenc t) .nil)) ≤ hQ (kind t)
 
-def CostedReduction.totalQueriesByKind (R : CostedReduction O I G C rIn aIn aOut out)
+@[expose] def CostedReduction.totalQueriesByKind (R : CostedReduction O I G C rIn aIn aOut out)
     (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ) {n : ℕ} (hQ qKind : Fin n → ℕ) : ℕ :=
   R.init.queries w ws + (List.ofFn fun i => qKind i * hQ i).sum + R.finish.queries w ws
 
 /-- `R` makes at most `Q` weighted target queries under classifier `kind` and counts `qKind`. -/
-def CostedReduction.QueriesBoundedByKind (R : CostedReduction O I G C rIn aIn aOut out)
+@[expose] def CostedReduction.QueriesBoundedByKind (R : CostedReduction O I G C rIn aIn aOut out)
     (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ) {n : ℕ} (kind : κ → Fin n) (qKind : Fin n → ℕ)
     (Q : ℕ) : Prop :=
   ∃ hQ : Fin n → ℕ, R.ValidKindQueries w ws kind hQ ∧ R.totalQueriesByKind w ws hQ qKind ≤ Q
 
-def TwoStageCostedReduction.ValidKindQueries
+@[expose] def TwoStageCostedReduction.ValidKindQueries
     (R : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out)
     (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ) {n : ℕ} (kind : κ → Fin n) (hQ : Fin n → ℕ) : Prop :=
   ∀ (s : R.σ.denote) (t : κ),
     R.handlePre.queriesAt w ws (.cons s (.cons (C.qenc t) .nil)) ≤ hQ (kind t) ∧
     R.handlePost.queriesAt w ws (.cons s (.cons (C.qenc t) .nil)) ≤ hQ (kind t)
 
-def TwoStageCostedReduction.totalQueriesByKind
+@[expose] def TwoStageCostedReduction.totalQueriesByKind
     (R : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out)
     (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ) {n : ℕ} (hQ qKind : Fin n → ℕ) : ℕ :=
   R.init.queries w ws + (List.ofFn fun i => qKind i * hQ i).sum +
     max (R.chDone.queries w ws) (R.resume.queries w ws) + R.finish.queries w ws
 
-def TwoStageCostedReduction.QueriesBoundedByKind
+@[expose] def TwoStageCostedReduction.QueriesBoundedByKind
     (R : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out)
     (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ) {n : ℕ} (kind : κ → Fin n) (qKind : Fin n → ℕ)
     (Q : ℕ) : Prop :=

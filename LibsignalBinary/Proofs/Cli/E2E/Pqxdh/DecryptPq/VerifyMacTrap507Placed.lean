@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym
-public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefs
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMac -- proof-setup: allow-public-import
 
 /-!
 # Relocatable `[LibsignalPlacement]` Segment S7 (`VerifyMac`, `blkPl_508`)
@@ -22,7 +24,7 @@ Proves Segment S7 (`VerifyMacStatePlaced` → `AesDecryptStatePlaced` / `ErrTail
 `try_decrypt_with_state::<signal_session_handshake::Coins>` (`blkPC_508` / `blkPl_508`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

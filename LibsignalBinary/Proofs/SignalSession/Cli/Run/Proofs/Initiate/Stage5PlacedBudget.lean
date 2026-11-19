@@ -9,15 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.EntryAndRegIdPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.EntryAndRegIdPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.RegIdBranchPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Stage 5 (`[LibsignalPlacement]`): PreKey Metadata, Registration ID, `save_identity`, `promote_state`, and `store_session`
@@ -26,14 +32,12 @@ Top-level Stage 5 (`+0x1484 → ret` at `lr`, both `Ok(())` and `Err`) theorems 
 allocator-envelope composition on `initProgPlaced W` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
 set_option linter.dupNamespace false
 set_option maxRecDepth 2000000
-
-noncomputable section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5PlacedBudget
 
@@ -279,40 +283,6 @@ theorem initiate_stage5_placed_ok_gen [LibsignalPlacement] {M : AllocCostModel}
     hFit.fitSaveShim hFit.fitSavePoll hFit.fitStoreShim hFit.fitStorePoll hFit.envOk
     hS hinitOk hcoinsLt hstk hstk64 hs5 hpost
 
-theorem initiate_stage5_placed_ok_of_store [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {eEnvs : ExistingStoreCalleesEnvs}
-    {InitEnv : InitGhost → List AllocEvent → Prop}
-    {mmpl : MultiPlacement} {gh : CliGhostHooks} {W : CliHooks}
-    {X : UnreachedPqxdhPrimitives} {B : RunBudgets} {S : RunSem}
-    {x : InitGhost} {st0 st : M.σ} {be : PreKeyBundleFields} {kp : IdentityKeyPair}
-    {ekASk ekAPk : List (BitVec 8)} {dk : SignalPqxdh.DRKey} {hdr : SignalPqxdh.HandshakeHdr}
-    {pqspkPtr : BitVec 64} {opkId : BitVec 32}
-    {sg : SessionGhost} {ss : SessionState (List (BitVec 8))}
-    {stk : Nat} {s0 s5 : State}
-    {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hh : RunHooksPlaced W A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (hStore : InitStoreCalleesPlaced A lim eEnvs mmpl gh W B stk)
-    (hFit : CliStage5BudgetFits M lim eEnvs InitEnv x be kp hdr opkId sg ss s0 st0 st)
-    (hS : S.initiate = initDef X ⟨W.C, W.Q⟩)
-    (hinitOk : InitOk₀ ⟨W.C, W.Q⟩ x.F x.peer.val x.me.val)
-    (hcoinsLt : x.coins.length < 2 ^ 63)
-    (hstk : cliInitiateNeed B ≤ stk)
-    (hstk64 : stk ≤ 2 ^ 63)
-    (hspk : stk ≤ s0.sp.toNat)
-    (hs5 : AtStage5Placed W X x be kp ekASk ekAPk dk hdr sg ss pqspkPtr opkId s0 s5)
-    (hpost : ∀ sf Pf, InitExitPostPlaced A lim InitEnv S x st0 stk s0 sf Pf → Q sf Pf) :
-    SepWPp (initProgPlaced mmpl gh W) (s0.readReg64 .lr) s5
-      (stage5MemPlaced A lim st x kp ekASk ekAPk pqspkPtr opkId sg ss stk s0 s5)
-      Q Qp oom :=
-  initiate_stage5_placed_ok_gen hh
-    hStore.rodata_idVt_regIdSlot hStore.idRegIdShim hStore.idRegIdPoll
-    hStore.rodata_idVt_saveSlot hStore.idSaveShim hStore.idSavePoll
-    (promoteState_cli_placed_ok mmpl gh W hh)
-    hStore.rodata_sessVt_storeSlot hStore.sessStoreShim hStore.sessStorePoll
-    hStore.futDrop (dropSessionStructure_cli_placed_ok mmpl gh W hh)
-    hFit hS hinitOk hcoinsLt hstk hstk64 hspk hs5 hpost
-
 /-- Budget-threaded Stage 5 (`+0x1484 → ret` at `lr`, both `Ok(())` and `Err`) on `initProgPlaced W`. -/
 theorem initiate_stage5_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -387,4 +357,3 @@ theorem initiate_stage5_placed_ok_with_panic [LibsignalPlacement] {M : AllocCost
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5PlacedBudget
 
-end

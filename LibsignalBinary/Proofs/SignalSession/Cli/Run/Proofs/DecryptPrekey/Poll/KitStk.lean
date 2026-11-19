@@ -9,8 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOk
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOk -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOk -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Poll Store Callback Stack Budgets
@@ -20,7 +23,7 @@ store shims and polls invoked by `message_decrypt_prekey::<Coins>::{closure#0}`,
 fits inside `dpClosSubStack B`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,7 +60,7 @@ structure DpKitStk where
   kpkMarkPoll : Nat
 
 /-- Pointwise predicate over all 22 fields of `DpKitStk`. -/
-def DpKitStk.All (P : Nat → Prop) (σ : DpKitStk) : Prop :=
+@[expose] def DpKitStk.All (P : Nat → Prop) (σ : DpKitStk) : Prop :=
   P σ.sessLoadShim ∧ P σ.sessLoadPoll ∧ P σ.sessStoreShim ∧ P σ.sessStorePoll ∧
   P σ.idTrustShim ∧ P σ.idTrustPoll ∧ P σ.idSaveShim ∧ P σ.idSavePoll ∧
   P σ.kpShim ∧ P σ.kpPoll ∧ P σ.regIdShim ∧ P σ.regIdPoll ∧
@@ -66,7 +69,7 @@ def DpKitStk.All (P : Nat → Prop) (σ : DpKitStk) : Prop :=
   P σ.kpkGetShim ∧ P σ.kpkGetPoll ∧ P σ.kpkMarkShim ∧ P σ.kpkMarkPoll
 
 /-- Exact `hstk` left-hand sides of the 22 CLI store hops at `RunBudgets` `B`. -/
-def cliKitStk (B : RunBudgets) : DpKitStk where
+@[expose] def cliKitStk (B : RunBudgets) : DpKitStk where
   sessLoadShim := SessKit.loadShimNeed
   sessLoadPoll := SessKit.loadPollNeed B.readFile
   sessStoreShim := SessKit.storeShimNeed

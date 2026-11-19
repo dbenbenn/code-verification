@@ -10,8 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.HookDischarge.RustStd.Common -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.DurationSinceGhostReplays -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.DurationSinceGhostReplays
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts -- proof-setup: allow-public-import
+public import ProofLib.Placed.OpcodeExclusion
+public import VerifiedLibraries.RustStd.Proofs.Wave1.TimeDurationSince
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Cutover-2 (`C2`) `SystemTime::duration_since` `.rodata.cst16` Glue (`C2RowLayoutFacts.DurCst16`)
@@ -73,17 +79,5 @@ theorem durationSince_hRo_of_f3CodeInv
     (hInv : ∀ u : State, InvS u → F3CodeInv mpl mmpl u.mem) :
     ∀ u : State, InvS u → RoDataAt u.mem (timeMpl.ρ timeRodataCst16Sym) timePlacedData0 :=
   fun u hu => f3CodeInv_roDataAt_timeCst16 hRoSlice hLs hRho (hInv u hu)
-
-/-- Specialization of `durationSince_hRo_of_f3CodeInv` when `InvS u` is a conjunction headed by
-    `F3CodeInv mpl mmpl u.mem`. -/
-theorem durationSince_hRo_f3CodeInv_and
-    (hRoSlice : C2RoSliceFacts)
-    {mpl mmpl timeMpl : Obj.MultiPlacement}
-    {Pred : State → Prop}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hRho : timeMpl.ρ timeRodataCst16Sym = c2DurationSinceCst16Addr) :
-    ∀ u : State, (F3CodeInv mpl mmpl u.mem ∧ Pred u) →
-      RoDataAt u.mem (timeMpl.ρ timeRodataCst16Sym) timePlacedData0 :=
-  durationSince_hRo_of_f3CodeInv hRoSlice hLs hRho (fun _ h => h.1)
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.DurCst16

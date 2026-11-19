@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKit
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKit -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `SessionStore` Contract
@@ -21,7 +21,7 @@ public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKit
 specifications for `load_session` and `store_session`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -91,7 +91,7 @@ structure SessionStoreBudgetEnv {A : RustAlloc} {b : BitVec 64}
   storePollEnv : kit.StoreState → AddrVal → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop
 
 /-- `load_session` shim + poll + `Box` dealloc step envelope. -/
-def LoadStepEnv {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
+@[expose] def LoadStepEnv {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
     (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (rem : AddrVal) : List AllocEvent → Prop :=
   SeqEnv (BoxAllocEnv kit.loadBoxSize)
@@ -99,7 +99,7 @@ def LoadStepEnv {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
       (· = rustDeallocEvents kit.loadBoxSize 8))
 
 /-- `store_session` shim + poll + `Box` dealloc step envelope. -/
-def StoreStepEnv {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
+@[expose] def StoreStepEnv {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
     (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (rem : AddrVal) (rec : SessionRecord (List (BitVec 8))) : List AllocEvent → Prop :=
   SeqEnv (BoxAllocEnv kit.storeBoxSize)
@@ -108,7 +108,7 @@ def StoreStepEnv {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
 
 /-- Budget-threaded `load_session` shim contract parameterized by
     `kit : SessionStoreSpec A.repAlloc b`. -/
-def kitLoadShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitLoadShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (kit : SessionStoreSpec A.repAlloc b) (fds : Bool := false) :
     Spec (LoadShimCall × M.σ) where
   pre := fun (x, st) s =>
@@ -137,7 +137,7 @@ def kitLoadShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Budge
 
 /-- Budget-threaded `store_session` shim contract parameterized by
     `kit : SessionStoreSpec A.repAlloc b`. -/
-def kitStoreShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitStoreShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (kit : SessionStoreSpec A.repAlloc b) (fds : Bool := false) :
     Spec (StoreShimCall × M.σ) where
   pre := fun (x, st) s =>
@@ -166,7 +166,7 @@ def kitStoreShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Budg
 
 /-- Budget-threaded `store_session` poll contract parameterized by
     `kit : SessionStoreSpec A.repAlloc b` and `kitEnv : SessionStoreBudgetEnv kit`. -/
-def kitStorePollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitStorePollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (kit : SessionStoreSpec A.repAlloc b)
     (kitEnv : SessionStoreBudgetEnv kit)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))

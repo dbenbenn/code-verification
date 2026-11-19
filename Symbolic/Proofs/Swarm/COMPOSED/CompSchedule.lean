@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTermAlgebra
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
-public import Symbolic.Proofs.Swarm.COMPOSED.CompClosed
+import Symbolic.Proofs.Swarm.COMPOSED.CompTermAlgebra
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.COMPOSED.CompClosed -- proof-setup: allow-public-import
 import all DY.ALaCarte.Basic
 import all DY.ALaCarte.Ordering
 import all DY.Trace.Basic
@@ -33,7 +33,7 @@ Defines the step-1 anchored root-key and chain-root schedule relations (`CompRkS
 invariant `CompScheduleInv`, proving its preservation on all reachable composed traces.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -49,7 +49,7 @@ open Symbolic.Swarm.COMPOSED.CompTermAlgebra Symbolic.Swarm.COMPOSED.CompTrace
 /-! ## Role Parity and Diffie-Hellman Injectivity -/
 
 /-- Parity of `rIdx` for a given role: `1` for initiator (`aliceStart`), `0` for responder (`bobStart`). -/
-def roleParity (initiator : Bool) : Nat := if initiator then 1 else 0
+@[expose] def roleParity (initiator : Bool) : Nat := if initiator then 1 else 0
 
 theorem dh_right_inj {p₁ p₂ sk : Bytes} (h : dh p₁ sk = dh p₂ sk) : p₁ = p₂ := by
   have hpack₂ := Bytes.pack_view? DiffieHellman.DhPk.SubF p₂
@@ -107,7 +107,7 @@ theorem isChainRoot_kdfRk_snd (rk dhOut : Bytes) : IsChainRoot (kdfRk rk dhOut).
   fun x h => hkdfBlock2_ne_kdfCk_fst _ _ x h
 
 /-- Step-1 anchored chain-root derivation relation. -/
-def CompChainRootFrom1 (dh₁ ikm : Bytes) (m : Nat) (ck₀ : Bytes) : Prop :=
+@[expose] def CompChainRootFrom1 (dh₁ ikm : Bytes) (m : Nat) (ck₀ : Bytes) : Prop :=
   match m with
   | 0 => ck₀ = (pqxdhKdf ikm).ck
   | 1 => ck₀ = (kdfRk (pqxdhKdf ikm).rk dh₁).2
@@ -143,7 +143,7 @@ theorem CompChainRootFrom1.eq_iff {dh₁ dh₂ ikm₁ ikm₂ ck₀ : Bytes} {m�
 /-! ## Session-Origin Predicate and Session Uniqueness -/
 
 /-- Concrete session-origin invariant `CompSessionAt tr s doneIdx ikm dh1`. -/
-def CompSessionAt (tr : ExecTrace) (s : SessionInfo) (doneIdx : Nat) (ikm dh₁ : Bytes) : Prop :=
+@[expose] def CompSessionAt (tr : ExecTrace) (s : SessionInfo) (doneIdx : Nat) (ikm dh₁ : Bytes) : Prop :=
   tr.EventLogged (ComposedEvent.HandshakeSession s doneIdx) ∧ HandshakeKeysAt tr doneIdx (pqxdhKdf ikm) ∧
   if s.initiator then
     ∃ a b t₀ ikA ikB spk pqpk opk ct dh1 dh2 dh4,
@@ -231,7 +231,7 @@ theorem CompPQXDHStateOK.ik_ne_spk {tr : ExecTrace} {ikB spkSk : Bytes}
   exact at?_disjoint rfl hr64 hev
 
 /-- Per-receiver-chain schedule invariant inside a stored `TRState` snapshot. -/
-def CompRecvChainScheduleOK (dh₁ ikm : Bytes) (initiator : Bool) (stRIdx : Nat) (c : RecvChain) : Prop :=
+@[expose] def CompRecvChainScheduleOK (dh₁ ikm : Bytes) (initiator : Bool) (stRIdx : Nat) (c : RecvChain) : Prop :=
   1 ≤ c.rIdx ∧ c.rIdx ≤ stRIdx ∧ c.rIdx % 2 = roleParity initiator ∧
   ∃ ck₀, CompChainRootFrom1 dh₁ ikm (c.rIdx - 1) ck₀ ∧ c.chainKey = chainKeyAt ck₀ c.index.toNat
 
@@ -241,7 +241,7 @@ theorem CompRecvChainScheduleOK.mono_rIdx {dh₁ ikm : Bytes} {initiator : Bool}
   ⟨h.1, Nat.le_trans h.2.1 hle, h.2.2.1, h.2.2.2⟩
 
 /-- Per-snapshot schedule invariant on `TRState` on trace `tr`. -/
-def CompStateScheduleOK (tr : ExecTrace) (me : Participant) (st : TRState) : Prop :=
+@[expose] def CompStateScheduleOK (tr : ExecTrace) (me : Participant) (st : TRState) : Prop :=
   1 ≤ st.rIdx ∧ st.rIdx % 2 = roleParity st.initiator ∧ (∃ r p sk, st.rk = (createChain r p sk).1) ∧
   (∃ doneIdx ikm dh₁, CompSessionAt tr (st.sessionInfo me) doneIdx ikm dh₁ ∧
     CompRkSteps dh₁ st.rIdx (pqxdhKdf ikm).rk st.rk ∧
@@ -262,7 +262,7 @@ theorem CompStateScheduleOK.mono {tr tr' : ExecTrace} (hle : tr ≤ tr')
     ⟨ts, randAt_lt_length hr', hr', hdhs⟩⟩
 
 /-- Per-event schedule invariant on `TREvent` on trace `tr`. -/
-def CompEventScheduleOK (tr : ExecTrace) : TREvent → Prop
+@[expose] def CompEventScheduleOK (tr : ExecTrace) : TREvent → Prop
   | .SkippedKeyStored s _ n seed rIdx _ =>
     1 ≤ rIdx ∧ rIdx % 2 = roleParity s.initiator ∧
     ∃ doneIdx ikm dh₁ ck₀, CompSessionAt tr s doneIdx ikm dh₁ ∧

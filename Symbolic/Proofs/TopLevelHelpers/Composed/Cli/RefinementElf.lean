@@ -9,13 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlaced
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedG -- rooting-only, no decl used
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst -- rooting-only, no decl used
 public import LibsignalBinary.Specifications.SignalSession.CliElf
-public import Symbolic.Proofs.Refinement.Composed.Cli.ElfToModelV2BridgeF3Placed
-import Symbolic.Proofs.TopLevelHelpers.Composed.Cli.ProgressElfPlaced -- rooting-only, no decl used
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfDirectBridge
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced
+import Symbolic.Proofs.Refinement.Composed.Cli.ElfToModelV2BridgeF3Placed
 public import Symbolic.Specifications.Refinement.ElfBinding
+public import Symbolic.Proofs.SpecLemmas.ElfBindingPlaced -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SpecLemmas.ElfBindingPlainPanPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMemsetEntryGuard
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2Asm
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2Branch2
@@ -24,7 +27,6 @@ import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStop
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KAssembly
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KBridges
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KHooks
-import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KD3MainLiftGlueSat -- rooting-only, no decl used
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KFdAll
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KMainEntryFitsSat -- rooting-only, no decl used
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KM1
@@ -33,9 +35,14 @@ import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KMemset
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KNarrowR1
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KWitness
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2StepsLiftR2
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.AesDecErrRoGhost -- rooting-only, no decl used
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.Compress512 -- rooting-only, no decl used
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.MlKemSampleNttHelpers -- rooting-only, no decl used
 import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.T4Witness -- rooting-only, no decl used
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.X25519Row -- rooting-only, no decl used
 import Symbolic.Proofs.TopLevelHelpers.Composed.Cli.RefinementKElf
 import Symbolic.Proofs.TopLevelHelpers.Composed.Cli.AsmLevelSecurityKElf
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MlKemSampleNttDiverge -- rooting-only, no decl used
 
 /-!
 # Relocatable Whole-Protocol CLI Refinement for `cliElfBytes`
@@ -45,7 +52,7 @@ Instantiates `compRefinesCliBinaryPlaced_of_v2OomF3Bytes` and `comp_refines_cli_
 `CompRefinesCliBinaryPlaced cliElfBytes`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -72,7 +79,7 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KM1
 open Symbolic.Proofs.Refinement.Composed.Cli.ElfToModelV2BridgeF3Placed
   (compRefinesCliBinaryPlaced_of_v2OomF3Bytes)
 
-/-- Relocatable two-placement `cliElfBytes` whole-protocol CLI refinement from
+/-- Relocatable `cliElfBytes` whole-protocol CLI refinement from
 `hv2 : CliPqBinaryV2OomF3BytesPlaced cliElfBytes`. -/
 theorem comp_refines_cli_placed_of_v2
     (hv2 : CliPqBinaryV2OomF3BytesPlaced cliElfBytes)
@@ -80,9 +87,14 @@ theorem comp_refines_cli_placed_of_v2
       libsignalSessionLib.LinkedAt cliElfBytes mpl →
       VerifiedLibraries.mallocngLib.LinkedAt cliElfBytes mmpl →
       ∀ elf' : ElfImage, ElfImage.parse cliElfBytes = .ok elf' →
-        DY.Libsignal.Composed.Refinement.Cli.CliElfProgressPlaced mpl mmpl elf') :
+        DY.Libsignal.Composed.Refinement.Cli.CliElfProgressPlaced mpl elf') :
     CompRefinesCliBinaryPlaced cliElfBytes :=
-  compRefinesCliBinaryPlaced_of_v2OomF3Bytes hv2 hprog comp_refines_cli_model_b2
+  compRefinesCliBinaryPlaced_of_v2OomF3Bytes
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced.cliElf_mallocng_linkedIn
+    (fun _ hLs _ hparse =>
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced.cliElf_trustedCodeMatchesPlaced_of_parse
+        hLs hparse)
+    hv2 hprog comp_refines_cli_model_b2
 
 /-- Composes `cliPqBinaryV2OomF3BytesPlaced_cliElf_of_main` with `comp_refines_cli_placed_of_v2`
 to derive `CompRefinesCliBinaryPlaced cliElfBytes` from the `main`-level witnesses. -/
@@ -123,26 +135,72 @@ theorem comp_refines_cli_placed_of_main
       libsignalSessionLib.LinkedAt cliElfBytes mpl →
       VerifiedLibraries.mallocngLib.LinkedAt cliElfBytes mmpl →
       ∀ elf' : ElfImage, ElfImage.parse cliElfBytes = .ok elf' →
-        DY.Libsignal.Composed.Refinement.Cli.CliElfProgressPlaced mpl mmpl elf') :
+        DY.Libsignal.Composed.Refinement.Cli.CliElfProgressPlaced mpl elf') :
     CompRefinesCliBinaryPlaced cliElfBytes :=
   comp_refines_cli_placed_of_v2
     (cliPqBinaryV2OomF3BytesPlaced_cliElf_of_main
       hparse hAssump hmain hoverD3 huntyped hpathB hvalidMatch hinitSem)
     hprog
 
-/-- Placed progress for `cliElfBytes`. -/
+/-- Plain-memory placed progress for `cliElfBytes`. -/
 theorem cliElfProgressPlaced_cliElf :
     ∀ mpl mmpl : MultiPlacement,
       libsignalSessionLib.LinkedAt cliElfBytes mpl →
       VerifiedLibraries.mallocngLib.LinkedAt cliElfBytes mmpl →
       ∀ elf : ElfImage, ElfImage.parse cliElfBytes = .ok elf →
-        DY.Libsignal.Composed.Refinement.Cli.CliElfProgressPlaced mpl mmpl elf :=
+        Symbolic.Proofs.SpecLemmas.ElfBindingPlainPanPlaced.CliElfProgressPlainPanPlaced mpl elf :=
   RefinementKElf.cliElfProgressPlaced_cliElfK h2k_ghostArms_closed
 
-/-- Relocatable two-placement whole-protocol CLI refinement for `cliElfBytes`. -/
+/-- Relocatable plain-memory whole-protocol CLI refinement for `cliElfBytes`. -/
 theorem comp_refines_cli_placed_proof :
-    CompRefinesCliBinaryPlaced cliElfBytes :=
+    Symbolic.Proofs.SpecLemmas.ElfBindingPlainPanPlaced.CompRefinesCliBinaryPlainPanPlaced
+      cliElfBytes :=
   RefinementKElf.comp_refines_cli_placed_proofK h2k_ghostArms_closed
+
+/-- ELF-direct whole-protocol CLI refinement and progress for `cliElfBytes`. -/
+theorem comp_refines_cli_proof :
+    DY.Libsignal.Composed.Refinement.Cli.CompRefinesCliBinary cliElfBytes := by
+  have hAt := comp_refines_cli_placed_proof
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced.cliElfMultiPlacement
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced.cliElf_linkedAt
+  rcases hAt with ⟨elf, hparse, _, hprog, href⟩
+  have helf : elf = CryptoVerification.SignalSession.cliElfImage := by
+    rw [CryptoVerification.SignalSession.cliElf_parse] at hparse
+    exact Except.ok.inj hparse.symm
+  subst helf
+  have hrel :
+      DY.Libsignal.Composed.Refinement.Cli.elfRel
+        CryptoVerification.SignalSession.cliElfImage
+        LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfDirectBridge.cliElfAddrsVal =
+      Symbolic.Proofs.SpecLemmas.ElfBindingPlainPanPlaced.elfRelPlainPanPlaced
+        LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced.cliElfMultiPlacement
+        CryptoVerification.SignalSession.cliElfImage := by
+    funext interp W i o
+    simp only [DY.Libsignal.Composed.Refinement.Cli.elfRel,
+      Symbolic.Proofs.SpecLemmas.ElfBindingPlainPanPlaced.elfRelPlainPanPlaced,
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfDirectBridge.cliRunElf_eq]
+  refine ⟨CryptoVerification.SignalSession.cliElfImage,
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfDirectBridge.cliElfAddrsVal,
+    CryptoVerification.SignalSession.cliElf_parse,
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfDirectBridge.cliElf_resolveAddrs,
+    ?_, ?_⟩
+  · intro interp hInt W hW r hr t ht c i hc hi hAgree
+    have ht' : DY.Libsignal.Composed.Refinement.Cli.CliReachable
+        (Symbolic.Proofs.SpecLemmas.ElfBindingPlainPanPlaced.elfRelPlainPanPlaced
+          LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced.cliElfMultiPlacement
+          CryptoVerification.SignalSession.cliElfImage interp W)
+        interp r
+        (DY.Libsignal.Composed.Refinement.Cli.CliTurn.init
+          (DY.Libsignal.Composed.Refinement.Cli.initDirs interp r)) t := by
+      simpa [hrel] using ht
+    rcases hprog interp hInt W hW r hr t ht' c i hc hi hAgree with hne | hstuck
+    · exact Or.inl (by
+        rw [LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfDirectBridge.cliRunElf_eq]
+        exact hne)
+    · exact Or.inr
+        ((LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfDirectBridge.cliReachesSampleNttStuckElf_iff i).mpr
+          hstuck)
+  · simpa [hrel] using href
 
 /--
 info: 'Symbolic.Proofs.TopLevelHelpers.Composed.Cli.comp_refines_cli_placed_of_v2' depends on axioms: [propext,

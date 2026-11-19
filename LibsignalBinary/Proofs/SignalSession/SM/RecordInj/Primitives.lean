@@ -20,7 +20,7 @@ Varint and field-tag lookahead (`peekTag`, `TagGe`), `ChainEq` field-peeling com
 injectivity.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -62,7 +62,7 @@ theorem encodeKey_append_inj {tag : ℕ} {wt : WireType} {r₁ r₂ : Bytes}
   (encodeVarint_append_inj h).2
 
 /-- Next protobuf field number at the front of `bs`, if a valid field key starts `bs`. -/
-def peekTag (bs : Bytes) : Option ℕ :=
+@[expose] def peekTag (bs : Bytes) : Option ℕ :=
   (decodeKey bs).map (·.1.1)
 
 theorem peekTag_encodeKey (tag : ℕ) (wt : WireType) (rest : Bytes)
@@ -73,7 +73,7 @@ theorem peekTag_encodeKey (tag : ℕ) (wt : WireType) (rest : Bytes)
 /-! ## Lower Bounds on Next Field Tag (`TagGe`) -/
 
 /-- Either `peekTag bs` is `none` (e.g. end of buffer) or its tag is `≥ T`. -/
-def TagGe (T : ℕ) (bs : Bytes) : Prop :=
+@[expose] def TagGe (T : ℕ) (bs : Bytes) : Prop :=
   ∀ t, peekTag bs = some t → T ≤ t
 
 theorem tagGe_nil (T : ℕ) : TagGe T [] := by
@@ -284,7 +284,7 @@ theorem flatten_lenField_append_inj {α : Type} {tag : ℕ} (enc : α → Bytes)
 /-! ## High-Level `ChainEq` Field Peeling Combinators -/
 
 /-- Equal byte streams of length `< 2 ^ 64` (threads both equality and the varint length bound). -/
-def ChainEq (bs₁ bs₂ : Bytes) : Prop :=
+@[expose] def ChainEq (bs₁ bs₂ : Bytes) : Prop :=
   bs₁ = bs₂ ∧ bs₁.length < 2 ^ 64
 
 theorem peel_uint32 {tag : ℕ} {v₁ v₂ : BitVec 32} {r₁ r₂ : Bytes}

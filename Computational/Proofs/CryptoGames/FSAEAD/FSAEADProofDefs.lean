@@ -19,7 +19,7 @@ Predicates restricting an FS-AEAD adversary's encryption associated data (`encBa
 and AEAD correctness to valid associated data (`CorrectOn`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 namespace CryptoGames
@@ -29,13 +29,13 @@ section RestrictedAD
 variable {SS RS AD Msg C : Type}
 
 /-- Whether the FS-AEAD query `t` is a `transmit` or `challenge` whose AD fails `ok`. -/
-def encBadAD (ok : AD → Bool) : (unifSpec + spec SS RS AD Msg C).Domain → Bool
+@[expose] def encBadAD (ok : AD → Bool) : (unifSpec + spec SS RS AD Msg C).Domain → Bool
   | .inr (.inl (.inl (.inl (.inl (.inl ⟨a, _⟩))))) => !ok a
   | .inr (.inl (.inl (.inl (.inl (.inr ⟨a, _, _⟩))))) => !ok a
   | _ => false
 
 /-- Every `transmit` and `challenge` query of `A` carries an AD satisfying `ok`. -/
-def EncADsOk (ok : AD → Bool) (A : Adversary SS RS AD Msg C) : Prop :=
+@[expose] def EncADsOk (ok : AD → Bool) (A : Adversary SS RS AD Msg C) : Prop :=
   A.IsQueryBoundP (fun t => encBadAD (SS := SS) (RS := RS) (Msg := Msg) (C := C) ok t = true) 0
 
 end RestrictedAD
@@ -44,7 +44,7 @@ namespace AEADScheme
 variable {K AD M C : Type}
 
 /-- `ae` is correct on the ADs `a` with `ok a = true`. -/
-def CorrectOn (ae : AEADScheme K AD M C) (ok : AD → Bool) : Prop :=
+@[expose] def CorrectOn (ae : AEADScheme K AD M C) (ok : AD → Bool) : Prop :=
   ∀ k a m, ok a = true → ae.dec k a (ae.enc k a m) = some m
 
 end AEADScheme

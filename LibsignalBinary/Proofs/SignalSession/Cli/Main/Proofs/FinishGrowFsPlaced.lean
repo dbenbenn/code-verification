@@ -9,13 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FinishGrowFs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FinishGrowFs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlaced
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -593,20 +597,6 @@ theorem finish_grow_ne_cells_fs_blk587_ok_x [LibsignalPlacement] {A : RustAlloc}
 section CallerBlock
 variable [LibsignalPlacement] {A : RustAlloc} {H : LibsignalHooks}
   {prog : Program} {i : Nat} [IsLsBlockProg prog i H]
-
-theorem cliFinishGrow_placed_ok_at (hC : AllocContractsXCliPlaced A H)
-    (hi : i < 619 := by decide) :
-    subroutine_ok prog (lsmpl.base 587)
-      (LibsignalPublicApi.StoreKit.withLsRoCl lsmpl (finishGrowSpecX A)) :=
-  LibsignalPublicApi.StoreKit.ls_subroutine_ok_rocl_of_block (i := i) (j := 587)
-    (cliFinishGrow_blk587_ok hC) hi
-
-theorem cliFinishGrow_placed_okFs_at (hCF : AllocContractsFsPlaced A H)
-    (hi : i < 619 := by decide) :
-    subroutine_ok prog (lsmpl.base 587)
-      (LibsignalPublicApi.StoreKit.withLsRoCl lsmpl (finishGrowSpecX A).keepsFs) :=
-  LibsignalPublicApi.StoreKit.ls_subroutine_ok_rocl_of_block (i := i) (j := 587)
-    (cliFinishGrow_blk587_okFs hCF) hi
 
 theorem finish_grow_zero_cells_placed_ok_at (hC : AllocContractsXCliPlaced A H)
     (hi : i < 619 := by decide) :

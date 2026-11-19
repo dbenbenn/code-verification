@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgeCKA
-public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgeCKA -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11 -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG
 
 /-!
@@ -19,7 +19,7 @@ import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG
 Lifts Lemma 11 (hop H2 → FS-AEAD) to `SMCompDF` (`implEDF`) and assembles `theorem8_df`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -44,13 +44,13 @@ abbrev SMSpecDF (Γ T Sig SS RS M CCoins E : Type) :=
 abbrev SMCompDF (Γ T Sig SS RS M CCoins E : Type) :=
   AdversaryCompDF (PartyState Γ T Sig SS RS) M CCoins (Header T × E)
 
-def liftQ (q : (SMSpec Γ T Sig SS RS M CCoins E).Domain) :
+@[expose] def liftQ (q : (SMSpec Γ T Sig SS RS M CCoins E).Domain) :
     (SMSpecDF Γ T Sig SS RS M CCoins E).Domain :=
   match q with
   | .inl n => .inl n
   | .inr oq => .inr (.inl oq)
 
-def stepPDF (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
+@[expose] def stepPDF (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     (esP : EStateP Γ T Sig SS RS M E K) (sp : PRFPRNG.GameState Sig I K) :
     ProbComp (((SMSpecDF Γ T Sig SS RS M CCoins E).Range q × EStateP Γ T Sig SS RS M E K) ×
       PRFPRNG.GameState Sig I K) :=
@@ -58,7 +58,7 @@ def stepPDF (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     ((implEDF (hooksPRNG cka prng fs mo) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy q).run
       esP)).run sp
 
-def stepLDF (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
+@[expose] def stepLDF (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     (esL : EStateL Γ T Sig SS RS M E K I) :
     ProbComp ((SMSpecDF Γ T Sig SS RS M CCoins E).Range q × EStateL Γ T Sig SS RS M E K I) :=
   simulateQ lImpl
@@ -78,14 +78,14 @@ def runLocDF (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
       oa).run esL)
   pure (authOut (2 + Δcka) mo.policy r.2)
 
-def runLocAtDF (j : ℕ) (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
+@[expose] def runLocAtDF (j : ℕ) (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
     (esL : EStateL Γ T Sig SS RS M E K I) : ProbComp Bool := do
   let r ← simulateQ lImpl
     ((simulateQ (implEDF (hooksLocal cka prng fs mo) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy)
       oa).run esL)
   pure (authOut (2 + Δcka) mo.policy r.2 && (r.2.h.lastIdx == some j))
 
-def localAuthDF (tL : Option ℕ) (t : ℕ) (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) :
+@[expose] def localAuthDF (tL : Option ℕ) (t : ℕ) (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) :
     ProbComp Bool := do
   let mo : Mode := ⟨true, tL, t⟩
   let (vs, h) ← simulateQ lImpl ((initLocal cka prng fs lam mo).run {})
@@ -96,7 +96,7 @@ def localAuthDF (tL : Option ℕ) (t : ℕ) (A : SchemeAdversaryDF Γ T Sig SS R
       { st := fun P => match P with | .A => vA | .B => vB, b := false }
     runLocDF cka prng fs Δcka qep mo A { g, h }
 
-def localAuthAtDF (j : ℕ) (tL : Option ℕ) (t : ℕ)
+@[expose] def localAuthAtDF (j : ℕ) (tL : Option ℕ) (t : ℕ)
     (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) : ProbComp Bool := do
   let mo : Mode := ⟨true, tL, t⟩
   let (vs, h) ← simulateQ lImpl ((initLocal cka prng fs lam mo).run {})
@@ -107,21 +107,21 @@ def localAuthAtDF (j : ℕ) (tL : Option ℕ) (t : ℕ)
       { st := fun P => match P with | .A => vA | .B => vB, b := false }
     runLocAtDF cka prng fs Δcka qep mo j A { g, h }
 
-def stepLFixedDF (j : ℕ) (k_fs : K) (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
+@[expose] def stepLFixedDF (j : ℕ) (k_fs : K) (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     (esL : EStateL Γ T Sig SS RS M E K I) :
     ProbComp ((SMSpecDF Γ T Sig SS RS M CCoins E).Range q × EStateL Γ T Sig SS RS M E K I) :=
   simulateQ lImpl
     ((implEDF (hooksLocalFixed cka prng fs mo j k_fs)
       (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy q).run esL)
 
-def runLocAtFixedDF (j : ℕ) (k_fs : K) (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
+@[expose] def runLocAtFixedDF (j : ℕ) (k_fs : K) (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
     (esL : EStateL Γ T Sig SS RS M E K I) : ProbComp Bool := do
   let r ← simulateQ lImpl
     ((simulateQ (implEDF (hooksLocalFixed cka prng fs mo j k_fs)
       (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy) oa).run esL)
   pure (authOut (2 + Δcka) mo.policy r.2 && (r.2.h.lastIdx == some j))
 
-def localAuthAtFixedDF (j : ℕ) (k_fs : K) (tL : Option ℕ) (t : ℕ)
+@[expose] def localAuthAtFixedDF (j : ℕ) (k_fs : K) (tL : Option ℕ) (t : ℕ)
     (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) : ProbComp Bool := do
   let mo : Mode := ⟨true, tL, t⟩
   let (vs, h) ← simulateQ lImpl ((initLocalFixed cka prng fs lam mo j k_fs).run {})
@@ -132,7 +132,7 @@ def localAuthAtFixedDF (j : ℕ) (k_fs : K) (tL : Option ℕ) (t : ℕ)
       { st := fun P => match P with | .A => vA | .B => vB, b := false }
     runLocAtFixedDF cka prng fs Δcka qep mo j k_fs A { g, h }
 
-def stepFDF (j : ℕ) (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
+@[expose] def stepFDF (j : ℕ) (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     (esF : EStateF Γ T Sig SS RS M E K I) (st : FSGameState SS RS T M E) :
     ProbComp (((SMSpecDF Γ T Sig SS RS M CCoins E).Range q ×
       EStateF Γ T Sig SS RS M E K I) × FSGameState SS RS T M E) :=
@@ -140,7 +140,7 @@ def stepFDF (j : ℕ) (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     ((implEDF (hooksFS cka prng fs Δcka mo j) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy q).run
       esF)).run st
 
-def runFDF (j : ℕ) (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
+@[expose] def runFDF (j : ℕ) (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
     (esF : EStateF Γ T Sig SS RS M E K I) (st : FSGameState SS RS T M E) : ProbComp Bool := do
   let r ← (simulateQ (implFS fs)
     ((simulateQ (implEDF (hooksFS cka prng fs Δcka mo j)
@@ -148,57 +148,11 @@ def runFDF (j : ℕ) (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
   pure r.2.win
 
 omit [SampleableType KR] [SampleableType KC] in
-theorem runPDF_pure (b' : Bool) (esP : EStateP Γ T Sig SS RS M E K)
-    (sp : PRFPRNG.GameState Sig I K) :
-    runPDF cka prng fs Δcka qep mo (pure b') esP sp =
-      pure (authOut (2 + Δcka) mo.policy esP) := by
-  simp [runPDF, map_eq_bind_pure_comp]
-
-omit [SampleableType KR] [SampleableType KC] in
-theorem runLocDF_pure (b' : Bool) (esL : EStateL Γ T Sig SS RS M E K I) :
-    runLocDF cka prng fs Δcka qep mo (pure b') esL =
-      pure (authOut (2 + Δcka) mo.policy esL) := by
-  simp [runLocDF, map_eq_bind_pure_comp]
-
-omit [SampleableType KR] [SampleableType KC] in
-theorem runLocAtDF_pure (j : ℕ) (b' : Bool) (esL : EStateL Γ T Sig SS RS M E K I) :
-    runLocAtDF cka prng fs Δcka qep mo j (pure b') esL =
-      pure (authOut (2 + Δcka) mo.policy esL && (esL.h.lastIdx == some j)) := by
-  simp [runLocAtDF, map_eq_bind_pure_comp]
-
-omit [SampleableType KR] [SampleableType KC] in
 theorem runLocAtFixedDF_pure (j : ℕ) (k_fs : K) (b' : Bool)
     (esL : EStateL Γ T Sig SS RS M E K I) :
     runLocAtFixedDF cka prng fs Δcka qep mo j k_fs (pure b') esL =
       pure (authOut (2 + Δcka) mo.policy esL && (esL.h.lastIdx == some j)) := by
   simp [runLocAtFixedDF, map_eq_bind_pure_comp]
-
-omit [SampleableType KR] [SampleableType KC] in
-theorem runPDF_query_bind (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
-    (k : (SMSpecDF Γ T Sig SS RS M CCoins E).Range q → SMCompDF Γ T Sig SS RS M CCoins E Bool)
-    (esP : EStateP Γ T Sig SS RS M E K) (sp : PRFPRNG.GameState Sig I K) :
-    runPDF cka prng fs Δcka qep mo (liftM (OracleSpec.query q) >>= k) esP sp =
-      stepPDF cka prng fs Δcka qep mo q esP sp >>= fun r =>
-        runPDF cka prng fs Δcka qep mo (k r.1.1) r.1.2 r.2 := by
-  simp [runPDF, stepPDF, simulateQ_bind, StateT.run_bind, map_eq_bind_pure_comp, bind_assoc]
-
-omit [SampleableType KR] [SampleableType KC] in
-theorem runLocDF_query_bind (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
-    (k : (SMSpecDF Γ T Sig SS RS M CCoins E).Range q → SMCompDF Γ T Sig SS RS M CCoins E Bool)
-    (esL : EStateL Γ T Sig SS RS M E K I) :
-    runLocDF cka prng fs Δcka qep mo (liftM (OracleSpec.query q) >>= k) esL =
-      stepLDF cka prng fs Δcka qep mo q esL >>= fun r =>
-        runLocDF cka prng fs Δcka qep mo (k r.1) r.2 := by
-  simp [runLocDF, stepLDF, simulateQ_bind, StateT.run_bind, map_eq_bind_pure_comp, bind_assoc]
-
-omit [SampleableType KR] [SampleableType KC] in
-theorem runLocAtDF_query_bind (j : ℕ) (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
-    (k : (SMSpecDF Γ T Sig SS RS M CCoins E).Range q → SMCompDF Γ T Sig SS RS M CCoins E Bool)
-    (esL : EStateL Γ T Sig SS RS M E K I) :
-    runLocAtDF cka prng fs Δcka qep mo j (liftM (OracleSpec.query q) >>= k) esL =
-      stepLDF cka prng fs Δcka qep mo q esL >>= fun r =>
-        runLocAtDF cka prng fs Δcka qep mo j (k r.1) r.2 := by
-  simp [runLocAtDF, stepLDF, simulateQ_bind, StateT.run_bind, map_eq_bind_pure_comp, bind_assoc]
 
 omit [SampleableType KR] [SampleableType KC] in
 theorem runLocAtFixedDF_query_bind (j : ℕ) (k_fs : K)
@@ -232,25 +186,6 @@ theorem stepPDF_abort (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
       StateT.run_get, pure_bind, hab, Bool.true_or, ↓reduceIte, StateT.run_pure, simulateQ_pure,
       support_pure, Set.mem_singleton_iff] at hr
     subst hr; exact hab
-
-theorem runPDF_abort (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
-    {esP : EStateP Γ T Sig SS RS M E K} {sp : PRFPRNG.GameState Sig I K} (hab : esP.abort = true) :
-    𝒟[runPDF cka prng fs Δcka qep mo oa esP sp] {true} = 0 := by
-  induction oa using OracleComp.inductionOn generalizing esP sp with
-  | pure b' =>
-    rw [runPDF_pure]
-    simp [authOut, hab]
-  | query_bind q k ih =>
-    rw [runPDF_query_bind]
-    exact evalDist_bind_eq_zero _ _ fun r hr =>
-      ih r.1.1 (stepPDF_abort cka prng fs Δcka qep mo q esP sp hab r hr)
-
-theorem runPDF_abort_le (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
-    {esP : EStateP Γ T Sig SS RS M E K} {sp : PRFPRNG.GameState Sig I K} (hab : esP.abort = true)
-    (rhs : ℝ≥0∞) :
-    𝒟[runPDF cka prng fs Δcka qep mo oa esP sp] {true} ≤ rhs := by
-  rw [runPDF_abort cka prng fs Δcka qep mo oa hab]
-  exact zero_le
 
 theorem leComp_deliverForgeE_PRNG_local
     (arg : Party × (Header T × E) × (Header T × E))
@@ -506,108 +441,6 @@ theorem leComp_stepPDF_stepLDF (hauth : mo.auth = true)
   · exact leComp_stepP_stepL cka prng fs Δcka qep mo hauth (.inr oq) hsync
   · exact leComp_deliverForgeE_PRNG_local cka prng fs Δcka qep mo df hsync
 
-theorem runPDF_le_runLocDF (hauth : mo.auth = true)
-    (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
-    {esP : EStateP Γ T Sig SS RS M E K} {sp : PRFPRNG.GameState Sig I K}
-    {esL : EStateL Γ T Sig SS RS M E K I}
-    (hsync : SyncPL Δcka mo esP sp esL) :
-    𝒟[runPDF cka prng fs Δcka qep mo oa esP sp] {true} ≤
-      𝒟[runLocDF cka prng fs Δcka qep mo oa esL] {true} := by
-  induction oa using OracleComp.inductionOn generalizing esP sp esL with
-  | pure b' =>
-    rw [runPDF_pure, runLocDF_pure]
-    have hout : authOut (2 + Δcka) mo.policy esP = authOut (2 + Δcka) mo.policy esL := by
-      unfold authOut
-      rw [hsync.abort_eq, eraseSt_win hsync.g_eq,
-        eraseSt_authOK hsync.g_eq (2 + Δcka) mo.policy.tL mo.policy.tStar]
-    rw [hout]
-  | query_bind q k ih =>
-    rw [runPDF_query_bind, runLocDF_query_bind]
-    refine leComp_stepPDF_stepLDF cka prng fs Δcka qep mo hauth q hsync _ _ ?_
-    rintro ⟨⟨uP, esP'⟩, sp'⟩ ⟨uL, esL'⟩ (hab | ⟨rfl, hsync'⟩)
-    · exact runPDF_abort_le cka prng fs Δcka qep mo (k uP) hab _
-    · exact ih uP hsync'
-
-omit [SampleableType KR] [SampleableType KC] in
-theorem evalDist_runPDF_eq (tL : Option ℕ) (t : ℕ)
-    (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
-    (esP : EStateP Γ T Sig SS RS M E K) (sp : PRFPRNG.GameState Sig I K) :
-    𝒟[do
-      let x ← (simulateQ (pImpl prng)
-        ((simulateQ (implEDF (hooksPRNG cka prng fs ⟨true, tL, t⟩) (2 + Δcka) qep fs.maxSkip
-          (Config.auth t) ⟨true, tL, t⟩) oa).run esP)).run sp
-      pure (authOut (2 + Δcka) ⟨true, tL, t⟩ x.1.2)] =
-    𝒟[runPDF cka prng fs Δcka qep ⟨true, tL, t⟩ oa esP sp] := by
-  simp [runPDF, Mode.cfg, Mode.policy, map_eq_bind_pure_comp]
-
-theorem branch_redPRNGAuthDF_le_localAuthDF (tL : Option ℕ) (t : ℕ)
-    (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) :
-    𝒟[PRFPRNG.branch prng true (redPRNGAuthDF cka prng fs lam Δcka qep tL t A)] {true} ≤
-      𝒟[localAuthDF cka prng fs lam Δcka qep tL t A] {true} := by
-  have hpImpl : (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-      (StateT (PRFPRNG.GameState Sig I K) ProbComp) + prng.oracleImpl = pImpl prng := rfl
-  unfold PRFPRNG.branch redPRNGAuthDF authSimDF engRunDF localAuthDF initPRNG initLocal
-  simp only [hpImpl, StateT.run'_eq, map_eq_bind_pure_comp,
-    StateT.run_bind, simulateQ_bind, bind_assoc,
-    simulateQ_pImpl_run_lift_sampleT, simulateQ_lImpl_run_lift_sampleT, pure_bind]
-  refine evalDist_bind_mono ($ᵗ KR) _ _ fun kr _ => ?_
-  refine evalDist_bind_mono ($ᵗ KC) _ _ fun kc _ => ?_
-  have hroot0 := leComp_rootPRNG_rootL prng ⟨true, tL, t⟩
-    (t := 0) (Ik := lam) (σv := none) (σ := prng.init kr)
-    (hP := ({} : PRNGState T Sig K)) (sp := { σ := prng.init kr, b := true })
-    (hL := ({} : LState T Sig K I))
-    rfl rfl (fun h1 _ => Or.inr (by cases tL <;> simp [Mode.tH, healEpoch] at h1 ⊢)) (by omega)
-    (fun _ => rfl)
-  refine hroot0 _ _ ?_
-  rintro ⟨⟨res0, hP0⟩, sp0⟩ ⟨⟨σL, kL, sid0⟩, hL0⟩ hrel0
-  rcases hrel0 with hnone | ⟨σP, hres_eq, hhP0, hb0, htab0, hcorr0', hc0, _, hσ_rel, hlt0, _⟩
-  · dsimp only at hnone; subst hnone
-    simp
-  · dsimp only at hres_eq hhP0; subst hres_eq hhP0
-    have hreg_det : ∃ (idx? : Option ℕ) (hL1 : LState T Sig K I),
-        simulateQ lImpl ((regSessOf (T := T) (Sig := Sig) (K := K) sid0).run hL0) =
-          pure (idx?, hL1) ∧ hL1.table = hL0.table ∧ hL1.cache = hL0.cache := by
-      cases sid0 with
-      | none => exact ⟨none, hL0, rfl, rfl, rfl⟩
-      | some Ik =>
-        unfold regSessOf regSess
-        simp only [StateT.run_map, StateT.run_bind, StateT.run_get, pure_bind]
-        split
-        · exact ⟨some (hL0.sessions.idxOf Ik), hL0, rfl, rfl, rfl⟩
-        · exact ⟨some hL0.sessions.length, { hL0 with sessions := hL0.sessions ++ [Ik] },
-            rfl, rfl, rfl⟩
-    obtain ⟨idx?, hL1, hreg_eq, htab1, hc1⟩ := hreg_det
-    simp only [StateT.run_pure, simulateQ_pure, StateT.run_bind, simulateQ_bind, hreg_eq,
-      pure_bind, bind_assoc, Function.comp_apply]
-    rw [evalDist_runPDF_eq]
-    refine runPDF_le_runLocDF cka prng fs Δcka qep ⟨true, tL, t⟩ rfl A ?_
-    refine ⟨rfl, rfl, ?_, ?_, hb0, htab0.trans htab1.symm, hcorr0', ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-    · intro P
-      cases P with
-      | A =>
-        refine ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, ?_, hσ_rel⟩
-        intro t'
-        dsimp only [mkParties]
-        split <;> rfl
-      | B =>
-        refine ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, ?_, hσ_rel⟩
-        intro t'
-        rfl
-    · intro t'
-      rw [hc1, hc0]
-      exact Or.inl ⟨rfl, rfl⟩
-    · intro pos hpos; cases hpos
-    · intro r hr; cases hr
-    · intro P; simp
-    · intro P hlt; simp at hlt
-    · intro P _ hlt
-      cases P <;> exact (hlt0 hlt).symm
-    · intro hpos P _ _
-      cases P <;> exact (hlt0 hpos).symm
-    · intro Tc σc k idx' hc_eq _
-      rw [hc1, hc0] at hc_eq
-      cases hc_eq
-
 theorem stepLDF_sessInv (hauth : mo.auth = true) {q rem : ℕ}
     (q_sm : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     (esL : EStateL Γ T Sig SS RS M E K I) (hS : SessInv mo q rem esL) :
@@ -727,125 +560,6 @@ theorem stepLDF_sessInv (hauth : mo.auth = true) {q rem : ℕ}
                         obtain ⟨idx, hlt, heq⟩ := hS.vR_idx Q rsv hq
                         exact ⟨idx, lt_of_lt_of_le hlt hl1, heq⟩
 
-theorem runLocDF_le_sum_runLocAtDF (hauth : mo.auth = true) {q rem : ℕ}
-    {p : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain → Prop} [DecidablePred p]
-    (hp_inl : ∀ t, ¬ p (.inl t)) (hp_inr : ∀ t, p (.inr t))
-    (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
-    (hq : oa.IsQueryBoundP p rem)
-    (esL : EStateL Γ T Sig SS RS M E K I) (hS : SessInv mo q rem esL) :
-    𝒟[runLocDF cka prng fs Δcka qep mo oa esL] {true} ≤
-      ∑ j ∈ Finset.range q, 𝒟[runLocAtDF cka prng fs Δcka qep mo j oa esL] {true} := by
-  induction oa using OracleComp.inductionOn generalizing rem esL with
-  | pure a =>
-    simp only [runLocDF, runLocAtDF, simulateQ_pure, StateT.run_pure, pure_bind, evalDist_pure]
-    by_cases hwin : authOut (2 + Δcka) mo.policy esL = true
-    · rw [hwin]
-      simp only [Bool.true_and]
-      have hwin_g : esL.g.win = true := by
-        unfold authOut at hwin
-        simp only [Bool.and_eq_true] at hwin
-        exact hwin.1.2
-      rcases hS.bound with ⟨_, j, hj, hlast⟩ | ⟨hnw, _⟩
-      · refine le_trans ?_ (Finset.single_le_sum (fun _ _ => zero_le) (Finset.mem_range.mpr hj))
-        simp [hlast]
-      · rw [hwin_g] at hnw; cases hnw
-    · have hfalse : authOut (2 + Δcka) mo.policy esL = false :=
-        Bool.eq_false_iff.mpr hwin
-      simp [hfalse]
-  | query_bind t r ih =>
-    rw [isQueryBoundP_query_bind_iff] at hq
-    dsimp only [runLocDF, runLocAtDF]
-    rw [simulateQ_query_bind]
-    simp only [OracleQuery.input_query, OracleQuery.cont_query, id_eq, StateT.run_bind,
-      simulateQ_bind, bind_assoc]
-    change 𝒟[stepLDF cka prng fs Δcka qep mo t esL >>= fun x =>
-        runLocDF cka prng fs Δcka qep mo (r x.1) x.2] {true} ≤
-      ∑ j ∈ Finset.range q, 𝒟[stepLDF cka prng fs Δcka qep mo t esL >>= fun x =>
-        runLocAtDF cka prng fs Δcka qep mo j (r x.1) x.2] {true}
-    refine evalDist_bind_le_sum _ _ _ _ (fun x hx => ?_)
-    have hstep := stepLDF_sessInv cka prng fs Δcka qep mo hauth t esL hS
-    cases t with
-    | inl c =>
-      exact ih x.1 (by simpa [hp_inl c] using hq.2 x.1) x.2 (hstep.1 c rfl x hx)
-    | inr q_sm =>
-      have hpos : 0 < rem := hq.1.resolve_left (not_not.mpr (hp_inr q_sm))
-      exact ih x.1 (by simpa [hp_inr q_sm] using hq.2 x.1) x.2 (hstep.2 q_sm rfl hpos x hx)
-
-theorem localAuthDF_le_sum_localAuthAtDF (tL : Option ℕ) (t q : ℕ)
-    (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) (hq : MakesAtMostQueriesDF A q) :
-    𝒟[localAuthDF cka prng fs lam Δcka qep tL t A] {true} ≤
-      ∑ j ∈ Finset.range q, 𝒟[localAuthAtDF cka prng fs lam Δcka qep j tL t A] {true} := by
-  rw [MakesAtMostQueriesDF] at hq
-  dsimp only [localAuthDF, localAuthAtDF]
-  refine evalDist_bind_le_sum
-    (simulateQ lImpl ((initLocal cka prng fs lam ⟨true, tL, t⟩).run {})) q
-    (fun x => match x.1 with
-      | none => pure false
-      | some (vA, vB) =>
-        runLocDF cka prng fs Δcka qep ⟨true, tL, t⟩ A
-          { g := { st := fun P => match P with | .A => vA | .B => vB, b := false }, h := x.2 })
-    (fun j x => match x.1 with
-      | none => pure false
-      | some (vA, vB) =>
-        runLocAtDF cka prng fs Δcka qep ⟨true, tL, t⟩ j A
-          { g := { st := fun P => match P with | .A => vA | .B => vB, b := false }, h := x.2 })
-    (fun x hx => ?_)
-  rcases x with ⟨vs, h⟩
-  cases vs with
-  | none =>
-    simp
-  | some vAB =>
-    rcases vAB with ⟨vA, vB⟩
-    let mo : Mode := ⟨true, tL, t⟩
-    have hS : SessInv mo q q
-        ({ g := { st := fun P => match P with | .A => vA | .B => vB, b := false }, h := h } :
-          EStateL Γ T Sig SS RS M E K I) := by
-      simp only [initLocal, StateT.run_bind, simulateQ_bind, simulateQ_lImpl_run_lift_sampleT,
-        MonadAttach.mem_support_bind] at hx
-      rcases hx with ⟨⟨kr, s1⟩, ⟨_, _, hs1⟩, ⟨kc, s2⟩, ⟨_, _, hs2⟩,
-        ⟨⟨σ, k, sid⟩, s3⟩, hroot, ⟨idx?, s4⟩, hreg, hpure⟩
-      injection hs1 with _ hs1; subst hs1
-      injection hs2 with _ hs2; subst hs2
-      simp only [StateT.run_pure, simulateQ_pure, support_pure, Set.mem_singleton_iff] at hpure
-      injection hpure with hvAB hh
-      injection hvAB with hvAB; injection hvAB with hvA hvB
-      subst hvA hvB hh
-      obtain ⟨hl_r, hc_r, _, hsid_r1, hsid_r2⟩ := mem_support_rootL prng mo hroot
-      obtain ⟨hnone_reg, hsome_reg⟩ := mem_support_regSessOf hreg
-      refine ⟨?_, ?_, ?_⟩
-      · intro P rsv hrsv
-        cases P <;> dsimp only [mkParties] at hrsv
-        · split at hrsv
-          · rename_i ht0
-            injection hrsv with hrsv; subst hrsv
-            obtain ⟨I', hsid_some⟩ := hsid_r1 ht0.symm
-            obtain ⟨⟨idx, hlt, heq⟩, _⟩ := hsome_reg I' hsid_some
-            exact ⟨idx, hlt, heq⟩
-          · cases hrsv
-        · cases hrsv
-      · intro Tc σ' k' idx' hc
-        rcases sid with _ | Ik
-        · obtain ⟨_, hs4⟩ := hnone_reg rfl
-          rw [hs4, hc_r] at hc; cases hc
-        · obtain ⟨_, _, _, hc_reg, _⟩ := hsome_reg Ik rfl
-          rw [hc_reg, hc_r] at hc; cases hc
-      · refine Or.inr ⟨rfl, ?_⟩
-        by_cases ht0 : mo.tStar = 0
-        · refine Or.inl ⟨ht0, ?_, le_rfl⟩
-          obtain ⟨I', hsid_some⟩ := hsid_r1 ht0.symm
-          obtain ⟨_, _, hl2, _, _⟩ := hsome_reg I' hsid_some
-          have : h.sessions.length ≤ ({} : LState T Sig K I).sessions.length + 1 := by
-            rw [← hl_r]; exact hl2
-          exact this
-        · have htpos : 0 < mo.tStar := Nat.pos_of_ne_zero ht0
-          have hsid_none : sid = none := hsid_r2 (Ne.symm ht0)
-          obtain ⟨_, hs4⟩ := hnone_reg hsid_none
-          have hlen0 : h.sessions.length = 0 := by
-            rw [hs4, hl_r]; rfl
-          exact Or.inr ⟨htpos, by rw [hlen0, Nat.zero_add]⟩
-    exact runLocDF_le_sum_runLocAtDF cka prng fs Δcka qep mo rfl (fun _ => by simp)
-      (fun _ => by simp) A hq _ hS
-
 theorem stepLFixedDF_eq_of_lt {j : ℕ} (k_fs : K)
     (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     {esL : EStateL Γ T Sig SS RS M E K I} (hlt : j < esL.h.sessions.length) :
@@ -921,21 +635,6 @@ theorem mem_support_stepLDF_sessions_le
                       Set.mem_singleton_iff] at hr2
                     subst hr2; exact hl
 
-theorem evalDist_runLocAtDF_eq_fixed_of_lt {j : ℕ} (k_fs : K)
-    (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
-    {esL : EStateL Γ T Sig SS RS M E K I} (hlt : j < esL.h.sessions.length) :
-    𝒟[runLocAtDF cka prng fs Δcka qep mo j oa esL] {true} =
-      𝒟[runLocAtFixedDF cka prng fs Δcka qep mo j k_fs oa esL] {true} := by
-  induction oa using OracleComp.inductionOn generalizing esL with
-  | pure b' =>
-    rw [runLocAtDF_pure, runLocAtFixedDF_pure]
-  | query_bind q k ih =>
-    rw [runLocAtDF_query_bind, runLocAtFixedDF_query_bind,
-      stepLFixedDF_eq_of_lt cka prng fs Δcka qep mo k_fs q hlt]
-    refine evalDist_bind_congr_true _ _ _ fun r hr => ?_
-    exact ih r.1 (lt_of_lt_of_le hlt
-      (mem_support_stepLDF_sessions_le cka prng fs Δcka qep mo q esL hr))
-
 theorem shiftLe_stepLDF {j : ℕ}
     (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     {esL : EStateL Γ T Sig SS RS M E K I}
@@ -991,63 +690,6 @@ theorem shiftLe_stepLDF {j : ℕ}
                   · simp only [StateT.run_pure, simulateQ_pure, support_pure,
                       Set.mem_singleton_iff] at hb
                     subst hb; exact ⟨rfl, rfl⟩
-
-theorem evalDist_runLocAtDF_le_fixed {j : ℕ}
-    (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
-    {esL : EStateL Γ T Sig SS RS M E K I}
-    (hle : esL.h.sessions.length ≤ j) (hinv : TabSessInv mo esL.h) :
-    𝒟[runLocAtDF cka prng fs Δcka qep mo j oa esL] {true} ≤
-      𝒟[($ᵗ K : ProbComp K) >>= fun k_fs =>
-        runLocAtFixedDF cka prng fs Δcka qep mo j k_fs oa esL] {true} := by
-  induction oa using OracleComp.inductionOn generalizing esL with
-  | pure b' =>
-    simp only [runLocAtDF_pure, runLocAtFixedDF_pure, OracleComp.evalDist_bind_const, le_rfl]
-  | query_bind q k ih =>
-    simp only [runLocAtDF_query_bind, runLocAtFixedDF_query_bind]
-    refine shiftLe_stepLDF cka prng fs Δcka qep mo q hle hinv
-      (fun r => runLocAtDF cka prng fs Δcka qep mo j (k r.1) r.2)
-      (fun k_fs r => runLocAtFixedDF cka prng fs Δcka qep mo j k_fs (k r.1) r.2) ?_ ?_
-    · intro r hlt k_fs
-      exact (evalDist_runLocAtDF_eq_fixed_of_lt cka prng fs Δcka qep mo k_fs (k r.1) hlt).le
-    · intro r hle' hinv'
-      exact ih r.1 hle' hinv'
-
-theorem localAuthAtDF_le_localAuthAtFixedDF (j : ℕ) (tL : Option ℕ) (t : ℕ)
-    (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) :
-    𝒟[localAuthAtDF cka prng fs lam Δcka qep j tL t A] {true} ≤
-      𝒟[($ᵗ K : ProbComp K) >>= fun k_fs =>
-        localAuthAtFixedDF cka prng fs lam Δcka qep j k_fs tL t A] {true} := by
-  let mo : Mode := ⟨true, tL, t⟩
-  dsimp only [localAuthAtDF, localAuthAtFixedDF]
-  have hle0 : ({} : LState T Sig K I).sessions.length ≤ j := Nat.zero_le j
-  have hinv0 : TabSessInv mo ({} : LState T Sig K I) := fun _ _ => rfl
-  refine shiftLe_initLocal cka prng fs lam mo hle0 hinv0
-    (fun r => match r.1 with
-      | none => pure false
-      | some (vA, vB) =>
-        runLocAtDF cka prng fs Δcka qep mo j A
-          { g := { st := fun P => match P with | .A => vA | .B => vB, b := false }, h := r.2 })
-    (fun k_fs r => match r.1 with
-      | none => pure false
-      | some (vA, vB) =>
-        runLocAtFixedDF cka prng fs Δcka qep mo j k_fs A
-          { g := { st := fun P => match P with | .A => vA | .B => vB, b := false }, h := r.2 })
-    ?_ ?_
-  · intro r hlt k_fs
-    rcases r with ⟨vs, h⟩
-    cases vs with
-    | none => exact le_rfl
-    | some vAB =>
-      rcases vAB with ⟨vA, vB⟩
-      exact (evalDist_runLocAtDF_eq_fixed_of_lt cka prng fs Δcka qep mo k_fs A hlt).le
-  · intro r hle hinv
-    rcases r with ⟨vs, h⟩
-    cases vs with
-    | none =>
-      simp 
-    | some vAB =>
-      rcases vAB with ⟨vA, vB⟩
-      exact evalDist_runLocAtDF_le_fixed cka prng fs Δcka qep mo A hle hinv
 
 omit [SampleableType KR] [SampleableType KC] in
 theorem evalDist_runFDF_eq_one_of_win (j : ℕ)
@@ -1164,7 +806,7 @@ theorem evalDist_runLocAtFixedDF_eq_zero_of_not_validGuess (j : ℕ) (k_fs : K)
     simp [authOut, Mode.policy, authLosingConditionsAvoided, hvg]
   simp [h]
 
-def injectTailDF {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
+@[expose] def injectTailDF {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (P : Party) (c : Header T × E) (s₁ : VP Γv T Sv SSv RSv)
     (es : EState (VP Γv T Sv SSv RSv) M (Header T × E) HS) :
@@ -1192,7 +834,7 @@ def injectTailDF {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
             { es with g := { es.g with win := true } }
         return some RecvResult.rejected).run es
 
-def deliverForgeTail {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
+@[expose] def deliverForgeTail {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (P : Party) (c' : Header T × E) (r : Record M (Header T × E))
     (s₁ : VP Γv T Sv SSv RSv)
@@ -1554,7 +1196,7 @@ theorem runLocAtFixedDF_le_runFDF (j : ℕ) (k_fs : K)
     · rw [heq_ans]
       exact ih rF.1.1 hs'
 
-def runFSDF (j : ℕ) (b : Bool) (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) :
+@[expose] def runFSDF (j : ℕ) (b : Bool) (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) :
     FSAEAD.AdversaryComp SS RS (Header T) M E
       (Option (Bool × EState (PartyState Γ T Sig (Option SS) (Option RS)) M (Header T × E)
         (FSState T Sig K I SS RS E))) :=
@@ -1601,32 +1243,6 @@ theorem localAuthAtFixedDF_le_runFSDF (j : ℕ) (k_fs : K) (b_fs : Bool) (tL : O
     rw [hzero]
     exact zero_le
 
-theorem localAuthAtDF_le_fsWinDF (j : ℕ) (tL : Option ℕ) (t : ℕ)
-    (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) :
-    𝒟[localAuthAtDF cka prng fs lam Δcka qep j tL t A] {true} ≤
-      FSAEAD.advantage fs (redFSAuthDF cka prng fs lam Δcka qep j tL t A) := by
-  have hred : redFSAuthDF cka prng fs lam Δcka qep j tL t A =
-      (runFSDF cka prng fs lam Δcka qep ⟨true, tL, t⟩ j false A >>= fun _ => sampleT Bool) := rfl
-  rw [hred, advantage_bind_sampleT_bool]
-  refine le_trans (localAuthAtDF_le_localAuthAtFixedDF cka prng fs lam Δcka qep j tL t A) ?_
-  unfold fsWin
-  rw [← OracleComp.evalDist_bind_const ($ᵗ Bool)
-        (($ᵗ K : ProbComp K) >>= fun k_fs =>
-          localAuthAtFixedDF cka prng fs lam Δcka qep j k_fs tL t A)]
-  refine evalDist_bind_mono ($ᵗ Bool) _ _ fun b_fs _ => ?_
-  refine evalDist_bind_mono ($ᵗ K) _ _ fun k_fs _ => ?_
-  exact localAuthAtFixedDF_le_runFSDF cka prng fs lam Δcka qep j k_fs b_fs tL t A
-
-theorem lemma11_df_proof (tL : Option ℕ) (t q : ℕ)
-    (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E)
-    (hq : MakesAtMostQueriesDF A q) :
-    𝒟[PRFPRNG.branch prng true (redPRNGAuthDF cka prng fs lam Δcka qep tL t A)] {true} ≤
-      ∑ j ∈ Finset.range q,
-        FSAEAD.advantage fs (redFSAuthDF cka prng fs lam Δcka qep j tL t A) := by
-  refine le_trans (branch_redPRNGAuthDF_le_localAuthDF cka prng fs lam Δcka qep tL t A) ?_
-  refine le_trans (localAuthDF_le_sum_localAuthAtDF cka prng fs lam Δcka qep tL t q A hq) ?_
-  exact Finset.sum_le_sum fun j _ => localAuthAtDF_le_fsWinDF cka prng fs lam Δcka qep j tL t A
-
 end CryptoGames.SM.Construction.AuthL11
 
 namespace CryptoGames.SM.Construction.DeliverForge
@@ -1653,77 +1269,6 @@ theorem lemma10_df (hc : cka.Correct) (tL : Option ℕ) (t : ℕ)
         (redCKAAuthDF cka prng fs lam Δcka qep tL t A)] {true} ≤
       𝒟[PRFPRNG.branch prng false (redPRNGAuthDF cka prng fs lam Δcka qep tL t A)] {true} :=
   AuthL10DF.lemma10_df cka prng fs lam Δcka qep hc tL t A
-
-/-- Lemma 11 for `DeliverForge`: with a uniform FS-AEAD key in epoch `t` (indexed by session
-`j < q`), every forgery against epoch `t` wins the FS-AEAD game. -/
-theorem lemma11_df (tL : Option ℕ) (t q : ℕ)
-    (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E)
-    (hq : MakesAtMostQueriesDF A q) :
-    𝒟[PRFPRNG.branch prng true (redPRNGAuthDF cka prng fs lam Δcka qep tL t A)] {true} ≤
-      ∑ j ∈ Finset.range q,
-        FSAEAD.advantage fs (redFSAuthDF cka prng fs lam Δcka qep j tL t A) :=
-  AuthL11.lemma11_df_proof cka prng fs lam Δcka qep tL t q A hq
-
-/-- Theorem 8 for `DeliverForge` at a single guessed pair `(tL, t)`. -/
-theorem theorem8_df (hc : cka.Correct) (tL : Option ℕ) (t q : ℕ)
-    (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E)
-    (hq : MakesAtMostQueriesDF A q) :
-    forgeGuessedAdvantage (scheme cka prng fs lam) (2 + Δcka) qep sameHdrScheme
-        tL t A ≤
-      CKA.advantage cka Δcka (healEpoch tL) (redCKAAuthDF cka prng fs lam Δcka qep tL t A) +
-      PRFPRNG.advantage prng (redPRNGAuthDF cka prng fs lam Δcka qep tL t A) +
-      ∑ j ∈ Finset.range q,
-        FSAEAD.advantage fs (redFSAuthDF cka prng fs lam Δcka qep j tL t A) := by
-  rw [CKA.advantage_eq_boolDist, PRFPRNG.advantage_eq_boolDist]
-  set cT := 𝒟[CKA.branch cka Δcka (healEpoch tL) true
-    (redCKAAuthDF cka prng fs lam Δcka qep tL t A)]
-  set cF := 𝒟[CKA.branch cka Δcka (healEpoch tL) false
-    (redCKAAuthDF cka prng fs lam Δcka qep tL t A)]
-  set pT := 𝒟[PRFPRNG.branch prng true (redPRNGAuthDF cka prng fs lam Δcka qep tL t A)]
-  set pF := 𝒟[PRFPRNG.branch prng false (redPRNGAuthDF cka prng fs lam Δcka qep tL t A)]
-  have h9 := lemma9_df cka prng fs lam Δcka qep hc tL t A
-  have h10 := lemma10_df cka prng fs lam Δcka qep hc tL t A
-  have h11 := lemma11_df cka prng fs lam Δcka qep tL t q A hq
-  have hc' : cF {true} ≤ cT {true} + cT.boolDist cF := by
-    rw [Measure.boolDist_comm]; exact Measure.apply_true_le_add_boolDist _ _
-  have hp' : pF {true} ≤ pT {true} + pT.boolDist pF := by
-    rw [Measure.boolDist_comm]; exact Measure.apply_true_le_add_boolDist _ _
-  calc forgeGuessedAdvantage (scheme cka prng fs lam) (2 + Δcka) qep sameHdrScheme
-          tL t A
-      ≤ cF {true} := h9
-    _ ≤ cT {true} + cT.boolDist cF := hc'
-    _ ≤ (pT {true} + pT.boolDist pF) + cT.boolDist cF := add_le_add (h10.trans hp') le_rfl
-    _ ≤ ((∑ j ∈ Finset.range q, FSAEAD.advantage fs
-          (redFSAuthDF cka prng fs lam Δcka qep j tL t A)) + pT.boolDist pF) + cT.boolDist cF :=
-        add_le_add (add_le_add h11 le_rfl) le_rfl
-    _ = _ := by ring
-
-/-- Epoch-guessing bound on `forgeAdvantage` at `Δ = 2 + 1` (`Δcka = 1`), summing `theorem8_df`
-over `t < qep + 2` and `tL ∈ admissibleLastLeakGuesses 2 t`. -/
-theorem theorem8_df_dir2_k4Free_sum (hc : cka.Correct) (q : ℕ)
-    (B : SchemeAdversaryDF Γ T Sig SS RS M CCoins E)
-    (hq : MakesAtMostQueriesDF (challSimDF (2 + 1) qep B) q) :
-    forgeAdvantage (scheme cka prng fs lam) (2 + 1) qep sameHdrScheme B ≤
-      ∑ t ∈ Finset.range (qep + 2), ∑ tL ∈ admissibleLastLeakGuesses 2 t,
-        (CKA.advantage cka 1 (healEpoch tL)
-            (redCKAAuthDF cka prng fs lam 1 qep tL t (challSimDF (2 + 1) qep B)) +
-          PRFPRNG.advantage prng
-            (redPRNGAuthDF cka prng fs lam 1 qep tL t (challSimDF (2 + 1) qep B)) +
-          ∑ j ∈ Finset.range q,
-            FSAEAD.advantage fs
-              (redFSAuthDF cka prng fs lam 1 qep j tL t (challSimDF (2 + 1) qep B))) := by
-  have hsub : ∀ t, admissibleLastLeakGuesses (2 + 1) t ⊆ admissibleLastLeakGuesses 2 t := by
-    intro t x hx
-    simp only [admissibleLastLeakGuesses, Finset.mem_insert, Finset.mem_image, Finset.mem_range] at hx ⊢
-    rcases hx with rfl | ⟨l, hl, rfl⟩
-    · exact Or.inl rfl
-    · exact Or.inr ⟨l, by omega, rfl⟩
-  refine (forgeGame_le_sum (scheme cka prng fs lam) (2 + 1) qep sameHdrScheme
-    (by decide) B).trans ?_
-  refine Finset.sum_le_sum fun t _ => ?_
-  refine (Finset.sum_le_sum_of_subset (hsub t)).trans ?_
-  refine Finset.sum_le_sum fun tL _ => ?_
-  exact theorem8_df cka prng fs lam 1 qep hc tL t q (challSimDF (2 + 1) qep B) hq
 
 end CryptoGames.SM.Construction.DeliverForge
 

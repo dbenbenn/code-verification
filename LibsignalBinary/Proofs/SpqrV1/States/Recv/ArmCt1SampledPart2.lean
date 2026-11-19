@@ -25,7 +25,7 @@ helpers (`fsp + 0..976`), and state-copy blocks for `msg.epoch < st.uc.epoch` (`
 non-`ek` payloads (`+12144`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.Recv
 
@@ -66,12 +66,6 @@ attribute [-arm64_norm]
   HkdfToSliceProof.sp_add_neg688_eq_hsp
   HkdfToSliceProof.sp_sub_96_eq_hsp_592
   HkdfToSliceProof.sp_add_neg96_eq_hsp_592
-
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  (ls_lemma% fnOff "<spqr::v1::chunked::states::States>::recv")
-  (ls_stub% "memcpy")
-
-/-! ## 1. Stack Bundle `[fsp + 224 .. fsp + 976]` for `0x59e88..0x59fd0` (`+18996 -> +19324`) -/
 
 /-- The 47 8-byte words and 376-byte middle slice at `fsp + 224 .. fsp + 976` (`0xe0 .. 0x3d0`, 752B)
     read by the shared `.ct1Sampled` `Ok` return store block at `0x59e88..0x59fd0` (`+18996 -> +19324`). -/
@@ -126,7 +120,7 @@ structure EpilogueStoreStack where
   w3c8 : BitVec 64
 
 /-- Part 1 stack words read in `0x59e88..0x59fa4` (`+18996 -> +19280`, 36 words). -/
-def epilogueStoreStackPart1At (fsp : BitVec 64) (k : EpilogueStoreStack) : SepProp :=
+@[expose] def epilogueStoreStackPart1At (fsp : BitVec 64) (k : EpilogueStoreStack) : SepProp :=
   ((fsp + 224#64) ↦₆₄ k.we0) ∗
   ((fsp + 248#64) ↦₆₄ k.wf8) ∗ ((fsp + 256#64) ↦₆₄ k.w100) ∗
   ((fsp + 264#64) ↦₆₄ k.w108) ∗ ((fsp + 272#64) ↦₆₄ k.w110) ∗
@@ -148,7 +142,7 @@ def epilogueStoreStackPart1At (fsp : BitVec 64) (k : EpilogueStoreStack) : SepPr
   ((fsp + 960#64) ↦₆₄ k.w3c0) ∗ ((fsp + 968#64) ↦₆₄ k.w3c8)
 
 /-- Part 2 stack words and `mid` slice read in `0x59fa4..0x59fd0` (`+19280 -> +19324`). -/
-def epilogueStoreStackPart2At (fsp : BitVec 64) (k : EpilogueStoreStack) : SepProp :=
+@[expose] def epilogueStoreStackPart2At (fsp : BitVec 64) (k : EpilogueStoreStack) : SepProp :=
   ((fsp + 232#64) ↦₆₄ k.we8) ∗
   ((fsp + 512#64) ↦₆₄ k.w200) ∗ ((fsp + 520#64) ↦₆₄ k.w208) ∗
   ((fsp + 528#64) ↦₆₄ k.w210) ∗ ((fsp + 536#64) ↦₆₄ k.w218) ∗
@@ -158,7 +152,7 @@ def epilogueStoreStackPart2At (fsp : BitVec 64) (k : EpilogueStoreStack) : SepPr
 
 /-- The `Split928` value written to `outA + 0..928` by `0x59e88..0x59fd0` (`+18996 -> +19324`)
     when entered in state `s` with stack contents `k : EpilogueStoreStack`. -/
-def epilogueSplit928 (s : State) (k : EpilogueStoreStack) : Split928 where
+@[expose] def epilogueSplit928 (s : State) (k : EpilogueStoreStack) : Split928 where
   c0 := {
     w0 := k.we0
     w1 := s.readReg64 .x1
@@ -242,7 +236,7 @@ def epilogueSplit928 (s : State) (k : EpilogueStoreStack) : Split928 where
 
 /-- Inverse of `epilogueSplit928`: builds the `EpilogueStoreStack` corresponding to `d : Split928`
     and `Option<EpochSecret>` stack words `we8, w200, w208`. -/
-def epilogueStackOfSplit928 (d : Split928) (we8 w200 w208 : BitVec 64) : EpilogueStoreStack where
+@[expose] def epilogueStackOfSplit928 (d : Split928) (we8 w200 w208 : BitVec 64) : EpilogueStoreStack where
   we0 := d.c0.w0
   we8 := we8
   wf0 := 0#64
@@ -293,7 +287,7 @@ def epilogueStackOfSplit928 (d : Split928) (we8 w200 w208 : BitVec 64) : Epilogu
   w3c8 := d.c3.w14
 
 /-- Register equality condition at `+18996` (`0x59e88`) ensuring `epilogueSplit928 s k = d`. -/
-def epilogueRegsEqSplit928 (s : State) (d : Split928) : Prop :=
+@[expose] def epilogueRegsEqSplit928 (s : State) (d : Split928) : Prop :=
   s.readReg64 .x1 = d.c0.w1 ∧
   s.readReg64 .x8 = d.c0.w2 ∧
   s.readReg64 .x23 = d.c1.w0 ∧
@@ -362,260 +356,11 @@ theorem memRegion_32_entails_words4 (a : BitVec 64) :
       ProofLib.memRegion_eight (a + 24#64)]
   exact Entails.of_eq (by ac_rfl)
 
-theorem memcpy_region_ok_at_statesRecv {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hmemcpy : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr memcpyName) sessionMemcpyRegionSpec) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesRecvName +
-        (bv% (ls_rel% "<spqr::v1::chunked::states::States>::recv" "memcpy")))
-      sessionMemcpyRegionSpec := by
-  refine Drop.sub_ok_of_addr_eq ?_ hmemcpy
-  exact (fnAddr_fwd_eq (d := (num% (ls_rel% "<spqr::v1::chunked::states::States>::recv" "memcpy"))) (b := b) (X := Rust.withPanics ext)
-    (ls_lemma% fnOff "<spqr::v1::chunked::states::States>::recv") (ls_stub% "memcpy") (by decide)).symm
-
-set_option maxHeartbeats 800000 in
-/-- Part 1 of shared `Ok` return store block (`+18996 -> +19280`, `0x59e88 -> 0x59fa4`):
-    writes `c0, c1, c2, c3` (`64` words = `512`B) to `outA + 0..512` and sets up
-    `x0 = outA + 512#64`, `x1 = fsp + 576#64`, `x2 = 376#64` for `memcpy`. -/
-theorem ct1Sampled_epilogue_store_part1
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (s_in : State) (fsp outA : BitVec 64)
-    (k : EpilogueStoreStack)
-    (c0_out c1_out c2_out c3_out : Words16)
-    (Rest : SepProp)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (hpc : s_in.pc = (tripleRatchetProgAtExt b ext).fnAddr statesRecvName + 18996#64)
-    (hrun : s_in.status = .Running)
-    (hsp : s_in.sp = fsp)
-    (hx19 : s_in.readReg64 .x19 = outA) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesRecvName + 19280#64) s_in
-      (epilogueStoreStackPart1At fsp k ∗
-        wordsAt outA c0_out.toList ∗
-        wordsAt (outA + 128#64) c1_out.toList ∗
-        wordsAt (outA + 256#64) c2_out.toList ∗
-        wordsAt (outA + 384#64) c3_out.toList ∗
-        Rest)
-      (fun sf Pf =>
-        (Pf ⊢
-          epilogueStoreStackPart1At fsp k ∗
-          wordsAt outA (epilogueSplit928 s_in k).c0.toList ∗
-          wordsAt (outA + 128#64) (epilogueSplit928 s_in k).c1.toList ∗
-          wordsAt (outA + 256#64) (epilogueSplit928 s_in k).c2.toList ∗
-          wordsAt (outA + 384#64) (epilogueSplit928 s_in k).c3.toList ∗
-          Rest) ∧
-        sf.sp = fsp ∧
-        sf.readReg64 .x0 = outA + 512#64 ∧
-        sf.readReg64 .x1 = fsp + 576#64 ∧
-        sf.readReg64 .x2 = 376#64 ∧
-        sf.readReg64 .x19 = outA ∧
-        sf.readReg64 .x20 = s_in.readReg64 .x20 ∧
-        TraceCalleeSaved sf s_in) := by
-  subst hsp hx19
-  states_recv_fetches_range b (Rust.withPanics ext) 18996 284
-  dsimp only [tripleRatchetProgAtExt, statesRecvName, BitVec.ofNat_eq_ofNat] at hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::recv" = entry
-  examples_hide_fetches
-  dsimp only [epilogueStoreStackPart1At, epilogueSplit928, Words16.toList]
-  simp only [wordsAt_16, BitVec.add_assoc, BitVec.reduceAdd]
-  wp_steps
-  wp_done
-
-/-- Part 2 of shared `Ok` return store block (`+19280 -> +19324`, `0x59fa4 -> 0x59fd0`):
-    calls `memcpy(outA + 512, fsp + 576, 376)` and writes `tail` (`5` words = `40`B at `outA + 888..928`)
-    and the 4 `Option<EpochSecret>` words at `outA + 928..960`. -/
-theorem ct1Sampled_epilogue_store_part2
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (hmemcpy : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr memcpyName) sessionMemcpyRegionSpec)
-    (s_mid : State) (fsp outA v20 : BitVec 64)
-    (k : EpilogueStoreStack)
-    (tail_out : Words5) (v928 v936 v944 v952 : BitVec 64)
-    (Rest : SepProp)
-    (hmid : k.mid.length = 376)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (hpc : s_mid.pc = (tripleRatchetProgAtExt b ext).fnAddr statesRecvName + 19280#64)
-    (hrun : s_mid.status = .Running)
-    (hsp : s_mid.sp = fsp)
-    (hx0 : s_mid.readReg64 .x0 = outA + 512#64)
-    (hx1 : s_mid.readReg64 .x1 = fsp + 576#64)
-    (hx2 : s_mid.readReg64 .x2 = 376#64)
-    (hx19 : s_mid.readReg64 .x19 = outA)
-    (hx20 : s_mid.readReg64 .x20 = v20) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesRecvName + 19324#64) s_mid
-      (epilogueStoreStackPart2At fsp k ∗
-        memRegion (outA + 512#64) 376 ∗
-        wordsAt (outA + 888#64) tail_out.toList ∗
-        ((outA + 928#64) ↦₆₄ v928) ∗
-        ((outA + 936#64) ↦₆₄ v936) ∗
-        ((outA + 944#64) ↦₆₄ v944) ∗
-        ((outA + 952#64) ↦₆₄ v952) ∗
-        Rest)
-      (fun sf Pf =>
-        (Pf ⊢
-          epilogueStoreStackPart2At fsp k ∗
-          ((outA + 512#64) ↦ₛ k.mid) ∗
-          wordsAt (outA + 888#64) [k.w210, k.w218, k.w220, k.w228, k.w230] ∗
-          ((outA + 928#64) ↦₆₄ k.we8) ∗
-          ((outA + 936#64) ↦₆₄ v20) ∗
-          ((outA + 944#64) ↦₆₄ k.w200) ∗
-          ((outA + 952#64) ↦₆₄ k.w208) ∗
-          Rest) ∧
-        sf.sp = fsp ∧
-        TraceCalleeSaved sf s_mid) := by
-  subst hsp hx19 hx20
-  have hmemcpy_raw := memcpy_region_ok_at_statesRecv hmemcpy
-  states_recv_fetches_range b (Rust.withPanics ext) 19280 44
-  dsimp only [tripleRatchetProgAtExt, statesRecvName, BitVec.ofNat_eq_ofNat] at hpc hmemcpy_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::recv" = entry
-  examples_hide_fetches
-  dsimp only [epilogueStoreStackPart2At, Words5.toList]
-  simp only [wordsAt_5, BitVec.add_assoc, BitVec.reduceAdd]
-  wp_steps
-  wp_call hmemcpy_raw ⟨s_mid.readReg64 .x19 + 512#64, s_mid.sp + 576#64, k.mid⟩
-  wp_steps
-  wp_done
-
 theorem pointsToBytes_entails_memRegion_376 (a : BitVec 64) (bs : List (BitVec 8)) (h : bs.length = 376) :
     (a ↦ₛ bs) ⊢ memRegion a 376 := by
   rw [memRegion_eq_exists_bytes a 376 (by decide)]
   refine Entails.sepExists_right bs ?_
   exact Entails.pure_right h (Entails.refl _)
-
-/-- Full shared `Ok` return store block (`+18996 -> +19324`, `0x59e88 -> 0x59fd0`):
-    combines `ct1Sampled_epilogue_store_part1` and `ct1Sampled_epilogue_store_part2` to write
-    `split928At outA (epilogueSplit928 s_in k)` (`928`B) and the 4 `Option<EpochSecret>` words
-    at `outA + 928..960` (`32`B). -/
-theorem ct1Sampled_epilogue_store
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (hmemcpy : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr memcpyName) sessionMemcpyRegionSpec)
-    (s_in : State) (fsp outA : BitVec 64)
-    (k : EpilogueStoreStack)
-    (Rest : SepProp)
-    (hmid : k.mid.length = 376)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (hpc : s_in.pc = (tripleRatchetProgAtExt b ext).fnAddr statesRecvName + 18996#64)
-    (hrun : s_in.status = .Running)
-    (hsp : s_in.sp = fsp)
-    (hx19 : s_in.readReg64 .x19 = outA) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesRecvName + 19324#64) s_in
-      (epilogueStoreStackPart1At fsp k ∗
-        epilogueStoreStackPart2At fsp k ∗
-        memRegion outA chunkedStatesSize ∗
-        memRegion (outA + 928#64) 32 ∗
-        Rest)
-      (fun sf Pf =>
-        (Pf ⊢
-          epilogueStoreStackPart1At fsp k ∗
-          epilogueStoreStackPart2At fsp k ∗
-          split928At outA (epilogueSplit928 s_in k) ∗
-          ((outA + 928#64) ↦₆₄ k.we8) ∗
-          ((outA + 936#64) ↦₆₄ (s_in.readReg64 .x20)) ∗
-          ((outA + 944#64) ↦₆₄ k.w200) ∗
-          ((outA + 952#64) ↦₆₄ k.w208) ∗
-          Rest) ∧
-        sf.sp = fsp ∧
-        TraceCalleeSaved sf s_in) := by
-  have hpre :
-      epilogueStoreStackPart1At fsp k ∗
-      epilogueStoreStackPart2At fsp k ∗
-      memRegion outA chunkedStatesSize ∗
-      memRegion (outA + 928#64) 32 ∗
-      Rest ⊢
-      ∃∗ d_out : Split928, ∃∗ v928 : BitVec 64, ∃∗ v936 : BitVec 64,
-      ∃∗ v944 : BitVec 64, ∃∗ v952 : BitVec 64,
-        epilogueStoreStackPart1At fsp k ∗
-        wordsAt outA d_out.c0.toList ∗
-        wordsAt (outA + 128#64) d_out.c1.toList ∗
-        wordsAt (outA + 256#64) d_out.c2.toList ∗
-        wordsAt (outA + 384#64) d_out.c3.toList ∗
-        (epilogueStoreStackPart2At fsp k ∗
-          memRegion (outA + 512#64) 376 ∗
-          wordsAt (outA + 888#64) d_out.tail.toList ∗
-          ((outA + 928#64) ↦₆₄ v928) ∗
-          ((outA + 936#64) ↦₆₄ v936) ∗
-          ((outA + 944#64) ↦₆₄ v944) ∗
-          ((outA + 952#64) ↦₆₄ v952) ∗
-          Rest) := by
-    refine Entails.trans (sepConj_mono_right (sepConj_mono_right
-      (sepConj_mono (memRegion_928_entails_split928 outA)
-        (sepConj_mono_left (memRegion_32_entails_words4 (outA + 928#64)))))) ?_
-    simp only [sepExists_sepConj_left, sepExists_sepConj_right, BitVec.add_assoc, BitVec.reduceAdd]
-    apply Entails.sepExists_elim; intro v952
-    apply Entails.sepExists_elim; intro v944
-    apply Entails.sepExists_elim; intro v936
-    apply Entails.sepExists_elim; intro v928
-    apply Entails.sepExists_elim; intro d_out
-    refine Entails.sepExists_right d_out (Entails.sepExists_right v928
-      (Entails.sepExists_right v936 (Entails.sepExists_right v944
-        (Entails.sepExists_right v952 ?_))))
-    rw [show epilogueStoreStackPart1At fsp k ∗
-        (epilogueStoreStackPart2At fsp k ∗
-          ((⌜d_out.mid.length = 376⌝ ∗ split928At outA d_out) ∗
-            ((((outA + 928#64) ↦₆₄ v928) ∗ ((outA + 936#64) ↦₆₄ v936) ∗
-              ((outA + 944#64) ↦₆₄ v944) ∗ ((outA + 952#64) ↦₆₄ v952)) ∗
-            Rest))) =
-        ⌜d_out.mid.length = 376⌝ ∗
-        ((outA + 512#64) ↦ₛ d_out.mid) ∗
-        (epilogueStoreStackPart1At fsp k ∗
-          wordsAt outA d_out.c0.toList ∗
-          wordsAt (outA + 128#64) d_out.c1.toList ∗
-          wordsAt (outA + 256#64) d_out.c2.toList ∗
-          wordsAt (outA + 384#64) d_out.c3.toList ∗
-          (epilogueStoreStackPart2At fsp k ∗
-            wordsAt (outA + 888#64) d_out.tail.toList ∗
-            ((outA + 928#64) ↦₆₄ v928) ∗
-            ((outA + 936#64) ↦₆₄ v936) ∗
-            ((outA + 944#64) ↦₆₄ v944) ∗
-            ((outA + 952#64) ↦₆₄ v952) ∗
-            Rest)) by
-      dsimp only [split928At]; ac_rfl]
-    apply Entails.pure_left; intro hd_mid
-    refine Entails.trans (sepConj_mono_left
-      (pointsToBytes_entails_memRegion_376 (outA + 512#64) d_out.mid hd_mid)) ?_
-    exact Entails.of_eq (by ac_rfl)
-  refine SepWP.weaken_pre hpre ?_
-  apply ProofLib.SepWP.exists_left; intro d_out
-  apply ProofLib.SepWP.exists_left; intro v928
-  apply ProofLib.SepWP.exists_left; intro v936
-  apply ProofLib.SepWP.exists_left; intro v944
-  apply ProofLib.SepWP.exists_left; intro v952
-  refine SepWP.seq (ct1Sampled_epilogue_store_part1 s_in fsp outA k
-    d_out.c0 d_out.c1 d_out.c2 d_out.c3 _ hfsp_align hpc hrun hsp hx19) ?_
-  intro s_mid P_mid hpc_mid hrun_mid ⟨hP_mid, hsp_mid, hx0_mid, hx1_mid, hx2_mid, hx19_mid, hx20_mid, htr_mid⟩
-  have hP_mid' : P_mid ⊢
-      epilogueStoreStackPart2At fsp k ∗
-      memRegion (outA + 512#64) 376 ∗
-      wordsAt (outA + 888#64) d_out.tail.toList ∗
-      ((outA + 928#64) ↦₆₄ v928) ∗
-      ((outA + 936#64) ↦₆₄ v936) ∗
-      ((outA + 944#64) ↦₆₄ v944) ∗
-      ((outA + 952#64) ↦₆₄ v952) ∗
-      (epilogueStoreStackPart1At fsp k ∗
-        wordsAt outA (epilogueSplit928 s_in k).c0.toList ∗
-        wordsAt (outA + 128#64) (epilogueSplit928 s_in k).c1.toList ∗
-        wordsAt (outA + 256#64) (epilogueSplit928 s_in k).c2.toList ∗
-        wordsAt (outA + 384#64) (epilogueSplit928 s_in k).c3.toList ∗
-        Rest) :=
-    Entails.trans hP_mid (Entails.of_eq (by ac_rfl))
-  refine SepWP.weaken_pre hP_mid' ?_
-  refine SepWP.mono
-    (ct1Sampled_epilogue_store_part2 hmemcpy s_mid fsp outA (s_in.readReg64 .x20) k
-      d_out.tail v928 v936 v944 v952 _ hmid hfsp_align hpc_mid hrun_mid
-      hsp_mid hx0_mid hx1_mid hx2_mid hx19_mid hx20_mid) ?_
-  intro sf Pf _ _ ⟨hPf, hsp_f, htr_f⟩
-  refine ⟨?_, hsp_f, htr_f.trans htr_mid⟩
-  refine Entails.trans hPf ?_
-  dsimp only [split928At, epilogueSplit928, Words5.toList]
-  exact Entails.of_eq (by ac_rfl)
-
-/-! ## 2. Scratch Stack Frame (`fsp + 0..976`) for State-Copy Paths -/
 
 /-- The 29 scratch 64-bit words in `fsp + 0..248` (all words in `0..256` except `we0`, `we8`, `wf8`). -/
 structure CopyScratchStack where
@@ -634,22 +379,22 @@ structure CopyScratchStack where
   wd8 : BitVec 64
   wf0 : BitVec 64
 
-def CopyScratchStack.c1 (sc : CopyScratchStack) (we0 we8 wf8 : BitVec 64) : Words16 :=
+@[expose] def CopyScratchStack.c1 (sc : CopyScratchStack) (we0 we8 wf8 : BitVec 64) : Words16 :=
   ⟨sc.w80, sc.w88, sc.w90, sc.w98, sc.wa0, sc.wa8, sc.wb0, sc.wb8,
    sc.wc0, sc.wc8, sc.wd0, sc.wd8, we0, we8, sc.wf0, wf8⟩
 
-def EpilogueStoreStack.c2 (k : EpilogueStoreStack) : Words16 :=
+@[expose] def EpilogueStoreStack.c2 (k : EpilogueStoreStack) : Words16 :=
   ⟨k.w100, k.w108, k.w110, k.w118, k.w120, k.w128, k.w130, k.w138,
    k.w140, k.w148, k.w150, k.w158, k.w160, k.w168, k.w170, k.w178⟩
 
-def EpilogueStoreStack.c3 (k : EpilogueStoreStack) : Words16 :=
+@[expose] def EpilogueStoreStack.c3 (k : EpilogueStoreStack) : Words16 :=
   ⟨k.w180, k.w188, k.w190, k.w198, k.w1a0, k.w1a8, k.w1b0, k.w1b8,
    k.w1c0, k.w1c8, k.w1d0, k.w1d8, k.w1e0, k.w1e8, k.w1f0, k.w1f8⟩
 
-def EpilogueStoreStack.tail (k : EpilogueStoreStack) : Words5 :=
+@[expose] def EpilogueStoreStack.tail (k : EpilogueStoreStack) : Words5 :=
   ⟨k.w210, k.w218, k.w220, k.w228, k.w230⟩
 
-def copyScratchStackAt (fsp : BitVec 64) (sc : CopyScratchStack) : SepProp :=
+@[expose] def copyScratchStackAt (fsp : BitVec 64) (sc : CopyScratchStack) : SepProp :=
   wordsAt fsp sc.c0.toList ∗
   ((fsp + 128#64) ↦₆₄ sc.w80) ∗ ((fsp + 136#64) ↦₆₄ sc.w88) ∗
   ((fsp + 144#64) ↦₆₄ sc.w90) ∗ ((fsp + 152#64) ↦₆₄ sc.w98) ∗
@@ -759,7 +504,7 @@ theorem copyScratch_and_epilogueStack_entails_memRegion_4144 (fsp : BitVec 64)
       ProofLib.memRegion_split' (b := fsp + 968#64) (n := 8) (k := 3168) (b' := fsp + 976#64) rfl (by bv_omega) (by decide)]
   exact Entails.of_eq (by ac_rfl)
 
-def copyLtScratch (sc : CopyScratchStack) (d : Split928) : CopyScratchStack where
+@[expose] def copyLtScratch (sc : CopyScratchStack) (d : Split928) : CopyScratchStack where
   c0 := { sc.c0 with
     w2 := d.c2.w4
     w3 := d.c2.w0
@@ -786,7 +531,7 @@ def copyLtScratch (sc : CopyScratchStack) (d : Split928) : CopyScratchStack wher
   wd8 := d.c3.w1
   wf0 := d.c2.w11
 
-def copyOtherScratch (sc : CopyScratchStack) (d : Split928) : CopyScratchStack where
+@[expose] def copyOtherScratch (sc : CopyScratchStack) (d : Split928) : CopyScratchStack where
   c0 := { sc.c0 with
     w1 := d.c3.w5
     w2 := d.c2.w4
@@ -814,121 +559,6 @@ def copyOtherScratch (sc : CopyScratchStack) (d : Split928) : CopyScratchStack w
   wd0 := sc.wd0
   wd8 := d.c3.w1
   wf0 := d.c2.w11
-
-set_option maxHeartbeats 1200000 in
-/-- Path 2 (`msg.epoch < st.uc.epoch`) state-copy block (`+10500 -> +18996`,
-    `0x57d58..0x57f00 -> 0x5857c..0x58594`). -/
-theorem ct1Sampled_copy_lt
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (hmemcpy : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr memcpyName) sessionMemcpyRegionSpec)
-    (s_in : State) (fsp stA outA : BitVec 64)
-    (d : Split928) (sc : CopyScratchStack) (k : EpilogueStoreStack)
-    (Rest : SepProp)
-    (hmid : d.mid.length = 376)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (hpc : s_in.pc = (tripleRatchetProgAtExt b ext).fnAddr statesRecvName + 10500#64)
-    (hrun : s_in.status = .Running)
-    (hsp : s_in.sp = fsp)
-    (hx1 : s_in.readReg64 .x1 = stA)
-    (hx12 : s_in.readReg64 .x12 = d.c0.w0)
-    (hx19 : s_in.readReg64 .x19 = outA) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesRecvName + 18996#64) s_in
-      (split928At stA d ∗
-        copyScratchStackAt fsp sc ∗
-        epilogueStoreStackPart1At fsp k ∗
-        ((fsp + 232#64) ↦₆₄ k.we8) ∗
-        ((fsp + 512#64) ↦₆₄ k.w200) ∗
-        ((fsp + 520#64) ↦₆₄ k.w208) ∗
-        wordsAt (fsp + 528#64) k.tail.toList ∗
-        memRegion (fsp + 576#64) 376 ∗
-        Rest)
-      (fun sf Pf =>
-        (Pf ⊢
-          split928At stA d ∗
-          copyScratchStackAt fsp (copyLtScratch sc d) ∗
-          epilogueStoreStackPart1At fsp (epilogueStackOfSplit928 d noneCap k.w200 k.w208) ∗
-          epilogueStoreStackPart2At fsp (epilogueStackOfSplit928 d noneCap k.w200 k.w208) ∗
-          Rest) ∧
-        epilogueRegsEqSplit928 sf d ∧
-        sf.sp = fsp ∧
-        sf.readReg64 .x19 = outA ∧
-        sf.readReg64 .x29 = s_in.readReg64 .x29 ∧
-        TraceCalleeSaved sf s_in) := by
-  subst hsp hx1 hx19
-  have hmemcpy_raw := memcpy_region_ok_at_statesRecv hmemcpy
-  states_recv_fetches_range b (Rust.withPanics ext) 10500 428
-  states_recv_fetches_range b (Rust.withPanics ext) 12584 28
-  dsimp only [tripleRatchetProgAtExt, statesRecvName, BitVec.ofNat_eq_ofNat] at hpc hmemcpy_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::recv" = entry
-  examples_hide_fetches
-  dsimp only [split928At, copyScratchStackAt, epilogueStoreStackPart1At, epilogueStoreStackPart2At,
-    copyLtScratch, epilogueStackOfSplit928, epilogueRegsEqSplit928, EpilogueStoreStack.tail,
-    noneCap, Words16.toList, Words5.toList]
-  simp only [wordsAt_16, wordsAt_5, BitVec.add_assoc, BitVec.reduceAdd]
-  wp_steps
-  wp_call hmemcpy_raw ⟨s_in.sp + 576#64, s_in.readReg64 .x1 + 512#64, d.mid⟩
-  wp_steps
-  wp_done
-
-set_option maxHeartbeats 1200000 in
-/-- Path 3 (`msg.epoch == st.uc.epoch`, non-`ek`/`ekCt1Ack`) state-copy block (`+12144 -> +18996`,
-    `0x583c4..0x58594`). -/
-theorem ct1Sampled_copy_other
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (hmemcpy : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr memcpyName) sessionMemcpyRegionSpec)
-    (s_in : State) (fsp stA outA : BitVec 64)
-    (d : Split928) (sc : CopyScratchStack) (k : EpilogueStoreStack)
-    (Rest : SepProp)
-    (hmid : d.mid.length = 376)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (hpc : s_in.pc = (tripleRatchetProgAtExt b ext).fnAddr statesRecvName + 12144#64)
-    (hrun : s_in.status = .Running)
-    (hsp : s_in.sp = fsp)
-    (hx1 : s_in.readReg64 .x1 = stA)
-    (hx12 : s_in.readReg64 .x12 = d.c0.w0)
-    (hx19 : s_in.readReg64 .x19 = outA) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesRecvName + 18996#64) s_in
-      (split928At stA d ∗
-        copyScratchStackAt fsp sc ∗
-        epilogueStoreStackPart1At fsp k ∗
-        ((fsp + 232#64) ↦₆₄ k.we8) ∗
-        ((fsp + 512#64) ↦₆₄ k.w200) ∗
-        ((fsp + 520#64) ↦₆₄ k.w208) ∗
-        wordsAt (fsp + 528#64) k.tail.toList ∗
-        memRegion (fsp + 576#64) 376 ∗
-        Rest)
-      (fun sf Pf =>
-        (Pf ⊢
-          split928At stA d ∗
-          copyScratchStackAt fsp (copyOtherScratch sc d) ∗
-          epilogueStoreStackPart1At fsp (epilogueStackOfSplit928 d noneCap k.w200 k.w208) ∗
-          epilogueStoreStackPart2At fsp (epilogueStackOfSplit928 d noneCap k.w200 k.w208) ∗
-          Rest) ∧
-        epilogueRegsEqSplit928 sf d ∧
-        sf.sp = fsp ∧
-        sf.readReg64 .x19 = outA ∧
-        sf.readReg64 .x29 = s_in.readReg64 .x29 ∧
-        TraceCalleeSaved sf s_in) := by
-  subst hsp hx1 hx19
-  have hmemcpy_raw := memcpy_region_ok_at_statesRecv hmemcpy
-  states_recv_fetches_range b (Rust.withPanics ext) 12144 468
-  dsimp only [tripleRatchetProgAtExt, statesRecvName, BitVec.ofNat_eq_ofNat] at hpc hmemcpy_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::recv" = entry
-  examples_hide_fetches
-  dsimp only [split928At, copyScratchStackAt, epilogueStoreStackPart1At, epilogueStoreStackPart2At,
-    copyOtherScratch, epilogueStackOfSplit928, epilogueRegsEqSplit928, EpilogueStoreStack.tail,
-    noneCap, Words16.toList, Words5.toList]
-  simp only [wordsAt_16, wordsAt_5, BitVec.add_assoc, BitVec.reduceAdd]
-  wp_steps
-  wp_call hmemcpy_raw ⟨s_in.sp + 576#64, s_in.readReg64 .x1 + 512#64, d.mid⟩
-  wp_steps
-  wp_done
 
 theorem optEpochSecretAt_none_of_words4 (A : RustAlloc) (a w1 w2 w3 : BitVec 64) :
     (a ↦₆₄ noneCap) ∗ ((a + 8#64) ↦₆₄ w1) ∗ ((a + 16#64) ↦₆₄ w2) ∗ ((a + 24#64) ↦₆₄ w3) ⊢

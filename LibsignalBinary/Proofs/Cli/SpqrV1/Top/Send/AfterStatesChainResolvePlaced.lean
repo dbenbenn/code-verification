@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesChainPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChainStep
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesChainPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChainStep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpoch
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
@@ -25,7 +25,7 @@ Proves the `[LibsignalPlacement]` chain resolution branches, `vn.min_version <= 
 `spqr::send::<signal_session_ratchet::Coins>`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -59,7 +59,7 @@ open CryptoVerification.Cli.SpqrV1.Top.Send.CodePlaced
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 attribute [local simp, local arm64_norm]
   CryptoVerification.SpqrV1.Drop.none2Cap_add_two_beq_zero

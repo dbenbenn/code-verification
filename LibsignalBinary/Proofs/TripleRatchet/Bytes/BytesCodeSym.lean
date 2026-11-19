@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard10
 
 /-!
 # Relocatable Per-Block Fetches for `TripleRatchet/Bytes`
@@ -22,7 +23,7 @@ Generated instruction-fetch definitions for blocks `224` (`bytes::bytes::static_
 (`bytes::bytes::promotable_even_drop`), and `250` (`<Bytes as From<Vec<u8>>>::from`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

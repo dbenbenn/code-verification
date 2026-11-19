@@ -21,7 +21,7 @@ Dispatches `deliver` on a known chain under `!safeInj 3` when `predictReceive` r
 the Fig. 8 rejecting and accepting subcases.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

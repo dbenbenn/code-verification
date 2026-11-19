@@ -12,29 +12,40 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBaseBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromLoopBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlacedBudgetAux
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedABudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedBBudget
-public import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.CalleesBudget
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemSlots
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTightCredit
-public import LibsignalBinary.Proofs.RecordCodecs.AssemblyBudget
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchDefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.CalleesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssemblyPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bTopPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromInstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromLoopBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlacedBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlacedBudgetAux
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedABudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedBBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.CalleesBudget
+public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemSlots -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTightCredit
+import LibsignalBinary.Proofs.RecordCodecs.AssemblyBudget
+import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchDefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.CalleesPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssemblyPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bTopPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromInstPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncodePure
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.Common.SharedHelpers
 
 /-!
 # Canonical-or-Fallback `PreKeySignalMessage::try_from` Slot Bridge
@@ -46,7 +57,7 @@ characterization `pksmParse_bytes_lt64` and `PksmCanonSliceEnv`; non-canonical i
 fall back to `PksmTryFromEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -438,27 +449,6 @@ theorem preKeyTryFrom_cro_placed_ok_of_codecHooks [LibsignalPlacement]
 
 /-! ## Byte-Slice Congruence and `CanonicalOrFallbackPksmEnv` Slot Closure -/
 
-/-- `PksmTryFromEnv x` depends only on `x.bytes`. -/
-theorem pksmTryFromEnv_congr_bytes (x y : PksmGhost) (h : x.bytes = y.bytes) :
-    PksmTryFromEnv x = PksmTryFromEnv y := by
-  have aux : ∀ a b : PksmGhost, a.bytes = b.bytes → ∀ evs, PksmTryFromEnv a evs → PksmTryFromEnv b evs := by
-    intro a b hab evs hevs
-    rcases hevs with _ | ⟨ha, h1, h2, hl⟩ | ⟨ha, h1, h2, hl, hp⟩
-    · exact PksmTryFromEnvGen.nil
-    · exact PksmTryFromEnvGen.loopOnly (hab.symm.trans ha) h1 h2
-        (by simpa only [PksmLoopEnv, hab] using hl)
-    · exact PksmTryFromEnvGen.loopAfter (hab.symm.trans ha) h1 h2
-        (by simpa only [PksmLoopEnv, hab] using hl) (by simpa only [hab] using hp)
-  funext evs
-  exact propext ⟨aux x y h evs, aux y x h.symm evs⟩
-
-/-- `CanonicalOrFallbackPksmEnv PksmTryFromEnv x` depends only on `x.bytes`. -/
-theorem canonicalOrFallbackPksmEnv_congr_bytes (x y : PksmGhost) (h : x.bytes = y.bytes) :
-    CanonicalOrFallbackPksmEnv PksmTryFromEnv x = CanonicalOrFallbackPksmEnv PksmTryFromEnv y := by
-  have hxy := pksmTryFromEnv_congr_bytes x y h
-  funext evs
-  simp only [CanonicalOrFallbackPksmEnv, h, hxy]
-
 private theorem satisfies_pksmResAt_of_preKeyResultAt
     {A : RustAlloc} {x : PreKeyTryFromArgs} {F : SepProp} {m : Memory}
     (hx : x.inner.length < 2 ^ 64)
@@ -591,14 +581,6 @@ theorem subsetA4PksmTryFromPlaced_canonOrFallback [LibsignalPlacement] {H : Libs
         exact ⟨⟨htr, Or.inr ⟨hcan, hE⟩⟩, hmem_f⟩
       · exact Or.inr hrest
 
-theorem subsetA4PksmTryFromPlaced_canonOrFallback_cli [LibsignalPlacement]
-    (mmpl : MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hG : CliGhostAllocHooks M A lim g) :
-    SubsetA4PksmTryFromPlaced M A lim (CanonicalOrFallbackPksmEnv PksmTryFromEnv)
-      (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
-  subsetA4PksmTryFromPlaced_canonOrFallback (codecHooksPlaced_cli mmpl g W hG)
-
 /-- `PksmSlotOkPlacedAt` at `CanonicalOrFallbackPksmEnv PksmTryFromEnv` from `CodecHooksPlaced`. -/
 theorem pksmSlotOkPlacedAt_canonOrFallback [LibsignalPlacement] {H : LibsignalHooks}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -609,20 +591,5 @@ theorem pksmSlotOkPlacedAt_canonOrFallback [LibsignalPlacement] {H : LibsignalHo
       (callerProg := CryptoVerification.SignalSession.Cli.Run.Placed.lsProg_579 H) (i := 579)
       (subsetA4PksmTryFromPlaced_canonOrFallback hCodec)
       (fun b => congrFun hS b)
-
-/-- `CliPksmSlotExistsPlacedAt` at `CanonicalOrFallbackPksmEnv PksmTryFromEnv` from `CodecHooksPlaced`. -/
-theorem cliPksmSlotExistsPlacedAt_canonOrFallback [LibsignalPlacement] {H : LibsignalHooks}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hCodec : CodecHooksPlaced M A lim H) :
-    CliPksmSlotExistsPlacedAt H A lim (CanonicalOrFallbackPksmEnv PksmTryFromEnv) :=
-  ⟨pksmParse, pksmSlotOkPlacedAt_canonOrFallback hCodec⟩
-
-/-- `CliPksmSlotExistsPlaced` on `cliGhostExterns` under `CliGhostAllocHooks`. -/
-theorem cliPksmSlotExistsPlaced_canonOrFallback [LibsignalPlacement]
-    (mmpl : MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hG : CliGhostAllocHooks M A lim g) :
-    CliPksmSlotExistsPlaced mmpl g W A lim (CanonicalOrFallbackPksmEnv PksmTryFromEnv) :=
-  cliPksmSlotExistsPlacedAt_canonOrFallback (codecHooksPlaced_cli mmpl g W hG)
 
 end LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3PksmAux

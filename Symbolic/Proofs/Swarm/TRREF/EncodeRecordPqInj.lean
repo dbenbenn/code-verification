@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SpecLemmas.CliPureBytes
+public import Symbolic.Proofs.SpecLemmas.CliPureBytes -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.EncodeWithCovered
 import Symbolic.Proofs.Refinement.LemmasPure
 import Symbolic.Proofs.Refinement.RecordBytesBridge
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

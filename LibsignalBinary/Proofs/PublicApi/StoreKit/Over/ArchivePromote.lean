@@ -9,8 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePendPlaced
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePendPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Fetch
 import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveNone
 import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.HeapDefs
@@ -21,6 +20,7 @@ import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodySomeX
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommon
 import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Fetch
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # `SessionRecord::promote_state` on Empty `previous_sessions`
@@ -30,7 +30,7 @@ Proves `promote_state_over_gen_ok` (arbitrary `prevCap`) and `promote_state_over
 with relocatable `[LibsignalPlacement]` counterparts on Block `47`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -54,80 +54,14 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## 1. Callees at `promote_state`-Relative Offsets -/
 
-theorem promote_rel_fnAddrX (b : BitVec 64) (ext : String → Option (State → State))
-    (name : String) (k : BitVec 64)
-    (hk : BitVec.ofNat 64 (libsignalSessionCode.fnOff promoteStateName) + k =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff name)) :
-    (SP2Ext b ext).fnAddr promoteStateName + k = (SP2Ext b ext).fnAddr name := by
-  simp only [SP2Ext, Program.fnAddr_rebase]
-  rw [BitVec.add_assoc, hk]
-
-/-- `archive_over_gen_ok` at its `promote_state`-relative offset. -/
-theorem archive_prom_gen_okX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : SerContractsX img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr promoteStateName +
-        bv% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner" -
-          ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_state"))
-      ((archiveOverGenSpec A).inImage img) := by
-  rw [promote_rel_fnAddrX img.base ext archiveCurrentStateInnerName _
-    (by rw [libsignalSessionCode_fnOff_promote, libsignalSessionCode_fnOff_archive]; rfl)]
-  exact archive_over_gen_ok hC (encodeRaw_ok_of_serContractsX hC)
-    (Proofs.libsignal.Hooks2.drop_session_structure_local1_ok_ext hC.alloc)
-
-/-- `archive_over_okX` at its `promote_state`-relative offset. -/
-theorem archive_prom_okX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : SerContractsX img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr promoteStateName +
-        bv% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner" -
-          ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_state"))
-      ((archiveOverSpecX A).inImage img) := by
-  rw [promote_rel_fnAddrX img.base ext archiveCurrentStateInnerName _
-    (by rw [libsignalSessionCode_fnOff_promote, libsignalSessionCode_fnOff_archive]; rfl)]
-  exact archive_over_okX hC (encodeRaw_ok_of_serContractsX hC)
-    (Proofs.libsignal.Hooks2.drop_session_structure_local1_ok_ext hC.alloc)
-
 /-- `memcpy` with the whole `promote_state` stack budget (the tail call runs on the caller's `sp`). -/
-def memcpyPromSpecX : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def memcpyPromSpecX : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s =>
     ⌜s.readReg64 .x0 = dst ∧ s.readReg64 .x1 = src ∧ (s.readReg64 .x2).toNat = bs.length⌝ ∗
       memRegion dst bs.length ∗ (src ↦ₛ bs) ∗ stackAt s.sp promoteStackX
   post := fun (dst, src, bs) s0 sf =>
     ⌜sf.readReg64 .x0 = dst ∧ sf.trace = s0.trace⌝ ∗
       (dst ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ stackAt s0.sp promoteStackX
-
-theorem memcpy_prom_okX {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hC : SerContractsX img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr promoteStateName +
-        bv% (ls_off% "memcpy" -
-          ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_state"))
-      (memcpyPromSpecX.inImage img) := by
-  have hmemcpy := hC.memcpy_ok_at promoteStateName
-    (num% (ls_off% "memcpy" -
-      ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_state"))
-    (by simp only [libsignalSessionCode_fnOff_promote, arm64_norm])
-  refine subroutine_ok_frame_weaken_inImage
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 promoteStackX)
-      (promoteStackX - CryptoVerification.LibsignalTripleRatchet.extHookStack))
-    hmemcpy
-    (fun ⟨_dst, _src, _bs⟩ s0 => ?_)
-    (fun ⟨_dst, _src, _bs⟩ s0 _sf => ?_)
-    (fun _ _ _ => Entails.pure_left False.elim)
-    (fun _ _ _ _ => rfl)
-  · simp only [memcpyPromSpecX, sessionMemcpySpec, libcMemcpySpec,
-      stackAt_sub_split_ser s0.sp CryptoVerification.LibsignalTripleRatchet.extHookStack promoteStackX
-        (by decide) (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-  · simp only [memcpyPromSpecX, sessionMemcpySpec,
-      stackAt_sub_split_ser s0.sp CryptoVerification.LibsignalTripleRatchet.extHookStack promoteStackX
-        (by decide) (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-
-/-! ## 2. Stack & Memory Shapes -/
 
 /-- The promote stack: the archive stack below the 4 frame cells (`sp - 32 .. sp - 8`). -/
 theorem stackAt_promote_splitX (sp : BitVec 64) :
@@ -165,10 +99,6 @@ theorem pointsTo64_memRegion_336_entails_344X (recPtr v : BitVec 64) :
 
 /-! ## 3. `promote_state` Proofs -/
 
-gen_decodes libsignalSessionCode_tree promoteBin
-  [(ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_state") →
-   (ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_state" + 0x44)]
-
 private def archiveOverGenSpecPrev (A : RustAlloc) : Spec ArchiveOverGenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.recPtr ∧
@@ -178,116 +108,6 @@ private def archiveOverGenSpecPrev (A : RustAlloc) : Spec ArchiveOverGenGhost wh
       stackAt s.sp archiveStackX
   post := (archiveOverGenSpec A).post
   onPanic := allocPanic
-
-set_option maxHeartbeats 800000 in
-theorem promote_state_over_gen_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : SerContractsX img A ext) :
-    PromoteStateOverGenOk img A ext := by
-  have hfn : libsignalSessionCode.fnOff promoteStateName =
-      num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_state") :=
-    libsignalSessionCode_fnOff_promote
-  have harch : subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr promoteStateName +
-        bv% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner" -
-          ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_state"))
-      ((archiveOverGenSpecPrev A).inImage img) :=
-    archive_prom_gen_okX hC
-  have hmemcpy := memcpy_prom_okX (img := img) (A := A) (ext := ext) hC
-  code_fetches_from CryptoVerification.libsignalSessionCode
-    promoteBin img.base
-    (Rust.withPanics ext) hfn
-    (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_state")) 0 0x44
-  unfold PromoteStateOverGenOk promoteOverGenSpec
-  simp only [prevVecAt_nil_eq]
-  show subroutine_ok (SP2Ext img.base ext) _ _
-  wppin_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨recPtr, src, prevCap, prevPtr, G, sess, newBs⟩ := x
-  dsimp only at *
-  apply SepWPpIn.of_sepWP
-    (mid := entry +
-      bv% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner" -
-        ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_state"))
-  conv => arg 4; rw [stackAt_promote_splitX s0.sp]
-  conv => arg 4; simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  apply SepWP.exists_left; intro v0
-  apply SepWP.exists_left; intro v1
-  apply SepWP.exists_left; intro v2
-  apply SepWP.exists_left; intro v3
-  wp_steps
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  wppin_callc harch ((archiveOverGenSpecPrev A).inImage img)
-    (⟨recPtr, prevCap, prevPtr, G, sess⟩ : ArchiveOverGenGhost)
-  apply SepWPpIn.of_sepWP
-    (mid := entry +
-      bv% (ls_off% "memcpy" -
-        ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_state"))
-  wp_steps
-  refine SepWP.fold
-    (pointsTo64_memRegion_336_entails_344X recPtr _)
-    (by sep_focus) ?_ -- framing-bypass: equality-frame combinator requires P = P1 * F
-  refine SepWP.fold (stackAt_promote_mergeX s0.sp _ _ _ _) (by sep_focus) ?_ -- framing-bypass: equality-frame combinator requires P = P1 * F
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  have hlen : newBs.length = 344 := by assumption
-  rw [← hlen]
-  wppin_callc hmemcpy (memcpyPromSpecX.inImage img) (recPtr + 24#64, src, newBs)
-  apply SepWPpIn.of_sepWP_ret
-  wp_done
-
-set_option maxHeartbeats 800000 in
-theorem promote_state_over_okX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : SerContractsX img A ext) :
-    PromoteStateOverOkX img A ext := by
-  have hfn : libsignalSessionCode.fnOff promoteStateName =
-      num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_state") :=
-    libsignalSessionCode_fnOff_promote
-  have harch := archive_prom_okX hC
-  have hmemcpy := memcpy_prom_okX (img := img) (A := A) (ext := ext) hC
-  code_fetches_from CryptoVerification.libsignalSessionCode
-    promoteBin img.base
-    (Rust.withPanics ext) hfn
-    (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_state")) 0 0x44
-  unfold PromoteStateOverOkX promoteOverSpecX
-  show subroutine_ok (SP2Ext img.base ext) _ _
-  wppin_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨recPtr, src, prevPtr, G, sess, newBs⟩ := x
-  dsimp only at *
-  apply SepWPpIn.of_sepWP
-    (mid := entry +
-      bv% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner" -
-        ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_state"))
-  conv => arg 4; rw [stackAt_promote_splitX s0.sp]
-  conv => arg 4; simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  apply SepWP.exists_left; intro v0
-  apply SepWP.exists_left; intro v1
-  apply SepWP.exists_left; intro v2
-  apply SepWP.exists_left; intro v3
-  wp_steps
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  wppin_callc harch ((archiveOverSpecX A).inImage img)
-    (⟨recPtr, prevPtr, G, sess⟩ : ArchiveOverGhost)
-  apply SepWPpIn.of_sepWP
-    (mid := entry +
-      bv% (ls_off% "memcpy" -
-        ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_state"))
-  wp_steps
-  refine SepWP.fold
-    (pointsTo64_memRegion_336_entails_344X recPtr _)
-    (by sep_focus) ?_ -- framing-bypass: equality-frame combinator requires P = P1 * F
-  refine SepWP.fold (stackAt_promote_mergeX s0.sp _ _ _ _) (by sep_focus) ?_ -- framing-bypass: equality-frame combinator requires P = P1 * F
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  have hlen : newBs.length = 344 := by assumption
-  rw [← hlen]
-  wppin_callc hmemcpy (memcpyPromSpecX.inImage img) (recPtr + 24#64, src, newBs)
-  apply SepWPpIn.of_sepWP_ret
-  wp_done
-
-/-! ## 4. Relocatable `[LibsignalPlacement]` `promote_state` Proofs (Block `47`) -/
 
 section Placed
 

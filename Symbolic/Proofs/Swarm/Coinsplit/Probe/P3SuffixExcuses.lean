@@ -19,12 +19,26 @@ import all DY.Actions.PersistentLocalState
 import all DY.Actions.PersistentGlobalState
 import all DY.Actions.ProtocolEvent
 import all DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.CBad
+import Symbolic.Proofs.Swarm.CREF.CBad
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.Sticky
 import Symbolic.Proofs.Swarm.CREF.TR.FreshSigmaHead
 import Symbolic.Proofs.Swarm.CREF.TR.FreshSigmaReach
 import Symbolic.Proofs.Swarm.CREF.Xpl.NoRatchet
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
+import Batteries.Lean.Except
+import Lean.Elab.SyntheticMVars
+import Lean.Exception
+import Lean.Meta.Reduce
+import Mathlib.Data.Nat.Notation
+import Mathlib.Data.Vector.Basic
+import VCVio.CryptoFoundations.HardnessAssumptions.DiffieHellman
+import VCVio.CryptoFoundations.PRG
+import VCVio.OracleComp.Constructions.SampleableType.Basic
+import VCVio.OracleComp.QueryTracking.QueryBound.Basic
+import VCVio.OracleComp.SimSemantics.Append.Core
+import Mathlib.Data.List.Forall2
 
 /-!
 # Suffix Two-Cut Reduction and Collision Reselection
@@ -34,7 +48,7 @@ Proves the two-cut characterization of `ModelAcceptsTermAfterAttackerSendsMoves`
 `¬ CollisionAfterExplainedPrefixMoves`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

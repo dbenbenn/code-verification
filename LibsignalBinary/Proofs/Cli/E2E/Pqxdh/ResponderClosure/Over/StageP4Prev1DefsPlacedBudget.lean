@@ -11,27 +11,42 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsKyberRefusedPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberProofPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsNonePlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyProofPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1DefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1MarkPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1RemovePlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1SaveIdPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1StorePlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsKyberRefusedPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberProofPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsNonePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyProofPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1DefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1MarkPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1RemovePlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1SaveIdPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1StorePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsAPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4None
+public import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Trap.SameAccount
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrAPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsBPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsKyberRefusedPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberProofPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsNonePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyProofPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSessionProofPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 
 /-!
 # Budget-Threaded Placed Stage P4 Over-Path Bundles, Envelopes, and `+0x3cc` Wrapper
@@ -42,7 +57,7 @@ Defines budget-threaded `[LibsignalPlacement]` 4-kit spatial bundles, allocation
 at `+0x3cc`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -137,7 +152,7 @@ open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1Stor
 
 /-- Budget-threaded placed shared spatial resources preserved across Stage P4
 (`+0x34dc → s0.readReg64 .x30`). -/
-def stageP4Prev1SharedPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4Prev1SharedPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) {b : BitVec 64}
     (kit : SessionStoreSpec A.repAlloc b) (ikit : IdentityStoreSpec A.repAlloc b)
     (pkKit : PreKeyStoreSpec A.repAlloc b) (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
@@ -184,7 +199,7 @@ def stageP4Prev1SharedPlaced [LibsignalPlacement] {M : AllocCostModel}
   stackAt s.sp (stageP4CallStack kit ikit pkKit kpkKit)
 
 /-- Budget-threaded placed Stage P4 entry assertion at `+0x34dc` parameterized by `opkSlot`. -/
-def stageP4Prev1RawPrePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4Prev1RawPrePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st0 : M.σ) {b : BitVec 64}
     (kit : SessionStoreSpec A.repAlloc b) (ikit : IdentityStoreSpec A.repAlloc b)
     (pkKit : PreKeyStoreSpec A.repAlloc b) (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
@@ -238,7 +253,7 @@ abbrev stageP4Prev1PrePlaced [LibsignalPlacement] {M : AllocCostModel}
     sst0 ist0 pst0 kst0 G ssSt
 
 /-- Budget-threaded placed Stage P4 assertion at `+0x3cc` entering Substage P4.4 (`store_session`). -/
-def stageP4At3ccPrev1PrePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4At3ccPrev1PrePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st3 : M.σ) {b : BitVec 64}
     (kit : SessionStoreSpec A.repAlloc b) (ikit : IdentityStoreSpec A.repAlloc b)
     (pkKit : PreKeyStoreSpec A.repAlloc b) (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
@@ -274,7 +289,7 @@ def stageP4At3ccPrev1PrePlaced [LibsignalPlacement] {M : AllocCostModel}
   kit.storeAt sessionStorePtr sst0
 
 /-- Budget-threaded placed exit assertion common to all five Stage P4 outcomes at `s0.readReg64 .x30`. -/
-def stageP4Prev1ExitAtPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4Prev1ExitAtPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stf : M.σ) {b : BitVec 64}
     (kit : SessionStoreSpec A.repAlloc b) (ikit : IdentityStoreSpec A.repAlloc b)
     (pkKit : PreKeyStoreSpec A.repAlloc b) (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
@@ -320,7 +335,7 @@ abbrev StageP4Prev1NoneStepEnv {A : RustAlloc} {b : BitVec 64}
 
 /-- Entry allocation envelope for Stage P4 parameterized by `opkId? : Option (BitVec 32)`, inserting
 `RemoveStepEnv` between `MarkStepEnv` and `StorePrev1StepEnv` when `opkId? = some opkId`. -/
-def StageP4Prev1StepEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def StageP4Prev1StepEnv {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (opsEnv : StorePrev1BudgetEnv kit)
     (ikit : IdentityStoreSpec A b) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (pkKit : PreKeyStoreSpec A b) (pkKitEnv : PreKeyStoreBudgetEnv pkKit)
@@ -343,7 +358,7 @@ def StageP4Prev1StepEnv {A : RustAlloc} {b : BitVec 64}
             (StorePrev1StepEnv kit opsEnv sst0 rem G ss enc)))
 
 /-- Allocation envelope on the `ok` and `storeErr` exits of Stage P4. -/
-def StageP4Prev1StoreBranchEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def StageP4Prev1StoreBranchEnv {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (opsEnv : StorePrev1BudgetEnv kit)
     (ikit : IdentityStoreSpec A b) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (pkKit : PreKeyStoreSpec A b) (pkKitEnv : PreKeyStoreBudgetEnv pkKit)
@@ -367,7 +382,7 @@ def StageP4Prev1StoreBranchEnv {A : RustAlloc} {b : BitVec 64}
             (StageP4StorePrev1ExitEnv kit opsEnv sst0 rem G ss enc)))
 
 /-- Combined exit allocation envelope of Stage P4 when `opkId? = none`. -/
-def StageP4Prev1NoneExitEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def StageP4Prev1NoneExitEnv {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (opsEnv : StorePrev1BudgetEnv kit)
     (ikit : IdentityStoreSpec A b) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (kpkKit : KyberPreKeyStoreSpec A b) (kpkKitEnv : KyberPreKeyStoreBudgetEnv kpkKit)
@@ -384,7 +399,7 @@ def StageP4Prev1NoneExitEnv {A : RustAlloc} {b : BitVec 64}
   StageP4MatchedSaveErrEnv ikit ikitEnv ist0 rem remoteIk evs
 
 /-- Combined exit allocation envelope of Stage P4 parameterized by `opkId? : Option (BitVec 32)`. -/
-def StageP4Prev1ExitEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def StageP4Prev1ExitEnv {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (opsEnv : StorePrev1BudgetEnv kit)
     (ikit : IdentityStoreSpec A b) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (pkKit : PreKeyStoreSpec A b) (pkKitEnv : PreKeyStoreBudgetEnv pkKit)

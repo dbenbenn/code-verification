@@ -9,7 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightBranches
+public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightBranches -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
+import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvRaw
+import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Tight `fineCostModel` Credit Specification for SPQR `spqr::recv`
@@ -19,7 +24,7 @@ Composes the tight branch and codec credit specs from `SpqrRecvTightBranches` wi
 `fineCredit`, and `evalLog` footprint bounds for `SpqrRecvTightEnv` and `SpqrRecvC07TightEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -52,7 +57,8 @@ open LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightBranches
    c07ActualIntoPbCum c07TightCreditSpec_inst c07TightDecodeCum c07TightFromPbCum
    c07TightIntoPbCum c09aTightStatesRecvAnyKCum c09aTightStatesRecvCum chainFrom_links_length_le_4
    cliRecv_peerSpqrTightValid640 phaseCreditSpec_of_false_fine phaseCreditSpec_or_freeOnly_fine
-   phaseCreditSpec_seq_freeOnly_left_fine phaseCreditSpec_seq_zero_left_fine
+   phaseCreditSpec_seq_freeOnly_left_fine phaseCreditSpec_seq_freeOnly_right_fine
+   phaseCreditSpec_seq_zero_left_fine
    spqrRecvC07TightEnv_nil spqrRecvOrderingGreater_phaseCreditSpec_tight
    spqrRecvOrderingGreater_phaseCreditSpec_tight_smallHist
    spqrRecvOrderingLess_phaseCreditSpec_tight spqrRecvTightCumCap
@@ -66,6 +72,8 @@ open LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps (ValidChainParamsPB ValidEn
 open LibsignalBinary.Proofs.PeakBudget.SpqrTightCapsAux
   (StatesPtsBoundedAt ValidPqPtsAt ValidV1PtsAt statesPtsBoundedAt_of_from_pb
    statesPtsBoundedAt_of_recv validV1PtsAt_states_into_pb)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
+  (phaseCreditSpec_msgDeserErrEnv_320)
 
 export LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightBranches
   (C07TightCreditSpec SpqrRecvEqualTightEnv SpqrRecvTightDomain SpqrRecvTightEnv)
@@ -176,10 +184,14 @@ theorem spqrRecvOrderingEqual_phaseCreditSpec_tight
   have hAfterFrom := phaseCreditSpec_or_freeOnly_fine hAfterFromOk
   have hAfterMd := phaseCreditSpec_or_freeOnly_fine (phaseCreditSpec_seq_zero_left_fine hFrom hAfterFrom)
   have hFull := phaseCreditSpec_seq_freeOnly_left_fine hAfterMd
+  have hMdErr := phaseCreditSpec_seq_freeOnly_right_fine (Nat.le_refl 0) phaseCreditSpec_msgDeserErrEnv_320
   unfold SpqrRecvEqualTightEnv
-  exact hFull.mono
-    (by simp only [Nat.add_assoc]; exact Nat.le_refl _)
-    (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _)
+  exact (hMdErr.or hFull).mono
+    (Nat.max_le.mpr ⟨by omega, by simp only [Nat.add_assoc]; exact Nat.le_refl _⟩)
+    (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩)
+    (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩)
+    (Nat.max_le.mpr ⟨Nat.le_trans (Nat.le_trans (by decide : 320 ≤ 302480) (Nat.le_max_left _ _))
+      (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_max_right _ _)), Nat.le_refl _⟩)
 
 /-- `Ordering::Equal` `PhaseCreditSpec` on `fineCostModel` under `KeyHistorySmallOrReserved xRk` (`Δlive = Δpeak = 294,391`).
 -/
@@ -265,10 +277,14 @@ theorem spqrRecvOrderingEqual_phaseCreditSpec_tight_smallHist
   have hAfterFrom := phaseCreditSpec_or_freeOnly_fine hAfterFromOk
   have hAfterMd := phaseCreditSpec_or_freeOnly_fine (phaseCreditSpec_seq_zero_left_fine hFrom hAfterFrom)
   have hFull := phaseCreditSpec_seq_freeOnly_left_fine hAfterMd
+  have hMdErr := phaseCreditSpec_seq_freeOnly_right_fine (Nat.le_refl 0) phaseCreditSpec_msgDeserErrEnv_320
   unfold SpqrRecvEqualTightEnv
-  exact hFull.mono
-    (by simp only [Nat.add_assoc]; exact Nat.le_refl _)
-    (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _)
+  exact (hMdErr.or hFull).mono
+    (Nat.max_le.mpr ⟨by omega, by simp only [Nat.add_assoc]; exact Nat.le_refl _⟩)
+    (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩)
+    (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩)
+    (Nat.max_le.mpr ⟨Nat.le_trans (Nat.le_trans (by decide : 320 ≤ 286196) (Nat.le_max_left _ _))
+      (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_max_right _ _)), Nat.le_refl _⟩)
 
 /-! ## Parametric Tight `spqr::recv` Credit Bounds -/
 

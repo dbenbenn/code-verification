@@ -11,20 +11,23 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysTailPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePendingPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysTailPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePendingPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysBase
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePendingSteps
 
 /-!
 # Budget-Threaded Placed Segment 4: `alice_base_key` & `pq_ratchet_state` (Block `518`)
@@ -34,7 +37,7 @@ and budget-threaded (`RustCliAllocBudget M`) Segment 4 proofs (`cloneKeysTail_vr
 `+0x1b20 → +0x1bac`, `genP3J3PlacedBudget → genP3J4PlacedBudget`) on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -117,12 +120,12 @@ attribute [local wp_norm]
 
 /-- Exact allocator event sequence emitted while cloning `alice_base_key : VecGhost`
 (`+0x1b20 → +0x1b68`): `[]` when `alice.bytes = []`, else `rustAllocEvents alice.bytes.length 1`. -/
-def cloneAliceEvents (alice : VecGhost) : List AllocEvent :=
+@[expose] def cloneAliceEvents (alice : VecGhost) : List AllocEvent :=
   if alice.bytes = [] then []
   else rustAllocEvents alice.bytes.length 1
 
 /-- Exact allocator event envelope for `cloneAlice_placed_ok`. -/
-def CloneAliceEnv (alice : VecGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def CloneAliceEnv (alice : VecGhost) (evs : List AllocEvent) : Prop :=
   evs = cloneAliceEvents alice
 
 @[simp]
@@ -133,12 +136,12 @@ theorem fitsEnv_cloneAlice_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M
 
 /-- Exact allocator event sequence emitted while cloning `pq_ratchet_state : List (BitVec 8)`
 (`+0x1b68 → +0x1bac`): `[]` when `pqBytes = []`, else `rustAllocEvents pqBytes.length 1`. -/
-def clonePqEvents (pqBytes : List (BitVec 8)) : List AllocEvent :=
+@[expose] def clonePqEvents (pqBytes : List (BitVec 8)) : List AllocEvent :=
   if pqBytes = [] then []
   else rustAllocEvents pqBytes.length 1
 
 /-- Exact allocator event envelope for `clonePq_placed_ok`. -/
-def ClonePqEnv (pqBytes : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def ClonePqEnv (pqBytes : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   evs = clonePqEvents pqBytes
 
 @[simp]
@@ -149,12 +152,12 @@ theorem fitsEnv_clonePq_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ
 
 /-- Exact allocator event sequence emitted across Stage P3 Segment 4 (`+0x1b20 → +0x1bac`):
 `alice_base_key` followed by `pq_ratchet_state`. -/
-def cloneKeysTailEvents (recG : SessionGhost) (st : SessionState (List (BitVec 8))) :
+@[expose] def cloneKeysTailEvents (recG : SessionGhost) (st : SessionState (List (BitVec 8))) :
     List AllocEvent :=
   cloneAliceEvents recG.alice ++ clonePqEvents st.pqRatchetState
 
 /-- Exact allocator event envelope for Stage P3 Segment 4 (`cloneKeysTail_vregs_placed_ok`). -/
-def CloneKeysTailEnv (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
+@[expose] def CloneKeysTailEnv (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
     (evs : List AllocEvent) : Prop :=
   evs = cloneKeysTailEvents recG st
 
@@ -177,7 +180,7 @@ theorem fitsEvents_cloneKeysTail_of_fitsEnv (M : AllocCostModel) (lim : BudgetLi
 /-! ## 2. Budget-Threaded Relocatable Junction 4 Predicate (`genP3J4PlacedBudget`) -/
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` Junction 4 predicate at `+0x1bac`. -/
-def genP3J4PlacedBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3J4PlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stB : M.σ)
     (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8))

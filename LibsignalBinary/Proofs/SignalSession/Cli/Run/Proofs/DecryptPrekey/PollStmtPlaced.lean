@@ -9,14 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.FramePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.FramePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.MuslStage1Init
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable Poll Closure Contract Statements for `decrypt_prekey`
@@ -25,7 +37,7 @@ Defines the `[LibsignalPlacement]` poll closure contract `CliDpPollOkStatePlaced
 `LibsignalFrozen` variant on block `518` (`lsProg_518`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -49,7 +61,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer (CliGhostHo
 
 /-- States that the `decrypt_prekey` poll closure (`cliDpPollName`, block `518`) satisfies
 `dpPollSpecState` at `K₀_statePlaced B S` under `[LibsignalPlacement]`. -/
-def CliDpPollOkStatePlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def CliDpPollOkStatePlacedStmt [LibsignalPlacement] : Prop :=
   ∀ (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
     (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
     (Scope : SessionRecord (List (BitVec 8)) → Prop),
@@ -69,7 +81,7 @@ def CliDpPollOkStatePlacedStmt [LibsignalPlacement] : Prop :=
           (dpPollSpecState (dpSlotPollKStatePlaced E2E.HooksE.A0 B S) stk'))
 
 /-- `LibsignalFrozen`-guarded counterpart of `CliDpPollOkStatePlacedStmt`. -/
-def CliDpPollOkStateFrozenPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def CliDpPollOkStateFrozenPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
     (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
     (Scope : SessionRecord (List (BitVec 8)) → Prop),

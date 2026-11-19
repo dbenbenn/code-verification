@@ -9,18 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudgetFd
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRootBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedFd -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudgetFd
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRootBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Hops -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W0Spec
 
 /-!
 # `FdsGe3Closed`-Threaded Arm Hop Specifications for `signal_session::run`
@@ -30,7 +38,7 @@ Defines `Ok`-branch `fs`-preserving wire-decoder contracts (`tryFromPlacedSpecOk
 `RunHopPrePlacedFd` through `RunHopRecvPPlacedFd` on Block `579`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -73,7 +81,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRootBudget (tryFromPlacedS
 /-! ## `Ok`-Branch `fs`-Preserving Wire-Decoder Specifications -/
 
 /-- Strengthens `tryFromPlacedSpec` (Block `85`, `SignalMessage::try_from`) with `(SignalMessage.tryFrom protoSignalCodec x.bytes).isOk = true → sf.fs = s0.fs` in the postcondition. -/
-def tryFromPlacedSpecOkFs [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tryFromPlacedSpecOkFs [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (TryFromGhost × M.σ) :=
   { tryFromPlacedSpec A lim with
     post := fun (x, st) s0 sf =>
@@ -85,17 +93,8 @@ theorem fs_eq_of_sigTryFrom_eq_ok {α ε : Type} {res : Except ε α} {m : α} {
     sf.fs = s0.fs :=
   h (by simp [hok, Except.isOk, Except.toBool])
 
-theorem subroutine_ok_tryFromPlacedSpec_of_okFs [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {prog : Program} {entry : BitVec 64}
-    (h : subroutine_ok prog entry (withLsCodeRoLoaded lsmpl (tryFromPlacedSpecOkFs A lim))) :
-    subroutine_ok prog entry (withLsCodeRoLoaded lsmpl (tryFromPlacedSpec A lim)) :=
-  subroutine_ok_mono h (fun _ _ _ hp => hp) (fun _ _ _ _ hq => by
-    dsimp only [tryFromPlacedSpecOkFs, withLsCodeRoLoaded] at hq ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq
-    exact hq.2)
-
 /-- Strengthens `pksmSlotSpecPlaced` (Block `111`, `PreKeySignalMessage::try_from`) with `(S.pksmParse x.bytes).isSome = true → sf.fs = s0.fs` in the postcondition. -/
-def pksmSlotSpecPlacedOkFs [LibsignalPlacement]
+@[expose] def pksmSlotSpecPlacedOkFs [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PksmTryFromEnv : PksmGhost → List AllocEvent → Prop) (S : RunSem) :
     Spec (PksmGhost × M.σ) :=
@@ -116,7 +115,7 @@ def pksmSlotSpecPlacedOkFs [LibsignalPlacement]
               A.pool lim (M.stepEvents evs st) sf }
 
 /-- Concrete `pksmParse` specialization of `pksmSlotSpecPlacedOkFs`. -/
-def pksmTryFromSpecPlacedOkFs [LibsignalPlacement]
+@[expose] def pksmTryFromSpecPlacedOkFs [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PksmTryFromEnv : PksmGhost → List AllocEvent → Prop) :
     Spec (PksmGhost × M.σ) :=
@@ -150,31 +149,9 @@ theorem fs_eq_of_pksmParse_eq_some {α : Type} {res : Option α} {pm : α} {s0 s
     sf.fs = s0.fs :=
   h (by simp [hsome])
 
-theorem subroutine_ok_pksmSlotSpecPlaced_of_okFs [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {PksmTryFromEnv : PksmGhost → List AllocEvent → Prop} {S : RunSem}
-    {prog : Program} {entry : BitVec 64}
-    (h : subroutine_ok prog entry (pksmSlotSpecPlacedOkFs M A lim PksmTryFromEnv S)) :
-    subroutine_ok prog entry (pksmSlotSpecPlaced M A lim PksmTryFromEnv S) :=
-  subroutine_ok_mono h (fun _ _ _ hp => hp) (fun _ _ _ _ hq => by
-    dsimp only [pksmSlotSpecPlacedOkFs, pksmSlotSpecPlaced, withLsCodeRoLoaded] at hq ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq
-    exact hq.2)
-
-theorem subroutine_ok_pksmTryFromSpecPlaced_of_okFs [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {PksmTryFromEnv : PksmGhost → List AllocEvent → Prop}
-    {prog : Program} {entry : BitVec 64}
-    (h : subroutine_ok prog entry (pksmTryFromSpecPlacedOkFs M A lim PksmTryFromEnv)) :
-    subroutine_ok prog entry (pksmTryFromSpecPlaced M A lim PksmTryFromEnv) :=
-  subroutine_ok_mono h (fun _ _ _ hp => hp) (fun _ _ _ _ hq => by
-    dsimp only [pksmTryFromSpecPlacedOkFs, pksmTryFromSpecPlaced, withLsCodeRoLoaded] at hq ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq
-    exact hq.2)
-
 /-! ## Arm `R0` (`R+0x0 → R+0x214`) -/
 
-def RunHopPrePlacedFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopPrePlacedFd [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs) (sEnvs : RunSlotEnvs)
     (PreEnv : RunCall → List AllocEvent → Prop)
@@ -201,7 +178,7 @@ def RunHopPrePlacedFd [LibsignalPlacement] {M : AllocCostModel}
       (runEntryMemPlaced A lim st g s0 resStack) Q Qp
       (fun _ => ⌜False⌝)
 
-def RunHopPrePlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopPrePlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs)
     (PreEnv : RunCall → List AllocEvent → Prop)
@@ -230,7 +207,7 @@ def RunHopPrePlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## Arm `R1a` (`R+0x214 → R+0x74c`) -/
 
-def RunHopInit1PlacedFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopInit1PlacedFd [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs) (sEnvs : RunSlotEnvs)
     (Init1Env : RunCall → MeAtDispatch → AddrV → List (BitVec 8) → List AllocEvent → Prop)
@@ -260,7 +237,7 @@ def RunHopInit1PlacedFd [LibsignalPlacement] {M : AllocCostModel}
       (dispatchMemPlaced A lim st g me s0 s resStack) Q Qp
       (fun _ => ⌜False⌝)
 
-def RunHopInit1PlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopInit1PlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs)
     (Init1Env : RunCall → MeAtDispatch → AddrV → List (BitVec 8) → List AllocEvent → Prop)
@@ -292,7 +269,7 @@ def RunHopInit1PlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## Arm `R1b` (`R+0x74c → R+0x28f0`) -/
 
-def RunHopInit2PlacedFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopInit2PlacedFd [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs) (sEnvs : RunSlotEnvs)
     (Init2Env : RunCall → Init1Data → List AllocEvent → Prop)
@@ -320,7 +297,7 @@ def RunHopInit2PlacedFd [LibsignalPlacement] {M : AllocCostModel}
       (init1MemPlaced A lim st g d1 s0 s1 resStack) Q Qp
       (fun _ => ⌜False⌝)
 
-def RunHopInit2PlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopInit2PlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs)
     (Init2Env : RunCall → Init1Data → List AllocEvent → Prop)
@@ -350,7 +327,7 @@ def RunHopInit2PlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## Arm `R1c` (`R+0x28f0 → Join/Reject`) -/
 
-def RunHopInit3PlacedFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopInit3PlacedFd [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs) (sEnvs : RunSlotEnvs)
     (Init3Env : RunCall → Init2Data → List AllocEvent → Prop)
@@ -376,7 +353,7 @@ def RunHopInit3PlacedFd [LibsignalPlacement] {M : AllocCostModel}
       (init2MemPlaced A lim st g d2 s0 s2 resStack) Q Qp
       (fun _ => ⌜False⌝)
 
-def RunHopInit3PlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopInit3PlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs)
     (Init3Env : RunCall → Init2Data → List AllocEvent → Prop)
@@ -404,7 +381,7 @@ def RunHopInit3PlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## Arm `R2` (`send`, `R+0x214 → Join/Reject`) -/
 
-def RunHopSendPlacedFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopSendPlacedFd [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs) (sEnvs : RunSlotEnvs)
     (SendEnv : RunCall → MeAtDispatch → AddrV → List AllocEvent → Prop)
@@ -432,7 +409,7 @@ def RunHopSendPlacedFd [LibsignalPlacement] {M : AllocCostModel}
       (dispatchMemPlaced A lim st g me s0 s resStack) Q Qp
       (fun _ => ⌜False⌝)
 
-def RunHopSendPlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopSendPlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs)
     (SendEnv : RunCall → MeAtDispatch → AddrV → List AllocEvent → Prop)
@@ -462,7 +439,7 @@ def RunHopSendPlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## Arm `R3a` (Whisper `recv`, `R+0x214 → Join/Reject`) -/
 
-def RunHopRecvWPlacedFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopRecvWPlacedFd [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs) (sEnvs : RunSlotEnvs)
     (RecvWEnv : RunCall → MeAtDispatch → AddrV → List (BitVec 8) → List AllocEvent → Prop)
@@ -493,7 +470,7 @@ def RunHopRecvWPlacedFd [LibsignalPlacement] {M : AllocCostModel}
       (dispatchMemPlaced A lim st g me s0 s resStack) Q Qp
       (fun _ => ⌜False⌝)
 
-def RunHopRecvWPlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopRecvWPlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs)
     (RecvWEnv : RunCall → MeAtDispatch → AddrV → List (BitVec 8) → List AllocEvent → Prop)
@@ -526,7 +503,7 @@ def RunHopRecvWPlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## Arm `R3b` (PreKey `recv`, `R+0x214 → Join/Reject`) -/
 
-def RunHopRecvPPlacedFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopRecvPPlacedFd [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs) (sEnvs : RunSlotEnvs)
     (PksmTryFromEnv : PksmGhost → List AllocEvent → Prop)
@@ -558,7 +535,7 @@ def RunHopRecvPPlacedFd [LibsignalPlacement] {M : AllocCostModel}
       (dispatchMemPlaced A lim st g me s0 s resStack) Q Qp
       (fun _ => ⌜False⌝)
 
-def RunHopRecvPPlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopRecvPPlacedFdOf [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs)
     (PksmTryFromEnv : PksmGhost → List AllocEvent → Prop)

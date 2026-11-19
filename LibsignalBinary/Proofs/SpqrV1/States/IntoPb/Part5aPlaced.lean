@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -20,6 +20,8 @@ import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`) — Part 5a Placed: Arm 8 (`States.ekReceivedCt1Sampled`)
@@ -28,7 +30,7 @@ Relocatable `[LibsignalPlacement]` verification of Arm 8 (`States.ekReceivedCt1S
 jump table index `8`, `+1644 -> +1760 -> +2248/+2252 -> +2324 -> +2340 -> +1544`) on Block `334`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -58,7 +60,7 @@ set_option linter.unusedSimpArgs false
 
 open CryptoVerification.SpqrV1.States.IntoPb.Placed
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
   bv_sub_sub_lit' bv_add_add_lit'
 

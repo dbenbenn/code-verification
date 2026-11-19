@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import VCVio.EvalDist.ProbabilityNotation
@@ -22,7 +22,7 @@ pairwise distinct concretized receiver ratchet keys, and proves step-preservatio
 `StateRel`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -37,7 +37,7 @@ open CryptoProofLib.Refinement (ExternInterpretation)
 namespace G1
 
 /-- Every available `TRState` on `runTraceMoves r₀ ms` has `Nodup` concretized receiver ratchet keys. -/
-def RecvHistInvTR (interpretation : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def RecvHistInvTR (interpretation : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
     (r₀ : ProtocolSetup) (ms : List Move) : Prop :=
   ∀ st ∈ availableStates r₀ (runTraceMoves r₀ ms),
     (st.recv.map fun c => gamma interpretation S g c.ratchetKey).Nodup

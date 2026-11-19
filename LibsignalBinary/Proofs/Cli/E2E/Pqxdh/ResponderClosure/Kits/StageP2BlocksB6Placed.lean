@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksB6
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksB6
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 
@@ -21,7 +21,7 @@ Relocatable `[LibsignalPlacement]` basic-block lemmas for Substage P2.6 (`+0x125
 Block `518` (`stageP1ProgPlaced ext`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

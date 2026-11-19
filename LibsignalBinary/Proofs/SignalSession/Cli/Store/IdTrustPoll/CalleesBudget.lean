@@ -10,8 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.Callees
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.Callees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Cell Wrappers for `IdTrustPoll`
@@ -20,7 +22,7 @@ Defines budget-threaded callee specifications (`dirGetCellsSpec` and `deallocVec
 `is_trusted_identity::{closure#0}`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +37,7 @@ open CryptoVerification.SignalSession.Cli (DirGhost ReadRule dirAt getResultAt p
 open CryptoVerification.SignalSession.Cli.Store.IdTrustPoll.Helpers
   (DirGetCellsGhost DeallocVecBufGhost vecU8BufRest)
 
-def dirGetCellsSpec {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def dirGetCellsSpec {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (GetEnv : DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (calleeStk : Nat) : Spec (DirGetCellsGhost × M.σ) where
@@ -54,7 +56,7 @@ def dirGetCellsSpec {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 
         dirAt A.repAlloc self dir ∗ (nameA ↦ₛ name) ∗ stackAt fsp calleeStk ∗
         A.pool lim (M.stepEvents evs st) sf
 
-def deallocVecBufSpec [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def deallocVecBufSpec [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (calleeStk : Nat) : Spec (DeallocVecBufGhost × M.σ) where
   pre := fun ((bPtr, bCap, bs, fsp), st) s =>
     ⌜s.readReg64 .x0 = bPtr ∧ s.readReg64 .x1 = bCap ∧ s.readReg64 .x2 = 1#64 ∧

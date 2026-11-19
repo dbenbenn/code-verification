@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyB
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyB
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodySomeX
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyNoneX -- proof-setup: allow-public-import
 
 /-!
 # Relocatable `SessionRecord::serialize` with One Previous Session: Epilogue Tail
@@ -23,7 +24,7 @@ Relocatable `[LibsignalPlacement]` proof of `serPrev1Tail_placed_ok : SerPrev1Pl
 (`+692 .. ret` on Block `52`) and `k5_fold_q_placed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false
@@ -32,7 +33,7 @@ set_option maxRecDepth 2000000
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 
-open Arm64 ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection CryptoGames
+open Arm64 ProofLib ProofLib.ProgramReflection CryptoGames
 open CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr CryptoVerification.LibsignalPublicApiRepr

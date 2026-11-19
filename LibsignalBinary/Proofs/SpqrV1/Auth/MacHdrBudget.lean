@@ -11,16 +11,17 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
-public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
@@ -33,7 +34,7 @@ against `authMacHdrPinnedSpec` and `authMacHdrSpec` with deterministic allocatio
 envelope `AuthMacHdrEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -81,6 +82,10 @@ open LibsignalBinary.Heap (
 open LibsignalBinary.Heap.SpecBudget (
   LibcruxHmacEnv libcruxHmacBudgetSpec libcruxHmacSha256Events
 )
+open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (
+  LsRetAddr624 lsLen lsRetAddr624_blockPlacement_base_add
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget (
   SliceConcat3Env sliceConcat3Events sliceConcat3Spec
 )
@@ -93,6 +98,12 @@ open LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget (
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
+
+@[local wp_norm]
+private theorem lsRetAddr624_blkPl_342 [LibsignalPlacement] (off : BitVec 64)
+    (ho : off.toNat < lsLen 342 := by decide) :
+    LsRetAddr624 ((blkPl_342).base + off) :=
+  lsRetAddr624_blockPlacement_base_add 342 off (by decide) ho
 attribute [local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
   bytesAt_true bytesAt_false hdrLabel_length toBEBytes_8_length List.length_append
 attribute [local arm64_norm ↓, local wp_norm ↓]
@@ -105,14 +116,14 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 /-- Deterministic `AllocEvent` list of `Authenticator::mac_hdr`: allocates `ct_mac_data`
 (`41 + hdr.length` B), and when `macKey` and `ct_mac_data` fit in `u32`, runs
 `libcrux_hmac::hmac` and deallocates `ct_mac_data`. -/
-def authMacHdrEvents (auth : Authenticator) (hdr : Bytes) : List AllocEvent :=
+@[expose] def authMacHdrEvents (auth : Authenticator) (hdr : Bytes) : List AllocEvent :=
   if auth.macKey.length < 2 ^ 32 ∧ 41 + hdr.length < 2 ^ 32 then
     sliceConcat3Events (41 + hdr.length) ++ libcruxHmacSha256Events ++
       rustDeallocEvents (41 + hdr.length) 1
   else
     sliceConcat3Events (41 + hdr.length)
 
-def AuthMacHdrEnv (auth : Authenticator) (hdr : Bytes) (evs : List AllocEvent) : Prop :=
+@[expose] def AuthMacHdrEnv (auth : Authenticator) (hdr : Bytes) (evs : List AllocEvent) : Prop :=
   evs = authMacHdrEvents auth hdr
 
 theorem fitsEnv_authMacHdr_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
@@ -124,7 +135,7 @@ theorem fitsEnv_authMacHdr_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M
 /-! ## Budget-Threaded Specifications -/
 
 /-- Budget-threaded pinned specification of `Authenticator::mac_hdr` (retaining only the `u32` HMAC length-overflow panic). -/
-def authMacHdrPinnedSpec (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def authMacHdrPinnedSpec (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthMacHdrPinnedGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -151,7 +162,7 @@ def authMacHdrPinnedSpec (F : ShaState → List (BitVec 8) → ShaState)
       s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Budget-threaded unpinned specification of `Authenticator::mac_hdr`. -/
-def authMacHdrSpec (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def authMacHdrSpec (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthMacHdrGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -177,7 +188,7 @@ def authMacHdrSpec (F : ShaState → List (BitVec 8) → ShaState)
       2 ^ 32 ≤ (Authenticator.hdrLabel ++ toBEBytes 8 x.ep ++ x.hdr).length) ∧
       s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def AuthMacHdrPlacedOk [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def AuthMacHdrPlacedOk [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_342).rebase (blkPl_342).base H) (blkPl_342).base
@@ -265,7 +276,7 @@ theorem authMacHdrPinned_placed_ok [LibsignalPlacement]
       (lsmpl.base 386) (withLsCallInv lsmpl (sliceConcat3Spec M A lim)))
     (h_hmac : subroutine_ok ((blkPC_342).rebase (blkPl_342).base H)
       (lsρ "_RNvCs65XVORQObL2_12libcrux_hmac4hmac")
-      (withLsCallInv lsmpl (libcruxHmacBudgetSpec F M A lim)))
+      (withLsCallInv lsmpl (withLsRet (libcruxHmacBudgetSpec F M A lim))))
     (h_dealloc : subroutine_ok ((blkPC_342).rebase (blkPl_342).base H)
       (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc")
       (rustDeallocSpecWithStack M A lim extHookStack)) :
@@ -381,10 +392,7 @@ theorem authMacHdrPinned_placed_ok [LibsignalPlacement]
   simp only [wp_norm, arm64_norm] at hcs_sf_norm
   rcases hcs_sf_norm with ⟨hx19_sf, hx20_sf, hx21_sf, hx22_sf, hx23_sf, hx24_sf,
     hx25_sf, hx26_sf, hx27_sf, hx28_sf, hx29_sf, hvregs_sf⟩
-  wp_norm_hyp hpc_sf; wp_norm_hyp hsp_sf'; wp_norm_hyp hx19_sf; wp_norm_hyp hx20_sf
-  wp_norm_hyp hx21_sf; wp_norm_hyp hx22_sf; wp_norm_hyp hx23_sf; wp_norm_hyp hx24_sf
-  wp_norm_hyp hx25_sf; wp_norm_hyp hx26_sf; wp_norm_hyp hx27_sf; wp_norm_hyp hx28_sf
-  wp_norm_hyp hx29_sf; wp_norm_hyp hvregs_sf; wp_norm_hyp htrace_sf
+  wp_norm_hyp hpc_sf; wp_norm_hyp htrace_sf
   refine CryptoVerification.SpqrV1.ChainProofs.NextKeyInternalFacts.SepWPp.of_sepWP_lsCallInv
     (mid := lsρ "_RNvCs65XVORQObL2_12libcrux_hmac4hmac") hF_sf ?_
   wp_steps_sync_pool (lsρ "_RNvCs65XVORQObL2_12libcrux_hmac4hmac")
@@ -414,7 +422,8 @@ theorem authMacHdrPinned_placed_ok [LibsignalPlacement]
       exact hfits_all.2.1
     · subst hevs
       simp
-  change subroutine_ok _ _ (withLsCallInv lsmpl (libcruxHmacBudgetSpec F M A lim)) at h_hmac
+  change subroutine_ok _ _
+    (withLsCallInv lsmpl (withLsRet (libcruxHmacBudgetSpec F M A lim))) at h_hmac
   apply (SepWPp.call_allowPanic_lsCallInv_ret h_hmac (x := (x_hmac, st1)) hinv2)
   · wp_norm_goal
   · wp_norm_lhs
@@ -423,17 +432,17 @@ theorem authMacHdrPinned_placed_ok [LibsignalPlacement]
   · intro R' hmR'
     rw [← sepConj_assoc]
     refine Satisfies.mono (sepConj_mono_left ?_) hmR'
-    dsimp only [libcruxHmacBudgetSpec, x_hmac]
+    dsimp only [withLsRet, libcruxHmacBudgetSpec, x_hmac]
     simp (config := { decide := true }) only [
       hmac_toNat, hcap_toNat, sepConj_assoc, wp_norm, arm64_norm]
     refine Entails.pure_right hfits_hmac ?_
     sep_frame
   · intro _
-    dsimp only [libcruxHmacBudgetSpec, x_hmac]
+    dsimp only [withLsRet, libcruxHmacBudgetSpec, x_hmac]
     exact onPanic_hmacBudget_entails_macHdr (by wp_norm_lhs)
   · exact ⟨fun _ _ => rfl, fun _ => rfl⟩
   intro sf_1 hpc_sf1 hrun_sf1 hsp_sf1 hcs_sf1 hF_sf1
-  dsimp only [libcruxHmacBudgetSpec, x_hmac]
+  dsimp only [withLsRet, libcruxHmacBudgetSpec, x_hmac]
   simp only [sepExists_sepConj_left]
   apply SepWP.exists_elim; intro evs_hmac
   refine CryptoVerification.SpqrV1.ChainProofs.NextKeyInternalFacts.SepWP.pure_left_focus _ (by sep_focus) ?_
@@ -449,10 +458,7 @@ theorem authMacHdrPinned_placed_ok [LibsignalPlacement]
   simp only [wp_norm, arm64_norm] at hcs_sf1_norm
   rcases hcs_sf1_norm with ⟨hx19_1, hx20_1, hx21_1, hx22_1, hx23_1, hx24_1,
     hx25_1, hx26_1, hx27_1, hx28_1, hx29_1, hvregs_1⟩
-  wp_norm_hyp hpc_sf1; wp_norm_hyp hsp_sf1'; wp_norm_hyp hx19_1; wp_norm_hyp hx20_1
-  wp_norm_hyp hx21_1; wp_norm_hyp hx22_1; wp_norm_hyp hx23_1; wp_norm_hyp hx24_1
-  wp_norm_hyp hx25_1; wp_norm_hyp hx26_1; wp_norm_hyp hx27_1; wp_norm_hyp hx28_1
-  wp_norm_hyp hx29_1; wp_norm_hyp hvregs_1; wp_norm_hyp htrace_sf1
+  wp_norm_hyp hpc_sf1; wp_norm_hyp htrace_sf1
   wp_steps_sync_pool (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc")
   have hmr_data :
       (ptr ↦ₛ (Authenticator.hdrLabel ++ (toBEBytes 8 (s0.readReg64 (.gpr 1#5)) ++ hdr))) ⊢
@@ -490,9 +496,7 @@ theorem authMacHdrPinned_placed_ok [LibsignalPlacement]
   have htr_final : sf_2.trace = s0.trace := by
     have hacp_2 : AllocCallPreserved sf_1 sf_2 := ‹AllocCallPreserved _ sf_2›
     have htr2 : sf_2.trace = sf_1.trace := hacp_2.2.1
-    wp_norm_hyp htr2
     exact htr2.trans (htrace_sf1.trans htrace_sf)
-  wp_norm_hyp htr_final
   have hpool_eq :
       M.stepEvents (rustDeallocEvents (41 + hdr.length) 1)
         (M.stepEvents libcruxHmacSha256Events st1) =
@@ -519,7 +523,7 @@ theorem authMacHdr_placed_ok [LibsignalPlacement]
       (lsmpl.base 386) (withLsCallInv lsmpl (sliceConcat3Spec M A lim)))
     (h_hmac : subroutine_ok ((blkPC_342).rebase (blkPl_342).base H)
       (lsρ "_RNvCs65XVORQObL2_12libcrux_hmac4hmac")
-      (withLsCallInv lsmpl (libcruxHmacBudgetSpec F M A lim)))
+      (withLsCallInv lsmpl (withLsRet (libcruxHmacBudgetSpec F M A lim))))
     (h_dealloc : subroutine_ok ((blkPC_342).rebase (blkPl_342).base H)
       (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc")
       (rustDeallocSpecWithStack M A lim extHookStack)) :

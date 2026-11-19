@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid3
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5Defs
 
 /-!
@@ -20,7 +20,7 @@ Defines `stageP2V1CallStack`, `opkOkSkBytes?`, `mkP2AcceptKeysInput`, and spatia
 for Stage P2 Error Arms 1–6 (`p2ErrFrameAt`) and Substage P2.5/P2.6 boundaries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -150,7 +150,7 @@ theorem p2_memRegion_e0_368_split_24_344 (coroPtr : BitVec 64) :
     (b' := coroPtr + 0xf8#64) rfl (by bv_omega) (by decide)
 
 /-- Full Stage P2 stack bound at SPQR V1 (`stageP2CallStack` plus `initialize_bob_session` V1 stack). -/
-def stageP2V1CallStack {A : RustAlloc} {b : BitVec 64}
+@[expose] def stageP2V1CallStack {A : RustAlloc} {b : BitVec 64}
     (spkKit : SignedPreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b) {ikit : IdentityStoreSpec A b}
     (skit : IdentitySelfStoreSpec ikit) : Nat :=
@@ -204,7 +204,7 @@ theorem p2_dropSs3Stack_le_v1CallStack {A : RustAlloc} {b : BitVec 64}
     (p2_callStack_le_v1CallStack spkKit kpkKit pkKit skit)
 
 /-- Full Stage P2 stack bound at SPQR V1 under 4K `memcpy` and 16K PQXDH/blackBox hooks. -/
-def stageP2V1CallStack4K {A : RustAlloc} {b : BitVec 64}
+@[expose] def stageP2V1CallStack4K {A : RustAlloc} {b : BitVec 64}
     (spkKit : SignedPreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b) {ikit : IdentityStoreSpec A b}
     (skit : IdentitySelfStoreSpec ikit) : Nat :=
@@ -266,7 +266,7 @@ theorem p2_pqsk_split_rejoin (p : BitVec 64) (bs : List (BitVec 8)) (h : 0 < bs.
   (p2_pointsToBytes_split_head p bs h).symm
 
 /-- Convert wire `hdr.opkId? : Option UInt32` to `Option (BitVec 32)` for store-kit specs. -/
-def hdrOpkIdBv? (hdr : HandshakeHdr) : Option (BitVec 32) :=
+@[expose] def hdrOpkIdBv? (hdr : HandshakeHdr) : Option (BitVec 32) :=
   hdr.opkId?.map UInt32.toBitVec
 
 theorem hdrOpkIdBv?_isSome (hdr : HandshakeHdr) :
@@ -284,7 +284,7 @@ theorem hdrOpkIdBv?_of_none {hdr : HandshakeHdr} (h : hdr.opkId? = none) :
 
 /-- Optional OPK secret-key bytes for `AcceptKeysInput` (`some (toU8 opkSkBytes)` when `opkId?`
 is `some _`, `none` when `none`). -/
-def opkOkSkBytes? : Option (BitVec 32) → List (BitVec 8) → Option SignalPqxdh.Bytes
+@[expose] def opkOkSkBytes? : Option (BitVec 32) → List (BitVec 8) → Option SignalPqxdh.Bytes
   | some _, skB => some (toU8 skB)
   | none, _ => none
 
@@ -315,7 +315,7 @@ theorem opkOkSkBytes?_eq_of_some {opkId? : Option (BitVec 32)} {skB : List (BitV
 
 /-- Construct `AcceptKeysInput` from wire `HandshakeHdr`, Bob's 32-byte identity keypair bytes
 `(ikBSk, ikBPk)`, and the store-resolved SPK, Kyber1024, and optional OPK key bytes. -/
-def mkP2AcceptKeysInput (hdr : HandshakeHdr) (ikBSk ikBPk : SignalPqxdh.Bytes)
+@[expose] def mkP2AcceptKeysInput (hdr : HandshakeHdr) (ikBSk ikBPk : SignalPqxdh.Bytes)
     (spkPubBytes spkPrivBytes kyberPubBytes kyberPrivBytes opkSkBytes : List (BitVec 8)) :
     AcceptKeysInput where
   ikBSk := ikBSk
@@ -772,7 +772,7 @@ theorem p2_coro4b0_byte_64_entails_65 (coroPtr : BitVec 64) (b : BitVec 8) :
   exact sepConj_mono_left (pointsTo8_entails_memRegion (coroPtr + 0x4b0#64) b)
 
 /-- Read-only `PreKeySignalMessage` fields accessed during Stage P2 (`+0x70..+0xf0` + `ctBufPtr`). -/
-def p2MsgFieldsAt (msgPtr ctBufPtr : BitVec 64) (hdr : HandshakeHdr)
+@[expose] def p2MsgFieldsAt (msgPtr ctBufPtr : BitVec 64) (hdr : HandshakeHdr)
     (msgVerByte : BitVec 8) (opkIdWord kyberPreKeyId remoteRegId signedPreKeyId : BitVec 32) :
     SepProp :=
   ((msgPtr + 0x70#64) ↦₈ msgVerByte) ∗
@@ -789,59 +789,11 @@ def p2MsgFieldsAt (msgPtr ctBufPtr : BitVec 64) (hdr : HandshakeHdr)
   (ctBufPtr ↦ₛ (8#8 :: bytesToBv8 hdr.kemCt))
 
 /-- Coroutine Stage-P2 scratch regions at `+0x4f8..+0x7d8` preserved identically across all exits. -/
-def p2CoroScratchTailAt (coroPtr : BitVec 64) : SepProp :=
+@[expose] def p2CoroScratchTailAt (coroPtr : BitVec 64) : SepProp :=
   memRegion (coroPtr + 0x4f8#64) 344 ∗
   memRegion (coroPtr + 0x650#64) 8 ∗
   memRegion (coroPtr + 0x658#64) 298 ∗
   memRegion (coroPtr + 0x788#64) 16 ∗
   memRegion (coroPtr + 0x798#64) 64
-
-/-- Common coroutine, stack, message, address, and allocator spatial frame delivered uniformly at
-`s0.readReg64 .x30` on all 6 Stage-P2 error exits (Arms 1–6). -/
-def p2ErrFrameAt (A : RustAlloc) (img : Obj.Image) (s0 : State)
-    (sp fp coroPtr msgPtr ctBufPtr remoteAddrPtr localAddrPtr
-     idStorePtr idVt preKeyStorePtr pkVt kyberStorePtr kpkVt v_330 v_388 : BitVec 64)
-    (hdr : HandshakeHdr) (msgVerByte : BitVec 8)
-    (opkIdWord kyberPreKeyId remoteRegId signedPreKeyId : BitVec 32)
-    (gMe gPeer : AddrGhost) (stk : Nat) (Frame : SepProp) : SepProp :=
-  ((coroPtr + 0x70#64) ↦₆₄ msgPtr) ∗
-  ((coroPtr + 0x78#64) ↦₆₄ remoteAddrPtr) ∗
-  ((coroPtr + 0x80#64) ↦₆₄ localAddrPtr) ∗
-  memRegion (coroPtr + 0xe0#64) 368 ∗
-  cells (coroPtr + 0x250#64) 6 ∗
-  memRegion (coroPtr + 0x298#64) 20 ∗
-  ((coroPtr + 0x2c0#64) ↦₈ 1#8) ∗
-  ((coroPtr + 0x330#64) ↦₆₄ v_330) ∗
-  ((coroPtr + 0x388#64) ↦₆₄ v_388) ∗
-  ((coroPtr + 0x390#64) ↦₈ 1#8) ∗
-  memRegion (coroPtr + 0x398#64) 96 ∗
-  processPrekeyActive10At coroPtr msgPtr remoteAddrPtr localAddrPtr
-    idStorePtr idVt preKeyStorePtr pkVt kyberStorePtr kpkVt ∗
-  memRegion (coroPtr + 0x488#64) 8 ∗
-  memRegion (coroPtr + 0x4b0#64) 65 ∗
-  ((coroPtr + 0x4f1#64) ↦₈ 0#8) ∗
-  ((coroPtr + 0x4f2#64) ↦₈ 1#8) ∗
-  p2CoroScratchTailAt coroPtr ∗
-  p2MsgFieldsAt msgPtr ctBufPtr hdr msgVerByte opkIdWord kyberPreKeyId remoteRegId signedPreKeyId ∗
-  protocolAddressAt A gMe localAddrPtr ∗
-  protocolAddressAt A gPeer remoteAddrPtr ∗
-  memRegion (sp + 0x80#64) 88 ∗
-  memRegion (sp + 0x270#64) 9 ∗
-  memRegion (sp + 0x370#64) 36 ∗
-  memRegion (sp + 0x3a0#64) 8 ∗
-  memRegion (sp + 0x3ac#64) 1 ∗
-  memRegion (sp + 0x3b0#64) 48 ∗
-  memRegion (sp + 0x3e0#64) 368 ∗
-  cells (sp + 0x560#64) 4 ∗
-  cells (sp + 0x6a0#64) 4 ∗
-  cells (sp + 0x7e0#64) 4 ∗
-  cells (sp + 0x930#64) 8 ∗
-  memRegion (sp + 0xa90#64) 288 ∗
-  memRegion (fp + 0xffffffffffffff80#64) 9 ∗
-  decryptPrekeySavedRegsAt (sp + 0xcd0#64) s0 ∗
-  logOff img ∗
-  A.pool ∗
-  stackAt sp stk ∗
-  Frame
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits

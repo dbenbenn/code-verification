@@ -10,10 +10,13 @@ limitations under the License.
 module
 
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalShortDefs
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.WireHop
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.WireHop -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.MsgAeadCorrect
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RoundTrip
 import Std.Tactic.BVDecide.Normalize.BitVec
+public import Computational.Proofs.CryptoGames.FSAEAD.PubProofDefs
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip -- proof-setup: allow-public-import
 
 /-!
 # Wire-hop synchronization invariant for short public parts
@@ -24,7 +27,7 @@ Defines `RealSync` and proves observational equivalence between `wireBranch ... 
 `saltRunNF ... false` when encryption ADs have short public parts.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory CryptoGames.Lazy
 

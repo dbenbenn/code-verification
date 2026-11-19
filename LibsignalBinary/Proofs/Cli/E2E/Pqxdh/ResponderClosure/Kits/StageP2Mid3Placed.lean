@@ -9,12 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid2Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid3
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid2Placed
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid3 -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub4
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsBPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Qpan
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub4AuxPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub4Placed
 
 /-!
 # Relocatable Stage P2 Substages 1–4 Unified Composition
@@ -23,13 +32,13 @@ Proves placed Substages P2.1–P2.4 composition (`+0x0868 → +0x36ac` or error 
 `s0.readReg64 .x30` via Arms 1–3) on Block `518` (`stageP1ProgPlaced ext`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits
 
-open Arm64 Arm64.Process ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection ProofLib.Variant
+open Arm64 Arm64.Process ProofLib ProofLib.ProgramReflection ProofLib.Variant
 open CryptoGames CryptoGames.HMAC CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSession CryptoVerification.LibsignalSessionRepr

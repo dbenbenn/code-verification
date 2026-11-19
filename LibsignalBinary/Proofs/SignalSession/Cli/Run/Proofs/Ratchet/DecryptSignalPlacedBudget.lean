@@ -11,16 +11,22 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Agree.PqDecrypt
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Agree.SmDecrypt
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.InnerGluePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.TopPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptSignal
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Agree.PqDecrypt
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Agree.SmDecrypt
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.InnerGluePlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.TopPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptSignal -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Agree.Common -- proof-setup: allow-public-import
+public import ProofLib.RegChain
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `signal_session_ratchet::decrypt_signal` Slot Contract (Placed)
@@ -30,7 +36,7 @@ contracts for `signal_session_ratchet::decrypt_signal` (Block `463`) under alloc
 `CliDecryptSignalSlotEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -259,7 +265,7 @@ theorem smDecryptSignalAgrees_decSigDef_placed (S : RunSem) (W : PEParams)
     SmDecryptSignalAgrees S W.C :=
   smDecryptSignalAgrees_decSigDef_aux S W Scope hS hinj hcov
 
-def slotsOfSigFrozenPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def slotsOfSigFrozenPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (envs : RunSlotEnvs)
     (S : RunSem) (needs : RunNeeds) :
     CryptoVerification.SignalSession.Cli.RunSkeleton.RunSlots :=

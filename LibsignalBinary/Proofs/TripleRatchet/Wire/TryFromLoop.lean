@@ -10,13 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromDefs
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.VarintBridge
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.CodeLayout -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Wire
 
@@ -59,27 +59,6 @@ elab "code_fetches_from " codeId:ident decPrefix:ident b:term:max H:term:max hfn
     else
       evalTactic (← `(tactic|
         have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
-
-/-- Fetch hypotheses for `SignalMessage::try_from` (`0x25868`), from fn-relative offset `k0`,
-    `len` bytes. -/
-macro "tryFrom_fetches " b:term:max H:term:max k0:num len:num : tactic =>
-  `(tactic| code_fetches_from CryptoVerification.libsignalSessionCode
-    CryptoVerification.LibsignalTripleRatchet.libsignalTripleRatchetBin $b $H
-    (ls_lemma% fnOff "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from") (num% (ls_off% "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from")) $k0 $len)
-
-/-- Container holding all callee `subroutine_ok` hypotheses required by `try_from`. -/
-structure TryFromDeps (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (abs : String → Option (Arm64.State → Arm64.State)) : Prop where
-  intoBoxed : IntoBoxedSliceOk img C A ctl abs
-  tryClone : TryCloneFromRefOk img C A ctl abs
-  varintSlice : DecodeVarintSliceOkW img C A ctl abs
-  int32Merge : Int32MergeOkW img C A ctl abs
-  skipField : SkipFieldOkW img C A ctl abs
-  dropDecodeError : DropDecodeErrorOkW img C A ctl abs
-  bytesMerge : BytesMergeOkW img C A ctl abs
-  dropSpe : DropSpeOkW img C A ctl abs
-
-/-! ## Suffix and cursor-splitting lemmas for the protobuf codec -/
 
 theorem decodeVarint_suffix {bs : List (BitVec 8)} {v : BitVec 64} {rest : List (BitVec 8)}
     (h : decodeVarint bs = some (v, rest)) :
@@ -302,7 +281,7 @@ theorem pointsToBytes_take_drop (ptr : BitVec 64) (bs : List (BitVec 8)) (k : �
 /-! ## `SepWPp` combinators for `try_from` -/
 
 /-- The panic postcondition of `tryFromSpec` in `SepWPp` form, polymorphic over the outer frame. -/
-def tryFromQp (s0 : Arm64.State) : Arm64.State → SepProp → Prop :=
+@[expose] def tryFromQp (s0 : Arm64.State) : Arm64.State → SepProp → Prop :=
   fun sf P_f => ∀ R, (sf.mem ⊨ P_f ∗ R) →
     (sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R)
 
@@ -461,7 +440,7 @@ theorem SepWP.done {prog : Program} {target_pc : BitVec 64} {s0 s : Arm64.State}
 
 /-- Panic-aware weakest precondition that also threads `calleeSavedVRegs sf = calleeSavedVRegs s`
 on the normal return branch. -/
-def SepWPp (prog : Program) (ret : BitVec 64) (s : Arm64.State) (P : SepProp)
+@[expose] def SepWPp (prog : Program) (ret : BitVec 64) (s : Arm64.State) (P : SepProp)
     (Q Qp : Arm64.State → SepProp → Prop) (oom : Arm64.State → SepProp := fun _ => ⌜False⌝) : Prop :=
   ProofLib.SepWPp prog ret s P (fun sf Pf => Q sf Pf ∧ calleeSavedVRegs sf = calleeSavedVRegs s) Qp oom
 
@@ -474,25 +453,6 @@ theorem SepWPp.of_sepWP {prog : Program} {ret mid : BitVec 64} {s : Arm64.State}
   rcases h.elim hm hL with ⟨sm, hsteps, ⟨-, -, Pm, hmm, hv, hnext⟩ | hoom⟩
   · obtain ⟨sf, hsteps', ⟨hpc, hrun, Pf, hmf, hq, hvf⟩ | hpan⟩ :=
       hnext R hmm (hsteps.codeLoaded hL)
-    · exact ⟨sf, hsteps.trans hsteps', Or.inl ⟨hpc, hrun, Pf, hmf, hq, hvf.trans hv.eq⟩⟩
-    · exact ⟨sf, hsteps.trans hsteps', Or.inr hpan⟩
-  · exact ⟨sm, hsteps, Or.inr (Or.inr hoom)⟩
-
-theorem SepWPp.of_sepWP_frozen {prog : Program} {ret : BitVec 64} {s : Arm64.State} {P : SepProp}
-    {Q Qp : Arm64.State → SepProp → Prop} {oom : Arm64.State → SepProp}
-    {mid : BitVec 64} {img : Obj.Image}
-    (hfz : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h : ProofLib.SepWP prog mid s P (fun sm Pm =>
-      VRegsAt s sm ∧
-      (img.FrozenLoaded sm → sm.symtab = img.symtab →
-        SepWPp prog ret sm Pm Q Qp oom)) oom) :
-    SepWPp prog ret s P Q Qp oom := by
-  intro R hm hL
-  rcases h.elim hm hL with ⟨sm, hsteps, ⟨-, -, Pm, hmm, hv, hnext⟩ | hoom⟩
-  · have hfz_m := hsteps.frozenLoaded hfz
-    have hsym_m := hsteps.symtab_eq.trans hsym
-    obtain ⟨sf, hsteps', ⟨hpc, hrun, Pf, hmf, hq, hvf⟩ | hpan⟩ :=
-      hnext hfz_m hsym_m R hmm (hsteps.codeLoaded hL)
     · exact ⟨sf, hsteps.trans hsteps', Or.inl ⟨hpc, hrun, Pf, hmf, hq, hvf.trans hv.eq⟩⟩
     · exact ⟨sf, hsteps.trans hsteps', Or.inr hpan⟩
   · exact ⟨sm, hsteps, Or.inr (Or.inr hoom)⟩
@@ -531,68 +491,6 @@ theorem SepWPp.bind {prog : Program} {mid ret : BitVec 64} {s : Arm64.State} {P 
     · exact ⟨sf, hsteps.trans hsteps', Or.inl ⟨hpcf, hrunf, Pf, hmf, hqf, hvf.trans hvm⟩⟩
     · exact ⟨sf, hsteps.trans hsteps', Or.inr hpanf⟩
   · exact ⟨sm, hsteps, Or.inr hpan⟩
-
-/-- Call a panicking callee whose `onPanic` is `⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap`
-and whose `onExit` is `⌜False⌝`, threading `img.FrozenLoaded`, `symtab`, and `spAligned`. -/
-theorem SepWPp.call_tryFrom {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {s0 s : Arm64.State} {P T F : SepProp} {φ : Prop}
-    {Q : Arm64.State → SepProp → Prop} {spec : Spec α} (x : α)
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hlr : s.readReg64 Reg.lr = ret_pc) (htr : s.trace = s0.trace)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F := by sep_focus)
-    (hnext : ∀ sf : Arm64.State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → img.FrozenLoaded sf → sf.symtab = img.symtab →
-      CalleeSavedPreserved s sf →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q (tryFromQp s0))
-    (hexit : ∀ sf code, spec.onExit x code s sf = ⌜False⌝ := by intros; rfl)
-    (hpan : ∀ sf, spec.onPanic x s sf = (⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap) := by
-      intros; rfl)
-    (hoom_eq : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intros; rfl) :
-    SepWPp prog ret s P Q (tryFromQp s0) := by
-  refine ProofLib.SepWPp.call_wpp_frozen hcall hF hsym hpc hrun hsp hlr
-    (x := x) (F := F)
-    (fun R' hm => by
-      dsimp only [Spec.inImage]
-      rw [sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨⟨hF, hsym⟩, ?_⟩
-      rw [hspec, sepConj_assoc, satisfies_pure_sepConj, ← sepConj_assoc, ← hP]
-      exact ⟨hφ, hm⟩)
-    (fun sm code _ _ hpost => by
-      dsimp only [Spec.inImage] at hpost
-      rw [hexit sm code] at hpost
-      exact allowPanic_not_exited hpost)
-    (fun sm _ _ => by
-      dsimp only [Spec.inImage]
-      rw [hpan sm]
-      exact tryFromQp_of_call htr)
-    (fun sm hpcm hrunm hspm hcsm hFm hsymm R' hpost hLm => ?_)
-    (fun sm _ _ hoom => by
-      dsimp only [Spec.inImage] at hoom
-      rw [hoom_eq sm] at hoom
-      exact (not_satisfies_false_sepConj hoom).elim)
-  have hspm_align : sm.spAligned = true := by
-    rw [Arm64.State.spAligned, hspm, ← Arm64.State.spAligned]; exact hsp
-  obtain ⟨sf, hsteps', ⟨hpcf, hrunf, Pf, hmf, hqf, hvf⟩ | hpanf⟩ :=
-    hnext sm hpcm hrunm hspm hspm_align hFm hsymm hcsm R' hpost hLm
-  · exact ⟨sf, hsteps',
-      Or.inl ⟨hpcf, hrunf, Pf, hmf, hqf, hvf.trans hcsm.2.2.2.2.2.2.2.2.2.2.2⟩⟩
-  · exact ⟨sf, hsteps', Or.inr hpanf⟩
-
-/-- Run a `SepWP` segment that reaches `ret` directly, threading `img.FrozenLoaded` and `symtab`. -/
-theorem SepWPp.of_sepWP_end {prog : Program} {img : Obj.Image} {ret : BitVec 64}
-    {s0 s : Arm64.State} {P : SepProp} {Q : Arm64.State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h : ProofLib.SepWP prog ret s P (fun sf Pf =>
-      VRegsAt s sf ∧
-      (img.FrozenLoaded sf → sf.symtab = img.symtab → Q sf Pf))) :
-    SepWPp prog ret s P Q (tryFromQp s0) := by
-  intro R hm hL
-  rcases h.elim hm hL with ⟨sf, hsteps, ⟨hpc, hrun, Pf, hmf, hv, hq⟩ | ⟨_, hoom⟩⟩
-  · exact ⟨sf, hsteps, Or.inl ⟨hpc, hrun, Pf, hmf,
-      hq (hsteps.frozenLoaded hF) (hsteps.symtab_eq.trans hsym), hv.eq⟩⟩
-  · exact (not_satisfies_false_sepConj hoom).elim
 
 /-- Sequence a `SepWPp` segment whose postcondition entails `Qm sm` with a continuation from `Qm sm`. -/
 theorem SepWPp.bind_entails {prog : Program} {mid ret : BitVec 64} {s : Arm64.State} {P : SepProp}
@@ -666,7 +564,7 @@ theorem LoopRegs.of_calleeSaved {sp' x19 x20 x21 x23 : BitVec 64} {s sf : Arm64.
 * `stackAt sp' (skipFieldStack 100)`: callee stack budget below `sp'`;
 * `sp' + 176 .. 288`: `wireSignalMessageOf A (sp' + 176#64) m'` on `some m'`, or
   `decodeErrorAt A x24 ∗ (∃∗ mErr, wireSignalMessageOf A (sp' + 176#64) mErr)` on `none`. -/
-def loopExitMem (A : RustAlloc) (sp' ptr : BitVec 64) (bs : List (BitVec 8))
+@[expose] def loopExitMem (A : RustAlloc) (sp' ptr : BitVec 64) (bs : List (BitVec 8))
     (x24 : BitVec 64) (res : Option ProtoSignalMessage) : SepProp :=
   memRegion (sp' + 160#64) 16 ∗ (ptr ↦ₛ bs) ∗
     ((sp' + 288#64) ↦₆₄ (sp' + 160#64)) ∗ memRegion (sp' + 296#64) 48 ∗
@@ -677,22 +575,6 @@ def loopExitMem (A : RustAlloc) (sp' ptr : BitVec 64) (bs : List (BitVec 8))
       ⌜x24 ≠ 0#64⌝ ∗ decodeErrorAt A x24 ∗
         (∃∗ mErr, wireSignalMessageOf A (sp' + 176#64) mErr)
 
-/-- State predicate at `+0x3b0` (`0x25c18`). -/
-def LoopExitState (img : Obj.Image) (s0 : Arm64.State)
-    (sp' x19 x20 x21 x23 : BitVec 64) (sf : Arm64.State) : Prop :=
-  LoopRegs sp' x19 x20 x21 x23 sf ∧
-  sf.spAligned = true ∧
-  img.FrozenLoaded sf ∧
-  sf.symtab = img.symtab ∧
-  sf.trace = s0.trace
-
-/-- Full state + memory postcondition at `+0x3b0` (`0x25c18`). -/
-def loopExitPost (img : Obj.Image) (A : RustAlloc) (s0 : Arm64.State)
-    (sp' x19 x20 x21 x23 ptr : BitVec 64) (bs : List (BitVec 8))
-    (res : Option ProtoSignalMessage) (sf : Arm64.State) (P : SepProp) : Prop :=
-  LoopExitState img s0 sp' x19 x20 x21 x23 sf ∧
-  (P ⊢ loopExitMem A sp' ptr bs (sf.readReg64 .x24) res)
-
 theorem loopExitMem_append_prefix (A : RustAlloc) (sp' ptr : BitVec 64)
     (bs : List (BitVec 8)) (k : ℕ) (hk : k ≤ bs.length)
     (x24 : BitVec 64) (res : Option ProtoSignalMessage) :
@@ -702,18 +584,6 @@ theorem loopExitMem_append_prefix (A : RustAlloc) (sp' ptr : BitVec 64)
   have hsplit := pointsToBytes_take_drop ptr bs k hk
   rw [← hsplit]
   ac_nf
-
-theorem loopExitPost_append_prefix {img : Obj.Image} {A : RustAlloc} {s0 sf : Arm64.State}
-    {sp' x19 x20 x21 x23 ptr : BitVec 64} {bs : List (BitVec 8)} {k : ℕ} (hk : k ≤ bs.length)
-    {res : Option ProtoSignalMessage} {Pm : SepProp}
-    (h : loopExitPost img A s0 sp' x19 x20 x21 x23 (ptr + BitVec.ofNat 64 k) (bs.drop k) res sf Pm) :
-    loopExitPost img A s0 sp' x19 x20 x21 x23 ptr bs res sf (Pm ∗ (ptr ↦ₛ bs.take k)) := by
-  rcases h with ⟨hst, hent⟩
-  refine ⟨hst, ?_⟩
-  rw [← loopExitMem_append_prefix A sp' ptr bs k hk (sf.readReg64 .x24) res]
-  exact sepConj_mono_left hent
-
-/-! ## Stack and entailment helpers for loop steps -/
 
 theorem stackAt_sub_split (sp : BitVec 64) (M N : ℕ)
     (hMN : (N - M) + M = N := by decide)
@@ -780,88 +650,6 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 theorem entails_of_eq {P Q : SepProp} (h : P = Q) : P ⊢ Q := h ▸ Entails.refl P
 
-/-- Shared tail `+0x2bc..+0x2cc` (`0x25b24..0x25b34` → `+0x3b0`): stores `x8` at `sp' + 296`,
-calls `DecodeError::from(sp' + 296)`, moves `x0` into `x24`, and jumps to `+0x3b0`. -/
-theorem decodeErrorFrom_tail_wp {img : Obj.Image} {C : Crypto} {A : RustAlloc} {S : SpqrModel}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (hS : TripleRatchetHooksW img C A S abs)
-    {s0 s : State} {sp' x19 x20 x21 x23 ptr w0 : BitVec 64}
-    {bs : List (BitVec 8)} {mErr : ProtoSignalMessage}
-    (hpc : s.pc = (tripleRatchetProgAtW img.base C ctl abs).fnAddr tryFromName + 0x2bc#64)
-    (hrun : s.status = .Running)
-    (hregs : LoopRegs sp' x19 x20 x21 x23 s)
-    (hsp : s.spAligned = true) (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (htr : s.trace = s0.trace)
-    (hkind : KindNoHeap (s.readReg64 .x8)) :
-    SepWPp (tripleRatchetProgAtW img.base C ctl abs)
-      ((tripleRatchetProgAtW img.base C ctl abs).fnAddr tryFromName + 0x3b0#64) s
-      (memRegion (sp' + 160#64) 16 ∗ (ptr ↦ₛ bs) ∗
-        ((sp' + 288#64) ↦₆₄ (sp' + 160#64)) ∗
-        ((sp' + 296#64) ↦₆₄ w0) ∗ memRegion (sp' + 304#64) 40 ∗
-        A.pool ∗ stackAt sp' (skipFieldStackX 100) ∗
-        wireSignalMessageOf A (sp' + 176#64) mErr)
-      (loopExitPost img A s0 sp' x19 x20 x21 x23 ptr bs none)
-      (tryFromQp s0) := by
-  have hcall := decodeErrorFrom_ok_at_tripleRatchet hS (ctl := ctl)
-    (name := tryFromName) (k := num% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" - ls_off% "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from"))
-  let H := Rust.withPanics abs
-  tryFrom_fetches img.base H 700 20
-  change SepWPp (libsignalSessionCode.rebase img.base H)
-    ((libsignalSessionCode.rebase img.base H).fnAddr tryFromName + 944#64) _ _ _ _
-  change s.pc = (libsignalSessionCode.rebase img.base H).fnAddr tryFromName + 700#64 at hpc
-  change subroutine_ok (libsignalSessionCode.rebase img.base H)
-    ((libsignalSessionCode.rebase img.base H).fnAddr tryFromName + bv% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" - ls_off% "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from")) _ at hcall
-  generalize_entry (libsignalSessionCode.rebase img.base H).fnAddr tryFromName = entry
-  examples_hide_fetches
-  have hsp_eq : s.sp = sp' := hregs.sp
-  have h29 : s.readReg64 (Reg.gpr 29#5) = sp' + 352#64 := hregs.x29
-  have hstack := stackAt_sub_split sp' (2 * extHookStack) (skipFieldStackX 100)
-  simp only [hstack, sepConj_assoc]
-  refine SepWPp.of_sepWP_frozen hF hsym (mid := entry + bv% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" - ls_off% "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from")) ?_
-  wp_steps
-  refine SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) ?_
-  intro hF1 hsym1
-  refine SepWPp.call_tryFrom (sp' + 296#64, s.readReg64 (Reg.gpr 8#5)) hcall
-    (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-    (by simp_all [State.spAligned, arm64_norm]) hF1 hsym1
-    (ret_pc := entry + bv% (712)) (by simp_all [arm64_norm])
-    (by simp_all [arm64_norm])
-    (T := ((sp' + 296#64) ↦₆₄ s.readReg64 (Reg.gpr 8#5)) ∗ memRegion (sp' + 304#64) 40 ∗
-      A.pool ∗ stackAt sp' (2 * extHookStack))
-    (φ := KindNoHeap (s.readReg64 (Reg.gpr 8#5)))
-    (by simp_all [decodeErrorFromSpecWithStack, arm64_norm])
-    hkind
-    (by sep_focus)
-    ?_
-  intro s2 hpc2 hrun2 hsp2 hsp2_align hF2 hsym2 hcs2
-  have hregs2 : LoopRegs sp' x19 x20 x21 x23 s2 :=
-    LoopRegs.of_calleeSaved
-      ⟨by simp_all [arm64_norm], by simp_all [arm64_norm],
-       by simpa [arm64_norm] using hregs.x26, by simpa [arm64_norm] using hregs.x25,
-       by simpa [arm64_norm] using hregs.x23_eq, by simpa [arm64_norm] using hregs.x22,
-       by simpa [arm64_norm] using hregs.x21_eq, by simpa [arm64_norm] using hregs.x20_eq,
-       by simpa [arm64_norm] using hregs.x19_eq⟩
-      hsp2 hcs2
-  dsimp only [decodeErrorFromSpecWithStack]
-  rw [sepConj_assoc]
-  refine SepWPp.pure_pre (fun ⟨hx0_ne, htr2⟩ => ?_)
-  refine SepWPp.of_sepWP_end hF2 hsym2 ?_
-  wp_steps
-  refine SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) ?_
-  intro hF3 hsym3
-  refine ⟨⟨⟨by simp_all [arm64_norm, hregs2.sp], by simpa [arm64_norm] using hregs2.x29,
-    by simpa [arm64_norm] using hregs2.x26, by simpa [arm64_norm] using hregs2.x25,
-    by simpa [arm64_norm] using hregs2.x23_eq, by simpa [arm64_norm] using hregs2.x22,
-    by simpa [arm64_norm] using hregs2.x21_eq, by simpa [arm64_norm] using hregs2.x20_eq,
-    by simpa [arm64_norm] using hregs2.x19_eq⟩,
-    by simp_all [State.spAligned, arm64_norm], hF3, hsym3,
-    by simp_all [arm64_norm]⟩, ?_⟩
-  simp only [arm64_norm]
-  refine Entails.trans ?_ (loopExitMem_err_intro A sp' ptr bs (s2.readReg64 (Reg.gpr 0#5)) hx0_ne 0 mErr)
-  apply entails_of_eq
-  simp only [hstack, hsp_eq, arm64_norm]
-  ac_rfl
-
 theorem memRegion48_split8 (sp' : BitVec 64) :
     memRegion (sp' + 296#64) 48 =
       memRegion (sp' + 296#64) 8 ∗ memRegion (sp' + 304#64) 40 := by
@@ -874,99 +662,6 @@ theorem pointsTo64_memRegion40_entails_memRegion48 (sp' v : BitVec 64) :
     ((sp' + 296#64) ↦₆₄ v) ∗ memRegion (sp' + 304#64) 40 ⊢ memRegion (sp' + 296#64) 48 := by
   rw [memRegion48_split8 sp']
   exact sepConj_mono_left (pointsTo64_entails_memRegion (sp' + 296#64) v)
-
-/-- Shared tail `+0x3a8..+0x3ac` (`0x25c10..0x25c14` → `+0x3b0`): calls `DecodeError::push`,
-loads `x24 := [sp' + 296] = err`, and falls through to `+0x3b0`. -/
-theorem decodeErrorPush_tail_wp {img : Obj.Image} {C : Crypto} {A : RustAlloc} {S : SpqrModel}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (hS : TripleRatchetHooksW img C A S abs)
-    {s0 s : State} {sp' x19 x20 x21 x23 ptr err : BitVec 64}
-    {n : Nat}
-    {bs : List (BitVec 8)} {mErr : ProtoSignalMessage}
-    (hpc : s.pc = (tripleRatchetProgAtW img.base C ctl abs).fnAddr tryFromName + 0x3a8#64)
-    (hrun : s.status = .Running)
-    (hregs : LoopRegs sp' x19 x20 x21 x23 s)
-    (hsp : s.spAligned = true) (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (htr : s.trace = s0.trace)
-    (hx0 : s.readReg64 .x0 = sp' + 296#64)
-    (herr : err ≠ 0#64)
-    (hn : n < 2 ^ 32) :
-    SepWPp (tripleRatchetProgAtW img.base C ctl abs)
-      ((tripleRatchetProgAtW img.base C ctl abs).fnAddr tryFromName + 0x3b0#64) s
-      (memRegion (sp' + 160#64) 16 ∗ (ptr ↦ₛ bs) ∗
-        ((sp' + 288#64) ↦₆₄ (sp' + 160#64)) ∗
-        ((sp' + 296#64) ↦₆₄ err) ∗ memRegion (sp' + 304#64) 40 ∗
-        A.pool ∗ stackAt sp' (skipFieldStackX 100) ∗
-        decodeErrorAtStackLen A err n ∗
-        wireSignalMessageOf A (sp' + 176#64) mErr)
-      (loopExitPost img A s0 sp' x19 x20 x21 x23 ptr bs none)
-      (tryFromQp s0) := by
-  have hcall := decodeErrorPush_ok_at_tripleRatchet hS (ctl := ctl)
-    (name := tryFromName) (k := num% (ls_off% "<prost::error::DecodeError>::push" - ls_off% "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from"))
-  let H := Rust.withPanics abs
-  tryFrom_fetches img.base H 936 8
-  change SepWPp (libsignalSessionCode.rebase img.base H)
-    ((libsignalSessionCode.rebase img.base H).fnAddr tryFromName + 944#64) _ _ _ _
-  change s.pc = (libsignalSessionCode.rebase img.base H).fnAddr tryFromName + 936#64 at hpc
-  change subroutine_ok (libsignalSessionCode.rebase img.base H)
-    ((libsignalSessionCode.rebase img.base H).fnAddr tryFromName + bv% (ls_off% "<prost::error::DecodeError>::push" - ls_off% "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from")) _ at hcall
-  generalize_entry (libsignalSessionCode.rebase img.base H).fnAddr tryFromName = entry
-  examples_hide_fetches
-  have hsp_eq : s.sp = sp' := hregs.sp
-  have h29 : s.readReg64 (Reg.gpr 29#5) = sp' + 352#64 := hregs.x29
-  have hstack := stackAt_sub_split sp' (2 * extHookStack) (skipFieldStackX 100)
-  simp only [hstack, sepConj_assoc]
-  refine SepWPp.of_sepWP_frozen hF hsym (mid := entry + bv% (ls_off% "<prost::error::DecodeError>::push" - ls_off% "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from")) ?_
-  wp_steps
-  refine SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) ?_
-  intro hF1 hsym1
-  refine SepWPp.call_tryFrom (sp' + 296#64, err, n) hcall
-    (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-    (by simp_all [State.spAligned, arm64_norm]) hF1 hsym1
-    (ret_pc := entry + bv% (940)) (by simp_all [arm64_norm])
-    (by simp_all [arm64_norm])
-    (T := ((sp' + 296#64) ↦₆₄ err) ∗ decodeErrorAtStackLen A err n ∗
-      A.pool ∗ stackAt sp' (2 * extHookStack))
-    (φ := err ≠ 0#64 ∧ n < 4294967296)
-    (by simp_all [decodeErrorPushExternSpecWithStack, arm64_norm])
-    ⟨herr, hn⟩
-    (by sep_focus)
-    ?_
-  intro s2 hpc2 hrun2 hsp2 hsp2_align hF2 hsym2 hcs2
-  have hregs2 : LoopRegs sp' x19 x20 x21 x23 s2 :=
-    LoopRegs.of_calleeSaved
-      ⟨by simp_all [arm64_norm], by simpa [arm64_norm] using hregs.x29,
-       by simpa [arm64_norm] using hregs.x26, by simpa [arm64_norm] using hregs.x25,
-       by simpa [arm64_norm] using hregs.x23_eq, by simpa [arm64_norm] using hregs.x22,
-       by simpa [arm64_norm] using hregs.x21_eq, by simpa [arm64_norm] using hregs.x20_eq,
-       by simpa [arm64_norm] using hregs.x19_eq⟩
-      hsp2 hcs2
-  have h29_2 : s2.readReg64 (Reg.gpr 29#5) = sp' + 352#64 := hregs2.x29
-  dsimp only [decodeErrorPushExternSpecWithStack]
-  rw [sepConj_assoc]
-  refine SepWPp.pure_pre (fun htr2 => ?_)
-  simp only [sepExists_sepConj_left, sepConj_assoc]
-  refine SepWPp.exists_pre fun err' => ?_
-  refine SepWPp.pure_pre (fun herr' => ?_)
-  refine SepWPp.of_sepWP_end hF2 hsym2 ?_
-  wp_steps
-  refine SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) ?_
-  intro hF3 hsym3
-  refine ⟨⟨⟨by simp_all [arm64_norm, hregs2.sp], by simpa [arm64_norm] using hregs2.x29,
-    by simpa [arm64_norm] using hregs2.x26, by simpa [arm64_norm] using hregs2.x25,
-    by simpa [arm64_norm] using hregs2.x23_eq, by simpa [arm64_norm] using hregs2.x22,
-    by simpa [arm64_norm] using hregs2.x21_eq, by simpa [arm64_norm] using hregs2.x20_eq,
-    by simpa [arm64_norm] using hregs2.x19_eq⟩,
-    by simp_all [State.spAligned, arm64_norm], hF3, hsym3,
-    by simp_all [arm64_norm]⟩, ?_⟩
-  simp only [arm64_norm]
-  refine Entails.trans (sepConj_mono_left (pointsTo64_entails_memRegion (sp' + 296#64) err')) ?_
-  refine Entails.trans ?_ (loopExitMem_err_intro A sp' ptr bs err' herr' (n + 1) mErr)
-  apply entails_of_eq
-  simp only [hstack, hsp_eq, memRegion48_split8 sp', arm64_norm]
-  ac_rfl
-
-/-! ## Relocatable `[LibsignalPlacement]` Loop Combinators and Shared Error Tails (Block `85`) -/
 
 structure TryFromDepsPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop where
   intoBoxed : IntoBoxedSliceOkPlaced A H
@@ -1042,11 +737,11 @@ theorem SepWPp.of_sepWP_end_placed [LibsignalPlacement] {prog : Program} {ret : 
   · exact ⟨sf, hsteps, Or.inl ⟨hpc, hrun, Pf, hmf, hq (hcl.of_keepsFrozen hsteps.keepsFrozen), hv.eq⟩⟩
   · exact (not_satisfies_false_sepConj hoom).elim
 
-def LoopExitStatePlaced [LibsignalPlacement] (s0 : Arm64.State)
+@[expose] def LoopExitStatePlaced [LibsignalPlacement] (s0 : Arm64.State)
     (sp' x19 x20 x21 x23 : BitVec 64) (sf : Arm64.State) : Prop :=
   LoopRegs sp' x19 x20 x21 x23 sf ∧ sf.spAligned = true ∧ LibsignalCodeRoLoaded lsmpl sf.mem ∧ sf.trace = s0.trace
 
-def loopExitPostPlaced [LibsignalPlacement] (A : RustAlloc) (s0 : Arm64.State)
+@[expose] def loopExitPostPlaced [LibsignalPlacement] (A : RustAlloc) (s0 : Arm64.State)
     (sp' x19 x20 x21 x23 ptr : BitVec 64) (bs : List (BitVec 8))
     (res : Option ProtoSignalMessage) (sf : Arm64.State) (P : SepProp) : Prop :=
   LoopExitStatePlaced s0 sp' x19 x20 x21 x23 sf ∧ (P ⊢ loopExitMem A sp' ptr bs (sf.readReg64 .x24) res)

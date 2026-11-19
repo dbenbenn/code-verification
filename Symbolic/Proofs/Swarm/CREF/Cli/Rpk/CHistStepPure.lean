@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.SlotsZ6Pure
-public import Symbolic.Proofs.Hooks2.BridgeXPure
+public import Symbolic.Proofs.Swarm.CREF.TR.SlotsZ6Pure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Hooks2.BridgeXPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 
 /-!
@@ -22,7 +22,7 @@ and `G1.RecvHistInvTR` across available states, together with the record-level k
 as well as `RecRecvRkOk` at `bobStart`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,7 +41,7 @@ open Symbolic.Swarm.CREF Symbolic.Swarm.CREF.CliPure Symbolic.Swarm.CREF.CliPure
 
 /-- Conjunction of receiver ratchet-key length, non-low-order, skipped-key byte-freshness, and
 receiver-history invariants across available states at `(g, ms)`. -/
-def CHist (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def CHist (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ms : List Move) : Prop :=
   RecvRkLensAll interpretation S g r₀ ms ∧
   RecvRkNotLowAll interpretation S g r₀ ms ∧
@@ -49,7 +49,7 @@ def CHist (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : Op
   G1.RecvHistInvTR interpretation S g r₀ ms
 
 /-- Every receiver chain in `rec` has a 32-byte, non-low-order sender ratchet key payload. -/
-def RecRecvRkOk (rec : RecordRec) : Prop :=
+@[expose] def RecRecvRkOk (rec : RecordRec) : Prop :=
   ∀ rc ∈ rec.current.receiverChains,
     (rc.senderRatchetKey.drop 1).length = 32 ∧
     DY.X25519.isLowOrderKey ((rc.senderRatchetKey.drop 1).map BitVec.toNat) = false

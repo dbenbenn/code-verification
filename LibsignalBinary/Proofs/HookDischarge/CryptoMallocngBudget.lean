@@ -19,9 +19,9 @@ public import LibsignalBinary.Specifications.LibsignalE2E.HooksMallocng
 public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Heap.Fine.RustEntriesFine
 public import LibsignalBinary.Heap.Fine.AllocZeroedFine
-public import LibsignalBinary.Proofs.Placed.StringCloneMallocngPlaced
+public import LibsignalBinary.Proofs.Placed.StringCloneMallocngPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
-public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetHelpers
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetHelpers -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.IfaceBudgetBase
 import LibsignalBinary.Heap.IfaceBudgetBaseBridges
 import ProofLib.Hoare.OutcomeSteps
@@ -38,7 +38,7 @@ program-mode specializations) to their `*BudgetSpec` contracts in `SpecBudget.le
 `(M, I)` satisfying `MallocngCostModelSound M I`, with specializations to `fineCostModel`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -97,7 +97,7 @@ open LibsignalBinary.Heap.Fine (
 )
 open LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase (
   CodeBlocksPermRX CodeBlocksPermRXMem
-  allocCallPreserved_refl cc_retHook_setMem_sameRegs codeBlocksPermRX_of_keepsFrozen
+  aesStorageCell allocCallPreserved_refl cc_retHook_setMem_sameRegs codeBlocksPermRX_of_keepsFrozen
   fineHookBudgetPool_of_init fineHookRustCliAllocBudget
   mallocngHookBudgetPool mallocngHookBudgetPool_of_codeLoaded mallocngHookBudgetPool_of_init
   mallocngHookBudgetPool_transport mallocngHookRustCliAllocBudget
@@ -121,8 +121,10 @@ open VerifiedLibraries.RustStd (
 )
 
 export LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase (
-  mallocngHookBudgetPool mallocngHookRustCliAllocBudget fineHookRustCliAllocBudget
-  mallocngHookBudgetPool_of_init fineHookBudgetPool_of_init
+  aesStorageCell mallocngHookBudgetPool mallocngHookRustCliAllocBudget
+)
+export LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase (
+  fineHookRustCliAllocBudget mallocngHookBudgetPool_of_init fineHookBudgetPool_of_init
 )
 
 /-! ## Pool-lift bridges (`mallocngRustCliAllocBudget` → `mallocngHookRustCliAllocBudget`) -/
@@ -147,13 +149,14 @@ theorem mallocngHookAllocBudget_of_raw {M : AllocCostModel} {I : MallocngCostMod
         ((⌜(s0.readReg64 .x0).toNat = size ∧ (s0.readReg64 .x1).toNat = align ∧
             RustLayoutOk size align⌝ ∗
           A₀.pool lim st s0 ∗ stackAt s0.sp allocHookStack) ∗
-          (VerifiedLibraries.mallocngLib.codeRO mpl ∗ R)) := by
+          ((VerifiedLibraries.mallocngLib.codeRO mpl ∗ aesStorageCell brkStart) ∗ R)) := by
     dsimp only [rustCliAllocBudgetSpecBase, A, A₀, mallocngHookRustCliAllocBudget,
       mallocngRustCliAllocBudget, mallocngHookBudgetPool] at hpre ⊢
     exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpre
   rw [satisfies_pure_sepConj] at hpre1
   obtain ⟨hrx0, hpre₀⟩ := hpre1
-  refine (h.to_outcome (size, align, st) (VerifiedLibraries.mallocngLib.codeRO mpl ∗ R)
+  refine (h.to_outcome (size, align, st)
+    ((VerifiedLibraries.mallocngLib.codeRO mpl ∗ aesStorageCell brkStart) ∗ R)
     s0 hpc hrun hpre₀ hsp).mono_outcome_steps fun sf hsteps hout => ?_
   have hrxf : lim.enforced = true → CodeBlocksPermRX mpl sf :=
     fun henf => codeBlocksPermRX_of_keepsFrozen (hrx0 henf) hsteps.keepsFrozen
@@ -161,7 +164,7 @@ theorem mallocngHookAllocBudget_of_raw {M : AllocCostModel} {I : MallocngCostMod
   · refine Or.inl ⟨hret, hcc, ?_⟩
     have hpool_eq (st' : M.σ) (u : State) :
         A.pool lim st' u = VerifiedLibraries.mallocngLib.codeRO mpl ∗ A₀.pool lim st' u ∗
-          ⌜lim.enforced = true → CodeBlocksPermRX mpl u⌝ := rfl
+          aesStorageCell brkStart ∗ ⌜lim.enforced = true → CodeBlocksPermRX mpl u⌝ := rfl
     have hlive_eq : A.live = A₀.live := rfl
     dsimp only [rustCliAllocBudgetSpecBase] at hpost ⊢
     rw [hpool_eq, hlive_eq]
@@ -172,7 +175,8 @@ theorem mallocngHookAllocBudget_of_raw {M : AllocCostModel} {I : MallocngCostMod
   · exact False.elim (not_satisfies_false_sepConj he)
   · refine Or.inr (Or.inr (Or.inr ⟨ho, ?_⟩))
     dsimp only [rustCliAllocBudgetSpecBase] at hoom ⊢
-    exact Satisfies.of_sep_right (P := VerifiedLibraries.mallocngLib.codeRO mpl)
+    exact Satisfies.of_sep_right
+      (P := VerifiedLibraries.mallocngLib.codeRO mpl ∗ aesStorageCell brkStart)
       (Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hoom)
 
 /-- Lift any compiled `rustCliDeallocBudgetSpec` witness from `mallocngRustCliAllocBudget` to
@@ -195,13 +199,14 @@ theorem mallocngHookDeallocBudget_of_raw {M : AllocCostModel} {I : MallocngCostM
             (s0.readReg64 .x2).toNat = align⌝ ∗
           A₀.pool lim st s0 ∗ A₀.live p size align ∗ memRegion p size ∗
           stackAt s0.sp allocHookStack) ∗
-          (VerifiedLibraries.mallocngLib.codeRO mpl ∗ R)) := by
+          ((VerifiedLibraries.mallocngLib.codeRO mpl ∗ aesStorageCell brkStart) ∗ R)) := by
     dsimp only [rustCliDeallocBudgetSpecBase, A, A₀, mallocngHookRustCliAllocBudget,
       mallocngRustCliAllocBudget, mallocngHookBudgetPool] at hpre ⊢
     exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpre
   rw [satisfies_pure_sepConj] at hpre1
   obtain ⟨hrx0, hpre₀⟩ := hpre1
-  refine (h.to_outcome (p, size, align, st) (VerifiedLibraries.mallocngLib.codeRO mpl ∗ R)
+  refine (h.to_outcome (p, size, align, st)
+    ((VerifiedLibraries.mallocngLib.codeRO mpl ∗ aesStorageCell brkStart) ∗ R)
     s0 hpc hrun hpre₀ hsp).mono_outcome_steps fun sf hsteps hout => ?_
   have hrxf : lim.enforced = true → CodeBlocksPermRX mpl sf :=
     fun henf => codeBlocksPermRX_of_keepsFrozen (hrx0 henf) hsteps.keepsFrozen
@@ -238,13 +243,14 @@ theorem mallocngHookReallocBudget_of_raw {M : AllocCostModel} {I : MallocngCostM
           A₀.pool lim st s0 ∗ A₀.live p old align ∗ (p ↦ₛ bs) ∗
           memRegion (p + BitVec.ofNat 64 bs.length) (old - bs.length) ∗
           stackAt s0.sp allocHookStack) ∗
-          (VerifiedLibraries.mallocngLib.codeRO mpl ∗ R)) := by
+          ((VerifiedLibraries.mallocngLib.codeRO mpl ∗ aesStorageCell brkStart) ∗ R)) := by
     dsimp only [rustCliReallocBudgetSpecBase, A, A₀, mallocngHookRustCliAllocBudget,
       mallocngRustCliAllocBudget, mallocngHookBudgetPool] at hpre ⊢
     exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpre
   rw [satisfies_pure_sepConj] at hpre1
   obtain ⟨hrx0, hpre₀⟩ := hpre1
-  refine (h.to_outcome (p, old, align, new, bs, st) (VerifiedLibraries.mallocngLib.codeRO mpl ∗ R)
+  refine (h.to_outcome (p, old, align, new, bs, st)
+    ((VerifiedLibraries.mallocngLib.codeRO mpl ∗ aesStorageCell brkStart) ∗ R)
     s0 hpc hrun hpre₀ hsp).mono_outcome_steps fun sf hsteps hout => ?_
   have hrxf : lim.enforced = true → CodeBlocksPermRX mpl sf :=
     fun henf => codeBlocksPermRX_of_keepsFrozen (hrx0 henf) hsteps.keepsFrozen
@@ -252,7 +258,7 @@ theorem mallocngHookReallocBudget_of_raw {M : AllocCostModel} {I : MallocngCostM
   · refine Or.inl ⟨hret, hcc, ?_⟩
     have hpool_eq (st' : M.σ) (u : State) :
         A.pool lim st' u = VerifiedLibraries.mallocngLib.codeRO mpl ∗ A₀.pool lim st' u ∗
-          ⌜lim.enforced = true → CodeBlocksPermRX mpl u⌝ := rfl
+          aesStorageCell brkStart ∗ ⌜lim.enforced = true → CodeBlocksPermRX mpl u⌝ := rfl
     have hlive_eq : A.live = A₀.live := rfl
     dsimp only [rustCliReallocBudgetSpecBase] at hpost ⊢
     rw [hpool_eq, hlive_eq]
@@ -263,7 +269,8 @@ theorem mallocngHookReallocBudget_of_raw {M : AllocCostModel} {I : MallocngCostM
   · exact False.elim (not_satisfies_false_sepConj he)
   · refine Or.inr (Or.inr (Or.inr ⟨ho, ?_⟩))
     dsimp only [rustCliReallocBudgetSpecBase] at hoom ⊢
-    exact Satisfies.of_sep_right (P := VerifiedLibraries.mallocngLib.codeRO mpl)
+    exact Satisfies.of_sep_right
+      (P := VerifiedLibraries.mallocngLib.codeRO mpl ∗ aesStorageCell brkStart)
       (Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hoom)
 
 /-- Lift a `RustCliAllocBudgetEntries` bundle from `mallocngRustCliAllocBudget` to
@@ -905,7 +912,7 @@ abbrev stringCloneFrameBytes : Nat := 0x30
     `Vec` header `{0, 1, 0}` at `x8` (`0` allocations); if non-empty (`n > 0`), allocates `n` bytes
     via `stepRustAlloc1 mpl false stringCloneFrameBytes n`, re-reads `cloneSrc s1`, copies the bytes
     into `p`, and writes header `{n, p, n}` at `x8`. -/
-noncomputable def stringCloneHookMallocng (mpl : Obj.MultiPlacement) (s0 : State) : State :=
+@[expose] noncomputable def stringCloneHookMallocng (mpl : Obj.MultiPlacement) (s0 : State) : State :=
   let n := (cloneSrc s0).length
   if n == 0 then
     retHook (fun s => s.setMem (writeVecHeader s.mem (s.readReg64 .x8) 0#64 1#64 0#64)) s0

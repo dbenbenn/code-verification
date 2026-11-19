@@ -26,7 +26,7 @@ Proves `closeByStateC_deliver_newChain_saltMatch`, closing a new-epoch `deliver`
 received SPQR salt matches the honest salt.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

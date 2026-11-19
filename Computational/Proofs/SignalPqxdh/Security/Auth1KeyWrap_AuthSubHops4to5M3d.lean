@@ -9,27 +9,27 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M3c
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHA2
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M2
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M1
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M3c -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHA2
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M2
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M1
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M3d
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthPrfHmacHA2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5C1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5M1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5M2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5M3a
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M3d -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthPrfHmacHA2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5C1
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5M1
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5M2 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5M3a
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
 
 /-!
 # One-key multi-user `INT-CTXT` hop `G3.8 → G5`
@@ -38,7 +38,7 @@ One-key (`pqxdhAuthImpl1KeyG`) counterparts of the multi-key `INT-CTXT` coupling
 `G3.8 → split(.g3_8, .g5, true)` hop bounds in `AuthSubHops4to5M3d`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

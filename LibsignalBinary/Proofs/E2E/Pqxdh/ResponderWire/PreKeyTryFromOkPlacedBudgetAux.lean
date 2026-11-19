@@ -11,20 +11,24 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedBBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.IntoBoxedSliceBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.TryCloneFromRefBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.ExtBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRootBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedABudget -- shake: keep
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlaced
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedBBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.IntoBoxedSliceBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.TryCloneFromRefBudget
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.ExtBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRootBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedABudget -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOk
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPost
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBoxes
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.Common
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
 
 /-!
 # Budget-Threaded `<PreKeySignalMessage as TryFrom<&[u8]>>::try_from` (Block `111`): Ok Path Helpers
@@ -34,7 +38,7 @@ Provides budget-threaded callee contract bridges and proves Segment 4
 Block `111` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -125,7 +129,7 @@ attribute [local arm64_norm, local wp_norm]
 
 /-! ## Callee Contracts and `KeepsFrozenInv` Lift Helpers -/
 
-def PreKeyTryCloneOk [LibsignalPlacement] (Inv : Memory → Prop) {M : AllocCostModel}
+@[expose] def PreKeyTryCloneOk [LibsignalPlacement] (Inv : Memory → Prop) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (preKeyPlacedProg H) (lsmpl.base 23)
     (withPreKeyInv Inv (tryCloneFromRefSpec M A lim))

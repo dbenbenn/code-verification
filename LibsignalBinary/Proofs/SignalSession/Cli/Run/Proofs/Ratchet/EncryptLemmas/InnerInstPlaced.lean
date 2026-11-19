@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInnerPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDetPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInnerPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDetPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable Inner Contract Transfer and Slot Proof for `encrypt`
@@ -22,7 +24,7 @@ Defines `W1InnerPlacedOk` on Block `464` (`signal_session_ratchet::encrypt`), tr
 caller block `i < 619`, and establishes `cliEncrypt_slot_placed` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -47,7 +49,7 @@ open CryptoVerification.CliRatchet.EncPlaced
 open CryptoVerification
 
 /-- Relocatable Block-`464` inner `withStoresEncPlacedSpecVT_cli` contract for `w1SessKitPlaced` and `w1IdKitPlaced`. -/
-def W1InnerPlacedOk [LibsignalPlacement]
+@[expose] def W1InnerPlacedOk [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) (B : RunBudgets)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) : Prop :=
   ∀ (F : FsFiles) (peer : AddrGhost),

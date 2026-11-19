@@ -19,7 +19,7 @@ Defines CLI symbol-name abbreviations for `PolynomialDecoder::encoded_len [local
 `PolynomialEncoder::encoded_len [local#3]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageEncode
 

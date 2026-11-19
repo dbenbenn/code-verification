@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.SHARED.SpqrBytesDefs
 
 /-!
@@ -20,7 +20,7 @@ Shows that under the 32-byte HMAC tag-length hypothesis
 `SpqrSemOf` agree with the raw-tag definitions in `HookAuth` and `SpqrBytes`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

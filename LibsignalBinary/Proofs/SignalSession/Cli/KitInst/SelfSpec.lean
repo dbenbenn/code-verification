@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKit
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKit -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentitySpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SelfRel
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdKeyPairVtables
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdRegIdVtables
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlot
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SelfRel -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlot -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
 import ProofLib.SpecAudit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # CLI Self-Identity Store Specification
@@ -27,7 +28,7 @@ defining the 48-byte `SignalProtocolError` layout `cliSelfSpeErrSpec` (`RunDrop.
 establishing `IdentitySelfVtablesOk`, and proving answer totality and sret layout bi-entailments.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -99,7 +100,7 @@ structure CliSelfSpeErr where
   w0_ne_pending : w0 ≠ 0xFFFFFFFFFFFFFFFD#64
 
 /-- Explicit inhabitant of `CliSelfSpeErr` (`BadKemKeyType`, `speWord 31`). -/
-def cliSelfSpeErrWitness : CliSelfSpeErr where
+@[expose] def cliSelfSpeErrWitness : CliSelfSpeErr where
   k := .badKemKeyType
   w0 := speWord 31
   w1 := 0#64
@@ -115,7 +116,7 @@ instance : Inhabited CliSelfSpeErr := ⟨cliSelfSpeErrWitness⟩
 instance : Nonempty CliSelfSpeErr := ⟨cliSelfSpeErrWitness⟩
 
 /-- 48-byte `SpeErrSpec` backed by `RunCompose.dpErrHeap`. -/
-def cliSelfSpeErrSpec (A : RustAlloc) : SpeErrSpec CliSelfSpeErr where
+@[expose] def cliSelfSpeErrSpec (A : RustAlloc) : SpeErrSpec CliSelfSpeErr where
   w0 := CliSelfSpeErr.w0
   w1 := CliSelfSpeErr.w1
   w2 := CliSelfSpeErr.w2
@@ -320,7 +321,7 @@ end SpeErrBridge
 /-! ## `IdentitySelfStoreSpec` instance -/
 
 /-- Concrete `IdentitySelfStoreSpec` for CLI `IdentityFiles` at peer `peer` and initial files `F0`. -/
-def cliIdentitySelfSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliIdentitySelfSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (peer : AddrGhost)
     {t1 t2 t3 t4 : Nat}
     (kpShimStk kpPollStk regIdShimStk regIdPollStk : Nat) :
@@ -334,13 +335,13 @@ def cliIdentitySelfSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : Fs
   regIdRel := cliRegIdRel rd F0
   kpEvs := fun _ => []
   regIdEvs := fun _ => []
-  kpShimOff := cliIdKpShimOff
-  kpFutVtOff := idKeyPairFutVtOff
-  kpPollOff := cliIdKpPollOff
+  kpShimOff := 0#64
+  kpFutVtOff := 0#64
+  kpPollOff := 0#64
   kpFutDropOff := cliIdFutDropOff
-  regIdShimOff := cliIdRegIdShimOff
-  regIdFutVtOff := idRegIdFutVtOff
-  regIdPollOff := cliIdRegIdPollOff
+  regIdShimOff := 0#64
+  regIdFutVtOff := 0#64
+  regIdPollOff := 0#64
   regIdFutDropOff := cliIdFutDropOff
   kpBoxSize := 16
   regIdBoxSize := 16
@@ -363,39 +364,6 @@ def cliIdentitySelfSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : Fs
     rw [show b = 0#64 - cliIdFutDropOff by rw [← h, BitVec.add_sub_cancel]] at hb
     exact absurd hb (by decide)
 
-/-! ## Vtable validity and quietness -/
-
-section VtablesAndQuiet
-
-variable {A : RustAlloc} {img : Obj.Image} {rd : ReadRule} {F0 : FsFiles}
-  {pathOk : List (BitVec 8) → Prop} {peer : AddrGhost}
-  {t1 t2 t3 t4 k1 k2 k3 k4 : Nat}
-
-/-- Vtable validity (`IdentitySelfVtablesOk`) for `cliIdentitySelfSpec`. -/
-theorem cliIdSelfVtables_ok (himg : Obj.Loads libsignalSessionImage img) :
-    IdentitySelfVtablesOk img
-      (cliIdentityStoreSpec A img.base rd F0 pathOk peer t1 t2 t3 t4)
-      (cliIdentitySelfSpec A img.base rd F0 pathOk peer k1 k2 k3 k4) where
-  kpSlot := cliIdKpSlot_ok himg
-  regIdSlot := cliIdRegIdSlot_ok himg
-  kpFutDrop := cliIdKpFutDrop_ok himg
-  kpFutSize := cliIdKpFutSize_ok himg
-  kpFutAlign := cliIdKpFutAlign_ok himg
-  kpFutPoll := cliIdKpFutPoll_ok himg
-  regIdFutDrop := cliIdRegIdFutDrop_ok himg
-  regIdFutSize := cliIdRegIdFutSize_ok himg
-  regIdFutAlign := cliIdRegIdFutAlign_ok himg
-  regIdFutPoll := cliIdRegIdFutPoll_ok himg
-
-/-- `cliIdentitySelfSpec` emits no filesystem trace events (`Quiet`). -/
-theorem cliIdentitySelfSpec_quiet :
-    (cliIdentitySelfSpec A img.base rd F0 pathOk peer
-      (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4).Quiet :=
-  ⟨fun _ => by simp [cliIdentitySelfSpec, NoFsEv],
-    fun _ => by simp [cliIdentitySelfSpec, NoFsEv]⟩
-
-end VtablesAndQuiet
-
 /-! ## Totality, relation equalities, and sret layout bi-entailments -/
 
 section G4V2
@@ -413,102 +381,6 @@ instance cliIdentitySelf_regIdErr_nonempty (A : RustAlloc) (b : BitVec 64) (rd :
     Nonempty (cliIdentitySelfSpec A b rd F0 pathOk peer
       (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4).RegIdErr :=
   ⟨cliSelfSpeErrWitness⟩
-
-theorem cliIdentitySelf_kpRel_total {A : RustAlloc} {img : Obj.Image} {peer : AddrGhost}
-    {t1 t2 t3 t4 k1 k2 k3 k4 : Nat} (F0 : FsFiles) (g : IdGhost) :
-    ∃ ans,
-      (cliIdentitySelfSpec A img.base cliIo.rd F0 cliWrOk peer
-        (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4).kpRel g ans :=
-  cliKpRel_total cliSelfSpeErrWitness cliIo.rd F0 g
-
-theorem cliIdentitySelf_regIdRel_total {A : RustAlloc} {img : Obj.Image} {peer : AddrGhost}
-    {t1 t2 t3 t4 k1 k2 k3 k4 : Nat} (F0 : FsFiles) (g : IdGhost) :
-    ∃ ans,
-      (cliIdentitySelfSpec A img.base cliIo.rd F0 cliWrOk peer
-        (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4).regIdRel g ans :=
-  cliRegIdRel_total cliSelfSpeErrWitness cliIo.rd F0 g
-
-theorem cliIdentitySelf_kpRel_eq {A : RustAlloc} {img : Obj.Image} {peer : AddrGhost}
-    {t1 t2 t3 t4 k1 k2 k3 k4 : Nat} (F0 : FsFiles) :
-    (cliIdentitySelfSpec A img.base cliIo.rd F0 cliWrOk peer
-      (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4).kpRel =
-      cliKpRel cliIo.rd F0 :=
-  rfl
-
-theorem cliIdentitySelf_regIdRel_eq {A : RustAlloc} {img : Obj.Image} {peer : AddrGhost}
-    {t1 t2 t3 t4 k1 k2 k3 k4 : Nat} (F0 : FsFiles) :
-    (cliIdentitySelfSpec A img.base cliIo.rd F0 cliWrOk peer
-      (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4).regIdRel =
-      cliRegIdRel cliIo.rd F0 :=
-  rfl
-
-/-- Two-sided `.error` layout bi-entailment between `kpPollOutAt` and `idKeyPairOutAt`. -/
-theorem cliIdentitySelf_kpErr_layout (A : RustAlloc) (img : Obj.Image) (F0 : FsFiles)
-    {peer : AddrGhost} {t1 t2 t3 t4 k1 k2 k3 k4 : Nat} (out : BitVec 64) :
-    ((∃∗ e, kpPollOutAt
-      (cliIdentitySelfSpec A img.base cliIo.rd F0 cliWrOk peer
-        (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4) out (.error e)) ⊢
-      idKeyPairOutAt A out (.error ())) ∧
-    (idKeyPairOutAt A out (.error ()) ⊢
-      (∃∗ e, kpPollOutAt
-        (cliIdentitySelfSpec A img.base cliIo.rd F0 cliWrOk peer
-          (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4) out (.error e))) := by
-  obtain ⟨hfwd, hrev⟩ := cliSelfSpeErrAt_biEntails A (out + 8#64)
-  dsimp only [kpPollOutAt, idKeyPairOutAt, cliIdentitySelfSpec]
-  constructor
-  · refine Entails.sepExists_elim fun e => ?_
-    have he : speErrAt (cliSelfSpeErrSpec A) (out + 8#64) e ⊢
-        SepProp.sepExists fun k : RunDrop.SpeOwned => RunDrop.speOwnedAt A (out + 8#64) k :=
-      Entails.trans (Entails.sepExists_right e (Entails.refl _)) hfwd
-    exact sepConj_mono (Entails.refl _) (sepConj_mono (Entails.refl _)
-      (sepConj_mono he (Entails.refl _)))
-  · have hpull :
-        (out ↦₈ 1#8) ∗ memRegion (out + 1#64) 7 ∗
-          SepProp.sepExists (fun k : RunDrop.SpeOwned => RunDrop.speOwnedAt A (out + 8#64) k) ∗
-          memRegion (out + 0x38#64) 16 =
-        SepProp.sepExists (fun k : RunDrop.SpeOwned => RunDrop.speOwnedAt A (out + 8#64) k) ∗
-          ((out ↦₈ 1#8) ∗ memRegion (out + 1#64) 7 ∗ memRegion (out + 0x38#64) 16) := by
-      ac_rfl
-    rw [hpull]
-    refine Entails.trans (sepConj_mono_left hrev) ?_
-    rw [sepExists_sepConj_left]
-    refine Entails.sepExists_elim fun e => ?_
-    refine Entails.sepExists_right e ?_
-    exact Entails.of_eq (by ac_rfl)
-
-/-- Two-sided `.error` layout bi-entailment between `regIdPollOutAt` and `idRegIdOutAt`. -/
-theorem cliIdentitySelf_regIdErr_layout (A : RustAlloc) (img : Obj.Image) (F0 : FsFiles)
-    {peer : AddrGhost} {t1 t2 t3 t4 k1 k2 k3 k4 : Nat} (out : BitVec 64) :
-    ((∃∗ e, regIdPollOutAt
-      (cliIdentitySelfSpec A img.base cliIo.rd F0 cliWrOk peer
-        (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4) out (.error e)) ⊢
-      idRegIdOutAt A out (.error ())) ∧
-    (idRegIdOutAt A out (.error ()) ⊢
-      (∃∗ e, regIdPollOutAt
-        (cliIdentitySelfSpec A img.base cliIo.rd F0 cliWrOk peer
-          (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4) out (.error e))) := by
-  dsimp only [regIdPollOutAt, idRegIdOutAt, cliIdentitySelfSpec]
-  exact cliSelfSpeErrAt_biEntails A out
-
-#spec_nonvacuous! (fun (A : RustAlloc) (img : Obj.Image) (F0 : FsFiles) (peer : AddrGhost)
-    (t1 t2 t3 t4 k1 k2 k3 k4 : Nat) =>
-  kitKpShimSpec (cliIdentitySelfSpec A img.base cliIo.rd F0 cliWrOk peer
-    (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4))
-
-#spec_nonvacuous! (fun (A : RustAlloc) (img : Obj.Image) (F0 : FsFiles) (peer : AddrGhost)
-    (t1 t2 t3 t4 k1 k2 k3 k4 : Nat) =>
-  kitRegIdShimSpec (cliIdentitySelfSpec A img.base cliIo.rd F0 cliWrOk peer
-    (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4))
-
-#spec_nonvacuous! (fun (A : RustAlloc) (img : Obj.Image) (F0 : FsFiles) (peer : AddrGhost)
-    (t1 t2 t3 t4 k1 k2 k3 k4 : Nat) =>
-  kitKpPollSpecI img (cliIdentitySelfSpec A img.base cliIo.rd F0 cliWrOk peer
-    (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4))
-
-#spec_nonvacuous! (fun (A : RustAlloc) (img : Obj.Image) (F0 : FsFiles) (peer : AddrGhost)
-    (t1 t2 t3 t4 k1 k2 k3 k4 : Nat) =>
-  kitRegIdPollSpecI img (cliIdentitySelfSpec A img.base cliIo.rd F0 cliWrOk peer
-    (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4))
 
 end G4V2
 

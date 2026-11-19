@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosure
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosure -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.Record.Defs
+import LibsignalBinary.Proofs.TripleRatchet.Record.Defs
 public import LibsignalBinary.Heap.SpecBudget
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Record.RecordCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `VmPreserved` Relocatable Contracts for `try_decrypt_from_record::{closure#0}` (Blocks `159` & `462`)
@@ -24,7 +26,7 @@ Proves `withVmPreserved logClosurePlacedSpec` on blocks `159` (`HookRng`) and `4
 `withLsFrozen` cross-block transfer lemmas for mutated blocks (`159, 462 ∈ libsignalMutatedBlocks`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -48,17 +50,6 @@ open LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget (ls_subroutine_ok_plain_
 
 /-! ## 1. Own-Block `withVmPreserved` & `withLsCodeLoaded` Contracts (Blocks `159` & `462`) -/
 
-/-- Block `159` (`try_decrypt_from_record::<HookRng>::{closure#0}`) satisfies
-`withVmPreserved logClosurePlacedSpec` under `[LibsignalFullPlacement]`. -/
-theorem log_closure_vm_placed_ok [LibsignalFullPlacement]
-    (H : LibsignalHooks) :
-    subroutine_ok ((blkPC_159).rebase (blkPl_159).base H) (lsmpl.base 159)
-      (withVmPreserved logClosurePlacedSpec) :=
-  ls_subroutine_ok_plain_vmPreserved
-    (progQ := (blkPC_159).rebase (blkPl_159).base (hooksException H))
-    (i := 159) (by decide +kernel)
-    (hok := log_closure_placed_ok (hooksException H))
-
 /-- Block `462` (`try_decrypt_from_record::<Coins>::{closure#0}`) satisfies
 `withVmPreserved logClosurePlacedSpec` under `[LibsignalFullPlacement]`. -/
 theorem log_closure_coins_vm_placed_ok [LibsignalFullPlacement]
@@ -69,22 +60,6 @@ theorem log_closure_coins_vm_placed_ok [LibsignalFullPlacement]
     (progQ := (blkPC_462).rebase (blkPl_462).base (hooksException H))
     (i := 462) (by decide +kernel)
     (hok := log_closure_coins_placed_ok (hooksException H))
-
-/-- Block `159` `withLsCodeLoaded lsmpl (withVmPreserved logClosurePlacedSpec)` wrapper on its own
-block program. -/
-theorem log_closure_vm_codeLoaded_placed_ok [LibsignalFullPlacement]
-    (H : LibsignalHooks) :
-    subroutine_ok ((blkPC_159).rebase (blkPl_159).base H) (lsmpl.base 159)
-      (withLsCodeLoaded lsmpl (withVmPreserved logClosurePlacedSpec)) :=
-  subroutine_ok_withLsCodeLoaded_of_plain (log_closure_vm_placed_ok H)
-
-/-- Block `462` `withLsCodeLoaded lsmpl (withVmPreserved logClosurePlacedSpec)` wrapper on its own
-block program. -/
-theorem log_closure_coins_vm_codeLoaded_placed_ok [LibsignalFullPlacement]
-    (H : LibsignalHooks) :
-    subroutine_ok ((blkPC_462).rebase (blkPl_462).base H) (lsmpl.base 462)
-      (withLsCodeLoaded lsmpl (withVmPreserved logClosurePlacedSpec)) :=
-  subroutine_ok_withLsCodeLoaded_of_plain (log_closure_coins_vm_placed_ok H)
 
 /-! ## 2. Cross-Block Transfer for Mutated Blocks (`159, 462 ∈ libsignalMutatedBlocks`) -/
 
@@ -103,7 +78,7 @@ private theorem ls_subroutine_ok_fullCodeLoaded_of_block [LibsignalFullPlacement
   have hQL : calleeProg.CodeLoaded s0.mem := by
     rw [hcallee_prog.eq_blockProgram]
     have h := hcl0 j hlt_blocks
-    rwa [Program.codeLoaded_iff] at h ⊢
+    rw [Program.codeLoaded_iff] at h ⊢; exact h
   obtain ⟨sf, hstepsQ, hout, _⟩ := hcallee.no_fault_before_outcome x R s0 hpc hrun hpre0 hsp hQL
   have hext : ∀ pc, calleeProg.externAt? pc = callerProg.externAt? pc := fun pc => by
     rw [hcallee_prog.eq_blockProgram, hcaller.eq_blockProgram,
@@ -125,17 +100,6 @@ private theorem subroutine_ok_withLsFrozen_of_fullCodeLoaded {α : Type} {prog :
       exact ⟨hfr.2, hpre⟩)
     (fun _ _ _ _ hq => hq)
 
-/-- Cross-block transfer of Block `159` (`logClosurePlacedSpec` + `VmPreserved`) onto any
-`callerProg` under `libsignalSessionLib.withCodeLoaded lsmpl`. -/
-theorem log_closure_fullCodeLoaded_vm_placed_ok_of_block [LibsignalFullPlacement]
-    {callerProg : Program} {i : Nat} {H : LibsignalHooks}
-    [IsLsBlockProg callerProg i H] :
-    subroutine_ok callerProg (lsmpl.base 159)
-      (libsignalSessionLib.withCodeLoaded lsmpl (withVmPreserved logClosurePlacedSpec)) :=
-  ls_subroutine_ok_fullCodeLoaded_of_block
-    (callerProg := callerProg) (calleeProg := lsProg_159 H)
-    (log_closure_vm_placed_ok H) (by decide)
-
 /-- Cross-block transfer of Block `462` (`logClosurePlacedSpec` + `VmPreserved`) onto any
 `callerProg` under `libsignalSessionLib.withCodeLoaded lsmpl`. -/
 theorem log_closure_coins_fullCodeLoaded_vm_placed_ok_of_block [LibsignalFullPlacement]
@@ -147,16 +111,6 @@ theorem log_closure_coins_fullCodeLoaded_vm_placed_ok_of_block [LibsignalFullPla
     (callerProg := callerProg) (calleeProg := lsProg_462 H)
     (log_closure_coins_vm_placed_ok H) (by decide)
 
-/-- Cross-block transfer of Block `159` (`logClosurePlacedSpec` + `VmPreserved`) onto any
-`callerProg` under `withLsFrozen lsmpl`. -/
-theorem log_closure_frozen_vm_placed_ok_of_block [LibsignalFullPlacement]
-    {callerProg : Program} {i : Nat} {H : LibsignalHooks}
-    [IsLsBlockProg callerProg i H] :
-    subroutine_ok callerProg (lsmpl.base 159)
-      (withLsFrozen lsmpl (withVmPreserved logClosurePlacedSpec)) :=
-  subroutine_ok_withLsFrozen_of_fullCodeLoaded
-    (log_closure_fullCodeLoaded_vm_placed_ok_of_block (callerProg := callerProg))
-
 /-- Cross-block transfer of Block `462` (`logClosurePlacedSpec` + `VmPreserved`) onto any
 `callerProg` (including `(blkPC_463).rebase (blkPl_463).base H`) under `withLsFrozen lsmpl`. -/
 theorem log_closure_coins_frozen_vm_placed_ok_of_block [LibsignalFullPlacement]
@@ -166,13 +120,5 @@ theorem log_closure_coins_frozen_vm_placed_ok_of_block [LibsignalFullPlacement]
       (withLsFrozen lsmpl (withVmPreserved logClosurePlacedSpec)) :=
   subroutine_ok_withLsFrozen_of_fullCodeLoaded
     (log_closure_coins_fullCodeLoaded_vm_placed_ok_of_block (callerProg := callerProg))
-
-/-- Block `197` → Block `159` `withLsFrozen lsmpl (withVmPreserved logClosurePlacedSpec)` contract. -/
-theorem log_closure_blk197_frozen_vm_placed_ok [LibsignalFullPlacement]
-    (H : LibsignalHooks) :
-    subroutine_ok ((blkPC_197).rebase (blkPl_197).base H) (lsmpl.base 159)
-      (withLsFrozen lsmpl (withVmPreserved logClosurePlacedSpec)) :=
-  log_closure_frozen_vm_placed_ok_of_block
-    (callerProg := (blkPC_197).rebase (blkPl_197).base H)
 
 end LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosureVmPlacedBudget

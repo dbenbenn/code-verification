@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Decodes
-public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Decodes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefs
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb`: Specifications, Prologue, and Epilogue
@@ -28,7 +29,7 @@ specifications (`statesIntoPbSpec`, `statesIntoPbVariantSpec`) for
 frame prologue (`+0 -> +44 -> +60`) and 224-byte output epilogue (`+1544 -> +1640`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.IntoPb
 
@@ -77,81 +78,8 @@ structure StatesIntoPbGhost (F : ShaCompress) where
   st : States spqrPolyApi (spqrAuthApi F)
 
 /-- Panic postcondition of `<States>::into_pb`: heap allocation failure (`allocFailedIn`). -/
-def statesIntoPbOnPanic (s0 sf : State) : SepProp :=
+@[expose] def statesIntoPbOnPanic (s0 sf : State) : SepProp :=
   ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- Specification of `<spqr::v1::chunked::states::States>::into_pb` (`0x5ce20..0x5d7bc`, 615 insns):
-    * Registers: `x8 = out` (224-byte `V1State` indirect result), `x0 = stA` (928-byte `States`).
-    * Consumes `chunkedStatesAt A stA st` (leaving `memRegion stA 928`) and writes
-      `optProtoInnerStateAt A out st.into_pb.innerState` at `out`,
-      or panics with `allocFailedEvent` on heap allocation failure. -/
-def statesIntoPbSpec (A : RustAlloc) (F : ShaCompress) (b : BitVec 64) :
-    Spec (StatesIntoPbGhost F) where
-  pre := fun x s =>
-    ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.stA ∧
-      b &&& 0xfff#64 = 0#64⌝ ∗
-      memRegion x.out optProtoInnerStateSize ∗
-      chunkedStatesAt A x.stA x.st ∗
-      statesIntoPbJumpTableAt b ∗
-      A.pool ∗ stackAt s.sp statesIntoPbStack
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      optProtoInnerStateAt A x.out x.st.into_pb.innerState ∗
-      memRegion x.stA chunkedStatesSize ∗
-      statesIntoPbJumpTableAt b ∗
-      A.pool ∗ stackAt s0.sp statesIntoPbStack
-  onPanic := fun _ s0 sf => statesIntoPbOnPanic s0 sf
-
-/-- Per-variant specification of `0x5ce20` (`States::into_pb`) for a fixed `st : States`. -/
-def statesIntoPbVariantSpec (A : RustAlloc) (F : ShaCompress) (b : BitVec 64)
-    (st : States spqrPolyApi (spqrAuthApi F)) : Spec (BitVec 64 × BitVec 64) where
-  pre := fun ⟨out, stA⟩ s =>
-    ⌜s.readReg64 .x8 = out ∧ s.readReg64 .x0 = stA ∧
-      b &&& 0xfff#64 = 0#64⌝ ∗
-      memRegion out optProtoInnerStateSize ∗
-      chunkedStatesAt A stA st ∗
-      statesIntoPbJumpTableAt b ∗
-      A.pool ∗ stackAt s.sp statesIntoPbStack
-  post := fun ⟨out, stA⟩ s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      optProtoInnerStateAt A out st.into_pb.innerState ∗
-      memRegion stA chunkedStatesSize ∗
-      statesIntoPbJumpTableAt b ∗
-      A.pool ∗ stackAt s0.sp statesIntoPbStack
-  onPanic := fun _ s0 sf => statesIntoPbOnPanic s0 sf
-
-/-- Extended-stack variant of `statesIntoPbSpec`. -/
-def statesIntoPbSpecX (A : RustAlloc) (F : ShaCompress) (b : BitVec 64) :
-    Spec (StatesIntoPbGhost F) where
-  pre := fun x s =>
-    ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.stA ∧
-      b &&& 0xfff#64 = 0#64⌝ ∗
-      memRegion x.out optProtoInnerStateSize ∗
-      chunkedStatesAt A x.stA x.st ∗
-      statesIntoPbJumpTableAt b ∗
-      A.pool ∗ stackAt s.sp statesIntoPbStackX
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      optProtoInnerStateAt A x.out x.st.into_pb.innerState ∗
-      memRegion x.stA chunkedStatesSize ∗
-      statesIntoPbJumpTableAt b ∗
-      A.pool ∗ stackAt s0.sp statesIntoPbStackX
-  onPanic := fun _ s0 sf => statesIntoPbOnPanic s0 sf
-
-/-- `<States>::into_pb` meets `statesIntoPbSpec A F b` on `tripleRatchetProgAtExt b ext`. -/
-def StatesIntoPbOkExt (b : BitVec 64) (A : RustAlloc) (F : ShaCompress)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr statesIntoPbName)
-    (statesIntoPbSpec A F b)
-
-/-- `<States>::into_pb` meets `(statesIntoPbSpecX A F img.base).inImage img` on
-    `tripleRatchetProgAtExt img.base ext`. -/
-def StatesIntoPbOkX (img : Obj.Image) (A : RustAlloc) (F : ShaCompress)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr statesIntoPbName)
-    ((statesIntoPbSpecX A F img.base).inImage img)
 
 private theorem satisfies_anyHeap_frame {m : Memory} {P Fr R : SepProp}
     (h : m ⊨ (P ∗ anyHeap) ∗ Fr ∗ R) :
@@ -160,41 +88,6 @@ private theorem satisfies_anyHeap_frame {m : Memory} {P Fr R : SepProp}
     rw [sepConj_assoc P anyHeap (Fr ∗ R), ← sepConj_assoc anyHeap Fr R, sepConj_assoc P anyHeap R]
     exact sepConj_mono_right (sepConj_mono_left (entails_anyHeap (anyHeap ∗ Fr)))
   exact Satisfies.mono h1 h
-
-/-- `statesIntoPbSpec A F b` entails `statesIntoPbSpecX A F b` by framing the unused bottom stack region. -/
-theorem statesIntoPbSpecX_of_statesIntoPbSpec {P : Program} {addr b : BitVec 64}
-    {A : RustAlloc} {F : ShaCompress}
-    (h : subroutine_ok P addr (statesIntoPbSpec A F b)) :
-    subroutine_ok P addr (statesIntoPbSpecX A F b) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hal => ?_
-  have hle : statesIntoPbStack ≤ statesIntoPbStackX := by decide
-  have hsplit : stackAt s0.sp statesIntoPbStackX =
-      memRegion (s0.sp - BitVec.ofNat 64 statesIntoPbStackX)
-        (statesIntoPbStackX - statesIntoPbStack) ∗
-        stackAt s0.sp statesIntoPbStack := by
-    have h1 := stackAt_split_bottom s0.sp statesIntoPbStack
-      (statesIntoPbStackX - statesIntoPbStack) (by decide)
-    rwa [Nat.add_sub_of_le hle] at h1
-  let R' : SepProp :=
-    memRegion (s0.sp - BitVec.ofNat 64 statesIntoPbStackX)
-      (statesIntoPbStackX - statesIntoPbStack) ∗ R
-  have hpre' : s0.mem ⊨ (statesIntoPbSpec A F b).pre x s0 ∗ R' := by
-    dsimp only [statesIntoPbSpecX, statesIntoPbSpec, R'] at hpre ⊢
-    rw [hsplit] at hpre
-    ac_nf at hpre ⊢
-  refine h.mono_outcome x R' s0 hpc hrun hpre' hal fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, _, hex⟩ | ⟨_, hoom⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [statesIntoPbSpecX, statesIntoPbSpec, R'] at hpost ⊢
-    rw [hsplit]
-    ac_nf at hpost ⊢
-  · exact Or.inr (Or.inl ⟨hpan, satisfies_anyHeap_frame hpost⟩)
-  · dsimp only [statesIntoPbSpec] at hex
-    rw [satisfies_pure_sepConj] at hex
-    exact False.elim hex.1
-  · exact False.elim (not_satisfies_false_sepConj hoom)
-
-/-! ## 2. Pure Reduction Lemmas for `States.into_pb` and `PolyApi` / `AuthApi` -/
 
 @[simp]
 theorem pbToProtoPolyEncoder_encoder_into_pb (enc : PolyEncoder) :
@@ -214,7 +107,7 @@ theorem optProtoAuthenticatorAt_some_into_pb (A : RustAlloc) {F : ShaCompress}
 
 /-- Saved callee-saved registers at `[s0.sp - 96 .. s0.sp)` (`12` words = `96` bytes):
     `fp, lr, x28, x27, x26, x25, x24, x23, x22, x21, x20, x19`. -/
-def statesIntoPbSavedCells (s0 : State) : SepProp :=
+@[expose] def statesIntoPbSavedCells (s0 : State) : SepProp :=
   ((s0.sp - 96#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((s0.sp - 88#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((s0.sp - 80#64) ↦₆₄ s0.readReg64 .x28) ∗
@@ -295,103 +188,6 @@ theorem stack_restore_statesIntoPb (s0 : State) :
 
 /-! ## 4. Prologue (`+0 -> +44`) and Convert-to-`SepWPp` Helper -/
 
-/-- Prologue (`+0 -> +44`, `0x5ce20 -> 0x5ce4c`):
-    saves `x19..x30` at `s0.sp - 96`, sets `x29 = s0.sp - 96`, `sp = s0.sp - 1520`,
-    stores `0#64` at `[sp]`, sets `x19 = out`, and sets `x28 = s0.sp - 256` (`x29 - 0xa0`). -/
-theorem states_into_pb_prologue {b : BitVec 64} {ext : String → Option (State → State)}
-    (s0 : State) (out stA : BitVec 64) (Rest : SepProp)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s0.pc = (tripleRatchetProgAtExt b ext).fnAddr statesIntoPbName)
-    (hrun : s0.status = .Running)
-    (hx8 : s0.readReg64 .x8 = out)
-    (hx0 : s0.readReg64 .x0 = stA) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesIntoPbName + 44#64) s0
-      (stackAt s0.sp statesIntoPbStack ∗ Rest)
-      (fun s1 P1 =>
-        (P1 ⊢
-          stackAt (s0.sp - 1520#64) encoderIntoPbStack ∗
-          ((s0.sp - 1520#64) ↦₆₄ 0#64) ∗
-          memRegion (s0.sp - 1512#64) 1416 ∗
-          statesIntoPbSavedCells s0 ∗ Rest) ∧
-        s1.sp = s0.sp - 1520#64 ∧
-        s1.readReg64 .x29 = s0.sp - 96#64 ∧
-        s1.readReg64 .x28 = s0.sp - 256#64 ∧
-        s1.readReg64 .x19 = out ∧
-        s1.readReg64 .x0 = stA ∧
-        s1.trace = s0.trace) := by
-  have hfsp_align : ((s0.sp - 1520#64) &&& 15#64 == 0#64) = true :=
-    ProofLib.spAligned_sub s0.sp 1520#64 hsp0_align (by decide)
-  states_into_pb_fetches_range b (Rust.withPanics ext) 0 44
-  dsimp only [tripleRatchetProgAtExt, statesIntoPbName, BitVec.ofNat_eq_ofNat] at hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::into_pb" = entry
-  examples_hide_fetches
-  have hsplit_1424 : memRegion (s0.sp - 1520#64) 1424 =
-      cells (s0.sp - 1520#64) 1 ∗
-      memRegion (s0.sp - 1512#64) 1416 := by
-    rw [ProofLib.memRegion_split' (b := s0.sp - 1520#64) (n := 8) (k := 1416)
-          (b' := s0.sp - 1512#64) rfl (by bv_omega) (by decide),
-        ProofLib.memRegion_cells (s0.sp - 1520#64) 1 (by decide)]
-  rw [stackAt_statesIntoPb_split_96 s0.sp, stackAt_statesIntoPb_split_fsp s0.sp]
-  nth_rw 1 [hsplit_1424]
-  cells_unfold
-  wp_pull_exists
-  wp_steps
-  refine Drop.align_pre ?_ ?_
-  · unfold statesIntoPbSavedCells
-    ac_rfl
-  · wp_done
-
-/-- Convert a clean exit `SepWP` to `s0.readReg64 .x30` into a `SepWPp` for `statesIntoPbVariantSpec`. -/
-theorem sepWPp_of_states_into_pb_exit {A : RustAlloc} {F : ShaCompress}
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (s0 s : State) (out stA : BitVec 64) (st : States spqrPolyApi (spqrAuthApi F))
-    (P R : SepProp)
-    (h : SepWP (tripleRatchetProgAtExt b ext) (s0.readReg64 .x30) s P
-      (fun sf Pf =>
-        (Pf ⊢
-          optProtoInnerStateAt A out st.into_pb.innerState ∗
-          memRegion stA chunkedStatesSize ∗
-          statesIntoPbJumpTableAt b ∗
-          A.pool ∗ stackAt s0.sp statesIntoPbStack) ∧
-        sf.sp = s0.sp ∧
-        CalleeSavedPreserved s0 sf ∧
-        sf.trace = s0.trace)) :
-    SepWPp (tripleRatchetProgAtExt b ext) (s0.readReg64 Reg.lr) s P
-      (fun sf P_f =>
-        (sf.mem ⊨ P_f ∗ R →
-          sf.mem ⊨ (statesIntoPbVariantSpec A F b st).post (out, stA) s0 sf ∗ R) ∧
-        sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
-      (fun sf P_f =>
-        (sf.mem ⊨ P_f ∗ R) →
-          (sf.mem ⊨ (statesIntoPbVariantSpec A F b st).onPanic (out, stA) s0 sf ∗ R)) := by
-  refine SepWPp.of_sepWP (SepWP.mono h fun sf Pf hpcf hrunf ⟨hPf, hspf, hcs, htrf⟩ => ?_)
-  refine SepWPp.done hpcf hrunf ⟨fun hmem_f => ?_, hspf, hcs⟩
-  dsimp only [statesIntoPbVariantSpec]
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨htrf, Satisfies.mono (Entails.trans (sepConj_mono_left hPf) (Entails.of_eq (by ac_rfl))) hmem_f⟩
-
-/-! ## 5. Jump Table Expansion, Prologue (`+0 -> +60`), and Common Epilogue (`+1544 -> ret`) -/
-
-/-- Image offset of the 22-byte `.rodata` jump table for `<States>::into_pb` (`0x82444` = `533572`). -/
-abbrev statesIntoPbJumpTableOff : Nat := num% (ls_xref% 0x57a74 0x57a78)
-
-theorem statesIntoPbJumpTableBytes_eq_rodata :
-    (libsignalSessionImage.data.drop (statesIntoPbJumpTableOff - libsignalSessionImage.dataOff)).take 22 =
-      statesIntoPbJumpTableBytes := by
-  rfl_kernel
-
-theorem rodata_statesIntoPbJumpTable {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ statesIntoPbJumpTableAt img.base ∗ P := by
-  have hhb := loads_rodata_holdsBytes himg hF
-    (off := statesIntoPbJumpTableOff) (n := 22) (bs := statesIntoPbJumpTableBytes)
-    (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel)
-    (by rfl_kernel) rfl statesIntoPbJumpTableBytes_eq_rodata
-  have ⟨h1, h2⟩ := holdsBytes_ro hhb
-  exact Satisfies.rodata_intro h1 h2 (by decide) hP
-
 theorem memRegion_1416_split (sp : BitVec 64) :
     memRegion (sp - 1512#64) 1416 =
       cells (sp - 1512#64) 19 ∗
@@ -415,61 +211,8 @@ theorem memRegion_1416_split (sp : BitVec 64) :
 abbrev TraceCalleeSaved (s s0 : State) : Prop :=
   s.trace = s0.trace ∧ calleeSavedVRegs s = calleeSavedVRegs s0
 
-/-- Extended prologue (`+0 -> +60`, `0x5ce20 -> 0x5ce5c`):
-    saves `x19..x30`, allocates 1424B stack frame, stores `0#64` at `[sp]`,
-    loads `x8 = tag` from `stA`, and initializes
-    `x19 = out`, `x20 = stA`, `x26 = s0.sp - 480`, `x27 = s0.sp - 1360`, `x28 = s0.sp - 256`, `x29 = s0.sp - 96`. -/
-theorem states_into_pb_prologue_60 {b : BitVec 64} {ext : String → Option (State → State)}
-    (s0 : State) (out stA tag : BitVec 64) (Rest : SepProp)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s0.pc = (tripleRatchetProgAtExt b ext).fnAddr statesIntoPbName)
-    (hrun : s0.status = .Running)
-    (hx8 : s0.readReg64 .x8 = out)
-    (hx0 : s0.readReg64 .x0 = stA) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesIntoPbName + 60#64) s0
-      (stackAt s0.sp statesIntoPbStack ∗ (stA ↦₆₄ tag) ∗ Rest)
-      (fun s1 P1 =>
-        (P1 ⊢
-          stackAt (s0.sp - 1520#64) encoderIntoPbStack ∗
-          ((s0.sp - 1520#64) ↦₆₄ 0#64) ∗
-          memRegion (s0.sp - 1512#64) 1416 ∗
-          statesIntoPbSavedCells s0 ∗
-          (stA ↦₆₄ tag) ∗ Rest) ∧
-        s1.sp = s0.sp - 1520#64 ∧
-        s1.readReg64 .x29 = s0.sp - 96#64 ∧
-        s1.readReg64 .x28 = s0.sp - 256#64 ∧
-        s1.readReg64 .x27 = s0.sp - 1360#64 ∧
-        s1.readReg64 .x26 = s0.sp - 480#64 ∧
-        s1.readReg64 .x20 = stA ∧
-        s1.readReg64 .x19 = out ∧
-        s1.readReg64 .x8 = tag ∧
-        TraceCalleeSaved s1 s0) := by
-  have hfsp_align : ((s0.sp - 1520#64) &&& 15#64 == 0#64) = true :=
-    ProofLib.spAligned_sub s0.sp 1520#64 hsp0_align (by decide)
-  states_into_pb_fetches_range b (Rust.withPanics ext) 0 60
-  dsimp only [tripleRatchetProgAtExt, statesIntoPbName, BitVec.ofNat_eq_ofNat] at hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::into_pb" = entry
-  examples_hide_fetches
-  have hsplit_1424 : memRegion (s0.sp - 1520#64) 1424 =
-      cells (s0.sp - 1520#64) 1 ∗
-      memRegion (s0.sp - 1512#64) 1416 := by
-    rw [ProofLib.memRegion_split' (b := s0.sp - 1520#64) (n := 8) (k := 1416)
-          (b' := s0.sp - 1512#64) rfl (by bv_omega) (by decide),
-        ProofLib.memRegion_cells (s0.sp - 1520#64) 1 (by decide)]
-  rw [stackAt_statesIntoPb_split_96 s0.sp, stackAt_statesIntoPb_split_fsp s0.sp]
-  nth_rw 1 [hsplit_1424]
-  cells_unfold
-  wp_pull_exists
-  wp_steps
-  refine Drop.align_pre ?_ ?_
-  · unfold statesIntoPbSavedCells
-    ac_rfl
-  · wp_done
-
 /-- The 28 64-bit words (`224` bytes) of `out` written by the common epilogue (`+1544 -> +1640`). -/
-def outWords28 (out : BitVec 64)
+@[expose] def outWords28 (out : BitVec 64)
     (w0 w8 w16 w24 w32 w40 w48 w56
      w64 w72 w80 w88 w96 w104 w112 w120
      w128 w136 w144 w152 w160 w168 w176 w184
@@ -494,7 +237,7 @@ def outWords28 (out : BitVec 64)
     * `[s0.sp - 304 .. s0.sp - 256)` (`6` words -> `out + 8 .. out + 48`)
     * `[s0.sp - 1520 .. s0.sp - 1488)` (`4` words -> `out + 192 .. out + 216`)
     * `[s0.sp - 1488 .. s0.sp - 1360)` (`16` words -> `out + 64 .. out + 184`) -/
-def epilogueStagingCells (sp : BitVec 64)
+@[expose] def epilogueStagingCells (sp : BitVec 64)
     (w8 w16 w24 w32 w40 w48
      w64 w72 w80 w88 w96 w104 w112 w120
      w128 w136 w144 w152 w160 w168 w176 w184
@@ -618,97 +361,5 @@ theorem memRegion_out_224_eq (out : BitVec 64) :
   simp only [ProofLib.cells_succ, ProofLib.cells_zero, sepConj_emp,
     sepExists_sepConj_right, BitVec.add_assoc]
   rfl
-
-/-- Common epilogue (`+1544 -> s0.readReg64 .x30`, `0x5d428 -> 0x5d488`):
-    copies the 28 output words from `x22`, `x21`, and `epilogueStagingCells s0.sp` into `out`,
-    restores `x19..x30` and `sp = s0.sp`, and recombines `stackAt s0.sp statesIntoPbStack`. -/
-theorem states_into_pb_epilogue {b : BitVec 64} {ext : String → Option (State → State)}
-    (s0 s : State) (out : BitVec 64)
-    (w8 w16 w24 w32 w40 w48
-     w64 w72 w80 w88 w96 w104 w112 w120
-     w128 w136 w144 w152 w160 w168 w176 w184
-     w192 w200 w208 w216 : BitVec 64)
-    (Rest : SepProp)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr statesIntoPbName + 1544#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 1520#64)
-    (hx29 : s.readReg64 .x29 = s0.sp - 96#64)
-    (hx19 : s.readReg64 .x19 = out)
-    (htr : TraceCalleeSaved s s0) :
-    SepWP (tripleRatchetProgAtExt b ext) (s0.readReg64 .x30) s
-      (stackAt (s0.sp - 1520#64) encoderIntoPbStack ∗
-       epilogueStagingCells s0.sp
-         w8 w16 w24 w32 w40 w48
-         w64 w72 w80 w88 w96 w104 w112 w120
-         w128 w136 w144 w152 w160 w168 w176 w184
-         w192 w200 w208 w216 ∗
-       memRegion (s0.sp - 1360#64) 880 ∗
-       memRegion (s0.sp - 480#64) 176 ∗
-       memRegion (s0.sp - 256#64) 160 ∗
-       statesIntoPbSavedCells s0 ∗
-       memRegion out optProtoInnerStateSize ∗
-       Rest)
-      (fun sf Pf =>
-        (Pf ⊢
-          outWords28 out
-            (s.readReg64 .x22) w8 w16 w24 w32 w40 w48 (s.readReg64 .x21)
-            w64 w72 w80 w88 w96 w104 w112 w120
-            w128 w136 w144 w152 w160 w168 w176 w184
-            w192 w200 w208 w216 ∗
-          stackAt s0.sp statesIntoPbStack ∗
-          Rest) ∧
-        sf.sp = s0.sp ∧
-        CalleeSavedPreserved s0 sf ∧
-        sf.trace = s0.trace) := by
-  rcases htr with ⟨htr, hvregs⟩
-  have hrestore :
-      outWords28 out
-        (s.readReg64 .x22) w8 w16 w24 w32 w40 w48 (s.readReg64 .x21)
-        w64 w72 w80 w88 w96 w104 w112 w120
-        w128 w136 w144 w152 w160 w168 w176 w184
-        w192 w200 w208 w216 ∗
-      (stackAt (s0.sp - 1520#64) encoderIntoPbStack ∗
-       (epilogueStagingCells s0.sp
-          w8 w16 w24 w32 w40 w48
-          w64 w72 w80 w88 w96 w104 w112 w120
-          w128 w136 w144 w152 w160 w168 w176 w184
-          w192 w200 w208 w216 ∗
-        memRegion (s0.sp - 1360#64) 880 ∗
-        memRegion (s0.sp - 480#64) 176 ∗
-        memRegion (s0.sp - 256#64) 160) ∗
-       statesIntoPbSavedCells s0) ∗
-      Rest ⊢
-      outWords28 out
-        (s.readReg64 .x22) w8 w16 w24 w32 w40 w48 (s.readReg64 .x21)
-        w64 w72 w80 w88 w96 w104 w112 w120
-        w128 w136 w144 w152 w160 w168 w176 w184
-        w192 w200 w208 w216 ∗
-      stackAt s0.sp statesIntoPbStack ∗
-      Rest := by
-    refine sepConj_mono_right (sepConj_mono_left ?_)
-    refine Entails.trans (sepConj_mono_right (sepConj_mono_left
-      (epilogueStagingCells_entails_memRegion s0.sp
-        w8 w16 w24 w32 w40 w48
-        w64 w72 w80 w88 w96 w104 w112 w120
-        w128 w136 w144 w152 w160 w168 w176 w184
-        w192 w200 w208 w216))) ?_
-    exact stack_restore_statesIntoPb s0
-  refine SepWP.strengthen_entails_const hrestore ?_
-  have hfsp_align : ((s0.sp - 1520#64) &&& 15#64 == 0#64) = true :=
-    ProofLib.spAligned_sub s0.sp 1520#64 hsp0_align (by decide)
-  have hsp96_align : ((s0.sp - 96#64) &&& 15#64 == 0#64) = true :=
-    ProofLib.spAligned_sub s0.sp 96#64 hsp0_align (by decide)
-  states_into_pb_fetches_range b (Rust.withPanics ext) 1544 100
-  dsimp only [tripleRatchetProgAtExt, statesIntoPbName, BitVec.ofNat_eq_ofNat] at hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::into_pb" = entry
-  examples_hide_fetches
-  rw [memRegion_out_224_eq out]
-  wp_pull_exists
-  dsimp only [outWords28, epilogueStagingCells, statesIntoPbSavedCells]
-  wp_steps
-  refine Drop.align_pre (by ac_rfl) ?_
-  wp_done
 
 end CryptoVerification.SpqrV1.States.IntoPb

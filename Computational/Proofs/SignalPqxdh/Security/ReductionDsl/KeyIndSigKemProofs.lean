@@ -9,8 +9,21 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKem
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Potential
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKem -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Potential -- proof-setup: allow-public-import
+import Init.Data.List.Control
+import Init.Data.Range.Basic
+import Init.Data.String.Defs
+import Init.Data.String.Pattern.Basic
+import Init.Data.String.Pattern.String
+import Init.Data.String.Slice
+import Init.Data.String.TakeDrop
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import VCVio.EvalDist.Monad.Bool
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Semantic Challenger-Query Bound for the Costed `KeyInd` Signature Reduction
@@ -19,7 +32,7 @@ Proves via a potential argument on the remaining signing budget that `sigKeyIndP
 `2 * S.N_spk_tot` signing-oracle queries for any adversary.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,17 +45,17 @@ namespace SignalPqxdh.Security.ReductionDsl.KeyInd
 
 attribute [local simp] Expr.eval Env.get
 
-@[reducible] def isSigChalQ : (PrimBaseSpec + eufCmaSignOracle.spec).Domain → Prop :=
+@[expose, reducible] def isSigChalQ : (PrimBaseSpec + eufCmaSignOracle.spec).Domain → Prop :=
   fun q => q.isRight = true
 
 instance : DecidablePred isSigChalQ :=
   fun q => inferInstanceAs (Decidable (q.isRight = true))
 
-def wSigChal : pqxdhEufCmaIface.Tag → ℕ
+@[expose] def wSigChal : pqxdhEufCmaIface.Tag → ℕ
   | .inl _ => 0
   | .inr _ => 1
 
-@[simp] def wsZero : pqxdhEufCmaIface.smp.Samp → ℕ := fun _ => 0
+@[expose, simp] def wsZero : pqxdhEufCmaIface.smp.Samp → ℕ := fun _ => 0
 
 theorem hwSigChal : ∀ g x, isSigChalQ (pqxdhEufCmaIface.enc g x) → 1 ≤ wSigChal g
   | .inl _, _, h => by cases h
@@ -109,7 +122,7 @@ theorem potC_bind1 (m : ℕ+) {Γ : List PT} {τ₂ : PT} {Pot : τ₂.denote �
     (by simpa [qChalSign, Comp.queries, wSigChal] using hmn)
 
 /-- Potential of a signature-reduction state: twice its remaining signing budget. -/
-def sigPot (st : sigStTy.denote) : ℕ := 2 * st.2.2.2.2
+@[expose] def sigPot (st : sigStTy.denote) : ℕ := 2 * st.2.2.2.2
 
 @[simp] theorem Ext.step_wk {Γ Δ : List PT} {σ τ : PT} [h : Ext Γ Δ] (x : Var Γ τ) :
     (Ext.step (σ := σ)).wk x = .succ (h.wk x) := rfl

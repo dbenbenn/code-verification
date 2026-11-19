@@ -10,10 +10,16 @@ limitations under the License.
 module
 
 import all Init.Data.String.Defs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Model
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Model -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.StateNorm
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Specifications.LibsignalSessionRepr
+import LibsignalBinary.Specifications.LibsignalTripleRatchet
+import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
+import LibsignalBinary.Specifications.RustHeap.Alloc
+import LibsignalBinary.Specifications.RustHeap.Vec
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -152,13 +158,8 @@ theorem sub48_ule_9_iff_isDigit (b : BitVec 8) :
   change (b.toNat + 2 ^ 32 - 48) % 2 ^ 32 ≤ 9 ↔ 48 ≤ b.toNat ∧ b.toNat ≤ 57
   omega
 
-theorem sub48_toNat_eq (b : BitVec 8) (hd : isDigit b = true) :
-    (b.setWidth 32 - 48#32).toNat = b.toNat - 48 := by
-  simp only [isDigit, decide_eq_true_eq] at hd
-  bv_omega
-
 /-- Digits stripped of optional leading `'+'`. -/
-def stripPlus (bs : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def stripPlus (bs : List (BitVec 8)) : List (BitVec 8) :=
   match bs with
   | b :: rest => if b = 43#8 then rest else bs
   | [] => []

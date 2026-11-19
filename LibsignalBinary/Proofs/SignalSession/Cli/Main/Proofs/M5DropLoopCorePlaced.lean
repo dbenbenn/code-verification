@@ -9,9 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPanicsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPanicsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropCodePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FramePlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `(String, Vec<u8>)` Entry Drop Loops for `main` Hop M5 (Block `617`)
@@ -21,7 +29,7 @@ Verifies the generic 14-instruction `(String, Vec<u8>)` slice drop loop (`m5_dro
 `(0xa84, 0xabc)` and `(0xc04, 0xc3c)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

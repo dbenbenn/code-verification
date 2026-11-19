@@ -209,49 +209,48 @@ def openatPure (fs : FsState) (dfd : BitVec 32) (rawPath : String) (flags : BitV
     let hasCloexec := (flags &&& O_CLOEXEC_W32) != 0#32
     match resolveCwdPath dfd rawPath with
     | .trap msg => .trap msg
-    | .errno err => .errno err
+    | .errno err =>
+      match fs.allocFd with
+      | none => .errno EMFILE
+      | some _ => .errno err
     | .ok segs =>
-      match strictAncestorWalkErrno? fs rawPath with
-      | some err => .errno err
-      | none =>
-        let isTrailDir := trailingDir rawPath
-        let isTrailNormSlash := trailingNormSlash rawPath
-        if hasCreat && isTrailNormSlash then .errno EISDIR
-        else if ((splitSlash rawPath).filter (!·.isEmpty)).getLast?.any (·.length > NAME_MAX) then
-          .errno ENAMETOOLONG
-        else
-          match fs.getEntry segs with
-          | some .dir =>
-            if hasCreat && hasExcl && !isTrailNormSlash then .errno EEXIST
-            else if acc != .rdonly || hasTrunc || hasCreat then .errno EISDIR
-            else match fs.allocFd with
-              | none => .errno EMFILE
-              | some fd =>
+      match fs.allocFd with
+      | none => .errno EMFILE
+      | some fd =>
+        match strictAncestorWalkErrno? fs rawPath with
+        | some err => .errno err
+        | none =>
+          let isTrailDir := trailingDir rawPath
+          let isTrailNormSlash := trailingNormSlash rawPath
+          if hasCreat && isTrailNormSlash then .errno EISDIR
+          else if ((splitSlash rawPath).filter (!·.isEmpty)).getLast?.any (·.length > NAME_MAX) then
+            .errno ENAMETOOLONG
+          else
+            match fs.getEntry segs with
+            | some .dir =>
+              if hasCreat && hasExcl && !isTrailNormSlash then .errno EEXIST
+              else if acc != .rdonly || hasTrunc || hasCreat then .errno EISDIR
+              else
                 let fs' := fs.setFd fd
                   (some { path := rawPath, accMode := .rdonly, append := hasAppend,
                           cloexec := hasCloexec, offset := 0, kind := .localDir })
                 .opened fd fs' none
-          | some (.file oldBytes) =>
-            if isTrailDir || hasDir then .errno ENOTDIR
-            else if hasCreat && hasExcl then .errno EEXIST
-            else match fs.allocFd with
-              | none => .errno EMFILE
-              | some fd =>
+            | some (.file oldBytes) =>
+              if isTrailDir || hasDir then .errno ENOTDIR
+              else if hasCreat && hasExcl then .errno EEXIST
+              else
                 let bs' := if hasTrunc then [] else oldBytes
                 let fs' := (fs.setEntry segs (some (.file bs'))).setFd fd
                   (some { path := rawPath, accMode := acc, append := hasAppend, cloexec := hasCloexec, offset := 0 })
                 .opened fd fs' (if hasTrunc then some segs.toPathString else none)
-          | none =>
-            if !hasCreat then .errno ENOENT
-            else match fs.allocFd with
-              | none => .errno EMFILE
-              | some fd =>
-                if (mode &&& O_CREAT_OWNER_RW_MASK) != O_CREAT_OWNER_RW_MASK then
-                  .trap "unmodeled non-owner-rw O_CREAT mode"
-                else
-                  let fs' := (fs.setEntry segs (some (.file []))).setFd fd
-                    (some { path := rawPath, accMode := acc, append := hasAppend, cloexec := hasCloexec, offset := 0 })
-                  .opened fd fs' (some segs.toPathString)
+            | none =>
+              if !hasCreat then .errno ENOENT
+              else if (mode &&& O_CREAT_OWNER_RW_MASK) != O_CREAT_OWNER_RW_MASK then
+                .trap "unmodeled non-owner-rw O_CREAT mode"
+              else
+                let fs' := (fs.setEntry segs (some (.file []))).setFd fd
+                  (some { path := rawPath, accMode := acc, append := hasAppend, cloexec := hasCloexec, offset := 0 })
+                .opened fd fs' (some segs.toPathString)
 
 /-- Apply an `OpenVerdict` to machine state `s`. -/
 def applyOpenVerdict (s : State) : OpenVerdict → State
@@ -274,9 +273,11 @@ def applyOpenVerdict (s : State) : OpenVerdict → State
     - records `O_CLOEXEC` in `FdEntry.cloexec`, and emits canonical `TraceEvent.fileChanged` on
       file creation or `O_TRUNC` truncation (any access mode, including `O_RDONLY|O_TRUNC`,
       `fs/open.c:1308`);
-    - `[OVERPINNED_BEHAVIOR]`: validates `flags` (`checkOpenFlags` / `build_open_flags`) before
-      copying `filename` (`readCString` / `getname_flags`) and walking path components
-      (`openatPure` / `do_filp_open`), matching `fs/open.c:1402`. -/
+    - `[OVERPINNED_BEHAVIOR]`: validates `flags` (`checkOpenFlags` / `build_open_flags`) first, then
+      checks `s.fs.allocFd` (`FD_ADD` -> `__FD_PREPARE_INIT` -> `get_unused_fd_flags`,
+      `include/linux/file.h:195`) before surfacing `getname_flags` / `do_file_open` `IS_ERR(name)`
+      errnos (`-EFAULT`, `-ENAMETOOLONG`, empty-path `-ENOENT`) or walking path components
+      (`fs/open.c:1416-1417`, `fs/namei.c:5025`). -/
 def execOpenat (s : State) : State :=
   let dfd   := s.readReg32 Reg.x0
   let fname := s.readReg64 Reg.x1
@@ -287,7 +288,10 @@ def execOpenat (s : State) : State :=
   | none =>
     match readCString s.mem fname with
     | .trap msg => s.setStatus (.Exception msg)
-    | .errno err => (s.writeReg64 Reg.x0 (-err)).advancePC
+    | .errno err =>
+      match s.fs.allocFd with
+      | none => (s.writeReg64 Reg.x0 (-EMFILE)).advancePC
+      | some _ => (s.writeReg64 Reg.x0 (-err)).advancePC
     | .ok rawPath => applyOpenVerdict s (openatPure s.fs dfd rawPath flags mode)
 
 /-- `close(fd)` (`__NR_close = 57`, `fs/open.c:1553` `SYSCALL_DEFINE1(close)` -> `close_fd`):

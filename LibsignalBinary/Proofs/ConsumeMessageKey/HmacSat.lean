@@ -11,14 +11,49 @@ module
 
 public import LibsignalBinary.Proofs.ConsumeMessageKey.Defs -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.ConsumeMessageKey.Hmac -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.DefsSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.DefsSat
+public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.EntryAndKeyBlockExact -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyExactCore -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat
 public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.CompressAndDigest
-import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.EntryAndKeyBlock
-import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.EntryAndKeyBlockExact
-import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExtractCommon
+import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.CompressAndDigestExact
+public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.EntryAndKeyBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExtractCommon -- proof-setup: allow-public-import
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `HookSat`-Backed `crypto::hmac_sha256` Contract (Block 73)
@@ -27,6 +62,8 @@ Proves placed `hmac_sha256` contracts (`hmac_sha256_placed_ok_sat` and
 `hmac_sha256_placed_ro_ok_sat`) under `HookSat H lsMemsetSym sessionMemsetRegionSpec`.
 -/
 
+public section
+
 set_option autoImplicit false
 set_option maxHeartbeats 400000
 
@@ -34,12 +71,13 @@ namespace LibsignalBinary.Proofs.ConsumeMessageKey.HmacSat
 
 open Arm64 ProofLib
 open CryptoGames.HMAC (ShaState hmacWith sha256IV)
+open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification
   (LibsignalCodeLoaded LibsignalHooks LibsignalPlacement LibsignalRoLoaded
    blkPC_73 blkPl_73 extract_withLsCodeLoaded libsignalRoLoaded_of_keepsFrozen
    lsProg_73 lsmpl lsρ withLsCodeLoaded)
 open CryptoVerification.LibsignalAesCbc (toLEBytes)
-open CryptoVerification.LibsignalHmac (compress256Hook shaStateBytes)
+open CryptoVerification.LibsignalHmac (shaStateBytes)
 open CryptoVerification.LibsignalSession (hmacSpec)
 open CryptoVerification.LibsignalSession.CryptoHmacSha256
   (CalleeSaved CallingConventionPreserved_of_calleeSaved Frame
@@ -48,35 +86,35 @@ open CryptoVerification.LibsignalSession.CryptoHmacSha256
    length_hmacWith lsCompress256Sym lsMemcpySym lsMemsetSym lsSha256IVAddr outerState
    read64_writeBytes_replicate_off_disjoint read64_writeBytes_replicate_zero_off
    readBytes_writeBytes_replicate_off_disjoint rodata_placed_sha256IV
-   seg1a_placed_runsTo seg2_placed_runsTo seg3_placed_runsTo
-   seg4_placed_runsTo toLEBytes_8_read64_writeBytes_146_62)
+   seg1a_placed_runsTo toLEBytes_8_read64_writeBytes_146_62)
 open CryptoVerification.LibsignalTripleRatchet (sessionMemsetRegionSpec)
 open CryptoVerification.LibsignalTripleRatchet.Extract
   (CallingConventionPreserved.x19 CallingConventionPreserved.x20
    CallingConventionPreserved.x21 CallingConventionPreserved.x22
    CallingConventionPreserved.x27 CallingConventionPreserved.x29 S2Frame)
 open CryptoVerification.LibsignalTripleRatchet.HkdfExt (AgreesOn)
+open LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.CompressAndDigestExact
+  (hmac_tail_placed_runsTo_sat)
 open LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.DefsSat
-  (hmacSaved_of_agreesOn placed_memset_step_sat s2Frame_of_hmacFrame
-   s2Frame_readBytes_eq_of_readable s2Frame_readable_of_readable)
+  (hmacSaved_of_agreesOn placed_memset_step_sat s2Frame_of_hmacFrame)
 open LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.EntryAndKeyBlockExact
-  (seg0_placed_runsTo_exact seg1b1_placed_runsTo_exact)
+  (HmacPlacedPreSat seg0_placed_runsTo_exact seg1b1_placed_runsTo_exact)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyExactCore (HookSatExactMemcpy)
 open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat
   (CallingConventionPreserved.x23 CallingConventionPreserved.x24 CallingConventionPreserved.x25
-   CallingConventionPreserved.x26)
+   CallingConventionPreserved.x26 HookSatCompress256)
 
 /-! ## `S2Frame` Cut Predicates -/
 
-public structure HmacCommonSat (s₀ s : State) : Prop where
+structure HmacCommonSat (s₀ s : State) : Prop where
   status : s.status = .Running
   sp_eq  : s.sp = hsp s₀
   x29_eq : s.readReg64 .x29 = hsp s₀ + 384#64
   x27_eq : s.readReg64 .x27 = s₀.readReg64 .x27
   saved  : HmacSaved s₀ (hsp s₀) s.mem
-  frame  : S2Frame s₀.mem s.mem [(s₀.sp - 1024#64, 1024)]
+  frame  : S2Frame s₀.mem s.mem [(s₀.sp - 1200#64, 1200)]
 
-public structure StateH2PlacedSat [LibsignalPlacement]
+structure StateH2PlacedSat [LibsignalPlacement]
     (F : ShaState → List (BitVec 8) → ShaState)
     (key : List (BitVec 8)) (byte : BitVec 8) (s₀ s : State) : Prop where
   pc_eq  : s.pc = (blkPl_73).base + 388#64
@@ -101,13 +139,13 @@ public structure StateH2PlacedSat [LibsignalPlacement]
   ost_eq : s.mem.readBytes (hsp s₀ + 248#64) 32 = shaStateBytes (outerState F key)
   obl_eq : s.mem.read64 (hsp s₀ + 280#64) = 1#64
 
-public structure StateH5Sat (F : ShaState → List (BitVec 8) → ShaState)
+structure StateH5Sat (F : ShaState → List (BitVec 8) → ShaState)
     (key : List (BitVec 8)) (byte : BitVec 8) (s₀ s : State) : Prop where
   pc_eq       : s.pc = s₀.readReg64 .lr
   status      : s.status = .Running
   calleeSaved : CalleeSaved s₀ s
   out_eq      : s.mem.readBytes (s₀.readReg64 .x0) 32 = hmacWith F key [byte]
-  frame       : S2Frame s₀.mem s.mem [(s₀.readReg64 .x0, 32), (s₀.sp - 1024#64, 1024)]
+  frame       : S2Frame s₀.mem s.mem [(s₀.readReg64 .x0, 32), (s₀.sp - 1200#64, 1200)]
 
 /-! ## `HookSat` `memset` Step and `hmac_placed_runsTo_sat` -/
 
@@ -138,12 +176,17 @@ public theorem seg1b2_placed_runsTo_sat [LibsignalPlacement]
     have hnl := hrw_hsp a (by unfold InRegion at ha ⊢; bv_omega)
     obtain ⟨hp, hlf⟩ := Memory.permNoLazy_eq_some_rw_iff.mp hnl
     exact ⟨by rw [hp]; rfl, hlf⟩
-  have hframe_s' : S2Frame s₀.mem s'.mem [(s₀.sp - 1024#64, 1024)] := by
-    refine (s2Frame_of_hmacFrame hframe).trans (hs2_frame.mono fun a ha => ?_)
+  have hframe_s' : S2Frame s₀.mem s'.mem [(s₀.sp - 1200#64, 1200)] := by
+    have hf0 : S2Frame s₀.mem s.mem [(s₀.sp - 1200#64, 1200)] :=
+      (s2Frame_of_hmacFrame hframe).mono fun a ha r hr => by
+        simp only [List.mem_cons, List.not_mem_nil, or_false] at hr; subst hr
+        have ha_stk := ha (s₀.sp - 1200#64, 1200) (by simp)
+        clear * - ha_stk; unfold OutsideRegion at ha_stk ⊢; bv_omega
+    refine hf0.trans (hs2_frame.mono fun a ha => ?_)
     intro r hr_mem
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hr_mem
     subst hr_mem
-    have ha_stk := ha (s₀.sp - 1024#64, 1024) (by simp)
+    have ha_stk := ha (s₀.sp - 1200#64, 1200) (by simp)
     clear * - ha_stk
     unfold hsp OutsideRegion at ha_stk ⊢
     bv_omega
@@ -206,45 +249,24 @@ public theorem seg1b_placed_runsTo_sat [LibsignalPlacement]
   (seg1b1_placed_runsTo_exact h_memcpy hpre hs).trans fun _ h1p =>
   seg1b2_placed_runsTo_sat h_memset hpre h1p
 
-/-- Placed `RunsTo` execution of `hmac_sha256` (Block 73) under `HookSat` for `memset`. -/
+/-- Placed `RunsTo` execution of `hmac_sha256` (Block 73) under `HookSat` for `memset` and `compress256`. -/
 public theorem hmac_placed_runsTo_sat [LibsignalPlacement]
-    {F : ShaState → List (BitVec 8) → ShaState}
+    {F : ShaCompress}
     {H : LibsignalHooks} (h_memcpy : HookSatExactMemcpy H lsMemcpySym)
     (h_memset : HookSat H lsMemsetSym sessionMemsetRegionSpec)
-    (h_compress : H lsCompress256Sym = some (compress256Hook F))
+    (h_compress : HookSatCompress256 H lsCompress256Sym F)
     {key : List (BitVec 8)} {byte : BitVec 8} {s₀ : State}
     (hcl : LibsignalCodeLoaded lsmpl s₀.mem)
-    (hpre : HmacPlacedPre F key [byte] s₀)
+    (hpre : HmacPlacedPreSat F key [byte] s₀)
     (hread_key : s₀.mem.Readable (s₀.readReg64 .x1) 32) :
     RunsTo (lsProg_73 H) s₀ (StateH5Sat F key byte s₀) := by
-  refine (seg0_placed_runsTo_exact h_memcpy h_compress hcl hpre hread_key).trans fun _ h1 => ?_
-  refine (seg1a_placed_runsTo hpre h1).trans fun _ h1m => ?_
-  refine (seg1b_placed_runsTo_sat h_memcpy h_memset hpre h1m).trans fun s₂ h2 => ?_
-  let s₀' : State := s₀.setMem s₂.mem
-  have hs2_frame : S2Frame s₀.mem s₂.mem [(s₀.sp - 1024#64, 1024)] := h2.common.frame
-  have hpre' : HmacPlacedPre F key [byte] s₀' :=
-    { pc_eq := hpre.pc_eq
-      status := hpre.status
-      sp_aligned := hpre.sp_aligned
-      x2_eq := hpre.x2_eq
-      x4_eq := hpre.x4_eq
-      key_len := hpre.key_len
-      inp_len := hpre.inp_len
-      key_eq := (s2Frame_readBytes_eq_of_readable hs2_frame hread_key (by decide)
-        (by simp [hpre.disj_key_stack.symm])).trans hpre.key_eq
-      inp_eq := (s2Frame_readBytes_eq_of_readable hs2_frame hpre.read_inp (by decide)
-        (by simp [hpre.disj_inp_stack.symm])).trans hpre.inp_eq
-      iv_eq := (s2Frame_readBytes_eq_of_readable hs2_frame hpre.read_iv (by decide)
-        (by simp [hpre.disj_iv_stack.symm])).trans hpre.iv_eq
-      read_iv := s2Frame_readable_of_readable hs2_frame hpre.read_iv
-      read_inp := s2Frame_readable_of_readable hs2_frame hpre.read_inp
-      rw_out := hs2_frame.rw_of_rw _ _ hpre.rw_out
-      rw_stack := hs2_frame.rw_of_rw _ _ hpre.rw_stack
-      disj_iv_stack := hpre.disj_iv_stack
-      disj_out_stack := hpre.disj_out_stack
-      disj_key_stack := hpre.disj_key_stack
-      disj_inp_stack := hpre.disj_inp_stack }
-  have h2' : StateH2Placed F key byte s₀' s₂ :=
+  refine (seg0_placed_runsTo_exact h_memcpy h_compress hcl hpre hread_key).trans fun s₁ ⟨h1, hf01⟩ => ?_
+  obtain ⟨hpre₁, hread_key₁⟩ := hpre.of_s2Frame hread_key hf01
+  refine (seg1a_placed_runsTo hpre₁.toHmacPlacedPre h1).trans fun _ h1m => ?_
+  refine (seg1b_placed_runsTo_sat h_memcpy h_memset hpre₁.toHmacPlacedPre h1m).trans fun s₂ h2 => ?_
+  have hf02 : S2Frame s₀.mem s₂.mem [(s₀.sp - 1200#64, 1200)] := hf01.trans h2.common.frame
+  obtain ⟨hpre₂, hread_key₂⟩ := hpre.of_s2Frame hread_key hf02
+  have h2' : StateH2Placed F key byte (s₀.setMem s₂.mem) s₂ :=
     { pc_eq := h2.pc_eq
       common :=
         { status := h2.common.status
@@ -258,32 +280,37 @@ public theorem hmac_placed_runsTo_sat [LibsignalPlacement]
       m144 := h2.m144, m152 := h2.m152, m160 := h2.m160, m168 := h2.m168,
       m176 := h2.m176, m184 := h2.m184, m192 := h2.m192,
       ist_eq := h2.ist_eq, ibl_eq := h2.ibl_eq, ost_eq := h2.ost_eq, obl_eq := h2.obl_eq }
-  refine ((seg2_placed_runsTo h_compress hpre' h2').trans fun _ h3 =>
-    (seg3_placed_runsTo h_compress hpre' h3).trans fun _ h4 =>
-    seg4_placed_runsTo hpre' h4).mono fun s₅ h5 => ?_
-  have hs2_widen : S2Frame s₀.mem s₂.mem
-      [(s₀.readReg64 .x0, 32), (s₀.sp - 1024#64, 1024)] :=
-    hs2_frame.mono fun a ha r hr => by
-      simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-      subst hr
+  refine (hmac_tail_placed_runsTo_sat h_compress hpre₂.toHmacPlacedPre hread_key₂ h2').mono fun s₅ h5 => ?_
+  rcases h5 with ⟨hpc5, hstat5, hcs5, hout5, hf25⟩
+  have hf02_w : S2Frame s₀.mem s₂.mem [(s₀.readReg64 .x0, 32), (s₀.sp - 1200#64, 1200)] :=
+    hf02.mono fun a ha r hr => by
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at hr; subst hr
       exact ha _ (by simp)
-  rcases h5 with ⟨hpc5, hstat5, hcs5, hout5, hfr5⟩
+  have hf25_w : S2Frame s₂.mem s₅.mem [(s₀.readReg64 .x0, 32), (s₀.sp - 1200#64, 1200)] :=
+    hf25.mono fun a ha r hr => by
+      have hout := ha (s₀.readReg64 .x0, 32) (by simp)
+      have hstk := ha (s₀.sp - 1200#64, 1200) (by simp)
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
+      rcases hr with rfl | rfl
+      · exact hout
+      · clear * - hstk; simp only [State.sp_setMem] at *; unfold OutsideRegion at hstk ⊢; bv_omega
   exact
     { pc_eq := hpc5
       status := hstat5
       calleeSaved := hcs5
       out_eq := hout5
-      frame := hs2_widen.trans (s2Frame_of_hmacFrame hfr5) }
+      frame := hf02_w.trans hf25_w }
 
 /-! ## Separation-Logic Contracts -/
 
-/-- Placed `hmac_sha256` contract on Block 73 under `HookSatExactMemcpy H lsMemcpySym` and `HookSat H lsMemsetSym sessionMemsetRegionSpec` (sibling of `hmac_sha256_placed_ok`). -/
+/-- Placed `hmac_sha256` contract on Block 73 under `HookSatExactMemcpy`, `HookSat` `memset`,
+and `HookSatCompress256` (sibling of `hmac_sha256_placed_ok`). -/
 public theorem hmac_sha256_placed_ok_sat [LibsignalPlacement]
-    (F : ShaState → List (BitVec 8) → ShaState)
+    (F : ShaCompress)
     {H : String → Option (State → State)}
     (h_mc : HookSatExactMemcpy H lsMemcpySym)
     (h_ms : HookSat H lsMemsetSym sessionMemsetRegionSpec)
-    (h_c256 : H lsCompress256Sym = some (compress256Hook F)) :
+    (h_c256 : HookSatCompress256 H lsCompress256Sym F) :
     subroutine_ok ((blkPC_73).rebase (blkPl_73).base H) (blkPl_73).base
       (withLsCodeLoaded lsmpl (hmacPlacedSpec F)) := by
   refine subroutine_ok_intro fun ⟨out, ka, key, ia, inp⟩ R s0 hpc hrun hpre hsp => ?_
@@ -298,24 +325,24 @@ public theorem hmac_sha256_placed_ok_sat [LibsignalPlacement]
   have hx4 : s0.readReg64 .x4 = 1#64 := by
     apply BitVec.eq_of_toNat_eq; simp at hx4_nat; simp [hx4_nat]
   have hsp_split : stackAt s0.sp 2048 =
-      memRegion (s0.sp - 2048#64) 1024 ∗ memRegion (s0.sp - 1024#64) 1024 :=
-    stackAt_split_bottom s0.sp 1024 1024 (by decide)
+      memRegion (s0.sp - 2048#64) 848 ∗ memRegion (s0.sp - 1200#64) 1200 :=
+    stackAt_split_bottom s0.sp 1200 848 (by decide)
   rw [hsp_split] at hsep
   have hb_out := IsBlock.memRegion out 32
   have hb_key := IsBlock.pointsToBytes_len (a := ka) hkey_len
   have hb_inp := IsBlock.pointsToBytes_len (a := ia) (rfl : [byte].length = 1)
-  have hb_stk := IsBlock.memRegion (s0.sp - 1024#64) 1024
-  have hsep_key : s0.mem ⊨ (ka ↦ₛ key) ∗ (memRegion (s0.sp - 1024#64) 1024 ∗
-      (memRegion out 32 ∗ (ia ↦ₛ [byte]) ∗ memRegion (s0.sp - 2048#64) 1024 ∗ R)) := by
+  have hb_stk := IsBlock.memRegion (s0.sp - 1200#64) 1200
+  have hsep_key : s0.mem ⊨ (ka ↦ₛ key) ∗ (memRegion (s0.sp - 1200#64) 1200 ∗
+      (memRegion out 32 ∗ (ia ↦ₛ [byte]) ∗ memRegion (s0.sp - 2048#64) 848 ∗ R)) := by
     ac_nf at hsep ⊢
-  have hsep_inp : s0.mem ⊨ (ia ↦ₛ [byte]) ∗ (memRegion (s0.sp - 1024#64) 1024 ∗
-      (memRegion out 32 ∗ (ka ↦ₛ key) ∗ memRegion (s0.sp - 2048#64) 1024 ∗ R)) := by
+  have hsep_inp : s0.mem ⊨ (ia ↦ₛ [byte]) ∗ (memRegion (s0.sp - 1200#64) 1200 ∗
+      (memRegion out 32 ∗ (ka ↦ₛ key) ∗ memRegion (s0.sp - 2048#64) 848 ∗ R)) := by
     ac_nf at hsep ⊢
-  have hsep_out : s0.mem ⊨ memRegion out 32 ∗ (memRegion (s0.sp - 1024#64) 1024 ∗
-      ((ka ↦ₛ key) ∗ (ia ↦ₛ [byte]) ∗ memRegion (s0.sp - 2048#64) 1024 ∗ R)) := by
+  have hsep_out : s0.mem ⊨ memRegion out 32 ∗ (memRegion (s0.sp - 1200#64) 1200 ∗
+      ((ka ↦ₛ key) ∗ (ia ↦ₛ [byte]) ∗ memRegion (s0.sp - 2048#64) 848 ∗ R)) := by
     ac_nf at hsep ⊢
-  have hsep_stk : s0.mem ⊨ memRegion (s0.sp - 1024#64) 1024 ∗
-      (memRegion out 32 ∗ (ka ↦ₛ key) ∗ (ia ↦ₛ [byte]) ∗ memRegion (s0.sp - 2048#64) 1024 ∗ R) := by
+  have hsep_stk : s0.mem ⊨ memRegion (s0.sp - 1200#64) 1200 ∗
+      (memRegion out 32 ∗ (ka ↦ₛ key) ∗ (ia ↦ₛ [byte]) ∗ memRegion (s0.sp - 2048#64) 848 ∗ R) := by
     ac_nf at hsep ⊢
   have hkey_eq : s0.mem.readBytes ka 32 = key := by
     have h := (hb_key.read hsep_key).2
@@ -324,7 +351,7 @@ public theorem hmac_sha256_placed_ok_sat [LibsignalPlacement]
     (hb_inp.read hsep_inp).2
   have hrw_out : RW s0.mem out 32 :=
     fun a ha => hb_out.permNoLazy_rw hsep_out ha
-  have hrw_stk : RW s0.mem (s0.sp - 1024#64) 1024 :=
+  have hrw_stk : RW s0.mem (s0.sp - 1200#64) 1200 :=
     fun a ha => hb_stk.permNoLazy_rw hsep_stk ha
   have hread_key : s0.mem.Readable ka 32 :=
     Memory.RW.readable (fun a ha => hb_key.permNoLazy_rw hsep_key ha)
@@ -333,7 +360,7 @@ public theorem hmac_sha256_placed_ok_sat [LibsignalPlacement]
   obtain ⟨hro_iv, hiv_eq⟩ := rodata_placed_sha256IV hro
   have hread_iv : s0.mem.Readable lsSha256IVAddr 32 :=
     fun a ha => ⟨by rw [(hro_iv a ha).1]; rfl, (hro_iv a ha).2⟩
-  have hpre_hmac : HmacPlacedPre F key [byte] s0 :=
+  have hpre_hmac : HmacPlacedPreSat F key [byte] s0 :=
     { pc_eq := hpc
       status := hrun
       sp_aligned := by simpa [State.spAligned] using hsp
@@ -363,22 +390,23 @@ public theorem hmac_sha256_placed_ok_sat [LibsignalPlacement]
   rw [hsp_split]
   have hb_out' := IsBlock.pointsToBytes_len (a := out) (length_hmacWith F key [byte])
   rw [hx0] at hout_sf hframe_sf
-  have hpost_sep : sf.mem ⊨ (out ↦ₛ hmacWith F key [byte]) ∗ (memRegion (s0.sp - 1024#64) 1024 ∗
-      ((ka ↦ₛ key) ∗ (ia ↦ₛ [byte]) ∗ memRegion (s0.sp - 2048#64) 1024 ∗ R)) :=
+  have hpost_sep : sf.mem ⊨ (out ↦ₛ hmacWith F key [byte]) ∗ (memRegion (s0.sp - 1200#64) 1200 ∗
+      ((ka ↦ₛ key) ∗ (ia ↦ₛ [byte]) ∗ memRegion (s0.sp - 2048#64) 848 ∗ R)) :=
     S2Frame.update_two_blocks hb_out hb_out' hb_stk hb_stk hsep_out hframe_sf
       ⟨by rw [length_hmacWith]; decide, by rwa [length_hmacWith]⟩ trivial
   change (sf.mem ⊨
     ((out ↦ₛ hmacWith F key [byte]) ∗ (ka ↦ₛ key) ∗ (ia ↦ₛ [byte]) ∗
-      (memRegion (s0.sp - 2048#64) 1024 ∗ memRegion (s0.sp - 1024#64) 1024)) ∗ R)
+      (memRegion (s0.sp - 2048#64) 848 ∗ memRegion (s0.sp - 1200#64) 1200)) ∗ R)
   ac_nf at hpost_sep ⊢
 
-/-- `.rodata`-backed placed `hmac_sha256` contract on Block 73 under `HookSatExactMemcpy H lsMemcpySym` and `HookSat H lsMemsetSym sessionMemsetRegionSpec` (sibling of `hmac_sha256_placed_ro_ok`). -/
+/-- `.rodata`-backed placed `hmac_sha256` contract on Block 73 under `HookSatExactMemcpy`, `HookSat` `memset`,
+and `HookSatCompress256` (sibling of `hmac_sha256_placed_ro_ok`). -/
 public theorem hmac_sha256_placed_ro_ok_sat [LibsignalPlacement]
-    (F : ShaState → List (BitVec 8) → ShaState)
+    (F : ShaCompress)
     {H : String → Option (State → State)}
     (h_mc : HookSatExactMemcpy H lsMemcpySym)
     (h_ms : HookSat H lsMemsetSym sessionMemsetRegionSpec)
-    (h_c256 : H lsCompress256Sym = some (compress256Hook F)) :
+    (h_c256 : HookSatCompress256 H lsCompress256Sym F) :
     subroutine_ok ((blkPC_73).rebase (blkPl_73).base H) (blkPl_73).base
       (withLsCodeLoaded lsmpl
         { hmacSpec F with pre := fun g s => (hmacSpec F).pre g s ∗ ⌜LibsignalRoLoaded lsmpl s.mem⌝ }) := by

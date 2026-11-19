@@ -11,7 +11,7 @@ module
 
 public import LibsignalBinary.Proofs.PublicApi.StoreKit.Defs
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Entries
-public import LibsignalBinary.Proofs.E2E.InMem.SessionStoreImpl.ReprBridge
+public import LibsignalBinary.Proofs.E2E.InMem.SessionStoreImpl.ReprBridge -- proof-setup: allow-public-import
 
 /-!
 # Scope predicates and store-kit bridges for SPQR V1
@@ -22,7 +22,7 @@ Defines the SPQR V1 counterparts (`InScopeV1`, `InvV1`, `InMemRecOkV1`, `HonestE
 SPQR-off scopes.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.V1
 
@@ -38,7 +38,7 @@ open CryptoVerification.E2E.InMem.SessionStoreImpl
 /-! ## Record scope `InScopeV1` -/
 
 /-- V1 record scope: `Record.InScope` with `RecordPqStateLengthBelow2Pow32` in place of `RecordPqEmpty`. -/
-def InScopeV1 (r : SessionRecord (List (BitVec 8))) : Prop :=
+@[expose] def InScopeV1 (r : SessionRecord (List (BitVec 8))) : Prop :=
   Record.RecordInScope r ∧ LibsignalSpqrV1.RecordPqStateLengthBelow2Pow32 r ∧ Record.RecordRepr r
 
 theorem recordPqBound_of_recordPqEmpty {r : SessionRecord (List (BitVec 8))} (h : Record.RecordPqEmpty r) :
@@ -48,35 +48,10 @@ theorem recordPqBound_of_recordPqEmpty {r : SessionRecord (List (BitVec 8))} (h 
 theorem inScopeV1_of_inScope {r : SessionRecord (List (BitVec 8))} (h : Record.InScope r) : InScopeV1 r := by
   exact ⟨h.1, recordPqBound_of_recordPqEmpty h.2.1, h.2.2⟩
 
-/-! ## `HonestEnv.paramsS` and reachable-state invariant `InvV1` -/
-
-/-- `HonestEnv.params` parameterized by an arbitrary SPQR model `S` in place of `Record.spqrOffB`. -/
-def _root_.CryptoVerification.E2E.Record.HonestEnv.paramsS (E : Record.HonestEnv) {PQC : Type}
-    (S : Spqr (List (BitVec 8)) PQC) : Params (List (BitVec 8)) PQC :=
-  ⟨E.C, protoSignalCodec, S, E.idOf .A, E.idOf .B,
-    serializeAddrVals (serviceIdParse uuidTryParse) (E.addr .A) (E.addr .B),
-    serializeAddrVals (serviceIdParse uuidTryParse) (E.addr .B) (E.addr .A)⟩
-
-theorem params_eq_paramsS (E : Record.HonestEnv) : E.params = E.paramsS Record.spqrOffB := by
-  rfl
-
-theorem ownId_eq_paramsS (E : Record.HonestEnv) {PQC : Type} (S : Spqr (List (BitVec 8)) PQC) (p : Party) :
-    Record.ownId E p = (match p with | .A => (E.paramsS S).idA | .B => (E.paramsS S).idB) := by
-  cases p <;> rfl
-
-/-- Reachable-session invariant for V1 (`Record.Inv` with `InScopeV1` in place of `Record.InScope`). -/
-def InvV1 (E : Record.HonestEnv) (g : GhostState (List (BitVec 8))) : Prop :=
-  InScopeV1 (E.recOf g) ∧ g.session.localIdentity = Record.ownId E g.party ∧
-    g.session.remoteIdentity = some (Record.ownId E g.party.other)
-
-theorem invV1_of_inv {E : Record.HonestEnv} {g : GhostState (List (BitVec 8))} (h : Record.Inv E g) :
-    InvV1 E g := by
-  exact ⟨inScopeV1_of_inScope h.1, h.2⟩
-
 /-! ## In-memory store scope `InMemRecOkV1` -/
 
 /-- Store-side record invariant for an SPQR V1 `InMemSessionStore` (`RecordPqStateLengthBelow2Pow32` in place of `RecordPqEmpty`). -/
-def InMemRecOkV1 (r : SessionRecord (List (BitVec 8))) : Prop :=
+@[expose] def InMemRecOkV1 (r : SessionRecord (List (BitVec 8))) : Prop :=
   Record.RecordInScope r ∧ LibsignalSpqrV1.RecordPqStateLengthBelow2Pow32 r ∧ r.currentSession.isSome
 
 theorem inMemRecOkV1_of_inMemRecOk {r : SessionRecord (List (BitVec 8))} (h : InMemRecOk r) :

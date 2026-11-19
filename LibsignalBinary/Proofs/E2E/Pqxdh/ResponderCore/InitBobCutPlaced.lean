@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCut
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobPlaced
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCut -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable `initialize_bob_session` (Block `75`): Rejecting Run and `spqr::initial_state` Cut
@@ -21,7 +22,7 @@ hypothesis. Provides the rejecting-branch contract and the frame-retaining cuts 
 `lsmpl.base 327` (`spqr::initial_state`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -58,7 +59,7 @@ private theorem calleeSavedVRegs_writeVReg128_0_cut (s : State) (v : BitVec 128)
 /-! ## Rejecting Run (`Model.acceptKeys P g.inp = none`) -/
 
 /-- `initializeBobSessionInnerPlacedSpec` restricted to `Model.acceptKeys P g.inp = none`. -/
-def initializeBobSessionErrInnerPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
+@[expose] def initializeBobSessionErrInnerPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
     Spec InitBobCallGhost where
   pre := fun (g : InitBobCallGhost) s =>
     ⌜s.readReg64 .x0 = g.argPtr ∧
@@ -135,11 +136,11 @@ private theorem call_bobMemInv_frame {α : Type} {prog : Program} {Φ : Memory �
   · dsimp only [withBobMemInv] at hpost
     exact (hexit sm code _ hex hpost).elim
 
-def initializeBobSessionErrPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
+@[expose] def initializeBobSessionErrPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
     Spec InitBobCallGhost :=
   withLsCodeRoLoaded lsmpl (initializeBobSessionErrInnerPlacedSpec P A)
 
-def initializeBobSessionErrFrozenPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
+@[expose] def initializeBobSessionErrFrozenPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
     Spec InitBobCallGhost :=
   withLsFrozen lsmpl (initializeBobSessionErrInnerPlacedSpec P A)
 

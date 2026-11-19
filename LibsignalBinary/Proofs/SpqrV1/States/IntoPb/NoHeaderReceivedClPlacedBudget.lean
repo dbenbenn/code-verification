@@ -9,13 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.BaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.NoHeaderReceivedClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4aBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4aPlacedBudget
+import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.BaseBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.NoHeaderReceivedClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4aBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4aPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersX
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1PlacedBudget
 
 /-!
 # Budget-Threaded `<States>::into_pb` (Block `334`) — Arm 5 (`States.noHeaderReceived`) with `withLsCodeLoaded`
@@ -24,7 +27,7 @@ Re-exports `NoHeaderReceivedEnv` and `withLsCodeLoaded` relocatable contracts fo
 (`States.noHeaderReceived`, tag `7`) from `Part4aPlacedBudget`, and lifts them to `withLsCl`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -74,54 +77,5 @@ export LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4aPlacedBudget (
 )
 
 /-! ## 2. `withLsCl` Relocatable Arm 5 Contracts -/
-
-/-- Envelope-parametric `withLsCl` relocatable `subroutine_ok` for `<States>::into_pb`
-    (Block `334`) on `.noHeaderReceived s` (Arm 5, tag `7`). -/
-theorem states_into_pb_noHeaderReceived_of_env_withLsCl_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    {Env : List AllocEvent → Prop}
-    (hdec_cl : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (withLsCl lsmpl (decoderIntoPbSpec M A lim)))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec)
-    (s : NoHeaderReceived spqrPolyApi (spqrAuthApi F))
-    (hEnv : ∀ evs, NoHeaderReceivedEnv s evs → Env evs) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (blkPl_334).base
-      (withLsCl lsmpl (statesIntoPbVariantPlacedSpecOfEnv M A lim F (.noHeaderReceived s) Env)) :=
-  subroutine_ok_withLsCl_of_withLsCodeLoaded
-    (states_into_pb_noHeaderReceived_of_env_cl_placed
-      (subroutine_ok_withLsCodeLoaded_of_withLsCl hdec_cl) hmemcpy_raw s hEnv)
-
-/-- Tight `NoHeaderReceivedEnv` `withLsCl` relocatable `subroutine_ok` for `<States>::into_pb`
-    (Block `334`) on `.noHeaderReceived s` (Arm 5, tag `7`). -/
-theorem states_into_pb_noHeaderReceived_env_withLsCl_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hdec_cl : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (withLsCl lsmpl (decoderIntoPbSpec M A lim)))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec)
-    (s : NoHeaderReceived spqrPolyApi (spqrAuthApi F)) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (blkPl_334).base
-      (withLsCl lsmpl (statesIntoPbNoHeaderReceivedPlacedSpec M A lim F s)) :=
-  states_into_pb_noHeaderReceived_of_env_withLsCl_placed hdec_cl hmemcpy_raw s (fun _ h => h)
-
-/-- Complete `withLsCl` budget-threaded relocatable proof of `<States>::into_pb`
-    (Block `334`) on `.noHeaderReceived s` (Arm 5, tag `7`). -/
-theorem states_into_pb_noHeaderReceived_withLsCl_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hdec_cl : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (withLsCl lsmpl (decoderIntoPbSpec M A lim)))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec)
-    (s : NoHeaderReceived spqrPolyApi (spqrAuthApi F)) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (blkPl_334).base
-      (withLsCl lsmpl (statesIntoPbNoHeaderReceivedPlacedSpec M A lim F s)) :=
-  states_into_pb_noHeaderReceived_env_withLsCl_placed hdec_cl hmemcpy_raw s
 
 end LibsignalBinary.Proofs.SpqrV1.States.IntoPb.NoHeaderReceivedClPlacedBudget

@@ -9,16 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontStepsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFront
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontStepsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFront
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysBase
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +56,7 @@ open CryptoVerification.CliHandshake.RespClosurePlaced
 open CryptoVerification.CliHandshake.Placed
 
 /-- Relocatable `[LibsignalPlacement]` Junction 1 predicate `genP3J1Placed` at `+0x19b0`. -/
-def genP3J1Placed [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr
+@[expose] def genP3J1Placed [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr
     whisperMsgPtr cur : BitVec 64) (msgVer : BitVec 32) (rest : List (BitVec 8))
     (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
@@ -88,7 +94,7 @@ def genP3J1Placed [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr rem
       genP3SenderInlineWords sp w.sq0 w.sq1 w.sq2 w.sq3 w.sq4 w.sq5
 
 /-- Relocatable `[LibsignalPlacement]` Junction 2 predicate `genP3J2Placed` at `+0x1a5c`. -/
-def genP3J2Placed [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr
+@[expose] def genP3J2Placed [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr
     whisperMsgPtr cur : BitVec 64) (msgVer : BitVec 32) (rest : List (BitVec 8))
     (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
@@ -131,7 +137,7 @@ def genP3J2Placed [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr rem
       genP3SenderInlineWords sp w.sq0 w.sq1 w.sq2 w.sq3 w.sq4 w.sq5
 
 /-- Relocatable `[LibsignalPlacement]` Junction 3 predicate `genP3J3Placed` at `+0x1b20`. -/
-def genP3J3Placed [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr
+@[expose] def genP3J3Placed [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr
     whisperMsgPtr cur : BitVec 64) (msgVer : BitVec 32) (rest : List (BitVec 8))
     (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
@@ -183,7 +189,7 @@ def genP3J3Placed [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr rem
       genP3SenderInlineWords sp w.sq0 w.sq1 w.sq2 w.sq3 w.sq4 w.sq5
 
 /-- Relocatable `[LibsignalPlacement]` Junction 4 predicate `genP3J4Placed` at `+0x1bac`. -/
-def genP3J4Placed [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr
+@[expose] def genP3J4Placed [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr
     whisperMsgPtr cur : BitVec 64) (msgVer : BitVec 32) (rest : List (BitVec 8))
     (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)

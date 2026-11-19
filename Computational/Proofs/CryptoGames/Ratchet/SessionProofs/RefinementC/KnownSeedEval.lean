@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.SaltK4
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.SaltK4 -- proof-setup: allow-public-import
 public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Defs
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.Crypto
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Sync
@@ -20,7 +20,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Sync
 **Checked by Lean.** Connects `predictReceiveWithSnapshots` (`snapshotMessageKeySeed` and `decryptWithKnownSeed` over the corruption snapshot log `snaps`) to Fig. 8 `receive` and derives the four-way corruption-window exclusion when `predictReceiveWithSnapshots` returns `none`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -36,8 +36,6 @@ variable {Pt PQ PQC : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt] [Inha
   [SampleableType PQC] {ℓ : ℕ}
 
 /-! ## Snapshot receive prediction -/
-
-abbrev SimStateCK (PQ Pt : Type) (ℓ : ℕ) := LibsignalToModularSchemeSimState PQ Pt ℓ
 
 omit [Zero Pt] [SampleableType Pt] [Inhabited PQ] [SampleableType PQC] in
 theorem evalCK_of_evalC_some
@@ -681,87 +679,5 @@ theorem KeptInv.evalCK_spec (P : Params PQ PQC) (Inv : ℕ → PQ → Prop)
           exact ⟨st', hfig_c', pm, hfig_c⟩
 
 /-! ## Corruption-window exclusion -/
-
-omit [SampleableType Pt] [Inhabited PQ] [SampleableType PQC] in
-theorem no_corr_window_of_evalCK_none_gen
-    {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → List (BitVec 8)} {encT : Pt → PublicKey}
-    (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
-      (BitVec 256) (Fig8C Pt))
-    (fs : FSAEADScheme (BitVec 256) (FSAEAD.RatchetSenderState (BitVec 256))
-      (FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256)) (Header Pt) (LibsignalMsgPublicPart × Plain ℓ)
-      (ℕ × LibsignalCiphertextWithSalt32))
-    (P : Params PQ PQC) (hX : X25519RealizesDh P.C Dh encPt encT) (hDh : Dh.Commutes)
-    (tr : EpochTrace P.C.F Dh encPt)
-    {s : SimStateCK PQ Pt ℓ} {Q : Party} {s_Q s_Q' : RatchetState} {maxAcc_Q : ℕ → ℕ}
-    (hsnaps : ∀ snap ∈ s.snaps, SnapInv P.C Dh encPt encT tr Q s_Q maxAcc_Q snap)
-    {w : List (BitVec 8)} {c c' : Fig8C Pt}
-    {idx : ℕ} (ht : c.1.1 ≤ tr.tFront) (hsends : Q.other.sendsIn c.1.1 = true)
-    {rc : ReceiverChain} {msg : SignalMessage} {msgType : MessageType} {key : MessageKeyGenerator}
-    (hw : SignalMessage.tryFrom P.codec w = .ok msg)
-    (hY : msg.senderRatchetKey = encT (tr.T c.1.1))
-    (hfind : s_Q.findReceiverChainIndex (encT (tr.T c.1.1)) = some idx)
-    (hget : s_Q.receiverChains[idx]? = some rc)
-    (hinv : RcvChainInv P.C.F (tr.ck c.1.1) (maxAcc_Q c.1.1) rc)
-    (hexec : Mut.exec
-      (RatchetState.consumeMessageKey P.C.F (encT (tr.T c.1.1))
-        ⟨chainKeyValAt P.C.F (tr.ck c.1.1) (maxAcc_Q c.1.1), BitVec.ofNat 32 (maxAcc_Q c.1.1)⟩
-        msg.counter msgType) s_Q = (Except.ok key, s_Q'))
-    (hstored : ∀ e g, (Q, e, g) ∈ s.snaps → c.1.1 < e → c.1.1 ∈ storedEpochs Q e)
-    (heval : predictReceiveWithSnapshots fig fs P s Q w c c' = none) :
-    predictReceive (fig := fig) (fs := fs) s Q c c' = none ∧
-    snapshotMessageKeySeed P s.snaps Q c.1.1 w = none ∧
-    (∀ e g, (Q, e, g) ∈ s.snaps → e + 3 ≤ c.1.1) ∧
-    (∀ e g, (Q.other, e, g) ∈ s.snaps → c.1.1 ≠ e + 1) ∧
-    (∀ g sc, (Q.other, c.1.1, g) ∈ s.snaps → g.session.senderChain = some sc →
-      msg.counter.toNat < sc.chainKey.index.toNat) ∧
-    ¬ ((∃ e₁ g₁, (Q.other, e₁, g₁) ∈ s.snaps ∧ c.1.1 = e₁ + 2) ∧
-       (∃ g₂, (Q.other, c.1.1, g₂) ∈ s.snaps)) := by
-  rcases (evalCK_eq_none_iff fig fs P s Q w c c').mp heval with ⟨hevC, hknone⟩
-  refine ⟨hevC, hknone, ?_⟩
-  exact knownSeedR_none_no_corr_window P hX hDh tr hsnaps ht hsends hw hY
-    hfind hget hinv hexec hstored hknone
-
-omit [SampleableType Pt] [Inhabited PQ] [SampleableType PQC] in
-/-- When `predictReceiveWithSnapshots` returns `none` on an honest delivery to `Q` under `SnapsInv`, all four corruption-window exclusions of `knownSeedR_none_no_corr_window` hold. -/
-theorem no_corr_window_of_evalCK_none
-    {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → List (BitVec 8)} {encT : Pt → PublicKey}
-    (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
-      (BitVec 256) (Fig8C Pt))
-    (fs : FSAEADScheme (BitVec 256) (FSAEAD.RatchetSenderState (BitVec 256))
-      (FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256)) (Header Pt) (LibsignalMsgPublicPart × Plain ℓ)
-      (ℕ × LibsignalCiphertextWithSalt32))
-    (P : Params PQ PQC) (idOf : Party → IdentityKey)
-    (hX : X25519RealizesDh P.C Dh encPt encT) (hDh : Dh.Commutes)
-    {s_R : SM.GameState (GhostState PQ) (Plain ℓ) (List (BitVec 8))}
-    {s : SimStateCK PQ Pt ℓ}
-    {s_fig8 : SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)}
-    {epExp : ℕ → BitVec 256}
-    {tr : EpochTrace P.C.F Dh encPt} {K : ℕ → BitVec 256} {maxAcc : Party → ℕ → ℕ}
-    (hsnaps : SnapsInv P Dh encPt encT idOf s_R s s_fig8 epExp tr K maxAcc)
-    {Q : Party} {w : List (BitVec 8)} {c c' : Fig8C Pt}
-    {idx : ℕ} (ht : c.1.1 ≤ tr.tFront) (hsends : Q.other.sendsIn c.1.1 = true)
-    {rc : ReceiverChain} {msg : SignalMessage} {msgType : MessageType}
-    {key : MessageKeyGenerator} {s_Q' : RatchetState}
-    (hw : SignalMessage.tryFrom P.codec w = .ok msg)
-    (hY : msg.senderRatchetKey = encT (tr.T c.1.1))
-    (hfind : (ratchetStateOf (s_R.st Q)).findReceiverChainIndex (encT (tr.T c.1.1)) = some idx)
-    (hget : (ratchetStateOf (s_R.st Q)).receiverChains[idx]? = some rc)
-    (hinv : RcvChainInv P.C.F (tr.ck c.1.1) (maxAcc Q c.1.1) rc)
-    (hexec : Mut.exec
-      (RatchetState.consumeMessageKey P.C.F (encT (tr.T c.1.1))
-        ⟨chainKeyValAt P.C.F (tr.ck c.1.1) (maxAcc Q c.1.1), BitVec.ofNat 32 (maxAcc Q c.1.1)⟩
-        msg.counter msgType) (ratchetStateOf (s_R.st Q)) = (Except.ok key, s_Q'))
-    (hstored : ∀ e g, (Q, e, g) ∈ s.snaps → c.1.1 < e → c.1.1 ∈ storedEpochs Q e)
-    (heval : predictReceiveWithSnapshots fig fs P s Q w c c' = none) :
-    predictReceive (fig := fig) (fs := fs) s Q c c' = none ∧
-    snapshotMessageKeySeed P s.snaps Q c.1.1 w = none ∧
-    (∀ e g, (Q, e, g) ∈ s.snaps → e + 3 ≤ c.1.1) ∧
-    (∀ e g, (Q.other, e, g) ∈ s.snaps → c.1.1 ≠ e + 1) ∧
-    (∀ g sc, (Q.other, c.1.1, g) ∈ s.snaps → g.session.senderChain = some sc →
-      msg.counter.toNat < sc.chainKey.index.toNat) ∧
-    ¬ ((∃ e₁ g₁, (Q.other, e₁, g₁) ∈ s.snaps ∧ c.1.1 = e₁ + 2) ∧
-       (∃ g₂, (Q.other, c.1.1, g₂) ∈ s.snaps)) :=
-  no_corr_window_of_evalCK_none_gen fig fs P hX hDh tr (hsnaps.hsnaps Q) ht hsends hw hY
-    hfind hget hinv hexec hstored heval
 
 end CryptoGames.LibsignalSM.Proofs.Refinement

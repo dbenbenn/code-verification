@@ -9,10 +9,10 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import Symbolic.Proofs.Swarm.CREF.Prelude
-public import Symbolic.Proofs.Swarm.CREF.Sticky
-public import Symbolic.Proofs.Swarm.CREF.Stage1Wire
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
+import Symbolic.Proofs.Swarm.CREF.Prelude
+import Symbolic.Proofs.Swarm.CREF.Sticky
+import Symbolic.Proofs.Swarm.CREF.Stage1Wire
+import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
 public import Mathlib.MeasureTheory.Integral.Bochner.Basic
 public import VCVio.Prelude.Core
 
@@ -23,7 +23,7 @@ Turn-state record and sent-message update projections (`effectiveRecords`, `effe
 composed model (`DY.Libsignal.Composed`), re-exporting `GhostsPure` and `GhostsSlots`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

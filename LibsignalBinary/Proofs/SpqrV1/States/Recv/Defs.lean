@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.Decodes
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerialize
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.Decodes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerialize -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Defs
 public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2Defs
 public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefs
@@ -24,7 +24,7 @@ decoder strict-sortedness invariants, `.rodata` and callee contract bundles (`St
 and specifications (`statesRecvSpecX`, `statesRecvVariantSpec`) for `<States>::recv` (`0x55454`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.Recv
 
@@ -65,7 +65,7 @@ abbrev v1RecvSize : Nat := 960
 /-- Binary layout of `Option<EpochSecret>` at `a` (`32` bytes = `0x20`, align `8`):
     - `none`: `(a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 24` (`Vec<u8>.cap = noneCap` niche at `+0`)
     - `some sec`: `epochSecretAt A a sec` (`vecU8 A a sec.secret ∗ ((a + 24#64) ↦₆₄ sec.epoch)`). -/
-def optEpochSecretAt (A : RustAlloc) (a : BitVec 64) : Option EpochSecret → SepProp
+@[expose] def optEpochSecretAt (A : RustAlloc) (a : BitVec 64) : Option EpochSecret → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 24
   | some sec => epochSecretAt A a sec
 
@@ -80,7 +80,7 @@ theorem optEpochSecretAt_some (A : RustAlloc) (a : BitVec 64) (sec : EpochSecret
 /-- Binary layout of `spqr::v1::V1Recv` at `a` (`960` bytes = `0x3c0`, align `8`):
     - `+0x000..+0x3a0` (`928`B): `state : States` (`chunkedStatesAt A a v.state`)
     - `+0x3a0..+0x3c0` (`32`B): `key : Option<EpochSecret>` (`optEpochSecretAt A (a + 928#64) v.key`). -/
-def v1RecvAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def v1RecvAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (v : V1Recv spqrPolyApi (spqrAuthApi F)) : SepProp :=
   chunkedStatesAt A a v.state ∗
     optEpochSecretAt A (a + 928#64) v.key
@@ -89,7 +89,7 @@ def v1RecvAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     - `.ok v`: `v1RecvAt A out v` (`960`B, with `States` discriminant `≠ noneCap` at `out + 0`)
     - `.error (.err err)`: `(out ↦₆₄ noneCap) ∗ ((out + 8#64) ↦₈ spqrErrorByte err) ∗ memRegion (out + 9#64) 951`
     - `.error (.panic _)`: `⌜False⌝` (panics take the `onPanic` continuation). -/
-def resultV1RecvAt (A : RustAlloc) {F : ShaCompress} (out : BitVec 64) :
+@[expose] def resultV1RecvAt (A : RustAlloc) {F : ShaCompress} (out : BitVec 64) :
     StatesResult (V1Recv spqrPolyApi (spqrAuthApi F)) → SepProp
   | .ok v => v1RecvAt A out v
   | .error (.err err) =>
@@ -151,7 +151,7 @@ theorem err_epochOutOfRange_entails_resultV1RecvAt (A : RustAlloc) {F : ShaCompr
 /-! ## Decoder Strict-Sortedness and Root-Key Preconditions -/
 
 /-- Active `PolyDecoder` strict-sortedness invariant on `States`. -/
-def statesDecoderStrictSorted {F : ShaCompress} :
+@[expose] def statesDecoderStrictSorted {F : ShaCompress} :
     States spqrPolyApi (spqrAuthApi F) → Prop
   | .headerSent s => PolyDecoderStrictSorted s.receiving_ct1
   | .ekSentCt1Received s => PolyDecoderStrictSorted s.receiving_ct2
@@ -166,7 +166,7 @@ def statesDecoderStrictSorted {F : ShaCompress} :
     `.ekReceivedCt1Sampled`, `.ct1Acknowledged` satisfy the `from_pb` / `spqrDecodeState`
     field byte-length bounds (`ek.length = 1152`, `es.length = 2080`, `ct1.length = 960`,
     `macKey.length < 2 ^ 32`). -/
-def statesRecvPreInv {F : ShaCompress} :
+@[expose] def statesRecvPreInv {F : ShaCompress} :
     States spqrPolyApi (spqrAuthApi F) → Prop
   | .keysSampled s => s.uc.ek.length = 1152
   | .headerSent s => PolyDecoderStrictSorted s.receiving_ct1
@@ -316,134 +316,11 @@ abbrev statesRecvStackXExt : Nat := statesRecvFrame + statesRecvCalleeStackXExt
     - `unchunkedSendCt2RoAt b` (`(b + 0xaa080#64) ↦₆₄ 0#64` for `logOff` + `(b + 0xa2748#64) ↦ᵣ Authenticator.ctLabel`)
     - `tokenInitAt b` (`(b + 0xaa088#64) ↦₈ 1#8`)
     - `reduceTableAt b` (`(b + 0xa1450#64) ↦ᵣ reduceTableBytes`). -/
-def statesRecvRoAt (b : BitVec 64) : SepProp :=
+@[expose] def statesRecvRoAt (b : BitVec 64) : SepProp :=
   statesRecvJumpTableAt b ∗
     unchunkedSendCt2RoAt b ∗
     tokenInitAt b ∗
     reduceTableAt b
-
-theorem rodata_statesRecvJumpTable {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ statesRecvJumpTableAt img.base ∗ P :=
-  rodata_statesRecvJumpTableAt himg hF hP
-
-/-- Bundle of callee `subroutine_ok` contracts used by `<States>::recv` (`0x55454..0x5a0a0`):
-    1. `<KeysSampled>::recv_ct1_chunk` (`0x61768`, `keysSampledRecvCt1ChunkSpec`)
-    2. `<HeaderSent>::recv_ct1_chunk` (`0x5d8fc`, `headerSentRecvCt1ChunkSpec`)
-    3. `<Ct1Received>::recv_ct2_chunk` (`0x5e2f4`, `ct1ReceivedRecvCt2ChunkSpec`)
-    4. `<EkSentCt1Received>::recv_ct2_chunk` (`0x5ec2c`, `RecvCt2ChunkOkX`)
-    5. `<NoHeaderReceived>::recv_hdr_chunk` (`0x61254`, `NoHeaderReceivedRecvHdrChunkOkX`)
-    6. `<PolyDecoder>::add_chunk` (`0x6c420`, `AddChunkOkX` — inlined `Ct1Sampled::recv_ek_chunk`)
-    7. `<PolyDecoder as Decoder>::decoded_message` (`0x6bb80`, `polyDecoderDecodedMessageSpec` — inlined `Ct1Sampled::recv_ek_chunk`)
-    8. `<Unchunked.SendCt.Ct1Sent>::recv_ek` (`0x5dac0`, `unchunkedCt1SentRecvEkSpec` — inlined `Ct1Sampled::recv_ek_chunk`)
-    9. `<Unchunked.SendCt.Ct1SentEkReceived>::send_ct2` (`0x5e400`, `unchunkedCt1SentEkReceivedSendCt2Spec` — inlined `Ct1Sampled::recv_ek_chunk`)
-    10. `send_ct2_encoder` (`0x63b28`, `sendCt2EncoderSpec` — inlined `Ct1Sampled::recv_ek_chunk`)
-    11. `<EkReceivedCt1Sampled>::recv_ct1_ack` (`0x5e0fc`, `ekReceivedCt1SampledRecvCt1AckSpec`)
-    12. `<Ct1Acknowledged>::recv_ek_chunk` (`0x5e9c8`, `ct1AcknowledgedRecvEkChunkSpec`)
-    13. `<Ct2Sampled>::recv_next_epoch` (`0x5fa5c`, `ct2SampledRecvNextEpochSpec`).
-    (Drop glue `0x4bd18`, `0x4bebc`, `0x4c78c`, `0x4c7d4`, `0x4c858`, `0x4c8bc`, `0x4c92c` are
-    already unconditionally proved in `Drop/PolyDecoder.lean`, `Drop/PolyEncoder.lean`, and `Drop/Chunked.lean`.) -/
-structure StatesRecvContracts (img : Obj.Image) (A : RustAlloc) (F : ShaCompress) (K : MlKem)
-    (ext : String → Option (State → State)) : Prop where
-  keysSampledRecvCt1Chunk_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr keysSampledRecvCt1ChunkName)
-      (keysSampledRecvCt1ChunkSpec A F)
-  headerSentRecvCt1Chunk_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr headerSentRecvCt1ChunkName)
-      (headerSentRecvCt1ChunkSpec A F img.base)
-  ct1ReceivedRecvCt2Chunk_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr ct1ReceivedRecvCt2ChunkName)
-      (ct1ReceivedRecvCt2ChunkSpec A F)
-  ekSentCt1ReceivedRecvCt2Chunk_ok :
-    RecvCt2ChunkOkX img K F A ext
-  noHeaderReceivedRecvHdrChunk_ok :
-    NoHeaderReceivedRecvHdrChunkOkX img F A ext
-  polyAddChunk_ok :
-    AddChunkOkX img A ext
-  polyDecodedMessage_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr polyDecoderDecodedMessageName)
-      (polyDecoderDecodedMessageSpec A img.base)
-  unchunkedCt1SentRecvEk_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr unchunkedCt1SentRecvEkName)
-      (unchunkedCt1SentRecvEkSpec A F K)
-  unchunkedCt1SentEkReceivedSendCt2_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr unchunkedCt1SentEkReceivedSendCt2Name)
-      (unchunkedCt1SentEkReceivedSendCt2Spec A F K img.base)
-  sendCt2Encoder_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr sendCt2EncoderName)
-      (sendCt2EncoderSpec A)
-  ekReceivedCt1SampledRecvCt1Ack_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr ekReceivedCt1SampledRecvCt1AckName)
-      (ekReceivedCt1SampledRecvCt1AckSpec A F K img.base)
-  ct1AcknowledgedRecvEkChunk_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr ct1AcknowledgedRecvEkChunkName)
-      (ct1AcknowledgedRecvEkChunkSpec A F K img.base)
-  ct2SampledRecvNextEpoch_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr ct2SampledRecvNextEpochName)
-      (ct2SampledRecvNextEpochSpec A F)
-
-/-- Contract-backed (`*Ext`) callee `subroutine_ok` bundle for `<States>::recv` (`0x55454..0x5a0a0`),
-    replacing `RecvCt2ChunkOkX` with `RecvCt2ChunkOkExt`. -/
-structure StatesRecvContractsExt (img : Obj.Image) (A : RustAlloc) (F : ShaCompress) (K : MlKem)
-    (ext : String → Option (State → State)) : Prop where
-  keysSampledRecvCt1Chunk_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr keysSampledRecvCt1ChunkName)
-      (keysSampledRecvCt1ChunkSpec A F)
-  headerSentRecvCt1Chunk_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr headerSentRecvCt1ChunkName)
-      (headerSentRecvCt1ChunkSpec A F img.base)
-  ct1ReceivedRecvCt2Chunk_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr ct1ReceivedRecvCt2ChunkName)
-      (ct1ReceivedRecvCt2ChunkSpec A F)
-  ekSentCt1ReceivedRecvCt2Chunk_ok :
-    RecvCt2ChunkOkExt img K F A ext
-  noHeaderReceivedRecvHdrChunk_ok :
-    NoHeaderReceivedRecvHdrChunkOkX img F A ext
-  polyAddChunk_ok :
-    AddChunkOkX img A ext
-  polyDecodedMessage_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr polyDecoderDecodedMessageName)
-      (polyDecoderDecodedMessageSpec A img.base)
-  unchunkedCt1SentRecvEk_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr unchunkedCt1SentRecvEkName)
-      (unchunkedCt1SentRecvEkSpec A F K)
-  unchunkedCt1SentEkReceivedSendCt2_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr unchunkedCt1SentEkReceivedSendCt2Name)
-      (unchunkedCt1SentEkReceivedSendCt2Spec A F K img.base)
-  sendCt2Encoder_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr sendCt2EncoderName)
-      (sendCt2EncoderSpec A)
-  ekReceivedCt1SampledRecvCt1Ack_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr ekReceivedCt1SampledRecvCt1AckName)
-      (ekReceivedCt1SampledRecvCt1AckSpec A F K img.base)
-  ct1AcknowledgedRecvEkChunk_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr ct1AcknowledgedRecvEkChunkName)
-      (ct1AcknowledgedRecvEkChunkSpec A F K img.base)
-  ct2SampledRecvNextEpoch_ok :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr ct2SampledRecvNextEpochName)
-      (ct2SampledRecvNextEpochSpec A F)
-
-/-! ## Top-Level and Per-Variant Specifications of `<States>::recv` (`0x55454`) -/
 
 /-- Ghost arguments of `<spqr::v1::chunked::states::States>::recv` (`0x55454`). -/
 structure StatesRecvGhost (F : ShaCompress) where
@@ -458,7 +335,7 @@ structure StatesRecvGhost (F : ShaCompress) where
 
 /-- Panic postcondition of `<States>::recv` (`0x55454`):
     either `x.self.recv K x.msg` panics in the pure model, or heap allocation fails (`allocFailedIn`). -/
-def statesRecvOnPanic {F : ShaCompress} (K : MlKem) (x : StatesRecvGhost F) (s0 sf : State) : SepProp :=
+@[expose] def statesRecvOnPanic {F : ShaCompress} (K : MlKem) (x : StatesRecvGhost F) (s0 sf : State) : SepProp :=
   ⌜((x.self.recv K x.msg).isPanic = true ∨ allocFailedIn s0 sf) ∧
     s0.trace <+: sf.trace⌝ ∗ anyHeap
 
@@ -468,7 +345,7 @@ def statesRecvOnPanic {F : ShaCompress} (K : MlKem) (x : StatesRecvGhost F) (s0 
     - Consumes `chunkedStatesAt A x.selfA x.self` (leaving `memRegion x.selfA 928`), preserves
       `messageAt spqrPolyApi x.msgA x.msg`, and writes `resultV1RecvAt A x.outA (x.self.recv K x.msg)` at `x.outA`,
       or panics via `statesRecvOnPanic`. -/
-def statesRecvSpec (A : RustAlloc) (F : ShaCompress) (K : MlKem) (b : BitVec 64) :
+@[expose] def statesRecvSpec (A : RustAlloc) (F : ShaCompress) (K : MlKem) (b : BitVec 64) :
     Spec (StatesRecvGhost F) where
   pre := fun x s =>
     ⌜b &&& 0xfff#64 = 0#64 ∧
@@ -491,7 +368,7 @@ def statesRecvSpec (A : RustAlloc) (F : ShaCompress) (K : MlKem) (b : BitVec 64)
   onPanic := fun x s0 sf => statesRecvOnPanic K x s0 sf
 
 /-- Per-variant specification of `0x55454` (`States::recv`) for a fixed `(self, msg)`. -/
-def statesRecvVariantSpec (A : RustAlloc) (F : ShaCompress) (K : MlKem) (b : BitVec 64)
+@[expose] def statesRecvVariantSpec (A : RustAlloc) (F : ShaCompress) (K : MlKem) (b : BitVec 64)
     (self : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64) where
   pre := fun ⟨outA, selfA, msgA⟩ s =>
@@ -515,27 +392,8 @@ def statesRecvVariantSpec (A : RustAlloc) (F : ShaCompress) (K : MlKem) (b : Bit
   onPanic := fun ⟨outA, selfA, msgA⟩ s0 sf =>
     statesRecvOnPanic K ⟨outA, selfA, msgA, self, msg⟩ s0 sf
 
-/-- In-image specification of `<States>::recv` (`0x55454`). -/
-def statesRecvSpecX (A : RustAlloc) (F : ShaCompress) (K : MlKem) (img : Obj.Image) :
-    Spec (StatesRecvGhost F) :=
-  (statesRecvSpec A F K img.base).inImage img
-
-/-- `<States>::recv` (`0x55454`) meets `statesRecvSpec A F K b` on `tripleRatchetProgAtExt b ext`. -/
-def StatesRecvOkExt (b : BitVec 64) (A : RustAlloc) (F : ShaCompress) (K : MlKem)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr statesRecvName)
-    (statesRecvSpec A F K b)
-
-/-- `<States>::recv` (`0x55454`) meets `statesRecvSpecX A F K img` on `tripleRatchetProgAtExt img.base ext`. -/
-def StatesRecvOkX (img : Obj.Image) (A : RustAlloc) (F : ShaCompress) (K : MlKem)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr statesRecvName)
-    (statesRecvSpecX A F K img)
-
 /-- Extended (`+ extHookStack = + 16384`B) specification of `<spqr::v1::chunked::states::States>::recv` (`0x55454`). -/
-def statesRecvSpecExt (A : RustAlloc) (F : ShaCompress) (K : MlKem) (b : BitVec 64) :
+@[expose] def statesRecvSpecExt (A : RustAlloc) (F : ShaCompress) (K : MlKem) (b : BitVec 64) :
     Spec (StatesRecvGhost F) where
   pre := fun x s =>
     ⌜b &&& 0xfff#64 = 0#64 ∧
@@ -558,7 +416,7 @@ def statesRecvSpecExt (A : RustAlloc) (F : ShaCompress) (K : MlKem) (b : BitVec 
   onPanic := fun x s0 sf => statesRecvOnPanic K x s0 sf
 
 /-- Extended (`+ extHookStack = + 16384`B) per-variant specification of `0x55454` (`States::recv`). -/
-def statesRecvVariantSpecExt (A : RustAlloc) (F : ShaCompress) (K : MlKem) (b : BitVec 64)
+@[expose] def statesRecvVariantSpecExt (A : RustAlloc) (F : ShaCompress) (K : MlKem) (b : BitVec 64)
     (self : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64) where
   pre := fun ⟨outA, selfA, msgA⟩ s =>
@@ -582,18 +440,6 @@ def statesRecvVariantSpecExt (A : RustAlloc) (F : ShaCompress) (K : MlKem) (b : 
   onPanic := fun ⟨outA, selfA, msgA⟩ s0 sf =>
     statesRecvOnPanic K ⟨outA, selfA, msgA, self, msg⟩ s0 sf
 
-/-- Extended (`+ extHookStack = + 16384`B) in-image specification of `<States>::recv` (`0x55454`). -/
-def statesRecvSpecXExt (A : RustAlloc) (F : ShaCompress) (K : MlKem) (img : Obj.Image) :
-    Spec (StatesRecvGhost F) :=
-  (statesRecvSpecExt A F K img.base).inImage img
-
-/-- `<States>::recv` (`0x55454`) meets `statesRecvSpecXExt A F K img` on `tripleRatchetProgAtExt img.base ext`. -/
-def StatesRecvOkXExt (img : Obj.Image) (A : RustAlloc) (F : ShaCompress) (K : MlKem)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr statesRecvName)
-    (statesRecvSpecXExt A F K img)
-
 private theorem stackAt_split_grow_recv (sp : BitVec 64) (nX nExt : Nat)
     (hle : nX ≤ nExt := by decide) (hbd : nExt ≤ 131072 := by decide) :
     stackAt sp nExt = memRegion (sp - BitVec.ofNat 64 nExt) (nExt - nX) ∗ stackAt sp nX := by
@@ -601,107 +447,9 @@ private theorem stackAt_split_grow_recv (sp : BitVec 64) (nX nExt : Nat)
   have h := ProofLib.stackAt_split_bottom sp nX (nExt - nX) hbd'
   rwa [Nat.add_sub_of_le hle] at h
 
-theorem sub_ok_inImage_grow_stack_recv {α : Type} {prog : Program} {img : Obj.Image}
-    {entry : BitVec 64} {specX specExt : Spec α} (nX nExt : Nat)
-    (hpre_imp : ∀ x s,
-      specExt.pre x s ⊢
-        specX.pre x s ∗ memRegion (s.sp - BitVec.ofNat 64 nExt) (nExt - nX))
-    (hpost_imp : ∀ x s sf,
-      specX.post x s sf ∗ memRegion (s.sp - BitVec.ofNat 64 nExt) (nExt - nX) ⊢
-        specExt.post x s sf)
-    (hpan_eq : ∀ x s sf, ∃ φ : Prop,
-      specX.onPanic x s sf = (⌜φ⌝ ∗ anyHeap) ∧ specExt.onPanic x s sf = (⌜φ⌝ ∗ anyHeap))
-    (hexit : ∀ x code s sf, specX.onExit x code s sf = ⌜False⌝)
-    (hoom : ∀ x s sf, specX.onOom x s sf = ⌜False⌝)
-    (h : subroutine_ok prog entry (specX.inImage img)) :
-    subroutine_ok prog entry (specExt.inImage img) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  let Fr := memRegion (s0.sp - BitVec.ofNat 64 nExt) (nExt - nX)
-  have hpre' : s0.mem ⊨ (specX.inImage img).pre x s0 ∗ (Fr ∗ R) := by
-    change s0.mem ⊨ (⌜ImgCallInv img s0⌝ ∗ specExt.pre x s0) ∗ R at hpre
-    change s0.mem ⊨ (⌜ImgCallInv img s0⌝ ∗ specX.pre x s0) ∗ (Fr ∗ R)
-    refine Satisfies.mono ?_ hpre
-    refine Entails.trans (sepConj_mono_left (sepConj_mono_right (hpre_imp x s0))) ?_
-    exact Entails.of_eq (by dsimp only [Fr]; ac_rfl)
-  refine h.mono_outcome x (Fr ∗ R) s0 hpc hrun hpre' hsp ?_
-  intro sf hout
-  rcases hout with ⟨hret, hcs, hpost⟩ | ⟨hpan_st, hpost⟩ | ⟨code, _, hpost⟩ | ⟨_, hpost⟩
-  · refine Or.inl ⟨hret, hcs, ?_⟩
-    change sf.mem ⊨ specX.post x s0 sf ∗ (Fr ∗ R) at hpost
-    change sf.mem ⊨ specExt.post x s0 sf ∗ R
-    refine Satisfies.mono ?_ hpost
-    exact Entails.trans (Entails.of_eq (by dsimp only [Fr]; ac_rfl))
-      (sepConj_mono_left (hpost_imp x s0 sf))
-  · refine Or.inr (Or.inl ⟨hpan_st, ?_⟩)
-    obtain ⟨φ, hpX, hpE⟩ := hpan_eq x s0 sf
-    change sf.mem ⊨ specX.onPanic x s0 sf ∗ (Fr ∗ R) at hpost
-    change sf.mem ⊨ specExt.onPanic x s0 sf ∗ R
-    rw [hpX] at hpost; rw [hpE]
-    refine Satisfies.mono ?_ hpost
-    exact Entails.trans
-      (Entails.of_eq (show (⌜φ⌝ ∗ anyHeap) ∗ (Fr ∗ R) = (⌜φ⌝ ∗ (anyHeap ∗ Fr)) ∗ R by ac_rfl))
-      (sepConj_mono_left (sepConj_mono_right (entails_anyHeap (anyHeap ∗ Fr))))
-  · change sf.mem ⊨ specX.onExit x code s0 sf ∗ (Fr ∗ R) at hpost
-    rw [hexit] at hpost; exact (not_satisfies_false_sepConj hpost).elim
-  · change sf.mem ⊨ specX.onOom x s0 sf ∗ (Fr ∗ R) at hpost
-    rw [hoom] at hpost; exact (not_satisfies_false_sepConj hpost).elim
-
-theorem recvCt2ChunkOkExt_of_okX {img : Obj.Image} {K : MlKem} {F : ShaCompress} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : RecvCt2ChunkOkX img K F A ext) :
-    RecvCt2ChunkOkExt img K F A ext := by
-  refine sub_ok_inImage_grow_stack_recv recvCt2ChunkStackX recvCt2ChunkStackExt ?_ ?_
-    (fun _ _ _ => ⟨_, rfl, rfl⟩) (fun _ _ _ _ => rfl) (fun _ _ _ => rfl) h
-  · intro x s; dsimp only [recvCt2ChunkSpecExt, recvCt2ChunkSpec]
-    rw [stackAt_split_grow_recv s.sp recvCt2ChunkStackX recvCt2ChunkStackExt]
-    exact Entails.of_eq (by ac_rfl)
-  · intro x s sf; dsimp only [recvCt2ChunkSpecExt, recvCt2ChunkSpec]
-    rw [stackAt_split_grow_recv s.sp recvCt2ChunkStackX recvCt2ChunkStackExt]
-    exact Entails.of_eq (by ac_rfl)
-
-theorem StatesRecvContracts.toExt {img : Obj.Image} {A : RustAlloc} {F : ShaCompress} {K : MlKem}
-    {ext : String → Option (State → State)} (h : StatesRecvContracts img A F K ext) :
-    StatesRecvContractsExt img A F K ext :=
-  { h with ekSentCt1ReceivedRecvCt2Chunk_ok := recvCt2ChunkOkExt_of_okX h.ekSentCt1ReceivedRecvCt2Chunk_ok }
-
-theorem statesRecvVariant_inImage_grow_stack {img : Obj.Image} {A : RustAlloc} {F : ShaCompress}
-    {K : MlKem} {ext : String → Option (State → State)}
-    {self : States spqrPolyApi (spqrAuthApi F)} {msg : Message spqrPolyApi}
-    (h : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr statesRecvName)
-      ((statesRecvVariantSpec A F K img.base self msg).inImage img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr statesRecvName)
-      ((statesRecvVariantSpecExt A F K img.base self msg).inImage img) := by
-  refine sub_ok_inImage_grow_stack_recv statesRecvStackX statesRecvStackXExt ?_ ?_
-    (fun _ _ _ => ⟨_, rfl, rfl⟩) (fun _ _ _ _ => rfl) (fun _ _ _ => rfl) h
-  · intro ⟨outA, selfA, msgA⟩ s
-    dsimp only [statesRecvVariantSpecExt, statesRecvVariantSpec]
-    rw [stackAt_split_grow_recv s.sp statesRecvStackX statesRecvStackXExt]
-    exact Entails.of_eq (by ac_rfl)
-  · intro ⟨outA, selfA, msgA⟩ s sf
-    dsimp only [statesRecvVariantSpecExt, statesRecvVariantSpec]
-    rw [stackAt_split_grow_recv s.sp statesRecvStackX statesRecvStackXExt]
-    exact Entails.of_eq (by ac_rfl)
-
-theorem StatesRecvOkX.toExt {img : Obj.Image} {A : RustAlloc} {F : ShaCompress} {K : MlKem}
-    {ext : String → Option (State → State)} (h : StatesRecvOkX img A F K ext) :
-    StatesRecvOkXExt img A F K ext := by
-  refine sub_ok_inImage_grow_stack_recv statesRecvStackX statesRecvStackXExt ?_ ?_
-    (fun _ _ _ => ⟨_, rfl, rfl⟩) (fun _ _ _ _ => rfl) (fun _ _ _ => rfl) h
-  · intro x s
-    dsimp only [statesRecvSpecExt, statesRecvSpec]
-    rw [stackAt_split_grow_recv s.sp statesRecvStackX statesRecvStackXExt]
-    exact Entails.of_eq (by ac_rfl)
-  · intro x s sf
-    dsimp only [statesRecvSpecExt, statesRecvSpec]
-    rw [stackAt_split_grow_recv s.sp statesRecvStackX statesRecvStackXExt]
-    exact Entails.of_eq (by ac_rfl)
-
-/-! ## Stack Frame and Saved-Register Helpers (`4240`B = `0x1090` frame) -/
-
 /-- Saved callee-saved registers at `[s0.sp - 96 .. s0.sp)` (`12` words = `96` bytes):
     `fp, lr, x28, x27, x26, x25, x24, x23, x22, x21, x20, x19`. -/
-def statesRecvSavedCells (s0 : State) : SepProp :=
+@[expose] def statesRecvSavedCells (s0 : State) : SepProp :=
   ((s0.sp - 96#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((s0.sp - 88#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((s0.sp - 80#64) ↦₆₄ s0.readReg64 .x28) ∗
@@ -844,7 +592,7 @@ theorem memRegion_statesRecv_15664_720 (sp : BitVec 64) :
   rw [hadd, h16384] at hsplit
   exact hsplit.symm
 
-def recvCt2ChunkSpecWithStack (stk : Nat) (K : MlKem) (F : ShaCompress) (A : RustAlloc) (b : BitVec 64) :
+@[expose] def recvCt2ChunkSpecWithStack (stk : Nat) (K : MlKem) (F : ShaCompress) (A : RustAlloc) (b : BitVec 64) :
     Spec (RecvCt2ChunkGhost F) where
   pre := fun x s =>
     ⌜b &&& 0xfff#64 = 0#64 ∧
@@ -875,42 +623,6 @@ def recvCt2ChunkSpecWithStack (stk : Nat) (K : MlKem) (F : ShaCompress) (A : Rus
         allocFailedIn s0 sf) ∧
       s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-@[simp] theorem recvCt2ChunkSpecWithStack_X (K : MlKem) (F : ShaCompress) (A : RustAlloc) (b : BitVec 64) :
-    recvCt2ChunkSpecWithStack recvCt2ChunkStackX K F A b = recvCt2ChunkSpec K F A b := rfl
-
-@[simp] theorem recvCt2ChunkSpecWithStack_Ext (K : MlKem) (F : ShaCompress) (A : RustAlloc) (b : BitVec 64) :
-    recvCt2ChunkSpecWithStack recvCt2ChunkStackExt K F A b = recvCt2ChunkSpecExt K F A b := rfl
-
-theorem sepWPp_of_statesRecv_exit_ext {A : RustAlloc} {F : ShaCompress} {K : MlKem}
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (s0 s : State) (outA selfA msgA : BitVec 64)
-    (self : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi)
-    (P R : SepProp)
-    (h : SepWP (tripleRatchetProgAtExt b ext) (s0.readReg64 .x30) s P
-      (fun sf Pf =>
-        (Pf ⊢
-          resultV1RecvAt A (F := F) outA (self.recv K msg) ∗
-          memRegion selfA chunkedStatesSize ∗
-          messageAt spqrPolyApi msgA msg ∗
-          statesRecvRoAt b ∗
-          A.pool ∗ stackAt s0.sp statesRecvStackXExt) ∧
-        sf.sp = s0.sp ∧
-        CalleeSavedPreserved s0 sf ∧
-        sf.trace = s0.trace)) :
-    SepWPp (tripleRatchetProgAtExt b ext) (s0.readReg64 Reg.lr) s P
-      (fun sf P_f =>
-        (sf.mem ⊨ P_f ∗ R →
-          sf.mem ⊨ (statesRecvVariantSpecExt A F K b self msg).post (outA, selfA, msgA) s0 sf ∗ R) ∧
-        sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
-      (fun sf P_f =>
-        (sf.mem ⊨ P_f ∗ R) →
-          (sf.mem ⊨ (statesRecvVariantSpecExt A F K b self msg).onPanic (outA, selfA, msgA) s0 sf ∗ R)) := by
-  refine SepWPp.of_sepWP (SepWP.mono h fun sf Pf hpcf hrunf ⟨hPf, hspf, hcs, htrf⟩ => ?_)
-  refine SepWPp.done hpcf hrunf ⟨fun hmem_f => ?_, hspf, hcs⟩
-  dsimp only [statesRecvVariantSpecExt]
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨htrf, Satisfies.mono (Entails.trans (sepConj_mono_left hPf) (Entails.of_eq (by ac_rfl))) hmem_f⟩
-
 @[local arm64_norm, local wp_norm] theorem sp_sub_96_add_16 (sp : BitVec 64) : (sp - 96#64) + 16#64 = sp - 80#64 := by bv_omega
 @[local arm64_norm, local wp_norm] theorem sp_sub_96_add_32 (sp : BitVec 64) : (sp - 96#64) + 32#64 = sp - 64#64 := by bv_omega
 @[local arm64_norm, local wp_norm] theorem sp_sub_96_add_48 (sp : BitVec 64) : (sp - 96#64) + 48#64 = sp - 48#64 := by bv_omega
@@ -921,36 +633,6 @@ theorem sepWPp_of_statesRecv_exit_ext {A : RustAlloc} {F : ShaCompress} {K : MlK
 @[local arm64_norm, local wp_norm] theorem sp_sub_4240_add_48 (sp : BitVec 64) : (sp - 4240#64) + 48#64 = sp - 4192#64 := by bv_omega
 @[local arm64_norm, local wp_norm] theorem sp_sub_4240_add_4096 (sp : BitVec 64) : (sp - 4240#64) + 4096#64 = sp - 144#64 := by bv_omega
 @[local arm64_norm, local wp_norm] theorem sp_sub_144_add_48 (sp : BitVec 64) : (sp - 144#64) + 48#64 = sp - 96#64 := by bv_omega
-
-theorem sepWPp_of_statesRecv_exit {A : RustAlloc} {F : ShaCompress} {K : MlKem}
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (s0 s : State) (outA selfA msgA : BitVec 64)
-    (self : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi)
-    (P R : SepProp)
-    (h : SepWP (tripleRatchetProgAtExt b ext) (s0.readReg64 .x30) s P
-      (fun sf Pf =>
-        (Pf ⊢
-          resultV1RecvAt A (F := F) outA (self.recv K msg) ∗
-          memRegion selfA chunkedStatesSize ∗
-          messageAt spqrPolyApi msgA msg ∗
-          statesRecvRoAt b ∗
-          A.pool ∗ stackAt s0.sp statesRecvStackX) ∧
-        sf.sp = s0.sp ∧
-        CalleeSavedPreserved s0 sf ∧
-        sf.trace = s0.trace)) :
-    SepWPp (tripleRatchetProgAtExt b ext) (s0.readReg64 Reg.lr) s P
-      (fun sf P_f =>
-        (sf.mem ⊨ P_f ∗ R →
-          sf.mem ⊨ (statesRecvVariantSpec A F K b self msg).post (outA, selfA, msgA) s0 sf ∗ R) ∧
-        sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
-      (fun sf P_f =>
-        (sf.mem ⊨ P_f ∗ R) →
-          (sf.mem ⊨ (statesRecvVariantSpec A F K b self msg).onPanic (outA, selfA, msgA) s0 sf ∗ R)) := by
-  refine SepWPp.of_sepWP (SepWP.mono h fun sf Pf hpcf hrunf ⟨hPf, hspf, hcs, htrf⟩ => ?_)
-  refine SepWPp.done hpcf hrunf ⟨fun hmem_f => ?_, hspf, hcs⟩
-  dsimp only [statesRecvVariantSpec]
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨htrf, Satisfies.mono (Entails.trans (sepConj_mono_left hPf) (Entails.of_eq (by ac_rfl))) hmem_f⟩
 
 /-- Combined trace and callee-saved SIMD register preservation from `s0` to `s`. -/
 abbrev TraceCalleeSaved (s s0 : State) : Prop :=

@@ -9,13 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.BytesMerge6Phase23
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.BytesMerge6Phase23
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import LibsignalBinary.Proofs.VarintBridge
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DoReserve10 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Bytes.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Defs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB
+import LibsignalBinary.Proofs.TripleRatchet.Bytes.BytesCodeSym
 
 /-!
 # Placed Handshake `bytes::merge [local#5]` Phases 2 and 3
@@ -26,7 +32,7 @@ postcondition `BytesMergeCapOk x.valCap x.bs.length → BytesMergeCapOk cap' res
 both `bytesMerge3PlacedSpec` (`< 2 ^ 63`) and `bytesMerge3PlacedSpecW` (`< 2 ^ 62`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -59,7 +65,7 @@ attribute [local simp]
 
 /-- Unified inner (`bytesMergeStackX`) specification supporting both `BytesMergeCapOk` (`< 2 ^ 63`)
 and unconstrained-capacity `< 2 ^ 62` (`W`). -/
-def bytesMergeRawSpecXBoth (A : RustAlloc) : Spec BytesMergeGhost where
+@[expose] def bytesMergeRawSpecXBoth (A : RustAlloc) : Spec BytesMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.valPtr ∧ s.readReg64 .x2 = x.bufRef ∧ x.bs.length < 2 ^ 63 ∧

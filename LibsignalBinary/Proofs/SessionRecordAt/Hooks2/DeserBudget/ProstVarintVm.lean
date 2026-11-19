@@ -11,18 +11,66 @@ module
 
 public meta import Lean -- shake: keep
 public meta import ProofLib -- shake: keep
-public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
-public import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.Prost.DefsW
+public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.Prost.DefsW -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Bytes.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32Merge
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32Merge -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.Bytes.From
 import LibsignalBinary.Proofs.TripleRatchet.Bytes.Drops
 import LibsignalBinary.Proofs.TripleRatchet.InImage.VarintSlow.Slow
 import LibsignalBinary.Proofs.VarintBridge
+public import LibsignalBinary.Proofs.TripleRatchet.Bytes.BytesCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.StepsProcess
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Mallocng.Spec.Top
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.Alloc
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.IoCommon
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.RustStd.Spec.Top
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+public import LibsignalBinary.Heap.IfaceBudget
 
 /-!
 # `VmPreserved` Contracts for `bytes` and `prost` Varint Leaves
@@ -34,7 +82,7 @@ Proves relocatable `[LibsignalPlacement]` total-correctness (`onPanic := ⌜Fals
 (Block `8`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -233,7 +281,7 @@ theorem bytesFromVec_vmPreserved_placed_ok_cl [LibsignalPlacement] {A : RustAllo
 
 /-- Heap-pool-free total-correctness `VmPreserved` contract for `decode_varint_slow` (Block `293`)
 in `varintSlow` cursor form at stack size `stackSz = 0x40 + errStack`. -/
-def decodeVarintSlowSomeWithStackSpec (stackSz : Nat) :
+@[expose] def decodeVarintSlowSomeWithStackSpec (stackSz : Nat) :
     Spec ((BitVec 64 × BitVec 64 × BitVec 64 × List (BitVec 8)) × BitVec 64 × Nat) where
   pre := fun ((slotA, slot, ptr, bs), v, k) s =>
     ⌜s.readReg64 .x0 = slotA ∧ bs.length < 2 ^ 64 ∧ varintSlow bs = some (v, k)⌝ ∗
@@ -247,7 +295,7 @@ def decodeVarintSlowSomeWithStackSpec (stackSz : Nat) :
 
 /-- Heap-pool-free total-correctness `VmPreserved` contract for `decode_varint_slow` (Block `293`)
 in `decodeVarint` + `sliceCursorAt` form at `0x40 + errStack`. -/
-def decodeVarintSlowSomeSpecGen (errStack : Nat) :
+@[expose] def decodeVarintSlowSomeSpecGen (errStack : Nat) :
     Spec (DecodeVarintSlowGhost × BitVec 64 × List (BitVec 8)) where
   pre := fun (x, v, rest) s =>
     ⌜s.readReg64 .x0 = x.bufRef ∧ x.bs.length < 2 ^ 63 ∧ decodeVarint x.bs = some (v, rest)⌝ ∗
@@ -677,7 +725,7 @@ private def dummyAlloc : RustAlloc where
 
 /-- Heap-pool-free total-correctness `VmPreserved` contract for `decode_varint_slice` (Block `76`)
 on `decodeVarint x.bs = some (v, rest)` at `0x50 + errStack`. -/
-def decodeVarintSliceSomeSpecGen (errStack : Nat) :
+@[expose] def decodeVarintSliceSomeSpecGen (errStack : Nat) :
     Spec (DecodeVarintSliceGhost × BitVec 64 × List (BitVec 8)) where
   pre := fun (x, v, rest) s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.ptr ∧
@@ -989,7 +1037,7 @@ theorem decode_varint_slice_some_placed_ok_cl [LibsignalPlacement]
 
 /-- Heap-pool-free total-correctness `VmPreserved` contract for `int32::merge` (Block `8`)
 on `mergeUint32 x.wt x.bs = some (v, rest)` at `0x50 + (0x50 + errStack)`. -/
-def int32MergeSomeSpecGen (errStack : Nat) :
+@[expose] def int32MergeSomeSpecGen (errStack : Nat) :
     Spec (Int32MergeGhost × BitVec 32 × List (BitVec 8)) where
   pre := fun (x, v, rest) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧

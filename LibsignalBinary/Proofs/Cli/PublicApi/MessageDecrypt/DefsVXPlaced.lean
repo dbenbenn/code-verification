@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsVX
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlaced
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsVX
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlaced -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Parametric-Panic `MessageDecrypt` Specification (`withStoresDecPlacedSpecVX`)
@@ -21,7 +24,7 @@ Generalizes `withStoresDecPlacedSpecV` and `DecSegVPlaced` on `lsProg_463` by re
 `x.recvPanics S answers` panic disjunct with an arbitrary predicate `Extra x answers`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -53,7 +56,7 @@ attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- `withStoresDecPlacedSpecV` with `x.recvPanics S answers` replaced by `Extra x answers`. -/
-def withStoresDecPlacedSpecVX [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def withStoresDecPlacedSpecVX [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
@@ -106,7 +109,7 @@ theorem withStoresDecPlacedSpecV_eq_VX [LibsignalPlacement] (C : Crypto) (A : Ru
         (fun x a => x.recvPanics S a) := rfl
 
 /-- Relocatable segment step relation `DecSegVPlaced` over `withStoresDecPlacedSpecVX … Extra`. -/
-def DecSegVXPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def DecSegVXPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
     (H : LibsignalHooks)

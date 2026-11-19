@@ -136,21 +136,10 @@ private theorem cons_headD_tail_of_length_pos {α : Type} {l : List α} (d : α)
   cases l with
   | nil => simp at h
   | cons x xs => rfl
-theorem highBitComp_trace_eq_split : Witnesses.Cheval26SmallSubgroupHighBitComp.trace = (CompSmallSubgroupTrace.call0Trace ++ CompSmallSubgroupTrace.call1Trace) ++ (.recv CompSmallSubgroupTrace.highBitWireBytes :: CompSmallSubgroupTrace.highBitCall2Trace.tail) := CompSmallSubgroupTrace.highBitComp_trace_decomp.trans
-    (congrArg ((CompSmallSubgroupTrace.call0Trace ++ CompSmallSubgroupTrace.call1Trace) ++ ·)
-      ((cons_headD_tail_of_length_pos (.recv []) (by decide)).trans
-        (congrFun (congrArg List.cons (recv_eventBytes_of_kind (by decide)).symm) _)))
 theorem torsionComp_trace_eq_split : Witnesses.Cheval26SmallSubgroupTorsionComp.trace = (CompSmallSubgroupTrace.call0Trace ++ CompSmallSubgroupTrace.call1Trace) ++ (.recv CompSmallSubgroupTrace.torsionWireBytes :: CompSmallSubgroupTrace.torsionCall2Trace.tail) := CompSmallSubgroupTrace.torsionComp_trace_decomp.trans
     (congrArg ((CompSmallSubgroupTrace.call0Trace ++ CompSmallSubgroupTrace.call1Trace) ++ ·)
       ((cons_headD_tail_of_length_pos (.recv []) (by decide)).trans
         (congrFun (congrArg List.cons (recv_eventBytes_of_kind (by decide)).symm) _)))
-theorem not_matchedPrefix_highBitComp_cref {r : Records} {S : Sem} {g : Ghost} {ms : List Move} (hnb : CompSetupSecrecy.NoBrk r ms) : ¬ Symbolic.Swarm.CREF.MatchedPrefix compI0 r S g ms Witnesses.Cheval26SmallSubgroupHighBitComp.trace := by
-  intro hmp; rw [highBitComp_trace_eq_split] at hmp
-  exact not_matchedPrefix_of_recv_accept_tail rfl hmp hnb
-    (by rw [← highBitComp_trace_eq_split]; decide)
-    (by decide) (by decide)
-    highBitWireBytes_props.1 highBitWireBytes_props.2
-    highBitWireBytes_baseKey_ne_compPubOfOpt
 theorem not_matchedPrefix_torsionComp_cref {r : Records} {S : Sem} {g : Ghost} {ms : List Move} (hnb : CompSetupSecrecy.NoBrk r ms) : ¬ Symbolic.Swarm.CREF.MatchedPrefix compI0 r S g ms Witnesses.Cheval26SmallSubgroupTorsionComp.trace := by
   intro hmp; rw [torsionComp_trace_eq_split] at hmp
   exact not_matchedPrefix_of_recv_accept_tail rfl hmp hnb
@@ -158,12 +147,8 @@ theorem not_matchedPrefix_torsionComp_cref {r : Records} {S : Sem} {g : Ghost} {
     (by decide) (by decide)
     torsionWireBytes_props.1 torsionWireBytes_props.2
     torsionWireBytes_baseKey_ne_compPubOfOpt
-theorem not_matchedPrefix_highBitComp {r : Records} {S : Sem} {who₀ : List Participant} {g : Ghost} {ms : List Move} (hnb : CompSetupSecrecy.NoBrk r ms) : ¬ MatchedPrefix compI0 r S who₀ g ms Witnesses.Cheval26SmallSubgroupHighBitComp.trace :=
-  fun hmp => not_matchedPrefix_highBitComp_cref hnb (Symbolic.Swarm.CREF.MatchedPrefix.of_composed hmp)
 theorem not_matchedPrefix_torsionComp {r : Records} {S : Sem} {who₀ : List Participant} {g : Ghost} {ms : List Move} (hnb : CompSetupSecrecy.NoBrk r ms) : ¬ MatchedPrefix compI0 r S who₀ g ms Witnesses.Cheval26SmallSubgroupTorsionComp.trace :=
   fun hmp => not_matchedPrefix_torsionComp_cref hnb (Symbolic.Swarm.CREF.MatchedPrefix.of_composed hmp)
-theorem noFullMatchHB : NoFullMatchHB :=
-  fun _ _ _ _ _ hnb hmp => not_matchedPrefix_highBitComp hnb hmp
 theorem noFullMatchTC : ∀ (r : Records) (S : Sem) (g : Ghost) (ms : List Move), compFitsPinned Witnesses.Cheval26SmallSubgroupTorsionComp.setup compI0 r → CompSetupSecrecy.NoBrk r ms → ¬ MatchedPrefix compI0 r S Witnesses.Cheval26SmallSubgroupTorsionComp.who g ms Witnesses.Cheval26SmallSubgroupTorsionComp.trace :=
   fun _ _ _ _ _ hnb hmp => not_matchedPrefix_torsionComp hnb hmp
 end Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443

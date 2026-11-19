@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrB
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrB
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
@@ -25,12 +25,15 @@ import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3GenSub5
 import all Init.Data.String.Defs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA
+import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
 
 /-!
 # Relocatable Substage P3.5 Error Paths over General `prevSessionsEmptyAt`
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

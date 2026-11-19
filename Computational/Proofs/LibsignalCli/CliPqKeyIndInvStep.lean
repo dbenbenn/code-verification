@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.CliPqKeyIndStepCore
+public import Computational.Proofs.LibsignalCli.CliPqKeyIndStepCore -- proof-setup: allow-public-import
 import Computational.Proofs.E2E.ComposedKeyIndHop
 import ProofLib.SepLogic.WP.StateNorm
 import VCVio.EvalDist.Monad.Basic
@@ -21,7 +21,7 @@ import VCVio.EvalDist.Monad.Basic
 each 1-key real-HKDF `KeyInd` query arm.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.constructorNameAsVariable false

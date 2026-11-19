@@ -11,7 +11,7 @@ module
 
 public import ProofLib.SepLogic.SliceArray
 public import ProofLib.SepLogic.WP.ControlTactics
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 public import ProofLib.Hoare.Hooks
 
 /-!
@@ -292,7 +292,7 @@ declare_rebased_program sampleFixedRebased (0x100000#64 : BitVec 64) sampleRawPr
 
 -- Negative test: `declare_rebased_program` rejects invalid argument types.
 /--
-error: declare_rebased_program: expected `(baseConst : BitVec 64) (rawProgram : Program)` or `(rawProgram : Program) (linkedImage : Obj.LinkedImage)`, got arguments of types `Nat` and `Nat`
+error: declare_rebased_program: expected `(baseConst : BitVec 64) (rawProgram : Program)`, got arguments of types `Nat` and `Nat`
 -/
 #guard_msgs in
 declare_rebased_program badRebased (0 : Nat) (1 : Nat)

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet4PlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet4PlacedBudgetAux -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
@@ -22,6 +22,12 @@ import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet4Placed
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable V1 Ratchet Chain Segment (`+1856 -> +2664`)
@@ -30,7 +36,7 @@ Budget-threaded `<Chain>::recv_key` stepper (`+1976..+2024`) and full `+1856 -> 
 composition for `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,12 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.DefsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.MergeFields
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.MergeFields
 public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.Post
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
@@ -31,7 +30,7 @@ import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 `private_key`, `skip_field`) and error-cleanup helpers on Block `65`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -10,14 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
-public import Computational.Tests.AEAD.CBCDecTest
-public import Computational.Tests.AEAD.HMACTest
 public meta import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead -- shake: keep
+public import Computational.Tests.AEAD.CBCDecTest
 public meta import Computational.Tests.AEAD.CBCDecTest -- shake: keep
+public import Computational.Tests.AEAD.HMACTest
 public meta import Computational.Tests.AEAD.HMACTest -- shake: keep
 public meta import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDefs -- shake: keep
 public import Computational.Proofs.CryptoGames.AEAD.LibsignalAeadProofDefs
-public meta import Computational.Proofs.CryptoGames.AEAD.LibsignalAeadProofDefs
+public meta import Computational.Proofs.CryptoGames.AEAD.LibsignalAeadProofDefs -- shake: keep
 
 /-!
 # Fixed-Block Per-Message AEAD Tests

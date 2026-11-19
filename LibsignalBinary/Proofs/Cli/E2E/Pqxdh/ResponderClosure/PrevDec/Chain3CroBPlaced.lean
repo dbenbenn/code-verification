@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroAPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroAPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Leaf.ChainKeyFieldG
@@ -20,6 +20,17 @@ import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.ChainMergeAux.Pure
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.Srk -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.CodePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.KeyDefs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.KeyInner
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.KeyInnerPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.KeyPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.KeySeg3a
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.KeySeg3aPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.KeySeg3c
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.KeySeg3cPlaced
 
 /-!
 # `VerNe.Chain3` (Block `516`) Part B (`Srk` and `ChainKey`) under `LibsignalCodeRoLoaded`
@@ -28,7 +39,7 @@ Verifies the `Srk` (`tag = 1`, `tag = 2`) and `ChainKey` (`tag = 3`) field slice
 `message::merge<Chain> [local#4]` (Block `516`) under `StoreKit.LibsignalCodeRoLoaded`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

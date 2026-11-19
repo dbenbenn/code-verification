@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepNoRatchetWAtHelpersPure
-public import Symbolic.Proofs.Swarm.CREF.TR.SrHonestVer
-public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
-public import Symbolic.Proofs.Swarm.TRREF.B3DefsPure
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepNoRatchetWAtHelpersPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.SrHonestVer -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.B3DefsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSkippedG1LeavesPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSpqrPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -21,6 +21,7 @@ import Symbolic.Proofs.Swarm.CREF.TROpen
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.Leaks -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 
 /-!
 # Existing-Chain Decrypt Witness Lemmas at a Fixed Explanation
@@ -30,7 +31,7 @@ existing-chain (`noRatchet`) branch from either attacker knowledge of `seed` or 
 decrypt representation `AuthenticDecryptRepB3St`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

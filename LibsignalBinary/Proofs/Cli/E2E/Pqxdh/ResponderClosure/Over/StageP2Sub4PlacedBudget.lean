@@ -11,11 +11,11 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub4Placed
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub4Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Placed Stage P2 Over-Path Normal-Exit Postcondition
@@ -24,7 +24,7 @@ Defines budget-threaded `[LibsignalPlacement]` forms of `prevArchived1AtPlaced` 
 `p2OverOkPostAtPlaced` at `+0x1778`, together with `A.atState` bridge equalities.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -61,7 +61,7 @@ open LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget (retagPreKey
 open LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget (retagIdentityStore)
 
 /-- Placed 1-element `previous_sessions` predicate at `coroPtr + 0xe0` over `A.repAlloc`. -/
-noncomputable abbrev prevArchived1AtPlaced [LibsignalPlacement] {M : AllocCostModel}
+abbrev prevArchived1AtPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (coroPtr : BitVec 64)
     (recG : SessionGhost) (sess : Session (List (BitVec 8))) : SepProp :=
   prevArchived1At A.repAlloc coroPtr recG sess
@@ -77,15 +77,8 @@ theorem prevArchived1At_placed_eq [LibsignalPlacement] {M : AllocCostModel}
     prevArchived1AtPlaced A coroPtr recG sess :=
   prevArchived1At_eq A.repAlloc coroPtr recG sess
 
-theorem prevArchived1At_atState_eq {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (s : State)
-    (coroPtr : BitVec 64) (recG : SessionGhost) (sess : Session (List (BitVec 8))) :
-    prevArchived1At (A.atState lim st s) coroPtr recG sess =
-      prevArchived1At A.repAlloc coroPtr recG sess :=
-  rfl
-
 /-- Budget-threaded placed Stage P2 Over-path normal-exit postcondition at `+0x1778`. -/
-noncomputable def p2OverOkPostAtPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def p2OverOkPostAtPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (b : BitVec 64)
     (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
     (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieSeedEqPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2AdapterPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieSeedEqPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2AdapterPure -- proof-setup: allow-public-import
 import Batteries.Data.UInt
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
@@ -22,12 +22,12 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieSeedShapePure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure
-public import Symbolic.Proofs.Swarm.CREF.Sem
-public import Symbolic.Proofs.Swarm.TRREF.B3DefsPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieSeedShapePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.B3DefsPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieAPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieBExclPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.DecCryptoBPure
@@ -55,6 +55,8 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Swarm.CREF.CBad -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- proof-setup: allow-public-import
 
 /-!
 # Cross-Branch Exclusion for Promote Chain-Step vs Model `decryptSkipped`
@@ -64,7 +66,7 @@ Proves `prom_seedEq_core` and `prom_not_decryptSkipped_of_binStep`, ruling out a
 (`PromDecSelNoRatchet`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -109,7 +111,7 @@ theorem prom_accBlk_rng (b rngBytes pt : HwBytes) :
 
 /-- Synthetic `RecvWireGhost` packaging the session `sess` and record bytes `rec` for lemmas that
 inspect only `.sess` and `.stateBytes`. -/
-def promGhost (rec : HwBytes) (sess : Session (List (BitVec 8))) : RecvWireGhost :=
+@[expose] def promGhost (rec : HwBytes) (sess : Session (List (BitVec 8))) : RecvWireGhost :=
   { who := 0, aPtr := 0, meBytes := [], stateBytes := rec, sess := sess, wirePtr := 0,
     wireBytes := [], cur := 0, rest := [], tlsInit := none }
 

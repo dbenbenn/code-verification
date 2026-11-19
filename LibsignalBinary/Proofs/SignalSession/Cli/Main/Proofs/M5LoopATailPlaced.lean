@@ -9,11 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5AfterPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5AfterPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Common
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Hops -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5CallsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Mem
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable M5 Inner Loop A Slash Push & Name Append (`M+0x948 .. M+0x980`, Block `617`)
@@ -22,7 +31,7 @@ Verifies `m5_loop_a_slash_and_name_placed` (`M+0x948 .. M+0x980`, plus `M+0x9b8 
 reserve growth) appending `'/'` and `name` to the path buffer on Block `617`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

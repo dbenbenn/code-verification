@@ -10,12 +10,17 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Defs
-public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Terms01
-public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Bytes03
-public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Bytes04
-public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Bytes05
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Terms01 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Bytes03 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Bytes04 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Bytes05 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Bytes00 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Bytes01 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Bytes02 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Terms00 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Witness -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -29,7 +34,7 @@ open Symbolic.Proofs.Tests.CliNonvacuity.Witness
 open Symbolic.Proofs.Tests.CliNonvacuity.Table.Defs (BinTree CertNode)
 open Symbolic.Proofs.Tests.CliNonvacuity.Table.MkTerm (sendAddrABytes)
 
-def sub00 : BinTree CertNode :=
+@[expose] def sub00 : BinTree CertNode :=
   (.branch
     (.branch
       (.branch
@@ -142,7 +147,7 @@ def sub00 : BinTree CertNode :=
     )
   )
 
-def sub01 : BinTree CertNode :=
+@[expose] def sub01 : BinTree CertNode :=
   (.branch
     (.branch
       (.branch
@@ -252,7 +257,7 @@ def sub01 : BinTree CertNode :=
     )
   )
 
-def sub02 : BinTree CertNode :=
+@[expose] def sub02 : BinTree CertNode :=
   (.branch
     (.branch
       (.branch
@@ -362,7 +367,7 @@ def sub02 : BinTree CertNode :=
     )
   )
 
-def sub03 : BinTree CertNode :=
+@[expose] def sub03 : BinTree CertNode :=
   (.branch
     (.branch
       (.branch

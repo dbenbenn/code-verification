@@ -13,34 +13,24 @@ public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.DefsClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergeCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommon
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.DefsClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergeCodeSym
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommon
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
 public import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-
-/-!
-# Shared Budget Envelopes & Contracts for `PolynomialDecoder::merge` and `PolynomialEncoder::merge`
-
-Defines `BytesMerge3Env`, `PolyMergeIterEnv`, `PolyMergeLoopEnv`, budget contracts
-`polyDecoderMergeSpec{OfEnv,}` and `polyEncoderMergeSpec{OfEnv,}`, loop/error frames, and
-relocatable Block `296` shared exit and unknown-tag skip lemmas.
--/
-
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -126,7 +116,7 @@ abbrev BytesMerge3Env (x : BytesMergeGhost) : List AllocEvent → Prop :=
 
 /-- Budget-threaded raw contract of `prost::encoding::bytes::merge::<Vec<u8>, &mut &[u8]>`
 (Block `290`, counterpart of `CryptoVerification.SpqrV1.Prost.BytesMerge.bytesMerge3RawSpec`). -/
-def bytesMerge3RawBudgetSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def bytesMerge3RawBudgetSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BytesMergeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
@@ -384,16 +374,16 @@ theorem FitsEnv.polyMergeLoop_mono {M : AllocCostModel} {lim : BudgetLimits} {st
 /-! ## 2. Budget-Threaded `PolynomialDecoder::merge` & `PolynomialEncoder::merge` Specifications -/
 
 /-- Uniform `growVecU8` capacity upper bound for `PolynomialDecoder::merge`. -/
-def polyDecoderCapBound (x : PolyDecoderMergeGhost) : Nat :=
+@[expose] def polyDecoderCapBound (x : PolyDecoderMergeGhost) : Nat :=
   x.msg.pts.length + x.bs.length
 
 /-- Precondition allocation envelope of `PolynomialDecoder::merge`. -/
-def PolyDecoderMergeEnv (x : PolyDecoderMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def PolyDecoderMergeEnv (x : PolyDecoderMergeGhost) (evs : List AllocEvent) : Prop :=
   PolyMergeLoopEnv (2 * x.bs.length + 2) x.bs.length (polyDecoderCapBound x) evs
 
 /-- Postcondition allocation envelope of `PolynomialDecoder::merge`: proportional to consumed bytes
 `x.bs.length - rest.length` on `Ok`, and bounded by `2 * x.bs.length + 2` on `Err`. -/
-def PolyDecoderMergePostEnv (x : PolyDecoderMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def PolyDecoderMergePostEnv (x : PolyDecoderMergeGhost) (evs : List AllocEvent) : Prop :=
   match (mergeMessage PolynomialDecoder.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 98).toOption with
   | some (_, rest) => PolyMergeLoopEnv (2 * (x.bs.length - rest.length)) x.bs.length (polyDecoderCapBound x) evs
   | none => PolyMergeLoopEnv (2 * x.bs.length + 2) x.bs.length (polyDecoderCapBound x) evs
@@ -407,7 +397,7 @@ theorem polyDecoderMergePostEnv_imp_pre {x : PolyDecoderMergeGhost} {evs : List 
   · exact h
 
 /-- Envelope-parameterized budget-threaded contract of `PolynomialDecoder::merge` (`Block 296`). -/
-def polyDecoderMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def polyDecoderMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : PolyDecoderMergeGhost → List AllocEvent → Prop) :
     Spec (PolyDecoderMergeGhost × M.σ) where
@@ -436,20 +426,20 @@ def polyDecoderMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
 /-- Budget-threaded contract of `PolynomialDecoder::merge` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def polyDecoderMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def polyDecoderMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (PolyDecoderMergeGhost × M.σ) :=
   polyDecoderMergeSpecOfEnv A lim PolyDecoderMergeEnv PolyDecoderMergePostEnv
 
 /-- Uniform `growVecU8` capacity upper bound for `PolynomialEncoder::merge`. -/
-def polyEncoderCapBound (x : PolyEncoderMergeGhost) : Nat :=
+@[expose] def polyEncoderCapBound (x : PolyEncoderMergeGhost) : Nat :=
   Nat.max x.msg.pts.length x.msg.polys.length + x.bs.length
 
 /-- Precondition allocation envelope of `PolynomialEncoder::merge`. -/
-def PolyEncoderMergeEnv (x : PolyEncoderMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def PolyEncoderMergeEnv (x : PolyEncoderMergeGhost) (evs : List AllocEvent) : Prop :=
   PolyMergeLoopEnv (2 * x.bs.length + 2) x.bs.length (polyEncoderCapBound x) evs
 
 /-- Postcondition allocation envelope of `PolynomialEncoder::merge`. -/
-def PolyEncoderMergePostEnv (x : PolyEncoderMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def PolyEncoderMergePostEnv (x : PolyEncoderMergeGhost) (evs : List AllocEvent) : Prop :=
   match (mergeMessage PolynomialEncoder.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 98).toOption with
   | some (_, rest) => PolyMergeLoopEnv (2 * (x.bs.length - rest.length)) x.bs.length (polyEncoderCapBound x) evs
   | none => PolyMergeLoopEnv (2 * x.bs.length + 2) x.bs.length (polyEncoderCapBound x) evs
@@ -463,7 +453,7 @@ theorem polyEncoderMergePostEnv_imp_pre {x : PolyEncoderMergeGhost} {evs : List 
   · exact h
 
 /-- Envelope-parameterized budget-threaded contract of `PolynomialEncoder::merge` (`Block 297`). -/
-def polyEncoderMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def polyEncoderMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : PolyEncoderMergeGhost → List AllocEvent → Prop) :
     Spec (PolyEncoderMergeGhost × M.σ) where
@@ -493,7 +483,7 @@ def polyEncoderMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
 /-- Budget-threaded contract of `PolynomialEncoder::merge` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def polyEncoderMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def polyEncoderMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (PolyEncoderMergeGhost × M.σ) :=
   polyEncoderMergeSpecOfEnv A lim PolyEncoderMergeEnv PolyEncoderMergePostEnv
 
@@ -573,7 +563,7 @@ theorem polyEncoderMergePostEnv_fitsEnv_witness :
 /-! ## 3. Loop & Error-Exit Separation-Logic Bundles -/
 
 /-- Budget-threaded loop-header separation-logic bundle at `+0x0a4` of `PolynomialDecoder::merge`. -/
-def polyDecoderLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def polyDecoderLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) (s0 s : State) (msgPtr bufRef slot ptr : BitVec 64)
     (m : PolynomialDecoder) (bs cur : List (BitVec 8)) : SepProp :=
   stackAt (s0.sp - 160#64) polyBelowStack ∗ memRegion (s0.sp - 160#64) 32 ∗
@@ -582,14 +572,14 @@ def polyDecoderLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : Bu
     (bufRef ↦₆₄ slot) ∗ sliceCursorAfter slot ptr bs cur ∗ A.pool lim st s
 
 /-- Budget-threaded error-exit separation-logic bundle at `+0x070`, `+0x07c`, `+0x380` of `PolynomialDecoder::merge`. -/
-def polyDecoderErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def polyDecoderErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) (s0 s : State) (msgPtr bufRef slot ptr : BitVec 64)
     (m : PolynomialDecoder) (bs : List (BitVec 8)) : SepProp :=
   polySavedRegsAny s0.sp s0 ∗ protoPolynomialDecoderAt A.repAlloc msgPtr (polyDecoderToProto m) ∗
     (bufRef ↦₆₄ slot) ∗ memRegion slot 16 ∗ (ptr ↦ₛ bs) ∗ A.pool lim st s
 
 /-- Budget-threaded loop-header separation-logic bundle at `+0x0a4` of `PolynomialEncoder::merge`. -/
-def polyEncoderLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def polyEncoderLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) (s0 s : State) (msgPtr bufRef slot ptr : BitVec 64)
     (m : PolynomialEncoder) (bs cur : List (BitVec 8)) : SepProp :=
   stackAt (s0.sp - 160#64) polyBelowStack ∗ memRegion (s0.sp - 160#64) 32 ∗
@@ -598,7 +588,7 @@ def polyEncoderLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : Bu
     (bufRef ↦₆₄ slot) ∗ sliceCursorAfter slot ptr bs cur ∗ A.pool lim st s
 
 /-- Budget-threaded error-exit separation-logic bundle at `+0x070`, `+0x07c`, `+0x344` of `PolynomialEncoder::merge`. -/
-def polyEncoderErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def polyEncoderErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) (s0 s : State) (msgPtr bufRef slot ptr : BitVec 64)
     (m : PolynomialEncoder) (bs : List (BitVec 8)) : SepProp :=
   polySavedRegsAny s0.sp s0 ∗ protoPolynomialEncoderAt A.repAlloc msgPtr (polyEncoderToProto m) ∗

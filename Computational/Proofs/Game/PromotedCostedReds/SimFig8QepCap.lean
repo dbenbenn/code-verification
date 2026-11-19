@@ -43,8 +43,6 @@ open CryptoGames.LibsignalSession
   (Params Crypto IdentityKey PublicKey GhostState SignalMessageProtoCodec)
 open CryptoGames.SM (Pos Record GameState RecvResult)
 
-noncomputable section
-
 private abbrev Fig8G (Pt : Type) (ℓ : ℕ) := GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)
 private abbrev FSpec' (Pt : Type) (ℓ : ℕ) :=
   unifSpec + CryptoGames.SM.spec (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt)
@@ -1184,7 +1182,5 @@ theorem sm_run_libsignalToModularSchemeSim_qep_eq
       (fun m' t sC gs hsC hfg => simImplC_inr_stepCEqAndInv P Dh encPt encT decT idOf lam q m' QEP qep₁ qep₂ hQ hq₁ hq₂ cfg t sC hsC gs hfg)
       A q (isQueryBoundP_isInrQ_of_makesAtMostQueries hA) _ _ (simCCapInv_init q _ _)
       (fig8CapInv_init P.C P.codec Dh encPt encT idOf lam q k b)
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimFig8QepCap

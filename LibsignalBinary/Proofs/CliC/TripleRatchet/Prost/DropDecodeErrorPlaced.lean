@@ -9,12 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DropDecodeError
-public import LibsignalBinary.Proofs.CliC.TripleRatchet.Prost.DropDecodeError
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.DropDecodeError -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CliC.TripleRatchet.Prost.Defs
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2
+import ProofLib.GenDecodes
+import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSym
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+public import ProofLib.FsTrace
+public import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable Proof of `CliC` `drop_glue<DecodeError> [local#3]`
@@ -23,7 +32,7 @@ Proves `[LibsignalPlacement]` contracts (`dropDecodeErrorSpec` and `dropDecodeEr
 `CliC` `core::ptr::drop_glue::<prost::error::DecodeError> [local#3]` (Block `555`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

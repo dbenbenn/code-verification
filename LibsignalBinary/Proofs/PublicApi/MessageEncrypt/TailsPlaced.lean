@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tails
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.CommonPlaced
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tails -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.CommonPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.CmDropPlaced
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.ProtocolErrPreKeyEncryptPlaced
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.ProtocolErrSignalEncryptPlaced
@@ -20,6 +20,8 @@ import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailFreePrevSessions
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailFromSessionStateErrPlaced
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailWriteErrPlaced
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailWriteResultPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Relocatable (`[LibsignalPlacement]`) Shared Error and Result Tails
@@ -28,7 +30,7 @@ Exports `EncTailVPlaced` and the nine relocatable error/result tail theorems for
 `session_message_encrypt_with_stores` on Block `198` (`lsProg_198 Hk`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

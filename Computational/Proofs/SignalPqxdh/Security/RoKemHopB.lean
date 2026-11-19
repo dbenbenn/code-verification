@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
-public import Computational.Proofs.SignalPqxdh.Security.SigHop
+public import Computational.Proofs.SignalPqxdh.Security.RoKemHopA -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.SigHop -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -165,13 +165,13 @@ theorem applyShCrFinish_send {S : Setup} {Base Resp : Type}
     · exact Or.inr ⟨rfl, rfl, rfl, rfl⟩
     · exact Or.inl hi_old
 
-def checkBundleSigs (P : Primitives) (principals : List (Nat × PrincipalEntry))
+@[expose] def checkBundleSigs (P : Primitives) (principals : List (Nat × PrincipalEntry))
     (bundle : PreKeyBundleInput) : Bool :=
   let sigPkB := resolveSigPk P principals bundle.ikB
   P.sigVerify sigPkB (encodeEC bundle.spkB) bundle.spkSig &&
   P.sigVerify sigPkB (encodeKEM bundle.pqspkB) bundle.pqspkSig
 
-def runShCrInitiate2 {S : Setup} {Base Resp U : Type} (P : Primitives)
+@[expose] def runShCrInitiate2 {S : Setup} {Base Resp U : Type} (P : Primitives)
     (getPrincipals : Base → List (Nat × PrincipalEntry))
     (noneResp : Resp)
     (preCheck : Base → Option U)
@@ -190,7 +190,7 @@ def runShCrInitiate2 {S : Setup} {Base Resp U : Type} (P : Primitives)
   | some (ss, kemCt) =>
     applyShCrFinish sid bundle.pqspkB ss kemCt hst <$> finishBase uInfo ekASk ss kemCt st
 
-def postKem2 {S : Setup} {Base Resp U : Type}
+@[expose] def postKem2 {S : Setup} {Base Resp U : Type}
     (sid : SessionId S) (bundle : PreKeyBundleInput) (uInfo : U)
     (finishBase : U → Bytes → Bytes → Bytes → Base → ProbComp (Resp × Option Base))
     (hst : ShCrState S Base) (ss kemCt : Bytes) :
@@ -198,7 +198,7 @@ def postKem2 {S : Setup} {Base Resp U : Type}
   let ekASk ← sampleScalar32
   applyShCrFinish sid bundle.pqspkB ss kemCt hst <$> finishBase uInfo ekASk ss kemCt hst.base
 
-noncomputable def tryPause2 {S : Setup} {Base Resp U ι : Type}
+@[expose] def tryPause2 {S : Setup} {Base Resp U ι : Type}
     {QSpec : OracleSpec.{0, 0} ι} (P : Primitives)
     (getPrincipals : Base → List (Nat × PrincipalEntry))
     (implTrue : QueryImpl QSpec (StateT (ShCrState S Base) ProbComp))
@@ -502,7 +502,7 @@ theorem runShCrInitiate2_pauseSome {S : Setup} {Base Resp U ι : Type}
           · exact Or.inr ⟨hi_idx.trans hsIdx, hi_pk, hi_ct, hi_ss⟩
 
 
-def runShCrInitiate4 {S : Setup} {Base Resp U : Type} (P : Primitives)
+@[expose] def runShCrInitiate4 {S : Setup} {Base Resp U : Type} (P : Primitives)
     (getPrincipals : Base → List (Nat × PrincipalEntry))
     (noneResp : Resp)
     (preCheck : Base → Option U)
@@ -525,7 +525,7 @@ def runShCrInitiate4 {S : Setup} {Base Resp U : Type} (P : Primitives)
     applyShCrFinish sid bundle.pqspkB ss kemCt hst <$>
       finishBase uInfo ekASk ephASk spqrCoins ss kemCt st
 
-def postKem4 {S : Setup} {Base Resp U : Type}
+@[expose] def postKem4 {S : Setup} {Base Resp U : Type}
     (sid : SessionId S) (bundle : PreKeyBundleInput) (uInfo : U)
     (finishBase : U → Bytes → Bytes → Bytes → Bytes → Bytes → Base → ProbComp (Resp × Option Base))
     (hst : ShCrState S Base) (ss kemCt : Bytes) :
@@ -536,7 +536,7 @@ def postKem4 {S : Setup} {Base Resp U : Type}
   applyShCrFinish sid bundle.pqspkB ss kemCt hst <$>
     finishBase uInfo ekASk ephASk spqrCoins ss kemCt hst.base
 
-noncomputable def tryPause4 {S : Setup} {Base Resp U ι : Type}
+@[expose] def tryPause4 {S : Setup} {Base Resp U ι : Type}
     {QSpec : OracleSpec.{0, 0} ι} (P : Primitives)
     (getPrincipals : Base → List (Nat × PrincipalEntry))
     (implTrue : QueryImpl QSpec (StateT (ShCrState S Base) ProbComp))
@@ -1042,7 +1042,7 @@ abbrev liftKeyIndShCrBase {S : Setup} {α : Type}
     (m : StateT (KeyIndState S) ProbComp α) : StateT (KeyIndShCrState S) ProbComp α :=
   liftShCrBase m
 
-def preCheckKeyInd (S : Setup) (P : Primitives) (sid : SessionId S) (u : Fin S.N_id)
+@[expose] def preCheckKeyInd (S : Setup) (P : Primitives) (sid : SessionId S) (u : Fin S.N_id)
     (bundle : PreKeyBundleInput) (st : KeyIndState S) :
     Option PrincipalEntry :=
   if st.sessions.any (fun e => e.sid == sid) then none
@@ -1052,7 +1052,7 @@ def preCheckKeyInd (S : Setup) (P : Primitives) (sid : SessionId S) (u : Fin S.N
       if !koskBundleOk P st.principals st.spkBundles st.opkEntries st.advKeys bundle then none
       else some uEntry
 
-def finishKeyIndBase (S : Setup) (P : Primitives)
+@[expose] def finishKeyIndBase (S : Setup) (P : Primitives)
     (sid : SessionId S) (bundle : PreKeyBundleInput) (uEntry : PrincipalEntry)
     (ekASk ss kemCt : Bytes) (st : KeyIndState S) :
     ProbComp (KeyIndResponse × Option (KeyIndState S)) := do
@@ -1136,7 +1136,7 @@ abbrev runKeyIndShCrGenSPK (embedTarget : Bool) (S : Setup) (P : Primitives)
     (fun st bs => { st with spkBundles :=
       bs }) KeyIndResponse.noneResp KeyIndResponse.bundleResp u j
 
-def pqxdhKeyIndShCrImpl (checkG2 : Bool) (S : Setup) (P : Primitives) :
+@[expose] def pqxdhKeyIndShCrImpl (checkG2 : Bool) (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndShCrState S) ProbComp)
   | .genSPK u j => runKeyIndShCrGenSPK checkG2 S P u j
   | .initiateOPK u i bundle =>
@@ -1153,7 +1153,7 @@ def pqxdhKeyIndShCrImpl (checkG2 : Bool) (S : Setup) (P : Primitives) :
       (pqxdhKeyIndImpl true S P (.acceptNoOPK k j l hdr)) k j hdr
   | q_other => liftKeyIndShCrBase (pqxdhKeyIndImpl true S P q_other)
 
-def pqxdhKeyIndShCrCachedImpl (checkG2 : Bool) (S : Setup) (P : Primitives) :
+@[expose] def pqxdhKeyIndShCrCachedImpl (checkG2 : Bool) (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndShCrState S) ProbComp)
   | .genSPK u j => runKeyIndShCrGenSPK checkG2 S P u j
   | .initiateOPK u i bundle =>
@@ -1170,7 +1170,7 @@ def pqxdhKeyIndShCrCachedImpl (checkG2 : Bool) (S : Setup) (P : Primitives) :
       (pqxdhKeyIndCachedImpl true S P (.acceptNoOPK k j l hdr)) k j hdr
   | q_other => liftKeyIndShCrBase (pqxdhKeyIndCachedImpl true S P q_other)
 
-def cacheShCrAdvKeys (S : Setup) (P : Primitives) (hst : KeyIndShCrState S) : KeyIndShCrState S :=
+@[expose] def cacheShCrAdvKeys (S : Setup) (P : Primitives) (hst : KeyIndShCrState S) : KeyIndShCrState S :=
   { hst with base := cacheKeyIndAdvKeys S P hst.base }
 
 theorem CommutesRel.liftKeyIndShCrBase_cache (S : Setup) (P : Primitives)
@@ -1326,7 +1326,7 @@ theorem pqxdhKeyIndShCrCachedImpl_false_commutes_cache (S : Setup) (P : Primitiv
     exact CommutesRel.liftKeyIndShCrBase_cache S P hst _ _ (pqxdhKeyIndCachedImpl_commutes_cache
       true S P (.revealSpkSk u j) hst.base)
 
-noncomputable def tryPauseKeyIndQuery (S : Setup) (P : Primitives)
+@[expose] def tryPauseKeyIndQuery (S : Setup) (P : Primitives)
     (sIdx : Nat) (gq : KeyIndQuery S)
     (cont : (keyIndSpec S).Range gq → OracleComp (unifSpec + keyIndSpec S) Bool)
     (hst : KeyIndShCrState S) : Option (PausedShCrKem S (KeyIndState S)) :=
@@ -1343,13 +1343,13 @@ noncomputable def tryPauseKeyIndQuery (S : Setup) (P : Primitives)
       (finishKeyIndBase S P (.sendNoOPK u i) bundle) sIdx cont hst
   | _, _ => none
 
-noncomputable def shcrChoosePkKeyIndAt (S : Setup) (P : Primitives)
+@[expose] def shcrChoosePkKeyIndAt (S : Setup) (P : Primitives)
     (bIdx sIdx : Nat) (A : KeyIndAdversary S) :
     Bytes → Bytes → ProbComp (Bytes × (Bytes → Bytes → ProbComp Bytes)) :=
   shcrChoosePkGenericAt P ($ᵗ Bool >>= fun secb => pure (KeyIndState.empty S secb))
     (pqxdhKeyIndShCrCachedImpl true S P) (tryPauseKeyIndQuery S P) bIdx sIdx A.run
 
-noncomputable def runKeyIndShCrSim (S : Setup) (P : Primitives)
+@[expose] def runKeyIndShCrSim (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ProbComp (Bool × Bool × KeyIndShCrState S) := do
   let secb ← $ᵗ Bool
   let initSt : KeyIndShCrState S := { base := KeyIndState.empty S secb }
@@ -1358,7 +1358,7 @@ noncomputable def runKeyIndShCrSim (S : Setup) (P : Primitives)
   let (b', finalHst) ← (simulateQ impl A.run).run initSt
   return (secb, b', finalHst)
 
-noncomputable def badKemShCrProbKeyIndAt (S : Setup) (P : Primitives)
+@[expose] noncomputable def badKemShCrProbKeyIndAt (S : Setup) (P : Primitives)
     (idx : Nat) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[runKeyIndShCrSim S P A >>= fun (_, _, finalHst) =>
     pure (hasBadKemShCrRecordsAt S P idx finalHst.initKemRecs finalHst.recvKemRecs)] {true}).toReal

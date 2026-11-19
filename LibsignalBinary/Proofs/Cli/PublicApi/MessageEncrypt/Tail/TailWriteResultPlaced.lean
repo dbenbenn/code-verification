@@ -9,16 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CommonPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailWriteResult
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailWriteResult -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Relocatable (`[LibsignalPlacement]`) T2 Writer + Epilogue (`+0x5f8..+0x660`)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

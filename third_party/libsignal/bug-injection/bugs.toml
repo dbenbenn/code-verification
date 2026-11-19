@@ -57,11 +57,11 @@ expect = "live"
 spec_half = "open (not claimed true)"
 notes = """
 evs is the `libsignal-cli` CLI counterpart of `cheval26-weak-state` (7 `CliEvent.run` entries):
-Alice clears her session file (`CliTraces.clear`, emitting no event per D7) after sending her second
+Alice clears her session file (`CliTraces.clear`, emitting no event) after sending her second
 S1 pre-key message, re-initiates S2, and sends an S2 pre-key message; evs ends with Bob's `recv`
 run (`exit = some (0, "second")`) on a PreKey message that splices S2's PQXDH header (ek2, ct2)
 onto Alice's S1 inner SignalMessage while Bob holds his S1 session file. `ValidCall` admits this
-`recv` under D2(c) (`BobCallAllowed` holds beforehand since `bobOff = false`, and the trace ends
+`recv` (`BobCallAllowed` holds beforehand since `bobOff = false`, and the trace ends
 right after this `PreKeyNoMatch` call).
 (1) No model run satisfies `Explains` on evs: the final `recv` exited `0`, so `RunRejected` is
 false and `MatchesEvents` must apply `RunMatches`. On any explanation of the prefix, Bob completed
@@ -70,7 +70,7 @@ only S1's `bobStart` (`bobDoneBaseKeys tr = [ek1]`), whereas the spliced message
 `.messageDecryptSkipped`, while whisper decrypt is closed by the `0x03` tag). Then `RunMatches`
 requires `s.ok tr = true`, which fails because `bobStart`'s symbolic MAC check uses S2's handshake
 keys on S1's inner message (distinct terms; evs has no `.env (.leak ..)`).
-(2) On `CollisionAfterExplainedPrefix` excuses, honest prefixes have an `Explains` witness (under `UA-1` `GhostWF`
+(2) On `CollisionAfterExplainedPrefix` excuses, honest prefixes have an `Explains` witness (under `GhostWF`
 on `.rng` draws), so the universal prefix quantifiers in `PreKeyStartCollidesOrRejects` and `SignalMsgAcceptedOnlyViaCollision`
 are non-vacuous; `¬ KnownBaseKeyOn` closes the pre-key `SignalMsgAcceptedOnlyViaCollision` branch (modelling
 cd361186), `ImplicitReject` is closed because `ct2` is an honest Kyber ciphertext to Bob, and
@@ -90,15 +90,15 @@ inputs = "witnesses/cheval26-weak-state-idx1-cli.json"
 expect = "live"
 spec_half = "open (not claimed true)"
 notes = """
-The `libsignal-cli` CLI counterpart of #450's `cheval26-weak-state-idx1` (schedule b): the spliced
+The `libsignal-cli` CLI counterpart of `cheval26-weak-state-idx1` (schedule b): the spliced
 inner message carries SPQR index 1, the lowest index an honest send can carry. Alice initiates S1 and
 sends two S1 pre-key messages (calls 1, 2); Bob's first `recv` (call 3, no session file yet) takes the
 second, storing the skipped counter-0 / SPQR-index-1 keys in his S1 session file; Alice clears her
 session file (`CliTraces.clear`), initiates S2 and sends an S2 pre-key message (calls 4, 5); τ ends
-with Bob's `recv` (call 6) of a canonical PreKey message (`CanonicalPreKey`, D3) that splices S2's
-PQXDH header (ek2, ct2) onto Alice's FIRST S1 inner SignalMessage while Bob holds his S1 session file,
+with Bob's `recv` (call 6) of a canonical PreKey message (`CanonicalPreKey`) that splices S2's
+PQXDH header (ek2, ct2) onto Alice's first S1 inner SignalMessage while Bob holds his S1 session file,
 then `rng` (32 coin bytes) and `accept`. The mutant accepts call 6 through the stored skipped keys;
-the control rejects it. `ValidCall` admits call 6 under D2(c) (`BobCallAllowed` holds since
+the control rejects it. `ValidCall` admits call 6 (`BobCallAllowed` holds since
 `bobOff = false`, and the trace ends right after this `PreKeyNoMatch` call).
 (1) No model run explains any `CoinSplit` cut of τ, as for `cheval26-weak-state-cli`: the final
 call can only be matched by `bobStart` (whisper decrypt is closed by the 0x03 tag, and wrapped
@@ -121,7 +121,7 @@ inputs = "witnesses/cheval26-small-subgroup-high-bit-cli.json"
 expect = "live"
 spec_half = "open (not claimed true)"
 notes = """
-The `libsignal-cli` CLI counterpart of #450's `cheval26-small-subgroup-high-bit-comp`. Alice runs
+The `libsignal-cli` CLI counterpart of `cheval26-small-subgroup-high-bit-comp`. Alice runs
 `init` and `send`; τ ends with Bob's `recv` (call 2, no session file yet) of Alice's pre-key message
 with the top bit of its base key set, then `rng` (32 coin bytes) and `accept`. The spliced key is still
 `0x05 ‖ 32 bytes`, so the input meets `CanonicalPreKey` and `ValidCall`. The mutant accepts (X25519
@@ -133,10 +133,10 @@ with those bytes yields different agreement terms, so the symbolic MAC check fai
 `PreKeyStartCollidesOrRejects` can excuse the accept; `KyberMismatch` fails on τ's ciphertext by
 `CompKyberCorrectOn`, and `ImplicitReject` fails (Alice's ciphertext decapsulates in the model);
 `X25519PubCanonical` (in `ExternContractsHoldCli`) keeps every interpreted public key below p, so the
-high-bit bytes are not an honest public key. What is NOT argued (as in #450): (a) `BobSessionStartCollidesOrImplicitRejects`'s
+high-bit bytes are not an honest public key. What is not argued: (a) `BobSessionStartCollidesOrImplicitRejects`'s
 `MemoCollisionOn`, `BobOwnKeyMacGuess`, `KemGuess` and `KemAlias` read `S : OpaqueSymbolSemantics` outputs (`kemSS`,
 SPQR keys) that `cliCompShape` quantifies universally (`ghostOk := True`) and τ does not pin;
-(b) `KyberCollisionAt`: `cliCompFits` pins Kyber only on τ's ciphertexts (`CompKyberCorrectOn`). Either
+(b) `KyberCollisionAt`: `CliSetupMatches` pins Kyber only on τ's ciphertexts (`CompKyberCorrectOn`). Either
 could make (S) false. So (S) is left open and not claimed true.
 """
 
@@ -148,7 +148,7 @@ inputs = "witnesses/cheval26-small-subgroup-torsion-cli.json"
 expect = "live"
 spec_half = "open (not claimed true)"
 notes = """
-The `libsignal-cli` CLI counterpart of #450's `cheval26-small-subgroup-torsion-comp`. Alice runs
+The `libsignal-cli` CLI counterpart of `cheval26-small-subgroup-torsion-comp`. Alice runs
 `init` and `send`; τ ends with Bob's `recv` (call 2, no session file yet) of Alice's pre-key message
 with a point of order 8 added to the base key (`ekA` shifted to `ekB`, the witness JSON's
 `torsion_shifts`, recorded in `setup.torsionShifts`), then `rng` (32 coin bytes) and `accept`. The
@@ -160,11 +160,11 @@ mutant accepts (X25519 clamping clears the cofactor, so Bob derives Alice's keys
 yields different agreement terms, so the symbolic MAC check fails; τ has no `leak`.
 (2) On `CollisionAfterExplainedPrefix` excuses: `ExternContractsHoldCli` carries `X25519TorsionShiftsRejected`,
 so no interpreted honest public key is a torsion shift of another; `KnownBaseKey` fails (no session
-before call 2), `KyberMismatch` fails by `CompKyberCorrectOn`, `ImplicitReject` fails. What is NOT
+before call 2), `KyberMismatch` fails by `CompKyberCorrectOn`, `ImplicitReject` fails. What is not
 argued: (a) the `OpaqueSymbolSemantics`-dependent `BobSessionStartCollidesOrImplicitRejects` branches and `KyberCollisionAt`, as for
-`cheval26-small-subgroup-high-bit-cli`; (b) `cliCompFits` does not carry #450's proof-layer
-`TorsionShiftsRecorded` (the interpretation's `torsionShift` need not give the recorded `ekB`; #443
-deleted it from the trusted `fits`, and #450 re-added it only in the untrusted `CompFitsPin.lean`), so
+`cheval26-small-subgroup-high-bit-cli`; (b) `CliSetupMatches` does not carry the proof-layer
+`TorsionShiftsRecorded` (the interpretation's `torsionShift` need not give the recorded `ekB`; it
+lives only in the untrusted `CompFitsPin.lean`, not in the trusted `fits`), so
 the torsion variant need not stand for `ekB` in an adversarial interpretation. So (S) is left open and
 not claimed true.
 """

@@ -9,21 +9,21 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G
-public import Computational.Proofs.SignalPqxdh.Security.CollisionsC
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.CollisionsC
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3B
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3F
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3G
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G2 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3B
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3F
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3G
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 
 /-!
 # One-Key `RootKdfRO` Up-to-Bad Coupling on Non-Session Queries
@@ -32,7 +32,7 @@ Proves `AgreeOffRkAuth` preservation and `RelProbUpToBad` coupling for `authCkOt
 `pqxdhAuthImpl1KeyG`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option maxHeartbeats 400000
 open scoped ENNReal BigOperators

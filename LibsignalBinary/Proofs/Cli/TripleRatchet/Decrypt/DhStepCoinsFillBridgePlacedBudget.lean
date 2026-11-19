@@ -9,15 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhStep433PlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhStep433PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
 /-!
 # Budget-Threaded `signal_session_coins_fill` Bridge for CLI `DhStep`
@@ -26,7 +31,7 @@ Proves `cliCoinsFillBudgetPlaced_ok` (`withVmPreserved (coinsFillSpecPlaced stk)
 and specializes the cross-block `hrng` hypothesis for caller blocks `433` and `507`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

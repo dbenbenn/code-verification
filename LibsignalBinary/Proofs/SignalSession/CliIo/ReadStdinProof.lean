@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadStdinLoop
-public import LibsignalBinary.Proofs.SignalSession.CliIo.FinishGrow
+public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadStdinLoop -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.CliIo.FinishGrow
+import LibsignalBinary.Proofs.SignalSession.CliIo.ReadStdinSteps
 
 /-!
 # Placement-Generic Proof of `signal_session_io::read_stdin`
@@ -21,7 +22,7 @@ the doubling schedule `cliIoReadCaps 8 rem.length`, deallocates and returns `Err
 exceeds `1 MiB`, and propagates allocator OOM via `cliIoStdinOom`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -63,7 +64,7 @@ open LibsignalBinary.Proofs.SignalSession.CliIo.ReadStdinLoop (
 
 /-- State-field preservation across `signal_session_io::read_stdin` / `read_file`
     (all non-`fs` architectural/OS fields preserved). -/
-def CliIoCallPreserved (s0 sf : State) : Prop :=
+@[expose] def CliIoCallPreserved (s0 sf : State) : Prop :=
   sf.trace = s0.trace ∧
     sf.sigActions = s0.sigActions ∧
     sf.tpidrEl0 = s0.tpidrEl0 ∧
@@ -73,7 +74,7 @@ def CliIoCallPreserved (s0 sf : State) : Prop :=
 
 /-- Hoare contract for `signal_session_io::read_stdin() -> Result<Vec<u8>, IoError>` (`x8 = sret`).
     Ghost argument: `(sret, d0, lb, lk)`. -/
-def cliIoReadStdinSpec {oom : State → State → Prop} (A : RustStdAlloc oom)
+@[expose] def cliIoReadStdinSpec {oom : State → State → Prop} (A : RustStdAlloc oom)
     (stackBytes : Nat) : Spec (BitVec 64 × FdEntry × Nat × Nat) where
   pre := fun (sret, d0, lb, lk) s0 =>
     ⌜4256 + Rust.hookStack ≤ stackBytes ∧

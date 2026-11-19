@@ -24,7 +24,7 @@ in-memory layouts (`48` bytes = `0x30`, alignment `8`):
 - `p + 0x18` (`24` bytes): `mac_key: Vec<u8>`
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Auth
 
@@ -72,14 +72,14 @@ abbrev AuthenticatorGhost := AuthenticatorPBGhost
 /-- Pinned representation predicate for `spqr::authenticator::Authenticator` at `p` (`48` bytes = `0x30`):
 - `p + 0x00`: `root_key: Vec<u8>` (`24` bytes)
 - `p + 0x18`: `mac_key: Vec<u8>` (`24` bytes) -/
-def authenticatorPinAt (A : RustAlloc) (g : AuthenticatorGhost) (p : BitVec 64)
+@[expose] def authenticatorPinAt (A : RustAlloc) (g : AuthenticatorGhost) (p : BitVec 64)
     (auth : Authenticator) : SepProp :=
   vecU8At A p g.rootKey.cap g.rootKey.ptr auth.rootKey ∗
     vecU8At A (p + 0x18#64) g.macKey.cap g.macKey.ptr auth.macKey
 
 /-- Unpinned representation predicate for `spqr::authenticator::Authenticator` at `p` (`48` bytes = `0x30`),
 existentially quantifying the `(cap, ptr)` pairs of `root_key` and `mac_key`. -/
-def authenticatorAt (A : RustAlloc) (p : BitVec 64) (auth : Authenticator) : SepProp :=
+@[expose] def authenticatorAt (A : RustAlloc) (p : BitVec 64) (auth : Authenticator) : SepProp :=
   vecU8 A p auth.rootKey ∗
     vecU8 A (p + 0x18#64) auth.macKey
 
@@ -221,27 +221,6 @@ theorem vecU8At_unexpose_entails (A : RustAlloc) (v cap ptr : BitVec 64) (bs : L
     exact Entails.refl _
   · simp only [hcap, ↓reduceIte]
     exact Entails.of_eq (by ac_rfl)
-
-theorem subroutine_ok_inImage_rodata1_keep {α : Type} {prog : Program} {entry : BitVec 64}
-    {img : Obj.Image} {roAddr : BitVec 64} {roBytes : List (BitVec 8)}
-    {spec : Spec α}
-    (hro : ∀ {s : State} (_ : img.FrozenLoaded s) {P : SepProp},
-      (s.mem ⊨ P) → (s.mem ⊨ (roAddr ↦ᵣ roBytes) ∗ P))
-    (h : subroutine_ok prog entry
-      { spec with
-        pre := fun x s => ⌜img.FrozenLoaded s ∧ s.symtab = img.symtab⌝ ∗
-          (roAddr ↦ᵣ roBytes) ∗ spec.pre x s
-        post := fun x s0 sf =>
-          (roAddr ↦ᵣ roBytes) ∗ spec.post x s0 sf }) :
-    subroutine_ok prog entry (spec.inImage img) := by
-  refine subroutine_ok_mono h (fun x R s0 hpre => ?_) (fun x R s0 sf hq => ?_)
-  · simp only [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-    rcases hpre with ⟨hL, hpre⟩
-    exact ⟨hL, hro hL.1 hpre⟩
-  · simp only [Spec.inImage]
-    dsimp only at hq
-    rw [sepConj_assoc] at hq
-    exact Satisfies.of_sep_right hq
 
 end CryptoVerification.SpqrV1.Auth
 

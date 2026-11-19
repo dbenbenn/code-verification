@@ -9,7 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.Proof
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.Proof -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Owned `SignalProtocolError` Representation and Drop Specification (`SpeOwned`, `dropSpeOwnedSpec`)
@@ -30,7 +32,7 @@ failures as `InvalidState` rather than `ApplicationCallbackError`, and `RunCompo
 excludes `.error (.store ())`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -43,20 +45,20 @@ open CryptoVerification.LibsignalPublicApiRepr
 
 /-- Discriminant tags `i` (`speWord i` at `+0`) for which `drop_glue::<SignalProtocolError>` returns
 without deallocating (tags `2..11, 13..17, 20, 21, 23, 28..34`). -/
-def plainSpeTags : List Nat :=
+@[expose] def plainSpeTags : List Nat :=
   [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 20, 21, 23, 28, 29, 30, 31, 32, 33, 34]
 
 /-- Membership in `plainSpeTags`. -/
-def PlainSpeTag (i : Nat) : Prop := i ∈ plainSpeTags
+@[expose] def PlainSpeTag (i : Nat) : Prop := i ∈ plainSpeTags
 
 instance (i : Nat) : Decidable (PlainSpeTag i) := inferInstanceAs (Decidable (i ∈ plainSpeTags))
 
 /-- Discriminant tags `i` (`speWord i` at `+0`) for which `drop_glue::<SignalProtocolError>` frees
 the `Vec<u8>` buffer at `+0x8` (capacity at `+0x8`, pointer at `+0x10`) when capacity is nonzero. -/
-def strSpeTags : List Nat := [0, 1, 12, 18, 22, 24, 25, 27]
+@[expose] def strSpeTags : List Nat := [0, 1, 12, 18, 22, 24, 25, 27]
 
 /-- Membership in `strSpeTags`. -/
-def StrSpeTag (i : Nat) : Prop := i ∈ strSpeTags
+@[expose] def StrSpeTag (i : Nat) : Prop := i ∈ strSpeTags
 
 instance (i : Nat) : Decidable (StrSpeTag i) := inferInstanceAs (Decidable (i ∈ strSpeTags))
 
@@ -78,7 +80,7 @@ inductive SpeOwned where
   | withString (i : Nat) (h : StrSpeTag i)
 
 /-- 48-byte memory layout predicate for `k : SpeOwned` at `a`. -/
-def speOwnedAt (A : RustAlloc) (a : BitVec 64) : SpeOwned → SepProp
+@[expose] def speOwnedAt (A : RustAlloc) (a : BitVec 64) : SpeOwned → SepProp
   | .proto fnName e => speAt A fnName a e
   | .sessionNotFound addr op => apiErrAt A a (.sessionNotFound addr op)
   | .untrustedIdentity addr => apiErrAt A a (.untrustedIdentity addr)
@@ -97,19 +99,11 @@ structure DropSpeOwnedGhost where
 
 /-- Specification of `core::ptr::drop_glue::<SignalProtocolError>` on `SpeOwned` at stack budget
 `stk`, returning `memRegion x.a 48` with `A.pool` and `stackAt s0.sp stk` preserved. -/
-def dropSpeOwnedSpec (A : RustAlloc) (stk : Nat) : Spec DropSpeOwnedGhost where
+@[expose] def dropSpeOwnedSpec (A : RustAlloc) (stk : Nat) : Spec DropSpeOwnedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗ speOwnedAt A x.a x.k ∗ A.pool ∗ stackAt s.sp stk
   post := fun x s0 sf =>
     ⌜sf.trace = s0.trace⌝ ∗ memRegion x.a 48 ∗ A.pool ∗ stackAt s0.sp stk
-
-/-- `dropSpeOwnedSpec A stk` holds on `tripleRatchetProgAtExt img.base ext` for all `32 + extHookStack ≤ stk ≤ 2^64`. -/
-def DropSpeOwnedOk (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) :
-    Prop :=
-  ∀ stk, 32 + extHookStack ≤ stk → stk ≤ 2 ^ 64 →
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr cliDropSpeName)
-      ((dropSpeOwnedSpec A stk).inImage img)
 
 theorem dropSpeOwnedSpec_proto_pre (A : RustAlloc) (stk : Nat) (a : BitVec 64)
     (fnName : List (BitVec 8)) (e : SignalProtocolError) :

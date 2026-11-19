@@ -13,6 +13,10 @@ public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DefsBudge
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.Model
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # `HookSat` Sibling of `StoreLoopProofs.DefsBudget` (`SegS3`, Block `24`)

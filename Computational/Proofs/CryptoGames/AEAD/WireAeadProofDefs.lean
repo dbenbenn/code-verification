@@ -19,7 +19,7 @@ Generic encode-then-MAC wire AEAD (`etmWire`) and libsignal wire codec helpers (
 `wireMacInput`, `openWire`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 namespace CryptoGames
@@ -41,7 +41,7 @@ namespace LibsignalAead
 open CBC HMAC WireAEAD
 
 /-- Restricted round-trip property `parse ∘ encode = some` on header/body pairs satisfying `valid`. -/
-def WireCodec.RoundTripOn {H : Type} (codec : WireCodec H) (valid : H → List (BitVec 8) → Prop) :
+@[expose] def WireCodec.RoundTripOn {H : Type} (codec : WireCodec H) (valid : H → List (BitVec 8) → Prop) :
     Prop :=
   ∀ h body, valid h body → codec.parse (codec.encode h body) = some (h, body)
 

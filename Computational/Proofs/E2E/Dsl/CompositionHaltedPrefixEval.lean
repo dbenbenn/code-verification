@@ -12,17 +12,69 @@ module
 public import Computational.Specifications.LibsignalCli.StatementPqElf
 public import Computational.Specifications.Game.ModelIface
 public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.BinaryHarnessCostedRedsV1 -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.BinaryHarnessCostedRedsV1
 public import Computational.Proofs.E2E.Dsl.CompositionHaltedWitness -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.CompositionHaltedWitnessInst -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.CompositionHaltedWitnessInst
 public import Computational.Proofs.E2E.Dsl.CompositionHaltedSimSpecInst -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.CompositionHaltedPrefixInv -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.PrefixRedHalted -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.PrefixRedHaltedEval -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.PrefixRedHalted
+import Computational.Proofs.E2E.Dsl.PrefixRedHaltedEval
 public import Computational.Proofs.E2E.Dsl.PrefixRedHaltedInst -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.M3Interfaces -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.M3Interfaces
 import Computational.Proofs.E2E.Dsl.KindRedHaltedEval
 import Computational.Proofs.ReductionDsl.Soundness
+import Computational.Proofs.E2E.ComposedKeyIndHop
+import Computational.Proofs.E2E.ComposedPrefixHelpers
+import Computational.Proofs.E2E.Dsl.DrSessionSimBookkeeping
+import Computational.Proofs.E2E.Dsl.E2EStateRepr
+import Computational.Proofs.E2E.Dsl.FreshnessSim
+import Computational.Proofs.E2E.Dsl.HaltedStartSessionSim
+import Computational.Proofs.E2E.Dsl.LocalSessionStep
+import Computational.Proofs.E2E.Dsl.LocalSessionStepAux
+import Computational.Proofs.E2E.Dsl.M3Subprograms
+import Computational.Proofs.E2E.Dsl.PqxdhSim
+import Computational.Proofs.E2E.Dsl.PqxdhSimBranches
+import Computational.Proofs.E2E.Dsl.SpqrSimChain
+import Computational.Proofs.E2E.Dsl.SpqrSimHist
+import Computational.Proofs.E2E.Dsl.StartAndExtSm
+import Computational.Proofs.E2E.Dsl.StartAndExtSmAux
+import Computational.Proofs.E2E.TagSync1KeyReal
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge
+import Computational.Proofs.GameHop.Advantage
+import Computational.Proofs.GameHop.GlobalHybrid
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.MacroLift
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingC
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingD
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhD
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
+import Computational.Proofs.SignalPqxdh.Security.SigHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHopC
+import Mathlib.Data.List.Dedup
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Bool
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Clamped Two-Stage Prefix Reduction Equivalence
@@ -587,38 +639,6 @@ theorem prefixEval_eq_of_valid_inst_any_k
   dsimp only [prefixRedHalted_twoStageSimSpecInst] at hSim
   rwa [bhPrefixRedWithHalted_eq_bhPrefixRedWithSessionTracked] at hSim
 
-theorem prefixEval_eq_of_valid_inst
-    {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
-    {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey} {SessH : Type}
-    {subs : HaltedPrefixSubprograms S (Pt := Pt) ℓ P C K decT encT SessH}
-    {T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey SessH}
-    {TrackInv : ℕ → SessH → Prop}
-    {b : SignalPqxdh.QueryBudget} {qStart qInst qep k : ℕ} {qs : ℕ → ℕ}
-    (hValid : ValidHaltedPrefixSubprogramsInst subs T TrackInv b qStart qInst qep)
-    (hqInst : Finset.sup (Finset.range qStart) qs ≤ qInst)
-    (hP : SignalPqxdh.WellFormedPrimitivesδ P)
-    (B_A : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool)
-    (hB : HaltedTargetAdvPerInstanceBounded B_A b qStart qs)
-    (hk : k < min qStart (min b.q_total S.N_send_tot))
-    {β : Type}
-    (game2 : IdentityKey → IdentityKey → BitVec 256 →
-      OracleComp
-        (unifSpec + CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) Bool →
-      ProbComp β)
-    (qTot : ℕ) (flip : Bool) :
-    let R := prefixRedHalted subs b qStart qInst qep k
-    let R_sh := bhPrefixRedWithSessionTracked T P (SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P)
-      C K qep decT encT k
-    (stageOneAsProbComp (R.eval1 (fun _ => B_A) () qTot false) >>= fun o =>
-      game2 o.1.1 o.1.2.1 o.1.2.2 (R.eval2 o.2 flip qTot false)) =
-    (stageOneAsProbComp (R_sh.eval1 (fun _ => B_A) () qTot false) >>= fun o =>
-      game2 o.1.idA o.1.idB o.1.spkCoins (R_sh.eval2 o.2 flip qTot false)) :=
-  prefixEval_eq_of_valid_inst_any_k hValid hqInst hP
-    (fun {_} hInstLen {_} kE idxOptE σE ρ idx? hkE hidx hσ =>
-      hValid.promoteSlotKC_eval hInstLen kE idxOptE σE ρ k idx? hk hkE hidx hσ)
-    B_A hB game2 qTot flip
-
 /-! ## Clamped-slot equivalence -/
 
 private theorem map_set_eq_self_local {α β : Type} (f : α → β) :
@@ -766,280 +786,5 @@ private theorem shallowInstsBoundInv_stepLocalSm {τ : Type} {S : SignalPqxdh.Se
               rcases hInv with ⟨hsends, hinsts, hnodup, hsub⟩
               exact ⟨hsends, by simpa only [List.length_set] using hinsts,
                 by rwa [hmap], by rwa [hmap]⟩
-
-private theorem bhPrefixRedWithSessionTracked_run1_eq_and_done
-    {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
-    (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
-    (P : SignalPqxdh.Primitives)
-    (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
-    (C : Crypto) (K : MlKem) (qep : ℕ) (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
-    (b : SignalPqxdh.QueryBudget) (qStart : ℕ) {k₁ k₂ : ℕ}
-    (hk₁ : min qStart (min b.q_total S.N_send_tot) ≤ k₁)
-    (hk₂ : min qStart (min b.q_total S.N_send_tot) ≤ k₂)
-    {α : Type} (dflt : α) (oa : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) α) :
-    ∀ (f qKiDone qKiRem qStartDone qStartRem : ℕ) (drv : BHE2EDrvState S ℓ × List τ),
-      oa.IsQueryBoundP
-        (fun q => bhClassifyTarget (fun _ => true) (fun _ => false) (fun _ => false) q = true)
-        qKiRem →
-      oa.IsQueryBoundP
-        (fun q => bhClassifyTarget (fun _ => false) (fun _ => true) (fun _ => false) q = true)
-        qStartRem →
-      qKiDone + qKiRem ≤ b.q_total → qStartDone + qStartRem ≤ min qStart S.N_send_tot →
-      shallowInstsBoundInv qKiDone qStartDone drv.1 →
-      (bhPrefixRedWithSessionTracked T P ki C K qep decT encT k₁).run1 dflt oa f drv =
-        (bhPrefixRedWithSessionTracked T P ki C K qep decT encT k₂).run1 dflt oa f drv ∧
-      ∀ m ∈ support ((bhPrefixRedWithSessionTracked T P ki C K qep decT encT k₁).run1 dflt oa f drv),
-        ∃ b_out s_out, m = .done b_out s_out := by
-  induction oa using OracleComp.inductionOn with
-  | pure a =>
-    intro _ _ _ _ _ drv _ _ _ _ _
-    simp only [CryptoVerification.E2E.BhShallowTwoStageRed.run1_pure]
-    exact ⟨trivial, fun m hm => ⟨a, drv, by simpa [support_pure] using hm⟩⟩
-  | query_bind q mx ih =>
-    intro f qKiDone qKiRem qStartDone qStartRem drv hqKi hqSt hKiSum hStSum hInv
-    rw [isQueryBoundP_query_bind_iff] at hqKi hqSt
-    cases q with
-    | inl _ =>
-      simp only [CryptoVerification.E2E.BhShallowTwoStageRed.run1_query_inl]
-      have hKiSub : ∀ u, (mx u).IsQueryBoundP _ qKiRem :=
-        fun u => (hqKi.2 u).mono (by simp [bhClassifyTarget])
-      have hStSub : ∀ u, (mx u).IsQueryBoundP _ qStartRem :=
-        fun u => (hqSt.2 u).mono (by simp [bhClassifyTarget])
-      refine ⟨bind_congr fun u => (ih u f qKiDone qKiRem qStartDone qStartRem drv
-          (hKiSub u) (hStSub u) hKiSum hStSum hInv).1, fun m hm => ?_⟩
-      rw [mem_support_bind_iff] at hm
-      rcases hm with ⟨u, -, hmu⟩
-      exact (ih u f qKiDone qKiRem qStartDone qStartRem drv
-        (hKiSub u) (hStSub u) hKiSum hStSum hInv).2 m hmu
-    | inr t =>
-      cases f with
-      | zero =>
-        simp only [CryptoVerification.E2E.BhShallowTwoStageRed.run1_query_inr_zero]
-        exact ⟨trivial, fun m hm => ⟨dflt, drv, by simpa [support_pure] using hm⟩⟩
-      | succ f' =>
-        simp only [CryptoVerification.E2E.BhShallowTwoStageRed.run1_query_inr_succ]
-        rcases t with (kq | ctl) | ⟨i, sq⟩
-        · have hKiPos : 0 < qKiRem :=
-            hqKi.1.resolve_left (by simp [bhClassifyTarget, bhClassifyTargetOnly])
-          have hKiSub : ∀ u, (mx u).IsQueryBoundP _ (qKiRem - 1) :=
-            fun u => (hqKi.2 u).mono (by simp [bhClassifyTarget, bhClassifyTargetOnly])
-          have hStSub : ∀ u, (mx u).IsQueryBoundP _ qStartRem :=
-            fun u => (hqSt.2 u).mono (by simp [bhClassifyTarget, bhClassifyTargetOnly])
-          dsimp only [bhPrefixRedWithSessionTracked, bhPrefixHandlePreWithSessionTracked, bhTargetQenc]
-          have hStepInv : ∀ res ∈ support (bhLiftP
-              (G := CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
-              (bhShallowStepPreNonCtlSessionTracked T P ki C K qep decT encT drv (.inl (.inl kq)))),
-              shallowInstsBoundInv (qKiDone + 1) qStartDone res.2.1 := fun res hres => by
-            have hraw := KindRedHaltedEval.mem_support_of_bhLiftP _ hres
-            unfold bhShallowStepPreNonCtlSessionTracked at hraw
-            dsimp only at hraw; split_ifs at hraw
-            · simp only [support_pure, Set.mem_singleton_iff] at hraw; subst hraw
-              exact ⟨Nat.le_succ_of_le hInv.1, hInv.2.1, hInv.2.2.1, hInv.2.2.2⟩
-            · simp only [support_pure, Set.mem_singleton_iff] at hraw; subst hraw
-              exact ⟨Nat.le_succ_of_le hInv.1, hInv.2.1, hInv.2.2.1, hInv.2.2.2⟩
-            · rw [mem_support_bind_iff] at hraw
-              rcases hraw with ⟨⟨kr, st'⟩, -, hret⟩
-              simp only [support_pure, Set.mem_singleton_iff] at hret; subst hret
-              exact shallowInstsBoundInv_mirror hInv st' kq kr
-          simp only [bind_assoc, pure_bind]
-          refine ⟨OracleComp.bind_congr_of_forall_mem_support _ fun res hres =>
-              (ih _ f' (qKiDone + 1) (qKiRem - 1) qStartDone qStartRem res.2
-                (hKiSub _) (hStSub _) (by omega) hStSum (hStepInv res hres)).1, fun m hm => ?_⟩
-          rw [mem_support_bind_iff] at hm
-          rcases hm with ⟨res, hres, hm'⟩
-          exact (ih _ f' (qKiDone + 1) (qKiRem - 1) qStartDone qStartRem res.2
-            (hKiSub _) (hStSub _) (by omega) hStSum (hStepInv res hres)).2 m hm'
-        · cases ctl with | _ sid =>
-          have hStPos : 0 < qStartRem :=
-            hqSt.1.resolve_left (by simp [bhClassifyTarget, bhClassifyTargetOnly])
-          have hKiSub : ∀ u, (mx u).IsQueryBoundP _ qKiRem :=
-            fun u => (hqKi.2 u).mono (by simp [bhClassifyTarget, bhClassifyTargetOnly])
-          have hStSub : ∀ u, (mx u).IsQueryBoundP _ (qStartRem - 1) :=
-            fun u => (hqSt.2 u).mono (by simp [bhClassifyTarget, bhClassifyTargetOnly])
-          dsimp only [bhPrefixRedWithSessionTracked, bhPrefixHandlePreWithSessionTracked, bhTargetQenc]
-          have hLocInv : ∀ ans ∈ support (bhLiftP
-              (G := CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
-              (bhE2ELocalStartSessionTracked T.init ki C K (some true) drv sid)),
-              shallowInstsBoundInv qKiDone (qStartDone + 1) ans.2.1 := fun ans hans => by
-            have hraw := KindRedHaltedEval.mem_support_of_bhLiftP _ hans
-            unfold bhE2ELocalStartSessionTracked at hraw; dsimp only at hraw
-            cases hg : bhE2EGuard drv.1 sid with
-            | none =>
-              simp only [hg, support_pure, Set.mem_singleton_iff] at hraw; subst hraw
-              exact ⟨hInv.1, Nat.le_succ_of_le hInv.2.1, hInv.2.2.1, hInv.2.2.2⟩
-            | some val =>
-              rcases val with ⟨_, _, ⟨_, _⟩⟩; simp only [hg, mem_support_bind_iff] at hraw
-              rcases hraw with ⟨⟨kr1, _⟩, -, ⟨kr2, st2⟩, -, ac, -, hret⟩
-              simp only [support_pure, Set.mem_singleton_iff] at hret; subst hret
-              exact shallowInstsBoundInv_finishStartSpk C K (some true) hInv st2 sid kr1 kr2 ac
-          have hCtlEq : ∀ k_idx, min qStart (min b.q_total S.N_send_tot) ≤ k_idx →
-              bhLiftP (G := CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
-                (bhShallowStepPreCtlSessionTracked T.init ki C K k_idx drv sid) =
-              (bhLiftP (G := CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
-                (bhE2ELocalStartSessionTracked T.init ki C K (some true) drv sid) >>=
-                fun ans => pure (Sum.inl (ans.1, ans.2))) := fun k_idx hk_idx => by
-            unfold bhShallowStepPreCtlSessionTracked; simp only [bhLiftP, simulateQ_bind]
-            refine OracleComp.bind_congr_of_forall_mem_support _ fun ans hans => ?_
-            have hLen : ans.2.1.insts.length ≤ min qStart (min b.q_total S.N_send_tot) :=
-              shallowInstsBoundInv_insts_le (hLocInv ans hans) (by omega) (by omega)
-            have hNotLt : ¬ k_idx < ans.2.1.insts.length := by omega
-            rcases ans with ⟨_, ⟨_, _⟩⟩; dsimp only at hNotLt ⊢
-            simp only [hNotLt, ↓reduceIte, simulateQ_pure]
-          rw [hCtlEq k₁ hk₁, hCtlEq k₂ hk₂]; simp only [bind_assoc, pure_bind]
-          refine ⟨OracleComp.bind_congr_of_forall_mem_support _ fun ans hans =>
-              (ih _ f' qKiDone qKiRem (qStartDone + 1) (qStartRem - 1) ans.2
-                (hKiSub _) (hStSub _) hKiSum (by omega) (hLocInv ans hans)).1, fun m hm => ?_⟩
-          rw [mem_support_bind_iff] at hm
-          rcases hm with ⟨ans, hans, hm'⟩
-          exact (ih _ f' qKiDone qKiRem (qStartDone + 1) (qStartRem - 1) ans.2
-            (hKiSub _) (hStSub _) hKiSum (by omega) (hLocInv ans hans)).2 m hm'
-        · have hKiSub : ∀ u, (mx u).IsQueryBoundP _ qKiRem :=
-            fun u => (hqKi.2 u).mono (by simp [bhClassifyTarget, bhClassifyTargetOnly])
-          have hStSub : ∀ u, (mx u).IsQueryBoundP _ qStartRem :=
-            fun u => (hqSt.2 u).mono (by simp [bhClassifyTarget, bhClassifyTargetOnly])
-          dsimp only [bhPrefixRedWithSessionTracked, bhPrefixHandlePreWithSessionTracked,
-            bhShallowStepPreNonCtlSessionTracked, bhTargetQenc]
-          have hSmInv : ∀ (res : BHTargetResp ℓ × (BHE2EDrvState S ℓ × List τ)),
-              res ∈ support (bhLiftP
-                (G := CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
-                (do let (sr, σH') ← bhE2EStepLocalSmSessionTracked T C K qep decT encT drv i sq
-                    return ((Sum.inr sr : BHTargetResp ℓ), σH'))) →
-              shallowInstsBoundInv qKiDone qStartDone res.2.1 := fun res hres => by
-            have hraw := KindRedHaltedEval.mem_support_of_bhLiftP _ hres
-            rw [mem_support_bind_iff] at hraw
-            rcases hraw with ⟨out, hout, hret⟩
-            simp only [support_pure, Set.mem_singleton_iff] at hret; subst hret
-            exact shallowInstsBoundInv_stepLocalSm T C K qep decT encT hInv i sq hout
-          simp only [bind_assoc, pure_bind]
-          refine ⟨OracleComp.bind_congr_of_forall_mem_support _ fun res hres =>
-              (ih _ f' qKiDone qKiRem qStartDone qStartRem res.2
-                (hKiSub _) (hStSub _) hKiSum hStSum (hSmInv res hres)).1, fun m hm => ?_⟩
-          rw [mem_support_bind_iff] at hm
-          rcases hm with ⟨res, hres, hm'⟩
-          exact (ih _ f' qKiDone qKiRem qStartDone qStartRem res.2
-            (hKiSub _) (hStSub _) hKiSum hStSum (hSmInv res hres)).2 m hm'
-
-theorem bhPrefixRedWithSessionTracked_stage12_eq_of_ge_nInst
-    {τ β : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
-    (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
-    (P : SignalPqxdh.Primitives)
-    (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
-    (C : Crypto) (K : MlKem) (qep : ℕ) (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
-    (b : SignalPqxdh.QueryBudget) (qStart : ℕ) (qs : ℕ → ℕ)
-    (B_A : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool)
-    (hB : HaltedTargetAdvPerInstanceBounded B_A b qStart qs)
-    {k : ℕ} (hk_ge : min qStart (min b.q_total S.N_send_tot) ≤ k)
-    (qTot : ℕ) (flip : Bool)
-    (game2 : IdentityKey → IdentityKey → BitVec 256 →
-      OracleComp
-        (unifSpec + CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) Bool →
-      ProbComp β) :
-    let nInst := min qStart (min b.q_total S.N_send_tot)
-    (stageOneAsProbComp
-        ((bhPrefixRedWithSessionTracked T P ki C K qep decT encT nInst).eval1
-          (fun _ => B_A) () qTot false) >>=
-      fun o => game2 o.1.idA o.1.idB o.1.spkCoins
-        ((bhPrefixRedWithSessionTracked T P ki C K qep decT encT nInst).eval2 o.2 flip qTot false)) =
-    (stageOneAsProbComp
-        ((bhPrefixRedWithSessionTracked T P ki C K qep decT encT k).eval1
-          (fun _ => B_A) () qTot false) >>=
-      fun o => game2 o.1.idA o.1.idB o.1.spkCoins
-        ((bhPrefixRedWithSessionTracked T P ki C K qep decT encT k).eval2 o.2 flip qTot false)) := by
-  dsimp only
-  set nInst := min qStart (min b.q_total S.N_send_tot)
-  have hStMin := isQueryBoundP_min B_A _ hB.2.2.2.2.2.2.1 hB.2.2.2.2.2.1
-  have hInitInv : shallowInstsBoundInv 0 0 ({} : BHE2EDrvState S ℓ) :=
-    ⟨Nat.zero_le _, Nat.zero_le _, List.nodup_nil, fun _ h => nomatch h⟩
-  obtain ⟨hRun1Eq, hRun1Done⟩ :=
-    bhPrefixRedWithSessionTracked_run1_eq_and_done T P ki C K qep decT encT b qStart
-      (le_refl nInst) hk_ge false B_A qTot 0 b.q_total 0 (min qStart S.N_send_tot) ({}, [])
-      hB.2.2.2.1 hStMin (by omega) (by omega) hInitInv
-  have hEval1Eq :
-      (bhPrefixRedWithSessionTracked T P ki C K qep decT encT nInst).eval1
-        (fun _ => B_A) () qTot false =
-      (bhPrefixRedWithSessionTracked T P ki C K qep decT encT k).eval1
-        (fun _ => B_A) () qTot false := by
-    have hInit : ∀ m, (bhPrefixRedWithSessionTracked T P ki C K qep decT encT m).init () =
-        pure ((), ({}, [])) := fun _ => rfl
-    dsimp only [CryptoVerification.E2E.BhShallowTwoStageRed.eval1]
-    rw [hInit nInst, hInit k, pure_bind, pure_bind]
-    dsimp only
-    rw [hRun1Eq]
-    rfl
-  have hEval1Done : ∀ o ∈ support (stageOneAsProbComp
-      ((bhPrefixRedWithSessionTracked T P ki C K qep decT encT k).eval1
-        (fun _ => B_A) () qTot false)),
-      ∃ b_out s_out, o.2 = .done b_out s_out := fun o ho => by
-    rw [← hEval1Eq] at ho
-    have hraw := mem_support_of_stageOneAsProbComp_local _ ho
-    simp only [CryptoVerification.E2E.BhShallowTwoStageRed.eval1, mem_support_bind_iff] at hraw
-    rcases hraw with ⟨⟨_, s0⟩, hs0, m, hm, htail⟩
-    have hs0' : s0 = ({}, []) := by
-      simp only [bhPrefixRedWithSessionTracked, support_pure, Set.mem_singleton_iff,
-        Prod.mk.injEq] at hs0
-      exact hs0.2
-    subst hs0'
-    obtain ⟨b_out, s_out, rfl⟩ := hRun1Done m hm
-    simp only [mem_support_bind_iff, support_pure, Set.mem_singleton_iff] at htail
-    rcases htail with ⟨_, -, rfl⟩
-    exact ⟨b_out, s_out, rfl⟩
-  rw [hEval1Eq]
-  refine OracleComp.bind_congr_of_forall_mem_support _ fun o ho => ?_
-  obtain ⟨b_out, s_out, hm⟩ := hEval1Done o ho
-  rw [hm]
-  rfl
-
-/-- Two-stage `ProbComp` equivalence between `prefixRedHalted` at clamped slot
-`min k (min qStart (min b.q_total S.N_send_tot))` and `bhPrefixRedWithSessionTracked` at slot `k`. -/
-theorem prefixEval_clamped_eq_of_valid_inst
-    {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
-    {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey} {SessH : Type}
-    {subs : HaltedPrefixSubprograms S (Pt := Pt) ℓ P C K decT encT SessH}
-    {T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey SessH}
-    {TrackInv : ℕ → SessH → Prop}
-    {b : SignalPqxdh.QueryBudget} {qStart qInst qep k : ℕ} {qs : ℕ → ℕ}
-    (hValid : ValidHaltedPrefixSubprogramsInst subs T TrackInv b qStart qInst qep)
-    (hqInst : Finset.sup (Finset.range qStart) qs ≤ qInst)
-    (hP : SignalPqxdh.WellFormedPrimitivesδ P)
-    (hPromoteNInst : ∀ {σH : BHE2EDrvState S ℓ × List SessH},
-      σH.1.insts.length ≤ min qStart (min b.q_total S.N_send_tot) →
-      ∀ {Γ} (kE : Expr (atomicE2EOps ℓ P C K decT encT) Γ .nat)
-        (idxOptE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (.opt .nat))
-        (σE : Expr (atomicE2EOps ℓ P C K decT encT) Γ subs.drvTy) (ρ : Env Γ) (idx? : Option ℕ),
-        kE.eval ρ = min qStart (min b.q_total S.N_send_tot) →
-        idxOptE.eval ρ = idx? → σE.eval ρ = subs.drvEnc σH.1 →
-        (subs.promoteSlotKC qStart kE idxOptE σE).eval ρ =
-          match bhPromoteSlotK (min qStart (min b.q_total S.N_send_tot)) idx? σH.1 with
-          | .inl ans => pure (.inl (ans.1, subs.drvEnc ans.2))
-          | .inr (ctx, p, σ_p) => pure (.inr (atomicPrefixCtxEnc ctx, (p, subs.drvEnc σ_p))))
-    (B_A : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool)
-    (hB : HaltedTargetAdvPerInstanceBounded B_A b qStart qs)
-    {β : Type}
-    (game2 : IdentityKey → IdentityKey → BitVec 256 →
-      OracleComp
-        (unifSpec + CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) Bool →
-      ProbComp β)
-    (qTot : ℕ) (flip : Bool) :
-    let nInst := min qStart (min b.q_total S.N_send_tot)
-    let R := prefixRedHalted subs b qStart qInst qep (min k nInst)
-    let R_sh := bhPrefixRedWithSessionTracked T P (SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P)
-      C K qep decT encT k
-    (stageOneAsProbComp (R.eval1 (fun _ => B_A) () qTot false) >>= fun o =>
-      game2 o.1.1 o.1.2.1 o.1.2.2 (R.eval2 o.2 flip qTot false)) =
-    (stageOneAsProbComp (R_sh.eval1 (fun _ => B_A) () qTot false) >>= fun o =>
-      game2 o.1.idA o.1.idB o.1.spkCoins (R_sh.eval2 o.2 flip qTot false)) := by
-  dsimp only
-  set nInst := min qStart (min b.q_total S.N_send_tot)
-  by_cases hk : k < nInst
-  · rw [Nat.min_eq_left (le_of_lt hk)]
-    exact prefixEval_eq_of_valid_inst hValid hqInst hP B_A hB hk game2 qTot flip
-  · have hk_ge : nInst ≤ k := Nat.le_of_not_lt hk
-    rw [Nat.min_eq_right hk_ge]
-    exact (prefixEval_eq_of_valid_inst_any_k hValid hqInst hP hPromoteNInst
-      B_A hB game2 qTot flip).trans
-      (bhPrefixRedWithSessionTracked_stage12_eq_of_ge_nInst T P
-        (SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P) C K qep decT encT b qStart qs B_A hB hk_ge
-        qTot flip game2)
 
 end Computational.Proofs.E2E.Dsl.CompositionHaltedPrefixEval

@@ -9,12 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeySigKem
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndShcrWire
-public import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeySigKem -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndShcrWire -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.ReductionDsl.Size
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrEval
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreHol
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndShcrBranch
+public import VCVio.OracleComp.Constructions.SampleableType.Measure
+public import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Costed `ReductionDsl` One-Key `KemShCr` Program and Advantage Equivalence
@@ -24,7 +28,7 @@ one-key `KemShCr` reduction `shcrReductionKeyInd1Key` and proves its syntactic c
 block-size bounds together with exact `KemShCr` advantage agreement.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +43,7 @@ attribute [simp] bundleV hdrV drKeyV sidV keyIndRenc keyIndQenc
 /-! ## One-key `initPrin` branch and `shcrKeyInd1KeyProg` -/
 
 /-- One-key `initPrin u` handler reusing a single 32-byte scalar for both X25519 keys. -/
-def initPrin1KeyB (K : Nat) {Γ₁ Γ₂ Δ : List PT}
+@[expose] def initPrin1KeyB (K : Nat) {Γ₁ Γ₂ Δ : List PT}
     (st : Var Γ₁ keyIndStateTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ RS :=
   .ite (eAny K (stPrin (v st)) fun e => natEq (.fst (v e)) (v u)) (.ret (rs rNone (v st))) <|
@@ -47,14 +51,14 @@ def initPrin1KeyB (K : Nat) {Γ₁ Γ₂ Δ : List PT}
   .ret (rs (rInitPrin (v ik) (v ik)) (stUpd (v st) (prin := .cons
     (.pair (v u) (peMk (v s0) (v ik) (v s0) (v ik) (.bool false))) (stPrin (v st)))))
 
-@[reducible] def keyIndQueryRestTy : PT :=
+@[expose, reducible] def keyIndQueryRestTy : PT :=
   .sum .nat (.sum (.prod .nat .nat) (.sum (.prod .nat (.prod .nat .nat))
   (.sum (.prod .nat (.prod .nat bundleT)) (.sum (.prod .nat (.prod .nat bundleT))
   (.sum (.prod .nat (.prod .nat (.prod .nat hdrT)))
   (.sum (.prod .nat (.prod .nat (.prod .nat hdrT)))
   (.sum sidT (.sum (B 192) (.sum .unit (.sum sidT (.sum (B 32) (.prod .nat .nat))))))))))))
 
-def shcrPostTailC (S : Setup) (K : Nat) {Γ₁ Δ : List PT}
+@[expose] def shcrPostTailC (S : Setup) (K : Nat) {Γ₁ Δ : List PT}
     (s : Var Γ₁ shcrStTy) [Ext Γ₁ Δ]
     (q : Var (keyIndQueryRestTy :: Δ) keyIndQueryRestTy) :
     Comp pqxdhOps pqPrimIface (keyIndQueryRestTy :: Δ) SCS :=
@@ -72,7 +76,7 @@ def shcrPostTailC (S : Setup) (K : Nat) {Γ₁ Δ : List PT}
   caseSumV (v q) (fun sk => onBase s fun g => registerB g sk) fun x =>
   onBase s fun g => revealSpkB K g x
 
-def shcr1KeyPostC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
+@[expose] def shcr1KeyPostC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
     (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ SCS :=
   caseSumV (v q) (fun u => onBase s fun g => initPrin1KeyB K g u) (shcrPostTailC S K s)
@@ -83,7 +87,7 @@ theorem shcrPostC_eq_tail (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
       caseSumV (v q) (fun u => onBase s fun g => initPrinB K g u) (shcrPostTailC S K s) :=
   rfl
 
-def shcr1KeyPreC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
+@[expose] def shcr1KeyPreC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
     (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ (.sum SCS (.prod (B 1568) (.prod pauseTy shcrStTy))) :=
   bindV (pauseCheckC S K s q) fun p =>
@@ -91,7 +95,7 @@ def shcr1KeyPreC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
   .ret (.inr (.pair (buPqspkB (.fst (.snd (v d)))) (.pair (v d) (v s))))
 
 /-- Two-stage `ReductionDsl` program for `shcrReductionKeyInd1KeyCore S b` with extraction bound `Q` and state-list bound `K`. -/
-def shcrKeyInd1KeyProg (S : Setup) (Q K : Nat) :
+@[expose] def shcrKeyInd1KeyProg (S : Setup) (Q K : Nat) :
     TwoStageCostedReduction pqxdhOps pqPrimIface (keyIndSpec S) (keyIndCodec S)
       (.prod (B 1568) (B 3168)) .unit .bool (B 1568) (.prod (B 32) (B 1568)) (B 1568) where
   σ := shcrStTy
@@ -140,60 +144,6 @@ theorem caseSumV_cost_le_left {τ₁ τ₂ τ : PT} {Γ : List PT}
   dsimp only [caseSumV, Comp.cost]
   omega
 
-theorem shcr1KeyPostC_cost_le_shcrPostC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (shcr1KeyPostC (Δ := Δ) S K s q).cost ≤ (shcrPostC (Δ := Δ) S K s q).cost := by
-  rw [shcrPostC_eq_tail]
-  unfold shcr1KeyPostC
-  refine caseSumV_cost_le_left _ _ _ (shcrPostTailC S K s) ?_
-  simp only [onBase_cost]
-  exact Nat.add_le_add_right (initPrin1KeyB_cost_le K (Γ₁ := keyIndStateTy :: (.nat :: Δ))
-    (Γ₂ := .nat :: Δ) (Δ := keyIndStateTy :: (.nat :: Δ)) .zero .zero) 70
-
-theorem shcr1KeyPreC_cost_le_shcrPreC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (shcr1KeyPreC (Δ := Δ) S K s q).cost ≤ (shcrPreC (Δ := Δ) S K s q).cost := by
-  have hPost := shcr1KeyPostC_cost_le_shcrPostC S K (Γ₁ := Γ₁) (Γ₂ := Γ₂)
-    (Δ := (.opt pauseTy) :: Δ) s q
-  simp only [shcr1KeyPreC, shcrPreC, bindV, caseOptV, Comp.cost]
-  omega
-
-theorem shcrKeyInd1KeyProg_totalCost_le_twoKey (S : Setup) (Q K fuel : Nat) :
-    (shcrKeyInd1KeyProg S Q K).totalCost fuel ≤ (shcrKeyIndProg S Q K).totalCost fuel := by
-  have hInit : (shcrKeyInd1KeyProg S Q K).init.cost = (shcrKeyIndProg S Q K).init.cost := rfl
-  have hCh : (shcrKeyInd1KeyProg S Q K).chDone.cost = (shcrKeyIndProg S Q K).chDone.cost := rfl
-  have hRes : (shcrKeyInd1KeyProg S Q K).resume.cost = (shcrKeyIndProg S Q K).resume.cost := rfl
-  have hFin : (shcrKeyInd1KeyProg S Q K).finish.cost = (shcrKeyIndProg S Q K).finish.cost := rfl
-  have hPre : (shcrKeyInd1KeyProg S Q K).handlePre.cost ≤ (shcrKeyIndProg S Q K).handlePre.cost :=
-    shcr1KeyPreC_cost_le_shcrPreC S K (Γ₁ := [shcrStTy, keyIndQueryTy])
-      (Γ₂ := [keyIndQueryTy]) (Δ := [shcrStTy, keyIndQueryTy]) .zero .zero
-  have hPost : (shcrKeyInd1KeyProg S Q K).handlePost.cost ≤ (shcrKeyIndProg S Q K).handlePost.cost :=
-    shcr1KeyPostC_cost_le_shcrPostC S K (Γ₁ := [shcrStTy, keyIndQueryTy])
-      (Γ₂ := [keyIndQueryTy]) (Δ := [shcrStTy, keyIndQueryTy]) .zero .zero
-  have hMax :
-      max pqPrimIface.uCost (max (shcrKeyInd1KeyProg S Q K).handlePre.cost
-        (shcrKeyInd1KeyProg S Q K).handlePost.cost + (keyIndCodec S).codecCost) ≤
-      max pqPrimIface.uCost (max (shcrKeyIndProg S Q K).handlePre.cost
-        (shcrKeyIndProg S Q K).handlePost.cost + (keyIndCodec S).codecCost) :=
-    max_le (le_max_left _ _)
-      (le_trans (Nat.add_le_add_right (max_le (le_trans hPre (le_max_left _ _))
-        (le_trans hPost (le_max_right _ _))) _) (le_max_right _ _))
-  have hMul := Nat.mul_le_mul_left fuel hMax
-  unfold TwoStageCostedReduction.totalCost
-  rw [hInit, hCh, hRes, hFin]
-  omega
-
-theorem shcrKeyInd1KeyDslProg_totalCost_le (S : Setup) (b : QueryBudget) :
-    (shcrKeyInd1KeyDslProg S b).totalCost b.q_total ≤ stepCostBudget S b :=
-  (shcrKeyInd1KeyProg_totalCost_le_twoKey S b.q_total (keyIndLoopBound b) b.q_total).trans
-    (shcrKeyIndDslProg_totalCost_le S b)
-
-theorem shcrKeyInd1KeyDslProg_totalCost_le_stepCostBudget (S : Setup) (b : QueryBudget) :
-    (shcrKeyInd1KeyDslProg S b).totalCost b.q_total ≤
-      _root_.SignalPqxdh.Security.stepCostBudget S b :=
-  (shcrKeyInd1KeyProg_totalCost_le_twoKey S b.q_total (keyIndLoopBound b) b.q_total).trans
-    (shcrKeyIndProg_totalCost_le_security_of_le S b (keyIndLoopBound b) le_rfl)
-
 theorem caseSumV_queries_le_left {τ₁ τ₂ τ : PT} {Γ : List PT}
     (e : Expr pqxdhOps Γ (.sum τ₁ τ₂))
     (l₁ l₂ : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps pqPrimIface (τ₁ :: Γ) τ)
@@ -202,64 +152,6 @@ theorem caseSumV_queries_le_left {τ₁ τ₂ τ : PT} {Γ : List PT}
     (caseSumV e l₁ r).queries primW primWS ≤ (caseSumV e l₂ r).queries primW primWS := by
   dsimp only [caseSumV, Comp.queries]
   omega
-
-theorem shcr1KeyPostC_queries_le_shcrPostC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (shcr1KeyPostC (Δ := Δ) S K s q).queries primW primWS ≤
-      (shcrPostC (Δ := Δ) S K s q).queries primW primWS := by
-  rw [shcrPostC_eq_tail]
-  unfold shcr1KeyPostC
-  refine caseSumV_queries_le_left _ _ _ (shcrPostTailC S K s) ?_
-  simp only [onBase_queries]
-  exact initPrin1KeyB_queries_le K (Γ₁ := keyIndStateTy :: (.nat :: Δ))
-    (Γ₂ := .nat :: Δ) (Δ := keyIndStateTy :: (.nat :: Δ)) .zero .zero
-
-theorem shcr1KeyPreC_queries_le_shcrPreC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (shcr1KeyPreC (Δ := Δ) S K s q).queries primW primWS ≤
-      (shcrPreC (Δ := Δ) S K s q).queries primW primWS := by
-  have hPost := shcr1KeyPostC_queries_le_shcrPostC S K (Γ₁ := Γ₁) (Γ₂ := Γ₂)
-    (Δ := (.opt pauseTy) :: Δ) s q
-  simp only [shcr1KeyPreC, shcrPreC, bindV, caseOptV, Comp.queries]
-  omega
-
-theorem shcrKeyInd1KeyProg_totalQueries_le_twoKey (S : Setup) (Q K fuel : Nat) :
-    (shcrKeyInd1KeyProg S Q K).totalQueries primW primWS fuel ≤
-      (shcrKeyIndProg S Q K).totalQueries primW primWS fuel := by
-  have hInit : (shcrKeyInd1KeyProg S Q K).init.queries primW primWS =
-      (shcrKeyIndProg S Q K).init.queries primW primWS := rfl
-  have hCh : (shcrKeyInd1KeyProg S Q K).chDone.queries primW primWS =
-      (shcrKeyIndProg S Q K).chDone.queries primW primWS := rfl
-  have hRes : (shcrKeyInd1KeyProg S Q K).resume.queries primW primWS =
-      (shcrKeyIndProg S Q K).resume.queries primW primWS := rfl
-  have hFin : (shcrKeyInd1KeyProg S Q K).finish.queries primW primWS =
-      (shcrKeyIndProg S Q K).finish.queries primW primWS := rfl
-  have hPre : (shcrKeyInd1KeyProg S Q K).handlePre.queries primW primWS ≤
-      (shcrKeyIndProg S Q K).handlePre.queries primW primWS :=
-    shcr1KeyPreC_queries_le_shcrPreC S K (Γ₁ := [shcrStTy, keyIndQueryTy])
-      (Γ₂ := [keyIndQueryTy]) (Δ := [shcrStTy, keyIndQueryTy]) .zero .zero
-  have hPost : (shcrKeyInd1KeyProg S Q K).handlePost.queries primW primWS ≤
-      (shcrKeyIndProg S Q K).handlePost.queries primW primWS :=
-    shcr1KeyPostC_queries_le_shcrPostC S K (Γ₁ := [shcrStTy, keyIndQueryTy])
-      (Γ₂ := [keyIndQueryTy]) (Δ := [shcrStTy, keyIndQueryTy]) .zero .zero
-  have hMax :
-      max ((shcrKeyInd1KeyProg S Q K).handlePre.queries primW primWS)
-        ((shcrKeyInd1KeyProg S Q K).handlePost.queries primW primWS) ≤
-      max ((shcrKeyIndProg S Q K).handlePre.queries primW primWS)
-        ((shcrKeyIndProg S Q K).handlePost.queries primW primWS) :=
-    max_le (le_trans hPre (le_max_left _ _)) (le_trans hPost (le_max_right _ _))
-  have hMul := Nat.mul_le_mul_left fuel hMax
-  unfold TwoStageCostedReduction.totalQueries
-  rw [hInit, hCh, hRes, hFin]
-  omega
-
-theorem shcrKeyInd1KeyDslProg_totalPrimQueries_le (S : Setup) (b : QueryBudget) :
-    (shcrKeyInd1KeyDslProg S b).totalQueries SignalPqxdh.LegacyCosted.primIfacePrimQueryWeight SignalPqxdh.LegacyCosted.samplerZeroQueryWeight
-      b.q_total ≤ primQueryBudget S b := by
-  rw [show SignalPqxdh.LegacyCosted.primIfacePrimQueryWeight = primW from rfl,
-    show SignalPqxdh.LegacyCosted.samplerZeroQueryWeight = primWS from rfl]
-  exact (shcrKeyInd1KeyProg_totalQueries_le_twoKey S b.q_total (keyIndLoopBound b) b.q_total).trans
-    (shcrKeyIndDslProg_totalPrimQueries_le S b)
 
 private theorem securityStepCostBudget_le_legacy (S : Setup) (b : QueryBudget) :
     _root_.SignalPqxdh.Security.stepCostBudget S b ≤
@@ -273,16 +165,6 @@ private theorem securityStepCostBudget_le_legacy (S : Setup) (b : QueryBudget) :
         63488 * S.N_dh ^ 2 + 130816 * S.N_dh * S.N_sess_tot + 65536 * S.N_sess_tot ^ 2) := by ring
   rw [hEq]
   exact Nat.le_add_right _ _
-
-theorem shcrKeyInd1KeyDslProg_blocks (S : Setup) (b : QueryBudget) (ℓ : Nat) :
-    SignalPqxdh.LegacyCosted.GRed2BlockBounded S b ℓ (shcrKeyInd1KeyDslProg S b) :=
-  _root_.SignalPqxdh.LegacyCosted.gred2BlockBounded_of_totalCost_le
-    pqSamplers_sizeHonest
-    _root_.SignalPqxdh.LegacyCosted.one_le_pqPrimIface_qCost
-    _root_.SignalPqxdh.LegacyCosted.one_le_pqSamplers_sCost
-    S b ℓ (shcrKeyInd1KeyDslProg S b)
-    ((shcrKeyInd1KeyDslProg_totalCost_le_stepCostBudget S b).trans
-      (securityStepCostBudget_le_legacy S b))
 
 theorem initPrin1KeyB_size_le (K : Nat) {Γ₁ Γ₂ Δ : List PT}
     (st : Var Γ₁ keyIndStateTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
@@ -302,41 +184,6 @@ theorem caseSumV_size_le_left {τ₁ τ₂ τ : PT} {Γ : List PT}
   dsimp only [caseSumV, Comp.size]
   omega
 
-theorem shcr1KeyPostC_size_le_shcrPostC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (shcr1KeyPostC (Δ := Δ) S K s q).size ≤ (shcrPostC (Δ := Δ) S K s q).size := by
-  rw [shcrPostC_eq_tail]
-  unfold shcr1KeyPostC
-  refine caseSumV_size_le_left _ _ _ (shcrPostTailC S K s) ?_
-  have h := initPrin1KeyB_size_le K (Γ₁ := keyIndStateTy :: (.nat :: Δ))
-    (Γ₂ := .nat :: Δ) (Δ := keyIndStateTy :: (.nat :: Δ)) .zero .zero
-  simp only [onBase, bindV, letV, Comp.size]
-  omega
-
-theorem shcr1KeyPreC_size_le_shcrPreC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (shcr1KeyPreC (Δ := Δ) S K s q).size ≤ (shcrPreC (Δ := Δ) S K s q).size := by
-  have hPost := shcr1KeyPostC_size_le_shcrPostC S K (Γ₁ := Γ₁) (Γ₂ := Γ₂)
-    (Δ := (.opt pauseTy) :: Δ) s q
-  simp only [shcr1KeyPreC, shcrPreC, bindV, caseOptV, Comp.size]
-  omega
-
-theorem shcrKeyInd1KeyProg_size_le_twoKey (S : Setup) (Q K : Nat) :
-    (shcrKeyInd1KeyProg S Q K).size ≤ (shcrKeyIndProg S Q K).size := by
-  have hInit : (shcrKeyInd1KeyProg S Q K).init.size = (shcrKeyIndProg S Q K).init.size := rfl
-  have hCh : (shcrKeyInd1KeyProg S Q K).chDone.size = (shcrKeyIndProg S Q K).chDone.size := rfl
-  have hRes : (shcrKeyInd1KeyProg S Q K).resume.size = (shcrKeyIndProg S Q K).resume.size := rfl
-  have hFin : (shcrKeyInd1KeyProg S Q K).finish.size = (shcrKeyIndProg S Q K).finish.size := rfl
-  have hPre : (shcrKeyInd1KeyProg S Q K).handlePre.size ≤ (shcrKeyIndProg S Q K).handlePre.size :=
-    shcr1KeyPreC_size_le_shcrPreC S K (Γ₁ := [shcrStTy, keyIndQueryTy])
-      (Γ₂ := [keyIndQueryTy]) (Δ := [shcrStTy, keyIndQueryTy]) .zero .zero
-  have hPost : (shcrKeyInd1KeyProg S Q K).handlePost.size ≤ (shcrKeyIndProg S Q K).handlePost.size :=
-    shcr1KeyPostC_size_le_shcrPostC S K (Γ₁ := [shcrStTy, keyIndQueryTy])
-      (Γ₂ := [keyIndQueryTy]) (Δ := [shcrStTy, keyIndQueryTy]) .zero .zero
-  unfold TwoStageCostedReduction.size
-  rw [hInit, hCh, hRes, hFin]
-  omega
-
 @[simp] private theorem sh_partnerC_size {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (s : Var Γ₁ keyIndSessionEntryTy) (r : Var Γ₂ keyIndRespEntryTy) :
     (partnerC (Δ := Δ) s r).size = 211 := by
@@ -344,248 +191,6 @@ theorem shcrKeyInd1KeyProg_size_le_twoKey (S : Setup) (Q K : Nat) :
     eqB, litB, v, Comp.size, Expr.size]
   simp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.SignalPqxdh.LegacyCosted.pqBytesOps,
     Ops.sum, Sum.elim_inl]
-
-set_option maxRecDepth 100000 in
-set_option maxHeartbeats 800000 in
-private theorem shcrPostC_size_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (shcrPostC (Δ := Δ) S K s q).size ≤
-      65 * _root_.ReductionDsl.bits K + 30 * _root_.ReductionDsl.bits S.N_dh +
-        5 * _root_.ReductionDsl.bits S.N_sess_tot + 12000 := by
-  simp (config := { maxSteps := 500000 }) only [shcrPostC, shcrGenSpkB, initGuardE, shcrInitiateC,
-    shcrAcceptB, onBase, scBase, scTB, scTPk, scTSk, scCnt, scIR, scRR, scSIdx, scChosen, scMk, scUpd,
-    initPrinB, corruptB, genSpkB, genOpkB, initSidE, initFinishC, preCheckC, checkSigsC,
-    acceptOpkB, acceptNoOpkB, testB, revealB, roB, revealDhB, registerB, revealSpkB,
-    findHonestC, isAdvRegC, isGameSpkC, isGameOpkC, koskBundleOkC, koskSenderOkC,
-    resolveSigPkC, honestPeerC, checkProvC, sh_partnerC_size, recordRespC, hkdfOrRoC,
-    aiIkSk, aiSpkSk, aiOpkSk, aiPqSk, aiReplay, aiHdr, acceptKeysC,
-    qK, qJ, qO, qHdr, qKJO,
-    stSecb, stPrin, stSpks, stOpks, stSess, stResps, stUsedO, stUsedN, stKyb, stRo, stAdv,
-    stMk, stUpd, peSecIKA0, peIkAPk, peSecIKAsign, peIkSignPk, peCorrupted, peMk, peUpd,
-    sbSpkSk, sbSpkPk, sbSpkSig, sbPqspkSk, sbPqspkPk, sbPqspkSig, sbMk, sbUpd,
-    oeOpkSk, oeOpkPk, oeConsumed, oeMk, oeUpd,
-    seSid, seHonestPeer, sePeerIk, sePeerSpk, sePeerOpk, sePeerPqspk,
-    seSpkHon, seOpkHon, sePqspkHon, seEkASk, seFresh, seDrReal, seDrRand, seHdr,
-    seTested, seRevealed, seMk, seUpd,
-    reSid, reRespIk, reSpk, reOpk, rePqspk, reHdr, reSenderHonest, reDrReal, reDrRand,
-    reTested, reRevealed, reMk, reUpd,
-    buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk,
-    hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk,
-    rNone, rInitPrin, rPk, rCorr, rBundle, rHdr, rInitUnfresh, rAccFresh, rDrKey, rSpkSk,
-    isSomeE, isNoneRespE, getDBytes, optFst, optSnd, dhOptNZ, guardE, rs, kyberCheckE, freshE,
-    orE, natEq, nat2Eq, nat3Eq, optU32Eq, sidEq, kyberEq, nonZero32,
-    buildSecretsE, eLet2, shcrFinE,
-    bindV, letV, caseOptV, caseSumV, findMV, anyMV, eLet, eCaseOpt, eCaseSum, eFind, eAny, eMap, v,
-    litB, catB, consB, widenB, lenB, eqB, u32OfNat, eqU32,
-    sBytes32, sRandom64, sDrKey96,
-    qX25519, qX25519Base, qIsCanonical, qPow8, qSigPkGen, qSigSign, qSigVerify,
-    qKemKeyGen, qKemEncaps, qKemDecaps, qHkdfDerive96, encEC, encKEM,
-    Comp.size, Expr.size, Bool.not_true, ↓reduceIte, Bool.false_eq_true]
-  simp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.SignalPqxdh.LegacyCosted.pqBytesOps,
-    _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Ops.sum, Sum.elim_inl, Sum.elim_inr]
-  have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
-  have hs : S.N_send_tot = S.N_send_opk_tot + S.N_send_no_opk_tot := rfl
-  have hnr := nRecv_le_spk_tot S
-  have bNRecv : _root_.ReductionDsl.bits (nRecv S) ≤ _root_.ReductionDsl.bits S.N_dh :=
-    _root_.ReductionDsl.bits_mono (by omega)
-  have bMin1 : _root_.ReductionDsl.bits (S.N_recv.min S.N_spk_tot) ≤ _root_.ReductionDsl.bits S.N_dh :=
-    _root_.ReductionDsl.bits_mono (le_trans (Nat.min_le_right _ _) (by omega))
-  have bMin2 : _root_.ReductionDsl.bits (S.N_opk.min S.N_opk_tot) ≤ _root_.ReductionDsl.bits S.N_dh :=
-    _root_.ReductionDsl.bits_mono (le_trans (Nat.min_le_right _ _) (by omega))
-  have bMin3 : _root_.ReductionDsl.bits (S.N_send_opk.min S.N_send_opk_tot) ≤ _root_.ReductionDsl.bits S.N_dh :=
-    _root_.ReductionDsl.bits_mono (le_trans (Nat.min_le_right _ _) (by omega))
-  have bMin4 : _root_.ReductionDsl.bits (S.N_send_no_opk.min S.N_send_no_opk_tot) ≤ _root_.ReductionDsl.bits S.N_dh :=
-    _root_.ReductionDsl.bits_mono (le_trans (Nat.min_le_right _ _) (by omega))
-  have bId : _root_.ReductionDsl.bits S.N_id ≤ _root_.ReductionDsl.bits S.N_dh :=
-    _root_.ReductionDsl.bits_mono (by omega)
-  have bSpk : _root_.ReductionDsl.bits S.N_spk_tot ≤ _root_.ReductionDsl.bits S.N_dh :=
-    _root_.ReductionDsl.bits_mono (by omega)
-  have bOpk : _root_.ReductionDsl.bits S.N_opk_tot ≤ _root_.ReductionDsl.bits S.N_dh :=
-    _root_.ReductionDsl.bits_mono (by omega)
-  have bSend : _root_.ReductionDsl.bits S.N_send_tot ≤ _root_.ReductionDsl.bits S.N_dh :=
-    _root_.ReductionDsl.bits_mono (by omega)
-  have bSendO : _root_.ReductionDsl.bits S.N_send_opk_tot ≤ _root_.ReductionDsl.bits S.N_dh :=
-    _root_.ReductionDsl.bits_mono (by omega)
-  have bSendN : _root_.ReductionDsl.bits S.N_send_no_opk_tot ≤ _root_.ReductionDsl.bits S.N_dh :=
-    _root_.ReductionDsl.bits_mono (by omega)
-  have hb0 : _root_.ReductionDsl.bits 0 = 1 := by decide
-  have hb1 : _root_.ReductionDsl.bits 1 = 1 := by decide
-  have hb32 : _root_.ReductionDsl.bits 32 = 6 := by decide
-  have : _root_.ReductionDsl.bits (min K S.N_dh) ≤ _root_.ReductionDsl.bits S.N_dh :=
-    _root_.ReductionDsl.bits_mono (Nat.min_le_right _ _)
-  have : _root_.ReductionDsl.bits (K.min S.N_dh) ≤ _root_.ReductionDsl.bits S.N_dh :=
-    _root_.ReductionDsl.bits_mono (Nat.min_le_right _ _)
-  have : _root_.ReductionDsl.bits (min K S.N_sess_tot) ≤ _root_.ReductionDsl.bits S.N_sess_tot :=
-    _root_.ReductionDsl.bits_mono (Nat.min_le_right _ _)
-  have : _root_.ReductionDsl.bits (K.min S.N_sess_tot) ≤ _root_.ReductionDsl.bits S.N_sess_tot :=
-    _root_.ReductionDsl.bits_mono (Nat.min_le_right _ _)
-  omega
-
-private theorem shcrPreC_size_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (shcrPreC (Δ := Δ) S K s q).size ≤
-      75 * _root_.ReductionDsl.bits K + 45 * _root_.ReductionDsl.bits S.N_dh +
-        10 * _root_.ReductionDsl.bits S.N_sess_tot + 14500 := by
-  have hPost := shcrPostC_size_le S K (Γ₁ := Γ₁) (Γ₂ := Γ₂) (Δ := .opt pauseTy :: Δ) s q
-  have hPC : (pauseCheckC (Δ := Δ) S K s q).size ≤
-      10 * _root_.ReductionDsl.bits K + 15 * _root_.ReductionDsl.bits S.N_dh +
-        5 * _root_.ReductionDsl.bits S.N_sess_tot + 2000 := by
-    simp only [pauseCheckC, tryPauseC, initGuardE, initSidE, preCheckC, checkSigsC,
-      findHonestC, isAdvRegC, isGameSpkC, isGameOpkC, koskBundleOkC, resolveSigPkC,
-      scBase, scCnt, scSIdx,
-      stPrin, stSpks, stOpks, stSess, stAdv,
-      peIkAPk, peIkSignPk, sbSpkPk, oeOpkPk, seSid,
-      buIkB, buSpkB, buSpkSig, buOpkB, buPqspkB, buPqspkSig,
-      isSomeE,
-      orE, natEq, nat2Eq, nat3Eq, sidEq, eLet2,
-      bindV, letV, caseOptV, caseSumV, findMV, anyMV, eLet, eCaseOpt, eCaseSum, eFind, eAny, v,
-      consB, eqB, qPow8, qSigVerify, encEC, encKEM,
-      Comp.size, Expr.size, ↓reduceIte, Bool.false_eq_true]
-    simp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.SignalPqxdh.LegacyCosted.pqBytesOps,
-      Ops.sum, Sum.elim_inl]
-    have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
-    have hs : S.N_send_tot = S.N_send_opk_tot + S.N_send_no_opk_tot := rfl
-    have bMin3 : _root_.ReductionDsl.bits (S.N_send_opk.min S.N_send_opk_tot) ≤ _root_.ReductionDsl.bits S.N_dh :=
-      _root_.ReductionDsl.bits_mono (le_trans (Nat.min_le_right _ _) (by omega))
-    have bMin4 : _root_.ReductionDsl.bits (S.N_send_no_opk.min S.N_send_no_opk_tot) ≤ _root_.ReductionDsl.bits S.N_dh :=
-      _root_.ReductionDsl.bits_mono (le_trans (Nat.min_le_right _ _) (by omega))
-    have bSendO : _root_.ReductionDsl.bits S.N_send_opk_tot ≤ _root_.ReductionDsl.bits S.N_dh :=
-      _root_.ReductionDsl.bits_mono (by omega)
-    have : _root_.ReductionDsl.bits (min K S.N_dh) ≤ _root_.ReductionDsl.bits S.N_dh :=
-      _root_.ReductionDsl.bits_mono (Nat.min_le_right _ _)
-    have : _root_.ReductionDsl.bits (K.min S.N_dh) ≤ _root_.ReductionDsl.bits S.N_dh :=
-      _root_.ReductionDsl.bits_mono (Nat.min_le_right _ _)
-    omega
-  simp only [shcrPreC, bindV, caseOptV, buPqspkB, v, Comp.size, Expr.size]
-  omega
-
-set_option maxRecDepth 100000 in
-set_option maxHeartbeats 800000 in
-theorem shcrKeyIndProg_size_le (S : Setup) (Q K : Nat) :
-    (shcrKeyIndProg S Q K).size ≤
-      _root_.ReductionDsl.bits Q + 150 * _root_.ReductionDsl.bits K +
-        90 * _root_.ReductionDsl.bits S.N_dh + 25 * _root_.ReductionDsl.bits S.N_sess_tot + 29000 := by
-  have hPre : (shcrKeyIndProg S Q K).handlePre.size ≤
-      75 * _root_.ReductionDsl.bits K + 45 * _root_.ReductionDsl.bits S.N_dh +
-        10 * _root_.ReductionDsl.bits S.N_sess_tot + 14500 :=
-    shcrPreC_size_le S K (Γ₁ := [shcrStTy, keyIndQueryTy]) (Γ₂ := [keyIndQueryTy])
-      (Δ := [shcrStTy, keyIndQueryTy]) .zero .zero
-  have hPost : (shcrKeyIndProg S Q K).handlePost.size ≤
-      65 * _root_.ReductionDsl.bits K + 30 * _root_.ReductionDsl.bits S.N_dh +
-        5 * _root_.ReductionDsl.bits S.N_sess_tot + 12000 :=
-    shcrPostC_size_le S K (Γ₁ := [shcrStTy, keyIndQueryTy]) (Γ₂ := [keyIndQueryTy])
-      (Δ := [shcrStTy, keyIndQueryTy]) .zero .zero
-  have hInit : (shcrKeyIndProg S Q K).init.size ≤ 100 := by
-    dsimp only [shcrKeyIndProg]
-    split <;> {
-      simp only [emptyStE, stMk, scMk, bindV, v, sBool, sIndex, Comp.size, Expr.size, bits_0]
-      omega
-    }
-  have hRest : (shcrKeyIndProg S Q K).chDone.size +
-      (shcrKeyIndProg S Q K).resume.size + (shcrKeyIndProg S Q K).finish.size ≤
-      _root_.ReductionDsl.bits Q + 10 * _root_.ReductionDsl.bits K +
-        15 * _root_.ReductionDsl.bits S.N_dh + 10 * _root_.ReductionDsl.bits S.N_sess_tot + 1900 := by
-    dsimp only [shcrKeyIndProg]
-    simp (config := { maxSteps := 500000 }) only [
-      shcrResumeC, shcrExtractC, shcrFinE,
-      scBase, scTB, scTPk, scTSk, scCnt, scIR, scRR, scSIdx, scChosen, scMk, scUpd, rrCt,
-      initFinishC,
-      findHonestC,
-      honestPeerC, checkProvC, sh_partnerC_size, hkdfOrRoC,
-      stSecb, stPrin, stSpks, stOpks, stSess, stResps, stUsedO, stUsedN, stKyb, stRo, stAdv,
-      stMk, stUpd, peSecIKA0, peIkAPk, peCorrupted,
-      sbSpkPk, sbPqspkPk, oeOpkPk,
-      seSid, seHonestPeer, sePeerIk, sePeerSpk, sePeerOpk, sePeerPqspk,
-      seSpkHon, seOpkHon, sePqspkHon, seEkASk, seFresh, seDrReal, seHdr,
-      seTested, seRevealed, seMk, seUpd, reDrRand,
-      buIkB, buSpkId, buSpkB, buOpkB, buPqspkId, buPqspkB,
-      hdMk, rHdr, rInitUnfresh,
-      isSomeE, getDBytes, optBytesEq, optFst, optSnd, rs,
-      orE, natEq,
-      buildSecretsE, eLet2,
-      bindV, letV, caseOptV, findMV, anyMV, eLet, eCaseOpt, eFind, eAny, v,
-      litB, catB, widenB, eqB,
-      sBytes32, sDrKey96,
-      qX25519, qX25519Base, qPow8,
-      qKemDecaps,
-      Comp.size, Expr.size, ↓reduceIte]
-    simp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.SignalPqxdh.LegacyCosted.pqBytesOps,
-      Ops.sum, Sum.elim_inl]
-    have hb0 : _root_.ReductionDsl.bits 0 = 1 := by decide
-    have hb1 : _root_.ReductionDsl.bits 1 = 1 := by decide
-    have : _root_.ReductionDsl.bits (min K S.N_dh) ≤ _root_.ReductionDsl.bits S.N_dh :=
-      _root_.ReductionDsl.bits_mono (Nat.min_le_right _ _)
-    have : _root_.ReductionDsl.bits (K.min S.N_dh) ≤ _root_.ReductionDsl.bits S.N_dh :=
-      _root_.ReductionDsl.bits_mono (Nat.min_le_right _ _)
-    have : _root_.ReductionDsl.bits (min K S.N_sess_tot) ≤ _root_.ReductionDsl.bits S.N_sess_tot :=
-      _root_.ReductionDsl.bits_mono (Nat.min_le_right _ _)
-    have : _root_.ReductionDsl.bits (K.min S.N_sess_tot) ≤ _root_.ReductionDsl.bits S.N_sess_tot :=
-      _root_.ReductionDsl.bits_mono (Nat.min_le_right _ _)
-    omega
-  unfold _root_.ReductionDsl.TwoStageCostedReduction.size
-  omega
-
-theorem shcrKeyIndDslProg_size_le_stepCostBudget (S : Setup) (b : QueryBudget) :
-    (shcrKeyIndDslProg S b).size ≤
-      29000 + 266 * _root_.ReductionDsl.bits (_root_.SignalPqxdh.Security.stepCostBudget S b) :=
-  shcrKeyIndProg_size_le_stepCostBudget S b (keyIndLoopBound b) le_rfl
-
-theorem shcrKeyInd1KeyDslProg_size_le_stepCostBudget (S : Setup) (b : QueryBudget) :
-    (shcrKeyInd1KeyDslProg S b).size ≤
-      29000 + 266 * _root_.ReductionDsl.bits (_root_.SignalPqxdh.Security.stepCostBudget S b) :=
-  (shcrKeyInd1KeyProg_size_le_twoKey S b.q_total (keyIndLoopBound b)).trans
-    (shcrKeyIndDslProg_size_le_stepCostBudget S b)
-
-/-- Run-local two-stage output block-size bound for `shcrKeyInd1KeyDslProg`. -/
-theorem shcrKeyInd1KeyDslProg_blocks_when (S : Setup) (b : QueryBudget) (ℓ : Nat)
-    (A : Unit → OracleComp (unifSpec + keyIndSpec S) Bool)
-    (hfit : ∀ u, AllGameQueriesFit ℓ (keyIndCodec S) (A u))
-    (x : (Ty.prod (B 1568) (B 3168)).denote)
-    (hx : _root_.ReductionDsl.ValFits ℓ (Ty.prod (B 1568) (B 3168)) x)
-    (cm : Bytes × Mid (keyIndSpec S) Bool pauseTy.denote shcrStTy.denote Bytes)
-    (hcm : cm ∈ supportWhen (SignalPqxdh.LegacyCosted.pqPrimIface.AnswerFits ℓ)
-      ((shcrKeyInd1KeyDslProg S b).eval1 A x b.q_total false)) :
-    _root_.ReductionDsl.ValFits (SignalPqxdh.LegacyCosted.outputSizeBudget S b ℓ) (B 1568) cm.1 ∧
-    ∀ (y : (Ty.prod (B 32) (B 1568)).denote),
-      _root_.ReductionDsl.ValFits ℓ (Ty.prod (B 32) (B 1568)) y →
-      ∀ z ∈ supportWhen (SignalPqxdh.LegacyCosted.pqPrimIface.AnswerFits ℓ)
-        ((shcrKeyInd1KeyDslProg S b).eval2 cm.2 y b.q_total false),
-        _root_.ReductionDsl.ValFits (SignalPqxdh.LegacyCosted.outputSizeBudget S b ℓ) (B 1568) z := by
-  let R := shcrKeyInd1KeyDslProg S b
-  obtain ⟨hcm1, hmid⟩ := R.fits_eval1_when pqO_sizeHonest pqSamplers_sizeHonest ℓ ℓ 0
-    (fun _ => trivial) A hfit b.q_total ℓ x hx false cm hcm
-  have hCost : R.totalCost b.q_total ≤ _root_.SignalPqxdh.LegacyCosted.stepCostBudget S b :=
-    (shcrKeyInd1KeyDslProg_totalCost_le_stepCostBudget S b).trans
-      (securityStepCostBudget_le_legacy S b)
-  have hNq : R.nq b.q_total ≤ R.totalCost b.q_total :=
-    CryptoVerification.E2E.Costed.TwoStageCostedReduction.nq_le_totalCost R b.q_total
-  refine ⟨Ty.fits_mono ?_ (B 1568) cm.1 hcm1, fun y hy z hz => ?_⟩
-  · unfold _root_.SignalPqxdh.LegacyCosted.outputSizeBudget
-    have hMul := Nat.mul_le_mul_right ℓ hNq
-    nlinarith
-  · have hz' := R.fits_eval2_when pqO_sizeHonest pqSamplers_sizeHonest ℓ ℓ 0
-      (fun _ => trivial) cm.2 _ hmid y ℓ hy b.q_total false z hz
-    refine Ty.fits_mono ?_ (B 1568) z hz'
-    have hPreCost : b.q_total * R.handlePre.cost ≤
-        b.q_total * max pqPrimIface.uCost (max R.handlePre.cost R.handlePost.cost + (keyIndCodec S).codecCost) :=
-      Nat.mul_le_mul_left _ (le_trans (le_trans (le_max_left _ _) (Nat.le_add_right _ _)) (le_max_right _ _))
-    have hPostCost : b.q_total * R.handlePost.cost ≤
-        b.q_total * max pqPrimIface.uCost (max R.handlePre.cost R.handlePost.cost + (keyIndCodec S).codecCost) :=
-      Nat.mul_le_mul_left _ (le_trans (le_trans (le_max_right _ _) (Nat.le_add_right _ _)) (le_max_right _ _))
-    have hResCost : R.resume.cost ≤ max R.chDone.cost R.resume.cost := le_max_right _ _
-    have hPreNq : b.q_total * R.handlePre.nq ≤ b.q_total * max R.handlePre.nq R.handlePost.nq :=
-      Nat.mul_le_mul_left _ (le_max_left _ _)
-    have hPostNq : b.q_total * R.handlePost.nq ≤ b.q_total * max R.handlePre.nq R.handlePost.nq :=
-      Nat.mul_le_mul_left _ (le_max_right _ _)
-    have hResNq : R.resume.nq ≤ max R.chDone.nq R.resume.nq := le_max_right _ _
-    have hC12 : R.init.cost + b.q_total * R.handlePre.cost +
-        (R.resume.cost + b.q_total * R.handlePost.cost + R.finish.cost) ≤ 2 * R.totalCost b.q_total := by
-      dsimp only [TwoStageCostedReduction.totalCost] at *; omega
-    have hN12 : R.init.nq + b.q_total * R.handlePre.nq +
-        (R.resume.nq + b.q_total * R.handlePost.nq + R.finish.nq) ≤ 2 * R.nq b.q_total := by
-      dsimp only [TwoStageCostedReduction.nq, TwoStageCostedReduction.totalQueries, Comp.nq] at *; omega
-    unfold _root_.SignalPqxdh.LegacyCosted.outputSizeBudget
-    nlinarith
 
 /-! ## Branch evaluation and invariant preservation -/
 
@@ -632,14 +237,6 @@ theorem pqxdhKeyIndShCrPrimImpl1Key_inv (S : Setup) (pk sk : Bytes) (n : ℕ) (q
   | _ =>
     simpa [pqxdhKeyIndShCrPrimImpl1Key] using pqxdhKeyIndShCrPrimImpl_inv S pk sk n _ h hI
 
-theorem caseSumV_eval_inr {τ₁ τ₂ τ : PT} {Γ : List PT}
-    (e : Expr pqxdhOps Γ (.sum τ₁ τ₂))
-    (l₁ l₂ : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps pqPrimIface (τ₁ :: Γ) τ)
-    (r : Var (τ₂ :: Γ) τ₂ → Comp pqxdhOps pqPrimIface (τ₂ :: Γ) τ)
-    (env : Env Γ) {b : τ₂.denote} (hb : e.eval env = .inr b) :
-    (caseSumV e l₁ r).eval env = (caseSumV e l₂ r).eval env := by
-  simp [caseSumV, Comp.eval, hb]
-
 theorem shcr1KeyPostC_eval (S : Setup) (K n : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (sV : Var Γ₁ shcrStTy) (qV : Var Γ₂ keyIndQueryTy) (env : Env Δ) (q : KeyIndQuery S)
     (h : KeyIndShCrState S) (sIdx : Nat) (chosen : Bytes)
@@ -667,7 +264,7 @@ theorem shcr1KeyPostC_eval (S : Setup) (K n : Nat) {Γ₁ Γ₂ Δ : List PT} [E
 
 /-! ## Stage 1 and Stage 2 simulation -/
 
-def stepMid1Key (S : Setup) (sIdx : ℕ) (q : KeyIndQuery S) (h : KeyIndShCrState S) :
+@[expose] def stepMid1Key (S : Setup) (sIdx : ℕ) (q : KeyIndQuery S) (h : KeyIndShCrState S) :
     OracleComp PrimBaseSpec
       ((KeyIndResponse × KeyIndShCrState S) ⊕ (Bytes × (PauseMid S × KeyIndShCrState S))) := do
   match ← tryPauseMid S sIdx q h with
@@ -745,7 +342,7 @@ theorem stepMid1Key_inv (S : Setup) (sIdx : ℕ) (pk sk : Bytes) (n : ℕ) (q : 
   · exact HoldsOnLeaves.map _ (pqxdhKeyIndShCrPrimImpl1Key_inv S pk sk n q h hI) fun _ hx => hx
   · exact HoldsOnLeaves.pure ⟨rfl, hI⟩
 
-def midRun1Key (S : Setup) (b : QueryBudget) (A : KeyIndAdversary S) (pk sk : Bytes) :
+@[expose] def midRun1Key (S : Setup) (b : QueryBudget) (A : KeyIndAdversary S) (pk sk : Bytes) :
     OracleComp PrimBaseSpec (ℕ × (Option Bytes ×
       RedProg2State (keyIndSpec S) Bool (PauseMid S) (KeyIndShCrState S))) :=
   if S.N_spk_tot * S.N_send_tot = 0 then do
@@ -762,7 +359,7 @@ def midRun1Key (S : Setup) (b : QueryBudget) (A : KeyIndAdversary S) (pk sk : By
       (initSh S secb (uIdx * S.N_recv + jIdx) pk sk)
     pure (sIdx, r)
 
-def midAdv1Key (S : Setup) (b : QueryBudget) (A : KeyIndAdversary S) : KemShCrAdv where
+@[expose] def midAdv1Key (S : Setup) (b : QueryBudget) (A : KeyIndAdversary S) : KemShCrAdv where
   State := Bytes × Bytes × ℕ × (Option Bytes ×
     RedProg2State (keyIndSpec S) Bool (PauseMid S) (KeyIndShCrState S))
   choosePk := fun pk sk => (fun x => (chosenOf pk x.2.2, (pk, sk, x))) <$> midRun1Key S b A pk sk
@@ -791,7 +388,7 @@ theorem kemShCrExp_mid1Key_core (P : Primitives) (S : Setup) (b : QueryBudget)
     simp only [midAdv1Key, midRun1Key]
     split_ifs <;> simp only [map_eq_bind_pure_comp, bind_assoc, pure_bind, Function.comp_def]
 
-def stepPreD1Key (S : Setup) (Q K : ℕ) (q : KeyIndQuery S) (st : shcrStTy.denote) :
+@[expose] def stepPreD1Key (S : Setup) (Q K : ℕ) (q : KeyIndQuery S) (st : shcrStTy.denote) :
     OracleComp PrimBaseSpec ((KeyIndResponse × shcrStTy.denote) ⊕
       (Bytes × (pauseTy.denote × shcrStTy.denote))) :=
   (shcrKeyInd1KeyProg S Q K).handlePre.eval (.cons st (.cons (keyIndQueryToVal q) .nil)) >>=
@@ -929,7 +526,7 @@ theorem eval1_1Key_eq (S : Setup) (Q K : ℕ) (b : QueryBudget) (A : KeyIndAdver
 
 /-! ## DSL adversary, semantic bounds, and advantage equality -/
 
-def shcrKeyInd1KeyDslAdvK (S : Setup) (b : QueryBudget) (K : ℕ) (A : KeyIndAdversary S) :
+@[expose] def shcrKeyInd1KeyDslAdvK (S : Setup) (b : QueryBudget) (K : ℕ) (A : KeyIndAdversary S) :
     KemShCrAdv where
   State := Mid (keyIndSpec S) Bool pauseTy.denote shcrStTy.denote Bytes
   choosePk := fun pk sk =>
@@ -939,11 +536,11 @@ def shcrKeyInd1KeyDslAdvK (S : Setup) (b : QueryBudget) (K : ℕ) (A : KeyIndAdv
   q_prim := primQueryBudget S b
 
 /-- `KemShCr` adversary obtained by running `shcrKeyInd1KeyDslProg S b`. -/
-def shcrKeyInd1KeyDslAdv (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) :
+@[expose] def shcrKeyInd1KeyDslAdv (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) :
     KemShCrAdv :=
   shcrKeyInd1KeyDslAdvK S b (keyIndLoopBound b) A.1
 
-def stepPostD1Key (S : Setup) (Q K : ℕ) (q : KeyIndQuery S) (st : shcrStTy.denote) :
+@[expose] def stepPostD1Key (S : Setup) (Q K : ℕ) (q : KeyIndQuery S) (st : shcrStTy.denote) :
     OracleComp PrimBaseSpec (KeyIndResponse × shcrStTy.denote) :=
   (shcrKeyInd1KeyProg S Q K).handlePost.eval (.cons st (.cons (keyIndQueryToVal q) .nil)) >>=
     fun (x : SCS.denote) => pure (valToKeyIndResp x.1, x.2)
@@ -1065,47 +662,5 @@ theorem KemShCr_shcrKeyInd1KeyDslAdv (P : Primitives) (S : Setup) (b : QueryBudg
     (A : BoundedAdv (KeyIndAdversary S) b) :
     KemShCr P (shcrKeyInd1KeyDslAdv S b A) = KemShCr P (shcrReductionKeyInd1Key S b A) :=
   kemShCrExp_shcrKeyInd1KeyDslAdv P S b A
-
-theorem KemShCrReal_shcrKeyInd1KeyDslAdv (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (KeyIndAdversary S) b) :
-    KemShCrReal P (shcrKeyInd1KeyDslAdv S b A) = KemShCrReal P (shcrReductionKeyInd1Key S b A) :=
-  congrArg ENNReal.toReal (KemShCr_shcrKeyInd1KeyDslAdv P S b A)
-
-theorem shcrKeyInd1KeyProg_eval1_primBounded (S : Setup) (Q K fuel : Nat)
-    (A : Unit → OracleComp (unifSpec + keyIndSpec S) Bool) (pk sk : Bytes) :
-    ((shcrKeyInd1KeyProg S Q K).eval1 A (pk, sk) fuel false).IsQueryBoundP
-      (fun q => SignalPqxdh.isPrimQuery₀ q = true)
-      ((shcrKeyInd1KeyProg S Q K).totalQueries primW primWS fuel) :=
-  TwoStageCostedReduction.eval1_queryBound (shcrKeyInd1KeyProg S Q K)
-    (fun q => SignalPqxdh.isPrimQuery₀ q = true) primW primWS
-    (fun _ _ _ => le_rfl)
-    (fun n => (isQueryBoundP_query_iff (spec := PrimBaseSpec)
-      (fun q => SignalPqxdh.isPrimQuery₀ q = true) (Sum.inl n) 0).2 (fun h => by cases h))
-    A (pk, sk) fuel false
-
-theorem shcrKeyInd1KeyProg_eval2_primBounded (S : Setup) (Q K fuel : Nat)
-    (m : Mid (keyIndSpec S) Bool pauseTy.denote shcrStTy.denote Bytes) (ss ct : Bytes) :
-    ((shcrKeyInd1KeyProg S Q K).eval2 m (ss, ct) fuel false).IsQueryBoundP
-      (fun q => SignalPqxdh.isPrimQuery₀ q = true)
-      ((shcrKeyInd1KeyProg S Q K).totalQueries primW primWS fuel) :=
-  TwoStageCostedReduction.eval2_queryBound (shcrKeyInd1KeyProg S Q K)
-    (fun q => SignalPqxdh.isPrimQuery₀ q = true) primW primWS
-    (fun _ _ _ => le_rfl)
-    (fun n => (isQueryBoundP_query_iff (spec := PrimBaseSpec)
-      (fun q => SignalPqxdh.isPrimQuery₀ q = true) (Sum.inl n) 0).2 (fun h => by cases h))
-    m (ss, ct) fuel false
-
-/-- Semantic primitive-query bound for `shcrKeyInd1KeyDslAdv`. -/
-theorem shcrKeyInd1KeyDslAdv_bounded (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (KeyIndAdversary S) b) :
-    (shcrKeyInd1KeyDslAdv S b A).Bounded := by
-  have hQ : (shcrKeyInd1KeyDslProg S b).totalQueries primW primWS b.q_total ≤
-      primQueryBudget S b :=
-    shcrKeyInd1KeyDslProg_totalPrimQueries_le S b
-  refine ⟨fun pk sk => ?_, fun st ss ct => ?_⟩
-  · exact (shcrKeyInd1KeyProg_eval1_primBounded S b.q_total (keyIndLoopBound b) b.q_total
-      (fun _ => A.1.run) pk sk).mono hQ
-  · exact (shcrKeyInd1KeyProg_eval2_primBounded S b.q_total (keyIndLoopBound b) b.q_total
-      st ss ct).mono hQ
 
 end SignalPqxdh.Security.ReductionDsl.KeyInd

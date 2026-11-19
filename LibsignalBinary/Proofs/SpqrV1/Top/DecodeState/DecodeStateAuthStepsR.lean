@@ -10,13 +10,13 @@ limitations under the License.
 module
 
 meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateSubMergesStepsR
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MergePlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateSubMergesStepsR
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergePlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
@@ -26,8 +26,13 @@ import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbLeaf
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateTightCountR
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
 
 /-!
 # Step & `AuthMergeLoopEnv` Helpers for `ProtoAuthenticator::merge` (`Block 295`)
@@ -36,7 +41,7 @@ Proves pure `AuthMergeLoopEnv` step bridges, `decodeErrorPushMergeBudgetSpec` er
 field steps, and zero-capacity per-field step lemmas on `tlb_AuthDom` for Block `295`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -679,7 +684,7 @@ theorem e2ar_auth_tag2_merge_step_cl_placed [LibsignalPlacement] {M : AllocCostM
 
 /-! ## 3. Zero-Capacity Per-Field Step Lemmas on `tlb_AuthDom` (`tlb_authMergeTightSpecOfEnv`) -/
 
-def e2ar_vecU8CapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
+@[expose] def e2ar_vecU8CapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
     (bs : List (BitVec 8)) : SepProp :=
   ∃∗ cap : BitVec 64, ∃∗ ptr : BitVec 64,
     ⌜BytesMergeCapOk cap bsLen⌝ ∗ vecU8At A a cap ptr bs
@@ -695,7 +700,7 @@ theorem e2ar_vecU8CapAt_mono {A : RustAlloc} {a : BitVec 64} {bs : List (BitVec 
     e2ar_vecU8CapAt A a n bs ⊢ e2ar_vecU8CapAt A a m bs :=
   CryptoVerification.SpqrV1.Auth.vecU8CapAt_mono A a bs hle
 
-def e2ar_authLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def e2ar_authLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) (s0 s : State) (bufRef slot ptr : BitVec 64)
     (Hmsg : SepProp) (bs cur : List (BitVec 8)) : SepProp :=
   Hmsg ∗

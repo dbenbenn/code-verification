@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
 import ProofLib.SepLogic.WPFrozen
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # SPQR V1 Send-Leaf Transitions: Relocatable `RustCliAllocBudget` Bridges & `SepWPp` Helpers
@@ -24,7 +26,7 @@ envelopes and specifications, and provides `SepWP` → `SepWPp` call helpers
 `call_polyNextChunk_placed_sepWPp{,_ofEnv}` for `PolyEncoder::next_chunk` (Block `416`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -124,87 +126,5 @@ export LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget
   (call_polyNextChunk_placed)
 
 /-! ## 3. `SepWP` → `SepWPp` Relocatable `PolyEncoder::next_chunk` Call Helpers -/
-
-/-- Envelope-parametric `SepWP` → `SepWPp` relocatable call rule for
-    `withLsCodeRoLoaded lsmpl (polyNextChunkPlacedSpecOfEnv Env M A lim)` (Block `416`),
-    matching `DefsPlaced.call_polyNextChunk_placed` for any panic predicate `Qp` (`onPanic = ⌜False⌝`). -/
-theorem call_polyNextChunk_placed_sepWPp_ofEnv [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {prog : Program} {entry ret_pc : BitVec 64}
-    {Env : PolyNextChunkGhost → List AllocEvent → Prop}
-    (hcall : subroutine_ok prog entry
-      (withLsCodeRoLoaded lsmpl (polyNextChunkPlacedSpecOfEnv Env M A lim)))
-    (outChunkA encA : BitVec 64) (enc enc' : PolyEncoder) (chunk : Chunk) (st : M.σ)
-    {s0 s : State} {sp_call v19 v20 : BitVec 64} {P Frame : SepProp}
-    {post Qp : State → SepProp → Prop}
-    (hpc : s.pc = entry)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp_call)
-    (hsp_align : (sp_call &&& 15#64 == 0#64) = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (htrace : s.trace = s0.trace)
-    (hregs : Regs19To27Eq s v19 v20 s0)
-    (hx8 : s.readReg64 Reg.x8 = outChunkA)
-    (hx0 : s.readReg64 Reg.x0 = encA)
-    (hnc : enc.nextChunk = .ok (enc', chunk))
-    (hfit : FitsEnv M lim st (Env ⟨outChunkA, encA, enc, enc', chunk⟩))
-    (hsplit : P = (memRegion outChunkA chunkSize ∗ polyEncoderAt A.repAlloc encA enc ∗
-      tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-      A.pool lim st s ∗ stackAt sp_call polyNextChunkStack) ∗ Frame)
-    (hnext : ∀ (sf : State) (evs : List AllocEvent),
-      sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = sp_call → Regs19To27Eq sf v19 v20 s0 → sf.trace = s0.trace →
-      Env ⟨outChunkA, encA, enc, enc', chunk⟩ evs →
-      SepWP prog (s0.readReg64 Reg.lr) sf
-        ((chunkAt outChunkA chunk ∗ polyEncoderAt A.repAlloc encA enc' ∗
-          tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-          A.pool lim (M.stepEvents evs st) sf ∗ stackAt sp_call polyNextChunkStack) ∗ Frame) post) :
-    SepWP prog entry s P
-      (fun sm Pm =>
-        LibsignalCodeRoLoaded lsmpl sm.mem →
-        SepWPp prog (s0.readReg64 Reg.lr) sm Pm post Qp) := by
-  apply SepWP.done hpc hrun
-  intro hcro
-  apply SepWPp.of_sepWP_ret
-  exact sepWP_seq_lscro hcro
-    (call_polyNextChunk_placed_ofEnv hcall outChunkA encA enc enc' chunk st
-      hpc hrun hsp hsp_align hlr htrace hregs hx8 hx0 hnc hfit hsplit hnext)
-
-theorem call_polyNextChunk_placed_sepWPp [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {prog : Program} {entry ret_pc : BitVec 64}
-    (hcall : subroutine_ok prog entry
-      (withLsCodeRoLoaded lsmpl (polyNextChunkPlacedSpec M A lim)))
-    (outChunkA encA : BitVec 64) (enc enc' : PolyEncoder) (chunk : Chunk) (st : M.σ)
-    {s0 s : State} {sp_call v19 v20 : BitVec 64} {P Frame : SepProp}
-    {post Qp : State → SepProp → Prop}
-    (hpc : s.pc = entry)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp_call)
-    (hsp_align : (sp_call &&& 15#64 == 0#64) = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (htrace : s.trace = s0.trace)
-    (hregs : Regs19To27Eq s v19 v20 s0)
-    (hx8 : s.readReg64 Reg.x8 = outChunkA)
-    (hx0 : s.readReg64 Reg.x0 = encA)
-    (hnc : enc.nextChunk = .ok (enc', chunk))
-    (hfit : FitsEnv M lim st (PolyEncoderNextChunkEnv enc))
-    (hsplit : P = (memRegion outChunkA chunkSize ∗ polyEncoderAt A.repAlloc encA enc ∗
-      tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-      A.pool lim st s ∗ stackAt sp_call polyNextChunkStack) ∗ Frame)
-    (hnext : ∀ (sf : State) (evs : List AllocEvent),
-      sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = sp_call → Regs19To27Eq sf v19 v20 s0 → sf.trace = s0.trace →
-      PolyEncoderNextChunkEnv enc evs →
-      SepWP prog (s0.readReg64 Reg.lr) sf
-        ((chunkAt outChunkA chunk ∗ polyEncoderAt A.repAlloc encA enc' ∗
-          tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-          A.pool lim (M.stepEvents evs st) sf ∗ stackAt sp_call polyNextChunkStack) ∗ Frame) post) :
-    SepWP prog entry s P
-      (fun sm Pm =>
-        LibsignalCodeRoLoaded lsmpl sm.mem →
-        SepWPp prog (s0.readReg64 Reg.lr) sm Pm post Qp) :=
-  call_polyNextChunk_placed_sepWPp_ofEnv hcall outChunkA encA enc enc' chunk st
-    hpc hrun hsp hsp_align hlr htrace hregs hx8 hx0 hnc hfit hsplit hnext
 
 end LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget

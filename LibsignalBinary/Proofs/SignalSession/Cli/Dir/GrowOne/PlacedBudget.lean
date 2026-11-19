@@ -9,19 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.LayoutBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.Placed
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.LayoutBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` `RawVec<(String, Vec<u8>)>::grow_one` (Block 586)
@@ -30,7 +36,7 @@ Verifies Block 586 (`grow_one`) against `withLsCodeRoLoaded lsmpl (growOneDirByt
 and `growOneDirSpecPlaced A lim stk` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -85,7 +91,7 @@ private theorem memRegion_24_cells_p (a : BitVec 64) :
 
 /-- Refinement of `finishGrowZeroCellsSpec` adding `align.toNat ≤ 2 ^ 31` (`RustLayoutOk`),
 which holds automatically at concrete Rust alignments (`1`, `8`, …). -/
-def finishGrowZeroCellsRustSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def finishGrowZeroCellsRustSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (FGCellsGhost × M.σ) :=
   { finishGrowZeroCellsSpec A lim with
     pre := fun ((out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp), st) s =>
@@ -94,7 +100,7 @@ def finishGrowZeroCellsRustSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
           ((out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp), st) s }
 
 /-- Refinement of `finishGrowNeCellsSpec` adding `align.toNat ≤ 2 ^ 31` (`RustLayoutOk`). -/
-def finishGrowNeCellsRustSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def finishGrowNeCellsRustSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (FGCellsGhost × M.σ) :=
   { finishGrowNeCellsSpec A lim with
     pre := fun ((out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp), st) s =>

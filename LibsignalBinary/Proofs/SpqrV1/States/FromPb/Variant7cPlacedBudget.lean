@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7bPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7c
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7cPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7bPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7c -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7cPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch1Placed
@@ -21,6 +21,16 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch2Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch3Placed
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget
+import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoder
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7aPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.UnchunkedFromPbClPlacedBudget
 
 /-!
 # Budget-Threaded Placed Variant 7 (`Ct1Sampled`, Block `333`) — Part C
@@ -29,7 +39,7 @@ Relocatable budget-threaded mid-stage cleanup paths (`+7196`, `+7100`, `+3732`, 
 `+10556 -> +11112 -> +4632`) under `FreeOnlyEvs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

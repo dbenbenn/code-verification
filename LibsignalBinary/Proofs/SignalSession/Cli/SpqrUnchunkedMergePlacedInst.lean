@@ -9,13 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedCt1SentClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedEkSentCt1ReceivedClPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsPlacedInst
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedCt1SentClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedEkSentCt1ReceivedClPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsPlacedInst -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB
 import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.BytesMergeCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Placed `unchunked::Ct1Sent::merge` & `unchunked::EkSentCt1Received::merge`
@@ -25,7 +29,7 @@ Code-and-rodata-loaded (`withLsCodeRoLoaded lsmpl`) own-block and caller-transfe
 both over generic hooks and instantiated under `[CliSpqrExt W ext]`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.SpqrUnchunkedMergePlacedInst

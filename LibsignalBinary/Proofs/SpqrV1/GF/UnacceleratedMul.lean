@@ -10,21 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.GF16
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2
-public import LibsignalBinary.Proofs.CodeLayout
-public import LibsignalBinary.Proofs.SpqrV1.GF.GfCodeSym
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.SpqrV1.GF.GfCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
-
-/-!
-# Verification of `spqr::encoding::gf::unaccelerated::mul`
-
-Proves fixed-offset (`0x63ca4`) and relocatable `[LibsignalPlacement]` (Block `384`) subroutine
-contracts for `spqr::encoding::gf::unaccelerated::mul` against `unaccelerated.mul`.
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.GF.UnacceleratedMul
 
@@ -81,16 +72,8 @@ theorem readReg_setMem_setPC_pre (s : State) (pc : BitVec 64) (m : Memory) (w : 
 
 abbrev unacceleratedMulName : String := "spqr::encoding::gf::unaccelerated::mul"
 
-theorem unacceleratedMul_fnOff : libsignalSessionCode.fnOff unacceleratedMulName = 0x5e8ac :=
-  ls_lemma% fnOff "spqr::encoding::gf::unaccelerated::mul"
-
-gen_decodes libsignalSessionCode_tree unacceleratedMulBin [0x5e8ac → 0x5e994]
-
-/-- Image offset of `spqr::encoding::gf::reduce::REDUCE_BYTES` (`0x85ae0`, 512 bytes = 256 × `u16`). -/
-abbrev reduceBytesOff : Nat := num% (ls_xref% 0x5e970 0x5e974)
-
 /-- The 512 little-endian bytes of `spqr::encoding::gf::reduce::REDUCE_BYTES`. -/
-def reduceTableBytes : List (BitVec 8) :=
+@[expose] def reduceTableBytes : List (BitVec 8) :=
   (List.range 256).flatMap fun i =>
     let w := reduce.reduceByteEntry (BitVec.ofNat 8 i)
     [w.extractLsb' 0 8, w.extractLsb' 8 8]
@@ -104,54 +87,6 @@ theorem reduceTableBytes_pack16 (idx : BitVec 8) :
     reduce.reduceByteEntry idx := by
   revert idx
   decide +kernel
-
-/-- Read-only separation-logic assertion for `REDUCE_BYTES` at `b + 0xa4ae0`. -/
-def reduceTableAt (b : BitVec 64) : SepProp :=
-  (b + bv% (ls_xref% 0x5e970 0x5e974)) ↦ᵣ reduceTableBytes
-
-/-- `.rodata` slice at `0x85ae0` (`ls_xref% 0x63d68 0x63d6c`, 512 bytes): `REDUCE_BYTES`. -/
-theorem rodata_reduceTable {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ reduceTableAt img.base ∗ P := by
-  have hhb := loads_rodata_holdsBytes himg hF
-    (off := reduceBytesOff) (n := 512) (bs := reduceTableBytes)
-    (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel)
-    (by rfl_kernel) reduceTableBytes_length (by rfl_kernel)
-  have ⟨h1, h2⟩ := holdsBytes_ro hhb
-  exact Satisfies.rodata_intro h1 h2 (by rw [reduceTableBytes_length]; decide) hP
-
-def reduceTableFrame (b : BitVec 64) (off : Nat) : SepProp :=
-  let base := b + bv% (ls_xref% 0x5e970 0x5e974)
-  (base ↦ᵣ reduceTableBytes.take off) ∗
-    ((base + BitVec.ofNat 64 (off + 2)) ↦ᵣ reduceTableBytes.drop (off + 2))
-
-theorem reduceTableAt_focus16 (b : BitVec 64) (idx : BitVec 8) :
-    reduceTableAt b =
-      ((b + bv% (ls_xref% 0x5e970 0x5e974) + BitVec.ofNat 64 (2 * idx.toNat)) ↦₁₆ᵣ
-        reduce.reduceByteEntry idx) ∗
-      reduceTableFrame b (2 * idx.toNat) := by
-  have hlt := idx.isLt
-  have hlen : 2 * idx.toNat + 2 ≤ reduceTableBytes.length := by
-    rw [reduceTableBytes_length]; omega
-  unfold reduceTableAt reduceTableFrame
-  rw [pointsToBytesRO_split3 _ reduceTableBytes (2 * idx.toNat) 2 hlen,
-      pointsToBytesRO_take2_eq_pointsTo16RO _ reduceTableBytes (2 * idx.toNat) hlen,
-      reduceTableBytes_pack16 idx]
-
-theorem reduceTableAt_unfocus16 (b : BitVec 64) (idx : BitVec 8) :
-    ((b + bv% (ls_xref% 0x5e970 0x5e974) + BitVec.ofNat 64 (2 * idx.toNat)) ↦₁₆ᵣ
-      reduce.reduceByteEntry idx) ∗
-    reduceTableFrame b (2 * idx.toNat) ⊢
-      reduceTableAt b := by
-  rw [reduceTableAt_focus16 b idx]
-  exact Entails.refl _
-
-theorem fnAddr_adrp_63d68 {b : BitVec 64} {H : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr unacceleratedMulName + 196#64) &&&
-      0xfffffffffffff000#64) = b + 0x5e000#64 := by
-  rw [Program.fnAddr_rebase, unacceleratedMul_fnOff]
-  revert hb; bv_bits
 
 private theorem sbfx64_helper (w : BitVec 64) :
     (w &&& 1#64 |||
@@ -550,74 +485,10 @@ theorem polyReduce_asm_eq (a b_arg : BitVec 16) :
   dsimp only [unaccelerated.mul, reduce.polyReduce]
   exact polyReduce_asm_helper _ _
 
-/-- Specification of `spqr::encoding::gf::unaccelerated::mul` (`0x63ca4`).
-Takes two 16-bit field elements `a` and `b_arg` in the low 16 bits of `.x0` and `.x1`,
-reads the precomputed table `reduceTableAt b`, and returns `unaccelerated.mul a b_arg`
-in the low 16 bits of `.x0` without touching the stack. -/
-def unacceleratedMulSpec (b : BitVec 64) : Spec (BitVec 16 × BitVec 16) where
-  pre := fun (a, b_arg) s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      BitVec.truncate 16 (s.readReg64 .x0) = a ∧
-      BitVec.truncate 16 (s.readReg64 .x1) = b_arg⌝ ∗
-      reduceTableAt b
-  post := fun (a, b_arg) s0 sf =>
-    ⌜BitVec.truncate 16 (sf.readReg64 .x0) = unaccelerated.mul a b_arg ∧
-      sf.trace = s0.trace⌝ ∗
-      reduceTableAt b
-
-theorem unacceleratedMul_ok (b : BitVec 64) (ext : String → Option (State → State)) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr unacceleratedMulName)
-      (unacceleratedMulSpec b) := by
-  have hfn : libsignalSessionCode.fnOff unacceleratedMulName = 0x5e8ac := unacceleratedMul_fnOff
-  code_fetches CryptoVerification.libsignalSessionCode unacceleratedMulBin b
-    (Rust.withPanics ext) hfn 0x5e8ac 236
-  dsimp only [tripleRatchetProgAtExt] at ⊢
-  clear hfn
-  simp only [unacceleratedMulSpec]
-  wp_init ab s0
-  have hpc' : s0.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr unacceleratedMulName := by
-    rw [Program.fnAddr_rebase, unacceleratedMul_fnOff]; exact hpc
-  clear hpc
-  have hadrp := fnAddr_adrp_63d68 (H := Rust.withPanics ext) h_1
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr unacceleratedMulName = entry
-  examples_hide_fetches
-  wp_steps 52
-  rw [polyMul_asm_eq]
-  wp_steps 1
-  wp_conv_pre =>
-    rw [reduceTableAt_focus16 b (BitVec.truncate 8 (unaccelerated.polyMul ab.1 ab.2 >>> 24)),
-        uxtw1_idx1_eq (unaccelerated.polyMul ab.1 ab.2)]
-  wp_steps 3
-  wp_conv_pre =>
-    rw [← uxtw1_idx1_eq (unaccelerated.polyMul ab.1 ab.2),
-        ← reduceTableAt_focus16 b (BitVec.truncate 8 (unaccelerated.polyMul ab.1 ab.2 >>> 24)),
-        reduceTableAt_focus16 b
-          (BitVec.truncate 8
-            ((unaccelerated.polyMul ab.1 ab.2 ^^^
-                BitVec.zeroExtend 32
-                    (reduce.reduceByteEntry (BitVec.truncate 8 (unaccelerated.polyMul ab.1 ab.2 >>> 24))) <<<
-                  8) >>>
-              16)),
-        uxtw1_idx2_eq]
-  wp_steps 3
-  wp_conv_pre =>
-    rw [← uxtw1_idx2_eq,
-        ← reduceTableAt_focus16 b
-          (BitVec.truncate 8
-            ((unaccelerated.polyMul ab.1 ab.2 ^^^
-                BitVec.zeroExtend 32
-                    (reduce.reduceByteEntry (BitVec.truncate 8 (unaccelerated.polyMul ab.1 ab.2 >>> 24))) <<<
-                  8) >>>
-              16))]
-  wp_done
-
-/-! ## Relocatable `[LibsignalPlacement]` Contract (Block `384`) -/
-
 abbrev reduceTableSym : String := "spqr:.rodata..Lanon.234"
 
 /-- Relocatable read-only separation-logic assertion for `REDUCE_BYTES` at `lsρ reduceTableSym`. -/
-def reduceTablePlacedAt [LibsignalPlacement] : SepProp :=
+@[expose] def reduceTablePlacedAt [LibsignalPlacement] : SepProp :=
   (lsρ reduceTableSym) ↦ᵣ reduceTableBytes
 
 theorem rodata_reduceTable_placed [LibsignalPlacement] {m : Memory}
@@ -625,7 +496,7 @@ theorem rodata_reduceTable_placed [LibsignalPlacement] {m : Memory}
     m ⊨ reduceTablePlacedAt ∗ P :=
   lsro_intro_chk hro (by decide +kernel) hP
 
-def reduceTablePlacedFrame [LibsignalPlacement] (off : Nat) : SepProp :=
+@[expose] def reduceTablePlacedFrame [LibsignalPlacement] (off : Nat) : SepProp :=
   let base := lsρ reduceTableSym
   (base ↦ᵣ reduceTableBytes.take off) ∗
     ((base + BitVec.ofNat 64 (off + 2)) ↦ᵣ reduceTableBytes.drop (off + 2))
@@ -652,7 +523,7 @@ theorem reduceTablePlacedAt_unfocus16 [LibsignalPlacement] (idx : BitVec 8) :
   exact Entails.refl _
 
 /-- Relocatable specification of `spqr::encoding::gf::unaccelerated::mul` (Block `384`). -/
-def unacceleratedMulPlacedSpec [LibsignalPlacement] : Spec (BitVec 16 × BitVec 16) where
+@[expose] def unacceleratedMulPlacedSpec [LibsignalPlacement] : Spec (BitVec 16 × BitVec 16) where
   pre := fun (a, b_arg) s =>
     ⌜BitVec.truncate 16 (s.readReg64 .x0) = a ∧
       BitVec.truncate 16 (s.readReg64 .x1) = b_arg⌝ ∗

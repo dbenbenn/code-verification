@@ -9,13 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hscPlacedBudgetAux
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hscPlacedBudgetAux -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch3Placed
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Repr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsc -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hscPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Budget-Threaded Variant 2 (`HeaderSent`) — Part C
@@ -24,7 +37,7 @@ Relocatable Block-`333` `FreeOnlyEvs` cleanup chain (`+9152 -> +9228`) under
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

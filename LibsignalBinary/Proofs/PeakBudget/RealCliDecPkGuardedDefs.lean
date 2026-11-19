@@ -10,9 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.PeakBudget.GateM2rGSite3Defs
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
-public import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpecRepaired
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
+import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
+public import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpecRepaired -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
 
 /-!
 # Guarded Wide `decryptPrekey` Slot Envelope Definitions
@@ -23,7 +33,7 @@ Defines `realCliDecPkBinaryWideSlotEnvGuardedFixed` and `cliDecPkCanonSlotEnvExa
 `PeerSpqrStateTight640`-guarded binary-kit `W4` (`decrypt_prekey`) slot envelopes.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -51,25 +61,12 @@ abbrev realCliDecPkBinaryWideSlotEnvGuardedFixed [LibsignalPlacement]
   PeerSpqrStateTight640 W.C.F W.Q.K x.F x.peer.val →
     realCliDecPkBinaryWideSlotEnvFixed X W x evs
 
-theorem realCliDecPkBinaryWideSlotEnvGuardedFixed_ghost_congr [LibsignalPlacement]
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (x y : DecPkGhost)
-    (hp : x.peer.val = y.peer.val) (hm : x.me.val = y.me.val)
-    (hs : x.stores = y.stores) (hcp : x.coinsP = y.coinsP)
-    (hf : x.F = y.F) (hc : x.coins = y.coins) (hmsg : x.msg = y.msg) :
-    realCliDecPkBinaryWideSlotEnvGuardedFixed X W x =
-      realCliDecPkBinaryWideSlotEnvGuardedFixed X W y := by
-  funext evs
-  dsimp [realCliDecPkBinaryWideSlotEnvGuardedFixed]
-  rw [hf, hp,
-    realCliDecPkBinaryWideSlotEnvFixed_ghost_congr X W x y hp hm hs hcp hf hc hmsg]
-
 /-- Canonical `PeerSpqrStateTight640`-guarded `W4` (`decrypt_prekey`) slot envelope instantiated
 with `CmkLoopAdvanceEvs`, `VerNeTightTopEnv`, `maxOps = 109`, and `StatesRecvProtoEnv' K`
 (definitionally equal to `GateM2rGStatesRecvTwins.m2rg_realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixed'
 (fun _ K => StatesRecvProtoEnv' K) X W`). When `¬ PeerSpqrStateTight640`, the predicate reduces to
 `⊤`, whose `FitsEnv` precondition is unsatisfiable at finite `lim`. -/
-noncomputable def cliDecPkCanonSlotEnvExact [LibsignalPlacement]
+@[expose] def cliDecPkCanonSlotEnvExact [LibsignalPlacement]
     (X : UnreachedPqxdhPrimitives) (W : CliHooks) :
     DecPkGhost → List AllocEvent → Prop :=
   m2rgs3_realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixed'

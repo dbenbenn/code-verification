@@ -10,9 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBase
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1State
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommon
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1State -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommon -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
 
@@ -29,7 +28,7 @@ the four `V1State.Chunked.*` `prost::encoding::message::merge` subroutines:
 4. `V1State.Chunked.Ct1Sampled` (`0x4a390`)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageMerge
 
@@ -53,12 +52,12 @@ set_option linter.unusedSimpArgs false
 
 /-! ## 1. Coordinated Callee Specs (`PolyDecoder` / `PolyEncoder` / `Unchunked.{Ct1Sent,EkSentCt1Received}`) -/
 
-def optAuthenticatorPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) :
+@[expose] def optAuthenticatorPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) :
     Option ProtoAuthenticator → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 40
   | some auth => authenticatorPBCapAt A a bsLen auth
 
-def unchunkedCt1SentPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
+@[expose] def unchunkedCt1SentPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
     (u : V1State.Unchunked.Ct1Sent) : SepProp :=
   (∃∗ cap : BitVec 64, ∃∗ ptr : BitVec 64, ⌜BytesMergeCapOk cap bsLen⌝ ∗ vecU8At A a cap ptr u.hdr) ∗
   (∃∗ cap : BitVec 64, ∃∗ ptr : BitVec 64, ⌜BytesMergeCapOk cap bsLen⌝ ∗ vecU8At A (a + 0x18#64) cap ptr u.es) ∗
@@ -66,19 +65,19 @@ def unchunkedCt1SentPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
   optAuthenticatorPBCapAt A (a + 0x48#64) bsLen u.auth ∗
   ((a + 0x78#64) ↦₆₄ u.epoch)
 
-def optUnchunkedCt1SentPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) :
+@[expose] def optUnchunkedCt1SentPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) :
     Option V1State.Unchunked.Ct1Sent → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 120
   | some u => unchunkedCt1SentPBCapAt A a bsLen u
 
-def unchunkedEkSentCt1ReceivedPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
+@[expose] def unchunkedEkSentCt1ReceivedPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
     (u : V1State.Unchunked.EkSentCt1Received) : SepProp :=
   (∃∗ cap : BitVec 64, ∃∗ ptr : BitVec 64, ⌜BytesMergeCapOk cap bsLen⌝ ∗ vecU8At A a cap ptr u.dk) ∗
   (∃∗ cap : BitVec 64, ∃∗ ptr : BitVec 64, ⌜BytesMergeCapOk cap bsLen⌝ ∗ vecU8At A (a + 0x18#64) cap ptr u.ct1) ∗
   optAuthenticatorPBCapAt A (a + 0x30#64) bsLen u.auth ∗
   ((a + 0x60#64) ↦₆₄ u.epoch)
 
-def optUnchunkedEkSentCt1ReceivedPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) :
+@[expose] def optUnchunkedEkSentCt1ReceivedPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) :
     Option V1State.Unchunked.EkSentCt1Received → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 96
   | some u => unchunkedEkSentCt1ReceivedPBCapAt A a bsLen u
@@ -102,7 +101,7 @@ structure UnchunkedCt1SentMergeGhost where
   ptr : BitVec 64
   bs : List (BitVec 8)
 
-def unchunkedCt1SentMergeSpec (A : RustAlloc) : Spec UnchunkedCt1SentMergeGhost where
+@[expose] def unchunkedCt1SentMergeSpec (A : RustAlloc) : Spec UnchunkedCt1SentMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.msgPtr ∧
@@ -134,7 +133,7 @@ structure UnchunkedEkSentCt1ReceivedMergeGhost where
   ptr : BitVec 64
   bs : List (BitVec 8)
 
-def unchunkedEkSentCt1ReceivedMergeSpec (A : RustAlloc) : Spec UnchunkedEkSentCt1ReceivedMergeGhost where
+@[expose] def unchunkedEkSentCt1ReceivedMergeSpec (A : RustAlloc) : Spec UnchunkedEkSentCt1ReceivedMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.msgPtr ∧
@@ -157,14 +156,6 @@ def unchunkedEkSentCt1ReceivedMergeSpec (A : RustAlloc) : Spec UnchunkedEkSentCt
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-theorem unchunkedCt1SentMerge_fnOff :
-    libsignalSessionCode.fnOff unchunkedCt1SentMergeName = 0x4caa4 :=
-  libsignalSessionCode_fnOff_0x4caa4
-
-theorem unchunkedEkSentCt1ReceivedMerge_fnOff :
-    libsignalSessionCode.fnOff unchunkedEkSentCt1ReceivedMergeName = 0x4c808 :=
-  libsignalSessionCode_fnOff_0x4c808
-
 end ChunkedMerge
 
 open ChunkedMerge
@@ -182,22 +173,6 @@ abbrev chunkedEkSentCt1ReceivedMergeName : String :=
 
 abbrev chunkedCt1SampledMergeName : String :=
   "prost::encoding::message::merge::<spqr::proto::pq_ratchet::v1_state::chunked::Ct1Sampled, &mut &[u8]>"
-
-theorem chunkedCt1ReceivedMerge_fnOff :
-    libsignalSessionCode.fnOff chunkedCt1ReceivedMergeName = 0x4ae0c :=
-  libsignalSessionCode_fnOff_0x4ae0c
-
-theorem chunkedCt1AcknowledgedMerge_fnOff :
-    libsignalSessionCode.fnOff chunkedCt1AcknowledgedMergeName = 0x4bbb4 :=
-  libsignalSessionCode_fnOff_0x4bbb4
-
-theorem chunkedEkSentCt1ReceivedMerge_fnOff :
-    libsignalSessionCode.fnOff chunkedEkSentCt1ReceivedMergeName = 0x4c178 :=
-  libsignalSessionCode_fnOff_0x4c178
-
-theorem chunkedCt1SampledMerge_fnOff :
-    libsignalSessionCode.fnOff chunkedCt1SampledMergeName = 0x4a390 :=
-  libsignalSessionCode_fnOff_0x4a390
 
 theorem protoPolynomialDecoderAt_eq_pb (A : RustAlloc) (a : BitVec 64) (m : PolynomialDecoder) :
     Poly.protoPolynomialDecoderAt A a (polyDecoderToProto m) =
@@ -291,15 +266,15 @@ theorem optUnchunkedEkSentCt1ReceivedPBCapAt_entails_optEkSentCt1ReceivedPBAt (A
 
 /-! ## 4. Pure `pts` / `polys` Length Growth Bounds for `PolynomialDecoder` and `PolynomialEncoder` -/
 
-def optPolyDecoderPtsLen : Option PolynomialDecoder → Nat
+@[expose] def optPolyDecoderPtsLen : Option PolynomialDecoder → Nat
   | none => 0
   | some d => d.pts.length
 
-def optPolyEncoderPtsLen : Option PolynomialEncoder → Nat
+@[expose] def optPolyEncoderPtsLen : Option PolynomialEncoder → Nat
   | none => 0
   | some e => e.pts.length
 
-def optPolyEncoderPolysLen : Option PolynomialEncoder → Nat
+@[expose] def optPolyEncoderPolysLen : Option PolynomialEncoder → Nat
   | none => 0
   | some e => e.polys.length
 
@@ -509,11 +484,11 @@ theorem polyEncoder_mergeMessage_pts_polys_len {wt : Proto.WireType}
 
 /-! ## 5. Representation Predicates and Hoare `Spec`s for `V1State.Chunked.*` `merge` -/
 
-def chunkedCt1ReceivedPBAt (A : RustAlloc) (a : BitVec 64) (m : V1State.Chunked.Ct1Received) : SepProp :=
+@[expose] def chunkedCt1ReceivedPBAt (A : RustAlloc) (a : BitVec 64) (m : V1State.Chunked.Ct1Received) : SepProp :=
   optEkSentCt1ReceivedPBAt A a m.uc ∗
     optPolynomialEncoderPBAt A (a + 104#64) m.sendingEk
 
-def chunkedCt1ReceivedPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
+@[expose] def chunkedCt1ReceivedPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
     (m : V1State.Chunked.Ct1Received) : SepProp :=
   optUnchunkedEkSentCt1ReceivedPBCapAt A a bsLen m.uc ∗
     optPolynomialEncoderPBAt A (a + 104#64) m.sendingEk
@@ -533,11 +508,11 @@ theorem chunkedCt1ReceivedPBAt_entails_exists (A : RustAlloc) (a : BitVec 64)
     chunkedCt1ReceivedPBAt A a m ⊢ ∃∗ m' : V1State.Chunked.Ct1Received, chunkedCt1ReceivedPBAt A a m' :=
   Entails.sepExists_intro m
 
-def chunkedCt1AcknowledgedPBAt (A : RustAlloc) (a : BitVec 64) (m : V1State.Chunked.Ct1Acknowledged) : SepProp :=
+@[expose] def chunkedCt1AcknowledgedPBAt (A : RustAlloc) (a : BitVec 64) (m : V1State.Chunked.Ct1Acknowledged) : SepProp :=
   optCt1SentPBAt A a m.uc ∗
     optPolynomialDecoderPBAt A (a + 128#64) m.receivingEk
 
-def chunkedCt1AcknowledgedPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
+@[expose] def chunkedCt1AcknowledgedPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
     (m : V1State.Chunked.Ct1Acknowledged) : SepProp :=
   optUnchunkedCt1SentPBCapAt A a bsLen m.uc ∗
     optPolynomialDecoderPBAt A (a + 128#64) m.receivingEk
@@ -557,11 +532,11 @@ theorem chunkedCt1AcknowledgedPBAt_entails_exists (A : RustAlloc) (a : BitVec 64
     chunkedCt1AcknowledgedPBAt A a m ⊢ ∃∗ m' : V1State.Chunked.Ct1Acknowledged, chunkedCt1AcknowledgedPBAt A a m' :=
   Entails.sepExists_intro m
 
-def chunkedEkSentCt1ReceivedPBAt (A : RustAlloc) (a : BitVec 64) (m : V1State.Chunked.EkSentCt1Received) : SepProp :=
+@[expose] def chunkedEkSentCt1ReceivedPBAt (A : RustAlloc) (a : BitVec 64) (m : V1State.Chunked.EkSentCt1Received) : SepProp :=
   optEkSentCt1ReceivedPBAt A a m.uc ∗
     optPolynomialDecoderPBAt A (a + 104#64) m.receivingCt2
 
-def chunkedEkSentCt1ReceivedPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
+@[expose] def chunkedEkSentCt1ReceivedPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
     (m : V1State.Chunked.EkSentCt1Received) : SepProp :=
   optUnchunkedEkSentCt1ReceivedPBCapAt A a bsLen m.uc ∗
     optPolynomialDecoderPBAt A (a + 104#64) m.receivingCt2
@@ -581,7 +556,7 @@ theorem chunkedEkSentCt1ReceivedPBAt_entails_exists (A : RustAlloc) (a : BitVec 
     chunkedEkSentCt1ReceivedPBAt A a m ⊢ ∃∗ m' : V1State.Chunked.EkSentCt1Received, chunkedEkSentCt1ReceivedPBAt A a m' :=
   Entails.sepExists_intro m
 
-def chunkedCt1SampledPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
+@[expose] def chunkedCt1SampledPBCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
     (m : V1State.Chunked.Ct1Sampled) : SepProp :=
   optUnchunkedCt1SentPBCapAt A a bsLen m.uc ∗
     optPolynomialEncoderPBAt A (a + 128#64) m.sendingCt1 ∗
@@ -611,7 +586,7 @@ structure ChunkedCt1ReceivedMergeGhost where
   ptr : BitVec 64
   bs : List (BitVec 8)
 
-def chunkedCt1ReceivedMergeSpec (A : RustAlloc) : Spec ChunkedCt1ReceivedMergeGhost where
+@[expose] def chunkedCt1ReceivedMergeSpec (A : RustAlloc) : Spec ChunkedCt1ReceivedMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.msgPtr ∧
@@ -644,7 +619,7 @@ structure ChunkedCt1AcknowledgedMergeGhost where
   ptr : BitVec 64
   bs : List (BitVec 8)
 
-def chunkedCt1AcknowledgedMergeSpec (A : RustAlloc) : Spec ChunkedCt1AcknowledgedMergeGhost where
+@[expose] def chunkedCt1AcknowledgedMergeSpec (A : RustAlloc) : Spec ChunkedCt1AcknowledgedMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.msgPtr ∧
@@ -676,7 +651,7 @@ structure ChunkedEkSentCt1ReceivedMergeGhost where
   ptr : BitVec 64
   bs : List (BitVec 8)
 
-def chunkedEkSentCt1ReceivedMergeSpec (A : RustAlloc) : Spec ChunkedEkSentCt1ReceivedMergeGhost where
+@[expose] def chunkedEkSentCt1ReceivedMergeSpec (A : RustAlloc) : Spec ChunkedEkSentCt1ReceivedMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.msgPtr ∧
@@ -708,7 +683,7 @@ structure ChunkedCt1SampledMergeGhost where
   ptr : BitVec 64
   bs : List (BitVec 8)
 
-def chunkedCt1SampledMergeSpec (A : RustAlloc) : Spec ChunkedCt1SampledMergeGhost where
+@[expose] def chunkedCt1SampledMergeSpec (A : RustAlloc) : Spec ChunkedCt1SampledMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.msgPtr ∧
@@ -1131,20 +1106,20 @@ theorem decodeErrorWith_succ_entails_le3 (A : RustAlloc) (e : BitVec 64) {n : Na
 @[simp] theorem optPolyDecoderPtsLen_eq_getD (opt : Option PolynomialDecoder) :
     optPolyDecoderPtsLen opt = (opt.getD default).pts.length := by cases opt <;> rfl
 
-def chunkedSavedRegs (s0 : State) : SepProp :=
+@[expose] def chunkedSavedRegs (s0 : State) : SepProp :=
   ((s0.sp - 80#64) ↦₆₄ s0.readReg64 .x29) ∗ ((s0.sp - 72#64) ↦₆₄ s0.readReg64 .x30) ∗
     ((s0.sp - 64#64) ↦₆₄ s0.readReg64 .x25) ∗ memRegion (s0.sp - 56#64) 8 ∗
     ((s0.sp - 48#64) ↦₆₄ s0.readReg64 .x24) ∗ ((s0.sp - 40#64) ↦₆₄ s0.readReg64 .x23) ∗
     ((s0.sp - 32#64) ↦₆₄ s0.readReg64 .x22) ∗ ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x21) ∗
     ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗ ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19)
 
-def ChunkedHighCalleeSaved (s0 s : State) : Prop :=
+@[expose] def ChunkedHighCalleeSaved (s0 s : State) : Prop :=
   s.readReg64 (Reg.gpr 26#5) = s0.readReg64 (Reg.gpr 26#5) ∧
     s.readReg64 (Reg.gpr 27#5) = s0.readReg64 (Reg.gpr 27#5) ∧
     s.readReg64 (Reg.gpr 28#5) = s0.readReg64 (Reg.gpr 28#5) ∧
     calleeSavedVRegs s = calleeSavedVRegs s0
 
-def ChunkedLoopRegs (s0 s : State) : Prop :=
+@[expose] def ChunkedLoopRegs (s0 s : State) : Prop :=
   s.readReg64 (Reg.gpr 23#5) = 1#64 ∧
     s.readReg64 (Reg.gpr 24#5) = 0xffffffffffffffff#64 ∧
     s.readReg64 (Reg.gpr 25#5) = 8#64 ∧ ChunkedHighCalleeSaved s0 s

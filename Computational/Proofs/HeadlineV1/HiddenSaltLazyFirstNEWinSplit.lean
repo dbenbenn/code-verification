@@ -9,11 +9,59 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple2
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECoupleT
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple2 -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECoupleT -- proof-setup: allow-public-import
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEInTransTransfer
 import ProofLib.BV.WidthNorm
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.StateInv -- shake: keep
+public import Computational.Proofs.HeadlineV1.HiddenSaltV1Defs -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatementsShort
+import Computational.Proofs.CryptoGames.SM.GameProofDefs
+import Computational.Proofs.CryptoGames.SM.Theorem1.Lemma17Aux
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.CostedTables
+import LibsignalBinary.Proofs.SpqrV1Sync.InSyncEpoch
+import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDefs
+import LibsignalBinary.Specifications.CryptoGames.AEAD.EffSalt
+import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
+import LibsignalBinary.Specifications.CryptoGames.Party
+import LibsignalBinary.Specifications.CryptoGames.SM.Game
+import LibsignalBinary.Specifications.HkdfSalt
+import Mathlib.Algebra.BigOperators.Group.Finset.Defs
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Data.Finset.Defs
+import Mathlib.Data.List.Dedup
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.Integral.Lebesgue.Add
+import Mathlib.Order.Disjoint
+import Mathlib.Order.SetNotation
+import Mathlib.Tactic.Attr.Register
+import PolyFun.Control.Monad.Support
+import Std.Tactic.BVDecide.Normalize.BitVec
+import Std.Tactic.BVDecide.Normalize.Bool
+import Std.Tactic.BVDecide.Normalize.Prop
+import ToMathlib.Control.StateT
+import VCVio.CryptoFoundations.SecExp
+import VCVio.CryptoFoundations.SecExp.Measure
+import VCVio.EvalDist.Defs.Measure.Core
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Basic
+import VCVio.EvalDist.Monad.Bool
+import VCVio.EvalDist.ProbabilityBounds
+import VCVio.EvalDist.ProbabilityNotation
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.EvalDist.Measure
+import VCVio.OracleComp.OracleSpec
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.QueryTracking.QueryBound.Simulation
+import VCVio.OracleComp.QueryTracking.SubSpec
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.Basic
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Relational.SimulateQ.UntilBad
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Deliver-Step Case Split and In-Transit Origin Invariant
@@ -23,11 +71,9 @@ probe under the pre-divergence cell-family invariant and the in-transit origin i
 `FirstNEInTransOriginInv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec ENNReal MeasureTheory
@@ -297,7 +343,7 @@ theorem firstNEProbeAt_imp_deliverHcasesAt_of_inv
 
 /-- 5-way origin disjunction for a record `r` in transit at target epoch `t'`, including the
 `B1(t')` case. -/
-def FirstNEOriginAt {St Msg C : Type}
+@[expose] def FirstNEOriginAt {St Msg C : Type}
     (Q : Party) (t' : ℕ) (r : SM.Record Msg C) (g : SM.GameState St Msg C)
     (s_cell : ℕ → Option ℕ → SM.GameState St Msg C) : Prop :=
   ((Q.other, t') ∉ g.corrs ∧ (Q, t') ∉ g.corrs ∧
@@ -311,7 +357,7 @@ def FirstNEOriginAt {St Msg C : Type}
 
 /-- Extended deliver-step case split at target epoch `t'`: `DeliverHcasesAt` or the `B1(t')`
 case. -/
-def DeliverHcasesAtExt {St Msg C : Type} [DecidableEq C]
+@[expose] def DeliverHcasesAtExt {St Msg C : Type} [DecidableEq C]
     (Q : Party) (t' : ℕ) (r : SM.Record Msg C) (g : SM.GameState St Msg C)
     (s_cell : ℕ → Option ℕ → SM.GameState St Msg C) : Prop :=
   DeliverHcasesAt Q t' r g s_cell ∨
@@ -363,7 +409,7 @@ theorem firstNEProbeAt_imp_deliverHcasesAtExt_of_origin
   · exact Or.inr h5
 
 /-- Per-record in-transit origin invariant across all cell families `t < (qep + 1) + 2`. -/
-def FirstNEInTransOriginInv {PQ St Msg C : Type} (qep : ℕ)
+@[expose] def FirstNEInTransOriginInv {PQ St Msg C : Type} (qep : ℕ)
     (snaps : List (Party × ℕ × GhostState PQ))
     (g : SM.GameState St Msg C) (s_cell : ℕ → Option ℕ → SM.GameState St Msg C) : Prop :=
   ∀ t ∈ Finset.range ((qep + 1) + 2),

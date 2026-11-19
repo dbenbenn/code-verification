@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsPlaced
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Fixed-`ext` `LibsignalCodeRoLoaded` Loop Definitions
@@ -22,13 +23,13 @@ Pointwise (`ext`-fixed) `[LibsignalPlacement]` loop and step contracts threading
 `lsProg_518 ext`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec
 
-open Arm64 ProofLib ProofLib.ObjectLoad SepProp
+open Arm64 ProofLib SepProp
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr
@@ -55,7 +56,7 @@ theorem sepWPp_lift_cro [LibsignalPlacement] {prog : Program} {ret : BitVec 64}
 /-- Fixed-`ext` `[LibsignalPlacement]` inlined `SessionStructure::decode` of `enc`
 (`(blkPl_518).base + 0x1ee8 → (blkPl_518).base + 0x2620`, closure frame `s.sp`) on `lsProg_518 ext`
 under `StoreKit.LibsignalCodeRoLoaded lsmpl`. -/
-def OverPrevDecodeCroPlacedAt [LibsignalPlacement]
+@[expose] def OverPrevDecodeCroPlacedAt [LibsignalPlacement]
     (ext : String → Option (State → State)) : Prop :=
   ∀ (s0 s : State) (prevCap prevPtr encCap encPtr : BitVec 64) (enc : List (BitVec 8))
     (sess : Session (List (BitVec 8))),
@@ -92,7 +93,7 @@ def OverPrevDecodeCroPlacedAt [LibsignalPlacement]
 
 /-- Register and machine-state invariant at `(blkPl_518).base + off` inside the decode loop
 under `[LibsignalPlacement]` with `StoreKit.LibsignalCodeRoLoaded lsmpl`. -/
-def OverDecRegsCroPlaced [LibsignalPlacement] (ext : String → Option (State → State)) (s0 : State)
+@[expose] def OverDecRegsCroPlaced [LibsignalPlacement] (ext : String → Option (State → State)) (s0 : State)
     (g : OverDecG) (off : BitVec 64) (s : State) : Prop :=
   StoreKit.LibsignalCodeRoLoaded lsmpl s.mem ∧ OverDecRegsPlaced ext s0 g off s
 
@@ -113,7 +114,7 @@ theorem sepWPp_lift_cro_regs [LibsignalPlacement] {ext : String → Option (Stat
   · exact ⟨sf, hsteps, .inr hpan⟩
 
 /-- Fixed-`ext` `LibsignalCodeRoLoaded` Entry (`+0x1ee8 → +0x216c`). -/
-def OverDecEntryCroPlacedAt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
+@[expose] def OverDecEntryCroPlacedAt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
   ∀ (s0 s : State) (g : OverDecG),
     g.enc ≠ [] → g.enc.length < 2 ^ 62 →
     StoreKit.LibsignalCodeRoLoaded lsmpl s.mem →
@@ -135,7 +136,7 @@ def OverDecEntryCroPlacedAt [LibsignalPlacement] (ext : String → Option (State
       (PanicOomProp s0)
 
 /-- Fixed-`ext` `LibsignalCodeRoLoaded` one field (`+0x216c → +0x2160`) restricted by `P`. -/
-def OverDecFieldCroPlacedAt [LibsignalPlacement] (ext : String → Option (State → State))
+@[expose] def OverDecFieldCroPlacedAt [LibsignalPlacement] (ext : String → Option (State → State))
     (P : GenFieldQ → Prop) : Prop :=
   ∀ (s0 s : State) (g : OverDecG) (v : SSGQ) (fl : GenFieldQ) (rest : List (BitVec 8)),
     P fl → fl.Ok → fl.Fresh v →
@@ -148,7 +149,7 @@ def OverDecFieldCroPlacedAt [LibsignalPlacement] (ext : String → Option (State
       (PanicOomProp s0)
 
 /-- Fixed-`ext` `LibsignalCodeRoLoaded` loop head (`+0x2160 → +0x216c`) when `rest ≠ []`. -/
-def OverDecHeadConsCroPlacedAt [LibsignalPlacement]
+@[expose] def OverDecHeadConsCroPlacedAt [LibsignalPlacement]
     (ext : String → Option (State → State)) : Prop :=
   ∀ (s0 s : State) (g : OverDecG) (v : SSGQ) (rest : List (BitVec 8)),
     rest ≠ [] → rest <:+ g.enc → g.enc.length < 2 ^ 62 →
@@ -159,7 +160,7 @@ def OverDecHeadConsCroPlacedAt [LibsignalPlacement]
       (PanicOomProp s0)
 
 /-- Fixed-`ext` `LibsignalCodeRoLoaded` loop head (`+0x2160 → +0x2620`) when `rest = []`. -/
-def OverDecHeadNilCroPlacedAt [LibsignalPlacement]
+@[expose] def OverDecHeadNilCroPlacedAt [LibsignalPlacement]
     (ext : String → Option (State → State)) : Prop :=
   ∀ (s0 s : State) (g : OverDecG) (v : SSGQ),
     g.enc.length < 2 ^ 62 →
@@ -170,7 +171,7 @@ def OverDecHeadNilCroPlacedAt [LibsignalPlacement]
       (PanicOomProp s0)
 
 /-- Fixed-`ext` `LibsignalCodeRoLoaded` Key (`+0x216c → overDecArmOff fl`). -/
-def OverDecKeyCroPlacedAt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
+@[expose] def OverDecKeyCroPlacedAt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
   ∀ (s0 s : State) (g : OverDecG) (v : SSGQ) (fl : GenFieldQ) (rest : List (BitVec 8)),
     OverDecAnyField fl → fl.Ok →
     (fl.enc ++ rest) <:+ g.enc → g.enc.length < 2 ^ 62 →
@@ -184,7 +185,7 @@ def OverDecKeyCroPlacedAt [LibsignalPlacement] (ext : String → Option (State �
       (PanicOomProp s0)
 
 /-- Fixed-`ext` `LibsignalCodeRoLoaded` Arm contract (`overDecArmOff fl → +0x2160`). -/
-def OverDecArmCroPlacedAt [LibsignalPlacement] (ext : String → Option (State → State))
+@[expose] def OverDecArmCroPlacedAt [LibsignalPlacement] (ext : String → Option (State → State))
     (P : GenFieldQ → Prop) : Prop :=
   ∀ (s0 s : State) (g : OverDecG) (v : SSGQ) (fl : GenFieldQ) (rest : List (BitVec 8)),
     P fl → fl.Ok → fl.Fresh v →

@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.Core
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SendCodeSym
-public import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.Core
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SendCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
 
 /-!
 # Relocatable `spqr::send::<Coins>` on Empty PQ State
@@ -22,7 +23,7 @@ Proves `spqrSendEmptyCoinsPlacedSpec` for `spqr::send::<signal_session_ratchet::
 under `[LibsignalPlacement]` over the CLI `.data`/`.bss` coins tape.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -43,7 +44,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Relocatable `[LibsignalPlacement]` contract for `spqr::send::<signal_session_ratchet::Coins>`
 (Block `427`), using the CLI `.data`/`.bss` coins tape (`cliTapeAt` / `cliTapeAfter`). -/
-def spqrSendCoinsPlacedSpec [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def spqrSendCoinsPlacedSpec [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (S : SpqrModel) : Spec SendCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.st.v⌝ ∗ x.st.at A ∗ memRegion x.ret 72 ∗
@@ -59,7 +60,7 @@ def spqrSendCoinsPlacedSpec [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 6
       anyHeap
 
 /-- `spqrSendCoinsPlacedSpec` restricted to an empty state (`x.st.bytes = []`). -/
-def spqrSendEmptyCoinsPlacedSpec [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def spqrSendEmptyCoinsPlacedSpec [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (S : SpqrModel) : Spec SendCall :=
   { spqrSendCoinsPlacedSpec A ctl S with
     pre := fun x s => ⌜x.st.bytes = []⌝ ∗ (spqrSendCoinsPlacedSpec A ctl S).pre x s }

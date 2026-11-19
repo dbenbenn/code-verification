@@ -24,7 +24,7 @@ Provides local `DY.Bytes.SubFunction` instances embedding each component concret
 `concretizeAll` over the composed symbolic model.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

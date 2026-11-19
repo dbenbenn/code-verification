@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.VersionPure
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.VersionPure -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Bytes.Basic
 import DY.EquationalTheory.KdfExtract
@@ -21,10 +21,10 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieSeedShapePure
-public import Symbolic.Proofs.Swarm.CREF.Sem
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieSeedShapePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.A2bSameOriginPure
@@ -41,7 +41,7 @@ import Symbolic.Proofs.Swarm.CREF.TR.G1.SkippedPkLineage
 import Symbolic.Proofs.Swarm.CREF.TROpen
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.By2Pure -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.RecvWire.By2SupplyA -- shake: keep
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvCol -- shake: keep
+import Symbolic.Proofs.Swarm.CREF.TR.RecvCol -- shake: keep
 import Symbolic.DYBridge.DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
@@ -53,6 +53,12 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.CBad -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.TR.G1.G1Rep
+import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials
+import Symbolic.Proofs.SpecLemmas.Model.PQXDH.StateMachine
+import Symbolic.Proofs.Swarm.CREF.Stage1Trials
 
 /-!
 # `PromExplainOK`, `PromRcvDecTieAt`, and Skipped/Chain Seed Aliasing Exclusion
@@ -62,7 +68,7 @@ Assembles `prom_explainOK_of_noDraw_and_ver`, reduces `PromNewRecByOK₂` to poi
 key and a receiver-chain message key without `RecvCollision`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

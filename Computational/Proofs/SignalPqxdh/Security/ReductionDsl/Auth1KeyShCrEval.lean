@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyShCr
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrEval
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyShCr -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrEval -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrStep
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimSend
 import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
@@ -24,7 +24,7 @@ import VCVio.EvalDist.Monad.Basic
 reduction `shcrReductionAuth1Key`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -107,7 +107,7 @@ theorem runWithFuelShCr1Key_eq (S : Setup) (mx : OracleComp (unifSpec + authSpec
 
 /-- The `KemShCr` adversary obtained by running the one-key `ReductionDsl` program
     `shcrReductionAuthProg1Key` (`Q = K = b.q_total`, fuel `b.q_total`). -/
-def shcrAuth1KeyDslAdv (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : KemShCrAdv where
+@[expose] def shcrAuth1KeyDslAdv (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : KemShCrAdv where
   State := Mid (authSpec S) Bool
     (shcrReductionAuthProg1Key S b.q_total b.q_total).π.denote
     (shcrReductionAuthProg1Key S b.q_total b.q_total).σ.denote
@@ -384,11 +384,5 @@ theorem shcrAuth1KeyDslAdv_kemShCr_eq (P : Primitives) (S : Setup) (b : QueryBud
     rw [dslAdv1Key_kemShCrExp_eq_mid P S b A.1 hA]
   rw [hDslMid, ← midAdv1Key_kemShCrExp_eq_core]
   rfl
-
-theorem shcrAuth1KeyDslAdv_kemShCrExp_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    𝒟[kemShCrExp P (shcrAuth1KeyDslAdv S b A.1)] {true} =
-      𝒟[kemShCrExp P (shcrReductionAuth1Key S b A)] {true} :=
-  shcrAuth1KeyDslAdv_kemShCr_eq P S b A
 
 end SignalPqxdh.Security.ReductionDsl.AuthHs

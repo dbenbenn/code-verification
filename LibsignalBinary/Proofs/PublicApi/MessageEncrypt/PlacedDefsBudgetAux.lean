@@ -10,16 +10,18 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PlacedDefs
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPure
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Budget-Threaded Relocatable `MessageEncrypt` Envelopes and Seam States
@@ -30,7 +32,7 @@ states (`CurStateVPlaced` through `StoredStateVPlaced`), and `FitsEnv` witnesses
 `session_message_encrypt_with_stores` (block `198`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -76,7 +78,7 @@ set_option maxHeartbeats 400000
 /-! ## 1. Per-Seam and End-to-End Allocation Envelopes -/
 
 /-- Remaining allocation envelope from `Apply` (`+0xd9c`) to return (`segApplyStore` + exit). -/
-def FromApplyEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
+@[expose] def FromApplyEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (x : WithStoresEncGhost) (sess : Session (List (BitVec 8)))
     (otr' : OutgoingTripleRatchet (List (BitVec 8)))
@@ -87,7 +89,7 @@ def FromApplyEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
         (SeqEnv (· = rustDeallocEvents kit.storeBoxSize 8) FreeOnlyEvs)))
 
 /-- Remaining allocation envelope from `Save` (`+0xbd4`) to return. -/
-def FromSaveEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
+@[expose] def FromSaveEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (ist1 : ikit.IdState) (x : WithStoresEncGhost)
@@ -97,7 +99,7 @@ def FromSaveEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (fun evs => FreeOnlyEvs evs ∨ FromApplyEnv kit kitEnv st0 x sess otr' taken evs)
 
 /-- Remaining allocation envelope from `Cm` (`+0xa70`) to return. -/
-def FromCmEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
+@[expose] def FromCmEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (ist0 : ikit.IdState) (x : WithStoresEncGhost)
@@ -111,18 +113,18 @@ def FromCmEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
         (ikit.trustUpdate ist0 x.rem.val k .sending (.ok true)) x sess otr' taken k evs)
 
 /-- Pending Kyber payload extracted from `sess.pendingKyberPreKey`. -/
-def pendingKyberPayload (sess : Session (List (BitVec 8))) : Option KyberPayload :=
+@[expose] def pendingKyberPayload (sess : Session (List (BitVec 8))) : Option KyberPayload :=
   sess.pendingKyberPreKey.map fun k => (⟨k.preKeyId, k.ciphertext⟩ : KyberPayload)
 
 /-- Model `PreKeySignalMessage` assembled in `segPreKey` from `(sess, items, otr', sm)`. -/
-def preKeyMsgFromItems (sess : Session (List (BitVec 8))) (items : PendingPreKey)
+@[expose] def preKeyMsgFromItems (sess : Session (List (BitVec 8))) (items : PendingPreKey)
     (otr' : OutgoingTripleRatchet (List (BitVec 8))) (sm : SignalMessage) : PreKeySignalMessage :=
   PreKeySignalMessage.new otr'.sessionVersion sess.localRegistrationId items.preKeyId
     items.signedPreKeyId (pendingKyberPayload sess) items.baseKey otr'.localIdentityKey sm
 
 /-- Remaining allocation envelope on the `pendingPreKey = some items` path right after
     `OTR::encrypt` returns. -/
-def PreKeyPostEncryptEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : UuidParser)
+@[expose] def PreKeyPostEncryptEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : UuidParser)
     (kit : SessionStoreSpec A 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
     (x : WithStoresEncGhost) (sess : Session (List (BitVec 8)))
@@ -142,7 +144,7 @@ def PreKeyPostEncryptEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : U
         FromCmEnv kit kitEnv st0 ikit ikitEnv ist0 x sess res.2 taken k evs'') evs'
 
 /-- Remaining allocation envelope from `Key` (`+0x344`) to return. -/
-def FromKeyEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
+@[expose] def FromKeyEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
     (parse : UuidParser)
     (kit : SessionStoreSpec A 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit)
@@ -165,7 +167,7 @@ def FromKeyEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendB
             x sess otr taken k items)) evs))
 
 /-- Remaining allocation envelope from `Otr` (`+0x2c8`) to return. -/
-def FromOtrEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
+@[expose] def FromOtrEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
     (parse : UuidParser)
     (kit : SessionStoreSpec A 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit)
@@ -178,7 +180,7 @@ def FromOtrEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendB
     FromKeyEnv C S sendEnv parse kit kitEnv st0 ikit ikitEnv ist0 x sess otr taken k evs
 
 /-- Remaining allocation envelope from `Cur` (`+0x20c`) to return (`segFrom` + rest). -/
-def FromCurEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
+@[expose] def FromCurEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
     (parse : UuidParser)
     (kit : SessionStoreSpec A 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit)
@@ -194,7 +196,7 @@ def FromCurEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendB
         FromOtrEnv C S sendEnv parse kit kitEnv st0 ikit ikitEnv ist0 x sess otr taken evs') evs
 
 /-- Full end-to-end allocation envelope of `session_message_encrypt_with_stores`. -/
-def WithStoresEncEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
+@[expose] def WithStoresEncEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (ist0 : ikit.IdState) (Scope : SessionRecord (List (BitVec 8)) → Prop)
@@ -239,7 +241,7 @@ theorem encStoreExtraPlaced_retag {A A' : RustAlloc}
 
 /-- Budget-threaded relocatable `session_message_encrypt_with_stores` (Block `198`) contract
     (`onOom := ⌜False⌝`, `allocFailedIn` eliminated from `onPanic`). -/
-def withStoresEncPlacedSpecV [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def withStoresEncPlacedSpecV [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -308,7 +310,7 @@ theorem withStoresEncPlacedSpecV_pre_addrOk [LibsignalPlacement] {M : AllocCostM
 
 /-! ## 3. Budget-Threaded Seam States -/
 
-def CurStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CurStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -327,7 +329,7 @@ def CurStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 abbrev CurStateVBudget := @CurStateVPlaced
 
-def OtrStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OtrStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -347,7 +349,7 @@ def OtrStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 abbrev OtrStateVBudget := @OtrStateVPlaced
 
-def KeyStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def KeyStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -367,7 +369,7 @@ def KeyStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 abbrev KeyStateVBudget := @KeyStateVPlaced
 
-def CmStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CmStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -388,7 +390,7 @@ def CmStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 abbrev CmStateVBudget := @CmStateVPlaced
 
-def SaveStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SaveStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -410,7 +412,7 @@ def SaveStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 abbrev SaveStateVBudget := @SaveStateVPlaced
 
-def ApplyStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ApplyStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -432,7 +434,7 @@ def ApplyStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
 abbrev ApplyStateVBudget := @ApplyStateVPlaced
 
 /-- Budget-threaded `Stored` (`+0xe88`) seam state (`FreeOnlyEvs` remaining to exit). -/
-def StoredStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StoredStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -456,10 +458,10 @@ abbrev StoredStateVBudget := @StoredStateVPlaced
 /-! ## 4. `PhaseCreditSpec` Bounds and Non-Vacuity Witnesses -/
 
 def witnessRustAlloc : RustAlloc := ⟨.emp, fun _ _ _ => .emp⟩
-def witnessKit : SessionStoreSpec witnessRustAlloc 0#64 := hookSessionStoreSpec witnessRustAlloc 0#64
+@[expose] def witnessKit : SessionStoreSpec witnessRustAlloc 0#64 := hookSessionStoreSpec witnessRustAlloc 0#64
 def witnessKitEnv : SessionStoreBudgetEnv witnessKit :=
   ⟨fun _ _ evs => evs = rustAllocEvents 16 1, fun _ _ _ evs => evs = rustAllocEvents 16 1⟩
-def witnessIkit : IdentityStoreSpec witnessRustAlloc 0#64 := hookIdentityStoreSpec witnessRustAlloc 0#64
+@[expose] def witnessIkit : IdentityStoreSpec witnessRustAlloc 0#64 := hookIdentityStoreSpec witnessRustAlloc 0#64
 def witnessIkitEnv : IdentityStoreBudgetEnv witnessIkit :=
   ⟨fun _ _ _ _ evs => evs = rustAllocEvents 16 1, fun _ _ _ evs => evs = rustAllocEvents 16 1⟩
 def witnessPendingPreKey : PendingPreKey := ⟨some 2#32, 3#32, witnessPublicKey, 0#64⟩
@@ -571,7 +573,7 @@ theorem fromCurEnv_phaseCreditSpec :
       (OtrEncryptCoreEnv witnessCrypto witnessSpqrModel witnessSendEnv witnessUuidParse
         witnessOtr witnessWithStoresGhost.ptext (some witnessWithStoresGhost.loc)
         witnessWithStoresGhost.rem witnessWithStoresGhost.rest)
-      118000 101000 101000 256 := by
+      118000 101000 101000 320 := by
     refine (otrEncryptCoreEnv_phaseCreditSpec_bounded fineCostModel_modelHyps
       witnessCrypto witnessSpqrModel witnessSendEnv witnessUuidParse
       witnessOtr witnessWithStoresGhost.ptext (some witnessWithStoresGhost.loc)

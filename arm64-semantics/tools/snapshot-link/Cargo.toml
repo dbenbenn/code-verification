@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2024"
 publish = false
 
-# Untrusted link recipe for process snapshots: links the exact relocatable objects that
-# `rust-obj2lean` extracts for a `translation.toml` into a static non-PIE AArch64 Linux
-# executable with `ld.lld`, pinning them at the offsets of the exported `Arm64.Obj.LinkedImage`.
+# Untrusted link recipes for whole-binary ELF fixtures: links extracted `translation.toml`
+# objects with stock `ld.lld` (`--stock`, emitting `stock-link.json` and `census.json`) or builds
+# pinned Rust 1.98.1 `std` static AArch64 Linux executables (`--main-rust`).
 
 [dependencies]
 anyhow = "1"

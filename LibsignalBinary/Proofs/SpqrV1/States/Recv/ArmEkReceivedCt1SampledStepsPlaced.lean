@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkReceivedCt1SampledSteps
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkReceivedCt1SampledSteps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch1Placed
@@ -27,7 +27,7 @@ Relocatable `[LibsignalPlacement]` jump-table dispatch (`+36 -> +3392`) and inst
 lemmas for `.ekReceivedCt1Sampled` (`lsmpl.base 332 + 3392#64`, tag `10#64`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

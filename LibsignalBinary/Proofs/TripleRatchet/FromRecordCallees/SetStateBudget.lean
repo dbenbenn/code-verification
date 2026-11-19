@@ -10,15 +10,17 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.SetState
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.SetState
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.FromRecordCalleesCodeSym -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `SessionRecord::set_session_state` (Block `48`)
@@ -28,7 +30,7 @@ Verifies `<SessionRecord>::set_session_state` against `setSessionStateSpec M A l
 `cur = some _` (`FreeOnlyEvs evs`) branches.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -209,7 +211,7 @@ private theorem drop_session_structure_local1_placed_head_at_state [LibsignalPla
 
 /-! ## 2. Relocatable `[LibsignalPlacement]` Budget Proofs (Block `48`) -/
 
-def setSessionStateNoneSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def setSessionStateNoneSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec ((BitVec 64 × BitVec 64 × List (BitVec 8)) × M.σ) where
   pre := fun ((record, src, bs), stB) s =>
     ⌜s.readReg64 .x0 = record ∧ s.readReg64 .x1 = src ∧ bs.length = 344⌝ ∗
@@ -221,7 +223,7 @@ def setSessionStateNoneSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim
         ((record + 0x18#64) ↦ₛ bs) ∗ (src ↦ₛ bs) ∗
         A.pool lim (M.stepEvents evs stB) sf ∗ stackAt s0.sp setSessionStateStack
 
-def setSessionStateSomeSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def setSessionStateSomeSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec ((BitVec 64 × BitVec 64 × SessionGhost × SessionState (List (BitVec 8)) × List (BitVec 8)) × M.σ) where
   pre := fun ((record, src, G, ss, bs), stB) s =>
     ⌜s.readReg64 .x0 = record ∧ s.readReg64 .x1 = src ∧ bs.length = 344⌝ ∗

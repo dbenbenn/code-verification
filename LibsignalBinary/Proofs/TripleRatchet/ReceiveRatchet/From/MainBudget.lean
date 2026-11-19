@@ -9,17 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Main
-public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step244PlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.Common.CallInv
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case2Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Main
+public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step244PlacedBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import ProofLib
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step244
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Verification of `TripleRatchet::from_session_state`
@@ -28,7 +29,7 @@ Relocatable `RustCliAllocBudget`-threaded verification of
 `<libsignal_protocol::triple_ratchet::TripleRatchet>::from_session_state` (block 57, `FreeOnlyEvs`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

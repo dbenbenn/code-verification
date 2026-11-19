@@ -25,7 +25,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementWeak.Inj
 Closes the `deliver` step on a known chain when the SPQR salt matches the honest record (`c' = c`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

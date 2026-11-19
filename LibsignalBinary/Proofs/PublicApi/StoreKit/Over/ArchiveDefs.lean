@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersX
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersX -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.HeapDefs
 
 /-!
@@ -23,7 +23,7 @@ when `recPtr` holds a populated current session (with arbitrary `pending_pre_key
 stack copy; `promote_state` then copies the 344-byte new session into `recPtr + 0x18`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +35,6 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalP
 open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.E2E.Record.Serialization
 open CryptoVerification.E2E.Record.Serialization.SerializeBodyAuxX (serializeSubStackX)
-open Proofs.libsignal.Hooks2 (SerContractsX)
 
 abbrev archiveCurrentStateInnerName : String :=
   "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner"
@@ -46,13 +45,13 @@ abbrev promoteStateName : String :=
 /-! ## Pending-Cleared Ghost and Model Helpers -/
 
 /-- Ghost of a `SessionStructure` after `clear_unacknowledged_pre_key_message()`. -/
-def clearPendingGhost (G : SessionGhost) : SessionGhost :=
+@[expose] def clearPendingGhost (G : SessionGhost) : SessionGhost :=
   { G with pending := none, kyber := none }
 
 abbrev clearedGhost : SessionGhost → SessionGhost := clearPendingGhost
 
 /-- Model `Session` after `clear_unacknowledged_pre_key_message()`. -/
-def clearPending (s : Session (List (BitVec 8))) : Session (List (BitVec 8)) :=
+@[expose] def clearPending (s : Session (List (BitVec 8))) : Session (List (BitVec 8)) :=
   { s with
     state := { s.state with pendingPreKey := false }
     pendingPreKey := none
@@ -121,7 +120,7 @@ pre-keys) and an empty `previous_sessions` (arbitrary capacity `prevCap`): after
 `previous_sessions` holds `[encSessionMem (clearPendingGhost x.G) (clearPending x.sess)]` at some
 nonzero capacity `prevCap'`, `recPtr + 0x18` holds `noneCap`, and `recPtr + 0x20 .. +0x170` is a
 336-byte `memRegion`. Panics only on allocation failure (`allocPanic`). -/
-def archiveOverGenSpec (A : RustAlloc) : Spec ArchiveOverGenGhost where
+@[expose] def archiveOverGenSpec (A : RustAlloc) : Spec ArchiveOverGenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.recPtr ∧
       (encSessionMem (clearPendingGhost x.G) (clearPending x.sess)).length < 2 ^ 32⌝ ∗
@@ -137,14 +136,6 @@ def archiveOverGenSpec (A : RustAlloc) : Spec ArchiveOverGenGhost where
       ((x.recPtr + 0x18#64) ↦₆₄ 0xffffffffffffffff#64) ∗ memRegion (x.recPtr + 0x20#64) 336 ∗
       A.pool ∗ stackAt s0.sp archiveStackX
   onPanic := allocPanic
-
-/-- The general archive spec holds at `archive_current_state_inner` on
-`tripleRatchetProgAtExt img.base ext`. -/
-def ArchiveOverGenOk (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) :
-    Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr archiveCurrentStateInnerName)
-    ((archiveOverGenSpec A).inImage img)
 
 /-- Ghost of the general `promote_state` call: the record `recPtr`, the new session's 344 bytes
 `newBs` at `src`, the capacity `prevCap` and pointer `prevPtr` of the empty `previous_sessions`,
@@ -163,7 +154,7 @@ an empty `previous_sessions` (arbitrary capacity `prevCap`): afterwards `previou
 `[encSessionMem (clearPendingGhost x.G) (clearPending x.sess)]` at some nonzero capacity
 `prevCap'`, `recPtr + 0x18` holds a copy of `newBs`, and `src` is unchanged. Panics only on
 allocation failure (`allocPanic`). -/
-def promoteOverGenSpec (A : RustAlloc) : Spec PromoteOverGenGhost where
+@[expose] def promoteOverGenSpec (A : RustAlloc) : Spec PromoteOverGenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.recPtr ∧ s.readReg64 .x1 = x.src ∧ x.newBs.length = 344 ∧
       (encSessionMem (clearPendingGhost x.G) (clearPending x.sess)).length < 2 ^ 32⌝ ∗
@@ -179,13 +170,6 @@ def promoteOverGenSpec (A : RustAlloc) : Spec PromoteOverGenGhost where
       ((x.recPtr + 0x18#64) ↦ₛ x.newBs) ∗ (x.src ↦ₛ x.newBs) ∗ A.pool ∗
       stackAt s0.sp promoteStackX
   onPanic := allocPanic
-
-/-- The general promote spec holds at `promote_state` on `tripleRatchetProgAtExt img.base ext`. -/
-def PromoteStateOverGenOk (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr promoteStateName)
-    ((promoteOverGenSpec A).inImage img)
 
 /-- Direct rewrite from `sessionRecordAt` on `some sess` to the two record atoms of
 `archiveOverGenSpec` / `promoteOverGenSpec`. -/
@@ -207,7 +191,7 @@ structure ArchiveOverGhost where
 
 /-- Specialization of `archive_current_state_inner` when `prevCap = 0#64`, producing capacity `4#64`
 (`HdrP x.recPtr 4#64 q 1#64 ∗ Prev1 A q ...`). Supports arbitrary `G.pending` and `G.kyber`. -/
-def archiveOverSpecX (A : RustAlloc) : Spec ArchiveOverGhost where
+@[expose] def archiveOverSpecX (A : RustAlloc) : Spec ArchiveOverGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.recPtr ∧ x.prevPtr ≠ 0#64 ∧
       (encSessionMem (clearPendingGhost x.G) (clearPending x.sess)).length < 2 ^ 32⌝ ∗
@@ -222,12 +206,6 @@ def archiveOverSpecX (A : RustAlloc) : Spec ArchiveOverGhost where
       A.pool ∗ stackAt s0.sp archiveStackX
   onPanic := allocPanic
 
-def ArchiveOverOkX (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) :
-    Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr archiveCurrentStateInnerName)
-    ((archiveOverSpecX A).inImage img)
-
 /-- Ghost of the zero-capacity `promote_state` call (`prevCap = 0#64`). -/
 structure PromoteOverGhost where
   recPtr : BitVec 64
@@ -239,7 +217,7 @@ structure PromoteOverGhost where
 
 /-- Specialization of `promote_state` when `prevCap = 0#64`, producing capacity `4#64`
 (`HdrP x.recPtr 4#64 q 1#64 ∗ Prev1 A q ...`). Supports arbitrary `G.pending` and `G.kyber`. -/
-def promoteOverSpecX (A : RustAlloc) : Spec PromoteOverGhost where
+@[expose] def promoteOverSpecX (A : RustAlloc) : Spec PromoteOverGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.recPtr ∧ s.readReg64 .x1 = x.src ∧ x.newBs.length = 344 ∧
       x.prevPtr ≠ 0#64 ∧
@@ -254,14 +232,6 @@ def promoteOverSpecX (A : RustAlloc) : Spec PromoteOverGhost where
       ((x.recPtr + 0x18#64) ↦ₛ x.newBs) ∗ (x.src ↦ₛ x.newBs) ∗ A.pool ∗
       stackAt s0.sp promoteStackX
   onPanic := allocPanic
-
-def PromoteStateOverOkX (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) :
-    Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr promoteStateName)
-    ((promoteOverSpecX A).inImage img)
-
-/-! ## Relocatable `[LibsignalPlacement]` Symbol Definitions -/
 
 section Placed
 

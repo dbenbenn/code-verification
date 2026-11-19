@@ -31,12 +31,10 @@ split-and-pack lemmas for `hkSlotBytes` (`100` B), `32`-byte keys, `36`-byte `Ch
 copies.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage4Lemmas
 
@@ -77,13 +75,6 @@ theorem sepWPp_mono_pre {prog : Program} {target : BitVec 64} {s : State}
     SepWPp prog target s P Q Qp Qo := by
   intro R hm hL
   exact hwp R (Satisfies.mono (sepConj_mono_left hent) hm) hL
-
-theorem sepWP_mono_pre {prog : Program} {target : BitVec 64} {s : State}
-    {P P' : SepProp} {post : State → SepProp → Prop} {oom : State → SepProp}
-    (hent : P ⊢ P')
-    (hwp : SepWP prog target s P' post oom) :
-    SepWP prog target s P post oom :=
-  SepWP.weaken_pre hent hwp
 
 @[simp, arm64_norm, wp_norm]
 theorem cond_eq_adds_33_1 :
@@ -174,45 +165,6 @@ theorem pointsTo64_4294967296_eq_pair32 (base : BitVec 64) :
   have hunpack : unpack64 4294967296#64 = unpack32 0#32 ++ unpack32 1#32 := by decide
   rw [pointsTo64_eq_pointsToBytes, hunpack, pointsToBytes_append]
   simp only [unpack32_length, ← pointsTo32_eq_pointsToBytes]
-
-theorem createChainErr_5632_entails_memRegion72 (fsp e0 e1 e2 e3 e4 e5 : BitVec 64) :
-    ((fsp + 5632#64) ↦₃₂ 1#32) ∗
-    memRegion (fsp + 5636#64) 4 ∗
-    ((fsp + 5640#64) ↦₆₄ e0) ∗
-    ((fsp + 5648#64) ↦₆₄ e1) ∗
-    ((fsp + 5656#64) ↦₆₄ e2) ∗
-    ((fsp + 5664#64) ↦₆₄ e3) ∗
-    ((fsp + 5672#64) ↦₆₄ e4) ∗
-    ((fsp + 5680#64) ↦₆₄ e5) ∗
-    memRegion (fsp + 5688#64) 16 ⊢
-      memRegion (fsp + 5632#64) 72 := by
-  have h4 : ((fsp + 5632#64) ↦₃₂ 1#32) ⊢ memRegion (fsp + 5632#64) 4 :=
-    pointsTo32_entails_memRegion (fsp + 5632#64) 1#32
-  have h48 := cells6_entails_memRegion48 (fsp + 5640#64) e0 e1 e2 e3 e4 e5
-  simp only [BitVec.add_assoc, BitVec.reduceAdd] at h48
-  rw [ProofLib.memRegion_split' (b := fsp + 5632#64) (n := 4) (k := 68)
-        (b' := fsp + 5636#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_split' (b := fsp + 5636#64) (n := 4) (k := 64)
-        (b' := fsp + 5640#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_split' (b := fsp + 5640#64) (n := 48) (k := 16)
-        (b' := fsp + 5688#64) rfl (by bv_omega) (by decide)]
-  exact Entails.trans (Entails.of_eq (by ac_rfl))
-    (sepConj_mono h4 (sepConj_mono_right (sepConj_mono_left h48)))
-
-theorem pointsToBytes_split_56_288 (base : BitVec 64) {bs : List (BitVec 8)}
-    (hlen : bs.length = 344) :
-    (base ↦ₛ bs) =
-      (base ↦ₛ bs.take 56) ∗ ((base + 56#64) ↦ₛ bs.drop 56) := by
-  have heq : bs = bs.take 56 ++ bs.drop 56 := (List.take_append_drop 56 bs).symm
-  have ht : (bs.take 56).length = 56 := by simp [hlen]
-  conv => lhs; rw [heq]
-  rw [pointsToBytes_append, ht]
-
-theorem pointsToBytes_pack_56_288 (base : BitVec 64) {bs : List (BitVec 8)}
-    (hlen : bs.length = 344) :
-    (base ↦ₛ bs.take 56) ∗ ((base + 56#64) ↦ₛ bs.drop 56) =
-      (base ↦ₛ bs) :=
-  (pointsToBytes_split_56_288 base hlen).symm
 
 theorem memRegion344_split_56_288 (base : BitVec 64) :
     memRegion base 344 =
@@ -319,79 +271,7 @@ theorem spqrOut_4064_to_memRegion344 (fsp w0 w1 w2 w3 : BitVec 64) :
   simp only [BitVec.add_assoc, BitVec.reduceAdd] at h32
   exact Entails.trans (Entails.of_eq (by ac_rfl)) (sepConj_mono h32 (Entails.refl _))
 
-theorem ccOk72_5632_to_spqrParams (fsp : BitVec 64)
-    (rk0 rk1 rk2 rk3 ck0 ck1 ck2 ck3 : BitVec 64) :
-    ((fsp + 5632#64) ↦₃₂ 0#32) ∗
-    ((fsp + 5636#64) ↦₆₄ rk0) ∗ ((fsp + 5644#64) ↦₆₄ rk1) ∗
-    ((fsp + 5652#64) ↦₆₄ rk2) ∗ ((fsp + 5660#64) ↦₆₄ rk3) ∗
-    ((fsp + 5668#64) ↦₆₄ ck0) ∗ ((fsp + 5676#64) ↦₆₄ ck1) ∗
-    ((fsp + 5684#64) ↦₆₄ ck2) ∗ ((fsp + 5692#64) ↦₆₄ ck3) ∗
-    ((fsp + 5700#64) ↦₃₂ 0#32) ⊢
-      ∃∗ w0 : BitVec 64, ∃∗ w1 : BitVec 64, ∃∗ d2 : BitVec 32,
-      ∃∗ d3 : BitVec 32, ∃∗ w4 : BitVec 64, ∃∗ d6 : BitVec 32,
-        ((fsp + 5632#64) ↦₆₄ w0) ∗ ((fsp + 5640#64) ↦₆₄ w1) ∗
-        ((fsp + 5648#64) ↦₃₂ d2) ∗ ((fsp + 5652#64) ↦₃₂ d3) ∗
-        ((fsp + 5656#64) ↦₆₄ w4) ∗ ((fsp + 5664#64) ↦₃₂ d6) ∗
-        memRegion (fsp + 5668#64) 36 := by
-  have hm72 :
-      ((fsp + 5632#64) ↦₃₂ 0#32) ∗
-      ((fsp + 5636#64) ↦₆₄ rk0) ∗ ((fsp + 5644#64) ↦₆₄ rk1) ∗
-      ((fsp + 5652#64) ↦₆₄ rk2) ∗ ((fsp + 5660#64) ↦₆₄ rk3) ∗
-      ((fsp + 5668#64) ↦₆₄ ck0) ∗ ((fsp + 5676#64) ↦₆₄ ck1) ∗
-      ((fsp + 5684#64) ↦₆₄ ck2) ∗ ((fsp + 5692#64) ↦₆₄ ck3) ∗
-      ((fsp + 5700#64) ↦₃₂ 0#32) ⊢
-        memRegion (fsp + 5632#64) 72 := by
-    rw [ProofLib.memRegion_split' (b := fsp + 5632#64) (n := 4) (k := 68) (b' := fsp + 5636#64) rfl (by bv_omega) (by decide),
-        ProofLib.memRegion_split' (b := fsp + 5636#64) (n := 8) (k := 60) (b' := fsp + 5644#64) rfl (by bv_omega) (by decide),
-        ProofLib.memRegion_split' (b := fsp + 5644#64) (n := 8) (k := 52) (b' := fsp + 5652#64) rfl (by bv_omega) (by decide),
-        ProofLib.memRegion_split' (b := fsp + 5652#64) (n := 8) (k := 44) (b' := fsp + 5660#64) rfl (by bv_omega) (by decide),
-        ProofLib.memRegion_split' (b := fsp + 5660#64) (n := 8) (k := 36) (b' := fsp + 5668#64) rfl (by bv_omega) (by decide),
-        ProofLib.memRegion_split' (b := fsp + 5668#64) (n := 8) (k := 28) (b' := fsp + 5676#64) rfl (by bv_omega) (by decide),
-        ProofLib.memRegion_split' (b := fsp + 5676#64) (n := 8) (k := 20) (b' := fsp + 5684#64) rfl (by bv_omega) (by decide),
-        ProofLib.memRegion_split' (b := fsp + 5684#64) (n := 8) (k := 12) (b' := fsp + 5692#64) rfl (by bv_omega) (by decide),
-        ProofLib.memRegion_split' (b := fsp + 5692#64) (n := 8) (k := 4) (b' := fsp + 5700#64) rfl (by bv_omega) (by decide)]
-    exact sepConj_mono (pointsTo32_entails_memRegion _ _)
-      (sepConj_mono (pointsTo64_entails_memRegion _ _)
-      (sepConj_mono (pointsTo64_entails_memRegion _ _)
-      (sepConj_mono (pointsTo64_entails_memRegion _ _)
-      (sepConj_mono (pointsTo64_entails_memRegion _ _)
-      (sepConj_mono (pointsTo64_entails_memRegion _ _)
-      (sepConj_mono (pointsTo64_entails_memRegion _ _)
-      (sepConj_mono (pointsTo64_entails_memRegion _ _)
-      (sepConj_mono (pointsTo64_entails_memRegion _ _)
-        (pointsTo32_entails_memRegion _ _)))))))))
-  refine Entails.trans hm72 ?_
-  rw [ProofLib.memRegion_split' (b := fsp + 5632#64) (n := 8) (k := 64) (b' := fsp + 5640#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_split' (b := fsp + 5640#64) (n := 8) (k := 56) (b' := fsp + 5648#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_split' (b := fsp + 5648#64) (n := 4) (k := 52) (b' := fsp + 5652#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_split' (b := fsp + 5652#64) (n := 4) (k := 48) (b' := fsp + 5656#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_split' (b := fsp + 5656#64) (n := 8) (k := 40) (b' := fsp + 5664#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_split' (b := fsp + 5664#64) (n := 4) (k := 36) (b' := fsp + 5668#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_eight (fsp + 5632#64),
-      ProofLib.memRegion_eight (fsp + 5640#64),
-      ProofLib.memRegion_four (fsp + 5648#64),
-      ProofLib.memRegion_four (fsp + 5652#64),
-      ProofLib.memRegion_eight (fsp + 5656#64),
-      ProofLib.memRegion_four (fsp + 5664#64)]
-  s4_exists_eq
-  exact Entails.refl _
-
-theorem memRegion344_4064_split68 (fsp : BitVec 64) :
-    memRegion (fsp + 4064#64) 344 =
-      memRegion (fsp + 4064#64) 68 ∗ memRegion (fsp + 4132#64) 276 :=
-  ProofLib.memRegion_split' (b := fsp + 4064#64) (n := 68) (k := 276)
-    (b' := fsp + 4132#64) rfl (by bv_omega) (by decide)
-
-theorem memRegion68_4064_split (fsp : BitVec 64) :
-    memRegion (fsp + 4064#64) 68 =
-      cells (fsp + 4064#64) 8 ∗ (∃∗ v : BitVec 32, (fsp + 4128#64) ↦₃₂ v) := by
-  rw [ProofLib.memRegion_split' (b := fsp + 4064#64) (n := 64) (k := 4)
-        (b' := fsp + 4128#64) rfl (by bv_omega) (by decide),
-      (ProofLib.memRegion_cells (fsp + 4064#64) 8 (by decide) :
-        memRegion (fsp + 4064#64) 64 = cells (fsp + 4064#64) 8),
-      ProofLib.memRegion_four (fsp + 4128#64)]
-
-def pack32Pair (lo hi : BitVec 32) : BitVec 64 :=
+@[expose] def pack32Pair (lo hi : BitVec 32) : BitVec 64 :=
   (hi.zeroExtend 64 <<< 32) ||| lo.zeroExtend 64
 
 @[simp, arm64_norm, wp_norm]
@@ -496,25 +376,6 @@ theorem pointsTo64_pair_eq_pointsTo128 (a : BitVec 64) (w0 w1 : BitVec 64) :
   unfold pointsTo128
   exact congrArg₂ sepConj (congrArg (pointsTo64 a) (by bv_kernel))
     (congrArg (pointsTo64 (a + 8#64)) (by bv_kernel))
-
-theorem pointsTo128_zero (a : BitVec 64) :
-    pointsTo128 a 0#128 = (a ↦₆₄ 0#64) ∗ ((a + 8#64) ↦₆₄ 0#64) := by
-  rw [show (0#128 : BitVec 128) = (0#64 : BitVec 64) ++ 0#64 from rfl,
-      ← pointsTo64_pair_eq_pointsTo128 a 0#64 0#64]
-
-theorem fsp_pair128 (fsp : BitVec 64) (off off8 : Nat) (w0 w1 : BitVec 64)
-    (h : BitVec.ofNat 64 off + 8#64 = BitVec.ofNat 64 off8 := by decide) :
-    ((fsp + BitVec.ofNat 64 off) ↦₆₄ w0) ∗ ((fsp + BitVec.ofNat 64 off8) ↦₆₄ w1) =
-      pointsTo128 (fsp + BitVec.ofNat 64 off) (w1 ++ w0) := by
-  rw [← h, ← BitVec.add_assoc]
-  exact pointsTo64_pair_eq_pointsTo128 (fsp + BitVec.ofNat 64 off) w0 w1
-
-theorem fsp_zero128 (fsp : BitVec 64) (off off8 : Nat)
-    (h : BitVec.ofNat 64 off + 8#64 = BitVec.ofNat 64 off8 := by decide) :
-    pointsTo128 (fsp + BitVec.ofNat 64 off) 0#128 =
-      ((fsp + BitVec.ofNat 64 off) ↦₆₄ 0#64) ∗ ((fsp + BitVec.ofNat 64 off8) ↦₆₄ 0#64) := by
-  rw [← h, ← BitVec.add_assoc]
-  exact pointsTo128_zero (fsp + BitVec.ofNat 64 off)
 
 theorem exists_unpack32_8_of_length_32 {bs : List (BitVec 8)} (h : bs.length = 32) :
     ∃ d0 d1 d2 d3 d4 d5 d6 d7 : BitVec 32,

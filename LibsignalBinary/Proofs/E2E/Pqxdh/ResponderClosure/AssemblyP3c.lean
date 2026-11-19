@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3b
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3b2
-public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccount
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCallees
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3b -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3b2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccount -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCallees -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 
 /-!
@@ -22,7 +22,7 @@ Spatial re-slicing helpers for the `+0x1cd8#64` and `+0x34dc#64` Stage P3/P4 han
 `bobSession344WithRegIdsBv8` unpacking lemmas for `initializeRecipientSession`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -55,32 +55,6 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 section TryDecryptPqDistinct
 
-def tryDecryptRawSpecP (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (uuidParse : UuidParser)
-    (S : SpqrModel) (img : Obj.Image) : Spec TryDecryptGhost :=
-  { tryDecryptRawSpec C A ctl uuidParse S img with
-    pre := fun x s => ⌜x.st.pqRatchetState = [] ∧ s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.ss ∧
-        s.readReg64 .x2 = x.remA ∧ s.readReg64 .x3 = x.locA ∧ s.readReg64 .x4 = x.msgA ∧
-        (s.readReg64 .x5).setWidth 8 = msgTypeByte x.msgType ∧ (x.st.remoteIdentity ≠ some
-        x.st.localIdentity ∨ DistinctSid uuidParse x.loc.name.bytes x.rem.name.bytes) ∧ SeedsLen32
-        x.st ∧ x.st.receiverChains.length < 2 ^ 32 ∧ rootStack ≤ s.sp.toNat⌝ ∗ sessionStateAt A x.ss
-        x.G x.st ∗ protocolAddressAt A x.rem x.remA ∗ protocolAddressAt A x.loc x.locA ∗
-        signalMessageAt A x.msgG x.msgA x.msg ∗
-      memRegion x.ret 48 ∗ tapeAt ctl x.cur x.rest ∗ logOff img ∗ stackAt s.sp rootStack ∗ A.pool }
-private def tryDecryptSpecPqP (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (uuidParse :
-  UuidParser)
-    (S : SpqrModel) (img : Obj.Image) : Spec TryDecryptGhost :=
-  { tryDecryptSpec C A ctl uuidParse S img with
-    pre := fun x s =>
-      ⌜img.FrozenLoaded s ∧ s.symtab = img.symtab⌝ ∗ ⌜x.st.pqRatchetState = [] ∧ s.readReg64 .x0 =
-      x.ret ∧ s.readReg64 .x1 = x.ss ∧ s.readReg64 .x2 = x.remA ∧ s.readReg64 .x3 = x.locA ∧
-      s.readReg64 .x4 = x.msgA ∧ (s.readReg64 .x5).setWidth 8 = msgTypeByte x.msgType ∧
-      (x.st.remoteIdentity ≠ some x.st.localIdentity ∨ DistinctSid uuidParse x.loc.name.bytes
-      x.rem.name.bytes) ∧ SeedsLen32 x.st ∧ x.st.receiverChains.length < 2 ^ 32 ∧ rootStack ≤
-      s.sp.toNat⌝ ∗ sessionStateAt A x.ss x.G x.st ∗ protocolAddressAt A x.rem x.remA ∗
-      protocolAddressAt A x.loc x.locA ∗ signalMessageAt A x.msgG x.msgA x.msg ∗ memRegion x.ret 48
-      ∗ tapeAt ctl x.cur x.rest ∗ logOff img ∗ stackAt s.sp rootStack ∗
-      A.pool }
-
 private theorem tapeAfter_zero_sa (ctl cur : BitVec 64) (rest : List (BitVec 8)) :
     tapeAt ctl cur rest ⊢ tapeAfter ctl cur rest 0 := by
   unfold tapeAt tapeAfter
@@ -88,16 +62,6 @@ private theorem tapeAfter_zero_sa (ctl cur : BitVec 64) (rest : List (BitVec 8))
   have hlen : rest.length - 0 = rest.length := Nat.sub_zero _
   rw [hcur, hlen]
   exact Entails.pure_left (fun _ => Entails.refl _)
-
-private theorem seedsLen32_of_pre_pq_P {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel} {img : Obj.Image} {x : TryDecryptGhost} {R : SepProp} {s0 : State} (hpre :
-    s0.mem ⊨ (tryDecryptSpecPqP C A ctl uuidTryParse S img).pre x s0 ∗ R) : x.st.pqRatchetState = []
-    ∧ SeedsLen32 x.st ∧ x.st.receiverChains.length < 2 ^ 32 ∧ rootStack ≤ s0.sp.toNat := by
-  simp only [tryDecryptSpecPqP] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨_, hpre⟩
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact ⟨hpre.1.1, hpre.1.2.2.2.2.2.2.2.2⟩
 
 end TryDecryptPqDistinct
 
@@ -187,7 +151,7 @@ theorem retPtr08_p4_slots_to_words3 (retPtr ptCap ptPtr ptLen : BitVec 64) :
   simpa only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc] using h
 
 /-- Frame preserved across `stageP3_sub5_dispatch_ok` after `stageP3_tryDecrypt_v4_nopanic_ok`. -/
-def stageP3PostTryDecryptFrame (A : RustAlloc) (ctl : BitVec 64) (C : Crypto) (sp : BitVec 64)
+@[expose] def stageP3PostTryDecryptFrame (A : RustAlloc) (ctl : BitVec 64) (C : Crypto) (sp : BitVec 64)
     (coroPtr v08 v10 v18 c0 newRootKeyPtr newRemIdPtr newLocIdPtr ctxPtr
      remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (sq3 sq4 sq5 : BitVec 128) (v24 v28 v2c f248 f24c prevCounter : BitVec 32) (rest : List (BitVec
@@ -216,7 +180,7 @@ def stageP3PostTryDecryptFrame (A : RustAlloc) (ctl : BitVec 64) (C : Crypto) (s
 
 /-- Extra frame required at `+0x1778#64` beyond `stageP3_clone_and_tryDecrypt_v4_ok`'s precondition
 to execute `stageP3_sub5_dispatch_ok`. -/
-def stageP3Sub5ExtraPre (s0 s : State) (coroPtr outPtr initErrsPtr prevStatesPtr : BitVec 64)
+@[expose] def stageP3Sub5ExtraPre (s0 s : State) (coroPtr outPtr initErrsPtr prevStatesPtr : BitVec 64)
     (b_2c0 : BitVec 8) : SepProp :=
   ((s.sp + 0x80#64) ↦₆₄ (coroPtr + 0xf8#64)) ∗
   ((s.sp + 0x88#64) ↦₆₄ (coroPtr + 0xe0#64)) ∗ ((s.sp + 0xc8#64) ↦₆₄ outPtr) ∗
@@ -227,51 +191,8 @@ def stageP3Sub5ExtraPre (s0 s : State) (coroPtr outPtr initErrsPtr prevStatesPtr
   memRegion outPtr 48 ∗ memRegion (s.sp + 0x250#64) 20 ∗ memRegion (s.sp + 0x370#64) 36 ∗
   decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0
 
-theorem postTryDecrypt_entails_dispatchPre (A : RustAlloc) (img : Obj.Image) (C : Crypto)
-    (ctl : BitVec 64) (S : SpqrModel) (s0 s : State) (coroPtr outPtr initErrsPtr prevStatesPtr
-     v08 v10 v18 c0 newRootKeyPtr newRemIdPtr newLocIdPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr
-     cur : BitVec 64)
-    (sq0 sq1 sq2 sq3 sq4 sq5 : BitVec 128) (v24 v28 v2c f248 f24c prevCounter : BitVec 32) (b_2c0 :
-    BitVec 8) (rest : List (BitVec 8)) (G' recG : SessionGhost) (st : SessionState (List (BitVec
-    8))) (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage) : (sessionStateAt A
-    (s.sp + 0xa90#64) G' (pqxdhTryDecryptModel C S uuidTryParse rem loc msg rest st).2 ∗ vecResultAt
-    A (s.sp + 0x270#64) (pqxdhTryDecryptModel C S uuidTryParse rem loc msg rest st).1 ∗
-    sessionStateAt A (coroPtr + 0xf8#64) recG st ∗ protocolAddressAt A rem remAddrPtr ∗
-    protocolAddressAt A loc locAddrPtr ∗ signalMessageAt A msgG whisperMsgPtr msg ∗ tapeAfter ctl
-    cur rest (decryptDraws C st msg.senderRatchetKey rest) ∗ logOff img ∗ stackAt s.sp rootStack ∗
-    A.pool ∗ memRegion (s.sp + 0x3e0#64) 104 ∗ ((s.sp + 0x8#64) ↦₆₄ v08) ∗ ((s.sp + 0x10#64) ↦₆₄
-    v10) ∗ ((s.sp + 0x18#64) ↦₆₄ v18) ∗ ((s.sp + 0x24#64) ↦₃₂ v24) ∗ ((s.sp + 0x28#64) ↦₃₂ v28) ∗
-    ((s.sp + 0x2c#64) ↦₃₂ v2c) ∗ ((s.sp + 0x30#64) ↦₃₂ f248) ∗ ((s.sp + 0x34#64) ↦₃₂ f24c) ∗ ((s.sp
-    + 0x38#64) ↦₆₄ 0xffffffffffffffff#64) ∗ ((s.sp + 0x40#64) ↦₆₄ 0#64) ∗ ((s.sp + 0x48#64) ↦₆₄ c0)
-    ∗ ((s.sp + 0x50#64) ↦₆₄ newRootKeyPtr) ∗ ((s.sp + 0x5c#64) ↦₃₂ prevCounter) ∗ ((s.sp + 0x60#64)
-    ↦₆₄ newRemIdPtr) ∗ ((s.sp + 0x68#64) ↦₆₄ 33#64) ∗ ((s.sp + 0x70#64) ↦₆₄ newLocIdPtr) ∗ ((s.sp +
-    0x7c#64) ↦₃₂ 4#32) ∗ ((s.sp + 0x98#64) ↦₆₄ 32#64) ∗ ((s.sp + 0xa0#64) ↦₆₄ locAddrPtr) ∗ ((s.sp +
-    0xb0#64) ↦₆₄ whisperMsgPtr) ∗ ((s.sp + 0xb8#64) ↦₃₂ 4#32) ∗ ((s.sp + 0xc0#64) ↦₆₄ ctxPtr) ∗
-    ((s.sp + 0xd0#64) ↦₆₄ 33#64) ∗ ((s.sp + 0x3a0#64) ↦₆₄ remAddrPtr) ∗ ((s.sp + 0x3ac#64) ↦₈ 3#8) ∗
-    ((s.sp + 0x930#64) ↦₆₄ sq0.extractLsb' 0 64) ∗ ((s.sp + 0x938#64) ↦₆₄ sq0.extractLsb' 64 64) ∗
-    ((s.sp + 0x940#64) ↦₆₄ sq1.extractLsb' 0 64) ∗ ((s.sp + 0x948#64) ↦₆₄ sq1.extractLsb' 64 64) ∗
-    ((s.sp + 0x950#64) ↦₆₄ sq2.extractLsb' 0 64) ∗ ((s.sp + 0x958#64) ↦₆₄ sq2.extractLsb' 64 64) ∗
-    ((s.sp + 0x960#64) ↦₆₄ sq3.extractLsb' 0 64) ∗ ((s.sp + 0x968#64) ↦₆₄ sq3.extractLsb' 64 64) ∗
-    ((s.sp + 0x970#64) ↦₆₄ sq4.extractLsb' 0 64) ∗ ((s.sp + 0x978#64) ↦₆₄ sq4.extractLsb' 64 64) ∗
-    ((s.sp + 0x980#64) ↦₆₄ sq5.extractLsb' 0 64) ∗ ((s.sp + 0x988#64) ↦₆₄ sq5.extractLsb' 64 64)) ∗
-    stageP3Sub5ExtraPre s0 s coroPtr outPtr initErrsPtr prevStatesPtr b_2c0 ⊢ stageP3DispatchPre A
-    img.base s0 s coroPtr outPtr initErrsPtr prevStatesPtr
-      (pqxdhTryDecryptModel C S uuidTryParse rem loc msg rest st).1 b_2c0 G' recG
-      (pqxdhTryDecryptModel C S uuidTryParse rem loc msg rest st).2 st ∗ stageP3PostTryDecryptFrame
-      A ctl C s.sp coroPtr v08 v10 v18 c0 newRootKeyPtr newRemIdPtr
-      newLocIdPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur sq3 sq4 sq5 v24 v28 v2c f248 f24c
-      prevCounter rest st rem loc msgG msg := by
-  unfold stageP3Sub5ExtraPre stageP3DispatchPre stageP3PostTryDecryptFrame
-  rw [logOff_eq_5b810 img, stackAt_root_eq_growOneSpe s.sp, ← sp3e0_104_240_eq_344 s.sp]
-  have h930 := sp930_6words_entails_memRegion48 s.sp
-    (sq0.extractLsb' 0 64) (sq0.extractLsb' 64 64) (sq1.extractLsb' 0 64) (sq1.extractLsb' 64 64)
-    (sq2.extractLsb' 0 64) (sq2.extractLsb' 64 64)
-  exact entails_replace_sub h930 (by sep_focus) (eq_of_sep_emp (by sep_focus))
-
-/-! ## 2. `bobSession344WithRegIdsBv8` Layout Definitions -/
-
 /-- Middle 280 bytes (`+0x38..+0x150`) of `bobSession344Bv8`. -/
-def bobSession280MidBv8 (rootKeyBoxPtr baseKeyBoxPtr spqrCap spqrBufPtr
+@[expose] def bobSession280MidBv8 (rootKeyBoxPtr baseKeyBoxPtr spqrCap spqrBufPtr
     ratchetPubBoxPtr ratchetPrivBoxPtr chainKeyBoxPtr : BitVec 64)
     (pad_f4 : BitVec 32) (c0 c1 c2 c3 c4 d0 d1 d2 : BitVec 64) : List (BitVec 8) :=
   unpack64 rootKeyBoxPtr ++ unpack64 32#64 ++
@@ -293,7 +214,7 @@ theorem bobSession280MidBv8_length (p3 p4 c5 p5 p6 p7 p8 : BitVec 64)
   simp only [List.length_append, unpack64_length, unpack32_length]
 
 /-- 344-byte `SessionState` with `remoteRegId` at `+0x150` and `localRegId` at `+0x154`. -/
-def bobSession344WithRegIdsBv8 (localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr baseKeyBoxPtr
+@[expose] def bobSession344WithRegIdsBv8 (localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr baseKeyBoxPtr
     spqrCap spqrBufPtr ratchetPubBoxPtr ratchetPrivBoxPtr chainKeyBoxPtr : BitVec 64)
     (pad_f4 : BitVec 32) (c0 c1 c2 c3 c4 d0 d1 d2 : BitVec 64)
     (remoteRegId localRegId : BitVec 32) : List (BitVec 8) :=
@@ -351,7 +272,7 @@ theorem bobSession344WithRegIds_fold (a p1 p2 p3 p4 c5 p5 p6 p7 p8 : BitVec 64)
 
 /-! ## 3. `bobSession344WithRegIdsBv8` Unpacking and `initializeRecipientSession` Bridge -/
 
-def mkBobSenderChainGhost (ratchetPubBoxPtr ratchetPrivBoxPtr chainKeyBoxPtr : BitVec 64)
+@[expose] def mkBobSenderChainGhost (ratchetPubBoxPtr ratchetPrivBoxPtr chainKeyBoxPtr : BitVec 64)
     (spkPubBytes spkPrivBytes : List (BitVec 8)) : SenderChainGhost :=
   { srk := ⟨33#64, ratchetPubBoxPtr, spkPubBytes⟩, priv := ⟨32#64, ratchetPrivBoxPtr, spkPrivBytes⟩,
     mkCap := 0#64, mkPtr := 8#64, ck := ⟨32#64, chainKeyBoxPtr⟩ }
@@ -458,7 +379,7 @@ theorem bobSession280Mid_entails_fields (coroPtr rootKeyBoxPtr baseKeyBoxPtr
   refine Entails.trans (entails_replace_sub hc40 (by sep_focus) rfl) ?_
   exact entails_replace_sub hd24 (by sep_focus) (eq_of_sep_emp (by sep_focus))
 
-def stageP3InitSessionPre (A : RustAlloc) (sp coroPtr localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr
+@[expose] def stageP3InitSessionPre (A : RustAlloc) (sp coroPtr localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr
     baseKeyBoxPtr ratchetPubBoxPtr ratchetPrivBoxPtr chainKeyBoxPtr ctxPtr u_38 u_40 u_48 u_50 u_60
     u_68 u_70 u_98 u_d0 u930 u938 u940 u948 u950 u958 u960 u968 u970 u978 u980 u988 : BitVec 64)
     (pad_f4 remoteRegId localRegId u_30 u_34 u_5c u_7c : BitVec 32) (c0 c1 c2 c3 c4 d0 d1 d2 :

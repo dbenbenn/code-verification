@@ -16,28 +16,27 @@ public import Symbolic.Proofs.SpecLemmas.ImageSymbolsProofDefs
 # Extern-interpretation totality predicates
 
 Defines `ReturnsLength` and `ExternInterpretationTotalOnUsedSymbols`, specifying totality and
-output byte lengths of the Kyber-1024, SHA-512, Ed25519, ML-KEM-768, and HMAC extern symbols on
+output byte lengths of the Kyber-1024, SHA-512, ML-KEM-768, and HMAC extern symbols on
 well-sized inputs.
 -/
 
-@[expose] public section
+public section
 
 namespace DY.Libsignal.Composed.Refinement
 
 open CryptoProofLib.Refinement (ByteString ExternInterpretation)
 open DY.Libsignal.Refinement (StubSymbol)
 open DY.Libsignal.PQXDH.Refinement (kyberEncapsSymbol kyberDecapsSymbol sha512CompressSymbol
-  toEdwardsSymbol edwardsCompressSymbol edwardsNegSymbol torsionFreeSymbol doubleScalarMulSymbol
-  scalarModOrderSymbol scalarModOrderWideSymbol mlkem768FromSeedSymbol mlkem768Encaps1Symbol
+  mlkem768FromSeedSymbol mlkem768Encaps1Symbol
   mlkem768Encaps2Symbol mlkem768DecapsSymbol mlkem768ValidatePkSymbol libcruxHmacSymbol)
 
-def ReturnsLength (interpretation : ExternInterpretation) (sym : StubSymbol)
+@[expose] def ReturnsLength (interpretation : ExternInterpretation) (sym : StubSymbol)
     (args : List ByteString) (n : Nat) : Prop :=
   ∃ out, interpretation sym args = some out ∧ out.length = n
 
-/-- Totality and output-length requirements on the Kyber-1024, SHA-512, Ed25519, ML-KEM-768,
+/-- Totality and output-length requirements on the Kyber-1024, SHA-512, ML-KEM-768,
 and HMAC externs. -/
-def ExternInterpretationTotalOnUsedSymbols (interpretation : ExternInterpretation) : Prop :=
+@[expose] def ExternInterpretationTotalOnUsedSymbols (interpretation : ExternInterpretation) : Prop :=
   -- Kyber-1024
   (∀ pk rand : ByteString, pk.length = 1568 → rand.length = 32 →
     ReturnsLength interpretation kyberEncapsSymbol [pk, rand] 1600) ∧
@@ -46,20 +45,6 @@ def ExternInterpretationTotalOnUsedSymbols (interpretation : ExternInterpretatio
   -- SHA-512 one-block compression
   (∀ st b : ByteString, st.length = 64 → b.length = 128 →
     ReturnsLength interpretation sha512CompressSymbol [st, b] 64) ∧
-  -- Ed25519 curve core
-  (∀ (u : ByteString) (sign : BitVec 8), u.length = 32 →
-    ReturnsLength interpretation toEdwardsSymbol [u, [sign]] 160) ∧
-  (∀ pt : ByteString, pt.length = 160 →
-    ReturnsLength interpretation edwardsCompressSymbol [pt] 32) ∧
-  (∀ pt : ByteString, pt.length = 160 →
-    ReturnsLength interpretation edwardsNegSymbol [pt] 160) ∧
-  (∀ pt : ByteString, pt.length = 160 → (interpretation torsionFreeSymbol [pt]).isSome) ∧
-  (∀ a pt b : ByteString, a.length = 32 → pt.length = 160 → b.length = 32 →
-    ReturnsLength interpretation doubleScalarMulSymbol [a, pt, b] 160) ∧
-  (∀ b : ByteString, b.length = 32 →
-    ReturnsLength interpretation scalarModOrderSymbol [b] 32) ∧
-  (∀ b : ByteString, b.length = 64 →
-    ReturnsLength interpretation scalarModOrderWideSymbol [b] 32) ∧
   -- ML-KEM-768 incremental
   (∀ seed : ByteString, seed.length = 64 →
     ReturnsLength interpretation mlkem768FromSeedSymbol [seed] 2400) ∧

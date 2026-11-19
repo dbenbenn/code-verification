@@ -9,16 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkSpinePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserCloneErr
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkSpinePlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserCloneErr -- proof-setup: allow-public-import
+meta import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserCloneErr -- shake: keep
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSites
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupUpperPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadKpk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadRegSpk
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # Relocatable Stage 4a Deserialization Error Cleanup for Arm `R1b`
@@ -26,7 +34,7 @@ import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
 Relocatable (`[LibsignalPlacement]`) counterparts of `R1b.DeserCloneErr` on Block `579`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

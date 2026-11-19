@@ -11,6 +11,7 @@ module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopPeelDefs
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.PrevBridge
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Decoded `SessionStructure` Inline Peel Proof
@@ -20,7 +21,7 @@ into `overPrevMovesSS ss w0 w1 w2 r1 r2 ∗ H` together with `w0.toNat < 2 ^ 63`
 `r2.length = 12`, and the drop-precondition reassembly `overPrevDropFromMovesExt A ss w0 w1 w2 r1 r2 H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

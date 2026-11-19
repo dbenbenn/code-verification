@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KyberKitOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.SelfKitOk
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KyberKitOk -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.SelfKitOk -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Spatial Store Bridge for `decrypt_prekey` Poll
@@ -20,7 +22,7 @@ Proves the bidirectional separation-logic bridge between `MainHops.storesAt A a 
 store kits together with the untouched `pub` directory at `a + 0x118#64`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,41 +48,41 @@ private theorem pure_sepConj_true {φ : Prop} (P : SepProp) (hφ : φ) : ⌜φ�
   rw [hEq, pure_true, emp_sepConj]
 
 /-- Session store kit for one `decrypt_prekey` poll on `F0` and `peer`. -/
-def cliPollSessKit (A : RustAlloc) (b : BitVec 64) (F0 : FsFiles)
+@[expose] def cliPollSessKit (A : RustAlloc) (b : BitVec 64) (F0 : FsFiles)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (peer : AddrGhost) (σ : DpKitStk) :
     SessionStoreSpec A b :=
   cliSessionStoreSpec A b cliIo.rd F0 cliWrOk Scope peer
     σ.sessLoadShim σ.sessLoadPoll σ.sessStoreShim σ.sessStorePoll
 
-def cliPollIdKit (A : RustAlloc) (b : BitVec 64) (F0 : FsFiles)
+@[expose] def cliPollIdKit (A : RustAlloc) (b : BitVec 64) (F0 : FsFiles)
     (peer : AddrGhost) (σ : DpKitStk) : IdentityStoreSpec A b :=
   cliIdStoreSpecFull A b cliIo.rd F0 cliWrOk peer
     σ.idTrustShim σ.idTrustPoll σ.idSaveShim σ.idSavePoll
 
-def cliPollSelfKit (A : RustAlloc) (b : BitVec 64) (F0 : FsFiles)
+@[expose] def cliPollSelfKit (A : RustAlloc) (b : BitVec 64) (F0 : FsFiles)
     (peer : AddrGhost) (σ : DpKitStk) :
     IdentitySelf.IdentitySelfStoreSpec (cliPollIdKit A b F0 peer σ) :=
   cliIdSelfSpecFull A b cliIo.rd F0 cliWrOk peer
     σ.kpShim σ.kpPoll σ.regIdShim σ.regIdPoll
 
-def cliPollPkKit (A : RustAlloc) (b : BitVec 64) (F0 : FsFiles)
+@[expose] def cliPollPkKit (A : RustAlloc) (b : BitVec 64) (F0 : FsFiles)
     (pid : BitVec 32) (σ : DpKitStk) : PreKeyStoreSpec A b :=
   cliPreKeyStoreSpec A b cliIo.rd F0 cliWrOk pid
     σ.pkGetShim σ.pkGetPoll σ.pkRemoveShim σ.pkRemovePoll
 
-def cliPollSpkKit (A : RustAlloc) (b : BitVec 64) (F0 : FsFiles)
+@[expose] def cliPollSpkKit (A : RustAlloc) (b : BitVec 64) (F0 : FsFiles)
     (sid : BitVec 32) (σ : DpKitStk) : SignedPreKeyStoreSpec A b :=
   cliSignedPreKeyStoreSpec A b cliIo.rd F0 cliWrOk sid
     σ.spkGetShim σ.spkGetPoll
 
-def cliPollKpkKit (A : RustAlloc) (b : BitVec 64) (F0 : FsFiles)
+@[expose] def cliPollKpkKit (A : RustAlloc) (b : BitVec 64) (F0 : FsFiles)
     (kid ksid : BitVec 32) (kbk : PublicKey) (σ : DpKitStk) : KyberPreKeyStoreSpec A b :=
   cliKpkStoreSpecFull A b cliIo.rd F0 cliWrOk kid ksid kbk
     σ.kpkGetShim σ.kpkGetPoll σ.kpkMarkShim σ.kpkMarkPoll
 
 /-- Separating conjunction of the CLI store kits' spatial predicates and the untouched
 `pub` directory at `a + 0x118#64`. -/
-def cliPollStoresKitsAt (A : RustAlloc) (b : BitVec 64) (F0 : FsFiles)
+@[expose] def cliPollStoresKitsAt (A : RustAlloc) (b : BitVec 64) (F0 : FsFiles)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (peer : AddrGhost)
     (pid sid kid : BitVec 32) (kbk : PublicKey) (σ : DpKitStk)
     (a : BitVec 64) (g : StoresGhost) : SepProp :=

@@ -13,6 +13,10 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3AllocStdinGhostH
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetLrTrap -- proof-setup: allow-public-import
 import ProofLib.OpcodeExclusion
 import ProofLib.ProgramReflection.Variant.TrapTransfer
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Generalized `blk21` Closed-Trap Entry Points (`HooksDehook.MemsetLrTrapRet`)
@@ -119,111 +123,6 @@ theorem blk21TrapHook_of_exception_on_keepLr
     Blk21TrapHook L f := by
   intro w _ hlr
   exact Or.inl (hex_of_keep w (hlr ▸ hkeepL))
-
-/-- Any `linkedCallHook` whose `spec.pre` implies `keep (w.readReg64 .lr) = false` satisfies
-    `Blk21TrapHook L` whenever `keep L = true` (via the `¬ ActiveRealPre` `.Exception` branch). -/
-theorem blk21TrapHook_linkedCallHook_of_pre_keepFalse {α : Type}
-    {keep keep' : BitVec 64 → Bool} {L : BitVec 64}
-    (P_real P_sub : Program) (entryTarget : BitVec 64)
-    (spec : Spec α) (fallback : State → State)
-    (hpre_lr : ∀ (x : α) (R : SepProp) (w : State),
-      (w.mem ⊨ spec.pre x w ∗ R) → keep (w.readReg64 .lr) = false)
-    (hkeepL : keep L = true) :
-    Blk21TrapHook L (linkedCallHook keep' P_real P_sub entryTarget spec fallback) := by
-  refine blk21TrapHook_of_exception_on_keepLr hkeepL fun w hkw => ?_
-  classical
-  have hnAct : ¬ ActiveRealPre spec w := by
-    rintro ⟨_, _, x, R, hpre⟩
-    have hfalse := hpre_lr x R w hpre
-    rw [hkw] at hfalse
-    exact Bool.noConfusion hfalse
-  refine ⟨"ghost-hook precondition violated", ?_⟩
-  unfold linkedCallHook
-  simp [hnAct]
-
-/-- Every `memsetSpecK keep spec`-narrowed `linkedCallHook` with `keep ⊇ keepMemsetBlk21 mmpl`
-    satisfies `∀ L, keepMemsetBlk21 mmpl L = true → Blk21TrapHook L (...)`. -/
-theorem blk21TrapHook_linkedCallHook_memsetSpecK {α : Type}
-    {mmpl : Obj.MultiPlacement} {keep keep' : BitVec 64 → Bool}
-    (hcover : ∀ a, keepMemsetBlk21 mmpl a = true → keep a = true)
-    (P_real P_sub : Program) (entryTarget : BitVec 64)
-    (spec : Spec α) (fallback : State → State) :
-    ∀ L : BitVec 64, keepMemsetBlk21 mmpl L = true →
-      Blk21TrapHook L
-        (linkedCallHook keep' P_real P_sub entryTarget (memsetSpecK keep spec) fallback) := by
-  intro L hL
-  refine blk21TrapHook_linkedCallHook_of_pre_keepFalse P_real P_sub entryTarget
-    (memsetSpecK keep spec) fallback (fun x R w hpre => ?_) (hcover L hL)
-  dsimp only [memsetSpecK] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact hpre.1
-
-/-- Any `f3LinkedCallHook` whose `(specOf γ tp).pre` implies `keep (w.readReg64 .lr) = false`
-    (covering **both** `h2k_withKeepLrFalse keep` and `h2k_withKeepLrAndFds keep` across all 7
-    K-route ghosts in `h2k_ghFixedK`) satisfies `Blk21TrapHook L` whenever `keep L = true`. -/
-theorem blk21TrapHook_f3LinkedCallHook_of_pre_keepFalse {α : Type}
-    {keep keep' : BitVec 64 → Bool} {L : BitVec 64}
-    (P_real P_sub : Program) (entryTarget : BitVec 64)
-    (specOf : GhostName → BitVec 64 → Spec α) (fallback : State → State)
-    (hpre_lr : ∀ (γ : GhostName) (tp : BitVec 64) (x : α) (R : SepProp) (w : State),
-      (w.mem ⊨ (specOf γ tp).pre x w ∗ R) → keep (w.readReg64 .lr) = false)
-    (hkeepL : keep L = true) :
-    Blk21TrapHook L (f3LinkedCallHook keep' P_real P_sub entryTarget specOf fallback) := by
-  refine blk21TrapHook_of_exception_on_keepLr hkeepL fun w hkw => ?_
-  classical
-  have hnAct : ¬ ActiveF3CallPre specOf w := by
-    rintro ⟨_, _, γ, tp, x, R, hpre⟩
-    have hfalse := hpre_lr γ tp x R w hpre
-    rw [hkw] at hfalse
-    exact Bool.noConfusion hfalse
-  refine ⟨"ghost-hook precondition violated", ?_⟩
-  unfold f3LinkedCallHook
-  simp [hnAct]
-
-/-- Every `memsetSpecK keep`-narrowed `f3LinkedCallHook` (`rfl`-equal to `h2k_withKeepLrFalse keep`)
-    with `keep ⊇ keepMemsetBlk21 mmpl` satisfies
-    `∀ L, keepMemsetBlk21 mmpl L = true → Blk21TrapHook L (...)`. -/
-theorem blk21TrapHook_f3LinkedCallHook_memsetSpecK {α : Type}
-    {mmpl : Obj.MultiPlacement} {keep keep' : BitVec 64 → Bool}
-    (hcover : ∀ a, keepMemsetBlk21 mmpl a = true → keep a = true)
-    (P_real P_sub : Program) (entryTarget : BitVec 64)
-    (specOf : GhostName → BitVec 64 → Spec α) (fallback : State → State) :
-    ∀ L : BitVec 64, keepMemsetBlk21 mmpl L = true →
-      Blk21TrapHook L
-        (f3LinkedCallHook keep' P_real P_sub entryTarget
-          (fun γ tp => memsetSpecK keep (specOf γ tp)) fallback) := by
-  intro L hL
-  refine blk21TrapHook_f3LinkedCallHook_of_pre_keepFalse P_real P_sub entryTarget
-    (fun γ tp => memsetSpecK keep (specOf γ tp)) fallback
-    (fun γ tp x R w hpre => ?_) (hcover L hL)
-  dsimp only [memsetSpecK] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact hpre.1
-
-/-- Every `(⌜keep (w.readReg64 .lr) = false ∧ P w⌝ ∗ ...)`-narrowed `f3LinkedCallHook` (`rfl`-equal
-    to `h2k_withKeepLrAndFds keep` when `P w := FdsGe3Closed w.fs`) with
-    `keep ⊇ keepMemsetBlk21 mmpl` satisfies
-    `∀ L, keepMemsetBlk21 mmpl L = true → Blk21TrapHook L (...)`. -/
-theorem blk21TrapHook_f3LinkedCallHook_keepAnd {α : Type}
-    {mmpl : Obj.MultiPlacement} {keep keep' : BitVec 64 → Bool}
-    (hcover : ∀ a, keepMemsetBlk21 mmpl a = true → keep a = true)
-    (P : State → Prop)
-    (P_real P_sub : Program) (entryTarget : BitVec 64)
-    (specOf : GhostName → BitVec 64 → Spec α) (fallback : State → State) :
-    ∀ L : BitVec 64, keepMemsetBlk21 mmpl L = true →
-      Blk21TrapHook L
-        (f3LinkedCallHook keep' P_real P_sub entryTarget
-          (fun γ tp =>
-            { (specOf γ tp) with
-              pre := fun x s =>
-                ⌜keep (s.readReg64 .lr) = false ∧ P s⌝ ∗ (specOf γ tp).pre x s })
-          fallback) := by
-  intro L hL
-  refine blk21TrapHook_f3LinkedCallHook_of_pre_keepFalse P_real P_sub entryTarget _ fallback
-    (fun γ tp x R w hpre => ?_) (hcover L hL)
-  dsimp only [] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact hpre.1.1
 
 /-- Plain `memsetGhostHook keep P_real P_sub entryTarget` with `keep ⊇ keepMemsetBlk21 mmpl`
     satisfies `∀ L, keepMemsetBlk21 mmpl L = true → Blk21TrapHook L (...)` via its `hookMemset`

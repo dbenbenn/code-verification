@@ -48,9 +48,8 @@ open LibsignalBinary.Heap (
 )
 open LibsignalBinary.Heap.IfaceLemmas (
   withHookStackOom withExternStackFromAllocOom'
-  satisfies_drop_mid_entails subroutine_ok_frame_oom' subroutine_ok_inImage_frame_oom'
+  satisfies_drop_mid_entails subroutine_ok_frame_oom'
   subroutine_ok_withExternStackFromAllocOom'
-  subroutine_ok_inImage_withExternStackFromAllocOom'
   isPanicSymbol_rust_alloc isPanicSymbol_rust_dealloc isPanicSymbol_rust_realloc
 )
 
@@ -852,23 +851,6 @@ theorem subroutine_ok_rustCliAllocBudget_withStack {M : AllocCostModel}
     rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
     exact Entails.of_eq (by sep_ac_rfl)
 
-theorem subroutine_ok_inImage_rustCliAllocBudget_withStack {M : AllocCostModel}
-    {prog : Program} {entry : BitVec 64} {img : Obj.Image} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {zeroed : Bool} {stk : Nat}
-    (hle : allocHookStack ≤ stk) (hbound : stk ≤ 2 ^ 64)
-    (h : subroutine_ok prog entry ((rustCliAllocBudgetSpec M A lim zeroed).inImage img)) :
-    subroutine_ok prog entry ((rustCliAllocBudgetSpecWithStack M A lim zeroed stk).inImage img) := by
-  refine subroutine_ok_frame_oom'
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - allocHookStack)) h ?_ ?_
-  · rintro ⟨size, align, st⟩ s0
-    dsimp only [Spec.inImage, rustCliAllocBudgetSpec, rustCliAllocBudgetSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · rintro ⟨size, align, st⟩ s0 sf
-    dsimp only [Spec.inImage, rustCliAllocBudgetSpec, rustCliAllocBudgetSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-
 theorem subroutine_ok_rustCliDeallocBudget_withStack {M : AllocCostModel}
     {prog : Program} {entry : BitVec 64} {A : RustCliAllocBudget M}
     {lim : BudgetLimits} {stk : Nat}
@@ -883,23 +865,6 @@ theorem subroutine_ok_rustCliDeallocBudget_withStack {M : AllocCostModel}
     exact Entails.of_eq (by sep_ac_rfl)
   · rintro ⟨p, size, align, st⟩ s0 sf
     dsimp only [rustCliDeallocBudgetSpec, rustCliDeallocBudgetSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-
-theorem subroutine_ok_inImage_rustCliDeallocBudget_withStack {M : AllocCostModel}
-    {prog : Program} {entry : BitVec 64} {img : Obj.Image} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {stk : Nat}
-    (hle : allocHookStack ≤ stk) (hbound : stk ≤ 2 ^ 64)
-    (h : subroutine_ok prog entry ((rustCliDeallocBudgetSpec M A lim).inImage img)) :
-    subroutine_ok prog entry ((rustCliDeallocBudgetSpecWithStack M A lim stk).inImage img) := by
-  refine subroutine_ok_frame_oom'
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - allocHookStack)) h ?_ ?_
-  · rintro ⟨p, size, align, st⟩ s0
-    dsimp only [Spec.inImage, rustCliDeallocBudgetSpec, rustCliDeallocBudgetSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · rintro ⟨p, size, align, st⟩ s0 sf
-    dsimp only [Spec.inImage, rustCliDeallocBudgetSpec, rustCliDeallocBudgetSpecWithStack]
     rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
     exact Entails.of_eq (by sep_ac_rfl)
 
@@ -920,23 +885,6 @@ theorem subroutine_ok_rustCliReallocBudget_withStack {M : AllocCostModel}
     rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
     exact Entails.of_eq (by sep_ac_rfl)
 
-theorem subroutine_ok_inImage_rustCliReallocBudget_withStack {M : AllocCostModel}
-    {prog : Program} {entry : BitVec 64} {img : Obj.Image} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {stk : Nat}
-    (hle : allocHookStack ≤ stk) (hbound : stk ≤ 2 ^ 64)
-    (h : subroutine_ok prog entry ((rustCliReallocBudgetSpec M A lim).inImage img)) :
-    subroutine_ok prog entry ((rustCliReallocBudgetSpecWithStack M A lim stk).inImage img) := by
-  refine subroutine_ok_frame_oom'
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - allocHookStack)) h ?_ ?_
-  · rintro ⟨p, old, align, new, bs, st⟩ s0
-    dsimp only [Spec.inImage, rustCliReallocBudgetSpec, rustCliReallocBudgetSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · rintro ⟨p, old, align, new, bs, st⟩ s0 sf
-    dsimp only [Spec.inImage, rustCliReallocBudgetSpec, rustCliReallocBudgetSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-
 theorem subroutine_ok_rustCliAllocNoOom_withStack {M : AllocCostModel}
     {prog : Program} {entry : BitVec 64} {A : RustCliAllocBudget M}
     {lim : BudgetLimits} {zeroed : Bool} {stk : Nat}
@@ -954,23 +902,6 @@ theorem subroutine_ok_rustCliAllocNoOom_withStack {M : AllocCostModel}
     rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
     exact Entails.of_eq (by sep_ac_rfl)
 
-theorem subroutine_ok_inImage_rustCliAllocNoOom_withStack {M : AllocCostModel}
-    {prog : Program} {entry : BitVec 64} {img : Obj.Image} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {zeroed : Bool} {stk : Nat}
-    (hle : allocHookStack ≤ stk) (hbound : stk ≤ 2 ^ 64)
-    (h : subroutine_ok prog entry ((rustCliAllocNoOomSpec M A lim zeroed).inImage img)) :
-    subroutine_ok prog entry ((rustCliAllocNoOomSpecWithStack M A lim zeroed stk).inImage img) := by
-  refine subroutine_ok_frame_oom'
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - allocHookStack)) h ?_ ?_
-  · rintro ⟨size, align, st⟩ s0
-    dsimp only [Spec.inImage, rustCliAllocNoOomSpec, rustCliAllocNoOomSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · rintro ⟨size, align, st⟩ s0 sf
-    dsimp only [Spec.inImage, rustCliAllocNoOomSpec, rustCliAllocNoOomSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-
 theorem subroutine_ok_rustCliReallocNoOom_withStack {M : AllocCostModel}
     {prog : Program} {entry : BitVec 64} {A : RustCliAllocBudget M}
     {lim : BudgetLimits} {stk : Nat}
@@ -985,23 +916,6 @@ theorem subroutine_ok_rustCliReallocNoOom_withStack {M : AllocCostModel}
     exact Entails.of_eq (by sep_ac_rfl)
   · rintro ⟨p, old, align, new, bs, st⟩ s0 sf
     dsimp only [rustCliReallocNoOomSpec, rustCliReallocNoOomSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-
-theorem subroutine_ok_inImage_rustCliReallocNoOom_withStack {M : AllocCostModel}
-    {prog : Program} {entry : BitVec 64} {img : Obj.Image} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {stk : Nat}
-    (hle : allocHookStack ≤ stk) (hbound : stk ≤ 2 ^ 64)
-    (h : subroutine_ok prog entry ((rustCliReallocNoOomSpec M A lim).inImage img)) :
-    subroutine_ok prog entry ((rustCliReallocNoOomSpecWithStack M A lim stk).inImage img) := by
-  refine subroutine_ok_frame_oom'
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - allocHookStack)) h ?_ ?_
-  · rintro ⟨p, old, align, new, bs, st⟩ s0
-    dsimp only [Spec.inImage, rustCliReallocNoOomSpec, rustCliReallocNoOomSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · rintro ⟨p, old, align, new, bs, st⟩ s0 sf
-    dsimp only [Spec.inImage, rustCliReallocNoOomSpec, rustCliReallocNoOomSpecWithStack]
     rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
     exact Entails.of_eq (by sep_ac_rfl)
 
@@ -1432,24 +1346,6 @@ theorem _root_.LibsignalBinary.Heap.RustCliAllocBudgetHooks.toEntries_stubs {M :
   dealloc lim := hH.dealloc_ok_stub lim hsD hstubD
   realloc lim := hH.realloc_ok_stub lim hsR hstubR
 
-theorem _root_.LibsignalBinary.Heap.RustCliAllocBudgetEntries.alloc_inImage {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocBudgetEntries M A P addrs) (lim : BudgetLimits) (img : Obj.Image) :
-    subroutine_ok P addrs.alloc ((rustCliAllocBudgetSpec M A lim false).inImage img) :=
-  subroutine_ok_inImage img (hE.alloc lim)
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocBudgetEntries.dealloc_inImage {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocBudgetEntries M A P addrs) (lim : BudgetLimits) (img : Obj.Image) :
-    subroutine_ok P addrs.dealloc ((rustCliDeallocBudgetSpec M A lim).inImage img) :=
-  subroutine_ok_inImage img (hE.dealloc lim)
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocBudgetEntries.realloc_inImage {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocBudgetEntries M A P addrs) (lim : BudgetLimits) (img : Obj.Image) :
-    subroutine_ok P addrs.realloc ((rustCliReallocBudgetSpec M A lim).inImage img) :=
-  subroutine_ok_inImage img (hE.realloc lim)
-
 theorem _root_.LibsignalBinary.Heap.RustCliAllocBudgetEntries.alloc_externStack {M : AllocCostModel}
     {A : RustCliAllocBudget M} {P : Program} {addrs : RustAllocAddrs}
     (hE : RustCliAllocBudgetEntries M A P addrs) (lim : BudgetLimits) :
@@ -1467,27 +1363,6 @@ theorem _root_.LibsignalBinary.Heap.RustCliAllocBudgetEntries.realloc_externStac
     (hE : RustCliAllocBudgetEntries M A P addrs) (lim : BudgetLimits) :
     subroutine_ok P addrs.realloc (rustCliReallocBudgetSpec M A lim).withExternStackFromAllocOom' :=
   subroutine_ok_withExternStackFromAllocOom' (hE.realloc lim)
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocBudgetEntries.alloc_externStack_inImage
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocBudgetEntries M A P addrs) (lim : BudgetLimits) (img : Obj.Image) :
-    subroutine_ok P addrs.alloc
-      (((rustCliAllocBudgetSpec M A lim false).withExternStackFromAllocOom').inImage img) :=
-  subroutine_ok_inImage img (hE.alloc_externStack lim)
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocBudgetEntries.dealloc_externStack_inImage
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocBudgetEntries M A P addrs) (lim : BudgetLimits) (img : Obj.Image) :
-    subroutine_ok P addrs.dealloc
-      (((rustCliDeallocBudgetSpec M A lim).withExternStackFromAllocOom').inImage img) :=
-  subroutine_ok_inImage img (hE.dealloc_externStack lim)
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocBudgetEntries.realloc_externStack_inImage
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocBudgetEntries M A P addrs) (lim : BudgetLimits) (img : Obj.Image) :
-    subroutine_ok P addrs.realloc
-      (((rustCliReallocBudgetSpec M A lim).withExternStackFromAllocOom').inImage img) :=
-  subroutine_ok_inImage img (hE.realloc_externStack lim)
 
 theorem _root_.LibsignalBinary.Heap.RustCliAllocBudgetEntries.alloc_withStack
     {M : AllocCostModel} {A : RustCliAllocBudget M} {P : Program} {addrs : RustAllocAddrs}
@@ -1510,48 +1385,6 @@ theorem _root_.LibsignalBinary.Heap.RustCliAllocBudgetEntries.realloc_withStack
     subroutine_ok P addrs.realloc (rustCliReallocBudgetSpecWithStack M A lim stk) :=
   subroutine_ok_rustCliReallocBudget_withStack hle hbound (hE.realloc lim)
 
-theorem _root_.LibsignalBinary.Heap.RustCliAllocBudgetEntries.alloc_withStack_inImage
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocBudgetEntries M A P addrs) (lim : BudgetLimits) (img : Obj.Image) {stk : Nat}
-    (hle : allocHookStack ≤ stk := by decide) (hbound : stk ≤ 2 ^ 64 := by decide) :
-    subroutine_ok P addrs.alloc ((rustCliAllocBudgetSpecWithStack M A lim false stk).inImage img) :=
-  subroutine_ok_inImage img (hE.alloc_withStack lim hle hbound)
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocBudgetEntries.dealloc_withStack_inImage
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocBudgetEntries M A P addrs) (lim : BudgetLimits) (img : Obj.Image) {stk : Nat}
-    (hle : allocHookStack ≤ stk := by decide) (hbound : stk ≤ 2 ^ 64 := by decide) :
-    subroutine_ok P addrs.dealloc ((rustCliDeallocBudgetSpecWithStack M A lim stk).inImage img) :=
-  subroutine_ok_inImage img (hE.dealloc_withStack lim hle hbound)
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocBudgetEntries.realloc_withStack_inImage
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocBudgetEntries M A P addrs) (lim : BudgetLimits) (img : Obj.Image) {stk : Nat}
-    (hle : allocHookStack ≤ stk := by decide) (hbound : stk ≤ 2 ^ 64 := by decide) :
-    subroutine_ok P addrs.realloc ((rustCliReallocBudgetSpecWithStack M A lim stk).inImage img) :=
-  subroutine_ok_inImage img (hE.realloc_withStack lim hle hbound)
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocNoOomEntries.alloc_inImage
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocNoOomEntries M A lim P addrs) (img : Obj.Image) :
-    subroutine_ok P addrs.alloc ((rustCliAllocNoOomSpec M A lim false).inImage img) :=
-  subroutine_ok_inImage img hE.alloc
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocNoOomEntries.dealloc_inImage
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocNoOomEntries M A lim P addrs) (img : Obj.Image) :
-    subroutine_ok P addrs.dealloc ((rustCliDeallocNoOomSpec M A lim).inImage img) :=
-  subroutine_ok_inImage img hE.dealloc
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocNoOomEntries.realloc_inImage
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocNoOomEntries M A lim P addrs) (img : Obj.Image) :
-    subroutine_ok P addrs.realloc ((rustCliReallocNoOomSpec M A lim).inImage img) :=
-  subroutine_ok_inImage img hE.realloc
-
 theorem _root_.LibsignalBinary.Heap.RustCliAllocNoOomEntries.alloc_externStack
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {P : Program} {addrs : RustAllocAddrs}
@@ -1572,30 +1405,6 @@ theorem _root_.LibsignalBinary.Heap.RustCliAllocNoOomEntries.realloc_externStack
     (hE : RustCliAllocNoOomEntries M A lim P addrs) :
     subroutine_ok P addrs.realloc (rustCliReallocNoOomSpec M A lim).withExternStackFromAllocOom' :=
   subroutine_ok_withExternStackFromAllocOom' hE.realloc
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocNoOomEntries.alloc_externStack_inImage
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocNoOomEntries M A lim P addrs) (img : Obj.Image) :
-    subroutine_ok P addrs.alloc
-      (((rustCliAllocNoOomSpec M A lim false).withExternStackFromAllocOom').inImage img) :=
-  subroutine_ok_inImage img hE.alloc_externStack
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocNoOomEntries.dealloc_externStack_inImage
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocNoOomEntries M A lim P addrs) (img : Obj.Image) :
-    subroutine_ok P addrs.dealloc
-      (((rustCliDeallocNoOomSpec M A lim).withExternStackFromAllocOom').inImage img) :=
-  subroutine_ok_inImage img hE.dealloc_externStack
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocNoOomEntries.realloc_externStack_inImage
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocNoOomEntries M A lim P addrs) (img : Obj.Image) :
-    subroutine_ok P addrs.realloc
-      (((rustCliReallocNoOomSpec M A lim).withExternStackFromAllocOom').inImage img) :=
-  subroutine_ok_inImage img hE.realloc_externStack
 
 theorem _root_.LibsignalBinary.Heap.RustCliAllocNoOomEntries.alloc_withStack
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -1620,30 +1429,6 @@ theorem _root_.LibsignalBinary.Heap.RustCliAllocNoOomEntries.realloc_withStack
     (hle : allocHookStack ≤ stk := by decide) (hbound : stk ≤ 2 ^ 64 := by decide) :
     subroutine_ok P addrs.realloc (rustCliReallocNoOomSpecWithStack M A lim stk) :=
   subroutine_ok_rustCliReallocNoOom_withStack hle hbound hE.realloc
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocNoOomEntries.alloc_withStack_inImage
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocNoOomEntries M A lim P addrs) (img : Obj.Image) {stk : Nat}
-    (hle : allocHookStack ≤ stk := by decide) (hbound : stk ≤ 2 ^ 64 := by decide) :
-    subroutine_ok P addrs.alloc ((rustCliAllocNoOomSpecWithStack M A lim false stk).inImage img) :=
-  subroutine_ok_inImage img (hE.alloc_withStack hle hbound)
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocNoOomEntries.dealloc_withStack_inImage
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocNoOomEntries M A lim P addrs) (img : Obj.Image) {stk : Nat}
-    (hle : allocHookStack ≤ stk := by decide) (hbound : stk ≤ 2 ^ 64 := by decide) :
-    subroutine_ok P addrs.dealloc ((rustCliDeallocNoOomSpecWithStack M A lim stk).inImage img) :=
-  subroutine_ok_inImage img (hE.dealloc_withStack hle hbound)
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocNoOomEntries.realloc_withStack_inImage
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocNoOomEntries M A lim P addrs) (img : Obj.Image) {stk : Nat}
-    (hle : allocHookStack ≤ stk := by decide) (hbound : stk ≤ 2 ^ 64 := by decide) :
-    subroutine_ok P addrs.realloc ((rustCliReallocNoOomSpecWithStack M A lim stk).inImage img) :=
-  subroutine_ok_inImage img (hE.realloc_withStack hle hbound)
 
 theorem _root_.LibsignalBinary.Heap.RustCliAllocNoOomEntries.alloc_externWithStack
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}

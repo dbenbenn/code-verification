@@ -365,20 +365,6 @@ theorem ForgetSim.eval_eq
   costedReduction_eval_eq_of_forgetSim R' R forget P B x Inv
     hSim.hInit hSim.hHandle hSim.hFinish A hA
 
-theorem ForgetSim.simulateQ_eval_eq
-    {ι' : Type} {T' : OracleSpec ι'}
-    (impl : QueryImpl T (OracleComp T'))
-    {R' R : CostedReduction O I G C rIn aIn aOut out}
-    {forget : R'.σ.denote → R.σ.denote}
-    {m : ℕ} {P : Fin m → κ → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → ℕ}
-    {x : rIn.denote}
-    {Inv : (Fin m → ℕ) → R'.σ.denote → Prop}
-    (hSim : ForgetSim R' R forget P B x Inv)
-    (A : aIn.denote → OracleComp (unifSpec + G) aOut.denote)
-    (hA : ∀ a j, (A a).IsQueryBoundP (isGamePred (G := G) (P j)) (B j)) :
-    simulateQ impl (R'.eval A x) = simulateQ impl (R.eval A x) :=
-  congrArg (simulateQ impl) (hSim.eval_eq A hA)
-
 /-- Constructs `ForgetSim` from disjoint per-kind obligations (`P i t := kind t = i`). -/
 theorem ForgetSim.ofByKind
     (R' R : CostedReduction O I G C rIn aIn aOut out)
@@ -407,67 +393,6 @@ theorem ForgetSim.ofByKind
   hHandle := fun c₀ s₀ t hc₀ hroom₀ hInv₀ => by
     rw [bumpPred_eq_bumpCount]; exact hHandle c₀ s₀ t hc₀ (hroom₀ (kind t) rfl) hInv₀
   hFinish := hFinish
-
-theorem simulateQ_handlerImpl_forget_byKind
-    {σ' σ : Ty S}
-    (h' : Comp O I [σ', C.Q] (.prod C.R σ'))
-    (h : Comp O I [σ, C.Q] (.prod C.R σ))
-    (forget : σ'.denote → σ.denote)
-    {k : ℕ} (kind : κ → Fin k) (counts : Fin k → ℕ)
-    (Inv : (Fin k → ℕ) → σ'.denote → Prop)
-    (hStep : ∀ (c : Fin k → ℕ) (s' : σ'.denote) (t : κ),
-      (∀ i, c i ≤ counts i) →
-      c (kind t) + 1 ≤ counts (kind t) →
-      Inv c s' →
-      Prod.map id forget <$> h'.eval (.cons s' (.cons (C.qenc t) .nil)) =
-        h.eval (.cons (forget s') (.cons (C.qenc t) .nil)) ∧
-      ∀ p ∈ support (h'.eval (.cons s' (.cons (C.qenc t) .nil))),
-        Inv (bumpCount c (kind t)) p.2)
-    {α : Type} (oa : OracleComp (unifSpec + G) α)
-    (c qRem : Fin k → ℕ)
-    (hA : ∀ i, oa.IsQueryBoundP (isQueryKind (G := G) kind i) (qRem i))
-    (hc : ∀ i, c i + qRem i ≤ counts i)
-    (s' : σ'.denote) (hInv : Inv c s') :
-    Prod.map id forget <$> ((simulateQ (handlerImpl (C := C) h') oa).run s') =
-      (simulateQ (handlerImpl (C := C) h) oa).run (forget s') ∧
-    ∀ bs' ∈ support ((simulateQ (handlerImpl (C := C) h') oa).run s'),
-      ∃ c', (∀ i, c' i ≤ counts i) ∧ Inv c' bs'.2 := by
-  refine simulateQ_handlerImpl_forget h' h forget (fun i t => kind t = i) counts Inv
-    (fun c₀ s₀ t hc₀ hroom₀ hInv₀ => ?_) oa c qRem
-    (fun i => by simpa [isGamePred_eq_isQueryKind] using hA i) hc s' hInv
-  rw [bumpPred_eq_bumpCount]
-  exact hStep c₀ s₀ t hc₀ (hroom₀ (kind t) rfl) hInv₀
-
-theorem costedReduction_eval_eq_of_forgetSim_byKind
-    (R' R : CostedReduction O I G C rIn aIn aOut out)
-    (forget : R'.σ.denote → R.σ.denote)
-    {k : ℕ} (kind : κ → Fin k) (counts : Fin k → ℕ)
-    (x : rIn.denote)
-    (Inv : (Fin k → ℕ) → R'.σ.denote → Prop)
-    (hInit :
-      Prod.map id forget <$> R'.init.eval (.cons x .nil) = R.init.eval (.cons x .nil) ∧
-      ∀ as' ∈ support (R'.init.eval (.cons x .nil)), Inv 0 as'.2)
-    (hHandle : ∀ (c : Fin k → ℕ) (s' : R'.σ.denote) (t : κ),
-      (∀ i, c i ≤ counts i) →
-      c (kind t) + 1 ≤ counts (kind t) →
-      Inv c s' →
-      Prod.map id forget <$> R'.handle.eval (.cons s' (.cons (C.qenc t) .nil)) =
-        R.handle.eval (.cons (forget s') (.cons (C.qenc t) .nil)) ∧
-      ∀ p ∈ support (R'.handle.eval (.cons s' (.cons (C.qenc t) .nil))),
-        Inv (bumpCount c (kind t)) p.2)
-    (hFinish : ∀ (c : Fin k → ℕ) (s' : R'.σ.denote) (b : aOut.denote),
-      (∀ i, c i ≤ counts i) →
-      Inv c s' →
-      R'.finish.eval (.cons s' (.cons b .nil)) =
-        R.finish.eval (.cons (forget s') (.cons b .nil)))
-    (A : aIn.denote → OracleComp (unifSpec + G) aOut.denote)
-    (hA : ∀ a i, (A a).IsQueryBoundP (isQueryKind (G := G) kind i) (counts i)) :
-    R'.eval A x = R.eval A x := by
-  refine costedReduction_eval_eq_of_forgetSim R' R forget (fun i t => kind t = i) counts x Inv
-    hInit (fun c₀ s₀ t hc₀ hroom₀ hInv₀ => ?_) hFinish A
-    (fun a i => by simpa [isGamePred_eq_isQueryKind] using hA a i)
-  rw [bumpPred_eq_bumpCount]
-  exact hHandle c₀ s₀ t hc₀ (hroom₀ (kind t) rfl) hInv₀
 
 end OneStage
 

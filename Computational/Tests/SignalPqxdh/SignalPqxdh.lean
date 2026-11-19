@@ -580,10 +580,10 @@ theorem idealRoundtripPrimitives_isCanonical_eq_isCanonicalRef (pk : Bytes) :
       unfold scalarIsInRange at hrange
       rw [Bool.and_eq_true] at hrange
       exact hrange.1
-    have htake : (pk ++ List.replicate 128 0).take 32 = pk := by
-      rw [List.take_append_of_le_length (by omega), List.take_of_length_le (by omega)]
+    have htoy : bytesOfToyEd (toyEdOfBytes pk) = pk := by
+      rw [bytesOfToyEd_toyEdOfBytes, fitBytes_of_length_eq hlen]
     rw [hcanon, hlen, h80, hrange]
-    simp only [beq_self_eq_true, Bool.and_self, ↓reduceIte, htake, hcanon]
+    simp only [beq_self_eq_true, Bool.and_self, ↓reduceIte, htoy, hcanon]
   · have hfalse : isCanonical32 pk = false := Bool.eq_false_iff.mpr hcanon
     simp [hfalse]
 
@@ -632,14 +632,11 @@ theorem idealRoundtripPrimitives_sig_corr (sk msg r : Bytes) :
     rw [h80, hpk_canon]; decide
   have hsScalar : clampIdeal32 (capR.take 31 ++ [capR.getD 31 0 &&& 0x7F]) = capR :=
     clampIdeal32_clamped31 _
-  have hfit_take : (fitBytes 160 capR).take 32 = capR := by
-    unfold fitBytes
-    rw [List.take_append_of_le_length (by rw [List.length_take, hcapR_len]; omega)]
-    rw [List.take_take, Nat.min_eq_left (by decide)]
-    exact List.take_of_length_le (by omega)
+  have htoy_capR : bytesOfToyEd (toyEdOfBytes capR) = capR := by
+    rw [bytesOfToyEd_toyEdOfBytes, fitBytes_of_length_eq hcapR_len]
   have hclamp_capR : clampIdeal32 capR = capR := clampIdeal32_idem _
   rw [hcond1, hcond2]
-  simp only [↓reduceIte, htake_sig, hdrop_sig, hsScalar, hclamp_capR, hfit_take, beq_self_eq_true]
+  simp only [↓reduceIte, htake_sig, hdrop_sig, hsScalar, hclamp_capR, htoy_capR, beq_self_eq_true]
 
 theorem idealX25519_clamp_left (a y : Bytes) :
     idealX25519 (clampIdeal32 a) y = idealX25519 a y := by
@@ -748,20 +745,7 @@ theorem idealRoundtripPrimitives_wellFormed : WellFormedPrimitives idealRoundtri
     rfl
   scalarFromBytesModOrder_len := clampIdeal32_length
   scalarFromWide_len := fun b => clampIdeal32_length (b.take 32)
-  montToEd_len := by
-    intro u s pt h
-    dsimp only [idealRoundtripPrimitives, idealLeafPrimitives] at h
-    split at h <;> rename_i hcond
-    · injection h with hpt
-      subst hpt
-      rw [Bool.and_eq_true, beq_iff_eq, isCanonical32, Bool.and_eq_true, beq_iff_eq] at hcond
-      have hu : u.length = 32 := hcond.2.1
-      rw [List.length_append, hu, List.length_replicate]
-    · contradiction
-  edNeg_len := fun pt => fitBytes_length 160 (clampIdeal32 (pt.take 32))
-  doubleScalarMulBasepoint_len := fun _h _a s =>
-    fitBytes_length 160 (clampIdeal32 s)
-  compress_len := fun pt => clampIdeal32_length (pt.take 32)
+  compress_len := fun pt => clampIdeal32_length (bytesOfToyEd pt)
   sigVerify_eq_xeddsaVerifyRef := fun _ _ _ => rfl
   isCanonical_eq_isCanonicalRef := idealRoundtripPrimitives_isCanonical_eq_isCanonicalRef
   kemKeyGen_valid := fun seed =>

@@ -19,7 +19,7 @@ Proves that a successful `spqrSendB` on a fresh `.a2b` state `spqrInitB F K mac 
 produces a message preamble with `index = 1#32`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Assumptions.KeyInd1KeyRo
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeySigKem
-public import Computational.Proofs.SignalPqxdh.Security.Collisions
-public import Computational.Proofs.SignalPqxdh.Security.SigHopA
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeySigKem -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Collisions -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 
 /-!
@@ -24,7 +24,7 @@ game `pqxdhKeyIndImpl1KeyRo`, proves the birthday-collision bounds for `G0 → G
 `G2 → G2_1`, and establishes the `simulateQ` and `clearFgTargetSign` commutation lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,7 +38,7 @@ open Proofs.SignalPqxdh.Security.FgGapDh
 
 /-! ## One-key hybrid games `G0` through `G2_1` -/
 
-noncomputable def runKeyInd1KeySim (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+@[expose] def runKeyInd1KeySim (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp (Bool × Bool × KeyIndState S) := do
   let secb ← $ᵗ Bool
   let initSt := KeyIndState.empty S secb
@@ -47,7 +47,7 @@ noncomputable def runKeyInd1KeySim (S : Setup) (P : Primitives) (A : KeyIndAdver
   let (b', finalSt) ← (simulateQ impl A.run).run initSt
   return (secb, b', finalSt)
 
-def keyInd1KeyAllTestedClean {S : Setup} (P : Primitives) (finalSt : KeyIndState S) : Bool :=
+@[expose] def keyInd1KeyAllTestedClean {S : Setup} (P : Primitives) (finalSt : KeyIndState S) : Bool :=
   finalSt.sessions.all (fun s =>
     !s.tested ||
       isKeyIndInitStillFresh P true finalSt.principals finalSt.spkBundles finalSt.respSessions s) &&
@@ -56,12 +56,12 @@ def keyInd1KeyAllTestedClean {S : Setup} (P : Primitives) (finalSt : KeyIndState
       isKeyIndRespStillFresh P true finalSt.principals finalSt.spkBundles finalSt.sessions r)
 
 /-- One-key `KeyInd` hybrid `G0`: `pqxdhKeyInd1KeyExpForHandshake` on `pqxdhKeyIndImpl1KeyRo`. -/
-noncomputable def keyInd1KeyExpG0 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+@[expose] def keyInd1KeyExpG0 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool :=
   pqxdhKeyInd1KeyExpForHandshake S P (pqxdhKeyIndImpl1KeyRo S P) A
 
 /-- One-key `KeyInd` hybrid `G0_1`: aborts with a uniform coin on `hasEcPkCollisionKeyInd`. -/
-noncomputable def keyInd1KeyExpG0_1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+@[expose] def keyInd1KeyExpG0_1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool := do
   let (secb, b', finalSt) ← runKeyInd1KeySim S P A
   if !keyInd1KeyAllTestedClean P finalSt || hasEcPkCollisionKeyInd P finalSt then
@@ -70,7 +70,7 @@ noncomputable def keyInd1KeyExpG0_1 (S : Setup) (P : Primitives) (A : KeyIndAdve
     return (b' == secb)
 
 /-- One-key `KeyInd` hybrid `G1`: additionally aborts on `hasBadSigKeyInd`. -/
-noncomputable def keyInd1KeyExpG1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+@[expose] def keyInd1KeyExpG1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool := do
   let (secb, b', finalSt) ← runKeyInd1KeySim S P A
   if (!keyInd1KeyAllTestedClean P finalSt || hasEcPkCollisionKeyInd P finalSt) ||
@@ -80,12 +80,12 @@ noncomputable def keyInd1KeyExpG1 (S : Setup) (P : Primitives) (A : KeyIndAdvers
     return (b' == secb)
 
 /-- One-key `KeyInd` hybrid `G2`: syntactic alias of `keyInd1KeyExpG1`. -/
-noncomputable def keyInd1KeyExpG2 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+@[expose] def keyInd1KeyExpG2 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool :=
   keyInd1KeyExpG1 S P A
 
 /-- One-key `KeyInd` hybrid `G2_1`: additionally aborts on `hasKemPkCollisionKeyInd`. -/
-noncomputable def keyInd1KeyExpG2_1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+@[expose] def keyInd1KeyExpG2_1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool := do
   let (secb, b', finalSt) ← runKeyInd1KeySim S P A
   if ((!keyInd1KeyAllTestedClean P finalSt || hasEcPkCollisionKeyInd P finalSt) ||
@@ -95,19 +95,19 @@ noncomputable def keyInd1KeyExpG2_1 (S : Setup) (P : Primitives) (A : KeyIndAdve
   else
     return (b' == secb)
 
-noncomputable def keyInd1KeyAdvG0 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
+@[expose] noncomputable def keyInd1KeyAdvG0 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[keyInd1KeyExpG0 S P A].boolBias).toReal
 
-noncomputable def keyInd1KeyAdvG0_1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
+@[expose] noncomputable def keyInd1KeyAdvG0_1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[keyInd1KeyExpG0_1 S P A].boolBias).toReal
 
-noncomputable def keyInd1KeyAdvG1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
+@[expose] noncomputable def keyInd1KeyAdvG1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[keyInd1KeyExpG1 S P A].boolBias).toReal
 
-noncomputable def keyInd1KeyAdvG2 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
+@[expose] noncomputable def keyInd1KeyAdvG2 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[keyInd1KeyExpG2 S P A].boolBias).toReal
 
-noncomputable def keyInd1KeyAdvG2_1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
+@[expose] noncomputable def keyInd1KeyAdvG2_1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[keyInd1KeyExpG2_1 S P A].boolBias).toReal
 
 theorem keyInd1KeyAdvG0_eq (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
@@ -116,15 +116,15 @@ theorem keyInd1KeyAdvG0_eq (S : Setup) (P : Primitives) (A : KeyIndAdversary S) 
 theorem keyInd1KeyAdvG1_eq_G2 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     keyInd1KeyAdvG1 S P A = keyInd1KeyAdvG2 S P A := rfl
 
-noncomputable def ecCollProbKeyInd1Key (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
+@[expose] noncomputable def ecCollProbKeyInd1Key (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[runKeyInd1KeySim S P A >>= fun (_, _, finalSt) =>
     pure (hasEcPkCollisionKeyInd P finalSt)] {true}).toReal
 
-noncomputable def kemCollProbKeyInd1Key (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
+@[expose] noncomputable def kemCollProbKeyInd1Key (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[runKeyInd1KeySim S P A >>= fun (_, _, finalSt) =>
     pure (hasKemPkCollisionKeyInd finalSt)] {true}).toReal
 
-noncomputable def badSigProbKeyInd1Key (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
+@[expose] noncomputable def badSigProbKeyInd1Key (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[runKeyInd1KeySim S P A >>= fun (_, _, finalSt) =>
     pure (hasBadSigKeyInd finalSt)] {true}).toReal
 
@@ -501,18 +501,18 @@ theorem keyInd1Key_hop_G0_G0_1_le (S : Setup) (P : Primitives)
 
 /-! ## `GapSigEufCma` oracle implementation and `simulateQ` lemmas -/
 
-noncomputable def gapSigEufCmaSigImpl (P : Primitives) (sk : Bytes) :
+@[expose] def gapSigEufCmaSigImpl (P : Primitives) (sk : Bytes) :
     QueryImpl sigOracleSpec (StateT (List Bytes) ProbComp) := fun (.sign m) => do
   let r ← liftM sampleRandom64
   let sig := P.sigSign sk m r
   modify (m :: ·)
   return sig
 
-noncomputable def gapSigEufCmaDdhImpl (ddh : Bytes → Bytes → Bytes → Bool) :
+@[expose] def gapSigEufCmaDdhImpl (ddh : Bytes → Bytes → Bytes → Bool) :
     QueryImpl gapDhOracleSpec (StateT (List Bytes) ProbComp) := fun (X, Y, Z) =>
   pure (ddh X Y Z)
 
-noncomputable def gapSigEufCmaFullImpl (P : Primitives)
+@[expose] def gapSigEufCmaFullImpl (P : Primitives)
     (ddh : Bytes → Bytes → Bytes → Bool) (sk : Bytes) :
     QueryImpl SigDdhSimSpec (StateT (List Bytes) ProbComp) :=
   (primBaseImpl P).liftTarget (StateT (List Bytes) ProbComp) +
@@ -634,13 +634,13 @@ theorem runWithSigDdhStep_query_inr {ιI : Type}
 
 /-! ## Erasing target `secIKAsign` on `FgKeyIndSimState` -/
 
-def clearPrincipalsTargetSign (kIdx : ℕ) (principals : List (Nat × PrincipalEntry)) :
+@[expose] def clearPrincipalsTargetSign (kIdx : ℕ) (principals : List (Nat × PrincipalEntry)) :
     List (Nat × PrincipalEntry) :=
   principals.map (fun (idx, e) =>
     if idx == kIdx then (idx, { e with secIKAsign := [] }) else (idx, e))
 
 /-- Erase `secIKAsign := []` on target principal `kIdx` inside `FgKeyIndSimState S`. -/
-def clearFgTargetSign {S : Setup} (kIdx : ℕ) (st : FgKeyIndSimState S) : FgKeyIndSimState S :=
+@[expose] def clearFgTargetSign {S : Setup} (kIdx : ℕ) (st : FgKeyIndSimState S) : FgKeyIndSimState S :=
   { st with base := { st.base with principals := clearPrincipalsTargetSign kIdx st.base.principals } }
 
 @[simp]

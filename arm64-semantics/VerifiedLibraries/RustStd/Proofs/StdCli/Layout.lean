@@ -231,25 +231,158 @@ def HbStdinUninit (C : StdCliLayout) : SepProp :=
 abbrev StdStdinUninit := HbStdinUninit
 
 /-- Shared cached `ThreadId` invariant across `<&Stdout as Write>::write_fmt`,
-    `<&Stderr as Write>::write_all`, and post-`main` `cleanupClosure`:
+    `<&Stderr as Write>::write_all`, and post-`main` `cleanupClosure` at TP-relative offset `tidOff`:
     either `tid = 0#64` (not yet cached on the main thread) or `tid = 1#64`
-    (cached at `[tp + 0x58]` after atomic increment of `threadIdCounterAddr`). -/
-def HbThreadIdInv (C : StdCliLayout) (tp : BitVec 64) : SepProp :=
+    (cached at `[tp + tidOff]` after atomic increment of `threadIdCounterAddr`). -/
+def HbThreadIdInvAt (C : StdCliLayout) (tidOff tp : BitVec 64) : SepProp :=
   ∃∗ tid : BitVec 64,
     ⌜tid = 0#64 ∨ tid = 1#64⌝ ∗
-    ((tp + 0x58#64) ↦₆₄ tid) ∗
+    ((tp + tidOff) ↦₆₄ tid) ∗
     (C.std.threadIdCounterAddr ↦₆₄ tid)
+
+abbrev StdThreadIdInvAt := HbThreadIdInvAt
+
+theorem HbThreadIdInvAt_zero (C : StdCliLayout) (tidOff tp : BitVec 64) :
+    ((tp + tidOff) ↦₆₄ 0#64) ∗ (C.std.threadIdCounterAddr ↦₆₄ 0#64) ⊢
+      HbThreadIdInvAt C tidOff tp := by
+  unfold HbThreadIdInvAt
+  exact Entails.trans (Entails.pure_right (Or.inl rfl) (Entails.refl _))
+    (Entails.sepExists_right 0#64 (Entails.refl _))
+
+abbrev StdThreadIdInvAt_zero := @HbThreadIdInvAt_zero
+
+theorem HbThreadIdInvAt_one (C : StdCliLayout) (tidOff tp : BitVec 64) :
+    ((tp + tidOff) ↦₆₄ 1#64) ∗ (C.std.threadIdCounterAddr ↦₆₄ 1#64) ⊢
+      HbThreadIdInvAt C tidOff tp := by
+  unfold HbThreadIdInvAt
+  exact Entails.trans (Entails.pure_right (Or.inr rfl) (Entails.refl _))
+    (Entails.sepExists_right 1#64 (Entails.refl _))
+
+abbrev StdThreadIdInvAt_one := @HbThreadIdInvAt_one
+
+abbrev HbThreadIdInv (C : StdCliLayout) (tp : BitVec 64) : SepProp :=
+  HbThreadIdInvAt C 0x58#64 tp
 
 abbrev StdThreadIdInv := HbThreadIdInv
 
 theorem HbThreadIdInv_zero (C : StdCliLayout) (tp : BitVec 64) :
     ((tp + 0x58#64) ↦₆₄ 0#64) ∗ (C.std.threadIdCounterAddr ↦₆₄ 0#64) ⊢
-      HbThreadIdInv C tp := by
-  unfold HbThreadIdInv
-  exact Entails.trans (Entails.pure_right (Or.inl rfl) (Entails.refl _))
-    (Entails.sepExists_right 0#64 (Entails.refl _))
+      HbThreadIdInv C tp :=
+  HbThreadIdInvAt_zero C 0x58#64 tp
 
 abbrev StdThreadIdInv_zero := @HbThreadIdInv_zero
+
+/-- Decoded `movk x0, #tidOff` instruction (`Instr.moveWide .W64 .MOVK .x0 (tidOff.truncate 16) 0`)
+    used after `movz x0, #0, lsl #16` (`0xd2a00000#32`) for TP-relative `ID` lookup. -/
+def iMovkX0 (tidOff : BitVec 64) : Instr :=
+  Instr.moveWide .W64 .MOVK .x0 (tidOff.truncate 16) 0
+
+theorem tidOff_truncate16_zeroExtend64 {tidOff : BitVec 64} (hlt : tidOff.toNat < 2 ^ 16) :
+    (tidOff.truncate 16).zeroExtend 64 = tidOff := by
+  apply BitVec.eq_of_toNat_eq
+  simp only [BitVec.toNat_setWidth, show 2 ^ 16 = 65536 from rfl,
+    Nat.mod_eq_of_lt hlt, Nat.mod_eq_of_lt (Nat.lt_trans hlt (by decide : 65536 < 2 ^ 64))]
+
+theorem movz_movk_x0_eq {tidOff : BitVec 64} (hlt : tidOff.toNat < 2 ^ 16) :
+    ((0#64 &&& ~~~(0xffff#64 <<< 0)) ||| ((tidOff.truncate 16).zeroExtend 64 <<< 0)) = tidOff := by
+  simp only [BitVec.shiftLeft_zero, BitVec.zero_and, BitVec.zero_or]
+  exact tidOff_truncate16_zeroExtend64 hlt
+
+/-! ## 2b. Thread-Local Storage (`PT_TLS`) Layout Parameters (`StdCliTlsLayout`) -/
+
+/-- Thread-local storage (`PT_TLS`) layout parameters for prebuilt-`libstd` + `musl` 1.2.5
+    `ET_EXEC` CLI binaries (`p_filesz = 0x30`, `p_align = 8`). -/
+structure StdCliTlsLayout where
+  tlsMemsz   : Nat       := 0x50
+  currentOff : BitVec 64 := 0x50#64
+  tidOff     : BitVec 64 := 0x58#64
+  deriving DecidableEq, Repr, Inhabited
+
+/-- Default `0x30/0x50` `PT_TLS` layout (`builtin_tls` path, `tlsSize = 0x140`). -/
+def StdCliTlsLayout.default : StdCliTlsLayout := {}
+
+/-- `0x30/0x68` `PT_TLS` layout (`SYS_mmap` path, `tlsSize = 0x158`), e.g. binaries linking
+    `std::collections::HashMap` (`RandomState::new::KEYS` at `tp + 0x50 .. tp + 0x68`). -/
+def StdCliTlsLayout.tls68 : StdCliTlsLayout :=
+  { tlsMemsz := 0x68, currentOff := 0x68#64, tidOff := 0x70#64 }
+
+/-- `0x30/0x78` `PT_TLS` layout (`SYS_mmap` path, `tlsSize = 0x168`). -/
+def StdCliTlsLayout.tls78 : StdCliTlsLayout :=
+  { tlsMemsz := 0x78, currentOff := 0x78#64, tidOff := 0x80#64 }
+
+/-- `musl` `libc.tls_size` computed by `static_init_tls` when `p_align = 8` and `tlsMemsz % 8 = 0`:
+    `tlsMemsz + 0xf0`. -/
+def StdCliTlsLayout.tlsSize (T : StdCliTlsLayout) : Nat := T.tlsMemsz + 0xf0
+
+/-- Byte offset from `td` (`tp - 0xc8`) to the 2-word DTV `[1, td + 0xd8]` written by `__copy_tls`:
+    `tlsSize - 0x10 = tlsMemsz + 0xe0`. -/
+def StdCliTlsLayout.dtvOff (T : StdCliTlsLayout) : Nat := T.tlsMemsz + 0xe0
+
+/-- Whether `musl` `static_init_tls` takes the anonymous `SYS_mmap` branch (`0x150 < tlsSize`,
+    equivalently `0x60 < tlsMemsz`) rather than the static `builtin_tls` buffer (`tlsSize ≤ 0x150`).
+    Tests `tlsMemsz` directly via `Nat.ble 0x61` to avoid Peano reduction of `+ 0xf0` and `Decidable`
+    proof terms during `isDefEq`. -/
+def StdCliTlsLayout.usesMmap (T : StdCliTlsLayout) : Bool := Nat.ble 0x61 T.tlsMemsz
+
+theorem StdCliTlsLayout.usesMmap_eq_decide (T : StdCliTlsLayout) :
+    T.usesMmap = decide (0x150 < T.tlsSize) := by
+  unfold usesMmap tlsSize
+  by_cases h : 0x61 ≤ T.tlsMemsz
+  · rw [Nat.ble_eq.mpr h, decide_eq_true (by omega)]
+  · rw [Bool.eq_false_iff.mpr fun hb => h (Nat.ble_eq.mp hb), decide_eq_false (by omega)]
+
+/-- Maximum static mapped-interval count at `userMain` entry (`3` on `builtin_tls`, `4` when
+    `static_init_tls` maps a 4 KiB anonymous TLS page via `SYS_mmap`). -/
+def StdCliTlsLayout.maxStaticIvs (T : StdCliTlsLayout) : Nat :=
+  if T.usesMmap then 4 else 3
+
+/-- Extra physical-memory budget reserved for the 4 KiB anonymous TLS page on the `SYS_mmap`
+    branch (`8192` covers both the `4096`-byte `physMemAvail` deduction and the `4096`-byte
+    `staticIvs` sum increase in `Std4HeapInitOkAt`). -/
+def StdCliTlsLayout.physReserve (T : StdCliTlsLayout) : Nat :=
+  if T.usesMmap then 8192 else 0
+
+/-- Structural validity of `T : StdCliTlsLayout`:
+    - `PT_TLS` fits inside a single 4 KiB page (`tlsSize ≤ 4096`, i.e. `tlsMemsz + 0xf0 ≤ 4096`)
+      and starts at or after `.tdata` (`48` B at `tp + 0x10..0x40`) + `LOCAL_PANIC_COUNT` (`16` B
+      at `tp + 0x40..0x50`).
+    - `currentOff` and `tidOff` are 8-byte aligned, `0x50 ≤ currentOff`, `currentOff + 8 ≤ tidOff`,
+      and `tidOff + 8 ≤ 0x10 + tlsMemsz`. -/
+structure StdCliTlsLayout.Valid (T : StdCliTlsLayout) : Prop where
+  memsz_lo        : 0x50 ≤ T.tlsMemsz
+  memsz_align     : T.tlsMemsz % 8 = 0
+  tlsSize_le_page : T.tlsMemsz + 0xf0 ≤ 4096
+  current_align   : T.currentOff.toNat % 8 = 0
+  current_lo      : 0x50 ≤ T.currentOff.toNat
+  current_lt_tid  : T.currentOff.toNat + 8 ≤ T.tidOff.toNat
+  tid_align       : T.tidOff.toNat % 8 = 0
+  tid_hi          : T.tidOff.toNat + 8 ≤ 0x10 + T.tlsMemsz
+
+def StdCliTlsLayout.checkValid (T : StdCliTlsLayout) : Bool :=
+  decide (0x50 ≤ T.tlsMemsz ∧ T.tlsMemsz % 8 = 0 ∧ T.tlsMemsz + 0xf0 ≤ 4096 ∧
+    T.currentOff.toNat % 8 = 0 ∧ 0x50 ≤ T.currentOff.toNat ∧
+    T.currentOff.toNat + 8 ≤ T.tidOff.toNat ∧
+    T.tidOff.toNat % 8 = 0 ∧ T.tidOff.toNat + 8 ≤ 0x10 + T.tlsMemsz)
+
+theorem StdCliTlsLayout.Valid.of_check {T : StdCliTlsLayout} (h : T.checkValid = true) :
+    T.Valid := by
+  unfold StdCliTlsLayout.checkValid at h
+  simp only [decide_eq_true_eq] at h
+  exact ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1, h.2.2.2.2.1, h.2.2.2.2.2.1,
+    h.2.2.2.2.2.2.1, h.2.2.2.2.2.2.2⟩
+
+theorem StdCliTlsLayout.default_valid : StdCliTlsLayout.default.Valid :=
+  .of_check (by decide)
+
+theorem StdCliTlsLayout.tls68_valid : StdCliTlsLayout.tls68.Valid :=
+  .of_check (by decide)
+
+theorem StdCliTlsLayout.tls78_valid : StdCliTlsLayout.tls78.Valid :=
+  .of_check (by decide)
+
+theorem StdCliTlsLayout.Valid.tidOff_lt_u16 {T : StdCliTlsLayout} (h : T.Valid) :
+    T.tidOff.toNat < 2 ^ 16 := by
+  have := h.tid_hi; have := h.tlsSize_le_page; omega
 
 /-- Minimal `Spec` for `BufWriter<StdoutRaw>::flush_buf` on the empty-buffer fast path (`len == 0`). -/
 def hbFlushZeroSpec (_C : StdCliLayout) : Spec (BitVec 64) where

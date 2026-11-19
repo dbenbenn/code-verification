@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
 
 /-!
 # Relocatable Callee Contracts for Inlined `.keysUnsampled` Arm (Block 124)
@@ -18,7 +18,7 @@ Defines `AuthMacHdrPinnedPlacedOkX` (Block 342) and `DoReserve2PlacedOkX` (Block
 along with `withLsCodeRoLoaded` lifting lemmas on `spqrSendPlacedProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -69,14 +69,14 @@ theorem subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded {α : Type} {prog :
 
 /-- `<spqr::authenticator::Authenticator>::mac_hdr` (Block `342`) meets
 `withLsCodeRoLoaded lsmpl (authMacHdrPinnedSpec F A)` on `spqrSendPlacedProg ext`. -/
-def AuthMacHdrPinnedPlacedOkX (F : ShaCompress) (A : RustAlloc)
+@[expose] def AuthMacHdrPinnedPlacedOkX (F : ShaCompress) (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 342)
     (withLsCodeRoLoaded lsmpl (authMacHdrPinnedSpec F A))
 
 /-- `alloc::raw_vec::RawVecInner<A>::do_reserve_and_handle [local#2]` (Block `157`) meets
 `withLsCodeRoLoaded lsmpl (doReserve1Raw32Spec A)` on `spqrSendPlacedProg ext`. -/
-def DoReserve2PlacedOkX (A : RustAlloc)
+@[expose] def DoReserve2PlacedOkX (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 157)
     (withLsCodeRoLoaded lsmpl (doReserve1Raw32Spec A))

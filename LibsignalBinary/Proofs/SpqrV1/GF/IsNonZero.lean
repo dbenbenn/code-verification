@@ -9,22 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2
-public import LibsignalBinary.Proofs.SpqrV1.GF.GfCodeSym
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.GfCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Core
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
-
-/-!
-# Verification of `spqr::util::is_non_zero`
-
-Proves fixed-offset (`0x639e8`) and relocatable `[LibsignalPlacement]` (Block `380`) subroutine
-contracts for `spqr::util::is_non_zero` against `isNonZero`.
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.GF.IsNonZero
 
@@ -79,11 +70,6 @@ theorem readReg_setMem_setPC_pre (s : State) (pc : BitVec 64) (m : Memory) (w : 
 
 abbrev isNonZeroName : String := "spqr::util::is_non_zero"
 
-theorem isNonZero_fnOff : libsignalSessionCode.fnOff isNonZeroName = 0x5e5f0 :=
-  ls_lemma% fnOff "spqr::util::is_non_zero"
-
-gen_decodes libsignalSessionCode_tree isNonZeroBin [0x5e5f0 → 0x5e610]
-
 theorem stackAt_16_split_byte12 (sp : BitVec 64) :
     stackAt sp 0x10 =
       memRegion (sp - 16#64) 12 ∗
@@ -117,39 +103,12 @@ theorem isNonZero_asm_eq (v : BitVec 8) :
 /-- Specification of `spqr::util::is_non_zero` (`0x639e8`).
 Accepts any 64-bit register `.x0` whose low byte is `v`, and returns `(isNonZero v).zeroExtend 64`
 in `.x0` (so `.w0 = (isNonZero v).zeroExtend 32`). -/
-def isNonZeroSpec : Spec (BitVec 8) where
+@[expose] def isNonZeroSpec : Spec (BitVec 8) where
   pre := fun v s =>
     ⌜BitVec.truncate 8 (s.readReg64 .x0) = v⌝ ∗ stackAt s.sp 0x10
   post := fun v s0 sf =>
     ⌜sf.readReg64 .x0 = BitVec.zeroExtend 64 (isNonZero v) ∧ sf.trace = s0.trace⌝ ∗
       stackAt s0.sp 0x10
-
-theorem isNonZero_ok (b : BitVec 64) (ext : String → Option (State → State)) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr isNonZeroName)
-      isNonZeroSpec := by
-  have hfn : libsignalSessionCode.fnOff isNonZeroName = 0x5e5f0 := isNonZero_fnOff
-  code_fetches CryptoVerification.libsignalSessionCode isNonZeroBin b
-    (Rust.withPanics ext) hfn 0x5e5f0 36
-  dsimp only [tripleRatchetProgAtExt] at ⊢
-  clear hfn
-  simp only [isNonZeroSpec]
-  wp_init v s0
-  have hpc' : s0.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr isNonZeroName := by
-    rw [Program.fnAddr_rebase, isNonZero_fnOff]; exact hpc
-  clear hpc
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr isNonZeroName = entry
-  examples_hide_fetches
-  wp_simp_pre [stackAt_16_split_byte12]
-  wp_pull_exists
-  wp_steps
-  apply SepWP.fold
-    (stackAt_16_merge_byte12 s0.sp
-      (BitVec.zeroExtend 8 (BitVec.zeroExtend 64 (0#32 - BitVec.zeroExtend 32 v) >>> 31)))
-    (by sep_focus)
-  wp_done
-
-/-! ## Relocatable `[LibsignalPlacement]` Contract (Block `380`) -/
 
 /-- Relocatable `spqr::util::is_non_zero` (Block `380`) meets `isNonZeroSpec` under `[LibsignalPlacement]`. -/
 theorem isNonZero_placed_ok [LibsignalPlacement] (H : String → Option (State → State)) :

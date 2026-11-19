@@ -10,11 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.Leaves
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.LeavesDecode
+import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.Leaves
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import ProofLib.ProgramReflection.SortedFresh
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitiatorCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 
 /-!
 # Budget-Threaded Specifications and Placed Contracts for PQXDH Initiator Leaves
@@ -25,7 +29,7 @@ Defines `RustCliAllocBudget M` allocation envelopes and contracts for `do_reserv
 `kemCiphertextSerialize_placed_ok` on Block `71`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -59,7 +63,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-! ## 1. `do_reserve_and_handle [local#6]` (`doReserve6Spec`) -/
 
 /-- Deterministic `AllocEvent` list emitted by `do_reserve_and_handle` (`doReserve6Spec`). -/
-def doReserveEvents (x : DoReserveCall) : List AllocEvent :=
+@[expose] def doReserveEvents (x : DoReserveCall) : List AllocEvent :=
   let newCap := reserveCap x.cap.toNat x.bs.length x.additional
   if x.cap = 0#64 then
     rustAllocEvents newCap 1
@@ -67,11 +71,11 @@ def doReserveEvents (x : DoReserveCall) : List AllocEvent :=
     rustReallocEvents x.cap.toNat newCap 1
 
 /-- Allocation envelope for `do_reserve_and_handle` (`doReserve6Spec`). -/
-def DoReserveEnv (x : DoReserveCall) (evs : List AllocEvent) : Prop :=
+@[expose] def DoReserveEnv (x : DoReserveCall) (evs : List AllocEvent) : Prop :=
   evs = doReserveEvents x
 
 /-- Budget-threaded specification of `do_reserve_and_handle [local#6]` (`onPanic = onOom = ⌜False⌝`). -/
-def doReserve6Spec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def doReserve6Spec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DoReserveCall × M.σ) where
   pre := fun (x, st) s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional
@@ -90,7 +94,7 @@ def doReserve6Spec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Budget
 /-! ## 2. `<kem::Ciphertext>::serialize` & `<kem::Key<Public>>::serialize` -/
 
 /-- Deterministic `1569`-byte allocation envelope for KEM ciphertext / public-key serialization. -/
-def KemSerialize1569Env (evs : List AllocEvent) : Prop :=
+@[expose] def KemSerialize1569Env (evs : List AllocEvent) : Prop :=
   evs = rustAllocEvents 1569 1
 
 private theorem stackAt_kemSerialize48 (sp : BitVec 64) :
@@ -105,7 +109,7 @@ private theorem memRegion_1569_split (a : BitVec 64) :
     memRegion_split a 1 1568 (by decide), memRegion_one]
 
 /-- Budget-threaded specification of `<kem::Ciphertext>::serialize` (Block `71`). -/
-def kemCiphertextSerializeSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def kemCiphertextSerializeSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec ((BitVec 64 × BitVec 64 × List (BitVec 8)) × M.σ) where
   pre := fun ((hdrPtr, boxPtr, ctBytes), st) s =>
@@ -126,7 +130,7 @@ def kemCiphertextSerializeSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
         stackAt s0.sp tryCloneFromRefStack
 
 /-- Budget-threaded specification of `<kem::Key<Public>>::serialize [local#1]`. -/
-def kemPubKeySerializeSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def kemPubKeySerializeSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec ((BitVec 64 × List (BitVec 8)) × M.σ) where
   pre := fun ((boxPtr, pkBytes), st) s =>

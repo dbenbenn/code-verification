@@ -10,8 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Fetch
 import ProofLib.SepLogic.WPp
 
@@ -23,7 +22,7 @@ function branches at `+0x024: cbz x2, +0xc4` to write `{cap := 0, ptr := 8, len 
 without allocation.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.Serialization
 
@@ -39,10 +38,6 @@ attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Instruction decode lemmas (`0x2c75c..0x2c780`, `0x2c820..0x2c844`) -/
-
-private gen_decodes libsignalSessionCode_tree vecVecClone [(ls_off% "<alloc::vec::Vec<alloc::vec::Vec<u8>> as core::clone::Clone>::clone") → (ls_off% "<alloc::vec::Vec<alloc::vec::Vec<u8>> as core::clone::Clone>::clone" + 36), (ls_off% "<alloc::vec::Vec<alloc::vec::Vec<u8>> as core::clone::Clone>::clone" + 196) → (ls_off% "<alloc::vec::Vec<alloc::vec::Vec<u8>> as core::clone::Clone>::clone" + 232)]
-
-/-! ## Stack and destination region splits -/
 
 private theorem stackAt_vecVecClone (sp : BitVec 64) :
     stackAt sp vecVecCloneStack =
@@ -86,29 +81,6 @@ private theorem memRegion_24_cells (dst : BitVec 64) :
   change memRegion dst 24 = memRegion dst 8 ∗ memRegion (dst + 8#64) 16 at h1
   change memRegion (dst + 8#64) 16 = memRegion (dst + 8#64) 8 ∗ memRegion (dst + 8#64 + 8#64) 8 at h2
   rw [h1, h2, hadd, ProofLib.memRegion_eight, ProofLib.memRegion_eight, ProofLib.memRegion_eight]
-
-/-- `<Vec<Vec<u8>> as Clone>::clone` (`0x2c75c`) on an empty source satisfies `vecVecCloneEmptySpec`. -/
-theorem vecVecCloneEmpty_ok (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    OkAt b C ctl abs vecVecCloneName vecVecCloneEmptySpec := by
-  unfold OkAt vecVecCloneEmptySpec
-  simp only [stackAt_vecVecClone, memRegion_24_cells, vecHeader,
-    sepExists_sepConj_left, sepExists_sepConj_right]
-  have hfn : libsignalSessionCode.fnOff vecVecCloneName = num% (ls_off% "<alloc::vec::Vec<alloc::vec::Vec<u8>> as core::clone::Clone>::clone") :=
-    (ls_lemma% fnOff "<alloc::vec::Vec<alloc::vec::Vec<u8>> as core::clone::Clone>::clone")
-  code_fetches_from CryptoVerification.libsignalSessionCode vecVecClone b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn (num% (ls_off% "<alloc::vec::Vec<alloc::vec::Vec<u8>> as core::clone::Clone>::clone")) 0 40
-  code_fetches_from CryptoVerification.libsignalSessionCode vecVecClone b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn (num% (ls_off% "<alloc::vec::Vec<alloc::vec::Vec<u8>> as core::clone::Clone>::clone")) 0xc4 40
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨dst, src⟩ := x
-  dsimp only at *
-  wp_steps
-  wp_done
-
-/-! ## Relocatable `[LibsignalPlacement]` proofs (block `117`) -/
 
 open CryptoVerification.E2E.Record.Placed in
 /-- Relocatable `<Vec<Vec<u8>> as Clone>::clone` (block `117`) on an empty source satisfies `vecVecCloneEmptySpec`. -/

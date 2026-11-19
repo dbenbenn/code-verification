@@ -9,8 +9,51 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedFS2
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedFS2 -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.StateNorm
+import Computational.Proofs.CryptoGames.FSAEAD.HybridLazy
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5On
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Start
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux
+import Computational.Proofs.E2E.RefuseCorrB0Core
+import Computational.Proofs.E2E.Relabel.GameEq
+import Computational.Proofs.E2E.SpkHop1A
+import Computational.Proofs.HeadlineV1.CouplingV1
+import Computational.Proofs.HeadlineV1.SignedRefineC
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.Fig8Atomic
+import Computational.Proofs.ReductionDsl.Fig8ExcessCosts
+import Computational.Proofs.ReductionDsl.Fig8SourceCosts
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.MacroLift
+import Computational.Proofs.ReductionDsl.PureAuxMacroLift
+import Computational.Proofs.ReductionDsl.SM.DeliverForge
+import Computational.Proofs.ReductionDsl.SM.Engine
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.ReductionDsl.SM.RedCKA
+import Computational.Proofs.ReductionDsl.SM.RedFS
+import Computational.Proofs.ReductionDsl.SM.RedPRNG
+import Computational.Proofs.ReductionDsl.SM.Theorem1
+import Computational.Proofs.ReductionDsl.Soundness
+import Computational.Proofs.SessionCostedFig8.Bundles
+import Computational.Proofs.SessionCostedFig8.ProgSizeBounds
+import Computational.Proofs.SpecLemmas.Reductions.Primitives.CKA.CostedTables
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
+import Mathlib.Data.FinEnum
+import Mathlib.Data.Fintype.BigOperators
+import Mathlib.Data.List.Dedup
+import ToMathlib.Control.StateT
+import VCVio.CryptoFoundations.SecExp
+import VCVio.EvalDist.EvalDistEq
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Shifted-Paper Lemma 11 at `Δ = 2`, Part 2
@@ -19,7 +62,7 @@ Completes `lemma11_df_shifted_dir2_paper`, coupling `localAuthAtFixedDFShiftedDi
 `redFSAuthDFShiftedDir2Paper`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -228,7 +271,7 @@ theorem localAuthAtDFShiftedDir2Paper_le_localAuthAtFixedDFShiftedDir2Paper
     · simp
     · exact evalDist_runLocAtDFShiftedDir2Paper_le_fixed cka prng fs Δcka qep l mo A hle hinv
 
-def stepFDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def stepFDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep l : ℕ) (mo : Mode) (j : ℕ)
     (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     (esF : EStateF Γ T Sig SS RS M E K I) (st : FSGameState SS RS T M E) :
@@ -238,7 +281,7 @@ def stepFDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG K
     ((implEDFShiftedB1 l (hooksFS cka prng fs Δcka mo j)
       (2 + Δcka) qep fs.maxSkip mo.tStar (moAuth mo).cfg (moAuth mo).policy q).run esF)).run st
 
-def runFDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def runFDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep l : ℕ) (mo : Mode) (j : ℕ)
     (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
     (esF : EStateF Γ T Sig SS RS M E K I) (st : FSGameState SS RS T M E) : ProbComp Bool := do
@@ -715,7 +758,7 @@ theorem leComp_deliverE_dir2 (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG 
         · dsimp only [deliverTail]; simp only [hvRecvL, StateT.run_bind]; congr 2
         · dsimp only [deliverTail]; simp only [hvRecvF, StateT.run_bind]; congr 3
 
-def injectTailB1 {ι : Type} {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
+@[expose] def injectTailB1 {ι : Type} {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
     (qep : ℕ) (mo : Mode)
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (P : Party) (c : Header T × E) (s₁ : VP Γv T Sv SSv RSv)
@@ -744,7 +787,7 @@ def injectTailB1 {ι : Type} {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS :
             { es with g := { es.g with win := true } }
         return some RecvResult.rejected).run es
 
-def deliverForgeTailB1 {ι : Type} {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
+@[expose] def deliverForgeTailB1 {ι : Type} {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
     (qep : ℕ) (mo : Mode)
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (P : Party) (c' : Header T × E) (r : Record M (Header T × E))
@@ -1394,7 +1437,7 @@ theorem runLocAtFixedDFShiftedDir2Paper_le_runFDFShiftedDir2Paper (cka : CKASche
         rF.1.2 rF.2 hwin]; exact prob_le_one
     · rw [heq_ans]; exact ih rF.1.1 hs'
 
-def runFSDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def runFSDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep l : ℕ) (mo : Mode)
     (j : ℕ) (b : Bool) (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) :
     FSAEAD.AdversaryComp SS RS (Header T) M E

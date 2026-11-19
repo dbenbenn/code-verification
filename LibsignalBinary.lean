@@ -7,6 +7,8 @@ Unless required by applicable law or agreed to in writing, software distributed 
 limitations under the License.
 -/
 
+module -- shake: keep-all
+
 import LibsignalBinary.Heap.Fine.AlignedPosixFine
 import LibsignalBinary.Heap.Fine.AlignedReframeFine
 import LibsignalBinary.Heap.Fine.AllocGroupFine
@@ -43,7 +45,6 @@ import LibsignalBinary.Heap.Fine.MallocImplSmallFine
 import LibsignalBinary.Heap.Fine.MallocImplSmallSteps
 import LibsignalBinary.Heap.Fine.MallocLargeTraceHelpers
 import LibsignalBinary.Heap.Fine.MallocLargeTraceRaw
-import LibsignalBinary.Heap.Fine.NonVacFine
 import LibsignalBinary.Heap.Fine.NontrivialFreeFine1
 import LibsignalBinary.Heap.Fine.NontrivialFreeFine2
 import LibsignalBinary.Heap.Fine.NontrivialFreeFine3
@@ -61,7 +62,6 @@ import LibsignalBinary.Heap.Fine.ReallocStagesFine
 import LibsignalBinary.Heap.Fine.RootMmapParamsFine
 import LibsignalBinary.Heap.Fine.RustEntriesFine
 import LibsignalBinary.Heap.Fine.SpecBudgetFine
-import LibsignalBinary.Heap.Fine.SpecBudgetFineSat
 import LibsignalBinary.Heap.Fine.SpecBudgetHelpersFine
 import LibsignalBinary.Heap.Fine.Tables
 import LibsignalBinary.Heap.Fine.VendorFree
@@ -80,32 +80,24 @@ import LibsignalBinary.Heap.NonVacBudget
 import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 import LibsignalBinary.Heap.SpecBudget
 import LibsignalBinary.Proofs.AesCbc.LibsignalAesCbcProofDefs
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.RootTrapPlacedBudgetPart3Sat
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.RootTrapPlacedBudgetPart4Sat
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudgetSat
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlacedBudgetSat
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlacedSat
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3ExactPlacedBudget
 import LibsignalBinary.Proofs.Cli.E2E.V1.BobTailV1PlacedBudgetSat
-import LibsignalBinary.Proofs.Cli.SpqrV1.M4.DecryptFrontTrapPlacedBudgetSat
 import LibsignalBinary.Proofs.CodeLayout
-import LibsignalBinary.Proofs.Common.CallInv
 import LibsignalBinary.Proofs.Common.StringClonePlaced
 import LibsignalBinary.Proofs.Common.StringClonePlacedBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudgetAux
-import LibsignalBinary.Proofs.ConsumeMessageKey.AssemblySat
 import LibsignalBinary.Proofs.ConsumeMessageKey.Defs
 import LibsignalBinary.Proofs.ConsumeMessageKey.DefsBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexBudgetSat
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.LoopBudget
-import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexSat
 import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.CoreBudget
-import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.CompressAndDigestExact
 import LibsignalBinary.Proofs.ConsumeMessageKey.ModelDefs
 import LibsignalBinary.Proofs.ConsumeMessageKey.ModelProofs.AdvanceAndFrame
 import LibsignalBinary.Proofs.ConsumeMessageKey.NonVacProofs.AllocWitness
@@ -127,20 +119,19 @@ import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.DuplicatedMessage
 import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.LoopBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.RemoveBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.TooFarPathProofs.CoreBudget
-import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.Bday
-import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.Hop1
-import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.Hop2
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.CBCDec
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
 import LibsignalBinary.Proofs.CryptoGames.Ratchet.CreateChainProofDefs
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
 import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionProofDefs
 import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionSMProofDefs
 import LibsignalBinary.Proofs.CryptoGames.Ratchet.RootKdfProofDefs
-import LibsignalBinary.Proofs.CryptoGames.Ratchet.RootStepProof
 import LibsignalBinary.Proofs.E2E.Bin.RecordBudget
 import LibsignalBinary.Proofs.E2E.Bin.SpecsCommonBudget
 import LibsignalBinary.Proofs.E2E.HooksE.Common
 import LibsignalBinary.Proofs.E2E.HooksE.CommonBudget
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.DefsBudget
-import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.DefsBudgetSat
 import LibsignalBinary.Proofs.E2E.InMem.SipHashModel.Lemmas
 import LibsignalBinary.Proofs.E2E.InMem.SipHashModel.Model
 import LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollariesBudget
@@ -165,8 +156,6 @@ import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudget
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetAux
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetBbSat
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetSat
-import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedSat
-import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoPlacedBbSat
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoPlacedSat
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.HkdfGenFinPlacedSat
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlacedBudget
@@ -215,20 +204,19 @@ import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionLenAux.StepsFrontB
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionLenBudget
 import LibsignalBinary.Proofs.E2E.Record.Support.ImageWitness
 import LibsignalBinary.Proofs.E2E.Record.Support.Phi
+import LibsignalBinary.Proofs.E2E.V1.ParamsEWith
+import LibsignalBinary.Proofs.HookDischarge.CryptoAes.CbcDecrypt
+import LibsignalBinary.Proofs.HookDischarge.CryptoAes.CbcEncrypt
 import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
 import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
 import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetHelpers
-import LibsignalBinary.Proofs.HookDischarge.Generics
+import LibsignalBinary.Proofs.HookDischarge.CryptoSha256
+import LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4ConsumerGlue
 import LibsignalBinary.Proofs.HookDischarge.Libc.Bcmp
 import LibsignalBinary.Proofs.HookDischarge.Libc.Strlen
-import LibsignalBinary.Proofs.HookDischarge.RustStd
 import LibsignalBinary.Proofs.HookDischarge.RustStd.DurationSinceBoundedVm
 import LibsignalBinary.Proofs.HookDischarge.RustStd.DurationSinceVm
-import LibsignalBinary.Proofs.HookDischarge.RustStd.FromUtf8AsciiSteps
-import LibsignalBinary.Proofs.HookDischarge.RustStd.FromUtf8Vm
 import LibsignalBinary.Proofs.HookDischarge.RustStd.MemrchrRO
-import LibsignalBinary.Proofs.HookDischarge.RustStd.MemrchrSat
-import LibsignalBinary.Proofs.HookDischarge.RustStd.TimeAddVm
 import LibsignalBinary.Proofs.PeakBudget.CallSiteFacts
 import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
 import LibsignalBinary.Proofs.PeakBudget.CliDpPollTrustedWideBridge
@@ -251,7 +239,6 @@ import LibsignalBinary.Proofs.PeakBudget.CliKitW2RecvExactAuxR2Race
 import LibsignalBinary.Proofs.PeakBudget.CliMainIoCredit
 import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
 import LibsignalBinary.Proofs.PeakBudget.CliNoOomOfFitsEnv
-import LibsignalBinary.Proofs.PeakBudget.CliNoOomOfFitsEnvSat
 import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
 import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
 import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
@@ -285,10 +272,6 @@ import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
 import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemSlots
 import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3
 import LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
-import LibsignalBinary.Proofs.PeakBudget.RealMainEnvNonVacCommon
-import LibsignalBinary.Proofs.PeakBudget.RealMainEnvNonVacSend
-import LibsignalBinary.Proofs.PeakBudget.RealMainEnvNonVacSuccInit
-import LibsignalBinary.Proofs.PeakBudget.RealMainEnvNonVacSuccSend
 import LibsignalBinary.Proofs.PeakBudget.RealMainEnvNonVacSuccWhisper
 import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
 import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
@@ -394,12 +377,13 @@ import LibsignalBinary.Proofs.PeakBudget.WireTryFromHelpers
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced
-import LibsignalBinary.Proofs.Placed.CliMainBlockPin
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.PlacedShardsCheck
 import LibsignalBinary.Proofs.Placed.StringCloneMallocngPlaced
 import LibsignalBinary.Proofs.Placed.SubsetA4cBudget
 import LibsignalBinary.Proofs.Placed.SubsetA4cBudgetSat
 import LibsignalBinary.Proofs.Placed.SubsetA4d
+import LibsignalBinary.Proofs.ProtoCodecKat
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.AssemblyBudget
 import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
@@ -458,6 +442,8 @@ import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.MergeLoopBudget
 import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.PostBudget
 import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.VarintKeyBudget
 import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserializeBudget
+import LibsignalBinary.Proofs.RecordCodecs.RecordCodecs
+import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsBinary
 import LibsignalBinary.Proofs.RecordCodecs.RoundTrip
 import LibsignalBinary.Proofs.RecordCodecs.SignedAssemblyBudget
 import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget
@@ -470,7 +456,7 @@ import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.KeyAndScalarBudget
 import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.LoopBudget
 import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.NonemptyBudget
 import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecodeBudget
-import LibsignalBinary.Proofs.RoDataReloc
+import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeySpec
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.AdaptersBudget
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.ChainBudget
@@ -544,7 +530,6 @@ import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonStage2PathAFullPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonStage2PathAOfEnvPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.StageP3RawBodyPlacedBudget
-import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemP2KitsPlacedBudgetSat
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotDom0BridgePostBob
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotDom0BridgePostBobTightProducer
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotDom0EnvSub
@@ -555,11 +540,9 @@ import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotDom0Leaves16
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotWideWitness
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7RAOverD3Wire
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7RAVerNeRawSlot520
-import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadStdinBudgetPlacedSat
 import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxCode
 import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxGhost
 import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxLrTrap
-import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.DalekLrTrap
 import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhostAcp
 import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.SharedSecretDropLrTrap
 import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ZeroizeCode
@@ -583,26 +566,17 @@ import LibsignalBinary.Proofs.SignalSession.Cli.M24.MuslStartFineResources
 import LibsignalBinary.Proofs.SignalSession.Cli.M24.PlacedOomRecovery
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHonestSpecs
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHonestSpecsHook
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooksPlacedSat
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1PlacedBudgetSat
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetAuxSat
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FreeArgsPlacedBudget
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.IoSitesPlacedBudgetSat
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1PlacedRoBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1PlacedRoBudgetSat
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3PlacedBudgetFdSat
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainOkA1PlacedSat
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.ParseFailPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.ResponderCanonicalPlacedBudgetSat
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1BasePlacedBudgetBbSat
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudgetBbSat
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedSat
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecDefs
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Spec
 import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudgetSat
-import LibsignalBinary.Proofs.SignalSession.Cli.SpqrInitialStatePlacedInstBudgetSat
-import LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsPlacedInstBudgetSat
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPollPlacedBudgetFdSat
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeserAux
@@ -613,8 +587,10 @@ import LibsignalBinary.Proofs.SignalSession.NonVacuity
 import LibsignalBinary.Proofs.SignalSession.NonVacuityPq
 import LibsignalBinary.Proofs.SignalSession.PqClosure
 import LibsignalBinary.Proofs.SignalSession.PqModelRun
+import LibsignalBinary.Proofs.SignalSession.PqStatement
 import LibsignalBinary.Proofs.SignalSession.PqStep
 import LibsignalBinary.Proofs.SignalSession.SessionCap.PqSessionCap
+import LibsignalBinary.Proofs.SignalSession.SmScheme
 import LibsignalBinary.Proofs.SpecLemmas.FsFold
 import LibsignalBinary.Proofs.SpecLemmas.HKDFProofDefs
 import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhCorrectModelProofDefs
@@ -631,9 +607,15 @@ import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRun
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRunProofDefs
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliSymtabGhost
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfFrozen
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KSlot464Cal
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KSlot520VmPoll
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHooksUnfetchedPerPc
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3PksmAux
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W1InnerTight
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W1InnerTightGlue
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W3BudgetFitsAux
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W3VerifySigAux
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W3VerifySigBbSat
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W4DecPkArmAB
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W4DecPkArmC
@@ -644,7 +626,9 @@ import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W4DecPkR2
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W4DecPkStep2
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W4DecPkWire
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W4DecPkWireStep2
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.HooksCommonLegacy
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.InitStack
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.IoHooksLegacy
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.MuslElf
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.MuslElfBlock
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.MuslExit
@@ -658,6 +642,7 @@ import LibsignalBinary.Proofs.SpecLemmas.SignalSession.SmDirProofDefs
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.V1MergeBlk325Cli
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ValidMatchDecPkSlot
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ValidMatchDecPkSlotSeqFree
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen
 import LibsignalBinary.Proofs.SpqrV1.Alloc.Concat
 import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget
 import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux
@@ -717,7 +702,6 @@ import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Drop.ChainStatesClPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Drop.ChainStatesClPlacedBudgetAux
 import LibsignalBinary.Proofs.SpqrV1.Drop.ChunkedBudget
-import LibsignalBinary.Proofs.SpqrV1.Drop.DecodesBudget
 import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget
 import LibsignalBinary.Proofs.SpqrV1.Drop.PolyDecoderBudget
 import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoderBudget
@@ -739,11 +723,11 @@ import LibsignalBinary.Proofs.SpqrV1.Drop.States1aBudget
 import LibsignalBinary.Proofs.SpqrV1.Drop.States2Budget
 import LibsignalBinary.Proofs.SpqrV1.Drop.States2BudgetAux
 import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget
+import LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag
 import LibsignalBinary.Proofs.SpqrV1.InitFacts
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOkBudget
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOkBudgetFinSat
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOkBudgetNfsSat
-import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceSat
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVecBudget
 import LibsignalBinary.Proofs.SpqrV1.KemFailFindFacts
 import LibsignalBinary.Proofs.SpqrV1.MlKemCorrectFacts
@@ -1053,7 +1037,6 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.EncoderFromPbExitClPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.EncoderFromPbProofClPlacedBudget
-import LibsignalBinary.Proofs.SpqrV1.States.FromPb.EpilogueBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.EpiloguePlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.ProofPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.TopPlacedBudget
@@ -1084,10 +1067,8 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsaPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsb0PlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsbPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsbPlacedBudgetAux
-import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hscBudgetAux
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hscPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hscPlacedBudgetAux
-import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsdBudgetAux
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsdPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hse2PlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hse3PlacedBudget
@@ -1102,7 +1083,6 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3PlacedBudgetAux
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3bPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3dPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3dPlacedBudgetAux
-import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4Budget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4PlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4aPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4c0PlacedBudget
@@ -1128,13 +1108,8 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6fPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6fPlacedBudgetAux
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7PlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7PlacedBudgetAux
-import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7aBudget
-import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7aBudgetAux
-import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7aBudgetDropUnchunked
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7aPlacedBudget
-import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7bBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7bPlacedBudget
-import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7cBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7cPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7dPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7fPlacedBudget
@@ -1384,13 +1359,9 @@ import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.BasePlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.ProofPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.ProofPlacedBudgetAux
-import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsBudget
 import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
-import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.ProofBudgetAux
 import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.ProofPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.ProofPlacedBudgetAux
-import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.StepsBudget
-import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.StepsBudgetAux
 import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.StepsPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.ProofPlacedBudget
@@ -1495,6 +1466,7 @@ import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ChainPrev
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ChainRecv
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ChainSmall
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Defs
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Encaps1Total
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Erasure
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ErasureDecAdd
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ErasureDecMsg
@@ -1524,7 +1496,6 @@ import LibsignalBinary.Proofs.TripleRatchet.ChainKey.MessageKeysBudget
 import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.CtEqROSat
 import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.InstancesBudget
 import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.InstancesBudgetSat
-import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.InstancesSat
 import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.NewFromSliceSat
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudget
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudgetAux
@@ -1534,18 +1505,13 @@ import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefsBudget
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.CommonBudget
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailProofBudget
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailSymBudget
-import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainBudget
-import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainStackBudget
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysBudget
-import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysBudgetSat
-import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysSat
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysStepsBudget
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysSymBudget
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.LoadRatchetProofBudget
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.LoadRatchetSymBudget
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.TightTargets
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.TightTargetsBudget
-import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookupBudget
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKeyBudget
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DeriveKeysBudget
@@ -1609,6 +1575,7 @@ import LibsignalBinary.Proofs.TripleRatchet.Keys.AgreeBudget
 import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChainBudget
 import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
 import LibsignalBinary.Proofs.TripleRatchet.Keys.GenerateKeysBudget
+import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst
 import LibsignalBinary.Proofs.TripleRatchet.Mac.AddressesBudget
 import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudget
 import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux
@@ -1617,7 +1584,6 @@ import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyBudget
 import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyBudgetSat
 import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyMacWithAddressesBudget
 import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyMacWithAddressesBudgetAux
-import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifySat
 import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.ApplyBudget
 import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.DefsBudget
 import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case1Budget
@@ -1685,13 +1651,10 @@ import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostCleanupBudget
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDeserBudget
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostRkSomeBudget
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRootBudget
-import LibsignalBinary.Specifications.LibsignalSessionGuards
-import LibsignalBinary.Specifications.LibsignalTripleRatchetGuards
+import LibsignalBinary.Specifications.CryptoGames.KEM.Kyber1024KeyGen
 import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
 import LibsignalBinary.Specifications.SignalSession.CliProcess
 import LibsignalBinary.Specifications.SignalSession.CliRun
-import LibsignalBinary.Specifications.SignalSession.PqStatement
-import LibsignalBinary.Specifications.SignalSession.SmScheme
 
 /-!
 # LibsignalBinary Library Umbrella

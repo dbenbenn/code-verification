@@ -37,9 +37,9 @@ import Symbolic.Specifications.Model.EquationalTheory.Trunc
 import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
 import Symbolic.Specifications.Model.EquationalTheory.X25519
 import Init.Data.String.Defs
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeIdInv
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeIdInv -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.TripleRatchet.WireCovered
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSendBranch
@@ -47,7 +47,7 @@ import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch
 import Symbolic.Proofs.Swarm.CREF.TR.G1.RatchetDHRkSwapPeelTR
 import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeAddr
 import Symbolic.Proofs.Swarm.CREF.TR.RecvRep
-public import Symbolic.Proofs.Refinement.LemmasPure -- shake: keep
+import Symbolic.Proofs.Refinement.LemmasPure -- shake: keep
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.Bytes.AttackerKnowledge
 import Symbolic.DYBridge.DY.ALaCarte.Basic
@@ -73,7 +73,7 @@ received message carries a non-`TermShapeId` ratchet key without a memo collisio
 (`recv_mac_authentic_or_rkSwap_seed_known_of_not_collision'`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false

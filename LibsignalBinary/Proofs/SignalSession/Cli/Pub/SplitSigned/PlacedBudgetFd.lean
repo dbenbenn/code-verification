@@ -9,14 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitId.PlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.PlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitId.PlacedBudgetFd -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.PlacedBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.BV
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.Base
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.PlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.ProofPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # `Ok`-Branch `fs`-Preserving Relocatable `signal_session::public::split_signed` (Block `592`)
@@ -26,7 +38,7 @@ Strengthens `splitSignedSpecPlaced` on Block `592` with
 `AllocContractsFsPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -94,7 +106,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.PlacedBudgetAux (
 /-! ## `Ok`-Branch `fs`-Preserving Specification -/
 
 /-- Strengthens `splitSignedSpecPlaced` with `(splitSigned x.file).isSome = true → sf.fs = s0.fs` in the postcondition, matching callers that branch on `splitSigned file` over the 48-byte `sret` buffer at `x.ret`. -/
-def splitSignedSpecPlacedOkFs [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def splitSignedSpecPlacedOkFs [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (SplitEnv : List (BitVec 8) → List AllocEvent → Prop)
     (stk : Nat) : Spec (SplitGhost × M.σ) :=
@@ -865,23 +877,6 @@ theorem splitSigned_placed_ok_of_deps_fd [LibsignalPlacement] {M : AllocCostMode
     subroutine_ok (lsProg_592 H) (lsmpl.base 592)
       (splitSignedSpecPlacedOkFs A lim (SplitSignedEnv SplitEnv) stk) :=
   Helpers.splitSigned_placed_ok_core_fd hC hSplit hDrop hstk
-
-theorem splitSigned_placed_caller_ok_of_deps_fd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {SplitEnv : List (BitVec 8) → List AllocEvent → Prop}
-    {H : LibsignalHooks} {splitStk stk : Nat} {callerProg : Program} {i : Nat}
-    [IsLsBlockProg callerProg i H]
-    (hC : AllocContractsFsPlaced A lim H)
-    (hSplit : subroutine_ok (lsProg_592 H) (lsmpl.base 593)
-      (splitIdSpecPlacedOkFs A lim SplitEnv splitStk))
-    (hDrop : subroutine_ok (lsProg_592 H) (lsmpl.base 553)
-      (withLsCodeRoLoaded lsmpl (dropSpeSpecX M A lim).keepsFs))
-    (hstk : 96 + max splitStk dropSpeStackX ≤ stk)
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 592)
-      (splitSignedSpecPlacedOkFs A lim (SplitSignedEnv SplitEnv) stk) :=
-  ls_transfer_lscro (callerProg := callerProg) (j := 592)
-    (splitSigned_placed_ok_of_deps_fd hC hSplit hDrop hstk) hi
 
 /-- `split_signed` (Block `592`) satisfies `splitSignedSpecPlacedOkFs` from `AllocContractsFsPlaced` alone. -/
 theorem splitSigned_placed_ok_of_allocFs_fd [LibsignalPlacement] {M : AllocCostModel}

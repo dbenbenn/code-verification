@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Bin.SpecsCommon
+public import LibsignalBinary.Proofs.E2E.Bin.SpecsCommon -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.HeapDefs
 public meta import Lean -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `SessionRecord::serialize` with One Previous Session: Specification
@@ -21,7 +22,7 @@ Wire encoding `encodeRecordPrev1` and subroutine contract `serializePrev1Spec` /
 together with a single archived previous session (`previous_sessions = [enc]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false
@@ -72,7 +73,7 @@ end SepPullPureTactic
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 
-open Arm64 ProofLib ProofLib.ObjectLoad CryptoGames
+open Arm64 ProofLib CryptoGames
 open CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr CryptoVerification.LibsignalPublicApiRepr
@@ -86,7 +87,7 @@ open CryptoVerification.E2E.Record.Serialization (CanonSession)
 /-- Canonical wire bytes of a `SessionRecord` with current session `sess` and
 `previous_sessions = [enc]`: length-delimited field 1 (`encodeRecord ⟨some sess⟩`) followed by
 length-delimited field 2 (`0x12`, varint length, `enc`). -/
-def encodeRecordPrev1 (sess : Session (List (BitVec 8))) (enc : List (BitVec 8)) :
+@[expose] def encodeRecordPrev1 (sess : Session (List (BitVec 8))) (enc : List (BitVec 8)) :
     List (BitVec 8) :=
   CryptoVerification.E2E.Record.encodeRecord ⟨some sess⟩ ++
     CryptoVerification.E2E.Record.lenField 2 enc
@@ -112,7 +113,7 @@ structure SerializePrev1Ghost where
 /-- Specification of `<SessionRecord>::serialize` on `sessionRecordPrevAt` with current session
 `sess` and `previous_sessions = [enc]`, preserving the input record and writing
 `encodeRecordPrev1 sess enc` to `out`. -/
-def serializePrev1Spec (A : RustAlloc) : Spec SerializePrev1Ghost where
+@[expose] def serializePrev1Spec (A : RustAlloc) : Spec SerializePrev1Ghost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.out ∧
       BinCanonSession x.G x.sess ∧ (encodeRecordPrev1 x.sess x.enc).length < 2 ^ 32⌝ ∗
@@ -124,10 +125,5 @@ def serializePrev1Spec (A : RustAlloc) : Spec SerializePrev1Ghost where
       (x.out ↦₆₄ okTagVec) ∗ vecU8 A (x.out + 8#64) (encodeRecordPrev1 x.sess x.enc) ∗
       memRegion (x.out + 32#64) 16 ∗ A.pool ∗ stackAt s0.sp recordSerializeStack
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-def SerializePrev1OkStmt (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (contractProg img.base ext) (img.base + serializeOff)
-    ((serializePrev1Spec A).inImage img)
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over

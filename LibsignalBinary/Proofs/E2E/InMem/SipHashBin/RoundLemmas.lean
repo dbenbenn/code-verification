@@ -23,7 +23,7 @@ Equivalences relating `UInt64` operations in `SipHashModel` (`rotl64`, `compress
 little-endian word packings (`pack32`, `pack64`) produced by ARM64 symbolic execution.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.InMem.SipHashBin
 
@@ -124,7 +124,7 @@ theorem setWidth64_append_ushiftRight_43_eq_rotateRight (x : BitVec 64) :
 /-! ## `compress` and `compressBlock` in `BitVec 64` Form -/
 
 /-- Pure `BitVec 64` formulation of one SipRound (`SipHashModel.compress`). -/
-def compressBv (v0 v1 v2 v3 : BitVec 64) : BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 :=
+@[expose] def compressBv (v0 v1 v2 v3 : BitVec 64) : BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 :=
   let v0 := v1 + v0
   let v2 := v2 + v3
   let v1 := v0 ^^^ (v1.rotateRight 51)
@@ -167,7 +167,7 @@ theorem compress_toBitVec (st : SipHashModel.State) :
     toBitVec_rotl64_21, toBitVec_rotl64_32]
   exact compress_toBitVec_aux st.v0.toBitVec st.v1.toBitVec st.v2.toBitVec st.v3.toBitVec
 
-def stateOfBv (v0 v1 v2 v3 : BitVec 64) : SipHashModel.State :=
+@[expose] def stateOfBv (v0 v1 v2 v3 : BitVec 64) : SipHashModel.State :=
   { v0 := UInt64.ofBitVec v0
     v1 := UInt64.ofBitVec v1
     v2 := UInt64.ofBitVec v2

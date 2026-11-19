@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.DefsV1StatePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerHeaderPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1StateBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.DefsV1StatePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerHeaderPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1StateBudget
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.ChainEncodedLenPlacedBudget
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.V1StatePlacedBudget
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EpochEncodedLenPlacedBudget
@@ -28,6 +28,15 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateHeader
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpers
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesVnEncode
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlaced
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
 
 /-!
 # Budget-Threaded Relocatable Phase 3d Callee Bridges & Inner Length Step (Block `427`)
@@ -36,7 +45,7 @@ Provides budget-ready `[local#3]` callee bridges, polymorphic `s.sp = sp` call w
 and the `VmPreserved` inner encoded-length step (`+4844..+4920`) for Block `427`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -49,7 +58,7 @@ namespace LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerHeaderPlace
 
 open Arm64 Arm64.Obj ProofLib ProofLib.ProgramReflection SepProp
 open CryptoVerification
-  (LibsignalCodeLoaded LibsignalPlacement extract_withLsCodeLoaded libsignalSessionCode
+  (LibsignalCodeLoaded LibsignalPlacement extract_withLsCodeLoaded
    ls_subroutine_ok_of_block lsmpl lsρ subroutine_ok_withLsCodeLoaded_of_plain withLsCodeLoaded)
 open CryptoVerification.RustHeap (RustAlloc vecU8At)
 open CryptoVerification.LibsignalTripleRatchet
@@ -147,7 +156,7 @@ private theorem sepWPp_extract_pure {prog : Program} {ret : BitVec 64} {s : Stat
 
 /-! ## 2. Budget-Ready `[local#3]` Callee `subroutine_ok` Bridges for `spqr::send::<Coins>` (Block `427`) -/
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero spqrSendPlacedEntry
   zeroExtend64_beq_zero32
   ofNat_countLeadingZeros_64 ofNat_countLeadingZeros_32

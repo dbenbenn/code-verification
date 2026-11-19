@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.ReadFaithful
@@ -23,7 +23,7 @@ Proves preservation of `ReadFaithful` under hidden moves (including `.attackerSe
 block with no `.accept` event and no colliding-read moves.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

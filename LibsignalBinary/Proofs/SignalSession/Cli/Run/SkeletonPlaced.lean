@@ -9,31 +9,49 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.RunCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.ReadFileHookPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Concat2Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropPreKeyMsgPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSignalMessagePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwnedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStoresPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFromPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.TryAllocateIn3Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Reserve11Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Placed
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyDecode
-public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat
-public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Deserialize
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromHooks
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.RunCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.ReadFileHookPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Concat2Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropPreKeyMsgPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSignalMessagePlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwnedPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStoresPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFromPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.TryAllocateIn3Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Reserve11Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Placed
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyDecode
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Deserialize
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromHooks
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.RecordCodecs.Deps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymE -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1
+public import ProofLib.Disproof.Basic
+public import VerifiedLibraries.Musl.Spec
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
 /-!
 # Relocatable Callee Slots and Hook Bundles for `signal_session::run`
@@ -43,7 +61,7 @@ Defines `CalleeSlot.OkPlaced`, `RunHooksPlaced`, and `RunCalleesPlaced` for Bloc
 onto any caller block `i < 619`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -68,7 +86,7 @@ open CryptoVerification.RecordCodecs.Placed
 /-! ## Placed wrapper slots -/
 
 /-- The slot's contract holds on `callerProg` at `target` for every budget `σ.need ≤ stk ≤ 2^63`. -/
-def CalleeSlot.OkPlaced (callerProg : Program) (target : BitVec 64) (σ : CalleeSlot) : Prop :=
+@[expose] def CalleeSlot.OkPlaced (callerProg : Program) (target : BitVec 64) (σ : CalleeSlot) : Prop :=
   ∀ stk, σ.need ≤ stk → stk ≤ 2 ^ 63 →
     subroutine_ok callerProg target (σ.spec stk)
 
@@ -320,29 +338,6 @@ theorem identityKeyDecode_placed_ok [LibsignalPlacement] {callerProg : Program} 
     ((blkPC_18).rebase (blkPl_18).base ext) i 18 ext
     hcaller (instIsLsBlockProg_18 ext) (blkPl_18).base _
     h18 _ _ _ _ hi (by decide) (by decide)
-  refine subroutine_ok_mono hrocl (fun _ _ _ h => h) ?_ (fun _ _ _ _ hp => hp)
-  intro x R s0 sf hpost
-  dsimp only [withLsRoCl] at hpost
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
-  exact hpost.2
-
-/-- `PublicKey::deserialize` (Block `201`, ok case only) on any caller block `i < 619`. -/
-theorem pkDeserialize_placed_ok [LibsignalPlacement] {callerProg : Program} {i : Nat}
-    (ext : String → Option (State → State))
-    [hcaller : IsLsBlockProg callerProg i ext]
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (blkPl_201).base
-      (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
-        LibsignalSession.FindReceiverChainIndex.deserializePlacedSpec) := by
-  have h201 : subroutine_ok ((blkPC_201).rebase (blkPl_201).base ext) (blkPl_201).base
-      (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
-        LibsignalSession.FindReceiverChainIndex.deserializePlacedSpec) :=
-    LibsignalPublicApi.StoreKit.subroutine_ok_withLsCodeRoLoaded_of_plain
-      (LibsignalSession.FindReceiverChainIndex.deserialize_placed_ok ext)
-  have hrocl := @ls_subroutine_ok_rocl_of_block _ _ callerProg
-    ((blkPC_201).rebase (blkPl_201).base ext) i 201 ext
-    hcaller (CryptoVerification.instIsLsBlockProg_201 ext) (blkPl_201).base _
-    h201 _ _ _ _ hi (by decide) (by decide)
   refine subroutine_ok_mono hrocl (fun _ _ _ h => h) ?_ (fun _ _ _ _ hp => hp)
   intro x R s0 sf hpost
   dsimp only [withLsRoCl] at hpost

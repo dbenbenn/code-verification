@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag9ClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag8
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag9ClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag8
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WP.Apply
@@ -25,7 +25,7 @@ Verifies tag arm 8 (`Ct1Sampled`, entry `+516`, fresh-init `+1272`) under `[Libs
 with `withLsCl`-wrapped cross-block drops (`286`, `271`, `267`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,14 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwnedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserialize.Spec
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwnedPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserialize.Spec
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `[LibsignalPlacement]` Composition Semantics and Slot Specifications
@@ -27,7 +29,7 @@ Defines placed store vtable addresses (`sessVtPlaced`, `idVtPlaced`, `oneTimeVtP
 `slotsOfPlaced` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -47,15 +49,15 @@ open CryptoVerification.RecordCodecs
 
 /-! ## 1. Placed Store Vtable Addresses -/
 
-def sessVtPlaced [LibsignalPlacement] : BitVec 64 := lsρ cliSessionVtSym
-def idVtPlaced [LibsignalPlacement] : BitVec 64 := lsρ cliIdentityVtSym
+@[expose] def sessVtPlaced [LibsignalPlacement] : BitVec 64 := lsρ cliSessionVtSym
+@[expose] def idVtPlaced [LibsignalPlacement] : BitVec 64 := lsρ cliIdentityVtSym
 def oneTimeVtPlaced [LibsignalPlacement] : BitVec 64 := lsρ cliPreKeyVtSym
-def signedVtPlaced [LibsignalPlacement] : BitVec 64 := lsρ cliSignedPreKeyVtSym
-def kyberVtPlaced [LibsignalPlacement] : BitVec 64 := lsρ cliKyberPreKeyVtSym
+@[expose] def signedVtPlaced [LibsignalPlacement] : BitVec 64 := lsρ cliSignedPreKeyVtSym
+@[expose] def kyberVtPlaced [LibsignalPlacement] : BitVec 64 := lsρ cliKyberPreKeyVtSym
 
 /-! ## 2. Placed Wrapper Slot Specs (`slotFramePlaced` & `decPkSlotSpecPlaced` from `DecryptPrekeySlotPlaced`) -/
 
-def encSlotSpecPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (stk : Nat) : Spec EncGhost :=
+@[expose] def encSlotSpecPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (stk : Nat) : Spec EncGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.ptA ∧ (s.readReg64 .x1).toNat = x.ptext.length ∧
@@ -83,7 +85,7 @@ def encSlotSpecPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (stk : N
 abbrev withCodeOk {α : Type} (CodeOk : Memory → Prop) (spec : Spec α) : Spec α :=
   { spec with pre := fun x s0 => spec.pre x s0 ∗ ⌜CodeOk s0.mem⌝ }
 
-def decSigSlotSpecPlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop)
+@[expose] def decSigSlotSpecPlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop)
     (A : RustAlloc) (S : RunSem) (stk : Nat) : Spec DecSigGhost :=
   withCodeOk CodeOk
     { pre := fun x s =>
@@ -106,7 +108,7 @@ def decSigSlotSpecPlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop)
         ⌜S.decryptSignal x.F x.peer.val x.me.val x.msg x.coins = none ∨ allocFailedIn s0 sf⌝ ∗
           anyHeap }
 
-def decSigSlotSpecPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (stk : Nat) :
+@[expose] def decSigSlotSpecPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (stk : Nat) :
     Spec DecSigGhost :=
   decSigSlotSpecPlacedOf (LibsignalPublicApi.StoreKit.LibsignalCodeRoLoaded lsmpl) A S stk
 
@@ -114,7 +116,7 @@ abbrev decSigSlotSpecFrozenPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunS
     Spec DecSigGhost :=
   decSigSlotSpecPlacedOf (LibsignalFrozen lsmpl) A S stk
 
-def initSlotSpecPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (stk : Nat) : Spec InitGhost :=
+@[expose] def initSlotSpecPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (stk : Nat) : Spec InitGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.peerA ∧ s.readReg64 .x1 = x.meA ∧
@@ -140,7 +142,7 @@ def initSlotSpecPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (stk : 
         ⌜S.initiate x.F x.peer.val x.me.val x.bundle x.coins = none ∨ allocFailedIn s0 sf⌝ ∗
           anyHeap }
 
-def slotsOfPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (needs : RunNeeds) : RunSlots where
+@[expose] def slotsOfPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (needs : RunNeeds) : RunSlots where
   encrypt := mkSlot (encSlotSpecPlaced A S) needs.encrypt
   decryptSignal := mkSlot (decSigSlotSpecPlaced A S) needs.decryptSignal
   initiate := mkSlot (initSlotSpecPlaced A S) needs.initiate
@@ -149,11 +151,11 @@ def slotsOfPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (needs : Run
     (fun stk => LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl (RunProofs.cliKemDeserializeSpec A stk))
     (48 + extHookStack)
 
-def slotsOfSigFrozenPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (needs : RunNeeds) : RunSlots :=
+@[expose] def slotsOfSigFrozenPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (needs : RunNeeds) : RunSlots :=
   { slotsOfPlaced A S needs with
     decryptSignal := mkSlot (decSigSlotSpecFrozenPlaced A S) needs.decryptSignal }
 
-def slotsOfSigPkFrozenPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (needs : RunNeeds) : RunSlots :=
+@[expose] def slotsOfSigPkFrozenPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (needs : RunNeeds) : RunSlots :=
   { slotsOfSigFrozenPlaced A S needs with
     decryptPrekey := mkSlot (decPkSlotSpecFrozenPlaced A S) needs.decryptPrekey }
 

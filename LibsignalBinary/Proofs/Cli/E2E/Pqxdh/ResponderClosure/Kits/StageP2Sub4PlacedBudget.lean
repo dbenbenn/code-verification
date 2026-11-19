@@ -12,15 +12,15 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA3PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub4AuxPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub4Placed
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA3PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub4AuxPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub4Placed
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
@@ -28,6 +28,13 @@ import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub4Aux
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA3Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub4AuxPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContracts
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Substage P2.4 (`Some` Branch)
@@ -36,7 +43,7 @@ Defines `P2Sub4SomeFixedPollEnv` and proves `RustCliAllocBudget M` / `VmPreserve
 Substage P2.4-Some (`+0x0d5c → +0x36ac` or `+0x09c4` Arm 3) on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -158,20 +165,20 @@ private theorem p2_vecU8Buf_keep_le (A : RustAlloc) (cap ptr : BitVec 64) (bs : 
 
 /-- Allocator event list of Substage P2.4-Some up to the `get_pre_key` poll return at `+0x09c4`:
 `pkKit.getShim` (`boxAllocEvents opkBoxSize`) followed by `evs_poll` from `pkKit.getPoll`. -/
-def p2Sub4SomePollEvents (opkBoxSize : Nat) (evs_poll : List AllocEvent) : List AllocEvent :=
+@[expose] def p2Sub4SomePollEvents (opkBoxSize : Nat) (evs_poll : List AllocEvent) : List AllocEvent :=
   boxAllocEvents opkBoxSize ++ evs_poll
 
 /-- Allocator event list of Substage P2.4-Some along the `.ok r` branch (`+0x0d5c -> +0x36ac`):
 `pkKit.getShim` (`boxAllocEvents opkBoxSize`), `evs_poll` from `pkKit.getPoll`, and
 `p2Sub4SomeTailEvents` (`p2OpkRecFreeEvents` + `skit.kpShim`). -/
-def p2Sub4SomeOkEvents (opkBoxSize : Nat) (evs_poll : List AllocEvent)
+@[expose] def p2Sub4SomeOkEvents (opkBoxSize : Nat) (evs_poll : List AllocEvent)
     (pubCap privCap kpBoxSize : Nat) : List AllocEvent :=
   boxAllocEvents opkBoxSize ++ evs_poll ++
     p2Sub4SomeTailEvents opkBoxSize pubCap privCap kpBoxSize
 
 /-- Deterministic fixed-poll allocator event envelope for Substage P2.4-Some `.ok r`
 (`+0x0d5c -> +0x36ac`). -/
-def P2Sub4SomeFixedPollEnv (opkBoxSize : Nat) (evs_poll : List AllocEvent)
+@[expose] def P2Sub4SomeFixedPollEnv (opkBoxSize : Nat) (evs_poll : List AllocEvent)
     (pubCap privCap kpBoxSize : Nat) (evs : List AllocEvent) : Prop :=
   evs = p2Sub4SomeOkEvents opkBoxSize evs_poll pubCap privCap kpBoxSize
 

@@ -17,7 +17,7 @@ import VCVio.Prelude.Core
 # CLI `StoreSession` Entry Symbol (`decWithStoresName`)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.StoreSession
 

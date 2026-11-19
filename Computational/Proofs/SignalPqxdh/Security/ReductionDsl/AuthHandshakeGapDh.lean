@@ -9,7 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCr
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCr -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.CostedTablesCompat -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshake -- proof-setup: allow-public-import
 
 /-!
 # `ReductionDsl` Program for the `Auth` Fiedler–Günther `GapDH` Reduction
@@ -18,7 +20,7 @@ Defines `fgAuthGapDhProg`, the `ReductionDsl` witness for the `Auth` Fiedler–G
 reduction (`fgAuthGapDhAdv4`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -28,16 +30,16 @@ open _root_.ReductionDsl hiding B PTag U32 bundleOfV bundleT bundleV dhSecretsT 
 open SignalPqxdh SignalPqxdh.LegacyCosted SignalPqxdh.Security SignalPqxdh.Security.ReductionDsl
 open OracleSpec OracleComp
 
-def Comp.queryDdh {Γ : List (Ty pqSig)}
+@[expose] def Comp.queryDdh {Γ : List (Ty pqSig)}
     (e : Expr pqxdhOps Γ (.prod (B 32) (.prod (B 32) (B 32)))) : Comp pqxdhOps pqGapDhIface Γ .bool :=
   Comp.queryChal (C := gapDhDdhOracle) () e
 
 /-- Effective `N_send_opk` multiplier (`0` when `N_id = 0`, `N_send_opk` otherwise). -/
-def nSendOpkEff (S : Setup) : Nat :=
+@[expose] def nSendOpkEff (S : Setup) : Nat :=
   if S.N_id = 0 then 0 else S.N_send_opk
 
 /-- Effective `N_send_no_opk` multiplier (`0` when `N_id = 0`, `N_send_no_opk` otherwise). -/
-def nSendNoOpkEff (S : Setup) : Nat :=
+@[expose] def nSendNoOpkEff (S : Setup) : Nat :=
   if S.N_id = 0 then 0 else S.N_send_no_opk
 
 /-! ## Types, Accessors, and Helpers -/
@@ -62,27 +64,27 @@ abbrev quadTy : Ty pqSig := .prod (B 32) (.prod (B 32) (.prod (B 32) (B 32)))
 
 abbrev CG := Comp pqxdhOps pqGapDhIface
 
-@[reducible] def fsBase {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgSimTy) :
+@[expose, reducible] def fsBase {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgSimTy) :
     Expr pqxdhOps Γ authStateTy := .fst e
-@[reducible] def fsL {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgSimTy) :
+@[expose, reducible] def fsL {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgSimTy) :
     Expr pqxdhOps Γ (.list fgPatchEntryTy) := .fst (.snd e)
-@[reducible] def fsRootL {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgSimTy) :
+@[expose, reducible] def fsRootL {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgSimTy) :
     Expr pqxdhOps Γ (.list rootEntryTy) := .fst (.snd (.snd e))
-@[reducible] def fsRaw {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgSimTy) :
+@[expose, reducible] def fsRaw {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgSimTy) :
     Expr pqxdhOps Γ (.list (.prod (B 192) drKeyTy)) := .fst (.snd (.snd (.snd e)))
-@[reducible] def fsLog {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgSimTy) :
+@[expose, reducible] def fsLog {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgSimTy) :
     Expr pqxdhOps Γ (.list (B 192)) := .fst (.snd (.snd (.snd (.snd e))))
-@[reducible] def fsResp {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgSimTy) :
+@[expose, reducible] def fsResp {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgSimTy) :
     Expr pqxdhOps Γ (.list respRecTy) := .fst (.snd (.snd (.snd (.snd (.snd e)))))
-@[reducible] def fsPows {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgSimTy) :
+@[expose, reducible] def fsPows {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgSimTy) :
     Expr pqxdhOps Γ (.list (.prod (B 32) (B 32))) := .snd (.snd (.snd (.snd (.snd (.snd e)))))
-@[reducible] def fsMk {Γ : List (Ty pqSig)} (base : Expr pqxdhOps Γ authStateTy)
+@[expose, reducible] def fsMk {Γ : List (Ty pqSig)} (base : Expr pqxdhOps Γ authStateTy)
     (fgL : Expr pqxdhOps Γ (.list fgPatchEntryTy)) (rootL : Expr pqxdhOps Γ (.list rootEntryTy))
     (raw : Expr pqxdhOps Γ (.list (.prod (B 192) drKeyTy))) (log : Expr pqxdhOps Γ (.list (B 192)))
     (resp : Expr pqxdhOps Γ (.list respRecTy))
     (pows : Expr pqxdhOps Γ (.list (.prod (B 32) (B 32)))) : Expr pqxdhOps Γ fgSimTy :=
   .pair base (.pair fgL (.pair rootL (.pair raw (.pair log (.pair resp pows)))))
-@[reducible] def fsUpd {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgSimTy)
+@[expose, reducible] def fsUpd {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgSimTy)
     (base : Expr pqxdhOps Γ authStateTy := fsBase e)
     (fgL : Expr pqxdhOps Γ (.list fgPatchEntryTy) := fsL e)
     (rootL : Expr pqxdhOps Γ (.list rootEntryTy) := fsRootL e)
@@ -92,79 +94,79 @@ abbrev CG := Comp pqxdhOps pqGapDhIface
     (pows : Expr pqxdhOps Γ (.list (.prod (B 32) (B 32))) := fsPows e) : Expr pqxdhOps Γ fgSimTy :=
   fsMk base fgL rootL raw log resp pows
 
-@[reducible] def paU {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ paramsTy) :
+@[expose, reducible] def paU {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ paramsTy) :
     Expr pqxdhOps Γ (B 32) := .fst e
-@[reducible] def paV {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ paramsTy) :
+@[expose, reducible] def paV {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ paramsTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd e)
-@[reducible] def paDh1 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ paramsTy) :
+@[expose, reducible] def paDh1 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ paramsTy) :
     Expr pqxdhOps Γ .bool := .fst (.snd (.snd e))
-@[reducible] def paTI {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ paramsTy) :
+@[expose, reducible] def paTI {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ paramsTy) :
     Expr pqxdhOps Γ .nat := .fst (.snd (.snd (.snd e)))
-@[reducible] def paTS {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ paramsTy) :
+@[expose, reducible] def paTS {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ paramsTy) :
     Expr pqxdhOps Γ .nat := .snd (.snd (.snd (.snd e)))
-@[reducible] def paTSPair {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ paramsTy) :
+@[expose, reducible] def paTSPair {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ paramsTy) :
     Expr pqxdhOps Γ (.prod .nat .nat) := .snd (.snd (.snd e))
 
-@[reducible] def fg2PaU {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fg2ParamsTy) :
+@[expose, reducible] def fg2PaU {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fg2ParamsTy) :
     Expr pqxdhOps Γ (B 32) := .fst e
-@[reducible] def fg2PaV {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fg2ParamsTy) :
+@[expose, reducible] def fg2PaV {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fg2ParamsTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd e)
-@[reducible] def fg2PaDh1 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fg2ParamsTy) :
+@[expose, reducible] def fg2PaDh1 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fg2ParamsTy) :
     Expr pqxdhOps Γ .bool := .fst (.snd (.snd e))
-@[reducible] def fg2PaTI {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fg2ParamsTy) :
+@[expose, reducible] def fg2PaTI {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fg2ParamsTy) :
     Expr pqxdhOps Γ .nat := .fst (.snd (.snd (.snd e)))
-@[reducible] def fg2PaSendOpk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fg2ParamsTy) :
+@[expose, reducible] def fg2PaSendOpk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fg2ParamsTy) :
     Expr pqxdhOps Γ .bool := .fst (.snd (.snd (.snd (.snd e))))
-@[reducible] def fg2PaSendIdx {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fg2ParamsTy) :
+@[expose, reducible] def fg2PaSendIdx {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fg2ParamsTy) :
     Expr pqxdhOps Γ .nat := .fst (.snd (.snd (.snd (.snd (.snd e)))))
-@[reducible] def fg2PaTS {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fg2ParamsTy) :
+@[expose, reducible] def fg2PaTS {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fg2ParamsTy) :
     Expr pqxdhOps Γ (.opt (.prod .nat .nat)) := .snd (.snd (.snd (.snd (.snd (.snd e)))))
 
-@[reducible] def feP1 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgPatchEntryTy) :
+@[expose, reducible] def feP1 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgPatchEntryTy) :
     Expr pqxdhOps Γ fgPosTy := .fst e
-@[reducible] def feP2 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgPatchEntryTy) :
+@[expose, reducible] def feP2 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgPatchEntryTy) :
     Expr pqxdhOps Γ fgPosTy := .fst (.snd e)
-@[reducible] def feP3 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgPatchEntryTy) :
+@[expose, reducible] def feP3 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgPatchEntryTy) :
     Expr pqxdhOps Γ fgPosTy := .fst (.snd (.snd e))
-@[reducible] def feP4 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgPatchEntryTy) :
+@[expose, reducible] def feP4 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgPatchEntryTy) :
     Expr pqxdhOps Γ (.opt fgPosTy) := .fst (.snd (.snd (.snd e)))
-@[reducible] def feSs {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgPatchEntryTy) :
+@[expose, reducible] def feSs {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgPatchEntryTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd (.snd (.snd e))))
-@[reducible] def feDk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgPatchEntryTy) :
+@[expose, reducible] def feDk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ fgPatchEntryTy) :
     Expr pqxdhOps Γ drKeyTy := .snd (.snd (.snd (.snd (.snd e))))
 
-@[reducible] def pkP1 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ patchKeyTy) :
+@[expose, reducible] def pkP1 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ patchKeyTy) :
     Expr pqxdhOps Γ fgPosTy := .fst e
-@[reducible] def pkP2 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ patchKeyTy) :
+@[expose, reducible] def pkP2 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ patchKeyTy) :
     Expr pqxdhOps Γ fgPosTy := .fst (.snd e)
-@[reducible] def pkP3 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ patchKeyTy) :
+@[expose, reducible] def pkP3 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ patchKeyTy) :
     Expr pqxdhOps Γ fgPosTy := .fst (.snd (.snd e))
-@[reducible] def pkP4 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ patchKeyTy) :
+@[expose, reducible] def pkP4 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ patchKeyTy) :
     Expr pqxdhOps Γ (.opt fgPosTy) := .fst (.snd (.snd (.snd e)))
-@[reducible] def pkSs {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ patchKeyTy) :
+@[expose, reducible] def pkSs {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ patchKeyTy) :
     Expr pqxdhOps Γ (B 32) := .snd (.snd (.snd (.snd e)))
 
-@[reducible] def reRk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ rootEntryTy) :
+@[expose, reducible] def reRk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ rootEntryTy) :
     Expr pqxdhOps Γ (B 32) := .fst e
-@[reducible] def rePos {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ rootEntryTy) :
+@[expose, reducible] def rePos {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ rootEntryTy) :
     Expr pqxdhOps Γ fgPosTy := .fst (.snd e)
-@[reducible] def reRk1 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ rootEntryTy) :
+@[expose, reducible] def reRk1 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ rootEntryTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd e))
-@[reducible] def reCk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ rootEntryTy) :
+@[expose, reducible] def reCk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ rootEntryTy) :
     Expr pqxdhOps Γ (B 32) := .snd (.snd (.snd e))
 
-@[reducible] def q4 {Γ : List (Ty pqSig)} (a b c d : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ quadTy :=
+@[expose, reducible] def q4 {Γ : List (Ty pqSig)} (a b c d : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ quadTy :=
   .pair a (.pair b (.pair c d))
 
-def bytesEmpty {w : ℕ+} {Γ : List (Ty pqSig)} (b : Expr pqxdhOps Γ (B w)) : Expr pqxdhOps Γ .bool :=
+@[expose] def bytesEmpty {w : ℕ+} {Γ : List (Ty pqSig)} (b : Expr pqxdhOps Γ (B w)) : Expr pqxdhOps Γ .bool :=
   .bytesBeq b (.litBytes w [])
 
-def slice32 {w : ℕ+} {Γ : List (Ty pqSig)} (n : Nat) (b : Expr pqxdhOps Γ (B w)) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def slice32 {w : ℕ+} {Γ : List (Ty pqSig)} (n : Nat) (b : Expr pqxdhOps Γ (B w)) : Expr pqxdhOps Γ (B 32) :=
   .bytesTakeK 32 (.bytesDrop (.litNat n) b)
 
-def zero32 {Γ : List (Ty pqSig)} : Expr pqxdhOps Γ (B 32) := .litBytes 32 (List.replicate 32 0)
+@[expose] def zero32 {Γ : List (Ty pqSig)} : Expr pqxdhOps Γ (B 32) := .litBytes 32 (List.replicate 32 0)
 
-def emptySimE {Γ : List (Ty pqSig)} (secb : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ fgSimTy :=
+@[expose] def emptySimE {Γ : List (Ty pqSig)} (secb : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ fgSimTy :=
   fsMk (emptyAuthStE secb) .listNil .listNil .listNil .listNil .listNil .listNil
 
 /-! ## DDH-Patched Random-Oracle Tables -/
@@ -173,16 +175,16 @@ section FgHelpers
 
 variable {Δ : List (Ty pqSig)}
 
-def mkSecretPosC (z : Expr pqxdhOps Δ (B 32)) : CG Δ fgPosTy :=
+@[expose] def mkSecretPosC (z : Expr pqxdhOps Δ (B 32)) : CG Δ fgPosTy :=
   letV z fun z => bindV (.queryPrimC .isCanonical (v z)) fun c => .ret (.inl (.pair (v z) (v c)))
 
-def mkPairPosC (pk1 pk2 : Expr pqxdhOps Δ (B 32)) : CG Δ fgPosTy :=
+@[expose] def mkPairPosC (pk1 pk2 : Expr pqxdhOps Δ (B 32)) : CG Δ fgPosTy :=
   letV (.pair pk1 pk2) fun p =>
   bindV (.queryPrimC .pow8 (.fst (v p))) fun w1 =>
   bindV (.queryPrimC .pow8 (.snd (v p))) fun w2 =>
   .ret (.inr (.pair (.fst (v p)) (.pair (.snd (v p)) (.pair (v w1) (v w2)))))
 
-def twoSideC (a : Expr pqxdhOps Δ quadTy) : CG Δ fgPosTy :=
+@[expose] def twoSideC (a : Expr pqxdhOps Δ quadTy) : CG Δ fgPosTy :=
   letV a fun a =>
   .iteC (.boolNot (bytesEmpty (.fst (v a))))
     (bindV (.queryPrimC .x25519 (.pair (.fst (v a)) (.snd (.snd (.snd (v a)))))) fun z =>
@@ -192,10 +194,10 @@ def twoSideC (a : Expr pqxdhOps Δ quadTy) : CG Δ fgPosTy :=
       mkSecretPosC (v z))
     (mkPairPosC (.fst (.snd (.snd (v a)))) (.snd (.snd (.snd (v a)))))
 
-def twoSideOptC (o : Expr pqxdhOps Δ (.opt quadTy)) : CG Δ (.opt fgPosTy) :=
+@[expose] def twoSideOptC (o : Expr pqxdhOps Δ (.opt quadTy)) : CG Δ (.opt fgPosTy) :=
   caseOptV o (.ret .noneE) fun a => bindV (twoSideC (v a)) fun p => .ret (.someE (v p))
 
-def ddhEqC (p1 p2 : Expr pqxdhOps Δ fgPosTy) : CG Δ .bool :=
+@[expose] def ddhEqC (p1 p2 : Expr pqxdhOps Δ fgPosTy) : CG Δ .bool :=
   letV (.pair p1 p2) fun pp =>
   caseSumV (.fst (v pp))
     (fun s1 => caseSumV (.snd (v pp))
@@ -213,14 +215,14 @@ def ddhEqC (p1 p2 : Expr pqxdhOps Δ fgPosTy) : CG Δ .bool :=
         (.boolAnd (.bytesBeq (.fst (.snd (.snd (v q1)))) (.snd (.snd (.snd (v q2)))))
           (.bytesBeq (.snd (.snd (.snd (v q1)))) (.fst (.snd (.snd (v q2)))))))))
 
-def ddhEqOptC (p1 p2 : Expr pqxdhOps Δ (.opt fgPosTy)) : CG Δ .bool :=
+@[expose] def ddhEqOptC (p1 p2 : Expr pqxdhOps Δ (.opt fgPosTy)) : CG Δ .bool :=
   letV (.pair p1 p2) fun pp =>
   caseOptV (.fst (v pp)) (.ret (eCaseOpt (.snd (v pp)) (.litBool true) fun _ => .litBool false))
     fun a => caseOptV (.snd (v pp)) (.ret (.litBool false)) fun b => ddhEqC (v a) (v b)
 
 variable {Γ₁ Γ₂ : List (Ty pqSig)}
 
-def entryMatchesC (k : Var Γ₁ patchKeyTy) (e : Var Γ₂ fgPatchEntryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def entryMatchesC (k : Var Γ₁ patchKeyTy) (e : Var Γ₂ fgPatchEntryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     CG Δ .bool :=
   .iteC (.boolNot (.bytesBeq (pkSs (v k)) (feSs (v e)))) (.ret (.litBool false)) <|
   bindV (ddhEqC (pkP1 (v k)) (feP1 (v e))) fun b1 =>
@@ -229,7 +231,7 @@ def entryMatchesC (k : Var Γ₁ patchKeyTy) (e : Var Γ₂ fgPatchEntryTy) [Ext
   bindV (ddhEqOptC (pkP4 (v k)) (feP4 (v e))) fun b4 =>
   .ret (.boolAnd (.boolAnd (.boolAnd (v b1) (v b2)) (v b3)) (v b4))
 
-def patchC (maxLen : Nat) (k : Var Γ₁ patchKeyTy) [Ext Γ₁ Δ]
+@[expose] def patchC (maxLen : Nat) (k : Var Γ₁ patchKeyTy) [Ext Γ₁ Δ]
     (L : Expr pqxdhOps Δ (.list fgPatchEntryTy)) :
     CG Δ (.prod drKeyTy (.list fgPatchEntryTy)) :=
   letV L fun L =>
@@ -240,7 +242,7 @@ def patchC (maxLen : Nat) (k : Var Γ₁ patchKeyTy) [Ext Γ₁ Δ]
         (.pair (pkP4 (v k)) (.pair (pkSs (v k)) (v dk)))))) (v L))))
     fun e => .ret (.pair (feDk (v e)) (v L))
 
-def rootPatchC (maxLen : Nat) (rk : Expr pqxdhOps Δ (B 32)) (pos : Expr pqxdhOps Δ fgPosTy)
+@[expose] def rootPatchC (maxLen : Nat) (rk : Expr pqxdhOps Δ (B 32)) (pos : Expr pqxdhOps Δ fgPosTy)
     (L : Expr pqxdhOps Δ (.list rootEntryTy)) :
     CG Δ (.prod (.prod (B 32) (B 32)) (.list rootEntryTy)) :=
   letV (.pair rk (.pair pos L)) fun a =>
@@ -262,12 +264,12 @@ section PowsHelpers
 
 variable (S : Setup) (K : Nat) {Γ Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)}
 
-def isAdvPowsC (pows : Var Γ (.list (.prod (B 32) (B 32)))) [Ext Γ Δ] (pk : Expr pqxdhOps Δ (B 32)) :
+@[expose] def isAdvPowsC (pows : Var Γ (.list (.prod (B 32) (B 32)))) [Ext Γ Δ] (pk : Expr pqxdhOps Δ (B 32)) :
     Comp pqxdhOps pqPrimIface Δ .bool :=
   bindV (.queryPrim .pow8 pk) fun w =>
   .ret (eAny K (v pows) fun e => .bytesBeq (.snd (v e)) (v w))
 
-def koskBundleOkPowsC (st : Var Γ₁ authStateTy) (pows : Var Γ₂ (.list (.prod (B 32) (B 32))))
+@[expose] def koskBundleOkPowsC (st : Var Γ₁ authStateTy) (pows : Var Γ₂ (.list (.prod (B 32) (B 32))))
     (bu : Var Γ₃ preKeyBundleTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] :
     Comp pqxdhOps pqPrimIface Δ .bool :=
   bindV (findHonestC S K st (buIkB (v bu))) fun f =>
@@ -283,14 +285,14 @@ def koskBundleOkPowsC (st : Var Γ₁ authStateTy) (pows : Var Γ₂ (.list (.pr
       .ret (.boolAnd (.boolAnd (.boolOr (isSomeE (v f)) (v idA)) (.boolOr (v spkG) (v spkA)))
         (.boolOr (v opkG) (v opkA)))
 
-def koskSenderOkPowsC (st : Var Γ₁ authStateTy) (pows : Var Γ₂ (.list (.prod (B 32) (B 32))))
+@[expose] def koskSenderOkPowsC (st : Var Γ₁ authStateTy) (pows : Var Γ₂ (.list (.prod (B 32) (B 32))))
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] (ik : Expr pqxdhOps Δ (B 32)) : Comp pqxdhOps pqPrimIface Δ .bool :=
   letV ik fun ik =>
   bindV (findHonestC S K st (v ik)) fun f =>
   bindV (isAdvPowsC K pows (v ik)) fun idA =>
   .ret (.boolOr (isSomeE (v f)) (v idA))
 
-def lookupSpkSkC (st : Var Γ₁ authStateTy) (pows : Var Γ₂ (.list (.prod (B 32) (B 32))))
+@[expose] def lookupSpkSkC (st : Var Γ₁ authStateTy) (pows : Var Γ₂ (.list (.prod (B 32) (B 32))))
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] (pk : Expr pqxdhOps Δ (B 32)) : Comp pqxdhOps pqPrimIface Δ (B 32) :=
   bindV (.queryPrim .pow8 pk) fun w =>
   bindV (findMV (min K S.N_dh) (stSpks (v st)) fun e =>
@@ -309,13 +311,13 @@ section Handlers
 
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)}
 
-def onBaseF (sim : Var Γ₁ fgSimTy) [Ext Γ₁ Δ]
+@[expose] def onBaseF (sim : Var Γ₁ fgSimTy) [Ext Γ₁ Δ]
     (br : (g : Var (authStateTy :: Δ) authStateTy) →
       Comp pqxdhOps pqPrimIface (authStateTy :: Δ) RS) : CG Δ RSF :=
   bindV (Comp.liftChal (C := gapDhDdhOracle) (letV (fsBase (v sim)) fun g => br g)) fun r =>
   .ret (.pair (.fst (v r)) (fsUpd (v sim) (base := .snd (v r))))
 
-def fgInitPrinC (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) (u : Var Γ₃ .nat)
+@[expose] def fgInitPrinC (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) (u : Var Γ₃ .nat)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] : CG Δ RSF :=
   letV (fsBase (v sim)) fun st =>
   .iteC (eAny K (stPrin (v st)) fun e => natEq (.fst (v e)) (v u)) (.ret (.pair aNone (v sim))) <|
@@ -328,7 +330,7 @@ def fgInitPrinC (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) (u : Var Γ�
     (fsUpd (v sim)
       (base := stUpd (v st) (prin := .listCons (.pair (v u) (v ent)) (stPrin (v st))))))
 
-def fgGenSpkC (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) (x : Var Γ₃ (.prod .nat .nat))
+@[expose] def fgGenSpkC (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) (x : Var Γ₃ (.prod .nat .nat))
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] : CG Δ RSF :=
   letV (fsBase (v sim)) fun st =>
   .iteC (eAny K (stSpks (v st)) fun e => nat2Eq (.fst (v e)) (v x)) (.ret (.pair aNone (v sim))) <|
@@ -354,7 +356,7 @@ def fgGenSpkC (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) (x : Var Γ₃
     (fsUpd (v sim) (base := stUpd (v st) (spks := .listCons (.pair (v x) (sbMk (v spkSk) (v spkPk)
       (v sig1) (.snd (v kp)) (.fst (v kp)) (v sig2) (.litBool false))) (stSpks (v st))))))
 
-def fgSendC (opk : Bool) (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) (x : Var Γ₃ sendQTy)
+@[expose] def fgSendC (opk : Bool) (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) (x : Var Γ₃ sendQTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] : CG Δ RSF :=
   .iteC (sendGuardE opk (v x)) (.ret (.pair aNone (v sim))) <|
   letV (fsBase (v sim)) fun st => letV (fsPows (v sim)) fun pows =>
@@ -438,7 +440,7 @@ def fgSendC (opk : Bool) (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) (x 
         (usedS := .listCons (v sid) (stUsedS (v st))))
       (fgL := .snd (v dr)) (rootL := .snd (v rkOut))))
 
-def fgRecvC (opk : Bool) (sim : Var Γ₁ fgSimTy) (x : Var Γ₂ recvQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def fgRecvC (opk : Bool) (sim : Var Γ₁ fgSimTy) (x : Var Γ₂ recvQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     CG Δ RSF :=
   letV (fsBase (v sim)) fun st => letV (fsPows (v sim)) fun pows =>
   letV (.snd (.snd (.snd (v x)))) fun msg =>
@@ -516,7 +518,7 @@ def fgRecvC (opk : Bool) (sim : Var Γ₁ fgSimTy) (x : Var Γ₂ recvQTy) [Ext 
       fun _ => aRecvHonest)
     (fsUpd (v sim) (base := v st') (fgL := .snd (v dkL)) (rootL := .snd (v rkOut))))
 
-def fgRecvB (opk : Bool) (sim : Var Γ₁ fgSimTy) (x : Var Γ₂ recvQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def fgRecvB (opk : Bool) (sim : Var Γ₁ fgSimTy) (x : Var Γ₂ recvQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     CG Δ RSF :=
   letV (fsUpd (v sim) (resp := .listCons (.pair (.pair (.fst (v x)) (.fst (.snd (v x))))
       (.pair (hdIkAPk (pmHdr (.snd (.snd (.snd (v x))))))
@@ -524,7 +526,7 @@ def fgRecvB (opk : Bool) (sim : Var Γ₁ fgSimTy) (x : Var Γ₂ recvQTy) [Ext 
       (fsResp (v sim)))) fun sim' =>
   fgRecvC S K opk sim' x
 
-def fgRoC (sim : Var Γ₁ fgSimTy) (sec : Var Γ₂ (B 192)) [Ext Γ₁ Δ] [Ext Γ₂ Δ] : CG Δ RSF :=
+@[expose] def fgRoC (sim : Var Γ₁ fgSimTy) (sec : Var Γ₂ (B 192)) [Ext Γ₁ Δ] [Ext Γ₂ Δ] : CG Δ RSF :=
   letV (.listCons (v sec) (fsLog (v sim))) fun log' =>
   .iteC (.boolAnd (.bytesBeq (.bytesTakeK 32 (v sec)) (.litBytes 32 F_X25519))
       (.boolOr (natEq (.bytesLen (v sec)) (.litNat 160))
@@ -546,14 +548,14 @@ def fgRoC (sim : Var Γ₁ fgSimTy) (sec : Var Γ₂ (B 192)) [Ext Γ₁ Δ] [Ex
           (raw := .listCons (.pair (v sec) (v dk)) (fsRaw (v sim))) (log := v log'))))
       fun e => .ret (.pair (aDrKey (.snd (v e))) (fsUpd (v sim) (log := v log'))))
 
-def fgRoRootC (sim : Var Γ₁ fgSimTy) (x : Var Γ₂ (.prod (B 32) (B 32))) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def fgRoRootC (sim : Var Γ₁ fgSimTy) (x : Var Γ₂ (.prod (B 32) (B 32))) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     CG Δ RSF :=
   bindV (mkSecretPosC (.snd (v x))) fun pos =>
   bindV (rootPatchC K (.fst (v x)) (v pos) (fsRootL (v sim))) fun r =>
   .ret (.pair (aRootKdf (.fst (.fst (v r))) (.snd (.fst (v r))))
     (fsUpd (v sim) (rootL := .snd (v r))))
 
-def fgRegisterC (sim : Var Γ₁ fgSimTy) (sk : Var Γ₂ (B 32)) [Ext Γ₁ Δ] [Ext Γ₂ Δ] : CG Δ RSF :=
+@[expose] def fgRegisterC (sim : Var Γ₁ fgSimTy) (sk : Var Γ₂ (B 32)) [Ext Γ₁ Δ] [Ext Γ₂ Δ] : CG Δ RSF :=
   .iteC (.boolNot (natEq (.bytesLen (v sk)) (.litNat 32))) (.ret (.pair aNone (v sim))) <|
   bindV (.queryPrimC .x25519Base (v sk)) fun pk => bindV (.queryPrimC .pow8 (v pk)) fun w =>
   .ret (.pair (aPk (v pk)) (fsUpd (v sim)
@@ -562,7 +564,7 @@ def fgRegisterC (sim : Var Γ₁ fgSimTy) (sk : Var Γ₂ (B 32)) [Ext Γ₁ Δ]
     (pows := .listCons (.pair (v sk) (v w)) (fsPows (v sim)))))
 
 /-- Full `fgAuthStep` simulator query handler. -/
-def fgStepC (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) (q : Var Γ₃ authQueryTy)
+@[expose] def fgStepC (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) (q : Var Γ₃ authQueryTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] : CG Δ RSF :=
   caseSumV (v q) (fun u => fgInitPrinC K pa sim u) fun q =>
   caseSumV (v q) (fun u => onBaseF sim fun g => corruptB K g u) fun q =>
@@ -585,7 +587,7 @@ section Extract
 
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List (Ty pqSig)}
 
-def findMapC {τ : Ty pqSig} (pa : Var Γ₁ paramsTy) [Ext Γ₁ Δ] (N : Nat)
+@[expose] def findMapC {τ : Ty pqSig} (pa : Var Γ₁ paramsTy) [Ext Γ₁ Δ] (N : Nat)
     (xs : Expr pqxdhOps Δ (.list τ))
     (f : (x : Var (τ :: .opt (B 32) :: Δ) τ) → CG (τ :: .opt (B 32) :: Δ) (B 32)) :
     CG Δ (.opt (B 32)) :=
@@ -596,19 +598,19 @@ def findMapC {τ : Ty pqSig} (pa : Var Γ₁ paramsTy) [Ext Γ₁ Δ] (N : Nat)
         .ret (.ite (v b) (.someE (v z)) .noneE))
       fun _ => .ret (v acc)
 
-def logScanC (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] (off : Nat) :
+@[expose] def logScanC (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] (off : Nat) :
     CG Δ (.opt (B 32)) :=
   findMV K (eMap K (fsLog (v sim)) fun s => slice32 off (v s)) fun z =>
     Comp.queryDdh (.pair (paU (v pa)) (.pair (paV (v pa)) (v z)))
 
-def respCandC (sim : Var Γ₁ fgSimTy) (r : Var Γ₂ respRecTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def respCandC (sim : Var Γ₁ fgSimTy) (r : Var Γ₂ respRecTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (pk : Expr pqxdhOps Δ (B 32)) : CG Δ (B 32) :=
   .queryPrimC .x25519 (.pair
     (eCaseOpt (eFind S.N_dh (stSpks (fsBase (v sim))) fun e => nat2Eq (.fst (v e)) (.fst (v r)))
       (.litBytes 32 []) fun e => sbSpkSk (.snd (v e)))
     pk)
 
-def initDh1CandC (sim : Var Γ₁ fgSimTy) (spkPows : Var Γ₂ (.list (.prod (B 32) (B 32))))
+@[expose] def initDh1CandC (sim : Var Γ₁ fgSimTy) (spkPows : Var Γ₂ (.list (.prod (B 32) (B 32))))
     (s : Var Γ₃ authSessionEntryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] : CG Δ (B 32) :=
   bindV (.queryPrimC .pow8 (sePeerSpk (v s))) fun w =>
   letV (eCaseOpt (eFind S.N_dh (v spkPows) fun e =>
@@ -622,7 +624,7 @@ def initDh1CandC (sim : Var Γ₁ fgSimTy) (spkPows : Var Γ₂ (.list (.prod (B
       (.litBytes 32 []) fun e => peIkAPk (.snd (v e))) fun ikA =>
   .queryPrimC .x25519 (.pair (v spkSk) (v ikA))
 
-def fgExtractC (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def fgExtractC (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     CG Δ (B 32) :=
   .iteC (paDh1 (v pa))
     (bindV (logScanC K pa sim 32) fun f =>
@@ -655,7 +657,7 @@ end Extract
 
 /-! ## Flat-Indexed Entrypoints -/
 
-def fgHandleDsl (S : Setup) (K : Nat) : CG [gsTy, authQueryTy] (.prod authRespTy gsTy) :=
+@[expose] def fgHandleDsl (S : Setup) (K : Nat) : CG [gsTy, authQueryTy] (.prod authRespTy gsTy) :=
   letV (.fst (.var .vz) : Expr pqxdhOps [gsTy, authQueryTy] paramsTy) fun pa =>
   letV (.snd (.var (.vs .vz)) : Expr pqxdhOps [paramsTy, gsTy, authQueryTy] fgSimTy) fun sim =>
   .iteC (.boolAnd (paDh1 (v pa))
@@ -665,7 +667,7 @@ def fgHandleDsl (S : Setup) (K : Nat) : CG [gsTy, authQueryTy] (.prod authRespTy
   bindV (fgStepC S K pa sim (.vs .vz : Var [gsTy, authQueryTy] authQueryTy)) fun r =>
   .ret (.pair (.fst (v r)) (.pair (v pa) (.snd (v r))))
 
-def fgInitDsl (S : Setup) : CG [.prod (B 32) (B 32)] (.prod .unit gsTy) :=
+@[expose] def fgInitDsl (S : Setup) : CG [.prod (B 32) (B 32)] (.prod .unit gsTy) :=
   bindV (.sampleIndexC (S.N_id + S.N_send_tot)) fun flat =>
   bindV (.sampleIndexC S.N_spk_tot) fun bIdx =>
   letV (.lt (v flat) (.litNat S.N_id)) fun dh1 =>
@@ -678,7 +680,7 @@ def fgInitDsl (S : Setup) : CG [.prod (B 32) (B 32)] (.prod .unit gsTy) :=
     (.pair (v dh1) (.pair (.ite (v dh1) (v flat) (.sub (v flat) (.litNat S.N_id))) (v bIdx)))))
     (emptySimE (v secb))))
 
-def fgFinishDsl (S : Setup) (K : Nat) : CG [gsTy, .bool] (B 32) :=
+@[expose] def fgFinishDsl (S : Setup) (K : Nat) : CG [gsTy, .bool] (B 32) :=
   letV (.fst (.var .vz) : Expr pqxdhOps [gsTy, .bool] paramsTy) fun pa =>
   letV (.snd (.var (.vs .vz)) : Expr pqxdhOps [paramsTy, gsTy, .bool] fgSimTy) fun sim =>
   fgExtractC S K pa sim
@@ -689,7 +691,7 @@ section TupleProgram
 
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List (Ty pqSig)}
 
-def fg2InitPrinC (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) (u : Var Γ₃ .nat)
+@[expose] def fg2InitPrinC (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) (u : Var Γ₃ .nat)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] : CG Δ RSF :=
   letV (fsBase (v sim)) fun st =>
   .iteC (eAny K (stPrin (v st)) fun e => natEq (.fst (v e)) (v u)) (.ret (.pair aNone (v sim))) <|
@@ -702,7 +704,7 @@ def fg2InitPrinC (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) (u : Var
     (fsUpd (v sim)
       (base := stUpd (v st) (prin := .listCons (.pair (v u) (v ent)) (stPrin (v st))))))
 
-def fg2GenSpkC (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) (x : Var Γ₃ (.prod .nat .nat))
+@[expose] def fg2GenSpkC (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) (x : Var Γ₃ (.prod .nat .nat))
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] : CG Δ RSF :=
   letV (fsBase (v sim)) fun st =>
   .iteC (eAny K (stSpks (v st)) fun e => nat2Eq (.fst (v e)) (v x)) (.ret (.pair aNone (v sim))) <|
@@ -728,7 +730,7 @@ def fg2GenSpkC (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) (x : Var �
     (fsUpd (v sim) (base := stUpd (v st) (spks := .listCons (.pair (v x) (sbMk (v spkSk) (v spkPk)
       (v sig1) (.snd (v kp)) (.fst (v kp)) (v sig2) (.litBool false))) (stSpks (v st))))))
 
-def fg2SendC (opk : Bool) (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) (x : Var Γ₃ sendQTy)
+@[expose] def fg2SendC (opk : Bool) (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) (x : Var Γ₃ sendQTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] : CG Δ RSF :=
   .iteC (sendGuardE opk (v x)) (.ret (.pair aNone (v sim))) <|
   letV (fsBase (v sim)) fun st => letV (fsPows (v sim)) fun pows =>
@@ -811,7 +813,7 @@ def fg2SendC (opk : Bool) (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy)
         (usedS := .listCons (v sid) (stUsedS (v st))))
       (fgL := .snd (v dr)) (rootL := .snd (v rkOut))))
 
-def fg2StepC (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) (q : Var Γ₃ authQueryTy)
+@[expose] def fg2StepC (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) (q : Var Γ₃ authQueryTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] : CG Δ RSF :=
   caseSumV (v q) (fun u => fg2InitPrinC K pa sim u) fun q =>
   caseSumV (v q) (fun u => onBaseF sim fun g => corruptB K g u) fun q =>
@@ -826,7 +828,7 @@ def fg2StepC (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) (q : Var Γ�
   caseSumV (v q) (fun _ => .ret (.pair aNone (v sim))) fun sk =>
   fgRegisterC sim sk
 
-def fg2FindMapC {τ : Ty pqSig} (pa : Var Γ₁ fg2ParamsTy) [Ext Γ₁ Δ] (N : Nat)
+@[expose] def fg2FindMapC {τ : Ty pqSig} (pa : Var Γ₁ fg2ParamsTy) [Ext Γ₁ Δ] (N : Nat)
     (xs : Expr pqxdhOps Δ (.list τ))
     (f : (x : Var (τ :: .opt (B 32) :: Δ) τ) → CG (τ :: .opt (B 32) :: Δ) (B 32)) :
     CG Δ (.opt (B 32)) :=
@@ -837,19 +839,19 @@ def fg2FindMapC {τ : Ty pqSig} (pa : Var Γ₁ fg2ParamsTy) [Ext Γ₁ Δ] (N :
         .ret (.ite (v b) (.someE (v z)) .noneE))
       fun _ => .ret (v acc)
 
-def fg2LogScanC (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] (off : Nat) :
+@[expose] def fg2LogScanC (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] (off : Nat) :
     CG Δ (.opt (B 32)) :=
   findMV K (eMap K (fsLog (v sim)) fun s => slice32 off (v s)) fun z =>
     Comp.queryDdh (.pair (fg2PaU (v pa)) (.pair (fg2PaV (v pa)) (v z)))
 
-def fg2RespCandC (sim : Var Γ₁ fgSimTy) (r : Var Γ₂ respRecTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def fg2RespCandC (sim : Var Γ₁ fgSimTy) (r : Var Γ₂ respRecTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (pk : Expr pqxdhOps Δ (B 32)) : CG Δ (B 32) :=
   .queryPrimC .x25519 (.pair
     (eCaseOpt (eFind (min K S.N_dh) (stSpks (fsBase (v sim))) fun e => nat2Eq (.fst (v e)) (.fst (v r)))
       (.litBytes 32 []) fun e => sbSpkSk (.snd (v e)))
     pk)
 
-def fg2InitDh1CandC (sim : Var Γ₁ fgSimTy) (spkPows : Var Γ₂ (.list (.prod (B 32) (B 32))))
+@[expose] def fg2InitDh1CandC (sim : Var Γ₁ fgSimTy) (spkPows : Var Γ₂ (.list (.prod (B 32) (B 32))))
     (s : Var Γ₃ authSessionEntryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] : CG Δ (B 32) :=
   bindV (.queryPrimC .pow8 (sePeerSpk (v s))) fun w =>
   letV (eCaseOpt (eFind (min K S.N_dh) (v spkPows) fun e =>
@@ -863,7 +865,7 @@ def fg2InitDh1CandC (sim : Var Γ₁ fgSimTy) (spkPows : Var Γ₂ (.list (.prod
       (.litBytes 32 []) fun e => peIkAPk (.snd (v e))) fun ikA =>
   .queryPrimC .x25519 (.pair (v spkSk) (v ikA))
 
-def fg2ExtractC (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def fg2ExtractC (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     CG Δ (B 32) :=
   .iteC (fg2PaDh1 (v pa))
     (bindV (fg2LogScanC K pa sim 32) fun f =>
@@ -894,7 +896,7 @@ def fg2ExtractC (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) [Ext Γ�
 
 end TupleProgram
 
-def fg2HandleDsl (S : Setup) (K : Nat) : CG [fg2GsTy, authQueryTy] (.prod authRespTy fg2GsTy) :=
+@[expose] def fg2HandleDsl (S : Setup) (K : Nat) : CG [fg2GsTy, authQueryTy] (.prod authRespTy fg2GsTy) :=
   letV (.fst (.var .vz) : Expr pqxdhOps [fg2GsTy, authQueryTy] fg2ParamsTy) fun pa =>
   letV (.snd (.var (.vs .vz)) : Expr pqxdhOps [fg2ParamsTy, fg2GsTy, authQueryTy] fgSimTy) fun sim =>
   .iteC (.boolAnd (fg2PaDh1 (v pa))
@@ -907,7 +909,7 @@ def fg2HandleDsl (S : Setup) (K : Nat) : CG [fg2GsTy, authQueryTy] (.prod authRe
 abbrev targetChoiceTy : Ty pqSig := .prod .bool (.prod .nat (.prod .bool .nat))
 
 /-- Samples `(useDh1, targetPrinIdx, sendIsOpk, sendSubIdx)` uniformly over target choices. -/
-def fgSampleTargetC (S : Setup) {Γ : List (Ty pqSig)} : CG Γ targetChoiceTy :=
+@[expose] def fgSampleTargetC (S : Setup) {Γ : List (Ty pqSig)} : CG Γ targetChoiceTy :=
   if S.N_id = 0 then
     .ret (.pair (.litBool false) (.pair (.litNat 0) (.pair (.litBool false) (.litNat 0))))
   else
@@ -943,7 +945,7 @@ def fgSampleTargetC (S : Setup) {Γ : List (Ty pqSig)} : CG Γ targetChoiceTy :=
             .ret (.pair (.litBool false) (.pair (v uT) (.pair (.litBool true) (v i))))))
 
 /-- Samples target SPK pair `(uSpk, jSpk)` uniformly when `S.N_spk_tot > 0`. -/
-def fgSampleSpkC (S : Setup) {Γ : List (Ty pqSig)} : CG Γ (.opt (.prod .nat .nat)) :=
+@[expose] def fgSampleSpkC (S : Setup) {Γ : List (Ty pqSig)} : CG Γ (.opt (.prod .nat .nat)) :=
   if S.N_spk_tot = 0 then
     .ret .noneE
   else
@@ -951,7 +953,7 @@ def fgSampleSpkC (S : Setup) {Γ : List (Ty pqSig)} : CG Γ (.opt (.prod .nat .n
     bindV (.sampleIndexC S.N_recv) fun jSpk =>
     .ret (.someE (.pair (v uSpk) (v jSpk)))
 
-def fg2InitDsl (S : Setup) : CG [.prod (B 32) (B 32)] (.prod .unit fg2GsTy) :=
+@[expose] def fg2InitDsl (S : Setup) : CG [.prod (B 32) (B 32)] (.prod .unit fg2GsTy) :=
   let uv : Var [.prod (B 32) (B 32)] (.prod (B 32) (B 32)) := .vz
   bindV (fgSampleTargetC S) fun tc =>
   bindV (fgSampleSpkC S) fun spk =>
@@ -966,13 +968,13 @@ def fg2InitDsl (S : Setup) : CG [.prod (B 32) (B 32)] (.prod .unit fg2GsTy) :=
            (v spk)))))))
     (emptySimE (v secb))))
 
-def fg2FinishDsl (S : Setup) (K : Nat) : CG [fg2GsTy, .bool] (B 32) :=
+@[expose] def fg2FinishDsl (S : Setup) (K : Nat) : CG [fg2GsTy, .bool] (B 32) :=
   letV (.fst (.var .vz) : Expr pqxdhOps [fg2GsTy, .bool] fg2ParamsTy) fun pa =>
   letV (.snd (.var (.vs .vz)) : Expr pqxdhOps [fg2ParamsTy, fg2GsTy, .bool] fgSimTy) fun sim =>
   fg2ExtractC S K pa sim
 
 /-- `ReductionDsl` witness for `fgAuthGapDhAdv4` with list-traversal bound `K`. -/
-def fgAuthGapDhProg (S : Setup) (K : Nat) :
+@[expose] def fgAuthGapDhProg (S : Setup) (K : Nat) :
     CostedReduction pqxdhOps pqGapDhIface (authSpec S) (authCodec S)
       (.prod (B 32) (B 32)) .unit .bool (B 32) where
   σ      := fg2GsTy

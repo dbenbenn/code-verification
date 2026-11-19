@@ -11,8 +11,8 @@ module
 
 public import Computational.Specifications.Pqxdh.Security.HeadlineDelta
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeySigKem -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeyGapDh -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeySigKem
+import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeyGapDh
 /-!
 # Shallow Creation-Order Reductions for One-Key PQXDH `KeyInd`
 

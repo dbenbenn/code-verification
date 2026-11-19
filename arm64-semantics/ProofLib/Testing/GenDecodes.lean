@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import ProofLib.GenDecodes
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 
 /-!
 # Tests for `ProofLib.GenDecodes`

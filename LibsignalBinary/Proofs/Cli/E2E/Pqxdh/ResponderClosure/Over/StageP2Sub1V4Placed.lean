@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub1V4
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub1V4
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 
@@ -20,11 +20,9 @@ import Arm64.Trusted.Spec.SepLogic
 Relates `stageP2OverEntryPlaced` to `lsmpl.base 518` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 
@@ -36,8 +34,4 @@ open CryptoVerification.LibsignalPublicApi.StoreKit
 open CryptoVerification.CliHandshake.RespClosurePlaced
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.OverP2
 
-theorem stageP2OverEntryPlaced_eq_lsmpl_base [LibsignalPlacement] :
-    stageP2OverEntryPlaced = lsmpl.base 518 := rfl
-
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
-end

@@ -9,19 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymA -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymC -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymB -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymA -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymC -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymB -- shake: keep -- proof-setup: allow-public-import
+meta import GeneratedLean.LibsignalSessionPlacedObjShard2
+meta import GeneratedLean.LibsignalSessionPlacedObjShard4
 
 /-!
 # Relocatable instruction fetches for `E2E/Record` (blocks 46, 52, and 80)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

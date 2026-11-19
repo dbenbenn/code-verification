@@ -10,20 +10,22 @@ limitations under the License.
 module
 
 public import Symbolic.Specifications.Refinement.TraceExplanation
+public import Symbolic.Specifications.Concrete.SessionRecordDecidable
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Refinement.EncodeWithCovered
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import VCVio.EvalDist.ProbabilityNotation
 
 /-!
-# Session-Record Encoding Injectivity Modulo Pending Pre-Key Normalization
+# Session-Record Encoding Injectivity
 
 Proves `recordBytes_injective` (equal `recordBytes` encodings imply equal `normPending` records,
-where `normPending` normalizes each pending pre-key pair `p` to `(p.1 ++ p.2, [])`) and derives
-`keyInRecord_of_recordBytes_eq` transferring `KeyInRecord` across equal `recordBytes`.
+where `normPending` normalizes each pending pre-key pair `p` to `(p.1 ++ p.2, [])`), derives
+`keyInRecord_of_recordBytes_eq` transferring `KeyInRecord` across equal `recordBytes`, and provides
+`decodeRecordBytes?_eq_none_iff` for `DY.Libsignal.Rust.decodeRecordBytes?`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -38,12 +40,12 @@ section RecordBytes
 open DY.Libsignal.Refinement (PbValue encodeField readVarint paddedVarint readVarint_paddedVarint)
 
 /-- Normalizes each pending pre-key pair `p` of `s` to `(p.1 ++ p.2, [])`. -/
-def normPendingS (s : SessionRec) : SessionRec :=
+@[expose] def normPendingS (s : SessionRec) : SessionRec :=
   { s with pendingPreKey := s.pendingPreKey.map fun p => (p.1 ++ p.2, [])
            pendingKyberPreKey := s.pendingKyberPreKey.map fun p => (p.1 ++ p.2, []) }
 
 /-- `normPendingS` on the current session of a record. -/
-def normPending (rec : RecordRec) : RecordRec := { rec with current := normPendingS rec.current }
+@[expose] def normPending (rec : RecordRec) : RecordRec := { rec with current := normPendingS rec.current }
 
 private def pbFields (l : List (Nat × PbValue)) : HwBytes :=
   l.flatMap (fun p => encodeField p.1 0 0 p.2)
@@ -491,6 +493,24 @@ theorem keyInRecord_of_recordBytes_eq {r₁ r₂ : RecordRec} {k : HwBytes}
   have hn := recordBytes_injective h
   rw [← keyInRecord_normPending] at hk ⊢
   rw [← hn]; exact hk
+
+/-- `recordBytes` is invariant under `normPending`. -/
+theorem recordBytes_normPending (rec : RecordRec) :
+    recordBytes (normPending rec) = recordBytes rec := by
+  obtain ⟨⟨_, _, _, _, _, _, _, pp, pk, _, _, _, _⟩, _⟩ := rec
+  cases pp <;> cases pk <;> simp [recordBytes, normPending, normPendingS]
+
+/-- `DY.Libsignal.Rust.decodeRecordBytes?` returns `none` if and only if `b` is outside the image of `recordBytes`. -/
+theorem decodeRecordBytes?_eq_none_iff (b : HwBytes) :
+    DY.Libsignal.Rust.decodeRecordBytes? b = none ↔ ¬ ∃ r : RecordRec, b = recordBytes r := by
+  constructor
+  · rintro hd ⟨r, rfl⟩
+    rw [DY.Libsignal.Rust.decodeRecordBytes?_recordBytes] at hd
+    cases hd
+  · intro h
+    cases hd : DY.Libsignal.Rust.decodeRecordBytes? b with
+    | none => rfl
+    | some rr => exact absurd ⟨rr, DY.Libsignal.Rust.decodeRecordBytes?_sound hd⟩ h
 
 end RecordBytes
 

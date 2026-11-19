@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.GF16Fast
+public import LibsignalBinary.Proofs.SpqrV1.Poly.GF16Fast -- proof-setup: allow-public-import
 
 /-!
 # Pure Evaluators for Precomputed `.rodata` Lagrange Basis Tables
@@ -20,29 +20,21 @@ Boolean equality evaluators and `completePointsPolys_eq_of_fast` bridge for kern
 `COMPLETE_POINTS_POLYS_{1,3,5,30,34,36}`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.NextChunk
 
 open CryptoVerification.LibsignalSpqrV1
 
 /-- The `x = 0, 1, ..., n - 1`, `y = 1` point list used by `lagrangePolysForCompletePoints n`. -/
-def completeOnes (n : Nat) : List Pt :=
+@[expose] def completeOnes (n : Nat) : List Pt :=
   (List.range n).map (fun i => { x := GF16.new (BitVec.ofNat 16 i), y := GF16.ONE })
 
 theorem lagrangePolysForCompletePoints_eq_mapM (n : Nat) :
     lagrangePolysForCompletePoints n =
       (List.range n).mapM (fun i => PolyConst.lagrangeInterpolatePt n (completeOnes n) i) := rfl
 
-theorem except_mapM_nil {ε α β : Type} (f : α → Except ε β) :
-    ([] : List α).mapM f = .ok [] := rfl
-
-theorem except_mapM_cons {ε α β : Type} (f : α → Except ε β) (x : α) (xs : List α)
-    (y : β) (ys : List β) (hy : f x = .ok y) (hys : xs.mapM f = .ok ys) :
-    (x :: xs).mapM f = .ok (y :: ys) := by
-  simp [List.mapM_cons, hy, hys, bind, Except.bind, pure, Except.pure]
-
-def gf16ListBeq : List GF16 → List GF16 → Bool
+@[expose] def gf16ListBeq : List GF16 → List GF16 → Bool
   | [], [] => true
   | a :: as, b :: bs =>
     match Nat.beq a.value.toNat b.value.toNat with
@@ -63,7 +55,7 @@ theorem eq_of_gf16ListBeq :
       rw [hb] at h
       rw [BitVec.eq_of_toNat_eq (Nat.eq_of_beq_eq_true hb), eq_of_gf16ListBeq h]
 
-def polyConstListBeq {n : Nat} : List (PolyConst n) → List (PolyConst n) → Bool
+@[expose] def polyConstListBeq {n : Nat} : List (PolyConst n) → List (PolyConst n) → Bool
   | [], [] => true
   | a :: as, b :: bs =>
     match gf16ListBeq a.coefficients b.coefficients with
@@ -84,7 +76,7 @@ theorem eq_of_polyConstListBeq {n : Nat} :
       rw [hb] at h
       rw [eq_of_gf16ListBeq hb, eq_of_polyConstListBeq h]
 
-def exceptPolysOkBeq {n : Nat} (r : Except PolyPanic (List (PolyConst n)))
+@[expose] def exceptPolysOkBeq {n : Nat} (r : Except PolyPanic (List (PolyConst n)))
     (ys : List (PolyConst n)) : Bool :=
   match r with
   | .ok xs => polyConstListBeq xs ys

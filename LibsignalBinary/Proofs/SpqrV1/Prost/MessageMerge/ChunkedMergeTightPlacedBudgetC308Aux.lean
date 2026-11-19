@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeTightPlacedBudgetC308UcAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeTightPlacedBudgetC308UcAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -29,6 +28,11 @@ import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedNoHeaderReceived
 
 /-!
 # Canonical-Domain Outer Steps & Proof for `Chunked.NoHeaderReceived::merge` (Block `308`)
@@ -38,7 +42,7 @@ Block `308` under `tlb_ChunkedNoHeaderReceivedDom x`, stepping Tag `1` (`uc`), T
 (`receivingHdr`), and the outer `cur.length = outerLimit` exit.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

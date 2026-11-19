@@ -9,13 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedBudgetSteps
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedBudgetSteps
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
+import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
@@ -38,6 +37,12 @@ import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1Acknowledged
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Guarded-Tight Placed Budget Proof for `Chunked.Ct1Acknowledged::merge` (Block `307`)
@@ -48,7 +53,7 @@ Proves `tlb_ChunkedCt1AcknowledgedMergePlacedTightOkOf` on Block `307` within
 `tlb_ChunkedCt1AcknowledgedDom` inputs, falling back to `ChunkedCt1AcknowledgedMergeEnv` outside the domain.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -91,20 +96,7 @@ open CryptoVerification.SpqrV1.ProtoRepr
   (optPolynomialDecoderPBAt vecVecU8Buf vecVecU8PinnedAt_eq_header_buf)
 open CryptoVerification.SpqrV1.ProtoRepr.EncodedLen
   (noneCap_add_one_beq_zero noneCap_add_one_bne_zero)
-open CryptoVerification.SpqrV1.Prost.MessageMerge
-  (ChunkedCt1AcknowledgedMergeGhost ChunkedLoopRegs PolyDecoderMergeGhost SepWPpLscro
-   bv64_add_zero bv64_sub_zero bv_len_sub_limit chunkedBelow chunkedBelow_eq_poly
-   chunkedBelow_eq_unchunked chunkedBelow_leaf chunkedBelow_leaf_entails
-   chunkedCt1AcknowledgedMerge_fnOff chunkedCt1AcknowledgedPBCapAt
-   chunkedCt1AcknowledgedPBCapAt_mono chunkedMergeStack chunkedSavedRegs
-   cmp_len_limit_of_eq cmp_len_limit_of_gt codecWireTypeToProto
-   instIsLsBlockProg_296 memRegion_ct1Sent_none_split memRegion_polyDecoder_none_split
-   optPolyDecoderPtsLen optUnchunkedCt1SentPBCapAt optUnchunkedCt1SentPBCapAt_mono
-   pointsTo64_zero_eq_pointsTo32_pair polyDecoderToProto
-   protoPolynomialDecoderAt_eq_pb proto_mergeMessage_len_le proto_mergeMessage_suffix
-   setWidth8_ofNat64_wt stackAt_chunkedMerge
-   subroutine_ok_withLsCodeRoLoaded_of_withLscroProp vecU8At_eq_header_sep_buf vecU8Buf
-   withLscroProp wt_beq_two_of_lengthDelimited)
+open CryptoVerification.SpqrV1.Prost.MessageMerge (ChunkedCt1AcknowledgedMergeGhost ChunkedLoopRegs PolyDecoderMergeGhost SepWPpLscro bv64_add_zero bv64_sub_zero bv_len_sub_limit chunkedBelow chunkedBelow_eq_poly chunkedBelow_eq_unchunked chunkedBelow_leaf chunkedBelow_leaf_entails chunkedCt1AcknowledgedPBCapAt chunkedCt1AcknowledgedPBCapAt_mono chunkedMergeStack chunkedSavedRegs cmp_len_limit_of_eq cmp_len_limit_of_gt codecWireTypeToProto instIsLsBlockProg_296 memRegion_ct1Sent_none_split memRegion_polyDecoder_none_split optPolyDecoderPtsLen optUnchunkedCt1SentPBCapAt optUnchunkedCt1SentPBCapAt_mono pointsTo64_zero_eq_pointsTo32_pair polyDecoderToProto protoPolynomialDecoderAt_eq_pb proto_mergeMessage_len_le proto_mergeMessage_suffix setWidth8_ofNat64_wt stackAt_chunkedMerge subroutine_ok_withLsCodeRoLoaded_of_withLscroProp vecU8At_eq_header_sep_buf vecU8Buf withLscroProp wt_beq_two_of_lengthDelimited)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.ChunkedMerge (UnchunkedCt1SentMergeGhost)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.Part2
   (blkPC_307 blkPl_307 instIsLsBlockProg_307)
@@ -163,8 +155,7 @@ open LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget (skipField3Spec)
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff VmPreserved
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   noneCap_add_one_beq_zero noneCap_add_one_bne_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero
-  chunkedCt1AcknowledgedMerge_fnOff setWidth8_ofNat64_wt
+attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero setWidth8_ofNat64_wt
 
 @[local simp, local arm64_norm]
 private theorem e2b307_iwt_w0_setWidth8_1 (iwt : WireType) :

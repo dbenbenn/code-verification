@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DefsBudget
-public import LibsignalBinary.Proofs.E2E.Bin.SpecsCommon
+public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Bin.SpecsCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `E2E.Bin.SpecsCommon` Contracts
@@ -20,7 +21,7 @@ Budget-threaded (`RustCliAllocBudget M`) `recordDeserializeOpenSpec` over `Recor
 and its 1 GiB non-vacuity witness.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +38,7 @@ open LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DefsBudget (
 
 /-- Budget-threaded `SessionRecord::deserialize` on a canonical encoded `SessionRecord`, bounded
 by `RecordDeserializeEnv bs` with `onOom = ⌜False⌝` and `onPanic = ⌜False⌝`. -/
-def recordDeserializeOpenSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def recordDeserializeOpenSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec ((BitVec 64 × List (BitVec 8) × BitVec 64 × Session (List (BitVec 8))) × M.σ) where
   pre := fun (x, st) s =>
     let (_, bs, _, _) := x

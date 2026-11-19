@@ -10,9 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlaced
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2a -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Budget-Threaded Variant 1 (`KeysSampled`) — Part D
@@ -21,7 +25,7 @@ Relocatable Block-`333` `sendingHdr` dispatch and staging (`+4016 -> +5860 | +40
 `VmPreserved` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 400000

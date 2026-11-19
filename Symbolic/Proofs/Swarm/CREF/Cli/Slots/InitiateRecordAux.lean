@@ -22,7 +22,7 @@ byte agreement and 118-byte length, and bounds `encodeRecordUnderExtras` to
 preserve `PqxdhPartyInSpecDomain` after `initiateState`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

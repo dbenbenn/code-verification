@@ -18,7 +18,7 @@ Provides `HookOk.of_trace` to lift an engine `HookOk f spec` witness to a streng
 `f` preserves `State.trace`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.HookTrace
 

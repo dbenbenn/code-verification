@@ -13,43 +13,48 @@ public import Arm64.Trusted.Process.Semantics
 public import LibsignalBinary.Heap.Fine.ClientBounds
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
-public import LibsignalBinary.Proofs.PeakBudget.CliMainIoCredit
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+public import LibsignalBinary.Proofs.PeakBudget.CliMainIoCredit -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
-public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal
-public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
-public import LibsignalBinary.Proofs.PeakBudget.DirPeakHelpers
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB
-public import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTightCredit
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserProfile
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliBinaryPqProofDefs
+public import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
+import LibsignalBinary.Proofs.PeakBudget.CliRunPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal
+import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
+import LibsignalBinary.Proofs.PeakBudget.DirPeakHelpers
+import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB
+import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTightCredit
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserProfile
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliBinaryPqProofDefs
 public import LibsignalBinary.Specifications.LibsignalE2E.SchemeModel
 public import LibsignalBinary.Specifications.SignalSession.PqDir
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
 
 /-!
 # Whole-`main` `RealCliMainEnvOf` Domain Adapter
 
 Proves `∀ i, CliPqxdhInputs W i → FitsEnv fineCostModel lim fineCostModel.init (RealCliMainEnvOf E i)`
-both parametrically in `(SE, hSlots)` and unconditionally at `mkExistentialRealCalleeEnvs img S W`
-(with `< 90%` of `1 GiB` physical RAM footprint `962,211,497 ≤ 966,367,641` B), plus unconditional
-`argvLen ≤ 1820` setup/early-exit `FitsEnv` bounds and `recv-prekey` non-vacuity witnesses.
+parametrically in `(SE, hSlots)`, plus unconditional `argvLen ≤ 1820` setup/early-exit `FitsEnv`
+bounds and `recv-prekey` non-vacuity witnesses.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 namespace LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
 
@@ -101,8 +106,7 @@ open LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
    m5DirStep_phaseCredit m6DeltaCum m6_phaseCredit_small1024 readFileDeltaCum_tight
    readStdinDeltaCum_tight readStdinDeltaLive readStdinDeltaPeak readStdinMaxReq)
 open LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
-  (cliIo_rd_ok_length_le_sessionCapBytes existentialRealCalleeFineSpecs
-   existentialRealCalleeFineSpecs_direct_run_bounds mkExistentialRealCalleeEnvs)
+  (cliIo_rd_ok_length_le_sessionCapBytes)
 open LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
   (CliRunCalleeEnvs CliRunOpenedEnv cliRunOpened_tight_phaseCredit fineCostModel_cliRunTightHyps)
 open LibsignalBinary.Proofs.PeakBudget.CliRunPeakSpec
@@ -607,28 +611,28 @@ theorem cliRunOpened_real_1MiB_fine_phaseCredit_of_cliPqInputs
 
 /-! ## 3. Pre-`M4` Setup, Over-Cap Early Exit, and `RealCliMainEnvOf` Envelopes -/
 
-def M2CollectFullEnv (argvLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def M2CollectFullEnv (argvLen : Nat) (evs : List AllocEvent) : Prop :=
   M2CollectEnv argvLen evs ∨
   SeqEnv (· = rustAllocEvents 64 8) (IterSeqEnv M2CollectStepEnv (List.range' 1 (argvLen - 1))) evs
 
-def AddrOptBoundedEnv (evs : List AllocEvent) : Prop :=
+@[expose] def AddrOptBoundedEnv (evs : List AllocEvent) : Prop :=
   evs = [] ∨ ∃ n : Nat, n ≤ 16384 ∧ evs = rustAllocEvents n 1
 
-def BundleOptBoundedEnv (evs : List AllocEvent) : Prop :=
+@[expose] def BundleOptBoundedEnv (evs : List AllocEvent) : Prop :=
   evs = [] ∨ ∃ n : Nat, n ≤ 16384 ∧ evs = rustAllocEvents n 1
 
-def BoundedReadStdinEnv (evs : List AllocEvent) : Prop :=
+@[expose] def BoundedReadStdinEnv (evs : List AllocEvent) : Prop :=
   evs = [] ∨ (∃ bs : List (BitVec 8), bs.length ≤ msgCapBytes ∧ evs = allocBytes1Events bs) ∨
   SeqEnv (fun e => ∃ r : Nat, e = cliIoCapEvents (cliIoReadCaps 8 r)) FreeOnlyEvs evs
 
-def BoundedReadFileEnv (evs : List AllocEvent) : Prop :=
+@[expose] def BoundedReadFileEnv (evs : List AllocEvent) : Prop :=
   evs = [] ∨ (∃ bs : List (BitVec 8), bs.length ≤ sessionCapBytes ∧ evs = allocBytes1Events bs) ∨
   SeqEnv (fun e => ∃ r : Nat, e = cliIoCapEvents (cliIoReadCaps 9 r)) FreeOnlyEvs evs
 
-def M3BoundedSetupEnv (evs : List AllocEvent) : Prop :=
+@[expose] def M3BoundedSetupEnv (evs : List AllocEvent) : Prop :=
   SeqEnv BoundedReadStdinEnv (SeqEnv BoundedReadFileEnv FreeOnlyEvs) evs
 
-def CliMainBoundedSetupEnv (argvLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def CliMainBoundedSetupEnv (argvLen : Nat) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ SeqEnv (M1PhaseEnv argvLen)
     (SeqEnv (M2CollectFullEnv argvLen)
       (SeqEnv AddrOptBoundedEnv
@@ -648,7 +652,7 @@ structure ValidPostSetupWitness (i : Inputs) where
   ok : Bool
 
 /-- Unfolded whole-`main` allocator trace predicate on `i : Inputs` over callee slot family `E`. -/
-def RealCliMainEnvOf (E : RunCall → CliRunCalleeEnvs) (i : Inputs) (evs : List AllocEvent) : Prop :=
+@[expose] def RealCliMainEnvOf (E : RunCall → CliRunCalleeEnvs) (i : Inputs) (evs : List AllocEvent) : Prop :=
   SeqEnv (CliMainBoundedSetupEnv i.argv.length) (fun evs' =>
     FreeOnlyEvs evs' ∨ ∃ w : ValidPostSetupWitness i, w.g.i = i ∧
       SeqEnv (CliRunOpenedEnv cliIo.rd (E w.g) sessionCapBytes w.g)
@@ -1066,29 +1070,29 @@ private theorem boundedReadFile_fine_groupSpec :
       (PhaseGroupSpec.freeOnly fineCostModel)))).mono (by unfold FineScale; decide)
 
 /-- Tight `fineCostModel` widened setup group bound (`argvLen ≤ 3`, `AddrOpt` + `BundleOpt` `≤ 16384`). -/
-def cliMainWidenedSetupFineGrpS : Nat :=
+@[expose] def cliMainWidenedSetupFineGrpS : Nat :=
   24623 + 72 * FineScale
 
 /-- Closed-form whole-`main` `Δcum` with widened `16384`-B `AddrOpt`/`BundleOpt` setup (`123,250` B pre-`M3`). -/
-def cliMainWidenedCumOf (runCumCap : Nat) : Nat :=
+@[expose] def cliMainWidenedCumOf (runCumCap : Nat) : Nat :=
   123250 + m3PhaseDeltaCum_tight + runCumCap +
     cliMaxDirtyEntries * (10 * max (4 * cliMaxDirPathBytes + cliMaxAddrTextBytes + 16) 16 + 4 * 9539) +
     m6DeltaCum
 
 /-- Closed-form whole-`main` scaled group count `grpS` with widened setup. -/
-def cliMainWidenedGrpSOf (runGrpSCap : Nat) : Nat :=
+@[expose] def cliMainWidenedGrpSOf (runGrpSCap : Nat) : Nat :=
   cliMainWidenedSetupFineGrpS + runGrpSCap + cliMaxDirtyEntries * (12 * FineScale) + 3 * FineScale
 
 /-- Closed-form whole-`main` integer group ceiling `(grpS + FineScale - 1) / FineScale` with widened setup. -/
-def cliMainWidenedGrpCountOf (runGrpSCap : Nat) : Nat :=
+@[expose] def cliMainWidenedGrpCountOf (runGrpSCap : Nat) : Nat :=
   (cliMainWidenedGrpSOf runGrpSCap + FineScale - 1) / FineScale
 
 /-- Closed-form whole-`main` `stepReserve` with widened setup. -/
-def cliMainWidenedStepReserveOf (runReqCap runGrpSCap : Nat) : Nat :=
+@[expose] def cliMainWidenedStepReserveOf (runReqCap runGrpSCap : Nat) : Nat :=
   fineStepReserveOfGroups (cliMainTightReqOf runReqCap) 16 (cliMainWidenedGrpCountOf runGrpSCap)
 
 /-- Set-A (`cliRealRunReqCap`, `cliRealRunGrpSCap`) whole-`main` `stepReserve` with widened setup. -/
-def cliRealWidenedMainStepReserve : Nat :=
+@[expose] def cliRealWidenedMainStepReserve : Nat :=
   cliMainWidenedStepReserveOf cliRealRunReqCap cliRealRunGrpSCap
 
 private theorem cliMainBoundedSetup_phaseCredit_fine {argvLen : Nat} (hargv : argvLen ≤ 3) :
@@ -1566,200 +1570,6 @@ theorem realCliMainEnvOf_fitsEnv_cliBudgetLimits_uniform
       FitsEnv fineCostModel cliBudgetLimits fineCostModel.init (RealCliMainEnvOf E i) :=
   realCliMainEnvOf_fitsEnv_cliBudgetLimits (fun g _ => SE g) (fun g _ => hSlots g) hSessCap
 
-/-! ## 5. Unconditional Concrete `mkExistentialRealCalleeEnvs` Whole-`main` `FitsEnv` -/
-
-/-- Canonical direct-5-slot whole-`main` `stepReserve` under Variant (i)
-(`W4RecvPrekeyRealDomOf sessionCapBytes msgCapBytes`, widened setup). -/
-def cliRealDirectMainStepReserve_i : Nat :=
-  cliMainWidenedStepReserveOf cliRealDirectRunMaxReq_i cliRealDirectRunGrpS_i
-
-private theorem cliRealDirectWidened_90pct_literals :
-    cliDecoupledRamNeed cliDefaultStaticBytes (cliMainWidenedCumOf cliRealDirectRunCum_i)
-      (cliMainTightPeakOf cliRealDirectRunLive_i cliRealDirectRunPeak_i)
-      (cliMainTightReqOf cliRealDirectRunMaxReq_i)
-      (cliMainWidenedGrpCountOf cliRealDirectRunGrpS_i) ≤ cliRealNinetyPctOneGiB ∧
-    cliDecoupledVaNeed cliDefaultStaticBytes cliDefaultStaticCount
-      (cliMainWidenedCumOf cliRealDirectRunCum_i)
-      (cliMainTightPeakOf cliRealDirectRunLive_i cliRealDirectRunPeak_i)
-      (cliMainTightReqOf cliRealDirectRunMaxReq_i)
-      (cliMainWidenedGrpCountOf cliRealDirectRunGrpS_i) ≤ 2 ^ 48 :=
-  ⟨by decide, by decide⟩
-
-private theorem realCliMainEnvOf_90pct_bounds_direct {lim : BudgetLimits}
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes) (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap90 : cliRealNinetyPctOneGiB ≤ lim.physCap) :
-    cliMainTightLiveOf cliRealDirectRunLive_i ≤
-      cliMainTightPeakOf cliRealDirectRunLive_i cliRealDirectRunPeak_i ∧
-    cliDecoupledRamNeed lim.staticBytes (cliMainWidenedCumOf cliRealDirectRunCum_i)
-      (cliMainTightPeakOf cliRealDirectRunLive_i cliRealDirectRunPeak_i)
-      (cliMainTightReqOf cliRealDirectRunMaxReq_i)
-      (cliMainWidenedGrpCountOf cliRealDirectRunGrpS_i) ≤ lim.physCap ∧
-    cliDecoupledVaNeed lim.staticBytes lim.staticCount (cliMainWidenedCumOf cliRealDirectRunCum_i)
-      (cliMainTightPeakOf cliRealDirectRunLive_i cliRealDirectRunPeak_i)
-      (cliMainTightReqOf cliRealDirectRunMaxReq_i)
-      (cliMainWidenedGrpCountOf cliRealDirectRunGrpS_i) ≤ 2 ^ 48 :=
-  ⟨by unfold cliMainTightLiveOf cliMainTightPeakOf cliMainDeltaLive_tight cliMainDeltaPeak_tight
-      exact Nat.le_trans (Nat.add_le_add_left
-        (Nat.le_trans (Nat.le_add_right _ _) (Nat.le_max_right _ _)) _) (Nat.le_max_right _ _),
-   Nat.le_trans
-     (cliDecoupledRamNeed_mono hsb (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _))
-     (Nat.le_trans cliRealDirectWidened_90pct_literals.1 hcap90),
-   Nat.le_trans
-     (cliDecoupledVaNeed_mono hsb hsc (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _))
-     cliRealDirectWidened_90pct_literals.2⟩
-
-/-- Unconditional concrete `PhaseCreditSpec fineCostModel` on
-`RealCliMainEnvOf (mkExistentialRealCalleeEnvs img S W) i`. -/
-theorem realCliMainEnvOf_phaseCredit_fine_concrete [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) {W : PEParams} {i : Inputs}
-    (hi : CliPqxdhInputs W i) :
-    PhaseCreditSpec fineCostModel (RealCliMainEnvOf (mkExistentialRealCalleeEnvs img S W) i)
-      (cliMainWidenedCumOf cliRealDirectRunCum_i) (cliMainTightLiveOf cliRealDirectRunLive_i)
-      (cliMainTightPeakOf cliRealDirectRunLive_i cliRealDirectRunPeak_i)
-      (cliMainTightReqOf cliRealDirectRunMaxReq_i) := by
-  have hsm1024 : 1024 ≤ HasFineReallocCredit.smallMaxReq fineCostModel := by
-    rw [fineCostModel_smallMaxReq_eq]; decide
-  have hw (w : ValidPostSetupWitness i) : PhaseCreditSpec fineCostModel
-      (SeqEnv (CliRunOpenedEnv cliIo.rd (mkExistentialRealCalleeEnvs img S W w.g) sessionCapBytes w.g)
-        (SeqEnv (M5PhaseEnv w.dirs) (M6Env w.ok)))
-      (cliRealDirectRunCum_i + cliMaxDirtyEntries *
-        (10 * max (4 * cliMaxDirPathBytes + cliMaxAddrTextBytes + 16) 16 + 4 * 9539) + m6DeltaCum)
-      cliRealDirectRunLive_i
-      (max cliRealDirectRunPeak_i
-        (cliRealDirectRunLive_i + m5DirStepDeltaPeak cliMaxDirPathBytes cliMaxAddrTextBytes))
-      (max cliRealDirectRunMaxReq_i (max 1024 (m5DirStepMaxReq cliMaxDirPathBytes cliMaxAddrTextBytes))) := by
-    have hi_g : CliPqxdhInputs W w.g.i := w.g_i.symm ▸ hi
-    let SE := existentialRealCalleeFineSpecs img S hi_g w.parse_ok
-    obtain ⟨h1, h2, h3, h4, _⟩ :=
-      existentialRealCalleeFineSpecs_direct_run_bounds img S hi_g w.parse_ok
-    have hrun :=
-      (cliRunOpened_real_1MiB_fine_phaseCredit_of_cliPqInputs SE hi_g w.stdin_le w.parse_ok).mono
-        h1 h2 h3 h4
-    refine (hrun.seq ((m5Phase_Bounded_phaseCredit_fine w.dirs_sum_le w.dirs_bounds).seq
-      (m6_phaseCredit_small1024 fineCostModel_modelHyps hsm1024 w.ok))).mono ?_ ?_ ?_ ?_
-    · rw [Nat.add_assoc]; exact Nat.le_refl _
-    · simp only [Nat.add_zero]; exact Nat.le_refl _
-    · exact max_mono (Nat.le_refl _)
-        (Nat.add_le_add_left (Nat.max_le.mpr ⟨Nat.le_refl _, Nat.zero_le _⟩) _)
-    · exact max_mono (Nat.le_refl _) (Nat.le_of_eq (Nat.max_comm _ _))
-  have hex : PhaseCreditSpec fineCostModel
-      (fun evs' => ∃ w : ValidPostSetupWitness i, w.g.i = i ∧
-        SeqEnv (CliRunOpenedEnv cliIo.rd (mkExistentialRealCalleeEnvs img S W w.g) sessionCapBytes w.g)
-          (SeqEnv (M5PhaseEnv w.dirs) (M6Env w.ok)) evs')
-      (cliRealDirectRunCum_i + cliMaxDirtyEntries *
-        (10 * max (4 * cliMaxDirPathBytes + cliMaxAddrTextBytes + 16) 16 + 4 * 9539) + m6DeltaCum)
-      cliRealDirectRunLive_i
-      (max cliRealDirectRunPeak_i
-        (cliRealDirectRunLive_i + m5DirStepDeltaPeak cliMaxDirPathBytes cliMaxAddrTextBytes))
-      (max cliRealDirectRunMaxReq_i (max 1024 (m5DirStepMaxReq cliMaxDirPathBytes cliMaxAddrTextBytes))) :=
-    { req_align := fun evs ⟨w, _, hseq⟩ ev hev => (hw w).req_align evs hseq ev hev
-      credit_le := fun st0 {_} ⟨w, _, hseq⟩ => (hw w).credit_le st0 hseq }
-  have htail := ((PhaseCreditSpec.freeOnly fineCostModel_modelHyps.freeNonInc).or hex).mono
-    (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩) (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩)
-    (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩) (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩)
-  refine ((cliMainBoundedSetup_phaseCredit_fine (argv_length_le_of_cliPqInputs hi)).seq htail).mono
-    ?_ ?_ ?_ ?_
-  · unfold cliMainWidenedCumOf; simp only [Nat.add_assoc]; exact Nat.le_refl _
-  · unfold cliMainTightLiveOf cliMainDeltaLive_tight; exact Nat.le_refl _
-  · unfold cliMainTightPeakOf cliMainDeltaPeak_tight; exact Nat.le_refl _
-  · unfold cliMainTightReqOf cliMainMaxReq
-    have h16k : max 16384 (m3PhaseMaxReq msgCapBytes sessionCapBytes) =
-        m3PhaseMaxReq msgCapBytes sessionCapBytes := by
-      unfold m3PhaseMaxReq msgCapBytes sessionCapBytes; decide
-    rw [h16k]
-
-/-- Unconditional concrete `PhaseGroupSpec fineCostModel` on
-`RealCliMainEnvOf (mkExistentialRealCalleeEnvs img S W) i`. -/
-theorem realCliMainEnvOf_fine_groupSpec_concrete [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) {W : PEParams} {i : Inputs}
-    (hi : CliPqxdhInputs W i) :
-    PhaseGroupSpec fineCostModel (RealCliMainEnvOf (mkExistentialRealCalleeEnvs img S W) i)
-      (cliMainWidenedGrpSOf cliRealDirectRunGrpS_i) := by
-  have hex : PhaseGroupSpec fineCostModel
-      (fun evs' => ∃ w : ValidPostSetupWitness i, w.g.i = i ∧
-        SeqEnv (CliRunOpenedEnv cliIo.rd (mkExistentialRealCalleeEnvs img S W w.g) sessionCapBytes w.g)
-          (SeqEnv (M5PhaseEnv w.dirs) (M6Env w.ok)) evs')
-      (cliRealDirectRunGrpS_i + cliMaxDirtyEntries * (12 * FineScale) + 3 * FineScale) :=
-    { groups_le := fun st0 {_} ⟨w, _, hseq⟩ => by
-        have hi_g : CliPqxdhInputs W w.g.i := w.g_i.symm ▸ hi
-        let SE := existentialRealCalleeFineSpecs img S hi_g w.parse_ok
-        obtain ⟨_, _, _, _, h5⟩ :=
-          existentialRealCalleeFineSpecs_direct_run_bounds img S hi_g w.parse_ok
-        have hrun := (cliRunOpened_real_fine_groupSpec (wireOutCap := sessionCapBytes)
-          SE w.stdin_le).mono h5
-        have hm5 := (m5PhaseEnv_groupSpec fineCostModel w.dirs).mono
-          (Nat.mul_le_mul_right (12 * FineScale) w.dirs_sum_le)
-        have htot : PhaseGroupSpec fineCostModel
-            (SeqEnv (CliRunOpenedEnv cliIo.rd (mkExistentialRealCalleeEnvs img S W w.g) sessionCapBytes w.g)
-              (SeqEnv (M5PhaseEnv w.dirs) (M6Env w.ok)))
-            (cliRealDirectRunGrpS_i + cliMaxDirtyEntries * (12 * FineScale) + 3 * FineScale) :=
-          (hrun.seq (hm5.seq (m6Env_groupSpec fineCostModel w.ok))).mono (by omega)
-        exact htot.groups_le st0 hseq }
-  have htail := ((PhaseGroupSpec.freeOnly fineCostModel).or hex).mono
-    (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩)
-  exact ((cliMainBoundedSetup_fine_groupSpec (argv_length_le_of_cliPqInputs hi)).seq htail).mono
-    (by unfold cliMainWidenedGrpSOf; omega)
-
-/-- Unconditional `< 90%` (`962,211,497 ≤ 966,367,641` B) concrete whole-`main`
-`FitsTrace fineCostModel` at `mkExistentialRealCalleeEnvs img S W`. -/
-theorem realCliMainEnvOf_90pct_fitsTrace_concrete [LibsignalPlacement]
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap90 : cliRealNinetyPctOneGiB ≤ lim.physCap)
-    (img : Arm64.Obj.Image) (S : RunSem) (W : PEParams)
-    {i : Inputs} (hi : CliPqxdhInputs W i)
-    {fullLog : List AllocEvent}
-    (hEnv : RealCliMainEnvOf (mkExistentialRealCalleeEnvs img S W) i fullLog) :
-    FitsTrace fineCostModel lim cliRealDirectMainStepReserve_i fullLog := by
-  obtain ⟨hlp, hram, hva⟩ := realCliMainEnvOf_90pct_bounds_direct hsb hsc hcap90
-  exact fitsTrace_fineCostModel_of_group_literal_bounds
-    (realCliMainEnvOf_phaseCredit_fine_concrete img S hi)
-    (realCliMainEnvOf_fine_groupSpec_concrete img S hi)
-    (Nat.le_refl _) hlp (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _) henf hram hva hEnv
-
-/-- Unconditional `< 90%` (`962,211,497 ≤ 966,367,641` B) concrete whole-`main`
-`FitsEnv fineCostModel` at `mkExistentialRealCalleeEnvs img S W`. -/
-theorem realCliMainEnvOf_90pct_fitsEnv_concrete [LibsignalPlacement]
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap90 : cliRealNinetyPctOneGiB ≤ lim.physCap)
-    (img : Arm64.Obj.Image) (S : RunSem) (W : PEParams) :
-    ∀ i : Inputs, CliPqxdhInputs W i →
-      FitsEnv fineCostModel lim fineCostModel.init
-        (RealCliMainEnvOf (mkExistentialRealCalleeEnvs img S W) i) := by
-  intro i hi
-  obtain ⟨hlp, hram, hva⟩ := realCliMainEnvOf_90pct_bounds_direct hsb hsc hcap90
-  exact fitsEnv_fineCostModel_of_group_literal_bounds
-    (realCliMainEnvOf_phaseCredit_fine_concrete img S hi)
-    (realCliMainEnvOf_fine_groupSpec_concrete img S hi)
-    (Nat.le_refl _) hlp (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _) henf hram hva
-
-/-- Unconditional `≤ 1 GiB` concrete whole-`main` `FitsEnv fineCostModel` at `mkExistentialRealCalleeEnvs img S W`. -/
-theorem realCliMainEnvOf_fitsEnv_concrete [LibsignalPlacement]
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap1G : cliOneGiB ≤ lim.physCap)
-    (img : Arm64.Obj.Image) (S : RunSem) (W : PEParams) :
-    ∀ i : Inputs, CliPqxdhInputs W i →
-      FitsEnv fineCostModel lim fineCostModel.init
-        (RealCliMainEnvOf (mkExistentialRealCalleeEnvs img S W) i) :=
-  realCliMainEnvOf_90pct_fitsEnv_concrete henf hsb hsc
-    (Nat.le_trans (by unfold cliRealNinetyPctOneGiB cliOneGiB; decide) hcap1G) img S W
-
-/-- Unconditional `cliBudgetLimits` (`1 GiB`) concrete whole-`main` `FitsEnv fineCostModel` at `mkExistentialRealCalleeEnvs img S W`. -/
-theorem realCliMainEnvOf_fitsEnv_cliBudgetLimits_concrete [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) (W : PEParams) :
-    ∀ i : Inputs, CliPqxdhInputs W i →
-      FitsEnv fineCostModel cliBudgetLimits fineCostModel.init
-        (RealCliMainEnvOf (mkExistentialRealCalleeEnvs img S W) i) :=
-  realCliMainEnvOf_90pct_fitsEnv_concrete rfl (Nat.le_refl _) (Nat.le_refl _)
-    (by unfold cliBudgetLimits cliRealNinetyPctOneGiB cliOneGiB; decide) img S W
 
 /-! ## 6. Non-Vacuity Theorems (`recv-prekey` `3#8` Allocating Trace) -/
 
@@ -1775,14 +1585,7 @@ theorem realCliMainEnvOf_recvPrekey_nonvacuous (E : PEParams → RunCall → Cli
   exact realCliMainEnvOf_of_cliMainEnv hd.toCliPqxdhInputs uuidTryParse none false [] false
     ⟨hd.parseArgs_eq, hd.toCliPqDomainCaps.stdin_le, Nat.zero_le _, fun _ hm => nomatch hm⟩ hEnv
 
-/-- Concrete allocating non-vacuity witness on
-`RealCliMainEnvOf (mkExistentialRealCalleeEnvs img S P₀) i₀` (`alloc 72` and `realloc 1 2048 1569`). -/
-theorem realCliMainEnvOf_concrete_recvPrekey_nonvacuous [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) :
-    ∃ (P₀ : PEParams) (i₀ : Inputs) (fullLog : List AllocEvent),
-      CliPqxdhInputs P₀ i₀ ∧
-      RealCliMainEnvOf (mkExistentialRealCalleeEnvs img S P₀) i₀ fullLog ∧
-      AllocEvent.alloc 72 ∈ fullLog ∧ AllocEvent.realloc 1 2048 1569 ∈ fullLog :=
-  realCliMainEnvOf_recvPrekey_nonvacuous (mkExistentialRealCalleeEnvs img S) (fun _ _ => rfl)
+abbrev realCliMainEnvOf_concrete_recvPrekey_nonvacuous :=
+  @realCliMainEnvOf_recvPrekey_nonvacuous
 
 end LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter

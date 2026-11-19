@@ -10,8 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineInst
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineInst
 import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Fields
+public import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Defs
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.ChainBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserializeBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.Potential
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
 
 /-!
 # Scratch-Cancellation Envelopes for `SessionRecord::deserialize`
@@ -23,7 +29,7 @@ deallocations), proves per-event request and alignment bounds
 closed `fineCostModel` cumulative small-slot byte bound `deserCancelFineCumExpr`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -81,14 +87,14 @@ open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserializ
 /-- Record-indexed cancellation environment for `SessionRecord::deserialize` (Block `46`,
 `lsProg_46 H`) on `DeserializeScopeP_Q NonEmptyV1Q`: binds `evs` to the exact trace
 `sessDeserEvents r` (which includes every `bytesVtableDrop` `.free` scratch deallocation). -/
-def SessDeserializeCancelEnv (r : SessionRecord (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
+@[expose] def SessDeserializeCancelEnv (r : SessionRecord (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
   DeserializeScopeP_Q NonEmptyV1Q r ∧ evs = sessDeserEvents r
 
 /-- Wire-byte-indexed cancellation environment for `load_session` / `SessionRecord::deserialize`:
 either `bs = [] ∧ evs = []` (empty session file fast path, returning `None` with `0` allocations),
 or `bs = encodeRecord r` for some `r` in `DeserializeScopeP_Q NonEmptyV1Q` with
 `evs = sessDeserEvents r`. -/
-def RecordDeserializeCancelEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def RecordDeserializeCancelEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   (bs = [] ∧ evs = []) ∨
     ∃ r : SessionRecord (List (BitVec 8)),
       bs = encodeRecord r ∧ DeserializeScopeP_Q NonEmptyV1Q r ∧ evs = sessDeserEvents r
@@ -220,7 +226,7 @@ theorem recvCount_recFieldsQ_le_five {Q : List (BitVec 8) → Prop}
     simp only [List.map_nil, hc3, hc6, hc14, show recvCount [] = 0 from rfl] <;>
     omega
 
-def chainHdrFields (c : ChainG) : List ChainField :=
+@[expose] def chainHdrFields (c : ChainG) : List ChainField :=
   (if c.srk = [] then [] else [ChainField.srk c.srk]) ++
     (if c.priv = [] then [] else [ChainField.priv c.priv]) ++
     (match c.ck with | some (i, k) => [ChainField.ck i k] | none => [])
@@ -228,11 +234,6 @@ def chainHdrFields (c : ChainG) : List ChainField :=
 theorem chain_fields_eq_hdr_append_keys (c : ChainG) :
     c.fields = chainHdrFields c ++ c.keys.map ChainField.key :=
   rfl
-
-theorem chainHdrFields_length_le (c : ChainG) :
-    (chainHdrFields c).length ≤ 3 := by
-  unfold chainHdrFields
-  rcases c.ck with _ | ⟨i, k⟩ <;> split_ifs <;> simp
 
 theorem chainHdrFields_no_key (c : ChainG) {f : ChainField} (hf : f ∈ chainHdrFields c) :
     (∀ mkg, f ≠ .key mkg) ∧
@@ -353,10 +354,10 @@ theorem vecCap4Of_le_2048_of_le_2000 {n : Nat} (hn : n ≤ 2000) :
       _ = 4 := by decide
       _ ≤ 2048 := by decide
 
-def growPoints2000 : List Nat :=
+@[expose] def growPoints2000 : List Nat :=
   [0, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
 
-def growPoints5 : List Nat :=
+@[expose] def growPoints5 : List Nat :=
   [0, 4]
 
 theorem isPow2Cap4_lt_2000 {j : Nat} (hp : IsPow2Cap4 j) (hlt : j < 2000) :
@@ -791,19 +792,19 @@ theorem sessDeserEvents_req_align_2MiB
 
 /-- Closed `fineCostModel` `cumSmall` upper bound for a single receiver chain
 (`≤ 2,000` message keys, `priv = []`, `srk` `33 B`, `ck` `32 B`, `Vec<104>` cap `≤ 2,048`). -/
-def deserRecvChainFineCum : Nat :=
+@[expose] def deserRecvChainFineCum : Nat :=
   bytesFreshSmallCost fineCostModel 33 +
     2001 * bytesFreshSmallCost fineCostModel 32 +
     vec104CumOfCap fineCostModel 2048
 
 /-- Closed `fineCostModel` `cumSmall` upper bound for the sender chain
 (`keys = []`, `srk` `33 B`, `priv` `32 B`, `ck` `32 B`). -/
-def deserSenderChainFineCum : Nat :=
+@[expose] def deserSenderChainFineCum : Nat :=
   bytesFreshSmallCost fineCostModel 33 + 2 * bytesFreshSmallCost fineCostModel 32
 
 /-- Closed `fineCostModel` `cumSmall` expression bounding `sessDeserSmallCost fineCostModel r`
 across all `r` in `DeserializeScopeP_Q NonEmptyV1Q` (independent of `|encodeRecord r|`). -/
-def deserCancelFineCumExpr : Nat :=
+@[expose] def deserCancelFineCumExpr : Nat :=
   4 * bytesFreshSmallCost fineCostModel 33 +
     bytesFreshSmallCost fineCostModel 32 +
     deserSenderChainFineCum +

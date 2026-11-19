@@ -9,12 +9,21 @@ limitations under the License.
 
 module
 
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegErrTeardownPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.ExtDefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegErrTeardownExtPlaced
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegErrTeardownPlacedBudget
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.ExtDefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegErrTeardownExtPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegErrTeardownPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegSaveAuxPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegSavePlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegSaveAuxPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegStoreAuxPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable `SegErrTeardown` (`+0x2294 / +0x22a8 → +0x24d4`)
@@ -23,7 +32,7 @@ Proves budget-threaded (`RustCliAllocBudget M`) relocatable `segErrTeardownVX_pl
 `lsProg_463 H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Stage1Kyber -- shake: keep
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeIdInv
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch
-public import Symbolic.Proofs.Swarm.CREF.TR.SpqrSemDef
+import Symbolic.Proofs.Swarm.CREF.Stage1Kyber -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeIdInv -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.SpqrSemDef -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepRatchetDHAtPureA
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepRatchetDHAtPureB
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSpqrHonestPure
@@ -35,7 +35,7 @@ seed or an `AuthenticDecryptRep` witness with `TermShapeId` when a DH-ratchet de
 without a receive collision.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false

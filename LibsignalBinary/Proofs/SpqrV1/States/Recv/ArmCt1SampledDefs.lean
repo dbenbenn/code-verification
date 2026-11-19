@@ -11,7 +11,8 @@ module
 
 public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Defs
 public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Defs
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.Decodes
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.Decodes -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<States>::recv` — `.ct1Sampled` Arm Definitions
@@ -20,7 +21,7 @@ public import LibsignalBinary.Proofs.SpqrV1.States.Recv.Decodes
 helpers (`Words5`, `Words50`, `Split928`) for the inlined `.ct1Sampled` arm (`0x55a4c`, `+1528`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.Recv
 
@@ -47,29 +48,6 @@ set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
-
-theorem fnAddr_adrp_59620 {b : BitVec 64} {H : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr statesRecvName + 16844#64) &&&
-      0xfffffffffffff000#64) = b + 0x54000#64 := by
-  rw [Program.fnAddr_rebase, statesRecv_fnOff]
-  revert hb; bv_bits
-
-theorem fnAddr_adrp_5977c {b : BitVec 64} {H : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr statesRecvName + 17192#64) &&&
-      0xfffffffffffff000#64) = b + 0x54000#64 := by
-  rw [Program.fnAddr_rebase, statesRecv_fnOff]
-  revert hb; bv_bits
-
-theorem fnAddr_adrp_5988c {b : BitVec 64} {H : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr statesRecvName + 17464#64) &&&
-      0xfffffffffffff000#64) = b + 0x54000#64 := by
-  rw [Program.fnAddr_rebase, statesRecv_fnOff]
-  revert hb; bv_bits
-
-/-! ## 1. Pure Equations for `States.recv` on `.ct1Sampled` -/
 
 theorem states_recv_ct1Sampled_gt (K : MlKem) {F : ShaCompress}
     (st : Chunked.SendCt.Ct1Sampled spqrPolyApi (spqrAuthApi F))
@@ -243,7 +221,7 @@ structure Words5 where
   w3 : BitVec 64
   w4 : BitVec 64
 
-def Words5.toList (u : Words5) : List (BitVec 64) :=
+@[expose] def Words5.toList (u : Words5) : List (BitVec 64) :=
   [u.w0, u.w1, u.w2, u.w3, u.w4]
 
 @[simp] theorem Words5.toList_length (u : Words5) : u.toList.length = 5 := rfl
@@ -275,7 +253,7 @@ structure Words16 where
   w14 : BitVec 64
   w15 : BitVec 64
 
-def Words16.toList (u : Words16) : List (BitVec 64) :=
+@[expose] def Words16.toList (u : Words16) : List (BitVec 64) :=
   [u.w0, u.w1, u.w2, u.w3, u.w4, u.w5, u.w6, u.w7,
    u.w8, u.w9, u.w10, u.w11, u.w12, u.w13, u.w14, u.w15]
 
@@ -304,7 +282,7 @@ structure Words50 where
   w48 : BitVec 64
   w49 : BitVec 64
 
-def Words50.toBytes (u : Words50) : List (BitVec 8) :=
+@[expose] def Words50.toBytes (u : Words50) : List (BitVec 8) :=
   wordsBytes u.c0.toList ++ (wordsBytes u.c1.toList ++
     (wordsBytes u.c2.toList ++ wordsBytes [u.w48, u.w49]))
 
@@ -313,7 +291,7 @@ theorem Words50.toBytes_length (u : Words50) : u.toBytes.length = 400 := by
   simp only [List.length_append, length_wordsBytes, Words16.toList_length,
     List.length_cons, List.length_nil]
 
-def words50At (a : BitVec 64) (u : Words50) : SepProp :=
+@[expose] def words50At (a : BitVec 64) (u : Words50) : SepProp :=
   wordsAt a u.c0.toList ∗
     wordsAt (a + 128#64) u.c1.toList ∗
     wordsAt (a + 256#64) u.c2.toList ∗
@@ -382,12 +360,12 @@ structure Split928 where
   mid : List (BitVec 8)
   tail : Words5
 
-def Split928.toBytes (u : Split928) : List (BitVec 8) :=
+@[expose] def Split928.toBytes (u : Split928) : List (BitVec 8) :=
   wordsBytes u.c0.toList ++ (wordsBytes u.c1.toList ++
     (wordsBytes u.c2.toList ++ (wordsBytes u.c3.toList ++
       (u.mid ++ wordsBytes u.tail.toList))))
 
-def split928At (a : BitVec 64) (u : Split928) : SepProp :=
+@[expose] def split928At (a : BitVec 64) (u : Split928) : SepProp :=
   wordsAt a u.c0.toList ∗
     wordsAt (a + 128#64) u.c1.toList ∗
     wordsAt (a + 256#64) u.c2.toList ∗
@@ -455,7 +433,7 @@ theorem Relocatable.extract_928 {F : BitVec 64 → SepProp} (hrel : Relocatable 
   exact Entails.refl _
 
 /-- Tag word (`0#64` for `.points`, `1#64` for `.polys`) at offset `+0` of `PolyEncoder`. -/
-def polyEncoderTagVal (enc : PolyEncoder) : BitVec 64 :=
+@[expose] def polyEncoderTagVal (enc : PolyEncoder) : BitVec 64 :=
   match enc.s with
   | .points _ => 0#64
   | .polys _ => 1#64
@@ -466,7 +444,7 @@ theorem polyEncoderTagVal_zero_or_one (enc : PolyEncoder) :
   cases enc.s <;> simp
 
 /-- The `392`-byte body of `PolyEncoder` at `b = a + 8#64`. -/
-def polyEncoderBodyAt (A : RustAlloc) (b : BitVec 64) (enc : PolyEncoder) : SepProp :=
+@[expose] def polyEncoderBodyAt (A : RustAlloc) (b : BitVec 64) (enc : PolyEncoder) : SepProp :=
   (match enc.s with
    | .points pts =>
      ⌜pts.length = NUM_POLYS ∧ (∀ pt ∈ pts, pt.value.length ≤ 0x0555555555555555)⌝ ∗
@@ -525,7 +503,7 @@ theorem Relocatable.of_polyEncoderBodyAt (A : RustAlloc) (enc : PolyEncoder) :
   rw [h388]
 
 /-- The `920`-byte body of `Chunked.SendCt.Ct1Sampled` at `b = a + 8#64`. -/
-def chunkedCt1SampledBodyAt (A : RustAlloc) {F : ShaCompress} (b : BitVec 64)
+@[expose] def chunkedCt1SampledBodyAt (A : RustAlloc) {F : ShaCompress} (b : BitVec 64)
     (st : Chunked.SendCt.Ct1Sampled spqrPolyApi (spqrAuthApi F)) : SepProp :=
   polyEncoderBodyAt A b st.sending_ct1 ∗
     unchunkedCt1SentAt A (b + 392#64) st.uc ∗
@@ -555,7 +533,7 @@ theorem Relocatable.of_chunkedCt1SampledBodyAt (A : RustAlloc) {F : ShaCompress}
   have h520 : b + 392#64 + 128#64 = b + 520#64 := by bv_omega
   rw [h520]
 
-def Split928.tailBytes (u : Split928) : List (BitVec 8) :=
+@[expose] def Split928.tailBytes (u : Split928) : List (BitVec 8) :=
   wordsBytes [u.c0.w1, u.c0.w2, u.c0.w3, u.c0.w4, u.c0.w5, u.c0.w6, u.c0.w7,
     u.c0.w8, u.c0.w9, u.c0.w10, u.c0.w11, u.c0.w12, u.c0.w13, u.c0.w14, u.c0.w15] ++
     (wordsBytes u.c1.toList ++ (wordsBytes u.c2.toList ++

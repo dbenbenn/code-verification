@@ -10,20 +10,22 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4dBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4dClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4dPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4Placed
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4aPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4dBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4dClPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4dPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4d
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`) — Part 4d Placed: Arm 2 (`States.headerSent`)
@@ -33,7 +35,7 @@ on Block `334` under `RustCliAllocBudget M` and `HeaderSentEnv`, in plain and
 `withLsCodeLoaded` forms.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -46,7 +48,7 @@ namespace LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4dPlacedBudget
 open Arm64 Arm64.Obj ProofLib ProofLib.ProgramReflection
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification
-  (LibsignalCodeLoaded LibsignalPlacement libsignalSessionCode lsmpl lsρ
+  (LibsignalCodeLoaded LibsignalPlacement lsmpl lsρ
    withLsCodeLoaded)
 open CryptoVerification.LibsignalSpqrV1 (States spqrAuthApi spqrPolyApi)
 open CryptoVerification.LibsignalSpqrV1.Chunked.SendEk (HeaderSent)
@@ -90,7 +92,7 @@ open LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4dBudget
 open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
   (sessionMemcpyRegionBudgetSpec)
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
   bv_sub_sub_lit' bv_add_add_lit'
 attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero noneCap_add_two_beq_zero

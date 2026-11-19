@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecBasePure
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1LeavesPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecBasePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1LeavesPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.ModelSplit
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecTieACorePure
@@ -19,6 +19,8 @@ import Symbolic.Proofs.Swarm.CREF.TROpen
 import Symbolic.Proofs.Swarm.CREF.Xpl.NoRatchet
 import Symbolic.Proofs.Swarm.CREF.TR.Leaks -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.CBad
 
 /-!
 # Block-Level Existing-Chain Whisper Decrypt Tie
@@ -27,7 +29,7 @@ Lifts `a2b_tieA_core` to an accepting `XplBlock` decomposed as `pre ++ Move.decr
 with `InvisibleNoEffect` surrounding moves.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

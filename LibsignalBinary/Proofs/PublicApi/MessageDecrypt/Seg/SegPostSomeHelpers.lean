@@ -9,16 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegPostNone
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegPostNone -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import all Init.Data.String.Pattern.Basic
 import all Init.Data.String.Pattern.String
 import all Init.Data.String.Slice
 import all Init.Data.String.TakeDrop
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.TripleRatchet.Hooks
-import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Helpers for `SegPostSome`
@@ -27,7 +28,7 @@ Instruction decode lemmas, pure model bridges, and stack/record spatial decompos
 `segPostSome_ok`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageDecrypt.Pf.SegPostSome
 
@@ -48,11 +49,6 @@ attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## 1. Instruction decode lemmas for `SegPostSome` (`0x3c3f8:31`, `0x3c55c:8`, `0x3ca08:6`) -/
-
-gen_decodes libsignalSessionCode_tree messageDecryptPostSomeBin [(ls_off% "session_message_decrypt_signal" + 8016) → (ls_off% "session_message_decrypt_signal" + 8092), raw (ls_off% "session_message_decrypt_signal" + 8096),
-    (ls_off% "session_message_decrypt_signal" + 8100) → (ls_off% "session_message_decrypt_signal" + 8136), (ls_off% "session_message_decrypt_signal" + 8372) → (ls_off% "session_message_decrypt_signal" + 8400), (ls_off% "session_message_decrypt_signal" + 9568) → (ls_off% "session_message_decrypt_signal" + 9588)]
-
-/-! ## 2. Pure Session-API Model and `RecordDecryptGhost` Model Lemmas -/
 
 theorem draws_eq_region_draws (C : Crypto) (x : DecryptGhost) (prevPtr : BitVec 64)
     (G : SessionGhost) (ses : Session (List (BitVec 8)))
@@ -635,7 +631,7 @@ theorem slot4b0_ok_fold_memRegion (sp : BitVec 64) (w21 : BitVec 32) (w0 w1 : Bi
 
 /-! ## 5. `sessionStateAt`, `remoteIdentityKey`, and `expect_failed` Helpers -/
 
-def vecGhostRestAt (A : RustAlloc) (g : VecGhost) (p : BitVec 64) : SepProp :=
+@[expose] def vecGhostRestAt (A : RustAlloc) (g : VecGhost) (p : BitVec 64) : SepProp :=
   ((p + 8#64) ↦₆₄ g.ptr) ∗ ((p + 16#64) ↦₆₄ BitVec.ofNat 64 g.bytes.length) ∗
     ⌜g.bytes.length ≤ g.cap.toNat ∧ g.cap.toNat < 2 ^ 63 ∧ g.ptr ≠ 0⌝ ∗
     (if g.cap = 0 then emp
@@ -657,7 +653,7 @@ theorem vecGhostRestAt_cap_lt {A : RustAlloc} {g : VecGhost} {p : BitVec 64} {R 
   rw [satisfies_pure] at h4
   exact h4.2.1
 
-def sessionStateRemExposedAt (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
+@[expose] def sessionStateRemExposedAt (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
     (st : SessionState (List (BitVec 8))) : SepProp :=
   ⌜PublicKey.deserialize G.localIk.bytes = .ok st.localIdentity.publicKey ∧
     (match st.remoteIdentity with
@@ -717,26 +713,7 @@ theorem cap_add_one_ne_zero {cap : BitVec 64} (h : cap.toNat < 2 ^ 63) :
     cap + 1#64 ≠ 0#64 := by
   bv_omega
 
-theorem remoteIdentityKey_ok_at_msgDecrypt {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (h : OutgoingRatchet.RemoteIdentityKeyOk img C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr msgDecryptName + 0x1fa0#64 +
-        bv% (((2 ^ 64 + ls_off% "<libsignal_protocol::state::session::SessionState>::remote_identity_key" - ls_off% "session_message_decrypt_signal" - 8096) % 2 ^ 64)))
-      (Getters.remoteIdentityKeySpec A img) := by
-  have hk : BitVec.ofNat 64 (libsignalSessionCode.fnOff msgDecryptName) + 0x1fa0#64 +
-      bv% (((2 ^ 64 + ls_off% "<libsignal_protocol::state::session::SessionState>::remote_identity_key" - ls_off% "session_message_decrypt_signal" - 8096) % 2 ^ 64)) =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff Getters.remoteIdentityKeyName) := by
-    simp only [arm64_norm]
-  have haddr :
-      (tripleRatchetProgAt img.base C ctl abs).fnAddr msgDecryptName + 0x1fa0#64 +
-        bv% (((2 ^ 64 + ls_off% "<libsignal_protocol::state::session::SessionState>::remote_identity_key" - ls_off% "session_message_decrypt_signal" - 8096) % 2 ^ 64)) =
-      (tripleRatchetProgAt img.base C ctl abs).fnAddr Getters.remoteIdentityKeyName := by
-    simp only [tripleRatchetProgAt, Program.fnAddr_rebase]
-    rw [BitVec.add_assoc, BitVec.add_assoc, ← BitVec.add_assoc (BitVec.ofNat 64 _), hk]
-  rwa [haddr]
-
-def remoteIdentityTag : Option IdentityKey → BitVec 8
+@[expose] def remoteIdentityTag : Option IdentityKey → BitVec 8
   | none => 0#8
   | some _ => 1#8
 
@@ -803,15 +780,6 @@ theorem slotca0_fold_memRegion (sp : BitVec 64) (k0 k1 k2 k3 : BitVec 64) :
       (sepConj_mono (Entails.sepExists_right k2 (Entails.refl _))
         (Entails.sepExists_right k3 (Entails.refl _))))
 
-theorem panic_at_expect_failed_msgDecrypt (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    (tripleRatchetProgAt b C ctl abs).externAt?
-      ((tripleRatchetProgAt b C ctl abs).fnAddr msgDecryptName + bv% (ls_off% "core::option::expect_failed" - ls_off% "session_message_decrypt_signal")) = some Rust.panicked :=
-  panic_at_sym b C ctl abs msgDecryptName "core::option::expect_failed" num% (ls_off% "core::option::expect_failed" - ls_off% "session_message_decrypt_signal")
-    (by simp only [arm64_norm]) (hp := by decide +kernel)
-
-/-! ## Relocatable `[LibsignalPlacement]` Helpers -/
-
 section Placed
 
 open CryptoVerification CryptoVerification.LibsignalPublicApi.Placed
@@ -827,7 +795,4 @@ theorem panic_at_expect_failed_msgDecrypt_placed [LibsignalPlacement]
 end Placed
 
 end CryptoVerification.LibsignalPublicApi.MessageDecrypt.Pf.SegPostSome
-
-
-
 

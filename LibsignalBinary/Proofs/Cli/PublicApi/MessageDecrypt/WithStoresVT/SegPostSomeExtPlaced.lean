@@ -9,14 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegPostSome
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegPostSomeHelpersPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.ExtDefsPlaced
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegPostSome
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegPostSomeHelpersPlaced
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.ExtDefsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.RecordJoin
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegPostNone
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegPostSomeHelpers
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegPostNonePlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsVX
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

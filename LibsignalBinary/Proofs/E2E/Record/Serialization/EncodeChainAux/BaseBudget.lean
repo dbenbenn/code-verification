@@ -12,13 +12,13 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeChainAux.Base
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBase
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBase
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
@@ -31,7 +31,7 @@ Relocatable `[LibsignalPlacement]` helpers for block `12` (`lsProg_12 H`), threa
 `do_reserve_and_handle`, and `memcpy` calls.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -126,33 +126,6 @@ theorem sepWPp_call_lscl_noPanic {α : Type} {prog : Program} {pl : MultiPlaceme
   · dsimp only [withLsCodeLoaded] at hpost
     rw [hoom sm] at hpost
     exact (not_satisfies_false_sepConj hpost).elim
-
-/-- Bridges `HookSat H "memcpy" allocMemcpyVmSpec` to `HookSat H lsMemcpySym framelessMemcpyBudgetSpec`. -/
-theorem hookSat_framelessMemcpyBudget_of_allocMemcpyVm
-    {H : String → Option (State → State)}
-    (hmc : HookSat H "memcpy" allocMemcpyVmSpec) :
-    HookSat H lsMemcpySym framelessMemcpyBudgetSpec := by
-  change HookSat H "memcpy" framelessMemcpyBudgetSpec
-  refine HookSat.mono hmc fun ⟨dst, src, bs⟩ R s0 hpre => ?_
-  dsimp only [framelessMemcpyBudgetSpec] at hpre
-  rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx2_nat⟩, hrest⟩
-  have hlt64 : bs.length < 2 ^ 64 := hx2_nat ▸ (s0.readReg64 .x2).isLt
-  have hx2 : s0.readReg64 .x2 = BitVec.ofNat 64 bs.length := by
-    rw [← hx2_nat, BitVec.ofNat_toNat, BitVec.setWidth_eq]
-  refine ⟨(dst, src, bs), R, ?_, fun sf hpost => ?_⟩
-  · dsimp only [allocMemcpyVmSpec]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hx2, hlt64⟩, ?_⟩
-    simpa only [sepConj_assoc] using hrest
-  · dsimp only [allocMemcpyVmSpec] at hpost
-    dsimp only [framelessMemcpyBudgetSpec]
-    rw [sepConj_assoc] at hpost
-    rw [sepConj_assoc, sepConj_assoc]
-    rw [satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨⟨hret, hacp, hvm⟩, hmem⟩
-    refine ⟨⟨hret, hacp.2.1, hvm⟩, ?_⟩
-    simpa only [sepConj_assoc] using hmem
 
 theorem step_encChain_encodeVarint_placed [LibsignalPlacement]
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)

@@ -12,68 +12,80 @@ module
 public import Arm64.Trusted.Process.Semantics
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
-public import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
-public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
-public import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit
-public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedEnv
-public import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptPhasePeak
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptTrialPeak
-public import LibsignalBinary.Proofs.PeakBudget.W2RecvWhisperRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
-public import LibsignalBinary.Proofs.ProtoCodecRoundTrip
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Defs
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserializeBudget
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.AddressText.PlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.SpecPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.TopPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.LayoutPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
-public import LibsignalBinary.Proofs.SignalSession.NonVacuityPq
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
+import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
+import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
+import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
+public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
+import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
+import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
+import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit
+import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedEnv
+import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptPhasePeak
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptTrialPeak
+import LibsignalBinary.Proofs.PeakBudget.W2RecvWhisperRealSlot
+import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
+import LibsignalBinary.Proofs.ProtoCodecRoundTrip
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Defs
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserializeBudget
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.AddressText.PlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.SpecPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.TopPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.LayoutPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
+public import LibsignalBinary.Proofs.SignalSession.NonVacuityPq -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HKDFDefs
 public import LibsignalBinary.Specifications.CryptoGames.Ratchet.CreateChainDefs
 public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApi
 public import LibsignalBinary.Specifications.LibsignalE2E.StateXModel
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.PqDir
-public import LibsignalBinary.Proofs.ConsumeMessageKey.NonVacProofs.StateWitness
+public import LibsignalBinary.Proofs.ConsumeMessageKey.NonVacProofs.StateWitness -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
 import ProofLib.VCGen
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.E2E.Seed.Defs
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
 
 /-!
 # `recvWhisper`-Arm Binary-Kit Success-Path Non-Vacuity Witness
@@ -94,7 +106,7 @@ for all `img`, `S`, `X` at the concrete witness `W₀ = w0CliHooks` (`⟨W₀.C,
    via `decryptRecord` and `pqRecvWhisperModel`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 8192
@@ -166,7 +178,7 @@ open CryptoVerification.SignalSession.Cli.Slots
    scopeIn scopeKit scopeKit_of_scopeIn)
 open CryptoVerification.SignalSession.CliExt (blockingAncestorF pathStr readFileResult readViewF)
 open CryptoVerification.SignalSession.NonVacuityPq
-  (C0 K0 Q0 W0 X0 b0 nzVec32 pqInitModel_W0_creates_wfSession t0)
+  (C0 K0 Q0 W0 X0 b0 nzVec32 pqInitModel_W0_creates_wfSession sig0 t0)
 open CryptoVerification.SpqrV1.ChainProofs
   (ChainAddEpochGhost ChainIntoPbCall ChainNewGhost ChainRecvKeyGhost)
 open CryptoVerification.SpqrV1.States.IntoPb (StatesIntoPbGhost)
@@ -252,7 +264,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
 /-! ## 1. `RecvWhisperSucc*` Sub-Envelopes -/
 
 /-- `ReadFileRuleEnv` / `ReadFileEnv` pinned to `.ok bs` with `bs.length ≤ 2097152`. -/
-def ReadFileOkEnv (rd : CryptoVerification.SignalSession.Cli.ReadRule) (files : FsFiles)
+@[expose] def ReadFileOkEnv (rd : CryptoVerification.SignalSession.Cli.ReadRule) (files : FsFiles)
     (path : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   ∃ bs : List (BitVec 8),
     rd files path = .ok bs ∧
@@ -261,18 +273,18 @@ def ReadFileOkEnv (rd : CryptoVerification.SignalSession.Cli.ReadRule) (files : 
       evs = cliIoCapsEvents 0 (cliIoReadScheduleCaps 9 bs.length))
 
 /-- `ReadStdinEnv` pinned to `bs.length ≤ 1048576` (excluding over-cap `1048576 < bs.length`). -/
-def ReadStdinSuccEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def ReadStdinSuccEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   bs.length ≤ 1048576 ∧
   (evs = allocBytes1Events bs ∨
     evs = cliIoCapsEvents 0 (cliIoReadScheduleCaps 8 bs.length))
 
 /-- `M2CollectEnv` with `IterConcatEnv` at every step. -/
-def M2CollectSuccEnv (argvLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def M2CollectSuccEnv (argvLen : Nat) (evs : List AllocEvent) : Prop :=
   IterConcatEnv M2CollectStepEnv (List.range argvLen) evs
 
 /-- `CliMainSetupEnv uuidTryParse i₀ addrOpt true` with `ConcatEnv` / `IterConcatEnv` at every seam,
 `M1` pinned to `rustAllocEvents (16 * i₀.argv.length) 8`, and `ReadFileOkEnv` pinning `"coins"`. -/
-def CliMainSetupSuccEnv (i₀ : Inputs) (addrOpt : Option AddressCall)
+@[expose] def CliMainSetupSuccEnv (i₀ : Inputs) (addrOpt : Option AddressCall)
     (evs : List AllocEvent) : Prop :=
   ConcatEnv (· = rustAllocEvents (16 * i₀.argv.length) 8)
     (ConcatEnv (M2CollectSuccEnv i₀.argv.length)
@@ -288,7 +300,7 @@ def CliMainSetupSuccEnv (i₀ : Inputs) (addrOpt : Option AddressCall)
 
 /-- Binary Block `594` `address_text(&ProtocolAddress)` success envelope with `ConcatEnv` across
 `addrToOwnedEvents`, `addrDotReserveEvents`, `DecimalEnv`, `addrDecReserveEvents`, and `FreeOnlyEvs`. -/
-def AddrTextValSuccEnv (rem : AddrVal) (evs : List AllocEvent) : Prop :=
+@[expose] def AddrTextValSuccEnv (rem : AddrVal) (evs : List AllocEvent) : Prop :=
   ConcatEnv (· = addrToOwnedEvents rem.name)
     (ConcatEnv (· = addrDotReserveEvents rem.name)
       (ConcatEnv (DecimalEnv (rem.device.zeroExtend 32))
@@ -298,7 +310,7 @@ def AddrTextValSuccEnv (rem : AddrVal) (evs : List AllocEvent) : Prop :=
 /-- Binary Block `589` `Dir::get` cache-miss `.ok bs` envelope: `d.changed = []`,
 `cliIo.rd F0 (pathOf d.path name) = .ok bs` (`DirGetErrAllocEnv` reduces to `(· = [])`), and
 `ConcatEnv` at every seam. -/
-def DirGetCacheMissOkBinEnv (F0 : FsFiles) (d : DirGhost) (name : List (BitVec 8))
+@[expose] def DirGetCacheMissOkBinEnv (F0 : FsFiles) (d : DirGhost) (name : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   d.changed = [] ∧
   ∃ bs : List (BitVec 8),
@@ -311,7 +323,7 @@ def DirGetCacheMissOkBinEnv (F0 : FsFiles) (d : DirGhost) (name : List (BitVec 8
 
 /-- Binary Arm `R0` (`R0BinaryEnv cliIo.rd g` `Or.inr`) pinned to `.ok ownB` and
 `addrParse uuidTryParse ownB = some ownAddr` (`ConcatEnv` throughout). -/
-def R0BinarySuccEnv (g : RunCall) (evs : List AllocEvent) : Prop :=
+@[expose] def R0BinarySuccEnv (g : RunCall) (evs : List AllocEvent) : Prop :=
   ∃ (ownB : List (BitVec 8)) (ownAddr : AddrV),
     StoresGhost.opened.identity.own.get cliIo.rd (runFiles g.i) (utf8 "address") = .ok ownB ∧
     addrParse uuidTryParse ownB = some ownAddr ∧
@@ -320,7 +332,7 @@ def R0BinarySuccEnv (g : RunCall) (evs : List AllocEvent) : Prop :=
       evs
 
 /-- `SigTryFromSliceEnv rest` pinned to `.ok msg` (`ConcatEnv` throughout). -/
-def SigTryFromOkEnv (rest : List (BitVec 8)) (msg : SignalMessage)
+@[expose] def SigTryFromOkEnv (rest : List (BitVec 8)) (msg : SignalMessage)
     (evs : List AllocEvent) : Prop :=
   SignalMessage.tryFrom protoSignalCodec rest = .ok msg ∧
   ConcatEnv (SigTryFromLoopBoundedEnv rest.length SigTryFromCaps.zero)
@@ -334,7 +346,7 @@ def SigTryFromOkEnv (rest : List (BitVec 8)) (msg : SignalMessage)
 
 /-- Binary `load_session` step + `loadBox` dealloc (`W2LoadStepSuccEnv` on `W2BinaryWhisperParams`,
 using `AddrTextValSuccEnv` and `DirGetCacheMissOkBinEnv`). -/
-def W2LoadStepSuccEnv [LibsignalPlacement]
+@[expose] def W2LoadStepSuccEnv [LibsignalPlacement]
     (w2R : W2BinaryWhisperParams)
     (rec : SessionRecord (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
   let kit := decSessKitPlaced w2R.repAlloc w2R.x.F w2R.x.peer w2R.B
@@ -354,7 +366,7 @@ def W2LoadStepSuccEnv [LibsignalPlacement]
       evs
 
 /-- Pre-decrypt setup and session-load segment (`pre` in `pre ++ dec ++ store ++ M6`). -/
-def RecvWhisperSuccPreEnv [LibsignalPlacement]
+@[expose] def RecvWhisperSuccPreEnv [LibsignalPlacement]
     (g : RunCall) (addrOpt : Option AddressCall) (rest : List (BitVec 8))
     (msg : SignalMessage) (w2R : W2BinaryWhisperParams)
     (rec : SessionRecord (List (BitVec 8))) (evsPre : List AllocEvent) : Prop :=
@@ -366,7 +378,7 @@ def RecvWhisperSuccPreEnv [LibsignalPlacement]
 
 /-- `W2RealTdEnv` specialized to the existing-chain `0`-jump success path (`S3 = []`, `S4 = []`,
 `S7` `errAlloc = false`, `S8` plaintext allocation, `ConcatEnv` throughout). -/
-def W2RealTdSuccEnv (F : ShaCompress) (K : MlKem)
+@[expose] def W2RealTdSuccEnv (F : ShaCompress) (K : MlKem)
     (a : TryDecryptEnvArgs) (evs : List AllocEvent) : Prop :=
   ∃ (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
     (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
@@ -387,7 +399,7 @@ def W2RealTdSuccEnv (F : ShaCompress) (K : MlKem)
       evs
 
 /-- Record-decryption segment (`dec` in `pre ++ dec ++ store ++ M6`). -/
-def RecordDecryptSuccEnv (F : ShaCompress) (K : MlKem)
+@[expose] def RecordDecryptSuccEnv (F : ShaCompress) (K : MlKem)
     (x : RecordDecryptGhost) (evsDec : List AllocEvent) : Prop :=
   x.st.version.toNat = x.msg.messageVersion.toNat ∧
   ∃ G₁ : SessionGhost, CloneRel x.G G₁ ∧
@@ -396,7 +408,7 @@ def RecordDecryptSuccEnv (F : ShaCompress) (K : MlKem)
       evsDec
 
 /-- Binary `is_trusted_identity` step (`DirGetCacheMissOkBinEnv` + `ConcatEnv`). -/
-def W2TrustStepSuccEnv [LibsignalPlacement]
+@[expose] def W2TrustStepSuccEnv [LibsignalPlacement]
     (w2R : W2BinaryWhisperParams) (evs : List AllocEvent) : Prop :=
   let ikit := decIdKitPlaced w2R.repAlloc w2R.x.F w2R.x.peer w2R.B
   let ist0 := StoresGhost.opened.identity
@@ -409,7 +421,7 @@ def W2TrustStepSuccEnv [LibsignalPlacement]
 
 /-- Binary `save_identity` step (`DirGetCacheMissOkBinEnv`, `PublicKeySerializeEnv`, and
 `DirPutStrEnv` cold-`Vec` `grow_one` path with `ConcatEnv`). -/
-def W2SaveStepSuccEnv [LibsignalPlacement]
+@[expose] def W2SaveStepSuccEnv [LibsignalPlacement]
     (w2R : W2BinaryWhisperParams) (k : IdentityKey) (evs : List AllocEvent) : Prop :=
   let ikit := decIdKitPlaced w2R.repAlloc w2R.x.F w2R.x.peer w2R.B
   let rem := (toDecryptGhost w2R.x).rem.val
@@ -429,7 +441,7 @@ def W2SaveStepSuccEnv [LibsignalPlacement]
 
 /-- Binary `store_session` step (`AddrTextValSuccEnv`, `SerializeSomeCancelEnv`, and cold-`Vec`
 `DirPutEnv` `rawVecGrowEvents 48 4 8 0#64` with `ConcatEnv`). -/
-def W2StoreStepSuccEnv [LibsignalPlacement]
+@[expose] def W2StoreStepSuccEnv [LibsignalPlacement]
     (w2R : W2BinaryWhisperParams)
     (rec' : SessionRecord (List (BitVec 8))) (ses' : Session (List (BitVec 8)))
     (G' : SessionGhost) (evs : List AllocEvent) : Prop :=
@@ -451,7 +463,7 @@ def W2StoreStepSuccEnv [LibsignalPlacement]
 
 /-- `M5` commit loop with `ConcatEnv` + `IterConcatEnv` on the pinned 2-directory dirty list
 `[("identities", [peer.name]), ("sessions", [addressText rem])]`. -/
-def RecvWhisperM5SuccEnv (w2R : W2BinaryWhisperParams) (evs : List AllocEvent) : Prop :=
+@[expose] def RecvWhisperM5SuccEnv (w2R : W2BinaryWhisperParams) (evs : List AllocEvent) : Prop :=
   let dirs : List (List (BitVec 8) × List (List (BitVec 8))) :=
     [(utf8 "identities", [w2R.peer.name.bytes]),
      (utf8 "sessions", [addressText (toDecryptGhost w2R.x).rem.val])]
@@ -463,7 +475,7 @@ def RecvWhisperM5SuccEnv (w2R : W2BinaryWhisperParams) (evs : List AllocEvent) :
     evs
 
 /-- Identity/session store and `M5` commit segment (`store` in `pre ++ dec ++ store ++ M6`). -/
-def RecvWhisperSuccStoreEnv [LibsignalPlacement]
+@[expose] def RecvWhisperSuccStoreEnv [LibsignalPlacement]
     (w2R : W2BinaryWhisperParams)
     (rec' : SessionRecord (List (BitVec 8))) (ses' : Session (List (BitVec 8)))
     (G' : SessionGhost) (k : IdentityKey) (evsStore : List AllocEvent) : Prop :=
@@ -475,51 +487,9 @@ def RecvWhisperSuccStoreEnv [LibsignalPlacement]
     evsStore
 
 /-- `M6` stdout-write segment (`M6` in `pre ++ dec ++ store ++ M6`). -/
-def RecvWhisperSuccM6Env (evsM6 : List AllocEvent) : Prop :=
+@[expose] def RecvWhisperSuccM6Env (evsM6 : List AllocEvent) : Prop :=
   M6Env true evsM6 ∧
   ConcatEnv (· = rustAllocEvents 1024 1) FreeOnlyEvs evsM6
-
-/-- Whole-`main` `recvWhisper` binary-kit success sub-envelope. -/
-def RecvWhisperSuccMainEnv [LibsignalPlacement]
-    (_img : Arm64.Obj.Image) (P₀ : PEParams) (i₀ : Inputs) (evs : List AllocEvent) : Prop :=
-  ∃ (st st₁ : PqParty) (rc : BitVec 256)
-    (g : RunCall) (peerAddr : AddrV) (rest : List (BitVec 8))
-    (msg : SignalMessage) (ag : AddressCall)
-    (w2R : W2BinaryWhisperParams)
-    (rec rec' : SessionRecord (List (BitVec 8)))
-    (ses ses' : Session (List (BitVec 8)))
-    (G G' : SessionGhost) (pt : List (BitVec 8)) (k : IdentityKey)
-    (evsPre evsDec evsStore evsM6 : List AllocEvent),
-    let kit := decSessKitPlaced w2R.repAlloc w2R.x.F w2R.x.peer w2R.B
-    let dx := toDecryptGhost w2R.x
-    evs = evsPre ++ evsDec ++ evsStore ++ evsM6 ∧
-    PqxdhPartyInSpecDomain P₀ st ∧
-    i₀ = pqRecvInputs P₀ st (wireWhisper :: rest) rc ∧
-    pqRecvWhisperModel P₀ st rest rc = some (some (st₁, pt)) ∧
-    (∃ x' g', st₁.session = some (x', g') ∧ g'.session = ses'.state) ∧
-    g.i = i₀ ∧
-    g.c = .recv peerAddr ∧
-    parseArgs uuidTryParse (i₀.argv.map bytesOfString) = some (.recv peerAddr) ∧
-    i₀.argv.map bytesOfString = [utf8 "recv", ag.bs] ∧
-    addrParse uuidTryParse ag.bs = some peerAddr ∧
-    i₀.stdin = wireWhisper :: rest ∧
-    i₀.stdin.length ≤ msgCapBytes ∧
-    dx.msg = msg ∧
-    coinsOf dx.rest = rc ∧
-    dx.loc.val = partyAddr st.party ∧
-    W2BinaryWhisperDom (.recv peerAddr) i₀ w2R ∧
-    kit.ScopeAt scopeKit StoresGhost.opened.sessions dx.rem.val rec ∧
-    rec.currentSession = some ses ∧
-    SessionGhostValid G ses ∧
-    decryptRecord P₀.C (spqrV1 P₀.C.F P₀.Q.K) uuidTryParse dx rec = .ok (pt, rec') ∧
-    rec'.currentSession = some ses' ∧
-    ses'.state.remoteIdentity = some k ∧
-    RecvWhisperSuccPreEnv g (some ag) rest msg w2R rec evsPre ∧
-    RecordDecryptSuccEnv P₀.C.F P₀.Q.K (recGhostOf dx 0#64 G ses.state) evsDec ∧
-    RecvWhisperSuccStoreEnv w2R rec' ses' G' k evsStore ∧
-    RecvWhisperSuccM6Env evsM6
-
-/-! ## 2. Concrete `W0` Session, SPQR V1 `recv`, `pqRecvWhisperModel` & `decryptRecord = .ok` Witnesses -/
 
 private theorem ofU8_toU8 : ∀ (bs : List (BitVec 8)), ofU8 (toU8 bs) = bs
   | [] => rfl
@@ -575,17 +545,6 @@ private theorem hkdfDerive96_w0 (secrets : List UInt8) :
   dsimp only [modelPrims, SignalPqxdh.hkdfDerive96Ref, SignalPqxdh.hkdfExtractRef,
     SignalPqxdh.hkdfExpand96Ref]
   simp only [hmacSha256Ref_w0B1]
-  rfl
-
-private theorem sigVerify_w0_zero64 (ikPk msg : List UInt8) (hik : ikPk.length = 32) :
-    (modelPrims X0 W0).sigVerify ikPk msg
-      (vecU8 (List.Vector.replicate 64 0#8)) = true := by
-  have hsig : vecU8 (List.Vector.replicate 64 0#8) = List.replicate 64 0 := rfl
-  dsimp only [modelPrims]
-  rw [hsig]
-  unfold SignalPqxdh.xeddsaVerifyRef
-  simp only [hik, List.length_replicate, beq_self_eq_true, Bool.true_and,
-    blockLevelPrims, W0, Q0, fitVec]
   rfl
 
 private theorem sha256With_C0 (m : List (BitVec 8)) :
@@ -702,7 +661,7 @@ private theorem verifyMacWithAddresses_new_C0
   rw [htake, hdrop]
   simp only [mac, beq_self_eq_true, had, Bool.and_self]
 
-def w0Vec1568 : List.Vector (BitVec 8) 1568 :=
+@[expose] def w0Vec1568 : List.Vector (BitVec 8) 1568 :=
   List.Vector.replicate 1568 0#8
 
 private theorem w0Vec1568_eq : List.Vector.replicate 1568 0#8 = w0Vec1568 := by
@@ -710,29 +669,30 @@ private theorem w0Vec1568_eq : List.Vector.replicate 1568 0#8 = w0Vec1568 := by
 
 attribute [local irreducible] w0Vec1568
 
-def w0IdA : KeyPair := keyPairOf C0 emptyParty.me.idPriv
-def w0BaseA : KeyPair := keyPairOf C0 (List.Vector.replicate 32 0#8)
-def w0EphA : KeyPair := KeyPair.generate C0 (bytesToKey32 (List.replicate 32 0#8))
-def w0Key0 : BitVec 256 := bytesToKey32 (ofU8 SignalPqxdh.sha256InitState)
-def w0PqA0 : List (BitVec 8) := (pqxdhSpqrSession W0).init .a2b w0Key0
+@[expose] def w0IdA : KeyPair := keyPairOf C0 emptyParty.me.idPriv
+@[expose] def w0BaseA : KeyPair := keyPairOf C0 (List.Vector.replicate 32 0#8)
+@[expose] def w0EphA : KeyPair := KeyPair.generate C0 (bytesToKey32 (List.replicate 32 0#8))
+@[expose] def w0Key0 : BitVec 256 := bytesToKey32 (ofU8 SignalPqxdh.sha256InitState)
+@[expose] def w0PqA0 : List (BitVec 8) := (pqxdhSpqrSession W0).init .a2b w0Key0
 
-def w0SA0 : SessionState (List (BitVec 8)) :=
+@[expose] def w0SA0 : SessionState (List (BitVec 8)) :=
   (((SessionState.new currentVersion ⟨w0IdA.publicKey⟩ ⟨⟨b0.idPub⟩⟩
       (rootKdf C0.F w0Key0 nzVec32.toList).1 w0PqA0).addReceiverChain
       ⟨b0.spkPub⟩ ⟨w0Key0, 0#32⟩).setSenderChain
     w0EphA ⟨(rootKdf C0.F w0Key0 nzVec32.toList).2, 0#32⟩).setUnacknowledgedPreKeyMessage
 
-def w0XA : RecordExtras :=
+@[expose] def w0XA : RecordExtras :=
   initiatorRecordExtras emptyParty.me b0 w0BaseA.publicKey w0Vec1568
 
 theorem w0_initiateState_eq :
     initiateState X0 W0 .A emptyParty.me b0 t0 =
       some (w0XA, ⟨.A, w0SA0, 0, [0]⟩) := by
-  have hikB : (vecU8 b0.idPub).length = 32 := vecU8_length _
-  have hsig1 := sigVerify_w0_zero64 (vecU8 b0.idPub)
-    (SignalPqxdh.encodeEC (vecU8 b0.spkPub)) hikB
-  have hsig2 := sigVerify_w0_zero64 (vecU8 b0.idPub)
-    (SignalPqxdh.encodeKEM (vecU8 w0Vec1568)) hikB
+  have hsig1 : (modelPrims X0 W0).sigVerify (vecU8 b0.idPub)
+      (SignalPqxdh.encodeEC (vecU8 b0.spkPub)) (vecU8 sig0) = true := by
+    decide +kernel
+  have hsig2 : (modelPrims X0 W0).sigVerify (vecU8 b0.idPub)
+      (SignalPqxdh.encodeKEM (vecU8 w0Vec1568)) (vecU8 sig0) = true := by
+    decide +kernel
   have hkem : (modelPrims X0 W0).kemEncaps (vecU8 w0Vec1568)
       (vecU8 (initiateKemCoins t0)) =
       some (vecU8 (List.Vector.replicate 32 0#8), vecU8 w0Vec1568) := by
@@ -755,11 +715,11 @@ theorem w0_initiateState_eq :
           { ikB := vecU8 b0.idPub
             spkId := u32 0#32
             spkB := vecU8 b0.spkPub
-            spkSig := vecU8 (List.Vector.replicate 64 0#8)
+            spkSig := vecU8 sig0
             opkB? := none
             pqspkId := u32 0#32
             pqspkB := vecU8 w0Vec1568
-            pqspkSig := vecU8 (List.Vector.replicate 64 0#8) } } := by
+            pqspkSig := vecU8 sig0 } } := by
     dsimp only [initiateInput, b0, w0IdA]
     rw [w0Vec1568_eq]
     rfl
@@ -788,9 +748,9 @@ theorem w0_initiateState_eq :
   rw [u8Vec_vecU8, u8Vec_vecU8]
   rfl
 
-def w0PqMsg : List (BitVec 8) := [1#8, 1#8, 1#8, 0#8]
+@[expose] def w0PqMsg : List (BitVec 8) := [1#8, 1#8, 1#8, 0#8]
 
-def stepCedNext (hkdf : HkdfFn) (ced : ChainEpochDirection) :
+@[expose] def stepCedNext (hkdf : HkdfFn) (ced : ChainEpochDirection) :
     ChainEpochDirection × List (BitVec 8) :=
   match ced.nextKey hkdf with
   | .ok (ced', (_, out)) => (ced', out)
@@ -825,42 +785,42 @@ private theorem ced_key_zero_one (hkdf : HkdfFn)
   simp only [hnext, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte,
     show ((0#32 : BitVec 32) == 0xffffffff#32) = false from rfl]
 
-def stepChainRecv0 (hkdf : HkdfFn) (c : Chain) : Chain × List (BitVec 8) :=
+@[expose] def stepChainRecv0 (hkdf : HkdfFn) (c : Chain) : Chain × List (BitVec 8) :=
   match c.links with
   | [link] =>
     let (recv', out) := stepCedNext hkdf link.recv
     ({ c with links := [{ link with recv := recv' }] }, out)
   | _ => (default, [])
 
-def w0Auth0 : Authenticator :=
+@[expose] def w0Auth0 : Authenticator :=
   Authenticator.new C0.F (keyToBytes32 w0Key0) 1#64
 
-def w0VnA : VersionNegotiationPB :=
+@[expose] def w0VnA : VersionNegotiationPB :=
   { authKey := keyToBytes32 w0Key0
     direction := 0#32
     minVersion := 1#32
     chainParams := some ChainParams.default.intoPb }
 
-def w0ChA0 : Chain :=
+@[expose] def w0ChA0 : Chain :=
   match chainFrom (spqrHkdfWith C0.F) none (some w0VnA) with
   | .ok c => c
   | .error _ => default
 
-def w0ChA1Key : Chain × List (BitVec 8) :=
+@[expose] def w0ChA1Key : Chain × List (BitVec 8) :=
   stepChainRecv0 (spqrHkdfWith C0.F) w0ChA0
 
-def w0PbInner0 : V1State :=
+@[expose] def w0PbInner0 : V1State :=
   { innerState := some (.keysUnsampled { uc := some { epoch := 1#64, auth := some w0Auth0.intoPb } }) }
 
-def w0PbA1 : PqRatchetStatePB V1State :=
+@[expose] def w0PbA1 : PqRatchetStatePB V1State :=
   { inner := some w0PbInner0
     versionNegotiation := none
     chain := some w0ChA1Key.1.intoPb }
 
-def w0PqA1 : List (BitVec 8) :=
+@[expose] def w0PqA1 : List (BitVec 8) :=
   (spqrDeps C0.F K0).encodeState w0PbA1
 
-def w0Salt1 : CryptoGames.HKDF.Salt :=
+@[expose] def w0Salt1 : CryptoGames.HKDF.Salt :=
   (recvKeyToSalt? (some w0ChA1Key.2)).getD none
 
 private theorem spqr_recv_v1_none_key
@@ -956,24 +916,24 @@ theorem w0_spqrRecv :
     dsimp only [toSpqrModel, SpqrModel.spqr, recvPanicsB, recvPanicsSaltB]
     rw [htop]
 
-def w0Pt : List (BitVec 8) := [0x4F#8, 0x4B#8]
+@[expose] def w0Pt : List (BitVec 8) := [0x4F#8, 0x4B#8]
 
-def w0Addrs : Option (List (BitVec 8)) :=
+@[expose] def w0Addrs : Option (List (BitVec 8)) :=
   serializeAddrVals (serviceIdParse uuidTryParse) (partyAddr .B) (partyAddr .A)
 
-def w0Mk : MessageKeys :=
+@[expose] def w0Mk : MessageKeys :=
   (ChainKey.messageKeys C0.F ⟨w0Key0, 0#32⟩).generateKeys C0.F w0Salt1
 
-def w0Ct : List (BitVec 8) :=
+@[expose] def w0Ct : List (BitVec 8) :=
   aesCbcEncrypt C0.E w0Mk.cipherKey w0Mk.iv w0Pt
 
 theorem w0Ct_len : w0Ct.length = 16 := rfl
 
-def w0Msg : SignalMessage :=
+@[expose] def w0Msg : SignalMessage :=
   SignalMessage.new C0.F protoSignalCodec currentVersion w0Mk.macKey w0Addrs
     ⟨b0.spkPub⟩ 0#32 0#32 w0Ct ⟨⟨b0.idPub⟩⟩ ⟨w0IdA.publicKey⟩ w0PqMsg
 
-def w0Rest : List (BitVec 8) := w0Msg.serialized
+@[expose] def w0Rest : List (BitVec 8) := w0Msg.serialized
 
 private theorem mut_exec_bind {S α β : Type} (m : Mut S α) (f : α → Mut S β) (s : S) :
     Mut.exec (m >>= f) s =
@@ -1008,7 +968,7 @@ private theorem mut_exec_onRatchet {PQ α : Type} (m : Mut RatchetState α) (t :
   rcases hm : Mut.exec m t.ratchet with ⟨_ | _, r'⟩ <;>
     (rw [mut_exec_bind, hset]; dsimp only; rw [mut_exec_liftE])
 
-def w0St1 : PqParty :=
+@[expose] def w0St1 : PqParty :=
   { emptyParty with peerId := some ⟨⟨b0.idPub⟩⟩, session := some (w0XA, ⟨.A, w0SA0, 0, [0]⟩) }
 
 theorem w0St1_domain : PqxdhPartyInSpecDomain W0 w0St1 := by
@@ -1462,156 +1422,11 @@ private theorem recvWhisperM5SuccEnv_sub {w2R : W2BinaryWhisperParams} {evs : Li
       Or.inr ⟨_, [], rfl, Or.inr ⟨eW2, eF2, rfl, iterConcatEnv_sub _ hW2, hF2⟩, rfl⟩⟩,
     hFree⟩
 
-/-- Inclusion of `RecvWhisperSuccMainEnv` into
-`RealCliMainBinaryEnvOf (mkBinaryKitRealCalleeEnvs img S X W) i₀`. -/
-theorem recvWhisperSuccMainEnv_sub [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (i₀ : Inputs) {evs : List AllocEvent}
-    (h : RecvWhisperSuccMainEnv img ⟨W.C, W.Q⟩ i₀ evs) :
-    RealCliMainBinaryEnvOf (mkBinaryKitRealCalleeEnvs img S X W) i₀ evs := by
-  obtain ⟨st, st₁, rc, g, peerAddr, rest, msg, ag, w2R,
-    rec, rec', ses, ses', G, G', pt, k,
-    evsPre, evsDec, evsStore, evsM6,
-    rfl, _, _, _, _, hgi, hgc, hparse, _, _, hstdin, hstdinCap,
-    _, _, _, hw2Dom, hScopeAt, hcur, hgv, hdecOk, hcur', hremId,
-    hPre, hDec, hStore, hM6⟩ := h
-  obtain ⟨evsSetup, _, rfl, hSetup,
-    evsR0, _, rfl, hR0,
-    evsSig, evsLoad, rfl, hSig, hLoad⟩ := hPre
-  obtain ⟨evsLoadStep, rfl, hLoadStep⟩ := w2LoadStepSuccEnv_split hLoad
-  obtain ⟨evsTrust, _, rfl, hTrust,
-    evsSave, _, rfl, hSave,
-    evsStoreStep, _, rfl, hStoreStep,
-    evsPostSigFree, _, rfl, hPostSigFree,
-    evsJoin, evsM5, rfl, hJoin, hM5⟩ := hStore
-  let kit := decSessKitPlaced w2R.repAlloc w2R.x.F w2R.x.peer w2R.B
-  let kitEnv := decBinarySessKitPlacedBudget w2R.repAlloc w2R.B w2R.x.F w2R.x.peer
-  let ikit := decIdKitPlaced w2R.repAlloc w2R.x.F w2R.x.peer w2R.B
-  let ikitEnv := decBinaryIdKitPlacedBudget w2R.repAlloc w2R.B w2R.x.F w2R.x.peer
-  let dx := toDecryptGhost w2R.x
-  have hFromStore : FromStoreCallEnv kit kitEnv StoresGhost.opened.sessions dx.rem.val rec'
-      evsStoreStep := w2StoreStepSuccEnv_sub hStoreStep
-  have hTrustedTrue : FromTrustedTrueEnv kit kitEnv StoresGhost.opened.sessions
-      ikit ikitEnv StoresGhost.opened.identity dx rec' k
-      (evsSave ++ evsStoreStep) :=
-    Or.inr ⟨evsSave, evsStoreStep, rfl, w2SaveStepSuccEnv_sub hSave, Or.inr hFromStore⟩
-  have hKeyReady : FromKeyReadyEnv kit kitEnv StoresGhost.opened.sessions
-      ikit ikitEnv StoresGhost.opened.identity dx rec' k
-      (evsTrust ++ (evsSave ++ evsStoreStep)) :=
-    Or.inr ⟨evsTrust, _, rfl, w2TrustStepSuccEnv_sub k hTrust, Or.inr (Or.inr hTrustedTrue)⟩
-  have hPostSome : FromPostSomeEnv W.C (spqrV1 W.C.F W.Q.K) uuidTryParse
-      kit kitEnv StoresGhost.opened.sessions ikit ikitEnv StoresGhost.opened.identity dx rec
-      (evsTrust ++ (evsSave ++ evsStoreStep)) :=
-    Or.inr ⟨pt, rec', ses', k, hdecOk, hcur', hremId, hKeyReady⟩
-  have hRegSome : FromRegionSomeEnv W.C (spqrV1 W.C.F W.Q.K) uuidTryParse
-      (W2RealTdEnv W.C.F W.Q.K) kit kitEnv StoresGhost.opened.sessions
-      ikit ikitEnv StoresGhost.opened.identity dx rec G ses.state
-      (evsDec ++ (evsTrust ++ (evsSave ++ evsStoreStep))) :=
-    Or.inr ⟨evsDec, _, rfl, recordDecryptSuccEnv_sub hDec, hPostSome⟩
-  have hFromPolled : FromLoadPolledEnv W.C (spqrV1 W.C.F W.Q.K) uuidTryParse
-      (W2RealTdEnv W.C.F W.Q.K) kit kitEnv StoresGhost.opened.sessions
-      ikit ikitEnv StoresGhost.opened.identity scopeKit dx
-      (rustDeallocEvents kit.loadBoxSize 8 ++
-        (evsDec ++ (evsTrust ++ (evsSave ++ evsStoreStep)))) :=
-    Or.inr ⟨_, _, rfl, rfl,
-      Or.inr (Or.inr (Or.inr ⟨rec, ses, G, hScopeAt, hcur, hgv, hRegSome⟩))⟩
-  let evsDecSig := evsLoadStep ++ (rustDeallocEvents kit.loadBoxSize 8 ++
-    (evsDec ++ (evsTrust ++ (evsSave ++ evsStoreStep))))
-  have hSlot : W2RecvWhisperBinaryKitSlotEnv ⟨W.C, W.Q⟩ w2R evsDecSig :=
-    Or.inr ⟨evsLoadStep, _, rfl, hLoadStep, hFromPolled⟩
-  have hDecSig : (mkBinaryKitRealCalleeEnvs img S X W g).decSigEnv evsDecSig := by
-    unfold mkBinaryKitRealCalleeEnvs
-    dsimp only
-    rw [hgc, hgi]
-    exact ⟨w2R, hw2Dom, hSlot⟩
-  let evsArm := evsSig ++ (evsDecSig ++ evsPostSigFree)
-  have hArmBin : LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge.RunArmBinaryEnv
-      cliIo.rd (runFiles g.i) (mkBinaryKitRealCalleeEnvs img S X W g)
-      sessionCapBytes g.i.stdin g.c evsArm := by
-    rw [hgc, hgi, hstdin]
-    unfold LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge.RunArmBinaryEnv
-      LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge.RecvArmBinaryEnv
-    have hw2 : (wireWhisper : BitVec 8) = 2#8 := rfl
-    simp only [hw2, ↓reduceIte]
-    exact Or.inr (Or.inr ⟨evsSig, _, rfl, Or.inl (sigTryFromOkEnv_sub hSig),
-      Or.inr (Or.inr ⟨evsDecSig, evsPostSigFree, rfl, hDecSig, hPostSigFree⟩)⟩)
-  let evsRun := evsR0 ++ (evsArm ++ evsJoin)
-  have hRunBin : CliRunBinaryEnv cliIo.rd (mkBinaryKitRealCalleeEnvs img S X W g)
-      sessionCapBytes g evsRun :=
-    Or.inr (Or.inr ⟨evsR0, _, rfl, r0BinarySuccEnv_sub hR0,
-      Or.inr ⟨evsArm, evsJoin, rfl, hArmBin, hJoin⟩⟩)
-  have hSetup0 : CliMainSetupEnv uuidTryParse i₀ (some ag) true evsSetup := by
-    rw [← hgi]
-    exact cliMainSetupSuccEnv_sub hSetup
-  have hBoundedSetup : CliMainBoundedSetupEnv i₀.argv.length evsSetup :=
-    cliMainBoundedSetupEnv_of_setup_any uuidTryParse i₀ (some ag) true (fun _ => hstdinCap) hSetup0
-  let dirs : List (List (BitVec 8) × List (List (BitVec 8))) :=
-    [(utf8 "identities", [w2R.peer.name.bytes]),
-     (utf8 "sessions", [addressText dx.rem.val])]
-  have hdomPeer := hw2Dom peerAddr rfl
-  obtain ⟨hpeer40, hrem40, _⟩ :=
-    peer_and_rem_name_le_40_of_recv hparse hdomPeer.1 hdomPeer.2.2.1
-  have hdirsGuard : ∀ dn ∈ dirs,
-      dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes := by
-    intro dn hdn
-    simp only [dirs, List.mem_cons, List.not_mem_nil, or_false] at hdn
-    rcases hdn with rfl | rfl
-    · refine ⟨?_, ?_⟩
-      · have h10 : (utf8 "identities").length = 10 := opened_peers_path_len
-        rw [h10]; decide
-      · intro nm hnm
-        simp only [List.mem_singleton] at hnm; subst hnm
-        unfold cliMaxAddrTextBytes; omega
-    · refine ⟨?_, ?_⟩
-      · have h8 : (utf8 "sessions").length = 8 := opened_sess_path_len
-        rw [h8]; decide
-      · intro nm hnm
-        simp only [List.mem_singleton] at hnm; subst hnm
-        have hat := addressText_length_le dx.rem.val
-        have hremEq : dx.rem.val.name.length = (toDecryptGhost w2R.x).rem.name.bytes.length := rfl
-        dsimp only [dx] at hat hremEq ⊢
-        rw [hremEq] at hat
-        unfold cliMaxAddrTextBytes; omega
-  let wPost : ValidPostSetupWitness i₀ :=
-    { g := g
-      g_i := hgi
-      parse_ok := by rw [hgi, hgc]; exact hparse
-      stdin_le := by rw [hgi]; exact hstdinCap
-      dirs := dirs
-      dirs_sum_le := by simp [dirs, cliMaxDirtyEntries]
-      dirs_bounds := hdirsGuard
-      ok := true }
-  have hMainBin : RealCliMainBinaryEnvOf (mkBinaryKitRealCalleeEnvs img S X W) i₀
-      (evsSetup ++ (evsRun ++ (evsM5 ++ evsM6))) :=
-    Or.inr ⟨evsSetup, _, rfl, hBoundedSetup,
-      Or.inr ⟨wPost, hgi,
-        Or.inr ⟨evsRun, _, rfl, hRunBin,
-          Or.inr ⟨evsM5, evsM6, rfl, recvWhisperM5SuccEnv_sub hM5, hM6.1⟩⟩⟩⟩
-  have heqEvs :
-      evsSetup ++ (evsRun ++ (evsM5 ++ evsM6)) =
-      (evsSetup ++ (evsR0 ++ (evsSig ++ (evsLoadStep ++ rustDeallocEvents kit.loadBoxSize 8)))) ++
-        evsDec ++
-        (evsTrust ++ (evsSave ++ (evsStoreStep ++ (evsPostSigFree ++ (evsJoin ++ evsM5))))) ++
-        evsM6 := by
-    dsimp only [evsRun, evsArm, evsDecSig]
-    simp only [List.append_assoc]
-  rwa [heqEvs] at hMainBin
-
-/-- Alias form of `recvWhisperSuccMainEnv_sub` on `realCliMainBinaryKitEnvOf img S X W i₀`. -/
-theorem recvWhisperSuccMainEnv_sub_kit [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (i₀ : Inputs) {evs : List AllocEvent}
-    (h : RecvWhisperSuccMainEnv img ⟨W.C, W.Q⟩ i₀ evs) :
-    realCliMainBinaryKitEnvOf img S X W i₀ evs :=
-  recvWhisperSuccMainEnv_sub img S X W i₀ h
-
-/-! ## 4. Concrete `SessionGhostValid` Witnesses (`w0Ses0` & `w0Ses1`) and End-to-End Trace -/
-
 def w0CliHooks : CliHooks where
   C := C0
   Q := Q0
 
-def w0Rec0 : SessionRecord (List (BitVec 8)) :=
+@[expose] def w0Rec0 : SessionRecord (List (BitVec 8)) :=
   toRecord (extrasOf fun _ => w0XA) ⟨.A, w0SA0, 0, [0]⟩
 
 private theorem w0Rec0_encode_eq :
@@ -1625,7 +1440,7 @@ private theorem w0Rec0_encode_ne_nil : encodeRecord w0Rec0 ≠ [] := by
 private theorem w0Rec0_currentSession_isSome : w0Rec0.currentSession.isSome = true := by
   decide +kernel
 
-def w0Ses0 : Session (List (BitVec 8)) :=
+@[expose] def w0Ses0 : Session (List (BitVec 8)) :=
   match w0Rec0.currentSession with
   | some s => s
   | none =>
@@ -1667,7 +1482,7 @@ def w0Rec1 : SessionRecord (List (BitVec 8)) :=
 private theorem w0Ses0_pendingPreKey_isSome : w0Ses0.pendingPreKey.isSome = true := by
   decide +kernel
 
-def w0Ppk : PendingPreKey :=
+@[expose] def w0Ppk : PendingPreKey :=
   match w0Ses0.pendingPreKey with
   | some p => p
   | none => ⟨none, 0#32, pk0, 0#64⟩
@@ -1681,7 +1496,7 @@ private theorem w0Ses0_pendingPreKey_eq : w0Ses0.pendingPreKey = some w0Ppk := b
 private theorem w0Ses0_pendingKyber_isSome : w0Ses0.pendingKyberPreKey.isSome = true := by
   decide +kernel
 
-def w0Kpk : PendingKyberPreKey :=
+@[expose] def w0Kpk : PendingKyberPreKey :=
   match w0Ses0.pendingKyberPreKey with
   | some k => k
   | none => ⟨0#32, []⟩
@@ -1701,10 +1516,10 @@ private theorem w0PqA0_bounds : 0 < w0PqA0.length ∧ w0PqA0.length ≤ 286196 :
 private theorem w0PqA1_bounds : 0 < w0PqA1.length ∧ w0PqA1.length ≤ 286196 := by
   decide +kernel
 
-def w0Sc0 : SenderChain :=
+@[expose] def w0Sc0 : SenderChain :=
   ⟨w0EphA, ⟨(rootKdf C0.F w0Key0 nzVec32.toList).2, 0#32⟩⟩
 
-def w0RcInit : ReceiverChain :=
+@[expose] def w0RcInit : ReceiverChain :=
   ⟨⟨b0.spkPub⟩, some ⟨w0Key0, 0#32⟩, []⟩
 
 def w0RcPost : ReceiverChain :=
@@ -1736,12 +1551,12 @@ private theorem w0_key_deser_facts :
       .ok w0Sc0.ratchetKey.publicKey ∧
     clampScalar w0Sc0.ratchetKey.privateKey.bytes = w0Sc0.ratchetKey.privateKey.bytes ∧
     PublicKey.deserialize w0Ppk.baseKey.serialize = .ok w0Ppk.baseKey ∧
-    PublicKey.deserialize (⟨b0.spkPub⟩ : PublicKey).serialize = .ok ⟨b0.spkPub⟩ := by
-  decide +kernel
+    PublicKey.deserialize (⟨b0.spkPub⟩ : PublicKey).serialize = .ok ⟨b0.spkPub⟩ :=
+  ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
-def ghostBase : BitVec 64 := 0x10000#64
+@[expose] def ghostBase : BitVec 64 := 0x10000#64
 
-def w0PendTail : List (BitVec 8) :=
+@[expose] def w0PendTail : List (BitVec 8) :=
   (match w0Ppk.preKeyId with
    | none => [0#8, 0#8, 0#8, 0#8, 0#8, 0#8, 0#8, 0#8]
    | some v => [1#8, 0#8, 0#8, 0#8] ++ leBytes 4 v.toNat) ++
@@ -1749,10 +1564,10 @@ def w0PendTail : List (BitVec 8) :=
   leBytes 4 w0Ppk.signedPreKeyId.toNat ++
   [0#8, 0#8, 0#8, 0#8]
 
-def w0KyberTail : List (BitVec 8) :=
+@[expose] def w0KyberTail : List (BitVec 8) :=
   leBytes 4 w0Kpk.preKeyId.toNat ++ [0#8, 0#8, 0#8, 0#8]
 
-def w0RcGhost : CryptoVerification.LibsignalSessionRepr.ChainGhost where
+@[expose] def w0RcGhost : CryptoVerification.LibsignalSessionRepr.ChainGhost where
   srk := ⟨33#64, ghostBase + 896#64, (⟨b0.spkPub⟩ : PublicKey).serialize⟩
   priv := ⟨0#64, 1#64, []⟩
   mkCap := 0#64
@@ -1760,7 +1575,7 @@ def w0RcGhost : CryptoVerification.LibsignalSessionRepr.ChainGhost where
   keys := []
   ck := ⟨32#64, ghostBase + 944#64⟩
 
-def w0G0 : SessionGhost where
+@[expose] def w0G0 : SessionGhost where
   localIk := ⟨33#64, ghostBase + 512#64, w0SA0.localIdentity.publicKey.serialize⟩
   remoteIk := ⟨33#64, ghostBase + 560#64, (⟨⟨b0.idPub⟩⟩ : IdentityKey).publicKey.serialize⟩
   root := ⟨32#64, ghostBase + 608#64⟩
@@ -2740,273 +2555,5 @@ private theorem ratchetScopeCoversPq_scopeIn_local (W : PEParams) :
       split at hk'
       · exact hky k hk'
       · cases hk'
-
-/-- Concrete `recvWhisper` binary-kit success-path non-vacuity witness on
-`RealCliMainBinaryEnvOf (mkBinaryKitRealCalleeEnvs img S X W₀) i₀` at `W₀ = w0CliHooks`
-(exhibiting Block 594 `address_text` events, `.ok` `Dir::get` reads, hook-model read disjuncts, and
-`CliWriteStdoutEnv`'s `alloc 1024` disjunct). -/
-theorem realCliMainBinaryEnvOf_concrete_recvWhisper_succ_nonvacuous [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) :
-    ∃ (W₀ : CliHooks) (i₀ : Inputs) (evs : List AllocEvent),
-      CliPqxdhInputs ⟨W₀.C, W₀.Q⟩ i₀ ∧
-      (∃ peer, parseArgs uuidTryParse (i₀.argv.map bytesOfString) = some (.recv peer)) ∧
-      i₀.stdin.head? = some wireWhisper ∧
-      RecvWhisperSuccMainEnv img ⟨W₀.C, W₀.Q⟩ i₀ evs ∧
-      RealCliMainBinaryEnvOf (mkBinaryKitRealCalleeEnvs img S X W₀) i₀ evs ∧
-      AllocEvent.alloc 36 ∈ evs ∧
-      AllocEvent.alloc 8 ∈ evs ∧
-      AllocEvent.alloc 24 ∈ evs ∧
-      AllocEvent.alloc 16 ∈ evs ∧
-      AllocEvent.alloc 1024 ∈ evs := by
-  let R := w0W2Params
-  let dx := toDecryptGhost R.x
-  let rem := dx.rem.val
-  have hremEq : rem = partyAddr .B := rfl
-  have hlocEq : dx.loc.val = partyAddr .A := rfl
-  have hW0Eq : (⟨w0CliHooks.C, w0CliHooks.Q⟩ : PEParams) = W0 := rfl
-  have hScopeIn : scopeIn w0Rec0 :=
-    ratchetScopeCoversPq_scopeIn_local W0 w0St1 w0XA ⟨.A, w0SA0, 0, [0]⟩ w0St1_domain rfl
-  have hKitR0 : scopeKit w0Rec0 := scopeKit_of_scopeIn hScopeIn
-  have hSessCap : (encodeRecord w0Rec0).length ≤ 2097152 := by
-    rw [w0Rec0_encode_eq]
-    exact pqSessBytes_le_fileCapBytes w0St1_domain
-  have hOwnCap : (textBytes (partyAddress .A).text).length ≤ 2097152 := by
-    rw [textBytes_partyA_len]; decide
-  have hPeerCap : (pqIdBytes w0St1).length ≤ 2097152 := by decide +kernel
-  have hStdinCap : w0Inputs.stdin.length ≤ msgCapBytes := by
-    have := w0Rest_len_le
-    change (wireWhisper :: w0Rest).length ≤ msgCapBytes
-    simp only [List.length_cons, msgCapBytes]
-    omega
-  have hRestLt : w0Rest.length < 2 ^ 32 := by
-    have := w0Rest_len_le
-    omega
-  let kit := decSessKitPlaced R.repAlloc R.x.F R.x.peer R.B
-  have hScAt : kit.ScopeAt scopeKit StoresGhost.opened.sessions rem w0Rec0 := by
-    cases henc : encodeRecord w0Rec0 with
-    | nil => exact absurd henc w0Rec0_encode_ne_nil
-    | cons b0 bsRest =>
-      have hget : StoresGhost.opened.sessions.get cliIo.rd R.x.F (addressText rem) =
-          .ok (b0 :: bsRest) := by
-        rw [hremEq]
-        exact henc ▸ w0Sess_get
-      exact ⟨hKitR0, b0 :: bsRest, hget, w0Rec0, rfl, henc, hKitR0⟩
-  have hM2 : M2CollectSuccEnv w0Inputs.argv.length [] :=
-    ⟨[], [], rfl, Or.inl rfl, ⟨[], [], rfl, Or.inl rfl, rfl⟩⟩
-  let evsSetup :=
-    rustAllocEvents (16 * w0Inputs.argv.length) 8 ++
-      ([] ++ (addressEvents uuidTryParse w0AddressCall.bs ++
-        (allocBytes1Events w0Inputs.stdin ++ (allocBytes1Events (keyToBytes32 0#256) ++ []))))
-  have hSetup : CliMainSetupSuccEnv w0Inputs (some w0AddressCall) evsSetup :=
-    ⟨_, _, rfl, rfl,
-      [], _, rfl, hM2,
-      _, _, rfl, rfl,
-      _, _, rfl, ⟨by have := hStdinCap; unfold msgCapBytes at this; omega, Or.inl rfl⟩,
-      _, [], rfl, ⟨keyToBytes32 0#256, w0Inputs_coins_readFileResult, by decide, Or.inl rfl⟩,
-      FreeOnlyEvs.nil⟩
-  let ownB := textBytes (partyAddress .A).text
-  let evsR0Get := mkDirGetOkBinEvs StoresGhost.opened.identity.own (utf8 "address") ownB
-  let evsR0 := evsR0Get ++ (rustAllocEvents w0OwnAddr.name.length 1 ++ deallocBytes1OfLen ownB.length)
-  have hDeallocOwn : FreeOnlyEvs (deallocBytes1OfLen ownB.length) := by
-    have hlen : ownB.length = 38 := textBytes_partyA_len
-    rw [hlen]
-    exact FreeOnlyEvs.singleton 1 38
-  have hR0 : R0BinarySuccEnv w0RunCall evsR0 :=
-    ⟨ownB, w0OwnAddr, w0Own_get, addrParse_textBytes .A,
-      evsR0Get, _, rfl, mkDirGetOkBinEvs_mem rfl w0Own_get hOwnCap,
-      _, _, rfl, rfl, hDeallocOwn⟩
-  let evsCt : List AllocEvent := []
-  let evsAd : List AllocEvent := []
-  let evsSer : List AllocEvent :=
-    if w0Msg.serialized = [] then [] else rustAllocEvents w0Msg.serialized.length 1
-  let evsSig := [] ++ (([] ++ (evsCt ++ (evsAd ++ evsSer))) ++ [])
-  have hCtMem : IntoBoxedBoundedEnv w0Msg.ciphertext evsCt :=
-    intoBoxedBoundedEnv_nil (by change w0Ct.length < 2 ^ 63; rw [w0Ct_len]; decide)
-  have hAdMem : IntoBoxedOptBoundedEnv w0Msg.addresses evsAd := by
-    change IntoBoxedOptBoundedEnv w0Addrs []
-    cases ha : w0Addrs with
-    | none => rfl
-    | some ad =>
-      have had36 := w0Addrs_len_le ad ha
-      exact intoBoxedBoundedEnv_nil (by omega)
-  have hSig : SigTryFromOkEnv w0Rest w0Msg evsSig :=
-    ⟨w0Rest_tryFrom,
-      [], _, rfl, SigTryFromLoopBoundedEnv.done SigTryFromErrTailEnv.nil,
-      _, [], rfl,
-      ⟨[], _, rfl, FreeOnlyEvs.nil,
-        ⟨evsCt, _, rfl, hCtMem,
-          ⟨evsAd, evsSer, rfl, hAdMem, rfl⟩⟩⟩,
-      FreeOnlyEvs.nil⟩
-  let evsAddr := mkAddrTextValEvs rem
-  let evsSessGet := mkDirGetOkBinEvs StoresGhost.opened.sessions (addressText rem) (encodeRecord w0Rec0)
-  let evsLoad :=
-    (rustAllocEvents kit.loadBoxSize 8 ++
-      (evsAddr ++ (evsSessGet ++ (sessDeserEvents w0Rec0 ++ [])))) ++
-    rustDeallocEvents kit.loadBoxSize 8
-  have hLoad : W2LoadStepSuccEnv R w0Rec0 evsLoad := by
-    cases henc : encodeRecord w0Rec0 with
-    | nil => exact absurd henc w0Rec0_encode_ne_nil
-    | cons b0 bsRest =>
-      have hget : StoresGhost.opened.sessions.get cliIo.rd R.x.F (addressText rem) =
-          .ok (b0 :: bsRest) := henc ▸ w0Sess_get
-      exact ⟨b0, bsRest, hget, henc, hKitR0,
-        _, _, rfl,
-        ⟨_, _, rfl, rfl,
-          ⟨evsAddr, _, rfl, mkAddrTextValEvs_mem rem,
-            ⟨evsSessGet, _, rfl, mkDirGetOkBinEvs_mem rfl w0Sess_get hSessCap,
-              ⟨_, [], rfl, rfl, FreeOnlyEvs.nil⟩⟩⟩⟩,
-        rfl⟩
-  let evsPre := evsSetup ++ (evsR0 ++ (evsSig ++ evsLoad))
-  have hPre : RecvWhisperSuccPreEnv w0RunCall (some w0AddressCall) w0Rest w0Msg R w0Rec0 evsPre :=
-    ⟨evsSetup, _, rfl, hSetup, evsR0, _, rfl, hR0, evsSig, evsLoad, rfl, hSig, hLoad⟩
-  let rdg := recGhostOf dx 0#64 w0G0 w0Ses0.state
-  have hctPos : 0 < (recordTryDecryptEnvArgs rdg w0G0).msg.ciphertext.length := by
-    change 0 < w0Msg.ciphertext.length
-    have hc : w0Msg.ciphertext = w0Ct := rfl
-    rw [hc, w0Ct_len]; decide
-  obtain ⟨evsTd, h16Td, hTd⟩ := w2RealTdSuccEnv_inhabited (recordTryDecryptEnvArgs rdg w0G0) hctPos
-  let evsDec := segCloneEvents rdg.G rdg.st ++ (evsTd ++ [])
-  have hDec : RecordDecryptSuccEnv C0.F K0 rdg evsDec :=
-    ⟨by rw [show rdg.st = w0Ses0.state from rfl, w0Ses0_state_eq]; rfl,
-      w0G0, w0G0_cloneRel,
-      _, _, rfl, rfl, evsTd, [], rfl, hTd, FreeOnlyEvs.nil⟩
-  let ikit := decIdKitPlaced R.repAlloc R.x.F R.x.peer R.B
-  let evsPeerGet := mkDirGetOkBinEvs StoresGhost.opened.identity.peers rem.name (pqIdBytes w0St1)
-  let evsTrust := rustAllocEvents ikit.trustBoxSize 8 ++ ((evsPeerGet ++ []) ++ rustDeallocEvents ikit.trustBoxSize 8)
-  have hTrust : W2TrustStepSuccEnv R evsTrust :=
-    ⟨_, _, rfl, rfl, _, _, rfl,
-      ⟨evsPeerGet, [], rfl, mkDirGetOkBinEvs_mem rfl w0Peer_get hPeerCap, FreeOnlyEvs.nil⟩, rfl⟩
-  let kBob : IdentityKey := ⟨⟨b0.idPub⟩⟩
-  let evsSave :=
-    rustAllocEvents ikit.saveBoxSize 8 ++
-      ((evsPeerGet ++ ([] ++ (publicKeySerializeEvents ++
-          (rustAllocEvents rem.name.length 1 ++ rawVecGrowEvents 48 4 8 0#64)))) ++
-        rustDeallocEvents ikit.saveBoxSize 8)
-  have hSave : W2SaveStepSuccEnv R kBob evsSave :=
-    ⟨by change rem.name ≠ []; rw [hremEq, partyAddr_eq]; decide, rfl, ⟨pqIdBytes w0St1, w0Peer_get⟩,
-      _, _, rfl, rfl, _, _, rfl,
-      ⟨evsPeerGet, _, rfl, mkDirGetOkBinEvs_mem rfl w0Peer_get hPeerCap,
-        [], _, rfl, FreeOnlyEvs.nil,
-        _, _, rfl, rfl,
-        _, _, rfl, rfl, rfl⟩,
-      rfl⟩
-  let encLen1 := (lenField 1 (encSessionMem w0G1 w0Ses1)).length
-  let evsSer1 := (segCloneEvents w0G1 w0Ses1.state ++ rustAllocEvents encLen1 1) ++
-    dropClonedSessionEvents w0G1 w0Ses1.state
-  have hSer1 : SerializeSomeCancelEnv w0G1 w0Ses1 evsSer1 :=
-    ⟨_, _, rfl, ⟨_, _, rfl, rfl, rfl⟩, rfl⟩
-  let evsStorePoll := evsAddr ++ (evsSer1 ++ rawVecGrowEvents 48 4 8 0#64)
-  let evsStoreStep :=
-    (rustAllocEvents kit.storeBoxSize 8 ++ (evsStorePoll ++ rustDeallocEvents kit.storeBoxSize 8)) ++ []
-  have hStoreStep : W2StoreStepSuccEnv R w0Rec1 w0Ses1 w0G1 evsStoreStep :=
-    ⟨rfl, w0G1_sessionGhostValid, w0G1_drop_freeOnly, evsStorePoll,
-      ⟨evsAddr, _, rfl, mkAddrTextValEvs_mem rem, evsSer1, _, rfl, hSer1, rfl⟩,
-      _, [], rfl, ⟨_, _, rfl, rfl, _, _, rfl, rfl, rfl⟩, FreeOnlyEvs.nil⟩
-  let evsM5P := mkM5EntrySimple (utf8 "identities") R.peer.name.bytes
-  let evsM5S := mkM5EntrySimple (utf8 "sessions") (addressText rem)
-  let evsM5 := ((evsM5P ++ []) ++ ((evsM5S ++ []) ++ [])) ++ []
-  have hIdDirNe : utf8 "identities" ≠ [] := by rw [utf8_eq_kutf8]; decide
-  have hSessDirNe : utf8 "sessions" ≠ [] := by rw [utf8_eq_kutf8]; decide
-  have hM5 : RecvWhisperM5SuccEnv R evsM5 :=
-    ⟨_, [], rfl,
-      ⟨evsM5P ++ [], _, rfl,
-        ⟨evsM5P, [], rfl, ⟨evsM5P, [], (List.append_nil _).symm, mkM5EntrySimple_mem _ _ hIdDirNe, rfl⟩,
-          FreeOnlyEvs.nil⟩,
-        ⟨evsM5S ++ [], [], rfl,
-          ⟨evsM5S, [], rfl, ⟨evsM5S, [], (List.append_nil _).symm, mkM5EntrySimple_mem _ _ hSessDirNe, rfl⟩,
-            FreeOnlyEvs.nil⟩,
-          rfl⟩⟩,
-      FreeOnlyEvs.nil⟩
-  let evsStore := evsTrust ++ (evsSave ++ (evsStoreStep ++ ([] ++ ([] ++ evsM5))))
-  have hStore : RecvWhisperSuccStoreEnv R w0Rec1 w0Ses1 w0G1 kBob evsStore :=
-    ⟨evsTrust, _, rfl, hTrust,
-      evsSave, _, rfl, hSave,
-      evsStoreStep, _, rfl, hStoreStep,
-      [], _, rfl, FreeOnlyEvs.nil,
-      [], evsM5, rfl, FreeOnlyEvs.nil, hM5⟩
-  let evsM6 := rustAllocEvents 1024 1 ++ []
-  have hM6 : RecvWhisperSuccM6Env evsM6 :=
-    ⟨Or.inr ⟨_, [], rfl, Or.inr rfl, FreeOnlyEvs.nil⟩,
-      _, [], rfl, rfl, FreeOnlyEvs.nil⟩
-  let fullLog := evsPre ++ evsDec ++ evsStore ++ evsM6
-  have hcoins : coinsOf dx.rest = 0#256 := by decide +kernel
-  have ⟨hdecRec, hremId, _⟩ := w0_decryptRecord_ok dx w0Ses0 hremEq hlocEq rfl hcoins w0Ses0_state_eq
-  have hMainSucc : RecvWhisperSuccMainEnv img ⟨w0CliHooks.C, w0CliHooks.Q⟩ w0Inputs fullLog := by
-    rw [hW0Eq]
-    exact ⟨w0St1, w0St2, 0#256, w0RunCall, w0PeerAddr, w0Rest, w0Msg, w0AddressCall, R,
-      w0Rec0, w0Rec1, w0Ses0, w0Ses1, w0G0, w0G1, w0Pt, kBob,
-      evsPre, evsDec, evsStore, evsM6,
-      rfl, w0St1_domain, rfl, w0_pqRecvWhisperModel_ok, ⟨w0XA, ⟨.A, w0SA1, 0, [0]⟩, rfl, rfl⟩,
-      rfl, rfl, w0Inputs_parseArgs, w0Inputs_argv_map, w0AddressCall_parse,
-      rfl, hStdinCap, rfl, hcoins, hlocEq, w0W2Params_dom,
-      hScAt, w0Rec0_currentSession, w0G0_sessionGhostValid, hdecRec, rfl, hremId,
-      hPre, hDec, hStore, hM6⟩
-  have h36_addr : AllocEvent.alloc 36 ∈ evsAddr := by
-    change AllocEvent.alloc 36 ∈ mkAddrTextValEvs (partyAddr .B)
-    rw [partyAddr_eq]
-    decide
-  have h8_addr : AllocEvent.alloc 8 ∈ evsAddr := by
-    have hdec1 : decimalEvents ((1#8 : BitVec 8).zeroExtend 32) = [AllocEvent.alloc 8] := by
-      unfold decimalEvents
-      rw [show ((1#8 : BitVec 8).zeroExtend 32).toNat = 1 by decide,
-        CryptoVerification.SignalSession.Cli.Decimal.Helpers.decimalText_digit 1 (by decide)]
-      decide
-    have hd : rem.device = 1#8 := by rw [hremEq, partyAddr_eq]
-    exact List.mem_append_right _ (List.mem_append_right _ (List.mem_append_left _
-      (by rw [hd, hdec1]; decide)))
-  have h24_load : AllocEvent.alloc 24 ∈ evsLoad :=
-    List.mem_append_left _ (List.mem_append_left _
-      (show AllocEvent.alloc 24 ∈ rustAllocEvents 24 8 by decide))
-  have h36_load : AllocEvent.alloc 36 ∈ evsLoad :=
-    List.mem_append_left _ (List.mem_append_right _ (List.mem_append_left _ h36_addr))
-  have h8_load : AllocEvent.alloc 8 ∈ evsLoad :=
-    List.mem_append_left _ (List.mem_append_right _ (List.mem_append_left _ h8_addr))
-  have hLoad_sub : ∀ e ∈ evsLoad, e ∈ fullLog := fun e he =>
-    List.mem_append_left _
-      (List.mem_append_left _
-        (List.mem_append_left _
-          (List.mem_append_right _
-            (List.mem_append_right _
-              (List.mem_append_right _ he)))))
-  have h16_dec : AllocEvent.alloc 16 ∈ evsDec := by
-    have h16' : AllocEvent.alloc 16 ∈ evsTd := by
-      have hc : (recordTryDecryptEnvArgs rdg w0G0).msg.ciphertext.length = 16 := by
-        change w0Msg.ciphertext.length = 16
-        have h1 : w0Msg.ciphertext = w0Ct := rfl
-        rw [h1, w0Ct_len]
-      rwa [hc] at h16Td
-    exact List.mem_append_right _ (List.mem_append_left _ h16')
-  have h16_full : AllocEvent.alloc 16 ∈ fullLog :=
-    List.mem_append_left _ (List.mem_append_left _ (List.mem_append_right _ h16_dec))
-  have h1024_full : AllocEvent.alloc 1024 ∈ fullLog :=
-    List.mem_append_right _ (List.mem_append_left _ (by decide))
-  exact ⟨w0CliHooks, w0Inputs, fullLog,
-    ⟨w0St1, w0St1_domain, Or.inr (Or.inr (Or.inl ⟨w0Rest, 0#256, hRestLt, rfl⟩))⟩,
-    ⟨w0PeerAddr, w0Inputs_parseArgs⟩,
-    rfl,
-    hMainSucc,
-    recvWhisperSuccMainEnv_sub img S X w0CliHooks w0Inputs hMainSucc,
-    hLoad_sub _ h36_load,
-    hLoad_sub _ h8_load,
-    hLoad_sub _ h24_load,
-    h16_full,
-    h1024_full⟩
-
-/-- Alias form of `realCliMainBinaryEnvOf_concrete_recvWhisper_succ_nonvacuous` on
-`realCliMainBinaryKitEnvOf img S X W₀ i₀`. -/
-theorem realCliMainBinaryKitEnvOf_concrete_recvWhisper_succ_nonvacuous [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) :
-    ∃ (W₀ : CliHooks) (i₀ : Inputs) (evs : List AllocEvent),
-      CliPqxdhInputs ⟨W₀.C, W₀.Q⟩ i₀ ∧
-      (∃ peer, parseArgs uuidTryParse (i₀.argv.map bytesOfString) = some (.recv peer)) ∧
-      i₀.stdin.head? = some wireWhisper ∧
-      RecvWhisperSuccMainEnv img ⟨W₀.C, W₀.Q⟩ i₀ evs ∧
-      realCliMainBinaryKitEnvOf img S X W₀ i₀ evs ∧
-      AllocEvent.alloc 36 ∈ evs ∧
-      AllocEvent.alloc 8 ∈ evs ∧
-      AllocEvent.alloc 24 ∈ evs ∧
-      AllocEvent.alloc 16 ∈ evs ∧
-      AllocEvent.alloc 1024 ∈ evs :=
-  realCliMainBinaryEnvOf_concrete_recvWhisper_succ_nonvacuous img S X
 
 end LibsignalBinary.Proofs.PeakBudget.RealMainEnvNonVacSuccWhisper

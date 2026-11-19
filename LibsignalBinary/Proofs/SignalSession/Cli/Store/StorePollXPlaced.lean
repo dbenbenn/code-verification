@@ -9,10 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollPlaced
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsX
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollPlaced
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsX -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.Layout -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `<SessionFiles as SessionStore>::store_session::{closure#0}` at `serializeStackX`
@@ -21,7 +29,7 @@ Proves `sessStorePollSpecPlaced` on Block `570` (`lsProg_570 H`) at `serializeSt
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

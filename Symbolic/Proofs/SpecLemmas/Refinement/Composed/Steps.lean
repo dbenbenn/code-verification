@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SpecLemmas.ModelProofDefs
+import Symbolic.Proofs.SpecLemmas.ModelProofDefs
 public import Symbolic.Specifications.Refinement.Statement
 public import Symbolic.Proofs.SpecLemmas.LeakableSecretProofDefs
 import all DY.Trace.Manipulation
@@ -28,7 +28,7 @@ Proves list-append composition for `runSteps` (`runSteps_append`) and the equiva
 `Cli.KeyInDirs` and `∃ p, Cli.KeyInDir` (`keyInDirs_iff_exists_keyInDir`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

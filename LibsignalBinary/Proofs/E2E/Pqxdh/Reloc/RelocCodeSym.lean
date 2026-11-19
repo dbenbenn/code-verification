@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard23
+meta import GeneratedLean.LibsignalSessionPlacedObjShard25
+meta import GeneratedLean.LibsignalSessionPlacedObjShard26
 
 /-!
 # Relocatable Per-Block Instruction Fetches for `E2E/Pqxdh/Reloc`
@@ -22,7 +25,7 @@ Per-block `CodeSym` / instruction-fetch definitions under `[LibsignalPlacement]`
 (`Chain::clone [local#3]`), and `511` (`drop_glue::<SignalProtocolError> [local#2]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

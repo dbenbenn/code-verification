@@ -9,15 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderReceived
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderReceivedUcClPlaced
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderReceived
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderReceivedUcClPlaced
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBase
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParams -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderReceivedUc -- proof-setup: allow-public-import
 
 /-!
 # Code-Loaded Placed Verification of `Chunked.HeaderReceived::merge` (Block `306`)
@@ -26,7 +29,7 @@ Proves the outer loop and top-level contract `chunked_header_received_merge_cl_p
 for `Chunked.HeaderReceived::merge` on Block `306` with `withLsCodeRoLoaded lsmpl` callee contracts.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageMerge
 

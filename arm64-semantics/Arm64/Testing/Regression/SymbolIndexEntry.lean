@@ -34,10 +34,10 @@ attribute [local irreducible] Program.fetch Program.externAt?
 
 /-! ## Generated `fnSize` and `frameBytes` lemmas -/
 
-example : fnFrameBytes cExamplesObj "c_arith_shift" = 0 := by simp
-example : fnFrameBytes cExamplesImage "c_swap_u64" = 0 := by simp
-example : Obj.fnSize cExamplesImage "c_swap_u64" = 20 := by simp
-example : fnFrameBytes cExamplesObj "c_swap_u64" = 0 := by simp
+example : fnFrameBytes cExamplesCode "c_arith_shift" = 0 := by simp
+example : fnFrameBytes cExamplesCode "c_swap_u64" = 0 := by simp
+example : progFnSize cExamplesCode "c_swap_u64" = 20 := by simp
+example : fnFrameBytes frame32TextProg "frame32_branch" = 32 := rfl
 
 /-! ## `stackFrameAt` and `stackFrameFor` -/
 
@@ -48,7 +48,7 @@ example (sp : BitVec 64) : stackFrameAt sp 32 = memRegion (sp - 32#64) 32 :=
   stackFrameAt_eq_memRegion sp 32
 
 example (sp : BitVec 64) :
-    stackFrameFor cExamplesObj "c_arith_shift" sp = emp := by
+    stackFrameFor cExamplesCode "c_arith_shift" sp = emp := by
   simp
 
 example (sp : BitVec 64) :
@@ -56,7 +56,7 @@ example (sp : BitVec 64) :
   simp
 
 example (sp : BitVec 64) :
-    stackFrameFor cExamplesImage "c_swap_u64" sp = emp := by
+    stackFrameFor cExamplesCode "c_swap_u64" sp = emp := by
   simp
 
 example (sp : BitVec 64) :
@@ -68,7 +68,7 @@ example (sp : BitVec 64) :
 /-! ## `wp_entry` and `wp_init_fn` -/
 
 def cArithShiftFrameSpec : Spec (BitVec 64) where
-  pre  := fun x s0 => ⌜s0.readReg64 .x0 = x⌝ ∗ stackFrameFor cExamplesObj "c_arith_shift" s0.sp
+  pre  := fun x s0 => ⌜s0.readReg64 .x0 = x⌝ ∗ stackFrameFor cExamplesCode "c_arith_shift" s0.sp
   post := fun x _ sf => ⌜sf.readReg64 .x0 = 3#64 * (x + 42#64)⌝
 
 theorem cArithShift_wp_entry_fnAddr (b : BitVec 64) (H : String → Option (State → State)) :

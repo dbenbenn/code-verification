@@ -9,10 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSignalMemPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalOk
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSignalMemPlaced
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalOk -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlaced
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalFrame
+import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
+public import ProofLib.RegChain
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CmDropPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrCommonPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrPreKeyEncryptPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrSignalEncryptPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrStoreHookPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Relocatable `segSignal` Success Path (`+0x3a4..+0x418` → `Cm` `+0xa70`)
@@ -21,7 +37,7 @@ Defines `SegSignalRetStateVPlaced` and proves `segSignal_placed_ok_path` (`Ok sm
 `CmStateVPlaced` at `+0xa70`) on Block `464` (`lsProg_464 Hk`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -48,7 +64,7 @@ set_option maxHeartbeats 400000
 
 /-- **Ret** (`+0x3a4`) under `[LibsignalPlacement]`: `OTR::encrypt` returned (not panicking) at
 `segSignal`. -/
-def SegSignalRetStateVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def SegSignalRetStateVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop)

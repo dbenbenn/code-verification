@@ -25,7 +25,7 @@ Proves `BridgeBQuietFailSpec`: whenever a call fails (`ok (callStarts τ_pre).le
 `blk'` of `[e, .rng coins]` with `e` a `.recv` or `.pt` event.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

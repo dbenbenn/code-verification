@@ -11,6 +11,8 @@ module
 
 public import Symbolic.Proofs.Swarm.UA.Defs
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil
+import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical
+import Symbolic.Proofs.Swarm.CREF.Sem
 
 /-!
 # Initial Clean Explanation Witness
@@ -20,7 +22,7 @@ Proves `init_w : UAInitWSpec`, showing that the empty CLI event list admits a cl
 hold.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

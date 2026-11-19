@@ -210,16 +210,16 @@ theorem set_tid_address_and_sched_getaffinity_conformance :
     `rt_sigprocmask` (`135`), `rt_sigaction` (`134`), `tkill` (`130`), `tgkill` (`131`), and
     `ProcessOutcome.ofSignal` vs `ProcessOutcome.ofState`. -/
 theorem abort_and_signal_syscalls_conformance :
-    let mem0 := (((Memory.empty.mapZero 0x50000#64 0x1000).write64 0x50000#64 0xdeadbeefcafebabe#64
+    let mem0 := ((((Memory.empty.mapZero 0x50000#64 0x1000).write64 0x50000#64 0xdeadbeefcafebabe#64
       ).write64 0x50400#64 0x40100#64
       ).write64 0x50408#64 0x200#64
+      ).write64 0x50410#64 0x20#64
     let memIgn := mem0.write64 0x50200#64 1#64
     let memCustom := mem0.write64 0x50300#64 0x4000#64
     let s0 : State := { mem := mem0 }
     let sPid := execSyscall (s0.writeReg64 .x8 SYS_GETPID)
     let sTid := execSyscall (s0.writeReg64 .x8 SYS_GETTID)
-    -- rt_sigprocmask: empty / SIGKILL|SIGSTOP sets and SIG_UNBLOCK succeed & zero-fill oldset;
-    -- non-zero blockable SIG_BLOCK / SIG_SETMASK fail closed with .Exception
+    -- rt_sigprocmask: tracks blocked mask (stripping SIGKILL|SIGSTOP) and delivers unblocked pending SIGABRT
     let sMaskOk := execRtSigprocmask
       ((((s0.writeReg64 .x0 0#64).writeReg64 .x1 0x50100#64).writeReg64 .x2 0x50000#64).writeReg64
         .x3 8#64)
@@ -235,6 +235,20 @@ theorem abort_and_signal_syscalls_conformance :
     let sMaskSetNonZero := execRtSigprocmask
       ((((s0.writeReg64 .x0 2#64).writeReg64 .x1 0x50408#64).writeReg64 .x2 0x50000#64).writeReg64
         .x3 8#64)
+    let sMaskQueryAfterBlock := execRtSigprocmask
+      ((((sMaskBlockNonZero.writeReg64 .x0 0#64).writeReg64 .x1 0#64).writeReg64 .x2 0x50000#64).writeReg64
+        .x3 8#64)
+    let sMaskBlockAbrt := execRtSigprocmask
+      ((((s0.writeReg64 .x0 0#64).writeReg64 .x1 0x50410#64).writeReg64 .x2 0x50000#64).writeReg64
+        .x3 8#64)
+    let sTkillBlocked := execTkill
+      ((sMaskBlockAbrt.writeReg64 .x0 1#64).writeReg64 .x1 6#64)
+    let sUnblockPending := execRtSigprocmask
+      ((((sTkillBlocked.writeReg64 .x0 1#64).writeReg64 .x1 0x50410#64).writeReg64 .x2 0#64).writeReg64
+        .x3 8#64)
+    let sIgnFlush := execRtSigaction
+      (((((sTkillBlocked.setMem memIgn).writeReg64 .x0 6#64).writeReg64 .x1 0x50200#64).writeReg64
+        .x2 0#64).writeReg64 .x3 8#64)
     let sMaskBadSz := execRtSigprocmask (s0.writeReg64 .x3 4#64)
     let sMaskBadHow := execRtSigprocmask
       (((s0.writeReg64 .x0 9#64).writeReg64 .x1 0x50408#64).writeReg64 .x3 8#64)
@@ -286,8 +300,21 @@ theorem abort_and_signal_syscalls_conformance :
     sMaskKillStop.mem.read64 0x50000#64 = 0#64 ∧
     sMaskUnblock.readReg64 .x0 = 0#64 ∧
     sMaskUnblock.mem.read64 0x50000#64 = 0#64 ∧
-    sMaskBlockNonZero.status = .Exception "unmodeled non-zero signal mask in rt_sigprocmask" ∧
-    sMaskSetNonZero.status = .Exception "unmodeled non-zero signal mask in rt_sigprocmask" ∧
+    sMaskBlockNonZero.status = .Running ∧
+    sMaskBlockNonZero.readReg64 .x0 = 0#64 ∧
+    sMaskBlockNonZero.sigMask = 0x200#64 ∧
+    sMaskSetNonZero.status = .Running ∧
+    sMaskSetNonZero.readReg64 .x0 = 0#64 ∧
+    sMaskSetNonZero.sigMask = 0x200#64 ∧
+    sMaskQueryAfterBlock.mem.read64 0x50000#64 = 0x200#64 ∧
+    sMaskBlockAbrt.sigMask = 0x20#64 ∧
+    sTkillBlocked.status = .Running ∧
+    sTkillBlocked.readReg64 .x0 = 0#64 ∧
+    sTkillBlocked.sigPending = 0x20#64 ∧
+    sUnblockPending.status = .Signaled 6#7 ∧
+    sUnblockPending.sigPending = 0#64 ∧
+    sIgnFlush.status = .Running ∧
+    sIgnFlush.sigPending = 0#64 ∧
     sMaskBadSz.readReg64 .x0 = -22#64 ∧
     sMaskBadHow.readReg64 .x0 = -22#64 ∧
     sMaskEfaultSet.readReg64 .x0 = -14#64 ∧
@@ -523,7 +550,7 @@ theorem runElfImageRefArrayBacked_eq (fuel : Nat) (img : ElfImage) (inputs : Pro
 inductive ModeledSyscall where
   | fcntl | ioctl | openat | close | lseek
   | read | write | readv | writev | pread64 | ppoll | fstat
-  | exit | exitGroup | setTidAddress
+  | exit | exitGroup | setTidAddress | futex
   | getpid | gettid | sigaltstack | rtSigprocmask | rtSigaction | tkill | tgkill
   | clockGettime | schedGetaffinity
   | brk | munmap | mremap | mmap | mprotect | madvise | getrandom
@@ -547,6 +574,7 @@ def ModeledSyscall.ofNr? (nr : BitVec 64) : Option ModeledSyscall :=
   else if nr == SYS_EXIT then some .exit
   else if nr == SYS_EXIT_GROUP then some .exitGroup
   else if nr == SYS_SET_TID_ADDRESS then some .setTidAddress
+  else if nr == SYS_FUTEX then some .futex
   else if nr == SYS_GETPID then some .getpid
   else if nr == SYS_GETTID then some .gettid
   else if nr == SYS_SIGALTSTACK then some .sigaltstack
@@ -638,7 +666,7 @@ def syscallWriteRanges (sc : ModeledSyscall) (s s' : State) : List (BitVec 64 ×
   | .ioctl =>
     if ret.slt 0#64 || s.readReg32 .x1 != FIONREAD_W32 then [] else [(s.readReg64 .x2, 4)]
   | .fcntl | .openat | .close | .lseek | .write | .writev | .exit | .exitGroup
-  | .setTidAddress
+  | .setTidAddress | .futex
   | .getpid | .gettid | .tkill | .tgkill =>
     []
 
@@ -1122,8 +1150,8 @@ theorem abortStatus_parse : ElfImage.parse abortStatusBytes = .ok abortStatusImg
 
 set_option compiler.extract_closed false in
 /-- Cross-check `runElfImageFast` against the reference `runElfImage` (`runSteps Program.pureMem`)
-    on `abort_status.elf` for both stock musl `abort()` (`argc = 1`, failing closed in
-    `rt_sigprocmask` on `__block_all_sigs`) and normal `exit(134)` (`argc = 2`,
+    on `abort_status.elf` for both stock musl `abort()` (`argc = 1`, terminating via
+    `SIGABRT` with `exitCode = 134#64`, `signal = some 6`) and normal `exit(134)` (`argc = 2`,
     `exitCode = 134#64`, `signal = none`). -/
 def checkAbortStatusProcess (_ : Unit := ()) : Bool :=
   let abortInputs : ProcessInputs :=
@@ -1135,14 +1163,18 @@ def checkAbortStatusProcess (_ : Unit := ()) : Bool :=
   let abortOk :=
     match runElfImageFast 20 256 abortStatusImg abortInputs,
           runElfImagePure 5000 abortStatusImg abortInputs with
-    | .ok (sFast, none), .ok (sRef, none) =>
+    | .ok (sFast, some outFast), .ok (sRef, some outRef) =>
       let gprsEq := (List.range 32).all fun i =>
         sFast.regs.regs (BitVec.ofNat 5 i) == sRef.regs.regs (BitVec.ofNat 5 i)
       let vregsEq := (List.range 32).all fun i =>
         sFast.vregs.regs (BitVec.ofNat 5 i) == sRef.vregs.regs (BitVec.ofNat 5 i)
       let stackBase := BitVec.ofNat 64 (abortInputs.init.stackTop.toNat - abortInputs.init.stackSize)
       let stackEq := memRangeCellsEq sFast.mem sRef.mem stackBase abortInputs.init.stackSize
-      sFast.status == .Exception "unmodeled non-zero signal mask in rt_sigprocmask" &&
+      outFast.exitCode == 134#64 &&
+      outFast.signal == some 6 &&
+      outRef.exitCode == 134#64 &&
+      outRef.signal == some 6 &&
+      sFast.status == .Signaled 6#7 &&
       sFast.status == sRef.status &&
       sFast.pc == sRef.pc &&
       sFast.sp == sRef.sp &&
@@ -1180,8 +1212,8 @@ def runQemuShellExitStatus (elfPath : String) (extraArgs : List String := []) : 
   return res.stdout.trimAscii.toString.toNat?
 
 /-- Differential conformance test comparing stock static musl `abort()` (`abort_status.elf`) under
-    `qemu-aarch64` (`134`) against `runElfByteArray` (`runSteps Program.pureMem`, failing closed on
-    `rt_sigprocmask` non-zero signal mask in `__block_all_sigs`) and `exit(134)` (`134`,
+    `qemu-aarch64` (`134`) against `runElfByteArray` (`runSteps Program.pureMem`, terminating with
+    `.Signaled 6#7`, `exitCode = 134`, `signal = some 6`) and `exit(134)` (`134`,
     `signal = none`). -/
 def checkAbortStatusVsQemuIO : IO Bool := do
   let elfPath ← Testing.Harness.resolveRepoFilePath "Arm64/Testing/Regression/fixtures/abort_status.elf"
@@ -1192,10 +1224,12 @@ def checkAbortStatusVsQemuIO : IO Bool := do
   let simExit  := runElfByteArrayPure 5000 elfBytes
     { argv := [bytesOfString "abort_status", bytesOfString "exit134"] }
   match qemuAbort?, qemuExit?, simAbort, simExit with
-  | some qAbort, some qExit, .ok (sAbort, none), .ok (_, some oExit) =>
+  | some qAbort, some qExit, .ok (sAbort, some oAbort), .ok (_, some oExit) =>
     return (
       qAbort == 134 &&
-      sAbort.status == .Exception "unmodeled non-zero signal mask in rt_sigprocmask" &&
+      sAbort.status == .Signaled 6#7 &&
+      oAbort.exitCode == BitVec.ofNat 64 qAbort &&
+      oAbort.signal == some 6 &&
       qExit == 134 &&
       oExit.exitCode == BitVec.ofNat 64 qExit &&
       oExit.signal == none)

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
+public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- proof-setup: allow-public-import
 import Batteries.Data.UInt
 public import Symbolic.Proofs.Swarm.SHARED.SpqrBytesDefs
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewSpqr
@@ -25,7 +25,7 @@ Proves receive-side salt extraction on Bob's initial `spqrInitB` state in direct
 (`spqrV1WithMacEmptyAsNone_recv_of_spqrV1WithMac_recv_ok`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

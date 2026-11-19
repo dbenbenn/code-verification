@@ -9,10 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.UniformStartDistinguisherProg
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim
+public import Computational.Proofs.Game.PromotedCostedReds.UniformStartDistinguisherProg -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim -- proof-setup: allow-public-import
 import Computational.Proofs.Game.PromotedCostedReds.DrSessionSimSize
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
+public import Computational.Proofs.E2E.Dsl.DrSessionSim -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.SpqrSim -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+public import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.SM.GameCosted
 
 /-!
 # Promoted `CostedReduction` Witness for `epoch0Distinguisher`
@@ -22,7 +29,7 @@ Constructs `epoch0Red`, the `ReductionDsl.CostedReduction` witness over `atomicS
 for bounded-query adversaries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -127,7 +134,7 @@ variable {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
 local notation "ESig" => e2eSig ℓ
 local notation "EOps" => e2eOps ℓ zeroPqxdhPrims C K decT encT
 
-def epoch0CorrOKE {Γ : List (Ty ESig)}
+@[expose] def epoch0CorrOKE {Γ : List (Ty ESig)}
     (gsE : Expr EOps Γ (e2eGsTy ℓ)) (pE : Expr EOps Γ .bool) : Expr EOps Γ .bool :=
   .and (noAliceBelow10E gsE pE)
     (.not (.and (.not pE)
@@ -196,7 +203,7 @@ theorem size_epoch0CorrOKE_le {Γ : List (Ty ESig)}
     at hp ⊢
   omega
 
-def epoch0IjArmC (hooks : SpqrDslHooks ℓ zeroPqxdhPrims C K decT encT)
+@[expose] def epoch0IjArmC (hooks : SpqrDslHooks ℓ zeroPqxdhPrims C K decT encT)
     {ι : Type} {T : OracleSpec ι} {I : Iface ESig T}
     (coins : E2ECoinSamplers ℓ zeroPqxdhPrims C K decT encT I)
     (q Δ qep : ℕ) {Γ : List (Ty ESig)}
@@ -457,7 +464,7 @@ theorem epoch0IjArmC_eval (hooks : SpqrDslHooks ℓ zeroPqxdhPrims C K decT encT
               ite_eval, heq0, ht0, Bool.false_eq_true, ↓reduceIte]
             rfl
 
-def epoch0CrArmC {ι : Type} {T : OracleSpec ι} {I : Iface ESig T}
+@[expose] def epoch0CrArmC {ι : Type} {T : OracleSpec ι} {I : Iface ESig T}
     (q : ℕ) {Γ : List (Ty ESig)}
     (gsE : Expr EOps Γ (e2eGsTy ℓ)) (crArg : Expr EOps Γ .bool) :
     Comp EOps I Γ (.prod (smRT GhostStT) (e2eGsTy ℓ)) :=
@@ -570,7 +577,7 @@ theorem epoch0CrArmC_eval {ι : Type} {T : OracleSpec ι} {I : Iface ESig T}
     simp only [eval_smRCorrE, some_eval, hpGet, hAfter]
 
 /-- Combined 5-oracle step handler for `configEpoch0Distinguisher` over `EOps`. -/
-def epoch0OracleStepE2EC (q Δ qep : ℕ) {Γ : List (Ty ESig)}
+@[expose] def epoch0OracleStepE2EC (q Δ qep : ℕ) {Γ : List (Ty ESig)}
     (gsE : Expr EOps Γ (e2eGsTy ℓ)) (qryE : Expr EOps Γ smQT) :
     Comp EOps (coinE2EIface (coinOnlyIface ℓ Pt)) Γ (.prod (smRT GhostStT) (e2eGsTy ℓ)) :=
   let hooks := spqrDslHooks ℓ zeroPqxdhPrims C K decT encT
@@ -702,7 +709,7 @@ theorem epoch0OracleStepE2EC_eval (q Δ qep : ℕ) {Γ : List (Ty ESig)}
       funext ⟨st?, s'⟩
       cases st? <;> rfl
 
-def epoch0FinishE (q : ℕ) : Expr EOps [e2eGsTy ℓ, .bool] .bool :=
+@[expose] def epoch0FinishE (q : ℕ) : Expr EOps [e2eGsTy ℓ, .bool] .bool :=
   .and (orE (.lt (.nat 0) (.tget (.fst (e2eGsMaxAcc .v0)) (.nat 0))) (e2eGsWin .v0))
     (.not (.anyB q (e2eGsCorrs .v0) (.and (.fst .v0) (.eqN (.snd .v0) (.nat 0)))))
 
@@ -761,7 +768,7 @@ variable (C : Crypto) (K : MlKem) {Pt : Type} [DecidableEq Pt] [Zero Pt] [Sample
   (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
   (idA idB : IdentityKey) (lam : Pt) (ℓ q qep : ℕ)
 
-def epoch0RedReal :
+@[expose] def epoch0RedReal :
     CostedReduction (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam)
       (coinOnlyIface ℓ Pt)
       (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
@@ -778,7 +785,7 @@ def epoch0RedReal :
     (epoch0FinishE (ℓ := ℓ) (C := C) (K := K) (decT := decT) (encT := encT) q))
 
 /-- Promoted `CostedReduction` witness for `epoch0Distinguisher`. -/
-def epoch0Red :
+@[expose] def epoch0Red :
     CostedReduction (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam)
       (coinOnlyIface ℓ Pt)
       (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)

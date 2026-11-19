@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChain
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChain -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import all Init.Data.String.Pattern.Basic
 import all Init.Data.String.Pattern.String
@@ -24,6 +24,7 @@ import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable `spqr::send`: Panic Blocks, Shared Epilogue, and Error Cleanup
@@ -32,7 +33,7 @@ Relocatable panic blocks (`+12004`, `+13552`), shared return epilogue (`+4576..+
 error cleanup paths (`+3848`, `+3896`, `+3920`) for `spqr::send::<HookRng>` (Block `124`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -60,7 +61,7 @@ open CryptoVerification.SpqrV1.Top.Send.Placed
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 attribute [local simp, local arm64_norm]
   CryptoVerification.SpqrV1.Drop.none2Cap_add_two_beq_zero
@@ -87,10 +88,10 @@ abbrev DeallocOkPlaced (A : RustAlloc) (ext : String → Option (State → State
 abbrev chunkedStatesLocal1JumpTableSym : String :=
   "libsignal_session:.rodata.core::ptr::drop_glue::<spqr::v1::chunked::states::States>"
 
-def chunkedStatesLocal1JumpTablePlacedAt : SepProp :=
+@[expose] def chunkedStatesLocal1JumpTablePlacedAt : SepProp :=
   (lsmpl.ρ chunkedStatesLocal1JumpTableSym) ↦ᵣ chunkedStatesLocal1JumpTableBytes
 
-def dropChunkedStatesLocal1PlacedSpec (A : RustAlloc) (F : ShaCompress) :
+@[expose] def dropChunkedStatesLocal1PlacedSpec (A : RustAlloc) (F : ShaCompress) :
     Spec (DropChunkedStatesGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗

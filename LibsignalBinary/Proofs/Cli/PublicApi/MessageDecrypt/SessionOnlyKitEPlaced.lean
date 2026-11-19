@@ -9,12 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.SessionOnlyKitE
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlaced
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.SessionOnlyKitE
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.RatchetDecryptCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Defs
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -52,46 +59,6 @@ theorem SessionOnlyKitPlacedOkSE.loadShim_463 [LibsignalPlacement] {A : RustAllo
     subroutine_ok (lsProg_463 H) (0#64 + kit.loadShimOff)
       (StoreKit.withLsRoCl lsmpl (kitLoadShimSpec kit)) :=
   h.loadShim (callerBlk := 463) (by decide)
-
-theorem SessionOnlyKitPlacedOkSE.loadPoll_463 [LibsignalPlacement] {A : RustAlloc}
-    {kit : SessionStoreSpec A 0#64} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)} {H : LibsignalHooks}
-    (h : StoreKit.SessionOnlyKitPlacedOkSE kit Scope encRecord H) :
-    subroutine_ok (lsProg_463 H) (0#64 + kit.loadPollOff)
-      (StoreKit.withLsRoCl lsmpl (StoreKit.kitLoadPollPlacedSpecSE kit Scope encRecord)) :=
-  h.loadPoll (callerBlk := 463) (by decide)
-
-theorem SessionOnlyKitPlacedOkSE.loadFutDrop_463 [LibsignalPlacement] {A : RustAlloc}
-    {kit : SessionStoreSpec A 0#64} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)} {H : LibsignalHooks}
-    (h : StoreKit.SessionOnlyKitPlacedOkSE kit Scope encRecord H) :
-    subroutine_ok (lsProg_463 H) (0#64 + kit.loadFutDropOff)
-      (StoreKit.withLsRoCl lsmpl futDropSpec) :=
-  h.loadFutDrop (callerBlk := 463) (by decide)
-
-theorem SessionOnlyKitPlacedOkSE.storeShim_463 [LibsignalPlacement] {A : RustAlloc}
-    {kit : SessionStoreSpec A 0#64} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)} {H : LibsignalHooks}
-    (h : StoreKit.SessionOnlyKitPlacedOkSE kit Scope encRecord H) :
-    subroutine_ok (lsProg_463 H) (0#64 + kit.storeShimOff)
-      (StoreKit.withLsRoCl lsmpl (kitStoreShimSpec kit)) :=
-  h.storeShim (callerBlk := 463) (by decide)
-
-theorem SessionOnlyKitPlacedOkSE.storePoll_463 [LibsignalPlacement] {A : RustAlloc}
-    {kit : SessionStoreSpec A 0#64} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)} {H : LibsignalHooks}
-    (h : StoreKit.SessionOnlyKitPlacedOkSE kit Scope encRecord H) :
-    subroutine_ok (lsProg_463 H) (0#64 + kit.storePollOff)
-      (StoreKit.withLsRoCl lsmpl (StoreKit.kitStorePollPlacedSpecE kit encRecord)) :=
-  h.storePoll (callerBlk := 463) (by decide)
-
-theorem SessionOnlyKitPlacedOkSE.storeFutDrop_463 [LibsignalPlacement] {A : RustAlloc}
-    {kit : SessionStoreSpec A 0#64} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)} {H : LibsignalHooks}
-    (h : StoreKit.SessionOnlyKitPlacedOkSE kit Scope encRecord H) :
-    subroutine_ok (lsProg_463 H) (0#64 + kit.storeFutDropOff)
-      (StoreKit.withLsRoCl lsmpl futDropSpec) :=
-  h.storeFutDrop (callerBlk := 463) (by decide)
 
 
 end CryptoVerification.Cli.LibsignalPublicApi.MessageDecrypt

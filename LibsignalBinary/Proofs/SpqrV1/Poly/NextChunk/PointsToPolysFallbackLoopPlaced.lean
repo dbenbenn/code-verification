@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackLoop
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackLoop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysDefs
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Placed Dynamic Lagrange Basis Loop
@@ -24,7 +25,7 @@ Relocatable `[LibsignalPlacement]` verification of the dynamic Lagrange basis co
 (`+4128 -> +4368`) in Block `416`.
 -/
 
-@[expose] public section
+public section
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000

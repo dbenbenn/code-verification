@@ -19,7 +19,7 @@ Combines the `srk`, `priv`, `chain_key`, and `message_keys` clone segments into 
 `subroutine_ok` theorems for `<session_structure::Chain as Clone>::clone [local#3]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.ChainClone3
 
@@ -70,7 +70,7 @@ theorem chainAt_eq_pure_sep (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
   · apply Entails.pure_left; intro _
     exact Entails.refl _
 
-def chainSrkPosFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
+@[expose] def chainSrkPosFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     (a : BitVec 64) : SepProp :=
   (a ↦₆₄ gc.1.srk.cap) ∗
   A.live gc.1.srk.ptr gc.1.srk.cap.toNat 1 ∗
@@ -107,7 +107,7 @@ theorem chainAt_eq_srk_pos (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     apply Entails.pure_right ⟨hle, hlt, hptr⟩
     exact Entails.of_eq (by ac_rfl)
 
-def deadStackSlots (sp : BitVec 64) : SepProp :=
+@[expose] def deadStackSlots (sp : BitVec 64) : SepProp :=
   (∃∗ v11 : BitVec 64, (sp - 120#64) ↦₆₄ v11) ∗
   (∃∗ w12a : BitVec 32, (sp - 112#64) ↦₃₂ w12a) ∗
   (∃∗ w12b : BitVec 32, (sp - 108#64) ↦₃₂ w12b)

@@ -9,9 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # Relocatable I/O Call-Site Helpers for `main` (Block `617`)
@@ -20,7 +26,7 @@ Projects relocatable `subroutine_ok` contracts for `read_stdin`, `read_file`, `w
 `write_stdout` on Block `617` (`mProgPlaced H`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

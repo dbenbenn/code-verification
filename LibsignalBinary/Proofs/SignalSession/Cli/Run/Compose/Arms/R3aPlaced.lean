@@ -9,9 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Hops -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # `signal_session::run` Arm `R3a`: `Recv` Whisper Contract (`R+0x214` → Join/Reject)
@@ -20,7 +23,7 @@ Relocatable (`[LibsignalPlacement]`) hop contracts `RunHopRecvWPlaced` and `RunH
 for Arm `R3a` (`g.c = .recv peerV`, `g.i.stdin = 2#8 :: rest`) on Block `579`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,7 +41,7 @@ open CryptoVerification.SignalSession.Cli.RunSkeleton
 /-- Parametric-slot relocatable (`[LibsignalPlacement]`) Arm R3a Whisper hop contract:
 from `AtDispatchPlaced` (`R+0x214`) on `g.c = .recv peerV` and `g.i.stdin = 2#8 :: rest`, calls
 `wrap_decrypt_signal` via `slots.decryptSignal` to reach `JoinKPlaced` or `RejectKPlaced`. -/
-def RunHopRecvWPlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
+@[expose] def RunHopRecvWPlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (slots : RunSlots) (resStack : Nat) : Prop :=
   ∀ {g : RunCall} {s0 s : State} {me : MeAtDispatch} {peerV : AddrV} {rest : List (BitVec 8)}
     {Q Qp : State → SepProp → Prop},
@@ -61,7 +64,7 @@ def RunHopRecvWPlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : Rus
 /-- Relocatable (`[LibsignalPlacement]`) Arm R3a Whisper hop contract (`run_hop_recvW_ok`):
 from `AtDispatchPlaced` (`R+0x214`) on `g.c = .recv peerV` and `g.i.stdin = 2#8 :: rest`, calls
 `wrap_decrypt_signal` to reach `JoinKPlaced` or `RejectKPlaced`. -/
-def RunHopRecvWPlaced [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
+@[expose] def RunHopRecvWPlaced [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (needs : RunNeeds) (resStack : Nat) : Prop :=
   RunHopRecvWPlacedOf CodeOk A H B S (slotsOfPlaced A S needs) resStack
 

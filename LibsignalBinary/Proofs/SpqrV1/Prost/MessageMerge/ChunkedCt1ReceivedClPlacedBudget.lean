@@ -9,10 +9,64 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedBudgetAux2
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedBudgetAux2
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedClPlaced
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.Multi
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.StepsProcess
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.SepLogic.WPp
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Mallocng.Spec.Top
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Code-Loaded `[LibsignalPlacement]` `Chunked.Ct1Received::merge` Re-Exports (Block `303`)
@@ -22,7 +76,7 @@ field-step, key-decode, loop, and top-level Block `303` contracts from
 `ChunkedCt1ReceivedBudgetAux`, `ChunkedCt1ReceivedBudgetAux2`, and `ChunkedCt1ReceivedBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

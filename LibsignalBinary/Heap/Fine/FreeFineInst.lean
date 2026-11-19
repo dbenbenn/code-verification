@@ -23,7 +23,7 @@ exported `free` (`blk03`) entrypoint against `fineFreeSpec`.
 set_option autoImplicit false
 set_option maxRecDepth 20000
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 
@@ -32,7 +32,7 @@ open VerifiedLibraries VerifiedLibraries.Mallocng VerifiedLibraries.Mallocng.Pro
 
 /-! ## `FineEnv`-Based `__libc_free` (`blk06`) Specification -/
 
-noncomputable def libcFreeFine272Spec [MallocngMultiPlacement]
+def libcFreeFine272Spec [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart p : BitVec 64) (n align : Nat)
     (b : FineBudget) (ivs0 : List (BitVec 64 × Nat)) : Spec Unit :=
   let bf := if p == 0#64 then b else FineBudget.stepFree align n b
@@ -60,7 +60,7 @@ private theorem pack_finePostEnv [MallocngMultiPlacement]
     (hInv' : MallocngFineInv 0 bf (dynamicRootRegions st') alignMap' st') :
     MallocngRoTablesA maddrs ∗
     ghostMapAuth (fineAlignGam γ) alignMap' ∗
-    MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ∗
+    MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ∗
     MallocngRuntime maddrs tp ⊢
       FinePostEnv γ maddrs tp brkStart bf ivs0 s0 sf := by
   unfold FinePostEnv FineEnv
@@ -69,19 +69,19 @@ private theorem pack_finePostEnv [MallocngMultiPlacement]
   rw [FineHeapImpl_eq, FineCoreImpl_eq]
   have hCoreEnt :
       ghostMapAuth (fineAlignGam γ) alignMap' ∗
-      MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ⊢
+      MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ⊢
         ∃∗ st1 : MallocngSt, ∃∗ am1 : BitVec 64 → Option Nat,
         ∃∗ lc1 : Nat, ∃∗ pc1 : Nat,
           FineCoreStInflightA 0 γ maddrs brkStart sf.brk bf
             (dynamicRootRegions st') am1 lc1 pc1 st1 :=
     Entails.sepExists_right st' (Entails.sepExists_right alignMap'
       (Entails.sepExists_right live' (Entails.sepExists_right peak'
-        (by unfold FineCoreStInflightA MallocngCoreStA
+        (by unfold FineCoreStInflightA MallocngCoreStModeA
             exact Entails.pure_right hInv' (Entails.refl _)))))
   refine Entails.trans (Q :=
       (MallocngRoTablesA maddrs ∗
        (ghostMapAuth (fineAlignGam γ) alignMap' ∗
-        MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st')) ∗
+        MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st')) ∗
       MallocngRuntime maddrs tp)
     (Entails.of_eq (by ac_rfl)) ?_
   exact sepConj_mono_left (sepConj_mono_right hCoreEnt)
@@ -116,17 +116,17 @@ theorem placed_libcFree_fine_272_ok [MallocngMultiPlacement]
   rw [satisfies_pure_sepConj] at hpre1; obtain ⟨⟨htp0, hbrks0⟩, hpre1⟩ := hpre1
   simp only [sepExists_sepConj_left, satisfies_sepExists] at hpre1
   obtain ⟨st0, alignMap0, live0, peak0, hpre1⟩ := hpre1
-  dsimp only [FineCoreStInflightA, MallocngCoreStInflightA] at hpre1
+  dsimp only [FineCoreStInflightA, MallocngCoreStInflightModeA] at hpre1
   have hpre2 : s0.mem ⊨
       ⌜MallocngFineInv 0 b ivs0 alignMap0 st0⌝ ∗
       ⌜MallocngWFInflight 0 maddrs.base brkStart s0.brk live0 peak0 st0⌝ ∗
       (stackFrame s0 272 ∗ MallocngRoTablesA maddrs ∗
        ghostMapAuth (fineAlignGam γ) alignMap0 ∗
-       MallocngCoreStA (fineBaseGam γ) maddrs brkStart s0.brk live0 peak0 st0 ∗
+       MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart s0.brk live0 peak0 st0 ∗
        MallocngRuntime maddrs tp ∗
        (if p = 0#64 then emp else memRegion p n ∗ FineBlock γ p n (max align 16))) ∗ R := by
     refine Satisfies.mono ?_ hpre1
-    dsimp only [MallocngCoreStA, MallocngCoreStInflightA]
+    dsimp only [MallocngCoreStModeA, MallocngCoreStInflightModeA]
     refine Entails.trans (Q :=
         ⌜MallocngFineInv 0 b ivs0 alignMap0 st0⌝ ∗
         ⌜MallocngWFInflight 0 maddrs.base brkStart s0.brk live0 peak0 st0⌝ ∗
@@ -137,8 +137,8 @@ theorem placed_libcFree_fine_272_ok [MallocngMultiPlacement]
           (maddrs.lock ↦₃₂ 0#32) ∗
           (maddrs.replaced ↦₃₂ 0#32) ∗
           (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-          ((maddrs.libc + 8#64) ↦₆₄ st0.auxvPtr) ∗
-          MallocngAuxvState (fineBaseGam γ) st0.auxvPtr st0.auxvSnap ∗
+          MallocngAuxvPtrCell true maddrs.libc st0.auxvPtr ∗
+          MallocngAuxvStateRo true (fineBaseGam γ) st0.auxvPtr st0.auxvSnap ∗
           ByteMap st0.masterDom (OwnedRwByte st0) st0.byteVal ∗
           ProtNoneByteMap st0.masterDom (OwnedProtNoneByte st0) st0.byteVal ∗
           MappedSet st0.masterDom (OwnedMappedByte st0)) ∗
@@ -155,7 +155,7 @@ theorem placed_libcFree_fine_272_ok [MallocngMultiPlacement]
   have hIvs0 : ivs0 = dynamicRootRegions st0 := hInv0.ivs_eq rfl
   let P0 := stackFrame s0 272 ∗ MallocngRoTablesA maddrs ∗
     ghostMapAuth (fineAlignGam γ) alignMap0 ∗
-    MallocngCoreStA (fineBaseGam γ) maddrs brkStart s0.brk live0 peak0 st0 ∗
+    MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart s0.brk live0 peak0 st0 ∗
     MallocngRuntime maddrs tp ∗
     (if p = 0#64 then emp else memRegion p n ∗ FineBlock γ p n (max align 16))
   have hRaw := placed_libcFree_raw_ok (fineBaseGam γ) tp brkStart p n live0 peak0 st0
@@ -177,7 +177,7 @@ theorem placed_libcFree_fine_272_ok [MallocngMultiPlacement]
             ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl s0.mem⌝ ∗
             ⌜s0.readReg64 .x0 = 0#64 ∧ s0.tpidrEl0 = tp ∧ s0.brkStart = brkStart⌝ ∗
             (stackFrame s0 272 ∗ MallocngRoTablesA maddrs ∗
-             MallocngCoreStA (fineBaseGam γ) maddrs brkStart s0.brk live0 peak0 st0 ∗
+             MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart s0.brk live0 peak0 st0 ∗
              MallocngRuntime maddrs tp) ∗
             ghostMapAuth (fineAlignGam γ) alignMap0)
           ?_ (Entails.of_eq (by ac_rfl))
@@ -201,7 +201,7 @@ theorem placed_libcFree_fine_272_ok [MallocngMultiPlacement]
         (stackFrame s0 272 ∗
          (MallocngRoTablesA maddrs ∗
           ghostMapAuth (fineAlignGam γ) alignMap0 ∗
-          MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk liveCost' peak0 st' ∗
+          MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk liveCost' peak0 st' ∗
           MallocngRuntime maddrs tp)) ∗ R := by
       refine Satisfies.mono (Entails.of_eq ?_) hsat
       ac_rfl
@@ -237,13 +237,13 @@ theorem placed_libcFree_fine_272_ok [MallocngMultiPlacement]
            (maddrs.lock ↦₃₂ 0#32) ∗
            (maddrs.replaced ↦₃₂ 0#32) ∗
            (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-           ((maddrs.libc + 8#64) ↦₆₄ st0.auxvPtr) ∗
-           MallocngAuxvState (fineBaseGam γ) st0.auxvPtr st0.auxvSnap ∗
+           MallocngAuxvPtrCell true maddrs.libc st0.auxvPtr ∗
+           MallocngAuxvStateRo true (fineBaseGam γ) st0.auxvPtr st0.auxvSnap ∗
            ByteMap st0.masterDom (OwnedRwByte st0) st0.byteVal ∗
            ProtNoneByteMap st0.masterDom (OwnedProtNoneByte st0) st0.byteVal ∗
            MappedSet st0.masterDom (OwnedMappedByte st0) ∗
            MallocngRuntime maddrs tp ∗ memRegion p n ∗ R) := by
-        dsimp only [P0, MallocngCoreStA, MallocngCoreStInflightA] at hmem0
+        dsimp only [P0, MallocngCoreStModeA, MallocngCoreStInflightModeA] at hmem0
         simp only [hp0, ↓reduceIte] at hmem0
         refine Satisfies.mono (Entails.of_eq ?_) hmem0
         ac_rfl
@@ -255,7 +255,7 @@ theorem placed_libcFree_fine_272_ok [MallocngMultiPlacement]
     simp only [beq_false_of_ne hp0, Bool.false_eq_true, ↓reduceIte]
     let alignMap' : BitVec 64 → Option Nat := fun k => if k = p then none else alignMap0 k
     let RawPre := stackFrame s0 272 ∗ MallocngRoTablesA maddrs ∗
-      MallocngCoreStA (fineBaseGam γ) maddrs brkStart s0.brk live0 peak0 st0 ∗
+      MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart s0.brk live0 peak0 st0 ∗
       MallocngRuntime maddrs tp ∗ memRegion p n ∗ MallocngBlockToken (fineBaseGam γ) p n
     have hBupd : P0 ⊢ |==> (ghostMapAuth (fineAlignGam γ) alignMap' ∗ RawPre) := by
       dsimp only [P0, RawPre, FineBlock]
@@ -263,7 +263,7 @@ theorem placed_libcFree_fine_272_ok [MallocngMultiPlacement]
       have hRearr :
           stackFrame s0 272 ∗ MallocngRoTablesA maddrs ∗
           ghostMapAuth (fineAlignGam γ) alignMap0 ∗
-          MallocngCoreStA (fineBaseGam γ) maddrs brkStart s0.brk live0 peak0 st0 ∗
+          MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart s0.brk live0 peak0 st0 ∗
           MallocngRuntime maddrs tp ∗
           (memRegion p n ∗ ⌜16 ≤ max align 16⌝ ∗ MallocngBlockToken (fineBaseGam γ) p n ∗
            ghostMapElem (fineAlignGam γ) p (max align 16)) ⊢
@@ -312,10 +312,10 @@ theorem placed_libcFree_fine_272_ok [MallocngMultiPlacement]
         (stackFrame s0 272 ∗
          (MallocngRoTablesA maddrs ∗
           ghostMapAuth (fineAlignGam γ) alignMap' ∗
-          MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk liveCost' peak0 st' ∗
+          MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk liveCost' peak0 st' ∗
           MallocngRuntime maddrs tp)) ∗ R := by
       refine Satisfies.mono ?_ hsat
-      dsimp only [MallocngCoreStA, MallocngCoreStInflightA]
+      dsimp only [MallocngCoreStModeA, MallocngCoreStInflightModeA]
       refine Entails.trans (Q :=
           ⌜MallocngProcPreserved s0 sf ∧ MallocngMappedDelta 0 0 s0.mem sf.mem ∧
             sf.brk = s0.brk ∧ sf.tpidrEl0 = tp ∧ sf.brkStart = brkStart ∧
@@ -332,8 +332,8 @@ theorem placed_libcFree_fine_272_ok [MallocngMultiPlacement]
             (maddrs.lock ↦₃₂ 0#32) ∗
             (maddrs.replaced ↦₃₂ 0#32) ∗
             (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-            ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗
-            MallocngAuxvState (fineBaseGam γ) st'.auxvPtr st'.auxvSnap ∗
+            MallocngAuxvPtrCell true maddrs.libc st'.auxvPtr ∗
+            MallocngAuxvStateRo true (fineBaseGam γ) st'.auxvPtr st'.auxvSnap ∗
             ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗
             ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
             MappedSet st'.masterDom (OwnedMappedByte st')) ∗

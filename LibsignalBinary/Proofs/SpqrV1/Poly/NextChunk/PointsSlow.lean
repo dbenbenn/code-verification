@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsFast
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProof
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Poly
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsFast -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProof -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Poly -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PolysLoop
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk`: `Points` Slow-Path Prefix and Block C
@@ -28,7 +29,7 @@ Verifies the `Points` fast-path prefix (`0..i0`), slow-path trigger (`+288 -> +4
 `points_to_polys`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.NextChunk
 
@@ -92,95 +93,6 @@ theorem cmp_len_idx_le {len : Nat} {idx16 : BitVec 16}
         apply BitVec.eq_of_toNat_eq; omega
       simp [heq]
 
-/-- Slow-path trigger (`0x6a4a4..0x6a4a8 -> 0x6a508..0x6a514`, `+288 -> +436`, 6 insns):
-    when `(pts[i0]).value.length ≤ (x.enc.idx.setWidth 16).toNat`, stores `i0` to `[fsp + 104]`
-    and branches to Block A (`+436`). -/
-theorem pointsSlowTrigger_sepWP
-    (A : RustAlloc) (b : BitVec 64) (ext : String → Option (State → State))
-    {ret : BitVec 64} {post : State → SepProp → Prop}
-    (x : PolyNextChunkGhost) (pts : List Point) (hlen_pts : pts.length = 16)
-    (i0 : Nat) (hi0 : i0 < 16)
-    (hidx_le : (pts[i0]'(by omega)).value.length ≤ (x.enc.idx.setWidth 16).toNat)
-    (fsp u104 : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (Frame : SepProp) (s : State)
-    (hpc : s.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName + 288#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = fsp)
-    (hx9 : s.readReg64 .x9 = BitVec.ofNat 64 i0)
-    (hx19 : s.readReg64 .x19 = x.encA + 8#64)
-    (hx21 : s.readReg64 .x21 = 0#64)
-    (hx24 : s.readReg64 .x24 = x.encA)
-    (hx27 : s.readReg64 .x27 = (x.enc.idx.setWidth 16).setWidth 64)
-    (hx28 : s.readReg64 .x28 = 24#64)
-    (hnext : ∀ sf : State,
-      sf.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName + 436#64 →
-      sf.status = .Running →
-      sf.sp = fsp →
-      sf.trace = s.trace →
-      calleeSavedVRegs sf = calleeSavedVRegs s →
-      sf.readReg64 .x24 = x.encA →
-      sf.readReg64 .x27 = (x.enc.idx.setWidth 16).setWidth 64 →
-      sf.readReg64 .x29 = s.readReg64 .x29 →
-      SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) ret sf
-        (pointListOf A (x.encA + 8#64) pts ∗
-         ((fsp + 104#64) ↦₆₄ BitVec.ofNat 64 i0) ∗
-         Frame) post) :
-    SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) ret s
-      (pointListOf A (x.encA + 8#64) pts ∗
-       ((fsp + 104#64) ↦₆₄ u104) ∗
-       Frame) post := by
-  have hi0_len : i0 < pts.length := by omega
-  poly_next_chunk_fetches_range b (Rust.withPanics ext) 0x120 8
-  poly_next_chunk_fetches_range b (Rust.withPanics ext) 0x184 16
-  dsimp only [tripleRatchetProgAtExt, polyNextChunkName, BitVec.ofNat_eq_ofNat] at hpc hnext ⊢
-  rw [pointListOf_split_idx A (x.encA + 8#64) pts i0 hi0_len]
-  apply SepWP.fold (pointOf_unfold A ((x.encA + 8#64) + BitVec.ofNat 64 (24 * i0)) (pts[i0]'hi0_len))
-    (by sep_focus)
-  simp only [sepExists_sepConj_left]
-  apply ProofLib.SepWP.exists_left; intro cap
-  apply ProofLib.SepWP.exists_left; intro ptr
-  have hpure_pull : ∀ (P_c P_p P_l : SepProp) (φ : Prop) (P_body Rest : SepProp),
-      (P_c ∗ P_p ∗ P_l ∗ ⌜φ⌝ ∗ P_body) ∗ Rest = ⌜φ⌝ ∗ ((P_c ∗ P_p ∗ P_l ∗ P_body) ∗ Rest) := by
-    intros; ac_rfl
-  rw [hpure_pull]
-  apply SepWP.pure_elim; rintro ⟨hlen_cap, hcap_bound, hptr_ne⟩
-  rw [pointBufBody_eq_slice_rest A cap ptr (pts[i0]'hi0_len) hlen_cap]
-  rcases cmp_len_idx_le hidx_le with ⟨hule_len, hcond_eq, hcond_sub⟩
-  generalize_entry hentry :
-    (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-      "<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::next_chunk" = entry
-  examples_hide_fetches
-  wp_steps 6
-  have hfold_point :
-      (((x.encA + 8#64) + BitVec.ofNat 64 (24 * i0)) ↦₆₄ cap) ∗
-        ((((x.encA + 8#64) + BitVec.ofNat 64 (24 * i0)) + 8#64) ↦₆₄ ptr) ∗
-        ((((x.encA + 8#64) + BitVec.ofNat 64 (24 * i0)) + 16#64) ↦₆₄
-          BitVec.ofNat 64 (pts[i0]'hi0_len).value.length) ∗
-        gf16SliceAt ptr (pts[i0]'hi0_len).value ∗
-        pointBufRest A cap ptr (pts[i0]'hi0_len) ⊢
-        pointOf A ((x.encA + 8#64) + BitVec.ofNat 64 (24 * i0)) (pts[i0]'hi0_len) :=
-    pointOf_fold A ((x.encA + 8#64) + BitVec.ofNat 64 (24 * i0)) cap ptr (pts[i0]'hi0_len)
-      ⟨hlen_cap, hcap_bound, hptr_ne⟩
-  apply SepWP.fold hfold_point (by sep_focus)
-  have hfold_list :
-      pointListOf A (x.encA + 8#64) (pts.take i0) ∗
-        pointOf A ((x.encA + 8#64) + BitVec.ofNat 64 (24 * i0)) (pts[i0]'hi0_len) ∗
-        pointListOf A ((x.encA + 8#64) + BitVec.ofNat 64 (24 * (i0 + 1))) (pts.drop (i0 + 1)) ⊢
-        pointListOf A (x.encA + 8#64) pts := by
-    rw [← pointListOf_split_idx A (x.encA + 8#64) pts i0 hi0_len]
-    exact Entails.refl _
-  apply SepWP.fold hfold_list (by sep_focus)
-  refine SepWP.weaken_pre (Entails.of_eq (by ac_rfl))
-    (hnext _
-      (by subst hentry; simp only [arm64_norm, wp_norm, hule_len, hcond_eq, hcond_sub, ↓reduceIte])
-      (by wp_norm_lhs)
-      (by simpa [arm64_norm, wp_norm] using hsp)
-      (by simp only [arm64_norm, wp_norm])
-      (by simp only [arm64_norm, wp_norm])
-      (by simpa [arm64_norm, wp_norm] using hx24)
-      (by simpa [arm64_norm, wp_norm] using hx27)
-      (by simp only [arm64_norm, wp_norm]))
-
 /-! ## 2. `vecGF16ListOf` Header/Heap Splitting & Block C (`0x6b4cc..0x6b504`, `+4424 -> +296`) -/
 
 @[local arm64_norm, local wp_norm] theorem bv384_toNat : (384#64 : BitVec 64).toNat = 384 := rfl
@@ -192,14 +104,14 @@ theorem sepWP_pure_left {prog : Program} {target_pc : BitVec 64}
   SepWP.pure_elim h
 
 /-- 24-byte serialized `Vec` header `(cap, ptr, len)`. -/
-def vecHeaderBytesOf (pin : VecPin) (len : Nat) : List (BitVec 8) :=
+@[expose] def vecHeaderBytesOf (pin : VecPin) (len : Nat) : List (BitVec 8) :=
   unpack64 pin.cap ++ unpack64 pin.ptr ++ unpack64 (BitVec.ofNat 64 len)
 
 @[simp] theorem length_vecHeaderBytesOf (pin : VecPin) (len : Nat) :
     (vecHeaderBytesOf pin len).length = 24 := rfl
 
 /-- Concatenated 24-byte `Vec` headers for `pins` and `vecs`. -/
-def vecHeadersBytesOf : List VecPin → List (List GF16) → List (BitVec 8)
+@[expose] def vecHeadersBytesOf : List VecPin → List (List GF16) → List (BitVec 8)
   | [], _ => []
   | _, [] => []
   | pin :: pins, cs :: vecs => vecHeaderBytesOf pin cs.length ++ vecHeadersBytesOf pins vecs
@@ -218,7 +130,7 @@ theorem length_vecHeadersBytesOf :
     omega
 
 /-- Separating conjunction of `vecBuf A gf16Stride gf16Align gf16At` across `pins` and `vecs`. -/
-def vecGF16HeapList (A : RustAlloc) : List VecPin → List (List GF16) → SepProp
+@[expose] def vecGF16HeapList (A : RustAlloc) : List VecPin → List (List GF16) → SepProp
   | [], _ => emp
   | _, [] => emp
   | pin :: pins, cs :: vecs =>
@@ -344,478 +256,8 @@ theorem stackAt_dropGluePoly16_split_bottom (fsp : BitVec 64) :
       memRegion (fsp - 4128#64) 32 ∗ stackAt fsp allocHookStack :=
   stackAt_split_bottom fsp allocHookStack 32 (by decide)
 
-theorem drop_glue_poly16_ok_at_nextChunk {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (libsignalSessionCode.rebase b (Rust.withPanics ext))
-      ((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName +
-        bv% (2 ^ 64 + ls_off% "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" -
-          ls_off% "<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::next_chunk"))
-      (dropGluePoly16Spec A) := by
-  have h := drop_glue_poly16_ok_ext hA.dealloc
-  have haddr : (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName +
-      bv% (2 ^ 64 + ls_off% "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" -
-        ls_off% "<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::next_chunk") =
-      (dropProgAtExt b ext).fnAddr dropPoly16Name := by
-    simp only [dropProgAtExt, Program.fnAddr_rebase,
-      polyNextChunkName, dropPoly16Name,
-      (ls_lemma% fnOff "<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::next_chunk"),
-      (ls_lemma% fnOff "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>")]
-    bv_omega
-  rw [haddr]
-  exact h
-
-/-- Block C (`0x6b4cc..0x6b504`, `+4424 -> +296`, 15 instructions):
-    copies the 16 new `Poly` headers from `fsp + 256` to `fsp + 656`, drops the old
-    `[Point; 16]` at `x.encA + 8` via `drop_glue::<[Poly; 16]>`, writes tag `1#64`
-    (`EncoderState::Polys`) to `x.encA`, copies the 16 `Poly` headers from `fsp + 656`
-    to `x.encA + 8`, reloads `x9 = i0` from `[fsp + 104]`, and jumps to `+296`. -/
-theorem blockC_sepWP
-    (A : RustAlloc) (b : BitVec 64) (ext : String → Option (State → State))
-    {ret : BitVec 64} {post : State → SepProp → Prop}
-    (hA : AllocContracts b A ext)
-    (x : PolyNextChunkGhost)
-    (pts : List Point) (hlen_pts : pts.length = 16)
-    (polys : List LibsignalSpqrV1.Poly) (hlen_polys : polys.length = 16)
-    (i0 : Nat)
-    (fsp : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (Frame : SepProp) (s : State)
-    (hpc : s.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName + 4424#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = fsp)
-    (hx19 : s.readReg64 .x19 = x.encA + 8#64)
-    (hx27 : s.readReg64 .x27 = (x.enc.idx.setWidth 16).setWidth 64)
-    (hx28 : s.readReg64 .x28 = 24#64)
-    (hnext : ∀ sf : State,
-      sf.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName + 296#64 →
-      sf.status = .Running →
-      sf.sp = fsp →
-      sf.trace = s.trace →
-      calleeSavedVRegs sf = calleeSavedVRegs s →
-      sf.readReg64 .x9 = BitVec.ofNat 64 i0 →
-      sf.readReg64 .x19 = x.encA + 8#64 →
-      sf.readReg64 .x24 = x.encA →
-      sf.readReg64 .x27 = (x.enc.idx.setWidth 16).setWidth 64 →
-      sf.readReg64 .x28 = 24#64 →
-      sf.readReg64 .x29 = s.readReg64 .x29 →
-      SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) ret sf
-        (polyListOf A (x.encA + 8#64) polys ∗
-         (x.encA ↦₆₄ 1#64) ∗
-         memRegion (fsp + 256#64) 384 ∗
-         memRegion (fsp + 656#64) 384 ∗
-         ((fsp + 8#64) ↦₆₄ x.encA) ∗
-         ((fsp + 104#64) ↦₆₄ BitVec.ofNat 64 i0) ∗
-         memRegion (fsp - 4128#64) 32 ∗
-         stackAt fsp allocHookStack ∗
-         A.pool ∗
-         Frame) post) :
-    SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) ret s
-      (polyListOf A (fsp + 256#64) polys ∗
-       memRegion (fsp + 656#64) 384 ∗
-       pointListOf A (x.encA + 8#64) pts ∗
-       (x.encA ↦₆₄ 0#64) ∗
-       ((fsp + 8#64) ↦₆₄ x.encA) ∗
-       ((fsp + 104#64) ↦₆₄ BitVec.ofNat 64 i0) ∗
-       memRegion (fsp - 4128#64) 32 ∗
-       stackAt fsp allocHookStack ∗
-       A.pool ∗
-       Frame) post := by
-  have hvecs_polys : (polys.map LibsignalSpqrV1.Poly.coefficients).length = 16 := by
-    simp [hlen_polys]
-  have hvecs_pts : (pts.map Point.value).length = NUM_POLYS := by
-    simp [NUM_POLYS, CHUNK_SIZE, hlen_pts]
-  rw [polyListOf_eq_vecGF16ListOf, pointListOf_eq_vecGF16ListOf]
-  refine SepWP.weaken_pre
-    (sepConj_mono_left (vecGF16ListOf_entails_headers_heaps A
-      (polys.map LibsignalSpqrV1.Poly.coefficients) (fsp + 256#64))) ?_
-  simp only [sepExists_sepConj_left]
-  apply ProofLib.SepWP.exists_left; intro pins
-  rw [sepConj_assoc, sepConj_assoc]
-  apply sepWP_pure_left; intro hpins_len
-  have hbs_len : (vecHeadersBytesOf pins (polys.map LibsignalSpqrV1.Poly.coefficients)).length = 384 := by
-    rw [length_vecHeadersBytesOf pins _ hpins_len, hvecs_polys]
-  have hmemcpy := hA.session_memcpy_ok_at polyNextChunkName
-    (num% (ls_off% "memcpy" -
-      ls_off% "<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::next_chunk"))
-  simp only [sessionMemcpySpec] at hmemcpy
-  have hdrop16 := drop_glue_poly16_ok_at_nextChunk hA
-  simp only [dropGluePoly16Spec] at hdrop16
-  poly_next_chunk_fetches_range b (Rust.withPanics ext) 0x1148 60
-  dsimp only [tripleRatchetProgAtExt, polyNextChunkName, polyArrayBytes, NUM_POLYS, CHUNK_SIZE,
-    BitVec.ofNat_eq_ofNat] at hpc hmemcpy hdrop16 hnext ⊢
-  generalize_entry hentry :
-    (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-      "<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::next_chunk" = entry
-  examples_hide_fetches
-  wp_steps 4
-  wp_call hmemcpy (fsp + 656#64, fsp + 256#64,
-    vecHeadersBytesOf pins (polys.map LibsignalSpqrV1.Poly.coefficients))
-  have hsrc256 : ((fsp + 256#64) ↦ₛ
-      vecHeadersBytesOf pins (polys.map LibsignalSpqrV1.Poly.coefficients)) ⊢
-      memRegion (fsp + 256#64) 384 := by
-    rw [← hbs_len]
-    exact ProofLib.pointsToBytes_entails_memRegion (fsp + 256#64) _
-  apply SepWP.fold hsrc256 (by sep_focus)
-  have hjoin_drop_stack :
-      memRegion (fsp - 4128#64) 32 ∗ stackAt s.sp 4096 ⊢
-        stackAt fsp dropGluePoly16Stack := by
-    rw [hsp, stackAt_dropGluePoly16_split_bottom fsp]
-    exact Entails.refl _
-  apply SepWP.fold hjoin_drop_stack (by sep_focus)
-  wp_steps 2
-  wp_call hdrop16 (⟨x.encA + 8#64, pts.map Point.value⟩ : DropGluePoly16Ghost)
-  have hsplit_drop_stack :
-      stackAt sf.sp dropGluePoly16Stack ⊢
-        memRegion (fsp - 4128#64) 32 ∗ stackAt fsp 4096 := by
-    rw [hsp_sf, hsp, stackAt_dropGluePoly16_split_bottom fsp]
-    exact Entails.refl _
-  apply SepWP.fold hsplit_drop_stack (by sep_focus)
-  wp_steps 7
-  wp_call hmemcpy (x.encA + 8#64, fsp + 656#64,
-    vecHeadersBytesOf pins (polys.map LibsignalSpqrV1.Poly.coefficients))
-  have hsrc656 : ((fsp + 656#64) ↦ₛ
-      vecHeadersBytesOf pins (polys.map LibsignalSpqrV1.Poly.coefficients)) ⊢
-      memRegion (fsp + 656#64) 384 := by
-    rw [← hbs_len]
-    exact ProofLib.pointsToBytes_entails_memRegion (fsp + 656#64) _
-  apply SepWP.fold hsrc656 (by sep_focus)
-  have hfold_polys :
-      ((x.encA + 8#64) ↦ₛ vecHeadersBytesOf pins (polys.map LibsignalSpqrV1.Poly.coefficients)) ∗
-        vecGF16HeapList A pins (polys.map LibsignalSpqrV1.Poly.coefficients) ⊢
-        polyListOf A (x.encA + 8#64) polys := by
-    rw [polyListOf_eq_vecGF16ListOf]
-    exact headers_heaps_entails_vecGF16ListOf A pins _ (x.encA + 8#64) hpins_len
-  apply SepWP.fold hfold_polys (by sep_focus)
-  wp_steps 2
-  have hsp_sf1 : stackAt sf_1.sp 4096 ⊢ stackAt fsp allocHookStack := by
-    rw [hsp_sf_1, hsp_sf, hsp]
-    exact Entails.refl _
-  apply SepWP.fold hsp_sf1 (by sep_focus)
-  refine SepWP.weaken_pre (Entails.of_eq (by ac_rfl))
-    (hnext _
-      (by subst hentry; simp only [arm64_norm, wp_norm])
-      (by wp_norm_lhs)
-      (by simp only [arm64_norm, wp_norm, *])
-      (by simp only [arm64_norm, wp_norm, *])
-      (by simp only [arm64_norm, wp_norm, *])
-      (by simp only [arm64_norm, wp_norm, *])
-      (by simp only [arm64_norm, wp_norm, Reg.x19, *])
-      (by simp only [arm64_norm, wp_norm, Reg.x24, *])
-      (by simp only [arm64_norm, wp_norm, Reg.x27, *])
-      (by simp only [arm64_norm, wp_norm, Reg.x28, *])
-      (by simp only [arm64_norm, wp_norm, Reg.x29, *]))
-
-/-! ## 3. Prefix `0..i0` of the `Points` Fast-Path Loop (`+288 -> +288`) -/
-
-attribute [local simp, local arm64_norm, local wp_norm]
-  madd_24_eq madd_24_eq' zext16_shl1_bv_eq zext16_shl1_nat_eq
-  ofNat_add_one_eq ofNat_two_mul_add_one ofNat_two_mul_add_two
-  lsr8_zext16_eq trunc8_zext16_eq
-
-set_option maxHeartbeats 1200000 in
-/-- Single iteration `i < 15` of the `Points` fast-path loop (`+288 -> +288`, 30 insns)
-    with a generic `Frame : SepProp` and preserving `x29`. -/
-theorem pointsFastPrefix_step_sepWP
-    (A : RustAlloc) (b : BitVec 64) (ext : String → Option (State → State))
-    {ret : BitVec 64} {post : State → SepProp → Prop}
-    (x : PolyNextChunkGhost) (pts : List Point) (hlen_pts : pts.length = 16)
-    (out_ptr fsp u104 : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (i : Nat) (hi15 : i < 15)
-    (hidx_lt : (x.enc.idx.setWidth 16).toNat < (pts[i]'(by omega)).value.length)
-    (Frame : SepProp) (s : State)
-    (hpc : s.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName + 288#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = fsp)
-    (hx9 : s.readReg64 .x9 = BitVec.ofNat 64 i)
-    (hx19 : s.readReg64 .x19 = x.encA + 8#64)
-    (hx20 : s.readReg64 .x20 = BitVec.ofNat 64 (2 * i))
-    (hx21 : s.readReg64 .x21 = 0#64)
-    (hx24 : s.readReg64 .x24 = x.encA)
-    (hx27 : s.readReg64 .x27 = (x.enc.idx.setWidth 16).setWidth 64)
-    (hx28 : s.readReg64 .x28 = 24#64)
-    (hnext : ∀ sf : State,
-      sf.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName + 288#64 →
-      sf.status = .Running →
-      sf.sp = fsp →
-      sf.trace = s.trace →
-      calleeSavedVRegs sf = calleeSavedVRegs s →
-      sf.readReg64 .x9 = BitVec.ofNat 64 (i + 1) →
-      sf.readReg64 .x19 = x.encA + 8#64 →
-      sf.readReg64 .x20 = BitVec.ofNat 64 (2 * (i + 1)) →
-      sf.readReg64 .x21 = 0#64 →
-      sf.readReg64 .x24 = x.encA →
-      sf.readReg64 .x27 = (x.enc.idx.setWidth 16).setWidth 64 →
-      sf.readReg64 .x28 = 24#64 →
-      sf.readReg64 .x29 = s.readReg64 .x29 →
-      SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) ret sf
-        ((out_ptr ↦ₛ chunkPointsBytes (x.enc.idx.setWidth 16) pts 0 (i + 1)) ∗
-          memRegion (out_ptr + BitVec.ofNat 64 (2 * (i + 1))) (32 - 2 * (i + 1)) ∗
-          pointListOf A (x.encA + 8#64) pts ∗
-          ((fsp + 88#64) ↦₆₄ (x.encA + 8#64)) ∗
-          ((fsp + 104#64) ↦₆₄ BitVec.ofNat 64 i) ∗
-          ((fsp + 232#64) ↦₆₄ 32#64) ∗
-          ((fsp + 240#64) ↦₆₄ out_ptr) ∗
-          ((fsp + 248#64) ↦₆₄ BitVec.ofNat 64 (2 * (i + 1))) ∗
-          Frame) post) :
-    SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) ret s
-      ((out_ptr ↦ₛ chunkPointsBytes (x.enc.idx.setWidth 16) pts 0 i) ∗
-        memRegion (out_ptr + BitVec.ofNat 64 (2 * i)) (32 - 2 * i) ∗
-        pointListOf A (x.encA + 8#64) pts ∗
-        ((fsp + 88#64) ↦₆₄ (x.encA + 8#64)) ∗
-        ((fsp + 104#64) ↦₆₄ u104) ∗
-        ((fsp + 232#64) ↦₆₄ 32#64) ∗
-        ((fsp + 240#64) ↦₆₄ out_ptr) ∗
-        ((fsp + 248#64) ↦₆₄ BitVec.ofNat 64 (2 * i)) ∗
-        Frame) post := by
-  have hi16 : i < 16 := by omega
-  have hi_len : i < pts.length := by omega
-  have hi15_ne : (i == 15) = false := beq_eq_false_iff_ne.mpr (by omega)
-  poly_next_chunk_fetches_range b (Rust.withPanics ext) 0xfc 68
-  poly_next_chunk_fetches_range b (Rust.withPanics ext) 0x15c 92
-  dsimp only [tripleRatchetProgAtExt, polyNextChunkName, BitVec.ofNat_eq_ofNat] at hpc hnext ⊢
-  rw [pointListOf_split_idx A (x.encA + 8#64) pts i hi_len]
-  apply SepWP.fold (pointOf_unfold A ((x.encA + 8#64) + BitVec.ofNat 64 (24 * i)) (pts[i]'hi_len))
-    (by sep_focus)
-  simp only [sepExists_sepConj_left]
-  apply ProofLib.SepWP.exists_left; intro cap
-  apply ProofLib.SepWP.exists_left; intro ptr
-  have hpure_pull : ∀ (P_c P_p P_l : SepProp) (φ : Prop) (P_body Rest : SepProp),
-      (P_c ∗ P_p ∗ P_l ∗ ⌜φ⌝ ∗ P_body) ∗ Rest = ⌜φ⌝ ∗ ((P_c ∗ P_p ∗ P_l ∗ P_body) ∗ Rest) := by
-    intros; ac_rfl
-  rw [hpure_pull]
-  apply SepWP.pure_elim; rintro ⟨hlen_cap, hcap_bound, hptr_ne⟩
-  rw [pointBufBody_eq_slice_rest A cap ptr (pts[i]'hi_len) hlen_cap,
-      gf16SliceAt_split_idx ptr (pts[i]'hi_len).value (x.enc.idx.setWidth 16).toNat hidx_lt]
-  have hlen_lt : (pts[i]'hi_len).value.length < 2 ^ 63 :=
-    pointValue_len_lt_two_pow_63 hlen_cap hcap_bound
-  rcases cmp_len_idx_gt (idx16 := x.enc.idx.setWidth 16) hidx_lt hlen_lt with
-    ⟨hult_len, hule_len, hbeq_len, hsub_len⟩
-  rcases ofNat_beq_false_of_lt (a := 2 * i) (b := 32) (by omega) (by omega) with
-    ⟨hcmp1_eq, hcmp1_sub, _, _⟩
-  rcases ofNat_beq_false_of_lt (a := 2 * i + 1) (b := 32) (by omega) (by omega) with
-    ⟨hcmp2_eq, hcmp2_sub, _, _⟩
-  rcases ofNat_add_one_beq_16 hi16 with ⟨hcmp16_eq, hcmp16_sub⟩
-  rw [hi15_ne] at hcmp16_eq hcmp16_sub
-  have h32_eq : (32#64 : BitVec 64) = BitVec.ofNat 64 32 := rfl
-  rw [← h32_eq] at hcmp1_eq hcmp1_sub hcmp2_eq hcmp2_sub
-  generalize_entry hentry :
-    (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-      "<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::next_chunk" = entry
-  examples_hide_fetches
-  apply SepWP.fold (memRegion_split_two_bytes out_ptr i hi16) (by sep_focus)
-  apply sepWP_exists_left_sep; intro b0
-  apply sepWP_exists_left_sep; intro b1
-  wp_steps 30
-  have hfold_bytes :
-      (out_ptr ↦ₛ chunkPointsBytes (x.enc.idx.setWidth 16) pts 0 i) ∗
-        ((out_ptr + BitVec.ofNat 64 (2 * i)) ↦₈
-          BitVec.setWidth 8 (((pts[i]'hi_len).value[(x.enc.idx.setWidth 16).toNat]'hidx_lt).value >>> 8)) ∗
-        ((out_ptr + BitVec.ofNat 64 (2 * i + 1)) ↦₈
-          BitVec.setWidth 8 ((pts[i]'hi_len).value[(x.enc.idx.setWidth 16).toNat]'hidx_lt).value) ⊢
-        (out_ptr ↦ₛ chunkPointsBytes (x.enc.idx.setWidth 16) pts 0 (i + 1)) := by
-    rw [chunkPointsBytes_zero_succ (x.enc.idx.setWidth 16) pts i hi_len hidx_lt]
-    exact pointsToBytes_append_two_bytes out_ptr
-      (chunkPointsBytes (x.enc.idx.setWidth 16) pts 0 i) i
-      (chunkPointsBytes_length (x.enc.idx.setWidth 16) pts 0 i) _ _
-  apply SepWP.fold hfold_bytes (by sep_focus)
-  have hfold_slice :
-      gf16SliceAt ptr ((pts[i]'hi_len).value.take (x.enc.idx.setWidth 16).toNat) ∗
-        ((ptr + BitVec.ofNat 64 (2 * (x.enc.idx.setWidth 16).toNat)) ↦₁₆
-          ((pts[i]'hi_len).value[(x.enc.idx.setWidth 16).toNat]'hidx_lt).value) ∗
-        gf16SliceAt (ptr + BitVec.ofNat 64 (2 * ((x.enc.idx.setWidth 16).toNat + 1)))
-          ((pts[i]'hi_len).value.drop ((x.enc.idx.setWidth 16).toNat + 1)) ⊢
-        gf16SliceAt ptr (pts[i]'hi_len).value := by
-    rw [← gf16SliceAt_split_idx ptr (pts[i]'hi_len).value (x.enc.idx.setWidth 16).toNat hidx_lt]
-    exact Entails.refl _
-  apply SepWP.fold hfold_slice (by sep_focus)
-  have hfold_point :
-      (((x.encA + 8#64) + BitVec.ofNat 64 (24 * i)) ↦₆₄ cap) ∗
-        ((((x.encA + 8#64) + BitVec.ofNat 64 (24 * i)) + 8#64) ↦₆₄ ptr) ∗
-        ((((x.encA + 8#64) + BitVec.ofNat 64 (24 * i)) + 16#64) ↦₆₄
-          BitVec.ofNat 64 (pts[i]'hi_len).value.length) ∗
-        gf16SliceAt ptr (pts[i]'hi_len).value ∗
-        pointBufRest A cap ptr (pts[i]'hi_len) ⊢
-        pointOf A ((x.encA + 8#64) + BitVec.ofNat 64 (24 * i)) (pts[i]'hi_len) :=
-    pointOf_fold A ((x.encA + 8#64) + BitVec.ofNat 64 (24 * i)) cap ptr (pts[i]'hi_len)
-      ⟨hlen_cap, hcap_bound, hptr_ne⟩
-  apply SepWP.fold hfold_point (by sep_focus)
-  have hfold_list :
-      pointListOf A (x.encA + 8#64) (pts.take i) ∗
-        pointOf A ((x.encA + 8#64) + BitVec.ofNat 64 (24 * i)) (pts[i]'hi_len) ∗
-        pointListOf A ((x.encA + 8#64) + BitVec.ofNat 64 (24 * (i + 1))) (pts.drop (i + 1)) ⊢
-        pointListOf A (x.encA + 8#64) pts := by
-    rw [← pointListOf_split_idx A (x.encA + 8#64) pts i hi_len]
-    exact Entails.refl _
-  apply SepWP.fold hfold_list (by sep_focus)
-  refine SepWP.weaken_pre (Entails.of_eq (by ac_rfl))
-    (hnext _
-      (by subst hentry; simp only [arm64_norm, wp_norm, hult_len, hule_len, hbeq_len, hsub_len,
-          hcmp1_eq, hcmp1_sub, hcmp2_eq, hcmp2_sub, hcmp16_eq, hcmp16_sub])
-      (by wp_norm_lhs)
-      (by simpa [arm64_norm, wp_norm] using hsp)
-      (by simp only [arm64_norm, wp_norm, hult_len, hule_len, hbeq_len, hsub_len,
-          hcmp1_eq, hcmp1_sub, hcmp2_eq, hcmp2_sub])
-      (by simp only [arm64_norm, wp_norm, hult_len, hule_len, hbeq_len, hsub_len,
-          hcmp1_eq, hcmp1_sub, hcmp2_eq, hcmp2_sub])
-      (by simp only [arm64_norm, wp_norm, hult_len, hule_len, hbeq_len, hsub_len,
-          hcmp1_eq, hcmp1_sub, hcmp2_eq, hcmp2_sub])
-      (by simp only [arm64_norm, wp_norm, hult_len, hule_len, hbeq_len, hsub_len,
-          hcmp1_eq, hcmp1_sub, hcmp2_eq, hcmp2_sub])
-      (by simp only [arm64_norm, wp_norm, hult_len, hule_len, hbeq_len, hsub_len,
-          hcmp1_eq, hcmp1_sub, hcmp2_eq, hcmp2_sub])
-      (by simp only [arm64_norm, wp_norm, hult_len, hule_len, hbeq_len, hsub_len,
-          hcmp1_eq, hcmp1_sub, hcmp2_eq, hcmp2_sub])
-      (by simp only [arm64_norm, wp_norm, hult_len, hule_len, hbeq_len, hsub_len,
-          hcmp1_eq, hcmp1_sub, hcmp2_eq, hcmp2_sub, hx24])
-      (by simp only [arm64_norm, wp_norm, hult_len, hule_len, hbeq_len, hsub_len,
-          hcmp1_eq, hcmp1_sub, hcmp2_eq, hcmp2_sub, hx27])
-      (by simp only [arm64_norm, wp_norm, hult_len, hule_len, hbeq_len, hsub_len,
-          hcmp1_eq, hcmp1_sub, hcmp2_eq, hcmp2_sub, hx28])
-      (by simp only [arm64_norm, wp_norm, hult_len, hule_len, hbeq_len, hsub_len,
-          hcmp1_eq, hcmp1_sub, hcmp2_eq, hcmp2_sub]))
-
-/-- Prefix `i..i+k` (`i + k < 16`) of the `Points` fast-path loop (`+288 -> +288`),
-    producing `chunkPointsBytes (x.enc.idx.setWidth 16) pts 0 (i + k)`. -/
-theorem pointsFastPrefix_sepWP
-    (A : RustAlloc) (b : BitVec 64) (ext : String → Option (State → State))
-    {ret : BitVec 64} {post : State → SepProp → Prop}
-    (x : PolyNextChunkGhost) (pts : List Point) (hlen_pts : pts.length = 16)
-    (out_ptr fsp : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (Frame : SepProp) :
-    ∀ (k i : Nat) (u104 : BitVec 64) (s : State),
-      (hik : i + k < 16) →
-      (∀ (j : Nat) (hj : i ≤ j ∧ j < i + k),
-        (x.enc.idx.setWidth 16).toNat < (pts[j]'(by omega)).value.length) →
-      s.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName + 288#64 →
-      s.status = .Running →
-      s.sp = fsp →
-      s.readReg64 .x9 = BitVec.ofNat 64 i →
-      s.readReg64 .x19 = x.encA + 8#64 →
-      s.readReg64 .x20 = BitVec.ofNat 64 (2 * i) →
-      s.readReg64 .x21 = 0#64 →
-      s.readReg64 .x24 = x.encA →
-      s.readReg64 .x27 = (x.enc.idx.setWidth 16).setWidth 64 →
-      s.readReg64 .x28 = 24#64 →
-      (∀ sf : State, ∀ u104' : BitVec 64,
-        sf.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName + 288#64 →
-        sf.status = .Running →
-        sf.sp = fsp →
-        sf.trace = s.trace →
-        calleeSavedVRegs sf = calleeSavedVRegs s →
-        sf.readReg64 .x9 = BitVec.ofNat 64 (i + k) →
-        sf.readReg64 .x19 = x.encA + 8#64 →
-        sf.readReg64 .x20 = BitVec.ofNat 64 (2 * (i + k)) →
-        sf.readReg64 .x21 = 0#64 →
-        sf.readReg64 .x24 = x.encA →
-        sf.readReg64 .x27 = (x.enc.idx.setWidth 16).setWidth 64 →
-        sf.readReg64 .x28 = 24#64 →
-        sf.readReg64 .x29 = s.readReg64 .x29 →
-        SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) ret sf
-          ((out_ptr ↦ₛ chunkPointsBytes (x.enc.idx.setWidth 16) pts 0 (i + k)) ∗
-            memRegion (out_ptr + BitVec.ofNat 64 (2 * (i + k))) (32 - 2 * (i + k)) ∗
-            pointListOf A (x.encA + 8#64) pts ∗
-            ((fsp + 88#64) ↦₆₄ (x.encA + 8#64)) ∗
-            ((fsp + 104#64) ↦₆₄ u104') ∗
-            ((fsp + 232#64) ↦₆₄ 32#64) ∗
-            ((fsp + 240#64) ↦₆₄ out_ptr) ∗
-            ((fsp + 248#64) ↦₆₄ BitVec.ofNat 64 (2 * (i + k))) ∗
-            Frame) post) →
-      SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) ret s
-        ((out_ptr ↦ₛ chunkPointsBytes (x.enc.idx.setWidth 16) pts 0 i) ∗
-          memRegion (out_ptr + BitVec.ofNat 64 (2 * i)) (32 - 2 * i) ∗
-          pointListOf A (x.encA + 8#64) pts ∗
-          ((fsp + 88#64) ↦₆₄ (x.encA + 8#64)) ∗
-          ((fsp + 104#64) ↦₆₄ u104) ∗
-          ((fsp + 232#64) ↦₆₄ 32#64) ∗
-          ((fsp + 240#64) ↦₆₄ out_ptr) ∗
-          ((fsp + 248#64) ↦₆₄ BitVec.ofNat 64 (2 * i)) ∗
-          Frame) post
-  | 0, i, u104, s, _hik, _hfast, hpc, hrun, hsp, hx9, hx19, hx20, hx21, hx24, hx27, hx28, hnext => by
-    simp only [Nat.add_zero] at hnext
-    exact hnext s u104 hpc hrun hsp rfl rfl hx9 hx19 hx20 hx21 hx24 hx27 hx28 rfl
-  | k + 1, i, u104, s, hik, hfast, hpc, hrun, hsp, hx9, hx19, hx20, hx21, hx24, hx27, hx28, hnext => by
-    have hi15 : i < 15 := by omega
-    refine pointsFastPrefix_step_sepWP A b ext x pts hlen_pts out_ptr fsp u104 hfsp_align
-      i hi15 (hfast i ⟨by omega, by omega⟩) Frame s
-      hpc hrun hsp hx9 hx19 hx20 hx21 hx24 hx27 hx28 ?_
-    intro s1 hpc1 hrun1 hsp1 htr1 hvregs1 hx9_1 hx19_1 hx20_1 hx21_1 hx24_1 hx27_1 hx28_1 hx29_1
-    have hik' : (i + 1) + k < 16 := by omega
-    have hadd_assoc : (i + 1) + k = i + (k + 1) := by omega
-    refine pointsFastPrefix_sepWP A b ext x pts hlen_pts out_ptr fsp hfsp_align Frame
-      k (i + 1) (BitVec.ofNat 64 i) s1 hik'
-      (fun j hj => hfast j ⟨by omega, by omega⟩)
-      hpc1 hrun1 hsp1 hx9_1 hx19_1 hx20_1 hx21_1 hx24_1 hx27_1 hx28_1 ?_
-    intro sf u104' hpcf hrunf hspf htrf hvregsf hx9f hx19f hx20f hx21f hx24f hx27f hx28f hx29f
-    rw [hadd_assoc] at hx9f hx20f ⊢
-    exact hnext sf u104' hpcf hrunf hspf (htrf.trans htr1) (hvregsf.trans hvregs1) hx9f hx19f hx20f hx21f hx24f hx27f hx28f
-      (hx29f.trans hx29_1)
-
-theorem sepWPp_drop_frame {prog : Program} {ret : BitVec 64}
-    {A : RustAlloc} {b : BitVec 64} {x : PolyNextChunkGhost} {s0 s : State}
-    {F P R : SepProp}
-    (h : SepWPp prog ret s P
-      (fun sf1 P_f =>
-        ((sf1.mem ⊨ P_f ∗ (F ∗ R)) →
-          (sf1.mem ⊨
-            ⌜sf1.trace = s0.trace⌝ ∗
-             chunkAt x.outA x.chunk ∗
-             polyEncoderAt A x.encA x.enc' ∗
-             tokenInitAt b ∗
-             reduceTableAt b ∗
-             A.pool ∗
-             stackAt s0.sp polyNextChunkStack ∗ (F ∗ R))) ∧
-          sf1.sp = s0.sp ∧ CalleeSavedPreserved s0 sf1)
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ (F ∗ R)) → (sf.mem ⊨ nextChunkOnPanic s0 sf ∗ (F ∗ R)))) :
-    SepWPp prog ret s (F ∗ P)
-      (fun sf1 P_f =>
-        ((sf1.mem ⊨ P_f ∗ R) →
-          (sf1.mem ⊨
-            ⌜sf1.trace = s0.trace⌝ ∗
-             chunkAt x.outA x.chunk ∗
-             polyEncoderAt A x.encA x.enc' ∗
-             tokenInitAt b ∗
-             reduceTableAt b ∗
-             A.pool ∗
-             stackAt s0.sp polyNextChunkStack ∗ R)) ∧
-          sf1.sp = s0.sp ∧ CalleeSavedPreserved s0 sf1)
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ nextChunkOnPanic s0 sf ∗ R)) := by
-  intro R0 hm hL
-  have hm' : s.mem ⊨ P ∗ (F ∗ R0) := by
-    rwa [show P ∗ (F ∗ R0) = (F ∗ P) ∗ R0 by ac_rfl]
-  obtain ⟨sf, hsteps, hout⟩ := h (F ∗ R0) hm' hL
-  refine ⟨sf, hsteps, ?_⟩
-  rcases hout with ⟨hpc, hrun, P_f, hmf, hpost, hsp, hcc⟩ | ⟨hpan, P_f, hmf, hqp⟩ | ⟨_, hmf⟩
-  · refine Or.inl ⟨hpc, hrun, F ∗ P_f, ?_, ⟨fun hFR => ?_, hsp, hcc⟩⟩
-    · rwa [show (F ∗ P_f) ∗ R0 = P_f ∗ (F ∗ R0) by ac_rfl]
-    · have hFR' : sf.mem ⊨ P_f ∗ (F ∗ R) := by
-        rwa [show P_f ∗ (F ∗ R) = (F ∗ P_f) ∗ R by ac_rfl]
-      have h1 := hpost hFR'
-      rw [show (⌜sf.trace = s0.trace⌝ ∗
-            chunkAt x.outA x.chunk ∗
-            polyEncoderAt A x.encA x.enc' ∗
-            tokenInitAt b ∗
-            reduceTableAt b ∗
-            A.pool ∗
-            stackAt s0.sp polyNextChunkStack ∗ (F ∗ R)) =
-          F ∗ (⌜sf.trace = s0.trace⌝ ∗
-            chunkAt x.outA x.chunk ∗
-            polyEncoderAt A x.encA x.enc' ∗
-            tokenInitAt b ∗
-            reduceTableAt b ∗
-            A.pool ∗
-            stackAt s0.sp polyNextChunkStack ∗ R) by ac_rfl] at h1
-      exact Satisfies.of_sep_right h1
-  · refine Or.inr (Or.inl ⟨hpan, F ∗ P_f, ?_, fun hFR => ?_⟩)
-    · rwa [show (F ∗ P_f) ∗ R0 = P_f ∗ (F ∗ R0) by ac_rfl]
-    · have hFR' : sf.mem ⊨ P_f ∗ (F ∗ R) := by
-        rwa [show P_f ∗ (F ∗ R) = (F ∗ P_f) ∗ R by ac_rfl]
-      have h1 : sf.mem ⊨ F ∗ (nextChunkOnPanic s0 sf ∗ R) := by
-        have := hqp hFR'
-        rwa [show F ∗ (nextChunkOnPanic s0 sf ∗ R) = nextChunkOnPanic s0 sf ∗ (F ∗ R) by ac_rfl]
-      exact Satisfies.of_sep_right h1
-  · exact False.elim (not_satisfies_false_sepConj hmf)
-
 /-- Find the first index `i ∈ [16 - rem, 16)` where `¬ (idx < (pts[i]?.getD ⟨[]⟩).value.length)`, or `16` if all satisfy `idx < len`. -/
-def firstSlowIdxAux (idx : Nat) (pts : List Point) : Nat → Nat → Nat
+@[expose] def firstSlowIdxAux (idx : Nat) (pts : List Point) : Nat → Nat → Nat
   | 0, _ => 16
   | rem + 1, i =>
     if idx < (pts[i]?.getD ⟨[]⟩).value.length then
@@ -1125,6 +567,5 @@ theorem memRegion_656_join_680 (fsp : BitVec 64) :
   rw [ProofLib.memRegion_split' (b := fsp + 656#64) (n := 24) (k := 360) (b' := fsp + 680#64)
         rfl (by bv_omega) (by decide)]
   exact Entails.refl _
-
 
 end CryptoVerification.SpqrV1.Poly.NextChunk

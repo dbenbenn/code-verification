@@ -12,22 +12,33 @@ module
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.CalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.CalleesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.ModelAndLayoutPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerializeBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.Common.StringClonePlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.CalleesBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.CalleesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.ModelAndLayoutPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerializeBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.Common.StringClonePlacedBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegB_ErrPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.Callees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LscroKitPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.ModelAndLayout
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegB_Err
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Cells
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Common
 
 /-!
 # Budget-Threaded Relocatable Stage 1 Direct `BL` Wrappers and Error Epilogue
@@ -37,15 +48,13 @@ stack `stk - cliInitiateFrame` and the shared error epilogue `stage1_epilogue_er
 (`0x0350 → ret`) on `initProgPlaced mmpl gh W`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
 set_option linter.dupNamespace false
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.CalleesPlacedBudget
-
-noncomputable section
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib SepProp
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
@@ -374,15 +383,16 @@ theorem init_verifySig_vm_placed_ok_at [LibsignalPlacement] {M : AllocCostModel}
         (withVmPreserved
           (verifySigAtStkSpec (modelPrims X ⟨W.C, W.Q⟩) (stk - cliInitiateFrame)))) := by
   have hbase := hLocal.verifySignature X
-  have hle : pqxdhHookStack + 1280 ≤ stk - cliInitiateFrame := by
+  have hle : CryptoVerification.SignalSession.Cli.RunProofs.Initiate.verifySigHookStack + 1280 ≤ stk - cliInitiateFrame := by
     have h1 := stk_sub_ge_base hstk
-    have hp : pqxdhHookStack + 1280 ≤ 516880 := by decide
+    have hp : CryptoVerification.SignalSession.Cli.RunProofs.Initiate.verifySigHookStack + 1280 ≤ 516880 := by decide
     omega
   have hhi : stk - cliInitiateFrame ≤ 2 ^ 64 := by omega
   have hspecEq :
       verifySignatureInnerSpec (modelPrims X ⟨W.C, W.Q⟩) =
         withVmPreserved
-          (verifySigAtStkSpec (modelPrims X ⟨W.C, W.Q⟩) (pqxdhHookStack + 1280)) := rfl
+          (verifySigAtStkSpec (modelPrims X ⟨W.C, W.Q⟩)
+            (CryptoVerification.SignalSession.Cli.RunProofs.Initiate.verifySigHookStack + 1280)) := rfl
   rw [hspecEq] at hbase
   apply subroutine_ok.of_codeLoaded
   intro gx R s0 hpc hrun hpre hsp _
@@ -390,12 +400,13 @@ theorem init_verifySig_vm_placed_ok_at [LibsignalPlacement] {M : AllocCostModel}
   dsimp only [withVmPreserved, verifySigAtStkSpec] at hpre
   rw [stackAt_sub_split_local s0.sp hle hhi] at hpre
   let stkRem := memRegion (s0.sp - BitVec.ofNat 64 (stk - cliInitiateFrame))
-    ((stk - cliInitiateFrame) - (pqxdhHookStack + 1280))
+    ((stk - cliInitiateFrame) -
+      (CryptoVerification.SignalSession.Cli.RunProofs.Initiate.verifySigHookStack + 1280))
   have hpre0 : s0.mem ⊨
       (withLsCodeRoLoaded lsmpl
         (withVmPreserved
           (verifySigAtStkSpec (modelPrims X ⟨W.C, W.Q⟩)
-            (pqxdhHookStack + 1280)))).pre gx s0 ∗ (stkRem ∗ R) := by
+            (CryptoVerification.SignalSession.Cli.RunProofs.Initiate.verifySigHookStack + 1280)))).pre gx s0 ∗ (stkRem ∗ R) := by
     refine satisfies_withLsCodeRoLoaded_pre hinv ?_
     dsimp only [withVmPreserved, verifySigAtStkSpec, stkRem]
     convert hpre using 1; sep_ac_rfl
@@ -674,7 +685,5 @@ theorem stage1_epilogue_err_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       refine foc (by sep_frame) hHeap ?_
       rw [A.pool_of_vmPreserved hvm]
       sep_frame)
-
-end
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.CalleesPlacedBudget

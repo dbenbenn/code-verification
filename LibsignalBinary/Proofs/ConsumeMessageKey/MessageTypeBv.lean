@@ -20,13 +20,10 @@ Generates `MessageType.enumToBitVec` and companion lemmas in a single shared mod
 proof files using `bv_decide` on `MessageType` can be imported together without colliding.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalSession
 
 open CryptoGames.LibsignalSession
-
-theorem messageType_bv_trigger (a b : MessageType) (h : a = b) : b = a := by
-  exact h.symm
 
 end CryptoVerification.LibsignalSession

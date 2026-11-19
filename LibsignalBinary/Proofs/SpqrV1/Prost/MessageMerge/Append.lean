@@ -23,7 +23,7 @@ the binary's untruncated `limit = rest.length - len.toNat` loop (`mergeLoopBin`)
 specification's slice-first `takeExact len.toNat rest >>= mergeFieldsLoop` (`Proto.mergeMessage`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageMerge
 
@@ -760,7 +760,7 @@ theorem mergeFieldsLoop_fuel {M : Type}
 /-- Binary model of `prost::encoding::merge_loop`: loops on the untruncated slice `cur` while
 `cur.length > limit` (`limit = rest0.length - len.toNat`), then checks `cur.length == limit`
 at loop exit (`DelimitedLengthExceeded` when `cur.length < limit`). -/
-def mergeLoopBin {M : Type}
+@[expose] def mergeLoopBin {M : Type}
     (mergeField : M → BitVec 32 → WireType → Bytes → Nat → Except DecodeErr (M × Bytes)) :
     Nat → M → Bytes → Nat → Nat → Option M
   | fuel, m, cur, limit, depth' =>
@@ -779,7 +779,7 @@ def mergeLoopBin {M : Type}
             mergeLoopBin mergeField fuel' m' rest' limit depth'
 
 /-- Binary model of `prost::encoding::message::merge` at positive recursion budget `depth = depth' + 1`. -/
-def mergeMessageBin {M : Type}
+@[expose] def mergeMessageBin {M : Type}
     (mergeField : M → BitVec 32 → WireType → Bytes → Nat → Except DecodeErr (M × Bytes))
     (wt : WireType) (m : M) (bs : Bytes) (depth' : Nat) : Option (M × Bytes) :=
   if wt != .lengthDelimited then none

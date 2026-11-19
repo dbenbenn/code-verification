@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Defs
-public import LibsignalBinary.Proofs.SpqrV1Sync.ChainSync
+import LibsignalBinary.Proofs.SpqrV1Sync.ChainSync
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Auth
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.GF16
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Proto
@@ -27,7 +27,7 @@ backward lookups swap-remove an entry, while forward lookups garbage-collect abo
 bytes down to at most `2001` entries (`≤ 72036` bytes).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 

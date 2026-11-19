@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.GameHop.StateSim
+public import Computational.Proofs.GameHop.StateSim -- proof-setup: allow-public-import
 public import Computational.Specifications.Reductions.ReductionDsl.Core
-public import Computational.Proofs.ReductionDsl.Soundness
+import Computational.Proofs.ReductionDsl.Soundness
 
 /-!
 # Support-Invariant Rules and Potential-Based Query Bounds for `ReductionDsl`
@@ -22,7 +22,7 @@ state-potential query bounds (`PotOK`) across `handlerImpl` simulations.
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.GameHop.ReductionDsl.SupportWP
 
@@ -35,178 +35,11 @@ section LoopSupport
 
 variable {ι : Type} {T : OracleSpec.{0, 0} ι}
 
-theorem allSupport_iterM {α : Type} {P : α → Prop} (f : α → OracleComp T α)
-    (hf : ∀ a, P a → AllSupport P (f a)) :
-    ∀ (n : ℕ) {a : α}, P a → AllSupport P (iterM f n a)
-  | 0, _, ha => AllSupport.pure ha
-  | n + 1, _, ha => (hf _ ha).bind fun _ ha' => allSupport_iterM f hf n ha'
-
-theorem allSupport_findML {α : Type} {Q : α → Prop} (p : α → OracleComp T Bool) :
-    ∀ (xs : List α), (∀ x ∈ xs, Q x) →
-      AllSupport (fun o => ∀ x, o = some x → Q x) (findML p xs)
-  | [], _ => AllSupport.pure fun _ h => by cases h
-  | x :: xs, hxs => by
-    simp only [findML]
-    refine (AllSupport.of_forall (p x) fun _ => trivial).bind fun b _ => ?_
-    cases b
-    · exact allSupport_findML p xs fun y hy => hxs y (List.mem_cons_of_mem x hy)
-    · exact AllSupport.pure fun y hy => by
-        injection hy with hxy; subst hxy; exact hxs x List.mem_cons_self
-
-theorem allSupport_mapML {α β : Type} {P : α → Prop} {Q : β → Prop}
-    (f : α → OracleComp T β) (hf : ∀ x, P x → AllSupport Q (f x)) :
-    ∀ (xs : List α), (∀ x ∈ xs, P x) →
-      AllSupport (fun ys => ys.length = xs.length ∧ ∀ y ∈ ys, Q y) (mapML f xs)
-  | [], _ => AllSupport.pure ⟨rfl, fun _ h => by cases h⟩
-  | x :: xs, hxs => by
-    simp only [mapML]
-    refine (hf x (hxs x List.mem_cons_self)).bind fun y hy => ?_
-    refine (allSupport_mapML f hf xs fun z hz => hxs z (List.mem_cons_of_mem x hz)).bind
-      fun ys hys => ?_
-    refine AllSupport.pure ⟨by simp [hys.1], fun z hz => ?_⟩
-    rcases List.mem_cons.mp hz with rfl | hz'
-    · exact hy
-    · exact hys.2 z hz'
-
-theorem allSupport_foldML {α β : Type} {P : α → Prop} {I : β → Prop}
-    (f : α → β → OracleComp T β) (hf : ∀ x acc, P x → I acc → AllSupport I (f x acc)) :
-    ∀ {acc : β} (xs : List α), I acc → (∀ x ∈ xs, P x) → AllSupport I (foldML f acc xs)
-  | _, [], hacc, _ => AllSupport.pure hacc
-  | acc, x :: xs, hacc, hxs => by
-    simp only [foldML]
-    exact (hf x acc (hxs x List.mem_cons_self) hacc).bind fun acc' hacc' =>
-      allSupport_foldML f hf xs hacc' fun z hz => hxs z (List.mem_cons_of_mem x hz)
-
 end LoopSupport
 
 section CompSupport
 
 variable {S : Sig} {ι : Type} {T : OracleSpec.{0, 0} ι} {O : Ops S} {I : Iface S T}
-
-theorem allSupport_comp_ret {Γ : List (Ty S)} {t : Ty S} {P : t.denote → Prop}
-    (e : Expr O Γ t) (ρ : Env Γ) (h : P (e.eval ρ)) :
-    AllSupport P ((Comp.ret (I := I) e).eval ρ) :=
-  AllSupport.pure h
-
-theorem allSupport_comp_bind {Γ : List (Ty S)} {t u : Ty S}
-    {P : t.denote → Prop} {Q : u.denote → Prop}
-    (c : Comp O I Γ t) (k : Comp O I (t :: Γ) u) (ρ : Env Γ)
-    (hc : AllSupport P (c.eval ρ))
-    (hk : ∀ x, P x → AllSupport Q (k.eval (.cons x ρ))) :
-    AllSupport Q ((Comp.bind c k).eval ρ) :=
-  hc.bind hk
-
-theorem allSupport_comp_ite {Γ : List (Ty S)} {t : Ty S} {P : t.denote → Prop}
-    (b : Expr O Γ .bool) (c d : Comp O I Γ t) (ρ : Env Γ)
-    (hc : b.eval ρ = true → AllSupport P (c.eval ρ))
-    (hd : b.eval ρ = false → AllSupport P (d.eval ρ)) :
-    AllSupport P ((Comp.ite b c d).eval ρ) := by
-  simp only [Comp.eval]
-  cases hb : b.eval ρ
-  · exact hd hb
-  · exact hc hb
-
-theorem allSupport_comp_caseOpt {Γ : List (Ty S)} {t u : Ty S} {P : u.denote → Prop}
-    (e : Expr O Γ (.opt t)) (n : Comp O I Γ u) (s : Comp O I (t :: Γ) u) (ρ : Env Γ)
-    (hn : e.eval ρ = none → AllSupport P (n.eval ρ))
-    (hs : ∀ x, e.eval ρ = some x → AllSupport P (s.eval (.cons x ρ))) :
-    AllSupport P ((Comp.caseOpt e n s).eval ρ) := by
-  simp only [Comp.eval]
-  cases he : e.eval ρ
-  · exact hn he
-  · exact hs _ he
-
-theorem allSupport_comp_caseSum {Γ : List (Ty S)} {t u v : Ty S} {P : v.denote → Prop}
-    (e : Expr O Γ (.sum t u)) (l : Comp O I (t :: Γ) v) (r : Comp O I (u :: Γ) v) (ρ : Env Γ)
-    (hl : ∀ a, e.eval ρ = .inl a → AllSupport P (l.eval (.cons a ρ)))
-    (hr : ∀ b, e.eval ρ = .inr b → AllSupport P (r.eval (.cons b ρ))) :
-    AllSupport P ((Comp.caseSum e l r).eval ρ) := by
-  simp only [Comp.eval]
-  cases he : e.eval ρ
-  · exact hl _ he
-  · exact hr _ he
-
-theorem allSupport_simulateQ_handlerImpl {κ : Type} {G : OracleSpec.{0, 0} κ}
-    {C : GameCodec S G} {σ : Ty S} {α : Type}
-    (inv : σ.denote → Prop)
-    (h : Comp O I [σ, C.Q] (.prod C.R σ))
-    (hStep : ∀ gq s, inv s →
-      AllSupport (fun p : C.R.denote × σ.denote => inv p.2)
-        (h.eval (.cons s (.cons (C.qenc gq) .nil))))
-    (oa : OracleComp (unifSpec + G) α) (s₀ : σ.denote) (hs₀ : inv s₀) :
-    AllSupport (fun z : α × σ.denote => inv z.2)
-      ((simulateQ (handlerImpl (C := C) h) oa).run s₀) := by
-  refine AllSupport.simulateQ_run (handlerImpl (C := C) h) inv (fun q s hs => ?_) oa s₀ hs₀
-  rcases q with uq | gq
-  · intro z hz
-    simp only [handlerImpl, StateT.run_lift, mem_support_bind_iff, support_pure,
-      Set.mem_singleton_iff] at hz
-    obtain ⟨_, _, rfl⟩ := hz
-    exact hs
-  · intro z hz
-    simp only [handlerImpl, StateT.run_mk, mem_support_bind_iff, support_pure,
-      Set.mem_singleton_iff] at hz
-    obtain ⟨p, hp, rfl⟩ := hz
-    exact hStep gq s hs p hp
-
-theorem allSupport_runFuel {κ : Type} {G : OracleSpec.{0, 0} κ}
-    {C : GameCodec S G} {σ : Ty S} {α : Type}
-    (inv : σ.denote → Prop)
-    (h : Comp O I [σ, C.Q] (.prod C.R σ))
-    (hStep : ∀ gq s, inv s →
-      AllSupport (fun p : C.R.denote × σ.denote => inv p.2)
-        (h.eval (.cons s (.cons (C.qenc gq) .nil))))
-    (dflt : α) (oa : OracleComp (unifSpec + G) α) (fuel : ℕ) (s₀ : σ.denote) (hs₀ : inv s₀) :
-    AllSupport (fun z : α × σ.denote => inv z.2) (runFuel (C := C) h dflt oa fuel s₀) := by
-  induction oa using OracleComp.inductionOn generalizing fuel s₀ with
-  | pure a =>
-    exact AllSupport.pure hs₀
-  | query_bind q k ih =>
-    unfold runFuel
-    rw [OracleComp.construct_query_bind]
-    rcases q with uq | gq
-    · dsimp only
-      exact (AllSupport.of_forall (I.fwdU uq) fun _ => trivial).bind fun u _ => ih u fuel s₀ hs₀
-    · rcases fuel with _ | fuel
-      · exact AllSupport.pure hs₀
-      · dsimp only
-        exact (hStep gq s₀ hs₀).bind fun p hp => ih (C.rdec gq p.1) fuel p.2 hp
-
-theorem allSupport_run1 {κ : Type} {G : OracleSpec.{0, 0} κ}
-    {C : GameCodec S G} {rIn aIn aOut ch rIn2 out : Ty S} {α : Type}
-    (R : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out)
-    (inv : R.σ.denote → Prop)
-    (pauseInv : R.π.denote → R.σ.denote → Prop)
-    (hStep : ∀ gq s, inv s →
-      AllSupport
-        (fun res : (C.R.denote × R.σ.denote) ⊕ (ch.denote × R.π.denote × R.σ.denote) =>
-          match res with
-          | .inl (_, s') => inv s'
-          | .inr (_, p, s') => pauseInv p s')
-        (R.handlePre.eval (.cons s (.cons (C.qenc gq) .nil))))
-    (dflt : α) (oa : OracleComp (unifSpec + G) α) (fuel : ℕ) (s₀ : R.σ.denote) (hs₀ : inv s₀) :
-    AllSupport
-      (fun m : Mid G α R.π.denote R.σ.denote ch.denote =>
-        match m with
-        | .done _ s => inv s
-        | .paused _ _ p s _ => pauseInv p s)
-      (R.run1 dflt oa fuel s₀) := by
-  induction oa using OracleComp.inductionOn generalizing fuel s₀ with
-  | pure a =>
-    exact AllSupport.pure hs₀
-  | query_bind q k ih =>
-    unfold TwoStageCostedReduction.run1
-    rw [OracleComp.construct_query_bind]
-    rcases q with uq | gq
-    · dsimp only
-      exact (AllSupport.of_forall (I.fwdU uq) fun _ => trivial).bind fun u _ => ih u fuel s₀ hs₀
-    · rcases fuel with _ | fuel
-      · exact AllSupport.pure hs₀
-      · dsimp only
-        refine (hStep gq s₀ hs₀).bind fun res hres => ?_
-        rcases res with ⟨v, s'⟩ | ⟨c, p, s'⟩
-        · exact ih (C.rdec gq v) fuel s' hres
-        · exact AllSupport.pure hres
 
 end CompSupport
 
@@ -216,7 +49,7 @@ variable {S : Sig} {ι : Type} {T : OracleSpec.{0, 0} ι} {O : Ops S} {I : Iface
 
 /-- Continuation-passing potential bound requiring `oa >>= k` to satisfy `IsQueryBoundP P n`
 whenever each continuation `k a` has query bound `B a`. -/
-def PotOK {α : Type} (P : ι → Prop) [DecidablePred P]
+@[expose] def PotOK {α : Type} (P : ι → Prop) [DecidablePred P]
     (B : α → ℕ) (oa : OracleComp T α) (n : ℕ) : Prop :=
   ∀ {β : Type} (k : α → OracleComp T β),
     (∀ a, (k a).IsQueryBoundP P (B a)) → (oa >>= k).IsQueryBoundP P n

@@ -10,20 +10,24 @@ limitations under the License.
 module
 
 public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedBase
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedCost -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedEval -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedShort -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedCoupling -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedCost
+import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedEval
+import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedShort
+import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedCoupling
 public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperCKA -- proof-setup: allow-public-import
 import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanCouplingBounds
+public import Computational.Proofs.HeadlineV1.DeliverForgePaperChallSim -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECell -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitness
+import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanCoupling
+import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanSem
 
 /-!
 # Online-Halted Costed `simDeliverForge` Reduction
 
 Packages the tracker-halted costed reduction `simDeliverForgeRedProgHalted`, proves its
 `GRedBounded`, query-bound, shortness, and guardedness properties, and couples its `DeliverForge`
-cell and bucket advantages directly to `simDeliverForgeTrackHalted`.
--/
+cell and bucket advantages directly to `simDeliverForgeTrackHalted`.-/
 
 public section
 
@@ -31,20 +35,18 @@ set_option autoImplicit false
 
 namespace Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHalted
 
-noncomputable section
-
 open _root_.CryptoGames (Party)
-open CryptoGames.CBC (Plain)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey GhostState Params)
-open CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart lFig8)
-open CryptoGames.Ratchet.LibsignalSim (Fig8St Fig8C kemTrackEnc SimCStateBounded deliverForgeSemHook)
-open CryptoGames.SM.Construction.DeliverForge (AdversaryDF AdversaryCompDF MakesAtMostQueriesDF)
-open CryptoGames.LibsignalSM.Proofs.Refinement
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey GhostState Params)
+open _root_.CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart lFig8)
+open _root_.CryptoGames.Ratchet.LibsignalSim (Fig8St Fig8C kemTrackEnc SimCStateBounded deliverForgeSemHook)
+open _root_.CryptoGames.SM.Construction.DeliverForge (AdversaryDF AdversaryCompDF MakesAtMostQueriesDF)
+open _root_.CryptoGames.LibsignalSM.Proofs.Refinement
   (KemFailTrackState initKemFailTrack stepKemFailDeliver)
-open CryptoVerification.LibsignalSpqrV1 (MlKem)
-open CryptoVerification.LibsignalSession (GRedBounded ratchetCostBudget)
-open CryptoVerification.E2E (Bytes idsOf paramsV1)
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem)
+open _root_.CryptoVerification.LibsignalSession (GRedBounded ratchetCostBudget)
+open _root_.CryptoVerification.E2E (Bytes idsOf paramsV1)
 open _root_.ReductionDsl
   (Sig Ops Ty Env Expr Comp Iface CostedReduction handlerImpl atomicSig atomicSessionOps
    e2eSessionCodec GhostStT BV256 fig8SmIfaceDF smQT smRT partyToBool)
@@ -111,10 +113,10 @@ section StepAndInitEval
 
 open OracleSpec OracleComp
 open _root_.ReductionDsl (smQenc smRdec smRrDec recvResultT recvResultEnc recvResultDec)
-open CryptoGames.SM (partyEnc RecvResult)
-open CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState initSimC)
-open CryptoVerification.E2E (Bytes paramsV1)
-open CryptoVerification.LibsignalSpqrV1 (MlKem)
+open _root_.CryptoGames.SM (partyEnc RecvResult)
+open _root_.CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState initSimC)
+open _root_.CryptoVerification.E2E (Bytes paramsV1)
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem)
 open Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge
   (atomicDraw256_eval eval_sessSpqrKemOp)
 open Computational.Proofs.Game.PromotedCostedReds.KemFailRedInit
@@ -587,7 +589,7 @@ end StepAndInitEval
 
 section ShortAndGuarded
 
-open CryptoVerification.LibsignalSession.HeadlineV1 (SendMsgsOkDF GuardedSMDFShort)
+open _root_.CryptoVerification.LibsignalSession.HeadlineV1 (SendMsgsOkDF GuardedSMDFShort)
 open Computational.Proofs.ReductionDsl.Fig8Atomic (atomicShortPubB)
 open Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedShort
   (simDeliverForgeClampSanTrackHalted_sendAtomicShortDF
@@ -680,7 +682,5 @@ theorem forgeBucketAdvantagePaper_challSimDF'Paper_simDeliverForgeRedProgHalted_
     (idsOf_eq_paramsV1_id C K idA idB) A hq hq32
 
 end ShortAndGuarded
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHalted

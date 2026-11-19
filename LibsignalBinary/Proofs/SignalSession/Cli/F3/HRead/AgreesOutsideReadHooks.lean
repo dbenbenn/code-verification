@@ -9,19 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchDefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchDefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # `AgreesOutsideReadHooks` and Read-Hook Generalization Bridges
@@ -31,7 +34,7 @@ via `ReadHooksFsT`, `RunHooksPlaced` lifts, stack-monotone `readFileSpecPlaced` 
 the `H`-parametric `initiate` slot predicate `CliInitSlotOkPlacedAt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -51,7 +54,7 @@ open CryptoVerification.LibsignalPublicApi.StoreKit
 open CryptoVerification.LibsignalTripleRatchet
   (HkdfPlacedHooks extHookStack lsMemcpySym lsMemsetSym memcpyName memsetName)
 open CryptoVerification.SignalSession
-  (CliHooks cliExternsPlaced cliPanicSymbolsPlaced lsBlackBoxSym lsCompress256Sym
+  (CliHooks cliCratePanicSyms cliExternsPlaced lsBlackBoxSym lsCompress256Sym
    lsDiffieHellmanSym lsDurationSinceSym lsFormatInnerSym lsFromUtf8Sym lsMemrchrSym
    lsPubFromSecretSym lsReadFileSym lsReadStdinSym lsRustAllocSymCli lsRustAllocZeroedSymCli
    lsRustDeallocSymCli lsRustNoAllocShimSymCli lsRustReallocSymCli lsSharedSecretDropSym
@@ -143,7 +146,7 @@ theorem hookSat_readFile_withReadStdinHook {α : Type} (rsh : State → State) {
 
 /-- Pointwise hook-map agreement with `cliGhostExterns gh (cliExternsPlaced mmpl W)` outside the
     two read-hook symbols `{lsReadFileSym, lsReadStdinSym}`. -/
-def AgreesOutsideReadHooks (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
+@[expose] def AgreesOutsideReadHooks (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     (H : LibsignalHooks) : Prop :=
   ∀ s : String, s ≠ lsReadFileSym → s ≠ lsReadStdinSym →
     H s = cliGhostExterns gh (cliExternsPlaced mmpl W) s
@@ -483,9 +486,9 @@ theorem hkdfPlacedHooks_of_agreesOutsideReadHooks
 theorem panic_of_mem_cliPanicSymbolsPlaced
     {mmpl : Obj.MultiPlacement} {gh : CliGhostHooks} {W : CliHooks} {H : LibsignalHooks}
     (hAgree : AgreesOutsideReadHooks mmpl gh W H)
-    (h0 : ∀ s, s ∈ cliPanicSymbolsPlaced →
+    (h0 : ∀ s, s ∈ cliCratePanicSyms →
       cliGhostExterns gh (cliExternsPlaced mmpl W) s = some Rust.panicked) :
-    ∀ s, s ∈ cliPanicSymbolsPlaced → H s = some Rust.panicked := by
+    ∀ s, s ∈ cliCratePanicSyms → H s = some Rust.panicked := by
   intro s hs
   have hFile : s ≠ lsReadFileSym := by
     intro heq; subst heq; exact nomatch hs
@@ -514,6 +517,7 @@ theorem skeletonRunHooksPlaced_of_agreesOutsideReadHooks [LibsignalPlacement] {M
   allocZeroed := hAgree.hookSat h0.allocZeroed
   stringClone := hAgree.hookSat h0.stringClone
   formatInner := hAgree.hookSat h0.formatInner
+  fmtWrite := hAgree.hookSat h0.fmtWrite
   blackBox := hAgree.hookSat h0.blackBox
 
 theorem w3RunHooksPlaced_of_agreesOutsideReadHooks [LibsignalPlacement] {M : AllocCostModel}
@@ -553,8 +557,10 @@ theorem w3RunHooksPlaced_of_agreesOutsideReadHooks [LibsignalPlacement] {M : All
   hkdf := let ⟨f, hf, hex⟩ := h0.hkdf.memcpy
     { memset := hAgree.hookSat h0.hkdf.memset
       memcpy := ⟨f, (hAgree _ (by decide) (by decide)).trans hf, hex⟩
-      compress256 := (hAgree _ (by decide) (by decide)).trans h0.hkdf.compress256 }
-  kemEncaps := (hAgree _ (by decide) (by decide)).trans h0.kemEncaps
+      compress256 :=
+        LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat.hookSatCompress256_of_sym_eq
+          (hAgree _ (by decide) (by decide)) h0.hkdf.compress256 }
+  kemEncaps := hAgree.hookSat h0.kemEncaps
   durationSince := hAgree.hookSat h0.durationSince
   panic_alloc := (hAgree _ (by decide) (by decide)).trans h0.panic_alloc
   panic_raw := (hAgree _ (by decide) (by decide)).trans h0.panic_raw
@@ -686,7 +692,7 @@ theorem hRead_rocl_of_hookSat_mono_stk [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Extern-parametric `signal_session_handshake::initiate` slot contract on `lsProg_579 H` at
 fixed `(X, W)`. -/
-def CliInitSlotOkPlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliInitSlotOkPlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (H : LibsignalHooks) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (InitEnv : InitGhost → List AllocEvent → Prop)
     (X : UnreachedPqxdhPrimitives) (W : CliHooks) : Prop :=

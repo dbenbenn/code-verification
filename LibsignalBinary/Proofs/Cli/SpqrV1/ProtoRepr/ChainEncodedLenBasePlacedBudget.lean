@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.ChainEncodedLenBasePlaced
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.ChainEncodedLenBasePlaced -- proof-setup: allow-public-import
 
 /-!
 # `VmPreserved` Base and `links` Loop Helpers for `Chain::encoded_len [local#3]` (Block `485`)
@@ -19,7 +19,7 @@ Proves `VmPreserved`-threaded `Epoch::encoded_len` call and `links` loop lemmas 
 under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,31 +39,31 @@ open CryptoVerification.Cli.SpqrV1.ProtoRepr.Placed (lsProg_485 blkPl_485)
 open LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget
   (withVmPreserved epochEncodedLenSpec chainEncodedLenPinnedSpec chainEncodedLenSpec)
 
-def ChainEncodedLenLocal1PinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChainEncodedLenLocal1PinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_485 H) (blkPl_485).base
     (withLsCodeLoaded lsmpl (chainEncodedLenPinnedSpec A))
 
-def ChainEncodedLenLocal1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChainEncodedLenLocal1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_485 H) (blkPl_485).base
     (withLsCodeLoaded lsmpl (chainEncodedLenSpec A))
 
-def ChainEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChainEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_485 (Rust.withPanics ext))
     (blkPl_485).base (withLsCodeLoaded lsmpl (chainEncodedLenPinnedSpec A))
 
-def ChainEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChainEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_485 (Rust.withPanics ext))
     (blkPl_485).base (withLsCodeLoaded lsmpl (chainEncodedLenSpec A))
 
-def ChainEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def ChainEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   ChainEncodedLenLocal1PinnedPlacedOkExt A (tripleRatchetExterns C ctl abs)
 
-def ChainEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def ChainEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   ChainEncodedLenLocal1PlacedOkExt A (tripleRatchetExterns C ctl abs)
 

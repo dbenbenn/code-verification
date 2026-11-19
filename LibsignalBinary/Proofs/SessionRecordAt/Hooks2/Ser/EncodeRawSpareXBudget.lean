@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveAuxBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.SpareBaseXBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveAuxBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.SpareBaseXBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.SpareChainsXBudget
@@ -21,6 +21,8 @@ import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.SparePendingP
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.SpareTags1To5XPlacedBudget
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.SpareTailTagsXPlacedBudget
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Pre-Reserved `<SessionStructure as prost::Message>::encode_raw::<Vec<u8>>` (Block `14`)
@@ -30,7 +32,7 @@ Block `14` contract `EncodeRawPreallocPlacedOkX A.repAlloc H` at `encodeRawStack
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -405,16 +407,5 @@ theorem encodeRawPrealloc_placed_ok_of_chain [LibsignalPlacement] {M : AllocCost
   rw [hSessEq, ← hbytes]
   unfold sessionRawOpen
   exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hm
-
-theorem encodeRawPrealloc_placed_cl_of_chain [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {callerProg : Program} {callerBlk : Nat} {H : LibsignalHooks}
-    [IsLsBlockProg callerProg callerBlk H]
-    (hC : SerContractsXPlaced M A lim H)
-    (hEC : EncodeChainPreallocPlacedOkX' A.repAlloc H) :
-    subroutine_ok callerProg (lsmpl.base 14)
-      (withLsCl lsmpl (encodeRawPreallocSpecX A.repAlloc)) :=
-  ls_subroutine_ok_cl_of_callee (callerProg := callerProg)
-    (encodeRawPrealloc_placed_ok_of_chain hC hEC)
 
 end LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRawSpareXBudget

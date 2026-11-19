@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.ParseServiceId
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PrivateKeySerialize
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.ProtocolAddressDisplay
@@ -26,159 +26,12 @@ Restates the contracts for `PublicKey::try_from`, `ServiceId::parse_from_service
 `fnAddr name + k` (as well as relocatable cross-block `[LibsignalPlacement]` call sites).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 
 open Arm64 ProofLib CryptoGames.LibsignalSession CryptoVerification.RustHeap
 open CryptoVerification.LibsignalTripleRatchetRepr
-
-/-- Transport `subroutine_ok` from `fnAddr callee` to `fnAddr name + k` when
-`fnOff name + k = fnOff callee`. -/
-theorem inImage_ok_at_rebase {α : Type} {b : BitVec 64}
-    {H : String → Option (State → State)} {spec : Spec α}
-    {name callee : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff callee)
-    (h : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr callee) spec) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr name + BitVec.ofNat 64 k) spec := by
-  rwa [← Program.fnAddr_rel rfl rfl hk]
-
-theorem inImage_ok_at {α : Type} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {spec : Spec α}
-    {name callee : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff callee)
-    (h : subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr callee) spec) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) spec :=
-  inImage_ok_at_rebase hk h
-
-theorem pk_try_from_ok_at_ext (img : Obj.Image) (ext : String → Option (State → State))
-    (himg : Obj.Loads libsignalSessionImage img)
-    (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff pkTryFromName) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k) (pkTryFromCodeSpec img) :=
-  inImage_ok_at_rebase hk (pkTryFrom_ok_ext img ext himg)
-
-theorem pk_try_from_ok_at (img : Obj.Image) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) (himg : Obj.Loads libsignalSessionImage img)
-    (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff pkTryFromName) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr name + BitVec.ofNat 64 k) (pkTryFromCodeSpec img) :=
-  inImage_ok_at hk (pkTryFrom_ok img C ctl abs himg)
-
-/-- Contract-backed `ServiceId::parse_from_service_id_string` at call distance `k` from `name`. -/
-theorem parse_sid_ok_at_of_contract (b : BitVec 64)
-    (H : String → Option (State → State))
-    (huuid : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr uuidTryParseName)
-      (uuidTryParseSpec uuidTryParse))
-    (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff parseSidName) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr name + BitVec.ofNat 64 k)
-      (parseSidCodeSpec uuidTryParse) :=
-  inImage_ok_at_rebase hk (parseSid_ok_of_contract b H huuid)
-
-/-- Stack-framed contract-backed `ServiceId::parse_from_service_id_string` at call distance `k`. -/
-theorem parse_sid_ok_at_of_contract_stack (b : BitVec 64)
-    (H : String → Option (State → State)) (hookStack : Nat := 0)
-    (huuid : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr uuidTryParseName)
-      (uuidTryParseStackSpec hookStack))
-    (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff parseSidName) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr name + BitVec.ofNat 64 k)
-      (parseSidCodeStackSpec hookStack) :=
-  inImage_ok_at_rebase hk (parseSid_ok_of_contract_stack b H hookStack huuid)
-
-theorem parse_sid_ok_at_ext (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (ext : String → Option (State → State))
-    (hC : Stage2Contracts b C A ctl uuidTryParse S ext)
-    (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff parseSidName) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k) (parseSidCodeSpec uuidTryParse) :=
-  inImage_ok_at_rebase hk (parseSid_ok_ext b C A ctl S ext hC)
-
-theorem parse_sid_ok_at (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff parseSidName) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) (parseSidCodeSpec uuidTryParse) :=
-  inImage_ok_at hk (parseSid_ok b C ctl abs)
-
-theorem priv_serialize_ok_at_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) (hC : AllocContracts b A ext)
-    (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff privSerializeName) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k) (privSerializeSpec A) :=
-  inImage_ok_at_rebase hk (privSerialize_ok_ext b A ext hC)
-
-theorem priv_serialize_ok_at (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) (hA : AllocHooks A abs)
-    (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff privSerializeName) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) (privSerializeSpec A) :=
-  inImage_ok_at hk (privSerialize_ok b C A ctl abs hA)
-
-theorem addr_display_ok_at_ext (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (ext : String → Option (State → State))
-    (hC : Stage2Contracts b C A ctl uuidTryParse S ext)
-    (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff addrDisplayName) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k) (addrDisplaySpec A) :=
-  inImage_ok_at_rebase hk (addrDisplay_ok_ext b C A ctl S ext hC)
-
-theorem addr_display_ok_at (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (hW : HookSat abs fmtWriteName (fmtWriteSpec A)) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff addrDisplayName) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) (addrDisplaySpec A) :=
-  inImage_ok_at hk (addrDisplay_ok b C A ctl abs hW)
-
-/-- Image-invariant stack-framed `ServiceId::parse_from_service_id_string` at call distance `k`. -/
-theorem parse_sid_ok_at_of_contract_stack_inImage (img : Obj.Image)
-    (H : String → Option (State → State)) (hookStack : Nat := 0)
-    (huuid : subroutine_ok (libsignalSessionCode.rebase img.base H)
-      ((libsignalSessionCode.rebase img.base H).fnAddr uuidTryParseName)
-      ((uuidTryParseStackSpec hookStack).inImage img))
-    (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff parseSidName) :
-    subroutine_ok (libsignalSessionCode.rebase img.base H)
-      ((libsignalSessionCode.rebase img.base H).fnAddr name + BitVec.ofNat 64 k)
-      ((parseSidCodeStackSpec hookStack).inImage img) :=
-  inImage_ok_at_rebase hk (parseSid_ok_of_contract_stack_inImage img H hookStack huuid)
-
-theorem priv_serialize_ok_at_ext_x (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) (hC : AllocContractsX img A ext)
-    (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff privSerializeName) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((privSerializeSpecX A).inImage img) :=
-  inImage_ok_at_rebase hk (privSerialize_ok_ext_x hC)
-
-theorem addr_display_ok_at_ext_x (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    {encFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → List (BitVec 8)}
-    {decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8))}
-    (ext : String → Option (State → State)) (hC : Stage2ContractsX img C A encFn decFn ext)
-    (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff addrDisplayName) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((addrDisplaySpec A).inImage img) :=
-  inImage_ok_at_rebase hk (addrDisplay_ok_ext_x hC)
-
-/-! ## Relocatable Cross-Block Call-Site Lemmas (`[LibsignalPlacement]`) -/
 
 /-- Relocatable `PublicKey::try_from` (Block `211`) lifted to any caller block `prog`. -/
 theorem pk_try_from_placed_ok_at [LibsignalPlacement] {prog : Program} {i : Nat}

@@ -9,9 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.PrevBridge
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.PrevBridge
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Archived Session Predicates and `previous_sessions` Bridges
@@ -20,6 +28,6 @@ Re-exports the layout-independent archived-session predicates, drop-precondition
 `previous_sessions` `Vec<Vec<u8>>` helpers from `VerNe.PrevBridge`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false

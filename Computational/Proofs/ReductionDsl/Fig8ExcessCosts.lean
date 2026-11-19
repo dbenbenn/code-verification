@@ -9,8 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.Fig8SourceCosts
+import Computational.Proofs.ReductionDsl.Fig8SourceCosts
 import Computational.Proofs.GameHop.ReductionDsl.CostUB
+public import Computational.Proofs.CryptoGames.SM.Engine -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.PureAuxMacroLift -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.Engine -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.RedCKA -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.RedFS -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.RedPRNG -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.Theorem1 -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.ReductionDsl.Core -- proof-setup: allow-public-import
 
 /-!
 # Excess cost bounds and atomic step budget for Figure 8 reductions
@@ -19,7 +28,7 @@ Bounds `compExcessOf` via branch-free `compExcessUB` under the concrete macro we
 `smOpC` and `ckaOpC`, and fits `fig8AtomicStepBound` inside `ratchetCostBudget q qep`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +46,7 @@ namespace Computational.Proofs.ReductionDsl.Fig8ExcessCosts
 
 section ExcessUB
 
-def exprExcessUB {S : Sig} {O : Ops S} (opEx : O.Op → ℕ) :
+@[expose] def exprExcessUB {S : Sig} {O : Ops S} (opEx : O.Op → ℕ) :
     {Γ : List (Ty S)} → {t : Ty S} → Expr O Γ t → ℕ
   | _, _, .var _ | _, _, .unit | _, _, .bool _ | _, _, .nat _ | _, _, .none | _, _, .nil => 0
   | _, _, .add a b | _, _, .sub a b | _, _, .lt a b | _, _, .eqN a b | _, _, .and a b
@@ -55,7 +64,7 @@ def exprExcessUB {S : Sig} {O : Ops S} (opEx : O.Op → ℕ) :
     exprExcessUB opEx l + exprExcessUB opEx z + K * exprExcessUB opEx f
   | _, _, .tset m i a => exprExcessUB opEx m + exprExcessUB opEx i + exprExcessUB opEx a
 
-def compExcessUB {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
+@[expose] def compExcessUB {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (opEx : O.Op → ℕ) (sEx : I.smp.Samp → ℕ) (qEx : I.Tag → ℕ) :
     {Γ : List (Ty S)} → {t : Ty S} → Comp O I Γ t → ℕ
   | _, _, .ret e => exprExcessUB opEx e
@@ -234,14 +243,14 @@ end ExcessSimps
 set_option linter.unusedSimpArgs false
 set_option maxRecDepth 200000
 
-def smOpC : SM.SMOp → ℕ
+@[expose] def smOpC : SM.SMOp → ℕ
   | .eqMsg => 32000
   | .eqCt => 200
   | .blank => 32000
   | _ => 10
 
-def smSampC {α : Type} : α → ℕ := fun _ => 200
-def smQueryC {α : Type} : α → ℕ := fun _ => 100000
+@[expose] def smSampC {α : Type} : α → ℕ := fun _ => 200
+@[expose] def smQueryC {α : Type} : α → ℕ := fun _ => 100000
 
 section Thm1ExcessHelpers
 
@@ -314,7 +323,7 @@ lemma thm1_simHandleC_excessUB_le (K qep : ℕ) (realEpoch : Option ℕ) :
 
 end Thm1ExcessHelpers
 
-def ckaOpC (B0 : ℕ) : CKA.CKAOp → ℕ
+@[expose] def ckaOpC (B0 : ℕ) : CKA.CKAOp → ℕ
   | .ckaInitA => 20
   | .ckaInitB => 10
   | .ckaSend => 60
@@ -332,10 +341,10 @@ def ckaOpC (B0 : ℕ) : CKA.CKAOp → ℕ
   | .lamI => 10
   | .defaultE => 60
 
-def ckaSampC {α : Type} : α → ℕ := fun _ => 200
-def ckaQueryC {α : Type} : α → ℕ := fun _ => 200
-def prngQueryC {α : Type} : α → ℕ := fun _ => 200
-def fsQueryC {α : Type} : α → ℕ := fun _ => 100000
+@[expose] def ckaSampC {α : Type} : α → ℕ := fun _ => 200
+@[expose] def ckaQueryC {α : Type} : α → ℕ := fun _ => 200
+@[expose] def prngQueryC {α : Type} : α → ℕ := fun _ => 200
+@[expose] def fsQueryC {α : Type} : α → ℕ := fun _ => 100000
 
 section EngineExcessHelpers
 

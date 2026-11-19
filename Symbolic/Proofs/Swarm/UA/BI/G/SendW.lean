@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.UA.BI.RAB.Defs
-public import Symbolic.Proofs.Swarm.CREF.SendWire.Ghosts
-public import Symbolic.Proofs.Swarm.CREF.SendWire.WhisperPureA
+public import Symbolic.Proofs.Swarm.CREF.SendWire.Ghosts -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.SendWire.WhisperPureA -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.DirStepAux
 import Symbolic.Proofs.Swarm.CREF.Cli.DirStepBridge
 import Symbolic.Proofs.Swarm.CREF.Cli.ModelRel
@@ -31,6 +31,12 @@ import Symbolic.Proofs.Swarm.Coinsplit.Lift.L08SlotSendCli
 import Symbolic.Proofs.Swarm.UA.BI.G.PendingPreKey
 import Symbolic.Proofs.Swarm.UA.BI.RAB.Base
 import Symbolic.Proofs.Swarm.UA.Base
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.Cli.TopDispatch
+import Symbolic.Proofs.Swarm.CREF.Cli.Slots.SendCoinsBridge
+import Symbolic.Proofs.Swarm.CREF.Cli.Slots.SendWhisperSlot
 
 /-!
 # Non-Pending Whisper Send Branch
@@ -39,7 +45,7 @@ Proves `send_w_branch`, the exit-`0` whisper `send` case (`¬ PureRecPending` on
 record) of `UASlotSendSpecB`, parameterized by `XlateInvSpecB` and `WhisperEncryptStepSpec`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -104,7 +110,7 @@ attribute [local instance 2000]
   _root_.DY.Libsignal.Composed.toPQXDHSpqr
 
 /-- Step-level clean-explanation extension contract for an exit-`0` whisper `send` run. -/
-def WhisperEncryptStepSpec : Prop :=
+@[expose] def WhisperEncryptStepSpec : Prop :=
   ∀ {interp' : ExternInterpretation} {r : ProtocolSetup} {S : OpaqueSymbolSemantics}
     {g₀ : Ghost} {ss₀ : List Step} {vis₀ : List VisEntry} {evs_pre : List CliEvent}
     {ev : RunEvent} {p : Participant} {peer : Address} {out coins : HwBytes}

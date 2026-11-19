@@ -21,7 +21,7 @@ proves round-trip decoding lemmas (`decodePreKey_encode`, `parsePreKeyWire_preKe
 `parsePreKeyWire_preKeyMsgE`) for `PreKeyProto` and `PreKeyMessageFields`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

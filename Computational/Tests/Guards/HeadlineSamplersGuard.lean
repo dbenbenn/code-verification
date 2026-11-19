@@ -194,9 +194,9 @@ def auditedHeadlineRoots : Array Name := #[
   `SignalPqxdh.Security.PqxdhCorrectAndSecureδ,
   `CryptoVerification.E2E.SessionSecure,
   `CryptoVerification.E2E.ModelSecure,
-  `CryptoVerification.SignalSession.CliPqxdhElfCorrectPlaced,
-  `CryptoVerification.LibsignalCli.CliPqxdhElfSecurePlaced,
-  `CryptoVerification.LibsignalCli.CliPqxdhBinaryCorrectAndSecurePlaced,
+  `CryptoVerification.SignalSession.CliPqxdhElfCorrect,
+  `CryptoVerification.LibsignalCli.CliPqxdhElfSecure,
+  `CryptoVerification.LibsignalCli.CliPqxdhBinaryCorrectAndSecure,
   `CryptoVerification.E2E.CliPqxdhSecurityFor
 ]
 
@@ -384,8 +384,8 @@ def runHeadlineSamplersAudit : CoreM Unit := do
   let mut allViolations : Array String := #[]
   let e2eRootsRequiringCoinSampler : Array Name := #[
     `CryptoVerification.E2E.ModelSecure,
-    `CryptoVerification.LibsignalCli.CliPqxdhElfSecurePlaced,
-    `CryptoVerification.LibsignalCli.CliPqxdhBinaryCorrectAndSecurePlaced,
+    `CryptoVerification.LibsignalCli.CliPqxdhElfSecure,
+    `CryptoVerification.LibsignalCli.CliPqxdhBinaryCorrectAndSecure,
     `CryptoVerification.E2E.CliPqxdhSecurityFor
   ]
   for root in auditedHeadlineRoots do

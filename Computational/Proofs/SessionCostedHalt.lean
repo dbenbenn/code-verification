@@ -22,8 +22,7 @@ import Computational.Proofs.ReductionDsl.Soundness
 
 **Checked by Lean.** Defines epoch-cap clamping (`qepClamp qep q = min qep (q + 4)`) for per-session
 costed reduction bundles and families so AST literal sizes satisfy `SessionCostedReductionFamilyBounded`
-unconditionally, and proves monotonicity of `sessionAdvantageBound` from `qepClamp qep q` to `qep`.
--/
+unconditionally, and proves monotonicity of `sessionAdvantageBound` from `qepClamp qep q` to `qep`.-/
 
 public section
 
@@ -31,26 +30,24 @@ set_option autoImplicit false
 
 namespace Computational.Proofs.SessionCostedHalt
 
-noncomputable section
-
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec
 
-open CryptoGames (Party)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.CBC (Plain)
-open CryptoGames.SM (Adversary admissibleLastLeakGuesses)
-open CryptoGames.SM.Construction (healEpoch)
-open CryptoGames.LibsignalSession
+open _root_.CryptoGames (Party)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.SM (Adversary admissibleLastLeakGuesses)
+open _root_.CryptoGames.SM.Construction (healEpoch)
+open _root_.CryptoGames.LibsignalSession
   (Crypto PublicKey IdentityKey SignalMessageProtoCodec maxForwardJumps GhostState)
-open CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart)
-open CryptoGames.Ratchet.LibsignalSim (Fig8St Fig8C spuriousStepTerm)
-open CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
-open CryptoVerification.LibsignalSpqrV1 (MlKem Bytes)
+open _root_.CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart)
+open _root_.CryptoGames.Ratchet.LibsignalSim (Fig8St Fig8C spuriousStepTerm)
+open _root_.CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem Bytes)
 open Computational.Proofs.ReductionDsl.SizeBudgetBridge (bits_mono)
-open CryptoVerification.LibsignalSession
+open _root_.CryptoVerification.LibsignalSession
   (GRedBounded ratchetCostBudget Fig8CostedReds fig8CostedBounds FsCostedReds fsCostedBounds)
-open CryptoVerification.E2E
+open _root_.CryptoVerification.E2E
   (idsOf SpkLeakRedProg SpkLeakRedUProg SpkSwapPrgHybridProg SpkSwapPrfHybridProg
    SpkCostedReds spkCostedBounds spkHopBudget spkLeakRedUBudget spkSwapHybridCount refineConst
    SessionCostedReductions sessionCostedReductionsBounded
@@ -88,14 +85,6 @@ theorem qepClamp_le_ratchetCostBudget (qep q : ℕ) :
   have hsq : 1 ≤ (q + 1) ^ 2 := Nat.one_le_pow 2 (q + 1) (Nat.succ_pos q)
   nlinarith
 
-theorem qepClamp_succ_le_ratchetCostBudget (qep q : ℕ) :
-    qepClamp qep q + 1 ≤ ratchetCostBudget q (qepClamp qep q + 1) := by
-  have h1 : qepClamp qep q ≤ q + 4 := qepClamp_le_add qep q
-  have h2 : maxForwardJumps = 25000 := rfl
-  unfold ratchetCostBudget
-  have hsq : 1 ≤ (q + 1) ^ 2 := Nat.one_le_pow 2 (q + 1) (Nat.succ_pos q)
-  nlinarith
-
 theorem bits_mono_le {a b : ℕ} (h : a ≤ b) :
     ReductionDsl.bits a ≤ ReductionDsl.bits b :=
   bits_mono h
@@ -104,14 +93,6 @@ theorem ratchetCostBudget_mono_qep {q qep₁ qep₂ : ℕ} (h : qep₁ ≤ qep�
     ratchetCostBudget q qep₁ ≤ ratchetCostBudget q qep₂ := by
   unfold ratchetCostBudget
   exact Nat.mul_le_mul_left _ (Nat.add_le_add_left (bits_mono_le h) _)
-
-theorem ratchetCostBudget_qepClamp_le (q qep : ℕ) :
-    ratchetCostBudget q (qepClamp qep q) ≤ ratchetCostBudget q qep :=
-  ratchetCostBudget_mono_qep (qepClamp_le_qep qep q)
-
-theorem ratchetCostBudget_qepClamp_succ_le (q qep : ℕ) :
-    ratchetCostBudget q (qepClamp qep q + 1) ≤ ratchetCostBudget q (qep + 1) :=
-  ratchetCostBudget_mono_qep (Nat.add_le_add_right (qepClamp_le_qep qep q) 1)
 
 theorem gRedBounded_mono_budget
     {S : ReductionDsl.Sig} {O : ReductionDsl.Ops S}
@@ -161,21 +142,33 @@ theorem fsCostedBounds_mono_qep {Pt : Type} [DecidableEq Pt]
     Fig8CostedReds Dh encPt C codec ℓ encT idOf lam where
   challSim := base.challSim
   privRedB := fun i => if i < qep_c + 1 then base.privRedB i else dummy.privRedB i
-  redCKAAuth := fun tL t => if t < qep_c + 2 then base.redCKAAuth tL t else dummy.redCKAAuth tL t
-  redPRNGAuth := fun tL t => if t < qep_c + 2 then base.redPRNGAuth tL t else dummy.redPRNGAuth tL t
-  redFSAuth := fun j tL t => if t < qep_c + 2 then base.redFSAuth j tL t else dummy.redFSAuth j tL t
+  redCKAAuth := fun tL =>
+    if tL ∈ admissibleLastLeakGuesses (2 + 1) (qep_c + 1) then base.redCKAAuth tL
+    else dummy.redCKAAuth tL
+  redPRNGAuth := fun tL t =>
+    if tL ∈ admissibleLastLeakGuesses (2 + 1) (qep_c + 1) ∧
+        t ∈ Finset.Ico (healEpoch tL) (qep_c + 2) then
+      base.redPRNGAuth tL t
+    else dummy.redPRNGAuth tL t
+  redFSAuth := fun stage la j tL t =>
+    if tL ∈ admissibleLastLeakGuesses (2 + 1) (qep_c + 1) ∧
+        t ∈ Finset.Ico (healEpoch tL) (qep_c + 2) then
+      base.redFSAuth stage la j tL t
+    else dummy.redFSAuth stage la j tL t
   redCKAPriv := fun tL i => if i < qep_c + 1 then base.redCKAPriv tL i else dummy.redCKAPriv tL i
+  redCKAPrivU := fun tL i =>
+    if i < qep_c + 1 then base.redCKAPrivU tL i else dummy.redCKAPrivU tL i
   redPRNGPriv := fun tL i => if i < qep_c + 1 then base.redPRNGPriv tL i else dummy.redPRNGPriv tL i
-  redFSPriv := fun tL i => if i < qep_c + 1 then base.redFSPriv tL i else dummy.redFSPriv tL i
-  redFSPrivCoin := fun tL i =>
-    if i < qep_c + 1 then base.redFSPrivCoin tL i else dummy.redFSPrivCoin tL i
+  redFSPriv := fun i => if i < qep_c + 1 then base.redFSPriv i else dummy.redFSPriv i
+  redFSPrivCoin := fun i =>
+    if i < qep_c + 1 then base.redFSPrivCoin i else dummy.redFSPrivCoin i
 
 @[simp] theorem clampFig8CostedReds_challSim {Pt : Type} [DecidableEq Pt] [Zero Pt]
     [SampleableType Pt] {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → List (BitVec 8)}
     {C : Crypto} {codec : SignalMessageProtoCodec} {ℓ : ℕ}
     {encT : Pt → PublicKey} {idOf : Party → IdentityKey} {lam : Pt}
     (qep_c : ℕ) (base dummy : Fig8CostedReds Dh encPt C codec ℓ encT idOf lam) :
-    (clampFig8CostedReds qep_c base dummy).challSim = base.challSim := rfl
+    (clampFig8CostedReds qep_c base dummy).challSim = base.challSim := by rfl
 
 theorem clampFig8CostedReds_bounds {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → List (BitVec 8)}
@@ -186,28 +179,28 @@ theorem clampFig8CostedReds_bounds {Pt : Type} [DecidableEq Pt] [Zero Pt] [Sampl
     (hbase : fig8CostedBounds q qep_c base)
     (hdummy : fig8CostedBounds q qep dummy) :
     fig8CostedBounds q qep (clampFig8CostedReds qep_c base dummy) := by
-  rcases hbase with ⟨hb1, hb2, hb3, hb4, hb5, hb6, hb7, hb8, hb9,
-    hb10, hb11, hb12, hb13, hb14, hb15, hb16⟩
-  rcases hdummy with ⟨hd1, hd2, hd3, hd4, hd5, hd6, hd7, hd8, hd9,
-    hd10, hd11, hd12, hd13, hd14, hd15, hd16⟩
+  rcases hbase with ⟨hb1, hb2, hb3, hb4, hb5, hb6, hb7, hb8, hb9, hb10,
+    hb11, hb12, hb13, hb14, hb15, hb16, hb17, hb18⟩
+  rcases hdummy with ⟨hd1, hd2, hd3, hd4, hd5, hd6, hd7, hd8, hd9, hd10,
+    hd11, hd12, hd13, hd14, hd15, hd16, hd17, hd18⟩
   have hB := ratchetCostBudget_mono_qep (q := q) hqep
   refine ⟨gRedBounded_mono_budget hB hb1,
     fun i hi => by
       dsimp only [clampFig8CostedReds]; split_ifs with h
       · exact gRedBounded_mono_budget hB (hb2 i h)
       · exact hd2 i hi,
-    fun t ht tL htL => by
+    fun tL htL => by
       dsimp only [clampFig8CostedReds]; split_ifs with h
-      · exact gRedBounded_mono_budget hB (hb3 t h tL htL)
-      · exact hd3 t ht tL htL,
-    fun t ht tL htL => by
+      · exact gRedBounded_mono_budget hB (hb3 tL h)
+      · exact hd3 tL htL,
+    fun tL htL t ht => by
       dsimp only [clampFig8CostedReds]; split_ifs with h
-      · exact gRedBounded_mono_budget hB (hb4 t h tL htL)
-      · exact hd4 t ht tL htL,
-    fun t ht tL htL j hj => by
+      · exact gRedBounded_mono_budget hB (hb4 tL h.1 t h.2)
+      · exact hd4 tL htL t ht,
+    fun tL htL t ht j hj stage la => by
       dsimp only [clampFig8CostedReds]; split_ifs with h
-      · exact gRedBounded_mono_budget hB (hb5 t h tL htL j hj)
-      · exact hd5 t ht tL htL j hj,
+      · exact gRedBounded_mono_budget hB (hb5 tL h.1 t h.2 j hj stage la)
+      · exact hd5 tL htL t ht j hj stage la,
     fun i hi tL htL => by
       dsimp only [clampFig8CostedReds]; split_ifs with h
       · exact gRedBounded_mono_budget hB (hb6 i h tL htL)
@@ -220,39 +213,49 @@ theorem clampFig8CostedReds_bounds {Pt : Type} [DecidableEq Pt] [Zero Pt] [Sampl
       dsimp only [clampFig8CostedReds]; split_ifs with h
       · exact gRedBounded_mono_budget hB (hb8 i h tL htL)
       · exact hd8 i hi tL htL,
-    fun i hi tL htL => by
+    fun i hi => by
       dsimp only [clampFig8CostedReds]; split_ifs with h
-      · exact gRedBounded_mono_budget hB (hb9 i h tL htL)
-      · exact hd9 i hi tL htL,
-    fun t ht tL htL A hA => by
+      · exact gRedBounded_mono_budget hB (hb9 i h)
+      · exact hd9 i hi,
+    fun i hi => by
       dsimp only [clampFig8CostedReds]; split_ifs with h
-      · exact hb10 t h tL htL A hA
-      · exact hd10 t ht tL htL A hA,
+      · exact gRedBounded_mono_budget hB (hb10 i h)
+      · exact hd10 i hi,
+    fun tL htL A hA => by
+      dsimp only [clampFig8CostedReds]; split_ifs with h
+      · exact hb11 tL h A hA
+      · exact hd11 tL htL A hA,
     fun i hi tL htL A hA => by
       dsimp only [clampFig8CostedReds]; split_ifs with h
-      · exact hb11 i h tL htL A hA
-      · exact hd11 i hi tL htL A hA,
-    fun t ht tL htL A hA => by
-      dsimp only [clampFig8CostedReds]; split_ifs with h
-      · exact hb12 t h tL htL A hA
-      · exact hd12 t ht tL htL A hA,
+      · exact hb12 i h tL htL A hA
+      · exact hd12 i hi tL htL A hA,
     fun i hi tL htL A hA => by
       dsimp only [clampFig8CostedReds]; split_ifs with h
-      · exact OracleComp.IsQueryBoundP.mono (hb13 i h tL htL A hA) (by omega)
+      · exact hb13 i h tL htL A hA
       · exact hd13 i hi tL htL A hA,
-    fun t ht tL htL j hj A hA => by
+    fun tL htL t ht A hA => by
       dsimp only [clampFig8CostedReds]; split_ifs with h
-      · exact hb14 t h tL htL j hj A hA
-      · exact hd14 t ht tL htL j hj A hA,
+      · exact hb14 tL h.1 t h.2 A hA
+      · exact hd14 tL htL t ht A hA,
     fun i hi tL htL A hA => by
       dsimp only [clampFig8CostedReds]; split_ifs with h
-      · exact hb15 i h tL htL A hA
+      · exact OracleComp.IsQueryBoundP.mono (hb15 i h tL htL A hA) (by omega)
       · exact hd15 i hi tL htL A hA,
-    fun i hi tL htL A hA => by
+    fun tL htL t ht j hj stage la A hA => by
       dsimp only [clampFig8CostedReds]; split_ifs with h
-      · exact hb16 i h tL htL A hA
-      · exact hd16 i hi tL htL A hA⟩
+      · exact hb16 tL h.1 t h.2 j hj stage la A hA
+      · exact hd16 tL htL t ht j hj stage la A hA,
+    fun i hi A hA => by
+      dsimp only [clampFig8CostedReds]; split_ifs with h
+      · exact hb17 i h A hA
+      · exact hd17 i hi A hA,
+    fun i hi A hA => by
+      dsimp only [clampFig8CostedReds]; split_ifs with h
+      · exact hb18 i h A hA
+      · exact hd18 i hi A hA⟩
 
+/-- Clamps an epoch-indexed `(tL, t)` `DeliverForge` reduction family (`B_cka` / `B_prng`) to
+`t < qep_c + 2`, falling back to `dummy` for unreachable `t ≥ qep_c + 2`. -/
 @[expose] def clampDFRed
     {S : ReductionDsl.Sig} {O : ReductionDsl.Ops S}
     {ιT : Type} {T : OracleSpec ιT} {I : ReductionDsl.Iface S T}
@@ -292,11 +295,12 @@ theorem clampDFRed_gRedBounded
     {ιS : Type} {Src : OracleSpec ιS} {C : ReductionDsl.GameCodec S Src}
     {In ShallowIn Out ShallowOut : ReductionDsl.Ty S}
     (qep_c : ℕ)
-    (base : ℕ → Option ℕ → ℕ → ReductionDsl.CostedReduction O I Src C In ShallowIn Out ShallowOut)
+    (base : Bool → Bool → ℕ → Option ℕ → ℕ →
+      ReductionDsl.CostedReduction O I Src C In ShallowIn Out ShallowOut)
     (dummy : ReductionDsl.CostedReduction O I Src C In ShallowIn Out ShallowOut)
-    (j : ℕ) (tL : Option ℕ) (t : ℕ) :
+    (stage la : Bool) (j : ℕ) (tL : Option ℕ) (t : ℕ) :
     ReductionDsl.CostedReduction O I Src C In ShallowIn Out ShallowOut :=
-  if t < qep_c + 2 then base j tL t else dummy
+  if t < qep_c + 2 then base stage la j tL t else dummy
 
 theorem clampDFFsRed_gRedBounded
     {S : ReductionDsl.Sig} {O : ReductionDsl.Ops S}
@@ -305,19 +309,20 @@ theorem clampDFFsRed_gRedBounded
     {In ShallowIn Out ShallowOut : ReductionDsl.Ty S}
     {wTag : I.Tag → ℕ} {wSamp : I.smp.Samp → ℕ}
     {q qOut qep_c qep : ℕ} (hqep : qep_c ≤ qep)
-    {base : ℕ → Option ℕ → ℕ → ReductionDsl.CostedReduction O I Src C In ShallowIn Out ShallowOut}
+    {base : Bool → Bool → ℕ → Option ℕ → ℕ →
+      ReductionDsl.CostedReduction O I Src C In ShallowIn Out ShallowOut}
     {dummy : ReductionDsl.CostedReduction O I Src C In ShallowIn Out ShallowOut}
-    (hbase : ∀ t < qep_c + 2, ∀ tL ∈ admissibleLastLeakGuesses 2 t, ∀ j < q,
-      GRedBounded (base j tL t) wTag wSamp q qOut (ratchetCostBudget q qep_c))
+    (hbase : ∀ t < qep_c + 2, ∀ tL ∈ admissibleLastLeakGuesses 2 t, ∀ j < q, ∀ stage la : Bool,
+      GRedBounded (base stage la j tL t) wTag wSamp q qOut (ratchetCostBudget q qep_c))
     (hdummy : GRedBounded dummy wTag wSamp q qOut (ratchetCostBudget q qep)) :
-    ∀ t < qep + 2, ∀ tL ∈ admissibleLastLeakGuesses 2 t, ∀ j < q,
-      GRedBounded (clampDFFsRed qep_c base dummy j tL t) wTag wSamp q qOut
+    ∀ t < qep + 2, ∀ tL ∈ admissibleLastLeakGuesses 2 t, ∀ j < q, ∀ stage la : Bool,
+      GRedBounded (clampDFFsRed qep_c base dummy stage la j tL t) wTag wSamp q qOut
         (ratchetCostBudget q qep) := by
   have hB := ratchetCostBudget_mono_qep (q := q) hqep
-  intro t _ht tL htL j hj
+  intro t _ht tL htL j hj stage la
   unfold clampDFFsRed
   split_ifs with hlt
-  · exact gRedBounded_mono_budget hB (hbase t hlt tL htL j hj)
+  · exact gRedBounded_mono_budget hB (hbase t hlt tL htL j hj stage la)
   · exact hdummy
 
 /-! ## Program abbreviations -/
@@ -330,36 +335,6 @@ abbrev SimFig8RedProg (Pt : Type) [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (ReductionDsl.fig8SmIface ℓ Pt)
     (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
     (ReductionDsl.e2eSessionCodec ℓ Pt) .unit .unit .bool .bool
-
-abbrev SimDFRedProg (Pt : Type) [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (ℓ : ℕ) (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt) :=
-  ReductionDsl.CostedReduction
-    (ReductionDsl.atomicSessionOps ℓ Pt C K Dh encPt encT decT lam)
-    (ReductionDsl.fig8SmIfaceDF ℓ Pt)
-    (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
-    (ReductionDsl.e2eSessionCodec ℓ Pt) .unit .unit .bool .bool
-
-abbrev SessionCoinOnlyRedProg (Pt : Type) [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (ℓ : ℕ) (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt) :=
-  ReductionDsl.CostedReduction
-    (ReductionDsl.atomicSessionOps ℓ Pt C K Dh encPt encT decT lam)
-    (ReductionDsl.coinOnlyIface ℓ Pt)
-    (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
-    (ReductionDsl.e2eSessionCodec ℓ Pt)
-    (.prod ReductionDsl.BV256 ReductionDsl.BV256) .unit .bool .bool
-
-abbrev Fig8DFRedProg (Pt : Type) [DecidableEq Pt] [Zero Pt]
-    (ℓ : ℕ) (C : Crypto) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (lam : Pt)
-    {ιT : Type} {T : OracleSpec ιT}
-    (I : ReductionDsl.Iface (ReductionDsl.atomicSig ℓ Pt) T) :=
-  ReductionDsl.CostedReduction
-    (ReductionDsl.atomicFig8Ops ℓ Pt C Dh encPt encT lam)
-    I
-    (CryptoGames.SM.specDF (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
-    (ReductionDsl.fig8SmCodecDF ℓ Pt) .unit .unit .bool .bool
 
 /-! ## Advantage bound monotonicity -/
 
@@ -388,17 +363,9 @@ theorem hiddenSaltMixtureBound_mono_qep {Pt : Type} [DecidableEq Pt] [Zero Pt] [
     (R : ∀ o, SessionCostedReductions Pt ℓ Z K (ida o) (idb o) Dh encPt encT decT lam)
     (A : α → Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) :
     hiddenSaltMixtureBound Z K ℓ Dh encPt encT decT lam qep₁ q δ oa ida idb R A ≤
-      hiddenSaltMixtureBound Z K ℓ Dh encPt encT decT lam qep₂ q δ oa ida idb R A := by
-  unfold hiddenSaltMixtureBound
-  have hsum :
-      ∀ f : ℕ → ℝ≥0∞,
-        ∑ t ∈ Finset.range ((qep₁ + 1) + 2), f t ≤
-          ∑ t ∈ Finset.range ((qep₂ + 1) + 2), f t := fun f =>
-    Finset.sum_le_sum_of_subset (Finset.range_mono (by omega))
-  have hsp := spuriousStepTerm_mono_qep Z.F encPt Dh q hqep
-  have h1 : (qep₁ : ℝ≥0∞) ≤ (qep₂ : ℝ≥0∞) := Nat.cast_le.mpr hqep
-  refine add_le_add (add_le_add (hsum _) hsp) ?_
-  gcongr
+      hiddenSaltMixtureBound Z K ℓ Dh encPt encT decT lam qep₂ q δ oa ida idb R A :=
+  Computational.Proofs.SpecLemmas.Session.StatementComposed.hiddenSaltMixtureBound_mono_qep
+    Z K ℓ Dh encPt encT decT lam hqep q δ oa ida idb R A
 
 theorem fig8MixShortAuthV1_mono_qep {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     {α : Type} (Z : Crypto) (K : MlKem) (ℓ : ℕ)
@@ -408,10 +375,9 @@ theorem fig8MixShortAuthV1_mono_qep {Pt : Type} [DecidableEq Pt] [Zero Pt] [Samp
     (R : ∀ o, SessionCostedReductions Pt ℓ Z K (ida o) (idb o) Dh encPt encT decT lam)
     (A : α → Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) :
     fig8MixShortAuthV1 Z K ℓ Dh encPt encT decT lam qep₁ q oa ida idb R A ≤
-      fig8MixShortAuthV1 Z K ℓ Dh encPt encT decT lam qep₂ q oa ida idb R A := by
-  unfold fig8MixShortAuthV1
-  exact mul_le_mul_of_nonneg_left (Finset.sum_le_sum_of_subset (Finset.range_mono (by omega)))
-    zero_le
+      fig8MixShortAuthV1 Z K ℓ Dh encPt encT decT lam qep₂ q oa ida idb R A :=
+  Computational.Proofs.SpecLemmas.Session.StatementComposed.fig8MixShortAuthV1_mono_qep
+    Z K ℓ Dh encPt encT decT lam hqep q oa ida idb R A
 
 theorem fig8MixShortPrivV1_mono_qep {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     {α : Type} (Z : Crypto) (K : MlKem) (ℓ : ℕ)
@@ -444,28 +410,6 @@ theorem uniformStartMixtureBound_mono_qep
   have href := refineConst_mono_qep Z Dh encPt q δ hqep
   have hhs := hiddenSaltMixtureBound_mono_qep Z K ℓ Dh encPt encT decT lam hqep q δ oa ida idb R
     (fun o => CryptoVerification.E2E.RefuseB0.refuseCorrB0 (A o))
-  gcongr
-
-/-- Bounds `sessionAdvantageBound` at `qepClamp qep q` by `sessionAdvantageBound` at `qep` for clamp-invariant families. -/
-theorem sessionAdvantageBound_qepClamp_le
-    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    {α : Type} (ℓ : ℕ) (D : SessionCostedReductionFamily Pt ℓ)
-    (C : Crypto) (K : MlKem)
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
-    (decT : PublicKey → Option Pt) (qep q : ℕ) (δ : ℝ≥0∞)
-    (oa : ProbComp α) (ida idb : α → IdentityKey) (s : α → BitVec 256)
-    (A : α → Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
-    (hD_eq : ∀ o,
-      D C K (ida o) (idb o) Dh encPt encT decT 0 (qepClamp qep q) q =
-        D C K (ida o) (idb o) Dh encPt encT decT 0 qep q) :
-    sessionAdvantageBound ℓ D C K Dh encPt encT decT (qepClamp qep q) q δ oa ida idb s A ≤
-      sessionAdvantageBound ℓ D C K Dh encPt encT decT qep q δ oa ida idb s A := by
-  unfold sessionAdvantageBound
-  dsimp only
-  simp only [hD_eq]
-  have hu := uniformStartMixtureBound_mono_qep C K ℓ Dh encPt encT decT (0 : Pt)
-    (qepClamp_le_qep qep q) q δ oa ida idb
-    (fun o => D C K (ida o) (idb o) Dh encPt encT decT 0 qep q) A
   gcongr
 
 /-! ## Dummy witnesses and halted family constructors -/
@@ -559,6 +503,8 @@ theorem dummyFig8SmDFRed_gRedBounded
     omega
   · simp [dummyFig8SmDFRed, ReductionDsl.CostedReduction.totalQueries, ReductionDsl.Comp.queries]
 
+/-- Parameter-free fallback `Fig8CostedReds` bundle satisfying `fig8CostedBounds q qep` for all
+`(q, qep : ℕ)`. -/
 @[expose] def dummyFig8CostedReds {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (C : Crypto)
     (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt → PublicKey)
@@ -566,15 +512,16 @@ theorem dummyFig8SmDFRed_gRedBounded
     Fig8CostedReds Dh encPt C codec ℓ encT idOf lam where
   challSim := dummyFig8SmRed ℓ C Dh encPt encT lam (ReductionDsl.fig8SmIface ℓ Pt)
   privRedB := fun _ => dummyFig8SmRed ℓ C Dh encPt encT lam (ReductionDsl.fig8SmIface ℓ Pt)
-  redCKAAuth := fun _ _ => dummyFig8SmRed ℓ C Dh encPt encT lam (ReductionDsl.ckaTargetIface ℓ Pt)
+  redCKAAuth := fun _ => dummyFig8SmRed ℓ C Dh encPt encT lam (ReductionDsl.ckaTargetIface ℓ Pt)
   redPRNGAuth := fun _ _ => dummyFig8SmRed ℓ C Dh encPt encT lam (ReductionDsl.prngTargetIface ℓ Pt)
-  redFSAuth := fun _ _ _ =>
+  redFSAuth := fun _ _ _ _ _ =>
     dummyFig8SmRed ℓ C Dh encPt encT lam (ReductionDsl.fsaeadHeaderIface ℓ Pt)
   redCKAPriv := fun _ _ => dummyFig8SmRed ℓ C Dh encPt encT lam (ReductionDsl.ckaTargetIface ℓ Pt)
+  redCKAPrivU := fun _ _ => dummyFig8SmRed ℓ C Dh encPt encT lam (ReductionDsl.ckaTargetIface ℓ Pt)
   redPRNGPriv := fun _ _ => dummyFig8SmRed ℓ C Dh encPt encT lam (ReductionDsl.prngTargetIface ℓ Pt)
-  redFSPriv := fun _ _ =>
+  redFSPriv := fun _ =>
     dummyFig8SmRed ℓ C Dh encPt encT lam (ReductionDsl.fsaeadHeaderIface ℓ Pt)
-  redFSPrivCoin := fun _ _ =>
+  redFSPrivCoin := fun _ =>
     dummyFig8SmRed ℓ C Dh encPt encT lam (ReductionDsl.fsaeadHeaderIface ℓ Pt)
 
 private theorem dummyFig8SmRed_queryBound {Pt : Type} [DecidableEq Pt] [Zero Pt]
@@ -649,14 +596,18 @@ theorem dummyFig8CostedReds_bounds {Pt : Type} [DecidableEq Pt] [Zero Pt] [Sampl
     CryptoGames.PRFPRNG.MakesAtMostQueries, CryptoGames.FSAEAD.MakesAtMostQueries]
   exact ⟨dummyFig8SmRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q q qep,
     fun _ _ => dummyFig8SmRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q q qep,
+    fun _ _ => dummyFig8SmRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 * q) qep,
+    fun _ _ _ _ =>
+      dummyFig8SmRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 + 2 * q) qep,
+    fun _ _ _ _ _ _ _ _ =>
+      dummyFig8SmRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 * q) qep,
     fun _ _ _ _ => dummyFig8SmRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 * q) qep,
-    fun _ _ _ _ => dummyFig8SmRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 + 2 * q) qep,
-    fun _ _ _ _ _ _ => dummyFig8SmRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 * q) qep,
     fun _ _ _ _ => dummyFig8SmRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 * q) qep,
-    fun _ _ _ _ => dummyFig8SmRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 + 2 * q) qep,
-    fun _ _ _ _ => dummyFig8SmRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 * q) qep,
-    fun _ _ _ _ => dummyFig8SmRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 * q) qep,
-    fun _ _ _ _ A hA =>
+    fun _ _ _ _ =>
+      dummyFig8SmRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 + 2 * q) qep,
+    fun _ _ => dummyFig8SmRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 * q) qep,
+    fun _ _ => dummyFig8SmRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 * q) qep,
+    fun _ _ A hA =>
       dummyFig8SmRed_queryBound ℓ C Dh encPt encT lam _ (fun _ => rfl) (fun _ => by rintro ⟨⟩) A hA,
     fun _ _ _ _ A hA =>
       dummyFig8SmRed_queryBound ℓ C Dh encPt encT lam _ (fun _ => rfl) (fun _ => by rintro ⟨⟩) A hA,
@@ -664,13 +615,45 @@ theorem dummyFig8CostedReds_bounds {Pt : Type} [DecidableEq Pt] [Zero Pt] [Sampl
       dummyFig8SmRed_queryBound ℓ C Dh encPt encT lam _ (fun _ => rfl) (fun _ => by rintro ⟨⟩) A hA,
     fun _ _ _ _ A hA =>
       dummyFig8SmRed_queryBound ℓ C Dh encPt encT lam _ (fun _ => rfl) (fun _ => by rintro ⟨⟩) A hA,
-    fun _ _ _ _ _ _ A hA =>
-      dummyFig8SmRed_queryBound ℓ C Dh encPt encT lam _ (fun _ => rfl) (fun _ => by rintro ⟨⟩) A hA,
     fun _ _ _ _ A hA =>
       dummyFig8SmRed_queryBound ℓ C Dh encPt encT lam _ (fun _ => rfl) (fun _ => by rintro ⟨⟩) A hA,
-    fun _ _ _ _ A hA =>
+    fun _ _ _ _ _ _ _ _ A hA =>
+      dummyFig8SmRed_queryBound ℓ C Dh encPt encT lam _ (fun _ => rfl) (fun _ => by rintro ⟨⟩) A hA,
+    fun _ _ A hA =>
+      dummyFig8SmRed_queryBound ℓ C Dh encPt encT lam _ (fun _ => rfl) (fun _ => by rintro ⟨⟩) A hA,
+    fun _ _ A hA =>
       dummyFig8SmRed_queryBound ℓ C Dh encPt encT lam _ (fun _ => rfl) (fun _ => by rintro ⟨⟩) A hA⟩
 
+/-! ## 6. Generic Bundle/Family Clamp Combinators & Halted SPK Constructor -/
+
+@[simp] theorem clampDFRed_of_lt
+    {S : ReductionDsl.Sig} {O : ReductionDsl.Ops S}
+    {ιT : Type} {T : OracleSpec ιT} {I : ReductionDsl.Iface S T}
+    {ιS : Type} {Src : OracleSpec ιS} {C : ReductionDsl.GameCodec S Src}
+    {In ShallowIn Out ShallowOut : ReductionDsl.Ty S}
+    {qep_c t : ℕ} (ht : t < qep_c + 2)
+    (base : Option ℕ → ℕ → ReductionDsl.CostedReduction O I Src C In ShallowIn Out ShallowOut)
+    (dummy : ReductionDsl.CostedReduction O I Src C In ShallowIn Out ShallowOut)
+    (tL : Option ℕ) :
+    clampDFRed qep_c base dummy tL t = base tL t := by
+  simp [clampDFRed, ht]
+
+@[simp] theorem clampDFFsRed_of_lt
+    {S : ReductionDsl.Sig} {O : ReductionDsl.Ops S}
+    {ιT : Type} {T : OracleSpec ιT} {I : ReductionDsl.Iface S T}
+    {ιS : Type} {Src : OracleSpec ιS} {C : ReductionDsl.GameCodec S Src}
+    {In ShallowIn Out ShallowOut : ReductionDsl.Ty S}
+    {qep_c t : ℕ} (ht : t < qep_c + 2)
+    (base : Bool → Bool → ℕ → Option ℕ → ℕ →
+      ReductionDsl.CostedReduction O I Src C In ShallowIn Out ShallowOut)
+    (dummy : ReductionDsl.CostedReduction O I Src C In ShallowIn Out ShallowOut)
+    (stage la : Bool) (j : ℕ) (tL : Option ℕ) :
+    clampDFFsRed qep_c base dummy stage la j tL t = base stage la j tL t := by
+  simp [clampDFFsRed, ht]
+
+/-- Clamps an existing `SessionCostedReductions` bundle evaluated at `qep_c` so that its epoch-indexed
+`fig8`, `B_{cka,prng,fs}`, and `B_{cka,prng,fs}_u` families satisfy `sessionCostedReductionsBounded`
+at any `qep ≥ qep_c`. -/
 @[expose] def clampSessionCostedReductions {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     {ℓ : ℕ} {C : Crypto} {K : MlKem} {idA idB : IdentityKey}
     {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → Bytes}
@@ -693,6 +676,19 @@ theorem dummyFig8CostedReds_bounds {Pt : Type} [DecidableEq Pt] [Zero Pt] [Sampl
     (dummyFig8SmDFRed ℓ C Dh encPt encT lam (ReductionDsl.prngTargetIface ℓ Pt))
   B_fs := clampDFFsRed (qep_c + 1) base.B_fs
     (dummyFig8SmDFRed ℓ C Dh encPt encT lam (ReductionDsl.fsaeadHeaderIface ℓ Pt))
+  B_cka_u := fun tL par =>
+    if tL ∈ admissibleLastLeakGuesses 4 ((qep_c + 1) + 1) then base.B_cka_u tL par
+    else dummyFig8SmDFRed ℓ C Dh encPt encT lam (ReductionDsl.ckaTargetIface ℓ Pt)
+  B_prng_u := fun tL par t =>
+    if tL ∈ admissibleLastLeakGuesses 4 ((qep_c + 1) + 1) ∧
+        t ∈ Finset.Ico (healEpoch tL) ((qep_c + 1) + 2) then
+      base.B_prng_u tL par t
+    else dummyFig8SmDFRed ℓ C Dh encPt encT lam (ReductionDsl.prngTargetIface ℓ Pt)
+  B_fs_u := fun stage la j tL par t =>
+    if tL ∈ admissibleLastLeakGuesses 4 ((qep_c + 1) + 1) ∧
+        t ∈ Finset.Ico (healEpoch tL) ((qep_c + 1) + 2) then
+      base.B_fs_u stage la j tL par t
+    else dummyFig8SmDFRed ℓ C Dh encPt encT lam (ReductionDsl.fsaeadHeaderIface ℓ Pt)
 
 section ClampSessionProjections
 
@@ -703,19 +699,19 @@ variable {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
   (qep_c : ℕ) (base : SessionCostedReductions Pt ℓ C K idA idB Dh encPt encT decT lam)
 
 @[simp] theorem clampSessionCostedReductions_spk :
-    (clampSessionCostedReductions qep_c base).spk = base.spk := rfl
+    (clampSessionCostedReductions qep_c base).spk = base.spk := by rfl
 @[simp] theorem clampSessionCostedReductions_fs :
-    (clampSessionCostedReductions qep_c base).fs = base.fs := rfl
+    (clampSessionCostedReductions qep_c base).fs = base.fs := by rfl
 @[simp] theorem clampSessionCostedReductions_simFig8 :
-    (clampSessionCostedReductions qep_c base).simFig8 = base.simFig8 := rfl
+    (clampSessionCostedReductions qep_c base).simFig8 = base.simFig8 := by rfl
 @[simp] theorem clampSessionCostedReductions_simDeliverForge :
-    (clampSessionCostedReductions qep_c base).simDeliverForge = base.simDeliverForge := rfl
+    (clampSessionCostedReductions qep_c base).simDeliverForge = base.simDeliverForge := by rfl
 @[simp] theorem clampSessionCostedReductions_epoch0Red :
-    (clampSessionCostedReductions qep_c base).epoch0Red = base.epoch0Red := rfl
+    (clampSessionCostedReductions qep_c base).epoch0Red = base.epoch0Red := by rfl
 @[simp] theorem clampSessionCostedReductions_uniformStartRed :
-    (clampSessionCostedReductions qep_c base).uniformStartRed = base.uniformStartRed := rfl
+    (clampSessionCostedReductions qep_c base).uniformStartRed = base.uniformStartRed := by rfl
 @[simp] theorem clampSessionCostedReductions_challSimDF :
-    (clampSessionCostedReductions qep_c base).challSimDF = base.challSimDF := rfl
+    (clampSessionCostedReductions qep_c base).challSimDF = base.challSimDF := by rfl
 @[simp] theorem clampSessionCostedReductions_B_cka_of_lt {t : ℕ} (ht : t < (qep_c + 1) + 2)
     (tL : Option ℕ) : (clampSessionCostedReductions qep_c base).B_cka tL t = base.B_cka tL t := by
   simp [clampSessionCostedReductions, clampDFRed, ht]
@@ -723,32 +719,69 @@ variable {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (tL : Option ℕ) : (clampSessionCostedReductions qep_c base).B_prng tL t = base.B_prng tL t := by
   simp [clampSessionCostedReductions, clampDFRed, ht]
 @[simp] theorem clampSessionCostedReductions_B_fs_of_lt {t : ℕ} (ht : t < (qep_c + 1) + 2)
-    (j : ℕ) (tL : Option ℕ) :
-    (clampSessionCostedReductions qep_c base).B_fs j tL t = base.B_fs j tL t := by
+    (stage la : Bool) (j : ℕ) (tL : Option ℕ) :
+    (clampSessionCostedReductions qep_c base).B_fs stage la j tL t =
+      base.B_fs stage la j tL t := by
   simp [clampSessionCostedReductions, clampDFFsRed, ht]
+@[simp] theorem clampSessionCostedReductions_B_cka_u_of_mem {tL : Option ℕ}
+    (htL : tL ∈ admissibleLastLeakGuesses 4 ((qep_c + 1) + 1)) (par : Bool) :
+    (clampSessionCostedReductions qep_c base).B_cka_u tL par = base.B_cka_u tL par := by
+  simp [clampSessionCostedReductions, htL]
+@[simp] theorem clampSessionCostedReductions_B_prng_u_of_mem {tL : Option ℕ} {t : ℕ}
+    (htL : tL ∈ admissibleLastLeakGuesses 4 ((qep_c + 1) + 1))
+    (ht : t ∈ Finset.Ico (healEpoch tL) ((qep_c + 1) + 2)) (par : Bool) :
+    (clampSessionCostedReductions qep_c base).B_prng_u tL par t = base.B_prng_u tL par t := by
+  dsimp only [clampSessionCostedReductions]
+  split_ifs with h
+  · rfl
+  · exact absurd ⟨htL, ht⟩ h
+@[simp] theorem clampSessionCostedReductions_B_fs_u_of_mem {tL : Option ℕ} {t : ℕ}
+    (htL : tL ∈ admissibleLastLeakGuesses 4 ((qep_c + 1) + 1))
+    (ht : t ∈ Finset.Ico (healEpoch tL) ((qep_c + 1) + 2))
+    (stage la : Bool) (j : ℕ) (par : Bool) :
+    (clampSessionCostedReductions qep_c base).B_fs_u stage la j tL par t =
+      base.B_fs_u stage la j tL par t := by
+  dsimp only [clampSessionCostedReductions]
+  split_ifs with h
+  · rfl
+  · exact absurd ⟨htL, ht⟩ h
 @[simp] theorem clampSessionCostedReductions_fig8_challSim :
-    (clampSessionCostedReductions qep_c base).fig8.challSim = base.fig8.challSim := rfl
+    (clampSessionCostedReductions qep_c base).fig8.challSim = base.fig8.challSim := by rfl
 @[simp] theorem clampSessionCostedReductions_fig8_privRedB_of_lt {i : ℕ}
     (hi : i < (qep_c + 1) + 1) :
     (clampSessionCostedReductions qep_c base).fig8.privRedB i = base.fig8.privRedB i := by
   dsimp only [clampSessionCostedReductions, clampFig8CostedReds]; split_ifs; rfl
-@[simp] theorem clampSessionCostedReductions_fig8_redCKAAuth_of_lt {t : ℕ}
-    (ht : t < (qep_c + 1) + 2) (tL : Option ℕ) :
-    (clampSessionCostedReductions qep_c base).fig8.redCKAAuth tL t = base.fig8.redCKAAuth tL t := by
-  dsimp only [clampSessionCostedReductions, clampFig8CostedReds]; split_ifs; rfl
-@[simp] theorem clampSessionCostedReductions_fig8_redPRNGAuth_of_lt {t : ℕ}
-    (ht : t < (qep_c + 1) + 2) (tL : Option ℕ) :
+@[simp] theorem clampSessionCostedReductions_fig8_redCKAAuth_of_mem {tL : Option ℕ}
+    (htL : tL ∈ admissibleLastLeakGuesses (2 + 1) ((qep_c + 1) + 1)) :
+    (clampSessionCostedReductions qep_c base).fig8.redCKAAuth tL = base.fig8.redCKAAuth tL := by
+  simp [clampSessionCostedReductions, clampFig8CostedReds, htL]
+@[simp] theorem clampSessionCostedReductions_fig8_redPRNGAuth_of_mem {tL : Option ℕ} {t : ℕ}
+    (htL : tL ∈ admissibleLastLeakGuesses (2 + 1) ((qep_c + 1) + 1))
+    (ht : t ∈ Finset.Ico (healEpoch tL) ((qep_c + 1) + 2)) :
     (clampSessionCostedReductions qep_c base).fig8.redPRNGAuth tL t =
       base.fig8.redPRNGAuth tL t := by
-  dsimp only [clampSessionCostedReductions, clampFig8CostedReds]; split_ifs; rfl
-@[simp] theorem clampSessionCostedReductions_fig8_redFSAuth_of_lt {t : ℕ}
-    (ht : t < (qep_c + 1) + 2) (j : ℕ) (tL : Option ℕ) :
-    (clampSessionCostedReductions qep_c base).fig8.redFSAuth j tL t =
-      base.fig8.redFSAuth j tL t := by
-  dsimp only [clampSessionCostedReductions, clampFig8CostedReds]; split_ifs; rfl
+  dsimp only [clampSessionCostedReductions, clampFig8CostedReds]
+  split_ifs with h
+  · rfl
+  · exact absurd ⟨htL, ht⟩ h
+@[simp] theorem clampSessionCostedReductions_fig8_redFSAuth_of_mem {tL : Option ℕ} {t : ℕ}
+    (htL : tL ∈ admissibleLastLeakGuesses (2 + 1) ((qep_c + 1) + 1))
+    (ht : t ∈ Finset.Ico (healEpoch tL) ((qep_c + 1) + 2))
+    (stage la : Bool) (j : ℕ) :
+    (clampSessionCostedReductions qep_c base).fig8.redFSAuth stage la j tL t =
+      base.fig8.redFSAuth stage la j tL t := by
+  dsimp only [clampSessionCostedReductions, clampFig8CostedReds]
+  split_ifs with h
+  · rfl
+  · exact absurd ⟨htL, ht⟩ h
 @[simp] theorem clampSessionCostedReductions_fig8_redCKAPriv_of_lt {i : ℕ}
     (hi : i < (qep_c + 1) + 1) (tL : Option ℕ) :
     (clampSessionCostedReductions qep_c base).fig8.redCKAPriv tL i = base.fig8.redCKAPriv tL i := by
+  dsimp only [clampSessionCostedReductions, clampFig8CostedReds]; split_ifs; rfl
+@[simp] theorem clampSessionCostedReductions_fig8_redCKAPrivU_of_lt {i : ℕ}
+    (hi : i < (qep_c + 1) + 1) (tL : Option ℕ) :
+    (clampSessionCostedReductions qep_c base).fig8.redCKAPrivU tL i =
+      base.fig8.redCKAPrivU tL i := by
   dsimp only [clampSessionCostedReductions, clampFig8CostedReds]; split_ifs; rfl
 @[simp] theorem clampSessionCostedReductions_fig8_redPRNGPriv_of_lt {i : ℕ}
     (hi : i < (qep_c + 1) + 1) (tL : Option ℕ) :
@@ -756,13 +789,13 @@ variable {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
       base.fig8.redPRNGPriv tL i := by
   dsimp only [clampSessionCostedReductions, clampFig8CostedReds]; split_ifs; rfl
 @[simp] theorem clampSessionCostedReductions_fig8_redFSPriv_of_lt {i : ℕ}
-    (hi : i < (qep_c + 1) + 1) (tL : Option ℕ) :
-    (clampSessionCostedReductions qep_c base).fig8.redFSPriv tL i = base.fig8.redFSPriv tL i := by
+    (hi : i < (qep_c + 1) + 1) :
+    (clampSessionCostedReductions qep_c base).fig8.redFSPriv i = base.fig8.redFSPriv i := by
   dsimp only [clampSessionCostedReductions, clampFig8CostedReds]; split_ifs; rfl
 @[simp] theorem clampSessionCostedReductions_fig8_redFSPrivCoin_of_lt {i : ℕ}
-    (hi : i < (qep_c + 1) + 1) (tL : Option ℕ) :
-    (clampSessionCostedReductions qep_c base).fig8.redFSPrivCoin tL i =
-      base.fig8.redFSPrivCoin tL i := by
+    (hi : i < (qep_c + 1) + 1) :
+    (clampSessionCostedReductions qep_c base).fig8.redFSPrivCoin i =
+      base.fig8.redFSPrivCoin i := by
   dsimp only [clampSessionCostedReductions, clampFig8CostedReds]; split_ifs; rfl
 
 end ClampSessionProjections
@@ -777,43 +810,109 @@ theorem clampSessionCostedReductions_bounded
     (hbase : sessionCostedReductionsBounded ℓ C K idA idB Dh encPt encT decT lam qep_c q base) :
     sessionCostedReductionsBounded ℓ C K idA idB Dh encPt encT decT lam qep q
       (clampSessionCostedReductions qep_c base) := by
-  rcases hbase with ⟨hb1, hb2, hb3, hb4, hb5, hb6, hb7, hb8, hb9, hb10, hb11, hb12, hb13⟩
-  have hle_succ : qep_c + 1 ≤ qep + 1 := Nat.add_le_add_right hqep 1
-  have hB_succ : ratchetCostBudget q (qep_c + 1) ≤ ratchetCostBudget q (qep + 1) :=
-    ratchetCostBudget_mono_qep (q := q) hle_succ
+  rcases hbase with
+    ⟨hb1, hb2, hb3, hb4, hb5, hb6, hb7, hb8, hb9, hb10, hb11, hb12, hb13, hb14⟩
+  have hqep1 : qep_c + 1 ≤ qep + 1 := Nat.add_le_add_right hqep 1
+  have hB := ratchetCostBudget_mono_qep (q := q) hqep1
   refine ⟨spkCostedBounds_mono_qep hqep hb1,
-    clampFig8CostedReds_bounds hle_succ hb2
+    clampFig8CostedReds_bounds hqep1 hb2
       (dummyFig8CostedReds_bounds Dh encPt C protoSignalCodec ℓ encT (idsOf idA idB) lam
         q (qep + 1)),
-    fsCostedBounds_mono_qep hle_succ hb3,
-    gRedBounded_mono_budget hB_succ hb4,
-    gRedBounded_mono_budget hB_succ hb5,
-    gRedBounded_mono_budget hB_succ hb6,
-    gRedBounded_mono_budget hB_succ hb7,
-    gRedBounded_mono_budget hB_succ hb8,
-    clampDFRed_gRedBounded hle_succ hb9
-      (dummyFig8SmDFRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 + 2 * q) (qep + 1)),
-    clampDFRed_gRedBounded hle_succ hb10
-      (dummyFig8SmDFRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 + 2 * q) (qep + 1)),
-    clampDFFsRed_gRedBounded hle_succ hb11
-      (dummyFig8SmDFRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 * q) (qep + 1)),
-    ?_, ?_⟩
-  · intro t _ht tL htL A hA
+    fsCostedBounds_mono_qep hqep1 hb3,
+    gRedBounded_mono_budget hB hb4,
+    gRedBounded_mono_budget hB hb5,
+    gRedBounded_mono_budget hB hb6,
+    gRedBounded_mono_budget hB hb7,
+    gRedBounded_mono_budget hB hb8,
+    ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · intro t ht
     by_cases hlt : t < (qep_c + 1) + 2
-    · rw [clampSessionCostedReductions_B_prng_of_lt qep_c base hlt tL]
-      exact hb12 t hlt tL htL A hA
-    · simp only [clampSessionCostedReductions, clampDFRed, hlt, ↓reduceIte,
-        CryptoGames.PRFPRNG.MakesAtMostQueries]
-      exact dummyFig8SmDFRed_queryBound ℓ C Dh encPt encT lam _ (fun _ => rfl)
-        (fun _ => by rintro ⟨⟩) A (by rintro (_ | _) <;> simp [ReductionDsl.isGameQuery]) hA
-  · intro t _ht tL htL j hj A hA
+    · have ht_c : t ∈ Finset.Ico 2 ((qep_c + 1) + 2) :=
+        Finset.mem_Ico.mpr ⟨(Finset.mem_Ico.mp ht).1, hlt⟩
+      rcases hb9 t ht_c with ⟨hc1, hc2, hc3⟩
+      refine ⟨?_, ?_, fun j hj stage la => ?_⟩
+      · rw [clampSessionCostedReductions_B_cka_of_lt qep_c base hlt]
+        exact gRedBounded_mono_budget hB hc1
+      · rw [clampSessionCostedReductions_B_prng_of_lt qep_c base hlt]
+        exact gRedBounded_mono_budget hB hc2
+      · rw [clampSessionCostedReductions_B_fs_of_lt qep_c base hlt]
+        exact gRedBounded_mono_budget hB (hc3 j hj stage la)
+    · simp only [clampSessionCostedReductions, clampDFRed, clampDFFsRed, hlt, ↓reduceIte]
+      exact ⟨dummyFig8SmDFRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 + 2 * q) (qep + 1),
+        dummyFig8SmDFRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 + 2 * q) (qep + 1),
+        fun _ _ _ _ =>
+          dummyFig8SmDFRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 * q) (qep + 1)⟩
+  · intro t ht
     by_cases hlt : t < (qep_c + 1) + 2
-    · rw [clampSessionCostedReductions_B_fs_of_lt qep_c base hlt j tL]
-      exact hb13 t hlt tL htL j hj A hA
-    · simp only [clampSessionCostedReductions, clampDFFsRed, hlt, ↓reduceIte,
-        CryptoGames.FSAEAD.MakesAtMostQueries]
-      exact dummyFig8SmDFRed_queryBound ℓ C Dh encPt encT lam _ (fun _ => rfl)
-        (fun _ => by rintro ⟨⟩) A (by rintro (_ | _) <;> simp [ReductionDsl.isGameQuery]) hA
+    · have ht_c : t ∈ Finset.Ico 3 ((qep_c + 1) + 2) :=
+        Finset.mem_Ico.mpr ⟨(Finset.mem_Ico.mp ht).1, hlt⟩
+      rcases hb10 t ht_c with ⟨hc1, hc2, hc3⟩
+      refine ⟨?_, ?_, fun j hj stage la => ?_⟩
+      · rw [clampSessionCostedReductions_B_cka_of_lt qep_c base hlt]
+        exact gRedBounded_mono_budget hB hc1
+      · rw [clampSessionCostedReductions_B_prng_of_lt qep_c base hlt]
+        exact gRedBounded_mono_budget hB hc2
+      · rw [clampSessionCostedReductions_B_fs_of_lt qep_c base hlt]
+        exact gRedBounded_mono_budget hB (hc3 j hj stage la)
+    · simp only [clampSessionCostedReductions, clampDFRed, clampDFFsRed, hlt, ↓reduceIte]
+      exact ⟨dummyFig8SmDFRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 + 2 * q) (qep + 1),
+        dummyFig8SmDFRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 + 2 * q) (qep + 1),
+        fun _ _ _ _ =>
+          dummyFig8SmDFRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 * q) (qep + 1)⟩
+  · intro tL _htL par
+    refine ⟨?_, fun t _ht => ?_⟩
+    · dsimp only [clampSessionCostedReductions]
+      split_ifs with htL_c
+      · exact gRedBounded_mono_budget hB (hb11 tL htL_c par).1
+      · exact dummyFig8SmDFRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 + 2 * q) (qep + 1)
+    · dsimp only [clampSessionCostedReductions]
+      refine ⟨?_, fun j hj stage la => ?_⟩
+      · split_ifs with hmem_c
+        · exact gRedBounded_mono_budget hB ((hb11 tL hmem_c.1 par).2 t hmem_c.2).1
+        · exact dummyFig8SmDFRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 + 2 * q) (qep + 1)
+      · split_ifs with hmem_c
+        · exact gRedBounded_mono_budget hB (((hb11 tL hmem_c.1 par).2 t hmem_c.2).2 j hj stage la)
+        · exact dummyFig8SmDFRed_gRedBounded ℓ C Dh encPt encT lam _ rfl rfl _ _ q (2 * q) (qep + 1)
+  · intro t ht A hA
+    by_cases hlt : t < (qep_c + 1) + 2
+    · have ht_c : t ∈ Finset.Ico 2 ((qep_c + 1) + 2) :=
+        Finset.mem_Ico.mpr ⟨(Finset.mem_Ico.mp ht).1, hlt⟩
+      rcases hb12 t ht_c A hA with ⟨hq1, hq2⟩
+      refine ⟨?_, fun j hj stage la => ?_⟩
+      · rw [clampSessionCostedReductions_B_prng_of_lt qep_c base hlt]; exact hq1
+      · rw [clampSessionCostedReductions_B_fs_of_lt qep_c base hlt]; exact hq2 j hj stage la
+    · simp only [clampSessionCostedReductions, clampDFRed, clampDFFsRed, hlt, ↓reduceIte,
+        CryptoGames.PRFPRNG.MakesAtMostQueries, CryptoGames.FSAEAD.MakesAtMostQueries]
+      exact ⟨dummyFig8SmDFRed_queryBound ℓ C Dh encPt encT lam _ (fun _ => rfl)
+          (fun _ => by rintro ⟨⟩) A (by rintro (_ | _) <;> simp [ReductionDsl.isGameQuery]) hA,
+        fun _ _ _ _ => dummyFig8SmDFRed_queryBound ℓ C Dh encPt encT lam _ (fun _ => rfl)
+          (fun _ => by rintro ⟨⟩) A (by rintro (_ | _) <;> simp [ReductionDsl.isGameQuery]) hA⟩
+  · intro t ht A hA
+    by_cases hlt : t < (qep_c + 1) + 2
+    · have ht_c : t ∈ Finset.Ico 3 ((qep_c + 1) + 2) :=
+        Finset.mem_Ico.mpr ⟨(Finset.mem_Ico.mp ht).1, hlt⟩
+      rcases hb13 t ht_c A hA with ⟨hq1, hq2⟩
+      refine ⟨?_, fun j hj stage la => ?_⟩
+      · rw [clampSessionCostedReductions_B_prng_of_lt qep_c base hlt]; exact hq1
+      · rw [clampSessionCostedReductions_B_fs_of_lt qep_c base hlt]; exact hq2 j hj stage la
+    · simp only [clampSessionCostedReductions, clampDFRed, clampDFFsRed, hlt, ↓reduceIte,
+        CryptoGames.PRFPRNG.MakesAtMostQueries, CryptoGames.FSAEAD.MakesAtMostQueries]
+      exact ⟨dummyFig8SmDFRed_queryBound ℓ C Dh encPt encT lam _ (fun _ => rfl)
+          (fun _ => by rintro ⟨⟩) A (by rintro (_ | _) <;> simp [ReductionDsl.isGameQuery]) hA,
+        fun _ _ _ _ => dummyFig8SmDFRed_queryBound ℓ C Dh encPt encT lam _ (fun _ => rfl)
+          (fun _ => by rintro ⟨⟩) A (by rintro (_ | _) <;> simp [ReductionDsl.isGameQuery]) hA⟩
+  · intro tL _htL par t _ht A hA
+    dsimp only [clampSessionCostedReductions, CryptoGames.PRFPRNG.MakesAtMostQueries,
+      CryptoGames.FSAEAD.MakesAtMostQueries]
+    refine ⟨?_, fun j hj stage la => ?_⟩
+    · split_ifs with hmem_c
+      · exact (hb14 tL hmem_c.1 par t hmem_c.2 A hA).1
+      · exact dummyFig8SmDFRed_queryBound ℓ C Dh encPt encT lam _ (fun _ => rfl)
+          (fun _ => by rintro ⟨⟩) A (by rintro (_ | _) <;> simp [ReductionDsl.isGameQuery]) hA
+    · split_ifs with hmem_c
+      · exact (hb14 tL hmem_c.1 par t hmem_c.2 A hA).2 j hj stage la
+      · exact dummyFig8SmDFRed_queryBound ℓ C Dh encPt encT lam _ (fun _ => rfl)
+          (fun _ => by rintro ⟨⟩) A (by rintro (_ | _) <;> simp [ReductionDsl.isGameQuery]) hA
 
 /-- Clamps a `SessionCostedReductionFamily` to `qepClamp qep q` above `q + 4`. -/
 @[expose] def clampSessionCostedReductionFamily {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
@@ -875,19 +974,23 @@ theorem fig8MixShortAuthV1_congr
     (hfs : ∀ o, (R₁ o).fs = (R₂ o).fs)
     (hsim : ∀ o, (R₁ o).simFig8 = (R₂ o).simFig8)
     (hchall : ∀ o, (R₁ o).fig8.challSim = (R₂ o).fig8.challSim)
-    (hcka : ∀ o {t : ℕ}, t < (qep + 1) + 2 → ∀ tL,
-      (R₁ o).fig8.redCKAAuth tL t = (R₂ o).fig8.redCKAAuth tL t)
-    (hprng : ∀ o {t : ℕ}, t < (qep + 1) + 2 → ∀ tL,
+    (hcka : ∀ o {tL : Option ℕ}, tL ∈ admissibleLastLeakGuesses (2 + 1) ((qep + 1) + 1) →
+      (R₁ o).fig8.redCKAAuth tL = (R₂ o).fig8.redCKAAuth tL)
+    (hprng : ∀ o {tL : Option ℕ}, tL ∈ admissibleLastLeakGuesses (2 + 1) ((qep + 1) + 1) →
+      ∀ {t : ℕ}, t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2) →
       (R₁ o).fig8.redPRNGAuth tL t = (R₂ o).fig8.redPRNGAuth tL t)
-    (hfsa : ∀ o {t : ℕ}, t < (qep + 1) + 2 → ∀ j tL,
-      (R₁ o).fig8.redFSAuth j tL t = (R₂ o).fig8.redFSAuth j tL t) :
+    (hfsa : ∀ o {tL : Option ℕ}, tL ∈ admissibleLastLeakGuesses (2 + 1) ((qep + 1) + 1) →
+      ∀ {t : ℕ}, t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2) → ∀ stage la j,
+      (R₁ o).fig8.redFSAuth stage la j tL t = (R₂ o).fig8.redFSAuth stage la j tL t) :
     fig8MixShortAuthV1 Z K ℓ Dh encPt encT decT lam qep q oa ida idb R₁ A =
       fig8MixShortAuthV1 Z K ℓ Dh encPt encT decT lam qep q oa ida idb R₂ A := by
   unfold fig8MixShortAuthV1
-  refine congrArg (2 * ·) (Finset.sum_congr rfl fun t ht => ?_)
-  have hlt : t < (qep + 1) + 2 := Finset.mem_range.mp ht
-  simp only [hfs, hsim, hchall, fun o tL => hcka o hlt tL, fun o tL => hprng o hlt tL,
-    fun o j tL => hfsa o hlt j tL]
+  dsimp only
+  refine congrArg (2 * ·) (Finset.sum_congr rfl fun tL htL => ?_)
+  refine congrArg (· + _) (congrArg₂ (· + ·) ?_ (Finset.sum_congr rfl fun t ht => ?_))
+  · simp only [hsim, hchall, fun o => hcka o htL]
+  · simp only [hfs, hsim, hchall, fun o => hprng o htL ht,
+      fun o stage la j => hfsa o htL ht stage la j]
 
 theorem fig8MixShortPrivV1_congr
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
@@ -903,19 +1006,22 @@ theorem fig8MixShortPrivV1_congr
       (R₁ o).fig8.privRedB i = (R₂ o).fig8.privRedB i)
     (hcka : ∀ o {i : ℕ}, i < (qep + 1) + 1 → ∀ tL,
       (R₁ o).fig8.redCKAPriv tL i = (R₂ o).fig8.redCKAPriv tL i)
+    (hckaU : ∀ o {i : ℕ}, i < (qep + 1) + 1 → ∀ tL,
+      (R₁ o).fig8.redCKAPrivU tL i = (R₂ o).fig8.redCKAPrivU tL i)
     (hprng : ∀ o {i : ℕ}, i < (qep + 1) + 1 → ∀ tL,
       (R₁ o).fig8.redPRNGPriv tL i = (R₂ o).fig8.redPRNGPriv tL i)
-    (hfsp : ∀ o {i : ℕ}, i < (qep + 1) + 1 → ∀ tL,
-      (R₁ o).fig8.redFSPriv tL i = (R₂ o).fig8.redFSPriv tL i)
-    (hfspc : ∀ o {i : ℕ}, i < (qep + 1) + 1 → ∀ tL,
-      (R₁ o).fig8.redFSPrivCoin tL i = (R₂ o).fig8.redFSPrivCoin tL i) :
+    (hfsp : ∀ o {i : ℕ}, i < (qep + 1) + 1 →
+      (R₁ o).fig8.redFSPriv i = (R₂ o).fig8.redFSPriv i)
+    (hfspc : ∀ o {i : ℕ}, i < (qep + 1) + 1 →
+      (R₁ o).fig8.redFSPrivCoin i = (R₂ o).fig8.redFSPrivCoin i) :
     fig8MixShortPrivV1 Z K ℓ Dh encPt encT decT lam qep q oa ida idb R₁ A =
       fig8MixShortPrivV1 Z K ℓ Dh encPt encT decT lam qep q oa ida idb R₂ A := by
   unfold fig8MixShortPrivV1
   refine congrArg (2 * ·) (Finset.sum_congr rfl fun i hi => ?_)
   have hlt : i < (qep + 1) + 1 := Finset.mem_range.mp hi
   simp only [hfs, hsim, fun o => hprivB o hlt, fun o tL => hcka o hlt tL,
-    fun o tL => hprng o hlt tL, fun o tL => hfsp o hlt tL, fun o tL => hfspc o hlt tL]
+    fun o tL => hckaU o hlt tL, fun o tL => hprng o hlt tL,
+    fun o => hfsp o hlt, fun o => hfspc o hlt]
 
 theorem hiddenSaltMixtureBound_congr
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
@@ -930,14 +1036,35 @@ theorem hiddenSaltMixtureBound_congr
     (hchallDF : ∀ o, (R₁ o).challSimDF = (R₂ o).challSimDF)
     (hbCka : ∀ o {t : ℕ}, t < (qep + 1) + 2 → ∀ tL, (R₁ o).B_cka tL t = (R₂ o).B_cka tL t)
     (hbPrng : ∀ o {t : ℕ}, t < (qep + 1) + 2 → ∀ tL, (R₁ o).B_prng tL t = (R₂ o).B_prng tL t)
-    (hbFs : ∀ o {t : ℕ}, t < (qep + 1) + 2 → ∀ j tL, (R₁ o).B_fs j tL t = (R₂ o).B_fs j tL t) :
+    (hbFs : ∀ o {t : ℕ}, t < (qep + 1) + 2 → ∀ stage la j tL,
+      (R₁ o).B_fs stage la j tL t = (R₂ o).B_fs stage la j tL t)
+    (hbCkaU : ∀ o {tL : Option ℕ}, tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1) →
+      ∀ par, (R₁ o).B_cka_u tL par = (R₂ o).B_cka_u tL par)
+    (hbPrngU : ∀ o {tL : Option ℕ}, tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1) →
+      ∀ {t : ℕ}, t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2) → ∀ par,
+      (R₁ o).B_prng_u tL par t = (R₂ o).B_prng_u tL par t)
+    (hbFsU : ∀ o {tL : Option ℕ}, tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1) →
+      ∀ {t : ℕ}, t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2) → ∀ stage la j par,
+      (R₁ o).B_fs_u stage la j tL par t = (R₂ o).B_fs_u stage la j tL par t) :
     hiddenSaltMixtureBound Z K ℓ Dh encPt encT decT lam qep q δ oa ida idb R₁ A =
       hiddenSaltMixtureBound Z K ℓ Dh encPt encT decT lam qep q δ oa ida idb R₂ A := by
   unfold hiddenSaltMixtureBound
-  refine congrArg (fun x => x + _ + _) (Finset.sum_congr rfl fun t ht => ?_)
-  have hlt : t < (qep + 1) + 2 := Finset.mem_range.mp ht
-  simp only [hfs, hsimDF, hchallDF, fun o tL => hbCka o hlt tL, fun o tL => hbPrng o hlt tL,
-    fun o j tL => hbFs o hlt j tL]
+  dsimp only
+  refine congrArg (· + _) (congrArg (· + _)
+    (congrArg₂ (· + ·) (congrArg₂ (· + ·) ?_ ?_) ?_))
+  · refine Finset.sum_congr rfl fun t ht => ?_
+    have hlt : t < (qep + 1) + 2 := (Finset.mem_Ico.mp ht).2
+    simp only [hfs, hsimDF, hchallDF, fun o tL => hbCka o hlt tL,
+      fun o tL => hbPrng o hlt tL, fun o stage la j tL => hbFs o hlt stage la j tL]
+  · refine Finset.sum_congr rfl fun t ht => ?_
+    have hlt : t < (qep + 1) + 2 := (Finset.mem_Ico.mp ht).2
+    simp only [hfs, hsimDF, hchallDF, fun o tL => hbCka o hlt tL,
+      fun o tL => hbPrng o hlt tL, fun o stage la j tL => hbFs o hlt stage la j tL]
+  · refine Finset.sum_congr rfl fun tL htL => Finset.sum_congr rfl fun par _ => ?_
+    refine congrArg (· + _) (congrArg₂ (· + ·) ?_ (Finset.sum_congr rfl fun t ht => ?_))
+    · simp only [hsimDF, hchallDF, fun o => hbCkaU o htL par]
+    · simp only [hfs, hsimDF, hchallDF, fun o => hbPrngU o htL ht par,
+        fun o stage la j => hbFsU o htL ht stage la j par]
 
 theorem fig8MixShortAuthV1_clampSessionCostedReductions_eq
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
@@ -949,13 +1076,21 @@ theorem fig8MixShortAuthV1_clampSessionCostedReductions_eq
     (A : α → Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) :
     fig8MixShortAuthV1 Z K ℓ Dh encPt encT decT lam qep q oa ida idb
         (fun o => clampSessionCostedReductions qep_c (R o)) A =
-      fig8MixShortAuthV1 Z K ℓ Dh encPt encT decT lam qep q oa ida idb R A :=
-  fig8MixShortAuthV1_congr Z K ℓ Dh encPt encT decT lam qep q oa ida idb _ R A
+      fig8MixShortAuthV1 Z K ℓ Dh encPt encT decT lam qep q oa ida idb R A := by
+  have hsub :=
+    Computational.Proofs.SpecLemmas.Session.StatementComposed.admissibleLastLeakGuesses_mono
+      (2 + 1) (t₁ := (qep + 1) + 1) (t₂ := (qep_c + 1) + 1) (by omega)
+  have hIco : ∀ tL, Finset.Ico (healEpoch tL) ((qep + 1) + 2) ⊆
+      Finset.Ico (healEpoch tL) ((qep_c + 1) + 2) :=
+    fun _ => Finset.Ico_subset_Ico_right (by omega)
+  exact fig8MixShortAuthV1_congr Z K ℓ Dh encPt encT decT lam qep q oa ida idb _ R A
     (fun _ => rfl) (fun _ => rfl) (fun _ => rfl)
-    (fun o _ ht tL => clampSessionCostedReductions_fig8_redCKAAuth_of_lt qep_c (R o) (by omega) tL)
-    (fun o _ ht tL => clampSessionCostedReductions_fig8_redPRNGAuth_of_lt qep_c (R o) (by omega) tL)
-    (fun o _ ht j tL =>
-      clampSessionCostedReductions_fig8_redFSAuth_of_lt qep_c (R o) (by omega) j tL)
+    (fun o _ htL => clampSessionCostedReductions_fig8_redCKAAuth_of_mem qep_c (R o) (hsub htL))
+    (fun o _ htL _ ht =>
+      clampSessionCostedReductions_fig8_redPRNGAuth_of_mem qep_c (R o) (hsub htL) (hIco _ ht))
+    (fun o _ htL _ ht stage la j =>
+      clampSessionCostedReductions_fig8_redFSAuth_of_mem qep_c (R o) (hsub htL) (hIco _ ht)
+        stage la j)
 
 theorem fig8MixShortPrivV1_clampSessionCostedReductions_eq
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
@@ -972,10 +1107,10 @@ theorem fig8MixShortPrivV1_clampSessionCostedReductions_eq
     (fun _ => rfl) (fun _ => rfl)
     (fun o _ hi => clampSessionCostedReductions_fig8_privRedB_of_lt qep_c (R o) (by omega))
     (fun o _ hi tL => clampSessionCostedReductions_fig8_redCKAPriv_of_lt qep_c (R o) (by omega) tL)
+    (fun o _ hi tL => clampSessionCostedReductions_fig8_redCKAPrivU_of_lt qep_c (R o) (by omega) tL)
     (fun o _ hi tL => clampSessionCostedReductions_fig8_redPRNGPriv_of_lt qep_c (R o) (by omega) tL)
-    (fun o _ hi tL => clampSessionCostedReductions_fig8_redFSPriv_of_lt qep_c (R o) (by omega) tL)
-    (fun o _ hi tL =>
-      clampSessionCostedReductions_fig8_redFSPrivCoin_of_lt qep_c (R o) (by omega) tL)
+    (fun o _ hi => clampSessionCostedReductions_fig8_redFSPriv_of_lt qep_c (R o) (by omega))
+    (fun o _ hi => clampSessionCostedReductions_fig8_redFSPrivCoin_of_lt qep_c (R o) (by omega))
 
 theorem hiddenSaltMixtureBound_clampSessionCostedReductions_eq
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
@@ -987,12 +1122,26 @@ theorem hiddenSaltMixtureBound_clampSessionCostedReductions_eq
     (A : α → Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) :
     hiddenSaltMixtureBound Z K ℓ Dh encPt encT decT lam qep q δ oa ida idb
         (fun o => clampSessionCostedReductions qep_c (R o)) A =
-      hiddenSaltMixtureBound Z K ℓ Dh encPt encT decT lam qep q δ oa ida idb R A :=
-  hiddenSaltMixtureBound_congr Z K ℓ Dh encPt encT decT lam qep q δ oa ida idb _ R A
+      hiddenSaltMixtureBound Z K ℓ Dh encPt encT decT lam qep q δ oa ida idb R A := by
+  have hsub :=
+    Computational.Proofs.SpecLemmas.Session.StatementComposed.admissibleLastLeakGuesses_mono
+      4 (t₁ := (qep + 1) + 1) (t₂ := (qep_c + 1) + 1) (by omega)
+  have hIco : ∀ tL, Finset.Ico (healEpoch tL) ((qep + 1) + 2) ⊆
+      Finset.Ico (healEpoch tL) ((qep_c + 1) + 2) :=
+    fun _ => Finset.Ico_subset_Ico_right (by omega)
+  exact hiddenSaltMixtureBound_congr Z K ℓ Dh encPt encT decT lam qep q δ oa ida idb _ R A
     (fun _ => rfl) (fun _ => rfl) (fun _ => rfl)
     (fun o _ ht tL => clampSessionCostedReductions_B_cka_of_lt qep_c (R o) (by omega) tL)
     (fun o _ ht tL => clampSessionCostedReductions_B_prng_of_lt qep_c (R o) (by omega) tL)
-    (fun o _ ht j tL => clampSessionCostedReductions_B_fs_of_lt qep_c (R o) (by omega) j tL)
+    (fun o _ ht stage la j tL =>
+      clampSessionCostedReductions_B_fs_of_lt qep_c (R o) (by omega) stage la j tL)
+    (fun o _ htL par =>
+      clampSessionCostedReductions_B_cka_u_of_mem qep_c (R o) (hsub htL) par)
+    (fun o _ htL _ ht par =>
+      clampSessionCostedReductions_B_prng_u_of_mem qep_c (R o) (hsub htL) (hIco _ ht) par)
+    (fun o _ htL _ ht stage la j par =>
+      clampSessionCostedReductions_B_fs_u_of_mem qep_c (R o) (hsub htL) (hIco _ ht)
+        stage la j par)
 
 theorem uniformStartMixtureBound_clampSessionCostedReductions_eq
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
@@ -1028,66 +1177,6 @@ theorem sessionAdvantageBound_clampSessionCostedReductionFamily_eq_of_le
   unfold sessionAdvantageBound
   dsimp only
   simp only [clampSessionCostedReductionFamily_of_le ℓ D C K _ _ Dh encPt encT decT _ hqep]
-
-theorem sessionAdvantageBound_le_clampSessionCostedReductionFamily
-    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    {α : Type} (ℓ : ℕ) (D : SessionCostedReductionFamily Pt ℓ)
-    (C : Crypto) (K : MlKem)
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
-    (decT : PublicKey → Option Pt) (qep q : ℕ) (δ : ℝ≥0∞)
-    (oa : ProbComp α) (ida idb : α → IdentityKey) (s : α → BitVec 256)
-    (A : α → Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) :
-    sessionAdvantageBound ℓ D C K Dh encPt encT decT (qepClamp qep q) q δ oa ida idb s A ≤
-      sessionAdvantageBound ℓ (clampSessionCostedReductionFamily ℓ D) C K Dh encPt encT decT
-        qep q δ oa ida idb s A := by
-  by_cases hqep : qep ≤ q + 4
-  · rw [qepClamp_eq_qep_of_le hqep,
-      sessionAdvantageBound_clampSessionCostedReductionFamily_eq_of_le ℓ D C K Dh encPt encT
-        decT hqep δ oa ida idb s A]
-  · have hgt : q + 4 < qep := Nat.lt_of_not_ge hqep
-    have hc : qepClamp qep q = q + 4 := Nat.min_eq_right (Nat.le_of_lt hgt)
-    let D' : SessionCostedReductionFamily Pt ℓ :=
-      fun C' K' idA' idB' Dh' encPt' encT' decT' lam' _ q' =>
-        clampSessionCostedReductions (q' + 4)
-          (D C' K' idA' idB' Dh' encPt' encT' decT' lam' (q' + 4) q')
-    have hle := sessionAdvantageBound_qepClamp_le ℓ D' C K Dh encPt encT decT qep q δ
-      oa ida idb s A (fun _ => rfl)
-    rw [hc] at hle ⊢
-    have heqL :
-        sessionAdvantageBound ℓ D' C K Dh encPt encT decT (q + 4) q δ oa ida idb s A =
-          sessionAdvantageBound ℓ D C K Dh encPt encT decT (q + 4) q δ oa ida idb s A := by
-      unfold sessionAdvantageBound
-      dsimp only [D']
-      simp only [clampSessionCostedReductions_spk]
-      rw [uniformStartMixtureBound_clampSessionCostedReductions_eq C K ℓ Dh encPt encT decT
-        (0 : Pt) le_rfl q δ oa ida idb
-        (fun o => D C K (ida o) (idb o) Dh encPt encT decT 0 (q + 4) q) A]
-    have heqR :
-        sessionAdvantageBound ℓ D' C K Dh encPt encT decT qep q δ oa ida idb s A =
-          sessionAdvantageBound ℓ (clampSessionCostedReductionFamily ℓ D) C K Dh encPt encT decT
-            qep q δ oa ida idb s A := by
-      unfold sessionAdvantageBound
-      dsimp only [D']
-      simp only [clampSessionCostedReductionFamily_of_gt ℓ D C K _ _ Dh encPt encT decT _ hgt]
-    rw [← heqL, ← heqR]
-    exact hle
-
-theorem sessionAdvantageBound_clampSessionCostedReductionFamily_le
-    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    {α : Type} (ℓ : ℕ) (D : SessionCostedReductionFamily Pt ℓ)
-    (C : Crypto) (K : MlKem)
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
-    (decT : PublicKey → Option Pt) (qep q : ℕ) (δ : ℝ≥0∞)
-    (oa : ProbComp α) (ida idb : α → IdentityKey) (s : α → BitVec 256)
-    (A : α → Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) :
-    sessionAdvantageBound ℓ (clampSessionCostedReductionFamily ℓ D) C K Dh encPt encT decT
-        (qepClamp qep q) q δ oa ida idb s A ≤
-      sessionAdvantageBound ℓ (clampSessionCostedReductionFamily ℓ D) C K Dh encPt encT decT
-        qep q δ oa ida idb s A := by
-  rw [sessionAdvantageBound_clampSessionCostedReductionFamily_eq_of_le ℓ D C K Dh encPt encT decT
-    (qepClamp_le_add qep q) δ oa ida idb s A]
-  exact sessionAdvantageBound_le_clampSessionCostedReductionFamily ℓ D C K Dh encPt encT decT
-    qep q δ oa ida idb s A
 
 @[simp] theorem clampSessionCostedReductionFamily_fs
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
@@ -1169,7 +1258,5 @@ theorem mkSpkCostedRedsHalted_bounds
     fun k hk => by simp only [mkSpkCostedRedsHalted, hk, ↓reduceIte]; exact hhop2Prf k hk⟩
 
 end SpkHalted
-
-end
 
 end Computational.Proofs.SessionCostedHalt

@@ -10,13 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDropPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDropPlaced
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Placed `SessionRecord::serialize` (`Prev1`) Body Specs and Step Statements
@@ -26,14 +27,14 @@ Relocatable `[LibsignalPlacement]` body contract, field-2 write step (`+444 .. +
 (block 52) on `lsProg_52 H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 
-open Arm64 ProofLib ProofLib.ObjectLoad CryptoGames
+open Arm64 ProofLib CryptoGames
 open CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr CryptoVerification.LibsignalPublicApiRepr
@@ -45,19 +46,19 @@ open Proofs.libsignal.Hooks2
 
 /-! ## Body and Bridge Statements -/
 
-def SerializePrev1BodyPlacedOkStmt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def SerializePrev1BodyPlacedOkStmt [LibsignalPlacement] (A : RustAlloc)
     (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_52 H) (blkPl_52).base
     (withLsCodeLoaded lsmpl (serializePrev1BodySpecX A))
 
-def SerializePrev1PlacedBridgeStmt [LibsignalPlacement] : Prop :=
+@[expose] def SerializePrev1PlacedBridgeStmt [LibsignalPlacement] : Prop :=
   ∀ (A : RustAlloc) (H : LibsignalHooks),
     SerializePrev1BodyPlacedOkStmt A H → SerializePrev1PlacedOkStmt (lsProg_52 H) A
 
 /-! ## Field-2 Write Step (`+444 .. +692`) -/
 
 /-- Field-2 write block of `SessionRecord::serialize` (`+444 .. +692`) on `lsProg_52 H`. -/
-def SerField2PlacedStepStmt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def SerField2PlacedStepStmt [LibsignalPlacement] (A : RustAlloc)
     (H : LibsignalHooks) : Prop :=
   ∀ (sp0 q' cap ptr capE ptrE : BitVec 64) (bs enc : List (BitVec 8))
     {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop},
@@ -137,7 +138,7 @@ theorem dealloc_placed_sub_okX [LibsignalPlacement] {A : RustAlloc}
 
 /-- Epilogue of `SessionRecord::serialize` (`+692 .. ret`) on `lsProg_52 H`: writes `Ok(vec)` to
 `out`, drops the cloned `SessionStructure` and `Vec<Vec<u8>>`, and returns. -/
-def SerPrev1PlacedTailStmt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def SerPrev1PlacedTailStmt [LibsignalPlacement] (A : RustAlloc)
     (H : LibsignalHooks) : Prop :=
   ∀ (out q' capE ptrE cap' ptr' o0 o1 o2 o3 : BitVec 64) (bs enc : List (BitVec 8))
     (w : SessionGhost) (sess' : Session (List (BitVec 8)))

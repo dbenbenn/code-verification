@@ -9,17 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.CodeLayout
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
-
-/-!
-# Instruction Fetches for `spqr::send::<HookRng>` on the Empty-State Path
-
-Decode lemmas and range-fetch tactics (`code_fetches_from`, `spqr_fetches`) for the 61 instructions
-executed by `spqr::send::<libsignal_session::HookRng>` (`0x3085c`) when the post-quantum state is empty.
--/
-
-@[expose] public section
+public import LibsignalBinary.Proofs.CodeLayout -- proof-setup: allow-public-import
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.SpqrSendEmpty
 
@@ -47,14 +38,5 @@ elab "code_fetches_from " codeId:ident decPrefix:ident b:term:max H:term:max hfn
     else
       evalTactic (← `(tactic|
         have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
-
-/-- Fetch hypotheses for `spqr::send::<HookRng>` (`hfn : fnOff spqrSendName = 0x3085c`), from
-    fn-relative offset `k0`, `len` bytes. -/
-macro "spqr_fetches " b:term:max H:term:max hfn:term:max k0:num len:num : tactic =>
-  `(tactic| code_fetches_from CryptoVerification.libsignalSessionCode libsignalSessionBin $b $H
-    $hfn (num% (ls_off% "spqr::send::<libsignal_session::HookRng>")) $k0 $len)
-
-gen_decodes libsignalSessionCode_tree libsignalSessionBin [(ls_off% "spqr::send::<libsignal_session::HookRng>") → (ls_off% "spqr::send::<libsignal_session::HookRng>" + 104), (ls_off% "spqr::send::<libsignal_session::HookRng>" + 136) → (ls_off% "spqr::send::<libsignal_session::HookRng>" + 220),
-    (ls_off% "spqr::send::<libsignal_session::HookRng>" + 4608) → (ls_off% "spqr::send::<libsignal_session::HookRng>" + 4616), (ls_off% "spqr::send::<libsignal_session::HookRng>" + 4632) → (ls_off% "spqr::send::<libsignal_session::HookRng>" + 4664)]
 
 end CryptoVerification.LibsignalTripleRatchet.SpqrSendEmpty

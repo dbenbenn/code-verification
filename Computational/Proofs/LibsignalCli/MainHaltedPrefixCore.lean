@@ -12,8 +12,8 @@ module
 public import Computational.Specifications.LibsignalCli.StatementPqElf
 public import Computational.Specifications.Game.ModelIface
 public import Computational.Specifications.Reductions.Pqxdh.StatementPqReds
-public import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers
-public import Computational.Proofs.E2E.ComposedPrefixHelpers
+public import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.ComposedPrefixHelpers
 import Computational.Proofs.GameHop.GlobalHybrid
 import VCVio.EvalDist.Monad.Basic
 
@@ -25,7 +25,7 @@ import VCVio.EvalDist.Monad.Basic
 multi-session E2E model experiments, and shallow two-stage reduction `bhPrefixRedWithSessionTracked`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -53,7 +53,7 @@ open CryptoVerification.E2E (BHDRCtlQuery BHE2EDrvState BHE2ESmResp BHModelInst
   injectRM liftStateT paramsIdsWithSpqr prob_bind_congr_of_support sessionSchemeFixedSpk
   shortCiphertext wirePrekey)
 
-def bhClassifyTargetOnly {S : SignalPqxdh.Setup} {ℓ : ℕ} {PQC : Type}
+@[expose] def bhClassifyTargetOnly {S : SignalPqxdh.Setup} {ℓ : ℕ} {PQC : Type}
     (pKi : SignalPqxdh.KeyIndQuery S → Bool)
     (pCtl : BHDRCtlQuery S → Bool) (pInst : ℕ → Bool) :
     (bhTargetGameSpec S ℓ PQC).Domain → Bool
@@ -111,12 +111,7 @@ def coinLogSessionTracker {St Msg Coins C Key : Type} (badLog : List Coins → B
     (badLog log', log', fun _ => log')
   onDeliver _ _ _ _ log := log
 
-/-- Model-state E2E driver state augmented with one `τ` tracker entry per promoted session instance
-(`σH.2.length = σH.1.insts.length`). -/
-abbrev BHE2EDrvStateSessionTracked (τ : Type) (S : SignalPqxdh.Setup) (ℓ : ℕ) : Type :=
-  BHE2EDrvState S ℓ × List τ
-
-def smSchemeTrackState {τ Key St Msg Coins RCoins C : Type}
+@[expose] def smSchemeTrackState {τ Key St Msg Coins RCoins C : Type}
     (sm : SMSchemeR Key St Msg Coins RCoins C) :
     SMSchemeRM (StateT τ ProbComp) Key St Msg Coins RCoins C where
   initA := sm.initA
@@ -124,7 +119,7 @@ def smSchemeTrackState {τ Key St Msg Coins RCoins C : Type}
   send st m r := pure (sm.send st m r)
   receive st c rc := pure (sm.receive st c rc)
 
-def transmitRSessionTracked {Key St Msg Coins RCoins C τ : Type} [SampleableType Coins]
+@[expose] def transmitRSessionTracked {Key St Msg Coins RCoins C τ : Type} [SampleableType Coins]
     (T : SessionHaltTracker St Msg Coins C Key τ)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
     QueryImpl ((Party × Msg × Option Coins) →ₒ Option C)
@@ -146,7 +141,7 @@ def transmitRSessionTracked {Key St Msg Coins RCoins C τ : Type} [SampleableTyp
         set (s₁.record Δ P out.1 ⟨⟨P, s₁.epoch P, s₁.idx P + 1⟩, m, out.2⟩ false)
         return some out.2
 
-def challRSessionTracked {Key St Msg Coins RCoins C τ : Type} [SampleableType Coins]
+@[expose] def challRSessionTracked {Key St Msg Coins RCoins C τ : Type} [SampleableType Coins]
     (T : SessionHaltTracker St Msg Coins C Key τ)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
     QueryImpl ((Party × Msg × Msg × Option Coins) →ₒ Option C)
@@ -170,7 +165,7 @@ def challRSessionTracked {Key St Msg Coins RCoins C τ : Type} [SampleableType C
         set (s₁.record Δ P out.1 ⟨⟨P, s₁.epoch P, s₁.idx P + 1⟩, m, out.2⟩ true)
         return some out.2
 
-def deliverRSessionTracked {Key St Msg Coins RCoins C τ : Type}
+@[expose] def deliverRSessionTracked {Key St Msg Coins RCoins C τ : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType RCoins]
     (T : SessionHaltTracker St Msg Coins C Key τ)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (cfg : ConfigR St Msg C) :
@@ -182,7 +177,7 @@ def deliverRSessionTracked {Key St Msg Coins RCoins C τ : Type}
     let _ ← StateT.lift (fun tr => pure ((), T.onDeliver s₀ P c res tr))
     return res
 
-def oracleImplRSessionTracked {Key St Msg Coins RCoins C τ : Type}
+@[expose] def oracleImplRSessionTracked {Key St Msg Coins RCoins C τ : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Coins] [SampleableType RCoins]
     (T : SessionHaltTracker St Msg Coins C Key τ)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
@@ -194,7 +189,7 @@ def oracleImplRSessionTracked {Key St Msg Coins RCoins C τ : Type}
       QueryImpl (Party →ₒ Option St)
         (StateT (GameState St Msg C) (StateT τ ProbComp)))
 
-def runRSessionTracked {Key St Msg Coins RCoins C τ : Type}
+@[expose] def runRSessionTracked {Key St Msg Coins RCoins C τ : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins]
     [SampleableType RCoins]
     (T : SessionHaltTracker St Msg Coins C Key τ)
@@ -208,7 +203,7 @@ def runRSessionTracked {Key St Msg Coins RCoins C τ : Type}
   ((simulateQ impl A).run (initState sm.sendPart k b)).run (T.init k)
 
 /-- Single-session halted `SM.gameR` driven by `T : SessionHaltTracker`. -/
-def gameRSessionTracked {Key St Msg Coins RCoins C τ : Type}
+@[expose] def gameRSessionTracked {Key St Msg Coins RCoins C τ : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins]
     [SampleableType RCoins]
     (T : SessionHaltTracker St Msg Coins C Key τ)
@@ -223,7 +218,7 @@ def gameRSessionTracked {Key St Msg Coins RCoins C τ : Type}
     let (b', s) ← (simulateQ impl A).run (initState sm.sendPart k b)
     return (b == b' || s.win)
 
-def bhE2ELocalStartSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhE2ELocalStartSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (initTrack : SampledSessionKey → τ)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : MlKem) (bMode? : Option Bool)
@@ -242,7 +237,7 @@ def bhE2ELocalStartSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ
       | _, _ => σH.2
     return (idx?, (σ', tracks'))
 
-def bhE2EStepLocalSmSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhE2EStepLocalSmSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (C : Crypto) (K : MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
@@ -314,7 +309,7 @@ def bhE2EStepLocalSmSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : �
           | _ => runTr q σ
     | _, _ => return ((none, none, none), σH)
 
-def bhE2EDrvImplWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhE2EDrvImplWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
@@ -347,7 +342,7 @@ def bhE2EDrvImplWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : �
     return bhUnpackSmResp sq sr
 
 /-- Per-session `SessionHaltTracker`-driven E2E model experiment. -/
-def bhE2EExpWithKiSessionTracked {τ : Type} {ℓ : ℕ}
+@[expose] def bhE2EExpWithKiSessionTracked {τ : Type} {ℓ : ℕ}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (secb : Bool) (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
@@ -368,7 +363,7 @@ abbrev ModelDriverKeyBitGen :=
 abbrev BHDrvPrefixKeyBitGen :=
   ℕ → ModelDriverKeyBitGen
 
-def bhFinishStartSpkGen {S : SignalPqxdh.Setup} {ℓ : ℕ} (C : Crypto) (K : MlKem)
+@[expose] def bhFinishStartSpkGen {S : SignalPqxdh.Setup} {ℓ : ℕ} (C : Crypto) (K : MlKem)
     (σ : BHE2EDrvState S ℓ) (sid : SignalPqxdh.SessionId S)
     (kr1 kr2 : SignalPqxdh.KeyIndResponse) (kb : SampledSessionKey × Bool) :
     Option ℕ × BHE2EDrvState S ℓ :=
@@ -389,14 +384,14 @@ def bhFinishStartSpkGen {S : SignalPqxdh.Setup} {ℓ : ℕ} (C : Crypto) (K : Ml
     else (none, σ)
   | _, _, _ => (none, σ)
 
-def bhMkPrefixExact (k : ℕ) (b_k : Bool) : BHDrvPrefixKeyBitGen :=
+@[expose] def bhMkPrefixExact (k : ℕ) (b_k : Bool) : BHDrvPrefixKeyBitGen :=
   fun len kr1 _ => do
     let ac ← ($ᵗ BitVec 256 : ProbComp (BitVec 256))
     let dk := match kr1 with | .drKeyResp dk => dk | _ => default
     let b_use := if len == k then b_k else decide (len < k)
     return (bhKeySOf dk ac, b_use)
 
-def bhMkPrefixLazy (k : ℕ) (b_k : Bool) : BHDrvPrefixKeyBitGen :=
+@[expose] def bhMkPrefixLazy (k : ℕ) (b_k : Bool) : BHDrvPrefixKeyBitGen :=
   fun len kr1 kr2 => do
     let ac ← ($ᵗ BitVec 256 : ProbComp (BitVec 256))
     let b_use := if len == k then b_k else decide (len < k)
@@ -413,7 +408,7 @@ def bhMkPrefixLazy (k : ℕ) (b_k : Bool) : BHDrvPrefixKeyBitGen :=
     | _, _ =>
       return (bhKeySOf default ac, b_use)
 
-def bhComposedPostObs {S : SignalPqxdh.Setup} {ℓ : ℕ} (P : SignalPqxdh.Primitives) :
+@[expose] def bhComposedPostObs {S : SignalPqxdh.Setup} {ℓ : ℕ} (P : SignalPqxdh.Primitives) :
     Bool × BHE2EDrvState S ℓ → ProbComp Bool :=
   fun ⟨b', σ⟩ =>
     if !allTestedSessionsFresh P σ.st then do
@@ -422,7 +417,7 @@ def bhComposedPostObs {S : SignalPqxdh.Setup} {ℓ : ℕ} (P : SignalPqxdh.Primi
     else
       return (if bhE2EDrvWon σ true then true else if bhE2EDrvWon σ false then false else b')
 
-def bhE2ELocalStartGenWith {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhE2ELocalStartGenWith {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : MlKem) (mkKeyBit : ModelDriverKeyBitGen)
     (σ : BHE2EDrvState S ℓ) (sid : SignalPqxdh.SessionId S) :
@@ -435,12 +430,12 @@ def bhE2ELocalStartGenWith {S : SignalPqxdh.Setup} {ℓ : ℕ}
     let kb ← mkKeyBit kr1 kr2
     return bhFinishStartSpkGen C K { σ with st := st2 } sid kr1 kr2 kb
 
-def bhMkKeyBitConst (b : Bool) : ModelDriverKeyBitGen := fun kr1 _ => do
+@[expose] def bhMkKeyBitConst (b : Bool) : ModelDriverKeyBitGen := fun kr1 _ => do
   let ac ← ($ᵗ BitVec 256 : ProbComp (BitVec 256))
   let dk := match kr1 with | .drKeyResp dk => dk | _ => default
   return (bhKeySOf dk ac, b)
 
-def bhMkPrefixHyb (k : ℕ) : BHDrvPrefixKeyBitGen :=
+@[expose] def bhMkPrefixHyb (k : ℕ) : BHDrvPrefixKeyBitGen :=
   fun len kr1 _ => do
     let ac ← ($ᵗ BitVec 256 : ProbComp (BitVec 256))
     let dk := match kr1 with | .drKeyResp dk => dk | _ => default
@@ -478,7 +473,7 @@ theorem bhFinishStartSpkGen_bhMkKeyBitConst_eq {S : SignalPqxdh.Setup} {ℓ : �
     rcases val with ⟨hdr, bnd, ⟨u, j⟩⟩
     cases kr1 <;> cases kr2 <;> rfl
 
-def bhE2ELocalStartGenWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhE2ELocalStartGenWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (initTrack : SampledSessionKey → τ)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : MlKem) (mkKeyBit : ModelDriverKeyBitGen)
@@ -494,7 +489,7 @@ def bhE2ELocalStartGenWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {�
     let tracks' := if idx?.isSome then σH.2 ++ [initTrack kb.1] else σH.2
     return (idx?, (σ', tracks'))
 
-def bhE2EDrvImplGenWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhE2EDrvImplGenWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
@@ -525,7 +520,7 @@ def bhE2EDrvImplGenWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ :
     set σH'
     return bhUnpackSmResp sq sr
 
-def bhE2EDrvImplPrefixWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhE2EDrvImplPrefixWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
@@ -548,12 +543,12 @@ theorem bhE2EDrvImplPrefixWithSessionTracked_run_eq_gen {τ : Type} {S : SignalP
       (bhE2EDrvImplGenWithSessionTracked T ki P C K qep decT encT
         (mkP σH.1.insts.length) q).run σH := rfl
 
-def bhComposedPostObsSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhComposedPostObsSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (P : SignalPqxdh.Primitives) :
     Bool × (BHE2EDrvState S ℓ × List τ) → ProbComp Bool :=
   fun ⟨b', σH⟩ => bhComposedPostObs P (b', σH.1)
 
-def bhModeExpWithSessionTracked {τ : Type} {ℓ : ℕ}
+@[expose] def bhModeExpWithSessionTracked {τ : Type} {ℓ : ℕ}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (S : SignalPqxdh.Setup)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
@@ -565,7 +560,7 @@ def bhModeExpWithSessionTracked {τ : Type} {ℓ : ℕ}
     bhComposedPostObsSessionTracked P
 
 /-- The `k`-th session-tracked prefix-creation hybrid experiment over `ki`. -/
-def bhPrefixHybExpWithSessionTracked {τ : Type} {ℓ : ℕ}
+@[expose] def bhPrefixHybExpWithSessionTracked {τ : Type} {ℓ : ℕ}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (S : SignalPqxdh.Setup)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
@@ -576,7 +571,7 @@ def bhPrefixHybExpWithSessionTracked {τ : Type} {ℓ : ℕ}
       (bhMkPrefixHyb k)) B).run ({}, []) >>=
     bhComposedPostObsSessionTracked P
 
-def bhPrefixExactFullExpWithSessionTracked {τ : Type} {ℓ : ℕ}
+@[expose] def bhPrefixExactFullExpWithSessionTracked {τ : Type} {ℓ : ℕ}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (S : SignalPqxdh.Setup)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
@@ -587,7 +582,7 @@ def bhPrefixExactFullExpWithSessionTracked {τ : Type} {ℓ : ℕ}
       (bhMkPrefixExact k b_k)) B).run ({}, []) >>=
     bhComposedPostObsSessionTracked P
 
-def bhPrefixLazyFullExpWithSessionTracked {τ : Type} {ℓ : ℕ}
+@[expose] def bhPrefixLazyFullExpWithSessionTracked {τ : Type} {ℓ : ℕ}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (S : SignalPqxdh.Setup)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
@@ -598,7 +593,7 @@ def bhPrefixLazyFullExpWithSessionTracked {τ : Type} {ℓ : ℕ}
       (bhMkPrefixLazy k b_k)) B).run ({}, []) >>=
     bhComposedPostObsSessionTracked P
 
-def bhShallowStepPreNonCtlSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhShallowStepPreNonCtlSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
@@ -623,7 +618,7 @@ def bhShallowStepPreNonCtlSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {�
 
 /-- Stage-1 `startDR` promotion and slot-`k` pause check, appending `initTrack` even at slot `k` so
 `σH.2.length = σH.1.insts.length` remains invariant across Stage 1 and Stage 2. -/
-def bhShallowStepPreCtlSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhShallowStepPreCtlSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (initTrack : SampledSessionKey → τ)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : MlKem)
@@ -639,7 +634,7 @@ def bhShallowStepPreCtlSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ :
     return .inr (ctx, (idx?, ({ σ' with insts := insts', paused := true }, tracks')))
   else return .inl (idx?, (σ', tracks'))
 
-def bhShallowStepPostLocalSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhShallowStepPostLocalSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
@@ -664,7 +659,7 @@ def bhShallowStepPostLocalSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {�
     let (sr, σH') ← bhE2EStepLocalSmSessionTracked T C K qep decT encT σH i sq
     return (.inr sr, σH')
 
-def bhPrefixHandlePreWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhPrefixHandlePreWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
@@ -690,7 +685,7 @@ def bhPrefixHandlePreWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ
       (bhShallowStepPreNonCtlSessionTracked T P ki C K qep decT encT drv (.inr iSq))
     return .inl res
 
-def bhPrefixHandlePostWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhPrefixHandlePostWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
@@ -717,7 +712,7 @@ def bhPrefixHandlePostWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {�
       return (resp, (σ1, drv.2))
 
 /-- Shallow two-stage session-tracked prefix reference reduction over `T` and `ki`. -/
-def bhPrefixRedWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhPrefixRedWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
@@ -741,7 +736,7 @@ def bhPrefixRedWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ
 /-! ## Wire-filtering factorization -/
 
 /-- Factor out the 5-way wire-filtering in `bhE2EStepLocalSmSessionTracked` and `bhShallowCheckExtSm`. -/
-def bhFilterSmQuery {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhFilterSmQuery {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (d : BHModelInst S ℓ) (im : ModelDriverInstanceMeta S)
     (q : (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Domain) :
     Option (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Domain :=

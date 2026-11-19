@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget
 public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromDefs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Definitions & Callee Contracts for `<SignalMessage>::try_from`
@@ -25,7 +26,7 @@ Re-exports `RustAlloc`-independent placed helpers from `Wire.TryFromDefs` and de
 bundles, and callee `subroutine_ok` propositions for Block `85`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -71,13 +72,13 @@ export CryptoVerification.LibsignalTripleRatchet.Wire
 /-! ## Bounded `<DecodeError>::push` & Exact-Capacity `bytes::merge` Contracts -/
 
 /-- Bounded `<DecodeError>::push` envelope matching `SpqrV1.Alloc.newCap32` (`max (2 * n) 4`). -/
-def DecodeErrorPushBoundedEnv (n : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def DecodeErrorPushBoundedEnv (n : Nat) (evs : List AllocEvent) : Prop :=
   evs = [] ∨
   (n = 0 ∧ evs = rustAllocEvents 128 8) ∨
   (0 < n ∧ evs = rustReallocEvents (n * 32) (max (2 * n) 4 * 32) 8)
 
 /-- Stack-parameterized `<DecodeError>::push` specification guarded by `DecodeErrorPushBoundedEnv`. -/
-def decodeErrorPushBoundedSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def decodeErrorPushBoundedSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hStack : Nat) : Spec (BitVec 64 × BitVec 64 × Nat × M.σ) where
   pre := fun (slot, err, n, st) s =>
     ⌜s.readReg64 .x0 = slot ∧ err ≠ 0#64 ∧ n < 2 ^ 32 ∧
@@ -94,7 +95,7 @@ def decodeErrorPushBoundedSpecWithStack (M : AllocCostModel) (A : RustCliAllocBu
 /-- Deterministic `Vec<u8>` post-capacity after `prost::encoding::bytes::merge::<Vec<u8>, _>`
 succeeds with slice `v` (`v.length ≤ cap` overwrites in place; `cap < v.length` reserves
 `reserveCap cap 0 v.length`). -/
-def bmNextCap (cap vLen : Nat) : Nat :=
+@[expose] def bmNextCap (cap vLen : Nat) : Nat :=
   if vLen ≤ cap then cap else reserveCap cap 0 vLen
 
 /-- Exact-capacity output `Vec<u8>` spatial postcondition of `bytesMergeExactRawSpecX`:
@@ -108,7 +109,7 @@ abbrev bmExactPostVec (A : RustAlloc) (valPtr valCap : BitVec 64)
 /-- Budget-threaded raw contract of `bytes::merge` at `bytesMergeStackX` exposing the
 deterministic post-capacity equation `cap'.toNat = bmNextCap x.valCap.toNat v.length`
 on `some (v, rest)`. -/
-def bytesMergeExactRawSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def bytesMergeExactRawSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BytesMergeGhost × M.σ) where
   pre := (bytesMergeRawSpecX A lim).pre
   post := fun (x, st) s0 sf =>
@@ -148,49 +149,49 @@ structure TripleRatchetHooksWPlaced [LibsignalPlacement] {M : AllocCostModel}
     ((blkPl_85).ρ varintSlowName)
     (withLsCodeRoLoaded lsmpl (decodeVarintSlowSpecWithStack M A lim (64 + 2 * extHookStack)))
 
-def IntoBoxedSliceOkPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def IntoBoxedSliceOkPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (tryFromPlacedProg H)
     ((blkPl_85).ρ intoBoxedSliceName)
     (withLsCodeRoLoaded lsmpl (intoBoxedSliceSpecX M A lim))
 
-def TryCloneFromRefOkPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def TryCloneFromRefOkPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (tryFromPlacedProg H)
     ((blkPl_85).ρ tryCloneFromRefName)
     (withLsCodeRoLoaded lsmpl (tryCloneFromRefSpecX M A lim))
 
-def DecodeVarintSliceOkWPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DecodeVarintSliceOkWPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (tryFromPlacedProg H)
     ((blkPl_85).ρ decodeVarintSliceName)
     (withLsCodeRoLoaded lsmpl (decodeVarintSliceSpecX A lim))
 
-def Int32MergeOkWPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Int32MergeOkWPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (tryFromPlacedProg H)
     ((blkPl_85).ρ int32MergeName)
     (withLsCodeRoLoaded lsmpl (int32MergeSpecX A lim))
 
-def SkipFieldOkWPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SkipFieldOkWPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (tryFromPlacedProg H)
     ((blkPl_85).ρ skipFieldName)
     (withLsCodeRoLoaded lsmpl (skipFieldSpecX A lim))
 
-def DropDecodeErrorOkWPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DropDecodeErrorOkWPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (tryFromPlacedProg H)
     ((blkPl_85).ρ dropDecodeErrorName)
     (withLsCodeRoLoaded lsmpl (dropDecodeErrorSpecX A lim))
 
-def BytesMergeOkWPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def BytesMergeOkWPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (tryFromPlacedProg H)
     ((blkPl_85).ρ bytesMergeName)
     (withLsCodeRoLoaded lsmpl (bytesMergeExactRawSpecX A lim))
 
-def DropSpeOkWPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DropSpeOkWPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (tryFromPlacedProg H)
     ((blkPl_85).ρ dropSpeName)

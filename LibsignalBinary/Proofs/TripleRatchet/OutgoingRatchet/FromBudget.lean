@@ -10,13 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case1Budget
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case3Budget
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case4Budget
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.FrameBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case1Budget
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case2Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case3Budget
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case4Budget
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.FrameBudget
+public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable `OutgoingTripleRatchet::from_session_state`
@@ -25,7 +27,7 @@ Combines `Case1Budget`–`Case4Budget` into `otrFrom_placed_ok_of_contracts` and
 `otrFrom_placed_ok` under `[LibsignalPlacement]` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -24,7 +24,7 @@ the `recv` wire-type dispatch (`2` for whisper, `3` for pre-key, rejection other
 `RunCompose.runAns S` on each PQXDH and Signal-Message domain input to the corresponding slot of `S`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -85,15 +85,6 @@ private theorem ofList_toList_eq (s : String) : String.ofList s.toList = s := by
 
 private theorem string_ne_of_toList {s1 s2 : String} (h : s1.toList ≠ s2.toList) : s1 ≠ s2 :=
   fun e => h (congrArg String.toList e)
-
-private theorem ne_address_of_toList {s : String} (h : s.toList.head? ≠ some 'a') :
-    s ≠ "address" :=
-  fun e => h (congrArg (fun x => x.toList.head?) e)
-
-private theorem prefix_ne_address {p : String} (h : ∃ c cs, p.toList = c :: cs ∧ c ≠ 'a')
-    (s : String) : p ++ s ≠ "address" := by
-  obtain ⟨c, cs, hp, hc⟩ := h
-  exact ne_address_of_toList (by rw [String.toList_append, hp]; simp [hc])
 
 private theorem utf8_eq_flatMap (s : String) :
     utf8 s = (s.toList.flatMap String.utf8EncodeChar).map fun b => BitVec.ofNat 8 b.toNat := by

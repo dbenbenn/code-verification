@@ -11,9 +11,8 @@ module
 
 public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.MessageKeys
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
-import GeneratedLean.LibsignalSession -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.MessageKeys -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.Defs
@@ -24,6 +23,7 @@ meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import ProofLib.Sep
 
 /-!
 # Budget-Threaded `ChainKey::message_keys` (Block `38`)
@@ -34,7 +34,7 @@ Defines the `messageKeysEvents` (`rustAllocEvents 32 1`) allocation envelope and
 `FitsEnv M lim st MessageKeysEnv`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -83,10 +83,10 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-! ## 1. Allocation Envelope & Relocatable Specifications -/
 
 /-- Deterministic `AllocEvent` list emitted by `ChainKey::message_keys` (`32`-byte seed `Vec<u8>`). -/
-def messageKeysEvents : List AllocEvent :=
+@[expose] def messageKeysEvents : List AllocEvent :=
   rustAllocEvents 32 1
 
-def MessageKeysEnv (evs : List AllocEvent) : Prop :=
+@[expose] def MessageKeysEnv (evs : List AllocEvent) : Prop :=
   evs = messageKeysEvents
 
 theorem messageKeysEnv_events : MessageKeysEnv messageKeysEvents := rfl
@@ -96,7 +96,7 @@ theorem fitsEvents_messageKeys_of_fitsEnv (M : AllocCostModel) (lim : BudgetLimi
     FitsEvents M lim st messageKeysEvents :=
   h messageKeysEvents rfl
 
-def messageKeysPlacedSpecWithStack {M : AllocCostModel} (F : ShaCompress)
+@[expose] def messageKeysPlacedSpecWithStack {M : AllocCostModel} (F : ShaCompress)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (totalStack : Nat) :
     Spec (ChainKeyGhost × M.σ) where
   pre := fun ((self, ck, ret), st) s =>
@@ -156,20 +156,6 @@ private theorem pointsTo8_eq_pointsToBytes1 (a : BitVec 64) (b : BitVec 8) :
     (a ↦₈ b) = (a ↦ₛ [b]) := by
   rw [pointsToBytes_cons, pointsToBytes_nil, sepConj_emp]
 
-private theorem mr_cut' (sp : BitVec 64) (c c' n k N : Nat) (hN : n + k = N) (hc' : c - n = c')
-    (hn : n ≤ c) (hc : c < 2 ^ 64) (h : N ≤ 2 ^ 64) :
-    memRegion (sp - BitVec.ofNat 64 c) N =
-      memRegion (sp - BitVec.ofNat 64 c) n ∗ memRegion (sp - BitVec.ofNat 64 c') k := by
-  subst hN hc'
-  refine memRegion_split' rfl ?_ h
-  apply BitVec.eq_of_toNat_eq
-  simp only [BitVec.toNat_add, BitVec.toNat_sub, BitVec.toNat_ofNat]
-  have h1 : c % 2 ^ 64 = c := Nat.mod_eq_of_lt hc
-  have h2 : (c - n) % 2 ^ 64 = c - n := Nat.mod_eq_of_lt (by omega)
-  have h3 : n % 2 ^ 64 = n := Nat.mod_eq_of_lt (by omega)
-  rw [h1, h2, h3]
-  omega
-
 private theorem stackAt_80_messageKeys (sp : BitVec 64) :
     stackAt sp 80 =
       memRegion (sp - 80#64) 32 ∗
@@ -181,88 +167,7 @@ private theorem stackAt_80_messageKeys (sp : BitVec 64) :
       memRegion (sp - 19#64) 3 ∗
       (∃∗ v : BitVec 64, (sp - 16#64) ↦₆₄ v) ∗
       (∃∗ v : BitVec 64, (sp - 8#64) ↦₆₄ v) := by
-  show memRegion (sp - BitVec.ofNat 64 80) 80 = _
-  rw [mr_cut' sp 80 48 32 48 80 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 48 40 8 40 48 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 40 32 8 32 40 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 32 24 8 24 32 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 24 20 4 20 24 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 20 19 1 19 20 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 19 16 3 16 19 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 16 8 8 8 16 rfl rfl (by decide) (by decide) (by decide)]
-  rw [memRegion_eight (sp - 48#64), memRegion_eight (sp - 40#64), memRegion_eight (sp - 32#64),
-      memRegion_one (sp - 20#64), memRegion_eight (sp - 16#64), memRegion_eight (sp - 8#64)]
-
-private theorem stackAt_80_messageKeys_repack (sp : BitVec 64)
-    (w0 w1 w2 w3 v29 v30 v21 v20 v19 : BitVec 64) (b0 : BitVec 8) :
-    ((sp - 80#64) ↦₆₄ w0) ∗
-    ((sp - 72#64) ↦₆₄ w1) ∗
-    ((sp - 64#64) ↦₆₄ w2) ∗
-    ((sp - 56#64) ↦₆₄ w3) ∗
-    ((sp - 48#64) ↦₆₄ v29) ∗
-    ((sp - 40#64) ↦₆₄ v30) ∗
-    ((sp - 32#64) ↦₆₄ v21) ∗
-    memRegion (sp - 24#64) 4 ∗
-    ((sp - 20#64) ↦₈ b0) ∗
-    memRegion (sp - 19#64) 3 ∗
-    ((sp - 16#64) ↦₆₄ v20) ∗
-    ((sp - 8#64) ↦₆₄ v19) ⊢
-      stackAt sp 80 := by
-  rw [stackAt_80_messageKeys sp]
-  have hw0 := pointsTo64_entails_memRegion (sp - 80#64) w0
-  have hw1 := pointsTo64_entails_memRegion (sp - 72#64) w1
-  have hw2 := pointsTo64_entails_memRegion (sp - 64#64) w2
-  have hw3 := pointsTo64_entails_memRegion (sp - 56#64) w3
-  have h72 : sp - 80#64 + 8#64 = sp - 72#64 := by bv_arith
-  have h64 : sp - 72#64 + 8#64 = sp - 64#64 := by bv_arith
-  have h56 : sp - 64#64 + 8#64 = sp - 56#64 := by bv_arith
-  have h32 :
-      ((sp - 80#64) ↦₆₄ w0) ∗ ((sp - 72#64) ↦₆₄ w1) ∗ ((sp - 64#64) ↦₆₄ w2) ∗ ((sp - 56#64) ↦₆₄ w3) ⊢
-        memRegion (sp - 80#64) 32 := by
-    refine Entails.trans (sepConj_mono hw0 (sepConj_mono hw1 (sepConj_mono hw2 hw3))) ?_
-    rw [← h56, ← memRegion_split (sp - 64#64) 8 8 (by decide),
-        ← h64, ← memRegion_split (sp - 72#64) 8 16 (by decide),
-        ← h72, ← memRegion_split (sp - 80#64) 8 24 (by decide)]
-    exact Entails.refl _
-  have hv29 : ((sp - 48#64) ↦₆₄ v29) ⊢ ∃∗ v : BitVec 64, (sp - 48#64) ↦₆₄ v :=
-    Entails.sepExists_right v29 (Entails.refl _)
-  have hv30 : ((sp - 40#64) ↦₆₄ v30) ⊢ ∃∗ v : BitVec 64, (sp - 40#64) ↦₆₄ v :=
-    Entails.sepExists_right v30 (Entails.refl _)
-  have hv21 : ((sp - 32#64) ↦₆₄ v21) ⊢ ∃∗ v : BitVec 64, (sp - 32#64) ↦₆₄ v :=
-    Entails.sepExists_right v21 (Entails.refl _)
-  have hb0 : ((sp - 20#64) ↦₈ b0) ⊢ ∃∗ b : BitVec 8, (sp - 20#64) ↦₈ b :=
-    Entails.sepExists_right b0 (Entails.refl _)
-  have hv20 : ((sp - 16#64) ↦₆₄ v20) ⊢ ∃∗ v : BitVec 64, (sp - 16#64) ↦₆₄ v :=
-    Entails.sepExists_right v20 (Entails.refl _)
-  have hv19 : ((sp - 8#64) ↦₆₄ v19) ⊢ ∃∗ v : BitVec 64, (sp - 8#64) ↦₆₄ v :=
-    Entails.sepExists_right v19 (Entails.refl _)
-  have hpull :
-      (((sp - 80#64) ↦₆₄ w0) ∗
-        ((sp - 72#64) ↦₆₄ w1) ∗
-        ((sp - 64#64) ↦₆₄ w2) ∗
-        ((sp - 56#64) ↦₆₄ w3) ∗
-        ((sp - 48#64) ↦₆₄ v29) ∗
-        ((sp - 40#64) ↦₆₄ v30) ∗
-        ((sp - 32#64) ↦₆₄ v21) ∗
-        memRegion (sp - 24#64) 4 ∗
-        ((sp - 20#64) ↦₈ b0) ∗
-        memRegion (sp - 19#64) 3 ∗
-        ((sp - 16#64) ↦₆₄ v20) ∗
-        ((sp - 8#64) ↦₆₄ v19)) =
-      ((((sp - 80#64) ↦₆₄ w0) ∗ ((sp - 72#64) ↦₆₄ w1) ∗
-         ((sp - 64#64) ↦₆₄ w2) ∗ ((sp - 56#64) ↦₆₄ w3)) ∗
-        ((sp - 48#64) ↦₆₄ v29) ∗
-        ((sp - 40#64) ↦₆₄ v30) ∗
-        ((sp - 32#64) ↦₆₄ v21) ∗
-        memRegion (sp - 24#64) 4 ∗
-        ((sp - 20#64) ↦₈ b0) ∗
-        memRegion (sp - 19#64) 3 ∗
-        ((sp - 16#64) ↦₆₄ v20) ∗
-        ((sp - 8#64) ↦₆₄ v19)) := by sep_ac_rfl
-  rw [hpull]
-  exact sepConj_mono h32 (sepConj_mono hv29 (sepConj_mono hv30 (sepConj_mono hv21
-    (sepConj_mono_right (sepConj_mono hb0 (sepConj_mono_right
-      (sepConj_mono hv20 hv19)))))))
+  dsimp only [stackAt]; sep_interval_eq
 
 private theorem stackAt_gen_split (sp : BitVec 64) (totalStack midStack padTop : Nat)
     (htot : (80 + midStack) + padTop = totalStack) (hbound : totalStack ≤ 2 ^ 64) :
@@ -315,29 +220,23 @@ private theorem stackAt_gen_repack (sp : BitVec 64)
       stackAt_sub_split (sp - 80#64) allocStack allocPad midStack ha (by omega),
       sepConj_assoc]
   exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-    (stackAt_80_messageKeys_repack sp w0 w1 w2 w3 v29 v30 v21 v20 v19 b0)))
+    (by dsimp only [stackAt]; sep_interval)))
 
-private theorem remerge_and_split_midStack (sp : BitVec 64)
+private theorem midStack_reframe (sp : BitVec 64)
     (hmacStack hmacPad allocStack allocPad midStack : Nat)
     (hh : hmacStack + hmacPad = midStack) (ha : allocStack + allocPad = midStack)
     (hb : midStack ≤ 2 ^ 64)
-    (P1 P2 P3 P4 P5 P6 P7 P8 : SepProp) :
-    P1 ∗ P2 ∗ P3 ∗ stackAt sp hmacStack ∗ P4 ∗ P5 ∗ P6 ∗ P7 ∗
-        memRegion (sp - BitVec.ofNat 64 midStack) hmacPad ∗ P8 =
-      memRegion (sp - BitVec.ofNat 64 midStack) allocPad ∗ stackAt sp allocStack ∗
-        P1 ∗ P2 ∗ P3 ∗ P4 ∗ P5 ∗ P6 ∗ P7 ∗ P8 := by
-  have h1 : memRegion (sp - BitVec.ofNat 64 midStack) hmacPad ∗ stackAt sp hmacStack =
-      stackAt sp midStack :=
-    (stackAt_sub_split sp hmacStack hmacPad midStack hh hb).symm
-  have h2 : stackAt sp midStack =
-      memRegion (sp - BitVec.ofNat 64 midStack) allocPad ∗ stackAt sp allocStack :=
-    stackAt_sub_split sp allocStack allocPad midStack ha hb
-  calc
-    _ = (memRegion (sp - BitVec.ofNat 64 midStack) hmacPad ∗ stackAt sp hmacStack) ∗
-          (P1 ∗ P2 ∗ P3 ∗ P4 ∗ P5 ∗ P6 ∗ P7 ∗ P8) := by sep_ac_rfl
-    _ = (memRegion (sp - BitVec.ofNat 64 midStack) allocPad ∗ stackAt sp allocStack) ∗
-          (P1 ∗ P2 ∗ P3 ∗ P4 ∗ P5 ∗ P6 ∗ P7 ∗ P8) := by rw [h1, h2]
-    _ = _ := by sep_ac_rfl
+    (Pool W Key B0 Idx Ret PadTop Saved : SepProp) :
+    Pool ∗ W ∗ Key ∗ B0 ∗ stackAt sp hmacStack ∗ Idx ∗ Ret ∗ PadTop ∗
+        memRegion (sp - BitVec.ofNat 64 midStack) hmacPad ∗ Saved ⊢
+      Pool ∗ memRegion (sp - BitVec.ofNat 64 midStack) allocPad ∗ stackAt sp allocStack ∗
+        W ∗ Key ∗ B0 ∗ Idx ∗ Ret ∗ PadTop ∗ Saved := by
+  refine Entails.trans (Q := (memRegion (sp - BitVec.ofNat 64 midStack) hmacPad ∗
+      stackAt sp hmacStack) ∗ (Pool ∗ W ∗ Key ∗ B0 ∗ Idx ∗ Ret ∗ PadTop ∗ Saved))
+    (by bi_entail) ?_
+  rw [← stackAt_sub_split sp hmacStack hmacPad midStack hh hb,
+      stackAt_sub_split sp allocStack allocPad midStack ha hb]
+  bi_entail
 
 private theorem memRegion40_unpack (r : BitVec 64) :
     memRegion r 40 =
@@ -348,42 +247,13 @@ private theorem memRegion40_unpack (r : BitVec 64) :
       (∃∗ l0 : BitVec 64, ((r + 24#64) ↦₆₄ l0)) ∗
       (∃∗ i0 : BitVec 32, ((r + 32#64) ↦₃₂ i0)) ∗
       memRegion (r + 36#64) 4 := by
-  rw [show memRegion r 40 = memRegion r 4 ∗ memRegion (r + 4#64) 36 from
-        memRegion_split r 4 36 (by decide),
-      show memRegion (r + 4#64) 36 = memRegion (r + 4#64) 4 ∗ memRegion (r + 4#64 + 4#64) 32 from
-        memRegion_split (r + 4#64) 4 32 (by decide)]
-  have h8 : r + 4#64 + 4#64 = r + 8#64 := by bv_arith
-  rw [h8, show memRegion (r + 8#64) 32 = memRegion (r + 8#64) 8 ∗ memRegion (r + 8#64 + 8#64) 24 from
-        memRegion_split (r + 8#64) 8 24 (by decide)]
-  have h16 : r + 8#64 + 8#64 = r + 16#64 := by bv_arith
-  rw [h16, show memRegion (r + 16#64) 24 = memRegion (r + 16#64) 8 ∗ memRegion (r + 16#64 + 8#64) 16 from
-        memRegion_split (r + 16#64) 8 16 (by decide)]
-  have h24 : r + 16#64 + 8#64 = r + 24#64 := by bv_arith
-  rw [h24, show memRegion (r + 24#64) 16 = memRegion (r + 24#64) 8 ∗ memRegion (r + 24#64 + 8#64) 8 from
-        memRegion_split (r + 24#64) 8 8 (by decide)]
-  have h32 : r + 24#64 + 8#64 = r + 32#64 := by bv_arith
-  rw [h32, show memRegion (r + 32#64) 8 = memRegion (r + 32#64) 4 ∗ memRegion (r + 32#64 + 4#64) 4 from
-        memRegion_split (r + 32#64) 4 4 (by decide)]
-  have h36 : r + 32#64 + 4#64 = r + 36#64 := by bv_arith
-  rw [h36, memRegion_four r, memRegion_eight (r + 8#64), memRegion_eight (r + 16#64),
-      memRegion_eight (r + 24#64), memRegion_four (r + 32#64)]
+  sep_interval_eq
 
 private theorem memRegion32_eq_exists_cells4 (a : BitVec 64) :
     memRegion a 32 =
       ∃∗ d0 : BitVec 64, ∃∗ d1 : BitVec 64, ∃∗ d2 : BitVec 64, ∃∗ d3 : BitVec 64,
         (a ↦₆₄ d0) ∗ ((a + 8#64) ↦₆₄ d1) ∗ ((a + 16#64) ↦₆₄ d2) ∗ ((a + 24#64) ↦₆₄ d3) := by
-  rw [show (32 : Nat) = 8 + 24 from rfl, memRegion_split a 8 24 (by decide),
-      memRegion_eight a, memRegion_24_eq_exists_vecHeader (a + 8#64)]
-  unfold vecHeader
-  have h16 : a + 8#64 + 8#64 = a + 16#64 := by bv_arith
-  have h24 : a + 8#64 + 16#64 = a + 24#64 := by bv_arith
-  rw [h16, h24, sepExists_sepConj_left]
-  apply congrArg SepProp.sepExists; funext d0
-  rw [sepExists_sepConj_right]
-  apply congrArg SepProp.sepExists; funext d1
-  rw [sepExists_sepConj_right]
-  apply congrArg SepProp.sepExists; funext d2
-  rw [sepExists_sepConj_right]
+  sep_interval_eq
 
 /-! ## 3. Callee Wrappers & `SepWP` Proof (Block `38`) -/
 
@@ -523,53 +393,10 @@ theorem message_keys_placed_ok_gen [LibsignalPlacement] {M : AllocCostModel}
   conv =>
     arg 4
     rw [hw_sp]
-  have hmid_eq :
-      A.pool lim stB sf ∗
-        (((s0.sp - 80#64) ↦₆₄ w0) ∗ ((s0.sp - 72#64) ↦₆₄ w1) ∗
-         ((s0.sp - 64#64) ↦₆₄ w2) ∗ ((s0.sp - 56#64) ↦₆₄ w3)) ∗
-        (self ↦ₛ keyToBytes32 ck.key) ∗ ((s0.sp - 20#64) ↦₈ 1#8) ∗
-        stackAt (s0.sp - 80#64) hmacStack ∗
-        ((self + 32#64) ↦₃₂ ck.index) ∗ memRegion ret 40 ∗
-        memRegion (s0.sp - BitVec.ofNat 64 totalStack) padTop ∗
-        memRegion (s0.sp - 80#64 - BitVec.ofNat 64 midStack) hmacPad ∗
-        (((s0.sp - 48#64) ↦₆₄ s0.readReg64 Reg.x29) ∗
-         ((s0.sp - 40#64) ↦₆₄ s0.readReg64 Reg.lr) ∗
-         ((s0.sp - 32#64) ↦₆₄ s0.readReg64 Reg.x21) ∗
-         memRegion (s0.sp - 24#64) 4 ∗ memRegion (s0.sp - 19#64) 3 ∗
-         ((s0.sp - 16#64) ↦₆₄ s0.readReg64 Reg.x20) ∗
-         ((s0.sp - 8#64) ↦₆₄ s0.readReg64 Reg.x19)) =
-      A.pool lim stB sf ∗
-        memRegion (s0.sp - 80#64 - BitVec.ofNat 64 midStack) allocPad ∗
-        stackAt (s0.sp - 80#64) allocStack ∗
-        ((s0.sp - 80#64) ↦₆₄ w0) ∗ ((s0.sp - 72#64) ↦₆₄ w1) ∗
-        ((s0.sp - 64#64) ↦₆₄ w2) ∗ ((s0.sp - 56#64) ↦₆₄ w3) ∗
-        (self ↦ₛ keyToBytes32 ck.key) ∗ ((s0.sp - 20#64) ↦₈ 1#8) ∗
-        ((self + 32#64) ↦₃₂ ck.index) ∗ memRegion ret 40 ∗
-        memRegion (s0.sp - BitVec.ofNat 64 totalStack) padTop ∗
-        ((s0.sp - 48#64) ↦₆₄ s0.readReg64 Reg.x29) ∗
-        ((s0.sp - 40#64) ↦₆₄ s0.readReg64 Reg.lr) ∗
-        ((s0.sp - 32#64) ↦₆₄ s0.readReg64 Reg.x21) ∗
-        memRegion (s0.sp - 24#64) 4 ∗ memRegion (s0.sp - 19#64) 3 ∗
-        ((s0.sp - 16#64) ↦₆₄ s0.readReg64 Reg.x20) ∗
-        ((s0.sp - 8#64) ↦₆₄ s0.readReg64 Reg.x19) := by
-    have hr := remerge_and_split_midStack (s0.sp - 80#64) hmacStack hmacPad allocStack allocPad
-      midStack hhmac_pad halloc_pad (by omega)
-      (((s0.sp - 80#64) ↦₆₄ w0) ∗ ((s0.sp - 72#64) ↦₆₄ w1) ∗
-       ((s0.sp - 64#64) ↦₆₄ w2) ∗ ((s0.sp - 56#64) ↦₆₄ w3))
-      (self ↦ₛ keyToBytes32 ck.key)
-      ((s0.sp - 20#64) ↦₈ 1#8)
-      ((self + 32#64) ↦₃₂ ck.index)
-      (memRegion ret 40)
-      (memRegion (s0.sp - BitVec.ofNat 64 totalStack) padTop)
-      (A.pool lim stB sf)
-      (((s0.sp - 48#64) ↦₆₄ s0.readReg64 Reg.x29) ∗
-       ((s0.sp - 40#64) ↦₆₄ s0.readReg64 Reg.lr) ∗
-       ((s0.sp - 32#64) ↦₆₄ s0.readReg64 Reg.x21) ∗
-       memRegion (s0.sp - 24#64) 4 ∗ memRegion (s0.sp - 19#64) 3 ∗
-       ((s0.sp - 16#64) ↦₆₄ s0.readReg64 Reg.x20) ∗
-       ((s0.sp - 8#64) ↦₆₄ s0.readReg64 Reg.x19))
-    exact Eq.trans (by sep_ac_rfl) (Eq.trans hr (by sep_ac_rfl))
-  refine SepWP.weaken_pre (Entails.of_eq hmid_eq) ?_
+  refine SepWP.weaken_pre (midStack_reframe (s0.sp - 80#64)
+    hmacStack hmacPad allocStack allocPad midStack hhmac_pad halloc_pad (by omega)
+    _ _ _ _ _ _ _ _) ?_
+  wp_simp_pre only [sepConj_assoc]
   wp_steps_sync_pool (lsρ lsRustNoAllocShimSym)
   simp only [State.setMem_setMem]
   wp_call hshim ()
@@ -617,10 +444,9 @@ theorem message_keys_placed_ok_gen [LibsignalPlacement] {M : AllocCostModel}
       (s0.readReg64 Reg.x20) (s0.readReg64 Reg.x19) 1#8
     refine Entails.trans ?_
       (sepConj_mono_right (sepConj_mono hmkg (sepConj_mono_right hstk)))
-    exact Entails.of_eq (by
-      dsimp only [ChainKey.messageKeys, messageKeysEvents, Reg.x0, Reg.x19, Reg.x20, Reg.x21,
-        Reg.lr, Reg.x29]
-      sep_ac_rfl)
+    dsimp only [ChainKey.messageKeys, messageKeysEvents, Reg.x0, Reg.x19, Reg.x20, Reg.x21,
+      Reg.lr, Reg.x29]
+    bi_entail
   · simp only [wp_norm, arm64_norm, *]
   · simp (config := { decide := true }) only [Arm64.CalleeSavedPreserved, arm64_norm, *]
 
@@ -724,53 +550,10 @@ theorem message_keys_placed_cro_ok_gen [LibsignalPlacement] {M : AllocCostModel}
   conv =>
     arg 4
     rw [hw_sp]
-  have hmid_eq :
-      A.pool lim stB sf ∗
-        (((s0.sp - 80#64) ↦₆₄ w0) ∗ ((s0.sp - 72#64) ↦₆₄ w1) ∗
-         ((s0.sp - 64#64) ↦₆₄ w2) ∗ ((s0.sp - 56#64) ↦₆₄ w3)) ∗
-        (self ↦ₛ keyToBytes32 ck.key) ∗ ((s0.sp - 20#64) ↦₈ 1#8) ∗
-        stackAt (s0.sp - 80#64) hmacStack ∗
-        ((self + 32#64) ↦₃₂ ck.index) ∗ memRegion ret 40 ∗
-        memRegion (s0.sp - BitVec.ofNat 64 totalStack) padTop ∗
-        memRegion (s0.sp - 80#64 - BitVec.ofNat 64 midStack) hmacPad ∗
-        (((s0.sp - 48#64) ↦₆₄ s0.readReg64 Reg.x29) ∗
-         ((s0.sp - 40#64) ↦₆₄ s0.readReg64 Reg.lr) ∗
-         ((s0.sp - 32#64) ↦₆₄ s0.readReg64 Reg.x21) ∗
-         memRegion (s0.sp - 24#64) 4 ∗ memRegion (s0.sp - 19#64) 3 ∗
-         ((s0.sp - 16#64) ↦₆₄ s0.readReg64 Reg.x20) ∗
-         ((s0.sp - 8#64) ↦₆₄ s0.readReg64 Reg.x19)) =
-      A.pool lim stB sf ∗
-        memRegion (s0.sp - 80#64 - BitVec.ofNat 64 midStack) allocPad ∗
-        stackAt (s0.sp - 80#64) allocStack ∗
-        ((s0.sp - 80#64) ↦₆₄ w0) ∗ ((s0.sp - 72#64) ↦₆₄ w1) ∗
-        ((s0.sp - 64#64) ↦₆₄ w2) ∗ ((s0.sp - 56#64) ↦₆₄ w3) ∗
-        (self ↦ₛ keyToBytes32 ck.key) ∗ ((s0.sp - 20#64) ↦₈ 1#8) ∗
-        ((self + 32#64) ↦₃₂ ck.index) ∗ memRegion ret 40 ∗
-        memRegion (s0.sp - BitVec.ofNat 64 totalStack) padTop ∗
-        ((s0.sp - 48#64) ↦₆₄ s0.readReg64 Reg.x29) ∗
-        ((s0.sp - 40#64) ↦₆₄ s0.readReg64 Reg.lr) ∗
-        ((s0.sp - 32#64) ↦₆₄ s0.readReg64 Reg.x21) ∗
-        memRegion (s0.sp - 24#64) 4 ∗ memRegion (s0.sp - 19#64) 3 ∗
-        ((s0.sp - 16#64) ↦₆₄ s0.readReg64 Reg.x20) ∗
-        ((s0.sp - 8#64) ↦₆₄ s0.readReg64 Reg.x19) := by
-    have hr := remerge_and_split_midStack (s0.sp - 80#64) hmacStack hmacPad allocStack allocPad
-      midStack hhmac_pad halloc_pad (by omega)
-      (((s0.sp - 80#64) ↦₆₄ w0) ∗ ((s0.sp - 72#64) ↦₆₄ w1) ∗
-       ((s0.sp - 64#64) ↦₆₄ w2) ∗ ((s0.sp - 56#64) ↦₆₄ w3))
-      (self ↦ₛ keyToBytes32 ck.key)
-      ((s0.sp - 20#64) ↦₈ 1#8)
-      ((self + 32#64) ↦₃₂ ck.index)
-      (memRegion ret 40)
-      (memRegion (s0.sp - BitVec.ofNat 64 totalStack) padTop)
-      (A.pool lim stB sf)
-      (((s0.sp - 48#64) ↦₆₄ s0.readReg64 Reg.x29) ∗
-       ((s0.sp - 40#64) ↦₆₄ s0.readReg64 Reg.lr) ∗
-       ((s0.sp - 32#64) ↦₆₄ s0.readReg64 Reg.x21) ∗
-       memRegion (s0.sp - 24#64) 4 ∗ memRegion (s0.sp - 19#64) 3 ∗
-       ((s0.sp - 16#64) ↦₆₄ s0.readReg64 Reg.x20) ∗
-       ((s0.sp - 8#64) ↦₆₄ s0.readReg64 Reg.x19))
-    exact Eq.trans (by sep_ac_rfl) (Eq.trans hr (by sep_ac_rfl))
-  refine SepWP.weaken_pre (Entails.of_eq hmid_eq) ?_
+  refine SepWP.weaken_pre (midStack_reframe (s0.sp - 80#64)
+    hmacStack hmacPad allocStack allocPad midStack hhmac_pad halloc_pad (by omega)
+    _ _ _ _ _ _ _ _) ?_
+  wp_simp_pre only [sepConj_assoc]
   wp_steps_sync_pool (lsρ lsRustNoAllocShimSym)
   simp only [State.setMem_setMem]
   wp_call hshim ()
@@ -818,10 +601,9 @@ theorem message_keys_placed_cro_ok_gen [LibsignalPlacement] {M : AllocCostModel}
       (s0.readReg64 Reg.x20) (s0.readReg64 Reg.x19) 1#8
     refine Entails.trans ?_
       (sepConj_mono_right (sepConj_mono hmkg (sepConj_mono_right hstk)))
-    exact Entails.of_eq (by
-      dsimp only [ChainKey.messageKeys, messageKeysEvents, Reg.x0, Reg.x19, Reg.x20, Reg.x21,
-        Reg.lr, Reg.x29]
-      sep_ac_rfl)
+    dsimp only [ChainKey.messageKeys, messageKeysEvents, Reg.x0, Reg.x19, Reg.x20, Reg.x21,
+      Reg.lr, Reg.x29]
+    bi_entail
   · simp only [wp_norm, arm64_norm, *]
   · simp (config := { decide := true }) only [Arm64.CalleeSavedPreserved, arm64_norm, *]
 

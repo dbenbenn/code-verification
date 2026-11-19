@@ -10,6 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `extHookStack`-Scaled Stack Budgets and Specifications for `SessionRecord::serialize`
@@ -19,12 +21,10 @@ Stack-budget constants (`*StackX`) and `Spec` definitions (`dropSessionStructure
 `serializeSpecX`, `serializeCanonSpecX`) parameterized over arbitrary extern tables.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.SerializeExt
 
@@ -62,7 +62,7 @@ abbrev serializeStackX : Nat :=
     Prost.encodeVarintStackX + encodeRawStackX + doReserveStackX +
     dropSessionStructureLocal1StackX
 
-def dropSessionStructureLocal1SpecX (A : RustAlloc) :
+@[expose] def dropSessionStructureLocal1SpecX (A : RustAlloc) :
     Spec FromRecordCallees.DropSessionStructureGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss⌝ ∗
@@ -71,7 +71,7 @@ def dropSessionStructureLocal1SpecX (A : RustAlloc) :
     ⌜sf.trace = s0.trace⌝ ∗
       memRegion x.ss 344 ∗ A.pool ∗ stackAt s0.sp dropSessionStructureLocal1StackX
 
-def encodeChainSpecX (A : RustAlloc) : Spec EncodeChainGhost where
+@[expose] def encodeChainSpecX (A : RustAlloc) : Spec EncodeChainGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = BitVec.ofNat 64 x.tag ∧ s.readReg64 .x1 = x.a ∧ s.readReg64 .x2 = x.v ∧
       (x.tag = 6 ∨ x.tag = 7) ∧ x.bs.length + (lenField x.tag (encChainMem x.gc)).length < 2 ^ 32⌝ ∗
@@ -83,7 +83,7 @@ def encodeChainSpecX (A : RustAlloc) : Spec EncodeChainGhost where
       A.pool ∗ stackAt s0.sp encodeChainStackX
   onPanic := allocPanic
 
-def encodeRawSpecX (A : RustAlloc) : Spec EncodeRawGhost where
+@[expose] def encodeRawSpecX (A : RustAlloc) : Spec EncodeRawGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ s.readReg64 .x1 = x.v ∧
       x.bs.length + (encSessionMem x.G x.s).length < 2 ^ 32⌝ ∗
@@ -96,7 +96,7 @@ def encodeRawSpecX (A : RustAlloc) : Spec EncodeRawGhost where
       A.pool ∗ stackAt s0.sp encodeRawStackX
   onPanic := allocPanic
 
-def sessionCloneSpecX (A : RustAlloc) : Spec SessionCloneGhost where
+@[expose] def sessionCloneSpecX (A : RustAlloc) : Spec SessionCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src⌝ ∗
       sessionStateReprAt A x.src x.G x.s ∗ memRegion x.dst 344 ∗ A.pool ∗ stackAt s.sp sessionCloneStackX
@@ -107,7 +107,7 @@ def sessionCloneSpecX (A : RustAlloc) : Spec SessionCloneGhost where
       A.pool ∗ stackAt s0.sp sessionCloneStackX
   onPanic := allocPanic
 
-def vecVecCloneEmptySpecX : Spec VecVecCloneGhost where
+@[expose] def vecVecCloneEmptySpecX : Spec VecVecCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src ∧ s.readReg64 .x2 = 0#64⌝ ∗
       memRegion x.dst 24 ∗ stackAt s.sp vecVecCloneStackX
@@ -115,7 +115,7 @@ def vecVecCloneEmptySpecX : Spec VecVecCloneGhost where
     ⌜sf.trace = s0.trace⌝ ∗ vecHeader x.dst 0#64 8#64 0#64 ∗ stackAt s0.sp vecVecCloneStackX
 
 /-- `SessionRecord::serialize`, memory-level, at `serializeStackX`. -/
-def serializeSpecX (A : RustAlloc) : Spec SerializeGhost where
+@[expose] def serializeSpecX (A : RustAlloc) : Spec SerializeGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.out ∧ (encRecordMem x.g x.r).length < 2 ^ 32⌝ ∗
       sessionRecordAt A x.self x.g x.r ∗ memRegion x.out 32 ∗ A.pool ∗
@@ -127,7 +127,7 @@ def serializeSpecX (A : RustAlloc) : Spec SerializeGhost where
   onPanic := allocPanic
 
 /-- `SessionRecord::serialize` on a canonical record, at `serializeStackX`. -/
-def serializeCanonSpecX (A : RustAlloc) : Spec SerializeGhost where
+@[expose] def serializeCanonSpecX (A : RustAlloc) : Spec SerializeGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.out ∧ CanonRecord x.g x.r ∧
       (encodeRecord x.r).length < 2 ^ 32⌝ ∗
@@ -138,16 +138,5 @@ def serializeCanonSpecX (A : RustAlloc) : Spec SerializeGhost where
       (x.out ↦₆₄ okTagVec) ∗ vecU8 A (x.out + 8#64) (encodeRecord x.r) ∗
       A.pool ∗ stackAt s0.sp serializeStackX
   onPanic := allocPanic
-
-/-- Pure subroutine contract at image base `b` under arbitrary extern table `ext`. -/
-abbrev OkAtExt {α : Type} (b : BitVec 64) (ext : String → Option (State → State))
-    (fn : String) (spec : Spec α) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr fn) spec
-
-/-- Image-invariant subroutine contract at `img` under arbitrary extern table `ext`. -/
-abbrev OkAtX {α : Type} (img : Obj.Image) (ext : String → Option (State → State))
-    (fn : String) (spec : Spec α) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr fn) (spec.inImage img)
 
 end CryptoVerification.SignalSession.Cli.RunProofs.Initiate.SerializeExt

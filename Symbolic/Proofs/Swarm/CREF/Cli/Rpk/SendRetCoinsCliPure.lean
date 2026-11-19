@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SendRetCoinsCliPureA
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SendRetCoinsCliPureA -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SendRetCoinsCliPureB
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- shake: keep
 import Symbolic.Proofs.Swarm.TRREF.B3DefsPure -- shake: keep
+import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

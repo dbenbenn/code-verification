@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tails
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tails -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
 import LibsignalBinary.Proofs.Common.StringCloneFlat
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Shared Helpers for `segTrust_ok`, `segSave_ok`, and `segApplyStore_ok`
@@ -22,7 +22,7 @@ import LibsignalBinary.Proofs.Common.StringCloneFlat
 lemmas, and `StoreAnswers` witnesses shared across the post-encryption store segments.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.SegTrust
 
@@ -41,95 +41,6 @@ set_option maxHeartbeats 400000
 
 /-! ## `SegExit` Combinators and Allocation Panic Bridge -/
 
-theorem SegExit.next {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {kit : SessionStoreSpec A img.base} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A img.base} {ist0 : ikit.IdState} {ctl : BitVec 64}
-    {S : SpqrModel}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {abs : String → Option (State → State)} {x : WithStoresEncGhost} {R : SepProp}
-    {s0 s : State} {next : State → Prop} (h : next s) :
-    SegExit kit st0 ikit ist0 C ctl uuidTryParse S encRecord abs x R s0 s next :=
-  fun _ => ⟨s, Steps.refl s, Or.inl h⟩
-
-theorem SegExit.of_false {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {kit : SessionStoreSpec A img.base} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A img.base} {ist0 : ikit.IdState} {ctl : BitVec 64}
-    {S : SpqrModel}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {abs : String → Option (State → State)} {x : WithStoresEncGhost} {R : SepProp}
-    {s0 s : State} {next : State → Prop}
-    (h : SegExit kit st0 ikit ist0 C ctl uuidTryParse S encRecord abs x R s0 s (fun _ => False)) :
-    SegExit kit st0 ikit ist0 C ctl uuidTryParse S encRecord abs x R s0 s next := by
-  intro hL
-  obtain ⟨sf, hsteps, hfalse | hout⟩ := h hL
-  · exact False.elim hfalse
-  · exact ⟨sf, hsteps, Or.inr hout⟩
-
-theorem SegExit.of_sepWP {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {kit : SessionStoreSpec A img.base} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A img.base} {ist0 : ikit.IdState} {ctl : BitVec 64}
-    {S : SpqrModel}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {abs : String → Option (State → State)} {x : WithStoresEncGhost} {R R0 : SepProp}
-    {s0 s : State} {next : State → Prop} {mid : BitVec 64} {P F : SepProp}
-    {post : State → SepProp → Prop}
-    (hm : s.mem ⊨ P ∗ (F ∗ R))
-    (hwp : SepWP (tripleRatchetProgAt img.base C ctl abs) mid s P post)
-    (hcont : ∀ sm Pm, (tripleRatchetProgAt img.base C ctl abs).CodeLoaded s.mem →
-      Steps (tripleRatchetProgAt img.base C ctl abs) s sm →
-      sm.pc = mid → sm.status = .Running → (sm.mem ⊨ Pm ∗ (F ∗ R)) →
-      post sm Pm → SegExit kit st0 ikit ist0 C ctl uuidTryParse S encRecord abs x R0 s0 sm next) :
-    SegExit kit st0 ikit ist0 C ctl uuidTryParse S encRecord abs x R0 s0 s next := by
-  intro hL
-  obtain ⟨sm, hsteps, ⟨hpc, hrun, Pm, hmm, hpost⟩ | ⟨_, _hoom⟩⟩ := hwp.elim hm hL
-  rotate_left
-  · exact (not_satisfies_false_sepConj _hoom).elim
-  obtain ⟨sf, hsteps', hout⟩ := hcont sm Pm hL hsteps hpc hrun hmm hpost (hsteps.codeLoaded hL)
-  exact ⟨sf, hsteps.trans hsteps', hout⟩
-
-theorem SegExit.call {α : Type} {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {kit : SessionStoreSpec A img.base} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A img.base} {ist0 : ikit.IdState} {ctl : BitVec 64}
-    {S : SpqrModel}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {abs : String → Option (State → State)} {x : WithStoresEncGhost} {R R0 : SepProp}
-    {s0 s : State} {next : State → Prop} {entry ret_pc : BitVec 64} {spec : Spec α}
-    (hcall : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) entry spec)
-    (xc : α) {F : SepProp}
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hm : s.mem ⊨ spec.pre xc s ∗ (F ∗ R))
-    (hexit : ∀ sf code R', sf.status = .Exited code → (sf.mem ⊨ spec.onExit xc code s sf ∗ R') → False)
-    (hpanic : ∀ sf, Steps (tripleRatchetProgAt img.base C ctl abs) s sf → sf.status = .Panicked →
-      (sf.mem ⊨ (spec.onPanic xc s sf ∗ F) ∗ R) →
-      (sf.mem ⊨ (withStoresEncSpecV kit st0 ikit ist0 C ctl uuidTryParse S encRecord).onPanic x s0 sf ∗ R0))
-    (hnext : ∀ sm : State, (tripleRatchetProgAt img.base C ctl abs).CodeLoaded s.mem →
-      Steps (tripleRatchetProgAt img.base C ctl abs) s sm →
-      sm.pc = ret_pc → sm.status = .Running →
-      sm.sp = s.sp → CalleeSavedPreserved s sm →
-      (sm.mem ⊨ (spec.post xc s sm ∗ F) ∗ R) →
-      SegExit kit st0 ikit ist0 C ctl uuidTryParse S encRecord abs x R0 s0 sm next)
-    (hoom : ∀ sf R', sf.status = .OutOfMemory → (sf.mem ⊨ spec.onOom xc s sf ∗ R') → False := by
-      intro _ _ _ h; exact not_satisfies_false_sepConj h) :
-    SegExit kit st0 ikit ist0 C ctl uuidTryParse S encRecord abs x R0 s0 s next := by
-  have h1 : SepWPp (tripleRatchetProgAt img.base C ctl abs) ret_pc s (spec.pre xc s ∗ F)
-      (fun sm Pm => sm.sp = s.sp ∧ CalleeSavedPreserved s sm ∧ Pm = spec.post xc s sm ∗ F)
-      (fun sm Pm => Pm = spec.onPanic xc s sm ∗ F) := by
-    refine SepWPp.call_wpp hcall (x := xc) (F := F) hpc hrun hsp hlr
-      (fun R' hm' => by rwa [← sepConj_assoc]) hexit
-      (fun _ _ _ => rfl)
-      (fun sm hpcm hrunm hspm hcsm => SepWPp.done hpcm hrunm ⟨hspm, hcsm, rfl⟩)
-      (fun sf R' hoom_st hpost => (hoom sf (F ∗ R') hoom_st hpost).elim)
-  intro hL
-  have hm' : s.mem ⊨ (spec.pre xc s ∗ F) ∗ R := by rwa [sepConj_assoc]
-  rcases h1 R hm' hL with
-    ⟨sm, hsteps, ⟨hpcm, hrunm, Pm, hpost, hspm, hcsm, rfl⟩ | ⟨hpan, Pm, hpost, rfl⟩ | ⟨_, hoom_post⟩⟩
-  · obtain ⟨sf, hsteps', hout'⟩ :=
-      hnext sm hL hsteps hpcm hrunm hspm hcsm hpost (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout'⟩
-  · exact ⟨sm, hsteps, Or.inr (Or.inr (Or.inl ⟨hpan, hpanic sm hsteps hpan hpost⟩))⟩
-  · exact (not_satisfies_false_sepConj hoom_post).elim
-
 theorem allocFailedIn_trans {s0 sm sf : State}
     (h0m : s0.trace <+: sm.trace) (hmf : allocFailedIn sm sf) :
     allocFailedIn s0 sf := by
@@ -137,71 +48,6 @@ theorem allocFailedIn_trans {s0 sm sf : State}
   unfold allocFailedIn at hmf ⊢
   rw [← ht, List.length_append, ← List.drop_drop] at hmf
   exact List.mem_of_mem_drop hmf
-
-theorem alloc_onPanic_entails {C : Crypto} {A : RustAlloc} {img : Obj.Image}
-    {kit : SessionStoreSpec A img.base} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A img.base} {ist0 : ikit.IdState} {ctl : BitVec 64}
-    {S : SpqrModel}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {x : WithStoresEncGhost} {s0 s sf : State} {F R R0 : SepProp}
-    (hpref0 : s0.trace <+: s.trace)
-    (hR : R ⊢ anyHeap ∗ R0) :
-    ((⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap) ∗ F) ∗ R ⊢
-      (withStoresEncSpecV kit st0 ikit ist0 C ctl uuidTryParse S encRecord).onPanic x s0 sf ∗ R0 := by
-  refine Entails.trans (sepConj_mono_right hR) ?_
-  dsimp only [withStoresEncSpecV, Spec.inImage]
-  have hreord :
-      ((⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap) ∗ F) ∗ (anyHeap ∗ R0) =
-      ⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ ((anyHeap ∗ F ∗ anyHeap) ∗ R0) := by ac_rfl
-  rw [hreord]
-  refine Entails.pure_left fun ⟨halloc, hpref⟩ => ?_
-  have halloc0 := allocFailedIn_trans hpref0 halloc
-  exact sepConj_mono_left (Entails.pure_right ⟨hpref0.trans hpref, Or.inl halloc0⟩ (entails_anyHeap _))
-
-
-/-! ## Entry, Callee, and Hook Projections -/
-
-theorem encEntry_eq_fnAddr {A : RustAlloc} {img : Obj.Image}
-    {kit : SessionStoreSpec A img.base} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A img.base} {ist0 : ikit.IdState}
-    {Scope Q C ctl S encRecord abs}
-    (env : EncEnv kit st0 ikit ist0 Scope Q C ctl uuidTryParse S encRecord abs) :
-    encEntry img = (tripleRatchetProgAt img.base C ctl abs).fnAddr encryptWithStoresName :=
-  entryOf_eq_tripleRatchetProgAt env.loads encryptWithStoresName
-
-theorem encEntry_eq_base_add {A : RustAlloc} {img : Obj.Image}
-    {kit : SessionStoreSpec A img.base} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A img.base} {ist0 : ikit.IdState}
-    {Scope Q C ctl S encRecord abs}
-    (env : EncEnv kit st0 ikit ist0 Scope Q C ctl uuidTryParse S encRecord abs) :
-    encEntry img = img.base + 0x3cbd8#64 := by
-  rw [encEntry_eq_fnAddr env, Program.fnAddr_rebase, libsignalSessionCode_fnOff_0x3cbd8]
-
-theorem dealloc_ok_at_enc {A : RustAlloc} {img : Obj.Image}
-    {kit : SessionStoreSpec A img.base} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A img.base} {ist0 : ikit.IdState}
-    {Scope Q C ctl S encRecord abs}
-    (env : EncEnv kit st0 ikit ist0 Scope Q C ctl uuidTryParse S encRecord abs) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr encryptWithStoresName + bv% (ls_off% "__rustc::__rust_dealloc" - 0x3cbd8))
-      (rustDeallocSpec A) := by
-  exact dealloc_ok_at_norm (b := img.base) (C := C) (ctl := ctl)
-    (name := encryptWithStoresName) (k := num% (ls_off% "__rustc::__rust_dealloc" - 0x3cbd8)) env.hooks.alloc
-    (by simp only [libsignalSessionCode_fnOff_0x3cbd8, arm64_norm])
-
-theorem stringClone_ok_at_enc {A : RustAlloc} {img : Obj.Image}
-    {kit : SessionStoreSpec A img.base} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A img.base} {ist0 : ikit.IdState}
-    {Scope Q C ctl S encRecord abs}
-    (env : EncEnv kit st0 ikit ist0 Scope Q C ctl uuidTryParse S encRecord abs) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr encryptWithStoresName + bv% (ls_off% "<alloc::string::String as core::clone::Clone>::clone" - 0x3cbd8))
-      (stringCloneSpec A) := by
-  exact sub_ok_at_of_fnAddr
-    (LibsignalBinary.Proofs.Common.StringCloneFlat.stringClone_tripleRatchetProgAt_ok img.base C A ctl abs env.hooks.alloc)
-    encryptWithStoresName (num% (ls_off% "<alloc::string::String as core::clone::Clone>::clone" - 0x3cbd8))
-    (by simp only [libsignalSessionCode_fnOff_0x3cbd8,
-      LibsignalBinary.Proofs.Common.StringCloneFlat.stringCloneName_fnOff, arm64_norm])
 
 theorem drop_ne (b : BitVec 64) (hb : b &&& 0xfff#64 = 0#64) :
     b + 0x42b28#64 ≠ 0#64 := by
@@ -211,98 +57,26 @@ theorem drop_ne (b : BitVec 64) (hb : b &&& 0xfff#64 = 0#64) :
 
 /-! ## `.rodata` Vtable and String Literal Lemmas -/
 
-def trustVtablesAt {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b) : SepProp :=
+@[expose] def trustVtablesAt {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b) : SepProp :=
   ((ikit.id_vt + 0x30#64) ↦₆₄ᵣ (b + ikit.trustShimOff)) ∗
   ((b + ikit.trustFutVtOff) ↦₆₄ᵣ (b + ikit.trustFutDropOff)) ∗
   ((b + ikit.trustFutVtOff + 8#64) ↦₆₄ᵣ BitVec.ofNat 64 ikit.trustBoxSize) ∗
   ((b + ikit.trustFutVtOff + 0x10#64) ↦₆₄ᵣ 8#64) ∗
   ((b + ikit.trustFutVtOff + 0x18#64) ↦₆₄ᵣ (b + ikit.trustPollOff))
 
-def saveVtablesAt {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b) : SepProp :=
+@[expose] def saveVtablesAt {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b) : SepProp :=
   ((ikit.id_vt + 0x28#64) ↦₆₄ᵣ (b + ikit.saveShimOff)) ∗
   ((b + ikit.saveFutVtOff) ↦₆₄ᵣ (b + ikit.saveFutDropOff)) ∗
   ((b + ikit.saveFutVtOff + 8#64) ↦₆₄ᵣ BitVec.ofNat 64 ikit.saveBoxSize) ∗
   ((b + ikit.saveFutVtOff + 0x10#64) ↦₆₄ᵣ 8#64) ∗
   ((b + ikit.saveFutVtOff + 0x18#64) ↦₆₄ᵣ (b + ikit.savePollOff))
 
-def storeVtablesAt {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b) : SepProp :=
+@[expose] def storeVtablesAt {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b) : SepProp :=
   ((kit.ss_vt + 0x20#64) ↦₆₄ᵣ (b + kit.storeShimOff)) ∗
   ((b + kit.storeFutVtOff) ↦₆₄ᵣ (b + kit.storeFutDropOff)) ∗
   ((b + kit.storeFutVtOff + 8#64) ↦₆₄ᵣ BitVec.ofNat 64 kit.storeBoxSize) ∗
   ((b + kit.storeFutVtOff + 0x10#64) ↦₆₄ᵣ 8#64) ∗
   ((b + kit.storeFutVtOff + 0x18#64) ↦₆₄ᵣ (b + kit.storePollOff))
-
-theorem trustVtablesAt_intro {A : RustAlloc} {img : Obj.Image}
-    {ikit : IdentityStoreSpec A img.base} (hvt : IdentityVtablesOk img ikit)
-    {s : State} {P : SepProp} (hF : img.FrozenLoaded s) (hP : s.mem ⊨ P) :
-    s.mem ⊨ trustVtablesAt ikit ∗ P := by
-  unfold trustVtablesAt
-  simp only [sepConj_assoc]
-  exact hvt.trustSlot hF (hvt.trustFutDrop hF
-    (hvt.trustFutSize hF (hvt.trustFutAlign hF
-      (hvt.trustFutPoll hF hP))))
-
-theorem saveVtablesAt_intro {A : RustAlloc} {img : Obj.Image}
-    {ikit : IdentityStoreSpec A img.base} (hvt : IdentityVtablesOk img ikit)
-    {s : State} {P : SepProp} (hF : img.FrozenLoaded s) (hP : s.mem ⊨ P) :
-    s.mem ⊨ saveVtablesAt ikit ∗ P := by
-  unfold saveVtablesAt
-  simp only [sepConj_assoc]
-  exact hvt.saveSlot hF (hvt.saveFutDrop hF
-    (hvt.saveFutSize hF (hvt.saveFutAlign hF
-      (hvt.saveFutPoll hF hP))))
-
-theorem storeVtablesAt_intro {A : RustAlloc} {img : Obj.Image}
-    {kit : SessionStoreSpec A img.base} (hvt : MessageDecrypt.SessionOnlyVtablesOk img kit)
-    {s : State} {P : SepProp} (hF : img.FrozenLoaded s) (hP : s.mem ⊨ P) :
-    s.mem ⊨ storeVtablesAt kit ∗ P := by
-  unfold storeVtablesAt
-  simp only [sepConj_assoc]
-  exact hvt.storeSlot hF (hvt.storeFutDrop hF
-    (hvt.storeFutSize hF (hvt.storeFutAlign hF
-      (hvt.storeFutPoll hF hP))))
-
-theorem speStaged_storeErr (A : RustAlloc) (b ret w6 : BitVec 64) :
-    SpeStaged A ret (.store ())
-      [0x800000000000001A#64, b + bv% (ls_reloc% 0x77cc), 10#64, 1#64, b + bv% (ls_xref% 0xc9ec 0xc9f0 + 16), w6]
-      ((b + bv% (ls_reloc% 0x77cc)) ↦ᵣ storeHookStr) := by
-  refine ⟨by decide, rfl, ?_⟩
-  dsimp only [words64At, encErrAt, apiErrAt, strRefAt]
-  have h10 : BitVec.ofNat 64 storeHookStr.length = 10#64 := by decide +kernel
-  have hword : speWord speApplicationCallback = 0x800000000000001A#64 := rfl
-  have ha1 : ret + 8#64 + 8#64 + 8#64 = ret + 8#64 + 0x10#64 := by bv_arith
-  have ha2 : ret + 8#64 + 0x10#64 + 8#64 = ret + 8#64 + 0x18#64 := by bv_arith
-  have ha3 : ret + 8#64 + 0x18#64 + 8#64 = ret + 8#64 + 0x20#64 := by bv_arith
-  have ha4 : ret + 8#64 + 0x20#64 + 8#64 = ret + 8#64 + 0x28#64 := by bv_arith
-  rw [ha1, ha2, ha3, ha4, sepConj_emp, hword]
-  have hpull :
-      (((ret + 8#64) ↦₆₄ 0x800000000000001A#64) ∗
-        ((ret + 8#64 + 8#64) ↦₆₄ (b + bv% (ls_reloc% 0x77cc))) ∗
-        ((ret + 8#64 + 0x10#64) ↦₆₄ 10#64) ∗
-        ((ret + 8#64 + 0x18#64) ↦₆₄ 1#64) ∗
-        ((ret + 8#64 + 0x20#64) ↦₆₄ (b + bv% (ls_xref% 0xc9ec 0xc9f0 + 16))) ∗
-        ((ret + 8#64 + 0x28#64) ↦₆₄ w6)) ∗
-        ((b + bv% (ls_reloc% 0x77cc)) ↦ᵣ storeHookStr) =
-      ((ret + 8#64) ↦₆₄ 0x800000000000001A#64) ∗
-        (((ret + 8#64 + 8#64) ↦₆₄ (b + bv% (ls_reloc% 0x77cc))) ∗
-          ((ret + 8#64 + 8#64 + 8#64) ↦₆₄ 10#64) ∗
-          ((b + bv% (ls_reloc% 0x77cc)) ↦ᵣ storeHookStr)) ∗
-        ((ret + 8#64 + 0x18#64) ↦₆₄ 1#64) ∗
-        ((ret + 8#64 + 0x20#64) ↦₆₄ (b + bv% (ls_xref% 0xc9ec 0xc9f0 + 16))) ∗
-        ((ret + 8#64 + 0x28#64) ↦₆₄ w6) := by
-    rw [ha1]
-    ac_rfl
-  rw [hpull]
-  refine sepConj_mono_right ?_
-  refine sepConj_mono ?_ ?_
-  · refine Entails.sepExists_right (b + bv% (ls_reloc% 0x77cc)) ?_
-    rw [h10]
-    exact Entails.of_eq (by ac_rfl)
-  refine sepConj_mono (Entails.sepExists_right 1#64 (Entails.pure_right (by decide) (Entails.refl _))) ?_
-  refine sepConj_mono (Entails.sepExists_right (b + bv% (ls_xref% 0xc9ec 0xc9f0 + 16)) (Entails.refl _)) ?_
-  exact pointsTo64_entails_memRegion _ _
-
-/-! ## Stack and Future-Box Folding Lemmas -/
 
 theorem encSubStackV_lt {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
     (ikit : IdentityStoreSpec A b)
@@ -346,12 +120,6 @@ theorem saveBox_fold (p u0 u1 u2 : BitVec 64) (b0 : BitVec 8) :
   exact sepConj_mono (pointsTo64_entails_memRegion _ _) (sepConj_mono
     (pointsTo64_entails_memRegion _ _) (sepConj_mono (pointsTo64_entails_memRegion _ _)
       (sepConj_mono (pointsTo8_entails_memRegion _ _) (Entails.refl _))))
-
-theorem callInv_steps {P : Program} {img : Obj.Image} {s s' : State}
-    (hfl : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hsteps : Steps P s s') :
-    img.FrozenLoaded s' ∧ s'.symtab = img.symtab :=
-  ⟨hsteps.frozenLoaded hfl, hsteps.symtab_eq.trans hsym⟩
 
 theorem spAligned_of_sp_eq {s sm : State} (hal : s.spAligned = true) (hsp : sm.sp = s.sp) :
     sm.spAligned = true := by
@@ -446,21 +214,21 @@ theorem StepsThroughEncrypt.draws_eq {Scope : SessionRecord (List (BitVec 8)) �
     rcases hstep5 with ⟨ts, expiry, sm, hts, hexp, hlt, _, _⟩
     simp only [hts, Option.bind_some, hexp, hlt, Bool.false_eq_true, ↓reduceIte]
 
-def answersOfTrust (r : SessionRecord (List (BitVec 8))) (ans : Except Unit Bool) :
+@[expose] def answersOfTrust (r : SessionRecord (List (BitVec 8))) (ans : Except Unit Bool) :
     StoreAnswers (List (BitVec 8)) Unit :=
   { loadSession := .ok (some r)
     isTrustedIdentity := ans
     saveIdentity := .ok .newOrUnchanged
     storeSession := .ok () }
 
-def answersOfSaveErr (r : SessionRecord (List (BitVec 8))) :
+@[expose] def answersOfSaveErr (r : SessionRecord (List (BitVec 8))) :
     StoreAnswers (List (BitVec 8)) Unit :=
   { loadSession := .ok (some r)
     isTrustedIdentity := .ok true
     saveIdentity := .error ()
     storeSession := .ok () }
 
-def answersOfStoreErr (r : SessionRecord (List (BitVec 8))) (c : IdentityChange) :
+@[expose] def answersOfStoreErr (r : SessionRecord (List (BitVec 8))) (c : IdentityChange) :
     StoreAnswers (List (BitVec 8)) Unit :=
   { loadSession := .ok (some r)
     isTrustedIdentity := .ok true

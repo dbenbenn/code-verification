@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
+import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionLenBudget
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `VmPreserved`-Carrying `<SessionStructure as prost::Message>::encoded_len` (Block `86`)
@@ -22,7 +24,7 @@ Re-exports the `VmPreserved`-carrying `DefsBudget.sessionLenSpec` contract for B
 (`<SessionStructure as prost::Message>::encoded_len`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

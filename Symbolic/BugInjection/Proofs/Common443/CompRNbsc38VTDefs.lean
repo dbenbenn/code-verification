@@ -58,5 +58,4 @@ def Split38NoClassifiedCollisionAtVT (w : PQXDHSpqrSetup) (τ : List MachineEven
       let pts := plaintextTerms (runVis r ms');
       ∀ x₁ ∈ newMemo, ∀ x₂ ∈ preMemo ++ newMemo, Split38MemoClass r S g ms' tr₁ tr₂ cl x₁ → Split38MemoClass r S g ms' tr₁ tr₂ cl x₂ → ¬ MemoPairCollides known pts x₁ x₂
 abbrev Split38NoClassifiedCollisionHBVT : Prop := Split38NoClassifiedCollisionAtVT Witnesses.Cheval26SmallSubgroupHighBitComp.setup (Witnesses.Cheval26SmallSubgroupHighBitComp.trace.take 38) highBitWireBytes 1 0
-abbrev Split38NoClassifiedCollisionTCVT : Prop := Split38NoClassifiedCollisionAtVT Witnesses.Cheval26SmallSubgroupTorsionComp.setup (Witnesses.Cheval26SmallSubgroupTorsionComp.trace.take 38) torsionWireBytes 0 1
 end Symbolic.BugInjection.Proofs.Common443.CompRNbsc38VT

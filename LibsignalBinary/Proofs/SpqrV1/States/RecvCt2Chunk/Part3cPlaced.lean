@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Part3bPlaced
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`): Relocatable `Ok(Done)` Deallocations
@@ -23,7 +24,7 @@ Relocatable `[LibsignalPlacement]` proof of `x.epoch + 1` overflow check, 32-byt
 and 7-buffer deallocation chain (`+1308 .. +1520`), handing off to `Part3bPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

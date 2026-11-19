@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.Defs
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart10
@@ -34,7 +34,7 @@ Composes all relocatable `[LibsignalPlacement]` paths of the `.ct1Sampled` arm (
 1528#64`) into `states_recv_arm_ct1Sampled_placed` and `states_recv_ct1Sampled_placed_ok_ext`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -10,21 +10,24 @@ limitations under the License.
 module
 
 public import Arm64.Trusted.Process.Semantics
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.WireFieldDomainCaps
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageLengthBound
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlBridge
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliBinaryPqProofDefs
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Process
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps
+import LibsignalBinary.Proofs.PeakBudget.WireFieldDomainCaps
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageLengthBound
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlBridge -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliBinaryPqProofDefs
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Process
 public import LibsignalBinary.Specifications.LibsignalE2E.SchemeModel
 public import LibsignalBinary.Specifications.SignalSession.PqDir
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
 import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodedLen
+public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -98,21 +101,21 @@ export LibsignalBinary.Proofs.PeakBudget.WireFieldDomainCaps
 /-! ## Domain cap predicates -/
 
 /-- Query-count cap `∀ k < qStart, 2 * (qs k + 1) + 25002 < 2 ^ 32`. -/
-def R3QueryCap (qStart : Nat) (qs : Nat → Nat) : Prop :=
+@[expose] def R3QueryCap (qStart : Nat) (qs : Nat → Nat) : Prop :=
   ∀ k < qStart, 2 * (qs k + 1) + 25002 < 2 ^ 32
 
 /-- Session-record byte-length cap on `ReachablePqxdhSession W me x g`. -/
-def SessionRecordCapInDomain (W : PEParams) (cap : Nat) : Prop :=
+@[expose] def SessionRecordCapInDomain (W : PEParams) (cap : Nat) : Prop :=
   ∀ (me : LocalIdentity) (x : RecordExtras) (g : GhostState (List (BitVec 8))),
     ReachablePqxdhSession W me x g →
     (encodeRecordUnderExtras (fun _ => x) g).length ≤ cap
 
 /-- Byte-length cap on every last-resort Kyber pre-key `.base-keys` file in `st`. -/
-def PqPartyBaseKeysCap (bkCap : Nat) (st : PqParty) : Prop :=
+@[expose] def PqPartyBaseKeysCap (bkCap : Nat) (st : PqParty) : Prop :=
   ∀ i k seen, (i, k, seen) ∈ st.kyberLastResort → (baseKeysBytes seen).length ≤ bkCap
 
 /-- Every regular file in `fs` has byte length `≤ cap`. -/
-def FilesBounded (cap : Nat) (fs : FsState) : Prop :=
+@[expose] def FilesBounded (cap : Nat) (fs : FsState) : Prop :=
   ∀ p bs, fs.files p = some (.file bs) → bs.length ≤ cap
 
 theorem FilesBounded.mono {c₁ c₂ : Nat} {fs : FsState}
@@ -827,7 +830,7 @@ theorem addrParse_name_length_le {bs : List (BitVec 8)} {v : AddrV}
         rw [← hv]
         exact serviceIdParse_length_le hs
 
-def callAddrNameLen : CallV → Nat
+@[expose] def callAddrNameLen : CallV → Nat
   | .keygen me _ => me.name.length
   | .init peer _ => peer.name.length
   | .send peer => peer.name.length
@@ -872,7 +875,7 @@ theorem parseArgs_peer_name_length_le {args : List (List (BitVec 8))} {c : CallV
 
 /-- `AllocCostModel`-free SPQR encoder-point validity of the current session stored for `rem` on
 `F` under `scopeKit` (`True` when no session is present). -/
-def PeerSpqrValid (F : FsFiles) (rem : AddrVal) : Prop :=
+@[expose] def PeerSpqrValid (F : FsFiles) (rem : AddrVal) : Prop :=
   match loadRec scopeKit F rem with
   | .ok (some r) =>
     match r.currentSession with
@@ -880,27 +883,6 @@ def PeerSpqrValid (F : FsFiles) (rem : AddrVal) : Prop :=
         sess.state.pqRatchetState.length < 2 ^ 31
     | none => True
   | _ => True
-
-/-- At any `ScopeAt` record loaded from `StoresGhost.opened.sessions` by `w1SessKit`, `PeerSpqrValid`
-delivers `ValidEncoderPts otrPqr ∧ otrPqr.length < 2 ^ 31` on the session's `pqRatchetState`. -/
-theorem peerSpqrValid_of_scopeAt {B : RunBudgets} {img : Arm64.Obj.Image}
-    {F : FsFiles} {peer : AddrGhost} {rem : AddrVal}
-    {r : SessionRecord (List (BitVec 8))} {sess : Session (List (BitVec 8))}
-    {otrPqr : List (BitVec 8)}
-    (hScAt : (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions rem r)
-    (hcur : r.currentSession = some sess)
-    (hpqr : otrPqr = sess.state.pqRatchetState)
-    (hValid : PeerSpqrValid F rem) :
-    ValidEncoderPts otrPqr ∧ otrPqr.length < 2 ^ 31 := by
-  obtain ⟨bs, hbs, hla⟩ := hScAt.2
-  have hlr : loadRec scopeKit F rem = .ok (some r) := by
-    symm
-    exact loadRec_unique encodeInjOn_deserializeScopeP_Q (hbs ▸ hla)
-  unfold PeerSpqrValid at hValid
-  rw [hlr] at hValid
-  dsimp only at hValid
-  rw [hcur] at hValid
-  simpa [hpqr] using hValid
 
 /-- On every `CliPqxdhInputs W i` whose `argv` parses to `.send peer`, `PeerSpqrValid` holds on
 `runFiles i` and `addrValOf peer`. -/

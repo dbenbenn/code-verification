@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+public import Computational.Proofs.SignalPqxdh.Security.CollisionsB -- proof-setup: allow-public-import
 import Computational.Proofs.GameHop.StateSim
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.QueryTracking.SubSpec
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -190,7 +190,7 @@ inductive SigStepResult (St R : Type) where
       (k1 : Bytes → ProbComp (Bytes × (Bytes → R × St)))
       (fallback : R × St)
 
-noncomputable def SigStepResultPrim.toProbComp {St R : Type} (P : Primitives) :
+@[expose] def SigStepResultPrim.toProbComp {St R : Type} (P : Primitives) :
     SigStepResultPrim St R → SigStepResult St R
   | .done res st' => .done res st'
   | .signTwo msg1 k1 fb => .signTwo msg1 (fun sig1 => (fun pq => k1 pq sig1) <$> sampleKemKeyGen P)
@@ -299,7 +299,7 @@ theorem isQueryBoundP_runWithSigBudgetPrim_prim {ιI : Type}
             exact (isQueryBoundP_bind (m := Q' * (C + 1)) h_sig2 (fun sig2 _ =>
               ih ((k1 pq sig1).2 sig2).1 Q' (h_cont _) ((k1 pq sig1).2 sig2).2 b')).mono (by omega)
 
-def sigEufCmaOracleImpl (P : Primitives) (sk : Bytes) :
+@[expose] def sigEufCmaOracleImpl (P : Primitives) (sk : Bytes) :
     QueryImpl sigOracleSpec (StateT (List Bytes) ProbComp) :=
   fun (.sign m) => do
     let r ← liftM sampleRandom64
@@ -307,7 +307,7 @@ def sigEufCmaOracleImpl (P : Primitives) (sk : Bytes) :
     modify (m :: ·)
     return sig
 
-def sigEufCmaFullImpl (P : Primitives) (sk : Bytes) :
+@[expose] def sigEufCmaFullImpl (P : Primitives) (sk : Bytes) :
     QueryImpl (PrimBaseSpec + sigOracleSpec) (StateT (List Bytes) ProbComp) :=
   (primBaseImpl P).liftTarget (StateT (List Bytes) ProbComp) +
     sigEufCmaOracleImpl P sk
@@ -316,7 +316,7 @@ def sigEufCmaFullImpl (P : Primitives) (sk : Bytes) :
     (f : σ → α × σ) (s : σ) :
     (StateT.modifyGet (m := m) f).run s = pure (f s) := rfl
 
-noncomputable def runSigStepSim {St R : Type} (P : Primitives) (sk : Bytes) (budget : Nat)
+@[expose] def runSigStepSim {St R : Type} (P : Primitives) (sk : Bytes) (budget : Nat)
     (stepComp : ProbComp (SigStepResult St R)) (signedMsgs : List Bytes) :
     ProbComp ((R × St × Nat) × List Bytes) := do
   let res ← stepComp
@@ -525,7 +525,7 @@ theorem simulateQ_checkBundleProvenancePrim (S : Setup) (P : Primitives)
               P.pow8 e.opkPk == P.pow8 opkPk) (fun _ => rfl) opkEntries, pure_bind]
       rfl
 
-def ValidAdvKeysPow8 (P : Primitives) (advKeys : List (Bytes × Bytes)) : Prop :=
+@[expose] def ValidAdvKeysPow8 (P : Primitives) (advKeys : List (Bytes × Bytes)) : Prop :=
   ∀ e ∈ advKeys, e.1 = P.pow8 e.2
 
 theorem primBounded_isAdvRegisteredPrim (advKeys : List (Bytes × Bytes)) (pk : Bytes) :
@@ -1008,7 +1008,7 @@ theorem simulateQ_runKeyIndInitiatePrim (useRo : Bool) (S : Setup) (P : Primitiv
     simulateQ (primBaseImpl P) (primQ (.kemKeyGen seed)) =
       (pure (P.kemKeyGen seed) : ProbComp (primSpec.Range (.kemKeyGen seed))) := rfl
 
-def pqxdhKeyIndCachedImpl (useRo : Bool) (S : Setup) (P : Primitives) :
+@[expose] def pqxdhKeyIndCachedImpl (useRo : Bool) (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndState S) ProbComp) := fun q =>
   match q with
   | .registerKey sk => do
@@ -1440,7 +1440,7 @@ theorem probExpect_eq_zero_of_support {α : Type} (mx : ProbComp α) (f : α →
     probExpect mx f = 0 :=
   le_antisymm (probExpect_const_le_of_support mx f 0 (fun x hx => le_of_eq (h x hx))) bot_le
 
-def noPrinPkColl (P : Primitives) (principals : List (Nat × PrincipalEntry)) : Bool :=
+@[expose] def noPrinPkColl (P : Primitives) (principals : List (Nat × PrincipalEntry)) : Bool :=
   !hasDuplicateBytes (principals.map (fun (_, e) => P.pow8 e.ikAPk))
 
 theorem findHonestPrincipal_eq_some_of_noPrinPkColl (P : Primitives) :

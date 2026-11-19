@@ -10,34 +10,34 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1Budget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateProof
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateProofClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag10ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag11ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1BudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag24ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag2ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag5ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag7ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag8ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag9ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTags2To4ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTags5To6ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateProof
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateProofClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag10ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag11ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1BudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag24ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag2ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag5ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag7ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag8ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag9ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTags2To4ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTags5To6ClPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
@@ -50,6 +50,9 @@ import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopClPlacedBudgetAux
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopBudget
 
 /-!
 # Budget-Threaded Code-Loaded Verification for `V1State::merge` (Block `298`)
@@ -59,7 +62,7 @@ import ProofLib.SepLogic.WPp
 `withLsCodeRoLoaded lsmpl (v1StateMergePlacedSpec A lim)` and envelope-parameterized corollaries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -83,17 +86,7 @@ open CryptoVerification.LibsignalTripleRatchet.Prost
    sliceCursorAfter_eq_split sliceCursorAt ule_len_of_ge ule_len_of_lt)
 open CryptoVerification.SpqrV1.Drop (optProtoInnerStateJumpTableAt optProtoInnerStateJumpTablePlacedAt)
 open CryptoVerification.SpqrV1.Prost.BytesMerge (proto_decodeVarint_toOption)
-open CryptoVerification.SpqrV1.Prost.MessageMerge
-  (OptInnerStatePolyBound SepWPp.call_frame_lscro SepWPp.elim_lscroProp SepWPp.of_sepWP_lscro
-   V1StateMergeGhost WppPost bv64_add_zero bv64_sub_zero bv_len_sub_limit chunkedInlStack
-   codecWireTypeToProto mergeLoopBin mergeMessageBin mergeMessageBin_eq_proto_mergeMessage
-   optInnerStatePolyBound_mono optProtoInnerStateCapAt_mono protoPrefixStep_v1State_mergeField
-   stackAt_v1StateMerge_prologue subroutine_ok_withLsCodeRoLoaded_of_withLscroProp
-   v1Loop_err1_join_720 v1Proof_capAt_entails_exists v1Proof_memRegion_720_split_wtErr
-   v1Proof_savedRegs_intro v1Proof_wtErr_entails_memRegion40 v1StateBelow_decodeVarint2
-   v1StateBelow_decodeVarint2_entails v1StateMergeJumpTableExpanded
-   v1StateMergeJumpTablePlacedExpanded v1StateMerge_fnOff v1StateSavedRegsAt withLscroProp
-   wt_beq_two_of_lengthDelimited wt_beq_two_of_ne_lengthDelimited)
+open CryptoVerification.SpqrV1.Prost.MessageMerge (OptInnerStatePolyBound SepWPp.call_frame_lscro SepWPp.elim_lscroProp SepWPp.of_sepWP_lscro V1StateMergeGhost WppPost bv64_add_zero bv64_sub_zero bv_len_sub_limit chunkedInlStack codecWireTypeToProto mergeLoopBin mergeMessageBin mergeMessageBin_eq_proto_mergeMessage optInnerStatePolyBound_mono optProtoInnerStateCapAt_mono protoPrefixStep_v1State_mergeField stackAt_v1StateMerge_prologue subroutine_ok_withLsCodeRoLoaded_of_withLscroProp v1Loop_err1_join_720 v1Proof_capAt_entails_exists v1Proof_memRegion_720_split_wtErr v1Proof_savedRegs_intro v1Proof_wtErr_entails_memRegion40 v1StateBelow_decodeVarint2 v1StateBelow_decodeVarint2_entails v1StateMergeJumpTableExpanded v1StateMergeJumpTablePlacedExpanded v1StateSavedRegsAt withLscroProp wt_beq_two_of_lengthDelimited wt_beq_two_of_ne_lengthDelimited)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.Part2 (blkPC_298 blkPl_298)
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FitsEnv RustCliAllocBudget rustCliDeallocBudgetSpec)
@@ -159,7 +152,7 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
   v1StateMergeJumpTableExpanded optProtoInnerStateJumpTableAt v1StateSavedRegsAt
   v1StateMergeJumpTablePlacedExpanded optProtoInnerStateJumpTablePlacedAt
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero v1StateMerge_fnOff
+attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero
 
 private theorem spqrIter_of_decodeVarint2 {maxLen polyCap : Nat} {bs : List (BitVec 8)}
     {evs : List AllocEvent} (h : DecodeVarint2Env bs evs) :

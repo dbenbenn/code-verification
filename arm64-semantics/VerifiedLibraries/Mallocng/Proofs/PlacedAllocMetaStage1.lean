@@ -130,6 +130,42 @@ theorem placed_memcpy8_mapped_ok [MallocngMultiPlacement] {P : Program}
     simp only [sepConj_assoc, satisfies_pure_sepConj] at hm' ⊢
     exact ⟨⟨hProc, hBrk, hx0, ⟨[], Nat.zero_le 0, Nat.zero_le 0, fun a ha => Or.inl (hperm ▸ ha)⟩⟩, hm'⟩
 
+theorem placed_memcpy8_ro_mapped_ok [MallocngMultiPlacement] {P : Program}
+    (dst src dstVal srcVal : BitVec 64)
+    (_hDstFit : dst.toNat + 8 ≤ 2 ^ 64) (_hSrcFit : src.toNat + 8 ≤ 2 ^ 64)
+    (hext : ∀ pc, P.externAt? pc = none := by
+      intro pc; simp [Program.rebase, PlacedLib.program, Program.externAt?, Program.hookAtOff?])
+    (hsvc : P.svc = msvc := by rfl) :
+    subroutine_ok P (mbase 20) (withCL mmpl {
+      pre := fun (_ : Unit) s0 =>
+        ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ s0.readReg64 .x2 = 8#64⌝ ∗
+        (dst ↦₆₄ dstVal) ∗ (src ↦₆₄ᵣ srcVal)
+      post := fun _ s0 sf =>
+        ⌜MallocngProcPreserved s0 sf ∧ sf.brk = s0.brk ∧ sf.readReg64 .x0 = dst ∧
+         MallocngMappedDelta 0 0 s0.mem sf.mem⌝ ∗
+        (dst ↦₆₄ srcVal) ∗ (src ↦₆₄ᵣ srcVal)
+    }) := by
+  refine subroutine_ok_block_to_block_plain (j := 20) (by decide) ?_ hext hsvc
+  have hwords : ((mallocngBlockProg mmpl 20 msvc).withSvc mallocngFaultSvc).hasWords (mbase 20) memcpySymWords :=
+    Program.hasWords_withSvc (hasWords_blk_relocFree (i := 20) (by decide) (ws := memcpySymWords) (by decide +kernel))
+  wp_init x s0
+  refine SepWP.mono
+    (SepWP.lift_noSyscalls rfl rfl
+      (post := sepPost (fun sf =>
+        MallocngProcPreserved s0 sf ∧ sf.brk = s0.brk ∧ sf.readReg64 .x0 = dst ∧
+        sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
+        ((dst ↦₆₄ srcVal) ∗ (src ↦₆₄ᵣ srcVal))) ?_) ?_
+  · wp_sym_steps
+    have hSubAdd : dst + 8#64 - 8#64 = dst := by bv_arith
+    have hSrcSubAdd : src + 8#64 - 8#64 = src := by bv_arith
+    simp only [hSubAdd, hSrcSubAdd] at *
+    wp_done
+  · intro sf P_f _ _ ⟨⟨⟨hProc, hBrk, hx0, hsp, hcs⟩, hent⟩, hperm⟩
+    refine ⟨fun hm => ?_, hsp, hcs⟩
+    have hm' := Satisfies.mono (sepConj_mono_left hent) hm
+    simp only [sepConj_assoc, satisfies_pure_sepConj] at hm' ⊢
+    exact ⟨⟨hProc, hBrk, hx0, ⟨[], Nat.zero_le 0, Nat.zero_le 0, fun a ha => Or.inl (hperm ▸ ha)⟩⟩, hm'⟩
+
 theorem freeMeta_toBytes_eq_cells (fm : FreeMetaDesc) :
     (fm.ptr ↦ₛ fm.toBytes) = ((fm.ptr ↦₆₄ fm.prev) ∗ ((fm.ptr + 8#64) ↦₆₄ fm.next) ∗ ((fm.ptr + 16#64) ↦ₛ List.replicate 24 0#8)) := by
   simp only [FreeMetaDesc.toBytes, List.append_assoc, pointsToBytes_append, unpack64_length, ← pointsTo64_eq_pointsToBytes, addr_norm]
@@ -167,7 +203,7 @@ abbrev Cs25Preserved (s0 s : State) : Prop :=
 abbrev Cs23Preserved (s0 s : State) : Prop :=
   s.readReg64 (.gpr 23#5) = s0.readReg64 (.gpr 23#5) ∧ s.readReg64 (.gpr 24#5) = s0.readReg64 (.gpr 24#5) ∧ Cs25Preserved s0 s
 
-abbrev AllocMetaPlacedPost [MallocngMultiPlacement] (inflight : Nat) (γ : GhostName)
+abbrev AllocMetaPlacedPost [MallocngMultiPlacement] {ro : Bool} (inflight : Nat) (γ : GhostName)
     (tp brkStart : BitVec 64) (liveCost peakCost peakCount : Nat) (st : MallocngSt)
     (s0 sf : State) (P_f : SepProp) : Prop :=
   (P_f ⊢ ∃∗ st' : MallocngSt, ∃∗ m : BitVec 64,
@@ -183,7 +219,7 @@ abbrev AllocMetaPlacedPost [MallocngMultiPlacement] (inflight : Nat) (γ : Ghost
        (InRegion g.metaPtr 40 a ∨ InRegion g.mem g.totalBytes a) → st'.byteVal a = st.byteVal a) ∧
      MallocngMappedDelta 1 (allocMetaPlacedByteBound peakCount) s0.mem sf.mem⌝ ∗
     stackFrame s0 224 ∗ MallocngRuntime maddrs tp ∗ (m ↦ₛ List.replicate 40 0#8) ∗
-    MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st') ∧
+    MallocngCoreStInflightModeA ro (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st') ∧
   sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf
 
 def StaticFrameA (γ : GhostName) (A : MallocngAddrs)
@@ -221,13 +257,13 @@ theorem stackSlow_to_open (s0 : State) : StackFrameSlow s0 ⊢ StackFrameOpen s0
   rw [SavedRegs21, sepConj_assoc, sepConj_assoc, sepConj_assoc]
   exact cells_sub_succ_entails 48 6 (cells_sub_succ_entails 40 5 (cells_sub_succ_entails 32 4 (cells_sub_succ_entails 24 3 (Entails.refl _))))
 
-theorem allocMetaPlacedPost_congr [MallocngMultiPlacement] {inflight : Nat} {γ : GhostName}
+theorem allocMetaPlacedPost_congr [MallocngMultiPlacement] {ro : Bool} {inflight : Nat} {γ : GhostName}
     {tp brkStart : BitVec 64} {liveCost peakCost peakCount : Nat} {st1 st2 : MallocngSt} {s0 sf : State} {P_f : SepProp}
     (hEq : st1.reservedMetas = st2.reservedMetas ∧ st1.groups = st2.groups ∧ st1.activeLists = st2.activeLists ∧
       st1.liveMap = st2.liveMap ∧ st1.ctx.active = st2.ctx.active ∧ st1.ctx.usageByClass = st2.ctx.usageByClass ∧
       st1.ctx.unmapSeq = st2.ctx.unmapSeq ∧ st1.ctx.bounces = st2.ctx.bounces ∧ st1.ctx.seq = st2.ctx.seq ∧ st1.byteVal = st2.byteVal)
-    (hPost : AllocMetaPlacedPost inflight γ tp brkStart liveCost peakCost peakCount st1 s0 sf P_f) :
-    AllocMetaPlacedPost inflight γ tp brkStart liveCost peakCost peakCount st2 s0 sf P_f := by
+    (hPost : AllocMetaPlacedPost (ro := ro) inflight γ tp brkStart liveCost peakCost peakCount st1 s0 sf P_f) :
+    AllocMetaPlacedPost (ro := ro) inflight γ tp brkStart liveCost peakCost peakCount st2 s0 sf P_f := by
   obtain ⟨r1, r2, r3, r4, r5, r6, r7, r8, r9, r10⟩ := hEq
   have rCnt : totalLiveCount st1 = totalLiveCount st2 := by unfold totalLiveCount; rw [r2]
   unfold AllocMetaPlacedPost at hPost ⊢; rwa [r1, r2, r3, r4, rCnt, r5, r6, r7, r8, r9, r10] at hPost
@@ -307,7 +343,7 @@ macro "Blk07Range116" : term =>
       (mbase 7 + 116#64 + BitVec.ofNat 64 r.off)
       (Obj.addSignedAddr (VerifiedLibraries.mallocngLib.resolve mmpl r.sym) r.addend))
 
-theorem sepWP_epilogue_278 [MallocngMultiPlacement]
+theorem sepWP_epilogue_278 [MallocngMultiPlacement] {ro : Bool}
     {inflight : Nat} {γ : GhostName} {tp brkStart : BitVec 64} {liveCost peakCost peakCount : Nat}
     {st st' : MallocngSt} {m w0 w1 : BitVec 64} {errnoVal : BitVec 32} {s0 s : State} {oom : State → SepProp}
     (hWords : Blk07HasWords116 mallocngFaultSvc)
@@ -326,10 +362,10 @@ theorem sepWP_epilogue_278 [MallocngMultiPlacement]
       (StackFrameOpen s0 ∗ (((tp - 0xa4#64) ↦₃₂ errnoVal) ∗
         (StaticFrameA γ maddrs st'.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
           (m ↦₆₄ w0) ∗ ((m + 8#64) ↦₆₄ w1) ∗ ((m + 16#64) ↦ₛ List.replicate 24 0#8) ∗
-          CtxCells maddrs.ctx st'.ctx ∗ ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+          CtxCells maddrs.ctx st'.ctx ∗ MallocngAuxvPtrCell ro maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo ro γ st'.auxvPtr st'.auxvSnap ∗
           ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗ ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
           MappedSet st'.masterDom (OwnedMappedByte st'))))
-      (AllocMetaPlacedPost inflight γ tp brkStart liveCost peakCost peakCount st s0) oom := by
+      (AllocMetaPlacedPost (ro := ro) inflight γ tp brkStart liveCost peakCost peakCount st s0) oom := by
   have hSpA : (s0.sp &&& 15#64 == 0#64) = true := by simpa [State.spAligned] using hSp0
   have hSpSub : ((s0.sp - 80#64) &&& 15#64 == 0#64) = true := spAligned_sub s0.sp 80#64 hSpA
   have hSubAddSp : s0.sp - 80#64 + 80#64 = s0.sp := BitVec.sub_add_cancel s0.sp 80#64
@@ -338,7 +374,7 @@ theorem sepWP_epilogue_278 [MallocngMultiPlacement]
       (StackFrameOpen s0 ∗ (((tp - 0xa4#64) ↦₃₂ errnoVal) ∗
         (StaticFrameA γ maddrs st'.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
           (m ↦₆₄ 0#64) ∗ ((m + 8#64) ↦₆₄ 0#64) ∗ ((m + 16#64) ↦ₛ List.replicate 24 0#8) ∗
-          CtxCells maddrs.ctx st'.ctx ∗ ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+          CtxCells maddrs.ctx st'.ctx ∗ MallocngAuxvPtrCell ro maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo ro γ st'.auxvPtr st'.auxvSnap ∗
           ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗ ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
           MappedSet st'.masterDom (OwnedMappedByte st'))))) hcl ?_) ?_
   · unfold StackFrameOpen SavedRegs0
@@ -362,11 +398,11 @@ theorem sepWP_epilogue_278 [MallocngMultiPlacement]
       hPres.1, hPres.2.1, hPres.2.2.1, hPres.2.2.2.1, hCntEq, hPres.2.2.2.2.1, hPres.2.2.2.2.2.1,
       hPres.2.2.2.2.2.2.1, hPres.2.2.2.2.2.2.2.1, hPres.2.2.2.2.2.2.2.2, hGrpPost, hDeltaF⟩ ?_
     refine Entails.trans (sepConj_mono_left (stack224_fold s0)) ?_
-    unfold StaticFrameA MallocngCoreStInflightA MallocngRuntime
+    unfold StaticFrameA MallocngCoreStInflightModeA MallocngRuntime
     rw [← hCtxEq, ← hZ40, pure_sepConj_of_true hWfF]
     sep_frame
 
-theorem sepWP_epilogue_26c [MallocngMultiPlacement]
+theorem sepWP_epilogue_26c [MallocngMultiPlacement] {ro : Bool}
     {inflight : Nat} {γ : GhostName} {tp brkStart : BitVec 64} {liveCost peakCost peakCount : Nat}
     {st st' : MallocngSt} {m oldAv oldCnt : BitVec 64} {errnoVal : BitVec 32} {s0 s : State} {oom : State → SepProp}
     (hWords : Blk07HasWords116 mallocngFaultSvc)
@@ -390,10 +426,10 @@ theorem sepWP_epilogue_26c [MallocngMultiPlacement]
         (StaticFrameA γ maddrs st'.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
           (m ↦ₛ List.replicate 40 0#8) ∗
           CtxCells maddrs.ctx { st'.ctx with availMeta := oldAv, availMetaCount := oldCnt } ∗
-          ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+          MallocngAuxvPtrCell ro maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo ro γ st'.auxvPtr st'.auxvSnap ∗
           ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗ ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
           MappedSet st'.masterDom (OwnedMappedByte st'))))
-      (AllocMetaPlacedPost inflight γ tp brkStart liveCost peakCost peakCount st s0) oom := by
+      (AllocMetaPlacedPost (ro := ro) inflight γ tp brkStart liveCost peakCost peakCount st s0) oom := by
   rw [zero40_eq_cells m]
   refine SepWP.cut_at_off (mbase 7) (words_ret_off% blk07Words - 16#64)
     (SepWP.mono (sepWP_lift_noSyscalls_cl (sepPost (fun s1 =>
@@ -403,7 +439,7 @@ theorem sepWP_epilogue_26c [MallocngMultiPlacement]
       (StackFrameOpen s0 ∗ (((tp - 0xa4#64) ↦₃₂ errnoVal) ∗
         (StaticFrameA γ maddrs st'.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
           (m ↦₆₄ 0#64) ∗ ((m + 8#64) ↦₆₄ 0#64) ∗ ((m + 16#64) ↦ₛ List.replicate 24 0#8) ∗
-          CtxCells maddrs.ctx st'.ctx ∗ ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+          CtxCells maddrs.ctx st'.ctx ∗ MallocngAuxvPtrCell ro maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo ro γ st'.auxvPtr st'.auxvSnap ∗
           ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗ ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
           MappedSet st'.masterDom (OwnedMappedByte st'))))) hcl ?_) ?_)
   · unfold CtxCells; dsimp only [ctxMiddleBytes]
@@ -415,11 +451,11 @@ theorem sepWP_epilogue_26c [MallocngMultiPlacement]
     obtain ⟨hc21, hc22, hc23, hc24, hc25, hc26, hc27, hc28, hcv⟩ := hCs21
     wp_done
   · intro s1 P1 hPc1 hRun1 ⟨_, hD1, hcl1, ⟨_, _, hSp1, hx19_1, hCs1, hProc1, hBrk1⟩, hEnt1⟩
-    exact SepWP.weaken_pre hEnt1 (sepWP_epilogue_278 hWords hcl1 hPc1 hRun1 hSp1 hSp0 hx19_1 hCs1 hProc1
+    exact SepWP.weaken_pre hEnt1 (sepWP_epilogue_278 (ro := ro) hWords hcl1 hPc1 hRun1 hSp1 hSp0 hx19_1 hCs1 hProc1
       (MallocngMappedDelta.mono (by decide) (by omega) (MallocngMappedDelta.trans hDelta hD1))
       hmProps (hBrk1 ▸ hWf') hPres hGrpPost)
 
-theorem sepWP_activate_2a0 [MallocngMultiPlacement]
+theorem sepWP_activate_2a0 [MallocngMultiPlacement] {ro : Bool}
     {inflight : Nat} {γ : GhostName} {tp brkStart : BitVec 64} {liveCost peakCost peakCount : Nat}
     {st st' : MallocngSt} {ap oldAv oldCnt oldHd oldTl oldAreas : BitVec 64}
     {bv0 bv1 : BitVec 64 → BitVec 8} {errnoVal : BitVec 32} {s0 s : State} {oom : State → SepProp}
@@ -451,10 +487,10 @@ theorem sepWP_activate_2a0 [MallocngMultiPlacement]
         (StaticFrameA γ maddrs st'.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
           (ap ↦ₛ List.replicate 4096 0#8) ∗
           CtxCells maddrs.ctx { st'.ctx with availMeta := oldAv, availMetaCount := oldCnt, availMetaAreaCount := st'.ctx.availMetaAreaCount + 1#64, metaAreaHead := oldHd, metaAreaTail := oldTl, availMetaAreas := oldAreas } ∗
-          ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+          MallocngAuxvPtrCell ro maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo ro γ st'.auxvPtr st'.auxvSnap ∗
           ByteMap st'.masterDom (OwnedRwByte st) bv0 ∗ ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
           MappedSet st'.masterDom (OwnedMappedByte st'))))
-      (AllocMetaPlacedPost inflight γ tp brkStart liveCost peakCost peakCount st s0) oom := by
+      (AllocMetaPlacedPost (ro := ro) inflight γ tp brkStart liveCost peakCost peakCount st s0) oom := by
   have hSpA : (s0.sp &&& 15#64 == 0#64) = true := by simpa [State.spAligned] using hSp0
   have hSpSub : ((s0.sp - 80#64) &&& 15#64 == 0#64) = true := spAligned_sub s0.sp 80#64 hSpA
   have hCntSub : st'.ctx.availMetaAreaCount + 1#64 - 1#64 = st'.ctx.availMetaAreaCount := BitVec.add_sub_cancel _ _
@@ -470,7 +506,7 @@ theorem sepWP_activate_2a0 [MallocngMultiPlacement]
         (StaticFrameA γ maddrs st'.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
           ((ap + 24#64) ↦ₛ List.replicate 40 0#8) ∗
           CtxCells maddrs.ctx { st'.ctx with availMeta := oldAv, availMetaCount := oldCnt } ∗
-          ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+          MallocngAuxvPtrCell ro maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo ro γ st'.auxvPtr st'.auxvSnap ∗
           ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗ ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
           MappedSet st'.masterDom (OwnedMappedByte st'))))) hcl ?_) ?_)
   · rw [← hApBm, metaHdrBytes_eq_cells]
@@ -497,7 +533,7 @@ theorem sepWP_activate_2a0 [MallocngMultiPlacement]
       wp_done
   · intro s1 P1 hPc1 hRun1 ⟨_, hD1, hcl1, ⟨_, _, hSp1, hx19_1, hx0_1, hx20_1, hCs1, hProc1, hBrk1⟩, hEnt1⟩
     have hEnt2 := Entails.trans hEnt1 (sepConj_mono_left (stackSlow_to_open s0))
-    exact SepWP.weaken_pre hEnt2 (sepWP_epilogue_26c hWords hRange hcl1 hPc1 hRun1 hSp1 hSp0
+    exact SepWP.weaken_pre hEnt2 (sepWP_epilogue_26c (ro := ro) hWords hRange hcl1 hPc1 hRun1 hSp1 hSp0
       hx19_1 hx0_1 hx20_1 (hCtxEqs.1.trans hAv64.symm) hCs1 hProc1
       (MallocngMappedDelta.mono (by decide) (by omega) (MallocngMappedDelta.trans hDelta hD1))
       hmProps (hBrk1 ▸ hWf') hPres hGrpPost)
@@ -507,7 +543,7 @@ theorem stack64_split_48 {s : State} {sp : BitVec 64} (hSp : s.sp = sp) :
   have h1 : stackAt sp 64 = (memRegion (sp - 64#64) 16 ∗ stackAt sp 48) := stackAt_split_bottom sp 48 16 (by decide)
   rw [h1, stackAt_eq_stackFrameAt sp 48, stackFrameAt_eq_memRegion sp 48]; unfold stackFrame; rw [hSp]
 
-theorem sepWP_mprotect_224 [MallocngMultiPlacement]
+theorem sepWP_mprotect_224 [MallocngMultiPlacement] {ro : Bool}
     {inflight : Nat} {γ : GhostName} {tp brkStart : BitVec 64} {liveCost peakCost peakCount : Nat}
     {st st' : MallocngSt} {ap oldAv oldCnt oldHd oldTl oldAreas : BitVec 64}
     {bv0 bv1 : BitVec 64 → BitVec 8} {errnoVal : BitVec 32} {s0 s : State}
@@ -541,14 +577,14 @@ theorem sepWP_mprotect_224 [MallocngMultiPlacement]
         (StaticFrameA γ maddrs st'.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
           (ap ↦ₙ List.replicate 4096 0#8) ∗
           CtxCells maddrs.ctx { st'.ctx with availMeta := oldAv, availMetaCount := oldCnt, availMetaAreaCount := st'.ctx.availMetaAreaCount + 1#64, metaAreaHead := oldHd, metaAreaTail := oldTl, availMetaAreas := oldAreas } ∗
-          ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+          MallocngAuxvPtrCell ro maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo ro γ st'.auxvPtr st'.auxvSnap ∗
           ByteMap st'.masterDom (OwnedRwByte st) bv0 ∗ ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
           MappedSet st'.masterDom (OwnedMappedByte st'))))
-      (AllocMetaPlacedPost inflight γ tp brkStart liveCost peakCost peakCount st s0)
+      (AllocMetaPlacedPost (ro := ro) inflight γ tp brkStart liveCost peakCost peakCount st s0)
       (fun sf => ⌜MallocngPlacedOomCond msvc 1 (allocMetaPlacedByteBound peakCount) s0 sf⌝) := by
   let P_rest := StaticFrameA γ maddrs st'.liveMap ∗
     CtxCells maddrs.ctx { st'.ctx with availMeta := oldAv, availMetaCount := oldCnt, availMetaAreaCount := st'.ctx.availMetaAreaCount + 1#64, metaAreaHead := oldHd, metaAreaTail := oldTl, availMetaAreas := oldAreas } ∗
-    ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+    MallocngAuxvPtrCell ro maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo ro γ st'.auxvPtr st'.auxvSnap ∗
     ByteMap st'.masterDom (OwnedRwByte st) bv0 ∗ ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
     MappedSet st'.masterDom (OwnedMappedByte st')
   let retPc := mbase 7 + (reloc_call_off% blk07Relocs "mprotect" + 4#64)
@@ -621,7 +657,7 @@ theorem sepWP_mprotect_224 [MallocngMultiPlacement]
           (MallocngMappedDelta.trans (MallocngMappedDelta.trans (MallocngMappedDelta.trans hDelta hD1) hDCall) hD3)
         all_goals omega
       exact SepWP.weaken_pre (Entails.trans hEnt3 (by dsimp only [P_rest]; sep_frame))
-        (sepWP_activate_2a0 hWords hRange hcl3 hPc3 hRun3 hSp3 hSp0
+        (sepWP_activate_2a0 (ro := ro) hWords hRange hcl3 hPc3 hRun3 hSp3 hSp0
           hx20_3 hx21_3 hCs3 hProc3 hDTot hCtxEqs hTailBm hNilBv hApBm hmProps (hBrk3 ▸ hWf') hPres hGrpPost)
 
 theorem metaAreas_ctx_eqs {inflight : Nat} {base brkStart brk : BitVec 64} {liveCost peakCost : Nat}

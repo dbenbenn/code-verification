@@ -9,12 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.MacCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.AddressesBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyMacWithAddressesBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.MacCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Mac.AddressesBudget
+import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudget
+import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyMacWithAddressesBudget
 import ProofLib.SepLogic.WPFrozen
+public import LibsignalBinary.Proofs.TripleRatchet.Hmac.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable `<SignalMessage>::verify_mac_with_addresses` Composition
@@ -24,7 +31,7 @@ Composes the `[LibsignalPlacement]` `RustCliAllocBudget` proofs of `serialize_ad
 `verifyMacWithAddresses_placed_ok_x`, and `verifyMacWithAddresses_placed_cro_ok`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -129,33 +136,6 @@ theorem verifyMacWithAddresses_placed_ok [LibsignalPlacement]
     (ls_subroutine_ok_lscl_of_block
       (computeMac_placed_ok C M A lim H hnew hpk hmemcpy hcompress hdealloc hmemset))
 
-theorem verifyMacWithAddresses_placed_ok_of_rustAllocShimVm [LibsignalPlacement]
-    (C : Crypto) (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (parse : UuidParser) (H : String → Option (State → State))
-    (hparse : subroutine_ok ((blkPC_61).rebase (blkPl_61).base H) (lsmpl.base 206)
-      (withLsCodeLoaded lsmpl (parseSidCodeBudgetSpec parse)))
-    (hnew : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 114)
-      (withLsCodeLoaded lsmpl (newFromSliceBudgetSpec C.F)))
-    (hpk : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 205)
-      (withLsCodeLoaded lsmpl (publicKeySerializeSpec M A lim)))
-    (hbb_raw : subroutine_ok ((blkPC_62).rebase (blkPl_62).base H)
-      (lsρ lsBlackBoxU8Sym) (withVmPreserved blackBoxSpec))
-    (hshim : HookSat H lsMacRustNoAllocShimSym rustAllocShimVmSpec)
-    (halloc : HookSat H lsMacRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : HookSat H lsMacRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hmemcpy : HookSat H lsMacMemcpySym sessionMemcpyRegionBudgetSpec)
-    (hcompress : HookSat H lsMacCompress256Sym (compress256BudgetSpec C.F))
-    (hmemset : HookSat H lsMacMemsetSym sessionMemsetRegionBudgetSpec) :
-    subroutine_ok ((blkPC_62).rebase (blkPl_62).base H)
-      (blkPl_62).base
-      (withLsCodeLoaded lsmpl (verifyMacWithAddressesPlacedSpec M A lim C.F parse)) :=
-  verifyMacWithAddresses_placed_ok_of_compute C M A lim parse H
-    hdealloc hbb_raw
-    (ls_subroutine_ok_lscl_of_block
-      (serialize_addresses_placed_ok_of_rustAllocShimVm hparse hshim halloc))
-    (ls_subroutine_ok_lscl_of_block
-      (computeMac_placed_ok C M A lim H hnew hpk hmemcpy hcompress hdealloc hmemset))
-
 theorem verifyMacWithAddresses_placed_ok_x [LibsignalPlacement]
     (C : Crypto) (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State))
@@ -179,33 +159,6 @@ theorem verifyMacWithAddresses_placed_ok_x [LibsignalPlacement]
   verifyMacWithAddresses_placed_ok_of_compute_x C M A lim uuidTryParse H
     hdealloc hbb_raw
     (ls_subroutine_ok_lscl_of_block (serialize_addresses_placed_ok_x hparse hshim halloc))
-    (ls_subroutine_ok_lscl_of_block
-      (computeMac_placed_ok_x C M A lim H hnew hpk hmemcpy hcompress hdealloc hmemset))
-
-theorem verifyMacWithAddresses_placed_ok_x_of_rustAllocShimVm [LibsignalPlacement]
-    (C : Crypto) (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (H : String → Option (State → State))
-    (hparse : subroutine_ok ((blkPC_61).rebase (blkPl_61).base H) (lsmpl.base 206)
-      (withLsCodeLoaded lsmpl (parseSidCodeStackBudgetSpec extHookStack)))
-    (hnew : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 114)
-      (withLsCodeLoaded lsmpl (newFromSliceBudgetSpec C.F)))
-    (hpk : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 205)
-      (withLsCodeLoaded lsmpl (publicKeySerializeSpecX M A lim)))
-    (hbb_raw : subroutine_ok ((blkPC_62).rebase (blkPl_62).base H) (lsρ lsBlackBoxU8Sym)
-      (withStack blackBoxU8BudgetSpec extHookStack))
-    (hshim : HookSat H lsMacRustNoAllocShimSym rustAllocShimVmSpec)
-    (halloc : HookSat H lsMacRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : HookSat H lsMacRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hmemcpy : HookSat H lsMacMemcpySym sessionMemcpyRegionBudgetSpec)
-    (hcompress : HookSat H lsMacCompress256Sym (compress256BudgetSpec C.F))
-    (hmemset : HookSat H lsMacMemsetSym sessionMemsetRegionBudgetSpec) :
-    subroutine_ok ((blkPC_62).rebase (blkPl_62).base H)
-      (blkPl_62).base
-      (withLsCodeLoaded lsmpl (verifyMacWithAddressesPlacedSpecX M A lim C.F uuidTryParse)) :=
-  verifyMacWithAddresses_placed_ok_of_compute_x C M A lim uuidTryParse H
-    hdealloc hbb_raw
-    (ls_subroutine_ok_lscl_of_block
-      (serialize_addresses_placed_ok_x_of_rustAllocShimVm hparse hshim halloc))
     (ls_subroutine_ok_lscl_of_block
       (computeMac_placed_ok_x C M A lim H hnew hpk hmemcpy hcompress hdealloc hmemset))
 
@@ -233,34 +186,6 @@ theorem verifyMacWithAddresses_placed_cro_ok [LibsignalPlacement]
     hdealloc hbb_raw
     (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
       (ls_subroutine_ok_lscl_of_block (serialize_addresses_placed_ok hparse hshim halloc)))
-    (keys_ls_subroutine_ok_of_block_cro
-      (computeMac_placed_cro_ok C M A lim H hnew hpk hmemcpy hcompress hdealloc hmemset))
-
-theorem verifyMacWithAddresses_placed_cro_ok_of_rustAllocShimVm [LibsignalPlacement]
-    (C : Crypto) (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (parse : UuidParser) (H : String → Option (State → State))
-    (hparse : subroutine_ok ((blkPC_61).rebase (blkPl_61).base H) (lsmpl.base 206)
-      (withLsCodeLoaded lsmpl (parseSidCodeBudgetSpec parse)))
-    (hnew : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 114)
-      (withLsCodeRoLoaded lsmpl (newFromSliceBudgetSpec C.F)))
-    (hpk : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 205)
-      (withLsCodeRoLoaded lsmpl (publicKeySerializeSpec M A lim)))
-    (hbb_raw : subroutine_ok ((blkPC_62).rebase (blkPl_62).base H)
-      (lsρ lsBlackBoxU8Sym) (withVmPreserved blackBoxSpec))
-    (hshim : HookSat H lsMacRustNoAllocShimSym rustAllocShimVmSpec)
-    (halloc : HookSat H lsMacRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : HookSat H lsMacRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hmemcpy : HookSat H lsMacMemcpySym sessionMemcpyRegionBudgetSpec)
-    (hcompress : HookSat H lsMacCompress256Sym (compress256BudgetSpec C.F))
-    (hmemset : HookSat H lsMacMemsetSym sessionMemsetRegionBudgetSpec) :
-    subroutine_ok ((blkPC_62).rebase (blkPl_62).base H)
-      (blkPl_62).base
-      (withLsCodeRoLoaded lsmpl (verifyMacWithAddressesPlacedSpec M A lim C.F parse)) :=
-  verifyMacWithAddresses_placed_cro_ok_of_compute C M A lim parse H
-    hdealloc hbb_raw
-    (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
-      (ls_subroutine_ok_lscl_of_block
-        (serialize_addresses_placed_ok_of_rustAllocShimVm hparse hshim halloc)))
     (keys_ls_subroutine_ok_of_block_cro
       (computeMac_placed_cro_ok C M A lim H hnew hpk hmemcpy hcompress hdealloc hmemset))
 

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled1Placed
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled2
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampledPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1Placed
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampledPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -25,6 +25,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled3
 import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable Inlined `.keysUnsampled` Arm (`+2588..+3068` and Top-Level Arm, Block 124)
@@ -33,7 +34,7 @@ Verifies `step_keysUnsampled_2588_to_3068_placed` and `step_send_arm_keysUnsampl
 (`+372..+3068`) inside Block 124 (`spqr::send::<HookRng>`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -64,7 +65,7 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
   DoReserveNorm.readReg32_setPC_pre DoReserveNorm.readReg32_setMem_setPC_pre
   DoReserveNorm.readReg_setPC_pre DoReserveNorm.readReg_setMem_setPC_pre
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [-arm64_norm]
   Kdf.HkdfToSliceProof.sp_sub_688_eq_hsp
   Kdf.HkdfToSliceProof.sp_add_neg688_eq_hsp
@@ -81,7 +82,7 @@ abbrev spqrLogLevelZeroPlacedAt : SepProp :=
 
 /-- `<PolyEncoder as Encoder>::encode_bytes` (Block `417`) meets
     `withLsCodeRoLoaded lsmpl (encodeBytesSpecX A)` on `spqrSendPlacedProg ext`. -/
-def EncodeBytesPlacedOkX (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def EncodeBytesPlacedOkX (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 417)
     (withLsCodeRoLoaded lsmpl (encodeBytesSpecX A))
 
@@ -325,12 +326,12 @@ theorem step_keysUnsampled_2588_to_3068_placed {F : ShaCompress}
       (by wp_norm_goal) (by simp only [wp_norm, arm64_norm, *]) (by simp only [State.sp, arm64_norm, *])
       hsp_align (by simp only [wp_norm, arm64_norm, *])
       (ret_pc := (blkPl_124).base + 2672#64) (by simp only [Reg.lr, wp_norm, arm64_norm, *])
-      (by dsimp only [polyNextChunkPlacedSpec, polyNextChunkSpec]; ac_rfl)
+      (by dsimp only [polyNextChunkPlacedSpec]; ac_rfl)
       (by simp only [hnc, Reg.x8, Reg.x0, wp_norm, arm64_norm, *])
       (by dsimp only [polyEncoderSize, chunkSize]; ac_rfl)
       (fun _ _ => rfl)
       (fun sf => polyNextChunkPlaced_onPanic_of_ok _ hnc _ sf)
-      (by intro sf; dsimp only [polyNextChunkPlacedSpec, polyNextChunkSpec]; ac_rfl) ?_
+      (by intro sf; dsimp only [polyNextChunkPlacedSpec]; ac_rfl) ?_
     intro sm2 hpc_sm2 hrun_sm2 hsp_sm2 htr_sm2 hinv_sm2
       hx19_sm2 hx20_sm2 hx21_sm2 hx22_sm2 hx23_sm2 hx24_sm2 _ hx26_sm2 _ hx28_sm2 hvregs_sm2
     simp only [wp_norm, arm64_norm, *] at htr_sm2 hx19_sm2 hx20_sm2 hx21_sm2 hx22_sm2 hx23_sm2 hx24_sm2 hx26_sm2 hx28_sm2 hvregs_sm2

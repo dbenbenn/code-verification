@@ -9,14 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.DoReservePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FinishGrowPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.DoReservePlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FinishGrowPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FetchPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable `RawVecInner::do_reserve_and_handle [local#7]` (Block `460`)
@@ -26,7 +29,7 @@ Proves `do_reserve_2_raw32_placed_ok`, `do_reserve_2_raw1_placed_ok`,
 under `RustCliAllocBudget M` and `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

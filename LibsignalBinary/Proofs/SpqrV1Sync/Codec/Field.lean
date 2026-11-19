@@ -15,6 +15,9 @@ import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Varint
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import ProofLib.BV.WidthNorm
 import VCVio.Prelude.Core
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append
+public import LibsignalBinary.Specifications.LibsignalSpqrV1.MlKem
+public import LibsignalBinary.Specifications.LibsignalSpqrV1.Proto
 
 /-!
 # Prost Field Key and Scalar Round-Trip Lemmas
@@ -23,7 +26,7 @@ Round-trip lemmas showing that each `Proto.merge*` scalar and bytes decoder inve
 corresponding `Proto.encode*Field` writer on the field payload with arbitrary trailing bytes.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.Codec
 
@@ -96,31 +99,6 @@ theorem mergeUint32_encode (v : BitVec 32) (rest : Bytes) :
   congr 2
   apply BitVec.eq_of_toNat_eq
   simp
-
-theorem mergeUint64_encode (v : BitVec 64) (rest : Bytes) :
-    Proto.mergeUint64 .varint (Proto.encodeVarint v ++ rest) = .ok (v, rest) := by
-  simp only [Proto.mergeUint64, Proto.checkWireType, bne_self_eq_false, Bool.false_eq_true,
-    ↓reduceIte, proto_decodeVarint_encodeVarint, Bind.bind, Except.bind]
-
-/-- Prost encodes `int32` fields by sign-extending to 64 bits before varint encoding. -/
-theorem mergeInt32_encode (v : BitVec 32) (rest : Bytes) :
-    Proto.mergeInt32 .varint (Proto.encodeVarint (v.signExtend 64) ++ rest) = .ok (v, rest) := by
-  simp only [Proto.mergeInt32, Proto.checkWireType, bne_self_eq_false, Bool.false_eq_true,
-    ↓reduceIte, proto_decodeVarint_encodeVarint, Bind.bind, Except.bind]
-  congr 2
-  apply BitVec.eq_of_getLsbD_eq
-  intro i hi
-  simp [BitVec.getLsbD_signExtend, hi]
-  omega
-
-/-- `encodeBoolField` omits `false` and writes `true` as the single byte `1`. -/
-theorem mergeBool_encode_true (rest : Bytes) :
-    Proto.mergeBool .varint (1#8 :: rest) = .ok (true, rest) := by
-  have h : Proto.encodeVarint 1#64 = [1#8] := by decide
-  rw [show (1#8 :: rest) = Proto.encodeVarint 1#64 ++ rest by rw [h]; rfl]
-  simp only [Proto.mergeBool, Proto.checkWireType, bne_self_eq_false, Bool.false_eq_true,
-    ↓reduceIte, proto_decodeVarint_encodeVarint, Bind.bind, Except.bind]
-  rfl
 
 /-! ## Field writers after the key -/
 

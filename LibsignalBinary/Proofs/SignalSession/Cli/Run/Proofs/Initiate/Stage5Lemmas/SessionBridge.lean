@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDerive
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDerive -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Defs
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAlice
 import LibsignalBinary.Proofs.E2E.Pqxdh.TopLevel.SessionInitiatePostCommon
 import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RunEnvCommon
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.ModelBridge
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Stage 5 `SessionState` Lenses, `SessionRecord` Promotion, and Model Agreement
@@ -24,12 +25,10 @@ promotion and `< 2 ^ 32` serialized length bound (`sessionRecord_promote_accept`
 accept-path agreement, and post-store `SessionRecord` unpack (`sessionRecord_unpack_drop`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage5Lemmas
 
@@ -149,7 +148,7 @@ theorem initiateKeys_hdr_props {X : UnreachedPqxdhPrimitives} {W : PEParams}
 
 /-! ## `SessionState` Field Lenses -/
 
-def pack4LE (b0 b1 b2 b3 : BitVec 8) : BitVec 32 :=
+@[expose] def pack4LE (b0 b1 b2 b3 : BitVec 8) : BitVec 32 :=
   b0.zeroExtend 32 ||| (b1.zeroExtend 32 <<< 8) |||
     (b2.zeroExtend 32 <<< 16) ||| (b3.zeroExtend 32 <<< 24)
 

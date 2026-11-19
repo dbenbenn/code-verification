@@ -9,15 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbChunked
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
+import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbChunked
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
 import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Proof
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbLeaf
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Varint
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Tight Budget Pool & Canonical Codec Helpers for `Chunked.KeysSampled::merge` (Block `304`)
@@ -27,7 +29,7 @@ step projections, `bytesMergeEventsCore` tight 2-op / `19,578` B cost lemma, and
 `tlb_lenPrefixed` round-trip evaluations for Block `304`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -62,7 +64,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
 
 /-- Tight `SpqrTightEvs ops cum 2560`-backed allocator pool assertion from initial cost-model
 state `st`. -/
-def b304PoolAt {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def b304PoolAt {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) (ops cum : Nat) (s : State) : SepProp :=
   ∃∗ evs : List AllocEvent, ⌜SpqrTightEvs ops cum 2560 evs⌝ ∗ A.pool lim (M.stepEvents evs st) s
 
@@ -79,12 +81,6 @@ theorem b304PoolAt_eq_of_vmPreserved {M : AllocCostModel} {A : RustCliAllocBudge
     (hvm : VmPreserved s1 s2) :
     b304PoolAt A lim st ops cum s2 = b304PoolAt A lim st ops cum s1 := by
   simp only [b304PoolAt, A.pool_of_vmPreserved hvm]
-
-theorem b304PoolAt_of_vmPreserved {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {st : M.σ} {ops cum : Nat} {s1 s2 : State}
-    (hvm : VmPreserved s1 s2) :
-    b304PoolAt A lim st ops cum s1 ⊢ b304PoolAt A lim st ops cum s2 :=
-  Entails.of_eq (b304PoolAt_eq_of_vmPreserved hvm).symm
 
 theorem b304PoolAt_mono {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) {ops₁ ops₂ cum₁ cum₂ : Nat} (hops : ops₁ ≤ ops₂) (hcum : cum₁ ≤ cum₂)

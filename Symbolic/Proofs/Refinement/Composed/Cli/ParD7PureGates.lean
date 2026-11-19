@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
 
 /-!
 # Flat-Bundle Directory Round-Trip and Injectivity Lemmas
@@ -18,7 +18,7 @@ Proves field-parser round-trip lemmas, flatness and `parseBundleFiles` round-tri
 `publicBundleOf` directories, injectivity of `publicBundleOf`, and reflexivity of `ScrubAgree`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

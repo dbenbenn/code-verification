@@ -11,16 +11,18 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.UnchunkedRecvEk
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::unchunked::send_ct::Ct1Sent>::recv_ek` (Budget-Threaded, Block `338`)
@@ -29,7 +31,7 @@ Budget-threaded `[LibsignalPlacement]` contracts on `lsProg_338 (Rust.withPanics
 instructions) under `UnchunkedCt1SentRecvEkEnv` (`FreeOnlyEvs`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -80,6 +82,9 @@ open LibsignalBinary.Heap (
 )
 open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (
+  hookSat_withLsRet lsRetAddr624_of_lr_eq_blockPlacement_base_add withLsRet
+)
 open LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsBudget (
   UnchunkedCt1SentRecvEkEnv UnchunkedCt1SentRecvEkPlacedOkX
   unchunkedCt1SentRecvEkSpec unchunkedCt1SentRecvEkSpecOfEnv
@@ -202,8 +207,9 @@ private theorem sepWP_close_recv_ek {M : AllocCostModel} {A : RustCliAllocBudget
   refine Entails.pure_left fun htr => ?_
   exact Entails.pure_right ⟨htr, hEnv evs hevs⟩ (Entails.refl _)
 
-private theorem call_validatePk_vm {K : MlKem} {prog : Program} {entry ret_pc target_pc : BitVec 64}
-    (hcall : subroutine_ok prog entry (withVmPreserved (mlkemValidatePkSpec K)))
+private theorem call_validatePk_vm [LibsignalPlacement] {K : MlKem} {prog : Program}
+    {entry ret_pc target_pc : BitVec 64}
+    (hcall : subroutine_ok prog entry (withLsRet (withVmPreserved (mlkemValidatePkSpec K))))
     (hdrPtr ekPtr : BitVec 64) (hdr ek : Bytes)
     {s0 s : State} {sp_call : BitVec 64} {P Frame : SepProp}
     {post : State → SepProp → Prop}
@@ -212,6 +218,7 @@ private theorem call_validatePk_vm {K : MlKem} {prog : Program} {entry ret_pc ta
     (hsp : s.sp = sp_call)
     (hsp_align : (sp_call &&& 15#64 == 0#64) = true)
     (hlr : s.readReg64 Reg.lr = ret_pc)
+    (hlr624 : LsRetAddr624 (s.readReg64 Reg.lr))
     (htrace : s.trace = s0.trace)
     (hx0 : s.readReg64 Reg.x0 = hdrPtr)
     (hx1 : (s.readReg64 Reg.x1).toNat = hdr.length)
@@ -231,10 +238,12 @@ private theorem call_validatePk_vm {K : MlKem} {prog : Program} {entry ret_pc ta
     (fun sf hpc_sf hrun_sf hsp_sf hcs_sf => ?_)
   · intro R hm
     rw [hsplit] at hm
-    dsimp only [withVmPreserved, mlkemValidatePkSpec]
+    dsimp only [withLsRet, withVmPreserved, mlkemValidatePkSpec]
     rw [hsp, sepConj_assoc, satisfies_pure_sepConj]
+    refine ⟨hlr624, ?_⟩
+    rw [sepConj_assoc, satisfies_pure_sepConj]
     exact ⟨⟨hx0, hx1, hx2, hx3⟩, by simpa only [sepConj_assoc] using hm⟩
-  · dsimp only [withVmPreserved, mlkemValidatePkSpec]
+  · dsimp only [withLsRet, withVmPreserved, mlkemValidatePkSpec]
     rw [hsp]
     simp only [sepConj_assoc]
     refine SepWP.pure_elim fun hvm => ?_
@@ -901,9 +910,9 @@ private theorem unchunked_recv_ek_err_branch_placed [LibsignalPlacement]
 
 /-! ## 5. Public Budget-Threaded Contracts (Block `338`, 99 instructions) -/
 
-/-- Envelope-parametric `[LibsignalPlacement]` contract for
+/-- `withLsRet`-narrowed envelope-parametric `[LibsignalPlacement]` contract for
     `<spqr::v1::unchunked::send_ct::Ct1Sent>::recv_ek` (Block `338`, 99 instructions). -/
-theorem unchunked_ct1_sent_recv_ek_placed_ok_x_of_env [LibsignalPlacement]
+theorem unchunked_ct1_sent_recv_ek_placed_ok_x_of_env_withLsRet [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {F : ShaCompress} {K : MlKem}
     {Env : UnchunkedCt1SentRecvEkGhost F → List AllocEvent → Prop}
@@ -913,7 +922,7 @@ theorem unchunked_ct1_sent_recv_ek_placed_ok_x_of_env [LibsignalPlacement]
       (rustCliDeallocBudgetSpec M A lim))
     (hval_pk : HookSat (Rust.withPanics ext)
       "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes"
-      (withVmPreserved (mlkemValidatePkSpec K))) :
+      (withLsRet (withVmPreserved (mlkemValidatePkSpec K)))) :
     subroutine_ok (lsProg_338 (Rust.withPanics ext)) (blkPl_338).base
       (unchunkedCt1SentRecvEkSpecOfEnv M A lim F K Env) := by
   have hdealloc_call : subroutine_ok (lsProg_338 (Rust.withPanics ext))
@@ -922,7 +931,7 @@ theorem unchunked_ct1_sent_recv_ek_placed_ok_x_of_env [LibsignalPlacement]
   have hdealloc_fo := subroutine_ok_deallocFreeOnly hdealloc_call
   have hval_call : subroutine_ok (lsProg_338 (Rust.withPanics ext))
       (lsρ "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes")
-      (withVmPreserved (mlkemValidatePkSpec K)) :=
+      (withLsRet (withVmPreserved (mlkemValidatePkSpec K))) :=
     spqr_hook_ok_of_mem
       (sym := "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes") hval_pk
   simp only [unchunkedCt1SentRecvEkSpecOfEnv, lsProg_338] at hdealloc_fo hval_call ⊢
@@ -998,7 +1007,9 @@ theorem unchunked_ct1_sent_recv_ek_placed_ok_x_of_env [LibsignalPlacement]
     rw [← A.pool_of_vmPreserved hvmc]
     refine call_validatePk_vm hval_call hdrPtr ekPtr x.st.hdr x.ek
       (ret_pc := (blkPl_338).base + 76#64) (sp_call := s0.sp - 208#64)
-      hpcc hrunc hsp_c hfsp_align hlr_c htr_c hx0_c
+      hpcc hrunc hsp_c hfsp_align hlr_c
+      (lsRetAddr624_of_lr_eq_blockPlacement_base_add 338 76#64 hlr_c)
+      htr_c hx0_c
       (by rw [hx1_c, BitVec.toNat_ofNat]; omega)
       hx2_c
       (by rw [hx3_c, BitVec.toNat_ofNat]; omega)
@@ -1063,6 +1074,51 @@ theorem unchunked_ct1_sent_recv_ek_placed_ok_x_of_env [LibsignalPlacement]
       · simp only [arm64_norm, htr1]
       · simp only [arm64_norm, hvregs_f]
       · simp only [arm64_norm, wp_norm]; sep_ac_rfl
+
+/-- Envelope-parametric `[LibsignalPlacement]` contract for
+    `<spqr::v1::unchunked::send_ct::Ct1Sent>::recv_ek` (Block `338`, 99 instructions). -/
+theorem unchunked_ct1_sent_recv_ek_placed_ok_x_of_env [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {F : ShaCompress} {K : MlKem}
+    {Env : UnchunkedCt1SentRecvEkGhost F → List AllocEvent → Prop}
+    {ext : String → Option (State → State)}
+    (hEnv : ∀ x evs, FreeOnlyEvs evs → Env x evs)
+    (hdealloc : HookSat (Rust.withPanics ext) "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc"
+      (rustCliDeallocBudgetSpec M A lim))
+    (hval_pk : HookSat (Rust.withPanics ext)
+      "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes"
+      (withVmPreserved (mlkemValidatePkSpec K))) :
+    subroutine_ok (lsProg_338 (Rust.withPanics ext)) (blkPl_338).base
+      (unchunkedCt1SentRecvEkSpecOfEnv M A lim F K Env) :=
+  unchunked_ct1_sent_recv_ek_placed_ok_x_of_env_withLsRet hEnv hdealloc (hookSat_withLsRet hval_pk)
+
+/-- `withLsRet`-narrowed closed `[LibsignalPlacement]` budget contract for
+    `<spqr::v1::unchunked::send_ct::Ct1Sent>::recv_ek` (Block `338`, 99 instructions). -/
+theorem unchunked_ct1_sent_recv_ek_placed_ok_x_withLsRet [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {F : ShaCompress} {K : MlKem} {ext : String → Option (State → State)}
+    (hdealloc : HookSat (Rust.withPanics ext) "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc"
+      (rustCliDeallocBudgetSpec M A lim))
+    (hval_pk : HookSat (Rust.withPanics ext)
+      "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes"
+      (withLsRet (withVmPreserved (mlkemValidatePkSpec K)))) :
+    UnchunkedCt1SentRecvEkPlacedOkX M A lim F K ext :=
+  unchunked_ct1_sent_recv_ek_placed_ok_x_of_env_withLsRet (fun _ _ h => h) hdealloc hval_pk
+
+/-- `withLsRet`-narrowed `withLsCodeLoaded`-wrapped `[LibsignalPlacement]` budget contract for
+    `<spqr::v1::unchunked::send_ct::Ct1Sent>::recv_ek` (Block `338`). -/
+theorem unchunked_ct1_sent_recv_ek_placed_cl_ok_x_withLsRet [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {F : ShaCompress} {K : MlKem} {ext : String → Option (State → State)}
+    (hdealloc : HookSat (Rust.withPanics ext) "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc"
+      (rustCliDeallocBudgetSpec M A lim))
+    (hval_pk : HookSat (Rust.withPanics ext)
+      "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes"
+      (withLsRet (withVmPreserved (mlkemValidatePkSpec K)))) :
+    subroutine_ok (lsProg_338 (Rust.withPanics ext)) (blkPl_338).base
+      (withLsCodeLoaded lsmpl (unchunkedCt1SentRecvEkSpec M A lim F K)) :=
+  subroutine_ok_withLsCodeLoaded_of_plain
+    (unchunked_ct1_sent_recv_ek_placed_ok_x_withLsRet hdealloc hval_pk)
 
 /-- `withLsCodeLoaded`-wrapped envelope-parametric `[LibsignalPlacement]` contract for
     `<spqr::v1::unchunked::send_ct::Ct1Sent>::recv_ek` (Block `338`). -/

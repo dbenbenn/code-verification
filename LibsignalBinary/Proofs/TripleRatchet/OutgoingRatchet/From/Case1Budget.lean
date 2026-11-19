@@ -9,12 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case1
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.FrameBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case1
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.FrameBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.StdStartup.MemOps
+public import VerifiedLibraries.RustStd.Proofs.ExecSegSym
 
 /-!
 # Budget-Threaded Relocatable `OTR::from_session_state` Case 1 (`st.senderChain = none`)
@@ -23,7 +32,7 @@ Proves the `[LibsignalPlacement]` `RustCliAllocBudget` contract for the `st.send
 branch of `<OutgoingTripleRatchet>::from_session_state`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -103,7 +112,7 @@ theorem otrFrom_case1_placed_ok [LibsignalPlacement] {M : AllocCostModel}
   have hmod2 := congrArg Prod.snd hmod
   have hnopanic : (.error (.invalidSessionStructure .missingSenderChain) :
       Except SignalProtocolError (OutgoingTripleRatchet (List (BitVec 8)))) ≠ .error .panic := by
-    decide
+    nofun
   have hagree : G.AgreeExceptPq G := rfl
   refine finish_otrFrom_placed ⟨ss, G, st, ret⟩ stB G [] FreeOnlyEvs.nil _ _
     hmod1 hmod2 hnopanic hagree (by dsimp only [AllocCostModel.stepEvents]; wp_done) ?_

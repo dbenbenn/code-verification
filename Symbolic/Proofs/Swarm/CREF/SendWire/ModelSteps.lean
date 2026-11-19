@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.SendWire.Ghosts
+public import Symbolic.Proofs.Swarm.CREF.SendWire.Ghosts -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.ALaCarte.Basic
@@ -41,7 +41,7 @@ Proves `ExecTrace` step equations, visible-entry projections, and `ModelRun` pre
 `Move.encryptAbort`, `Move.encryptFail`, and `Move.encrypt` (with or without prekey wrapping).
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -363,7 +363,7 @@ theorem encryptFail_next_cases (me : Participant) (stateIdx coinsLen : Nat) (tr 
     · exact Or.inr ⟨st, encryptFail_next_of_some hst hns⟩
 
 /-- The 7-entry trace resulting from `Move.encrypt me stateIdx coinsLen (tr.length + 2) wrap`. -/
-def encTr (tr : ExecTrace) (me : Participant) (stateIdx coinsLen : Nat) (st : TRState) : ExecTrace :=
+@[expose] def encTr (tr : ExecTrace) (me : Participant) (stateIdx coinsLen : Nat) (st : TRState) : ExecTrace :=
   let m := randTerm tr.length 32
   let coinsTerm := randTerm (tr.length + 1) coinsLen
   let (_, key, _) := Spqr.spqrSend st.spqr coinsTerm
@@ -532,12 +532,12 @@ theorem modelRun_snoc_encrypt {r₀ : ProtocolSetup} {ms : List Move} {p : Parti
 
 /-! ## Visible entries, exposures, and `encTr` invariance -/
 
-def trLayout : VisEventKind → VisByteLayout
+@[expose] def trLayout : VisEventKind → VisByteLayout
   | .send | .recv => .whisper
   | .leak => .leakRecord
   | _ => .single
 
-def trEntry (k : VisEventKind) (t : DY.Bytes) : VisEntry := ⟨k, [t], trLayout k, none⟩
+@[expose] def trEntry (k : VisEventKind) (t : DY.Bytes) : VisEntry := ⟨k, [t], trLayout k, none⟩
 
 theorem vis_encryptAbort {me : Participant} {stateIdx : Nat} {tr tr' : ExecTrace}
     (h : (Move.encryptAbort me stateIdx).next tr = tr') :

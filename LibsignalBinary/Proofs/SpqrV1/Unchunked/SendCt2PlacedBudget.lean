@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Placed
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Placed -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 import ProofLib.Placed.OpcodeExclusion
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `<Ct1SentEkReceived>::send_ct2`: Specs, Relocatable Loops, and Prologue
@@ -24,7 +25,7 @@ and `[LibsignalPlacement]` `RustCliAllocBudget` contracts, and lifts the Issue-1
 and Segment 1 prologue with `VmPreserved` and pool synchronization.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -59,21 +60,21 @@ abbrev Ct1SentEkReceived :=
 /-! ## Allocator Event Envelopes -/
 
 /-- Conditional 2080-byte workspace allocation in Segment 2 when `issue1275NeedsFlip` triggers. -/
-def sendCt2FlipAllocEvents (es : Bytes) : List AllocEvent :=
+@[expose] def sendCt2FlipAllocEvents (es : Bytes) : List AllocEvent :=
   if issue1275NeedsFlip ((es.drop 1536).take 512) then rustAllocEvents 2080 1 else []
 
 /-- Conditional 2080-byte workspace deallocation in Segment 3 when `issue1275NeedsFlip` triggers. -/
-def sendCt2FlipDeallocEvents (es : Bytes) : List AllocEvent :=
+@[expose] def sendCt2FlipDeallocEvents (es : Bytes) : List AllocEvent :=
   if issue1275NeedsFlip ((es.drop 1536).take 512) then rustDeallocEvents 2080 1 else []
 
 /-- Combined allocator events across Segments 2 and 3: optional 2080-byte `es` flip workspace
     allocation, 128-byte `ct2` buffer allocation, and optional 2080-byte workspace deallocation. -/
-def sendCt2Seg23Events (es : Bytes) : List AllocEvent :=
+@[expose] def sendCt2Seg23Events (es : Bytes) : List AllocEvent :=
   sendCt2FlipAllocEvents es ++ rustAllocEvents 128 1 ++ sendCt2FlipDeallocEvents es
 
 /-- Slow-path allocator events of `ct1.reserve(128)` (`do_reserve_and_handle` at capacity `cap`
     and length `ct1Len`). -/
-def sendCt2Reserve128Events (cap : BitVec 64) (ct1Len : Nat) : List AllocEvent :=
+@[expose] def sendCt2Reserve128Events (cap : BitVec 64) (ct1Len : Nat) : List AllocEvent :=
   let newCap := reserveCap cap.toNat ct1Len 128
   if cap = 0#64 then rustAllocEvents newCap 1
   else rustReallocEvents cap.toNat newCap 1
@@ -81,7 +82,7 @@ def sendCt2Reserve128Events (cap : BitVec 64) (ct1Len : Nat) : List AllocEvent :
 /-- Allocator event envelope of Segment 4 (`ct1.reserve(128)`): either `[]` on the spare-capacity
     fast path (`128 ≤ cap - ct1Len`), or `sendCt2Reserve128Events cap ct1Len` on the slow path
     (`ct1Len ≤ cap.toNat ≤ ct1Len + 127`). -/
-def SendCt2Reserve128Env (ct1Len : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def SendCt2Reserve128Env (ct1Len : Nat) (evs : List AllocEvent) : Prop :=
   evs = [] ∨
   ∃ cap : BitVec 64, ct1Len ≤ cap.toNat ∧ cap.toNat ≤ ct1Len + 127 ∧
     evs = sendCt2Reserve128Events cap ct1Len
@@ -96,12 +97,12 @@ theorem SendCt2Reserve128Env.slow {cap : BitVec 64} {ct1Len : Nat}
 
 /-- Allocation events in Segment 5a prior to trailing buffer drops:
     `slice_concat_3` (`35 + 8 + (ct1Len + 128)` bytes) followed by `libcrux_hmac::hmac`. -/
-def sendCt2ConcatHmacEvents (ct1Len : Nat) : List AllocEvent :=
+@[expose] def sendCt2ConcatHmacEvents (ct1Len : Nat) : List AllocEvent :=
   rustAllocEvents (35 + 8 + (ct1Len + 128)) 1 ++ libcruxHmacSha256Events
 
 /-- Allocation-phase prefix envelope of `<Ct1SentEkReceived>::send_ct2` (Segments 2–5a up to
     `libcrux_hmac::hmac`), prior to the four trailing `FreeOnlyEvs` buffer deallocations. -/
-def UnchunkedSendCt2PreEnv {F : ShaCompress} (x : UnchunkedSendCt2Ghost F)
+@[expose] def UnchunkedSendCt2PreEnv {F : ShaCompress} (x : UnchunkedSendCt2Ghost F)
     (evs : List AllocEvent) : Prop :=
   ∃ evsRes : List AllocEvent,
     SendCt2Reserve128Env x.st.ct1.length evsRes ∧
@@ -110,7 +111,7 @@ def UnchunkedSendCt2PreEnv {F : ShaCompress} (x : UnchunkedSendCt2Ghost F)
 /-- Postcondition allocator event envelope of `<Ct1SentEkReceived>::send_ct2` (Block `347`):
     an allocation prefix in `UnchunkedSendCt2PreEnv x` followed by `FreeOnlyEvs` from dropping
     the temporary MAC input buffer and consumed `ct1`, `es`, and `ek` `Vec<u8>` buffers. -/
-def UnchunkedSendCt2PostEnv {F : ShaCompress} (x : UnchunkedSendCt2Ghost F)
+@[expose] def UnchunkedSendCt2PostEnv {F : ShaCompress} (x : UnchunkedSendCt2Ghost F)
     (evs : List AllocEvent) : Prop :=
   ∃ evsPre evsFree : List AllocEvent,
     UnchunkedSendCt2PreEnv x evsPre ∧ FreeOnlyEvs evsFree ∧ evs = evsPre ++ evsFree
@@ -126,7 +127,7 @@ theorem UnchunkedSendCt2PostEnv.of_pre {F : ShaCompress} {x : UnchunkedSendCt2Gh
 
 /-- Two-envelope (`PreEnv` / `PostEnv`) budget-threaded relocatable specification of
     `<spqr::v1::unchunked::send_ct::Ct1SentEkReceived>::send_ct2` (Block `347`). -/
-def unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfPrePostEnv [LibsignalPlacement]
+@[expose] def unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfPrePostEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (K : MlKem)
     (PreEnv PostEnv : UnchunkedSendCt2Ghost F → List AllocEvent → Prop) :
@@ -164,7 +165,7 @@ abbrev unchunkedCt1SentEkReceivedSendCt2PlacedSpec [LibsignalPlacement]
   unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfPrePostEnv M A lim F K
     UnchunkedSendCt2PreEnv UnchunkedSendCt2PostEnv
 
-def UnchunkedCt1SentEkReceivedSendCt2PlacedOk [LibsignalPlacement]
+@[expose] def UnchunkedCt1SentEkReceivedSendCt2PlacedOk [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (K : MlKem) (H : LibsignalHooks) : Prop :=
   subroutine_ok ((blkPC_347).rebase (blkPl_347).base H) (blkPl_347).base
@@ -788,10 +789,10 @@ theorem send_ct2_prologue_to_scan_placed [LibsignalPlacement] {H : LibsignalHook
         VmPreserved s0 sf) := by
   rcases s0 with
     ⟨regs, vregs, sp, pc, pstate, mem, tpidrEl0, fpsr, brkStart, brk, fs, oracle, oracleIdx,
-     exclFails, trace, status, symtab, sigActions, sigAltStack, physMemAvail⟩
+     exclFails, trace, status, symtab, sigActions, sigAltStack, sigMask, sigPending, physMemAvail⟩
   let s0 : State :=
     ⟨regs, vregs, sp, pc, pstate, mem, tpidrEl0, fpsr, brkStart, brk, fs, oracle, oracleIdx,
-     exclFails, trace, status, symtab, sigActions, sigAltStack, physMemAvail⟩
+     exclFails, trace, status, symtab, sigActions, sigAltStack, sigMask, sigPending, physMemAvail⟩
   refine sepWP_lift_347_vm
     (fun m_strip =>
       CryptoVerification.SpqrV1.Unchunked.send_ct2_prologue_to_scan_placed (H := hooksException H)

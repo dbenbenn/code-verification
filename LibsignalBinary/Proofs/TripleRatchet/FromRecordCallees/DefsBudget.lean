@@ -12,8 +12,9 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Defs
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Budget-Threaded `try_decrypt_from_record` Callee Specifications
@@ -25,7 +26,7 @@ Defines budget-threaded specifications over `RustCliAllocBudget M` for:
 4. `growOneSpeCondSpec` and `growOneSpeSpec` (block `75`, `(elemSz, minCap, align) = (48, 4, 8)`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -53,7 +54,7 @@ open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 
 /-- Budget-threaded specification of `core::ptr::drop_glue::<SessionStructure> [local#2]`
     (Block `139`, `FreeOnlyEvs`, `0` `FitsEnv`). -/
-def dropSessionStructureLocal2Spec [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def dropSessionStructureLocal2Spec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropSessionStructureGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -70,7 +71,7 @@ def dropSessionStructureLocal2Spec [LibsignalPlacement] (M : AllocCostModel)
 
 /-- Budget-threaded specification of `core::ptr::drop_glue::<SessionStructure> [local#1]`
     (Block `13`, `FreeOnlyEvs`, `0` `FitsEnv`). -/
-def dropSessionStructureLocal1Spec [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def dropSessionStructureLocal1Spec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropSessionStructureGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -87,7 +88,7 @@ def dropSessionStructureLocal1Spec [LibsignalPlacement] (M : AllocCostModel)
 
 /-- Budget-threaded specification of `<SessionRecord>::set_session_state`
     (Block `80`, `FreeOnlyEvs`, `evs = []` when `x.cur = none`). -/
-def setSessionStateSpec (M : AllocCostModel)
+@[expose] def setSessionStateSpec (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (SetSessionStateGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -109,7 +110,7 @@ abbrev growOneSpeEvents (cap : BitVec 64) : List AllocEvent :=
   rawVecGrowEvents 48 4 8 cap
 
 /-- Allocation envelope for `RawVec<SignalProtocolError>::grow_one`. -/
-def GrowOneSpeEnv (cap : BitVec 64) (evs : List AllocEvent) : Prop :=
+@[expose] def GrowOneSpeEnv (cap : BitVec 64) (evs : List AllocEvent) : Prop :=
   (cap = 0#64 ∧ evs = rustAllocEvents (4 * 48) 8) ∨
   (cap ≠ 0#64 ∧ evs = rustReallocEvents (cap.toNat * 48) (max (2 * cap.toNat) 4 * 48) 8)
 
@@ -130,7 +131,7 @@ theorem growOneSpeEvents_eq_of_env {cap : BitVec 64} {evs : List AllocEvent}
 
 /-- Conditional-OOM budget-threaded contract for `RawVec<SignalProtocolError>::grow_one`
     (retaining the explicit `CapacityOverflow` / `NullAllowed` panic and conditional `onOom`). -/
-def growOneSpeCondSpec (M : AllocCostModel)
+@[expose] def growOneSpeCondSpec (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (GrowGhost × M.σ) where
   pre := fun ((v, cap, ptr, bs), st) s =>
@@ -162,7 +163,7 @@ def growOneSpeCondSpec (M : AllocCostModel)
 /-- Envelope total-correctness (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`) contract for
     `RawVec<SignalProtocolError>::grow_one` under `max (2 * cap.toNat) 4 * 48 + 8 ≤ 2 ^ 63`
     and `FitsEnv M lim st (GrowOneSpeEnv cap)`. -/
-def growOneSpeSpec (M : AllocCostModel)
+@[expose] def growOneSpeSpec (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (GrowGhost × M.σ) where
   pre := fun ((v, cap, ptr, bs), st) s =>

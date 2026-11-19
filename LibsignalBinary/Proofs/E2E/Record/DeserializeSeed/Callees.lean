@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.Defs
-public import LibsignalBinary.Proofs.E2E.Record.DeserializeSeedTop
+public import LibsignalBinary.Proofs.E2E.Record.DeserializeSeedTop -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.Core
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.DoReserve
 import LibsignalBinary.Proofs.TripleRatchet.Bytes.Drops
@@ -19,7 +19,7 @@ import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.Instances
 import LibsignalBinary.Proofs.TripleRatchet.Glue
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32Merge
-import LibsignalBinary.Proofs.TripleRatchet.RunAssembly.TryFromAssembly
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop
 
 /-!
 # Callee Bundle Discharge for Seed `SessionRecord::deserialize`
@@ -29,7 +29,7 @@ Discharges `DeserializeCallees` (`deserializeCallees_ok_of_hooks`) and its reloc
 `int32::merge`, `bytes::merge`, and `RawVec<Chain>::grow_one`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.DeserializeSeed
 
@@ -39,21 +39,6 @@ open CryptoVerification.E2E.Record
 open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalTripleRatchetRepr
 open CryptoVerification.E2E.Record
 open CryptoVerification.LibsignalSession.NonVacuityWitness
-
-/-- Discharges `DeserializeCallees` on `tripleRatchetProgAt` for any hook table satisfying
-`AllocHooks A0 abs`. -/
-theorem deserializeCallees_ok_of_hooks (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (hA : AllocHooks A0 abs) :
-    DeserializeCallees C ctl abs := by
-  have himg := E2E.Record.loads_sessionImg0
-  refine ⟨Prost.decodeVarintSlice_ok hA, Prost.int32Merge_ok hA, ?_,
-    ConsumeMessageKeyTransfer.growOneChain_ok himg hA⟩
-  exact Prost.bytes_merge_ok himg hA hA (TryFromAssembly.varintSlow_ok hA)
-    (Prost.decodeVarintSlice_ok hA) (Glue.bytes_from_vec_inImage_ok himg) (do_reserve_ok hA)
-    bytesVtableSlotLoaded (fun p v => Glue.bytes_vtable_drop_inImage_ok hA p v v.length)
-
-/-! ## Relocatable `[LibsignalPlacement]` Callee Bundle -/
 
 section Placed
 

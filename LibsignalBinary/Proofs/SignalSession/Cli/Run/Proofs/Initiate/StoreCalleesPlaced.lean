@@ -9,17 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.Existing
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.ShimsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdKeyPairPollPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdRegIdPollPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.StorePollCliPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.Existing -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.ShimsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdKeyPairPollPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdRegIdPollPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.StorePollCliPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymE -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable `[LibsignalPlacement]` CLI Store Vtable and Callback Contracts
@@ -28,13 +37,11 @@ Packages all 12 CLI store functions, `futDrop`, and the 6 trait-vtable `.rodata`
 facts transferred onto `initProgPlaced W` (`lsProg_521 (cliExternsPlaced W)`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
 set_option maxRecDepth 200000
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate
 

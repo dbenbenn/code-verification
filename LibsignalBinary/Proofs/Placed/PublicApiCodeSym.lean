@@ -9,9 +9,12 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import LibsignalBinary.Proofs.Placed.PublicApiCodeSymC
+import LibsignalBinary.Proofs.Placed.PublicApiCodeSymC
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
 
 /-!
 # Relocatable Per-Block Fetches for `PublicApi` Helper Blocks
@@ -20,4 +23,4 @@ Re-exports `PublicApiCodeSymA`, `PublicApiCodeSymB`, and `PublicApiCodeSymC` (bl
 127, 135, 194, 292`) under `CryptoVerification.LibsignalPublicApi.Placed`.
 -/
 
-@[expose] public section
+public section

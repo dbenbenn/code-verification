@@ -31,6 +31,7 @@ public import Computational.Tests.Guards.HeadlineAtomicOpsGuard
 public import Computational.Tests.Guards.HeadlineSamplersGuard
 public import Computational.Tests.Guards.KemFailBadGuard
 public import Computational.Tests.Guards.KeyInd1KeyRoGuard
+public import Computational.Tests.Guards.Kyber1024NoiseSpecGuard
 public import Computational.Tests.Guards.MacSupCapsGuard
 public import Computational.Tests.Guards.NoOpkCorruptGuard
 public import Computational.Tests.Guards.PqxdhKemLengthGuards
@@ -41,8 +42,8 @@ public import Computational.Tests.Guards.StatementPqRedsGuard
 public import Computational.Tests.NonVacuity.FirstMessageRoundtrip
 public import Computational.Tests.NonVacuity.KeyInd1KeyRoNonVac
 public import Computational.Tests.NonVacuity.ModelPrimsWitness255
+public import Computational.Tests.NonVacuity.ModelPrimsWitnessReal
 public import Computational.Tests.NonVacuity.ModelTest
-public import Computational.Tests.NonVacuity.NonVac
 public import Computational.Tests.NonVacuity.PqHeadlineSatisfiable
 public import Computational.Tests.NonVacuity.PqNonVacuity
 public import Computational.Tests.NonVacuity.PqOomSatisfiable
@@ -64,13 +65,19 @@ public import Computational.Tests.Session.RootKdfTest
 public import Computational.Tests.SignalPqxdh.SignalPqxdh
 public import Computational.Tests.XeddsaRomNonVac
 public import Computational.Tests.Guards.CliPqAllocPremiseGuard
+public import Computational.Tests.Guards.ConcreteX25519OldToNew
+public import Computational.Tests.Guards.X25519PtSamplerGuard
+public import LibsignalBinary.Proofs.HookDischarge.CryptoAes.Aes256Vectors
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.Spec.MlKemKat
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.Spec.MlKemOfficialKat
 
 /-!
 # Computational Tests Umbrella
 
 Root of the default `ComputationalTests` library: sanity, non-vacuity, consistency, and deviation
-checks, statement guards (`Computational/Tests/Guards/`), and binary execution tests
-(`Computational/Tests/{AEAD,Binary}/`). No module in `Computational/Specifications/`,
+checks, statement guards (`Computational/Tests/Guards/`), binary execution tests
+(`Computational/Tests/{AEAD,Binary}/`), and pure primitive vector checks (`Aes256Vectors`,
+`MlKemKat`, `MlKemOfficialKat`). No module in `Computational/Specifications/`,
 `Computational/Proofs/`, or `Computational/Theorems/` imports from `Computational/Tests/`
 (`Computational/scripts/check_computational_deps.py`). Known-answer tests under
 `Computational/Tests/Kat/` belong to the separate `ComputationalKat` library.

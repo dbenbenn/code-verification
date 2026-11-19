@@ -9,16 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitE
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitE
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitE
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKit
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKit
+import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKit
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
 public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced
-public import LibsignalBinary.Proofs.RecordCodecs.SignedAssembly
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KitStk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced
+import LibsignalBinary.Proofs.RecordCodecs.SignedAssembly
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KitStk
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import ProofLib.Disproof.Basic
+public import VerifiedLibraries.Musl.Spec
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable `[LibsignalPlacement]` CLI PreKey, SignedPreKey, and KyberPreKey Store-Kit Specs
@@ -27,7 +35,7 @@ Instantiates `PreKeyStoreSpec A 0#64`, `SignedPreKeyStoreSpec A 0#64`, and
 `KyberPreKeyStoreSpec A 0#64` with `lsρ cli*VtSym` vtable addresses.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +58,7 @@ open CryptoVerification.SignalSession.Cli.KitInst
 
 /-- Relocatable `[LibsignalPlacement]` `PreKeyStoreSpec A 0#64` with `pk_vt := lsρ cliPreKeyVtSym`
 and placed shim/future-vtable/poll/drop addresses. -/
-def cliPreKeyStoreSpecPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliPreKeyStoreSpecPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (pid : BitVec 32)
     (getShimStk getPollStk removeShimStk removePollStk : Nat) : PreKeyStoreSpec A 0#64 :=
   { cliPreKeyStoreSpec A 0#64 rd F0 pathOk pid
@@ -69,7 +77,7 @@ def cliPreKeyStoreSpecPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule
 
 /-- Relocatable `[LibsignalPlacement]` `SignedPreKeyStoreSpec A 0#64` with `spk_vt := lsρ cliSignedPreKeyVtSym`
 and placed shim/future-vtable/poll/drop addresses. -/
-def cliSignedPreKeyStoreSpecPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliSignedPreKeyStoreSpecPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (sid : BitVec 32)
     (getShimStk getPollStk : Nat) : SignedPreKeyStoreSpec A 0#64 :=
   { cliSignedPreKeyStoreSpec A 0#64 rd F0 pathOk sid getShimStk getPollStk with
@@ -82,7 +90,7 @@ def cliSignedPreKeyStoreSpecPlaced [LibsignalPlacement] (A : RustAlloc) (rd : Re
 
 /-- Relocatable `[LibsignalPlacement]` `KyberPreKeyStoreSpec A 0#64` with `kpk_vt := lsρ cliKyberPreKeyVtSym`
 and placed shim/future-vtable/poll/drop addresses. -/
-def cliKyberPreKeyStoreSpecPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliKyberPreKeyStoreSpecPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (kid ksid : BitVec 32) (kbk : PublicKey)
     (getShimStk getPollStk markShimStk markPollStk : Nat) : KyberPreKeyStoreSpec A 0#64 :=
   { cliKyberPreKeyStoreSpec A 0#64 rd F0 pathOk kid ksid kbk

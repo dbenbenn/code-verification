@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1Placed
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1Placed
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
@@ -26,6 +26,16 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.WP.Apply
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
 
 /-!
 # Budget-Threaded Relocatable Phase 1 Prologue and Epilogues for `spqr::send::<HookRng>` (Block 124)
@@ -34,7 +44,7 @@ Verifies the prologue (`+0..+76`) and shared cleanup epilogues (`+4632`, `+4608`
 with `VmPreserved`, `FreeOnlyEvs`, and `RustCliAllocBudget` pool transport.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -465,42 +475,6 @@ theorem spqr_send_prologue_placed {ext : String → Option (State → State)}
            Rest) by ac_rfl))
         (Entails.trans (sepConj_mono_left hfsp) (Entails.of_eq (by ac_rfl)))
     · wp_done)
-
-theorem spqr_send_prologue_pool_placed {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {ext : String → Option (State → State)}
-    (s0 : State) (st : M.σ) (ret stV : BitVec 64) (Rest : SepProp)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s0.pc = spqrSendPlacedEntry)
-    (hrun : s0.status = .Running)
-    (hx0 : s0.readReg64 .x0 = ret)
-    (hx1 : s0.readReg64 .x1 = stV) :
-    SepWP (spqrSendPlacedProg ext)
-      (spqrSendPlacedEntry + 76#64) s0
-      (stackAt s0.sp spqrSendStack ∗ A.pool lim st s0 ∗ Rest)
-      (fun s1 P1 =>
-        VmPreserved s0 s1 ∧
-        AllocCallPreserved s0 s1 ∧
-        (P1 ⊢
-          stackAt (s0.sp - 0x1f80#64) spqrSendCalleeStack ∗
-          memRegion (s0.sp - 0x1f80#64) 0x1f20 ∗
-          spqrSendSavedRegs (s0.sp - 0x1f80#64) s0 ∗
-          A.pool lim st s1 ∗ Rest) ∧
-        s1.sp = s0.sp - 0x1f80#64 ∧
-        s1.readReg64 .x29 = s0.sp - 96#64 ∧
-        s1.readReg64 .x19 = ret ∧
-        s1.readReg64 .x0 = stV ∧
-        s1.readReg64 .x8 = (s0.sp - 0x1f80#64) + 0x1260#64 ∧
-        s1.readReg64 .x21 = (s0.sp - 0x1f80#64) + 0x1260#64 ∧
-        s1.readReg64 .x26 = (s0.sp - 0x1f80#64) + 0x1260#64 ∧
-        s1.trace = s0.trace ∧
-        calleeSavedVRegs s1 = calleeSavedVRegs s0) := by
-  have hpr := spqr_send_prologue_placed (ext := ext) s0 ret stV (A.pool lim st s0 ∗ Rest)
-    hsp0_align hpc hrun hx0 hx1
-  refine SepWP.mono hpr ?_
-  intro s1 P1 _ _ ⟨hvm, hacp, hP1, hsp1, hx29, hx19, hx0', hx8, hx21, hx26, htr1, hvregs1⟩
-  refine ⟨hvm, hacp, ?_, hsp1, hx29, hx19, hx0', hx8, hx21, hx26, htr1, hvregs1⟩
-  rw [A.pool_transport lim st s0 s1 hvm]
-  exact Entails.trans hP1 (Entails.of_eq (by ac_rfl))
 
 /-! ## Budget-Threaded Shared Cleanup Epilogues (`+4608` and `+904`) -/
 

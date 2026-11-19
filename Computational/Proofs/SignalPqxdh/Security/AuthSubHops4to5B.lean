@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
+public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
 import VCVio.EvalDist.Monad.Basic
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhA -- shake: keep
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhC -- shake: keep
 
-@[expose] public section
+public section
 set_option autoImplicit false
 open OracleSpec OracleComp MeasureTheory ENNReal BigOperators
 namespace SignalPqxdh.Security
@@ -32,7 +32,7 @@ open _root_.Proofs.SignalPqxdh.Security.FgGapDh (initSessionSlotIdx initSessionS
 Defines the split-stage `Auth` hybrid `authSplitFixedExp`, whose send and receive queries run at
 independent stages, and shows that resetting `hasWonAuth` commutes with `checkAuth = false` steps.
 -/
-def pqxdhAuthHybridSplitKoskImpl (sendStage recvStage : AuthHybridStage) (useRo checkAuth : Bool)
+@[expose] def pqxdhAuthHybridSplitKoskImpl (sendStage recvStage : AuthHybridStage) (useRo checkAuth : Bool)
     (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthHybridState S) ProbComp) := fun q => do
   let hst ← get
@@ -196,7 +196,7 @@ def pqxdhAuthHybridSplitKoskImpl (sendStage recvStage : AuthHybridStage) (useRo 
           rootRoCache      := rootRoCache' } }
       return .recvUnfreshResp drKey rk1 ck1_1 pt
   | q => liftAuthBase (pqxdhAuthImpl useRo checkAuth S P q)
-def pqxdhAuthHybridSplitFixedImpl (sendStage recvStage : AuthHybridStage) (useRo checkAuth : Bool)
+@[expose] def pqxdhAuthHybridSplitFixedImpl (sendStage recvStage : AuthHybridStage) (useRo checkAuth : Bool)
     (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthHybridStateFixed S) ProbComp) := fun q => do
   let hst ← get
@@ -235,7 +235,7 @@ theorem pqxdhAuthHybridSplitFixedImpl_same (stage : AuthHybridStage) (useRo chec
   funext q; apply StateT.ext; intro hst
   unfold pqxdhAuthHybridSplitFixedImpl pqxdhAuthHybridFixedImpl
   cases stage.idealMsgKeys <;> cases q <;> simp
-noncomputable def authSplitFixedExp (sendStage recvStage : AuthHybridStage) (checkAuth : Bool)
+@[expose] def authSplitFixedExp (sendStage recvStage : AuthHybridStage) (checkAuth : Bool)
     (S : Setup) (P : Primitives) (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthHybridStateFixed.empty S secb
@@ -261,9 +261,9 @@ theorem authSplitFixedExp_same_true (stage : AuthHybridStage) (S : Setup) (P : P
     authSplitFixedExp stage stage true S P A = authFixedExpAtStage stage S P A := by
   unfold authSplitFixedExp authFixedExpAtStage
   simp [pqxdhAuthHybridSplitFixedImpl_same]
-def resetWonAuth {S : Setup} (hst : AuthHybridState S) : AuthHybridState S :=
+@[expose] def resetWonAuth {S : Setup} (hst : AuthHybridState S) : AuthHybridState S :=
   { hst with base := { hst.base with hasWonAuth := false } }
-def resetWonAuthFixed {S : Setup} (hst : AuthHybridStateFixed S) : AuthHybridStateFixed S :=
+@[expose] def resetWonAuthFixed {S : Setup} (hst : AuthHybridStateFixed S) : AuthHybridStateFixed S :=
   { hst with toAuthHybridState := resetWonAuth hst.toAuthHybridState }
 @[simp]
 theorem resetWonAuth_idem {S : Setup} (hst : AuthHybridState S) :
@@ -471,7 +471,7 @@ theorem run_liftAuthBase {S : Setup} {α : Type}
   simp only [StateT.run_bind, StateT.run_get, StateT.run_monadLift, StateT.run_set,
     StateT.run_pure, map_eq_bind_pure_comp, bind_assoc, pure_bind]
   rfl
-def evalAuthHybridSendSchedule (stage : AuthHybridStage) (useRo : Bool) (P : Primitives)
+@[expose] def evalAuthHybridSendSchedule (stage : AuthHybridStage) (useRo : Bool) (P : Primitives)
     (roCache : List (Bytes × DRKey))
     (rootRoCache : List ((Bytes × Bytes) × (Bytes × Bytes)))
     (isFreshPeer : Bool) (secrets dhRatchet : Bytes) :
@@ -498,7 +498,7 @@ def evalAuthHybridSendSchedule (stage : AuthHybridStage) (useRo : Bool) (P : Pri
     else
       pure (P.chainKdfSeed ck1_0, P.chainKdfNext ck1_0)
   return (drKey, roCache', (rk1, ck1_0), rootRoCache', (mkSeed, ck1_1))
-def evalAuthHybridSendKosk (stage : AuthHybridStage) (useRo : Bool)
+@[expose] def evalAuthHybridSendKosk (stage : AuthHybridStage) (useRo : Bool)
     (S : Setup) (P : Primitives)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthHybridState S) : ProbComp (AuthResponse × AuthHybridState S) := do

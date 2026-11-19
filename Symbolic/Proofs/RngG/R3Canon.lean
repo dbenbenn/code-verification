@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
-public import Symbolic.Proofs.SR.ModelW
+public import Symbolic.Proofs.SR.ModelW -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.CliPureBytes
 
 /-!
@@ -21,7 +21,7 @@ receiver-chain count bounds, and empty SPQR state across a successful
 `SessionState.tryDecryptFromRecordW` call (`tryDecryptFromRecordW_ok_state_props`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -133,7 +133,7 @@ def RatchetRepr (r : RatchetState) : Prop :=
       Ratchet.clampScalar sc.ratchetKey.privateKey.bytes = sc.ratchetKey.privateKey.bytes)
 
 /-- Session-state counterpart of `RatchetRepr`. -/
-def SessRepr {PQ : Type} (st : SessionState PQ) : Prop :=
+@[expose] def SessRepr {PQ : Type} (st : SessionState PQ) : Prop :=
   (∀ c ∈ st.receiverChains, c.messageKeys.length ≤ maxMessageKeys) ∧
     (∀ sc, st.senderChain = some sc →
       Ratchet.clampScalar sc.ratchetKey.privateKey.bytes = sc.ratchetKey.privateKey.bytes)

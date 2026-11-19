@@ -13,15 +13,15 @@ public import Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupHighBitCli
 public import Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable
 public import Symbolic.BugInjection.Proofs.Common443.CompSmallSubgroupTrace
 public import Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443.CliBridge
+public import Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443.PartyStates
 
 /-!
-# 3-Call Small-Subgroup CLI Implementation Trace Builder
+# 3-Call Small-Subgroup CLI Implementation Trace Helpers
 
-Constructs a generic 3-call (`alice` `init`, `alice` `send`, `bob` `recv`) `ImplHalf` builder
-parameterized over a plausible `PQXDHSpqrSetup` and concrete post-call file lists validated by
-`ValidCall0Files`. Provides `compI0` setup witnesses (`cliCompFitsPinned_compI0_of_plausible`),
-decidable `CanonicalPreKey` checks, and the concrete `Cheval26SmallSubgroupHighBitCli`
-instantiation (`impl_half_pinned_of_three_calls`, `impl_half_of_three_calls`).
+Provides shared setup witnesses (`cliSetupMatchesPinned_compI0_of_plausible`), decidable
+`CanonicalPreKey` and `ValidCall0Files` checks, and concrete input/output slices (`ssInp0`..`ssInp2`,
+`hbInp0`..`hbInp2`, `hbOut0`..`hbOut2`) for `ImplTracePlaced` and the `SmallSubgroup` implementation
+disproof.
 -/
 
 @[expose] public section
@@ -42,7 +42,7 @@ open DY.Libsignal.Composed.Refinement.Cli
 open CryptoVerification.SignalSession
   (Address Cmd Inputs Outcome PublicBundle filesOf stdioPaths partyDirs bundleDir coinsFile
    addressFile identityKeyPairFile registrationIdFile identityFile sessionFile
-   signedPreKeyFile lastResortKyberPreKeyFile baseKeysFile cliRunAbortOnPanic)
+   signedPreKeyFile lastResortKyberPreKeyFile baseKeysFile)
 open CryptoVerification.RecordCodecs
   (IdentityKeyPairStructure SignedPreKeyRecordStructure)
 open Symbolic.BugInjection
@@ -54,7 +54,7 @@ open Symbolic.BugInjection.Proofs.Common443.CompI0Laws
   (compI0_cryptoEquationsHold compI0_pubCanonical compI0_kyberCorrectOn
    compI0_torsionShiftsRejected)
 open Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable
-  (compHooks0 compI0_hooksAgree compI0_externContractsHoldCli cliCompFitsPinned
+  (compHooks0 compI0_hooksAgree compI0_externContractsHoldCli CliSetupMatchesPinned
    compRecordsI0 compI0_gamma_randTerm_pos compI0_gamma_kemPk compI0_gamma_sign
    compRecordsI0_ne compRecordsI0_randomsAt compRecordsI0_public)
 open Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443.CliBridge
@@ -67,10 +67,10 @@ open Symbolic.Proofs.Tests.Refinement.Cli
    bobPreKeyFiles_cliFilePath commonFiles_alice_bounded commonFiles_bob_bounded
    bobPreKeyFiles_bounded initDirs_alice_no_session textBytes_eq_flatMap)
 
-theorem cliCompFits_of_pinned {w : PQXDHSpqrSetup}
+theorem cliSetupMatches_of_pinned {w : PQXDHSpqrSetup}
     {iw : ExternInterpretation × CryptoVerification.SignalSession.CliHooks}
     {r : ProtocolSetup}
-    (h : cliCompFitsPinned w iw r) : cliCompFits w iw r :=
+    (h : CliSetupMatchesPinned w iw r) : CliSetupMatches w iw r :=
   ⟨h.1.1, h.2.1, h.2.2⟩
 
 theorem compRecordsI0_secrets (w : PQXDHSpqrSetup) :
@@ -108,9 +108,10 @@ theorem compRecordsI0_opaque (w : PQXDHSpqrSetup) :
     rw [compI0_gamma_randTerm_pos w 17 64 (by decide)]
     simp [PQXDHSpqrSetup.compGhost, PQXDHSpqrSetup.fresh, fillFresh_ne_11_17]
 
-theorem compRecordsI0_wf_of_plausible (w : PQXDHSpqrSetup) (h : w.Plausible) :
+theorem compRecordsI0_wf_of_plausible (w : PQXDHSpqrSetup) (h : w.Plausible)
+    (hw : w.withOpk = false := by rfl) :
     ProtocolSetupWF (compRecordsI0 w) := by
-  obtain ⟨ha, hb, hs, hss, hk, hks, hsec, hslice, hnd, _⟩ := h
+  obtain ⟨ha, hb, hs, hss, hk, hks, hsec, hslice, hnd, _, _⟩ := h
   obtain ⟨o5, o6, o7⟩ := compRecordsI0_opaque w
   have hR := compRecordsI0_randomsAt w
   refine ⟨compRecordsI0_ne w, ?_, ?_, ?_, ?_, ?_, hsec, ?_⟩
@@ -120,7 +121,7 @@ theorem compRecordsI0_wf_of_plausible (w : PQXDHSpqrSetup) (h : w.Plausible) :
     rcases hp with rfl | rfl | rfl | rfl | rfl | rfl <;>
       simp [compRecordsI0, PQXDHSpqrSetup.fresh, fillFresh, ha, hb, hs]
   · rw [hR]
-    simpa [compRecordsI0, PQXDHSpqrSetup.fresh] using hnd
+    simpa [hw, compRecordsI0, PQXDHSpqrSetup.fresh] using hnd
   · dsimp only [ProtocolSetup.spkSigTerm]; rw [o5]; exact hss
   · dsimp only [ProtocolSetup.pqpkPubTerm]; rw [o6]; exact hk
   · dsimp only [ProtocolSetup.pqpkSigTerm]; rw [o7]; exact hks
@@ -128,24 +129,25 @@ theorem compRecordsI0_wf_of_plausible (w : PQXDHSpqrSetup) (h : w.Plausible) :
     dsimp only [ProtocolSetup.pqpkPubTerm]
     rw [o6]; exact hslice
 
-theorem cliCompFitsPinned_compI0_of_plausible (w : PQXDHSpqrSetup)
-    (h : w.Plausible) (htor : TorsionShiftsRecorded compI0 w.torsionShifts) :
-    cliCompFitsPinned w (compI0, compHooks0) (compRecordsI0 w) := by
-  have hwf := compRecordsI0_wf_of_plausible w h
+theorem cliSetupMatchesPinned_compI0_of_plausible (w : PQXDHSpqrSetup)
+    (h : w.Plausible) (htor : TorsionShiftsRecorded compI0 w.torsionShifts)
+    (hw : w.withOpk = false := by rfl) :
+    CliSetupMatchesPinned w (compI0, compHooks0) (compRecordsI0 w) := by
+  have hwf := compRecordsI0_wf_of_plausible w h hw
   obtain ⟨hs0, hs1, hs2, hs3, hs4, hs5⟩ := compRecordsI0_secrets w
   obtain ⟨o5, o6, o7⟩ := compRecordsI0_opaque w
-  exact ⟨⟨⟨hwf, rfl, rfl, rfl, rfl, rfl, hs0, hs1, hs2, o5, o6, o7, rfl,
+  exact ⟨⟨⟨hwf, by rw [hw]; rfl, rfl, rfl, rfl, rfl, hs0, hs1, hs2, o5, o6, o7, rfl,
       compI0_cryptoEquationsHold, compI0_pubCanonical,
       compI0_kyberCorrectOn (compRecordsI0 w) w.kyberCts⟩,
      rfl, ⟨hs3, hs4, hs5⟩, ⟨rfl, rfl⟩,
      compI0_torsionShiftsRejected, htor⟩,
     compI0_externContractsHoldCli, compI0_hooksAgree⟩
 
-theorem cliCompFitsPinned_hb :
-    cliCompFitsPinned Witnesses.Cheval26SmallSubgroupHighBitCli.setup
+theorem cliSetupMatchesPinned_hb :
+    CliSetupMatchesPinned Witnesses.Cheval26SmallSubgroupHighBitCli.setup
       (compI0, compHooks0)
       (compRecordsI0 Witnesses.Cheval26SmallSubgroupHighBitCli.setup) :=
-  cliCompFitsPinned_compI0_of_plausible
+  cliSetupMatchesPinned_compI0_of_plausible
     Witnesses.Cheval26SmallSubgroupHighBitCli.setup
     (by decide +kernel)
     (fun _ h => nomatch h)
@@ -320,18 +322,55 @@ theorem sessionFile_bobUuid_eq : sessionFile ⟨bobUuid, 1⟩ = aliceSessPath :=
   simp [sessionFile, CryptoVerification.SignalSession.Address.text, bobUuid, aliceSessPath,
     nat_repr_one]
 
+def sameCliEval (l1 l2 : List (String × HwBytes)) : Bool :=
+  l1.all (fun x => cliEvalAt (Arm64.normalizePath x.1) none l1 ==
+    cliEvalAt (Arm64.normalizePath x.1) none l2) &&
+  l2.all (fun x => cliEvalAt (Arm64.normalizePath x.1) none l1 ==
+    cliEvalAt (Arm64.normalizePath x.1) none l2)
+
+theorem filesOf_eq_of_sameCliEval {l1 l2 : List (String × HwBytes)}
+    (hl1 : ∀ x ∈ l1, CliFilePath x.1) (hl2 : ∀ x ∈ l2, CliFilePath x.1)
+    (hsame : sameCliEval l1 l2 = true) (p : String) :
+    filesOf l1 p = filesOf l2 p := by
+  unfold sameCliEval at hsame
+  obtain ⟨ha1, ha2⟩ := (Bool.and_eq_true _ _).mp hsame
+  rw [cliFilesOf_eq_evalAt hl1, cliFilesOf_eq_evalAt hl2]
+  split
+  · rfl
+  · split
+    · rfl
+    · by_cases hm1 : ∃ x ∈ l1, Arm64.normalizePath x.1 = Arm64.normalizePath p
+      · obtain ⟨x, hx, hnx⟩ := hm1
+        rw [← hnx]
+        exact beq_iff_eq.mp (List.all_eq_true.mp ha1 x hx)
+      · by_cases hm2 : ∃ x ∈ l2, Arm64.normalizePath x.1 = Arm64.normalizePath p
+        · obtain ⟨x, hx, hnx⟩ := hm2
+          rw [← hnx]
+          exact beq_iff_eq.mp (List.all_eq_true.mp ha2 x hx)
+        · rw [cliEvalAt_idle (fun x hx h => hm1 ⟨x, hx, h⟩) none,
+              cliEvalAt_idle (fun x hx h => hm2 ⟨x, hx, h⟩) none]
+
 /-- Checks that `files0` uses valid `CliFilePath`s, remains `< 2^31` bytes per file after
-scrubbing, and leaves a non-empty session record at `aliceSessPath`. -/
+scrubbing, leaves a non-empty session record at `aliceSessPath`, and agrees extensionally with
+`PartyStates.hbAlice1Files` after scrubbing. -/
 def ValidCall0Files (files0 : List (String × HwBytes)) : Bool :=
   files0.all (fun f => decide (CliFilePath f.1)) &&
   (scrubList files0).all (fun f => decide (f.2.length < 2 ^ 31)) &&
-  match cliEvalAt (Arm64.normalizePath aliceSessPath) none (scrubList files0) with
-  | some rec_ => !rec_.isEmpty
-  | none => false
+  ((match cliEvalAt (Arm64.normalizePath aliceSessPath) none (scrubList files0) with
+    | some rec_ => !rec_.isEmpty
+    | none => false) &&
+   sameCliEval (scrubList files0) PartyStates.hbAlice1Files)
 
 theorem validCall0Files_smoke :
-    ValidCall0Files [("address", [1#8]), (aliceSessPath, [1#8])] = true := by
+    ValidCall0Files PartyStates.hbAlice1Files = true := by
   decide +kernel
+
+theorem validCall0Files_sameCliEval {files0 : List (String × HwBytes)}
+    (h : ValidCall0Files files0 = true) :
+    sameCliEval (scrubList files0) PartyStates.hbAlice1Files = true := by
+  unfold ValidCall0Files at h
+  simp only [Bool.and_eq_true] at h
+  exact h.2.2
 
 /-- Vacuous post-condition on Alice's Call 1 output files, since Call 2 runs on Bob's directory and
 ends the trace. -/
@@ -374,7 +413,7 @@ theorem validCall0Files_alice_records_ne_none {files0 : List (String × HwBytes)
     simp [hnot_stdio, hnot_empty]
   unfold ValidCall0Files at h
   simp only [Bool.and_eq_true] at h
-  have hrec := h.2
+  have hrec := h.2.1
   unfold CliTurn.records
   simp only [↓reduceIte, hsp, hf]
   cases hev : cliEvalAt (Arm64.normalizePath aliceSessPath) none (scrubList files0) with
@@ -567,21 +606,6 @@ def ssInp2 (w : PQXDHSpqrSetup) (c2Msg c2Coins : HwBytes) : Inputs where
   files := ssBobBaseFiles w ++ (ssCall2 c2Msg c2Coins).extra
   stdin := c2Msg
 
-private theorem ssInp0_eq_mkInp (w : PQXDHSpqrSetup) :
-    ssInp0 w = mkInp (ssCall0 w) (ssAliceBaseFiles w) := by
-  simp [ssInp0, mkInp, ssCall0, CryptoVerification.SignalSession.Cmd.argv,
-    CryptoVerification.SignalSession.Address.text, bobUuid, nat_repr_one]
-
-private theorem ssInp1_eq_mkInp (files0 : List (String × HwBytes)) :
-    ssInp1 files0 = mkInp ssCall1 (scrubList files0) := by
-  simp [ssInp1, mkInp, ssCall1, CryptoVerification.SignalSession.Cmd.argv,
-    CryptoVerification.SignalSession.Address.text, bobUuid, nat_repr_one]
-
-private theorem ssInp2_eq_mkInp (w : PQXDHSpqrSetup) (c2Msg c2Coins : HwBytes) :
-    ssInp2 w c2Msg c2Coins = mkInp (ssCall2 c2Msg c2Coins) (ssBobBaseFiles w) := by
-  simp [ssInp2, mkInp, ssCall2, CryptoVerification.SignalSession.Cmd.argv,
-    CryptoVerification.SignalSession.Address.text, aliceUuid, nat_repr_one]
-
 def ssOut0 (files0 : List (String × HwBytes)) : Outcome := .exited 0 [] (filesOf files0)
 def ssOut1 (files1 : List (String × HwBytes)) : Outcome := .exited 0 ssC1Out (filesOf files1)
 def ssOut2 (c2Out : HwBytes) (files2 : List (String × HwBytes)) : Outcome :=
@@ -591,227 +615,6 @@ def mkTurn (aDir bDir : DirectorySnapshot) (sent : List HwBytes) (bobOff : Bool)
   dirs := fun q => if q = "alice" then aDir else if q = "bob" then bDir else fun _ => none
   sent := sent
   bobOff := bobOff
-
-private theorem cliTurn_mk_eq {d1 d2 : Participant → DirectorySnapshot}
-    {s1 s2 : List HwBytes} {b1 b2 : Bool}
-    (hd : d1 = d2) (hs : s1 = s2) (hb : b1 = b2) :
-    CliTurn.mk d1 s1 b1 = CliTurn.mk d2 s2 b2 := by
-  subst hd hs hb; rfl
-
-private theorem initTurn_eq_mkTurn (w : PQXDHSpqrSetup)
-    (hSpk : w.spkId = 7) (hKpk : w.kpkId = 9) :
-    CliTurn.init (initDirs compI0 (compRecordsI0 w)) =
-      mkTurn (filesOf (ssAliceBaseFiles w)) (filesOf (ssBobBaseFiles w)) [] false := by
-  unfold CliTurn.init mkTurn
-  refine cliTurn_mk_eq (funext fun p => ?_) rfl rfl
-  simp only [initDirs,
-    show (compRecordsI0 w).alice = "alice" from rfl,
-    show (compRecordsI0 w).bob = "bob" from rfl]
-  by_cases hpa : p = "alice"
-  · subst hpa
-    simp [commonFiles_alice_eq_ssAliceBaseFiles w]
-  · by_cases hpb : p = "bob"
-    · subst hpb
-      simp [hpa, bobFiles_eq_ssBobBaseFiles w hSpk hKpk]
-    · simp [hpa, hpb]
-
-open Classical in
-private theorem after_alice_mkTurn {w : PQXDHSpqrSetup} {aDir bDir outDir : DirectorySnapshot}
-    {sent : List HwBytes} {c : CliCall} {out : HwBytes} (hp : c.party = "alice") :
-    (mkTurn aDir bDir sent false).after (compRecordsI0 w) c 0 out outDir =
-      mkTurn (scrub outDir) bDir
-        (sent ++ (match c.cmd with | .send _ => (sentBody out).toList | _ => [])) false := by
-  have hnm : ¬ (0 = 0 ∧ PreKeyNoMatch (compRecordsI0 w) (mkTurn aDir bDir sent false) c) := by
-    rintro ⟨_, hbob, _⟩
-    have hab : ("alice" : String) = "bob" := hp.symm.trans hbob
-    exact absurd hab (by decide)
-  have hbob : ((mkTurn aDir bDir sent false).bobOff ||
-      decide (0 = 0 ∧ PreKeyNoMatch (compRecordsI0 w) (mkTurn aDir bDir sent false) c)) = false := by
-    rw [show (mkTurn aDir bDir sent false).bobOff = false from rfl, Bool.false_or]
-    exact decide_eq_false hnm
-  unfold CliTurn.after; rw [hbob]; simp only [hp]; unfold mkTurn
-  refine cliTurn_mk_eq (funext fun q => ?_) (by cases c.cmd <;> rfl) rfl
-  by_cases hqa : q = "alice" <;> simp [hqa]
-
-/-- Builds `cliCompShape.ImplHalf` at `cliCompFitsPinned w` from three `cliRunAbortOnPanic`
-executions (`init`, `send`, `recv`) with arbitrary Call 1 and Call 2 output snapshots. -/
-theorem ss_impl_half_pinned_of_three_calls_dirs
-    {w : PQXDHSpqrSetup} {evs : List CliEvent}
-    (hPlaus : w.Plausible)
-    (hTor : TorsionShiftsRecorded compI0 w.torsionShifts)
-    (hSpkId : w.spkId = 7) (hKpkId : w.kpkId = 9)
-    (hBun : bundleBlob (ssBundle w) = CompSmallSubgroupTrace.bundleFast)
-    {c2Msg : HwBytes}
-    (hCanon : checkCanonicalPreKey c2Msg = true)
-    (hStdin2 : checkRecvStdinBounded c2Msg = true)
-    (hPq2 : ∀ q, parsePreKeyWire c2Msg = some q →
-      PqFromHonest (sentBody CompSmallSubgroupTrace.sentWireBytes).toList q.message)
-    (hEvs : cliEvents c2Msg = evs)
-    (H : Arm64.Process.ElfImage)
-    (files0 : List (String × HwBytes)) (outDir1 outDir2 : DirectorySnapshot)
-    (hValid0 : ValidCall0Files files0 = true)
-    (hRun0 : cliRunAbortOnPanic H compHooks0 (ssInp0 w) = some (ssOut0 files0))
-    (hRun1 : cliRunAbortOnPanic H compHooks0 (ssInp1 files0) = some (.exited 0 ssC1Out outDir1))
-    (hRun2 : cliRunAbortOnPanic H compHooks0 (ssInp2 w c2Msg ssC2Coins) =
-      some (.exited 0 ssC2Out outDir2)) :
-    cliCompShape.ImplHalf (cliCompFitsPinned w) H evs := by
-  have hFits := cliCompFitsPinned_compI0_of_plausible w hPlaus hTor
-  have hwf := compRecordsI0_wf_of_plausible w hPlaus
-  refine ⟨(compI0, compHooks0), compRecordsI0 w, hFits, ⟨hFits.2.1, hFits.2.2⟩, ?_, ?_⟩
-  ·
-    rw [← hEvs]
-    have hHonBun : HonestBundleDir compI0 (compRecordsI0 w) (ssBundle w) := by
-      rw [← honestPublicBundle_eq_ssBundle w]
-      exact honestBundleDir_honestPublicBundle compI0_cryptoEquationsHold hwf
-    have hAliceFp : ∀ x ∈ ssAliceBaseFiles w, CliFilePath x.1 := by
-      rw [← commonFiles_alice_eq_ssAliceBaseFiles w]
-      exact commonFiles_alice_cliFilePath compI0 (compRecordsI0 w)
-    have hBobFp : ∀ x ∈ ssBobBaseFiles w, CliFilePath x.1 := by
-      rw [← bobFiles_eq_ssBobBaseFiles w hSpkId hKpkId]
-      intro x hx
-      rcases List.mem_append.mp hx with h1 | h2
-      · exact commonFiles_bob_cliFilePath hwf.1 x h1
-      · exact bobPreKeyFiles_cliFilePath rfl hSpkId hKpkId x h2
-    have hAliceBd : FilesBounded (filesOf (ssAliceBaseFiles w)) := by
-      rw [← commonFiles_alice_eq_ssAliceBaseFiles w]
-      exact filesBounded_of_cliFilePaths (commonFiles_alice_cliFilePath compI0 (compRecordsI0 w))
-        (commonFiles_alice_bounded compI0_cryptoEquationsHold hwf)
-    have hBobBd : FilesBounded (filesOf (ssBobBaseFiles w)) := by
-      rw [← bobFiles_eq_ssBobBaseFiles w hSpkId hKpkId]
-      apply filesBounded_of_cliFilePaths
-      · intro x hx
-        rcases List.mem_append.mp hx with h1 | h2
-        · exact commonFiles_bob_cliFilePath hwf.1 x h1
-        · exact bobPreKeyFiles_cliFilePath rfl hSpkId hKpkId x h2
-      · intro x hx
-        rcases List.mem_append.mp hx with h1 | h2
-        · exact commonFiles_bob_bounded compI0_cryptoEquationsHold hwf x h1
-        · exact bobPreKeyFiles_bounded compI0_cryptoEquationsHold hwf rfl x h2
-    let t0 := mkTurn (filesOf (ssAliceBaseFiles w)) (filesOf (ssBobBaseFiles w)) [] false
-    rw [initTurn_eq_mkTurn w hSpkId hKpkId]
-    have hVal0 : ValidCall compI0 (compRecordsI0 w) t0 (ssCall0 w) := by
-      have hNoSess0 : t0.records (compRecordsI0 w) "alice" = none := by
-        dsimp only [t0]
-        rw [← initTurn_eq_mkTurn w hSpkId hKpkId]
-        exact initDirs_alice_no_session compI0 (compRecordsI0 w)
-      have hc0Len : ssC0Coins.length = 192 := cliCoins0_length
-      dsimp only [ValidCall, StdinBounded, BobCallAllowed, ssCall0, t0]
-      exact ⟨hc0Len, trivial, by simpa [mkTurn] using hAliceBd, (fun h => nomatch h),
-        rfl, rfl, rfl, rfl, hNoSess0, honestBundleDir_to_flat_and_honest hHonBun⟩
-    have hInp0 : InputsFor (ssCall0 w) (t0.dirs "alice") (ssInp0 w) := by
-      rw [ssInp0_eq_mkInp]
-      exact inputsFor_of_cliFilePaths (ssCall0 w) (ssAliceBaseFiles w) hAliceFp
-        (bundleFiles_cliFilePath (ssBundle w))
-        (by rw [← commonFiles_alice_eq_ssAliceBaseFiles w]
-            exact commonFiles_alice_bounded compI0_cryptoEquationsHold hwf)
-        (fun x hx => ((honestBundleDir_to_flat_and_honest hHonBun).1 x hx).2)
-        (by have hc0Len : ssC0Coins.length = 192 := cliCoins0_length; dsimp only [ssCall0]; omega)
-    have hEv0 : runEventOf (ssCall0 w) (some (0, [])) = evInit := by
-      have hpbf := parseBundleFiles_of_honestBundleDir hHonBun
-      have hbunEq : CompRX0SS38.bunBytes = CompSmallSubgroupTrace.bundleFast := by
-        rw [CompRX0SS38.bunBytes_eq]; rfl
-      unfold runEventOf runInput ssCall0 evInit
-      dsimp only
-      rw [hpbf, Option.map_some, Option.getD_some, hBun, ← hbunEq, cliCoins0_eq_ssC0Coins]
-      rfl
-    let t1 := mkTurn (filesOf (scrubList files0)) (filesOf (ssBobBaseFiles w)) [] false
-    have hAfter0 : t0.after (compRecordsI0 w) (ssCall0 w) 0 [] (filesOf files0) = t1 := by
-      rw [after_alice_mkTurn (w := w) rfl,
-        scrub_filesOf_eq_filesOf_scrubList (validCall0Files_cliFilePath hValid0)]
-      rfl
-    have hVal1 : ValidCall compI0 (compRecordsI0 w) t1 ssCall1 := by
-      have hc1Len : ssC1Coins.length = 64 := by decide +kernel
-      have hptLen : ssC1Pt.length < 2 ^ 32 := by decide +kernel
-      dsimp only [ValidCall, StdinBounded, BobCallAllowed, ssCall1, t1, mkTurn]
-      exact ⟨hc1Len, hptLen,
-        validCall0Files_scrub_bounded hValid0,
-        (fun h => nomatch h), Or.inl rfl, rfl, rfl, by decide,
-        validCall0Files_alice_records_ne_none hValid0 rfl (filesOf (ssBobBaseFiles w)) [] false⟩
-    have hInp1 : InputsFor ssCall1 (t1.dirs "alice") (ssInp1 files0) := by
-      rw [ssInp1_eq_mkInp]
-      exact inputsFor_of_cliFilePaths ssCall1 (scrubList files0)
-        (validCall0Files_scrub_cliFilePath hValid0) (fun _ h => nomatch h)
-        (fun x hx => by
-          have hv := hValid0; unfold ValidCall0Files at hv; simp only [Bool.and_eq_true] at hv
-          exact of_decide_eq_true (List.all_eq_true.mp hv.1.2 x hx))
-        (fun _ h => nomatch h)
-        (by change ssC1Coins.length < 2 ^ 31; decide +kernel)
-    have hEv1 : runEventOf ssCall1 (some (0, ssC1Out)) = evSend := by
-      unfold runEventOf runInput ssCall1 evSend
-      rw [ptB_eq_ssC1Pt, cB_eq_ssC1Coins, sentWirePlant_eq_ssC1Out]
-      rfl
-    let t2 := mkTurn (scrub outDir1) (filesOf (ssBobBaseFiles w)) (sentBody ssC1Out).toList false
-    have hAfter1 : t1.after (compRecordsI0 w) ssCall1 0 ssC1Out outDir1 = t2 :=
-      after_alice_mkTurn (w := w) rfl
-    have hVal2 : ValidCall compI0 (compRecordsI0 w) t2 (ssCall2 c2Msg ssC2Coins) := by
-      have hba : ("bob" : String) ≠ "alice" := by decide
-      have hc2Len : ssC2Coins.length = 32 := by decide +kernel
-      have hHeadNe := canonicalPreKey_head_ne_whisper (canonicalPreKey_of_check hCanon)
-      dsimp only [ValidCall, BobCallAllowed, ssCall2, t2]
-      refine ⟨hc2Len, stdinBounded_recv_of_check hStdin2,
-        by simpa [mkTurn, hba] using hBobBd, (fun h => nomatch h),
-        Or.inr rfl, rfl, rfl, Or.inr ⟨rfl, Or.inl hHeadNe, ?_⟩⟩
-      intro q hq
-      have hPq2' := hPq2 q hq
-      rw [sentWireSS_eq_ssC1Out] at hPq2'
-      exact hPq2'
-    have hba : ("bob" : String) ≠ "alice" := by decide
-    have hInp2 : InputsFor (ssCall2 c2Msg ssC2Coins) (t2.dirs "bob")
-        (ssInp2 w c2Msg ssC2Coins) := by
-      dsimp only [t2, mkTurn]
-      simp only [hba, ↓reduceIte]
-      rw [ssInp2_eq_mkInp]
-      exact inputsFor_of_cliFilePaths (ssCall2 c2Msg ssC2Coins) (ssBobBaseFiles w) hBobFp
-        (fun _ h => nomatch h)
-        (by rw [← bobFiles_eq_ssBobBaseFiles w hSpkId hKpkId]
-            intro x hx
-            exact (List.mem_append.mp hx).elim
-              (commonFiles_bob_bounded compI0_cryptoEquationsHold hwf x)
-              (bobPreKeyFiles_bounded compI0_cryptoEquationsHold hwf rfl x))
-        (fun _ h => nomatch h)
-        (by change ssC2Coins.length < 2 ^ 31; decide +kernel)
-    have hEv2 : runEventOf (ssCall2 c2Msg ssC2Coins) (some (0, ssC2Out)) = evRecv c2Msg := by
-      unfold runEventOf runInput ssCall2 evRecv
-      rw [rngMsg39_eq_ssC2Coins, acceptMsg40_eq_ssC2Out]
-      rfl
-    unfold cliEvents
-    rw [← hEv0, ← hEv1, ← hEv2]
-    refine CliTraces.step (leaks := []) (fun _ h => nomatch h) hVal0 hInp0 hRun0 ?_
-    rw [hAfter0]
-    refine CliTraces.step (leaks := []) (fun _ h => nomatch h) hVal1 hInp1 hRun1 ?_
-    rw [hAfter1]
-    refine CliTraces.step (leaks := []) (fun _ h => nomatch h) hVal2 hInp2 hRun2 ?_
-    exact CliTraces.done _
-  ·
-    rw [← hEvs]
-    apply invertsGuarded_of_noInverts
-    unfold cliEvents evInit evSend evRecv
-    rfl
-
-/-- Specialization of `ss_impl_half_pinned_of_three_calls_dirs` to concrete post-call file lists. -/
-theorem ss_impl_half_pinned_of_three_calls
-    {w : PQXDHSpqrSetup} {evs : List CliEvent}
-    (hPlaus : w.Plausible)
-    (hTor : TorsionShiftsRecorded compI0 w.torsionShifts)
-    (hSpkId : w.spkId = 7) (hKpkId : w.kpkId = 9)
-    (hBun : bundleBlob (ssBundle w) = CompSmallSubgroupTrace.bundleFast)
-    {c2Msg : HwBytes}
-    (hCanon : checkCanonicalPreKey c2Msg = true)
-    (hStdin2 : checkRecvStdinBounded c2Msg = true)
-    (hPq2 : ∀ q, parsePreKeyWire c2Msg = some q →
-      PqFromHonest (sentBody CompSmallSubgroupTrace.sentWireBytes).toList q.message)
-    (hEvs : cliEvents c2Msg = evs)
-    (H : Arm64.Process.ElfImage)
-    (files0 files1 files2 : List (String × HwBytes))
-    (hValid0 : ValidCall0Files files0 = true)
-    (_hValid1 : ValidCall1Files files1 = true)
-    (hRun0 : cliRunAbortOnPanic H compHooks0 (ssInp0 w) = some (ssOut0 files0))
-    (hRun1 : cliRunAbortOnPanic H compHooks0 (ssInp1 files0) = some (ssOut1 files1))
-    (hRun2 : cliRunAbortOnPanic H compHooks0 (ssInp2 w c2Msg ssC2Coins) =
-      some (ssOut2 ssC2Out files2)) :
-    cliCompShape.ImplHalf (cliCompFitsPinned w) H evs :=
-  ss_impl_half_pinned_of_three_calls_dirs hPlaus hTor hSpkId hKpkId hBun hCanon hStdin2 hPq2 hEvs
-    H files0 (filesOf files1) (filesOf files2) hValid0 hRun0 hRun1 hRun2
 
 def hbC2Msg : HwBytes := CompSmallSubgroupTrace.highBitWireFast
 
@@ -833,72 +636,6 @@ theorem hbTrace_invertsGuarded :
       Witnesses.Cheval26SmallSubgroupHighBitCli.trace := by
   rw [← Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443.CliBridge.cliEvents_eq]
   exact invertsGuarded_of_noInverts rfl
-
-private theorem hb_pqFromHonest :
-    ∀ q, parsePreKeyWire hbC2Msg = some q →
-      PqFromHonest (sentBody CompSmallSubgroupTrace.sentWireBytes).toList q.message := by
-  intro q hq
-  apply CompSmallSubgroupTrace.highBit_pqFromHonest q
-  rw [CompSmallSubgroupTrace.highBitWireBytes_eq]
-  exact hq
-
-private theorem hb_cliEvents_eq :
-    cliEvents hbC2Msg = Witnesses.Cheval26SmallSubgroupHighBitCli.trace := by
-  have h1 : hbC2Msg = CompSmallSubgroupTrace.highBitWireBytes :=
-    CompSmallSubgroupTrace.highBitWireBytes_eq.symm
-  rw [h1,
-    ← Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443.CliBridge.recvMsg38_eq_ss_highBitWireBytes]
-  exact Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443.CliBridge.cliEvents_eq
-
-theorem impl_half_pinned_of_three_calls_dirs
-    (H : Arm64.Process.ElfImage)
-    (files0 : List (String × HwBytes)) (outDir1 outDir2 : DirectorySnapshot)
-    (hValid0 : ValidCall0Files files0 = true)
-    (hRun0 : cliRunAbortOnPanic H compHooks0 hbInp0 = some (hbOut0 files0))
-    (hRun1 : cliRunAbortOnPanic H compHooks0 (hbInp1 files0) = some (.exited 0 ssC1Out outDir1))
-    (hRun2 : cliRunAbortOnPanic H compHooks0 hbInp2 = some (.exited 0 ssC2Out outDir2)) :
-    cliCompShape.ImplHalf
-      (cliCompFitsPinned Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
-      H Witnesses.Cheval26SmallSubgroupHighBitCli.trace :=
-  ss_impl_half_pinned_of_three_calls_dirs
-    (w := Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
-    (by decide +kernel) (fun _ h => nomatch h) rfl rfl hbBundle_blob_eq
-    (by decide +kernel) (by decide +kernel) hb_pqFromHonest hb_cliEvents_eq
-    H files0 outDir1 outDir2 hValid0 hRun0 hRun1 hRun2
-
-/-- Pinned `ImplHalf` for `Cheval26SmallSubgroupHighBitCli` from three concrete CLI runs. -/
-theorem impl_half_pinned_of_three_calls
-    (H : Arm64.Process.ElfImage)
-    (files0 files1 files2 : List (String × HwBytes))
-    (hValid0 : ValidCall0Files files0 = true)
-    (hValid1 : ValidCall1Files files1 = true)
-    (hRun0 : cliRunAbortOnPanic H compHooks0 hbInp0 = some (hbOut0 files0))
-    (hRun1 : cliRunAbortOnPanic H compHooks0 (hbInp1 files0) = some (hbOut1 files1))
-    (hRun2 : cliRunAbortOnPanic H compHooks0 hbInp2 = some (hbOut2 files2)) :
-    cliCompShape.ImplHalf
-      (cliCompFitsPinned Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
-      H Witnesses.Cheval26SmallSubgroupHighBitCli.trace :=
-  ss_impl_half_pinned_of_three_calls
-    (w := Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
-    (by decide +kernel) (fun _ h => nomatch h) rfl rfl hbBundle_blob_eq
-    (by decide +kernel) (by decide +kernel) hb_pqFromHonest hb_cliEvents_eq
-    H files0 files1 files2 hValid0 hValid1 hRun0 hRun1 hRun2
-
-/-- Unpinned `ImplHalf` for `Cheval26SmallSubgroupHighBitCli` from three concrete CLI runs. -/
-theorem impl_half_of_three_calls
-    (H : Arm64.Process.ElfImage)
-    (files0 files1 files2 : List (String × HwBytes))
-    (hValid0 : ValidCall0Files files0 = true)
-    (hValid1 : ValidCall1Files files1 = true)
-    (hRun0 : cliRunAbortOnPanic H compHooks0 hbInp0 = some (hbOut0 files0))
-    (hRun1 : cliRunAbortOnPanic H compHooks0 (hbInp1 files0) = some (hbOut1 files1))
-    (hRun2 : cliRunAbortOnPanic H compHooks0 hbInp2 = some (hbOut2 files2)) :
-    cliCompShape.ImplHalf
-      Witnesses.Cheval26SmallSubgroupHighBitCli.fits
-      H Witnesses.Cheval26SmallSubgroupHighBitCli.trace := by
-  obtain ⟨iw, r, hfit, hc, htr⟩ :=
-    impl_half_pinned_of_three_calls H files0 files1 files2 hValid0 hValid1 hRun0 hRun1 hRun2
-  exact ⟨iw, r, cliCompFits_of_pinned hfit, hc, htr⟩
 
 theorem hbInputs_kernel_reducible :
     hbInp0.argv = ["init", "5d3e2f10-7a8b-4c9d-8e0f-a1b2c3d4e5f6.1", "bundle"] ∧

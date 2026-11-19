@@ -9,13 +9,60 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.States
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwnedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.States -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwnedPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.RunCodeSym -- proof-setup: allow-public-import
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.Disproof.Basic
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.StepsProcess
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Musl.Spec
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W0Spec
 
 /-!
 # Relocatable `[LibsignalPlacement]` Machine-Level Hop States for `signal_session::run`
@@ -25,7 +72,7 @@ Defines the placed cut-point state predicates (`AtRunEntryPlaced`, `AtDispatchPl
 budget bounds, and `runSpecPlaced` entry/exit bridge lemmas on Block `579` (`lsProg_579`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -64,14 +111,6 @@ theorem runPcPlaced_zero [LibsignalPlacement] :
     runPcPlaced 0 = lsmpl.base 579 := by
   change lsmpl.base 579 + 0#64 = lsmpl.base 579
   exact BitVec.add_zero _
-
-theorem LsCodeInv.codeLoaded_runProgPlaced [LibsignalPlacement] {CodeOk : Memory → Prop}
-    [hCI : LsCodeInv CodeOk] {m : Memory} (h : CodeOk m) (H : LibsignalHooks) :
-    (runProgPlaced H).CodeLoaded m := by
-  have heq : runProgPlaced H = libsignalSessionLib.blockProgram lsmpl 579 H :=
-    IsLsBlockProg.eq_blockProgram (prog := lsProg_579 H) (i := 579) (H := H)
-  rw [heq]
-  exact (hCI.toRoCl h).1 579 (by decide) (by decide) H (fun _ => none) Syscall.standard
 
 /-- Common post-prologue machine invariant inside `run` (Block `579`) at offset `R + k`. -/
 structure InRunPlaced [LibsignalPlacement] (CodeOk : Memory → Prop)
@@ -143,7 +182,7 @@ structure AtRunEntryPlaced [LibsignalPlacement] (CodeOk : Memory → Prop) (S : 
   stdout : ProcessOutcome.traceStreamBytes .stdout s0.trace = []
 
 /-- Entry spatial footprint of `run` under `[LibsignalPlacement]`. -/
-def runEntryMemPlaced [LibsignalPlacement] (A : RustAlloc) (g : RunCall) (s0 : State)
+@[expose] def runEntryMemPlaced [LibsignalPlacement] (A : RustAlloc) (g : RunCall) (s0 : State)
     (resStack : Nat) : SepProp :=
   memRegion g.res runResSize ∗ callAt A g.call g.c ∗
     storesAt A g.stores StoresGhost.opened ∗ (g.inp ↦ₛ inputOf g.i g.c) ∗
@@ -181,7 +220,7 @@ structure AtDispatchPlaced [LibsignalPlacement] (CodeOk : Memory → Prop)
   stdout : ProcessOutcome.traceStreamBytes .stdout s.trace = []
 
 /-- Spatial footprint at `AtDispatchPlaced` (`R + 0x214`). -/
-def dispatchMemPlaced [LibsignalPlacement] (A : RustAlloc) (g : RunCall) (me : MeAtDispatch)
+@[expose] def dispatchMemPlaced [LibsignalPlacement] (A : RustAlloc) (g : RunCall) (me : MeAtDispatch)
     (s0 : State) (resStack : Nat) : SepProp :=
   let fsp := runFsp s0
   memRegion g.res runResSize ∗ callAt A g.call g.c ∗
@@ -216,7 +255,7 @@ structure AtInit1Placed [LibsignalPlacement] (CodeOk : Memory → Prop)
   stdout : ProcessOutcome.traceStreamBytes .stdout s.trace = []
 
 /-- Spatial footprint at `AtInit1Placed` (`R + 0x74c`). -/
-def init1MemPlaced [LibsignalPlacement] (A : RustAlloc) (g : RunCall) (d : Init1Data)
+@[expose] def init1MemPlaced [LibsignalPlacement] (A : RustAlloc) (g : RunCall) (d : Init1Data)
     (s0 : State) (resStack : Nat) : SepProp :=
   let fsp := runFsp s0
   memRegion g.res runResSize ∗ memRegion g.call 56 ∗
@@ -256,7 +295,7 @@ structure AtInit2Placed [LibsignalPlacement] (CodeOk : Memory → Prop)
   stdout : ProcessOutcome.traceStreamBytes .stdout s.trace = []
 
 /-- Spatial footprint at `AtInit2Placed` (`R + 0x28f0`). -/
-def init2MemPlaced [LibsignalPlacement] (A : RustAlloc) (g : RunCall) (d : Init2Data)
+@[expose] def init2MemPlaced [LibsignalPlacement] (A : RustAlloc) (g : RunCall) (d : Init2Data)
     (s0 : State) (resStack : Nat) : SepProp :=
   let fsp := runFsp s0
   memRegion g.res runResSize ∗ memRegion g.call 56 ∗
@@ -291,7 +330,7 @@ structure AtRejectPlaced [LibsignalPlacement] (CodeOk : Memory → Prop)
   ans : g.a = some none
 
 /-- Concrete normal-return postcondition established by `run_hop_join_placed` at `s0.readReg64 .lr`. -/
-def runPostPlaced [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
+@[expose] def runPostPlaced [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
     (g : RunCall) (resStack : Nat) (s0 sf : State) (Pf : SepProp) : Prop :=
   CodeOk sf.mem ∧ sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧
     s0.trace <+: sf.trace ∧ RunHistOk g.i s0 sf ∧

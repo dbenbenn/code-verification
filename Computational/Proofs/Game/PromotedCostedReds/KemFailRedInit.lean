@@ -9,23 +9,26 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
+public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept -- proof-setup: allow-public-import
 import Computational.Proofs.E2E.Dsl.ClampsLossless
 import Computational.Proofs.ReductionDsl.FsAtomicMacros
 import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.FsAtomicMacrosBase
 
 /-!
 # Atomic Initializer and State Encodings for `KemFailRed`
 
 Defines the `atomicSessionOps` state encodings (`kemFailStateT`), initializer `kemFailInitC`, and
 candidate extractor `kemFailFinishOptE` for `KemFailRed`, and proves state-encoding roundtrips and
-exact `.eval` relations.
--/
+exact `.eval` relations.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
 namespace Computational.Proofs.Game.PromotedCostedReds.KemFailRedInit
 
@@ -71,12 +74,12 @@ open Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost (kemCand
 
 /-! ## State types and encodings -/
 
-@[reducible] def fig8RecT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def fig8RecT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod posTy
     (.prod (.prod (lpubT (ℓ := ℓ) (Pt := Pt)) (PlainT (ℓ := ℓ) (Pt := Pt)))
       (fig8CtT (ℓ := ℓ) (Pt := Pt)))
 
-@[reducible] def fig8MirT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def fig8MirT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod .bool
     (.prod .bool
       (.prod (.prod .nat .nat)
@@ -90,17 +93,17 @@ open Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost (kemCand
                       (.list (.prod .bool .nat)))))))))))
 
 /-- Full `Fig8` mirror `GameState` encoded in `atomicSig ℓ Pt`. -/
-@[reducible] def fig8GsT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def fig8GsT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (.prod (fig8StT (ℓ := ℓ) (Pt := Pt)) (fig8StT (ℓ := ℓ) (Pt := Pt))) (fig8MirT ℓ Pt)
 
-@[reducible] def kemCoinsT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def kemCoinsT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .sum .unit (.sum (BV512 (ℓ := ℓ) (Pt := Pt)) (.prod (BV512 (ℓ := ℓ) (Pt := Pt)) (BV256 (ℓ := ℓ) (Pt := Pt))))
 
-@[reducible] def kemSentEntryT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def kemSentEntryT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (.prod (U64 (ℓ := ℓ) (Pt := Pt)) (B (ℓ := ℓ) (Pt := Pt) 64)) (U32 (ℓ := ℓ) (Pt := Pt))
 
 /-- `SimKemFailTrack` state encoded in `atomicSig ℓ Pt`. -/
-@[reducible] def kemTrackT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def kemTrackT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (U64 (ℓ := ℓ) (Pt := Pt))
     (.prod (kemCoinsT ℓ Pt)
       (.prod (.prod (B (ℓ := ℓ) (Pt := Pt) 32) (B (ℓ := ℓ) (Pt := Pt) 32))
@@ -109,14 +112,14 @@ open Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost (kemCand
             (.opt (.prod (BV512 (ℓ := ℓ) (Pt := Pt)) (BV256 (ℓ := ℓ) (Pt := Pt))))))))
 
 /-- Combined `KemFailRed` state `(sC, (gFig, tr))` encoded in `atomicSig ℓ Pt`. -/
-@[reducible] def kemFailStateT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def kemFailStateT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (simFullT ℓ Pt) (.prod (fig8GsT ℓ Pt) (kemTrackT ℓ Pt))
 
 section StateEncodings
 
 variable {ℓ : ℕ} {Pt : Type}
 
-def fig8RecEnc (r : Record (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)) :
+@[expose] def fig8RecEnc (r : Record (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)) :
     (fig8RecT ℓ Pt).denote :=
   (posEnc r.pos, ((lpubV r.msg.1, r.msg.2), fig8CtV r.ct))
 
@@ -124,7 +127,7 @@ def fig8RecDec (v : (fig8RecT ℓ Pt).denote) :
     Record (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt) :=
   ⟨posDec v.1, (lpubOfV v.2.1.1, v.2.1.2), fig8CtOfV v.2.2⟩
 
-def fig8GsEnc (g : GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)) :
+@[expose] def fig8GsEnc (g : GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)) :
     (fig8GsT ℓ Pt).denote :=
   ((fig8StV (g.st .A), fig8StV (g.st .B)),
    (g.b,
@@ -156,7 +159,7 @@ def fig8GsDec (v : (fig8GsT ℓ Pt).denote) :
     leaks := leaks
     corrs := corrs.map fun (p, e) => (CryptoGames.SM.partyDec p, e) }
 
-def fig8ClampGsEnc (g : (@fig8GsTy Bytes (BitVec 512) Pt ℓ).denote) : (fig8GsT ℓ Pt).denote :=
+@[expose] def fig8ClampGsEnc (g : (@fig8GsTy Bytes (BitVec 512) Pt ℓ).denote) : (fig8GsT ℓ Pt).denote :=
   let ((stA, stB), (b, (win, ((epA, epB), ((iA, iB), (tL, (trs, (chall, (comp,
     ((mA, mB), (leaks, corrs))))))))))) := g
   ((fig8StV stA, fig8StV stB),
@@ -164,7 +167,7 @@ def fig8ClampGsEnc (g : (@fig8GsTy Bytes (BitVec 512) Pt ℓ).denote) : (fig8GsT
     (trs.map (fun (p, ((lp, m), ct)) => (p, ((lpubV lp, m), fig8CtV ct))),
      (chall, (comp, ((mA, mB), (leaks, corrs)))))))))))
 
-def kemCoinsAtomicEnc : SimKemCoins → (kemCoinsT ℓ Pt).denote
+@[expose] def kemCoinsAtomicEnc : SimKemCoins → (kemCoinsT ℓ Pt).denote
   | .init => .inl ()
   | .seed s => .inr (.inl (bytesToWordLE 512 s.toList))
   | .both s r => .inr (.inr (bytesToWordLE 512 s.toList, bytesToWordLE 256 r.toList))
@@ -174,7 +177,7 @@ def kemCoinsAtomicDec : (kemCoinsT ℓ Pt).denote → SimKemCoins
   | .inr (.inl s) => .seed ⟨coinBytes s, coinBytes_length s⟩
   | .inr (.inr (s, r)) => .both ⟨coinBytes s, coinBytes_length s⟩ (keyToBytesVec32 r)
 
-def kemTrackAtomicEnc {F : ShaCompress} (tr : SimKemFailTrack F) : (kemTrackT ℓ Pt).denote :=
+@[expose] def kemTrackAtomicEnc {F : ShaCompress} (tr : SimKemFailTrack F) : (kemTrackT ℓ Pt).denote :=
   (tr.e,
    (kemCoinsAtomicEnc tr.c,
     ((V1State.encodeRaw (tr.st .A).into_pb, V1State.encodeRaw (tr.st .B).into_pb),
@@ -182,12 +185,12 @@ def kemTrackAtomicEnc {F : ShaCompress} (tr : SimKemFailTrack F) : (kemTrackT �
       ((tr.sendCtr .A, tr.sendCtr .B),
        tr.cand.map kemCandVecToBv)))))
 
-def kemFailClampStateEnc [Zero Pt]
+@[expose] def kemFailClampStateEnc [Zero Pt]
     (s : LibsignalToModularSchemeSimState Bytes Pt ℓ × KemExtraRaw Bytes (BitVec 512) Pt ℓ) :
     (kemFailStateT ℓ Pt).denote :=
   (simFullEnc s.1, (fig8ClampGsEnc s.2.1, kemTrackAtomicEnc s.2.2.1.2))
 
-def kemFailSimStateEnc {F : ShaCompress}
+@[expose] def kemFailSimStateEnc {F : ShaCompress}
     (s : LibsignalToModularSchemeSimState Bytes Pt ℓ ×
       (GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt) × Bool) ×
       KemFailTrackState F) :
@@ -208,14 +211,14 @@ variable {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
 local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
-def initSimCAtomicE {Γ : List (Ty ASig)} (pqrKeyE : Expr AOps Γ BV256) :
+@[expose] def initSimCAtomicE {Γ : List (Ty ASig)} (pqrKeyE : Expr AOps Γ BV256) :
     Expr AOps Γ (simFullT ℓ Pt) :=
   eLet pqrKeyE
     (initSimCE
       (sessSpqrKemOp .spqrV1InitOp (.pair (.bool true) (.var .zero)))
       (sessSpqrKemOp .spqrV1InitOp (.pair (.bool false) (.var .zero))))
 
-def initFig8MirAtomicE {O' : Ops ASig} {Γ : List (Ty ASig)} (bE : Expr O' Γ .bool) :
+@[expose] def initFig8MirAtomicE {O' : Ops ASig} {Γ : List (Ty ASig)} (bE : Expr O' Γ .bool) :
     Expr O' Γ (fig8MirT ℓ Pt) :=
   .pair bE
     (.pair (.bool false)
@@ -228,12 +231,12 @@ def initFig8MirAtomicE {O' : Ops ASig} {Γ : List (Ty ASig)} (bE : Expr O' Γ .b
                   (.pair (.pair (.tconst (.nat 0)) (.tconst (.nat 0)))
                     (.pair .nil .nil)))))))))
 
-def initFig8GsAtomicE (idA idB : IdentityKey) {Γ : List (Ty ASig)}
+@[expose] def initFig8GsAtomicE (idA idB : IdentityKey) {Γ : List (Ty ASig)}
     (bE : Expr AOps Γ .bool) (k1E k2E : Expr AOps Γ BV256) :
     Expr AOps Γ (fig8GsT ℓ Pt) :=
   .pair (fig8InitAtomicE idA idB (.pair k1E k2E)) (initFig8MirAtomicE bE)
 
-def initV1BraidStAtomicE (isAlice : Bool) {Γ : List (Ty ASig)}
+@[expose] def initV1BraidStAtomicE (isAlice : Bool) {Γ : List (Ty ASig)}
     (pqrKeyE : Expr AOps Γ BV256) : Expr AOps Γ (B 32) :=
   let ver1 := sessPureOp (C := C) (K := K) (Dh := Dh) (encPt := encPt) (encT := encT)
     (decT := decT) (lam := lam) (.u8Lit 1#8) .unit
@@ -249,7 +252,7 @@ def initV1BraidStAtomicE (isAlice : Bool) {Γ : List (Ty ASig)}
         (decT := decT) (lam := lam) (.bytesLit 32 []) .unit)
       (.var .zero))
 
-def initKemTrackAtomicE {Γ : List (Ty ASig)} (pqrKeyE : Expr AOps Γ BV256) :
+@[expose] def initKemTrackAtomicE {Γ : List (Ty ASig)} (pqrKeyE : Expr AOps Γ BV256) :
     Expr AOps Γ (kemTrackT ℓ Pt) :=
   eLet pqrKeyE
     (let e1 := sessPureOp (C := C) (K := K) (Dh := Dh) (encPt := encPt) (encT := encT)
@@ -266,7 +269,7 @@ def initKemTrackAtomicE {Γ : List (Ty ASig)} (pqrKeyE : Expr AOps Γ BV256) :
              (.pair (.pair (.tconst (.nat 0)) (.tconst (.nat 0)))
                .none)))))
 
-def kemFailMkInitE (idA idB : IdentityKey) :
+@[expose] def kemFailMkInitE (idA idB : IdentityKey) :
     Expr AOps [BV256, BV256, BV256, .bool, .unit] (kemFailStateT ℓ Pt) :=
   let pqrKeyE : Expr AOps [BV256, BV256, BV256, .bool, .unit] BV256 := .var .zero
   let k2E : Expr AOps [BV256, BV256, BV256, .bool, .unit] BV256 := .var (.succ .zero)
@@ -281,13 +284,13 @@ def kemFailMkInitE (idA idB : IdentityKey) :
         (decT := decT) (lam := lam) pqrKeyE))
 
 /-- Atomic `init` computation for `KemFailRed` over `coinOnlyIface ℓ Pt`. -/
-def kemFailInitC (idA idB : IdentityKey) :
+@[expose] def kemFailInitC (idA idB : IdentityKey) :
     Comp AOps (coinOnlyIface ℓ Pt) [.unit] (.prod .unit (kemFailStateT ℓ Pt)) :=
   kemFailInitCoinsC (C := C) (K := K) (Dh := Dh) (encPt := encPt) (encT := encT)
     (decT := decT) (lam := lam) (kemFailMkInitE idA idB)
 
 /-- Candidate extractor projecting `tr.cand` from `kemFailStateT ℓ Pt`. -/
-def kemFailFinishOptE : Expr AOps [kemFailStateT ℓ Pt, .bool] (.opt (.prod BV512 BV256)) :=
+@[expose] def kemFailFinishOptE : Expr AOps [kemFailStateT ℓ Pt, .bool] (.opt (.prod BV512 BV256)) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.var .zero)))))))
 
 end AtomicInit

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs
-public import LibsignalBinary.Specifications.RecordCodecsBinary
-public import LibsignalBinary.Proofs.PublicApi.StoreSession.StoreCallSite
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsBinary -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreSession.StoreCallSite -- proof-setup: allow-public-import
 
 /-!
 # Generic `PreKeyStore` Contract (`PreKeyStoreSpec`)
@@ -25,7 +25,7 @@ Abstract separation-logic interface for `libsignal_protocol::storage::traits::Pr
   (`pk_vt + 0x28`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -43,7 +43,7 @@ open CryptoVerification.RecordCodecs CryptoVerification.RecordCodecsBinary
 
 /-- Six consecutive 64-bit words (`48` B) at `p`: the inline representation of a
     `libsignal_protocol::SignalProtocolError` value on stack or in an `sret` slot. -/
-def speWordsAt (p w0 w1 w2 w3 w4 w5 : BitVec 64) : SepProp :=
+@[expose] def speWordsAt (p w0 w1 w2 w3 w4 w5 : BitVec 64) : SepProp :=
   (p ↦₆₄ w0) ∗
   ((p + 0x08#64) ↦₆₄ w1) ∗
   ((p + 0x10#64) ↦₆₄ w2) ∗
@@ -69,7 +69,7 @@ structure SpeErrSpec (E : Type) where
   w0_ne_pending : ∀ e, w0 e ≠ 0xFFFFFFFFFFFFFFFD#64
 
 /-- The 48-byte `SignalProtocolError` value `e` at address `p`. -/
-def speErrAt {E : Type} (S : SpeErrSpec E) (p : BitVec 64) (e : E) : SepProp :=
+@[expose] def speErrAt {E : Type} (S : SpeErrSpec E) (p : BitVec 64) (e : E) : SepProp :=
   speWordsAt p (S.w0 e) (S.w1 e) (S.w2 e) (S.w3 e) (S.w4 e) (S.w5 e) ∗ S.heap e
 
 /-- Canonical empty `SpeErrSpec` for infallible store implementations (such as `OneKeyStore`). -/
@@ -89,7 +89,7 @@ def pemptySpeErrSpec : SpeErrSpec PEmpty where
     `remove_pre_key` and `mark_kyber_pre_key_used` future polls:
     * `.ok ()`: word 0 is `-2` (`okTagVec`), bytes `8..48` are uninspected (`memRegion`);
     * `.error e`: the 48-byte `SignalProtocolError` `speErrAt S out e`. -/
-def unitSpePollOutAt {E : Type} (S : SpeErrSpec E) (out : BitVec 64) : Except E Unit → SepProp
+@[expose] def unitSpePollOutAt {E : Type} (S : SpeErrSpec E) (out : BitVec 64) : Except E Unit → SepProp
   | .ok () => (out ↦₆₄ okTagVec) ∗ memRegion (out + 8#64) 40
   | .error e => speErrAt S out e
 
@@ -209,7 +209,7 @@ abbrev PreKeyStoreKit := PreKeyStoreSpec
     `get_pre_key`'s future poll:
     * `.ok r`: `RecOk r` and `preKeyRecordAt A out r` (`56` B);
     * `.error e`: word 0 is `-1` (`errTag`) followed by `speErrAt kit.getErr (out + 8) e` (`48` B). -/
-def preKeyGetPollOutAt {A : RustAlloc} {b : BitVec 64} (kit : PreKeyStoreSpec A b)
+@[expose] def preKeyGetPollOutAt {A : RustAlloc} {b : BitVec 64} (kit : PreKeyStoreSpec A b)
     (out : BitVec 64) : Except kit.GetErr PreKeyRecord → SepProp
   | .ok r => ⌜kit.RecOk r⌝ ∗ preKeyRecordAt A out r
   | .error e => (out ↦₆₄ errTag) ∗ speErrAt kit.getErr (out + 8#64) e
@@ -221,7 +221,7 @@ abbrev preKeyRemovePollOutAt {A : RustAlloc} {b : BitVec 64} (kit : PreKeyStoreS
   unitSpePollOutAt kit.removeErr out
 
 /-- Generic `get_pre_key` shim spec parameterized by `kit : PreKeyStoreSpec A b`. -/
-def kitPreKeyGetShimSpec {A : RustAlloc} {b : BitVec 64} (kit : PreKeyStoreSpec A b) :
+@[expose] def kitPreKeyGetShimSpec {A : RustAlloc} {b : BitVec 64} (kit : PreKeyStoreSpec A b) :
     Spec PreKeyShimCall where
   pre := fun x s =>
     ⌜(b &&& 0xfff#64) = 0#64 ∧ s.readReg64 .x0 = x.self ∧ s.readReg32 .x1 = x.id⌝ ∗
@@ -235,7 +235,7 @@ def kitPreKeyGetShimSpec {A : RustAlloc} {b : BitVec 64} (kit : PreKeyStoreSpec 
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Generic `remove_pre_key` shim spec parameterized by `kit : PreKeyStoreSpec A b`. -/
-def kitPreKeyRemoveShimSpec {A : RustAlloc} {b : BitVec 64} (kit : PreKeyStoreSpec A b) :
+@[expose] def kitPreKeyRemoveShimSpec {A : RustAlloc} {b : BitVec 64} (kit : PreKeyStoreSpec A b) :
     Spec PreKeyShimCall where
   pre := fun x s =>
     ⌜(b &&& 0xfff#64) = 0#64 ∧ s.readReg64 .x0 = x.self ∧ s.readReg32 .x1 = x.id⌝ ∗
@@ -249,7 +249,7 @@ def kitPreKeyRemoveShimSpec {A : RustAlloc} {b : BitVec 64} (kit : PreKeyStoreSp
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Generic `get_pre_key` poll spec parameterized by `kit : PreKeyStoreSpec A b`. -/
-def kitPreKeyGetPollSpec {A : RustAlloc} {b : BitVec 64} (kit : PreKeyStoreSpec A b) :
+@[expose] def kitPreKeyGetPollSpec {A : RustAlloc} {b : BitVec 64} (kit : PreKeyStoreSpec A b) :
     Spec (PreKeyPollCall × kit.PkState) where
   pre := fun (x, st0) s =>
     ⌜(b &&& 0xfff#64) = 0#64 ∧ s.readReg64 .x0 = x.fut ∧ s.readReg64 .x8 = x.out ∧
@@ -267,7 +267,7 @@ def kitPreKeyGetPollSpec {A : RustAlloc} {b : BitVec 64} (kit : PreKeyStoreSpec 
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Generic `remove_pre_key` poll spec parameterized by `kit : PreKeyStoreSpec A b`. -/
-def kitPreKeyRemovePollSpec {A : RustAlloc} {b : BitVec 64} (kit : PreKeyStoreSpec A b) :
+@[expose] def kitPreKeyRemovePollSpec {A : RustAlloc} {b : BitVec 64} (kit : PreKeyStoreSpec A b) :
     Spec (PreKeyPollCall × kit.PkState) where
   pre := fun (x, st0) s =>
     ⌜(b &&& 0xfff#64) = 0#64 ∧ s.readReg64 .x0 = x.fut ∧ s.readReg64 .x8 = x.out ∧
@@ -295,70 +295,8 @@ abbrev kitPreKeyRemovePollSpecE {A : RustAlloc} {b : BitVec 64} (kit : PreKeySto
   withEnvPre (kitPreKeyRemovePollSpec kit) fun s => kit.envOk s.fs.files
 
 /-- The pre-key store's own trace events contain no file-system event (`FsCtx`'s `Q`). -/
-def PreKeyStoreSpec.Quiet {A : RustAlloc} {b : BitVec 64} (kit : PreKeyStoreSpec A b) : Prop :=
+@[expose] def PreKeyStoreSpec.Quiet {A : RustAlloc} {b : BitVec 64} (kit : PreKeyStoreSpec A b) : Prop :=
   (∀ id ans, NoFsEv (kit.getEvs id ans)) ∧
     (∀ id ans, NoFsEv (kit.removeEvs id ans))
-
-/-- Read-only `.rodata` vtable slots required by `kit : PreKeyStoreSpec A img.base` under
-    `img.FrozenLoaded`. Store `drop_in_place` and `save_pre_key` (`+0x20`) are never called by
-    `decrypt_prekey`. -/
-structure PreKeyVtablesOk {A : RustAlloc} (img : Obj.Image)
-    (kit : PreKeyStoreSpec A img.base) : Prop where
-  getSlot : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((kit.pk_vt + 0x18#64) ↦₆₄ᵣ (img.base + kit.getShimOff)) ∗ P
-  removeSlot : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((kit.pk_vt + 0x28#64) ↦₆₄ᵣ (img.base + kit.removeShimOff)) ∗ P
-  getFutDrop : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.getFutVtOff) ↦₆₄ᵣ (img.base + kit.getFutDropOff)) ∗ P
-  getFutSize : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.getFutVtOff + 8#64) ↦₆₄ᵣ BitVec.ofNat 64 kit.getBoxSize) ∗ P
-  getFutAlign : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.getFutVtOff + 0x10#64) ↦₆₄ᵣ 8#64) ∗ P
-  getFutPoll : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.getFutVtOff + 0x18#64) ↦₆₄ᵣ (img.base + kit.getPollOff)) ∗ P
-  removeFutDrop : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.removeFutVtOff) ↦₆₄ᵣ (img.base + kit.removeFutDropOff)) ∗ P
-  removeFutSize : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.removeFutVtOff + 8#64) ↦₆₄ᵣ BitVec.ofNat 64 kit.removeBoxSize) ∗ P
-  removeFutAlign : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.removeFutVtOff + 0x10#64) ↦₆₄ᵣ 8#64) ∗ P
-  removeFutPoll : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.removeFutVtOff + 0x18#64) ↦₆₄ᵣ (img.base + kit.removePollOff)) ∗ P
-
-/-- Code-contract bundle for `kit : PreKeyStoreSpec A b` (without `img.FrozenLoaded`, as used by
-    in-memory E2E stores). -/
-structure PreKeyStoreKitOk {A : RustAlloc} {b : BitVec 64} (kit : PreKeyStoreSpec A b)
-    (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop where
-  getShim : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + kit.getShimOff)
-    (kitPreKeyGetShimSpec kit)
-  getPoll : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + kit.getPollOff)
-    (kitPreKeyGetPollSpecE kit)
-  getFutDrop : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + kit.getFutDropOff)
-    futDropSpec
-  removeShim : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + kit.removeShimOff)
-    (kitPreKeyRemoveShimSpec kit)
-  removePoll : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + kit.removePollOff)
-    (kitPreKeyRemovePollSpecE kit)
-  removeFutDrop : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + kit.removeFutDropOff)
-    futDropSpec
-
-/-- Image-relocated code-contract bundle (`Spec.inImage ... img`, providing `img.FrozenLoaded`
-    to every shim, poll, and future drop, as satisfied directly by the CLI store specs). -/
-structure PreKeyStoreKitOkImg {A : RustAlloc} (img : Obj.Image)
-    (kit : PreKeyStoreSpec A img.base) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop where
-  getShim : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + kit.getShimOff)
-    ((kitPreKeyGetShimSpec kit).inImage img)
-  getPoll : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + kit.getPollOff)
-    ((kitPreKeyGetPollSpecE kit).inImage img)
-  getFutDrop : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + kit.getFutDropOff)
-    (futDropSpec.inImage img)
-  removeShim : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + kit.removeShimOff)
-    ((kitPreKeyRemoveShimSpec kit).inImage img)
-  removePoll : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + kit.removePollOff)
-    ((kitPreKeyRemovePollSpecE kit).inImage img)
-  removeFutDrop : subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-    (img.base + kit.removeFutDropOff) (futDropSpec.inImage img)
 
 end CryptoVerification.LibsignalPublicApi.StoreKit

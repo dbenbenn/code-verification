@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Model.ExplanationTightness.CliHndlWitness.Witness
+public import Symbolic.Proofs.Tests.Model.ExplanationTightness.CliHndlWitness.Witness -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Bytes.Basic
 import DY.EquationalTheory.DiffieHellman
@@ -23,6 +23,11 @@ import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Actions.Network
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+import Symbolic.Proofs.SpecLemmas.ModelProofDefs
+import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
+import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+import Symbolic.Proofs.Swarm.CREF.Cli.Slots.InitiateDefs
 
 /-!
 # Symbolic Model Explanation for `cli_hndl_witness`
@@ -32,7 +37,7 @@ machine-free witness in `Witness.lean` and proves `Explains`, `BrokenDH`, `Alice
 and `HNDLPremise`, assembling `cli_hndl_witness_aux`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

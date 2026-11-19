@@ -242,7 +242,7 @@ c_type_spec mallocngModelAlignedAllocSpec (ctx M : AllocCostModel)
   let ev := AllocEvent.aligned align.toNat len.toNat
   let st' := if ok then M.step ev st else st
   let stepB := if ok then M.stepReserve ev st else M.stepReserve (.alloc 0) st
-  caveat [API_RESTRICTION] "align ≤ 2^31 avoids musl 1.2.5 set_size int32 reserved overflow" :
+  caveat [API_RESTRICTION] "align ≤ 2^31 avoids musl set_size int32 reserved overflow" :
     align.toNat ≤ MaxAlignedAllocAlign
   c_arg align : Val SizeT
   c_arg len : Val SizeT
@@ -264,7 +264,7 @@ c_type_spec mallocngModelPosixMemalignSpec (ctx M : AllocCostModel)
   let ev := AllocEvent.aligned align.toNat len.toNat
   let st' := if ok then M.step ev st else st
   let stepB := if ok then M.stepReserve ev st else M.stepReserve (.alloc 0) st
-  caveat [API_RESTRICTION] "align ≤ 2^31 avoids musl 1.2.5 set_size int32 reserved overflow" :
+  caveat [API_RESTRICTION] "align ≤ 2^31 avoids musl set_size int32 reserved overflow" :
     align.toNat ≤ MaxAlignedAllocAlign
   c_arg res : MutRef (OptOutPtr (MallocngModelBlock I γ)) none ⇝
     (if ok then some (len.toNat, max align.toNat 16) else none)
@@ -278,40 +278,53 @@ c_type_spec mallocngModelPosixMemalignSpec (ctx M : AllocCostModel)
 
 /-! ## Model-Indexed Soundness Record -/
 
-/-- The six placed C allocator entry points over `(M, I)`. -/
-structure MallocngModelPlacedEntryContracts (M : AllocCostModel) (I : MallocngCostModelIface M)
+/-- The six placed C allocator entry points of `lib` over `(M, I)` at symbol mapping `addrsOf`. -/
+structure MallocngLibModelPlacedEntryContracts (lib : Obj.MultiPlacedLib)
+    (addrsOf : Obj.MultiPlacement → MallocngAddrs)
+    (M : AllocCostModel) (I : MallocngCostModelIface M)
     (mpl : Obj.MultiPlacement) (svc : State → State) : Prop where
   malloc_ok : ∀ γ : GhostName,
-    mallocngMultiEntryOk mpl svc "malloc"
-      (mallocngModelMallocSpec M I svc γ (mallocngAddrsOfPlacement mpl))
+    mallocngLibMultiEntryOk lib mpl svc "malloc"
+      (mallocngModelMallocSpec M I svc γ (addrsOf mpl))
   free_ok : ∀ γ : GhostName,
-    mallocngMultiEntryOk mpl svc "free"
-      (mallocngModelFreeSpec M I γ (mallocngAddrsOfPlacement mpl))
+    mallocngLibMultiEntryOk lib mpl svc "free"
+      (mallocngModelFreeSpec M I γ (addrsOf mpl))
   calloc_ok : ∀ γ : GhostName,
-    mallocngMultiEntryOk mpl svc "calloc"
-      (mallocngModelCallocSpec M I svc γ (mallocngAddrsOfPlacement mpl))
+    mallocngLibMultiEntryOk lib mpl svc "calloc"
+      (mallocngModelCallocSpec M I svc γ (addrsOf mpl))
   realloc_ok : ∀ γ : GhostName,
-    mallocngMultiEntryOk mpl svc "realloc"
-      (mallocngModelReallocSpec M I svc γ (mallocngAddrsOfPlacement mpl))
+    mallocngLibMultiEntryOk lib mpl svc "realloc"
+      (mallocngModelReallocSpec M I svc γ (addrsOf mpl))
   alignedAlloc_ok : ∀ γ : GhostName,
-    mallocngMultiEntryOk mpl svc "aligned_alloc"
-      (mallocngModelAlignedAllocSpec M I svc γ (mallocngAddrsOfPlacement mpl))
+    mallocngLibMultiEntryOk lib mpl svc "aligned_alloc"
+      (mallocngModelAlignedAllocSpec M I svc γ (addrsOf mpl))
   posixMemalign_ok : ∀ γ : GhostName,
-    mallocngMultiEntryOk mpl svc "posix_memalign"
-      (mallocngModelPosixMemalignSpec M I svc γ (mallocngAddrsOfPlacement mpl))
+    mallocngLibMultiEntryOk lib mpl svc "posix_memalign"
+      (mallocngModelPosixMemalignSpec M I svc γ (addrsOf mpl))
 
-/-- Soundness of cost model `M` with representation `I` for the compiled `mallocngLib`:
-    startup into `I.HeapM ... M.init []`, the runtime split, block facts, the dynamic footprint
-    bound by `M.maxDynIvs` / `M.footprint`, and all six placed entry contracts. -/
-structure MallocngCostModelSound (M : AllocCostModel) (I : MallocngCostModelIface M) : Prop where
+/-- The six placed C allocator entry points of `VerifiedLibraries.mallocngLib` over `(M, I)`. -/
+abbrev MallocngModelPlacedEntryContracts (M : AllocCostModel) (I : MallocngCostModelIface M)
+    (mpl : Obj.MultiPlacement) (svc : State → State) : Prop :=
+  MallocngLibModelPlacedEntryContracts VerifiedLibraries.mallocngLib mallocngAddrsOfPlacement
+    M I mpl svc
+
+/-- Library-generic soundness of cost model `M` with representation `I` for `lib : Obj.MultiPlacedLib`
+    at symbol mapping `addrsOf`, startup bundle `startupRes`, and entry-point bundle
+    `entriesContract`: startup into `I.HeapM ... M.init []`, the runtime split, block facts, the
+    dynamic footprint bound by `M.maxDynIvs` / `M.footprint`, and all placed entry contracts. -/
+structure MallocngLibCostModelSound (lib : Obj.MultiPlacedLib)
+    (addrsOf : Obj.MultiPlacement → MallocngAddrs)
+    (startupRes : MallocngAddrs → BitVec 64 → SepProp)
+    (entriesContract : Obj.MultiPlacement → (State → State) → Prop)
+    (M : AllocCostModel) (I : MallocngCostModelIface M) : Prop where
   init :
     ∀ (mpl : Obj.MultiPlacement) (tp brkStart auxvPtr : BitVec 64) (R : SepProp) (m : Memory),
-      let A := mallocngAddrsOfPlacement mpl
+      let A := addrsOf mpl
       0xa4 ≤ tp.toNat →
       tp.toNat ≤ 2 ^ 48 →
       MallocngBrkStartWf brkStart →
       (m ⊨
-        VerifiedLibraries.mallocngLib.dataInit mpl ∗
+        lib.dataInit mpl ∗
         MallocngRuntime A tp ∗
         ((A.libc + 8#64) ↦₆₄ auxvPtr) ∗
         MallocngAuxvAt auxvPtr ∗ R) →
@@ -322,7 +335,7 @@ structure MallocngCostModelSound (M : AllocCostModel) (I : MallocngCostModelIfac
       0xa4 ≤ tp.toNat →
       tp.toNat ≤ 2 ^ 48 →
       MallocngBrkStartWf brkStart →
-      MallocngStartupResources A tp ⊢
+      startupRes A tp ⊢
         |==> (∃∗ γ : GhostName, I.HeapM γ A tp brkStart brkStart M.init [])
   heap_split_runtime :
     ∀ (γ : GhostName) (A : MallocngAddrs) (tp brkStart brk : BitVec 64)
@@ -347,9 +360,14 @@ structure MallocngCostModelSound (M : AllocCostModel) (I : MallocngCostModelIfac
       ∀ iv ∈ ivs, iv.1.toNat + iv.2 ≤ 2 ^ 48
   entries_ok :
     ∀ (mpl : Obj.MultiPlacement) (svc : State → State),
-      VerifiedLibraries.mallocngLib.Placeable mpl →
+      lib.Placeable mpl →
       MallocngSvcValid svc →
-      MallocngModelPlacedEntryContracts M I mpl svc
+      entriesContract mpl svc
+
+/-- Soundness of cost model `M` with representation `I` for `VerifiedLibraries.mallocngLib`. -/
+abbrev MallocngCostModelSound (M : AllocCostModel) (I : MallocngCostModelIface M) : Prop :=
+  MallocngLibCostModelSound VerifiedLibraries.mallocngLib mallocngAddrsOfPlacement
+    MallocngStartupResources (MallocngModelPlacedEntryContracts M I) M I
 
 /-! ## Usage-Indexed Tight Cost Model
 

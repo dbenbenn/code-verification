@@ -9,17 +9,36 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StoreSteps
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StepsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StoreSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StepsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
-import ProofLib.SepLogic.WPp
+public import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.RustHeap.Alloc
+public import ProofLib
+public import ProofLib.FsTrace
+public import ProofLib.GenPlacedFetches
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Defs
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKit
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKit
+import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKit
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKit
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKit
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKit
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Stage P4 Nonzero-`prevCap` `Ok` Epilogue
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

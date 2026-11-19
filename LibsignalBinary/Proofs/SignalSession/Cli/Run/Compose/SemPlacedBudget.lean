@@ -11,13 +11,18 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwnedPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserialize.SpecBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwnedPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserialize.SpecBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` Slot Specifications
@@ -27,7 +32,7 @@ Defines `RunSlotEnvs` and the budget-threaded (`RustCliAllocBudget M`) wrapper s
 `slotsOfPlaced` (along with `LibsignalFrozen`-guarded variants).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -74,7 +79,7 @@ theorem slotFramePlaced_eq_atState [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `encrypt` slot contract
 (`signal_session_ratchet::encrypt`) carrying `withLsCodeRoLoaded lsmpl`. -/
-def encSlotSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def encSlotSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (EncEnv : EncGhost → List AllocEvent → Prop) (S : RunSem) (stk : Nat) :
     Spec (EncGhost × M.σ) :=
@@ -107,7 +112,7 @@ def encSlotSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `decrypt_signal` slot contract
 (`signal_session_ratchet::decrypt_signal`) carrying `withLsCodeRoLoaded lsmpl`. -/
-def decSigSlotSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def decSigSlotSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecSigEnv : DecSigGhost → List AllocEvent → Prop) (S : RunSem) (stk : Nat) :
     Spec (DecSigGhost × M.σ) :=
@@ -136,7 +141,7 @@ def decSigSlotSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `initiate` slot contract
 (`signal_session_handshake::initiate`) carrying `withLsCodeRoLoaded lsmpl`. -/
-def initSlotSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initSlotSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (InitEnv : InitGhost → List AllocEvent → Prop) (S : RunSem) (stk : Nat) :
     Spec (InitGhost × M.σ) :=
@@ -175,7 +180,7 @@ abbrev decPkSlotSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     A lim DecPkEnv S stk
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` wrapper slots of `signal_session::run`. -/
-def slotsOfPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def slotsOfPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (envs : RunSlotEnvs)
     (S : RunSem) (needs : RunNeeds) : RunSlots where
   encrypt := mkSlot (encSlotSpecPlaced A lim envs.encrypt S) needs.encrypt
@@ -188,7 +193,7 @@ def slotsOfPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Base (unwrapped) budget-threaded `[LibsignalPlacement]` `decrypt_signal` slot contract,
 `rfl`-equal to `DecryptLemmas.TopPlacedBudget.decSigSlotSpecBasePlaced`. -/
-def decSigSlotSpecBasePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def decSigSlotSpecBasePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecSigEnv : DecSigGhost → List AllocEvent → Prop) (S : RunSem) (stk : Nat) :
     Spec (DecSigGhost × M.σ) :=
@@ -216,7 +221,7 @@ def decSigSlotSpecBasePlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-- `CodeOk`-parameterized budget-threaded `[LibsignalPlacement]` `decrypt_signal` slot contract,
 `rfl`-equal to `DecryptLemmas.TopPlacedBudget.decSigSlotSpecPlacedOf`. -/
-def decSigSlotSpecPlacedOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def decSigSlotSpecPlacedOf [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecSigEnv : DecSigGhost → List AllocEvent → Prop) (S : RunSem) (stk : Nat) :
@@ -239,16 +244,8 @@ abbrev decPkSlotSpecFrozenPlaced [LibsignalPlacement] {M : AllocCostModel}
   LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedBudget.decPkSlotSpecFrozenPlaced
     A lim DecPkEnv S stk
 
-/-- Wrapper slots with `decryptPrekey` guarded by `LibsignalFrozen lsmpl`. -/
-def slotsOfPkFrozenPlaced [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (envs : RunSlotEnvs)
-    (S : RunSem) (needs : RunNeeds) : RunSlots :=
-  { slotsOfPlaced A lim envs S needs with
-    decryptPrekey := mkSlot (decPkSlotSpecFrozenPlaced A lim envs.decryptPrekey S)
-      needs.decryptPrekey }
-
 /-- Wrapper slots with `decryptSignal` guarded by `LibsignalFrozen lsmpl`. -/
-def slotsOfSigFrozenPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def slotsOfSigFrozenPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (envs : RunSlotEnvs)
     (S : RunSem) (needs : RunNeeds) : RunSlots :=
   { slotsOfPlaced A lim envs S needs with
@@ -256,7 +253,7 @@ def slotsOfSigFrozenPlaced [LibsignalPlacement] {M : AllocCostModel}
       needs.decryptSignal }
 
 /-- Wrapper slots with both `decryptSignal` and `decryptPrekey` guarded by `LibsignalFrozen lsmpl`. -/
-def slotsOfSigPkFrozenPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def slotsOfSigPkFrozenPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (envs : RunSlotEnvs)
     (S : RunSem) (needs : RunNeeds) : RunSlots :=
   { slotsOfSigFrozenPlaced A lim envs S needs with

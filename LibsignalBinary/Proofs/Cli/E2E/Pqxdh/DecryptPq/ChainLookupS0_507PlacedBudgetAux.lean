@@ -10,15 +10,18 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ChainLookupS0_507Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym
-public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysSym
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ChainLookupS0_507Placed
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysSym
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
 # `VmPreserved` Step Lemmas for Segment `S0` on Block `507`
@@ -27,7 +30,7 @@ Auxiliary symbolic step lemmas recording `VmPreserved` across Segment `S0` of
 `try_decrypt_with_state::<signal_session_handshake::Coins>` under `DistinctSid`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

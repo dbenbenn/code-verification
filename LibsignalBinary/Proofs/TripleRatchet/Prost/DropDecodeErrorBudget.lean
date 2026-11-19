@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DropDecodeError
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.DropDecodeError
 import ProofLib.SepLogic.WP.Apply
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Verification of `core::ptr::drop_glue::<prost::error::DecodeError>`
@@ -23,7 +24,7 @@ Relocatable per-block verification of `drop_glue::<prost::error::DecodeError>` (
 `DefsBudget.dropDecodeErrorSpecGen`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -132,19 +133,5 @@ theorem drop_decode_error_placed_ok_x [LibsignalPlacement]
   drop_decode_error_placed_ok_gen (dStack := extHookStack) (by decide)
     (rustDeallocExternWithStack_of_rustDealloc (by decide) (by decide)
       (ls_hook_ok_of_mem hdealloc))
-
-theorem dropDecodeError_placedOk [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks}
-    (hdealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim)) :
-    DropDecodeErrorPlacedOk A lim H :=
-  subroutine_ok_withLsCodeLoaded_of_plain (drop_decode_error_placed_ok hdealloc)
-
-theorem dropDecodeError_placedOkX [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks}
-    (hdealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim)) :
-    DropDecodeErrorPlacedOkX A lim H :=
-  subroutine_ok_withLsCodeLoaded_of_plain (drop_decode_error_placed_ok_x hdealloc)
 
 end LibsignalBinary.Proofs.TripleRatchet.Prost.DropDecodeErrorBudget

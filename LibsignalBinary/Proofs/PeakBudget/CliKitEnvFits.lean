@@ -9,27 +9,49 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
-public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.W2RecvWhisperRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeserAux
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
+import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
+import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
+import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
+import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal
+import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot
+import LibsignalBinary.Proofs.PeakBudget.W2RecvWhisperRealSlot
+import LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeserAux
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedWrappers
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptSlotPeak
+import LibsignalBinary.Proofs.PeakBudget.W4OuterHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.Potential
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.E2E.Seed.Defs
+import LibsignalBinary.Proofs.PeakBudget.W1EncryptPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W4InnerPeakSpec
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortAfterGetPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
 
 /-!
 # Binary-Kit Callee `SingleSlotFineSpec` and Whole-`main` `FitsEnv` Closure
@@ -40,7 +62,7 @@ on over-cap `.error ()`), and whole-`main` `FitsEnv fineCostModel` on
 `RealCliMainBinaryEnvOf (mkBinaryKitCalleeEnvsWithDecPk ...)` and `realCliMainBinaryKitEnvOfFixed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -48,7 +70,6 @@ set_option maxHeartbeats 400000
 
 namespace LibsignalBinary.Proofs.PeakBudget.CliKitEnvFits
 
-open Arm64.Obj (Image)
 open Arm64.Process (bytesOfString)
 open CryptoVerification (LibsignalPlacement)
 open CryptoVerification.E2E (UnreachedPqxdhPrimitives)
@@ -94,7 +115,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced (Rea
 `mkBinaryKitRealCalleeEnvsFixed` on `initEnv`, `encEnv`, `decSigEnv`, and `pksmEnv`, and
 parametric in `decPkEnv`. -/
 def mkBinaryKitCalleeEnvsWithDecPk [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (decPkEnv : RunCall → List AllocEvent → Prop) (g : RunCall) : CliRunCalleeEnvs :=
   { mkBinaryKitRealCalleeEnvsFixed img S X W g with decPkEnv := decPkEnv g }
 
@@ -1125,7 +1146,7 @@ private theorem otrEncryptCore_imp_step_s2 (P : PEParams)
   · refine Or.inr ⟨e1, e2, rfl, he1, ?_⟩
     rcases hsend : (pqxdhSpqrModel P).send otr.pqrState rest with _ | ⟨pq', pqrKey, pqrMsg⟩ <;>
       rw [hsend] at he2
-    · exact Or.inl (by rw [he2]; exact FreeOnlyEvs.nil)
+    · exact Or.inl (Or.inr he2)
     · refine Or.inr ?_
       rcases he2 with h2a | ⟨ea, eb, rfl, hea, heb⟩
       · exact Or.inl h2a
@@ -1635,6 +1656,18 @@ private theorem w1PkRaw_guarded_credit_and_group :
   · exact (phaseGroupSpec_exists_guarded fineCostModel
       (fun t _ => preKeyMsgNewRaw_phaseGroup fineCostModel_wireGroupHyps t.1 t.2.1 t.2.2)).of_imp hiff
 
+private theorem w1Otr_cum_mono_aux {cs ct ctCap sig : Nat}
+    (hct : ct ≤ ctCap) (h30537 : 30537 ≤ sig) :
+    cs + max 30537 ((2 * 32 + 9539) + (2 * ct + 9539) + sig) ≤
+      cs + (2 * 32 + 9539) + (2 * ctCap + 9539) + sig := by omega
+
+private theorem w1Otr_live_mono_aux {ls ct ctCap ln : Nat} (hct : ct ≤ ctCap) :
+    ls + (ct + 8195) + ln ≤ ls + (ctCap + 8195) + ln := by omega
+
+private theorem w1Otr_grp_mono_aux {gs fs gsig : Nat} (h : 3 * fs ≤ gsig) :
+    gs + max (max 0 (9 * fs)) (3 * fs + (3 * fs + (gsig + 0))) ≤
+      gs + 6 * fs + gsig := by omega
+
 private theorem w1BinarySend_credit_and_groups [LibsignalPlacement]
     (P : PEParams) (i : Inputs) (peerAddr : AddrV) (R : W1BinarySendParams)
     (hi : CliPqxdhInputs P i)
@@ -1702,32 +1735,37 @@ private theorem w1BinarySend_credit_and_groups [LibsignalPlacement]
       (by rw [fineCostModel_smallMaxReq_eq]; decide)
       (ptextLen := x.ptext.length) hSendCr hSigCr
     dsimp only at hStepCr
+    have h30537 : 30537 ≤ w1SigCumCap := by decide
+    have h320_req : 320 ≤ w1SigReqCap := by decide
     constructor
     · refine hStepCr.mono ?_ ?_ ?_ ?_
-      · omega
-      · omega
+      · exact w1Otr_cum_mono_aux hct_le h30537
+      · exact w1Otr_live_mono_aux hct_le
       · exact Nat.max_le.mpr
           ⟨Nat.le_max_left _ _,
-           Nat.le_trans (by omega) (Nat.le_max_right _ _)⟩
+           Nat.le_trans (w1Otr_live_mono_aux hct_le) (Nat.le_max_right _ _)⟩
       · exact Nat.max_le.mpr
           ⟨Nat.le_max_left _ _,
-           Nat.le_trans
-             (Nat.max_le.mpr
-               ⟨Nat.le_max_left _ _,
-                Nat.le_trans
-                  (Nat.max_le.mpr
-                    ⟨Nat.le_trans hct_le (Nat.le_max_left _ _), Nat.le_max_right _ _⟩)
-                  (Nat.le_max_right _ _)⟩)
-             (Nat.le_max_right _ _)⟩
+           Nat.max_le.mpr
+             ⟨Nat.le_trans h320_req
+                (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_max_right _ _)),
+              Nat.le_trans
+                (Nat.max_le.mpr
+                  ⟨Nat.le_trans hct_le (Nat.le_max_left _ _), Nat.le_max_right _ _⟩)
+                (Nat.le_max_right _ _)⟩⟩
     · have hSendGrp := spqrSendTightCap_groupSpec fineCostModel otr.pqrState x.rest
       have hMkgGrp : PhaseGroupSpec fineCostModel
           LibsignalBinary.Proofs.PeakBudget.W1EncryptSegments.OtrApplyEnvTight (3 * FineScale) :=
         ((fine_rustAlloc_le_44 (by decide) (by decide)).seq
           (PhaseGroupSpec.freeOnly fineCostModel)).mono (by decide)
       have hCtGrp := PhaseGroupSpec.rustAlloc_any fineCostModel ((x.ptext.length / 16 + 1) * 16) 1
-      have hTailGrp := (PhaseGroupSpec.freeOnly fineCostModel).or
-        (hMkgGrp.seq (hCtGrp.seq (hSigGrp.seq (PhaseGroupSpec.freeOnly fineCostModel))))
-      exact (hSendGrp.seq hTailGrp).mono (by omega)
+      have hTailGrp :=
+        ((PhaseGroupSpec.freeOnly fineCostModel).or
+          (LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges.phaseGroupSpec_cliFormatInnerEnv
+            fineCostModel)).or
+          (hMkgGrp.seq (hCtGrp.seq (hSigGrp.seq (PhaseGroupSpec.freeOnly fineCostModel))))
+      have hGrpSig : 3 * FineScale ≤ signalMessageNewDeltaGrpS := by decide
+      exact (hSendGrp.seq hTailGrp).mono (w1Otr_grp_mono_aux hGrpSig)
   have hKyber1569 : ∀ r sess otr taken,
       kit.ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
       r.currentSession = some sess →
@@ -1857,7 +1895,7 @@ private theorem w1BinarySend_credit_and_groups [LibsignalPlacement]
     exact (hgrp.mono (by decide)).of_imp hImp
 
 private theorem binaryKitW1_credit_and_groups [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall)
     (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
@@ -1899,8 +1937,8 @@ end S2Helpers
 /-- Binary-kit W1 (`send`) `SingleSlotFineSpec` on `(mkBinaryKitRealCalleeEnvs img S X W g).encEnv`.
 `live = peak`: `RecordSerializeSeqFreeValidEnv` admits `e_free = []` (no `dropClonedSessionEvents`),
 so `segCloneLarge` may stay live after the slot. -/
-def binaryKitW1_fineSpec [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+@[expose] def binaryKitW1_fineSpec [LibsignalPlacement]
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall)
     (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
@@ -2468,8 +2506,8 @@ private theorem s2b_w2Slot_group [LibsignalPlacement]
 `(mkBinaryKitRealCalleeEnvs img S X W g).decSigEnv`.
 `live = peak`: `RecordSerializeSeqFreeValidEnv` admits `e_free = []` (no `dropClonedSessionEvents`),
 so `segCloneLarge` may stay live after the slot. -/
-def binaryKitW2_fineSpec [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+@[expose] def binaryKitW2_fineSpec [LibsignalPlacement]
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall)
     (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
@@ -3325,7 +3363,7 @@ end S3aHelpers
 
 /-- Binary-kit W3 (`init`) `SingleSlotFineSpec` at `W3InitBinaryKitSlotEnvFixed` under the
 `105`-byte `identity-key-pair` cap. -/
-def binaryKitW3Fixed_fineSpec (g : RunCall)
+@[expose] def binaryKitW3Fixed_fineSpec (g : RunCall)
     (hikp : ∀ bs,
       StoresGhost.opened.identity.own.get cliIo.rd (runFiles g.i) (utf8 "identity-key-pair") =
         .ok bs → bs.length ≤ 105) :
@@ -3358,11 +3396,11 @@ def binaryKitW3Fixed_fineSpec (g : RunCall)
 
 /-! ## W4 (`recv` PreKey) Binary-Kit Slot Bounds -/
 
-def binaryKitW4FixedCum : Nat := d3RecvW4ExtCum + 2000000
-def binaryKitW4FixedLive : Nat := d3RecvW4ExtLive
-def binaryKitW4FixedPeak : Nat := d3RecvW4ExtPeak
-def binaryKitW4FixedMaxReq : Nat := 4194368
-def binaryKitW4FixedGrpS : Nat := d3RecvW4ExtGrpS + 2000 * FineScale
+@[expose] def binaryKitW4FixedCum : Nat := d3RecvW4ExtCum + 2000000
+@[expose] def binaryKitW4FixedLive : Nat := d3RecvW4ExtLive
+@[expose] def binaryKitW4FixedPeak : Nat := d3RecvW4ExtPeak
+@[expose] def binaryKitW4FixedMaxReq : Nat := 4194368
+@[expose] def binaryKitW4FixedGrpS : Nat := d3RecvW4ExtGrpS + 2000 * FineScale
 
 private def s3a_spkRank (c : Nat) : Nat :=
   if 4900 ≤ c then 0
@@ -9545,8 +9583,8 @@ private theorem s3_hole_b (W : CliHooks) (i : Inputs)
 
 /-- Binary-kit W4 (`recv-prekey`) `SingleSlotFineSpec` on
 `(mkBinaryKitRealCalleeEnvsFixed img S X W g).decPkEnv` bounded by `binaryKitW4Fixed*`. -/
-def binaryKitW4Fixed_fineSpec [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+@[expose] def binaryKitW4Fixed_fineSpec [LibsignalPlacement]
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall)
     (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
@@ -9894,7 +9932,7 @@ private theorem optStage_groupSpec_s4 {P : List AllocEvent → Prop} {g : Nat}
     (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩)
 
 private theorem binaryKitInit_imp_w3Fixed [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {decPkEnv : RunCall → List AllocEvent → Prop} {g : RunCall}
     (hi_g : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i) :
     ∀ evs, (mkBinaryKitCalleeEnvsWithDecPk img S X W decPkEnv g).initEnv evs →
@@ -9916,7 +9954,7 @@ private theorem binaryKitInit_imp_w3Fixed [LibsignalPlacement]
         (hw peerAddr dir rfl).2.2.1).symm ▸ hevs⟩
 
 private def binaryKitCalleeFineSpecs_s4 [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {decPkEnv : RunCall → List AllocEvent → Prop} {g : RunCall}
     (Spk : SingleSlotFineSpec (decPkEnv g))
     (hi_g : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)
@@ -10024,7 +10062,7 @@ private def s4BinaryExtMainGrpS : Nat :=
     CliFitsTraceArith.cliMaxDirtyEntries * (12 * FineScale) + 3 * FineScale
 
 private theorem binaryKitCalleeFineSpecs_ext_bounds_s4 [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {decPkEnv : RunCall → List AllocEvent → Prop} {g : RunCall}
     (Spk : SingleSlotFineSpec (decPkEnv g))
     (hCaps : Spk.cum ≤ binaryKitW4FixedCum ∧
@@ -10114,7 +10152,7 @@ theorem realCliMainBinaryKitWithDecPk_fitsEnv_of_bounds [LibsignalPlacement]
     (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
     (hsc : lim.staticCount ≤ cliDefaultStaticCount)
     (hcap1G : cliOneGiB ≤ lim.physCap)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (decPkEnv : RunCall → List AllocEvent → Prop)
     (S_pk : ∀ (g : RunCall),
       CliPqxdhInputs ⟨W.C, W.Q⟩ g.i →
@@ -10278,7 +10316,7 @@ theorem realCliMainBinaryKitWithDecPk_fitsEnv_of_bounds [LibsignalPlacement]
 /-- Concrete `cliBudgetLimits` (`1 GiB`) whole-`main` `FitsEnv fineCostModel` on
 `realCliMainBinaryKitEnvOfFixed img S X W i`. -/
 theorem realCliMainBinaryKitEnvOfFixed_fitsEnv_cliBudgetLimits [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks) :
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks) :
     ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i →
       FitsEnv fineCostModel cliBudgetLimits fineCostModel.init
         (realCliMainBinaryKitEnvOfFixed img S X W i) :=

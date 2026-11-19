@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepRecvFwdCost
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepRecvFwdSkip
+public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepRecvFwdCost -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepRecvFwdSkip
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
 
 /-!
 # Receive Pipeline Equivalence for `SimDeliverForge`
@@ -19,7 +21,7 @@ Proves semantic `.eval` equivalence for the atomic `SimDeliverForge` receive pip
 against `semRecvHookS` with `deliverForgeSemHook`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -62,8 +64,6 @@ open Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
 open Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost
   (atomicSessionOpDescBits atomicCompDescBits)
 
-noncomputable section
-
 section RecvFwdProofs
 
 variable {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] {ℓ : ℕ}
@@ -74,7 +74,7 @@ local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 local notation "IDF" => fig8SmIfaceDF ℓ Pt
 
-def semRecvNewBranchDF (qep B T Kc : ℕ)
+@[expose] def semRecvNewBranchDF (qep B T Kc : ℕ)
     (sC : LibsignalToModularSchemeSimState Bytes Pt ℓ) (ex : List (Fig8C Pt))
     (Q : Party) (w : Bytes) (isDel : Bool)
     (pq' : Bytes) (i : ℕ) (pk : PublicKey) (T? : Option Pt)
@@ -115,7 +115,7 @@ def semRecvNewBranchDF (qep B T Kc : ℕ)
           (deliverForgeSemHook (PQC := BitVec 512) (Pt := Pt) (ℓ := ℓ))
           qep B sCAmb ex Q w isDel none pk pq' honestC (mkC (sC.base.mir.epoch Q + 1) (some T₀))
 
-def semRecvSameBranchDF (qep B T Kc : ℕ)
+@[expose] def semRecvSameBranchDF (qep B T Kc : ℕ)
     (sC : LibsignalToModularSchemeSimState Bytes Pt ℓ) (ex : List (Fig8C Pt))
     (Q : Party) (w : Bytes) (isDel : Bool)
     (pq' : Bytes) (i : ℕ) (pk : PublicKey) (T? : Option Pt)
@@ -140,7 +140,7 @@ def semRecvSameBranchDF (qep B T Kc : ℕ)
       qep B sC ex Q w isDel (some ci) pk pq' honestC (mkC g.epoch T?)
 
 /-- Full atomic `semRecvHookS` `Comp` over `fig8SmIfaceDF ℓ Pt`. -/
-def dfRecvHookC (qep q : ℕ) :
+@[expose] def dfRecvHookC (qep q : ℕ) :
     Comp AOps IDF [dfRecvInT ℓ Pt] (dfRecvOutT ℓ Pt) :=
   fwdRecvDispatchC C K idA idB Dh encPt encT decT lam q
     (fwdRecvNewC C K idA idB Dh encPt encT decT lam qep q)
@@ -916,7 +916,5 @@ theorem dfRecvHookC_eval (qep q : ℕ) (hℓ : ℓ < 10 ^ 6)
           sC ex Q w isDel pq' i pk T? lct honestC ci hbnd hex hextra
 
 end RecvFwdProofs
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepRecvFwd

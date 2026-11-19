@@ -10,22 +10,27 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8dPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8dPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch3Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8b
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8c
-import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8d
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8d -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
 
 /-!
 # Budget-Threaded Placed Variant 8 (`EkReceivedCt1Sampled`, `+1764`, Block `333`) — Part D
@@ -35,7 +40,7 @@ Lifts the Variant 8 `<PolyEncoder>::from_pb` setup (`+10836 -> +10900`), result 
 to `VmPreserved` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

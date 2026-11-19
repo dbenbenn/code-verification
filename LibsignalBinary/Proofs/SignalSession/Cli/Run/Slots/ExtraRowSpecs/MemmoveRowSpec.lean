@@ -11,8 +11,12 @@ module
 
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # `memmove` Consumer `HookOk` Row Arm (`ExtraRowSpecs.MemmoveRowSpec`)
@@ -37,8 +41,8 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc
   (hookOk_withAlloc_of_withVmPreserved withAlloc)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget (hookOk_withVmPreserved)
 
-/-- `memmove` consumer `HookOk` arm narrowed to `#1348` `MemmoveArithBound`-guarded
-    `libcMemmoveBoundedSpec` + `sessionMemmoveBoundedSpec` (plain, `withVmPreserved` /
+/-- `memmove` consumer `HookOk` arm for `MemmoveArithBound`-guarded
+    `libcMemmoveBoundedSpec` and `sessionMemmoveBoundedSpec` (plain, `withVmPreserved` /
     `sessionMemmoveBoundedBudgetSpec`, `withAlloc`, and `AllocCallPreserved`). -/
 @[expose] def MemmoveRowSpec (f : State → State) : Prop :=
   (∀ stk : Nat, HookOk f (libcMemmoveBoundedSpec stk)) ∧

@@ -9,13 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.PrefixPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Dev
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.PrefixPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Dev
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Alloc -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.BasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.AllocPlaced
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

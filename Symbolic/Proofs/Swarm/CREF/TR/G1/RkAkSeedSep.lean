@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkSeedSepGood
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkPeel
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkSeedSepGood -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkPeel -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.RatchetDHRkSwapPeelTR
 
@@ -22,7 +22,7 @@ Proves `seedSepAK_good` and packages `seedSepAKRun_of` for `Q := Good T` from `R
 into `UNF` and discharging the root-key and chain-key twin cases.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -73,7 +73,7 @@ theorem ckOut_hkdfBlock2_split_of_ak {T : ExecTrace} {prk : DY.Bytes} (hp : prk.
 
 /-- Decomposition of an honest KDF output or logged skipped seed into a stored root key, a chain
 output over `RootX`, or a `kdfExtract` on attacker-known inputs. -/
-def UNF (T : ExecTrace) (u : DY.Bytes) : Prop :=
+@[expose] def UNF (T : ExecTrace) (u : DY.Bytes) : Prop :=
   (∃ (p : Participant) (st : TRState) (i₀ : Nat), TRStateStoredAt p st i₀ T ∧ u = st.rk) ∨
   (∃ (X : DY.Bytes) (j : Nat) (b : Bool), RootX T X ∧ u = ckOut b (chainKeyAt X j)) ∨
   (∃ s i, u = KdfExtract.kdfExtract s i ∧ s.AttackerKnows T ∧ i.AttackerKnows T)

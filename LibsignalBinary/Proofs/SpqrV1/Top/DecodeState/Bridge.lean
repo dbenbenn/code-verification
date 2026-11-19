@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Proof
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldLemmas
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Proof -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldLemmas -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Top -- shake: keep
 
@@ -22,7 +22,7 @@ import LibsignalBinary.Specifications.LibsignalSpqrV1.Top -- shake: keep
 `skipField`) and `LibsignalSpqrV1.Proto`, plus strict length-decrease lemmas for `mergeLoop` termination.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.DecodeState
 
@@ -42,7 +42,7 @@ set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
-def codecWireTypeToProto : CryptoVerification.LibsignalProtoCodec.WireType → Proto.WireType
+@[expose] def codecWireTypeToProto : CryptoVerification.LibsignalProtoCodec.WireType → Proto.WireType
   | .varint => .varint
   | .sixtyFourBit => .SixtyFourBit
   | .lengthDelimited => .lengthDelimited

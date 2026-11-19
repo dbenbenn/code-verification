@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.Leaks
+public import Symbolic.Proofs.Swarm.CREF.TR.Leaks -- proof-setup: allow-public-import
 public import Symbolic.Proofs.SpecLemmas.LeakableSecretProofDefs
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Actions.Network
 import DY.Actions.ProtocolEvent
-public import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil
+public import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -37,7 +37,7 @@ run is matched by one PQXDH compromise move (`compromiseIK`, `compromiseSPK`, `c
 `compromiseOPK`), preserving `MatchedPrefix` and satisfying `AppendsOnlyExposure`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -51,7 +51,7 @@ open CryptoProofLib.Refinement (ExternInterpretation)
 open DY.Libsignal.PQXDH (PQXDHEvent)
 
 /-- The `leakPq` flag of a PQXDH compromise event (`none` if not a compromise). -/
-def pqLeakKind : PQXDHEvent → Option Bool
+@[expose] def pqLeakKind : PQXDHEvent → Option Bool
   | .CompromisedIK .. | .CompromisedSPK .. | .CompromisedOPK .. => some false
   | .CompromisedPQSPK .. => some true
   | _ => none
@@ -105,7 +105,7 @@ theorem appendsOnlyExposure_pq_pair (t : ExecTrace) (ev : PQXDHEvent) (msg : DY.
         TraceEntryHas.inj (NetE msg) := by simp [Symbolic.DYBridge.DY.Trace.append_eq_1, Symbolic.DYBridge.DY.Trace.at_eq_2, Symbolic.DYBridge.DY.Trace.length_eq_2]
     rw [this]; exact ⟨rfl, fun _ he => by cases he⟩
 
-def IsCompromiseMove : Move → Prop
+@[expose] def IsCompromiseMove : Move → Prop
   | .compromiseIK .. | .compromiseSPK .. | .compromisePQSPK .. | .compromiseOPK .. => True
   | _ => False
 
@@ -115,7 +115,7 @@ private theorem run_discard_snd {α : Type} (x : Traceful α) (tr : ExecTrace) :
   rcases x.run tr with ⟨_ | a, t⟩ <;> (simp -failIfUnchanged only [Symbolic.DYBridge.DY.Traceful.run_eq_1]; try rfl)
 
 /-- The key a compromise move reads (by kind) and the event it logs. -/
-def compromiseShape : Move → Option (Participant × Nat × DY.Libsignal.PQXDH.KeyKind ×
+@[expose] def compromiseShape : Move → Option (Participant × Nat × DY.Libsignal.PQXDH.KeyKind ×
     (DY.Bytes → PQXDHEvent))
   | .compromiseIK p i => some (p, i, .identity, fun sk => .CompromisedIK p (DY.DiffieHellman.dhPk sk))
   | .compromiseSPK b i =>

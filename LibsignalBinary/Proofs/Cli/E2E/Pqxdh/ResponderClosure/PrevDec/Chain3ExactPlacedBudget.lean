@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroCPlacedBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.ChainBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroCPlacedBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.ChainBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -29,6 +29,31 @@ import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.MergeReceiverChainsAux.
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.ChainMessageKeysGExt
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroAPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroBPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.CodePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.EntryPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.KeyInner
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.KeySeg3c
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.MK
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.MKPush
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.MKSeed
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXCliPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.Potential
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.TopPlacedBudget
 
 /-!
 # Exact-Trace Budget Contract for Handshake `message::merge<Chain>`
@@ -39,7 +64,7 @@ under `[LibsignalPlacement]`, tracking capacity-pinned `Vec<MessageKey>` growth 
 from `0` on entry to `vecCap4Of c.keys.length` on exit.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -216,7 +241,7 @@ attribute [local simp, local arm64_norm]
 /-! ## Capacity-Pinned `Chain` Representation (`c3x_chain3GAtCap`) and Spatial Bridges -/
 
 /-- The `message_keys` (pinned at capacity `capMk`) and `chain_key` fields of `prostChainGAt A a c`. -/
-def c3x_chainGRestCap (A : RustAlloc) (a : BitVec 64) (capMk : Nat) (c : ChainG) : SepProp :=
+@[expose] def c3x_chainGRestCap (A : RustAlloc) (a : BitVec 64) (capMk : Nat) (c : ChainG) : SepProp :=
   (∃∗ ptrMk : BitVec 64,
     vecAt A 104 8 (fun mk b => prostMsgKeyAt A mk b)
       (a + 0x30#64) (BitVec.ofNat 64 capMk) ptrMk c.keys) ∗
@@ -227,7 +252,7 @@ def c3x_chainGRestCap (A : RustAlloc) (a : BitVec 64) (capMk : Nat) (c : ChainG)
 
 /-- Capacity-pinned `chain3GAt`: `srk` and `priv` as `chain3VecAt` (`cap = 0#64` when `[]`) and
 `keys` pinned at capacity `BitVec.ofNat 64 capMk` (`0` on entry, `vecCap4Of c.keys.length` on exit). -/
-def c3x_chain3GAtCap (A : RustAlloc) (a : BitVec 64) (capMk : Nat) (c : ChainG) : SepProp :=
+@[expose] def c3x_chain3GAtCap (A : RustAlloc) (a : BitVec 64) (capMk : Nat) (c : ChainG) : SepProp :=
   chain3VecAt A a c.srk ∗ chain3VecAt A (a + 0x18#64) c.priv ∗ c3x_chainGRestCap A a capMk c
 
 theorem c3x_chainGRestCap_entails_chainGRest (A : RustAlloc) (a : BitVec 64)
@@ -342,7 +367,7 @@ theorem c3x_default_cells_bf0_entail_chain3GAtCap_ext (A : RustAlloc) (q : BitVe
 /-! ## Exact-Trace Envelope and Block-`516` Specifications -/
 
 /-- Exact deterministic allocator event envelope of `message::merge<Chain>` on `c`. -/
-def c3x_ChainMergeExactEnv (c : ChainG) (evs : List AllocEvent) : Prop :=
+@[expose] def c3x_ChainMergeExactEnv (c : ChainG) (evs : List AllocEvent) : Prop :=
   evs = chainMergeEvents c
 
 theorem c3x_fitsEnv_exact_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} {c : ChainG} :
@@ -356,7 +381,7 @@ theorem c3x_fitsEnv_exact_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.
 /-- Capacity-retaining exact-trace raw contract of handshake
 `prost::encoding::message::merge::<Chain, &mut &[u8]> [local#4]` (Block `516`, `lsmpl.base 516`)
 at `chainMerge3StackX` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def c3x_chainMerge3ExactCapRawSpecW {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def c3x_chainMerge3ExactCapRawSpecW {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainMergeGenGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = 2#8 ∧ s.readReg64 .x1 = x.a ∧ s.readReg64 .x2 = x.bufRef ∧
@@ -375,7 +400,7 @@ def c3x_chainMerge3ExactCapRawSpecW {M : AllocCostModel} (A : RustCliAllocBudget
 `prost::encoding::message::merge::<Chain, &mut &[u8]> [local#4]` (Block `516`, `lsmpl.base 516`)
 at `chainMerge3StackX` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`), erasing `c3x_chain3GAtCap` to
 `prostChainGAt` in `post` to match `TopPlacedBudgetAux.chainMerge3RawSpecW`. -/
-def c3x_chainMerge3ExactRawSpecW {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def c3x_chainMerge3ExactRawSpecW {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainMergeGenGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = 2#8 ∧ s.readReg64 .x1 = x.a ∧ s.readReg64 .x2 = x.bufRef ∧
@@ -392,14 +417,14 @@ def c3x_chainMerge3ExactRawSpecW {M : AllocCostModel} (A : RustCliAllocBudget M)
 
 /-- Relocatable `[LibsignalPlacement]` exact-trace Block-`516` contract on `lsProg_518 ext`
 under `withLsCodeRoLoaded lsmpl`, retaining `c3x_chain3GAtCap` in `post`. -/
-def c3x_ChainMerge5ExactCapCroPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def c3x_ChainMerge5ExactCapCroPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 516)
     (withLsCodeRoLoaded lsmpl (c3x_chainMerge3ExactCapRawSpecW A lim))
 
 /-- Relocatable `[LibsignalPlacement]` exact-trace Block-`516` contract on `lsProg_518 ext` under `withLsCodeRoLoaded lsmpl`, producing `prostChainGAt` in `post`. -/
-def c3x_ChainMerge5ExactCroPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def c3x_ChainMerge5ExactCroPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 516)

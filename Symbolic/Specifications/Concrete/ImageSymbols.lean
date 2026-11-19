@@ -48,11 +48,6 @@ abbrev kyberEncapsSymbol : StubSymbol := "libcrux_ml_kem::mlkem1024::kyber::enca
 
 abbrev kyberDecapsSymbol : StubSymbol := "libcrux_ml_kem::mlkem1024::kyber::decapsulate"
 
-abbrev toEdwardsSymbol : StubSymbol := "<curve25519_dalek::montgomery::MontgomeryPoint>::to_edwards"
-
-abbrev torsionFreeSymbol : StubSymbol :=
-  "<curve25519_dalek::edwards::EdwardsPoint>::is_torsion_free"
-
 /-- Leading wire tag byte for `PreKeySignalMessage`. -/
 abbrev wirePrekeyTag : BitVec 8 := 3#8
 

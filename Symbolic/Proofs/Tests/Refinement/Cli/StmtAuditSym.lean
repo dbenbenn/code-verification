@@ -9,16 +9,17 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Refinement.Cli.ExternWitness
-public import LibsignalBinary.Proofs.SignalSession.NonVacuityPq
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredElfBinding
-public import Symbolic.Proofs.SpecLemmas.ElfBindingFixed
+public import Symbolic.Proofs.Tests.Refinement.Cli.ExternWitness -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SpecLemmas.ElfBindingPlaced -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.Refinement.Cli.Cheval26.Session -- proof-setup: allow-public-import
 import all Init.Data.Repr
 import all Init.Data.String.Defs
 import DY.Actions.Network
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
+import Symbolic.Proofs.SpecLemmas.CliTurnAfterEq
 import Symbolic.Proofs.Tests.Refinement.Cli.StdinGuard
 import Symbolic.DYBridge.DY.Actions.Network
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredAsmLevelSecurity -- proof-setup: allow-public-import
 
 /-!
 # Non-Vacuity, Boundary, and Falsifiability Checks for `Composed/Cli/`
@@ -29,7 +30,7 @@ clauses with negative guard boundaries, `CoinSplit`, `CallsMatchSchedules`, `Fil
 `CompAsmSecurityCliMoves`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 namespace Symbolic.Proofs.Tests.Refinement.Cli.StmtAuditSym
@@ -44,8 +45,8 @@ open DY.Libsignal.HwEvents (MachineEvent)
 open DY.Libsignal.PQXDH.Refinement (wirePrekeyTag)
 open DY.Libsignal.TripleRatchet.Refinement (wireWhisperTag)
 open CryptoVerification.SignalSession (Inputs Outcome partyDirs filesOf bundleDir coinsFile sessionFile emptyParty)
-open CryptoVerification.E2E (initiateState encodeRecordUnderExtras)
-open CryptoVerification.SignalSession.NonVacuityPq (W0 b0 t0 X0)
+open Symbolic.Proofs.Tests.Refinement.Cli.Cheval26
+  (chevalSessionBytes chevalSessionBytes_ne_nil chevalSessionBytes_lt)
 
 /-! ## Path Canonicalization and Turn-State Properties -/
 private theorem sessionPathOf_cases (r : ProtocolSetup) (p : Participant) :
@@ -96,12 +97,9 @@ theorem not_filesVisible_dot_or_stdio : ¬ FilesVisible [(".", [])] ∧ ¬ Files
 
 /-! ## Inhabited Clauses and Negative Guard Boundaries -/
 
-def auditSessionBytes : HwBytes :=
-  match initiateState X0 W0 .A emptyParty.me b0 t0 with
-  | some (x, g) => encodeRecordUnderExtras (fun _ => x) g | none => []
-set_option maxHeartbeats 800000 in
-theorem auditSessionBytes_wf : auditSessionBytes ≠ [] ∧ auditSessionBytes.length < 2 ^ 31 := by
-  unfold auditSessionBytes; exact ⟨by decide +kernel, by decide +kernel⟩
+def auditSessionBytes : HwBytes := chevalSessionBytes
+theorem auditSessionBytes_wf : auditSessionBytes ≠ [] ∧ auditSessionBytes.length < 2 ^ 31 :=
+  ⟨chevalSessionBytes_ne_nil, chevalSessionBytes_lt⟩
 
 def aliceSessPath : String := sessionPathOf testRecords testRecords.alice
 def aliceSessFiles : List (String × HwBytes) :=
@@ -117,10 +115,10 @@ private theorem aliceSessFiles_fp : ∀ x ∈ aliceSessFiles, CliFilePath x.1 :=
 private theorem bobInitFiles_fp : ∀ x ∈ bobInitFiles, CliFilePath x.1 := fun x hx =>
   (List.mem_append.mp hx).elim (commonFiles_bob_cliFilePath testRecords_wf.1 x)
     (bobPreKeyFiles_cliFilePath rfl rfl rfl x)
-set_option maxRecDepth 8192 in
+set_option maxRecDepth 32768 in
 private theorem aliceSessFiles_bounded : ∀ x ∈ aliceSessFiles, x.2.length < 2 ^ 31 := fun x hx =>
   (List.mem_append.mp hx).elim (commonFiles_alice_bounded cliWitnessInterp_cryptoEquationsHold testRecords_wf x)
-    fun h => by simp only [List.mem_singleton] at h; subst h; exact auditSessionBytes_wf.2
+    fun h => by rw [List.mem_singleton.mp h]; exact auditSessionBytes_wf.2
 private theorem bobInitFiles_bounded : ∀ x ∈ bobInitFiles, x.2.length < 2 ^ 31 := fun x hx =>
   (List.mem_append.mp hx).elim (commonFiles_bob_bounded cliWitnessInterp_cryptoEquationsHold testRecords_wf x)
     (bobPreKeyFiles_bounded cliWitnessInterp_cryptoEquationsHold testRecords_wf rfl x)
@@ -381,165 +379,6 @@ theorem cliReachable_step_and_clear_satisfiable :
     rw [heq, hrec1] at hrec2; cases hrec2
   exact ⟨t1, t2, hne10, hne21, hr1, hsend1, hr2, hrec2⟩
 
-/-- Minimal well-formed 1-page `udf #0` (`0#32`) ELF image at `Obj.pageSize`. -/
-def udfElf : Arm64.Process.ElfImage :=
-  { entry := BitVec.ofNat 64 Arm64.Obj.pageSize
-    phdrVaddr := BitVec.ofNat 64 Arm64.Obj.pageSize
-    phent := 56
-    phnum := 1
-    segments := [{ start := BitVec.ofNat 64 Arm64.Obj.pageSize
-                   perm := .rx
-                   bytes := List.replicate Arm64.Obj.pageSize 0#8 }]
-    brkStart := BitVec.ofNat 64 (2 * Arm64.Obj.pageSize)
-    symbols := [] }
-
-/-- `udfElf` passes `ElfImage.WellFormed` and loads cleanly, yet fails `CliElfProgress` because
-instruction 0 (`udf #0`) halts instead of exiting or aborting. -/
-theorem not_cliElfProgress_udfElf :
-    udfElf.WellFormed = true ∧
-    (∃ s0, udfElf.loadState (CryptoVerification.SignalSession.cliProcessInputs
-      { argv := testRecvPreKeyCall.cmd.argv, dirs := partyDirs,
-        files := bobInitFiles ++ testRecvPreKeyCall.extra, stdin := auditPreKeyBytes }) = .ok s0) ∧
-    ¬ CliElfProgress udfElf := by
-  have hwf : udfElf.WellFormed = true := by
-    unfold udfElf Arm64.Process.ElfImage.WellFormed Arm64.Process.regionsDisjointAndAligned
-      Arm64.Process.regionAlignedValid Arm64.Process.entryInExecRegion
-    simp only [List.length_replicate]
-    decide +kernel
-  let inp : Inputs :=
-    { argv := testRecvPreKeyCall.cmd.argv, dirs := partyDirs,
-      files := bobInitFiles ++ testRecvPreKeyCall.extra, stdin := auditPreKeyBytes }
-  let t0 := CliTurn.init (initDirs cliWitnessInterp testRecords)
-  have hba : testRecords.bob ≠ testRecords.alice := testRecords_wf.1.symm
-  have hd : t0.dirs testRecvPreKeyCall.party = filesOf bobInitFiles := by
-    simp [t0, CliTurn.init, initDirs, testRecvPreKeyCall, hba, bobInitFiles]
-  have hinp : InputsFor testRecvPreKeyCall (t0.dirs testRecvPreKeyCall.party) inp := by
-    rw [hd]
-    exact inputsFor_of_cliFilePaths testRecvPreKeyCall _ bobInitFiles_fp (fun _ h => nomatch h)
-      bobInitFiles_bounded (fun _ h => nomatch h) (by dsimp only [testRecvPreKeyCall]; decide)
-  have hdirs_ok :
-      ((CryptoVerification.SignalSession.cliProcessInputs inp).dirs.any
-        (fun d => Arm64.hasLeadingSlash d || Arm64.hasDotDot d)) = false := by decide +kernel
-  have hfiles_ok :
-      ((CryptoVerification.SignalSession.cliProcessInputs inp).files.any
-        (fun (p, bs) => Arm64.hasLeadingSlash p || Arm64.hasDotDot p ||
-          !decide (bs.length ≤ Arm64.MAX_LFS_FILESIZE))) = false := by
-    rw [List.any_eq_false]
-    intro ⟨p, bs⟩ hmem
-    obtain ⟨_, _, hsl, hdd, hle⟩ := hinp.2.2.2.2 (p, bs) hmem
-    simp [hsl, hdd, hle]
-  have hstk : ∃ sp stackRegion,
-      Arm64.Process.buildInitialStack udfElf
-        (CryptoVerification.SignalSession.cliProcessInputs inp) = .ok (sp, stackRegion) := by
-    cases h : Arm64.Process.buildInitialStack udfElf
-        (CryptoVerification.SignalSession.cliProcessInputs inp) with
-    | ok p => exact ⟨p.1, p.2, rfl⟩
-    | error _ =>
-      have hok : (match Arm64.Process.buildInitialStack udfElf
-          (CryptoVerification.SignalSession.cliProcessInputs inp) with
-        | .ok _ => true | .error _ => false) = true := by decide +kernel
-      rw [h] at hok; cases hok
-  obtain ⟨sp, stackRegion, hstk_eq⟩ := hstk
-  let baseMem : Arm64.Memory := ⟨Arm64.Snapshot.loadCellAt (udfElf.segments ++ [stackRegion])⟩
-  let stackBase := BitVec.ofNat 64
-    ((CryptoVerification.SignalSession.cliProcessInputs inp).init.stackTop.toNat -
-      (CryptoVerification.SignalSession.cliProcessInputs inp).init.stackSize)
-  have hload : ∃ s0, udfElf.loadState (CryptoVerification.SignalSession.cliProcessInputs inp) = .ok s0 ∧
-      s0.pc = udfElf.entry ∧ s0.status = .Running ∧
-      s0.mem = baseMem.mapZero stackBase
-        (CryptoVerification.SignalSession.cliProcessInputs inp).init.stackSize := by
-    unfold Arm64.Process.ElfImage.loadState
-    simp only [hwf, Bool.not_true, Bool.false_eq_true, ↓reduceIte, hdirs_ok, hfiles_ok,
-      Bind.bind, Except.bind, hstk_eq, pure, Except.pure]
-    exact ⟨_, rfl, rfl, rfl, rfl⟩
-  obtain ⟨s0, hload_eq, hpc, hrun, hmem⟩ := hload
-  refine ⟨hwf, ⟨s0, hload_eq⟩, fun hprog => ?_⟩
-  have hne := hprog cliWitnessInterp cliWitnessInterp_contracts cliWitnessHooks cliWitnessHooks_agree
-    testRecords testRecords_wf t0 CliReachable.init testRecvPreKeyCall inp
-    cliNextCall_testRecvPreKeyCall hinp
-  apply hne
-  unfold CryptoVerification.SignalSession.cliRunAbortOnPanic
-  split
-  · next hex =>
-    obtain ⟨o, s0', hload', hruns⟩ := hex
-    cases Option.some.inj ( Except.ok.inj (hload_eq.symm.trans hload') ▸ rfl : some s0 = some s0' )
-    let prog := CryptoVerification.SignalSession.cliProgAbortOnPanic cliWitnessHooks
-    let st0 := CryptoVerification.SignalSession.cliTokenPatch s0
-    have hpc_st0 : st0.pc = udfElf.entry := by simp [st0, CryptoVerification.SignalSession.cliTokenPatch, hpc]
-    have hrun_st0 : st0.status = .Running := by simp [st0, CryptoVerification.SignalSession.cliTokenPatch, hrun]
-    have hext_none : prog.externAt? st0.pc = none := by
-      rw [hpc_st0]
-      exact Option.isNone_iff_eq_none.mp (by decide +kernel)
-    have hfetch_none : prog.fetchMem st0.mem st0.pc = none := by
-      unfold Arm64.Program.fetchMem
-      rw [hext_none]
-      split
-      · rfl
-      · split
-        · rfl
-        · split
-          · rfl
-          · have hr32 : st0.mem.read32 st0.pc = 0#32 := by
-              have hw8 : ∀ (m : Arm64.Memory) (addr a : BitVec 64),
-                  m.read8 a = 0#8 → (m.write8 addr 0#8).read8 a = 0#8 := by
-                intro m addr a hm
-                unfold Arm64.Memory.read8 at hm ⊢
-                unfold Arm64.Memory.write8
-                dsimp only
-                by_cases ha : a = addr
-                · subst ha; simp only [↓reduceIte]
-                · simp only [ha, ↓reduceIte]; exact hm
-              have hmz : ∀ (m : Arm64.Memory) (base : BitVec 64) (len : Nat) (a : BitVec 64),
-                  m.read8 a = 0#8 → (m.mapZero base len).read8 a = 0#8 := by
-                intro m base len a hm
-                unfold Arm64.Memory.read8 at hm ⊢
-                unfold Arm64.Memory.mapZero
-                dsimp only
-                cases hc : ((a - base).toNat < len && !(m.perm a).mapped)
-                · simp only [Bool.false_eq_true, ↓reduceIte]; exact hm
-                · simp only [↓reduceIte]
-              have hb : ∀ (sr : Arm64.Snapshot.Region) (off : BitVec 64),
-                  (off = 0#64 ∨ off = 1#64 ∨ off = 2#64 ∨ off = 3#64) →
-                  (⟨Arm64.Snapshot.loadCellAt (udfElf.segments ++ [sr])⟩ :
-                    Arm64.Memory).read8 (udfElf.entry + off) = 0#8 := by
-                intro sr off hoff
-                have hlt : (BitVec.ofNat 64 Arm64.Obj.pageSize + off -
-                    BitVec.ofNat 64 Arm64.Obj.pageSize).toNat <
-                    (List.replicate Arm64.Obj.pageSize (0#8 : BitVec 8)).length := by
-                  rw [List.length_replicate]
-                  rcases hoff with rfl | rfl | rfl | rfl <;> decide +kernel
-                unfold Arm64.Memory.read8 Arm64.Snapshot.loadCellAt udfElf
-                dsimp only [List.cons_append, List.findSome?]
-                simp only [hlt, ↓reduceDIte, List.getElem_replicate]
-              obtain ⟨a1, a2, hst0_mem⟩ : ∃ a1 a2,
-                  st0.mem = (s0.mem.writeBytes a1 [0#8]).writeBytes a2 [0#8, 0#8, 0#8, 0#8] :=
-                ⟨_, _, rfl⟩
-              have hm8 : ∀ (off : BitVec 64),
-                  (off = 0#64 ∨ off = 1#64 ∨ off = 2#64 ∨ off = 3#64) →
-                  st0.mem.read8 (udfElf.entry + off) = 0#8 := by
-                intro off hoff
-                rw [hst0_mem, hmem]
-                dsimp only [Arm64.Memory.writeBytes]
-                exact hw8 _ _ _ (hw8 _ _ _ (hw8 _ _ _ (hw8 _ _ _ (hw8 _ _ _
-                  (hmz _ _ _ _ (hb stackRegion off hoff))))))
-              rw [hpc_st0]
-              unfold Arm64.Memory.read32
-              rw [hm8 0#64 (Or.inl rfl), hm8 1#64 (Or.inr (Or.inl rfl)),
-                  hm8 2#64 (Or.inr (Or.inr (Or.inl rfl))), hm8 3#64 (Or.inr (Or.inr (Or.inr rfl)))]
-              rfl
-            rw [hr32]
-            decide +kernel
-    have hstep : Arm64.Step prog st0 { st0 with status := .Halted } :=
-      Arm64.Step.halt_unmapped hrun_st0 hfetch_none hext_none
-    have hsteps : Arm64.Steps prog st0 { st0 with status := .Halted } :=
-      Arm64.Steps.step hstep (Arm64.Steps.refl _)
-    have hpart := hruns.2 { st0 with status := .Halted } hsteps
-    rcases hpart with ⟨_, hterm, _⟩ | ⟨hc, _⟩ | ⟨hc, _⟩
-    · rcases hterm with ⟨_, hc, _⟩ | ⟨_, hc, _⟩ <;> cases hc
-    · cases hc
-    · cases hc
-  · rfl
-
 theorem not_cliNextCall_wrong_coinsLen {interp : ExternInterpretation} {r : ProtocolSetup} {t : CliTurn}
     {c : CliCall} (h : c.coins.length ≠ coinsLen c.cmd) : ¬ ValidCall interp r t c := fun hc => h hc.1
 theorem not_canonicalPreKey_nil : ¬ CanonicalPreKey [] := by
@@ -613,16 +452,22 @@ theorem not_hooksAgree_flipped_pubKey :
       Symbolic.Proofs.Swarm.WIT.Pure.exampleAgreement
         (List.Vector.replicate 32 0#8).toList Symbolic.Proofs.Swarm.WIT.Pure.exampleBasepoint := by decide
   injection h2 with heq; exact hne heq
-theorem not_hooksAgree_flipped_torsionFree :
+theorem not_hooksAgree_flipped_decaps :
     ¬ HooksMatchInterpretation cliWitnessInterp
-      { cliWitnessHooks with Q := { cliWitnessHooks.Q with isTorsionFree := fun _ => true } } := by
-  intro h; have h1 := h.2.2.2.2.2.2.2.2 (List.Vector.replicate 160 0#8)
-  have h2 := cliWitnessHooks_agree.2.2.2.2.2.2.2.2 (List.Vector.replicate 160 0#8)
-  dsimp only [cliWitnessHooks] at h1 h2; rw [← h2] at h1; cases h1
+      { cliWitnessHooks with Q := { cliWitnessHooks.Q with decaps := fun _ _ => List.Vector.replicate 32 1#8 } } := by
+  intro h
+  have h1 := h.2.2.2.2.2.2 (List.Vector.replicate 3168 0#8) (List.Vector.replicate 1568 0#8)
+  have h2 := cliWitnessHooks_agree.2.2.2.2.2.2 (List.Vector.replicate 3168 0#8) (List.Vector.replicate 1568 0#8)
+  rw [h1] at h2; dsimp only [cliWitnessHooks] at h2
+  have hne : (List.Vector.replicate 32 1#8).toList ≠ (List.Vector.replicate 32 0#8).toList := by decide
+  injection h2 with heq; exact hne heq
 
 /-! ## Falsifiability and Trace-Level Non-Tautology -/
-theorem not_compRefinesCliBinary_nil : ¬ CompRefinesCliBinaryMoves [] := by rintro ⟨_, h, _⟩; cases h
-theorem not_compAsmSecurityCliBinary_nil : ¬ CompAsmSecurityCliBinaryMoves [] := by rintro ⟨_, h, _⟩; cases h
+theorem not_compRefinesCliBinary_nil : ¬ CompRefinesCliBinary [] := by
+  rintro ⟨_, _, h, _⟩; cases h
+theorem not_compRefinesCliBinaryPlacedAt_nil (mpl : Arm64.Obj.MultiPlacement) :
+    ¬ CompRefinesCliBinaryPlacedAt mpl [] := by
+  rintro ⟨_, h, _⟩; cases h
 theorem compRefinesCli_of_compAsmSecurityCli {ω : Type} {Agree : ExternInterpretation → ω → Prop}
     {R : ExternInterpretation → ω → Inputs → Option Outcome → Prop}
     (h : CompAsmSecurityCliMoves Agree R) : CompRefinesCliMoves Agree R :=
@@ -820,9 +665,8 @@ theorem not_compAsmSecurityCli_rogue : ¬ CompAsmSecurityCliMoves (fun _ (_ : Un
 #print axioms DY.Libsignal.Composed.Refinement.Cli.CompAsmSecurityCliMoves
 #print axioms DY.Libsignal.Composed.Refinement.Cli.HooksMatchInterpretation
 #print axioms DY.Libsignal.Composed.Refinement.Cli.elfRel
-#print axioms DY.Libsignal.Composed.Refinement.Cli.CompRefinesCliElfMoves
-#print axioms DY.Libsignal.Composed.Refinement.Cli.CompRefinesCliBinaryMoves
-#print axioms DY.Libsignal.Composed.Refinement.Cli.CompAsmSecurityCliBinaryMoves
+#print axioms DY.Libsignal.Composed.Refinement.Cli.elfRelPlaced
+#print axioms DY.Libsignal.Composed.Refinement.Cli.CompRefinesCliBinaryPlacedAt
 #print axioms DY.Libsignal.Composed.Refinement.Cli.CompExternsSatisfiableCli
 #print axioms samePath_dot_aliases
 #print axioms scrub_deletes_coins_and_bundle
@@ -853,18 +697,18 @@ theorem not_compAsmSecurityCli_rogue : ¬ CompAsmSecurityCliMoves (fun _ (_ : Un
 #print axioms not_callsFit_wrong_intermediate_ok
 #print axioms hooksAgree_cliWitness
 #print axioms not_hooksAgree_flipped_pubKey
-#print axioms not_hooksAgree_flipped_torsionFree
+#print axioms not_hooksAgree_flipped_decaps
 #print axioms not_compRefinesCliBinary_nil
-#print axioms not_compAsmSecurityCliBinary_nil
+#print axioms not_compRefinesCliBinaryPlacedAt_nil
 #print axioms compRefinesCli_of_compAsmSecurityCli
 #print axioms not_compRefinesCli_rogue
 #print axioms not_compAsmSecurityCli_rogue
 #print axioms DY.Libsignal.Composed.Refinement.Cli.CliReachable
 #print axioms DY.Libsignal.Composed.Refinement.Cli.CliElfProgress
 #print axioms DY.Libsignal.Composed.Refinement.Cli.CompRefinesCliBinary
+#print axioms DY.Libsignal.Composed.Refinement.Cli.CliElfProgressPlaced
 #print axioms DY.Libsignal.Composed.Refinement.Cli.CompRefinesCliBinaryPlaced
 #print axioms live_cliTraces_stop_aborted_only
 #print axioms not_filesVisible_slash_or_dotdot
 #print axioms cliReachable_step_and_clear_satisfiable
-#print axioms not_cliElfProgress_udfElf
 end Symbolic.Proofs.Tests.Refinement.Cli.StmtAuditSym

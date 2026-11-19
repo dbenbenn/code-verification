@@ -10,15 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedABudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.DecodeKeyBPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailCPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailWPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedABudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.DecodeKeyBPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailCPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailWPlaced
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBudget
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import Arm64.Trusted.Spec.Hoare
@@ -29,6 +29,22 @@ import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPost
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostCleanup
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.DecodeKeyPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrAt -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
+public import ProofLib.Placed.OpcodeExclusion
+public import ProofLib.SepLogic.WP.Apply
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.TripleRatchet.Getters.ClearUnacknowledgedPreKeyMessage
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` Loop-Decode Error Tail and Shared Epilogue
@@ -38,7 +54,7 @@ and the `+0x460 → +0x504` loop-decode error deallocation chain (`FreeOnlyEvs`)
 `preKeyPlacedProg H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false

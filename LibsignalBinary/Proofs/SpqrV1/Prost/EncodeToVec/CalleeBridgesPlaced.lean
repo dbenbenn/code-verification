@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommon
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.EncodedLenCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.EncodedLenCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4Base
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlaced
@@ -27,7 +27,7 @@ Cross-block `[LibsignalPlacement]` `subroutine_ok` transfer lemmas and placed ho
 into Block `426`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.EncodeToVec
 
@@ -50,7 +50,7 @@ set_option autoImplicit false
 set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 
 /-- Transfer a plain block `j` `subroutine_ok` into `withStepInv s0 spec` on `Block 426`. -/
 theorem etv_subroutine_ok_placed_of_plain [LibsignalPlacement] {α : Type}

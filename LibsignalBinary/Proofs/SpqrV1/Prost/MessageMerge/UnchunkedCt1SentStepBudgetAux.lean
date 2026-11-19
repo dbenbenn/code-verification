@@ -10,15 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ProofBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedCt1SentStep
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ProofBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedCt1SentStep
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
+public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -28,6 +28,8 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirection
 import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Shared Budget Combinators & Exit Lemmas for `Unchunked.Ct1Sent::merge` (Block `312`)
@@ -37,7 +39,7 @@ helpers, budget-threaded loop/error frames (`ct1SentLoopPre`, `ct1SentErrFrame`)
 error-exit lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -158,7 +160,7 @@ theorem bytesMergeEnv_to_spqr_ok {maxLen polyCapBound : Nat} {x_bm : BytesMergeG
 
 /-- Saved callee-saved register slots `X19..X23, X29, X30` (plus the 8-byte alignment hole at
 `sp - 40`) in the 112-byte (`0x70`) stack frame of `Ct1Sent::merge` and `EkSentCt1Received::merge`. -/
-def unchunkedSavedRegs (sp : BitVec 64) (s0 : State) : SepProp :=
+@[expose] def unchunkedSavedRegs (sp : BitVec 64) (s0 : State) : SepProp :=
   ((sp - 64#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5)) ∗
     ((sp - 56#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5)) ∗
     ((sp - 48#64) ↦₆₄ s0.readReg64 (Reg.gpr 23#5)) ∗
@@ -192,7 +194,7 @@ theorem decodeErrorAtStackLen_entails_le2 (A : RustAlloc) (err : BitVec 64) {n :
 
 /-- Existentially-wrapped `protoUnchunkedCt1SentAt` (kept as a `def` so `simp` does not peel `m'`
 during exit instruction stepping). -/
-def anyProtoUnchunkedCt1SentAt (A : RustAlloc) (msgPtr : BitVec 64) : SepProp :=
+@[expose] def anyProtoUnchunkedCt1SentAt (A : RustAlloc) (msgPtr : BitVec 64) : SepProp :=
   ∃∗ m' : V1State.Unchunked.Ct1Sent, protoUnchunkedCt1SentAt A msgPtr m'
 
 theorem protoUnchunkedCt1SentCapAt_entails_any (A : RustAlloc) (a : BitVec 64)
@@ -215,7 +217,7 @@ theorem ct1Sent_fields_entails_any (A : RustAlloc) (a : BitVec 64)
   ct1Sent_fields_entails_exists A a m
 
 /-- Budget-threaded loop-header separation-logic bundle at `+0x098` (`entry + 152#64`) of Block `312`. -/
-def ct1SentLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def ct1SentLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (m : V1State.Unchunked.Ct1Sent) (bs cur : List (BitVec 8)) : SepProp :=
@@ -227,7 +229,7 @@ def ct1SentLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     unchunkedMergeBelow s0.sp
 
 /-- Budget-threaded error-exit separation-logic bundle at fuel `f` (`f ≤ 4 * bs.length + 8`). -/
-def ct1SentErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def ct1SentErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (f : Nat) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   spqrPoolAt A lim st f bs.length 0 s ∗

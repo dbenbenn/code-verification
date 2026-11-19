@@ -13,13 +13,17 @@ public import LibsignalBinary.Heap.Fine.F3LayoutData -- proof-setup: allow-publi
 public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2 -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpGhostReplays -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.CodeSubslice -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.RowCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.RowCommon
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StrlenGhostReplays -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfBcmpEntryGuard -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfBcmpEntryGuard
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfStrlenEntryGuard -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfStrlenEntryGuard
 import ProofLib.ProgramReflection
 meta import ProofLib.ProgramReflection
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Cutover-2 (`C2`) `.text.b_pre` `"strlen"` & `"bcmp"` Full `GhostRowOk` Glue (`C2RowLayoutFacts.LibcRows`)
@@ -190,39 +194,6 @@ theorem c2_strlenGhost_rowOk_guardOf [LibsignalPlacement]
   have hRow := c2_strlenGhost_rowOk mpl mmpl PredFs g extra hLook hExt hRx hRes hLs
   exact ⟨hRow.1, ghostRowReplayOn_of_guard_imp hRow.2 hGuard⟩
 
-/-- Block-`617` startup `StdMainEntryLr f3StdLayout s0` discharge of `strlenEntryGuard mpl s0`
-    from `hRes` (routing through `ElfStrlenEntryGuard.f3StrlenEntryGuard_of_stdMainEntryLr`). -/
-theorem c2StrlenEntryGuard_of_stdMainEntryLr
-    {mpl : Obj.MultiPlacement}
-    (hRes : libsignalSessionLib.resolve mpl "strlen" = c2StrlenAddr)
-    {s0 : State} (hlr : StdMainEntryLr f3StdLayout s0) :
-    strlenEntryGuard mpl s0 :=
-  f3StrlenEntryGuard_of_stdMainEntryLr keepTextBPre hlr
-    keepTextBPre_startupLr_false
-    (by rw [hRes]; exact decide_eq_true_eq.mp (by rfl_kernel))
-    (keepR_strlen_sub_keepTextBPre hRes)
-
-/-- Per-arm `"strlen"` `ExtraEntryGuard` discharge at Cutover-2. -/
-theorem c2_extraEntryGuard_strlen_arm
-    {mpl : Obj.MultiPlacement} {guardOf : String → State → Prop} {s0 : State}
-    (hRes : libsignalSessionLib.resolve mpl "strlen" = c2StrlenAddr)
-    (hlr : StdMainEntryLr f3StdLayout s0)
-    (hGuardEq : guardOf "strlen" s0 ↔ strlenEntryGuard mpl s0) :
-    guardOf "strlen" s0 :=
-  extraEntryGuard_strlen_arm hGuardEq (c2StrlenEntryGuard_of_stdMainEntryLr hRes hlr)
-
-/-- Singleton `g.extra = [("strlen", strlenGhost mpl mmpl)]` `ExtraEntryGuard` discharge. -/
-theorem c2_extraEntryGuard_singleton_strlen
-    {mpl mmpl : Obj.MultiPlacement} {guardOf : String → State → Prop}
-    {g : CliGhostHooks} {s0 : State}
-    (hRes : libsignalSessionLib.resolve mpl "strlen" = c2StrlenAddr)
-    (hlr : StdMainEntryLr f3StdLayout s0)
-    (hg : g.extra = [("strlen", strlenGhost mpl mmpl)])
-    (hGuardEq : guardOf "strlen" s0 ↔ strlenEntryGuard mpl s0) :
-    ExtraEntryGuard guardOf g s0 :=
-  extraEntryGuard_singleton_strlen hg hGuardEq
-    (c2StrlenEntryGuard_of_stdMainEntryLr hRes hlr)
-
 /-! ## 2. `"bcmp"` (`BcmpGhostReplays` + `ElfBcmpEntryGuard`) -/
 
 theorem bcmp_mem_c2RxDehookedSyms :
@@ -316,38 +287,5 @@ theorem c2_bcmpGhost_rowOk_guardOf [LibsignalPlacement]
       (bcmpGhost mpl mmpl) := by
   have hRow := c2_bcmpGhost_rowOk mpl mmpl PredFs g extra hLook hExt hRx hRes hLs
   exact ⟨hRow.1, ghostRowReplayOn_of_guard_imp hRow.2 hGuard⟩
-
-/-- Block-`617` startup `StdMainEntryLr f3StdLayout s0` discharge of `bcmpEntryGuard mpl s0`
-    from `hRes` (routing through `ElfBcmpEntryGuard.f3BcmpEntryGuard_of_stdMainEntryLr`). -/
-theorem c2BcmpEntryGuard_of_stdMainEntryLr
-    {mpl : Obj.MultiPlacement}
-    (hRes : libsignalSessionLib.resolve mpl "bcmp" = c2BcmpAddr)
-    {s0 : State} (hlr : StdMainEntryLr f3StdLayout s0) :
-    bcmpEntryGuard mpl s0 :=
-  f3BcmpEntryGuard_of_stdMainEntryLr keepTextBPre hlr
-    keepTextBPre_startupLr_false
-    (by rw [hRes]; exact decide_eq_true_eq.mp (by rfl_kernel))
-    (keepR_bcmp_sub_keepTextBPre hRes)
-
-/-- Per-arm `"bcmp"` `ExtraEntryGuard` discharge at Cutover-2. -/
-theorem c2_extraEntryGuard_bcmp_arm
-    {mpl : Obj.MultiPlacement} {guardOf : String → State → Prop} {s0 : State}
-    (hRes : libsignalSessionLib.resolve mpl "bcmp" = c2BcmpAddr)
-    (hlr : StdMainEntryLr f3StdLayout s0)
-    (hGuardEq : guardOf "bcmp" s0 ↔ bcmpEntryGuard mpl s0) :
-    guardOf "bcmp" s0 :=
-  extraEntryGuard_bcmp_arm hGuardEq (c2BcmpEntryGuard_of_stdMainEntryLr hRes hlr)
-
-/-- Singleton `g.extra = [("bcmp", bcmpGhost mpl mmpl)]` `ExtraEntryGuard` discharge. -/
-theorem c2_extraEntryGuard_singleton_bcmp
-    {mpl mmpl : Obj.MultiPlacement} {guardOf : String → State → Prop}
-    {g : CliGhostHooks} {s0 : State}
-    (hRes : libsignalSessionLib.resolve mpl "bcmp" = c2BcmpAddr)
-    (hlr : StdMainEntryLr f3StdLayout s0)
-    (hg : g.extra = [("bcmp", bcmpGhost mpl mmpl)])
-    (hGuardEq : guardOf "bcmp" s0 ↔ bcmpEntryGuard mpl s0) :
-    ExtraEntryGuard guardOf g s0 :=
-  extraEntryGuard_singleton_bcmp hg hGuardEq
-    (c2BcmpEntryGuard_of_stdMainEntryLr hRes hlr)
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.LibcRows

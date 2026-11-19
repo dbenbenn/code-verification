@@ -9,17 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1ChainFieldsPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1ChainFieldsPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1ChainFields
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` Phase 2c (`Block 426`, `+1212 .. +1740`): `Option<Chain>` Fields Encoding
@@ -29,7 +30,7 @@ Proves budget-threaded `[LibsignalPlacement]` symbolic execution of the scalar, 
 threading `A.pool lim st`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

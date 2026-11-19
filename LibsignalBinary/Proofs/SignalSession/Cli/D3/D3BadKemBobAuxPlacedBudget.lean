@@ -12,19 +12,22 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollariesBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlacedBudgetAuxA
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlacedBudgetAuxB
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollariesBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlacedBudgetAuxA -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlacedBudgetAuxB
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Bad-KEM Error Ownership (`Pqxdh::accept` & `initialize_bob_session`)
@@ -34,7 +37,7 @@ Budget-threaded `[LibsignalPlacement]` / `[LibsignalFullPlacement]` owned-error 
 `pkVecTag? 8#8 1568 ctBytes = none` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝` under `FitsEnv`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -78,6 +81,9 @@ open LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollariesBudget (
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget (
   acceptCalculateAgreementPlacedBaseSpec ecPubKeyIsCanonicalCallSpec
 )
+open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget (
+  ecPubKeyIsCanonicalDalekCallSpec
+)
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudget (
   PqxdhPlacedHookContracts
   hookSat_framelessMemcpy_of_allocMemcpyVm
@@ -93,10 +99,12 @@ open LibsignalBinary.Proofs.SignalSession.Cli.D3 (
 )
 open LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlacedBudgetAuxA (
   pqxdhAcceptBadKemErrOwnedOpkNoneInnerPlacedSpec
+  pqxdhAccept_badKem_err_owned_opk_none_dalek_placed_ok
   pqxdhAccept_badKem_err_owned_opk_none_placed_ok
 )
 open LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlacedBudgetAuxB (
   pqxdhAcceptBadKemErrOwnedOpkSomeInnerPlacedSpec
+  pqxdhAccept_badKem_err_owned_opk_some_dalek_placed_ok
   pqxdhAccept_badKem_err_owned_opk_some_placed_ok
 )
 open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (framelessMemcpySpec noAllocShimSpec)
@@ -121,6 +129,67 @@ export D3BadKemBobAuxPlacedBudgetAuxA (
 )
 
 /-! ## 1. Combined Block-`79` Contract & Cross-Block Wrappers -/
+
+/-- Budget-threaded owned-error rejecting contract for `Pqxdh::accept` (Block `79`) when
+`pkVecTag? 8#8 1568 g.ctBytes = none` (`5120`-B Dalek stack). -/
+theorem pqxdhAccept_badKem_err_owned_dalek_placed_ok [LibsignalFullPlacement]
+    {M : AllocCostModel} {P : Primitives} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {H : LibsignalHooks}
+    (hWF : StructuralPrims P)
+    (h_canon : subroutine_ok (lsProg_79 H) (lsmpl.base 202)
+      (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalDalekCallSpec P)))
+    (h_agree : subroutine_ok (lsProg_79 H) (lsmpl.base 207)
+      (withLsCodeRoLoaded lsmpl (acceptCalculateAgreementPlacedBaseSpec M P A lim)))
+    (h_vec_append : subroutine_ok (lsProg_79 H) (lsmpl.base 55)
+      (libsignalSessionLib.withCodeLoaded lsmpl pqxdhVecAppendElementsFastSpec))
+    (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimSpec)
+    (h_alloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
+    (h_dealloc : HookSat H acceptRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
+    (h_memcpy : HookSat H lsMemcpySym framelessMemcpySpec) :
+    subroutine_ok (lsProg_79 H) (blkPl_79).base
+      (D3BadKemBobAuxPlacedBudgetAuxA.pqxdhAcceptBadKemErrOwnedFrozenPlacedSpec
+        A lim (AcceptBadKemEnv P)) := by
+  have hnone := pqxdhAccept_badKem_err_owned_opk_none_dalek_placed_ok hWF h_canon h_agree
+    h_shim h_alloc h_dealloc h_memcpy
+  have hsome := pqxdhAccept_badKem_err_owned_opk_some_dalek_placed_ok hWF h_canon h_agree h_vec_append
+    h_shim h_alloc h_dealloc h_memcpy
+  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
+  obtain ⟨hfr, hpre_inner⟩ := extract_withLsFrozen hpre
+  cases hopk : x.1.inp.opkBSk?
+  · refine hnone.mono_outcome x R s0 hpc hrun ?_ hsp fun _ hout => hout
+    dsimp only [withLsFrozen, pqxdhAcceptBadKemErrOwnedOpkNoneInnerPlacedSpec]
+    rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
+    refine ⟨hfr, ?_⟩
+    rw [sepConj_assoc, satisfies_pure_sepConj]
+    exact ⟨hopk, hpre_inner⟩
+  · refine hsome.mono_outcome x R s0 hpc hrun ?_ hsp fun _ hout => hout
+    dsimp only [withLsFrozen, pqxdhAcceptBadKemErrOwnedOpkSomeInnerPlacedSpec]
+    rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
+    refine ⟨hfr, ?_⟩
+    rw [sepConj_assoc, satisfies_pure_sepConj]
+    exact ⟨by simp [hopk], hpre_inner⟩
+
+theorem pqxdhAccept_badKem_err_owned_dalek_placed_ok_of_block [LibsignalFullPlacement]
+    {callerProg : Program} {i : Nat} {M : AllocCostModel}
+    {P : Primitives} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
+    [IsLsBlockProg callerProg i H]
+    (hWF : StructuralPrims P)
+    (h_canon : subroutine_ok (lsProg_79 H) (lsmpl.base 202)
+      (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalDalekCallSpec P)))
+    (h_agree : subroutine_ok (lsProg_79 H) (lsmpl.base 207)
+      (withLsCodeRoLoaded lsmpl (acceptCalculateAgreementPlacedBaseSpec M P A lim)))
+    (h_vec_append : subroutine_ok (lsProg_79 H) (lsmpl.base 55)
+      (libsignalSessionLib.withCodeLoaded lsmpl pqxdhVecAppendElementsFastSpec))
+    (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimSpec)
+    (h_alloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
+    (h_dealloc : HookSat H acceptRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
+    (h_memcpy : HookSat H lsMemcpySym framelessMemcpySpec) :
+    subroutine_ok callerProg (lsmpl.base 79)
+      (D3BadKemBobAuxPlacedBudgetAuxA.pqxdhAcceptBadKemErrOwnedFrozenPlacedSpec
+        A lim (AcceptBadKemEnv P)) :=
+  ls_subroutine_ok_withLsFrozen_of_block
+    (pqxdhAccept_badKem_err_owned_dalek_placed_ok hWF h_canon h_agree h_vec_append
+      h_shim h_alloc h_dealloc h_memcpy)
 
 /-- Budget-threaded owned-error rejecting contract for `Pqxdh::accept` (Block `79`) when
 `pkVecTag? 8#8 1568 g.ctBytes = none`. -/
@@ -263,7 +332,7 @@ theorem pqxdhAccept_badKem_err_owned_full_placed_ok_of_block_std [LibsignalFullP
 
 /-- Budget-threaded inner specification of `initialize_bob_session` (Block `75`) when
 `pkVecTag? 8#8 1568 g.ctBytes = none`, exposing `initBobBadKemErrOwnedAt A.repAlloc g.outPtr`. -/
-def initializeBobSessionBadKemErrOwnedInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionBadKemErrOwnedInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobBadKemGhost × M.σ) where
@@ -296,13 +365,13 @@ def initializeBobSessionBadKemErrOwnedInnerPlacedSpec [LibsignalPlacement] {M : 
       stackAt s0.sp (768 + pqxdhEntryStack) ∗
       A.pool lim (M.stepEvents evs st) sf
 
-def initializeBobSessionBadKemErrOwnedPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionBadKemErrOwnedPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobBadKemGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl (initializeBobSessionBadKemErrOwnedInnerPlacedSpec A lim AcceptErrEnv)
 
-def initializeBobSessionBadKemErrOwnedFrozenPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionBadKemErrOwnedFrozenPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobBadKemGhost × M.σ) :=

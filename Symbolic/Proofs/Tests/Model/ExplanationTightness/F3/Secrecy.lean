@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Model.ExplanationTightness.F3.Trace
-public import Symbolic.Proofs.Tests.Model.ExplanationTightness.F3.PubClosure
+public import Symbolic.Proofs.Tests.Model.ExplanationTightness.F3.Trace -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.Model.ExplanationTightness.F3.PubClosure -- proof-setup: allow-public-import
 import Init.Data.String.Defs
 import DY.ALaCarte.Basic
 import DY.ALaCarte.Ordering
@@ -48,6 +48,7 @@ import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.Bytes.AttackerKnowledge
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
 import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
+public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon -- proof-setup: allow-public-import
 
 /-!
 # Secrecy of Alice's Initial Message Key on the Replay Trace `fTr`
@@ -58,7 +59,7 @@ Bob's identity secret (`t = 5`), so no key derived from `DH2 = DH(EK_A, IK_B)` i
 `fTr`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -88,7 +89,7 @@ open DY.Libsignal.PQXDH (PQXDHEvent PQXDHState pqxdhKdf pqxdhIkm agree)
 abbrev SecL (t : Nat) : Prop := t ≠ 22 ∧ t ≠ 5
 
 /-- Every network message of `tr` is in `Pub SecL`. -/
-def NetPub (tr : ExecTrace) : Prop := ∀ y, tr.BaseAttackerKnows y → Pub SecL y
+@[expose] def NetPub (tr : ExecTrace) : Prop := ∀ y, tr.BaseAttackerKnows y → Pub SecL y
 
 /-! ## Appending entries -/
 

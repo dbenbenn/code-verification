@@ -21,7 +21,7 @@ public import Arm64.Trusted.Syscalls.Common
   - `mm/vma.c:1718` (`do_vmi_munmap` / `vm_munmap`, invoked from `mm/mmap.c` `SYSCALL_DEFINE2(munmap)`)
   - `include/uapi/asm-generic/mman-common.h:10` (`PROT_NONE = 0x0`, `PROT_READ | PROT_WRITE = 0x3`, `MAP_PRIVATE | MAP_ANONYMOUS = 0x22`, `MAP_STACK = 0x20000`, `MAP_FIXED = 0x10`)
   - `include/linux/mman.h:158` (`calc_vm_flag_bits`: `MAP_STACK` maps to advisory `VM_NOHUGEPAGE`)
-- **Purpose & Key Exports**: `Memory.unmapWritable`, `Memory.unmapNonFrozen`,
+- **Purpose & Key Exports**: `Memory.unmapNonFrozen`,
   `Memory.setPermNonFrozen`, `PAGE_SIZE`, `USER_VA_LIMIT`, `pageAlignUp`, `MMAP_PROT_NONE`,
   `MMAP_PROT_RW`, `MMAP_FLAGS_PRIVATE_ANON`, `MMAP_FLAGS_PRIVATE_ANON_STACK`, `MAP_FIXED`,
   `MMAP_FLAGS_PRIVATE_ANON_FIXED`,
@@ -35,14 +35,6 @@ public import Arm64.Trusted.Syscalls.Common
 namespace Arm64
 
 namespace Memory
-
-/-- Unmap the writable bytes of `[base, base + len)` (they lose their cell); other bytes are
-    unchanged. Used when `brk` shrinks the heap (`do_brk_munmap` in `mm/mmap.c:155`). Never touches
-    frozen bytes.
-    Note: if a heap page was set to `Perm.protNone` via `mprotect`, `unmapWritable` conservatively
-    leaves it `some Perm.protNone` (so later `canMap` checks treat it as still reserved). -/
-def unmapWritable (m : Memory) (base : BitVec 64) (len : Nat) : Memory :=
-  ⟨fun a => if (a - base).toNat < len && (m.perm a).w then none else m.cells a⟩
 
 /-- Unmap all non-frozen bytes of `[base, base + len)` (they lose their cell); frozen bytes
     (`some Perm.ro`, `some Perm.rx`) and bytes outside the range are unchanged. Used for `munmap`
@@ -232,8 +224,10 @@ def execMmap (s : State) : State :=
     | none =>
       s.setStatus .OutOfMemory
 
-/-- `munmap(addr, len)` (`__NR_munmap = 215`, `mm/vma.c:1718` `do_vmi_munmap`).
-    With `size := pageAlignUp len`:
+/-- `munmap(addr, len)` (`__NR_munmap = 215`, `mm/mmap.c:1093` `vm_munmap` -> `mm/vma.c:1718`
+    `do_vmi_munmap`).
+    Strips any AArch64 user TBI tag via `addr := untaggedAddr X0` (`mm/mmap.c:1093`), and with
+    `size := pageAlignUp len`:
     - if `addr` is not page-aligned (`addr.toNat % PAGE_SIZE != 0`), `len == 0`, or
       `[addr, addr + size)` exceeds the 48-bit user virtual address space
       (`addr.toNat + size > 2 ^ 48`), returns `-EINVAL`;
@@ -243,7 +237,7 @@ def execMmap (s : State) : State :=
       allowing already-unmapped holes in the range per POSIX/Linux), refunds
       `s.mem.countRw addr size` to `s.physMemAvail`, and returns `0`. -/
 def execMunmap (s : State) : State :=
-  let addr := s.readReg64 Reg.x0
+  let addr := untaggedAddr (s.readReg64 Reg.x0)
   let len := (s.readReg64 Reg.x1).toNat
   let size := pageAlignUp len
   if addr.toNat % PAGE_SIZE != 0 || len == 0 || !decide (addr.toNat + size ≤ 2 ^ 48) then
@@ -271,11 +265,14 @@ def BRK_GUARD_GAP : Nat := 256 * PAGE_SIZE
       with memory and `s.brk` unchanged.
     - Shrink or same-page (`newPage ≤ oldPage`, where `oldPage := pageAlignUp s.brk.toNat` and
       `newPage := pageAlignUp addr.toNat`, `shrinkBytes := oldPage - newPage`):
-      - if `newPage < oldPage` and `[newPage, oldPage)` is not fully mapped
-        (`!s.mem.allPerm (·.mapped) (BitVec.ofNat 64 newPage) shrinkBytes`, e.g. after `munmap` of
-        the heap tail, matching `!brkvma || brkvma->vm_start >= oldbrk` in `mm/mmap.c:167`),
+      - if `newPage == oldPage` (`mm/mmap.c:145`), updates `s.brk := addr` and returns `addr`;
+      - if `newPage < oldPage` and `[newPage, oldPage)` contains no mapped byte
+        (`s.mem.canMap (BitVec.ofNat 64 newPage) shrinkBytes`, e.g. after `munmap` of the entire
+        heap tail, matching `!brkvma || brkvma->vm_start >= oldbrk` in `mm/mmap.c:167`),
         returns the unchanged `s.brk` (`origbrk`) with memory and `physMemAvail` unchanged;
-      - otherwise unmaps freed writable pages `[newPage, oldPage)` (`s.mem.unmapWritable`,
+      - if `newPage < oldPage` and `[newPage, oldPage)` intersects any frozen byte, fails closed
+        with `.Exception "brk shrink on frozen memory"`;
+      - otherwise unmaps all non-frozen pages `[newPage, oldPage)` (`s.mem.unmapNonFrozen`,
         `do_brk_munmap` in `mm/mmap.c:155`), refunds `s.mem.countRw newPage shrinkBytes` to
         `s.physMemAvail`, sets `s.brk := addr`, and returns `addr`.
     - Grow (`oldPage < newPage`, `growBytes := newPage - oldPage`):
@@ -283,7 +280,7 @@ def BRK_GUARD_GAP : Nat := 256 * PAGE_SIZE
          (`newbrk + PAGE_SIZE > vm_start_gap(next)` in `mm/mmap.c:186`): if
          `newPage + BRK_GUARD_GAP > USER_VA_LIMIT` or
          `!s.mem.canMap (BitVec.ofNat 64 oldPage) (growBytes + BRK_GUARD_GAP)`, returns the
-         unchanged `s.brk` in `X0` with `status = .Running` so allocators (`mallocng`)
+         unchanged `s.brk` in `X0` with `status = .Running` so allocators
          deterministically fall back to `SYS_mmap`.
       2. **Physical memory budget**: if `s.physMemAvail < growBytes`, transitions to
          `ExecStatus.OutOfMemory`.
@@ -296,13 +293,18 @@ def execBrk (s : State) : State :=
   else
     let oldPage := pageAlignUp s.brk.toNat
     let newPage := pageAlignUp addr.toNat
-    if newPage ≤ oldPage then
+    if newPage == oldPage then
+      ((s.setBrk addr).writeReg64 Reg.x0 addr).advancePC
+    else if newPage < oldPage then
+      let shrinkBase := BitVec.ofNat 64 newPage
       let shrinkBytes := oldPage - newPage
-      if !s.mem.allPerm (·.mapped) (BitVec.ofNat 64 newPage) shrinkBytes then
+      if s.mem.canMap shrinkBase shrinkBytes then
         (s.writeReg64 Reg.x0 s.brk).advancePC
+      else if !s.mem.allPerm (fun p => !p.frozen) shrinkBase shrinkBytes then
+        s.setStatus (.Exception "brk shrink on frozen memory")
       else
-        let reclaimed := s.mem.countRw (BitVec.ofNat 64 newPage) shrinkBytes
-        let mem := s.mem.unmapWritable (BitVec.ofNat 64 newPage) shrinkBytes
+        let reclaimed := s.mem.countRw shrinkBase shrinkBytes
+        let mem := s.mem.unmapNonFrozen shrinkBase shrinkBytes
         ((((s.setBrk addr).setMem mem).setPhysMemAvail (s.physMemAvail + reclaimed)).writeReg64
           Reg.x0 addr).advancePC
     else

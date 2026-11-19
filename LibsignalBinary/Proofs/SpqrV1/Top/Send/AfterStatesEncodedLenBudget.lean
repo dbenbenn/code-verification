@@ -11,11 +11,19 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1StateBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesEncodedLen
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1StateBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesEncodedLen
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.Defs
+public import ProofLib.MallocngBridge
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
 
 /-!
 # Budget-Threaded Allocator Stack Wrappers for `spqr::send`
@@ -24,7 +32,7 @@ Stack-framed `spqrSendCalleeStack` specifications and `subroutine_ok` lifting le
 allocator no-op shim and `__rust_alloc` in `spqr::send` under `RustCliAllocBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -48,7 +56,7 @@ open LibsignalBinary.Heap.RustStdAllocBudgetBridge (rustAllocShimVmSpec)
 
 /-- Budget-threaded stack-equipped no-op shim contract at `s.sp` with `spqrSendCalleeStack`,
     preserving `AllocCallPreserved` and `VmPreserved` so `A.pool` transports across the call. -/
-def spqrSendShimStackSpec : Spec Unit where
+@[expose] def spqrSendShimStackSpec : Spec Unit where
   pre := fun _ s => stackAt s.sp spqrSendCalleeStack
   post := fun _ s0 sf =>
     ⌜sf.trace = s0.trace ∧ AllocCallPreserved s0 sf ∧ VmPreserved s0 sf⌝ ∗
@@ -56,7 +64,7 @@ def spqrSendShimStackSpec : Spec Unit where
 
 /-- Budget-threaded stack-equipped `__rust_alloc(sz, 1)` conditional-OOM contract at `s.sp` with
     `spqrSendCalleeStack`. -/
-def spqrSendRustAllocStackSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def spqrSendRustAllocStackSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (Nat × M.σ) where
   pre := fun (sz, st) s =>
     ⌜(s.readReg64 .x0).toNat = sz ∧ s.readReg64 .x1 = 1#64 ∧ 0 < sz ∧ sz < 2 ^ 63 ∧
@@ -75,7 +83,7 @@ def spqrSendRustAllocStackSpec [LibsignalPlacement] (M : AllocCostModel) (A : Ru
 
 /-- Budget-threaded stack-equipped `__rust_alloc(sz, 1)` total-correctness (`NoOom`) contract at
     `s.sp` with `spqrSendCalleeStack` when `FitsEvents M lim st (rustAllocEvents sz 1)` holds. -/
-def spqrSendRustAllocNoOomStackSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def spqrSendRustAllocNoOomStackSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (Nat × M.σ) where
   pre := fun (sz, st) s =>
     ⌜(s.readReg64 .x0).toNat = sz ∧ s.readReg64 .x1 = 1#64 ∧ 0 < sz ∧ sz < 2 ^ 63 ∧

@@ -11,9 +11,9 @@ module
 
 public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.OneKeyStoreBase
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
-import ProofLib.SepLogic.WPp
+public import ProofLib.SepLogic.WPp
+public import ProofLib
 
 /-!
 # `SignedPreKeyRecordStructure::clone` and `OneKeyStore` Async Poll Closures
@@ -23,7 +23,7 @@ Proves `subroutine_ok` contracts on `tripleRatchetProgAt` for
 closures (`0x75b08..0x75ef0`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,34 +42,7 @@ set_option linter.unusedSimpArgs false
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   extractLsb_lo_append64 extractLsb_hi_append64
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  sp_setPC_oks sp_setMem_setPC_oks
-  readReg64_setPC_oks readReg64_setMem_setPC_oks
-  readReg32_setPC_oks readReg32_setMem_setPC_oks
-  readReg_setPC_oks readReg_setMem_setPC_oks
-  hi32_append_lo32 cond_eq_adds64_neg1_1 cond_eq_adds64_pos_1
-  cond_ne_subs32_self csinc_satIncU8_norm
-  dropOneKeyFutName dropOneKeyStoreName dropStringLocal4Name
-  dropInMemSessionStoreName dropInMemIdentityStoreName
-  oneKeyGetSpkName oneKeySaveSpkName oneKeyGetKyberName
-  oneKeySaveKyberName oneKeyMarkKyberName oneKeyGetPreKeyName
-  oneKeySavePreKeyName oneKeyRemovePreKeyName spkRecordCloneName
-  oneKeyGetSpkClosureName oneKeySaveSpkClosureName
-  oneKeyGetKyberClosureName oneKeySaveKyberClosureName
-  oneKeyMarkKyberClosureName oneKeyGetPreKeyClosureName
-  oneKeySavePreKeyClosureName oneKeyRemovePreKeyClosureName
-  libsignalSessionCode_fnOff_0x3e2c4
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_stub% "memcpy")
-  (ls_stub% "alloc::raw_vec::handle_error")
-  (ls_stub% "alloc::alloc::handle_alloc_error")
-  (ls_hook% "alloc::alloc::handle_alloc_error")
-
-/-! ## `<SignedPreKeyRecordStructure as Clone>::clone` (`0x76f88`) -/
-
-def spkRecordSrcAt (src pubPtr pubLen privPtr privLen sigPtr sigLen timestamp : BitVec 64)
+@[expose] def spkRecordSrcAt (src pubPtr pubLen privPtr privLen sigPtr sigLen timestamp : BitVec 64)
     (id : BitVec 32) : SepProp :=
   ((src + 0x08#64) ↦₆₄ pubPtr) ∗
   ((src + 0x10#64) ↦₆₄ pubLen) ∗
@@ -80,7 +53,7 @@ def spkRecordSrcAt (src pubPtr pubLen privPtr privLen sigPtr sigLen timestamp : 
   ((src + 0x48#64) ↦₆₄ timestamp) ∗
   ((src + 0x50#64) ↦₃₂ id)
 
-def spkRecordDstUninitAt (dst u0 u8 u10 u18 u20 u28 u30 u38 u40 u48 : BitVec 64)
+@[expose] def spkRecordDstUninitAt (dst u0 u8 u10 u18 u20 u28 u30 u38 u40 u48 : BitVec 64)
     (u50 : BitVec 32) : SepProp :=
   (dst ↦₆₄ u0) ∗
   ((dst + 0x08#64) ↦₆₄ u8) ∗
@@ -94,7 +67,7 @@ def spkRecordDstUninitAt (dst u0 u8 u10 u18 u20 u28 u30 u38 u40 u48 : BitVec 64)
   ((dst + 0x48#64) ↦₆₄ u48) ∗
   ((dst + 0x50#64) ↦₃₂ u50)
 
-def spkRecordDstAt (dst pubLen pubPtr privLen privPtr sigLen sigPtr timestamp : BitVec 64)
+@[expose] def spkRecordDstAt (dst pubLen pubPtr privLen privPtr sigLen sigPtr timestamp : BitVec 64)
     (id : BitVec 32) : SepProp :=
   (dst ↦₆₄ pubLen) ∗
   ((dst + 0x08#64) ↦₆₄ pubPtr) ∗
@@ -135,7 +108,7 @@ structure SpkCloneEmptySigArgs where
   u48 : BitVec 64
   u50 : BitVec 32
 
-def spkRecordCloneEmptySigSpec (A : RustAlloc) : Spec SpkCloneEmptySigArgs where
+@[expose] def spkRecordCloneEmptySigSpec (A : RustAlloc) : Spec SpkCloneEmptySigArgs where
   pre := fun x s =>
     ⌜BitVec.ofNat 64 x.pubBytes.length ≠ 0#64 ∧
       x.pubBytes.length < 2 ^ 63 ∧
@@ -188,7 +161,7 @@ structure SpkCloneNonemptySigArgs where
   u48 : BitVec 64
   u50 : BitVec 32
 
-def spkRecordCloneNonemptySigSpec (A : RustAlloc) : Spec SpkCloneNonemptySigArgs where
+@[expose] def spkRecordCloneNonemptySigSpec (A : RustAlloc) : Spec SpkCloneNonemptySigArgs where
   pre := fun x s =>
     ⌜BitVec.ofNat 64 x.pubBytes.length ≠ 0#64 ∧
       x.pubBytes.length < 2 ^ 63 ∧
@@ -229,7 +202,7 @@ def spkRecordCloneNonemptySigSpec (A : RustAlloc) : Spec SpkCloneNonemptySigArgs
 /-! ## `OneKeyStore` Async Poll Closures (`0x75b08..0x75ef0`) -/
 
 /-- Shared spec for the 3 no-op save closures (`0x75bd4`, `0x75cd0`, `0x75ec4`). -/
-def oneKeySaveClosureSpec : Spec (BitVec 64 × BitVec 64 × BitVec 64) where
+@[expose] def oneKeySaveClosureSpec : Spec (BitVec 64 × BitVec 64 × BitVec 64) where
   pre := fun (boxPtr, retPtr, u0) s =>
     ⌜s.readReg64 .x0 = boxPtr ∧
       s.readReg64 .x8 = retPtr⌝ ∗
@@ -258,7 +231,7 @@ structure OneKeyRemovePreKeyClosureArgs where
   oldOpkRemoved : BitVec 8
   u0 : BitVec 64
 
-def oneKeyRemovePreKeyClosureSpec : Spec OneKeyRemovePreKeyClosureArgs where
+@[expose] def oneKeyRemovePreKeyClosureSpec : Spec OneKeyRemovePreKeyClosureArgs where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.boxPtr ∧
       s.readReg64 .x8 = x.retPtr⌝ ∗
@@ -278,7 +251,7 @@ private theorem stackAt_getPreKeyClosure (sp : BitVec 64) :
       stackAt (sp - 80#64) allocHookStack ∗ cells (sp - 80#64) 10 :=
   ProofLib.stackAt_split_cells sp 4096 10 (by decide)
 
-def preKeyRecordOutAt (dst pubLen pubPtr privLen privPtr : BitVec 64) (id : BitVec 32) : SepProp :=
+@[expose] def preKeyRecordOutAt (dst pubLen pubPtr privLen privPtr : BitVec 64) (id : BitVec 32) : SepProp :=
   (dst ↦₆₄ pubLen) ∗
   ((dst + 0x08#64) ↦₆₄ pubPtr) ∗
   ((dst + 0x10#64) ↦₆₄ pubLen) ∗
@@ -305,7 +278,7 @@ structure OneKeyGetPreKeyClosureArgs where
   u28 : BitVec 64
   u30 : BitVec 32
 
-def oneKeyGetPreKeyClosureSpec (A : RustAlloc) : Spec OneKeyGetPreKeyClosureArgs where
+@[expose] def oneKeyGetPreKeyClosureSpec (A : RustAlloc) : Spec OneKeyGetPreKeyClosureArgs where
   pre := fun x s =>
     ⌜x.opkPubCap ≠ 0xffffffffffffffff#64 ∧
       BitVec.ofNat 64 x.opkPubBytes.length ≠ 0#64 ∧
@@ -561,7 +534,7 @@ structure MarkKyberClosureArgs where
   oldBs : List (BitVec 8)
   u0 : BitVec 64
 
-def oneKeyMarkKyberClosureSpec (A : RustAlloc) : Spec MarkKyberClosureArgs where
+@[expose] def oneKeyMarkKyberClosureSpec (A : RustAlloc) : Spec MarkKyberClosureArgs where
   pre := fun x s =>
     ⌜x.oldBs.length = 32 ∧
       s.readReg64 .x0 = x.boxPtr ∧
@@ -771,7 +744,7 @@ private theorem call_spk_clone {prog : Program} {ret callee : BitVec 64}
   exact hnext sf newPubPtr newPrivPtr hpcm hrunm (hspm.trans hsp_cur) hsp_sf hcsm
     hnpub hnpriv (htr'.trans htr)
 
-def spkPollOutUninitAt (retPtr u0 u8 u10 u18 u20 u28 u30 u38 u40 u48 u50 : BitVec 64) : SepProp :=
+@[expose] def spkPollOutUninitAt (retPtr u0 u8 u10 u18 u20 u28 u30 u38 u40 u48 u50 : BitVec 64) : SepProp :=
   (retPtr ↦₆₄ u0) ∗
   ((retPtr + 0x08#64) ↦₆₄ u8) ∗
   ((retPtr + 0x10#64) ↦₆₄ u10) ∗
@@ -807,7 +780,7 @@ structure GetSpkClosureArgs where
   u48 : BitVec 64
   u50 : BitVec 64
 
-def oneKeyGetSpkClosureSpec (A : RustAlloc) : Spec GetSpkClosureArgs where
+@[expose] def oneKeyGetSpkClosureSpec (A : RustAlloc) : Spec GetSpkClosureArgs where
   pre := fun x s =>
     ⌜BitVec.ofNat 64 x.pubBytes.length ≠ 0#64 ∧
       x.pubBytes.length < 2 ^ 63 ∧
@@ -842,7 +815,7 @@ def oneKeyGetSpkClosureSpec (A : RustAlloc) : Spec GetSpkClosureArgs where
       A.live newPrivPtr x.privBytes.length 1
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def oneKeyGetKyberClosureSpec (A : RustAlloc) : Spec GetSpkClosureArgs where
+@[expose] def oneKeyGetKyberClosureSpec (A : RustAlloc) : Spec GetSpkClosureArgs where
   pre := fun x s =>
     ⌜BitVec.ofNat 64 x.pubBytes.length ≠ 0#64 ∧
       x.pubBytes.length < 2 ^ 63 ∧

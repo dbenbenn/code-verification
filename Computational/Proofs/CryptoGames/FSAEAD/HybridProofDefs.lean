@@ -19,7 +19,7 @@ Defines the hybrid receiver operations (`receiveH`, `deliverH`, `injectH`), the 
 chain/message-key pair sampler `DU`, and the OT-CCA reduction oracle spec `RSpec`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 namespace CryptoGames.FSAEAD.Thm5
@@ -33,7 +33,7 @@ local notation "St" => HSt CK MK AD M C
 local notation "HS" => HState CK MK AD M C
 
 /-- Hybrid receiver step (`FS-Rcv` on hybrid keys), updating skipped keys and advancing chain positions. -/
-def receiveH (hint : Option M) (a : AD) (c : ℕ × C) : StateT St m (Option (ℕ × M)) := do
+@[expose] def receiveH (hint : Option M) (a : AD) (c : ℕ × C) : StateT St m (Option (ℕ × M)) := do
   let (i, e) := c
   let st ← getH
   if st.skipped.contains i then
@@ -55,7 +55,7 @@ def receiveH (hint : Option M) (a : AD) (c : ℕ × C) : StateT St m (Option (�
 variable [DecidableEq AD] [DecidableEq M] [DecidableEq C]
 
 /-- Hybrid `deliver` oracle. -/
-def deliverH (q : AD × (ℕ × C)) : StateT St m (Option (ReceiveResult M)) := do
+@[expose] def deliverH (q : AD × (ℕ × C)) : StateT St m (Option (ReceiveResult M)) := do
   let st ← getH
   if st.ended then pure none else
   match st.inTransit.find? (fun r => r.ad == q.1 && r.ct == q.2) with
@@ -75,7 +75,7 @@ def deliverH (q : AD × (ℕ × C)) : StateT St m (Option (ReceiveResult M)) := 
       pure (some (.accepted i' out))
 
 /-- Hybrid `inject` oracle, recording lookahead forgeries in `lf` and halting in lookahead mode. -/
-def injectH (q : AD × (ℕ × C)) : StateT St m (Option (ReceiveResult M)) := do
+@[expose] def injectH (q : AD × (ℕ × C)) : StateT St m (Option (ReceiveResult M)) := do
   let st ← getH
   if st.ended || st.inTransit.any (fun r => r.ad == q.1 && r.ct == q.2) then pure none else
   match ← receiveH ae G maxSkip P D ops none q.1 q.2 with
@@ -95,7 +95,7 @@ variable [SampleableType MK] [SampleableType CK] [SampleableType C]
   (ae : AEADScheme MK (ℕ × AD) M C) (G : ℕ → PRGScheme CK (CK × MK)) (maxSkip : ℕ)
 
 /-- Samples a uniform `(CK, MK)` pair independently of the chain position. -/
-def DU (_ : ℕ) : ProbComp (CK × MK) := do
+@[expose] def DU (_ : ℕ) : ProbComp (CK × MK) := do
   let w ← $ᵗ CK
   let K ← $ᵗ MK
   pure (w, K)

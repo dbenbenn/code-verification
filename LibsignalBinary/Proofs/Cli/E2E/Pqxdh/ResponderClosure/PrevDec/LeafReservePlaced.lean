@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafReserve
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DoReserve10Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DoReserve10
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DoReserve10Placed -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Handshake `finish_grow [local#9]` and `do_reserve [local#8]` Re-exports
@@ -21,7 +22,7 @@ Re-exports the `[LibsignalPlacement]` contracts for `finish_grow [local#9]` and
 `do_reserve_and_handle [local#8]` from `SpqrH.DoReserve10Placed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

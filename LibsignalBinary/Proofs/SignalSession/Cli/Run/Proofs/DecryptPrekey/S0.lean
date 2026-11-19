@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.LoadRec
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.LoadRec -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeTop
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.HsOk
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.Ok
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
 
 /-!
 # Slot Semantics and Domain Preconditions for `decrypt_prekey`
@@ -29,7 +32,7 @@ via `decPkOk₀_pqRecv`, `pqDecryptPrekeyAgrees_decPkDef`, and `RunHsOk`:
   last-resort `.base-keys` files).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -50,31 +53,31 @@ open CryptoVerification.SignalSession.Cli.RunCompose hiding Bytes
 /-! ## Typed pre-key message parsing -/
 
 /-- Model `PreKeySignalMessage` produced by `PreKeySignalMessage::try_from` on `m.bytes` when `m.inner` parses to `i`. -/
-def pmOfE (m : PreKeyMessageFields) (i : SignalMessage) : PreKeySignalMessage :=
+@[expose] def pmOfE (m : PreKeyMessageFields) (i : SignalMessage) : PreKeySignalMessage :=
   E2E.Pqxdh.ResponderWire.PreKeyTryFromArgs.toModel
     { ptr := 0, sret := 0, regId := m.regId, opkId := m.opkId, spkId := m.spkId, kpkId := m.kpkId,
       kyberCt := m.kyberCt, baseKey := m.baseKey, idPub := m.idPub, inner := m.inner } i
 
 /-- States that `S.pksmParse` on `m.bytes` (for `m.inner.length + 2048 < 2 ^ 32`) yields `pmOfE m i` for a parsed `SignalMessage` `i`. -/
-def PksmTyped (S : RunSem) : Prop :=
+@[expose] def PksmTyped (S : RunSem) : Prop :=
   ∀ (m : PreKeyMessageFields) (pm : PreKeySignalMessage), m.inner.length + 2048 < 2 ^ 32 →
     S.pksmParse m.bytes = some pm →
     ∃ i : SignalMessage, SignalMessage.tryFrom protoSignalCodec m.inner = .ok i ∧ pm = pmOfE m i
 
 /-- Strips leading tag byte `tag` and packages the remaining `n` bytes as a vector, or `none` on mismatch. -/
-def pkVecTag? (tag : BitVec 8) (n : Nat) (l : List (BitVec 8)) :
+@[expose] def pkVecTag? (tag : BitVec 8) (n : Nat) (l : List (BitVec 8)) :
     Option (List.Vector (BitVec 8) n) :=
   match l with
   | t :: rest => if h : t = tag ∧ rest.length = n then some ⟨rest, h.2⟩ else none
   | [] => none
 
 /-- Packages a byte list of length `n` as a vector, or `none` if `l.length ≠ n`. -/
-def pkVec? (n : Nat) (l : List (BitVec 8)) : Option (List.Vector (BitVec 8) n) :=
+@[expose] def pkVec? (n : Nat) (l : List (BitVec 8)) : Option (List.Vector (BitVec 8) n) :=
   if h : l.length = n then some ⟨l, h⟩ else none
 
 /-- Extracts `PreKeyMessageFields` from a version-4 `PreKeySignalMessage` carrying a 1568-byte
 tag-`8` Kyber ciphertext, inverting `pmOfE` on valid inner messages (`pkToE?_pmOfE`). -/
-def pkToE? (pm : PreKeySignalMessage) : Option PreKeyMessageFields :=
+@[expose] def pkToE? (pm : PreKeySignalMessage) : Option PreKeyMessageFields :=
   if pm.messageVersion ≠ 4 then none
   else
     match pm.kyberPayload with
@@ -104,7 +107,7 @@ structure PreKeyFilesWf (W : PEParams) (F : FsFiles) : Prop where
 
 /-- Session-matching predicate (`promote_matching_session`): `s.state.version` equals the
 message version and `s.aliceBaseKey` equals the serialized base key. -/
-def SessMatchesPm (s : CryptoGames.LibsignalSessionApi.Session (List (BitVec 8)))
+@[expose] def SessMatchesPm (s : CryptoGames.LibsignalSessionApi.Session (List (BitVec 8)))
     (pm : PreKeySignalMessage) : Prop :=
   s.state.version = pm.messageVersion.zeroExtend 32 ∧ s.aliceBaseKey = pm.baseKey.serialize
 
@@ -137,7 +140,7 @@ structure DecPkOk₀ (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) →
 
 /-- Reads responder signed, Kyber, and optional one-time pre-key secrets for `m` from `F`,
 returning `none` when any lookup or key decode fails. -/
-def pkStoreKeys (F : FsFiles) (m : PreKeyMessageFields) : Option ResponderPreKeySecrets :=
+@[expose] def pkStoreKeys (F : FsFiles) (m : PreKeyMessageFields) : Option ResponderPreKeySecrets :=
   let g := StoresGhost.opened
   match getSignedPreKey cliIo.rd F g.signed m.spkId, g.kyber.get cliIo.rd F m.kpkId with
   | .ok sr, .ok kr =>
@@ -158,13 +161,13 @@ def pkStoreKeys (F : FsFiles) (m : PreKeyMessageFields) : Option ResponderPreKey
   | _, _ => none
 
 /-- Converts the first 32 coin bytes (zero-padded past the end) into a little-endian `BitVec 256`. -/
-def pkRecvCoins (c : List (BitVec 8)) : BitVec 256 :=
+@[expose] def pkRecvCoins (c : List (BitVec 8)) : BitVec 256 :=
   HKDF.bytesToKey32 (c.take 32 ++ List.replicate (32 - c.length) 0#8)
 
 /-- Model semantics of `signal_session_handshake::decrypt_prekey` on files `F`, addresses
 `peer` and `_me`, parsed message `pm`, and coin tape `coins`. Returns `none` on decryption panic
 and `some none` on protocol rejection. -/
-noncomputable def decPkDef (X : UnreachedPqxdhPrimitives) (W : PEParams)
+@[expose] noncomputable def decPkDef (X : UnreachedPqxdhPrimitives) (W : PEParams)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (F : FsFiles) (peer _me : AddrVal)
     (pm : PreKeySignalMessage) (coins : List (BitVec 8)) : SlotAns (List (BitVec 8)) :=
   let g := StoresGhost.opened
@@ -238,7 +241,7 @@ abbrev cliDecryptPrekeyNeed (B : RunBudgets) : Nat :=
   2144 + 1048576 + B.dirGetNeed
 
 /-- States that `Scope` covers every session record produced in the PQXDH specification domain. -/
-def ScopeCoversPq (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop) : Prop :=
+@[expose] def ScopeCoversPq (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop) : Prop :=
   ∀ (st : PqParty) x g, PqxdhPartyInSpecDomain W st → st.session = some (x, g) →
     Scope (E2E.Record.toRecord (E2E.RecordX.extrasOf fun _ => x) g)
 
@@ -269,40 +272,5 @@ theorem pqDecryptPrekeyAgrees_decPkDef (S : RunSem) (X : UnreachedPqxdhPrimitive
   exact DecPkS0.pqDecryptPrekeyAgrees_decPkDef S X W Scope hS hpksm hinj hcov
 
 /-! ### `RunHsOk` on domain inputs -/
-
-theorem runHsOk_pqInit (S : RunSem) (W : PEParams) (st : PqParty) (b : PreKeyBundleFields)
-    (t : List.Vector (BitVec 8) initiateTapeLen) (hwf : PqxdhPartyInSpecDomain W st) (hs : st.session = none)
-    (hinit : ∀ F peer me, InitOk₀ W F peer me → S.initOk F peer me) :
-    RunHsOk S (pqInitInputs W st b t) := by
-  exact DecPkS0.pqInit S W st b t hwf hs hinit
-
-theorem runHsOk_pqSend (S : RunSem) (W : PEParams) (st : PqParty) (m : List (BitVec 8))
-    (r : List.Vector (BitVec 8) 64) : RunHsOk S (pqSendInputs W st m r) := by
-  exact DecPkS0.pqSend S W st m r
-
-/-- Discharges `RunHsOk` on pre-key `recv` inputs (`wirePrekey :: m.bytes`) via `PksmTyped` and `decPkOk₀_pqRecv`. -/
-theorem runHsOk_pqRecvPrekey (S : RunSem) (W : PEParams)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop)
-    (hdec : ∀ F peer me pm, DecPkOk₀ W Scope F peer me pm → S.decPkOk F peer me pm)
-    (hpksm : PksmTyped S) (hinj : Slots.EncodeInjOn Scope) (hcov : ScopeCoversPq W Scope)
-    (st : PqParty) (m : PreKeyMessageFields) (rc : BitVec 256) (hwf : PqxdhPartyInSpecDomain W st)
-    (hm : m.inner.length + 2048 < 2 ^ 32)
-    (hmatch : ∀ x g, st.session = some (x, g) → PqSessionMatches x g m) :
-    RunHsOk S (pqRecvInputs W st (wirePrekey :: m.bytes) rc) := by
-  refine DecPkS0.pqRecvPrekey S W st m rc fun pm hparse => ?_
-  obtain ⟨i, hi, rfl⟩ := hpksm m pm hm hparse
-  exact hdec _ _ _ _ (decPkOk₀_pqRecv W Scope hinj hcov st m i rc hwf hm hi hmatch)
-
-theorem runHsOk_pqRecvOther (S : RunSem) (W : PEParams) (st : PqParty) (c : List (BitVec 8))
-    (rc : BitVec 256) (h3 : c.head? ≠ some wirePrekey) : RunHsOk S (pqRecvInputs W st c rc) := by
-  exact DecPkS0.pqRecvOther S W st c rc h3
-
-theorem runHsOk_smSend (S : RunSem) (g : GhostState (List (BitVec 8))) (m : List (BitVec 8)) :
-    RunHsOk S (smSendInputs g m) := by
-  exact DecPkS0.smSend S g m
-
-theorem runHsOk_smRecv (S : RunSem) (g : GhostState (List (BitVec 8))) (c : List (BitVec 8))
-    (rc : BitVec 256) : RunHsOk S (smRecvInputs g c rc) := by
-  exact DecPkS0.smRecv S g c rc
 
 end CryptoVerification.SignalSession.Cli.RunProofs

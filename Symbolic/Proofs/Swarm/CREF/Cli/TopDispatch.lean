@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge
-public import Symbolic.Proofs.Swarm.CREF.Cli.World.TopPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge
+public import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.Cli.World.TopPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.DirBridge
 import Symbolic.Proofs.Swarm.CREF.Cli.DirStepBridge
 
@@ -22,7 +22,7 @@ Specializes `pqDirInv_init` to `interpOfParams` and extracts the caller's `PqPar
 domain invariant, and encoded session record for guarded CLI calls.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

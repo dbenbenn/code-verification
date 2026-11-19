@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
-public import Symbolic.Proofs.Refinement.RecordBytesBridge
-public import Symbolic.Proofs.RngG.R3ModelInv
-public import Symbolic.Proofs.Hooks2.BridgeXPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.PinCoinsPure
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.RngG.R3ModelInv -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Hooks2.BridgeXPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.PinCoinsPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepRatchetDHaPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
 
@@ -25,7 +25,7 @@ and lifts `stateRel_and_consumeMessageKey_of_dhRatchetStep_tr` to sessions relat
 only after `rpkSessionNorm`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,7 +47,7 @@ open Symbolic.Swarm.CREF Symbolic.Swarm.CREF.CliPure Symbolic.Swarm.CREF.TR Symb
 open Symbolic.Swarm.CREF.TR.RecvDec (trDhRatchetState)
 
 /-- Replaces the sender chain's public key in `s` with `P` and sets `previousCounter := 0`. -/
-def rpkSessionNorm (P : PublicKey) (s : Session (List (BitVec 8))) :
+@[expose] def rpkSessionNorm (P : PublicKey) (s : Session (List (BitVec 8))) :
     Session (List (BitVec 8)) :=
   { s with
     state :=

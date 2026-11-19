@@ -10,20 +10,22 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget
 public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.Defs
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Specifications for `<spqr::encoding::polynomial::Poly>::compute_at`
 
 Allocator event envelopes (`computeAtEvents`, `ComputeAtEnv`), `RustCliAllocBudget`-threaded
-specifications (`computeAtSpec`, `computeAtPlacedSpec`), and `cap ∈ {0, 1}` `RawVec<GF16>::grow_one`
+specification (`computeAtPlacedSpec`), and `cap ∈ {0, 1}` `RawVec<GF16>::grow_one`
 wrappers for Block `371`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,8 +38,8 @@ open CryptoVerification.SpqrV1.Alloc
   (growOneStack spqrHandleErrorSym spqrRustAllocSym spqrRustNoAllocShimSym
    spqrRustReallocSym)
 open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (noAllocShimSpec)
-open CryptoVerification.SpqrV1.GF.Mul2U16 (tokenInitAt tokenInitPlacedAt)
-open CryptoVerification.SpqrV1.GF.UnacceleratedMul (reduceTableAt reduceTablePlacedAt)
+open CryptoVerification.SpqrV1.GF.Mul2U16 (tokenInitPlacedAt)
+open CryptoVerification.SpqrV1.GF.UnacceleratedMul (reduceTablePlacedAt)
 open CryptoVerification.SpqrV1.Poly (gf16SliceAt)
 open CryptoVerification.SpqrV1.Poly.ComputeAt
   (ComputeAtArgs computeAtPure computeAtStack memRegion6_split_16_4 memRegion8_split_16_16_4
@@ -54,7 +56,7 @@ open LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget
 
 /-- Scratch `GF16` capacity allocated (and deallocated in the epilogue) by `<Poly>::compute_at`
     for a polynomial with `len` coefficients: `4` when `len ≤ 1`, and `len` when `2 ≤ len`. -/
-def computeAtScratchCap (len : Nat) : Nat :=
+@[expose] def computeAtScratchCap (len : Nat) : Nat :=
   if len ≤ 1 then 4 else len
 
 /-- Allocation/reallocation events emitted by `<Poly>::compute_at` before its epilogue
@@ -62,7 +64,7 @@ def computeAtScratchCap (len : Nat) : Nat :=
     - `len = 0`: `grow_one` from `0 → 4` `GF16`s (`8` bytes, align `2`);
     - `len = 1`: `with_capacity(1)` (`2` bytes, align `2`) then `grow_one` (`2 → 8` bytes, align `2`);
     - `2 ≤ len`: `with_capacity(len)` (`2 * len` bytes, align `2`). -/
-def computeAtAllocEvents (len : Nat) : List AllocEvent :=
+@[expose] def computeAtAllocEvents (len : Nat) : List AllocEvent :=
   if len = 0 then
     rustAllocEvents 8 2
   else if len = 1 then
@@ -72,10 +74,10 @@ def computeAtAllocEvents (len : Nat) : List AllocEvent :=
 
 /-- Full deterministic allocator event sequence of `<Poly>::compute_at` on `len` coefficients,
     including the epilogue `__rust_dealloc` of `2 * computeAtScratchCap len` bytes at alignment `2`. -/
-def computeAtEvents (len : Nat) : List AllocEvent :=
+@[expose] def computeAtEvents (len : Nat) : List AllocEvent :=
   computeAtAllocEvents len ++ rustDeallocEvents (2 * computeAtScratchCap len) 2
 
-def ComputeAtEnv (len : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def ComputeAtEnv (len : Nat) (evs : List AllocEvent) : Prop :=
   evs = computeAtEvents len
 
 theorem fitsEnv_computeAt_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} (len : Nat) :
@@ -84,30 +86,7 @@ theorem fitsEnv_computeAt_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.
 
 /-! ## Budget-Threaded `<Poly>::compute_at` Specifications -/
 
-def computeAtSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (b : BitVec 64) : Spec (ComputeAtArgs × M.σ) where
-  pre := fun (args, st) s =>
-    ⌜s.readReg64 .x0 = args.p_coeffs ∧
-      s.readReg64 .x1 = BitVec.ofNat 64 args.poly.coefficients.length ∧
-      BitVec.truncate 16 (s.readReg64 .x2) = args.x.value ∧
-      2 * args.poly.coefficients.length + 2 ≤ 2 ^ 63 ∧
-      FitsEvents M lim st (computeAtAllocEvents args.poly.coefficients.length)⌝ ∗
-    gf16SliceAt args.p_coeffs args.poly.coefficients ∗
-    tokenInitAt b ∗
-    reduceTableAt b ∗
-    A.pool lim st s ∗
-    stackAt s.sp computeAtStack
-  post := fun (args, st) s0 sf =>
-    ⌜sf.trace = s0.trace ∧
-      BitVec.truncate 16 (sf.readReg64 .x0) = (computeAtPure args.poly args.x).value⌝ ∗
-    gf16SliceAt args.p_coeffs args.poly.coefficients ∗
-    tokenInitAt b ∗
-    reduceTableAt b ∗
-    A.pool lim (M.stepEvents (computeAtEvents args.poly.coefficients.length) st) sf ∗
-    stackAt s0.sp computeAtStack
-  onPanic := fun _ _ _ => ⌜False⌝
-
-def computeAtPlacedSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def computeAtPlacedSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ComputeAtArgs × M.σ) where
   pre := fun (args, st) s =>
     ⌜s.readReg64 .x0 = args.p_coeffs ∧
@@ -133,7 +112,7 @@ def computeAtPlacedSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAl
 /-! ## Specialized `RawVec<GF16>::grow_one` Wrappers (`cap = 0` and `cap = 1`, Block `359`) -/
 
 /-- Budget-threaded contract for `RawVec<GF16>::grow_one` called with `cap = 0` (`ptr = 2`). -/
-def growOneGF16ZeroSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def growOneGF16ZeroSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (BitVec 64 × M.σ) where
   pre := fun (v, st) s =>
     ⌜s.readReg64 .x0 = v ∧ FitsEvents M lim st (rustAllocEvents 8 2)⌝ ∗
@@ -150,7 +129,7 @@ def growOneGF16ZeroSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : B
   onPanic := fun _ _ _ => ⌜False⌝
 
 /-- Budget-threaded contract for `RawVec<GF16>::grow_one` called with `cap = 1` and `p0 ↦₁₆ 1#16`. -/
-def growOneGF16OneSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def growOneGF16OneSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec ((BitVec 64 × BitVec 64) × M.σ) where
   pre := fun ((v, p0), st) s =>
     ⌜s.readReg64 .x0 = v ∧ p0 ≠ 0#64 ∧ FitsEvents M lim st (rustReallocEvents 2 8 2)⌝ ∗

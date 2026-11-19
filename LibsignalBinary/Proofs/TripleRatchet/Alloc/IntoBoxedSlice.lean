@@ -9,10 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContracts
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContracts -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import ProofLib.SepLogic.WPp
@@ -27,7 +26,7 @@ Verifies `<alloc::vec::Vec<u8>>::into_boxed_slice` (`0x1afd4`, 31 instructions) 
 3. `bytes.length < cap.toNat` and `bytes ≠ []` (`__rust_realloc`, plus OOM panic via `handle_error`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 
@@ -74,164 +73,6 @@ private theorem sepWPp_pure_mid {prog : Program} {ret : BitVec 64} {s : State}
     SepWPp prog ret s (A ∗ B ∗ ⌜φ⌝ ∗ C) Q Qp := by
   rw [show A ∗ B ∗ ⌜φ⌝ ∗ C = ⌜φ⌝ ∗ A ∗ B ∗ C by ac_rfl]
   exact SepWPp.pure_elim h
-
-theorem into_boxed_slice_ok_of_hooks_opt {oimg : Option Obj.Image} {A : RustAlloc}
-    {b : BitVec 64} {ext : String → Option (State → State)} {hookStack : Nat}
-    (hstack : hookStack + 32 ≤ 2 ^ 64 := by decide)
-    (hdealloc : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr intoBoxedSliceName +
-        BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_dealloc" -
-          ls_off% "<alloc::vec::Vec<u8>>::into_boxed_slice")))
-      (specWithOptInv oimg (rustDeallocExternSpecWithStack A hookStack)))
-    (hrealloc : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr intoBoxedSliceName +
-        BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_realloc" -
-          ls_off% "<alloc::vec::Vec<u8>>::into_boxed_slice")))
-      (specWithOptInv oimg (rustReallocExternSpecWithStack A hookStack))) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr intoBoxedSliceName)
-      (specWithOptInv oimg (intoBoxedSliceSpecWithStack A hookStack)) := by
-  unfold specWithOptInv
-  simp only [intoBoxedSliceSpecWithStack, VecArg.at, vecU8At, vecHeader, boxU8Buf,
-    stackAt_intoBoxedSlice_opt hstack]
-  cells_unfold
-  have hfn : libsignalSessionCode.fnOff intoBoxedSliceName = num% (ls_off% "<alloc::vec::Vec<u8>>::into_boxed_slice") :=
-    (ls_lemma% fnOff "<alloc::vec::Vec<u8>>::into_boxed_slice")
-  have hpanic := panic_at_handle_error_norm_ext (b := b) (ext := ext)
-    (name := intoBoxedSliceName) (k := num% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<alloc::vec::Vec<u8>>::into_boxed_slice"))
-  code_fetches CryptoVerification.libsignalSessionCode
-    CryptoVerification.LibsignalTripleRatchet.libsignalTripleRatchetBin b
-    (Rust.withPanics ext) hfn (num% (ls_off% "<alloc::vec::Vec<u8>>::into_boxed_slice")) 124
-  wpp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨v, cap, ptr, bs⟩ := x
-  dsimp only at *
-  have hinv0 : OptCallInv oimg s0 := by assumption
-  have hbs_le_cap : bs.length ≤ cap.toNat := by assumption
-  have hlen_lt63 : bs.length < 2 ^ 63 := by omega
-  have hlen_toNat : (BitVec.ofNat 64 bs.length).toNat = bs.length := by
-    rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  have hpow2 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  rcases Nat.eq_or_lt_of_le hbs_le_cap with hcap_eq | hcap_lt
-  · -- Case 1: `bs.length = cap.toNat` (`b.ls` taken to `+0x44`)
-    have hcap_bv : BitVec.ofNat 64 bs.length = cap := by
-      apply BitVec.eq_of_toNat_eq
-      rw [hlen_toNat, hcap_eq]
-    rw [hcap_bv]
-    have hule : cap.ule cap = true := by
-      rw [BitVec.ule_eq_decide, decide_eq_true_iff]
-    by_cases hcap0 : cap = 0
-    · subst hcap0
-      have hbs : bs = [] := List.eq_nil_of_length_eq_zero hcap_eq
-      subst hbs
-      simp only [ite_true, sepConj_emp]
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      wp_done
-    · have hbs_ne : bs ≠ [] := by
-        intro hnil
-        apply hcap0
-        apply BitVec.eq_of_toNat_eq
-        rw [← hcap_eq, hnil]
-        rfl
-      simp only [hcap0, hbs_ne, ← hcap_eq, Nat.sub_self, memRegion_zero,
-        ite_false, sepConj_emp]
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      wp_done
-  · -- Case 2 & 3: `bs.length < cap.toNat` (`b.ls` not taken)
-    have hcap0 : cap ≠ 0 := by
-      intro heq
-      subst heq
-      change bs.length < 0 at hcap_lt
-      omega
-    have hpos_cap : 0 < cap.toNat := by omega
-    have hbound_cap : cap.toNat + 1 ≤ 2 ^ 63 := by omega
-    have hlay_cap : LayoutOk cap.toNat 1 := ⟨hpos_cap, hpow2, hbound_cap⟩
-    have hule : cap.ule (BitVec.ofNat 64 bs.length) = false :=
-      ule_eq_false_of_lt hcap_lt
-    by_cases hbs : bs = []
-    · -- Case 2: `bs = []` (`cbz x19` taken to `+0x58`, calls `__rust_dealloc`)
-      subst hbs
-      have hule0 : cap.ule 0#64 = false := hule
-      simp only [hcap0, ite_false, List.length_nil,
-        pointsToBytes_nil, BitVec.add_zero, Nat.sub_zero, ite_true, emp_sepConj, sepConj_emp]
-      apply SepWPp.of_sepWP_ret
-      apply SepWP.seq_optImage (mid := entry + bv% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<alloc::vec::Vec<u8>>::into_boxed_slice")) hinv0
-      wp_steps
-      apply SepWP.done (by rfl) (by wp_norm_lhs)
-      intro hinv1
-      wp_call hdealloc (ptr, cap.toNat, 1)
-      wp_steps
-      wp_done
-    · -- Case 3: `bs ≠ []` (`cbz x19` not taken, calls `__rust_realloc`)
-      have hpos : 0 < bs.length := List.length_pos_iff.mpr hbs
-      have hbound_bs : bs.length + 1 ≤ 2 ^ 63 := by omega
-      have hlen_ne0 : BitVec.ofNat 64 bs.length ≠ 0#64 :=
-        ofNat_ne_zero_of_pos hpos (by omega)
-      have hlen_beq0 : (BitVec.ofNat 64 bs.length == 0#64) = false :=
-        beq_ofNat_zero_eq_false hpos (by omega)
-      have hlay_new : LayoutOk bs.length 1 := ⟨hpos, hpow2, hbound_bs⟩
-      have hmin : bs.length ≤ min cap.toNat bs.length := by omega
-      simp only [hcap0, hbs, ite_false, sepConj_assoc]
-      apply SepWPp.of_sepWP (mid := entry + bv% (48))
-      apply SepWP.seq_optImage (mid := entry + bv% (ls_off% "__rustc::__rust_realloc" - ls_off% "<alloc::vec::Vec<u8>>::into_boxed_slice")) hinv0
-      wp_steps
-      apply SepWP.done (by rfl) (by wp_norm_lhs)
-      intro hinv1
-      wp_call hrealloc (ptr, cap.toNat, 1, bs.length, bs)
-      apply SepWP.done (by simp_all) (by simp_all)
-      by_cases hoom : sf.readReg64 (Reg.gpr 0#5) = 0
-      · have hoom64 : sf.readReg64 (Reg.gpr 0#5) = 0#64 := hoom
-        simp only [hoom, ite_true, sepConj_assoc]
-        refine sepWPp_pure_mid fun htrace => ?_
-        apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<alloc::vec::Vec<u8>>::into_boxed_slice"))
-        wp_steps
-        apply SepWP.done (by simp_all) (by simp_all)
-        refine SepWPp.panic (by simp_all) (by simp_all) fun hm => ?_
-        simpa only [sepConj_assoc] using
-          allowPanic_panicked (allocFailedIn_of_eq (by simp_all [Rust.panicked])) hm
-      · have hoom64 : sf.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom
-        simp only [hoom, Nat.sub_self, memRegion_zero, sepConj_emp, ite_false, sepConj_assoc]
-        refine sepWPp_pure_mid fun ⟨hmod, htrace⟩ => ?_
-        apply SepWPp.of_sepWP_ret
-        wp_steps
-        wp_done
-
-theorem into_boxed_slice_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr intoBoxedSliceName)
-      (intoBoxedSliceSpec A) :=
-  subroutine_ok_of_optNone <|
-    into_boxed_slice_ok_of_hooks_opt (by decide)
-      (dealloc_opt_of_base hA (name := intoBoxedSliceName)
-        (k := num% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<alloc::vec::Vec<u8>>::into_boxed_slice")))
-      (realloc_opt_of_base hA (name := intoBoxedSliceName)
-        (k := num% (ls_off% "__rustc::__rust_realloc" - ls_off% "<alloc::vec::Vec<u8>>::into_boxed_slice")))
-
-/-- `<alloc::vec::Vec<u8>>::into_boxed_slice` (`0x1afd4`) meets `intoBoxedSliceSpec A` on `tripleRatchetProgAt`. -/
-theorem into_boxed_slice_ok {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr intoBoxedSliceName)
-      (intoBoxedSliceSpec A) :=
-  into_boxed_slice_ok_ext (AllocContracts.of_tripleRatchetProgAt b C A ctl abs hA)
-
-theorem into_boxed_slice_ok_ext_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr intoBoxedSliceName)
-      ((intoBoxedSliceSpecX A).inImage img) :=
-  into_boxed_slice_ok_of_hooks_opt (oimg := some img) (by decide)
-    (dealloc_opt_of_x hA (name := intoBoxedSliceName)
-      (k := num% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<alloc::vec::Vec<u8>>::into_boxed_slice")))
-    (realloc_opt_of_x hA (name := intoBoxedSliceName)
-      (k := num% (ls_off% "__rustc::__rust_realloc" - ls_off% "<alloc::vec::Vec<u8>>::into_boxed_slice")))
-
-/-! ## Relocatable `[LibsignalPlacement]` Contract (Block `56`) -/
 
 theorem into_boxed_slice_placed_ok_of_hooks [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)} {hookStack : Nat}

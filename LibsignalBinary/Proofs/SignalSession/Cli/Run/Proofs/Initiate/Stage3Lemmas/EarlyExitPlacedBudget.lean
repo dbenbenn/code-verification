@@ -9,14 +9,33 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.EarlyExitPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.CollapsePlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.EarlyExitPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.CollapsePlacedBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Layout -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Defs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Collapse
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.CollapsePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DefsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.EarlyExit
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Cells
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExit
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Shared Zero-DH Unwind Exit (`[LibsignalPlacement]`)
@@ -26,15 +45,13 @@ Verifies the shared zero-DH unwind tail (`+0x1544` / `+0x1548 → +0x0350 → re
 `unwind1548Events` and reassembling `InitExitPostPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
 set_option linter.dupNamespace false
 set_option linter.unusedTactic false
 set_option maxRecDepth 200000
-
-noncomputable section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.EarlyExitPlacedBudget
 
@@ -79,7 +96,7 @@ attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] BitVec.toNat_zero
 
 /-- Allocator events along `+0x1544`/`+0x1548 → ret`: `dealloc(192, 1)` then `dealloc(1568, 1)`. -/
-def unwind1548Events : List AllocEvent :=
+@[expose] def unwind1548Events : List AllocEvent :=
   rustDeallocEvents 192 1 ++ rustDeallocEvents 1568 1
 
 theorem stepEvents_unwind1548Events (M : AllocCostModel) (st : M.σ) :
@@ -88,7 +105,7 @@ theorem stepEvents_unwind1548Events (M : AllocCostModel) (st : M.σ) :
   (M.stepEvents_append (rustDeallocEvents 192 1) (rustDeallocEvents 1568 1) st).symm
 
 /-- Spatial footprint entering the shared zero-DH unwind tail at `+0x1548`. -/
-def Unwind1548MemPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Unwind1548MemPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (x : InitGhost)
     (pqspkPtr secretsPtr : BitVec 64) (stk : Nat) (s0 s : State) : SepProp :=
   let fsp := s0.sp - BitVec.ofNat 64 cliInitiateFrame
@@ -391,38 +408,6 @@ theorem unwind_1548_placed_ok [LibsignalPlacement] {M : AllocCostModel}
             BitVec.reduceAdd, BitVec.reduceNeg, BitVec.add_zero]
           ac_rfl)
 
-theorem unwind_1548_placed_evs_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {InitEnv : InitGhost → List AllocEvent → Prop}
-    {mmpl : MultiPlacement} {gh : CliGhostHooks} {W : CliHooks} {X : UnreachedPqxdhPrimitives} {B : RunBudgets} {S : RunSem}
-    {x : InitGhost} {st0 : M.σ} {evs_pre : List AllocEvent}
-    {pqspkPtr secretsPtr : BitVec 64} {stk : Nat}
-    {s0 s : State} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hh : RunHooksPlaced W A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (hEnv : InitEnv x (evs_pre ++ unwind1548Events))
-    (hS : S.initiate = initDef X ⟨W.C, W.Q⟩)
-    (hnone : initDef X ⟨W.C, W.Q⟩ x.F x.peer.val x.me.val x.bundle x.coins = some none)
-    (hstk : cliInitiateNeed B ≤ stk)
-    (hstk64 : stk ≤ 2 ^ 63)
-    (hx8 : s0.readReg64 .x8 = x.ret)
-    (hsecNonNull : secretsPtr ≠ 0#64)
-    (hpqNonNull : pqspkPtr ≠ 0#64)
-    (hctrl : InInitiatePlaced s0 s 0x1548)
-    (htr : s.trace = s0.trace)
-    (hx25 : s.readReg64 (.gpr 25#5) = secretsPtr)
-    (hx26 : s.readReg64 (.gpr 26#5) = speWord 10)
-    (hx1 : s.readReg64 .x1 = 192#64)
-    (hpost : ∀ sf Pf, InitExitPostPlaced A lim InitEnv S x st0 stk s0 sf Pf → Q sf Pf)
-    (hpanic : ∀ sf Pf, InitPanicPostPlaced A lim InitEnv S x st0 stk s0 sf Pf → Qp sf Pf) :
-    SepWPp (initProgPlaced mmpl gh W) (s0.readReg64 .lr) s
-      (Unwind1548MemPlaced A lim (M.stepEvents evs_pre st0) x pqspkPtr secretsPtr stk s0 s)
-      Q Qp oom :=
-  unwind_1548_placed_ok hh
-    ⟨evs_pre ++ unwind1548Events, hEnv,
-      (stepEvents_unwind1548Events M (M.stepEvents evs_pre st0)).trans
-        (M.stepEvents_append evs_pre unwind1548Events st0).symm⟩
-    hS hnone hstk hstk64 hx8 hsecNonNull hpqNonNull hctrl htr hx25 hx26 hx1 hpost hpanic
-
 /-- Budget-threaded zero-DH unwind entry at `+0x1544` (`DH2`, `DH3`, `DH4`). -/
 theorem unwind_1544_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -517,57 +502,5 @@ theorem unwind_1544_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     rw [hpool]
     exact sep_replace htail (by dsimp only [fsp]; sep_frame) (by dsimp only [fsp]; sep_frame)
 
-theorem unwind_1544_placed_evs_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {InitEnv : InitGhost → List AllocEvent → Prop}
-    {mmpl : MultiPlacement} {gh : CliGhostHooks} {W : CliHooks} {X : UnreachedPqxdhPrimitives} {B : RunBudgets} {S : RunSem}
-    {x : InitGhost} {st0 : M.σ} {evs_pre : List AllocEvent}
-    {pqspkPtr secretsPtr : BitVec 64} {stk : Nat}
-    {s0 s : State} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hh : RunHooksPlaced W A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (hEnv : InitEnv x (evs_pre ++ unwind1548Events))
-    (hS : S.initiate = initDef X ⟨W.C, W.Q⟩)
-    (hnone : initDef X ⟨W.C, W.Q⟩ x.F x.peer.val x.me.val x.bundle x.coins = some none)
-    (hstk : cliInitiateNeed B ≤ stk)
-    (hstk64 : stk ≤ 2 ^ 63)
-    (hx8 : s0.readReg64 .x8 = x.ret)
-    (hsecNonNull : secretsPtr ≠ 0#64)
-    (hpqNonNull : pqspkPtr ≠ 0#64)
-    (hctrl : InInitiatePlaced s0 s 0x1544)
-    (htr : s.trace = s0.trace)
-    (hx26 : s.readReg64 (.gpr 26#5) = speWord 10)
-    (hx1 : s.readReg64 .x1 = 192#64)
-    (hpost : ∀ sf Pf, InitExitPostPlaced A lim InitEnv S x st0 stk s0 sf Pf → Q sf Pf)
-    (hpanic : ∀ sf Pf, InitPanicPostPlaced A lim InitEnv S x st0 stk s0 sf Pf → Qp sf Pf) :
-    let fsp := s0.sp - BitVec.ofNat 64 cliInitiateFrame
-    SepWPp (initProgPlaced mmpl gh W) (s0.readReg64 .lr) s
-      (((s0.sp - 0x60#64 - 0x28#64) ↦₆₄ secretsPtr) ∗
-        storesAt A.repAlloc x.stores StoresGhost.opened ∗
-        protocolAddressAt A.repAlloc x.peer x.peerA ∗ protocolAddressAt A.repAlloc x.me x.meA ∗
-        cliBundleAt x.bundleA x.bundle x.spkSigPtr x.kpkSigPtr x.kpkPtr ∗
-        (s0.sp ↦₃₂ 0#32) ∗ memRegion x.ret 48 ∗
-        FromRecordCallees.lsLogOff ∗ A.pool lim (M.stepEvents evs_pre st0) s ∗ initSaved s0 ∗
-        A.live secretsPtr 192 1 ∗ memRegion secretsPtr 192 ∗
-        A.live pqspkPtr 1568 1 ∗ memRegion pqspkPtr 1568 ∗
-        memRegion fsp 0x128 ∗
-        initFreshRecAt fsp ∗
-        memRegion (fsp + 0x148#64) 0x2e0 ∗
-        ((fsp + 0x428#64) ↦₆₄ pqspkPtr) ∗ ((fsp + 0x430#64) ↦₆₄ 1568#64) ∗
-        memRegion (fsp + 0x438#64) 0x181 ∗
-        ((fsp + 0x5b9#64) ↦₈ 0#8) ∗
-        memRegion (fsp + 0x5ba#64) 0x37e ∗
-        memRegion (fsp + 0x938#64) 0x20 ∗
-        memRegion (fsp + 0x958#64) 0x1310 ∗
-        memRegion (fsp + 0x1c70#64) 0x20 ∗
-        stackAt fsp (stk - cliInitiateFrame) ∗
-        coinsCursorAtPlaced x.coinsP x.coins 32 ∗
-        SpqrV1.GF.Mul2U16.tokenInitPlacedAt) Q Qp oom :=
-  unwind_1544_placed_ok hh
-    ⟨evs_pre ++ unwind1548Events, hEnv,
-      (stepEvents_unwind1548Events M (M.stepEvents evs_pre st0)).trans
-        (M.stepEvents_append evs_pre unwind1548Events st0).symm⟩
-    hS hnone hstk hstk64 hx8 hsecNonNull hpqNonNull hctrl htr hx26 hx1 hpost hpanic
-
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.EarlyExitPlacedBudget
 
-end

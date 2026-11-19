@@ -9,8 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigTotals
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigTotals
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeProofs
+public import Computational.Proofs.SignalPqxdh.CostedTablesCompat -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySig -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigBounds
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeGapDhProofs
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDh
 
 /-!
 # Step-Level Bounds for the One-Key `Auth` Sig Program
@@ -19,7 +24,7 @@ import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeProof
 bounds on `a1gStepC` into total cost and query bounds for `sigAuth1KeyProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,12 +40,12 @@ attribute [implicit_reducible] sigAndDdhOracle gapDhDdhOracle
 end
 
 /-- Context-generic cost bound on `a1gStepC`. -/
-def A1gStepCostUB (S : Setup) (K c : Nat) : Prop :=
+@[expose] def A1gStepCostUB (S : Setup) (K c : Nat) : Prop :=
   ∀ {Γ₁ Γ₂ Δ : List (Ty pqSig)} [Ext Γ₁ Δ] [Ext Γ₂ Δ] (st : Var Γ₁ a1gStTy)
     (q : Var Γ₂ authQueryTy), (a1gStepC S K (Δ := Δ) st q).costUB ≤ c
 
 /-- Context-generic query bound on `a1gStepC` for weight `w`. -/
-def A1gStepQueries (S : Setup) (K : Nat) (w : pqSigAndDdhIface.Tag → ℕ) (c : Nat) : Prop :=
+@[expose] def A1gStepQueries (S : Setup) (K : Nat) (w : pqSigAndDdhIface.Tag → ℕ) (c : Nat) : Prop :=
   ∀ {Γ₁ Γ₂ Δ : List (Ty pqSig)} [Ext Γ₁ Δ] [Ext Γ₂ Δ] (st : Var Γ₁ a1gStTy)
     (q : Var Γ₂ authQueryTy),
     (a1gStepC S K (Δ := Δ) st q).queries w SignalPqxdh.LegacyCosted.samplerZeroQueryWeight ≤ c

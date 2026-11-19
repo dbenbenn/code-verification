@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1Defs
 public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveDefs
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitE
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Top
 import LibsignalBinary.Proofs.E2E.Record.Serialization.Canon
@@ -22,6 +23,7 @@ import LibsignalBinary.Proofs.E2E.RecordX.LengthP
 import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveEnc
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly -- shake: keep
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
 
 /-!
 # Responder Closure Over-Path Scope Bridges and Stage P3/P4 Instantiations
@@ -31,7 +33,7 @@ canonicality and `< 2 ^ 32` length bounds from `Cli.Slots.scopeIn`, and instanti
 Stages P3 and P4 (`previous_sessions = [enc]`) for general `RustAlloc` and `E2E.HooksE.A0`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -73,14 +75,14 @@ open CryptoVerification.SignalSession
 
 /-! ## Archived Previous-Session Predicates and `clearPending` Scope Bridges -/
 
-def OverPrevEncOKAt (enc : List (BitVec 8)) (sess : Session (List (BitVec 8))) : Prop :=
+@[expose] def OverPrevEncOKAt (enc : List (BitVec 8)) (sess : Session (List (BitVec 8))) : Prop :=
   enc = CryptoVerification.E2E.Record.encSession sess ∧
     Symbolic.Swarm.TRREF.B3Defs.DeserializeScopeP_Q Symbolic.Swarm.TRREF.B3Defs.NonEmptyV1Q
       ⟨some sess⟩ ∧
     sess.state.sessionVersion = 4#32 ∧
     sess.pendingPreKey = none ∧ sess.pendingKyberPreKey = none
 
-def OverPrevEncOK (enc : List (BitVec 8)) : Prop :=
+@[expose] def OverPrevEncOK (enc : List (BitVec 8)) : Prop :=
   ∃ sess : Session (List (BitVec 8)),
     enc = CryptoVerification.E2E.Record.encSession sess ∧
     Symbolic.Swarm.TRREF.B3Defs.DeserializeScopeP_Q Symbolic.Swarm.TRREF.B3Defs.NonEmptyV1Q
@@ -88,7 +90,7 @@ def OverPrevEncOK (enc : List (BitVec 8)) : Prop :=
     sess.state.sessionVersion = 4#32 ∧
     sess.pendingPreKey = none ∧ sess.pendingKyberPreKey = none
 
-def prevArchived1AtD2c (A : RustAlloc) (coroPtr : BitVec 64)
+@[expose] def prevArchived1AtD2c (A : RustAlloc) (coroPtr : BitVec 64)
     (recG : SessionGhost) (sess : Session (List (BitVec 8))) : SepProp :=
   ∃∗ prevCap' : BitVec 64, ∃∗ prevPtr' : BitVec 64,
     ⌜prevCap' ≠ 0#64⌝ ∗
@@ -185,188 +187,5 @@ theorem lenField2_clearPending_length_lt {s : Session (List (BitVec 8))}
   omega
 
 /-! ## Stage P3 (`Prev1`) Instantiations -/
-
-abbrev OverVerNe1e04CliA0Stmt : Prop :=
-  OverVerNe1e04CliAtStmt E2E.HooksE.A0 OverPrevEncOK
-
-theorem OverVerNe1e04CliStmt.toA0 (h : OverVerNe1e04CliStmt OverPrevEncOK) :
-    OverVerNe1e04CliA0Stmt :=
-  h (A := E2E.HooksE.A0)
-
-abbrev StageP3Prev1VRegsA0Stmt : Prop :=
-  StageP3Prev1VRegsAtStmt E2E.HooksE.A0 OverPrevEncOK
-
-theorem StageP3Prev1VRegsStmt.toA0 (h : StageP3Prev1VRegsStmt OverPrevEncOK) :
-    StageP3Prev1VRegsA0Stmt :=
-  h (A := E2E.HooksE.A0)
-
-/-- Version-mismatch exit (`+0x1e04 → s0.readReg64 .x30`) at allocator `A` under 4K-aligned
-memory contracts. -/
-theorem overVerNe_1e04_cli_at_4k {A : RustAlloc} : OverVerNe1e04CliAt4KStmt A OverPrevEncOK :=
-  VerNe.overVerNe_1e04_cli_ext
-
-theorem overVerNe_1e04_cli_4k : OverVerNe1e04Cli4KStmt OverPrevEncOK :=
-  fun {_A} => overVerNe_1e04_cli_at_4k
-
-theorem overVerNe_1e04_cli_at {A : RustAlloc} : OverVerNe1e04CliAtStmt A OverPrevEncOK :=
-  overVerNe_1e04_cli_at_4k.toAtStmt
-
-theorem overVerNe_1e04_cli : OverVerNe1e04CliStmt OverPrevEncOK :=
-  fun {_A} => overVerNe_1e04_cli_at
-
-/-- Stage P3 (`+0x1778 → +0x34dc` or `s0.readReg64 .x30`) over a 1-element `previous_sessions`
-at allocator `A` under 4K-aligned memory contracts. -/
-theorem stageP3_prev1_vregs_at_4k_ok {A : RustAlloc} : StageP3Prev1VRegsAt4KStmt A OverPrevEncOK :=
-  stageP3Gen_prev1_vregs_at_4k_ok overVerNe_1e04_cli_at_4k
-
-theorem stageP3_prev1_vregs_4k_ok : StageP3Prev1VRegs4KStmt OverPrevEncOK :=
-  stageP3Gen_prev1_vregs_4k_ok overVerNe_1e04_cli_4k
-
-theorem stageP3_prev1_vregs_at_ok {A : RustAlloc} : StageP3Prev1VRegsAtStmt A OverPrevEncOK :=
-  stageP3_prev1_vregs_at_4k_ok.toAtStmt
-
-theorem stageP3_prev1_vregs_ok : StageP3Prev1VRegsStmt OverPrevEncOK :=
-  fun {_A} => stageP3_prev1_vregs_at_ok
-
-theorem overVerNe_1e04_cli_a0 : OverVerNe1e04CliA0Stmt :=
-  overVerNe_1e04_cli.toA0
-
-theorem stageP3_prev1_vregs_a0_ok : StageP3Prev1VRegsA0Stmt :=
-  stageP3_prev1_vregs_ok.toA0
-
-/-! ## Stage P4 (`Prev1`) Statements and Instantiations -/
-
-def StageP4Prev1VRegsAt4KStmt (A : RustAlloc) : Prop :=
-  ∀ (img : Obj.Image) (ext : String → Option (State → State))
-    (kit : SessionStoreSpec A img.base) (ops : StorePrev1Ops kit)
-    (ikit : IdentityStoreSpec A img.base)
-    (pkKit : PreKeyStoreSpec A img.base) (kpkKit : KyberPreKeyStoreSpec A img.base),
-    AllocContractsMem4K img.base A ext → DropSessionStructure3OkExt img.base A ext →
-    SessionPrev1KitOkSE kit ops ext → SessionOnlyVtablesOk img kit →
-    IdentityStoreKitOkIE img ikit ext → IdentityVtablesOk img ikit →
-    PreKeyStoreKitOkImgE img pkKit ext → PreKeyVtablesOk img pkKit →
-    KyberPreKeyStoreKitOkImgE img kpkKit ext → KyberPreKeyVtablesOk img kpkKit →
-    ∀ (s0 s : State)
-      (coroPtr ctxPtr msgPtr outPtr remoteAddrPtr remoteIkPtr sessionStorePtr idStorePtr
-       preKeyStorePtr kyberStorePtr prevCap prevPtr ptCap ptPtr v_3d0 : BitVec 64)
-      (opkId? : Option (BitVec 32)) (kyberPreKeyId signedPreKeyId : BitVec 32)
-      (b_2c0 : BitVec 8) (pt enc : List (BitVec 8))
-      (peer : AddrGhost) (remoteIk : IdentityKey) (baseKey : PublicKey)
-      (sst0 : kit.StoreState) (ist0 : ikit.IdState) (pst0 : pkKit.PkState) (kst0 : kpkKit.KpkState)
-      (G : SessionGhost) (ss : Session (List (BitVec 8))),
-      img.base &&& 0xfff#64 = 0#64 → SessionExtraRel G ss → ops.RecPrev1Ok G ss enc →
-      kit.addrOk peer.val → ikit.addrOk peer.val →
-      kpkKit.markOk kyberPreKeyId signedPreKeyId baseKey →
-      (∀ opkId, opkId? = some opkId → pkKit.removeIdOk opkId) →
-      pt.length ≤ ptCap.toNat → ptCap.toNat < 2 ^ 63 → ptPtr ≠ 0#64 →
-      stageP4CallStack kit ikit pkKit kpkKit ≤ 2 ^ 64 →
-      FsAt (stageP4EnvOk kit ikit pkKit kpkKit) (stageP4Quiet kit ikit pkKit kpkKit)
-        (tripleRatchetProgAtExt img.base ext) s →
-      img.FrozenLoaded s → s.symtab = img.symtab →
-      s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr decryptPrekeyClosureName + 0x34dc#64 →
-      s.status = .Running → (s.sp &&& 15#64 == 0#64) = true → s0.trace <+: s.trace →
-      s.readReg64 .x19 = coroPtr → s.readReg64 .x24 = s.sp + 0x370#64 →
-      s.readReg64 .x25 = s.sp + 0x210#64 → s.readReg64 .x26 = outPtr →
-      s.readReg64 .x27 = ctxPtr → s.readReg64 .x28 = 0xfffffffffffffffe#64 →
-      calleeSavedVRegs s = calleeSavedVRegs s0 →
-      SepWPp (tripleRatchetProgAtExt img.base ext) (s0.readReg64 .x30) s
-        (stageP4Prev1Pre img kit ikit pkKit kpkKit s0 s coroPtr msgPtr outPtr remoteAddrPtr
-          remoteIkPtr sessionStorePtr idStorePtr preKeyStorePtr kyberStorePtr prevCap prevPtr
-          ptCap ptPtr v_3d0 opkId? kyberPreKeyId signedPreKeyId b_2c0 pt enc peer remoteIk baseKey
-          sst0 ist0 pst0 kst0 G ss.state)
-        (fun sf Pf =>
-          Steps (tripleRatchetProgAtExt img.base ext) s sf ∧
-          sf.sp = s.sp + 0xcd0#64 ∧ ClosureCalleeSavedP4 s0 sf ∧
-          calleeSavedVRegs sf = calleeSavedVRegs s0 ∧ img.FrozenLoaded sf ∧
-          sf.symtab = img.symtab ∧
-          StageP4Prev1Branch img kit ops ikit pkKit kpkKit s0 s coroPtr msgPtr outPtr
-            remoteAddrPtr remoteIkPtr sessionStorePtr idStorePtr preKeyStorePtr kyberStorePtr
-            ptCap ptPtr v_3d0 opkId? kyberPreKeyId signedPreKeyId pt enc peer remoteIk
-            baseKey sst0 ist0 pst0 kst0 G ss sf Pf)
-        (PanicOomProp s0)
-
-def StageP4Prev1VRegs4KStmt : Prop :=
-  ∀ {A : RustAlloc}, StageP4Prev1VRegsAt4KStmt A
-
-def StageP4Prev1VRegsAtStmt (A : RustAlloc) : Prop :=
-  ∀ (img : Obj.Image) (ext : String → Option (State → State))
-    (kit : SessionStoreSpec A img.base) (ops : StorePrev1Ops kit)
-    (ikit : IdentityStoreSpec A img.base)
-    (pkKit : PreKeyStoreSpec A img.base) (kpkKit : KyberPreKeyStoreSpec A img.base),
-    AllocContracts img.base A ext → DropSessionStructure3OkExt img.base A ext →
-    SessionPrev1KitOkSE kit ops ext → SessionOnlyVtablesOk img kit →
-    IdentityStoreKitOkIE img ikit ext → IdentityVtablesOk img ikit →
-    PreKeyStoreKitOkImgE img pkKit ext → PreKeyVtablesOk img pkKit →
-    KyberPreKeyStoreKitOkImgE img kpkKit ext → KyberPreKeyVtablesOk img kpkKit →
-    ∀ (s0 s : State)
-      (coroPtr ctxPtr msgPtr outPtr remoteAddrPtr remoteIkPtr sessionStorePtr idStorePtr
-       preKeyStorePtr kyberStorePtr prevCap prevPtr ptCap ptPtr v_3d0 : BitVec 64)
-      (opkId? : Option (BitVec 32)) (kyberPreKeyId signedPreKeyId : BitVec 32)
-      (b_2c0 : BitVec 8) (pt enc : List (BitVec 8))
-      (peer : AddrGhost) (remoteIk : IdentityKey) (baseKey : PublicKey)
-      (sst0 : kit.StoreState) (ist0 : ikit.IdState) (pst0 : pkKit.PkState) (kst0 : kpkKit.KpkState)
-      (G : SessionGhost) (ss : Session (List (BitVec 8))),
-      img.base &&& 0xfff#64 = 0#64 → SessionExtraRel G ss → ops.RecPrev1Ok G ss enc →
-      kit.addrOk peer.val → ikit.addrOk peer.val →
-      kpkKit.markOk kyberPreKeyId signedPreKeyId baseKey →
-      (∀ opkId, opkId? = some opkId → pkKit.removeIdOk opkId) →
-      pt.length ≤ ptCap.toNat → ptCap.toNat < 2 ^ 63 → ptPtr ≠ 0#64 →
-      stageP4CallStack kit ikit pkKit kpkKit ≤ 2 ^ 64 →
-      FsAt (stageP4EnvOk kit ikit pkKit kpkKit) (stageP4Quiet kit ikit pkKit kpkKit)
-        (tripleRatchetProgAtExt img.base ext) s →
-      img.FrozenLoaded s → s.symtab = img.symtab →
-      s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr decryptPrekeyClosureName + 0x34dc#64 →
-      s.status = .Running → (s.sp &&& 15#64 == 0#64) = true → s0.trace <+: s.trace →
-      s.readReg64 .x19 = coroPtr → s.readReg64 .x24 = s.sp + 0x370#64 →
-      s.readReg64 .x25 = s.sp + 0x210#64 → s.readReg64 .x26 = outPtr →
-      s.readReg64 .x27 = ctxPtr → s.readReg64 .x28 = 0xfffffffffffffffe#64 →
-      calleeSavedVRegs s = calleeSavedVRegs s0 →
-      SepWPp (tripleRatchetProgAtExt img.base ext) (s0.readReg64 .x30) s
-        (stageP4Prev1Pre img kit ikit pkKit kpkKit s0 s coroPtr msgPtr outPtr remoteAddrPtr
-          remoteIkPtr sessionStorePtr idStorePtr preKeyStorePtr kyberStorePtr prevCap prevPtr
-          ptCap ptPtr v_3d0 opkId? kyberPreKeyId signedPreKeyId b_2c0 pt enc peer remoteIk baseKey
-          sst0 ist0 pst0 kst0 G ss.state)
-        (fun sf Pf =>
-          Steps (tripleRatchetProgAtExt img.base ext) s sf ∧
-          sf.sp = s.sp + 0xcd0#64 ∧ ClosureCalleeSavedP4 s0 sf ∧
-          calleeSavedVRegs sf = calleeSavedVRegs s0 ∧ img.FrozenLoaded sf ∧
-          sf.symtab = img.symtab ∧
-          StageP4Prev1Branch img kit ops ikit pkKit kpkKit s0 s coroPtr msgPtr outPtr
-            remoteAddrPtr remoteIkPtr sessionStorePtr idStorePtr preKeyStorePtr kyberStorePtr
-            ptCap ptPtr v_3d0 opkId? kyberPreKeyId signedPreKeyId pt enc peer remoteIk
-            baseKey sst0 ist0 pst0 kst0 G ss sf Pf)
-        (PanicOomProp s0)
-
-def StageP4Prev1VRegsStmt : Prop :=
-  ∀ {A : RustAlloc}, StageP4Prev1VRegsAtStmt A
-
-theorem StageP4Prev1VRegsAt4KStmt.toAtStmt {A : RustAlloc} (h : StageP4Prev1VRegsAt4KStmt A) :
-    StageP4Prev1VRegsAtStmt A :=
-  fun img ext kit ops ikit pkKit kpkKit hA =>
-    h img ext kit ops ikit pkKit kpkKit (AllocContractsMem4K.of_AllocContracts hA)
-
-abbrev StageP4Prev1VRegsA0Stmt : Prop :=
-  StageP4Prev1VRegsAtStmt E2E.HooksE.A0
-
-theorem StageP4Prev1VRegsStmt.toA0 (h : StageP4Prev1VRegsStmt) :
-    StageP4Prev1VRegsA0Stmt :=
-  h (A := E2E.HooksE.A0)
-
-/-- Stage P4 (`+0x34dc → s0.readReg64 .x30`) over a 1-element `previous_sessions` at allocator
-`A` under 4K-aligned memory contracts. -/
-theorem stageP4_prev1_vregs_at_4k_ok {A : RustAlloc} : StageP4Prev1VRegsAt4KStmt A :=
-  stageP4_prev1_vregs_kits_4k_ok
-
-theorem stageP4_prev1_vregs_4k_ok : StageP4Prev1VRegs4KStmt :=
-  fun {_A} => stageP4_prev1_vregs_kits_4k_ok
-
-theorem stageP4_prev1_vregs_at_ok {A : RustAlloc} : StageP4Prev1VRegsAtStmt A :=
-  stageP4_prev1_vregs_at_4k_ok.toAtStmt
-
-theorem stageP4_prev1_vregs_ok : StageP4Prev1VRegsStmt :=
-  fun {_A} => stageP4_prev1_vregs_at_ok
-
-theorem stageP4_prev1_vregs_a0_ok : StageP4Prev1VRegsA0Stmt :=
-  stageP4_prev1_vregs_ok.toA0
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over

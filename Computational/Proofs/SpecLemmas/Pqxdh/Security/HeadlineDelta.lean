@@ -10,11 +10,12 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Pqxdh.Security.HeadlineDelta
-public import Computational.Proofs.SpecLemmas.Pqxdh.Security.Headline
+import Computational.Proofs.SpecLemmas.Pqxdh.Security.Headline
 import Computational.Proofs.SpecLemmas.Assumptions.KemCorrect
-public import Computational.Proofs.SpecLemmas.Pqxdh.Security.BoundProofDefs
+import Computational.Proofs.SpecLemmas.Pqxdh.Security.BoundProofDefs
+public import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthStatements -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -70,8 +71,8 @@ def dummyPqxdhPrimitives : Primitives where
   scalarFromWide := fun _ => []
   montToEd := fun _ _ => none
   isTorsionFree := fun _ => false
-  edNeg := fun _ => []
-  doubleScalarMulBasepoint := fun _ _ _ => []
+  edNeg := fun _ => VerifiedLibraries.Common.edZero
+  doubleScalarMulBasepoint := fun _ _ _ => VerifiedLibraries.Common.edZero
   compress := fun _ => []
   kemKeyGen := fun _ => ([], [])
   kemEncaps := fun _ _ => none

@@ -10,13 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Kdf.GenDefs
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExtractCommon
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExtractCommon
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Kdf
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `spqr::kdf::hkdf_to_slice`: Extract Phase
@@ -25,7 +25,7 @@ Stack layout, frame invariants, and symbolic execution of the initial HKDF-Extra
 (`0x63284 → 0x633cc`) of `spqr::kdf::hkdf_to_slice`.
 -/
 
-@[expose] public section
+public section
 
 set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
@@ -66,9 +66,6 @@ attribute [local simp, local arm64_norm] bv_sub_add_lit
     (m.write64 (base + 408#64) v).read8 (base + 415#64) = v.extractLsb' 56 8 := by
   dsimp only [Memory.write64]; simp [arm64_norm]
 
-@[simp, arm64_norm] private
-gen_decodes libsignalSessionCode_tree libsignalSessionCode [0x5de8c → 0x5e108]
-
 theorem hkdfExpand_32_eq (F : ShaState → List (BitVec 8) → ShaState) (prk info : List (BitVec 8)) :
     hkdfExpand F prk info 32 = Expand.t1 F prk info := by
   dsimp only [hkdfExpand]; have h1 : (32 + 31) / 32 = 1 := rfl
@@ -84,7 +81,7 @@ theorem hkdfExpand_96_eq (F : ShaState → List (BitVec 8) → ShaState) (prk in
   rw [h3, hblocks, List.take_of_length_le]; simp [Expand.t1, Expand.t2, Expand.t3, length_hmacWith]
 
 /-- Stack pointer of `spqr::kdf::hkdf_to_slice` after its 688-byte prologue (`96 + 592`). -/
-def hsp (s₀ : State) : BitVec 64 := s₀.sp - 688#64
+@[expose] def hsp (s₀ : State) : BitVec 64 := s₀.sp - 688#64
 
 theorem hsp_eq_add (s₀ : State) : s₀.sp = hsp s₀ + 688#64 := by unfold hsp; bv_lin
 @[scoped simp, arm64_norm] theorem sp_sub_688_eq_hsp (s₀ : State) : s₀.sp - 688#64 = hsp s₀ := rfl
@@ -186,25 +183,6 @@ macro "prove_agrees_hsp" : tactic =>
       | ((with_reducible refine AgreesOutside.write8 ?_ ?hw); case hw => (simp only [InRegion]; bv_omega)))
     exact AgreesOutside.rfl' _ _ _))
 
-/-- `RunsTo` contract of `new_from_slice [local#3]` (`0x66fa0`) on `tripleRatchetProgAtExt b ext`
-for a key slice at `s₀.x1` of length `(s₀.readReg64 .x2).toNat ≤ 64`. -/
-def Nfs3RunsToExt (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
-    (ext : String → Option (State → State)) : Prop :=
-  ∀ {s₀ : State}, s₀.pc = b + 0x61ba8#64 → s₀.status = .Running → (s₀.readReg64 .x2).toNat ≤ 64 →
-    s₀.mem.readBytes (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 = shaStateBytes sha256IV →
-    (b &&& 0xfff#64) = 0#64 →
-    s₀.mem.Readable (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 →
-    DisjointRegions (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 (s₀.sp - 544#64) 544 →
-    s₀.mem.RW (s₀.readReg64 .x0) 0x98 → s₀.mem.RW (s₀.sp - 544#64) 544 →
-    DisjointRegions (s₀.readReg64 .x0) 0x98 (s₀.sp - 544#64) 544 →
-    ((s₀.readReg64 .x2).toNat = 0 ∨ DisjointRegions (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat (s₀.sp - 544#64) 544) →
-    (s₀.sp &&& 0b1111#64) = 0#64 →
-    RunsTo (tripleRatchetProgAtExt b ext) s₀ (fun s' =>
-      s'.pc = s₀.readReg64 .lr ∧ s'.status = .Running ∧ CalleeSaved s₀ s' ∧
-      s'.mem.read64 (s₀.readReg64 .x0) = 0#64 ∧
-      HmacSt s'.mem (s₀.readReg64 .x0 + 8#64) F (s₀.mem.readBytes (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat) [] ∧
-      Frame s₀.mem s'.mem [(s₀.readReg64 .x0, 0x98), (s₀.sp - 544#64, 544)])
-
 /-- Bundled entry preconditions of `spqr::kdf::hkdf_to_slice` (`b + 0x63284`) across all SPQR V1
 call sites (`salt.length < 2 ^ 63`, `ikm.length < 2 ^ 63`,
 `32 ≤ info.length < 55`, `okmLen ∈ {32, 64, 96}`). -/
@@ -227,10 +205,10 @@ structure HPre (b : BitVec 64) (salt ikm info : List (BitVec 8))
   info_lt       : info.length < 55
   okm_len       : okmLen = 32 ∨ okmLen = 64 ∨ okmLen = 96
   base_al       : aligned
-  ro_iv_bytes   : s₀.mem.readBytes (b_iv + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 = shaStateBytes sha256IV
-  ro_iv_read    : s₀.mem.Readable (b_iv + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32
-  disj_iv_stk   : DisjointRegions (b_iv + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 (hsp s₀ - 544#64) 1232
-  disj_iv_okm   : DisjointRegions (b_iv + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 okmA okmLen
+  ro_iv_bytes   : s₀.mem.readBytes (b_iv + bv% (601056 + 64)) 32 = shaStateBytes sha256IV
+  ro_iv_read    : s₀.mem.Readable (b_iv + bv% (601056 + 64)) 32
+  disj_iv_stk   : DisjointRegions (b_iv + bv% (601056 + 64)) 32 (hsp s₀ - 544#64) 1232
+  disj_iv_okm   : DisjointRegions (b_iv + bv% (601056 + 64)) 32 okmA okmLen
   salt_bytes    : s₀.mem.readBytes saltA salt.length = salt
   ikm_bytes     : s₀.mem.readBytes ikmA ikm.length = ikm
   info_bytes    : s₀.mem.readBytes infoA info.length = info
@@ -290,14 +268,14 @@ theorem HFrame.ro_iv_read {b b_iv : BitVec 64} {aligned : Prop} {salt ikm info :
     {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ : State} {m : Memory}
     (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀ b_iv aligned)
     (hf : HFrame okmLen s₀ m) :
-    m.Readable (b_iv + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 :=
+    m.Readable (b_iv + bv% (601056 + 64)) 32 :=
   (Expand.Frame.readable_iff hf _ _).mpr hpre.ro_iv_read
 
 theorem HFrame.ro_iv_bytes {b b_iv : BitVec 64} {aligned : Prop} {salt ikm info : List (BitVec 8)}
     {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ : State} {m : Memory}
     (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀ b_iv aligned)
     (hf : HFrame okmLen s₀ m) :
-    m.readBytes (b_iv + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 = shaStateBytes sha256IV := by
+    m.readBytes (b_iv + bv% (601056 + 64)) 32 = shaStateBytes sha256IV := by
   refine (Expand.Frame.readBytes_eq hf (fun r hr => ?_) (by decide)).trans hpre.ro_iv_bytes
   simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
   rcases hr with rfl | rfl
@@ -701,16 +679,16 @@ theorem s2_compress256_step_placed_429 [LibsignalPlacement] {C_arg : Crypto} {H_
     (by rw [chunks64_single_64 hlen]; rfl) hrw h
 
 /-- Generalized `RunsTo` contract of `new_from_slice [local#3]` parameterized over `P`, `b_iv`, `pc_nfs`, `aligned`. -/
-def Nfs3GenRunsToProg (P : Program) (b_iv pc_nfs : BitVec 64) (aligned : Memory → Prop)
+@[expose] def Nfs3GenRunsToProg (P : Program) (b_iv pc_nfs : BitVec 64) (aligned : Memory → Prop)
     (F : ShaState → List (BitVec 8) → ShaState) : Prop :=
   ∀ {s₀ : State},
     s₀.pc = pc_nfs →
     s₀.status = .Running →
     (s₀.readReg64 .x2).toNat < 2 ^ 63 →
-    s₀.mem.readBytes (b_iv + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 = shaStateBytes sha256IV →
+    s₀.mem.readBytes (b_iv + bv% (601056 + 64)) 32 = shaStateBytes sha256IV →
     aligned s₀.mem →
-    s₀.mem.Readable (b_iv + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 →
-    DisjointRegions (b_iv + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 (s₀.sp - 544#64) 544 →
+    s₀.mem.Readable (b_iv + bv% (601056 + 64)) 32 →
+    DisjointRegions (b_iv + bv% (601056 + 64)) 32 (s₀.sp - 544#64) 544 →
     s₀.mem.RW (s₀.readReg64 .x0) 0x98 →
     s₀.mem.RW (s₀.sp - 544#64) 544 →
     DisjointRegions (s₀.readReg64 .x0) 0x98 (s₀.sp - 544#64) 544 →
@@ -735,10 +713,7 @@ macro "kdf_step" : tactic =>
     refine RunsTo.step (inst := ?inst) ?hrun ?hfetch ?_
     case hfetch => (
       (try simp (config := { decide := true }) only [arm64_norm, *])
-      first
-      | (refine libsignalSessionCode_fetch_rebase_text ?_ (by decide) (by decide)
-         (try simp only [arm64_norm]) <;> rfl)
-      | rfl)
+      rfl)
     case hrun => (simp only [arm64_norm, *])
     try dsimp only [execInst, execAddSubImm, execAddSubExt, execAddSubShift, execAddSubCarry, execLogicalImm,
       execLogicalShift, execMoveWide, execBitfield, execCondSelect, execCondCompare,
@@ -789,16 +764,6 @@ local macro "hkdf_seg_e0_body" : tactic => `(tactic| (
         m680 := by simp (config := { decide := true }) only [arm64_norm] }
   · exact HFrame.of_agreesOutside_hsp (off := 592#64) (sz := 96)
       (Frame.refl s₀.mem _) (by prove_agrees_hsp) (by decide)))
-
-/-- Segment `E0` (`b + 0x5dda8` → `b + 0x61ac4`, 18 steps): prologue saving `x19..x30` at
-`hsp s₀ + 592 .. 688`, setting `sp = hsp s₀`, `x29 = hsp s₀ + 592#64`, moving arguments into
-`x22..x27`, and calling `new_from_slice(hsp s₀ + 32#64, saltA, salt.length)`. -/
-theorem seg_e0_runsTo [HkdfHooks C.F ext] {salt ikm info : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀) :
-    RunsTo (tripleRatchetProgAtExt b ext) s₀
-      (StateENfs1 b salt ikm info saltA ikmA infoA okmA okmLen s₀) := by
-  hkdf_seg_e0_body
 
 theorem seg_e0_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     {b_iv : BitVec 64} {aligned : Prop} {salt ikm info : List (BitVec 8)}
@@ -960,15 +925,6 @@ local macro "hkdf_seg_e1_lt56_body" b_code:term:max step_memcpy:term:max : tacti
       (hsp s₀ + 208#64) C.F (effectiveHmacKey C.F salt) [] ikm
     rw [h271]; exact HmacStN.of_hmacSt (HmacSt.of_writeBytes_lt63_write8_pos hhm0 hikm)))
 
-theorem seg_e1_lt56_runsTo [HkdfHooks C.F ext] {salt ikm info : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀)
-    (hikm : ikm.length < 64)
-    (hx : StateERet1 b C.F salt ikm info ikmA infoA okmA okmLen s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s
-      (StateE3cc b C.F salt ikm info infoA okmA okmLen s₀) := by
-  hkdf_seg_e1_lt56_body b (s2_memcpy_step_ext b C ext)
-
 theorem seg_e1_lt56_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     (h_memcpy : H lsMemcpySym = some memcpyHook)
     {b_iv : BitVec 64} {aligned : Prop} {salt ikm info : List (BitVec 8)}
@@ -1128,16 +1084,6 @@ local macro "hkdf_seg_e1_eq64_body" b_code:term:max step_comp_multi:term:max ste
     rw [hm1_344, h176]; exact hx.hmac_40.2.2.2.2.2.2))
 
 set_option maxHeartbeats 800000 in
-theorem seg_e1_eq64_runsTo [HkdfHooks C.F ext] {salt ikm info : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀)
-    (hikm : 64 ≤ ikm.length)
-    (hx : StateERet1 b C.F salt ikm info ikmA infoA okmA okmLen s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s
-      (StateE3cc b C.F salt ikm info infoA okmA okmLen s₀) := by
-  hkdf_seg_e1_eq64_body b (s2_compress256_multi_step_ext b C ext) (s2_memcpy_step_ext b C ext)
-
-set_option maxHeartbeats 800000 in
 theorem seg_e1_eq64_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     (h_memcpy : H lsMemcpySym = some memcpyHook)
     (h_compress : H lsCompress256Sym = some (compress256Hook C.F))
@@ -1150,17 +1096,6 @@ theorem seg_e1_eq64_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
       (StateE3cc hkdfCodeFakeB C.F salt ikm info infoA okmA okmLen s₀) := by
   hkdf_seg_e1_eq64_body hkdfCodeFakeB
     (s2_compress256_multi_step_placed_429 h_compress) (s2_memcpy_step_placed_429 h_memcpy)
-
-/-- Segment `E1` (`b + 0x632cc` → `b + 0x633cc`): feeds `ikm` (`< 2 ^ 63` bytes) into `Hmac`. -/
-theorem seg_e1_runsTo [HkdfHooks C.F ext] {salt ikm info : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀)
-    (hx : StateERet1 b C.F salt ikm info ikmA infoA okmA okmLen s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s
-      (StateE3cc b C.F salt ikm info infoA okmA okmLen s₀) := by
-  by_cases hikm : ikm.length < 64
-  · exact seg_e1_lt56_runsTo hpre hikm hx
-  · exact seg_e1_eq64_runsTo hpre (by omega) hx
 
 theorem seg_e1_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     (h_memcpy : H lsMemcpySym = some memcpyHook)

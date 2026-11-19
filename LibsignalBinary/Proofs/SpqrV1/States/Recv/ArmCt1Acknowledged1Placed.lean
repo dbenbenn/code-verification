@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged1
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1
@@ -26,7 +26,7 @@ Relocatable `[LibsignalPlacement]` jump-table dispatch (`+36 -> +588`), entry ep
 branch dispatch, and `msg.epoch > st.uc.epoch` exit path for `.ct1Acknowledged` (tag `11#64`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

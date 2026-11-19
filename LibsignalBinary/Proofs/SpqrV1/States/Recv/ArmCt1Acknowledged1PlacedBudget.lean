@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged1
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged1 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1
@@ -25,6 +25,9 @@ import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
 import ProofLib.SepLogic.WP.Apply
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged1Placed
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
 # `<States>::recv` (Block `332`) — `.ct1Acknowledged` Arm, Part 1 (Budget-Threaded)
@@ -33,7 +36,7 @@ meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 st.uc.epoch` deallocation exit for `.ct1Acknowledged` (`lsmpl.base 332 + 588#64`, tag `11#64`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

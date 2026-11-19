@@ -9,20 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesEncodedLenPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesEncodePlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhasePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1StateBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesEncodedLenBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesEncodedLenPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesEncodePlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhasePlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1StateBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesEncodedLenBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EpochEncodedLen -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.Defs
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
 
 /-!
 # Budget-Threaded Relocatable `spqr::send::<signal_session_ratchet::Coins>` Encoded Length & Allocation (Block `427`)
@@ -31,7 +40,7 @@ Threads `RustCliAllocBudget` and `VmPreserved` through `PqRatchetState` encoded-
 computation and output `Vec::with_capacity` allocation (`+4288..+4996`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -45,7 +54,7 @@ namespace LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesEncodedLenPlaced
 open scoped CryptoVerification.RustHeap CryptoVerification.LibsignalTripleRatchet
   CryptoVerification.CodeLayout
 open Arm64 Arm64.Obj ProofLib ProofLib.ProgramReflection SepProp
-open CryptoVerification (LibsignalPlacement libsignalSessionCode lsmpl lsρ)
+open CryptoVerification (LibsignalPlacement lsmpl lsρ)
 open CryptoVerification.Cli.SpqrV1.Top.Send (spqrSendPlacedEntry spqrSendPlacedProg)
 open CryptoVerification.Cli.SpqrV1.Top.Send.CodePlaced
   (blkPC_427 blkPl_427 blkPl_427_ρ ls_resolve_rel_427_blk_484 ls_resolve_rel_427_blk_485)
@@ -114,7 +123,7 @@ private theorem sepWPp_extract_pure {prog : Program} {ret : BitVec 64} {s : Stat
     SepWPp prog ret s P Q Qp oom :=
   fun R hm hL => hnext (hφ R hm) R hm hL
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero spqrSendPlacedEntry
   zeroExtend64_beq_zero32
   ofNat_countLeadingZeros_64 ofNat_countLeadingZeros_32
@@ -128,7 +137,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero spqrSendPlacedEntr
 
 /-- `VmPreserved`-equipped no-op shim contract at `s.sp` with `spqrSendCalleeStack`, matching
 `AllocContractsPlaced.shim` (`sessionShimBudgetSpec`) so `A.pool` transports across the call. -/
-def spqrSendShimVmStackSpec : Spec Unit where
+@[expose] def spqrSendShimVmStackSpec : Spec Unit where
   pre := fun _ s => stackAt s.sp spqrSendCalleeStack
   post := fun _ s0 sf =>
     ⌜VmPreserved s0 sf ∧ sf.trace = s0.trace⌝ ∗ stackAt s0.sp spqrSendCalleeStack

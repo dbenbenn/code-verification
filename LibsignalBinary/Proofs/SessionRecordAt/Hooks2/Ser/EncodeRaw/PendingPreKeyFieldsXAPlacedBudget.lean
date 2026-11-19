@@ -11,24 +11,25 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.BaseBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.PendingPreKeyHeader
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeChain.BaseXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.BaseX
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.BaseXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.PendingPreKeyFieldsXAPlaced
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.PrologueVersionLocalIdentityXPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.BaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.PendingPreKeyHeader -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeChain.BaseXBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.BaseX -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.BaseXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.PendingPreKeyFieldsXAPlaced
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.PrologueVersionLocalIdentityXPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.PendingPreKeyFieldsXA
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded `SessionStructure::encode_raw` Tag 9 Subfields 1 and 2 (`824` → `976`)
@@ -38,7 +39,7 @@ Verifies relocatable subfields 1 (`pre_key_id`) and 2 (`base_key`) of protobuf t
 `EncRawSegEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

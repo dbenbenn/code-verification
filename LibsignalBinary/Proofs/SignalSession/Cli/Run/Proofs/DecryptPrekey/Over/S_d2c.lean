@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0 -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefs
 public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveDefs
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # D2(c) Domain Precondition (`DecPkOkD2c`) and Model (`decPkDefD2c`) for Non-Matching Pre-Key Messages
@@ -24,7 +26,7 @@ Extends `DecryptPrekey/S0.lean` to non-matching current sessions (`D2(c)`):
   and stores the 2-session record archiving `Over.clearPending s` behind the newly promoted session.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -65,7 +67,7 @@ structure DecPkOkD2c (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) →
 
 /-- Shared PQXDH responder accept & store continuation parameterized by the session-record byte
 encoder `mkBytes x gs`. -/
-noncomputable def decPkAcceptWith (X : UnreachedPqxdhPrimitives) (W : PEParams) (F : FsFiles) (peer : AddrVal)
+@[expose] def decPkAcceptWith (X : UnreachedPqxdhPrimitives) (W : PEParams) (F : FsFiles) (peer : AddrVal)
     (pm : PreKeySignalMessage) (coins : List (BitVec 8)) (saved : IdGhost)
     (mkBytes : RecordExtras → GhostState (List (BitVec 8)) → List (BitVec 8)) :
     SlotAns (List (BitVec 8)) :=
@@ -99,7 +101,7 @@ noncomputable def decPkAcceptWith (X : UnreachedPqxdhPrimitives) (W : PEParams) 
 * `r.bind (·.currentSession) = some s` with `SessMatchesPm s pm`: in-place decrypt on `s` (Path B);
 * `r.bind (·.currentSession) = some s` with `¬ SessMatchesPm s pm`: PQXDH accept archiving
   `Over.clearPending s` in field 2 behind the newly promoted session in field 1 (Path C / D2(c)). -/
-noncomputable def decPkDefD2c (X : UnreachedPqxdhPrimitives) (W : PEParams)
+@[expose] noncomputable def decPkDefD2c (X : UnreachedPqxdhPrimitives) (W : PEParams)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (F : FsFiles) (peer _me : AddrVal)
     (pm : PreKeySignalMessage) (coins : List (BitVec 8)) : SlotAns (List (BitVec 8)) :=
   let g := StoresGhost.opened
@@ -187,22 +189,6 @@ theorem DecPkOkD2c.toDecPkOk₀_of_match {W : PEParams}
   subst hs
   exact hmatch
 
-/-- On a `DecPkOkD2c` call where `¬ SessMatchesPm s pm`, `s.state.version = 4#32` and `pm`'s
-version is `4`, so `s.aliceBaseKey ≠ pm.baseKey.serialize`. -/
-theorem DecPkOkD2c.aliceBaseKey_ne_of_not_match {W : PEParams}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {F : FsFiles} {peer me : AddrVal} {pm : PreKeySignalMessage}
-    {r : SessionRecord (List (BitVec 8))}
-    {s : CryptoGames.LibsignalSessionApi.Session (List (BitVec 8))}
-    (h : DecPkOkD2c W Scope F peer me pm)
-    (hload : Slots.loadRec Scope F peer = .ok (some r))
-    (hcur : r.currentSession = some s)
-    (hnot : ¬ SessMatchesPm s pm) :
-    s.state.version = 4#32 ∧ s.aliceBaseKey ≠ pm.baseKey.serialize := by
-  have hver := h.sessVer4 r s hload hcur
-  refine ⟨hver, fun hbk => hnot ⟨?_, hbk⟩⟩
-  obtain ⟨m, i, _, _, rfl⟩ := h.typed
-  simpa [pmOfE, E2E.Pqxdh.ResponderWire.PreKeyTryFromArgs.toModel] using hver
 
 /-- `Slots.loadRec (fun _ => False)` can never succeed with `some r`. -/
 theorem loadRec_false_ne_some (F : FsFiles) (peer : AddrVal)
@@ -361,14 +347,6 @@ theorem decPkDefD2c_eq_decPkDef_of_untrusted (X : UnreachedPqxdhPrimitives) (W :
 
 /-! ## Encoding equivalences for the archived 2-session record -/
 
-/-- `encodeRecordUnderExtras (fun _ => x) gs ++ lenField 2 prevEnc` equals
-`Over.encodeRecordPrev1 (sessionOfX (fun _ => x) gs) prevEnc`. -/
-theorem encodeRecordX_append_lenField2_eq_encodeRecordPrev1
-    (x : RecordExtras) (gs : GhostState (List (BitVec 8))) (prevEnc : List (BitVec 8)) :
-    encodeRecordUnderExtras (fun _ => x) gs ++ E2E.Record.lenField 2 prevEnc =
-      Over.encodeRecordPrev1 (E2E.RecordX.sessionOfX (fun _ => x) gs) prevEnc := by
-  rw [E2E.RecordX.encodeRecordX_eq_toRecord, E2E.RecordX.toRecord_extrasOf_eq]
-  rfl
 
 /-- Clearing pending pre-key fields on `sessionOfX (fun _ => x) g` encodes to
 `encStateUnderExtras x { g.session with pendingPreKey := false }`. -/
@@ -380,18 +358,6 @@ theorem encSession_clearPending_sessionOfX_eq (x : RecordExtras)
   unfold E2E.Record.encSession encStateUnderExtras E2E.RecordX.sessionOfX Over.clearPending
   rfl
 
-/-- Full 2-session record bytes produced on D2(c) when archiving a domain session `(x₀, g₀)` and
-promoting `(x', gs)`. -/
-theorem d2c_record_bytes_eq (x' x₀ : RecordExtras)
-    (gs g₀ : GhostState (List (BitVec 8))) :
-    encodeRecordUnderExtras (fun _ => x') gs ++
-        E2E.Record.lenField 2
-          (E2E.Record.encSession
-            (Over.clearPending (E2E.RecordX.sessionOfX (fun _ => x₀) g₀))) =
-      E2E.Record.lenField 1 (encStateUnderExtras x' gs.session) ++
-        E2E.Record.lenField 2 (encStateUnderExtras x₀ { g₀.session with pendingPreKey := false }) := by
-  rw [encSession_clearPending_sessionOfX_eq]
-  rfl
 
 /-! ## Unfolding `decPkDefD2c` on Path C (`some s`, `¬ SessMatchesPm s pm`, `trusted = .ok true`) -/
 

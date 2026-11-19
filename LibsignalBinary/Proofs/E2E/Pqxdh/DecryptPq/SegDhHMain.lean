@@ -12,9 +12,16 @@ module
 public import Mathlib.Algebra.Group.Nat.Defs
 public import Mathlib.Tactic.ToDual
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import ProofLib.SepLogic.WPp
+public import ProofLib.SepLogic.WPp
 import VCVio.Prelude.Core
-public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHStep5 -- shake: keep
+import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHStep5 -- shake: keep
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Arithmetic and Bitvector Helpers for `S3CommitSpec`
@@ -23,7 +30,7 @@ Small arithmetic and byte-truncation helper lemmas (`le_of_eq_succ_lt`, `setWidt
 used in the top-level `S3CommitSpec` assembly.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegBH
 

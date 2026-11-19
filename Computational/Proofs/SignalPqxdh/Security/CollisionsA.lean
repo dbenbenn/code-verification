@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndSigKem
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndSigKem -- proof-setup: allow-public-import
 public import Computational.Specifications.Pqxdh.Bound
 public import Computational.Proofs.SpecLemmas.Pqxdh.Security.BoundProofDefs
-public import Computational.Proofs.SpecLemmas.SignalPqxdh.Assumptions
-public import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Assumptions
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 public import Computational.Specifications.Assumptions.KemCorrect
 import VCVio.CryptoFoundations.SecExp.Measure
 
@@ -25,7 +25,7 @@ fixed-key collision bounds, and the intermediate hybrid games (`G0`–`G3`) and 
 predicates for `KeyInd` and `Auth`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -90,9 +90,9 @@ theorem authAdvantage_nonneg (S : Setup) (P : Primitives) (A : AuthAdversary S) 
     0 ≤ AuthAdvantageReal S P A :=
   ENNReal.toReal_nonneg
 
-noncomputable def Pfixed_pk_ec : ℝ := 1 / (2 : ℝ) ^ 250
+@[expose] noncomputable def Pfixed_pk_ec : ℝ := 1 / (2 : ℝ) ^ 250
 
-noncomputable def Pfixed_pk_kem : ℝ := 1 / (2 : ℝ) ^ 255
+@[expose] noncomputable def Pfixed_pk_kem : ℝ := 1 / (2 : ℝ) ^ 255
 
 theorem pfixed_pk_ec_nonneg : 0 ≤ Pfixed_pk_ec := by
   unfold Pfixed_pk_ec; positivity
@@ -100,7 +100,7 @@ theorem pfixed_pk_ec_nonneg : 0 ≤ Pfixed_pk_ec := by
 theorem pfixed_pk_kem_nonneg : 0 ≤ Pfixed_pk_kem := by
   unfold Pfixed_pk_kem; positivity
 
-def hasBadKemShCrRecords {S : Setup} (P : Primitives)
+@[expose] def hasBadKemShCrRecords {S : Setup} (P : Primitives)
     (initRecs : List (InitKemRecord S)) (recvRecs : List RecvKemRecord) : Bool :=
   initRecs.any (fun i =>
     recvRecs.any (fun r =>
@@ -114,14 +114,14 @@ structure KeyIndHybridState (S : Setup) where
   initKemRecs : List (InitKemRecord S)
   recvKemRecs : List RecvKemRecord
 
-def KeyIndHybridState.empty (S : Setup) (secb : Bool) : KeyIndHybridState S :=
+@[expose] def KeyIndHybridState.empty (S : Setup) (secb : Bool) : KeyIndHybridState S :=
   { base        := KeyIndState.empty S secb
     initKemRecs := []
     recvKemRecs := [] }
 
 /-- Recovers the KEM shared secret encapsulated by initiator session `s` from `st.roCache` or
     `P.kemDecaps`. -/
-def recoverKeyIndSessionKemSs {S : Setup} (P : Primitives) (st : KeyIndState S)
+@[expose] def recoverKeyIndSessionKemSs {S : Setup} (P : Primitives) (st : KeyIndState S)
     (s : KeyIndInitiatorEntry S) : Option Bytes :=
   match st.principals.find? (fun (_, e) => e.ikAPk == s.hdr.ikAPk) with
   | some (_, uEntry) =>
@@ -164,7 +164,7 @@ instance {S : Setup} : HasKeyIndState (KeyIndHybridState S) S where
   toInitKemRecs _ st := st.initKemRecs
   toRecvKemRecs _ st := st.recvKemRecs
 
-def allHonestEcPksKeyInd {S : Setup} {σ : Type} [HasKeyIndState σ S]
+@[expose] def allHonestEcPksKeyInd {S : Setup} {σ : Type} [HasKeyIndState σ S]
     (P : Primitives) (st : σ) : List Bytes :=
   let s0 := HasKeyIndState.toKeyIndState st
   (s0.principals.map (fun (_, e) => P.pow8 e.ikAPk)) ++
@@ -172,42 +172,42 @@ def allHonestEcPksKeyInd {S : Setup} {σ : Type} [HasKeyIndState σ S]
   (s0.opkEntries.map (fun (_, o) => P.pow8 o.opkPk)) ++
   (s0.sessions.map (fun s => P.pow8 s.hdr.ekAPk))
 
-def allHonestKemPksKeyInd {S : Setup} {σ : Type} [HasKeyIndState σ S] (st : σ) : List Bytes :=
+@[expose] def allHonestKemPksKeyInd {S : Setup} {σ : Type} [HasKeyIndState σ S] (st : σ) : List Bytes :=
   (HasKeyIndState.toKeyIndState st).spkBundles.map (fun (_, b) => b.pqspkPk)
 
-def allInitDh2sKeyInd {S : Setup} {σ : Type} [HasKeyIndState σ S]
+@[expose] def allInitDh2sKeyInd {S : Setup} {σ : Type} [HasKeyIndState σ S]
     (P : Primitives) (st : σ) : List Bytes :=
   let s0 := HasKeyIndState.toKeyIndState st
   s0.sessions.map (fun s => P.x25519 s.ekASk s.peerIkPk)
 
 /-- Checks whether two honest X25519 keys collide in `pow8` or two initiator sessions produce
     colliding `dh2` secrets. -/
-def hasEcPkCollisionKeyInd {S : Setup} {σ : Type} [HasKeyIndState σ S]
+@[expose] def hasEcPkCollisionKeyInd {S : Setup} {σ : Type} [HasKeyIndState σ S]
     (P : Primitives) (st : σ) : Bool :=
   hasDuplicateBytes (allHonestEcPksKeyInd P st) ||
   hasDuplicateBytes (allInitDh2sKeyInd P st)
 
 /-- Checks whether two honest Kyber-1024 public keys collide. -/
-def hasKemPkCollisionKeyInd {S : Setup} {σ : Type} [HasKeyIndState σ S] (st : σ) : Bool :=
+@[expose] def hasKemPkCollisionKeyInd {S : Setup} {σ : Type} [HasKeyIndState σ S] (st : σ) : Bool :=
   hasDuplicateBytes (allHonestKemPksKeyInd st)
 
 /-- Checks whether any fresh initiator session accepted a forged `spkSig` or `pqspkSig`. -/
-def hasBadSigKeyInd {S : Setup} {σ : Type} [HasKeyIndState σ S] (st : σ) : Bool :=
+@[expose] def hasBadSigKeyInd {S : Setup} {σ : Type} [HasKeyIndState σ S] (st : σ) : Bool :=
   (HasKeyIndState.toKeyIndState st).sessions.any (fun s =>
     s.fresh && (!s.spkHonest || !s.pqspkHonest))
 
-def hasBadKemShCrKeyInd {S : Setup} {σ : Type} [HasKeyIndState σ S]
+@[expose] def hasBadKemShCrKeyInd {S : Setup} {σ : Type} [HasKeyIndState σ S]
     (P : Primitives) (st : σ) : Bool :=
   hasBadKemShCrRecords P (HasKeyIndState.toInitKemRecs P st) (HasKeyIndState.toRecvKemRecs P st)
 
-def liftKeyIndBase {S : Setup} {α : Type}
+@[expose] def liftKeyIndBase {S : Setup} {α : Type}
     (m : StateT (KeyIndState S) ProbComp α) : StateT (KeyIndHybridState S) ProbComp α := do
   let st ← get
   let (a, base') ← liftM (m.run st.base)
   set { st with base := base' }
   return a
 
-def runKeyIndHybridInitiate (idealFreshDrKey useRo : Bool) (S : Setup) (P : Primitives)
+@[expose] def runKeyIndHybridInitiate (idealFreshDrKey useRo : Bool) (S : Setup) (P : Primitives)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) :
     StateT (KeyIndHybridState S) ProbComp KeyIndResponse := do
   let hst ← get
@@ -254,7 +254,7 @@ def runKeyIndHybridInitiate (idealFreshDrKey useRo : Bool) (S : Setup) (P : Prim
   | some _ => return .hdrResp hdr
   | none   => return .initUnfreshResp drKeyReal hdr
 
-def pqxdhKeyIndHybridImpl (idealFreshDrKey useRo : Bool) (S : Setup) (P : Primitives) :
+@[expose] def pqxdhKeyIndHybridImpl (idealFreshDrKey useRo : Bool) (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndHybridState S) ProbComp) := fun q => do
   match q with
   | .initiateOPK u i bundle =>
@@ -300,12 +300,12 @@ def pqxdhKeyIndHybridImpl (idealFreshDrKey useRo : Bool) (S : Setup) (P : Primit
   | q_other =>
     liftKeyIndBase (pqxdhKeyIndImpl useRo S P q_other)
 
-noncomputable def keyIndExpG0 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+@[expose] def keyIndExpG0 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool :=
   pqxdhKeyIndExp S P A
 
 /-- `KeyInd` hybrid `G1`, aborting on X25519 key collision or bundle signature forgery. -/
-noncomputable def keyIndExpG1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+@[expose] def keyIndExpG1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := KeyIndState.empty S secb
@@ -325,12 +325,12 @@ noncomputable def keyIndExpG1 (S : Setup) (P : Primitives) (A : KeyIndAdversary 
   else
     return (b' == secb)
 
-noncomputable def keyIndExpG2 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+@[expose] def keyIndExpG2 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool :=
   keyIndExpG1 S P A
 
 /-- `KeyInd` hybrid `G3`, additionally aborting on KEM public-key or `KemShCr` collision. -/
-noncomputable def keyIndExpG3 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+@[expose] def keyIndExpG3 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := KeyIndHybridState.empty S secb
@@ -352,16 +352,16 @@ noncomputable def keyIndExpG3 (S : Setup) (P : Primitives) (A : KeyIndAdversary 
   else
     return (b' == secb)
 
-noncomputable def keyIndAdvG0 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
+@[expose] noncomputable def keyIndAdvG0 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[keyIndExpG0 S P A].boolBias).toReal
 
-noncomputable def keyIndAdvG1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
+@[expose] noncomputable def keyIndAdvG1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[keyIndExpG1 S P A].boolBias).toReal
 
-noncomputable def keyIndAdvG2 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
+@[expose] noncomputable def keyIndAdvG2 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[keyIndExpG2 S P A].boolBias).toReal
 
-noncomputable def keyIndAdvG3 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
+@[expose] noncomputable def keyIndAdvG3 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[keyIndExpG3 S P A].boolBias).toReal
 
 @[simp]
@@ -374,7 +374,7 @@ theorem keyIndAdvG1_eq_G2 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
 
 /-! ## `Auth` hybrids -/
 
-def allHonestEcPksAuth {S : Setup} {σ : Type} [HasAuthState σ S]
+@[expose] def allHonestEcPksAuth {S : Setup} {σ : Type} [HasAuthState σ S]
     (P : Primitives) (st : σ) : List Bytes :=
   let s0 := HasAuthState.toAuthState st
   (s0.principals.map (fun (_, e) => P.pow8 e.ikAPk)) ++
@@ -382,17 +382,17 @@ def allHonestEcPksAuth {S : Setup} {σ : Type} [HasAuthState σ S]
   (s0.opkEntries.map (fun (_, o) => P.pow8 o.opkPk)) ++
   (s0.sessions.map (fun s => P.pow8 (P.x25519Base s.ekASk)))
 
-def hasEcPkCollisionAuth {S : Setup} {σ : Type} [HasAuthState σ S]
+@[expose] def hasEcPkCollisionAuth {S : Setup} {σ : Type} [HasAuthState σ S]
     (P : Primitives) (st : σ) : Bool :=
   hasDuplicateBytes (allHonestEcPksAuth P st)
 
 /-- Checks whether an honest receiver bundle decapsulates a KEM ciphertext to an honest initiator
     session's shared secret under a distinct `(kemCt, pqspkPk)` pair. -/
-def hasBadKemShCrAuth {S : Setup} {σ : Type} [HasAuthState σ S]
+@[expose] def hasBadKemShCrAuth {S : Setup} {σ : Type} [HasAuthState σ S]
     (P : Primitives) (st : σ) : Bool :=
   hasBadKemShCrRecords P (HasAuthState.toInitKemRecs P st) (HasAuthState.toRecvKemRecs P st)
 
-def liftAuthBase {S : Setup} {α : Type}
+@[expose] def liftAuthBase {S : Setup} {α : Type}
     (m : StateT (AuthState S) ProbComp α) : StateT (AuthHybridState S) ProbComp α := do
   let st ← get
   let (a, base') ← liftM (m.run st.base)
@@ -401,7 +401,7 @@ def liftAuthBase {S : Setup} {α : Type}
 
 /-- Checks whether an incoming receiver handshake header matches the handshake tuple of a fresh
     initiator session `s`. -/
-def matchIdealAuthHandshake {S : Setup} (P : Primitives)
+@[expose] def matchIdealAuthHandshake {S : Setup} (P : Primitives)
     (ikBPk spkBPk : Bytes) (opkBPk? : Option Bytes) (pqspkBPk : Bytes)
     (hdr : HandshakeHdr) (s : IdealAuthSession S) : Bool :=
   P.pow8 hdr.ikAPk == P.pow8 s.ikAPk &&
@@ -416,7 +416,7 @@ def matchIdealAuthHandshake {S : Setup} (P : Primitives)
   hdr.kemCt == s.kemCt
 
 /-- Stage-parameterized receiver key-schedule and AEAD helper for `Auth` hybrids `G3`–`G5`. -/
-def evalAuthHybridRecvSchedule {S : Setup} (stage : AuthHybridStage) (useRo : Bool) (P : Primitives)
+@[expose] def evalAuthHybridRecvSchedule {S : Setup} (stage : AuthHybridStage) (useRo : Bool) (P : Primitives)
     (hst : AuthHybridState S) (kEntry : PrincipalEntry) (bEntry : SpkBundleEntry)
     (opkPk? : Option Bytes) (secrets : Bytes) (msg : PreKeyMsg) :
     ProbComp (Option (DRKey × Bytes × Bytes × Bytes × List (Bytes × DRKey) × List ((Bytes × Bytes)
@@ -508,12 +508,12 @@ def evalAuthHybridRecvSchedule {S : Setup} (stage : AuthHybridStage) (useRo : Bo
     | none    => return none
     | some pt => return some (drKey, rk1, ck1_1, pt, roCache', rootRoCache')
 
-noncomputable def authExpG0 (S : Setup) (P : Primitives) (A : AuthAdversary S) :
+@[expose] noncomputable def authExpG0 (S : Setup) (P : Primitives) (A : AuthAdversary S) :
     ProbComp Bool :=
   pqxdhAuthExp S P A
 
 /-- `Auth` hybrid `G1`, aborting on X25519 key collision or bundle signature forgery. -/
-noncomputable def authExpG1 (S : Setup) (P : Primitives) (A : AuthAdversary S) :
+@[expose] def authExpG1 (S : Setup) (P : Primitives) (A : AuthAdversary S) :
     ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthState.empty S secb

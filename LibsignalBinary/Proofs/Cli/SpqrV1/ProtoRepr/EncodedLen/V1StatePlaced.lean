@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.DefsV1StatePlaced
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.DefsV1StatePlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.V1StateBranchesBPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.V1StateBranchesPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpersPlaced
@@ -24,7 +24,7 @@ jump-table and `LibsignalRoLoaded`-discharged `subroutine_ok` contracts on CLI B
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -744,23 +744,23 @@ theorem v1State_484_entry_ro_pinned_wp_placed [LibsignalPlacement]
 
 /-! ## 2. Explicit `.rodata` Jump-Table Placed Contracts (`lsρ cliV1StateJtSym`) -/
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1PinnedPlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1PinnedPlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_484 (Rust.withPanics ext)) (blkPl_484).base
     (withLsCodeLoaded lsmpl (v1StateEncodedLenRoPinnedSpec A cliV1JtAddr))
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1PlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1PlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_484 (Rust.withPanics ext)) (blkPl_484).base
     (withLsCodeLoaded lsmpl (v1StateEncodedLenRoSpec A cliV1JtAddr))
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1PinnedPlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1PinnedPlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (abs : String → Option (State → State)) : Prop :=
   CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1PinnedPlacedOkExt
     A (tripleRatchetExterns C ctl abs)
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1PlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1PlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (abs : String → Option (State → State)) : Prop :=
   CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1PlacedOkExt
@@ -883,27 +883,27 @@ private theorem subroutine_ok_swap_lsro_lscl {α : Type} {pl : MultiPlacement}
     (fun _ _ _ _ _ he => he)
     (fun _ _ _ _ ho => ho)
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1RoPinnedPlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1RoPinnedPlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_484 (Rust.withPanics ext)) (blkPl_484).base
     (withLsCodeLoaded lsmpl
       (CryptoVerification.Cli.SpqrV1.ProtoRepr.withLsRoLoaded lsmpl
         (v1StateEncodedLenPinnedSpec A)))
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1RoPlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1RoPlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_484 (Rust.withPanics ext)) (blkPl_484).base
     (withLsCodeLoaded lsmpl
       (CryptoVerification.Cli.SpqrV1.ProtoRepr.withLsRoLoaded lsmpl
         (v1StateEncodedLenSpec A)))
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1RoPinnedPlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1RoPinnedPlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (abs : String → Option (State → State)) : Prop :=
   CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1RoPinnedPlacedOkExt
     A (tripleRatchetExterns C ctl abs)
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1RoPlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1RoPlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (abs : String → Option (State → State)) : Prop :=
   CryptoVerification.Cli.SpqrV1.ProtoRepr.V1StateEncodedLenLocal1RoPlacedOkExt

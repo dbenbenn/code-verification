@@ -10,12 +10,53 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpers
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
+import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpersBudget
+public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import ProofLib.SepLogic.WPp -- shake: keep
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
 
 /-!
 # Budget-Threaded Helpers and Specifications for `<spqr::chain::Chain>::recv_key` (Block `366`)
@@ -25,7 +66,7 @@ Defines the deterministic allocation/reallocation schedule `chainRecvKeyEvents` 
 `chainRecvKeySpecX`, `chainRecvKeySpecExt`, and `ChainRecvKeyPlacedOkX` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -57,7 +98,7 @@ open Arm64 ProofLib
 
 /-- Exact event step of `RawVecInner::reserve::do_reserve_and_handle` (`stride = 1, align = 1`)
 for current capacity `cap`, length `len`, and `additional` bytes. -/
-def doReserveStep (cap len additional : Nat) : Nat × List AllocEvent :=
+@[expose] def doReserveStep (cap len additional : Nat) : Nat × List AllocEvent :=
   if len + additional ≤ cap then
     (cap, [])
   else
@@ -66,14 +107,14 @@ def doReserveStep (cap len additional : Nat) : Nat × List AllocEvent :=
 
 /-- Exact two-step `do_reserve_and_handle` sequence inside `KeyHistory::add`
 (`4`-byte counter push followed by `32`-byte key push). -/
-def keyHistoryAddStep (cap len : Nat) : Nat × List AllocEvent :=
+@[expose] def keyHistoryAddStep (cap len : Nat) : Nat × List AllocEvent :=
   let (cap1, ev1) := doReserveStep cap len 4
   let (cap2, ev2) := doReserveStep cap1 (len + 4) 32
   (cap2, ev1 ++ ev2)
 
 /-- Exact allocation/reallocation events emitted across `ChainEpochDirection.keyAdvanceLoop`
 starting from `(ced, cap)` with `rem` remaining loop steps (`atIdx.toNat - ced.ctr.toNat ≤ rem`). -/
-def keyAdvanceLoopEvents (hkdf : HkdfFn) (params : ChainParamsPB) (atIdx : BitVec 32) :
+@[expose] def keyAdvanceLoopEvents (hkdf : HkdfFn) (params : ChainParamsPB) (atIdx : BitVec 32) :
     Nat → ChainEpochDirection → Nat → List AllocEvent
   | 0, _, _ => []
   | rem + 1, ced, cap =>
@@ -98,7 +139,7 @@ def keyAdvanceLoopEvents (hkdf : HkdfFn) (params : ChainParamsPB) (atIdx : BitVe
 
 /-- Deterministic allocator event sequence emitted by `<spqr::chain::Chain>::recv_key` on a
 non-panicking execution from ghost state `x`. -/
-def chainRecvKeyEvents (hkdf : HkdfFn) (x : ChainRecvKeyGhost) : List AllocEvent :=
+@[expose] def chainRecvKeyEvents (hkdf : HkdfFn) (x : ChainRecvKeyGhost) : List AllocEvent :=
   if x.epoch == 0#64 && x.index == 0#32 then
     []
   else
@@ -137,13 +178,13 @@ def chainRecvKeyEvents (hkdf : HkdfFn) (x : ChainRecvKeyGhost) : List AllocEvent
 
 /-- Envelope predicate for `<spqr::chain::Chain>::recv_key`: non-panicking executions emit
 `chainRecvKeyEvents hkdf x`. -/
-def ChainRecvKeyEnv (hkdf : HkdfFn) (x : ChainRecvKeyGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChainRecvKeyEnv (hkdf : HkdfFn) (x : ChainRecvKeyGhost) (evs : List AllocEvent) : Prop :=
   evs = chainRecvKeyEvents hkdf x
 
 /-! ## Budget-Threaded Specifications -/
 
 /-- Budget-threaded specification of `<spqr::chain::Chain>::recv_key` (`chainRecvKeyStackX` stack). -/
-def chainRecvKeySpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def chainRecvKeySpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (hkdf : HkdfFn) : Spec (ChainRecvKeyGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.selfPtr ∧
@@ -160,7 +201,7 @@ def chainRecvKeySpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Bud
   onPanic := fun (x, _) s0 sf =>
     ⌜(Chain.recvKey hkdf x.self x.epoch x.index).isPanic = true ∧ sf.trace = s0.trace⌝ ∗ anyHeap
 
-def ChainRecvKeyPlacedOkX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def ChainRecvKeyPlacedOkX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hkdf : HkdfFn) (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_366).rebase (blkPl_366).base H)
     (blkPl_366).base
@@ -168,7 +209,7 @@ def ChainRecvKeyPlacedOkX [LibsignalPlacement] (M : AllocCostModel) (A : RustCli
 
 /-- Budget-threaded specification of `<spqr::chain::Chain>::recv_key` under `CliExternsOk`
 (`chainRecvKeyStackExt = 17920` B stack). -/
-def chainRecvKeySpecExt (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def chainRecvKeySpecExt (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (hkdf : HkdfFn) : Spec (ChainRecvKeyGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.selfPtr ∧
@@ -185,7 +226,7 @@ def chainRecvKeySpecExt (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : B
   onPanic := fun (x, _) s0 sf =>
     ⌜(Chain.recvKey hkdf x.self x.epoch x.index).isPanic = true ∧ sf.trace = s0.trace⌝ ∗ anyHeap
 
-def nextKeyInternalSpecRecvCore (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def nextKeyInternalSpecRecvCore (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hkdf : HkdfFn) (extra : Nat) :
     Spec (NextKeyInternalGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -206,7 +247,7 @@ def nextKeyInternalSpecRecvCore (M : AllocCostModel) (A : RustCliAllocBudget M)
       stackAt s0.sp nextKeyInternalStackX
   onPanic := fun _ _ _ => ⌜False⌝
 
-def chainRecvKeySpecCore (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def chainRecvKeySpecCore (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (hkdf : HkdfFn) (extra : Nat) : Spec (ChainRecvKeyGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.selfPtr ∧

@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape
+public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape -- proof-setup: allow-public-import
 public import Symbolic.Specifications.Refinement.ElfBinding
 public import Symbolic.Proofs.SpecLemmas.ExternInterpretationProofDefs
 import Symbolic.Proofs.Tests.Refinement.Cli.ExternWitness
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
 
 /-!
 # Links and Non-Vacuity Checks for `Composed/Cli/Model.lean`
@@ -24,7 +25,7 @@ joint satisfiability of `ExternInterpretationTotalOnUsedSymbols`, `ExternContrac
 and `ModelAgree`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,12 +39,12 @@ open CryptoVerification.SignalSession (PqParty pqInitInputs pqSendInputs pqRecvI
   Inputs Outcome filesOf)
 
 /-- Process input equivalence up to `filesOf` from the CLI migration design draft. -/
-def InputsEquiv (i i' : Inputs) : Prop :=
+@[expose] def InputsEquiv (i i' : Inputs) : Prop :=
   i.argv = i'.argv ∧ i.dirs = i'.dirs ∧ i.stdin = i'.stdin ∧
     ∀ p, filesOf i.files p = filesOf i'.files p
 
 /-- Four-clause call relation from the CLI migration design draft. -/
-def PqCall (X : UnreachedPqxdhPrimitives) (W : PEParams) (st : PqParty) (i₀ : Inputs) (o₀ : Outcome) : Prop :=
+@[expose] def PqCall (X : UnreachedPqxdhPrimitives) (W : PEParams) (st : PqParty) (i₀ : Inputs) (o₀ : Outcome) : Prop :=
   (∃ (b : PreKeyBundleFields) (t : List.Vector (BitVec 8) initiateTapeLen), st.session = none ∧
     i₀ = pqInitInputs W st b t ∧ o₀ = pqxdhExpectedOutcome W i₀ (pqInitModel X W st b t)) ∨
   (∃ (m : List (BitVec 8)) (r : List.Vector (BitVec 8) 64), m.length < 2 ^ 32 ∧
@@ -56,7 +57,7 @@ def PqCall (X : UnreachedPqxdhPrimitives) (W : PEParams) (st : PqParty) (i₀ : 
     o₀ = pqxdhExpectedOutcome W i₀ (pqRecvPrekeyModel X W st m rc))
 
 /-- Five-argument run relation from the CLI migration design draft. -/
-def PqModelRel (Xof : ExternInterpretation → UnreachedPqxdhPrimitives) (Wof : ExternInterpretation → PEParams)
+@[expose] def PqModelRel (Xof : ExternInterpretation → UnreachedPqxdhPrimitives) (Wof : ExternInterpretation → PEParams)
     (interp : ExternInterpretation) (i : Inputs) (o : Outcome) : Prop :=
   ∃ st i₀, PqxdhPartyInSpecDomain (Wof interp) st ∧ InputsEquiv i i₀ ∧ PqCall (Xof interp) (Wof interp) st i₀ o
 
@@ -118,13 +119,13 @@ theorem cliTraces_mono {Rel Rel' : Inputs → Option Outcome → Prop}
 
 /-- Model determinism obligation: on an input that the draft relation names with outcome `o`, `o`
 meets every clause naming the same call. -/
-def DraftDet (Xof : ExternInterpretation → UnreachedPqxdhPrimitives) (Wof : ExternInterpretation → PEParams) :
+@[expose] def DraftDet (Xof : ExternInterpretation → UnreachedPqxdhPrimitives) (Wof : ExternInterpretation → PEParams) :
     Prop :=
   ∀ interp i o, Draft.PqModelRel Xof Wof interp i o → PqModelPost interp (Wof interp) i o
 
 /-- Nearest well-typed reading of the design draft's target line (`ω := Unit`; `Agree` ties
 `Wof interp` to `interp` by `ModelAgree`; `R` lifts the draft relation to `Option Outcome`). -/
-def LockedReading (Xof : ExternInterpretation → UnreachedPqxdhPrimitives) (Wof : ExternInterpretation → PEParams) :
+@[expose] def LockedReading (Xof : ExternInterpretation → UnreachedPqxdhPrimitives) (Wof : ExternInterpretation → PEParams) :
     Prop :=
   CompRefinesCliRMoves (ω := Unit) (fun interp _ => ModelAgree interp (Wof interp))
     (fun interp _ i o => ∃ o', o = some o' ∧ Draft.PqModelRel Xof Wof interp i o')
@@ -140,7 +141,7 @@ theorem locked_of_root (Xof : ExternInterpretation → UnreachedPqxdhPrimitives)
   rintro i o ⟨o', rfl, hd⟩
   exact Or.inr ⟨o', rfl, hdet interp i o' hd⟩
 
-def X₀ : UnreachedPqxdhPrimitives :=
+@[expose] def X₀ : UnreachedPqxdhPrimitives :=
   ⟨fun _ => [], fun _ _ _ => [], fun _ _ => [], fun _ _ => [], fun _ => ([], []), fun _ => [],
     fun _ _ _ => false⟩
 

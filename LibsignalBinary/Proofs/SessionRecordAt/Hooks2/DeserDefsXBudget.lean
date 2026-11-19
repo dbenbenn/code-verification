@@ -11,14 +11,18 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX
-public import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.Prost.DefsWBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.Prost.DefsWBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Fields
 import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.ChainMergeAux.Pure
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Envelopes and Definitions for `SessionRecord::deserialize`
@@ -29,7 +33,7 @@ Input-length-bounded allocation envelopes (`ChainMergeGenEnv`, `MergeFieldGenEnv
 `11`, `15`, and `46`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -115,27 +119,27 @@ theorem DDXB1 : True := trivial
 /-! ## 1. Input-Bounded Allocation Envelopes & `FitsEnv` / `BoundedRustEvs` Lemmas -/
 
 /-- Prefix allocation envelope after `k` fields of `message::merge<Chain>` on `c`. -/
-def ChainPrefixEnv (c : ChainG) (k : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def ChainPrefixEnv (c : ChainG) (k : Nat) (evs : List AllocEvent) : Prop :=
   BoundedRustEvs (8 * ((c.fields.take k).flatMap ChainField.enc).length + 4)
     (256 * (c.payload.length + 16)) evs
 
 /-- Total allocation envelope of `message::merge<Chain>` on `x`. -/
-def ChainMergeGenEnv (x : ChainMergeGenGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChainMergeGenEnv (x : ChainMergeGenGhost) (evs : List AllocEvent) : Prop :=
   BoundedRustEvs (8 * x.c.payload.length + 4) (256 * (x.c.payload.length + 16)) evs
 
 /-- Total allocation envelope of `SessionStructure::merge_field` on `x`. -/
-def MergeFieldGenEnv (x : MergeFieldGenGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def MergeFieldGenEnv (x : MergeFieldGenGhost) (evs : List AllocEvent) : Prop :=
   BoundedRustEvs (8 * x.fld.enc.length) (256 * (x.fld.enc.length + 16)) evs
 
 /-- Prefix allocation envelope after `k` outer fields of `SessionRecord::deserialize` on `r`. -/
-def DeserPrefixEnv (r : SessionRecord (List (BitVec 8))) (k : Nat)
+@[expose] def DeserPrefixEnv (r : SessionRecord (List (BitVec 8))) (k : Nat)
     (evs : List AllocEvent) : Prop :=
   BoundedRustEvs (8 * (((recFields r).take k).flatMap GenField.enc).length + 32)
     (256 * ((encodeRecord r).length + 16)) evs
 
 /-- Total allocation envelope of `SessionRecord::deserialize` on `x`
     (`= RecordDeserializeEnv (encodeRecord x.r)` by `rfl`). -/
-def DeserializeGenEnv (x : DeserializeGenGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def DeserializeGenEnv (x : DeserializeGenGhost) (evs : List AllocEvent) : Prop :=
   BoundedRustEvs (8 * (encodeRecord x.r).length + 64)
     (256 * ((encodeRecord x.r).length + 16)) evs
 
@@ -151,16 +155,6 @@ theorem fitsEnv_step_boundedRustEvs {M : AllocCostModel} {lim : BudgetLimits} {s
   have happ : BoundedRustEvs c r (evs₁ ++ evs₂) :=
     BoundedRustEvs.mono hc (Nat.max_le.mpr ⟨hr1, hr2⟩) (BoundedRustEvs.append h1 h2)
   exact ((fitsEvents_append M lim evs₁ evs₂ st).mp (hFit (evs₁ ++ evs₂) happ)).2
-
-/-- Specialize `fitsEnv_step_boundedRustEvs` to a concrete callee envelope `E`. -/
-theorem fitsEnv_step_of_sub {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
-    {c₁ c₂ c r₁ r₂ r : Nat} {evs₁ : List AllocEvent} {E : List AllocEvent → Prop}
-    (h1 : BoundedRustEvs c₁ r₁ evs₁)
-    (hsub : ∀ evs₂, E evs₂ → BoundedRustEvs c₂ r₂ evs₂)
-    (hc : c₁ + c₂ ≤ c) (hr1 : r₁ ≤ r) (hr2 : r₂ ≤ r)
-    (hFit : FitsEnv M lim st (BoundedRustEvs c r)) :
-    FitsEnv M lim (M.stepEvents evs₁ st) E :=
-  FitsEnv.mono hsub (fitsEnv_step_boundedRustEvs h1 hc hr1 hr2 hFit)
 
 /-- Specialize `fitsEnv_step_of_sub` at the initial state `st` (`evs₁ = []`). -/
 theorem fitsEnv_head_of_sub {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
@@ -205,34 +199,6 @@ theorem boundedRustEvs_rustReallocEvents (old : Nat) {new align : Nat}
   intro al _ _ h
   cases h
   exact hal16
-
-/-- Every `DecodeVarintSliceEnv bs` execution emits at most 1 event of size `≤ 72`. -/
-theorem boundedRustEvs_decodeVarintSliceEnv {bs : List (BitVec 8)} {evs : List AllocEvent}
-    (h : DecodeVarintSliceEnv bs evs) :
-    BoundedRustEvs 1 72 evs := by
-  subst h
-  unfold decodeVarintSliceEvents
-  cases decodeVarint bs with
-  | some _ => exact BoundedRustEvs.nil 1 72
-  | none =>
-    exact boundedRustEvs_rustAllocEvents (by decide) (by decide) (by decide)
-
-/-- On `decodeVarint bs = some p`, `DecodeVarintSliceEnv bs` emits `[]`. -/
-theorem decodeVarintSliceEnv_eq_nil {bs : List (BitVec 8)} {p : BitVec 64 × List (BitVec 8)}
-    {evs : List AllocEvent} (hdec : decodeVarint bs = some p) (hevs : DecodeVarintSliceEnv bs evs) :
-    evs = [] := by
-  rw [hevs, decodeVarintSliceEvents, hdec]
-
-/-- Every `Int32MergeEnv x` execution emits at most 1 event of size `≤ 72`. -/
-theorem boundedRustEvs_int32MergeEnv {x : Int32MergeGhost} {evs : List AllocEvent}
-    (h : Int32MergeEnv x evs) :
-    BoundedRustEvs 1 72 evs := by
-  subst h
-  unfold int32MergeEvents
-  cases mergeUint32 x.wt x.bs with
-  | some _ => exact BoundedRustEvs.nil 1 72
-  | none =>
-    exact boundedRustEvs_rustAllocEvents (by decide) (by decide) (by decide)
 
 /-- On `mergeUint32 x.wt x.bs = some p`, `Int32MergeEnv x` emits `[]`. -/
 theorem int32MergeEnv_eq_nil {x : Int32MergeGhost} {p : BitVec 32 × List (BitVec 8)}
@@ -348,29 +314,11 @@ theorem chainPrefixEnv_at_length {x : ChainMergeGenGhost} {evs : List AllocEvent
     omega
   exact BoundedRustEvs.mono (by omega) (Nat.le_refl _) h
 
-theorem deserPrefixEnv_zero (r : SessionRecord (List (BitVec 8))) :
-    DeserPrefixEnv r 0 [] :=
-  BoundedRustEvs.nil _ _
-
-theorem recFields_flatMap_length_le_encodeRecord (r : SessionRecord (List (BitVec 8)))
-    (hr : DeserializeScope r) :
-    ((recFields r).flatMap GenField.enc).length ≤ (encodeRecord r).length := by
-  rw [encodeRecord_eq_recFields r hr, List.length_append, List.length_append]
-  omega
-
-theorem deserPrefixEnv_at_length {x : DeserializeGenGhost} (hr : DeserializeScope x.r)
-    {evs : List AllocEvent} :
-    DeserPrefixEnv x.r (recFields x.r).length evs → DeserializeGenEnv x evs := by
-  intro h
-  have h1 := flatMap_take_length_le GenField.enc (recFields x.r) (recFields x.r).length
-  have h2 := recFields_flatMap_length_le_encodeRecord x.r hr
-  exact BoundedRustEvs.mono (by omega) (Nat.le_refl _) h
-
 /-! ## 2. Budget-Threaded Raw & `[LibsignalPlacement]` Specifications -/
 
 /-- Image-free budget-threaded contract of `SessionStructure::merge_field` (block `15`) on one
     in-scope field restricted by `P`, at `mergeFieldStackX` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def mergeFieldGenRawSpecW (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def mergeFieldGenRawSpecW (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (P : GenField → Prop) : Spec (MergeFieldGenGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ss ∧ (s.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 x.fld.tag ∧
@@ -398,7 +346,7 @@ abbrev mergeFieldGenPlacedSpecW [LibsignalPlacement] (M : AllocCostModel)
 
 /-- Image-free budget-threaded contract of `message::merge<Chain>` (block `11`) on one in-scope
     chain into a default chain, at `chainMergeStackX` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def chainMergeGenRawSpecW (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def chainMergeGenRawSpecW (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (ChainMergeGenGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = 2#8 ∧ s.readReg64 .x1 = x.a ∧ s.readReg64 .x2 = x.bufRef ∧
@@ -425,7 +373,7 @@ abbrev chainMergeGenPlacedSpecW [LibsignalPlacement] (M : AllocCostModel)
 
 /-- Image-free budget-threaded contract of `SessionRecord::deserialize` (block `46`) on a general
     record (`DeserializeScope`), with `onPanic = ⌜False⌝`, `onOom = ⌜False⌝`. -/
-noncomputable def deserializeGenRawSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def deserializeGenRawSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DeserializeGenGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.p ∧
@@ -443,14 +391,14 @@ noncomputable def deserializeGenRawSpec (M : AllocCostModel) (A : RustCliAllocBu
 
 /-- Relocatable `[LibsignalPlacement]` budget-threaded contract of `SessionRecord::deserialize`
     (block `46`) on a general record (`DeserializeScope`), carrying `LibsignalCodeRoLoaded lsmpl`. -/
-noncomputable abbrev deserializeGenPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
+abbrev deserializeGenPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DeserializeGenGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl (deserializeGenRawSpec M A lim)
 
 /-- Raw loop-exit postcondition of `SessionRecord::deserialize` before lifting `deserOutRecordGA`
     to `sessionRecordAt`. -/
-def deserOutRawGBudget (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def deserOutRawGBudget (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : DeserializeGenGhost) (st : M.σ) (s0 sf : State) : SepProp :=
   ∃∗ evs : List AllocEvent,
     ⌜sf.trace = s0.trace ∧ DeserializeGenEnv x evs⌝ ∗
@@ -462,7 +410,7 @@ def deserOutRawGBudget (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Bu
 
 /-- Relocatable `[LibsignalPlacement]` budget-threaded X-stack callee bundle for `deserialize`
     and `merge_field`. -/
-def DeserializeCalleesPlacedW [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def DeserializeCalleesPlacedW [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   DecodeVarintSlicePlacedOkW A lim H ∧
     Int32MergePlacedOkW A lim H ∧
@@ -470,13 +418,13 @@ def DeserializeCalleesPlacedW [LibsignalPlacement] (M : AllocCostModel)
     GrowOneChainPlacedOkX A lim H
 
 /-- Relocatable budget-threaded `merge_field` (block `15`) contract restricted by `P`. -/
-def MergeFieldGenPlacedOkW [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def MergeFieldGenPlacedOkW [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks)
     (P : GenField → Prop) : Prop :=
   subroutine_ok (lsProg_15 H) (blkPl_15).base (mergeFieldGenPlacedSpecW M A lim P)
 
 /-- Relocatable budget-threaded `message::merge<Chain>` (block `11`) contract. -/
-def ChainMergeGenPlacedOkW [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def ChainMergeGenPlacedOkW [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_11 H) (blkPl_11).base (chainMergeGenPlacedSpecW M A lim)
 
@@ -487,7 +435,7 @@ abbrev ChainStepGPlacedW [LibsignalPlacement] (M : AllocCostModel)
   SegStepG (lsProg_11 H) (chainMergeGenPlacedSpecW M A lim) (x, st) R s0 s Q
 
 /-- Return state of relocatable budget-threaded `message::merge<Chain>` on `lsProg_11 H`. -/
-def ChainRetGPlacedW [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def ChainRetGPlacedW [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : ChainMergeGenGhost) (st : M.σ) (R : SepProp) (s0 sf : State) : Prop :=
   Returned s0 sf ∧ CallingConventionPreserved s0 sf ∧
@@ -496,7 +444,7 @@ def ChainRetGPlacedW [LibsignalPlacement] (M : AllocCostModel)
 /-- Field-loop head `(blkPl_11).base + 0x120` after `k` fields of `message::merge<Chain>` at
     `chainMergeSubStackX`, threading `FitsEnv M lim st (ChainMergeGenEnv x)` and accumulated
     `ChainPrefixEnv x.c k evs`. -/
-def ChainLoopGPlacedW [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def ChainLoopGPlacedW [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : ChainMergeGenGhost) (st : M.σ) (R : SepProp) (s0 : State) (k : Nat) (s : State) : Prop :=
   s.pc = chainPlacedPC 0x120#64 ∧ s.status = .Running ∧ s.trace = s0.trace ∧
@@ -524,7 +472,7 @@ abbrev DeserStepGPlacedW [LibsignalPlacement] (M : AllocCostModel)
   SegStepG (lsProg_46 H) (deserializeGenPlacedSpec M A lim) (x, st) R s0 s Q
 
 /-- Raw return state of relocatable budget-threaded `SessionRecord::deserialize` on `lsProg_46 H`. -/
-def DeserRetGPlaced [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def DeserRetGPlaced [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : DeserializeGenGhost) (st : M.σ) (R : SepProp) (s0 sf : State) : Prop :=
   Returned s0 sf ∧ CallingConventionPreserved s0 sf ∧
@@ -533,7 +481,7 @@ def DeserRetGPlaced [LibsignalPlacement] (M : AllocCostModel)
 /-- Field-loop head `(blkPl_46).base + 0x254` after `k` outer fields of
     `SessionRecord::deserialize`, threading `FitsEnv M lim st (DeserializeGenEnv x)` and
     accumulated `DeserPrefixEnv x.r k evs`. -/
-def DeserLoopGPlacedW [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def DeserLoopGPlacedW [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : DeserializeGenGhost) (st : M.σ) (R : SepProp) (s0 : State) (k : Nat) (s : State) : Prop :=
   s.pc = deserPlacedPC 0x254#64 ∧ s.status = .Running ∧

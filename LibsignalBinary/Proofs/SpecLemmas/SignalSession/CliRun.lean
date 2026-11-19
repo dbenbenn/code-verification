@@ -14,26 +14,27 @@ import all Init.Data.String.Pattern.Basic
 import all Init.Data.String.Pattern.String
 import all Init.Data.String.Slice
 import all Init.Data.String.TakeDrop
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRunProofDefs
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRunFixed
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRunFixed -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 /-!
 # Hook-Table and File-Read Lemmas for `CliRun`
 
-**Checked by Lean.** Relates `cliProg W` to the `Rust.withPanics`-wrapped program form used by
-function-level proofs (`cliProg_eq_rebase_withPanics`), proves distinctness and lookup properties of
-the 46 stub names in `cliHookTable`, and characterizes `readFileHook` and `read_stdin` via
-`readView` and `readStdinResult`.
+**Checked by Lean.** Proves distinctness and lookup properties of the 46 stub names in
+`cliHookTable`, and characterizes `readFileHook` and `read_stdin` via `readView` and
+`readStdinResult`.
 -/
 
 namespace CryptoVerification.SignalSession
 
 open Arm64
+open LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy
+  (compress512Name toEdwardsName compressName edNegName torsionFreeName dsmbName
+   scalarModName scalarWideName kemEncapsName kemDecapsName pqxdhHookTable spqrHookTable)
 
 /-- `Rust.withPanics` is idempotent on `E2E.withImagePanics`, since every `Rust.isPanicSymbol`
 satisfies `E2E.isImagePanicSymbol`. -/
@@ -47,21 +48,14 @@ theorem withPanics_cliExterns (W : CliHooks) :
     Rust.withPanics (cliExterns W) = cliExterns W :=
   withPanics_withCliPanics _
 
-/-- Rewrites `cliProg W` as `libsignalSessionCode.rebase cliBase (Rust.withPanics (cliExterns W))`,
-matching `contractProg` and `tripleRatchetProgAtExt`. -/
-theorem cliProg_eq_rebase_withPanics (W : CliHooks) :
-    cliProg W = libsignalSessionCode.rebase cliBase (Rust.withPanics (cliExterns W)) := by
-  rw [withPanics_cliExterns]
-  rfl
-
 /-! ## Hook-Table Keys and Lookup -/
 
 /-- Ordered list of the 46 stub names in `cliHookTable W` (18 from `E2E.pqxdhHookTable` followed by
 28 CLI-specific entries, independent of `W`). -/
-def cliHookNames : List String :=
-  [E2E.compress512Name, E2E.toEdwardsName, E2E.compressName, E2E.edNegName,
-   E2E.torsionFreeName, E2E.dsmbName, E2E.scalarModName, E2E.scalarWideName,
-   E2E.kemEncapsName, E2E.kemDecapsName,
+@[expose] def cliHookNames : List String :=
+  [compress512Name, toEdwardsName, compressName, edNegName,
+   torsionFreeName, dsmbName, scalarModName, scalarWideName,
+   kemEncapsName, kemDecapsName,
    LibsignalSpqrV1.mlkemFromSeedName, LibsignalSpqrV1.mlkemPk1Name,
    LibsignalSpqrV1.mlkemPk2Name, LibsignalSpqrV1.mlkemEncaps1Name,
    LibsignalSpqrV1.mlkemEncaps2Name, LibsignalSpqrV1.mlkemDecapsName,
@@ -168,7 +162,7 @@ theorem cliExterns_none_of_not_imagePanic (W : CliHooks) {n : String} (hn : n �
 
 /-- Pure specification of `read_stdin`: `.ok bs` when `bs.length ≤ stdinCapBytes`, otherwise
 `.error ()`. -/
-def readStdinResult (bs : List (BitVec 8)) : Except Unit (List (BitVec 8)) :=
+@[expose] def readStdinResult (bs : List (BitVec 8)) : Except Unit (List (BitVec 8)) :=
   if bs.length ≤ stdinCapBytes then .ok bs else .error ()
 
 private theorem mem_of_mem_intercalate {α : Type} {x : α} {sep : List α} (hsep : x ∉ sep) :
@@ -209,7 +203,7 @@ theorem contains_zero_eq_false_of_pathOk {raw : List (BitVec 8)}
 /-- Pure file-system read view for `read_file(p)`: `none` (`Err`) if blocked by a regular-file
 proper ancestor, directory target, or length above `fileCapBytes`; `some []` if missing; and
 `some bs` for a regular file within `fileCapBytes`. -/
-def readView (fs : FsState) (p : String) : Option (List (BitVec 8)) :=
+@[expose] def readView (fs : FsState) (p : String) : Option (List (BitVec 8)) :=
   match blockingAncestor? fs p with
   | some (some _) => none
   | some none => some []

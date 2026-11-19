@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SpkHop1A
-public import Computational.Proofs.E2E.UniformStartHop
+public import Computational.Proofs.E2E.SpkHop1A -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.UniformStartHop -- proof-setup: allow-public-import
 
 /-!
 # Generic `Adversary.refuseCorrB0` SM game wrapper
@@ -20,7 +20,7 @@ public import Computational.Proofs.E2E.UniformStartHop
 preservation (`refuseCorrB0_queries`) and exact R-game equivalence (`gameR_withNoCorrB0_eq`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -33,7 +33,7 @@ open CryptoGames CryptoGames.SM CryptoGames.Ratchet CryptoGames.Ratchet.Libsigna
   CryptoVerification.E2E.HeadlineU CryptoVerification.E2E.SpkHop1
 
 /-- Add `noBobCorrInEpoch0` (`DEV-LS33`) and `noBobCorrWhileAliceBelowEpoch10` (`DEV-LS34`) to `cfg.corrOK`. -/
-def withNoCorrB0 {St Msg C : Type} (cfg : ConfigR St Msg C) : ConfigR St Msg C :=
+@[expose] def withNoCorrB0 {St Msg C : Type} (cfg : ConfigR St Msg C) : ConfigR St Msg C :=
   { cfg with corrOK := fun s P => cfg.corrOK s P && noBobCorrInEpoch0 s P && noBobCorrWhileAliceBelowEpoch10 s P }
 
 /-- Observable game-state shadow tracked by the `refuseCorrB0` wrapper: party epochs,
@@ -47,7 +47,7 @@ namespace RefuseState
 
 variable {C : Type}
 
-def onSend (rs : RefuseState C) (P : Party) (c : C) : RefuseState C :=
+@[expose] def onSend (rs : RefuseState C) (P : Party) (c : C) : RefuseState C :=
   let ep' :=
     if P.sendsIn (rs.epoch P + 1) then Function.update rs.epoch P (rs.epoch P + 1) else rs.epoch
   let idx₀ := if P.sendsIn (rs.epoch P + 1) then Function.update rs.idx P 0 else rs.idx
@@ -56,17 +56,17 @@ def onSend (rs : RefuseState C) (P : Party) (c : C) : RefuseState C :=
     idx := Function.update idx₀ P (idx₀ P + 1)
     trans := (pos, c) :: rs.trans }
 
-def onAccept (rs : RefuseState C) (P : Party) (pos : SM.Pos) : RefuseState C :=
+@[expose] def onAccept (rs : RefuseState C) (P : Party) (pos : SM.Pos) : RefuseState C :=
   { rs with
     epoch := Function.update rs.epoch P (max (rs.epoch P) pos.epoch)
     trans := rs.trans.filter (fun pc => pc.1 != pos) }
 
-def onDeliver [DecidableEq C] (rs : RefuseState C) (P : Party) (c : C) : RefuseState C :=
+@[expose] def onDeliver [DecidableEq C] (rs : RefuseState C) (P : Party) (c : C) : RefuseState C :=
   match rs.trans.find? (fun pc => pc.1.sender == P.other && decide (pc.2 = c)) with
   | some (pos, _) => rs.onAccept P pos
   | none => rs
 
-def ofGameState {St Msg : Type} (s : GameState St Msg C) : RefuseState C :=
+@[expose] def ofGameState {St Msg : Type} (s : GameState St Msg C) : RefuseState C :=
   { epoch := s.epoch
     idx := s.idx
     trans := s.trans.map (fun r => (r.pos, r.ct)) }
@@ -75,7 +75,7 @@ end RefuseState
 
 abbrev RefuseM (St Msg Coins C : Type) := StateT (RefuseState C) (AdversaryComp St Msg Coins C)
 
-def refuseTransmit {St Msg Coins C : Type} :
+@[expose] def refuseTransmit {St Msg Coins C : Type} :
     QueryImpl ((Party × Msg × Option Coins) →ₒ Option C) (RefuseM St Msg Coins C) :=
   fun ⟨P, m, r⟩ => do
     let res ← StateT.lift (transmitQuery (St := St) P m r)
@@ -86,7 +86,7 @@ def refuseTransmit {St Msg Coins C : Type} :
     | none => pure ()
     return res
 
-def refuseChall {St Msg Coins C : Type} :
+@[expose] def refuseChall {St Msg Coins C : Type} :
     QueryImpl ((Party × Msg × Msg × Option Coins) →ₒ Option C) (RefuseM St Msg Coins C) :=
   fun ⟨P, m₀, m₁, r⟩ => do
     let res ← StateT.lift (challQuery (St := St) P m₀ m₁ r)
@@ -97,7 +97,7 @@ def refuseChall {St Msg Coins C : Type} :
     | none => pure ()
     return res
 
-def refuseDeliver {St Msg Coins C : Type} [DecidableEq C] :
+@[expose] def refuseDeliver {St Msg Coins C : Type} [DecidableEq C] :
     QueryImpl ((Party × C) →ₒ Option (RecvResult Msg)) (RefuseM St Msg Coins C) :=
   fun ⟨P, c⟩ => do
     let res ← StateT.lift (deliverQuery (St := St) (Coins := Coins) P c)
@@ -108,7 +108,7 @@ def refuseDeliver {St Msg Coins C : Type} [DecidableEq C] :
     | _ => pure ()
     return res
 
-def refuseInject {St Msg Coins C : Type} :
+@[expose] def refuseInject {St Msg Coins C : Type} :
     QueryImpl ((Party × C) →ₒ Option (RecvResult Msg)) (RefuseM St Msg Coins C) :=
   fun ⟨P, c⟩ => do
     let res ← StateT.lift (injectQuery (St := St) (Coins := Coins) P c)
@@ -119,7 +119,7 @@ def refuseInject {St Msg Coins C : Type} :
     | _ => pure ()
     return res
 
-def refuseCorr {St Msg Coins C : Type} :
+@[expose] def refuseCorr {St Msg Coins C : Type} :
     QueryImpl (Party →ₒ Option St) (RefuseM St Msg Coins C) :=
   fun P => do
     let rs ← get
@@ -128,7 +128,7 @@ def refuseCorr {St Msg Coins C : Type} :
     else
       StateT.lift (corrQuery (Msg := Msg) (Coins := Coins) (C := C) P)
 
-def refuseCorrB0Impl {St Msg Coins C : Type} [DecidableEq C] :
+@[expose] def refuseCorrB0Impl {St Msg Coins C : Type} [DecidableEq C] :
     QueryImpl (unifSpec + spec St Msg Coins C) (RefuseM St Msg Coins C) :=
   let c : QueryImpl unifSpec (RefuseM St Msg Coins C) := fun n =>
     StateT.lift (query (spec := unifSpec + spec St Msg Coins C) (.inl n))
@@ -146,7 +146,7 @@ def refuseCorrB0Impl {St Msg Coins C : Type} [DecidableEq C] :
 
 /-- Wrap `A` to refuse `corr-B` locally in epoch 0 (`DEV-LS33`) and while `epoch A < 10`
 (`DEV-LS34`). -/
-def _root_.CryptoGames.SM.Adversary.refuseCorrB0 {St Msg Coins C : Type} [DecidableEq C]
+@[expose] def _root_.CryptoGames.SM.Adversary.refuseCorrB0 {St Msg Coins C : Type} [DecidableEq C]
     (A : Adversary St Msg Coins C) : Adversary St Msg Coins C :=
   (simulateQ refuseCorrB0Impl A).run' {}
 

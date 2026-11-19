@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V1
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub5Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V1
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub5Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Defs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
 
 /-!
 # Placed Stage P2 Over-Path Call-Stack Monotonicity Lemmas
@@ -21,11 +23,9 @@ Lifts the Stage P2 Over-path call-stack inequalities between `stageP2OverPureAnd
 `stageP2OverCallStack`, and `stageP2OverV1CallStack` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 
@@ -67,4 +67,3 @@ theorem p2_over_callStack_le_v1CallStack_placed [LibsignalPlacement] {A : RustAl
   p2_over_callStack_le_v1CallStack spkKit kpkKit pkKit skit
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
-end

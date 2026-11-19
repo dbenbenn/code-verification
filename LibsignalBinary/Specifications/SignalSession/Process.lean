@@ -24,9 +24,11 @@ proof-side process definitions (`ProcessProofDefs.lean`).
 
 `processInputs` constructs `Arm64.Process.ProcessInputs` with ASCII `argv` (`"libsignal-cli" :: cmd.argv`),
 `stdin` on file descriptor 0, canonical working-directory-relative `files` and `dirs` (the CLI never
-creates directories), an 8 MiB stack topped at `0x7fff_ffff_0000` (DEV-CLI7), and the engine's
-default `envp`, auxiliary vector, and `mmap` oracle (`0x6000_0000_0000` upward). Runs reaching
-`.Halted`, `.OutOfMemory`, `.Exception`, or non-termination produce no `ProcessResult`.
+creates directories), an 8 MiB stack topped at `0x7fff_ffff_0000` (DEV-CLI7), `AT_HWCAP = 0x1b`
+(`HWCAP_FP | HWCAP_ASIMD | HWCAP_AES | HWCAP_PMULL`, enabling ARMv8 hardware AES and SPQR `PMULL`
+GF(2¹⁶) while keeping LSE atomics bit 8 `= 0`), and the engine's default `envp`, remaining auxiliary
+vector fields, and `mmap` oracle (`0x6000_0000_0000` upward). Runs reaching `.Halted`,
+`.OutOfMemory`, `.Exception`, or non-termination produce no `ProcessResult`.
 -/
 
 namespace CryptoVerification.SignalSession
@@ -52,15 +54,17 @@ end ProcessResult
     (DEV-CLI7). Every other field is the engine's default (`ProcessInputs`); `execfn` is `[]`, so
     `AT_EXECFN` points to `""` (Linux passes the execve path); the only reader is musl's
     `__init_libc`, which uses it for `__progname` only when `argv[0]` is null, and `argv[0]` is
-    always `"libsignal-cli"` here (and `__progname` is never read); `auxv.hwcap` is `0x3` (FP
-    bit 0 and ASIMD bit 1 only; AES bit 3 and PMULL bit 4 are `0`, see DEV-CLI10); in particular `auxv`
-    keeps `AuxvConfig`'s non-setuid ids and the loader sets `AT_SECURE = 0` (DEV-CLI6). -/
+    always `"libsignal-cli"` here (and `__progname` is never read); `auxv.hwcap` is `0x1b` (FP
+    bit 0, ASIMD bit 1, AES bit 3, and PMULL bit 4, so both `aes` 0.9.1's and SPQR's `AT_HWCAP`
+    feature probes select ARMv8 hardware AES and `PMULL` GF(2¹⁶) while LSE bit 8 remains `0`); in
+    particular `auxv` keeps `AuxvConfig`'s non-setuid ids and the loader sets `AT_SECURE = 0`
+    (DEV-CLI6). -/
 def processInputs (argv : List String) (stdin : List (BitVec 8))
     (files : List (String × List (BitVec 8))) (dirs : List String) : ProcessInputs :=
   { argv := argv.map bytesOfString
     stdin := stdin
     files := files
     dirs := dirs
-    init := { stackSize := 8388608 } }
+    init := { stackSize := 8388608, auxv := { hwcap := 0x1b#64 } } }
 
 end CryptoVerification.SignalSession

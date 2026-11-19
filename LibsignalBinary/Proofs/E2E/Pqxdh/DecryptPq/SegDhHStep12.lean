@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHPack
+public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHPack -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHEvict
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `ChainKey` Cell and 32-Byte Region Helpers for `S3CommitSpec`
@@ -20,7 +21,7 @@ Decomposition lemmas between 32-byte `ChainKey` byte slices, four 64-bit cells, 
 blocks for sub-segments 1 and 2 of `S3CommitSpec`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegBH
 

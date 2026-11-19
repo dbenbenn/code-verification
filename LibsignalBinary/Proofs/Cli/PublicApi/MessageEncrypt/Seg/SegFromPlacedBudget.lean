@@ -9,19 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlaced
 public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFrom
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFrom
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
 public import ProofLib.RegChain
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFromFetch
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFromPlaced
 
 /-!
 # Budget-Threaded Relocatable CLI `SegFrom` Proof (`segFrom_placed_okV_budget`)
@@ -30,7 +37,7 @@ Verifies `SegFromSpecVBudget` (`CurStateVBudget` at `+0x20c` → `OtrStateVBudge
 error tail at `+0x49c`) on `lsProg_464 Hk` (`blkPl_464`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -85,11 +92,11 @@ export LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget.T
   preKeyMsgNewBudgetSpec dropSessionStructureLocal2BudgetSpec
 )
 
-def durationSinceBoundedBudgetSpec : Spec (BitVec 64 × BitVec 64) :=
+@[expose] def durationSinceBoundedBudgetSpec : Spec (BitVec 64 × BitVec 64) :=
   { durationSinceBoundedSpec with
     post := fun x s0 sf => ⌜VmPreserved s0 sf⌝ ∗ durationSinceBoundedSpec.post x s0 sf }
 
-def CurStateVBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CurStateVBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -105,7 +112,7 @@ def CurStateVBudget [LibsignalPlacement] {M : AllocCostModel}
     (retagIdentityStore (A' := A.atState lim st s) ikit) ist0 Scope ctl encRecord
     x r g sess R s0 s
 
-def StoredStateVBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StoredStateVBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -231,7 +238,7 @@ structure EncEnvFullBudget [LibsignalPlacement] {M : AllocCostModel}
         SegExitBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv encRecord H
           x st_init R s0 s (fun _ => False)
 
-def SegLoadSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegLoadSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -253,7 +260,7 @@ def SegLoadSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
           CurStateVBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv encRecord
             x st_init st' r g sess R s0 s)
 
-def SegFromSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegFromSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -273,7 +280,7 @@ def SegFromSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
           OtrStateVBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv encRecord
             x st_init st' r sess otr taken pqCap pqPtr R s0 s')
 
-def SegPreKeySpecVBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegPreKeySpecVBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -296,7 +303,7 @@ def SegPreKeySpecVBudget [LibsignalPlacement] {M : AllocCostModel}
           CmStateVBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv encRecord
             x st_init st' r sess otr taken k m otr' pqCap' pqPtr' R s0 s')
 
-def SegApplyStoreSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegApplyStoreSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -321,7 +328,7 @@ def SegApplyStoreSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
           StoredStateVBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv encRecord
             x st_init st' r sess otr taken k m otr' c R s0 s')
 
-def SegFinishSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegFinishSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)

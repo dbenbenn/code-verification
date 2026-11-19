@@ -10,6 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk`: Pure Loop and Point Characterizations
@@ -20,7 +21,7 @@ Pure characterizations of `enumeratePts`, `checkCompletePoints`, `PolyEncoder.ch
 `Point` evaluation for `<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::next_chunk`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.NextChunk
 
@@ -35,10 +36,6 @@ open CryptoVerification.SpqrV1.Poly.ComputeAt
 open CryptoVerification.SpqrV1.GF.UnacceleratedMul
 open CryptoVerification.SpqrV1.GF.Mul2U16
 open CryptoVerification.CodeLayout
-
-gen_decodes libsignalSessionCode_tree polyNextChunkBin [0x64f8c → 0x662bc]
-
-/-! ## 1. `enumeratePts` and `checkCompletePoints` Lemmas -/
 
 @[simp]
 theorem enumeratePts_length :
@@ -134,7 +131,7 @@ theorem pointAt_polys_eq {idx : BitVec 32} {polys : List Poly} {i : Nat}
   simp only [hp, computeAt_eq_ok, ofNat_16_toNat, Bind.bind, Except.bind, Pure.pure, Except.pure]
 
 /-- Pure byte accumulator for `PolyEncoder.chunkAtLoop` in the `EncoderState.polys` state. -/
-def chunkPolysBytes (idx : BitVec 16) (polys : List Poly) : Nat → Nat → List (BitVec 8)
+@[expose] def chunkPolysBytes (idx : BitVec 16) (polys : List Poly) : Nat → Nat → List (BitVec 8)
   | _, 0 => []
   | i, rem + 1 =>
     let p : GF16 := match polys[i]? with
@@ -201,7 +198,7 @@ theorem pointAt_points_lt_eq {idx : BitVec 32} {pts : List Point} {i : Nat}
 
 /-- Pure byte accumulator for `PolyEncoder.chunkAtLoop` when `EncoderState.points` has all
 `pts[k].value.length > idx`. -/
-def chunkPointsBytes (idx : BitVec 16) (pts : List Point) : Nat → Nat → List (BitVec 8)
+@[expose] def chunkPointsBytes (idx : BitVec 16) (pts : List Point) : Nat → Nat → List (BitVec 8)
   | _, 0 => []
   | i, rem + 1 =>
     let p : GF16 := match pts[i]? with

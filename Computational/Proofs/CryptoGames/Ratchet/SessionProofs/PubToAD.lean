@@ -24,7 +24,7 @@ associated-data classes, and reduces the FS-AEAD game of `fromAEADPRG (ae.movePu
 to `fromAEADPRG (reassoc ae) G maxSkip` for adversaries with equal public challenge parts.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -34,7 +34,7 @@ open FSAEAD AEADScheme
 
 variable {MK CK AD Pub M C : Type}
 
-def reassoc (ae : AEADScheme MK ((ℕ × AD) × Pub) M C) : AEADScheme MK (ℕ × (AD × Pub)) M C where
+@[expose] def reassoc (ae : AEADScheme MK ((ℕ × AD) × Pub) M C) : AEADScheme MK (ℕ × (AD × Pub)) M C where
   enc k a m := ae.enc k ((a.1, a.2.1), a.2.2) m
   dec k a c := ae.dec k ((a.1, a.2.1), a.2.2) c
 
@@ -42,10 +42,10 @@ local instance (priority := high) [DecidableEq C] : BEq (ℕ × C) := instBEqOfD
 local instance (priority := high) [DecidableEq Pub] [DecidableEq M] : BEq (Pub × M) :=
   instBEqOfDecidableEq
 
-def mapRecord (r : Record (AD × Pub) M (ℕ × C)) : Record AD (Pub × M) (ℕ × C) :=
+@[expose] def mapRecord (r : Record (AD × Pub) M (ℕ × C)) : Record AD (Pub × M) (ℕ × C) :=
   { idx := r.idx, ad := r.ad.1, msg := (r.ad.2, r.msg), ct := r.ct }
 
-def mapState {SS RS : Type} (st : State SS RS (AD × Pub) M (ℕ × C)) :
+@[expose] def mapState {SS RS : Type} (st : State SS RS (AD × Pub) M (ℕ × C)) :
     State SS RS AD (Pub × M) (ℕ × C) :=
   { senderState := st.senderState
     receiverState := st.receiverState
@@ -59,7 +59,7 @@ def mapState {SS RS : Type} (st : State SS RS (AD × Pub) M (ℕ × C)) :
     challengesInTransit := st.challengesInTransit }
 
 /-- Simulation invariant relating `pubRedImpl`'s `ended` flag to the `(AD × Pub, M)` game state. -/
-def Inv {SS RS : Type} (pubOf : C → Option Pub) (ended : Bool)
+@[expose] def Inv {SS RS : Type} (pubOf : C → Option Pub) (ended : Bool)
     (st : State SS RS (AD × Pub) M (ℕ × C)) : Prop :=
   ended = st.ended ∧ ∀ r ∈ st.inTransit, pubOf r.ct.2 = some r.ad.2
 

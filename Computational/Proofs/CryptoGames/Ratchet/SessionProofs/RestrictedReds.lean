@@ -10,13 +10,13 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Session.ACD19.Ratchet.LibsignalSim
-public import Computational.Proofs.CryptoGames.SM.BlankedPrivRed
-public import Computational.Proofs.CryptoGames.SM.ReductionsQueries
+public import Computational.Proofs.CryptoGames.SM.BlankedPrivRed -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.ReductionsQueries -- proof-setup: allow-public-import
 import Std.Tactic.BVDecide.Normalize.BitVec
 import Std.Tactic.BVDecide.Normalize.Prop
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDec
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.CBCDec
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
 public import Computational.Proofs.CryptoGames.FSAEAD.PubProofDefs
 
 /-!
@@ -25,7 +25,7 @@ public import Computational.Proofs.CryptoGames.FSAEAD.PubProofDefs
 **Checked by Lean.** Proves that the FS-AEAD reductions `redFSAuth`, `redFSPriv`, and `redFSPrivCoin` applied to `Thm1.challSim` and `ThmB.privRedB` satisfy `FSAEAD.EqualPubChallenges` and `FSAEAD.AllQueriesInOneADClass (fun h : Header Pt => h.1)`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -120,7 +120,7 @@ theorem SafePost.liftComp_unif {τ : Type} {tspec : OracleSpec.{0, 0} τ}
 
 /-- `SafeS Q I P x` states that from any state satisfying `I`, running `x` makes no `Q`-queries
 and every `(a, s')` returned satisfies `P a s'`. -/
-def SafeS (Q : ι → Prop) {σ α : Type} (I : σ → Prop) (P : α → σ → Prop)
+@[expose] def SafeS (Q : ι → Prop) {σ α : Type} (I : σ → Prop) (P : α → σ → Prop)
     (x : StateT σ (OracleComp spec) α) : Prop :=
   ∀ s, I s → SafePost Q (fun r => P r.1 r.2) (x.run s)
 

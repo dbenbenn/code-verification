@@ -10,11 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.FromRecordCalleesCodeSym
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.FromRecordCalleesCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
-import GeneratedLean.LibsignalSession -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.FinishGrow
 import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Fetch
 import ProofLib.SepLogic.WPp
@@ -27,7 +26,7 @@ Proves fixed-image and relocatable `[LibsignalPlacement]` contracts for
 `<RawVec<Chain>>::grow_one` (`0x15cac`, block `43`, stride `104`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.FromRecordCallees
 
@@ -143,73 +142,6 @@ private def finishGrow48ZeroSpec (A : RustAlloc) : Spec FG48Ghost where
       A.pool ∗ stackAt fsp finishGrowStack ∗
       (out ↦₆₄ tag) ∗ ((out + 8#64) ↦₆₄ p') ∗ ((out + 16#64) ↦₆₄ o2')
 
-private theorem finish_grow_48_zero_ok {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hfg : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName) (finishGrowSpec A)) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName)
-      (finishGrow48ZeroSpec A) := by
-  refine subroutine_ok_outcome_intro fun ⟨out, cap, ptr, new, bs, o0, o1, o2, fsp⟩ R s0 hpc hrun hpre hsp => ?_
-  simp only [finishGrow48ZeroSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx2, hx3, hx4, hx5, hfsp, hcap0, hbs, hle, hpos, hbound⟩, hmem⟩
-  subst hfsp; subst hcap0; subst hbs
-  let hcall : FinishGrowCall := ⟨out, 0#64, ptr, new, 8#64, 48#64, []⟩
-  have hlay : LayoutOk (new.toNat * (48#64 : BitVec 64).toNat) (8#64 : BitVec 64).toNat := by
-    refine ⟨by change 0 < new.toNat * 48; omega, ⟨3, rfl⟩, ?_⟩
-    change new.toNat * 48 + 8 ≤ 2 ^ 63; omega
-  have hpre' : s0.mem ⊨ (finishGrowSpec A).pre hcall s0 ∗ R := by
-    simp only [finishGrowSpec, hcall, FinishGrowCall.oldBuf, ite_true,
-      memRegion_24_cells, emp_sepConj, sepExists_sepConj_left, sepExists_sepConj_right,
-      satisfies_sepExists]
-    refine ⟨o2, o1, o0, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1, hx2, hx3, hx4, hx5, fun _ => trivial, Nat.zero_le _, hle, hpos, by decide, hlay⟩,
-      by simpa only [sepConj_assoc] using hmem⟩
-  refine hfg.mono_outcome hcall R s0 hpc hrun hpre' hsp ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    simp only [finishGrowSpec, finishGrow48ZeroSpec, hcall, FinishGrowCall.oldBuf,
-      ite_true, pointsToBytes_nil, List.length_nil,
-      BitVec.add_zero, Nat.sub_zero, emp_sepConj, sepConj_emp,
-      sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-    rcases hq with ⟨tag, p', hq⟩
-    have hm48 : (48#64 : BitVec 64).toNat = 48 := rfl
-    have ha8 : (8#64 : BitVec 64).toNat = 8 := rfl
-    rw [hm48, ha8] at hq
-    refine ⟨tag, p', BitVec.ofNat 64 (new.toNat * 48), ?_⟩
-    by_cases htag : tag = 1#64
-    · simp only [htag, ite_true] at hq ⊢
-      rw [show (out ↦₆₄ 1#64 ∗ (out + 8#64) ↦₆₄ p' ∗
-            (out + 16#64) ↦₆₄ BitVec.ofNat 64 (new.toNat * 48) ∗
-            ⌜p' = 8#64 ∧ sf.trace = s0.trace ++ [allocFailedEvent]⌝ ∗
-            A.pool ∗ stackAt s0.sp finishGrowStack) ∗ R =
-          ⌜p' = 8#64 ∧ sf.trace = s0.trace ++ [allocFailedEvent]⌝ ∗
-            ((A.pool ∗ stackAt s0.sp finishGrowStack ∗ out ↦₆₄ 1#64 ∗
-              (out + 8#64) ↦₆₄ p' ∗
-              (out + 16#64) ↦₆₄ BitVec.ofNat 64 (new.toNat * 48)) ∗ R) by ac_rfl,
-        satisfies_pure_sepConj] at hq
-      rw [sepConj_assoc, satisfies_pure_sepConj]
-      exact ⟨hq.1.2, hq.2⟩
-    · simp only [htag, ite_false] at hq ⊢
-      rw [show (out ↦₆₄ tag ∗ (out + 8#64) ↦₆₄ p' ∗
-            (out + 16#64) ↦₆₄ BitVec.ofNat 64 (new.toNat * 48) ∗
-            (⌜tag = 0#64 ∧ p' ≠ 0#64 ∧ p'.toNat % 8 = 0 ∧ sf.trace = s0.trace⌝ ∗
-              A.live p' (new.toNat * 48) 8 ∗ memRegion p' (new.toNat * 48)) ∗
-            A.pool ∗ stackAt s0.sp finishGrowStack) ∗ R =
-          ⌜tag = 0#64 ∧ p' ≠ 0#64 ∧ p'.toNat % 8 = 0 ∧ sf.trace = s0.trace⌝ ∗
-            ((A.live p' (new.toNat * 48) 8 ∗ memRegion p' (new.toNat * 48) ∗
-              A.pool ∗ stackAt s0.sp finishGrowStack ∗
-              out ↦₆₄ tag ∗ (out + 8#64) ↦₆₄ p' ∗
-              (out + 16#64) ↦₆₄ BitVec.ofNat 64 (new.toNat * 48)) ∗ R) by ac_rfl,
-        satisfies_pure_sepConj] at hq
-      rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨⟨hq.1.1, hq.1.2.1, hq.1.2.2.2⟩, ?_⟩
-      simpa only [sepConj_assoc] using hq.2
-  · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hq⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨hoom, hq⟩))
-
 private def finishGrow48NeSpec (A : RustAlloc) : Spec FG48Ghost where
   pre := fun (out, cap, ptr, new, bs, o0, o1, o2, fsp) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
@@ -230,173 +162,6 @@ private def finishGrow48NeSpec (A : RustAlloc) : Spec FG48Ghost where
           memRegion (p' + BitVec.ofNat 64 bs.length) (new.toNat * 48 - bs.length))) ∗
       A.pool ∗ stackAt fsp finishGrowStack ∗
       (out ↦₆₄ tag) ∗ ((out + 8#64) ↦₆₄ p') ∗ ((out + 16#64) ↦₆₄ o2')
-
-private theorem finish_grow_48_ne_ok {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hfg : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName) (finishGrowSpec A)) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName)
-      (finishGrow48NeSpec A) := by
-  refine subroutine_ok_outcome_intro fun ⟨out, cap, ptr, new, bs, o0, o1, o2, fsp⟩ R s0 hpc hrun hpre hsp => ?_
-  simp only [finishGrow48NeSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx2, hx3, hx4, hx5, hfsp, hcap, hbs, hle, hpos, hbound⟩, hmem⟩
-  subst hfsp
-  let hcall : FinishGrowCall := ⟨out, cap, ptr, new, 8#64, 48#64, bs⟩
-  have hlay : LayoutOk (new.toNat * (48#64 : BitVec 64).toNat) (8#64 : BitVec 64).toNat := by
-    refine ⟨by change 0 < new.toNat * 48; omega, ⟨3, rfl⟩, ?_⟩
-    change new.toNat * 48 + 8 ≤ 2 ^ 63; omega
-  have hm48 : (48#64 : BitVec 64).toNat = 48 := rfl
-  have ha8 : (8#64 : BitVec 64).toNat = 8 := rfl
-  have hpre' : s0.mem ⊨ (finishGrowSpec A).pre hcall s0 ∗ R := by
-    simp only [finishGrowSpec, hcall, FinishGrowCall.oldBuf, hcap, ite_false,
-      memRegion_24_cells, sepExists_sepConj_left, sepExists_sepConj_right,
-      satisfies_sepExists]
-    refine ⟨o2, o1, o0, ?_⟩
-    rw [hm48, ha8, ← hbs, Nat.sub_self, memRegion_zero, sepConj_emp, sepConj_assoc,
-      satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1, hx2, hx3, hx4, hx5, False.elim, Nat.le_refl _, hle, hpos, by decide, hlay⟩,
-      by simpa only [sepConj_assoc] using hmem⟩
-  refine hfg.mono_outcome hcall R s0 hpc hrun hpre' hsp ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    simp only [finishGrowSpec, finishGrow48NeSpec, hcall, FinishGrowCall.oldBuf,
-      hcap, ite_false, sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-    rcases hq with ⟨tag, p', hq⟩
-    rw [hm48, ha8, ← hbs, Nat.sub_self, memRegion_zero, sepConj_emp] at hq
-    refine ⟨tag, p', BitVec.ofNat 64 (new.toNat * 48), ?_⟩
-    by_cases htag : tag = 1#64
-    · simp only [htag, ite_true] at hq ⊢
-      rw [show (out ↦₆₄ 1#64 ∗ (out + 8#64) ↦₆₄ p' ∗
-            (out + 16#64) ↦₆₄ BitVec.ofNat 64 (new.toNat * 48) ∗
-            (⌜p' = 8#64 ∧ sf.trace = s0.trace ++ [allocFailedEvent]⌝ ∗
-              A.live ptr bs.length 8 ∗ (ptr ↦ₛ bs)) ∗
-            A.pool ∗ stackAt s0.sp finishGrowStack) ∗ R =
-          ⌜p' = 8#64 ∧ sf.trace = s0.trace ++ [allocFailedEvent]⌝ ∗
-            ((A.live ptr bs.length 8 ∗ (ptr ↦ₛ bs) ∗
-              A.pool ∗ stackAt s0.sp finishGrowStack ∗
-              out ↦₆₄ 1#64 ∗ (out + 8#64) ↦₆₄ p' ∗
-              (out + 16#64) ↦₆₄ BitVec.ofNat 64 (new.toNat * 48)) ∗ R) by ac_rfl,
-        satisfies_pure_sepConj] at hq
-      rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨hq.1.2, ?_⟩
-      simpa only [sepConj_assoc] using hq.2
-    · simp only [htag, ite_false] at hq ⊢
-      rw [show (out ↦₆₄ tag ∗ (out + 8#64) ↦₆₄ p' ∗
-            (out + 16#64) ↦₆₄ BitVec.ofNat 64 (new.toNat * 48) ∗
-            (⌜tag = 0#64 ∧ p' ≠ 0#64 ∧ p'.toNat % 8 = 0 ∧ sf.trace = s0.trace⌝ ∗
-              A.live p' (new.toNat * 48) 8 ∗ (p' ↦ₛ bs) ∗
-              memRegion (p' + BitVec.ofNat 64 bs.length) (new.toNat * 48 - bs.length)) ∗
-            A.pool ∗ stackAt s0.sp finishGrowStack) ∗ R =
-          ⌜tag = 0#64 ∧ p' ≠ 0#64 ∧ p'.toNat % 8 = 0 ∧ sf.trace = s0.trace⌝ ∗
-            ((A.live p' (new.toNat * 48) 8 ∗ (p' ↦ₛ bs) ∗
-              memRegion (p' + BitVec.ofNat 64 bs.length) (new.toNat * 48 - bs.length) ∗
-              A.pool ∗ stackAt s0.sp finishGrowStack ∗
-              out ↦₆₄ tag ∗ (out + 8#64) ↦₆₄ p' ∗
-              (out + 16#64) ↦₆₄ BitVec.ofNat 64 (new.toNat * 48)) ∗ R) by ac_rfl,
-        satisfies_pure_sepConj] at hq
-      rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨⟨hq.1.1, hq.1.2.1, hq.1.2.2.2⟩, ?_⟩
-      simpa only [sepConj_assoc] using hq.2
-  · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hq⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨hoom, hq⟩))
-
-/-! ## Unified `grow_one_spe_ok` -/
-
-theorem grow_one_spe_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hfg : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName) (finishGrowSpec A)) :
-    GrowOneSpeOkExt b A ext := by
-  unfold GrowOneSpeOkExt growOneSpeSpec growOneSpeName
-  simp only [stackAt_grow_one_spe, sepExists_sepConj_right]
-  have hfn := (ls_lemma% fnOff "<alloc::raw_vec::RawVec<libsignal_protocol::error::SignalProtocolError>>::grow_one")
-  have hpanic := panic_at_handle_error_ext (b := b) (ext := ext)
-    (name := "<alloc::raw_vec::RawVec<libsignal_protocol::error::SignalProtocolError>>::grow_one")
-    (k := num% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<alloc::raw_vec::RawVec<libsignal_protocol::error::SignalProtocolError>>::grow_one"))
-  have hfg0 := finish_grow_48_zero_ok (b := b) (ext := ext) hfg
-  have hfg1 := finish_grow_48_ne_ok (b := b) (ext := ext) hfg
-  rw [Program.fnAddr_rel
-    (name := "<alloc::raw_vec::RawVec<libsignal_protocol::error::SignalProtocolError>>::grow_one")
-    hfn (ls_lemma% fnOff "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]") (k := 416) (by decide)] at hfg0 hfg1
-  code_fetches_from CryptoVerification.libsignalSessionCode fromRecordCalleesBin b
-    (Rust.withPanics ext) hfn (num% (ls_off% "<alloc::raw_vec::RawVec<libsignal_protocol::error::SignalProtocolError>>::grow_one")) 0 104
-  wpp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨v, cap, ptr, bs⟩ := x
-  dsimp only at *
-  have hnew_eq := grow_spe_new_cap_eq h
-  let new := BitVec.ofNat 64 (max (2 * cap.toNat) 4)
-  have hnew_toNat : new.toNat = max (2 * cap.toNat) 4 := by
-    dsimp [new]; rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  have hcap_le_new : cap.toNat ≤ new.toNat := by omega
-  have hnew_pos : 0 < new.toNat := by omega
-  have hnew_bound : new.toNat * 48 + 8 ≤ 2 ^ 63 := by omega
-  by_cases hcap0 : cap = 0#64
-  · subst hcap0
-    have hbs : bs = [] := List.eq_nil_of_length_eq_zero h_2
-    subst hbs
-    simp only [BitVec.ofNat_eq_ofNat, ite_true, emp_sepConj, pointsToBytes_nil,
-      List.length_nil, BitVec.add_zero, BitVec.toNat_zero, Nat.mul_zero, Nat.sub_zero]
-    apply SepWPp.of_sepWP (mid := entry + bv% (60))
-    wp_steps
-    wp_call hfg0 (s0.sp - 56#64, 0#64, ptr, new, [], v_stk_1, v_stk_2, v_stk_3, s0.sp - 64#64)
-    apply SepWP.done (by first | rfl | assumption) (by first | rfl | assumption)
-    refine SepWPp.ite_elim_pure1 (fun htag htrace => ?_) (fun _ ⟨hw0, hp', htrace⟩ => ?_)
-    · subst htag
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<alloc::raw_vec::RawVec<libsignal_protocol::error::SignalProtocolError>>::grow_one"))
-      wp_steps
-      apply SepWP.done (by rfl) (by exact hrun_sf)
-      refine SepWPp.panic (by exact hrun_sf) hpanic fun hm => ?_
-      exact allowPanic_panicked
-        (allocFailedIn_of_eq (htrace : (Rust.panicked _).trace = s0.trace ++ [allocFailedEvent])) hm
-    · subst hw0
-      rw [sepConj_assoc]
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      wp_done
-  · have hcap0' : cap ≠ 0 := hcap0
-    simp only [hcap0', ite_false, sepConj_assoc]
-    have hsub_mul : (max (2 * cap.toNat) 4 - cap.toNat) * 48 = new.toNat * 48 - bs.length := by
-      rw [Nat.sub_mul, hnew_toNat, h_2]
-    rw [hsub_mul]
-    apply SepWPp.of_sepWP (mid := entry + bv% (60))
-    wp_steps
-    wp_call hfg1 (s0.sp - 56#64, cap, ptr, new, bs, v_stk_1, v_stk_2, v_stk_3, s0.sp - 64#64)
-    apply SepWP.done hpc_sf hrun_sf
-    refine SepWPp.ite_elim_pure2 (fun htag htrace => ?_) (fun _ ⟨hw0, hp', htrace⟩ => ?_)
-    · subst htag
-      rw [sepConj_assoc]
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<alloc::raw_vec::RawVec<libsignal_protocol::error::SignalProtocolError>>::grow_one"))
-      wp_steps
-      apply SepWP.done (by rfl) (by exact hrun_sf)
-      refine SepWPp.panic (by exact hrun_sf) hpanic fun hm => ?_
-      rw [← sepConj_assoc]
-      exact allowPanic_panicked
-        (allocFailedIn_of_eq (htrace : (Rust.panicked _).trace = s0.trace ++ [allocFailedEvent])) hm
-    · subst hw0
-      rw [sepConj_assoc, sepConj_assoc]
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      wp_done
-
-theorem grow_one_spe_ok_trap {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    GrowOneSpeOk_trap b C A abs :=
-  grow_one_spe_ok_ext (finish_grow_ok_trap hA)
-
-/-- `<alloc::raw_vec::RawVec<SignalProtocolError>>::grow_one` (`0x15c44`, 26 insns) meets
-`growOneSpeSpec A` on `tripleRatchetProgAt`. -/
-theorem grow_one_spe_ok {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    GrowOneSpeOk b C A ctl abs :=
-  subroutine_ok_kit_of_trTrap (grow_one_spe_ok_trap hA)
-
-/-! ## `RawVec<Chain>::grow_one` (`0x15cac`, stride = 104, align = 8) under `AllocContractsX` -/
 
 private def growPad104X (sp : BitVec 64) : SepProp :=
   memRegion (sp - 16896#64) 400
@@ -465,73 +230,6 @@ private def finishGrow104ZeroSpecX (A : RustAlloc) : Spec FG48Ghost where
       A.pool ∗ stackAt fsp finishGrowStackX ∗
       (out ↦₆₄ tag) ∗ ((out + 8#64) ↦₆₄ p') ∗ ((out + 16#64) ↦₆₄ o2')
 
-private theorem finish_grow_104_zero_ok_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hfg : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr finishGrowName) ((finishGrowSpecX A).inImage img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr finishGrowName)
-      ((finishGrow104ZeroSpecX A).inImage img) := by
-  refine subroutine_ok_outcome_intro fun ⟨out, cap, ptr, new, bs, o0, o1, o2, fsp⟩ R s0 hpc hrun hpre hsp => ?_
-  simp only [Spec.inImage, finishGrow104ZeroSpecX, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, ⟨hx0, hx1, hx2, hx3, hx4, hx5, hfsp, hcap0, hbs, hle, hpos, hbound⟩, hmem⟩
-  subst hfsp; subst hcap0; subst hbs
-  let hcall : FinishGrowCall := ⟨out, 0#64, ptr, new, 8#64, 104#64, []⟩
-  have hlay : LayoutOk (new.toNat * (104#64 : BitVec 64).toNat) (8#64 : BitVec 64).toNat := by
-    refine ⟨by change 0 < new.toNat * 104; omega, ⟨3, rfl⟩, ?_⟩
-    change new.toNat * 104 + 8 ≤ 2 ^ 63; omega
-  have hpre' : s0.mem ⊨ ((finishGrowSpecX A).inImage img).pre hcall s0 ∗ R := by
-    simp only [Spec.inImage, finishGrowSpecX, hcall, FinishGrowCall.oldBuf, ite_true,
-      memRegion_24_cells, emp_sepConj, sepExists_sepConj_left, sepExists_sepConj_right,
-      satisfies_sepExists]
-    refine ⟨o2, o1, o0, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hinv, ⟨hx0, hx1, hx2, hx3, hx4, hx5, fun _ => trivial, Nat.zero_le _, hle, hpos, by decide, hlay⟩,
-      by simpa only [sepConj_assoc] using hmem⟩
-  refine hfg.mono_outcome hcall R s0 hpc hrun hpre' hsp ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    simp only [Spec.inImage, finishGrowSpecX, finishGrow104ZeroSpecX, hcall, FinishGrowCall.oldBuf,
-      ite_true, pointsToBytes_nil, List.length_nil,
-      BitVec.add_zero, Nat.sub_zero, emp_sepConj, sepConj_emp,
-      sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-    rcases hq with ⟨tag, p', hq⟩
-    have hm104 : (104#64 : BitVec 64).toNat = 104 := rfl
-    have ha8 : (8#64 : BitVec 64).toNat = 8 := rfl
-    rw [hm104, ha8] at hq
-    refine ⟨tag, p', BitVec.ofNat 64 (new.toNat * 104), ?_⟩
-    by_cases htag : tag = 1#64
-    · simp only [htag, ite_true] at hq ⊢
-      rw [show (out ↦₆₄ 1#64 ∗ (out + 8#64) ↦₆₄ p' ∗
-            (out + 16#64) ↦₆₄ BitVec.ofNat 64 (new.toNat * 104) ∗
-            ⌜p' = 8#64 ∧ sf.trace = s0.trace ++ [allocFailedEvent]⌝ ∗
-            A.pool ∗ stackAt s0.sp finishGrowStackX) ∗ R =
-          ⌜p' = 8#64 ∧ sf.trace = s0.trace ++ [allocFailedEvent]⌝ ∗
-            ((A.pool ∗ stackAt s0.sp finishGrowStackX ∗ out ↦₆₄ 1#64 ∗
-              (out + 8#64) ↦₆₄ p' ∗
-              (out + 16#64) ↦₆₄ BitVec.ofNat 64 (new.toNat * 104)) ∗ R) by ac_rfl,
-        satisfies_pure_sepConj] at hq
-      rw [sepConj_assoc, satisfies_pure_sepConj]
-      exact ⟨hq.1.2, hq.2⟩
-    · simp only [htag, ite_false] at hq ⊢
-      rw [show (out ↦₆₄ tag ∗ (out + 8#64) ↦₆₄ p' ∗
-            (out + 16#64) ↦₆₄ BitVec.ofNat 64 (new.toNat * 104) ∗
-            (⌜tag = 0#64 ∧ p' ≠ 0#64 ∧ p'.toNat % 8 = 0 ∧ sf.trace = s0.trace⌝ ∗
-              A.live p' (new.toNat * 104) 8 ∗ memRegion p' (new.toNat * 104)) ∗
-            A.pool ∗ stackAt s0.sp finishGrowStackX) ∗ R =
-          ⌜tag = 0#64 ∧ p' ≠ 0#64 ∧ p'.toNat % 8 = 0 ∧ sf.trace = s0.trace⌝ ∗
-            ((A.live p' (new.toNat * 104) 8 ∗ memRegion p' (new.toNat * 104) ∗
-              A.pool ∗ stackAt s0.sp finishGrowStackX ∗
-              out ↦₆₄ tag ∗ (out + 8#64) ↦₆₄ p' ∗
-              (out + 16#64) ↦₆₄ BitVec.ofNat 64 (new.toNat * 104)) ∗ R) by ac_rfl,
-        satisfies_pure_sepConj] at hq
-      rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨⟨hq.1.1, hq.1.2.1, hq.1.2.2.2⟩, ?_⟩
-      simpa only [sepConj_assoc] using hq.2
-  · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hq⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨hoom, hq⟩))
-
 private def finishGrow104NeSpecX (A : RustAlloc) : Spec FG48Ghost where
   pre := fun (out, cap, ptr, new, bs, o0, o1, o2, fsp) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
@@ -553,79 +251,8 @@ private def finishGrow104NeSpecX (A : RustAlloc) : Spec FG48Ghost where
       A.pool ∗ stackAt fsp finishGrowStackX ∗
       (out ↦₆₄ tag) ∗ ((out + 8#64) ↦₆₄ p') ∗ ((out + 16#64) ↦₆₄ o2')
 
-private theorem finish_grow_104_ne_ok_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hfg : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr finishGrowName) ((finishGrowSpecX A).inImage img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr finishGrowName)
-      ((finishGrow104NeSpecX A).inImage img) := by
-  refine subroutine_ok_outcome_intro fun ⟨out, cap, ptr, new, bs, o0, o1, o2, fsp⟩ R s0 hpc hrun hpre hsp => ?_
-  simp only [Spec.inImage, finishGrow104NeSpecX, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, ⟨hx0, hx1, hx2, hx3, hx4, hx5, hfsp, hcap, hbs, hle, hpos, hbound⟩, hmem⟩
-  subst hfsp
-  let hcall : FinishGrowCall := ⟨out, cap, ptr, new, 8#64, 104#64, bs⟩
-  have hlay : LayoutOk (new.toNat * (104#64 : BitVec 64).toNat) (8#64 : BitVec 64).toNat := by
-    refine ⟨by change 0 < new.toNat * 104; omega, ⟨3, rfl⟩, ?_⟩
-    change new.toNat * 104 + 8 ≤ 2 ^ 63; omega
-  have hm104 : (104#64 : BitVec 64).toNat = 104 := rfl
-  have ha8 : (8#64 : BitVec 64).toNat = 8 := rfl
-  have hpre' : s0.mem ⊨ ((finishGrowSpecX A).inImage img).pre hcall s0 ∗ R := by
-    simp only [Spec.inImage, finishGrowSpecX, hcall, FinishGrowCall.oldBuf, hcap, ite_false,
-      memRegion_24_cells, sepExists_sepConj_left, sepExists_sepConj_right,
-      satisfies_sepExists]
-    refine ⟨o2, o1, o0, ?_⟩
-    rw [hm104, ha8, ← hbs, Nat.sub_self, memRegion_zero, sepConj_emp, sepConj_assoc,
-      satisfies_pure_sepConj, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hinv, ⟨hx0, hx1, hx2, hx3, hx4, hx5, False.elim, Nat.le_refl _, hle, hpos, by decide, hlay⟩,
-      by simpa only [sepConj_assoc] using hmem⟩
-  refine hfg.mono_outcome hcall R s0 hpc hrun hpre' hsp ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    simp only [Spec.inImage, finishGrowSpecX, finishGrow104NeSpecX, hcall, FinishGrowCall.oldBuf,
-      hcap, ite_false, sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-    rcases hq with ⟨tag, p', hq⟩
-    rw [hm104, ha8, ← hbs, Nat.sub_self, memRegion_zero, sepConj_emp] at hq
-    refine ⟨tag, p', BitVec.ofNat 64 (new.toNat * 104), ?_⟩
-    by_cases htag : tag = 1#64
-    · simp only [htag, ite_true] at hq ⊢
-      rw [show (out ↦₆₄ 1#64 ∗ (out + 8#64) ↦₆₄ p' ∗
-            (out + 16#64) ↦₆₄ BitVec.ofNat 64 (new.toNat * 104) ∗
-            (⌜p' = 8#64 ∧ sf.trace = s0.trace ++ [allocFailedEvent]⌝ ∗
-              A.live ptr bs.length 8 ∗ (ptr ↦ₛ bs)) ∗
-            A.pool ∗ stackAt s0.sp finishGrowStackX) ∗ R =
-          ⌜p' = 8#64 ∧ sf.trace = s0.trace ++ [allocFailedEvent]⌝ ∗
-            ((A.live ptr bs.length 8 ∗ (ptr ↦ₛ bs) ∗
-              A.pool ∗ stackAt s0.sp finishGrowStackX ∗
-              out ↦₆₄ 1#64 ∗ (out + 8#64) ↦₆₄ p' ∗
-              (out + 16#64) ↦₆₄ BitVec.ofNat 64 (new.toNat * 104)) ∗ R) by ac_rfl,
-        satisfies_pure_sepConj] at hq
-      rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨hq.1.2, ?_⟩
-      simpa only [sepConj_assoc] using hq.2
-    · simp only [htag, ite_false] at hq ⊢
-      rw [show (out ↦₆₄ tag ∗ (out + 8#64) ↦₆₄ p' ∗
-            (out + 16#64) ↦₆₄ BitVec.ofNat 64 (new.toNat * 104) ∗
-            (⌜tag = 0#64 ∧ p' ≠ 0#64 ∧ p'.toNat % 8 = 0 ∧ sf.trace = s0.trace⌝ ∗
-              A.live p' (new.toNat * 104) 8 ∗ (p' ↦ₛ bs) ∗
-              memRegion (p' + BitVec.ofNat 64 bs.length) (new.toNat * 104 - bs.length)) ∗
-            A.pool ∗ stackAt s0.sp finishGrowStackX) ∗ R =
-          ⌜tag = 0#64 ∧ p' ≠ 0#64 ∧ p'.toNat % 8 = 0 ∧ sf.trace = s0.trace⌝ ∗
-            ((A.live p' (new.toNat * 104) 8 ∗ (p' ↦ₛ bs) ∗
-              memRegion (p' + BitVec.ofNat 64 bs.length) (new.toNat * 104 - bs.length) ∗
-              A.pool ∗ stackAt s0.sp finishGrowStackX ∗
-              out ↦₆₄ tag ∗ (out + 8#64) ↦₆₄ p' ∗
-              (out + 16#64) ↦₆₄ BitVec.ofNat 64 (new.toNat * 104)) ∗ R) by ac_rfl,
-        satisfies_pure_sepConj] at hq
-      rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨⟨hq.1.1, hq.1.2.1, hq.1.2.2.2⟩, ?_⟩
-      simpa only [sepConj_assoc] using hq.2
-  · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hq⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨hoom, hq⟩))
-
 /-- `growOneSpec A` at `464 + finishGrowStackX`. -/
-def growOne104SpecX (A : RustAlloc) : Spec GrowGhost where
+@[expose] def growOne104SpecX (A : RustAlloc) : Spec GrowGhost where
   pre := fun (v, cap, ptr, bs) s =>
     ⌜s.readReg64 .x0 = v ∧ bs.length = cap.toNat * 104 ∧ ptr ≠ 0 ∧
       max (2 * cap.toNat) 4 * 104 + 8 ≤ 2 ^ 63⌝ ∗
@@ -640,98 +267,6 @@ def growOne104SpecX (A : RustAlloc) : Spec GrowGhost where
       memRegion (p' + BitVec.ofNat 64 bs.length) ((max (2 * cap.toNat) 4 - cap.toNat) * 104) ∗
       A.pool ∗ stackAt s0.sp (464 + finishGrowStackX)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- `<alloc::raw_vec::RawVec<Chain>>::grow_one` (`0x15cac`, 26 insns) meets
-`(growOne104SpecX A).inImage img` on `tripleRatchetProgAtExt img.base ext` under `AllocContractsX`. -/
-theorem grow_one_104_ok_ext_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr
-        "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one")
-      ((growOne104SpecX A).inImage img) := by
-  have hfg := finish_grow_ok_ext_x hA
-  unfold Spec.inImage growOne104SpecX
-  simp only [stackAt_grow_one_104_x, sepExists_sepConj_right]
-  have hfn := (ls_lemma% fnOff "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one")
-  have hpanic := panic_at_handle_error_ext (b := img.base) (ext := ext)
-    (name := "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one")
-    (k := num% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one"))
-  have hfg0 := finish_grow_104_zero_ok_x hfg
-  have hfg1 := finish_grow_104_ne_ok_x hfg
-  rw [Program.fnAddr_rel
-    (name := "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one")
-    hfn (ls_lemma% fnOff "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]") (k := 312) (by decide)] at hfg0 hfg1
-  code_fetches CryptoVerification.libsignalSessionCode
-    CryptoVerification.LibsignalSession.libsignalSessionBin img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one")) 104
-  wpp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨v, cap, ptr, bs⟩ := x
-  dsimp only at *
-  have hinv0 : ImgCallInv img s0 := ⟨by assumption, by assumption⟩
-  have hnew_eq := grow_104_new_cap_eq h
-  let new := BitVec.ofNat 64 (max (2 * cap.toNat) 4)
-  have hnew_toNat : new.toNat = max (2 * cap.toNat) 4 := by
-    dsimp [new]; rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  have hcap_le_new : cap.toNat ≤ new.toNat := by omega
-  have hnew_pos : 0 < new.toNat := by omega
-  have hnew_bound : new.toNat * 104 + 8 ≤ 2 ^ 63 := by omega
-  by_cases hcap0 : cap = 0#64
-  · subst hcap0
-    have hbs : bs = [] := List.eq_nil_of_length_eq_zero h_4
-    subst hbs
-    simp only [BitVec.ofNat_eq_ofNat, ite_true, emp_sepConj, pointsToBytes_nil,
-      List.length_nil, BitVec.add_zero, BitVec.toNat_zero, Nat.mul_zero, Nat.sub_zero]
-    apply SepWPp.of_sepWP (mid := entry + bv% (60))
-    apply SepWP.seq_inImage (mid := entry + bv% (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]" - ls_off% "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one")) hinv0
-    wp_steps
-    apply SepWP.done (by rfl) (by wp_norm_lhs)
-    rintro ⟨hF1, hsym1⟩
-    wp_call hfg0 (s0.sp - 56#64, 0#64, ptr, new, [], v_stk_1, v_stk_2, v_stk_3, s0.sp - 64#64)
-    apply SepWP.done (by first | rfl | assumption) (by first | rfl | assumption)
-    refine SepWPp.ite_elim_pure1 (fun htag htrace => ?_) (fun _ ⟨hw0, hp', htrace⟩ => ?_)
-    · subst htag
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one"))
-      wp_steps
-      apply SepWP.done (by rfl) (by exact hrun_sf)
-      refine SepWPp.panic (by exact hrun_sf) hpanic fun hm => ?_
-      exact allowPanic_panicked
-        (allocFailedIn_of_eq (htrace : (Rust.panicked _).trace = s0.trace ++ [allocFailedEvent])) hm
-    · subst hw0
-      rw [sepConj_assoc]
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      wp_done
-  · have hcap0' : cap ≠ 0 := hcap0
-    simp only [hcap0', ite_false, sepConj_assoc]
-    have hsub_mul : (max (2 * cap.toNat) 4 - cap.toNat) * 104 = new.toNat * 104 - bs.length := by
-      rw [Nat.sub_mul, hnew_toNat, h_4]
-    rw [hsub_mul]
-    apply SepWPp.of_sepWP (mid := entry + bv% (60))
-    apply SepWP.seq_inImage (mid := entry + bv% (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]" - ls_off% "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one")) hinv0
-    wp_steps
-    apply SepWP.done (by rfl) (by wp_norm_lhs)
-    rintro ⟨hF1, hsym1⟩
-    wp_call hfg1 (s0.sp - 56#64, cap, ptr, new, bs, v_stk_1, v_stk_2, v_stk_3, s0.sp - 64#64)
-    apply SepWP.done hpc_sf hrun_sf
-    refine SepWPp.ite_elim_pure2 (fun htag htrace => ?_) (fun _ ⟨hw0, hp', htrace⟩ => ?_)
-    · subst htag
-      rw [sepConj_assoc]
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one"))
-      wp_steps
-      apply SepWP.done (by rfl) (by exact hrun_sf)
-      refine SepWPp.panic (by exact hrun_sf) hpanic fun hm => ?_
-      rw [← sepConj_assoc]
-      exact allowPanic_panicked
-        (allocFailedIn_of_eq (htrace : (Rust.panicked _).trace = s0.trace ++ [allocFailedEvent])) hm
-    · subst hw0
-      rw [sepConj_assoc, sepConj_assoc]
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      wp_done
-
-/-! ## Relocatable `[LibsignalPlacement]` Contracts (Blocks `42` and `43`) -/
 
 private theorem finish_grow_48_zero_ok_gen {A : RustAlloc} {prog : Program} {entry : BitVec 64}
     (hfg : subroutine_ok prog entry (finishGrowSpec A)) :

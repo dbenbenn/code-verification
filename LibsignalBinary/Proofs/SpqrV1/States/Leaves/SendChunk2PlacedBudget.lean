@@ -9,16 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.TopPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk2
 import ProofLib.Hoare.LibcHooks
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
 
 /-!
 # Chunked Braid Send-Chunk Leaf Transitions 2 (Budget-Threaded Relocatable)
@@ -27,7 +34,7 @@ Budget-threaded `[LibsignalPlacement]` contracts for `<Ct1Received>::send_ek_chu
 and `<Ct1Sampled>::send_ct1_chunk` (Block `335`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeModKem
+import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeModKem
 import Symbolic.Proofs.Swarm.CREF.Prelude
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj -- proof-setup: allow-public-import
 
 /-!
 # Seed Spine Grammars over IKM Bases and DH Holes
@@ -21,7 +22,7 @@ relation `Peel` and the shape-injectivity theorems `eq_of_shape_eq_of_spineB` an
 `eq_of_shape_eq_of_spineR_peel`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,73 +46,7 @@ inductive SpineB (B : DY.Bytes → Prop) : DY.Bytes → Prop
   | ckStep1 {ck : DY.Bytes} : SpineB B ck → SpineB B (kdfCk ck).1
   | ckStep2 {ck : DY.Bytes} : SpineB B ck → SpineB B (kdfCk ck).2
 
-/-- Base injectivity at `(i, S, g)`: equal-shape `B` IKMs are equal. -/
-def BaseShapeInj (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (B : DY.Bytes → Prop) : Prop :=
-  ∀ m₁ m₂ : DY.Bytes, B m₁ → B m₂ → (gamma' i S g m₁).shape = (gamma' i S g m₂).shape → m₁ = m₂
-
 open ShapeModKem in
-/-- Two `SpineB` terms with equal shapes are equal under base injectivity `BaseShapeInj i S g B`. -/
-theorem eq_of_shape_eq_of_spineB {B : DY.Bytes → Prop}
-    {i : ExternInterpretation} {S : OpaqueSymbolSemantics} {g : Ghost} (hbase : BaseShapeInj i S g B)
-    {u v : DY.Bytes}
-    (hu : SpineB B u) (hv : SpineB B v)
-    (h : (gamma' i S g u).shape = (gamma' i S g v).shape) : u = v := by
-  induction hu generalizing v with
-  | hsRk hm₁ =>
-    cases hv with
-    | hsRk hm₂ =>
-      rw [hbase _ _ hm₁ hm₂ (shape_pqxdhKdf_rk_inj i S g h)]
-    | hsCk _ => exact False.elim (shape_pqxdhKdf_rk_ne_ck i S g _ _ h)
-    | rkStep1 _ _ => exact False.elim ((shape_pqxdhKdf_ne_kdfRk i S g _ _ _).1 h)
-    | rkStep2 _ _ => exact False.elim ((shape_pqxdhKdf_ne_kdfRk i S g _ _ _).2.1 h)
-    | ckStep1 _ => exact False.elim ((shape_pqxdhKdf_ne_kdfCk i S g _ _).1 h)
-    | ckStep2 _ => exact False.elim ((shape_pqxdhKdf_ne_kdfCk i S g _ _).2.1 h)
-  | hsCk hm₁ =>
-    cases hv with
-    | hsRk _ => exact False.elim (shape_pqxdhKdf_rk_ne_ck i S g _ _ h.symm)
-    | hsCk hm₂ =>
-      rw [hbase _ _ hm₁ hm₂ (shape_pqxdhKdf_ck_inj i S g h)]
-    | rkStep1 _ _ => exact False.elim ((shape_pqxdhKdf_ne_kdfRk i S g _ _ _).2.2.1 h)
-    | rkStep2 _ _ => exact False.elim ((shape_pqxdhKdf_ne_kdfRk i S g _ _ _).2.2.2 h)
-    | ckStep1 _ => exact False.elim ((shape_pqxdhKdf_ne_kdfCk i S g _ _).2.2.1 h)
-    | ckStep2 _ => exact False.elim ((shape_pqxdhKdf_ne_kdfCk i S g _ _).2.2.2 h)
-  | rkStep1 _ hd₁ ih =>
-    cases hv with
-    | hsRk _ => exact False.elim ((shape_pqxdhKdf_ne_kdfRk i S g _ _ _).1 h.symm)
-    | hsCk _ => exact False.elim ((shape_pqxdhKdf_ne_kdfRk i S g _ _ _).2.2.1 h.symm)
-    | rkStep1 hr₂ hd₂ =>
-      obtain ⟨hrk, hdh⟩ := shape_kdfRk_fst_inj i S g h
-      rw [ih hr₂ hrk, eq_of_shape_eq_of_shapeId hd₁ hd₂ hdh]
-    | rkStep2 _ _ => exact False.elim (shape_kdfRk_fst_ne_snd i S g _ _ _ _ h)
-    | ckStep1 _ => exact False.elim ((shape_kdfRk_ne_kdfCk i S g _ _ _).1 h)
-    | ckStep2 _ => exact False.elim ((shape_kdfRk_ne_kdfCk i S g _ _ _).2.1 h)
-  | rkStep2 _ hd₁ ih =>
-    cases hv with
-    | hsRk _ => exact False.elim ((shape_pqxdhKdf_ne_kdfRk i S g _ _ _).2.1 h.symm)
-    | hsCk _ => exact False.elim ((shape_pqxdhKdf_ne_kdfRk i S g _ _ _).2.2.2 h.symm)
-    | rkStep1 _ _ => exact False.elim (shape_kdfRk_fst_ne_snd i S g _ _ _ _ h.symm)
-    | rkStep2 hr₂ hd₂ =>
-      obtain ⟨hrk, hdh⟩ := shape_kdfRk_snd_inj i S g h
-      rw [ih hr₂ hrk, eq_of_shape_eq_of_shapeId hd₁ hd₂ hdh]
-    | ckStep1 _ => exact False.elim ((shape_kdfRk_ne_kdfCk i S g _ _ _).2.2.1 h)
-    | ckStep2 _ => exact False.elim ((shape_kdfRk_ne_kdfCk i S g _ _ _).2.2.2 h)
-  | ckStep1 _ ih =>
-    cases hv with
-    | hsRk _ => exact False.elim ((shape_pqxdhKdf_ne_kdfCk i S g _ _).1 h.symm)
-    | hsCk _ => exact False.elim ((shape_pqxdhKdf_ne_kdfCk i S g _ _).2.2.1 h.symm)
-    | rkStep1 _ _ => exact False.elim ((shape_kdfRk_ne_kdfCk i S g _ _ _).1 h.symm)
-    | rkStep2 _ _ => exact False.elim ((shape_kdfRk_ne_kdfCk i S g _ _ _).2.2.1 h.symm)
-    | ckStep1 hc₂ => rw [ih hc₂ (shape_kdfCk_fst_inj i S g h)]
-    | ckStep2 _ => exact False.elim (shape_kdfCk_fst_ne_snd i S g _ _ h)
-  | ckStep2 _ ih =>
-    cases hv with
-    | hsRk _ => exact False.elim ((shape_pqxdhKdf_ne_kdfCk i S g _ _).2.1 h.symm)
-    | hsCk _ => exact False.elim ((shape_pqxdhKdf_ne_kdfCk i S g _ _).2.2.2 h.symm)
-    | rkStep1 _ _ => exact False.elim ((shape_kdfRk_ne_kdfCk i S g _ _ _).2.1 h.symm)
-    | rkStep2 _ _ => exact False.elim ((shape_kdfRk_ne_kdfCk i S g _ _ _).2.2.2 h.symm)
-    | ckStep1 _ => exact False.elim (shape_kdfCk_fst_ne_snd i S g _ _ h.symm)
-    | ckStep2 hc₂ => rw [ih hc₂ (shape_kdfCk_snd_inj i S g h)]
-
 /-! ## Role-Parity Spine Grammar with DH Holes -/
 
 /-- Role- and `kdfRk`-depth-parity-indexed seed grammar with DH hole predicate `W`. -/
@@ -173,7 +108,7 @@ theorem PeelKdf.peel {u₀ v₀ m₁ m₂ : DY.Bytes} (h : PeelKdf u₀ v₀ m�
   h.elim .hsRk .hsCk
 
 /-- DH hole of the honest spine: a DH output with a `ShapeId` secret and normalized public input. -/
-def DhHole (d : DY.Bytes) : Prop :=
+@[expose] def DhHole (d : DY.Bytes) : Prop :=
   ∃ pk sk : DY.Bytes, d = dh (DY.X25519.normalizeX25519Key pk) sk ∧ ShapeId sk
 
 theorem dhHole_agree {pk sk : DY.Bytes} (hsk : ShapeId sk) :

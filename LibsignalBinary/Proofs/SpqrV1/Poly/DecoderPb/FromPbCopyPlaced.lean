@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbExit
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbExit -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbCopy
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbExitPlaced
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyDecoder>::from_pb`: Relocatable Success Copy and Deallocation
@@ -24,7 +25,7 @@ Relocatable `[LibsignalPlacement]` proof of the `SortedSet<Pt>` header `memcpy`,
 `Vec<u8>` deallocation (`+904..+1236`), and success exit (`+876 → s0.lr`) on Block `376`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.DecoderPb
 

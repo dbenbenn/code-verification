@@ -9,20 +9,22 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c1
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c1 -- proof-setup: allow-public-import
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c4
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2b
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC3b
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6b
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthHopInterface
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c4 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2b
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC3b -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6b
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c1 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Collisions
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # One-Key `Auth` Full Receive Couplings and Bad-Event Monotonicity
@@ -31,13 +33,13 @@ Send-latched simulation runner, full `AuthFullG3G3_5CoupledInv` receive coupling
 of `badAuthFgAnyLatchedMono` across one-key queries.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 open Classical SignalPqxdh SignalPqxdh.Security OracleSpec OracleComp MeasureTheory
 open scoped ENNReal BigOperators
 open Proofs.SignalPqxdh.Security.FgGapDh
 namespace Proofs.SignalPqxdh.Security
-def runAuthSendLatchedSim1Key (stage : AuthHybridStage) (S : Setup) (P : Primitives)
+@[expose] def runAuthSendLatchedSim1Key (stage : AuthHybridStage) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp (Bool × Bool × AuthSendLatchedState S) := do
   let secb ← $ᵗ Bool
   let initSt := AuthSendLatchedState.empty S secb

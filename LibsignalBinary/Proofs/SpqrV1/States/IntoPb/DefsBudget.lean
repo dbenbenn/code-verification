@@ -11,18 +11,20 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5Placed
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5Placed
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Specifications, Prologue, and Epilogue for `<States>::into_pb` (Block `334`)
@@ -33,7 +35,7 @@ pool-synchronized prologue (`+0 -> +44 -> +60`) and common epilogue (`+1544 -> r
 `<spqr::v1::chunked::states::States>::into_pb`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -43,16 +45,13 @@ set_option linter.unusedSimpArgs false
 
 namespace LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget
 
+open CryptoVerification (LibsignalPlacement lsmpl lsρ withLsCodeLoaded)
+
 open Arm64 Arm64.Obj ProofLib ProofLib.ProgramReflection
 open CryptoGames.LibsignalSession (ShaCompress)
-open CryptoVerification
-  (LibsignalCodeLoaded LibsignalPlacement LibsignalRoLoaded
-   extract_withLsCodeLoaded libsignalSessionCode lsmpl lsρ
-   subroutine_ok_withLsCodeLoaded_of_plain withLsCodeLoaded)
 open CryptoVerification.LibsignalPublicApi.StoreKit
   (LibsignalCodeRoLoaded withLsCodeRoLoaded)
 open CryptoVerification.LibsignalSpqrV1 (States V1State spqrAuthApi spqrPolyApi)
-open CryptoVerification.LibsignalTripleRatchet (extHookStack tripleRatchetProgAtExt)
 open CryptoVerification.SpqrV1.Alloc
   (spqrHandleErrorSym spqrRustAllocSym spqrRustNoAllocShimSym)
 open CryptoVerification.SpqrV1.Poly.DecoderPb (spqrRustDeallocSym)
@@ -67,7 +66,7 @@ open CryptoVerification.SpqrV1.States.IntoPb
    sp_sub_1520_add_1424 sp_sub_96_add_16 sp_sub_96_add_32 sp_sub_96_add_48
    sp_sub_96_add_64 sp_sub_96_add_80 sp_sub_96_sub_1424 sp_sub_96_sub_160
    stackAt_statesIntoPb_split_96 stackAt_statesIntoPb_split_fsp
-   stack_restore_statesIntoPb statesIntoPbJumpTableAt
+   stack_restore_statesIntoPb
    statesIntoPbJumpTablePlacedAt statesIntoPbName statesIntoPbSavedCells
    statesIntoPbStack statesIntoPbStackX)
 open CryptoVerification.SpqrV1.States.IntoPb.Placed (blkPC_334 blkPl_334)
@@ -84,152 +83,14 @@ export LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
 export LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
   (StatesIntoPbPlacedOkX)
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
   sp_sub_96_add_16 sp_sub_96_add_32 sp_sub_96_add_48
   sp_sub_96_add_64 sp_sub_96_add_80 sp_sub_96_sub_1424 sp_sub_96_sub_160
   sp_sub_1520_add_1424
 attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero noneCap_add_two_beq_zero
 
-/-! ## 1. Fixed-Offset & Relocatable Budget Specifications (`Block 334`) -/
-
-/-- Envelope-parametric fixed-offset specification of `<States>::into_pb` (`0x5ce20`). -/
-def statesIntoPbSpecOfEnv (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (F : ShaCompress) (b : BitVec 64)
-    (Env : StatesIntoPbGhost F → List AllocEvent → Prop) :
-    Spec (StatesIntoPbGhost F × M.σ) where
-  pre := fun (x, st) s =>
-    ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.stA ∧
-      b &&& 0xfff#64 = 0#64 ∧ FitsEnv M lim st (Env x)⌝ ∗
-      memRegion x.out optProtoInnerStateSize ∗
-      chunkedStatesAt A.repAlloc x.stA x.st ∗
-      statesIntoPbJumpTableAt b ∗
-      A.pool lim st s ∗ stackAt s.sp statesIntoPbStack
-  post := fun (x, st) s0 sf =>
-    ∃∗ evs : List AllocEvent,
-      ⌜sf.trace = s0.trace ∧ Env x evs⌝ ∗
-      optProtoInnerStateAt A.repAlloc x.out x.st.into_pb.innerState ∗
-      memRegion x.stA chunkedStatesSize ∗
-      statesIntoPbJumpTableAt b ∗
-      A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp statesIntoPbStack
-
-/-- Fixed-offset budget specification of `<States>::into_pb` (`0x5ce20`). -/
-abbrev statesIntoPbSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (F : ShaCompress) (b : BitVec 64) : Spec (StatesIntoPbGhost F × M.σ) :=
-  statesIntoPbSpecOfEnv M A lim F b StatesIntoPbEnv
-
-/-- Envelope-parametric per-variant fixed-offset specification of `<States>::into_pb`. -/
-def statesIntoPbVariantSpecOfEnv (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (F : ShaCompress) (b : BitVec 64)
-    (stateVal : States spqrPolyApi (spqrAuthApi F))
-    (Env : List AllocEvent → Prop) :
-    Spec ((BitVec 64 × BitVec 64) × M.σ) where
-  pre := fun (⟨out, stA⟩, st) s =>
-    ⌜s.readReg64 .x8 = out ∧ s.readReg64 .x0 = stA ∧
-      b &&& 0xfff#64 = 0#64 ∧ FitsEnv M lim st Env⌝ ∗
-      memRegion out optProtoInnerStateSize ∗
-      chunkedStatesAt A.repAlloc stA stateVal ∗
-      statesIntoPbJumpTableAt b ∗
-      A.pool lim st s ∗ stackAt s.sp statesIntoPbStack
-  post := fun (⟨out, stA⟩, st) s0 sf =>
-    ∃∗ evs : List AllocEvent,
-      ⌜sf.trace = s0.trace ∧ Env evs⌝ ∗
-      optProtoInnerStateAt A.repAlloc out stateVal.into_pb.innerState ∗
-      memRegion stA chunkedStatesSize ∗
-      statesIntoPbJumpTableAt b ∗
-      A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp statesIntoPbStack
-
-/-- Per-variant fixed-offset budget specification of `<States>::into_pb`. -/
-abbrev statesIntoPbVariantSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (F : ShaCompress) (b : BitVec 64)
-    (stateVal : States spqrPolyApi (spqrAuthApi F)) :
-    Spec ((BitVec 64 × BitVec 64) × M.σ) :=
-  statesIntoPbVariantSpecOfEnv M A lim F b stateVal
-    (SpqrBoundedEvs 64 (2 * (V1State.encodeRaw stateVal.into_pb).length + 1024))
-
-/-- Envelope-parametric extended-stack fixed-offset specification of `<States>::into_pb`. -/
-def statesIntoPbSpecXOfEnv (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (F : ShaCompress) (b : BitVec 64)
-    (Env : StatesIntoPbGhost F → List AllocEvent → Prop) :
-    Spec (StatesIntoPbGhost F × M.σ) where
-  pre := fun (x, st) s =>
-    ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.stA ∧
-      b &&& 0xfff#64 = 0#64 ∧ FitsEnv M lim st (Env x)⌝ ∗
-      memRegion x.out optProtoInnerStateSize ∗
-      chunkedStatesAt A.repAlloc x.stA x.st ∗
-      statesIntoPbJumpTableAt b ∗
-      A.pool lim st s ∗ stackAt s.sp statesIntoPbStackX
-  post := fun (x, st) s0 sf =>
-    ∃∗ evs : List AllocEvent,
-      ⌜sf.trace = s0.trace ∧ Env x evs⌝ ∗
-      optProtoInnerStateAt A.repAlloc x.out x.st.into_pb.innerState ∗
-      memRegion x.stA chunkedStatesSize ∗
-      statesIntoPbJumpTableAt b ∗
-      A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp statesIntoPbStackX
-
-/-- Extended-stack fixed-offset budget specification of `<States>::into_pb`. -/
-abbrev statesIntoPbSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (F : ShaCompress) (b : BitVec 64) : Spec (StatesIntoPbGhost F × M.σ) :=
-  statesIntoPbSpecXOfEnv M A lim F b StatesIntoPbEnv
-
-/-- `<States>::into_pb` meets `statesIntoPbSpec M A lim F b` on `tripleRatchetProgAtExt b ext`. -/
-def StatesIntoPbOkExt (b : BitVec 64) (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (F : ShaCompress)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr statesIntoPbName)
-    (statesIntoPbSpec M A lim F b)
-
-/-- `<States>::into_pb` meets `(statesIntoPbSpecX M A lim F img.base).inImage img` on
-    `tripleRatchetProgAtExt img.base ext`. -/
-def StatesIntoPbOkX (img : Obj.Image) (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (F : ShaCompress)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr statesIntoPbName)
-    ((statesIntoPbSpecX M A lim F img.base).inImage img)
-
-theorem statesIntoPbSpecXOfEnv_of_statesIntoPbSpecOfEnv
-    {P : Program} {addr b : BitVec 64}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {Env : StatesIntoPbGhost F → List AllocEvent → Prop}
-    (h : subroutine_ok P addr (statesIntoPbSpecOfEnv M A lim F b Env)) :
-    subroutine_ok P addr (statesIntoPbSpecXOfEnv M A lim F b Env) := by
-  refine subroutine_ok_outcome_intro fun (x, st) R s0 hpc hrun hpre hal => ?_
-  have hle : statesIntoPbStack ≤ statesIntoPbStackX := by decide
-  have hsplit : stackAt s0.sp statesIntoPbStackX =
-      memRegion (s0.sp - BitVec.ofNat 64 statesIntoPbStackX)
-        (statesIntoPbStackX - statesIntoPbStack) ∗
-        stackAt s0.sp statesIntoPbStack := by
-    have h1 := stackAt_split_bottom s0.sp statesIntoPbStack
-      (statesIntoPbStackX - statesIntoPbStack) (by decide)
-    rwa [Nat.add_sub_of_le hle] at h1
-  let R' : SepProp :=
-    memRegion (s0.sp - BitVec.ofNat 64 statesIntoPbStackX)
-      (statesIntoPbStackX - statesIntoPbStack) ∗ R
-  have hpre' : s0.mem ⊨ (statesIntoPbSpecOfEnv M A lim F b Env).pre (x, st) s0 ∗ R' := by
-    dsimp only [statesIntoPbSpecXOfEnv, statesIntoPbSpecOfEnv, R'] at hpre ⊢
-    rw [hsplit] at hpre
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpre
-  refine h.mono_outcome (x, st) R' s0 hpc hrun hpre' hal fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨_, hpan⟩ | ⟨_, _, hex⟩ | ⟨_, hoom⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [statesIntoPbSpecXOfEnv, statesIntoPbSpecOfEnv, R'] at hpost ⊢
-    rw [sepExists_sepConj_left, satisfies_sepExists] at hpost ⊢
-    rcases hpost with ⟨evs, hpost⟩
-    refine ⟨evs, ?_⟩
-    rw [hsplit]
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpost
-  · exact (not_satisfies_false_sepConj hpan).elim
-  · exact (not_satisfies_false_sepConj hex).elim
-  · exact (not_satisfies_false_sepConj hoom).elim
-
-theorem statesIntoPbSpecX_of_statesIntoPbSpec
-    {P : Program} {addr b : BitVec 64}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    (h : subroutine_ok P addr (statesIntoPbSpec M A lim F b)) :
-    subroutine_ok P addr (statesIntoPbSpecX M A lim F b) :=
-  statesIntoPbSpecXOfEnv_of_statesIntoPbSpecOfEnv h
+/-! ## 1. Relocatable Budget Specifications (`Block 334`) -/
 
 theorem statesIntoPbPlacedSpecXOfEnv_of_statesIntoPbPlacedSpecOfEnv [LibsignalPlacement]
     {P : Program} {addr : BitVec 64}
@@ -275,7 +136,7 @@ theorem statesIntoPbPlacedSpecX_of_statesIntoPbPlacedSpec [LibsignalPlacement]
 
 /-- Envelope-parametric `.rodata`-free extended-stack relocatable specification of `<States>::into_pb`
     (`Block 334`), where `statesIntoPbJumpTablePlacedAt` is discharged from `LibsignalRoLoaded`. -/
-def statesIntoPbPlacedRoFreeSpecXOfEnv (M : AllocCostModel)
+@[expose] def statesIntoPbPlacedRoFreeSpecXOfEnv (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : StatesIntoPbGhost F → List AllocEvent → Prop) :
     Spec (StatesIntoPbGhost F × M.σ) where
@@ -300,7 +161,7 @@ abbrev statesIntoPbPlacedRoFreeSpecX (M : AllocCostModel)
 
 /-- `<States>::into_pb` (`Block 334`) meets `withLsCodeLoaded lsmpl (statesIntoPbPlacedSpec M A lim F)`
     on `(blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext)`. -/
-def StatesIntoPbPlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def StatesIntoPbPlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
@@ -310,7 +171,7 @@ def StatesIntoPbPlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
 /-- `<States>::into_pb` (`Block 334`) meets
     `withLsCodeRoLoaded lsmpl (statesIntoPbPlacedRoFreeSpecX M A lim F)` on
     `(blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext)`. -/
-def StatesIntoPbPlacedRoFreeOkX [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def StatesIntoPbPlacedRoFreeOkX [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))

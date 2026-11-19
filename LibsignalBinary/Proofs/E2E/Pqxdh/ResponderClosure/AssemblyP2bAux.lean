@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP2a
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBob
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP2a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBob -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StoreEmpty
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `SessionState` Byte-Layout and Parameter Bridge Lemmas for Stage P2.5 & P2.6
@@ -23,7 +23,7 @@ import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StoreEmpty
 `<IdentityKey>::is_same_account` bridges for `AssemblyP2b`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Pqxdh.ResponderClosure
 
@@ -45,14 +45,6 @@ set_option linter.unusedSimpArgs false
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_stub% "memcpy")
-
-/-! ## 1. `SessionState` and `stageP2_sub5` / `stageP2_sub6` Framing Helpers -/
-
 open CryptoVerification.E2E.InMem
 open CryptoVerification.E2E.InMem.HashbrownModel
 open CryptoVerification.E2E.InMem.HashbrownBin
@@ -60,7 +52,7 @@ open CryptoVerification.E2E.Pqxdh.ResponderCore
 open CryptoVerification.LibsignalTripleRatchet.Getters
 
 /-- Middle 280 bytes (`+0x38..+0x150`) of `bobSession344Bv8`. -/
-def bobSession280MidBv8 (rootKeyBoxPtr baseKeyBoxPtr spqrCap spqrBufPtr
+@[expose] def bobSession280MidBv8 (rootKeyBoxPtr baseKeyBoxPtr spqrCap spqrBufPtr
     ratchetPubBoxPtr ratchetPrivBoxPtr chainKeyBoxPtr : BitVec 64)
     (pad_f4 : BitVec 32) (c0 c1 c2 c3 c4 d0 d1 d2 : BitVec 64) : List (BitVec 8) :=
   unpack64 rootKeyBoxPtr ++ unpack64 32#64 ++
@@ -83,7 +75,7 @@ theorem bobSession280MidBv8_length (p3 p4 c5 p5 p6 p7 p8 : BitVec 64)
   simp only [List.length_append, unpack64_length, unpack32_length]
 
 /-- 344-byte `SessionState` with `remoteRegId` at `+0x150` and `localRegId` at `+0x154`. -/
-def bobSession344WithRegIdsBv8 (localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr baseKeyBoxPtr
+@[expose] def bobSession344WithRegIdsBv8 (localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr baseKeyBoxPtr
     spqrCap spqrBufPtr ratchetPubBoxPtr ratchetPrivBoxPtr chainKeyBoxPtr : BitVec 64)
     (pad_f4 : BitVec 32) (c0 c1 c2 c3 c4 d0 d1 d2 : BitVec 64)
     (remoteRegId localRegId : BitVec 32) : List (BitVec 8) :=

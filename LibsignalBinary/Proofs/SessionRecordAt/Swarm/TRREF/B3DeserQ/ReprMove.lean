@@ -12,6 +12,7 @@ module
 public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Defs
 import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Fields
 import LibsignalBinary.Proofs.TripleRatchet.InImage.DecodeErrorPush.Push
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `Q`-Scope `SessionStructure` Relocation and Representation Bridges
@@ -22,7 +23,7 @@ and bridges a decoded `DeserializeScopeP_Q Q` `SessionStructure` to `sessionStat
 `deserOutRecordQA_entails_binCanonSession`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -12,20 +12,20 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrAPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid2Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2PlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid2PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrAPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid2Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2PlacedBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
@@ -41,6 +41,12 @@ import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub3
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub3PlacedBudget
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Defs
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub1V4
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub3AuxPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsB
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid2
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Placed Stage P2 Over-Path Substages P2.1–P2.3
@@ -51,7 +57,7 @@ budget-threaded `[LibsignalPlacement]` specifications for Substage P2.1 (`+0x086
 Substages P2.1–P2.3 (`+0x0868 → +0x0d5c` or Arms 1–2).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -211,7 +217,7 @@ abbrev P2OverSub1Env (spkBoxSize : Nat) : List AllocEvent → Prop :=
 example : P2OverSub1Env 64 (p2Sub1Events 64) := rfl
 
 /-- Over-path Arm 1 (`get_signed_pre_key` error and `SessionRecord` drop) event envelope. -/
-def P2OverSub1To3Arm1Env (spkBoxSize : Nat) (spkPollEnv : List AllocEvent → Prop) :
+@[expose] def P2OverSub1To3Arm1Env (spkBoxSize : Nat) (spkPollEnv : List AllocEvent → Prop) :
     List AllocEvent → Prop :=
   SeqEnv (P2Sub1Env spkBoxSize) (SeqEnv spkPollEnv FreeOnlyEvs)
 
@@ -219,7 +225,7 @@ example : P2OverSub1To3Arm1Env 64 (· = []) (p2Sub1Events 64) :=
   Or.inl rfl
 
 /-- Over-path Arm 2 (`get_kyber_pre_key` error and `SessionRecord` drop) event envelope. -/
-def P2OverSub1To3Arm2Env (spkBoxSize : Nat) (spkPollEnv : List AllocEvent → Prop)
+@[expose] def P2OverSub1To3Arm2Env (spkBoxSize : Nat) (spkPollEnv : List AllocEvent → Prop)
     (kpkBoxSize : Nat) (kpkPollEnv : List AllocEvent → Prop) :
     List AllocEvent → Prop :=
   SeqEnv (P2Sub1Env spkBoxSize)
@@ -232,7 +238,7 @@ example : P2OverSub1To3Arm2Env 64 (· = []) 64 (· = []) (p2Sub1Events 64) :=
   Or.inl rfl
 
 /-- Over-path normal `+0x0d5c` exit event envelope across Substages P2.1–P2.3. -/
-def P2OverSub1To3OkEnv (spkBoxSize : Nat) (spkPollEnv : List AllocEvent → Prop)
+@[expose] def P2OverSub1To3OkEnv (spkBoxSize : Nat) (spkPollEnv : List AllocEvent → Prop)
     (kpkBoxSize : Nat) (kpkPollEnv : List AllocEvent → Prop) :
     List AllocEvent → Prop :=
   SeqEnv (P2Sub1Env spkBoxSize)
@@ -249,7 +255,7 @@ example : P2OverSub1To3OkEnv 64 (· = []) 64 (· = []) (p2Sub1Events 64) :=
   Or.inl rfl
 
 /-- Combined Over-path Substages P2.1–P2.3 event envelope covering Arms 1–2 and `+0x0d5c`. -/
-def P2OverSub1To3Env (spkBoxSize : Nat) (spkPollEnv : List AllocEvent → Prop)
+@[expose] def P2OverSub1To3Env (spkBoxSize : Nat) (spkPollEnv : List AllocEvent → Prop)
     (kpkBoxSize : Nat) (kpkPollEnv : List AllocEvent → Prop) :
     List AllocEvent → Prop :=
   fun evs =>

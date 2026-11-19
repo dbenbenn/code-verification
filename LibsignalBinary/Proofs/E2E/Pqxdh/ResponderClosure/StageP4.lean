@@ -25,7 +25,7 @@ Defines isolated Stage P4 store-persistence callee contracts (`save_identity`,
 with sub-word merge/split lemmas for `(opkId?, kyberPreKeyId?, signedPreKeyId)`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Pqxdh.ResponderClosure
 
@@ -66,24 +66,6 @@ structure StageP4CalleeContracts (b : BitVec 64) where
   sessionStateDropInPlaceAddr : BitVec 64 := b + 0x70dc0#64
 
 /-! ## 2. Sub-Word Merge/Split Helpers for `(opkId?, kyberPreKeyId?, signedPreKeyId)` -/
-
-theorem pointsTo32_pair_coro_298 (coroPtr : BitVec 64) (lo hi : BitVec 32) :
-    (((coroPtr + 0x298#64) ↦₃₂ lo) ∗ ((coroPtr + 0x29c#64) ↦₃₂ hi)) =
-      ((coroPtr + 0x298#64) ↦₆₄ (hi ++ lo)) := by
-  have h : coroPtr + 0x29c#64 = (coroPtr + 0x298#64) + 4#64 := by bv_omega
-  rw [h, pointsTo32_pair]
-
-theorem pointsTo32_pair_coro_2ac (coroPtr : BitVec 64) (lo hi : BitVec 32) :
-    ((coroPtr + 0x2ac#64) ↦₆₄ (hi ++ lo)) =
-      (((coroPtr + 0x2ac#64) ↦₃₂ lo) ∗ ((coroPtr + 0x2b0#64) ↦₃₂ hi)) := by
-  have h : coroPtr + 0x2b0#64 = (coroPtr + 0x2ac#64) + 4#64 := by bv_omega
-  rw [h, ← pointsTo32_pair]
-
-theorem pointsTo32_pair_coro_2b4 (coroPtr : BitVec 64) (lo hi : BitVec 32) :
-    ((coroPtr + 0x2b4#64) ↦₆₄ (hi ++ lo)) =
-      (((coroPtr + 0x2b4#64) ↦₃₂ lo) ∗ ((coroPtr + 0x2b8#64) ↦₃₂ hi)) := by
-  have h : coroPtr + 0x2b8#64 = (coroPtr + 0x2b4#64) + 4#64 := by bv_omega
-  rw [h, ← pointsTo32_pair]
 
 @[local simp, local arm64_norm, local wp_norm]
 theorem extractLsb_0_32_append_32 (hi lo : BitVec 32) :

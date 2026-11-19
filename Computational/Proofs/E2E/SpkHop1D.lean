@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SpkHop1C
+public import Computational.Proofs.E2E.SpkHop1C -- proof-setup: allow-public-import
 import Computational.Proofs.GameHop.Advantage
 
 /-!
@@ -19,7 +19,7 @@ Defines the send-step relation `StSendStep`, the terminal hybrid invariants `Hop
 `Hop2LastActiveAt`, and the absorbing condition `Hop2Absorbed` for `runHop2`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -151,7 +151,7 @@ theorem sessionSchemeU_send_props {ℓ : ℕ} (P : Params Bytes PQC)
 
 /-- Relation between two SM game states where each party's ghost state is either unchanged or
 advanced by a single `(sessionSchemeU P ℓ).send`. -/
-def StSendStep {ℓ : ℕ} (P : Params Bytes PQC)
+@[expose] def StSendStep {ℓ : ℕ} (P : Params Bytes PQC)
     (s₁ s₂ : SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes) : Prop :=
   ∀ Q, s₂.st Q = s₁.st Q ∨ ∃ m r, s₂.st Q = ((sessionSchemeU P ℓ).send (s₁.st Q) m r).1
 
@@ -676,7 +676,7 @@ theorem evalDist_runHop2_eq_zero_of_done {ℓ : ℕ}
 
 /-! ## Terminal hybrid active invariant and bound -/
 
-def hop2HybLast (r : Ratchet.RootKey) (c_chall : BitVec 256) : Hop2Hyb Pt :=
+@[expose] def hop2HybLast (r : Ratchet.RootKey) (c_chall : BitVec 256) : Hop2Hyb Pt :=
   ⟨spkSwapHybridCount - 1, (r, c_chall), fun I => evalQuery (Input := Pt) (Tag := BitVec 256) I⟩
 
 omit [DecidableEq Pt] [Zero Pt] [SampleableType Pt] in
@@ -741,7 +741,7 @@ structure Hop2LastActiveAt {ℓ : ℕ} (P : Params Bytes PQC)
     Q ≠ Dh.dh (st.2.coins .A) (Dh.dh s Dh.base)
   bob_state : Hop2BobState Dh k_A st.2
 
-def Hop2LastInv {ℓ : ℕ} (P : Params Bytes PQC)
+@[expose] def Hop2LastInv {ℓ : ℕ} (P : Params Bytes PQC)
     (Dh : DHFun (BitVec 256) Pt) (s : BitVec 256)
     (st : Hop2State Pt ℓ) (tbl : List (Pt × BitVec 256)) : Prop :=
   Hop2LastDone P s st ∨ ∃ k_A, Hop2LastActiveAt P Dh s k_A st tbl
@@ -1274,7 +1274,7 @@ theorem evalDist_runHop2_eq_of_win_true {ℓ : ℕ}
         ih r.1 (r.2, st.2) tbl (corrR_support_win_true decT encT y_corr st.1 hwin r hr)
 
 /-- Absorbing state condition under which `runHop2` preserves `st.2.bad` with probability `1`. -/
-def Hop2Absorbed {ℓ : ℕ} (st : Hop2State Pt ℓ) : Prop :=
+@[expose] def Hop2Absorbed {ℓ : ℕ} (st : Hop2State Pt ℓ) : Prop :=
   st.2.bad = true ∨ st.1.win = true ∨
     ((st.1.st .A).party = .A ∧ (st.1.st .B).party = .B ∧
       ∀ e ∈ (st.1.st .A).chainEpochs, 0 < e)

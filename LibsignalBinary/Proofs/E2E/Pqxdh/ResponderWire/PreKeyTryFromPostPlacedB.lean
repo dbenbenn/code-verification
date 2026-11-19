@@ -9,12 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedA
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOk
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBoxes
 import ProofLib.SepLogic.WPFrozen
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.Common
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysPlacedSym
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
 
 /-!
 # Relocatable `<PreKeySignalMessage as TryFrom<&[u8]>>::try_from` (Block `111`): Post-Loop Part B
@@ -23,7 +26,7 @@ Proves post-loop Segments 2, 3, 4-error, and 4-ok packing (`+1668 .. +2648` → 
 Block `111` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -55,12 +58,12 @@ attribute [local arm64_norm, local wp_norm]
   append32_truncate zeroExtend32_truncate8_eq extractLsb0_8_append56
   zeroExtend32_lsr4_truncate8
 
-def PreKeyIntoBoxOk [LibsignalPlacement] (Inv : Memory → Prop) (A : RustAlloc)
+@[expose] def PreKeyIntoBoxOk [LibsignalPlacement] (Inv : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) : Prop :=
   subroutine_ok (preKeyPlacedProg H) (lsmpl.base 56)
     (withPreKeyInv Inv (intoBoxedSliceSpec A))
 
-def PreKeySigTryFromOk [LibsignalPlacement] (Inv : Memory → Prop) (A : RustAlloc)
+@[expose] def PreKeySigTryFromOk [LibsignalPlacement] (Inv : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) : Prop :=
   subroutine_ok (preKeyPlacedProg H) (lsmpl.base 85)
     (withPreKeyInv Inv (tryFromPlacedSpec A))

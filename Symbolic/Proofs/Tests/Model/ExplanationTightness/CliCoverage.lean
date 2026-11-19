@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
-public import Symbolic.Proofs.Swarm.UA.ClassicalBridge
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.UA.ClassicalBridge -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -42,7 +42,7 @@ compromise predicates and making `HNDLQuery` follow from `ForwardSecrecyQuery`
 (`asmSecure_iff_without_hndl`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

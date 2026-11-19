@@ -10,13 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbLoop
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbLoop -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Loop Proofs for `<PolyDecoder>::into_pb`
@@ -25,7 +26,7 @@ Threads `VmPreserved` and `AllocCallPreserved` through the inner `Pt` serializat
 (`+204..+300`) and outer-iteration finish (`+300 → +148 / +328`) on Block `377`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

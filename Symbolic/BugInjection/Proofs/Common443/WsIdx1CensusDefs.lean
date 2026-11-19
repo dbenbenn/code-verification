@@ -71,11 +71,6 @@ theorem matchedPrefix40_of_split2 {r : Records} {S : Sem} {g : Ghost} {ms' : Lis
     (hmp : MatchedPrefix compI0 r S who g ms' ((wsIdx1Trace.take 35 ++ b1) ++ b2)) :
     MatchedPrefix40 r S g ms' :=
   ⟨hmp.1, hmp.2.1, trivial, trivial, trivial, ⟨b1, b2, hcs1, hcs2, hmp⟩⟩
-theorem matchedPrefix40_of_split {r : Records} {S : Sem} {g : Ghost} {ms' : List Move} {b1 : List MachineEvent}
-    (hcs1 : DY.Libsignal.Composed.Refinement.Cli.CoinSplit (wsIdx1Trace.drop 35 |>.take 3) b1)
-    (hmp : MatchedPrefix compI0 r S who g ms' ((wsIdx1Trace.take 35 ++ b1) ++ (wsIdx1Trace.drop 38 |>.take 2))) :
-    MatchedPrefix40 r S g ms' :=
-  matchedPrefix40_of_split2 hcs1 coinSplit_seg38_self hmp
 theorem matchedPrefix81_of_split3 {r : Records} {S : Sem} {g : Ghost} {ms' : List Move} {b1 b2 b5 : List MachineEvent}
     (hcs1 : DY.Libsignal.Composed.Refinement.Cli.CoinSplit (wsIdx1Trace.drop 35 |>.take 3) b1)
     (hcs2 : DY.Libsignal.Composed.Refinement.Cli.CoinSplit seg38SplitSrc b2)
@@ -85,14 +80,6 @@ theorem matchedPrefix81_of_split3 {r : Records} {S : Sem} {g : Ghost} {ms' : Lis
         (wsIdx1Trace.drop 40 |>.take 3)) ++ (wsIdx1Trace.drop 43 |>.take 35)) ++ b5)) :
     MatchedPrefix81 r S g ms' :=
   ⟨hmp.1, hmp.2.1, trivial, trivial, trivial, ⟨b1, b2, b5, hcs1, hcs2, hcs5, hmp⟩⟩
-theorem matchedPrefix81_of_split {r : Records} {S : Sem} {g : Ghost} {ms' : List Move} {b1 b5 : List MachineEvent}
-    (hcs1 : DY.Libsignal.Composed.Refinement.Cli.CoinSplit (wsIdx1Trace.drop 35 |>.take 3) b1)
-    (hcs5 : DY.Libsignal.Composed.Refinement.Cli.CoinSplit (wsIdx1Trace.drop 78 |>.take 3) b5)
-    (hmp : MatchedPrefix compI0 r S who g ms'
-      (((((wsIdx1Trace.take 35 ++ b1) ++ (wsIdx1Trace.drop 38 |>.take 2)) ++
-        (wsIdx1Trace.drop 40 |>.take 3)) ++ (wsIdx1Trace.drop 43 |>.take 35)) ++ b5)) :
-    MatchedPrefix81 r S g ms' :=
-  matchedPrefix81_of_split3 hcs1 coinSplit_seg38_self hcs5 hmp
 structure WS40Idx1RunInv (r : Records) (S : Sem) (g : Ghost) (ms' : List Move)
     (tr₁ tr₂ tr₃ : ExecTrace) (cl₁ cl₂ : Nat) : Prop where
   mp : MatchedPrefix40 r S g ms'
@@ -115,10 +102,10 @@ structure WS40Idx1RunInv (r : Records) (S : Sem) (g : Ghost) (ms' : List Move)
   hek₁ : gamma compI0 S g (DY.DiffieHellman.dhPk (randTerm tr₁.length 32)) = ek1PubKey
   hdhs₁ : FreshSafeTerm compI0 S g (randTerm (tr₁.length + 2) 32)
   hm₁ : FreshSafeTerm compI0 S g (randTerm tr₂.length 32)
-  hm₁_len : (g.σ tr₂.length 32).length ≠ 64
+  hm₁_len : (g.σ tr₂.length 32).length < 48
   hcoins₁ : FreshSafeTerm compI0 S g (randTerm (tr₂.length + 1) cl₁)
   hm₂ : FreshSafeTerm compI0 S g (randTerm tr₃.length 32)
-  hm₂_len : (g.σ tr₃.length 32).length ≠ 64
+  hm₂_len : (g.σ tr₃.length 32).length < 48
   hcoins₂ : FreshSafeTerm compI0 S g (randTerm (tr₃.length + 1) cl₂)
   hwire₂ :
     let o₁ := iniAliceOut tr₁ (setupSecret r 0) (setupPublic r 2) (setupPublic r 4) (setupPublic r 6) none
@@ -164,10 +151,10 @@ structure WS81Idx1RunInv (r : Records) (S : Sem) (g : Ghost) (ms' : List Move)
   hek₁ : gamma compI0 S g (DY.DiffieHellman.dhPk (randTerm tr₁.length 32)) = ek1PubKey
   hdhs₁ : FreshSafeTerm compI0 S g (randTerm (tr₁.length + 2) 32)
   hm₁ : FreshSafeTerm compI0 S g (randTerm tr₂.length 32)
-  hm₁_len : (g.σ tr₂.length 32).length ≠ 64
+  hm₁_len : (g.σ tr₂.length 32).length < 48
   hcoins₁ : FreshSafeTerm compI0 S g (randTerm (tr₂.length + 1) cl₁)
   hm₂ : FreshSafeTerm compI0 S g (randTerm tr₃.length 32)
-  hm₂_len : (g.σ tr₃.length 32).length ≠ 64
+  hm₂_len : (g.σ tr₃.length 32).length < 48
   hcoins₂ : FreshSafeTerm compI0 S g (randTerm (tr₃.length + 1) cl₂)
   hek₂_safe : FreshSafeTerm compI0 S g (randTerm tr₄.length 32)
   hek₂ : gamma compI0 S g (DY.DiffieHellman.dhPk (randTerm tr₄.length 32)) = ek2PubKey
@@ -191,6 +178,4 @@ structure WS81Idx1RunInv (r : Records) (S : Sem) (g : Ghost) (ms' : List Move)
       s = (DY.Spqr.spqrSend stA₁'.spqr (randTerm (tr₃.length + 1) cl₂)).2.1 ∨
       s = DY.Spqr.spqrChainKey o₂.keys.pqr DY.Libsignal.TripleRatchet.spqrA2B (DY.Spqr.spqrIdx 1)
   hpref_safe : ∀ u ∈ prefixTerms r (runTraceMoves r ms') (runVis r ms'), FreshSafeTerm compI0 S g u
-def NoBscAt40 : Prop := ∀ (r : Records) (S : Sem) (g : Ghost) (ms : List Move) (p : PreKeyFields), compFitsPinned setup compI0 r → ExplainsMoves compI0 r S who ok g ms (wsIdx1Trace.take 40) → parsePreKeyWire (recvAt 40) = some p → ∃ g' ms', ExplainsMoves compI0 r S who ok g' ms' (wsIdx1Trace.take 40) ∧ ¬ ReadCollision compI0 r S g' ms' (wsIdx1Trace.take 40) ∧ ∃ x ∈ preKeyRepresentations compI0 r S g' ms' (recvAt 40), ¬ BobStartCollision compI0 r S g' ms' p x
-def NoBscAt81 : Prop := ∀ (r : Records) (S : Sem) (g : Ghost) (ms : List Move) (p : PreKeyFields), compFitsPinned setup compI0 r → ExplainsMoves compI0 r S who ok g ms (wsIdx1Trace.take 81) → parsePreKeyWire (recvAt 81) = some p → ∃ g' ms', ExplainsMoves compI0 r S who ok g' ms' (wsIdx1Trace.take 81) ∧ ¬ ReadCollision compI0 r S g' ms' (wsIdx1Trace.take 81) ∧ ∃ x ∈ preKeyRepresentations compI0 r S g' ms' (recvAt 81), ¬ BobStartCollision compI0 r S g' ms' p x
 end Symbolic.BugInjection.Proofs.Common443.WsIdx1CensusDefs

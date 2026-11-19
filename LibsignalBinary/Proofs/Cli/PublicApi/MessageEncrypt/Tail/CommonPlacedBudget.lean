@@ -9,12 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CommonPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.Common
-public import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CommonPlaced
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.Common
+import LibsignalBinary.Proofs.Common.SharedHelpers
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Relocatable Tail Definitions and `SegExitPlaced` Bridges
@@ -23,7 +26,7 @@ Re-exports `EncTailVPlaced` on Block `464` (`lsProg_464 H`) under `RustCliAllocB
 `[LibsignalPlacement]` and provides `SepWP`-to-`SegExitPlaced` / `SegExitBudget` bridge lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -129,33 +132,6 @@ theorem segExit_placed_of_sepWP [LibsignalPlacement] {M : AllocCostModel}
   obtain ⟨sf, hsteps2, hout⟩ :=
     hnext s1 P_f hsteps1 hpc1 hrun1 hmf1 hpost1 (hsteps1.codeLoaded hL)
   exact ⟨sf, hsteps1.trans hsteps2, hout⟩
-
-theorem segExitBudget_of_sepWP_ret [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {kit : SessionStoreSpec A.repAlloc 0#64}
-    {kitEnv : LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.SessionStoreBudgetEnv kit}
-    {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A.repAlloc 0#64}
-    {ikitEnv : LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.IdentityStoreBudgetEnv ikit}
-    {ist0 : ikit.IdState}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {C : Crypto} {ctl : BitVec 64} {parse : UuidParser} {S : SpqrModel} {sendEnv : SpqrSendBudgetEnv}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {H : LibsignalHooks}
-    {x : WithStoresEncGhost} {st_init : M.σ} {P R : SepProp} {s0 s : State}
-    (hm : s.mem ⊨ P ∗ R)
-    (hwp : SepWP (lsProg_464 H) (s0.readReg64 .lr) s P
-      (fun sf P_f =>
-        (sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf) ∧
-        (P_f ⊢ (withStoresEncBudgetSpecV A lim kit kitEnv st0 ikit ikitEnv ist0 Scope
-          C ctl parse S sendEnv encRecord).post (x, st_init) s0 sf))) :
-    SegExitBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv encRecord H
-      x st_init R s0 s (fun _ => False) := by
-  intro hL
-  obtain ⟨sf, hsteps, ⟨hpcf, hrunf, P_f, hmf, ⟨hspf, hcsf⟩, hent⟩ | ⟨_, _hoom⟩⟩ := hwp.elim hm hL
-  rotate_left; · exact (not_satisfies_false_sepConj _hoom).elim
-  refine ⟨sf, hsteps, Or.inr (Or.inl ⟨⟨hpcf, hspf, hrunf⟩, ⟨hspf, hcsf⟩, ?_⟩)⟩
-  exact Satisfies.mono (sepConj_mono_left hent) hmf
 
 theorem segExitBudget_of_sepWP [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}

@@ -9,16 +9,20 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SessionPrimsPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BobKyberNonePure
-public import Symbolic.Proofs.SR.ModelW
-public import Symbolic.Proofs.Swarm.CREF.Initiate.Is1aRunPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SessionPrimsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BobKyberNonePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SR.ModelW -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.Initiate.Is1aRunPure
 import Symbolic.Proofs.RngG.R3ModelInv
 import Symbolic.Proofs.Swarm.CREF.Grow.PqInit
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj
 import Symbolic.Proofs.Swarm.TRREF.EncodeRecordPqInj
 import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.TopPure
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.SHARED.SpqrBytesDefs
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
+import Symbolic.Proofs.Refinement.RecordBytesBridge
 
 /-!
 # `SpqrOooBounded` Preservation Across Session Decrypt
@@ -28,7 +32,7 @@ records, and proves preservation of `SpqrOooBounded` and PQ ratchet state length
 `tryDecryptWithStateW` and `spqrInitOf`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -55,17 +59,9 @@ open Swarm.Phase0WholeFunctionBridge
 @[scoped simp] theorem sessionToRecordRecPending_pqRatchetState (s : Session HwBytes) :
     (sessionToRecordRecPending s).current.pqRatchetState = s.state.pqRatchetState := rfl
 
-theorem recordBytes_pqRatchetState_inj {r₁ r₂ : RecordRec}
-    (h : recordBytes r₁ = recordBytes r₂) :
-    r₁.current.pqRatchetState = r₂.current.pqRatchetState := by
-  have hn := TR.recordBytes_injective h
-  exact congrArg (fun r => r.current.pqRatchetState) hn
-
 @[scoped simp] theorem pqStateOf_recordBytes (r : RecordRec) :
     pqStateOf (recordBytes r) = r.current.pqRatchetState := by
-  have hex : ∃ r' : RecordRec, recordBytes r = recordBytes r' := ⟨r, rfl⟩
-  simp only [pqStateOf, hex, ↓reduceDIte]
-  exact recordBytes_pqRatchetState_inj (Classical.choose_spec hex).symm
+  rw [pqStateOf, DY.Libsignal.Rust.decodeRecordBytes?_recordBytes]; rfl
 
 private theorem flatten_map_lenField_length_ge {α : Type} (tag : Nat) (f : α → HwBytes)
     (l : List α) (x : α) (hx : x ∈ l) :

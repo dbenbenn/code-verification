@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoder
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<Ct2Sampled>::recv_next_epoch` (Relocatable, Block `355`)
@@ -22,7 +23,7 @@ Relocatable `[LibsignalPlacement]` proofs on `lsProg_355 (Rust.withPanics ext)` 
 `ct2_sampled_recv_next_epoch_placed_ok_x`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

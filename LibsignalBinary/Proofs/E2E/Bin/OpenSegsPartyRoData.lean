@@ -10,8 +10,7 @@ limitations under the License.
 module
 
 import all Init.Data.String.Defs
-public import LibsignalBinary.Proofs.E2E.Bin.SpecsCommon
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Bin.SpecsCommon -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Bin.CalleeProofs
 import LibsignalBinary.Proofs.E2E.Bin.OpenSegs
 import LibsignalBinary.Proofs.E2E.StoreNew.RoData
@@ -22,7 +21,7 @@ import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Bin
 
@@ -30,7 +29,7 @@ set_option warningAsError false
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
-open Arm64 ProofLib ProofLib.ObjectLoad CryptoGames
+open Arm64 ProofLib CryptoGames
 open CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
@@ -49,59 +48,6 @@ attribute [-arm64_norm, -wp_norm]
   ProofLib.reduceStateReadReg
 
 /-! ## `.rodata` and `.data.rel.ro` Facts for `ALICE` and `BOB` -/
-
-section PartyRoDataFacts
-open ProofLib.ObjectLoad.RoDataFactsAux ProofLib.ProgramReflection
-set_option maxRecDepth 2000000
-
-end PartyRoDataFacts
-
-theorem loads_reloc_word_holdsBytes_inRo {li : Obj.LinkedImage} {img : Obj.Image} {s : State}
-    (himg : Obj.Loads li img) (hF : img.FrozenLoaded s) {secOff target : Nat}
-    (hro : inLiRoData li secOff 8 = true)
-    (hoff : li.dataOff ≤ secOff)
-    (hlen : secOff - li.dataOff ≤ li.data.length)
-    (hany : li.relocs.any (fun r =>
-      decide (r.off = secOff - li.dataOff ∧ r.width = 8 ∧ r.target = target)) = true)
-    (hall : li.relocs.all (fun r =>
-      decide ((r.off = secOff - li.dataOff ∧ r.width = 8 ∧ r.target = target) ∨
-        r.off + r.width ≤ secOff - li.dataOff ∨ secOff - li.dataOff + 8 ≤ r.off)) = true) :
-    Obj.HoldsBytes s.mem (img.base + BitVec.ofNat 64 secOff)
-      (Obj.bytesLE 8 (img.base + BitVec.ofNat 64 target)) (fun _ => .ro) := by
-  obtain ⟨data, hfold, -, hwf, -, himg_eq⟩ := load_eq_ok himg
-  have hda : img.dataAddr = img.base + BitVec.ofNat 64 li.dataOff := congrArg Obj.Image.dataAddr himg_eq
-  have hdata_eq : img.data = data := congrArg Obj.Image.data himg_eq
-  have hro_map : img.roData = li.roData.map (fun (o, m) => (img.base + BitVec.ofNat 64 o, m)) :=
-    congrArg Obj.Image.roData himg_eq
-  simp only [inLiRoData, List.any_eq_true, decide_eq_true_eq] at hro
-  obtain ⟨⟨rOff, rLen⟩, hr_mem, hr_le1, hr_le2, hr_lt⟩ := hro
-  intro j hj
-  have hj8 : j < 8 := hj
-  have hlen_app : secOff - li.dataOff ≤ (li.data ++ List.replicate li.bss 0).length := by
-    rw [List.length_append]; omega
-  have hout := StoreNew.foldlM_dataReloc_getElem?_reloc li.relocs _ data hfold hlen_app hany hall hj8
-  rw [← hdata_eq, List.getElem?_eq_getElem hj] at hout
-  have hi : secOff - li.dataOff + j < img.data.length := (List.getElem?_eq_some_iff.mp hout).1
-  have hget : img.data[secOff - li.dataOff + j] =
-      (Obj.bytesLE 8 (img.base + BitVec.ofNat 64 target))[j] :=
-    Option.some.inj ((List.getElem?_eq_getElem hi).symm.trans hout)
-  have ha_eq : img.dataAddr + BitVec.ofNat 64 (secOff - li.dataOff + j) =
-      img.base + BitVec.ofNat 64 secOff + BitVec.ofNat 64 j := by
-    rw [hda, BitVec.add_assoc, BitVec.add_assoc, ← BitVec.ofNat_add, ← BitVec.ofNat_add]
-    congr 2; omega
-  have ha_eq' : img.dataAddr + BitVec.ofNat 64 (secOff - li.dataOff + j) =
-      img.base + BitVec.ofNat 64 (secOff + j) := by
-    rw [ha_eq, BitVec.add_assoc, ← BitVec.ofNat_add]
-  have hisRo : img.isRoData (img.dataAddr + BitVec.ofNat 64 (secOff - li.dataOff + j)) = true := by
-    simp only [Obj.Image.isRoData, hro_map, List.any_map, List.any_eq_true]
-    refine ⟨(rOff, rLen), hr_mem, ?_⟩
-    simp only [Function.comp_apply, decide_eq_true_eq, ha_eq']
-    rw [bv_add_sub_add_of_le img.base (by omega) (by omega),
-      BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-    omega
-  obtain ⟨hread, hperm'⟩ := hF.roData (secOff - li.dataOff + j) hi hisRo
-  rw [← ha_eq, hread, hget]
-  exact ⟨rfl, hperm'⟩
 
 theorem pointsToBytesRO_partyTail_eq (p : BitVec 64) (r : Role) :
     ((p + 8#64) ↦ᵣ (leBytes 8 36 ++ r.idPrivBytes ++ r.idPubWire)) =
@@ -122,7 +68,7 @@ theorem bobNameBytes_length : bobNameBytes.length = 36 := by rfl_kernel
 
 /-! ## Read-Only `memcpy`, `PublicKey::try_from`, and `IdentityKey::decode` -/
 
-def openMemcpyRoSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def openMemcpyRoSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧
      s0.readReg64 .x1 = src ∧
@@ -168,7 +114,7 @@ theorem pointsToBytesRO_of_unpack64_32 {bs : List (BitVec 8)} {w0 w1 w2 w3 : Bit
       ← pointsTo64RO_eq_pointsToBytesRO]
   simp only [BitVec.add_assoc, BitVec.reduceAdd]
 
-def pkTryFromLen33RoSpec : Spec (BitVec 64 × BitVec 64 × Role) where
+@[expose] def pkTryFromLen33RoSpec : Spec (BitVec 64 × BitVec 64 × Role) where
   pre := fun (out, keyPtr, r) s =>
     ⌜s.readReg64 .x8 = out ∧ s.readReg64 .x0 = keyPtr ∧ s.readReg64 .x1 = 33#64⌝ ∗
       (keyPtr ↦ᵣ r.idPubWire) ∗ memRegion out 40
@@ -177,44 +123,6 @@ def pkTryFromLen33RoSpec : Spec (BitVec 64 × BitVec 64 × Role) where
       (keyPtr ↦ᵣ r.idPubWire) ∗
       (out ↦₈ 0#8) ∗ ((out + 1#64) ↦ₛ r.idKey.publicKey.bytes.toList) ∗
       memRegion (out + 33#64) 7
-
-theorem pkTryFrom_len33_ro_ok (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr pkTryFromName) pkTryFromLen33RoSpec := by
-  simp only [pkTryFromLen33RoSpec]
-  code_fetches_range libsignalSessionCode CryptoVerification.LibsignalTripleRatchet.PublicKeyTryFrom.pkTryFrom b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))
-    (ls_lemma% fnOff "<libsignal_core::curve::PublicKey as core::convert::TryFrom<&[u8]>>::try_from") (num% (ls_off% "<libsignal_core::curve::PublicKey as core::convert::TryFrom<&[u8]>>::try_from")) 0 48
-  code_fetches_range libsignalSessionCode CryptoVerification.LibsignalTripleRatchet.PublicKeyTryFrom.pkTryFrom b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))
-    (ls_lemma% fnOff "<libsignal_core::curve::PublicKey as core::convert::TryFrom<&[u8]>>::try_from") (num% (ls_off% "<libsignal_core::curve::PublicKey as core::convert::TryFrom<&[u8]>>::try_from")) 196 76
-  wp_init g s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨out, keyPtr, r⟩ := g
-  dsimp only at *
-  subst out keyPtr
-  obtain ⟨w0, w1, w2, w3, hbs, hpk_cells⟩ :=
-    exists_unpack64_of_length_32 (bs := r.idKey.publicKey.bytes.toList)
-      (role_idKey_bytes_length r)
-  rw [role_idPubWire_eq r, pointsToBytesRO_cons,
-      pointsToBytesRO_of_unpack64_32 hbs (s0.readReg64 (Reg.gpr 0#5) + 1#64),
-      PublicKeyTryFrom.memRegion_40_split_ok (s0.readReg64 (Reg.gpr 8#5))]
-  wp_pull_exists
-  simp only [BitVec.add_assoc, BitVec.reduceAdd]
-  wp_steps
-  rw [hpk_cells (s0.readReg64 (Reg.gpr 8#5) + 1#64)]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-  wp_done
-
-theorem pk_try_from_len33_ro_ok_at (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff pkTryFromName) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) pkTryFromLen33RoSpec :=
-  inImage_ok_at hk (pkTryFrom_len33_ro_ok b C ctl abs)
 
 private def remoteKeyChunks (a : BitVec 64)
     (b0 b1 b2 b3 b4 b5 b6 : BitVec 8)
@@ -492,7 +400,7 @@ private theorem memRegion_sp_88_40_split (sp : BitVec 64) :
       memRegion_two (sp - 80#64), memRegion_four (sp - 78#64), memRegion_two (sp - 74#64),
       ProofLib.memRegion_eight (sp - 72#64), ProofLib.memRegion_eight (sp - 64#64), memRegion_one (sp - 56#64)]
 
-def identityKeyDecodeRoSpec : Spec (BitVec 64 × BitVec 64 × Role) where
+@[expose] def identityKeyDecodeRoSpec : Spec (BitVec 64 × BitVec 64 × Role) where
   pre := fun (out, keyPtr, r) s =>
     ⌜s.readReg64 .x8 = out ∧ s.readReg64 .x0 = keyPtr ∧ s.readReg64 .x1 = 33#64⌝ ∗
       (keyPtr ↦ᵣ r.idPubWire) ∗ memRegion out 40 ∗
@@ -504,75 +412,11 @@ def identityKeyDecodeRoSpec : Spec (BitVec 64 × BitVec 64 × Role) where
       ((out + 8#64) ↦ₛ r.idKey.publicKey.bytes.toList) ∗
       stackAt s0.sp 0x60
 
-set_option maxHeartbeats 800000 in
-theorem identityKey_decode_ro_tripleRatchetProgAt_ok (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr identityKeyDecodeName)
-      identityKeyDecodeRoSpec := by
-  simp only [identityKeyDecodeRoSpec]
-  have htry := pk_try_from_len33_ro_ok_at b C ctl abs
-    identityKeyDecodeName (k := num% (ls_off% "<libsignal_core::curve::PublicKey as core::convert::TryFrom<&[u8]>>::try_from" - ls_off% "<libsignal_protocol::identity_key::IdentityKey>::decode"))
-    (by rw [identityKeyDecode_fnOff, (ls_lemma% fnOff "<libsignal_core::curve::PublicKey as core::convert::TryFrom<&[u8]>>::try_from")])
-  simp only [pkTryFromLen33RoSpec] at htry
-  code_fetches_range libsignalSessionCode CryptoVerification.E2E.Bin.identityKeyDecode b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))
-    (ls_lemma% fnOff "<libsignal_protocol::identity_key::IdentityKey>::decode") (num% (ls_off% "<libsignal_protocol::identity_key::IdentityKey>::decode")) 0 40
-  code_fetches_range libsignalSessionCode CryptoVerification.E2E.Bin.identityKeyDecode b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))
-    (ls_lemma% fnOff "<libsignal_protocol::identity_key::IdentityKey>::decode") (num% (ls_off% "<libsignal_protocol::identity_key::IdentityKey>::decode")) 64 108
-  dsimp only [tripleRatchetProgAt, identityKeyDecodeName, BitVec.ofNat_eq_ofNat] at htry ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr "<libsignal_protocol::identity_key::IdentityKey>::decode" = entry
-  wp_init x s0
-  examples_hide_fetches
-  obtain ⟨ret, keyPtr, r⟩ := x
-  dsimp only at *
-  subst ret keyPtr
-  obtain ⟨b0, b1, b2, b3, b4, b5, b6, v7, v9, v13, v15, v23, v31, hchunks⟩ :=
-    exists_remoteKeyChunks_of_length_32 (role_idKey_bytes_length r)
-  rw [memRegion_40_identityKeyDecode_split (s0.readReg64 (Reg.gpr 8#5)),
-      hchunks (s0.readReg64 (Reg.gpr 8#5) + 8#64),
-      remoteKeyChunks_ret_8 (s0.readReg64 (Reg.gpr 8#5)),
-      stackAt_identityKeyDecode_split s0.sp]
-  cells_unfold
-  wp_pull_exists
-  wp_steps
-  wp_apply
-  rw [hchunks (s0.sp - 87#64), remoteKeyChunks_sp_87 s0.sp]
-  wp_steps
-  rw [sevenLo_sp_87 s0.sp]
-  wp_steps
-  simp only [sepConj_assoc]
-  rw [sevenLo_ret_8 (s0.readReg64 (Reg.gpr 8#5)),
-      sp_88_four_bytes s0.sp,
-      sp_84_split_16 s0.sp]
-  wp_steps
-  try rw [truncate16_zeroExtend32]
-  try rw [truncate16_zeroExtend32]
-  try rw [← sevenLo_ret_8 (s0.readReg64 (Reg.gpr 8#5))]
-  try rw [memRegion_sp_88_40_split s0.sp]
-  wp_done
-
-theorem identityKey_decode_ro_ok (C : Crypto) (img : Obj.Image) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (tripleRatchetProg img C ctl abs)
-      (img.base + identityKeyDecodeOff)
-      (identityKeyDecodeRoSpec.inImage img) := by
-  have hfn : (tripleRatchetProgAt img.base C ctl abs).fnAddr identityKeyDecodeName =
-      img.base + identityKeyDecodeOff := by
-    rw [tripleRatchetProgAt, Program.fnAddr_rebase, identityKeyDecode_fnOff]
-  rw [tripleRatchetProg_eq_tripleRatchetProgAt himg, ← hfn]
-  exact LibsignalTripleRatchet.subroutine_ok_inImage img
-    (identityKey_decode_ro_tripleRatchetProgAt_ok img.base C ctl abs)
-
-/-! ## Private Key Chunk Decomposition (`r.idPrivBytes`, 32 B) -/
-
-def Role.privB0 : Role → BitVec 8
+@[expose] def Role.privB0 : Role → BitVec 8
   | .alice => 0x70#8
   | .bob   => 0xd8#8
 
-def Role.privB31 : Role → BitVec 8
+@[expose] def Role.privB31 : Role → BitVec 8
   | .alice => 0x47#8
   | .bob   => 0x74#8
 
@@ -599,7 +443,7 @@ theorem pointsToBytesRO_drop_split (a : BitVec 64) (bs : List (BitVec 8)) (off k
     omega
   rw [pointsToBytesRO_append, hlen, List.drop_drop]
 
-def privKeyChunksRO (a : BitVec 64)
+@[expose] def privKeyChunksRO (a : BitVec 64)
     (b0 : BitVec 8) (v1 : BitVec 32) (v5 : BitVec 16) (b7 : BitVec 8)
     (b8 b9 b10 b11 b12 b13 b14 : BitVec 8)
     (v15 v23 : BitVec 64) (b31 : BitVec 8) : SepProp :=
@@ -608,7 +452,7 @@ def privKeyChunksRO (a : BitVec 64)
   ((a + 12#64) ↦₈ᵣ b12) ∗ ((a + 13#64) ↦₈ᵣ b13) ∗ ((a + 14#64) ↦₈ᵣ b14) ∗
   ((a + 15#64) ↦₆₄ᵣ v15) ∗ ((a + 23#64) ↦₆₄ᵣ v23) ∗ ((a + 31#64) ↦₈ᵣ b31)
 
-def privKeyChunksRW (a : BitVec 64)
+@[expose] def privKeyChunksRW (a : BitVec 64)
     (b0 : BitVec 8) (v1 : BitVec 32) (v5 : BitVec 16) (b7 : BitVec 8)
     (b8 b9 b10 b11 b12 b13 b14 : BitVec 8)
     (v15 v23 : BitVec 64) (b31 : BitVec 8) : SepProp :=

@@ -194,10 +194,6 @@ private theorem except_bind_eq_ok {ε α β : Type} {m : Except ε α} {f : α �
     ChainResult.ofPanic r = Except.ok v ↔ r = Except.ok v := by
   cases r <;> simp [ChainResult.ofPanic]
 
-@[simp] theorem ChainResult.ofError_eq_ok {α : Type} {r : Except Error α} {v : α} :
-    ChainResult.ofError r = Except.ok v ↔ r = Except.ok v := by
-  cases r <;> simp [ChainResult.ofError]
-
 @[simp] theorem SpqrApiResult.ofError_eq_ok {α : Type} {r : Except Error α} {v : α} :
     SpqrApiResult.ofError r = Except.ok v ↔ r = Except.ok v := by
   cases r <;> simp [SpqrApiResult.ofError]
@@ -355,28 +351,6 @@ theorem Chain.recvKey_key_length (F : ShaCompress) (self : Chain) (epoch : Epoch
       simp only [Pure.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hok
       rcases hok with ⟨_, rfl⟩
       exact Or.inr (ChainEpochDirection.key_key_length F link.recv index self.params hkey)
-
-/-- Convert `Salt` (`Option (List.Vector (BitVec 8) 32)`) back to `MessageKey`. -/
-def saltToMessageKey (salt : Salt) : MessageKey :=
-  salt.map List.Vector.toList
-
-@[simp] theorem saltToMessageKey_messageKeyToSalt? {mk : MessageKey} {salt : Salt}
-    (h : messageKeyToSalt? mk = some salt) :
-    saltToMessageKey salt = mk := by
-  cases mk with
-  | none =>
-    simp only [messageKeyToSalt?, Option.some.injEq] at h
-    subst h
-    rfl
-  | some k =>
-    dsimp only [messageKeyToSalt?] at h
-    by_cases hlen : k.length = 32
-    · rw [dite_eq_left hlen] at h
-      injection h with h
-      subst h
-      rfl
-    · rw [dite_eq_right hlen] at h
-      nomatch h
 
 theorem recvKeyToSalt?_isSome_of_messageKeyToSalt? {mk : MessageKey}
     (h : (messageKeyToSalt? mk).isSome = true) :

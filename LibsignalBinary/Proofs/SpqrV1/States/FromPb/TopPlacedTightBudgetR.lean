@@ -10,24 +10,24 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove
+public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
-public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.TopPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10dPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4ePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeamsBudget
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.TopPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10dPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4ePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeamsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.ProofPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10dPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudget
@@ -42,6 +42,14 @@ import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbState
 import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.DecoderCodec
 import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.EncoderCodec
 import LibsignalBinary.Proofs.SpqrV1Sync.ErasureCode
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.TopPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4cPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4cPlacedBudget
 
 /-!
 # Guarded-Tight Relocatable Allocation Envelopes and Producers for `<States>::from_pb` (Block `333`)
@@ -52,7 +60,7 @@ allocation envelopes (`SpqrTightEvs 56 359623 2560`), and relocatable Block `333
 `StatesFromPbPlacedOkXOfEnv` producers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -103,22 +111,22 @@ open LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10dPlacedBudgetAux (Ct2S
 /-! ## 1. Structural Per-Field Tight Domain (`e2b_StatesFromPbTightDom`) -/
 
 /-- `32`-byte cap on optional `ProtoAuthenticator` key slices (`rootKey`, `macKey`). -/
-def e2b_ValidOptAuth32 : Option ProtoAuthenticator → Prop
+@[expose] def e2b_ValidOptAuth32 : Option ProtoAuthenticator → Prop
   | none => True
   | some a => a.rootKey.length ≤ 32 ∧ a.macKey.length ≤ 32
 
 /-- `2,560`-byte cap on optional `PolynomialEncoder.polys` coefficient slices. -/
-def e2b_ValidOptEncPolys2560 : Option PolynomialEncoder → Prop
+@[expose] def e2b_ValidOptEncPolys2560 : Option PolynomialEncoder → Prop
   | none => True
   | some enc => ∀ bs ∈ enc.polys, bs.length ≤ 2560
 
 /-- `2,560`-byte cap on optional `PolynomialDecoder.pts` point slices. -/
-def e2b_ValidOptDecPts2560 : Option PolynomialDecoder → Prop
+@[expose] def e2b_ValidOptDecPts2560 : Option PolynomialDecoder → Prop
   | none => True
   | some dec => ∀ bs ∈ dec.pts, bs.length ≤ 2560
 
 /-- `32`-byte authenticator key cap across all 11 variants of `V1State`. -/
-def e2b_ValidV1Auth32 (v1 : V1State) : Prop :=
+@[expose] def e2b_ValidV1Auth32 (v1 : V1State) : Prop :=
   match v1.innerState with
   | none => True
   | some (.keysUnsampled s) =>
@@ -145,7 +153,7 @@ def e2b_ValidV1Auth32 (v1 : V1State) : Prop :=
     match s.uc with | none => True | some u => e2b_ValidOptAuth32 u.auth
 
 /-- `2,560`-byte `.polys` slice cap across the encoder-carrying variants of `V1State`. -/
-def e2b_ValidV1Polys2560 (v1 : V1State) : Prop :=
+@[expose] def e2b_ValidV1Polys2560 (v1 : V1State) : Prop :=
   match v1.innerState with
   | none => True
   | some (.keysUnsampled _) => True
@@ -161,7 +169,7 @@ def e2b_ValidV1Polys2560 (v1 : V1State) : Prop :=
   | some (.ct2Sampled s) => e2b_ValidOptEncPolys2560 s.sendingCt2
 
 /-- `2,560`-byte decoder `.pts` slice cap across the decoder-carrying variants of `V1State`. -/
-def e2b_ValidV1DecPts2560 (v1 : V1State) : Prop :=
+@[expose] def e2b_ValidV1DecPts2560 (v1 : V1State) : Prop :=
   match v1.innerState with
   | none => True
   | some (.keysUnsampled _) => True
@@ -179,7 +187,7 @@ def e2b_ValidV1DecPts2560 (v1 : V1State) : Prop :=
 /-- Structural zero-existential tight domain on `pb : V1State` for `<States>::from_pb` (`Block 333`):
     combines `ValidV1PtsAt 640 pb` (`enc.pts ≤ 1,280` B) with `auth ≤ 32` B,
     `enc.polys ≤ 2,560` B, and `dec.pts ≤ 2,560` B. -/
-def e2b_StatesFromPbTightDom (pb : V1State) : Prop :=
+@[expose] def e2b_StatesFromPbTightDom (pb : V1State) : Prop :=
   ValidV1PtsAt 640 pb ∧ e2b_ValidV1Auth32 pb ∧ e2b_ValidV1Polys2560 pb ∧ e2b_ValidV1DecPts2560 pb
 
 
@@ -187,7 +195,7 @@ def e2b_StatesFromPbTightDom (pb : V1State) : Prop :=
 
 /-- Exact 12-arm (`none` + 11 `V1State.InnerState` variants) allocation envelope of
     `<spqr::v1::chunked::states::States>::from_pb` (`Block 333`). -/
-def e2b_StatesFromPbExactEnv (F : ShaCompress) (pb : V1State) (evs : List AllocEvent) : Prop :=
+@[expose] def e2b_StatesFromPbExactEnv (F : ShaCompress) (pb : V1State) (evs : List AllocEvent) : Prop :=
   match pb.innerState with
   | none => evs = []
   | some (.keysUnsampled s) => KeysUnsampledFromPbEnv s evs
@@ -206,12 +214,12 @@ def e2b_StatesFromPbExactEnv (F : ShaCompress) (pb : V1State) (evs : List AllocE
     yields `StatesFromPbTightEnv` (`SpqrTightEvs 56 359623 2560`, zero existential binders) on
     `e2b_StatesFromPbTightDom pb`, and falls back to `DefsBudget.StatesFromPbEnv pb` off-domain
     so `FitsEnv` remains satisfiable on all `pb`. -/
-def e2b_StatesFromPbGuardedTightEnv (pb : V1State) (evs : List AllocEvent) : Prop :=
+@[expose] def e2b_StatesFromPbGuardedTightEnv (pb : V1State) (evs : List AllocEvent) : Prop :=
   (e2b_StatesFromPbTightDom pb ∧ StatesFromPbTightEnv evs) ∨
     (¬ e2b_StatesFromPbTightDom pb ∧ StatesFromPbEnv pb evs)
 
 /-- Implication-guarded tight envelope for `<States>::from_pb` (`Block 333`). -/
-def e2b_StatesFromPbImpTightEnv (pb : V1State) (evs : List AllocEvent) : Prop :=
+@[expose] def e2b_StatesFromPbImpTightEnv (pb : V1State) (evs : List AllocEvent) : Prop :=
   e2b_StatesFromPbTightDom pb → StatesFromPbTightEnv evs
 
 private theorem e2b_validOptAuth32_of_authOk (F : ShaCompress)
@@ -1165,20 +1173,5 @@ theorem e2b_states_from_pb_ok_x_placed_impTight [LibsignalPlacement]
       e2b_statesFromPbVariantPlacedSpecOfEnv_mono
         (fun _ hevs hDom => e2b_statesFromPbExactEnv_sub_tight hDom hevs)
         (e2b_states_from_pb_branch_proof_placed_exact hA hmemmove pb))
-
-/-- `.rodata`-free extended-stack (`statesFromPbPlacedRoFreeSpecXOfEnv`) corollary of
-    `e2b_states_from_pb_ok_x_placed_guardedTight`. -/
-theorem e2b_states_from_pb_roFree_ok_x_placed_guardedTight [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksBudget M A lim ext)
-    (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym
-      (withAllocVmPreserved (sessionMemmoveBoundedSpec 0))) :
-    subroutine_ok (libsignalSessionLib.blockProgram lsmpl 333 (Rust.withPanics ext))
-      (lsmpl.base 333)
-      (withLsCodeRoLoaded lsmpl
-        (statesFromPbPlacedRoFreeSpecXOfEnv M A lim F e2b_StatesFromPbGuardedTightEnv)) :=
-  ProofPlacedBudget.states_from_pb_roFree_okX_of_okX_placed_of_env
-    (e2b_states_from_pb_ok_x_placed_guardedTight hA hmemmove)
 
 end LibsignalBinary.Proofs.SpqrV1.States.FromPb.TopPlacedTightBudgetR

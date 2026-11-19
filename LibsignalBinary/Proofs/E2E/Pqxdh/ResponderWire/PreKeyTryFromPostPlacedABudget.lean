@@ -10,18 +10,62 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBaseBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedA
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBaseBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedA -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBoxes
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostCleanup
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.Common
+public meta import ProofLib
+public meta import ProofLib.SepLogic.WP
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
 
 /-!
 # Budget-Threaded `<PreKeySignalMessage as TryFrom<&[u8]>>::try_from` (Block `111`): Post-Loop Part A
@@ -31,7 +75,7 @@ Proves panic-free `RustCliAllocBudget M` specifications for the shared cleanup t
 under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -219,7 +263,7 @@ theorem SepWPp.call_noPanic_budget_pk {α : Type} {prog : Program}
     rw [hoom sm] at hpost
     exact (allowPanic_not_exited hpost).elim
 
-def PreKeyDeallocOk [LibsignalPlacement] (Inv : Memory → Prop) {M : AllocCostModel}
+@[expose] def PreKeyDeallocOk [LibsignalPlacement] (Inv : Memory → Prop) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (preKeyPlacedProg H) ((blkPl_111).ρ lsRustDeallocSym)
     (withPreKeyInv Inv (rustCliDeallocBudgetSpec M A lim))
@@ -231,7 +275,7 @@ theorem preKeyDeallocOk_of_hookSat [LibsignalPlacement] {Inv : Memory → Prop}
     PreKeyDeallocOk Inv A lim H :=
   subroutine_ok_withPreKeyInv_of_plain (ls_hook_ok_of_mem hsat)
 
-def PreKeyDropSpeOk [LibsignalPlacement] (Inv : Memory → Prop) {M : AllocCostModel}
+@[expose] def PreKeyDropSpeOk [LibsignalPlacement] (Inv : Memory → Prop) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (preKeyPlacedProg H) (lsmpl.base 5)
     (withPreKeyInv Inv (dropSpeSpec M A lim))

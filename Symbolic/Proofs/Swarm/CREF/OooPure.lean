@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RelPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BobKyberNone
-public import Symbolic.Proofs.Swarm.CREF.Initiate.Is1aRunPure
+public import Symbolic.Proofs.Swarm.CREF.RelPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BobKyberNone -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.Initiate.Is1aRunPure
 import Symbolic.Proofs.Swarm.CREF.Grow.PqInit
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.SHARED.SpqrBytesDefs
 
 /-!
 # Session Record Serialization and Initial Out-of-Order SPQR Bounds
@@ -23,7 +25,7 @@ Relates `recordBytes`, `pqStateOf`, and `encodeRecord` for pending sessions, and
 `SpqrOooBounded` and length bounds for Alice's initial SPQR state.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,17 +52,27 @@ open Swarm.Phase0WholeFunctionBridge
 @[scoped simp] theorem sessionToRecordRec_pqRatchetState (s : Session HwBytes) :
     (sessionToRecordRec s).current.pqRatchetState = s.state.pqRatchetState := rfl
 
-theorem recordBytes_pqRatchetState_inj {r₁ r₂ : RecordRec}
-    (h : recordBytes r₁ = recordBytes r₂) :
-    r₁.current.pqRatchetState = r₂.current.pqRatchetState := by
-  have hn := TR.recordBytes_injective h
-  exact congrArg (fun r => r.current.pqRatchetState) hn
-
 @[scoped simp] theorem pqStateOf_recordBytes (r : RecordRec) :
     pqStateOf (recordBytes r) = r.current.pqRatchetState := by
-  have hex : ∃ r' : RecordRec, recordBytes r = recordBytes r' := ⟨r, rfl⟩
-  simp only [pqStateOf, hex, ↓reduceDIte]
-  exact recordBytes_pqRatchetState_inj (Classical.choose_spec hex).symm
+  rw [pqStateOf, DY.Libsignal.Rust.decodeRecordBytes?_recordBytes]; rfl
+
+/-- Outside the image of `recordBytes`, `pqStateOf` returns `[]` (proved without `Classical.choose`). -/
+theorem pqStateOf_of_not_mem {b : HwBytes} (h : ¬ ∃ r : RecordRec, b = recordBytes r) :
+    pqStateOf b = [] := by
+  rw [pqStateOf, (TR.decodeRecordBytes?_eq_none_iff b).mpr h]
+
+open Classical in
+/-- `pqStateOf` agrees pointwise with the `Classical.choose` definition. -/
+theorem pqStateOf_eq_classical (b : HwBytes) :
+    pqStateOf b =
+      if h : ∃ r : RecordRec, b = recordBytes r then (Classical.choose h).current.pqRatchetState
+      else [] := by
+  split
+  · next h =>
+    calc pqStateOf b
+        = pqStateOf (recordBytes (Classical.choose h)) := congrArg _ (Classical.choose_spec h)
+      _ = _ := pqStateOf_recordBytes _
+  · next h => exact pqStateOf_of_not_mem h
 
 private theorem encPendingPreKey_length_le_encSession (s : Session HwBytes)
     (p : PendingPreKey) (hp : s.pendingPreKey = some p) :

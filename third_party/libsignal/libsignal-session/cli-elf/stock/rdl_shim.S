@@ -186,3 +186,21 @@ _RNvCs1njKG4L9aB3_7___rustc19___rust_alloc_zeroed:
 _RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2:
     ret
 .size _RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2, .-_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2
+
+// Abort-only panic and allocation-error handlers (no panic message on stderr):
+// branch directly to musl `abort`, which raises and delivers `SIGABRT` (exit 134).
+.section .text._RNvCs1njKG4L9aB3_7___rustc17rust_begin_unwind,"ax",@progbits
+.p2align 2
+.globl _RNvCs1njKG4L9aB3_7___rustc17rust_begin_unwind
+.type _RNvCs1njKG4L9aB3_7___rustc17rust_begin_unwind, @function
+_RNvCs1njKG4L9aB3_7___rustc17rust_begin_unwind:
+    b abort
+.size _RNvCs1njKG4L9aB3_7___rustc17rust_begin_unwind, .-_RNvCs1njKG4L9aB3_7___rustc17rust_begin_unwind
+
+.section .text._RNvCs1njKG4L9aB3_7___rustc26___rust_alloc_error_handler,"ax",@progbits
+.p2align 2
+.globl _RNvCs1njKG4L9aB3_7___rustc26___rust_alloc_error_handler
+.type _RNvCs1njKG4L9aB3_7___rustc26___rust_alloc_error_handler, @function
+_RNvCs1njKG4L9aB3_7___rustc26___rust_alloc_error_handler:
+    b abort
+.size _RNvCs1njKG4L9aB3_7___rustc26___rust_alloc_error_handler, .-_RNvCs1njKG4L9aB3_7___rustc26___rust_alloc_error_handler

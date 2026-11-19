@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5c
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5c -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch2Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch3Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5aPlaced
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 5 (`NoHeaderReceived`, `+1344`) — Part C
@@ -25,7 +26,7 @@ Relocatable Block-`333` cloned-`Authenticator` error cleanup (`+6520 -> +6500`),
 `<PolyDecoder>::from_pb` staging (`+6064..+6132`), and `Ok` epilogue (`+6132 -> +8180 -> ret`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -63,7 +64,7 @@ set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
 
 attribute [local irreducible]
-  Program.fetch Program.externAt? Program.fnOff libsignalSessionCode
+  Program.fetch Program.externAt? Program.fnOff
   CryptoVerification.blkPC_333
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   extractLsb'_0_64_append extractLsb'_64_64_append

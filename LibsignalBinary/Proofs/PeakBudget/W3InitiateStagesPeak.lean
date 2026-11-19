@@ -9,7 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.W3InitiateHelpers
+import LibsignalBinary.Proofs.PeakBudget.W3InitiateHelpers
+public import LibsignalBinary.Heap.Fine.ClientBounds
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
 
 /-!
 # Stage and End-to-End `PhaseCreditSpec` Bounds for W3 `process_prekey_bundle`
@@ -19,7 +22,7 @@ Parametric stage-by-stage (`W3Stage1Env`..`W3Stage5Env`) and 5-stage (`W3Initiat
 (`process_prekey_bundle`) over `W3BoundedEvs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,31 +50,19 @@ open LibsignalBinary.Proofs.PeakBudget.W3InitiateHelpers
 
 /-! ## 1. `W3BoundedEvs`: Bounded Non-Free Operations and Interleaved Frees -/
 
-def nonFreeCount : List AllocEvent → Nat
+@[expose] def nonFreeCount : List AllocEvent → Nat
   | [] => 0
   | .free _ _ :: tl => nonFreeCount tl
   | _ :: tl => nonFreeCount tl + 1
 
 /-- Envelope of at most `maxOps` non-`.free` events (`eventStepReq ≤ maxReq`, `eventStepAlign ≤ 16`) with interleaved `.free` events.
 -/
-def W3BoundedEvs (maxOps maxReq : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def W3BoundedEvs (maxOps maxReq : Nat) (evs : List AllocEvent) : Prop :=
   nonFreeCount evs ≤ maxOps ∧
   ∀ ev ∈ evs, eventStepReq ev ≤ maxReq ∧ eventStepAlign ev ≤ 16
 
 theorem w3BoundedEvs_nil (maxOps maxReq : Nat) : W3BoundedEvs maxOps maxReq [] :=
   ⟨Nat.zero_le maxOps, fun _ h => nomatch h⟩
-
-theorem w3BoundedEvs_freeOnly {maxOps maxReq : Nat} {evs : List AllocEvent}
-    (hf : FreeOnlyEvs evs) : W3BoundedEvs maxOps maxReq evs := by
-  induction evs with
-  | nil => exact w3BoundedEvs_nil maxOps maxReq
-  | cons ev tl ih =>
-    obtain ⟨al, sz, rfl⟩ := hf ev List.mem_cons_self
-    obtain ⟨hc, ha⟩ := ih (fun e he => hf e (List.mem_cons_of_mem _ he))
-    refine ⟨hc, fun e he => ?_⟩
-    rcases List.mem_cons.mp he with rfl | hmem
-    · exact ⟨Nat.zero_le maxReq, Nat.le_refl 16⟩
-    · exact ha e hmem
 
 theorem nonFreeCount_append (evs₁ evs₂ : List AllocEvent) :
     nonFreeCount (evs₁ ++ evs₂) = nonFreeCount evs₁ + nonFreeCount evs₂ := by
@@ -89,16 +80,6 @@ theorem w3BoundedEvs_append {n₁ n₂ r₁ r₂ : Nat} {evs₁ evs₂ : List Al
     exact ⟨Nat.le_trans hr (Nat.le_max_left r₁ r₂), hal⟩
   · obtain ⟨hr, hal⟩ := h₂.2 ev he2
     exact ⟨Nat.le_trans hr (Nat.le_max_right r₁ r₂), hal⟩
-
-theorem w3BoundedEvs_seqEnv {n₁ n₂ r₁ r₂ : Nat} {E₁ E₂ : List AllocEvent → Prop}
-    (h₁ : ∀ evs, E₁ evs → W3BoundedEvs n₁ r₁ evs)
-    (h₂ : ∀ evs, E₂ evs → W3BoundedEvs n₂ r₂ evs) :
-    ∀ evs, SeqEnv E₁ E₂ evs → W3BoundedEvs (n₁ + n₂) (max r₁ r₂) evs := by
-  rintro evs (hE1 | ⟨evs₁, evs₂, rfl, hE1, hE2⟩)
-  · obtain ⟨hc, ha⟩ := h₁ evs hE1
-    exact ⟨Nat.le_trans hc (Nat.le_add_right n₁ n₂), fun ev hev =>
-      ⟨Nat.le_trans (ha ev hev).1 (Nat.le_max_left r₁ r₂), (ha ev hev).2⟩⟩
-  · exact w3BoundedEvs_append (h₁ evs₁ hE1) (h₂ evs₂ hE2)
 
 private theorem step_small_nonFree_le {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) {ev : AllocEvent} {maxReq : Nat} (st : M.σ)
@@ -269,7 +250,7 @@ theorem phaseCreditSpec_seq_freeOnly
 
 /-- Stage 1 envelope (`idTrust`, followed by untrusted-identity clone error or SPK/Kyber PK serialize + `sessLoad`).
 -/
-def W3Stage1Env
+@[expose] def W3Stage1Env
     (E_trust E_sessLoad : List AllocEvent → Prop) (nameLen : Nat)
     (evs : List AllocEvent) : Prop :=
   SeqEnv E_trust
@@ -312,7 +293,7 @@ where
 
 /-- Stage 2 envelope (`idKeyPair`, followed by error drop, same-account `1568` B clone+free, or `1568` B Kyber SPK clone).
 -/
-def W3Stage2Env (E_idKp : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
+@[expose] def W3Stage2Env (E_idKp : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   SeqEnv E_idKp
     (fun evs' =>
       SeqEnv (· = rustDeallocEvents 16 8) FreeOnlyEvs evs' ∨
@@ -342,7 +323,7 @@ where
   stage2_cum_le (c_k k : Nat) : c_k + max 0 (max (k + 0) k) ≤ c_k + k := by omega
 
 /-- Stage 2→3 bracketed envelope cancelling the `1568` B Kyber SPK clone across `E_stage3Body`. -/
-def W3Stage23BracketEnv (E_idKp E_stage3Body : List AllocEvent → Prop)
+@[expose] def W3Stage23BracketEnv (E_idKp E_stage3Body : List AllocEvent → Prop)
     (evs : List AllocEvent) : Prop :=
   SeqEnv E_idKp
     (fun evs' =>
@@ -386,7 +367,7 @@ theorem phaseCreditSpec_w3Stage3_small
   phaseCreditSpec_w3BoundedEvs_small hM 8 1569 hsmall
 
 /-- Stage 4 envelope (`create_chain` → `E_spqrInit` → `SessionState` construction). -/
-def W3Stage4Env (E_spqrInit : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
+@[expose] def W3Stage4Env (E_spqrInit : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   SeqEnv (W3BoundedEvs 1 33)
     (SeqEnv E_spqrInit (W3BoundedEvs 13 416))
     evs
@@ -412,7 +393,7 @@ where
 
 /-- Stage 5 envelope (pending prekey / `KyberPreKeyId::fmt` → `idRegId` → `idSave` → `sessStore` → `FreeOnlyEvs`).
 -/
-def W3Stage5Env (E_idRegId E_idSave E_sessStore : List AllocEvent → Prop)
+@[expose] def W3Stage5Env (E_idRegId E_idSave E_sessStore : List AllocEvent → Prop)
     (evs : List AllocEvent) : Prop :=
   SeqEnv (W3BoundedEvs 4 68)
     (SeqEnv E_idRegId
@@ -447,7 +428,7 @@ where
 /-! ## 3. Full 5-Stage `W3InitiateFullEnv` Composition -/
 
 /-- 5-stage `process_prekey_bundle` sequential allocation envelope (`S1 → S2 → S3 → S4 → S5`). -/
-def W3InitiateFullEnv
+@[expose] def W3InitiateFullEnv
     (E_trust E_sessLoad E_idKp E_spqrInit E_idRegId E_idSave E_sessStore :
       List AllocEvent → Prop)
     (nameLen : Nat) (evs : List AllocEvent) : Prop :=
@@ -461,7 +442,7 @@ def W3InitiateFullEnv
     evs
 
 /-- Native non-callee small-class cumulative constant of `W3InitiateFullEnv` across Stages 1–5. -/
-def w3InitiateNativeSmallCum : Nat :=
+@[expose] def w3InitiateNativeSmallCum : Nat :=
   ((2 * 33 + 9539) + (2 * 1569 + 9539)) +
   (2 * 1568 + 9539) +
   8 * (2 * 1569 + 9539) +
@@ -573,7 +554,7 @@ theorem phaseCreditSpec_w3InitiateFull_small
 
 /-- Widened Stage 1 envelope admitting both `rustAllocEvents (nameLen + 1) 1` and `rustAllocEvents nameLen 1`.
 -/
-def W3Stage1EnvWide
+@[expose] def W3Stage1EnvWide
     (E_trust E_sessLoad : List AllocEvent → Prop) (nameLen : Nat)
     (evs : List AllocEvent) : Prop :=
   SeqEnv E_trust
@@ -649,7 +630,7 @@ where
     omega
 
 /-- 5-stage `process_prekey_bundle` sequential envelope over `W3Stage1EnvWide`. -/
-def W3InitiateFullEnvWide
+@[expose] def W3InitiateFullEnvWide
     (E_trust E_sessLoad E_idKp E_spqrInit E_idRegId E_idSave E_sessStore :
       List AllocEvent → Prop)
     (nameLen : Nat) (evs : List AllocEvent) : Prop :=

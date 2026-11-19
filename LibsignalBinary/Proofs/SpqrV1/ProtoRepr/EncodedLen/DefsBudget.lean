@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
 
 /-!
@@ -19,7 +19,7 @@ public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
 Hoare contracts for the zero-allocation `V1State.Unchunked.*::encoded_len` leaf subroutines.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,87 +45,87 @@ open CryptoVerification.SpqrV1.ProtoRepr
 
 /-! ## 1. Parametric `V1State.Unchunked.*::encoded_len` `VmPreserved` Specs -/
 
-def unchunked2EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked2EncodedLenPinnedGhost :=
+@[expose] def unchunked2EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked2EncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.unchunked2EncodedLenPinnedSpec A)
 
-def unchunked2EncodedLenSpec (A : RustAlloc) : Spec Unchunked2EncodedLenGhost :=
+@[expose] def unchunked2EncodedLenSpec (A : RustAlloc) : Spec Unchunked2EncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.unchunked2EncodedLenSpec A)
 
-def unchunked3EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked3EncodedLenPinnedGhost :=
+@[expose] def unchunked3EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked3EncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.unchunked3EncodedLenPinnedSpec A)
 
-def unchunked3EncodedLenSpec (A : RustAlloc) : Spec Unchunked3EncodedLenGhost :=
+@[expose] def unchunked3EncodedLenSpec (A : RustAlloc) : Spec Unchunked3EncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.unchunked3EncodedLenSpec A)
 
-def unchunked4EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked4EncodedLenPinnedGhost :=
+@[expose] def unchunked4EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked4EncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.unchunked4EncodedLenPinnedSpec A)
 
-def unchunked4EncodedLenSpec (A : RustAlloc) : Spec Unchunked4EncodedLenGhost :=
+@[expose] def unchunked4EncodedLenSpec (A : RustAlloc) : Spec Unchunked4EncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.unchunked4EncodedLenSpec A)
 
-def unchunked5EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked5EncodedLenPinnedGhost :=
+@[expose] def unchunked5EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked5EncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.unchunked5EncodedLenPinnedSpec A)
 
-def unchunked5EncodedLenSpec (A : RustAlloc) : Spec Unchunked5EncodedLenGhost :=
+@[expose] def unchunked5EncodedLenSpec (A : RustAlloc) : Spec Unchunked5EncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.unchunked5EncodedLenSpec A)
 
 /-! ## 2. Concrete `V1State.Unchunked.*::encoded_len` `VmPreserved` Specs -/
 
-def keysUnsampledEncodedLenPinnedSpec (A : RustAlloc) : Spec KeysUnsampledEncodedLenPinnedGhost :=
+@[expose] def keysUnsampledEncodedLenPinnedSpec (A : RustAlloc) : Spec KeysUnsampledEncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.keysUnsampledEncodedLenPinnedSpec A)
 
-def keysUnsampledEncodedLenSpec (A : RustAlloc) : Spec KeysUnsampledEncodedLenGhost :=
+@[expose] def keysUnsampledEncodedLenSpec (A : RustAlloc) : Spec KeysUnsampledEncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.keysUnsampledEncodedLenSpec A)
 
-def noHeaderReceivedEncodedLenPinnedSpec (A : RustAlloc) :
+@[expose] def noHeaderReceivedEncodedLenPinnedSpec (A : RustAlloc) :
     Spec NoHeaderReceivedEncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.noHeaderReceivedEncodedLenPinnedSpec A)
 
-def noHeaderReceivedEncodedLenSpec (A : RustAlloc) : Spec NoHeaderReceivedEncodedLenGhost :=
+@[expose] def noHeaderReceivedEncodedLenSpec (A : RustAlloc) : Spec NoHeaderReceivedEncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.noHeaderReceivedEncodedLenSpec A)
 
-def ct2SentEncodedLenPinnedSpec (A : RustAlloc) : Spec Ct2SentEncodedLenPinnedGhost :=
+@[expose] def ct2SentEncodedLenPinnedSpec (A : RustAlloc) : Spec Ct2SentEncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.ct2SentEncodedLenPinnedSpec A)
 
-def ct2SentEncodedLenSpec (A : RustAlloc) : Spec Ct2SentEncodedLenGhost :=
+@[expose] def ct2SentEncodedLenSpec (A : RustAlloc) : Spec Ct2SentEncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.ct2SentEncodedLenSpec A)
 
-def ekSentEncodedLenPinnedSpec (A : RustAlloc) : Spec EkSentEncodedLenPinnedGhost :=
+@[expose] def ekSentEncodedLenPinnedSpec (A : RustAlloc) : Spec EkSentEncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.ekSentEncodedLenPinnedSpec A)
 
-def ekSentEncodedLenSpec (A : RustAlloc) : Spec EkSentEncodedLenGhost :=
+@[expose] def ekSentEncodedLenSpec (A : RustAlloc) : Spec EkSentEncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.ekSentEncodedLenSpec A)
 
-def headerReceivedEncodedLenPinnedSpec (A : RustAlloc) : Spec HeaderReceivedEncodedLenPinnedGhost :=
+@[expose] def headerReceivedEncodedLenPinnedSpec (A : RustAlloc) : Spec HeaderReceivedEncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.headerReceivedEncodedLenPinnedSpec A)
 
-def headerReceivedEncodedLenSpec (A : RustAlloc) : Spec HeaderReceivedEncodedLenGhost :=
+@[expose] def headerReceivedEncodedLenSpec (A : RustAlloc) : Spec HeaderReceivedEncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.headerReceivedEncodedLenSpec A)
 
-def headerSentEncodedLenPinnedSpec (A : RustAlloc) : Spec HeaderSentEncodedLenPinnedGhost :=
+@[expose] def headerSentEncodedLenPinnedSpec (A : RustAlloc) : Spec HeaderSentEncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.headerSentEncodedLenPinnedSpec A)
 
-def headerSentEncodedLenSpec (A : RustAlloc) : Spec HeaderSentEncodedLenGhost :=
+@[expose] def headerSentEncodedLenSpec (A : RustAlloc) : Spec HeaderSentEncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.headerSentEncodedLenSpec A)
 
-def ekSentCt1ReceivedEncodedLenPinnedSpec (A : RustAlloc) :
+@[expose] def ekSentCt1ReceivedEncodedLenPinnedSpec (A : RustAlloc) :
     Spec EkSentCt1ReceivedEncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.ekSentCt1ReceivedEncodedLenPinnedSpec A)
 
-def ekSentCt1ReceivedEncodedLenSpec (A : RustAlloc) : Spec EkSentCt1ReceivedEncodedLenGhost :=
+@[expose] def ekSentCt1ReceivedEncodedLenSpec (A : RustAlloc) : Spec EkSentCt1ReceivedEncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.ekSentCt1ReceivedEncodedLenSpec A)
 
-def ct1SentEncodedLenPinnedSpec (A : RustAlloc) : Spec Ct1SentEncodedLenPinnedGhost :=
+@[expose] def ct1SentEncodedLenPinnedSpec (A : RustAlloc) : Spec Ct1SentEncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.ct1SentEncodedLenPinnedSpec A)
 
-def ct1SentEncodedLenSpec (A : RustAlloc) : Spec Ct1SentEncodedLenGhost :=
+@[expose] def ct1SentEncodedLenSpec (A : RustAlloc) : Spec Ct1SentEncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.ct1SentEncodedLenSpec A)
 
-def ct1SentEkReceivedEncodedLenPinnedSpec (A : RustAlloc) :
+@[expose] def ct1SentEkReceivedEncodedLenPinnedSpec (A : RustAlloc) :
     Spec Ct1SentEkReceivedEncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.ct1SentEkReceivedEncodedLenPinnedSpec A)
 
-def ct1SentEkReceivedEncodedLenSpec (A : RustAlloc) : Spec Ct1SentEkReceivedEncodedLenGhost :=
+@[expose] def ct1SentEkReceivedEncodedLenSpec (A : RustAlloc) : Spec Ct1SentEkReceivedEncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.ct1SentEkReceivedEncodedLenSpec A)
 
 end LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsBudget

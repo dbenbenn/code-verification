@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderReceivedUcBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderReceivedUcBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
+import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -24,6 +24,8 @@ import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Inner `Unchunked.HeaderReceived` Loop for `Chunked.HeaderReceived::merge` (Block `306`)
@@ -32,7 +34,7 @@ Proves the budget-threaded `decode_varint`, `bytes::merge` (`tag = 3`), `skip_fi
 `Unchunked.HeaderReceived` loop induction (`chunkedHeaderReceived_uc_loop_ok_cl_placed`) on Block `306`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

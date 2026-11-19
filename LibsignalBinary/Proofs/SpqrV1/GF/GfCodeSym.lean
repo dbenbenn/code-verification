@@ -9,19 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard14
+meta import GeneratedLean.LibsignalSessionPlacedObjShard19
 
 /-!
 # Per-Block Instruction Decode Tables for `SpqrV1/GF`
 
 Relocatable instruction decode tables for Blocks `380` (`is_non_zero`),
-`384` (`unaccelerated::mul`), `381` (`mul2_u16`), and `331` (`GF16::div_impl`).
+`383` (`accelerated::mul2_unreduced`), `384` (`unaccelerated::mul`), `381` (`mul2_u16`),
+and `331` (`GF16::div_impl`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -29,6 +32,7 @@ set_option maxRecDepth 2000000
 namespace CryptoVerification
 
 gen_ls_blk 380
+gen_ls_blk 383
 gen_ls_blk 384
 gen_ls_blk 381
 gen_ls_blk 331

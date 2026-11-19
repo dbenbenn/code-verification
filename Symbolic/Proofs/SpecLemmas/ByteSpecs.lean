@@ -19,7 +19,7 @@ and proves round-trip correctness (`cbcDecRaw_correct`) when the block-cipher in
 inverts `E k`.
 -/
 
-@[expose] public section
+public section
 
 namespace ByteSpecs
 
@@ -30,7 +30,7 @@ abbrev Block := BitVec 128
 abbrev AesKey := BitVec 256
 
 /-- CBC encryption of blocks under block function `f` from initial chaining value `prev`. -/
-def cbcEncrypt (f : Block → Block) (prev : Block) :
+@[expose] def cbcEncrypt (f : Block → Block) (prev : Block) :
     {n : ℕ} → List.Vector Block n → List.Vector Block n
   | 0, _ => List.Vector.nil
   | _ + 1, P =>
@@ -39,39 +39,39 @@ def cbcEncrypt (f : Block → Block) (prev : Block) :
 
 abbrev Plain (ℓ : ℕ) := List.Vector (BitVec 8) ℓ
 
-def nBlocks (ℓ : ℕ) : ℕ := ℓ / 16 + 1
+@[expose] def nBlocks (ℓ : ℕ) : ℕ := ℓ / 16 + 1
 
-def padLen (ℓ : ℕ) : ℕ := 16 - ℓ % 16
+@[expose] def padLen (ℓ : ℕ) : ℕ := 16 - ℓ % 16
 
-def pkcs7Bytes {ℓ : ℕ} (m : Plain ℓ) : List (BitVec 8) :=
+@[expose] def pkcs7Bytes {ℓ : ℕ} (m : Plain ℓ) : List (BitVec 8) :=
   m.toList ++ List.replicate (padLen ℓ) (BitVec.ofNat 8 (padLen ℓ))
 
 /-- Packs up to 16 bytes into a little-endian 128-bit block (byte `j` at bits `8*j .. 8*j + 7`). -/
-def bytesToBlock (bs : List (BitVec 8)) : Block :=
+@[expose] def bytesToBlock (bs : List (BitVec 8)) : Block :=
   bs.foldr (fun b acc => (acc <<< 8) ||| b.zeroExtend 128) 0
 
 /-- Splits `pkcs7Bytes m` into `nBlocks ℓ` 16-byte blocks. -/
-def pkcs7Blocks {ℓ : ℕ} (m : Plain ℓ) : List.Vector Block (nBlocks ℓ) :=
+@[expose] def pkcs7Blocks {ℓ : ℕ} (m : Plain ℓ) : List.Vector Block (nBlocks ℓ) :=
   List.Vector.ofFn fun i => bytesToBlock (((pkcs7Bytes m).drop (16 * i.val)).take 16)
 
 /-! ## AES-256-CBC decryption with strict PKCS#7 unpadding -/
 
 /-- Unpacks a 128-bit block into 16 little-endian bytes; inverse of `bytesToBlock`. -/
-def blockToBytesLE (b : Block) : List (BitVec 8) :=
+@[expose] def blockToBytesLE (b : Block) : List (BitVec 8) :=
   List.ofFn fun j : Fin 16 => b.extractLsb' (8 * j.val) 8
 
 /-- Splits `bs` into 16-byte blocks, dropping any trailing partial chunk. -/
-def chunks16 (bs : List (BitVec 8)) : List Block :=
+@[expose] def chunks16 (bs : List (BitVec 8)) : List Block :=
   List.ofFn fun i : Fin (bs.length / 16) => bytesToBlock ((bs.drop (16 * i.val)).take 16)
 
 /-- CBC decryption of blocks under inverse block function `g` from initial chaining value `prev`. -/
-def cbcDecryptBlocks (g : Block → Block) (prev : Block) : List Block → List Block
+@[expose] def cbcDecryptBlocks (g : Block → Block) (prev : Block) : List Block → List Block
   | [] => []
   | c :: cs => (g c ^^^ prev) :: cbcDecryptBlocks g c cs
 
 /-- Strict PKCS#7 unpadding: rejects unless the final byte `n` satisfies `1 ≤ n ≤ 16` and the
 trailing `n` bytes all equal `n`. -/
-def pkcs7Unpad (bs : List (BitVec 8)) : Option (List (BitVec 8)) :=
+@[expose] def pkcs7Unpad (bs : List (BitVec 8)) : Option (List (BitVec 8)) :=
   match bs.getLast? with
   | none => none
   | some last =>
@@ -82,7 +82,7 @@ def pkcs7Unpad (bs : List (BitVec 8)) : Option (List (BitVec 8)) :=
 
 /-- AES-256-CBC decryption with strict PKCS#7 unpadding, returning `none` if `ct` is empty, not
 block-aligned, or has invalid padding. -/
-def cbcDecRaw (D : AesKey → Block → Block) (k : AesKey) (iv : Block)
+@[expose] def cbcDecRaw (D : AesKey → Block → Block) (k : AesKey) (iv : Block)
     (ct : List (BitVec 8)) : Option (List (BitVec 8)) :=
   if ct = [] ∨ ct.length % 16 ≠ 0 then none
   else pkcs7Unpad ((cbcDecryptBlocks (D k) iv (chunks16 ct)).flatMap blockToBytesLE)

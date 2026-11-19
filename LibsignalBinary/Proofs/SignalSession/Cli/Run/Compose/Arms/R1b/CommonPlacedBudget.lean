@@ -9,19 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3Helpers
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
 import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.Layout
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Shared Call and Cleanup Helpers for Arm `R1b`
@@ -30,7 +34,7 @@ Budget-threaded `.keepsFs` allocator and `memcpy` callee helpers, `SepWPp` call 
 `r1b_call_placed`, `ownedBytes` deallocation, and `SignalProtocolError` drop helpers on Block `579`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -84,14 +88,6 @@ theorem r1b_shimFs_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       (withLsCodeRoLoaded lsmpl (withStack sessionShimBudgetSpec extHookStack).keepsFs) :=
   r1b_lscro_of_rocl
     (AllocContractsFsPlaced.shim_rocl (prog := runProgPlaced H) (i := 579) hh.allocFs)
-
-theorem r1b_shim2Fs_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hh : RunHooksPlaced A lim H) :
-    subroutine_ok (runProgPlaced H) (lsρ lsRustNoAllocShimSymCli)
-      (withLsCodeRoLoaded lsmpl session2ShimBudgetSpecX.keepsFs) :=
-  r1b_lscro_of_rocl
-    (AllocContractsFsPlaced.shim2_rocl (prog := runProgPlaced H) (i := 579) hh.allocFs)
 
 theorem r1b_allocFs_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}

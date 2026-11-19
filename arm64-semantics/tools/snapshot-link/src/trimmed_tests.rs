@@ -362,7 +362,7 @@ fn emit_rejects_what_the_trim_cannot_represent() {
 fn comdat_member() -> Vec<u8> {
     let mut obj = Object::new(BinaryFormat::Elf, Architecture::Aarch64, Endianness::Little);
     let seg = obj.segment_name(StandardSegment::Text).to_vec();
-    let mut func = |obj: &mut Object, sec: &str, name: &str| {
+    let func = |obj: &mut Object, sec: &str, name: &str| {
         let s = obj.add_section(seg.clone(), sec.as_bytes().to_vec(), SectionKind::Text);
         obj.append_section_data(s, &[0xc0, 0x03, 0x5f, 0xd6], 4);
         let sym = obj.add_symbol(Symbol {

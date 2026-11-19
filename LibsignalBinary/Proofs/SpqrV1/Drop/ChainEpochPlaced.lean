@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpoch
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpoch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochCodeSym -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-import GeneratedLean.LibsignalSessionCode
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable `[LibsignalPlacement]` Drop Glue for `[ChainEpoch]` and `Chain`
@@ -24,7 +24,7 @@ Proves relocatable `[LibsignalPlacement]` subroutine contracts for:
 - Block `269`: `core::ptr::drop_glue::<spqr::chain::Chain>`
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -41,7 +41,7 @@ open CryptoVerification.SpqrV1.ChainProofs
 open CryptoVerification.SpqrV1.Drop.ChainEpochPlaced
 open CryptoVerification.SpqrV1.Drop.Blk337_338
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Obj.lookup
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Block `143`: `drop_glue::<[spqr::chain::ChainEpoch]> [local#1]` -/

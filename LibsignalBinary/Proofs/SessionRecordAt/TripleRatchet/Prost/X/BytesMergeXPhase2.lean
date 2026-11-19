@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.Prost.X.BytesMergeXDefs
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneX
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneX -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import ProofLib.SepLogic.WPp
@@ -22,7 +22,7 @@ Payload-reservation arithmetic bounds, phase 2/3 symbolic execution lemmas, and 
 extern adapters for `prost::encoding::bytes::merge`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -44,20 +44,11 @@ set_option linter.unusedSimpArgs false
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-attribute [local simp, local arm64_norm] bytesMerge_fnOff
 attribute [local simp]
   bytesMutDataWord_zero bytesMutDataWord_bit0 bytesMutDataWord_getLsbD_zero
   bytesMutDataWord_getElem_zero bytesMutDataWord_lsr5 bitvec_ult_zero
 
 def L1_BytesMergeXPhase2 : Unit := ()
-
-theorem fnAddr_offset_eq_HX {b : BitVec 64} {H : String → Option (State → State)}
-    {name callee : String} {k : BitVec 64}
-    (hk : BitVec.ofNat 64 (libsignalSessionCode.fnOff name) + k =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff callee) := by fnoff_eq) :
-    (libsignalSessionCode.rebase b H).fnAddr name + k =
-      (libsignalSessionCode.rebase b H).fnAddr callee := by
-  rw [Program.fnAddr_rebase, Program.fnAddr_rebase, BitVec.add_assoc, hk]
 
 /-- `mergeBytes` consumes at least one varint byte plus the payload. -/
 theorem mergeBytes_length_sumX {wt : WireType} {bs v rest : List (BitVec 8)}
@@ -167,7 +158,7 @@ theorem bitvec_getLsbD_63_of_lt63 {n : Nat} (hn : n < 2 ^ 63) :
   bitvec_msb_false_of_lt63 hn
 
 /-- `__rust_no_alloc_shim_is_unstable_v2` contract with `decodeVarintSliceStackW` (`24656` bytes). -/
-def sessionShimSpecBMX : Spec Unit where
+@[expose] def sessionShimSpecBMX : Spec Unit where
   pre := fun _ s => ⌜True⌝ ∗ stackAt s.sp decodeVarintSliceStackW
   post := fun _ s0 sf => ⌜sf.trace = s0.trace⌝ ∗ stackAt s0.sp decodeVarintSliceStackW
 

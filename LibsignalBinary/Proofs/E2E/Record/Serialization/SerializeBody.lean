@@ -10,19 +10,20 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymB
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.FromRecordCalleesCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.FromRecordCalleesCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Fetch
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
 import ProofLib.SepLogic.SymWP
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymA
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Body proof of `SessionRecord::serialize` (`0x1857c`) from callee contracts
@@ -37,7 +38,7 @@ across the six stages of `SessionRecord::serialize`:
 6. Writing `Ok(v)` (`okTagVec = -2`) into the `sret` output slot `x8`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.Serialization
 
@@ -244,61 +245,6 @@ private theorem repack_stack_none_cells (sp wn w0 w1 w2 : BitVec 64)
     ac_rfl
   rw [hpull, hv, hp]
   exact repack_stack_none sp wn (w1 ++ w0) w2 h336
-
-private theorem serialize_none_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (hVV : OkAt b C ctl abs vecVecCloneName vecVecCloneEmptySpec) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr serializeName)
-      (serializeNoneSpec A) := by
-  unfold serializeNoneSpec
-  simp only [noneCap, okTagVec, memRegion_out32_stack_none,
-    sepExists_sepConj_left, sepExists_sepConj_right]
-  have hfn : libsignalSessionCode.fnOff serializeName = 0x1857c :=
-    libsignalSessionCode_fnOff_serialize
-  have hmemcpy := framelessMemcpy_ok_at (b := b) (C := C) (ctl := ctl) (abs := abs)
-    (name := serializeName) (k := num% (ls_off% "memcpy" - 0x1857c))
-  have hvv := vecVecClone_sub_ok hVV
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x1857c 0 56
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x1857c 0x5c 48
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x1857c 0x10c 12
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x1857c 0x128 4
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x1857c 0x188 20
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x1857c 0x1a8 24
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x1857c 0x2b4 32
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x1857c 0x2dc 8
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x1857c 0x310 8
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x1857c 0x32c 32
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨self, out, prevPtr⟩ := x
-  dsimp only at *
-  wp_steps
-  wp_apply
-  wp_simp_pre [vecHeader, arm64_norm]
-  wp_steps
-  rw [← h]
-  wp_apply
-  refine SepWP.fold (bytes336_to_w012 s0.sp h) (by sep_focus) ?_
-  apply sepWP_exists_left_sep; intro w0
-  apply sepWP_exists_left_sep; intro w1
-  apply sepWP_exists_left_sep; intro w2
-  wp_steps
-  refine SepWP.fold (vecU8_nil_from_out_cells A out) (by sep_focus) ?_
-  refine SepWP.fold (cells_12_pack s0.sp _ _ _ _ _ _ _ _ _ _ _ _) (by sep_focus) ?_
-  refine SepWP.fold (repack_stack_none_cells s0.sp _ _ _ _ h) (by sep_focus) ?_
-  wp_done
 
 private theorem sessionAt_pack_776 (A : RustAlloc) (sp : BitVec 64)
     (G : SessionGhost) (s : LibsignalSessionApi.Session (List (BitVec 8)))
@@ -570,153 +516,6 @@ private theorem lenField_one_cons_eq {bs bs' : List (BitVec 8)} (h : bs = bs') :
 section SerializeSomeIrred
 attribute [local irreducible] Program.fnOff reaches_pc sessionStateReprAt sessionStateAt
 
-set_option maxHeartbeats 800000 in
-private theorem serialize_some_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (hA : AllocHooks A abs)
-    (hClone : OkAt b C ctl abs sessionCloneName (sessionCloneSpec A))
-    (hVV : OkAt b C ctl abs vecVecCloneName vecVecCloneEmptySpec)
-    (hLen : OkAt b C ctl abs sessionLenName (sessionLenSpec A))
-    (hEV : Prost.EncodeVarintOk b C A ctl abs)
-    (hRaw : OkAt b C ctl abs encodeRawName (encodeRawSpec A))
-    (hDrop : FromRecordCallees.DropSessionStructureLocal1Ok b C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr serializeName)
-      (serializeSomeSpec A) := by
-  unfold serializeSomeSpec
-  simp only [okTagVec, memRegion_out32_stack_some,
-    sepExists_sepConj_left, sepExists_sepConj_right]
-  have hfn : libsignalSessionCode.fnOff serializeName = 0x1857c :=
-    libsignalSessionCode_fnOff_serialize
-  have hmemcpy := framelessMemcpy_ok_at (b := b) (C := C) (ctl := ctl) (abs := abs)
-    (name := serializeName) (k := num% (ls_off% "memcpy" - 0x1857c))
-  have hshim := noAllocShim_ok_at (b := b) (C := C) (ctl := ctl) (abs := abs)
-    (name := serializeName) (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - 0x1857c))
-  have hpanic := panic_at_handle_error_norm (b := b) (C := C) (ctl := ctl) (abs := abs)
-    (name := serializeName) (k := num% (ls_off% "alloc::raw_vec::handle_error" - 0x1857c))
-  have hclone := sessionClone_sub_ok hClone
-  have hvv := vecVecClone_sub_ok hVV
-  have hlen := sessionLen_sub_ok hLen
-  have hev := encodeVarint_sub_ok hEV
-  have hraw := encodeRaw_sub_ok hRaw
-  have hdrop := dropLocal1_sub_ok hDrop
-  have halloc := alloc_sub_ok (b := b) (C := C) (ctl := ctl) hA
-  clear hClone hVV hLen hEV hRaw hDrop
-  code_fetches_range CryptoVerification.libsignalSessionCode serializeBin b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x1857c 0 196
-  code_fetches_range CryptoVerification.libsignalSessionCode serializeBin b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x1857c 0x10c 160
-  code_fetches_range CryptoVerification.libsignalSessionCode serializeBin b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x1857c 0x1bc 4
-  code_fetches_range CryptoVerification.libsignalSessionCode serializeBin b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x1857c 0x2b4 48
-  code_fetches_range CryptoVerification.libsignalSessionCode serializeBin b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x1857c 0x310 8
-  code_fetches_range CryptoVerification.libsignalSessionCode serializeBin b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x1857c 0x32c 32
-  wpp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨self, out, prevPtr, G, sess⟩ := x
-  dsimp only at *
-  apply SepWPp.of_sepWP (mid := entry + 47988#64)
-  refine SepWP.fold (sessionAt_unpack_head_tail A (self + 24#64) G sess) (by sep_focus) ?_
-  apply sepWP_exists_left_sep; intro bs336_self
-  apply sepWP_pure_left_sep; rintro ⟨hbs336_self, hcap_self, hinl_self⟩
-  have hcmn_self : (G.localIk.cap + 1#64 == 0#64) = false := cap_lt_not_noneCap hcap_self
-  wp_steps
-  refine SepWP.fold (sessionAt_pack_head_tail A (self + 24#64) G sess hinl_self) (by sep_focus) ?_
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  wpp_call hclone ⟨s0.sp - 800#64, self + 24#64, G, sess⟩
-  have heq_enc : encSessionMem w sess = encSessionMem G sess := hpost
-  clear hclone bs336_self hbs336_self hcap_self hinl_self hcmn_self
-  apply SepWPp.of_sepWP (mid := entry + 320#64)
-  refine SepWP.fold (sessionAt_unpack_800 A s0.sp w sess) (by sep_focus) ?_
-  apply sepWP_exists_left_sep; intro bs336_clone
-  apply sepWP_pure_left_sep; rintro ⟨hbs336_clone, hcap_clone, hinl_clone⟩
-  have hcmn_clone : (w.localIk.cap + 1#64 == 0#64) = false := cap_lt_not_noneCap hcap_clone
-  wp_steps
-  rw [← hbs336_clone]
-  wp_apply using hmemcpy
-  refine SepWP.fold (repack_frame_368 s0.sp w.localIk.cap hbs336_clone) (by sep_focus) ?_
-  conv => arg 4; simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  apply SepWP.exists_left; intro w_none
-  wp_steps
-  wp_apply using hvv
-  wp_simp_pre [vecHeader, arm64_norm]
-  wp_steps
-  rw [← hbs336_clone]
-  wp_apply using hmemcpy
-  refine SepWP.fold (sessionAt_pack_776 A s0.sp w sess hinl_clone) (by sep_focus) ?_
-  refine SepWP.fold (bytes336_to_w012 s0.sp hbs336_clone) (by sep_focus) ?_
-  apply sepWP_exists_left_sep; intro w0
-  apply sepWP_exists_left_sep; intro w1
-  apply sepWP_exists_left_sep; intro w2
-  wp_steps
-  clear hvv hmemcpy bs336_clone hbs336_clone hcap_clone hinl_clone w_none
-  have hlen_bounds_G : (lenField 1 (encSessionMem G sess)).length < 2 ^ 32 := by
-    assumption
-  obtain ⟨hbs_lt_G, hlf_pos_G, hlf_lt63_G, hlayout_G, hv_lt62_G, hv_le_lf_G, hraw_lt_G⟩ :=
-    lenField_one_bounds hlen_bounds_G
-  obtain ⟨hbr_ls_G, hbr_tbz_G, hbr_cbz_G⟩ := lenField_one_branch_conds hlen_bounds_G
-  have hcap_toNat_G := lenField_one_bv_toNat hlen_bounds_G
-  have hex_pow : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  wp_apply using hlen with ⟨s0.sp - 776#64, w, sess⟩
-  wp_steps
-  wp_apply using hshim
-  wp_steps
-  wp_apply using halloc
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  clear hshim halloc hex_pow
-  wp_clear_temps
-  by_cases hp0 : sf_6.readReg64 .x0 = 0#64
-  · conv => arg 4; simp only [hp0, sepConj_assoc]
-    refine SepWPp.pure_elim fun htr_fail => ?_
-    apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x1857c))
-    wp_steps
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-    simpa only [sepConj_assoc] using
-      allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-  · have hp0' : sf_6.readReg64 .x0 ≠ 0 := hp0
-    have hp0_beq : (sf_6.readReg64 .x0 == 0#64) = false := beq_false_of_ne hp0
-    conv => arg 4; simp only [hp0', ↓reduceIte, sepConj_assoc]
-    refine SepWPp.pure_elim fun ⟨halign, htr_alloc⟩ => ?_
-    apply SepWPp.of_sepWP (mid := entry + 18446744073709464356#64)
-    rw [memRegion_split_init_byte (sf_6.readReg64 .x0) hlf_pos_G hlf_lt63_G]
-    conv => arg 4; simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    apply SepWP.exists_left; intro b0
-    wp_steps
-    wp_apply using hlen with ⟨s0.sp - 776#64, w, sess⟩
-    wp_steps
-    refine SepWP.fold (vecU8At_init_byte_432 A s0.sp (sf_6.readReg64 .x0)
-      (lenField 1 (encSessionMem G sess)).length 0x0a#8 hlf_pos_G hlen_bounds_G hp0')
-      (by sep_focus) ?_
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    wpp_call hev ⟨BitVec.ofNat 64 (encSessionMem G sess).length, s0.sp - 432#64,
-      BitVec.ofNat 64 (lenField 1 (encSessionMem G sess)).length,
-      sf_6.readReg64 .x0, [0x0a#8]⟩
-    clear hlen hev b0 hlf_pos_G hlf_lt63_G hlen_bounds_G
-    apply SepWPp.of_sepWP (mid := entry + 18446744073709471676#64)
-    wp_steps
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    wpp_call hraw ⟨s0.sp - 776#64, w, sess, s0.sp - 432#64, _, _,
-      [0x0a#8] ++ encodeVarint (BitVec.ofNat 64 (encSessionMem G sess).length)⟩
-    clear hraw hpanic hA hfn hbs_lt_G hlayout_G hraw_lt_G
-      hbr_ls_G hbr_tbz_G hbr_cbz_G hcap_toNat_G hp0_beq halign
-    apply SepWPp.of_sepWP_ret
-    rw [lenField_one_cons_eq heq_enc, vecU8At_unpack_cells_432]
-    wp_steps
-    refine SepWP.fold (sessionAt_entails_sessionStateAt A (s0.sp - 776#64) w sess) (by sep_focus) ?_
-    wp_call hdrop (x := ⟨s0.sp - 776#64, w, sess.state⟩)
-    wp_steps
-    conv => arg 4; simp only [*]
-    refine SepWP.fold (vecU8_from_out_cells A out _ _ (lenField 1 (encSessionMem G sess)))
-      (by sep_focus) ?_
-    refine SepWP.fold (cells_12_pack s0.sp _ _ _ _ _ _ _ _ _ _ _ _) (by sep_focus) ?_
-    refine SepWP.fold (repack_stack_some_cells s0.sp _ _ _) (by sep_focus) ?_
-    wp_done
-
 end SerializeSomeIrred
 
 private def prevVecFrame (A : RustAlloc) (r : BitVec 64) (g : RecordGhost) : SepProp :=
@@ -728,81 +527,6 @@ private theorem vecAt_empty_split (A : RustAlloc) (r : BitVec 64) (g : RecordGho
   unfold vecAt vecHeader prevVecFrame
   simp only [List.length_nil]
   ac_rfl
-
-/-- `SessionRecord::serialize` (`0x1857c`) satisfies `serializeSpec` given `AllocHooks` and its
-callee contracts. -/
-theorem serialize_ok_of_leaves (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (hA : AllocHooks A abs)
-    (hClone : OkAt b C ctl abs sessionCloneName (sessionCloneSpec A))
-    (hVV : OkAt b C ctl abs vecVecCloneName vecVecCloneEmptySpec)
-    (hLen : OkAt b C ctl abs sessionLenName (sessionLenSpec A))
-    (hEV : Prost.EncodeVarintOk b C A ctl abs)
-    (hRaw : OkAt b C ctl abs encodeRawName (encodeRawSpec A))
-    (hDR : OkAt b C ctl abs doReserveName (doReserveSpec A))
-    (hDrop : FromRecordCallees.DropSessionStructureLocal1Ok b C A ctl abs) :
-    OkAt b C ctl abs serializeName (serializeSpec A) := by
-  have _ := hDR
-  have hnone := serialize_none_ok b C A ctl abs hVV
-  have hsome := serialize_some_ok b C A ctl abs hA hClone hVV hLen hEV hRaw hDrop
-  apply subroutine_ok_outcome_intro
-  intro x R s0 hpc hrun hpre hsp
-  rcases hcur_g : x.g.cur with _ | G <;> rcases hcur_r : x.r.currentSession with _ | sess
-  ·
-    have henc : encRecordMem x.g x.r = [] := by
-      simp [encRecordMem, encCurMem, hcur_g, hcur_r]
-    let F := prevVecFrame A x.self x.g ∗ memRegion (x.self + 32#64) 336 ∗ A.pool
-    have hpre' : s0.mem ⊨ (serializeNoneSpec A).pre (x.self, x.out, x.g.prevPtr) s0 ∗ (F ∗ R) := by
-      simp only [serializeSpec, serializeNoneSpec, sessionRecordAt, hcur_g, hcur_r,
-        vecAt_empty_split, F, sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-      refine ⟨⟨hpre.1.1, hpre.1.2.1⟩, ?_⟩
-      exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpre.2
-    refine hnone.mono_outcome (x.self, x.out, x.g.prevPtr) (F ∗ R) s0 hpc hrun hpre' hsp fun sf hout => ?_
-    rcases hout with ⟨h1, h2, hpost⟩ | ⟨_, hpan⟩ | ⟨_, _, hex⟩ | ⟨_hoom_st, _hoom_post⟩
-    rotate_right; · exact (not_satisfies_false_sepConj _hoom_post).elim
-    · refine Or.inl ⟨h1, h2, ?_⟩
-      simp only [serializeSpec, serializeNoneSpec, sessionRecordAt, hcur_g, hcur_r, henc,
-        vecAt_empty_split, F, sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-      refine ⟨hpost.1, ?_⟩
-      exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpost.2
-    · exact False.elim (not_satisfies_false_sepConj hpan)
-    · exact False.elim (not_satisfies_false_sepConj hex)
-  ·
-    simp only [serializeSpec, sessionRecordAt, hcur_g, hcur_r,
-      sepConj_assoc, satisfies_pure_sepConj] at hpre
-    rw [sepConj_comm (vecAt A 24 8 (fun _ _ => emp) x.self x.g.prevCap x.g.prevPtr []),
-      sepConj_assoc, satisfies_pure_sepConj] at hpre
-    exact False.elim hpre.2.1
-  ·
-    simp only [serializeSpec, sessionRecordAt, hcur_g, hcur_r,
-      sepConj_assoc, satisfies_pure_sepConj] at hpre
-    rw [sepConj_comm (vecAt A 24 8 (fun _ _ => emp) x.self x.g.prevCap x.g.prevPtr []),
-      sepConj_assoc, satisfies_pure_sepConj] at hpre
-    exact False.elim hpre.2.1
-  ·
-    have henc : encRecordMem x.g x.r = lenField 1 (encSessionMem G sess) := by
-      simp [encRecordMem, encCurMem, hcur_g, hcur_r]
-    let F := prevVecFrame A x.self x.g
-    have hpre' : s0.mem ⊨ (serializeSomeSpec A).pre ⟨x.self, x.out, x.g.prevPtr, G, sess⟩ s0 ∗ (F ∗ R) := by
-      simp only [serializeSpec, serializeSomeSpec, sessionRecordAt, hcur_g, hcur_r, henc,
-        vecAt_empty_split, F, sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-      refine ⟨hpre.1, ?_⟩
-      exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpre.2
-    refine hsome.mono_outcome ⟨x.self, x.out, x.g.prevPtr, G, sess⟩ (F ∗ R) s0 hpc hrun hpre' hsp fun sf hout => ?_
-    rcases hout with ⟨h1, h2, hpost⟩ | ⟨hpan_st, hpan⟩ | ⟨_, _, hex⟩ | ⟨_hoom_st, _hoom_post⟩
-    rotate_right; · exact (not_satisfies_false_sepConj _hoom_post).elim
-    · refine Or.inl ⟨h1, h2, ?_⟩
-      simp only [serializeSpec, serializeSomeSpec, sessionRecordAt, hcur_g, hcur_r, henc,
-        vecAt_empty_split, F, sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-      refine ⟨hpost.1, ?_⟩
-      exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpost.2
-    · refine Or.inr (Or.inl ⟨hpan_st, ?_⟩)
-      simp only [serializeSpec, serializeSomeSpec] at hpan ⊢
-      rw [← sepConj_assoc] at hpan
-      exact allowPanic_frame id hpan
-    · exact False.elim (not_satisfies_false_sepConj hex)
-
-/-! ## Relocatable `[LibsignalPlacement]` body proofs (block `52`) -/
 
 section Placed
 

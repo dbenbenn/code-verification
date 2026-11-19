@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil
+public import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -42,7 +42,7 @@ of `setupTrace r`, so Bob's identity, signed, PQ, and one-time pre-key secrets a
 registered identity key on `runTraceMoves r ms` equal the setup values.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

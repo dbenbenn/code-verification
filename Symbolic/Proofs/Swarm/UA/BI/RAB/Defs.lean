@@ -10,6 +10,17 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.UA.Defs
+public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhInputs
+public import Symbolic.Specifications.Concrete.ExternInterpretation
+public import Symbolic.Specifications.Concrete.MachineEvents
+public import Symbolic.Specifications.Refinement.CliSetup
+public import Symbolic.Specifications.Refinement.Statement
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
+import Symbolic.Proofs.Refinement.Composed.Cli.Model
+public import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
+public import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 
 /-!
 # Run-After-Break Refinement Invariant and Slot Specifications
@@ -20,7 +31,7 @@ per-event/slot specification propositions (`UALeakSpecB`, `UAEnvSpecB`, `UASlot*
 containing break and invert events.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,7 +58,7 @@ open Symbolic.Proofs.Swarm.UA.Defs (AliceRecordPendingInSession flatEvents calls
 /-- Trace invariant after CLI events `evs`: either `CollisionAfterExplainedPrefix` holds on `evs`,
 or `CliLiveAtCli` holds on `flatEvents evs`, every clean explanation of `evs` satisfies
 `AliceRecordPendingInSession`, and some clean explanation of `evs` exists. -/
-def UAInvB (interp' : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (who : List Participant)
+@[expose] def UAInvB (interp' : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (who : List Participant)
     (ok : Nat → Bool) (t_clean : CliTurn) (accepted : List HwBytes) (evs : List CliEvent) : Prop :=
   CollisionAfterExplainedPrefix interp' r S evs ∨
     (CliLiveAtCli interp' r S who ok t_clean accepted (flatEvents evs) ∧
@@ -56,7 +67,7 @@ def UAInvB (interp' : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbo
       ∃ g ss vis, Explains interp' r S g ss vis evs ∧ ¬ ReadCollisionCli interp' r S g ss evs)
 
 /-- Per-call postcondition advancing `PqTurnSim1A` and preserving `UAInvB` across `c`. -/
-def UASlotPostB (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup)
+@[expose] def UASlotPostB (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup)
     (t t_clean : CliTurn) (c : CliCall) (code : Nat) (out : HwBytes) (files : DirectorySnapshot)
     (accepted : List HwBytes) (evs_pre : List CliEvent) : Prop :=
   let interp' := interpOfParams interp P
@@ -72,7 +83,7 @@ def UASlotPostB (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetu
 /-! ## Induction Step Specifications -/
 
 /-- Environment leak events (`LeaksFrom`) preserve `UAInvB`. -/
-def UALeakSpecB : Prop :=
+@[expose] def UALeakSpecB : Prop :=
   ∀ (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup),
     ExternContractsHoldCli interp → ModelAgree interp P → ProtocolSetupWF r →
     ∀ {t t_clean : CliTurn} {accepted : List HwBytes} {evs leaks : List CliEvent}
@@ -86,7 +97,7 @@ def UALeakSpecB : Prop :=
         t_clean accepted (evs ++ leaks)
 
 /-- A guarded break or invert environment event preserves `UAInvB`. -/
-def UAEnvSpecB : Prop :=
+@[expose] def UAEnvSpecB : Prop :=
   ∀ (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup),
     ExternContractsHoldCli interp → ModelAgree interp P → ProtocolSetupWF r →
     ∀ {t t_clean : CliTurn} {accepted : List HwBytes} {evs : List CliEvent} {e : EnvEvent}
@@ -101,7 +112,7 @@ def UAEnvSpecB : Prop :=
         t_clean accepted (evs ++ [.env e])
 
 /-- Specification for Alice's `init` call slot. -/
-def UASlotInitSpecB : Prop :=
+@[expose] def UASlotInitSpecB : Prop :=
   ∀ (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup),
     ExternContractsHoldCli interp → ModelAgree interp P → ProtocolSetupWF r →
     ∀ {t t_clean : CliTurn} {c : CliCall} {i : Inputs}
@@ -120,7 +131,7 @@ def UASlotInitSpecB : Prop :=
       UASlotPostB interp P r t t_clean c code out files accepted evs_pre
 
 /-- Specification for the `send` call slot. -/
-def UASlotSendSpecB : Prop :=
+@[expose] def UASlotSendSpecB : Prop :=
   ∀ (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup),
     ExternContractsHoldCli interp → ModelAgree interp P → ProtocolSetupWF r →
     ∀ {t t_clean : CliTurn} {c : CliCall} {i : Inputs}
@@ -141,7 +152,7 @@ def UASlotSendSpecB : Prop :=
       UASlotPostB interp P r t t_clean c code out files accepted evs_pre
 
 /-- Specification for the whisper `recv` call slot. -/
-def UASlotRecvWSpecB : Prop :=
+@[expose] def UASlotRecvWSpecB : Prop :=
   ∀ (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup),
     ExternContractsHoldCli interp → ModelAgree interp P → ProtocolSetupWF r →
     ∀ {t t_clean : CliTurn} {c : CliCall} {i : Inputs} {body : HwBytes}
@@ -163,7 +174,7 @@ def UASlotRecvWSpecB : Prop :=
       UASlotPostB interp P r t t_clean c code out files accepted evs_pre
 
 /-- Specification for Bob's non-promote pre-key `recv` call slot. -/
-def UASlotRpkNOSpecB : Prop :=
+@[expose] def UASlotRpkNOSpecB : Prop :=
   ∀ (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup),
     ExternContractsHoldCli interp → ModelAgree interp P → ProtocolSetupWF r →
     ∀ {t t_clean : CliTurn} {c : CliCall} {i : Inputs}
@@ -186,7 +197,7 @@ def UASlotRpkNOSpecB : Prop :=
       UASlotPostB interp P r t t_clean c code out files accepted evs_pre
 
 /-- Specification for Bob's matching-session promotion `recv` call slot. -/
-def UASlotRpkPromSpecB : Prop :=
+@[expose] def UASlotRpkPromSpecB : Prop :=
   ∀ (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup),
     ExternContractsHoldCli interp → ModelAgree interp P → ProtocolSetupWF r →
     ∀ {t t_clean : CliTurn} {c : CliCall} {i : Inputs} {rec_ : HwBytes} {q : PreKeyFields}
@@ -209,13 +220,13 @@ def UASlotRpkPromSpecB : Prop :=
       UASlotPostB interp P r t t_clean c code out files accepted evs_pre
 
 /-- The empty event list has a clean explanation. -/
-def UAInitWSpecB : Prop :=
+@[expose] def UAInitWSpecB : Prop :=
   ∀ {interp' : ExternInterpretation} {r : ProtocolSetup} {S : OpaqueSymbolSemantics},
     ProtocolSetupWF r → SemReady interp' r S →
     ∃ g ss vis, Explains interp' r S g ss vis [] ∧ ¬ ReadCollisionCli interp' r S g ss []
 
 /-- `Explains` and `CollisionAfterExplainedPrefix` are invariant under `interpOfParams`. -/
-def UAXportSpecB : Prop :=
+@[expose] def UAXportSpecB : Prop :=
   ∀ (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup) (S : OpaqueSymbolSemantics),
     (∀ g ss vis evs, Explains (interpOfParams interp P) r S g ss vis evs ↔
       Explains interp r S g ss vis evs) ∧
@@ -225,7 +236,7 @@ def UAXportSpecB : Prop :=
 
 /-- Every clean step-level explanation of `evs` translates to a clean move-level explanation of
 `flatEvents evs` with matching `runTrace`, `honestSalts`, `prefixTerms`, and `plaintextTerms`. -/
-def XlateInvSpecB : Prop :=
+@[expose] def XlateInvSpecB : Prop :=
   ∀ {interp' : ExternInterpretation} {r : ProtocolSetup} {S : OpaqueSymbolSemantics} {who : List Participant}
     {ok : Nat → Bool} {evs : List CliEvent} {g : Ghost} {ss : List Step} {vis : List VisEntry},
     ProtocolSetupWF r → SemReady interp' r S →
@@ -239,7 +250,7 @@ def XlateInvSpecB : Prop :=
 
 /-- Absence of `CollisionAfterExplainedPrefix` on an accepted whisper or promoted-session `recv`
 run refutes `SignalMsgAcceptedOnlyViaCollisionMoves` at the call's cut. -/
-def XlateExcWSpecB : Prop :=
+@[expose] def XlateExcWSpecB : Prop :=
   ∀ {interp' : ExternInterpretation} {r : ProtocolSetup} {S : OpaqueSymbolSemantics} {who : List Participant}
     {ok : Nat → Bool} {evs : List CliEvent} {ev : RunEvent} {g₀ : Ghost} {ss₀ : List Step}
     {vis₀ : List VisEntry} {peer : Address} {out b : HwBytes}
@@ -263,7 +274,7 @@ def XlateExcWSpecB : Prop :=
 
 /-- Absence of `CollisionAfterExplainedPrefix` on an accepted non-promote pre-key `recv` run
 refutes `PreKeyStartCollidesOrRejectsMoves` at the call's cut. -/
-def XlateExcPSpecB : Prop :=
+@[expose] def XlateExcPSpecB : Prop :=
   ∀ {interp' : ExternInterpretation} {r : ProtocolSetup} {S : OpaqueSymbolSemantics} {who : List Participant}
     {ok : Nat → Bool} {evs : List CliEvent} {ev : RunEvent} {g₀ : Ghost} {ss₀ : List Step}
     {vis₀ : List VisEntry} {peer : Address} {out : HwBytes} {p : PreKeyFields}

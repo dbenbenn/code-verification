@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Record.RecordCodeSym
+public import LibsignalBinary.Proofs.TripleRatchet.Record.RecordCodeSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard9
 
 /-!
 # Relocatable Per-Block Fetches for `session_message_decrypt_signal`
@@ -21,7 +22,7 @@ Generated placed block program and instruction fetch lemmas for block `197`
 (`session_message_decrypt_signal`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

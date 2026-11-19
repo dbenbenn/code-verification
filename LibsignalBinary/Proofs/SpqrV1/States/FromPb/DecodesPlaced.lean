@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Decodes
-public import LibsignalBinary.Proofs.Placed.Bridge
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Decodes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced
 
 /-!
@@ -20,7 +20,7 @@ Consolidates all 4 fetch shards (`0..11640`), seals `CryptoVerification.blkPC_33
 and defines `statesFromPbJumpTablePlacedAt` + `rodata_statesFromPbJumpTablePlacedAt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -38,7 +38,7 @@ abbrev statesFromPbJumpTableSym : String :=
   "spqr:.rodata.<spqr::v1::chunked::states::States>::from_pb"
 
 /-- Relocatable `.rodata` jump table for `<States>::from_pb` (Block `333`, `22` bytes). -/
-def statesFromPbJumpTablePlacedAt [LibsignalPlacement] : SepProp :=
+@[expose] def statesFromPbJumpTablePlacedAt [LibsignalPlacement] : SepProp :=
   (lsρ statesFromPbJumpTableSym) ↦ᵣ statesFromPbJumpTableBytes
 
 /-- Extract `statesFromPbJumpTablePlacedAt` (`22` bytes) from `LibsignalRoLoaded lsmpl m`. -/

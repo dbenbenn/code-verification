@@ -19,7 +19,7 @@ Binary symbol names for `spqr::kdf::hkdf_to_slice`, `spqr::kdf::hkdf_to_vec`, an
 monomorphized `Hmac<Sha256>` callees.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Kdf
 

@@ -10,10 +10,20 @@ limitations under the License.
 module
 
 import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSignalOkPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalErr
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSignalOkPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalErr
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSignalMemPlacedBudget
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFrom
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalFrame
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Relocatable `segSignal` Error Branch (`+0x3a4..+0x3c8` → `+0xc14`)
@@ -22,7 +32,7 @@ Proves `segSignal_placed_err_path_pf` on Block `464` (`lsProg_464 Hk`) under `Ru
 and `[LibsignalPlacement]`, exiting via `env.tailSignalEncryptErr` at `+0xc14`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

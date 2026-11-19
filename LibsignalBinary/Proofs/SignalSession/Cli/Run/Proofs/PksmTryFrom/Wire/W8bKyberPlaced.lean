@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bKyber
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKybercWPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bBaseKeyPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bKyber -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKybercWPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bBaseKeyPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPost
@@ -23,7 +23,7 @@ Defines `w8bRowYFramePlaced`, `PreKey830OkWPlaced`, and `PreKeyKyberErrWPlaced`,
 proves `preKey684OkW_placed_of_830` on `preKeyPlacedProg H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -50,7 +50,7 @@ open CryptoVerification.SignalSession.Cli.RunProofs
 /-! ## 1. Frames and the `+0x830` continuation (`[LibsignalPlacement]`) -/
 
 /-- The part of `w8bRowKPostPlaced ∗ w8bRowKFrame` untouched by Kyber dispatch (`+0x684 → +0x830`). -/
-def w8bRowYFramePlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
+@[expose] def w8bRowYFramePlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
     (sp' sret ptr bkCap bkPtr ikCap ikPtr msgCap msgPtr : BitVec 64)
     (bk ik msg bytes : List (BitVec 8)) : SepProp :=
   Wire.vecU8Buf A bkCap bkPtr bk ∗ lsLogOff ∗
@@ -63,7 +63,7 @@ def w8bRowYFramePlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
       (preKeyTryFromSubStack - Prost.skipFieldStackX 100)
 
 /-- `+0x830` (`2096`) → `ret` on the Kyber Ok dispatch. -/
-def PreKey830OkWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def PreKey830OkWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   ∀ (x : RunCompose.PksmGhost) (s0 sf : State) (vb b1 : BitVec 8) (bs1 : List (BitVec 8))
     (m : ProtoPreKeySignalMessage) (bk ik msg : List (BitVec 8)) (spkId : BitVec 32)
     (pk : PublicKey)
@@ -102,7 +102,7 @@ def PreKey830OkWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks)
 
 /-- `PreKey684OkWPlaced` restricted to the Kyber Err dispatch (`isSome` mismatch,
 or both `none` with `0x40 ≤ vb.toNat`; Kyber `Err` edges `+0x684 → +0xa24` / `+0xa74` / `+0xa80` → ret). -/
-def PreKeyKyberErrWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def PreKeyKyberErrWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   ∀ (x : RunCompose.PksmGhost) (s0 sf : State) (vb b1 : BitVec 8) (bs1 : List (BitVec 8))
     (m : ProtoPreKeySignalMessage) (bk ik msg : List (BitVec 8)) (spkId : BitVec 32)
     (pk : PublicKey)

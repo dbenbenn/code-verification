@@ -13,6 +13,7 @@ public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Eager
 import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11Aux
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Coupling
 
 /-!
 # Spurious-step bridge for tracker-halted `RefinementC`
@@ -23,7 +24,7 @@ state by `spurUnitPt P.C.F encPt Dh` (`evalDist_runWinAtCTrack_succ_init_leC`).
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace CryptoGames.LibsignalSM.Proofs.Refinement
 

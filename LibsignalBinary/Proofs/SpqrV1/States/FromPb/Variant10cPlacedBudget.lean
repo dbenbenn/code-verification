@@ -10,13 +10,23 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10cPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10cPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10c -- proof-setup: allow-public-import
+public import VerifiedLibraries.Musl.Spec
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1Placed
 
 /-!
 # Budget-Threaded Relocatable Variant 10 (`Ct2Sampled`, `+1632`) — Epilogue Staging
@@ -25,7 +35,7 @@ Proves `VmPreserved`-strengthened and `RustCliAllocBudget M` pool-threading relo
 and `+7904 -> s0.x30` theorems for Variant 10 on Block `333`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

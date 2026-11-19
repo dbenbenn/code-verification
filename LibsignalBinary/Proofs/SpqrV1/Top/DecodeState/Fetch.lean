@@ -9,30 +9,15 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 import ProofLib.GenDecodes
-
-/-!
-# Instruction Decode Tree for `spqr::decode_state` (`0x5349c..0x54040`, 745 insns)
-
-**Checked by Lean.**
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.DecodeState
 
 open Arm64 ProofLib ProofLib.ProgramReflection
 
 /-- Symbol name for `spqr::decode_state` (`0x5349c`, 745 insns, 2980 bytes). -/
-def decodeStateName : String :=
+@[expose] def decodeStateName : String :=
   "spqr::decode_state"
-
-@[simp, arm64_norm]
-theorem decodeState_fnOff :
-    libsignalSessionCode.fnOff decodeStateName = 0x4e0a4 :=
-  libsignalSessionCode_fnOff_0x4e0a4
-
-gen_decodes libsignalSessionCode_tree decodeStateBin [ 0x4e0a4 → 0x4ec48 ]
 
 end CryptoVerification.SpqrV1.Top.DecodeState

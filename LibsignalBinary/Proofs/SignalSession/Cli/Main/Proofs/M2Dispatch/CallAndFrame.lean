@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
 
 /-!
 # Scoped Frame and Call-Site Helpers for `M2Dispatch`
@@ -17,7 +17,7 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced
 Local `locals` and `stackAt` frame helpers in `MainHops.Proofs` for `main_m2` subcommand dispatch.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false
@@ -35,15 +35,15 @@ open CryptoVerification.SignalSession.Cli.MainHops
 
 /-! ## 1. `locals` & `stackAt` Helpers -/
 
-def localsBound : List (Nat × Nat × SepProp) → Nat
+@[expose] def localsBound : List (Nat × Nat × SepProp) → Nat
   | [] => 0x480
   | (o, _, _) :: _ => o
 
-def localsEnd (off : Nat) : List (Nat × Nat × SepProp) → Nat
+@[expose] def localsEnd (off : Nat) : List (Nat × Nat × SepProp) → Nat
   | [] => off
   | (o, n, _) :: cs => localsEnd (o + n) cs
 
-def localsCtx (fsp : BitVec 64) :
+@[expose] def localsCtx (fsp : BitVec 64) :
     Nat → List (Nat × Nat × SepProp) → Nat → Nat → List (Nat × Nat × SepProp) → SepProp
   | off, [], o, n, cs₂ =>
     memRegion (fsp + BitVec.ofNat 64 off) (o - off) ∗ localsFrom fsp (o + n) cs₂
@@ -51,7 +51,7 @@ def localsCtx (fsp : BitVec 64) :
     memRegion (fsp + BitVec.ofNat 64 off) (o₁ - off) ∗ P₁ ∗
       localsCtx fsp (o₁ + n₁) cs₁ o n cs₂
 
-def LocalsWF : Nat → List (Nat × Nat × SepProp) → Prop
+@[expose] def LocalsWF : Nat → List (Nat × Nat × SepProp) → Prop
   | off, [] => off ≤ 0x480
   | off, (o, n, _) :: cs => off ≤ o ∧ LocalsWF (o + n) cs
 

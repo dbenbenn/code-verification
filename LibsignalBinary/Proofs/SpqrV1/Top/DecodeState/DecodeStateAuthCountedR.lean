@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateAuthStepsR
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MergePlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateAuthStepsR
+import LibsignalBinary.Proofs.SpqrV1.Auth.MergePlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.FnOffEq
@@ -24,8 +24,17 @@ import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergePlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateSubMergesStepsR
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateTightCountR
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.Placed.BlocksTreeDefs
 
 /-!
 # Tight & Base `ProtoAuthenticator::merge` Verification (`Block 295`)
@@ -35,7 +44,7 @@ Verifies `ProtoAuthenticator::merge` (Block `295`) both against the general loop
 `tlb_AuthTightEnvOf` on `tlb_AuthDom`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

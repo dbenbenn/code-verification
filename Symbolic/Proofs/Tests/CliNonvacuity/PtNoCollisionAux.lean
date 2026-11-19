@@ -65,7 +65,7 @@ network message, stored state, or logged event corresponds to a `DY.Random.ExecE
 size on `tr`, and excludes non-`Random` memo entries of byte length `9`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -456,7 +456,7 @@ end Core
 
 /-! ## Memo-Entry Inversion and Non-`Random` Byte-Length Exclusion (`≠ 9`) -/
 
-def MemoEntryProp (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def MemoEntryProp (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
     (t : DY.Bytes) : Prop :=
   ∀ (u sh : DY.Bytes) (v : HwBytes),
     (u, sh, v) ∈ (gamma' i S g t).memo →

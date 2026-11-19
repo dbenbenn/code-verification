@@ -9,16 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserializePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KemDeserializeSlotPlacedBudget
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserializePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudgetFd -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KemDeserializeSlotPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
 /-!
 # File-Descriptor-Threaded `kem::Key<Public>::deserialize` Slot Adapter (Placed)
@@ -28,7 +33,7 @@ discharging `withFdsGe3Closed` for Block `590` (`kem::Key<Public>::deserialize`)
 both for `slotsOfPlaced` and `slotsOfSigPkFrozenPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -118,114 +123,5 @@ theorem allocContractsXCliPlaced_withFds_of_runHooks [LibsignalPlacement] {M : A
       realloc := subroutine_ok_withLsCodeRoLoaded_of_plain
         (ls_hook_ok_ultra_of_mem
           ⟨fr, hfr, hookOk_rustReallocExternWithStack hokr (by decide) (by decide)⟩ (by decide)) }
-
-private theorem kem_pre_enforced {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} (henf : lim.enforced = true)
-    {P1 P2 P3 P4 P5 R : SepProp} {st : M.σ} {s0 : State}
-    (hClosed0 : FdsGe3Closed s0.fs)
-    (h : s0.mem ⊨ ((P1 ∗ P2 ∗ P3 ∗ A.pool lim st s0 ∗ P4) ∗ P5) ∗ R) :
-    s0.mem ⊨ ((P1 ∗ P2 ∗ P3 ∗ (withFds A).pool lim st s0 ∗ P4) ∗ P5) ∗ R := by
-  rw [withFds_pool_enforced A henf]
-  have hEq :
-      ((P1 ∗ P2 ∗ P3 ∗ (⌜FdsGe3Closed s0.fs⌝ ∗ A.pool lim st s0) ∗ P4) ∗ P5) ∗ R =
-      ⌜FdsGe3Closed s0.fs⌝ ∗ (((P1 ∗ P2 ∗ P3 ∗ A.pool lim st s0 ∗ P4) ∗ P5) ∗ R) := by
-    sep_ac_rfl
-  rw [hEq, satisfies_pure_sepConj]
-  exact ⟨hClosed0, h⟩
-
-private theorem kem_post_enforced {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} (henf : lim.enforced = true)
-    {P1 P2 P3 P4 R : SepProp} {st : M.σ} {sf : State}
-    (h : sf.mem ⊨ (P1 ∗ P2 ∗ P3 ∗ (withFds A).pool lim st sf ∗ P4) ∗ R) :
-    sf.mem ⊨ (⌜FdsGe3Closed sf.fs⌝ ∗ (P1 ∗ P2 ∗ P3 ∗ A.pool lim st sf ∗ P4)) ∗ R := by
-  rw [withFds_pool_enforced A henf] at h
-  have hEq :
-      (P1 ∗ P2 ∗ P3 ∗ (⌜FdsGe3Closed sf.fs⌝ ∗ A.pool lim st sf) ∗ P4) ∗ R =
-      ⌜FdsGe3Closed sf.fs⌝ ∗ ((P1 ∗ P2 ∗ P3 ∗ A.pool lim st sf ∗ P4) ∗ R) := by
-    sep_ac_rfl
-  rw [hEq, satisfies_pure_sepConj] at h
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  exact h
-
-/-- Converts `subroutine_ok` for `cliKemDeserializeSpecPlaced M (withFds A) lim stk` to
-`withFdsGe3Closed (cliKemDeserializeSpecPlaced M A lim stk)` when `lim.enforced = true`. -/
-theorem subroutine_ok_kemDeserialize_withFdsGe3Closed_of_withFds [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (henf : lim.enforced = true) {P : Program} {entry : BitVec 64} {stk : Nat}
-    (hok : subroutine_ok P entry (cliKemDeserializeSpecPlaced M (withFds A) lim stk)) :
-    subroutine_ok P entry (withFdsGe3Closed (cliKemDeserializeSpecPlaced M A lim stk)) := by
-  refine subroutine_ok_of_pre_post (Q := fun _ _ => True) hok rfl rfl rfl ?_ ?_
-  · rintro ⟨x, st⟩ R s0 hpre
-    obtain ⟨hClosed0, hpreA⟩ := extract_withFdsGe3Closed hpre
-    dsimp only [cliKemDeserializeSpecPlaced, withLsCodeRoLoaded, cliKemDeserializeSpec,
-      withFds_repAlloc] at hpreA ⊢
-    exact ⟨trivial, kem_pre_enforced henf hClosed0 hpreA⟩
-  · rintro ⟨x, st⟩ R s0 sf _ hpost
-    dsimp only [withFdsGe3Closed, cliKemDeserializeSpecPlaced, withLsCodeRoLoaded,
-      cliKemDeserializeSpec, withFds_repAlloc] at hpost ⊢
-    exact kem_post_enforced henf hpost
-
-/-- Transfers `withFdsGe3Closed` for Block `590` (`kem::Key<Public>::deserialize`) to any caller block `i < 619`. -/
-theorem cliKemDeserialize_placed_at_block_withFdsGe3Closed [LibsignalPlacement]
-    {callerProg : Program} {i : Nat}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} [hcaller : IsLsBlockProg callerProg i H]
-    (henf : lim.enforced = true)
-    (hA : AllocContractsXCliPlaced (withFds A) lim H)
-    (hRO : HookSat H memcpyName (withVmPreserved sessionMemcpyRegionROSpec))
-    (stk : Nat) (hstk : 48 + extHookStack ≤ stk) (hstk64 : stk ≤ 2 ^ 64)
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (blkPl_590).base
-      (withFdsGe3Closed (cliKemDeserializeSpecPlaced M A lim stk)) :=
-  subroutine_ok_kemDeserialize_withFdsGe3Closed_of_withFds henf
-    (cliKemDeserialize_placed_at_block (callerProg := callerProg) (i := i)
-      (A := withFds A) hA hRO stk hstk hstk64 hi)
-
-/-- Discharges `(slotWithFdsGe3Closed (slotsOfPlaced A lim sEnvs S needs).kemDeserialize).OkPlaced` on `lsProg_579 H`. -/
-theorem kemDeserialize_slot_withFdsGe3Closed_okPlaced [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} (sEnvs : RunSlotEnvs) (S : RunSem) (needs : RunNeeds)
-    (henf : lim.enforced = true)
-    (hA : AllocContractsXCliPlaced (withFds A) lim H)
-    (hRO : HookSat H memcpyName (withVmPreserved sessionMemcpyRegionROSpec)) :
-    (slotWithFdsGe3Closed (slotsOfPlaced A lim sEnvs S needs).kemDeserialize).OkPlaced
-      (lsProg_579 H) (blkPl_590).base :=
-  fun stk hlo hhi =>
-    cliKemDeserialize_placed_at_block_withFdsGe3Closed (callerProg := lsProg_579 H) (i := 579)
-      henf hA hRO stk hlo (Nat.le_trans hhi (by decide))
-
-/-- Discharges `(slotWithFdsGe3Closed (slotsOfSigPkFrozenPlaced A lim sEnvs S needs).kemDeserialize).OkPlaced` on `lsProg_579 H`. -/
-theorem kemDeserialize_frozenSlot_withFdsGe3Closed_okPlaced [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} (sEnvs : RunSlotEnvs) (S : RunSem) (needs : RunNeeds)
-    (henf : lim.enforced = true)
-    (hA : AllocContractsXCliPlaced (withFds A) lim H)
-    (hRO : HookSat H memcpyName (withVmPreserved sessionMemcpyRegionROSpec)) :
-    (slotWithFdsGe3Closed
-      (slotsOfSigPkFrozenPlaced A lim sEnvs S needs).kemDeserialize).OkPlaced
-      (lsProg_579 H) (blkPl_590).base :=
-  kemDeserialize_slot_withFdsGe3Closed_okPlaced sEnvs S needs henf hA hRO
-
-theorem kemDeserialize_slot_withFdsGe3Closed_of_runHooks [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} (sEnvs : RunSlotEnvs) (S : RunSem) (needs : RunNeeds)
-    (henf : lim.enforced = true)
-    (hh : RunHooksPlaced A lim H) :
-    (slotWithFdsGe3Closed (slotsOfPlaced A lim sEnvs S needs).kemDeserialize).OkPlaced
-      (lsProg_579 H) (blkPl_590).base :=
-  kemDeserialize_slot_withFdsGe3Closed_okPlaced sEnvs S needs henf
-    (allocContractsXCliPlaced_withFds_of_runHooks hh) hh.memcpyRO
-
-/-- `RunHooksPlaced` wrapper for `kemDeserialize_frozenSlot_withFdsGe3Closed_okPlaced`. -/
-theorem kemDeserialize_frozenSlot_withFdsGe3Closed_of_runHooks [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} (sEnvs : RunSlotEnvs) (S : RunSem) (needs : RunNeeds)
-    (henf : lim.enforced = true)
-    (hh : RunHooksPlaced A lim H) :
-    (slotWithFdsGe3Closed
-      (slotsOfSigPkFrozenPlaced A lim sEnvs S needs).kemDeserialize).OkPlaced
-      (lsProg_579 H) (blkPl_590).base :=
-  kemDeserialize_frozenSlot_withFdsGe3Closed_okPlaced sEnvs S needs henf
-    (allocContractsXCliPlaced_withFds_of_runHooks hh) hh.memcpyRO
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KemDeserializeSlotPlacedBudgetFd

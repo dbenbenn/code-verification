@@ -9,19 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.ChainClone4PlacedMidBudget
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.VecGrowCredit
-public import LibsignalBinary.Proofs.PeakBudget.W4InitBobPeak
-public import LibsignalBinary.Proofs.PeakBudget.W4InnerHelpers
-public import LibsignalBinary.Proofs.PeakBudget.W4PrevDecPeak
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep12Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep3Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.ChainClone4PlacedMidBudget
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.VecGrowCredit
+public import LibsignalBinary.Proofs.PeakBudget.W4InitBobPeak -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W4InnerHelpers
+import LibsignalBinary.Proofs.PeakBudget.W4PrevDecPeak
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep12Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep3Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.VecGrowCreditHelpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `try_decrypt_pq` Seam & Segment Peak Live-Heap Bounds
@@ -37,7 +40,7 @@ Parametric `(M : AllocCostModel) [HasFineReallocCredit M]` (`ModelHyps M`) seque
    (`W4TryDecryptCloneFailEnv`, `phaseCredit_w4TryDecryptCloneFail_cancel`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -280,7 +283,7 @@ theorem phaseCredit_dhCommitStep3_aff {M : AllocCostModel} [HasFineReallocCredit
 
 /-- Full Segment `S3` (`DhStep`) exact-order envelope: `DhCommitStep12Env` → `DhCommitStep3Env` →
 `FreeOnlyEvs` (evicted 6th receiver chain drop + DH temp drops). -/
-def W4DhStepS3Env (chainsCap rcLen : BitVec 64) : List AllocEvent → Prop :=
+@[expose] def W4DhStepS3Env (chainsCap rcLen : BitVec 64) : List AllocEvent → Prop :=
   SeqEnv DhCommitStep12Env
     (SeqEnv (DhCommitStep3Env chainsCap rcLen) FreeOnlyEvs)
 
@@ -412,7 +415,7 @@ theorem phaseCredit_verifyMacWithAddresses_small {M : AllocCostModel} [HasFineRe
 either `[]` (pre-alloc length/block-multiple check fails), `rustAllocEvents ctLen 1` (plaintext
 buffer returned on `.some`), or `rustAllocEvents ctLen 1 ++ rustDeallocEvents ctLen 1` (buffer
 dropped on PKCS#7 unpad failure). -/
-def W4AesDecEnv (ctCap : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def W4AesDecEnv (ctCap : Nat) (evs : List AllocEvent) : Prop :=
   evs = [] ∨
   ∃ ctLen : Nat, ctLen ≤ ctCap ∧
     (evs = rustAllocEvents ctLen 1 ∨
@@ -420,7 +423,7 @@ def W4AesDecEnv (ctCap : Nat) (evs : List AllocEvent) : Prop :=
 
 /-- Failed-AES-CBC (`aesOpt = none`) specialization of `W4AesDecEnv ctCap`, where any allocated
 output buffer is dropped before returning `.error`, cancelling `sc = 63` across all regimes. -/
-def W4AesDecErrEnv (ctCap : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def W4AesDecErrEnv (ctCap : Nat) (evs : List AllocEvent) : Prop :=
   evs = [] ∨
   ∃ ctLen : Nat, ctLen ≤ ctCap ∧
     evs = rustAllocEvents ctLen 1 ++ rustDeallocEvents ctLen 1
@@ -484,7 +487,7 @@ theorem phaseCredit_w4AesDecErr_cancel {M : AllocCostModel} [HasFineReallocCredi
 
 /-- Segment `S9` (`ApplyRatchet` + `set_session_state`) exact-order envelope: `≤ 6` small ratchet
 key/state writes (`≤ 34 B` each) followed by `FreeOnlyEvs` (`set_session_state` old-state drop). -/
-def W4ApplySetStateEnv : List AllocEvent → Prop :=
+@[expose] def W4ApplySetStateEnv : List AllocEvent → Prop :=
   SeqEnv (W4BoundedEvs 6 34) FreeOnlyEvs
 
 /-- Small-regime `PhaseCreditSpec` for `W4ApplySetStateEnv` (`34 ≤ smallMaxReq M`):
@@ -707,7 +710,7 @@ end SeamComposition
 /-- Exact-order failed `try_decrypt_pq` trial on a cloned candidate session (`CloneEnv`):
 `((CloneEnv ++ TrialFailEnv) ++ DropCloneEnv)` followed by `SeqEnv (GrowOneSpeEnv 0#64) FreeOnlyEvs`
 (pushing `SignalProtocolError` into the `errors` `Vec` and dropping error temporaries). -/
-def W4TryDecryptCloneFailEnv
+@[expose] def W4TryDecryptCloneFailEnv
     (CloneEnv TrialFailEnv DropCloneEnv : List AllocEvent → Prop) : List AllocEvent → Prop :=
   SeqEnv
     (ConcatEnv (ConcatEnv CloneEnv TrialFailEnv) DropCloneEnv)

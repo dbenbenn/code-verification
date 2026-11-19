@@ -9,16 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.TrapRng
-
-/-!
-# `Hmac<Sha256>` Memory Layout and `new_from_slice` Specification
-
-Defines the 144-byte `Hmac<Sha256>` separation-logic layout `hmacStateAt` / `hmacCoreAt`
-and the contract `newFromSliceSpec` for `<Hmac<Sha256> as KeyInit>::new_from_slice`.
--/
-
-@[expose] public section
+public import LibsignalBinary.Proofs.TripleRatchet.TrapRng -- proof-setup: allow-public-import
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 
@@ -34,15 +26,15 @@ hooks that use no stack). -/
 abbrev newFromSliceStack : Nat := 544
 
 /-- The 64-byte zero-padded HMAC key block `k₀ = key ‖ 0…0` for `|key| ≤ 64`. -/
-def hmacKeyBlock (key : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def hmacKeyBlock (key : List (BitVec 8)) : List (BitVec 8) :=
   key ++ List.replicate (64 - key.length) 0#8
 
 /-- Inner SHA-256 chaining state after compressing `k₀ ⊕ ipad`. -/
-def hmacInnerInit (F : ShaCompress) (key : List (BitVec 8)) : ShaState :=
+@[expose] def hmacInnerInit (F : ShaCompress) (key : List (BitVec 8)) : ShaState :=
   F sha256IV ((hmacKeyBlock key).map (· ^^^ 0x36#8))
 
 /-- Outer SHA-256 chaining state after compressing `k₀ ⊕ opad`. -/
-def hmacOuterInit (F : ShaCompress) (key : List (BitVec 8)) : ShaState :=
+@[expose] def hmacOuterInit (F : ShaCompress) (key : List (BitVec 8)) : ShaState :=
   F sha256IV ((hmacKeyBlock key).map (· ^^^ 0x5c#8))
 
 /-- The 144-byte (`0x90`-byte) `Hmac<Sha256>` (`hmac` 0.13.0 / `sha2` 0.11.0) state at `a` with
@@ -54,7 +46,7 @@ buffered bytes `tail` (`|tail| < 64`), inner chaining state `innerSt` after `nBl
 * `+0x60` (8 B): inner `block_len = nBlocks` (`u64`);
 * `+0x68..+0x88` (32 B): outer `Sha256VarCore` state (`shaStateBytes outerSt`);
 * `+0x88` (8 B): outer `block_len = 1` (`u64`). -/
-def hmacStateAt (a : BitVec 64) (innerSt : ShaState) (nBlocks : Nat) (outerSt : ShaState)
+@[expose] def hmacStateAt (a : BitVec 64) (innerSt : ShaState) (nBlocks : Nat) (outerSt : ShaState)
     (tail : List (BitVec 8)) : SepProp :=
   ⌜tail.length < 64⌝ ∗
     (a ↦ₛ tail) ∗ memRegion (a + BitVec.ofNat 64 tail.length) (63 - tail.length) ∗
@@ -83,7 +75,7 @@ structure NewFromSliceGhost where
 * writes the `Result::Ok` discriminant `0#64` at `ret` and `hmacCoreAt F (ret + 8) key []` at
   `ret + 8 .. ret + 0x98`.
 Cannot panic (`onPanic = ⌜False⌝`). -/
-def newFromSliceSpec (F : ShaCompress) : Spec NewFromSliceGhost where
+@[expose] def newFromSliceSpec (F : ShaCompress) : Spec NewFromSliceGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.keyA ∧
       (s.readReg64 .x2).toNat = x.key.length ∧ x.key.length ≤ 64⌝ ∗
@@ -94,30 +86,5 @@ def newFromSliceSpec (F : ShaCompress) : Spec NewFromSliceGhost where
       (x.ret ↦₆₄ 0#64) ∗ hmacCoreAt F (x.ret + 8#64) x.key [] ∗
       (x.keyA ↦ₛ x.key) ∗
       stackAt s0.sp newFromSliceStack
-
-def NewFromSliceOkExt (img : Obj.Image) (C : Crypto)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (libsignalSessionCode.rebase img.base (Rust.withPanics ext))
-    ((libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr newFromSliceName)
-    ((newFromSliceSpec C.F).inImage img)
-
-def NewFromSliceOk_trap (img : Obj.Image) (C : Crypto)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (trTrapProgAt img.base C abs)
-    ((trTrapProgAt img.base C abs).fnAddr newFromSliceName)
-    ((newFromSliceSpec C.F).inImage img)
-
-def NewFromSliceOk (img : Obj.Image) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-    ((tripleRatchetProgAt img.base C ctl abs).fnAddr newFromSliceName)
-    ((newFromSliceSpec C.F).inImage img)
-
-theorem NewFromSliceOk.of_trap {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (h : NewFromSliceOk_trap img C abs) :
-    NewFromSliceOk img C ctl abs := by
-  unfold NewFromSliceOk
-  rw [← (trapsOnly_trTrap_kit img.base C ctl abs).fnAddr newFromSliceName]
-  exact subroutine_ok_kit_of_trTrap h
 
 end CryptoVerification.LibsignalTripleRatchet

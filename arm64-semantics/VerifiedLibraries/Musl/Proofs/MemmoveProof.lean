@@ -11,7 +11,6 @@ module
 
 public import Arm64
 public import ProofLib
-public import ProofLib.Library.Calls
 public import VerifiedLibraries.Musl.Spec
 public import VerifiedLibraries.Musl.Proofs.Code
 public import VerifiedLibraries.Musl.Proofs.Common

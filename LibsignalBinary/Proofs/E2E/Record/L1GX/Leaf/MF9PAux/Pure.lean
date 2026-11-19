@@ -9,20 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.MF14Aux.Helpers
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.MF14Aux.Helpers -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32Merge
-
-/-!
-# Pure and layout helpers for `merge_field` tag 9 (`MergeFieldX9P`)
-
-Instruction decodes, varint/payload byte decompositions, `.rodata` jump-table lookup, and
-`prostSSGXAt` layout splits around `ss + 0xf8..0x128` for the PQXDH `pending_pre_key` arms of
-`SessionStructure::merge_field`.
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.L1GX.Leaf.MF9PAux
 
@@ -34,16 +24,10 @@ open CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.E2E.Record.DeserializeSeed CryptoVerification.E2E.Record.DeserializeGeneral
 open CryptoVerification.E2E.Record.L1GX
 open CryptoVerification.E2E.Record.L1GX.Leaf.MF14Aux
-open CryptoVerification.E2E.Record.Serialization (OkAt allocPanic)
+open CryptoVerification.E2E.Record.Serialization (allocPanic)
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
-
-gen_decodes libsignalSessionCode_tree x9p
-  [0x581c → 0x5858, 0x5b30 → 0x5b84, 0x5f24 → 0x5f34, 0x5f74 → 0x5fbc,
-   0x6010 → 0x606c, 0x60b8 → 0x610c, 0x6148 → 0x6150]
-
-/-! ## Payload and varint lemmas -/
 
 theorem encodeVarint_37_57_x9p {n : Nat} (h1 : 37 ≤ n) (h2 : n ≤ 57) :
     encodeVarint (BitVec.ofNat 64 n) = [BitVec.ofNat 8 n] ∧
@@ -194,19 +178,8 @@ theorem mergeBytes_k_x9p {k : List (BitVec 8)} (hk : k.length = 33)
 
 /-! ## Jump-table byte at `.rodata + 0x79024` -/
 
-theorem rodata_jump_tag9_x9p {s : State} (hF : sessionImg0.FrozenLoaded s) :
-    s.mem.read8 (sessionImg0.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 8)) = 0xb5#8 ∧
-      s.mem.canRead (sessionImg0.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 8)) 1 = true := by
-  have hhb := loads_rodata_holdsBytes E2E.Record.loads_sessionImg0 hF
-    (off := num% (ls_bytes% "0082775f19328d6db5d6cb6d" + 8)) (n := 1) (bs := [0xb5#8])
-    (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel) (by rfl_kernel) rfl (by
-      rfl_kernel)
-  exact ⟨(holdsBytes_cons_iff.mp hhb).1.1, (memSlice_of_holdsBytes_ro hhb).1⟩
-
-/-! ## `SessionStructure` layout splits at `+0xf8..0x128` -/
-
 /-- Portion of `prostSSGXAt` outside the 48-byte `pending_pre_key` region at `ss + 0xf8..0x128`. -/
-def prostSSRest_x9p (A : RustAlloc) (ss : BitVec 64) (v : SSG) : SepProp :=
+@[expose] def prostSSRest_x9p (A : RustAlloc) (ss : BitVec 64) (v : SSG) : SepProp :=
   vecU8 A ss v.lik ∗ vecU8 A (ss + 0x18#64) v.rik ∗ vecU8 A (ss + 0x30#64) v.root ∗
     vecOf A 104 8 (fun c a => prostChainGAt A a c) (ss + 0x48#64) v.recv ∗
     vecU8 A (ss + 0x60#64) [] ∗ vecU8 A (ss + 0x78#64) [] ∗
@@ -380,6 +353,5 @@ theorem stackAt_mergeField_unfold_x9p (sp0 : BitVec 64) :
     show sp0 - 24#64 + 8#64 = sp0 - 16#64 by bv_lin,
     show sp0 - 16#64 + 8#64 = sp0 - 8#64 by bv_lin,
     sepConj_assoc]
-
 
 end CryptoVerification.E2E.Record.L1GX.Leaf.MF9PAux

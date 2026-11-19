@@ -9,12 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegDispatch
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegDispatchAuxPlaced
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegDispatch
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegDispatchAuxPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,7 +61,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 open CryptoVerification
 
-def wsFixedRestPlaced {A : RustAlloc} {b : BitVec 64}
+@[expose] def wsFixedRestPlaced {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (ikit : IdentityStoreSpec A b)
     (_x : DecryptGhost) (s0 : State) (sp : BitVec 64) : SepProp :=
   wsSavedRegs s0.sp s0 ∗
@@ -184,7 +189,7 @@ theorem branch_err_entails_placed [LibsignalPlacement] (A : RustAlloc) (ctl : Bi
   refine Entails.focus_left (by sep_focus) htape ?_
   exact Entails.of_eq (by ac_rfl)
 
-def wsNonePassivePlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def wsNonePassivePlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (st0 : kit.StoreState) (ist0 : ikit.IdState)
     (x : DecryptGhost) (s0 : State) (sp : BitVec 64) : SepProp :=
@@ -208,7 +213,7 @@ def wsNonePassivePlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
   cliTapeAt ctl x.cur x.rest ∗
   decStoreExtraPlaced kit ikit st0 ist0 s0
 
-def F_clonePlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def F_clonePlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (st0 : kit.StoreState) (ist0 : ikit.IdState)
     (x : DecryptGhost) (s0 : State) (sp : BitVec 64) : SepProp :=
@@ -353,7 +358,7 @@ theorem branch_none_post_entails_placed [LibsignalPlacement] (A : RustAlloc) (ct
   refine Entails.focus_left (by sep_focus) htape ?_
   exact Entails.of_eq (by ac_rfl)
 
-def regionCommonBodyPlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def regionCommonBodyPlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (x : DecryptGhost) (sp : BitVec 64) : SepProp :=
   memRegion sp 0xa0 ∗
   ((sp + 0xe0#64) ↦₆₄ x.msgA) ∗ ((sp + 0xf0#64) ↦₆₄ x.locA) ∗
@@ -362,7 +367,7 @@ def regionCommonBodyPlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64
   signalMessageAt A x.msgG x.msgA x.msg ∗
   cliTapeAt ctl x.cur x.rest ∗ FromRecordCallees.lsLogOff ∗ stackAt sp rootStack ∗ A.pool
 
-def wsRegionFrameRestPlaced {A : RustAlloc}
+@[expose] def wsRegionFrameRestPlaced {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (st0 : kit.StoreState) (ist0 : ikit.IdState)
     (x : DecryptGhost) (s0 : State) (sp : BitVec 64) : SepProp :=

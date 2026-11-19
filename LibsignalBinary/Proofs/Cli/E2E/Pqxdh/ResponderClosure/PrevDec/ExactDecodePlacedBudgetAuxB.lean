@@ -11,12 +11,12 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ExactDecodePlacedBudgetAuxA
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.KeyPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5PlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ExactDecodePlacedBudgetAuxA -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.KeyPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5PlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -24,6 +24,12 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.VarintBridge
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Key -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipField.BranchesXBudgetAux
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafVarintPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5Placed
 
 /-!
 # Capacity-Explicit Key Decode and Jump-Table Dispatch for Block `518` Exact Decode
@@ -32,7 +38,7 @@ Verifies `b518x_key_cro_placed_of_alloc` (`+0x216c → overDecArmOff fl`, `0` ev
 preserving `b518x_overDecHeapCapA`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -40,7 +46,7 @@ set_option linter.unusedSimpArgs false
 
 namespace LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ExactDecodePlacedBudgetAuxB
 
-open Arm64 ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection SepProp
+open Arm64 ProofLib ProofLib.ProgramReflection SepProp
 open CryptoVerification (
   LibsignalCodeLoaded LibsignalPlacement lsmpl lsρ withLsCl withLsCodeLoaded
 )

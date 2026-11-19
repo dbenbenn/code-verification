@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag10
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag7
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag8
@@ -25,7 +25,7 @@ Verifies tag arm 10 (`Ct1Acknowledged`, entry `+380`, fresh-init `+880`) under
 `[LibsignalPlacement]` to `(blkPl_298).base + 2700#64` with `withLsCl`-wrapped cross-block drops.
 -/
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag10ClPlaced
 end LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag10ClPlaced
@@ -60,7 +60,7 @@ attribute [local irreducible] Program.fetch Program.externAt?
   v1StateMergeJumpTablePlacedExpanded optProtoInnerStateJumpTablePlacedAt
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   EncodedLen.noneCap_add_one_beq_zero EncodedLen.noneCap_add_one_bne_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero v1StateMerge_fnOff
+attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero
 
 private theorem v1Tag10_discrFull_other {bsLen : Nat} {is : V1State.InnerState} {d : BitVec 64}
     (hne : ∀ v, is ≠ .ct1Acknowledged v) (hd : InnerStateDiscrFull bsLen (some is) d) :

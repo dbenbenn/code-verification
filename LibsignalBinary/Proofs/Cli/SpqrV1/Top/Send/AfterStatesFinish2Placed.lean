@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinish1Placed
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinish1Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.ProtoPolyPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.UnchunkedPlaced
 import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpoch
@@ -25,7 +25,7 @@ Proves the non-looping `InnerState` drop arms and shared `PolynomialDecoder` tai
 `pts` drop loop (`+6928..+6960`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -67,7 +67,7 @@ private theorem send_noneCap2_add_two_beq_zero :
 private theorem send_noneCap2_add_two_bne_zero :
     (0xfffffffffffffffe#64 + 2#64 != 0#64) = false := rfl
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff Program.fnAddr
   v1StatePBPinnedAt
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero spqrSendPlacedEntry
 attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero Drop.noneCap_add_two_beq_zero

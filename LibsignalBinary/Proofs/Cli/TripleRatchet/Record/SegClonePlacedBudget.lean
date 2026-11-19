@@ -9,23 +9,32 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneBasePlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneKeysPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneChainsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneChainsPlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegClonePlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegDecryptPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegTailPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegExitPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegClonePlaced
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneBasePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneKeysPlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneChainsPlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneChainsPlacedBudgetAux
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegClonePlacedBudgetAux
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegDecryptPlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegTailPlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegExitPlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegClonePlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneKeysPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatchBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneAssemble
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneChains
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneKeys
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatch
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded CLI `SegClone` Composition and `try_decrypt_from_record` Region Assembly
@@ -35,7 +44,7 @@ proofs into `recordDecrypt_placed_region_ok` and `recordDecrypt_full_placed_regi
 Block `463`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -157,7 +166,7 @@ theorem fromMEnv_inhabited : ∃ evs, FromMEnv evs := by
 /-- Concrete `try_decrypt_with_state` envelopes (`TryDecryptEnv`, etc.) are inhabited on every
     version-matching `RecordDecryptGhost` input (needed to extract `FitsEvents` for `segCloneEvents`
     from `FitsEnv M lim st_init (RecordDecryptEnv tdEnv x)`). -/
-def TdEnvInhabited (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) : Prop :=
+@[expose] def TdEnvInhabited (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) : Prop :=
   ∀ x : RecordDecryptGhost,
     x.st.version.toNat = x.msg.messageVersion.toNat →
     ∃ G₁ evs, CloneRel x.G G₁ ∧ tdEnv (recordTryDecryptEnvArgs x G₁) evs

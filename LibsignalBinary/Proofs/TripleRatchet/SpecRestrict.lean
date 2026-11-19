@@ -20,7 +20,7 @@ weakening lemmas for `subroutine_ok` and `region_ok` used to specialize general 
 contracts to empty-state contracts (`spqrRecvEmptySpec`, `TryDecryptEmptyRunStmt`, `RecordDecryptEmptyRunStmt`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 
@@ -39,7 +39,7 @@ namespace Arm64.Spec
 open ProofLib
 
 /-- `spec` with the pure fact `P x` added to its precondition. -/
-def restrictPre {α : Type} (spec : Spec α) (P : α → Prop) : Spec α :=
+@[expose] def restrictPre {α : Type} (spec : Spec α) (P : α → Prop) : Spec α :=
   { spec with pre := fun x s => ⌜P x⌝ ∗ spec.pre x s }
 
 theorem restrictPre_true {α : Type} (spec : Spec α) : spec.restrictPre (fun _ => True) = spec :=
@@ -89,7 +89,7 @@ theorem region_ok_restrictPre {α : Type} {prog : Program} {entry exit : BitVec 
   region_ok_restrictPre_of fun x R s0 _ hpc hrun hpre hL => h x R s0 hpc hrun hpre hL
 
 /-- `spec` with `calleeSavedVRegs sf = calleeSavedVRegs s0` conjoined to its postcondition. -/
-def withVRegs {α : Type} (spec : Spec α) : Spec α :=
+@[expose] def withVRegs {α : Type} (spec : Spec α) : Spec α :=
   { spec with post := fun x s0 sf => ⌜calleeSavedVRegs sf = calleeSavedVRegs s0⌝ ∗ spec.post x s0 sf }
 
 end Arm64.Spec
@@ -97,26 +97,5 @@ end Arm64.Spec
 namespace CryptoVerification.LibsignalTripleRatchet
 
 open Arm64 CryptoGames.LibsignalSession CryptoVerification.RustHeap CryptoVerification.LibsignalTripleRatchetRepr
-
-/-- The trusted `spqrRecvEmptySpec` is `spqrRecvSpec` restricted to an empty state. -/
-theorem spqrRecvEmptySpec_eq (A : RustAlloc) (S : SpqrModel) (img : Obj.Image) :
-    spqrRecvEmptySpec A S img = (spqrRecvSpec A S img).restrictPre (·.1.bytes = []) :=
-  rfl
-
--- `TryDecryptEmptyRunStmt` is `tryDecryptSpec` restricted to an empty PQ state.
-example (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (S : SpqrModel) (img : Obj.Image) :
-    { tryDecryptSpec C A ctl uuidTryParse S img with
-      pre := fun x s =>
-        ⌜x.st.pqRatchetState = []⌝ ∗ (tryDecryptSpec C A ctl uuidTryParse S img).pre x s } =
-      (tryDecryptSpec C A ctl uuidTryParse S img).restrictPre (·.st.pqRatchetState = []) :=
-  rfl
-
--- `RecordDecryptEmptyRunStmt` is `recordDecryptSpec` restricted to an empty PQ state.
-example (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (S : SpqrModel) (img : Obj.Image) :
-    { recordDecryptSpec C A ctl uuidTryParse S img with
-      pre := fun x s =>
-        ⌜x.st.pqRatchetState = []⌝ ∗ (recordDecryptSpec C A ctl uuidTryParse S img).pre x s } =
-      (recordDecryptSpec C A ctl uuidTryParse S img).restrictPre (·.st.pqRatchetState = []) :=
-  rfl
 
 end CryptoVerification.LibsignalTripleRatchet

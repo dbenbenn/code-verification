@@ -10,6 +10,8 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.UA.Defs
+public import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical -- proof-setup: allow-public-import
 
 /-!
 # Invariance Under `interpOfParams`
@@ -19,7 +21,7 @@ invariant under `interpOfParams`, which overrides only SPQR and HMAC symbols not
 `gamma`, `gamma'`, `pubBytes`, `kyberDecapsBytes`, or `kyberEncapsBytes`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

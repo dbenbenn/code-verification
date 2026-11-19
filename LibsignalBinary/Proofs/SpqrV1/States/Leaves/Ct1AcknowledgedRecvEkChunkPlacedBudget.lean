@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPtBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Ct1AcknowledgedRecvEkChunkSym
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Ct1AcknowledgedRecvEkChunkSymPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.UnchunkedRecvEkPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPtBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Ct1AcknowledgedRecvEkChunkSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Ct1AcknowledgedRecvEkChunkSymPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.UnchunkedRecvEkPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
@@ -33,6 +33,8 @@ import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2Encoder
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<spqr::v1::chunked::send_ct::Ct1Acknowledged>::recv_ek_chunk` (Block `349`, `RustCliAllocBudget`)
@@ -43,7 +45,7 @@ Relocatable `[LibsignalPlacement]` verification of `<Ct1Acknowledged>::recv_ek_c
 (discharging Blocks `338`, `382`, and `264`) in two-envelope, single-envelope, and canonical forms.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
 
 /-!
 # Leaf and Helper Peak Bounds for W3 `process_prekey_bundle`
@@ -18,7 +18,7 @@ public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
 Stages 1–5), parametric in `(M : AllocCostModel) [HasFineReallocCredit M]` under `ModelHyps M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,12 +33,6 @@ open LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
   (ConcatEnv DeallocCreditSpec FreeNonInc IterConcatEnv IterSeqEnv ModelHyps PhaseCreditSpec)
 
 /-! ## 1. Stage 1 and Stage 5 Fixed-Layout Allocation Leaves -/
-
-theorem phaseCreditSpec_alloc33
-    {M : AllocCostModel} [HasFineReallocCredit M] (hM : ModelHyps M) :
-    PhaseCreditSpec M (· = rustAllocEvents 33 1)
-      (2 * 33 + 9539) (33 + 8195) (33 + 8195) 33 :=
-  PhaseCreditSpec.rustAlloc_aff hM (by decide)
 
 theorem phaseCreditSpec_alloc33_small
     {M : AllocCostModel} [HasFineReallocCredit M] (hM : ModelHyps M)
@@ -120,34 +114,6 @@ theorem phaseCreditSpec_segC_kyberSpkClone_body_free
   PhaseCreditSpec.tempAllocBodyFree_aff hM (by decide) hbody
 
 /-! ## 3. Stage 3 `do_reserve` and Optional `DH4` Helpers -/
-
-/-- Small-regime bound for `Vec<u8>::do_reserve_and_handle`. -/
-theorem phaseCreditSpec_doReserve_raw_small
-    {M : AllocCostModel} [HasFineReallocCredit M] (hM : ModelHyps M)
-    (cap len add : BitVec 64) {maxCap : Nat}
-    (hcap : max (2 * cap.toNat) (max (len.toNat + add.toNat) 8) ≤ maxCap)
-    (hsmall : maxCap ≤ HasFineReallocCredit.smallMaxReq M) :
-    let newCap := max (2 * cap.toNat) (max (len.toNat + add.toNat) 8)
-    PhaseCreditSpec M
-      (fun evs => evs = if cap = 0#64 then rustAllocEvents newCap 1
-                        else rustReallocEvents cap.toNat newCap 1)
-      (2 * maxCap + 9539) 0 0 maxCap := by
-  intro newCap
-  have hnew_pos : 1 ≤ newCap := by dsimp [newCap]; omega
-  have hnew_small : newCap ≤ HasFineReallocCredit.smallMaxReq M := Nat.le_trans hcap hsmall
-  have hold_small : cap.toNat ≤ HasFineReallocCredit.smallMaxReq M := by
-    have : cap.toNat ≤ newCap := by dsimp [newCap]; omega
-    exact Nat.le_trans this hnew_small
-  split
-  · exact phaseCreditSpec_rustAlloc_small_bounded hM (by decide) hcap hsmall
-  · rename_i hne
-    have hold_pos : 0 < cap.toNat := by
-      have : cap.toNat ≠ 0 := fun h0 => hne (BitVec.eq_of_toNat_eq h0)
-      omega
-    have hsr := hM.smallRealloc_le hnew_small
-    exact (PhaseCreditSpec.rustRealloc_small_small M (old := cap.toNat) (new := newCap) (al := 1)
-      (by decide) hnew_pos hold_pos hold_small hnew_pos hnew_small).mono
-      (by omega) (Nat.le_refl 0) (Nat.le_refl 0) hcap
 
 theorem phaseCreditSpec_optDh4_small
     {M : AllocCostModel} [HasFineReallocCredit M] (hM : ModelHyps M)
@@ -256,16 +222,6 @@ theorem phaseCreditSpec_setUnackPreKeyMsg_small
   exact h.mono (by omega) (by omega) (by omega) (by omega)
 
 /-! ## 5. Stage 5 Deallocation and 5-Stage Sequential Composition -/
-
-theorem phaseCreditSpec_callKit_dealloc
-    {M : AllocCostModel} [HasFineReallocCredit M] (hM : ModelHyps M) (size align : Nat) :
-    PhaseCreditSpec M (· = rustDeallocEvents size align) 0 0 0 0 :=
-  PhaseCreditSpec.rustDealloc hM.freeNonInc size align
-
-theorem phaseCreditSpec_dropSessionStructure
-    {M : AllocCostModel} [HasFineReallocCredit M] (hM : ModelHyps M) :
-    PhaseCreditSpec M FreeOnlyEvs 0 0 0 0 :=
-  PhaseCreditSpec.freeOnly_of_hyps hM
 
 /-- Left-associated 5-stage `SeqEnv` `PhaseCreditSpec` composition. -/
 theorem phaseCreditSpec_seq5

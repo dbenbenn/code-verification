@@ -9,10 +9,17 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefs
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecrypt
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMac
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchet
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefs
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecrypt
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMac
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchet
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
 
 /-!
 # Authenticated Decryption & Commit Segments (`S7`–`S9`) of `try_decrypt_with_state`
@@ -21,4 +28,4 @@ Umbrella module re-exporting `AuthDecryptDefs`, `VerifyMac`, `AesDecrypt`, and `
 for segments `S7` (`VerifyMacSpec`), `S8` (`AesDecryptSpec`), and `S9` (`ApplyRatchetSpec`).
 -/
 
-@[expose] public section
+public section

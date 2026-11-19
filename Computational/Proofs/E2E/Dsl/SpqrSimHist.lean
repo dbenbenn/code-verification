@@ -9,13 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.SpqrSimChain
+public import Computational.Proofs.E2E.Dsl.SpqrSimChain -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ChainDir
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ChainRecv
-import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TightSize
+public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TightSize -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.ChainSync
-import LibsignalBinary.Proofs.SpqrV1Sync.ChainSyncBase
-import Computational.Proofs.E2E.ComposedBinaryLinkV1
+public import LibsignalBinary.Proofs.SpqrV1Sync.ChainSyncBase
+public import Computational.Proofs.E2E.ComposedBinaryLinkV1 -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.ClampsLossless
+public import Computational.Proofs.E2E.Dsl.TablesHonest -- proof-setup: allow-public-import
 
 /-!
 # SPQR V1 `ReductionDsl` `KeyHistory` and Receive-Chain Helpers
@@ -25,7 +28,7 @@ table-backed `O(K)` list reversal, `KeyHistory.gc`, bounded `keyAdvanceLoop`,
 `ChainEpochDirection.key`, and `Chain.recvKey`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,7 +60,7 @@ open CryptoVerification.SpqrV1Sync.SendTotal (RecvSmallTight crcv_epochIdx_eq st
 
 /-! ## `KeyHistory` entry encoding -/
 
-def encodePrevEntries (es : List (BitVec 32 × BitVec 256)) : Bytes :=
+@[expose] def encodePrevEntries (es : List (BitVec 32 × BitVec 256)) : Bytes :=
   joinSpqrPrev es []
 
 def prevEntryBytes (e : BitVec 32 × BitVec 256) : Bytes :=
@@ -413,7 +416,7 @@ private theorem foldr_sliceTbl_aux {α β : Type} (m : ℕ → α) (curLen : ℕ
       simp [hlt, sliceTbl]
 
 /-- Table-backed `O(K)` list reversal on lists of length at most `K`. -/
-def spqrListRevExpr {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def spqrListRevExpr {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
     {t : Ty (e2eSig ℓ)} (K : ℕ) (dflt : Expr O Γ t) (l : Expr O Γ (.list t)) :
     Expr O Γ (.list t) :=
   .letE (.pair dflt (.take (.nat K) l))
@@ -546,7 +549,7 @@ private theorem getLoop_encodePrevEntries (es : List (BitVec 32 × BitVec 256))
       rw [hstep]
       exact getLoop_encodePrevEntries es atIdx params rem (k + 1) (by omega)
 
-def spqrPrevGetFuelExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrPrevGetFuelExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {Γ : List (Ty (e2eSig ℓ))} (cap : ℕ)
     (entries : Expr (e2eOps ℓ P C K decT encT) Γ (.list spqrPrevEntryT))
@@ -583,7 +586,7 @@ def spqrPrevGetFuelExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C 
                     (.snd .v2))))))))))
 
 /-- Implements `KeyHistory.get` on up to `2201` `(index, key)` entries plus `tail`. -/
-def spqrPrevGetExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrPrevGetExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {Γ : List (Ty (e2eSig ℓ))}
     (entries : Expr (e2eOps ℓ P C K decT encT) Γ (.list spqrPrevEntryT))
@@ -818,7 +821,7 @@ private theorem gcLoop_iterate_gcStepPure (horizon : BitVec 32) (params : ChainP
       rw [Function.iterate_succ_apply, hfix]
       exact gcLoop_iterate_gcStepPure horizon params steps (i, (curLen, tbl)) (by dsimp only; omega)
 
-def spqrPrevGcFuelExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrPrevGcFuelExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {Γ : List (Ty (e2eSig ℓ))} (cap : ℕ)
     (entries : Expr (e2eOps ℓ P C K decT encT) Γ (.list spqrPrevEntryT))
@@ -858,7 +861,7 @@ def spqrPrevGcFuelExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C :
                         (.snd .v2)))))))))))))
 
 /-- Implements `KeyHistory.gc` on up to `4201` `(index, key)` entries. -/
-def spqrPrevGcExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrPrevGcExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {Γ : List (Ty (e2eSig ℓ))}
     (entries : Expr (e2eOps ℓ P C K decT encT) Γ (.list spqrPrevEntryT))
@@ -1036,7 +1039,7 @@ private theorem nextKeyInternal_spqrHkdf_ok (F : ShaCompress) (next : Bytes) (ct
 abbrev spqrCatchAccT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod .nat (.prod (.list spqrPrevEntryT) (.prod (B 32) U32))
 
-def spqrKeyAdvanceStep {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrKeyAdvanceStep {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))} :
     Comp (e2eOps ℓ P C K decT encT) I
@@ -1055,7 +1058,7 @@ def spqrKeyAdvanceStep {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C :
                 (.pair (.fst .v1) (.fst (.snd .v1)))))))))
     (.ret .v0)
 
-def spqrKeyAdvanceFuelComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrKeyAdvanceFuelComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (fuel revCap outCap : ℕ)
@@ -1098,7 +1101,7 @@ def spqrKeyAdvanceFuelComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} 
         (.ret (.some (.pair (.fst (.fst .v1)) (.pair (.snd (.fst .v1)) (.fst (.snd .v1))))))))
 
 /-- Simulates `ChainEpochDirection.keyAdvanceLoop` via `Comp.iter 25000`. -/
-def spqrKeyAdvanceComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrKeyAdvanceComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (ctr0 : Expr (e2eOps ℓ P C K decT encT) Γ U32)
@@ -1404,7 +1407,7 @@ theorem eval_spqrKeyAdvanceComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primiti
   eval_spqrKeyAdvanceFuelComp I 25000 2000 4201 ctr0 next0 entries0 atIdx maxOoo ρ params
     hctr_lt hjump hooo_eq hooo_le (by omega)
 
-def spqrDirKeyFwdComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrDirKeyFwdComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (ctr0 : Expr (e2eOps ℓ P C K decT encT) Γ U32)
@@ -1716,7 +1719,7 @@ private theorem eval_spqrDirKeyFwdComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.
         rfl
 
 /-- Simulates `ChainEpochDirection.key` on `(recvDir, atIdx, params)`. -/
-def spqrDirKeyComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrDirKeyComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (recvDir : Expr (e2eOps ℓ P C K decT encT) Γ spqrDirT)
@@ -2167,7 +2170,7 @@ theorem eval_spqrDirKeyComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives}
           exact hfwd
 
 /-- Simulates `Chain.recvKey` on `(ch, epoch, index)`. -/
-def spqrChainRecvKeyComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrChainRecvKeyComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (ch : Expr (e2eOps ℓ P C K decT encT) Γ spqrChainT)

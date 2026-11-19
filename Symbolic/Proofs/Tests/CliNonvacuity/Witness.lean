@@ -11,7 +11,7 @@ module
 
 public import Symbolic.Tests.Nonvacuity.SetupTrace
 public import Symbolic.Proofs.Tests.CliNonvacuity.Defs
-public import Symbolic.Proofs.Swarm.CREF.Sem
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Tests.CliNonvacuity.WitnessBase
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
@@ -28,7 +28,7 @@ Defines uniform output-length lemmas for `myInterp` on `assumedInjective` primit
 `cliReachable_keySetupTrace`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,10 +41,9 @@ open DY.Libsignal.Refinement
   (ExternCryptoLawsHold sha256CompressFunction sha256CompressSymbol x25519AgreementSymbol
    x25519PublicKeySymbol x25519TorsionSymbol aesCbcEncryptSymbol aesCbcDecryptSymbol torsionShift)
 open DY.Libsignal.PQXDH.Refinement
-  (kyberEncapsSymbol kyberDecapsSymbol sha512CompressSymbol toEdwardsSymbol edwardsCompressSymbol
-   edwardsNegSymbol torsionFreeSymbol doubleScalarMulSymbol scalarModOrderSymbol
-   scalarModOrderWideSymbol mlkem768FromSeedSymbol mlkem768ValidatePkSymbol
-   mlkem768Encaps1Symbol mlkem768Encaps2Symbol mlkem768DecapsSymbol libcruxHmacSymbol)
+  (kyberEncapsSymbol kyberDecapsSymbol sha512CompressSymbol mlkem768FromSeedSymbol
+   mlkem768ValidatePkSymbol mlkem768Encaps1Symbol mlkem768Encaps2Symbol mlkem768DecapsSymbol
+   libcruxHmacSymbol)
 open DY.Libsignal.Composed.Refinement
   (ProtocolSetup OpaqueSymbolSemantics Ghost GhostAndSemMatchSetup MatchesEventsAt MatchesEvents
    ExternInterpretationTotalOnUsedSymbols ReturnsLength ProtocolSetupWF
@@ -141,7 +140,7 @@ private theorem myBaseInterp_contracts : ExternContractsHoldCli myBaseInterp := 
   · intro s
     rw [hp]
     exact hcan s
-  · intro s t k _ heq hne
+  · intro s t k _ heq hne _
     rw [torsionShift_myBaseInterp] at heq
     exact (hne heq).elim
 
@@ -152,8 +151,8 @@ theorem myHooks_agree : HooksMatchInterpretation myInterp myHooks := by
   change ModelAgree (interpOfParams myBaseInterp myParams) myParams
   rw [modelAgree_interpOfParams]
   change HooksMatchInterpretation myBaseInterp myHooks
-  rcases cliWitnessHooks_agree with ⟨_, _, _, hx, hpk, _, _, hmont, _⟩
-  refine ⟨rfl, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  rcases cliWitnessHooks_agree with ⟨_, _, _, hx, hpk, _, _⟩
+  refine ⟨rfl, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · intro p k iv _ _
     rfl
   · intro c k iv _ _
@@ -167,11 +166,6 @@ theorem myHooks_agree : HooksMatchInterpretation myInterp myHooks := by
   · intro pk rand
     rfl
   · intro sk ct
-    rfl
-  · intro u sign
-    rw [myBaseInterp_other (by decide)]
-    exact hmont u sign
-  · intro pt
     rfl
 
 /-! ## Uniform Output Lengths of `myInterp` on `assumedInjective` Primitives -/
@@ -211,15 +205,29 @@ theorem length_myInterp_kyberEncap_drop (pk e : ByteString) :
 
 /-! ## Provisioning `ProtocolSetup`, `OpaqueSymbolSemantics`, Plaintexts, and `not_kyberMismatch_myInterp` -/
 
-def freshBytes (ts n : Nat) : HwBytes :=
-  List.replicate n (BitVec.ofNat 8 (ts % 96 + 1))
+@[expose] def mySigBytes : HwBytes := 1#8 :: List.replicate 63 0#8
+
+@[expose] def mySigVec : List.Vector (BitVec 8) 64 := ⟨mySigBytes, rfl⟩
+
+@[expose] def freshByte (ts : Nat) : BitVec 8 :=
+  if ts = 5 then 9#8
+  else if ts = 26 then 94#8
+  else BitVec.ofNat 8 (ts % 96 + 1)
+
+@[expose] def freshBytes (ts n : Nat) : HwBytes :=
+  List.replicate n (freshByte ts)
 
 theorem freshBytes_byte_le (ts n : Nat) {b : BitVec 8} (hb : b ∈ freshBytes ts n) :
     b.toNat ≤ 96 := by
   rw [freshBytes, List.mem_replicate] at hb
   rcases hb with ⟨_, rfl⟩
-  simp only [BitVec.toNat_ofNat]
-  omega
+  unfold freshByte
+  split
+  · decide
+  · split
+    · decide
+    · simp only [BitVec.toNat_ofNat]
+      omega
 
 theorem not_mem_109_freshBytes (ts n : Nat) : (109#8 : BitVec 8) ∉ freshBytes ts n := by
   intro h
@@ -229,24 +237,24 @@ theorem not_mem_109_freshBytes (ts n : Nat) : (109#8 : BitVec 8) ∉ freshBytes 
 
 /-- 9-byte printable ASCII plaintext starting with `'m'` (`109#8`), disjoint in byte values from
 all coin draws (`<= 96`) and distinct in length from 8-byte tags, 16-byte blocks, and 32-byte keys. -/
-def pt0 : HwBytes := [109#8, 48#8, 48#8, 48#8, 48#8, 48#8, 48#8, 48#8, 49#8]
-def pt1 : HwBytes := [109#8, 48#8, 48#8, 48#8, 48#8, 48#8, 48#8, 48#8, 50#8]
-def ptReply0 : HwBytes := [109#8, 48#8, 48#8, 48#8, 48#8, 48#8, 48#8, 48#8, 51#8]
-def pt2 : HwBytes := [109#8, 48#8, 48#8, 48#8, 48#8, 48#8, 48#8, 48#8, 52#8]
+@[expose] def pt0 : HwBytes := [109#8, 48#8, 48#8, 48#8, 48#8, 48#8, 48#8, 48#8, 49#8]
+@[expose] def pt1 : HwBytes := [109#8, 48#8, 48#8, 48#8, 48#8, 48#8, 48#8, 48#8, 50#8]
+@[expose] def ptReply0 : HwBytes := [109#8, 48#8, 48#8, 48#8, 48#8, 48#8, 48#8, 48#8, 51#8]
+@[expose] def pt2 : HwBytes := [109#8, 48#8, 48#8, 48#8, 48#8, 48#8, 48#8, 48#8, 52#8]
 
-def myKyberPubBytes : HwBytes := List.replicate 1568 0x77#8
+@[expose] def myKyberPubBytes : HwBytes := List.replicate 1568 0x77#8
 
-def myKyberSecField : HwBytes :=
+@[expose] def myKyberSecField : HwBytes :=
   List.replicate 1537 0#8 ++ myKyberPubBytes ++ List.replicate 64 0#8
 
-def mkRecords (withOpk : Bool) : ProtocolSetup :=
+@[expose] def mkRecords (withOpk : Bool) : ProtocolSetup :=
   let dummy : ProtocolSetup :=
     { alice := "alice", bob := "bob", withOpk := withOpk
       regIdA := 10#32, regIdB := 20#32, spkId := 1#32, kpkId := 2#32, opkId := 3#32
       kyberSecB := myKyberSecField, fresh := freshBytes, opaqueBytes := fun _ => [] }
   let pk6 := setupPublic dummy 6
   { dummy with
-    opaqueBytes := fun t => if t = pk6 then myKyberPubBytes else List.replicate 64 0#8 }
+    opaqueBytes := fun t => if t = pk6 then myKyberPubBytes else mySigBytes }
 
 private def discrSem : OpaqueSymbolSemantics where
   init := fun _ _ => []
@@ -330,7 +338,7 @@ private theorem sign_ne_kemPk (sk nonce msg seed : DY.Bytes) :
 private theorem mkRecords_opaqueBytes (withOpk : Bool) (t : DY.Bytes) :
     (mkRecords withOpk).opaqueBytes t =
       if t = DY.PQKem.kemPk (randTerm 16 64) then myKyberPubBytes
-      else List.replicate 64 0#8 := by
+      else mySigBytes := by
   dsimp only [mkRecords]
   rw [b1_setupPublic_6 _ (by show "alice" ≠ "bob"; decide)]
 
@@ -347,13 +355,13 @@ theorem mkRecords_wf (withOpk : Bool) : ProtocolSetupWF (mkRecords withOpk) := b
   have h5 := b1_setupPublic_5 (mkRecords withOpk) hNe
   have h7 := b1_setupPublic_7 (mkRecords withOpk) hNe
   have o5 : (mkRecords withOpk).opaqueBytes (setupPublic (mkRecords withOpk) 5) =
-      List.replicate 64 0#8 := by
+      mySigBytes := by
     rw [mkRecords_opaqueBytes, h5]
     simp only [sign_ne_kemPk, ↓reduceIte]
   have o6 : (mkRecords withOpk).opaqueBytes (setupPublic (mkRecords withOpk) 6) = myKyberPubBytes :=
     mkRecords_opaqueBytes_6 withOpk
   have o7 : (mkRecords withOpk).opaqueBytes (setupPublic (mkRecords withOpk) 7) =
-      List.replicate 64 0#8 := by
+      mySigBytes := by
     rw [mkRecords_opaqueBytes, h7]
     simp only [sign_ne_kemPk, ↓reduceIte]
   refine ⟨hNe, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
@@ -361,9 +369,9 @@ theorem mkRecords_wf (withOpk : Bool) : ProtocolSetupWF (mkRecords withOpk) := b
     exact List.length_replicate
   · rw [b1_setupRandomsAt_eq (mkRecords withOpk) hNe]
     cases withOpk <;> decide
-  · dsimp only [DY.Libsignal.Composed.Refinement.ProtocolSetup.spkSigTerm]; rw [o5]; exact List.length_replicate
+  · dsimp only [DY.Libsignal.Composed.Refinement.ProtocolSetup.spkSigTerm]; rw [o5]; decide
   · dsimp only [DY.Libsignal.Composed.Refinement.ProtocolSetup.pqpkPubTerm]; rw [o6]; exact List.length_replicate
-  · dsimp only [DY.Libsignal.Composed.Refinement.ProtocolSetup.pqpkSigTerm]; rw [o7]; exact List.length_replicate
+  · dsimp only [DY.Libsignal.Composed.Refinement.ProtocolSetup.pqpkSigTerm]; rw [o7]; decide
   · show myKyberSecField.length = 3169
     simp only [myKyberSecField, myKyberPubBytes, List.length_append, List.length_replicate]
   · unfold slice
@@ -416,17 +424,17 @@ theorem not_kyberMismatch_myInterp (withOpk : Bool) (p : PreKeyFields) :
 
 /-- Expands a 32-byte symbolic `messageEncrypt` SPQR coin slice to the 64-byte repeated-byte coin
 slice consumed by SPQR V1 ML-KEM-768 keypair generation on initial sends. -/
-def padSendCoins (c : HwBytes) : HwBytes :=
+@[expose] def padSendCoins (c : HwBytes) : HwBytes :=
   if c.length = 32 then c ++ c else c
 
-def padCompSemOf (i : ExternInterpretation) (r : ProtocolSetup) : OpaqueSymbolSemantics :=
+@[expose] def padCompSemOf (i : ExternInterpretation) (r : ProtocolSetup) : OpaqueSymbolSemantics :=
   let base := compSemOf i r
   { base with
     sendState := fun st c => base.sendState st (padSendCoins c)
     sendKey := fun st c => base.sendKey st (padSendCoins c)
     sendMsg := fun st c => base.sendMsg st (padSendCoins c) }
 
-def mySem (withOpk : Bool) : OpaqueSymbolSemantics :=
+@[expose] def mySem (withOpk : Bool) : OpaqueSymbolSemantics :=
   padCompSemOf myInterp (mkRecords withOpk)
 
 private theorem gamma_sign_eq (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)

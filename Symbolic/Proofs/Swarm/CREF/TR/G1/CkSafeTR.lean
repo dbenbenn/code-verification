@@ -46,7 +46,7 @@ Proves that `CkInv` is preserved across all composed protocol transitions, yield
 `safeCkTR_of_attackerKnows_reachable` and `ckKnownCasesTR : CkKnownCasesTRP`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

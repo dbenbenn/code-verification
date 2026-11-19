@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpine
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpine -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.BaseAttackerKnowledge
@@ -20,8 +20,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR
-import ProofLib.Lemmas
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
 import Symbolic.Proofs.Swarm.COMPOSED.CompHsClass
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
@@ -43,6 +42,38 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeModKem -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.Leaves.IC13_Stage1Kyber
+import Batteries.Lean.Except
+import Batteries.Tactic.SeqFocus
+import DY.ALaCarte.Ordering
+import DY.Bytes.AttackerKnowledgeTheorem
+import DY.Meta.CombineMacro
+import Init.Data.List.Control
+import Init.Data.Range.Basic
+import Init.Data.String
+import Init.Data.String.Defs
+import Init.Data.String.Pattern.Basic
+import Init.Data.String.Pattern.String
+import Init.Data.String.Slice
+import Init.Data.String.TakeDrop
+import Lean.Elab.SyntheticMVars
+import Lean.Exception
+import Lean.Meta.Reduce
+import Mathlib.Data.List.Basic
+import Mathlib.Data.List.Forall2
+import Mathlib.Data.Vector.Basic
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.Tactic.Continuity
+import Mathlib.Tactic.Push
+import Std.Data.DTreeMap.Internal.Operations
+import Std.Tactic.BVDecide.Normalize.Prop
+import VCVio.CryptoFoundations.PRG
+import VCVio.EvalDist.Monad.Bool
+import VCVio.EvalDist.ProbabilityNotation
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.Prelude.Core
+import Symbolic.Proofs.Swarm.CREF.Stage1Kyber
 
 /-!
 # KEM Canonicity and Seed Uniqueness from Peel-Local Hole Injectivity
@@ -52,7 +83,7 @@ establishing KEM shared-secret agreement on opposite-role PQXDH base pairs and s
 peel-local `DhHole` injectivity.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -67,7 +98,7 @@ open CryptoProofLib.Refinement (ExternInterpretation)
 
 /-- Every `AliceDone` event logged at `t + 5` on `T` has a 32-byte `gamma` image for its KEM coin
 `randTerm (t + 1) 32`. -/
-def AliceKemLen32 (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (T : ExecTrace) : Prop :=
+@[expose] def AliceKemLen32 (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (T : ExecTrace) : Prop :=
   ∀ t a b ikA ikB spk pqpk opk ek ct keys,
     T.EventLoggedAt (DY.Libsignal.PQXDH.PQXDHEvent.AliceDone a b ikA ikB spk pqpk opk ek ct keys) (t + 5) →
     (gamma i S g (randTerm (t + 1) 32)).length = 32

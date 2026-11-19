@@ -12,12 +12,13 @@ module
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalShortDefs
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RoundTrip
 import Computational.Proofs.CryptoGames.Ratchet.WireRatchet
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDec
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.CBCDec
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.WireAeadDefs
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.EtM
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
 public import Computational.Proofs.CryptoGames.FSAEAD.FSAEADProofDefs
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip -- proof-setup: allow-public-import
 
 /-!
 # Per-message AEAD correctness and wire bounds for short public parts
@@ -29,7 +30,7 @@ bounds for `lAeadR` and `lWire` on short public parts under `SignalRoundTripShor
 `SignalEncodeFits32`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec
 

@@ -14,7 +14,7 @@ public import Computational.Specifications.Assumptions.KemCorrect
 public import Computational.Proofs.SpecLemmas.Assumptions.AssumptionsProofDefs
 public import LibsignalBinary.Proofs.SpecLemmas.SignalPqxdh.ModelProofDefs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,7 +33,7 @@ namespace SignalPqxdh
 open OracleComp OracleSpec ENNReal
 
 /-- Lazy-caching random oracle mapping `secrets` to a uniform 96-byte `DRKey` (DEV-PQ14). -/
-def HkdfRO (P : Primitives) (roCache : List (Bytes × DRKey)) (secrets : Bytes) :
+@[expose] def HkdfRO (P : Primitives) (roCache : List (Bytes × DRKey)) (secrets : Bytes) :
     ProbComp (DRKey × List (Bytes × DRKey)) :=
   evalHkdfOrRo true P roCache secrets
 
@@ -42,7 +42,7 @@ inductive KemCcaQuery where
   | decaps (ct : Bytes)
   deriving DecidableEq, Repr
 
-@[reducible] def kemCcaSpec : OracleSpec KemCcaQuery := fun _ => Option Bytes
+@[expose, reducible] def kemCcaSpec : OracleSpec KemCcaQuery := fun _ => Option Bytes
 
 /-- Adversary against the Kyber-1024 IND-CCA2 game with decapsulation and primitive-oracle budgets. -/
 structure KemIndCcaAdv where
@@ -50,31 +50,14 @@ structure KemIndCcaAdv where
   q_dec  : Nat
   q_prim : Nat
 
-/-- Kyber-1024 IND-CCA2 experiment returning whether the adversary guesses the challenge bit `b`. -/
-noncomputable def kemIndCcaExp (P : Primitives) (A : KemIndCcaAdv) : ProbComp Bool := do
-  let b ← $ᵗ Bool
-  let (pk, sk) ← sampleKemKeyGen P
-  let r ← sampleCoins32
-  let some (ss0, ctStar) := P.kemEncaps pk r | do let coin ← $ᵗ Bool; return coin
-  let ss1 ← sampleBytes32
-  let ssStar := if b then ss0 else ss1
-  let decImpl : QueryImpl kemCcaSpec ProbComp := fun (.decaps ct) =>
-    if ct == ctStar || ct.length != kyberCtLen then pure none else pure (P.kemDecaps sk ct)
-  let b' ← simulateQ (primBaseImpl P + decImpl) (A.run pk ctStar ssStar)
-  return (b' == b)
-
-/-- IND-CCA2 distinguishing bias against Kyber-1024. -/
-noncomputable def KemIndCca (P : Primitives) (A : KemIndCcaAdv) : ℝ :=
-  (𝒟[kemIndCcaExp P A].boolBias).toReal
-
 /-- Predicate characterizing `firstMsgAD ikA ikB ephAPk pq` for 32-byte EC public keys. -/
-def IsFirstMsgAD (ad : Bytes) : Prop :=
+@[expose] def IsFirstMsgAD (ad : Bytes) : Prop :=
   ∃ ikA ikB ephAPk pq : Bytes, ikA.length = 32 ∧ ikB.length = 32 ∧ ephAPk.length = 32 ∧
     ad = firstMsgAD ikA ikB ephAPk pq
 
 /-- Computable check for `IsFirstMsgAD` (`goodFirstMsgAD_iff`), restricting INT-CTXT games to
     associated data on which `aeadMacInput` uniquely determines `(ad, ct)`. -/
-def goodFirstMsgAD (ad : Bytes) : Bool :=
+@[expose] def goodFirstMsgAD (ad : Bytes) : Bool :=
   let ikA := (ad.drop 1).take 32
   let ikB := (ad.drop 34).take 32
   let ephAPk := (ad.drop 70).take 32
@@ -82,7 +65,7 @@ def goodFirstMsgAD (ad : Bytes) : Bool :=
   decide (firstMsgHdrLen ≤ ad.length) &&
     (List.range (tl.length + 1)).any (fun k => ad == firstMsgAD ikA ikB ephAPk (tl.drop k))
 
-@[reducible] def aeadMuIntSpec : OracleSpec AeadMuIntQuery := fun
+@[expose, reducible] def aeadMuIntSpec : OracleSpec AeadMuIntQuery := fun
   | .encOnce _ _ _  => Option Bytes
   | .tryForge _ _ _ => Bool
 
@@ -93,7 +76,7 @@ structure AeadMuIntCtxtAdv where
   q_dec  : ℕ
   q_prim : ℕ
 
-def AeadMuIntCtxtAdv.Bounded (A : AeadMuIntCtxtAdv) : Prop :=
+@[expose] def AeadMuIntCtxtAdv.Bounded (A : AeadMuIntCtxtAdv) : Prop :=
   OracleComp.IsQueryBoundP A.run isMuEncQuery A.q_enc ∧
   OracleComp.IsQueryBoundP A.run isMuForgeQuery A.q_dec ∧
   OracleComp.IsQueryBoundP A.run (fun q => isPrimQuery q = true) A.q_prim
@@ -101,7 +84,7 @@ def AeadMuIntCtxtAdv.Bounded (A : AeadMuIntCtxtAdv) : Prop :=
 abbrev AeadMuIntState :=
   List (ℕ × MessageKeys) × List (ℕ × (Bytes × Bytes)) × Bool
 
-def aeadMuIntKey (i : ℕ) : StateT AeadMuIntState ProbComp MessageKeys := do
+@[expose] def aeadMuIntKey (i : ℕ) : StateT AeadMuIntState ProbComp MessageKeys := do
   let (keys, chal, w) ← get
   match keys.lookup i with
   | some mk => return mk
@@ -112,7 +95,7 @@ def aeadMuIntKey (i : ℕ) : StateT AeadMuIntState ProbComp MessageKeys := do
 
 /-- Multi-key INT-CTXT experiment with lazy independent 80-byte keys, at most one encryption per
     key, and associated data restricted to `goodFirstMsgAD`. -/
-def aeadMuIntCtxtExp (P : Primitives) (A : AeadMuIntCtxtAdv) : ProbComp Bool := do
+@[expose] def aeadMuIntCtxtExp (P : Primitives) (A : AeadMuIntCtxtAdv) : ProbComp Bool := do
   let impl : QueryImpl aeadMuIntSpec (StateT AeadMuIntState ProbComp) := fun q =>
     match q with
     | .encOnce i ad pt => do
@@ -142,7 +125,7 @@ def aeadMuIntCtxtExp (P : Primitives) (A : AeadMuIntCtxtAdv) : ProbComp Bool := 
   return wonFinal
 
 /-- Multi-key INT-CTXT forgery advantage against the first-message AEAD over `goodFirstMsgAD`. -/
-noncomputable def AeadMuIntCtxt (P : Primitives) (A : AeadMuIntCtxtAdv) : ℝ :=
+@[expose] noncomputable def AeadMuIntCtxt (P : Primitives) (A : AeadMuIntCtxtAdv) : ℝ :=
   (𝒟[aeadMuIntCtxtExp P A] {true}).toReal
 
 /-- Combined KEM correctness (`WellFormedPrimitives`) and cryptographic well-formedness

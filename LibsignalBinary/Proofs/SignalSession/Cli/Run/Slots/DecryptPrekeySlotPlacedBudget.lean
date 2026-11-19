@@ -11,10 +11,50 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
 
 /-!
 # Budget-Threaded `decrypt_prekey` Slot Adapter (Placed)
@@ -25,7 +65,7 @@ Budget-threaded `[LibsignalPlacement]` poll and wrapper contracts (`DpPollKState
 `signal_session_handshake::decrypt_prekey`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -53,7 +93,7 @@ open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FitsEnv RustCliAllocBudget)
 
 /-- Budget-threaded `[LibsignalPlacement]` counterpart of `slotFramePlaced`. -/
-def slotFramePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def slotFramePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (x : SlotCtx) (s : State) :
     SepProp :=
   ⌜x.coins.length < 2 ^ 63⌝ ∗
@@ -71,7 +111,7 @@ theorem slotFramePlaced_eq_atState [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded `[LibsignalPlacement]` `decrypt_prekey` slot contract carrying
 `withLsCodeRoLoaded lsmpl`. -/
-def decPkSlotSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def decPkSlotSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) (S : RunSem) (stk : Nat) :
     Spec (DecPkGhost × M.σ) :=
@@ -128,7 +168,7 @@ structure DpPollGhostStateBudget {M : AllocCostModel} (K : DpPollKStateBudget M)
   st : M.σ
 
 /-- Budget-threaded state-coupled contract for one poll of a fresh `message_decrypt_prekey` future. -/
-def dpPollSpecStateBudget {M : AllocCostModel} (K : DpPollKStateBudget M) (stk : Nat) :
+@[expose] def dpPollSpecStateBudget {M : AllocCostModel} (K : DpPollKStateBudget M) (stk : Nat) :
     Spec (DpPollGhostStateBudget K) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.fut ∧ s.readReg64 .x2 = x.cx ∧
@@ -151,7 +191,7 @@ structure DecryptPrekeyGhostStateBudget {M : AllocCostModel} (K : DpPollKStateBu
   st : M.σ
 
 /-- Budget-threaded state-coupled contract for `signal_session_handshake::decrypt_prekey` under `K`. -/
-def cliDecryptPrekeySpecStateBudget {M : AllocCostModel}
+@[expose] def cliDecryptPrekeySpecStateBudget {M : AllocCostModel}
     (K : DpPollKStateBudget M) (stk : Nat) : Spec (DecryptPrekeyGhostStateBudget K) where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.ret ∧ (K.args x.g).length = 13 ∧
@@ -170,7 +210,7 @@ def cliDecryptPrekeySpecStateBudget {M : AllocCostModel}
     ⌜s0.trace <+: sf.trace ∧ K.panics x.g⌝ ∗ anyHeap
 
 /-- Budget-threaded `[LibsignalPlacement]` instantiation of `DpPollKStateBudget`. -/
-def dpSlotPollKStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def dpSlotPollKStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) (B : RunBudgets) (S : RunSem) :
     DpPollKStateBudget M where
@@ -347,7 +387,7 @@ theorem dpSlot_ok_state_placed [LibsignalPlacement] {prog : Program} {entry : Bi
     · exact Or.inr (Or.inr (Or.inl ⟨code, hex_st, hex⟩))
     · exact Or.inr (Or.inr (Or.inr ⟨ho_st, ho⟩))
 
-def decPkSlotSpecBasePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def decPkSlotSpecBasePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) (S : RunSem) (stk : Nat) :
     Spec (DecPkGhost × M.σ) where
@@ -368,7 +408,7 @@ def decPkSlotSpecBasePlaced [LibsignalPlacement] {M : AllocCostModel}
   post := (decPkSlotSpecPlaced A lim DecPkEnv S stk).post
   onPanic := (decPkSlotSpecPlaced A lim DecPkEnv S stk).onPanic
 
-def decPkSlotSpecPlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) {M : AllocCostModel}
+@[expose] def decPkSlotSpecPlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) (S : RunSem) (stk : Nat) :
     Spec (DecPkGhost × M.σ) :=

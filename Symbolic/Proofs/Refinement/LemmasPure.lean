@@ -16,6 +16,7 @@ import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Refinement.EncodeWithCovered
 import VCVio.EvalDist.ProbabilityNotation
 import Symbolic.DYBridge.DY.Trace.Monad
+public import Symbolic.Specifications.Refinement.Concretization
 
 /-!
 # Clamping, byte-array round-trip, and session protobuf helpers
@@ -25,7 +26,7 @@ bytes (`ofByteArray_toByteArray`), and auxiliary protobuf encoding definitions (
 `PbOk`, `sessionBytes`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -79,16 +80,16 @@ open DY.Libsignal.Rust
 
 section RecordBytes
 
-def pbFields (l : List (Nat × PbValue)) : HwBytes :=
+@[expose] def pbFields (l : List (Nat × PbValue)) : HwBytes :=
   l.flatMap (fun p => encodeField p.1 0 0 p.2)
 
-def PbOk (p : Nat × PbValue) : Prop :=
+@[expose] def PbOk (p : Nat × PbValue) : Prop :=
   match p.2 with
   | .varint _ => True
   | .bytes _ => True
   | .unknown _ _ => False
 
-def sessionBytes (s : SessionRec) : HwBytes :=
+@[expose] def sessionBytes (s : SessionRec) : HwBytes :=
   u32Field 1 s.sessionVersion ++ bytesField 2 s.localIdentityPublic ++
   bytesField 3 s.remoteIdentityPublic ++ bytesField 4 s.rootKey ++
   u32Field 5 s.previousCounter ++ ((s.senderChain.map (msgField 6 ∘ chainBytes)).getD []) ++

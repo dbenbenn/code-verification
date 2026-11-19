@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.SigHop
 import VCVio.EvalDist.Monad.Basic
 
@@ -20,11 +20,9 @@ Instantiates `SigGameLens` (`authSigLens`) to bound the EUF-CMA reduction `sigRe
 and establishes the provenance-rewriting bridges `G0 → G0.1 → G1 → G2.1` via `runAuthWithProv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal
 open MeasureTheory
@@ -35,11 +33,11 @@ namespace Proofs.SignalPqxdh.Security
 
 /-! ## `SigGameLens` instantiation -/
 
-def badPeersAuth {S : Setup} (st : AuthState S) : List Bytes :=
+@[expose] def badPeersAuth {S : Setup} (st : AuthState S) : List Bytes :=
   (st.sessions.filter (fun s => s.fresh && (!s.spkHonest || !s.pqspkHonest))).map (fun s =>
     s.peerIkPk)
 
-def authSigLens (S : Setup) : SigGameLens S (AuthState S) AuthResponse where
+@[expose] def authSigLens (S : Setup) : SigGameLens S (AuthState S) AuthResponse where
   prins        := fun st => st.principals
   putPrins     := fun st p => { st with principals := p }
   spks         := fun st => st.spkBundles
@@ -58,7 +56,7 @@ def authSigLens (S : Setup) : SigGameLens S (AuthState S) AuthResponse where
   badPeers_putSpks  := fun _ _ => rfl
   putPrins_putSpks  := fun _ _ _ => rfl
 
-def eraseAuth (S : Setup) (k : Nat) (st : AuthState S) : AuthState S :=
+@[expose] def eraseAuth (S : Setup) (k : Nat) (st : AuthState S) : AuthState S :=
   { st with principals := erasePrinSk k st.principals }
 
 theorem runAuthSendSim_commutes (S : Setup) (P : Primitives) (k : Nat)
@@ -136,7 +134,7 @@ theorem pqxdhAuthSimImpl_other_commutes (S : Setup) (P : Primitives) (k : Nat)
     unfold pqxdhAuthSimImpl pqxdhAuthImpl; apply CommutesRel.get_bind; dsimp only [eraseAuth];
       prove_commutes_rel
 
-def InitPostAuth {S : Setup} (P : Primitives) (bundle : PreKeyBundleInput)
+@[expose] def InitPostAuth {S : Setup} (P : Primitives) (bundle : PreKeyBundleInput)
     (st st' : AuthState S) : Prop :=
   st'.principals = st.principals ∧
   st'.spkBundles = st.spkBundles ∧
@@ -487,7 +485,7 @@ theorem after_step_initiate_auth (S : Setup) (P : Primitives) (k : Nat) (sk : By
           st.principals st.spkBundles (badPeersAuth st) bundle
           hVP ⟨ek, hek, hsk, hpk, hcorr⟩ hClean hfg hSig1 hSig2 hFresh hProv
 
-noncomputable def stepAuthForSig (S : Setup) (P : Primitives)
+@[expose] def stepAuthForSig (S : Setup) (P : Primitives)
     (q : AuthQuery S) (s : SigReductionState (AuthState S)) :
     ProbComp (SigStepResult (SigReductionState (AuthState S)) AuthResponse) :=
   if s.forgery.isSome then
@@ -573,7 +571,7 @@ theorem evalStepPrim_stepAuthForSigPrim (S : Setup) (P : Primitives)
         simulateQ_pqxdhAuthSimImplPrim S P _ s.gameState hPrin hSpk hOpk hAdv]
       simp [SigStepResultPrim.toProbComp]
 
-def ValidAuthSim (S : Setup) (P : Primitives) (st : AuthState S) : Prop :=
+@[expose] def ValidAuthSim (S : Setup) (P : Primitives) (st : AuthState S) : Prop :=
   ValidPrincipals S st.principals ∧
   ValidSpkBundles S st.spkBundles ∧
   ValidOpkEntries S st.opkEntries ∧
@@ -850,7 +848,7 @@ theorem sum_sigReductionAuth_le (S : Setup) (P : Primitives)
 
 /-! ## Provenance hybrid bridges -/
 
-def hasBadSigAuthAt (S : Setup) (P : Primitives) (k : Nat) (st : AuthState S) : Bool :=
+@[expose] def hasBadSigAuthAt (S : Setup) (P : Primitives) (k : Nat) (st : AuthState S) : Bool :=
   (authSigLens S).badAt P k st
 
 theorem hasBadSigAuth_eq_any_range (S : Setup) (P : Primitives) (st : AuthState S) :
@@ -869,7 +867,7 @@ theorem hasBadSigAuth_eq_any_range (S : Setup) (P : Primitives) (st : AuthState 
   · rintro ⟨k, _, ⟨_, ⟨s, ⟨hs, hfresh, hbad⟩, rfl⟩, _⟩, hnp⟩
     exact ⟨⟨s, hs, hfresh, hbad⟩, hnp⟩
 
-noncomputable def runAuthWithProv (prov : ProvFnType) (S : Setup) (P : Primitives)
+@[expose] def runAuthWithProv (prov : ProvFnType) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp (Bool × Bool × AuthState S) := do
   let secb ← $ᵗ Bool
   let initSt := AuthState.empty S secb
@@ -884,7 +882,7 @@ theorem runAuthWithProv_checkBundleProvenance (S : Setup) (P : Primitives) (A : 
   unfold runAuthWithProv runAuthSim
   rw [pqxdhAuthWithProvImpl_checkBundleProvenance]
 
-noncomputable def contAuth (S : Setup) (P : Primitives)
+@[expose] def contAuth (S : Setup) (P : Primitives)
     (a : Bool × Bool × AuthState S) : ProbComp Bool :=
   let (secb, b', finalSt) := a
   if finalSt.hasWonAuth then

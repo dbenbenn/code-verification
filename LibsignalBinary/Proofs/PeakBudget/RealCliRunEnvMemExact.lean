@@ -10,7 +10,20 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.PeakBudget.RealCliDecPkGuardedDefs
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrExactEnvDefs
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrExactEnvDefs
+import LibsignalBinary.Proofs.PeakBudget.WireFieldDomainCaps
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
 
 /-!
 # Parametric Exact-Slot Binary-Kit Callee Envelopes and Whole-`run` Bridge
@@ -24,14 +37,13 @@ families `EncSlot` and `DecSigSlot`, together with the whole-`run` inclusion the
 whole-`main` `FitsEnv` statement `realCliMainBinaryKitEnvOfSlot_fitsEnv_cliBudgetLimits_Stmt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemExact
 
-open Arm64.Obj (Image)
 open Arm64.Process (bytesOfString)
 open CryptoGames.LibsignalSession (SignalMessage)
 open CryptoGames.LibsignalSessionApi (PreKeySignalMessage)
@@ -102,7 +114,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget (ReadFileRuleEnv
 `ElfSlicesPqOomHole3Cut.binaryKitRunSlotEnvsExact W A B InitEnv DecPkEnv` when instantiated at
 `EncSlot := fun {_M} A B => cliEncryptBinaryKitSlotEnvExact W A B` and
 `DecSigSlot := fun {_M} A B => cliDecryptSignalBinaryKitSlotEnvExact W A B`. -/
-noncomputable def hmx_binaryKitRunSlotEnvsSlotOf {M : AllocCostModel}
+@[expose] def hmx_binaryKitRunSlotEnvsSlotOf {M : AllocCostModel}
     (EncSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M' : AllocCostModel},
@@ -119,12 +131,12 @@ noncomputable def hmx_binaryKitRunSlotEnvsSlotOf {M : AllocCostModel}
 and `DecSigSlot`, keeping `initEnv` at `(mkBinaryKitRealCalleeEnvsFixed img S X W g).initEnv`,
 `pksmEnv` at `PksmCanonSliceEnv`, and wrapping the named `cliDecPkCanonSlotEnvExact X W` directly on
 `.recv` (`3#8 :: rest` prekey arm). -/
-noncomputable def mkBinaryKitRealCalleeEnvsSlotOf [LibsignalPlacement]
+@[expose] def mkBinaryKitRealCalleeEnvsSlotOf [LibsignalPlacement]
     (EncSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) : CliRunCalleeEnvs where
   initEnv := (mkBinaryKitRealCalleeEnvsFixed img S X W g).initEnv
   encEnv := match g.c with
@@ -153,24 +165,24 @@ noncomputable def mkBinaryKitRealCalleeEnvsSlotOf [LibsignalPlacement]
 
 /-- Whole-`signal_session::run` binary-kit allocator trace predicate at
 `mkBinaryKitRealCalleeEnvsSlotOf EncSlot DecSigSlot`. -/
-noncomputable abbrev realCliRunBinaryKitEnvOfSlot [LibsignalPlacement]
+abbrev realCliRunBinaryKitEnvOfSlot [LibsignalPlacement]
     (EncSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) : List AllocEvent → Prop :=
   CliRunBinaryEnv cliIo.rd (mkBinaryKitRealCalleeEnvsSlotOf EncSlot DecSigSlot img S X W g)
     sessionCapBytes g
 
 /-- Whole-`main` binary-kit allocator trace predicate at
 `mkBinaryKitRealCalleeEnvsSlotOf EncSlot DecSigSlot`. -/
-noncomputable abbrev realCliMainBinaryKitEnvOfSlot [LibsignalPlacement]
+abbrev realCliMainBinaryKitEnvOfSlot [LibsignalPlacement]
     (EncSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (i : Inputs) : List AllocEvent → Prop :=
   RealCliMainBinaryEnvOf (mkBinaryKitRealCalleeEnvsSlotOf EncSlot DecSigSlot img S X W) i
 
@@ -267,7 +279,7 @@ private theorem hmx_w1_encSlot_sub_slotOf [LibsignalPlacement] {M : AllocCostMod
       RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     (g : RunCall) (meG : AddrGhost) (peerV : AddrV)
     (hin : (inputOf g.i g.c).length ≤ stdinCapBytes)
@@ -293,7 +305,7 @@ private theorem hmx_w2_decSigSlot_sub_slotOf [LibsignalPlacement] {M : AllocCost
       RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     (g : RunCall) (meG : AddrGhost) (peerV : AddrV) (rest : List (BitVec 8)) (m : SignalMessage)
     (hin : (inputOf g.i g.c).length ≤ stdinCapBytes)
@@ -326,7 +338,7 @@ private theorem hmx_w4_decPkCanonSlot_sub_slotOf [LibsignalPlacement]
       RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) (meV peerV : AddrV) (rest : List (BitVec 8)) (pm : PreKeySignalMessage)
     (hin : (inputOf g.i g.c).length ≤ stdinCapBytes)
     (hc : g.c = .recv peerV)
@@ -355,7 +367,7 @@ theorem hmx_runEnvSlotOf_sub_runBinaryKitEnvOfSlot_of_slots [LibsignalPlacement]
       RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     {InitEnv : InitGhost → List AllocEvent → Prop}
     {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
@@ -428,7 +440,7 @@ theorem hmx_runEnvExact_sub_runBinaryKitEnvOfSlot [LibsignalPlacement]
       RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     {g : RunCall}
     (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)
@@ -468,7 +480,7 @@ theorem hmx_runEnvExact_sub_runBinaryKitEnvOfSlot_of_pksmCanon [LibsignalPlaceme
       RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     {g : RunCall}
     (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)
@@ -508,12 +520,12 @@ theorem hmx_runEnvExact_sub_runBinaryKitEnvOfSlot_of_pksmCanon [LibsignalPlaceme
 /-- Whole-`main` `FitsEnv fineCostModel cliBudgetLimits fineCostModel.init` proposition on
 `realCliMainBinaryKitEnvOfSlot EncSlot DecSigSlot img S X W i` for all `CliPqxdhInputs ⟨W.C, W.Q⟩ i`
 (discharged parametrically in `CliKitEnvFitsExact`). -/
-def realCliMainBinaryKitEnvOfSlot_fitsEnv_cliBudgetLimits_Stmt [LibsignalPlacement]
+@[expose] def realCliMainBinaryKitEnvOfSlot_fitsEnv_cliBudgetLimits_Stmt [LibsignalPlacement]
     (EncSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks) : Prop :=
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks) : Prop :=
   ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i →
     FitsEnv fineCostModel cliBudgetLimits fineCostModel.init
       (realCliMainBinaryKitEnvOfSlot EncSlot DecSigSlot img S X W i)

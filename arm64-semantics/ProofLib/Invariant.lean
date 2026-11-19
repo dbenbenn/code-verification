@@ -209,38 +209,6 @@ theorem isAnon_mapFresh (m : Memory) (base : BitVec 64) (len : Nat) (p : Perm) (
   · simp only [h, ↓reduceIte]
   · simp only [h, ↓reduceIte, Bool.false_eq_true]; rfl
 
-theorem perm_unmapWritable (m : Memory) (base : BitVec 64) (len : Nat) (a : BitVec 64) :
-    (m.unmapWritable base len).perm a =
-      if (a - base).toNat < len && (m.perm a).w then none else m.perm a := by
-  rw [unmapWritable, perm_mk]
-  by_cases h : ((a - base).toNat < len && (m.perm a).w) = true
-  · simp only [h, ↓reduceIte]
-  · simp only [h, ↓reduceIte, Bool.false_eq_true]; rfl
-
-theorem read8_unmapWritable (m : Memory) (base : BitVec 64) (len : Nat) (a : BitVec 64) :
-    (m.unmapWritable base len).read8 a =
-      if (a - base).toNat < len && (m.perm a).w then 0#8 else m.read8 a := by
-  rw [unmapWritable, read8_mk]
-  by_cases h : ((a - base).toNat < len && (m.perm a).w) = true
-  · simp only [h, ↓reduceIte]
-  · simp only [h, ↓reduceIte, Bool.false_eq_true]; rfl
-
-theorem isLazyFree_unmapWritable (m : Memory) (base : BitVec 64) (len : Nat) (a : BitVec 64) :
-    (m.unmapWritable base len).isLazyFree a =
-      if (a - base).toNat < len && (m.perm a).w then false else m.isLazyFree a := by
-  rw [unmapWritable, isLazyFree_mk]
-  by_cases h : ((a - base).toNat < len && (m.perm a).w) = true
-  · simp only [h, ↓reduceIte]
-  · simp only [h, ↓reduceIte, Bool.false_eq_true]; rfl
-
-theorem isAnon_unmapWritable (m : Memory) (base : BitVec 64) (len : Nat) (a : BitVec 64) :
-    (m.unmapWritable base len).isAnon a =
-      if (a - base).toNat < len && (m.perm a).w then false else m.isAnon a := by
-  rw [unmapWritable, isAnon_mk]
-  by_cases h : ((a - base).toNat < len && (m.perm a).w) = true
-  · simp only [h, ↓reduceIte]
-  · simp only [h, ↓reduceIte, Bool.false_eq_true]; rfl
-
 theorem perm_mapZero (m : Memory) (base : BitVec 64) (len : Nat) (a : BitVec 64) :
     (m.mapZero base len).perm a =
       if (a - base).toNat < len && !(m.perm a).mapped then some Perm.rw else m.perm a := by
@@ -1014,17 +982,6 @@ theorem keepsFrozen_mapFresh (m : Memory) (base : BitVec 64) (len : Nat) (p : Pe
   have hcell : (m.mapFresh base len p).cells a = m.cells a := by simp [mapFresh, hne]
   simp [read8, perm, isLazyFree, isAnon, hcell]
 
-theorem keepsFrozen_unmapWritable (m : Memory) (base : BitVec 64) (len : Nat) :
-    m.KeepsFrozen (m.unmapWritable base len) := by
-  intro a ha
-  have hw : (m.perm a).w = false := by
-    unfold Frozen at ha
-    rcases hperm : m.perm a with _ | p <;>
-      simp [hperm, Option.frozen, Perm.frozen, Option.w] at ha ⊢
-    exact ha.2
-  have hcell : (m.unmapWritable base len).cells a = m.cells a := by simp [unmapWritable, hw]
-  simp [read8, perm, isLazyFree, isAnon, hcell]
-
 theorem keepsFrozen_mapZero (m : Memory) (base : BitVec 64) (len : Nat) :
     m.KeepsFrozen (m.mapZero base len) := by
   intro a ha
@@ -1243,6 +1200,28 @@ theorem keepsFrozenCells_writeStat {m : Memory} {statbuf : BitVec 64} (e : FsEnt
   keepsFrozenCells_writeBytes_le (encodeLinuxStat e) h
     (by cases e <;> simp [encodeLinuxStat, leBytes64, leBytes32])
 
+theorem encodeSchedAffinityMask_length (nrCpuIds : Nat) (words : List (BitVec 64)) (numWords : Nat) :
+    (encodeSchedAffinityMask nrCpuIds words numWords).length = numWords * 8 := by
+  have hflat : ∀ (xs : List (BitVec 64)), (xs.flatMap leBytes64).length = xs.length * 8 := by
+    intro xs
+    induction xs with
+    | nil => rfl
+    | cons _ xs ih => simp [List.flatMap_cons, leBytes64, ih]; omega
+  unfold encodeSchedAffinityMask
+  dsimp only
+  rw [hflat]
+  generalize hm : ((List.range numWords).map fun i =>
+    let rem := nrCpuIds - i * 64
+    let mask64 : BitVec 64 :=
+      if rem == 0 then 0#64
+      else if rem ≥ 64 then BitVec.allOnes 64
+      else (1#64 <<< rem) - 1#64
+    (words.getD i 0#64) &&& mask64) = masked
+  have hlen : masked.length = numWords := by rw [← hm]; simp
+  split
+  · cases masked <;> simp at hlen ⊢ <;> omega
+  · simp [hlen]
+
 theorem keepsFrozenCells_writeAffinity {m : Memory} {mask : BitVec 64}
     (h : ¬(!m.canWrite mask 8) = true) :
     m.KeepsFrozenCells (m.writeBytes mask SCHED_AFFINITY_MASK) :=
@@ -1257,16 +1236,6 @@ theorem keepsFrozenCells_getrandom {m : Memory} {buf : BitVec 64} {n : Nat}
     (h : ¬(!m.canWrite buf n) = true) (f : Nat → BitVec 8) :
     m.KeepsFrozenCells (m.writeBytes buf ((List.range n).map f)) :=
   keepsFrozenCells_writeBytes _ (by simpa using h)
-
-theorem keepsFrozenCells_unmapWritable (m : Memory) (base : BitVec 64) (len : Nat) :
-    m.KeepsFrozenCells (m.unmapWritable base len) := by
-  intro a ha
-  have hw : (m.perm a).w = false := by
-    unfold Frozen at ha
-    rcases hperm : m.perm a with _ | p <;>
-      simp [hperm, Option.frozen, Perm.frozen, Option.w] at ha ⊢
-    exact ha.2
-  simp [unmapWritable, hw]
 
 theorem keepsFrozenCells_mapZero (m : Memory) (base : BitVec 64) (len : Nat) :
     m.KeepsFrozenCells (m.mapZero base len) := by
@@ -1322,6 +1291,41 @@ theorem keepsFrozenCells_remapRw (m : Memory) (oldBase : BitVec 64) (oldSize : N
   simp [remapRw, hf]
 
 end Memory
+
+theorem evalPpollEntries_keepsFrozenCells_of_revents (fs : FsState) (m m' : Memory)
+    (ufds : BitVec 64) (rem idx count count' : Nat)
+    (heval : evalPpollEntries fs m ufds rem idx count = some (m', count'))
+    (hcw : ∀ k < rem, m.canWrite (ufds + BitVec.ofNat 64 ((idx + k) * 8 + 6)) 2 = true) :
+    m.KeepsFrozenCells m' := by
+  induction rem generalizing m idx count with
+  | zero =>
+    simp [evalPpollEntries] at heval
+    obtain ⟨rfl, _⟩ := heval
+    exact Memory.KeepsFrozenCells.refl m
+  | succ rem ih =>
+    unfold evalPpollEntries at heval
+    dsimp (config := { zetaHave := true }) only at heval
+    have hw2 : m.canWrite (ufds + BitVec.ofNat 64 (idx * 8) + 6#64) 2 = true := by
+      have h0 := hcw 0 (by omega)
+      have heq : ufds + BitVec.ofNat 64 (idx * 8) + 6#64 =
+          ufds + BitVec.ofNat 64 ((idx + 0) * 8 + 6) := by
+        rw [BitVec.add_assoc, show (6#64 : BitVec 64) = BitVec.ofNat 64 6 from rfl,
+          ← BitVec.ofNat_add, show idx * 8 + 6 = (idx + 0) * 8 + 6 by omega]
+      rw [heq]; exact h0
+    have hcw_step : ∀ (v : BitVec 16) (k : Nat), k < rem →
+        (m.write16 (ufds + BitVec.ofNat 64 (idx * 8) + 6#64) v).canWrite
+          (ufds + BitVec.ofNat 64 ((idx + 1 + k) * 8 + 6)) 2 = true := by
+      intro v k hk
+      rw [Memory.canWrite_congr (Memory.perm_write16 _ _ _),
+        show idx + 1 + k = idx + (k + 1) by omega]
+      exact hcw (k + 1) (by omega)
+    split at heval
+    · cases heval
+    · split at heval
+      · exact (Memory.keepsFrozenCells_write16 hw2 _).trans (ih _ (idx + 1) _ heval (hcw_step _))
+      · split at heval
+        · exact (Memory.keepsFrozenCells_write16 hw2 _).trans (ih _ (idx + 1) _ heval (hcw_step _))
+        · cases heval
 
 /-- `evalPpollEntries` preserves frozen cells whenever the remaining `pollfd` slice is writable. -/
 theorem evalPpollEntries_keepsFrozenCells (fs : FsState) (m m' : Memory) (ufds : BitVec 64)
@@ -1383,8 +1387,11 @@ private theorem execIoctl_keepsFrozen (s : State) : StateKeepsFrozen s.mem (exec
   repeat' split
   all_goals first
     | exact Memory.KeepsFrozenCells.refl _
-    | (change s.mem.KeepsFrozenCells (s.mem.writeBytes _ _)
-       exact Memory.keepsFrozenCells_writeBytes_le _ (by assumption) (by simp [leBytes32]))
+    | (next h =>
+        have hcw : ¬(!s.mem.canWrite (s.readReg64 Reg.x2) 4) = true := by
+          intro hc; exact h (by simp [hc])
+        change s.mem.KeepsFrozenCells (s.mem.writeBytes _ _)
+        exact Memory.keepsFrozenCells_writeBytes_le _ hcw (by simp [leBytes32]))
 
 private theorem execOpenat_keepsFrozen (s : State) : StateKeepsFrozen s.mem (execOpenat s) := by
   dsimp (config := { zetaHave := true }) only [execOpenat, applyOpenVerdict]
@@ -1435,10 +1442,19 @@ private theorem execWrite_keepsFrozen (s : State) : StateKeepsFrozen s.mem (exec
 
 private theorem execFstat_keepsFrozen (s : State) : StateKeepsFrozen s.mem (execFstat s) := by
   dsimp (config := { zetaHave := true }) only [execFstat]
-  repeat' split
-  all_goals first
-    | (change s.mem.KeepsFrozenCells (s.mem.writeBytes _ _); apply Memory.keepsFrozenCells_writeStat; assumption)
-    | exact Memory.KeepsFrozenCells.refl _
+  split
+  · exact Memory.KeepsFrozenCells.refl _
+  · cases s.fs.fds (BitVec.zeroExtend 64 (s.readReg32 Reg.x0))
+    · dsimp only; split <;> exact Memory.KeepsFrozenCells.refl _
+    · rename_i desc; dsimp only; split
+      · exact Memory.KeepsFrozenCells.refl _
+      · split
+        · exact Memory.KeepsFrozenCells.refl _
+        · rename_i h
+          have hcw : ¬(!s.mem.canWrite (s.readReg64 Reg.x1) 128) = true := by
+            intro hc; exact h (by simp [hc])
+          change s.mem.KeepsFrozenCells (s.mem.writeBytes _ _)
+          exact Memory.keepsFrozenCells_writeStat _ hcw
 
 private theorem execPpoll_keepsFrozen (s : State) : StateKeepsFrozen s.mem (execPpoll s) := by
   dsimp (config := { zetaHave := true }) only [execPpoll]
@@ -1463,7 +1479,7 @@ private theorem execPpoll_keepsFrozen (s : State) : StateKeepsFrozen s.mem (exec
   split
   · exact Memory.KeepsFrozenCells.refl _
   split
-  · exact Memory.KeepsFrozenCells.refl _
+  · split <;> exact Memory.KeepsFrozenCells.refl _
   split
   · exact Memory.KeepsFrozenCells.refl _
   split
@@ -1472,9 +1488,15 @@ private theorem execPpoll_keepsFrozen (s : State) : StateKeepsFrozen s.mem (exec
   · exact Memory.KeepsFrozenCells.refl _
   · rename_i m' count heval
     split
-    · exact Memory.KeepsFrozenCells.refl _
+    · split <;> exact Memory.KeepsFrozenCells.refl _
     · rename_i hcw
-      exact evalPpollEntries_keepsFrozenCells _ _ _ _ _ _ _ _ heval (by simpa using hcw)
+      refine evalPpollEntries_keepsFrozenCells_of_revents _ _ _ _ _ _ _ _ heval ?_
+      have hall : allPpollReventsWritable s.mem (s.readReg64 Reg.x0) (s.readReg32 Reg.x1).toNat = true := by
+        simpa using hcw
+      unfold allPpollReventsWritable at hall
+      rw [List.all_eq_true] at hall
+      intro k hk
+      simpa using hall k (List.mem_range.mpr hk)
 
 private theorem execSetTidAddress_keepsFrozen (s : State) :
     StateKeepsFrozen s.mem (execSetTidAddress s) := by
@@ -1486,13 +1508,61 @@ private theorem execGetpid_keepsFrozen (s : State) :
 
 private theorem execRtSigprocmask_keepsFrozen (s : State) :
     StateKeepsFrozen s.mem (execRtSigprocmask s) := by
-  dsimp (config := { zetaHave := true }) only [execRtSigprocmask]
-  repeat' split
-  all_goals first
-    | (next h =>
-        change s.mem.KeepsFrozenCells (s.mem.writeBytes _ _)
-        exact Memory.keepsFrozenCells_writeBytes_le (List.replicate 8 0#8) h (by simp))
-    | exact Memory.KeepsFrozenCells.refl _
+  have hmem_sm : ∀ (st : State) (m : BitVec 64), (st.setSigMask m).mem = st.mem :=
+    fun st _ => by cases st; rfl
+  have hmem_sp : ∀ (st : State) (p : BitVec 64), (st.setSigPending p).mem = st.mem :=
+    fun st _ => by cases st; rfl
+  have hmem_st : ∀ (st : State) (e : ExecStatus), (st.setStatus e).mem = st.mem :=
+    fun st _ => by cases st; rfl
+  have hmem_w : ∀ (st : State) (r : Reg) (v : BitVec 64), ((st.writeReg64 r v).advancePC).mem = st.mem :=
+    fun st r _ => by cases st; cases r <;> rfl
+  have hmem_wm : ∀ (st : State) (m' : Memory) (r : Reg) (v : BitVec 64),
+      (((st.setMem m').writeReg64 r v).advancePC).mem = m' :=
+    fun st _ r _ => by cases st; cases r <;> rfl
+  have hite : ∀ (c : Bool) (a b : State), s.mem.KeepsFrozenCells a.mem → s.mem.KeepsFrozenCells b.mem →
+      s.mem.KeepsFrozenCells (if c = true then a else b).mem := by
+    intro c a b ha hb; split <;> assumption
+  have hdeliv : ∀ (s2 : State), s.mem.KeepsFrozenCells s2.mem →
+      s.mem.KeepsFrozenCells
+        (let deliverable := s2.sigPending &&& ~~~s2.sigMask
+         if deliverable == 0#64 then s2
+         else if deliverable == SIGABRT_MASK then
+           let s3 := s2.setSigPending (s2.sigPending &&& ~~~SIGABRT_MASK)
+           let disp := (s3.getSigAction LINUX_SIGABRT).handler
+           if disp == SIG_DFL then s3.setStatus (.Signaled 6#7)
+           else if disp == SIG_IGN then s3
+           else s3.setStatus (.Exception "unmodeled signal handler delivery")
+         else s2.setStatus (.Exception "unmodeled pending signal delivery")).mem := by
+    intro s2 h2
+    refine hite _ _ _ h2 (hite _ _ _ ?_ (by rw [hmem_st]; exact h2))
+    refine hite _ _ _ (by rw [hmem_st, hmem_sp]; exact h2)
+      (hite _ _ _ (by rw [hmem_sp]; exact h2) (by rw [hmem_st, hmem_sp]; exact h2))
+  have hs1_mem : ∀ (c : Bool) (m : BitVec 64), (if c = true then s else s.setSigMask m).mem = s.mem := by
+    intro c m; split <;> simp [hmem_sm]
+  have hs2_kf : ∀ (s1 : State), s1.mem = s.mem →
+      s.mem.KeepsFrozenCells
+        (if (s.readReg64 Reg.x2 == 0#64) = true then (s1.writeReg64 Reg.x0 0#64).advancePC
+         else if (!decide ((s.readReg64 Reg.x2).toNat + 8 ≤ 2 ^ 64) || !s1.mem.canWrite (s.readReg64 Reg.x2) 8) = true then
+           (s1.writeReg64 Reg.x0 EFAULT_RET).advancePC
+         else ((s1.setMem (s1.mem.writeBytes (s.readReg64 Reg.x2) (leBytes64 s.sigMask))).writeReg64 Reg.x0 0#64).advancePC).mem := by
+    intro s1 hm1
+    split
+    · rw [hmem_w, hm1]; exact Memory.KeepsFrozenCells.refl _
+    · split
+      · rw [hmem_w, hm1]; exact Memory.KeepsFrozenCells.refl _
+      · next _ h =>
+        rw [hmem_wm, hm1]
+        rw [hm1] at h
+        have hcw : ¬(!s.mem.canWrite (s.readReg64 Reg.x2) 8) = true := by
+          intro hc; exact h (by simp [hc])
+        exact Memory.keepsFrozenCells_writeBytes_le (leBytes64 s.sigMask) hcw (by simp [leBytes64])
+  unfold StateKeepsFrozen execRtSigprocmask
+  refine hite _ _ _ (by rw [hmem_w]; exact Memory.KeepsFrozenCells.refl _)
+    (hite _ _ _ (by rw [hmem_w]; exact Memory.KeepsFrozenCells.refl _)
+    (hite _ _ _ (by rw [hmem_w]; exact Memory.KeepsFrozenCells.refl _)
+    (hite _ _ _ (by rw [hmem_st]; exact Memory.KeepsFrozenCells.refl _)
+    (hite _ _ _ (by rw [hmem_w]; exact Memory.KeepsFrozenCells.refl _)
+      (hdeliv _ (hs2_kf _ (hs1_mem _ _)))))))
 
 private theorem execSigaltstack_keepsFrozen (s : State) :
     StateKeepsFrozen s.mem (execSigaltstack s) := by
@@ -1529,33 +1599,53 @@ private theorem execSigaltstack_keepsFrozen (s : State) :
 
 private theorem execRtSigaction_keepsFrozen (s : State) :
     StateKeepsFrozen s.mem (execRtSigaction s) := by
-  have hmem0 : ∀ signum act, (s.setSigAction signum act).mem = s.mem :=
-    fun _ _ => by cases s; rfl
-  have hmem1 : ∀ signum act r v, (((s.setSigAction signum act).writeReg64 r v).advancePC).mem = s.mem :=
-    fun _ _ r _ => by cases s; cases r <;> rfl
-  have hmem2 : ∀ signum act m' r v,
-      ((((s.setSigAction signum act).setMem m').writeReg64 r v).advancePC).mem = m' :=
-    fun _ _ _ r _ => by cases s; cases r <;> rfl
-  unfold StateKeepsFrozen
-  dsimp (config := { zetaHave := true }) only [execRtSigaction]
-  by_cases hact : (s.readReg64 Reg.x1 == 0#64) = true
-  · simp only [hact, ↓reduceIte]
-    (repeat' split) <;> first
-      | exact Memory.KeepsFrozenCells.refl _
-      | (next h =>
-          have hcw : ¬(!s.mem.canWrite (s.readReg64 Reg.x2) 32) = true := by
-            intro hc; exact h (by simp [hc])
-          change s.mem.KeepsFrozenCells (s.mem.writeBytes _ _)
-          exact Memory.keepsFrozenCells_writeBytes_le _ hcw (by simp [SigAction.toBytes, leBytes64]))
-  · simp only [hact, ↓reduceIte, Bool.false_eq_true, hmem0]
-    (repeat' split) <;> first
-      | exact Memory.KeepsFrozenCells.refl _
-      | (rw [hmem1]; exact Memory.KeepsFrozenCells.refl _)
-      | (next h =>
-          rw [hmem2]
-          have hcw : ¬(!s.mem.canWrite (s.readReg64 Reg.x2) 32) = true := by
-            intro hc; exact h (by simp [hc])
-          exact Memory.keepsFrozenCells_writeBytes_le _ hcw (by simp [SigAction.toBytes, leBytes64]))
+  have hmem0 : ∀ (st : State) (signum : BitVec 32) (act : SigAction), (st.setSigAction signum act).mem = st.mem :=
+    fun st _ _ => by cases st; rfl
+  have hmem_sp : ∀ (st : State) (p : BitVec 64), (st.setSigPending p).mem = st.mem :=
+    fun st _ => by cases st; rfl
+  have hmem1 : ∀ (st : State) (r : Reg) (v : BitVec 64), ((st.writeReg64 r v).advancePC).mem = st.mem :=
+    fun st r _ => by cases st; cases r <;> rfl
+  have hmem2 : ∀ (st : State) (m' : Memory) (r : Reg) (v : BitVec 64),
+      (((st.setMem m').writeReg64 r v).advancePC).mem = m' :=
+    fun st _ r _ => by cases st; cases r <;> rfl
+  have hmem_st : ∀ (st : State) (e : ExecStatus), (st.setStatus e).mem = st.mem :=
+    fun st _ => by cases st; rfl
+  have hite : ∀ (c : Bool) (a b : State), s.mem.KeepsFrozenCells a.mem → s.mem.KeepsFrozenCells b.mem →
+      s.mem.KeepsFrozenCells (if c = true then a else b).mem := by
+    intro c a b ha hb; split <;> assumption
+  have hs1_mem : ∀ (c1 c2 : Bool) (sig : BitVec 32) (act : SigAction) (p : BitVec 64),
+      (if c1 = true then s
+       else
+         let sAct := s.setSigAction sig act
+         if c2 = true then sAct.setSigPending p else sAct).mem = s.mem := by
+    intro c1 c2 sig act p
+    split; · rfl
+    split <;> simp [hmem_sp, hmem0]
+  have hs2_kf : ∀ (s1 : State), s1.mem = s.mem →
+      s.mem.KeepsFrozenCells
+        (if (s.readReg64 Reg.x2 == 0#64) = true then (s1.writeReg64 Reg.x0 0#64).advancePC
+         else if (!decide ((s.readReg64 Reg.x2).toNat + 32 ≤ 2 ^ 64) || !s1.mem.canWrite (s.readReg64 Reg.x2) 32) = true then
+           (s1.writeReg64 Reg.x0 EFAULT_RET).advancePC
+         else ((s1.setMem (s1.mem.writeBytes (s.readReg64 Reg.x2) (SigAction.toBytes (s.getSigAction (s.readReg32 Reg.x0))))).writeReg64 Reg.x0 0#64).advancePC).mem := by
+    intro s1 hm1
+    split
+    · rw [hmem1, hm1]; exact Memory.KeepsFrozenCells.refl _
+    · split
+      · rw [hmem1, hm1]; exact Memory.KeepsFrozenCells.refl _
+      · next _ h =>
+        rw [hmem2, hm1]
+        rw [hm1] at h
+        have hcw : ¬(!s.mem.canWrite (s.readReg64 Reg.x2) 32) = true := by
+          intro hc; exact h (by simp [hc])
+        exact Memory.keepsFrozenCells_writeBytes_le _ hcw (by simp [SigAction.toBytes, leBytes64])
+  unfold StateKeepsFrozen execRtSigaction
+  refine hite _ _ _ (by rw [hmem1]; exact Memory.KeepsFrozenCells.refl _)
+    (hite _ _ _ (by rw [hmem1]; exact Memory.KeepsFrozenCells.refl _)
+    (hite _ _ _ (by rw [hmem_st]; exact Memory.KeepsFrozenCells.refl _)
+    (hite _ _ _ (by rw [hmem1]; exact Memory.KeepsFrozenCells.refl _)
+    (hite _ _ _ (by rw [hmem1]; exact Memory.KeepsFrozenCells.refl _)
+    (hite _ _ _ (by rw [hmem_st]; exact Memory.KeepsFrozenCells.refl _)
+      (hs2_kf _ (hs1_mem _ _ _ _ _)))))))
 
 private theorem execTkill_keepsFrozen (s : State) :
     StateKeepsFrozen s.mem (execTkill s) := by
@@ -1567,15 +1657,41 @@ private theorem execTgkill_keepsFrozen (s : State) :
   dsimp (config := { zetaHave := true }) only [execTgkill]
   (repeat' split) <;> exact Memory.KeepsFrozenCells.refl _
 
+private theorem execFutex_keepsFrozen (s : State) :
+    StateKeepsFrozen s.mem (execFutex s) := by
+  dsimp (config := { zetaHave := true }) only [execFutex]
+  (repeat' split) <;> exact Memory.KeepsFrozenCells.refl _
+
 private theorem execSchedGetaffinity_keepsFrozen (s : State) :
     StateKeepsFrozen s.mem (execSchedGetaffinity s) := by
   dsimp (config := { zetaHave := true }) only [execSchedGetaffinity]
-  repeat' split
-  all_goals first
-    | (next h =>
-        change s.mem.KeepsFrozenCells (s.mem.writeBytes _ _)
-        exact Memory.keepsFrozenCells_writeAffinity h)
-    | exact Memory.KeepsFrozenCells.refl _
+  split
+  · exact Memory.KeepsFrozenCells.refl _
+  · rename_i hvalid
+    have hlenGe8 : 8 ≤ (s.readReg32 Reg.x1).toNat := by
+      have hv : ((s.readReg32 Reg.x1 * 8#32) == 0#32 || (s.readReg32 Reg.x1 &&& 7#32) != 0#32) = false :=
+        Bool.eq_false_iff.mpr hvalid
+      rw [Bool.or_eq_false_iff] at hv
+      have hne0 : (s.readReg32 Reg.x1).toNat ≠ 0 := by
+        intro hz
+        have hbv : s.readReg32 Reg.x1 = 0#32 := BitVec.eq_of_toNat_eq (by simpa using hz)
+        rw [hbv] at hv; simp at hv
+      have hmod : (s.readReg32 Reg.x1).toNat % 8 = 0 := by
+        have hand : s.readReg32 Reg.x1 &&& 7#32 = 0#32 := by simpa using hv.2
+        have hand' : (s.readReg32 Reg.x1).toNat &&& (2 ^ 3 - 1) = 0 := by
+          simpa [BitVec.toNat_and] using congrArg BitVec.toNat hand
+        rwa [Nat.and_two_pow_sub_one_eq_mod] at hand'
+      omega
+    cases hq : s.oracle.schedGetaffinity s.oracleIdx <;> dsimp only
+    all_goals
+      repeat' split
+      all_goals first
+        | exact Memory.KeepsFrozenCells.refl _
+        | (next h =>
+            have h' := (Bool.or_eq_false_iff.mp (Bool.eq_false_iff.mpr h)).2
+            change s.mem.KeepsFrozenCells (s.mem.writeBytes _ _)
+            exact Memory.keepsFrozenCells_writeBytes_le _ (by rw [h']; decide)
+              (by simp [SCHED_AFFINITY_MASK, Memory.encodeSchedAffinityMask_length]; omega))
 
 private theorem execClockGettime_keepsFrozen (s : State) : StateKeepsFrozen s.mem (execClockGettime s) := by
   dsimp (config := { zetaHave := true }) only [execClockGettime]
@@ -1584,8 +1700,10 @@ private theorem execClockGettime_keepsFrozen (s : State) : StateKeepsFrozen s.me
   · split
     · exact Memory.KeepsFrozenCells.refl _
     · next h =>
+      have hcw : ¬(!s.mem.canWrite (s.readReg64 Reg.x1) 16) = true := by
+        intro hc; exact h (by simp [hc])
       change s.mem.KeepsFrozenCells (s.mem.writeBytes _ _)
-      exact Memory.keepsFrozenCells_writeClock (s.oracle.clockGettime s.oracleIdx) h
+      exact Memory.keepsFrozenCells_writeClock (s.oracle.clockGettime s.oracleIdx) hcw
 
 private theorem execMmap_keepsFrozen (s : State) : StateKeepsFrozen s.mem (execMmap s) := by
   dsimp (config := { zetaHave := true }) only [execMmap]
@@ -1621,7 +1739,7 @@ private theorem execBrk_keepsFrozen (s : State) : StateKeepsFrozen s.mem (execBr
   repeat' split
   all_goals first
     | exact Memory.keepsFrozenCells_mapZero _ _ _
-    | exact Memory.keepsFrozenCells_unmapWritable _ _ _
+    | exact Memory.keepsFrozenCells_unmapNonFrozen _ _ _
     | exact Memory.KeepsFrozenCells.refl _
 
 private theorem execMunmap_keepsFrozen (s : State) : StateKeepsFrozen s.mem (execMunmap s) := by
@@ -1633,29 +1751,18 @@ private theorem execMunmap_keepsFrozen (s : State) : StateKeepsFrozen s.mem (exe
 
 private theorem execMremap_keepsFrozen (s : State) : StateKeepsFrozen s.mem (execMremap s) := by
   dsimp (config := { zetaHave := true }) only [execMremap]
-  split
+  repeat' (apply stateKeepsFrozen_ite <;> intro)
+  any_goals first
+    | exact Memory.keepsFrozenCells_remapRw _ _ _ _ _
+    | exact Memory.KeepsFrozenCells.refl _
+  cases sanitizeMmapAddr
+      (s.mem.unmapNonFrozen (untaggedAddr (s.readReg64 Reg.x0)) (pageAlignUp (s.readReg64 Reg.x1).toNat))
+      (s.oracle.mmap s.oracleIdx) (pageAlignUp (s.readReg64 Reg.x2).toNat)
   · exact Memory.KeepsFrozenCells.refl _
-  split
-  · exact Memory.KeepsFrozenCells.refl _
-  split
-  · exact Memory.KeepsFrozenCells.refl _
-  split
-  · exact Memory.KeepsFrozenCells.refl _
-  split
-  · exact Memory.KeepsFrozenCells.refl _
-  split
-  · exact Memory.KeepsFrozenCells.refl _
-  split
-  · exact Memory.KeepsFrozenCells.refl _
-  split
-  · exact Memory.KeepsFrozenCells.refl _
-  split
-  · exact Memory.KeepsFrozenCells.refl _
-  · split
-    · exact Memory.KeepsFrozenCells.refl _
-    · split
-      · exact Memory.KeepsFrozenCells.refl _
-      · exact Memory.keepsFrozenCells_remapRw _ _ _ _ _
+  · dsimp only; repeat' (apply stateKeepsFrozen_ite <;> intro)
+    all_goals first
+      | exact Memory.keepsFrozenCells_remapRw _ _ _ _ _
+      | exact Memory.KeepsFrozenCells.refl _
 
 private theorem execMprotect_keepsFrozen (s : State) : StateKeepsFrozen s.mem (execMprotect s) := by
   dsimp (config := { zetaHave := true }) only [execMprotect]
@@ -1676,8 +1783,12 @@ private theorem execGetrandom_keepsFrozen (s : State) : StateKeepsFrozen s.mem (
   dsimp (config := { zetaHave := true }) only [execGetrandom]
   repeat' split
   all_goals first
-    | (next h => change s.mem.KeepsFrozenCells (s.mem.writeBytes _ _); exact Memory.keepsFrozenCells_getrandom h _)
     | exact Memory.KeepsFrozenCells.refl _
+    | (next h =>
+        have hcw : ¬(!s.mem.canWrite (s.readReg64 Reg.x0) (s.readReg64 Reg.x1).toNat) = true := by
+          intro hc; exact h (by simp [hc])
+        change s.mem.KeepsFrozenCells (s.mem.writeBytes _ _)
+        exact Memory.keepsFrozenCells_getrandom hcw _)
 
 theorem evalSvc_keepsFrozen (svc : State → State) (s : State) :
     s.mem.KeepsFrozen (evalSvc svc s).mem := by
@@ -1746,7 +1857,7 @@ private theorem standardEntry_keepsFrozen (s : State) :
     List.mem_cons, List.not_mem_nil, or_false]
   rintro _ (rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
             rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
+            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
   · exact execRead_keepsFrozen s
   · exact execWrite_keepsFrozen s
   · exact execReadv_keepsFrozen s
@@ -1775,6 +1886,7 @@ private theorem standardEntry_keepsFrozen (s : State) :
   · exact execClockGettime_keepsFrozen s
   · exact execGetrandom_keepsFrozen s
   · exact execSetTidAddress_keepsFrozen s
+  · exact execFutex_keepsFrozen s
   · exact execSchedGetaffinity_keepsFrozen s
   · exact execGetpid_keepsFrozen s
   · exact execGetpid_keepsFrozen s
@@ -2114,6 +2226,18 @@ namespace State
     (o n : String) :
     (s.setSigAltStack sas).sym o n = s.sym o n := by
   unfold State.sym; rw [symtab_setSigAltStack]
+@[simp, arm64_norm] theorem symtab_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).symtab = s.symtab := by
+  cases s; rfl
+@[simp, arm64_norm] theorem sym_setSigMask (s : State) (m : BitVec 64) (o n : String) :
+    (s.setSigMask m).sym o n = s.sym o n := by
+  unfold State.sym; rw [symtab_setSigMask]
+@[simp, arm64_norm] theorem symtab_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).symtab = s.symtab := by
+  cases s; rfl
+@[simp, arm64_norm] theorem sym_setSigPending (s : State) (p : BitVec 64) (o n : String) :
+    (s.setSigPending p).sym o n = s.sym o n := by
+  unfold State.sym; rw [symtab_setSigPending]
 @[simp, arm64_norm] theorem symtab_setPhysMemAvail (s : State) (v : Nat) :
     (s.setPhysMemAvail v).symtab = s.symtab := by
   cases s; rfl
@@ -2190,17 +2314,35 @@ private theorem symtab_execPpoll (s : State) : StateSymtabEq s.symtab (execPpoll
   (repeat' split) <;> rfl
 private theorem symtab_execSetTidAddress (s : State) :
     StateSymtabEq s.symtab (execSetTidAddress s) := rfl
+private theorem symtab_execFutex (s : State) :
+    StateSymtabEq s.symtab (execFutex s) := by
+  dsimp (config := { zetaHave := true }) only [execFutex]; (repeat' split) <;> rfl
 private theorem symtab_execGetpid (s : State) :
     StateSymtabEq s.symtab (execGetpid s) := rfl
 private theorem symtab_execRtSigprocmask (s : State) :
     StateSymtabEq s.symtab (execRtSigprocmask s) := by
-  dsimp (config := { zetaHave := true }) only [execRtSigprocmask]; (repeat' split) <;> rfl
+  have h1 : ∀ (st : State) (m : BitVec 64), (st.setSigMask m).symtab = st.symtab := fun st _ => by cases st; rfl
+  have h2 : ∀ (st : State) (p : BitVec 64), (st.setSigPending p).symtab = st.symtab := fun st _ => by cases st; rfl
+  have h3 : ∀ (st : State) (e : ExecStatus), (st.setStatus e).symtab = st.symtab := fun st _ => by cases st; rfl
+  have h4 : ∀ (st : State) (r : Reg) (v : BitVec 64), ((st.writeReg64 r v).advancePC).symtab = st.symtab :=
+    fun st r _ => by cases st; cases r <;> rfl
+  have h5 : ∀ (st : State) (m : Memory), (st.setMem m).symtab = st.symtab := fun st _ => by cases st; rfl
+  unfold StateSymtabEq execRtSigprocmask; dsimp only
+  (repeat' split) <;> simp only [h3, h2, h4, h5, h1, apply_ite State.symtab, ite_self]
 private theorem symtab_execSigaltstack (s : State) :
     StateSymtabEq s.symtab (execSigaltstack s) := by
   dsimp (config := { zetaHave := true }) only [execSigaltstack]; (repeat' split) <;> rfl
 private theorem symtab_execRtSigaction (s : State) :
     StateSymtabEq s.symtab (execRtSigaction s) := by
-  dsimp (config := { zetaHave := true }) only [execRtSigaction]; (repeat' split) <;> rfl
+  have h1 : ∀ (st : State) (sig : BitVec 32) (a : SigAction), (st.setSigAction sig a).symtab = st.symtab :=
+    fun st _ _ => by cases st; rfl
+  have h2 : ∀ (st : State) (p : BitVec 64), (st.setSigPending p).symtab = st.symtab := fun st _ => by cases st; rfl
+  have h3 : ∀ (st : State) (e : ExecStatus), (st.setStatus e).symtab = st.symtab := fun st _ => by cases st; rfl
+  have h4 : ∀ (st : State) (r : Reg) (v : BitVec 64), ((st.writeReg64 r v).advancePC).symtab = st.symtab :=
+    fun st r _ => by cases st; cases r <;> rfl
+  have h5 : ∀ (st : State) (m : Memory), (st.setMem m).symtab = st.symtab := fun st _ => by cases st; rfl
+  unfold StateSymtabEq execRtSigaction; dsimp only
+  (repeat' split) <;> simp only [h3, h4, h5, h2, h1, apply_ite State.symtab, ite_self]
 private theorem symtab_execTkill (s : State) :
     StateSymtabEq s.symtab (execTkill s) := by
   dsimp (config := { zetaHave := true }) only [execTkill]; (repeat' split) <;> rfl
@@ -2219,7 +2361,15 @@ private theorem symtab_execBrk (s : State) : StateSymtabEq s.symtab (execBrk s) 
 private theorem symtab_execMunmap (s : State) : StateSymtabEq s.symtab (execMunmap s) := by
   dsimp (config := { zetaHave := true }) only [execMunmap]; (repeat' split) <;> rfl
 private theorem symtab_execMremap (s : State) : StateSymtabEq s.symtab (execMremap s) := by
-  dsimp (config := { zetaHave := true }) only [execMremap]; (repeat' split) <;> rfl
+  dsimp (config := { zetaHave := true }) only [execMremap, StateSymtabEq]
+  repeat' (apply symtab_ite <;> intro)
+  any_goals rfl
+  cases sanitizeMmapAddr
+      (s.mem.unmapNonFrozen (untaggedAddr (s.readReg64 Reg.x0)) (pageAlignUp (s.readReg64 Reg.x1).toNat))
+      (s.oracle.mmap s.oracleIdx) (pageAlignUp (s.readReg64 Reg.x2).toNat)
+  · rfl
+  · dsimp only; repeat' (apply symtab_ite <;> intro)
+    all_goals rfl
 private theorem symtab_execMprotect (s : State) : StateSymtabEq s.symtab (execMprotect s) := by
   dsimp (config := { zetaHave := true }) only [execMprotect]; (repeat' split) <;> rfl
 private theorem symtab_execMadvise (s : State) : StateSymtabEq s.symtab (execMadvise s) := by
@@ -2269,7 +2419,7 @@ private theorem standardEntry_symtab (s : State) :
     List.mem_cons, List.not_mem_nil, or_false]
   rintro _ (rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
             rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
+            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
   · exact symtab_execRead s
   · exact symtab_execWrite s
   · exact symtab_execReadv s
@@ -2298,6 +2448,7 @@ private theorem standardEntry_symtab (s : State) :
   · exact symtab_execClockGettime s
   · exact symtab_execGetrandom s
   · exact symtab_execSetTidAddress s
+  · exact symtab_execFutex s
   · exact symtab_execSchedGetaffinity s
   · exact symtab_execGetpid s
   · exact symtab_execGetpid s
@@ -2687,7 +2838,15 @@ private theorem tpidr_execMunmap (s : State) :
   dsimp (config := { zetaHave := true }) only [execMunmap]; (repeat' split) <;> rfl
 private theorem tpidr_execMremap (s : State) :
     StateTpidrEq s.tpidrEl0 (execMremap s) := by
-  dsimp (config := { zetaHave := true }) only [execMremap]; (repeat' split) <;> rfl
+  dsimp (config := { zetaHave := true }) only [execMremap]
+  repeat' (apply stateTpidrEq_ite <;> intro)
+  any_goals rfl
+  cases sanitizeMmapAddr
+      (s.mem.unmapNonFrozen (untaggedAddr (s.readReg64 Reg.x0)) (pageAlignUp (s.readReg64 Reg.x1).toNat))
+      (s.oracle.mmap s.oracleIdx) (pageAlignUp (s.readReg64 Reg.x2).toNat)
+  · rfl
+  · dsimp only; repeat' (apply stateTpidrEq_ite <;> intro)
+    all_goals rfl
 private theorem tpidr_execMmap (s : State) :
     StateTpidrEq s.tpidrEl0 (execMmap s) := by
   dsimp (config := { zetaHave := true }) only [execMmap]; (repeat' split) <;> rfl
@@ -2702,10 +2861,25 @@ private theorem tpidr_execSigaltstack (s : State) :
   dsimp (config := { zetaHave := true }) only [execSigaltstack]; (repeat' split) <;> rfl
 private theorem tpidr_execRtSigaction (s : State) :
     StateTpidrEq s.tpidrEl0 (execRtSigaction s) := by
-  dsimp (config := { zetaHave := true }) only [execRtSigaction]; (repeat' split) <;> rfl
+  have h1 : ∀ (st : State) (sig : BitVec 32) (a : SigAction), (st.setSigAction sig a).tpidrEl0 = st.tpidrEl0 :=
+    fun st _ _ => by cases st; rfl
+  have h2 : ∀ (st : State) (p : BitVec 64), (st.setSigPending p).tpidrEl0 = st.tpidrEl0 := fun st _ => by cases st; rfl
+  have h3 : ∀ (st : State) (e : ExecStatus), (st.setStatus e).tpidrEl0 = st.tpidrEl0 := fun st _ => by cases st; rfl
+  have h4 : ∀ (st : State) (r : Reg) (v : BitVec 64), ((st.writeReg64 r v).advancePC).tpidrEl0 = st.tpidrEl0 :=
+    fun st r _ => by cases st; cases r <;> rfl
+  have h5 : ∀ (st : State) (m : Memory), (st.setMem m).tpidrEl0 = st.tpidrEl0 := fun st _ => by cases st; rfl
+  unfold StateTpidrEq execRtSigaction; dsimp only
+  (repeat' split) <;> simp only [h3, h4, h5, h2, h1, apply_ite State.tpidrEl0, ite_self]
 private theorem tpidr_execRtSigprocmask (s : State) :
     StateTpidrEq s.tpidrEl0 (execRtSigprocmask s) := by
-  dsimp (config := { zetaHave := true }) only [execRtSigprocmask]; (repeat' split) <;> rfl
+  have h1 : ∀ (st : State) (m : BitVec 64), (st.setSigMask m).tpidrEl0 = st.tpidrEl0 := fun st _ => by cases st; rfl
+  have h2 : ∀ (st : State) (p : BitVec 64), (st.setSigPending p).tpidrEl0 = st.tpidrEl0 := fun st _ => by cases st; rfl
+  have h3 : ∀ (st : State) (e : ExecStatus), (st.setStatus e).tpidrEl0 = st.tpidrEl0 := fun st _ => by cases st; rfl
+  have h4 : ∀ (st : State) (r : Reg) (v : BitVec 64), ((st.writeReg64 r v).advancePC).tpidrEl0 = st.tpidrEl0 :=
+    fun st r _ => by cases st; cases r <;> rfl
+  have h5 : ∀ (st : State) (m : Memory), (st.setMem m).tpidrEl0 = st.tpidrEl0 := fun st _ => by cases st; rfl
+  unfold StateTpidrEq execRtSigprocmask; dsimp only
+  (repeat' split) <;> simp only [h3, h2, h4, h5, h1, apply_ite State.tpidrEl0, ite_self]
 private theorem tpidr_execTkill (s : State) :
     StateTpidrEq s.tpidrEl0 (execTkill s) := by
   dsimp (config := { zetaHave := true }) only [execTkill]; (repeat' split) <;> rfl
@@ -2720,6 +2894,9 @@ private theorem tpidr_execGetrandom (s : State) :
   dsimp (config := { zetaHave := true }) only [execGetrandom]; (repeat' split) <;> rfl
 private theorem tpidr_execSetTidAddress (s : State) :
     StateTpidrEq s.tpidrEl0 (execSetTidAddress s) := rfl
+private theorem tpidr_execFutex (s : State) :
+    StateTpidrEq s.tpidrEl0 (execFutex s) := by
+  dsimp (config := { zetaHave := true }) only [execFutex]; (repeat' split) <;> rfl
 private theorem tpidr_execSchedGetaffinity (s : State) :
     StateTpidrEq s.tpidrEl0 (execSchedGetaffinity s) := by
   dsimp (config := { zetaHave := true }) only [execSchedGetaffinity]; (repeat' split) <;> rfl
@@ -2748,7 +2925,7 @@ private theorem standardEntry_tpidrEl0 (s : State) :
     List.mem_cons, List.not_mem_nil, or_false]
   rintro _ (rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
             rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
+            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
   · exact tpidr_execRead s
   · exact tpidr_execWrite s
   · exact tpidr_execReadv s
@@ -2777,6 +2954,7 @@ private theorem standardEntry_tpidrEl0 (s : State) :
   · exact tpidr_execClockGettime s
   · exact tpidr_execGetrandom s
   · exact tpidr_execSetTidAddress s
+  · exact tpidr_execFutex s
   · exact tpidr_execSchedGetaffinity s
   · exact tpidr_execGetpid s
   · exact tpidr_execGetpid s

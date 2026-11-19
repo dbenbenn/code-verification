@@ -13,6 +13,8 @@ public import Symbolic.Proofs.Swarm.UA.Defs
 import Symbolic.Proofs.Swarm.UA.Base
 import Symbolic.Proofs.Swarm.UA.XlateInv
 import Symbolic.Proofs.Swarm.UA.XlateSteps
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
 
 /-!
 # Pre-Key Start Excuse Transfer
@@ -22,7 +24,7 @@ Proves `xlate_exc_p : XlateExcPSpec`: on an accepted pre-key `recv` run with unk
 `PreKeyStartCollidesOrRejectsMoves` via `XlateInv.xlate_inv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

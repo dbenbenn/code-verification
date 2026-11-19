@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly -- shake: keep
@@ -20,6 +20,8 @@ import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3Gen
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3GenBlocks
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3GenSub5
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1Err
+public import ProofLib.FsTrace
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
 
 /-!
 # `HooksE.A0` Stage P3 Framing Helpers
@@ -28,14 +30,14 @@ Relocatable `[LibsignalPlacement]` step-bind and OOM framing lemmas
 (`bind_sepWP_frame_steps_a0_placed`, `sepWPp_frame_closOom_a0_placed`) for Stage P3.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.D3
 
-open Arm64 ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection
+open Arm64 ProofLib ProofLib.ProgramReflection
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSession CryptoVerification.LibsignalSessionRepr
@@ -78,19 +80,5 @@ theorem bind_sepWP_frame_steps_a0_placed [LibsignalPlacement] {prog : Program} {
   obtain ⟨sf, hsteps', hout'⟩ :=
     hnext sm hsteps hpc hrun hrocl' hregs R hmm' (hsteps.codeLoaded hL)
   exact ⟨sf, hsteps.trans hsteps', hout'⟩
-
-theorem sepWPp_frame_closOom_a0_placed {prog : Program} {ret : BitVec 64} {s0 s : State}
-    {P F_frame : SepProp} {Q : State → SepProp → Prop}
-    (hwp : SepWPp prog ret s P (fun sf P_f => Q sf (P_f ∗ F_frame)) (P3P4.PanicOomProp s0)) :
-    SepWPp prog ret s (P ∗ F_frame) Q (P3P4.PanicOomProp s0) := by
-  intro R hm hL; rw [sepConj_assoc] at hm
-  obtain ⟨sf, hsteps, ⟨hpc, hrun, P_f, hmf, hQ⟩ | ⟨hpan, P_f, hmf, hoom⟩ | ⟨_, hoom⟩⟩ :=
-    hwp (F_frame ∗ R) hm hL
-  · rw [← sepConj_assoc] at hmf; exact ⟨sf, hsteps, Or.inl ⟨hpc, hrun, P_f ∗ F_frame, hmf, hQ⟩⟩
-  · rw [← sepConj_assoc] at hmf
-    exact ⟨sf, hsteps, Or.inr (Or.inl ⟨hpan, P_f ∗ F_frame, hmf, fun R' hmR' => by
-      rw [sepConj_assoc] at hmR'; have h1 := hoom (F_frame ∗ R') hmR'
-      rw [← sepConj_assoc] at h1; exact allowPanic_frame id h1⟩)⟩
-  · exact (not_satisfies_false_sepConj hoom).elim
 
 end LibsignalBinary.Proofs.SignalSession.Cli.D3

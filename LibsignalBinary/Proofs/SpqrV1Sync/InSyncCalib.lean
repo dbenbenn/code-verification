@@ -27,7 +27,7 @@ decoded `States spqrPolyApi (spqrAuthApi F)` states:
   message drop, reordering, and replay.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.InSync
 
@@ -47,27 +47,27 @@ abbrev Msg := Message spqrPolyApi
 abbrev Seed := List.Vector (BitVec 8) 64
 
 /-- ML-KEM public header derived from `s`. -/
-def hdrOf (K : MlKem) (s : Seed) : Bytes := (K.fromSeed s).1.toList
+@[expose] def hdrOf (K : MlKem) (s : Seed) : Bytes := (K.fromSeed s).1.toList
 
 /-- ML-KEM encapsulation key derived from `s`. -/
-def ekOf (K : MlKem) (s : Seed) : Bytes := (K.fromSeed s).2.1.toList
+@[expose] def ekOf (K : MlKem) (s : Seed) : Bytes := (K.fromSeed s).2.1.toList
 
 /-- ML-KEM decapsulation key derived from `s`. -/
-def dkOf (K : MlKem) (s : Seed) : Bytes := (K.fromSeed s).2.2.toList
+@[expose] def dkOf (K : MlKem) (s : Seed) : Bytes := (K.fromSeed s).2.2.toList
 
 /-- 96-byte authenticated header payload `hdrOf K s ++ auth.macHdrUnchecked F e (hdrOf K s)`. -/
-def hdrMsg (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed) : Bytes :=
+@[expose] def hdrMsg (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed) : Bytes :=
   hdrOf K s ++ auth.macHdrUnchecked F e (hdrOf K s)
 
 /-- Well-formedness of an `Authenticator` (32-byte MAC key). -/
-def AuthWf (auth : Authenticator) : Prop := auth.macKey.length = 32
+@[expose] def AuthWf (auth : Authenticator) : Prop := auth.macKey.length = 32
 
 /-- Initial `PolyDecoder` state returned by `PolyDecoder.new len` for even `len`. -/
-def freshDec (len : Nat) : PolyDecoder :=
+@[expose] def freshDec (len : Nat) : PolyDecoder :=
   { ptsNeeded := len / 2, pts := List.replicate 16 SortedSetPt.new, isComplete := false }
 
 /-- Honest `.hdr` chunk `idx` of `hdrMsg` at epoch `e`. -/
-noncomputable def hdrChunkMsg (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator)
+@[expose] noncomputable def hdrChunkMsg (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator)
     (s : Seed) (idx : BitVec 16) : Msg where
   epoch := e
   payload := .hdr (spqrPolyApi.mkChunk idx (Erasure.chunkData (hdrMsg F K e auth s) idx))
@@ -75,7 +75,7 @@ noncomputable def hdrChunkMsg (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : 
 /-! ## Phase-1 invariant -/
 
 /-- EK-side state invariant in phase 1 (`none` = `.keysUnsampled`, `some s` = `.keysSampled`). -/
-def XShape (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) :
+@[expose] def XShape (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) :
     Option Seed → St F → Prop
   | none, x => x = .keysUnsampled { uc := { epoch := e, auth := auth } }
   | some s, x => ∃ enc : PolyEncoder, EncInv (hdrMsg F K e auth s) enc ∧
@@ -83,7 +83,7 @@ def XShape (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) :
                          sending_hdr := enc }
 
 /-- CT-side state invariant in phase 1 (`3 = needed 96 0` distinct chunks decode `hdrMsg`). -/
-def YShape (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) :
+@[expose] def YShape (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) :
     Option Seed → St F → Prop
   | none, y =>
       y = .noHeaderReceived { uc := { epoch := e, auth := auth }, receiving_hdr := freshDec 96 }
@@ -94,13 +94,13 @@ def YShape (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) :
                             receiving_ek := freshDec 1152 }
 
 /-- Valid phase-1 messages in flight toward `Y_e`: earlier-epoch messages or honest `.hdr` chunks. -/
-def ToYOk (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (seed? : Option Seed)
+@[expose] def ToYOk (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (seed? : Option Seed)
     (m : Msg) : Prop :=
   m.epoch < e ∨
   ∃ s, seed? = some s ∧ ∃ idx : BitVec 16, m = hdrChunkMsg F K e auth s idx
 
 /-- Valid phase-1 messages in flight toward `X_e`: earlier-epoch messages or `.none` at epoch `e`. -/
-def ToXOk (e : Epoch) (m : Msg) : Prop :=
+@[expose] def ToXOk (e : Epoch) (m : Msg) : Prop :=
   m.epoch < e ∨ m = { epoch := e, payload := .none }
 
 /-- Phase-1 synchronization invariant at epoch `e` with shared `auth` and optional seed `seed?`. -/

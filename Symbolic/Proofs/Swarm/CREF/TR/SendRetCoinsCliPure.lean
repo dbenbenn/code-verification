@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Hooks2.BridgeXPure
-public import Symbolic.Proofs.SR.SendSpecWPure
-public import Symbolic.Proofs.Swarm.CREF.Sem
-public import Symbolic.Proofs.Swarm.CREF.SendWire.Ghosts
-public import Symbolic.Proofs.Swarm.CREF.TR.SendRetCoinsCliPureA
+public import Symbolic.Proofs.Hooks2.BridgeXPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SR.SendSpecWPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.SendWire.Ghosts -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.SendRetCoinsCliPureA -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.ExecBridgeSendCtOS
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
@@ -29,7 +29,7 @@ Proves `pureEvalSendWire_stateRel_and_message_64`, establishing post-send `State
 wire-ciphertext correspondence for `pureEvalSendWire` under `sendGhost`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -123,7 +123,7 @@ theorem spqrSendOf_compSemOf_of_send_some (i : ExternInterpretation)
   rw [Symbolic.Swarm.TRREF.MacFormBridge.spqrSendMsgOf_spqrSemOf_eq_spqrBytes i hlen] at h3
   exact ⟨h1, h2, h3⟩
 
-def SpqrInitA2BKdf (b : DY.Bytes) : Prop :=
+@[expose] def SpqrInitA2BKdf (b : DY.Bytes) : Prop :=
   ∀ authKey params,
     b.view? DY.Spqr.InitState.SubF = some ⟨authKey, params⟩ →
     params = spqrA2B ∧ ∃ s m, authKey = DY.KdfExtract.kdfExtract s m

@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.CliC.SpqrV1.Alloc.DoReservePlacedBudget
-public import LibsignalBinary.Proofs.CliC.SpqrV1.Prost.BytesMerge.ExactPlacedBudgetAux
-public import LibsignalBinary.Proofs.CliC.SpqrV1.Varint.DecodeVarint2PlacedBudget
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.CliC.SpqrV1.Alloc.DoReservePlacedBudget
+public import LibsignalBinary.Proofs.CliC.SpqrV1.Prost.BytesMerge.ExactPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CliC.SpqrV1.Varint.DecodeVarint2PlacedBudget
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -27,6 +27,14 @@ import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSliceBudget
 import LibsignalBinary.Proofs.VarintBridge
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+public import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Exact-Capacity Budget-Threaded Proof of `CliC` `prost::encoding::bytes::merge`
@@ -36,7 +44,7 @@ Proves `bytesMerge3RawBudgetSpec M A lim` under `[LibsignalPlacement]` for `CliC
 deterministic capacity equation `cap'.toNat = bmNextCap x.valCap.toNat v.length`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

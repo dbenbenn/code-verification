@@ -9,26 +9,40 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CallsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortAfterGetPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortAfterGetPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CallsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortAfterGetPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortAfterGetPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Fs
-import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Fetches
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Pure
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Calls
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CallsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Drops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortAfterGet
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Relocatable `last_resort` Branch for `KpkMarkPoll`
@@ -38,7 +52,7 @@ Defines `KpkBaseKeysReserveEnv` and `KpkLastResortPreAfterGetEnv`, and proves bu
 Block `578` (`lsProg_578 H`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedTactic false
@@ -111,12 +125,12 @@ local macro_rules
 
 /-- Exact `.base-keys` `do_reserve_and_handle` event list when `decimal(id)` returned `spare`
 unused capacity bytes (`0 ≤ spare ≤ 9`). -/
-def kpkBaseKeysReserveEventsAt (id : BitVec 32) (spare : Nat) : List AllocEvent :=
+@[expose] def kpkBaseKeysReserveEventsAt (id : BitVec 32) (spare : Nat) : List AllocEvent :=
   doReserveEvents ⟨0#64, BitVec.ofNat 64 ((keyName id).length + spare), 0#64, keyName id, 10⟩
 
 /-- Finite 11-way disjunction of the `.base-keys` suffix reserve step:
 either no reserve (`evs = []`), or `spare ∈ 0..9` (`decCap.toNat = (keyName id).length + spare`). -/
-def KpkBaseKeysReserveEnv (id : BitVec 32) (evs : List AllocEvent) : Prop :=
+@[expose] def KpkBaseKeysReserveEnv (id : BitVec 32) (evs : List AllocEvent) : Prop :=
   evs = [] ∨
   evs = kpkBaseKeysReserveEventsAt id 0 ∨
   evs = kpkBaseKeysReserveEventsAt id 1 ∨
@@ -131,7 +145,7 @@ def KpkBaseKeysReserveEnv (id : BitVec 32) (evs : List AllocEvent) : Prop :=
 
 /-- Composite pre-`after_lr_get` envelope on `+280 .. +372`:
 `decimal(x.id)` → `KpkBaseKeysReserveEnv x.id` → `last_resort.get(.base-keys)`. -/
-def KpkLastResortPreAfterGetEnv
+@[expose] def KpkLastResortPreAfterGetEnv
     (DecEnv : BitVec 32 → List AllocEvent → Prop)
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (F0 : FsFiles) (x : KpkMarkPollGhost) : List AllocEvent → Prop :=

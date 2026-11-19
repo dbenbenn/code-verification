@@ -11,25 +11,26 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.BaseBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.SenderReceiverChains
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.SenderReceiverChainsBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeChain.BaseXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.BaseX
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.BaseXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.SenderReceiverChainsX
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.BaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.SenderReceiverChains
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.SenderReceiverChainsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeChain.BaseXBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.BaseX -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.BaseXBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.SenderReceiverChainsX -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
-import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.Fetch
+import Mathlib.Tactic.ToAdditive
+import Mathlib.Tactic.ToDual
 import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.PrologueVersionLocalIdentity
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded `SessionStructure::encode_raw` Tags 6 and 7 (`460` → `536`)
@@ -38,7 +39,7 @@ Verifies relocatable protobuf tag 6 (`sender_chain`, `460..488`) and the protobu
 `receiver_chains` loop (`488..536`) in Block `14` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -11,16 +11,20 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.FramePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.PollStmtPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.FramePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.PollStmtPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Poll Closure Statements for `decrypt_prekey`
@@ -29,7 +33,7 @@ Defines the `RustCliAllocBudget M` poll closure contracts `CliDpPollOkStatePlace
 `CliDpPollOkStatePlacedStmt` on block `518` (`lsProg_518`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -69,7 +73,7 @@ abbrev K₀_statePlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Pointwise budget-threaded `[LibsignalPlacement]` poll contract on block `518` at fixed
 `(mmpl, g, W, X, B, S, Scope)` and allocation envelope `DecPkEnv`. -/
-def CliDpPollOkStatePlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliDpPollOkStatePlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -94,7 +98,7 @@ def CliDpPollOkStatePlacedAt [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Quantified budget-threaded `[LibsignalPlacement]` poll contract on block `518` satisfying
 `dpPollSpecStateBudget` at `K₀_statePlaced A lim (DecPkEnv W X B Scope) B S`. -/
-def CliDpPollOkStatePlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliDpPollOkStatePlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)

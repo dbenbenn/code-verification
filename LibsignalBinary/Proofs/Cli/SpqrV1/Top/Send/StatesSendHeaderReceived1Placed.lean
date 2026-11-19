@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendHeaderReceived1
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled1Placed
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendHeaderReceived1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled1Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlaced
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
@@ -24,7 +24,7 @@ Proves ML-KEM encapsulation, `ct1` / `info` allocation, HKDF derivation, and aut
 update (`+1312..+1680`) in Block `427` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -52,7 +52,7 @@ open KeysUnsampledHelpers
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [-arm64_norm]
   Kdf.HkdfToSliceProof.sp_sub_688_eq_hsp
   Kdf.HkdfToSliceProof.sp_add_neg688_eq_hsp
@@ -66,14 +66,14 @@ attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.sub_add_cancel
 
 /-- `hkdf_to_vec` (Block `378`) meets `withLsCodeRoLoaded lsmpl (hkdfToVecSpqrSpec A HkdfFn)`
     on `spqrSendPlacedProg ext`. -/
-def HkdfToVecPlacedOkX (A : RustAlloc) (HkdfFn : Bytes → Bytes → Bytes → Nat → Bytes)
+@[expose] def HkdfToVecPlacedOkX (A : RustAlloc) (HkdfFn : Bytes → Bytes → Bytes → Nat → Bytes)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 378)
     (withLsCodeRoLoaded lsmpl (hkdfToVecSpqrSpec A HkdfFn))
 
 /-- `<Authenticator>::update` (Block `341`) meets
     `withLsCodeRoLoaded lsmpl (authUpdateSpec F A)` on `spqrSendPlacedProg ext`. -/
-def AuthUpdatePlacedOkX (F : ShaCompress) (A : RustAlloc)
+@[expose] def AuthUpdatePlacedOkX (F : ShaCompress) (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 341)
     (withLsCodeRoLoaded lsmpl (authUpdateSpec F A))

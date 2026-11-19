@@ -10,15 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CommonPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CmDropPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrCommonPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CommonPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CmDropPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrCommonPlacedBudget
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Budget-Threaded Relocatable `CiphertextMessage` Drop Tail (`+0xd40..+0xd4c` → `+0x46c`)
@@ -28,7 +32,7 @@ Proves `cmDrop_placed_run` and `tailCmDrop_placed_ok` on Block `464` (`lsProg_46
 continuing into `tailDropRecord`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -258,92 +262,6 @@ theorem tailCmDropPlaced [LibsignalPlacement] {M : AllocCostModel} {C : Crypto}
     let ⟨st', htail⟩ := hnext
     hT1 st' s' hm' htail
 
-theorem tailCmDropBudgetPlaced [LibsignalPlacement] {M : AllocCostModel} {C : Crypto}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {kit : SessionStoreSpec A.repAlloc 0#64}
-    {kitEnv : LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.SessionStoreBudgetEnv kit}
-    {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A.repAlloc 0#64}
-    {ikitEnv : LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.IdentityStoreBudgetEnv ikit}
-    {ist0 : ikit.IdState}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {ctl : BitVec 64} {parse : UuidParser} {S : SpqrModel} {sendEnv : SpqrSendBudgetEnv}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {Hk : LibsignalHooks}
-    (hdrop : subroutine_ok (lsProg_464 Hk) (lsmpl.base 438)
-      (withLsRoCl lsmpl (cmDropSpec M A lim)))
-    {x : WithStoresEncGhost} {st_init st : M.σ} {R : SepProp} {s0 s : State}
-    {answers : StoreAnswers (List (BitVec 8)) Unit} {e : ApiError AddrVal Unit}
-    {w0 w1 w2 w3 w4 w5 : BitVec 64} {Hp : SepProp} {scratch : BitVec 64 → SepProp}
-    {g : RecordGhost} {rec : SessionRecord (List (BitVec 8))}
-    {ot : Option (BitVec 64 × BitVec 64 × OutgoingTripleRatchet (List (BitVec 8)))}
-    {m : CiphertextMessage}
-    (hm : TailModel kit st0 ikit ist0 C S parse encRecord x answers (.error e) s0 s)
-    (hs : EncTailVBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-      x st_init st answers (encEntryPlaced + 0xd40#64) (tailRegs w0 w1 w2)
-      (fun sp => dropRecordSlots A.repAlloc sp scratch g rec ot (some m)
-        (pollWith sp 0x9d0 [w3, w4, w5]) ∗ Hp)
-      R s0 s)
-    (hT1 : ∀ st' s',
-      TailModel kit st0 ikit ist0 C S parse encRecord x answers (.error e) s0 s' →
-      EncTailVBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-        x st_init st' answers (encEntryPlaced + 0x46c#64) (tailRegs w0 w1 w2)
-        (fun sp => dropRecordSlots A.repAlloc sp scratch g rec ot none
-          (pollWith sp 0x9d0 [w3, w4, w5]) ∗ Hp)
-        R s0 s' →
-      SegExitBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-        encRecord Hk x st_init R s0 s' (fun _ => False)) :
-    SegExitBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-      encRecord Hk x st_init R s0 s (fun _ => False) := by
-  have hn : allocHookStack + 0x40 ≤ encSubStack := by decide
-  have hrun : (lsProg_464 Hk).CodeLoaded s.mem →
-      ∃ s', Steps (lsProg_464 Hk) s s' ∧ s'.trace = s.trace ∧
-        ∃ st', EncTailVBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-          x st_init st' answers (encEntryPlaced + 0x46c#64) (tailRegs w0 w1 w2)
-          (fun sp => dropRecordSlots A.repAlloc sp scratch g rec ot none
-            (pollWith sp 0x9d0 [w3, w4, w5]) ∗ Hp)
-          R s0 s' := fun hL => by
-    obtain ⟨st', s', hsteps, htr, htail⟩ :=
-      encTailBudget_run_withEncCommon (C := C) (Hk := Hk)
-        (pc' := encEntryPlaced + 0x46c#64)
-        (regs' := tailRegs w0 w1 w2)
-        (slots' := fun sp => dropRecordSlots A.repAlloc sp scratch g rec ot none
-          (pollWith sp 0x9d0 [w3, w4, w5]) ∗ Hp)
-        (Act := apiEncResultAt A.repAlloc (s0.sp - 0xbe0#64 + 0x370#64) (.ok m) ∗
-          A.pool lim st s ∗ stackAt (s0.sp - 0xbe0#64) (allocHookStack + 0x40))
-        (Act' := fun st' s' => memRegion (s0.sp - 0xbe0#64 + 0x370#64) 248 ∗
-          A.pool lim st' s' ∗ stackAt (s0.sp - 0xbe0#64) (allocHookStack + 0x40))
-        (Fr := (memRegion (s0.sp - 0xbe0#64 + 0x350#64) 0x20 ∗
-            memRegion (s0.sp - 0xbe0#64 + 0x468#64) 1) ∗
-          CryptoVerification.LibsignalPublicApi.MessageEncrypt.Tails.ProtocolErr.dropRecordBase
-            A.repAlloc (s0.sp - 0xbe0#64) scratch g rec ot ∗
-          pollWith (s0.sp - 0xbe0#64) 0x9d0 [w3, w4, w5] ∗
-          Hp ∗ encCommonPlacedFr A.repAlloc ctl x (x.draws S answers) s0 (allocHookStack + 0x40))
-        hs
-        (by
-          refine Entails.of_eq ?_
-          rw [tails_dropRecordSlots_eq,
-            CryptoVerification.LibsignalPublicApi.MessageEncrypt.Tails.ProtocolErr.dropRecordSlots_eq,
-            encCommonPlaced_eq A lim st s ctl x (x.draws S answers) s0 _ hn]
-          simp only [CryptoVerification.LibsignalPublicApi.MessageEncrypt.Tails.ProtocolErr.cmSlotAt]
-          sep_ac_rfl)
-        (fun st' s' => by
-          refine Entails.of_eq ?_
-          rw [tails_dropRecordSlots_eq,
-            CryptoVerification.LibsignalPublicApi.MessageEncrypt.Tails.ProtocolErr.dropRecordSlots_eq,
-            encCommonPlaced_eq A lim st' s' ctl x (x.draws S answers) s0 _ hn,
-            CryptoVerification.LibsignalPublicApi.MessageEncrypt.Tails.ProtocolErr.cmSlot_none_eq]
-          sep_ac_rfl)
-        (fun hpc hmeta hregs => by
-          obtain ⟨hrun, hssp, _, hspal, _, _, hcrl, _⟩ := hmeta
-          rw [← hssp] at hregs ⊢
-          exact cmDrop_placed_run hdrop w0 w1 w2 m st s hpc hrun hspal hcrl hregs)
-        hL
-    exact ⟨s', hsteps, htr, st', htail⟩
-  exact segExitBudget_of_run hm hrun fun s' hm' hnext =>
-    let ⟨st', htail⟩ := hnext
-    hT1 st' s' hm' htail
-
 theorem tailCmDrop_placed_ok [LibsignalPlacement] {M : AllocCostModel} {C : Crypto}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {kit : SessionStoreSpec A.repAlloc 0#64} {kitEnv : SessionStoreBudgetEnv kit}
@@ -387,54 +305,6 @@ theorem tailCmDrop_placed_ok [LibsignalPlacement] {M : AllocCostModel} {C : Cryp
     SegExitPlaced A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
       encRecord Hk x st_init R s0 s (fun _ => False) :=
   tailCmDropPlaced hdrop hm hs fun st' s' hm' hs' =>
-    hDropRecord x st_init st' R s0 s' answers e w0 w1 w2 w3 w4 w5 Hp scratch hscr g rec ot
-      hm' hst hs'
-
-theorem tailCmDropBudget_placed_ok [LibsignalPlacement] {M : AllocCostModel} {C : Crypto}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {kit : SessionStoreSpec A.repAlloc 0#64}
-    {kitEnv : LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.SessionStoreBudgetEnv kit}
-    {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A.repAlloc 0#64}
-    {ikitEnv : LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.IdentityStoreBudgetEnv ikit}
-    {ist0 : ikit.IdState}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {ctl : BitVec 64} {parse : UuidParser} {S : SpqrModel} {sendEnv : SpqrSendBudgetEnv}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {Hk : LibsignalHooks}
-    (hdrop : subroutine_ok (lsProg_464 Hk) (lsmpl.base 438)
-      (withLsRoCl lsmpl (cmDropSpec M A lim)))
-    (hDropRecord :
-      ∀ (x : WithStoresEncGhost) (st_init st : M.σ) (R : SepProp) (s0 s : State)
-        (answers : StoreAnswers (List (BitVec 8)) Unit) (e : ApiError AddrVal Unit)
-        (w0 w1 w2 w3 w4 w5 : BitVec 64) (Hp : SepProp) (scratch : BitVec 64 → SepProp),
-        (scratch = curScratch ∨ scratch = cmScratch) →
-        ∀ (g : RecordGhost) (rec : SessionRecord (List (BitVec 8)))
-          (ot : Option (BitVec 64 × BitVec 64 × OutgoingTripleRatchet (List (BitVec 8)))),
-          TailModel kit st0 ikit ist0 C S parse encRecord x answers (.error e) s0 s →
-          SpeStaged A.repAlloc x.ret e [w0, w1, w2, w3, w4, w5] Hp →
-          EncTailVBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-            x st_init st answers (encEntryPlaced + 0x46c#64) (tailRegs w0 w1 w2)
-            (fun sp => dropRecordSlots A.repAlloc sp scratch g rec ot none
-              (pollWith sp 0x9d0 [w3, w4, w5]) ∗ Hp) R s0 s →
-          SegExitBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-            encRecord Hk x st_init R s0 s (fun _ => False))
-    (x : WithStoresEncGhost) (st_init st : M.σ) (R : SepProp) (s0 s : State)
-    (answers : StoreAnswers (List (BitVec 8)) Unit) (e : ApiError AddrVal Unit)
-    (w0 w1 w2 w3 w4 w5 : BitVec 64) (Hp : SepProp) (scratch : BitVec 64 → SepProp)
-    (hscr : scratch = curScratch ∨ scratch = cmScratch)
-    (g : RecordGhost) (rec : SessionRecord (List (BitVec 8)))
-    (ot : Option (BitVec 64 × BitVec 64 × OutgoingTripleRatchet (List (BitVec 8))))
-    (m : CiphertextMessage)
-    (hm : TailModel kit st0 ikit ist0 C S parse encRecord x answers (.error e) s0 s)
-    (hst : SpeStaged A.repAlloc x.ret e [w0, w1, w2, w3, w4, w5] Hp)
-    (hs : EncTailVBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-      x st_init st answers (encEntryPlaced + 0xd40#64) (tailRegs w0 w1 w2)
-      (fun sp => dropRecordSlots A.repAlloc sp scratch g rec ot (some m)
-        (pollWith sp 0x9d0 [w3, w4, w5]) ∗ Hp) R s0 s) :
-    SegExitBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-      encRecord Hk x st_init R s0 s (fun _ => False) :=
-  tailCmDropBudgetPlaced hdrop hm hs fun st' s' hm' hs' =>
     hDropRecord x st_init st' R s0 s' answers e w0 w1 w2 w3 w4 w5 Hp scratch hscr g rec ot
       hm' hst hs'
 

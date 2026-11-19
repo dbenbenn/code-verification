@@ -12,20 +12,24 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA3PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub3AuxPlaced
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA2PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA3PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub3AuxPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub3Aux
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Substage P2.3 Helpers and Shared Tail
@@ -34,7 +38,7 @@ Defines `P2Sub3TailAllocEnv`, store-kit precondition helpers, and proves the bud
 shared Substage P2.3 tail (`+0x0d04 → +0x0d5c`) on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -141,7 +145,7 @@ local macro "sep_norm" : tactic =>
 /-- Exact deterministic deallocation events performed by `p2_seg3d1_sig0` / `p2_seg3d1_sigNz`
 when freeing the cloned `KyberPreKeyRecord` `publicKey`, `privateKey`, and (when `sigCap ≠ 0`)
 `signature` `Vec<u8>` buffers. -/
-def p2KpkVecFreeEvents (pubCap privCap sigCap : Nat) : List AllocEvent :=
+@[expose] def p2KpkVecFreeEvents (pubCap privCap sigCap : Nat) : List AllocEvent :=
   if sigCap = 0 then
     rustDeallocEvents pubCap 1 ++ rustDeallocEvents privCap 1
   else
@@ -161,12 +165,12 @@ theorem p2KpkVecFreeEvents_freeOnly (pubCap privCap sigCap : Nat) :
 
 /-- Exact deterministic allocation event list (`[AllocEvent.alloc 21]`) performed by
 `p2_seg3d2_alloc` at `+0x0d04` for the 21-byte `"missing pq ciphertext"` error string. -/
-def p2Sub3TailAllocEvents : List AllocEvent :=
+@[expose] def p2Sub3TailAllocEvents : List AllocEvent :=
   rustAllocEvents 21 1
 
 /-- Exact allocator event envelope for the 21-byte error-string allocation at the start of
 `stageP2_sub3_tail_kits_ext_placed` (`+0x0d04`). -/
-def P2Sub3TailAllocEnv (evs : List AllocEvent) : Prop :=
+@[expose] def P2Sub3TailAllocEnv (evs : List AllocEvent) : Prop :=
   evs = p2Sub3TailAllocEvents
 
 theorem fitsEnv_p2Sub3TailAllocEnv_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :

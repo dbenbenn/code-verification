@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.SessionSteps
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionSteps -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
@@ -45,7 +45,7 @@ to explicit constructor lists of `DY.Bytes` and `TRState` terms so `decide +kern
 checks do not traverse monadic `Traceful` definitions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -254,10 +254,10 @@ private theorem newRandoms_nil_append {E1 : Type} [ExecTraceTypes.Has E1]
   newRandoms_append Trace.nil tr e
     (by rw [Symbolic.DYBridge.DY.Trace.length_eq_1]; exact Nat.zero_le _)
 
-def t1Pure : ExecTrace := registerIdentityTr Trace.nil "alice"
-def t2Pure : ExecTrace := registerIdentityTr t1Pure "bob"
-def t3Pure : ExecTrace := genSignedPrekeyTr t2Pure "bob" ikB
-def t4Pure : ExecTrace := genPQPrekeyTr t3Pure "bob" ikB
+@[expose] def t1Pure : ExecTrace := registerIdentityTr Trace.nil "alice"
+@[expose] def t2Pure : ExecTrace := registerIdentityTr t1Pure "bob"
+@[expose] def t3Pure : ExecTrace := genSignedPrekeyTr t2Pure "bob" ikB
+@[expose] def t4Pure : ExecTrace := genPQPrekeyTr t3Pure "bob" ikB
 
 theorem t1_eq_pure : t1 = t1Pure :=
   (Runs.registerIdentity (tr := Trace.nil) (p := "alice")
@@ -925,7 +925,7 @@ theorem storedStates_trAt_10 :
     hs13, Symbolic.Proofs.Tests.Shared.Composed.HonestSession.t13_length]
   rfl
 
-def pqSecretsList : List DY.Bytes :=
+@[expose] def pqSecretsList : List DY.Bytes :=
   [Comparse.serialize (⟨"alice", { kind := .identity, sk := ikA }⟩ :
       DY.PersistentLocalState.LocalState DY.Libsignal.PQXDH.PQXDHState),
    Comparse.serialize (⟨"bob", { kind := .identity, sk := ikB }⟩ :
@@ -1032,7 +1032,7 @@ theorem bobDoneBaseKeys_trAt_4 : bobDoneBaseKeys (trAt 4) = [x4Rep.ek] := by
   simp only [bobDoneBaseKeys_append, hb4]
   rfl
 
-def noSkippedKeyStored (tr : ExecTrace) : Bool :=
+@[expose] def noSkippedKeyStored (tr : ExecTrace) : Bool :=
   (List.range tr.length).all fun i =>
     match tr.getEventAt TREvent i with
     | some (.SkippedKeyStored ..) => false
@@ -1091,7 +1091,7 @@ theorem noSkippedKeyStored_trAt_10 : noSkippedKeyStored (trAt 10) = true := by
   simp only [noSkippedKeyStored_append]
   rw [show t10 = trAt 6 from rfl, noSkippedKeyStored_trAt_6]; rfl
 
-def storedRatchetKeysNoSkipped (r : ProtocolSetup) (tr : ExecTrace) : List DY.Bytes :=
+@[expose] def storedRatchetKeysNoSkipped (r : ProtocolSetup) (tr : ExecTrace) : List DY.Bytes :=
   (availableStates r tr).flatMap fun st => st.toDRState.recv.map (·.ratchetKey)
 
 theorem storedRatchetKeys_of_noSkipped {r : ProtocolSetup} {tr : ExecTrace}
@@ -1118,7 +1118,7 @@ theorem storedRatchetKeys_trAt_10 (msg : TRSignalMsg) :
     storedRatchetKeys r0Comp (trAt 10) msg = storedRatchetKeysNoSkipped r0Comp (trAt 10) :=
   storedRatchetKeys_of_noSkipped noSkippedKeyStored_trAt_10 msg
 
-noncomputable def whisperTrialsNoSkipped (interp : ExternInterpretation) (r : ProtocolSetup)
+@[expose] def whisperTrialsNoSkipped (interp : ExternInterpretation) (r : ProtocolSetup)
     (S : OpaqueSymbolSemantics) (g : Ghost) (tr : ExecTrace) (msg : TRSignalMsg) : List TrialCtx :=
   if msg.version = messageVersion then
     let γ := gamma interp S g

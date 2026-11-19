@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart1Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart2
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
@@ -24,6 +24,8 @@ import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart5Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkProof
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 
 /-!
 # `<NoHeaderReceived>::recv_hdr_chunk` (Block `369`) — Relocatable Epilogues & Top-Level Proof
@@ -33,7 +35,7 @@ Relocatable `[LibsignalPlacement]` proofs for the `MacVerifyFailed` epilogue ent
 top-level Block `369` contract `noHeaderReceived_recv_hdr_chunk_placed_okX`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

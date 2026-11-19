@@ -9,18 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommit433PlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhStep433Placed
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhStep433PlacedBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommit433PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhStep433Placed
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhStep433PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudget
+import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBlocks
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepRecvChain
 import ProofLib.RegChain
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetAux
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Relocatable Segment S3 (`DhStep`) on Block `433`
@@ -30,7 +36,7 @@ Proves pinned and unpinned budget-threaded S3 (`DhStep`) seam contracts (`S3Tigh
 for `try_decrypt_with_state::<Coins>` (block `433`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -94,8 +100,11 @@ open LibsignalBinary.Heap (
 )
 open LibsignalBinary.Proofs.HookDischarge.Libc.Memmove (sessionMemmoveBoundedBudgetSpec)
 open LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget (growOneChainSpecX)
+open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624 lsRetAddr624_base_add)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (
-  chainKeyToPbSpec chainKeyToPbSpecX derivePublicKeyBytesBudgetSpec framelessMemcpyBudgetSpec
+  chainKeyToPbSpec chainKeyToPbSpecX derivePublicKeyBytesBudgetSpec
+  derivePublicKeyBytesStackBudgetSpec framelessMemcpyBudgetSpec
   noAllocShimBudgetSpec publicKeySerializeSpec publicKeySerializeSpecX
 )
 open LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget (
@@ -152,7 +161,8 @@ theorem dhStep_keygen_and_send_create_chain_withStack_cro_placed_cli [LibsignalP
     (hcc : subroutine_ok prog (lsmpl.base 40)
       (withLsCodeRoLoaded lsmpl (createChainSpecWithStack M A lim C ccStack)))
     (hdpk : subroutine_ok prog (lsmpl.base 200)
-      (withLsCodeRoLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+      (withLsCodeRoLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
+    (hlr624 : LsRetAddr624 (entry + 1972#64))
     (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (rk1 : RootKey) (rck : ChainKey)
     (R : SepProp) (s0 s : State)
@@ -181,7 +191,7 @@ theorem dhStep_keygen_and_send_create_chain_withStack_cro_placed_cli [LibsignalP
   set newSenderKey := KeyPair.generate C (coinsOf x.rest)
   obtain ⟨s5, hsteps5, hvm5, hpc5, hmeta5, hx0_5, hx1_5, hx2_5, hx8_5, hx19_5, hx20_5, hx21_5,
     hx22_5, hx23_5, hx25_5, hx26_5, hx27_5, hx28_5, hx30_5, msgW, hmsgW, hmem5⟩ :=
-    dhStep_after_cc1_to_cc2_call_vm_placed_cli hwp hdpk x trG tr st1 rk1 rck R s0 s
+    dhStep_after_cc1_to_cc2_call_vm_placed_cli hwp hdpk hlr624 x trG tr st1 rk1 rck R s0 s
       hrng hsd hafter hcode
   obtain ⟨hrun5, hsp5, hsp0_al, hsp_al5, hx29_5, htrace5, hcl5, hvregs5⟩ := hmeta5
   rw [A.atState_eq_of_vmPreserved lim st hvm5.symm] at hmem5
@@ -424,7 +434,7 @@ theorem dhStep_keygen_and_send_create_chain_withStack_cro_placed_cli [LibsignalP
 /-! ## S3 Seams, Master Composition, and Block `433` Specializations -/
 
 /-- Pinned loose CLI `S3` (`DhStep`) seam recording `trGhostCaps` on `.ok ck`. -/
-def CliS3SeamPinnedPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliS3SeamPinnedPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -456,7 +466,7 @@ def CliS3SeamPinnedPlaced [LibsignalPlacement] {M : AllocCostModel}
        (s'.status = .Panicked ∧ s'.mem ⊨ tryDecryptOnPanic C parse S x s0 s' ∗ R))
 
 /-- Unpinned loose CLI `S3` (`DhStep`) seam. -/
-def CliS3SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliS3SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -487,7 +497,7 @@ def CliS3SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
        (s'.status = .Panicked ∧ s'.mem ⊨ tryDecryptOnPanic C parse S x s0 s' ∗ R))
 
 /-- Pinned `Stage2ContractsX` (`X`) CLI `S3` (`DhStep`) seam. -/
-def CliS3SeamPinnedXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliS3SeamPinnedXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
@@ -521,7 +531,7 @@ def CliS3SeamPinnedXPlaced [LibsignalPlacement] {M : AllocCostModel}
        (s'.status = .Panicked ∧ s'.mem ⊨ tryDecryptFnOnPanic C decFn parse S x s0 s' ∗ R))
 
 /-- Unpinned `Stage2ContractsX` (`X`) CLI `S3` (`DhStep`) seam. -/
-def CliS3SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliS3SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
@@ -634,7 +644,8 @@ theorem dhStep_cli_withStack_cro_pinned_ok [LibsignalPlacement] {M : AllocCostMo
     (hcc : subroutine_ok prog (lsmpl.base 40)
       (withLsCodeRoLoaded lsmpl (createChainSpecWithStack M A lim C ccStack)))
     (hdpk : subroutine_ok prog (lsmpl.base 200)
-      (withLsCodeRoLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+      (withLsCodeRoLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
+    (hlr624 : LsRetAddr624 (entry + 1972#64))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok prog rngFillEntry
         (withLsCodeRoLoaded lsmpl (coinsFillAtBudgetSpecPlaced tryDecryptSubStack cur rest)))
@@ -742,7 +753,7 @@ theorem dhStep_cli_withStack_cro_pinned_ok [LibsignalPlacement] {M : AllocCostMo
         · exact hfits_after1
         · exact hfits_after1.seq_left
       have hstep2 := dhStep_keygen_and_send_create_chain_withStack_cro_placed_cli
-        A lim (M.stepEvents evs1 st) ccStack hstack_split hwp hcc hdpk
+        A lim (M.stepEvents evs1 st) ccStack hstack_split hwp hcc hdpk hlr624
         x trG tr st1 rk1 rck R s0 s1 (hrng x.cur x.rest hx_rest) hsd hrk2_ne hfits2
         hafter (hsteps1.codeLoaded hcode)
       dsimp only at hstep2
@@ -782,7 +793,8 @@ theorem s3_pinned_cro_placed_okT_cli [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     {s3CommitEnv : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) → List AllocEvent → Prop}
     (hcc : subroutine_ok prog (lsmpl.base 40) (withLsCodeRoLoaded lsmpl (createChainSpec M A lim C)))
-    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
+    (hlr624 : LsRetAddr624 (entry + 1972#64))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok prog rngFillEntry (withLsCodeRoLoaded lsmpl (coinsFillAtBudgetSpecPlaced tryDecryptSubStack cur rest)))
     (hsd : subroutine_ok prog (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
@@ -791,7 +803,7 @@ theorem s3_pinned_cro_placed_okT_cli [LibsignalPlacement] {M : AllocCostModel}
   intro x st trG tr st1 R s0 s hfrom hfind hrc_len hsp0 hx_rest hfits hs3 hcode
   refine dhStep_cli_withStack_cro_pinned_ok hwp C A lim ctl createChainStack
     stackAt_subStack_createChain (tryDecryptOnPanicTight C S uuidTryParse)
-    hcc hdpk hrng hsd ?_ x st trG tr st1 R s0 s hfrom hfind hrc_len hsp0 hx_rest hfits hs3 hcode
+    hcc hdpk hlr624 hrng hsd ?_ x st trG tr st1 R s0 s hfrom hfind hrc_len hsp0 hx_rest hfits hs3 hcode
   intro x' st_c trG' tr' st1' sc rck newSenderKey finalRootKey senderChainKey R' s0' s_c
     hsc hlen hclamp hfit_c hcm hcode_c
   obtain ⟨s3, hsteps3, hok | ⟨hpan3, hq3⟩⟩ :=
@@ -806,7 +818,8 @@ theorem s3_cro_placed_okT_cli [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     {s3CommitEnv : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) → List AllocEvent → Prop}
     (hcc : subroutine_ok prog (lsmpl.base 40) (withLsCodeRoLoaded lsmpl (createChainSpec M A lim C)))
-    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
+    (hlr624 : LsRetAddr624 (entry + 1972#64))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok prog rngFillEntry (withLsCodeRoLoaded lsmpl (coinsFillAtBudgetSpecPlaced tryDecryptSubStack cur rest)))
     (hsd : subroutine_ok prog (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
@@ -858,7 +871,7 @@ theorem s3_cro_placed_okT_cli [LibsignalPlacement] {M : AllocCostModel}
         · exact hfits_after1
         · exact hfits_after1.seq_left
       have hstep2 := dhStep_keygen_and_send_create_chain_withStack_cro_placed_cli
-        A lim (M.stepEvents evs1 st) createChainStack stackAt_subStack_createChain hwp hcc hdpk
+        A lim (M.stepEvents evs1 st) createChainStack stackAt_subStack_createChain hwp hcc hdpk hlr624
         x trG tr st1 rk1 rck R s0 s1 (hrng x.cur x.rest hx_rest) hsd hrk2_ne hfits2 hafter (hsteps1.codeLoaded hcode)
       dsimp only at hstep2
       cases hcc2 : rootCreateChain C rk1 x.msg.senderRatchetKey newSenderKey.privateKey with
@@ -892,7 +905,8 @@ theorem s3_pinned_placed_okT_cli [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     {s3CommitEnv : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) → List AllocEvent → Prop}
     (hcc : subroutine_ok prog (lsmpl.base 40) (createChainSpec M A lim C))
-    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
+    (hlr624 : LsRetAddr624 (entry + 1972#64))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok prog rngFillEntry (withLsCodeLoaded lsmpl (coinsFillAtBudgetSpecPlaced tryDecryptSubStack cur rest)))
     (hsd : subroutine_ok prog (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
@@ -901,6 +915,7 @@ theorem s3_pinned_placed_okT_cli [LibsignalPlacement] {M : AllocCostModel}
   s3_pinned_cro_placed_okT_cli hwp C A lim ctl S
     (subroutine_ok_withLsCodeRoLoaded_of_plain hcc)
     (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded hdpk)
+    hlr624
     (fun cur rest h => subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded (hrng cur rest h))
     hsd hcommit
 
@@ -910,7 +925,8 @@ theorem s3_placed_okT_cli [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     {s3CommitEnv : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) → List AllocEvent → Prop}
     (hcc : subroutine_ok prog (lsmpl.base 40) (createChainSpec M A lim C))
-    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
+    (hlr624 : LsRetAddr624 (entry + 1972#64))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok prog rngFillEntry (withLsCodeLoaded lsmpl (coinsFillAtBudgetSpecPlaced tryDecryptSubStack cur rest)))
     (hsd : subroutine_ok prog (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
@@ -919,6 +935,7 @@ theorem s3_placed_okT_cli [LibsignalPlacement] {M : AllocCostModel}
   s3_cro_placed_okT_cli hwp C A lim ctl S
     (subroutine_ok_withLsCodeRoLoaded_of_plain hcc)
     (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded hdpk)
+    hlr624
     (fun cur rest h => subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded (hrng cur rest h))
     hsd hcommit
 
@@ -928,13 +945,14 @@ theorem s3_pinned_cro_placed_ok_cli [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     {s3CommitEnv : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) → List AllocEvent → Prop}
     (hcc : subroutine_ok prog (lsmpl.base 40) (withLsCodeRoLoaded lsmpl (createChainSpec M A lim C)))
-    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
+    (hlr624 : LsRetAddr624 (entry + 1972#64))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok prog rngFillEntry (withLsCodeRoLoaded lsmpl (coinsFillAtBudgetSpecPlaced tryDecryptSubStack cur rest)))
     (hsd : subroutine_ok prog (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
     (hcommit : CliS3CommitSeamPinnedPlaced prog entry C A lim ctl uuidTryParse spqrNoPanic s3CommitEnv) :
     CliS3SeamPinnedPlaced prog entry C A lim ctl uuidTryParse S (s3EnvOf C s3CommitEnv) :=
-  .ofTight (s3_pinned_cro_placed_okT_cli hwp C A lim ctl S hcc hdpk hrng hsd hcommit)
+  .ofTight (s3_pinned_cro_placed_okT_cli hwp C A lim ctl S hcc hdpk hlr624 hrng hsd hcommit)
 
 theorem s3_cro_placed_ok_cli [LibsignalPlacement] {M : AllocCostModel}
     {prog : Program} {entry rngFillEntry : BitVec 64}
@@ -942,13 +960,14 @@ theorem s3_cro_placed_ok_cli [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     {s3CommitEnv : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) → List AllocEvent → Prop}
     (hcc : subroutine_ok prog (lsmpl.base 40) (withLsCodeRoLoaded lsmpl (createChainSpec M A lim C)))
-    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
+    (hlr624 : LsRetAddr624 (entry + 1972#64))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok prog rngFillEntry (withLsCodeRoLoaded lsmpl (coinsFillAtBudgetSpecPlaced tryDecryptSubStack cur rest)))
     (hsd : subroutine_ok prog (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
     (hcommit : CliS3CommitSeamPlaced prog entry C A lim ctl uuidTryParse spqrNoPanic s3CommitEnv) :
     CliS3SeamPlaced prog entry C A lim ctl uuidTryParse S (s3EnvOf C s3CommitEnv) :=
-  .ofTight (s3_cro_placed_okT_cli hwp C A lim ctl S hcc hdpk hrng hsd hcommit)
+  .ofTight (s3_cro_placed_okT_cli hwp C A lim ctl S hcc hdpk hlr624 hrng hsd hcommit)
 
 theorem s3_pinned_x_cro_placed_ok_cli [LibsignalPlacement] {M : AllocCostModel}
     {prog : Program} {entry rngFillEntry : BitVec 64}
@@ -957,7 +976,8 @@ theorem s3_pinned_x_cro_placed_ok_cli [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel)
     {s3CommitEnv : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) → List AllocEvent → Prop}
     (hcc : subroutine_ok prog (lsmpl.base 40) (withLsCodeRoLoaded lsmpl (createChainSpecX M A lim C)))
-    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
+    (hlr624 : LsRetAddr624 (entry + 1972#64))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok prog rngFillEntry (withLsCodeRoLoaded lsmpl (coinsFillAtBudgetSpecPlaced tryDecryptSubStack cur rest)))
     (hsd : subroutine_ok prog (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
@@ -966,7 +986,7 @@ theorem s3_pinned_x_cro_placed_ok_cli [LibsignalPlacement] {M : AllocCostModel}
   intro x st trG tr st1 R s0 s hfrom hfind hrc_len hsp0 hx_rest hfits hs3 hcode
   exact dhStep_cli_withStack_cro_pinned_ok hwp C A lim ctl createChainStackX
     stackAt_subStack_createChainX (tryDecryptFnOnPanic C decFn parse S)
-    hcc hdpk hrng hsd hcommit x st trG tr st1 R s0 s hfrom hfind hrc_len hsp0 hx_rest hfits hs3 hcode
+    hcc hdpk hlr624 hrng hsd hcommit x st trG tr st1 R s0 s hfrom hfind hrc_len hsp0 hx_rest hfits hs3 hcode
 
 theorem s3_x_cro_placed_ok_cli [LibsignalPlacement] {M : AllocCostModel}
     {prog : Program} {entry rngFillEntry : BitVec 64}
@@ -975,18 +995,19 @@ theorem s3_x_cro_placed_ok_cli [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel)
     {s3CommitEnv : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) → List AllocEvent → Prop}
     (hcc : subroutine_ok prog (lsmpl.base 40) (withLsCodeRoLoaded lsmpl (createChainSpecX M A lim C)))
-    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
+    (hlr624 : LsRetAddr624 (entry + 1972#64))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok prog rngFillEntry (withLsCodeRoLoaded lsmpl (coinsFillAtBudgetSpecPlaced tryDecryptSubStack cur rest)))
     (hsd : subroutine_ok prog (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
     (hcommit : CliS3CommitSeamPinnedXPlaced prog entry C decFn A lim ctl parse S s3CommitEnv) :
     CliS3SeamXPlaced prog entry C decFn A lim ctl parse S (s3EnvOf C s3CommitEnv) :=
-  (s3_pinned_x_cro_placed_ok_cli hwp C decFn A lim ctl parse S hcc hdpk hrng hsd hcommit).toUnpinned
+  (s3_pinned_x_cro_placed_ok_cli hwp C decFn A lim ctl parse S hcc hdpk hlr624 hrng hsd hcommit).toUnpinned
 
 theorem dhStep_433_pinned_cro_placed_okT [LibsignalPlacement] {M : AllocCostModel}
     (H : String → Option (State → State)) (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     (hcc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 40) (withLsCodeRoLoaded lsmpl (createChainSpec M A lim C)))
-    (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+    (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 618) (withLsCodeRoLoaded lsmpl (coinsFillAtBudgetSpecPlaced tryDecryptSubStack cur rest)))
     (hsd : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
@@ -1000,13 +1021,15 @@ theorem dhStep_433_pinned_cro_placed_okT [LibsignalPlacement] {M : AllocCostMode
     (hMemcpy : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.ρ "memcpy") framelessMemcpyBudgetSpec)
     (hMemmove : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.ρ "memmove") (sessionMemmoveBoundedBudgetSpec dropChainStack)) :
     S3TightSeamPinnedPlaced ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 434) C A lim ctl uuidTryParse S (s3DefaultEnv C) :=
-  s3_pinned_cro_placed_okT_cli (dhStepBlockVmWp_549 H) C A lim ctl S hcc hdpk hrng hsd
+  s3_pinned_cro_placed_okT_cli (dhStepBlockVmWp_549 H) C A lim ctl S hcc hdpk
+    (lsRetAddr624_base_add 434 1972#64 (by decide) (by decide))
+    hrng hsd
     (s3_commit_433_pinned_placed_ok H C A lim ctl spqrNoPanic hPkSer hToPb hGrowOne hDropChain hShim hAlloc hDealloc hMemcpy hMemmove)
 
 theorem dhStep_433_pinned_cro_budget_placed_okT [LibsignalPlacement] {M : AllocCostModel}
     (H : String → Option (State → State)) (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     (hcc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 40) (withLsCodeRoLoaded lsmpl (createChainSpec M A lim C)))
-    (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+    (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 618) (withLsCodeRoLoaded lsmpl (coinsFillAtBudgetSpecPlaced tryDecryptSubStack cur rest)))
     (hsd : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
@@ -1026,7 +1049,7 @@ theorem dhStep_433_pinned_cro_budget_placed_okT [LibsignalPlacement] {M : AllocC
 theorem dhStep_433_cro_placed_okT [LibsignalPlacement] {M : AllocCostModel}
     (H : String → Option (State → State)) (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     (hcc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 40) (withLsCodeRoLoaded lsmpl (createChainSpec M A lim C)))
-    (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+    (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 618) (withLsCodeRoLoaded lsmpl (coinsFillAtBudgetSpecPlaced tryDecryptSubStack cur rest)))
     (hsd : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
@@ -1045,7 +1068,7 @@ theorem dhStep_433_cro_placed_okT [LibsignalPlacement] {M : AllocCostModel}
 theorem dhStep_433_cro_budget_placed_okT [LibsignalPlacement] {M : AllocCostModel}
     (H : String → Option (State → State)) (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     (hcc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 40) (withLsCodeRoLoaded lsmpl (createChainSpec M A lim C)))
-    (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+    (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 618) (withLsCodeRoLoaded lsmpl (coinsFillAtBudgetSpecPlaced tryDecryptSubStack cur rest)))
     (hsd : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
@@ -1064,7 +1087,7 @@ theorem dhStep_433_cro_budget_placed_okT [LibsignalPlacement] {M : AllocCostMode
 theorem dhStep_433_pinned_placed_okT [LibsignalPlacement] {M : AllocCostModel}
     (H : String → Option (State → State)) (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     (hcc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 40) (createChainSpec M A lim C))
-    (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200) (withLsCodeLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+    (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200) (withLsCodeLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 618) (withLsCodeLoaded lsmpl (coinsFillAtBudgetSpecPlaced tryDecryptSubStack cur rest)))
     (hsd : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
@@ -1087,7 +1110,7 @@ theorem dhStep_433_pinned_placed_okT [LibsignalPlacement] {M : AllocCostModel}
 theorem dhStep_433_pinned_budget_placed_okT [LibsignalPlacement] {M : AllocCostModel}
     (H : String → Option (State → State)) (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     (hcc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 40) (createChainSpec M A lim C))
-    (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200) (withLsCodeLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+    (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200) (withLsCodeLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 618) (withLsCodeLoaded lsmpl (coinsFillAtBudgetSpecPlaced tryDecryptSubStack cur rest)))
     (hsd : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
@@ -1107,7 +1130,7 @@ theorem dhStep_433_pinned_budget_placed_okT [LibsignalPlacement] {M : AllocCostM
 theorem dhStep_433_placed_okT [LibsignalPlacement] {M : AllocCostModel}
     (H : String → Option (State → State)) (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     (hcc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 40) (createChainSpec M A lim C))
-    (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200) (withLsCodeLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+    (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200) (withLsCodeLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 618) (withLsCodeLoaded lsmpl (coinsFillAtBudgetSpecPlaced tryDecryptSubStack cur rest)))
     (hsd : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
@@ -1126,7 +1149,7 @@ theorem dhStep_433_placed_okT [LibsignalPlacement] {M : AllocCostModel}
 theorem dhStep_433_budget_placed_okT [LibsignalPlacement] {M : AllocCostModel}
     (H : String → Option (State → State)) (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     (hcc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 40) (createChainSpec M A lim C))
-    (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200) (withLsCodeLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+    (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200) (withLsCodeLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 618) (withLsCodeLoaded lsmpl (coinsFillAtBudgetSpecPlaced tryDecryptSubStack cur rest)))
     (hsd : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
@@ -1147,7 +1170,7 @@ theorem dhStep_433_pinned_x_cro_budget_placed_ok [LibsignalPlacement] {M : Alloc
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     (hcc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 40) (withLsCodeRoLoaded lsmpl (createChainSpecX M A lim C)))
-    (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (derivePublicKeyBytesBudgetSpec C.pubKey)))
+    (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200) (withLsCodeRoLoaded lsmpl (withLsRet (derivePublicKeyBytesStackBudgetSpec C.pubKey 1904))))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 618) (withLsCodeRoLoaded lsmpl (coinsFillAtBudgetSpecPlaced tryDecryptSubStack cur rest)))
     (hsd : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
@@ -1161,7 +1184,9 @@ theorem dhStep_433_pinned_x_cro_budget_placed_ok [LibsignalPlacement] {M : Alloc
     (hMemcpy : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.ρ "memcpy") framelessMemcpyBudgetSpec)
     (hMemmove : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.ρ "memmove") (sessionMemmoveBoundedBudgetSpec dropChainStackX)) :
     CliS3SeamPinnedXPlaced ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 434) C decFn A lim ctl uuidTryParse S (s3DefaultEnv C) :=
-  s3_pinned_x_cro_placed_ok_cli (dhStepBlockVmWp_549 H) C decFn A lim ctl uuidTryParse S hcc hdpk hrng hsd
+  s3_pinned_x_cro_placed_ok_cli (dhStepBlockVmWp_549 H) C decFn A lim ctl uuidTryParse S hcc hdpk
+    (lsRetAddr624_base_add 434 1972#64 (by decide) (by decide))
+    hrng hsd
     (s3_commit_433_pinned_x_budget_placed_ok H C decFn A lim ctl S hPkSer hToPb hGrowOne hDropChain hShim hAlloc hDealloc hMemcpy hMemmove)
 
 end LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhStep433PlacedBudget

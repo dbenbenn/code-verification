@@ -9,11 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.BranchesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.BranchesPlaced
 import Arm64.Trusted.Spec.Hoare
 import all Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.RecordCodecs.RoundTrip
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Defs
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.Deps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # Relocatable Symbolic Verification of `save_identity::{closure#0}`
@@ -22,7 +32,7 @@ Proves the `Ok (some k)` branch and main entry contract on Block `565` (`lsProg_
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

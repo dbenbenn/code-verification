@@ -11,17 +11,17 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.EncoderFromPbProofClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.EncoderFromPbProofClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch1Placed
@@ -30,6 +30,18 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.EpiloguePlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPoly -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2a -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Budget Hook Bundles and `sendingHdr` Drop Helpers
@@ -38,7 +50,7 @@ External hook bundles (`FromPbAllocHooksBudget`, `EncoderFromPbPlacedOkExt`), cr
 sequencing helpers, shared `+5940` error exit, and `+4204` / `+4332` `sendingHdr` drop cleanup.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -147,7 +159,7 @@ theorem FromPbAllocHooksBudget.toPlacedBudget [LibsignalPlacement]
     panic_ok := hA.panic_ok }
 
 /-- Budget-threaded relocatable `PolyEncoder::from_pb` (Block `374`) contract lifted to `lsProg_333`. -/
-def EncoderFromPbPlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def EncoderFromPbPlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_333 (Rust.withPanics ext)) (lsmpl.base 374)

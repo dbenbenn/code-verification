@@ -9,8 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.OuterLoopPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonClPlaced
+import LibsignalBinary.Proofs.Common.SharedHelpers
+meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.TripleRatchet.SepFocusAc
+meta import LibsignalBinary.Proofs.TripleRatchet.SepFocusAc -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainLoopClPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.V1StateStepClPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.VersionNegotiationLoop
@@ -18,6 +21,19 @@ import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.VersionNegotiationLoopClPla
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefs
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitSubClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.VersionNegotiationLoopPlaced
 
 /-!
 # Code-Loaded Verification of `spqr::decode_state` (Block `325`) — Outer Loop, Prologue, and Top Theorem
@@ -28,7 +44,7 @@ Verifies code-loaded empty-input handling, outer-loop field-key dispatch and len
 induction, prologue initialization, and `decodeState_cl_placed_ok` under `LibsignalPlacement`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -143,6 +159,49 @@ private theorem stack_1392_fold_1296 (sp w0 : BitVec 64) :
       (b' := sp - 1384#64) rfl (by bv_omega) (by decide)]
   exact sepConj_mono_left (ProofLib.pointsTo64_entails_memRegion (sp - 1392#64) w0)
 
+
+/-- Empty-input fast path `+1604..+1624` (6 instructions) -> `+2500`. -/
+theorem decodeState_empty_53ae0_placed [LibsignalPlacement] {H_inner : V1InnerHeapPred}
+    {A : RustAlloc} {ext : String → Option (State → State)}
+    (x : DecodeStateGhost) (w0 : BitVec 64) (hbs : x.st.bytes = [])
+    (s0 s : State) (P R : SepProp) (post : State → SepProp → Prop)
+    (hpost : post = decodeStatePostPlaced H_inner A x s0 R)
+    (hpc : s.pc = decodeStatePlacedEntry + 1604#64)
+    (hrun : s.status = .Running)
+    (hsp : s.sp = s0.sp - 1392#64)
+    (hs0A : s0.spAligned = true)
+    (htr : TraceVRegs s s0)
+    (hx19 : s.readReg64 .x19 = x.outPtr)
+    (hP : P =
+      v1StateJumpTablesPlacedAt ∗
+      x.st.at A ∗
+      memRegion x.outPtr 352 ∗
+      A.pool ∗
+      stackAt (s0.sp - 1392#64) v1StateMergeStack ∗
+      ((s0.sp - 1392#64) ↦₆₄ w0) ∗
+      memRegion (s0.sp - 1384#64) 1288 ∗
+      decodeStateSavedAt s0.sp (s0.readReg64 .x29) (s0.readReg64 .x30)
+        (s0.readReg64 .x28) (s0.readReg64 .x27) (s0.readReg64 .x26) (s0.readReg64 .x25)
+        (s0.readReg64 .x24) (s0.readReg64 .x23) (s0.readReg64 .x22) (s0.readReg64 .x21)
+        (s0.readReg64 .x20) (s0.readReg64 .x19)) :
+    SepWP (decodeStatePlacedProg ext) (s0.readReg64 .x30) s P post := by
+  have hspA : s.spAligned = true := by
+    rw [State.spAligned, hsp]; exact sp_sub_1392_aligned s0 hs0A
+  subst hP
+  dsimp only [decodeStatePlacedProg, decodeStatePlacedEntry] at hpc ⊢
+  refine SepWP.fold (memRegion_352_empty_split x.outPtr) (by sep_focus_ac) ?_
+  wp_pull_exists
+  wp_steps 6
+  refine SepWP.fold (fold_decodeStateResultAt_empty H_inner A x.outPtr hbs) (by sep_focus_ac) ?_
+  refine SepWP.fold (stack_1392_fold_1296 s0.sp w0) (by sep_focus_ac) ?_
+  exact decodeState_epilogue_53e60_placed x s0 _ _ R post hpost
+    (by dsimp only [decodeStatePlacedEntry]; simp only [arm64_norm, *])
+    (by simp only [arm64_norm, *])
+    (by simp only [arm64_norm, *])
+    hs0A
+    (by simp only [arm64_norm, *])
+    (by simp only [arm64_norm, *]; sep_ac_rfl_defeq)
+
 private theorem head_ne_none2Cap_branch {w : BitVec 64} (hne : w ≠ none2Cap) :
     (w + 2#64 == 0#64) = false ∧ (w + 2#64 != 0#64) = true := by
   have h0 : w + 2#64 ≠ 0#64 := by
@@ -214,34 +273,34 @@ theorem decodeState_ok_exit_53b28_cl_placed [LibsignalPlacement] {H_inner : V1In
   have hspA : s.spAligned = true := by
     rw [State.spAligned, hsp]; exact sp_sub_1392_aligned s0 hs0A
   subst hP
-  refine SepWP.fold (loopCommon_cursor_to_errFrame_placed H_inner A x [] 0 curSt s0) (by sep_focus) ?_
+  refine SepWP.fold (loopCommon_cursor_to_errFrame_placed H_inner A x [] 0 curSt s0) (by sep_focus_ac) ?_
   refine SepWP.fold (scratch_688_fold_48 s0.sp w0_scr)
-    (by dsimp only [decodeStateErrFramePlaced]; sep_focus) ?_
+    (by dsimp only [decodeStateErrFramePlaced]; sep_focus_ac) ?_
   dsimp only [decodeStatePlacedProg, decodeStatePlacedEntry, decodeStateErrFramePlaced] at hpc hmemcpy ⊢
   refine SepWP.fold (protoPqRatchetStateAt_entails_head16_tail336 H_inner A (s0.sp - 1040#64) curSt)
-    (by sep_focus) ?_
+    (by sep_focus_ac) ?_
   wp_pull_exists
   rename_i w0 w1 bs336
   wp_focus_pure; rintro ⟨hw0_ne, hbs336_len⟩
   have ⟨hcmn_eq_f, hcmn_ne_t⟩ := head_ne_none2Cap_branch hw0_ne
   rw [ProofLib.memRegion_split' (b := s0.sp - 1392#64) (n := 336) (k := 16)
       (b' := s0.sp - 1056#64) rfl (by bv_omega) (by decide)]
-  refine SepWP.fold (stackAt_to_callee (s0.sp - 1392#64) allocHookStack (by decide)) (by sep_focus) ?_
+  refine SepWP.fold (stackAt_to_callee (s0.sp - 1392#64) allocHookStack (by decide)) (by sep_focus_ac) ?_
   wp_steps 5
   wp_apply
   wp_conv_pre => simp only [*]
-  refine SepWP.fold (state_1040_fold_352 s0.sp w0 w1 hbs336_len) (by sep_focus) ?_
-  refine SepWP.fold (memRegion_352_split_head16_tail336 x.outPtr) (by sep_focus) ?_
+  refine SepWP.fold (state_1040_fold_352 s0.sp w0 w1 hbs336_len) (by sep_focus_ac) ?_
+  refine SepWP.fold (memRegion_352_split_head16_tail336 x.outPtr) (by sep_focus_ac) ?_
   wp_pull_exists
   wp_steps 6
   wp_apply
   wp_conv_pre => simp only [*]
-  refine SepWP.fold (stackAt_of_callee (s0.sp - 1392#64) allocHookStack (by decide)) (by sep_focus) ?_
+  refine SepWP.fold (stackAt_of_callee (s0.sp - 1392#64) allocHookStack (by decide)) (by sep_focus_ac) ?_
   have h336_sp : ((s0.sp - 1392#64) ↦ₛ bs336) ⊢ memRegion (s0.sp - 1392#64) 336 := by
     rw [← hbs336_len]; exact pointsToBytes_entails_memRegion (s0.sp - 1392#64) bs336
-  refine SepWP.fold h336_sp (by sep_focus) ?_
-  refine SepWP.fold (lower_352_fold s0.sp) (by sep_focus) ?_
-  refine SepWP.fold (frame_4chunks_to_1296 s0.sp) (by sep_focus) ?_
+  refine SepWP.fold h336_sp (by sep_focus_ac) ?_
+  refine SepWP.fold (lower_352_fold s0.sp) (by sep_focus_ac) ?_
+  refine SepWP.fold (frame_4chunks_to_1296 s0.sp) (by sep_focus_ac) ?_
   wp_steps 2
   have hfold_ok :
       (x.outPtr ↦₆₄ w0) ∗ ((x.outPtr + 8#64) ↦₆₄ w1) ∗ ((x.outPtr + 16#64) ↦ₛ bs336) ∗
@@ -249,7 +308,7 @@ theorem decodeState_ok_exit_53b28_cl_placed [LibsignalPlacement] {H_inner : V1In
         decodeStateResultAt H_inner A x.outPtr (spqrDecodeState x.st.bytes) := by
     rw [hok]
     exact head16_tail336_entails_protoPqRatchetStateAt H_inner A x.outPtr w0 w1 bs336 curSt hbs336_len
-  refine SepWP.fold hfold_ok (by sep_focus) ?_
+  refine SepWP.fold hfold_ok (by sep_focus_ac) ?_
   exact decodeState_epilogue_53e60_placed x s0 _ _ R post hpost
     (by dsimp only [decodeStatePlacedEntry]; simp only [arm64_norm, *])
     (by simp only [arm64_norm, *])
@@ -474,7 +533,7 @@ theorem decodeState_outer_body_53510_cl_placed [LibsignalPlacement] {H_inner : V
     (hsp := by simp only [arm64_norm, hsp]) (hs0A := hs0A)
     (hlr := by simp only [arm64_norm]) (htr := by simp only [arm64_norm, htr])
     (hx0 := by simp only [arm64_norm, hx29, hx29_f0])
-    (hlen := by omega) (hP := by sep_focus) ?_ ?_
+    (hlen := by omega) (hP := by sep_focus_ac) ?_ ?_
   · intro s1 key rest1 hdv hlt1 hsuf1 hpc1 hrun1 hsp1 htr1 hcs1 hx0_0 hx1_key
     have hle1 : rest1.length ≤ cur.length := Nat.le_of_lt hlt1
     have hrest1_le : rest1.length ≤ x.st.bytes.length := Nat.le_trans hle1 hcur_le
@@ -487,7 +546,7 @@ theorem decodeState_outer_body_53510_cl_placed [LibsignalPlacement] {H_inner : V
       apply SepWPpIPlaced.of_sepWP (mid := (blkPl_325).base + 1628#64)
       wp_steps 4
       refine SepWP.fold (after_decodeVarint2_to_errFrame_placed H_inner A x hcur_le hcur_suf hle1 curSt s0)
-        (by dsimp only [decodeStateLoopCommonPlaced]; sep_focus) ?_
+        (by dsimp only [decodeStateLoopCommonPlaced]; sep_focus_ac) ?_
       apply SepWP.done (by simp only [arm64_norm, hx0_0, hx1_key, hk_ne]) (by simp only [arm64_norm, hrun1])
       exact (decodeState_err_53af8_cl_placed hc.toDecodeStateCalleeContractsClPlaced x curSt w0 s0 _ _ R post hpost
         (herr_of_none (mergeLoopBin_of_key_ge protoPrefixStep_pqRatchetState_mergeField hgt hdv hk))
@@ -503,7 +562,7 @@ theorem decodeState_outer_body_53510_cl_placed [LibsignalPlacement] {H_inner : V
         · apply SepWPpIPlaced.of_sepWP (mid := (blkPl_325).base + 1640#64)
           wp_steps 7
           refine SepWP.fold (after_decodeVarint2_to_errFrame_placed H_inner A x hcur_le hcur_suf hle1 curSt s0)
-            (by dsimp only [decodeStateLoopCommonPlaced]; sep_focus) ?_
+            (by dsimp only [decodeStateLoopCommonPlaced]; sep_focus_ac) ?_
           apply SepWP.done (by simp only [arm64_norm, hx0_0, hx1_key, hk_zero, hand7]) (by simp only [arm64_norm, hrun1])
           exact (decodeState_err_53b04_cl_placed hc.toDecodeStateCalleeContractsClPlaced x curSt w0 s0 _ _ R post hpost
             (herr_of_none (mergeLoopBin_of_wt_none protoPrefixStep_pqRatchetState_mergeField hgt hdv hk hwt))
@@ -514,7 +573,7 @@ theorem decodeState_outer_body_53510_cl_placed [LibsignalPlacement] {H_inner : V
         · apply SepWPpIPlaced.of_sepWP (mid := (blkPl_325).base + 1640#64)
           wp_steps 7
           refine SepWP.fold (after_decodeVarint2_to_errFrame_placed H_inner A x hcur_le hcur_suf hle1 curSt s0)
-            (by dsimp only [decodeStateLoopCommonPlaced]; sep_focus) ?_
+            (by dsimp only [decodeStateLoopCommonPlaced]; sep_focus_ac) ?_
           apply SepWP.done (by simp only [arm64_norm, hx0_0, hx1_key, hk_zero, hand7]) (by simp only [arm64_norm, hrun1])
           exact (decodeState_err_53b04_cl_placed hc.toDecodeStateCalleeContractsClPlaced x curSt w0 s0 _ _ R post hpost
             (herr_of_none (mergeLoopBin_of_wt_none protoPrefixStep_pqRatchetState_mergeField hgt hdv hk hwt))
@@ -545,7 +604,7 @@ theorem decodeState_outer_body_53510_cl_placed [LibsignalPlacement] {H_inner : V
           apply SepWPpIPlaced.of_sepWP (mid := (blkPl_325).base + 1652#64)
           wp_steps 9
           refine SepWP.fold (after_decodeVarint2_to_errFrame_placed H_inner A x hcur_le hcur_suf hle1 curSt s0)
-            (by dsimp only [decodeStateLoopCommonPlaced]; sep_focus) ?_
+            (by dsimp only [decodeStateLoopCommonPlaced]; sep_focus_ac) ?_
           apply SepWP.done (by simp only [arm64_norm, hx0_0, hx1_key, hk_zero, hand7, hwt_ult, hwt_ule, hlsr3, hlsr3_64, hze, htw32, htag_eq0])
             (by simp only [arm64_norm, hrun1])
           exact (decodeState_err_53b10_cl_placed hc.toDecodeStateCalleeContractsClPlaced x curSt w0 s0 _ _ R post hpost
@@ -563,10 +622,10 @@ theorem decodeState_outer_body_53510_cl_placed [LibsignalPlacement] {H_inner : V
           apply SepWPpIPlaced.of_sepWP (mid := (blkPl_325).base + 160#64)
           wp_steps 9
           refine SepWP.fold (sliceCursorAfter_join (slot := s0.sp - 1056#64) (ptr := x.st.ptr)
-            hcur_le hcur_suf hle1) (by sep_focus) ?_
+            hcur_le hcur_suf hle1) (by sep_focus_ac) ?_
           refine SepWP.fold (protoPqRatchetStateCapOkAt_mono (H_inner := H_inner) (A := A)
             (a := s0.sp - 1040#64) (rem1 := cur.length) (rem2 := rest1.length)
-            (st := curSt) hle1) (by sep_focus) ?_
+            (st := curSt) hle1) (by sep_focus_ac) ?_
           apply SepWP.done
             (by simp only [arm64_norm, hx0_0, hx1_key, hk_zero, hand7, hwt_ult, hwt_ule, hlsr3, hlsr3_64, hze, htw32, hcbz64, hcbz32])
             (by simp only [arm64_norm, hrun1])
@@ -602,9 +661,9 @@ theorem decodeState_outer_body_53510_cl_placed [LibsignalPlacement] {H_inner : V
       simpa using h
     apply SepWPpIPlaced.of_sepWP (mid := (blkPl_325).base + 2392#64)
     refine SepWP.fold (loopCommon_calleeErr_to_errFrame_placed H_inner A x hcur_le hcur_suf
-      cur.length curSt s0) (by dsimp only [decodeStateLoopCommonPlaced]; sep_focus) ?_
+      cur.length curSt s0) (by dsimp only [decodeStateLoopCommonPlaced]; sep_focus_ac) ?_
     refine SepWP.fold (scratch_688_fold_48 s0.sp w0)
-      (by dsimp only [decodeStateErrFramePlaced]; sep_focus) ?_
+      (by dsimp only [decodeStateErrFramePlaced]; sep_focus_ac) ?_
     wp_steps 2
     apply SepWP.done
       (by simp only [arm64_norm, hpc1, hx0_1, *])
@@ -831,11 +890,11 @@ theorem decodeState_prologue_init_534d0_cl_placed [LibsignalPlacement] {H_inner 
   subst hP
   dsimp only [decodeStatePlacedProg, decodeStatePlacedEntry] at hpc ⊢
   apply SepWPpIPlaced.of_sepWP (mid := (blkPl_325).base + 116#64)
-  refine SepWP.fold (decodeState_nonempty_frame_split_s0 s0.sp) (by sep_focus) ?_
+  refine SepWP.fold (decodeState_nonempty_frame_split_s0 s0.sp) (by sep_focus_ac) ?_
   wp_pull_exists
   wp_steps 16
-  refine SepWP.fold (nonempty_prologue_frame_assemble H_inner A s0.sp x.st) (by sep_focus) ?_
-  refine SepWP.fold (scratch_688_split_48 s0.sp) (by sep_focus) ?_
+  refine SepWP.fold (nonempty_prologue_frame_assemble H_inner A s0.sp x.st) (by sep_focus_ac) ?_
+  refine SepWP.fold (scratch_688_split_48 s0.sp) (by sep_focus_ac) ?_
   wp_pull_exists
   rename_i w0_scr
   apply SepWP.done (by simp only [arm64_norm, hpc]) (by simp only [arm64_norm, hrun])
@@ -888,9 +947,9 @@ theorem decodeState_entry_5349c_cl_placed [LibsignalPlacement] {H_inner : V1Inne
     apply SepWPp.of_sepWP_ret
     wp_pull_exists
     unfold decodeStateSavedAt
-    refine SepWP.fold (vecArg_expose_len A x.st) (by sep_focus) ?_
+    refine SepWP.fold (vecArg_expose_len A x.st) (by sep_focus_ac) ?_
     wp_steps 12
-    refine SepWP.fold (vecArg_fold_len A x.st) (by sep_focus) ?_
+    refine SepWP.fold (vecArg_fold_len A x.st) (by sep_focus_ac) ?_
     exact decodeState_empty_53ae0_placed x 0#64 hbs_nil s0 _ _ R post hpost
       (by dsimp only [decodeStatePlacedEntry]; simp only [arm64_norm, hpc, hx0, hlen0])
       (by simp only [arm64_norm, hrun])
@@ -907,7 +966,7 @@ theorem decodeState_entry_5349c_cl_placed [LibsignalPlacement] {H_inner : V1Inne
     apply SepWPpIPlaced.of_sepWP (mid := (blkPl_325).base + 52#64)
     wp_pull_exists
     unfold decodeStateSavedAt
-    refine SepWP.fold (vecArg_split_bytes A x.st hbs_nil) (by sep_focus) ?_
+    refine SepWP.fold (vecArg_split_bytes A x.st hbs_nil) (by sep_focus_ac) ?_
     unfold vecArgRestAt
     wp_focus_pure; intro hpure_st
     wp_steps 13
@@ -921,7 +980,7 @@ theorem decodeState_entry_5349c_cl_placed [LibsignalPlacement] {H_inner : V1Inne
       refine Entails.trans (Entails.of_eq ?_)
         (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (Entails.pure_right hpure_st (Entails.refl _)))))
       ac_rfl
-    refine SepWP.fold hfold_rest (by sep_focus) ?_
+    refine SepWP.fold hfold_rest (by sep_focus_ac) ?_
     apply SepWP.done (by simp only [arm64_norm, hpc, hx0, hcbz]) (by simp only [arm64_norm, hrun])
     exact decodeState_prologue_init_534d0_cl_placed hc x hbs_nil hlen_bound s0 _ _ R post hpost hs0A
       (by dsimp only [decodeStatePlacedEntry]; simp only [arm64_norm, hpc, hx0, hcbz])

@@ -17,6 +17,7 @@ public import ProofLib.Process.FastParse
 public import VerifiedLibraries.Mallocng.Spec
 public import LibsignalBinary.Specifications.SignalSession.CliProcess
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import Symbolic.BugInjection.Proofs.CliExec.RadixMemAux
 public import Symbolic.BugInjection.Proofs.CliExec.RadixMem
 public import Symbolic.BugInjection.Proofs.CliExec.RadixMemLine

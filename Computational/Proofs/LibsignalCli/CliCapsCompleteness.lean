@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Game.StatementPq
-public import Computational.Proofs.SpqrV1Sync.TopStateTight
+public import Computational.Proofs.SpecLemmas.Game.StatementPq -- proof-setup: allow-public-import
+public import Computational.Proofs.SpqrV1Sync.TopStateTight -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.V1.SpqrV1FactsPure
 
 /-!
@@ -20,7 +20,7 @@ Proves that honest plaintexts, ciphertexts, random-coin tapes, pre-key bundles, 
 files fit within `maxPlaintextBytes`, `stdinCapBytes`, `fileCapBytes`, and `cliPathMaxBytes`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,15 +39,6 @@ open CryptoVerification.RecordCodecs
 open CryptoVerification.SpqrV1Sync.SendTotal
   (TopStateTight topStateTight_init topStateTight_length_le topStateTight_recv topStateTight_send)
 open CryptoVerification.E2E.V1 (spqrV1Send_msg_len_le)
-
-theorem fileCapBytes_eq_two_pow_21 : fileCapBytes = 2 ^ 21 := rfl
-
-theorem stdinCapBytes_eq_two_pow_20 : stdinCapBytes = 2 ^ 20 := rfl
-
-theorem send_plaintext_within_caps {m : List (BitVec 8)} (hm : m.length ≤ maxPlaintextBytes) :
-    m.length ≤ maxPlaintextBytes ∧ m.length ≤ stdinCapBytes := by
-  unfold maxPlaintextBytes stdinCapBytes at *
-  omega
 
 /-! ## Varint and protobuf encoding bounds -/
 
@@ -893,19 +884,6 @@ theorem honest_send_ciphertext_le_stdinCap {W : PEParams} {st st' : PqParty}
 
 /-! ## Coins tape length bound -/
 
-/-- Number of coin bytes drawn by `keygen n`. -/
-def cliKeygenCoinsNeeded (n : Nat) : Nat := 260 + 160 * n
-
-/-- Maximum coin bytes required by a single CLI invocation with `keygen` count `n`. -/
-def cliCoinsNeeded (n : Nat) : Nat := max initiateTapeLen (cliKeygenCoinsNeeded n)
-
-/-- Every honest CLI coins tape (`n ≤ 100`) fits within `fileCapBytes`. -/
-theorem honest_coins_le_fileCap {n : Nat} (hn : n ≤ 100) :
-    cliCoinsNeeded n ≤ fileCapBytes ∧
-    initiateTapeLen ≤ fileCapBytes ∧ 64 ≤ fileCapBytes ∧ 32 ≤ fileCapBytes := by
-  unfold cliCoinsNeeded cliKeygenCoinsNeeded initiateTapeLen fileCapBytes
-  omega
-
 /-! ## Bundle and party store file bounds -/
 
 /-- Every bundle file in `(publicBundleOf b).files dir` fits within `fileCapBytes`, with `bundleDir`
@@ -1084,84 +1062,5 @@ theorem honest_party_and_bundle_files_le_fileCap {W : PEParams} {st : PqParty}
       have h := kyberRecordBytes_len_le i k; unfold fileCapBytes; omega
     · injection hbk with _ hbs; subst hbs
       rw [baseKeysBytes_len_eq]; have hs_le := hseen i k seen hm; unfold fileCapBytes; omega
-
-/-- In `cliPqExp`, every last-resort `.base-keys` list has at most one entry and is never rejected
-by `fileCapBytes`. -/
-theorem cliPqExp_lastResort_never_cap_rejected {S : SignalPqxdh.Setup} {l : Nat}
-    (bi : ModelDriverInstance S l) (sigs : List.Vector (BitVec 8) 64 × List.Vector (BitVec 8) 64)
-    (s : BinState) :
-    ∀ i k seen, (i, k, seen) ∈ (cliPqDirOf bi sigs s).kyberLastResort →
-      seen.length ≤ 1 ∧ 37 * seen.length ≤ fileCapBytes ∧
-      decide (37 * seen.length > fileCapBytes) = false := by
-  have hseen1 : ∀ i k seen, (i, k, seen) ∈ (cliPqDirOf bi sigs s).kyberLastResort →
-      seen.length ≤ 1 := by
-    intro i k seen hmem; unfold cliPqDirOf at hmem
-    rcases hp : s.party with _ | _ <;> simp only [hp] at hmem
-    · simp [cliPqDirA] at hmem
-    · by_cases he : s.bytes.isEmpty = true
-      · simp only [he, ↓reduceIte, cliPqxdhDirBobBeforeAccept, List.mem_singleton,
-          Prod.mk.injEq] at hmem
-        rcases hmem with ⟨-, -, rfl⟩; simp
-      · simp only [he, Bool.false_eq_true, ↓reduceIte, cliPqxdhDirBobAfterAccept] at hmem
-        set m0 := bhExpectedPreKeyMsg bi.meA.regId bi.hdr []
-        set d0 := cliPqxdhDirBobBeforeAccept bi sigs
-        have hrm_klr : ∀ st0 : PqParty, (removeOpk st0 m0).kyberLastResort = st0.kyberLastResort := by
-          intro st0; unfold removeOpk; cases m0.opkId <;> rfl
-        rw [hrm_klr] at hmem; unfold markKyberUsed at hmem
-        have hkot : List.lookup m0.kpkId d0.kyberOneTime = none := by
-          simp [d0, cliPqxdhDirBobBeforeAccept]
-        rw [hkot] at hmem
-        by_cases hk : (m0.kpkId == bi.keysB.kpkId) = true
-        · have hklr : List.lookup m0.kpkId d0.kyberLastResort =
-              some ({ pub := bi.keysB.kpkPub, sec := bi.keysB.kpkSec, sig := sigs.2,
-                      timestamp := 0#64 }, []) := by
-            simp [d0, cliPqxdhDirBobBeforeAccept, List.lookup, hk]
-          rw [hklr] at hmem
-          simp only [List.length_nil, Nat.mul_zero, fileCapBytes, gt_iff_lt,
-            Nat.not_lt_zero, List.not_mem_nil, or_self, ↓reduceIte, Option.getD_some, d0,
-            cliPqxdhDirBobBeforeAccept, List.map_cons, List.map_nil] at hmem
-          split_ifs at hmem <;>
-            (simp only [List.mem_singleton, Prod.mk.injEq] at hmem; rcases hmem with ⟨-, -, rfl⟩; simp)
-        · have hk_f : (m0.kpkId == bi.keysB.kpkId) = false := Bool.eq_false_iff.mpr hk
-          have hklr : List.lookup m0.kpkId d0.kyberLastResort = none := by
-            simp [d0, cliPqxdhDirBobBeforeAccept, List.lookup, hk_f]
-          rw [hklr] at hmem
-          simp only [d0, cliPqxdhDirBobBeforeAccept, Option.getD_none, List.mem_singleton,
-            Prod.mk.injEq] at hmem
-          rcases hmem with ⟨-, -, rfl⟩; simp
-  intro i k seen hmem; have h1 := hseen1 i k seen hmem
-  exact ⟨h1, by unfold fileCapBytes; omega, by rw [decide_eq_false_iff_not]; unfold fileCapBytes; omega⟩
-
-/-- Every file in `cliPqDirRaw W (cliPqDirOf bi sigs s) rec` fits within `fileCapBytes` whenever
-`rec.length ≤ fileCapBytes`. -/
-theorem cliPqExp_dir_files_le_fileCap {S : SignalPqxdh.Setup} {l : Nat}
-    (W : PEParams) (bi : ModelDriverInstance S l)
-    (sigs : List.Vector (BitVec 8) 64 × List.Vector (BitVec 8) 64)
-    (s : BinState) (rec : List (BitVec 8)) (hrec : rec.length ≤ fileCapBytes)
-    (b : PreKeyBundleFields) :
-    ∀ p bs, (p, bs) ∈ cliPqDirRaw W (cliPqDirOf bi sigs s) rec → bs.length ≤ fileCapBytes := by
-  have hseen_of : ∀ i k seen, (i, k, seen) ∈ (cliPqDirOf bi sigs s).kyberLastResort →
-      seen.length ≤ 56_679 := fun i k seen hmem =>
-    Nat.le_trans (cliPqExp_lastResort_never_cap_rejected bi sigs s i k seen hmem).1 (by decide)
-  set st := cliPqDirOf bi sigs s
-  intro p bs hf
-  unfold cliPqDirRaw at hf
-  simp only [List.mem_append] at hf
-  rcases hf with (hf_hdr | hf_rec) | hf_tail
-  · have hsub := (honest_party_and_bundle_files_le_fileCap (W := W)
-      (st := { st with session := none, signed := [], oneTime := [], kyberOneTime := [],
-                       kyberLastResort := [] })
-      (b := b) (dir := bundleDir) (fun _ _ h => nomatch h) (fun _ _ _ h => nomatch h)).2
-    exact hsub p bs hf_hdr
-  · split_ifs at hf_rec
-    · simp at hf_rec
-    · simp only [List.mem_singleton, Prod.mk.injEq] at hf_rec
-      rcases hf_rec with ⟨-, rfl⟩; exact hrec
-  · have hm := mem_of_mem_drop 3 (encodeDir W { st with session := none, peerId := none })
-      (p, bs) hf_tail
-    have hsub := (honest_party_and_bundle_files_le_fileCap (W := W)
-      (st := { st with session := none, peerId := none })
-      (b := b) (dir := bundleDir) (fun _ _ h => nomatch h) hseen_of).2
-    exact hsub p bs hm
 
 end Computational.Proofs.LibsignalCli.CliCapsCompleteness

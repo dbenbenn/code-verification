@@ -265,7 +265,6 @@ fn trimmed_image(config: &str, externs: &[&str], paths: Vec<PathBuf>) -> StockIm
         config: config.into(),
         objects: vec![],
         externs: externs.iter().map(|e| extern_decl(e)).collect(),
-        page_separate_data: false,
         paths,
         trimmed: vec![Some(crate::trimmed::Trimmed {
             provenance: String::new(),
@@ -283,7 +282,6 @@ fn sibling_image(config: &str, path: &Path, defs: &[&str], exports: &[&str]) -> 
         config: config.into(),
         objects: vec![rust_obj2lean::trusted_extractor::parse_object("io", bytes).unwrap()],
         externs: vec![],
-        page_separate_data: false,
         paths: vec![path.to_path_buf()],
         trimmed: vec![None],
         exports: exports.iter().map(|e| e.to_string()).collect(),

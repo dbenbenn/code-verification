@@ -11,10 +11,13 @@ module
 
 public import Computational.Proofs.SpecLemmas.Pqxdh.Security.BoundProofDefs
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveShallow -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveInitEval -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhEvalEq -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhEvalEq
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhStepInit
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhGrow -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhStep -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEvalEq
 
 /-!
 # Evaluation Equivalence for Active One-Key `GapDhWithSign` Reduction
@@ -228,18 +231,6 @@ private theorem gdhActive_finish_unsupported (S : Setup) (b : QueryBudget) :
     logFindC, spkPowsC, findMapStepC, initDh1CandC, respDh1CandC, Comp.queries]
 
 end Unsupported
-
-theorem fgKeyInd1KeyGapDhActiveAtomicProg_eval_eq (S : Setup) (b : QueryBudget)
-    (adv : Unit → OracleComp (unifSpec + keyIndSpec S) Bool) (U V : Bytes) :
-    (fgKeyInd1KeyGapDhActiveAtomicProg S b).eval adv (U, V) =
-      (fgKeyInd1KeyGapDhActiveDslProg S b).eval adv (U, V) := by
-  have h := liftKeyInd1Stage_eval tlSigDdhKeyInd S (fgKeyInd1KeyGapDhActiveDslProg S b)
-    (gdhActive_init_unsupported S b)
-    (gdhActive_handle_unsupported S b)
-    (gdhActive_finish_unsupported S b) adv (U, V)
-  have hId : embedVal (B 32) = id := rfl
-  rw [hId, id_map] at h
-  exact h
 
 /-! ## State encoding and parameter evaluation -/
 
@@ -1072,18 +1063,6 @@ private theorem isQueryBoundP_adv_run (S : Setup) (b : QueryBudget)
   obtain ⟨_, _, _, h, _⟩ := A.2
   convert h using 1
   funext q; cases q <;> rfl
-
-theorem gapDhWithSign_fgKeyInd1KeyGapDhActiveAtomicProg_eq (S : Setup) (P : Primitives)
-    (isValidDhTriple : Bytes → Bytes → Bytes → Bool) (pow8 : Bytes → Bytes)
-    (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) :
-    GapDhWithSign P isValidDhTriple pow8
-      ((pqxdhKeyInd1KeyActiveCostedSims S).eval.gdh b A) =
-    GapDhWithSign P isValidDhTriple pow8
-      (fgKeyInd1KeyGapDhActiveAdv4 S b A) :=
-  gapDhWithSign_fgKeyInd1KeyGapDhActiveAtomicProg_1278_eq S P isValidDhTriple pow8 b A
-    (gdhActive_handle_unsupported S b) (gdhActive_finish_unsupported S b)
-    (fun pa hMode secb =>
-      runFrom1KeyActive_eq S b b.q_total pa hMode A.1.run (isQueryBoundP_adv_run S b A) secb)
 
 /-- Real-valued `GapDhWithSignReal` advantage equality for
     `(pqxdhKeyInd1KeyActiveCostedSims S).eval.gdh`. -/

@@ -11,18 +11,18 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMac
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMac
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym130
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym130 -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefs
 
 /-!
 # Budget-Threaded Segment 7 (`verify_mac_with_addresses`) Proofs — Block `130` (`159`)
@@ -33,7 +33,7 @@ Defines `vmacEvents` and the Segment 7 allocator event envelope `s7Env`, and pro
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -242,7 +242,7 @@ theorem subroutine_ok_allocNoOomWithStack_of_budgetWithStack [LibsignalPlacement
 
 /-- Pointer-independent projection of `verifyMacWithAddressesEvents`: for any stack/key pointer
     slots, `verifyMacWithAddressesEvents F parse vmacGhost = vmacEvents F parse x tr mks` by `rfl`. -/
-def vmacEvents (F : ShaCompress) (parse : UuidParser)
+@[expose] def vmacEvents (F : ShaCompress) (parse : UuidParser)
     (x : TryDecryptGhost) (tr : TripleRatchet (List (BitVec 8))) (mks : MessageKeys) :
     List AllocEvent :=
   verifyMacWithAddressesEvents F parse
@@ -252,7 +252,7 @@ def vmacEvents (F : ShaCompress) (parse : UuidParser)
 
 /-- Segment-7 (`verify_mac_with_addresses` + optional `macFailed` 23-byte `String` alloc +
     optional `newPqr` dealloc) allocator event envelope. -/
-def s7Env (F : ShaCompress) (parse : UuidParser)
+@[expose] def s7Env (F : ShaCompress) (parse : UuidParser)
     (x : TryDecryptGhost) (tr : TripleRatchet (List (BitVec 8))) (mks : MessageKeys)
     (_newPqrState : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   SeqEnv (SeqEnv (· = vmacEvents F parse x tr mks) (· = rustAllocEvents 23 1)) FreeOnlyEvs evs

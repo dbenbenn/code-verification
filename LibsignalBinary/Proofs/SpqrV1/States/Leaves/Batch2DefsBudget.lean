@@ -10,13 +10,17 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2Defs
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Bounded `RustCliAllocBudget` Relocatable Specifications for SPQR V1 Receiver & Encoder Leaves
@@ -30,7 +34,7 @@ Bounded, non-vacuous `AllocEvent` envelopes (`*Env` and `*_nonempty`), envelope-
 `<Ct1Acknowledged>::recv_ek_chunk`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -93,7 +97,7 @@ attribute [local irreducible] addChunkTotal DecodedMessageEnv
 /-! ## 1. Callee Envelopes & Relocatable Budget Specifications -/
 
 /-- Allocation envelope of `<PolyDecoder as Decoder>::decoded_message` (`Block 418`). -/
-def PolyDecoderDecodedMessageEnv (x : PolyDecoderDecodedMessageGhost)
+@[expose] def PolyDecoderDecodedMessageEnv (x : PolyDecoderDecodedMessageGhost)
     (evs : List AllocEvent) : Prop :=
   DecodedMessageEnv x.dec evs
 
@@ -102,7 +106,7 @@ theorem polyDecoderDecodedMessageEnv_nonempty (x : PolyDecoderDecodedMessageGhos
   decodedMessageEnv_nonempty x.dec
 
 /-- Envelope-parametric relocatable specification of `<PolyDecoder as Decoder>::decoded_message` (`Block 418`). -/
-def polyDecoderDecodedMessagePlacedSpecOfEnv [LibsignalPlacement]
+@[expose] def polyDecoderDecodedMessagePlacedSpecOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Env : PolyDecoderDecodedMessageGhost → List AllocEvent → Prop) :
     Spec (PolyDecoderDecodedMessageGhost × M.σ) where
@@ -129,7 +133,7 @@ abbrev polyDecoderDecodedMessagePlacedSpec [LibsignalPlacement]
   polyDecoderDecodedMessagePlacedSpecOfEnv M A lim PolyDecoderDecodedMessageEnv
 
 /-- Bounded allocation envelope of `<Unchunked.SendCt.Ct1SentEkReceived>::send_ct2` (`Block 347`). -/
-def UnchunkedSendCt2Env {F : ShaCompress} (_x : UnchunkedSendCt2Ghost F)
+@[expose] def UnchunkedSendCt2Env {F : ShaCompress} (_x : UnchunkedSendCt2Ghost F)
     (evs : List AllocEvent) : Prop :=
   SpqrBoundedEvs 16 8192 evs
 
@@ -138,7 +142,7 @@ theorem unchunkedSendCt2Env_nonempty {F : ShaCompress} (x : UnchunkedSendCt2Ghos
   ⟨[], SpqrBoundedEvs.nil 16 8192⟩
 
 /-- Envelope-parametric relocatable specification of `<Unchunked.SendCt.Ct1SentEkReceived>::send_ct2` (`Block 347`). -/
-def unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfEnv [LibsignalPlacement]
+@[expose] def unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (K : MlKem)
     (Env : UnchunkedSendCt2Ghost F → List AllocEvent → Prop) :
@@ -172,7 +176,7 @@ abbrev unchunkedCt1SentEkReceivedSendCt2PlacedSpec [LibsignalPlacement]
 /-- Allocation envelope of `spqr::v1::chunked::send_ct::send_ct2_encoder` (`Block 382`):
     concatenation buffer reserves (`≤ 4` allocations, request `≤ 2 * (ct2.length + mac.length) + 64`),
     followed by `EncodeBytesEnv (ct2.length + mac.length)`, followed by `FreeOnlyEvs`. -/
-def SendCt2EncoderEnv (x : SendCt2EncoderGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def SendCt2EncoderEnv (x : SendCt2EncoderGhost) (evs : List AllocEvent) : Prop :=
   SeqEnv (SpqrBoundedEvs 4 (2 * (x.ct2.length + x.mac.length) + 64))
     (SeqEnv (EncodeBytesEnv (x.ct2.length + x.mac.length)) FreeOnlyEvs) evs
 
@@ -182,7 +186,7 @@ theorem sendCt2EncoderEnv_nonempty (x : SendCt2EncoderGhost) :
     Or.inr ⟨[], _, rfl, SpqrBoundedEvs.nil _ _, Or.inl rfl⟩⟩
 
 /-- Envelope-parametric budget specification of `spqr::v1::chunked::send_ct::send_ct2_encoder` (`Block 382`). -/
-def sendCt2EncoderSpecOfEnv [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def sendCt2EncoderSpecOfEnv [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Env : SendCt2EncoderGhost → List AllocEvent → Prop) :
     Spec (SendCt2EncoderGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -211,7 +215,7 @@ abbrev sendCt2EncoderSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCli
 
 /-- Unplaced base envelope-parametric budget specification of
     `spqr::v1::chunked::send_ct::send_ct2_encoder` (`Block 382`). -/
-def sendCt2EncoderSpecOfEnvBase (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def sendCt2EncoderSpecOfEnvBase (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Env : SendCt2EncoderGhost → List AllocEvent → Prop) :
     Spec (SendCt2EncoderGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -241,7 +245,7 @@ abbrev sendCt2EncoderSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M) (l
 
 /-- Allocation envelope of `<spqr::v1::unchunked::send_ct::Ct1Sent>::recv_ek` (`Block 338`):
     `FreeOnlyEvs` (`recv_ek` never allocates and only deallocates consumed `Vec<u8>` buffers on error). -/
-def UnchunkedCt1SentRecvEkEnv {F : ShaCompress} (_x : UnchunkedCt1SentRecvEkGhost F)
+@[expose] def UnchunkedCt1SentRecvEkEnv {F : ShaCompress} (_x : UnchunkedCt1SentRecvEkGhost F)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs
 
@@ -250,7 +254,7 @@ theorem unchunkedCt1SentRecvEkEnv_nonempty {F : ShaCompress} (x : UnchunkedCt1Se
   ⟨[], FreeOnlyEvs.nil⟩
 
 /-- Envelope-parametric budget specification of `<Unchunked.SendCt.Ct1Sent>::recv_ek` (`Block 338`). -/
-def unchunkedCt1SentRecvEkSpecOfEnv [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def unchunkedCt1SentRecvEkSpecOfEnv [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (F : ShaCompress) (K : MlKem)
     (Env : UnchunkedCt1SentRecvEkGhost F → List AllocEvent → Prop) :
     Spec (UnchunkedCt1SentRecvEkGhost F × M.σ) where
@@ -281,7 +285,7 @@ abbrev unchunkedCt1SentRecvEkSpec [LibsignalPlacement] (M : AllocCostModel) (A :
 
 /-- Bounded allocation envelope of `<EkReceivedCt1Sampled>::recv_ct1_ack` (`Block 343`):
     calls `Unchunked::send_ct2` + `send_ct2_encoder` (`ct2 = 1088`B, `mac = 32`B) + drops. -/
-def EkReceivedCt1SampledRecvCt1AckEnv {F : ShaCompress} (_x : EkReceivedCt1SampledRecvCt1AckGhost F)
+@[expose] def EkReceivedCt1SampledRecvCt1AckEnv {F : ShaCompress} (_x : EkReceivedCt1SampledRecvCt1AckGhost F)
     (evs : List AllocEvent) : Prop :=
   SpqrBoundedEvs 40 16384 evs
 
@@ -291,7 +295,7 @@ theorem ekReceivedCt1SampledRecvCt1AckEnv_nonempty {F : ShaCompress}
   ⟨[], SpqrBoundedEvs.nil 40 16384⟩
 
 /-- Envelope-parametric relocatable specification of `<EkReceivedCt1Sampled>::recv_ct1_ack` (`Block 343`). -/
-def ekReceivedCt1SampledRecvCt1AckPlacedSpecOfEnv [LibsignalPlacement]
+@[expose] def ekReceivedCt1SampledRecvCt1AckPlacedSpecOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (K : MlKem)
     (Env : EkReceivedCt1SampledRecvCt1AckGhost F → List AllocEvent → Prop) :
@@ -322,7 +326,7 @@ abbrev ekReceivedCt1SampledRecvCt1AckPlacedSpec [LibsignalPlacement]
 
 /-- Allocation envelope of `<Ct1Received>::recv_ct2_chunk` (`Block 346`):
     initializes a fresh `PolyDecoder` (`16` empty slots) and calls `add_chunk`. -/
-def Ct1ReceivedRecvCt2ChunkEnv {F : ShaCompress} (_x : Ct1ReceivedRecvCt2ChunkGhost F)
+@[expose] def Ct1ReceivedRecvCt2ChunkEnv {F : ShaCompress} (_x : Ct1ReceivedRecvCt2ChunkGhost F)
     (evs : List AllocEvent) : Prop :=
   AddChunkSlotsEnv (List.replicate 16 SortedSetPt.new) evs
 
@@ -332,7 +336,7 @@ theorem ct1ReceivedRecvCt2ChunkEnv_nonempty {F : ShaCompress}
   ⟨[], addChunkSlotsEnv_nil (List.replicate 16 SortedSetPt.new)⟩
 
 /-- Envelope-parametric budget specification of `<Ct1Received>::recv_ct2_chunk` (`Block 346`). -/
-def ct1ReceivedRecvCt2ChunkSpecOfEnv [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def ct1ReceivedRecvCt2ChunkSpecOfEnv [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (F : ShaCompress)
     (Env : Ct1ReceivedRecvCt2ChunkGhost F → List AllocEvent → Prop) :
     Spec (Ct1ReceivedRecvCt2ChunkGhost F × M.σ) where
@@ -363,7 +367,7 @@ abbrev ct1ReceivedRecvCt2ChunkSpec [LibsignalPlacement] (M : AllocCostModel) (A 
 
 /-- Allocation envelope of `<HeaderSent>::recv_ct1_chunk` (`Block 337`):
     `add_chunk` on `x.st.receiving_ct1`, followed by `decoded_message`, followed by `FreeOnlyEvs`. -/
-def HeaderSentRecvCt1ChunkEnv {F : ShaCompress} (x : HeaderSentRecvCt1ChunkGhost F)
+@[expose] def HeaderSentRecvCt1ChunkEnv {F : ShaCompress} (x : HeaderSentRecvCt1ChunkGhost F)
     (evs : List AllocEvent) : Prop :=
   SeqEnv (AddChunkSlotsEnv x.st.receiving_ct1.pts)
     (SeqEnv (DecodedMessageEnv (addChunkTotal x.st.receiving_ct1 x.chunk)) FreeOnlyEvs) evs
@@ -375,7 +379,7 @@ theorem headerSentRecvCt1ChunkEnv_nonempty {F : ShaCompress}
   exact ⟨evs, Or.inr ⟨[], evs, rfl, addChunkSlotsEnv_nil x.st.receiving_ct1.pts, Or.inl hevs⟩⟩
 
 /-- Envelope-parametric relocatable specification of `<HeaderSent>::recv_ct1_chunk` (`Block 337`). -/
-def headerSentRecvCt1ChunkPlacedSpecOfEnv [LibsignalPlacement]
+@[expose] def headerSentRecvCt1ChunkPlacedSpecOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : HeaderSentRecvCt1ChunkGhost F → List AllocEvent → Prop) :
     Spec (HeaderSentRecvCt1ChunkGhost F × M.σ) where
@@ -409,7 +413,7 @@ abbrev headerSentRecvCt1ChunkPlacedSpec [LibsignalPlacement]
 /-- Allocation envelope of `<KeysSampled>::recv_ct1_chunk` (`Block 370`):
     initializes a fresh `PolyDecoder` (`16` empty slots), calls `add_chunk` + `encode_bytes`
     on the `1184`B EK + `FreeOnlyEvs`. -/
-def KeysSampledRecvCt1ChunkEnv {F : ShaCompress} (_x : KeysSampledRecvCt1ChunkGhost F)
+@[expose] def KeysSampledRecvCt1ChunkEnv {F : ShaCompress} (_x : KeysSampledRecvCt1ChunkGhost F)
     (evs : List AllocEvent) : Prop :=
   SpqrBoundedEvs 36 8192 evs
 
@@ -419,7 +423,7 @@ theorem keysSampledRecvCt1ChunkEnv_nonempty {F : ShaCompress}
   ⟨[], SpqrBoundedEvs.nil 36 8192⟩
 
 /-- Envelope-parametric budget specification of `<KeysSampled>::recv_ct1_chunk` (`Block 370`). -/
-def keysSampledRecvCt1ChunkSpecOfEnv [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def keysSampledRecvCt1ChunkSpecOfEnv [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (F : ShaCompress)
     (Env : KeysSampledRecvCt1ChunkGhost F → List AllocEvent → Prop) :
     Spec (KeysSampledRecvCt1ChunkGhost F × M.σ) where
@@ -452,7 +456,7 @@ abbrev keysSampledRecvCt1ChunkSpec [LibsignalPlacement] (M : AllocCostModel) (A 
     `add_chunk` on `x.st.receiving_ek`, followed by `decoded_message`, followed by optional
     `Unchunked::recv_ek` + `Unchunked::send_ct2` + `send_ct2_encoder` (`≤ 40` allocations,
     request `≤ 16384`), followed by `FreeOnlyEvs`. -/
-def Ct1AcknowledgedRecvEkChunkEnv {F : ShaCompress} (x : Ct1AcknowledgedRecvEkChunkGhost F)
+@[expose] def Ct1AcknowledgedRecvEkChunkEnv {F : ShaCompress} (x : Ct1AcknowledgedRecvEkChunkGhost F)
     (evs : List AllocEvent) : Prop :=
   SeqEnv (AddChunkSlotsEnv x.st.receiving_ek.pts)
     (SeqEnv (DecodedMessageEnv (addChunkTotal x.st.receiving_ek x.chunk))
@@ -465,7 +469,7 @@ theorem ct1AcknowledgedRecvEkChunkEnv_nonempty {F : ShaCompress}
   exact ⟨evs, Or.inr ⟨[], evs, rfl, addChunkSlotsEnv_nil x.st.receiving_ek.pts, Or.inl hevs⟩⟩
 
 /-- Envelope-parametric relocatable specification of `<Ct1Acknowledged>::recv_ek_chunk` (`Block 349`). -/
-def ct1AcknowledgedRecvEkChunkPlacedSpecOfEnv [LibsignalPlacement]
+@[expose] def ct1AcknowledgedRecvEkChunkPlacedSpecOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (K : MlKem)
     (Env : Ct1AcknowledgedRecvEkChunkGhost F → List AllocEvent → Prop) :
@@ -502,48 +506,48 @@ abbrev ct1AcknowledgedRecvEkChunkPlacedSpec [LibsignalPlacement]
 
 /-! ## 3. Contract Abbreviations (`*PlacedOkX`) -/
 
-def SendCt2EncoderPlacedOkX [LibsignalPlacement]
+@[expose] def SendCt2EncoderPlacedOkX [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_382 (Rust.withPanics ext)) (blkPl_382).base
     (withLsCodeLoaded lsmpl (sendCt2EncoderSpec M A lim))
 
-def UnchunkedCt1SentRecvEkPlacedOkX [LibsignalPlacement]
+@[expose] def UnchunkedCt1SentRecvEkPlacedOkX [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (K : MlKem)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_338 (Rust.withPanics ext)) (blkPl_338).base
     (unchunkedCt1SentRecvEkSpec M A lim F K)
 
-def EkReceivedCt1SampledRecvCt1AckPlacedOkX [LibsignalPlacement]
+@[expose] def EkReceivedCt1SampledRecvCt1AckPlacedOkX [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (K : MlKem)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_343 (Rust.withPanics ext)) (blkPl_343).base
     (withLsCodeLoaded lsmpl (ekReceivedCt1SampledRecvCt1AckPlacedSpec M A lim F K))
 
-def Ct1ReceivedRecvCt2ChunkPlacedOkX [LibsignalPlacement]
+@[expose] def Ct1ReceivedRecvCt2ChunkPlacedOkX [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_346 (Rust.withPanics ext)) (blkPl_346).base
     (withLsCodeLoaded lsmpl (ct1ReceivedRecvCt2ChunkSpec M A lim F))
 
-def HeaderSentRecvCt1ChunkPlacedOkX [LibsignalPlacement]
+@[expose] def HeaderSentRecvCt1ChunkPlacedOkX [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_337 (Rust.withPanics ext)) (blkPl_337).base
     (withLsCodeRoLoaded lsmpl (headerSentRecvCt1ChunkPlacedSpec M A lim F))
 
-def KeysSampledRecvCt1ChunkPlacedOkX [LibsignalPlacement]
+@[expose] def KeysSampledRecvCt1ChunkPlacedOkX [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_370 (Rust.withPanics ext)) (blkPl_370).base
     (withLsCodeLoaded lsmpl (keysSampledRecvCt1ChunkSpec M A lim F))
 
-def Ct1AcknowledgedRecvEkChunkPlacedOkX [LibsignalPlacement]
+@[expose] def Ct1AcknowledgedRecvEkChunkPlacedOkX [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (K : MlKem)
     (ext : String → Option (State → State)) : Prop :=

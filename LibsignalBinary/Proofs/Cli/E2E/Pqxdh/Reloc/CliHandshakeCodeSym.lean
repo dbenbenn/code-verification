@@ -9,11 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib.GenDecodes
+public import ProofLib.Placed.Multi
 
 /-!
 # Relocatable Per-Block Fetches for `signal_session_handshake` Helper Blocks
@@ -22,4 +25,4 @@ Re-exports Parts A, B, and C of the relocatable per-block instruction fetch defi
 `signal_session_handshake` helper blocks.
 -/
 
-@[expose] public section
+public section

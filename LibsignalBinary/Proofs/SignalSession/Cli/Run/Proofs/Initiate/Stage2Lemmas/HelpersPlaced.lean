@@ -9,13 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Helpers
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegC_OkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Helpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegC_OkPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.CommonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option warningAsError false
 
@@ -47,7 +57,10 @@ theorem sepWPp_panic_handleError_placed [LibsignalPlacement] {mmpl : MultiPlacem
     (hrun : s.status = .Running)
     (hpan : Qp (Rust.panicked s) P) :
     SepWPp (initProgPlaced mmpl gh W) target_pc s P Q Qp oom :=
-  SepWPp.panic hrun (hpc ▸ ((ls_externAt?_of_mem (sym := lsRawVecHandleErrorSym)).trans rfl)) hpan
+  SepWPp.panic hrun
+    (hpc ▸ ((ls_externAt?_of_mem (sym := lsRawVecHandleErrorSym)).trans
+      (CryptoVerification.SignalSession.Cli.RunGlue.cliGhostExterns_panic_of_mem mmpl gh W (by decide))))
+    hpan
 
 theorem initPanicPostPlaced_of_false [LibsignalPlacement] (A : RustAlloc) (S : RunSem)
     (x : InitGhost) (stk : Nat) {s0 sf : State} (F : SepProp) :

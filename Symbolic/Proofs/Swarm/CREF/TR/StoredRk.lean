@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.SpecLemmas.ModelProofDefs
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Bytes.Basic
@@ -60,7 +60,7 @@ all protocol moves that every stored `TRState` on `runTraceMoves r₀ ms` derive
 keys along `DRKeySpine` from PQXDH handshake outputs and known or initial ratchet public keys.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -85,7 +85,7 @@ abbrev PQStEntry :=
     (PersistentLocalState.LocalState DY.Libsignal.PQXDH.PQXDHState)
 
 /-- A stored PQXDH signed-prekey secret is a 32-byte random draw `randTerm t 32`. -/
-def PQStateSpkRand (st : DY.Libsignal.PQXDH.PQXDHState) : Prop :=
+@[expose] def PQStateSpkRand (st : DY.Libsignal.PQXDH.PQXDHState) : Prop :=
   st.kind = .signedPrekey → ∃ t : Nat, st.sk = randTerm t 32
 
 /-- A KEM shared secret from a PQXDH handshake: an encapsulation output, a successful
@@ -150,7 +150,7 @@ theorem attackerKnows_ratchetKey_of_at?_network
 /-! ## Key-Spine and Stored Ratchet-Key Predicates -/
 
 /-- A ratchet public key `pk` is either attacker-known on `tr` or equal to `dhPk (randTerm 2 32)`. -/
-def RkKnownOrInit (tr : ExecTrace) (pk : DY.Bytes) : Prop :=
+@[expose] def RkKnownOrInit (tr : ExecTrace) (pk : DY.Bytes) : Prop :=
   pk.AttackerKnows tr ∨ pk = dhPk (randTerm 2 32)
 
 theorem RkKnownOrInit.mono {tr₁ tr₂ : ExecTrace} {pk : DY.Bytes}
@@ -219,7 +219,7 @@ theorem TrStateStoredRkKnown.mono {tr₁ tr₂ : ExecTrace} {st : TRState}
 
 /-- Every state `st ∈ availableStates r₀ (runTraceMoves r₀ ms)` satisfies
 `TrStateStoredRkKnown (runTraceMoves r₀ ms) st`. -/
-def StoredRkKnown (r₀ : ProtocolSetup) (ms : List Move) : Prop :=
+@[expose] def StoredRkKnown (r₀ : ProtocolSetup) (ms : List Move) : Prop :=
   ∀ st ∈ availableStates r₀ (runTraceMoves r₀ ms),
     TrStateStoredRkKnown (runTraceMoves r₀ ms) st
 

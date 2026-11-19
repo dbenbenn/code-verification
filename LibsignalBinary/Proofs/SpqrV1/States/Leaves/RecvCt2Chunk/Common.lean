@@ -13,6 +13,7 @@ public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2Defs
 public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Shared Pure & Framed Call Helpers for `recv_ct1_ack` and `recv_ct2_chunk`
@@ -24,7 +25,7 @@ subroutine call rules (`call_addChunk`, `call_sendCt2`, `call_sendCt2Encoder`) s
 `<EkReceivedCt1Sampled>::recv_ct1_ack` and `<Ct1Received>::recv_ct2_chunk`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.Leaves
 
@@ -46,7 +47,7 @@ set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit bv_sub_sub BitVec.sub_add_cancel BitVec.toNat_zero
 
 /-! ## Pure Unfolding & `Vec<u8>` Slice/Dealloc Helpers -/
@@ -73,7 +74,7 @@ theorem recv_ct1_ack_ok_elim {F : ShaCompress} {K : MlKem}
       exact ⟨ct2, mac, rfl, henc⟩
 
 /-- Remaining heap tail of a `Vec<u8>` when `(ptr ↦ₛ bs)` is borrowed out. -/
-def vecU8Tail (A : RustAlloc) (cap ptr : BitVec 64) (bs : Bytes) : SepProp :=
+@[expose] def vecU8Tail (A : RustAlloc) (cap ptr : BitVec 64) (bs : Bytes) : SepProp :=
   if (cap == 0#64) = true then emp
   else A.live ptr cap.toNat 1 ∗ memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)
 
@@ -129,7 +130,7 @@ theorem slice_and_tail_entails_vecCapPtrDealloc (A : RustAlloc) (cap ptr : BitVe
     exact sepConj_mono_left (pointsToBytes_entails_memRegion ptr bs)
 
 /-- Fresh `PolyDecoder` with `ptsNeeded` (`lenBytes / 2`) and 16 empty `SortedSetPt`s. -/
-def emptyPolyDecoder (ptsNeeded : Nat) : PolyDecoder :=
+@[expose] def emptyPolyDecoder (ptsNeeded : Nat) : PolyDecoder :=
   { ptsNeeded := ptsNeeded
     pts := List.replicate 16 SortedSetPt.new
     isComplete := false }

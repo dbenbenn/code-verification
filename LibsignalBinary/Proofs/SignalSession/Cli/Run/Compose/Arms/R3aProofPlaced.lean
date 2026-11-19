@@ -9,22 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SpeOwnedBridges
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFromPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.CalleesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFinishStep
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyTailBuildMessage
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRoot
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SpeOwnedBridges
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFromPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.CalleesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFinishStep
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyTailBuildMessage
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRoot
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSites
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.E2E.Bin.Record
 
 /-!
 # `signal_session::run` Placed Arm `R3a`: Whisper Arm Proof
@@ -33,7 +35,7 @@ Relocatable (`[LibsignalPlacement]`) proof of `run_hop_recvW_placed_ok` (`RunHop
 Block `579` (`runProgPlaced H`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

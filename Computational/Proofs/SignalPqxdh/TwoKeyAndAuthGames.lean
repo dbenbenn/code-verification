@@ -22,7 +22,7 @@ and first-message INT-CTXT query types), and shallow reduction-family bundles
 imports this file; see `Computational/docs/TRUSTED_BASE.md`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,12 +38,12 @@ structure GapDhAdv where
   q_ddh  : Nat
   q_prim : Nat
 
-def GapDhAdv.Bounded (A : GapDhAdv) : Prop :=
+@[expose] def GapDhAdv.Bounded (A : GapDhAdv) : Prop :=
   (∀ U V, OracleComp.IsQueryBoundP (A.run U V) (fun q => q.isRight = true) A.q_ddh) ∧
   (∀ U V, OracleComp.IsQueryBoundP (A.run U V) (fun q => isPrimQuery q = true) A.q_prim)
 
 /-- Single-pair X25519 Gap-DH experiment with prime-order subgroup check via `pow8`. -/
-noncomputable def gapDhExp (P : Primitives) (isValidDhTriple : Bytes → Bytes → Bytes → Bool)
+@[expose] def gapDhExp (P : Primitives) (isValidDhTriple : Bytes → Bytes → Bytes → Bool)
     (pow8 : Bytes → Bytes) (A : GapDhAdv) : ProbComp Bool := do
   let u ← sampleScalar32
   let v ← sampleScalar32
@@ -55,7 +55,7 @@ noncomputable def gapDhExp (P : Primitives) (isValidDhTriple : Bytes → Bytes �
   return (pow8 Z == pow8 (P.x25519 u V))
 
 /-- Success probability of `A` in the single-pair X25519 Gap-DH game (DEV-PQ17). -/
-noncomputable def GapDH (P : Primitives) (isValidDhTriple : Bytes → Bytes → Bytes → Bool)
+@[expose] noncomputable def GapDH (P : Primitives) (isValidDhTriple : Bytes → Bytes → Bytes → Bool)
     (pow8 : Bytes → Bytes) (A : GapDhAdv) : ℝ :=
   (𝒟[gapDhExp P isValidDhTriple pow8 A] {true}).toReal
 
@@ -71,11 +71,11 @@ inductive AeadMuIntQuery where
   | tryForge (i : ℕ) (ad ct : Bytes)
   deriving DecidableEq, Repr
 
-def isMuEncQuery : ((ℕ ⊕ PrimQuery) ⊕ AeadMuIntQuery) → Prop
+@[expose] def isMuEncQuery : ((ℕ ⊕ PrimQuery) ⊕ AeadMuIntQuery) → Prop
   | .inr (.encOnce _ _ _) => True
   | _                     => False
 
-def isMuForgeQuery : ((ℕ ⊕ PrimQuery) ⊕ AeadMuIntQuery) → Prop
+@[expose] def isMuForgeQuery : ((ℕ ⊕ PrimQuery) ⊕ AeadMuIntQuery) → Prop
   | .inr (.tryForge _ _ _) => True
   | _                      => False
 
@@ -85,12 +85,12 @@ structure SigEufCmaAdv where
   q_sig  : Nat
   q_prim : Nat
 
-def SigEufCmaAdv.Bounded (A : SigEufCmaAdv) : Prop :=
+@[expose] def SigEufCmaAdv.Bounded (A : SigEufCmaAdv) : Prop :=
   (∀ pk, OracleComp.IsQueryBoundP (A.run pk) (fun q => q.isRight = true) A.q_sig) ∧
   (∀ pk, OracleComp.IsQueryBoundP (A.run pk) (fun q => isPrimQuery q = true) A.q_prim)
 
 /-- XEdDSA EUF-CMA experiment with fresh 64-byte signing randomness per query. -/
-noncomputable def sigEufCmaExp (P : Primitives) (A : SigEufCmaAdv) : ProbComp Bool := do
+@[expose] def sigEufCmaExp (P : Primitives) (A : SigEufCmaAdv) : ProbComp Bool := do
   let sk ← sampleScalar32
   let pk := P.sigPkGen sk
   let impl : QueryImpl sigOracleSpec (StateT (List Bytes) ProbComp) := fun (.sign m) => do
@@ -104,14 +104,14 @@ noncomputable def sigEufCmaExp (P : Primitives) (A : SigEufCmaAdv) : ProbComp Bo
   return (P.sigVerify pk mStar sigStar && decide (mStar ∉ signedMsgs))
 
 /-- EUF-CMA advantage against XEdDSA. -/
-noncomputable def SigEufCma (P : Primitives) (A : SigEufCmaAdv) : ℝ :=
+@[expose] noncomputable def SigEufCma (P : Primitives) (A : SigEufCmaAdv) : ℝ :=
   (𝒟[sigEufCmaExp P A] {true}).toReal
 
 /-! ## Standalone two-key `KeyInd` experiment -/
 
 /-- Core two-key `KeyInd` experiment (`useRo = true` for `-D DH`, `useRo = false` for HNDL;
     DEV-PQ13), returning a uniform coin if any tested session is unfresh at the end of the game. -/
-noncomputable def pqxdhKeyIndExpCore (useRo : Bool) (S : Setup) (P : Primitives)
+@[expose] def pqxdhKeyIndExpCore (useRo : Bool) (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := KeyIndState.empty S secb
@@ -132,12 +132,12 @@ noncomputable def pqxdhKeyIndExpCore (useRo : Bool) (S : Setup) (P : Primitives)
     return (b' == secb)
 
 /-- Two-key real-or-random `DRKey` indistinguishability experiment (`useRo = true`). -/
-noncomputable def pqxdhKeyIndExp (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+@[expose] def pqxdhKeyIndExp (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool :=
   pqxdhKeyIndExpCore true S P A
 
 /-- Advantage of `A` in `pqxdhKeyIndExp` (`boolBias` of the output). -/
-noncomputable def KeyIndAdvantage (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
+@[expose] noncomputable def KeyIndAdvantage (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[pqxdhKeyIndExp S P A].boolBias).toReal
 
 end SignalPqxdh

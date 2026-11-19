@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.UA.BI.RAB.Defs
-public import Symbolic.Proofs.Swarm.CREF.SendWire.WhisperPureA
+import Symbolic.Proofs.Swarm.CREF.SendWire.WhisperPureA
 import Symbolic.Proofs.Swarm.CREF.Cli.DirStepAux
 import Symbolic.Proofs.Swarm.CREF.Cli.DirStepBridge
 import Symbolic.Proofs.Swarm.CREF.Cli.ModelRel
@@ -33,6 +33,9 @@ import Symbolic.Proofs.Swarm.UA.BI.G.SendW
 import Symbolic.Proofs.Swarm.UA.BI.G.SlotInitTransfer
 import Symbolic.Proofs.Swarm.UA.BI.RAB.Base
 import Symbolic.Proofs.Swarm.UA.Base
+import Symbolic.Proofs.Swarm.CREF.Cli.Slots.SendWhisperSlot
+import Symbolic.Proofs.Swarm.CREF.Cli.TopDispatch
+import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
 
 /-!
 # Send Slot Refinement under Break and Invert Events
@@ -42,7 +45,7 @@ Proves `slot_send_of_xlate : XlateInvSpecB -> UASlotSendSpecB`, preserving `PqTu
 sends.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

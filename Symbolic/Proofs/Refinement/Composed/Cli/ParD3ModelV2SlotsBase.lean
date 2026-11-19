@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot
-public import Symbolic.Proofs.Swarm.CREF.Cli.DirStepAux
+import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot
+public import Symbolic.Proofs.Swarm.CREF.Cli.DirStepAux -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.Composed.Cli.Transfer
 import Symbolic.Proofs.Swarm.CREF.Cli.ModelRel
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.InitiateRecord
@@ -32,6 +32,7 @@ import Symbolic.Proofs.Swarm.CREF.Cli.World.TurnPure
 import Symbolic.Proofs.Swarm.CREF.Cli.World.XplTransferPure
 import Symbolic.Proofs.Swarm.CREF.Initiate.EntryPureB
 import Symbolic.Proofs.Swarm.CREF.Prelude
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
 
 /-!
 # Flat-Bundle Regularity, Scrubbing, and Typed-Bundle Lemmas
@@ -40,7 +41,7 @@ Proves that flat bundle file lists satisfy `RegularFileList` and `IsScrubbedPath
 `parseBundleFiles` produces `BundleTyped` bundles.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

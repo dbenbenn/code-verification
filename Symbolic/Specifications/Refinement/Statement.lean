@@ -9,6 +9,7 @@ limitations under the License.
 
 module
 
+public import Symbolic.Specifications.Concrete.SessionRecordDecidable
 public import Symbolic.Specifications.Refinement.TraceExplanation
 
 /-!
@@ -107,9 +108,27 @@ def PreKeyNoMatch (r : ProtocolSetup) (t : CliTurn) (c : CliCall) : Prop :=
   c.party = r.bob ∧ (∃ peer, c.cmd = .recv peer) ∧ c.stdin.head? ≠ some wireWhisperTag ∧
     ∃ rec_, t.records r r.bob = some rec_ ∧ ¬ EligibleForSessionPromotion rec_ c.stdin
 
-open Classical in
+/-- Decides `PreKeyNoMatch`. Correct by construction (a `Decidable` instance); its body need not be read. -/
+instance instDecidablePreKeyNoMatch (r : ProtocolSetup) (t : CliTurn) (c : CliCall) :
+    Decidable (PreKeyNoMatch r t c) :=
+  letI : Decidable (∃ peer, c.cmd = .recv peer) :=
+    match c.cmd with
+    | .recv peer => isTrue ⟨peer, rfl⟩
+    | .init _ _ => isFalse fun ⟨_, h⟩ => by nomatch h
+    | .send _ => isFalse fun ⟨_, h⟩ => by nomatch h
+  letI : Decidable (∃ rec_, t.records r r.bob = some rec_ ∧
+      ¬ EligibleForSessionPromotion rec_ c.stdin) :=
+    match t.records r r.bob with
+    | none => isFalse fun ⟨_, h, _⟩ => by nomatch h
+    | some rec_ =>
+      if h : ¬ EligibleForSessionPromotion rec_ c.stdin then
+        isTrue ⟨rec_, rfl, h⟩
+      else
+        isFalse fun ⟨_, hsome, hp⟩ => h (Option.some.inj hsome ▸ hp)
+  inferInstanceAs (Decidable (_ ∧ _ ∧ _ ∧ _))
+
 /-- Updated `CliTurn` after call `c` exits with `code`, `out`, and `files`. -/
-noncomputable def CliTurn.after (t : CliTurn) (r : ProtocolSetup) (c : CliCall) (code : Nat)
+def CliTurn.after (t : CliTurn) (r : ProtocolSetup) (c : CliCall) (code : Nat)
     (out : HwBytes) (files : DirectorySnapshot) : CliTurn :=
   { dirs := fun q => if q = c.party then scrub files else t.dirs q
     sent := t.sent ++ (match code, c.cmd with

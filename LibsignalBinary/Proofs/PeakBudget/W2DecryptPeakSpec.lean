@@ -9,19 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
+import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
+public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
 public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvGroupSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCmkDhPeak
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptLeavesPeak
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptPhasePeak
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptRecordStorePeak
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptTrialPeak
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
+public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCmkDhPeak -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptLeavesPeak
+public import LibsignalBinary.Proofs.PeakBudget.W2DecryptPhasePeak -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W2DecryptRecordStorePeak -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptTrialPeak
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Peak Live-Heap Interface for W2 `message_decrypt_signal`
@@ -33,7 +36,7 @@ cancellation and black-box `SpqrStepEnv`; and composes the `Scope`-guarded `With
 and `TrialLoopEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -107,28 +110,28 @@ export W2DecryptCloneBounds (serialize_dom_phaseGroup sessStorePoll_dom_phaseGro
 /-! ## 2. `try_decrypt` Segments `S1`–`S9` (`W2TryDecryptEnv`) -/
 
 /-- W2 Segment 3 (`get_or_create_chain` DH commit) envelope. -/
-def W2Seg3DhCommitEnv (dhCap : Nat) (needGrow : Bool) (evs : List AllocEvent) : Prop :=
+@[expose] def W2Seg3DhCommitEnv (dhCap : Nat) (needGrow : Bool) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
     SeqEnv (· = dhCommitStep12Evs)
       (SeqEnv (· = dhCommitStep3Evs dhCap needGrow) FreeOnlyEvs) evs
 
 /-- W2 Segment 4 (`create_message_keys ≤ 2000`) envelope. -/
-def W2Seg4CmkStepEnv (caps : List Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def W2Seg4CmkStepEnv (caps : List Nat) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
     SeqEnv (BoundedNonFreeEvs 2000 4000 33)
       (SeqEnv (· = doublingChain104Evs caps) FreeOnlyEvs) evs
 
 /-- W2 Segment 7 (`verify_mac` + optional error string) envelope. -/
-def W2Seg7MacEnv (withAddr errAlloc : Bool) (evs : List AllocEvent) : Prop :=
+@[expose] def W2Seg7MacEnv (withAddr errAlloc : Bool) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ SeqEnv (· = s7CoreEvs withAddr errAlloc) FreeOnlyEvs evs
 
 /-- Failed-trial W2 Segment 8 (`aes_256_cbc_decrypt` error exit) envelope (`Δlive = 0`). -/
-def W2AesDecErrEnv (ctLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def W2AesDecErrEnv (ctLen : Nat) (evs : List AllocEvent) : Prop :=
   evs = [] ∨ evs = rustAllocEvents ctLen 1 ++ rustDeallocEvents ctLen 1
 
 /-- Full W2 `try_decrypt` (`S1` → `S3` → `S4` → `S5` → `S7` → `S8` → `S9`) envelope with black-box `SpqrStepEnv`.
 -/
-def W2TryDecryptEnv (dhCap : Nat) (needGrow : Bool) (caps : List Nat)
+@[expose] def W2TryDecryptEnv (dhCap : Nat) (needGrow : Bool) (caps : List Nat)
     (SpqrStepEnv : List AllocEvent → Prop) (withAddr errAlloc : Bool) (ctLen : Nat)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
@@ -141,7 +144,7 @@ def W2TryDecryptEnv (dhCap : Nat) (needGrow : Bool) (caps : List Nat)
                 (SeqEnv TrApplyBoundedEnv FreeOnlyEvs)))))) evs
 
 /-- Failed-trial W2 `try_decrypt` envelope (`S1` → `S3` → `S4` → `S5` → `S7` → `W2AesDecErrEnv`). -/
-def W2TryDecryptFailEnv (dhCap : Nat) (needGrow : Bool) (caps : List Nat)
+@[expose] def W2TryDecryptFailEnv (dhCap : Nat) (needGrow : Bool) (caps : List Nat)
     (SpqrStepEnv : List AllocEvent → Prop) (withAddr errAlloc : Bool) (ctLen : Nat)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
@@ -152,7 +155,7 @@ def W2TryDecryptFailEnv (dhCap : Nat) (needGrow : Bool) (caps : List Nat)
             (SeqEnv (W2Seg7MacEnv withAddr errAlloc)
               (SeqEnv (W2AesDecErrEnv ctLen) FreeOnlyEvs))))) evs
 
-def w2TryDecryptCum (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def w2TryDecryptCum (M : AllocCostModel) [HasFineReallocCredit M]
     (dhCap : Nat) (needGrow : Bool) (maxSteps maxOldCap c_spqr maxCt : Nat) : Nat :=
   6 * (2 * 160 + 9539) +
     (2 * HasFineReallocCredit.smallAllocCost M 33 +
@@ -166,20 +169,20 @@ def w2TryDecryptCum (M : AllocCostModel) [HasFineReallocCredit M]
     (2 * maxCt + 9539) +
     6 * (2 * 34 + 9539)
 
-def w2CmkChainLive (maxOldCap : Nat) : Nat :=
+@[expose] def w2CmkChainLive (maxOldCap : Nat) : Nat :=
   104 * max 4 (2 * maxOldCap) + 8195
 
 def w2CmkChainPeak (maxOldCap : Nat) : Nat :=
   (104 * maxOldCap + 8195) + (104 * max 4 (2 * maxOldCap) + 8195)
 
-def w2TryDecryptLive (maxOldCap l_spqr maxCt : Nat) : Nat :=
+@[expose] def w2TryDecryptLive (maxOldCap l_spqr maxCt : Nat) : Nat :=
   w2CmkChainLive maxOldCap + l_spqr + (maxCt + 8195)
 
-def w2TryDecryptPeak (maxOldCap l_spqr p_spqr maxCt : Nat) : Nat :=
+@[expose] def w2TryDecryptPeak (maxOldCap l_spqr p_spqr maxCt : Nat) : Nat :=
   max (w2CmkChainPeak maxOldCap)
     (w2CmkChainLive maxOldCap + max p_spqr (l_spqr + (maxCt + 8195)))
 
-def w2TryDecryptMaxReq (dhCap maxOldCap r_spqr maxCt : Nat) : Nat :=
+@[expose] def w2TryDecryptMaxReq (dhCap maxOldCap r_spqr maxCt : Nat) : Nat :=
   max 160 (max (max 416 (104 * (2 * dhCap)))
     (max (max 416 (104 * (2 * maxOldCap))) (max r_spqr (max 36 maxCt))))
 
@@ -645,10 +648,10 @@ theorem v104GrowStepCum_fine_le_143484 (c : Nat) :
       exact fineSmallReallocCost_le_143484 hle
     · rw [fineCostModel_largeMetaCost_eq]; decide
 
-def w2CmkChainTightLive (maxOldCap : Nat) : Nat :=
+@[expose] def w2CmkChainTightLive (maxOldCap : Nat) : Nat :=
   optLargeCost fineCostModel (104 * max 4 (2 * maxOldCap))
 
-def w2CmkChainTightPeak (maxOldCap : Nat) : Nat :=
+@[expose] def w2CmkChainTightPeak (maxOldCap : Nat) : Nat :=
   optLargeCost fineCostModel (104 * maxOldCap) +
     optLargeCost fineCostModel (104 * max 4 (2 * maxOldCap))
 
@@ -969,7 +972,7 @@ theorem w2Seg7Mac_fine_phaseCreditSpec_tight (withAddr errAlloc : Bool) :
     hsum (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 36)
 
 /-- Tight `fineCostModel` `Δcum` for `W2TryDecryptEnv` and `W2TryDecryptFailEnv`. -/
-def w2TryDecryptTightCum (dhCap : Nat) (needGrow : Bool) (maxSteps c_spqr : Nat) : Nat :=
+@[expose] def w2TryDecryptTightCum (dhCap : Nat) (needGrow : Bool) (maxSteps c_spqr : Nat) : Nat :=
   58734 +
     (2214 + (if needGrow then v104GrowStepCum fineCostModel dhCap else 0)) +
     (19210000 + maxSteps * 143484) +
@@ -978,10 +981,10 @@ def w2TryDecryptTightCum (dhCap : Nat) (needGrow : Bool) (maxSteps c_spqr : Nat)
     143484 +
     57642
 
-def w2TryDecryptTightLive (maxOldCap l_spqr maxCt : Nat) : Nat :=
+@[expose] def w2TryDecryptTightLive (maxOldCap l_spqr maxCt : Nat) : Nat :=
   w2CmkChainTightLive maxOldCap + l_spqr + optLargeCost fineCostModel maxCt
 
-def w2TryDecryptTightPeak (maxOldCap l_spqr p_spqr maxCt : Nat) : Nat :=
+@[expose] def w2TryDecryptTightPeak (maxOldCap l_spqr p_spqr maxCt : Nat) : Nat :=
   max (w2CmkChainTightPeak maxOldCap)
     (w2CmkChainTightLive maxOldCap + max p_spqr (l_spqr + optLargeCost fineCostModel maxCt))
 
@@ -1572,8 +1575,8 @@ theorem w2Seg7Mac_fine_phaseGroupSpec (withAddr errAlloc : Bool) :
     rintro _ rfl
     unfold s7CoreEvs W2DecryptTrialPeak.vmacEvs W2DecryptTrialPeak.computeMacEvs
     cases withAddr <;> cases errAlloc <;>
-      simp [GroupCreditKit.nonFreeCount_append, nonFreeCount_rustAllocEvents,
-        GroupCreditKit.nonFreeCount_rustDeallocEvents]
+      simp [GroupCreditKit.nonFreeCount, GroupCreditKit.nonFreeCount_append,
+        nonFreeCount_rustAllocEvents]
   have hnf : NonFreeBound (W2Seg7MacEnv withAddr errAlloc) (max 0 (4 + 0)) :=
     NonFreeBound.freeOnly.or (hnf7.seq NonFreeBound.freeOnly)
   exact (PhaseGroupSpec.of_nonFreeBound fineCostModel hnf).mono (by decide)

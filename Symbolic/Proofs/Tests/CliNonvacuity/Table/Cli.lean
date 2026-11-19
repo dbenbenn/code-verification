@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.SessionDag
-public import Symbolic.Proofs.Tests.CliNonvacuity.Table.CliTable
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionDag -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.CliTable -- proof-setup: allow-public-import
 import Symbolic.Proofs.Tests.CliNonvacuity.Table.Chunk00
 import Symbolic.Proofs.Tests.CliNonvacuity.Table.Chunk01
 import Symbolic.Proofs.Tests.CliNonvacuity.Table.Chunk02
@@ -28,7 +28,7 @@ import Symbolic.Proofs.Tests.CliNonvacuity.Table.Chunk13
 import Symbolic.Proofs.Tests.CliNonvacuity.Table.Chunk14
 import Symbolic.Proofs.Tests.CliNonvacuity.Table.Chunk15
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -80,7 +80,7 @@ theorem cliTable_sound :
     IdTreeSound myInterp S0Comp myGhostComp cliTable.depth cliTable.idTree :=
   idTreeSound_of_cert cliTable_wire cliTable_bytes
 
-noncomputable def cliGamma : DY.Bytes → HwBytes :=
+@[expose] def cliGamma : DY.Bytes → HwBytes :=
   tableGamma myInterp S0Comp myGhostComp cliTable
 
 theorem gamma_comp_eq_cliGamma : gamma myInterp S0Comp myGhostComp = cliGamma :=

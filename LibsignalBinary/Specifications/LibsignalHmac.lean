@@ -17,11 +17,12 @@ public import LibsignalBinary.Specifications.LibsignalAesCbc
 /-!
 # SHA-256 Compression Hook and Chaining-State Layout
 
-**Trusted: definitions used by the statement.** Memory layout of `sha2`'s 8-word little-endian
-SHA-256 chaining state (`shaStateBytes`, `readShaState`) and the extern hook `compress256Hook`
-modeling `sha2::sha256::compress256(state: &mut [u32; 8], blocks: &[[u8; 64]])` over an abstract
-compression function `F : ShaState → List (BitVec 8) → ShaState`. See
-`Computational/docs/TRUSTED_BASE.md`.
+**Checked by Lean.** Memory layout of `sha2`'s 8-word little-endian SHA-256 chaining state
+(`shaStateBytes`, `readShaState`) and the extern hook `compress256Hook` modeling
+`sha2::sha256::compress256(state: &mut [u32; 8], blocks: &[[u8; 64]])` over an abstract
+compression function `F : ShaState → List (BitVec 8) → ShaState` (verified directly as linked code
+in `CliElfLib`).
+See `Computational/docs/TRUSTED_BASE.md`.
 -/
 
 @[expose] public section

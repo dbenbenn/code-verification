@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables
-public import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+public import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.ReductionDsl.Tables
 import Computational.Proofs.ReductionDsl.Size
 import Mathlib.Algebra.Order.Ring.Star
@@ -23,7 +23,7 @@ the E2E `ReductionDsl` operator tables, provides `Expr.op` smart constructors, a
 roundtrip identities for the shared value encodings and game codecs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -1212,25 +1212,6 @@ theorem e2eCostedFits_iff (ℓ B : ℕ) (t : Ty (e2eSig ℓ)) (x : t.denote) :
 theorem e2eSamplers_costedSizeHonest (ℓ : ℕ) : CostedSampSizeHonest (e2eSamplers ℓ) :=
   costedSampSizeHonest_of_sampSizeHonest (e2eSamplers_sizeHonest ℓ)
 
-theorem e2ePureOps_costedSizeHonest (ℓ : ℕ) : CostedOpsSizeHonest (e2ePureOps ℓ) :=
-  costedOpsSizeHonest_of_opsSizeHonest (e2ePureOps_sizeHonest ℓ)
-
-theorem e2eCurveCheckOps_costedSizeHonest (ℓ : ℕ) {Pt : Type}
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
-    CostedOpsSizeHonest (e2eCurveCheckOps ℓ decT encT) :=
-  costedOpsSizeHonest_of_opsSizeHonest (e2eCurveCheckOps_sizeHonest ℓ decT encT)
-
-theorem e2eCryptoOps_costedSizeHonest (ℓ : ℕ) (P : SignalPqxdh.Primitives) (C : Crypto)
-    (K : CryptoVerification.LibsignalSpqrV1.MlKem) :
-    CostedOpsSizeHonest (e2eCryptoOps ℓ P C K) :=
-  costedOpsSizeHonest_of_opsSizeHonest (e2eCryptoOps_sizeHonest ℓ P C K)
-
-theorem e2ePrimOps_costedSizeHonest (ℓ : ℕ) {Pt : Type} (P : SignalPqxdh.Primitives) (C : Crypto)
-    (K : CryptoVerification.LibsignalSpqrV1.MlKem)
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
-    CostedOpsSizeHonest (e2ePrimOps ℓ P C K decT encT) :=
-  costedOpsSizeHonest_of_opsSizeHonest (e2ePrimOps_sizeHonest ℓ P C K decT encT)
-
 theorem e2eAdapterOps_costedSizeHonest (ℓ : ℕ) {Pt : Type}
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
     CostedOpsSizeHonest (e2eAdapterOps ℓ decT encT) :=
@@ -1244,7 +1225,7 @@ theorem e2eOps_costedSizeHonest (ℓ : ℕ) {Pt : Type} (P : SignalPqxdh.Primiti
 
 /-! ## `Expr.op` smart constructors -/
 
-def adapterPureOp {ℓ : ℕ} {Pt : Type} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
+@[expose] def adapterPureOp {ℓ : ℕ} {Pt : Type} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {Γ : List (Ty (e2eSig ℓ))} (o : E2EPureOp)
     (a : Expr (e2eAdapterOps ℓ decT encT) Γ (o.dom ℓ)) :
     Expr (e2eAdapterOps ℓ decT encT) Γ (o.cod ℓ) :=
@@ -1288,7 +1269,7 @@ def adapterPureOp {ℓ : ℕ} {Pt : Type} {decT : PublicKey → Option Pt} {encT
     (a : Expr (e2eAdapterOps ℓ decT encT) Γ (o.dom ℓ)) :
     (adapterPureOp o a).size = a.size + o.opSize + 1 := rfl
 
-def adapterCurveOp {ℓ : ℕ} {Pt : Type} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
+@[expose] def adapterCurveOp {ℓ : ℕ} {Pt : Type} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {Γ : List (Ty (e2eSig ℓ))} (o : E2ECurveCheckOp)
     (a : Expr (e2eAdapterOps ℓ decT encT) Γ ((e2eCurveCheckOps ℓ decT encT).dom o)) :
     Expr (e2eAdapterOps ℓ decT encT) Γ ((e2eCurveCheckOps ℓ decT encT).cod o) :=
@@ -1309,7 +1290,7 @@ def adapterCurveOp {ℓ : ℕ} {Pt : Type} {decT : PublicKey → Option Pt} {enc
     (a : Expr (e2eAdapterOps ℓ decT encT) Γ ((e2eCurveCheckOps ℓ decT encT).dom o)) :
     (adapterCurveOp o a).size = a.size + 1 := rfl
 
-def e2ePureOp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def e2ePureOp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : CryptoVerification.LibsignalSpqrV1.MlKem} {decT : PublicKey → Option Pt}
     {encT : Pt → PublicKey} {Γ : List (Ty (e2eSig ℓ))} (o : E2EPureOp)
     (a : Expr (e2eOps ℓ P C K decT encT) Γ (o.dom ℓ)) :
@@ -1334,7 +1315,7 @@ def e2ePureOp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     (a : Expr (e2eOps ℓ P C K decT encT) Γ (o.dom ℓ)) :
     (e2ePureOp o a).size = a.size + o.opSize + 1 := rfl
 
-def e2eCurveOp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def e2eCurveOp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : CryptoVerification.LibsignalSpqrV1.MlKem} {decT : PublicKey → Option Pt}
     {encT : Pt → PublicKey} {Γ : List (Ty (e2eSig ℓ))} (o : E2ECurveCheckOp)
     (a : Expr (e2eOps ℓ P C K decT encT) Γ ((e2eCurveCheckOps ℓ decT encT).dom o)) :
@@ -1359,7 +1340,7 @@ def e2eCurveOp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     (a : Expr (e2eOps ℓ P C K decT encT) Γ ((e2eCurveCheckOps ℓ decT encT).dom o)) :
     (e2eCurveOp o a).size = a.size + 1 := rfl
 
-def e2eCryptoOp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def e2eCryptoOp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : CryptoVerification.LibsignalSpqrV1.MlKem} {decT : PublicKey → Option Pt}
     {encT : Pt → PublicKey} {Γ : List (Ty (e2eSig ℓ))} (o : E2ECryptoOp)
     (a : Expr (e2eOps ℓ P C K decT encT) Γ (o.dom ℓ)) :
@@ -1388,22 +1369,22 @@ def e2eCryptoOp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto
 
 /-- Per-instance metadata stored by `L_bh` in `σ.1`:
 `((regIdA, (regIdB, (bobRemoteRegId, hdr))), bobAccepted)`. -/
-@[reducible] def adapterInstMetaT {ℓ : ℕ} : Ty (e2eSig ℓ) :=
+@[expose, reducible] def adapterInstMetaT {ℓ : ℕ} : Ty (e2eSig ℓ) :=
   .prod (.prod U32 (.prod U32 (.prod U32 hdrT))) .bool
 
 /-- State layout of `L_bh` over a driver-mirror state type `drvMirrorT`:
 `(instMetaTbl, (aliceAckedTbl, drvMirror))`. -/
-@[reducible] def adapterStateTy {ℓ : ℕ} (drvMirrorT : Ty (e2eSig ℓ)) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def adapterStateTy {ℓ : ℕ} (drvMirrorT : Ty (e2eSig ℓ)) : Ty (e2eSig ℓ) :=
   .prod (.tbl (.opt adapterInstMetaT)) (.prod (.tbl .bool) drvMirrorT)
 
-@[reducible] def adapterNoneSmRespExpr {S : SignalPqxdh.Setup} {ℓ : ℕ} {Ctl Pt : Type}
+@[expose, reducible] def adapterNoneSmRespExpr {S : SignalPqxdh.Setup} {ℓ : ℕ} {Ctl Pt : Type}
     {unStart : Ctl → SignalPqxdh.SessionId S}
     {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {Γ : List (Ty (e2eSig ℓ))} :
     Expr (e2eAdapterOps ℓ decT encT) Γ (e2eAdapterCodec S ℓ unStart).R :=
   .inr (.pair .none (.pair .none .none))
 
-@[reducible] def adapterCrCtx (S : SignalPqxdh.Setup) (ℓ : ℕ) {Ctl : Type}
+@[expose, reducible] def adapterCrCtx (S : SignalPqxdh.Setup) (ℓ : ℕ) {Ctl : Type}
     (unStart : Ctl → SignalPqxdh.SessionId S) (drvMirrorT : Ty (e2eSig ℓ)) :
     List (Ty (e2eSig ℓ)) :=
   [.bool,
@@ -1417,7 +1398,7 @@ def e2eCryptoOp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto
 
 /-- `Comp` AST of `L_bh`'s `.cr` (`corrupt`) handler arm over `e2eAdapterOps` and
 `e2eAdapterIface`. -/
-def adapterCrArm (S : SignalPqxdh.Setup) (ℓ : ℕ) {Ctl Pt : Type}
+@[expose] def adapterCrArm (S : SignalPqxdh.Setup) (ℓ : ℕ) {Ctl Pt : Type}
     (mkStart : SignalPqxdh.SessionId S → Ctl)
     (unStart : Ctl → SignalPqxdh.SessionId S)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
@@ -1469,18 +1450,6 @@ theorem adapterCrArm_cost (S : SignalPqxdh.Setup) (ℓ : ℕ) {Ctl Pt : Type}
     (adapterCrArm S ℓ mkStart unStart decT encT drvMirrorT).cost = 56665 := by
   simp only [adapterCrArm, adapterNoneSmRespExpr, Comp.cost, Expr.cost, cost_adapterPureOp,
     e2ePureOp_cost_encodeSessionRecord, Expr.v0, Expr.v1, Expr.v2, Expr.v4, Expr.v5]
-  omega
-
-theorem adapterCrSpine_total_cost (S : SignalPqxdh.Setup) (ℓ : ℕ) {Ctl Pt : Type}
-    (mkStart : SignalPqxdh.SessionId S → Ctl)
-    (unStart : Ctl → SignalPqxdh.SessionId S)
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
-    (drvMirrorT : Ty (e2eSig ℓ)) :
-    (adapterCrSpine S ℓ mkStart unStart decT encT drvMirrorT).cost +
-      (e2eAdapterCodec S ℓ unStart).codecCost ≤ 56740 := by
-  have hcc : (e2eAdapterCodec S ℓ unStart).codecCost ≤ 64 := by dsimp [e2eAdapterCodec]; omega
-  simp only [adapterCrSpine, adapterCrArm_cost, adapterNoneSmRespExpr, Comp.cost, Expr.cost,
-    Expr.v0, Expr.v1, Expr.v2, Expr.v3, Expr.v4, Expr.v5]
   omega
 
 @[simp] theorem adapterCrArm_size (S : SignalPqxdh.Setup) (ℓ : ℕ) {Ctl Pt : Type}

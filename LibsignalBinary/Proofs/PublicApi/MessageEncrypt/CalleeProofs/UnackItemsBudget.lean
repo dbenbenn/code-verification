@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleeProofs.UnackItems
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleeProofs.UnackItems -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
@@ -19,6 +19,9 @@ import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
 import ProofLib.SepLogic.WP.Apply
 meta import ProofLib.SepLogic.WP.Apply -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # VM-Preserving `unacknowledged_pre_key_message_items`
@@ -27,7 +30,7 @@ Proves `subroutine_ok (lsProg_36 H) (blkPl_36).base (withLsCodeLoaded lsmpl (una
 under `HookSat H lsTimeAddSym timeAddBudgetSpec` and `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -925,7 +928,7 @@ private theorem lsLogOff_eq [LibsignalPlacement] :
 
 /-! ## Relocatable `[LibsignalPlacement]` Contract and Proofs -/
 
-def unackItemsPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec UnackCall :=
+@[expose] def unackItemsPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec UnackCall :=
   withVmPreserved
     (CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.UnackItems.unackItemsPlacedSpec A)
 

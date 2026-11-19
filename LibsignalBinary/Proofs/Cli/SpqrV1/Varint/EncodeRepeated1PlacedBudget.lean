@@ -9,14 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeRepeated1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeRepeatedCommonPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2BasePlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2PlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeRepeated1Placed
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeRepeatedCommonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2BasePlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2PlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
@@ -28,7 +27,7 @@ Proves deterministic-capacity `encode_varint [local#4]` (Block `451`) and budget
 `encode_repeated::<Vec<u8>, Vec<u8>> [local#3]` (Block `448`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -105,7 +104,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-! ## 1. Deterministic-Capacity `encode_varint::<Vec<u8>> [local#4]` (Block `451` → Block `460`) -/
 
 /-- Single-byte `RawVec<u8>::grow_one` / deterministic capacity invariant. -/
-def VecCapStepInv2 (x : EncodeVarintGhost) (curCap : BitVec 64)
+@[expose] def VecCapStepInv2 (x : EncodeVarintGhost) (curCap : BitVec 64)
     (curBs : List (BitVec 8)) (remLen : Nat) : Prop :=
   (pushBytesStep (encodeVarint x.val).length x.cap.toNat x.bs.length).1 =
     (pushBytesStep remLen curCap.toNat curBs.length).1

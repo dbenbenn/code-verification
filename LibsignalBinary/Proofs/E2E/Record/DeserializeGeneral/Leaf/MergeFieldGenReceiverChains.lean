@@ -11,13 +11,13 @@ module
 
 public import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Defs
 public import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.MergeReceiverChainsAux.Base
-public import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.Instances
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.Instances -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.MergeReceiverChains
 import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.MergeReceiverChainsAux.Fetch
 import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.MergeReceiverChainsAux.Steps
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Tag-7 Leaf (`mergeFieldGenReceiverChains_ok`) for `SessionStructure::merge_field`
@@ -27,7 +27,7 @@ on the stack via `message::merge<Chain>` and pushing it into `Vec<Chain>` at `ss
 `RawVec<Chain>::grow_one` when `len = cap`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.MergeFieldGenReceiverChains
 
@@ -44,7 +44,7 @@ open CryptoVerification.E2E.Record.DeserializeSeed CryptoVerification.E2E.Record
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
-attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr sessionImg0
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 attribute [local arm64_norm, local wp_norm]
   calleeSavedVRegs_advancePC calleeSavedVRegs_setPC calleeSavedVRegs_setMem
@@ -254,7 +254,7 @@ theorem arrayAt_prostChainGAt_move_bytes (A : RustAlloc) (cs : List ChainG) (a :
 
 /-! ## `prostSSGAt` `recv` Open/Close and `growOneSpec` Helpers -/
 
-def prostSSGRest (A : RustAlloc) (ss : BitVec 64) (v : SSG) : SepProp :=
+@[expose] def prostSSGRest (A : RustAlloc) (ss : BitVec 64) (v : SSG) : SepProp :=
   vecU8 A ss v.lik ∗ vecU8 A (ss + 0x18#64) v.rik ∗ vecU8 A (ss + 0x30#64) v.root ∗
     vecU8 A (ss + 0x60#64) [] ∗ vecU8 A (ss + 0x78#64) [] ∗
     (match v.sender with
@@ -376,82 +376,6 @@ theorem vecBuf_recv_not_full_open (cap ptr : BitVec 64) (cs : List ChainG)
   rw [hrem, memRegion_split (ptr + BitVec.ofNat 64 (cs.length * 104)) 104 _ (by omega),
       hoff, hmul]
 
-theorem growOne_inImage_pre_eq (ss cap ptr sp : BitVec 64) (bs : List (BitVec 8))
-    (s : State) (hsp : s.sp = sp) :
-    ((CryptoVerification.LibsignalSession.growOneSpec A0).inImage sessionImg0).pre
-      (ss + 0x48#64, cap, ptr, bs) s =
-    ⌜(bs.length = cap.toNat * 104 ∧ s.readReg64 .x0 = ss + 0x48#64 ∧
-        ptr ≠ 0#64 ∧ 8 + max (2 * cap.toNat) 4 * 104 ≤ 2 ^ 63) ∧
-      sessionImg0.FrozenLoaded s ∧ s.symtab = sessionImg0.symtab⌝ ∗
-    (((ss + 0x48#64) ↦₆₄ cap) ∗ ((ss + 0x50#64) ↦₆₄ ptr) ∗
-      (if cap = 0#64 then emp else A0.live ptr bs.length 8 ∗ (ptr ↦ₛ bs)) ∗
-      stackAt sp 4608) := by
-  unfold Spec.inImage CryptoVerification.LibsignalSession.growOneSpec
-  dsimp only
-  have e50 : ss + 0x48#64 + 8#64 = ss + 0x50#64 := by rw [BitVec.add_assoc]; rfl
-  have hpool : A0.pool = emp := rfl
-  have h0 : (0 : BitVec 64) = 0#64 := rfl
-  rw [e50, hpool, hsp, h0]
-  simp only [emp_sepConj, ← sepConj_assoc, pure_sepConj_pure]
-  ac_rfl
-
-theorem growOne_post_elim_sp (ss cap ptr sp : BitVec 64) (cs : List ChainG)
-    (bs : List (BitVec 8)) (s_pre sf : State)
-    (hsp : s_pre.sp = sp)
-    (hfull : cs.length = cap.toNat)
-    (hlt5 : cs.length < maxReceiverChains)
-    (hbs : bs.length = cap.toNat * 104) :
-    ((CryptoVerification.LibsignalSession.growOneSpec A0).inImage sessionImg0).post
-        (ss + 0x48#64, cap, ptr, bs) s_pre sf ⊢
-      ⌜sf.trace = s_pre.trace⌝ ∗
-      ∃∗ cap' : BitVec 64, ∃∗ p' : BitVec 64,
-        ⌜cs.length < cap'.toNat ∧ cap'.toNat * 104 < 2 ^ 63 ∧ p' ≠ 0#64⌝ ∗
-        ((ss + 0x48#64) ↦₆₄ cap') ∗ ((ss + 0x50#64) ↦₆₄ p') ∗
-        (p' ↦ₛ bs) ∗
-        memRegion (p' + BitVec.ofNat 64 cs.length * 104#64) 104 ∗
-        memRegion (p' + BitVec.ofNat 64 ((cs.length + 1) * 104))
-          ((cap'.toNat - (cs.length + 1)) * 104) ∗
-        stackAt sp 4608 := by
-  unfold Spec.inImage CryptoVerification.LibsignalSession.growOneSpec
-  dsimp only
-  apply Entails.pure_left; intro htr
-  refine Entails.pure_right htr ?_
-  apply Entails.sepExists_elim; intro p'
-  set newCap : Nat := max (2 * cap.toNat) 4
-  set cap' : BitVec 64 := BitVec.ofNat 64 newCap
-  have h5 : maxReceiverChains = 5 := rfl
-  have hcap'_toNat : cap'.toNat = newCap := by
-    dsimp only [cap', newCap]
-    rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  have hlt_cap' : cs.length < cap'.toNat := by omega
-  have hcap'_lt : cap'.toNat * 104 < 2 ^ 63 := by omega
-  refine Entails.sepExists_right cap' (Entails.sepExists_right p' ?_)
-  have e50 : ss + 0x48#64 + 8#64 = ss + 0x50#64 := by rw [BitVec.add_assoc]; rfl
-  have hlive : A0.live p' (newCap * 104) 8 = emp := rfl
-  have hpool : A0.pool = emp := rfl
-  have h0 : (0 : BitVec 64) = 0#64 := rfl
-  rw [e50, hlive, hpool, hsp, h0]
-  simp only [emp_sepConj]
-  apply Entails.pure_left; intro hp'
-  refine Entails.pure_right ⟨hlt_cap', hcap'_lt, hp'⟩ ?_
-  have hrem : (newCap - cap.toNat) * 104 =
-      104 + (cap'.toNat - (cs.length + 1)) * 104 := by
-    have : newCap - cap.toNat = 1 + (cap'.toNat - (cs.length + 1)) := by omega
-    rw [this, Nat.add_mul, Nat.one_mul]
-  have hbs_eq : BitVec.ofNat 64 bs.length = BitVec.ofNat 64 (cs.length * 104) := by
-    rw [hbs, hfull]
-  have hmul : BitVec.ofNat 64 (cs.length * 104) = BitVec.ofNat 64 cs.length * 104#64 := by
-    rw [BitVec.ofNat_mul]
-  have hoff :
-      p' + BitVec.ofNat 64 (cs.length * 104) + BitVec.ofNat 64 104 =
-        p' + BitVec.ofNat 64 ((cs.length + 1) * 104) := by
-    rw [BitVec.add_assoc, ← BitVec.ofNat_add]
-    congr 2; omega
-  rw [hbs_eq, hrem,
-      memRegion_split (p' + BitVec.ofNat 64 (cs.length * 104)) 104 _ (by omega),
-      hoff, hmul]
-  exact Entails.of_eq (by ac_rfl)
-
 theorem vecAt_recv_push_fold (ss cap ptr : BitVec 64) (cs : List ChainG) (c : ChainG)
     (hlt : cs.length < cap.toNat) (hcap_lt : cap.toNat * 104 < 2 ^ 63) (hptr : ptr ≠ 0#64) :
     ((ss + 0x48#64) ↦₆₄ cap) ∗ ((ss + 0x50#64) ↦₆₄ ptr) ∗
@@ -538,354 +462,5 @@ theorem recv_payload_append_eq {fld : GenField} {c : ChainG} (hfld : fld = .recv
   subst hfld
   rfl
 
-theorem chainMergeGen_pre_eq (x : MergeFieldGenGhost) (c : ChainG) (s0_sp_232 sp : BitVec 64)
-    (s : State) (hfld : x.fld = .recv c) (hsp : s.sp = sp) :
-    chainMergeGenSpec.pre ⟨s0_sp_232, c, x.bufRef, x.slot, x.ptr, x.tail⟩ s =
-      ⌜(s.readReg64 .x0).setWidth 8 = 2#8 ∧ s.readReg64 .x1 = s0_sp_232 ∧
-        s.readReg64 .x2 = x.bufRef ∧ (s.readReg64 .x3).setWidth 32 = 99#32 ∧
-        c.Ok ∧ (x.fld.payload ++ x.tail).length < 2 ^ 32 ∧
-        sessionImg0.FrozenLoaded s ∧ s.symtab = sessionImg0.symtab⌝ ∗
-      (prostChainGAt A0 s0_sp_232 ChainG.empty ∗ (x.bufRef ↦₆₄ x.slot) ∗
-        Prost.sliceCursorAt x.slot x.ptr (x.fld.payload ++ x.tail) ∗
-        stackAt sp chainMergeStack) := by
-  unfold chainMergeGenSpec
-  dsimp only
-  rw [recv_payload_append_eq hfld x.tail, hsp]
-
-theorem chainMergeGen_post_eq (x : MergeFieldGenGhost) (c : ChainG) (s0_sp_232 sp : BitVec 64)
-    (s_pre sf : State) (hfld : x.fld = .recv c) (hsp : s_pre.sp = sp) :
-    chainMergeGenSpec.post ⟨s0_sp_232, c, x.bufRef, x.slot, x.ptr, x.tail⟩ s_pre sf ⊢
-      ⌜sf.trace = s_pre.trace ∧ sf.readReg64 .x0 = 0#64⌝ ∗
-      prostChainGAt A0 s0_sp_232 c ∗ (x.bufRef ↦₆₄ x.slot) ∗
-      Prost.sliceCursorAfter x.slot x.ptr (x.fld.payload ++ x.tail) x.tail ∗
-      stackAt sp chainMergeStack := by
-  unfold chainMergeGenSpec
-  dsimp only
-  rw [recv_payload_append_eq hfld x.tail, hsp]
-  exact Entails.refl _
-
-/-- Step from `+0x45c` (`entry + 1116#64`) through the 104-byte `Chain` move and epilogue
-(`+0x758..+0x770`) to `ret`. -/
-theorem step_receiverChains_from_0x45c_to_ret
-    (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (P : GenField → Prop) (x : MergeFieldGenGhost) (c : ChainG)
-    (s0 s : State) (Fr : SepProp) (w56 cap' ptr' : BitVec 64)
-    (hfld : x.fld = .recv c)
-    (hlt : x.v.recv.length < cap'.toNat) (hcap_lt : cap'.toNat * 104 < 2 ^ 63) (hptr : ptr' ≠ 0#64)
-    (hpc : s.pc = (tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr mergeFieldName + 1116#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 240#64)
-    (hsp_align : s.spAligned = true)
-    (htr : s.trace = s0.trace)
-    (hx8 : s.readReg64 .x8 = x.ss)
-    (hx19 : s.readReg64 .x19 = BitVec.ofNat 64 x.v.recv.length)
-    (hx26 : s.readReg64 .x26 = s0.readReg64 .x26)
-    (hx27 : s.readReg64 .x27 = s0.readReg64 .x27)
-    (hx28 : s.readReg64 .x28 = s0.readReg64 .x28)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0) :
-    SepWP (tripleRatchetProgAt sessionImg0.base C ctl abs) (s0.readReg64 Reg.lr) s
-      (((x.ss + 0x48#64) ↦₆₄ cap') ∗ ((x.ss + 0x50#64) ↦₆₄ ptr') ∗
-        ((x.ss + 0x58#64) ↦₆₄ BitVec.ofNat 64 x.v.recv.length) ∗
-        arrayAt (fun c' a => prostChainGAt A0 a c') 104 ptr' x.v.recv ∗
-        memRegion (ptr' + BitVec.ofNat 64 x.v.recv.length * 104#64) 104 ∗
-        memRegion (ptr' + BitVec.ofNat 64 ((x.v.recv.length + 1) * 104))
-          ((cap'.toNat - (x.v.recv.length + 1)) * 104) ∗
-        prostSSGRest A0 x.ss x.v ∗
-        prostChainGAt A0 (s0.sp - 232#64) c ∗
-        mfSavedRegs_receiverChains s0.sp s0 w56 ∗ mfFramePad_receiverChains s0.sp ∗
-        stackAt (s0.sp - 240#64) mfSubStack_receiverChains ∗
-        (x.bufRef ↦₆₄ x.slot) ∗
-        Prost.sliceCursorAfter x.slot x.ptr (x.fld.payload ++ x.tail) x.tail)
-      (fun sf P_f =>
-        ((sf.mem ⊨ P_f ∗ Fr) → (sf.mem ⊨ (mergeFieldGenSpec P).post x s0 sf ∗ Fr)) ∧
-          sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf) := by
-  mf7_fetches_range sessionImg0.base (Rust.withPanics (tripleRatchetExterns C ctl abs)) 1116 1196
-  mf7_fetches_range sessionImg0.base (Rust.withPanics (tripleRatchetExterns C ctl abs)) 1880 1904
-  dsimp only [tripleRatchetProgAt, mergeFieldName] at hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase sessionImg0.base (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" = entry
-  examples_hide_fetches
-  apply SepWP.fold (prostChainGAt_move_chunks104 A0 (s0.sp - 232#64) c) (by sep_focus)
-  simp only [sepExists_sepConj_left, sepConj_assoc]
-  apply SepWP.exists_elim; intro q0
-  apply SepWP.exists_elim; intro q1
-  apply SepWP.exists_elim; intro q2
-  apply SepWP.exists_elim; intro q3
-  apply SepWP.exists_elim; intro q4
-  apply SepWP.exists_elim; intro q5
-  apply SepWP.exists_elim; intro w6
-  apply SepWP.exists_elim; intro H
-  apply SepWP.pure_elim; intro hmov
-  set dst : BitVec 64 := ptr' + BitVec.ofNat 64 x.v.recv.length * 104#64
-  apply SepWP.fold (Entails.of_eq (memRegion104_eq_exists_chunks104_6QWAt_receiverChains dst)) (by sep_focus)
-  simp only [sepExists_sepConj_left]
-  apply SepWP.exists_elim; intro d0
-  apply SepWP.exists_elim; intro d1
-  apply SepWP.exists_elim; intro d2
-  apply SepWP.exists_elim; intro d3
-  apply SepWP.exists_elim; intro d4
-  apply SepWP.exists_elim; intro d5
-  apply SepWP.exists_elim; intro dw6
-  conv => arg 4; rw [chunks104_6QWAt_stack_eq_receiverChains s0.sp q0 q1 q2 q3 q4 q5 w6,
-    chunks104_6QWAt_dst_eq_receiverChains dst d0 d1 d2 d3 d4 d5 dw6, mfSavedRegs_receiverChains]
-  wp_steps
-  conv => arg 4; rw [← chunks104_6QWAt_dst_eq_receiverChains dst q0 q1 q2 q3 q4 q5 w6,
-    ← chunks104_6QWAt_stack_eq_receiverChains s0.sp q0 q1 q2 q3 q4 q5 w6,
-    ← mfSavedRegs_receiverChains]
-  apply SepWP.fold (hmov dst) (by sep_focus)
-  apply SepWP.fold (prostSSGAt_fold_apply_recv x.ss cap' ptr' x.v c hlt hcap_lt hptr) (by sep_focus)
-  apply SepWP.fold (stackAt_receiverChains_epilogue_fold_receiverChains s0.sp s0 w56 q0 q1 q2 q3 q4 q5 w6) (by sep_focus)
-  simp only [mergeFieldGenSpec, hfld]
-  wp_done
-
-/-- Step from `+0x2bc` (`entry + 700#64`, return of `message::merge<Chain>`) to `ret`,
-handling both `x.v.recv.length = cap.toNat` (`grow_one` at `+0x9ac`) and `x.v.recv.length < cap.toNat`. -/
-theorem step_receiverChains_from_0x2bc_to_ret
-    (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (hG : subroutine_ok (tripleRatchetProgAt sessionImg0.base C ctl abs)
-      ((tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr growOneChainName)
-      ((CryptoVerification.LibsignalSession.growOneSpec A0).inImage sessionImg0))
-    (P : GenField → Prop) (x : MergeFieldGenGhost) (c : ChainG)
-    (s0 s : State) (Fr : SepProp) (w56 : BitVec 64)
-    (hfresh : x.v.recv.length < maxReceiverChains)
-    (hfld : x.fld = .recv c)
-    (hF : sessionImg0.FrozenLoaded s)
-    (hsym : s.symtab = sessionImg0.symtab)
-    (hpc : s.pc = (tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr mergeFieldName + 700#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 240#64)
-    (hsp_align : s.spAligned = true)
-    (htr : s.trace = s0.trace)
-    (hx0 : s.readReg64 .x0 = 0#64)
-    (hx20 : s.readReg64 .x20 = x.ss)
-    (hx26 : s.readReg64 .x26 = s0.readReg64 .x26)
-    (hx27 : s.readReg64 .x27 = s0.readReg64 .x27)
-    (hx28 : s.readReg64 .x28 = s0.readReg64 .x28)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0) :
-    SepWPp (tripleRatchetProgAt sessionImg0.base C ctl abs) (s0.readReg64 Reg.lr) s
-      (prostChainGAt A0 (s0.sp - 232#64) c ∗
-        (x.bufRef ↦₆₄ x.slot) ∗
-        Prost.sliceCursorAfter x.slot x.ptr (x.fld.payload ++ x.tail) x.tail ∗
-        stackAt (s0.sp - 240#64) chainMergeStack ∗
-        memRegion ((s0.sp - 240#64) - 16144#64) 3856 ∗
-        mfSavedRegs_receiverChains s0.sp s0 w56 ∗
-        mfFramePad_receiverChains s0.sp ∗
-        prostSSGAt A0 x.ss x.v)
-      (fun sf P_f =>
-        ((sf.mem ⊨ P_f ∗ Fr) → (sf.mem ⊨ (mergeFieldGenSpec P).post x s0 sf ∗ Fr)) ∧
-          sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
-      (fun sf P_f =>
-        (sf.mem ⊨ P_f ∗ Fr) → (sf.mem ⊨ (mergeFieldGenSpec P).onPanic x s0 sf ∗ Fr)) := by
-  have hG' : subroutine_ok (tripleRatchetProgAt sessionImg0.base C ctl abs)
-      ((tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr mergeFieldName + bv% (ls_off% "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>"))
-      ((CryptoVerification.LibsignalSession.growOneSpec A0).inImage sessionImg0) := by
-    rwa [growOneChain_fnAddr_eq_receiverChains]
-  have h45c := @step_receiverChains_from_0x45c_to_ret C ctl abs P x c s0
-  mf7_fetches_range sessionImg0.base (Rust.withPanics (tripleRatchetExterns C ctl abs)) 700 700
-  mf7_fetches_range sessionImg0.base (Rust.withPanics (tripleRatchetExterns C ctl abs)) 1096 1112
-  mf7_fetches_range sessionImg0.base (Rust.withPanics (tripleRatchetExterns C ctl abs)) 2472 2484
-  dsimp only [tripleRatchetProgAt, mergeFieldName] at hG' h45c hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase sessionImg0.base (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" = entry
-  examples_hide_fetches
-  apply SepWPp.fold (Entails.of_eq (stackAt_sub_to_chainMerge_receiverChains (s0.sp - 240#64)).symm) (by sep_focus)
-  rw [prostSSGAt_eq_recv_sep_rest A0 x.ss x.v]
-  apply SepWPp.fold (vecAt_recv_open x.ss x.v.recv) (by sep_focus)
-  simp only [sepExists_sepConj_left, sepConj_assoc]
-  apply SepWPp.exists_elim; intro cap
-  apply SepWPp.exists_elim; intro ptr
-  apply SepWPp.pure_left; rintro ⟨hlen_le, hcap_lt, hptr⟩
-  by_cases hfull : x.v.recv.length = cap.toNat
-  · apply SepWPp.fold (vecBuf_recv_full_open cap ptr x.v.recv hfull) (by sep_focus)
-    simp only [sepExists_sepConj_left, sepConj_assoc]
-    apply SepWPp.exists_elim; intro bs
-    apply SepWPp.exists_elim; intro H
-    apply SepWPp.pure_left; rintro ⟨hbs_len, hmov⟩
-    have hlen_cap : BitVec.ofNat 64 x.v.recv.length = cap := ofNat_length_eq_cap_of_eq hfull
-    have hmax_lt : 8 + max (2 * cap.toNat) 4 * 104 ≤ 2 ^ 63 := by
-      have h5 : maxReceiverChains = 5 := rfl
-      omega
-    rw [hlen_cap, stackAt_sub_to_growOne_receiverChains (s0.sp - 240#64)]
-    apply of_sepWP_inImage_receiverChains (entry + bv% (ls_off% "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) hF hsym
-    wp_steps
-    refine SepWP.done (by simp only [arm64_norm]) (by simp only [arm64_norm, hrun]) ?_
-    intro hF1 hsym1
-    refine SepWPp.call_frame (x := (x.ss + 0x48#64, cap, ptr, bs))
-      (ret_pc := entry + bv% (2480)) hG'
-      (by simp only [arm64_norm]) (by simp only [arm64_norm, hrun])
-      (by simp only [State.spAligned, arm64_norm] at hsp_align ⊢; exact hsp_align)
-      (by simp only [arm64_norm])
-      (growOne_inImage_pre_eq x.ss cap ptr (s0.sp - 240#64) bs _ (by simp only [arm64_norm, hsp]))
-      ⟨⟨hbs_len, by simp only [arm64_norm], hptr, hmax_lt⟩, hF1, hsym1⟩
-      (by sep_focus)
-      (fun _ _ _ _ hex => allowPanic_not_exited hex)
-      (fun sf _ hpan => allowPanic_frame (allocFailedIn_trans_receiverChains (by simp only [arm64_norm, htr])) hpan) ?_
-    intro sm hpcm hrunm hspm hcsm
-    simp only [CalleeSavedPreserved] at hcsm
-    obtain ⟨hx19m, hx20m, hx21m, hx22m, hx23m, hx24m, hx25m, hx26m, hx27m, hx28m, hfpm, hvregsm⟩ := hcsm
-    simp (config := { decide := true }) only [arm64_norm, hx20, hx26, hx27, hx28, hsp, hvregs] at hpcm hspm hx19m hx20m hx21m hx22m hx23m hx24m hx25m hx26m hx27m hx28m hfpm hvregsm
-    have hsp_align_m : sm.spAligned = true := by
-      simp only [State.spAligned] at hsp_align ⊢
-      rw [hspm, ← hsp]
-      exact hsp_align
-    refine SepWPp.fold
-      (growOne_post_elim_sp x.ss cap ptr (s0.sp - 240#64) x.v.recv bs _ sm ?_ hfull hfresh hbs_len) rfl ?_
-    · simp only [arm64_norm, hsp]
-    simp only [sepConj_assoc]
-    apply SepWPp.pure_left; intro htr_m
-    have htr_m' : sm.trace = s0.trace := by simpa only [arm64_norm, htr] using htr_m
-    simp only [sepExists_sepConj_left, sepConj_assoc]
-    apply SepWPp.exists_elim; intro cap'
-    apply SepWPp.exists_elim; intro p'
-    apply SepWPp.pure_left; rintro ⟨hlt_cap', hcap_lt', hp'⟩
-    apply SepWPp.fold (hmov p') (by sep_focus)
-    apply SepWPp.fold (Entails.of_eq (stackAt_sub_to_growOne_receiverChains (s0.sp - 240#64)).symm) (by sep_focus)
-    rw [← hlen_cap] at hx19m ⊢
-    apply SepWPp.of_sepWP (mid := entry + bv% (1116))
-    wp_steps
-    refine SepWP.done (by simp only [arm64_norm]) (by simp only [arm64_norm, hrunm]) ?_
-    apply SepWPp.of_sepWP_ret
-    refine SepWP.weaken_pre ?_
-      (h45c _ Fr w56 cap' p' hfld hlt_cap' hcap_lt' hp' ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_)
-    · exact Entails.of_eq (by ac_rfl)
-    · simp only [arm64_norm]
-    · simp only [arm64_norm, hrunm]
-    · simp only [arm64_norm, hspm]
-    · simp only [State.spAligned, arm64_norm] at hsp_align_m ⊢; exact hsp_align_m
-    · simp only [arm64_norm, htr_m']
-    · simp only [arm64_norm]
-    · simp only [arm64_norm, hx19m]
-    · simp only [arm64_norm, hx26m]
-    · simp only [arm64_norm, hx27m]
-    · simp only [arm64_norm, hx28m]
-    · simp only [arm64_norm, hvregsm]
-  · have hlt : x.v.recv.length < cap.toNat := by omega
-    have hbeq : (BitVec.ofNat 64 x.v.recv.length == cap) = false := beq_ofNat_len_cap_false hlt
-    rw [vecBuf_recv_not_full_open cap ptr x.v.recv hlt hcap_lt]
-    apply SepWPp.of_sepWP (mid := entry + bv% (1116))
-    wp_steps
-    refine SepWP.done (by simp only [arm64_norm])
-      (by simp only [arm64_norm, hrun]) ?_
-    apply SepWPp.of_sepWP_ret
-    refine SepWP.weaken_pre ?_
-      (h45c _ Fr w56 cap ptr hfld hlt hcap_lt hptr ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_)
-    · exact Entails.of_eq (by ac_rfl)
-    · simp only [arm64_norm]
-    · simp only [arm64_norm, hrun]
-    · simp only [arm64_norm, hsp]
-    · simp only [State.spAligned, arm64_norm] at hsp_align ⊢; exact hsp_align
-    · simp only [arm64_norm, htr]
-    · simp only [arm64_norm]
-    · simp only [arm64_norm]
-    · simp only [arm64_norm, hx26]
-    · simp only [arm64_norm, hx27]
-    · simp only [arm64_norm, hx28]
-    · simp only [arm64_norm, hvregs]
-
-theorem mergeFieldGenReceiverChains_ok (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (hC : DeserializeCallees C ctl abs) (hCh : ChainMergeGenOk C ctl abs) :
-    MergeFieldGenOk C ctl (fun fl => fl.tag = 7) abs := by
-  apply subroutine_ok_of_sepWPp
-  intro x Fr s0 hpc hrun hpre hsp
-  refine ⟨_, Fr, hpre, ?_⟩
-  conv => arg 4; dsimp only [mergeFieldGenSpec]
-  apply SepWPp.pure_left
-  rintro ⟨hx0, hx1, hx2, hx3, hx4, htag, hOk, hFresh, hlen, hF, hsym⟩
-  obtain ⟨c, hfld⟩ := eq_recv_of_tag_eq_7 htag
-  have hcOk : c.Ok := by rw [hfld] at hOk; exact hOk.1
-  have hfresh : x.v.recv.length < maxReceiverChains := by rw [hfld] at hFresh; exact hFresh
-  rw [hfld] at hx1 hx2
-  dsimp only [GenField.tag, GenField.wt, CryptoVerification.LibsignalProtoCodec.WireType.toNat,
-    BitVec.ofNat_eq_ofNat] at hx1 hx2
-  have hx2' : BitVec.zeroExtend 64 (BitVec.truncate 32 (s0.readReg64 .x2)) &&& 255#64 = 2#64 :=
-    zext64_trunc32_and_255_eq_of_trunc8_receiverChains hx2
-  have hsp0 : s0.sp &&& 15#64 = 0#64 := eq_of_beq hsp
-  have hsp240 : (s0.sp - 240#64) &&& 15#64 = 0#64 := sp_sub_240_aligned_receiverChains hsp0
-  have hsp240_beq : ((s0.sp - 240#64) &&& 15#64 == 0#64) = true := beq_iff_eq.mpr hsp240
-  have he : (tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr mergeFieldName =
-      sessionImg0.base + bv% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>") :=
-    mergeField_fnAddr_eq_base_add_receiverChains C ctl
-  have hCh' : subroutine_ok (tripleRatchetProgAt sessionImg0.base C ctl abs)
-      ((tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr mergeFieldName + bv% (2 ^ 64 + (ls_off% "prost::encoding::message::merge::<libsignal_protocol::proto::storage::session_structure::Chain, &mut &[u8]> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")))
-      chainMergeGenSpec := by
-    rw [chainMerge_fnAddr_eq_receiverChains]
-    exact hCh
-  have h2bc := @step_receiverChains_from_0x2bc_to_ret C ctl abs hC.2.2.2
-    (fun fl => fl.tag = 7) x c s0
-  mf7_fetches_range sessionImg0.base (Rust.withPanics (tripleRatchetExterns C ctl abs)) 0 60
-  mf7_fetches_range sessionImg0.base (Rust.withPanics (tripleRatchetExterns C ctl abs)) 628 696
-  rw [stackAt_mergeFieldStack_split_receiverChains s0.sp,
-    memRegion80_chainInit_eq_cells10_receiverChains s0.sp,
-    memRegion80_eq_cells10_receiverChains s0.sp]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  apply SepWPp.exists_elim; intro c0
-  apply SepWPp.exists_elim; intro c1
-  apply SepWPp.exists_elim; intro c2
-  apply SepWPp.exists_elim; intro c3
-  apply SepWPp.exists_elim; intro c4
-  apply SepWPp.exists_elim; intro c5
-  apply SepWPp.exists_elim; intro c6
-  apply SepWPp.exists_elim; intro c7
-  apply SepWPp.exists_elim; intro c8
-  apply SepWPp.exists_elim; intro c9
-  apply SepWPp.exists_elim; intro w80
-  apply SepWPp.exists_elim; intro w72
-  apply SepWPp.exists_elim; intro w64
-  apply SepWPp.exists_elim; intro w56
-  apply SepWPp.exists_elim; intro w48
-  apply SepWPp.exists_elim; intro w40
-  apply SepWPp.exists_elim; intro w32
-  apply SepWPp.exists_elim; intro w24
-  apply SepWPp.exists_elim; intro w16
-  apply SepWPp.exists_elim; intro w8
-  dsimp only [tripleRatchetProgAt, mergeFieldName] at he hCh' h2bc hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase sessionImg0.base (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" = entry
-  have hadrp : (entry + bv% (40) &&& bv% (2 ^ 64 - 4096)) = sessionImg0.base + 20480#64 :=
-    adrp_0x4601c_40_eq_receiverChains he
-  clear he
-  examples_hide_fetches
-  apply of_sepWP_inImage_receiverChains (entry + bv% (2 ^ 64 + (ls_off% "prost::encoding::message::merge::<libsignal_protocol::proto::storage::session_structure::Chain, &mut &[u8]> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>"))) hF hsym
-  apply sepWP_intro_rodata_tag7_receiverChains hF
-  wp_steps
-  apply sepWP_drop_left_receiverChains
-  apply SepWP.fold (prostChainGAt_default_of_cells_lit s0.sp) (by sep_focus)
-  apply SepWP.fold (mfSavedRegs_intro_receiverChains s0.sp s0 c3) (by sep_focus)
-  apply SepWP.fold (Entails.of_eq (stackAt_sub_to_chainMerge_receiverChains (s0.sp - 240#64))) (by sep_focus)
-  refine SepWP.done (by simp only [arm64_norm]) (by simp only [arm64_norm, hrun]) ?_
-  intro hF1 hsym1
-  refine call_frame_inImage_receiverChains (ret_pc := entry + bv% (700)) hF1 hsym1 hCh'
-    (by simp only [arm64_norm]) (by simp only [arm64_norm, hrun])
-    (by simp only [State.spAligned, arm64_norm] at hsp ⊢; exact hsp)
-    (by simp only [arm64_norm])
-    (chainMergeGen_pre_eq x c (s0.sp - 232#64) (s0.sp - 240#64) _ hfld (by simp only [arm64_norm]))
-    ⟨by simp only [arm64_norm], by simp only [arm64_norm], by simp only [arm64_norm],
-      by simp only [arm64_norm], hcOk, hlen, hF1, hsym1⟩
-    (by sep_focus)
-    (fun _ _ _ _ hex => allowPanic_not_exited hex)
-    (fun sf _ hpan => allowPanic_frame (allocFailedIn_trans_receiverChains (by simp only [arm64_norm])) hpan) ?_
-  intro sm hpcm hrunm hspm hcsm hF2 hsym2
-  simp only [CalleeSavedPreserved] at hcsm
-  obtain ⟨hx19m, hx20m, hx21m, hx22m, hx23m, hx24m, hx25m, hx26m, hx27m, hx28m, hfpm, hvregsm⟩ := hcsm
-  simp (config := { decide := true }) only [arm64_norm] at hpcm hspm hx19m hx20m hx21m hx22m hx23m hx24m hx25m hx26m hx27m hx28m hfpm hvregsm
-  have hsp_align_m : sm.spAligned = true := by
-    simp only [State.spAligned, hspm]
-    exact hsp240_beq
-  refine SepWPp.fold
-    (chainMergeGen_post_eq x c (s0.sp - 232#64) (s0.sp - 240#64) _ sm hfld ?_) rfl ?_
-  · simp only [arm64_norm]
-  simp only [sepConj_assoc]
-  apply SepWPp.pure_left; rintro ⟨htr_m, hx0_m⟩
-  have htr_m' : sm.trace = s0.trace := by simpa only [arm64_norm] using htr_m
-  refine SepWPp.weaken_pre ?_
-    (h2bc sm Fr c3 hfresh hfld hF2 hsym2 hpcm hrunm hspm hsp_align_m htr_m' hx0_m hx20m hx26m hx27m hx28m hvregsm)
-  have hsub16384 : (s0.sp - 240#64) - 16144#64 = s0.sp - 16384#64 := by
-    simp only [BitVec.sub_eq_add_neg, BitVec.add_assoc]; rfl
-  exact Entails.of_eq (by rw [hsub16384]; ac_rfl)
-
 end CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.MergeFieldGenReceiverChains
-
-
-
-
 

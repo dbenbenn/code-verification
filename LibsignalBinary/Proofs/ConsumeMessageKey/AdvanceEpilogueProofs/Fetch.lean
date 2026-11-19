@@ -9,39 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.ConsumeCodeSym
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Seams
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.ConsumeCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Seams -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.CodeLayout -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public meta import ProofLib.VCGen
 
-@[expose] public section
+public section
 
 set_option maxHeartbeats 400000
 set_option autoImplicit false
-
-namespace CryptoVerification.LibsignalSession.AdvanceEpilogue
-
-open Arm64 ProofLib ProofLib.ProgramReflection Lean Meta Elab Command
-
-gen_decodes libsignalSessionCode_tree libsignalSessionBin [(ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 1244) → (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 1504), (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 1916) → (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 1944),
-    (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 2484) → (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 2492)]
-
-/-- Introduce instruction-fetch hypotheses for `count` instructions from relative offset `relStart`. -/
-elab "advanceEpilogue_fetches " b:term:max H:term:max hfn:term:max relStart:num count:num : tactic => do
-  let r0 := relStart.getNat
-  let n := count.getNat
-  let fnOff := num% (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key")
-  let fetchAdd := mkIdent ``CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  for i in [0:n] do
-    let k := r0 + 4 * i
-    let off := fnOff + k
-    let hexStr := String.ofList (Nat.toDigits 16 off)
-    let dec := mkIdent (Name.str `CryptoVerification.LibsignalSession.AdvanceEpilogue ("libsignalSessionBin_decode_0x" ++ hexStr))
-    let kq := Syntax.mkNumLit (toString k)
-    Tactic.evalTactic (← `(tactic|
-      have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
-
-end CryptoVerification.LibsignalSession.AdvanceEpilogue
 
 namespace CryptoVerification.LibsignalSession
 
@@ -72,11 +49,11 @@ abbrev cmkPanicAddOverflowSym : String :=
 abbrev cmkBlackBoxU8Sym : String :=
   "subtle::black_box::<u8>"
 
-def cmkShimSpec : Spec Unit where
+@[expose] def cmkShimSpec : Spec Unit where
   pre := fun _ _ => emp
   post := fun _ s0 sf => ⌜sf.trace = s0.trace⌝
 
-def CmkAllocHooks (A : RustAlloc) (H : String → Option (State → State)) : Prop :=
+@[expose] def CmkAllocHooks (A : RustAlloc) (H : String → Option (State → State)) : Prop :=
   HookSat H cmkRustAllocSym (rustAllocSpec A) ∧
   HookSat H cmkRustDeallocSym (rustDeallocSpec A) ∧
   HookSat H cmkRustNoAllocShimSym cmkShimSpec ∧
@@ -86,20 +63,20 @@ def CmkAllocHooks (A : RustAlloc) (H : String → Option (State → State)) : Pr
 
 theorem cmk_externAt?_of_mem [LibsignalPlacement] {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
-    {sym : String} (hmem : sym ∈ libsignalSessionExterns := by decide)
+    {sym : String} (hmem : sym ∈ libsignalHookedExterns := by decide)
     (hi : i < 619 := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     prog.externAt? (lsρ sym) = H sym := by
-  obtain ⟨k, hk, hget⟩ := List.getElem_of_mem hmem
-  exact ls_externAt?_of_blockProg (k := k) (by simp [hk, hget]) hi hunmut
+  obtain ⟨k, hk, hget⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
+  exact ls_externAt?_of_blockProg (k := k) (by simp [hk, hget]) hi hunmut (hhooked := hmem)
 
 theorem cmk_hook_ok_of_mem [LibsignalPlacement] {α : Type} {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
     {sym : String} {spec : Spec α} (hsat : HookSat H sym spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide)
+    (hmem : sym ∈ libsignalHookedExterns := by decide)
     (hi : i < 619 := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     subroutine_ok prog (lsρ sym) spec := by
-  obtain ⟨k, hk, hget⟩ := List.getElem_of_mem hmem
-  exact ls_hook_ok (k := k) (by simp [hk, hget]) hsat hi hunmut
+  obtain ⟨k, hk, hget⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
+  exact ls_hook_ok (k := k) (by simp [hk, hget]) hsat hi hunmut (hhooked := hmem)
 
 abbrev cmkEntry_placed [LibsignalPlacement] : BitVec 64 := (blkPl_24).base
 abbrev cmkTakePC_placed [LibsignalPlacement] : BitVec 64 := cmkEntry_placed + 0x5c#64
@@ -113,7 +90,7 @@ abbrev cmkOom32PanicPC_placed [LibsignalPlacement] : BitVec 64 := cmkEntry_place
 abbrev cmkOverflowPanicPC_placed [LibsignalPlacement] : BitVec 64 := cmkEntry_placed + 0x9c0#64
 abbrev cmkOom36PanicPC_placed [LibsignalPlacement] : BitVec 64 := cmkEntry_placed + 0x9f4#64
 
-def cmkMidMeta_placed [LibsignalPlacement] (s0 s : State) : Prop :=
+@[expose] def cmkMidMeta_placed [LibsignalPlacement] (s0 s : State) : Prop :=
   s.status = .Running ∧
   s.sp = s0.sp - 480#64 ∧
   s0.spAligned = true ∧
@@ -123,16 +100,13 @@ def cmkMidMeta_placed [LibsignalPlacement] (s0 s : State) : Prop :=
   LibsignalCodeLoaded lsmpl s.mem ∧
   calleeSavedVRegs s = calleeSavedVRegs s0
 
-def cmkDummyImg [LibsignalPlacement] : Obj.Image :=
-  { (default : Obj.Image) with base := lsLogFilterAddr - logFilterAddr { (default : Obj.Image) with base := 0 } }
+@[expose] def cmkDummyImg : Unit := ()
 
 @[simp, arm64_norm, wp_norm]
 theorem logFilterAddr_cmkDummyImg [LibsignalPlacement] :
-    logFilterAddr cmkDummyImg = lsLogFilterAddr := by
-  simp only [cmkDummyImg, logFilterAddr]
-  bv_omega
+    logFilterAddr cmkDummyImg = lsLogFilterAddr := rfl
 
-def cmkPreLoopHeap_placed [LibsignalPlacement] (A : RustAlloc) (x : ConsumeMessageKeyGhost) (s0 : State) : SepProp :=
+@[expose] def cmkPreLoopHeap_placed [LibsignalPlacement] (A : RustAlloc) (x : ConsumeMessageKeyGhost) (s0 : State) : SepProp :=
   ratchetAt A x.self x.G x.st ∗
   (x.theirA ↦ₛ x.their.bytes.toList) ∗
   (x.ckA ↦ₛ chainKeyBytes x.ck) ∗
@@ -152,21 +126,21 @@ theorem cmkPreLoopHeap_placed_eq_at [LibsignalPlacement] (A : RustAlloc) (x : Co
     cmkPreLoopHeap_placed A x s0 = cmkPreLoopHeapAt A lsLogFilterAddr x s0 :=
   rfl
 
-def CmkTakeState_placed [LibsignalPlacement] (A : RustAlloc) (x : ConsumeMessageKeyGhost) (R : SepProp)
+@[expose] def CmkTakeState_placed [LibsignalPlacement] (A : RustAlloc) (x : ConsumeMessageKeyGhost) (R : SepProp)
     (s0 s : State) : Prop :=
   s.pc = cmkTakePC_placed ∧
   cmkMidMeta_placed s0 s ∧
   CmkTakeRegs x s0 s ∧
   (s.mem ⊨ cmkPreLoopHeap_placed A x s0 ∗ R)
 
-def CmkTooFarState_placed [LibsignalPlacement] (A : RustAlloc) (x : ConsumeMessageKeyGhost) (R : SepProp)
+@[expose] def CmkTooFarState_placed [LibsignalPlacement] (A : RustAlloc) (x : ConsumeMessageKeyGhost) (R : SepProp)
     (s0 s : State) : Prop :=
   s.pc = cmkTooFarPC_placed ∧
   cmkMidMeta_placed s0 s ∧
   CmkTooFarRegs x s0 s ∧
   (s.mem ⊨ cmkPreLoopHeap_placed A x s0 ∗ R)
 
-def cmkLoopHeap_placed [LibsignalPlacement] (A : RustAlloc) (x : ConsumeMessageKeyGhost)
+@[expose] def cmkLoopHeap_placed [LibsignalPlacement] (A : RustAlloc) (x : ConsumeMessageKeyGhost)
     (Gc : RatchetGhost) (stc : RatchetState) (ckc : ChainKey) (s0 : State) : SepProp :=
   ratchetAt A x.self Gc stc ∗
   (x.theirA ↦ₛ x.their.bytes.toList) ∗
@@ -189,7 +163,7 @@ theorem cmkLoopHeap_placed_eq_at [LibsignalPlacement] (A : RustAlloc) (x : Consu
     cmkLoopHeap_placed A x Gc stc ckc s0 = cmkLoopHeapAt A lsLogFilterAddr x Gc stc ckc s0 :=
   rfl
 
-def CmkLoopState_placed [LibsignalPlacement] (A : RustAlloc) (x : ConsumeMessageKeyGhost)
+@[expose] def CmkLoopState_placed [LibsignalPlacement] (A : RustAlloc) (x : ConsumeMessageKeyGhost)
     (Gc : RatchetGhost) (stc : RatchetState) (ckc : ChainKey) (R : SepProp)
     (pc : BitVec 64) (s0 s : State) : Prop :=
   s.pc = pc ∧
@@ -198,7 +172,7 @@ def CmkLoopState_placed [LibsignalPlacement] (A : RustAlloc) (x : ConsumeMessage
   (pc = cmkLoopPC_placed → s.readReg64 .x19 = 1#64) ∧
   (s.mem ⊨ cmkLoopHeap_placed A x Gc stc ckc s0 ∗ R)
 
-def findIndexPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec FindIndexGhost where
+@[expose] def findIndexPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec FindIndexGhost where
   pre := fun (p, cs, theirA, their) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = cs.length ∧ s.readReg64 .x2 = theirA ∧
       cs.length * 104 < 2 ^ 63⌝ ∗
@@ -212,22 +186,22 @@ def findIndexPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec FindIndexGho
     arrayAt (chainAt A) 104 p cs ∗ (theirA ↦ₛ their.bytes.toList) ∗
     (lsLogFilterAddr ↦₆₄ 0#64) ∗ stackAt s0.sp 1024
 
-def FindIndexPlacedOk [LibsignalPlacement] (H : String → Option (State → State)) (A : RustAlloc) : Prop :=
+@[expose] def FindIndexPlacedOk [LibsignalPlacement] (H : String → Option (State → State)) (A : RustAlloc) : Prop :=
   subroutine_ok ((blkPC_24).rebase (blkPl_24).base H) (lsmpl.base 26)
     (withLsCodeLoaded lsmpl (findIndexPlacedSpec A))
 
-def HmacPlacedOk [LibsignalPlacement] (H : String → Option (State → State))
+@[expose] def HmacPlacedOk [LibsignalPlacement] (H : String → Option (State → State))
     (F : ShaState → List (BitVec 8) → ShaState) : Prop :=
   subroutine_ok ((blkPC_24).rebase (blkPl_24).base H) (lsmpl.base 73)
     (withLsCodeLoaded lsmpl (hmacSpec F))
 
-def HmacPlacedRoOk [LibsignalPlacement] (H : String → Option (State → State))
+@[expose] def HmacPlacedRoOk [LibsignalPlacement] (H : String → Option (State → State))
     (F : ShaState → List (BitVec 8) → ShaState) : Prop :=
   subroutine_ok ((blkPC_24).rebase (blkPl_24).base H) (lsmpl.base 73)
     (withLsCodeLoaded lsmpl
       { hmacSpec F with pre := fun g s => (hmacSpec F).pre g s ∗ ⌜LibsignalRoLoaded lsmpl s.mem⌝ })
 
-def cmkPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc) :
+@[expose] def cmkPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc) :
     Spec ConsumeMessageKeyGhost :=
   withLsCodeLoaded lsmpl
     { pre := fun x s =>
@@ -247,7 +221,7 @@ def cmkPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → Sha
       onPanic := fun x s0 sf =>
         ⌜((x.model F).1 = .error .panic ∨ allocFailedIn s0 sf) ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def ProloguePastPlacedSpec [LibsignalPlacement]
+@[expose] def ProloguePastPlacedSpec [LibsignalPlacement]
     (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   ∀ (x : ConsumeMessageKeyGhost) (R : SepProp) (s0 : State),
@@ -257,7 +231,7 @@ def ProloguePastPlacedSpec [LibsignalPlacement]
     reaches_pc ((blkPC_24).rebase (blkPl_24).base H) cmkTakePC_placed s0
       (CmkTakeState_placed A x R s0)
 
-def PrologueTooFarPlacedSpec [LibsignalPlacement]
+@[expose] def PrologueTooFarPlacedSpec [LibsignalPlacement]
     (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   ∀ (x : ConsumeMessageKeyGhost) (R : SepProp) (s0 : State),
@@ -267,7 +241,7 @@ def PrologueTooFarPlacedSpec [LibsignalPlacement]
     reaches_pc ((blkPC_24).rebase (blkPl_24).base H) cmkTooFarPC_placed s0
       (CmkTooFarState_placed A x R s0)
 
-def PrologueAdvanceEntryPlacedSpec [LibsignalPlacement]
+@[expose] def PrologueAdvanceEntryPlacedSpec [LibsignalPlacement]
     (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   ∀ (x : ConsumeMessageKeyGhost) (R : SepProp) (s0 : State),
@@ -279,7 +253,7 @@ def PrologueAdvanceEntryPlacedSpec [LibsignalPlacement]
     reaches_pc ((blkPC_24).rebase (blkPl_24).base H) targetPC s0
       (CmkLoopState_placed A x x.G x.st x.ck R targetPC s0)
 
-def AdvanceEpiloguePlacedSpec [LibsignalPlacement]
+@[expose] def AdvanceEpiloguePlacedSpec [LibsignalPlacement]
     (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   CmkAllocHooks A H → FindIndexPlacedOk H A → HmacPlacedOk H F →
@@ -299,7 +273,7 @@ def AdvanceEpiloguePlacedSpec [LibsignalPlacement]
       CmkLoopState_placed A x Gc stc ckc R cmkEpiloguePC_placed s0 s →
       reaches_outcome ((blkPC_24).rebase (blkPl_24).base H) (cmkPlacedSpec F A) x R s0 s
 
-def LoopNoChainPanicPlacedSpec [LibsignalPlacement]
+@[expose] def LoopNoChainPanicPlacedSpec [LibsignalPlacement]
     (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   CmkAllocHooks A H → FindIndexPlacedOk H A → HmacPlacedOk H F →
@@ -310,7 +284,7 @@ def LoopNoChainPanicPlacedSpec [LibsignalPlacement]
       CmkLoopState_placed A x x.G x.st x.ck R cmkLoopPC_placed s0 s →
       reaches_outcome ((blkPC_24).rebase (blkPl_24).base H) (cmkPlacedSpec F A) x R s0 s
 
-def EpiloguePanicPlacedSpec [LibsignalPlacement]
+@[expose] def EpiloguePanicPlacedSpec [LibsignalPlacement]
     (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   H cmkExpectFailedSym = some Rust.panicked →
@@ -324,7 +298,7 @@ def EpiloguePanicPlacedSpec [LibsignalPlacement]
       CmkLoopState_placed A x Gc stc ckc R cmkEpiloguePC_placed s0 s →
       reaches_outcome ((blkPC_24).rebase (blkPl_24).base H) (cmkPlacedSpec F A) x R s0 s
 
-def AdvanceEpiloguePlacedRoSpec [LibsignalPlacement]
+@[expose] def AdvanceEpiloguePlacedRoSpec [LibsignalPlacement]
     (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   CmkAllocHooks A H → FindIndexPlacedOk H A → HmacPlacedRoOk H F →
@@ -345,7 +319,7 @@ def AdvanceEpiloguePlacedRoSpec [LibsignalPlacement]
       LibsignalRoLoaded lsmpl s.mem →
       reaches_outcome ((blkPC_24).rebase (blkPl_24).base H) (cmkPlacedSpec F A) x R s0 s
 
-def LoopNoChainPanicPlacedRoSpec [LibsignalPlacement]
+@[expose] def LoopNoChainPanicPlacedRoSpec [LibsignalPlacement]
     (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   CmkAllocHooks A H → FindIndexPlacedOk H A → HmacPlacedRoOk H F →
@@ -357,7 +331,7 @@ def LoopNoChainPanicPlacedRoSpec [LibsignalPlacement]
       LibsignalRoLoaded lsmpl s.mem →
       reaches_outcome ((blkPC_24).rebase (blkPl_24).base H) (cmkPlacedSpec F A) x R s0 s
 
-def EpiloguePanicPlacedRoSpec [LibsignalPlacement]
+@[expose] def EpiloguePanicPlacedRoSpec [LibsignalPlacement]
     (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   H cmkExpectFailedSym = some Rust.panicked →

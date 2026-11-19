@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeChainAux.MessageKeyLoopBody
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeChainAux.MessageKeyLoopBody -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeChainAux.ChainKeyField
-import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeChainAux.Fetch
+import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
+import ProofLib.SepLogic.CodeLookup
+import ProofLib.VCGen
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
 import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBase
@@ -22,7 +23,7 @@ import ProofLib.SepLogic.WPp
 # `encode::<Chain, Vec<u8>>` `message_keys` loop (`+0x258..+0x670`) and epilogue
 -/
 
-@[expose] public section
+public section
 
 set_option maxHeartbeats 400000
 set_option maxRecDepth 200000
@@ -102,7 +103,7 @@ theorem bv_madd_104 (ptr : BitVec 64) (n : Nat) :
     rw [← BitVec.ofNat_mul]
   rw [h]
 
-def vecMkRest (A : RustAlloc) (cap ptr : BitVec 64)
+@[expose] def vecMkRest (A : RustAlloc) (cap ptr : BitVec 64)
     (mks : List (MessageKeyGhost × MessageKeyGenerator)) : SepProp :=
   ⌜mks.length ≤ cap.toNat ∧ cap.toNat * 104 < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     A.live ptr (cap.toNat * 104) 8 ∗
@@ -140,7 +141,7 @@ theorem vecBuf_mk_eq_open (A : RustAlloc) (cap ptr : BitVec 64)
   ac_rfl
 
 /-- Portion of `protoChainAt` outside the `Vec<MessageKey>` field at `a + 48#64`. -/
-def chainMkUnusedAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 64) : SepProp :=
+@[expose] def chainMkUnusedAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 64) : SepProp :=
   ⌜PublicKey.deserialize gc.1.srk.bytes = .ok gc.2.senderRatchetKey ∧
     gc.2.messageKeys.length ≤ maxMessageKeys ∧ gc.1.keys.length = gc.2.messageKeys.length⌝ ∗
     vecGhostAt A gc.1.srk a ∗ vecGhostAt A gc.1.priv (a + 24#64) ∗
@@ -184,66 +185,6 @@ theorem sepWPp_extract_chain_mk_bounds {A : RustAlloc}
 
 /-! ## Loop back-edge (`+668..+680`) -/
 
-theorem step_encChain_mk_next_eq (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (v cur endPtr sp0 : BitVec 64)
-    (heq : ((cur + 104#64) == endPtr) = true)
-    {ret : BitVec 64} {s0 s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeChainName + 668#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 96#64)
-    (htr : s.trace = s0.trace ∧ calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hregs : MkLoopRegs s v cur endPtr)
-    (hnext : ∀ sm : State,
-      sm.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeChainName + 1648#64 →
-      sm.status = .Running →
-      sm.sp = sp0 - 96#64 →
-      sm.trace = s0.trace ∧ calleeSavedVRegs sm = calleeSavedVRegs s0 →
-      SepWPp (tripleRatchetProgAt b C ctl abs) ret sm P Q Qp) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q Qp := by
-  encChain_fetches_range b (Rust.withPanics (tripleRatchetExterns C ctl abs)) 668 680
-  generalize_entry hentry : (tripleRatchetProgAt b C ctl abs).fnAddr encodeChainName = entry
-  examples_hide_fetches
-  rcases hregs with ⟨hx19, hx20, hx24, hx25, hx26⟩
-  apply SepWPp.of_sepWP (mid := entry + bv% (1648))
-  wp_steps
-  apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-  exact hnext _ (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-
-theorem step_encChain_mk_next_ne (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (v cur endPtr sp0 : BitVec 64)
-    (hne : ((cur + 104#64) == endPtr) = false)
-    {ret : BitVec 64} {s0 s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeChainName + 668#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 96#64)
-    (htr : s.trace = s0.trace ∧ calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hregs : MkLoopRegs s v cur endPtr)
-    (hnext : ∀ sm : State,
-      sm.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeChainName + 680#64 →
-      sm.status = .Running →
-      sm.sp = sp0 - 96#64 →
-      sm.trace = s0.trace ∧ calleeSavedVRegs sm = calleeSavedVRegs s0 →
-      MkLoopRegs sm v (cur + 104#64) endPtr →
-      SepWPp (tripleRatchetProgAt b C ctl abs) ret sm P Q Qp) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q Qp := by
-  encChain_fetches_range b (Rust.withPanics (tripleRatchetExterns C ctl abs)) 668 680
-  generalize_entry hentry : (tripleRatchetProgAt b C ctl abs).fnAddr encodeChainName = entry
-  examples_hide_fetches
-  rcases hregs with ⟨hx19, hx20, hx24, hx25, hx26⟩
-  apply SepWPp.of_sepWP (mid := entry + bv% (680))
-  wp_steps
-  apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-  exact hnext _ (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    ⟨by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-     by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-     by simp only [arm64_norm, *]⟩
-
-/-! ## Inductive `message_keys` loop (`+680..+1648`) -/
-
 private theorem mk_len_tl_lt {α : Type} (x : α) (xs : List α)
     (h : (x :: xs).length * 104 < 2 ^ 32) :
     xs.length * 104 < 2 ^ 32 := by
@@ -268,321 +209,6 @@ private theorem mk_bound_tail (curBs : List (BitVec 8))
       ((tl.map (fun p => lenField 4 (encMessageKey p.2))).flatten).length < 2 ^ 32 := by
   simp only [List.map_cons, List.flatten_cons, List.length_append] at hbound ⊢
   omega
-
-theorem step_encChain_mk_loop (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (hMK : OkAt b C ctl abs msgKeyLenName (msgKeyLenSpec A))
-    (hEV : Prost.EncodeVarintOk b C A ctl abs)
-    (hDR : OkAt b C ctl abs doReserveName (doReserveSpec A))
-    (gk : MessageKeyGhost × MessageKeyGenerator)
-    (tl : List (MessageKeyGhost × MessageKeyGenerator))
-    (v cur endPtr curCap curPtr sp0 : BitVec 64)
-    (curBs : List (BitVec 8))
-    (hend : endPtr = cur + BitVec.ofNat 64 ((gk :: tl).length * 104))
-    (hlen_mk : (gk :: tl).length * 104 < 2 ^ 32)
-    (hbound : curBs.length +
-      (((gk :: tl).map (fun p => lenField 4 (encMessageKey p.2))).flatten).length < 2 ^ 32)
-    {x : EncodeChainGhost} {R : SepProp}
-    {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeChainName + 680#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 96#64)
-    (halign : sp0 &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace ∧ calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hregs : MkLoopRegs s v cur endPtr)
-    (hP : P = (vecU8At A v curCap curPtr curBs ∗
-      arrayAt (messageKeyAt A) 104 cur (gk :: tl) ∗
-      A.pool ∗ stackAt (sp0 - 96#64) encChainSubStack) ∗ F)
-    (hnext : ∀ (sm : State) (capOut ptrOut : BitVec 64),
-      sm.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeChainName + 1648#64 →
-      sm.status = .Running →
-      sm.sp = sp0 - 96#64 →
-      sm.trace = s0.trace ∧ calleeSavedVRegs sm = calleeSavedVRegs s0 →
-      SepWPp (tripleRatchetProgAt b C ctl abs) ret sm
-        ((vecU8At A v capOut ptrOut
-          (curBs ++ ((gk :: tl).map (fun p => lenField 4 (encMessageKey p.2))).flatten) ∗
-          arrayAt (messageKeyAt A) 104 cur (gk :: tl) ∗
-          A.pool ∗ stackAt (sp0 - 96#64) encChainSubStack) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeChainSpec A).onPanic x s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeChainSpec A).onPanic x s0 sf ∗ R)) := by
-  induction tl generalizing gk cur curCap curPtr curBs s P F with
-  | nil =>
-    have hbound1 := mk_bound_head curBs gk [] hbound
-    have heq_end : ((cur + 104#64) == endPtr) = true := by
-      rw [hend]; simp
-    refine step_encChain_mk_elem b C A ctl abs hMK hEV hDR
-      v cur endPtr curCap curPtr sp0 gk curBs hbound1
-      (x := x) (F := F) hpc hrun hsp halign htr hregs
-      (by rw [hP]; simp only [arrayAt, sepConj_emp]) ?_
-    intro s1 cap1 ptr1 hpc1 hrun1 hsp1 htr1 hregs1
-    refine step_encChain_mk_next_eq b C ctl abs v cur endPtr sp0 heq_end
-      hpc1 hrun1 hsp1 htr1 hregs1 ?_
-    intro sm hpcm hrunm hspm htrm
-    refine sepWPp_congr_pre ?_ (hnext sm cap1 ptr1 hpcm hrunm hspm htrm)
-    simp only [arrayAt, sepConj_emp, List.map_cons, List.map_nil, List.flatten_cons,
-      List.flatten_nil, List.append_nil]
-  | cons gk2 tl2 ih =>
-    have hbound1 := mk_bound_head curBs gk (gk2 :: tl2) hbound
-    have hlen_tl := mk_len_tl_lt gk (gk2 :: tl2) hlen_mk
-    have hbound_tl := mk_bound_tail curBs gk (gk2 :: tl2) hbound
-    refine step_encChain_mk_elem b C A ctl abs hMK hEV hDR
-      v cur endPtr curCap curPtr sp0 gk curBs hbound1
-      (x := x) (F := arrayAt (messageKeyAt A) 104 (cur + 104#64) (gk2 :: tl2) ∗ F)
-      hpc hrun hsp halign htr hregs
-      (by rw [hP]; simp only [arrayAt]; ac_rfl) ?_
-    intro s1 cap1 ptr1 hpc1 hrun1 hsp1 htr1 hregs1
-    have hend_step : endPtr = (cur + 104#64) + BitVec.ofNat 64 ((gk2 :: tl2).length * 104) := by
-      rw [hend]
-      exact mk_endPtr_step cur (gk2 :: tl2).length
-    have hne_end : ((cur + 104#64) == endPtr) = false := by
-      rw [hend_step]
-      exact mk_endPtr_ne_of_pos cur (gk2 :: tl2).length (by simp) hlen_tl
-    refine step_encChain_mk_next_ne b C ctl abs v cur endPtr sp0 hne_end
-      hpc1 hrun1 hsp1 htr1 hregs1 ?_
-    intro s2 hpc2 hrun2 hsp2 htr2 hregs2
-    refine ih gk2 (cur + 104#64) cap1 ptr1 (curBs ++ lenField 4 (encMessageKey gk.2))
-      hend_step hlen_tl hbound_tl
-      (F := messageKeyAt A gk cur ∗ F)
-      hpc2 hrun2 hsp2 htr2 hregs2
-      (by ac_rfl) ?_
-    intro sm capOut ptrOut hpcm hrunm hspm htrm
-    refine sepWPp_congr_pre ?_ (hnext sm capOut ptrOut hpcm hrunm hspm htrm)
-    simp only [arrayAt, List.map_cons, List.flatten_cons, List.append_assoc]
-    ac_rfl
-
-/-! ## Full `message_keys` segment (`+600..+1648`) -/
-
-theorem step_encChain_seg4_empty (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (a sp0 : BitVec 64)
-    {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeChainName + 600#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 96#64)
-    (htr : s.trace = s0.trace ∧ calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hx20 : s.readReg64 .x20 = a)
-    (hP : P = ((a + 64#64) ↦₆₄ 0#64) ∗ F)
-    (hnext : ∀ sm : State,
-      sm.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeChainName + 1648#64 →
-      sm.status = .Running →
-      sm.sp = sp0 - 96#64 →
-      sm.trace = s0.trace ∧ calleeSavedVRegs sm = calleeSavedVRegs s0 →
-      SepWPp (tripleRatchetProgAt b C ctl abs) ret sm (((a + 64#64) ↦₆₄ 0#64) ∗ F) Q Qp) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q Qp := by
-  encChain_fetches_range b (Rust.withPanics (tripleRatchetExterns C ctl abs)) 600 608
-  generalize_entry hentry : (tripleRatchetProgAt b C ctl abs).fnAddr encodeChainName = entry
-  examples_hide_fetches
-  subst hP
-  apply SepWPp.of_sepWP (mid := entry + bv% (1648))
-  wp_steps
-  apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-  exact hnext _ (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-
-theorem step_encChain_seg4_init (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (v a mkPtr sp0 : BitVec 64) (n : Nat)
-    (hpos : 0 < n) (hlt : n < 2 ^ 32)
-    {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeChainName + 600#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 96#64)
-    (htr : s.trace = s0.trace ∧ calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hx19 : s.readReg64 .x19 = v)
-    (hx20 : s.readReg64 .x20 = a)
-    (hP : P = (((a + 56#64) ↦₆₄ mkPtr) ∗ ((a + 64#64) ↦₆₄ BitVec.ofNat 64 n)) ∗ F)
-    (hnext : ∀ sm : State,
-      sm.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeChainName + 680#64 →
-      sm.status = .Running →
-      sm.sp = sp0 - 96#64 →
-      sm.trace = s0.trace ∧ calleeSavedVRegs sm = calleeSavedVRegs s0 →
-      MkLoopRegs sm v mkPtr (mkPtr + BitVec.ofNat 64 (n * 104)) →
-      SepWPp (tripleRatchetProgAt b C ctl abs) ret sm
-        ((((a + 56#64) ↦₆₄ mkPtr) ∗ ((a + 64#64) ↦₆₄ BitVec.ofNat 64 n)) ∗ F) Q Qp) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q Qp := by
-  encChain_fetches_range b (Rust.withPanics (tripleRatchetExterns C ctl abs)) 600 640
-  generalize_entry hentry : (tripleRatchetProgAt b C ctl abs).fnAddr encodeChainName = entry
-  examples_hide_fetches
-  subst hP
-  have hnz := bv_nat_beq_zero_false hpos hlt
-  have hmadd := bv_madd_104 mkPtr n
-  apply SepWPp.of_sepWP (mid := entry + bv% (680))
-  wp_steps
-  apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-  exact hnext _ (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    ⟨by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-     by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-     by simp only [arm64_norm, *]⟩
-
-theorem step_encChain_seg4 (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (hMK : OkAt b C ctl abs msgKeyLenName (msgKeyLenSpec A))
-    (hEV : Prost.EncodeVarintOk b C A ctl abs)
-    (hDR : OkAt b C ctl abs doReserveName (doReserveSpec A))
-    (v a curCap curPtr sp0 : BitVec 64) (gc : ChainGhost × ReceiverChain)
-    (curBs : List (BitVec 8))
-    (hbound : curBs.length +
-      ((gc.2.messageKeys.map fun mk => lenField 4 (encMessageKey mk)).flatten).length < 2 ^ 32)
-    {x : EncodeChainGhost} {R : SepProp}
-    {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeChainName + 600#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 96#64)
-    (halign : sp0 &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace ∧ calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hx19 : s.readReg64 .x19 = v)
-    (hx20 : s.readReg64 .x20 = a)
-    (hP : P = (vecU8At A v curCap curPtr curBs ∗
-      protoChainAt A gc a ∗
-      A.pool ∗ stackAt (sp0 - 96#64) encChainSubStack) ∗ F)
-    (hnext : ∀ (sm : State) (capOut ptrOut : BitVec 64),
-      sm.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeChainName + 1648#64 →
-      sm.status = .Running →
-      sm.sp = sp0 - 96#64 →
-      sm.trace = s0.trace ∧ calleeSavedVRegs sm = calleeSavedVRegs s0 →
-      SepWPp (tripleRatchetProgAt b C ctl abs) ret sm
-        ((vecU8At A v capOut ptrOut
-          (curBs ++ (gc.2.messageKeys.map fun mk => lenField 4 (encMessageKey mk)).flatten) ∗
-          protoChainAt A gc a ∗
-          A.pool ∗ stackAt (sp0 - 96#64) encChainSubStack) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeChainSpec A).onPanic x s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeChainSpec A).onPanic x s0 sf ∗ R)) := by
-  subst hP
-  refine sepWPp_extract_chain_mk_bounds (A := A) (gc := gc) (a := a)
-    (F := vecU8At A v curCap curPtr curBs ∗ A.pool ∗ stackAt (sp0 - 96#64) encChainSubStack ∗ F)
-    (by ac_rfl) fun hmk_max hkeys_len => ?_
-  have hzip_len : (gc.1.keys.zip gc.2.messageKeys).length = gc.2.messageKeys.length :=
-    zip_length_eq_right gc.1.keys gc.2.messageKeys hkeys_len
-  have hzip_map :
-      (gc.1.keys.zip gc.2.messageKeys).map (fun p => lenField 4 (encMessageKey p.2)) =
-      gc.2.messageKeys.map (fun mk => lenField 4 (encMessageKey mk)) :=
-    zip_map_snd_eq_encChain gc.1.keys gc.2.messageKeys (fun mk => lenField 4 (encMessageKey mk)) hkeys_len
-  rw [chainAt_eq_mk_cells A gc a]
-  rcases hmks : gc.1.keys.zip gc.2.messageKeys with _ | ⟨gk, tl⟩
-  · have hmks_len : gc.2.messageKeys.length = 0 := by
-      rw [← hzip_len, hmks]; rfl
-    have hmks_nil : gc.2.messageKeys = [] := List.eq_nil_of_length_eq_zero hmks_len
-    refine step_encChain_seg4_empty b C ctl abs a sp0
-      (F := vecU8At A v curCap curPtr curBs ∗
-        ((a + 48#64) ↦₆₄ gc.1.mkCap) ∗
-        ((a + 56#64) ↦₆₄ gc.1.mkPtr) ∗
-        vecBuf A 104 8 (messageKeyAt A) gc.1.mkCap gc.1.mkPtr [] ∗
-        chainMkUnusedAt A gc a ∗
-        A.pool ∗ stackAt (sp0 - 96#64) encChainSubStack ∗ F)
-      hpc hrun hsp htr hx20 (by simp only [List.length_nil]; ac_rfl) ?_
-    intro sm hpcm hrunm hspm htrm
-    refine sepWPp_congr_pre ?_ (hnext sm curCap curPtr hpcm hrunm hspm htrm)
-    rw [chainAt_eq_mk_cells A gc a, hmks, hmks_nil]
-    simp only [List.length_nil, List.map_nil, List.flatten_nil, List.append_nil]
-    ac_rfl
-  · rw [hmks] at hzip_len hzip_map
-    have hlen_le : (gk :: tl).length ≤ 2000 := by
-      have : maxMessageKeys = 2000 := rfl
-      omega
-    have hlen_pos : 0 < (gk :: tl).length := by simp
-    have hlen_lt : (gk :: tl).length < 2 ^ 32 := by omega
-    have hlen_mk : (gk :: tl).length * 104 < 2 ^ 32 := by omega
-    refine sepWPp_extract_vecBuf_mk_le (A := A) (cap := gc.1.mkCap) (ptr := gc.1.mkPtr)
-      (mks := gk :: tl)
-      (F := vecU8At A v curCap curPtr curBs ∗
-        ((a + 48#64) ↦₆₄ gc.1.mkCap) ∗
-        ((a + 56#64) ↦₆₄ gc.1.mkPtr) ∗
-        ((a + 64#64) ↦₆₄ BitVec.ofNat 64 (gk :: tl).length) ∗
-        chainMkUnusedAt A gc a ∗
-        A.pool ∗ stackAt (sp0 - 96#64) encChainSubStack ∗ F)
-      (by ac_rfl) fun hle_cap => ?_
-    rw [vecBuf_mk_eq_open A gc.1.mkCap gc.1.mkPtr (gk :: tl) hlen_pos hle_cap]
-    refine step_encChain_seg4_init b C ctl abs v a gc.1.mkPtr sp0 (gk :: tl).length
-      hlen_pos hlen_lt
-      (F := vecU8At A v curCap curPtr curBs ∗
-        ((a + 48#64) ↦₆₄ gc.1.mkCap) ∗
-        arrayAt (messageKeyAt A) 104 gc.1.mkPtr (gk :: tl) ∗
-        vecMkRest A gc.1.mkCap gc.1.mkPtr (gk :: tl) ∗
-        chainMkUnusedAt A gc a ∗
-        A.pool ∗ stackAt (sp0 - 96#64) encChainSubStack ∗ F)
-      hpc hrun hsp htr hx19 hx20 (by ac_rfl) ?_
-    intro s1 hpc1 hrun1 hsp1 htr1 hregs1
-    have hbound_mks :
-        curBs.length +
-          (((gk :: tl).map (fun p => lenField 4 (encMessageKey p.2))).flatten).length < 2 ^ 32 := by
-      rw [hzip_map]
-      exact hbound
-    refine step_encChain_mk_loop b C A ctl abs hMK hEV hDR
-      gk tl v gc.1.mkPtr (gc.1.mkPtr + BitVec.ofNat 64 ((gk :: tl).length * 104))
-      curCap curPtr sp0 curBs rfl hlen_mk hbound_mks
-      (x := x)
-      (F := ((a + 48#64) ↦₆₄ gc.1.mkCap) ∗
-        ((a + 56#64) ↦₆₄ gc.1.mkPtr) ∗
-        ((a + 64#64) ↦₆₄ BitVec.ofNat 64 (gk :: tl).length) ∗
-        vecMkRest A gc.1.mkCap gc.1.mkPtr (gk :: tl) ∗
-        chainMkUnusedAt A gc a ∗ F)
-      hpc1 hrun1 hsp1 halign htr1 hregs1 (by ac_rfl) ?_
-    intro sm capOut ptrOut hpcm hrunm hspm htrm
-    refine sepWPp_congr_pre ?_ (hnext sm capOut ptrOut hpcm hrunm hspm htrm)
-    rw [chainAt_eq_mk_cells A gc a, hmks,
-        vecBuf_mk_eq_open A gc.1.mkCap gc.1.mkPtr (gk :: tl) hlen_pos hle_cap,
-        hzip_map]
-    ac_rfl
-
-/-! ## Function epilogue (`+1648..+1676`) -/
-
-theorem step_encChain_epilogue (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (capOut ptrOut : BitVec 64)
-    {x : EncodeChainGhost} {R : SepProp}
-    {s0 s : State} {P : SepProp}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeChainName + 1648#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 96#64)
-    (halign : s0.sp &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace ∧ calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hP : P = (vecU8At A x.v capOut ptrOut (x.bs ++ lenField x.tag (encChainMem x.gc)) ∗
-      protoChainAt A x.gc x.a ∗
-      A.pool ∗ stackAt (s0.sp - 96#64) encChainSubStack ∗
-      encChainSavedRegs s0.sp s0)) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) (s0.readReg64 .lr) s P
-      (fun sf P_f =>
-        ((sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeChainSpec A).post x s0 sf ∗ R)) ∧
-        sf.sp = s0.sp ∧
-        CalleeSavedPreserved s0 sf)
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeChainSpec A).onPanic x s0 sf ∗ R)) := by
-  encChain_fetches_range b (Rust.withPanics (tripleRatchetExterns C ctl abs)) 1648 1676
-  generalize_entry hentry : (tripleRatchetProgAt b C ctl abs).fnAddr encodeChainName = entry
-  examples_hide_fetches
-  subst hP
-  unfold encChainSavedRegs
-  have hsp_align96 := sp_sub_96_aligned halign
-  apply SepWPp.of_sepWP (mid := s0.readReg64 .lr)
-  wp_steps
-  apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-  apply SepWPp.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-  refine ⟨?_, by simp only [arm64_norm, *],
-    ⟨by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-     by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-     by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-     by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-     by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-     by simp only [arm64_norm, *]⟩⟩
-  intro hm
-  simp only [encodeChainSpec, sepConj_assoc, satisfies_pure_sepConj]
-  refine ⟨by simp only [arm64_norm, *], ?_⟩
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists]
-  refine ⟨capOut, ptrOut, ?_⟩
-  rw [stackAt_encodeChainStack_split s0.sp]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists]
-  refine ⟨s0.readReg64 (Reg.gpr 29#5), s0.readReg64 (Reg.gpr 30#5),
-    s0.readReg64 (Reg.gpr 28#5), s0.readReg64 (Reg.gpr 27#5),
-    s0.readReg64 (Reg.gpr 26#5), s0.readReg64 (Reg.gpr 25#5),
-    s0.readReg64 (Reg.gpr 24#5), s0.readReg64 (Reg.gpr 23#5),
-    s0.readReg64 (Reg.gpr 22#5), s0.readReg64 (Reg.gpr 21#5),
-    s0.readReg64 (Reg.gpr 20#5), s0.readReg64 (Reg.gpr 19#5), ?_⟩
-  convert hm using 1
-  ac_rfl
-
-/-! ## Relocatable `[LibsignalPlacement]` proofs (block `12`) -/
 
 section Placed
 

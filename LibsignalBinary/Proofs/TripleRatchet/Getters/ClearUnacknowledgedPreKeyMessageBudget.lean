@@ -9,15 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.ClearUnacknowledgedPreKeyMessage
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.ClearUnacknowledgedPreKeyMessage -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `SessionState::clear_unacknowledged_pre_key_message` (Block `35`)
@@ -26,7 +27,7 @@ Verifies `<SessionState>::clear_unacknowledged_pre_key_message` against `clearUp
 `clearUpkSpecX M A lim` under `[LibsignalPlacement]` over `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -59,7 +60,7 @@ attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Stack-parameterized budget specification of `<SessionState>::clear_unacknowledged_pre_key_message`. -/
-def clearUpkSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def clearUpkSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (ClearUpkGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ss⌝ ∗

@@ -9,20 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.TrapRng
+public import LibsignalBinary.Proofs.TripleRatchet.TrapRng -- proof-setup: allow-public-import
 import all Init.Data.String.Pattern.Basic
 import all Init.Data.String.Pattern.String
 import all Init.Data.String.Slice
 import all Init.Data.String.TakeDrop
 public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
-import LibsignalBinary.Proofs.TripleRatchet.InImage.VarintSlow.Defs
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.InImage.VarintSlow
 
@@ -75,17 +72,6 @@ theorem readReg_setMem_setPC_pre (s : State) (pc : BitVec 64) (m : Memory) (w : 
     ((s.setPC pc).setMem m).readReg w r = s.readReg w r := by
   cases w <;> cases r <;> rfl
 
-theorem alloc_fnOff : libsignalSessionCode.fnOff allocName = num% (ls_off% "__rustc::__rust_alloc") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl) (ls_stub% "__rustc::__rust_alloc")
-
-theorem decodeErrorFrom_fnOff : libsignalSessionCode.fnOff decodeErrorFromName = num% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl)
-    (ls_lemma% fnOff "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from")
-
-theorem varintSlow_fnOff : libsignalSessionCode.fnOff varintSlowName = num% (ls_off% "prost::encoding::varint::decode_varint_slow::<&mut &[u8]>") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl)
-    (ls_lemma% fnOff "prost::encoding::varint::decode_varint_slow::<&mut &[u8]>")
-
 private theorem sessionShim_hookOk : HookOk hookNoop sessionShimSpec := by
   refine hookNoop_ok fun _ R s0 hpre => ?_
   simp only [sessionShimSpec, hookNoop, retHook, id_eq, State.trace_setPC,
@@ -105,79 +91,6 @@ private theorem hookSat_tripleRatchetExterns (C : Crypto) (ctl : BitVec 64)
     (h : HookSat abs sym spec) :
     HookSat (tripleRatchetExterns C ctl abs) sym spec := by
   unfold HookSat at *; rwa [heq]
-
-private theorem panic_at_handle_alloc_error_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "alloc::alloc::handle_alloc_error" := by simp only [arm64_norm]) :
-    (trTrapProgAt b C abs).externAt?
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) =
-      some Rust.panicked :=
-  panic_at_panicSymbol (hname := "alloc::alloc::handle_alloc_error") rfl hk
-    (by rw [(ls_stub% "alloc::alloc::handle_alloc_error")]; decide)
-    (fun H => by rw [(ls_stub% "alloc::alloc::handle_alloc_error")]; exact (ls_hook% "alloc::alloc::handle_alloc_error") H)
-    (by decide +kernel)
-
-private theorem panic_at_handle_alloc_error {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "alloc::alloc::handle_alloc_error" := by simp only [arm64_norm]) :
-    (tripleRatchetProgAt b C ctl abs).externAt?
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) =
-      some Rust.panicked := by
-  have h := panic_at_handle_alloc_error_trap (b := b) (C := C) (abs := abs) hk
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr name]
-  rcases (trapsOnly_trTrap_kit b C ctl abs).hook ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) with
-    heq | ⟨f, hf, ht⟩
-  · exact heq.symm.trans h
-  · cases h.symm.trans hf
-    exact False.elim (ht default (ProofLib.Variant.OutcomeStatus.of_panicked rfl))
-
-private theorem shim_ok_at_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_no_alloc_shim_is_unstable_v2" := by
-        simp only [arm64_norm]) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) sessionShimSpec :=
-  hook_ok_at (hname := "__rustc::__rust_no_alloc_shim_is_unstable_v2") rfl hk
-    (by rw [(ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")]; decide)
-    (fun H => by rw [(ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")]; exact (ls_hook% "__rustc::__rust_no_alloc_shim_is_unstable_v2") H)
-    (by decide +kernel)
-    ⟨hookNoop, rfl, sessionShim_hookOk⟩
-
-private theorem shim_ok_at {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_no_alloc_shim_is_unstable_v2" := by
-        simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) sessionShimSpec := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr name]
-  exact subroutine_ok_kit_of_trTrap (shim_ok_at_trap hk)
-
-private theorem alloc_ok_at_trap {A : RustAlloc} {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)}
-    (hA : AllocHooks A abs) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff allocName := by simp only [arm64_norm]) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) (rustAllocSpec A) :=
-  hook_ok_at (hname := allocName) rfl hk
-    (by rw [alloc_fnOff]; decide)
-    (fun H => by rw [alloc_fnOff]; exact (ls_hook% "__rustc::__rust_alloc") H)
-    (by decide +kernel)
-    (hookSat_tripleRatchetExterns_trap C abs rfl hA.alloc)
-
-private theorem alloc_ok_at {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hA : AllocHooks A abs) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff allocName := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) (rustAllocSpec A) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr name]
-  exact subroutine_ok_kit_of_trTrap (alloc_ok_at_trap hA hk)
 
 theorem memRegion_split (a : BitVec 64) (n k : Nat) (h : n + k ≤ 2 ^ 64) :
     memRegion a (n + k) = memRegion a n ∗ memRegion (a + BitVec.ofNat 64 n) k :=
@@ -332,102 +245,5 @@ private theorem decodeErrorFromSpec0_post_satisfies (A : RustAlloc)
   exact Satisfies.of_eq hm' (by unfold vecOf; ac_rfl)
 
 attribute [local irreducible] Program.fnOff
-
-theorem decodeErrorFrom_ok_aux_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (abs : String → Option (State → State)) (hA : AllocHooks A abs) :
-    subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr decodeErrorFromName)
-      (decodeErrorFromSpec A) := by
-  refine subroutine_ok_mono (spec := decodeErrorFromSpec0 A) ?_
-    (fun _ _ _ h => h)
-    (fun x R s0 sf h => decodeErrorFromSpec0_post_satisfies A x R s0 sf h)
-    (fun _ _ _ _ h => h)
-    (fun _ _ _ _ _ h => h)
-  simp only [decodeErrorFromSpec0, decodeErrorFromSpec,
-    memRegion_40_cells, memRegion_48_cells, stackAt_decodeErrorFrom,
-    sepExists_sepConj_left, sepExists_sepConj_right]
-  cells_unfold
-  have hfn : libsignalSessionCode.fnOff decodeErrorFromName = num% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from") :=
-    decodeErrorFrom_fnOff
-  have hshim := shim_ok_at_trap (b := b) (C := C) (abs := abs)
-    (name := decodeErrorFromName) (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from"))
-    (by rw [hfn, (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")])
-  have halloc := alloc_ok_at_trap (b := b) (C := C)
-    (name := decodeErrorFromName) (k := num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from")) hA
-    (by rw [hfn, alloc_fnOff])
-  have hpanic := panic_at_handle_alloc_error_trap (b := b) (C := C) (abs := abs)
-    (name := decodeErrorFromName) (k := num% (ls_off% "alloc::alloc::handle_alloc_error" - ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from"))
-    (by rw [hfn, (ls_stub% "alloc::alloc::handle_alloc_error")])
-  code_fetches CryptoVerification.libsignalSessionCode
-    varintSlowBin b
-    (Rust.withPanics (trTrapExterns C abs)) hfn (num% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from")) 92
-  dsimp only [trTrapProgAt] at hshim halloc hpanic ⊢
-  clear hfn hA
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))).fnAddr decodeErrorFromName = entry
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  wpp_init x s0
-  obtain ⟨k, w⟩ := x
-  dsimp only at *
-  obtain ⟨hk1, hk2⟩ := h
-  have hpow2 : ∃ j, 8 = 2 ^ j := ⟨3, rfl⟩
-  have hlay : LayoutOk 72 8 := ⟨by decide, hpow2, by decide⟩
-  apply SepWPp.of_sepWP (mid := entry + bv% (32))
-  wp_steps
-  wp_apply
-  wp_steps
-  wp_apply
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  by_cases hoom : sf_1.readReg64 (Reg.gpr 0#5) = 0
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) = 0#64 := hoom
-    simp only [hoom, ite_true, sepConj_assoc]
-    refine sepWPp_pure_mid fun htrace => ?_
-    apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::alloc::handle_alloc_error" - ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from"))
-    wp_steps
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-    simpa only [sepConj_assoc] using
-      allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom
-    simp only [hoom, ite_false, memRegion_72_cells,
-      sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun u0 => SepWPp.exists_elim fun u1 =>
-      SepWPp.exists_elim fun u2 => SepWPp.exists_elim fun u3 =>
-      SepWPp.exists_elim fun u4 => SepWPp.exists_elim fun u5 =>
-      SepWPp.exists_elim fun u6 => SepWPp.exists_elim fun u7 =>
-      SepWPp.exists_elim fun u8 => ?_
-    refine sepWPp_pure_mid fun ⟨hmod, htrace⟩ => ?_
-    apply SepWPp.of_sepWP_ret
-    wp_steps
-    wp_done
-
-theorem decodeErrorFrom_ok_aux (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr decodeErrorFromName)
-      (decodeErrorFromSpec A) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr decodeErrorFromName]
-  exact subroutine_ok_kit_of_trTrap (decodeErrorFrom_ok_aux_trap b C A abs hA)
-
-theorem decodeErrorFrom_ok_at_varintSlow_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (abs : String → Option (State → State)) (hA : AllocHooks A abs) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr varintSlowName - 11672#64)
-      (decodeErrorFromSpec A) := by
-  have heq : (trTrapProgAt b C abs).fnAddr varintSlowName - 11672#64 =
-      (trTrapProgAt b C abs).fnAddr decodeErrorFromName := by
-    simp only [trTrapProgAt, Program.fnAddr_rebase, varintSlow_fnOff, decodeErrorFrom_fnOff]
-    bv_lin
-  rw [heq]
-  exact decodeErrorFrom_ok_aux_trap b C A abs hA
-
-theorem decodeErrorFrom_ok_at_varintSlow (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (abs : String → Option (State → State)) (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr varintSlowName - 11672#64)
-      (decodeErrorFromSpec A) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr varintSlowName]
-  exact subroutine_ok_kit_of_trTrap (decodeErrorFrom_ok_at_varintSlow_trap b C A abs hA)
 
 end CryptoVerification.LibsignalTripleRatchet.InImage.VarintSlow

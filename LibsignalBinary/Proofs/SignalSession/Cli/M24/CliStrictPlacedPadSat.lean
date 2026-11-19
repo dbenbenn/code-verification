@@ -10,14 +10,17 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.M24.ArgvPad -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudgetSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudgetSat
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlaced
 public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainOkCliExtB2NeedLocksInst -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SignalSession.Cli.ProcessBridgeExec
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Process
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # SWAR-Padded Route-B2 `MainOkCliExt*PadPlacedAt` & Strict Whole-ELF Composers
@@ -46,8 +49,7 @@ namespace LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlacedPadSat
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib
 open CryptoGames.LibsignalSession (GhostState)
-open CryptoVerification
-  (LibsignalPlacement libsignalMutatedBlocks libsignalSessionExterns lsmpl)
+open CryptoVerification (ExternsDistinctOnHooked LibsignalPlacement libsignalMutatedBlocks lsmpl)
 open CryptoVerification.E2E
   (Bytes PEParams PreKeyBundleFields PreKeyMessageFields RecordExtras UnreachedPqxdhPrimitives
    initiateTapeLen wirePrekey wireWhisper)
@@ -72,10 +74,11 @@ open CryptoVerification.SignalSession.Cli
 open CryptoVerification.SignalSession.Cli.MainHops
   (CallV LsCodeInv RunCall cliMainStk cliResStack cliWrOk mProgPlaced mainFrameSize)
 open CryptoVerification.SignalSession.Cli.RunCompose (runRel)
-open CryptoVerification.SignalSession.Placed (CliElfCodeMatchesPlaced)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (CliElfCodeMatchesPlaced)
 open LibsignalBinary.Heap (AllocEvent BudgetLimits FitsEvents rustAllocEvents)
 open LibsignalBinary.Heap.Fine
-  (CliElfMallocngLayout FineBudget StartupVmPreserved fineCostModel fineHookRustCliAllocBudget)
+  (CliElfMallocngLayout FineBudget StartupVmPreserved aesStorageCell fineCostModel
+   fineHookRustCliAllocBudget)
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.ArgvPad
   (argvAtROPad b2MainEntryPreFinePad b2MainFrameFinePad b2MainFrameFinePad_entails_frame
    b2MainSpecTightNeedLocksFineAtPad strlenSpecROSat
@@ -208,7 +211,7 @@ theorem mainOkCliExtPqB2NeedLocksPadPlacedAt_of_pqScopedMainSubroutine
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {ext : CliHooks → String → Option (State → State)}
     {mainIdx : Nat} {inputsOf : Inputs → ProcessInputs} {CodeOk : Memory → Prop}
     {libcAddr brkStart : BitVec 64} {stk : Nat} {lim : BudgetLimits}
@@ -233,7 +236,7 @@ theorem mainOkCliExtOverB2NeedLocksPadPlacedAt_of_pqScopedMainSubroutine
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {ext : CliHooks → String → Option (State → State)}
     {mainIdx : Nat} {inputsOf : Inputs → ProcessInputs} {CodeOk : Memory → Prop}
     {libcAddr brkStart : BitVec 64} {stk : Nat} {lim : BudgetLimits}
@@ -259,7 +262,7 @@ theorem mainOkCliExtPqB2NeedLocksPadPlacedAt_of_mainSubroutine
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {ext : CliHooks → String → Option (State → State)}
     {mainIdx : Nat} {inputsOf : Inputs → ProcessInputs} {CodeOk : Memory → Prop}
     {libcAddr brkStart : BitVec 64} {stk : Nat} {lim : BudgetLimits}
@@ -283,7 +286,7 @@ theorem mainOkCliExtOverB2NeedLocksPadPlacedAt_of_mainSubroutine
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {ext : CliHooks → String → Option (State → State)}
     {mainIdx : Nat} {inputsOf : Inputs → ProcessInputs} {CodeOk : Memory → Prop}
     {libcAddr brkStart : BitVec 64} {stk : Nat} {lim : BudgetLimits}
@@ -309,7 +312,7 @@ theorem mainOkCliExtPqB2NeedLocksPadPlacedAt_of_runTight_and_hops_sat
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}
@@ -363,7 +366,7 @@ theorem mainOkCliExtOverB2NeedLocksPadPlacedAt_of_runTight_and_hops_sat
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}
@@ -497,6 +500,7 @@ theorem muslHarnessFineNeedLocksPadPerInput_of_startup
               ((libcAddr + 48#64) ↦₆₄ 4096#64) ∗
               ((libcAddr + 8#64) ↦₆₄ auxvPtr) ∗
               MallocngAuxvAt auxvPtr ∗
+              aesStorageCell elf.brkStart ∗
               (argvAtROPad (sm.readReg64 .x1) (("libsignal-cli" :: i.argv).map bytesOfString) ∗
                 stackAt sm.sp stk ∗ Statics ∗ Fr)) ∧
           ∀ sr : State, Steps P sm sr → Returned sm sr →
@@ -572,6 +576,7 @@ theorem muslHarnessFineNeedLocksGuardedPadPerInput_of_startup
               ((libcAddr + 48#64) ↦₆₄ 4096#64) ∗
               ((libcAddr + 8#64) ↦₆₄ auxvPtr) ∗
               MallocngAuxvAt auxvPtr ∗
+              aesStorageCell elf.brkStart ∗
               (argvAtROPad (sm.readReg64 .x1) (("libsignal-cli" :: i.argv).map bytesOfString) ∗
                 stackAt sm.sp stk ∗ Statics ∗ Fr)) ∧
           ∀ sr : State, Steps P sm sr → Returned sm sr →

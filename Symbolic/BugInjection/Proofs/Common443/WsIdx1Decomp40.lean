@@ -187,7 +187,7 @@ theorem canon_of_checkCanonAt {c : Nat} {w : HwBytes} (h : checkCanonAt c w = tr
 set_option maxRecDepth 200000 in theorem check_wire40Fast : checkCanonAt 1 wire40Fast = true := by decide +kernel
 theorem wireAt40_canon {p : PreKeyFields} (hp : parsePreKeyWire (wireAt 40) = some p) : WsIdx1PreKeyRep.InnerWireCanonicalAt 1 p := by rw [wireAt40_eq_fast] at hp; exact canon_of_checkCanonAt check_wire40Fast p hp
 set_option maxRecDepth 200000 in theorem checkOuter_wire40Fast : CompFitsNames.checkPreKeyOuter Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1.setup compI0 wire40Fast = true := by decide +kernel
-theorem wireAt40_outer {r : Records} {p : PreKeyFields} (hf : Symbolic.BugInjection.compFits Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1.setup compI0 r) (hp : parsePreKeyWire (wireAt 40) = some p) : CompRPreKeyWire.PreKeyOuterMatches compI0 r (wireAt 40) p := by rw [wireAt40_eq_fast] at hp ⊢; exact CompFitsNames.preKeyOuterMatches_of_check hf hp checkOuter_wire40Fast
+theorem wireAt40_outer {r : Records} {p : PreKeyFields} (hf : Symbolic.BugInjection.SetupMatches Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1.setup compI0 r) (hp : parsePreKeyWire (wireAt 40) = some p) : CompRPreKeyWire.PreKeyOuterMatches compI0 r (wireAt 40) p := by rw [wireAt40_eq_fast] at hp ⊢; exact CompFitsNames.preKeyOuterMatches_of_check hf hp checkOuter_wire40Fast
 theorem sendAt37_baseKey {q : PreKeyFields} (hq : parsePreKeyWire (sendAt 37) = some q) : q.baseKey = ecKey WsIdx1CensusDefs.ek1PubKey := by
   have h1 := send37Fast_baseKey; rw [sendAt37_eq_fast] at hq; rw [hq] at h1; exact Option.some.inj h1
 theorem sendAt37_kyberCiphertext {q : PreKeyFields} (hq : parsePreKeyWire (sendAt 37) = some q) : q.kyberCiphertext = some (kyberKey compKyberCt1) := by

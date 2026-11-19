@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDerive
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDerive -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,7 +30,7 @@ structure SetUnackExactGhost where
   baseKeyBytes : Initiator.Bytes
 
 
-def durationSinceZeroTsSpec : Spec (BitVec 64 × BitVec 64) where
+@[expose] def durationSinceZeroTsSpec : Spec (BitVec 64 × BitVec 64) where
   pre := fun (p, ret) s =>
     ⌜s.readReg64 .x0 = p ∧ s.readReg64 .x8 = ret⌝ ∗
       memRegion p 16 ∗ memRegion ret 24 ∗ stackAt s.sp extHookStack

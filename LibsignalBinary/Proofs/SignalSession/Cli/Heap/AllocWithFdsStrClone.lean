@@ -13,6 +13,8 @@ public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `stringCloneBudgetSpec` Lift to `withFds`
@@ -145,26 +147,6 @@ theorem hookOk_stringCloneBudget_withFds_of_hokFd [LibsignalPlacement]
   cases henf : lim.enforced
   · exact hookOk_stringCloneBudget_withFds_of_unenforced henf hok
   · exact hookOk_stringCloneBudget_withFds_of_enforced henf (hokFd henf)
-
-theorem hookSat_stringCloneBudget_withFds_of_hsatFd [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {hooks : String → Option (State → State)} {sym : String}
-    (hsat : HookSat hooks sym (stringCloneBudgetSpec M A lim))
-    (hsatFd : lim.enforced = true →
-      HookSat hooks sym (withFdsGe3Closed (stringCloneBudgetSpec M A lim))) :
-    HookSat hooks sym (stringCloneBudgetSpec M (withFds A) lim) := by
-  rcases hsat with ⟨fn, hfn, hok⟩
-  refine ⟨fn, hfn, hookOk_stringCloneBudget_withFds_of_hokFd hok (fun henf => ?_)⟩
-  rcases hsatFd henf with ⟨fn', hfn', hokFd⟩
-  have hEq : fn' = fn := Option.some.inj (hfn'.symm.trans hfn)
-  exact hEq ▸ hokFd
-
-theorem hookOk_stringCloneBudget_withFds_of_preserves [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {fn : State → State}
-    (hok : HookOk fn (stringCloneBudgetSpec M A lim))
-    (hpres : ∀ s0 : State, FdsGe3Closed s0.fs → FdsGe3Closed (fn s0).fs) :
-    HookOk fn (stringCloneBudgetSpec M (withFds A) lim) :=
-  hookOk_stringCloneBudget_withFds_of_hokFd hok (fun _ => hookOk_withFdsGe3Closed hpres hok)
 
 /-- Lift `HookOk fn (stringCloneBudgetSpec M A lim)` to `withFds A` when `∀ s0, (fn s0).fs = s0.fs`. -/
 theorem hookOk_stringCloneBudget_withFds [LibsignalPlacement]

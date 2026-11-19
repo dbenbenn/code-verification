@@ -9,13 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3Helpers
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FreeArgsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.LitsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3Helpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FreeArgsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.LitsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Hops -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FramePlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable Error-Path Drop Continuations for `main` Hop M3 & Send-Cap (Block `617`)
@@ -25,7 +33,7 @@ Verifies Block `617`'s shared error-exit drop continuations (`M+0x650`, `M+0x660
 variants, and `args` before returning `w26 = code`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -50,7 +58,7 @@ attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_add_neg96_eq_hsp_592
 
 /-- Focus the `"coins"` read-only literal in `mainLitsBlk617`. -/
-def mainLitsBlk617Rest [LibsignalPlacement] : SepProp :=
+@[expose] def mainLitsBlk617Rest [LibsignalPlacement] : SepProp :=
   dirLitsBlk617.foldr (fun l P => (lsρ l.1 ↦ᵣ utf8 l.2) ∗ P) emp
 
 theorem mainLitsBlk617_eq [LibsignalPlacement] :

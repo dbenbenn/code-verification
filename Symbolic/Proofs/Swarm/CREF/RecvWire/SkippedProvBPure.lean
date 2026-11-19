@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.SkippedNotJunkFixPure
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSkelLocal
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.SkippedNotJunkFixPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSkelLocal -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -20,9 +20,9 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpineRkCore
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpineRkCore -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.CREF.TR.G1.SpineRkKDefs
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvCol -- shake: keep
+import Symbolic.Proofs.Swarm.CREF.TR.RecvCol -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvWire.SkippedProvBPureA
 import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkBobGuard
@@ -38,6 +38,7 @@ import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.Actions.Network
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong -- proof-setup: allow-public-import
 
 /-!
 # Skipped-Key `ProvB` Provenance Lemmas for `RecvWire`
@@ -46,7 +47,7 @@ Proves `rIdx_eq_two_of_provB`, `honestSkelUniq_skipped`, `spineRkK_of_skippedKey
 `skippedFreshAliasExclB_of_reach` on reachable composed traces.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

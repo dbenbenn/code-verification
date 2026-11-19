@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 public import LibsignalBinary.Proofs.E2E.Record.L1GX.BodyDefs
 import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.ProstSSGXAtMove
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Loop-exit leaf `deserDExitX_ok`
@@ -21,7 +21,7 @@ Proves the `SessionRecord::deserialize` loop-exit path in PQXDH scope, relocatin
 344-byte `SessionStructure` into the output `SessionRecord` buffer.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.L1GX.Leaf.DeserDExitX
 
@@ -41,23 +41,6 @@ set_option maxHeartbeats 400000
 
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-
-private theorem fnOff_deser_dexit :
-    libsignalSessionCode.fnOff recDeserializeName = 0x16ed4 := by
-  exact CryptoVerification.libsignalSessionCode_fnOff_0x16ed4
-
-private theorem memcpy_ok_dexit {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr recDeserializeName + bv% (ls_off% "memcpy" - 0x16ed4))
-      framelessMemcpySpec :=
-  framelessMemcpy_ok_at (b := b) (C := C) (ctl := ctl) (abs := abs)
-    (name := recDeserializeName) (k := num% (ls_off% "memcpy" - 0x16ed4))
-    (by simp only [fnOff_deser_dexit, arm64_norm])
-
-gen_decodes CryptoVerification.libsignalSessionCode_tree dexit
-  [0x170c0 → 0x170d0, 0x17128 → 0x17134, 0x171e0,
-   0x17228 → 0x17268, 0x1738c → 0x173a8, 0x173b4 → 0x173dc]
 
 private theorem int64_raw_toBitVec_dexit (n : Nat) (h : n < 18446744073709551616) :
     ({ toUInt64 := { toBitVec := { toFin := ⟨n, h⟩ } } } : Int64).toBitVec = BitVec.ofNat 64 n := by
@@ -91,206 +74,6 @@ private theorem deserSaved_eq_atL_dexit (s0 : State) :
   have h0 : s0.sp - 0x60#64 = s0.sp - 0x770#64 + 0x710#64 := by bv_omega
   rw [h0]
   simp only [BitVec.add_assoc, BitVec.reduceAdd]
-
-set_option maxHeartbeats 800000 in
-private theorem dexit_sepWP_dexit {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    {s0 s : State} {L out w0 u0 u1 u2 u3 : BitVec 64} {rest : List (BitVec 8)}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr recDeserializeName + 0x254#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = L)
-    (hal : s.spAligned = true)
-    (hx29 : s.readReg64 .x29 = L + 0x710#64)
-    (hx19 : s.readReg64 .x19 = out)
-    (hx20 : s.readReg64 .x20 = 0#64)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hw0 : w0 ≠ noneCap)
-    (hrest : rest.length = 336) :
-    SepWP (tripleRatchetProgAt b C ctl abs) (s0.readReg64 .lr) s
-      (memRegion (L + 8#64) 336 ∗ memRegion (L + 0x158#64) 336 ∗ memRegion (L + 0x2a8#64) 336 ∗
-        ((L + 0x400#64) ↦₆₄ 0#64) ∗
-        ((L + 0x408#64) ↦₆₄ 0#64) ∗ ((L + 0x410#64) ↦₆₄ 8#64) ∗ ((L + 0x418#64) ↦₆₄ 0#64) ∗
-        ((L + 0x420#64) ↦₆₄ w0) ∗ ((L + 0x428#64) ↦ₛ rest) ∗
-        ((L + 0x6e8#64) ↦₆₄ (L + 0x3f8#64)) ∗
-        (out ↦₆₄ u0) ∗ ((out + 8#64) ↦₆₄ u1) ∗
-        ((out + 0x10#64) ↦₆₄ u2) ∗ ((out + 0x18#64) ↦₆₄ u3) ∗
-        memRegion (out + 0x20#64) 336 ∗
-        deserSavedAtL_dexit L s0)
-      (fun sf P_f =>
-        sf.sp = L + 0x770#64 ∧
-        sf.trace = s.trace ∧
-        CalleeSavedPreserved s0 sf ∧
-        P_f = (((L + 8#64) ↦ₛ rest) ∗ ((L + 0x158#64) ↦ₛ rest) ∗ ((L + 0x2a8#64) ↦ₛ rest) ∗
-          ((L + 0x400#64) ↦₆₄ 0#64) ∗
-          ((L + 0x408#64) ↦₆₄ 0#64) ∗ ((L + 0x410#64) ↦₆₄ 8#64) ∗ ((L + 0x418#64) ↦₆₄ 0#64) ∗
-          ((L + 0x420#64) ↦₆₄ w0) ∗ ((L + 0x428#64) ↦ₛ rest) ∗
-          ((L + 0x6e8#64) ↦₆₄ (L + 0x3f8#64)) ∗
-          (out ↦₆₄ 0#64) ∗ ((out + 8#64) ↦₆₄ 8#64) ∗
-          ((out + 0x10#64) ↦₆₄ 0#64) ∗ ((out + 0x18#64) ↦₆₄ w0) ∗
-          ((out + 0x20#64) ↦ₛ rest) ∗
-          deserSavedAtL_dexit L s0)) := by
-  subst hsp
-  have hmemcpy := memcpy_ok_dexit (b := b) (C := C) (ctl := ctl) (abs := abs)
-  dsimp only [framelessMemcpySpec] at hmemcpy
-  have hw0_ne := w0_add_one_ne_zero_dexit hw0
-  have hw0_beq := w0_add_one_beq_zero_dexit hw0
-  let H := Rust.withPanics (tripleRatchetExterns C ctl abs)
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 492)
-    fnOff_deser_dexit (by decide) dexit_decode_0x170c0
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 496)
-    fnOff_deser_dexit (by decide) dexit_decode_0x170c4
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 500)
-    fnOff_deser_dexit (by decide) dexit_decode_0x170c8
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 504)
-    fnOff_deser_dexit (by decide) dexit_decode_0x170cc
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 508)
-    fnOff_deser_dexit (by decide) dexit_decode_0x170d0
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 596)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17128
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 600)
-    fnOff_deser_dexit (by decide) dexit_decode_0x1712c
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 604)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17130
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 608)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17134
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 780)
-    fnOff_deser_dexit (by decide) dexit_decode_0x171e0
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 852)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17228
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 856)
-    fnOff_deser_dexit (by decide) dexit_decode_0x1722c
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 860)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17230
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 864)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17234
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 868)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17238
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 872)
-    fnOff_deser_dexit (by decide) dexit_decode_0x1723c
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 876)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17240
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 880)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17244
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 884)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17248
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 888)
-    fnOff_deser_dexit (by decide) dexit_decode_0x1724c
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 892)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17250
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 896)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17254
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 900)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17258
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 904)
-    fnOff_deser_dexit (by decide) dexit_decode_0x1725c
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 908)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17260
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 912)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17264
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 916)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17268
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1208)
-    fnOff_deser_dexit (by decide) dexit_decode_0x1738c
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1212)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17390
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1216)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17394
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1220)
-    fnOff_deser_dexit (by decide) dexit_decode_0x17398
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1224)
-    fnOff_deser_dexit (by decide) dexit_decode_0x1739c
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1228)
-    fnOff_deser_dexit (by decide) dexit_decode_0x173a0
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1232)
-    fnOff_deser_dexit (by decide) dexit_decode_0x173a4
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1236)
-    fnOff_deser_dexit (by decide) dexit_decode_0x173a8
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1248)
-    fnOff_deser_dexit (by decide) dexit_decode_0x173b4
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1252)
-    fnOff_deser_dexit (by decide) dexit_decode_0x173b8
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1256)
-    fnOff_deser_dexit (by decide) dexit_decode_0x173bc
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1260)
-    fnOff_deser_dexit (by decide) dexit_decode_0x173c0
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1264)
-    fnOff_deser_dexit (by decide) dexit_decode_0x173c4
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1268)
-    fnOff_deser_dexit (by decide) dexit_decode_0x173c8
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1272)
-    fnOff_deser_dexit (by decide) dexit_decode_0x173cc
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1276)
-    fnOff_deser_dexit (by decide) dexit_decode_0x173d0
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1280)
-    fnOff_deser_dexit (by decide) dexit_decode_0x173d4
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1284)
-    fnOff_deser_dexit (by decide) dexit_decode_0x173d8
-  have := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := b) (H := H) (k := 1288)
-    fnOff_deser_dexit (by decide) dexit_decode_0x173dc
-  dsimp only [tripleRatchetProgAt] at hpc hmemcpy ⊢
-  generalize (libsignalSessionCode.rebase b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr recDeserializeName = entry at *
-  examples_hide_fetches
-  unfold deserSavedAtL_dexit
-  wp_steps
-  wp_call hmemcpy (s.sp + 8#64, s.sp + 0x428#64, rest)
-  wp_steps
-  wp_call hmemcpy (s.sp + 0x2a8#64, s.sp + 8#64, rest)
-  wp_steps
-  wp_call hmemcpy (s.sp + 0x158#64, s.sp + 0x2a8#64, rest)
-  wp_steps
-  wp_call hmemcpy (out + 0x20#64, s.sp + 0x158#64, rest)
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *])
-  refine ⟨by simp only [wp_norm, arm64_norm, *], by simp only [wp_norm, arm64_norm, *], ?_, ?_⟩
-  · refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> simp only [wp_norm, arm64_norm, *]
-  · ac_rfl
 
 private theorem sliceCursorAfter_nil_dexit (L p : BitVec 64) (bs : List (BitVec 8)) :
     Prost.sliceCursorAfter (L + 0x3f8#64) p bs [] =
@@ -455,111 +238,5 @@ private theorem dexit_frame_entails_stackAt_dexit (s0 : State) (c0 w0 : BitVec 6
       (by dsimp [deserCalleeStack, recDeserializeStack]; bv_omega)
       (by decide)]
   exact Entails.refl _
-
-theorem deserDExitX_ok (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (x : DeserializeGenGhost) (R : SepProp) (s0 s : State) (hr : DeserializeScopeP x.r)
-    (hs : DeserLoopX C ctl x R s0 (recFieldsX x.r).length s) :
-    DeserStepX C ctl x R s0 s (DeserRetX x R s0) abs := by
-  let _ := hr
-  rcases hs with ⟨hpc, hrun, ⟨htr, hvregs⟩, _hsym, _hfr, hsp, hal, hx29, hx19, hx20, _hx23, hmem⟩
-  have hpc' : s.pc =
-      (tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr recDeserializeName + 0x254#64 := hpc
-  let L := deserSpL s0.sp
-  let v := ssgxAfter x.r (recFieldsX x.r).length
-  let bs := encodeRecord x.r
-  change s.mem ⊨ deserLocalsX L x.p bs
-      (((recFieldsX x.r).drop (recFieldsX x.r).length).flatMap GenFieldX.enc) v ∗
-    memRegion x.out 368 ∗ stackAt L deserCalleeStack ∗ deserSaved s0 ∗ R at hmem
-  rw [List.drop_length, List.flatMap_nil] at hmem
-  unfold deserLocalsX at hmem
-  rw [sliceCursorAfter_nil_dexit L x.p bs, memRegion_3f8_split_dexit L,
-      deserSaved_eq_atL_dexit s0] at hmem
-  let c0 := x.p + BitVec.ofNat 64 bs.length
-  have hmem1 : s.mem ⊨
-      prostSSGXAt A0 (L + 0x420#64) v ∗
-      (memRegion x.out 368 ∗
-       memRegion L 8 ∗
-       (memRegion (L + 8#64) 336 ∗ memRegion (L + 0x158#64) 336 ∗
-         memRegion (L + 0x2a8#64) 336) ∗
-       ((L + 0x3f8#64) ↦₆₄ c0) ∗ ((L + 0x400#64) ↦₆₄ 0#64) ∗ (x.p ↦ₛ bs) ∗
-       ((L + 0x408#64) ↦₆₄ 0#64) ∗ ((L + 0x410#64) ↦₆₄ 8#64) ∗ ((L + 0x418#64) ↦₆₄ 0#64) ∗
-       memRegion (L + 0x578#64) 0x170 ∗
-       ((L + 0x6e8#64) ↦₆₄ (L + 0x3f8#64)) ∗ memRegion (L + 0x6f0#64) 0x20 ∗
-       stackAt L deserCalleeStack ∗ deserSavedAtL_dexit L s0 ∗ R) := by
-    dsimp only [c0]
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hmem
-  obtain ⟨w0, rest, H, hw0, hrest, hrebuild, hmem2⟩ := satisfies_prostSSGXAt_move_dexit hmem1
-  have hmem3 : s.mem ⊨
-      memRegion x.out 368 ∗
-      (((L + 0x420#64) ↦₆₄ w0) ∗ ((L + 0x428#64) ↦ₛ rest) ∗ H ∗
-       memRegion L 8 ∗
-       (memRegion (L + 8#64) 336 ∗ memRegion (L + 0x158#64) 336 ∗
-         memRegion (L + 0x2a8#64) 336) ∗
-       ((L + 0x3f8#64) ↦₆₄ c0) ∗ ((L + 0x400#64) ↦₆₄ 0#64) ∗ (x.p ↦ₛ bs) ∗
-       ((L + 0x408#64) ↦₆₄ 0#64) ∗ ((L + 0x410#64) ↦₆₄ 8#64) ∗ ((L + 0x418#64) ↦₆₄ 0#64) ∗
-       memRegion (L + 0x578#64) 0x170 ∗
-       ((L + 0x6e8#64) ↦₆₄ (L + 0x3f8#64)) ∗ memRegion (L + 0x6f0#64) 0x20 ∗
-       stackAt L deserCalleeStack ∗ deserSavedAtL_dexit L s0 ∗ R) := by
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hmem2
-  obtain ⟨u0, u1, u2, u3, hmem3'⟩ := satisfies_memRegion_out_split_dexit hmem3
-  let F := (x.p ↦ₛ bs) ∗ H ∗ stackAt L deserCalleeStack ∗ memRegion L 8 ∗
-    ((L + 0x3f8#64) ↦₆₄ c0) ∗ memRegion (L + 0x578#64) 0x170 ∗
-    memRegion (L + 0x6f0#64) 0x20 ∗ R
-  have hmem4 : s.mem ⊨
-      (memRegion (L + 8#64) 336 ∗ memRegion (L + 0x158#64) 336 ∗ memRegion (L + 0x2a8#64) 336 ∗
-        ((L + 0x400#64) ↦₆₄ 0#64) ∗
-        ((L + 0x408#64) ↦₆₄ 0#64) ∗ ((L + 0x410#64) ↦₆₄ 8#64) ∗ ((L + 0x418#64) ↦₆₄ 0#64) ∗
-        ((L + 0x420#64) ↦₆₄ w0) ∗ ((L + 0x428#64) ↦ₛ rest) ∗
-        ((L + 0x6e8#64) ↦₆₄ (L + 0x3f8#64)) ∗
-        (x.out ↦₆₄ u0) ∗ ((x.out + 8#64) ↦₆₄ u1) ∗
-        ((x.out + 0x10#64) ↦₆₄ u2) ∗ ((x.out + 0x18#64) ↦₆₄ u3) ∗
-        memRegion (x.out + 0x20#64) 336 ∗
-        deserSavedAtL_dexit L s0) ∗ F := by
-    dsimp only [F]
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hmem3'
-  intro hL
-  have hwp := dexit_sepWP_dexit (abs := abs) (s0 := s0) (u0 := u0) (u1 := u1) (u2 := u2) (u3 := u3)
-    hpc' hrun hsp hal hx29 hx19 hx20 hvregs hw0 hrest
-  rcases hwp.elim hmem4 hL with
-    ⟨sf, hsteps, ⟨hpcf, hrunf, P_f, hmf, hspf, htracef, hcsf, rfl⟩ | ⟨_, hoom⟩⟩
-  swap; · exact (not_satisfies_false_sepConj hoom).elim
-  have hspf0 : sf.sp = s0.sp := by
-    rw [hspf]
-    dsimp [L, deserSpL]
-    bv_omega
-  refine ⟨sf, hsteps, Or.inl ⟨⟨hpcf, hspf0, hrunf⟩, ⟨hspf0, hcsf⟩, ?_⟩⟩
-  have hmf1 : sf.mem ⊨
-      ((x.p ↦ₛ bs) ∗
-       ((x.out ↦₆₄ 0#64) ∗ ((x.out + 8#64) ↦₆₄ 8#64) ∗ ((x.out + 0x10#64) ↦₆₄ 0#64) ∗
-         (((x.out + 0x18#64) ↦₆₄ w0) ∗ ((x.out + 0x20#64) ↦ₛ rest) ∗ H)) ∗
-       (stackAt L deserCalleeStack ∗
-        (memRegion L 8 ∗
-          ((L + 8#64) ↦ₛ rest) ∗ ((L + 0x158#64) ↦ₛ rest) ∗ ((L + 0x2a8#64) ↦ₛ rest) ∗
-          ((L + 0x3f8#64) ↦₆₄ c0) ∗ ((L + 0x400#64) ↦₆₄ 0#64) ∗
-          ((L + 0x408#64) ↦₆₄ 0#64) ∗ ((L + 0x410#64) ↦₆₄ 8#64) ∗ ((L + 0x418#64) ↦₆₄ 0#64) ∗
-          ((L + 0x420#64) ↦₆₄ w0) ∗ ((L + 0x428#64) ↦ₛ rest) ∗
-          memRegion (L + 0x578#64) 0x170 ∗
-          ((L + 0x6e8#64) ↦₆₄ (L + 0x3f8#64)) ∗
-          memRegion (L + 0x6f0#64) 0x20 ∗
-          deserSavedAtL_dexit L s0))) ∗ R := by
-    dsimp only [F, L] at hmf ⊢
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hmf
-  have hout20 : x.out + 0x18#64 + 8#64 = x.out + 0x20#64 := by bv_omega
-  have hss_out :
-      ((x.out + 0x18#64) ↦₆₄ w0) ∗ ((x.out + 0x20#64) ↦ₛ rest) ∗ H ⊢
-        prostSSGXAt A0 (x.out + 0x18#64) v := by
-    have hr := hrebuild (x.out + 0x18#64)
-    rwa [hout20] at hr
-  have hstk := dexit_frame_entails_stackAt_dexit s0 c0 w0 rest hrest
-  dsimp only at hstk
-  have hmf2 := Satisfies.mono
-    (sepConj_mono_left (sepConj_mono_right (sepConj_mono
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right hss_out))) hstk))) hmf1
-  unfold deserOutRawX deserOutRecordX
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  refine ⟨htracef.trans htr, ?_⟩
-  dsimp only [v, bs] at hmf2
-  exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hmf2
 
 end CryptoVerification.E2E.Record.L1GX.Leaf.DeserDExitX

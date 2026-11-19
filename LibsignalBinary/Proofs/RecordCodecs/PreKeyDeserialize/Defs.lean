@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.Deps
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.RecordCodecs.Deps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBody
 
 /-!
@@ -21,7 +20,7 @@ Relative-offset and `[LibsignalPlacement]` (Block `65`) callee wrappers, `PreKey
 stack-slot layout for `PreKeyRecordStructure` (`sp' + 56`), and epilogue state at `+0x224`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.RecordCodecsBinary.PreKeyDeserialize.Helpers
 
@@ -35,184 +34,6 @@ open CryptoVerification.LibsignalTripleRatchet.Getters
 open CryptoVerification.LibsignalTripleRatchet.Wire
 open CryptoVerification.RecordCodecs
 open CryptoVerification.RecordCodecsBinary
-
-abbrev pkDecOff : Nat :=
-  num% (ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize")
-
-theorem pkDec_fnOff :
-    libsignalSessionCode.fnOff preKeyDeserializeName = pkDecOff :=
-  ls_lemma% fnOff "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"
-
-gen_decodes CryptoVerification.libsignalSessionCode_tree pkDec
-  [(num% (ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize")) →
-   (num% (ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize" + 736))]
-
-/-! ## Callee contracts at relative offsets from `preKeyDeserializeName` -/
-
-theorem varintSlice_ok_sub {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (d : DecodeDeps img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr preKeyDeserializeName +
-        bv% (ls_off% "prost::encoding::varint::decode_varint_slice" -
-          ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"))
-      ((decodeVarintSliceSpecX A).inImage img) :=
-  sub_ok_at_of_fnAddr d.varintSlice preKeyDeserializeName
-    (num% (ls_off% "prost::encoding::varint::decode_varint_slice" -
-      ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"))
-
-theorem int32Merge_ok_sub {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (d : DecodeDeps img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr preKeyDeserializeName +
-        bv% (2 ^ 64 + (ls_off% "prost::encoding::int32::merge::<&mut &[u8]>") -
-          ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"))
-      ((int32MergeSpecX A).inImage img) := by
-  have heq :
-      (tripleRatchetProgAtExt img.base ext).fnAddr preKeyDeserializeName +
-        bv% (2 ^ 64 + (ls_off% "prost::encoding::int32::merge::<&mut &[u8]>") -
-          ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize") =
-      (tripleRatchetProgAtExt img.base ext).fnAddr int32MergeName := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"),
-      (ls_lemma% fnOff "prost::encoding::int32::merge::<&mut &[u8]>")]
-    bv_omega
-  rw [heq]; exact d.int32Merge
-
-theorem skipField_ok_sub {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (d : DecodeDeps img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr preKeyDeserializeName +
-        bv% (2 ^ 64 + (ls_off% "prost::encoding::skip_field::<&mut &[u8]> [local#1]") -
-          ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"))
-      ((skipFieldSpecX A).inImage img) := by
-  have heq :
-      (tripleRatchetProgAtExt img.base ext).fnAddr preKeyDeserializeName +
-        bv% (2 ^ 64 + (ls_off% "prost::encoding::skip_field::<&mut &[u8]> [local#1]") -
-          ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize") =
-      (tripleRatchetProgAtExt img.base ext).fnAddr skipFieldName := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"),
-      (ls_lemma% fnOff "prost::encoding::skip_field::<&mut &[u8]> [local#1]")]
-    bv_omega
-  rw [heq]; exact d.skipField
-
-theorem dropDecodeError_ok_sub {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (d : DecodeDeps img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr preKeyDeserializeName +
-        bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<prost::error::DecodeError> [local#1]") -
-          ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"))
-      ((dropDecodeErrorSpecX A).inImage img) := by
-  have heq :
-      (tripleRatchetProgAtExt img.base ext).fnAddr preKeyDeserializeName +
-        bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<prost::error::DecodeError> [local#1]") -
-          ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize") =
-      (tripleRatchetProgAtExt img.base ext).fnAddr dropDecodeErrorName := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"),
-      (ls_lemma% fnOff "core::ptr::drop_glue::<prost::error::DecodeError> [local#1]")]
-    bv_omega
-  rw [heq]; exact d.dropDecodeError
-
-theorem bytesMerge_ok_sub {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (d : DecodeDeps img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr preKeyDeserializeName +
-        bv% (2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") -
-          ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"))
-      ((bytesMergeRawSpecX A).inImage img) := by
-  have heq :
-      (tripleRatchetProgAtExt img.base ext).fnAddr preKeyDeserializeName +
-        bv% (2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") -
-          ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize") =
-      (tripleRatchetProgAtExt img.base ext).fnAddr bytesMergeName := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"),
-      (ls_lemma% fnOff "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]")]
-    bv_omega
-  rw [heq]; exact d.bytesMerge
-
-/-- Minimal 4-field hook bundle used by `PreKeyRecord::deserialize` (drops unused `spqr_recv`
-and cipher hooks from `Stage2ContractsX`). -/
-structure PreKeyDeserializeHooks (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop where
-  dealloc :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr deallocName)
-      ((rustDeallocExternSpecWithStack A extHookStack).inImage img)
-  decode_varint_slow :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr varintSlowName)
-      ((decodeVarintSlowSpecWithStack A (64 + 2 * extHookStack)).inImage img)
-  decode_error_from :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr decodeErrorFromName)
-      ((decodeErrorFromSpecWithStack A (2 * extHookStack)).inImage img)
-  decode_error_push :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr decodeErrorPushName)
-      ((decodeErrorPushExternSpecWithStack A (2 * extHookStack)).inImage img)
-
-theorem PreKeyDeserializeHooks.of_stage2 {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {encFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → List (BitVec 8)}
-    {decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8))}
-    {ext : String → Option (State → State)}
-    (hC : Stage2ContractsX img C A encFn decFn ext) :
-    PreKeyDeserializeHooks img A ext where
-  dealloc := hC.dealloc
-  decode_varint_slow := hC.decode_varint_slow
-  decode_error_from := hC.decode_error_from
-  decode_error_push := hC.decode_error_push
-
-theorem dealloc_ok_sub {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : PreKeyDeserializeHooks img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr preKeyDeserializeName +
-        bv% (ls_off% "__rustc::__rust_dealloc" -
-          ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"))
-      ((rustDeallocExternSpecWithStack A extHookStack).inImage img) :=
-  sub_ok_at_of_fnAddr hC.dealloc preKeyDeserializeName
-    (num% (ls_off% "__rustc::__rust_dealloc" -
-      ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"))
-
-theorem varintSlow_ok_sub {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : PreKeyDeserializeHooks img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr preKeyDeserializeName +
-        bv% (ls_off% "prost::encoding::varint::decode_varint_slow::<&mut &[u8]>" -
-          ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"))
-      ((decodeVarintSlowSpecWithStack A (64 + 2 * extHookStack)).inImage img) :=
-  sub_ok_at_of_fnAddr hC.decode_varint_slow preKeyDeserializeName
-    (num% (ls_off% "prost::encoding::varint::decode_varint_slow::<&mut &[u8]>" -
-      ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"))
-
-theorem decodeErrorFrom_ok_sub {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : PreKeyDeserializeHooks img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr preKeyDeserializeName +
-        bv% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" -
-          ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"))
-      ((decodeErrorFromSpecWithStack A (2 * extHookStack)).inImage img) :=
-  sub_ok_at_of_fnAddr hC.decode_error_from preKeyDeserializeName
-    (num% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" -
-      ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"))
-
-theorem decodeErrorPush_ok_sub {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : PreKeyDeserializeHooks img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr preKeyDeserializeName +
-        bv% (ls_off% "<prost::error::DecodeError>::push" -
-          ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"))
-      ((decodeErrorPushExternSpecWithStack A (2 * extHookStack)).inImage img) :=
-  sub_ok_at_of_fnAddr hC.decode_error_push preKeyDeserializeName
-    (num% (ls_off% "<prost::error::DecodeError>::push" -
-      ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"))
-
-/-! ## Pure codec suffix & model lemmas -/
 
 theorem pkMergeField_suffix {m m' : PreKeyRecordStructure} {tag : ℕ} {wt : WireType}
     {bs rest : List (BitVec 8)} (h : PreKeyRecordStructure.mergeField m tag wt bs = some (m', rest)) :
@@ -250,17 +71,17 @@ theorem PreKeyGhostCapOk.mono {g : PreKeyGhost} {m n : ℕ}
     PreKeyGhostCapOk g m :=
   ⟨bytesMergeCapOk_mono hg.pub hle, bytesMergeCapOk_mono hg.priv hle⟩
 
-def preKeyStructAt (A : RustAlloc) (g : PreKeyGhost) (a : BitVec 64)
+@[expose] def preKeyStructAt (A : RustAlloc) (g : PreKeyGhost) (a : BitVec 64)
     (m : PreKeyRecordStructure) : SepProp :=
   vecU8At A a g.pub.cap g.pub.ptr m.publicKey ∗
     vecU8At A (a + 0x18#64) g.priv.cap g.priv.ptr m.privateKey ∗
     ((a + 0x30#64) ↦₃₂ m.id) ∗
     memRegion (a + 0x34#64) 4
 
-def preKeyStructOf (A : RustAlloc) (a : BitVec 64) (m : PreKeyRecordStructure) : SepProp :=
+@[expose] def preKeyStructOf (A : RustAlloc) (a : BitVec 64) (m : PreKeyRecordStructure) : SepProp :=
   ∃∗ g : PreKeyGhost, preKeyStructAt A g a m
 
-def preKeyStructLoopOf (A : RustAlloc) (a : BitVec 64) (n : ℕ)
+@[expose] def preKeyStructLoopOf (A : RustAlloc) (a : BitVec 64) (n : ℕ)
     (m : PreKeyRecordStructure) : SepProp :=
   ∃∗ g : PreKeyGhost, ⌜PreKeyGhostCapOk g n⌝ ∗ preKeyStructAt A g a m
 
@@ -376,22 +197,7 @@ theorem PkLoopRegs.of_calleeSaved {s0 : State} {sp' x19 : BitVec 64} {s1 s2 : St
   x19_eq := hcs.1.trans h1.x19_eq
   saved := PkSavedRegs.of_calleeSaved h1.saved hcs
 
-structure PkEpilogueState (img : Obj.Image) (s0 : State) (sp' : BitVec 64) (s : State) : Prop where
-  sp : s.sp = sp'
-  sp_align : s.spAligned = true
-  frozen : img.FrozenLoaded s
-  sym : s.symtab = img.symtab
-  trace : s.trace = s0.trace
-  saved : PkSavedRegs s0 s
-
-theorem PkEpilogueState.of_steps {img : Obj.Image} {s0 : State} {sp' : BitVec 64} {s : State}
-    (hfz : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hsp : s.sp = sp') (_hsp0 : sp' = sp') (hal : s.spAligned = true)
-    (htr : s.trace = s0.trace) (hsaved : PkSavedRegs s0 s) :
-    PkEpilogueState img s0 sp' s :=
-  ⟨hsp, hal, hfz, hsym, htr, hsaved⟩
-
-def pkCalleeSavedAt (sp' : BitVec 64) (s0 : State) : SepProp :=
+@[expose] def pkCalleeSavedAt (sp' : BitVec 64) (s0 : State) : SepProp :=
   ((sp' + 160#64) ↦₆₄ s0.readReg64 .x29) ∗
     ((sp' + 168#64) ↦₆₄ s0.readReg64 .x30) ∗
     ((sp' + 176#64) ↦₆₄ s0.readReg64 .x23) ∗
@@ -400,7 +206,7 @@ def pkCalleeSavedAt (sp' : BitVec 64) (s0 : State) : SepProp :=
     ((sp' + 208#64) ↦₆₄ s0.readReg64 .x20) ∗
     ((sp' + 216#64) ↦₆₄ s0.readReg64 .x19)
 
-def pkEpilogueMem (A : RustAlloc) (sp' x19 ptr : BitVec 64) (bs : List (BitVec 8))
+@[expose] def pkEpilogueMem (A : RustAlloc) (sp' x19 ptr : BitVec 64) (bs : List (BitVec 8))
     (out : Except SignalProtocolError PreKeyRecord) : SepProp :=
   memRegion sp' 160 ∗
     ((sp' + 184#64) ↦₆₄ (sp' + 40#64)) ∗
@@ -408,27 +214,6 @@ def pkEpilogueMem (A : RustAlloc) (sp' x19 ptr : BitVec 64) (bs : List (BitVec 8
     (ptr ↦ₛ bs) ∗
     A.pool ∗
     stackAt sp' (skipFieldStackX 100)
-
-def pkEpiloguePost (img : Obj.Image) (A : RustAlloc) (s0 : State)
-    (sp' x19 ptr : BitVec 64) (bs : List (BitVec 8))
-    (out : Except SignalProtocolError PreKeyRecord) : State → SepProp → Prop :=
-  fun sf Pf => PkEpilogueState img s0 sp' sf ∧ (Pf ⊢ pkEpilogueMem A sp' x19 ptr bs out)
-
-theorem pkEpiloguePost_append_prefix (img : Obj.Image) (A : RustAlloc) (s0 : State)
-    (sp' x19 ptr : BitVec 64) (bs : List (BitVec 8)) (k : ℕ) (hk : k ≤ bs.length)
-    (out : Except SignalProtocolError PreKeyRecord)
-    (sf : State) (Pf : SepProp)
-    (h : pkEpiloguePost img A s0 sp' x19 (ptr + BitVec.ofNat 64 k) (bs.drop k) out sf Pf) :
-    pkEpiloguePost img A s0 sp' x19 ptr bs out sf (Pf ∗ (ptr ↦ₛ bs.take k)) := by
-  rcases h with ⟨hst, hent⟩
-  refine ⟨hst, ?_⟩
-  refine Entails.trans (sepConj_mono_left hent) ?_
-  unfold pkEpilogueMem
-  rw [← pointsToBytes_take_drop ptr bs k hk]
-  apply entails_of_eq
-  ac_rfl
-
-/-! ## Scratch memory splitting helpers at `sp' + 112` (`x29 - 48`) -/
 
 theorem pkMemRegion48_split24 (sp' : BitVec 64) :
     memRegion (sp' + 112#64) 48 =
@@ -654,7 +439,7 @@ structure PkEpilogueStatePlaced [LibsignalPlacement] (s0 : State) (sp' : BitVec 
   trace : s.trace = s0.trace
   saved : PkSavedRegs s0 s
 
-def pkEpiloguePostPlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
+@[expose] def pkEpiloguePostPlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
     (sp' x19 ptr : BitVec 64) (bs : List (BitVec 8))
     (out : Except SignalProtocolError PreKeyRecord) : State → SepProp → Prop :=
   fun sf Pf => PkEpilogueStatePlaced s0 sp' sf ∧ (Pf ⊢ pkEpilogueMem A sp' x19 ptr bs out)

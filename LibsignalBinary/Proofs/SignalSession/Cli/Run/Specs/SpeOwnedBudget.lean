@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.ProofBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwned
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.ProofBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwned -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Budget-Threaded `dropSpeOwnedSpec`
@@ -21,7 +22,7 @@ no `FitsEnv` precondition) and proves agreement with `DropSpe.ProofBudget.dropSp
 `.proto`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +38,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.ProofBudget (dropSpeSp
 
 /-- Budget-threaded `core::ptr::drop_glue::<SignalProtocolError>` specification on `SpeOwned` at
 stack budget `stk` (`FreeOnlyEvs`). -/
-def dropSpeOwnedSpec [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def dropSpeOwnedSpec [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) : Spec (DropSpeOwnedGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a ∧ LsRetAddr624 (s.readReg64 .x30)⌝ ∗

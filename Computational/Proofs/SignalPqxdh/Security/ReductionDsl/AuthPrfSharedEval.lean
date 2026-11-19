@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfBase
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Potential
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Potential -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
 import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E -- shake: keep
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndGapDh -- shake: keep
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E -- shake: keep
+import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndGapDh -- shake: keep
 
 /-!
 # Shared Evaluation and Leaf-Invariant Lemmas for `Auth` PRF Reductions
@@ -25,7 +25,7 @@ Proves shared expression and computation evaluation lemmas and list-length leaf 
 reductions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 100000
@@ -178,7 +178,7 @@ open OracleSpec OracleComp
 @[simp] theorem samplePrim_index_eval {Γ : List PT} (N : ℕ) (env : Env Γ) :
     (samplePrim (.index N)).eval env = embedUnif (RoKem.sampleIndexRange N) := rfl
 
-@[reducible] def evalPrimOp : (t : PTag) → t.dom.denote → OracleComp PrimBaseSpec t.cod.denote
+@[expose, reducible] def evalPrimOp : (t : PTag) → t.dom.denote → OracleComp PrimBaseSpec t.cod.denote
   | .x25519 => fun x => primQ (.x25519 x.1 x.2)
   | .x25519Base => fun sk => primQ (.x25519Base sk)
   | .isCanonical => fun pk => primQ (.isCanonical pk)
@@ -199,7 +199,7 @@ open OracleSpec OracleComp
   | .aeadEnc _ _ _ => fun x => primQ (.aeadEnc (valToMsgKeys x.1) x.2.1 x.2.2)
   | .aeadDec _ _ _ => fun x => primQ (.aeadDec (valToMsgKeys x.1) x.2.1 x.2.2)
 
-@[simp] def evalPrimQ {τ₁ τ₂ : PT} (f : τ₁.denote → OracleComp PrimBaseSpec τ₂.denote)
+@[expose, simp] def evalPrimQ {τ₁ τ₂ : PT} (f : τ₁.denote → OracleComp PrimBaseSpec τ₂.denote)
     (x : τ₁.denote) : OracleComp PrimBaseSpec τ₂.denote :=
   f x
 
@@ -724,46 +724,6 @@ private theorem allHonestEcPksAuthDslK_eval (S : Setup) (K : Nat) {Γ : List PT}
   have h12 : (p1 ++ p2).length ≤ 4 * min K S.N_dh := by simp [List.length_append]; omega
   have h123 : (p1 ++ p2 ++ p3).length ≤ 4 * min K S.N_dh := by simp [List.length_append]; omega
   have h1234 : (p1 ++ p2 ++ p3 ++ p4).length ≤ 4 * min K S.N_dh := by simp [List.length_append]; omega
-  rw [List.take_of_length_le h12, List.take_of_length_le h123, List.take_of_length_le h1234]
-
-theorem allHonestEcPksAuthPrim_length_le (S : Setup) (st : AuthState S) :
-    HoldsOnLeaves (fun ecPks => ecPks.length ≤ 4 * S.N_dh)
-      (AuthSubHops1to3.allHonestEcPksAuthPrim S st) := by
-  unfold AuthSubHops1to3.allHonestEcPksAuthPrim
-  refine HoldsOnLeaves.bind (mapMPrim_length_le_take _ S.N_dh st.principals) (fun p1 hp1 => ?_)
-  refine HoldsOnLeaves.bind (mapMPrim_length_le_take _ S.N_dh st.spkBundles) (fun p2 hp2 => ?_)
-  refine HoldsOnLeaves.bind (mapMPrim_length_le_take _ S.N_dh st.opkEntries) (fun p3 hp3 => ?_)
-  refine HoldsOnLeaves.bind (mapMPrim_length_le_take _ S.N_dh st.sessions) (fun p4 hp4 => ?_)
-  exact HoldsOnLeaves.pure (by simp only [List.length_append]; omega)
-
-theorem allHonestEcPksAuthDsl_eval (S : Setup) {Γ : List PT}
-    (st : AuthState S) (env : Env Γ) :
-    (allHonestEcPksAuthDsl S).eval (.cons (authStateToVal st) env) =
-    AuthSubHops1to3.allHonestEcPksAuthPrim S st := by
-  simp only [allHonestEcPksAuthDsl, AuthSubHops1to3.allHonestEcPksAuthPrim,
-    mapML_eq_mapMPrim, authSubHops1to3_mapMPrim_eq, Comp.eval, Expr.eval, Env.get,
-    asPrincipals, asSpkBundles, asOpkEntries, asSessions,
-    peIkAPk, sbSpkPk, oeOpkPk, aseEkASk, authStateToVal,
-    queryPrim_eval, evalPrimQ, ← List.map_take, mapMPrim_map,
-    Prod.map, id_eq, principalEntryToVal, spkBundleEntryToVal,
-    opkEntryToVal, authSessionEntryToVal]
-  have h1 := mapMPrim_length_le_take
-    (fun (x : Nat × PrincipalEntry) => primQ (.pow8 x.2.ikAPk)) S.N_dh st.principals
-  have h2 := mapMPrim_length_le_take
-    (fun (x : (Nat × Nat) × SpkBundleEntry) => primQ (.pow8 x.2.spkPk)) S.N_dh st.spkBundles
-  have h3 := mapMPrim_length_le_take
-    (fun (x : (Nat × Nat × Nat) × OpkEntry) => primQ (.pow8 x.2.opkPk)) S.N_dh st.opkEntries
-  have h4 := mapMPrim_length_le_take
-    (fun (s : AuthInitiatorEntry S) => primQ (.x25519Base s.ekASk) >>= fun pk => primQ (.pow8 pk))
-    S.N_dh st.sessions
-  rw [authSubHops1to3_mapMPrim_eq] at h1 h2 h3 h4
-  refine h1.bind_congr _ _ (fun p1 hp1 => ?_)
-  refine h2.bind_congr _ _ (fun p2 hp2 => ?_)
-  refine h3.bind_congr _ _ (fun p3 hp3 => ?_)
-  refine h4.bind_congr _ _ (fun p4 hp4 => ?_)
-  have h12 : (p1 ++ p2).length ≤ 4 * S.N_dh := by simp [List.length_append]; omega
-  have h123 : (p1 ++ p2 ++ p3).length ≤ 4 * S.N_dh := by simp [List.length_append]; omega
-  have h1234 : (p1 ++ p2 ++ p3 ++ p4).length ≤ 4 * S.N_dh := by simp [List.length_append]; omega
   rw [List.take_of_length_le h12, List.take_of_length_le h123, List.take_of_length_le h1234]
 
 private theorem foldr_hasDuplicateBytes_aux (K : Nat) (l : List Bytes) (hLen : l.length ≤ K) :
@@ -1488,7 +1448,7 @@ theorem registerFixedB_eval (fhst : Var Γ₁ authHybridStateFixedTy) (sk : Var 
   | false =>
     cases hLen : (skv.length == 32) <;> simp [hWon, authRespToVal, authRenc]
 
-@[simp] def recvFinishTagToVal {S : Setup} : RecvFinishTag S → recvFinishTagTy.denote
+@[expose, simp] def recvFinishTagToVal {S : Setup} : RecvFinishTag S → recvFinishTagTy.denote
   | .opk k j o kE bE oE usedT msg hstDec =>
     .inl ((k.val, (j.val, o.val)),
       (principalEntryToVal kE, (spkBundleEntryToVal bE, (opkEntryToVal oE,
@@ -1500,7 +1460,7 @@ theorem registerFixedB_eval (fhst : Var Γ₁ authHybridStateFixedTy) (sk : Var 
         (usedT.map (fun (k, p, s, e) => (k, (p, (s, e)))),
           (preKeyMsgToVal msg, authHybridStateToVal hstDec)))))
 
-@[simp] def recvFinishResToVal
+@[expose, simp] def recvFinishResToVal
     (res? : Option (DRKey × Bytes × Bytes × Bytes × List (Bytes × DRKey) ×
       List ((Bytes × Bytes) × (Bytes × Bytes)))) : recvFinishResTy.denote :=
   res?.map fun (drKey, rk1, ck1_1, pt, roC, rootC) =>
@@ -1752,7 +1712,7 @@ theorem recvFinishTagRunC_eval (tag : Var Γ₁ recvFinishTagTy) (res? : Expr pq
             exact matchSentNoOPKC_eval .zero .zero _ recvEv s rfl rfl
           · intro s; rfl
 
-@[simp] def finishSendArgsToVal {S : Setup}
+@[expose, simp] def finishSendArgsToVal {S : Setup}
     (sid : SessionId S) (uEntry : PrincipalEntry)
     (peerPrincipal? : Option (Nat × PrincipalEntry)) (isFreshPeer : Bool)
     (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
@@ -1865,7 +1825,7 @@ theorem finishAuthHybridSendC_eval (hst : Var Γ₁ authHybridStateTy)
           initKemRecordToVal, idealAuthSessionToVal, preKeyMsgV,
           hdrV, bne, pure_bind, Function.comp_def, List.map_cons]
 
-@[simp] def preparedAuthRecvToVal {S : Setup} (p : PreparedAuthRecvPrim S) :
+@[expose, simp] def preparedAuthRecvToVal {S : Setup} (p : PreparedAuthRecvPrim S) :
     preparedAuthRecvTy.denote :=
   (principalEntryToVal p.kEntry,
     (spkBundleEntryToVal p.bEntry,
@@ -2277,7 +2237,7 @@ end SharedHelperEval
 /-! ## Leaf Invariants and List-Length Preservation -/
 
 /-- Structural leaf predicate holding when `P a` holds at every `pure a` leaf of `m`. -/
-def AllLeaves {ι : Type} {spec : OracleSpec.{0, 0} ι} {α : Type}
+@[expose] def AllLeaves {ι : Type} {spec : OracleSpec.{0, 0} ι} {α : Type}
     (P : α → Prop) (m : OracleComp spec α) : Prop :=
   OracleComp.construct (C := fun _ => Prop) P (fun _ _ r => ∀ u, r u) m
 
@@ -2878,7 +2838,7 @@ open OracleSpec OracleComp
 @[simp] theorem embedPrim_pure {ι : Type} {spec : OracleSpec.{0, 0} ι} {α : Type} (a : α) :
     _root_.SignalPqxdh.Security.embedPrim (spec := spec) (Pure.pure a) = Pure.pure a := rfl
 
-def PTag.evalPrim : (g : PTag) → g.dom.denote → OracleComp PrimBaseSpec g.cod.denote
+@[expose] def PTag.evalPrim : (g : PTag) → g.dom.denote → OracleComp PrimBaseSpec g.cod.denote
   | .x25519 => fun x => primQ (.x25519 x.1 x.2)
   | .x25519Base => fun sk => primQ (.x25519Base sk)
   | .isCanonical => fun pk => primQ (.isCanonical pk)

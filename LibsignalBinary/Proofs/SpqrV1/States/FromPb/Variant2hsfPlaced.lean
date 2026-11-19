@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2d
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2d -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch3Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsf
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 2 (`HeaderSent`, `+508`) — Part F
@@ -23,7 +24,7 @@ Relocatable Block-`333` `Ok` staging (`+9404 -> +9484 -> +8180`) and shared epil
 composition for `InnerState.headerSent`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,21 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.DefsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.MergeFieldsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.MergeLoopBudget
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.PostBudget
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.VarintKeyBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize
+public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.MergeFieldsBudget
+import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.MergeLoopBudget
+import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.PostBudget
+import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.VarintKeyBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
-import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBody
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBody -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.MergeLoop -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.MergeFields
 
 /-!
 # Budget-Threaded `PreKeyRecord::deserialize` Proof
@@ -33,7 +34,7 @@ Proves `preKeyRecord_deserialize_placed_ok` (`preKeyDeserializePlacedSpec`, Bloc
 under `FitsEnv`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

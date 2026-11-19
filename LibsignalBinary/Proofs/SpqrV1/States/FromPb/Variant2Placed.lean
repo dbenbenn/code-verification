@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2bPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2cPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2ePlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 1 (`KeysSampled`, `+1104`)
@@ -23,7 +24,7 @@ import ProofLib.SepLogic.WPp
 Relocatable Block-`333` top-level composition for `InnerState.keysSampled`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

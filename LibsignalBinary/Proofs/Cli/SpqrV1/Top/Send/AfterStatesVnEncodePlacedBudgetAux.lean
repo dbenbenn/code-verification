@@ -9,19 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesVnEncodePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.VersionNegPhasePlacedBudgetAux
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesVnEncodePlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.VersionNegPhasePlacedBudgetAux
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhasePlaced
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ChainEncodedLenBase
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesVnEncode
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.VersionNegPhase -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Sub-Steps for Relocatable Phase 3c (`+4996..+5604`)
@@ -30,7 +39,7 @@ Proves `VmPreserved` `encode_varint` call helpers and sub-steps (`+4996..+5348`)
 inlined `Option<VersionNegotiation>` encoding in Block `427`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -43,7 +52,7 @@ namespace LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesVnEncodePlacedBu
 
 open Arm64 ProofLib ProofLib.ProgramReflection SepProp
 open LibsignalBinary.Heap (AllocCostModel BudgetLimits RustCliAllocBudget VmPreserved)
-open CryptoVerification (LibsignalPlacement libsignalSessionCode lsmpl lsρ)
+open CryptoVerification (LibsignalPlacement lsmpl lsρ)
 open CryptoVerification.Cli.SpqrV1.Top.Send (spqrSendPlacedEntry spqrSendPlacedProg)
 open CryptoVerification.RustHeap (RustAlloc vecU8At)
 open CryptoVerification.LibsignalSpqrV1 (ChainParamsPB VersionNegotiationPB)
@@ -86,7 +95,7 @@ open LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.VersionNegPhasePlacedBudget
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
   zeroExtend64_beq_zero32
   ofNat_countLeadingZeros_64 ofNat_countLeadingZeros_32

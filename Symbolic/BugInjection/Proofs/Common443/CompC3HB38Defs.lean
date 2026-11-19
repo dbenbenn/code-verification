@@ -37,17 +37,11 @@ abbrev RestPre38HB : Prop := RestPre38At Witnesses.Cheval26SmallSubgroupHighBitC
 abbrev Rest38EntryHB : Prop := Rest38EntryAt Witnesses.Cheval26SmallSubgroupHighBitComp.setup (Witnesses.Cheval26SmallSubgroupHighBitComp.trace.take 38) highBitWireBytes 1 0
 abbrev Rest38FnHB : Prop := Rest38FnAt Witnesses.Cheval26SmallSubgroupHighBitComp.setup (Witnesses.Cheval26SmallSubgroupHighBitComp.trace.take 38) highBitWireBytes 1 0
 abbrev RestPre38TC : Prop := RestPre38At Witnesses.Cheval26SmallSubgroupTorsionComp.setup (Witnesses.Cheval26SmallSubgroupTorsionComp.trace.take 38) torsionWireBytes 0 1
-abbrev Rest38EntryTC : Prop := Rest38EntryAt Witnesses.Cheval26SmallSubgroupTorsionComp.setup (Witnesses.Cheval26SmallSubgroupTorsionComp.trace.take 38) torsionWireBytes 0 1
 abbrev Rest38FnTC : Prop := Rest38FnAt Witnesses.Cheval26SmallSubgroupTorsionComp.setup (Witnesses.Cheval26SmallSubgroupTorsionComp.trace.take 38) torsionWireBytes 0 1
 theorem rest38EntryHB_of_pre (h : RestPre38HB) : Rest38EntryHB := rest38EntryAt_of_pre h
-theorem rest38EntryTC_of_pre (h : RestPre38TC) : Rest38EntryTC := rest38EntryAt_of_pre h
 theorem split38PairsHB_qRest_of_fn (hC : NonInj38CensusXZHB) (hE : Rest38EntryHB) (hF : Rest38FnHB) : Split38PairsHB QRest := split38PairsAt_qRest_of_fn hC hE hF
-theorem split38PairsTC_qRest_of_fn (hC : NonInj38CensusXZTC) (hE : Rest38EntryTC) (hF : Rest38FnTC) : Split38PairsTC QRest := split38PairsAt_qRest_of_fn hC hE hF
 theorem split38PairsHB_qKdf_of_c (h : Split38PairsHB QKdfC) : Split38PairsHB QKdf := split38PairsAt_qKdf_of_c h
-theorem split38PairsTC_qKdf_of_c (h : Split38PairsTC QKdfC) : Split38PairsTC QKdf := split38PairsAt_qKdf_of_c h
 theorem split38PairsHB_qKdfKK_of_child2 (hN : NonInj38CensusHB) (hR : Split38PairsHB QKdfInjRest) (hNK : Split38PairsHB QRest) (hCh : Split38PairsHB QKdfChild2) : Split38PairsHB QKdfKK :=
-  split38PairsAt_qKdfKK_of_child2 hN hR hNK hCh
-theorem split38PairsTC_qKdfKK_of_child2 (hN : NonInj38CensusTC) (hR : Split38PairsTC QKdfInjRest) (hNK : Split38PairsTC QRest) (hCh : Split38PairsTC QKdfChild2) : Split38PairsTC QKdfKK :=
   split38PairsAt_qKdfKK_of_child2 hN hR hNK hCh
 end Symbolic.BugInjection.Proofs.Common443.CompC3HB38Defs
 namespace Symbolic.BugInjection.Proofs.Common443.CompC3Nbsc38HB
@@ -58,10 +52,4 @@ theorem nbscHighBitComp_of_c3 (hPre : Split38CtxPairsHB QPreUntaggedNX) (hC : No
 theorem nbscHighBitComp_of_leaves (hPre : Split38CtxPairsHB QPreUntaggedNX) (hC : NonInj38CensusXZHB) (hIR : Split38PairsHB QKdfInjRest) (hRP : RestPre38HB) (hRF : Rest38FnHB) (hCh : Split38PairsHB QKdfChild2) : Census443Defs.NbscHighBitComp' :=
   let hRE := rest38EntryHB_of_pre hRP;
   nbscHighBitComp_of_c3 hPre hC (split38PairsHB_qKdfKK_of_child2 (nonInj38CensusHB_of_XZ hC) hIR (split38PairsHB_qRest_of_fn hC hRE hRF) hCh) hIR hRE hRF
-theorem split38PairsTC_qUntagged_of_min (hC : NonInj38CensusTC) (hKK : Split38PairsTC QKdfKK) (hIR : Split38PairsTC QKdfInjRest) (hR : Split38PairsTC QRest) : Split38PairsTC QUntagged := untaggedW_of_kdf_rest (split38PairsTC_qKdf_of_c (split38PairsAt_qKdfC_of hKK hIR hC)) hR
-theorem nbscTorsionComp_of_min (hPre : Split38CtxPairsTC QPreUntaggedNX) (hC : NonInj38CensusTC) (hKK : Split38PairsTC QKdfKK) (hIR : Split38PairsTC QKdfInjRest) (hR : Split38PairsTC QRest) : Census443Defs.NbscTorsionComp' := nbscTorsionComp_of_weak (split38PairsTC_qTagged_of_min hPre hC) (split38PairsTC_qUntagged_of_min hC hKK hIR hR)
-theorem nbscTorsionComp_of_c3 (hPre : Split38CtxPairsTC QPreUntaggedNX) (hC : NonInj38CensusXZTC) (hKK : Split38PairsTC QKdfKK) (hIR : Split38PairsTC QKdfInjRest) (hRE : Rest38EntryTC) (hRF : Rest38FnTC) : Census443Defs.NbscTorsionComp' := nbscTorsionComp_of_min hPre (nonInj38CensusTC_of_XZ hC) hKK hIR (split38PairsTC_qRest_of_fn hC hRE hRF)
-theorem nbscTorsionComp_of_leaves (hPre : Split38CtxPairsTC QPreUntaggedNX) (hC : NonInj38CensusXZTC) (hIR : Split38PairsTC QKdfInjRest) (hRP : RestPre38TC) (hRF : Rest38FnTC) (hCh : Split38PairsTC QKdfChild2) : Census443Defs.NbscTorsionComp' :=
-  let hRE := rest38EntryTC_of_pre hRP;
-  nbscTorsionComp_of_c3 hPre hC (split38PairsTC_qKdfKK_of_child2 (nonInj38CensusTC_of_XZ hC) hIR (split38PairsTC_qRest_of_fn hC hRE hRF) hCh) hIR hRE hRF
 end Symbolic.BugInjection.Proofs.Common443.CompC3Nbsc38HB

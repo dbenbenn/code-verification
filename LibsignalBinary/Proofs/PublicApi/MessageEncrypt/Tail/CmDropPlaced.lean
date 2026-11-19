@@ -9,19 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.CommonPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.ProtocolErrCommon
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.ProtocolErrCommon -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.ProtocolErrCommonPlaced
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Relocatable (`[LibsignalPlacement]`) CM Drop Tail (`tailCmDrop`)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

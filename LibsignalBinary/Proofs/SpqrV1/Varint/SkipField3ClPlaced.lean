@@ -9,12 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3BranchesClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2ClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3BranchesClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2ClPlaced
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldLemmas
 
 /-!
 # Code-Loaded `[LibsignalPlacement]` Proof of `skip_field [local#3]`
@@ -23,7 +28,7 @@ Proves the recursive `startGroup` case and full `withLsCodeLoaded` induction on 
 for `prost::encoding::skip_field::<&mut &[u8]> [local#3]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

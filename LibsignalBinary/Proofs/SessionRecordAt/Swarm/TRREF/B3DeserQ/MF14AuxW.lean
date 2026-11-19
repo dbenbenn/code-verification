@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.MF14Aux.Pure
+public import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.MF14Aux.Pure -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Defs
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # W-Stack Helpers and Specifications for `SessionStructure::merge_field` on Tag 14
@@ -22,7 +22,7 @@ frame decompositions for `SessionStructure::merge_field` on protobuf tag 14
 `mergeFieldStackX = 32768` with slice length `< 2 ^ 62`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +35,7 @@ open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalTripl
 open CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.E2E.Record.DeserializeSeed CryptoVerification.E2E.Record.DeserializeGeneral
 open CryptoVerification.E2E.Record.L1GX CryptoVerification.E2E.Record.L1GX.Leaf.MF14Aux
-open CryptoVerification.E2E.Record.Serialization (OkAt allocPanic)
+open CryptoVerification.E2E.Record.Serialization (allocPanic)
 open Proofs.libsignal.Hooks2
 
 set_option maxRecDepth 200000
@@ -44,29 +44,6 @@ set_option maxHeartbeats 400000
 theorem L1_MF14AuxW : True := trivial
 
 /-! ## Decode, step, call, stack, and payload helpers -/
-
-gen_decodes CryptoVerification.libsignalSessionCode_tree mf14W
-  [(ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>") →
-     (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 60),
-   (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 368) →
-     (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 440),
-   (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 1208) →
-     (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 1252),
-   (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 1320) →
-     (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 1436),
-   (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 1440) →
-     (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 1676),
-   (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 1680) →
-     (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 1724),
-   (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 1880) →
-     (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 1904),
-   (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 2328) →
-     (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 2356)]
-
-theorem mergeField_fnOff_mf14W :
-    CryptoVerification.libsignalSessionCode.fnOff mergeFieldName =
-      num% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>") :=
-  ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>"
 
 set_option allowUnsafeReducibility true in
 attribute [local semireducible] SepWP in
@@ -96,50 +73,6 @@ theorem step_ldr8_ro_mf14 {prog : Program} {target_pc : BitVec 64}
   rw [Program.evalInst_of_isSvc0Instr_false _ _ _ rfl, hstep]
   apply hnext R
   exact hm
-
-theorem adrp_rodata_mf14W (b : BitVec 64) (hb : b &&& 4095#64 = 0#64) :
-    (b + bv% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>") + 40#64 &&&
-      bv% (2 ^ 64 - 4096)) +
-      bv% (ls_bytes% "0082775f19328d6db5d6cb6d" -
-        page% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 40)) =
-      b + bv% (ls_bytes% "0082775f19328d6db5d6cb6d") := by
-  bv_arith
-
-theorem of_sepWP_frozen_mf14 {prog : Program} {img : Obj.Image} {mid ret : BitVec 64}
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hfl : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h : SepWP prog mid s P (fun sm Pm =>
-      img.FrozenLoaded sm → sm.symtab = img.symtab → SepWPp prog ret sm Pm Q Qp)) :
-    SepWPp prog ret s P Q Qp :=
-  ProofLib.SepWPp.of_sepWP_frozen hfl hsym h
-
-theorem call_alloc_mf14 {α β : Type} {prog : Program} {img : Obj.Image}
-    {entry ret_pc ret : BitVec 64} {spec : Spec α} {x : α} {φ : Prop}
-    {T F : SepProp} {s s0 : State} {P R : SepProp} {Q : State → SepProp → Prop} {y : β}
-    (hcall : subroutine_ok prog entry spec)
-    (hfl : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hexit : ∀ sf code, spec.onExit x code s sf = ⌜False⌝)
-    (hpan : ∀ sf, spec.onPanic x s sf = (⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap))
-    (htr : s.trace = s0.trace)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q
-        (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ allocPanic y s0 sf ∗ R)))
-    (hoom : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intros; rfl) :
-    SepWPp prog ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ allocPanic y s0 sf ∗ R)) := by
-  refine ProofLib.SepWPp.call_frame_frozen hcall hfl hsym hpc hrun hsp hlr hspec hφ hP
-    (fun sf code R' _ hex => by rw [hexit] at hex; exact not_satisfies_false_sepConj hex)
-    (fun sm _ hm' => ?_)
-    hnext
-    (fun sf R' _ hpost => by rw [hoom] at hpost; exact (not_satisfies_false_sepConj hpost).elim)
-  rw [hpan] at hm'
-  dsimp only [allocPanic]
-  exact allowPanic_frame (fun h => by simpa only [allocFailedIn, htr] using h) hm'
 
 theorem stackAt_split_top_mf14 (sp : BitVec 64) (n d : Nat) (h : n + d ≤ 2 ^ 64) :
     stackAt sp (n + d) = stackAt (sp - BitVec.ofNat 64 d) n ∗
@@ -260,7 +193,7 @@ theorem decode_kyber_result_mf14 {ct : List (BitVec 8)} (_hct : ct.length = 1569
     simp only [List.length_cons]; omega
   rw [this]
 
-def kyberPtr2 (ptr : BitVec 64) (i : BitVec 32) : BitVec 64 :=
+@[expose] def kyberPtr2 (ptr : BitVec 64) (i : BitVec 32) : BitVec 64 :=
   ptr + 3#64 + BitVec.ofNat 64 (encodeVarint (i.setWidth 64)).length
 
 theorem sliceCursorAt_kyber_ne_unfold_mf14 (slot ptr : BitVec 64) {i : BitVec 32} (hi : i ≠ 0#32)
@@ -368,7 +301,7 @@ theorem sliceCursorAfter_kyber_ne_fold_mf14 (slot ptr : BitVec 64) {i : BitVec 3
 /-! ## Tag-14 field slice (`kyberAt14`), `restX14NoPq`, and `prostSSGXNoPqAt_x14` -/
 
 /-- Standalone 32-byte `pending_kyber_pre_key: Option<PendingKyberPreKey>` slice at `ss + 0x128`. -/
-def kyberAt14 (A : RustAlloc) (ss : BitVec 64)
+@[expose] def kyberAt14 (A : RustAlloc) (ss : BitVec 64)
     (kyber : Option (BitVec 32 × List (BitVec 8))) : SepProp :=
   match kyber with
   | none => ((ss + 0x128#64) ↦₆₄ noneCap) ∗ memRegion (ss + 0x130#64) 24
@@ -376,7 +309,7 @@ def kyberAt14 (A : RustAlloc) (ss : BitVec 64)
       memRegion (ss + 0x144#64) 4
 
 /-- `prostSSGXNoPqAt_x14` without the pending Kyber pre-key @0x128 (32 bytes): unchanged by tag 14. -/
-def restX14NoPq (A : RustAlloc) (ss : BitVec 64) (v : SSGX) : SepProp :=
+@[expose] def restX14NoPq (A : RustAlloc) (ss : BitVec 64) (v : SSGX) : SepProp :=
   vecU8 A ss v.base.lik ∗ vecU8 A (ss + 0x18#64) v.base.rik ∗ vecU8 A (ss + 0x30#64) v.base.root ∗
     vecOf A 104 8 (fun c a => prostChainGAt A a c) (ss + 0x48#64) v.base.recv ∗
     vecU8 A (ss + 0x60#64) v.ext.abk ∗
@@ -444,115 +377,7 @@ theorem kyberAt14_some_fold (A : RustAlloc) (ss cap' ptr' : BitVec 64) (v : SSGX
   apply Entails.of_eq
   ac_rfl
 
-/-! ## W-stack specifications for `merge_field` on tag 14 -/
-
-def mergeField14KyberSpecAtW (img : Obj.Image) (P : GenFieldX → Prop) : Spec MergeFieldXGhost where
-  pre := fun x s =>
-    ⌜s.readReg64 .x0 = x.ss ∧ (s.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 x.fld.tag ∧
-      (s.readReg64 .x2).setWidth 8 = BitVec.ofNat 8 x.fld.wt.toNat ∧ s.readReg64 .x3 = x.bufRef ∧
-      (s.readReg64 .x4).setWidth 32 = 99#32 ∧ P x.fld ∧ x.fld.Ok ∧ x.fld.Fresh x.v ∧
-      (x.fld.payload ++ x.tail).length < 2 ^ 62 ∧
-      img.FrozenLoaded s ∧ s.symtab = img.symtab⌝ ∗
-      kyberAt14 A0 x.ss x.v.ext.kyber ∗ (x.bufRef ↦₆₄ x.slot) ∗
-      Prost.sliceCursorAt x.slot x.ptr (x.fld.payload ++ x.tail) ∗ stackAt s.sp mergeFieldStackX
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace ∧ sf.readReg64 .x0 = 0#64⌝ ∗
-      kyberAt14 A0 x.ss (x.v.apply x.fld).ext.kyber ∗
-      (x.bufRef ↦₆₄ x.slot) ∗
-      Prost.sliceCursorAfter x.slot x.ptr (x.fld.payload ++ x.tail) x.tail ∗
-      stackAt s0.sp mergeFieldStackX
-  onPanic := allocPanic
-
-def MergeField14KyberOkAtW (img : Obj.Image) (ext : String → Option (State → State))
-    (P : GenFieldX → Prop) : Prop :=
-  OkAtX img.base ext mergeFieldName (mergeField14KyberSpecAtW img P)
-
-def mergeField14SpecAtW (img : Obj.Image) (P : GenFieldX → Prop) : Spec MergeFieldXGhost where
-  pre := fun x s =>
-    ⌜s.readReg64 .x0 = x.ss ∧ (s.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 x.fld.tag ∧
-      (s.readReg64 .x2).setWidth 8 = BitVec.ofNat 8 x.fld.wt.toNat ∧ s.readReg64 .x3 = x.bufRef ∧
-      (s.readReg64 .x4).setWidth 32 = 99#32 ∧ P x.fld ∧ x.fld.Ok ∧ x.fld.Fresh x.v ∧
-      (x.fld.payload ++ x.tail).length < 2 ^ 62 ∧
-      img.FrozenLoaded s ∧ s.symtab = img.symtab⌝ ∗
-      prostSSGXNoPqAt_x14 A0 x.ss x.v ∗ (x.bufRef ↦₆₄ x.slot) ∗
-      Prost.sliceCursorAt x.slot x.ptr (x.fld.payload ++ x.tail) ∗ stackAt s.sp mergeFieldStackX
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace ∧ sf.readReg64 .x0 = 0#64⌝ ∗
-      prostSSGXNoPqAt_x14 A0 x.ss (x.v.apply x.fld) ∗
-      (x.bufRef ↦₆₄ x.slot) ∗
-      Prost.sliceCursorAfter x.slot x.ptr (x.fld.payload ++ x.tail) x.tail ∗
-      stackAt s0.sp mergeFieldStackX
-  onPanic := allocPanic
-
-def MergeField14OkAtW (img : Obj.Image) (ext : String → Option (State → State))
-    (P : GenFieldX → Prop) : Prop :=
-  OkAtX img.base ext mergeFieldName (mergeField14SpecAtW img P)
-
-theorem mergeField14OkAtW_of_kyber {img : Obj.Image}
-    {ext : String → Option (State → State)} {P : GenFieldX → Prop}
-    (hP14 : ∀ fl, P fl → fl.tag = 14)
-    (hP : MergeField14KyberOkAtW img ext P) :
-    MergeField14OkAtW img ext P := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hal => ?_
-  simp only [mergeField14SpecAtW, prostSSGXNoPqAt_x14_eq_kyber_sep_rest,
-    sepConj_assoc, satisfies_pure_sepConj] at hpre
-  obtain ⟨h0, hm⟩ := hpre
-  obtain ⟨i, ct, hfl⟩ := (genFieldX_tag_eq_14_iff x.fld).mp (hP14 x.fld h0.2.2.2.2.2.1)
-  have hpre' : s0.mem ⊨ (mergeField14KyberSpecAtW img P).pre x s0 ∗
-      (restX14NoPq A0 x.ss x.v ∗ R) := by
-    simp only [mergeField14KyberSpecAtW, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨h0, ?_⟩
-    convert hm using 1; ac_rfl
-  refine hP.mono_outcome x (restX14NoPq A0 x.ss x.v ∗ R) s0 hpc hrun hpre' hal fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, _, hpost⟩ | ⟨_, hpost⟩
-  · left
-    refine ⟨hret, hcc, ?_⟩
-    simp only [mergeField14SpecAtW, prostSSGXNoPqAt_x14_eq_kyber_sep_rest,
-      hfl, restX14NoPq_apply_kyber]
-    simp only [mergeField14KyberSpecAtW, hfl] at hpost
-    convert hpost using 1; ac_rfl
-  · right; left
-    refine ⟨hpan, ?_⟩
-    dsimp only [mergeField14SpecAtW, mergeField14KyberSpecAtW] at hpost ⊢
-    rw [← sepConj_assoc] at hpost
-    exact allowPanic_frame id hpost
-  · exact (allowPanic_not_exited hpost).elim
-  · exact (allowPanic_not_exited hpost).elim
-
-theorem okAtX_of_eq_pre_post_mf14 {α : Type} {b : BitVec 64}
-    {ext : String → Option (State → State)} {name : String} {s1 s2 : Spec α}
-    (h1 : OkAtX b ext name s1) (hpre : ∀ x s, s2.pre x s = s1.pre x s)
-    (hpost : ∀ x s0 sf, s1.post x s0 sf = s2.post x s0 sf)
-    (hpan : s1.onPanic = s2.onPanic) (hex : s1.onExit = s2.onExit)
-    (hoom : s1.onOom = s2.onOom) : OkAtX b ext name s2 := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hp hal => ?_
-  rw [hpre x s0] at hp
-  refine h1.mono_outcome x R s0 hpc hrun hp hal fun sf hout => ?_
-  rcases hout with ⟨hr, hc, hq⟩ | ⟨hp', hq⟩ | ⟨c, he, hq⟩ | ⟨ho, hq⟩
-  · exact Or.inl ⟨hr, hc, hpost x s0 sf ▸ hq⟩
-  · exact Or.inr (Or.inl ⟨hp', hpan ▸ hq⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨c, he, hex ▸ hq⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨ho, hoom ▸ hq⟩))
-
-theorem okAtX_of_imp_frame_mf14 {α β : Type} {b : BitVec 64} {ext : String → Option (State → State)}
-    {name : String} {specField : Spec α} {specFull : Spec β} (hField : OkAtX b ext name specField)
-    (h_exit : ∀ (g : α) (code : BitVec 64) (s0 sf : State), specField.onExit g code s0 sf = ⌜False⌝)
-    (h_panic : ∀ (g : α) (x : β) (s0 sf : State) (F R : SepProp),
-      (sf.mem ⊨ specField.onPanic g s0 sf ∗ (F ∗ R)) → (sf.mem ⊨ specFull.onPanic x s0 sf ∗ R))
-    (h_step : ∀ (x : β) (s0 : State) (R : SepProp), (s0.mem ⊨ specFull.pre x s0 ∗ R) →
-      ∃ (g : α) (F : SepProp), (s0.mem ⊨ specField.pre g s0 ∗ (F ∗ R)) ∧
-        (∀ sf : State, (sf.mem ⊨ specField.post g s0 sf ∗ (F ∗ R)) →
-          (sf.mem ⊨ specFull.post x s0 sf ∗ R)))
-    (h_oom : ∀ (g : α) (s0 sf : State), specField.onOom g s0 sf = ⌜False⌝) :
-    OkAtX b ext name specFull := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hal => ?_
-  obtain ⟨g, F, hpre', hpost_imp⟩ := h_step x s0 R hpre
-  refine hField.mono_outcome g (F ∗ R) s0 hpc hrun hpre' hal fun sf h_out => ?_
-  rcases h_out with ⟨hret, hcc, hpost⟩ | ⟨hpan, hpanic⟩ | ⟨code, _, hexit⟩ | ⟨_, hoom⟩
-  · exact Or.inl ⟨hret, hcc, hpost_imp sf hpost⟩
-  · exact Or.inr (Or.inl ⟨hpan, h_panic g x s0 sf F R hpanic⟩)
-  · rw [h_exit g code s0 sf, satisfies_pure_sepConj] at hexit; exact False.elim hexit.1
-  · rw [h_oom g s0 sf, satisfies_pure_sepConj] at hoom; exact False.elim hoom.1
+/-! ## Panic framing helper for `merge_field` on tag 14 -/
 
 theorem allocPanic_frame_mf14 {α β : Type} (g : α) (x : β) (s0 sf : State) (F R : SepProp)
     (hm : sf.mem ⊨ allocPanic g s0 sf ∗ (F ∗ R)) :
@@ -723,163 +548,6 @@ theorem stackAt_mergeField_fold_mf14W (sp0 v80 v72 v64 v56 v48 v40 v32 v24 v16 v
   exact Entails.sepExists_intro v8
 
 /-! ## Rodata jump table and callee offsets on `SP2Ext` -/
-
-theorem rodata_jump_tag14_mf14W {img : Obj.Image} {s : State}
-    (hLoads : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s) :
-    s.mem.read8 (img.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 13)) = 0x4c#8 ∧
-      s.mem.canRead (img.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 13)) 1 = true := by
-  have hhb := loads_rodata_holdsBytes hLoads hF
-    (off := num% (ls_bytes% "0082775f19328d6db5d6cb6d" + 13)) (n := 1) (bs := [0x4c#8])
-    (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel) (by rfl_kernel) rfl
-    (by rfl_kernel)
-  exact ⟨(holdsBytes_cons_iff.mp hhb).1.1, (memSlice_of_holdsBytes_ro hhb).1⟩
-
-theorem decodeVarintSlice_ok_sub_mf14W {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (h : Prost.X.DecodeVarintSliceOkW img A0 ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr mergeFieldName +
-        bv% ((2 ^ 64 + (ls_off% "prost::encoding::varint::decode_varint_slice") -
-          (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) % 2 ^ 64))
-      ((Prost.X.decodeVarintSliceSpecW A0).inImage img) := by
-  have heq : (SP2Ext img.base ext).fnAddr mergeFieldName +
-        bv% ((2 ^ 64 + (ls_off% "prost::encoding::varint::decode_varint_slice") -
-          (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) % 2 ^ 64) =
-      (SP2Ext img.base ext).fnAddr Prost.decodeVarintSliceName := by
-    dsimp only [SP2Ext]
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>"),
-      (ls_lemma% fnOff "prost::encoding::varint::decode_varint_slice")]
-    bv_omega
-  rw [heq]; exact h
-
-theorem int32Merge_ok_sub_mf14W {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (h : Prost.X.Int32MergeOkW img A0 ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr mergeFieldName +
-        bv% ((2 ^ 64 + (ls_off% "prost::encoding::int32::merge::<&mut &[u8]>") -
-          (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) % 2 ^ 64))
-      ((Prost.X.int32MergeSpecW A0).inImage img) := by
-  have heq : (SP2Ext img.base ext).fnAddr mergeFieldName +
-        bv% ((2 ^ 64 + (ls_off% "prost::encoding::int32::merge::<&mut &[u8]>") -
-          (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) % 2 ^ 64) =
-      (SP2Ext img.base ext).fnAddr Prost.int32MergeName := by
-    dsimp only [SP2Ext]
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>"),
-      (ls_lemma% fnOff "prost::encoding::int32::merge::<&mut &[u8]>")]
-    bv_omega
-  rw [heq]; exact h
-
-theorem bytesMerge_ok_sub_mf14W {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (h : Prost.X.BytesMergeOkW img A0 ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr mergeFieldName +
-        bv% ((2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") -
-          (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) % 2 ^ 64))
-      (Prost.X.bytesMergeSpecW A0 img) := by
-  have heq : (SP2Ext img.base ext).fnAddr mergeFieldName +
-        bv% ((2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") -
-          (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) % 2 ^ 64) =
-      (SP2Ext img.base ext).fnAddr Prost.bytesMergeName := by
-    dsimp only [SP2Ext]
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>"),
-      (ls_lemma% fnOff "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]")]
-    bv_omega
-  rw [heq]; exact h
-
-theorem int32Merge_ok_sub_mf14WA {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : Prost.X.Int32MergeOkW img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr mergeFieldName +
-        bv% ((2 ^ 64 + (ls_off% "prost::encoding::int32::merge::<&mut &[u8]>") -
-          (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) % 2 ^ 64))
-      ((Prost.X.int32MergeSpecW A).inImage img) := by
-  have heq : (SP2Ext img.base ext).fnAddr mergeFieldName +
-        bv% ((2 ^ 64 + (ls_off% "prost::encoding::int32::merge::<&mut &[u8]>") -
-          (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) % 2 ^ 64) =
-      (SP2Ext img.base ext).fnAddr Prost.int32MergeName := by
-    dsimp only [SP2Ext]
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>"),
-      (ls_lemma% fnOff "prost::encoding::int32::merge::<&mut &[u8]>")]
-    bv_omega
-  rw [heq]; exact h
-
-theorem bytesMerge_ok_sub_mf14WA {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : Prost.X.BytesMergeOkW img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr mergeFieldName +
-        bv% ((2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") -
-          (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) % 2 ^ 64))
-      (Prost.X.bytesMergeSpecW A img) := by
-  have heq : (SP2Ext img.base ext).fnAddr mergeFieldName +
-        bv% ((2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") -
-          (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) % 2 ^ 64) =
-      (SP2Ext img.base ext).fnAddr Prost.bytesMergeName := by
-    dsimp only [SP2Ext]
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>"),
-      (ls_lemma% fnOff "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]")]
-    bv_omega
-  rw [heq]; exact h
-
-/-! ## `call_alloc` wrappers for `.inImage img` specifications -/
-
-theorem call_alloc_inImage_mf14W {α β : Type} {prog : Program} {img : Obj.Image}
-    {entry ret_pc ret : BitVec 64} {spec : Spec α} {x : α} {φ : Prop}
-    {T F : SepProp} {s s0 : State} {P R : SepProp} {Q : State → SepProp → Prop} {y : β}
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (hfl : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hexit : ∀ sf code, spec.onExit x code s sf = ⌜False⌝)
-    (hpan : ∀ sf, spec.onPanic x s sf = (⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap))
-    (htr : s.trace = s0.trace)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q
-        (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ allocPanic y s0 sf ∗ R)))
-    (hoom : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intros; rfl) :
-    SepWPp prog ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ allocPanic y s0 sf ∗ R)) := by
-  exact call_alloc_mf14 (spec := spec.inImage img)
-    (φ := (img.FrozenLoaded s ∧ s.symtab = img.symtab) ∧ φ)
-    hcall hfl hsym hpc hrun hsp hlr
-    (by dsimp only [Spec.inImage]; rw [hspec, pure_sepConj_pure_assoc])
-    ⟨⟨hfl, hsym⟩, hφ⟩ hP hexit hpan htr hnext
-    (hoom := fun sf => by dsimp only [Spec.inImage]; exact hoom sf)
-
-theorem call_alloc_entails_inImage_mf14W {α β : Type} {prog : Program} {img : Obj.Image}
-    {entry ret_pc ret : BitVec 64} {spec : Spec α} {x : α} {φ : Prop}
-    {T F : SepProp} {s s0 : State} {P R : SepProp} {Q : State → SepProp → Prop} {y : β}
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (hfl : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P ⊢ T ∗ F)
-    (hexit : ∀ sf code, spec.onExit x code s sf = ⌜False⌝)
-    (hpan : ∀ sf, spec.onPanic x s sf = (⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap))
-    (htr : s.trace = s0.trace)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q
-        (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ allocPanic y s0 sf ∗ R)))
-    (hoom : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intros; rfl) :
-    SepWPp prog ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ allocPanic y s0 sf ∗ R)) := by
-  intro R' hm hL
-  exact call_alloc_inImage_mf14W hcall hfl hsym hpc hrun hsp hlr hspec hφ rfl hexit hpan htr hnext
-    (hoom := hoom) R'
-    (Satisfies.mono (sepConj_mono_left hP) hm) hL
-
-/-! ## Postcondition and frame helpers (`i = 0#32` and `i ≠ 0#32`) -/
 
 theorem post_of_decode_mf14W {ct : List (BitVec 8)} (hct : ct.length = 1569)
     (tail : List (BitVec 8)) (ptr sp0 : BitVec 64) (sm sf : State)

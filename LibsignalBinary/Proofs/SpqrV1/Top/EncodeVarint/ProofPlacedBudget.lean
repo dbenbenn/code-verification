@@ -9,10 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.ProofPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.ProofPlacedBudgetAux
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.Base
+import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.BaseBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.BasePlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBaseBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable Proof of `spqr::encode_varint` (`Block 326`, 164 insns)
@@ -21,7 +33,7 @@ Completes continuation-byte stages 7..9 (`+508..+640`) and proves `spqrEncodeVar
 and `spqrEncodeVarint_placed_ok_x` against `spqrEncodeVarintSpecX`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

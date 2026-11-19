@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10c
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10c -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch2Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1Placed
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Variant 10 (`Ct2Sampled`, `+1632`) — Part C (`Obj.MultiPlacedLib`)
@@ -24,7 +25,7 @@ theorems in `Variant10c.lean`:
 - `v10_ct2Sent_7904_to_ret_placed`
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

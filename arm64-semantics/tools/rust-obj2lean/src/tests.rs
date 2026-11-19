@@ -394,10 +394,6 @@ fn out_dir_pointing_to_generated_subdir_places_file_directly_and_infers_namespac
 
 #[test]
 fn lemma_shards_default_and_shard_file_naming() {
-    use crate::untrusted_lemmas::code::{
-        AUTO_LEMMA_SHARD_DECL_THRESHOLD, MAX_AUTO_LEMMA_SHARDS, effective_lemma_shards,
-    };
-
     let fx = FixtureRepo::new();
     let repo_root = fx.root();
     let cfg = load_config(&fx.alpha, &repo_root, None).unwrap();
@@ -410,34 +406,6 @@ fn lemma_shards_default_and_shard_file_naming() {
         repo_root.join("CaseStudies/Alpha/Generated/AlphaFnsShard2.lean")
     );
     assert_eq!(module, "CaseStudies.Alpha.Generated.AlphaFnsShard2");
-
-    // When `lemma_shards` is omitted in `.toml`, modules <= 2,500 declarations remain 1 file,
-    // while modules > 2,500 declarations auto-shard into ceil(decls / 2500) capped at 8.
-    assert_eq!(effective_lemma_shards(functions, 0), 1);
-    assert_eq!(
-        effective_lemma_shards(functions, AUTO_LEMMA_SHARD_DECL_THRESHOLD),
-        1
-    );
-    assert_eq!(
-        effective_lemma_shards(functions, AUTO_LEMMA_SHARD_DECL_THRESHOLD + 1),
-        2
-    );
-    assert_eq!(effective_lemma_shards(functions, 7_563), 4);
-    assert_eq!(
-        effective_lemma_shards(functions, 25_000),
-        MAX_AUTO_LEMMA_SHARDS
-    );
-
-    // Explicit `lemma_shards = 1` in `.toml` opts out of auto-sharding.
-    let mut explicit_one = functions.clone();
-    explicit_one.explicit_lemma_shards = Some(1);
-    assert_eq!(effective_lemma_shards(&explicit_one, 10_000), 1);
-
-    // Explicit `lemma_shards = 4` overrides auto-sharding regardless of declaration count.
-    let mut explicit_four = functions.clone();
-    explicit_four.lemma_shards = 4;
-    explicit_four.explicit_lemma_shards = Some(4);
-    assert_eq!(effective_lemma_shards(&explicit_four, 500), 4);
 }
 
 #[test]
@@ -1351,7 +1319,7 @@ fn lakefile_ensure_rust_exports_atomic_stamps_and_imported_outputs() {
         "ensureRustExports must check generatedImportsOfFile in allExist, error cleanup, and post-export verification"
     );
 
-    // 3. Every configured target's `lean_file` (or `placed.lib_file` when `placed_only = true`)
+    // 3. Every configured target's `placed.lib_file` (or `lean_file` when `[placed]` is absent)
     //    is covered in `exportTargetSpecs` (directly or via `shardOutputs`). Configs are
     //    discovered on disk so partial exports that drop campaigns still check what remains.
     let configs = load_configs(
@@ -1361,9 +1329,7 @@ fn lakefile_ensure_rust_exports_atomic_stamps_and_imported_outputs() {
     )
     .unwrap();
     for cfg in &configs {
-        if let Some(placed) = &cfg.placed
-            && placed.placed_only
-        {
+        if let Some(placed) = &cfg.placed {
             let rel = placed
                 .lib_file
                 .strip_prefix(&repo_root)
@@ -1382,7 +1348,7 @@ fn lakefile_ensure_rust_exports_atomic_stamps_and_imported_outputs() {
                 assert!(
                     combined_lakefiles
                         .contains(&format!("shardOutputs \"{stem}\" {}", placed.placed_shards)),
-                    "placed_only config `{}` with `placed_shards = {}` needs \
+                    "placed config `{}` with `placed_shards = {}` needs \
                      `shardOutputs \"{stem}\" {}` in lakefile.lean exportTargetSpecs",
                     cfg.config_rel,
                     placed.placed_shards,
@@ -1392,7 +1358,7 @@ fn lakefile_ensure_rust_exports_atomic_stamps_and_imported_outputs() {
             }
             assert!(
                 combined_lakefiles.contains(&format!("\"{rel_norm}\"")),
-                "placed_only config `{}` output `{rel_norm}` is missing from lakefile.lean exportTargetSpecs",
+                "placed config `{}` output `{rel_norm}` is missing from lakefile.lean exportTargetSpecs",
                 cfg.config_rel
             );
             continue;
@@ -1631,7 +1597,6 @@ obj_file = "Generated/CDemoObj.lean"
 code_file = "Generated/CDemoCode.lean"
 namespace_prefix = "CDemo"
 title = "C Demo Archive"
-legacy_linked_image = true
 build_script = "build.sh"
 c_flags = ["-Iinclude", "-DDEMO_SCALE=2"]
 c_archives = ["build/libdemo.a"]
@@ -1641,20 +1606,11 @@ c_objects = ["build/gamma.o"]
 name = "ext_explicit"
 kind = { data = 16 }
 
-[[targets]]
-name = "demo"
-lean_file = "Generated/CDemoLemmas.lean"
-prog_name = "cDemoProg"
-title = "C Demo Lemmas"
-lemma_allowlist = ["alpha_entry", "beta_entry", "gamma_entry", "helper"]
-
-[[targets]]
-name = "demo_sharded"
-lean_file = "Generated/CDemoShardedLemmas.lean"
-prog_name = "cDemoShardedProg"
-title = "C Demo Sharded Lemmas"
-lemma_allowlist = ["alpha_entry", "beta_entry"]
-lemma_shards = 2
+[placed]
+placed_only = true
+multi = true
+emit_extracted_obj = true
+exports = ["alpha_entry", "beta_entry", "gamma_entry"]
 "#;
     let toml_path = root.join("translation.toml");
     fs::write(&toml_path, toml).unwrap();
@@ -1662,6 +1618,37 @@ lemma_shards = 2
     let out_dir = root.join("out");
     let cfg = load_config(&toml_path, root, Some(&out_dir)).unwrap();
     let mut tc = Toolchain::new(root.to_path_buf()).unwrap();
+    let ex = crate::untrusted_driver::extract(&cfg, &mut tc).unwrap();
+    assert_eq!(
+        ex.objects.iter().map(|o| o.name.as_str()).collect::<Vec<_>>(),
+        vec!["gamma", "alpha", "beta"]
+    );
+    let cflags_prov = ex
+        .provenance
+        .iter()
+        .find(|(k, _)| k == "Compile flags (CFLAGS)")
+        .map(|(_, v)| v.as_str())
+        .expect("missing CFLAGS provenance");
+    assert!(
+        cflags_prov.contains("-target aarch64-linux-musl -mcpu=generic -O2")
+            && cflags_prov.contains("-Iinclude -DDEMO_SCALE=2"),
+        "{cflags_prov}"
+    );
+    // Address-taken external functions `malloc` and `free` resolve as functions;
+    // `ext_counter` is inferred (8 bytes) and `ext_explicit` uses configured size (16 bytes).
+    let find_ext = |name: &str| {
+        ex.externs
+            .iter()
+            .find(|e| e.name == name)
+            .unwrap_or_else(|| panic!("missing extern `{name}`"))
+    };
+    assert_eq!(find_ext("malloc").kind, crate::trusted_common::ExternKind::Func);
+    assert_eq!(find_ext("free").kind, crate::trusted_common::ExternKind::Func);
+    assert_eq!(find_ext("ext_counter").kind, crate::trusted_common::ExternKind::Object);
+    assert_eq!(find_ext("ext_counter").size, 8);
+    assert_eq!(find_ext("ext_explicit").kind, crate::trusted_common::ExternKind::Object);
+    assert_eq!(find_ext("ext_explicit").size, 16);
+
     let files = generate_config(&cfg, &mut tc).unwrap();
 
     let find_text = |suffix: &str| -> String {
@@ -1672,307 +1659,51 @@ lemma_shards = 2
         String::from_utf8(f.contents.clone()).unwrap()
     };
 
-    let obj_lean = find_text("CDemoObj.lean");
+    let placed_lean = find_text("CDemoPlacedObj.lean");
     assert!(
-        obj_lean.contains("* **Compile flags (CFLAGS)**: `-target aarch64-linux-musl -mcpu=generic -O2")
-            && obj_lean.contains("-Iinclude -DDEMO_SCALE=2`"),
-        "{obj_lean}"
+        placed_lean.contains("def cDemoMultiLib : Obj.MultiPlacedLib where"),
+        "{placed_lean}"
     );
-    assert!(
-        obj_lean.contains("def cDemoAlphaObj : Obj.ObjectInfo where"),
-        "{obj_lean}"
-    );
-    assert!(
-        obj_lean.contains("def cDemoBetaObj : Obj.ObjectInfo where"),
-        "{obj_lean}"
-    );
-    assert!(
-        obj_lean.contains("def cDemoGammaObj : Obj.ObjectInfo where"),
-        "{obj_lean}"
-    );
-    assert!(
-        obj_lean.contains("def cDemoImage : Obj.LinkedImage where"),
-        "{obj_lean}"
-    );
-    assert!(
-        obj_lean
-            .contains("  objects := [\n    cDemoGammaObj,\n    cDemoAlphaObj,\n    cDemoBetaObj]"),
-        "{obj_lean}"
-    );
-    // Address-taken external functions `malloc` and `free` resolve as functions (stubs).
-    let stubs = &obj_lean[obj_lean.find("  stubs := [").expect("stubs")..];
-    assert!(stubs.contains("(\"malloc\", "), "{obj_lean}");
-    assert!(stubs.contains("(\"free\", "), "{obj_lean}");
-    // Inferred external data symbol `ext_counter` and configured `ext_explicit`.
-    let extern_data = &obj_lean[obj_lean.find("  externData := [").expect("externData")..];
-    assert!(
-        extern_data.contains("(\"ext_counter\", ") && extern_data.contains(", 8)"),
-        "{obj_lean}"
-    );
-    assert!(
-        extern_data.contains("(\"ext_explicit\", ") && extern_data.contains(", 16)"),
-        "{obj_lean}"
-    );
-
-    let code_lean = find_text("CDemoCode.lean");
-    assert!(
-        code_lean.contains("noncomputable def cDemoCode : Program := cDemoImage.toProgram"),
-        "{code_lean}"
-    );
-    assert!(
-            code_lean.contains("theorem cDemoCode_symbols_fresh : allFreshCharSymbols cDemoCode_symChars = true := by rfl_kernel"),
-            "{code_lean}"
-        );
-    // By default (`emit_symbol_unique_lemmas = false`), output is byte-identical to main:
-    // no `_symEnc`, `_stubEnc`, `_lookup_0x`, or `_unique_0x` declarations are emitted.
-    assert!(!cfg.emit_symbol_unique_lemmas);
-    assert!(
-        !code_lean.contains("_symEnc")
-            && !code_lean.contains("_stubEnc")
-            && !code_lean.contains("_lookup_0x")
-            && !code_lean.contains("_unique_0x"),
-        "{code_lean}"
-    );
-    // Opting in via `emit_symbol_unique_lemmas = true` emits `_symEnc`, `_stubEnc`, correspondence
-    // lemmas, and `_lookup_0x` / `_unique_0x` lemmas as a pure line-level superset of the default
-    // `CDemoCode.lean`, leaving all other generated files byte-identical.
-    let mut cfg_opt_in = cfg.clone();
-    cfg_opt_in.emit_symbol_unique_lemmas = true;
-    let files_opt_in = generate_config_with(&cfg_opt_in, &mut tc, false).unwrap();
-    let files_default_no_dwarf = generate_config_with(&cfg, &mut tc, false).unwrap();
-    assert_eq!(files_opt_in.len(), files_default_no_dwarf.len());
-    for (def_f, opt_f) in files_default_no_dwarf.iter().zip(&files_opt_in) {
-        assert_eq!(def_f.path, opt_f.path);
-        if def_f.path.to_string_lossy().ends_with("CDemoCode.lean") {
-            let def_code = String::from_utf8(def_f.contents.clone()).unwrap();
-            let opt_code = String::from_utf8(opt_f.contents.clone()).unwrap();
-            assert_eq!(def_code, code_lean);
-            assert!(
-                opt_code.contains(
-                    "noncomputable def cDemoCode_symEnc : ProofLib.ObjectLoad.EncSymTable Nat := sym_enc_of% cDemoCode"
-                ),
-                "{opt_code}"
-            );
-            assert!(
-                opt_code.contains(
-                    "theorem cDemoCode_symEnc_eq : ProofLib.ObjectLoad.prepareCharAssocVal cDemoCode_symChars = cDemoCode_symEnc := by rfl_kernel"
-                ),
-                "{opt_code}"
-            );
-            assert!(
-                opt_code.contains("theorem cDemoCode_lookupUnique_eq_symEnc"),
-                "{opt_code}"
-            );
-            assert!(
-                opt_code.contains("theorem cDemoCode_lookup_0x")
-                    && opt_code.contains("theorem cDemoCode_unique_0x"),
-                "{opt_code}"
-            );
-            let stripped: String = opt_code
-                .lines()
-                .filter(|ln| {
-                    !ln.contains("_symEnc")
-                        && !ln.contains("_stubEnc")
-                        && !ln.starts_with("theorem cDemoCode_lookup_0x")
-                        && !ln.starts_with("  lookup_of_allFresh ")
-                        && !ln.starts_with("theorem cDemoCode_unique_0x")
-                        && !ln.starts_with("  lookupUnique_of_allFresh ")
-                })
-                .collect::<Vec<_>>()
-                .join("\n")
-                + "\n";
-            assert_eq!(stripped, def_code);
-        } else {
-            assert_eq!(
-                def_f.contents,
-                opt_f.contents,
-                "non-Code file {} must be byte-identical regardless of emit_symbol_unique_lemmas",
-                def_f.path.display()
-            );
-        }
-    }
-    assert!(!cfg.slice_stubs_in_code);
-    let mut cfg_sliced = cfg.clone();
-    cfg_sliced.slice_stubs_in_code = true;
-    let files_sliced = generate_config_with(&cfg_sliced, &mut tc, false).unwrap();
-    let sliced_code = files_sliced
-        .iter()
-        .find(|f| f.path.to_string_lossy().ends_with("CDemoCode.lean"))
-        .map(|f| String::from_utf8(f.contents.clone()).unwrap())
-        .unwrap();
-    assert!(
-        sliced_code.contains(
-            "noncomputable def cDemoCode : Program :=\n  { cDemoImage.toProgram with code := cDemoImage.code.take cDemoCodeTextEnd }"
-        ),
-        "{sliced_code}"
-    );
-    assert!(
-        sliced_code.contains("Program.ofImage_take_eq_rebase cDemoCode_canonical h")
-            && sliced_code.contains("Program.codeLoaded_rebase_take_of_loaded cDemoCode_canonical h hL")
-            && sliced_code.contains("fnSize_of_wordTree_take cDemoImage"),
-        "{sliced_code}"
-    );
-    // Local symbols from alpha.o, beta.o, gamma.o are disambiguated and fresh.
-    assert!(code_lean.contains("\"helper [alpha]\""), "{code_lean}");
-    assert!(code_lean.contains("\"helper [beta]\""), "{code_lean}");
-    assert!(code_lean.contains("\"helper [gamma]\""), "{code_lean}");
-    assert!(code_lean.contains("def cDemoCode_funcTable"), "{code_lean}");
-    assert!(
-        code_lean.contains("theorem cDemoCode_fnSize_"),
-        "{code_lean}"
-    );
-    // Symbol-keyed constants (backwards-compatible additions).
-    assert!(
-        code_lean.contains("abbrev cDemoCodeTextEnd : Nat := "),
-        "{code_lean}"
-    );
-    assert!(
-        code_lean.contains("abbrev cDemoCode_symOff_alpha_entry : Nat := 0x"),
-        "{code_lean}"
-    );
-    assert!(
-        code_lean.contains("abbrev cDemoCode_symAddr_alpha_entry : BitVec 64 := 0x"),
-        "{code_lean}"
-    );
-    assert!(
-        code_lean.contains("abbrev cDemoCode_symOff_helper_alpha : Nat := 0x"),
-        "{code_lean}"
-    );
-    assert!(
-        code_lean.contains("abbrev cDemoCode_symOff_helper_beta : Nat := 0x"),
-        "{code_lean}"
-    );
-    assert!(
-        code_lean.contains("abbrev cDemoCode_hookOff_malloc : Nat := 0x"),
-        "{code_lean}"
-    );
-    // The `0x<hex>`-keyed hook theorem is kept, with a symbol-keyed alias right below it.
-    let malloc_off = code_lean
-        .lines()
-        .find_map(|ln| ln.strip_prefix("abbrev cDemoCode_hookOff_malloc : Nat := "))
-        .expect("malloc hookOff")
-        .to_string();
-    let hook_thm = format!("theorem cDemoCode_hookAtOff?_{malloc_off} {{b : BitVec 64}}");
-    let alias = "theorem cDemoCode_hookAtOff?_malloc {b : BitVec 64}";
-    let (hi, ai) = (
-        code_lean
-            .find(&hook_thm)
-            .unwrap_or_else(|| panic!("{hook_thm}\n{code_lean}")),
-        code_lean
-            .find(alias)
-            .unwrap_or_else(|| panic!("{alias}\n{code_lean}")),
-    );
-    assert!(hi < ai, "{code_lean}");
-    assert!(
-        code_lean.contains(
-            "    (cDemoCode.rebase b H).hookAtOff? cDemoCode_hookOff_malloc = H \"malloc\" :=\n  \
-                 cDemoCode_hookAtOff?_"
-        ),
-        "{code_lean}"
-    );
-
-    let lemmas_lean = find_text("CDemoLemmas.lean");
-    assert!(
-        code_lean.contains("set_option Elab.async false"),
-        "{code_lean}"
-    );
-    assert!(
-        lemmas_lean.contains("set_option Elab.async false"),
-        "{lemmas_lean}"
-    );
-    assert!(lemmas_lean.contains("### `alpha_entry`"), "{lemmas_lean}");
-    assert!(
-        lemmas_lean.contains("### `helper [alpha]`"),
-        "{lemmas_lean}"
-    );
-    assert!(lemmas_lean.contains("### `helper [beta]`"), "{lemmas_lean}");
-    assert!(
-        lemmas_lean.contains("register_fn_entry \"alpha_entry\""),
-        "{lemmas_lean}"
-    );
-    // The `Code` module registers the function entries of every target (with that target's
-    // decode prefix), so importing it alone populates `fnEntryExt`.
-    let reg_lines = |text: &str| -> Vec<String> {
-        text.lines()
-            .filter(|ln| ln.starts_with("register_fn_entry "))
-            .map(str::to_string)
-            .collect()
-    };
-    let demo_regs = reg_lines(&lemmas_lean);
-    assert!(!demo_regs.is_empty(), "{lemmas_lean}");
-    let code_regs = reg_lines(&code_lean);
-    for r in &demo_regs {
-        assert!(code_regs.contains(r), "missing `{r}` in Code module:\n{code_lean}");
-    }
-    // Sharded target: the barrel and every shard carry the same full set of registrations.
-    let sharded_barrel = find_text("CDemoShardedLemmas.lean");
-    let sharded_regs = reg_lines(&sharded_barrel);
-    assert_eq!(sharded_regs.len(), 2, "{sharded_barrel}");
-    assert!(
-        sharded_regs
-            .iter()
-            .all(|r| r.contains(" cDemoShardedProg ") || r.contains(".cDemoShardedProg ")),
-        "{sharded_barrel}"
-    );
-    for r in &sharded_regs {
-        assert!(code_regs.contains(r), "missing `{r}` in Code module:\n{code_lean}");
-    }
-    for i in 0..2 {
-        let shard = find_text(&format!("CDemoShardedLemmasShard{i}.lean"));
-        assert_eq!(reg_lines(&shard), sharded_regs, "{shard}");
+    for expected in [
+        "\"alpha_entry\"",
+        "\"beta_entry\"",
+        "\"gamma_entry\"",
+        "\"helper [alpha]\"",
+        "\"helper [beta]\"",
+        "\"helper [gamma]\"",
+        "\"malloc\"",
+        "\"free\"",
+        "\"ext_counter\"",
+        "\"ext_explicit\"",
+    ] {
         assert!(
-            shard.find("register_fn_entry ").unwrap() < shard.rfind("\nend ").unwrap(),
-            "{shard}"
+            placed_lean.contains(expected),
+            "missing {expected} in CDemoPlacedObj.lean:\n{placed_lean}"
         );
     }
     assert!(
-        lemmas_lean.contains("gen_fetches cDemoCode cDemoProg true ["),
-        "expected gen_fetches invocation in CDemoLemmas.lean: {lemmas_lean}"
-    );
-    assert!(
-        !lemmas_lean.contains("unmodeled instruction"),
-        "switch statement should compile without indirect jump tables: {lemmas_lean}"
+        files
+            .iter()
+            .any(|f| f.path.to_string_lossy().ends_with("CDemoPlacedObj.bin") && !f.contents.is_empty()),
+        "expected non-empty CDemoPlacedObj.bin"
     );
 
-    let target_idx_json = find_text("CDemoLemmasIndex.json");
+    let extracted_lean = find_text("CDemoExtractedObj.lean");
     assert!(
-        target_idx_json.contains("\"schema_version\": 1"),
-        "{target_idx_json}"
+        extracted_lean.contains(
+            "def cDemoExtractedObjs : List Obj.ExtractedObj := [cDemoExtractedObj0, cDemoExtractedObj1, cDemoExtractedObj2]"
+        ),
+        "{extracted_lean}"
     );
+    assert!(extracted_lean.contains("\"helper [alpha]\""), "{extracted_lean}");
+    assert!(extracted_lean.contains("\"helper [beta]\""), "{extracted_lean}");
+    assert!(extracted_lean.contains("\"helper [gamma]\""), "{extracted_lean}");
     assert!(
-        target_idx_json.contains("\"target\": \"demo\""),
-        "{target_idx_json}"
+        files
+            .iter()
+            .any(|f| f.path.to_string_lossy().ends_with("CDemoExtractedObj.bin") && !f.contents.is_empty()),
+        "expected non-empty CDemoExtractedObj.bin"
     );
-    assert!(
-        target_idx_json.contains("\"code_file\": \"Generated/CDemoCode.lean\""),
-        "{target_idx_json}"
-    );
-    assert!(
-        target_idx_json.contains("\"lean_file\": \"Generated/CDemoLemmas.lean\""),
-        "{target_idx_json}"
-    );
-    assert!(
-        target_idx_json.contains("\"alpha_entry\""),
-        "{target_idx_json}"
-    );
-    assert!(
-        target_idx_json.contains("\"fn_off_lemma\""),
-        "{target_idx_json}"
-    );
-    assert!(
-        target_idx_json.contains("\"hook_at_off_lemma\""),
-        "{target_idx_json}"
-    );
-    let code_idx_json = find_text("CDemoIndex.json");
-    assert!(
-        code_idx_json.contains("\"schema_version\": 1"),
-        "{code_idx_json}"
-    );
-    assert!(
-        code_idx_json.contains("\"target\": null"),
-        "{code_idx_json}"
-    );
-    assert!(code_idx_json.contains("\"alpha_entry\""), "{code_idx_json}");
 }
 
 #[test]
@@ -1999,7 +1730,6 @@ fn tcb_modules_never_import_untrusted_lemmas() {
             assert!(
                 !trimmed.contains("untrusted_driver")
                     && !trimmed.contains("untrusted_lemmas")
-                    && !trimmed.contains("untrusted_legacy_linker")
                     && !trimmed.contains("untrusted_placed")
                     && !trimmed.contains("decode_word_to_lean")
                     && !trimmed.contains("objdump")
@@ -2014,11 +1744,10 @@ fn tcb_modules_never_import_untrusted_lemmas() {
     }
 }
 
-/// DWARF hints only change `*Index.json`: the trusted `Obj` module, `.bin` files, `Code` and
-/// lemma modules are byte-identical with and without them (the trusted build stays `-g0`).
-/// Also checks the index DWARF and the `symexec` source annotations derived from it.
+/// Companion `-g` DWARF extraction attaches function signatures, struct layouts, and source
+/// annotations to `TargetSymbolIndex` and `symexec` without altering `-g0` object extraction.
 #[test]
-fn dwarf_hints_change_only_the_index() {
+fn dwarf_hints_attach_to_index_and_annotate_symexec() {
     if crate::untrusted_driver::find_zig_binary("test").is_err() {
         eprintln!("skipping: zig not available");
         return;
@@ -2032,39 +1761,69 @@ obj_file = "Generated/DwSampleObj.lean"
 code_file = "Generated/DwSampleCode.lean"
 namespace_prefix = "DwSample"
 title = "DWARF sample"
-legacy_linked_image = true
 c_sources = ["sample.c"]
 
-[[targets]]
-name = "dw"
-lean_file = "Generated/DwSample.lean"
-prog_name = "dwProg"
-title = "DWARF sample"
-lemma_allowlist = ["sum_list", "set_flags"]
+[placed]
+placed_only = true
+multi = true
+exports = ["sum_list", "set_flags"]
 "#;
     let toml_path = root.join("translation.toml");
     fs::write(&toml_path, toml).unwrap();
     let cfg = load_config(&toml_path, root, Some(&root.join("out"))).unwrap();
     let mut tc = Toolchain::new(root.to_path_buf()).unwrap();
-    let with = generate_config_with(&cfg, &mut tc, true).unwrap();
-    let without = generate_config_with(&cfg, &mut tc, false).unwrap();
-    assert_eq!(with.len(), without.len());
-    let mut idx_json = None;
-    for (a, b) in with.iter().zip(&without) {
-        assert_eq!(a.path, b.path);
-        if a.path.to_string_lossy().ends_with("Index.json") {
-            assert_ne!(a.contents, b.contents, "{}", a.path.display());
-            idx_json.get_or_insert(String::from_utf8(a.contents.clone()).unwrap());
-        } else {
-            assert!(
-                a.contents == b.contents,
-                "{} depends on DWARF",
-                a.path.display()
-            );
-        }
-    }
-    let idx: crate::untrusted_lemmas::index::TargetSymbolIndex =
-        serde_json::from_str(&idx_json.unwrap()).unwrap();
+    let ex = crate::untrusted_driver::extract(&cfg, &mut tc).unwrap();
+    let dw = untrusted_lemmas::dwarf::companion::image_dwarf(&cfg, &ex.objects);
+    assert!(dw.warnings.is_empty(), "unexpected DWARF warnings: {:?}", dw.warnings);
+
+    let obj = &ex.objects[0];
+    let sym = obj
+        .symbols
+        .iter()
+        .find(|s| s.name == "sum_list")
+        .expect("sum_list symbol");
+    let crate::trusted_common::SymSection::Sec(sec_idx) = sym.sec else {
+        panic!("expected defined sum_list symbol");
+    };
+    let sec = &obj.sections[sec_idx];
+    let bytes = &sec.bytes[sym.value as usize..(sym.value + sym.size) as usize];
+
+    let mut idx = crate::untrusted_lemmas::index::TargetSymbolIndex {
+        schema_version: 1,
+        target: None,
+        obj_name: cfg.obj_name.clone(),
+        code_def: cfg.code_def_name(),
+        objs_expr: cfg.image_def_name(),
+        namespace_prefix: cfg.namespace_prefix.clone(),
+        sub_namespace: None,
+        code_file: String::new(),
+        lean_file: None,
+        code_module: cfg.code_module.clone(),
+        code_const: String::new(),
+        target_module: None,
+        prog_name: None,
+        functions: vec![crate::untrusted_lemmas::index::FunctionIndexEntry {
+            name: "sum_list".into(),
+            offset: 0,
+            offset_hex: "0x0".into(),
+            size_bytes: sym.size,
+            size_insns: sym.size / 4,
+            fn_off_lemma: String::new(),
+            fn_off_lemma_full: String::new(),
+            fn_size_lemma: String::new(),
+            frame_bytes_lemma: None,
+            decode_prefix: None,
+            decode_prefix_full: None,
+            frame_bytes: crate::untrusted_lemmas::index::infer_prologue_frame(bytes),
+            frame_unknown: false,
+            callees: Vec::new(),
+            dwarf: None,
+        }],
+        stubs: Vec::new(),
+        dwarf_types: Vec::new(),
+    };
+    untrusted_lemmas::dwarf::companion::attach_to_index(&dw, &mut idx);
+
     let f = idx.functions.iter().find(|f| f.name == "sum_list").unwrap();
     let d = f.dwarf.as_ref().expect("DWARF for sum_list");
     assert_eq!(
@@ -2074,13 +1833,6 @@ lemma_allowlist = ["sum_list", "set_flags"]
     assert_eq!(d.decl_file, "/src/sample.c");
     assert!(idx.dwarf_types.iter().any(|l| l.name == "struct node"));
 
-    // `symexec` on the exported code: field names, lines and variables.
-    let code = &with
-        .iter()
-        .find(|f| f.path.to_string_lossy().ends_with(".code.bin"))
-        .unwrap()
-        .contents;
-    let bytes = &code[f.offset as usize..(f.offset + f.size_bytes) as usize];
     let mut report = untrusted_lemmas::symexec::analyze_and_execute(
         &f.name,
         f.offset,
@@ -2110,61 +1862,7 @@ lemma_allowlist = ["sum_list", "set_flags"]
 }
 
 #[test]
-fn registry_facts_emits_rodata_abs64_lemmas() {
-    if crate::untrusted_driver::find_zig_binary("test").is_err() {
-        eprintln!("skipping: zig not available");
-        return;
-    }
-    let dir = tempfile::tempdir().unwrap();
-    let root = dir.path();
-    let src = r#"
-int alpha(int x) { return x + 1; }
-int widget(int x) { return x * 2; }
-
-typedef struct {
-    int (*apply)(int);
-} codec_op_t;
-
-const codec_op_t vtable[2] = {
-    { alpha },
-    { widget },
-};
-"#;
-    fs::write(root.join("vtable.c"), src).unwrap();
-    let toml = r#"
-obj_name = "regSample"
-obj_file = "Generated/RegSampleObj.lean"
-code_file = "Generated/RegSampleCode.lean"
-registry_facts = true
-namespace_prefix = "RegSample"
-title = "Registry sample"
-legacy_linked_image = true
-c_sources = ["vtable.c"]
-
-[[targets]]
-name = "reg"
-lean_file = "Generated/RegSample.lean"
-prog_name = "regProg"
-title = "Registry sample"
-lemma_allowlist = ["alpha", "widget"]
-"#;
-    let toml_path = root.join("translation.toml");
-    fs::write(&toml_path, toml).unwrap();
-    let cfg = load_config(&toml_path, root, Some(&root.join("out"))).unwrap();
-    let mut tc = Toolchain::new(root.to_path_buf()).unwrap();
-    let files = generate_config_with(&cfg, &mut tc, false).unwrap();
-    let reg_file = files
-        .iter()
-        .find(|f| f.path.to_string_lossy().ends_with("RegSampleRegistryFacts.lean"))
-        .expect("expected RegSampleRegistryFacts.lean");
-    let text = String::from_utf8(reg_file.contents.clone()).unwrap();
-    assert!(text.contains("+ 0) = img.fnAddr \"alpha\""), "{text}");
-    assert!(text.contains("+ 8) = img.fnAddr \"widget\""), "{text}");
-    assert!(text.contains("rodataPtr_eq_fnAddr_of_loads himg (by rfl_kernel)"), "{text}");
-}
-
-#[test]
-fn perturb_layout_cli_config_and_end_to_end_generation() {
+fn perturb_layout_cli_and_config_validation() {
     use crate::untrusted_driver::{
         PERTURB_LAYOUT_ENV, apply_perturb_layout_override, resolve_perturb_layout_bytes,
     };
@@ -2237,94 +1935,11 @@ title = "T"
 lemma_allowlist = []
 "#,
     );
-    let mut cfg = load_config(&ok_toml, &test_repo_root(), None).unwrap();
+    let cfg = load_config(&ok_toml, &test_repo_root(), None).unwrap();
     assert_eq!(cfg.perturb_layout_bytes, 0);
-    let mut cfgs = vec![cfg.clone()];
+    let mut cfgs = vec![cfg];
     apply_perturb_layout_override(&mut cfgs, Some(4096)).unwrap();
     assert_eq!(cfgs[0].perturb_layout_bytes, 4096);
-
-    // 5. End-to-end C compilation with `perturb_layout_bytes = 0` vs `64`.
-    if crate::untrusted_driver::find_zig_binary("test").is_err() {
-        eprintln!("skipping end-to-end C perturb test: zig not available");
-        return;
-    }
-    let dir = tempfile::tempdir().unwrap();
-    let root = dir.path();
-    let src = r#"
-int op_add(int a, int b) { return a + b; }
-int op_sub(int a, int b) { return a - b; }
-typedef int (*binop_t)(int, int);
-const binop_t ops[2] = { op_add, op_sub };
-int dispatch(int idx, int a, int b) { return ops[idx & 1](a, b); }
-"#;
-    fs::write(root.join("ops.c"), src).unwrap();
-    let c_toml = r#"
-obj_name = "pSample"
-obj_file = "Generated/PSampleObj.lean"
-code_file = "Generated/PSampleCode.lean"
-registry_facts = true
-namespace_prefix = "PSample"
-title = "Perturb sample"
-legacy_linked_image = true
-c_sources = ["ops.c"]
-
-[[targets]]
-name = "ps"
-lean_file = "Generated/PSample.lean"
-prog_name = "psProg"
-title = "Perturb sample"
-lemma_allowlist = ["op_add", "op_sub", "dispatch"]
-"#;
-    let c_toml_path = root.join("translation.toml");
-    fs::write(&c_toml_path, c_toml).unwrap();
-    cfg = load_config(&c_toml_path, root, Some(&root.join("out0"))).unwrap();
-    let mut cfg0_explicit = load_config(&c_toml_path, root, Some(&root.join("out0"))).unwrap();
-    apply_perturb_layout_override(std::slice::from_mut(&mut cfg0_explicit), Some(0)).unwrap();
-    let mut cfg64 = load_config(&c_toml_path, root, Some(&root.join("out64"))).unwrap();
-    apply_perturb_layout_override(std::slice::from_mut(&mut cfg64), Some(64)).unwrap();
-
-    let mut tc = Toolchain::new(root.to_path_buf()).unwrap();
-    let files0 = generate_config_with(&cfg, &mut tc, false).unwrap();
-    let files0_explicit = generate_config_with(&cfg0_explicit, &mut tc, false).unwrap();
-    let files64 = generate_config_with(&cfg64, &mut tc, false).unwrap();
-
-    // Verify byte-identical output across all generated files when perturbation is off (`0`).
-    assert_eq!(files0.len(), files0_explicit.len());
-    for (a, b) in files0.iter().zip(&files0_explicit) {
-        assert_eq!(a.path, b.path);
-        assert_eq!(
-            a.contents,
-            b.contents,
-            "generated file {} must be byte-identical when perturbation is off",
-            a.path.display()
-        );
-    }
-
-    let get_text = |files: &[GeneratedFile], suffix: &str| -> String {
-        let f = files
-            .iter()
-            .find(|f| f.path.to_string_lossy().ends_with(suffix))
-            .unwrap();
-        String::from_utf8(f.contents.clone()).unwrap()
-    };
-    let code0 = get_text(&files0, "PSampleCode.lean");
-    let code64 = get_text(&files64, "PSampleCode.lean");
-
-    let parse_sym_off = |text: &str, sym: &str| -> u64 {
-        let prefix = format!("abbrev pSampleCode_symOff_{sym} : Nat := 0x");
-        let hex = text
-            .lines()
-            .find_map(|l| l.strip_prefix(&prefix))
-            .unwrap_or_else(|| panic!("missing {prefix} in:\n{text}"));
-        u64::from_str_radix(hex.trim(), 16).unwrap()
-    };
-    for sym in ["op_add", "op_sub", "dispatch", "ops"] {
-        assert_eq!(
-            parse_sym_off(&code64, sym),
-            parse_sym_off(&code0, sym) + 64,
-            "symbol {sym} offset should shift by +64 bytes"
-        );
-    }
 }
 
 #[test]
@@ -2365,7 +1980,7 @@ exports = ["alpha"]
 }
 
 #[test]
-fn legacy_linked_image_gate_rejects_default_and_accepts_opt_in() {
+fn placed_section_required_and_legacy_linked_image_rejected() {
     let dir = tempfile::tempdir().unwrap();
     fs::write(dir.path().join("alpha.c"), "int alpha(int x) { return x + 1; }\n").unwrap();
     let cfg_path = dir.path().join("translation.toml");
@@ -2375,6 +1990,7 @@ fn legacy_linked_image_gate_rejects_default_and_accepts_opt_in() {
 obj_name = "alpha"
 title = "`alpha`"
 c_sources = ["alpha.c"]
+legacy_linked_image = false
 
 [native_compiler]
 zig_version = "0.16.0"
@@ -2390,39 +2006,56 @@ lemma_allowlist = ["alpha"]
     )
     .unwrap();
     let out_dir = dir.path().join("out");
-    let mut cfg = load_config(&cfg_path, &test_repo_root(), Some(&out_dir)).unwrap();
-    assert!(!cfg.legacy_linked_image);
+    let cfg = load_config(&cfg_path, &test_repo_root(), Some(&out_dir)).unwrap();
     let mut tc = Toolchain::new(test_repo_root()).unwrap();
     let err = match generate_config_with(&cfg, &mut tc, false) {
-        Ok(_) => panic!("non-placed_only config without legacy_linked_image must fail"),
+        Ok(_) => panic!("export target without `[placed]` must fail"),
         Err(e) => e,
     };
     let msg = format!("{err:#}");
     assert!(
-        msg.contains("--legacy-linked-image") && msg.contains("placed_only = true"),
-        "unexpected gate error: {msg}"
+        msg.contains("has no `[placed]` section"),
+        "unexpected error for missing [placed]: {msg}"
     );
 
-    // CLI flag parse check (`--legacy-linked-image`).
-    let cli = Cli::try_parse_from(["rust-obj2lean", "--legacy-linked-image"]).unwrap();
-    assert!(cli.legacy_linked_image);
-    cfg.legacy_linked_image = true;
-    let files = generate_config_with(&cfg, &mut tc, false).unwrap();
-    let obj = files
-        .iter()
-        .find(|f| f.path.to_string_lossy().ends_with("AlphaObj.lean"))
-        .expect("AlphaObj.lean emitted with legacy_linked_image = true");
-    let obj_text = String::from_utf8(obj.contents.clone()).unwrap();
     assert!(
-        obj_text.contains("public import Arm64.Legacy"),
-        "legacy Obj module must import Arm64.Legacy:\n{obj_text}"
+        Cli::try_parse_from(["rust-obj2lean", "--legacy-linked-image"]).is_err(),
+        "`--legacy-linked-image` CLI flag must be rejected"
+    );
+
+    let bad_cfg_path = dir.path().join("bad_legacy.toml");
+    fs::write(
+        &bad_cfg_path,
+        r#"
+obj_name = "alpha"
+title = "`alpha`"
+c_sources = ["alpha.c"]
+legacy_linked_image = true
+
+[native_compiler]
+zig_version = "0.16.0"
+
+[placed]
+placed_only = true
+multi = true
+exports = ["alpha"]
+"#,
+    )
+    .unwrap();
+    let err_load = load_config(&bad_cfg_path, &test_repo_root(), Some(&out_dir))
+        .expect_err("`legacy_linked_image = true` in TOML must fail");
+    assert!(
+        format!("{err_load:#}").contains(
+            "legacy_linked_image = true is no longer supported; configure [placed] for Obj.PlacedLib / Obj.MultiPlacedLib"
+        ),
+        "{err_load:#}"
     );
 }
 
 #[test]
-fn placed_only_with_extracted_obj_never_calls_legacy_linker_and_matches_hybrid_mode() {
+fn placed_with_extracted_obj_emits_identical_outputs_with_or_without_placed_only() {
     if crate::untrusted_driver::find_zig_binary("test").is_err() {
-        eprintln!("skipping end-to-end C placed_only extracted_obj test: zig not available");
+        eprintln!("skipping end-to-end C placed extracted_obj test: zig not available");
         return;
     }
     let cli = Cli::try_parse_from(["rust-obj2lean", "--placed-only", "--extracted-obj"]).unwrap();
@@ -2461,13 +2094,7 @@ exports = ["alpha"]
     let out_dir = dir.path().join("out");
     let cfg = load_config(&cfg_path, &test_repo_root(), Some(&out_dir)).unwrap();
     let mut tc = Toolchain::new(test_repo_root()).unwrap();
-    crate::untrusted_driver::pipeline::reset_legacy_linker_calls();
     let files = generate_config_with(&cfg, &mut tc, false).unwrap();
-    assert_eq!(
-        crate::untrusted_driver::pipeline::legacy_linker_calls(),
-        0,
-        "placed_only + emit_extracted_obj must never invoke untrusted_legacy_linker"
-    );
     let names: Vec<String> = files
         .iter()
         .map(|f| f.path.file_name().unwrap().to_string_lossy().into_owned())
@@ -2490,24 +2117,840 @@ exports = ["alpha"]
         .contents
         .clone();
 
-    // When `legacy_linked_image = true` and `placed_only = false`, `ExtractedObj` outputs remain
-    // byte-for-byte identical because they are emitted directly from `&ex` independently of `li`.
-    let mut hybrid_cfg = cfg.clone();
-    hybrid_cfg.legacy_linked_image = true;
-    hybrid_cfg.placed.as_mut().unwrap().placed_only = false;
-    let hybrid_files = generate_config_with(&hybrid_cfg, &mut tc, false).unwrap();
-    let hybrid_lean = hybrid_files
+    let mut default_placed_cfg = cfg.clone();
+    default_placed_cfg.placed.as_mut().unwrap().placed_only = false;
+    let default_files = generate_config_with(&default_placed_cfg, &mut tc, false).unwrap();
+    assert_eq!(files.len(), default_files.len());
+    for (a, b) in files.iter().zip(&default_files) {
+        assert_eq!(a.path, b.path);
+        assert_eq!(a.contents, b.contents);
+    }
+    let default_lean = default_files
         .iter()
         .find(|f| f.path.to_string_lossy().ends_with("AlphaExtractedObj.lean"))
         .unwrap()
         .contents
         .clone();
-    let hybrid_bin = hybrid_files
+    let default_bin = default_files
         .iter()
         .find(|f| f.path.to_string_lossy().ends_with("AlphaExtractedObj.bin"))
         .unwrap()
         .contents
         .clone();
-    assert_eq!(placed_only_lean, hybrid_lean);
-    assert_eq!(placed_only_bin, hybrid_bin);
+    assert_eq!(placed_only_lean, default_lean);
+    assert_eq!(placed_only_bin, default_bin);
+}
+
+#[cfg(unix)]
+#[test]
+fn fetch_upstream_sources_musl_126_rejects_corrupt_sha256() {
+    use std::process::Command;
+
+    let repo_root = test_repo_root();
+    let script_src = fs::read_to_string(repo_root.join("scripts/fetch-upstream-sources.sh"))
+        .expect("scripts/fetch-upstream-sources.sh must exist");
+    let musl_126_sha = script_src
+        .lines()
+        .find_map(|l| {
+            l.strip_prefix("MUSL_126_SHA256=\"")
+                .and_then(|r| r.strip_suffix('"'))
+        })
+        .expect("MUSL_126_SHA256 must be pinned in scripts/fetch-upstream-sources.sh");
+    assert_eq!(musl_126_sha.len(), 64);
+
+    let tmp = tempfile::tempdir().unwrap();
+    let fake_root = tmp.path().join("repo");
+    fs::create_dir_all(fake_root.join("scripts")).unwrap();
+    let fake_script = fake_root.join("scripts/fetch-upstream-sources.sh");
+    fs::write(&fake_script, &script_src).unwrap();
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&fake_script, fs::Permissions::from_mode(0o755)).unwrap();
+    }
+
+    // 1. Corrupt pre-cached archive is detected by SHA-256 verification and evicted.
+    let cache_dir = tmp.path().join("cache");
+    let archives_dir = cache_dir.join("archives");
+    fs::create_dir_all(&archives_dir).unwrap();
+    let cached_tar = archives_dir.join(format!("{musl_126_sha}-musl-1.2.6.tar.gz"));
+    fs::write(&cached_tar, b"tampered-musl-1.2.6-archive").unwrap();
+
+    let out = Command::new("bash")
+        .arg(&fake_script)
+        .args(["--print-env", "musl-1.2.6"])
+        .current_dir(&fake_root)
+        .env("ARM64_UPSTREAM_CACHE", &cache_dir)
+        .output()
+        .expect("bash must run fetch-upstream-sources.sh");
+    assert!(
+        !out.status.success(),
+        "corrupt cached musl-1.2.6 tarball must fail verification"
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("checksum mismatch"),
+        "expected checksum mismatch diagnostic, got: {stderr}"
+    );
+    assert!(
+        !cached_tar.exists(),
+        "corrupt cached archive must be evicted on SHA-256 mismatch"
+    );
+    assert!(
+        !fake_root.join("third_party/musl-1.2.6/upstream").exists(),
+        "unverified archive must never be unpacked"
+    );
+
+    // 2. Corrupt downloaded archive from primary + mirror URLs is discarded without unpacking.
+    if which::which("curl").is_ok() {
+        let bad_src = tmp.path().join("bad-musl-1.2.6.tar.gz");
+        fs::write(&bad_src, b"corrupt-download-bytes").unwrap();
+        let bad_url = format!("file://{}", bad_src.display());
+        let out_dl = Command::new("bash")
+            .arg(&fake_script)
+            .args(["--print-env", "musl-1.2.6"])
+            .current_dir(&fake_root)
+            .env("ARM64_UPSTREAM_CACHE", &cache_dir)
+            .env("MUSL_126_URL", &bad_url)
+            .env("MUSL_126_MIRROR_URL", &bad_url)
+            .output()
+            .expect("bash must run fetch-upstream-sources.sh");
+        assert!(
+            !out_dl.status.success(),
+            "corrupt downloaded musl-1.2.6 tarball must fail verification"
+        );
+        let stderr_dl = String::from_utf8_lossy(&out_dl.stderr);
+        assert!(
+            stderr_dl.contains("checksum mismatch") || stderr_dl.contains("could not download"),
+            "expected checksum/download failure diagnostic, got: {stderr_dl}"
+        );
+        assert!(!cached_tar.exists());
+        assert!(!fake_root.join("third_party/musl-1.2.6/upstream").exists());
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn ensure_rust_exports_cold_fetches_and_warm_forbids_subprocesses_and_writes() {
+    use sha2::{Digest, Sha256};
+    use std::os::unix::fs::PermissionsExt;
+    use std::process::Command;
+
+    struct ReadOnlyGuard(Vec<PathBuf>);
+    impl ReadOnlyGuard {
+        fn set_mode_recursive(path: &Path, writable: bool) {
+            let Ok(meta) = fs::symlink_metadata(path) else {
+                return;
+            };
+            if meta.file_type().is_symlink() {
+                return;
+            }
+            if writable && meta.is_dir() {
+                let mut mode = meta.permissions().mode();
+                mode |= 0o700;
+                let _ = fs::set_permissions(path, fs::Permissions::from_mode(mode));
+            }
+            if meta.is_dir()
+                && let Ok(entries) = fs::read_dir(path)
+            {
+                for entry in entries.flatten() {
+                    Self::set_mode_recursive(&entry.path(), writable);
+                }
+            }
+            let mut mode = meta.permissions().mode();
+            if writable {
+                mode |= if meta.is_dir() { 0o700 } else { 0o600 };
+            } else {
+                mode &= !0o222;
+            }
+            let _ = fs::set_permissions(path, fs::Permissions::from_mode(mode));
+        }
+
+        fn lock(paths: Vec<PathBuf>, verify_unwritable_dir: &Path) -> Self {
+            assert!(
+                verify_unwritable_dir.is_dir(),
+                "ReadOnlyGuard target `{}` must be an existing directory before write probe",
+                verify_unwritable_dir.display()
+            );
+            for p in &paths {
+                Self::set_mode_recursive(p, false);
+            }
+            let guard = Self(paths);
+            assert!(
+                fs::write(verify_unwritable_dir.join(".ro_probe"), b"x").is_err(),
+                "ReadOnlyGuard must deny writes into `{}` (chmod is vacuous when running as root)",
+                verify_unwritable_dir.display()
+            );
+            guard
+        }
+    }
+    impl Drop for ReadOnlyGuard {
+        fn drop(&mut self) {
+            for p in &self.0 {
+                Self::set_mode_recursive(p, true);
+            }
+        }
+    }
+
+    fn write_exec(path: &Path, body: &str) {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).unwrap();
+        }
+        fs::write(path, body).unwrap();
+        fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
+    }
+
+    fn read_count(path: &Path) -> usize {
+        fs::read_to_string(path)
+            .ok()
+            .map(|s| s.lines().filter(|l| !l.trim().is_empty()).count())
+            .unwrap_or(0)
+    }
+
+    let in_ci = std::env::var("CI")
+        .map(|v| !v.is_empty() && v != "0" && v != "false")
+        .unwrap_or(false);
+    let repo_root = test_repo_root();
+    let lean_prefix_out = Command::new("lean")
+        .arg("--print-prefix")
+        .current_dir(&repo_root)
+        .output();
+    let Ok(lean_prefix_out) = lean_prefix_out else {
+        assert!(
+            !in_ci,
+            "CI is set, so `lean` must be on PATH for LakeExports warm sandbox test"
+        );
+        eprintln!("skipping LakeExports warm sandbox test: `lean` not on PATH");
+        return;
+    };
+    if !lean_prefix_out.status.success() {
+        assert!(
+            !in_ci,
+            "CI is set, so `lean --print-prefix` must succeed for LakeExports warm sandbox test"
+        );
+        eprintln!("skipping LakeExports warm sandbox test: `lean --print-prefix` failed");
+        return;
+    }
+    let lean_prefix = PathBuf::from(String::from_utf8_lossy(&lean_prefix_out.stdout).trim());
+    let lean_bin_dir = lean_prefix.join("bin");
+    let lake_bin = lean_bin_dir.join("lake");
+    if !lake_bin.is_file() {
+        assert!(
+            !in_ci,
+            "CI is set, so `{}` must exist for LakeExports warm sandbox test",
+            lake_bin.display()
+        );
+        eprintln!(
+            "skipping LakeExports warm sandbox test: `{}` not found",
+            lake_bin.display()
+        );
+        return;
+    }
+
+    let tmp = tempfile::tempdir().unwrap();
+    let ws = normalize_path(&tmp.path().join("ws"));
+    let state_dir = normalize_path(&tmp.path().join("state"));
+    let shims_dir = normalize_path(&tmp.path().join("shims"));
+    let poison_dir = normalize_path(&tmp.path().join("poison"));
+    fs::create_dir_all(&ws).unwrap();
+    fs::create_dir_all(&state_dir).unwrap();
+    fs::create_dir_all(&shims_dir).unwrap();
+    fs::create_dir_all(&poison_dir).unwrap();
+
+    // Copy `lean-toolchain` and the real `scripts/LakeExports.lean`, plus stubs for every file
+    // referenced by `exportToolInputs`.
+    let toolchain = fs::read_to_string(repo_root.join("lean-toolchain")).unwrap();
+    fs::write(ws.join("lean-toolchain"), &toolchain).unwrap();
+    let lake_exports_src = fs::read_to_string(repo_root.join("scripts/LakeExports.lean")).unwrap();
+    fs::create_dir_all(ws.join("scripts")).unwrap();
+    fs::write(ws.join("scripts/LakeExports.lean"), &lake_exports_src).unwrap();
+
+    let (_, after_tool_inputs) = lake_exports_src
+        .split_once("def exportToolInputs")
+        .expect("scripts/LakeExports.lean must define exportToolInputs");
+    let (tool_inputs_block, _) = after_tool_inputs
+        .split_once(']')
+        .expect("exportToolInputs array must close with `]`");
+    for piece in tool_inputs_block.split('"').skip(1).step_by(2) {
+        let p = ws.join(piece);
+        if let Some(parent) = p.parent() {
+            fs::create_dir_all(parent).unwrap();
+        }
+        if !p.exists() {
+            fs::write(&p, "// stub\n").unwrap();
+        }
+    }
+
+    let fetch_log = state_dir.join("fetch.log");
+    let cargo_log = state_dir.join("cargo.log");
+    let cargo_env_log = state_dir.join("cargo.env");
+    let rustc_log = state_dir.join("rustc.log");
+    let poison_log = state_dir.join("poison.log");
+    let upstream_payload = state_dir.join("upstream_alpha.c");
+    let expected_sha_file = state_dir.join("expected.sha256");
+
+    // `scripts/fetch-upstream-sources.sh` verifies SHA-256 of `upstream_alpha.c`, takes a lock
+    // under `.lake/`, unpacks `third_party/alpha-1.0/alpha.c`, and prints `ALPHA_UPSTREAM_SRC=...`.
+    let fetch_script = format!(
+        "#!/usr/bin/env bash\n\
+         set -euo pipefail\n\
+         echo \"fetch:$*\" >> \"{fetch_log}\"\n\
+         ROOT=\"$(cd \"$(dirname \"${{BASH_SOURCE[0]}}\")/..\" && pwd)\"\n\
+         mkdir -p \"$ROOT/.lake\"\n\
+         echo lock > \"$ROOT/.lake/fetch-upstream-sources.lock\"\n\
+         EXPECTED=\"$(cat \"{expected_sha}\")\"\n\
+         GOT=\"$(sha256sum \"{payload}\" | awk '{{print $1}}')\"\n\
+         if [ \"$GOT\" != \"$EXPECTED\" ]; then\n\
+           echo \"checksum mismatch: expected $EXPECTED, got $GOT\" >&2\n\
+           exit 1\n\
+         fi\n\
+         mkdir -p \"$ROOT/third_party/alpha-1.0\"\n\
+         cp -f \"{payload}\" \"$ROOT/third_party/alpha-1.0/alpha.c\"\n\
+         for arg in \"$@\"; do\n\
+           if [ \"$arg\" = \"--print-env\" ]; then\n\
+             echo \"ALPHA_UPSTREAM_SRC=$ROOT/third_party/alpha-1.0\"\n\
+           fi\n\
+         done\n",
+        fetch_log = fetch_log.display(),
+        expected_sha = expected_sha_file.display(),
+        payload = upstream_payload.display(),
+    );
+    write_exec(&ws.join("scripts/fetch-upstream-sources.sh"), &fetch_script);
+
+    // Mock `rustc` and `cargo` shims for cold/dirty export builds.
+    write_exec(
+        &shims_dir.join("rustc"),
+        &format!(
+            "#!/bin/sh\necho rustc >> \"{}\"\necho 'rustc 1.98.1 (mock)'\n",
+            rustc_log.display()
+        ),
+    );
+    write_exec(
+        &shims_dir.join("cargo"),
+        &format!(
+            "#!/usr/bin/env bash\n\
+             set -euo pipefail\n\
+             echo \"cargo:$*\" >> \"{cargo_log}\"\n\
+             {{\n\
+               echo \"ZLIB_NO_CLONE=${{ZLIB_NO_CLONE:-}}\"\n\
+               echo \"HASHBROWN_NO_CLONE=${{HASHBROWN_NO_CLONE:-}}\"\n\
+               echo \"ALPHA_UPSTREAM_SRC=${{ALPHA_UPSTREAM_SRC:-}}\"\n\
+             }} > \"{cargo_env}\"\n\
+             OUT_DIR=\"\"\n\
+             while [ $# -gt 0 ]; do\n\
+               if [ \"$1\" = \"--out-dir\" ]; then OUT_DIR=\"$2\"; shift 2; else shift; fi\n\
+             done\n\
+             [ -n \"$OUT_DIR\" ]\n\
+             [ -f \"${{ALPHA_UPSTREAM_SRC}}/alpha.c\" ]\n\
+             MARKER=\"$(wc -c < \"${{ALPHA_UPSTREAM_SRC}}/alpha.c\" | tr -d ' ')\"\n\
+             mkdir -p \"$OUT_DIR/Alpha/Generated\"\n\
+             printf 'module\\npublic section\\ndef alphaMarker : Nat := %s\\n' \"$MARKER\" > \"$OUT_DIR/Alpha/Generated/AlphaPlacedObj.lean\"\n\
+             printf 'BIN%s' \"$MARKER\" > \"$OUT_DIR/Alpha/Generated/AlphaPlacedObj.bin\"\n",
+            cargo_log = cargo_log.display(),
+            cargo_env = cargo_env_log.display(),
+        ),
+    );
+
+    // Poison `bash` and `cargo` shims (+ working `rustc`) for verifying developer warm builds.
+    for cmd in ["bash", "cargo"] {
+        write_exec(
+            &poison_dir.join(cmd),
+            &format!(
+                "#!/bin/sh\necho \"poison:{cmd}:$*\" >> \"{}\"\nexit 99\n",
+                poison_log.display()
+            ),
+        );
+    }
+    write_exec(
+        &poison_dir.join("rustc"),
+        &format!(
+            "#!/bin/sh\necho rustc >> \"{}\"\necho 'rustc 1.98.1 (mock)'\n",
+            rustc_log.display()
+        ),
+    );
+
+    // Subpackage `subpkg` (models `VerifiedLibraries` / `CaseStudies/<Lib>`) + root consumer.
+    let subpkg = ws.join("subpkg");
+    fs::create_dir_all(subpkg.join("Implementation")).unwrap();
+    fs::write(subpkg.join("lean-toolchain"), &toolchain).unwrap();
+    fs::write(
+        subpkg.join("Implementation/translation.toml"),
+        "obj_name = \"alpha\"\n",
+    )
+    .unwrap();
+    fs::write(
+        subpkg.join("Implementation/shim.c"),
+        "int shim(void) { return 1; }\n",
+    )
+    .unwrap();
+    fs::write(
+        subpkg.join("lakefile.lean"),
+        r#"import Lake
+open Lake DSL
+open System (FilePath)
+
+open Lean Elab Command in
+elab "include_lake_file " rel:str : command => do
+  let curDir := (System.FilePath.mk (← read).fileName).parent.getD "."
+  let path := curDir / rel.getString
+  let src ← IO.FS.readFile path
+  let env ← getEnv
+  let ictx := Parser.mkInputContext src path.toString
+  let mut pstate : Parser.ModuleParserState := {}
+  let scope := (← get).scopes.head!
+  while !ictx.atEnd pstate.pos do
+    let (stx, pstate', msgs) := Parser.parseCommand ictx { env, options := scope.opts } pstate (← get).messages
+    modify fun s => { s with messages := msgs }
+    pstate := pstate'
+    if Parser.isTerminalCommand stx then break
+    withReader (fun ctx => { ctx with fileName := path.toString, fileMap := ictx.fileMap }) do
+      elabCommandTopLevel stx
+
+include_lake_file "../scripts/LakeExports.lean"
+
+def alphaExportSpecs : Array ExportTargetSpec := #[
+  { name := "alpha"
+    config := "Implementation/translation.toml"
+    inputs := #[
+      "Implementation/translation.toml",
+      "Implementation/shim.c",
+      "../third_party/alpha-1.0/alpha.c"
+    ]
+    outputs := #[
+      "Alpha/Generated/AlphaPlacedObj.lean",
+      "Alpha/Generated/AlphaPlacedObj.bin"
+    ] }
+]
+
+def alphaExportOutputs : Array String :=
+  alphaExportSpecs.foldl (fun acc s => acc ++ s.outputs) #[]
+
+package «alpha-subpkg» where
+  version := v!"0.1.0"
+  leanOptions := standardLeanOptions
+
+target rustExports pkg : Array FilePath := Job.async do
+  setTraceCaption "rustExports"
+  let repoRoot := pkg.dir / ".."
+  let (depTrace, outFiles) ←
+    ensureRustExports pkg.dir alphaExportSpecs "rustExportsAlpha" #["alpha-1.0"]
+      repoRoot "Alpha/Generated" "Alpha.Generated"
+  addTrace depTrace
+  cleanupStaleGeneratedFiles (pkg.dir / "Alpha" / "Generated")
+    "Alpha/Generated" alphaExportOutputs
+  let outTrace ← computeRelativeFilesTrace pkg.dir "outputs" alphaExportOutputs
+  addTrace outTrace
+  return outFiles
+
+@[«module_facet»] def generatedInputFacet : ModuleFacetDecl :=
+  mkGeneratedInputFacet `Alpha.Generated
+
+lean_lib Alpha where
+  roots := #[`Alpha.Generated.AlphaPlacedObj]
+  globs := #[.one `Alpha.Generated.AlphaPlacedObj]
+"#,
+    )
+    .unwrap();
+
+    fs::write(
+        ws.join("lakefile.lean"),
+        r#"import Lake
+open Lake DSL
+
+package «alpha-root» where
+  version := v!"0.1.0"
+
+require «alpha-subpkg» from "subpkg"
+
+@[default_target]
+lean_lib Consumer where
+  roots := #[`Consumer]
+"#,
+    )
+    .unwrap();
+    fs::write(
+        ws.join("Consumer.lean"),
+        "module\npublic import Alpha.Generated.AlphaPlacedObj\npublic section\ndef consumerVal : Nat := alphaMarker\n",
+    )
+    .unwrap();
+
+    let host_path = std::env::var("PATH").unwrap_or_default();
+    let cold_path = format!(
+        "{}:{}:{host_path}",
+        shims_dir.display(),
+        lean_bin_dir.display()
+    );
+    let home_dir = std::env::var("HOME").unwrap_or_else(|_| tmp.path().display().to_string());
+
+    // Stage A: Cold checkout with corrupt SHA-256 fails closed before invoking `cargo`.
+    let v1_bytes = b"int alpha_val(void) { return 7; }\n";
+    fs::write(&upstream_payload, v1_bytes).unwrap();
+    fs::write(&expected_sha_file, "0".repeat(64)).unwrap();
+    assert!(!ws.join("third_party/alpha-1.0/alpha.c").exists());
+
+    let bad_cold = Command::new(&lake_bin)
+        .args(["build", "--no-ansi", "Consumer"])
+        .current_dir(&ws)
+        .env_clear()
+        .env("PATH", &cold_path)
+        .env("HOME", &home_dir)
+        .env("LEAN_NUM_THREADS", "2")
+        .output()
+        .unwrap();
+    assert!(
+        !bad_cold.status.success(),
+        "cold build with mismatched upstream SHA-256 must fail"
+    );
+    assert_eq!(read_count(&fetch_log), 1);
+    assert_eq!(read_count(&cargo_log), 0);
+    assert!(!subpkg.join("Alpha/Generated/AlphaPlacedObj.lean").exists());
+
+    // Stage B: Cold checkout with valid SHA-256 fetches upstream before hashing and builds cleanly.
+    let v1_sha = hex::encode(Sha256::digest(v1_bytes));
+    fs::write(&expected_sha_file, &v1_sha).unwrap();
+    let _ = fs::remove_dir_all(ws.join("third_party"));
+
+    let ok_cold = Command::new(&lake_bin)
+        .args(["build", "--no-ansi", "Consumer"])
+        .current_dir(&ws)
+        .env_clear()
+        .env("PATH", &cold_path)
+        .env("HOME", &home_dir)
+        .env("LEAN_NUM_THREADS", "2")
+        .output()
+        .unwrap();
+    assert!(
+        ok_cold.status.success(),
+        "cold build failed:\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&ok_cold.stdout),
+        String::from_utf8_lossy(&ok_cold.stderr)
+    );
+    assert_eq!(read_count(&fetch_log), 2);
+    assert_eq!(read_count(&cargo_log), 1);
+    let cargo_env_text = fs::read_to_string(&cargo_env_log).unwrap();
+    assert!(
+        cargo_env_text.contains("ZLIB_NO_CLONE=1"),
+        "{cargo_env_text}"
+    );
+    assert!(
+        cargo_env_text.contains("HASHBROWN_NO_CLONE=1"),
+        "{cargo_env_text}"
+    );
+    assert!(
+        cargo_env_text.contains(&format!(
+            "ALPHA_UPSTREAM_SRC={}",
+            ws.join("third_party/alpha-1.0").display()
+        )),
+        "{cargo_env_text}"
+    );
+    assert!(
+        subpkg
+            .join("Alpha/Generated/.rustExportsAlpha.inputs.stamp")
+            .is_file()
+    );
+
+    let subpkg_build_dir = subpkg.join(".lake/build");
+    let dev_warm_path = format!("{}:{}", poison_dir.display(), lean_bin_dir.display());
+    let expected_build_stamp =
+        fs::read_to_string(subpkg_build_dir.join("rustExportsAlpha.stamp")).unwrap();
+    let expected_gen_stamp =
+        fs::read_to_string(subpkg.join("Alpha/Generated/.rustExportsAlpha.stamp")).unwrap();
+    let expected_gen_inputs_stamp =
+        fs::read_to_string(subpkg.join("Alpha/Generated/.rustExportsAlpha.inputs.stamp")).unwrap();
+    assert!(!expected_build_stamp.trim().is_empty());
+    assert_eq!(expected_build_stamp, expected_gen_stamp);
+    assert!(!expected_gen_inputs_stamp.trim().is_empty());
+
+    // Stage C1: Warm sandboxed build with subpackage & upstream trees read-only, missing
+    // subpackage `.lake/build/rustExportsAlpha.trace`, and `PATH` restricted solely to
+    // `<lean_prefix>/bin` (no `bash`, `sh`, `cargo`, or `rustc`; no `LAKE_TRUST_CACHED_RUST_EXPORTS`).
+    let _ = fs::remove_file(subpkg_build_dir.join("rustExportsAlpha.trace"));
+    let _ = fs::remove_file(ws.join(".lake/fetch-upstream-sources.lock"));
+    {
+        let _ro = ReadOnlyGuard::lock(
+            vec![
+                subpkg.clone(),
+                ws.join("scripts"),
+                ws.join("tools"),
+                ws.join("third_party"),
+            ],
+            &subpkg_build_dir,
+        );
+
+        let warm_sandbox = Command::new(&lake_bin)
+            .args(["build", "--no-ansi", "Consumer"])
+            .current_dir(&ws)
+            .env_clear()
+            .env("PATH", &lean_bin_dir)
+            .env("HOME", &home_dir)
+            .env("LEAN_NUM_THREADS", "2")
+            .output()
+            .unwrap();
+        assert!(
+            warm_sandbox.status.success(),
+            "warm sandboxed build failed:\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&warm_sandbox.stdout),
+            String::from_utf8_lossy(&warm_sandbox.stderr)
+        );
+        assert_eq!(
+            read_count(&fetch_log),
+            2,
+            "warm build must not run fetch script"
+        );
+        assert_eq!(read_count(&cargo_log), 1, "warm build must not run cargo");
+        assert!(
+            !ws.join(".lake/fetch-upstream-sources.lock").exists(),
+            "warm build must not create fetch lock file"
+        );
+
+        // Stage C2: Warm developer build (`rustc` on PATH, poison `bash` and `cargo` on PATH,
+        // `LAKE_TRUST_CACHED_RUST_EXPORTS` unset, subpackage still read-only).
+        let rustc_before = read_count(&rustc_log);
+        let warm_dev = Command::new(&lake_bin)
+            .args(["build", "--no-ansi", "Consumer"])
+            .current_dir(&ws)
+            .env_clear()
+            .env("PATH", &dev_warm_path)
+            .env("HOME", &home_dir)
+            .env("LEAN_NUM_THREADS", "2")
+            .output()
+            .unwrap();
+        assert!(
+            warm_dev.status.success(),
+            "warm dev build failed:\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&warm_dev.stdout),
+            String::from_utf8_lossy(&warm_dev.stderr)
+        );
+        assert!(
+            read_count(&rustc_log) > rustc_before,
+            "ensureRustExports must actually execute during warm Consumer build"
+        );
+        assert_eq!(
+            read_count(&poison_log),
+            0,
+            "warm dev build must never spawn bash or cargo"
+        );
+
+        // Stage C3: If `landrun` is installed and supported by the host kernel, also run the
+        // exact comparator `landrun` sandbox shape (`--ro <ws> --rwx <ws>/.lake --rox <lean_prefix>`).
+        let landrun_bin = std::env::var_os("COMPARATOR_LANDRUN")
+            .map(PathBuf::from)
+            .filter(|p| p.is_file())
+            .or_else(|| which::which("landrun").ok());
+        if let Some(landrun) = landrun_bin {
+            let probe = Command::new(&landrun)
+                .args([
+                    "--best-effort",
+                    "--ro",
+                    "/",
+                    "--rw",
+                    "/dev",
+                    "-ldd",
+                    "-add-exec",
+                    "--rox",
+                    &lean_prefix.to_string_lossy(),
+                    "--",
+                    &lean_bin_dir.join("lean").to_string_lossy(),
+                    "--version",
+                ])
+                .output();
+            if let Ok(p) = probe
+                && p.status.success()
+            {
+                let warm_landrun = Command::new(&landrun)
+                    .args([
+                        "--best-effort",
+                        "--ro",
+                        "/",
+                        "--rw",
+                        "/dev",
+                        "-ldd",
+                        "-add-exec",
+                        "--env",
+                        "PATH",
+                        "--env",
+                        "HOME",
+                        "--env",
+                        "LEAN_NUM_THREADS",
+                        "--ro",
+                        &ws.to_string_lossy(),
+                        "--rwx",
+                        &ws.join(".lake").to_string_lossy(),
+                        "--rox",
+                        &lean_prefix.to_string_lossy(),
+                        "--",
+                        &lake_bin.to_string_lossy(),
+                        "build",
+                        "--no-ansi",
+                        "Consumer",
+                    ])
+                    .current_dir(&ws)
+                    .env_clear()
+                    .env("PATH", &cold_path)
+                    .env("HOME", &home_dir)
+                    .env("LEAN_NUM_THREADS", "2")
+                    .output()
+                    .unwrap();
+                assert!(
+                    warm_landrun.status.success(),
+                    "warm landrun build failed:\nstdout:\n{}\nstderr:\n{}",
+                    String::from_utf8_lossy(&warm_landrun.stdout),
+                    String::from_utf8_lossy(&warm_landrun.stderr)
+                );
+                assert_eq!(read_count(&fetch_log), 2);
+                assert_eq!(read_count(&cargo_log), 1);
+            }
+        }
+    }
+
+    // Stage C4: Per-target trace backfill & empty-`dirtySpecs` path under a read-only subpackage
+    // `.lake/build` (top-level trace/stamps stale or missing, per-target `.trace` missing,
+    // per-target stamp still matching, `rustc` + poison `bash`/`cargo` on PATH). Verifies that
+    // filesystem errors are caught in `IO` before `MonadLift IO JobM` can fail the Lake job.
+    let _ = fs::remove_file(subpkg_build_dir.join("rustExportsAlpha.alpha.trace"));
+    let _ = fs::remove_file(subpkg_build_dir.join("rustExportsAlpha.trace"));
+    fs::write(subpkg_build_dir.join("rustExportsAlpha.stamp"), "stale\n").unwrap();
+    fs::write(
+        subpkg.join("Alpha/Generated/.rustExportsAlpha.stamp"),
+        "stale\n",
+    )
+    .unwrap();
+    fs::write(
+        subpkg.join("Alpha/Generated/.rustExportsAlpha.inputs.stamp"),
+        "stale\n",
+    )
+    .unwrap();
+    {
+        let _ro = ReadOnlyGuard::lock(
+            vec![
+                subpkg.clone(),
+                ws.join("scripts"),
+                ws.join("tools"),
+                ws.join("third_party"),
+            ],
+            &subpkg_build_dir,
+        );
+        let probe = Command::new(&lake_bin)
+            .args(["build", "--no-ansi", "Consumer"])
+            .current_dir(&ws)
+            .env_clear()
+            .env("PATH", &dev_warm_path)
+            .env("HOME", &home_dir)
+            .env("LEAN_NUM_THREADS", "2")
+            .output()
+            .unwrap();
+        assert!(
+            probe.status.success(),
+            "per-target backfill under read-only subpackage failed:\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&probe.stdout),
+            String::from_utf8_lossy(&probe.stderr)
+        );
+        assert_eq!(read_count(&fetch_log), 2);
+        assert_eq!(read_count(&cargo_log), 1);
+        assert_eq!(read_count(&poison_log), 0);
+    }
+
+    // Stage C5: When the subpackage is writable again, the same stale top-level stamps and missing
+    // traces self-heal on a warm build without invoking `fetch` or `cargo`.
+    let heal = Command::new(&lake_bin)
+        .args(["build", "--no-ansi", "Consumer"])
+        .current_dir(&ws)
+        .env_clear()
+        .env("PATH", &dev_warm_path)
+        .env("HOME", &home_dir)
+        .env("LEAN_NUM_THREADS", "2")
+        .output()
+        .unwrap();
+    assert!(
+        heal.status.success(),
+        "writable self-heal warm build failed:\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&heal.stdout),
+        String::from_utf8_lossy(&heal.stderr)
+    );
+    assert_eq!(read_count(&fetch_log), 2);
+    assert_eq!(read_count(&cargo_log), 1);
+    assert_eq!(read_count(&poison_log), 0);
+    assert!(
+        subpkg_build_dir
+            .join("rustExportsAlpha.alpha.trace")
+            .is_file()
+    );
+    assert!(subpkg_build_dir.join("rustExportsAlpha.trace").is_file());
+    assert_eq!(
+        fs::read_to_string(subpkg_build_dir.join("rustExportsAlpha.stamp")).unwrap(),
+        expected_build_stamp
+    );
+    assert_eq!(
+        fs::read_to_string(subpkg.join("Alpha/Generated/.rustExportsAlpha.stamp")).unwrap(),
+        expected_gen_stamp
+    );
+    assert_eq!(
+        fs::read_to_string(subpkg.join("Alpha/Generated/.rustExportsAlpha.inputs.stamp")).unwrap(),
+        expected_gen_inputs_stamp
+    );
+
+    // Stage D: Dirty rebuild when upstream source + fetch script update (all prior outputs and
+    // inputs already exist on disk, exercising lazy `fetchUpstreamSources` + post-fetch trace
+    // recomputation), followed by another warm sandboxed build that must stay a no-op.
+    let v2_bytes = b"int alpha_val(void) { return 123456; }\n";
+    let v2_sha = hex::encode(Sha256::digest(v2_bytes));
+    fs::write(&upstream_payload, v2_bytes).unwrap();
+    fs::write(&expected_sha_file, &v2_sha).unwrap();
+    let updated_fetch = format!("{fetch_script}# upstream bump\n");
+    write_exec(
+        &ws.join("scripts/fetch-upstream-sources.sh"),
+        &updated_fetch,
+    );
+
+    let dirty_rebuild = Command::new(&lake_bin)
+        .args(["build", "--no-ansi", "Consumer"])
+        .current_dir(&ws)
+        .env_clear()
+        .env("PATH", &cold_path)
+        .env("HOME", &home_dir)
+        .env("LEAN_NUM_THREADS", "2")
+        .output()
+        .unwrap();
+    assert!(
+        dirty_rebuild.status.success(),
+        "dirty rebuild failed:\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&dirty_rebuild.stdout),
+        String::from_utf8_lossy(&dirty_rebuild.stderr)
+    );
+    assert_eq!(read_count(&fetch_log), 3);
+    assert_eq!(read_count(&cargo_log), 2);
+    let generated_lean =
+        fs::read_to_string(subpkg.join("Alpha/Generated/AlphaPlacedObj.lean")).unwrap();
+    assert!(
+        generated_lean.contains(&format!("alphaMarker : Nat := {}", v2_bytes.len())),
+        "{generated_lean}"
+    );
+
+    {
+        let _ro = ReadOnlyGuard::lock(
+            vec![
+                subpkg.clone(),
+                ws.join("scripts"),
+                ws.join("tools"),
+                ws.join("third_party"),
+            ],
+            &subpkg_build_dir,
+        );
+        let warm_after_dirty = Command::new(&lake_bin)
+            .args(["build", "--no-ansi", "Consumer"])
+            .current_dir(&ws)
+            .env_clear()
+            .env("PATH", &lean_bin_dir)
+            .env("HOME", &home_dir)
+            .env("LEAN_NUM_THREADS", "2")
+            .output()
+            .unwrap();
+        assert!(
+            warm_after_dirty.status.success(),
+            "post-dirty warm sandboxed build failed:\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&warm_after_dirty.stdout),
+            String::from_utf8_lossy(&warm_after_dirty.stderr)
+        );
+        assert_eq!(read_count(&fetch_log), 3);
+        assert_eq!(read_count(&cargo_log), 2);
+    }
 }

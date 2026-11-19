@@ -13,15 +13,16 @@ public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Heap.Fine.ClientBounds
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.WireSignalHelpers
-public import LibsignalBinary.Proofs.PeakBudget.WireTryFromHelpers
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.WireSignalHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.WireTryFromHelpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -73,11 +74,6 @@ open LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
 
 /-! ## `reserveCap` Arithmetic Bounds -/
 
-theorem reserveCap_zero_ge_len (cap len : Nat) :
-    len ≤ reserveCap cap 0 len := by
-  unfold reserveCap
-  omega
-
 theorem reserveCap_zero_ge_cap (cap len : Nat) :
     cap ≤ reserveCap cap 0 len := by
   unfold reserveCap
@@ -96,7 +92,7 @@ theorem reserveCap_zero_le_max {cap len : Nat} (hLt : cap < len) :
 /-! ## `doReserveClearEvents` Fine-Credit Bounds -/
 
 /-- Upper bound on `cumSmall` increase for `doReserveClearEvents cap len`. -/
-def reserveClearSmallDelta (M : AllocCostModel) [HasFineReallocCredit M] (cap len : Nat) : Nat :=
+@[expose] def reserveClearSmallDelta (M : AllocCostModel) [HasFineReallocCredit M] (cap len : Nat) : Nat :=
   if len ≤ cap then 0
   else
     let newCap := reserveCap cap 0 len
@@ -115,7 +111,7 @@ def reserveClearSmallDelta (M : AllocCostModel) [HasFineReallocCredit M] (cap le
 
 /-- Upper bound on `liveLarge` and transient `peakLarge` increase for
 `doReserveClearEvents cap len` (zero when `len ≤ cap` in-place overwrite or `newCap ≤ smallMaxReq M`). -/
-def reserveClearLargeDelta (M : AllocCostModel) [HasFineReallocCredit M] (cap len : Nat) : Nat :=
+@[expose] def reserveClearLargeDelta (M : AllocCostModel) [HasFineReallocCredit M] (cap len : Nat) : Nat :=
   if len ≤ cap then 0
   else
     let newCap := reserveCap cap 0 len
@@ -178,7 +174,7 @@ theorem stepEvents_doReserveClearEvents_le (M : AllocCostModel) [HasFineReallocC
 /-! ## `bytesMergeEventsCore` Fine-Credit Bounds -/
 
 /-- Upper bound on `cumSmall` increase for an `Ok (v, _)` `bytes::merge` step of payload length `len`. -/
-def bytesMergeOkSmallDelta (M : AllocCostModel) [HasFineReallocCredit M] (cap len : Nat) : Nat :=
+@[expose] def bytesMergeOkSmallDelta (M : AllocCostModel) [HasFineReallocCredit M] (cap len : Nat) : Nat :=
   if len = 0 then 0
   else
     let tmpSmall :=
@@ -195,7 +191,7 @@ def bytesMergeOkLiveDelta (M : AllocCostModel) [HasFineReallocCredit M] (cap len
 
 /-- Upper bound on transient `peakLarge` spike above `liveLarge st` during `bytes::merge`:
 while `doReserveClearEvents` runs, the temporary `len`-byte buffer is still live. -/
-def bytesMergeOkPeakDelta (M : AllocCostModel) [HasFineReallocCredit M] (cap len : Nat) : Nat :=
+@[expose] def bytesMergeOkPeakDelta (M : AllocCostModel) [HasFineReallocCredit M] (cap len : Nat) : Nat :=
   if len = 0 then 0
   else
     let tmpLarge :=
@@ -315,7 +311,7 @@ theorem stepEvents_intoBoxedSliceEvents_le (M : AllocCostModel) [HasFineReallocC
         exact ⟨hCum, Nat.le_trans hLive (Nat.sub_le _ _), hPeak⟩
 
 /-- Upper bound on `cumSmall` increase for `tryCloneFromRefEvents x` (`Box<[u8]>` wire copy). -/
-def tryCloneSmallDelta (M : AllocCostModel) [HasFineReallocCredit M] (len : Nat) : Nat :=
+@[expose] def tryCloneSmallDelta (M : AllocCostModel) [HasFineReallocCredit M] (len : Nat) : Nat :=
   if len = 0 then 0
   else if len ≤ HasFineReallocCredit.smallMaxReq M then
     HasFineReallocCredit.smallAllocCost M len
@@ -323,7 +319,7 @@ def tryCloneSmallDelta (M : AllocCostModel) [HasFineReallocCredit M] (len : Nat)
     HasFineReallocCredit.largeMetaCost M
 
 /-- Upper bound on `liveLarge` / `peakLarge` increase for `tryCloneFromRefEvents x`. -/
-def tryCloneLargeDelta (M : AllocCostModel) [HasFineReallocCredit M] (len : Nat) : Nat :=
+@[expose] def tryCloneLargeDelta (M : AllocCostModel) [HasFineReallocCredit M] (len : Nat) : Nat :=
   if len ≤ HasFineReallocCredit.smallMaxReq M then 0
   else HasFineReallocCredit.largeCost M len
 
@@ -358,28 +354,6 @@ theorem stepEvents_tryCloneFromRefEvents_le (M : AllocCostModel) [HasFineRealloc
       exact stepEvents_rustAlloc_large M (req := x.bs.length) (al := 1) st hAl1 hLg
 
 /-! ## General `rustAllocEvents` Dispatch (`al ≤ 16`) & Wire-Length Progress -/
-
-theorem stepEvents_rustAlloc_any_le (M : AllocCostModel) [HasFineReallocCredit M]
-    {req al : Nat} (st : M.σ) (hal : al ≤ 16) (hpos : 0 < req) :
-    let sf := M.stepEvents (rustAllocEvents req al) st
-    HasFineReallocCredit.cumSmall sf ≤
-      HasFineReallocCredit.cumSmall st + tryCloneSmallDelta M req ∧
-    HasFineReallocCredit.liveLarge sf ≤
-      HasFineReallocCredit.liveLarge st + tryCloneLargeDelta M req ∧
-    HasFineReallocCredit.peakLarge sf ≤
-      max (HasFineReallocCredit.peakLarge st)
-        (HasFineReallocCredit.liveLarge st + tryCloneLargeDelta M req) := by
-  have hNe0 : req ≠ 0 := by omega
-  dsimp only [tryCloneSmallDelta, tryCloneLargeDelta]
-  simp only [hNe0, ↓reduceIte]
-  by_cases hSm : req ≤ HasFineReallocCredit.smallMaxReq M
-  · simp only [hSm, ↓reduceIte, Nat.add_zero]
-    obtain ⟨hCum, hLive, hPeak⟩ :=
-      stepEvents_rustAlloc_small M (req := req) (al := al) st hal hpos hSm
-    exact ⟨hCum, hLive, Nat.le_trans hPeak (Nat.le_max_left _ _)⟩
-  · have hLg : HasFineReallocCredit.smallMaxReq M < req := by omega
-    simp only [hSm, ↓reduceIte]
-    exact stepEvents_rustAlloc_large M (req := req) (al := al) st hal hLg
 
 private theorem decodeVarintAux_length_lt :
     ∀ (i : Nat) (acc : BitVec 64) (bs rest : List (BitVec 8)) (v : BitVec 64),
@@ -421,45 +395,6 @@ theorem mergeBytes_length_sum {wt : WireType} {bs v rest : List (BitVec 8)}
         have hDrop : (rest0.drop len.toNat).length = rest0.length - len.toNat :=
           List.length_drop
         omega
-
-def bytesMergeCoreSmallDelta (M : AllocCostModel) [HasFineReallocCredit M]
-    (wt : WireType) (valCap : BitVec 64) (bs : List (BitVec 8)) : Nat :=
-  match mergeBytes wt bs with
-  | none => tryCloneSmallDelta M 72
-  | some (v, _) => bytesMergeOkSmallDelta M valCap.toNat v.length
-
-def bytesMergeCoreLiveDelta (M : AllocCostModel) [HasFineReallocCredit M]
-    (wt : WireType) (valCap : BitVec 64) (bs : List (BitVec 8)) : Nat :=
-  match mergeBytes wt bs with
-  | none => tryCloneLargeDelta M 72
-  | some (v, _) => bytesMergeOkLiveDelta M valCap.toNat v.length
-
-def bytesMergeCorePeakDelta (M : AllocCostModel) [HasFineReallocCredit M]
-    (wt : WireType) (valCap : BitVec 64) (bs : List (BitVec 8)) : Nat :=
-  match mergeBytes wt bs with
-  | none => tryCloneLargeDelta M 72
-  | some (v, _) => bytesMergeOkPeakDelta M valCap.toNat v.length
-
-theorem stepEvents_bytesMergeEventsCore_le (M : AllocCostModel) [HasFineReallocCredit M]
-    (st : M.σ) (wt : WireType) (valCap : BitVec 64) (bs : List (BitVec 8)) :
-    let sf := M.stepEvents (bytesMergeEventsCore wt valCap bs) st
-    HasFineReallocCredit.cumSmall sf ≤
-      HasFineReallocCredit.cumSmall st + bytesMergeCoreSmallDelta M wt valCap bs ∧
-    HasFineReallocCredit.liveLarge sf ≤
-      HasFineReallocCredit.liveLarge st + bytesMergeCoreLiveDelta M wt valCap bs ∧
-    HasFineReallocCredit.peakLarge sf ≤
-      max (HasFineReallocCredit.peakLarge st)
-        (HasFineReallocCredit.liveLarge st + bytesMergeCorePeakDelta M wt valCap bs) := by
-  dsimp only [bytesMergeEventsCore, bytesMergeCoreSmallDelta, bytesMergeCoreLiveDelta,
-    bytesMergeCorePeakDelta]
-  cases hMb : mergeBytes wt bs with
-  | none =>
-    simp only []
-    exact stepEvents_rustAlloc_any_le M (req := 72) (al := 8) st (by decide) (by decide)
-  | some pair =>
-    rcases pair with ⟨v, rest⟩
-    simp only []
-    exact stepEvents_bytesMergeOk_le M st valCap.toNat v.length
 
 /-! ## Per-Event `eventStepReq` & `eventStepAlign` Bounds (`PhaseCreditSpec.req_align`) -/
 
@@ -560,43 +495,6 @@ theorem req_align_tryCloneFromRefEvents {x : TryCloneSliceCall} {ev : AllocEvent
 
 /-! ## `PhaseCreditSpec` Liftings for Prost Leaves & Canonical `PreKeyTryFromEnv` -/
 
-theorem phaseCreditSpec_bytesMergeCore (M : AllocCostModel) [HasFineReallocCredit M]
-    (wt : WireType) (valCap : BitVec 64) (bs : List (BitVec 8)) :
-    PhaseCreditSpec M (· = bytesMergeEventsCore wt valCap bs)
-      (bytesMergeCoreSmallDelta M wt valCap bs)
-      (bytesMergeCoreLiveDelta M wt valCap bs)
-      (bytesMergeCorePeakDelta M wt valCap bs)
-      (max 72 (max (2 * bs.length) 8)) where
-  req_align := by
-    rintro _ rfl _ hMem
-    exact req_align_bytesMergeEventsCore hMem
-  credit_le := by
-    rintro st0 _ rfl
-    exact stepEvents_bytesMergeEventsCore_le M st0 wt valCap bs
-
-theorem phaseCreditSpec_bytesMergeEnv (M : AllocCostModel) [HasFineReallocCredit M]
-    (x : BytesMergeGhost) :
-    PhaseCreditSpec M (BytesMergeEnv x)
-      (bytesMergeCoreSmallDelta M x.wt x.valCap x.bs)
-      (bytesMergeCoreLiveDelta M x.wt x.valCap x.bs)
-      (bytesMergeCorePeakDelta M x.wt x.valCap x.bs)
-      (max 72 (max (2 * x.bs.length) 8)) :=
-  phaseCreditSpec_bytesMergeCore M x.wt x.valCap x.bs
-
-theorem phaseCreditSpec_intoBoxedSlice (M : AllocCostModel) [HasFineReallocCredit M]
-    (x : VecArg) :
-    PhaseCreditSpec M (IntoBoxedSliceEnv x)
-      (intoBoxedSmallDelta M x.bytes.length)
-      (intoBoxedLargeDelta M x.bytes.length)
-      (intoBoxedLargeDelta M x.bytes.length)
-      x.bytes.length where
-  req_align := by
-    rintro _ rfl _ hMem
-    exact req_align_intoBoxedSliceEvents hMem
-  credit_le := by
-    rintro st0 _ rfl
-    exact stepEvents_intoBoxedSliceEvents_le M st0 x
-
 theorem phaseCreditSpec_tryCloneFromRef (M : AllocCostModel) [HasFineReallocCredit M]
     (x : TryCloneSliceCall) :
     PhaseCreditSpec M (TryCloneFromRefEnv x)
@@ -611,98 +509,10 @@ theorem phaseCreditSpec_tryCloneFromRef (M : AllocCostModel) [HasFineReallocCred
     rintro st0 _ rfl
     exact stepEvents_tryCloneFromRefEvents_le M st0 x
 
-theorem phaseCreditSpec_dropDecodeError (M : AllocCostModel) [HasFineReallocCredit M] :
-    PhaseCreditSpec M DropDecodeErrorEnv 0 0 0 0 := by
-  refine (PhaseCreditSpec.freeOnly_align16 M).of_imp ?_
-  intro evs hEnv ev hMem
-  rcases hEnv with rfl | ⟨c, _, _, rfl⟩
-  · simp only [rustDeallocEvents, List.mem_singleton] at hMem
-    subst hMem
-    exact ⟨8, by decide, 72, rfl⟩
-  · rcases List.mem_append.mp hMem with h1 | h2
-    · simp only [rustDeallocEvents, List.mem_singleton] at h1
-      subst h1
-      exact ⟨8, by decide, c * 32, rfl⟩
-    · simp only [rustDeallocEvents, List.mem_singleton] at h2
-      subst h2
-      exact ⟨8, by decide, 72, rfl⟩
-
-theorem phaseCreditSpec_decodeVarintSlice (M : AllocCostModel) [HasFineReallocCredit M]
-    (bs : List (BitVec 8)) :
-    PhaseCreditSpec M (DecodeVarintSliceEnv bs)
-      (tryCloneSmallDelta M 72) (tryCloneLargeDelta M 72) (tryCloneLargeDelta M 72) 72 where
-  req_align := by
-    rintro _ hEnv ev hMem
-    unfold DecodeVarintSliceEnv decodeVarintSliceEvents at hEnv
-    subst hEnv
-    cases h : decodeVarint bs with
-    | some _ => simp [h] at hMem
-    | none =>
-      simp only [h] at hMem
-      exact req_align_rustAlloc (by decide) hMem
-  credit_le := by
-    rintro st0 _ hEnv
-    unfold DecodeVarintSliceEnv decodeVarintSliceEvents at hEnv
-    subst hEnv
-    cases decodeVarint bs with
-    | some _ =>
-      simp only [AllocCostModel.stepEvents_nil]
-      exact ⟨by omega, by omega, by omega⟩
-    | none =>
-      exact stepEvents_rustAlloc_any_le M (req := 72) (al := 8) st0 (by decide) (by decide)
-
-theorem phaseCreditSpec_int32Merge (M : AllocCostModel) [HasFineReallocCredit M]
-    (x : Int32MergeGhost) :
-    PhaseCreditSpec M (Int32MergeEnv x)
-      (tryCloneSmallDelta M 72) (tryCloneLargeDelta M 72) (tryCloneLargeDelta M 72) 72 where
-  req_align := by
-    rintro _ hEnv ev hMem
-    unfold Int32MergeEnv int32MergeEvents at hEnv
-    subst hEnv
-    cases h : mergeUint32 x.wt x.bs with
-    | some _ => simp [h] at hMem
-    | none =>
-      simp only [h] at hMem
-      exact req_align_rustAlloc (by decide) hMem
-  credit_le := by
-    rintro st0 _ hEnv
-    unfold Int32MergeEnv int32MergeEvents at hEnv
-    subst hEnv
-    cases mergeUint32 x.wt x.bs with
-    | some _ =>
-      simp only [AllocCostModel.stepEvents_nil]
-      exact ⟨by omega, by omega, by omega⟩
-    | none =>
-      exact stepEvents_rustAlloc_any_le M (req := 72) (al := 8) st0 (by decide) (by decide)
-
-theorem phaseCreditSpec_skipField (M : AllocCostModel) [HasFineReallocCredit M]
-    (x : SkipFieldGhost) :
-    PhaseCreditSpec M (SkipFieldEnv x)
-      (tryCloneSmallDelta M 72) (tryCloneLargeDelta M 72) (tryCloneLargeDelta M 72) 72 where
-  req_align := by
-    rintro _ hEnv ev hMem
-    unfold SkipFieldEnv skipFieldEventsCore at hEnv
-    subst hEnv
-    cases h : skipField (2 * x.bs.length + 2) x.depth x.tag x.wt x.bs with
-    | some _ => simp [h] at hMem
-    | none =>
-      simp only [h] at hMem
-      exact req_align_rustAlloc (by decide) hMem
-  credit_le := by
-    rintro st0 _ hEnv
-    unfold SkipFieldEnv skipFieldEventsCore at hEnv
-    subst hEnv
-    cases skipField (2 * x.bs.length + 2) x.depth x.tag x.wt x.bs with
-    | some _ =>
-      simp only [AllocCostModel.stepEvents_nil]
-      exact ⟨by omega, by omega, by omega⟩
-    | none =>
-      exact stepEvents_rustAlloc_any_le M (req := 72) (al := 8) st0 (by decide) (by decide)
-
 /-! ## 4-Field Protobuf Loop `capsLargeCredit` Invariant & Kyber `Vec` Overwrite Cancellation -/
 
 /-- Live `sc = 63` credit held by a `Vec<u8>` buffer of capacity `cap`. -/
-def vecLargeCredit (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
+@[expose] def vecLargeCredit (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
   if cap ≤ HasFineReallocCredit.smallMaxReq M then 0
   else HasFineReallocCredit.largeCost M cap
 
@@ -846,24 +656,24 @@ structure ProtoCaps4 where
   f2 : Nat
   f3 : Nat
 
-def ProtoCaps4.zero : ProtoCaps4 := ⟨0, 0, 0, 0⟩
+@[expose] def ProtoCaps4.zero : ProtoCaps4 := ⟨0, 0, 0, 0⟩
 
-def ProtoCaps4.get (c : ProtoCaps4) : ProtoField4 → Nat
+@[expose] def ProtoCaps4.get (c : ProtoCaps4) : ProtoField4 → Nat
   | .f0 => c.f0 | .f1 => c.f1 | .f2 => c.f2 | .f3 => c.f3
 
-def ProtoCaps4.set (c : ProtoCaps4) : ProtoField4 → Nat → ProtoCaps4
+@[expose] def ProtoCaps4.set (c : ProtoCaps4) : ProtoField4 → Nat → ProtoCaps4
   | .f0, v => { c with f0 := v }
   | .f1, v => { c with f1 := v }
   | .f2, v => { c with f2 := v }
   | .f3, v => { c with f3 := v }
 
-def ProtoCaps4.sum (c : ProtoCaps4) : Nat :=
+@[expose] def ProtoCaps4.sum (c : ProtoCaps4) : Nat :=
   c.f0 + c.f1 + c.f2 + c.f3
 
-def ProtoCaps4.largeCredit (M : AllocCostModel) [HasFineReallocCredit M] (c : ProtoCaps4) : Nat :=
+@[expose] def ProtoCaps4.largeCredit (M : AllocCostModel) [HasFineReallocCredit M] (c : ProtoCaps4) : Nat :=
   vecLargeCredit M c.f0 + vecLargeCredit M c.f1 + vecLargeCredit M c.f2 + vecLargeCredit M c.f3
 
-def ProtoCaps4.otherLargeCredit (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def ProtoCaps4.otherLargeCredit (M : AllocCostModel) [HasFineReallocCredit M]
     (c : ProtoCaps4) : ProtoField4 → Nat
   | .f0 => vecLargeCredit M c.f1 + vecLargeCredit M c.f2 + vecLargeCredit M c.f3
   | .f1 => vecLargeCredit M c.f0 + vecLargeCredit M c.f2 + vecLargeCredit M c.f3
@@ -1149,31 +959,31 @@ theorem vecLargeCredit_eq_bytesLargeLive (M : AllocCostModel) [HasFineReallocCre
     vecLargeCredit M cap = bytesLargeLive M cap :=
   rfl
 
-def ProtoCaps4.otherSum (c : ProtoCaps4) : ProtoField4 → Nat
+@[expose] def ProtoCaps4.otherSum (c : ProtoCaps4) : ProtoField4 → Nat
   | .f0 => c.f1 + c.f2 + c.f3
   | .f1 => c.f0 + c.f2 + c.f3
   | .f2 => c.f0 + c.f1 + c.f3
   | .f3 => c.f0 + c.f1 + c.f2
 
-def ProtoCaps4.minSum (S : Nat) (c : ProtoCaps4) : Nat :=
+@[expose] def ProtoCaps4.minSum (S : Nat) (c : ProtoCaps4) : Nat :=
   min c.f0 S + min c.f1 S + min c.f2 S + min c.f3 S
 
-def ProtoCaps4.remGrows (N : Nat) (c : ProtoCaps4) : Nat :=
+@[expose] def ProtoCaps4.remGrows (N : Nat) (c : ProtoCaps4) : Nat :=
   wireRemGrows N c.f0 + wireRemGrows N c.f1 + wireRemGrows N c.f2 + wireRemGrows N c.f3
 
-def ProtoCaps4.otherRemGrows (N : Nat) (c : ProtoCaps4) : ProtoField4 → Nat
+@[expose] def ProtoCaps4.otherRemGrows (N : Nat) (c : ProtoCaps4) : ProtoField4 → Nat
   | .f0 => wireRemGrows N c.f1 + wireRemGrows N c.f2 + wireRemGrows N c.f3
   | .f1 => wireRemGrows N c.f0 + wireRemGrows N c.f2 + wireRemGrows N c.f3
   | .f2 => wireRemGrows N c.f0 + wireRemGrows N c.f1 + wireRemGrows N c.f3
   | .f3 => wireRemGrows N c.f0 + wireRemGrows N c.f1 + wireRemGrows N c.f2
 
-def ProtoCaps4.bounded (maxLen : Nat) (c : ProtoCaps4) : Prop :=
+@[expose] def ProtoCaps4.bounded (maxLen : Nat) (c : ProtoCaps4) : Prop :=
   c.f0 ≤ max 8 (2 * maxLen) ∧
   c.f1 ≤ max 8 (2 * maxLen) ∧
   c.f2 ≤ max 8 (2 * maxLen) ∧
   c.f3 ≤ max 8 (2 * maxLen)
 
-def ProtoCaps4.boundedG (c g : ProtoCaps4) : Prop :=
+@[expose] def ProtoCaps4.boundedG (c g : ProtoCaps4) : Prop :=
   c.f0 ≤ max (2 * g.f0) 8 ∧
   c.f1 ≤ max (2 * g.f1) 8 ∧
   c.f2 ≤ max (2 * g.f2) 8 ∧

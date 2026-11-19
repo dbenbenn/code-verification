@@ -9,23 +9,31 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib -- shake: keep
 public meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.HopSpecsPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetAuxFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetMidFd
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudgetFd
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.HopSpecsPlacedBudgetFd -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetAuxFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetMidFd
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudgetFd
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3Helpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetMid
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupPlacedBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
 
 /-!
 # `FdsGe3Closed`-Threaded Relocatable Arm `R1a` Proof
@@ -34,7 +42,7 @@ Proves `run_hop_init1_of_slots_placed_ok_fd` and `run_hop_init1_placed_ok_fd` on
 preserving `FdsGe3Closed` across `Dir::path`, `read_file` (`0x6b8 → 0x6bc`), and `IdentityKey::decode`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -775,13 +783,5 @@ theorem run_hop_init1_of_slots_placed_ok_fd [LibsignalPlacement] {M : AllocCostM
           (by simpa only [arm64_norm, s2] using hfds1)
           (by simpa only [arm64_norm, s2] using hout1))
     )
-
-theorem run_hop_init1_placed_ok_fd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {cEnvs : RunCalleesEnvs} {sEnvs : RunSlotEnvs}
-    {H : LibsignalHooks} {B : RunBudgets} {S : RunSem} {needs : RunNeeds} {resStack : Nat} :
-    RunHopInit1PlacedFd (LibsignalCodeRoLoaded lsmpl) A lim cEnvs sEnvs (Init1Env cEnvs)
-      H B S needs resStack :=
-  run_hop_init1_of_slots_placed_ok_fd (sEnvs := sEnvs) (needs := needs) rfl
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetFd

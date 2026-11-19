@@ -9,16 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CommonPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.ProtocolErrCommon
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.ProtocolErrCommon -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.Common
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Relocatable (`[LibsignalPlacement]`) T5 Protocol-Error Tail Bridges (`ProtocolErrCommonPlaced`)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +43,7 @@ open CryptoVerification.LibsignalPublicApi
 open CryptoVerification.LibsignalPublicApi.StoreKit
 open CryptoVerification.LibsignalPublicApi.MessageEncrypt
 open CryptoVerification.Cli.LibsignalPublicApi.MessageEncrypt.Pf.TailCommon
-open CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.TailCommon hiding words64At pollWith otrSlotAt cmSlotAt dropRecordSlots tailRegs EncTailV EncTail TailModel
+open CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.TailCommon hiding words64At pollWith otrSlotAt cmSlotAt dropRecordSlots tailRegs TailModel
 
 set_option maxRecDepth 200000
 
@@ -150,7 +156,7 @@ theorem encTail_placed_run_withEncCommon [lsmpl : LibsignalPlacement] {A : RustA
     have h2 := Satisfies.mono (sepConj_mono_left hjoin) h1
     exact Satisfies.mono (Entails.of_eq (by dsimp only [R']; sep_ac_rfl)) h2
 
-def encCommonPlacedFr [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64) (x : WithStoresEncGhost)
+@[expose] def encCommonPlacedFr [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64) (x : WithStoresEncGhost)
     (draws : Nat) (s0 : State) (n : Nat) : SepProp :=
   (x.ptA ↦ₛ x.ptext) ∗ protocolAddressAt A x.rem x.remA ∗ protocolAddressAt A x.loc x.locA ∗
     nowAt s0.sp x.now ∗ cliTapeAfter ctl x.cur x.rest draws ∗ FromRecordCallees.lsLogOff ∗

@@ -11,7 +11,7 @@ module
 
 public import Computational.Specifications.Pqxdh.Security.HeadlineDelta
 public import Computational.Proofs.SignalPqxdh.Delta.KeyIndDefs
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHop1Key
+public import Computational.Proofs.SignalPqxdh.Security.RoKemHop1Key -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
 
@@ -23,7 +23,7 @@ random-oracle handshake game `KeyInd1KeyRoAdvantage` (DEV-CLI16, DEV-PQ21) under
 assembles them into `PqxdhKeyIndReductionBoundStaticδ` and `PqxdhKeyIndReductionBoundδ`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +37,7 @@ open Proofs.SignalPqxdh.Security.FgGapDh
 namespace Proofs.SignalPqxdh.Security.PqxdhDelta
 
 /-- One-key `G0 -> G3` hop bound under `CryptoWellFormedPrimitivesδ`. -/
-def KI1KeyHopG0G3Stmt (S : Setup) : Prop :=
+@[expose] def KI1KeyHopG0G3Stmt (S : Setup) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b),
       |KeyInd1KeyRoAdvantageReal S P A.1 - keyInd1KeyAdvG3 S P A.1| ≤
@@ -48,7 +48,7 @@ def KI1KeyHopG0G3Stmt (S : Setup) : Prop :=
 
 /-- Per-index reduction of `hasBadKemCorrRecordsAt` in `runKeyInd1KeyShCrSim` to
     `kemCorrExpProb`. -/
-def KI1KeyCorrAtStmt (S : Setup) : Prop :=
+@[expose] def KI1KeyCorrAtStmt (S : Setup) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (A : KeyIndAdversary S) (idx : ℕ), idx < S.N_spk_tot * S.N_send_tot →
       ∃ choosePk : Bytes → Bytes → ProbComp Bytes,
@@ -57,11 +57,11 @@ def KI1KeyCorrAtStmt (S : Setup) : Prop :=
           {true}).toReal ≤
           (𝒟[kemCorrExpProb P choosePk] {true}).toReal
 
-def KI1KeyStopStmt (S : Setup) : Prop :=
+@[expose] def KI1KeyStopStmt (S : Setup) : Prop :=
   KIStopStmt S
 
 /-- Static `G3` bound on `keyInd1KeyAdvG3` via `gdh` and `kemDecapsFailureTermReal`. -/
-def KI1KeyG3BoundStmt (S : Setup)
+@[expose] def KI1KeyG3BoundStmt (S : Setup)
     (gdh : (b : QueryBudget) → BoundedAdv (KeyIndAdversary S) b → GapDhWithSignAdv) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (δ : ℝ), KemDeltaCorrectReal P δ →
@@ -96,7 +96,7 @@ theorem prob_hasBadKemCorrRecords_runKeyInd1KeyShCrSim_le (S : Setup) (hAt : KI1
         ring
 
 /-- Static one-key δ key-indistinguishability reduction bound over `pqxdhKeyIndAdvantageBoundδ`. -/
-def PqxdhKeyIndReductionBoundStaticδ (S : Setup) (R : KeyIndReductionFamily S) : Prop :=
+@[expose] def PqxdhKeyIndReductionBoundStaticδ (S : Setup) (R : KeyIndReductionFamily S) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (δ : ℝ≥0∞), KemDeltaCorrect P δ →
     ∀ (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b),
@@ -145,7 +145,7 @@ theorem pqxdh_1key_key_ind_withδ_of_hops (S : Setup)
 
 /-- Activity-bounded one-key `G0 -> G3` hop bound parameterized by creation-order `sig` and `shcr`
     reductions. -/
-def KI1KeyActiveHopG0G3Stmt (S : Setup)
+@[expose] def KI1KeyActiveHopG0G3Stmt (S : Setup)
     (sig : (b : QueryBudget) → BoundedAdv (KeyIndAdversary S) b → GapSigEufCmaAdv)
     (shcr : (b : QueryBudget) → BoundedAdv (KeyIndAdversary S) b → KemShCrAdv) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
@@ -161,7 +161,7 @@ def KI1KeyActiveHopG0G3Stmt (S : Setup)
         ((n_spk * (n_spk - 1) : ℕ) : ℝ) / (2 : ℝ) ^ 256
 
 /-- Activity-bounded `G3` bound on `keyInd1KeyAdvG3` via `gdh` and `kemDecapsFailureTermReal`. -/
-def KI1KeyActiveG3BoundStmt (S : Setup)
+@[expose] def KI1KeyActiveG3BoundStmt (S : Setup)
     (gdh : (b : QueryBudget) → BoundedAdv (KeyIndAdversary S) b → GapDhWithSignAdv) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (δ : ℝ), KemDeltaCorrectReal P δ →

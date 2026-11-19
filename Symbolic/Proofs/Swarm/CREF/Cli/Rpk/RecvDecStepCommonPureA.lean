@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.R3StepExistingPure
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.R3StepExistingPure -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
 import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
-public import Symbolic.Proofs.Refinement.RecordBytesBridge
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Trace.Monad
@@ -31,7 +31,7 @@ Defines `logSkippedKeysTr`, `decTailTr`, and `modelRecvChainOfTr`, and proves fo
 indexing, `setRecvChain`, and `consumeMessageKey` lemmas for Triple Ratchet decrypt steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -219,7 +219,7 @@ theorem isCurrentSnapshot_append_non_st {E : Type} [ExecTraceTypes.Has E]
     simp only [List.all_append, List.all_cons, List.all_nil,
       at?_append_non_entry tr e hnone, hlast, Bool.and_true]
 
-def logSkippedKeysTr (s : SessionInfo) (pk : DY.Bytes) (rIdx sourceStateIdx : Nat) :
+@[expose] def logSkippedKeysTr (s : SessionInfo) (pk : DY.Bytes) (rIdx sourceStateIdx : Nat) :
     DY.Bytes → UInt32 → Nat → ExecTrace → ExecTrace
   | _, _, 0, tr => tr
   | ck, n, k + 1, tr =>
@@ -291,7 +291,7 @@ theorem at?_trEntry_logSkippedKeysTr_add (s : SessionInfo) (pk : DY.Bytes) (rIdx
         rw [BitVec.ofNat_add]; ac_rfl
       rw [hn]; rfl
 
-def decTailTr (tr_pre : ExecTrace) (me : Participant) (stateIdx : Nat)
+@[expose] def decTailTr (tr_pre : ExecTrace) (me : Participant) (stateIdx : Nat)
     (st1 : TRState) (c c' : RecvChain) (pk seed pqSalt ptTerm spqr' : DY.Bytes)
     (n : UInt32) : ExecTrace :=
   let tr_sk := logSkippedKeysTr (st1.sessionInfo me) pk c.rIdx stateIdx c.chainKey c.index
@@ -402,7 +402,7 @@ theorem stateRel_sessionToRecordRec_iff_tr (interpretation : ExternInterpretatio
     StateRel interpretation S g st (sessionToRecordRec s) ↔
       eraseSkipped (eraseUnmodelled (sessionToSessionRec s)) =
         sessionOf interpretation (gamma interpretation S g) st := by simp [StateRel, sessionToRecordRec]
-def modelRecvChainOfTr (interpretation : ExternInterpretation) (S : SpqrSem) (g : Ghost) (c : RecvChain) : ReceiverChain :=
+@[expose] def modelRecvChainOfTr (interpretation : ExternInterpretation) (S : SpqrSem) (g : Ghost) (c : RecvChain) : ReceiverChain :=
   { senderRatchetKey := ⟨vec32 (gamma interpretation S g c.ratchetKey)⟩
     chainKey := some ⟨CryptoGames.HKDF.bytesToKey32 (gamma interpretation S g c.chainKey), c.index.toBitVec⟩
     messageKeys := [] }

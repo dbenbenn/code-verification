@@ -9,16 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.InitiateCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LscroKitPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.PurePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.InitiateCodeSym
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LscroKitPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.PurePlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
 /-!
 # Budget-Threaded Stage 4 Pure Algebra and Callee Transfer Lemmas (`[LibsignalPlacement]`)
@@ -27,14 +35,12 @@ Re-exports Stage 4 pure/allocator-free helpers and provides `initProgPlaced W` c
 wrappers under `RunHooksPlaced W A lim (cliExternsPlaced W)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
 set_option linter.dupNamespace false
 set_option maxRecDepth 2000000
-
-noncomputable section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.PurePlacedBudget
 
@@ -73,14 +79,6 @@ theorem dealloc_ok_at_init_placed [LibsignalPlacement] {M : AllocCostModel}
         (rustCliDeallocBudgetExternSpecWithStack M A lim extHookStack)) :=
   transfer_withLsCodeRoLoaded (callerProg := initProgPlaced mmpl gh W) hh.alloc.dealloc
 
-theorem rawDealloc_ok_at_init_placed [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {mmpl : MultiPlacement} {gh : CliGhostHooks} {W : CliHooks}
-    (hh : RunHooksPlaced W A lim (cliGhostExterns gh (cliExternsPlaced mmpl W))) :
-    subroutine_ok (initProgPlaced mmpl gh W) (lsρ lsRustDeallocSymCli)
-      (withLsCodeRoLoaded lsmpl (rustCliDeallocBudgetSpec M A lim)) :=
-  subroutine_ok_withLsCodeRoLoaded_of_plain
-    (ls_hook_ok_ultra_of_mem (i := 521) hh.rawDealloc)
-
 theorem memcpy_ok_at_init_placed [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {mmpl : MultiPlacement} {gh : CliGhostHooks} {W : CliHooks}
     (hh : RunHooksPlaced W A lim (cliGhostExterns gh (cliExternsPlaced mmpl W))) :
@@ -97,22 +95,5 @@ theorem staticDrop_ok_at_init_placed [LibsignalPlacement] {M : AllocCostModel}
   subroutine_ok_withLsCodeRoLoaded_of_plain
     (ls_hook_ok_ultra_of_mem (i := 521) hh.staticDrop)
 
-theorem staticDrop_plain_ok_at_init_placed [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {mmpl : MultiPlacement} {gh : CliGhostHooks} {W : CliHooks}
-    (hh : RunHooksPlaced W A lim (cliGhostExterns gh (cliExternsPlaced mmpl W))) :
-    subroutine_ok (initProgPlaced mmpl gh W) (lsρ lsStaticSecretDropSym)
-      (withLsCodeRoLoaded lsmpl zeroizeSecretSpec) :=
-  subroutine_ok_withLsCodeRoLoaded_of_plain
-    (ls_hook_ok_ultra_of_mem (i := 521) (hookSat_of_withVmPreserved hh.staticDrop))
-
-theorem sharedDrop_ok_at_init_placed [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {mmpl : MultiPlacement} {gh : CliGhostHooks} {W : CliHooks}
-    (hh : RunHooksPlaced W A lim (cliGhostExterns gh (cliExternsPlaced mmpl W))) :
-    subroutine_ok (initProgPlaced mmpl gh W) (lsρ lsSharedSecretDropSym)
-      (withLsCodeRoLoaded lsmpl (withVmPreserved zeroizeSecretSpec)) :=
-  subroutine_ok_withLsCodeRoLoaded_of_plain
-    (ls_hook_ok_ultra_of_mem (i := 521) hh.sharedDrop)
-
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.PurePlacedBudget
 
-end

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CHistStepPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CHistStepPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.RngG.R3ModelInv
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.DecCryptoAPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -22,7 +22,7 @@ Proves that a successful `RatchetState.dhRatchetStep` rejects low-order X25519 s
 and therefore preserves `RecRecvRkOk` on the updated session record.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

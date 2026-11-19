@@ -9,13 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H1
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H1 -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3D
 import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
 
-@[expose] public section
+public section
 open OracleComp OracleSpec MeasureTheory
 open SignalPqxdh SignalPqxdh.Security
 open _root_.Proofs.SignalPqxdh.Security
@@ -42,11 +45,11 @@ private theorem forall_support_pure {α : Type} (x : α) (P : α → Prop) (h : 
   intro b hb
   rw [support_pure, Set.mem_singleton_iff] at hb
   exact hb ▸ h
-def eraseIdealCk1_0MkSeed {S : Setup} (s : IdealAuthSession S) : IdealAuthSession S :=
+@[expose] def eraseIdealCk1_0MkSeed {S : Setup} (s : IdealAuthSession S) : IdealAuthSession S :=
   { s with ck1_0 := [], mkSeed := [] }
-def eraseAuthCk1_0MkSeed {S : Setup} (hst : AuthHybridState S) : AuthHybridState S :=
+@[expose] def eraseAuthCk1_0MkSeed {S : Setup} (hst : AuthHybridState S) : AuthHybridState S :=
   { hst with idealSessions := hst.idealSessions.map eraseIdealCk1_0MkSeed }
-def eraseAuthFixedCk1_0MkSeed {S : Setup} (hst : AuthHybridStateFixed S) : AuthHybridStateFixed S :=
+@[expose] def eraseAuthFixedCk1_0MkSeed {S : Setup} (hst : AuthHybridStateFixed S) : AuthHybridStateFixed S :=
   { toAuthHybridState := eraseAuthCk1_0MkSeed hst.toAuthHybridState
     recvCount := hst.recvCount
     mkSaltCache := hst.mkSaltCache }
@@ -192,7 +195,7 @@ theorem prepareAuthHybridRecvNoOPK_eraseAuthCk1_0MkSeed {S : Setup} (checkAuth :
         apply Eq.symm
         exact finishAuthHybridRecvNoOPK_eraseAuthCk1_0MkSeed checkAuth P k j l _ _ _ msg _ res?
   · rfl
-def InvMkIdealSid {S : Setup} (hst : AuthHybridState S) : Prop :=
+@[expose] def InvMkIdealSid {S : Setup} (hst : AuthHybridState S) : Prop :=
   ∀ s ∈ hst.idealSessions, sessionSlotIndex s.sid < S.N_sess_tot
 theorem invMkIdealSid_empty (S : Setup) (secb : Bool) :
     InvMkIdealSid (AuthHybridState.empty S secb) := by
@@ -1076,16 +1079,6 @@ theorem isQueryBoundP_finishAuthRecvUnmatchedSlotsReduction_prim (S : Setup) (id
         (fun deriveMessageKeys => isQueryBoundP_embedPrim_isPrimQuery _ _
           (primBounded_finishAuthRecvMkSlotsPrim S msg prep drKey _ _ recvCount' mkSaltCache slots' deriveMessageKeys)) (
             by omega)
-theorem isQueryBoundP_finishAuthRecvUnmatchedReduction_prim (S : Setup) (idx : Nat)
-    (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S) (drKey : DRKey) (rk1 : Bytes)
-    (spqrSalt? : Option Bytes) (rSlot recvCount' : Nat)
-    (mkSaltCache : List ((SessionId S × Option Bytes) × (Nat × MessageKeys))) (sentChal : Bool) :
-    IsQueryBoundP
-      (finishAuthRecvUnmatchedReduction S idx msg prep drKey rk1 spqrSalt? rSlot recvCount'
-        mkSaltCache sentChal)
-      (fun q => isPrimQuery q = true) (S.N_dh * 12 + 2) :=
-  isQueryBoundP_finishAuthRecvUnmatchedSlotsReduction_prim S idx msg prep drKey rk1 spqrSalt? rSlot
-    recvCount' mkSaltCache {} sentChal
 theorem isQueryBoundP_matchedSameEphMkSlotsReduction_prim (S : Setup) (idx : Nat)
     (s : IdealAuthSession S) (sIdx : Nat)
     (spqrSalt? : Option Bytes) (recvCount : Nat)
@@ -1111,14 +1104,6 @@ theorem isQueryBoundP_matchedSameEphMkSlotsReduction_prim (S : Setup) (idx : Nat
     · exact isQueryBoundP_bind_le_mk 0 (isQueryBoundP_embedPrim_isPrimQuery _ 1
                                          (primBounded_primQ _)) (fun _ => isQueryBoundP_pure _ _ _)
                                            (by omega)
-theorem isQueryBoundP_matchedSameEphMkReduction_prim (S : Setup) (idx : Nat)
-  (s : IdealAuthSession S)
-    (spqrSalt? : Option Bytes) (recvCount : Nat)
-    (mkSaltCache : List ((SessionId S × Option Bytes) × (Nat × MessageKeys))) :
-    IsQueryBoundP (matchedSameEphMkReduction S idx s spqrSalt? recvCount mkSaltCache)
-      (fun q => isPrimQuery q = true) 1 :=
-  isQueryBoundP_matchedSameEphMkSlotsReduction_prim S idx s (sessionSlotIndex s.sid) spqrSalt?
-    recvCount mkSaltCache
 theorem isQueryBoundP_authMkRecvReduction_prim (S : Setup) (idx : Nat)
     (msg : PreKeyMsg) (prep? : Option (PreparedAuthRecvPrim S))
     (hst : AuthHybridStateFixed S) (sentChal : Bool) :
@@ -1310,16 +1295,6 @@ theorem isQueryBoundP_finishAuthRecvUnmatchedSlotsReduction_prf (S : Setup) (idx
         by omega)
       exact isQueryBoundP_bind_le_mk 0 (isQueryBoundP_embedPrim_isRight _ 0)
         (fun _ => isQueryBoundP_embedPrim_isRight _ 0) (by omega)
-theorem isQueryBoundP_finishAuthRecvUnmatchedReduction_prf (S : Setup) (idx : Nat)
-    (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S) (drKey : DRKey) (rk1 : Bytes)
-    (spqrSalt? : Option Bytes) (rSlot recvCount' : Nat)
-    (mkSaltCache : List ((SessionId S × Option Bytes) × (Nat × MessageKeys))) (sentChal : Bool) :
-    IsQueryBoundP
-      (finishAuthRecvUnmatchedReduction S idx msg prep drKey rk1 spqrSalt? rSlot recvCount'
-        mkSaltCache sentChal)
-      (fun q => q.isRight = true) 1 :=
-  isQueryBoundP_finishAuthRecvUnmatchedSlotsReduction_prf S idx msg prep drKey rk1 spqrSalt? rSlot
-    recvCount' mkSaltCache {} sentChal
 theorem isQueryBoundP_matchedSameEphMkSlotsReduction_prf (S : Setup) (idx : Nat)
     (s : IdealAuthSession S) (sIdx : Nat)
     (spqrSalt? : Option Bytes) (recvCount : Nat)
@@ -1343,13 +1318,6 @@ theorem isQueryBoundP_matchedSameEphMkSlotsReduction_prf (S : Setup) (idx : Nat)
             (fun _ => isQueryBoundP_pure _ _ _) (by omega)
     · exact isQueryBoundP_bind_le_mk 0 (isQueryBoundP_embedPrim_isRight _ 0)
         (fun _ => isQueryBoundP_pure _ _ _) (by omega)
-theorem isQueryBoundP_matchedSameEphMkReduction_prf (S : Setup) (idx : Nat) (s : IdealAuthSession S)
-    (spqrSalt? : Option Bytes) (recvCount : Nat)
-    (mkSaltCache : List ((SessionId S × Option Bytes) × (Nat × MessageKeys))) :
-    IsQueryBoundP (matchedSameEphMkReduction S idx s spqrSalt? recvCount mkSaltCache)
-      (fun q => q.isRight = true) 1 :=
-  isQueryBoundP_matchedSameEphMkSlotsReduction_prf S idx s (sessionSlotIndex s.sid) spqrSalt?
-    recvCount mkSaltCache
 theorem isQueryBoundP_authMkRecvReduction_prf (S : Setup) (idx : Nat)
     (msg : PreKeyMsg) (prep? : Option (PreparedAuthRecvPrim S))
     (hst : AuthHybridStateFixed S) (sentChal : Bool) :

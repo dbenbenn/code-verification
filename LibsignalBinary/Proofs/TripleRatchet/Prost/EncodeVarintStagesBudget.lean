@@ -9,8 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBaseBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBaseBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
@@ -24,7 +23,7 @@ Relocatable `RustCliAllocBudget`-threaded step lemmas for continuation-byte stag
 `prost::encoding::varint::encode_varint::<Vec<u8>>` (block 10, calling block 13).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

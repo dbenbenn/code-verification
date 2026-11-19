@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.GameHop.ReductionDsl.SupportWP
+public import Computational.Proofs.GameHop.ReductionDsl.SupportWP -- proof-setup: allow-public-import
 
 /-!
 # Potential-Based Query Bounds for `ReductionDsl`
@@ -18,7 +18,7 @@ Re-exports `SupportWP` potential lemmas and defines the `HoldsOnLeaves` continua
 predicate.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

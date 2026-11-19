@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c2
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c1
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c2 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c1 -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.FgGapDh
 import Computational.Proofs.SpecLemmas.Assumptions.KemCorrect
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SignalPqxdh.Security.Collisions
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
 /-!
 # `Auth` hybrid hop `G3 → G3.5`: `.recvOPK` and `.recvNoOPK` premise discharge
 
@@ -22,7 +24,7 @@ Discharges the subcase premises of `fgAuthStepCoupling_cutoff_latched_recvOPK` a
 `AuthFullG3G3_5CoupledInv` and `AuthWinGuardedG3G3_5CoupledInv`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 open SignalPqxdh SignalPqxdh.Security
 open OracleSpec OracleComp
@@ -31,7 +33,7 @@ open Proofs.SignalPqxdh.Security.FgGapDh
 namespace Proofs.SignalPqxdh.Security
 /-! ## Initiator random-oracle origin -/
 /-- Witness that `secrets` was constructed by an earlier initiator handshake on a trace prefix. -/
-def AuthSendRoOrigin (S : Setup) (P : Primitives) (hst : AuthHybridState S)
+@[expose] def AuthSendRoOrigin (S : Setup) (P : Primitives) (hst : AuthHybridState S)
     (secrets : Bytes) : Prop :=
   ∃ (st0 : AuthState S) (u : Fin S.N_id) (uEntry0 uEntry : PrincipalEntry)
     (bundle : PreKeyBundleInput) (kemCoins ss_s : Bytes)
@@ -406,7 +408,7 @@ theorem recv_matched_none_imp_abort_or_badLatched_of_sendRoOrigin {S : Setup} (P
 /-! ## Random-oracle origin invariant -/
 /-- Invariant that every `.g3` `roCache` entry came from `advRoLog`, an initiator `send` query, or
     a responder `recv` query. -/
-def AuthRecvOriginInv (S : Setup) (P : Primitives) (s3 : AuthAdvLatchedState S) : Prop :=
+@[expose] def AuthRecvOriginInv (S : Setup) (P : Primitives) (s3 : AuthAdvLatchedState S) : Prop :=
   ∀ secrets p,
     s3.adv.hyb.base.roCache.find? (fun (s, _) => s == secrets) = some p →
     p.1 = secrets ∧
@@ -1311,19 +1313,19 @@ theorem finishLatchedRecvNoOPK_hasWonAuth_true_of_consume_false {S : Setup} (P :
   | mk matchedOk sentNoOPK' =>
     dsimp only; rintro rfl; simp
 /-! ## Full step couplings -/
-def AuthRoCacheOrWon {S : Setup} (P : Primitives)
+@[expose] def AuthRoCacheOrWon {S : Setup} (P : Primitives)
     (s35 s3 : AuthAdvLatchedState S) : Prop :=
   AuthAdvLatchedAgreeOffRo s35 s3 ∧
   (AuthRoCacheCoupled P s35 s3 ∨
    (s35.hyb.base.hasWonAuth = true ∧ s3.hyb.base.hasWonAuth = true))
 /-- Coupled invariant between `.g3_5` and `.g3` combining `AuthG3G3_5CoupledInv` and
     `AuthRecvOriginInv`. -/
-def AuthFullG3G3_5CoupledInv {S : Setup} (P : Primitives)
+@[expose] def AuthFullG3G3_5CoupledInv {S : Setup} (P : Primitives)
     (s35 s3 : AuthAdvLatchedState S) : Prop :=
   AuthG3G3_5CoupledInv P s35 s3 ∧
   AuthRecvOriginInv S P s3
 /-- Win-guarded coupled invariant between `.g3_5` and `.g3` on `AuthAdvLatchedState S`. -/
-def AuthWinGuardedG3G3_5CoupledInv {S : Setup} (P : Primitives)
+@[expose] def AuthWinGuardedG3G3_5CoupledInv {S : Setup} (P : Primitives)
     (s35 s3 : AuthAdvLatchedState S) : Prop :=
   AuthAdvLatchedAgreeOffRo s35 s3 ∧
   ValidAuthHybridRunInv S P s3.hyb ∧
@@ -1409,7 +1411,7 @@ theorem fgAuthStepCoupling_cutoff_latched_sendNoOPK_or_respEkColl_full
       authRecvOriginInv_of_sendNoOPK P u i bundle m0 m1 s3 hFull.1.2.1.1.1 hFull.2 hy3⟩
   · exact Or.inr hAb
 /-- Win-guarded coupled invariant on `AuthSendLatchedState S`. -/
-def AuthSendWinGuardedCoupledInv {S : Setup} (P : Primitives)
+@[expose] def AuthSendWinGuardedCoupledInv {S : Setup} (P : Primitives)
     (s35 s3 : AuthSendLatchedState S) : Prop :=
   AuthWinGuardedG3G3_5CoupledInv P s35.toAuthAdvLatchedState s3.toAuthAdvLatchedState ∧
   s35.respEkCollLatched = s3.respEkCollLatched

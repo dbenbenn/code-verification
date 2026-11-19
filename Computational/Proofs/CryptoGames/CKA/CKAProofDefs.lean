@@ -22,7 +22,7 @@ Correctness predicate (`AgreesFrom`, `Correct`), oracle query shorthands, and fi
 for continuous key agreement (`CKAScheme`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 namespace CryptoGames
@@ -30,14 +30,14 @@ namespace CKAScheme
 variable {Key State Coins Msg CKey : Type}
 
 /-- Honest alternating execution from states `(γS, γR)` with sender coins `rs` yields matching keys in every round. -/
-def AgreesFrom (cka : CKAScheme Key State Coins Msg CKey) : State → State → List Coins → Prop
+@[expose] def AgreesFrom (cka : CKAScheme Key State Coins Msg CKey) : State → State → List Coins → Prop
   | _, _, [] => True
   | γS, γR, r :: rs =>
     (cka.send γS r).2.2 = (cka.receive γR (cka.send γS r).2.1).2 ∧
       cka.AgreesFrom (cka.receive γR (cka.send γS r).2.1).1 (cka.send γS r).1 rs
 
 /-- CKA correctness: from initialized states `(initA k, initB k)`, honest alternating rounds always agree on the output key. -/
-def Correct (cka : CKAScheme Key State Coins Msg CKey) : Prop :=
+@[expose] def Correct (cka : CKAScheme Key State Coins Msg CKey) : Prop :=
   ∀ (k : Key) (rs : List Coins), cka.AgreesFrom (cka.initA k) (cka.initB k) rs
 
 end CKAScheme
@@ -47,23 +47,23 @@ section Queries
 local notation "Comp" => AdversaryComp State Coins Msg CKey
 
 /-- Query `send-P`. -/
-def sendQuery (P : Party) : Comp (Option (Msg × CKey)) :=
+@[expose] def sendQuery (P : Party) : Comp (Option (Msg × CKey)) :=
   query (spec := unifSpec + spec State Coins Msg CKey) (.inr (.inl (.inl (.inl (.inl P)))))
 
 /-- Query `send-P'(r)`. -/
-def sendWithAdversaryCoinsQuery (P : Party) (r : Coins) : Comp (Option (Msg × CKey)) :=
+@[expose] def sendWithAdversaryCoinsQuery (P : Party) (r : Coins) : Comp (Option (Msg × CKey)) :=
   query (spec := unifSpec + spec State Coins Msg CKey) (.inr (.inl (.inl (.inl (.inr (P, r))))))
 
 /-- Query `chall-P`. -/
-def challQuery (P : Party) : Comp (Option (Msg × CKey)) :=
+@[expose] def challQuery (P : Party) : Comp (Option (Msg × CKey)) :=
   query (spec := unifSpec + spec State Coins Msg CKey) (.inr (.inl (.inl (.inr P))))
 
 /-- Query `receive-P`. -/
-def receiveQuery (P : Party) : Comp (Option Unit) :=
+@[expose] def receiveQuery (P : Party) : Comp (Option Unit) :=
   query (spec := unifSpec + spec State Coins Msg CKey) (.inr (.inl (.inr P)))
 
 /-- Query `corr-P`. -/
-def corrQuery (P : Party) : Comp (Option State) :=
+@[expose] def corrQuery (P : Party) : Comp (Option State) :=
   query (spec := unifSpec + spec State Coins Msg CKey) (.inr (.inr P))
 
 end Queries
@@ -72,7 +72,7 @@ variable (cka : CKAScheme Key State Coins Msg CKey) (Δ tStar : ℕ)
   [SampleableType Key] [SampleableType Coins] [SampleableType CKey]
 
 /-- Runs the CKA game with fixed hidden bit `b` and returns the adversary's guess. -/
-def branch (b : Bool) (A : Adversary State Coins Msg CKey) : ProbComp Bool := do
+@[expose] def branch (b : Bool) (A : Adversary State Coins Msg CKey) : ProbComp Bool := do
   let k ← $ᵗ Key
   let impl := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
       (StateT (GameState State Msg) ProbComp) + oracleImpl cka Δ tStar

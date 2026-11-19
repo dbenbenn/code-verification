@@ -5,27 +5,31 @@
 # NEVER by the frozen CLI statement run (`Symbolic/scripts/machine_free_allow.txt`).
 # If any pinned source file changes blob, `machine_free_check.py` fails closed (exit 1) until re-signed.
 # blob-pin: LibsignalBinary/Specifications/LibsignalTripleRatchetRepr.lean = e1b0ceb39e3a3afd4b546809ac9a729fabf98835
-# blob-pin: LibsignalBinary/Specifications/LibsignalAesCbc.lean = c069e18e7a9c23c24482f53b68c21af4e8368993
-# blob-pin: LibsignalBinary/Specifications/LibsignalTripleRatchet.lean = 907c8f78eb0fa76affaf359d0c1074fddf56c94b
-# Re-pinned after dead-declaration removal; no pinned constant changed; approved by swarat.
-# Re-pinned again after the trust-banner edit of #808: one comment line changed in each of LibsignalTripleRatchetRepr.lean and LibsignalAesCbc.lean; no line moved, no pinned constant changed.
+# blob-pin: LibsignalBinary/Specifications/LibsignalAesCbc.lean = 16ebb1b56f6ddd264615dda79470e9c72e330764
+# blob-pin: LibsignalBinary/Specifications/LibsignalTripleRatchet.lean = 2956fed482979e23b0b7531e132b1bce6c5a3382
+# Re-pinned after dead-declaration removal; no pinned constant changed.
+# Re-pinned after trust-banner comment edits in LibsignalTripleRatchetRepr.lean and LibsignalAesCbc.lean; no line moved, no pinned constant changed.
 # Re-pinned after the computational-TCB rename (`scripts/rename_computational_tcb.tsv`): identifier renames in all three files, no line added or removed, no pinned constant renamed or changed.
 # Re-pinned again after the TCB docstring rewrite: comment-only edits to all three files; code lines shifted (l.NNN references below remapped), no pinned constant changed.
-# Re-pinned after the Lean module-system port (#831): `module` / `public import` / `import all` header lines and `@[expose] public section` added; l.NNN references below shifted accordingly; no pinned constant changed.
-# Re-pinned after the `lake shake` import narrowing: header import lines only (LibsignalTripleRatchetRepr: `-- shake: keep` comment on 1 import; LibsignalTripleRatchet: 2 `public import` lines removed, so l.NNN references below shift by −2); no pinned constant changed (GK ledger rows 84/85: statement hashes identical).
-# Re-pinned after merging #846 onto the import-narrowed main; proof-side definitions moved to *ProofDefs and unused open removed (l.NNN references below remapped by declaration); no pinned constant changed.
-# Re-pinned after the C2 trust-banner edit of LibsignalTripleRatchet.lean (second stock `ld.lld` cutover: `zeroizeSecretHook` left the hook table): comment-only, 5 docstring lines rewritten, no line added or removed, l.NNN references unchanged, no pinned constant changed.
+# Re-pinned after the Lean module-system port: `module` / `public import` / `import all` header lines and `@[expose] public section` added; l.NNN references below shifted accordingly; no pinned constant changed.
+# Re-pinned after the `lake shake` import narrowing: header import lines only (LibsignalTripleRatchetRepr: `-- shake: keep` comment on 1 import; LibsignalTripleRatchet: 2 `public import` lines removed, so l.NNN references below shift by −2); no pinned constant changed (statement hashes identical).
+# Re-pinned after moving proof-side definitions to *ProofDefs and removing unused opens (l.NNN references below remapped by declaration); no pinned constant changed.
+# Re-pinned after the trust-banner edit of LibsignalTripleRatchet.lean (`zeroizeSecretHook` left the hook table): comment-only, 5 docstring lines rewritten, no line added or removed, l.NNN references unchanged, no pinned constant changed.
+# Re-pinned after the B2→B3 trust-banner edit of LibsignalAesCbc.lean: comment-only docstring edit, code lines shift +3 (l.NNN references below remapped to 61/65/68), no pinned constant changed (.olean.hash unchanged).
+# Re-pinned after retiring dead fixed-image tripleRatchetProg / entryOf / fixed-image specs: l.NNN references below remapped (415->377, 424->385, 682->565), no pinned constant changed.
+# Re-pinned after docstring cleanup of LibsignalAesCbc.lean (replaced `cliHookTablePlaced is empty` with `under the panic-only cliExternsPlacedSig`): comment-only, 1 line rewritten in place, l.NNN references unchanged, no pinned constant changed.
+# Re-pinned for the trust-banner docstring of LibsignalTripleRatchet.lean (`pubFromSecretHook`/`diffieHellmanHook`/`readVec32` outside headline closures; `cliHookTablePlaced` in `CliBinaryPqPlaced.lean`): comment-only, 5 lines in place, l.NNN references unchanged, no pinned constant changed.
 # require-tag: [MODEL]
 
-# --- LibsignalTripleRatchet.lean @ 907c8f78eb0fa76affaf359d0c1074fddf56c94b (GK row 100) ---
-CryptoVerification.LibsignalTripleRatchet.SpqrModel : [MODEL] row 100 l.415 pure SPQR protocol model record over byte lists; no memory/layout/hook
-CryptoVerification.LibsignalTripleRatchet.SpqrModel.mk : [MODEL] row 100 l.415 constructor of pure SpqrModel record; no memory/layout/hook
-CryptoVerification.LibsignalTripleRatchet.SpqrModel.send : [MODEL] row 100 l.415 projection SpqrModel.send (pure byte-list step); no memory/layout/hook
-CryptoVerification.LibsignalTripleRatchet.SpqrModel.recv : [MODEL] row 100 pre-signed l.415 projection SpqrModel.recv (pure byte-list step); reached by PqDir*
-CryptoVerification.LibsignalTripleRatchet.SpqrModel.recvPanics : [MODEL] row 100 pre-signed l.415 projection SpqrModel.recvPanics (pure Bool predicate); reached by PqDir*
-CryptoVerification.LibsignalTripleRatchet.SpqrModel.sendPanics : [MODEL] row 100 pre-signed l.415 projection SpqrModel.sendPanics (pure Bool predicate); reached by PqDir*
-CryptoVerification.LibsignalTripleRatchet.SeedsLen32 : [MODEL] row 100 l.682 pure length=32 predicate on model SessionState seeds; no memory/layout/hook
-CryptoVerification.LibsignalTripleRatchet.SpqrModel.spqr : [MODEL] row 100 pre-signed l.424 Spqr instance built from SpqrModel's pure fields (init := fun _ _ => [], send, recv, sendPanics, recvPanics); no memory/layout/hook; added under GK row 219au
+# --- LibsignalTripleRatchet.lean @ 2956fed482979e23b0b7531e132b1bce6c5a3382 (GK row 100) ---
+CryptoVerification.LibsignalTripleRatchet.SpqrModel : [MODEL] row 100 l.377 pure SPQR protocol model record over byte lists; no memory/layout/hook
+CryptoVerification.LibsignalTripleRatchet.SpqrModel.mk : [MODEL] row 100 l.377 constructor of pure SpqrModel record; no memory/layout/hook
+CryptoVerification.LibsignalTripleRatchet.SpqrModel.send : [MODEL] row 100 l.377 projection SpqrModel.send (pure byte-list step); no memory/layout/hook
+CryptoVerification.LibsignalTripleRatchet.SpqrModel.recv : [MODEL] row 100 pre-signed l.377 projection SpqrModel.recv (pure byte-list step); reached by PqDir*
+CryptoVerification.LibsignalTripleRatchet.SpqrModel.recvPanics : [MODEL] row 100 pre-signed l.377 projection SpqrModel.recvPanics (pure Bool predicate); reached by PqDir*
+CryptoVerification.LibsignalTripleRatchet.SpqrModel.sendPanics : [MODEL] row 100 pre-signed l.377 projection SpqrModel.sendPanics (pure Bool predicate); reached by PqDir*
+CryptoVerification.LibsignalTripleRatchet.SeedsLen32 : [MODEL] row 100 l.565 pure length=32 predicate on model SessionState seeds; no memory/layout/hook
+CryptoVerification.LibsignalTripleRatchet.SpqrModel.spqr : [MODEL] row 100 pre-signed l.385 Spqr instance built from SpqrModel's pure fields (init := fun _ _ => [], send, recv, sendPanics, recvPanics); no memory/layout/hook; added under GK row 219au
 
 # --- LibsignalTripleRatchetRepr.lean @ e1b0ceb39e3a3afd4b546809ac9a729fabf98835 (GK row 109 A1-ext) ---
 CryptoVerification.LibsignalTripleRatchetRepr.utf8 : [MODEL] l.110 String literal -> its UTF-8 bytes (String.toUTF8 mapped to BitVec 8); pure
@@ -49,7 +53,7 @@ CryptoVerification.LibsignalTripleRatchetRepr.serviceIdParse : [MODEL] l.417 str
 CryptoVerification.LibsignalTripleRatchetRepr.kindByte : [MODEL] l.427 Bool -> 1#8 / 0#8; pure (docstring cites offsets, body does not)
 CryptoVerification.LibsignalTripleRatchetRepr.addrBytes : [MODEL] l.431 kind byte :: uuid bytes ++ [device]; pure list construction
 
-# --- LibsignalAesCbc.lean @ c069e18e7a9c23c24482f53b68c21af4e8368993 (GK row 109 A1-ext) ---
-CryptoVerification.LibsignalAesCbc.toLEBytes : [MODEL] l.49 the n little-endian bytes of a BitVec (List.ofFn of extractLsb'); pure; already trusted as statement text of libsignal_binary_e2e (file banner)
-CryptoVerification.LibsignalAesCbc.blockToBytes : [MODEL] l.53 abbrev toLEBytes 16 on a CBC Block; pure
-CryptoVerification.LibsignalAesCbc.bytesToKey : [MODEL] l.56 foldr shift/or of bytes into a 256-bit AesKey; pure
+# --- LibsignalAesCbc.lean @ 16ebb1b56f6ddd264615dda79470e9c72e330764 (GK row 109 A1-ext) ---
+CryptoVerification.LibsignalAesCbc.toLEBytes : [MODEL] l.61 the n little-endian bytes of a BitVec (List.ofFn of extractLsb'); pure; already trusted as statement text of libsignal_binary_e2e (file banner)
+CryptoVerification.LibsignalAesCbc.blockToBytes : [MODEL] l.65 abbrev toLEBytes 16 on a CBC Block; pure
+CryptoVerification.LibsignalAesCbc.bytesToKey : [MODEL] l.68 foldr shift/or of bytes into a 256-bit AesKey; pure

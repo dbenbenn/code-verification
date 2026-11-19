@@ -9,33 +9,19 @@ limitations under the License.
 
 module
 
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagBucketData
 public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagData
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert0
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert1
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert2
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert3
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert4
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert5
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert6
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert7
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert8
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert9
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert10
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert11
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert12
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert13
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert14
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert15
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert16
-public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert17
+import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagBucketData
+import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert0
+import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert1
+import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert2
+import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert3
 
 /-!
 # Certified Node Validity and Bucket Collision Freedom
 
-Combines the 18 node-certificate slices (`RecvDagCert0`–`RecvDagCert17`) into `dag_nodes_ok`,
-checks bucket coverage (`id_covered`) and per-bucket non-collision (`bucket_collision_free`)
-across all 251 hash buckets, and proves `dag_no_collision`.
+Combines the 4 node-certificate shards (`RecvDagCert0`–`RecvDagCert3`) into `dag_nodes_ok`,
+checks bucket coverage and per-bucket non-collision across all 512 hash buckets using the
+unboxed 54-bit prefix hash `fastBytesKey`, and proves `dag_no_collision`.
 -/
 
 @[expose] public section
@@ -44,193 +30,178 @@ set_option autoImplicit false
 
 namespace Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagBuckets
 
+open Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagTree (btGet)
 open Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagDefs
   (DagOp dagNodeOk bucketNoCollision bucketNoCollision_sound)
 open Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagData
-  (dagSize dagOp dagBytes fastBytesKey fastBucketIdx)
-open Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagBucketData (dagBucketIds)
+  (dagSize dagTree dagOp dagBytes fastBucketIdx rangeAll rangeAll_trans)
+open Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagBucketData
+  (dagBucketIds dagNodeBkt)
 
 theorem dag_nodes_ok : ∀ id < dagSize, dagNodeOk dagOp dagBytes id = true := by
   intro id hid
-  if h0 : id < 384 then
+  if h0 : id < 1680 then
     exact RecvDagCert0.certRangeOk_0 (by omega) h0
-  else
-  if h1 : id < 768 then
+  else if h1 : id < 3360 then
     exact RecvDagCert1.certRangeOk_1 (by omega) h1
-  else
-  if h2 : id < 1152 then
+  else if h2 : id < 5040 then
     exact RecvDagCert2.certRangeOk_2 (by omega) h2
   else
-  if h3 : id < 1536 then
-    exact RecvDagCert3.certRangeOk_3 (by omega) h3
-  else
-  if h4 : id < 1920 then
-    exact RecvDagCert4.certRangeOk_4 (by omega) h4
-  else
-  if h5 : id < 2304 then
-    exact RecvDagCert5.certRangeOk_5 (by omega) h5
-  else
-  if h6 : id < 2688 then
-    exact RecvDagCert6.certRangeOk_6 (by omega) h6
-  else
-  if h7 : id < 3072 then
-    exact RecvDagCert7.certRangeOk_7 (by omega) h7
-  else
-  if h8 : id < 3456 then
-    exact RecvDagCert8.certRangeOk_8 (by omega) h8
-  else
-  if h9 : id < 3840 then
-    exact RecvDagCert9.certRangeOk_9 (by omega) h9
-  else
-  if h10 : id < 4224 then
-    exact RecvDagCert10.certRangeOk_10 (by omega) h10
-  else
-  if h11 : id < 4608 then
-    exact RecvDagCert11.certRangeOk_11 (by omega) h11
-  else
-  if h12 : id < 4992 then
-    exact RecvDagCert12.certRangeOk_12 (by omega) h12
-  else
-  if h13 : id < 5376 then
-    exact RecvDagCert13.certRangeOk_13 (by omega) h13
-  else
-  if h14 : id < 5760 then
-    exact RecvDagCert14.certRangeOk_14 (by omega) h14
-  else
-  if h15 : id < 6144 then
-    exact RecvDagCert15.certRangeOk_15 (by omega) h15
-  else
-  if h16 : id < 6528 then
-    exact RecvDagCert16.certRangeOk_16 (by omega) h16
-  else
-    exact RecvDagCert17.certRangeOk_17 (by omega) hid
+    exact RecvDagCert3.certRangeOk_3 (by omega) hid
 
-def dagBucketEntries (b : Nat) : List (Nat × Bool × Nat) :=
-  (dagBucketIds b).map fun id => (id, (dagOp id).isAI, fastBytesKey (dagBytes id))
+private def fastElem (x : Nat) : List Nat → Bool
+  | [] => false
+  | y :: ys =>
+    match Nat.beq x y with
+    | true => true
+    | false => fastElem x ys
 
-def covRangeOk (lo count : Nat) : Bool :=
-  (List.range count).all fun k =>
-    (dagBucketIds (fastBucketIdx (fastBytesKey (dagBytes (lo + k))))).elem (lo + k)
+private theorem fastElem_mem {x : Nat} : ∀ {ys : List Nat}, fastElem x ys = true → x ∈ ys
+  | [], h => by contradiction
+  | y :: ys, h => by
+    unfold fastElem at h
+    cases hxy : Nat.beq x y with
+    | true => rw [Nat.beq_eq.mp hxy]; exact .head _
+    | false => rw [hxy] at h; exact .tail _ (fastElem_mem h)
 
-theorem idCovered_of_covRangeOk {lo count : Nat} (h : covRangeOk lo count = true)
-    {id : Nat} (hlo : lo ≤ id) (hhi : id < lo + count) :
-    (dagBucketIds (fastBucketIdx (fastBytesKey (dagBytes id)))).elem id = true := by
-  unfold covRangeOk at h
-  have hmem : id - lo ∈ List.range count := List.mem_range.mpr (by omega)
-  have hk := List.all_eq_true.mp h (id - lo) hmem
-  have heq : lo + (id - lo) = id := by omega
-  rwa [heq] at hk
+private def byteAtOr0 (bs : DY.Libsignal.HwBytes) : Nat → Nat
+  | 0 => match bs with | b :: _ => b.toFin.val | [] => 0
+  | n + 1 => match bs with | _ :: rest => byteAtOr0 rest n | [] => 0
 
-def bktRangeOk (lo count : Nat) : Bool :=
-  (List.range count).all fun k => bucketNoCollision (dagBucketEntries (lo + k))
+private def pack11 (tag b0 b4 b5 b6 b8 b12 b13 b19 b21 b28 b29 : Nat) : Nat :=
+  b4 + 256 * (b5 + 256 * (b6 + 256 * (b8 + 256 * (b12 + 256 *
+    (b13 + 256 * (b19 + 256 * (b21 + 256 * (b28 + 256 * (b29 + 256 *
+      (b0 + 256 * tag))))))))))
 
-theorem bktOk_of_bktRangeOk {lo count : Nat} (h : bktRangeOk lo count = true)
-    {b : Nat} (hlo : lo ≤ b) (hhi : b < lo + count) :
-    bucketNoCollision (dagBucketEntries b) = true := by
-  unfold bktRangeOk at h
-  have hmem : b - lo ∈ List.range count := List.mem_range.mpr (by omega)
-  have hk := List.all_eq_true.mp h (b - lo) hmem
-  have heq : lo + (b - lo) = b := by omega
-  rwa [heq] at hk
+private def fastKey : DY.Libsignal.HwBytes → Nat
+  | b0 :: _ :: _ :: _ :: b4 :: b5 :: b6 :: _ ::
+    b8 :: _ :: _ :: _ :: b12 :: b13 :: _ :: _ ::
+    _ :: _ :: _ :: b19 :: _ :: b21 :: _ :: _ ::
+    _ :: _ :: _ :: _ :: b28 :: b29 :: _ :: _ :: rest =>
+    let tag := match rest with | [] => 1 | _ :: _ => 2
+    pack11 tag b0.toFin.val b4.toFin.val b5.toFin.val b6.toFin.val b8.toFin.val
+      b12.toFin.val b13.toFin.val b19.toFin.val b21.toFin.val b28.toFin.val b29.toFin.val
+  | bs =>
+    pack11 (32 + bs.length) (byteAtOr0 bs 0) (byteAtOr0 bs 4) (byteAtOr0 bs 5)
+      (byteAtOr0 bs 6) (byteAtOr0 bs 8) (byteAtOr0 bs 12) (byteAtOr0 bs 13)
+      (byteAtOr0 bs 19) (byteAtOr0 bs 21) (byteAtOr0 bs 28) (byteAtOr0 bs 29)
 
-private theorem covSlice_0 : covRangeOk 0 512 = true := by decide +kernel
-private theorem covSlice_1 : covRangeOk 512 512 = true := by decide +kernel
-private theorem covSlice_2 : covRangeOk 1024 512 = true := by decide +kernel
-private theorem covSlice_3 : covRangeOk 1536 512 = true := by decide +kernel
-private theorem covSlice_4 : covRangeOk 2048 512 = true := by decide +kernel
-private theorem covSlice_5 : covRangeOk 2560 512 = true := by decide +kernel
-private theorem covSlice_6 : covRangeOk 3072 512 = true := by decide +kernel
-private theorem covSlice_7 : covRangeOk 3584 512 = true := by decide +kernel
-private theorem covSlice_8 : covRangeOk 4096 512 = true := by decide +kernel
-private theorem covSlice_9 : covRangeOk 4608 512 = true := by decide +kernel
-private theorem covSlice_10 : covRangeOk 5120 512 = true := by decide +kernel
-private theorem covSlice_11 : covRangeOk 5632 512 = true := by decide +kernel
-private theorem covSlice_12 : covRangeOk 6144 512 = true := by decide +kernel
-private theorem covSlice_13 : covRangeOk 6656 64 = true := by decide +kernel
+private def fastIdCovered (id : Nat) : Bool :=
+  let b := dagNodeBkt id
+  Nat.ble (b + 1) 512 && fastElem id (dagBucketIds b)
 
-theorem id_covered : ∀ id < dagSize,
-    (dagBucketIds (fastBucketIdx (fastBytesKey (dagBytes id)))).elem id = true := by
-  intro id hid
-  if hc0 : id < 512 then
-    exact idCovered_of_covRangeOk covSlice_0 (by omega) hc0
-  else
-  if hc1 : id < 1024 then
-    exact idCovered_of_covRangeOk covSlice_1 (by omega) hc1
-  else
-  if hc2 : id < 1536 then
-    exact idCovered_of_covRangeOk covSlice_2 (by omega) hc2
-  else
-  if hc3 : id < 2048 then
-    exact idCovered_of_covRangeOk covSlice_3 (by omega) hc3
-  else
-  if hc4 : id < 2560 then
-    exact idCovered_of_covRangeOk covSlice_4 (by omega) hc4
-  else
-  if hc5 : id < 3072 then
-    exact idCovered_of_covRangeOk covSlice_5 (by omega) hc5
-  else
-  if hc6 : id < 3584 then
-    exact idCovered_of_covRangeOk covSlice_6 (by omega) hc6
-  else
-  if hc7 : id < 4096 then
-    exact idCovered_of_covRangeOk covSlice_7 (by omega) hc7
-  else
-  if hc8 : id < 4608 then
-    exact idCovered_of_covRangeOk covSlice_8 (by omega) hc8
-  else
-  if hc9 : id < 5120 then
-    exact idCovered_of_covRangeOk covSlice_9 (by omega) hc9
-  else
-  if hc10 : id < 5632 then
-    exact idCovered_of_covRangeOk covSlice_10 (by omega) hc10
-  else
-  if hc11 : id < 6144 then
-    exact idCovered_of_covRangeOk covSlice_11 (by omega) hc11
-  else
-  if hc12 : id < 6656 then
-    exact idCovered_of_covRangeOk covSlice_12 (by omega) hc12
-  else
-    exact idCovered_of_covRangeOk covSlice_13 (by omega) hid
+private theorem covAll : rangeAll fastIdCovered 0 6720 = true := by decide +kernel
 
-private theorem bktSlice_0 : bktRangeOk 0 64 = true := by decide +kernel
-private theorem bktSlice_1 : bktRangeOk 64 64 = true := by decide +kernel
-private theorem bktSlice_2 : bktRangeOk 128 64 = true := by decide +kernel
-private theorem bktSlice_3 : bktRangeOk 192 59 = true := by decide +kernel
+private theorem id_in_nodeBkt {id : Nat} (hid : id < dagSize) :
+    dagNodeBkt id < 512 ∧ id ∈ dagBucketIds (dagNodeBkt id) := by
+  have h := covAll
+  unfold rangeAll at h
+  have hk := List.all_eq_true.mp h id (List.mem_range.mpr hid)
+  rw [Nat.zero_add] at hk
+  obtain ⟨hb, hm⟩ := Bool.and_eq_true_iff.mp hk
+  exact ⟨Nat.le_of_ble_eq_true hb, fastElem_mem hm⟩
 
-theorem bucket_collision_free : ∀ b < 251,
-    bucketNoCollision (dagBucketEntries b) = true := by
-  intro b hb
-  if hb0 : b < 64 then
-    exact bktOk_of_bktRangeOk bktSlice_0 (by omega) hb0
-  else
-  if hb1 : b < 128 then
-    exact bktOk_of_bktRangeOk bktSlice_1 (by omega) hb1
-  else
-  if hb2 : b < 192 then
-    exact bktOk_of_bktRangeOk bktSlice_2 (by omega) hb2
-  else
-    exact bktOk_of_bktRangeOk bktSlice_3 (by omega) hb
+private def fastNodeMeta (id : Nat) : Bool × Nat :=
+  match btGet 13 dagTree id with
+  | some (op, bs) => (op.isAI, fastKey bs)
+  | none => (false, fastKey [])
+
+private theorem fastNodeMeta_eq (id : Nat) :
+    fastNodeMeta id = ((dagOp id).isAI, fastKey (dagBytes id)) := by
+  unfold fastNodeMeta dagOp dagBytes
+  cases btGet 13 dagTree id <;> rfl
+
+private def dagBucketEntries (b : Nat) : List (Nat × Bool × Nat) :=
+  (dagBucketIds b).map fun id => (id, (dagOp id).isAI, fastKey (dagBytes id))
+
+private def fastBucketEntries (b : Nat) : List (Nat × Bool × Nat) :=
+  (dagBucketIds b).map fun id =>
+    let m := fastNodeMeta id
+    (id, m.1, m.2)
+
+private theorem fastBucketEntries_eq (b : Nat) :
+    fastBucketEntries b = dagBucketEntries b := by
+  unfold fastBucketEntries dagBucketEntries
+  congr 1; funext id
+  rw [fastNodeMeta_eq]
+
+private def fastBucketNoCollision (entries : List (Nat × Bool × Nat)) : Bool :=
+  entries.all fun (id₁, ai₁, k₁) =>
+    !ai₁ || entries.all fun (id₂, _, k₂) =>
+      !Nat.beq k₁ k₂ || Nat.beq id₁ id₂
+
+private theorem fastBucketNoCollision_eq (entries : List (Nat × Bool × Nat)) :
+    fastBucketNoCollision entries = bucketNoCollision entries := by
+  unfold fastBucketNoCollision bucketNoCollision
+  apply congrArg (List.all entries); funext ⟨id₁, ai₁, k₁⟩
+  dsimp only
+  apply congrArg (Bool.or (!ai₁)); apply congrArg (List.all entries); funext ⟨id₂, _, k₂⟩
+  dsimp only
+  have hk0 : Nat.beq k₁ k₂ = decide (k₁ = k₂) := by
+    apply Bool.eq_iff_iff.mpr; simp [Nat.beq_eq]
+  have hk : (!Nat.beq k₁ k₂) = decide (k₁ ≠ k₂) := by
+    rw [hk0]; by_cases h : k₁ = k₂ <;> simp [h]
+  have hi : Nat.beq id₁ id₂ = decide (id₁ = id₂) := by
+    apply Bool.eq_iff_iff.mpr; simp [Nat.beq_eq]
+  rw [hk, hi]
+
+private def fastBktOk (b : Nat) : Bool :=
+  let entries := fastBucketEntries b
+  (entries.all fun (_, _, k) => Nat.beq (fastBucketIdx k) b) &&
+    fastBucketNoCollision entries
+
+private theorem bkt0 : rangeAll fastBktOk 0 128 = true := by decide +kernel
+private theorem bkt1 : rangeAll fastBktOk 128 256 = true := by decide +kernel
+private theorem bkt2 : rangeAll fastBktOk 256 384 = true := by decide +kernel
+private theorem bkt3 : rangeAll fastBktOk 384 512 = true := by decide +kernel
+
+private theorem bktAll : rangeAll fastBktOk 0 512 = true :=
+  rangeAll_trans (rangeAll_trans (rangeAll_trans bkt0 bkt1) bkt2) bkt3
+
+private theorem bucket_ok_of_lt {b : Nat} (hb : b < 512) :
+    ((dagBucketEntries b).all fun (_, _, k) => Nat.beq (fastBucketIdx k) b) = true ∧
+      bucketNoCollision (dagBucketEntries b) = true := by
+  have h := bktAll
+  unfold rangeAll at h
+  have hk := List.all_eq_true.mp h b (List.mem_range.mpr hb)
+  rw [Nat.zero_add] at hk
+  unfold fastBktOk at hk
+  dsimp only at hk
+  rw [fastBucketNoCollision_eq, fastBucketEntries_eq] at hk
+  exact Bool.and_eq_true_iff.mp hk
+
+private theorem id_covered_mem {id : Nat} (hid : id < dagSize) :
+    id ∈ dagBucketIds (fastBucketIdx (fastKey (dagBytes id))) := by
+  obtain ⟨hb, hm⟩ := id_in_nodeBkt hid
+  have hmem : (id, (dagOp id).isAI, fastKey (dagBytes id)) ∈ dagBucketEntries (dagNodeBkt id) :=
+    List.mem_map_of_mem hm
+  have hall := (bucket_ok_of_lt hb).1
+  have hbeq := List.all_eq_true.mp hall _ hmem
+  dsimp only at hbeq
+  rwa [Nat.beq_eq.mp hbeq]
+
+private theorem bucket_collision_free {b : Nat} (hb : b < 512) :
+    bucketNoCollision (dagBucketEntries b) = true :=
+  (bucket_ok_of_lt hb).2
 
 /-- Distinct nodes below `dagSize` cannot share `dagBytes` when at least one has `isAI = true`. -/
 theorem dag_no_collision : ∀ id₁ < dagSize, ∀ id₂ < dagSize,
     ((dagOp id₁).isAI = true ∨ (dagOp id₂).isAI = true) →
     dagBytes id₁ = dagBytes id₂ → id₁ = id₂ := by
   intro id₁ h₁ id₂ h₂ hai hbs
-  have hcov₁ := id_covered id₁ h₁
-  have hcov₂ := id_covered id₂ h₂
-  have hid₁ := List.mem_of_elem_eq_true hcov₁
-  have hid₂ := List.mem_of_elem_eq_true hcov₂
+  have hid₁ := id_covered_mem h₁
+  have hid₂ := id_covered_mem h₂
   rw [← hbs] at hid₂
-  let f := fun id : Nat => (id, (dagOp id).isAI, fastBytesKey (dagBytes id))
-  have hmem₁ : f id₁ ∈ dagBucketEntries (fastBucketIdx (fastBytesKey (dagBytes id₁))) :=
+  let f := fun id : Nat => (id, (dagOp id).isAI, fastKey (dagBytes id))
+  have hmem₁ : f id₁ ∈ dagBucketEntries (fastBucketIdx (fastKey (dagBytes id₁))) :=
     List.mem_map_of_mem hid₁
-  have hmem₂' : f id₂ ∈ dagBucketEntries (fastBucketIdx (fastBytesKey (dagBytes id₁))) :=
+  have hmem₂' : f id₂ ∈ dagBucketEntries (fastBucketIdx (fastKey (dagBytes id₁))) :=
     List.mem_map_of_mem hid₂
-  have hmem₂ : (id₂, (dagOp id₂).isAI, fastBytesKey (dagBytes id₁)) ∈
-      dagBucketEntries (fastBucketIdx (fastBytesKey (dagBytes id₁))) := by
+  have hmem₂ : (id₂, (dagOp id₂).isAI, fastKey (dagBytes id₁)) ∈
+      dagBucketEntries (fastBucketIdx (fastKey (dagBytes id₁))) := by
     dsimp only [f] at hmem₂'; rwa [← hbs] at hmem₂'
-  have hlt : fastBucketIdx (fastBytesKey (dagBytes id₁)) < 251 := Nat.mod_lt _ (by decide)
-  have hb := bucket_collision_free (fastBucketIdx (fastBytesKey (dagBytes id₁))) hlt
+  have hlt : fastBucketIdx (fastKey (dagBytes id₁)) < 512 := Nat.mod_lt _ (by decide)
+  have hb := bucket_collision_free hlt
   exact bucketNoCollision_sound hb hmem₁ hmem₂ hai
 
 end Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagBuckets

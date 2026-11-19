@@ -18,7 +18,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame
+public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyMono
 import Symbolic.Proofs.Swarm.CREF.CBadG2.Stamps
@@ -35,6 +35,9 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical -- proof-setup: allow-public-import
 
 /-!
 # Helpers for Bob's Non-Promote Pre-Key `recv` Slot
@@ -44,7 +47,7 @@ predicates, `¬ ReadCollisionCliClassical` preservation across non-decrypting st
 and `AliceRecordPendingInSession` preservation across Bob's `recv` calls.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

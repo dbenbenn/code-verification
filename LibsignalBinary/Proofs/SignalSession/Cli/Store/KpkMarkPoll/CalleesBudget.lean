@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Callees
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Callees -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `kpkConcat2PosSpec` for `KpkMarkPoll`
@@ -19,7 +19,7 @@ Defines `kpkConcat2PosEvents`, `KpkConcat2PosEnv`, and budget-threaded `kpkConca
 `concat [local#3]` on two non-empty slices.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,15 +32,15 @@ open CryptoVerification.RustHeap (vecU8)
 open CryptoVerification.SignalSession.Cli.Store.KpkMarkPoll.Helpers (Concat2PosCall)
 
 /-- Deterministic `AllocEvent` list emitted by `concat [local#3]` on two non-empty slices. -/
-def kpkConcat2PosEvents (x : Concat2PosCall) : List AllocEvent :=
+@[expose] def kpkConcat2PosEvents (x : Concat2PosCall) : List AllocEvent :=
   rustAllocEvents (x.bs0.length + x.bs1.length) 1
 
 /-- Event envelope of `kpkConcat2PosSpec`. -/
-def KpkConcat2PosEnv (x : Concat2PosCall) (evs : List AllocEvent) : Prop :=
+@[expose] def KpkConcat2PosEnv (x : Concat2PosCall) (evs : List AllocEvent) : Prop :=
   evs = kpkConcat2PosEvents x
 
 /-- Budget-threaded `kpkConcat2PosSpec` (`onPanic = ⌜False⌝` under `FitsEnv`). -/
-def kpkConcat2PosSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kpkConcat2PosSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (stk : Nat) : Spec (Concat2PosCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.outVec ∧ s.readReg64 .x1 = x.slicesA ∧ s.readReg64 .x2 = 2#64 ∧

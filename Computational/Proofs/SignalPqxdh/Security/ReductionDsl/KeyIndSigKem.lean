@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCore
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCore -- proof-setup: allow-public-import
 
 /-!
 # Costed DSL Programs for the `KeyInd` `SigEufCma` and `KemShCr` Reductions
@@ -19,7 +19,7 @@ Defines the first-order `ReductionDsl` programs `sigKeyIndProg` (`CostedReductio
 reductions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,10 +30,10 @@ open OracleSpec OracleComp
 
 namespace SignalPqxdh.Security.ReductionDsl.KeyInd
 
-def widenEC {Γ : List PT} (e : Expr pqxdhOps Γ (B 33)) : Expr pqxdhOps Γ (B 1569) :=
+@[expose] def widenEC {Γ : List PT} (e : Expr pqxdhOps Γ (B 33)) : Expr pqxdhOps Γ (B 1569) :=
   widenB 33 1536 e
 
-def qChalSign (m : ℕ+) {Γ : List PT} (msg : Expr pqxdhOps Γ (B m)) :
+@[expose] def qChalSign (m : ℕ+) {Γ : List PT} (msg : Expr pqxdhOps Γ (B m)) :
     Comp pqxdhOps pqxdhEufCmaIface Γ (B 64) :=
   Comp.query (I := pqxdhEufCmaIface) (Sum.inr m) msg
 
@@ -43,19 +43,19 @@ def qChalSign (m : ℕ+) {Γ : List PT} (msg : Expr pqxdhOps Γ (B m)) :
 abbrev sigStTy : PT :=
   .prod keyIndStateTy (.prod .nat (.prod (B 32) (.prod (.opt (.prod (B 1569) (B 64))) .nat)))
 
-@[reducible] def sgGame {Γ : List PT} (e : Expr pqxdhOps Γ sigStTy) : Expr pqxdhOps Γ keyIndStateTy :=
+@[expose, reducible] def sgGame {Γ : List PT} (e : Expr pqxdhOps Γ sigStTy) : Expr pqxdhOps Γ keyIndStateTy :=
   .fst e
-@[reducible] def sgTarget {Γ : List PT} (e : Expr pqxdhOps Γ sigStTy) : Expr pqxdhOps Γ .nat :=
+@[expose, reducible] def sgTarget {Γ : List PT} (e : Expr pqxdhOps Γ sigStTy) : Expr pqxdhOps Γ .nat :=
   .fst (.snd e)
-@[reducible] def sgPk {Γ : List PT} (e : Expr pqxdhOps Γ sigStTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose, reducible] def sgPk {Γ : List PT} (e : Expr pqxdhOps Γ sigStTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd e))
-@[reducible] def sgForgery {Γ : List PT} (e : Expr pqxdhOps Γ sigStTy) :
+@[expose, reducible] def sgForgery {Γ : List PT} (e : Expr pqxdhOps Γ sigStTy) :
     Expr pqxdhOps Γ (.opt (.prod (B 1569) (B 64))) :=
   .fst (.snd (.snd (.snd e)))
-@[reducible] def sgBudget {Γ : List PT} (e : Expr pqxdhOps Γ sigStTy) : Expr pqxdhOps Γ .nat :=
+@[expose, reducible] def sgBudget {Γ : List PT} (e : Expr pqxdhOps Γ sigStTy) : Expr pqxdhOps Γ .nat :=
   .snd (.snd (.snd (.snd e)))
 
-@[reducible] def sgUpd {Γ : List PT} (e : Expr pqxdhOps Γ sigStTy)
+@[expose, reducible] def sgUpd {Γ : List PT} (e : Expr pqxdhOps Γ sigStTy)
     (game : Expr pqxdhOps Γ keyIndStateTy := sgGame e)
     (forgery : Expr pqxdhOps Γ (.opt (.prod (B 1569) (B 64))) := sgForgery e)
     (budget : Expr pqxdhOps Γ .nat := sgBudget e) : Expr pqxdhOps Γ sigStTy :=
@@ -67,14 +67,14 @@ section SigBranches
 
 variable (useRo : Bool) (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
 
-def onGame (s : Var Γ₁ sigStTy) [Ext Γ₁ Δ]
+@[expose] def onGame (s : Var Γ₁ sigStTy) [Ext Γ₁ Δ]
     (br : (g : Var (keyIndStateTy :: Δ) keyIndStateTy) →
       Comp pqxdhOps pqPrimIface (keyIndStateTy :: Δ) RS) :
     Comp pqxdhOps pqxdhEufCmaIface Δ SRS :=
   bindV (liftBase (letV (sgGame (v s)) fun g => br g)) fun r =>
   .ret (.pair (.fst (v r)) (sgUpd (v s) (game := .snd (v r))))
 
-def extractC (s : Var Γ₁ sigStTy) (bu : Var Γ₂ preKeyBundleTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def extractC (s : Var Γ₁ sigStTy) (bu : Var Γ₂ preKeyBundleTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqxdhEufCmaIface Δ (.opt (.prod (B 1569) (B 64))) :=
   bindV (liftBase (letV (sgGame (v s)) fun g => honestPeerC S K g (buIkB (v bu)))) fun peer =>
   bindV (liftBase (qSigVerify 33
@@ -95,7 +95,7 @@ def extractC (s : Var Γ₁ sigStTy) (bu : Var Γ₂ preKeyBundleTy) [Ext Γ₁ 
         .none)
     fun fg => .some (v fg))
 
-def sigInitPrinB (s : Var Γ₁ sigStTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def sigInitPrinB (s : Var Γ₁ sigStTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqxdhEufCmaIface Δ SRS :=
   .ite (eAny K (stPrin (sgGame (v s))) fun e => natEq (.fst (v e)) (v u))
     (.ret (.pair rNone (v s))) <|
@@ -107,7 +107,7 @@ def sigInitPrinB (s : Var Γ₁ sigStTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ex
           (.bool false))) (stPrin (sgGame (v s))))))))
     (onGame s fun g => initPrinB K g u)
 
-def sigCorruptB (s : Var Γ₁ sigStTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def sigCorruptB (s : Var Γ₁ sigStTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqxdhEufCmaIface Δ SRS :=
   .ite (natEq (v u) (sgTarget (v s)))
     (caseOptV (eFind K (stPrin (sgGame (v s))) fun e => natEq (.fst (v e)) (v u))
@@ -118,7 +118,7 @@ def sigCorruptB (s : Var Γ₁ sigStTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ext
             (.pair (.fst (v x)) (peUpd (.snd (v x)) (corrupted := .bool true))) (v x))))))
     (onGame s fun g => corruptB K g u)
 
-def sigGenSpkB (s : Var Γ₁ sigStTy) (x : Var Γ₂ (.prod .nat .nat)) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def sigGenSpkB (s : Var Γ₁ sigStTy) (x : Var Γ₂ (.prod .nat .nat)) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqxdhEufCmaIface Δ SRS :=
   .ite (natEq (.fst (v x)) (sgTarget (v s)))
     (.ite (eAny K (stSpks (sgGame (v s))) fun e => nat2Eq (.fst (v e)) (v x))
@@ -140,7 +140,7 @@ def sigGenSpkB (s : Var Γ₁ sigStTy) (x : Var Γ₂ (.prod .nat .nat)) [Ext Γ
         (budget := .sub (sgBudget (v s)) (.nat 1)))))
     (onGame s fun g => genSpkB K g x)
 
-def sigInitiateB (opk : Bool) (s : Var Γ₁ sigStTy) (x : Var Γ₂ initQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def sigInitiateB (opk : Bool) (s : Var Γ₁ sigStTy) (x : Var Γ₂ initQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqxdhEufCmaIface Δ SRS :=
   letV (.snd (.snd (v x))) fun bu =>
   bindV (extractC S K s bu) fun fg =>
@@ -148,7 +148,7 @@ def sigInitiateB (opk : Bool) (s : Var Γ₁ sigStTy) (x : Var Γ₂ initQTy) [E
       if opk then initiateOpkB useRo S K g x else initiateNoOpkB useRo S K g x)) fun r =>
   .ret (.pair (.fst (v r)) (sgUpd (v s) (game := .snd (v r)) (forgery := v fg)))
 
-def sigHandleC (s : Var Γ₁ sigStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def sigHandleC (s : Var Γ₁ sigStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqxdhEufCmaIface Δ SRS :=
   .ite (isSomeE (sgForgery (v s))) (.ret (.pair rNone (v s))) <|
   caseSumV (v q) (fun u => sigInitPrinB K s u) fun q =>
@@ -169,7 +169,7 @@ def sigHandleC (s : Var Γ₁ sigStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ 
 end SigBranches
 
 /-- Costed-DSL program for the `KeyInd` `SigEufCma` reduction (`sigReductionKeyIndCore`). -/
-def sigKeyIndProg (useRo : Bool) (S : Setup) (K : Nat) :
+@[expose] def sigKeyIndProg (useRo : Bool) (S : Setup) (K : Nat) :
     CostedReduction pqxdhOps pqxdhEufCmaIface (keyIndSpec S) (keyIndCodec S) (B 32) .unit .bool (.prod (B 1569) (B 64))
     where
   σ := sigStTy
@@ -197,27 +197,27 @@ abbrev shcrStTy : PT :=
   .prod keyIndStateTy (.prod (.opt (.prod .nat .nat)) (.prod (B 1568) (.prod (B 3168) (.prod .nat
     (.prod (.list initRecTy) (.prod (.list recvRecTy) (.prod .nat (B 1568))))))))
 
-@[reducible] def scBase {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy) : Expr pqxdhOps Γ keyIndStateTy :=
+@[expose, reducible] def scBase {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy) : Expr pqxdhOps Γ keyIndStateTy :=
   .fst e
-@[reducible] def scTB {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy) :
+@[expose, reducible] def scTB {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy) :
     Expr pqxdhOps Γ (.opt (.prod .nat .nat)) :=
   .fst (.snd e)
-@[reducible] def scTPk {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose, reducible] def scTPk {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy) : Expr pqxdhOps Γ (B 1568) :=
   .fst (.snd (.snd e))
-@[reducible] def scTSk {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy) : Expr pqxdhOps Γ (B 3168) :=
+@[expose, reducible] def scTSk {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy) : Expr pqxdhOps Γ (B 3168) :=
   .fst (.snd (.snd (.snd e)))
-@[reducible] def scCnt {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy) : Expr pqxdhOps Γ .nat :=
+@[expose, reducible] def scCnt {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy) : Expr pqxdhOps Γ .nat :=
   .fst (.snd (.snd (.snd (.snd e))))
-@[reducible] def scIR {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy) : Expr pqxdhOps Γ (.list initRecTy) :=
+@[expose, reducible] def scIR {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy) : Expr pqxdhOps Γ (.list initRecTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd e)))))
-@[reducible] def scRR {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy) : Expr pqxdhOps Γ (.list recvRecTy) :=
+@[expose, reducible] def scRR {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy) : Expr pqxdhOps Γ (.list recvRecTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd e))))))
-@[reducible] def scSIdx {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy) : Expr pqxdhOps Γ .nat :=
+@[expose, reducible] def scSIdx {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy) : Expr pqxdhOps Γ .nat :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))
-@[reducible] def scChosen {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose, reducible] def scChosen {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy) : Expr pqxdhOps Γ (B 1568) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))
 
-@[reducible] def scMk {Γ : List PT} (base : Expr pqxdhOps Γ keyIndStateTy)
+@[expose, reducible] def scMk {Γ : List PT} (base : Expr pqxdhOps Γ keyIndStateTy)
     (tB : Expr pqxdhOps Γ (.opt (.prod .nat .nat)))
     (tPk : Expr pqxdhOps Γ (B 1568)) (tSk : Expr pqxdhOps Γ (B 3168))
     (cnt : Expr pqxdhOps Γ .nat) (iR : Expr pqxdhOps Γ (.list initRecTy))
@@ -226,43 +226,43 @@ abbrev shcrStTy : PT :=
   .pair base (.pair tB (.pair tPk (.pair tSk (.pair cnt
     (.pair iR (.pair rR (.pair sIdx chosen)))))))
 
-@[reducible] def scUpd {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy)
+@[expose, reducible] def scUpd {Γ : List PT} (e : Expr pqxdhOps Γ shcrStTy)
     (base : Expr pqxdhOps Γ keyIndStateTy := scBase e) (cnt : Expr pqxdhOps Γ .nat := scCnt e)
     (iR : Expr pqxdhOps Γ (.list initRecTy) := scIR e) (rR : Expr pqxdhOps Γ (.list recvRecTy) := scRR e)
     (chosen : Expr pqxdhOps Γ (B 1568) := scChosen e) : Expr pqxdhOps Γ shcrStTy :=
   scMk base (scTB e) (scTPk e) (scTSk e) cnt iR rR (scSIdx e) chosen
 
-@[reducible] def rrCt {Γ : List PT} (e : Expr pqxdhOps Γ recvRecTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose, reducible] def rrCt {Γ : List PT} (e : Expr pqxdhOps Γ recvRecTy) : Expr pqxdhOps Γ (B 1568) :=
   .fst (.snd (.snd (.snd (.snd (.snd e)))))
 
 abbrev pauseTy : PT := .prod sessionIdTy (.prod preKeyBundleTy (.prod .nat principalEntryTy))
 
 abbrev SCS : PT := .prod keyIndRespTy shcrStTy
 
-def isNoneRespE {Γ : List PT} (r : Expr pqxdhOps Γ keyIndRespTy) : Expr pqxdhOps Γ .bool :=
+@[expose] def isNoneRespE {Γ : List PT} (r : Expr pqxdhOps Γ keyIndRespTy) : Expr pqxdhOps Γ .bool :=
   eCaseSum r (fun _ => .bool true) fun _ => .bool false
 
 section ShCrBranches
 
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
 
-def onBase (s : Var Γ₁ shcrStTy) [Ext Γ₁ Δ]
+@[expose] def onBase (s : Var Γ₁ shcrStTy) [Ext Γ₁ Δ]
     (br : (g : Var (keyIndStateTy :: Δ) keyIndStateTy) →
       Comp pqxdhOps pqPrimIface (keyIndStateTy :: Δ) RS) :
     Comp pqxdhOps pqPrimIface Δ SCS :=
   bindV (letV (scBase (v s)) fun g => br g) fun r =>
   .ret (.pair (.fst (v r)) (scUpd (v s) (base := .snd (v r))))
 
-def shcrFinE {Γ : List PT} (s : Expr pqxdhOps Γ shcrStTy) (sid : Expr pqxdhOps Γ sessionIdTy)
+@[expose] def shcrFinE {Γ : List PT} (s : Expr pqxdhOps Γ shcrStTy) (sid : Expr pqxdhOps Γ sessionIdTy)
     (bu : Expr pqxdhOps Γ preKeyBundleTy) (sc : Expr pqxdhOps Γ (.prod (B 32) (B 1568)))
     (r : Expr pqxdhOps Γ RS) : Expr pqxdhOps Γ SCS :=
   .pair (.fst r) (scUpd s (base := .snd r) (cnt := .add (scCnt s) (.nat 1))
     (iR := .cons (.pair (scCnt s) (.pair sid (.pair (buPqspkB bu) (.pair (.snd sc) (.fst sc)))))
       (scIR s)))
 
-def nRecv (S : Setup) : Nat := if S.N_id = 0 then 0 else S.N_recv
+@[expose] def nRecv (S : Setup) : Nat := if S.N_id = 0 then 0 else S.N_recv
 
-def shcrGenSpkB (s : Var Γ₁ shcrStTy) (x : Var Γ₂ (.prod .nat .nat)) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def shcrGenSpkB (s : Var Γ₁ shcrStTy) (x : Var Γ₂ (.prod .nat .nat)) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ SCS :=
   let _ := S
   caseOptV (scTB (v s)) (onBase s fun g => genSpkB K g x) fun bIdx =>
@@ -286,10 +286,10 @@ def shcrGenSpkB (s : Var Γ₁ shcrStTy) (x : Var Γ₂ (.prod .nat .nat)) [Ext 
       (v spkPk) (v sig1) (scTSk (v s)) (scTPk (v s)) (v sig2) (.bool false)))
       (stSpks (scBase (v s)))))))
 
-def initGuardE {Γ : List PT} (opk : Bool) (x : Expr pqxdhOps Γ initQTy) : Expr pqxdhOps Γ .bool :=
+@[expose] def initGuardE {Γ : List PT} (opk : Bool) (x : Expr pqxdhOps Γ initQTy) : Expr pqxdhOps Γ .bool :=
   if opk then .not (isSomeE (buOpkB (.snd (.snd x)))) else isSomeE (buOpkB (.snd (.snd x)))
 
-def shcrInitiateC (opk : Bool) (s : Var Γ₁ shcrStTy) (x : Var Γ₂ initQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def shcrInitiateC (opk : Bool) (s : Var Γ₁ shcrStTy) (x : Var Γ₂ initQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ SCS :=
   .ite (initGuardE opk (v x)) (.ret (.pair rNone (v s))) <|
   letV (.snd (.snd (v x))) fun bu => letV (initSidE opk (v x)) fun sid =>
@@ -306,7 +306,7 @@ def shcrInitiateC (opk : Bool) (s : Var Γ₁ shcrStTy) (x : Var Γ₂ initQTy) 
   bindV (initFinishC true S K st sid bu uE ekSk sc) fun r =>
   .ret (shcrFinE (v s) (v sid) (v bu) (v sc) (v r))
 
-def shcrAcceptB (opk : Bool) (s : Var Γ₁ shcrStTy) (x : Var Γ₂ accQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def shcrAcceptB (opk : Bool) (s : Var Γ₁ shcrStTy) (x : Var Γ₂ accQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ SCS :=
   bindV (onBase s fun g => if opk then acceptOpkB true S K g x else acceptNoOpkB true S K g x)
     fun r =>
@@ -322,7 +322,7 @@ def shcrAcceptB (opk : Bool) (s : Var Γ₁ shcrStTy) (x : Var Γ₂ accQTy) [Ex
         (.pair (sbPqspkSk (.snd (v bE))) (.pair (hdKemCt (qHdr (v x))) (v ss)))))))
     (scRR (.snd (v r))))))
 
-def shcrPostC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def shcrPostC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ SCS :=
   caseSumV (v q) (fun u => onBase s fun g => initPrinB K g u) fun q =>
   caseSumV (v q) (fun u => onBase s fun g => corruptB K g u) fun q =>
@@ -339,7 +339,7 @@ def shcrPostC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ 
   caseSumV (v q) (fun sk => onBase s fun g => registerB g sk) fun x =>
   onBase s fun g => revealSpkB K g x
 
-def tryPauseC (opk : Bool) (s : Var Γ₁ shcrStTy) (x : Var Γ₂ initQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def tryPauseC (opk : Bool) (s : Var Γ₁ shcrStTy) (x : Var Γ₂ initQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ (.opt pauseTy) :=
   .ite (initGuardE opk (v x)) (.ret .none) <|
   letV (.snd (.snd (v x))) fun bu => letV (initSidE opk (v x)) fun sid =>
@@ -350,7 +350,7 @@ def tryPauseC (opk : Bool) (s : Var Γ₁ shcrStTy) (x : Var Γ₂ initQTy) [Ext
   .ret (.ite (.not (v ok)) .none
     (.ite (natEq (scCnt (v s)) (scSIdx (v s))) (.some (.pair (v sid) (.pair (v bu) (v uE)))) .none))
 
-def pauseCheckC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def pauseCheckC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ (.opt pauseTy) :=
   caseSumV (v q) (fun _ => .ret .none) fun q =>
   caseSumV (v q) (fun _ => .ret .none) fun q =>
@@ -360,13 +360,13 @@ def pauseCheckC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ�
   caseSumV (v q) (fun x => tryPauseC S K false s x) fun _ =>
   .ret .none
 
-def shcrPreC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def shcrPreC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ (.sum SCS (.prod (B 1568) (.prod pauseTy shcrStTy))) :=
   bindV (pauseCheckC S K s q) fun p =>
   caseOptV (v p) (bindV (shcrPostC S K s q) fun r => .ret (.inl (v r))) fun d =>
   .ret (.inr (.pair (buPqspkB (.fst (.snd (v d)))) (.pair (v d) (v s))))
 
-def shcrResumeC (sc : Var Γ₁ (.prod (B 32) (B 1568))) (d : Var Γ₂ pauseTy)
+@[expose] def shcrResumeC (sc : Var Γ₁ (.prod (B 32) (B 1568))) (d : Var Γ₂ pauseTy)
     (s : Var Γ₃ shcrStTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] : Comp pqxdhOps pqPrimIface Δ SCS :=
   letV (scBase (v s)) fun st => letV (.fst (v d)) fun sid =>
   letV (.fst (.snd (v d))) fun bu => letV (.snd (.snd (v d))) fun uE =>
@@ -375,7 +375,7 @@ def shcrResumeC (sc : Var Γ₁ (.prod (B 32) (B 1568))) (d : Var Γ₂ pauseTy)
   letV (shcrFinE (v s) (v sid) (v bu) (v sc) (v r)) fun out =>
   .ret (.pair (.fst (v out)) (scUpd (.snd (v out)) (chosen := buPqspkB (v bu))))
 
-def shcrExtractC (Q : Nat) (sc : Var Γ₁ (.prod (B 32) (B 1568))) (s : Var Γ₃ shcrStTy)
+@[expose] def shcrExtractC (Q : Nat) (sc : Var Γ₁ (.prod (B 32) (B 1568))) (s : Var Γ₃ shcrStTy)
     [Ext Γ₁ Δ] [Ext Γ₃ Δ] : Comp pqxdhOps pqPrimIface Δ (B 1568) :=
   bindV (findMV Q (scRR (v s)) fun r =>
     bindV (qKemDecaps (.pair (scTSk (v s)) (rrCt (v r)))) fun dec =>
@@ -387,7 +387,7 @@ def shcrExtractC (Q : Nat) (sc : Var Γ₁ (.prod (B 32) (B 1568))) (s : Var Γ�
 end ShCrBranches
 
 /-- Two-stage costed-DSL program for the `KeyInd` `KemShCr` reduction (`shcrReductionKeyIndCore`). -/
-def shcrKeyIndProg (S : Setup) (Q K : Nat) :
+@[expose] def shcrKeyIndProg (S : Setup) (Q K : Nat) :
     TwoStageCostedReduction pqxdhOps pqPrimIface (keyIndSpec S) (keyIndCodec S)
       (.prod (B 1568) (B 3168)) .unit .bool (B 1568) (.prod (B 32) (B 1568)) (B 1568) where
   σ := shcrStTy

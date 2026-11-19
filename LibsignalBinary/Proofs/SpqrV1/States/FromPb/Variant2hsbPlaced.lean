@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsb
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsb -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch0Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch2Placed
@@ -19,8 +19,9 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10b
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -58,7 +59,7 @@ set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
 
 attribute [local irreducible]
-  Program.fetch Program.externAt? Program.fnOff libsignalSessionCode
+  Program.fetch Program.externAt? Program.fnOff
   CryptoVerification.blkPC_333
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   extractLsb'_0_64_append extractLsb'_64_64_append

@@ -11,6 +11,7 @@ module
 
 public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.Defs
 public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `spqr::init_inner` (`Block 324`): Relocatable `[LibsignalPlacement]` Definitions and Specifications
@@ -19,7 +20,7 @@ Defines the relocatable `[LibsignalPlacement]` specifications `initInnerPlacedSp
 `initInnerPlacedSpecX`, `initInnerPlacedRoSpecX`, and `InitInnerPlacedOkX` on `Block 324`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,7 +46,7 @@ set_option maxHeartbeats 400000
 /-! ## 1. Relocatable `.rodata` Jump Table for `<States>::into_pb` (`Block 334`) -/
 
 /-- Read-only separation-logic assertion for the 22-byte jump table of `<States>::into_pb` (`Block 334`). -/
-def statesIntoPbJumpTablePlacedAt [LibsignalPlacement] : SepProp :=
+@[expose] def statesIntoPbJumpTablePlacedAt [LibsignalPlacement] : SepProp :=
   (lsρ "spqr:.rodata.<spqr::v1::chunked::states::States>::into_pb") ↦ᵣ statesIntoPbJumpTableBytes
 
 theorem lsro_statesIntoPbJumpTablePlacedAt [LibsignalPlacement] {s : State}
@@ -57,7 +58,7 @@ theorem lsro_statesIntoPbJumpTablePlacedAt [LibsignalPlacement] {s : State}
 
 /-- Relocatable specification of `<spqr::v1::chunked::states::States>::into_pb` (`Block 334`)
     carrying `statesIntoPbJumpTablePlacedAt` explicitly. -/
-def statesIntoPbPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
+@[expose] def statesIntoPbPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
     Spec (StatesIntoPbGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.stA⌝ ∗
@@ -74,7 +75,7 @@ def statesIntoPbPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress
   onPanic := fun _ s0 sf => statesIntoPbOnPanic s0 sf
 
 /-- Per-variant relocatable specification of `<States>::into_pb` (`Block 334`). -/
-def statesIntoPbVariantPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def statesIntoPbVariantPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (st : States spqrPolyApi (spqrAuthApi F)) : Spec (BitVec 64 × BitVec 64) where
   pre := fun ⟨out, stA⟩ s =>
     ⌜s.readReg64 .x8 = out ∧ s.readReg64 .x0 = stA⌝ ∗
@@ -92,7 +93,7 @@ def statesIntoPbVariantPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaC
 
 /-- Extended-stack relocatable specification of `<States>::into_pb` (`Block 334`)
     carrying `statesIntoPbJumpTablePlacedAt` explicitly. -/
-def statesIntoPbPlacedSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
+@[expose] def statesIntoPbPlacedSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
     Spec (StatesIntoPbGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.stA⌝ ∗
@@ -110,7 +111,7 @@ def statesIntoPbPlacedSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompres
 
 /-- `<States>::into_pb` (`Block 334`) meets `withLsCodeLoaded lsmpl (statesIntoPbPlacedSpecX A F)` on
     `libsignalSessionLib.blockProgram lsmpl 334 (Rust.withPanics ext)` at `lsmpl.base 334`. -/
-def StatesIntoPbPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def StatesIntoPbPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 334 (Rust.withPanics ext))
     (lsmpl.base 334)
@@ -120,7 +121,7 @@ def StatesIntoPbPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
 
 /-- Relocatable Hoare specification of `spqr::init_inner` (`Block 324`)
     carrying `statesIntoPbJumpTablePlacedAt` explicitly. -/
-def initInnerPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
+@[expose] def initInnerPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
     Spec InitInnerGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧
@@ -144,7 +145,7 @@ def initInnerPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
 
 /-- Extended-stack relocatable specification of `spqr::init_inner` (`Block 324`)
     carrying `statesIntoPbJumpTablePlacedAt` explicitly (`initInnerStackX = 3392`B). -/
-def initInnerPlacedSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
+@[expose] def initInnerPlacedSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
     Spec InitInnerGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧
@@ -168,7 +169,7 @@ def initInnerPlacedSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) 
 
 /-- Extended-stack relocatable specification of `spqr::init_inner` (`Block 324`)
     where `.rodata` is discharged from `LibsignalRoLoaded lsmpl s.mem`. -/
-def initInnerPlacedRoSpecX (A : RustAlloc) (F : ShaCompress) :
+@[expose] def initInnerPlacedRoSpecX (A : RustAlloc) (F : ShaCompress) :
     Spec InitInnerGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧
@@ -190,7 +191,7 @@ def initInnerPlacedRoSpecX (A : RustAlloc) (F : ShaCompress) :
 
 /-- `spqr::init_inner` (`Block 324`) meets `withLsCodeLoaded lsmpl (initInnerPlacedSpecX A F)` on
     `libsignalSessionLib.blockProgram lsmpl 324 (Rust.withPanics ext)` at `lsmpl.base 324`. -/
-def InitInnerPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def InitInnerPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 324 (Rust.withPanics ext))
     (lsmpl.base 324)

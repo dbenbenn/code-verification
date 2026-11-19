@@ -9,22 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.Instances
+public import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.Instances -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
-import GeneratedLean.LibsignalSession -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 
 /-!
 # Constant-Time Slice Equality with a Read-Only Second Operand
 
 Verifies `<[u8] as subtle::ConstantTimeEq>::ct_eq` (`0x3ecc4`, Block `213`) when the second 32-byte
-slice resides in read-only `.rodata` (`p2 ↦ᵣ k2`), discharging `CtEqROOk` on `tripleRatchetProgAt`
-and providing relocatable `[LibsignalPlacement]` contracts (`ct_eq_ro_placed_ok`,
-`ct_eq_ro_mem_placed_ok`, `ct_eq_cells_placed_ok`, `ct_eq_mem_placed_ok`, and
-`publicKey_eq_mem_placed_ok`).
+slice resides in read-only `.rodata` (`p2 ↦ᵣ k2`), providing relocatable `[LibsignalPlacement]`
+contracts (`ct_eq_ro_placed_ok`, `ct_eq_ro_mem_placed_ok`, `ct_eq_cells_placed_ok`,
+`ct_eq_mem_placed_ok`, and `publicKey_eq_mem_placed_ok`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,10 +31,10 @@ namespace CryptoVerification.LibsignalTripleRatchet.ConsumeMessageKeyTransfer
 open Arm64 ProofLib ProofLib.ProgramReflection
 open CryptoVerification.LibsignalSession CryptoVerification.LibsignalSession.FindReceiverChainIndex
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoGames.LibsignalSession
-open CryptoVerification.LibsignalTripleRatchet (ctEqSliceROSpec CtEqROOk)
+open CryptoVerification.LibsignalTripleRatchet (ctEqSliceROSpec)
 
 /-- Read-only analogue of `pointsToBytes32`: a 32-byte read-only slice as 32 `↦₈ᵣ` cells. -/
-def pointsToBytesRO32 (a : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def pointsToBytesRO32 (a : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   (a ↦₈ᵣ bs.getD 0 0#8) ∗ ((a + 1#64) ↦₈ᵣ bs.getD 1 0#8) ∗
   ((a + 2#64) ↦₈ᵣ bs.getD 2 0#8) ∗ ((a + 3#64) ↦₈ᵣ bs.getD 3 0#8) ∗
   ((a + 4#64) ↦₈ᵣ bs.getD 4 0#8) ∗ ((a + 5#64) ↦₈ᵣ bs.getD 5 0#8) ∗
@@ -86,52 +84,6 @@ attribute [local simp] byte_bne_zext32 ite_bne_byte_0_1 setWidth32_ite_1_0 setWi
   setWidth64_ite_1_0_32 setWidth64_ite_1_0_8 and64_ite_1_0 and64_1_ite_1_0 and64_mask32_ite_1_0
   and32_ite_1_0 and32_1_ite_1_0 Bool.and_assoc
 
-theorem ct_eq_ro_ok (b : BitVec 64) {H : String → Option (State → State)}
-    (h_bb : H "subtle::black_box::<u8>" = some blackBoxHook) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr "<[u8] as subtle::ConstantTimeEq>::ct_eq")
-      ctEqSliceROSpec := by
-  simp only [ctEqSliceROSpec]
-  have hext := externAt?_black_box b h_bb
-  dsimp only at hext
-  code_fetches libsignalSessionCode libsignalSessionBin b H (ls_lemma% fnOff "<[u8] as subtle::ConstantTimeEq>::ct_eq") (num% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq")) 840
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨p1, k1, p2, k2, sp⟩ := x
-  dsimp only at *
-  subst h_1 h_2 h_3
-  rw [pointsToBytes_eq_pointsToBytes32 (s0.readReg64 (Reg.gpr 0#5)) h_4,
-    pointsToBytesRO_eq_pointsToBytesRO32 (s0.readReg64 (Reg.gpr 1#5)) h]
-  unfold pointsToBytes32 pointsToBytesRO32
-  simp only [sepConj_assoc]
-  iterate 33 (wp_steps; wp_black_box hext)
-  rw [ct_eq_bool_32 h_4 h]
-  wp_done
-
-theorem ctEqRO_ok_trap (b : BitVec 64) (C : Crypto)
-    (abs : String → Option (State → State)) :
-    CryptoVerification.LibsignalTripleRatchet.CtEqROOk_trap b C abs :=
-  ct_eq_ro_ok b (tripleRatchetProgAt_blackBox_trap C abs)
-
-/-- `<[u8] as subtle::ConstantTimeEq>::ct_eq` meets `ctEqSliceROSpec` on `tripleRatchetProgAt`
-(`CtEqROOk`). -/
-theorem ctEqRO_ok (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : CtEqROOk b C ctl abs := by
-  unfold CtEqROOk CtEqROOkExt tripleRatchetProgAtExt
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr ctEqName]
-  exact subroutine_ok_kit_of_trTrap (ctEqRO_ok_trap b C abs)
-
-theorem ctEqRO_ok_ext (b : BitVec 64) {ext : String → Option (State → State)}
-    (h_bb : Rust.withPanics ext "subtle::black_box::<u8>" =
-      some CryptoVerification.LibsignalSession.blackBoxHook) :
-    subroutine_ok (libsignalSessionCode.rebase b (Rust.withPanics ext))
-      ((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr ctEqName)
-      ctEqSliceROSpec :=
-  ct_eq_ro_ok b h_bb
-
-/-! ## Stacked 32-bit `black_box` (`CliExt.blackBoxSpec`, `extHookStack = 16384`) -/
-
 attribute [local irreducible] Program.fnOff
 
 attribute [local simp, local wp_norm, local arm64_norm]
@@ -139,88 +91,21 @@ attribute [local simp, local wp_norm, local arm64_norm]
   setWidth8_setWidth32_ext32 setWidth8_and64_ext32 setWidth8_and32_ext32
   ite_one_zero_and_8_ext32 setWidth32_and_4294967297_ext32 ite_one_zero_and_one_8_ext32
   zeroExtend32_ite_one_zero_8_ext32 zeroExtend32_ite_prop_1_0_8_ext32
-  fnFrameBytes_ctEqName_ext32
 
 /-- Read-only second-slice `ct_eq` contract with `extHookStack32 = 16384` B below `ct_eq`'s
 48-byte frame, returning 32-bit `(sf.readReg64 .x0).setWidth 32 = (if k1 = k2 then 1#32 else 0#32)`. -/
-noncomputable def ctEqSliceROSpecExt :
+@[expose] def ctEqSliceROSpecExt :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (p1, k1, p2, k2, sp) s =>
     ⌜s.readReg64 .x0 = p1 ∧ s.readReg64 .x1 = p2 ∧ s.sp = sp ∧ k1.length = 32 ∧ k2.length = 32⌝ ∗
       (p1 ↦ₛ k1) ∗ (p2 ↦ᵣ k2) ∗
-      stackFrameFor libsignalSessionImage ctEqName sp ∗
+      stackFrameAt sp 48 ∗
       stackAt (sp - 48#64) extHookStack32
   post := fun (p1, k1, p2, k2, sp) s0 sf =>
     ⌜(sf.readReg64 .x0).setWidth 32 = (if k1 = k2 then 1#32 else 0#32) ∧ sf.trace = s0.trace⌝ ∗
       (p1 ↦ₛ k1) ∗ (p2 ↦ᵣ k2) ∗
-      stackFrameFor libsignalSessionImage ctEqName sp ∗
+      stackFrameAt sp 48 ∗
       stackAt (sp - 48#64) extHookStack32
-
-/-- Stacked 32-bit `black_box` hypothesis for `ct_eq` with read-only second operand on
-`tripleRatchetProgAtExt b ext`. -/
-def CtEqROOkExt32 (b : BitVec 64) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (CryptoVerification.LibsignalTripleRatchet.tripleRatchetProgAtExt b ext)
-    ((CryptoVerification.LibsignalTripleRatchet.tripleRatchetProgAtExt b ext).fnAddr ctEqName)
-    ctEqSliceROSpecExt
-
-set_option maxRecDepth 2000000 in
-set_option maxHeartbeats 1600000 in
-theorem ct_eq_ro_ok_ext32 (b : BitVec 64) {H : String → Option (State → State)}
-    (h_bb : HookSat H "subtle::black_box::<u8>" blackBoxSpec32) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr ctEqName)
-      ctEqSliceROSpecExt := by
-  simp only [ctEqSliceROSpecExt, ctEqName]
-  have hbb := black_box_ok_ext32 b h_bb
-  code_fetches libsignalSessionCode libsignalSessionBin b H
-    (ls_lemma% fnOff "<[u8] as subtle::ConstantTimeEq>::ct_eq")
-    (num% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq")) 840
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨p1, k1, p2, k2, sp⟩ := x
-  dsimp only at *
-  subst h_1 h_2 h_3
-  have hal_sub48 : ((s0.sp - 48#64) &&& 15#64 == 0#64) = true :=
-    sp_sub48_aligned_ext32 hsp_align
-  have h_slices :
-      pointsToBytes32 (s0.readReg64 (Reg.gpr 0#5)) k1 ∗
-        pointsToBytesRO32 (s0.readReg64 (Reg.gpr 1#5)) k2 =
-      ((s0.readReg64 (Reg.gpr 0#5)) ↦ₛ k1) ∗ ((s0.readReg64 (Reg.gpr 1#5)) ↦ᵣ k2) := by
-    rw [pointsToBytes_eq_pointsToBytes32 (s0.readReg64 (Reg.gpr 0#5)) h_4,
-        pointsToBytesRO_eq_pointsToBytesRO32 (s0.readReg64 (Reg.gpr 1#5)) h]
-  rw [ctEq_pre_rearrange_ext32]
-  conv =>
-    arg 4
-    rw [← h_slices]
-    unfold pointsToBytes32 pointsToBytesRO32
-    simp only [sepConj_assoc]
-  wp_steps
-  iterate 31 (wp_black_box_ext32 hbb hal_sub48; wp_steps)
-  wp_black_box_ext32 hbb hal_sub48
-  clear hx19_bb
-  wp_steps
-  conv =>
-    arg 5; ext sf P_f
-    rw [← zeroExtend32_ite_prop_1_0_8_ext32 (k1 = k2)]
-  refine step_blackBox_tail_ext32 hbb hsp_align
-    (by wp_norm_lhs) (by wp_norm_lhs) (by wp_norm_lhs) (by wp_norm_lhs)
-    (by wp_norm_lhs) (by wp_norm_lhs) (by wp_norm_lhs) (by wp_norm_lhs)
-    (by wp_norm_lhs) (by wp_norm_lhs) (by wp_norm_lhs) (by wp_norm_lhs)
-    (by wp_norm_lhs) (by wp_norm_lhs) (by wp_norm_lhs) (by wp_norm_lhs)
-    (by wp_norm_lhs) (by wp_norm_lhs) (ct_eq_bool_32_u8_ext32 h_4 h) ?_
-  rw [← h_slices]
-  unfold pointsToBytes32 pointsToBytesRO32
-  simp only [sepConj_assoc]
-
-/-- `<[u8] as subtle::ConstantTimeEq>::ct_eq` meets `ctEqSliceROSpecExt` on `tripleRatchetProgAtExt`
-under `HookSat ext "subtle::black_box::<u8>" blackBoxSpec32`. -/
-theorem ctEqRO_ok_ext32 (b : BitVec 64) {ext : String → Option (State → State)}
-    (h_bb : HookSat ext "subtle::black_box::<u8>" blackBoxSpec32) :
-    CtEqROOkExt32 b ext :=
-  ct_eq_ro_ok_ext32 b (hookSat_withPanics_blackBox h_bb)
-
-/-! ## Relocatable `[LibsignalPlacement]` Contracts (Block `213`) -/
 
 /-- Relocatable `[LibsignalPlacement]` contract for `<[u8] as ConstantTimeEq>::ct_eq` (Block `213`)
 with a read-only second operand (`ctEqSliceROSpec`). -/
@@ -282,7 +167,7 @@ theorem ct_eq_ro_mem_placed_ok_withLsCodeLoaded [LibsignalPlacement]
   subroutine_ok_withLsCodeLoaded_of_plain (ct_eq_ro_mem_placed_ok h_bb)
 
 /-- Image-free read-write `ct_eq` contract with `cells (sp - 48#64) 6` frame. -/
-def ctEqSliceCellsSpec :
+@[expose] def ctEqSliceCellsSpec :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (p1, k1, p2, k2, sp) s =>
     ⌜s.readReg64 .x0 = p1 ∧ s.readReg64 .x1 = p2 ∧ s.sp = sp ∧ k1.length = 32 ∧ k2.length = 32⌝ ∗
@@ -313,7 +198,7 @@ theorem ct_eq_cells_placed_ok [LibsignalPlacement] {H : String → Option (State
   wp_done
 
 /-- Image-free read-write `ct_eq` contract with `memRegion (sp - 48#64) 48` frame. -/
-def ctEqSliceMemSpec :
+@[expose] def ctEqSliceMemSpec :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (p1, k1, p2, k2, sp) s =>
     ⌜s.readReg64 .x0 = p1 ∧ s.readReg64 .x1 = p2 ∧ s.sp = sp ∧ k1.length = 32 ∧ k2.length = 32⌝ ∗

@@ -9,12 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `main` Hop M6 (`M+0xf70 .. M+0xfb4` + `free_args`, Block `617`)
@@ -24,7 +27,7 @@ under `[LibsignalPlacement]`: optional `write_stdout`, `out` and `input` buffer 
 `free_args` into `ExitKPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -146,7 +149,7 @@ theorem arrayAt_sliceRef_entails_memRegion64 :
     exact sepConj_mono (sliceRefAt_entails_memRegion buf pb.1 pb.2.length)
       (arrayAt_sliceRef_entails_memRegion64 ps (buf + 16#64) hlen')
 
-def ownedBytesRest (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def ownedBytesRest (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   if cap = 0 then emp
   else A.live ptr cap.toNat 1 ∗
     memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)
@@ -236,7 +239,7 @@ theorem argsBuf_free_ne (A : RustAlloc) {cap buf : BitVec 64}
   conv => rhs; rw [hsplit, memRegion_split buf (ps.length * 16) ((cap.toNat - ps.length) * 16) (by omega)]
   exact sepConj_mono_left (arrayAt_sliceRef_entails_memRegion64 ps buf (by omega))
 
-def m6CellsPlacedRest (fsp : BitVec 64) : SepProp :=
+@[expose] def m6CellsPlacedRest (fsp : BitVec 64) : SepProp :=
   memRegion (fsp + BitVec.ofNat 64 0) (0 - 0) ∗
     memRegion (fsp + BitVec.ofNat 64 8) (8 - 8) ∗
     memRegion (fsp + BitVec.ofNat 64 16) (16 - 16) ∗

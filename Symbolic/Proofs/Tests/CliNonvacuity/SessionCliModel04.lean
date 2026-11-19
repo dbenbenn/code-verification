@@ -10,8 +10,39 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Tests.CliNonvacuity.SessionDefs
+import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeModel
 import all Init.Data.Nat.Bitwise.Basic
 import all Init.Data.String.Defs
+import Batteries.Tactic.OpenPrivate
+import DY.ALaCarte.Basic
+import DY.ALaCarte.Ordering
+import DY.Actions.Network
+import DY.Actions.PersistentGlobalState
+import DY.Bytes.AttackerKnowledgeTheorem
+import DY.Meta.CombineMacro
+import DY.Trace.BaseAttackerKnowledge
+import DY.Trace.Basic
+import DY.Trace.Manipulation
+import Init.Data.List.Control
+import Init.Data.Range.Basic
+import Init.Data.Repr
+import Init.Data.String.Pattern.Basic
+import Init.Data.String.Pattern.String
+import Init.Data.String.Slice
+import Init.Data.String.TakeDrop
+import Lean
+import Mathlib.Algebra.Field.Defs
+import Mathlib.Data.List.Basic
+import Mathlib.LinearAlgebra.Lagrange
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.Tactic.Basic
+import Mathlib.Tactic.Push
+import Mathlib.Tactic.ToDual
+import Std.Data.DTreeMap.Internal.Operations
+import Std.Tactic.BVDecide.Normalize.Prop
+import VCVio.EvalDist.Monad.Bool
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.Prelude.Core
 
 /-!
 # Flat CLI Model Step Equations for Multi-Turn Sessions, Calls 0..4
@@ -22,7 +53,7 @@ checks in isolation without nested `unwrapOut` unfolding, together with universa
 `UnreachedPqxdhPrimitives` independence (`call0_model_X`, `call3_model_X`, `call4_model_X`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,7 +72,7 @@ open CryptoVerification.SignalSession
   (PqParty pqInitModel pqSendModel pqRecvPrekeyModel PqSessionMatches markKyberUsed)
 open Symbolic.Proofs.Tests.Refinement.Cli.NonVacuityHelpers (nvX)
 open Symbolic.Proofs.Tests.CliNonvacuity.Witness
-  (myParams myInterp myHooks_agree pt0 pt1 myKyberPubBytes mkRecords mkRecords_wf
+  (myParams myInterp mySigBytes mySigVec myHooks_agree pt0 pt1 myKyberPubBytes mkRecords mkRecords_wf
    mkRecords_opaqueBytes_6)
 open Symbolic.Proofs.Tests.CliNonvacuity.SessionDefs
   (r0 stA_init stB_init bE tapeInitBytes tapeInit cSend0 cSend1 rc3Bytes rc4Bytes rc3 rc4)
@@ -51,40 +82,40 @@ open Symbolic.Swarm.TRREF.SpqrSemOf (bytesToVec)
 
 /-! ## Key Vectors and Initial States (`stA0_cli`, `stB0_cli`, `bE_cli`) -/
 
-def idPubA_vec : List.Vector (BitVec 8) 32 :=
+@[expose] def idPubA_vec : List.Vector (BitVec 8) 32 :=
   ⟨[11#8] ++ List.replicate 24 1#8 ++ List.replicate 7 0#8, rfl⟩
 
-def idPubB_vec : List.Vector (BitVec 8) 32 :=
-  ⟨[11#8] ++ List.replicate 24 6#8 ++ List.replicate 7 0#8, rfl⟩
+@[expose] def idPubB_vec : List.Vector (BitVec 8) 32 :=
+  ⟨[19#8] ++ List.replicate 24 9#8 ++ List.replicate 7 0#8, rfl⟩
 
-def spkPubB_vec : List.Vector (BitVec 8) 32 :=
+@[expose] def spkPubB_vec : List.Vector (BitVec 8) 32 :=
   ⟨[19#8] ++ List.replicate 24 11#8 ++ List.replicate 7 0#8, rfl⟩
 
-def basePubA_vec : List.Vector (BitVec 8) 32 :=
+@[expose] def basePubA_vec : List.Vector (BitVec 8) 32 :=
   ⟨[27#8] ++ List.replicate 24 23#8 ++ List.replicate 7 0#8, rfl⟩
 
-def ephPubA1_vec : List.Vector (BitVec 8) 32 :=
+@[expose] def ephPubA1_vec : List.Vector (BitVec 8) 32 :=
   ⟨[35#8] ++ List.replicate 24 25#8 ++ List.replicate 7 0#8, rfl⟩
 
-def ephPrivA1_vec : List.Vector (BitVec 8) 32 :=
+@[expose] def ephPrivA1_vec : List.Vector (BitVec 8) 32 :=
   ⟨[24#8] ++ List.replicate 30 25#8 ++ [89#8], rfl⟩
 
-def ephPubB1_vec : List.Vector (BitVec 8) 32 :=
+@[expose] def ephPubB1_vec : List.Vector (BitVec 8) 32 :=
   ⟨[51#8] ++ List.replicate 24 46#8 ++ List.replicate 7 0#8, rfl⟩
 
-def ephPrivB1_vec : List.Vector (BitVec 8) 32 :=
+@[expose] def ephPrivB1_vec : List.Vector (BitVec 8) 32 :=
   ⟨[40#8] ++ List.replicate 30 46#8 ++ [110#8], rfl⟩
 
-def kpkPub_vec : List.Vector (BitVec 8) 1568 :=
+@[expose] def kpkPub_vec : List.Vector (BitVec 8) 1568 :=
   List.Vector.replicate 1568 0x77#8
 
-def kpkSec_vec : List.Vector (BitVec 8) 3168 :=
+@[expose] def kpkSec_vec : List.Vector (BitVec 8) 3168 :=
   ⟨List.replicate 1536 0#8 ++ List.replicate 1568 0x77#8 ++ List.replicate 64 0#8, rfl⟩
 
-def kyberCt_vec : List.Vector (BitVec 8) 1568 :=
+@[expose] def kyberCt_vec : List.Vector (BitVec 8) 1568 :=
   ⟨[161#8] ++ List.replicate 32 24#8 ++ List.replicate 32 119#8 ++ List.replicate 1503 0#8, rfl⟩
 
-def stA0_cli : PqParty where
+@[expose] def stA0_cli : PqParty where
   party := .A
   me := ⟨List.Vector.replicate 32 1#8, 10#32⟩
   peerId := some ⟨⟨idPubB_vec⟩⟩
@@ -94,32 +125,32 @@ def stA0_cli : PqParty where
   kyberOneTime := []
   kyberLastResort := []
 
-def stB0_cli : PqParty where
+@[expose] def stB0_cli : PqParty where
   party := .B
-  me := ⟨List.Vector.replicate 32 6#8, 20#32⟩
+  me := ⟨List.Vector.replicate 32 9#8, 20#32⟩
   peerId := some ⟨⟨idPubA_vec⟩⟩
   session := none
-  signed := [(1#32, ⟨List.Vector.replicate 32 11#8, List.Vector.replicate 64 0#8, 0⟩)]
+  signed := [(1#32, ⟨List.Vector.replicate 32 11#8, mySigVec, 0⟩)]
   oneTime := []
   kyberOneTime := []
   kyberLastResort :=
-    [(2#32, ⟨kpkPub_vec, kpkSec_vec, List.Vector.replicate 64 0#8, 0⟩, [])]
+    [(2#32, ⟨kpkPub_vec, kpkSec_vec, mySigVec, 0⟩, [])]
 
-def bE_cli : PreKeyBundleFields where
+@[expose] def bE_cli : PreKeyBundleFields where
   regId := 20#32
   spkId := 1#32
   spkPub := spkPubB_vec
-  spkSig := List.Vector.replicate 64 0#8
+  spkSig := mySigVec
   kpkId := 2#32
   kpkPub := kpkPub_vec
-  kpkSig := List.Vector.replicate 64 0#8
+  kpkSig := mySigVec
   idPub := idPubB_vec
   opk := none
 
 theorem keyToBytes32_rc3 : CryptoGames.HMAC.keyToBytes32 rc3 = rc3Bytes := by decide
 theorem keyToBytes32_rc4 : CryptoGames.HMAC.keyToBytes32 rc4 = rc4Bytes := by decide
 
-theorem r0_opaque5 : r0.opaqueBytes (setupPublic r0 5) = List.replicate 64 0#8 := by
+theorem r0_opaque5 : r0.opaqueBytes (setupPublic r0 5) = mySigBytes := by
   have h5 := (mkRecords_wf false).2.2.2.1
   dsimp only [r0, mkRecords, DY.Libsignal.Composed.Refinement.ProtocolSetup.spkSigTerm] at h5 ⊢
   split_ifs at h5 ⊢
@@ -129,7 +160,7 @@ theorem r0_opaque5 : r0.opaqueBytes (setupPublic r0 5) = List.replicate 64 0#8 :
 theorem r0_opaque6 : r0.opaqueBytes (setupPublic r0 6) = List.replicate 1568 0x77#8 :=
   mkRecords_opaqueBytes_6 false
 
-theorem r0_opaque7 : r0.opaqueBytes (setupPublic r0 7) = List.replicate 64 0#8 := by
+theorem r0_opaque7 : r0.opaqueBytes (setupPublic r0 7) = mySigBytes := by
   have h7 := (mkRecords_wf false).2.2.2.2.2.1
   dsimp only [r0, mkRecords, DY.Libsignal.Composed.Refinement.ProtocolSetup.pqpkSigTerm] at h7 ⊢
   split_ifs at h7 ⊢
@@ -165,12 +196,15 @@ private theorem bytesToVec_kpkSec :
   rw [hd]
   exact bytesToVec_toList_of_len (List.Vector.toList_length _)
 
+private theorem bytesToVec_mySigBytes : bytesToVec 64 mySigBytes = mySigVec :=
+  Subtype.ext (bytesToVec_toList_of_len rfl)
+
 theorem kp_idA :
     (keyPairOf myParams.C (List.Vector.replicate 32 1#8)).publicKey.bytes = idPubA_vec := by
   decide +kernel
 
 theorem kp_idB :
-    (keyPairOf myParams.C (List.Vector.replicate 32 6#8)).publicKey.bytes = idPubB_vec := by
+    (keyPairOf myParams.C (List.Vector.replicate 32 9#8)).publicKey.bytes = idPubB_vec := by
   decide +kernel
 
 theorem kp_spkB :
@@ -183,7 +217,7 @@ private theorem idPubA_eq :
   exact kp_idA
 
 private theorem idPubB_eq :
-    bytesToVec 32 (pubBytes myInterp (List.replicate 32 6#8)) = idPubB_vec := by
+    bytesToVec 32 (pubBytes myInterp (List.replicate 32 9#8)) = idPubB_vec := by
   rw [bytesToVec_pubBytes_myInterp (List.length_replicate ..), bytesToVec_replicate]
   exact kp_idB
 
@@ -207,7 +241,7 @@ theorem stA_init_eq : stA_init = stA0_cli := by
   have hid : idSecret r0 "alice" = List.replicate 32 1#8 := by
     unfold idSecret DY.Libsignal.Composed.Refinement.ProtocolSetup.ikASecBytes
     simp only [ha, ↓reduceIte, r0_secretBytes_eq]; rfl
-  have hpid : peerIdSecret r0 "alice" = List.replicate 32 6#8 := by
+  have hpid : peerIdSecret r0 "alice" = List.replicate 32 9#8 := by
     unfold peerIdSecret DY.Libsignal.Composed.Refinement.ProtocolSetup.ikBSecBytes
     simp only [ha, ↓reduceIte, r0_secretBytes_eq]; rfl
   have hp : partyOf r0 "alice" = .A := rfl
@@ -218,7 +252,7 @@ theorem stA_init_eq : stA_init = stA0_cli := by
 theorem stB_init_eq : stB_init = stB0_cli := by
   unfold stB_init initPqParty stB0_cli kpkPub_vec
   have hne : ("bob" : String) ≠ r0.alice := by show "bob" ≠ "alice"; decide
-  have hid : idSecret r0 "bob" = List.replicate 32 6#8 := by
+  have hid : idSecret r0 "bob" = List.replicate 32 9#8 := by
     unfold idSecret DY.Libsignal.Composed.Refinement.ProtocolSetup.ikBSecBytes
     simp only [hne, ↓reduceIte, r0_secretBytes_eq]; rfl
   have hpid : peerIdSecret r0 "bob" = List.replicate 32 1#8 := by
@@ -233,11 +267,12 @@ theorem stB_init_eq : stB_init = stB0_cli := by
     (show r0.withOpk = false from rfl),
     (show r0.spkId = 1#32 from rfl),
     (show r0.kpkId = 2#32 from rfl),
-    hsec2, r0_opaque5, r0_opaque6, r0_opaque7, bytesToVec_kpkSec, idPubA_eq, bytesToVec_replicate]
+    hsec2, r0_opaque5, r0_opaque6, r0_opaque7, bytesToVec_kpkSec, idPubA_eq,
+    bytesToVec_replicate, bytesToVec_mySigBytes]
 
 theorem bE_eq : bE = bE_cli := by
   unfold bE bE_cli kpkPub_vec
-  have hsec1 : secretBytes r0 1 = List.replicate 32 6#8 := by
+  have hsec1 : secretBytes r0 1 = List.replicate 32 9#8 := by
     rw [r0_secretBytes_eq]; rfl
   have hsec2 : secretBytes r0 2 = List.replicate 32 11#8 := by
     rw [r0_secretBytes_eq]; rfl
@@ -245,94 +280,94 @@ theorem bE_eq : bE = bE_cli := by
     (show r0.spkId = 1#32 from rfl),
     (show r0.kpkId = 2#32 from rfl),
     hsec1, hsec2, r0_opaque5, r0_opaque6, r0_opaque7,
-    idPubB_eq, spkPubB_eq, bytesToVec_replicate]
+    idPubB_eq, spkPubB_eq, bytesToVec_replicate, bytesToVec_mySigBytes]
 
 /-! ## Closed-Form States and Messages for Calls 0..4 -/
 
-def x_A : RecordExtras :=
+@[expose] def x_A : RecordExtras :=
   { pending := ⟨none, 1#32, ⟨basePubA_vec⟩, 0#64⟩
     kyber := some ⟨2#32, [8#8] ++ kyberCt_vec.1⟩
     remoteRegistrationId := 20#32
     localRegistrationId := 10#32
     aliceBaseKey := [5#8] ++ basePubA_vec.1 }
 
-def x_B : RecordExtras :=
+@[expose] def x_B : RecordExtras :=
   { pending := ⟨none, 0#32, ⟨basePubA_vec⟩, 0#64⟩
     kyber := none
     remoteRegistrationId := 10#32
     localRegistrationId := 20#32
     aliceBaseKey := [5#8] ++ basePubA_vec.1 }
 
-def rk_A1 : BitVec 256 :=
-  0x9b7845d69807b8241a3122595a64270bf3bc0a6f17cfb0f595c469ce60e5e0d4#256
-def sck_A1 : BitVec 256 :=
-  0x246bb4190f60e2c3676076e2d82274dd4ed6bf9426b2ee80e8e62f66e22ca43#256
-def sck_A2 : BitVec 256 :=
-  0xeaac70d8a9f9c96e923f532733b80ad0e302175ab0fdd431e2fcf90a5a8c7d8a#256
-def sck_A3 : BitVec 256 :=
-  0xed39e2b1ed41bc153619e44220184550fc355f51c6fc4203c8abc465a4bc2856#256
-def rck_A0 : BitVec 256 :=
-  0xa71702ed76c97e891f3a9ae769414a4936a4119a2b6696cd600ab7789b0cd08d#256
+@[expose] def rk_A1 : BitVec 256 :=
+  0xfdb888904f1a367fc174f4659658580c763ba158762cbc5b0252da3cc448edac#256
+@[expose] def sck_A1 : BitVec 256 :=
+  0xc2c1f5c5a8d431d07ea977dfc0fcbe08112d70bb0417841beb1d00ba63f50a96#256
+@[expose] def sck_A2 : BitVec 256 :=
+  0xaa5e60529f6a3b3c7cda3a8cc5bcd6a5c929511ef7652cd9eaaa2fac3f398b68#256
+@[expose] def sck_A3 : BitVec 256 :=
+  0x5dd0eddedcf675024cd6fde3750167619d982d98e7e4755f50140ab3c2b417a7#256
+@[expose] def rck_A0 : BitVec 256 :=
+  0xa886fc2f2cec35c909c03f0d7fcfbcd12ae8993676557c8f408b9ba3a7459cb8#256
 
-def rk_B1 : BitVec 256 :=
-  0x6d78dda759e69e46e728e19603586a1aeb368482c69902a8b5fd661bb7fc8256#256
-def sck_B1 : BitVec 256 :=
-  0x5af28a08d87036667f1fda19854e39c37d8972e145fa5496ce2990150eaa4b61#256
+@[expose] def rk_B1 : BitVec 256 :=
+  0x7fb71aa800bdaa0dbb37de6d53b37a3edc209417b90a792ae252c62e8e4e440f#256
+@[expose] def sck_B1 : BitVec 256 :=
+  0x7593dd6d4622b1c06b6670dd81c8a7202144992c94cc3a89c2d63acce143c6ed#256
 
-def pqA_epoch (idx : BitVec 8) : HwBytes :=
+@[expose] def pqA_epoch (idx : BitVec 8) : HwBytes :=
   [26#8, 185#8, 29#8, 18#8, 182#8, 29#8, 10#8, 174#8, 28#8, 8#8, 1#8, 18#8, 68#8, 10#8, 32#8,
-   84#8, 23#8, 108#8, 27#8, 237#8, 144#8, 216#8, 24#8, 60#8, 142#8, 216#8, 7#8, 82#8, 250#8, 7#8,
-   63#8, 224#8, 207#8, 43#8, 209#8, 29#8, 78#8, 172#8, 43#8, 156#8, 25#8, 146#8, 51#8, 175#8,
-   93#8, 11#8, 220#8, 18#8, 32#8, 203#8, 136#8, 114#8, 125#8, 69#8, 175#8, 141#8, 50#8, 39#8,
-   144#8, 231#8, 254#8, 49#8, 144#8, 181#8, 205#8, 47#8, 242#8, 73#8, 194#8, 73#8, 114#8, 136#8,
-   21#8, 203#8, 102#8, 20#8, 163#8, 108#8, 127#8, 216#8, 202#8, 26#8, 128#8, 9#8] ++
+   37#8, 53#8, 118#8, 78#8, 117#8, 200#8, 225#8, 205#8, 58#8, 10#8, 214#8, 21#8, 123#8, 7#8, 109#8,
+   194#8, 37#8, 222#8, 108#8, 179#8, 189#8, 119#8, 76#8, 24#8, 183#8, 215#8, 192#8, 6#8, 211#8, 159#8,
+   29#8, 61#8, 18#8, 32#8, 234#8, 76#8, 138#8, 156#8, 98#8, 206#8, 244#8, 42#8, 26#8, 191#8, 238#8,
+   89#8, 16#8, 181#8, 73#8, 80#8, 180#8, 140#8, 25#8, 113#8, 251#8, 214#8, 237#8, 69#8, 24#8, 76#8,
+   178#8, 134#8, 236#8, 222#8, 122#8, 209#8, 26#8, 128#8, 9#8] ++
     List.replicate 1152 0#8 ++
     [34#8, 224#8, 18#8] ++ List.replicate 2400 0#8 ++
     [18#8, 130#8, 1#8, 8#8, idx,
-     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 93#8, 130#8,
-     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 204#8, 1#8,
-     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 16#8, 183#8,
-     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 82#8, 210#8,
-     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 106#8, 68#8,
-     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 139#8, 102#8,
-     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 30#8, 119#8,
-     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 158#8, 197#8,
-     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 187#8, 212#8,
-     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 215#8, 156#8,
-     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 41#8, 140#8,
-     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 254#8, 17#8,
-     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 141#8, 227#8,
-     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 26#8, 63#8,
-     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 100#8, 77#8,
-     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 229#8, 8#8]
+     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 251#8, 40#8,
+     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 57#8, 144#8,
+     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 36#8, 129#8,
+     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 135#8, 165#8,
+     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 227#8, 15#8,
+     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 255#8, 175#8,
+     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 72#8, 171#8,
+     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 217#8, 211#8,
+     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 237#8, 163#8,
+     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 182#8, 46#8,
+     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 179#8, 40#8,
+     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 203#8, 67#8,
+     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 16#8, 11#8,
+     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 71#8, 54#8,
+     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 134#8, 213#8,
+     18#8, 6#8, 0#8, 0#8, 0#8, 0#8, 134#8, 121#8]
 
-def pqA2_state : HwBytes :=
-  [10#8, 38#8, 10#8, 32#8, 200#8, 226#8, 5#8, 241#8, 183#8, 24#8, 161#8, 60#8, 5#8, 66#8, 175#8,
-   146#8, 208#8, 130#8, 71#8, 122#8, 111#8, 235#8, 63#8, 179#8, 156#8, 54#8, 191#8, 224#8, 224#8,
-   55#8, 170#8, 208#8, 218#8, 73#8, 33#8, 214#8, 24#8, 1#8, 34#8, 0#8, 18#8, 112#8, 26#8, 74#8,
-   10#8, 36#8, 8#8, 1#8, 18#8, 32#8, 151#8, 65#8, 145#8, 224#8, 133#8, 231#8, 194#8, 225#8, 43#8,
-   45#8, 121#8, 215#8, 243#8, 163#8, 231#8, 164#8, 143#8, 194#8, 9#8, 241#8, 94#8, 138#8, 20#8,
-   28#8, 217#8, 95#8, 137#8, 193#8, 127#8, 59#8, 56#8, 241#8, 18#8, 34#8, 18#8, 32#8, 103#8,
-   251#8, 177#8, 25#8, 59#8, 142#8, 226#8, 7#8, 196#8, 240#8, 237#8, 225#8, 40#8, 28#8, 35#8,
-   94#8, 225#8, 252#8, 229#8, 240#8, 165#8, 179#8, 27#8, 194#8, 206#8, 203#8, 16#8, 247#8, 109#8,
-   147#8, 34#8, 232#8, 34#8, 32#8, 181#8, 221#8, 166#8, 22#8, 197#8, 249#8, 63#8, 108#8, 136#8,
-   204#8, 230#8, 39#8, 38#8, 11#8, 160#8, 75#8, 184#8, 114#8, 211#8, 42#8, 209#8, 147#8, 69#8,
-   106#8, 4#8, 255#8, 1#8, 224#8, 239#8, 192#8, 86#8, 235#8, 50#8, 0#8] ++ pqA_epoch 1#8
+@[expose] def pqA2_state : HwBytes :=
+  [10#8, 38#8, 10#8, 32#8, 206#8, 116#8, 228#8, 26#8, 221#8, 0#8, 191#8, 176#8, 7#8, 72#8, 181#8,
+   72#8, 102#8, 171#8, 192#8, 16#8, 5#8, 123#8, 163#8, 130#8, 22#8, 26#8, 248#8, 67#8, 95#8, 209#8,
+   79#8, 123#8, 185#8, 7#8, 66#8, 129#8, 24#8, 1#8, 34#8, 0#8, 18#8, 112#8, 26#8, 74#8, 10#8,
+   36#8, 8#8, 1#8, 18#8, 32#8, 121#8, 211#8, 190#8, 203#8, 176#8, 185#8, 33#8, 222#8, 236#8, 185#8,
+   116#8, 252#8, 141#8, 225#8, 174#8, 80#8, 24#8, 65#8, 115#8, 235#8, 147#8, 225#8, 18#8, 229#8, 159#8,
+   121#8, 107#8, 78#8, 84#8, 7#8, 237#8, 60#8, 18#8, 34#8, 18#8, 32#8, 83#8, 200#8, 144#8, 230#8,
+   168#8, 150#8, 39#8, 122#8, 143#8, 237#8, 5#8, 87#8, 117#8, 177#8, 82#8, 210#8, 131#8, 32#8, 247#8,
+   141#8, 197#8, 117#8, 75#8, 72#8, 105#8, 135#8, 60#8, 224#8, 71#8, 227#8, 215#8, 188#8, 34#8, 32#8,
+   127#8, 87#8, 1#8, 203#8, 119#8, 138#8, 181#8, 52#8, 5#8, 60#8, 33#8, 37#8, 219#8, 194#8, 234#8,
+   28#8, 2#8, 117#8, 73#8, 8#8, 127#8, 5#8, 76#8, 140#8, 215#8, 255#8, 94#8, 58#8, 137#8, 206#8,
+   141#8, 94#8, 50#8, 0#8] ++ pqA_epoch 1#8
 
-def pqA3_state : HwBytes :=
-  [10#8, 38#8, 10#8, 32#8, 200#8, 226#8, 5#8, 241#8, 183#8, 24#8, 161#8, 60#8, 5#8, 66#8, 175#8,
-   146#8, 208#8, 130#8, 71#8, 122#8, 111#8, 235#8, 63#8, 179#8, 156#8, 54#8, 191#8, 224#8, 224#8,
-   55#8, 170#8, 208#8, 218#8, 73#8, 33#8, 214#8, 24#8, 1#8, 34#8, 0#8, 18#8, 112#8, 26#8, 74#8,
-   10#8, 36#8, 8#8, 2#8, 18#8, 32#8, 231#8, 196#8, 189#8, 214#8, 120#8, 18#8, 79#8, 223#8, 65#8,
-   60#8, 55#8, 86#8, 177#8, 8#8, 227#8, 107#8, 147#8, 122#8, 109#8, 53#8, 209#8, 127#8, 229#8,
-   199#8, 238#8, 177#8, 196#8, 165#8, 224#8, 160#8, 125#8, 62#8, 18#8, 34#8, 18#8, 32#8, 103#8,
-   251#8, 177#8, 25#8, 59#8, 142#8, 226#8, 7#8, 196#8, 240#8, 237#8, 225#8, 40#8, 28#8, 35#8,
-   94#8, 225#8, 252#8, 229#8, 240#8, 165#8, 179#8, 27#8, 194#8, 206#8, 203#8, 16#8, 247#8, 109#8,
-   147#8, 34#8, 232#8, 34#8, 32#8, 181#8, 221#8, 166#8, 22#8, 197#8, 249#8, 63#8, 108#8, 136#8,
-   204#8, 230#8, 39#8, 38#8, 11#8, 160#8, 75#8, 184#8, 114#8, 211#8, 42#8, 209#8, 147#8, 69#8,
-   106#8, 4#8, 255#8, 1#8, 224#8, 239#8, 192#8, 86#8, 235#8, 50#8, 0#8] ++ pqA_epoch 2#8
+@[expose] def pqA3_state : HwBytes :=
+  [10#8, 38#8, 10#8, 32#8, 206#8, 116#8, 228#8, 26#8, 221#8, 0#8, 191#8, 176#8, 7#8, 72#8, 181#8,
+   72#8, 102#8, 171#8, 192#8, 16#8, 5#8, 123#8, 163#8, 130#8, 22#8, 26#8, 248#8, 67#8, 95#8, 209#8,
+   79#8, 123#8, 185#8, 7#8, 66#8, 129#8, 24#8, 1#8, 34#8, 0#8, 18#8, 112#8, 26#8, 74#8, 10#8,
+   36#8, 8#8, 2#8, 18#8, 32#8, 81#8, 205#8, 52#8, 233#8, 160#8, 115#8, 21#8, 65#8, 3#8, 124#8,
+   37#8, 0#8, 60#8, 187#8, 126#8, 224#8, 62#8, 36#8, 159#8, 35#8, 11#8, 169#8, 134#8, 182#8, 67#8,
+   111#8, 49#8, 142#8, 149#8, 26#8, 126#8, 233#8, 18#8, 34#8, 18#8, 32#8, 83#8, 200#8, 144#8, 230#8,
+   168#8, 150#8, 39#8, 122#8, 143#8, 237#8, 5#8, 87#8, 117#8, 177#8, 82#8, 210#8, 131#8, 32#8, 247#8,
+   141#8, 197#8, 117#8, 75#8, 72#8, 105#8, 135#8, 60#8, 224#8, 71#8, 227#8, 215#8, 188#8, 34#8, 32#8,
+   127#8, 87#8, 1#8, 203#8, 119#8, 138#8, 181#8, 52#8, 5#8, 60#8, 33#8, 37#8, 219#8, 194#8, 234#8,
+   28#8, 2#8, 117#8, 73#8, 8#8, 127#8, 5#8, 76#8, 140#8, 215#8, 255#8, 94#8, 58#8, 137#8, 206#8,
+   141#8, 94#8, 50#8, 0#8] ++ pqA_epoch 2#8
 
-def g_A1 : GhostState HwBytes :=
+@[expose] def g_A1 : GhostState HwBytes :=
   ⟨.A,
     { sessionVersion := 4#32
       localIdentity := ⟨⟨idPubA_vec⟩⟩
@@ -343,41 +378,40 @@ def g_A1 : GhostState HwBytes :=
       receiverChains := [⟨⟨spkPubB_vec⟩, some ⟨rck_A0, 0#32⟩, []⟩]
       pendingPreKey := true
       pqRatchetState :=
-        [10#8, 38#8, 10#8, 32#8, 200#8, 226#8, 5#8, 241#8, 183#8, 24#8, 161#8, 60#8, 5#8, 66#8,
-         175#8, 146#8, 208#8, 130#8, 71#8, 122#8, 111#8, 235#8, 63#8, 179#8, 156#8, 54#8, 191#8,
-         224#8, 224#8, 55#8, 170#8, 208#8, 218#8, 73#8, 33#8, 214#8, 24#8, 1#8, 34#8, 0#8, 26#8,
-         76#8, 10#8, 74#8, 10#8, 72#8, 8#8, 1#8, 18#8, 68#8, 10#8, 32#8, 84#8, 23#8, 108#8, 27#8,
-         237#8, 144#8, 216#8, 24#8, 60#8, 142#8, 216#8, 7#8, 82#8, 250#8, 7#8, 63#8, 224#8, 207#8,
-         43#8, 209#8, 29#8, 78#8, 172#8, 43#8, 156#8, 25#8, 146#8, 51#8, 175#8, 93#8, 11#8, 220#8,
-         18#8, 32#8, 203#8, 136#8, 114#8, 125#8, 69#8, 175#8, 141#8, 50#8, 39#8, 144#8, 231#8,
-         254#8, 49#8, 144#8, 181#8, 205#8, 47#8, 242#8, 73#8, 194#8, 73#8, 114#8, 136#8, 21#8,
-         203#8, 102#8, 20#8, 163#8, 108#8, 127#8, 216#8, 202#8] },
+        [10#8, 38#8, 10#8, 32#8, 206#8, 116#8, 228#8, 26#8, 221#8, 0#8, 191#8, 176#8, 7#8, 72#8, 181#8,
+         72#8, 102#8, 171#8, 192#8, 16#8, 5#8, 123#8, 163#8, 130#8, 22#8, 26#8, 248#8, 67#8, 95#8, 209#8,
+         79#8, 123#8, 185#8, 7#8, 66#8, 129#8, 24#8, 1#8, 34#8, 0#8, 26#8, 76#8, 10#8, 74#8, 10#8,
+         72#8, 8#8, 1#8, 18#8, 68#8, 10#8, 32#8, 37#8, 53#8, 118#8, 78#8, 117#8, 200#8, 225#8, 205#8,
+         58#8, 10#8, 214#8, 21#8, 123#8, 7#8, 109#8, 194#8, 37#8, 222#8, 108#8, 179#8, 189#8, 119#8, 76#8,
+         24#8, 183#8, 215#8, 192#8, 6#8, 211#8, 159#8, 29#8, 61#8, 18#8, 32#8, 234#8, 76#8, 138#8, 156#8,
+         98#8, 206#8, 244#8, 42#8, 26#8, 191#8, 238#8, 89#8, 16#8, 181#8, 73#8, 80#8, 180#8, 140#8, 25#8,
+         113#8, 251#8, 214#8, 237#8, 69#8, 24#8, 76#8, 178#8, 134#8, 236#8, 222#8, 122#8, 209#8] },
     0, [0]⟩
 
-def g_A2 : GhostState HwBytes :=
+@[expose] def g_A2 : GhostState HwBytes :=
   ⟨.A,
     { g_A1.session with
       senderChain := some ⟨⟨⟨ephPubA1_vec⟩, ⟨ephPrivA1_vec⟩⟩, ⟨sck_A2, 1#32⟩⟩
       pqRatchetState := pqA2_state },
     0, [0]⟩
 
-def g_A3 : GhostState HwBytes :=
+@[expose] def g_A3 : GhostState HwBytes :=
   ⟨.A,
     { g_A1.session with
       senderChain := some ⟨⟨⟨ephPubA1_vec⟩, ⟨ephPrivA1_vec⟩⟩, ⟨sck_A3, 2#32⟩⟩
       pqRatchetState := pqA3_state },
     0, [0]⟩
 
-def stA1_cli : PqParty := { stA0_cli with peerId := some ⟨⟨idPubB_vec⟩⟩, session := some (x_A, g_A1) }
-def stA2_cli : PqParty := { stA0_cli with peerId := some ⟨⟨idPubB_vec⟩⟩, session := some (x_A, g_A2) }
-def stA3_cli : PqParty := { stA0_cli with peerId := some ⟨⟨idPubB_vec⟩⟩, session := some (x_A, g_A3) }
+@[expose] def stA1_cli : PqParty := { stA0_cli with peerId := some ⟨⟨idPubB_vec⟩⟩, session := some (x_A, g_A1) }
+@[expose] def stA2_cli : PqParty := { stA0_cli with peerId := some ⟨⟨idPubB_vec⟩⟩, session := some (x_A, g_A2) }
+@[expose] def stA3_cli : PqParty := { stA0_cli with peerId := some ⟨⟨idPubB_vec⟩⟩, session := some (x_A, g_A3) }
 
-def pkAddrField : HwBytes :=
+@[expose] def pkAddrField : HwBytes :=
   [50#8, 36#8, 0#8, 138#8, 111#8, 28#8, 46#8, 59#8, 77#8, 78#8, 95#8, 154#8, 11#8, 28#8, 45#8,
    62#8, 79#8, 90#8, 107#8, 1#8, 0#8, 93#8, 62#8, 47#8, 16#8, 122#8, 139#8, 76#8, 157#8, 142#8,
    15#8, 161#8, 178#8, 195#8, 212#8, 229#8, 246#8, 1#8]
 
-def pkMsg0 : PreKeyMessageFields where
+@[expose] def pkMsg0 : PreKeyMessageFields where
   regId := 10#32
   opkId := none
   spkId := 1#32
@@ -387,12 +421,11 @@ def pkMsg0 : PreKeyMessageFields where
   idPub := idPubA_vec
   inner :=
     [68#8, 10#8, 33#8, 5#8] ++ ephPubA1_vec.1 ++
-      [16#8, 0#8, 24#8, 0#8, 34#8, 16#8, 126#8, 2#8, 71#8, 242#8, 213#8, 6#8, 230#8, 110#8,
-       16#8, 104#8, 140#8, 236#8, 103#8, 26#8, 124#8, 144#8, 42#8, 37#8, 1#8, 1#8, 1#8, 1#8] ++
+      [16#8, 0#8, 24#8, 0#8, 34#8, 16#8, 233#8, 96#8, 187#8, 4#8, 102#8, 28#8, 137#8, 196#8, 99#8, 19#8, 214#8, 54#8, 134#8, 27#8, 246#8, 136#8, 42#8, 37#8, 1#8, 1#8, 1#8, 1#8] ++
       List.replicate 33 0#8 ++ pkAddrField ++
-      [230#8, 100#8, 190#8, 150#8, 227#8, 197#8, 188#8, 106#8]
+      [126#8, 167#8, 84#8, 76#8, 55#8, 202#8, 228#8, 115#8]
 
-def pkMsg1 : PreKeyMessageFields where
+@[expose] def pkMsg1 : PreKeyMessageFields where
   regId := 10#32
   opkId := none
   spkId := 1#32
@@ -402,33 +435,31 @@ def pkMsg1 : PreKeyMessageFields where
   idPub := idPubA_vec
   inner :=
     [68#8, 10#8, 33#8, 5#8] ++ ephPubA1_vec.1 ++
-      [16#8, 1#8, 24#8, 0#8, 34#8, 16#8, 185#8, 108#8, 101#8, 235#8, 153#8, 103#8, 202#8, 216#8,
-       27#8, 48#8, 219#8, 47#8, 76#8, 75#8, 11#8, 50#8, 42#8, 37#8, 1#8, 1#8, 2#8, 1#8, 1#8] ++
+      [16#8, 1#8, 24#8, 0#8, 34#8, 16#8, 140#8, 166#8, 99#8, 245#8, 194#8, 250#8, 207#8, 71#8, 201#8, 174#8, 46#8, 221#8, 56#8, 131#8, 156#8, 37#8, 42#8, 37#8, 1#8, 1#8, 2#8, 1#8, 1#8] ++
       List.replicate 32 0#8 ++ pkAddrField ++
-      [245#8, 130#8, 109#8, 233#8, 52#8, 106#8, 68#8, 0#8]
+      [5#8, 118#8, 255#8, 170#8, 17#8, 13#8, 97#8, 12#8]
 
-def wire0 : HwBytes := wirePrekey :: pkMsg0.bytes
-def wire1 : HwBytes := wirePrekey :: pkMsg1.bytes
+@[expose] def wire0 : HwBytes := wirePrekey :: pkMsg0.bytes
+@[expose] def wire1 : HwBytes := wirePrekey :: pkMsg1.bytes
 
-def pqB2_state : HwBytes :=
-  [18#8, 114#8, 8#8, 1#8, 26#8, 74#8, 10#8, 34#8, 18#8, 32#8, 103#8, 251#8, 177#8, 25#8, 59#8,
-   142#8, 226#8, 7#8, 196#8, 240#8, 237#8, 225#8, 40#8, 28#8, 35#8, 94#8, 225#8, 252#8, 229#8,
-   240#8, 165#8, 179#8, 27#8, 194#8, 206#8, 203#8, 16#8, 247#8, 109#8, 147#8, 34#8, 232#8, 18#8,
-   36#8, 8#8, 2#8, 18#8, 32#8, 231#8, 196#8, 189#8, 214#8, 120#8, 18#8, 79#8, 223#8, 65#8, 60#8,
-   55#8, 86#8, 177#8, 8#8, 227#8, 107#8, 147#8, 122#8, 109#8, 53#8, 209#8, 127#8, 229#8, 199#8,
-   238#8, 177#8, 196#8, 165#8, 224#8, 160#8, 125#8, 62#8, 34#8, 32#8, 181#8, 221#8, 166#8, 22#8,
-   197#8, 249#8, 63#8, 108#8, 136#8, 204#8, 230#8, 39#8, 38#8, 11#8, 160#8, 75#8, 184#8, 114#8,
-   211#8, 42#8, 209#8, 147#8, 69#8, 106#8, 4#8, 255#8, 1#8, 224#8, 239#8, 192#8, 86#8, 235#8,
-   50#8, 0#8, 26#8, 244#8, 1#8, 50#8, 241#8, 1#8, 10#8, 72#8, 8#8, 1#8, 18#8, 68#8, 10#8, 32#8,
-   84#8, 23#8, 108#8, 27#8, 237#8, 144#8, 216#8, 24#8, 60#8, 142#8, 216#8, 7#8, 82#8, 250#8, 7#8,
-   63#8, 224#8, 207#8, 43#8, 209#8, 29#8, 78#8, 172#8, 43#8, 156#8, 25#8, 146#8, 51#8, 175#8,
-   93#8, 11#8, 220#8, 18#8, 32#8, 203#8, 136#8, 114#8, 125#8, 69#8, 175#8, 141#8, 50#8, 39#8,
-   144#8, 231#8, 254#8, 49#8, 144#8, 181#8, 205#8, 47#8, 242#8, 73#8, 194#8, 73#8, 114#8, 136#8,
-   21#8, 203#8, 102#8, 20#8, 163#8, 108#8, 127#8, 216#8, 202#8, 18#8, 164#8, 1#8, 8#8, 48#8,
-   16#8, 16#8] ++
+@[expose] def pqB2_state : HwBytes :=
+  [18#8, 114#8, 8#8, 1#8, 26#8, 74#8, 10#8, 34#8, 18#8, 32#8, 83#8, 200#8, 144#8, 230#8, 168#8,
+   150#8, 39#8, 122#8, 143#8, 237#8, 5#8, 87#8, 117#8, 177#8, 82#8, 210#8, 131#8, 32#8, 247#8, 141#8,
+   197#8, 117#8, 75#8, 72#8, 105#8, 135#8, 60#8, 224#8, 71#8, 227#8, 215#8, 188#8, 18#8, 36#8, 8#8,
+   2#8, 18#8, 32#8, 81#8, 205#8, 52#8, 233#8, 160#8, 115#8, 21#8, 65#8, 3#8, 124#8, 37#8, 0#8,
+   60#8, 187#8, 126#8, 224#8, 62#8, 36#8, 159#8, 35#8, 11#8, 169#8, 134#8, 182#8, 67#8, 111#8, 49#8,
+   142#8, 149#8, 26#8, 126#8, 233#8, 34#8, 32#8, 127#8, 87#8, 1#8, 203#8, 119#8, 138#8, 181#8, 52#8,
+   5#8, 60#8, 33#8, 37#8, 219#8, 194#8, 234#8, 28#8, 2#8, 117#8, 73#8, 8#8, 127#8, 5#8, 76#8,
+   140#8, 215#8, 255#8, 94#8, 58#8, 137#8, 206#8, 141#8, 94#8, 50#8, 0#8, 26#8, 244#8, 1#8, 50#8,
+   241#8, 1#8, 10#8, 72#8, 8#8, 1#8, 18#8, 68#8, 10#8, 32#8, 37#8, 53#8, 118#8, 78#8, 117#8,
+   200#8, 225#8, 205#8, 58#8, 10#8, 214#8, 21#8, 123#8, 7#8, 109#8, 194#8, 37#8, 222#8, 108#8, 179#8,
+   189#8, 119#8, 76#8, 24#8, 183#8, 215#8, 192#8, 6#8, 211#8, 159#8, 29#8, 61#8, 18#8, 32#8, 234#8,
+   76#8, 138#8, 156#8, 98#8, 206#8, 244#8, 42#8, 26#8, 191#8, 238#8, 89#8, 16#8, 181#8, 73#8, 80#8,
+   180#8, 140#8, 25#8, 113#8, 251#8, 214#8, 237#8, 69#8, 24#8, 76#8, 178#8, 134#8, 236#8, 222#8, 122#8,
+   209#8, 18#8, 164#8, 1#8, 8#8, 48#8, 16#8, 16#8] ++
     (List.replicate 16 ([26#8, 8#8] ++ List.replicate 5 0#8 ++ [1#8, 0#8, 0#8])).flatten
 
-def g_B1 : GhostState HwBytes :=
+@[expose] def g_B1 : GhostState HwBytes :=
   ⟨.B,
     { sessionVersion := 4#32
       localIdentity := ⟨⟨idPubB_vec⟩⟩
@@ -439,41 +470,40 @@ def g_B1 : GhostState HwBytes :=
       receiverChains := [⟨⟨ephPubA1_vec⟩, some ⟨sck_A2, 1#32⟩, []⟩]
       pendingPreKey := false
       pqRatchetState :=
-        [18#8, 114#8, 8#8, 1#8, 26#8, 74#8, 10#8, 34#8, 18#8, 32#8, 103#8, 251#8, 177#8, 25#8,
-         59#8, 142#8, 226#8, 7#8, 196#8, 240#8, 237#8, 225#8, 40#8, 28#8, 35#8, 94#8, 225#8,
-         252#8, 229#8, 240#8, 165#8, 179#8, 27#8, 194#8, 206#8, 203#8, 16#8, 247#8, 109#8, 147#8,
-         34#8, 232#8, 18#8, 36#8, 8#8, 1#8, 18#8, 32#8, 151#8, 65#8, 145#8, 224#8, 133#8, 231#8,
-         194#8, 225#8, 43#8, 45#8, 121#8, 215#8, 243#8, 163#8, 231#8, 164#8, 143#8, 194#8, 9#8,
-         241#8, 94#8, 138#8, 20#8, 28#8, 217#8, 95#8, 137#8, 193#8, 127#8, 59#8, 56#8, 241#8,
-         34#8, 32#8, 181#8, 221#8, 166#8, 22#8, 197#8, 249#8, 63#8, 108#8, 136#8, 204#8, 230#8,
-         39#8, 38#8, 11#8, 160#8, 75#8, 184#8, 114#8, 211#8, 42#8, 209#8, 147#8, 69#8, 106#8, 4#8,
-         255#8, 1#8, 224#8, 239#8, 192#8, 86#8, 235#8, 50#8, 0#8, 26#8, 179#8, 1#8, 50#8, 176#8,
-         1#8, 10#8, 72#8, 8#8, 1#8, 18#8, 68#8, 10#8, 32#8, 84#8, 23#8, 108#8, 27#8, 237#8, 144#8,
-         216#8, 24#8, 60#8, 142#8, 216#8, 7#8, 82#8, 250#8, 7#8, 63#8, 224#8, 207#8, 43#8, 209#8,
-         29#8, 78#8, 172#8, 43#8, 156#8, 25#8, 146#8, 51#8, 175#8, 93#8, 11#8, 220#8, 18#8, 32#8,
-         203#8, 136#8, 114#8, 125#8, 69#8, 175#8, 141#8, 50#8, 39#8, 144#8, 231#8, 254#8, 49#8,
-         144#8, 181#8, 205#8, 47#8, 242#8, 73#8, 194#8, 73#8, 114#8, 136#8, 21#8, 203#8, 102#8,
-         20#8, 163#8, 108#8, 127#8, 216#8, 202#8, 18#8, 100#8, 8#8, 48#8, 16#8, 16#8] ++
+        [18#8, 114#8, 8#8, 1#8, 26#8, 74#8, 10#8, 34#8, 18#8, 32#8, 83#8, 200#8, 144#8, 230#8, 168#8,
+         150#8, 39#8, 122#8, 143#8, 237#8, 5#8, 87#8, 117#8, 177#8, 82#8, 210#8, 131#8, 32#8, 247#8, 141#8,
+         197#8, 117#8, 75#8, 72#8, 105#8, 135#8, 60#8, 224#8, 71#8, 227#8, 215#8, 188#8, 18#8, 36#8, 8#8,
+         1#8, 18#8, 32#8, 121#8, 211#8, 190#8, 203#8, 176#8, 185#8, 33#8, 222#8, 236#8, 185#8, 116#8, 252#8,
+         141#8, 225#8, 174#8, 80#8, 24#8, 65#8, 115#8, 235#8, 147#8, 225#8, 18#8, 229#8, 159#8, 121#8, 107#8,
+         78#8, 84#8, 7#8, 237#8, 60#8, 34#8, 32#8, 127#8, 87#8, 1#8, 203#8, 119#8, 138#8, 181#8, 52#8,
+         5#8, 60#8, 33#8, 37#8, 219#8, 194#8, 234#8, 28#8, 2#8, 117#8, 73#8, 8#8, 127#8, 5#8, 76#8,
+         140#8, 215#8, 255#8, 94#8, 58#8, 137#8, 206#8, 141#8, 94#8, 50#8, 0#8, 26#8, 179#8, 1#8, 50#8,
+         176#8, 1#8, 10#8, 72#8, 8#8, 1#8, 18#8, 68#8, 10#8, 32#8, 37#8, 53#8, 118#8, 78#8, 117#8,
+         200#8, 225#8, 205#8, 58#8, 10#8, 214#8, 21#8, 123#8, 7#8, 109#8, 194#8, 37#8, 222#8, 108#8, 179#8,
+         189#8, 119#8, 76#8, 24#8, 183#8, 215#8, 192#8, 6#8, 211#8, 159#8, 29#8, 61#8, 18#8, 32#8, 234#8,
+         76#8, 138#8, 156#8, 98#8, 206#8, 244#8, 42#8, 26#8, 191#8, 238#8, 89#8, 16#8, 181#8, 73#8, 80#8,
+         180#8, 140#8, 25#8, 113#8, 251#8, 214#8, 237#8, 69#8, 24#8, 76#8, 178#8, 134#8, 236#8, 222#8, 122#8,
+         209#8, 18#8, 100#8, 8#8, 48#8, 16#8, 16#8] ++
           (List.replicate 16 ([26#8, 4#8] ++ List.replicate 4 0#8)).flatten },
     1, [1]⟩
 
-def g_B2 : GhostState HwBytes :=
+@[expose] def g_B2 : GhostState HwBytes :=
   ⟨.B,
     { g_B1.session with
       receiverChains := [⟨⟨ephPubA1_vec⟩, some ⟨sck_A3, 2#32⟩, []⟩]
       pqRatchetState := pqB2_state },
     1, [1]⟩
 
-def stB0Marked : PqParty :=
+@[expose] def stB0Marked : PqParty :=
   { stB0_cli with
     kyberLastResort :=
-      [(2#32, ⟨kpkPub_vec, kpkSec_vec, List.Vector.replicate 64 0#8, 0⟩,
+      [(2#32, ⟨kpkPub_vec, kpkSec_vec, mySigVec, 0⟩,
         [(1#32, basePubA_vec)])] }
 
-def stB1_cli : PqParty :=
+@[expose] def stB1_cli : PqParty :=
   { stB0Marked with peerId := some ⟨⟨idPubA_vec⟩⟩, session := some (x_B, g_B1) }
 
-def stB2_cli : PqParty :=
+@[expose] def stB2_cli : PqParty :=
   { stB0Marked with peerId := some ⟨⟨idPubA_vec⟩⟩, session := some (x_B, g_B2) }
 
 /-! ## Model Step Proofs and `UnreachedPqxdhPrimitives` Independence for Calls 0..4 -/
@@ -502,14 +532,14 @@ theorem pqRecvPrekeyModel_indep (X₁ X₂ : UnreachedPqxdhPrimitives) :
   unfold pqRecvPrekeyModel
   rw [recvPrekeyState_indep X₁ X₂]
 
-def reprParty : CryptoGames.Party → Bool
+@[expose] def reprParty : CryptoGames.Party → Bool
   | .A => false
   | .B => true
 
 theorem reprParty_inj {a b : CryptoGames.Party} (h : reprParty a = reprParty b) : a = b := by
   cases a <;> cases b <;> first | rfl | cases h
 
-def reprRecordExtras (x : RecordExtras) :=
+@[expose] def reprRecordExtras (x : RecordExtras) :=
   ((x.pending.1, x.pending.2, x.pending.3.bytes.1, x.pending.4),
    x.kyber.map (fun k => (k.1, @id (List (BitVec 8)) k.2)),
    x.remoteRegistrationId, x.localRegistrationId, @id (List (BitVec 8)) x.aliceBaseKey)
@@ -532,7 +562,7 @@ theorem reprRecordExtras_inj {a b : RecordExtras}
       simp only [Option.map_some, Option.some.injEq, Prod.mk.injEq] at hky
       rcases hky with ⟨rfl, rfl⟩; rfl
 
-def reprKyberKey (k : CryptoVerification.SignalSession.PqKyberKey) :=
+@[expose] def reprKyberKey (k : CryptoVerification.SignalSession.PqKyberKey) :=
   (k.pub.1, k.sec.1, k.sig.1, k.timestamp)
 
 theorem reprKyberKey_inj {a b : CryptoVerification.SignalSession.PqKyberKey}
@@ -542,7 +572,7 @@ theorem reprKyberKey_inj {a b : CryptoVerification.SignalSession.PqKyberKey}
   rcases h with ⟨hp, hs, hg, rfl⟩
   rw [Subtype.ext hp, Subtype.ext hs, Subtype.ext hg]
 
-def reprSession (s : CryptoGames.LibsignalSession.SessionState CryptoVerification.E2E.Bytes) :=
+@[expose] def reprSession (s : CryptoGames.LibsignalSession.SessionState CryptoVerification.E2E.Bytes) :=
   (s.sessionVersion, s.localIdentity.publicKey.bytes.1,
    s.remoteIdentity.map (fun k => k.publicKey.bytes.1),
    s.rootKey, s.previousCounter,
@@ -588,7 +618,7 @@ theorem reprSession_inj {a b : CryptoGames.LibsignalSession.SessionState CryptoV
   have hpq' : pq1 = pq2 := hpq
   rw [hri', hsc', hrc', hpq']
 
-def reprPqParty (st : PqParty) :=
+@[expose] def reprPqParty (st : PqParty) :=
   (reprParty st.party, (st.me.1.1, st.me.2), st.peerId.map (fun k => k.publicKey.bytes.1),
    st.session.map (fun (x, g) =>
      (reprRecordExtras x, reprParty g.party, reprSession g.session, g.epoch, g.chainEpochs)),
@@ -647,7 +677,7 @@ theorem reprPqParty_inj {a b : PqParty} (h : reprPqParty a = reprPqParty b) : a 
     rw [reprKyberKey_inj hk, hl']
   rw [hpid', hsess', hsig', hot', hkot', hklr']
 
-def reprOut (r : Option (Option (PqParty × HwBytes))) :=
+@[expose] def reprOut (r : Option (Option (PqParty × HwBytes))) :=
   r.map (Option.map fun (st, out) => (reprPqParty st, @id (List (BitVec 8)) out))
 
 theorem eq_of_reprOut {a b : Option (Option (PqParty × HwBytes))}
@@ -662,7 +692,7 @@ theorem eq_of_reprOut {a b : Option (Option (PqParty × HwBytes))}
 
 set_option synthInstance.maxSize 4096 in
 set_option synthInstance.maxHeartbeats 200000 in
-def decReprOut (a b : Option (Option (PqParty × HwBytes))) : Bool :=
+@[expose] def decReprOut (a b : Option (Option (PqParty × HwBytes))) : Bool :=
   reprOut a == reprOut b
 
 set_option synthInstance.maxSize 4096 in
@@ -682,7 +712,7 @@ theorem wire1_eq : wire1 = wirePrekey :: pkMsg1.bytes := rfl
 
 theorem call0_model :
     pqInitModel nvX myParams stA0_cli bE_cli tapeInit = some (some (stA1_cli, [])) := by
-  rw [tapeInit_eq]
+  rw [HandshakeModel.pqInitModel_eq_fast _ _ _ rfl rfl rfl, tapeInit_eq]
   exact eq_of_decReprOut (by decide +kernel)
 
 theorem call0_model_X (X : UnreachedPqxdhPrimitives) :
@@ -702,7 +732,7 @@ theorem markKyberUsed_stB0 :
     markKyberUsed stB0_cli pkMsg0 = some stB0Marked := by
   have hko : stB0_cli.kyberOneTime.lookup pkMsg0.kpkId = none := rfl
   have hlr : stB0_cli.kyberLastResort.lookup pkMsg0.kpkId =
-      some (⟨kpkPub_vec, kpkSec_vec, List.Vector.replicate 64 0#8, 0⟩, []) := rfl
+      some (⟨kpkPub_vec, kpkSec_vec, mySigVec, 0⟩, []) := rfl
   unfold markKyberUsed
   rw [hko, hlr]
   simp only [List.not_mem_nil]
@@ -710,7 +740,8 @@ theorem markKyberUsed_stB0 :
 
 theorem call3_model :
     pqRecvPrekeyModel nvX myParams stB0_cli pkMsg0 rc3 = some (some (stB1_cli, pt0)) := by
-  unfold pqRecvPrekeyModel
+  rw [HandshakeModel.pqRecvPrekeyModel_eq_fast _ _ _ false rfl]
+  unfold HandshakeModel.pqRecvPrekeyModelFast
   rw [markKyberUsed_stB0]
   exact eq_of_decReprOut (by decide +kernel)
 

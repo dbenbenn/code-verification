@@ -9,11 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaMid
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaMid -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaEval
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaLeaves
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaSend
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.GameHop.ReductionDsl.TwoStageBridge -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.CostedTablesCompat -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpa -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaShallow -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # `aeadCpaRedProg` Experiment Equality
@@ -23,7 +28,7 @@ Evaluates the outer components of `aeadCpaRedProg`, defines the `ReductionDsl` a
 the shallow reduction `aeadCpaReductionAuthFixed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,14 +37,6 @@ namespace SignalPqxdh.Security.ReductionDsl.AuthAead
 open _root_.ReductionDsl hiding B PTag U32 bundleOfV bundleT bundleV dhSecretsT drKeyOfV drKeyT drKeyV hdrOfV hdrT hdrV keyIndCodec keyIndQT keyIndQenc keyIndRT keyIndRdec keyIndRenc pqPrimIface pqSigAndDdhIface sampleIndex sidT sidV
 open SignalPqxdh SignalPqxdh.LegacyCosted SignalPqxdh.Security SignalPqxdh.Security.ReductionDsl SignalPqxdh.Security.ReductionDsl.AuthPrf
 open OracleSpec OracleComp RoKem
-
-theorem cpaFinish_eval (S : Setup) (K idx : Nat) (c? : Option Bytes) (b' : Bool)
-    (hst : AuthHybridStateFixed S) (hB : AuthListsBounded K hst) :
-    (aeadCpaRedProg S K).finish.eval (.cons (cpaStToVal idx hst) (.cons b' (.cons c? .nil))) =
-      AuthSubHops1to3.finalizeAuthFixedPrim S true b' hst.toAuthHybridState := by
-  dsimp only [aeadCpaRedProg, authCodec]
-  simp only [cpaFinishC, letV_eval]
-  exact finalizeAuthFixedDsl_eval S K true b' hst.toAuthHybridState _ hB.toAuthHybridListsBounded
 
 theorem cpaInit_slot_eval (S : Setup) (K : Nat) :
     (aeadCpaRedProg S K).init.eval (.cons () .nil) =
@@ -92,7 +89,7 @@ theorem cpaFinish_slot_eval (S : Setup) (K idx : Nat) (c? : Option Bytes) (b' : 
 
 /-- The `AeadIndCpa` adversary obtained by running `aeadCpaRedProg` with capacity and fuel
     `b.q_total`. -/
-def aeadCpaDslAdv (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : AeadIndCpaAdv where
+@[expose] def aeadCpaDslAdv (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : AeadIndCpaAdv where
   State := Mid (authSpec S) Bool (aeadCpaRedProg S b.q_total).π.denote
     (aeadCpaRedProg S b.q_total).σ.denote cpaChOutTy.denote
   choose := do
@@ -105,34 +102,20 @@ abbrev CpaMid (S : Setup) :=
   Nat × (Option (Bytes × Bytes × Bytes) ×
     RedProg2State (authSpec S) Bool (AuthCpaPausePayload S) (AuthHybridStateFixed S))
 
-def cpaOutA {S : Setup} : AuthCpaPauseResult S Bool → Bytes × Bytes × Bytes
-  | .paused ad m0 m1 _ _ _ => if m0.length == m1.length then (ad, m0, m1) else ([], [0], [0])
-  | .done _ _ => ([], [0], [0])
-
-def FcpaA {S : Setup} (x : CpaMid S) : Bytes × Bytes × Bytes × (Nat × AuthCpaPauseResult S Bool) :=
-  ((cpaOutA (Gcpa x.2)).1, (cpaOutA (Gcpa x.2)).2.1, (cpaOutA (Gcpa x.2)).2.2, (x.1, Gcpa x.2))
-
-def FcpaB (S : Setup) (b : QueryBudget) (A : AuthAdversary S) (x : CpaMid S) :
-    Bytes × Bytes × Bytes × (aeadCpaDslAdv S b A).State :=
-  ((x.2.1.getD ([], [0], [0])).1, (x.2.1.getD ([], [0], [0])).2.1,
-    (x.2.1.getD ([], [0], [0])).2.2,
-    midOfStepUntilPause ([], ([0], [0]))
-      (x.2.1, x.2.2.mapSt cpaPayloadToVal (cpaStToVal x.1)))
-
 abbrev CpaSlotMid (S : Setup) :=
   Nat × (Option (Bytes × Bytes × Bytes) ×
     RedProg2State (authSpec S) Bool (AuthCpaPausePayload S) (CpaSlotSt S))
 
-def cpaSlotOutA {S : Setup} : CpaSlotPauseRes S Bool → Bytes × Bytes × Bytes
+@[expose] def cpaSlotOutA {S : Setup} : CpaSlotPauseRes S Bool → Bytes × Bytes × Bytes
   | .paused ad m0 m1 _ _ _ => if m0.length == m1.length then (ad, m0, m1) else ([], [0], [0])
   | .done _ _ => ([], [0], [0])
 
-def FcpaSlotA {S : Setup} (x : CpaSlotMid S) :
+@[expose] def FcpaSlotA {S : Setup} (x : CpaSlotMid S) :
     Bytes × Bytes × Bytes × (Nat × CpaSlotPauseRes S Bool) :=
   ((cpaSlotOutA (GcpaSlot x.2)).1, (cpaSlotOutA (GcpaSlot x.2)).2.1,
     (cpaSlotOutA (GcpaSlot x.2)).2.2, (x.1, GcpaSlot x.2))
 
-def FcpaSlotB (S : Setup) (b : QueryBudget) (A : AuthAdversary S) (x : CpaSlotMid S) :
+@[expose] def FcpaSlotB (S : Setup) (b : QueryBudget) (A : AuthAdversary S) (x : CpaSlotMid S) :
     Bytes × Bytes × Bytes × (aeadCpaDslAdv S b A).State :=
   ((x.2.1.getD ([], [0], [0])).1, (x.2.1.getD ([], [0], [0])).2.1,
     (x.2.1.getD ([], [0], [0])).2.2,
@@ -267,107 +250,5 @@ theorem aeadCpaDslAdv_aeadIndCpaExp_slot_eq_core (P : Primitives) (S : Setup) (b
         obtain ⟨b', fs⟩ := y
         erw [cpaFinish_slot_eval S _ idx c? b' fs hy.inv.bnd,
           finalizeAuthFixedPrim_true_eq S b' _ hy.inv.won]
-
-private def GcpaSlotExt {S : Setup} :
-    Option (Bytes × Bytes × Bytes) ×
-      RedProg2State (authSpec S) Bool (AuthCpaPausePayload S) (CpaSlotSt S) →
-    AuthCpaSlotPauseResult S Bool
-  | (_, .done a sh) => .done a sh
-  | (some c, .paused _ p sh k) => .paused c.1 c.2.1 c.2.2 p sh k
-  | (none, .paused _ p sh k) => .paused p.ad p.m0 p.m1 p sh k
-
-private theorem stepUntilAuthCpaChallengeSlotPrim_eq (S : Setup) (idx : Nat)
-    (mx : OracleComp (unifSpec + authSpec S) Bool) (fuel : Nat) (shst : CpaSlotSt S) :
-    stepUntilAuthCpaChallengeSlotPrim idx S false mx fuel shst =
-      GcpaSlotExt <$> stepUntilPauseFuel false (stepMidCpaSlot S idx) mx fuel shst := by
-  refine stepUntilPauseFuel_char false (stepMidCpaSlot S idx) GcpaSlotExt
-    (fun mx fuel sh => stepUntilAuthCpaChallengeSlotPrim idx S false mx fuel sh) ?_ ?_ ?_ ?_
-    mx fuel shst
-  · intro a fuel s; rfl
-  · intro uq k fuel s
-    simp only [stepUntilAuthCpaChallengeSlotPrim]
-    rw [OracleComp.construct_query_bind]
-    rfl
-  · intro gq k s
-    simp only [stepUntilAuthCpaChallengeSlotPrim]
-    rw [OracleComp.construct_query_bind]
-    rfl
-  · intro gq k fuel s
-    simp only [stepUntilAuthCpaChallengeSlotPrim]
-    rw [OracleComp.construct_query_bind]
-    cases gq
-    case sendOPK u i b m0 m1 =>
-      simp only [stepMidCpaSlot, cpaSendSlotShOpk]
-      split
-      · simp only [map_pure, pure_bind]; rfl
-      · rw [bind_map_left]
-        change (tryPauseAuthCpaSendSlotPrim true idx S (.sendOPK u i) u b m0 m1 s >>= _) =
-          (tryPauseAuthCpaSendSlotPrim true idx S (.sendOPK u i) u b m0 m1 s >>= _)
-        refine bind_congr fun x => ?_
-        rcases x with ⟨r, sh⟩ | ⟨ad, m0', m1', p, sh⟩ <;> rfl
-    case sendNoOPK u i b m0 m1 =>
-      simp only [stepMidCpaSlot, cpaSendSlotShNoOpk]
-      split
-      · simp only [map_pure, pure_bind]; rfl
-      · rw [bind_map_left]
-        change (tryPauseAuthCpaSendSlotPrim true idx S (.sendNoOPK u i) u b m0 m1 s >>= _) =
-          (tryPauseAuthCpaSendSlotPrim true idx S (.sendNoOPK u i) u b m0 m1 s >>= _)
-        refine bind_congr fun x => ?_
-        rcases x with ⟨r, sh⟩ | ⟨ad, m0', m1', p, sh⟩ <;> rfl
-    all_goals
-      simp only [stepMidCpaSlot]
-      rw [bind_map_left]
-
-/-- The `ReductionDsl` `AeadIndCpa` reduction `aeadCpaRedProg` (run as `aeadCpaDslAdv`) and
-    the shallow `aeadCpaReductionAuthFixed` have the same `AeadIndCpa` experiment. -/
-theorem aeadCpaDslAdv_aeadIndCpaExp_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    aeadIndCpaExp P (aeadCpaDslAdv S b A.1) =
-      aeadIndCpaExp P (aeadCpaReductionAuthFixed S b A) := by
-  have hA : IsQueryBoundP A.1.run (fun q : ℕ ⊕ AuthQuery S => q.isRight = true) b.q_total := by
-    have h := SignalPqxdh.QueryBounded.auth_total A.2
-    convert h using 1; funext q; cases q <;> rfl
-  rw [aeadCpaDslAdv_aeadIndCpaExp_slot_eq_core P S b A.1 hA]
-  let m : OracleComp PrimBaseSpec (CpaSlotMid S) := do
-    let idx ← embedUnif (sampleIndexRange (min b.q_total S.N_send_tot))
-    let r ← stepUntilPauseFuel false (stepMidCpaSlot S idx) A.1.run b.q_total
-      (0, AuthHybridStateFixed.empty S true)
-    pure (idx, r)
-  let outExt : AuthCpaSlotPauseResult S Bool → Bytes × Bytes × Bytes
-    | .paused ad m0 m1 _ _ _ => if m0.length == m1.length then (ad, m0, m1) else ([], [0], [0])
-    | .done _ _ => ([], [0], [0])
-  let FExt : CpaSlotMid S → Bytes × Bytes × Bytes × (Nat × AuthCpaSlotPauseResult S Bool) :=
-    fun x => ((outExt (GcpaSlotExt x.2)).1, (outExt (GcpaSlotExt x.2)).2.1,
-      (outExt (GcpaSlotExt x.2)).2.2, (x.1, GcpaSlotExt x.2))
-  refine aeadIndCpaExp_congr P (aeadCpaReductionAuthFixed S b A) (cpaReductionAuthSlot S b A.1) m
-    (fun _ => True) ?_ FExt FcpaSlotA ?_ ?_ ?_ ?_
-  · refine HoldsOnLeaves.bind_const _ fun _ => ?_
-    exact HoldsOnLeaves.bind_const _ fun _ => HoldsOnLeaves.pure trivial
-  · dsimp only [aeadCpaReductionAuthFixed, aeadCpaReductionAuthSlotChoose,
-      aeadCpaReductionAuthSlotAtChoose, m, outExt, FExt]
-    simp only [map_eq_bind_pure_comp, bind_assoc, Function.comp_def, pure_bind]
-    refine bind_congr fun idx => ?_
-    rw [stepUntilAuthCpaChallengeSlotPrim_eq]
-    simp only [map_eq_bind_pure_comp, bind_assoc, Function.comp_def, pure_bind]
-    refine bind_congr fun r => ?_
-    rcases r with ⟨_ | c, ⟨a, sh⟩ | ⟨q, p, sh, k⟩⟩ <;>
-      simp only [GcpaSlotExt] <;> (try split) <;> rfl
-  · dsimp only [cpaReductionAuthSlot, cpaReductionAuthSlotChoose, cpaReductionAuthSlotAtChoose, m]
-    simp only [map_eq_bind_pure_comp, bind_assoc, Function.comp_def, pure_bind]
-    refine bind_congr fun idx => ?_
-    rw [stepUntilCpaSlot_eq]
-    simp only [map_eq_bind_pure_comp, bind_assoc, Function.comp_def, pure_bind]
-    refine bind_congr fun r => ?_
-    rcases r with ⟨_ | c, ⟨a, sh⟩ | ⟨q, p, sh, k⟩⟩ <;>
-      simp only [GcpaSlot, FcpaSlotA, cpaSlotOutA] <;> (try split) <;> rfl
-  · rintro ⟨idx, _ | c, ⟨a, sh⟩ | ⟨q, p, sh, k⟩⟩ _ <;>
-      simp only [FcpaSlotA, FExt, GcpaSlot, GcpaSlotExt, cpaSlotOutA, outExt] <;>
-      exact ⟨trivial, trivial, trivial⟩
-  · rintro ⟨idx, _ | c, ⟨a, sh⟩ | ⟨q, p, sh, k⟩⟩ _ c? <;> rfl
-
-theorem aeadCpaDslAdv_aeadIndCpa_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    AeadIndCpa P (aeadCpaDslAdv S b A.1) = AeadIndCpa P (aeadCpaReductionAuthFixed S b A) := by
-  unfold AeadIndCpa; rw [aeadCpaDslAdv_aeadIndCpaExp_eq]
 
 end SignalPqxdh.Security.ReductionDsl.AuthAead

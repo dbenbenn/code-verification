@@ -11,11 +11,11 @@ module
 
 public import Arm64
 public import ProofLib
-public import LibsignalBinary.Proofs.Placed.Bridge
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst -- proof-setup: allow-public-import
 public import ProofLib.ProgramReflection
 public meta import ProofLib.ProgramReflection
 
@@ -26,19 +26,19 @@ public meta import ProofLib.ProgramReflection
 
 Ports the concrete `cliElfBytes` disjointness bridges for `LibsignalBinary.Proofs.Placed.ElfLsRetAddr`
 (`lsLen`, `LsRetAddr`, `LsRetAddr624`) onto the stock `ld.lld` layout (where block
-`623` begins at `0x4686a0` with length `132`):
+`623` begins at `0x4736a0` with length `132`):
 - `h2lr_lsLen_eq_code_length`: kernel-verified equality `lsLen j = libsignalSessionLib.blocks[j].code.length`
   across all `624` blocks (`rfl_kernel`).
 - `lsRetAddr_keep_false` / `h2lr_lsRetAddr_keep_false`: under `[LibsignalPlacement]` with
   `libsignalSessionLib.LinkedAt cliElfBytes lsmpl`, `LsRetAddr lr → hole2_keep lr = false ∧ hole2_keepSub lr = false`
-  (`0` byte slack at `j = 622`: `0x4685ec + 180 = 0x4686a0`).
+  (`0` byte slack at `j = 622`: `0x4735ec + 180 = 0x4736a0`).
 - `h2lr_lsRetAddr624_keepSub_false`: under `[LibsignalPlacement]` with
   `libsignalSessionLib.LinkedAt cliElfBytes lsmpl`, `LsRetAddr624 lr → hole2_keepSub lr = false`
-  (covering blocks `0 .. 623`, including `j = 623` at `[0x4686a0, 0x468724)` disjoint from `:text_b`
-  `[0x469000, 0x46f000)`).
+  (covering blocks `0 .. 623`, including `j = 623` at `[0x4736a0, 0x473724)` disjoint from `:text_b`
+  `[0x474000, 0x4ca000)`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +50,7 @@ open CryptoVerification.SignalSession (cliElfBytes libsignalSessionLib)
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr LsRetAddr624 lsLen)
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget (libsignalPlacementOf)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced
-  (cliElfBlockBases cliElfMultiPlacement cliElf_externs_nodup_of_linkedAt
+  (cliElfBlockBases cliElfMultiPlacement cliElf_externs_distinct_of_linkedAt
    cliElf_libsignal_placed cliElf_linkedAt cliElf_linkedAt_unique)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
   (hole2_hblk hole2_hext_nodup hole2_keep hole2_keepSub)
@@ -59,17 +59,17 @@ section KernelBounds
 set_option maxRecDepth 400000
 
 /-- Boolean kernel check on the stock `ld.lld` layout verifying across all 624 blocks that
-`lsLen j` equals block `j`'s code length and blocks `0..622` end at or below `0x4686a0` (tight at `j = 622`, `0x4685ec + 180 = 0x4686a0`). -/
+`lsLen j` equals block `j`'s code length and blocks `0..622` end at or below `0x4736a0` (tight at `j = 622`, `0x4735ec + 180 = 0x4736a0`). -/
 noncomputable def h2lr_checkLsRetAddrDisjointHole2B : Bool :=
   Nat.beq libsignalSessionLib.blocks.length 624 &&
   Nat.beq cliElfBlockBases.length 624 &&
   (List.range 624).all (fun j =>
     Nat.beq (lsLen j) (libsignalSessionLib.blocks.getD j { code := [] }).code.length) &&
   (List.range 623).all (fun j =>
-    Nat.ble ((cliElfBlockBases.getD j 0#64).toNat + lsLen j) 0x4686a0) &&
-  Nat.beq (cliElfBlockBases.getD 622 0#64).toNat 0x4685ec &&
-  Nat.beq ((cliElfBlockBases.getD 622 0#64).toNat + lsLen 622) 0x4686a0 &&
-  Nat.beq (cliElfBlockBases.getD 623 0#64).toNat 0x4686a0
+    Nat.ble ((cliElfBlockBases.getD j 0#64).toNat + lsLen j) 0x4736a0) &&
+  Nat.beq (cliElfBlockBases.getD 622 0#64).toNat 0x4735ec &&
+  Nat.beq ((cliElfBlockBases.getD 622 0#64).toNat + lsLen 622) 0x4736a0 &&
+  Nat.beq (cliElfBlockBases.getD 623 0#64).toNat 0x4736a0
 
 theorem h2lr_checkLsRetAddrDisjointHole2_ok : h2lr_checkLsRetAddrDisjointHole2B = true := by
   rfl_kernel
@@ -98,7 +98,7 @@ private theorem h2lr_cliElfMultiPlacement_base_eq (j : Nat) :
   rfl
 
 theorem h2lr_cliElf_base_add_lsLen_le_blk623 {j : Nat} (hj : j < 623) :
-    (cliElfMultiPlacement.base j).toNat + lsLen j ≤ 0x4686a0 := by
+    (cliElfMultiPlacement.base j).toNat + lsLen j ≤ 0x4736a0 := by
   have hok := h2lr_checkLsRetAddrDisjointHole2_ok
   unfold h2lr_checkLsRetAddrDisjointHole2B at hok
   simp only [Bool.and_eq_true, Nat.beq_eq] at hok
@@ -129,17 +129,21 @@ theorem lsRetAddr_keep_false [LibsignalPlacement]
     rw [h2lr_blocks_length_eq_624]; omega
   have hbase_eq : lsmpl.base j = cliElfMultiPlacement.base j :=
     (cliElf_linkedAt_unique hlink).1 j hj624
-  have hbnd : (cliElfMultiPlacement.base j).toNat + lsLen j ≤ 0x4686a0 :=
+  have hbnd : (cliElfMultiPlacement.base j).toNat + lsLen j ≤ 0x4736a0 :=
     h2lr_cliElf_base_add_lsLen_le_blk623 hj
   rw [hbase_eq]
-  have hlt : (cliElfMultiPlacement.base j + BitVec.ofNat 64 o).toNat < 0x4686a0 := by
+  have hlt : (cliElfMultiPlacement.base j + BitVec.ofNat 64 o).toNat < 0x4736a0 := by
     rw [h2lr_toNat_add_ofNat_of_lt64 (by omega)]
     omega
   constructor
-  · unfold hole2_keep
+  · unfold hole2_keep LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen.hole2_keepR1Lo
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen.hole2_keepR1Hi
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen.hole2_keepSubLo
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen.hole2_keepSubHi
     rw [decide_eq_false_iff_not]
     omega
-  · unfold hole2_keepSub
+  · unfold hole2_keepSub LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen.hole2_keepSubLo
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen.hole2_keepSubHi
     rw [decide_eq_false_iff_not]
     omega
 
@@ -177,13 +181,14 @@ theorem h2lr_lsRetAddr624_keepSub_false [LibsignalPlacement]
     have hok := h2lr_checkLsRetAddrDisjointHole2_ok
     unfold h2lr_checkLsRetAddrDisjointHole2B at hok
     simp only [Bool.and_eq_true, Nat.beq_eq] at hok
-    have hb623 : (cliElfBlockBases.getD 623 0#64).toNat = 0x4686a0 := hok.2
+    have hb623 : (cliElfBlockBases.getD 623 0#64).toNat = 0x4736a0 := hok.2
     have hlen623 : lsLen 623 = 132 := rfl
     rw [hlen623] at ho
     rw [hbase_eq, hdef]
-    have hadd : (cliElfBlockBases.getD 623 0#64 + BitVec.ofNat 64 o).toNat = 0x4686a0 + o := by
+    have hadd : (cliElfBlockBases.getD 623 0#64 + BitVec.ofNat 64 o).toNat = 0x4736a0 + o := by
       rw [h2lr_toNat_add_ofNat_of_lt64 (by omega), hb623]
-    unfold hole2_keepSub
+    unfold hole2_keepSub LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen.hole2_keepSubLo
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen.hole2_keepSubHi
     rw [hadd, decide_eq_false_iff_not]
     omega
 
@@ -203,11 +208,11 @@ theorem h2lr_lsRetAddr624_keepSub_false_seam
     hLs lr hlr
 
 /-- `LibsignalPlacement` instance at the canonical `cliElfMultiPlacement`. -/
-@[instance_reducible]
+@[expose, instance_reducible]
 noncomputable def h2lr_f3CliLibsignalPlacement : LibsignalPlacement :=
   (LibsignalFullPlacement.ofPlaceable cliElfMultiPlacement
     cliElf_libsignal_placed.1
-    (cliElf_externs_nodup_of_linkedAt cliElf_linkedAt)).toLibsignalPlacement
+    (cliElf_externs_distinct_of_linkedAt cliElf_linkedAt)).toLibsignalPlacement
 
 theorem h2lr_lsRetAddr_keep_false_f3LsMpl {lr : BitVec 64}
     (hlr : @LsRetAddr h2lr_f3CliLibsignalPlacement lr) :

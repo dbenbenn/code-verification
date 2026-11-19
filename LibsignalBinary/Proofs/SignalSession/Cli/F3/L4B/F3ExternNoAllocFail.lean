@@ -9,11 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
+import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
+public import LibsignalBinary.Proofs.E2E.AesHooks0 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalE2E.HooksMallocng
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
-import Std.Tactic.BVDecide.Normalize.Prop
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
+public meta import ProofLib
+import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.SpecLemmas.SyscallReadWritev
+import Std.Tactic.BVDecide.Normalize.Prop
 
 /-!
 # Shared-Allocator Hook Table and Whole-Process Non-`allocFailedEvent` Invariant
@@ -24,7 +29,7 @@ table preserves `allocFailedEvent ∉ s.trace`, so `Placed.cliProgPlacedSig mpl 
 `allocFailedEvent` from `Placed.cliTokenPatchPlaced mpl s0`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -36,37 +41,37 @@ open CryptoGames.CBC (AesKey Block)
 open CryptoGames.HMAC (ShaState)
 open CryptoGames.LibsignalSession (Crypto)
 open CryptoVerification.E2E
-  (PqxdhPrims aesDecHookMallocng aesEncHookMallocng compress512Hook compressHook dsmbHook edNegHook
-   fmtWriteHook0 formatInnerHook0 kemDecapsHook kemEncapsHook libcruxHmacHookMallocng
-   mlkemDecapsHook mlkemEncaps1Hook mlkemEncaps2Hook mlkemFromSeedHook mlkemPk1Hook mlkemPk2Hook
-   mlkemValidatePkHook restoreCallerRegs scalarModHook scalarWideHook stepRustAlloc1
-   stepRustDealloc1 timeAddHook toEdwardsHook torsionFreeHook)
-open CryptoVerification.LibsignalAesCbc (returnToLinkRegister)
+  (PqxdhPrims aesDecHookMallocng aesEncHookMallocng compress512Hook fmtWriteHook0 formatInnerHook0
+   kemDecapsHook kemEncapsHook libcruxHmacHookMallocng mlkemDecapsHook mlkemEncaps1Hook
+   mlkemEncaps2Hook mlkemFromSeedHook mlkemValidatePkHook restoreCallerRegs stepRustAlloc1
+   stepRustDealloc1 timeAddHook)
 open CryptoVerification.LibsignalHmac (compress256Hook)
 open CryptoVerification.LibsignalSession (blackBoxHook)
 open CryptoVerification.LibsignalTripleRatchet
   (diffieHellmanHook pubFromSecretHook zeroizeSecretHook)
 open CryptoVerification.RustHeap (allocFailedEvent)
 open CryptoVerification.SignalSession
-  (CliHooks Inputs abortOnPanic cliBcmpHook cliExternsPlaced cliExternsPlacedSig
-   cliHookTablePlaced cliPqxdhHookTablePlaced cliProcessInputs durationSinceExactHook fromUtf8Hook
-   isCliPanicSymbolPlaced lsAesDecSym lsAesEncSym lsBlackBoxSym lsCompress256Sym
-   lsDiffieHellmanSym lsDurationSinceSym lsFmtWriteSym lsFormatInnerSym lsFromUtf8Sym lsMemrchrSym
-   lsPubFromSecretSym lsSharedSecretDropSym lsStaticSecretDropSym lsTimeAddSym lsWriteFileSym
-   lsWriteStdoutSym memrchrHook strlenHook unitResult unmodelled writeFileHook writeStdoutHook)
+  (CliHooks Inputs abortOnPanic cliBcmpHook cliExternsPlaced cliPqxdhHookTablePlaced
+  cliProcessInputs durationSinceExactHook fromUtf8Hook isCliPanicSymbolPlaced lsAesDecSym
+  lsAesEncSym lsBlackBoxSym lsCompress256Sym lsDiffieHellmanSym lsDurationSinceSym lsFmtWriteSym
+  lsFormatInnerSym lsFromUtf8Sym lsMemrchrSym lsPubFromSecretSym lsSharedSecretDropSym
+  lsStaticSecretDropSym lsTimeAddSym lsWriteFileSym lsWriteStdoutSym memrchrHook strlenHook
+  unitResult unmodelled writeFileHook writeStdoutHook)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (cliExternsPlacedSig cliHookTablePlaced)
 open CryptoVerification.SignalSession.Cli (cliInputs loadState_fs_trace)
-open CryptoVerification.SignalSession.Placed (cliProgPlacedSig cliTokenPatchPlaced)
+open CryptoVerification.SignalSession.Placed (cliTokenPatchPlaced)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliProgPlacedSig)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced (cliProgExtPlacedSigAt)
 open VerifiedLibraries (mallocngLib)
 
 /-! ## `PreservesNoAllocFailed` and `State.trace` Helpers -/
 
 /-- A state transformer `f` never introduces `allocFailedEvent` into `s.trace`. -/
-def PreservesNoAllocFailed (f : State → State) : Prop :=
+@[expose] def PreservesNoAllocFailed (f : State → State) : Prop :=
   ∀ s : State, allocFailedEvent ∉ s.trace → allocFailedEvent ∉ (f s).trace
 
 /-- Every hooked function in `ext` satisfies `PreservesNoAllocFailed`. -/
-def ExternPreservesNoAllocFailed (ext : String → Option (State → State)) : Prop :=
+@[expose] def ExternPreservesNoAllocFailed (ext : String → Option (State → State)) : Prop :=
   ∀ name f, ext name = some f → PreservesNoAllocFailed f
 
 theorem externPreservesNoAllocFailed_none :
@@ -95,6 +100,10 @@ private theorem tr_setSigAction (s : State) (sig : BitVec 32) (act : SigAction) 
     (s.setSigAction sig act).trace = s.trace := rfl
 private theorem tr_setSigAltStack (s : State) (sas : SigAltStack) :
     (s.setSigAltStack sas).trace = s.trace := rfl
+private theorem tr_setSigMask (s : State) (mask : BitVec 64) :
+    (s.setSigMask mask).trace = s.trace := rfl
+private theorem tr_setSigPending (s : State) (pending : BitVec 64) :
+    (s.setSigPending pending).trace = s.trace := rfl
 private theorem tr_appendTrace (s : State) (x : List TraceEvent) :
     (s.appendTrace x).trace = s.trace ++ x := rfl
 private theorem tr_nextOracle (s : State) : s.nextOracle.trace = s.trace := rfl
@@ -172,12 +181,15 @@ set_option linter.unusedSimpArgs false in
 macro "trace_norm" : tactic => `(tactic|
   simp only [tr_advancePC, tr_setPC, tr_setPState, tr_setMem, tr_setFpsr, tr_orFpsr,
     tr_setBrk, tr_setPhysMemAvail, tr_setFs, tr_setSigAction, tr_setSigAltStack,
+    tr_setSigMask, tr_setSigPending,
     tr_nextOracle, tr_stepExclOracle,
     tr_appendTrace, tr_writeReg64, tr_writeReg32, tr_writeReg, tr_writeVReg128, tr_writeVReg64,
     tr_writeVReg32, tr_setStatus])
 
 macro "no_alloc_failed_close" h:ident : tactic => `(tactic|
   (repeat' split
+   repeat' split
+   repeat' split
    repeat' split
    all_goals
      try dsimp (config := { zeta := true, zetaHave := true }) only
@@ -357,7 +369,10 @@ private theorem execOpenat_no_allocFailed {s : State} (hs : allocFailedEvent ∉
   unfold execOpenat; dsimp only
   split
   · exact applyOpenVerdict_no_allocFailed _ hs
-  · split <;> first | exact applyOpenVerdict_no_allocFailed _ hs | no_alloc_failed_close hs
+  · split <;>
+      first
+      | exact applyOpenVerdict_no_allocFailed _ hs
+      | (try cases s.fs.allocFd) <;> no_alloc_failed_close hs
 
 private theorem execClose_no_allocFailed {s : State} (hs : allocFailedEvent ∉ s.trace) :
     allocFailedEvent ∉ (execClose s).trace := by
@@ -382,14 +397,18 @@ private theorem execPpoll_no_allocFailed {s : State} (hs : allocFailedEvent ∉ 
   refine ite_no_allocFailed (advancePC_no_allocFailed (writeReg64_no_allocFailed hs)) ?_
   refine ite_no_allocFailed (setStatus_no_allocFailed hs) ?_
   refine ite_no_allocFailed (advancePC_no_allocFailed (writeReg64_no_allocFailed hs)) ?_
-  refine ite_no_allocFailed (advancePC_no_allocFailed (writeReg64_no_allocFailed hs)) ?_
+  refine ite_no_allocFailed
+    (ite_no_allocFailed (advancePC_no_allocFailed (writeReg64_no_allocFailed hs))
+      (advancePC_no_allocFailed (writeReg64_no_allocFailed hs))) ?_
   refine ite_no_allocFailed (advancePC_no_allocFailed (writeReg64_no_allocFailed hs)) ?_
   refine ite_no_allocFailed (setStatus_no_allocFailed hs) ?_
   cases evalPpollEntries s.fs s.mem (s.readReg64 Reg.x0) (s.readReg32 Reg.x1).toNat 0 0 with
   | none => exact setStatus_no_allocFailed hs
   | some mc =>
     rcases mc with ⟨m', count⟩; dsimp only
-    exact ite_no_allocFailed (advancePC_no_allocFailed (writeReg64_no_allocFailed hs))
+    exact ite_no_allocFailed
+      (ite_no_allocFailed (advancePC_no_allocFailed (writeReg64_no_allocFailed hs))
+        (setStatus_no_allocFailed hs))
       (advancePC_no_allocFailed (writeReg64_no_allocFailed (setMem_no_allocFailed hs)))
 
 private theorem execBrk_no_allocFailed {s : State} (hs : allocFailedEvent ∉ s.trace) :
@@ -402,7 +421,9 @@ private theorem execMunmap_no_allocFailed {s : State} (hs : allocFailedEvent ∉
 
 private theorem execMremap_no_allocFailed {s : State} (hs : allocFailedEvent ∉ s.trace) :
     allocFailedEvent ∉ (execMremap s).trace := by
-  dsimp (config := { zetaHave := true }) only [execMremap]; no_alloc_failed_close hs
+  unfold execMremap; dsimp only
+  repeat' apply ite_no_allocFailed
+  all_goals no_alloc_failed_close hs
 
 private theorem execMmap_no_allocFailed {s : State} (hs : allocFailedEvent ∉ s.trace) :
     allocFailedEvent ∉ (execMmap s).trace := by
@@ -430,11 +451,22 @@ private theorem execSigaltstack_no_allocFailed {s : State} (hs : allocFailedEven
 
 private theorem execRtSigaction_no_allocFailed {s : State} (hs : allocFailedEvent ∉ s.trace) :
     allocFailedEvent ∉ (execRtSigaction s).trace := by
-  dsimp (config := { zetaHave := true }) only [execRtSigaction]; no_alloc_failed_close hs
+  unfold execRtSigaction
+  by_cases h1 : (s.readReg64 Reg.x1 == 0#64) = true <;>
+  by_cases h2 : (s.readReg32 Reg.x0 == LINUX_SIGABRT &&
+      s.mem.read64 (s.readReg64 Reg.x1) == SIG_IGN) = true <;>
+    (simp only [h1, h2, ↓reduceIte, Bool.false_eq_true]
+     no_alloc_failed_close hs)
 
 private theorem execRtSigprocmask_no_allocFailed {s : State} (hs : allocFailedEvent ∉ s.trace) :
     allocFailedEvent ∉ (execRtSigprocmask s).trace := by
-  dsimp (config := { zetaHave := true }) only [execRtSigprocmask]; no_alloc_failed_close hs
+  suffices (execRtSigprocmask s).trace = s.trace by rw [this]; exact hs
+  have hite : ∀ {c : Prop} [inst : Decidable c] {a b : State},
+      a.trace = s.trace → b.trace = s.trace → (if c then a else b).trace = s.trace := by
+    intro c inst a b ha hb; cases inst <;> assumption
+  unfold execRtSigprocmask; dsimp only
+  repeat' apply hite
+  all_goals rfl
 
 private theorem execClockGettime_no_allocFailed {s : State} (hs : allocFailedEvent ∉ s.trace) :
     allocFailedEvent ∉ (execClockGettime s).trace := by
@@ -448,9 +480,14 @@ private theorem execSetTidAddress_no_allocFailed {s : State} (hs : allocFailedEv
     allocFailedEvent ∉ (execSetTidAddress s).trace := by
   dsimp (config := { zetaHave := true }) only [execSetTidAddress]; no_alloc_failed_close hs
 
+private theorem execFutex_no_allocFailed {s : State} (hs : allocFailedEvent ∉ s.trace) :
+    allocFailedEvent ∉ (execFutex s).trace := by
+  dsimp (config := { zetaHave := true }) only [execFutex]; no_alloc_failed_close hs
+
 private theorem execSchedGetaffinity_no_allocFailed {s : State} (hs : allocFailedEvent ∉ s.trace) :
     allocFailedEvent ∉ (execSchedGetaffinity s).trace := by
-  dsimp (config := { zetaHave := true }) only [execSchedGetaffinity]; no_alloc_failed_close hs
+  dsimp (config := { zetaHave := true }) only [execSchedGetaffinity]
+  cases s.oracle.schedGetaffinity s.oracleIdx <;> (dsimp only; no_alloc_failed_close hs)
 
 private theorem execGetpid_no_allocFailed {s : State} (hs : allocFailedEvent ∉ s.trace) :
     allocFailedEvent ∉ (execGetpid s).trace := by
@@ -465,7 +502,7 @@ private theorem standardEntry_no_allocFailed {s : State} (hs : allocFailedEvent 
     List.mem_cons, List.not_mem_nil, or_false]
   rintro _ (rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
             rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
+            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
   · exact execRead_no_allocFailed hs
   · exact execWrite_no_allocFailed hs
   · exact LibsignalBinary.Proofs.SpecLemmas.SyscallReadWritev.execReadv_trace_not_mem
@@ -496,6 +533,7 @@ private theorem standardEntry_no_allocFailed {s : State} (hs : allocFailedEvent 
   · exact execClockGettime_no_allocFailed hs
   · exact execGetrandom_no_allocFailed hs
   · exact execSetTidAddress_no_allocFailed hs
+  · exact execFutex_no_allocFailed hs
   · exact execSchedGetaffinity_no_allocFailed hs
   · exact execGetpid_no_allocFailed hs
   · exact execGetpid_no_allocFailed hs
@@ -540,9 +578,9 @@ private theorem exec_ldrSimd_no_allocFailed {svc : State → State}
     allocFailedEvent ∉ (execInstWithSvc svc (.ldrSimd sz vt addr) s).trace := by
   apply ite_no_allocFailed
   · exact setStatus_no_allocFailed hs
-  · cases addr <;>
-      (try dsimp (config := { beta := true, iota := true, zeta := true, zetaHave := true }) only
-       peel_trace_step hs hs)
+  · dsimp (config := { beta := true, iota := true, zeta := true, zetaHave := true }) only [execInstWithSvc]
+    peel_trace_step hs hs
+    split <;> peel_trace_step hs hs
 
 private theorem exec_strSimd_no_allocFailed {svc : State → State}
     {sz : SimdMemSize} {vt : VReg} {addr : AddrMode} {s : State}
@@ -550,9 +588,9 @@ private theorem exec_strSimd_no_allocFailed {svc : State → State}
     allocFailedEvent ∉ (execInstWithSvc svc (.strSimd sz vt addr) s).trace := by
   apply ite_no_allocFailed
   · exact setStatus_no_allocFailed hs
-  · cases addr <;>
-      (try dsimp (config := { beta := true, iota := true, zeta := true, zetaHave := true }) only
-       peel_trace_step hs hs)
+  · dsimp (config := { beta := true, iota := true, zeta := true, zetaHave := true }) only [execInstWithSvc]
+    peel_trace_step hs hs
+    split <;> peel_trace_step hs hs
 
 private theorem exec_ldpSimd_no_allocFailed {svc : State → State}
     {sz : SimdMemSize} {vt1 vt2 : VReg} {addr : AddrMode} {s : State}
@@ -560,9 +598,9 @@ private theorem exec_ldpSimd_no_allocFailed {svc : State → State}
     allocFailedEvent ∉ (execInstWithSvc svc (.ldpSimd sz vt1 vt2 addr) s).trace := by
   apply ite_no_allocFailed
   · exact setStatus_no_allocFailed hs
-  · cases addr <;>
-      (try dsimp (config := { beta := true, iota := true, zeta := true, zetaHave := true }) only
-       peel_trace_step hs hs)
+  · dsimp (config := { beta := true, iota := true, zeta := true, zetaHave := true }) only [execInstWithSvc]
+    peel_trace_step hs hs
+    split <;> peel_trace_step hs hs
 
 private theorem exec_stpSimd_no_allocFailed {svc : State → State}
     {sz : SimdMemSize} {vt1 vt2 : VReg} {addr : AddrMode} {s : State}
@@ -570,9 +608,9 @@ private theorem exec_stpSimd_no_allocFailed {svc : State → State}
     allocFailedEvent ∉ (execInstWithSvc svc (.stpSimd sz vt1 vt2 addr) s).trace := by
   apply ite_no_allocFailed
   · exact setStatus_no_allocFailed hs
-  · cases addr <;>
-      (try dsimp (config := { beta := true, iota := true, zeta := true, zetaHave := true }) only
-       peel_trace_step hs hs)
+  · dsimp (config := { beta := true, iota := true, zeta := true, zetaHave := true }) only [execInstWithSvc]
+    peel_trace_step hs hs
+    split <;> peel_trace_step hs hs
 
 private theorem exec_st1SinglePost_no_allocFailed {svc : State → State}
     {q : Bool} {rm : VReg} {opcode : BitVec 3} {sBit : Bool} {size : BitVec 2}
@@ -885,9 +923,6 @@ theorem preservesNoAllocFailed_codeROSubroutineHook
 private theorem retHook_trace (f : State → State) (s : State) :
     (retHook f s).trace = (f s).trace := rfl
 
-private theorem returnToLinkRegister_trace (s : State) :
-    (returnToLinkRegister s).trace = s.trace := rfl
-
 private theorem restoreCallerRegs_trace (sCaller sCallee : State) :
     (restoreCallerRegs sCaller sCallee).trace = sCallee.trace := rfl
 
@@ -1169,37 +1204,6 @@ private theorem preservesNoAllocFailed_compress512Hook (Q : PqxdhPrims) :
     PreservesNoAllocFailed (compress512Hook Q.F512) :=
   fun _ hs => hs
 
-private theorem preservesNoAllocFailed_toEdwardsHook (Q : PqxdhPrims) :
-    PreservesNoAllocFailed (toEdwardsHook Q.montToEd) :=
-  fun _ hs => hs
-
-private theorem preservesNoAllocFailed_compressHook (Q : PqxdhPrims) :
-    PreservesNoAllocFailed (compressHook Q.compress) :=
-  fun _ hs => hs
-
-private theorem preservesNoAllocFailed_edNegHook (Q : PqxdhPrims) :
-    PreservesNoAllocFailed (edNegHook Q.edNeg) :=
-  fun _ hs => hs
-
-private theorem preservesNoAllocFailed_torsionFreeHook (Q : PqxdhPrims) :
-    PreservesNoAllocFailed (torsionFreeHook Q.isTorsionFree) := by
-  intro s hs
-  unfold torsionFreeHook
-  rw [returnToLinkRegister_trace, tr_writeReg64]
-  exact hs
-
-private theorem preservesNoAllocFailed_dsmbHook (Q : PqxdhPrims) :
-    PreservesNoAllocFailed (dsmbHook Q.dsmb) :=
-  fun _ hs => hs
-
-private theorem preservesNoAllocFailed_scalarModHook (Q : PqxdhPrims) :
-    PreservesNoAllocFailed (scalarModHook Q.scalarMod) :=
-  fun _ hs => hs
-
-private theorem preservesNoAllocFailed_scalarWideHook (Q : PqxdhPrims) :
-    PreservesNoAllocFailed (scalarWideHook Q.scalarWide) :=
-  fun _ hs => hs
-
 private theorem preservesNoAllocFailed_kemEncapsHook (Q : PqxdhPrims) :
     PreservesNoAllocFailed (kemEncapsHook Q.encaps) :=
   fun _ hs => hs
@@ -1211,20 +1215,6 @@ private theorem preservesNoAllocFailed_kemDecapsHook (Q : PqxdhPrims) :
 private theorem preservesNoAllocFailed_mlkemFromSeedHook (Q : PqxdhPrims) :
     PreservesNoAllocFailed (mlkemFromSeedHook Q.K) :=
   fun _ hs => hs
-
-private theorem preservesNoAllocFailed_mlkemPk1Hook :
-    PreservesNoAllocFailed mlkemPk1Hook := by
-  intro s hs
-  unfold mlkemPk1Hook
-  rw [retHook_trace, tr_writeReg64]
-  exact hs
-
-private theorem preservesNoAllocFailed_mlkemPk2Hook :
-    PreservesNoAllocFailed mlkemPk2Hook := by
-  intro s hs
-  unfold mlkemPk2Hook
-  rw [retHook_trace, tr_writeReg64]
-  exact hs
 
 private theorem preservesNoAllocFailed_mlkemEncaps1Hook (Q : PqxdhPrims) :
     PreservesNoAllocFailed (mlkemEncaps1Hook Q.K) := by
@@ -1297,49 +1287,15 @@ theorem externPreserves_map_abortOnPanic {ext : String → Option (State → Sta
     subst hgf
     exact preservesNoAllocFailed_abortOnPanic (hext name g he)
 
-private theorem tablePreserves_cliPqxdhPlaced (mmpl : Obj.MultiPlacement)
-    (C : Crypto) (Q : PqxdhPrims) :
-    ∀ p ∈ cliPqxdhHookTablePlaced mmpl C Q, PreservesNoAllocFailed p.2 := by
-  simp only [cliPqxdhHookTablePlaced, List.mem_cons, List.not_mem_nil, or_false]
-  rintro _ (rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
-  · exact preservesNoAllocFailed_compress512Hook Q
-  · exact preservesNoAllocFailed_toEdwardsHook Q
-  · exact preservesNoAllocFailed_compressHook Q
-  · exact preservesNoAllocFailed_edNegHook Q
-  · exact preservesNoAllocFailed_torsionFreeHook Q
-  · exact preservesNoAllocFailed_dsmbHook Q
-  · exact preservesNoAllocFailed_scalarModHook Q
-  · exact preservesNoAllocFailed_scalarWideHook Q
-  · exact preservesNoAllocFailed_kemEncapsHook Q
-  · exact preservesNoAllocFailed_kemDecapsHook Q
-  · exact preservesNoAllocFailed_mlkemFromSeedHook Q
-  · exact preservesNoAllocFailed_mlkemPk1Hook
-  · exact preservesNoAllocFailed_mlkemPk2Hook
-  · exact preservesNoAllocFailed_mlkemEncaps1Hook Q
-  · exact preservesNoAllocFailed_mlkemEncaps2Hook Q
-  · exact preservesNoAllocFailed_mlkemDecapsHook Q
-  · exact preservesNoAllocFailed_mlkemValidatePkHook Q
-  · exact preservesNoAllocFailed_libcruxHmacHookMallocng mmpl C.F
+private theorem tablePreserves_cliPqxdhPlaced (Q : PqxdhPrims) :
+    ∀ p ∈ cliPqxdhHookTablePlaced Q, PreservesNoAllocFailed p.2 := by
+  intro _ hp
+  cases hp
 
 private theorem tablePreserves_cliHookTablePlaced (mmpl : Obj.MultiPlacement) (W : CliHooks) :
     ∀ p ∈ cliHookTablePlaced mmpl W, PreservesNoAllocFailed p.2 := by
-  intro p hp
-  unfold cliHookTablePlaced at hp
-  rw [List.mem_append] at hp
-  rcases hp with hpq | hcli
-  · exact tablePreserves_cliPqxdhPlaced mmpl W.C W.Q p hpq
-  · simp only [List.mem_cons, List.not_mem_nil, or_false] at hcli
-    rcases hcli with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
-    · exact preservesNoAllocFailed_writeFileHook
-    · exact preservesNoAllocFailed_writeStdoutHook
-    · exact preservesNoAllocFailed_fmtWriteHook0
-    · exact preservesNoAllocFailed_formatInnerHook0
-    · exact preservesNoAllocFailed_compress256Hook W.C.F
-    · exact preservesNoAllocFailed_aesEncHookMallocng mmpl W.C.E
-    · exact preservesNoAllocFailed_aesDecHookMallocng mmpl W.C.D
-    · exact preservesNoAllocFailed_pubFromSecretHook W.C.pubKey
-    · exact preservesNoAllocFailed_diffieHellmanHook W.C.X
+  intro _ hp
+  cases hp
 
 /-- Every hook in `cliExternsPlaced mmpl W` preserves `allocFailedEvent ∉ s.trace`. -/
 theorem externPreservesNoAllocFailed_cliExternsPlaced

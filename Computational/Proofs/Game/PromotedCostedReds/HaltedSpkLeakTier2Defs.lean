@@ -9,15 +9,60 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.HaltedSpkDefs
-public import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.HaltedSpkDefs
+import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon
 public import Computational.Proofs.Game.PromotedCostedReds.SpkTier2Bookkeeping -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.KemFailTrackTier2 -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInProg -- proof-setup: allow-public-import
-import Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg
+public import Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInDefs -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs
 import Computational.Proofs.Game.PromotedCostedReds.DrSessionSimSize
 import Computational.Proofs.E2E.Dsl.SmReachInvParty
 public import Computational.Proofs.E2E.Dsl.SpqrSim -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.CostedTables
+import Computational.Specifications.Reductions.ReductionDsl.AtomicOps
+import Computational.Specifications.Reductions.ReductionDsl.Core
+import Computational.Specifications.Reductions.ReductionDsl.TargetCodecs
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
+import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionSM
+import LibsignalBinary.Specifications.LibsignalE2E.PqxdhInputs
+import LibsignalBinary.Specifications.LibsignalSpqrV1.Poly
+import Mathlib.Algebra.BigOperators.Group.Finset.Defs
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Data.Finset.Defs
+import Mathlib.Data.List.Dedup
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.Integral.Lebesgue.Add
+import Mathlib.Order.Disjoint
+import Mathlib.Order.SetNotation
+import Mathlib.Tactic.Ring
+import PolyFun.Control.Monad.Support
+import Std.Tactic.BVDecide.Normalize.BitVec
+import Std.Tactic.BVDecide.Normalize.Prop
+import ToMathlib.Control.StateT
+import VCVio.CryptoFoundations.SecExp
+import VCVio.CryptoFoundations.SecExp.Measure
+import VCVio.EvalDist.Defs.Measure.Core
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Basic
+import VCVio.EvalDist.Monad.Bool
+import VCVio.EvalDist.ProbabilityBounds
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.EvalDist.Measure
+import VCVio.OracleComp.OracleSpec
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.QueryTracking.SubSpec
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.Basic
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Unary.HoareTriple
+import Computational.Proofs.ReductionDsl.Bridge
 
 /-!
 # Tier-2 Tracker-Halted `spkLeakRed` Step Definitions and Bounds
@@ -102,10 +147,10 @@ open Computational.Proofs.Game.PromotedCostedReds.KemFailTrackTier2
    recordHonestWireTier2E recordHonestWireTier2E_cost_le recordHonestWireTier2E_size_le
    findRevHonestWireIdxTier2E findRevHonestWireIdxTier2E_cost_le findRevHonestWireIdxTier2E_size_le
    kemOnDeliverPostTier2E kemOnDeliverPostTier2E_cost_le kemOnDeliverPostTier2E_size_le)
-open Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInProg
+open Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInDefs
   (spkInitArgT spkInitGsE2EE cost_spkInitGsE2EE size_spkInitGsE2EE
    receiveSpkAtomicC receiveSpkAtomicC_queries receiveSpkAtomicC_size_le)
-open Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg
+open Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs
   (liftExpr_cost_exact liftCompCoins_cost_exact drReceiveAtomicC_cost_exact)
 
 section HaltedTier2
@@ -191,7 +236,7 @@ private theorem drSendCoinsTier2C_queries {Γ : List (Ty ASig)}
   simp [drSendCoinsTier2C, wk1Comp_queries, liftCompCoins_queries_zero, Comp.queries]
 
 private theorem noKemKeyGenComp_drSendC_v0 :
-    SpkHop2RInProg.NoKemKeyGenComp
+    SpkHop2RInDefs.NoKemKeyGenComp
       (drSendC (spqrDslHooks ℓ zeroPqxdhPrims C K decT encT) (coinE2EIface (ℓ := ℓ) PrfI)
         (Γ := [.prod Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.GhostStT
           (.prod Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.PlainT
@@ -254,9 +299,9 @@ private theorem receiveSpkAtomicC_cost_tier2 {Γ : List (Ty ASig)}
       (decT := decT) (lam := lam) sE gE cE rcE).cost ≤
       sE.cost + gE.cost + cE.cost + rcE.cost + 5105000 + 9 * (ℓ / 32 + 1) := by
   let t0 : Ty ASig := .prod BV256 (.prod GhostStT (.prod (B 32) BV256))
-  have hsk := SpkLeakRedRInProg.cost_senderKeyPtAtomicE (C := C) (K := K) (Dh := Dh) (encPt := encPt)
+  have hsk := SpkLeakRedRInDefs.cost_senderKeyPtAtomicE (C := C) (K := K) (Dh := Dh) (encPt := encPt)
     (encT := encT) (decT := decT) (lam := lam) (.fst (.snd (.snd .v0)) : Expr AOps (t0 :: Γ) (B 32))
-  have hprep := SpkLeakRedRInProg.cost_prepRecvB0StateAtomicE (C := C) (K := K) (Dh := Dh)
+  have hprep := SpkLeakRedRInDefs.cost_prepRecvB0StateAtomicE (C := C) (K := K) (Dh := Dh)
     (encPt := encPt) (encT := encT) (decT := decT) (lam := lam)
     (.pair (.fst (.snd .v2)) (.pair (.fst .v1) (.pair (.snd (.snd (.snd .v2))) .v0)) :
       Expr AOps (BV256 :: .prod PK PtT :: t0 :: Γ) (.prod GhostStT (.prod PK (.prod BV256 BV256))))
@@ -270,7 +315,7 @@ private theorem receiveSpkAtomicC_cost_tier2 {Γ : List (Ty ASig)}
       Expr AOps (t0 :: Γ) (.prod GhostStT (.prod (B 32) BV256)))
   have hb0 : bits 0 = 1 := by decide
   dsimp only [receiveSpkAtomicC]
-  simp only [SpkLeakRedRInProg.cost_sPureOp, SpkLeakRedRInProg.cost_sGroupOp,
+  simp only [SpkLeakRedRInDefs.cost_sPureOp, SpkLeakRedRInDefs.cost_sGroupOp,
     extractPtPrfIface, atomicPrfIface, Comp.cost, Expr.cost, Expr.v0, Expr.v1, Expr.v2, Expr.v3,
     _root_.ReductionDsl.AtomicPureOp.cost, _root_.ReductionDsl.AtomicGroupOp.cost, hb0]
     at hsk hprep hdr1 hdr2 ⊢

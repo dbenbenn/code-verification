@@ -18,7 +18,7 @@ External stub symbol-name abbreviations and `List.lookup` helper shared across E
 proof modules.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,9 +37,6 @@ abbrev stringCloneName : String := "<alloc::string::String as core::clone::Clone
 abbrev bcmpName : String := "bcmp"
 /-- `std::sys::random::linux::hashmap_random_keys() -> (u64, u64)` (stub `0x6eeb4`). -/
 abbrev randomKeysName : String := "std::sys::random::linux::hashmap_random_keys"
-/-- hashbrown's `Fallibility::capacity_overflow` of the copy the in-memory stores use (stub
-`0x6ee8c`). Every reached caller passes `Infallible`, so it panics. -/
-abbrev capOverflowName : String := "<hashbrown::raw::Fallibility>::capacity_overflow#1"
 /-- hashbrown's `Fallibility::alloc_err`, same copy (stub `0x6ee94`); panics as above. -/
 abbrev allocErrName : String := "<hashbrown::raw::Fallibility>::alloc_err#1"
 
@@ -49,20 +46,6 @@ abbrev allocErrName : String := "<hashbrown::raw::Fallibility>::alloc_err#1"
 abbrev rustAllocName : String := "__rustc::__rust_alloc"
 /-- `__rust_dealloc` (stub `0x6ee70`). -/
 abbrev rustDeallocName : String := "__rustc::__rust_dealloc"
-/-- `__rust_realloc` (stub `0x6eee0`). -/
-abbrev rustReallocName : String := "__rustc::__rust_realloc"
-
-
-theorem lookup_none {β : Type} (l : List (String × β)) (s : String)
-    (h : s ∉ l.map Prod.fst) : l.lookup s = none := by
-  induction l with
-  | nil => rfl
-  | cons p t ih =>
-    obtain ⟨k, v⟩ := p
-    simp only [List.map_cons, List.mem_cons, not_or] at h
-    have hk : (s == k) = false := by simpa using h.1
-    simp only [List.lookup, hk]
-    exact ih h.2
 
 
 end CryptoVerification.E2E

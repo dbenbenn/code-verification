@@ -10,19 +10,25 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hscPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hscPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch1Placed
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsc -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Budget Error Exits and Decoder Deallocation (`Variant2hsc`)
@@ -31,7 +37,7 @@ Relocatable Block-`333` error exits (`+9224`, `+9228`) and `FreeOnlyEvs` inline
 `ProtoPolynomialDecoder` deallocation (`+4428..+4512 -> +9228`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

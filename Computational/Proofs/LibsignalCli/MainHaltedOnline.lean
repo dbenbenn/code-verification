@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.MainHaltedCoupling
+public import Computational.Proofs.LibsignalCli.MainHaltedCoupling -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.EvalDist.MeasureTVDist.Event
 import VCVio.EvalDist.ProbabilityBounds
@@ -23,7 +23,7 @@ Proves the per-query identical-until-bad coupling between `oracleLoggedTracked` 
 driver (`cliE2EExpWithKiCoinLogged_good_le_sessionTracked_pr`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

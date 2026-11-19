@@ -10,13 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2ClPlaced
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSliceBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Code-Loaded `[LibsignalPlacement]` Proof of `decode_varint [local#2]`
@@ -25,7 +28,7 @@ Proves `RustCliAllocBudget`-threaded `withLsCodeLoaded` contracts (`decodeVarint
 `decodeVarint2SpecX`) on `(blkPC_291).rebase (blkPl_291).base H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1ClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbClPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1ClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbClPlaced
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -19,6 +19,16 @@ import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1Placed
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`) — Part 5a `withLsCodeLoaded`: Arm 8 (`States.ekReceivedCt1Sampled`)
@@ -27,7 +37,7 @@ Relocatable `[LibsignalPlacement]` verification of Arm 8 (`States.ekReceivedCt1S
 with `withLsCodeLoaded` on `<PolyEncoder>::into_pb` (Block `375`) and Block `334`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -56,13 +66,13 @@ open CryptoVerification.SpqrV1.ProtoRepr
 open CryptoVerification.CodeLayout
 open CryptoVerification.SpqrV1.States.IntoPb.Placed
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
   bv_sub_sub_lit' bv_add_add_lit'
 
 /-- Auxiliary reference state overriding only `x30` (`lr`) so `SepWPp` CPS steps can stop at an
     intermediate PC `lr` and sequence with `sepWPp_seq_mid_lscl`. -/
-def statesIntoPbSetLr (s0 : State) (lr : BitVec 64) : State :=
+@[expose] def statesIntoPbSetLr (s0 : State) (lr : BitVec 64) : State :=
   s0.writeReg64 (Reg.gpr 30#5) lr
 
 theorem statesIntoPbSetLr_lr (s0 : State) (lr : BitVec 64) :

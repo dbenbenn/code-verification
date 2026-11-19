@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3Placed
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4PlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3
@@ -19,6 +19,17 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3b
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4cPlacedBudgetAux
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3bPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3bPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4Placed
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4cPlaced
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Budget-Threaded Variant 3 (`Ct1Received`, `+692`)
@@ -27,7 +38,7 @@ Total-correctness relocatable Block-`333` theorems and `subroutine_ok` contracts
 `InnerState.ct1Received` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -747,24 +758,5 @@ theorem states_from_pb_ct1Received_ok_ext_placed [LibsignalPlacement]
     (fun _ h => fitsEnv_alloc_of_statesFromPbEnv s h)
     (fun _ _ hfits hevs => ct1ReceivedEnv_sub_statesFromPbEnv s hfits hevs)
 
-/-- `subroutine_ok` for Variant 3 (`InnerState.ct1Received`) under the uniform
-    `statesFromPbVariantPlacedSpec` (`StatesFromPbEnv`), discharged from `FromPbAllocHooksBudget`
-    alone via `v4c_ek_sent_ct1_received_from_pb_on_333_placed_ok` and
-    `encoder_from_pb_ok_of_alloc_placed`. -/
-theorem states_from_pb_ct1Received_ok_ext_of_alloc_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksBudget M A lim ext)
-    (s : CryptoVerification.LibsignalSpqrV1.V1State.Chunked.Ct1Received) :
-    subroutine_ok (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333)
-      (withLsCodeLoaded lsmpl
-        (DefsBudget.statesFromPbVariantPlacedSpec M A lim F
-          { innerState := some (.ct1Received s) })) :=
-  states_from_pb_ct1Received_ok_ext_placed hA
-    (Variant2aPlacedBudgetAux.encoder_from_pb_ok_of_alloc_placed hA) s
-
 abbrev states_from_pb_variant2_placed := @states_from_pb_ct1Received_ok_ext_placed
-abbrev states_from_pb_variant2_of_alloc_placed := @states_from_pb_ct1Received_ok_ext_of_alloc_placed
-
 end LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3PlacedBudget

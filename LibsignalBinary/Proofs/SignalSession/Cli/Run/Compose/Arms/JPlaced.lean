@@ -9,9 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.States -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # Relocatable Arm `J` Specification for `signal_session::run`
@@ -20,7 +29,7 @@ Defines `RunHopJoinPlaced` (`R+0xf8c` / `R+0x124` / `R+0x2c7c → lr`) on Block 
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +45,7 @@ open CryptoVerification.SignalSession.Cli.MainHops
 open CryptoVerification.SignalSession.Cli.RunSkeleton
 
 /-- Relocatable Arm `J` contract from `AtJoinPlaced` (`R+0xf8c`) or `AtRejectPlaced` (`R+0x124` / `R+0x2c7c`) through store/output moves, deallocation, and stack restoration to `runPostPlaced`. -/
-def RunHopJoinPlaced [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
+@[expose] def RunHopJoinPlaced [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (needs : RunNeeds) (resStack : Nat) : Prop :=
   ∀ {g : RunCall} {s0 s : State} {P : SepProp} {Qp : State → SepProp → Prop},
     RunHooksPlaced A H →

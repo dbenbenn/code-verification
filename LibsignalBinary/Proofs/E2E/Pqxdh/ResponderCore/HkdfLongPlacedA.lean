@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.HkdfLong
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.HkdfLong -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandSegsExt
 import LibsignalBinary.Specifications.LibsignalE2E.State -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable `expand_multi_info` (`okmLen = 96`, `info.length = 46`) — Cut Predicates and Part A
@@ -21,7 +22,7 @@ Defines relocatable loop cut-point structures and proves Block 1 (`T(1)`) and lo
 (`iter_a1`, `iter_a2`, `iter_b1`) for Block `53` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -46,23 +47,6 @@ open CryptoVerification.LibsignalTripleRatchet.Expand
 
 attribute [local arm64_norm] MemWidth.bytes SimdMemSize.bytes
 
-@[simp, arm64_norm]
-theorem expPlacedFakeB_off_892 [LibsignalPlacement] :
-    expPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 892) =
-      (blkPl_53).base + 892#64 := by
-  dsimp only [expPlacedFakeB]; bv_lin
-
-@[simp, arm64_norm]
-theorem expPlacedFakeB_off_920 [LibsignalPlacement] :
-    expPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 920) =
-      (blkPl_53).base + 920#64 := by
-  dsimp only [expPlacedFakeB]; bv_lin
-
-@[simp, arm64_norm]
-theorem expPlacedFakeB_off_988 [LibsignalPlacement] :
-    expPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 988) =
-      (blkPl_53).base + 988#64 := by
-  dsimp only [expPlacedFakeB]; bv_lin
 
 /-! ## Placed Loop Cut Predicates -/
 

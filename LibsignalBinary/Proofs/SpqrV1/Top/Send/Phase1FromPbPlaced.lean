@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Top.Send.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -22,6 +22,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1Placed
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1Steps
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.WPFrozen
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable `spqr::send::<HookRng>` Phase 1b: Inner-State Unpack (Block 124)
@@ -30,7 +31,7 @@ Verifies `spqr_send_inner_none_step_placed` (`+156 -> s0.lr`) and
 `spqr_send_inner_some_to_224_placed` (`+156 -> +224`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

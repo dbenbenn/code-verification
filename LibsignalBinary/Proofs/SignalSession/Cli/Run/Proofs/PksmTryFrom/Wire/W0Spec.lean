@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop -- proof-setup: allow-public-import
 
 /-!
 # `PreKeySignalMessage::try_from`: Stack `ProtoPreKeySignalMessage` and Decode-Loop Interface
@@ -21,7 +21,7 @@ Defines the X25519 key-parsing helpers (`ecKeyParses`, `pkOf`), the 128-byte sta
 `PreKeyLoopExitState`, `PreKeyDecodeLoopOk`, `PreKeyDecodeLoopF4Ok`) at `+0x0e4..+0x460`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -44,12 +44,12 @@ export CryptoVerification.E2E.Pqxdh.ResponderWire
 
 /-- Whether `b` begins with `0x05` (`djbType`) and has at least 33 bytes
 (`PublicKey::deserialize` succeeds). -/
-def ecKeyParses (b : List (BitVec 8)) : Bool :=
+@[expose] def ecKeyParses (b : List (BitVec 8)) : Bool :=
   b.head? == some 0x05#8 && 33 ≤ b.length
 
 /-- the key `PublicKey::deserialize bk` returns; an all-zero dummy on `Err` (never reached
 on paths guarded by `ecKeyParses bk = true`). -/
-def pkOf (bk : List (BitVec 8)) : PublicKey :=
+@[expose] def pkOf (bk : List (BitVec 8)) : PublicKey :=
   match PublicKey.deserialize bk with
   | .ok k => k
   | .error _ => ⟨List.Vector.replicate 32 0#8⟩
@@ -101,7 +101,7 @@ structure WirePreKeyGhost where
   message : VecPin
 
 /-- The stack `proto::wire::PreKeySignalMessage` (128 bytes at `a = sp' + 312`) holding `m`. -/
-def wirePreKeyAt (A : RustAlloc) (g : WirePreKeyGhost) (a : BitVec 64)
+@[expose] def wirePreKeyAt (A : RustAlloc) (g : WirePreKeyGhost) (a : BitVec 64)
     (m : ProtoPreKeySignalMessage) : SepProp :=
   optVecU8At A g.kyberCt a m.kyberCiphertext ∗
     optVecU8At A g.baseKey (a + 0x18#64) m.baseKey ∗
@@ -113,7 +113,7 @@ def wirePreKeyAt (A : RustAlloc) (g : WirePreKeyGhost) (a : BitVec 64)
     CryptoVerification.LibsignalTripleRatchet.Prost.optU32At (a + 0x78#64) m.kyberPreKeyId
 
 /-- Unpinned form (decode-loop invariant; analog of `wireSignalMessageOf`). -/
-def wirePreKeyOf (A : RustAlloc) (a : BitVec 64) (m : ProtoPreKeySignalMessage) : SepProp :=
+@[expose] def wirePreKeyOf (A : RustAlloc) (a : BitVec 64) (m : ProtoPreKeySignalMessage) : SepProp :=
   ∃∗ g : WirePreKeyGhost, wirePreKeyAt A g a m
 
 /-- The cells written by the init block (`+0x098..+0x0b4`: 4 flags `:= 0`, 4 caps `:= -1`) entail
@@ -153,7 +153,7 @@ structure PreKeyLoopRegs (sp' sret len ptr : BitVec 64) (vb : BitVec 8) (s : Sta
 
 /-- Memory at the loop exit `+0x460` for `res = Pksm.decodeProtoLoop fuel m bs`:
 Ok ⇒ `x24 = 0` and the decoded struct; Err ⇒ `x24 ≠ 0`, a live `DecodeError`, and some struct. -/
-def preKeyLoopExitMem (A : RustAlloc) (sp' ptr : BitVec 64) (bs : List (BitVec 8))
+@[expose] def preKeyLoopExitMem (A : RustAlloc) (sp' ptr : BitVec 64) (bs : List (BitVec 8))
     (x24 : BitVec 64) (res : Option ProtoPreKeySignalMessage) : SepProp :=
   memRegion (sp' + 296#64) 16 ∗ (ptr ↦ₛ bs) ∗
     ((sp' + 440#64) ↦₆₄ (sp' + 296#64)) ∗ memRegion (sp' + 448#64) 64 ∗
@@ -162,59 +162,5 @@ def preKeyLoopExitMem (A : RustAlloc) (sp' ptr : BitVec 64) (bs : List (BitVec 8
     | some m' => ⌜x24 = 0#64⌝ ∗ wirePreKeyOf A (sp' + 312#64) m'
     | none =>
       ⌜x24 ≠ 0#64⌝ ∗ decodeErrorAt A x24 ∗ (∃∗ mErr, wirePreKeyOf A (sp' + 312#64) mErr)
-
-/-- State at the loop exit `+0x460` (analog of `Wire.LoopExitState`). -/
-def PreKeyLoopExitState (img : Obj.Image) (s0 : State) (sp' sret len ptr : BitVec 64) (vb : BitVec 8)
-    (sf : State) : Prop :=
-  PreKeyLoopRegs sp' sret len ptr vb sf ∧ sf.spAligned = true ∧ img.FrozenLoaded sf ∧
-    sf.symtab = img.symtab ∧ sf.trace = s0.trace
-
-/-- Full loop-exit postcondition (analog of `loopExitPostX`). -/
-def preKeyLoopExitPost (img : Obj.Image) (A : RustAlloc) (s0 : State) (sp' sret len ptr0 : BitVec 64)
-    (vb : BitVec 8) (ptr : BitVec 64) (bs : List (BitVec 8)) (res : Option ProtoPreKeySignalMessage)
-    (sf : State) (P : SepProp) : Prop :=
-  PreKeyLoopExitState img s0 sp' sret len ptr0 vb sf ∧
-    (P ⊢ preKeyLoopExitMem A sp' ptr bs (sf.readReg64 .x24) res)
-
-/-- Decode-loop invariant (`fuel` induction): from the loop head `+0x0e4` to `+0x460`.-/
-def PreKeyDecodeLoopOk (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) :
-    Prop :=
-  ∀ (s0 : State) (sp' sret len ptr0 : BitVec 64) (vb : BitVec 8) (fuel : Nat) (s : State)
-    (ptr : BitVec 64) (bs : List (BitVec 8)) (m : ProtoPreKeySignalMessage),
-    s.pc = (contractProg img.base ext).fnAddr preKeyTryFromName + 0x0e4#64 →
-    s.status = .Running →
-    PreKeyLoopRegs sp' sret len ptr0 vb s →
-    s.spAligned = true → img.FrozenLoaded s → s.symtab = img.symtab → s.trace = s0.trace →
-    bs.length ≤ fuel → bs.length < 2 ^ 32 →
-    SepWPp (contractProg img.base ext)
-      ((contractProg img.base ext).fnAddr preKeyTryFromName + 0x460#64) s
-      (sliceCursorAt (sp' + 296#64) ptr bs ∗ ((sp' + 440#64) ↦₆₄ (sp' + 296#64)) ∗
-        memRegion (sp' + 448#64) 64 ∗ A.pool ∗ stackAt sp' (Prost.skipFieldStackX 100) ∗
-        wirePreKeyOf A (sp' + 312#64) m)
-      (preKeyLoopExitPost img A s0 sp' sret len ptr0 vb ptr bs
-        (Pksm.decodeProtoLoop fuel m bs))
-      (tryFromQp s0)
-
-/-- First-iteration decode-loop entry `+0x0f4` (jumped to from `+0x0d0` on a non-empty body,
-with `x28 = sp' + 296`, `x26 = sp' + 304`, `x2 = len`).-/
-def PreKeyDecodeLoopF4Ok (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) :
-    Prop :=
-  ∀ (s0 : State) (sp' sret len ptr0 : BitVec 64) (vb : BitVec 8) (fuel : Nat) (s : State)
-    (ptr : BitVec 64) (b0 : BitVec 8) (bs1 : List (BitVec 8)) (m : ProtoPreKeySignalMessage),
-    s.pc = (contractProg img.base ext).fnAddr preKeyTryFromName + 0x0f4#64 →
-    s.status = .Running →
-    PreKeyLoopRegs sp' sret len ptr0 vb s →
-    s.readReg64 .x28 = sp' + 296#64 → s.readReg64 .x26 = sp' + 304#64 →
-    s.readReg64 .x2 = BitVec.ofNat 64 (b0 :: bs1).length →
-    s.spAligned = true → img.FrozenLoaded s → s.symtab = img.symtab → s.trace = s0.trace →
-    (b0 :: bs1).length ≤ fuel + 1 → (b0 :: bs1).length < 2 ^ 32 →
-    SepWPp (contractProg img.base ext)
-      ((contractProg img.base ext).fnAddr preKeyTryFromName + 0x460#64) s
-      (sliceCursorAt (sp' + 296#64) ptr (b0 :: bs1) ∗ ((sp' + 440#64) ↦₆₄ (sp' + 296#64)) ∗
-        memRegion (sp' + 448#64) 64 ∗ A.pool ∗ stackAt sp' (Prost.skipFieldStackX 100) ∗
-        wirePreKeyOf A (sp' + 312#64) m)
-      (preKeyLoopExitPost img A s0 sp' sret len ptr0 vb ptr (b0 :: bs1)
-        (Pksm.decodeProtoLoop (fuel + 1) m (b0 :: bs1)))
-      (tryFromQp s0)
 
 end CryptoVerification.SignalSession.Cli.RunProofs.PksmWire

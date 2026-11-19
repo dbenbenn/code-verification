@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DropEpilogue
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolateFull
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DropEpilogue -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolateFull -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.Proof
@@ -28,6 +29,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMessageBridgePlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyDecoder as Decoder>::decoded_message` (Block `418`, Part 2): Main Loop & Top-Level Proof
@@ -37,7 +39,7 @@ Completes the relocatable `[LibsignalPlacement]` proof of `<PolyDecoder as Decod
 calls to `computeAt` (Block `371`), `lagrangePrepare` (Block `372`), and `lagrangeComplete` (Block `373`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -52,11 +54,7 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalS
 open CryptoVerification.SpqrV1.Poly CryptoVerification.SpqrV1.Alloc CryptoVerification.CodeLayout
 open CryptoVerification.SpqrV1.Poly.AddChunk CryptoVerification.SpqrV1.Poly.AddChunk.AddChunkNorm
 open CryptoVerification.SpqrV1.Poly.ComputeAt
-open CryptoVerification.SpqrV1.Poly.LagrangePrepare
-  (lagrangePrepareName lagrangePrepare_fnOff LagrangePrepareArgs lagrangePrepareSpec
-   lagrangePreparePlacedSpec lagrangePreparePure lagrangePreparePure_length
-   lagrangePrepareStack lagrangePrepare_ok lagrangePrepare_placed_ok
-   lagrangePrepare_placed_ok_of_hookSat polyOf_eq)
+open CryptoVerification.SpqrV1.Poly.LagrangePrepare (lagrangePrepareName LagrangePrepareArgs lagrangePreparePlacedSpec lagrangePreparePure lagrangePreparePure_length lagrangePrepareStack lagrangePrepare_placed_ok lagrangePrepare_placed_ok_of_hookSat polyOf_eq)
 open CryptoVerification.SpqrV1.Poly.LagrangeComplete
 open CryptoVerification.SpqrV1.GF.UnacceleratedMul CryptoVerification.SpqrV1.GF.Mul2U16
 open CryptoVerification.SpqrV1.States.Leaves
@@ -1121,18 +1119,18 @@ theorem polyDecoderDecodedMessage_cl_placed_ok [LibsignalPlacement] {A : RustAll
     (hrealloc_sat : HookSat (Rust.withPanics ext) spqrRustReallocSym (rustReallocSpec A))
     (hdealloc_sat : HookSat (Rust.withPanics ext) spqrRustDeallocSym (rustDeallocSpec A))
     (hmemcpy_sat : HookSat (Rust.withPanics ext) spqrMemcpySym sessionMemcpyRegionSpec)
-    (hmemset_sat : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionSpec) :
+    (hmemset_sat : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionSpec)
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     subroutine_ok ((blkPC_418).rebase (blkPl_418).base (Rust.withPanics ext))
       (blkPl_418).base (withLsCodeLoaded lsmpl (decodedMessagePlacedSpec A)) :=
   polyDecoderDecodedMessage_cl_placed_ok_of_contracts
     h_panic hshim_sat halloc_sat hdealloc_sat hmemcpy_sat
     (ls_subroutine_ok_of_block (i := 418) (j := 372)
-      (subroutine_ok_withLsCodeLoaded_of_plain
-        (lagrangePrepare_placed_ok_of_hookSat A ext h_panic hshim_sat halloc_sat hmemset_sat)))
+      (lagrangePrepare_placed_ok_of_hookSat A ext h_panic hshim_sat halloc_sat hmemset_sat hOnce))
     (ls_subroutine_ok_of_block (i := 418) (j := 373)
-      (lagrangeComplete_placed_ok ext))
+      (lagrangeComplete_placed_ok ext hOnce))
     (ls_subroutine_ok_of_block (i := 418) (j := 371)
-      (computeAt_placed_ok A ext h_panic hshim_sat halloc_sat hrealloc_sat hdealloc_sat))
+      (computeAt_placed_ok A ext hOnce h_panic hshim_sat halloc_sat hrealloc_sat hdealloc_sat))
 
 theorem polyDecoderDecodedMessage_cro_placed_ok [LibsignalPlacement] {A : RustAlloc}
     {ext : String → Option (State → State)}
@@ -1142,12 +1140,13 @@ theorem polyDecoderDecodedMessage_cro_placed_ok [LibsignalPlacement] {A : RustAl
     (hrealloc_sat : HookSat (Rust.withPanics ext) spqrRustReallocSym (rustReallocSpec A))
     (hdealloc_sat : HookSat (Rust.withPanics ext) spqrRustDeallocSym (rustDeallocSpec A))
     (hmemcpy_sat : HookSat (Rust.withPanics ext) spqrMemcpySym sessionMemcpyRegionSpec)
-    (hmemset_sat : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionSpec) :
+    (hmemset_sat : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionSpec)
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     subroutine_ok ((blkPC_418).rebase (blkPl_418).base (Rust.withPanics ext))
       (blkPl_418).base (withLsCodeRoLoaded lsmpl (decodedMessagePlacedSpec A)) :=
   CryptoVerification.LibsignalTripleRatchet.subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
     (polyDecoderDecodedMessage_cl_placed_ok h_panic hshim_sat halloc_sat hrealloc_sat
-      hdealloc_sat hmemcpy_sat hmemset_sat)
+      hdealloc_sat hmemcpy_sat hmemset_sat hOnce)
 
 theorem polyDecoderDecodedMessage_cro_placed_ok_x [LibsignalPlacement] {A : RustAlloc}
     {ext : String → Option (State → State)}
@@ -1157,12 +1156,13 @@ theorem polyDecoderDecodedMessage_cro_placed_ok_x [LibsignalPlacement] {A : Rust
     (hrealloc_sat : HookSat (Rust.withPanics ext) spqrRustReallocSym (rustReallocSpec A))
     (hdealloc_sat : HookSat (Rust.withPanics ext) spqrRustDeallocSym (rustDeallocSpec A))
     (hmemcpy_sat : HookSat (Rust.withPanics ext) spqrMemcpySym sessionMemcpyRegionSpec)
-    (hmemset_sat : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionSpec) :
+    (hmemset_sat : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionSpec)
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     subroutine_ok ((blkPC_418).rebase (blkPl_418).base (Rust.withPanics ext))
       (blkPl_418).base (withLsCodeRoLoaded lsmpl (polyDecoderDecodedMessagePlacedSpec A)) :=
   polyDecoderDecodedMessage_placed_cro_of_decodedMessage
     (polyDecoderDecodedMessage_cro_placed_ok h_panic hshim_sat halloc_sat hrealloc_sat
-      hdealloc_sat hmemcpy_sat hmemset_sat)
+      hdealloc_sat hmemcpy_sat hmemset_sat hOnce)
 
 theorem polyDecodedMessagePlacedOkX_of_hooks [LibsignalPlacement] {A : RustAlloc}
     {ext : String → Option (State → State)}
@@ -1172,11 +1172,12 @@ theorem polyDecodedMessagePlacedOkX_of_hooks [LibsignalPlacement] {A : RustAlloc
     (hrealloc_sat : HookSat (Rust.withPanics ext) spqrRustReallocSym (rustReallocSpec A))
     (hdealloc_sat : HookSat (Rust.withPanics ext) spqrRustDeallocSym (rustDeallocSpec A))
     (hmemcpy_sat : HookSat (Rust.withPanics ext) spqrMemcpySym sessionMemcpyRegionSpec)
-    (hmemset_sat : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionSpec) :
+    (hmemset_sat : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionSpec)
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     PolyDecodedMessagePlacedOkX A ext :=
   polyDecodedMessagePlacedOkX_of_decodedMessage
     (polyDecoderDecodedMessage_cro_placed_ok h_panic hshim_sat halloc_sat hrealloc_sat
-      hdealloc_sat hmemcpy_sat hmemset_sat)
+      hdealloc_sat hmemcpy_sat hmemset_sat hOnce)
 
 end CryptoVerification.SpqrV1.Poly.DecodedMessage
 

@@ -9,10 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- shake: keep -- proof-setup: allow-public-import
+meta import GeneratedLean.LibsignalSessionPlacedObjShard0
+meta import GeneratedLean.LibsignalSessionPlacedObjShard1
+meta import GeneratedLean.LibsignalSessionPlacedObjShard10
+meta import GeneratedLean.LibsignalSessionPlacedObjShard2
 
 /-!
 # Relocatable Per-Block Fetches for `TripleRatchet/Alloc`
@@ -23,7 +27,7 @@ Generated instruction-fetch definitions for blocks `13` (`do_reserve_and_handle`
 (`PublicKey::serialize`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -47,11 +51,11 @@ abbrev lsPubFromSecretSym : String :=
 theorem ls_hook_ok_of_mem [LibsignalPlacement] {α : Type} {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
     {sym : String} {spec : Spec α} (hsat : HookSat H sym spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide)
+    (hmem : sym ∈ libsignalHookedExterns := by decide)
     (hi : i < 619 := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     subroutine_ok prog (lsρ sym) spec := by
-  obtain ⟨k, hk, hget⟩ := List.getElem_of_mem hmem
-  exact ls_hook_ok (k := k) (by simp [hk, hget]) hsat hi hunmut
+  obtain ⟨k, hk, hget⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
+  exact ls_hook_ok (k := k) (by simp [hk, hget]) hsat hi hunmut (hhooked := hmem)
 
 gen_ls_blk 13
 gen_ls_blk 22

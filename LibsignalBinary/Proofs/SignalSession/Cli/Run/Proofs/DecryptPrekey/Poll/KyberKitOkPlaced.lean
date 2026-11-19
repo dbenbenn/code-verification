@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.PreKeyKitOkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KyberKitOk
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.PreKeyKitOkPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KyberKitOk -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable `[LibsignalPlacement]` CLI KyberPreKey Store-Kit Specification
@@ -21,7 +23,7 @@ Defines `cliKpkStoreSpecFullPlaced` (`b := 0#64` with `lsρ` / `lsmpl.base` offs
 quietness.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,7 +43,7 @@ open CryptoVerification.SignalSession.Cli.RunSkeleton
 open CryptoVerification.SignalSession.Cli.KitInst
 
 /-- Relocatable `[LibsignalPlacement]` `cliKpkStoreSpecFull` over `cliKyberPreKeyStoreSpecPlaced`. -/
-def cliKpkStoreSpecFullPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliKpkStoreSpecFullPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (kid ksid : BitVec 32) (kbk : PublicKey)
     (getShimStk getPollStk markShimStk markPollStk : Nat) : KyberPreKeyStoreSpec A 0#64 :=
   { cliKyberPreKeyStoreSpecPlaced A rd F0 pathOk kid ksid kbk

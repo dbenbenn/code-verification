@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSMInstance
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.OTCCA.CostedTables
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRF.CostedTables
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.OTCCA.CostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRF.CostedTables -- proof-setup: allow-public-import
 public import Computational.Specifications.Reductions.ReductionDsl.Samplers
 
 /-!
@@ -22,7 +22,7 @@ source OT-CCA game codec for `WireAEAD.wireSpec` and the Libsignal per-message s
 wire-OT-CCA reductions (`lSaltRed`, `lWireRed`, `slotSaltRed`, `slotWireRed`).
 -/
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.SpecLemmas.Reductions.Primitives.AEAD.CostedTables
 
@@ -46,7 +46,7 @@ inductive WireTag
 
 /-- Target oracle interface for `WireAEAD.wireSpec` with wire byte codec `toBytes`/`ofBytes` and
 unit query cost. -/
-@[reducible] def wireIface {S : Sig} (adT hdrT msgT msg'T rawT tagT : Ty S)
+@[expose, reducible] def wireIface {S : Sig} (adT hdrT msgT msg'T rawT tagT : Ty S)
     (toBytes : rawT.denote → List (BitVec 8))
     (ofBytes : List (BitVec 8) → rawT.denote) :
     Iface S (unifSpec +
@@ -84,7 +84,7 @@ inductive SaltWireSort
   | macTag
   deriving DecidableEq
 
-@[reducible] def SaltWireSort.den (Pt : Type) (ℓ : ℕ) : SaltWireSort → Type
+@[expose, reducible] def SaltWireSort.den (Pt : Type) (ℓ : ℕ) : SaltWireSort → Type
   | .seed => BitVec 256
   | .msgKey => DerivedMessageKeys
   | .salt => Salt32
@@ -96,23 +96,23 @@ inductive SaltWireSort
   | .macTag => BitVec 64
 
 /-- Signature for the Libsignal salt/wire reductions, assigning unit size to every `SaltWireSort`. -/
-@[reducible] def saltWireSig (Pt : Type) (ℓ : ℕ) : Sig where
+@[expose, reducible] def saltWireSig (Pt : Type) (ℓ : ℕ) : Sig where
   Base := SaltWireSort
   den := SaltWireSort.den Pt ℓ
   sz := fun _ _ => 1
 
-@[reducible] def slotAdTy (Pt : Type) (ℓ : ℕ) : Ty (saltWireSig Pt ℓ) :=
+@[expose, reducible] def slotAdTy (Pt : Type) (ℓ : ℕ) : Ty (saltWireSig Pt ℓ) :=
   .prod .nat (.base .ad)
 
-@[reducible] def wireTagTy (Pt : Type) (ℓ : ℕ) : Ty (saltWireSig Pt ℓ) :=
+@[expose, reducible] def wireTagTy (Pt : Type) (ℓ : ℕ) : Ty (saltWireSig Pt ℓ) :=
   .prod (.base .rawBytes) (.base .macTag)
 
-@[reducible] def lctTy (Pt : Type) (ℓ : ℕ) : Ty (saltWireSig Pt ℓ) :=
+@[expose, reducible] def lctTy (Pt : Type) (ℓ : ℕ) : Ty (saltWireSig Pt ℓ) :=
   .prod (wireTagTy Pt ℓ) (.base .salt)
 
 /-- `lAeadK` with associated data re-associated as `ℕ × (Header Pt × LibsignalMsgPublicPart)` to
 match `lAeadR`. -/
-def libsignalAeadKeyIndexedAd {Pt : Type} (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt → PublicKey)
+@[expose] def libsignalAeadKeyIndexedAd {Pt : Type} (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt → PublicKey)
     (idOf : Party → IdentityKey) :
     AEADScheme DerivedMessageKeys (ℕ × (Header Pt × LibsignalMsgPublicPart)) (Plain ℓ) LibsignalCiphertextWithSalt32 where
   enc mk a m := (lAeadK C codec ℓ encT idOf).enc mk ((a.1, a.2.1), a.2.2) m
@@ -126,7 +126,7 @@ inductive WireOp
   deriving DecidableEq
 
 /-- Wire header, identity-key, and plaintext-padding operation table for `lWireRed` at unit cost. -/
-@[reducible] def wireOps {Pt : Type} (ℓ : ℕ) (encT : Pt → PublicKey)
+@[expose, reducible] def wireOps {Pt : Type} (ℓ : ℕ) (encT : Pt → PublicKey)
     (idOf : Party → IdentityKey) :
     Ops (saltWireSig Pt ℓ) where
   Op := WireOp
@@ -149,7 +149,7 @@ inductive WireOp
 
 /-- Combined operation table summing `otccaOps` for `libsignalAeadKeyIndexedAd`, `otccaOps` for
 `lAeadR`, and `wireOps`. -/
-@[reducible] def saltWireOps {Pt : Type} [DecidableEq Pt]
+@[expose, reducible] def saltWireOps {Pt : Type} [DecidableEq Pt]
     (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt → PublicKey)
     (idOf : Party → IdentityKey) (kAEAD : ℕ) :
     Ops (saltWireSig Pt ℓ) :=
@@ -163,7 +163,7 @@ inductive WireOp
         (.base .salt) (fun a => a.2.2.salt))
       (wireOps ℓ encT idOf))
 
-def slotKeySort : Bool → SaltWireSort
+@[expose] def slotKeySort : Bool → SaltWireSort
   | true => .seed
   | false => .msgKey
 
@@ -174,7 +174,7 @@ instance instSampleableSlotKey {Pt : Type} {ℓ : ℕ} :
 
 /-- Target PRF interface for `lSaltRed` with `lIdeal` ciphertext sampling (`kIdeal`) and uniform bit
 sampling. -/
-@[reducible] def saltRedIface {Pt : Type} (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+@[expose, reducible] def saltRedIface {Pt : Type} (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     (encT : Pt → PublicKey) (kIdeal : ℕ) :
     Iface (saltWireSig Pt ℓ) (unifSpec + CryptoGames.MACScheme.prfSpec Salt32 DerivedMessageKeys) :=
   ((prfIface (S := saltWireSig Pt ℓ) (.base .salt) (.base .msgKey)).withSamp
@@ -183,7 +183,7 @@ sampling. -/
     (unifSamplers0 (saltWireSig Pt ℓ))
 
 /-- Target `WireAEAD` interface for `lWireRed` with uniform bit sampling. -/
-@[reducible] def wireRedIface (Pt : Type) (ℓ : ℕ) :
+@[expose, reducible] def wireRedIface (Pt : Type) (ℓ : ℕ) :
     Iface (saltWireSig Pt ℓ) (LibsignalWireOracleSpec ℓ) :=
   (wireIface (S := saltWireSig Pt ℓ) (.base .idKeys) (.base .sigHdr) (.base .plain)
     (.base .rawBytes) (.base .rawBytes) (.base .macTag) id id).withSamp
@@ -191,7 +191,7 @@ sampling. -/
 
 /-- Target single-slot OT-CCA interface for `slotSaltRed` and `slotWireRed` with `lIdeal` and
 uniform key samplers. -/
-@[reducible] def slotOtccaIface {Pt : Type} (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+@[expose, reducible] def slotOtccaIface {Pt : Type} (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     (encT : Pt → PublicKey) (kIdeal : ℕ) :
     Iface (saltWireSig Pt ℓ)
       (CryptoGames.FSAEAD.Thm5.IndexedOtccaSpec (Header Pt × LibsignalMsgPublicPart) (Plain ℓ) LibsignalCiphertextWithSalt32) :=
@@ -200,7 +200,7 @@ uniform key samplers. -/
     (unifSamplers (S := saltWireSig Pt ℓ) slotKeySort (fun _ => 1))
 
 /-- Source multi-slot OT-CCA game codec in `saltWireSig` (`codecCost = 2`). -/
-@[reducible] def slotOtccaCodec (Pt : Type) (ℓ : ℕ) :
+@[expose, reducible] def slotOtccaCodec (Pt : Type) (ℓ : ℕ) :
     GameCodec (saltWireSig Pt ℓ)
       (CryptoGames.AEADScheme.otccaSpec (ℕ × (Header Pt × LibsignalMsgPublicPart)) (Plain ℓ) LibsignalCiphertextWithSalt32) :=
   otccaCodec (S := saltWireSig Pt ℓ) (slotAdTy Pt ℓ) (.base .plain) (lctTy Pt ℓ)

@@ -9,19 +9,31 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2cPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2ePlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2cPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2ePlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeBase
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Auth.FromPbBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2cPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2ePlaced
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Variant 1 (`KeysSampled`) Envelopes and `+4016` Continuation
@@ -30,7 +42,7 @@ Allocator event envelopes, `StatesFromPbEnv` subsumption, and post-`auth` compos
 (`+4016 -> ret`) for `InnerState.keysSampled` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -105,7 +117,7 @@ attribute [local simp, local arm64_norm, local wp_norm]
 
 /-- Extract `uc.auth` iff `uc.dk.length` (`2400`) and `uc.ek.length` (`1152`) pass the `+1196`
     header-validation checks in Variant 1 (`InnerState.keysSampled`). -/
-def keysSampledValidAuth? (uc : V1State.Unchunked.HeaderSent) : Option ProtoAuthenticator :=
+@[expose] def keysSampledValidAuth? (uc : V1State.Unchunked.HeaderSent) : Option ProtoAuthenticator :=
   if (BitVec.ofNat 64 uc.dk.length == 2400#64) && (BitVec.ofNat 64 uc.ek.length == 1152#64) then
     uc.auth
   else
@@ -136,14 +148,14 @@ theorem keysSampledValidAuth?_eq_some {uc : V1State.Unchunked.HeaderSent}
   rfl
 
 /-- Tail budget precondition required at `+4016` after `auth` cloning and input `auth` drop. -/
-def KeysSampledTailFits (M : AllocCostModel) (lim : BudgetLimits) (st : M.σ)
+@[expose] def KeysSampledTailFits (M : AllocCostModel) (lim : BudgetLimits) (st : M.σ)
     (optEnc : Option PolynomialEncoder) : Prop :=
   match optEnc with
   | none => True
   | some pbEnc => FitsEnv M lim st (EncoderFromPbAllocEnv (pbToProtoPolyEncoder pbEnc))
 
 /-- Tail postcondition event envelope emitted from `+4016` to `s0.x30`. -/
-def KeysSampledTailEnv (optEnc : Option PolynomialEncoder) (evs : List AllocEvent) : Prop :=
+@[expose] def KeysSampledTailEnv (optEnc : Option PolynomialEncoder) (evs : List AllocEvent) : Prop :=
   match optEnc with
   | none => FreeOnlyEvs evs
   | some pbEnc => EncoderFromPbEnv (pbToProtoPolyEncoder pbEnc) evs
@@ -152,7 +164,7 @@ def KeysSampledTailEnv (optEnc : Option PolynomialEncoder) (evs : List AllocEven
     Admits `[]` when `s` performs zero allocations (passing `zeroBudgetLimits`), while covering
     both `auth` cloning and non-empty `<PolyEncoder>::from_pb` allocations after dropping the
     input `ProtoAuthenticator` buffers. -/
-def KeysSampledFromPbAllocEnv (s : V1State.Chunked.KeysSampled) (evs : List AllocEvent) : Prop :=
+@[expose] def KeysSampledFromPbAllocEnv (s : V1State.Chunked.KeysSampled) (evs : List AllocEvent) : Prop :=
   match s.uc with
   | none => evs = []
   | some uc =>
@@ -170,7 +182,7 @@ def KeysSampledFromPbAllocEnv (s : V1State.Chunked.KeysSampled) (evs : List Allo
           evs = authFromPbEvents auth ++ evs_af ++ evs_enc
 
 /-- Full postcondition event envelope of Variant 1 (`InnerState.keysSampled`, `+1104`). -/
-def KeysSampledFromPbEnv (s : V1State.Chunked.KeysSampled) (evs : List AllocEvent) : Prop :=
+@[expose] def KeysSampledFromPbEnv (s : V1State.Chunked.KeysSampled) (evs : List AllocEvent) : Prop :=
   match s.uc with
   | none => FreeOnlyEvs evs
   | some uc =>

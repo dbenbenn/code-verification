@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt2SampledUc
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt2SampledUc
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -25,6 +25,8 @@ import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergePart2CodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Shared Budget Combinators and Inner-Exit Lemmas for `Chunked*Budget`
@@ -39,7 +41,7 @@ Provides:
    `Chunked.Ct2Sampled::merge` (Block `301`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -113,7 +115,7 @@ attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero chunkedCt2S
 /-! ## Budget Preconditions, Error Frame, and Placed Exits for `Chunked.Ct2Sampled::merge` -/
 
 /-- Budget-threaded outer loop-header separation-logic bundle at `+0x0a8` (`entry + 168#64`). -/
-def chunkedCt2SampledLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedCt2SampledLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (m : V1State.Chunked.Ct2Sampled) (bs cur : List (BitVec 8)) (polyBound : Nat) : SepProp :=
@@ -123,7 +125,7 @@ def chunkedCt2SampledLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     chunkedInlSavedRegs10 s0.sp s0 ∗ (bufRef ↦₆₄ slot) ∗ sliceCursorAfter slot ptr bs cur
 
 /-- Budget-threaded inner `Unchunked.Ct2Sent` loop-header bundle at `+0x198` (`entry + 412#64`). -/
-def chunkedCt2SampledUcLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedCt2SampledUcLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (hdr : Option PolynomialEncoder) (uc : V1State.Unchunked.Ct2Sent)
@@ -135,7 +137,7 @@ def chunkedCt2SampledUcLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     chunkedInlSavedRegs10 s0.sp s0 ∗ (bufRef ↦₆₄ slot) ∗ sliceCursorAfter slot ptr bs cur
 
 /-- Budget-threaded error-exit separation-logic bundle at fuel `f` (`f ≤ 6 * bs.length + 12`). -/
-def chunkedCt2SampledErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedCt2SampledErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (f polyBound : Nat) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (m : V1State.Chunked.Ct2Sampled) (bs : List (BitVec 8)) : SepProp :=

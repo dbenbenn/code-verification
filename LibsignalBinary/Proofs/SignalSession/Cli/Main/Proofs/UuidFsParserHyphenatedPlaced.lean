@@ -9,14 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsDecodeHex32Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsParserHyphenated
-public meta import LibsignalBinary.Proofs.Placed.GenLsBlock -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsDecodeHex32Placed
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsParserHyphenated -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.GenLsBlock -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WP.Apply
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Relocatable `.keepsFs` Path Lemmas for `uuid::parser::try_parse`
@@ -25,7 +27,7 @@ Relocatable (`[LibsignalPlacement]`, Block `255` calling Block `254`) `.keepsFs`
 for the error, simple, and hyphenated paths of `uuid::parser::try_parse`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

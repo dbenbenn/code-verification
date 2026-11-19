@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhInputs
 
 /-!
 # Single-Cut Collision Excuses and Move-Level Model Target
@@ -19,7 +20,7 @@ Defines single-cut hardware-trace collision excuse predicates (`PrefixGhosts`, `
 `PreKeyExcused`, `CollisionAt`) and the move-level intermediate target `CompRefinesCliModelMoves`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,13 +33,13 @@ open DY.Libsignal.TripleRatchet.Refinement (wireWhisperTag)
 open DY.Libsignal.Rust
 
 /-- Ghosts sharing `g.σ` that explain the hardware trace prefix `τ` alongside `ms`. -/
-def PrefixGhosts (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PrefixGhosts (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (g : Ghost) (ms : List Move) (τ : List MachineEvent) : Set Ghost :=
   {g' | g'.σ = g.σ ∧ MatchedPrefix interpretation r S who g' ms τ}
 
 /-- States that an accepted whisper message body `b` after prefix `τ₁` requires a cryptographic
 collision under every collision-free explanation of `τ₁`. -/
-def WhisperExcused (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def WhisperExcused (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool) (g : Ghost) (ms : List Move)
     (τ₁ : List MachineEvent) (e : MachineEvent) (τ₂ : List MachineEvent)
     (b : HwBytes) : Prop :=
@@ -55,7 +56,7 @@ def WhisperExcused (interpretation : ExternInterpretation) (r : ProtocolSetup) (
 /-- States that a pre-key message `p` received as `b` after prefix `τ₁` either has a
 `KyberMismatch` or triggers a session-start collision or implicit rejection under every
 collision-free explanation of `τ₁`. -/
-def PreKeyExcused (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PreKeyExcused (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool) (g : Ghost) (ms : List Move)
     (τ₁ : List MachineEvent) (b : HwBytes) (p : PreKeyFields) : Prop :=
   (∃ x, x ∈ preKeyRepresentations interpretation r S g ms b) ∧
@@ -67,7 +68,7 @@ def PreKeyExcused (interpretation : ExternInterpretation) (r : ProtocolSetup) (S
 
 /-- Hardware trace `τ` splits at an explained prefix `τ₁` followed by a `recv` or `pt` event
 that forces a cryptographic collision. -/
-def CollisionAt (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def CollisionAt (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool) (τ : List MachineEvent) : Prop :=
   ∃ (τ₁ : List MachineEvent) (e : MachineEvent) (τ₂ : List MachineEvent) (g : Ghost)
     (ms : List Move),
@@ -106,7 +107,7 @@ open CryptoVerification.SignalSession (Inputs Outcome)
 
 /-- Move-level CLI refinement target instantiating `CompRefinesCliMoves` with `ModelAgree` and
 `PqModelRel`. -/
-def CompRefinesCliModelMoves : Prop :=
+@[expose] def CompRefinesCliModelMoves : Prop :=
   CompRefinesCliMoves ModelAgree PqModelRel
 
 end DY.Libsignal.Composed.Refinement.Cli

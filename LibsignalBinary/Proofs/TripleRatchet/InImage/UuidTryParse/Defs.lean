@@ -9,12 +9,10 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.InImage.UuidTryParse
 
@@ -23,9 +21,5 @@ open Arm64 ProofLib ProofLib.ProgramReflection
 
 abbrev decodeHex32Name : String := "uuid::parser::decode_hex32"
 abbrev parserTryParseName : String := "uuid::parser::try_parse"
-
-gen_decodes libsignalSessionCode_tree uuidTryParseBin [(ls_off% "<uuid::Uuid>::try_parse") → (ls_off% "<uuid::Uuid>::try_parse" + 92)]
-gen_decodes libsignalSessionCode_tree decodeHex32Bin [(ls_off% "uuid::parser::decode_hex32") → (ls_off% "uuid::parser::decode_hex32" + 376)]
-gen_decodes libsignalSessionCode_tree parserTryParseBin [(ls_off% "uuid::parser::try_parse") → (ls_off% "uuid::parser::try_parse" + 532)]
 
 end CryptoVerification.LibsignalTripleRatchet.InImage.UuidTryParse

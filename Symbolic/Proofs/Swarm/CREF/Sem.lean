@@ -41,7 +41,7 @@ SPQR byte operations and setup KEM/signature tables, and proves `compSemOf_ready
 `ProtocolSetupWF`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,13 +56,13 @@ open Symbolic.Swarm.SHARED.SpqrBytes
   (spqrInitOf spqrChainKeyOf spqrSendStateOf spqrSendKeyOf spqrSendMsgOf spqrRecvStateOf spqrRecvKeyOf)
 
 /-- `S` is compatible with every ghost that agrees with the records on the setup's fresh values. -/
-def SemReady (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) : Prop :=
+@[expose] def SemReady (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) : Prop :=
   ∀ g : Ghost, (∀ p ∈ setupRandomsAt r, g.σ p.1 p.2 = r.fresh p.1 p.2) →
     GhostAndSemMatchSetup interpretation r S g
 
 /-- Concrete `OpaqueSymbolSemantics` for composed refinement, combining SPQR byte operations from
 `Symbolic.Swarm.SHARED.SpqrBytes` with setup-compatible KEM and signature functions. -/
-def compSemOf (interpretation : ExternInterpretation) (r : ProtocolSetup) : OpaqueSymbolSemantics where
+@[expose] def compSemOf (interpretation : ExternInterpretation) (r : ProtocolSetup) : OpaqueSymbolSemantics where
   init := spqrInitOf interpretation
   chainKey := spqrChainKeyOf interpretation
   sendState := spqrSendStateOf interpretation
@@ -285,7 +285,7 @@ private theorem b1_Runs.requireTracePredicate {p : ExecTrace → Bool} {tr : Exe
   simp only [Traceful.run_mk, h, ↓reduceIte]
   exact ⟨trivial, trivial⟩
 
-def b1_setupTr1 (a : DY.Participant) : ExecTrace :=
+@[expose] def b1_setupTr1 (a : DY.Participant) : ExecTrace :=
   ((((Trace.nil.append (b1_RndE 32)).append
     (b1_EvE (.IdentityRegistered a (DY.DiffieHellman.dhPk (randTerm 0 32))
       (DY.Signature.vk (randTerm 0 32)) true))).append
@@ -293,7 +293,7 @@ def b1_setupTr1 (a : DY.Participant) : ExecTrace :=
     (b1_NetE (DY.Signature.vk (randTerm 0 32)))).append
     (b1_StE a { kind := .identity, sk := randTerm 0 32 })
 
-def b1_setupTr2 (a b : DY.Participant) : ExecTrace :=
+@[expose] def b1_setupTr2 (a b : DY.Participant) : ExecTrace :=
   (((((b1_setupTr1 a).append (b1_RndE 32)).append
     (b1_EvE (.IdentityRegistered b (DY.DiffieHellman.dhPk (randTerm 5 32))
       (DY.Signature.vk (randTerm 5 32)) true))).append
@@ -301,7 +301,7 @@ def b1_setupTr2 (a b : DY.Participant) : ExecTrace :=
     (b1_NetE (DY.Signature.vk (randTerm 5 32)))).append
     (b1_StE b { kind := .identity, sk := randTerm 5 32 })
 
-def b1_setupTr3 (a b : DY.Participant) : ExecTrace :=
+@[expose] def b1_setupTr3 (a b : DY.Participant) : ExecTrace :=
   ((((((b1_setupTr2 a b).append (b1_RndE 32)).append (b1_RndE 64)).append
     (b1_EvE (.SignedPrekeyPublished b (DY.DiffieHellman.dhPk (randTerm 10 32))))).append
     (b1_StE b { kind := .signedPrekey, sk := randTerm 10 32 })).append
@@ -309,7 +309,7 @@ def b1_setupTr3 (a b : DY.Participant) : ExecTrace :=
     (b1_NetE (DY.Signature.sign (randTerm 5 32) (randTerm 11 64)
       (DY.Libsignal.PQXDH.encodeEC (DY.DiffieHellman.dhPk (randTerm 10 32)))))
 
-def b1_setupTr4 (a b : DY.Participant) : ExecTrace :=
+@[expose] def b1_setupTr4 (a b : DY.Participant) : ExecTrace :=
   ((((((b1_setupTr3 a b).append (b1_RndE 64)).append (b1_RndE 64)).append
     (b1_EvE (.PQPrekeyPublished b (DY.PQKem.kemPk (randTerm 16 64))))).append
     (b1_StE b { kind := .pqPrekey, sk := randTerm 16 64 })).append
@@ -317,7 +317,7 @@ def b1_setupTr4 (a b : DY.Participant) : ExecTrace :=
     (b1_NetE (DY.Signature.sign (randTerm 5 32) (randTerm 17 64)
       (DY.Libsignal.PQXDH.encodeKEM (DY.PQKem.kemPk (randTerm 16 64)))))
 
-def b1_setupTr5 (a b : DY.Participant) : ExecTrace :=
+@[expose] def b1_setupTr5 (a b : DY.Participant) : ExecTrace :=
   ((((b1_setupTr4 a b).append (b1_RndE 32)).append
     (b1_EvE (.OneTimePrekeyPublished b (DY.DiffieHellman.dhPk (randTerm 22 32))))).append
     (b1_StE b { kind := .oneTimePrekey, sk := randTerm 22 32 })).append

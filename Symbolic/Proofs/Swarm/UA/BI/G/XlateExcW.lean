@@ -37,6 +37,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
 
 /-!
 # Whisper and Promoted-Session Collision Translation
@@ -47,7 +48,7 @@ matching-session pre-key `recv` run refutes `SignalMsgAcceptedOnlyViaCollisionMo
 cut.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

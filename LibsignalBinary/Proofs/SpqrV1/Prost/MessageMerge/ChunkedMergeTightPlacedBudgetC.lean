@@ -9,15 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeTightPlacedBudgetC308Aux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedNoHeaderReceivedClPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeTightPlacedBudgetC308Aux
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedNoHeaderReceivedClPlacedBudget
 import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB
 import LibsignalBinary.Proofs.SignalSession.Cli.SpqrChunkedMergePlacedInst
 import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Varint.VarintCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedNoHeaderReceivedBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
 
 /-!
 # Guarded-Tight Placed Budget Contract for `Chunked.NoHeaderReceived::merge` (Block `308`)
@@ -28,7 +32,7 @@ Proves `tlb_ChunkedNoHeaderReceivedMergePlacedTightOkOf` on Block `308` within
 `tlb_ChunkedNoHeaderReceivedDom` inputs, falling back to `ChunkedNoHeaderReceivedMergeEnv` outside the domain.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

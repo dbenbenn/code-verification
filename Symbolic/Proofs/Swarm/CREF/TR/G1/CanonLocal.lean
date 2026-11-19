@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Stage1Trials -- shake: keep
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.SpineIkm
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkHole
+import Symbolic.Proofs.Swarm.CREF.Stage1Trials -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.SpineIkm -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkHole -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.EquationalTheory.Literal
@@ -19,13 +19,13 @@ import DY.EquationalTheory.Concat
 import DY.EquationalTheory.KdfExtract
 import DY.EquationalTheory.DiffieHellman
 import Symbolic.Specifications.Model.EquationalTheory.Kem
-import ProofLib.Lemmas
 import Symbolic.Proofs.Swarm.CREF.GammaBridge
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeAddr
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeModKem -- proof-setup: allow-public-import
 
 /-!
 # Memo-Descent Helpers and DH-Hole Shape Injectivity
@@ -35,7 +35,7 @@ Provides child-to-parent memo-descent lemmas and proves DH-hole shape injectivit
 opposite-role PQXDH input key materials (`eq_of_shape_eq_of_spineRk`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

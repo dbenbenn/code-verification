@@ -10,17 +10,23 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CommonPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrCommonPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrPreKeyEncryptPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CommonPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrCommonPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrPreKeyEncryptPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.ProtocolErrPreKeyEncrypt
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Budget-Threaded Relocatable T5 Pre-Key Encrypt Error Tail (`+0xc38..+0xc64` → `+0x46c`)
@@ -30,7 +36,7 @@ under `RustCliAllocBudget M` and `[LibsignalPlacement]`, freeing any non-empty `
 ciphertext (`FreeOnlyEvs`) before entering T1 `+0x46c`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -398,101 +404,6 @@ theorem tailPreKeyEncryptErrPlaced [LibsignalPlacement] {M : AllocCostModel} {C 
     let ⟨st', htail⟩ := hnext
     hT1 st' s' hm' htail
 
-theorem tailPreKeyEncryptErrBudgetPlaced [LibsignalPlacement] {M : AllocCostModel} {C : Crypto}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {kit : SessionStoreSpec A.repAlloc 0#64}
-    {kitEnv : LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.SessionStoreBudgetEnv kit}
-    {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A.repAlloc 0#64}
-    {ikitEnv : LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.IdentityStoreBudgetEnv ikit}
-    {ist0 : ikit.IdState}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {ctl : BitVec 64} {parse : UuidParser} {S : SpqrModel} {sendEnv : SpqrSendBudgetEnv}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {Hk : LibsignalHooks}
-    (hdealloc_sat : HookSat Hk lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    {x : WithStoresEncGhost} {st_init st : M.σ} {R : SepProp} {s0 s : State}
-    {answers : StoreAnswers (List (BitVec 8)) Unit} {e : ApiError AddrVal Unit}
-    {w0 w1 w2 w3 w4 w5 : BitVec 64} {Hp : SepProp} {scratch : BitVec 64 → SepProp}
-    {g : RecordGhost} {rec : SessionRecord (List (BitVec 8))}
-    {ot : Option (BitVec 64 × BitVec 64 × OutgoingTripleRatchet (List (BitVec 8)))}
-    {kyPtr : BitVec 64} {kp : Option KyberPayload}
-    (hm : TailModel kit st0 ikit ist0 C S parse encRecord x answers (.error e) s0 s)
-    (hs : EncTailVBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-      x st_init st answers (encEntryPlaced + 0xc38#64) (tailRegs w0 w1 w2)
-      (fun sp => dropRecordSlots A.repAlloc sp scratch g rec ot none
-          (memRegion (sp + 0x46a#64) 0x436 ∗ optKyberAt A.repAlloc (sp + 0x8a0#64) kyPtr kp ∗
-            memRegion (sp + 0x8b8#64) 0x248 ∗ words64At (sp + 0xb00#64) [w3, w4, w5] ∗
-            memRegion (sp + 0xb18#64) 0x68) ∗ Hp)
-      R s0 s)
-    (hT1 : ∀ st' s',
-      TailModel kit st0 ikit ist0 C S parse encRecord x answers (.error e) s0 s' →
-      EncTailVBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-        x st_init st' answers (encEntryPlaced + 0x46c#64) (tailRegs w0 w1 w2)
-        (fun sp => dropRecordSlots A.repAlloc sp scratch g rec ot none
-          (pollWith sp 0x9d0 [w3, w4, w5]) ∗ Hp)
-        R s0 s' →
-      SegExitBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-        encRecord Hk x st_init R s0 s' (fun _ => False)) :
-    SegExitBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-      encRecord Hk x st_init R s0 s (fun _ => False) := by
-  have hn : allocHookStack ≤ encSubStack := by decide
-  have hrun : (lsProg_464 Hk).CodeLoaded s.mem →
-      ∃ s', Steps (lsProg_464 Hk) s s' ∧ s'.trace = s.trace ∧
-        ∃ st', EncTailVBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-          x st_init st' answers (encEntryPlaced + 0x46c#64) (tailRegs w0 w1 w2)
-          (fun sp => dropRecordSlots A.repAlloc sp scratch g rec ot none
-            (pollWith sp 0x9d0 [w3, w4, w5]) ∗ Hp)
-          R s0 s' := fun hL => by
-    obtain ⟨st', s', hsteps, htr, htail⟩ :=
-      encTailBudget_run_withEncCommon (C := C) (Hk := Hk)
-        (pc' := encEntryPlaced + 0x46c#64)
-        (regs' := tailRegs w0 w1 w2)
-        (slots' := fun sp => dropRecordSlots A.repAlloc sp scratch g rec ot none
-          (pollWith sp 0x9d0 [w3, w4, w5]) ∗ Hp)
-        (Act := memRegion (s0.sp - 0xbe0#64 + 0x9d0#64) 24 ∗
-          words64At (s0.sp - 0xbe0#64 + 0xb00#64) [w3, w4, w5] ∗
-          optKyberAt A.repAlloc (s0.sp - 0xbe0#64 + 0x8a0#64) kyPtr kp ∗
-          A.pool lim st s ∗ stackAt (s0.sp - 0xbe0#64) allocHookStack)
-        (Act' := fun st' s' => words64At (s0.sp - 0xbe0#64 + 0x9d0#64) [w3, w4, w5] ∗
-          memRegion (s0.sp - 0xbe0#64 + 0xb00#64) 24 ∗
-          memRegion (s0.sp - 0xbe0#64 + 0x8a0#64) 24 ∗
-          A.pool lim st' s' ∗ stackAt (s0.sp - 0xbe0#64) allocHookStack)
-        (Fr := (memRegion (s0.sp - 0xbe0#64 + 0x46a#64) 0x436 ∗
-            memRegion (s0.sp - 0xbe0#64 + 0x8b8#64) 0x118 ∗
-            memRegion (s0.sp - 0xbe0#64 + 0x9e8#64) 0x118 ∗
-            memRegion (s0.sp - 0xbe0#64 + 0xb18#64) 0x68) ∗
-          CryptoVerification.LibsignalPublicApi.MessageEncrypt.Tails.ProtocolErr.dropRecordBase
-            A.repAlloc (s0.sp - 0xbe0#64) scratch g rec ot ∗
-          CryptoVerification.LibsignalPublicApi.MessageEncrypt.Tails.ProtocolErr.cmSlotAt
-            A.repAlloc (s0.sp - 0xbe0#64) none ∗
-          Hp ∗ encCommonPlacedFr A.repAlloc ctl x (x.draws S answers) s0 allocHookStack)
-        hs
-        (by
-          refine Entails.of_eq ?_
-          rw [tails_dropRecordSlots_eq,
-            CryptoVerification.LibsignalPublicApi.MessageEncrypt.Tails.ProtocolErr.dropRecordSlots_eq,
-            encCommonPlaced_eq A lim st s ctl x (x.draws S answers) s0 _ hn,
-            kyberPoll_eq]
-          sep_ac_rfl)
-        (fun st' s' => by
-          refine Entails.of_eq ?_
-          rw [tails_dropRecordSlots_eq, tails_pollWith_3_eq, tails_words64At_3_eq,
-            CryptoVerification.LibsignalPublicApi.MessageEncrypt.Tails.ProtocolErr.dropRecordSlots_eq,
-            encCommonPlaced_eq A lim st' s' ctl x (x.draws S answers) s0 _ hn,
-            kyberDropRecordPoll_eq]
-          sep_ac_rfl)
-        (fun hpc hmeta hregs => by
-          obtain ⟨hrun, hssp, _, hspal, hx29, _, _, _⟩ := hmeta
-          rw [← hssp] at hregs ⊢
-          exact kyber_placed_run hdealloc_sat w0 w1 w2 w3 w4 w5 kyPtr kp st s hpc hrun hspal
-            (by rw [hx29, hssp]; bv_omega) hregs)
-        hL
-    exact ⟨s', hsteps, htr, st', htail⟩
-  exact segExitBudget_of_run hm hrun fun s' hm' hnext =>
-    let ⟨st', htail⟩ := hnext
-    hT1 st' s' hm' htail
-
 theorem tailPreKeyEncryptErr_placed_ok [LibsignalPlacement] {M : AllocCostModel} {C : Crypto}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {kit : SessionStoreSpec A.repAlloc 0#64} {kitEnv : SessionStoreBudgetEnv kit}
@@ -537,55 +448,6 @@ theorem tailPreKeyEncryptErr_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     SegExitPlaced A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
       encRecord Hk x st_init R s0 s (fun _ => False) :=
   tailPreKeyEncryptErrPlaced hdealloc_sat hm hs fun st' s' hm' hs' =>
-    hDropRecord x st_init st' R s0 s' answers e w0 w1 w2 w3 w4 w5 Hp scratch hscr g rec ot
-      hm' hst hs'
-
-theorem tailPreKeyEncryptErrBudget_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {C : Crypto} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {kit : SessionStoreSpec A.repAlloc 0#64}
-    {kitEnv : LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.SessionStoreBudgetEnv kit}
-    {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A.repAlloc 0#64}
-    {ikitEnv : LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.IdentityStoreBudgetEnv ikit}
-    {ist0 : ikit.IdState}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {ctl : BitVec 64} {parse : UuidParser} {S : SpqrModel} {sendEnv : SpqrSendBudgetEnv}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {Hk : LibsignalHooks}
-    (hdealloc_sat : HookSat Hk lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hDropRecord :
-      ∀ (x : WithStoresEncGhost) (st_init st : M.σ) (R : SepProp) (s0 s : State)
-        (answers : StoreAnswers (List (BitVec 8)) Unit) (e : ApiError AddrVal Unit)
-        (w0 w1 w2 w3 w4 w5 : BitVec 64) (Hp : SepProp) (scratch : BitVec 64 → SepProp),
-        (scratch = curScratch ∨ scratch = cmScratch) →
-        ∀ (g : RecordGhost) (rec : SessionRecord (List (BitVec 8)))
-          (ot : Option (BitVec 64 × BitVec 64 × OutgoingTripleRatchet (List (BitVec 8)))),
-          TailModel kit st0 ikit ist0 C S parse encRecord x answers (.error e) s0 s →
-          SpeStaged A.repAlloc x.ret e [w0, w1, w2, w3, w4, w5] Hp →
-          EncTailVBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-            x st_init st answers (encEntryPlaced + 0x46c#64) (tailRegs w0 w1 w2)
-            (fun sp => dropRecordSlots A.repAlloc sp scratch g rec ot none
-              (pollWith sp 0x9d0 [w3, w4, w5]) ∗ Hp) R s0 s →
-          SegExitBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-            encRecord Hk x st_init R s0 s (fun _ => False))
-    (x : WithStoresEncGhost) (st_init st : M.σ) (R : SepProp) (s0 s : State)
-    (answers : StoreAnswers (List (BitVec 8)) Unit) (e : ApiError AddrVal Unit)
-    (w0 w1 w2 w3 w4 w5 : BitVec 64) (Hp : SepProp) (scratch : BitVec 64 → SepProp)
-    (hscr : scratch = curScratch ∨ scratch = cmScratch)
-    (g : RecordGhost) (rec : SessionRecord (List (BitVec 8)))
-    (ot : Option (BitVec 64 × BitVec 64 × OutgoingTripleRatchet (List (BitVec 8))))
-    (kyPtr : BitVec 64) (kp : Option KyberPayload)
-    (hm : TailModel kit st0 ikit ist0 C S parse encRecord x answers (.error e) s0 s)
-    (hst : SpeStaged A.repAlloc x.ret e [w0, w1, w2, w3, w4, w5] Hp)
-    (hs : EncTailVBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-      x st_init st answers (encEntryPlaced + 0xc38#64) (tailRegs w0 w1 w2)
-      (fun sp => dropRecordSlots A.repAlloc sp scratch g rec ot none
-          (memRegion (sp + 0x46a#64) 0x436 ∗ optKyberAt A.repAlloc (sp + 0x8a0#64) kyPtr kp ∗
-            memRegion (sp + 0x8b8#64) 0x248 ∗ words64At (sp + 0xb00#64) [w3, w4, w5] ∗
-            memRegion (sp + 0xb18#64) 0x68) ∗ Hp) R s0 s) :
-    SegExitBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-      encRecord Hk x st_init R s0 s (fun _ => False) :=
-  tailPreKeyEncryptErrBudgetPlaced hdealloc_sat hm hs fun st' s' hm' hs' =>
     hDropRecord x st_init st' R s0 s' answers e w0 w1 w2 w3 w4 w5 Hp scratch hscr g rec ot
       hm' hst hs'
 

@@ -20,7 +20,7 @@ Proves wire-byte equivalence (`encSession_eq_genFields`, `encodeRecord_eq_recFie
 `< 2 ^ 20` byte-length bound (`encodeRecord_length_lt`) for in-scope records.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.DeserializeGeneral
 

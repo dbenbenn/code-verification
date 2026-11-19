@@ -40,7 +40,7 @@ simplifications, `Traceful` preservation combinators, handshake unpackers, and t
 reachability induction principle for `DY.Libsignal.Composed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -221,7 +221,7 @@ abbrev TRStateStoredAt (p : Participant) (st : TRState) (i : Nat) (tr : ExecTrac
   (tr.at? i : Option TRStEntry) = some (TRStE p st)
 
 /-- `PQXDHState` entry `st` stored for participant `p` at trace index `i`. -/
-def PQXDHStoredAt (tr : ExecTrace) (p : Participant) (st : PQXDHState) (i : Nat) : Prop :=
+@[expose] def PQXDHStoredAt (tr : ExecTrace) (p : Participant) (st : PQXDHState) (i : Nat) : Prop :=
   (tr.at? i : Option PQXDHStEntry) = some (PQStE p st)
 
 theorem trStateStoredAt_mono {tr tr' : ExecTrace} (hle : tr ≤ tr')
@@ -277,7 +277,7 @@ theorem pqxdhStoredAt_append_other {E : Type} [ExecTraceTypes.Has E]
   · rw [hnone] at hp; cases hp
 
 /-- Random draw of `n` bytes recorded at trace index `i`. -/
-def RandAt (tr : ExecTrace) (i n : Nat) : Prop :=
+@[expose] def RandAt (tr : ExecTrace) (i n : Nat) : Prop :=
   (tr.at? i : Option RndEntry) = some (RndE n)
 
 theorem randAt_mono {tr tr' : ExecTrace} (hle : tr ≤ tr') {i n : Nat}
@@ -289,7 +289,7 @@ theorem randAt_here (tr : ExecTrace) (n : Nat) :
   Trace.at?_append tr (RndE n)
 
 /-- Network message `msg` recorded at trace index `idx`. -/
-def NetMsgAt (msg : Bytes) (idx : Nat) (tr : ExecTrace) : Prop :=
+@[expose] def NetMsgAt (msg : Bytes) (idx : Nat) (tr : ExecTrace) : Prop :=
   (tr.at? idx : Option NetEntry) = some (NetE msg)
 
 theorem NetMsgAt.mono {tr tr' : ExecTrace} (hle : tr ≤ tr') {msg : Bytes} {idx : Nat}
@@ -406,7 +406,7 @@ theorem NetMsgAt.attackerKnows {msg : Bytes} {idx : Nat} {tr : ExecTrace}
 /-! ## Traceful Monad and Preservation Combinators -/
 
 /-- A `Traceful` computation preserves trace predicate `Inv`. -/
-def Preserves (Inv : ExecTrace → Prop) {α : Type} (m : Traceful α) : Prop :=
+@[expose] def Preserves (Inv : ExecTrace → Prop) {α : Type} (m : Traceful α) : Prop :=
   ∀ tr, Inv tr → Inv (m.run tr).2.val
 
 theorem run_bind_fst {α β : Type} (x : Traceful α) (f : α → Traceful β) (tr : ExecTrace) :
@@ -699,7 +699,7 @@ theorem bind_lookupIdentity_at {Inv : ExecTrace → Prop} {α : Type}
 
 /-- Output record of `aliceHandshake` starting at trace `tr` (draws `ek` at `tr.length` and KEM
 randomness `e` at `tr.length + 1`). -/
-def aliceOut (tr : ExecTrace) (ikA ikBPk spkPk pqPk : Bytes) (opk : Option Bytes) :
+@[expose] def aliceOut (tr : ExecTrace) (ikA ikBPk spkPk pqPk : Bytes) (opk : Option Bytes) :
     AliceHandshakeOut :=
   let ek := mkRand tr.length 32
   let e := mkRand (tr.length + 1) 32
@@ -707,7 +707,7 @@ def aliceOut (tr : ExecTrace) (ikA ikBPk spkPk pqPk : Bytes) (opk : Option Bytes
     ct := (aliceAgreement ikA ek ikBPk spkPk pqPk opk e).1,
     keys := (aliceAgreement ikA ek ikBPk spkPk pqPk opk e).2 }
 
-def aliceHandshakeJp (ikA ikB spk pqpk : Bytes) (opk : Option Bytes) :
+@[expose] def aliceHandshakeJp (ikA ikB spk pqpk : Bytes) (opk : Option Bytes) :
     Traceful AliceHandshakeOut := do
   let ek ← Random.genRand 32
   guard (!x25519LowOrder spk)

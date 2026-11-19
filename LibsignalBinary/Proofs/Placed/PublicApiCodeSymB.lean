@@ -10,13 +10,16 @@ limitations under the License.
 module
 
 public import Aesop.BuiltinRules
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
-public import LibsignalBinary.Proofs.Placed.PublicApiCodeSymA -- shake: keep
+public import LibsignalBinary.Proofs.Placed.PublicApiCodeSymA -- shake: keep -- proof-setup: allow-public-import
+meta import GeneratedLean.LibsignalSessionPlacedObjShard5
+meta import GeneratedLean.LibsignalSessionPlacedObjShard6
+meta import GeneratedLean.LibsignalSessionPlacedObjShard7
 
 /-!
 # Relocatable Per-Block Fetches for `PublicApi` Helper Blocks (Part B)
@@ -24,7 +27,7 @@ public import LibsignalBinary.Proofs.Placed.PublicApiCodeSymA -- shake: keep
 Generated placed block programs and fetch lemmas for blocks `119`, `127`, and `135`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

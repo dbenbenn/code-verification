@@ -10,11 +10,11 @@ limitations under the License.
 module
 
 public import Computational.Proofs.SignalPqxdh.AtomicLift -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyShCr -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfCk -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfMk -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyAeadCpa -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfHmac -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyShCr
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfCk
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfMk
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyAeadCpa
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfHmac
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreK -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKArmsHs -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKArmsBase -- proof-setup: allow-public-import

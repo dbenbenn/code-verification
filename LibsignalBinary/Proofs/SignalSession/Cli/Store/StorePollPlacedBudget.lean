@@ -9,15 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.LayoutBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollPlaced
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.LayoutBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollPlaced
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.Sym
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
 
 /-!
 # Budget-Threaded Relocatable `<SessionFiles as SessionStore>::store_session::{closure#0}`
@@ -26,7 +35,7 @@ Proves budget-threaded `sessStorePollSpecPlaced` on Block `570` (`lsProg_570 H`)
 `[LibsignalPlacement]`, together with its caller-block-polymorphic transfer.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -487,39 +496,6 @@ theorem sessStorePoll_placed_ok_of_deps [LibsignalPlacement] {M : AllocCostModel
     (addrText_cells_placed_ok hAddr' (by omega) hhi)
     (serialize_cells_placed_ok hSer' (by omega) hhi)
     (dirPut_cells_placed_ok hPut' (by omega) hhi)
-
-/-- Caller-block-polymorphic form of `sessStorePoll_placed_ok_of_deps`. -/
-theorem sessStorePoll_placed_caller_ok_of_deps [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {AddrEnv : AddrGhost → List AllocEvent → Prop}
-    {PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
-    {callerProg addrProg serProg putProg : Program}
-    {callerBlk addrBlk serBlk putBlk : Nat}
-    [IsLsBlockProg callerProg callerBlk H]
-    [IsLsBlockProg addrProg addrBlk H]
-    [IsLsBlockProg serProg serBlk H]
-    [IsLsBlockProg putProg putBlk H]
-    {addrStk putStk stk : Nat}
-    (hC : AllocContractsXCliPlaced A lim H)
-    (hAddr : subroutine_ok addrProg (lsmpl.base 594)
-      (addrTextSpecPlaced A lim AddrEnv addrStk))
-    (hSer : subroutine_ok serProg (lsmpl.base 52)
-      (withLsCodeRoLoaded lsmpl (serializeCanonSpec M A lim)))
-    (hPut : subroutine_ok putProg (lsmpl.base 542)
-      (dirPutSpecPlaced A lim PutEnv putStk))
-    (hstk : 0xd0 + max (max addrStk serializeStack) (max putStk extHookStack) ≤ stk)
-    (hCallerBlk : callerBlk < 619 := by decide)
-    (hAddrBlk : addrBlk < 619 := by decide)
-    (hAddrUnmut : (addrBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hSerBlk : serBlk < 619 := by decide)
-    (hSerUnmut : (serBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hPutBlk : putBlk < 619 := by decide)
-    (hPutUnmut : (putBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsmpl.base 570)
-      (sessStorePollSpecPlaced A lim (CliStorePollEnv AddrEnv SerializeEnv PutEnv) stk) :=
-  ls_transfer_lscro (callerProg := callerProg) (j := 570)
-    (sessStorePoll_placed_ok_of_deps hC hAddr hSer hPut hstk
-      hAddrBlk hAddrUnmut hSerBlk hSerUnmut hPutBlk hPutUnmut) hCallerBlk
 
 end Placed
 

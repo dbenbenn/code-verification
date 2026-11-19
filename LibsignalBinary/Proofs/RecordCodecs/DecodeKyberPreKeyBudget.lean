@@ -9,18 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDeps
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.Epilogue
-public import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.EpilogueBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.Fetches
-public import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.FetchesBudget
+import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey
+import LibsignalBinary.Proofs.RecordCodecs.SignedDeps
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.Epilogue
+import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.EpilogueBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.Fetches
+import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.FetchesBudget
 import LibsignalBinary.Proofs.RecordCodecs.Deps
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymD -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `signal_session::stores::decode_kyber_pre_key` Proof
@@ -29,7 +30,7 @@ Proves `decodeKyberPreKey_placed_ok_of_decode` (`decodeKyberPreKeyPlacedSpec`) u
 `[LibsignalPlacement]` (Block `595`) over `RustCliAllocBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

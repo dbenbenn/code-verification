@@ -10,21 +10,21 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Fine.SpecBudgetFine
-public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.HopSpecsPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.CalleesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.RunCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRootBudget
+import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.HopSpecsPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.CalleesPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.RunCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRootBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Run.NoSvcCommon
 import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsShadowHooksFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsSpecSwapRFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsStepTransportRFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsPlacedBudgetFd -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsShadowHooksFd -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsSpecSwapRFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsStepTransportRFd
 public import Arm64.Trusted.Spec.Hoare
 public import Arm64.Trusted.Spec.RustRuntime
 public import Arm64.Trusted.Spec.SepLogic
@@ -32,6 +32,10 @@ public import ProofLib.Hoare.LibcHooks
 import ProofLib.Invariant
 import ProofLib.MallocngBridge
 import ProofLib.Process.Core
+public import ProofLib.Disproof.Basic
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Two-Stage Pure-`fs` Transfer Core for `CodecHooksPlaced` Callees on `lsProg_579`
@@ -41,7 +45,7 @@ unmutated-code execution properties, and Stage-B shadow-simulation interfaces us
 `sf.fs = s0.fs` on normal return for `CodecHooksPlaced` callees on `lsProg_579`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -106,10 +110,10 @@ open LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRootBudget
 
 /-! ## Section 1: Stage-A Precondition-Guarded Trap Hook Table (`codecTrapHooks`) -/
 
-def ActivePre {α : Type} (spec : Spec α) (s : State) : Prop :=
+@[expose] def ActivePre {α : Type} (spec : Spec α) (s : State) : Prop :=
   s.status = .Running ∧ s.spAligned = true ∧ ∃ (x : α) (R : SepProp), s.mem ⊨ spec.pre x s ∗ R
 
-noncomputable def guardPre {α : Type} (spec : Spec α) (f : State → State) (s : State) :
+@[expose] noncomputable def guardPre {α : Type} (spec : Spec α) (f : State → State) (s : State) :
     State :=
   open Classical in
   if ActivePre spec s then f s else { s with status := .Exception "pre" }
@@ -123,7 +127,7 @@ theorem guardPre_ok {α : Type} {spec : Spec α} {f : State → State}
   exact hf x R s0 hrun hpre hsp
 
 /-- Ghost-`memcpyFn` / `baseExt`-parametric Stage-A precondition-guarded trap hook table. -/
-noncomputable def codecTrapHooksMc [LibsignalPlacement]
+@[expose] noncomputable def codecTrapHooksMc [LibsignalPlacement]
     {M : AllocCostModel} (A0 : RustCliAllocBudget M) (lim : BudgetLimits)
     (g : CliGhostHooks) (baseExt : LibsignalHooks) (memcpyFn : State → State) : LibsignalHooks :=
   fun sym =>
@@ -142,7 +146,7 @@ noncomputable def codecTrapHooksMc [LibsignalPlacement]
       | some _ => some (fun u => { u with status := .Exception "unlinked" })
       | none => none
 
-noncomputable def codecTrapHooks [LibsignalPlacement]
+@[expose] noncomputable def codecTrapHooks [LibsignalPlacement]
     {M : AllocCostModel} (A0 : RustCliAllocBudget M) (lim : BudgetLimits)
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks) : LibsignalHooks :=
   codecTrapHooksMc A0 lim g (cliExternsPlaced mmpl W) (g.memcpy.getD ProofLib.hookMemcpy)
@@ -176,17 +180,6 @@ theorem codecHooksPlaced_trap_mc [LibsignalPlacement]
       (by decide : lsHandleErrorSym ≠ lsRustReallocSymCli),
       (by decide : lsHandleErrorSym ≠ memcpyName),
       (by decide : lsHandleErrorSym ≠ lsHandleAllocErrorSym), ↓reduceIte])
-
-theorem codecHooksPlaced_trap [LibsignalPlacement]
-    {M : AllocCostModel} {A0 : RustCliAllocBudget M} {lim : BudgetLimits}
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    (hG : CliGhostAllocHooks M A0 lim g) :
-    CodecHooksPlaced M A0 lim (codecTrapHooks A0 lim mmpl g W) := by
-  obtain ⟨f_mc, hf_mc, _, _, _, _, hok_fm, _, hvm_mc, _, _⟩ := hG.memcpy
-  unfold codecTrapHooks
-  rw [hf_mc]; dsimp only [Option.getD]
-  exact codecHooksPlaced_trap_mc g (cliExternsPlaced mmpl W) f_mc hG
-    (hookOk_withVmPreserved hok_fm hvm_mc)
 
 theorem tryFrom_at_579_of_codecHooks [LibsignalPlacement]
     {M : AllocCostModel} {A' : RustCliAllocBudget M} {lim : BudgetLimits} {H' : LibsignalHooks}
@@ -234,20 +227,6 @@ theorem codecTrapHooksMc_isSome_eq [LibsignalPlacement]
   · subst h6; simp [hPanAlloc]
   · subst h7; simp [hPanRaw]
   · cases cliGhostExterns g baseExt sym <;> rfl
-
-theorem codecTrapHooks_isSome_eq [LibsignalPlacement]
-    {M : AllocCostModel} (A0 : RustCliAllocBudget M) (lim : BudgetLimits)
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    (hG : CliGhostAllocHooks M A0 lim g) (sym : String) :
-    (codecTrapHooks A0 lim mmpl g W sym).isSome =
-      (cliGhostExterns g (cliExternsPlaced mmpl W) sym).isSome := by
-  have hC := codecHooksPlaced_of_hooks mmpl g W hG
-  obtain ⟨f_mc, hf_mc, _, _, _, _, _, _, _, _, _⟩ := hG.memcpy
-  unfold codecTrapHooks
-  rw [hf_mc]; dsimp only [Option.getD]
-  exact codecTrapHooksMc_isSome_eq A0 lim g (cliExternsPlaced mmpl W) f_mc
-    (cliGhostExterns_memcpy_some g (cliExternsPlaced mmpl W) hf_mc)
-    hC.panic_alloc hC.panic_raw sym
 
 /-! ## Section 2: `lsProg_579` Extern Lookup, `inLsUnmutCode` `SVC #0`-Exclusion, & Stage-A Replay -/
 
@@ -351,12 +330,12 @@ theorem lsProg_579_externAt?_some [LibsignalPlacement]
   rw [lsProg_579_hookAtOff?_eq H₂]
   exact findSome_stub_some hdom _ _ h
 
-def inLsUnmutByte [LibsignalPlacement] (a : BitVec 64) : Bool :=
+@[expose] def inLsUnmutByte [LibsignalPlacement] (a : BitVec 64) : Bool :=
   (List.range 624).any fun i =>
     !(decide (i ∈ libsignalMutatedBlocks)) &&
       decide (InRegion (lsmpl.base i) (libsignalSessionLib.blockLib i).text.code.length a)
 
-def inLsUnmutCode4 [LibsignalPlacement] (pc : BitVec 64) : Bool :=
+@[expose] def inLsUnmutCode4 [LibsignalPlacement] (pc : BitVec 64) : Bool :=
   inLsUnmutByte pc && inLsUnmutByte (pc + 1#64) &&
     inLsUnmutByte (pc + 2#64) && inLsUnmutByte (pc + 3#64)
 
@@ -503,23 +482,6 @@ theorem trap_extern_step_eq_and_fs_mc [LibsignalPlacement]
     · injection htrap with hf; subst hf
       exfalso; exact hnoex_fu "unlinked" rfl
 
-theorem trap_extern_step_eq_and_fs [LibsignalPlacement]
-    {M : AllocCostModel} {A0 : RustCliAllocBudget M} {lim : BudgetLimits}
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    (hG : CliGhostAllocHooks M A0 lim g)
-    {sym : String} {f : State → State} {u : State}
-    (htrap : codecTrapHooks A0 lim mmpl g W sym = some f)
-    (hnoex_fu : ∀ msg, (f u).status ≠ .Exception msg) :
-    ∃ g_fn, cliGhostExterns g (cliExternsPlaced mmpl W) sym = some g_fn ∧
-      g_fn u = f u ∧ (f u).fs = u.fs := by
-  have hC := codecHooksPlaced_of_hooks mmpl g W hG
-  obtain ⟨f_mc, hf_mc, _, _, _, _, _, _, _, hfs_mc, _⟩ := hG.memcpy
-  unfold codecTrapHooks at htrap
-  rw [hf_mc] at htrap; dsimp only [Option.getD] at htrap
-  exact trap_extern_step_eq_and_fs_mc g (cliExternsPlaced mmpl W) f_mc hG
-    (cliGhostExterns_memcpy_some g (cliExternsPlaced mmpl W) hf_mc)
-    hfs_mc hC.panic_alloc hC.panic_raw htrap hnoex_fu
-
 theorem evalInst_eq_execInst_local (P : Program) {inst : Instr}
     (h : inst.isSvc0 = false) (s : State) : P.evalInst inst s = execInst inst s := by
   unfold Program.evalInst execInst
@@ -562,17 +524,6 @@ theorem StepsN.deterministic {P : Program} {n : Nat} {s t₁ t₂ : State}
     | succ hs₂ hr₂ =>
       have hu := Step.deterministic hs₁ hs₂
       subst hu; exact ih hr₂
-
-theorem StepsN.split_add {P : Program} {m k : Nat} {s t : State}
-    (h : StepsN P (m + k) s t) : ∃ u, StepsN P m s u ∧ StepsN P k u t := by
-  induction m generalizing s with
-  | zero => simp only [Nat.zero_add] at h; exact ⟨s, StepsN.zero s, h⟩
-  | succ m ih =>
-    rw [Nat.succ_add] at h
-    cases h with
-    | succ h1 hrest =>
-      obtain ⟨u, hm, hk⟩ := ih hrest
-      exact ⟨u, StepsN.succ h1 hm, hk⟩
 
 theorem StepsN.keepsFrozen {P : Program} {n : Nat} {s t : State}
     (h : StepsN P n s t) : s.mem.KeepsFrozen t.mem := by
@@ -715,16 +666,16 @@ theorem steps_on_halt_chain {P : Program} {traj : Nat → State} {K : Nat}
         rw [hzi] at h1
         cases h1 <;> simp [State.setStatus] at *
 
-def HookOkAt {α : Type} (spec : Spec α) (u v : State) : Prop :=
+@[expose] def HookOkAt {α : Type} (spec : Spec α) (u v : State) : Prop :=
   ∀ x R, u.status = .Running → (u.mem ⊨ spec.pre x u ∗ R) → u.spAligned = true →
     u.mem.KeepsFrozen v.mem ∧ v.symtab = u.symtab ∧ SubroutineOutcome spec x R u v
 
-noncomputable def lookupEntry : List (State × State) → State → Option State
+@[expose] noncomputable def lookupEntry : List (State × State) → State → Option State
   | [], _ => none
   | (k, v) :: tl, s =>
     if @decide (k = s) (Classical.propDecidable _) then some v else lookupEntry tl s
 
-noncomputable def overrideEntries (entries : List (State × State))
+@[expose] noncomputable def overrideEntries (entries : List (State × State))
     (fallback : State → State) (s : State) : State :=
   (lookupEntry entries s).getD (fallback s)
 
@@ -780,7 +731,7 @@ theorem hookOk_overrideEntries {α : Type} {spec : Spec α}
 
 /-! ## Section 3B-1: Stage-B Sub-Lemma Interfaces & Step Helpers -/
 
-def OutMallocng (keep : BitVec 64 → Bool) (mmpl : Obj.MultiPlacement)
+@[expose] def OutMallocng (keep : BitVec 64 → Bool) (mmpl : Obj.MultiPlacement)
     (lim : BudgetLimits) : Prop :=
   lim.enforced = false ∨
     ∀ a, (VerifiedLibraries.mallocngLib.findCodeBlock mmpl a).isSome = true → keep a = true
@@ -938,7 +889,7 @@ theorem b2_specPoolSwap_pksmSlot [LibsignalPlacement]
     · exact pksm_outcome_of_stripped_stripped keep hrx hkf hout
 
 /-- Ghost-`memcpyFn` / `memcpyE`-parametric Stage-B shadow hook table. -/
-noncomputable def codecShadowHooksMc [LibsignalPlacement]
+@[expose] noncomputable def codecShadowHooksMc [LibsignalPlacement]
     (keep : BitVec 64 → Bool) (lim : BudgetLimits)
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (baseExt : LibsignalHooks)
     (memcpyFn : State → State)
@@ -1018,7 +969,7 @@ theorem codecHooksPlaced_shadow_mc [LibsignalPlacement]
       (by decide : lsHandleErrorSym ≠ memcpyName),
       (by decide : lsHandleErrorSym ≠ lsHandleAllocErrorSym), ↓reduceIte])
 
-noncomputable def codecShadowHooks [LibsignalPlacement]
+@[expose] noncomputable def codecShadowHooks [LibsignalPlacement]
     (keep : BitVec 64 → Bool) (lim : BudgetLimits)
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
     (allocE deallocE reallocE : List (State × State)) : LibsignalHooks :=
@@ -1034,30 +985,6 @@ theorem codecShadowHooks_isSome_eq [LibsignalPlacement]
       (codecTrapHooks A0 lim mmpl g W sym).isSome :=
   codecShadowHooksMc_isSome_eq A0 keep lim mmpl g (cliExternsPlaced mmpl W)
     (g.memcpy.getD ProofLib.hookMemcpy) allocE deallocE reallocE [] sym
-
-theorem codecHooksPlaced_shadow [LibsignalPlacement]
-    {M : AllocCostModel} (I : MallocngCostModelIface M) (hS : MallocngCostModelSound M I)
-    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) (g : CliGhostHooks) (W : CliHooks) (keep : BitVec 64 → Bool)
-    (hG : CliGhostAllocHooks M (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart) lim g)
-    {allocE deallocE reallocE : List (State × State)}
-    (hAllocE : ∀ p ∈ allocE, HookOkAt
-      (rustCliAllocBudgetSpec M (strippedMallocngBudget keep M I hS γ mmpl tp brkStart) lim false)
-      p.1 p.2)
-    (hDeallocE : ∀ p ∈ deallocE, HookOkAt
-      (rustCliDeallocBudgetSpec M (strippedMallocngBudget keep M I hS γ mmpl tp brkStart) lim)
-      p.1 p.2)
-    (hReallocE : ∀ p ∈ reallocE, HookOkAt
-      (rustCliReallocBudgetSpec M (strippedMallocngBudget keep M I hS γ mmpl tp brkStart) lim)
-      p.1 p.2) :
-    CodecHooksPlaced M (strippedMallocngBudget keep M I hS γ mmpl tp brkStart) lim
-      (codecShadowHooks keep lim mmpl g W allocE deallocE reallocE) := by
-  obtain ⟨f_mc, hf_mc, _, _, _, _, hok_fm, _, hvm_mc, _, _⟩ := hG.memcpy
-  unfold codecShadowHooks
-  rw [hf_mc]; dsimp only [Option.getD]
-  exact codecHooksPlaced_shadow_mc I hS γ mmpl tp brkStart lim g (cliExternsPlaced mmpl W)
-    f_mc keep hG (hookOk_withVmPreserved hok_fm hvm_mc)
-    hAllocE hDeallocE hReallocE (fun _ hp => nomatch hp)
 
 theorem not_badKf_of_memcpy (keep : BitVec 64 → Bool)
     {u : State} (hact : ActivePre (withVmPreserved framelessMemcpySpec) u) :
@@ -1075,7 +1002,7 @@ theorem not_badKf_of_memcpy (keep : BitVec 64 → Bool)
   simpa [stripCodecS] using hkf
 
 /-- Stripped `KeepsFrozen` preservation across an active `memcpyFn` step. -/
-def MemcpyStripKeepsFrozen (memcpyFn : State → State) : Prop :=
+@[expose] def MemcpyStripKeepsFrozen (memcpyFn : State → State) : Prop :=
   ∀ (keep : BitVec 64 → Bool) (u : State),
     ActivePre (withVmPreserved framelessMemcpySpec) u →
     u.mem.KeepsFrozen (memcpyFn u).mem →

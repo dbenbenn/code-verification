@@ -10,32 +10,50 @@ limitations under the License.
 module
 
 public import Arm64.Trusted.Spec.Hoare
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
-public import LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinked
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
-public import LibsignalBinary.Proofs.PeakBudget.TryDecryptCliLinkedOf
-public import LibsignalBinary.Proofs.PeakBudget.W2RecvWhisperRealSlot
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemEnvAPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2ProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssemblyPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.SpecPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.TopPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInnerPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrExactEnvDefs
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMacBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinked -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
+public import LibsignalBinary.Proofs.PeakBudget.TryDecryptCliLinkedOf -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W2RecvWhisperRealSlot
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemEnvAPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cProofPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2ProofPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aProofPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssemblyPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.SpecPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.TopPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInnerPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrExactEnvDefs
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMacBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyCommonPlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhStep433PlacedBudget
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PlacedDefsBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs
 
 /-!
 # `CliPubCalleesFrozenPlaced` and Ghost Congruences for D3 Untyped `recv`
@@ -48,7 +66,7 @@ arbitrary or guarded `encrypt` / `decryptSignal` slot envelopes and specialized 
 `binaryKitRunSlotEnvsExact`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.style.haveILetI false
@@ -140,7 +158,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
 
 /-! ## Parametric `RunSlotEnvs` Bundles -/
 
-def g5bp_slotEnvsOf
+@[expose] def g5bp_slotEnvsOf
     (EncEnv : EncGhost → List AllocEvent → Prop)
     (DecSigEnv : DecSigGhost → List AllocEvent → Prop)
     (InitEnv : InitGhost → List AllocEvent → Prop)
@@ -151,7 +169,7 @@ def g5bp_slotEnvsOf
   decryptPrekey := DecPkEnv
 
 /-- Binary-kit `RunSlotEnvs` bundle parametric in `sendEnv : SpqrSendBudgetEnv`. -/
-noncomputable def g5bp_binaryKitRunSlotEnvsOfSend [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def g5bp_binaryKitRunSlotEnvsOfSend [LibsignalPlacement] {M : AllocCostModel}
     (W : CliHooks) (A : RustCliAllocBudget M) (B : RunBudgets := cliRunBudgets)
     (sendEnv : SpqrSendBudgetEnv)
     (InitEnv : InitGhost → List AllocEvent → Prop)
@@ -168,7 +186,7 @@ noncomputable def g5bp_binaryKitRunSlotEnvsOfSend [LibsignalPlacement] {M : Allo
 
 /-- Binary-kit `RunSlotEnvs` bundle guarding both `encrypt` (`sendEnv`) and `decryptSignal`
 by `PeerSpqrStateTight640 W.C.F W.Q.K x.F x.peer.val`. -/
-noncomputable def g5bp_binaryKitRunSlotEnvsGuardedOfSend [LibsignalPlacement] {M : AllocCostModel}
+def g5bp_binaryKitRunSlotEnvsGuardedOfSend [LibsignalPlacement] {M : AllocCostModel}
     (W : CliHooks) (A : RustCliAllocBudget M) (B : RunBudgets := cliRunBudgets)
     (sendEnv : SpqrSendBudgetEnv)
     (InitEnv : InitGhost → List AllocEvent → Prop)
@@ -190,7 +208,7 @@ noncomputable def g5bp_binaryKitRunSlotEnvsGuardedOfSend [LibsignalPlacement] {M
 /-- Binary-kit `RunSlotEnvs` bundle parametric in `sendEnv` and `maxOps`, guarding
 `decryptSignal` (`TryDecryptCliLinkedEnvOf maxOps W.C W.Q.K`) by `PeerSpqrStateTight640` while
 keeping `encrypt` unguarded. -/
-noncomputable def g5bp_binaryKitRunSlotEnvsOfSendDecSigGuarded [LibsignalPlacement]
+@[expose] def g5bp_binaryKitRunSlotEnvsOfSendDecSigGuarded [LibsignalPlacement]
     {M : AllocCostModel}
     (W : CliHooks) (A : RustCliAllocBudget M) (B : RunBudgets := cliRunBudgets)
     (sendEnv : SpqrSendBudgetEnv) (maxOps : Nat := 109)
@@ -1024,9 +1042,9 @@ theorem g5bp_tryDecryptCliLinkedEnvOf_r3a_congr
     (htype : a₁.msgType = a₂.msgType) (hrest : a₁.rest = a₂.rest) :
     TryDecryptCliLinkedEnvOf maxOps C K a₁ = TryDecryptCliLinkedEnvOf maxOps C K a₂ :=
   g5bp_tryDecryptCliEnvOfPure_congr C (CryptoVerification.LibsignalSpqrV1.spqrV1 C.F K)
-    LibsignalBinary.Heap.SpecBudget.FmtWriteEnv
+    LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs.CliFmtWriteEnv
     (LibsignalBinary.Proofs.PeakBudget.TryDecryptCliLinkedOf.SpqrRecvC07C09aBytesEnvOf maxOps C.F K)
-    LibsignalBinary.Heap.SpecBudget.FormatInnerEnv a₁ a₂ hG hst hrem hloc hmsg htype hrest
+    LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs.CliFormatInnerEnv a₁ a₂ hG hst hrem hloc hmsg htype hrest
 
 /-- Ghost congruence on `CliDecryptSignalSlotEnv` at `TryDecryptCliLinkedEnvOf maxOps W.C W.Q.K`. -/
 theorem g5bp_decSigEnv_linkedOf_r3a_congr [LibsignalPlacement] {M : AllocCostModel}

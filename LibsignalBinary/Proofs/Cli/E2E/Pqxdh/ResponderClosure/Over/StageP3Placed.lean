@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1ErrPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneGenPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TopPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1ErrPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneGenPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TopPlaced
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3Gen
@@ -22,6 +22,12 @@ import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologue
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3
 import all Init.Data.String.Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopErrPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.PrevBridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSlice -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1ErrAPlaced
 
 /-!
 # Placed Stage P3 Over-Path Specification (`previous_sessions = [enc]`)
@@ -31,13 +37,11 @@ Proves `[LibsignalPlacement]` and `[LibsignalFullPlacement]` Stage P3 specificat
 vector `prevVecAt A (coroPtr + 0xe0#64) prevCap prevPtr [enc]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 set_option linter.unusedSimpArgs false
-
-noncomputable section
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 
@@ -76,7 +80,7 @@ attribute [-arm64_norm]
 attribute [local arm64_norm] bv_sub_add_lit BitVec.add_assoc BitVec.toNat_zero
 
 /-- Placed dispatch precondition at `+0x1cd8` over a 1-element `prevVecAt [enc]`. -/
-def stageP3DispatchPrePrev1Placed [LibsignalPlacement] (A : RustAlloc) (s0 s : State)
+@[expose] def stageP3DispatchPrePrev1Placed [LibsignalPlacement] (A : RustAlloc) (s0 s : State)
     (coroPtr outPtr initErrsPtr prevCap prevPtr : BitVec 64) (enc : List (BitVec 8))
     (res : Except SignalProtocolError (List (BitVec 8))) (b_2c0 : BitVec 8)
     (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8))) : SepProp :=
@@ -94,7 +98,7 @@ def stageP3DispatchPrePrev1Placed [LibsignalPlacement] (A : RustAlloc) (s0 s : S
   decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗ A.pool ∗ stackAt s.sp growOneSpeStack
 
 /-- Placed dispatch `Ok(pt)` postcondition at `+0x34dc` over a 1-element `prevVecAt [enc]`. -/
-def stageP3DispatchOkMidPrev1Placed [LibsignalPlacement] (A : RustAlloc) (s0 s : State)
+@[expose] def stageP3DispatchOkMidPrev1Placed [LibsignalPlacement] (A : RustAlloc) (s0 s : State)
     (coroPtr outPtr initErrsPtr prevCap prevPtr ptCap ptPtr : BitVec 64)
     (enc pt : List (BitVec 8)) (b_2c0 : BitVec 8)
     (G₂ : SessionGhost) (st₂ : SessionState (List (BitVec 8))) : SepProp :=
@@ -494,7 +498,7 @@ theorem stageP3_call_tryDecrypt_prev1_placed_steps [LibsignalPlacement] {A : Rus
 
 /-- Placed Stage P3 specification (`dpClosureEntryM3Placed + 0x1778 → +0x34dc` or `s0.readReg64 .x30`)
 over a 1-element `prevVecAt [enc]` on `lsProg_518 ext`. -/
-def StageP3Prev1VRegsM3PlacedStmt [LibsignalPlacement]
+@[expose] def StageP3Prev1VRegsM3PlacedStmt [LibsignalPlacement]
     (A : RustAlloc) (PrevEncOK : List (BitVec 8) → Prop) : Prop :=
   ∀ (ext : String → Option (State → State))
     (C : Crypto) (ctl : BitVec 64) (K : LibsignalSpqrV1.MlKem),
@@ -1214,7 +1218,7 @@ abbrev OverVerNe1e04CliAtFrozenPlacedBody [LibsignalFullPlacement] (A : RustAllo
 
 /-- `[LibsignalFullPlacement]` Stage P3 specification (`+0x1778 → +0x34dc` or `s0.readReg64 .x30`)
 over a 1-element `prevVecAt [enc]`, discharging `.rodata` from `LibsignalFrozen`. -/
-def StageP3Prev1VRegsM3FrozenPlacedStmt [LibsignalFullPlacement]
+@[expose] def StageP3Prev1VRegsM3FrozenPlacedStmt [LibsignalFullPlacement]
     (A : RustAlloc) (PrevEncOK : List (BitVec 8) → Prop) : Prop :=
   ∀ (ext : String → Option (State → State))
     (C : Crypto) (ctl : BitVec 64) (K : LibsignalSpqrV1.MlKem),
@@ -1536,4 +1540,3 @@ theorem overVerNe1e04CliAtFrozenPlacedBody_a0_of_hooks [LibsignalFullPlacement]
       hmc_sat hpanic_alloc hpanic_raw)
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
-end

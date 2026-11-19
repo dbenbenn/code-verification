@@ -9,15 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.BlocksPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.SymPlacedBudgetAux
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.BlocksPlacedBudgetFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.SymPlacedBudgetAux -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.BlocksPlacedBudgetAuxFd -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `FdsGe3Closed`-Threaded Ok/Missing Branch and Cell Helpers for `get_pre_key::{closure#0}`
@@ -26,7 +32,7 @@ Proves the `FdsGe3Closed`-threaded `.missing` / `.found` branch helper `step_ok_
 the `FsFiles`-indexed `Dir::get` cell wrapper on Block `573` (`lsProg_573 H`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -635,7 +641,7 @@ private theorem vecU8_eq_words_sep_bytes_rest_p (A : RustAlloc) (v : BitVec 64)
   dsimp only [vecHeader]
   sep_ac_rfl
 
-def dirGetFsCellsSpec_p_fd {M : AllocCostModel} (F0 : FsFiles)
+@[expose] def dirGetFsCellsSpec_p_fd {M : AllocCostModel} (F0 : FsFiles)
     (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)

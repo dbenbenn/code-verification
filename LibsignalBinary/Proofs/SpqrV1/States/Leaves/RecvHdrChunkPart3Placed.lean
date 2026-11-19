@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart1Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart3
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<NoHeaderReceived>::recv_hdr_chunk` (Block `369`) — Relocatable Part 3
@@ -25,7 +26,7 @@ Relocatable `[LibsignalPlacement]` proof of `recv_hdr_chunk_hmac_placed_wpp` (of
 `sliceConcat3` (Block `386`), `libcrux_hmac`, and `ct_mac_data` deallocation.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

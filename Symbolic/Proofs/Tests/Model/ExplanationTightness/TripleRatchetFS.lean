@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import Symbolic.Specifications.Security.Model
-public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon
+public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon -- proof-setup: allow-public-import
 import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRTraces
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -55,7 +55,7 @@ open DY.Libsignal.TripleRatchet.Cheval
 /-! ## Parameterized `ForwardSecrecy` and `FSQuery` -/
 
 /-- `Security.ForwardSecrecy` parameterized by the trace query `Q`. -/
-def ForwardSecrecyWith (Q : TestTracePredicates → Prop) : Prop :=
+@[expose] def ForwardSecrecyWith (Q : TestTracePredicates → Prop) : Prop :=
   ∀ tr : ExecTrace, tr.Reachable reachability →
     Q (mkTestTracePredicates tr)
 
@@ -69,7 +69,7 @@ theorem ForwardSecrecyWith.mono {Q Q' : TestTracePredicates → Prop}
 
 /-- `FSQueryP` parameterized by the chain-derivation relation `DC` and the message-key derivation
 relations `DM_ck` and `DM_rk` in the chain-key and root-key disjuncts. -/
-def FSQueryGen (DC DM_ck DM_rk : Bytes → Bytes → Prop) (P : TestTracePredicates) : Prop :=
+@[expose] def FSQueryGen (DC DM_ck DM_rk : Bytes → Bytes → Prop) (P : TestTracePredicates) : Prop :=
   ∀ mk, P.MessageKey mk → P.AttackerKnows mk →
     P.Compromised mk ∨
     (∃ ck, DM_ck ck mk ∧ P.Compromised ck) ∨
@@ -81,7 +81,7 @@ theorem fsQueryGen_real :
 
 /-! ## Mutated `FSQuery` predicates -/
 
-def FSQuery_withoutMK (P : TestTracePredicates) : Prop :=
+@[expose] def FSQuery_withoutMK (P : TestTracePredicates) : Prop :=
   ∀ mk, P.MessageKey mk → P.AttackerKnows mk →
     (∃ ck, DerivesMsgKey ck mk ∧ P.Compromised ck) ∨
     (∃ rk ck, DerivesChain rk ck ∧ DerivesMsgKey ck mk ∧ P.Compromised rk)

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadLoopCommon
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadStdinSteps
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileSteps
+public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadLoopCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadStdinSteps -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileSteps
 public meta import ProofLib.ProgramReflection
 
 /-!
@@ -22,7 +22,7 @@ back-edge (`+0x15c → +0xd8`) step lemmas for `signalSessionIoMultiLib` block `
 (`signal_session_io::read_file`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

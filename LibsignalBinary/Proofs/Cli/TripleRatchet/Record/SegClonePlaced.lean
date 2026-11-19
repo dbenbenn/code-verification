@@ -9,15 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Record.SegClone
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneKeysPlaced
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneChainsPlaced
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegDecryptPlaced
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegTailPlaced
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegExitPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegClone
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneKeysPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneChainsPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegDecryptPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegTailPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegExitPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.RegChain
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.RatchetDecryptCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneAssemblePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlaced
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneAssemble
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegDecrypt
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatch
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegTail
 
 /-!
 # Relocatable CLI `SegClone` Composition and `try_decrypt_from_record` Region Assembly
@@ -27,7 +38,7 @@ composes all five segment contracts into `recordDecrypt_placed_region_ok` and
 `recordDecrypt_full_placed_region_ok` on CLI Block `463`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

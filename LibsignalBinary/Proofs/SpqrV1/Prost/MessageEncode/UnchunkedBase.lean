@@ -11,7 +11,6 @@ module
 
 public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
 public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -25,7 +24,7 @@ pure encoding model bridge lemmas, and specifications for:
    (`0x37c68`, 197 insns; `0x52d34`, 219 insns)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageEncode
 
@@ -48,11 +47,6 @@ set_option maxHeartbeats 400000
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
-gen_decodes libsignalSessionCode_tree libsignalSessionBin [
-  0x37af4 → 0x38060,
-  0x4d6a4 → 0x4dca8
-]
-
 abbrev ekSentCt1ReceivedEncode1Name : String :=
   "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::EkSentCt1Received, alloc::vec::Vec<u8>> [local#1]"
 
@@ -64,22 +58,6 @@ abbrev ct1SentEncode1Name : String :=
 
 abbrev ct1SentEncode2Name : String :=
   "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#2]"
-
-@[simp, arm64_norm] theorem ekSentCt1ReceivedEncode1_fnOff :
-    libsignalSessionCode.fnOff ekSentCt1ReceivedEncode1Name = 0x37af4 :=
-  libsignalSessionCode_fnOff_0x37af4
-
-@[simp, arm64_norm] theorem ekSentCt1ReceivedEncode2_fnOff :
-    libsignalSessionCode.fnOff ekSentCt1ReceivedEncode2Name = 0x4d6a4 :=
-  libsignalSessionCode_fnOff_0x4d6a4
-
-@[simp, arm64_norm] theorem ct1SentEncode1_fnOff :
-    libsignalSessionCode.fnOff ct1SentEncode1Name = 0x37d4c :=
-  libsignalSessionCode_fnOff_0x37d4c
-
-@[simp, arm64_norm] theorem ct1SentEncode2_fnOff :
-    libsignalSessionCode.fnOff ct1SentEncode2Name = 0x4d93c :=
-  libsignalSessionCode_fnOff_0x4d93c
 
 /-- Stack budget for `encode<EkSentCt1Received>` and `encode<Ct1Sent>` parameterized by `resStack`:
 `64 + authEncodeStackOf resStack = 128 + (0x30 + resStack)` bytes
@@ -156,19 +134,19 @@ abbrev encodeCt1SentMsg (m : V1State.Unchunked.Ct1Sent) : List (BitVec 8) :=
   Proto.encodeMessage V1State.Unchunked.Ct1Sent.encodeRaw 1#32 m
 
 /-- Outer message header bytes (`tag = 1`, length-delimited: `0x0a#8` + `encodeVarint innerLen`). -/
-def msgHeaderBytes (innerLen : Nat) : List (BitVec 8) :=
+@[expose] def msgHeaderBytes (innerLen : Nat) : List (BitVec 8) :=
   [0x0a#8] ++ CryptoVerification.LibsignalProtoCodec.encodeVarint (BitVec.ofNat 64 innerLen)
 
 /-- Encoded `epoch: u64` field (`tag = 1`, varint). -/
-def u64Field1Bytes (epoch : BitVec 64) : List (BitVec 8) :=
+@[expose] def u64Field1Bytes (epoch : BitVec 64) : List (BitVec 8) :=
   Proto.encodeUint64Field 1#32 epoch
 
 /-- Encoded `auth: Option<Authenticator>` field (`tag = 2`, length-delimited). -/
-def optAuthField2Bytes (auth : Option AuthenticatorPB) : List (BitVec 8) :=
+@[expose] def optAuthField2Bytes (auth : Option AuthenticatorPB) : List (BitVec 8) :=
   Proto.encodeOptMessage ProtoAuthenticator.encodeRaw 2#32 auth
 
 /-- Encoded `Vec<u8>` field with tag `tag` (length-delimited). -/
-def bytesFieldTagged (tag : BitVec 32) (bs : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def bytesFieldTagged (tag : BitVec 32) (bs : List (BitVec 8)) : List (BitVec 8) :=
   Proto.encodeBytesField tag bs
 
 theorem bs_append_msgHeaderBytes (bs : List (BitVec 8)) (innerLen : Nat) :
@@ -355,7 +333,7 @@ theorem ct1SentPBEncodedLen_eq_fields_len (m : V1State.Unchunked.Ct1Sent) :
 /-! ## 3. Specifications of `encode<EkSentCt1Received>` & `encode<Ct1Sent>` (`[local#1, 2]`) -/
 
 /-- Shared panic postcondition for `prost::encoding::message::encode` subroutines. -/
-def msgEncodeOnPanic (s0 sf : State) : SepProp :=
+@[expose] def msgEncodeOnPanic (s0 sf : State) : SepProp :=
   ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Pinned ghost arguments of `prost::encoding::message::encode::<EkSentCt1Received, Vec<u8>>`:
@@ -387,7 +365,7 @@ parameterized by `resStack`.
 Note on the capacity/length bound: top-level `Message::encode` pre-allocates `cap = encoded_len`,
 discharging the left disjunct `x.bs.length + (encodeEkSentCt1ReceivedMsg x.m).length ≤ x.cap.toNat`;
 growing callers discharge the right disjunct `< 2 ^ 62` from protocol message size bounds. -/
-def ekSentCt1ReceivedEncodePinnedSpecOf (resStack : Nat) (A : RustAlloc) :
+@[expose] def ekSentCt1ReceivedEncodePinnedSpecOf (resStack : Nat) (A : RustAlloc) :
     Spec EkSentCt1ReceivedEncodePinnedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.msgA ∧
@@ -409,7 +387,7 @@ def ekSentCt1ReceivedEncodePinnedSpecOf (resStack : Nat) (A : RustAlloc) :
 
 /-- Unpinned specification of `prost::encoding::message::encode::<EkSentCt1Received, Vec<u8>>` (`[local#1, 2]`),
 parameterized by `resStack`. -/
-def ekSentCt1ReceivedEncodeSpecOf (resStack : Nat) (A : RustAlloc) :
+@[expose] def ekSentCt1ReceivedEncodeSpecOf (resStack : Nat) (A : RustAlloc) :
     Spec EkSentCt1ReceivedEncodeGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.msgA ∧
@@ -441,54 +419,6 @@ abbrev ekSentCt1ReceivedEncodeSpec (A : RustAlloc) : Spec EkSentCt1ReceivedEncod
 abbrev ekSentCt1ReceivedEncodeSpecX (A : RustAlloc) : Spec EkSentCt1ReceivedEncodeGhost :=
   ekSentCt1ReceivedEncodeSpecOf doReserveStackX A
 
-def EkSentCt1ReceivedEncode1PinnedOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr ekSentCt1ReceivedEncode1Name)
-    (ekSentCt1ReceivedEncodePinnedSpec A)
-
-def EkSentCt1ReceivedEncode1OkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr ekSentCt1ReceivedEncode1Name)
-    (ekSentCt1ReceivedEncodeSpec A)
-
-def EkSentCt1ReceivedEncode1PinnedOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr ekSentCt1ReceivedEncode1Name)
-    ((ekSentCt1ReceivedEncodePinnedSpecX A).inImage img)
-
-def EkSentCt1ReceivedEncode1OkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr ekSentCt1ReceivedEncode1Name)
-    ((ekSentCt1ReceivedEncodeSpecX A).inImage img)
-
-def EkSentCt1ReceivedEncode2PinnedOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr ekSentCt1ReceivedEncode2Name)
-    (ekSentCt1ReceivedEncodePinnedSpec A)
-
-def EkSentCt1ReceivedEncode2OkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr ekSentCt1ReceivedEncode2Name)
-    (ekSentCt1ReceivedEncodeSpec A)
-
-def EkSentCt1ReceivedEncode2PinnedOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr ekSentCt1ReceivedEncode2Name)
-    ((ekSentCt1ReceivedEncodePinnedSpecX A).inImage img)
-
-def EkSentCt1ReceivedEncode2OkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr ekSentCt1ReceivedEncode2Name)
-    ((ekSentCt1ReceivedEncodeSpecX A).inImage img)
-
 /-- Pinned ghost arguments of `prost::encoding::message::encode::<Ct1Sent, Vec<u8>>`:
 - `msgA`: pointer to `&spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent` (`x0`, 128 bytes),
 - `g`: `(cap, ptr)` pins for `hdr`, `es`, `ct1`, and `auth`,
@@ -518,7 +448,7 @@ parameterized by `resStack`.
 Note on the capacity/length bound: top-level `Message::encode` pre-allocates `cap = encoded_len`,
 discharging the left disjunct `x.bs.length + (encodeCt1SentMsg x.m).length ≤ x.cap.toNat`;
 growing callers discharge the right disjunct `< 2 ^ 62` from protocol message size bounds. -/
-def ct1SentEncodePinnedSpecOf (resStack : Nat) (A : RustAlloc) :
+@[expose] def ct1SentEncodePinnedSpecOf (resStack : Nat) (A : RustAlloc) :
     Spec Ct1SentEncodePinnedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.msgA ∧
@@ -540,7 +470,7 @@ def ct1SentEncodePinnedSpecOf (resStack : Nat) (A : RustAlloc) :
 
 /-- Unpinned specification of `prost::encoding::message::encode::<Ct1Sent, Vec<u8>>` (`[local#1, 2]`),
 parameterized by `resStack`. -/
-def ct1SentEncodeSpecOf (resStack : Nat) (A : RustAlloc) :
+@[expose] def ct1SentEncodeSpecOf (resStack : Nat) (A : RustAlloc) :
     Spec Ct1SentEncodeGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.msgA ∧
@@ -571,54 +501,6 @@ abbrev ct1SentEncodeSpec (A : RustAlloc) : Spec Ct1SentEncodeGhost :=
 
 abbrev ct1SentEncodeSpecX (A : RustAlloc) : Spec Ct1SentEncodeGhost :=
   ct1SentEncodeSpecOf doReserveStackX A
-
-def Ct1SentEncode1PinnedOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name)
-    (ct1SentEncodePinnedSpec A)
-
-def Ct1SentEncode1OkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name)
-    (ct1SentEncodeSpec A)
-
-def Ct1SentEncode1PinnedOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr ct1SentEncode1Name)
-    ((ct1SentEncodePinnedSpecX A).inImage img)
-
-def Ct1SentEncode1OkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr ct1SentEncode1Name)
-    ((ct1SentEncodeSpecX A).inImage img)
-
-def Ct1SentEncode2PinnedOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode2Name)
-    (ct1SentEncodePinnedSpec A)
-
-def Ct1SentEncode2OkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode2Name)
-    (ct1SentEncodeSpec A)
-
-def Ct1SentEncode2PinnedOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr ct1SentEncode2Name)
-    ((ct1SentEncodePinnedSpecX A).inImage img)
-
-def Ct1SentEncode2OkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr ct1SentEncode2Name)
-    ((ct1SentEncodeSpecX A).inImage img)
 
 /-! ## 4. Stack, Memory, and Callee Helpers -/
 
@@ -667,430 +549,4 @@ theorem stackAt_authEncode_eq_encodedLen {resStack : Nat} (hres : resStack + 48 
     dsimp [unchunkedEncodedLenStack, authEncodeStackOf]; omega
   simpa only [heq] using h
 
-/-- Callee-saved registers `x24..x28` untouched by `encode<EkSentCt1Received>` and `encode<Ct1Sent>`
-(`x19..x23, fp, lr` are saved on stack), together with `StepInv s0 s` for `inImage img` invariant propagation. -/
-def UnchunkedEncodeCalleeSaved (s0 s : State) : Prop :=
-  s.readReg64 (Reg.gpr 24#5) = s0.readReg64 (Reg.gpr 24#5) ∧
-  s.readReg64 (Reg.gpr 25#5) = s0.readReg64 (Reg.gpr 25#5) ∧
-  s.readReg64 (Reg.gpr 26#5) = s0.readReg64 (Reg.gpr 26#5) ∧
-  s.readReg64 (Reg.gpr 27#5) = s0.readReg64 (Reg.gpr 27#5) ∧
-  s.readReg64 (Reg.gpr 28#5) = s0.readReg64 (Reg.gpr 28#5) ∧
-  calleeSavedVRegs s = calleeSavedVRegs s0 ∧
-  StepInv s0 s
-
-theorem UnchunkedEncodeCalleeSaved.refl (s0 : State) : UnchunkedEncodeCalleeSaved s0 s0 :=
-  ⟨rfl, rfl, rfl, rfl, rfl, rfl, StepInv.refl s0⟩
-
-theorem UnchunkedEncodeCalleeSaved.trans {s0 s1 s2 : State}
-    (h01 : UnchunkedEncodeCalleeSaved s0 s1) (h12 : UnchunkedEncodeCalleeSaved s1 s2) :
-    UnchunkedEncodeCalleeSaved s0 s2 :=
-  ⟨h12.1.trans h01.1, h12.2.1.trans h01.2.1, h12.2.2.1.trans h01.2.2.1,
-    h12.2.2.2.1.trans h01.2.2.2.1, h12.2.2.2.2.1.trans h01.2.2.2.2.1,
-    h12.2.2.2.2.2.1.trans h01.2.2.2.2.2.1,
-    h01.2.2.2.2.2.2.trans h12.2.2.2.2.2.2⟩
-
-theorem UnchunkedEncodeCalleeSaved.of_calleeSavedPreserved {s1 s2 : State}
-    (hcs : CalleeSavedPreserved s1 s2) (hinv : StepInv s1 s2) : UnchunkedEncodeCalleeSaved s1 s2 :=
-  ⟨hcs.2.2.2.2.2.1, hcs.2.2.2.2.2.2.1, hcs.2.2.2.2.2.2.2.1,
-    hcs.2.2.2.2.2.2.2.2.1, hcs.2.2.2.2.2.2.2.2.2.1,
-    hcs.2.2.2.2.2.2.2.2.2.2.2, hinv⟩
-
-theorem UnchunkedEncodeCalleeSaved.step {s0 s1 s2 : State}
-    (h01 : UnchunkedEncodeCalleeSaved s0 s1)
-    (hx24 : s2.readReg64 (Reg.gpr 24#5) = s1.readReg64 (Reg.gpr 24#5))
-    (hx25 : s2.readReg64 (Reg.gpr 25#5) = s1.readReg64 (Reg.gpr 25#5))
-    (hx26 : s2.readReg64 (Reg.gpr 26#5) = s1.readReg64 (Reg.gpr 26#5))
-    (hx27 : s2.readReg64 (Reg.gpr 27#5) = s1.readReg64 (Reg.gpr 27#5))
-    (hx28 : s2.readReg64 (Reg.gpr 28#5) = s1.readReg64 (Reg.gpr 28#5))
-    (hinv : StepInv s1 s2)
-    (hvregs : calleeSavedVRegs s2 = calleeSavedVRegs s1 := by simp only [arm64_norm]) :
-    UnchunkedEncodeCalleeSaved s0 s2 :=
-  h01.trans ⟨hx24, hx25, hx26, hx27, hx28, hvregs, hinv⟩
-
-/-- Wrap a `Spec α` with `⌜UnchunkedEncodeCalleeSaved s0 s⌝` in the precondition. -/
-def withUnchunkedEncodeCS {α : Type} (s0 : State) (spec : Spec α) : Spec α :=
-  { spec with pre := fun x s => ⌜UnchunkedEncodeCalleeSaved s0 s⌝ ∗ spec.pre x s }
-
-theorem subroutine_ok_withUnchunkedEncodeCS {α : Type} {prog : Program} {entry : BitVec 64} {spec : Spec α}
-    (s0 : State) (h : subroutine_ok prog entry spec) :
-    subroutine_ok prog entry (withUnchunkedEncodeCS s0 spec) := by
-  refine subroutine_ok_outcome_intro fun x R s hpc hrun hpre hsp => ?_
-  rw [withUnchunkedEncodeCS, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact h.mono_outcome x R s hpc hrun hpre.2 hsp fun _ hout => hout
-
-theorem subroutine_ok_withUnchunkedEncodeCS_x {α : Type} {prog : Program} {entry : BitVec 64} {spec : Spec α}
-    (img : Obj.Image) (s0 : State) (hinv0 : ImgCallInv img s0)
-    (h : subroutine_ok prog entry (spec.inImage img)) :
-    subroutine_ok prog entry (withUnchunkedEncodeCS s0 spec) := by
-  refine subroutine_ok_outcome_intro fun x R s hpc hrun hpre hsp => ?_
-  rw [withUnchunkedEncodeCS, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  have hpre' : s.mem ⊨ (spec.inImage img).pre x s ∗ R := by
-    rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hpre.1.2.2.2.2.2.2 img hinv0, hpre.2⟩
-  exact h.mono_outcome x R s hpc hrun hpre' hsp fun _ hout => hout
-
-/-! ### Call Wrapper Lemmas -/
-
-theorem step_unchunked_memcpy_call (b : BitVec 64)
-    (ext : String → Option (State → State))
-    {call_pc : BitVec 64}
-    (hmemcpy : subroutine_ok (tripleRatchetProgAtExt b ext) call_pc sessionMemcpyRegionSpec)
-    (dst src sp ret_pc : BitVec 64) (bs : List (BitVec 8))
-    {s0 s : State} {R : SepProp}
-    {ret : BitVec 64} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = call_pc) (hrun : s.status = .Running)
-    (hsp : s.sp = sp - 64#64) (halign : sp &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace) (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = dst) (hx1 : s.readReg64 .x1 = src)
-    (hx2 : (s.readReg64 .x2).toNat = bs.length)
-    (hcs : UnchunkedEncodeCalleeSaved s0 s)
-    (hP : P = (memRegion dst bs.length ∗ (src ↦ₛ bs)) ∗ F)
-    (hnext : ∀ (sm : State),
-      sm.pc = ret_pc → sm.status = .Running → sm.sp = sp - 64#64 → sm.trace = s0.trace →
-      CalleeSavedPreserved s sm → UnchunkedEncodeCalleeSaved s0 sm →
-      SepWPp (tripleRatchetProgAtExt b ext) ret sm (((dst ↦ₛ bs) ∗ (src ↦ₛ bs)) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ msgEncodeOnPanic s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ msgEncodeOnPanic s0 sf ∗ R)) := by
-  have hsp_aligned : s.spAligned = true := by
-    simp only [State.spAligned, hsp, beq_iff_eq]; exact sp_sub_64_aligned halign
-  refine SepWPp.call_cs (x := (dst, src, bs)) (F := F)
-    hmemcpy hpc hrun hsp_aligned hlr ?_ ?_ ?_ ?_
-  · intro R' hm; rw [hP] at hm
-    simp only [sessionMemcpyRegionSpec, memcpyRegionSpec, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hx2⟩, ?_⟩; convert hm using 1; ac_rfl
-  · intro sf code R' _ hm
-    exact allowPanic_not_exited hm
-  · intro sf _ hm
-    simp only [sessionMemcpyRegionSpec, sepConj_assoc, satisfies_pure_sepConj] at hm
-    exact hm.1.elim
-  · intro sm hpcm hrunm hspm hcsm hinv_call
-    rw [hsp] at hspm; simp only [sessionMemcpyRegionSpec, sepConj_assoc]
-    refine SepWPp.pure_elim fun ⟨_, htrm⟩ => ?_
-    refine SepWPp.weaken_pre ?_
-      (hnext sm hpcm hrunm hspm (htrm.trans htr) hcsm
-        (hcs.trans (UnchunkedEncodeCalleeSaved.of_calleeSavedPreserved hcsm hinv_call)))
-    exact Entails.of_eq (by ac_rfl)
-
-theorem step_unchunked_encode_varint_call {resStack : Nat} (hres : resStack + 48 + 128 < 2 ^ 64)
-    (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State))
-    {call_pc : BitVec 64} {s0 s : State}
-    (henc : subroutine_ok (tripleRatchetProgAtExt b ext) call_pc
-      (withUnchunkedEncodeCS s0 (encodeVarintFitSpecOf resStack A)))
-    (val v curCap curPtr sp ret_pc : BitVec 64) (curBs : List (BitVec 8))
-    (hlen_lt : curBs.length + (CryptoVerification.LibsignalProtoCodec.encodeVarint val).length ≤ curCap.toNat ∨
-      curBs.length + 10 < 2 ^ 62)
-    {R : SepProp} {ret : BitVec 64} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = call_pc) (hrun : s.status = .Running)
-    (hsp : s.sp = sp - 64#64) (halign : sp &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace) (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = val) (hx1 : s.readReg64 .x1 = v)
-    (hcs : UnchunkedEncodeCalleeSaved s0 s)
-    (hP : P = (vecU8At A v curCap curPtr curBs ∗ A.pool ∗ stackAt (sp - 64#64) (authEncodeStackOf resStack)) ∗ F)
-    (hnext : ∀ (sm : State) (nextCap nextPtr : BitVec 64),
-      sm.pc = ret_pc → sm.status = .Running → sm.sp = sp - 64#64 → sm.trace = s0.trace →
-      CalleeSavedPreserved s sm → UnchunkedEncodeCalleeSaved s0 sm →
-      curCap.toNat ≤ nextCap.toNat →
-      (curBs.length + (CryptoVerification.LibsignalProtoCodec.encodeVarint val).length ≤ curCap.toNat →
-        nextCap = curCap ∧ nextPtr = curPtr) →
-      SepWPp (tripleRatchetProgAtExt b ext) ret sm
-        ((vecU8At A v nextCap nextPtr (curBs ++ CryptoVerification.LibsignalProtoCodec.encodeVarint val) ∗ A.pool ∗
-          stackAt (sp - 64#64) (authEncodeStackOf resStack)) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ msgEncodeOnPanic s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ msgEncodeOnPanic s0 sf ∗ R)) := by
-  have hsp_aligned : s.spAligned = true := by
-    simp only [State.spAligned, hsp, beq_iff_eq]; exact sp_sub_64_aligned halign
-  refine SepWPp.call_cs (x := EncodeVarintGhost.mk val v curCap curPtr curBs)
-    (F := memRegion (sp - 64#64 - BitVec.ofNat 64 (authEncodeStackOf resStack)) 64 ∗ F)
-    henc hpc hrun hsp_aligned hlr ?_ ?_ ?_ ?_
-  · intro R' hm; rw [hP, stackAt_authEncode_eq_encodeVarint64 hres (sp - 64#64)] at hm
-    simp only [withUnchunkedEncodeCS, encodeVarintFitSpecOf, hsp, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hcs, ⟨hx0, hx1, hlen_lt⟩, ?_⟩; convert hm using 1; ac_rfl
-  · intro sf code R' _ hm
-    exact allowPanic_not_exited hm
-  · intro sf _ hm
-    dsimp only [withUnchunkedEncodeCS, encodeVarintFitSpecOf, encodeVarintSpec, encodeVarintSpecOf,
-      msgEncodeOnPanic, allocFailedIn] at hm ⊢
-    rw [htr] at hm; exact allowPanic_frame id hm
-  · intro sm hpcm hrunm hspm hcsm hinv_call
-    rw [hsp] at hspm
-    dsimp only [withUnchunkedEncodeCS, encodeVarintFitSpecOf, encodeVarintSpecOf]
-    rw [hsp, sepConj_assoc]
-    refine SepWPp.pure_elim fun htrm => ?_
-    simp only [sepExists_sepConj_left]
-    refine SepWPp.exists_elim fun nextCap => SepWPp.exists_elim fun nextPtr => ?_
-    simp only [sepConj_assoc]
-    refine SepWPp.pure_elim fun ⟨hge, hpres⟩ => ?_
-    refine SepWPp.weaken_pre ?_
-      (hnext sm nextCap nextPtr hpcm hrunm hspm (htrm.trans htr) hcsm
-        (hcs.trans (UnchunkedEncodeCalleeSaved.of_calleeSavedPreserved hcsm hinv_call)) hge hpres)
-    rw [stackAt_authEncode_eq_encodeVarint64 hres (sp - 64#64)]
-    exact Entails.of_eq (by ac_rfl)
-
-theorem step_unchunked_do_reserve2_call {resStack : Nat} (hres : resStack + 48 + 128 < 2 ^ 64)
-    (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State))
-    {call_pc : BitVec 64} {s0 s : State}
-    (hdoReserve : subroutine_ok (tripleRatchetProgAtExt b ext) call_pc
-      (withUnchunkedEncodeCS s0 (doReserve2SpecOf resStack A)))
-    (v curCap curPtr sp ret_pc : BitVec 64) (curBs : List (BitVec 8)) (additional : Nat)
-    (hbound : reserveCap curCap.toNat curBs.length additional + 1 ≤ 2 ^ 63)
-    {R : SepProp} {ret : BitVec 64} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = call_pc) (hrun : s.status = .Running)
-    (hsp : s.sp = sp - 64#64) (halign : sp &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace) (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = v) (hx1 : (s.readReg64 .x1).toNat = curBs.length)
-    (hx2 : (s.readReg64 .x2).toNat = additional)
-    (hcs : UnchunkedEncodeCalleeSaved s0 s)
-    (hP : P = (vecU8At A v curCap curPtr curBs ∗ A.pool ∗ stackAt (sp - 64#64) (authEncodeStackOf resStack)) ∗ F)
-    (hnext : ∀ (sm : State) (newPtr : BitVec 64),
-      sm.pc = ret_pc → sm.status = .Running → sm.sp = sp - 64#64 → sm.trace = s0.trace →
-      CalleeSavedPreserved s sm → UnchunkedEncodeCalleeSaved s0 sm →
-      SepWPp (tripleRatchetProgAtExt b ext) ret sm
-        ((vecU8At A v (BitVec.ofNat 64 (reserveCap curCap.toNat curBs.length additional)) newPtr curBs ∗
-          A.pool ∗ stackAt (sp - 64#64) (authEncodeStackOf resStack)) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ msgEncodeOnPanic s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ msgEncodeOnPanic s0 sf ∗ R)) := by
-  have hsp_aligned : s.spAligned = true := by
-    simp only [State.spAligned, hsp, beq_iff_eq]; exact sp_sub_64_aligned halign
-  have hres64 : resStack + 48 + 64 < 2 ^ 64 := by omega
-  refine SepWPp.call_cs (x := DoReserveCall.mk v curCap curPtr curBs additional)
-    (F := memRegion (sp - 64#64 - BitVec.ofNat 64 (authEncodeStackOf resStack)) 64 ∗
-          memRegion (sp - 64#64 - BitVec.ofNat 64 (0x30 + resStack)) 48 ∗ F)
-    hdoReserve hpc hrun hsp_aligned hlr ?_ ?_ ?_ ?_
-  · intro R' hm
-    rw [hP, stackAt_authEncode_eq_encodeVarint64 hres (sp - 64#64),
-      stackAt_encodeVarint_eq_doReserve64 hres64 (sp - 64#64)] at hm
-    simp only [withUnchunkedEncodeCS, doReserve2SpecOf, hsp, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hcs, ⟨hx0, hx1, hx2, hbound⟩, ?_⟩; convert hm using 1; ac_rfl
-  · intro sf code R' _ hm
-    exact allowPanic_not_exited hm
-  · intro sf _ hm
-    dsimp only [withUnchunkedEncodeCS, doReserve2SpecOf, doReserveSpec, msgEncodeOnPanic, allocFailedIn] at hm ⊢
-    rw [htr] at hm; exact allowPanic_frame id hm
-  · intro sm hpcm hrunm hspm hcsm hinv_call
-    rw [hsp] at hspm; dsimp only [withUnchunkedEncodeCS, doReserve2SpecOf]; rw [hsp, sepConj_assoc]
-    refine SepWPp.pure_elim fun htrm => ?_
-    simp only [sepExists_sepConj_left]; refine SepWPp.exists_elim fun newPtr => ?_
-    refine SepWPp.weaken_pre ?_
-      (hnext sm newPtr hpcm hrunm hspm (htrm.trans htr) hcsm
-        (hcs.trans (UnchunkedEncodeCalleeSaved.of_calleeSavedPreserved hcsm hinv_call)))
-    rw [stackAt_authEncode_eq_encodeVarint64 hres (sp - 64#64),
-      stackAt_encodeVarint_eq_doReserve64 hres64 (sp - 64#64)]
-    exact Entails.of_eq (by ac_rfl)
-
-theorem step_unchunked_do_reserve7_call {resStack : Nat} (hres : resStack + 48 + 128 < 2 ^ 64)
-    (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State))
-    {call_pc : BitVec 64} {s0 s : State}
-    (hdoReserve : subroutine_ok (tripleRatchetProgAtExt b ext) call_pc
-      (withUnchunkedEncodeCS s0 (doReserveSpecOf resStack A)))
-    (v curCap curPtr sp ret_pc : BitVec 64) (curBs : List (BitVec 8)) (additional : Nat)
-    (hbound : reserveCap curCap.toNat curBs.length additional + 1 ≤ 2 ^ 63)
-    {R : SepProp} {ret : BitVec 64} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = call_pc) (hrun : s.status = .Running)
-    (hsp : s.sp = sp - 64#64) (halign : sp &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace) (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = v) (hx1 : (s.readReg64 .x1).toNat = curBs.length)
-    (hx2 : (s.readReg64 .x2).toNat = additional) (hx3 : s.readReg64 .x3 = 1#64)
-    (hx4 : s.readReg64 .x4 = 1#64) (hcs : UnchunkedEncodeCalleeSaved s0 s)
-    (hP : P = (vecU8At A v curCap curPtr curBs ∗ A.pool ∗ stackAt (sp - 64#64) (authEncodeStackOf resStack)) ∗ F)
-    (hnext : ∀ (sm : State) (newPtr : BitVec 64),
-      sm.pc = ret_pc → sm.status = .Running → sm.sp = sp - 64#64 → sm.trace = s0.trace →
-      CalleeSavedPreserved s sm → UnchunkedEncodeCalleeSaved s0 sm →
-      SepWPp (tripleRatchetProgAtExt b ext) ret sm
-        ((vecU8At A v (BitVec.ofNat 64 (reserveCap curCap.toNat curBs.length additional)) newPtr curBs ∗
-          A.pool ∗ stackAt (sp - 64#64) (authEncodeStackOf resStack)) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ msgEncodeOnPanic s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ msgEncodeOnPanic s0 sf ∗ R)) := by
-  have hsp_aligned : s.spAligned = true := by
-    simp only [State.spAligned, hsp, beq_iff_eq]; exact sp_sub_64_aligned halign
-  have hres64 : resStack + 48 + 64 < 2 ^ 64 := by omega
-  refine SepWPp.call_cs (x := DoReserveCall.mk v curCap curPtr curBs additional)
-    (F := memRegion (sp - 64#64 - BitVec.ofNat 64 (authEncodeStackOf resStack)) 64 ∗
-          memRegion (sp - 64#64 - BitVec.ofNat 64 (0x30 + resStack)) 48 ∗ F)
-    hdoReserve hpc hrun hsp_aligned hlr ?_ ?_ ?_ ?_
-  · intro R' hm
-    rw [hP, stackAt_authEncode_eq_encodeVarint64 hres (sp - 64#64),
-      stackAt_encodeVarint_eq_doReserve64 hres64 (sp - 64#64)] at hm
-    simp only [withUnchunkedEncodeCS, doReserveSpecOf, hsp, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hcs, ⟨hx0, hx1, hx2, hx3, hx4, hbound⟩, ?_⟩; convert hm using 1; ac_rfl
-  · intro sf code R' _ hm
-    exact allowPanic_not_exited hm
-  · intro sf _ hm
-    dsimp only [withUnchunkedEncodeCS, doReserveSpecOf, doReserveSpec, msgEncodeOnPanic, allocFailedIn] at hm ⊢
-    rw [htr] at hm; exact allowPanic_frame id hm
-  · intro sm hpcm hrunm hspm hcsm hinv_call
-    rw [hsp] at hspm; dsimp only [withUnchunkedEncodeCS, doReserveSpecOf]; rw [hsp, sepConj_assoc]
-    refine SepWPp.pure_elim fun htrm => ?_
-    simp only [sepExists_sepConj_left]; refine SepWPp.exists_elim fun newPtr => ?_
-    refine SepWPp.weaken_pre ?_
-      (hnext sm newPtr hpcm hrunm hspm (htrm.trans htr) hcsm
-        (hcs.trans (UnchunkedEncodeCalleeSaved.of_calleeSavedPreserved hcsm hinv_call)))
-    rw [stackAt_authEncode_eq_encodeVarint64 hres (sp - 64#64),
-      stackAt_encodeVarint_eq_doReserve64 hres64 (sp - 64#64)]
-    exact Entails.of_eq (by ac_rfl)
-
-theorem step_unchunked_auth_encode_call {resStack : Nat}
-    (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State))
-    {call_pc : BitVec 64} {s0 s : State}
-    (hauthEnc : subroutine_ok (tripleRatchetProgAtExt b ext) call_pc
-      (withUnchunkedEncodeCS s0 (authEncodePinnedSpecOf resStack A)))
-    (authA : BitVec 64) (gAuth : AuthenticatorPBGhost) (auth : AuthenticatorPB)
-    (v curCap curPtr sp ret_pc : BitVec 64) (curBs : List (BitVec 8))
-    (hlen_fit : curBs.length + (encodeAuthMsg auth).length ≤ curCap.toNat ∨
-      curBs.length + (encodeAuthMsg auth).length + 10 < 2 ^ 62)
-    {R : SepProp} {ret : BitVec 64} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = call_pc) (hrun : s.status = .Running)
-    (hsp : s.sp = sp - 64#64) (halign : sp &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace) (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = authA) (hx1 : s.readReg64 .x1 = v)
-    (hcs : UnchunkedEncodeCalleeSaved s0 s)
-    (hP : P = (authenticatorPBPinnedAt A gAuth authA auth ∗
-      vecU8At A v curCap curPtr curBs ∗ A.pool ∗
-      stackAt (sp - 64#64) (authEncodeStackOf resStack)) ∗ F)
-    (hnext : ∀ (sm : State) (nextCap nextPtr : BitVec 64),
-      sm.pc = ret_pc → sm.status = .Running → sm.sp = sp - 64#64 → sm.trace = s0.trace →
-      CalleeSavedPreserved s sm → UnchunkedEncodeCalleeSaved s0 sm →
-      curCap.toNat ≤ nextCap.toNat →
-      (curBs.length + (encodeAuthMsg auth).length ≤ curCap.toNat →
-        nextCap = curCap ∧ nextPtr = curPtr) →
-      SepWPp (tripleRatchetProgAtExt b ext) ret sm
-        ((authenticatorPBPinnedAt A gAuth authA auth ∗
-          vecU8At A v nextCap nextPtr (curBs ++ encodeAuthMsg auth) ∗ A.pool ∗
-          stackAt (sp - 64#64) (authEncodeStackOf resStack)) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ msgEncodeOnPanic s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ msgEncodeOnPanic s0 sf ∗ R)) := by
-  have hsp_aligned : s.spAligned = true := by
-    simp only [State.spAligned, hsp, beq_iff_eq]; exact sp_sub_64_aligned halign
-  refine SepWPp.call_cs (x := AuthEncodePinnedGhost.mk authA gAuth auth v curCap curPtr curBs)
-    (F := F) hauthEnc hpc hrun hsp_aligned hlr ?_ ?_ ?_ ?_
-  · intro R' hm; rw [hP] at hm
-    simp only [withUnchunkedEncodeCS, authEncodePinnedSpecOf, hsp, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hcs, ⟨hx0, hx1, hlen_fit⟩, ?_⟩; convert hm using 1; ac_rfl
-  · intro sf code R' _ hm
-    exact allowPanic_not_exited hm
-  · intro sf _ hm
-    dsimp only [withUnchunkedEncodeCS, authEncodePinnedSpecOf, msgEncodeOnPanic, allocFailedIn] at hm ⊢
-    rw [htr] at hm; exact allowPanic_frame id hm
-  · intro sm hpcm hrunm hspm hcsm hinv_call
-    rw [hsp] at hspm; dsimp only [withUnchunkedEncodeCS, authEncodePinnedSpecOf]; rw [hsp, sepConj_assoc]
-    refine SepWPp.pure_elim fun htrm => ?_
-    simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-    refine SepWPp.exists_elim fun nextCap => SepWPp.exists_elim fun nextPtr => ?_
-    rw [sepConj_left_comm (authenticatorPBPinnedAt A gAuth authA auth)]
-    simp only [sepConj_assoc]
-    refine SepWPp.pure_elim fun hpure => ?_
-    refine SepWPp.weaken_pre ?_
-      (hnext sm nextCap nextPtr hpcm hrunm hspm (htrm.trans htr) hcsm
-        (hcs.trans (UnchunkedEncodeCalleeSaved.of_calleeSavedPreserved hcsm hinv_call)) hpure.1 hpure.2)
-    exact Entails.of_eq (by ac_rfl)
-
-theorem step_ekSentCt1Received_encoded_len_call {resStack : Nat} (hres : resStack + 48 + 128 < 2 ^ 64)
-    (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State))
-    {call_pc : BitVec 64} {s0 s : State}
-    (hencLen : subroutine_ok (tripleRatchetProgAtExt b ext) call_pc
-      (withUnchunkedEncodeCS s0 (ekSentCt1ReceivedEncodedLenPinnedSpec A)))
-    (g : Unchunked4PBGhost) (msgA sp ret_pc : BitVec 64) (m : V1State.Unchunked.EkSentCt1Received)
-    (hfit : ekSentCt1ReceivedPBEncodedLen m < 2 ^ 64)
-    {R : SepProp} {ret : BitVec 64} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = call_pc) (hrun : s.status = .Running)
-    (hsp : s.sp = sp - 64#64) (halign : sp &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace) (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = msgA) (hcs : UnchunkedEncodeCalleeSaved s0 s)
-    (hP : P = (ekSentCt1ReceivedPBPinnedAt A g msgA m ∗
-      stackAt (sp - 64#64) (authEncodeStackOf resStack)) ∗ F)
-    (hnext : ∀ (sm : State),
-      sm.pc = ret_pc → sm.status = .Running → sm.sp = sp - 64#64 → sm.trace = s0.trace →
-      sm.readReg64 .x0 = BitVec.ofNat 64 (ekSentCt1ReceivedPBEncodedLen m) →
-      CalleeSavedPreserved s sm → UnchunkedEncodeCalleeSaved s0 sm →
-      SepWPp (tripleRatchetProgAtExt b ext) ret sm
-        ((ekSentCt1ReceivedPBPinnedAt A g msgA m ∗
-          stackAt (sp - 64#64) (authEncodeStackOf resStack)) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ msgEncodeOnPanic s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ msgEncodeOnPanic s0 sf ∗ R)) := by
-  have hsp_aligned : s.spAligned = true := by
-    simp only [State.spAligned, hsp, beq_iff_eq]; exact sp_sub_64_aligned halign
-  refine SepWPp.call_cs (x := PinnedEncLenGhost.mk msgA g m)
-    (F := memRegion (sp - 64#64 - BitVec.ofNat 64 (authEncodeStackOf resStack))
-            (authEncodeStackOf resStack - 16) ∗ F)
-    hencLen hpc hrun hsp_aligned hlr ?_ ?_ ?_ ?_
-  · intro R' hm
-    rw [hP, stackAt_authEncode_eq_encodedLen hres (sp - 64#64)] at hm
-    simp only [withUnchunkedEncodeCS, ekSentCt1ReceivedEncodedLenPinnedSpec,
-      unchunked4EncodedLenPinnedSpec, hsp, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hcs, ⟨hx0, hfit⟩, ?_⟩; convert hm using 1; ac_rfl
-  · intro sf code R' _ hm
-    exact allowPanic_not_exited hm
-  · intro sf _ hm
-    simp only [withUnchunkedEncodeCS, ekSentCt1ReceivedEncodedLenPinnedSpec,
-      unchunked4EncodedLenPinnedSpec, sepConj_assoc, satisfies_pure_sepConj] at hm
-    exact hm.1.elim
-  · intro sm hpcm hrunm hspm hcsm hinv_call
-    rw [hsp] at hspm
-    dsimp only [withUnchunkedEncodeCS, ekSentCt1ReceivedEncodedLenPinnedSpec, unchunked4EncodedLenPinnedSpec]
-    rw [hsp, sepConj_assoc]
-    refine SepWPp.pure_elim fun ⟨hx0m, htrm⟩ => ?_
-    refine SepWPp.weaken_pre ?_
-      (hnext sm hpcm hrunm hspm (htrm.trans htr) hx0m hcsm
-        (hcs.trans (UnchunkedEncodeCalleeSaved.of_calleeSavedPreserved hcsm hinv_call)))
-    rw [stackAt_authEncode_eq_encodedLen hres (sp - 64#64)]
-    exact Entails.of_eq (by ac_rfl)
-
-theorem step_ct1Sent_encoded_len_call {resStack : Nat} (hres : resStack + 48 + 128 < 2 ^ 64)
-    (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State))
-    {call_pc : BitVec 64} {s0 s : State}
-    (hencLen : subroutine_ok (tripleRatchetProgAtExt b ext) call_pc
-      (withUnchunkedEncodeCS s0 (ct1SentEncodedLenPinnedSpec A)))
-    (g : Unchunked5PBGhost) (msgA sp ret_pc : BitVec 64) (m : V1State.Unchunked.Ct1Sent)
-    (hfit : ct1SentPBEncodedLen m < 2 ^ 64)
-    {R : SepProp} {ret : BitVec 64} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = call_pc) (hrun : s.status = .Running)
-    (hsp : s.sp = sp - 64#64) (halign : sp &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace) (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = msgA) (hcs : UnchunkedEncodeCalleeSaved s0 s)
-    (hP : P = (ct1SentPBPinnedAt A g msgA m ∗
-      stackAt (sp - 64#64) (authEncodeStackOf resStack)) ∗ F)
-    (hnext : ∀ (sm : State),
-      sm.pc = ret_pc → sm.status = .Running → sm.sp = sp - 64#64 → sm.trace = s0.trace →
-      sm.readReg64 .x0 = BitVec.ofNat 64 (ct1SentPBEncodedLen m) →
-      CalleeSavedPreserved s sm → UnchunkedEncodeCalleeSaved s0 sm →
-      SepWPp (tripleRatchetProgAtExt b ext) ret sm
-        ((ct1SentPBPinnedAt A g msgA m ∗
-          stackAt (sp - 64#64) (authEncodeStackOf resStack)) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ msgEncodeOnPanic s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ msgEncodeOnPanic s0 sf ∗ R)) := by
-  have hsp_aligned : s.spAligned = true := by
-    simp only [State.spAligned, hsp, beq_iff_eq]; exact sp_sub_64_aligned halign
-  refine SepWPp.call_cs (x := PinnedEncLenGhost.mk msgA g m)
-    (F := memRegion (sp - 64#64 - BitVec.ofNat 64 (authEncodeStackOf resStack))
-            (authEncodeStackOf resStack - 16) ∗ F)
-    hencLen hpc hrun hsp_aligned hlr ?_ ?_ ?_ ?_
-  · intro R' hm
-    rw [hP, stackAt_authEncode_eq_encodedLen hres (sp - 64#64)] at hm
-    simp only [withUnchunkedEncodeCS, ct1SentEncodedLenPinnedSpec,
-      unchunked5EncodedLenPinnedSpec, hsp, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hcs, ⟨hx0, hfit⟩, ?_⟩; convert hm using 1; ac_rfl
-  · intro sf code R' _ hm
-    exact allowPanic_not_exited hm
-  · intro sf _ hm
-    simp only [withUnchunkedEncodeCS, ct1SentEncodedLenPinnedSpec,
-      unchunked5EncodedLenPinnedSpec, sepConj_assoc, satisfies_pure_sepConj] at hm
-    exact hm.1.elim
-  · intro sm hpcm hrunm hspm hcsm hinv_call
-    rw [hsp] at hspm
-    dsimp only [withUnchunkedEncodeCS, ct1SentEncodedLenPinnedSpec, unchunked5EncodedLenPinnedSpec]
-    rw [hsp, sepConj_assoc]
-    refine SepWPp.pure_elim fun ⟨hx0m, htrm⟩ => ?_
-    refine SepWPp.weaken_pre ?_
-      (hnext sm hpcm hrunm hspm (htrm.trans htr) hx0m hcsm
-        (hcs.trans (UnchunkedEncodeCalleeSaved.of_calleeSavedPreserved hcsm hinv_call)))
-    rw [stackAt_authEncode_eq_encodedLen hres (sp - 64#64)]
-    exact Entails.of_eq (by ac_rfl)
-
 end CryptoVerification.SpqrV1.Prost.MessageEncode
-

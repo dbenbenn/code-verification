@@ -10,22 +10,26 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChunkedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPtBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeamsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChunkedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPtBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeamsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeams
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<States>::recv` (Block `332`): Budget-Threaded Relocatable Specifications & Contracts
@@ -34,7 +38,7 @@ Relocatable `[LibsignalPlacement]` `RustCliAllocBudget` callee contract bundles
 (`StatesRecvPlacedContractsOfEnv`, `StatesRecvPlacedContracts`) and specifications for Block `332`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -43,7 +47,7 @@ set_option linter.unusedSimpArgs false
 
 namespace LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
 
-open Arm64 ProofLib
+open Arm64 ProofLib SepProp
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification
@@ -62,7 +66,7 @@ open CryptoVerification.SpqrV1.States.Leaves
    PolyDecoderDecodedMessageGhost SendCt2EncoderGhost UnchunkedCt1SentRecvEkGhost
    UnchunkedSendCt2Ghost)
 open CryptoVerification.SpqrV1.States.Leaves.RecvHdrChunk (NoHeaderReceivedRecvHdrChunkGhost)
-open CryptoVerification.SpqrV1.States.RecvCt2Chunk (RecvCt2ChunkGhost)
+open CryptoVerification.SpqrV1.States.RecvCt2Chunk (RecvCt2ChunkGhost recvCt2ChunkStackX)
 open CryptoVerification.SpqrV1.States.Recv
   (StatesRecvGhost resultV1RecvAt spqrDeallocSym spqrRustDeallocSym statesRecvJumpTablePlacedAt
    statesRecvPreInv statesRecvRoPlacedAt statesRecvStackX v1RecvSize)
@@ -110,7 +114,7 @@ open LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
 open LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlacedBudget
   (RecvCt2ChunkEnv recvCt2ChunkPlacedSpec recvCt2ChunkPlacedSpecExt
    recvCt2ChunkPlacedSpecExtOfPrePostEnv recvCt2ChunkPlacedSpecOfPrePostEnv
-   withLsCodeRoLoaded_recvCt2ChunkPlacedSpecExtOfPrePostEnv_of_X)
+   recvCt2ChunkPlacedStack withLsCodeRoLoaded_recvCt2ChunkPlacedSpecExtOfPrePostEnv_of_X)
 open LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
   (UnchunkedSendCt2PostEnv UnchunkedSendCt2PreEnv
    unchunkedCt1SentEkReceivedSendCt2PlacedSpec
@@ -124,6 +128,8 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 alias StatesRecvEnv := LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget.StatesRecvEnv
 alias statesRecvBudgetOnPanic :=
   LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget.statesRecvBudgetOnPanic
+abbrev statesRecvPlacedStack : Nat :=
+  LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget.statesRecvPlacedStack
 alias statesRecvPlacedSpecOfEnv :=
   LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget.statesRecvPlacedSpecOfEnv
 alias statesRecvPlacedSpec :=
@@ -132,6 +138,20 @@ alias StatesRecvPlacedOkXOfEnv :=
   LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeamsBudget.StatesRecvPlacedOkXOfEnv
 alias StatesRecvPlacedOkX :=
   LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeamsBudget.StatesRecvPlacedOkX
+
+theorem stackAt_statesRecvPlaced_eq_X (sp : BitVec 64) :
+    stackAt sp statesRecvPlacedStack =
+      memRegion (sp - 43600#64) 19808 ∗ stackAt sp statesRecvStackX :=
+  stackAt_split_bottom sp statesRecvStackX 19808 (by decide)
+
+theorem stackAt_statesRecvCalleePlaced_eq_X (sp : BitVec 64) :
+    stackAt (sp - 4240#64) recvCt2ChunkPlacedStack =
+      memRegion (sp - 43600#64) 19808 ∗ stackAt (sp - 4240#64) recvCt2ChunkStackX := by
+  have h : stackAt (sp - 4240#64) 39360 =
+      memRegion ((sp - 4240#64) - 39360#64) 19808 ∗ stackAt (sp - 4240#64) recvCt2ChunkStackX :=
+    stackAt_split_bottom (sp - 4240#64) recvCt2ChunkStackX 19808 (by decide)
+  have hb : (sp - 4240#64) - 39360#64 = sp - 43600#64 := by bv_omega
+  rwa [hb] at h
 
 /-! ## Budget-Threaded Relocatable Callee Contract Bundle (`StatesRecvPlacedContracts`) -/
 
@@ -164,7 +184,7 @@ structure StatesRecvCalleeEnvs (F : ShaCompress) where
   ct1AcknowledgedRecvEkPost : Ct1AcknowledgedRecvEkChunkGhost F → List AllocEvent → Prop
 
 /-- Canonical exact binary callee envelopes for `<States>::recv` (Block `332`). -/
-def statesRecvCalleeEnvs (F : ShaCompress) (K : MlKem) : StatesRecvCalleeEnvs F where
+@[expose] def statesRecvCalleeEnvs (F : ShaCompress) (K : MlKem) : StatesRecvCalleeEnvs F where
   keysSampledRecvCt1Pre := KeysSampledRecvCt1ChunkPreEnv
   keysSampledRecvCt1Post := KeysSampledRecvCt1ChunkPostEnv
   headerSentRecvCt1Pre := HeaderSentRecvCt1ChunkPreEnv
@@ -212,7 +232,7 @@ structure StatesRecvPlacedContractsOfEnv [LibsignalPlacement]
   ekSentCt1ReceivedRecvCt2Chunk_ok :
     subroutine_ok (lsProg_332 (Rust.withPanics ext)) (lsmpl.base 350)
       (withLsCodeRoLoaded lsmpl
-        (recvCt2ChunkPlacedSpecOfPrePostEnv K F M A lim
+        (recvCt2ChunkPlacedSpecExtOfPrePostEnv K F M A lim
           envs.ekSentCt1ReceivedRecvCt2Pre envs.ekSentCt1ReceivedRecvCt2Post))
   noHeaderReceivedRecvHdrChunk_ok :
     subroutine_ok (lsProg_332 (Rust.withPanics ext)) (lsmpl.base 369)
@@ -335,7 +355,7 @@ theorem hct1_recv_ct2 (hC : StatesRecvPlacedContractsOfEnv M A lim F K envs ext)
 theorem hrecv_ct2_chunk (hC : StatesRecvPlacedContractsOfEnv M A lim F K envs ext) :
     subroutine_ok (lsProg_332 (Rust.withPanics ext)) (lsmpl.base 350)
       (withLsCodeRoLoaded lsmpl
-        (recvCt2ChunkPlacedSpecOfPrePostEnv K F M A lim
+        (recvCt2ChunkPlacedSpecExtOfPrePostEnv K F M A lim
           envs.ekSentCt1ReceivedRecvCt2Pre envs.ekSentCt1ReceivedRecvCt2Post)) :=
   hC.ekSentCt1ReceivedRecvCt2Chunk_ok
 
@@ -344,8 +364,7 @@ theorem hrecv_ct2_chunk_ext (hC : StatesRecvPlacedContractsOfEnv M A lim F K env
       (withLsCodeRoLoaded lsmpl
         (recvCt2ChunkPlacedSpecExtOfPrePostEnv K F M A lim
           envs.ekSentCt1ReceivedRecvCt2Pre envs.ekSentCt1ReceivedRecvCt2Post)) :=
-  withLsCodeRoLoaded_recvCt2ChunkPlacedSpecExtOfPrePostEnv_of_X
-    hC.ekSentCt1ReceivedRecvCt2Chunk_ok
+  hC.ekSentCt1ReceivedRecvCt2Chunk_ok
 
 theorem hrecv_hdr_chunk (hC : StatesRecvPlacedContractsOfEnv M A lim F K envs ext) :
     subroutine_ok (lsProg_332 (Rust.withPanics ext)) (lsmpl.base 369)
@@ -477,7 +496,7 @@ theorem of_callees
     (ekSentCt1ReceivedRecvCt2Chunk_ok :
       subroutine_ok (lsProg_332 (Rust.withPanics ext)) (lsmpl.base 350)
         (withLsCodeRoLoaded lsmpl
-          (recvCt2ChunkPlacedSpecOfPrePostEnv K F M A lim
+          (recvCt2ChunkPlacedSpecExtOfPrePostEnv K F M A lim
             envs.ekSentCt1ReceivedRecvCt2Pre envs.ekSentCt1ReceivedRecvCt2Post)))
     (noHeaderReceivedRecvHdrChunk_ok :
       subroutine_ok (lsProg_332 (Rust.withPanics ext)) (lsmpl.base 369)
@@ -572,7 +591,7 @@ theorem of_callees [LibsignalPlacement]
         (withLsCodeLoaded lsmpl (ct1ReceivedRecvCt2ChunkSpec M A lim F)))
     (ekSentCt1ReceivedRecvCt2Chunk_ok :
       subroutine_ok (lsProg_332 (Rust.withPanics ext)) (lsmpl.base 350)
-        (withLsCodeRoLoaded lsmpl (recvCt2ChunkPlacedSpec K F M A lim)))
+        (withLsCodeRoLoaded lsmpl (recvCt2ChunkPlacedSpecExt K F M A lim)))
     (noHeaderReceivedRecvHdrChunk_ok :
       subroutine_ok (lsProg_332 (Rust.withPanics ext)) (lsmpl.base 369)
         (withLsCodeRoLoaded lsmpl (noHeaderReceivedRecvHdrChunkPlacedSpec M A lim F)))
@@ -633,7 +652,7 @@ end StatesRecvPlacedContracts
 
 /-- Two-envelope (`PreEnv` / `PostEnv`) relocatable budget specification of
     `<spqr::v1::chunked::states::States>::recv` (Block `332`, 4,884 insns). -/
-def statesRecvPlacedSpecOfPrePostEnv [LibsignalPlacement]
+@[expose] def statesRecvPlacedSpecOfPrePostEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (K : MlKem)
     (PreEnv PostEnv : StatesRecvGhost F → List AllocEvent → Prop) :
@@ -649,7 +668,7 @@ def statesRecvPlacedSpecOfPrePostEnv [LibsignalPlacement]
       chunkedStatesAt A.repAlloc x.selfA x.self ∗
       messageAt spqrPolyApi x.msgA x.msg ∗
       statesRecvRoPlacedAt ∗
-      A.pool lim st s ∗ stackAt s.sp statesRecvStackX
+      A.pool lim st s ∗ stackAt s.sp statesRecvPlacedStack
   post := fun (x, st) s0 sf =>
     ∃∗ evs : List AllocEvent,
       ⌜sf.trace = s0.trace ∧ PostEnv x evs⌝ ∗
@@ -657,7 +676,7 @@ def statesRecvPlacedSpecOfPrePostEnv [LibsignalPlacement]
       memRegion x.selfA chunkedStatesSize ∗
       messageAt spqrPolyApi x.msgA x.msg ∗
       statesRecvRoPlacedAt ∗
-      A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp statesRecvStackX
+      A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp statesRecvPlacedStack
   onPanic := fun (x, _) s0 sf => statesRecvBudgetOnPanic K x s0 sf
 
 theorem statesRecvPlacedSpecOfPrePostEnv_same [LibsignalPlacement]
@@ -669,8 +688,8 @@ theorem statesRecvPlacedSpecOfPrePostEnv_same [LibsignalPlacement]
   rfl
 
 /-- Two-envelope (`PreEnv` / `PostEnv`) per-variant relocatable budget specification of
-    `<States>::recv` (Block `332`) for a fixed `(self, msg)`. -/
-def statesRecvVariantPlacedSpecOfPrePostEnv [LibsignalPlacement]
+    `<States>::recv` (Block `332`) for a fixed `(self, msg)` at `statesRecvStackX`. -/
+@[expose] def statesRecvVariantPlacedSpecOfPrePostEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (K : MlKem)
     (self : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi)
@@ -700,7 +719,7 @@ def statesRecvVariantPlacedSpecOfPrePostEnv [LibsignalPlacement]
     statesRecvBudgetOnPanic K ⟨outA, selfA, msgA, self, msg⟩ s0 sf
 
 /-- Single-envelope (`Env`) per-variant relocatable budget specification of `<States>::recv`
-    (Block `332`) for a fixed `(self, msg)`. -/
+    (Block `332`) for a fixed `(self, msg)` at `statesRecvStackX`. -/
 abbrev statesRecvVariantPlacedSpecOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (K : MlKem)
@@ -709,7 +728,8 @@ abbrev statesRecvVariantPlacedSpecOfEnv [LibsignalPlacement]
     Spec ((BitVec 64 × BitVec 64 × BitVec 64) × M.σ) :=
   statesRecvVariantPlacedSpecOfPrePostEnv M A lim F K self msg Env Env
 
-/-- Default per-variant relocatable budget specification of `<States>::recv` (Block `332`). -/
+/-- Default per-variant relocatable budget specification of `<States>::recv` (Block `332`)
+    at `statesRecvStackX`. -/
 abbrev statesRecvVariantPlacedSpec [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (K : MlKem)
@@ -717,8 +737,58 @@ abbrev statesRecvVariantPlacedSpec [LibsignalPlacement]
     Spec ((BitVec 64 × BitVec 64 × BitVec 64) × M.σ) :=
   statesRecvVariantPlacedSpecOfEnv M A lim F K self msg StatesRecvEnv
 
+/-- Two-envelope (`PreEnv` / `PostEnv`) per-variant relocatable budget specification of
+    `<States>::recv` (Block `332`) for a fixed `(self, msg)` at `statesRecvPlacedStack`. -/
+@[expose] def statesRecvVariantPlacedSpecExtOfPrePostEnv [LibsignalPlacement]
+    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (F : ShaCompress) (K : MlKem)
+    (self : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi)
+    (PreEnv PostEnv : StatesRecvGhost F → List AllocEvent → Prop) :
+    Spec ((BitVec 64 × BitVec 64 × BitVec 64) × M.σ) where
+  pre := fun (⟨outA, selfA, msgA⟩, st) s =>
+    ⌜s.readReg64 .x0 = outA ∧
+      s.readReg64 .x1 = selfA ∧
+      s.readReg64 .x2 = msgA ∧
+      statesRecvPreInv self ∧
+      FitsEnv M lim st (PreEnv ⟨outA, selfA, msgA, self, msg⟩) ∧
+      LsRetAddr624 (s.readReg64 .lr)⌝ ∗
+      memRegion outA v1RecvSize ∗
+      chunkedStatesAt A.repAlloc selfA self ∗
+      messageAt spqrPolyApi msgA msg ∗
+      statesRecvRoPlacedAt ∗
+      A.pool lim st s ∗ stackAt s.sp statesRecvPlacedStack
+  post := fun (⟨outA, selfA, msgA⟩, st) s0 sf =>
+    ∃∗ evs : List AllocEvent,
+      ⌜sf.trace = s0.trace ∧ PostEnv ⟨outA, selfA, msgA, self, msg⟩ evs⌝ ∗
+      resultV1RecvAt A.repAlloc (F := F) outA (self.recv K msg) ∗
+      memRegion selfA chunkedStatesSize ∗
+      messageAt spqrPolyApi msgA msg ∗
+      statesRecvRoPlacedAt ∗
+      A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp statesRecvPlacedStack
+  onPanic := fun (⟨outA, selfA, msgA⟩, _) s0 sf =>
+    statesRecvBudgetOnPanic K ⟨outA, selfA, msgA, self, msg⟩ s0 sf
+
+/-- Single-envelope (`Env`) per-variant relocatable budget specification of `<States>::recv`
+    (Block `332`) for a fixed `(self, msg)` at `statesRecvPlacedStack`. -/
+abbrev statesRecvVariantPlacedSpecExtOfEnv [LibsignalPlacement]
+    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (F : ShaCompress) (K : MlKem)
+    (self : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi)
+    (Env : StatesRecvGhost F → List AllocEvent → Prop) :
+    Spec ((BitVec 64 × BitVec 64 × BitVec 64) × M.σ) :=
+  statesRecvVariantPlacedSpecExtOfPrePostEnv M A lim F K self msg Env Env
+
+/-- Default per-variant relocatable budget specification of `<States>::recv` (Block `332`)
+    at `statesRecvPlacedStack`. -/
+abbrev statesRecvVariantPlacedSpecExt [LibsignalPlacement]
+    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (F : ShaCompress) (K : MlKem)
+    (self : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi) :
+    Spec ((BitVec 64 × BitVec 64 × BitVec 64) × M.σ) :=
+  statesRecvVariantPlacedSpecExtOfEnv M A lim F K self msg StatesRecvEnv
+
 /-- Two-envelope (`PreEnv` / `PostEnv`) Block `332` contract on `lsProg_332 (Rust.withPanics ext)`. -/
-def StatesRecvPlacedOkExtOfPrePostEnv [LibsignalPlacement]
+@[expose] def StatesRecvPlacedOkExtOfPrePostEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (K : MlKem)
     (ext : String → Option (State → State))
@@ -744,7 +814,7 @@ abbrev StatesRecvPlacedOkExt [LibsignalPlacement]
 
 /-- Two-envelope (`PreEnv` / `PostEnv`) Block `332` contract on
     `libsignalSessionLib.blockProgram lsmpl 332 (Rust.withPanics ext)`. -/
-def StatesRecvPlacedOkXOfPrePostEnv [LibsignalPlacement]
+@[expose] def StatesRecvPlacedOkXOfPrePostEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (K : MlKem)
     (ext : String → Option (State → State))
@@ -946,6 +1016,86 @@ theorem sepWPp_of_statesRecv_exit_evs_placed_ofPrePostEnv [LibsignalPlacement]
   sepWPp_of_statesRecv_exit_placed_ofPrePostEnv s0 s outA selfA msgA self msg st P R
     (SepWP.mono h fun _ _ _ _ ⟨hPf, hsp, hcs, htr⟩ => ⟨⟨evs, hevs, hPf⟩, hsp, hcs, htr⟩)
 
+theorem sepWPp_of_statesRecv_exit_placed_ext_ofPrePostEnv [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {F : ShaCompress} {K : MlKem}
+    {PreEnv PostEnv : StatesRecvGhost F → List AllocEvent → Prop}
+    {ext : String → Option (State → State)}
+    (s0 s : State) (outA selfA msgA : BitVec 64)
+    (self : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi)
+    (st : M.σ) (P R : SepProp)
+    (h : SepWP (lsProg_332 (Rust.withPanics ext)) (s0.readReg64 .x30) s P
+      (fun sf Pf =>
+        (∃ evs : List AllocEvent,
+          PostEnv ⟨outA, selfA, msgA, self, msg⟩ evs ∧
+          (Pf ⊢
+            resultV1RecvAt A.repAlloc (F := F) outA (self.recv K msg) ∗
+            memRegion selfA chunkedStatesSize ∗
+            messageAt spqrPolyApi msgA msg ∗
+            statesRecvRoPlacedAt ∗
+            A.pool lim (M.stepEvents evs st) sf ∗
+            stackAt s0.sp statesRecvPlacedStack)) ∧
+        sf.sp = s0.sp ∧
+        CalleeSavedPreserved s0 sf ∧
+        sf.trace = s0.trace)) :
+    SepWPp (lsProg_332 (Rust.withPanics ext)) (s0.readReg64 Reg.lr) s P
+      (fun sf P_f =>
+        (sf.mem ⊨ P_f ∗ R →
+          sf.mem ⊨
+            (statesRecvVariantPlacedSpecExtOfPrePostEnv M A lim F K self msg PreEnv PostEnv).post
+              ((outA, selfA, msgA), st) s0 sf ∗ R) ∧
+        sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
+      (fun sf P_f =>
+        (sf.mem ⊨ P_f ∗ R) →
+          (sf.mem ⊨
+            (statesRecvVariantPlacedSpecExtOfPrePostEnv M A lim F K self msg PreEnv PostEnv).onPanic
+              ((outA, selfA, msgA), st) s0 sf ∗ R)) := by
+  refine SepWPp.of_sepWP (SepWP.mono h fun sf Pf hpcf hrunf ⟨⟨evs, hevs, hPf⟩, hspf, hcs, htrf⟩ => ?_)
+  refine SepWPp.done hpcf hrunf ⟨fun hmem_f => ?_, hspf, hcs⟩
+  dsimp only [statesRecvVariantPlacedSpecExtOfPrePostEnv]
+  rw [sepExists_sepConj_left, satisfies_sepExists]
+  refine ⟨evs, ?_⟩
+  rw [sepConj_assoc, satisfies_pure_sepConj]
+  exact ⟨⟨htrf, hevs⟩,
+    Satisfies.mono (Entails.trans (sepConj_mono_left hPf) (Entails.of_eq (by sep_ac_rfl))) hmem_f⟩
+
+theorem sepWPp_of_statesRecv_exit_evs_placed_ext_ofPrePostEnv [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {F : ShaCompress} {K : MlKem}
+    {PreEnv PostEnv : StatesRecvGhost F → List AllocEvent → Prop}
+    {ext : String → Option (State → State)}
+    (s0 s : State) (outA selfA msgA : BitVec 64)
+    (self : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi)
+    (st : M.σ) (evs : List AllocEvent)
+    (hevs : PostEnv ⟨outA, selfA, msgA, self, msg⟩ evs)
+    (P R : SepProp)
+    (h : SepWP (lsProg_332 (Rust.withPanics ext)) (s0.readReg64 .x30) s P
+      (fun sf Pf =>
+        (Pf ⊢
+          resultV1RecvAt A.repAlloc (F := F) outA (self.recv K msg) ∗
+          memRegion selfA chunkedStatesSize ∗
+          messageAt spqrPolyApi msgA msg ∗
+          statesRecvRoPlacedAt ∗
+          A.pool lim (M.stepEvents evs st) sf ∗
+          stackAt s0.sp statesRecvPlacedStack) ∧
+        sf.sp = s0.sp ∧
+        CalleeSavedPreserved s0 sf ∧
+        sf.trace = s0.trace)) :
+    SepWPp (lsProg_332 (Rust.withPanics ext)) (s0.readReg64 Reg.lr) s P
+      (fun sf P_f =>
+        (sf.mem ⊨ P_f ∗ R →
+          sf.mem ⊨
+            (statesRecvVariantPlacedSpecExtOfPrePostEnv M A lim F K self msg PreEnv PostEnv).post
+              ((outA, selfA, msgA), st) s0 sf ∗ R) ∧
+        sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
+      (fun sf P_f =>
+        (sf.mem ⊨ P_f ∗ R) →
+          (sf.mem ⊨
+            (statesRecvVariantPlacedSpecExtOfPrePostEnv M A lim F K self msg PreEnv PostEnv).onPanic
+              ((outA, selfA, msgA), st) s0 sf ∗ R)) :=
+  sepWPp_of_statesRecv_exit_placed_ext_ofPrePostEnv s0 s outA selfA msgA self msg st P R
+    (SepWP.mono h fun _ _ _ _ ⟨hPf, hsp, hcs, htr⟩ => ⟨⟨evs, hevs, hPf⟩, hsp, hcs, htr⟩)
+
 theorem states_recv_placed_ok_ext_of_variants_ofPrePostEnv [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {F : ShaCompress} {K : MlKem}
@@ -954,7 +1104,7 @@ theorem states_recv_placed_ok_ext_of_variants_ofPrePostEnv [LibsignalPlacement]
     (hvar : ∀ (self : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi),
       subroutine_ok (lsProg_332 (Rust.withPanics ext)) (lsmpl.base 332)
         (withLsCodeRoLoaded lsmpl
-          (statesRecvVariantPlacedSpecOfPrePostEnv M A lim F K self msg PreEnv PostEnv))) :
+          (statesRecvVariantPlacedSpecExtOfPrePostEnv M A lim F K self msg PreEnv PostEnv))) :
     StatesRecvPlacedOkExtOfPrePostEnv M A lim F K ext PreEnv PostEnv := by
   dsimp only [StatesRecvPlacedOkExtOfPrePostEnv]
   refine subroutine_ok_outcome_intro fun ⟨⟨outA, selfA, msgA, self, msg⟩, st⟩ R s0 hpc hrun hpre hsp =>
@@ -969,7 +1119,7 @@ theorem states_recv_placed_ok_ext_of_variants_ofEnv [LibsignalPlacement]
     (hvar : ∀ (self : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi),
       subroutine_ok (lsProg_332 (Rust.withPanics ext)) (lsmpl.base 332)
         (withLsCodeRoLoaded lsmpl
-          (statesRecvVariantPlacedSpecOfEnv M A lim F K self msg Env))) :
+          (statesRecvVariantPlacedSpecExtOfEnv M A lim F K self msg Env))) :
     StatesRecvPlacedOkExtOfEnv M A lim F K ext Env :=
   states_recv_placed_ok_ext_of_variants_ofPrePostEnv hvar
 
@@ -980,7 +1130,7 @@ theorem states_recv_placed_ok_ext_of_variants [LibsignalPlacement]
     (hvar : ∀ (self : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi),
       subroutine_ok (lsProg_332 (Rust.withPanics ext)) (lsmpl.base 332)
         (withLsCodeRoLoaded lsmpl
-          (statesRecvVariantPlacedSpec M A lim F K self msg))) :
+          (statesRecvVariantPlacedSpecExt M A lim F K self msg))) :
     StatesRecvPlacedOkExt M A lim F K ext :=
   states_recv_placed_ok_ext_of_variants_ofPrePostEnv hvar
 
@@ -1088,6 +1238,103 @@ theorem subroutine_ok_statesRecvVariantPlacedSpecOfPrePostEnv_weaken [LibsignalP
   · left
     refine ⟨hret, hcc, ?_⟩
     dsimp only [withLsCodeRoLoaded, statesRecvVariantPlacedSpecOfPrePostEnv] at hpost ⊢
+    rw [sepExists_sepConj_left, satisfies_sepExists] at hpost ⊢
+    rcases hpost with ⟨evs, hpost⟩
+    refine ⟨evs, ?_⟩
+    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
+    exact ⟨⟨hpost.1.1, hPost outA selfA msgA evs hpost.1.2⟩, hpost.2⟩
+  · right; left; exact ⟨hpan, hpost⟩
+  · right; right; left; exact ⟨c, hex, hpost⟩
+  · right; right; right; exact ⟨hoom, hpost⟩
+
+/-- Lifts a `statesRecvStackX` (`23792` B) per-variant `subroutine_ok` contract to
+    `statesRecvPlacedStack` (`43600` B) by framing `memRegion (sp - 43600#64) 19808`. -/
+theorem subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_of_X [LibsignalPlacement]
+    {prog : Program} {entry : BitVec 64}
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {F : ShaCompress} {K : MlKem}
+    {self : States spqrPolyApi (spqrAuthApi F)} {msg : Message spqrPolyApi}
+    {PreEnv PostEnv : StatesRecvGhost F → List AllocEvent → Prop}
+    (hok : subroutine_ok prog entry
+      (withLsCodeRoLoaded lsmpl
+        (statesRecvVariantPlacedSpecOfPrePostEnv M A lim F K self msg PreEnv PostEnv))) :
+    subroutine_ok prog entry
+      (withLsCodeRoLoaded lsmpl
+        (statesRecvVariantPlacedSpecExtOfPrePostEnv M A lim F K self msg PreEnv PostEnv)) := by
+  refine subroutine_ok_outcome_intro fun ⟨⟨outA, selfA, msgA⟩, st⟩ R s0 hpc hrun hpre hal => ?_
+  let R' : SepProp := memRegion (s0.sp - 43600#64) 19808 ∗ R
+  have hpre' : s0.mem ⊨
+      (withLsCodeRoLoaded lsmpl
+        (statesRecvVariantPlacedSpecOfPrePostEnv M A lim F K self msg PreEnv PostEnv)).pre
+        ((outA, selfA, msgA), st) s0 ∗ R' := by
+    dsimp only [withLsCodeRoLoaded, statesRecvVariantPlacedSpecExtOfPrePostEnv,
+      statesRecvVariantPlacedSpecOfPrePostEnv, R'] at hpre ⊢
+    rw [stackAt_statesRecvPlaced_eq_X s0.sp] at hpre
+    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpre
+  refine hok.mono_outcome ((outA, selfA, msgA), st) R' s0 hpc hrun hpre' hal fun sf hout => ?_
+  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan, hpost⟩ | ⟨_, _, hex⟩ | ⟨_, hoom⟩
+  · refine Or.inl ⟨hret, hcc, ?_⟩
+    dsimp only [withLsCodeRoLoaded, statesRecvVariantPlacedSpecExtOfPrePostEnv,
+      statesRecvVariantPlacedSpecOfPrePostEnv, R'] at hpost ⊢
+    rw [sepExists_sepConj_left, satisfies_sepExists] at hpost ⊢
+    rcases hpost with ⟨evs, hpost⟩
+    refine ⟨evs, ?_⟩
+    rw [stackAt_statesRecvPlaced_eq_X s0.sp]
+    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpost
+  · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
+    dsimp only [withLsCodeRoLoaded, statesRecvVariantPlacedSpecExtOfPrePostEnv,
+      statesRecvVariantPlacedSpecOfPrePostEnv, statesRecvBudgetOnPanic,
+      LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget.statesRecvBudgetOnPanic, R'] at hpost ⊢
+    have harr :
+        (⌜(self.recv K msg).isPanic = true ∧ s0.trace <+: sf.trace⌝ ∗
+          anyHeap) ∗ (memRegion (s0.sp - 43600#64) 19808 ∗ R) =
+        ⌜(self.recv K msg).isPanic = true ∧ s0.trace <+: sf.trace⌝ ∗
+          (anyHeap ∗ memRegion (s0.sp - 43600#64) 19808) ∗ R := by sep_ac_rfl
+    rw [harr] at hpost
+    rw [sepConj_assoc]
+    exact Satisfies.mono
+      (sepConj_mono_right (sepConj_mono_left (entails_anyHeap _))) hpost
+  · exact (not_satisfies_false_sepConj hex).elim
+  · exact (not_satisfies_false_sepConj hoom).elim
+
+/-- Monotonic envelope weakening for
+    `withLsCodeRoLoaded lsmpl (statesRecvVariantPlacedSpecExtOfPrePostEnv ...)`. -/
+theorem subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_weaken [LibsignalPlacement]
+    {prog : Program} {entry : BitVec 64}
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {F : ShaCompress} {K : MlKem}
+    {self : States spqrPolyApi (spqrAuthApi F)} {msg : Message spqrPolyApi}
+    {PreEnv₁ PostEnv₁ PreEnv₂ PostEnv₂ : StatesRecvGhost F → List AllocEvent → Prop}
+    (hPre : ∀ outA selfA msgA st,
+      FitsEnv M lim st (PreEnv₂ ⟨outA, selfA, msgA, self, msg⟩) →
+      FitsEnv M lim st (PreEnv₁ ⟨outA, selfA, msgA, self, msg⟩))
+    (hPost : ∀ outA selfA msgA evs,
+      PostEnv₁ ⟨outA, selfA, msgA, self, msg⟩ evs →
+      PostEnv₂ ⟨outA, selfA, msgA, self, msg⟩ evs)
+    (hok : subroutine_ok prog entry
+      (withLsCodeRoLoaded lsmpl
+        (statesRecvVariantPlacedSpecExtOfPrePostEnv M A lim F K self msg PreEnv₁ PostEnv₁))) :
+    subroutine_ok prog entry
+      (withLsCodeRoLoaded lsmpl
+        (statesRecvVariantPlacedSpecExtOfPrePostEnv M A lim F K self msg PreEnv₂ PostEnv₂)) := by
+  apply subroutine_ok_outcome_intro
+  rintro ⟨⟨outA, selfA, msgA⟩, st⟩ R s0 hpc hrun hpre hal
+  obtain ⟨hcro, hpre0⟩ := extract_withLsCodeRoLoaded hpre
+  have hpre' : s0.mem ⊨
+      (withLsCodeRoLoaded lsmpl
+        (statesRecvVariantPlacedSpecExtOfPrePostEnv M A lim F K self msg PreEnv₁ PostEnv₁)).pre
+        ((outA, selfA, msgA), st) s0 ∗ R := by
+    dsimp only [withLsCodeRoLoaded, statesRecvVariantPlacedSpecExtOfPrePostEnv] at hpre0 ⊢
+    rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
+    refine ⟨hcro, ?_⟩
+    rw [sepConj_assoc, satisfies_pure_sepConj] at hpre0 ⊢
+    exact ⟨⟨hpre0.1.1, hpre0.1.2.1, hpre0.1.2.2.1, hpre0.1.2.2.2.1,
+      hPre outA selfA msgA st hpre0.1.2.2.2.2.1, hpre0.1.2.2.2.2.2⟩, hpre0.2⟩
+  refine subroutine_ok.mono_outcome hok ((outA, selfA, msgA), st) R s0 hpc hrun hpre' hal ?_
+  rintro sf (⟨hret, hcc, hpost⟩ | ⟨hpan, hpost⟩ | ⟨c, hex, hpost⟩ | ⟨hoom, hpost⟩)
+  · left
+    refine ⟨hret, hcc, ?_⟩
+    dsimp only [withLsCodeRoLoaded, statesRecvVariantPlacedSpecExtOfPrePostEnv] at hpost ⊢
     rw [sepExists_sepConj_left, satisfies_sepExists] at hpost ⊢
     rcases hpost with ⟨evs, hpost⟩
     refine ⟨evs, ?_⟩

@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptExplainPure
-public import Symbolic.Proofs.Swarm.CREF.Sanitize
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptHypsPure
-public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape
-public import Symbolic.Proofs.Swarm.CREF.Sem
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptExplainPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sanitize -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptHypsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptExplainG1bPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptExplainG1cPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CBadG2Pure
@@ -29,6 +29,8 @@ import VCVio.Prelude.Core -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- shake: keep
 import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.Initiate.MidRngPure -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.OpkRelC -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.RoleSnapshots
 
 /-!
 # Explanation Construction for Accepting Pre-Key Calls
@@ -37,7 +39,7 @@ Proves `rpk_exactRep_of_not_bobStartCollision`, `rpk_explainOK`, and `slot_rpk_h
 `MatchedPrefix` and `Clean` symbolic explanations for non-colliding accepting pre-key calls.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -158,7 +160,7 @@ theorem rpk_exactRep_of_not_bobStartCollision {interpretation : ExternInterpreta
     (hek_len : (gamma interpretation S g' x'.ek).length = 32)
     (hek_can : DY.X25519.leValue ((gamma interpretation S g' x'.ek).map BitVec.toNat) < DY.X25519.p25519)
     (hek_notlow : DY.X25519.isLowOrderKey ((gamma interpretation S g' x'.ek).map BitVec.toNat) = false ∧
-      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree interpretation (gamma interpretation S g' x'.ek))
+      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree (gamma interpretation S g' x'.ek))
     (hlow' : TripleRatchet.x25519LowOrder msg'.ratchetKey = false)
     (hctr : msg'.counter.toNat ≤ TripleRatchet.maxForwardJumps)
     (hmac_len : (gamma interpretation S g' msg'.mac).length = 8)
@@ -270,7 +272,7 @@ private theorem rpk_exactRep_of_not_bobStartCollision_contract {interpretation :
     rw [hek'_gamma, hek_eq]; exact hC.baseKey_ok.2.1
   have hek'_notlow :
       DY.X25519.isLowOrderKey ((gamma interpretation S g' x'.ek).map BitVec.toNat) = false ∧
-        DY.Libsignal.PQXDH.Refinement.X25519TorsionFree interpretation
+        DY.Libsignal.PQXDH.Refinement.X25519TorsionFree
           (gamma interpretation S g' x'.ek) := by
     rw [hek'_gamma, hek_eq]; exact hC.baseKey_ok.2.2
   obtain ⟨hp0, hp2, _⟩ := TR.gamma_setupPublic_0_2_6 interpretation r S g' hCompat' hne

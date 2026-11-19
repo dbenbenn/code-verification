@@ -9,17 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmBytes
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsCroPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWDefsPlaced
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmBytes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsCroPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWDefsPlaced
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeRepeatedCommon
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC
 
 /-!
 # Placed Bytes Arms (Tags 2, 3, 4, 13, 15) of Inlined `SessionStructure::decode`
@@ -29,14 +32,14 @@ and 15 (`+0x22cc`, `+0x22b8`, `+0x2290`, `+0x21d4`, `+0x2200 → +0x2160`), invo
 `bytes::merge [local#5]` at `lsmpl.base 514`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec
 
-open Arm64 ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection CryptoVerification.CodeLayout SepProp
+open Arm64 ProofLib ProofLib.ProgramReflection CryptoVerification.CodeLayout SepProp
 open CryptoGames CryptoGames.LibsignalSession
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr

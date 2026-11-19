@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.PkDispatchAtPure
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
-public import Symbolic.Proofs.Swarm.CREF.TR.SrHonestVer
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.PkDispatchAtPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.SrHonestVer -- proof-setup: allow-public-import
 import Batteries.Data.UInt
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Bytes.Basic
-public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
-public import Symbolic.Proofs.Swarm.CREF.TR.SpqrSemDef
-public import Symbolic.Proofs.Swarm.TRREF.B3DefsPure
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.SpqrSemDef -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.B3DefsPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.SymEnc
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.TrWireMsg
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSpqrHonestPure
@@ -31,7 +31,8 @@ import Symbolic.Proofs.Swarm.CREF.TR.RecvRep
 import Symbolic.Proofs.Swarm.CREF.TROpen
 import Symbolic.Proofs.Swarm.CREF.TR.Leaks -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- shake: keep
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvCol -- shake: keep
+import Symbolic.Proofs.Swarm.CREF.TR.RecvCol -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 
 /-!
 # Cached Skipped-Key Decrypt Witnesses
@@ -40,7 +41,7 @@ Proves decrypt-witness lemmas at a fixed `(g, t)` explanation for the cached ski
 whisper receive branch.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

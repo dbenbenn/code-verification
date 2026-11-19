@@ -9,21 +9,30 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.DropSpeWordPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.Sym
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.DropSpeWordPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.Sym
 public meta import ProofLib
-public meta import LibsignalBinary.Proofs.Common.InImageKit
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+public meta import LibsignalBinary.Proofs.Common.InImageKit -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- proof-setup: allow-public-import
 public meta import Lean
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.Defs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.Blocks
-public import LibsignalBinary.Proofs.RecordCodecs.Deps
-public import LibsignalBinary.Proofs.SignalSession.Cli.Fs
+import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.Defs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.Blocks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.Deps -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Fs
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+public import ProofLib.FsTrace
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.SepLogic.WP.Apply
+public import VerifiedLibraries.Mallocng.Spec
+public import LibsignalBinary.Proofs.Common.InImageKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable Callee Wrappers and Error/Epilogue Blocks for `get_pre_key::{closure#0}`
@@ -33,7 +42,7 @@ error-branch lemmas (`step_err_200`, `step_dec_err_152`) on `lsProg_573 H` under
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

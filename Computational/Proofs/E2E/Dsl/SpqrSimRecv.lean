@@ -9,12 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.SpqrSimHist
+public import Computational.Proofs.E2E.Dsl.SpqrSimHist -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopRecv
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopRecvEqual
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidCodec
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidPhi
 import LibsignalBinary.Proofs.SpqrV1Sync.ChainSync
+public import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SpqrV1Sync.TopStateTight -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.ClampsLossless
+public import Computational.Proofs.E2E.Dsl.SpqrSimChain -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.TablesHonest -- proof-setup: allow-public-import
 
 /-!
 # SPQR V1 `ReductionDsl` Receive Simulation
@@ -23,7 +28,7 @@ Implements `spqrRecvComp` over `e2eOps` and proves its static cost bound, zero o
 count, and functional equivalence with `spqrV1SessionUniformCoins` on `TopStateTight` states.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -70,10 +75,10 @@ open CryptoVerification.SpqrV1Sync.SendTotal (TopWitness TopStateTight TopStateT
 
 /-! ## Receive sub-computations -/
 
-@[reducible] def spqrPreambleT {ℓ : ℕ} : Ty (e2eSig ℓ) :=
+@[expose, reducible] def spqrPreambleT {ℓ : ℕ} : Ty (e2eSig ℓ) :=
   .prod U8 (.prod U64 (.prod U32 (B 32)))
 
-def spqrRecvGreaterComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrRecvGreaterComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (parts : Expr (e2eOps ℓ P C K decT encT) Γ spqrStatePartsT)
@@ -120,7 +125,7 @@ theorem cost_spqrRecvGreaterComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primit
     Expr.v0, Expr.v2, Expr.v4]
   omega
 
-def spqrRecvPrepStateComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrRecvPrepStateComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (parts : Expr (e2eOps ℓ P C K decT encT) Γ spqrStatePartsT)
@@ -174,7 +179,7 @@ theorem cost_spqrRecvPrepStateComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Prim
     cost_e2ePureOp, E2EPureOp.cost, Expr.v0, Expr.v1, Expr.v2, Expr.v3]
   omega
 
-def spqrRunRecvChainComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrRunRecvChainComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (vn? : Expr (e2eOps ℓ P C K decT encT) Γ (.opt spqrVnT))
@@ -241,7 +246,7 @@ theorem cost_spqrRunRecvChainComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primi
     Expr.v0, Expr.v2, Expr.v4]
   omega
 
-def spqrRecvV1BodyComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrRecvV1BodyComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (stateParts : Expr (e2eOps ℓ P C K decT encT) Γ spqrStatePartsT)
@@ -313,7 +318,7 @@ theorem cost_spqrRecvV1BodyComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primiti
 /-! ## Full `recv` simulation -/
 
 /-- Simulates `(spqrV1SessionUniformCoins C.F K).recv` in `ReductionDsl`. -/
-def spqrRecvComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrRecvComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (e : Expr (e2eOps ℓ P C K decT encT) Γ (.prod (B 32) (B 32))) :

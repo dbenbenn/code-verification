@@ -75,10 +75,10 @@ theorem DY.BytesView.pack_inj
 unseal DY.Bytes in
 theorem DY.Bytes.PartialFunction.combine_eq
     [DY.BytesFunctor]
-    {t : Type} [DecidableEq t] [Ord t] [Std.LawfulEqOrd t] [Std.TransOrd t]
-    {SubFs : t → Type → Type} [∀ id, DY.SubBytesFunctor (SubFs id)]
+    {n : Nat}
+    {SubFs : Fin n → Type → Type} [∀ id, DY.SubBytesFunctor (SubFs id)]
     {a : Type}
-    (funs : (id : t) → DY.Bytes.PartialFunction (SubFs id) a) :
+    (funs : (id : Fin n) → DY.Bytes.PartialFunction (SubFs id) a) :
     DY.Bytes.PartialFunction.combine funs = fun x rec => funs x.id x.val rec := by
   funext x rec
   unfold _root_.DY.Bytes.PartialFunction.combine

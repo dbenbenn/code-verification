@@ -419,7 +419,7 @@ private theorem step_hb_langStart_mid1 {P : Program} {C : HbCliLayout} {target_p
   have hpc1_b : s1.pc = b + 8#64 := by rw [hpc1, ← hb]; bv_lin
   have hcs01 : CalleeSavedPreserved s s1 := hcs0.trans hcs1
   have hnv01 : HbNonVmFields (s.setSigAction 13#32 (sigpipeIgnAction C.std)) s1 :=
-    HbNonVmFields.trans (s1 := s0.setSigAction 13#32 (sigpipeIgnAction C.std)) ⟨hnv0.1, hnv0.2.1, hnv0.2.2.1, by dsimp [State.setSigAction]; rw [hnv0.2.2.2.1], hnv0.2.2.2.2⟩ hnv1
+    HbNonVmFields.trans (s1 := s0.setSigAction 13#32 (sigpipeIgnAction C.std)) ⟨hnv0.1, hnv0.2.1, hnv0.2.2.1, by dsimp [State.setSigAction]; rw [hnv0.2.2.2.1], hnv0.2.2.2.2.1, hnv0.2.2.2.2.2⟩ hnv1
   have hx0_1' : s1.readReg64 (.gpr 0#5) = 0#64 := hx0_1; clear hpc1 hcs0 hcs1 hnv0 hnv1
   wp_steps 3
   refine hb_step_bl_to (pc := b + 20#64) (dst := C.std.sysconfAddr) (by hb_wp_simp) (by hb_wp_simp) hf_5 ?_
@@ -600,7 +600,7 @@ private theorem step_hb_langStart_after_makeHandler {P : Program} {C : HbCliLayo
   have hpc1_b : s1.pc = b + 84#64 := by rw [hpc1, ← hb]; bv_lin
   have hcs01 : CalleeSavedPreserved s s1 := hcs0.trans hcs1
   have hnv01 : HbNonVmFields (s.setSigAction 11#32 (hbCustomSigAction C S)) s1 :=
-    HbNonVmFields.trans (s1 := s0.setSigAction 11#32 (hbCustomSigAction C S)) ⟨hnv0.1, hnv0.2.1, hnv0.2.2.1, by dsimp [State.setSigAction]; rw [hnv0.2.2.2.1], hnv0.2.2.2.2⟩ hnv1
+    HbNonVmFields.trans (s1 := s0.setSigAction 11#32 (hbCustomSigAction C S)) ⟨hnv0.1, hnv0.2.1, hnv0.2.2.1, by dsimp [State.setSigAction]; rw [hnv0.2.2.2.1], hnv0.2.2.2.2.1, hnv0.2.2.2.2.2⟩ hnv1
   clear hpc1 hcs0 hcs1 hnv0 hnv1; wp_steps 3
   refine hb_step_bl_to (pc := b + 96#64) (dst := C.std.sigactionAddr) (by hb_wp_simp) (by hb_wp_simp) hf_24 ?_
   refine hb_step_cut fun s2 hs2 => ?_
@@ -748,7 +748,7 @@ private theorem step_hb_langStart_tail_to_userMain {P : Program} {C : HbCliLayou
   have hpc1_b : s1.pc = b + 40#64 := by rw [hpc1, ← hb]; bv_lin
   have hcs01 : CalleeSavedPreserved s s1 := hcs0.trans hcs1
   have hnv01 : HbNonVmFields (s.setSigAction 7#32 (hbCustomSigAction C S)) s1 :=
-    HbNonVmFields.trans (s1 := s0.setSigAction 7#32 (hbCustomSigAction C S)) ⟨hnv0.1, hnv0.2.1, hnv0.2.2.1, by dsimp [State.setSigAction]; rw [hnv0.2.2.2.1], hnv0.2.2.2.2⟩ hnv1
+    HbNonVmFields.trans (s1 := s0.setSigAction 7#32 (hbCustomSigAction C S)) ⟨hnv0.1, hnv0.2.1, hnv0.2.2.1, by dsimp [State.setSigAction]; rw [hnv0.2.2.2.1], hnv0.2.2.2.2.1, hnv0.2.2.2.2.2⟩ hnv1
   rcases (CalleeSavedPreserved.iff_regs _ _).mp hcs01 with ⟨g19, g20, g21, g22, _, _, _, _, _, _, g29, _⟩
   have hx19_1 : s1.readReg64 (.gpr 19#5) = mainFnSlot := g19.trans hx19; have hx20_1 : s1.readReg64 (.gpr 20#5) = argvPtr := g20.trans hx20
   have hx21_1 : s1.readReg64 (.gpr 21#5) = C.langStartVtableAddr := g21.trans hx21; have hx22_1 : s1.readReg64 (.gpr 22#5) = BitVec.ofNat 64 argc := g22.trans hx22
@@ -867,7 +867,7 @@ private theorem step_hb_cMain_to_makeHandler {P : Program} {C : HbCliLayout} {S 
     fun s2 hpc2 hrun2 hsp2 hsp_al2 hx1_2 hx19_2 hx20_2 hx21_2 hx22_2 hx29_2 hnv12 hgv12 => ?_
   have hsp2_eq : s2.sp = s.sp - 0x120#64 := hsp2.trans hsp1_sub; have hnv02 : HbNonVmFields s s2 := hnv01.trans hnv12
   have hnv_sig02 : HbNonVmFields (s.setSigAction 13#32 (sigpipeIgnAction C.std)) (s2.setSigAction 13#32 (sigpipeIgnAction C.std)) :=
-    ⟨hnv02.1, hnv02.2.1, hnv02.2.2.1, by have h := hnv02.2.2.2.1; dsimp only [State.setSigAction] at h ⊢; rw [h], hnv02.2.2.2.2⟩
+    ⟨hnv02.1, hnv02.2.1, hnv02.2.2.1, by have h := hnv02.2.2.2.1; dsimp only [State.setSigAction] at h ⊢; rw [h], hnv02.2.2.2.2.1, hnv02.2.2.2.2.2⟩
   refine step_hb_langStart_mid1 (v_ps := v_ps) hmid1
     (fun R hm => by
       rw [hsp2, stackAt_split_bottom (s1.sp - 256#64) 0x40 0x1e0 (by decide), show (s1.sp - 256#64) - BitVec.ofNat 64 (64 + 480) = s1.sp - BitVec.ofNat 64 (320 + 480) by bv_lin]
@@ -1077,7 +1077,7 @@ public theorem hbCMain_to_userMain {P : Program} {C : HbCliLayout} {S : HbStartu
         ((((C.needAltstackAddr ↦₈ 1#8) ∗ (C.std.pageSizeGlobalAddr ↦₆₄ 4096#64) ∗
            ((C.std.libcAddr + 0x30#64) ↦₆₄ 4096#64) ∗ Pmh_in) ∗ stackAt (s.sp - 0x120#64) 0x220) ∗ G) post oom)
     (hcustom11 : ∀ (s_post s0 : State) (G : SepProp),
-      s_post.sp = s.sp - 0x120#64 →
+      s_post.sp = s.sp - 0x120#64 → s_post.sigPending = s.sigPending →
       s0.pc = C.std.sigactionAddr → s0.status = .Running → s0.sp = s_post.sp → s0.spAligned = true →
       s0.readReg64 .lr = C.langStartInternalAddr + 780#64 → s0.readReg64 .x0 = 11#64 → s0.readReg64 .x1 = s_post.sp → s0.readReg64 .x2 = 0#64 → HbNonVmFields s_post s0 →
       (∀ s1 : State, s1.pc = C.langStartInternalAddr + 780#64 → s1.status = .Running → s1.sp = s_post.sp → s1.spAligned = true →
@@ -1149,10 +1149,13 @@ public theorem hbCMain_to_userMain {P : Program} {C : HbCliLayout} {S : HbStartu
   have ⟨hfs_mh, htr_mh, htp_mh⟩ := hb_nv_act hnv_mh; have ⟨hfs_p, htr_p, htp_p, hsig_p⟩ := hb_nv_sas hnv_post
   have hsig7_post : s_post.getSigAction 7#32 = s.getSigAction 7#32 := by
     change s_post.sigActions 7#32 = s.sigActions 7#32; rw [hsig_p, hnv_mh.2.2.2.1]; simp
+  have hspnd_post : s_post.sigPending = s.sigPending :=
+    (hnv_post.2.2.2.2.2.trans (State.sigPending_setSigAltStack _ _)).trans
+      (hnv_mh.2.2.2.2.2.trans (State.sigPending_setSigAction _ _ _))
   refine hb_seq_nonVm (mid := C.std.userMainAddr) hext hsvc ?_
   refine step_hb_langStart_after_makeHandler (P := P.withSvc nonVmSvc) (S := S) (altStackSp := altBase + 4096#64) (v_ma := v_ma) (Pin11 := Pin11) (Pcustom11 := Pcustom11)
     (hb_hasInstrs_withSvc hmid2) (fun R hm => by rw [← hsp_post_eq, stackAt_split_bottom s_post.sp 0xe0 320 (by decide)] at hm; revert hm; sep_frame)
-    hpc_post hrun_post hsp_al_post hx0_post (fun s0 G => hcustom11 s_post s0 G hsp_post_eq) (fun s0 G => hprobe7 s_post s0 G hsp_post_eq hsig7_post)
+    hpc_post hrun_post hsp_al_post hx0_post (fun s0 G => hcustom11 s_post s0 G hsp_post_eq hspnd_post) (fun s0 G => hprobe7 s_post s0 G hsp_post_eq hsig7_post)
     fun s1 hpc1 hrun1 hsp1 hsp_al1 hcs1 hnv1 => ?_
   refine step_hb_langStart_tail_to_userMain (P := P.withSvc nonVmSvc) (mainFnSlot := s.sp - 0x18#64) (argvPtr := argvPtr) (fp_ls := s.sp - 0x80#64)
     (v_argc := v_argc) (v_argv := v_argv) (argc := argc) (Pin7 := Pcustom11) (Pcustom7 := Pcustom7)

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoder
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.Common
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlaced
@@ -17,6 +17,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.RecvCt1Ack
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvNextEpochPlaced
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::send_ct::EkReceivedCt1Sampled>::recv_ct1_ack` (Block `343`)
@@ -26,7 +27,7 @@ Relocatable `[LibsignalPlacement]` verification of `<EkReceivedCt1Sampled>::recv
 (`EkReceivedCt1SampledRecvCt1AckPlacedOkX`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

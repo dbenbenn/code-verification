@@ -20,7 +20,7 @@ public import Symbolic.Specifications.Concrete.MachineEvents
 Auxiliary unfolding lemma for `Arm64.splitSlash.go` on non-slash characters.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

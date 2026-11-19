@@ -16,9 +16,9 @@ public import Symbolic.Specifications.Refinement.ElfBinding
 # Comparator challenge: trace refinement of the binary (`Symbolic/Theorems/Refinement.lean`)
 
 **Trusted: the statements.** Each theorem below has the same name and the same statement, byte for
-byte, as the theorem of `Symbolic/Theorems/Refinement.lean` (lake library `CliElfLib`), with `sorry`
-as its proof. It imports the specification modules that `Refinement.lean` imports publicly, and
-no proof module. See `comparator/README.md`.
+byte, as the theorem of that name in `Symbolic/Theorems/Refinement.lean` (lake library
+`CliElfLib`), with `sorry` as its proof. It imports the specification modules that
+`Refinement.lean` imports publicly, and no proof module. See `comparator/README.md`.
 -/
 
 @[expose] public section
@@ -28,10 +28,20 @@ set_option autoImplicit false
 namespace Proven.Refinement
 
 open CryptoVerification.SignalSession (cliElfBytes)
-open DY.Libsignal.Composed.Refinement.Cli (CompRefinesCliBinaryPlaced)
+open DY.Libsignal.Composed.Refinement.Cli (CompRefinesCliBinary)
 
-theorem comp_refines_cli_placed :
-    CompRefinesCliBinaryPlaced cliElfBytes :=
+theorem comp_refines_cli :
+    CompRefinesCliBinary cliElfBytes :=
+  sorry
+
+open DY.Libsignal.Composed.Refinement.Cli (CompRefinesCliBinaryReal RealPrimsAdmissible)
+
+theorem real_prims_admissible :
+    RealPrimsAdmissible :=
+  sorry
+
+theorem comp_refines_cli_real :
+    CompRefinesCliBinaryReal cliElfBytes :=
   sorry
 
 end Proven.Refinement

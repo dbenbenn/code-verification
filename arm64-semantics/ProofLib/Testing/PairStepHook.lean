@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import ProofLib
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 
 /-!
 # Pair-Step Hook Tests

@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.StoredRk
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.CanonRep
-public import Symbolic.Proofs.RngG.R3ModelInv
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.R3ChainsWFPresPure
+public import Symbolic.Proofs.Swarm.CREF.TR.StoredRk -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.CanonRep -- proof-setup: allow-public-import
+public import Symbolic.Proofs.RngG.R3ModelInv -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.R3ChainsWFPresPure -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Actions.Network
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.Sem
@@ -38,6 +38,10 @@ import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- shake: keep
 import Symbolic.DYBridge.DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Actions.Network
+import Mathlib.Tactic.Continuity
+import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR -- proof-setup: allow-public-import
 
 /-!
 # Existing-Chain Decrypt Helpers and Ratchet-Key Dispatch Definitions
@@ -46,7 +50,7 @@ Proves setup public-key attacker knowledge, receiver-chain well-formedness prese
 existing-chain branch, and defines `AuthenticDecryptRepB3St` and `NoRatchetPkDispatchAt`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -228,7 +232,7 @@ open Symbolic.Swarm.CREF.TR.RecvRep (decrypt_recvRepresentations_nonempty_of_try
 open Symbolic.Swarm.CREF.CliPure.TR.RecvDecStep
 
 /-- Salt-form authentic decrypt representation at a fixed provenance state `st_prov`. -/
-def AuthenticDecryptRepB3St (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : SpqrSem)
+@[expose] def AuthenticDecryptRepB3St (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : SpqrSem)
     (g : Ghost) (ms₁ : List Move) (_body pt : HwBytes) (_t₀ : DY.Bytes) (msg₀ : TRSignalMsg)
     (st_prov : TRState) (_salt seed : DY.Bytes) : Prop :=
   ∃ (st_s : TRState) (t_c coinsLen : Nat),
@@ -242,7 +246,7 @@ def AuthenticDecryptRepB3St (interpretation : ExternInterpretation) (r₀ : Prot
       gamma interpretation S g ptTerm = pt
 
 /-- Existing-chain ratchet-key dispatch hypothesis at `(g, ms₁)`. -/
-def NoRatchetPkDispatchAt (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : SpqrSem)
+@[expose] def NoRatchetPkDispatchAt (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : SpqrSem)
     (g : Ghost) (ms₁ : List Move) (_τ₁ : List MachineEvent) : Prop :=
   ∀ (p : Participant) (stateIdx₀ : Nat) (body ptBytes : HwBytes) (m : SignalMessage) (st₀ : TRState)
     (c c' : RecvChain) (t₀ seed k_own : DY.Bytes) (msg₀ : TRSignalMsg),

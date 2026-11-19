@@ -98,14 +98,25 @@ def blockLevelPrims (X : UnreachedPqxdhPrimitives) (W : PEParams) : SignalPqxdh.
   sha512 _ := []
   scalarMul := X.scalarMul
   scalarAdd := X.scalarAdd
-  scalarFromBytesModOrder b := vecU8 (W.Q.scalarMod (u8Vec 32 b))
-  scalarFromWide b := vecU8 (W.Q.scalarWide (u8Vec 64 b))
-  montToEd u s := (W.Q.montToEd (u8Vec 32 u) s.toBitVec).map vecU8
-  isTorsionFree p := W.Q.isTorsionFree (u8Vec 160 p)
-  edNeg p := vecU8 (W.Q.edNeg (u8Vec 160 p))
-  doubleScalarMulBasepoint h a s :=
-    vecU8 (W.Q.dsmb (u8Vec 32 h) (u8Vec 160 a) (u8Vec 32 s))
-  compress p := vecU8 (W.Q.compress (u8Vec 160 p))
+  scalarFromBytesModOrder b :=
+    toU8 (VerifiedLibraries.Common.natToLeBytes 32
+      (VerifiedLibraries.Common.leBytesToNat (u8Vec 32 b).toList %
+        VerifiedLibraries.Common.edOrderL))
+  scalarFromWide b :=
+    toU8 (VerifiedLibraries.Common.natToLeBytes 32
+      (VerifiedLibraries.Common.leBytesToNat (u8Vec 64 b).toList %
+        VerifiedLibraries.Common.edOrderL))
+  montToEd u s := SignalPqxdh.montLiftEd (u8Vec 32 u).toList s.toBitVec
+  isTorsionFree P :=
+    VerifiedLibraries.Common.edSmul VerifiedLibraries.Common.edOrderL P ==
+      VerifiedLibraries.Common.edZero
+  edNeg := VerifiedLibraries.Common.edNeg
+  doubleScalarMulBasepoint h A s :=
+    VerifiedLibraries.Common.edAdd
+      (VerifiedLibraries.Common.edSmul (VerifiedLibraries.Common.leBytesToNat (u8Vec 32 h).toList) A)
+      (VerifiedLibraries.Common.edSmul (VerifiedLibraries.Common.leBytesToNat (u8Vec 32 s).toList)
+        VerifiedLibraries.Common.edBasepoint)
+  compress P := toU8 (VerifiedLibraries.Common.encodeEd P)
   kemKeyGen := X.kemKeyGen
   kemEncaps pk r :=
     if pk.length == SignalPqxdh.kyberPkLen then

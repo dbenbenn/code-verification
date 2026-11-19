@@ -9,16 +9,32 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailFromSessionStateErr
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.TailDropRecordPlaced
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailFromSessionStateErr
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.TailDropRecordPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.Common -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.TailDropRecordStepsPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.TailFreePrevSessionsPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.TailWriteErrPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.TailWriteResultPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailDropRecordSteps
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailFreePrevSessions
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailWriteErr
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailWriteResult
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Relocatable (`[LibsignalPlacement]`) T1 From-Error (`+0x49c..+0x564`, `tailFromSessionStateErr_placed_ok`)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,7 +57,7 @@ open CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.TailWriteResult Cry
 open CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.TailWriteErr CryptoVerification.Cli.LibsignalPublicApi.MessageEncrypt.Pf.TailWriteErr
 open CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.TailFreePrevSessions CryptoVerification.Cli.LibsignalPublicApi.MessageEncrypt.Pf.TailFreePrevSessions
 open CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.TailDropRecordSteps CryptoVerification.Cli.LibsignalPublicApi.MessageEncrypt.Pf.TailDropRecordSteps
-open CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.TailDropRecord CryptoVerification.Cli.LibsignalPublicApi.MessageEncrypt.Pf.TailDropRecord
+open CryptoVerification.Cli.LibsignalPublicApi.MessageEncrypt.Pf.TailDropRecord
 
 set_option maxRecDepth 200000
 
@@ -106,7 +122,7 @@ theorem fromSessionStateErr_placed_sepWP [LibsignalPlacement]
   apply SepWP.done (by rfl) (by exact hrun)
   exact ⟨rfl, hsp_al, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, by sep_ac_rfl⟩
 
-def cliEncCommonRest [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def cliEncCommonRest [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (x : WithStoresEncGhost) (draws : Nat) (s0 : State) : SepProp :=
   (x.ptA ↦ₛ x.ptext) ∗ protocolAddressAt A x.rem x.remA ∗
     protocolAddressAt A x.loc x.locA ∗ nowAt s0.sp x.now ∗

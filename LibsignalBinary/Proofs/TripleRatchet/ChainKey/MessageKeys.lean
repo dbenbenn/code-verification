@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.ChainKeyCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContracts
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.ChainKeyCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContracts -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.ConsumeMessageKey.Defs
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
-import GeneratedLean.LibsignalSession -- shake: keep
-import LibsignalBinary.Proofs.Common.CallInv
+import ProofLib
+import ProofLib.Sep
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.ConsumeMessageKey.Hmac
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.EntryAndKeyBlock
@@ -24,8 +24,12 @@ import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.Transfer
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
 import ProofLib.SepLogic.WPp
+public meta import ProofLib.GenDecodes
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 800000
@@ -41,11 +45,6 @@ open CryptoVerification.InImageLift
 
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-
-/-- The base session program, rebased at `b`. -/
-noncomputable abbrev SP_mk (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
-    (alloc : String → Option (State → State)) : Program :=
-  libsignalSessionCode.rebase b (Rust.withPanics (sessionExterns F alloc))
 
 /-- Close a `CalleeSavedPreserved s0 sf` goal after straight-line execution. -/
 macro "mk_cc_close" : tactic => `(tactic| (
@@ -114,21 +113,6 @@ private theorem pointsTo8_eq_pointsToBytes1 (a : BitVec 64) (b : BitVec 8) :
     (a ↦₈ b) = (a ↦ₛ [b]) := by
   rw [pointsToBytes_cons, pointsToBytes_nil, sepConj_emp]
 
-@[local wp_norm] theorem frozenLoaded_writeReg64 (img : Obj.Image) (s : State) (r : Reg) (v : BitVec 64) :
-    img.FrozenLoaded (s.writeReg64 r v) ↔ img.FrozenLoaded s := by
-  have hmem : (s.writeReg64 r v).mem = s.mem := by cases s; cases r <;> rfl
-  rw [Obj.Image.frozenLoaded_iff, Obj.Image.frozenLoaded_iff, hmem]
-
-@[local wp_norm] theorem frozenLoaded_setPC (img : Obj.Image) (s : State) (pc : BitVec 64) :
-    img.FrozenLoaded (s.setPC pc) ↔ img.FrozenLoaded s := by
-  have hmem : (s.setPC pc).mem = s.mem := by cases s; rfl
-  rw [Obj.Image.frozenLoaded_iff, Obj.Image.frozenLoaded_iff, hmem]
-
-@[local wp_norm] theorem frozenLoaded_setPState (img : Obj.Image) (s : State) (ps : PState) :
-    img.FrozenLoaded (s.setPState ps) ↔ img.FrozenLoaded s := by
-  have hmem : (s.setPState ps).mem = s.mem := by cases s; rfl
-  rw [Obj.Image.frozenLoaded_iff, Obj.Image.frozenLoaded_iff, hmem]
-
 @[local wp_norm] theorem symtab_writeReg64 (s : State) (r : Reg) (v : BitVec 64) :
     (s.writeReg64 r v).symtab = s.symtab := by
   cases s; cases r <;> rfl
@@ -141,21 +125,78 @@ private theorem pointsTo8_eq_pointsToBytes1 (a : BitVec 64) (b : BitVec 8) :
     (s.setPState ps).symtab = s.symtab := by
   cases s; rfl
 
-/-! ## 2. Stack and Memory Region Lemmas -/
+/-! ## 2. Stack, `MkgRawLayout`, and Memory Region Lemmas -/
 
-private theorem mr_cut' (sp : BitVec 64) (c c' n k N : Nat) (hN : n + k = N) (hc' : c - n = c')
-    (hn : n ≤ c) (hc : c < 2 ^ 64) (h : N ≤ 2 ^ 64) :
-    memRegion (sp - BitVec.ofNat 64 c) N =
-      memRegion (sp - BitVec.ofNat 64 c) n ∗ memRegion (sp - BitVec.ofNat 64 c') k := by
-  subst hN hc'
-  refine memRegion_split' rfl ?_ h
-  apply BitVec.eq_of_toNat_eq
-  simp only [BitVec.toNat_add, BitVec.toNat_sub, BitVec.toNat_ofNat]
-  have h1 : c % 2 ^ 64 = c := Nat.mod_eq_of_lt hc
-  have h2 : (c - n) % 2 ^ 64 = c - n := Nat.mod_eq_of_lt (by omega)
-  have h3 : n % 2 ^ 64 = n := Nat.mod_eq_of_lt (by omega)
-  rw [h1, h2, h3]
-  omega
+private structure MkgRawSnap where
+  tag : BitVec 32
+  cap : BitVec 64
+  ptr : BitVec 64
+  len : BitVec 64
+  counter : BitVec 32
+
+private def MkgRawLayout : ProofLib.Sep.StructLayout MkgRawSnap where
+  totalSz := 40
+  fields := [
+    .u32 0  (·.tag),
+    .u64 8  (·.cap),
+    .u64 16 (·.ptr),
+    .u64 24 (·.len),
+    .u32 32 (·.counter)
+  ]
+
+private theorem memRegion40_entails_mkgRaw (r : BitVec 64) :
+    memRegion r 40 ⊢ ∃∗ m : MkgRawSnap, MkgRawLayout.own r m := by
+  have h : memRegion r 40 ⊢
+      ∃∗ t0 : BitVec 32, ∃∗ c0 : BitVec 64, ∃∗ p0 : BitVec 64,
+      ∃∗ l0 : BitVec 64, ∃∗ i0 : BitVec 32,
+        (r ↦₃₂ t0) ∗ memRegion (r + 4#64) 4 ∗
+        ((r + 8#64) ↦₆₄ c0) ∗ ((r + 16#64) ↦₆₄ p0) ∗
+        ((r + 24#64) ↦₆₄ l0) ∗ ((r + 32#64) ↦₃₂ i0) ∗
+        memRegion (r + 36#64) 4 := by
+    sep_interval
+  refine Entails.trans h ?_
+  refine Entails.sepExists_elim fun t0 => Entails.sepExists_elim fun c0 =>
+    Entails.sepExists_elim fun p0 => Entails.sepExists_elim fun l0 =>
+    Entails.sepExists_elim fun i0 => Entails.sepExists_right ⟨t0, c0, p0, l0, i0⟩ ?_
+  simp (config := { decide := true }) only [MkgRawLayout, ProofLib.Sep.StructLayout.own,
+    ProofLib.Sep.fieldsRenderAt, ProofLib.Sep.renderWithGap, ProofLib.Sep.renderTailGap,
+    ProofLib.Sep.StructField.u32, ProofLib.Sep.StructField.u64,
+    ProofLib.Sep.StructField.field32, ProofLib.Sep.StructField.field64,
+    ProofLib.Sep.fieldAddr, ↓reduceIte]
+  bi_entail
+
+private theorem memRegion40_eq_mkgRaw (r : BitVec 64) :
+    memRegion r 40 = ∃∗ m : MkgRawSnap, MkgRawLayout.own r m :=
+  Entails.antisymm (memRegion40_entails_mkgRaw r)
+    (Entails.sepExists_elim fun m => MkgRawLayout.struct_to_memRegion r m)
+
+private theorem mkgRaw_capPtr_lens (r : BitVec 64) :
+    ProofLib.Sep.LawfulSepLens
+      (MkgRawLayout.own r)
+      (fun (kv : BitVec 64 × BitVec 64) => ((r + 8#64) ↦₆₄ kv.1) ∗ ((r + 16#64) ↦₆₄ kv.2))
+      (fun m => (r ↦₃₂ m.tag) ∗ memRegion (r + 4#64) 4 ∗
+        ((r + 24#64) ↦₆₄ m.len) ∗ ((r + 32#64) ↦₃₂ m.counter) ∗ memRegion (r + 36#64) 4)
+      (fun m => (m.cap, m.ptr))
+      (fun m kv => { m with cap := kv.1, ptr := kv.2 }) where
+  open_entails m := by
+    simp (config := { decide := true }) only [MkgRawLayout, ProofLib.Sep.StructLayout.own,
+      ProofLib.Sep.fieldsRenderAt, ProofLib.Sep.renderWithGap, ProofLib.Sep.renderTailGap,
+      ProofLib.Sep.StructField.u32, ProofLib.Sep.StructField.u64,
+      ProofLib.Sep.StructField.field32, ProofLib.Sep.StructField.field64,
+      ProofLib.Sep.fieldAddr, ↓reduceIte]
+    bi_entail
+  close_entails m kv := by
+    simp (config := { decide := true }) only [MkgRawLayout, ProofLib.Sep.StructLayout.own,
+      ProofLib.Sep.fieldsRenderAt, ProofLib.Sep.renderWithGap, ProofLib.Sep.renderTailGap,
+      ProofLib.Sep.StructField.u32, ProofLib.Sep.StructField.u64,
+      ProofLib.Sep.StructField.field32, ProofLib.Sep.StructField.field64,
+      ProofLib.Sep.fieldAddr, ↓reduceIte]
+    bi_entail
+  put_get m := by cases m; rfl
+  get_put _ _ := rfl
+  put_put m _ _ := by cases m; rfl
+
+private instance : ProofLib.Sep.SepLensRule ``mkgRaw_capPtr_lens := {}
 
 private theorem stackAt_80_messageKeys (sp : BitVec 64) :
     stackAt sp 80 =
@@ -168,88 +209,7 @@ private theorem stackAt_80_messageKeys (sp : BitVec 64) :
       memRegion (sp - 19#64) 3 ∗
       (∃∗ v : BitVec 64, (sp - 16#64) ↦₆₄ v) ∗
       (∃∗ v : BitVec 64, (sp - 8#64) ↦₆₄ v) := by
-  show memRegion (sp - BitVec.ofNat 64 80) 80 = _
-  rw [mr_cut' sp 80 48 32 48 80 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 48 40 8 40 48 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 40 32 8 32 40 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 32 24 8 24 32 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 24 20 4 20 24 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 20 19 1 19 20 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 19 16 3 16 19 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 16 8 8 8 16 rfl rfl (by decide) (by decide) (by decide)]
-  rw [memRegion_eight (sp - 48#64), memRegion_eight (sp - 40#64), memRegion_eight (sp - 32#64),
-      memRegion_one (sp - 20#64), memRegion_eight (sp - 16#64), memRegion_eight (sp - 8#64)]
-
-private theorem stackAt_80_messageKeys_repack (sp : BitVec 64)
-    (w0 w1 w2 w3 v29 v30 v21 v20 v19 : BitVec 64) (b0 : BitVec 8) :
-    ((sp - 80#64) ↦₆₄ w0) ∗
-    ((sp - 72#64) ↦₆₄ w1) ∗
-    ((sp - 64#64) ↦₆₄ w2) ∗
-    ((sp - 56#64) ↦₆₄ w3) ∗
-    ((sp - 48#64) ↦₆₄ v29) ∗
-    ((sp - 40#64) ↦₆₄ v30) ∗
-    ((sp - 32#64) ↦₆₄ v21) ∗
-    memRegion (sp - 24#64) 4 ∗
-    ((sp - 20#64) ↦₈ b0) ∗
-    memRegion (sp - 19#64) 3 ∗
-    ((sp - 16#64) ↦₆₄ v20) ∗
-    ((sp - 8#64) ↦₆₄ v19) ⊢
-      stackAt sp 80 := by
-  rw [stackAt_80_messageKeys sp]
-  have hw0 := pointsTo64_entails_memRegion (sp - 80#64) w0
-  have hw1 := pointsTo64_entails_memRegion (sp - 72#64) w1
-  have hw2 := pointsTo64_entails_memRegion (sp - 64#64) w2
-  have hw3 := pointsTo64_entails_memRegion (sp - 56#64) w3
-  have h72 : sp - 80#64 + 8#64 = sp - 72#64 := by bv_arith
-  have h64 : sp - 72#64 + 8#64 = sp - 64#64 := by bv_arith
-  have h56 : sp - 64#64 + 8#64 = sp - 56#64 := by bv_arith
-  have h32 :
-      ((sp - 80#64) ↦₆₄ w0) ∗ ((sp - 72#64) ↦₆₄ w1) ∗ ((sp - 64#64) ↦₆₄ w2) ∗ ((sp - 56#64) ↦₆₄ w3) ⊢
-        memRegion (sp - 80#64) 32 := by
-    refine Entails.trans (sepConj_mono hw0 (sepConj_mono hw1 (sepConj_mono hw2 hw3))) ?_
-    rw [← h56, ← memRegion_split (sp - 64#64) 8 8 (by decide),
-        ← h64, ← memRegion_split (sp - 72#64) 8 16 (by decide),
-        ← h72, ← memRegion_split (sp - 80#64) 8 24 (by decide)]
-    exact Entails.refl _
-  have hv29 : ((sp - 48#64) ↦₆₄ v29) ⊢ ∃∗ v : BitVec 64, (sp - 48#64) ↦₆₄ v :=
-    Entails.sepExists_right v29 (Entails.refl _)
-  have hv30 : ((sp - 40#64) ↦₆₄ v30) ⊢ ∃∗ v : BitVec 64, (sp - 40#64) ↦₆₄ v :=
-    Entails.sepExists_right v30 (Entails.refl _)
-  have hv21 : ((sp - 32#64) ↦₆₄ v21) ⊢ ∃∗ v : BitVec 64, (sp - 32#64) ↦₆₄ v :=
-    Entails.sepExists_right v21 (Entails.refl _)
-  have hb0 : ((sp - 20#64) ↦₈ b0) ⊢ ∃∗ b : BitVec 8, (sp - 20#64) ↦₈ b :=
-    Entails.sepExists_right b0 (Entails.refl _)
-  have hv20 : ((sp - 16#64) ↦₆₄ v20) ⊢ ∃∗ v : BitVec 64, (sp - 16#64) ↦₆₄ v :=
-    Entails.sepExists_right v20 (Entails.refl _)
-  have hv19 : ((sp - 8#64) ↦₆₄ v19) ⊢ ∃∗ v : BitVec 64, (sp - 8#64) ↦₆₄ v :=
-    Entails.sepExists_right v19 (Entails.refl _)
-  have hpull :
-      (((sp - 80#64) ↦₆₄ w0) ∗
-        ((sp - 72#64) ↦₆₄ w1) ∗
-        ((sp - 64#64) ↦₆₄ w2) ∗
-        ((sp - 56#64) ↦₆₄ w3) ∗
-        ((sp - 48#64) ↦₆₄ v29) ∗
-        ((sp - 40#64) ↦₆₄ v30) ∗
-        ((sp - 32#64) ↦₆₄ v21) ∗
-        memRegion (sp - 24#64) 4 ∗
-        ((sp - 20#64) ↦₈ b0) ∗
-        memRegion (sp - 19#64) 3 ∗
-        ((sp - 16#64) ↦₆₄ v20) ∗
-        ((sp - 8#64) ↦₆₄ v19)) =
-      ((((sp - 80#64) ↦₆₄ w0) ∗ ((sp - 72#64) ↦₆₄ w1) ∗
-         ((sp - 64#64) ↦₆₄ w2) ∗ ((sp - 56#64) ↦₆₄ w3)) ∗
-        ((sp - 48#64) ↦₆₄ v29) ∗
-        ((sp - 40#64) ↦₆₄ v30) ∗
-        ((sp - 32#64) ↦₆₄ v21) ∗
-        memRegion (sp - 24#64) 4 ∗
-        ((sp - 20#64) ↦₈ b0) ∗
-        memRegion (sp - 19#64) 3 ∗
-        ((sp - 16#64) ↦₆₄ v20) ∗
-        ((sp - 8#64) ↦₆₄ v19)) := by ac_rfl
-  rw [hpull]
-  exact sepConj_mono h32 (sepConj_mono hv29 (sepConj_mono hv30 (sepConj_mono hv21
-    (sepConj_mono_right (sepConj_mono hb0 (sepConj_mono_right
-      (sepConj_mono hv20 hv19)))))))
+  dsimp only [stackAt]; sep_interval_eq
 
 private theorem stackAt_gen_split (sp : BitVec 64) (totalStack midStack padTop : Nat)
     (htot : (80 + midStack) + padTop = totalStack) (hbound : totalStack ≤ 2 ^ 64) :
@@ -261,19 +221,14 @@ private theorem stackAt_gen_split (sp : BitVec 64) (totalStack midStack padTop :
   rw [stackAt_split_bottom sp (80 + midStack) padTop hbound,
       stackAt_split_bottom sp 80 midStack (by omega)]
   have hsub : sp - BitVec.ofNat 64 (80 + midStack) = sp - 80#64 - BitVec.ofNat 64 midStack := by
-    rw [BitVec.ofNat_add]
-    bv_arith
-  have hm : memRegion (sp - BitVec.ofNat 64 (80 + midStack)) midStack = stackAt (sp - 80#64) midStack := by
-    unfold stackAt
-    rw [hsub]
-  rw [hm]
+    rw [BitVec.ofNat_add]; bv_arith
+  unfold stackAt; rw [hsub]
 
 private theorem stackAt_sub_split (sp : BitVec 64) (subStack subPad midStack : Nat)
     (h : subStack + subPad = midStack) (hb : midStack ≤ 2 ^ 64) :
     stackAt sp midStack =
       memRegion (sp - BitVec.ofNat 64 midStack) subPad ∗ stackAt sp subStack := by
-  subst h
-  exact stackAt_split_bottom sp subStack subPad hb
+  subst h; exact stackAt_split_bottom sp subStack subPad hb
 
 private theorem stackAt_gen_repack (sp : BitVec 64)
     (totalStack midStack padTop allocStack allocPad : Nat)
@@ -284,24 +239,18 @@ private theorem stackAt_gen_repack (sp : BitVec 64)
     memRegion (sp - BitVec.ofNat 64 totalStack) padTop ∗
     memRegion (sp - 80#64 - BitVec.ofNat 64 midStack) allocPad ∗
     stackAt (sp - 80#64) allocStack ∗
-    ((sp - 80#64) ↦₆₄ w0) ∗
-    ((sp - 72#64) ↦₆₄ w1) ∗
-    ((sp - 64#64) ↦₆₄ w2) ∗
-    ((sp - 56#64) ↦₆₄ w3) ∗
-    ((sp - 48#64) ↦₆₄ v29) ∗
-    ((sp - 40#64) ↦₆₄ v30) ∗
-    ((sp - 32#64) ↦₆₄ v21) ∗
-    memRegion (sp - 24#64) 4 ∗
-    ((sp - 20#64) ↦₈ b0) ∗
-    memRegion (sp - 19#64) 3 ∗
-    ((sp - 16#64) ↦₆₄ v20) ∗
-    ((sp - 8#64) ↦₆₄ v19) ⊢
+    ((sp - 80#64) ↦₆₄ w0) ∗ ((sp - 72#64) ↦₆₄ w1) ∗
+    ((sp - 64#64) ↦₆₄ w2) ∗ ((sp - 56#64) ↦₆₄ w3) ∗
+    ((sp - 48#64) ↦₆₄ v29) ∗ ((sp - 40#64) ↦₆₄ v30) ∗
+    ((sp - 32#64) ↦₆₄ v21) ∗ memRegion (sp - 24#64) 4 ∗
+    ((sp - 20#64) ↦₈ b0) ∗ memRegion (sp - 19#64) 3 ∗
+    ((sp - 16#64) ↦₆₄ v20) ∗ ((sp - 8#64) ↦₆₄ v19) ⊢
       stackAt sp totalStack := by
   rw [stackAt_gen_split sp totalStack midStack padTop htot hb,
       stackAt_sub_split (sp - 80#64) allocStack allocPad midStack ha (by omega),
       sepConj_assoc]
-  exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-    (stackAt_80_messageKeys_repack sp w0 w1 w2 w3 v29 v30 v21 v20 v19 b0)))
+  refine sepConj_mono_right (sepConj_mono_right (sepConj_mono_right ?_))
+  dsimp only [stackAt]; sep_interval
 
 private theorem remerge_and_split_midStack (sp : BitVec 64)
     (hmacStack hmacPad allocStack allocPad midStack : Nat)
@@ -312,64 +261,25 @@ private theorem remerge_and_split_midStack (sp : BitVec 64)
         memRegion (sp - BitVec.ofNat 64 midStack) hmacPad ∗ P8 =
       memRegion (sp - BitVec.ofNat 64 midStack) allocPad ∗ stackAt sp allocStack ∗
         P1 ∗ P2 ∗ P3 ∗ P4 ∗ P5 ∗ P6 ∗ P7 ∗ P8 := by
-  have h1 : memRegion (sp - BitVec.ofNat 64 midStack) hmacPad ∗ stackAt sp hmacStack =
-      stackAt sp midStack :=
-    (stackAt_sub_split sp hmacStack hmacPad midStack hh hb).symm
-  have h2 : stackAt sp midStack =
+  have h : memRegion (sp - BitVec.ofNat 64 midStack) hmacPad ∗ stackAt sp hmacStack =
       memRegion (sp - BitVec.ofNat 64 midStack) allocPad ∗ stackAt sp allocStack :=
-    stackAt_sub_split sp allocStack allocPad midStack ha hb
-  calc
-    _ = (memRegion (sp - BitVec.ofNat 64 midStack) hmacPad ∗ stackAt sp hmacStack) ∗
-          (P1 ∗ P2 ∗ P3 ∗ P4 ∗ P5 ∗ P6 ∗ P7 ∗ P8) := by ac_rfl
-    _ = (memRegion (sp - BitVec.ofNat 64 midStack) allocPad ∗ stackAt sp allocStack) ∗
-          (P1 ∗ P2 ∗ P3 ∗ P4 ∗ P5 ∗ P6 ∗ P7 ∗ P8) := by rw [h1, h2]
-    _ = _ := by ac_rfl
-
-private theorem memRegion40_unpack (r : BitVec 64) :
-    memRegion r 40 =
-      (∃∗ t0 : BitVec 32, (r ↦₃₂ t0)) ∗
-      memRegion (r + 4#64) 4 ∗
-      (∃∗ c0 : BitVec 64, ((r + 8#64) ↦₆₄ c0)) ∗
-      (∃∗ p0 : BitVec 64, ((r + 16#64) ↦₆₄ p0)) ∗
-      (∃∗ l0 : BitVec 64, ((r + 24#64) ↦₆₄ l0)) ∗
-      (∃∗ i0 : BitVec 32, ((r + 32#64) ↦₃₂ i0)) ∗
-      memRegion (r + 36#64) 4 := by
-  rw [show memRegion r 40 = memRegion r 4 ∗ memRegion (r + 4#64) 36 from
-        memRegion_split r 4 36 (by decide),
-      show memRegion (r + 4#64) 36 = memRegion (r + 4#64) 4 ∗ memRegion (r + 4#64 + 4#64) 32 from
-        memRegion_split (r + 4#64) 4 32 (by decide)]
-  have h8 : r + 4#64 + 4#64 = r + 8#64 := by bv_arith
-  rw [h8, show memRegion (r + 8#64) 32 = memRegion (r + 8#64) 8 ∗ memRegion (r + 8#64 + 8#64) 24 from
-        memRegion_split (r + 8#64) 8 24 (by decide)]
-  have h16 : r + 8#64 + 8#64 = r + 16#64 := by bv_arith
-  rw [h16, show memRegion (r + 16#64) 24 = memRegion (r + 16#64) 8 ∗ memRegion (r + 16#64 + 8#64) 16 from
-        memRegion_split (r + 16#64) 8 16 (by decide)]
-  have h24 : r + 16#64 + 8#64 = r + 24#64 := by bv_arith
-  rw [h24, show memRegion (r + 24#64) 16 = memRegion (r + 24#64) 8 ∗ memRegion (r + 24#64 + 8#64) 8 from
-        memRegion_split (r + 24#64) 8 8 (by decide)]
-  have h32 : r + 24#64 + 8#64 = r + 32#64 := by bv_arith
-  rw [h32, show memRegion (r + 32#64) 8 = memRegion (r + 32#64) 4 ∗ memRegion (r + 32#64 + 4#64) 4 from
-        memRegion_split (r + 32#64) 4 4 (by decide)]
-  have h36 : r + 32#64 + 4#64 = r + 36#64 := by bv_arith
-  rw [h36, memRegion_four r, memRegion_eight (r + 8#64), memRegion_eight (r + 16#64),
-      memRegion_eight (r + 24#64), memRegion_four (r + 32#64)]
+    (stackAt_sub_split sp hmacStack hmacPad midStack hh hb).symm.trans
+      (stackAt_sub_split sp allocStack allocPad midStack ha hb)
+  exact Entails.antisymm
+    (Entails.trans (Q := (memRegion (sp - BitVec.ofNat 64 midStack) hmacPad ∗ stackAt sp hmacStack) ∗
+        (P1 ∗ P2 ∗ P3 ∗ P4 ∗ P5 ∗ P6 ∗ P7 ∗ P8))
+      (by bi_entail) (by rw [h]; bi_entail))
+    (Entails.trans (Q := (memRegion (sp - BitVec.ofNat 64 midStack) allocPad ∗ stackAt sp allocStack) ∗
+        (P1 ∗ P2 ∗ P3 ∗ P4 ∗ P5 ∗ P6 ∗ P7 ∗ P8))
+      (by bi_entail) (by rw [← h]; bi_entail))
 
 private theorem memRegion32_eq_exists_cells4 (a : BitVec 64) :
     memRegion a 32 =
-      ∃∗ d0 : BitVec 64, ∃∗ d1 : BitVec 64, ∃∗ d2 : BitVec 64, ∃∗ d3 : BitVec 64,
-        (a ↦₆₄ d0) ∗ ((a + 8#64) ↦₆₄ d1) ∗ ((a + 16#64) ↦₆₄ d2) ∗ ((a + 24#64) ↦₆₄ d3) := by
-  rw [show (32 : Nat) = 8 + 24 from rfl, memRegion_split a 8 24 (by decide),
-      memRegion_eight a, memRegion_24_eq_exists_vecHeader (a + 8#64)]
-  unfold vecHeader
-  have h16 : a + 8#64 + 8#64 = a + 16#64 := by bv_arith
-  have h24 : a + 8#64 + 16#64 = a + 24#64 := by bv_arith
-  rw [h16, h24, sepExists_sepConj_left]
-  apply congrArg SepProp.sepExists; funext d0
-  rw [sepExists_sepConj_right]
-  apply congrArg SepProp.sepExists; funext d1
-  rw [sepExists_sepConj_right]
-  apply congrArg SepProp.sepExists; funext d2
-  rw [sepExists_sepConj_right]
+      (∃∗ d0 : BitVec 64, a ↦₆₄ d0) ∗
+      (∃∗ d1 : BitVec 64, (a + 8#64) ↦₆₄ d1) ∗
+      (∃∗ d2 : BitVec 64, (a + 16#64) ↦₆₄ d2) ∗
+      (∃∗ d3 : BitVec 64, (a + 24#64) ↦₆₄ d3) := by
+  sep_interval_eq
 
 theorem mkgAt_of_parts (A : RustAlloc) (r ptr : BitVec 64) (k : MessageKeyGenerator)
     (hseed : k.seed.length = 32) (hptr : ptr ≠ 0) :
@@ -379,39 +289,35 @@ theorem mkgAt_of_parts (A : RustAlloc) (r ptr : BitVec 64) (k : MessageKeyGenera
       A.live ptr 32 1 ∗ (ptr ↦ₛ k.seed) ⊢
       mkgAt A r k := by
   unfold mkgAt
-  have hex := vecU8At_entails_vecU8 A (r + 8#64) 32#64 ptr k.seed
   refine Entails.trans ?_
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left hex)))
+    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left
+      (vecU8At_entails_vecU8 A (r + 8#64) 32#64 ptr k.seed))))
   unfold vecU8At vecHeader
-  have h16 : r + 8#64 + 8#64 = r + 16#64 := by bv_arith
-  have h24 : r + 8#64 + 16#64 = r + 24#64 := by bv_arith
   have hcap_ne : (32#64 : BitVec 64) ≠ 0 := by decide
   have h32_eq : BitVec.ofNat 64 k.seed.length = 32#64 := by rw [hseed]
   have hrem_zero : (32#64 : BitVec 64).toNat - k.seed.length = 0 := by
     change 32 - k.seed.length = 0; omega
-  simp only [h16, h24, hcap_ne, ↓reduceIte, h32_eq, hrem_zero, memRegion_zero, sepConj_emp]
-  have hpure : k.seed.length ≤ (32#64 : BitVec 64).toNat ∧ (32#64 : BitVec 64).toNat < 2 ^ 63 ∧ ptr ≠ 0 := by
-    refine ⟨?_, by decide, hptr⟩
-    change k.seed.length ≤ 32; omega
-  have hpull :
-      ((r ↦₃₂ 1#32) ∗ memRegion (r + 4#64) 4 ∗
-        ((((r + 8#64) ↦₆₄ 32#64) ∗ ((r + 16#64) ↦₆₄ ptr) ∗ ((r + 24#64) ↦₆₄ 32#64)) ∗
-         ⌜k.seed.length ≤ (32#64 : BitVec 64).toNat ∧ (32#64 : BitVec 64).toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
-         (A.live ptr (32#64 : BitVec 64).toNat 1 ∗ (ptr ↦ₛ k.seed))) ∗
-        ((r + 32#64) ↦₃₂ k.counter) ∗ memRegion (r + 36#64) 4) =
-      (⌜k.seed.length ≤ (32#64 : BitVec 64).toNat ∧ (32#64 : BitVec 64).toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
-       ((r ↦₃₂ 1#32) ∗ memRegion (r + 4#64) 4 ∗
-        ((r + 8#64) ↦₆₄ 32#64) ∗ ((r + 16#64) ↦₆₄ ptr) ∗ ((r + 24#64) ↦₆₄ 32#64) ∗
-        ((r + 32#64) ↦₃₂ k.counter) ∗ memRegion (r + 36#64) 4 ∗
-        A.live ptr 32 1 ∗ (ptr ↦ₛ k.seed))) := by
-    ac_rfl
-  rw [hpull]
-  exact Entails.pure_right hpure (Entails.refl _)
+  simp only [hcap_ne, ↓reduceIte, h32_eq, hrem_zero, memRegion_zero, sepConj_emp]
+  have hpure : k.seed.length ≤ (32#64 : BitVec 64).toNat ∧ (32#64 : BitVec 64).toNat < 2 ^ 63 ∧ ptr ≠ 0 :=
+    ⟨by change k.seed.length ≤ 32; omega, by decide, hptr⟩
+  bi_entail
+
+private theorem mkgRaw_to_mkgAt (A : RustAlloc) (r ptr : BitVec 64) (k : MessageKeyGenerator)
+    (hseed : k.seed.length = 32) (hptr : ptr ≠ 0) :
+    MkgRawLayout.own r ⟨1#32, 32#64, ptr, 32#64, k.counter⟩ ∗ A.live ptr 32 1 ∗ (ptr ↦ₛ k.seed) ⊢
+      mkgAt A r k := by
+  simp (config := { decide := true }) only [MkgRawLayout, ProofLib.Sep.StructLayout.own,
+    ProofLib.Sep.fieldsRenderAt, ProofLib.Sep.renderWithGap, ProofLib.Sep.renderTailGap,
+    ProofLib.Sep.StructField.u32, ProofLib.Sep.StructField.u64,
+    ProofLib.Sep.StructField.field32, ProofLib.Sep.StructField.field64,
+    ProofLib.Sep.fieldAddr, ↓reduceIte]
+  refine Entails.trans ?_ (mkgAt_of_parts A r ptr k hseed hptr)
+  bi_entail
 
 /-! ## 3. Parameterized Specs & Callee Contract Wrappers -/
 
 /-- Stack-parameterized `hmacSpec` (`= hmacSpec F` at `2048`, `= Stage1X.hmacSpecX F` at `18432`). -/
-def hmacSpecWithStack (F : ShaState → List (BitVec 8) → ShaState) (hmacStack : Nat) :
+@[expose] def hmacSpecWithStack (F : ShaState → List (BitVec 8) → ShaState) (hmacStack : Nat) :
     Spec HmacGhost where
   pre := fun (out, ka, key, ia, inp) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = ka ∧ (s.readReg64 .x2).toNat = key.length ∧
@@ -422,55 +328,12 @@ def hmacSpecWithStack (F : ShaState → List (BitVec 8) → ShaState) (hmacStack
     ⌜sf.trace = s0.trace⌝ ∗
     (out ↦ₛ hmacWith F key inp) ∗ (ka ↦ₛ key) ∗ (ia ↦ₛ inp) ∗ stackAt s0.sp hmacStack
 
-/-- Stack-parameterized `messageKeysSpec` (`= messageKeysSpec` at `8192`,
-`= messageKeysSpecX` at `20480`, `= Stage1X.messageKeysSpecX` at `24576`). -/
-def messageKeysSpecWithStack (F : ShaCompress) (A : RustAlloc) (img : Obj.Image)
-    (totalStack : Nat) : Spec ChainKeyGhost :=
-  Spec.inImage
-    { pre := fun (self, ck, ret) s =>
-        ⌜s.readReg64 .x0 = self ∧ s.readReg64 .x8 = ret⌝ ∗
-        (self ↦ₛ chainKeyBytes ck) ∗ memRegion ret 40 ∗ A.pool ∗ stackAt s.sp totalStack
-      post := fun (self, ck, ret) s0 sf =>
-        ⌜sf.trace = s0.trace⌝ ∗
-        (self ↦ₛ chainKeyBytes ck) ∗ mkgAt A ret (ck.messageKeys F) ∗
-        A.pool ∗ stackAt s0.sp totalStack
-      onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
-    img
-
-private theorem pure_and_entails_pure_sep_of {P P' Q : Prop} {R : SepProp}
-    (h : P → P' ∧ Q) :
-    ⌜P⌝ ∗ R ⊢ ⌜P'⌝ ∗ (⌜Q⌝ ∗ R) := by
-  apply Entails.pure_left
-  intro hp
-  rcases h hp with ⟨hp', hq⟩
-  exact Entails.pure_right hp' (Entails.pure_right hq (Entails.refl R))
-
-private theorem hmacWithStack_ok_at_state {prog : Program}
-    {F : ShaState → List (BitVec 8) → ShaState} {hmacStack : Nat}
-    {img : Obj.Image} {addr : BitVec 64} {s : State}
-    (hhmac : subroutine_ok prog addr ((hmacSpecWithStack F hmacStack).inImage img))
-    (hfrozen : img.FrozenLoaded s) (hsym : s.symtab = img.symtab) :
-    subroutine_ok prog addr
-      { pre := fun (out, ka, key, ia, inp) s' =>
-          ⌜s'.mem = s.mem ∧ s'.symtab = s.symtab ∧
-            s'.readReg64 .x0 = out ∧ s'.readReg64 .x1 = ka ∧ (s'.readReg64 .x2).toNat = key.length ∧
-            s'.readReg64 .x3 = ia ∧ (s'.readReg64 .x4).toNat = inp.length ∧ key.length = 32 ∧
-            inp.length = 1⌝ ∗
-          memRegion out 32 ∗ (ka ↦ₛ key) ∗ (ia ↦ₛ inp) ∗ stackAt s'.sp hmacStack
-        post := (hmacSpecWithStack F hmacStack).post } := by
-  refine subroutine_ok_outcome_intro fun ⟨out, ka, key, ia, inp⟩ R s0 hpc hrun hm hsp => ?_
-  refine hhmac.mono_outcome (out, ka, key, ia, inp) R s0 hpc hrun ?_ hsp (fun _ hout => hout)
-  refine Satisfies.mono (sepConj_mono_left ?_) hm
-  dsimp only [Spec.inImage, hmacSpecWithStack]
-  exact pure_and_entails_pure_sep_of fun ⟨hmem, hsym', hrest⟩ =>
-    ⟨⟨frozenLoaded_of_mem_eq hmem hfrozen, hsym'.trans hsym⟩, hrest⟩
-
 theorem SepWPp_pure_elim_oom_shared_lb {prog : Program} {ret : BitVec 64} {s : State}
     {P1 P2 P3 : SepProp} {φ : Prop} {Q Qp : State → SepProp → Prop}
     (h : φ → SepWPp prog ret s (P1 ∗ P2 ∗ P3) Q Qp) :
     SepWPp prog ret s (P1 ∗ P2 ∗ ⌜φ⌝ ∗ P3) Q Qp := by
-  have heq : (P1 ∗ P2 ∗ ⌜φ⌝ ∗ P3) = (⌜φ⌝ ∗ (P1 ∗ P2 ∗ P3)) := by ac_rfl
-  rw [heq]
+  rw [show P1 ∗ P2 ∗ ⌜φ⌝ ∗ P3 = ⌜φ⌝ ∗ (P1 ∗ P2 ∗ P3) from
+    Entails.antisymm (by bi_entail) (by bi_entail)]
   exact SepWPp.pure_elim h
 
 private abbrev SepWPp.pure_elim_oom := @SepWPp_pure_elim_oom_shared_lb
@@ -479,8 +342,8 @@ theorem SepWPp_pure_elim_alloc_shared_lb {prog : Program} {ret : BitVec 64} {s :
     {P1 P2 P3 P4 : SepProp} {φ : Prop} {Q Qp : State → SepProp → Prop}
     (h : φ → SepWPp prog ret s (P1 ∗ P2 ∗ P3 ∗ P4) Q Qp) :
     SepWPp prog ret s (P1 ∗ P2 ∗ (⌜φ⌝ ∗ P3) ∗ P4) Q Qp := by
-  have heq : (P1 ∗ P2 ∗ (⌜φ⌝ ∗ P3) ∗ P4) = (⌜φ⌝ ∗ (P1 ∗ P2 ∗ P3 ∗ P4)) := by ac_rfl
-  rw [heq]
+  rw [show P1 ∗ P2 ∗ (⌜φ⌝ ∗ P3) ∗ P4 = ⌜φ⌝ ∗ (P1 ∗ P2 ∗ P3 ∗ P4) from
+    Entails.antisymm (by bi_entail) (by bi_entail)]
   exact SepWPp.pure_elim h
 
 private abbrev SepWPp.pure_elim_alloc := @SepWPp_pure_elim_alloc_shared_lb
@@ -496,258 +359,6 @@ private theorem allocFailedIn_of_trace_eq {s0 sf : State}
 
 /-! ## 4. Unified Stack-Parameterized Proof & Specializations -/
 
-set_option maxHeartbeats 2000000 in
-/-- Unified stack-parameterized contract proof for `ChainKey::message_keys` on
-`tripleRatchetProgAtExt img.base ext` (`= SP2Ext img.base ext`), instantiated at:
-- `(8192, 4096, 4016, 2048, 2048, 4096, 0)` for `messageKeys_ok_of_hmac_ext`,
-- `(20480, 16384, 4016, 2048, 14336, 16384, 0)` for `messageKeys_ok_of_hmac_x`, and
-- `(24576, 18432, 6064, 18432, 0, 16384, 2048)` for `Stage1X.messageKeys_ok_of_hmac_x`. -/
-theorem messageKeys_ok_of_hooks_gen {img : Obj.Image} {F : ShaCompress} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    {totalStack midStack padTop hmacStack hmacPad allocStack allocPad : Nat}
-    (htot : (80 + midStack) + padTop = totalStack := by decide)
-    (htot64 : totalStack ≤ 2 ^ 64 := by decide)
-    (hhmac_pad : hmacStack + hmacPad = midStack := by decide)
-    (halloc_pad : allocStack + allocPad = midStack := by decide)
-    (hhmac_at : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName +
-        bv% (ls_off% "libsignal_protocol::crypto::hmac_sha256" -
-          ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys"))
-      ((hmacSpecWithStack F hmacStack).inImage img))
-    (hshim_in : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName +
-        BitVec.ofNat 64
-          (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" -
-            ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys")))
-      ((shimSpecWithStack allocStack).inImage img))
-    (halloc_in : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName +
-        BitVec.ofNat 64
-          (num% (ls_off% "__rustc::__rust_alloc" -
-            ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys")))
-      ((rustAllocSpecWithStack A allocStack).inImage img))
-    (hpanic : (tripleRatchetProgAtExt img.base ext).externAt?
-      ((tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName +
-        BitVec.ofNat 64
-          (num% (ls_off% "alloc::raw_vec::handle_error" -
-            ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys"))) =
-      some Rust.panicked) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName)
-      (messageKeysSpecWithStack F A img totalStack) := by
-  have hfn := (ls_lemma% fnOff "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys")
-  have hshim := hshim_in
-  simp only [Spec.inImage, shimSpecWithStack] at hshim
-  have halloc := halloc_in
-  simp only [Spec.inImage, rustAllocSpecWithStack] at halloc
-  apply subroutine_ok_of_sepWPp
-  intro ⟨self, ck, ret⟩ R s0 hpc hrun hpre hsp0
-  simp only [messageKeysSpecWithStack, Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hfrozen0, hsym0⟩, ⟨hx0, hx8⟩, hmem⟩
-  refine ⟨(self ↦ₛ chainKeyBytes ck) ∗ memRegion ret 40 ∗ A.pool ∗ stackAt s0.sp totalStack,
-    R, ?_, ?_⟩
-  · simpa [sepConj_assoc] using hmem
-  rw [pointsToBytes_chainKeyBytes_eq self ck,
-      stackAt_gen_split s0.sp totalStack midStack padTop htot htot64,
-      stackAt_sub_split (s0.sp - 80#64) hmacStack hmacPad midStack hhmac_pad (by omega),
-      stackAt_80_messageKeys s0.sp]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  refine SepWPp.exists_elim fun v19 => SepWPp.exists_elim fun v20 =>
-    SepWPp.exists_elim fun b0 => SepWPp.exists_elim fun v21 =>
-    SepWPp.exists_elim fun v30 => SepWPp.exists_elim fun v29 => ?_
-  code_fetches CryptoVerification.libsignalSessionCode CryptoVerification.LibsignalSession.libsignalSessionBin
-    img.base (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys")) 144
-  generalize_entry hentry : (tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName = entry
-  apply SepWPp.of_sepWP_frozen (mid := entry + bv% (ls_off% "libsignal_protocol::crypto::hmac_sha256" - ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys")) hfrozen0 hsym0
-  wp_steps
-  examples_hide_fetches
-  apply SepWP.done (by simp_all) (by simp_all)
-  intro hfrozen1 hsym1
-  have hhmac1 := hmacWithStack_ok_at_state hhmac_at hfrozen1 hsym1
-  have hlen_key : (keyToBytes32 ck.key).length = 32 := by simp [keyToBytes32]
-  have hlen_inp : ([1#8] : List (BitVec 8)).length = 1 := rfl
-  apply SepWPp.of_sepWP_frozen (mid := entry + bv% (60)) hfrozen1 hsym1
-  rw [pointsTo8_eq_pointsToBytes1 (s0.sp - 20#64) 1#8]
-  wp_call hhmac1 (s0.sp - 80#64, self, keyToBytes32 ck.key, s0.sp - 20#64, [1#8])
-  apply SepWP.done (by simp_all) (by simp_all)
-  intro hfrozen2 hsym2
-  rw [hmacWith_one_eq_messageKeys_seed F ck]
-  obtain ⟨w0, w1, w2, w3, _, hw32⟩ :=
-    exists_unpack64_of_length_32 (length_messageKeys_seed F ck)
-  have hw_sp := hw32 (s0.sp - 80#64)
-  have h72 : s0.sp - 80#64 + 8#64 = s0.sp - 72#64 := by bv_arith
-  have h64 : s0.sp - 80#64 + 16#64 = s0.sp - 64#64 := by bv_arith
-  have h56 : s0.sp - 80#64 + 24#64 = s0.sp - 56#64 := by bv_arith
-  rw [h72, h64, h56] at hw_sp
-  rw [hw_sp, remerge_and_split_midStack (s0.sp - 80#64) hmacStack hmacPad allocStack allocPad
-      midStack hhmac_pad halloc_pad (by omega)]
-  have hpow1 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  have hlayout32 : LayoutOk 32 1 := ⟨by decide, hpow1, by decide⟩
-  code_fetches CryptoVerification.libsignalSessionCode CryptoVerification.LibsignalSession.libsignalSessionBin
-    img.base (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys")) 144
-  subst hentry
-  generalize_entry hentry : (tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName = entry
-  apply SepWPp.of_sepWP_frozen (mid := entry + bv% (68)) hfrozen2 hsym2
-  wp_steps
-  wp_call hshim ()
-  examples_hide_fetches
-  apply SepWP.done (by simp_all) (by simp_all)
-  intro hfrozen2' hsym2'
-  code_fetches CryptoVerification.libsignalSessionCode CryptoVerification.LibsignalSession.libsignalSessionBin
-    img.base (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys")) 144
-  subst hentry
-  generalize_entry hentry : (tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName = entry
-  apply SepWPp.of_sepWP_frozen (mid := entry + bv% (80)) hfrozen2' hsym2'
-  wp_steps
-  wp_call halloc (32, 1)
-  examples_hide_fetches
-  apply SepWP.done (by simp_all) (by simp_all)
-  intro hfrozen3 hsym3
-  by_cases hoom : sf_2.readReg64 Reg.x0 = 0
-  · simp only [hoom, ite_true]
-    refine SepWPp.pure_elim_oom fun htr_oom => ?_
-    code_fetches CryptoVerification.libsignalSessionCode CryptoVerification.LibsignalSession.libsignalSessionBin
-      img.base (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys")) 144
-    subst hentry
-    generalize_entry hentry : (tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName = entry
-    apply SepWPp.of_sepWP_frozen (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys")) hfrozen3 hsym3
-    wp_steps
-    examples_hide_fetches
-    apply SepWP.done (by simp_all) (by simp_all)
-    intro _ _
-    refine SepWPp.panic (by simp_all) (by simpa [hentry] using hpanic) fun hm' => ?_
-    have hfail : allocFailedIn s0 sf_2 ∧ s0.trace <+: sf_2.trace :=
-      allocFailedIn_of_trace_eq (by simp_all)
-    simpa only [messageKeysSpecWithStack, Spec.inImage, sepConj_assoc] using
-      allowPanic_panicked (⟨by simpa [allocFailedIn, Rust.panicked] using hfail.1,
-        by simpa [Rust.panicked] using hfail.2⟩) hm'
-  · simp only [hoom, ite_false]
-    refine SepWPp.pure_elim_alloc fun ⟨_halign, htr_alloc⟩ => ?_
-    have hoom' : ¬sf_2.readReg64 (Reg.gpr 0#5) = 0#64 := hoom
-    rw [memRegion40_unpack ret, memRegion32_eq_exists_cells4 (sf_2.readReg64 Reg.x0)]
-    simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-    refine SepWPp.exists_elim fun d0 => SepWPp.exists_elim fun d1 =>
-      SepWPp.exists_elim fun d2 => SepWPp.exists_elim fun d3 =>
-      SepWPp.exists_elim fun t0 => SepWPp.exists_elim fun c0 =>
-      SepWPp.exists_elim fun p0 => SepWPp.exists_elim fun l0 =>
-      SepWPp.exists_elim fun i0 => ?_
-    code_fetches CryptoVerification.libsignalSessionCode CryptoVerification.LibsignalSession.libsignalSessionBin
-      img.base (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys")) 144
-    subst hentry
-    generalize_entry hentry : (tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName = entry
-    apply SepWPp.of_sepWP_frozen (mid := s0.readReg64 Reg.lr) hfrozen3 hsym3
-    wp_steps
-    examples_hide_fetches
-    apply SepWP.done (by simp_all) (by simp_all)
-    intro _ _
-    refine SepWPp.done (by simp_all) (by simp_all) ⟨fun hm => ?_, rfl, by mk_cc_close⟩
-    have hsp_sf1 : sf_1.sp = s0.sp - 80#64 := by simp_all
-    rw [hsp_sf1] at hm
-    refine Satisfies.mono (sepConj_mono_left ?_) hm
-    refine Entails.pure_right (by simp_all) ?_
-    rw [pointsToBytes_chainKeyBytes_eq self ck]
-    have hmkg := mkgAt_of_parts A ret (sf_2.readReg64 Reg.x0) (ck.messageKeys F)
-      (length_messageKeys_seed F ck) hoom
-    rw [hw32 (sf_2.readReg64 Reg.x0)] at hmkg
-    have hstk := stackAt_gen_repack s0.sp totalStack midStack padTop allocStack allocPad
-      htot halloc_pad htot64 w0 w1 w2 w3
-      (s0.readReg64 Reg.x29) (s0.readReg64 Reg.lr) (s0.readReg64 Reg.x21)
-      (s0.readReg64 Reg.x20) (s0.readReg64 Reg.x19) 1#8
-    refine Entails.trans ?_
-      (sepConj_mono_right (sepConj_mono hmkg (sepConj_mono_right hstk)))
-    have heq : ∀ {P Q : SepProp}, P = Q → (P ⊢ Q) := fun h => h ▸ Entails.refl _
-    exact heq (by dsimp only [ChainKey.messageKeys, Reg.x0, Reg.x19, Reg.x20, Reg.x21, Reg.lr, Reg.x29]; ac_rfl)
-
-theorem messageKeys_ok_of_hmac_ext {img : Obj.Image} {F : ShaCompress} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContracts img.base A ext)
-    (hhmac : subroutine_ok (tripleRatchetProgAtExt img.base ext) (img.base + bv% (ls_off% "libsignal_protocol::crypto::hmac_sha256"))
-      ((hmacSpec F).inImage img)) :
-    MessageKeysOkExt img F A ext := by
-  have hhmac_at : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName + bv% (ls_off% "libsignal_protocol::crypto::hmac_sha256" - ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys"))
-      ((hmacSpecWithStack F 2048).inImage img) := by
-    have haddr : (tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName + bv% (ls_off% "libsignal_protocol::crypto::hmac_sha256" - ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys") = img.base + bv% (ls_off% "libsignal_protocol::crypto::hmac_sha256") := by
-      rw [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys"), BitVec.add_assoc]
-      rfl
-    rw [haddr]
-    exact hhmac
-  exact messageKeys_ok_of_hooks_gen
-    (totalStack := messageKeysStack) (midStack := 4096) (padTop := 4016)
-    (hmacStack := 2048) (hmacPad := 2048) (allocStack := allocHookStack) (allocPad := 0)
-    (by decide) (by decide) (by decide) (by decide)
-    hhmac_at
-    (subroutine_ok_inImage_of_subroutine_ok img
-      (subroutine_ok_of_optNone (shim_opt_of_base (name := messageKeysName) (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys")) hA (by fnoff_eq))))
-    (subroutine_ok_inImage_of_subroutine_ok img
-      (subroutine_ok_of_optNone (alloc_opt_of_base (name := messageKeysName) (k := num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys")) hA (by fnoff_eq))))
-    (panic_at_handle_error_ext img.base ext messageKeysName _ (by fnoff_eq))
-
-theorem messageKeys_ok_ext
-    {img : Obj.Image} {F : ShaCompress} {A : RustAlloc}
-    {abs ext : String → Option (State → State)}
-    (hA : AllocContracts img.base A ext)
-    (hle : ∀ n f, Rust.withPanics (CryptoVerification.LibsignalSession.sessionExterns F abs) n = some f →
-      Rust.withPanics ext n = some f)
-    (hloads : Obj.Loads libsignalSessionImage img) :
-    MessageKeysOkExt img F A ext :=
-  messageKeys_ok_of_hmac_ext hA
-    (ConsumeMessageKeyTransfer.session_subroutine_ok_mono_ext hloads hle (hmac_sha256_ok img F abs hloads))
-
-theorem messageKeys_ok_of_hmac
-    {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hhmac : HmacOk img C.F abs)
-    (hA : AllocHooks A abs)
-    (hloads : Obj.Loads libsignalSessionImage img) :
-    MessageKeysOk img C A ctl abs :=
-  messageKeys_ok_of_hmac_ext (AllocContracts.of_tripleRatchetProgAt img.base C A ctl abs hA)
-    (ConsumeMessageKeyTransfer.session_subroutine_ok_mono hloads hhmac)
-
-/-- `ChainKey::message_keys` satisfies `MessageKeysOk` on `tripleRatchetProgAt`. -/
-theorem messageKeys_ok
-    {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hA : AllocHooks A abs)
-    (hloads : Obj.Loads libsignalSessionImage img) :
-    MessageKeysOk img C A ctl abs :=
-  messageKeys_ok_of_hmac (hmac_sha256_ok img C.F abs hloads) hA hloads
-
-theorem messageKeys_ok_of_hmac_x {img : Obj.Image} {F : ShaCompress} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContractsX img A ext)
-    (hhmac : subroutine_ok (tripleRatchetProgAtExt img.base ext) (img.base + bv% (ls_off% "libsignal_protocol::crypto::hmac_sha256"))
-      ((hmacSpec F).inImage img)) :
-    MessageKeysOkX img F A ext := by
-  have hhmac_at : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName + bv% (ls_off% "libsignal_protocol::crypto::hmac_sha256" - ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys"))
-      ((hmacSpecWithStack F 2048).inImage img) := by
-    have haddr : (tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName + bv% (ls_off% "libsignal_protocol::crypto::hmac_sha256" - ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys") = img.base + bv% (ls_off% "libsignal_protocol::crypto::hmac_sha256") := by
-      rw [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::ratchet::keys::ChainKey>::message_keys"), BitVec.add_assoc]
-      rfl
-    rw [haddr]
-    exact hhmac
-  exact messageKeys_ok_of_hooks_gen
-    (totalStack := messageKeysStackX) (midStack := extHookStack) (padTop := 4016)
-    (hmacStack := 2048) (hmacPad := 14336) (allocStack := extHookStack) (allocPad := 0)
-    (by decide) (by decide) (by decide) (by decide)
-    hhmac_at
-    (shim_opt_of_x hA (by fnoff_eq))
-    (alloc_opt_of_x hA (by fnoff_eq))
-    (panic_at_handle_error_ext img.base ext messageKeysName _ (by fnoff_eq))
-
-/-- `ChainKey::message_keys` satisfies `MessageKeysOkX` on `tripleRatchetProgAtExt`. -/
-theorem messageKeys_ok_x
-    {img : Obj.Image} {F : ShaCompress} {A : RustAlloc}
-    {abs ext : String → Option (State → State)}
-    (hA : AllocContractsX img A ext)
-    (hle : ∀ n f, Rust.withPanics (CryptoVerification.LibsignalSession.sessionExterns F abs) n = some f →
-      Rust.withPanics ext n = some f)
-    (hloads : Obj.Loads libsignalSessionImage img) :
-    MessageKeysOkX img F A ext :=
-  messageKeys_ok_of_hmac_x hA
-    (ConsumeMessageKeyTransfer.session_subroutine_ok_mono_ext hloads hle (hmac_sha256_ok img F abs hloads))
-
-/-! ## 5. Relocatable `[LibsignalPlacement]` Contract (Block `38`) -/
-
 abbrev lsRustNoAllocShimSym : String :=
   "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2"
 
@@ -757,7 +368,7 @@ abbrev lsRustAllocSym : String :=
 abbrev lsHandleErrorSym : String :=
   "_RNvNtCs69KKACWg7bl_5alloc7raw_vec12handle_error"
 
-def messageKeysPlacedSpecWithStack (F : ShaCompress) (A : RustAlloc)
+@[expose] def messageKeysPlacedSpecWithStack (F : ShaCompress) (A : RustAlloc)
     (totalStack : Nat) : Spec ChainKeyGhost where
   pre := fun (self, ck, ret) s =>
     ⌜s.readReg64 .x0 = self ∧ s.readReg64 .x8 = ret⌝ ∗
@@ -816,16 +427,16 @@ private theorem hmacWithStack_placed_ok_at_state [LibsignalPlacement] {prog : Pr
 
 private theorem ls_externAt?_of_mem [LibsignalPlacement] {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
-    {sym : String} (hmem : sym ∈ libsignalSessionExterns := by decide)
+    {sym : String} (hmem : sym ∈ libsignalHookedExterns := by decide)
     (hi : i < 619 := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     prog.externAt? (lsρ sym) = H sym := by
-  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem hmem
-  exact ls_externAt?_of_blockProg (k := k) (by rw [List.getElem?_eq_getElem hlt, hk]) hi hunmut
+  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
+  exact ls_externAt?_of_blockProg (k := k) (by rw [List.getElem?_eq_getElem hlt, hk]) hi hunmut (hhooked := hmem)
 
 private theorem ls_hook_ok_of_mem [LibsignalPlacement] {α : Type} {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
     {sym : String} {spec : Spec α} (hsat : HookSat H sym spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide)
+    (hmem : sym ∈ libsignalHookedExterns := by decide)
     (hi : i < 619 := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     subroutine_ok prog (lsρ sym) spec := by
   obtain ⟨f, hf, hok⟩ := hsat
@@ -886,11 +497,10 @@ theorem message_keys_placed_ok_gen [LibsignalPlacement] {F : ShaCompress} {A : R
   rw [hmacWith_one_eq_messageKeys_seed F ck]
   obtain ⟨w0, w1, w2, w3, _, hw32⟩ :=
     exists_unpack64_of_length_32 (length_messageKeys_seed F ck)
-  have hw_sp := hw32 (s0.sp - 80#64)
-  have h72 : s0.sp - 80#64 + 8#64 = s0.sp - 72#64 := by bv_arith
-  have h64 : s0.sp - 80#64 + 16#64 = s0.sp - 64#64 := by bv_arith
-  have h56 : s0.sp - 80#64 + 24#64 = s0.sp - 56#64 := by bv_arith
-  rw [h72, h64, h56] at hw_sp
+  have hw_sp : ((s0.sp - 80#64) ↦ₛ (ck.messageKeys F).seed) =
+      ((s0.sp - 80#64) ↦₆₄ w0) ∗ ((s0.sp - 72#64) ↦₆₄ w1) ∗
+      ((s0.sp - 64#64) ↦₆₄ w2) ∗ ((s0.sp - 56#64) ↦₆₄ w3) := by
+    rw [hw32 (s0.sp - 80#64)]; sep_interval_eq
   rw [hw_sp, remerge_and_split_midStack (s0.sp - 80#64) hmacStack hmacPad allocStack allocPad
       midStack hhmac_pad halloc_pad (by omega)]
   have hpow1 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
@@ -921,15 +531,13 @@ theorem message_keys_placed_ok_gen [LibsignalPlacement] {F : ShaCompress} {A : R
   · simp only [hoom, ite_false]
     refine SepWPp.pure_elim_alloc fun ⟨_halign, htr_alloc⟩ => ?_
     have hoom' : ¬sf_2.readReg64 (Reg.gpr 0#5) = 0#64 := hoom
-    rw [memRegion40_unpack ret, memRegion32_eq_exists_cells4 (sf_2.readReg64 Reg.x0)]
+    rw [memRegion40_eq_mkgRaw ret, memRegion32_eq_exists_cells4 (sf_2.readReg64 Reg.x0)]
     simp only [sepExists_sepConj_left, sepExists_sepConj_right]
     refine SepWPp.exists_elim fun d0 => SepWPp.exists_elim fun d1 =>
       SepWPp.exists_elim fun d2 => SepWPp.exists_elim fun d3 =>
-      SepWPp.exists_elim fun t0 => SepWPp.exists_elim fun c0 =>
-      SepWPp.exists_elim fun p0 => SepWPp.exists_elim fun l0 =>
-      SepWPp.exists_elim fun i0 => ?_
+      SepWPp.exists_elim fun m0 => ?_
     apply sepWPp_seq_lscl (mid := s0.readReg64 Reg.lr) hcl3
-    wp_steps
+    wp_lens_auto
     apply SepWP.done (by simp_all) (by simp_all)
     intro _
     refine SepWPp.done (by simp_all) (by simp_all) ⟨fun hm => ?_, rfl, by mk_cc_close⟩
@@ -938,17 +546,16 @@ theorem message_keys_placed_ok_gen [LibsignalPlacement] {F : ShaCompress} {A : R
     refine Satisfies.mono (sepConj_mono_left ?_) hm
     refine Entails.pure_right (by simp_all) ?_
     rw [pointsToBytes_chainKeyBytes_eq self ck]
-    have hmkg := mkgAt_of_parts A ret (sf_2.readReg64 Reg.x0) (ck.messageKeys F)
+    have hmkg := mkgRaw_to_mkgAt A ret (sf_2.readReg64 Reg.x0) (ck.messageKeys F)
       (length_messageKeys_seed F ck) hoom
     rw [hw32 (sf_2.readReg64 Reg.x0)] at hmkg
     have hstk := stackAt_gen_repack s0.sp totalStack midStack padTop allocStack allocPad
       htot halloc_pad htot64 w0 w1 w2 w3
       (s0.readReg64 Reg.x29) (s0.readReg64 Reg.lr) (s0.readReg64 Reg.x21)
       (s0.readReg64 Reg.x20) (s0.readReg64 Reg.x19) 1#8
-    refine Entails.trans ?_
-      (sepConj_mono_right (sepConj_mono hmkg (sepConj_mono_right hstk)))
-    have heq : ∀ {P Q : SepProp}, P = Q → (P ⊢ Q) := fun h => h ▸ Entails.refl _
-    exact heq (by dsimp only [ChainKey.messageKeys, Reg.x0, Reg.x19, Reg.x20, Reg.x21, Reg.lr, Reg.x29]; ac_rfl)
+    dsimp only [ChainKey.messageKeys, Reg.x0, Reg.x19, Reg.x20, Reg.x21, Reg.lr, Reg.x29] at hmkg ⊢
+    refine Entails.trans ?_ (sepConj_mono_right (sepConj_mono hmkg (sepConj_mono_right hstk)))
+    bi_entail
 
 theorem message_keys_placed_ok [LibsignalPlacement] {F : ShaCompress} {A : RustAlloc}
     {H : String → Option (State → State)}
@@ -1063,11 +670,10 @@ theorem message_keys_placed_cro_ok_gen [LibsignalPlacement] {F : ShaCompress} {A
   rw [hmacWith_one_eq_messageKeys_seed F ck]
   obtain ⟨w0, w1, w2, w3, _, hw32⟩ :=
     exists_unpack64_of_length_32 (length_messageKeys_seed F ck)
-  have hw_sp := hw32 (s0.sp - 80#64)
-  have h72 : s0.sp - 80#64 + 8#64 = s0.sp - 72#64 := by bv_arith
-  have h64 : s0.sp - 80#64 + 16#64 = s0.sp - 64#64 := by bv_arith
-  have h56 : s0.sp - 80#64 + 24#64 = s0.sp - 56#64 := by bv_arith
-  rw [h72, h64, h56] at hw_sp
+  have hw_sp : ((s0.sp - 80#64) ↦ₛ (ck.messageKeys F).seed) =
+      ((s0.sp - 80#64) ↦₆₄ w0) ∗ ((s0.sp - 72#64) ↦₆₄ w1) ∗
+      ((s0.sp - 64#64) ↦₆₄ w2) ∗ ((s0.sp - 56#64) ↦₆₄ w3) := by
+    rw [hw32 (s0.sp - 80#64)]; sep_interval_eq
   rw [hw_sp, remerge_and_split_midStack (s0.sp - 80#64) hmacStack hmacPad allocStack allocPad
       midStack hhmac_pad halloc_pad (by omega)]
   have hpow1 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
@@ -1098,15 +704,13 @@ theorem message_keys_placed_cro_ok_gen [LibsignalPlacement] {F : ShaCompress} {A
   · simp only [hoom, ite_false]
     refine SepWPp.pure_elim_alloc fun ⟨_halign, htr_alloc⟩ => ?_
     have hoom' : ¬sf_2.readReg64 (Reg.gpr 0#5) = 0#64 := hoom
-    rw [memRegion40_unpack ret, memRegion32_eq_exists_cells4 (sf_2.readReg64 Reg.x0)]
+    rw [memRegion40_eq_mkgRaw ret, memRegion32_eq_exists_cells4 (sf_2.readReg64 Reg.x0)]
     simp only [sepExists_sepConj_left, sepExists_sepConj_right]
     refine SepWPp.exists_elim fun d0 => SepWPp.exists_elim fun d1 =>
       SepWPp.exists_elim fun d2 => SepWPp.exists_elim fun d3 =>
-      SepWPp.exists_elim fun t0 => SepWPp.exists_elim fun c0 =>
-      SepWPp.exists_elim fun p0 => SepWPp.exists_elim fun l0 =>
-      SepWPp.exists_elim fun i0 => ?_
+      SepWPp.exists_elim fun m0 => ?_
     apply sepWPp_seq_lscro (mid := s0.readReg64 Reg.lr) hcl3
-    wp_steps
+    wp_lens_auto
     apply SepWP.done (by simp_all) (by simp_all)
     intro _
     refine SepWPp.done (by simp_all) (by simp_all) ⟨fun hm => ?_, rfl, by mk_cc_close⟩
@@ -1115,17 +719,16 @@ theorem message_keys_placed_cro_ok_gen [LibsignalPlacement] {F : ShaCompress} {A
     refine Satisfies.mono (sepConj_mono_left ?_) hm
     refine Entails.pure_right (by simp_all) ?_
     rw [pointsToBytes_chainKeyBytes_eq self ck]
-    have hmkg := mkgAt_of_parts A ret (sf_2.readReg64 Reg.x0) (ck.messageKeys F)
+    have hmkg := mkgRaw_to_mkgAt A ret (sf_2.readReg64 Reg.x0) (ck.messageKeys F)
       (length_messageKeys_seed F ck) hoom
     rw [hw32 (sf_2.readReg64 Reg.x0)] at hmkg
     have hstk := stackAt_gen_repack s0.sp totalStack midStack padTop allocStack allocPad
       htot halloc_pad htot64 w0 w1 w2 w3
       (s0.readReg64 Reg.x29) (s0.readReg64 Reg.lr) (s0.readReg64 Reg.x21)
       (s0.readReg64 Reg.x20) (s0.readReg64 Reg.x19) 1#8
-    refine Entails.trans ?_
-      (sepConj_mono_right (sepConj_mono hmkg (sepConj_mono_right hstk)))
-    have heq : ∀ {P Q : SepProp}, P = Q → (P ⊢ Q) := fun h => h ▸ Entails.refl _
-    exact heq (by dsimp only [ChainKey.messageKeys, Reg.x0, Reg.x19, Reg.x20, Reg.x21, Reg.lr, Reg.x29]; ac_rfl)
+    dsimp only [ChainKey.messageKeys, Reg.x0, Reg.x19, Reg.x20, Reg.x21, Reg.lr, Reg.x29] at hmkg ⊢
+    refine Entails.trans ?_ (sepConj_mono_right (sepConj_mono hmkg (sepConj_mono_right hstk)))
+    bi_entail
 
 theorem message_keys_placed_cro_ok [LibsignalPlacement] {F : ShaCompress} {A : RustAlloc}
     {H : String → Option (State → State)}

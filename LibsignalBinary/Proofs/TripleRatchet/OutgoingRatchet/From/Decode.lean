@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.Apply
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.Apply -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.Calls
 import ProofLib.SepLogic.WPFrozen
@@ -24,7 +23,7 @@ Instruction decode facts, `.rodata` string literal lemmas, callee bridges, and 3
 partition lemmas for `<OutgoingTripleRatchet>::from_session_state`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.OutgoingRatchet
 
@@ -52,213 +51,9 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Instruction decode lemmas for `OTR::from_session_state` -/
 
-gen_decodes libsignalSessionCode_tree libsignalSessionBin [(ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state") → (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state" + 1304)]
-
-/-! ## `.rodata` string literal lemmas for `OTR::from_session_state` -/
-
-theorem rodata_0x40400_eq :
-    (libsignalSessionImage.data.drop (num% (ls_xref% (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state" + 104) (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state" + 108)) - num% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 44)))).take 20 = invalidSessionStructureStr .missingSenderChain := by
-  rfl_kernel
-
 namespace FromSessionStateFacts
 
-theorem img_dataOff : libsignalSessionImage.dataOff = num% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 44)) := rfl
-
-theorem img_data_len_ge {n : Nat} (h : n ≤ 0x3b78) : n ≤ libsignalSessionImage.data.length :=
-  Nat.le_trans h (Nat.le_of_ble_eq_true (by rfl_kernel))
-
-theorem of_rodata_loads_eq {li : Arm64.Obj.LinkedImage} {img : Arm64.Obj.Image}
-    {m : Memory} {P : SepProp} (himg : Arm64.Obj.Loads li img)
-    {dataOff : Nat} (hdo : li.dataOff = dataOff)
-    {secOff secLen : Nat} {bs : List (BitVec 8)}
-    (hsec : (secOff, secLen) ∈ li.roData)
-    (hoff : dataOff ≤ secOff) (hlen : secLen < 2 ^ 32)
-    (hdlen : secOff - dataOff + secLen ≤ li.data.length)
-    (hrel : li.relocs.all
-      (fun r => decide (r.off + r.width ≤ secOff - dataOff ∨ secOff - dataOff + secLen ≤ r.off)) = true)
-    (heq : (li.data.drop (secOff - dataOff)).take secLen = bs)
-    (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + BitVec.ofNat 64 secOff) ↦ᵣ bs) ∗ P := by
-  subst heq
-  exact ProofLib.Satisfies.of_rodata_loads himg hdo hsec hoff hlen hdlen hrel hro hP
-
 end FromSessionStateFacts
-
-theorem rodata_missingSenderChain_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {m : Memory} {P : SepProp} (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + bv% (ls_xref% (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state" + 104) (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state" + 108))) ↦ᵣ invalidSessionStructureStr .missingSenderChain) ∗ P :=
-  FromSessionStateFacts.of_rodata_loads_eq himg FromSessionStateFacts.img_dataOff
-    (List.mem_of_elem_eq_true (by rfl_kernel)) (by decide) (by decide)
-    (FromSessionStateFacts.img_data_len_ge (by decide)) (by rfl_kernel) rodata_0x40400_eq hro hP
-
-theorem rodata_0x4176c_eq :
-    (libsignalSessionImage.data.drop (num% (ls_str% "version does not fit in u8") - num% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 44)))).take 26 = invalidSessionStructureStr .versionTooLarge := by
-  rfl_kernel
-
-theorem rodata_versionTooLarge_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {m : Memory} {P : SepProp} (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + bv% (ls_str% "version does not fit in u8")) ↦ᵣ invalidSessionStructureStr .versionTooLarge) ∗ P :=
-  FromSessionStateFacts.of_rodata_loads_eq himg FromSessionStateFacts.img_dataOff
-    (List.mem_of_elem_eq_true (by rfl_kernel)) (by decide) (by decide)
-    (FromSessionStateFacts.img_data_len_ge (by decide)) (by rfl_kernel) rodata_0x4176c_eq hro hP
-
-theorem rodata_0x40ce0_eq :
-    (libsignalSessionImage.data.drop (num% (ls_xref% (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state" + 748) (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state" + 752)) - num% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 44)))).take 27 = invalidSessionStructureStr .missingRemoteIdentity := by
-  rfl_kernel
-
-theorem rodata_missingRemoteIdentity_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {m : Memory} {P : SepProp} (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + bv% (ls_xref% (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state" + 748) (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state" + 752))) ↦ᵣ invalidSessionStructureStr .missingRemoteIdentity) ∗ P :=
-  FromSessionStateFacts.of_rodata_loads_eq himg FromSessionStateFacts.img_dataOff
-    (List.mem_of_elem_eq_true (by rfl_kernel)) (by decide) (by decide)
-    (FromSessionStateFacts.img_data_len_ge (by decide)) (by rfl_kernel) rodata_0x40ce0_eq hro hP
-
-/-! ## `adrp` page alignment lemmas for `OTR::from_session_state` -/
-
-theorem fnAddr_adrp_b7fc {b : BitVec 64} {H : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr otrFromName + 104#64) &&&
-      0xfffffffffffff000#64) = b + bv% (page% (ls_off% "<libsignal_protocol::sealed_sender::ServerCertificate>::deserialize" + 156)) := by
-  rw [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state"), BitVec.add_assoc,
-    adrp_page_of_aligned hb]
-  rfl
-
-theorem fnAddr_adrp_b8f4 {b : BitVec 64} {H : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr otrFromName + 352#64) &&&
-      0xfffffffffffff000#64) = b + bv% (page% (ls_off% "<libsignal_protocol::sealed_sender::ServerCertificate>::deserialize" + 156)) := by
-  rw [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state"), BitVec.add_assoc,
-    adrp_page_of_aligned hb]
-  rfl
-
-theorem fnAddr_adrp_ba80 {b : BitVec 64} {H : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr otrFromName + 748#64) &&&
-      0xfffffffffffff000#64) = b + bv% (page% (ls_off% "<libsignal_protocol::sealed_sender::ServerCertificate>::deserialize" + 156)) := by
-  rw [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state"), BitVec.add_assoc,
-    adrp_page_of_aligned hb]
-  rfl
-
-/-! ## `pkTryFromCodeSpec` on valid DJB public keys -/
-
-/-- Specialized `pkTryFromSpec` when `PublicKey.deserialize bs = .ok pk`. -/
-def pkTryFromOkSpec (img : Obj.Image) : Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64) where
-  pre := fun (p, bs, pk, out) s =>
-    ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧ s.readReg64 .x8 = out ∧
-      PublicKey.deserialize bs = .ok pk⌝ ∗
-      (p ↦ₛ bs) ∗ memRegion out 40 ∗ ((img.base + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256)) ↦₆₄ 0#64)
-  post := fun (p, bs, pk, out) s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      (p ↦ₛ bs) ∗ (out ↦₈ 0#8) ∗ ((out + 1#64) ↦ₛ pk.bytes.toList) ∗
-      memRegion (out + 33#64) 7 ∗ ((img.base + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256)) ↦₆₄ 0#64)
-
-theorem pkTryFromOk_ok_at_ext {img : Obj.Image} {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff pkTryFromName := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      (pkTryFromOkSpec img) := by
-  refine subroutine_ok_map (pk_try_from_ok_at_ext img ext himg name k hk) ?_
-  rintro ⟨p, bs, pk, out⟩ R s0 hpre
-  simp only [pkTryFromOkSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx8, hdes⟩, hmem⟩
-  refine ⟨(p, bs, out), R, ?_, fun sf hpost => ?_⟩
-  · simp only [pkTryFromCodeSpec, pkTryFromSpec, logOff, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1, hx8⟩, hmem⟩
-  · simp only [pkTryFromCodeSpec, pkTryFromSpec, logOff, hdes, pkTryFromResultAt,
-      sepConj_assoc, satisfies_pure_sepConj] at hpost
-    simp only [pkTryFromOkSpec, sepConj_assoc, satisfies_pure_sepConj]
-    exact hpost
-
-theorem pkTryFromOk_ok_at_tripleRatchet {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff pkTryFromName := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      (pkTryFromOkSpec img) :=
-  pkTryFromOk_ok_at_ext himg hk
-
-/-! ## Callee address bridges for `OTR::from_session_state` -/
-
-theorem deserialize_ok_at_otrFrom_ext {b : BitVec 64} {ext : String → Option (State → State)}
-    (h : DeserializeExtOk b ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr otrFromName + bv% (ls_off% "<libsignal_core::curve::PublicKey>::deserialize" - ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state"))
-      (CryptoVerification.LibsignalSession.FindReceiverChainIndex.deserializeSpec b) := by
-  have heq : (tripleRatchetProgAtExt b ext).fnAddr otrFromName + bv% (ls_off% "<libsignal_core::curve::PublicKey>::deserialize" - ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state") =
-      (tripleRatchetProgAtExt b ext).fnAddr deserializeName := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state"), (ls_lemma% fnOff "<libsignal_core::curve::PublicKey>::deserialize")]
-    bv_lin
-  rw [heq]; exact h
-
-theorem deserialize_ok_at_otrFrom {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : DeserializeOk b C ctl abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr otrFromName + bv% (ls_off% "<libsignal_core::curve::PublicKey>::deserialize" - ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state"))
-      (CryptoVerification.LibsignalSession.FindReceiverChainIndex.deserializeSpec b) :=
-  deserialize_ok_at_otrFrom_ext h
-
-def remoteIdentityKeyOtrSpec (A : RustAlloc) (img : Obj.Image) : Spec RemoteIdentityKeyGhost where
-  pre := fun x s =>
-    ⌜s.readReg64 .x0 = x.ss ∧ s.readReg64 .x8 = x.ret ∧
-      (match x.rem with
-       | none => x.g.bytes = []
-       | some ik => PublicKey.deserialize x.g.bytes = .ok ik.publicKey)⌝ ∗
-      vecGhostAt A x.g (x.ss + 0x18#64) ∗ memRegion x.ret 34 ∗
-      ((img.base + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256)) ↦₆₄ 0#64) ∗ stackAt s.sp remoteIdentityKeyStack
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      vecGhostAt A x.g (x.ss + 0x18#64) ∗ remoteIdentityOkAt x.ret x.rem ∗
-      ((img.base + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256)) ↦₆₄ 0#64) ∗ stackAt s0.sp remoteIdentityKeyStack
-
-theorem remoteIdentityKey_ok_at_otrFrom_ext {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (h : RemoteIdentityKeyExtOk img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr otrFromName + bv% (ls_off% "<libsignal_protocol::state::session::SessionState>::remote_identity_key" - ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state"))
-      (remoteIdentityKeyOtrSpec A img) := by
-  have heq : (tripleRatchetProgAtExt img.base ext).fnAddr otrFromName + bv% (ls_off% "<libsignal_protocol::state::session::SessionState>::remote_identity_key" - ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state") =
-      (tripleRatchetProgAtExt img.base ext).fnAddr remoteIdentityKeyName := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state"), (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionState>::remote_identity_key")]
-    bv_lin
-  rw [heq]; exact h
-
-theorem remoteIdentityKey_ok_at_otrFrom {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (h : RemoteIdentityKeyOk img C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr otrFromName + bv% (ls_off% "<libsignal_protocol::state::session::SessionState>::remote_identity_key" - ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state"))
-      (remoteIdentityKeyOtrSpec A img) :=
-  remoteIdentityKey_ok_at_otrFrom_ext h
-
-theorem dropSpe_ok_at_otrFrom_ext {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (h : DropSpeExtOk img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr otrFromName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]") - (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state")))
-      ((dropSpeSpec A).inImage img) := by
-  have heq : (tripleRatchetProgAtExt img.base ext).fnAddr otrFromName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]") - (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state")) =
-      (tripleRatchetProgAtExt img.base ext).fnAddr dropSpeName := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state"), (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]")]
-    bv_lin
-  rw [heq]; exact h
-
-theorem dropSpe_ok_at_otrFrom {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (h : DropSpeOk img C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr otrFromName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]") - (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state")))
-      ((dropSpeSpec A).inImage img) :=
-  dropSpe_ok_at_otrFrom_ext h
-
-/-! ## Pure model and ghost relation lemmas for `OTR::from_session_state` -/
 
 theorem agreeExceptPq_afterOtrFrom (G : SessionGhost) (st : SessionState (List (BitVec 8))) :
     G.AgreeExceptPq (afterOtrFrom G st) := by
@@ -349,9 +144,9 @@ theorem otrFrom_model_no_panic (x : OtrFromGhost) :
 
 /-! ## Packed word helpers (`pack8`, `pack16`, `pack32`, `pack64`) -/
 
-def pack8 (bs : List (BitVec 8)) : BitVec 8 := packBV 8 bs
-def pack16 (bs : List (BitVec 8)) : BitVec 16 := packBV 16 bs
-def pack32 (bs : List (BitVec 8)) : BitVec 32 := packBV 32 bs
+@[expose] def pack8 (bs : List (BitVec 8)) : BitVec 8 := packBV 8 bs
+@[expose] def pack16 (bs : List (BitVec 8)) : BitVec 16 := packBV 16 bs
+@[expose] def pack32 (bs : List (BitVec 8)) : BitVec 32 := packBV 32 bs
 
 theorem pointsToBytes_1_eq_pointsTo8 (a : BitVec 64) (bs : List (BitVec 8)) (h : bs.length = 1) :
     (a ↦ₛ bs) = (a ↦₈ pack8 bs) := by
@@ -446,7 +241,7 @@ theorem pointsTo64_of_1_4_2_1 (a p : BitVec 64) :
   exact congrArg₂ sepConj (congrArg _ (by bv_kernel)) (congrArg _ (by bv_kernel))
 
 /-- Branch 3 (`missingRemoteIdentity`): 22 bytes `(8 + 8 + 6)` at `a` decomposed as `4 + 2 + 8 + 8`. -/
-def bs22 (w0 w1 : BitVec 64) (bs6 : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def bs22 (w0 w1 : BitVec 64) (bs6 : List (BitVec 8)) : List (BitVec 8) :=
   unpack64 w0 ++ (unpack64 w1 ++ bs6)
 
 theorem twentyTwoBytes_eq_4_2_8_8 (a w0 w1 : BitVec 64) (bs6 : List (BitVec 8))
@@ -475,10 +270,6 @@ theorem twentyTwoBytes_eq_4_2_8_8 (a w0 w1 : BitVec 64) (bs6 : List (BitVec 8))
       pointsToBytes_8_eq_pointsTo64 (a + 14#64) _ (by simp [hlen])]
 
 /-! ## `SepWP.of_sepWP_inv` and 32-byte key partition lemmas -/
-
-theorem frozenLoaded_setPC {img : Obj.Image} {s : State} (pc : BitVec 64)
-    (h : img.FrozenLoaded s) : img.FrozenLoaded (s.setPC pc) :=
-  (Obj.Image.frozenLoaded_iff (s := s.setPC pc)).2 ((Obj.Image.frozenLoaded_iff (s := s)).1 h)
 
 /-- `remoteIk` 32-byte partition: `4 + 2 + 8 + 8 + 8 + 2` at `+0, +4, +6, +14, +22, +30`. -/
 theorem bytes32_eq_4_2_8_8_8_2 (a : BitVec 64) (bs : List (BitVec 8)) (h : bs.length = 32) :
@@ -900,7 +691,6 @@ attribute [local arm64_norm]
   localIk_bytes0_7_low32 localIk_bytes0_7_mid16 localIk_bytes0_7_hi8
   shift40_shift16_eq_shift56
 
-
 namespace FromSessionStateFacts
 
 theorem vec32_pack8_take1_eq_get0 (v : List.Vector (BitVec 8) 32) :
@@ -1030,13 +820,13 @@ theorem stackAt_dropSpe (sp : BitVec 64) :
 /-! ## Relocatable `[LibsignalPlacement]` `.rodata` and callee helpers -/
 
 abbrev missingSenderChainSym : String :=
-  "libsignal_protocol:.rodata..Lanon.4"
+  "libsignal_protocol:.rodata..Lanon.6"
 
 abbrev versionTooLargeSym : String :=
-  "libsignal_protocol:.rodata..Lanon.238"
+  "libsignal_protocol:.rodata..Lanon.245"
 
 abbrev missingRemoteIdentitySym : String :=
-  "libsignal_protocol:.rodata..Lanon.139"
+  "libsignal_protocol:.rodata..Lanon.146"
 
 theorem rodata_missingSenderChain_placed_intro [LibsignalPlacement]
     {m : Memory} {P : SepProp} (hro : LibsignalRoLoaded lsmpl m) (hP : m ⊨ P) :
@@ -1054,7 +844,7 @@ theorem rodata_missingRemoteIdentity_placed_intro [LibsignalPlacement]
   lsro_intro_chk hro (by rfl_kernel) hP
 
 /-- Relocatable `pkTryFromPlacedSpec` specialized when `PublicKey.deserialize bs = .ok pk`. -/
-def pkTryFromOkPlacedSpec [LibsignalPlacement] :
+@[expose] def pkTryFromOkPlacedSpec [LibsignalPlacement] :
     Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64) where
   pre := fun (p, bs, pk, out) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧ s.readReg64 .x8 = out ∧

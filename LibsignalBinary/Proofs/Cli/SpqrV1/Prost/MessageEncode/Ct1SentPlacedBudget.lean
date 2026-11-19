@@ -9,15 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.UnchunkedBasePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1SentPlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.UnchunkedBasePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1SentPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.Ct1Sent1PlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EpochEncodedLen -- shake: keep
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent1Budget
 
 /-!
 # Budget-Threaded Top-Level Contracts for `encode<Ct1Sent> [local#3]` (Block `459`)
@@ -27,7 +29,7 @@ Instantiates budget-threaded pinned/unpinned `subroutine_ok` contracts and exact
 `[LibsignalPlacement]` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -228,46 +230,6 @@ private theorem elim_exact_evs {M : AllocCostModel} {A : RustCliAllocBudget M}
       rw [hnil evs hP]
       dsimp only [AllocCostModel.stepEvents]
       exact Entails.refl _
-
-/-- Generic `withStepInv` exact-capacity bridge from `ct1SentEncodePinnedSpecOfS` to
-`etvCt1SentBudgetExactSpecOf`. -/
-theorem etv_ct1SentEncode_of_spec_s {resStack : Nat}
-    {M : AllocCostModel} {prog : Program} {call_pc : BitVec 64}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {s0 : State}
-    (hct1_ok : subroutine_ok prog call_pc
-      (withStepInv s0 (ct1SentEncodePinnedSpecOfS resStack A lim))) :
-    subroutine_ok prog call_pc
-      (withStepInv s0 (etvCt1SentBudgetExactSpecOf resStack A lim)) := by
-  refine etv_ct1SentEncode_budget_exact_of_exact ?_
-  refine subroutine_ok_outcome_intro fun ⟨x, st⟩ R s hpc hrun hpre hal => ?_
-  dsimp only [withStepInv, ct1SentEncodeExactSpecOf] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv0, ⟨hx0, hx1, hfit⟩, hm⟩
-  have hfits : FitsEnv M lim st (Ct1SentEncodeEnvS (ct1SentPinnedToUnpinned x)) :=
-    fitsEnv_ct1SentEncodeS_of_spare hfit
-  have hpre' : s.mem ⊨
-      (withStepInv s0 (ct1SentEncodePinnedSpecOfS resStack A lim)).pre (x, st) s ∗ R := by
-    dsimp only [withStepInv, ct1SentEncodePinnedSpecOfS, ct1SentEncodePinnedSpecOfEnv]
-    rw [sepConj_assoc, satisfies_pure_sepConj, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hinv0, ⟨hx0, hx1, Or.inl hfit, hfits⟩, hm⟩
-  refine hct1_ok.mono_outcome (x, st) R s hpc hrun hpre' hal fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨_, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [withStepInv, ct1SentEncodePinnedSpecOfS,
-      ct1SentEncodePinnedSpecOfEnv, ct1SentEncodeExactSpecOf] at hpost ⊢
-    refine Satisfies.mono ?_ hpost
-    refine Entails.trans
-      (sepConj_mono_left
-        (sepConj_mono_right
-          (sepConj_mono_right
-            (sepConj_mono (elim_exact_cap_ptr hfit)
-              (sepConj_mono_left
-                (elim_exact_evs (fun _ hev =>
-                  ct1SentEncodeEnvS_eq_nil_of_spare hfit hev))))))) ?_
-    exact Entails.of_eq (by sep_ac_rfl)
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
 
 /-- `EncodeToVec` (`etvCt1SentBudgetExactSpecOf doReserveStack`) contract on Block `459`. -/
 theorem etv_ct1SentEncode_1_placed_ok [LibsignalPlacement]

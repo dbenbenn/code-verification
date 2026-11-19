@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersX
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersX -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Fetch
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
 import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Fetch
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,7 +47,7 @@ theorem L1_SerializeBodyNoneX : True := trivial
 /-! ## `None`-branch specification -/
 
 /-- `serialize` on a record with no current session (`serializeNoneSpec` at `serializeStackX`). -/
-def serializeNoneSpecX (A : RustAlloc) : Spec (BitVec 64 × BitVec 64 × BitVec 64) where
+@[expose] def serializeNoneSpecX (A : RustAlloc) : Spec (BitVec 64 × BitVec 64 × BitVec 64) where
   pre := fun (self, out, prevPtr) s =>
     ⌜s.readReg64 .x0 = self ∧ s.readReg64 .x8 = out⌝ ∗
       ((self + 8#64) ↦₆₄ prevPtr) ∗ ((self + 16#64) ↦₆₄ 0#64) ∗
@@ -203,202 +203,32 @@ theorem allowPanic_frame_traceX {s0 sm sf : State} {F R : SepProp}
     sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R :=
   allowPanic_frame (allocFailedIn_of_trace_eqX htr) h
 
-/-! ## `SepWPpIn` entry and call tactics -/
-
-open Lean Meta Elab Tactic in
-/-- `wppin_init x s0`: like `wpp_init`, for an `.inImage img` spec, reducing `subroutine_ok` to a
-`SepWPpIn img` goal via `subroutine_ok_inImage_of_sepWPpIn`. -/
-elab "wppin_init " a:ident s0:ident : tactic => do
-  let rId := mkIdent `R
-  let hpcId := mkIdent `hpc
-  let hrunId := mkIdent `hrun
-  let hpreId := mkIdent `hpre
-  let hspId := mkIdent `hsp_align
-  evalTactic (← `(tactic| (
-    apply subroutine_ok_inImage_of_sepWPpIn
-    intro $a:ident $rId:ident $s0:ident $hpcId:ident $hrunId:ident $hpreId:ident $hspId:ident
-    wp_unfold_specs)))
-  wpSplitAndNormHyps (unpackProds := false)
-  let g ← getMainGoal
-  let (pExpr, fExpr) ← g.withContext do
-    let lctx ← getLCtx
-    let rFVar := (lctx.findFromUserName? rId.getId).map (·.toExpr)
-    let mut fullPreOpt : Option Expr := none
-    for decl in lctx do
-      if !decl.isImplementationDetail && !decl.isAuxDecl then
-        let ty ← instantiateMVars decl.type
-        if ty.isAppOfArity ``SepProp.Satisfies 2 then
-          fullPreOpt := some (ty.getArg! 0)
-          break
-    let fullPre := fullPreOpt.getD (rFVar.getD (mkConst ``SepProp.emp))
-    let atoms := SepSolver.atoms fullPre
-    let spatial := atoms.filter (fun (e : Expr) => rFVar != some e)
-    let conj : Expr :=
-      if spatial.isEmpty then mkConst ``SepProp.emp
-      else
-        let n := spatial.size
-        (List.range (n - 1)).foldr
-          (fun i acc => mkApp2 (mkConst ``SepProp.sepConj) spatial[i]! acc) spatial[n - 1]!
-    Pure.pure (conj, rFVar.getD (mkConst ``SepProp.emp))
-  let pStx ← g.withContext (PrettyPrinter.delab pExpr)
-  let fStx ← g.withContext (PrettyPrinter.delab fExpr)
-  evalTactic (← `(tactic| (
-    refine ⟨$pStx, $fStx, ?_, ?_⟩
-    wp_focus_close arm64_sep_close)))
-
-open Lean Meta Elab Tactic in
-/-- Eliminate leading `∃∗` / `⌜φ⌝` atoms of a `SepWPpIn` precondition (arg 5). -/
-meta def wppinElimSpatialContext (hEq : Ident) : TacticM Unit := do
-  let _ ← tryTacticCatchRuntimeBool (evalTactic (← `(tactic| (
-    conv =>
-      arg 5
-      simp (config := { decide := true }) only [
-        stackFrame16, stackFrame32, stackFrame16At_def, stackFrame32At_def,
-        sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc,
-        wp_norm, arm64_norm, $hEq:ident]))))
-  for _ in [0:64] do
-    let g ← getMainGoal
-    let ty ← g.withContext (instantiateMVars (← g.getType))
-    unless ty.isAppOfArity ``SepWPpIn 7 do return
-    let P := (ty.getArg! 4).consumeMData
-    if P.isAppOfArity ``SepProp.sepExists 2 then
-      let wId ← freshIdent `w
-      evalTactic (← `(tactic| (apply SepWPpIn.exists_elim; intro $wId:ident)))
-      betaReduceTarget
-    else if P.isAppOfArity ``SepProp.sepConj 2 && (P.getArg! 0).isAppOfArity ``SepProp.pure 1 then
-      let hId ← freshIdent `hpost
-      evalTactic (← `(tactic| (apply SepWPpIn.pure_elim; intro $hId:ident)))
-      wpNormAndSplitHyp hId
-    else
-      return
+/-! ## Call-site setup and `wpplscl_*` entry/call tactics -/
 
 open Lean Meta Elab Tactic in
 meta def closeWppinCallSiteSetupSubgoals : TacticM Unit := do
   let gs ← getGoals
   let gPc :: gRun :: gSp :: gLr :: rest := gs
-    | throwError "wppin_call: unexpected subgoals after applying SepWPpIn.call_inImage"
+    | throwError "wpplscl_call: unexpected subgoals after applying call lemma"
   setGoals [gPc]
   if !(← tryTacticCatchRuntimeBool (evalTactic (← `(tactic| wp_focus_close (first | wp_norm_goal | wp_norm_lhs))))) then
     let ty ← gPc.withContext (instantiateMVars (← gPc.getType))
-    throwError "wppin_call: call target address does not match callee entry:{indentExpr ty}"
+    throwError "wpplscl_call: call target address does not match callee entry:{indentExpr ty}"
   setGoals [gRun]
   if !(← tryTacticCatchRuntimeBool (evalTactic (← `(tactic| wp_focus_close wp_norm_lhs)))) then
     let ty ← gRun.withContext (instantiateMVars (← gRun.getType))
-    throwError "wppin_call: failed to prove machine status is `.Running`:{indentExpr ty}"
+    throwError "wpplscl_call: failed to prove machine status is `.Running`:{indentExpr ty}"
   setGoals [gSp]
   if !(← tryTacticCatchRuntimeBool (evalTactic (← `(tactic| wp_focus_close (first | wp_norm_lhs | wp_norm_goal))))) then
     let ty ← gSp.withContext (instantiateMVars (← gSp.getType))
-    throwError "wppin_call: failed to prove `s.spAligned = true`:{indentExpr ty}"
+    throwError "wpplscl_call: failed to prove `s.spAligned = true`:{indentExpr ty}"
   setGoals [gLr]
   if !(← tryTacticCatchRuntimeBool (evalTactic (← `(tactic| wp_focus_close (first | wp_norm_lhs | wp_norm_goal))))) then
     let ty ← gLr.withContext (instantiateMVars (← gLr.getType))
-    throwError "wppin_call: failed to resolve link register (`s.readReg64 .lr = ret_pc`):{indentExpr ty}"
+    throwError "wpplscl_call: failed to resolve link register (`s.readReg64 .lr = ret_pc`):{indentExpr ty}"
   setGoals (← rest.filterM fun m => not <$> m.isAssigned)
 
-open Lean Meta Elab Tactic in
-/-- Calls an `.inImage img` callee from a `SepWPpIn img` goal via `SepWPpIn.call_inImage`,
-discharging panic and exit side conditions with `allowPanic_frame_traceX` and
-`not_satisfies_false_sepConj`. -/
-elab "wppin_call " hcall:term:max arg?:(ppSpace colGt term:max)? : tactic => do
-  let sfId ← freshIdent `sf
-  let hpcId ← freshIdent `hpc_sf
-  let hrunId ← freshIdent `hrun_sf
-  let hspId ← freshIdent `hsp_sf
-  let hcsId ← freshIdent `hcs_sf
-  let applyStx ← match arg? with
-    | some a => `(tactic| apply (SepWPpIn.call_inImage $hcall (x := $a)))
-    | none => `(tactic| apply (SepWPpIn.call_inImage $hcall))
-  evalTactic applyStx
-  closeWppinCallSiteSetupSubgoals
-  let gsAfterSetup ← getGoals
-  let gPre :: gExit :: gPanic :: gCont :: rest := gsAfterSetup
-    | throwError "wppin_call: unexpected subgoals after `SepWPpIn.call_inImage`"
-  setGoals [gPre]
-  evalTactic (← `(tactic| intro _R' _hmR'))
-  let ghostMVars ← etaExpandGoalProdMVarsWithNames
-  evalTactic (← `(tactic| (
-    wp_unfold_specs
-    try dsimp only
-    try simp (config := { decide := true }) only [
-      stackFrame16, stackFrame32, stackFrame16At_def, stackFrame32At_def,
-      sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists,
-      satisfies_pure_sepConj, sepConj_assoc,
-      wp_norm, arm64_norm] at _hmR' ⊢
-  )))
-  evalTactic (← `(tactic| repeat' (first | apply And.intro | arm64_instantiate_sep_exists)))
-  wpDischargeCallSubgoalsCore ghostMVars (some hcall)
-  setGoals (gExit :: gPanic :: gCont :: rest)
-  evalTactic (← `(tactic| (
-    wp_focus_close (wp_unfold_specs; intro _ _ _ _ _he; exact not_satisfies_false_sepConj _he)
-    wp_focus_close (wp_unfold_specs; intro _ _ _hp; first | exact allowPanic_frame_traceX (by wp_norm_lhs) _hp | exact (not_satisfies_false_sepConj (by simpa only [sepConj_assoc] using _hp)).elim | (simp only [sepConj_assoc, satisfies_pure_sepConj] at _hp; exact _hp.1.elim))
-    intro $sfId:ident $hpcId:ident $hrunId:ident $hspId:ident $hcsId:ident
-  )))
-  foldStructEtaTarget
-  wpNormAndSplitHyp hspId
-  wpNormAndSplitHyp hcsId
-  wppinElimSpatialContext hspId
-
 /-! ## `None`-branch verification on `SP2Ext` -/
-
-theorem serialize_none_okX {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hC : SerContractsX img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr serializeName)
-      ((serializeNoneSpecX A).inImage img) := by
-  have hfn : libsignalSessionCode.fnOff serializeName = num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize") :=
-    libsignalSessionCode_fnOff_serialize
-  have hmemcpy := memcpy_sub_okX (img := img) (A := A) (ext := ext) hC
-  have hvv := vecVecClone_sub_okX img.base ext
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) 0 56
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) 0x5c 48
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) 0x10c 12
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) 0x128 4
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) 0x188 20
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) 0x1a8 24
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) 0x2b4 32
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) 0x2dc 8
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) 0x310 8
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) 0x32c 32
-  unfold serializeNoneSpecX
-  simp only [noneCap, okTagVec, memRegion_out32_stack_noneX,
-    sepExists_sepConj_left, sepExists_sepConj_right]
-  wppin_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨self, out, prevPtr⟩ := x
-  dsimp only at *
-  apply SepWPpIn.of_sepWP (mid := entry + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize"))
-  wp_steps
-  wp_call hvv ⟨s0.sp - 800#64, prevPtr⟩
-  wp_simp_pre [vecHeader, arm64_norm]
-  wp_steps
-  apply SepWP.done (by simp_all) (by simp_all)
-  rw [← h]
-  change subroutine_ok (SP2Ext img.base ext) (entry + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) (memcpySubSpecX.inImage img) at hmemcpy
-  wppin_call hmemcpy (s0.sp - 768#64, s0.sp - 432#64, v_stk_12)
-  apply SepWPpIn.of_sepWP_ret
-  refine SepWP.fold (bytes336_to_w012 s0.sp h) (by sep_frame) ?_
-  apply sepWP_exists_left_sepX; intro w0
-  apply sepWP_exists_left_sepX; intro w1
-  apply sepWP_exists_left_sepX; intro w2
-  wp_steps
-  refine SepWP.fold (vecU8_nil_from_out_cellsX A out) (by sep_frame) ?_
-  refine SepWP.fold (cells_12_pack s0.sp _ _ _ _ _ _ _ _ _ _ _ _) (by sep_frame) ?_
-  wp_simp_pre [hsp_sf]
-  refine SepWP.fold (repack_stack_none_cellsX s0.sp _ _ _ _ h) (by sep_frame) ?_
-  wp_done
-
-/-! ## Relocatable `[LibsignalPlacement]` `None`-branch proof (Block `52`) -/
 
 section Placed
 

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecBasePure
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecBasePure -- proof-setup: allow-public-import
 import Batteries.Data.UInt
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1LeavesPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1LeavesPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Spqr
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecStepPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPure
@@ -29,6 +29,8 @@ import Symbolic.Proofs.Swarm.CREF.Xpl.NoRatchet
 import Symbolic.Proofs.Swarm.CREF.TR.Leaks -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.CBad
 
 /-!
 # Pending Pre-Key Branch: Existing-Chain Receive and Cached-Skip Exclusion
@@ -39,7 +41,7 @@ establishes `PureTRRecordStateInv` and `TRNsBound` after an existing-chain recei
 Alice's pending pre-key (`a2b_tieA_pending_core`, `a2b_tieA_pending_of_block`).
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SpkHop1B
+public import Computational.Proofs.E2E.SpkHop1B -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
 
 /-!
 # Hop 2 Receiver-Chain Helpers and Lazy Pre-Sampling
@@ -20,7 +21,7 @@ Proves receive-coin irrelevance on `steppedSessBase`, receiver-chain freshness h
 (`evalDist_runHop2_lazy_cons_fresh`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -110,7 +111,7 @@ theorem hop2BadAt_eq_false_of_pos_epochs (P : Params Bytes PQC) (s : BitVec 256)
 /-! ## Session and receiver-chain helpers -/
 
 /-- No receiver chain in `cs` has `senderRatchetKey = k`. -/
-def NoKeyInChains (k : PublicKey) (cs : List ReceiverChain) : Prop :=
+@[expose] def NoKeyInChains (k : PublicKey) (cs : List ReceiverChain) : Prop :=
   ∀ c ∈ cs, c.senderRatchetKey ≠ k
 
 theorem findIdx?_eq_none_of_noKeyInChains (k : PublicKey) (cs : List ReceiverChain)
@@ -268,7 +269,7 @@ theorem noKeyInChains_evict_append (k their : PublicKey) (cs : List ReceiverChai
   · exact h x hmem
   · exact hne
 
-def hop2OffChainOut (P : Params Bytes PQC) (ℓ : ℕ) (g : GhostState Bytes)
+@[expose] def hop2OffChainOut (P : Params Bytes PQC) (ℓ : ℕ) (g : GhostState Bytes)
     (msg : SignalMessage) (sc : SenderChain) (rc u : BitVec 256) : Hop2Out Pt ℓ :=
   let (rk', ckR) := Ratchet.rootExpand P.C.F (keyToBytes32 u)
   let newKey := KeyPair.generate P.C rc
@@ -458,7 +459,7 @@ theorem tryDecryptFromRecord_stepped_props (P : Params Bytes PQC)
 abbrev Hop2State (Pt : Type) (ℓ : ℕ) : Type :=
   SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes × Hop2Aux Pt
 
-def withLazy {ℓ : ℕ} (l : List ((ℕ × Pt) × BitVec 256)) (st : Hop2State Pt ℓ) : Hop2State Pt ℓ :=
+@[expose] def withLazy {ℓ : ℕ} (l : List ((ℕ × Pt) × BitVec 256)) (st : Hop2State Pt ℓ) : Hop2State Pt ℓ :=
   (st.1, { st.2 with lazy := l })
 
 omit [DecidableEq Pt] [Zero Pt] [SampleableType Pt] in
@@ -477,7 +478,7 @@ omit [DecidableEq Pt] [Zero Pt] [SampleableType Pt] in
     (m : Hop2Comp Pt α) (st : Hop2State Pt ℓ) :
     (StateT.lift m : Hop2M Pt ℓ α).run st = (do let a ← m; return (a, st)) := rfl
 
-def hop2LazyKey {ℓ : ℕ} (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def hop2LazyKey {ℓ : ℕ} (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (h : Hop2Hyb Pt)
     (g : GhostState Bytes) (c : Bytes) (st : Hop2State Pt ℓ) :
     Option ((ℕ × Pt) × SignalMessage × SenderChain) :=
@@ -671,7 +672,7 @@ theorem hop2Recv_run_of_hop2LazyKey_none {ℓ : ℕ} (P : Params Bytes PQC)
                     cases r_tr <;> simp [StateT.run_pure]
       · simp [hfind, StateT.run_pure]
 
-def hop2DeliverPost {ℓ : ℕ} (P : Params Bytes PQC) (s : BitVec 256)
+@[expose] def hop2DeliverPost {ℓ : ℕ} (P : Params Bytes PQC) (s : BitVec 256)
     (Q : Party) (c : Bytes) (g₀ : GhostState Bytes) (r : SM.Record (CBC.Plain ℓ) Bytes)
     (o : Hop2Out Pt ℓ) (st2 : Hop2State Pt ℓ) :
     Option (SM.RecvResult (CBC.Plain ℓ)) × Hop2State Pt ℓ :=
@@ -682,7 +683,7 @@ def hop2DeliverPost {ℓ : ℕ} (P : Params Bytes PQC) (s : BitVec 256)
       (st2.1.accept Q st' r.pos,
         { hop2Commit st2.2 Q u with bad := st2.2.bad || hop2BadAt P s g₀ c }))
 
-def hop2InjectPost {ℓ : ℕ} (P : Params Bytes PQC) (qep : ℕ) (s : BitVec 256)
+@[expose] def hop2InjectPost {ℓ : ℕ} (P : Params Bytes PQC) (qep : ℕ) (s : BitVec 256)
     (Q : Party) (c : Bytes) (g₀ : GhostState Bytes)
     (o : Hop2Out Pt ℓ) (st2 : Hop2State Pt ℓ) :
     Option (SM.RecvResult (CBC.Plain ℓ)) × Hop2State Pt ℓ :=
@@ -1044,7 +1045,7 @@ omit [Zero Pt] [SampleableType Pt] in
 
 
 /-- Runs `oa` in `hop2Impl` under `lazyImpl` from `(st, tbl)`, returning `st'.2.bad`. -/
-def runHop2 {ℓ : ℕ} {β : Type}
+@[expose] def runHop2 {ℓ : ℕ} {β : Type}
     (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256)
     (h : Hop2Hyb Pt)

@@ -9,8 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperCKA
+public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperCKA -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Notation
+public import Computational.Proofs.CryptoGames.SM.Engine -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForge -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperDefs
+public import Computational.Proofs.ReductionDsl.SM.Engine -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.RedPRNG -- proof-setup: allow-public-import
 
 /-!
 # Costed `redPRNGAuthDFPaperProg` Reduction
@@ -19,7 +25,7 @@ Deep-embedded `CostedReduction` formulation of `DeliverForge.redPRNGAuthDFPaper`
 advantage, query, cost, and size-honesty theorems.
 -/
 
-@[expose] public section
+public section
 
 open ReductionDsl OracleSpec OracleComp
 
@@ -69,7 +75,7 @@ local notation "II" =>
   prngIface KC Γ CCoins T I KR RSt K SS RS M E sampKR sampKC sampCCoins sampI sampK
 
 /-- Costed `DeliverForge.redPRNGAuthDFPaper` reduction over `SM.specDF`. -/
-def redPRNGAuthDFPaperProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
+@[expose] def redPRNGAuthDFPaperProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction OO II
       (SM.specDF (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (prngSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E)

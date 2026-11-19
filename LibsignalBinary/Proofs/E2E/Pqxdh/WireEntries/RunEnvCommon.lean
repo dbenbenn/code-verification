@@ -10,17 +10,17 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhSessionModel
-public import LibsignalBinary.Proofs.E2E.RecordX.ScopeP
+public import LibsignalBinary.Proofs.E2E.RecordX.ScopeP -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
-public import LibsignalBinary.Proofs.E2E.Bin.Record
-public import LibsignalBinary.Proofs.E2E.Reach.BundleCommon
-public import LibsignalBinary.Proofs.E2E.Run.SendPure
+public import LibsignalBinary.Proofs.E2E.Bin.Record -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Reach.BundleCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Run.SendPure -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.CanonKey
 import LibsignalBinary.Proofs.E2E.RecordX.Length
 import LibsignalBinary.Proofs.E2E.V1.ReachSteps
 import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.Specs -- shake: keep
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -63,7 +63,7 @@ theorem recordPqBound_of_encodeRecordX_length (E : Party → RecordExtras) (g : 
   omega
 
 /-- Inductive session and record-extras invariant for reachable V1 PQXDH sessions `(me, x, g)`. -/
-def ReachPqInv (W : PEParams) (me : LocalIdentity) (x : RecordExtras) (g : GhostState Bytes) : Prop :=
+@[expose] def ReachPqInv (W : PEParams) (me : LocalIdentity) (x : RecordExtras) (g : GhostState Bytes) : Prop :=
   SeedsLen32 g.session ∧
     g.session.receiverChains.length ≤ maxReceiverChains ∧
     g.session.localIdentity = ⟨(keyPairOf W.C me.idPriv).publicKey⟩ ∧
@@ -217,84 +217,9 @@ theorem encodeRecordX_eq_encodeRecord_sessionOfX (E : Party → RecordExtras) (g
     encodeRecordUnderExtras E g = Record.encodeRecord ⟨some (sessionOfX E g)⟩ := by
   rw [RecordX.encodeRecordX_eq_toRecord, RecordX.toRecord_extrasOf_eq]
 
-/-- Every reachable PQXDH session satisfies `BinCanonSession` on
-`canonGhostOf (sessionOfX (fun _ => x) g)`
-whenever `(encodeRecordUnderExtras (fun _ => x) g).length < 2 ^ 32`. -/
-theorem reachPq_binCanonSession {W : PEParams} {me : LocalIdentity} {x : RecordExtras} {g : GhostState Bytes}
-    (h : ReachablePqxdhSession W me x g)
-    (hlen32 : (encodeRecordUnderExtras (fun _ => x) g).length < 2 ^ 32) :
-    BinCanonSession (Run.canonGhostOf (sessionOfX (fun _ => x) g)) (sessionOfX (fun _ => x) g) := by
-  obtain ⟨hseeds, hlen, _, _, hrep, _, _, _, habk, hky⟩ := reachPq_inv h
-  let s := sessionOfX (fun _ => x) g
-  refine ⟨Run.serializationCanonSession_canonGhostOf s, sessionOfX_wf (fun _ => x) g, rfl,
-    Run.canonGhostOf_remoteIk s, Run.canonGhostOf_sender s,
-    hlen,
-    fun rc hrc => ⟨hrep.1 rc hrc, hseeds rc hrc⟩,
-    Run.canonGhostOf_chains_srk_priv s, ?_, ?_, ?_, ?_⟩
-  · change x.aliceBaseKey.length < 2 ^ 32
-    omega
-  · dsimp only [s, sessionOfX]
-    cases g.session.pendingPreKey
-    · simp only [Bool.false_eq_true, ↓reduceIte]
-    · simp only [↓reduceIte]
-      cases hky_opt : x.kyber with
-      | none => exact True.intro
-      | some k =>
-        have hk := hky k hky_opt
-        omega
-  · exact recordPqBound_of_encodeRecordX_length (fun _ => x) g hlen32
-  · have hle := Run.encSession_length_le_encodeRecord s
-    have heq : (encodeRecordUnderExtras (fun _ => x) g).length = (Record.encodeRecord ⟨some s⟩).length := by
-      rw [RecordX.encodeRecordX_eq_toRecord, RecordX.toRecord_extrasOf_eq]
-    change (Record.encSession s).length < 2 ^ 62
-    omega
-
-theorem reachPq_remoteIdentity_isSome {W : PEParams} {me : LocalIdentity}
-    {x : RecordExtras} {g : GhostState Bytes}
-    (h : ReachablePqxdhSession W me x g) :
-    (sessionOfX (fun _ => x) g).state.remoteIdentity.isSome = true := by
-  obtain ⟨rem, hrem⟩ := (reachPq_inv h).2.2.2.1
-  change g.session.remoteIdentity.isSome = true
-  rw [hrem]; rfl
-
-theorem reachPq_sessionScopeP {W : PEParams} {me : LocalIdentity} {x : RecordExtras} {g : GhostState Bytes}
-    (h : ReachablePqxdhSession W me x g) :
-    RecordX.SessionScopeP (sessionOfX (fun _ => x) g) := by
-  obtain ⟨_, hlen, _, _, _, _, hts, _, habk, hky⟩ := reachPq_inv h
-  refine ⟨hlen, ?_, ?_, Or.inr habk⟩
-  · intro p hp
-    unfold sessionOfX at hp
-    dsimp only at hp
-    split at hp
-    · injection hp with hp'
-      subst hp'
-      exact hts
-    · cases hp
-  · intro k hk
-    unfold sessionOfX at hk
-    dsimp only at hk
-    split at hk
-    · exact hky k hk
-    · cases hk
-
-theorem reachPq_recordInScopeP {W : PEParams} {me : LocalIdentity} {x : RecordExtras} {g : GhostState Bytes}
-    (h : ReachablePqxdhSession W me x g) :
-    RecordX.RecordInScopeP ⟨some (sessionOfX (fun _ => x) g)⟩ := by
-  obtain ⟨hseeds, hlen, _, _, _, _, _, _, _, hky⟩ := reachPq_inv h
-  intro s hs
-  injection hs with hs'
-  subst hs'
-  refine ⟨hseeds, Nat.lt_of_le_of_lt hlen (by decide), ?_⟩
-  intro k hk
-  unfold sessionOfX at hk
-  dsimp only at hk
-  split at hk
-  · rw [hky k hk]; decide
-  · cases hk
-
 end ReachPqInv
 
-def UuidNamesDistinct (uuidParse : UuidParser) : Prop :=
+@[expose] def UuidNamesDistinct (uuidParse : UuidParser) : Prop :=
   ¬∃ u, uuidParse (utf8 (partyAddressName .A)) = some u ∧
     uuidParse (utf8 (partyAddressName .B)) = some u
 

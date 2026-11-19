@@ -9,12 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureVtablesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreSessionPrev1Placed
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureVtablesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreSessionPrev1Placed -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Placed CLI Poll Overwrite-Path (`Path C`) `Prev1` Session-Store Kit
@@ -24,7 +28,7 @@ Relocatable (`[LibsignalPlacement]`) counterpart of `Over/PollOverP4.lean`, defi
 `SessionStore::store_session` poll contract on `dpPollProgPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -73,7 +77,7 @@ attribute [-arm64_norm]
 /-- Placed CLI `SessionStoreSpec` for Stage P4 on overwrite Path C (`previous_sessions = [enc]`):
 shares `ss_vt = lsρ cliSessionVtSym`, `id_vt = lsρ cliIdentityVtSym`, and stack budgets with
 `cliPollSessKitPlaced`, while weakening `storeAt` to `cliSessPrev1StoreAt`. -/
-def cliPollSessPrev1KitPlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def cliPollSessPrev1KitPlaced [LibsignalPlacement] (A : RustAlloc)
     (F0 : FsFiles) (peer : AddrGhost) (σ : DpKitStk) : SessionStoreSpec A 0#64 :=
   { cliPollSessPrev1Kit A 0#64 F0 peer σ with
     ss_vt := lsρ cliSessionVtSym
@@ -98,7 +102,7 @@ theorem cliPollSessKitPlaced_storeAt_entails_prev1 [LibsignalPlacement] {A : Rus
     (Scope := Scope) (peer := peer) (σ := σ) self d
 
 /-- `Over.StorePrev1Ops` instance for `cliPollSessPrev1KitPlaced`. -/
-def cliPollStorePrev1OpsPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def cliPollStorePrev1OpsPlaced [LibsignalPlacement] {A : RustAlloc}
     {F0 : FsFiles} {peer : AddrGhost} {σ : DpKitStk} :
     Over.StorePrev1Ops (cliPollSessPrev1KitPlaced A F0 peer σ) where
   RecPrev1Ok := fun G sess enc =>
@@ -115,13 +119,5 @@ theorem cliPollSessPrev1Placed_quiet [LibsignalPlacement] {A : RustAlloc}
   ⟨fun _ _ _ => NoFsEv.nil, fun _ _ _ _ => NoFsEv.nil⟩
 
 /-! ## 2. Placed `store_session` Poll Contract on `Prev1` -/
-
-theorem cliPollSessPrev1_storePoll_placed_of_mem [LibsignalPlacement] {prog : Program}
-    {entry : BitVec 64} {stk : Nat}
-    (hMem : subroutine_ok prog entry
-      (Store.StoreSessionPrev1.sessStorePollPrev1MemSpecPlaced E2E.HooksE.A0 stk)) :
-    subroutine_ok prog entry
-      (Store.StoreSessionPrev1.sessStorePollPrev1SpecPlaced E2E.HooksE.A0 stk) :=
-  Store.StoreSessionPrev1.sessStorePollPrev1_placed_of_mem hMem
 
 end CryptoVerification.SignalSession.Cli.RunProofs.Poll

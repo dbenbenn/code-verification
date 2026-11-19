@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedBase
 import LibsignalBinary.Proofs.Common.SharedHelpers
 
@@ -21,7 +21,7 @@ Defines `RustCliAllocBudget`-threaded own-stack contracts
 and proves their frame-lifting bridges to `ChunkedDefsBudget.unchunked{Ct1Sent,EkSentCt1Received}MergeSpec{OfEnv,}`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,7 +57,7 @@ open CryptoVerification.SpqrV1.Prost.MessageMerge
 /-! ## 1. 112-Byte Own-Stack Budget Contracts -/
 
 /-- Envelope-parameterized 112-byte-frame contract of `Unchunked.Ct1Sent::merge`. -/
-def unchunkedCt1SentMergeOwnSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def unchunkedCt1SentMergeOwnSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : UnchunkedCt1SentMergeGhost → List AllocEvent → Prop) :
     Spec (UnchunkedCt1SentMergeGhost × M.σ) where
@@ -86,13 +86,13 @@ def unchunkedCt1SentMergeOwnSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudg
 
 /-- Budget-threaded 112-byte-frame contract of `Unchunked.Ct1Sent::merge`
 (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def unchunkedCt1SentMergeOwnSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def unchunkedCt1SentMergeOwnSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (UnchunkedCt1SentMergeGhost × M.σ) :=
   unchunkedCt1SentMergeOwnSpecOfEnv A lim
     UnchunkedCt1SentMergeEnv UnchunkedCt1SentMergePostEnv
 
 /-- Envelope-parameterized 112-byte-frame contract of `Unchunked.EkSentCt1Received::merge`. -/
-def unchunkedEkSentCt1ReceivedMergeOwnSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def unchunkedEkSentCt1ReceivedMergeOwnSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : UnchunkedEkSentCt1ReceivedMergeGhost → List AllocEvent → Prop) :
     Spec (UnchunkedEkSentCt1ReceivedMergeGhost × M.σ) where
@@ -121,103 +121,12 @@ def unchunkedEkSentCt1ReceivedMergeOwnSpecOfEnv {M : AllocCostModel} (A : RustCl
 
 /-- Budget-threaded 112-byte-frame contract of `Unchunked.EkSentCt1Received::merge`
 (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def unchunkedEkSentCt1ReceivedMergeOwnSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def unchunkedEkSentCt1ReceivedMergeOwnSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (UnchunkedEkSentCt1ReceivedMergeGhost × M.σ) :=
   unchunkedEkSentCt1ReceivedMergeOwnSpecOfEnv A lim
     UnchunkedEkSentCt1ReceivedMergeEnv UnchunkedEkSentCt1ReceivedMergePostEnv
 
 /-! ## 2. Frame-Lifting Bridges to `ChunkedDefsBudget` (`unchunkedMergeStack`) -/
-
-theorem subroutine_ok_unchunkedCt1SentMergeOfEnv_of_own {prog : Program} {entry : BitVec 64}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {PreEnv PostEnv : UnchunkedCt1SentMergeGhost → List AllocEvent → Prop} {img : Obj.Image}
-    (h : subroutine_ok prog entry ((unchunkedCt1SentMergeOwnSpecOfEnv A lim PreEnv PostEnv).inImage img)) :
-    subroutine_ok prog entry ((unchunkedCt1SentMergeSpecOfEnv A lim PreEnv PostEnv).inImage img) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  let R_extra : SepProp := memRegion (s0.sp - BitVec.ofNat 64 unchunkedMergeStack) 48
-  have hpre_eq : ((unchunkedCt1SentMergeSpecOfEnv A lim PreEnv PostEnv).inImage img).pre x s0 ∗ R =
-      ((unchunkedCt1SentMergeOwnSpecOfEnv A lim PreEnv PostEnv).inImage img).pre x s0 ∗ (R_extra ∗ R) := by
-    dsimp only [Spec.inImage, unchunkedCt1SentMergeSpecOfEnv, unchunkedCt1SentMergeOwnSpecOfEnv,
-      R_extra, unchunkedCt1SentPBCapAt, optAuthenticatorPBCapAt, protoUnchunkedCt1SentCapAt,
-      vecU8CapAt, optProtoAuthenticatorCapAt]
-    rw [stackAt_unchunkedMergeStack_eq_own s0.sp]
-    sep_ac_rfl
-  rw [hpre_eq] at hpre
-  refine h.mono_outcome x (R_extra ∗ R) s0 hpc hrun hpre hsp ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨_, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    have hpost_eq : ((unchunkedCt1SentMergeSpecOfEnv A lim PreEnv PostEnv).inImage img).post x s0 sf ∗ R =
-        ((unchunkedCt1SentMergeOwnSpecOfEnv A lim PreEnv PostEnv).inImage img).post x s0 sf ∗ (R_extra ∗ R) := by
-      dsimp only [Spec.inImage, unchunkedCt1SentMergeSpecOfEnv, unchunkedCt1SentMergeOwnSpecOfEnv,
-        R_extra, unchunkedCt1SentPBCapAt, optAuthenticatorPBCapAt, protoUnchunkedCt1SentCapAt,
-        vecU8CapAt, optProtoAuthenticatorCapAt, ct1SentPBAt, unchunked5At,
-        rustBytesVecAt, optAuthenticatorPBAt, protoUnchunkedCt1SentAt, optProtoAuthenticatorAt]
-      rw [stackAt_unchunkedMergeStack_eq_own s0.sp]
-      sep_ac_rfl
-    rw [hpost_eq]
-    exact hq
-  · dsimp only [Spec.inImage, unchunkedCt1SentMergeOwnSpecOfEnv] at hq
-    rw [satisfies_pure_sepConj] at hq
-    exact False.elim hq.1
-  · dsimp only [Spec.inImage, unchunkedCt1SentMergeOwnSpecOfEnv] at hq
-    rw [satisfies_pure_sepConj] at hq
-    exact False.elim hq.1
-  · dsimp only [Spec.inImage, unchunkedCt1SentMergeOwnSpecOfEnv] at hq
-    rw [satisfies_pure_sepConj] at hq
-    exact False.elim hq.1
-
-theorem subroutine_ok_unchunkedCt1SentMerge_of_own {prog : Program} {entry : BitVec 64}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {img : Obj.Image}
-    (h : subroutine_ok prog entry ((unchunkedCt1SentMergeOwnSpec A lim).inImage img)) :
-    subroutine_ok prog entry ((unchunkedCt1SentMergeSpec A lim).inImage img) :=
-  subroutine_ok_unchunkedCt1SentMergeOfEnv_of_own h
-
-theorem subroutine_ok_unchunkedEkSentCt1ReceivedMergeOfEnv_of_own {prog : Program} {entry : BitVec 64}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {PreEnv PostEnv : UnchunkedEkSentCt1ReceivedMergeGhost → List AllocEvent → Prop} {img : Obj.Image}
-    (h : subroutine_ok prog entry ((unchunkedEkSentCt1ReceivedMergeOwnSpecOfEnv A lim PreEnv PostEnv).inImage img)) :
-    subroutine_ok prog entry ((unchunkedEkSentCt1ReceivedMergeSpecOfEnv A lim PreEnv PostEnv).inImage img) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  let R_extra : SepProp := memRegion (s0.sp - BitVec.ofNat 64 unchunkedMergeStack) 48
-  have hpre_eq : ((unchunkedEkSentCt1ReceivedMergeSpecOfEnv A lim PreEnv PostEnv).inImage img).pre x s0 ∗ R =
-      ((unchunkedEkSentCt1ReceivedMergeOwnSpecOfEnv A lim PreEnv PostEnv).inImage img).pre x s0 ∗ (R_extra ∗ R) := by
-    dsimp only [Spec.inImage, unchunkedEkSentCt1ReceivedMergeSpecOfEnv,
-      unchunkedEkSentCt1ReceivedMergeOwnSpecOfEnv, R_extra,
-      unchunkedEkSentCt1ReceivedPBCapAt, optAuthenticatorPBCapAt,
-      protoUnchunkedEkSentCt1ReceivedCapAt, vecU8CapAt, optProtoAuthenticatorCapAt]
-    rw [stackAt_unchunkedMergeStack_eq_own s0.sp]
-    sep_ac_rfl
-  rw [hpre_eq] at hpre
-  refine h.mono_outcome x (R_extra ∗ R) s0 hpc hrun hpre hsp ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨_, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    have hpost_eq : ((unchunkedEkSentCt1ReceivedMergeSpecOfEnv A lim PreEnv PostEnv).inImage img).post x s0 sf ∗ R =
-        ((unchunkedEkSentCt1ReceivedMergeOwnSpecOfEnv A lim PreEnv PostEnv).inImage img).post x s0 sf ∗ (R_extra ∗ R) := by
-      dsimp only [Spec.inImage, unchunkedEkSentCt1ReceivedMergeSpecOfEnv,
-        unchunkedEkSentCt1ReceivedMergeOwnSpecOfEnv, R_extra,
-        unchunkedEkSentCt1ReceivedPBCapAt, optAuthenticatorPBCapAt,
-        protoUnchunkedEkSentCt1ReceivedCapAt, vecU8CapAt, optProtoAuthenticatorCapAt,
-        ekSentCt1ReceivedPBAt, unchunked4At, rustBytesVecAt, optAuthenticatorPBAt,
-        protoUnchunkedEkSentCt1ReceivedAt, optProtoAuthenticatorAt]
-      rw [stackAt_unchunkedMergeStack_eq_own s0.sp]
-      sep_ac_rfl
-    rw [hpost_eq]
-    exact hq
-  · dsimp only [Spec.inImage, unchunkedEkSentCt1ReceivedMergeOwnSpecOfEnv] at hq
-    rw [satisfies_pure_sepConj] at hq
-    exact False.elim hq.1
-  · dsimp only [Spec.inImage, unchunkedEkSentCt1ReceivedMergeOwnSpecOfEnv] at hq
-    rw [satisfies_pure_sepConj] at hq
-    exact False.elim hq.1
-  · dsimp only [Spec.inImage, unchunkedEkSentCt1ReceivedMergeOwnSpecOfEnv] at hq
-    rw [satisfies_pure_sepConj] at hq
-    exact False.elim hq.1
-
-theorem subroutine_ok_unchunkedEkSentCt1ReceivedMerge_of_own {prog : Program} {entry : BitVec 64}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {img : Obj.Image}
-    (h : subroutine_ok prog entry ((unchunkedEkSentCt1ReceivedMergeOwnSpec A lim).inImage img)) :
-    subroutine_ok prog entry ((unchunkedEkSentCt1ReceivedMergeSpec A lim).inImage img) :=
-  subroutine_ok_unchunkedEkSentCt1ReceivedMergeOfEnv_of_own h
 
 theorem subroutine_ok_unchunkedCt1SentMergeOfEnv_of_own_placed [LibsignalPlacement]
     {prog : Program} {entry : BitVec 64}

@@ -758,6 +758,8 @@ structure FastState where
   symtab       : String → String → Option (BitVec 64) := fun _ _ => none
   sigActions   : BitVec 32 → SigAction := fun _ => {}
   sigAltStack  : SigAltStack := {}
+  sigMask      : BitVec 64 := 0#64
+  sigPending   : BitVec 64 := 0#64
   deriving Inhabited
 
 namespace FastState
@@ -783,7 +785,9 @@ def toState (s : FastState) : State :=
     status       := s.status
     symtab       := s.symtab
     sigActions   := s.sigActions
-    sigAltStack  := s.sigAltStack }
+    sigAltStack  := s.sigAltStack
+    sigMask      := s.sigMask
+    sigPending   := s.sigPending }
 
 /-- Lift a trusted `Arm64.State` into `FastState`. -/
 @[inline] def ofState (s : State) : FastState :=
@@ -806,7 +810,9 @@ def toState (s : FastState) : State :=
     status       := s.status
     symtab       := s.symtab
     sigActions   := s.sigActions
-    sigAltStack  := s.sigAltStack }
+    sigAltStack  := s.sigAltStack
+    sigMask      := s.sigMask
+    sigPending   := s.sigPending }
 
 @[simp] theorem toState_ofState (s : State) :
     (ofState s).toState = s := by
@@ -1598,6 +1604,8 @@ private theorem extractLsb'_truncate (w : Nat) (x : BitVec 64) (s : Nat) (h : s 
 @[simp] theorem FastState.toState_tpidrEl0 (s : FastState) : s.toState.tpidrEl0 = s.tpidrEl0.toBitVec := rfl
 @[simp] theorem FastState.toState_sigActions (s : FastState) : s.toState.sigActions = s.sigActions := rfl
 @[simp] theorem FastState.toState_sigAltStack (s : FastState) : s.toState.sigAltStack = s.sigAltStack := rfl
+@[simp] theorem FastState.toState_sigMask (s : FastState) : s.toState.sigMask = s.sigMask := rfl
+@[simp] theorem FastState.toState_sigPending (s : FastState) : s.toState.sigPending = s.sigPending := rfl
 
 @[simp] theorem FastState.toState_ite (c : Prop) [Decidable c] (a b : FastState) :
     (if c then a else b).toState = if c then a.toState else b.toState := by

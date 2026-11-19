@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.MF9PAuxWPlaced
+public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.MF9PAuxWPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -17,6 +17,7 @@ import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.MF14AuxW
 import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.MergeField9PW
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable `[LibsignalPlacement]` `merge_field` on Tag 9P (Block `15`)
@@ -26,7 +27,7 @@ Verifies `mergeField9PW_spk_none_placed_ok`, `mergeField9PW_spk_some_placed_ok`,
 `mergeFieldStackX = 32768` with slice length `< 2 ^ 62`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,7 +41,7 @@ open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalTripl
 open CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.E2E.Record.DeserializeSeed CryptoVerification.E2E.Record.DeserializeGeneral
 open CryptoVerification.E2E.Record.L1GX CryptoVerification.E2E.Record.L1GX.Leaf.MF14Aux
-open CryptoVerification.E2E.Record.Serialization (OkAt allocPanic)
+open CryptoVerification.E2E.Record.Serialization (allocPanic)
 open Proofs.libsignal.Hooks2
 
 set_option maxRecDepth 200000

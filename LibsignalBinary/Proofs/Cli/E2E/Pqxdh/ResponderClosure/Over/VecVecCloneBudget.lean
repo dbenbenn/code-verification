@@ -9,11 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecClone
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecClone -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `<Vec<Vec<u8>> as Clone>::clone` (`len = 1`) Helpers
@@ -22,7 +25,7 @@ Provides layout-independent frame predicates, budget-threaded return/panic conti
 `VecVecClone1Env` projection lemmas, and heap-fold identities for `VecVecClonePlacedBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,7 +59,7 @@ abbrev vvc1_mem24_cells :=
 /-! ## Budget-Threaded Return and Panic Obligations -/
 
 /-- Return continuation for `vecVecClone1SpecX M A lim` at `(x, st)` with frame `R`. -/
-def vvc1Q {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def vvc1Q {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : VecVecClone1Ghost) (st : M.σ) (s0 : State) (R : SepProp) :
     State → SepProp → Prop :=
   fun sf P_f =>
@@ -64,7 +67,7 @@ def vvc1Q {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
       sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf
 
 /-- Panic continuation for `vecVecClone1SpecX M A lim` (`onPanic = ⌜False⌝`) with frame `R`. -/
-def vvc1Qp {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def vvc1Qp {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : VecVecClone1Ghost) (st : M.σ) (s0 : State) (R : SepProp) :
     State → SepProp → Prop :=
   fun sf P_f =>
@@ -102,11 +105,6 @@ theorem fitsEvents_inner_of_fitsEnv {M : AllocCostModel} {lim : BudgetLimits}
 theorem vecVecClone1Env_nil {x : VecVecClone1Ghost} (henc : x.enc = []) :
     VecVecClone1Env x (rustAllocEvents 24 8) := by
   simp [VecVecClone1Env, vecVecClone1Events, henc]
-
-theorem vecVecClone1Env_pos {x : VecVecClone1Ghost} (hpos : 0 < x.enc.length) :
-    VecVecClone1Env x (rustAllocEvents 24 8 ++ rustAllocEvents x.enc.length 1) := by
-  have hne : x.enc.length ≠ 0 := Nat.ne_of_gt hpos
-  simp [VecVecClone1Env, vecVecClone1Events, hne]
 
 theorem stepEvents_vecVecClone1_nil {M : AllocCostModel} (st : M.σ) {enc : List (BitVec 8)}
     (henc : enc = []) :

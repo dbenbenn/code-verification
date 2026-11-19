@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepRatchetDHAtPureA
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepRatchetDHAtPureA -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -18,8 +18,8 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeIdInv
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeIdInv -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompPresPQXDH
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSpqrHonestPure
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
@@ -48,7 +48,7 @@ Proves non-collision disjunction and decrypt-witness lemmas at a fixed explanati
 for the DH-ratchet whisper receive branch.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

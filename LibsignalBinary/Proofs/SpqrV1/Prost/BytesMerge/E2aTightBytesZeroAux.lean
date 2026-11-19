@@ -9,13 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Proof
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Field
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Varint
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Proof -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Field
+import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Varint
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append
 
 /-!
 # Zero-Capacity Tight Event Envelopes and Canonical Wire Round-Trip Lemmas
@@ -26,7 +28,7 @@ Tight `SpqrTightEvs` bounds for `bytesMergeEventsCore .lengthDelimited 0#64` and
 `encodeUint64Field`, `encodeInt32Field`) to `LibsignalProtoCodec`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -72,27 +74,6 @@ theorem e2a_bytesMergeEventsCore_zero_tight_32 {bs v rest : Bytes}
       SpqrTightEvs.rustAlloc hlen (by decide)
     have hmax : max (max (0 + v.length) (2 * 0)) 8 ≤ 32 := by omega
     have ha2 : SpqrTightEvs 1 738 32 (rustAllocEvents (max (max (0 + v.length) (2 * 0)) 8) 1) :=
-      SpqrTightEvs.rustAlloc hmax (by decide)
-    have hd : SpqrTightEvs 0 0 0 (rustDeallocEvents v.length 1) :=
-      SpqrTightEvs.rustDealloc v.length 1
-    exact ((ha1.append ha2).append hd).mono (by decide) (by decide) (by decide)
-
-theorem e2a_bytesMergeEventsCore_zero_tight_79236 {bs v rest : Bytes}
-    (hm : mergeBytes .lengthDelimited bs = some (v, rest))
-    (hlen : v.length ≤ 79236) :
-    SpqrTightEvs 2 180468 79236 (bytesMergeEventsCore .lengthDelimited 0#64 bs) := by
-  unfold bytesMergeEventsCore
-  rw [hm]
-  dsimp only
-  by_cases hv0 : v.length = 0
-  · simp [hv0, SpqrTightEvs.nil]
-  · have hnot_le : ¬ v.length ≤ 0 := by omega
-    simp only [hv0, ↓reduceIte, doReserveClearEvents,
-      show (0#64 : BitVec 64).toNat = 0 from rfl, hnot_le, reserveCap]
-    have ha1 : SpqrTightEvs 1 90234 79236 (rustAllocEvents v.length 1) :=
-      SpqrTightEvs.rustAlloc hlen (by decide)
-    have hmax : max (max (0 + v.length) (2 * 0)) 8 ≤ 79236 := by omega
-    have ha2 : SpqrTightEvs 1 90234 79236 (rustAllocEvents (max (max (0 + v.length) (2 * 0)) 8) 1) :=
       SpqrTightEvs.rustAlloc hmax (by decide)
     have hd : SpqrTightEvs 0 0 0 (rustDeallocEvents v.length 1) :=
       SpqrTightEvs.rustDealloc v.length 1

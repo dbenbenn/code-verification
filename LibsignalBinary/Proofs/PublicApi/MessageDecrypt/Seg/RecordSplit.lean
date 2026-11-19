@@ -10,6 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Defs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `MessageDecrypt` Record-Split Bridge (`RecordSplit`)
@@ -19,7 +21,7 @@ and `g.cur = some G` into the `previous_sessions` header cells, `prevBufAt`, `‚å
 and `sessionStateAt A (r + 0x18) G s.state`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageDecrypt.Pf.RecordSplit
 

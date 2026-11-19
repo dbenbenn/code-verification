@@ -10,18 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoderBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPtBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.States1a
-public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoderBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPtBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.States1a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Drop.PolyDecoder
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Drop Glue for `spqr::v1::chunked::states::States [local#1]` (Block `140`, Part 1)
@@ -32,7 +33,7 @@ Defines `dropChunkedStatesLocal1PlacedSpec` and `dropChunkedStatesLocal1PlacedVa
 `ekSentCt1Received`, `ct1Acknowledged`, `ct1Sampled`) for Block `140`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -90,7 +91,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Budget-Threaded Specifications (Block `140`) -/
 
-def dropChunkedStatesLocal1PlacedSpec [LibsignalPlacement]
+@[expose] def dropChunkedStatesLocal1PlacedSpec [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress) :
     Spec (DropChunkedStatesGhost F × M.σ) where
   pre := fun (x, st) s =>
@@ -107,7 +108,7 @@ def dropChunkedStatesLocal1PlacedSpec [LibsignalPlacement]
 
 /-- Per-variant budget-threaded specification of
 `core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]` (Block `140`). -/
-def dropChunkedStatesLocal1PlacedVariantSpec [LibsignalPlacement]
+@[expose] def dropChunkedStatesLocal1PlacedVariantSpec [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) {F : ShaCompress}
     (st_v : States spqrPolyApi (spqrAuthApi F)) : Spec (BitVec 64 × M.σ) where
   pre := fun (a, st) s =>
@@ -128,7 +129,7 @@ abbrev savedFrame32 (s0 : State) (w3 : BitVec 64) : SepProp :=
   ((s0.sp - 32#64) ↦₆₄ s0.readReg64 .fp) ∗ ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .lr) ∗
     ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x19) ∗ ((s0.sp - 8#64) ↦₆₄ w3)
 
-def deallocFreeOnlySpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def deallocFreeOnlySpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BitVec 64 × Nat × Nat × M.σ) where
   pre := (rustCliDeallocBudgetSpec M A lim).pre
   post := fun (_, size, align, st) s0 sf =>

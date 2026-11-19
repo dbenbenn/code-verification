@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Specifications.RecordCodecsBinary
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsBinary
 public import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSlice
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSlice -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPFrozen
 import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSym -- shake: keep
 
@@ -28,44 +28,12 @@ combinators shared by `PreKeyRecord::deserialize` (Block `65`),
 (Block `18`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.RecordCodecsBinary
 
 open Arm64 ProofLib CryptoGames.LibsignalSession CryptoVerification.RustHeap
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
-
-/-- The proved in-image callees of the three record decoders, on
-`tripleRatchetProgAtExt img.base ext`. -/
-structure DecodeDeps (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) :
-    Prop where
-  varintSlice : Prost.DecodeVarintSliceOkExtX img A ext
-  int32Merge : Prost.Int32MergeOkExtX img A ext
-  skipField : Prost.SkipFieldOkExtX img A ext
-  dropDecodeError : Prost.DropDecodeErrorOkExtX img A ext
-  bytesMerge : Prost.BytesMergeOkExtX img A ext
-  pkTryFrom :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr pkTryFromName) (pkTryFromCodeSpec img)
-
-/-! ## The entry points are symbols of the image
-
-Each fails to elaborate if the symbol is missing from (or not unique in) the current image, so a
-re-export that drops or renames one is reported here. -/
-
-example : libsignalSessionCode.fnOff preKeyDeserializeName =
-    num% (ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize") :=
-  ls_lemma% fnOff "<libsignal_protocol::state::prekey::PreKeyRecord>::deserialize"
-
-example : libsignalSessionCode.fnOff identityKeyPairTryFromName =
-    num% (ls_off% "<libsignal_protocol::identity_key::IdentityKeyPair as core::convert::TryFrom<&[u8]>>::try_from") :=
-  ls_lemma% fnOff "<libsignal_protocol::identity_key::IdentityKeyPair as core::convert::TryFrom<&[u8]>>::try_from"
-
-example : libsignalSessionCode.fnOff identityKeyDecodeName =
-    num% (ls_off% "<libsignal_protocol::identity_key::IdentityKey>::decode") :=
-  ls_lemma% fnOff "<libsignal_protocol::identity_key::IdentityKey>::decode"
-
-/-! ## Relocatable `[LibsignalPlacement]` Contracts & Callee Dependencies -/
 
 section Placed
 
@@ -117,7 +85,7 @@ structure PortDepsPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHook
   dealloc : HookSat H lsRustDeallocSym (rustDeallocSpec A)
 
 /-- Image-free inner specification of `PreKeyRecord::deserialize`. -/
-def preKeyDeserializeRawSpec (A : RustAlloc) : Spec DecodeGhost where
+@[expose] def preKeyDeserializeRawSpec (A : RustAlloc) : Spec DecodeGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.bytesA ∧ (s.readReg64 .x1).toNat = x.bytes.length ∧
       x.bytes.length < 2 ^ 32 ∧ s.readReg64 .x8 = x.ret⌝ ∗
@@ -132,7 +100,7 @@ abbrev preKeyDeserializePlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec D
   withLsCodeRoLoaded lsmpl (preKeyDeserializeRawSpec A)
 
 /-- Image-free inner specification of `<IdentityKeyPair as TryFrom<&[u8]>>::try_from` using `lsLogOff`. -/
-def identityKeyPairTryFromRawSpec [LibsignalPlacement] (A : RustAlloc) : Spec DecodeGhost where
+@[expose] def identityKeyPairTryFromRawSpec [LibsignalPlacement] (A : RustAlloc) : Spec DecodeGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.bytesA ∧ (s.readReg64 .x1).toNat = x.bytes.length ∧
       x.bytes.length < 2 ^ 32 ∧ s.readReg64 .x8 = x.ret⌝ ∗
@@ -149,7 +117,7 @@ abbrev identityKeyPairTryFromPlacedSpec [LibsignalPlacement] (A : RustAlloc) : S
   withLsCodeRoLoaded lsmpl (identityKeyPairTryFromRawSpec A)
 
 /-- Image-free inner specification of `IdentityKey::decode` using `lsLogOff`. -/
-def identityKeyDecodeRawSpec [LibsignalPlacement] (A : RustAlloc) : Spec DecodeGhost where
+@[expose] def identityKeyDecodeRawSpec [LibsignalPlacement] (A : RustAlloc) : Spec DecodeGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.bytesA ∧ (s.readReg64 .x1).toNat = x.bytes.length ∧
       s.readReg64 .x8 = x.ret⌝ ∗

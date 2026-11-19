@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib -- shake: keep
 public meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadKpkPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadKpkPlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.BV.Bits
@@ -25,12 +25,26 @@ import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEq
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSites
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadRegSpkPlacedBudgetAux
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserCloneTail -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadRegSpk
+public import ProofLib.Placed.OpcodeExclusion
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.MuslStage1Init
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # Budget-Threaded Final Bundle Assembly for Arm `R1b` (`0x27bc → 0x28f0`)
@@ -40,7 +54,7 @@ Proves `r1b_step_init2_27bc_placed_aux` on Block `579` (`signal_session::run`), 
 with `VmPreserved` pool transport.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

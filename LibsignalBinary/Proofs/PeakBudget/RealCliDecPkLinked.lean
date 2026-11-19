@@ -9,13 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinked
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
-public import LibsignalBinary.Proofs.PeakBudget.WireFieldDomainCaps
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
+import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
+public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinked
+import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
+import LibsignalBinary.Proofs.PeakBudget.WireFieldDomainCaps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bProofPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
 
 /-!
 # Linked `W4` (`recv-prekey`, Arm `R3b`) Binary-Wide Slot Envelope and Bridges
@@ -25,13 +36,12 @@ Defines the wide-clone `W4` (`recv-prekey`) slot abbreviations, `W4BinaryCallSit
 `(mkBinaryKitRealCalleeEnvs img S X W g).decPkEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.PeakBudget.RealCliDecPkLinked
 
-open Arm64.Obj (Image)
 open Arm64.Process (bytesOfString)
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoGames.LibsignalSessionApi (PreKeySignalMessage Session)
@@ -267,7 +277,7 @@ abbrev w4RealCallSiteDom_toRealDomOf := @W4BinaryCallSiteDom.toRealDomOf
 `(mkBinaryKitRealCalleeEnvs img S X W g).decPkEnv` for any `S : RunSem` with
 `S.pksmParse = pksmParse`. -/
 theorem w4_realCliDecPkBinaryWideSlotEnv_sub_binaryKit [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) (meV : AddrV) (peerV : AddrV)
     (rest : List (BitVec 8)) (pm : PreKeySignalMessage)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c)
@@ -305,7 +315,7 @@ theorem w4_realCliDecPkBinaryWideSlotEnv_sub_binaryKit [LibsignalPlacement]
 `CliSlotEnvelopeBridge.cliMainArmEnvs_runEnv_to_cliRunBinaryEnv` for any `S : RunSem` with
 `S.pksmParse = pksmParse`. -/
 theorem w4_hrecvP_slot_binaryWide_sub_binaryKit [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c)
     (hin : (inputOf g.i g.c).length ≤ stdinCapBytes)

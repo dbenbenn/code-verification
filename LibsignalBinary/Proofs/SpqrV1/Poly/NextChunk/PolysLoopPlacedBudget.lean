@@ -9,16 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.Proof
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
-public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PolysLoop
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PolysLoopPlaced
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.Proof
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
+public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PolysLoop
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PolysLoopPlaced
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Pure -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Budget-Threaded Placed `Polys` Path
@@ -27,7 +31,7 @@ Relocatable `[LibsignalPlacement]` verification of the 16-iteration `EncoderStat
 threading `RustCliAllocBudget M`, `BudgetLimits`, `PolysLoopEnv`, and `NextChunkPolysEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -124,7 +128,7 @@ attribute [local simp, local arm64_norm, local wp_norm]
 /-! ## 1. Exact Allocator Event Envelopes for `Polys` Loop & `EncoderState::Polys` Path -/
 
 /-- Exact allocator event sequence across a list of polynomials evaluated by `<Poly>::compute_at`. -/
-def polysLoopEvents : List CryptoVerification.LibsignalSpqrV1.Poly → List AllocEvent
+@[expose] def polysLoopEvents : List CryptoVerification.LibsignalSpqrV1.Poly → List AllocEvent
   | [] => []
   | p :: ps => computeAtEvents p.coefficients.length ++ polysLoopEvents ps
 
@@ -147,7 +151,7 @@ theorem polysLoopEvents_drop_of_ge {polys : List CryptoVerification.LibsignalSpq
   rw [List.drop_eq_nil_of_le hi]
   rfl
 
-def PolysLoopEnv (polys : List CryptoVerification.LibsignalSpqrV1.Poly)
+@[expose] def PolysLoopEnv (polys : List CryptoVerification.LibsignalSpqrV1.Poly)
     (evs : List AllocEvent) : Prop :=
   evs = polysLoopEvents polys
 
@@ -165,10 +169,10 @@ theorem fitsEnv_polysLoop_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.
     `EncoderState::Polys` path (`+0..+92 -> +136..+220 -> +4484`):
     prologue `32`-byte output buffer allocation, 16 `<Poly>::compute_at` evaluations, and
     epilogue `32`-byte output buffer deallocation. -/
-def nextChunkPolysEvents (polys : List CryptoVerification.LibsignalSpqrV1.Poly) : List AllocEvent :=
+@[expose] def nextChunkPolysEvents (polys : List CryptoVerification.LibsignalSpqrV1.Poly) : List AllocEvent :=
   nextChunkPrologueEvents ++ polysLoopEvents polys ++ nextChunkEpilogueEvents
 
-def NextChunkPolysEnv (polys : List CryptoVerification.LibsignalSpqrV1.Poly)
+@[expose] def NextChunkPolysEnv (polys : List CryptoVerification.LibsignalSpqrV1.Poly)
     (evs : List AllocEvent) : Prop :=
   evs = nextChunkPolysEvents polys
 

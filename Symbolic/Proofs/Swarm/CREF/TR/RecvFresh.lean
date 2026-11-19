@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 
 /-!
@@ -19,7 +19,7 @@ Defines `TRRecvCountersFresh`, `TRSkippedRIdxFun`, `TRSkippedRIdxChainRel`, and 
 for Triple Ratchet snapshots, together with trace-extension transfer lemmas.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -33,7 +33,7 @@ open DY.Libsignal.TripleRatchet (SessionInfo RecvChain)
 open DY.Libsignal.TripleRatchet (TRState TREvent isCurrentSnapshot)
 
 /-- Receiver-counter freshness of snapshot `st` of `p` on `tr`. -/
-def TRRecvCountersFresh (tr : ExecTrace) (p : Participant) (st : TRState) : Prop :=
+@[expose] def TRRecvCountersFresh (tr : ExecTrace) (p : Participant) (st : TRState) : Prop :=
   (∀ c ∈ st.recv,
     (∀ seed pqSalt n pIdx i,
       tr.EventLoggedAt (TREvent.MessageKey (st.sessionInfo p) .receiver seed pqSalt n c.rIdx pIdx) i →
@@ -51,14 +51,14 @@ def TRRecvCountersFresh (tr : ExecTrace) (p : Participant) (st : TRState) : Prop
   (st.recv.map RecvChain.rIdx).Nodup
 
 /-- Any two `SkippedKeyStored sinfo` events on `tr` with the same `rIdx` carry equal `pk`. -/
-def TRSkippedRIdxFun (tr : ExecTrace) (sinfo : SessionInfo) : Prop :=
+@[expose] def TRSkippedRIdxFun (tr : ExecTrace) (sinfo : SessionInfo) : Prop :=
   ∀ pk₁ n₁ seed₁ srcIdx₁ i₁ pk₂ n₂ seed₂ srcIdx₂ i₂ rIdx,
     tr.EventLoggedAt (TREvent.SkippedKeyStored sinfo pk₁ n₁ seed₁ rIdx srcIdx₁) i₁ →
     tr.EventLoggedAt (TREvent.SkippedKeyStored sinfo pk₂ n₂ seed₂ rIdx srcIdx₂) i₂ →
     pk₁ = pk₂
 
 /-- Functionality of `SkippedKeyStored` by `rIdx` and ratchet-key agreement with `st.recv`. -/
-def TRSkippedRIdxChainRel (tr : ExecTrace) (p : Participant) (st : TRState) : Prop :=
+@[expose] def TRSkippedRIdxChainRel (tr : ExecTrace) (p : Participant) (st : TRState) : Prop :=
   TRSkippedRIdxFun tr (st.sessionInfo p) ∧
   ∀ c ∈ st.recv, ∀ pk n seed srcIdx i,
     tr.EventLoggedAt (TREvent.SkippedKeyStored (st.sessionInfo p) pk n seed c.rIdx srcIdx) i →
@@ -66,7 +66,7 @@ def TRSkippedRIdxChainRel (tr : ExecTrace) (p : Participant) (st : TRState) : Pr
 
 /-- Receiver-counter freshness and skipped-key index invariants across all current snapshots of
 `r₀.alice` and `r₀.bob` on `runTraceMoves r₀ ms`. -/
-def TRRecvFreshAll (r₀ : ProtocolSetup) (ms : List Move) : Prop :=
+@[expose] def TRRecvFreshAll (r₀ : ProtocolSetup) (ms : List Move) : Prop :=
   ∀ q stateIdx st,
     (q = r₀.alice ∨ q = r₀.bob) →
     ((PersistentLocalState.getLocalState q stateIdx : Traceful TRState).run (runTraceMoves r₀ ms)).1 = some st →

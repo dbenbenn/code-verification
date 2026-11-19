@@ -12,6 +12,7 @@ module
 public import Arm64
 public import LibsignalBinary.Specifications.SignalSession.CliProcess
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import Symbolic.BugInjection.Proofs.CliExec.RadixMemAux
 public import Symbolic.BugInjection.Proofs.CliExec.FastHooksPlaced
 public import Symbolic.BugInjection.Proofs.CliExec.PlacedExecCore
@@ -31,8 +32,9 @@ set_option autoImplicit false
 namespace Symbolic.BugInjection.Proofs.CliExec.PrebuildSpecPlaced
 
 open Arm64 Arm64.Obj Arm64.Process
-open CryptoVerification.SignalSession (CliHooks cliExternsPlacedSig)
-open CryptoVerification.SignalSession.Placed (cliProgPlacedSig)
+open CryptoVerification.SignalSession (CliHooks)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (cliExternsPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliProgPlacedSig)
 open Symbolic.BugInjection.Proofs.CliExec.RadixMemAux (BinTree btGet rawCellAt)
 open Symbolic.BugInjection.Proofs.CliExec.FastHooksPlaced (MallocngCallAddrs)
 open Symbolic.BugInjection.Proofs.CliExec.PlacedExecCore (PrebuiltElfPlaced overlayHooksPlaced

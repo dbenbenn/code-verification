@@ -10,6 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Defs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `MessageDecrypt` Record-Join Bridge (`RecordJoin`)
@@ -18,7 +20,7 @@ Pure separation-logic bridge reassembling `sessionRecordAt` after `G.AfterRecord
 `pendingPreKey := none` and `pendingKyberPreKey := none`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageDecrypt.Pf.RecordJoin
 

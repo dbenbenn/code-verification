@@ -12,7 +12,7 @@ module
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.HybridWith
 import Computational.Proofs.CryptoGames.FSAEAD.HybridLazy
 import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Final
-public import Computational.Proofs.CryptoGames.AEAD.PrimitivesProofDefs
+import Computational.Proofs.CryptoGames.AEAD.PrimitivesProofDefs
 public import Computational.Proofs.CryptoGames.FSAEAD.HybridProofDefs
 public import Computational.Proofs.CryptoGames.FSAEAD.HybridWithProofDefs
 
@@ -26,7 +26,7 @@ Relates the real `fromAEADPRG` FS-AEAD game to the initial main-chain and lookah
 two- and three-way state bisimulations.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory CryptoGames.Lazy
 
@@ -47,13 +47,13 @@ section ChainHelpers
 variable (G : ℕ → PRGScheme CK (CK × MK))
 
 /-- Message key generated at 0-based chain position `p` from initial seed `k`. -/
-def keyAt (k : CK) (p : ℕ) : MK := ((G p).gen (chainFrom G 0 k p)).2
+@[expose] def keyAt (k : CK) (p : ℕ) : MK := ((G p).gen (chainFrom G 0 k p)).2
 
 /-- First `n` message keys generated from initial seed `k`. -/
-def keysUpTo (k : CK) (n : ℕ) : List MK := (List.range n).map (keyAt G k)
+@[expose] def keysUpTo (k : CK) (n : ℕ) : List MK := (List.range n).map (keyAt G k)
 
 /-- Skipped `(index, key)` pairs for 1-based message indices `sk`. -/
-def skippedPairs (k : CK) (sk : List ℕ) : List (ℕ × MK) :=
+@[expose] def skippedPairs (k : CK) (sk : List ℕ) : List (ℕ × MK) :=
   sk.map fun i => (i, keyAt G k (i - 1))
 
 @[simp] theorem chainFrom_zero (p : ℕ) (w : CK) : chainFrom G p w 0 = w := rfl
@@ -532,7 +532,7 @@ abbrev implH (la : Bool) :
       SP :=
   implWith ideal ae G maxSkip (hp 0 0 la) (DG G) (none : Option (SpecialOps AD M C ProbComp))
 
-def mkRState (k : CK) (st : HS) : RState :=
+@[expose] def mkRState (k : CK) (st : HS) : RState :=
   { b := st.b
     senderState := ⟨chainFrom G 0 k st.lastSentIdx, st.lastSentIdx⟩
     receiverState := ⟨chainFrom G 0 k st.receiverIdx, st.receiverIdx, skippedPairs G k st.skipped⟩
@@ -544,7 +544,7 @@ def mkRState (k : CK) (st : HS) : RState :=
     inTransit := st.inTransit
     challengesInTransit := st.challengesInTransit }
 
-def uncompBound (st : HS) : ℕ :=
+@[expose] def uncompBound (st : HS) : ℕ :=
   st.senderCorruptedAt.getD st.lastSentIdx
 
 structure WFState (k : CK) (st : HS) : Prop where
@@ -1324,7 +1324,7 @@ variable [SampleableType MK] [SampleableType CK] (ideal : ℕ × AD → ProbComp
   [DecidableEq AD] [DecidableEq M] [DecidableEq C]
   (ae : AEADScheme MK (ℕ × AD) M C) (G : ℕ → PRGScheme CK (CK × MK)) (maxSkip : ℕ)
 
-def CloseBy (cR cM cL : ProbComp Bool) : Prop :=
+@[expose] def CloseBy (cR cM cL : ProbComp Bool) : Prop :=
   ∀ s : Set Bool,
     𝒟[cR] s ≤ 𝒟[cM] s + 𝒟[cL] {true} ∧
     𝒟[cM] s ≤ 𝒟[cR] s + 𝒟[cL] {true}

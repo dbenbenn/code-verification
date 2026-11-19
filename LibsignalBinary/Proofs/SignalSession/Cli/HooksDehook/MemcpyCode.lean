@@ -28,8 +28,11 @@ public import LibsignalBinary.Proofs.SpqrV1.Alloc.Concat -- proof-setup: allow-p
 public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Alloc.Hooks4K -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Alloc.Hooks4KBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
 public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Region-Local `memcpy` Code Proof (`blk20`) & Master Spec (`HooksDehook.MemcpyCode`)
@@ -157,15 +160,6 @@ theorem mallocng_blk20_code_length :
 theorem memcpySymWords_length :
     memcpySymWords.length = 99 := rfl
 
-/-- `mallocng_blk20_memcpy.code` is definitionally `mallocngWordsLE memcpySymWords`. -/
-theorem mallocng_blk20_code_eq_memcpySymWords :
-    mallocng_blk20_memcpy.code = mallocngWordsLE memcpySymWords := rfl
-
-/-- `mallocng_blk20_memcpy.code` is byte-identical to `(Program.ofWords 0#64 memcpySymWords).code`. -/
-theorem mallocng_blk20_code_eq_ofWords :
-    mallocng_blk20_memcpy.code = (Program.ofWords 0#64 memcpySymWords).code := by
-  decide +kernel
-
 private theorem patchedWord_of_relocs_nil {blk : Obj.CodeBlock} (hrel : blk.relocs = [])
     (pl : Obj.Placement) (off : Nat) :
     blk.patchedWord pl off = blk.wordAt off := by
@@ -271,18 +265,6 @@ theorem stdMemcpyRO_pre_of_masterMemcpy_pre {dst src : BitVec 64} {bs : List (Bi
   rw [sepConj_assoc, satisfies_pure_sepConj]
   exact ⟨⟨hx0, hx1, hx2', hlt⟩, by rwa [sepConj_assoc]⟩
 
-/-- Region-local `subroutine_ok` for `memcpySymSpec` on any `P_sub` holding `memcpySymWords`. -/
-theorem subroutine_ok_memcpySym_of_hasWords {P_sub : Program} {entry : BitVec 64}
-    (hwords : P_sub.hasWords entry memcpySymWords) :
-    subroutine_ok P_sub entry memcpySymSpec :=
-  memcpy_codeAt_ok_sym P_sub entry hwords
-
-/-- Region-local `subroutine_ok` for `memcpyROSymSpec` on any `P_sub` holding `memcpySymWords`. -/
-theorem subroutine_ok_memcpyROSym_of_hasWords {P_sub : Program} {entry : BitVec 64}
-    (hwords : P_sub.hasWords entry memcpySymWords) :
-    subroutine_ok P_sub entry memcpyROSymSpec :=
-  memcpyRO_codeAt_ok_sym P_sub entry hwords
-
 /-- Region-local `subroutine_ok` for `stdMemcpySpec` on any hook-free `P_sub` holding
     `memcpySymWords`. -/
 theorem subroutine_ok_stdMemcpy_of_hasWords {P_sub : Program} {entry : BitVec 64}
@@ -298,14 +280,6 @@ theorem subroutine_ok_stdMemcpyRO_of_hasWords {P_sub : Program} {entry : BitVec 
     (hwords : P_sub.hasWords entry memcpySymWords) :
     subroutine_ok P_sub entry stdMemcpyROSpec :=
   stdMemcpyRO_ok_of_hasWords P_sub entry hsub_no hwords
-
-/-- Region-local `subroutine_ok` for `allocMemcpyVmSpec` on any hook-free `P_sub` holding
-    `memcpySymWords`. -/
-theorem subroutine_ok_allocMemcpyVm_of_hasWords {P_sub : Program} {entry : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entry memcpySymWords) :
-    subroutine_ok P_sub entry allocMemcpyVmSpec :=
-  allocMemcpyVm_ok_of_hasWords P_sub entry hsub_no hwords
 
 /-- Region-local `subroutine_ok` for `masterMemcpySpec` (covering both `ro = false` RW and
     `ro = true` RO sources) on any hook-free `P_sub` holding `memcpySymWords`. -/
@@ -353,102 +327,6 @@ theorem subroutine_ok_masterMemcpyK_of_hasWords (keep : BitVec 64 → Bool)
   dsimp only [memcpySpecK] at hp
   rw [sepConj_assoc, satisfies_pure_sepConj] at hp
   exact hp.2
-
-/-- `mallocngBlockProg mmpl 20 svc` satisfies `memcpySymSpec` at `mmpl.base 20`. -/
-theorem mallocngBlock20_memcpySym_ok (mmpl : Obj.MultiPlacement)
-    (svc : State → State := Syscall.standard) :
-    subroutine_ok (mallocngBlockProg mmpl 20 svc) (mmpl.base 20) memcpySymSpec :=
-  subroutine_ok_memcpySym_of_hasWords (mallocngBlockProg20_hasWords mmpl svc)
-
-/-- `mallocngBlockProg mmpl 20 svc` satisfies `memcpyROSymSpec` at `mmpl.base 20`. -/
-theorem mallocngBlock20_memcpyROSym_ok (mmpl : Obj.MultiPlacement)
-    (svc : State → State := Syscall.standard) :
-    subroutine_ok (mallocngBlockProg mmpl 20 svc) (mmpl.base 20) memcpyROSymSpec :=
-  subroutine_ok_memcpyROSym_of_hasWords (mallocngBlockProg20_hasWords mmpl svc)
-
-/-- `mallocngBlockProg mmpl 20 Syscall.standard` satisfies `stdMemcpySpec` at `mmpl.base 20`. -/
-theorem mallocngBlock20_stdMemcpy_ok (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (mallocngBlockProg mmpl 20 Syscall.standard) (mmpl.base 20) stdMemcpySpec :=
-  subroutine_ok_stdMemcpy_of_hasWords
-    (mallocngBlockProg20_externAt_none mmpl Syscall.standard)
-    (mallocngBlockProg20_hasWords mmpl Syscall.standard)
-
-/-- `mallocngBlockProg mmpl 20 Syscall.standard` satisfies `stdMemcpyROSpec` at `mmpl.base 20`. -/
-theorem mallocngBlock20_stdMemcpyRO_ok (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (mallocngBlockProg mmpl 20 Syscall.standard) (mmpl.base 20) stdMemcpyROSpec :=
-  subroutine_ok_stdMemcpyRO_of_hasWords
-    (mallocngBlockProg20_externAt_none mmpl Syscall.standard)
-    (mallocngBlockProg20_hasWords mmpl Syscall.standard)
-
-/-- `mallocngBlockProg mmpl 20 Syscall.standard` satisfies `allocMemcpyVmSpec` at `mmpl.base 20`. -/
-theorem mallocngBlock20_allocMemcpyVm_ok (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (mallocngBlockProg mmpl 20 Syscall.standard) (mmpl.base 20) allocMemcpyVmSpec :=
-  subroutine_ok_allocMemcpyVm_of_hasWords
-    (mallocngBlockProg20_externAt_none mmpl Syscall.standard)
-    (mallocngBlockProg20_hasWords mmpl Syscall.standard)
-
-/-- `mallocngBlockProg mmpl 20 Syscall.standard` satisfies `masterMemcpySpec` at `mmpl.base 20`. -/
-theorem mallocngBlock20_masterMemcpy_ok (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (mallocngBlockProg mmpl 20 Syscall.standard) (mmpl.base 20) masterMemcpySpec :=
-  subroutine_ok_masterMemcpy_of_hasWords
-    (mallocngBlockProg20_externAt_none mmpl Syscall.standard)
-    (mallocngBlockProg20_hasWords mmpl Syscall.standard)
-
-/-- `mallocngBlockProg mmpl 20 Syscall.standard` satisfies `memcpySpecK keep masterMemcpySpec` at
-    `mmpl.base 20`. -/
-theorem mallocngBlock20_masterMemcpyK_ok (keep : BitVec 64 → Bool) (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (mallocngBlockProg mmpl 20 Syscall.standard) (mmpl.base 20)
-      (memcpySpecK keep masterMemcpySpec) :=
-  subroutine_ok_masterMemcpyK_of_hasWords keep
-    (mallocngBlockProg20_externAt_none mmpl Syscall.standard)
-    (mallocngBlockProg20_hasWords mmpl Syscall.standard)
-
-/-- `pureWordsProg (mmpl.base 20) memcpySymWords` satisfies `memcpySymSpec` at `mmpl.base 20`. -/
-theorem pureWordsProg20_memcpySym_ok (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (pureWordsProg (mmpl.base 20) memcpySymWords) (mmpl.base 20) memcpySymSpec :=
-  subroutine_ok_memcpySym_of_hasWords (pureWordsProg_memcpy_hasWords (mmpl.base 20))
-
-/-- `pureWordsProg (mmpl.base 20) memcpySymWords` satisfies `memcpyROSymSpec` at `mmpl.base 20`. -/
-theorem pureWordsProg20_memcpyROSym_ok (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (pureWordsProg (mmpl.base 20) memcpySymWords) (mmpl.base 20) memcpyROSymSpec :=
-  subroutine_ok_memcpyROSym_of_hasWords (pureWordsProg_memcpy_hasWords (mmpl.base 20))
-
-/-- `pureWordsProg (mmpl.base 20) memcpySymWords` satisfies `stdMemcpySpec` at `mmpl.base 20`. -/
-theorem pureWordsProg20_stdMemcpy_ok (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (pureWordsProg (mmpl.base 20) memcpySymWords) (mmpl.base 20) stdMemcpySpec :=
-  subroutine_ok_stdMemcpy_of_hasWords
-    (pureWordsProg_externAt_none (mmpl.base 20) memcpySymWords)
-    (pureWordsProg_memcpy_hasWords (mmpl.base 20))
-
-/-- `pureWordsProg (mmpl.base 20) memcpySymWords` satisfies `stdMemcpyROSpec` at `mmpl.base 20`. -/
-theorem pureWordsProg20_stdMemcpyRO_ok (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (pureWordsProg (mmpl.base 20) memcpySymWords) (mmpl.base 20) stdMemcpyROSpec :=
-  subroutine_ok_stdMemcpyRO_of_hasWords
-    (pureWordsProg_externAt_none (mmpl.base 20) memcpySymWords)
-    (pureWordsProg_memcpy_hasWords (mmpl.base 20))
-
-/-- `pureWordsProg (mmpl.base 20) memcpySymWords` satisfies `allocMemcpyVmSpec` at `mmpl.base 20`. -/
-theorem pureWordsProg20_allocMemcpyVm_ok (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (pureWordsProg (mmpl.base 20) memcpySymWords) (mmpl.base 20) allocMemcpyVmSpec :=
-  subroutine_ok_allocMemcpyVm_of_hasWords
-    (pureWordsProg_externAt_none (mmpl.base 20) memcpySymWords)
-    (pureWordsProg_memcpy_hasWords (mmpl.base 20))
-
-/-- `pureWordsProg (mmpl.base 20) memcpySymWords` satisfies `masterMemcpySpec` at `mmpl.base 20`. -/
-theorem pureWordsProg20_masterMemcpy_ok (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (pureWordsProg (mmpl.base 20) memcpySymWords) (mmpl.base 20) masterMemcpySpec :=
-  subroutine_ok_masterMemcpy_of_hasWords
-    (pureWordsProg_externAt_none (mmpl.base 20) memcpySymWords)
-    (pureWordsProg_memcpy_hasWords (mmpl.base 20))
-
-/-- `pureWordsProg (mmpl.base 20) memcpySymWords` satisfies `memcpySpecK keep masterMemcpySpec`
-    at `mmpl.base 20`. -/
-theorem pureWordsProg20_masterMemcpyK_ok (keep : BitVec 64 → Bool) (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (pureWordsProg (mmpl.base 20) memcpySymWords) (mmpl.base 20)
-      (memcpySpecK keep masterMemcpySpec) :=
-  subroutine_ok_masterMemcpyK_of_hasWords keep
-    (pureWordsProg_externAt_none (mmpl.base 20) memcpySymWords)
-    (pureWordsProg_memcpy_hasWords (mmpl.base 20))
 
 /-! ## 3. Fallback `hookMemcpy` Soundness for `masterMemcpySpec` -/
 

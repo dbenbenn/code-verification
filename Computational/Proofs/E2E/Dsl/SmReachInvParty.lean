@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.ClampsLossless
-public import Computational.Proofs.SpqrV1Sync.TopStateTight
+public import Computational.Proofs.E2E.Dsl.ClampsLossless -- proof-setup: allow-public-import
+import Computational.Proofs.SpqrV1Sync.TopStateTight
 public import Computational.Specifications.Session.StatementIdsModel
 
 /-!
@@ -21,7 +21,7 @@ and proves initialization, step preservation across `initA`, `initB`, `send`, an
 lossless `SessionRecord` serialization bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -80,11 +80,6 @@ theorem PartyReachInv.messageKeySeed_le_32 {C : Crypto} {K : MlKem} {g : GhostSt
 theorem PartyReachInv.pqRatchetState_length_le {C : Crypto} {K : MlKem} {g : GhostState Bytes}
     (h : PartyReachInv C K g) : g.session.pqRatchetState.length ≤ 286196 :=
   topStateTight_length_le C.F K h.topTight
-
-theorem PartyReachInv.ghostSplitJoin_roundtrip {ℓ : ℕ} {C : Crypto} {K : MlKem}
-    {g : GhostState Bytes} (h : PartyReachInv C K g) :
-    ghostJoinEval (ghostSplitEval (ℓ := ℓ) g) = g :=
-  ghostJoinEval_ghostSplitEval g h.receiverChains_le_five h.messageKeySeed_eq
 
 theorem PartyReachInv.reachableSessionRecordBounds {C : Crypto} {K : MlKem}
     {g : GhostState Bytes} (h : PartyReachInv C K g) (E : Party → RecordExtras)

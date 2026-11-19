@@ -27,7 +27,7 @@ Reusable `CloseByStateCTrack` combinators for `inject` steps, covering reject st
 absorption, stopped-run persistence, and non-stopping `amb + 1` transitions.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

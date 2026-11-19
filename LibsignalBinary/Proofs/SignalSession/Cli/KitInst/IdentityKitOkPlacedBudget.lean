@@ -9,22 +9,34 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.FinishGrowPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustShimPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSaveShimPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.SymPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.FinishGrowPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustShimPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPollPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSaveShimPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.SymPlacedBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.BranchesPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
 
 /-!
 # Placed Budgeted CLI `IdentityStoreKitPlacedOkI` Assembly
@@ -34,7 +46,7 @@ and assembles the budget-threaded `IdentityStoreKitPlacedOkI` bundle under
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
@@ -120,7 +132,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.SymPlacedBudget
 
 /-- Poll allocation envelope for `is_trusted_identity::{closure#0}`: `Dir::get` on `g.peers`
 followed by optional buffer deallocation (`FreeOnlyEvs`). -/
-def cliIdentityKitTrustPollEnv
+@[expose] def cliIdentityKitTrustPollEnv
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (F0 : FsFiles) (g : IdGhost) (rem : AddrVal) (_key : IdentityKey) (_d : Direction) :
     List AllocEvent → Prop :=
@@ -128,7 +140,7 @@ def cliIdentityKitTrustPollEnv
 
 /-- Post-`Dir::get` allocation envelope for `save_identity::{closure#0}`: empty on `.error ()`,
 and optional buffer deallocation plus `PublicKey::serialize` and `Dir::put::<&str>` on `.ok _`. -/
-def cliIdentityKitSaveTailEnv
+@[expose] def cliIdentityKitSaveTailEnv
     (PutStrEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (g : IdGhost) (rem : AddrVal) (key : IdentityKey)
     (gr : Except Unit (List (BitVec 8))) : List AllocEvent → Prop :=
@@ -139,7 +151,7 @@ def cliIdentityKitSaveTailEnv
       (SeqEnv PublicKeySerializeEnv
         (PutStrEnv g.peers rem.name key.serialize))
 
-def cliIdentityKitSavePollEnv (rd : ReadRule)
+@[expose] def cliIdentityKitSavePollEnv (rd : ReadRule)
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (PutStrEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (F0 : FsFiles) (g : IdGhost) (rem : AddrVal) (key : IdentityKey) :
@@ -147,7 +159,7 @@ def cliIdentityKitSavePollEnv (rd : ReadRule)
   SeqEnv (GetEnv F0 g.peers rem.name)
     (cliIdentityKitSaveTailEnv PutStrEnv g rem key (g.peers.get rd F0 rem.name))
 
-def cliIdentityKitBudgetEnv [LibsignalPlacement] (A : RustAlloc)
+@[expose] def cliIdentityKitBudgetEnv [LibsignalPlacement] (A : RustAlloc)
     (rd : ReadRule) (F0 : FsFiles) (pathOk : List (BitVec 8) → Prop) (peer : AddrGhost)
     (s1 s2 s3 s4 : Nat)
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)

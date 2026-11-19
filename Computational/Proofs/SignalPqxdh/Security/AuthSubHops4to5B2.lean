@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhA -- shake: keep
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhC -- shake: keep
@@ -22,7 +22,7 @@ Proves that `AuthCleanSessionInv` is preserved by every `Auth` oracle query unde
 KEM public-key collision events.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

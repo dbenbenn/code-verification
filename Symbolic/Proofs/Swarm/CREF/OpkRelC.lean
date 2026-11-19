@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix
-public import Symbolic.Proofs.Swarm.CREF.OpkRelOn
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.OpkRelOn -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import VCVio.Prelude.Core
@@ -22,7 +22,7 @@ Specializes `COpkRelOn` to `Clean` explanations (`COpkRelC`), proving prefix clo
 and providing transfer lemmas across non-accepting and non-OPK-consuming blocks.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -11,27 +11,33 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1LoadTrustTailsXExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsErrUnwindPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberProofPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1LoadTrustTailsXExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsErrUnwindPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberProofPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlacedBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4ErrUnwind
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4MarkKyber
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4MarkKyberProof
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4MarkKyber -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKit
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsErrUnwind
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyber
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Bin.Hooks
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP4
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveIdProof
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberPlaced
 
 /-!
 # Budget-Threaded Relocatable Stage P4.2 Dispatch Proof: `mark_kyber_pre_key_used`
@@ -41,7 +47,7 @@ Budget-threaded `[LibsignalPlacement]` Substage P4.2 dispatch proofs on Block `5
 on `Err(e)` unwind.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -162,7 +168,7 @@ private theorem markPoll_pre_intro_placed {M : AllocCostModel} {A : RustCliAlloc
 /-! ## Allocation envelopes, spatial bundles, and mark-only kit -/
 
 /-- `mark_kyber_pre_key_used` shim + poll + `Box` dealloc step envelope. -/
-def MarkStepEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def MarkStepEnv {A : RustAlloc} {b : BitVec 64}
     (kpkKit : KyberPreKeyStoreSpec A b) (kpkKitEnv : KyberPreKeyStoreBudgetEnv kpkKit)
     (kst0 : kpkKit.KpkState) (kyberPreKeyId signedPreKeyId : BitVec 32)
     (baseKey : PublicKey) : List AllocEvent → Prop :=
@@ -172,7 +178,7 @@ def MarkStepEnv {A : RustAlloc} {b : BitVec 64}
 
 /-- Allocation envelope on the `mark_kyber_pre_key_used = Err(e)` path of Stage P4.2:
 `MarkStepEnv` followed by `FreeOnlyEvs` (`drop_glue<SessionStructure>` and `pt` buffer dealloc). -/
-def StageP4MarkErrEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def StageP4MarkErrEnv {A : RustAlloc} {b : BitVec 64}
     (kpkKit : KyberPreKeyStoreSpec A b) (kpkKitEnv : KyberPreKeyStoreBudgetEnv kpkKit)
     (kst0 : kpkKit.KpkState) (kyberPreKeyId signedPreKeyId : BitVec 32)
     (baseKey : PublicKey) : List AllocEvent → Prop :=
@@ -180,7 +186,7 @@ def StageP4MarkErrEnv {A : RustAlloc} {b : BitVec 64}
 
 /-- Resources shared unchanged across Placed Substage P4.2 (`mark_kyber_pre_key_used`), separating
 the stack-frame anchor `s` from the pool state `s_pool`. -/
-def stageP4MarkKyberSharedPlaced {M : AllocCostModel}
+@[expose] def stageP4MarkKyberSharedPlaced {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (kpkKit : KyberPreKeyStoreSpec A.repAlloc 0#64)
     (s0 s s_pool : State)
@@ -198,7 +204,7 @@ def stageP4MarkKyberSharedPlaced {M : AllocCostModel}
   stackAt s.sp (markKyberCallStack kpkKit)
 
 /-- Spatial precondition of Placed Substage P4.2 at `0#64 + kpkKit.markShimOff`. -/
-def stageP4MarkKyberPrePlaced {M : AllocCostModel}
+@[expose] def stageP4MarkKyberPrePlaced {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st0 : M.σ)
     (kpkKit : KyberPreKeyStoreSpec A.repAlloc 0#64)
     (s0 s : State)
@@ -221,7 +227,7 @@ def stageP4MarkKyberPrePlaced {M : AllocCostModel}
   kpkKit.storeAt kyberStorePtr kst0
 
 /-- Spatial postcondition of Placed Substage P4.2 after `Ok(())` (at `+0x38c` or after deallocation). -/
-def stageP4MarkKyberOkPostPlaced {M : AllocCostModel}
+@[expose] def stageP4MarkKyberOkPostPlaced {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st1 : M.σ)
     (kpkKit : KyberPreKeyStoreSpec A.repAlloc 0#64)
     (s0 s s1 : State)
@@ -246,7 +252,7 @@ def stageP4MarkKyberOkPostPlaced {M : AllocCostModel}
   kpkKit.storeAt kyberStorePtr (kpkKit.markUpdate kst0 kyberPreKeyId signedPreKeyId baseKey (.ok ()))
 
 /-- Spatial postcondition of Placed Substage P4.2 on `Err(e)` at `s0.readReg64 .x30`. -/
-def stageP4MarkKyberErrPostPlaced {M : AllocCostModel}
+@[expose] def stageP4MarkKyberErrPostPlaced {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stf : M.σ)
     (kpkKit : KyberPreKeyStoreSpec A.repAlloc 0#64)
     (s0 s sf : State)

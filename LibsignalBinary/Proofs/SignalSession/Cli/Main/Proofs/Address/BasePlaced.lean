@@ -9,13 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlaced
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import ProofLib.FsTrace
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.SepLogic.WP.Apply
+public import VerifiedLibraries.Mallocng.Spec
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

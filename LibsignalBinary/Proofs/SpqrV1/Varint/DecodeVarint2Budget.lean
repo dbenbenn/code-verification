@@ -10,15 +10,18 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
-import LibsignalBinary.Proofs.TripleRatchet.InImage.Prost
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
+import LibsignalBinary.Proofs.TripleRatchet.TrapRng
 import LibsignalBinary.Proofs.VarintBridge
+public import LibsignalBinary.Proofs.SpqrV1.Varint.VarintCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32Merge -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `prost::encoding::varint::decode_varint::<&mut &[u8]> [local#2]`
@@ -28,7 +31,7 @@ Defines allocator event envelopes (`decodeVarint2Events`, `DecodeVarint2Env`) an
 `decodeVarint2SpecX`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -94,7 +97,7 @@ theorem decodeVarintSlowEnv_iff_decodeVarint2Env (bs : List (BitVec 8)) (evs : L
   rw [decodeVarintSlowEvents_eq_decodeVarint2Events]
 
 /-- Stack-parameterized budget-threaded `DecodeVarintSlowGhost` contract for `decode_varint_slow`. -/
-def decodeVarintSlowProstSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def decodeVarintSlowProstSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (errStack : Nat) : Spec (DecodeVarintSlowGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.bufRef ∧ x.bs.length < 2 ^ 63 ∧
@@ -117,11 +120,11 @@ def decodeVarintSlowProstSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
           decodeErrorAtStackLen A.repAlloc (sf.readReg64 .x1) 0 ∗
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
-def decodeVarintSlowProstSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def decodeVarintSlowProstSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DecodeVarintSlowGhost × M.σ) :=
   decodeVarintSlowProstSpecGen A lim decodeErrorHookStack
 
-def decodeVarintSlowProstSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def decodeVarintSlowProstSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DecodeVarintSlowGhost × M.σ) :=
   decodeVarintSlowProstSpecGen A lim decodeErrorHookStackX
 
@@ -214,7 +217,7 @@ theorem decodeVarintSlowProstGen_ok_of_session2 {M : AllocCostModel}
 
 /-- Stack-parameterized budget-threaded contract of
 `prost::encoding::varint::decode_varint::<&mut &[u8]> [local#2]` (Block `291`). -/
-def decodeVarint2SpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def decodeVarint2SpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (errStack : Nat) : Spec (DecodeVarintSlowGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.bufRef ∧ x.bs.length < 2 ^ 63 ∧
@@ -237,11 +240,11 @@ def decodeVarint2SpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
           decodeErrorAtStackLen A.repAlloc (sf.readReg64 .x1) 0 ∗
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
-def decodeVarint2Spec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def decodeVarint2Spec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DecodeVarintSlowGhost × M.σ) :=
   decodeVarint2SpecGen A lim decodeErrorHookStack
 
-def decodeVarint2SpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def decodeVarint2SpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DecodeVarintSlowGhost × M.σ) :=
   decodeVarint2SpecGen A lim decodeErrorHookStackX
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip -- proof-setup: allow-public-import
 
 /-!
 # Wire-codec round-trip bundle `RtHyp`
@@ -17,7 +17,7 @@ public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip
 **Checked by Lean.** Bundles the wire-codec hypotheses (`SignalRoundTripShort`, `LengthsOk`, `SignalEncodeFits32`) into `RtHyp` and derives parsing and `< 2 ^ 32` wire-length lemmas for honest session messages.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames.LibsignalSM.Proofs.RoundTrip
 
@@ -66,11 +66,11 @@ theorem LengthsOk.body_lt (hL : LengthsOk P ℓ) : 16 * nBlocks ℓ < rustLenBou
   omega
 
 /-- A `pq_ratchet` field the session can send: empty or an output of `spqr.send`. -/
-def SentPq (P : Params PQ PQC) (pq : List (BitVec 8)) : Prop :=
+@[expose] def SentPq (P : Params PQ PQC) (pq : List (BitVec 8)) : Prop :=
   pq = [] ∨ ∃ st rq st' salt, P.spqr.send st rq = some (st', salt, pq)
 
 /-- An `addresses` field the session can send. -/
-def SentAddrs (P : Params PQ PQC) (a : Option (List (BitVec 8))) : Prop :=
+@[expose] def SentAddrs (P : Params PQ PQC) (a : Option (List (BitVec 8))) : Prop :=
   a = none ∨ a = P.addrAB ∨ a = P.addrBA
 
 theorem sentAddrs_send (P : Params PQ PQC) (b : Bool) (Q : Party) :

@@ -11,18 +11,54 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathAP4ContPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathATop
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathATopPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBMainPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathAP4ContPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathATop
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathATopPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBMainPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureSpeOwned
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStmts
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3Stmt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Steps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4KyberRefused -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4StoreSession -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.WritePaths -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathACore -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureDefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrusted -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCallees
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathAPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathB
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBMain
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBTopPlacedBudget
+public import ProofLib.Placed.OpcodeExclusion
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Trap.SameAccount
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureExitPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathAP4Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBMainPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBTopPlaced
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` Poll New-Session Path A Top-Level Branch
@@ -32,7 +68,7 @@ Defines budget-threaded `StageP2PathAQpanCliPlacedStmt` over `StageP2PathAEnv` a
 variants) under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -162,6 +198,33 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.Clos
   closure_pathA_p4_cont_placed
 )
 
+private theorem pathA_byteArray_loop_len (bs : ByteArray) (i : Nat) (acc : List UInt8)
+    (hi : i ≤ bs.size) :
+    (ByteArray.toList.loop bs i acc).length = acc.length + (bs.size - i) := by
+  unfold ByteArray.toList.loop
+  split
+  · rw [pathA_byteArray_loop_len bs (i + 1) _ (by omega)]; simp; omega
+  · simp; omega
+termination_by bs.size - i
+decreasing_by
+  have : i < bs.size := ‹_›; omega
+
+private theorem pathA_peer_name_len_le_40 {W : CryptoVerification.E2E.PEParams}
+    {Scope : CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8)) → Prop}
+    {F : CryptoVerification.LibsignalPublicApi.StoreKit.FsFiles}
+    {peer me : CryptoVerification.LibsignalTripleRatchetRepr.AddrGhost} {pm}
+    (hd : CryptoVerification.SignalSession.Cli.RunProofs.DecPkOk₀ W Scope F peer.val me.val pm) :
+    peer.name.bytes.length ≤ 40 := by
+  obtain ⟨P, hp, _⟩ := hd.party
+  change peer.val.name.length ≤ 40
+  rw [congrArg CryptoVerification.LibsignalPublicApiRepr.AddrVal.name hp]
+  dsimp only [CryptoVerification.SignalSession.Cli.RunRefine.addrValE]
+  unfold CryptoVerification.SignalSession.Cli.utf8 ByteArray.toList
+  rw [List.length_map, pathA_byteArray_loop_len _ 0 [] (Nat.zero_le _),
+    String.toUTF8_eq_toByteArray]
+  simp only [List.length_nil, Nat.zero_add, Nat.sub_zero, String.size_toByteArray]
+  cases P <;> decide
+
 attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_sub_688_eq_hsp
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_add_neg688_eq_hsp
@@ -174,7 +237,7 @@ attribute [-arm64_norm]
 Path A (`opt = none`, `DecPkOk₀`): rules out Stage-P2 OOM panics via
 `FitsEnv M lim st_b (StageP2PathAEnv P2PathAErrEnv P2PathAOkEnv y.g)` so `hok` continues directly
 into Stage P3 (`genP3S5ModelPanicProp`). -/
-def StageP2PathAQpanCliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP2PathAQpanCliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {DecPkEnv P2PathAErrEnv P2PathAOkEnv : DecPkGhost → List AllocEvent → Prop}
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
@@ -833,6 +896,7 @@ theorem closure_pathA_placed_ok [LibsignalPlacement]
       recG st0 y.g.peer y.g.me y.g.msgG.msg y.g.msg.message F_p3 _
       (hfits_p3 evs_p2 m i k kp reg dk recG hevs_p2 hpm_eq hi hk hkp hreg hacc hex)
       (by decide) (Or.inr (distinctSid_of_decPkOk₀ hdecOk)) hSeeds hRC hPqLt
+      (pathA_peer_name_len_le_40 hdecOk)
       hro2 hpc2 hrun2 hsp_align2 (hs2_sp ▸ hroot) htr20 hvregs2 ?_ ?_ ?_
     · intro G₁ G' evs_p3 pt ptCap ptPtr s' P_s' hver hcl hdec_rel hevs_p3 hok
         hpt_le hpt_lt hpt_ne hsteps2' hpc' hrun' hs'_sp htr' hvregs'
@@ -952,7 +1016,7 @@ theorem closure_pathA_placed_ok [LibsignalPlacement]
 
 /-! ## `LibsignalFrozen` Variants -/
 
-def StageP2PathAQpanCliFrozenPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP2PathAQpanCliFrozenPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {DecPkEnv P2PathAErrEnv P2PathAOkEnv : DecPkGhost → List AllocEvent → Prop}
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
@@ -1470,6 +1534,7 @@ theorem closure_pathA_frozen_placed_ok [CryptoVerification.LibsignalFullPlacemen
       recG st0 y.g.peer y.g.me y.g.msgG.msg y.g.msg.message F_p3 _
       (hfits_p3 evs_p2 m i k kp reg dk recG hevs_p2 hpm_eq hi hk hkp hreg hacc hex)
       (by decide) (Or.inr (distinctSid_of_decPkOk₀ hdecOk)) hSeeds hRC hPqLt
+      (pathA_peer_name_len_le_40 hdecOk)
       hfr2 hpc2 hrun2 hsp_align2 (hs2_sp ▸ hroot) htr20 hvregs2 ?_ ?_ ?_
     · intro G₁ G' evs_p3 pt ptCap ptPtr s' P_s' hver hcl hdec_rel hevs_p3 hok
         hpt_le hpt_lt hpt_ne hsteps2' hpc' hrun' hs'_sp htr' hvregs'

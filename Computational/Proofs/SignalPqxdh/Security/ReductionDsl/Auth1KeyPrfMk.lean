@@ -10,13 +10,14 @@ limitations under the License.
 module
 
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfBase
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkEval
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfCost
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkShallow
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkEval -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfCost
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkShallow
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H2
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkDecomp
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkLeaves
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # One-Key `PrfMsgKeys` `ReductionDsl` Program
@@ -26,7 +27,7 @@ with `initPrin1KeyFixedB`. Proves evaluation equivalence with `prfMsgKeysReducti
 bounds static cost and query counts by those of `prfMsgKeysRedProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 16000000
@@ -47,7 +48,7 @@ section PrfMk1KeyBranches
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
 
 /-- `prfMkStepPreC` with the `.initPrin` branch replaced by `initPrin1KeyFixedB`. -/
-def prfMkStepPre1KeyC (core : Var Γ₁ prfMkCoreTy) (q : Var Γ₂ authQueryTy)
+@[expose] def prfMkStepPre1KeyC (core : Var Γ₁ prfMkCoreTy) (q : Var Γ₂ authQueryTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ prfMkStepPreTy :=
   letV (mkcFhst (v core)) fun fhst =>
   caseSumV (v q) (fun u => wrapMkBase core (initPrin1KeyFixedB K fhst u)) fun q =>
@@ -66,7 +67,7 @@ def prfMkStepPre1KeyC (core : Var Γ₁ prfMkCoreTy) (q : Var Γ₂ authQueryTy)
 end PrfMk1KeyBranches
 
 /-- One-key per-query handler: `prfMsgKeysHandleDsl` over `prfMkStepPre1KeyC`. -/
-def prfMsgKeysHandle1KeyDsl (S : Setup) (K : Nat) :
+@[expose] def prfMsgKeysHandle1KeyDsl (S : Setup) (K : Nat) :
     Comp pqxdhOps pqPrfMkIface [prfMkStTy, authQueryTy] (.prod authRespTy prfMkStTy) :=
   letV (.var .zero : Expr pqxdhOps [prfMkStTy, authQueryTy] prfMkStTy) fun s =>
   letV (.fst (v s)) fun bud =>
@@ -86,7 +87,7 @@ def prfMsgKeysHandle1KeyDsl (S : Setup) (K : Nat) :
            (.pair (.sub (v bud) (.nat 1)) (.snd (v post)))))
 
 /-- ReductionDsl program for `prfMsgKeysReductionAuthFixed1Key S b`. -/
-def prfMsgKeysRedProg1Key (S : Setup) (K : Nat) :
+@[expose] def prfMsgKeysRedProg1Key (S : Setup) (K : Nat) :
     CostedReduction pqxdhOps pqPrfMkIface (authSpec S) (authCodec S)
       .unit .unit .bool .bool where
   σ      := prfMkStTy
@@ -426,7 +427,7 @@ theorem prfMsgKeysRedProg1Key_eval_eq (S : Setup) (b : QueryBudget)
 
 /-- The `ReductionDsl` reduction as a `PrfMsgKeysAdv` (same budgets as
     `prfMsgKeysReductionAuthFixed1Key`). -/
-def prfMsgKeys1KeyDslAdv (S : Setup) (b : QueryBudget)
+@[expose] def prfMsgKeys1KeyDslAdv (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : PrfMsgKeysAdv where
   run := (prfMsgKeysRedProg1Key S b.q_total).eval (fun _ => A.1.run) ()
   q_prf := (prfMsgKeysReductionAuthFixed1Key S b A).q_prf

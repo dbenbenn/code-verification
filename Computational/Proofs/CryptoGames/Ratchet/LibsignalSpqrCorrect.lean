@@ -12,7 +12,7 @@ module
 public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionSM
 public import LibsignalBinary.Specifications.CryptoGames.SM.LibsignalGame
 public import LibsignalBinary.Specifications.LibsignalSpqr
-public import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
+import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
 
 /-!
 # SPQR acceptance window and honest-correctness game
@@ -24,7 +24,7 @@ DEV-SPQR7), and honest-traffic correctness game (`Corr.spqrGame`, `Corr.SpqrHone
 replacing the idealized `SpqrOffCorrect` hypothesis (DEV-LS24).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -46,34 +46,34 @@ instance : Inhabited SpqrLog := ⟨⟨[], []⟩⟩
 variable {PQ PQC : Type}
 
 /-- Augments `S` with a ghost `SpqrLog` recording successful `send` and `recv` payloads. -/
-def Spqr.withLog (S : Spqr PQ PQC) : Spqr (PQ × SpqrLog) PQC where
+@[expose] def Spqr.withLog (S : Spqr PQ PQC) : Spqr (PQ × SpqrLog) PQC where
   init dir k := (S.init dir k, default)
   send st r := (S.send st.1 r).map fun x => ((x.1, { st.2 with sent := x.2.2 :: st.2.sent }), x.2.1, x.2.2)
   recv st msg := (S.recv st.1 msg).map fun x => ((x.1, { st.2 with recvd := msg :: st.2.recvd }), x.2)
   sendPanics st r := S.sendPanics st.1 r
   recvPanics st msg := S.recvPanics st.1 msg
 
-def Params.withSpqrLog (P : Params PQ PQC) : Params (PQ × SpqrLog) PQC :=
+@[expose] def Params.withSpqrLog (P : Params PQ PQC) : Params (PQ × SpqrLog) PQC :=
   { P with spqr := P.spqr.withLog }
 
 /-! ## Acceptance window -/
 
 /-- Extracts `(epoch, index)` from an SPQR message preamble. -/
-def spqrPos (msg : List (BitVec 8)) : Option (ℕ × ℕ) :=
+@[expose] def spqrPos (msg : List (BitVec 8)) : Option (ℕ × ℕ) :=
   (CryptoVerification.LibsignalSpqr.msgPreamble? msg).map fun p => (p.epoch.toNat, p.index.toNat)
 
 /-- Largest header epoch among committed sends (`0` if none). -/
-def SpqrLog.maxSendEpoch (log : SpqrLog) : ℕ :=
+@[expose] def SpqrLog.maxSendEpoch (log : SpqrLog) : ℕ :=
   (log.sent.filterMap spqrPos).foldl (fun m p => max m p.1) 0
 
 /-- Largest message index among committed receives at header epoch `E` (`0` if none). -/
-def SpqrLog.recvCtr (log : SpqrLog) (E : ℕ) : ℕ :=
+@[expose] def SpqrLog.recvCtr (log : SpqrLog) (E : ℕ) : ℕ :=
   ((log.recvd.filterMap spqrPos).filter (·.1 = E)).foldl (fun m p => max m p.2) 0
 
 /-- SPQR symmetric-chain acceptance window (DEV-SPQR7): checks epoch retention
 (`maxSendEpoch ≤ E + 1`), forward-jump cap `25000`, out-of-order window `2000`, and non-replay
 against `log`. -/
-def spqrWindowOk (log : SpqrLog) (pqMsg : List (BitVec 8)) : Bool :=
+@[expose] def spqrWindowOk (log : SpqrLog) (pqMsg : List (BitVec 8)) : Bool :=
   match spqrPos pqMsg with
   | none => true
   | some (E, i) =>
@@ -104,7 +104,7 @@ open LibsignalSession HKDF
 
 variable {PQ PQC : Type}
 
-def spqrDir : Party → SpqrDirection
+@[expose] def spqrDir : Party → SpqrDirection
   | .A => .a2b
   | .B => .b2a
 
@@ -115,7 +115,7 @@ structure SpqrGameState (PQ : Type) where
   win : Bool
 
 /-- Executes an honest SPQR send for `P`, setting `win` on panic or `none` (DEV-LS17). -/
-def spqrSendStep (S : Spqr PQ PQC) (s : SpqrGameState PQ) (P : Party) (r : PQC) :
+@[expose] def spqrSendStep (S : Spqr PQ PQC) (s : SpqrGameState PQ) (P : Party) (r : PQC) :
     Option (List (BitVec 8) × Salt) × SpqrGameState PQ :=
   if s.win then (none, s) else
   if S.withLog.sendPanics (s.st P) r then (none, { s with win := true }) else
@@ -126,7 +126,7 @@ def spqrSendStep (S : Spqr PQ PQC) (s : SpqrGameState PQ) (P : Party) (r : PQC) 
 
 /-- Delivers recorded send `j` to `P`, setting `win` on panic, in-window rejection, or salt
 mismatch. -/
-def spqrDeliverStep (S : Spqr PQ PQC) (s : SpqrGameState PQ) (P : Party) (j : ℕ) (commit : Bool) :
+@[expose] def spqrDeliverStep (S : Spqr PQ PQC) (s : SpqrGameState PQ) (P : Party) (j : ℕ) (commit : Bool) :
     Option Salt × SpqrGameState PQ :=
   if s.win then (none, s) else
   match s.sent[j]? with
@@ -148,46 +148,46 @@ abbrev SpqrSpec (PQ : Type) :=
 
 abbrev SpqrAdversary (PQ : Type) := OracleComp (unifSpec + SpqrSpec PQ) Unit
 
-def spqrSendImpl [SampleableType PQC] (S : Spqr PQ PQC) :
+@[expose] def spqrSendImpl [SampleableType PQC] (S : Spqr PQ PQC) :
     QueryImpl (Party →ₒ Option (List (BitVec 8) × Salt)) (StateT (SpqrGameState PQ) ProbComp) :=
   fun P => do
     let r ← ($ᵗ PQC : ProbComp PQC)
     modifyGet fun s => spqrSendStep S s P r
 
-def spqrDeliverImpl (S : Spqr PQ PQC) :
+@[expose] def spqrDeliverImpl (S : Spqr PQ PQC) :
     QueryImpl ((Party × ℕ × Bool) →ₒ Option Salt) (StateT (SpqrGameState PQ) ProbComp) :=
   fun ⟨P, j, commit⟩ => modifyGet fun s => spqrDeliverStep S s P j commit
 
-def spqrCorrImpl : QueryImpl (Party →ₒ (PQ × SpqrLog)) (StateT (SpqrGameState PQ) ProbComp) :=
+@[expose] def spqrCorrImpl : QueryImpl (Party →ₒ (PQ × SpqrLog)) (StateT (SpqrGameState PQ) ProbComp) :=
   fun P => do
     let s ← get
     return s.st P
 
-def spqrImpl [SampleableType PQC] (S : Spqr PQ PQC) :
+@[expose] def spqrImpl [SampleableType PQC] (S : Spqr PQ PQC) :
     QueryImpl (SpqrSpec PQ) (StateT (SpqrGameState PQ) ProbComp) :=
   spqrSendImpl S + spqrDeliverImpl S + spqrCorrImpl (PQ := PQ)
 
 /-- Honest-traffic SPQR correctness game initialized from a uniform 256-bit key. -/
-def spqrGame [SampleableType PQC] (S : Spqr PQ PQC) (A : SpqrAdversary PQ) : ProbComp Bool := do
+@[expose] def spqrGame [SampleableType PQC] (S : Spqr PQ PQC) (A : SpqrAdversary PQ) : ProbComp Bool := do
   let k ← ($ᵗ BitVec 256 : ProbComp (BitVec 256))
   let impl := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
       (StateT (SpqrGameState PQ) ProbComp) + spqrImpl S
   let (_, s) ← (simulateQ impl A).run ⟨fun P => S.withLog.init (spqrDir P) k, [], false⟩
   return s.win
 
-def isSpqrSend : ℕ ⊕ ((Party ⊕ (Party × ℕ × Bool)) ⊕ Party) → Bool
+@[expose] def isSpqrSend : ℕ ⊕ ((Party ⊕ (Party × ℕ × Bool)) ⊕ Party) → Bool
   | .inr (.inl (.inl _)) => true
   | _ => false
 
 /-- `A` makes at most `q` `send` queries in `spqrGame`. -/
-def SpqrSendsAtMost (A : SpqrAdversary PQ) (q : ℕ) : Prop :=
+@[expose] def SpqrSendsAtMost (A : SpqrAdversary PQ) (q : ℕ) : Prop :=
   A.IsQueryBoundP (fun t => isSpqrSend t = true) q
 
 /-- Honest correctness of SPQR within `spqrWindowOk` (DEV-SPQR7; cf. `SpqrOffCorrect`, DEV-LS24):
 any adversary making at most `q` sends without injections or chosen send coins (DEV-LS35) triggers
 `win` in `spqrGame` with probability at most `ε` (accounting for ML-KEM decryption failures,
 DEV-SPQR6). -/
-def SpqrHonestCorrect [SampleableType PQC] (S : Spqr PQ PQC) (q : ℕ) (ε : ℝ≥0∞) : Prop :=
+@[expose] def SpqrHonestCorrect [SampleableType PQC] (S : Spqr PQ PQC) (q : ℕ) (ε : ℝ≥0∞) : Prop :=
   ∀ A : SpqrAdversary PQ, SpqrSendsAtMost A q → 𝒟[spqrGame S A] {true} ≤ ε
 
 end LibsignalSM.Corr

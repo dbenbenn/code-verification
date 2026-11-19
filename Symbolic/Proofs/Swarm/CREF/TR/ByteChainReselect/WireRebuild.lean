@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Bytes.Basic
@@ -31,7 +31,7 @@ Constructs a reselected wire representation `t₁` naming a stored receive chain
 `reselect_exists_mac_eq_unbundled`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,9 +9,15 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyCD
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyCD
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyPre -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhD -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhF -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh
+public import Computational.Proofs.SignalPqxdh.Security.SigHopB -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # One-Key `GapDhWithSign` Coupling for Case A
@@ -21,7 +27,7 @@ by embedding the challenge identity key with signing access into principal slot 
 with a ghost two-key `FgSimInvDh1` state.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +42,7 @@ namespace Proofs.SignalPqxdh.Security.FgGapDh1Key
 
 /-! ## Support Preservation and `clearTargetSecIKAsign` Commutation -/
 
-def PreStepPreserves1KeyAux {S : Setup} (hst hst' : KeyIndFgCutoffState S) : Prop :=
+@[expose] def PreStepPreserves1KeyAux {S : Setup} (hst hst' : KeyIndFgCutoffState S) : Prop :=
   ((∀ kv ∈ hst.base.principals, kv.2.secIKAsign = kv.2.secIKA0) →
     ∀ kv ∈ hst'.base.principals, kv.2.secIKAsign = kv.2.secIKA0) ∧
   (∀ k, (bundleSignedMessages k hst.base.spkBundles).length ≤
@@ -515,7 +521,7 @@ theorem fgKeyIndStepPure_genSPK_clearTargetSecIKAsign_of_ne (P : Primitives)
       simp only [bind_assoc, pure_bind]
       rfl
 
-def isDelegatedQuery1Key {S : Setup} (tIdx : ℕ) : KeyIndQuery S → Bool
+@[expose] def isDelegatedQuery1Key {S : Setup} (tIdx : ℕ) : KeyIndQuery S → Bool
   | .initPrin _  => false
   | .corruptIK u => !(u.val == tIdx)
   | .genSPK u _  => !(u.val == tIdx)
@@ -605,7 +611,7 @@ theorem pqxdhKeyIndFgPreImpl1Key_preserves_deadDh1Full {S : Setup} (P : Primitiv
 
 /-- One-key Case A simulation invariant coupling `st.sim` with a ghost two-key `FgSimInvDh1` state
     via `clearTargetSecIKAsign`. -/
-def FgSimInvDh1_1Key (S : Setup) (b : QueryBudget) (P : Primitives) (R : FgSlotReps P)
+@[expose] def FgSimInvDh1_1Key (S : Setup) (b : QueryBudget) (P : Primitives) (R : FgSlotReps P)
     (uIdx bIdx : ℕ) (uSk vSk : Bytes)
     (rem : ℕ) (hst : KeyIndFgCutoffState S) (st : FgKeyInd1KeySimState S) : Prop :=
   ∃ stGhost : FgKeyIndSimState S,

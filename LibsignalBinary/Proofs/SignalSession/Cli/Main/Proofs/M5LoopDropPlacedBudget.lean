@@ -10,11 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopDropPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopDropPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropLoopCorePlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5IfacePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPanicsPlaced
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded M5 Post-Commit Entry Drop Loop (`M+0xa90 .. M+0xabc`, Block `617`)
@@ -23,7 +31,7 @@ Defines `m5ErrEntryDropEvents` and verifies budget-threaded `m5_entry_drop_loop_
 (`M+0xa90 .. M+0xabc`) on Block `617`, advancing `A.pool` by `FreeOnlyEvs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -48,32 +56,18 @@ open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget (AllocContractsF
 
 /-- Exact allocator events emitted by the initial temporary-path `String` drop at `M5ErrEntryPlaced`
 (`0xbcc` / `0xbdc` / `0xbf4`) before `0xbf4 → 0xc5c` drops `curEntries` and remaining `Dir`s. -/
-def m5ErrEntryDropEvents : M5ErrEntryPlaced → List AllocEvent
+@[expose] def m5ErrEntryDropEvents : M5ErrEntryPlaced → List AllocEvent
   | .bcc cap _ _ => if cap = 0#64 then [] else rustDeallocEvents cap.toNat 1
   | .bdc cap _ _ => rustDeallocEvents cap.toNat 1
   | .bf4 => []
 
 /-- Allocator event envelope of `m5_entry_drop_loop_placed` (`M+0xa90 .. M+0xabc`): pure
 `__rust_dealloc` calls over the `(String, Vec<u8>)` entries of `es`. -/
-def M5EntryDropLoopEnv (evs : List AllocEvent) : Prop :=
+@[expose] def M5EntryDropLoopEnv (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs
 
 example : ∃ evs, M5EntryDropLoopEnv evs :=
   ⟨[], by rintro _ ⟨⟩⟩
-
-theorem m5ErrEntryDropEvents_freeOnly (errE : M5ErrEntryPlaced) :
-    FreeOnlyEvs (m5ErrEntryDropEvents errE) := by
-  cases errE with
-  | bcc cap _ _ =>
-    by_cases h : cap = 0#64
-    · simp only [m5ErrEntryDropEvents, h, ↓reduceIte]
-      exact FreeOnlyEvs.nil
-    · simp only [m5ErrEntryDropEvents, h, ↓reduceIte]
-      exact FreeOnlyEvs.singleton 1 cap.toNat
-  | bdc cap _ _ =>
-    exact FreeOnlyEvs.singleton 1 cap.toNat
-  | bf4 =>
-    exact FreeOnlyEvs.nil
 
 /-- Budget-threaded drop of a non-empty array of `(String, Vec<u8>)` entries starting at `M+0xa90`
 (`x21 = base + 32`, `x20 = es.length`), looping via `M+0xa84 .. M+0xa8c` until `x20 = 0` branches

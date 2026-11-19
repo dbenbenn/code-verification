@@ -1433,7 +1433,7 @@ theorem bump_pair_sepWPp_named_cuts_ok (prog : Program) (h_code : BumpPairCodeAt
 
 end NamedCutPointsTests
 
-/-! ## Panic-Aware (`wpp_call`) and Frozen (`wpp_call_frozen`, `Spec.inImage`) Call-Site Automation -/
+/-! ## Panic-Aware (`wpp_call`) Call-Site Automation -/
 
 section WppCallTests
 
@@ -1471,43 +1471,6 @@ theorem bump_pair_wpp_call_ok (prog : Program) (h_code : BumpPairCodeAt prog)
   wp_steps
   wp_call h_bump (x := (a.2.1, a.2.2.2)) (on_panic := fun hv => Or.inr hv)
   apply SepWPp.of_sepWP_ret
-  wp_steps
-  wp_done
-
-/-- Frozen (`Spec.inImage img`) caller and callee test: `wpp_call` and `wpp_call_frozen`
-    automatically discharge `img.FrozenLoaded s` and `s.symtab = img.symtab` across the call
-    and re-introduce `img.FrozenLoaded sf` and `sf.symtab = img.symtab` in the post-call state,
-    without any `(ret_pc := ...)` or `(T := ...)` annotations. -/
-theorem bump_pair_wpp_call_frozen_ok (img : Obj.Image) (prog : Program)
-    (h_code : BumpPairCodeAt prog)
-    (h_addr : prog.fnAddr "bump_cell" = bump_cell_addr)
-    (h_bump : prog.subroutineOk "bump_cell" (bumpCellPanicSpec.inImage img)) :
-    prog.subroutineOk "bump_pair" (bumpPairPanicSpec.inImage img) := by
-  wpp_init a s0
-  apply SepWPp.of_sepWP_frozen ‹img.FrozenLoaded s0› ‹s0.symtab = img.symtab›
-  wp_steps
-  wpp_call_frozen h_bump
-  apply SepWPp.of_sepWP_frozen hfz_sf hsym_sf
-  wp_steps
-  wpp_call h_bump
-  apply SepWPp.of_sepWP_ret
-  wp_steps
-  wp_done
-
-/-- `SepWP.of_sepWP_frozen` + `wp_call` on a `Spec.inImage img` contract in ordinary `SepWP`:
-    preserves `img.FrozenLoaded` and `symtab = img.symtab` across both calls. -/
-theorem bump_pair_wp_call_frozen_ok (img : Obj.Image) (prog : Program)
-    (h_code : BumpPairCodeAt prog)
-    (h_addr : prog.fnAddr "bump_cell" = bump_cell_addr)
-    (h_bump : prog.subroutineOk "bump_cell" (bumpCellSpec.inImage img)) :
-    prog.subroutineOk "bump_pair" (bumpPairSpec.inImage img) := by
-  wp_init a s0
-  apply SepWP.of_sepWP_frozen ‹img.FrozenLoaded s0› ‹s0.symtab = img.symtab›
-  wp_steps
-  wp_call h_bump
-  apply SepWP.of_sepWP_frozen hfz_sf hsym_sf
-  wp_steps
-  wp_call h_bump
   wp_steps
   wp_done
 
@@ -1814,7 +1777,7 @@ error: wp_call: call target address does not match callee entry: callee entry is
   callee entry:   ?m.51 (unresolved metavariable)
   raw target PC:  131328#64
   raw callee:     ?m.51
-hint: the callee contract's entry address contains an unresolved metavariable (`?m.51`); pass the entry address argument explicitly to `h_poly` (e.g. `wp_call (h_poly <entry_addr>)`) or supply a local `prog.fnAddr "<callee>" = ...` / `Obj.Loads` hypothesis
+hint: the callee contract's entry address contains an unresolved metavariable (`?m.51`); pass the entry address argument explicitly to `h_poly` (e.g. `wp_call (h_poly <entry_addr>)`) or supply a local `prog.fnAddr "<callee>" = ...` hypothesis
 -/
 #guard_msgs (error, drop info) in
 set_option maxHeartbeats 30000 in

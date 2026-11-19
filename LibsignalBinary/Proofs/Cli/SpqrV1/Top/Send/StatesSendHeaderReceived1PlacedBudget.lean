@@ -10,24 +10,30 @@ limitations under the License.
 module
 
 meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Auth.UpdateBudget
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVecBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1PlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled1PlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.UpdateBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVecBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderBudgetAux
-import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendHeaderReceived1
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendHeaderReceived1 -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable `.headerReceived` Arm (Part 1: `+1312..+1680`, Block `427`)
@@ -36,7 +42,7 @@ Threads `RustCliAllocBudget` through ML-KEM encapsulation, `ct1` / `info` alloca
 HKDF derivation, and authenticator update (`+1312..+1680`) in Block `427`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -88,12 +94,15 @@ open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1PlacedBudget (seq_vm_lscro
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SeamSpecsPlacedBudget
   (spqrCoinsFillAtPlaced_of_after0_cro spqrCoinsFillAtSpecPlaced)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled1PlacedBudget
-  (spqrSend_encapsulate1_ok_placed)
+  (spqrSend_encapsulate1_ok_placed stackAt_spqrSendCallee_from_mlkem
+   stackAt_spqrSendCallee_to_mlkem)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget.KeysUnsampledHelpers
   (call_lscro_calleeStack_evs_sepWP call_lscro_calleeStack_sepWP finish_sepWP_lscro_plain
    of_sepWP_lscro_plain spqrSend_allocNoOom_ok_placed spqrSend_alloc_ok_placed
    spqrSend_session_memcpy_region_ok_placed spqrSend_shim_ok_placed)
+open LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase (mlkemEncaps1AtSpec)
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SpqrV1.Auth.UpdateBudget
   (AuthUpdateEnv AuthUpdateLenEnv authUpdatePinnedEvents
    authUpdatePinnedEvents_mem_authUpdateLenEnv authUpdateSpec spqrBoundedEvs_of_authUpdateLenEnv)
@@ -137,7 +146,7 @@ export LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled1Placed
 
 /-- `spqr::kdf::hkdf_to_vec` (Block `378`) meets
     `withLsCodeRoLoaded lsmpl (hkdfToVecSpqrSpec M A lim HkdfFn)` on `spqrSendPlacedProg ext`. -/
-def HkdfToVecPlacedOkX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def HkdfToVecPlacedOkX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (HkdfFn : Bytes → Bytes → Bytes → Nat → Bytes)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 378)
@@ -145,7 +154,7 @@ def HkdfToVecPlacedOkX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Bu
 
 /-- `<Authenticator>::update` (Block `341`) meets
     `withLsCodeRoLoaded lsmpl (authUpdateSpec F M A lim)` on `spqrSendPlacedProg ext`. -/
-def AuthUpdatePlacedOkX (F : ShaCompress) (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def AuthUpdatePlacedOkX (F : ShaCompress) (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 341)
     (withLsCodeRoLoaded lsmpl (authUpdateSpec F M A lim))
@@ -170,11 +179,11 @@ theorem spqrSend_allocZeroedNoOom_ok_placed
 
 /-- Exact allocator event sequence of `.headerReceived` Sub-step 1a (`+1312 -> +1504`):
     `__rust_alloc_zeroed(2080, 1)` for `es` followed by `__rust_alloc_zeroed(32, 1)` for `ss`. -/
-def headerReceived1aEvents : List AllocEvent :=
+@[expose] def headerReceived1aEvents : List AllocEvent :=
   rustAllocEvents 2080 1 ++ rustAllocEvents 32 1
 
 /-- Exact allocator event envelope for `.headerReceived` Sub-step 1a (`+1312 -> +1504`). -/
-def HeaderReceived1aEnv (evs : List AllocEvent) : Prop :=
+@[expose] def HeaderReceived1aEnv (evs : List AllocEvent) : Prop :=
   evs = headerReceived1aEvents
 
 theorem headerReceived1aEnv_nonempty : ∃ evs, HeaderReceived1aEnv evs :=
@@ -199,11 +208,11 @@ theorem fitsEvents_headerReceived1aEvents_split {M : AllocCostModel} {lim : Budg
 
 /-- Exact allocator event prefix of `.headerReceived` Sub-step 2 before `<Authenticator>::update`:
     `__rust_alloc(960, 1)` (`ct1`), `__rust_alloc(41, 1)` (`info`), and `hkdf_to_vec` (`alloc(32, 1)`). -/
-def headerReceived1bPreEvents : List AllocEvent :=
+@[expose] def headerReceived1bPreEvents : List AllocEvent :=
   rustAllocEvents 960 1 ++ (rustAllocEvents 41 1 ++ rustAllocEvents 32 1)
 
 /-- Exact envelope for the pre-`update` prefix of `.headerReceived` Sub-step 2. -/
-def HeaderReceived1bPreEnv (evs : List AllocEvent) : Prop :=
+@[expose] def HeaderReceived1bPreEnv (evs : List AllocEvent) : Prop :=
   evs = headerReceived1bPreEvents
 
 @[simp]
@@ -230,11 +239,11 @@ theorem fitsEvents_headerReceived1bPreEvents_split {M : AllocCostModel} {lim : B
 
 /-- Allocator event envelope for `.headerReceived` Sub-step 2 (`+1504 -> +1680`), parameterized
     only by `auth.rootKey.length` (no unguarded existentials or `ValidRustAllocEv` universal). -/
-def HeaderReceived1bEnv (rkLen : Nat) : List AllocEvent → Prop :=
+@[expose] def HeaderReceived1bEnv (rkLen : Nat) : List AllocEvent → Prop :=
   SeqEnv HeaderReceived1bPreEnv (AuthUpdateLenEnv rkLen 32)
 
 /-- Combined allocator event envelope for `.headerReceived` Part 1 (`+1312 -> +1680`). -/
-def HeaderReceived1Env (rkLen : Nat) : List AllocEvent → Prop :=
+@[expose] def HeaderReceived1Env (rkLen : Nat) : List AllocEvent → Prop :=
   SeqEnv HeaderReceived1aEnv (HeaderReceived1bEnv rkLen)
 
 theorem headerReceived1bEnv_nonempty (g : AuthenticatorGhost) (rkLen : Nat) :
@@ -614,7 +623,7 @@ private theorem call_memcpy_lscro {M : AllocCostModel} {A : RustCliAllocBudget M
 
 private theorem call_mlkemEncaps1_lscro {M : AllocCostModel} {A : RustCliAllocBudget M}
     {lim : BudgetLimits} {K : MlKem} {prog : Program} {entry ret_pc tgt : BitVec 64}
-    (hcall : subroutine_ok prog entry (withVmPreserved (mlkemEncaps1Spec K)))
+    (hcall : subroutine_ok prog entry (withLsRet (withVmPreserved (mlkemEncaps1AtSpec 36864 K))))
     (retA hdrA randA esA ssA : BitVec 64) (hdr : Bytes) (rand : List.Vector (BitVec 8) 32)
     {ct1 : List.Vector (BitVec 8) 960} {es : List.Vector (BitVec 8) 2080} {ss : List.Vector (BitVec 8) 32}
     (hencaps : K.encaps1 hdr rand = some (ct1, es, ss)) (st : M.σ)
@@ -637,28 +646,30 @@ private theorem call_mlkemEncaps1_lscro {M : AllocCostModel} {A : RustCliAllocBu
       SepWP prog tgt sf
         (((hdrA ↦ₛ hdr) ∗ (randA ↦ₛ rand.toList) ∗ (retA ↦₈ 0#8) ∗
           ((retA + 1#64) ↦ₛ ct1.toList) ∗ (esA ↦ₛ es.toList) ∗ (ssA ↦ₛ ss.toList) ∗
-          A.pool lim st sf ∗ stackAt sp_call spqrSendCalleeStack) ∗ Frame) post) :
+          A.pool lim st sf ∗ stackAt sp_call spqrSendCalleeStack) ∗ Frame) post)
+    (hlr_ls : LsRetAddr624 ret_pc := by
+      first | assumption | simp (config := { decide := true }) only [Reg.x30, Reg.lr, BitVec.add_assoc, arm64_norm, wp_norm]) :
     SepWP prog tgt s P post := by
   rw [hsplit]
   refine of_sepWP_lscro_plain (mid := ret_pc) hcrl ?_
-  refine SepWP.fold (stackAt_spqrSendCallee_to_extHook sp_call) (by sep_focus) ?_
+  refine SepWP.fold (stackAt_spqrSendCallee_to_mlkem sp_call) (by sep_focus) ?_
   refine SepWP.call_subroutine_frame hcall
     (x := ({ ret := retA, hdrA := hdrA, hdr := hdr, randA := randA, rand := rand,
              esA := esA, ssA := ssA } : MlkemEncaps1Call))
-    (F := memRegion (sp_call - 123008#64) 106624 ∗ A.pool lim st s ∗ Frame)
+    (F := memRegion (sp_call - 123008#64) 86144 ∗ A.pool lim st s ∗ Frame)
     hpc hrun (by rw [State.spAligned, hsp]; exact hsp_align) hlr ?_
     (fun _ _ _ h => not_satisfies_false_sepConj h)
     (fun _ _ _ _ h => not_satisfies_false_sepConj h)
     (fun sf hpc_sf hrun_sf hsp_sf hcs_sf => ?_)
   · intro R hm
-    dsimp only [withVmPreserved, mlkemEncaps1Spec]
+    dsimp only [withLsRet, withVmPreserved, mlkemEncaps1AtSpec]
     rw [hsp]; simp only [sepConj_assoc, satisfies_pure_sepConj] at hm ⊢
-    exact ⟨⟨hx8, hx0, hx1, hx2, hx3, hx4, hx5, hx6⟩, by ac_nf at hm ⊢⟩
-  · dsimp only [withVmPreserved, mlkemEncaps1Spec]
+    exact ⟨hlr ▸ hlr_ls, ⟨hx8, hx0, hx1, hx2, hx3, hx4, hx5, hx6⟩, by ac_nf at hm ⊢⟩
+  · dsimp only [withLsRet, withVmPreserved, mlkemEncaps1AtSpec]
     rw [hencaps, hsp]; dsimp only; rw [sepConj_assoc, sepConj_assoc]
     refine SepWP.pure_elim fun hvm1 => SepWP.pure_elim fun htr1 => ?_
     rw [← A.pool_of_vmPreserved hvm1]
-    refine SepWP.fold (stackAt_spqrSendCallee_from_extHook sp_call) (by sep_focus) ?_
+    refine SepWP.fold (stackAt_spqrSendCallee_from_mlkem sp_call) (by sep_focus) ?_
     exact SepWP.done hpc_sf hrun_sf fun hcrl1 =>
       SepWP.weaken_pre (Entails.of_eq (by sep_ac_rfl))
         (hnext sf hcrl1 hpc_sf hrun_sf (hsp_sf.trans hsp) hcs_sf (htr1.trans htrace))
@@ -782,7 +793,8 @@ theorem step_headerReceived_1312_to_1504_sepWP_placed
     (hA : AllocContractsPlaced M A lim ext)
     (hZero : HookSat (Rust.withPanics ext) spqrRustAllocZeroedSym (rustAllocZeroedBudgetSpec M A lim))
     (hcoinsFill : CoinsFillPlacedOkX ext)
-    (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym (withVmPreserved (mlkemEncaps1Spec K)))
+    (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym
+      (withLsRet (withVmPreserved (mlkemEncaps1AtSpec 36864 K))))
     (g : AuthenticatorGhost) (auth : Authenticator) (epoch : BitVec 64)
     (hdr_cap hdr_ptr : BitVec 64) (hdr : Bytes) (hhdr_lt : hdr.length < 2 ^ 63)
     (sp cur : BitVec 64) (tape : List (BitVec 8))
@@ -1010,7 +1022,8 @@ theorem step_headerReceived_1312_to_1504_placed
     (hA : AllocContractsPlaced M A lim ext)
     (hZero : HookSat (Rust.withPanics ext) spqrRustAllocZeroedSym (rustAllocZeroedBudgetSpec M A lim))
     (hcoinsFill : CoinsFillPlacedOkX ext)
-    (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym (withVmPreserved (mlkemEncaps1Spec K)))
+    (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym
+      (withLsRet (withVmPreserved (mlkemEncaps1AtSpec 36864 K))))
     (g : AuthenticatorGhost) (auth : Authenticator) (epoch : BitVec 64)
     (hdr_cap hdr_ptr : BitVec 64) (hdr : Bytes) (hhdr_lt : hdr.length < 2 ^ 63)
     (sp cur : BitVec 64) (tape : List (BitVec 8))

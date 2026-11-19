@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
+public import LibsignalBinary.Heap.SpecBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyExactCore -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudgetAuxSat
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `HookSat` HKDF Hook Bundle (`CommonBudgetSat`)
@@ -31,19 +33,24 @@ namespace LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonBudgetSat
 
 open Arm64 ProofLib
 open CryptoGames.LibsignalSession (ShaCompress)
-open CryptoVerification (LibsignalHooks)
+open CryptoVerification (LibsignalHooks LibsignalPlacement)
 open CryptoVerification.LibsignalAesCbc (memcpyHook memsetHook)
 open CryptoVerification.LibsignalHmac (compress256Hook)
 open CryptoVerification.LibsignalTripleRatchet
-  (HkdfPlacedHooks lsCompress256Sym lsMemcpySym lsMemsetSym)
+  (ExpandMultiInfoGhost ExtractGhost FinalizeFixedGhost HkdfPlacedHooks NewFromSliceGhost
+   lsCompress256Sym lsMemcpySym lsMemsetSym)
+open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
 open LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudgetAuxSat
   (hookOk_sessionMemsetRegion_of_budget hookSat_hookMemset_budget_of_eq
    hookSat_memsetHook_budget_of_eq)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyExactCore
   (HookSatExactMemcpy hookSatExactMemcpy_of_eq memcpyHook_exact)
 open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat
-  (HkdfPlacedHooksExactSat HkdfPlacedHooksSat)
-open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget (sessionMemsetRegionBudgetSpec)
+  (HkdfPlacedHooksExactSat HkdfPlacedHooksSat HookSatCompress256 expandMultiInfoSpecSat
+   extractSpecSat finalizeFixedSpecSat hookSatCompress256_of_eq hookSatCompress256_of_sym_eq
+   newFromSliceSpecSat)
+open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+  (sessionMemsetRegionBudgetSpec)
 
 /-- Budget-threaded `HookSat` sibling of `HkdfPlacedHooks`: replaces the extensional equality
 `H lsMemsetSym = some memsetHook` with `HookSat H lsMemsetSym sessionMemsetRegionBudgetSpec`. -/
@@ -106,26 +113,29 @@ public theorem HkdfPlacedHooksBudgetSat.of_hooks_eq {F : ShaCompress}
 
 /-! ## `HookSatExactMemcpy`-Widened Budget HKDF Hook Bundle (`HkdfPlacedHooksExactBudgetSat`) -/
 
-/-- Budget-threaded `HookSat` + `HookSatExactMemcpy` HKDF hook bundle: replaces
-`H lsMemsetSym = some memsetHook` with `HookSat H lsMemsetSym sessionMemsetRegionBudgetSpec`
-and `H lsMemcpySym = some memcpyHook` with `HookSatExactMemcpy H lsMemcpySym`. -/
-public class HkdfPlacedHooksExactBudgetSat (F : ShaCompress) (H : LibsignalHooks) : Prop where
+/-- Budget-threaded `HookSat` + `HookSatExactMemcpy` + `HookSatCompress256` HKDF
+hook bundle: replaces `H lsMemsetSym = some memsetHook` with
+`HookSat H lsMemsetSym sessionMemsetRegionBudgetSpec`, `H lsMemcpySym = some memcpyHook` with
+`HookSatExactMemcpy H lsMemcpySym`, and `H lsCompress256Sym = some (compress256Hook F)` with
+`HookSatCompress256 H lsCompress256Sym F`. -/
+public class HkdfPlacedHooksExactBudgetSat [LibsignalPlacement] (F : ShaCompress)
+    (H : LibsignalHooks) : Prop where
   memset : HookSat H lsMemsetSym sessionMemsetRegionBudgetSpec
   memcpy : HookSatExactMemcpy H lsMemcpySym
-  compress256 : H lsCompress256Sym = some (compress256Hook F)
+  compress256 : HookSatCompress256 H lsCompress256Sym F
 
 /-- Every `HkdfPlacedHooksBudgetSat` is an `HkdfPlacedHooksExactBudgetSat` via
-`memcpyHook_exact`. -/
-public instance instHkdfPlacedHooksExactBudgetSatOfBudgetSat
+`memcpyHook_exact` + `hookSatCompress256_of_eq`. -/
+public instance instHkdfPlacedHooksExactBudgetSatOfBudgetSat [LibsignalPlacement]
     {F : ShaCompress} {H : LibsignalHooks} [hH : HkdfPlacedHooksBudgetSat F H] :
     HkdfPlacedHooksExactBudgetSat F H where
   memset := hH.memset
   memcpy := hookSatExactMemcpy_of_eq hH.memcpy memcpyHook_exact
-  compress256 := hH.compress256
+  compress256 := hookSatCompress256_of_eq hH.compress256
 
 /-- Forget `VmPreserved` on `memset` to obtain `HkdfPlacedHooksExactSat F H`. -/
-public theorem HkdfPlacedHooksExactBudgetSat.toExactSat {F : ShaCompress} {H : LibsignalHooks}
-    (hH : HkdfPlacedHooksExactBudgetSat F H) : HkdfPlacedHooksExactSat F H where
+public theorem HkdfPlacedHooksExactBudgetSat.toExactSat [LibsignalPlacement] {F : ShaCompress}
+    {H : LibsignalHooks} (hH : HkdfPlacedHooksExactBudgetSat F H) : HkdfPlacedHooksExactSat F H where
   memset := by
     rcases hH.memset with ⟨f, hf, hok⟩
     exact ⟨f, hf, hookOk_sessionMemsetRegion_of_budget hok⟩
@@ -133,14 +143,15 @@ public theorem HkdfPlacedHooksExactBudgetSat.toExactSat {F : ShaCompress} {H : L
   compress256 := hH.compress256
 
 /-- Forgetful typeclass instance `HkdfPlacedHooksExactBudgetSat → HkdfPlacedHooksExactSat`. -/
-public instance instHkdfPlacedHooksExactSatOfExactBudgetSat
+public instance instHkdfPlacedHooksExactSatOfExactBudgetSat [LibsignalPlacement]
     {F : ShaCompress} {H : LibsignalHooks} [hH : HkdfPlacedHooksExactBudgetSat F H] :
     HkdfPlacedHooksExactSat F H :=
   hH.toExactSat
 
 /-- Combine budget `memset` (`sessionMemsetRegionBudgetSpec`, e.g. from `CliGhostAllocHooks`)
 with `[HkdfPlacedHooksExactSat F H]` to construct `HkdfPlacedHooksExactBudgetSat F H`. -/
-public theorem HkdfPlacedHooksExactBudgetSat.of_exactSat {F : ShaCompress} {H : LibsignalHooks}
+public theorem HkdfPlacedHooksExactBudgetSat.of_exactSat [LibsignalPlacement] {F : ShaCompress}
+    {H : LibsignalHooks}
     (h_memset : HookSat H lsMemsetSym sessionMemsetRegionBudgetSpec)
     [hEx : HkdfPlacedHooksExactSat F H] :
     HkdfPlacedHooksExactBudgetSat F H where
@@ -149,13 +160,14 @@ public theorem HkdfPlacedHooksExactBudgetSat.of_exactSat {F : ShaCompress} {H : 
   compress256 := hEx.compress256
 
 /-- Coerce `HkdfPlacedHooksBudgetSat F H` into `HkdfPlacedHooksExactBudgetSat F H`. -/
-public theorem HkdfPlacedHooksBudgetSat.toExactBudgetSat {F : ShaCompress} {H : LibsignalHooks}
-    (hH : HkdfPlacedHooksBudgetSat F H) : HkdfPlacedHooksExactBudgetSat F H :=
-  @instHkdfPlacedHooksExactBudgetSatOfBudgetSat F H hH
+public theorem HkdfPlacedHooksBudgetSat.toExactBudgetSat [LibsignalPlacement] {F : ShaCompress}
+    {H : LibsignalHooks} (hH : HkdfPlacedHooksBudgetSat F H) :
+    HkdfPlacedHooksExactBudgetSat F H :=
+  @instHkdfPlacedHooksExactBudgetSatOfBudgetSat _ F H hH
 
 /-- Coerce `HkdfPlacedHooks F H` into `HkdfPlacedHooksExactBudgetSat F H`. -/
-public theorem HkdfPlacedHooks.toExactBudgetSat {F : ShaCompress} {H : LibsignalHooks}
-    (hH : HkdfPlacedHooks F H) : HkdfPlacedHooksExactBudgetSat F H :=
+public theorem HkdfPlacedHooks.toExactBudgetSat [LibsignalPlacement] {F : ShaCompress}
+    {H : LibsignalHooks} (hH : HkdfPlacedHooks F H) : HkdfPlacedHooksExactBudgetSat F H :=
   (HkdfPlacedHooks.toBudgetSat hH).toExactBudgetSat
 
 /-- Transport `HookSatExactMemcpy` across pointwise equality at `sym`. -/
@@ -166,7 +178,7 @@ public theorem hookSatExactMemcpy_of_sym_eq {H1 H2 : String → Option (State �
   exact ⟨f, heq.trans hf, hex⟩
 
 /-- Transport `HkdfPlacedHooksExactBudgetSat` across pointwise equality on the 3 HKDF symbols. -/
-public theorem HkdfPlacedHooksExactBudgetSat.of_hooks_eq {F : ShaCompress}
+public theorem HkdfPlacedHooksExactBudgetSat.of_hooks_eq [LibsignalPlacement] {F : ShaCompress}
     {H1 H2 : LibsignalHooks} (hH : HkdfPlacedHooksExactBudgetSat F H2)
     (h_memset : H1 lsMemsetSym = H2 lsMemsetSym)
     (h_memcpy : H1 lsMemcpySym = H2 lsMemcpySym)
@@ -174,6 +186,21 @@ public theorem HkdfPlacedHooksExactBudgetSat.of_hooks_eq {F : ShaCompress}
     HkdfPlacedHooksExactBudgetSat F H1 where
   memset := hookSat_of_sym_eq h_memset hH.memset
   memcpy := hookSatExactMemcpy_of_sym_eq h_memcpy hH.memcpy
-  compress256 := h_compress.trans hH.compress256
+  compress256 := hookSatCompress256_of_sym_eq h_compress hH.compress256
+
+/-! ## `VmPreserved`-Strengthened `176`-Byte `compress256`-Stacked `*Sat` Specs -/
+
+public abbrev newFromSliceBudgetSpecSat (F : ShaCompress) : Spec NewFromSliceGhost :=
+  withVmPreserved (newFromSliceSpecSat F)
+
+public abbrev finalizeFixedBudgetSpecSat (F : ShaCompress) : Spec FinalizeFixedGhost :=
+  withVmPreserved (finalizeFixedSpecSat F)
+
+public abbrev extractBudgetSpecSat (F : ShaCompress) : Spec ExtractGhost :=
+  withVmPreserved (extractSpecSat F)
+
+public abbrev expandMultiInfoBudgetSpecSat (F : ShaCompress) :
+    Spec ExpandMultiInfoGhost :=
+  withVmPreserved (expandMultiInfoSpecSat F)
 
 end LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonBudgetSat

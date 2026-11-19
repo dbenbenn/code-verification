@@ -9,10 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecv
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlaced
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecv -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
 # Relocatable SPQR Recv Error-Path Helpers on CLI Block `433`
@@ -21,7 +25,7 @@ Proves `pqRecv_dealloc_tail_433_placed`, `pqRecv_recv_err_true_433_placed`, and
 `pqRecv_recv_err_false_433_placed` on Block `433` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -21,7 +21,7 @@ import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11Aux
 Shared invariant, non-stopping step, receive-panic, absorbing-win, and `CloseByStateC` combinators for `closeByStateC_inject_step`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

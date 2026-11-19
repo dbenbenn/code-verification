@@ -10,12 +10,14 @@ limitations under the License.
 module
 
 public import Aesop.BuiltinRules
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
+meta import GeneratedLean.LibsignalSessionPlacedObjShard23
+meta import GeneratedLean.LibsignalSessionPlacedObjShard24
 
 /-!
 # Relocatable Per-Block Decode Tables for `Cli/SpqrV1/Prost/MessageEncode`
@@ -25,7 +27,7 @@ Generates relocatable per-block fetch/decode lemmas for CLI Blocks `453` and `45
 and `Ct1Sent` message encoders).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

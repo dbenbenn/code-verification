@@ -10,30 +10,32 @@ limitations under the License.
 module
 
 public import Arm64.Trusted.Spec.Hoare
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemRejectPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3UntypedElfF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.DecPkPollKitsFdsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2Asm
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KBridges
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KHooks
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KIfaces
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KStrCloneFds
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KWitness
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopPlacedBudgetFd -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3UntypedElfF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2Asm -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KHooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KIfaces -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliElf
 public import VerifiedLibraries.Mallocng.Spec
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemRejectPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemRejectPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3
+import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.DecPkPollKitsFdsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KBridges
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KStrCloneFds
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KWitness
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
 
 /-!
 # Spine-C Slot `520` (`decryptPrekey`, D3 Untyped) Bridge (`ElfSlicesPqOomH2KSlot520Untyped`)
@@ -46,7 +48,7 @@ Bridges `D3BadKemRejectPlacedBudgetFd.decPkD3Untyped_slotOk_withFdsGe3Closed_of_
 `ElfSlicesPqOomH2KStrCloneFds` so only `CliDecPkPollKitsPlacedOkFds` remains.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.style.haveILetI false
@@ -72,9 +74,9 @@ open LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux (SessDes
 open LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemEnvAPlacedBudget
   (DecPkD3UntypedEnvOf PqxdhAcceptBadKemErrEnv)
 open LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopPlacedBudgetFd
-  (CliDecPkPollKitsPlacedOkFds)
+  (CliDecPkPollKitsPlacedOkFds cliDecPkPollKitsFds_toWithFds)
 open LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemRejectPlacedBudgetFd
-  (decPkD3Untyped_slotOk_withFdsGe3Closed_of_pollKits)
+  (decPkD3Untyped_slotOk_of_kits_placedBudget decPkD3Untyped_slotOk_withFdsGe3Closed_of_pollKits)
 open LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3 (defaultExtrasF3)
 open LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3UntypedElfF3 (cliRunSemD3)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced (ReadFileRuleEnvFixed)
@@ -88,7 +90,9 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2Asm
   (h2asm_Branch2HookReplaysK)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KHooks (h2k_ghFixedK)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KIfaces
-  (h2ki_UntypedDecPkSlot520OkK okPlaced_slotWithPreFdsGe3Closed_of_withFdsGe3Closed
+  (h2ki_UntypedDecPkSlot520OkK h2ki_UntypedDecPkSlot520OkWfK
+   okPlaced_slotWithPreFdsGe3Closed_of_plain
+   okPlaced_slotWithPreFdsGe3Closed_of_withFdsGe3Closed
    slotWithFdsGe3Closed)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KStrCloneFds
   (h2kb_hole2_hG_withFds h2kb_runHooksPlaced_withFds)
@@ -196,7 +200,7 @@ theorem h2ki_UntypedDecPkSlot520OkK_of_hooksAndPollKits
           (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W))) :
     h2ki_UntypedDecPkSlot520OkK w := by
   letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
-  intro h547 W γ tp
+  intro h547 W _hF γ tp
   exact okPlaced_slotWithPreFdsGe3Closed_of_withFdsGe3Closed
     (h2ki_UntypedDecPkSlot520OkTwoSidedK_of_hooksAndPollKits
       hLs w hG_withFds hh_withFds hPollKits h547 W γ tp)
@@ -304,6 +308,183 @@ theorem h2ki_UntypedDecPkSlot520OkK_mkWitness_of_kitInstPollKits
   letI : LibsignalPlacement :=
     libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
   exact h2ki_UntypedDecPkSlot520OkK_mkWitness_of_pollKits mpl mmpl hLs hMm hBranch2
+    (fun h547 W γ tp => CliDecPkPollKitsPlacedOkFds.ofKitInst (hPollKits h547 W γ tp))
+
+/-! ## `withFds` (`h2ki_UntypedDecPkSlot520OkWfK`) Variants -/
+
+/-- Closes `h2ki_UntypedDecPkSlot520OkWfK w` (`slotWithPreFdsGe3Closed` over `withFds`) for an
+arbitrary `w : F3CliElfGhostWitnessK mpl mmpl` from `withFds` hook bundles and
+`CliDecPkPollKitsPlacedOkFds`. -/
+theorem h2ki_UntypedDecPkSlot520OkWfK_of_hooksAndPollKits
+    {mpl mmpl : MultiPlacement}
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
+    (w : F3CliElfGhostWitnessK mpl mmpl)
+    (hG_withFds :
+      letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
+      ∀ (γ : GhostName) (tp : BitVec 64),
+        CliGhostAllocHooks fineCostModel
+          (withFds (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart))
+          cliBudgetLimits w.ghFixed)
+    (hh_withFds :
+      letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
+      ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
+        @RunHooksPlaced (libsignalPlacementOf mpl w.hblk w.hext_nodup) fineCostModel
+          (withFds (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart))
+          cliBudgetLimits
+          (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W)))
+    (hPollKits :
+      letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
+      mpl.base 547 ≠ 0#64 →
+      ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
+        CliDecPkPollKitsPlacedOkFds
+          (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)
+          cliBudgetLimits cliRunBudgets (ReadFileRuleEnvFixed cliIo.rd) SessDeserializeCancelEnv
+          (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W))) :
+    h2ki_UntypedDecPkSlot520OkWfK w := by
+  letI : LibsignalFullPlacement := libsignalFullPlacementOf mpl hLs w.hblk w.hext_nodup
+  intro h547 W _hF γ tp
+  have hh := hh_withFds W γ tp
+  have hhClosure :
+      LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget.RunHooksPlaced
+        (withFds (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart))
+        cliBudgetLimits
+        (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W)) :=
+    { alloc := hh.alloc
+      allocFs := hh.allocFs
+      panics := hh.panics
+      memcpyRO := hh.memcpyRO
+      bcmp := hh.bcmp
+      fs := hh.fs
+      utf8 := hh.utf8
+      memrchr := hh.memrchr
+      codecHooks := hh.codecHooks
+      allocZeroed := hh.allocZeroed
+      stringClone := hh.stringClone
+      formatInner := hh.formatInner
+      fmtWrite := hh.fmtWrite
+      blackBox := hh.blackBox }
+  exact okPlaced_slotWithPreFdsGe3Closed_of_plain
+    (decPkD3Untyped_slotOk_of_kits_placedBudget
+      (A := withFds (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart))
+      (lim := cliBudgetLimits)
+      defaultExtrasF3 mmpl w.ghFixed W h547
+      (hG_withFds γ tp)
+      hhClosure
+      (cliDecPkPollKitsFds_toWithFds rfl (hPollKits h547 W γ tp))
+      (cliRunSemD3 W)
+      (binaryKitRunSlotEnvsExact W
+        (withFds (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart))
+        cliRunBudgets_placed (realCliInitBinarySlotEnvFixed W)
+        (DecPkD3UntypedEnvOf
+          (A := (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart).repAlloc)
+          cliRunBudgets_placed (ReadFileRuleEnvFixed cliIo.rd)
+          SessDeserializeCancelEnv PqxdhAcceptBadKemErrEnv))
+      (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets_placed))
+      (fun _ _ h => h) rfl rfl
+      (fun _ _ _ _ h => ⟨⟨h.1.keyPairLt, h.1.preKeysWf, h.1.baseKeysLt⟩, h.2⟩)
+      (by decide))
+
+/-- Closes `h2ki_UntypedDecPkSlot520OkWfK w` at `w.ghFixed = h2k_ghFixedK mpl mmpl` from
+`CliDecPkPollKitsPlacedOkFds`. -/
+theorem h2ki_UntypedDecPkSlot520OkWfK_of_ghFixedEq_and_pollKits
+    {mpl mmpl : MultiPlacement}
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
+    (w : F3CliElfGhostWitnessK mpl mmpl)
+    (hgh :
+      letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
+      w.ghFixed = h2k_ghFixedK mpl mmpl)
+    (hPollKits :
+      letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
+      mpl.base 547 ≠ 0#64 →
+      ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
+        CliDecPkPollKitsPlacedOkFds
+          (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)
+          cliBudgetLimits cliRunBudgets (ReadFileRuleEnvFixed cliIo.rd) SessDeserializeCancelEnv
+          (cliGhostExterns (h2k_ghFixedK mpl mmpl) (cliExternsPlaced mmpl W))) :
+    h2ki_UntypedDecPkSlot520OkWfK w := by
+  letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
+  have hgh' : w.ghFixed = h2k_ghFixedK mpl mmpl := hgh
+  refine h2ki_UntypedDecPkSlot520OkWfK_of_hooksAndPollKits hLs w ?_ ?_ ?_
+  · intro γ tp
+    rw [hgh']
+    exact h2kb_hole2_hG_withFds mpl mmpl hLs hMm γ tp
+  · intro W γ tp
+    rw [hgh']
+    exact h2kb_runHooksPlaced_withFds mpl mmpl hLs hMm W γ tp
+  · intro h547 W γ tp
+    rw [hgh']
+    exact hPollKits h547 W γ tp
+
+/-- Closes `h2ki_UntypedDecPkSlot520OkWfK (mkF3CliElfGhostWitnessK …)` from
+`D3BadKemP2TopPlacedBudgetFd.CliDecPkPollKitsPlacedOkFds`. -/
+theorem h2ki_UntypedDecPkSlot520OkWfK_mkWitness_of_pollKits
+    (mpl mmpl : MultiPlacement)
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
+    (hBranch2 :
+      letI : LibsignalPlacement :=
+        libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
+      h2asm_Branch2HookReplaysK mpl mmpl)
+    (hPollKits :
+      letI : LibsignalPlacement :=
+        libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
+      mpl.base 547 ≠ 0#64 →
+      ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
+        CliDecPkPollKitsPlacedOkFds
+          (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)
+          cliBudgetLimits cliRunBudgets (ReadFileRuleEnvFixed cliIo.rd) SessDeserializeCancelEnv
+          (cliGhostExterns (h2k_ghFixedK mpl mmpl) (cliExternsPlaced mmpl W))) :
+    h2ki_UntypedDecPkSlot520OkWfK (mkF3CliElfGhostWitnessK mpl mmpl hLs hMm hBranch2) :=
+  h2ki_UntypedDecPkSlot520OkWfK_of_ghFixedEq_and_pollKits hLs hMm
+    (mkF3CliElfGhostWitnessK mpl mmpl hLs hMm hBranch2) rfl hPollKits
+
+/-- Closes `h2ki_UntypedDecPkSlot520OkWfK w` at `w.ghFixed = h2k_ghFixedK mpl mmpl` from
+`KitInst.DecPkPollKitsFdsPlacedBudget.CliDecPkPollKitsPlacedOkFds`. -/
+theorem h2ki_UntypedDecPkSlot520OkWfK_of_ghFixedEq_and_kitInstPollKits
+    {mpl mmpl : MultiPlacement}
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
+    (w : F3CliElfGhostWitnessK mpl mmpl)
+    (hgh :
+      letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
+      w.ghFixed = h2k_ghFixedK mpl mmpl)
+    (hPollKits :
+      letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
+      mpl.base 547 ≠ 0#64 →
+      ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
+        LibsignalBinary.Proofs.SignalSession.Cli.KitInst.DecPkPollKitsFdsPlacedBudget.CliDecPkPollKitsPlacedOkFds
+          (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)
+          cliBudgetLimits cliRunBudgets (ReadFileRuleEnvFixed cliIo.rd) SessDeserializeCancelEnv
+          (cliGhostExterns (h2k_ghFixedK mpl mmpl) (cliExternsPlaced mmpl W))) :
+    h2ki_UntypedDecPkSlot520OkWfK w := by
+  letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
+  exact h2ki_UntypedDecPkSlot520OkWfK_of_ghFixedEq_and_pollKits hLs hMm w hgh
+    (fun h547 W γ tp => CliDecPkPollKitsPlacedOkFds.ofKitInst (hPollKits h547 W γ tp))
+
+/-- Closes `h2ki_UntypedDecPkSlot520OkWfK (mkF3CliElfGhostWitnessK …)` from
+`KitInst.DecPkPollKitsFdsPlacedBudget.CliDecPkPollKitsPlacedOkFds`. -/
+theorem h2ki_UntypedDecPkSlot520OkWfK_mkWitness_of_kitInstPollKits
+    (mpl mmpl : MultiPlacement)
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
+    (hBranch2 :
+      letI : LibsignalPlacement :=
+        libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
+      h2asm_Branch2HookReplaysK mpl mmpl)
+    (hPollKits :
+      letI : LibsignalPlacement :=
+        libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
+      mpl.base 547 ≠ 0#64 →
+      ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
+        LibsignalBinary.Proofs.SignalSession.Cli.KitInst.DecPkPollKitsFdsPlacedBudget.CliDecPkPollKitsPlacedOkFds
+          (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)
+          cliBudgetLimits cliRunBudgets (ReadFileRuleEnvFixed cliIo.rd) SessDeserializeCancelEnv
+          (cliGhostExterns (h2k_ghFixedK mpl mmpl) (cliExternsPlaced mmpl W))) :
+    h2ki_UntypedDecPkSlot520OkWfK (mkF3CliElfGhostWitnessK mpl mmpl hLs hMm hBranch2) := by
+  letI : LibsignalPlacement :=
+    libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
+  exact h2ki_UntypedDecPkSlot520OkWfK_mkWitness_of_pollKits mpl mmpl hLs hMm hBranch2
     (fun h547 W γ tp => CliDecPkPollKitsPlacedOkFds.ofKitInst (hPollKits h547 W γ tp))
 
 end LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KSlot520Untyped

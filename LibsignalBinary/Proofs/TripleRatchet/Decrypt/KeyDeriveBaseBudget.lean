@@ -12,13 +12,19 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKeyBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKeyBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.KeyDeriveBase
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.CallsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.CallsBudget
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `KeyDerive` & `spqr::recv` Helpers for `try_decrypt_with_state`
@@ -28,7 +34,7 @@ callee bridges (`format_inner`, `__rust_dealloc`, `<ProtocolAddress as Display>:
 budget-threaded `spqrRecvSpecPlaced` contract and `onPanic` bridges over `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,8 +62,13 @@ open LibsignalBinary.Heap (
   rustCliDeallocBudgetSpec
 )
 open LibsignalBinary.Heap.SpecBudget (
-  FmtWriteEnv FormatInnerEnv fmtWriteBudgetEnvSpec fmtWriteBudgetSpec
-  formatInnerBudgetEnvSpec formatInnerBudgetSpec
+  FormatInnerEnv formatInnerBudgetEnvSpec formatInnerBudgetSpec
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs (
+  fmtWriteProtoAddrCliLsSpec fmtWriteProtoAddrLsEnvSpec
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (
+  formatInnerCliLsSpec formatInnerLsEnvSpec
 )
 open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (TryDecryptEnvArgs)
 open LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget (
@@ -233,6 +244,24 @@ theorem formatInner_placed_ok [LibsignalPlacement] {prog : Program} {i : Nat}
     subroutine_ok prog (lsρ lsFormatInnerSym) (formatInnerBudgetSpec M A lim) :=
   keys_ls_hook_ok_of_mem h_fmt (by decide) hi hunmut
 
+/-- Relocatable `format_inner` (`formatInnerLsEnvSpec`) lifted to any caller block `prog`. -/
+theorem formatInnerLsEnv_placed_ok [LibsignalPlacement] {prog : Program} {i : Nat}
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {Env : List AllocEvent → Prop} {H : String → Option (State → State)} [IsLsBlockProg prog i H]
+    (h_fmt : HookSat H lsFormatInnerSym (formatInnerLsEnvSpec M A lim Env))
+    (hi : i < 619 := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
+    subroutine_ok prog (lsρ lsFormatInnerSym) (formatInnerLsEnvSpec M A lim Env) :=
+  keys_ls_hook_ok_of_mem h_fmt (by decide) hi hunmut
+
+/-- Relocatable `format_inner` (`formatInnerCliLsSpec`, `Env = CliFormatInnerEnv`) lifted to `prog`. -/
+theorem formatInnerCliLs_placed_ok [LibsignalPlacement] {prog : Program} {i : Nat}
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {H : String → Option (State → State)} [IsLsBlockProg prog i H]
+    (h_fmt : HookSat H lsFormatInnerSym (formatInnerCliLsSpec M A lim))
+    (hi : i < 619 := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
+    subroutine_ok prog (lsρ lsFormatInnerSym) (formatInnerCliLsSpec M A lim) :=
+  keys_ls_hook_ok_of_mem h_fmt (by decide) hi hunmut
+
 /-- Relocatable `__rust_dealloc` (`rustCliDeallocBudgetSpec`) lifted to any caller block `prog`. -/
 theorem dealloc_placed_ok [LibsignalPlacement] {prog : Program} {i : Nat}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -247,28 +276,28 @@ any caller block `prog`. -/
 theorem addrDisplayEnv_placed_ok [LibsignalPlacement] {prog : Program} {i : Nat}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {Env : List AllocEvent → Prop} {H : String → Option (State → State)} [IsLsBlockProg prog i H]
-    (hW : HookSat H lsFmtWriteSym (fmtWriteBudgetEnvSpec M A lim Env))
+    (hW : HookSat H lsFmtWriteSym (fmtWriteProtoAddrLsEnvSpec M A lim Env))
     (hi : i < 619 := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     subroutine_ok prog (lsmpl.base 215)
-      (withLsCodeLoaded lsmpl (addrDisplayEnvSpec M A lim Env)) :=
+      (withLsCodeRoLoaded lsmpl (addrDisplayEnvSpec M A lim Env)) :=
   addr_display_placed_ok_at hW hi hunmut
 
 /-- Relocatable `<ProtocolAddress as Display>::fmt` (Block `215`, `addrDisplaySpec`,
-`Env = FmtWriteEnv`) lifted to any caller block `prog`. -/
+`Env = CliFmtWriteEnv`) lifted to any caller block `prog`. -/
 theorem addrDisplay_placed_ok [LibsignalPlacement] {prog : Program} {i : Nat}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {H : String → Option (State → State)} [IsLsBlockProg prog i H]
-    (hW : HookSat H lsFmtWriteSym (fmtWriteBudgetSpec M A lim))
+    (hW : HookSat H lsFmtWriteSym (fmtWriteProtoAddrCliLsSpec M A lim))
     (hi : i < 619 := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     subroutine_ok prog (lsmpl.base 215)
-      (withLsCodeLoaded lsmpl (addrDisplaySpec M A lim)) :=
+      (withLsCodeRoLoaded lsmpl (addrDisplaySpec M A lim)) :=
   addr_display_placed_ok_at hW hi hunmut
 
 /-! ## 3. Budget-Threaded `spqr::recv` Contract & `onPanic` Bridges -/
 
 /-- Budget-threaded relocatable `spqr::recv` raw contract (`onOom = ⌜False⌝` under `FitsEnv`,
 `allocFailedIn` dropped from `onPanic`). -/
-def spqrRecvRawSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def spqrRecvRawSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (S : SpqrModel)
     (spqrRecvEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop) :
     Spec ((VecArg × VecArg × BitVec 64) × M.σ) where
@@ -289,7 +318,7 @@ def spqrRecvRawSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     ⌜S.recvPanics st_arg.bytes msg_arg.bytes ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- `withLsCodeRoLoaded`-wrapped budget `spqr::recv` contract. -/
-def spqrRecvSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def spqrRecvSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (S : SpqrModel)
     (spqrRecvEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop) :
     Spec ((VecArg × VecArg × BitVec 64) × M.σ) :=

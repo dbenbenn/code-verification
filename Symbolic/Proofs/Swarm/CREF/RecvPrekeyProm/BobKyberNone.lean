@@ -9,9 +9,13 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.RecordBytesBridge
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApi
+public import Symbolic.Proofs.SpecLemmas.CliPureBytes -- proof-setup: allow-public-import
+public import Symbolic.Specifications.Concrete.MachineEvents
+public import Symbolic.Specifications.Concrete.SessionRecord
 
 /-!
 # `pendingKyberPreKey` Record-Encoding Bridge
@@ -22,7 +26,7 @@ length bound, and deduces `pendingKyberPreKey_eq_none_of_encodeRecord_lt` via `r
 injectivity.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -38,7 +42,7 @@ open CryptoVerification.E2E.Record
 
 /-- Converts a `Session HwBytes` (including `pendingPreKey` and `pendingKyberPreKey` payloads) into
 a `RecordRec` with `previous = []`. -/
-def sessionToRecordRecPending (s : Session HwBytes) : RecordRec where
+@[expose] def sessionToRecordRecPending (s : Session HwBytes) : RecordRec where
   current :=
     { Swarm.Phase0WholeFunctionBridge.sessionToSessionRec s with
       pendingPreKey := s.pendingPreKey.map fun p => (encPendingPreKey p, [])

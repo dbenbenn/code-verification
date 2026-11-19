@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard1
+meta import GeneratedLean.LibsignalSessionPlacedObjShard3
+meta import GeneratedLean.LibsignalSessionPlacedObjShard4
 
 /-!
 # Relocatable Per-Block Instruction Fetches for `RecordCodecs` (Part A)
@@ -20,7 +23,7 @@ import LibsignalBinary.Proofs.Placed.GenLsBlock
 Per-block instruction fetch definitions for blocks `18, 65, 84`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

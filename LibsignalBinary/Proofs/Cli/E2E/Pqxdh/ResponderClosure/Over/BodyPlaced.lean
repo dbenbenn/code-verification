@@ -9,12 +9,63 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.ClosureOver
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBridgePlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseStepsPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.ClosureOver -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBridgePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseStepsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Record.Serialization.Canon
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.Apply
+public import ProofLib.SepLogic.WP.StepsProcess
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Musl.Spec
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Trap.SameAccount
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 
 /-!
 # Relocatable Overwrite Responder Closure Body
@@ -23,11 +74,9 @@ Relocatable `[LibsignalPlacement]` counterpart of `ClosureOver` on the `get_NoMa
 path of `decrypt_prekey`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 
@@ -59,31 +108,10 @@ open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits
 open CryptoVerification.SignalSession
 
-theorem encSessionMem_clearPending_eq_placed [LibsignalPlacement]
-    {G : SessionGhost} {s : Session (List (BitVec 8))}
-    (h : CanonSession G s) :
-    CryptoVerification.E2E.Record.Serialization.encSessionMem
-      (clearPendingGhost G) (clearPending s) =
-      CryptoVerification.E2E.Record.encSession (clearPending s) :=
-  encSessionMem_clearPending_eq h
-
-theorem scopeIn_clearPending_placed [LibsignalPlacement]
-    {s : Session (List (BitVec 8))} (h : Cli.Slots.scopeIn ⟨some s⟩) :
-    Cli.Slots.scopeIn ⟨some (clearPending s)⟩ :=
-  scopeIn_clearPending h
-
 theorem overPrevEncOK_clearPending_of_scopeIn_placed [LibsignalPlacement]
     {s : Session (List (BitVec 8))}
     (h : Cli.Slots.scopeIn ⟨some s⟩) (hver : s.state.sessionVersion = 4#32) :
     OverPrevEncOK (CryptoVerification.E2E.Record.encSession (clearPending s)) :=
   overPrevEncOK_clearPending_of_scopeIn h hver
 
-theorem lenField2_clearPending_length_lt_placed [LibsignalPlacement]
-    {s : Session (List (BitVec 8))} (h : Cli.Slots.scopeIn ⟨some s⟩) :
-    (CryptoVerification.E2E.Record.lenField 2
-      (CryptoVerification.E2E.Record.encSession (clearPending s))).length <
-      2 ^ 31 + 2 ^ 21 + 40 :=
-  lenField2_clearPending_length_lt h
-
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
-end

@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Reductions
-public import Computational.Proofs.CryptoGames.SM.SessionProofs.BlankLemma18
-public import Computational.Proofs.CryptoGames.SM.Theorem1.Lemma17
-public import Computational.Proofs.E2E.SignedPrims
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.SessionProofs.BlankLemma18 -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Theorem1.Lemma17 -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SignedPrims -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.SM.Theorem1
-import Computational.Proofs.E2E.SignedSession
+import Computational.Proofs.E2E.SignedAdv
 import Computational.Proofs.E2E.SignedThm12
 import Computational.Proofs.E2E.SignedThm8
 
@@ -25,7 +25,7 @@ Lifts the blanked `H1` security bounds (`theorem1_h1_blank_mix` and `theorem6_h1
 prefix-indexed mixtures, with single averaged CKA and PRF-PRNG reductions.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec MeasureTheory ENNReal
 
@@ -47,65 +47,6 @@ theorem boolBias_mix_eq_zero {α : Type} (oa : ProbComp α) (f : α → ProbComp
   change ENNReal.absDiff _ _ = 0
   rw [evalDist_bind_apply_lintegral, evalDist_bind_apply_lintegral]
   simp only [h', ENNReal.absDiff_self]
-
-theorem closeBySum_h1_h2 (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) (hΔ : 0 < Δ)
-    (A : Adversary St Msg Coins C) :
-    CloseBySum Δ qep (game sm Δ qep Config.h1 A) (game sm Δ qep Config.h2 A)
-      (fun t tL => authGame sm Δ qep tL t (challSim Δ qep A)) := by
-  let f (b : Bool) : Bool × GameState St Msg C → ProbComp Bool :=
-    fun z => pure (b == z.1 || z.2.win)
-  let fAuth (t : ℕ) (tL : Option ℕ) :
-      (Bool × Mirror Msg C) × GameState St Msg C → ProbComp Bool :=
-    fun z => pure (z.2.win && authLosingConditionsAvoided Δ tL t z.2)
-  have hclose : CloseBySum Δ qep
-      (game sm Δ qep Config.h1 A)
-      (game sm Δ qep Config.h2 A)
-      (fun t tL =>
-        ($ᵗ Bool : ProbComp Bool) >>= fun b => ($ᵗ Key : ProbComp Key) >>= fun k =>
-          (simulateQ (fullImpl sm Δ qep (Config.auth t))
-            ((simulateQ (simImpl Δ qep (fun _ => none) none) A).run
-              (toMirror (initState sm k b)))).run (toAuth (initState sm k b)) >>=
-            fAuth t tL) := by
-    unfold game run
-    simp only [bind_assoc]
-    refine closeBySum_bind Δ qep ($ᵗ Bool : ProbComp Bool) fun b =>
-      closeBySum_bind Δ qep ($ᵗ Key : ProbComp Key) fun k => ?_
-    exact closeBySum_simulateQ sm Δ qep hΔ A (f b) (f b) fAuth
-      (fun _ _ _ => rfl)
-      (fun t tL z hwin hok => by simp [fAuth, hwin, hok])
-      (wfState_init sm Δ k b) rfl
-  intro ev
-  have htr := hclose ev
-  dsimp only [fAuth] at htr
-  simp_rw [← authGame_challSim_evalDist sm Δ qep _ _ A] at htr
-  exact htr
-
-theorem lemma17_mix {α : Type} (sm : α → SMScheme Key St Msg Coins C) (Δ qep : ℕ) (hΔ : 0 < Δ)
-    (oa : ProbComp α) (A : α → Adversary St Msg Coins C) :
-    𝒟[oa >>= fun o => game (sm o) Δ qep Config.h1 (A o)].boolBias ≤
-      𝒟[oa >>= fun o => game (sm o) Δ qep Config.h2 (A o)].boolBias +
-        2 * ∑ t ∈ Finset.range (qep + 2), ∑ tL ∈ admissibleLastLeakGuesses Δ t,
-          𝒟[oa >>= fun o => authGame (sm o) Δ qep tL t (challSim Δ qep (A o))] {true} := by
-  have hclose := closeBySum_bind Δ qep oa
-    (f1 := fun o => game (sm o) Δ qep Config.h1 (A o))
-    (f2 := fun o => game (sm o) Δ qep Config.h2 (A o))
-    (fAuth := fun t tL o => authGame (sm o) Δ qep tL t (challSim Δ qep (A o)))
-    fun o => closeBySum_h1_h2 (sm o) Δ qep hΔ (A o)
-  set S := ∑ t ∈ Finset.range (qep + 2), ∑ tL ∈ admissibleLastLeakGuesses Δ t,
-    𝒟[oa >>= fun o => authGame (sm o) Δ qep tL t (challSim Δ qep (A o))] {true}
-  set μ1 := 𝒟[oa >>= fun o => game (sm o) Δ qep Config.h1 (A o)]
-  set μ2 := 𝒟[oa >>= fun o => game (sm o) Δ qep Config.h2 (A o)]
-  have hdiff : ENNReal.absDiff (μ1 {true}) (μ2 {true}) ≤ S :=
-    ENNReal.absDiff_le_iff.mpr (hclose {true})
-  have htri : ENNReal.absDiff (μ1 {true}) (1 / 2) ≤ ENNReal.absDiff (μ2 {true}) (1 / 2) + S := by
-    calc ENNReal.absDiff (μ1 {true}) (1 / 2)
-        ≤ ENNReal.absDiff (μ1 {true}) (μ2 {true}) + ENNReal.absDiff (μ2 {true}) (1 / 2) :=
-          ENNReal.absDiff_triangle _ _ _
-      _ ≤ S + ENNReal.absDiff (μ2 {true}) (1 / 2) := by gcongr
-      _ = _ := add_comm _ _
-  rw [Measure.boolBias_eq_two_mul_absDiff_half_of_isProbabilityMeasure,
-      Measure.boolBias_eq_two_mul_absDiff_half_of_isProbabilityMeasure, ← mul_add]
-  gcongr
 
 theorem evalDist_select_mix {α : Type} (oa : ProbComp α) (x y : α → ProbComp Bool) :
     𝒟[do let sel ← $ᵗ Bool; if sel then oa >>= x else oa >>= y] =
@@ -233,43 +174,6 @@ theorem lemma18B_mix {α : Type} (sm : α → SMScheme Key St Msg Coins C) (Δ q
     Measure.boolDist_self, zero_add] at hunion
   exact hunion
 
-/-- Blanked ACD19 Theorem 1 at `H1` for a prefix-indexed mixture of SM games. -/
-theorem theorem1_h1_blank_mix [DecidableEq Pub] {α : Type} (sm : α → SMScheme Key St Msg Coins C)
-    (Δ qep : ℕ) (hΔ : 0 < Δ) (pubOf : Msg → Pub) (blank : Msg → Msg)
-    (hblank : ∀ m₀ m₁, pubOf m₀ = pubOf m₁ → blank m₀ = blank m₁) (oa : ProbComp α)
-    (A : α → Adversary St Msg Coins C) (heq : ∀ o, EqualPubChalls pubOf (A o)) :
-    𝒟[oa >>= fun o => game (sm o) Δ qep Config.h1 (A o)].boolBias ≤
-      2 * ∑ t ∈ Finset.range (qep + 2), ∑ tL ∈ admissibleLastLeakGuesses Δ t,
-            𝒟[oa >>= fun o => authGame (sm o) Δ qep tL t (challSim Δ qep (A o))] {true}
-        + 2 * ∑ i ∈ Finset.range (qep + 1), ∑ tL ∈ admissibleLastLeakGuesses Δ i,
-            𝒟[oa >>= fun o =>
-              privGame (sm o) Δ qep tL i (ThmB.privRedB Δ qep i blank (A o))].boolBias := by
-  have h17 := lemma17_mix sm Δ qep hΔ oa A
-  have htel : ∀ n : ℕ,
-      𝒟[oa >>= fun o => game (sm o) Δ qep Config.h2 (A o)].boolBias ≤
-        𝒟[oa >>= fun o => gameB (sm o) Δ qep (challMsgB n blank) (A o)].boolBias +
-          2 * ∑ i ∈ Finset.range n, ∑ tL ∈ admissibleLastLeakGuesses Δ i, 𝒟[oa >>= fun o =>
-            privGame (sm o) Δ qep tL i (ThmB.privRedB Δ qep i blank (A o))].boolBias := by
-    intro n
-    induction n with
-    | zero =>
-      simp only [challMsgB_zero, Finset.range_zero, Finset.sum_empty, mul_zero, add_zero]
-      exact le_rfl
-    | succ n ih =>
-      refine ih.trans ?_
-      have h := lemma18B_mix sm Δ qep hΔ blank n oa A
-      rw [Finset.sum_range_succ, mul_add]
-      calc _ ≤ _ := add_le_add h le_rfl
-        _ = _ := by ring
-  have hfin : 𝒟[oa >>= fun o => gameB (sm o) Δ qep (challMsgB (qep + 1) blank) (A o)].boolBias =
-      0 :=
-    boolBias_mix_eq_zero oa _ fun o => h3B_final_proof (sm o) Δ qep pubOf blank hblank (A o) (heq o)
-  have h18 := htel (qep + 1)
-  rw [hfin, zero_add] at h18
-  calc _ ≤ _ := h17
-    _ ≤ _ + _ := add_le_add h18 le_rfl
-    _ = _ := by ring
-
 end Generic
 
 section Scheme
@@ -280,45 +184,6 @@ variable {KC Γ CCoins T I : Type} {KR Sig K : Type} {SS RS M E Pub : Type}
   [DecidableEq T] [DecidableEq M] [DecidableEq E] [DecidableEq I] [Inhabited E] [DecidableEq Pub]
   [SampleableType KR] [SampleableType KC] [SampleableType CCoins] [SampleableType I]
   [SampleableType K]
-
-/-- Blanked ACD19 Theorem 6 at `H1` for a prefix-indexed mixture with uniform CKA and PRF-PRNG reductions. -/
-theorem theorem6_h1_blank_mix {α : Type} (cka : CKAScheme KC Γ CCoins T I)
-    (prng : PRFPRNG KR Sig I K) (fs : α → FSAEADScheme K SS RS (Header T) M E) (lam : I)
-    (Δcka qep : ℕ) (hc : cka.Correct) (pubOf : M → Pub) (blank : M → M)
-    (hblank : ∀ m₀ m₁, pubOf m₀ = pubOf m₁ → blank m₀ = blank m₁) (oa : ProbComp α)
-    (A : α → SchemeAdversary Γ T Sig SS RS M CCoins E) (heq : ∀ o, EqualPubChalls pubOf (A o))
-    (q : ℕ) (hq : ∀ o, MakesAtMostQueries (A o) q) :
-    letI : MeasurableSpace α := ⊤
-    𝒟[oa >>= fun o => game (scheme cka prng (fs o) lam) (2 + Δcka) qep Config.h1 (A o)].boolBias ≤
-      2 * ∑ t ∈ Finset.range (qep + 2), ∑ tL ∈ admissibleLastLeakGuesses (2 + Δcka) t,
-          (CKA.advantage cka Δcka (healEpoch tL)
-              (advAvg oa fun o => redCKAAuth cka prng (fs o) lam Δcka qep tL t
-                (challSim (2 + Δcka) qep (A o)))
-            + PRFPRNG.advantage prng
-              (advAvg oa fun o => redPRNGAuth cka prng (fs o) lam Δcka qep tL t
-                (challSim (2 + Δcka) qep (A o)))
-            + ∫⁻ o, ∑ j ∈ Finset.range q, FSAEAD.advantage (fs o)
-                (redFSAuth cka prng (fs o) lam Δcka qep j tL t
-                  (challSim (2 + Δcka) qep (A o))) ∂𝒟[oa])
-        + 2 * ∑ i ∈ Finset.range (qep + 1), ∑ tL ∈ admissibleLastLeakGuesses (2 + Δcka) i,
-          (2 * CKA.advantage cka Δcka (healEpoch tL)
-              (advAvg oa fun o => redCKAPriv cka prng (fs o) lam Δcka qep tL i
-                (ThmB.privRedB (2 + Δcka) qep i blank (A o)))
-            + 2 * PRFPRNG.advantage prng
-              (advAvg oa fun o => redPRNGPriv cka prng (fs o) lam Δcka qep tL i
-                (ThmB.privRedB (2 + Δcka) qep i blank (A o)))
-            + 𝒟[oa >>= fun o => FSAEAD.game (fs o)
-                (redFSPriv cka prng (fs o) lam Δcka qep tL i
-                  (ThmB.privRedB (2 + Δcka) qep i blank (A o)))].boolBias
-            + 2 * ∫⁻ o, FSAEAD.advantage (fs o)
-                (redFSPrivCoin cka prng (fs o) lam Δcka qep tL i
-                  (ThmB.privRedB (2 + Δcka) qep i blank (A o))) ∂𝒟[oa]) := by
-  refine (theorem1_h1_blank_mix (fun o => scheme cka prng (fs o) lam) (2 + Δcka) qep (by omega)
-    pubOf blank hblank oa A heq).trans ?_
-  gcongr with t _ tL _ i _ tL _
-  · exact theorem8_mix cka prng fs lam Δcka qep hc tL t q oa _
-      fun o => Thm1.challSim_queries _ _ (A o) q (hq o)
-  · exact theorem12_mix cka prng fs lam Δcka qep hc tL i oa _
 
 end Scheme
 

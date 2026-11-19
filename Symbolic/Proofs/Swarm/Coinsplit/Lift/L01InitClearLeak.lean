@@ -20,6 +20,8 @@ import Symbolic.Proofs.Swarm.CREF.Cli.World.TurnPure
 import Symbolic.Proofs.Swarm.CREF.Cli.World.XplTransferPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+import Symbolic.Proofs.Swarm.CREF.Cli.World.HeldRecPure
+import Symbolic.Proofs.Swarm.CREF.Sanitize
 
 /-!
 # Initialization, Session Clear, and Leak Stepping for `CliLiveAtCli`
@@ -28,7 +30,7 @@ Proves `init_clear_leak : GoodExit0CutSpec → InitClearLeakSpec`: base initiali
 `clearSession` framing, and inductive `.leak` stepping for `CliLiveAtCli`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

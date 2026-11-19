@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled2
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled2Placed
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
@@ -28,7 +28,7 @@ Proves `PolyEncoder::encode_bytes`, `next_chunk`, `KeysSampled` state assembly (
 and the complete `.keysUnsampled` arm (`+372 -> +3068`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -62,7 +62,7 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
   DoReserveNorm.readReg32_setPC_pre DoReserveNorm.readReg32_setMem_setPC_pre
   DoReserveNorm.readReg_setPC_pre DoReserveNorm.readReg_setMem_setPC_pre
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [-arm64_norm]
   Kdf.HkdfToSliceProof.sp_sub_688_eq_hsp
   Kdf.HkdfToSliceProof.sp_add_neg688_eq_hsp
@@ -314,12 +314,12 @@ theorem step_keysUnsampled_2588_to_3068_placed {F : ShaCompress}
       (by wp_norm_goal) (by simp only [wp_norm, arm64_norm, *]) (by simp only [State.sp, arm64_norm, *])
       hsp_align (by simp only [wp_norm, arm64_norm, *])
       (ret_pc := (blkPl_427).base + 2672#64) (by simp only [Reg.lr, wp_norm, arm64_norm, *])
-      (by dsimp only [polyNextChunkPlacedSpec, polyNextChunkSpec]; ac_rfl)
+      (by dsimp only [polyNextChunkPlacedSpec]; ac_rfl)
       (by simp only [hnc, Reg.x8, Reg.x0, wp_norm, arm64_norm, *])
       (by dsimp only [polyEncoderSize, chunkSize]; ac_rfl)
       (fun _ _ => rfl)
       (fun sf => polyNextChunkPlaced_onPanic_of_ok _ hnc _ sf)
-      (by intro sf; dsimp only [polyNextChunkPlacedSpec, polyNextChunkSpec]; ac_rfl) ?_
+      (by intro sf; dsimp only [polyNextChunkPlacedSpec]; ac_rfl) ?_
     intro sm2 hpc_sm2 hrun_sm2 hsp_sm2 htr_sm2 hinv_sm2
       hx19_sm2 hx20_sm2 hx21_sm2 hx22_sm2 hx23_sm2 hx24_sm2 _ hx26_sm2 _ hx28_sm2 hvregs_sm2
     simp only [wp_norm, arm64_norm, *] at htr_sm2 hx19_sm2 hx20_sm2 hx21_sm2 hx22_sm2 hx23_sm2 hx24_sm2 hx26_sm2 hx28_sm2 hvregs_sm2

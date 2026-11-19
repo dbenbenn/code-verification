@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.InMem.HashbrownModel.BitMask
+public import LibsignalBinary.Proofs.E2E.InMem.HashbrownModel.BitMask -- proof-setup: allow-public-import
 
 /-!
 # Hashbrown 4-Bucket Table Control-Array and Probe Lemmas
@@ -19,7 +19,7 @@ Control-byte mirror invariants (`CtrlMirrorInv`, `FullBucketsInv`), `set_ctrl` m
 array of a 4-bucket (`mask = 3#64`) `hashbrown` table.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.InMem.HashbrownModel
 
@@ -27,7 +27,7 @@ namespace CryptoVerification.E2E.InMem.HashbrownModel
 
 /-- Control-byte length and mirrored-tail invariant (`cbs.length = mask.toNat + 1 + 8`) of
 `tableAt`. -/
-def CtrlMirrorInv (mask : BitVec 64) (cbs : List (BitVec 8)) : Prop :=
+@[expose] def CtrlMirrorInv (mask : BitVec 64) (cbs : List (BitVec 8)) : Prop :=
   cbs.length = mask.toNat + 1 + groupWidth ∧
   ∀ i < groupWidth, cbs[mask.toNat + 1 + i]? =
     if mask.toNat + 1 + i < groupWidth then some emptyTag
@@ -35,22 +35,22 @@ def CtrlMirrorInv (mask : BitVec 64) (cbs : List (BitVec 8)) : Prop :=
 
 /-- Full-bucket index-list invariant of `tableAt`: `full` lists the deduplicated indices
 `i < mask.toNat + 1` whose control byte has `msb = false`. -/
-def FullBucketsInv (mask : BitVec 64) (cbs : List (BitVec 8)) (full : List Nat) : Prop :=
+@[expose] def FullBucketsInv (mask : BitVec 64) (cbs : List (BitVec 8)) (full : List Nat) : Prop :=
   full.Nodup ∧
   ∀ i, i ∈ full ↔ i < mask.toNat + 1 ∧ ∃ b, cbs[i]? = some b ∧ b.msb = false
 
 /-- The 12-byte control array of a 4-bucket table (`mask = 3#64`) with bucket tags `b0, b1, b2, b3`:
 4 real control bytes, 4 `EMPTY` (`0xff`) padding bytes, and 4 mirrored control bytes `b0, b1, b2, b3`. -/
-def mkCtrl4 (b0 b1 b2 b3 : BitVec 8) : List (BitVec 8) :=
+@[expose] def mkCtrl4 (b0 b1 b2 b3 : BitVec 8) : List (BitVec 8) :=
   [b0, b1, b2, b3, emptyTag, emptyTag, emptyTag, emptyTag, b0, b1, b2, b3]
 
 /-- The 12-byte control array of an empty 4-bucket table (all 12 bytes are `0xff#8`). -/
-def emptyCtrl4 : List (BitVec 8) :=
+@[expose] def emptyCtrl4 : List (BitVec 8) :=
   mkCtrl4 emptyTag emptyTag emptyTag emptyTag
 
 /-- The 12-byte control array of a 4-bucket table with a single entry at bucket `k < 4` (with tag `tag`)
 and `EMPTY` (`0xff#8`) in the other 3 buckets. -/
-def singleCtrl4 (k : Nat) (tag : BitVec 8) : List (BitVec 8) :=
+@[expose] def singleCtrl4 (k : Nat) (tag : BitVec 8) : List (BitVec 8) :=
   mkCtrl4
     (if k = 0 then tag else emptyTag)
     (if k = 1 then tag else emptyTag)
@@ -75,28 +75,6 @@ theorem ctrlMirrorInv_mkCtrl4 (b0 b1 b2 b3 : BitVec 8) :
   change i < 8 at hi
   rcases (by omega : i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3 ∨ i = 4 ∨ i = 5 ∨ i = 6 ∨ i = 7) with
     rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> rfl
-
-/-- Every 12-byte control list satisfying `CtrlMirrorInv 3#64` has the form `mkCtrl4 b0 b1 b2 b3`. -/
-theorem eq_mkCtrl4_of_ctrlMirrorInv (cbs : List (BitVec 8)) (h : CtrlMirrorInv 3#64 cbs) :
-    cbs = mkCtrl4 (cbs.getD 0 emptyTag) (cbs.getD 1 emptyTag)
-                  (cbs.getD 2 emptyTag) (cbs.getD 3 emptyTag) := by
-  rcases h with ⟨hlen, hmir⟩
-  change cbs.length = 12 at hlen
-  rcases cbs with _ | ⟨b0, _ | ⟨b1, _ | ⟨b2, _ | ⟨b3, _ | ⟨b4, _ | ⟨b5, _ | ⟨b6, _ | ⟨b7,
-    _ | ⟨b8, _ | ⟨b9, _ | ⟨b10, _ | ⟨b11, _ | ⟨_, _⟩⟩⟩⟩⟩⟩⟩⟩⟩⟩⟩⟩⟩
-  all_goals try (simp at hlen)
-  have h4 := hmir 0 (by decide)
-  have h5 := hmir 1 (by decide)
-  have h6 := hmir 2 (by decide)
-  have h7 := hmir 3 (by decide)
-  have h8 := hmir 4 (by decide)
-  have h9 := hmir 5 (by decide)
-  have h10 := hmir 6 (by decide)
-  have h11 := hmir 7 (by decide)
-  simp [groupWidth] at h4 h5 h6 h7 h8 h9 h10 h11
-  subst h4; subst h5; subst h6; subst h7
-  subst h8; subst h9; subst h10; subst h11
-  rfl
 
 theorem ctrlMirrorInv_emptyCtrl4 : CtrlMirrorInv 3#64 emptyCtrl4 :=
   ctrlMirrorInv_mkCtrl4 _ _ _ _
@@ -139,7 +117,7 @@ theorem fullBucketsInv_singleCtrl4 (k : Nat) (hk : k < 4) (tag : BitVec 8) (htag
 
 /-- `hashbrown`'s `RawTableInner::set_ctrl` mirror index on 64-bit words:
 `index2 = ((index.wrapping_sub(Group::WIDTH)) & self.bucket_mask) + Group::WIDTH`. -/
-def setCtrlMirrorIdx (mask i : BitVec 64) : BitVec 64 :=
+@[expose] def setCtrlMirrorIdx (mask i : BitVec 64) : BitVec 64 :=
   ((i - 8#64) &&& mask) + 8#64
 
 @[simp]
@@ -160,13 +138,9 @@ theorem setCtrlMirrorIdx_3_ofNat (k : Nat) (hk : k < 4) :
     setCtrlMirrorIdx 3#64 (BitVec.ofNat 64 k) = BitVec.ofNat 64 (k + 8) := by
   rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3) with rfl | rfl | rfl | rfl <;> rfl
 
-theorem setCtrlMirrorIdx_3_toNat (k : Nat) (hk : k < 4) :
-    (setCtrlMirrorIdx 3#64 (BitVec.ofNat 64 k)).toNat = k + 8 := by
-  rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3) with rfl | rfl | rfl | rfl <;> rfl
-
 /-- Pure list model of `RawTableInner::set_ctrl(index, tag)`: writes `tag` at `index` and at
 `setCtrlMirrorIdx mask index`. -/
-def setCtrlList (mask : BitVec 64) (cbs : List (BitVec 8)) (i : BitVec 64) (tag : BitVec 8) :
+@[expose] def setCtrlList (mask : BitVec 64) (cbs : List (BitVec 8)) (i : BitVec 64) (tag : BitVec 8) :
     List (BitVec 8) :=
   (cbs.set i.toNat tag).set (setCtrlMirrorIdx mask i).toNat tag
 
@@ -186,34 +160,15 @@ theorem setCtrlList_mkCtrl4_2 (b0 b1 b2 b3 tag : BitVec 8) :
 theorem setCtrlList_mkCtrl4_3 (b0 b1 b2 b3 tag : BitVec 8) :
     setCtrlList 3#64 (mkCtrl4 b0 b1 b2 b3) 3#64 tag = mkCtrl4 b0 b1 b2 tag := rfl
 
-/-- `setCtrlList 3#64` preserves `CtrlMirrorInv 3#64` for any bucket `k < 4`. -/
-theorem ctrlMirrorInv_setCtrlList_3 (cbs : List (BitVec 8)) (hcbs : CtrlMirrorInv 3#64 cbs)
-    (k : Nat) (hk : k < 4) (tag : BitVec 8) :
-    CtrlMirrorInv 3#64 (setCtrlList 3#64 cbs (BitVec.ofNat 64 k) tag) := by
-  rw [eq_mkCtrl4_of_ctrlMirrorInv cbs hcbs]
-  rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3) with rfl | rfl | rfl | rfl <;>
-  exact ctrlMirrorInv_mkCtrl4 _ _ _ _
-
-/-- Calling `set_ctrl` on `emptyCtrl4` at bucket `k < 4` produces `singleCtrl4 k tag`. -/
-theorem setCtrlList_emptyCtrl4 (k : Nat) (hk : k < 4) (tag : BitVec 8) :
-    setCtrlList 3#64 emptyCtrl4 (BitVec.ofNat 64 k) tag = singleCtrl4 k tag := by
-  rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3) with rfl | rfl | rfl | rfl <;> rfl
-
-/-- Calling `set_ctrl` on `singleCtrl4 k oldTag` at the same bucket `k < 4` replaces `oldTag` with `newTag`. -/
-theorem setCtrlList_singleCtrl4_same (k : Nat) (hk : k < 4) (oldTag newTag : BitVec 8) :
-    setCtrlList 3#64 (singleCtrl4 k oldTag) (BitVec.ofNat 64 k) newTag =
-      singleCtrl4 k newTag := by
-  rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3) with rfl | rfl | rfl | rfl <;> rfl
-
 /-! ## Probe Sequence on 4-Bucket Tables (`mask = 3#64`) & Unaligned Group Load Over Mirrored Tail -/
 
 /-- Initial probe position `pos = h1(hash) & bucket_mask`. -/
-def probePos (hash mask : BitVec 64) : BitVec 64 :=
+@[expose] def probePos (hash mask : BitVec 64) : BitVec 64 :=
   hash &&& mask
 
 /-- Bucket index corresponding to matching lane `bit` at probe position `pos`:
 `index = (pos + bit) & bucket_mask`. -/
-def probeBucketIdx (pos : BitVec 64) (bit : Nat) (mask : BitVec 64) : BitVec 64 :=
+@[expose] def probeBucketIdx (pos : BitVec 64) (bit : Nat) (mask : BitVec 64) : BitVec 64 :=
   (pos + BitVec.ofNat 64 bit) &&& mask
 
 /-- Next triangular probe state (`ProbeSeq::move_next`):
@@ -234,7 +189,7 @@ theorem probePos_3_toNat_lt (hash : BitVec 64) : (probePos hash 3#64).toNat < 4 
 
 /-- Unaligned 8-byte group load (`Group::load(self.ctrl(pos))`) from control byte list `cbs`
 starting at byte offset `pos`. -/
-def loadGroupAt (cbs : List (BitVec 8)) (pos : Nat) : BitVec 64 :=
+@[expose] def loadGroupAt (cbs : List (BitVec 8)) (pos : Nat) : BitVec 64 :=
   packGroupWord
     (cbs.getD (pos + 0) emptyTag)
     (cbs.getD (pos + 1) emptyTag)
@@ -281,7 +236,7 @@ theorem loadGroupAt_emptyCtrl4 (pos : Nat) (hpos : pos < 4) :
 `pos < 4` on a 4-bucket table:
 - if `pos ≤ k`, bucket `k` is in the primary prefix at lane `k - pos`;
 - if `k < pos`, bucket `k` is in the mirrored tail at lane `k + 8 - pos`. -/
-def laneOfBucket4 (pos k : Nat) : Nat :=
+@[expose] def laneOfBucket4 (pos k : Nat) : Nat :=
   if pos ≤ k then k - pos else k + 8 - pos
 
 theorem laneOfBucket4_lt_8 (pos k : Nat) (hpos : pos < 4) (hk : k < 4) :
@@ -300,24 +255,6 @@ theorem probe4_reaches_every_bucket (b0 b1 b2 b3 : BitVec 8) (pos k : Nat)
   rcases (by omega : pos = 0 ∨ pos = 1 ∨ pos = 2 ∨ pos = 3) with rfl | rfl | rfl | rfl <;>
   rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3) with rfl | rfl | rfl | rfl <;>
   refine ⟨by simp [laneOfBucket4, mkCtrl4], rfl, rfl⟩
-
-/-- Conversely, every lane `bit < 8` in `loadGroupAt (mkCtrl4 b0 b1 b2 b3) pos` (for `pos < 4`) is
-either one of the 4 padding `EMPTY` lanes (`4 - pos ≤ bit ∧ bit < 8 - pos`, where the byte is `emptyTag`)
-or the unique lane `laneOfBucket4 pos ((pos + bit) % 4)` of bucket `k = (pos + bit) % 4`. -/
-theorem groupByte_loadGroupAt_mkCtrl4_cases (b0 b1 b2 b3 : BitVec 8) (pos bit : Nat)
-    (hpos : pos < 4) (hbit : bit < 8) :
-    (4 - pos ≤ bit ∧ bit < 8 - pos ∧
-      groupByte (loadGroupAt (mkCtrl4 b0 b1 b2 b3) pos) bit = emptyTag) ∨
-    (bit = laneOfBucket4 pos ((pos + bit) % 4) ∧
-      groupByte (loadGroupAt (mkCtrl4 b0 b1 b2 b3) pos) bit =
-        (mkCtrl4 b0 b1 b2 b3).getD ((pos + bit) % 4) emptyTag) := by
-  rcases (by omega : pos = 0 ∨ pos = 1 ∨ pos = 2 ∨ pos = 3) with rfl | rfl | rfl | rfl <;>
-  rcases (by omega : bit = 0 ∨ bit = 1 ∨ bit = 2 ∨ bit = 3 ∨ bit = 4 ∨ bit = 5 ∨ bit = 6 ∨ bit = 7) with
-    rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
-  all_goals
-    first
-    | (left; refine ⟨by decide, by decide, by simp [mkCtrl4]⟩)
-    | (right; refine ⟨rfl, by simp [mkCtrl4]⟩)
 
 /-- Lane `4 - pos < 8` of `loadGroupAt (mkCtrl4 b0 b1 b2 b3) pos` (`pos < 4`) is always `emptyTag`
 (`0xff#8`), so `match_empty().any_bit_set()` holds on the first group load. -/
@@ -347,7 +284,7 @@ theorem neonUmaxv8_neonMatchEmpty_loadGroupAt_mkCtrl4 (b0 b1 b2 b3 : BitVec 8) (
 
 /-- The 12-byte control array of a 4-bucket table with two entries at buckets `k1, k2 < 4`
 (where `k2` takes precedence if `k1 = k2`). -/
-def doubleCtrl4 (k1 : Nat) (tag1 : BitVec 8) (k2 : Nat) (tag2 : BitVec 8) : List (BitVec 8) :=
+@[expose] def doubleCtrl4 (k1 : Nat) (tag1 : BitVec 8) (k2 : Nat) (tag2 : BitVec 8) : List (BitVec 8) :=
   mkCtrl4
     (if k2 = 0 then tag2 else if k1 = 0 then tag1 else emptyTag)
     (if k2 = 1 then tag2 else if k1 = 1 then tag1 else emptyTag)
@@ -358,64 +295,10 @@ theorem ctrlMirrorInv_doubleCtrl4 (k1 : Nat) (tag1 : BitVec 8) (k2 : Nat) (tag2 
     CtrlMirrorInv 3#64 (doubleCtrl4 k1 tag1 k2 tag2) :=
   ctrlMirrorInv_mkCtrl4 _ _ _ _
 
-/-- Calling `set_ctrl` on `singleCtrl4 k1 tag1` at bucket `k2 < 4` produces `doubleCtrl4 k1 tag1 k2 tag2`. -/
-theorem setCtrlList_singleCtrl4 (k1 : Nat) (hk1 : k1 < 4) (tag1 : BitVec 8)
-    (k2 : Nat) (hk2 : k2 < 4) (tag2 : BitVec 8) :
-    setCtrlList 3#64 (singleCtrl4 k1 tag1) (BitVec.ofNat 64 k2) tag2 =
-      doubleCtrl4 k1 tag1 k2 tag2 := by
-  rcases (by omega : k1 = 0 ∨ k1 = 1 ∨ k1 = 2 ∨ k1 = 3) with rfl | rfl | rfl | rfl <;>
-  rcases (by omega : k2 = 0 ∨ k2 = 1 ∨ k2 = 2 ∨ k2 = 3) with rfl | rfl | rfl | rfl <;>
-  rfl
-
 @[simp]
 theorem doubleCtrl4_same (k : Nat) (hk : k < 4) (tag1 tag2 : BitVec 8) :
     doubleCtrl4 k tag1 k tag2 = singleCtrl4 k tag2 := by
   rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3) with rfl | rfl | rfl | rfl <;> rfl
-
-/-- `doubleCtrl4 k1 tag1 k2 tag2` with `k1 < 4`, `k2 < 4`, `k1 ≠ k2`, and `tag1.msb = false`,
-`tag2.msb = false` has `full = [k1, k2]` under `FullBucketsInv 3#64`. -/
-theorem fullBucketsInv_doubleCtrl4 (k1 k2 : Nat) (hk1 : k1 < 4) (hk2 : k2 < 4) (hne : k1 ≠ k2)
-    (tag1 tag2 : BitVec 8) (htag1 : tag1.msb = false) (htag2 : tag2.msb = false) :
-    FullBucketsInv 3#64 (doubleCtrl4 k1 tag1 k2 tag2) [k1, k2] := by
-  have hnodup : ([k1, k2] : List Nat).Nodup := by
-    refine List.Pairwise.cons ?_ (List.Pairwise.cons (by simp) List.Pairwise.nil)
-    intro x hx
-    simp only [List.mem_singleton] at hx
-    omega
-  refine ⟨hnodup, ?_⟩
-  intro i
-  have hm : (3#64).toNat + 1 = 4 := rfl
-  rw [hm]
-  rcases (by omega : k1 = 0 ∨ k1 = 1 ∨ k1 = 2 ∨ k1 = 3) with rfl | rfl | rfl | rfl <;>
-  rcases (by omega : k2 = 0 ∨ k2 = 1 ∨ k2 = 2 ∨ k2 = 3) with rfl | rfl | rfl | rfl
-  all_goals try (exfalso; exact hne rfl)
-  all_goals
-    constructor
-    · intro hi
-      simp only [List.mem_cons, List.not_mem_nil, or_false] at hi
-      rcases hi with rfl | rfl
-      · refine ⟨by omega, tag1, ?_, htag1⟩
-        simp [doubleCtrl4, mkCtrl4]
-      · refine ⟨by omega, tag2, ?_, htag2⟩
-        simp [doubleCtrl4, mkCtrl4]
-    · rintro ⟨hi, b, hb, hmsb⟩
-      rcases (by omega : i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3) with rfl | rfl | rfl | rfl <;>
-      · simp [doubleCtrl4, mkCtrl4] at hb
-        subst hb
-        first | decide | (rw [emptyTag_msb] at hmsb; cases hmsb)
-
-/-- On a 4-bucket table (`mask = 3#64`), `(idx - 8#64) &&& 3#64 = idx &&& 3#64`
-(used in `fix_insert_index` where `(index.wrapping_sub(Group::WIDTH)) & self.bucket_mask` is computed). -/
-theorem sub_eight_and_three (idx : BitVec 64) :
-    (idx - 8#64) &&& 3#64 = idx &&& 3#64 := by
-  have h1 : ((idx - 8#64) &&& 3#64).toNat = (idx - 8#64).toNat % 4 :=
-    probePos_3_toNat (idx - 8#64)
-  have h2 : (idx &&& 3#64).toNat = idx.toNat % 4 :=
-    probePos_3_toNat idx
-  have h8 : (8#64).toNat = 8 := rfl
-  apply BitVec.eq_of_toNat_eq
-  rw [h1, h2, BitVec.toNat_sub, h8, Nat.mod_mod_of_dvd _ (by decide : 4 ∣ 2 ^ 64)]
-  omega
 
 /-- On a 4-bucket table (`mask = 3#64`), for any `idx < 4`,
 `((BitVec.ofNat 64 idx - 8#64) &&& 3#64) = BitVec.ofNat 64 idx`. -/
@@ -423,25 +306,6 @@ theorem sub_eight_and_three (idx : BitVec 64) :
 theorem sub_eight_and_three_ofNat (idx : Nat) (hidx : idx < 4) :
     (BitVec.ofNat 64 idx - 8#64) &&& 3#64 = BitVec.ofNat 64 idx := by
   rcases (by omega : idx = 0 ∨ idx = 1 ∨ idx = 2 ∨ idx = 3) with rfl | rfl | rfl | rfl <;> rfl
-
-/-- On an 8-bucket table (`mask = 7#64`), `setCtrlMirrorIdx 7#64 (BitVec.ofNat 64 k) = BitVec.ofNat 64 (k + 8)`
-for all `k < 8`. -/
-theorem setCtrlMirrorIdx_7_ofNat (k : Nat) (hk : k < 8) :
-    setCtrlMirrorIdx 7#64 (BitVec.ofNat 64 k) = BitVec.ofNat 64 (k + 8) := by
-  rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 ∨ k = 5 ∨ k = 6 ∨ k = 7) with
-    rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> rfl
-
-/-- On a 16-bucket table (`mask = 15#64`), for `k < 8`, `setCtrlMirrorIdx 15#64 (BitVec.ofNat 64 k) = BitVec.ofNat 64 (k + 16)`
-(mirrors into the tail at `16 + k`), whereas for `8 ≤ k < 16`, `setCtrlMirrorIdx 15#64 (BitVec.ofNat 64 k) = BitVec.ofNat 64 k`
-(writes to `k` itself, an idempotent duplicate store). -/
-theorem setCtrlMirrorIdx_15_ofNat (k : Nat) (hk : k < 16) :
-    setCtrlMirrorIdx 15#64 (BitVec.ofNat 64 k) =
-      if k < 8 then BitVec.ofNat 64 (k + 16) else BitVec.ofNat 64 k := by
-  rcases (by omega :
-    k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 ∨ k = 5 ∨ k = 6 ∨ k = 7 ∨
-    k = 8 ∨ k = 9 ∨ k = 10 ∨ k = 11 ∨ k = 12 ∨ k = 13 ∨ k = 14 ∨ k = 15) with
-    rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-    rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> rfl
 
 /-! ## Group Match Masks on `emptyCtrl4` and `singleCtrl4` -/
 
@@ -536,65 +400,5 @@ theorem neonMatchTag_loadGroupAt_singleCtrl4_and_bitmaskIterMask
   cases (tag == qtag)
   · simp
   · simp [laneFullMask_and_bitmaskIterMask (laneOfBucket4 pos k) hlt]
-
-/-- On `singleCtrl4 k tag` (`k < 4`, `pos < 4`, `tag.msb = false`), `neonMatchFull` has `0xff`
-exclusively at lane `laneOfBucket4 pos k`. -/
-theorem neonMatchFull_loadGroupAt_singleCtrl4 (k pos : Nat) (hk : k < 4) (hpos : pos < 4)
-    (tag : BitVec 8) (htag : tag.msb = false) :
-    neonMatchFull (loadGroupAt (singleCtrl4 k tag) pos) =
-      laneFullMask (laneOfBucket4 pos k) := by
-  rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3) with rfl | rfl | rfl | rfl <;>
-  rcases (by omega : pos = 0 ∨ pos = 1 ∨ pos = 2 ∨ pos = 3) with rfl | rfl | rfl | rfl <;>
-  · simp only [singleCtrl4_0, singleCtrl4_1, singleCtrl4_2, singleCtrl4_3,
-               loadGroupAt_mkCtrl4_0, loadGroupAt_mkCtrl4_1,
-               loadGroupAt_mkCtrl4_2, loadGroupAt_mkCtrl4_3,
-               neonMatchFull, groupByte_packGroupWord_0, groupByte_packGroupWord_1,
-               groupByte_packGroupWord_2, groupByte_packGroupWord_3,
-               groupByte_packGroupWord_4, groupByte_packGroupWord_5,
-               groupByte_packGroupWord_6, groupByte_packGroupWord_7,
-               htag, emptyTag_msb]
-    rfl
-
-/-- On `singleCtrl4 k tag` (`k < 4`, `pos < 4`, `tag.msb = false`), `neonMatchEmptyOrDeleted`
-is the bitwise complement `~~~(laneFullMask (laneOfBucket4 pos k))` (all lanes `0xff` except
-lane `laneOfBucket4 pos k`, which is `0x00`). -/
-theorem neonMatchEmptyOrDeleted_loadGroupAt_singleCtrl4 (k pos : Nat) (hk : k < 4) (hpos : pos < 4)
-    (tag : BitVec 8) (htag : tag.msb = false) :
-    neonMatchEmptyOrDeleted (loadGroupAt (singleCtrl4 k tag) pos) =
-      ~~~(laneFullMask (laneOfBucket4 pos k)) := by
-  rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3) with rfl | rfl | rfl | rfl <;>
-  rcases (by omega : pos = 0 ∨ pos = 1 ∨ pos = 2 ∨ pos = 3) with rfl | rfl | rfl | rfl <;>
-  · simp only [singleCtrl4_0, singleCtrl4_1, singleCtrl4_2, singleCtrl4_3,
-               loadGroupAt_mkCtrl4_0, loadGroupAt_mkCtrl4_1,
-               loadGroupAt_mkCtrl4_2, loadGroupAt_mkCtrl4_3,
-               neonMatchEmptyOrDeleted, groupByte_packGroupWord_0, groupByte_packGroupWord_1,
-               groupByte_packGroupWord_2, groupByte_packGroupWord_3,
-               groupByte_packGroupWord_4, groupByte_packGroupWord_5,
-               groupByte_packGroupWord_6, groupByte_packGroupWord_7,
-               htag, emptyTag_msb]
-    rfl
-
-/-- On `singleCtrl4 k tag` (`k < 4`, `pos < 4`, `tag.msb = false`), `neonMatchEmpty` also equals
-`~~~(laneFullMask (laneOfBucket4 pos k))` (since there are no `DELETED` tags). -/
-theorem neonMatchEmpty_loadGroupAt_singleCtrl4 (k pos : Nat) (hk : k < 4) (hpos : pos < 4)
-    (tag : BitVec 8) (htag : tag.msb = false) :
-    neonMatchEmpty (loadGroupAt (singleCtrl4 k tag) pos) =
-      ~~~(laneFullMask (laneOfBucket4 pos k)) := by
-  have hne : tag ≠ emptyTag := by
-    intro h
-    have := congrArg BitVec.msb h
-    rw [htag, emptyTag_msb] at this
-    cases this
-  have hbeq : (tag == emptyTag) = false := beq_false_of_ne hne
-  rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3) with rfl | rfl | rfl | rfl <;>
-  rcases (by omega : pos = 0 ∨ pos = 1 ∨ pos = 2 ∨ pos = 3) with rfl | rfl | rfl | rfl <;>
-  · simp only [singleCtrl4_0, singleCtrl4_1, singleCtrl4_2, singleCtrl4_3,
-               loadGroupAt_mkCtrl4_0, loadGroupAt_mkCtrl4_1,
-               loadGroupAt_mkCtrl4_2, loadGroupAt_mkCtrl4_3,
-               neonMatchEmpty, neonMatchTag, groupByte_packGroupWord_0, groupByte_packGroupWord_1,
-               groupByte_packGroupWord_2, groupByte_packGroupWord_3,
-               groupByte_packGroupWord_4, groupByte_packGroupWord_5,
-               groupByte_packGroupWord_6, groupByte_packGroupWord_7, hbeq]
-    rfl
 
 end CryptoVerification.E2E.InMem.HashbrownModel

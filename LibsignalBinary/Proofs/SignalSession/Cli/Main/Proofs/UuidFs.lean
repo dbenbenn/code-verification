@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsParserTryParse
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # In-Image `<uuid::Uuid>::try_parse` with `.keepsFs` and Stack Framing
@@ -19,7 +20,7 @@ Lifts `<uuid::Uuid>::try_parse` to `.keepsFs` with stack framing (`uuidTryParseS
 and `.inImage img` on `libsignalSessionCode`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -29,12 +30,6 @@ open Arm64 ProofLib CryptoGames.LibsignalSession
 open CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr
 open CryptoVerification.LibsignalTripleRatchet
-
-theorem uuidTryParse_okFs_F (b : BitVec 64) (hooks : String → Option (State → State)) :
-    subroutine_ok (libsignalSessionCode.rebase b hooks)
-      ((libsignalSessionCode.rebase b hooks).fnAddr uuidTryParseName)
-      (uuidTryParseCodeSpec uuidTryParse).keepsFs :=
-  uuidTryParse_okFs_impl b hooks
 
 /-- Frames `(uuidTryParseCodeSpec uuidTryParse).keepsFs` (`0xC0` B) to any `uuidTryParseStack ≤ hookStack ≤ 2 ^ 64`. -/
 theorem uuidTryParseWithStack_keepsFs_of_code {P : Program} {addr : BitVec 64} {hookStack : Nat}
@@ -72,16 +67,5 @@ theorem uuidTryParseWithStack_keepsFs_of_code {P : Program} {addr : BitVec 64} {
     have h0 : (uuidTryParseCodeSpec uuidTryParse).keepsFs.onOom (p, bs, out) s0 sf = ⌜False⌝ := rfl
     rw [h0, satisfies_pure_sepConj] at hoom_sat
     exact False.elim hoom_sat.1
-
-theorem uuidTryParse_stack_keepsFs_inImage (img : Obj.Image)
-    (hooks : String → Option (State → State))
-    {hookStack : Nat}
-    (hle : uuidTryParseStack ≤ hookStack := by decide)
-    (hmax : hookStack ≤ 2 ^ 64 := by decide) :
-    subroutine_ok (libsignalSessionCode.rebase img.base hooks)
-      ((libsignalSessionCode.rebase img.base hooks).fnAddr uuidTryParseName)
-      ((uuidTryParseStackSpec hookStack).keepsFs.inImage img) :=
-  subroutine_ok_inImage_of_subroutine_ok img
-    (uuidTryParseWithStack_keepsFs_of_code (uuidTryParse_okFs_F img.base hooks) hle hmax)
 
 end CryptoVerification.SignalSession.Cli.MainHops.UuidFs

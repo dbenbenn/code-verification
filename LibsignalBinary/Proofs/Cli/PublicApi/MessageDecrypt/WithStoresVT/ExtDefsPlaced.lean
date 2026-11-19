@@ -9,12 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsVXPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegDispatchAuxPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.SessionOnlyKitEPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.ExtDefs
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsVXPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegDispatchAuxPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.SessionOnlyKitEPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.ExtDefs
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.E2E.RecordX.ScopeP -- proof-setup: allow-public-import
+public import ProofLib.BV
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsVX
 
 /-!
 # Relocatable `WithStoresVT` Foundations (`ExtDefsPlaced`)
@@ -23,7 +30,7 @@ Relocatable (`[LibsignalPlacement]`) filesystem carrier and weak-precondition (`
 hypothesis bundle on `lsProg_463 H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

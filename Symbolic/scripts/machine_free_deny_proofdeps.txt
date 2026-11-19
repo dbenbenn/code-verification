@@ -7,6 +7,9 @@
 [group proofdeps]
 Computational.Proofs.E2E.BhAdapterIjHelpersV1Core
 Computational.Proofs.E2E.HeadlineComposed
+Computational.Proofs.Game.PromotedCostedReds.SessionCostExactDefs
+Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs
+Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInDefs
 Computational.Proofs.HeadlineV1.CouplingV1
 Computational.Proofs.HeadlineV1.DeliverForgeShifted
 Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHeadline
@@ -15,6 +18,7 @@ Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEReds
 Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNESkeleton
 Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNESplit
 Computational.Proofs.HeadlineV1.HiddenSaltV1
+Computational.Proofs.HeadlineV1.HiddenSaltV1Defs
 Computational.Proofs.HeadlineV1.SendShortC
 Computational.Proofs.HeadlineV1.SignedRefineC
 Computational.Proofs.LibsignalCli.CliCapsCompleteness
@@ -965,7 +969,6 @@ LibsignalBinary.Proofs.E2E.InMem.SessionStoreImpl.*
 LibsignalBinary.Proofs.E2E.InMem.SipHashBin.*
 LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.Defs
 LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.Model
-LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.Root
 LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegBackDefs
 LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegBackS7
 LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegBackS9
@@ -1012,7 +1015,12 @@ LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.LeavesBudget
 LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.LeavesDecode
 LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCallees
 LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCalleesBudget
+LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCalleesBudgetBase
 LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCalleesDecode
+LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCalleesNewBudget
+LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCalleesReceiverBudget
+LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCalleesSenderBudget
+LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCalleesUnackBudget
 LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SmallCallees
 LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SmallCalleesBudget
 LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SmallCalleesDecode
@@ -1110,7 +1118,6 @@ LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
 LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
 LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetHelpers
 LibsignalBinary.Proofs.HookDischarge.Libc.*
-LibsignalBinary.Proofs.HookDischarge.RustStd.AllocShim
 LibsignalBinary.Proofs.HookDischarge.RustStd.Common
 LibsignalBinary.Proofs.HookDischarge.RustStd.FromUtf8
 LibsignalBinary.Proofs.HookDischarge.RustStd.Memrchr
@@ -1367,7 +1374,6 @@ LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliImgBridgeExt
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliImgLift
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliImgPlacement
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliImgSpecs
-LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlaced
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudget
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetAux
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetCallees
@@ -1401,6 +1407,7 @@ LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.InitPlaced
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.InitPlacedBudget
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.KeygenConvPlaced
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.KeygenConvPlacedBudget
+LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.KeygenCtxPlacedBudget
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.KeygenEntryPlaced
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.KeygenEntryPlacedBudget
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.KeygenLoopPlaced
@@ -1495,7 +1502,6 @@ LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M6PlacedBudget
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainAllocExtPlaced
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainCalleesExtHooks
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainCalleesExtPlaced
-LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainInstAllPlaced
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainIoExtPlaced
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainOkA1
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainOkA1Placed
@@ -1518,7 +1524,6 @@ LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlaced
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlacedBudget
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.*
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInstNoMatch
-LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInstNoMatchPlaced
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInstPlaced
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StackBudget
 LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1
@@ -1913,7 +1918,6 @@ LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bSigMsgPl
 LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bTop
 LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bTopPlaced
 LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bTopPlacedBudget
-LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromInstPlaced
 LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromInstPlacedBudget
 LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlaced
 LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget
@@ -1970,13 +1974,10 @@ LibsignalBinary.Proofs.SignalSession.Cli.SpqrChunkedMergePlacedInst
 LibsignalBinary.Proofs.SignalSession.Cli.SpqrDecodeStatePlacedInst
 LibsignalBinary.Proofs.SignalSession.Cli.SpqrDropsPlacedInst
 LibsignalBinary.Proofs.SignalSession.Cli.SpqrInitialStatePlacedInst
-LibsignalBinary.Proofs.SignalSession.Cli.SpqrMessageMergeLeavesPlacedInst
 LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsPlacedInst
-LibsignalBinary.Proofs.SignalSession.Cli.SpqrStatesIntoPbPlacedInst
 LibsignalBinary.Proofs.SignalSession.Cli.SpqrUnchunkedMergePlacedInst
 LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeams
 LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget
-LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsInst
 LibsignalBinary.Proofs.SignalSession.Cli.SpqrVarintPlacedInst
 LibsignalBinary.Proofs.SignalSession.Cli.Store.DropSpeWord.*
 LibsignalBinary.Proofs.SignalSession.Cli.Store.DropSpeWordPlaced
@@ -3114,6 +3115,7 @@ LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step244PlacedBudget
 LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.ReceiveRatchetCodeSym
 LibsignalBinary.Proofs.TripleRatchet.Record.*
 LibsignalBinary.Proofs.TripleRatchet.RunAssembly.*
+LibsignalBinary.Proofs.TripleRatchet.SepFocusAc
 LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
 LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.*
 LibsignalBinary.Proofs.TripleRatchet.Statements

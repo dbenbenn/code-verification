@@ -9,14 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyAdd
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyGetBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyAdd
+public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyGetBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyGetLoop -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `KeyHistory::add` Proofs for `<spqr::chain::Chain>::recv_key` (Block `366`)
@@ -26,7 +30,7 @@ Threads `RustCliAllocBudget M`, `A.pool lim st`, `AllocCallPreserved`, and exact
 relocatable `[LibsignalPlacement]` `KeyHistory::add` sub-phases (`+496`, `+520`, `+408` to `+448`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -90,7 +94,7 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 
 /-- Strengthen an allocating `Spec α` with `AllocCallPreserved s0 sf` so `AllocCallPreserved`
 transports across `do_reserve_and_handle` calls. -/
-def withAllocCallPreserved {α : Type} (spec : Spec α) : Spec α :=
+@[expose] def withAllocCallPreserved {α : Type} (spec : Spec α) : Spec α :=
   { spec with
     post := fun x s0 sf => ⌜AllocCallPreserved s0 sf⌝ ∗ spec.post x s0 sf }
 

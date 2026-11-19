@@ -9,13 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.Nonempty
+import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.Nonempty
 public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.Defs
-public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.DefsBudget
+import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.DefsBudget
 import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.Epilogue
-public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.EpilogueBudget
+import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.EpilogueBudget
 import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.Loop
-public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.LoopBudget
+import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.LoopBudget
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Full-Domain and Non-Empty `SignedPreKeyRecordStructure::decode`
@@ -25,7 +29,7 @@ public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.LoopBudget
 on Block `562`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,7 +51,7 @@ open LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.LoopBudget (prologue
 
 /-- Image-free raw budget-threaded contract satisfied by `<SignedPreKeyRecordStructure as Message>::decode::<&[u8]>`
 across all inputs (`x.bytes = []` returns `none`; `x.bytes ≠ []` returns `decode x.bytes`). -/
-def signedDecodeActualRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def signedDecodeActualRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DecodeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.bytesA ∧
@@ -69,7 +73,7 @@ abbrev signedDecodeActualPlacedSpec [CryptoVerification.LibsignalPlacement] {M :
   CryptoVerification.LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl (signedDecodeActualRawSpec A lim)
 
 /-- Image-free raw `signedDecodeRawSpec` restricted to `x.bytes ≠ []`. -/
-def signedDecodeNonemptyRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def signedDecodeNonemptyRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DecodeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.bytesA ∧

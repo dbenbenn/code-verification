@@ -9,9 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.ConsumeMsgKeySubPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.ConsumeMsgKeySubPlaced
 import Arm64.Trusted.Spec.Hoare
 import all Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKey -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.ConsumeMsgKeyHelpersPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlaced
+public import ProofLib.RegChain
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
 # Relocatable Segment 4 (`ConsumeMsgKey`) Seam on CLI Block `433`
@@ -19,7 +25,7 @@ import all Arm64.Trusted.Spec.SepLogic
 Proves `consumeMsgKey_433_placed_ok` (`S4SeamPlaced`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -372,7 +378,7 @@ theorem consumeMsgKey_433_placed_ok [LibsignalPlacement] (C : Crypto) (A : RustA
       · refine Or.inr ⟨hpan, ?_⟩
         rw [cliTryDecryptSpecPlaced_onPanic_eq]
         dsimp only [tryDecryptSpecPlaced, withLsCodeRoLoaded,
-          tryDecryptRawSpecPlaced, tryDecryptSpec, Spec.inImage]
+          tryDecryptRawSpecPlaced]
         rw [sepConj_assoc, satisfies_pure_sepConj]
         exact ⟨⟨Or.inr (Or.inr halloc0), htr0⟩, hany⟩
       · exact Or.inr ⟨hpan, ⟨Or.inr halloc0, htr0⟩, hany⟩
@@ -588,7 +594,7 @@ theorem consumeMsgKey_433_placed_ok [LibsignalPlacement] (C : Crypto) (A : RustA
               refine Or.inr ⟨hpan, ?_⟩
               rw [cliTryDecryptSpecPlaced_onPanic_eq]
               dsimp only [tryDecryptSpecPlaced, withLsCodeRoLoaded,
-                tryDecryptRawSpecPlaced, tryDecryptSpec, Spec.inImage]
+                tryDecryptRawSpecPlaced]
               rw [sepConj_assoc, satisfies_pure_sepConj]
               exact ⟨⟨Or.inr (Or.inr halloc0), htr0⟩, hany⟩
           · next e r2 hmod =>

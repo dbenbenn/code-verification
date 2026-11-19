@@ -10,21 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.Defs
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.Proof
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
-
-/-!
-# Verification of `spqr::chain_from` (`0x531ac`, 76 Instructions)
-
-Proves `chainFrom_ok_of_contracts_x` and `chainFrom_ok_of_contracts_ext` for `spqr::chain_from`
-(`0x531ac`) from `ChainFromPbOkX` and `ChainNewOkX`.
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.ChainFrom
 
@@ -38,8 +29,6 @@ open CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation
 open CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.ChainFromVNNorm
 open CryptoVerification.CodeLayout
 
-gen_decodes libsignalSessionCode_tree libsignalSessionBin [0x4ddb4 → 0x4dee0]
-
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
@@ -47,14 +36,6 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 namespace ChainFromNorm
-
-theorem chainFrom_fnOff :
-    libsignalSessionCode.fnOff chainFromName = 0x4ddb4 :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl) libsignalSessionCode_fnOff_0x4ddb4
-
-theorem chainFromPb_fnOff :
-    libsignalSessionCode.fnOff chainFromPbName = 0x5ac7c :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl) libsignalSessionCode_fnOff_0x5ac7c
 
 @[local simp, local arm64_norm, local wp_norm]
 theorem extractLsb_lo_append64 (hi lo : BitVec 64) :
@@ -69,9 +50,6 @@ theorem SepWP.rw_pre {prog : Program} {target_pc : BitVec 64} {s : State}
     (h : SepWP prog target_pc s P' post) :
     SepWP prog target_pc s P post :=
   heq ▸ h
-
-theorem sp_of_imgCallInv {img : Obj.Image} {s : State} (_ : ImgCallInv img s)
-    {sp' : BitVec 64} (h : s.sp = sp') : s.sp = sp' := h
 
 theorem pointsTo32_pair_eq_pointsTo64 (a : BitVec 64) (lo hi : BitVec 32) :
     (a ↦₃₂ lo) ∗ ((a + 4#64) ↦₃₂ hi) = (a ↦₆₄ (hi ++ lo)) := by
@@ -298,7 +276,7 @@ theorem chainErrorAt_pack_words4 (out : BitVec 64) (err : Error)
   exact Entails.pure_right htag (Entails.refl _)
 
 /-- Heap and pure invariant part of `chainAt A a G c` (independent of address `a`). -/
-def chainAtHeap (A : RustAlloc) (G : ChainGhost) (c : Chain) : SepProp :=
+@[expose] def chainAtHeap (A : RustAlloc) (G : ChainGhost) (c : Chain) : SepProp :=
   ⌜G.epochs.length = c.links.length⌝ ∗
     vecDequeRingBuf A chainEpochSize chainEpochAlign (chainEpochAt A)
       G.linksCap G.linksPtr G.linksHead (G.epochs.zip c.links) ∗
@@ -482,7 +460,7 @@ theorem words11_entails_chainRepr (A : RustAlloc) (out : BitVec 64) (G : ChainGh
     (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
       (sepConj_mono_right hpad))))))
 
-def chainPBRestAt (A : RustAlloc) (g : ChainPBGhost) (a : BitVec 64) (pb : ChainPB) : SepProp :=
+@[expose] def chainPBRestAt (A : RustAlloc) (g : ChainPBGhost) (a : BitVec 64) (pb : ChainPB) : SepProp :=
   ⌜g.epochs.length = pb.links.length⌝ ∗
     ((a + 8#64) ↦₆₄ g.linksPtr) ∗
     ((a + 16#64) ↦₆₄ BitVec.ofNat 64 (g.epochs.zip pb.links).length) ∗
@@ -552,312 +530,12 @@ theorem add_one_beq_zero_of_ne_noneCap {c : BitVec 64} (hne : c ≠ noneCap) :
   rw [← heq]
   bv_omega
 
-/-- Framed `BL` call rule for `SepWPp` with an `.inImage img` callee contract and a `SepWP`
-return continuation. -/
-theorem SepWPp.call_frame_inImage_ret {α : Type} {prog : Program} {img : Obj.Image}
-    {entry callee_ret_pc caller_ret_pc : BitVec 64} {spec : Spec α}
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (x : α) {s : State} {φ : Prop} {P T F R : SepProp} {Qpan : State → SepProp}
-    {post : State → SepProp → Prop}
-    (hF : ImgCallInv img s)
-    (hpc : s.pc = entry)
-    (hrun : s.status = .Running)
-    (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = callee_ret_pc)
-    (hspec : spec.pre x s = ⌜φ⌝ ∗ T)
-    (hφ : φ)
-    (hP : P = T ∗ F)
-    (hpan : ∀ sf, spec.onPanic x s sf ∗ F ⊢ Qpan sf)
-    (hexit_eq : ∀ code sf, spec.onExit x code s sf = ⌜False⌝)
-    (hoom_eq : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intros; rfl)
-    (hnext : ∀ sf : State, sf.pc = callee_ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf →
-      SepWP prog caller_ret_pc sf (spec.post x s sf ∗ F) post) :
-    SepWPp prog caller_ret_pc s P post
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ Qpan sf ∗ R)) :=
-  ProofLib.SepWPp.call_wpp_frozen (x := x) (F := F) hcall hF.1 hF.2 hpc hrun hsp_align hlr
-    (fun R' hm => by
-      dsimp only [Spec.inImage]
-      rw [sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨⟨hF.1, hF.2⟩, ?_⟩
-      rw [hspec, sepConj_assoc, satisfies_pure_sepConj, ← sepConj_assoc, ← hP]
-      exact ⟨hφ, hm⟩)
-    (fun sf code _ _ hex => by
-      dsimp only [Spec.inImage] at hex
-      rw [hexit_eq] at hex
-      exact not_satisfies_false_sepConj hex)
-    (fun sf _ _ hm' => Satisfies.mono (sepConj_mono_left (hpan sf)) hm')
-    (fun sf hpcm hrunm hspm hcsm _ _ => ProofLib.SepWPp.of_sepWP_ret (hnext sf hpcm hrunm hspm hcsm))
-    (fun sf R' _ hoom => by
-      dsimp only [Spec.inImage] at hoom
-      rw [hoom_eq] at hoom
-      exact (not_satisfies_false_sepConj hoom).elim)
-
 end ChainFromNorm
 
 open ChainFromNorm
 
-ls_attribute [local simp, local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
-  sp_setPC_pre sp_setMem_setPC_pre
-  readReg64_setPC_pre readReg64_setMem_setPC_pre
-  readReg32_setPC_pre readReg32_setMem_setPC_pre
-  readReg_setPC_pre readReg_setMem_setPC_pre
-  ult_one_toI32
-  extractLsb_lo_append64 extractLsb_hi_append64
-  chainFrom_fnOff chainFromPb_fnOff chainNew_fnOff
-  libsignalSessionCode_fnOff_0x4ddb4
-  libsignalSessionCode_fnOff_0x5ac7c
-  libsignalSessionCode_fnOff_0x5aaac
-
 macro "wp_elim_exists" : tactic =>
   `(tactic| repeat' (first | (apply SepWPp.exists_elim; intro _) | (apply SepWP.exists_elim; intro _)))
-
-set_option maxHeartbeats 1600000 in
-/-- `spqr::chain_from` (`0x531ac`, 76 instructions) meets `(chainFromSpecX hkdf A).inImage img`
-on `tripleRatchetProgAtExt img.base ext` assuming `ChainFromPbOkX img A ext` and
-`ChainNewOkX img hkdf A ext`. -/
-theorem chainFrom_ok_of_contracts_x {img : Obj.Image} {hkdf : HkdfFn}
-    {A : RustAlloc} {ext : String → Option (State → State)}
-    (hpb : ChainFromPbOkX img A ext)
-    (hnew : ChainNewOkX img hkdf A ext) :
-    ChainFromOkX img hkdf A ext := by
-  unfold ChainFromOkX tripleRatchetProgAtExt
-  wpp_init x s0
-  have hfn : libsignalSessionCode.fnOff chainFromName = 0x4ddb4 := chainFrom_fnOff
-  code_fetches libsignalSessionCode libsignalSessionBin img.base
-    (Rust.withPanics ext) hfn 0x4ddb4 304
-  have h_from_pb := sub_ok_at_rebase (name := chainFromName) (callee := chainFromPbName)
-    (k := num% (0x5ac7c - 0x4ddb4)) (by rw [chainFrom_fnOff, chainFromPb_fnOff]) hpb
-  have h_new := sub_ok_at_rebase (name := chainFromName) (callee := chainNewName)
-    (k := num% (0x5aaac - 0x4ddb4)) (by rw [chainFrom_fnOff, chainNew_fnOff]) hnew
-  replace hpc : s0.pc =
-      (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr chainFromName :=
-    hpc.trans (by rw [Program.fnAddr_rebase, hfn])
-  clear hpb hnew hfn
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr chainFromName = entry
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  rcases x with ⟨out, pbPtr, vnOptPtr, gPb, vnPin, pb, vn⟩
-  have hinv0 : ImgCallInv img s0 := ⟨h_2, h_1⟩
-  subst h_4 h_3 h
-  refine SepWPp.rw_pre (by
-    simp only [stackAt_chainFrom_split s0.sp,
-      sepExists_sepConj_left, sepExists_sepConj_right]
-    rfl) ?_
-  wp_elim_exists
-  cases pb with
-  | some chainPb =>
-    have hcf_eq : chainFrom hkdf (some chainPb) vn = Chain.fromPb chainPb := rfl
-    dsimp only [optChainPBAt]
-    refine SepWPp.fold (chainPBAt_expose_cap A gPb (s0.readReg64 (.gpr 1#5)) chainPb)
-      (by sep_focus) ?_
-    refine SepWPp.pure_left_focus _ (by sep_focus) fun hcap_ne => ?_
-    have hz_cap : (gPb.linksCap + 1#64 == 0#64) = false := add_one_beq_zero_of_ne_noneCap hcap_ne
-    refine SepWPp.of_sepWP_inImage (mid := entry + bv% (0x5ac7c - 0x4ddb4)) hinv0 ?_
-    wp_steps
-    refine SepWP.fold (chainPBAt_unexpose_cap A gPb (s0.readReg64 (.gpr 1#5)) chainPb)
-      (by sep_focus) ?_
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-    intro hinv1
-    apply (SepWPp.call_frame_inImage_ret h_from_pb
-      (⟨s0.sp - 120#64, s0.readReg64 (.gpr 1#5), gPb, chainPb⟩ : ChainFromPbCall)
-      hinv1 (callee_ret_pc := entry + 44#64))
-    · wp_focus_close wp_norm_goal
-    · wp_focus_close wp_norm_lhs
-    · wp_focus_close wp_norm_lhs
-    · wp_focus_close wp_norm_lhs
-    · rfl
-    · refine ⟨by wp_norm_lhs, by wp_norm_lhs⟩
-    · rw [sp_of_imgCallInv hinv1 (sp' := s0.sp - 144#64) (by wp_norm_lhs)]
-      sep_focus
-    · intro sf
-      exact onPanic_entails_of_trace_eq (by wp_norm_lhs)
-    · intro _ _; rfl
-    · intro sf hpc_sf hrun_sf hsp_sf hcs_sf
-      dsimp only [chainFromPbSpecX]
-      have hsp_sf' : sf.sp = s0.sp - 144#64 := hsp_sf.trans (by wp_norm_lhs)
-      have hx19_sf : sf.readReg64 (.gpr 19#5) = s0.readReg64 (.gpr 0#5) :=
-        hcs_sf.1.trans (by wp_norm_lhs)
-      rw [sp_of_imgCallInv hinv1 (sp' := s0.sp - 144#64) (by wp_norm_lhs)]
-      refine SepWP.focus_pure (by sep_focus) fun htr_sf => ?_
-      rw [hcf_eq]
-      cases hres : Chain.fromPb chainPb with
-      | ok ch =>
-        dsimp only [chainResultAt]
-        refine SepWP.fold (chainRepr_entails_words11 A (s0.sp - 120#64) ch)
-          (by sep_focus) ?_
-        refine SepWP.rw_pre (by
-          simp only [sepExists_sepConj_left, sepConj_assoc]
-          rfl) ?_
-        apply SepWP.exists_elim; intro G
-        apply SepWP.exists_elim; intro pad
-        refine SepWP.focus_pure (by sep_focus) fun hcap_ch_ne => ?_
-        have hz_ch : (G.linksCap + 1#64 == 0#64) = false := add_one_beq_zero_of_ne_noneCap hcap_ch_ne
-        refine SepWP.rw_pre (by
-          simp only [memRegion_88_words11 (s0.readReg64 (.gpr 0#5)),
-            sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-          rfl) ?_
-        wp_elim_exists
-        wp_steps
-        refine SepWP.fold (words11_entails_chainRepr A (s0.readReg64 (.gpr 0#5)) G ch pad)
-          (by sep_focus) ?_
-        refine SepWP.fold (words11_to_memRegion_88 (s0.sp - 120#64)
-          G.linksCap G.linksPtr G.linksHead (BitVec.ofNat 64 (G.epochs.zip ch.links).length)
-          G.nextRoot.cap G.nextRoot.ptr (BitVec.ofNat 64 ch.nextRoot.length)
-          ch.currentEpoch ch.sendEpoch (ch.params.maxOooKeys ++ ch.params.maxJump)
-          (pad ++ ch.dir.toI32)) (by sep_focus) ?_
-        refine SepWP.fold (stackAt_chainFrom_join s0.sp _ _ _ _ _ _) (by sep_focus) ?_
-        wp_done
-      | error err =>
-        dsimp only [chainResultAt]
-        refine SepWP.rw_pre (by
-          simp only [chainErrorAt_unpack_words4 (s0.sp - 120#64) err,
-            sepExists_sepConj_left, sepConj_assoc]
-          rfl) ?_
-        apply SepWP.exists_elim; intro q0_err
-        apply SepWP.exists_elim; intro w3_err
-        refine SepWP.rw_pre (by
-          simp only [memRegion_88_words4_rest (s0.readReg64 (.gpr 0#5)),
-            sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-          rfl) ?_
-        wp_elim_exists
-        refine SepWP.focus_pure (by sep_focus) fun htag_q0 => ?_
-        refine SepWP.rw_pre (by simp only [noneCap]; rfl) ?_
-        wp_steps
-        refine SepWP.fold (chainErrorAt_pack_words4 (s0.readReg64 (.gpr 0#5)) err q0_err w3_err htag_q0)
-          (by sep_focus) ?_
-        refine SepWP.fold (words4_rest_to_memRegion_88 (s0.sp - 120#64)
-          18446744073709551615#64 (q0_err.extractLsb' 0 64) (q0_err.extractLsb' 64 64) w3_err)
-          (by sep_focus) ?_
-        refine SepWP.fold (stackAt_chainFrom_join s0.sp _ _ _ _ _ _) (by sep_focus) ?_
-        wp_done
-  | none =>
-    dsimp only [optChainPBAt, noneCap]
-    cases vn with
-    | none =>
-      have hcf_eq : chainFrom hkdf none none = .error .chainNotAvailable := rfl
-      dsimp only [optVersionNegotiationRefAt]
-      refine SepWPp.pure_left_focus _ (by sep_focus) fun hvn0 => ?_
-      refine SepWPp.rw_pre (by
-        simp only [memRegion_88_err_split (s0.readReg64 (.gpr 0#5)),
-          sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-        rfl) ?_
-      apply SepWPp.exists_elim; intro w2_out
-      apply SepWPp.exists_elim; intro w1_out
-      apply SepWPp.exists_elim; intro bs7_out
-      apply SepWPp.exists_elim; intro b0_out
-      apply SepWPp.exists_elim; intro w0_out
-      refine SepWPp.pure_left_focus _ (by sep_focus) fun hbs7 => ?_
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      rw [hcf_eq]
-      dsimp only [chainResultAt]
-      refine SepWP.fold (fold_chainErrorAt (s0.readReg64 (.gpr 0#5)) .chainNotAvailable 15#8 rfl hbs7 w1_out w2_out)
-        (by sep_focus) ?_
-      refine SepWP.fold (word_rest72_to_memRegion_80 (s0.readReg64 (.gpr 1#5)) 18446744073709551615#64)
-        (by sep_focus) ?_
-      refine SepWP.fold (stackAt_chainFrom_join s0.sp _ _ _ _ _ _) (by sep_focus) ?_
-      wp_done
-    | some v =>
-      dsimp only [optVersionNegotiationRefAt, versionNegotiationPBAt]
-      refine SepWPp.pure_left_focus _ (by sep_focus) fun hvn_ne => ?_
-      rcases direction_fromI32_or v.direction with
-        ⟨dir, hdir_val, hdir_opt, hcond_hi⟩ | ⟨hdir_opt, hcond_hi⟩
-      · cases hcp : v.chainParams with
-        | none =>
-          have hcf_eq : chainFrom hkdf none (some v) = .error .chainNotAvailable := by
-            simp [chainFrom, chainFromVersionNegotiation, hdir_opt, hcp]; rfl
-          dsimp only [optChainParamsPBAt]
-          refine SepWPp.rw_pre (by
-            simp only [memRegion_88_err_split (s0.readReg64 (.gpr 0#5)),
-              sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-            rfl) ?_
-          apply SepWPp.exists_elim; intro w2_out
-          apply SepWPp.exists_elim; intro w1_out
-          apply SepWPp.exists_elim; intro bs7_out
-          apply SepWPp.exists_elim; intro b0_out
-          apply SepWPp.exists_elim; intro w0_out
-          refine SepWPp.pure_left_focus _ (by sep_focus) fun hbs7 => ?_
-          apply SepWPp.of_sepWP_ret
-          wp_steps
-          rw [hcf_eq]
-          dsimp only [chainResultAt]
-          refine SepWP.fold (fold_chainErrorAt (s0.readReg64 (.gpr 0#5)) .chainNotAvailable 15#8 rfl hbs7 w1_out w2_out)
-            (by sep_focus) ?_
-          refine SepWP.fold (word_rest72_to_memRegion_80 (s0.readReg64 (.gpr 1#5)) 18446744073709551615#64)
-            (by sep_focus) ?_
-          refine SepWP.fold (stackAt_chainFrom_join s0.sp _ _ _ _ _ _) (by sep_focus) ?_
-          wp_done
-        | some cp =>
-          have hcf_eq : chainFrom hkdf none (some v) =
-              .ok (chainNewVal hkdf v.authKey dir cp) := by
-            simp [chainFrom, chainFromVersionNegotiation, hdir_opt, hcp]; rfl
-          dsimp only [optChainParamsPBAt]
-          refine SepWPp.fold (vecU8At_entails_header_bytesAt_rest A
-            (s0.readReg64 (.gpr 2#5)) vnPin.cap vnPin.ptr v.authKey) (by sep_focus) ?_
-          refine SepWPp.pure_left_focus _ (by sep_focus) fun hlen64 => ?_
-          refine SepWPp.of_sepWP_inImage (mid := entry + bv% (0x5aaac - 0x4ddb4)) hinv0 ?_
-          wp_steps
-          refine SepWP.fold (word_rest72_to_memRegion_80 (s0.readReg64 (.gpr 1#5)) 18446744073709551615#64)
-            (by sep_focus) ?_
-          refine SepWP.fold (stackAt_chainFrom_join s0.sp _ _ _ _ _ _) (by sep_focus) ?_
-          refine SepWP.rw_pre (by
-            simp only [stackAt_chainFrom_split_chainNew s0.sp, sepConj_assoc]
-            rfl) ?_
-          apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-          intro hinv1
-          apply (SepWPp.tail_call_frame_inImage h_new
-            (⟨s0.readReg64 (.gpr 0#5), false, vnPin.ptr, v.authKey, dir, cp⟩ : ChainNewGhost)
-            hinv1)
-          · wp_focus_close wp_norm_goal
-          · wp_focus_close wp_norm_lhs
-          · wp_focus_close wp_norm_lhs
-          · wp_focus_close wp_norm_lhs
-          · rfl
-          · refine ⟨by wp_norm_lhs, by wp_norm_lhs, by wp_norm_lhs, by wp_norm_lhs, by wp_norm_lhs, by wp_norm_lhs, hlen64⟩
-          · rw [sp_of_imgCallInv hinv1 (sp' := s0.sp) (by wp_norm_lhs)]
-            sep_focus
-          · intro sf
-            exact onPanic_entails_of_trace_eq (by wp_norm_lhs)
-          · intro _ _; rfl
-          · intro sf hpc_sf hrun_sf hsp_sf hcs_sf
-            dsimp only [chainNewSpecX]
-            rw [sp_of_imgCallInv hinv1 (sp' := s0.sp) (by wp_norm_lhs)]
-            refine SepWP.focus_pure (by sep_focus) fun htr_sf => ?_
-            rw [hcf_eq]
-            dsimp only [chainResultAt]
-            refine SepWP.fold (chainNew_post_entails_chainRepr A (s0.readReg64 (.gpr 0#5)) _)
-              (by sep_focus) ?_
-            refine SepWP.fold (header_bytesAt_rest_entails_vecU8At A
-              (s0.readReg64 (.gpr 2#5)) vnPin.cap vnPin.ptr v.authKey) (by sep_focus) ?_
-            refine SepWP.fold (Entails.of_eq (stackAt_chainFrom_split_chainNew s0.sp).symm)
-              (by sep_focus) ?_
-            wp_done
-      · have hcf_eq : chainFrom hkdf none (some v) = .error .stateDecode := by
-          simp [chainFrom, chainFromVersionNegotiation, hdir_opt]; rfl
-        refine SepWPp.rw_pre (by
-          simp only [memRegion_88_err_split (s0.readReg64 (.gpr 0#5)),
-            sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-          rfl) ?_
-        apply SepWPp.exists_elim; intro w2_out
-        apply SepWPp.exists_elim; intro w1_out
-        apply SepWPp.exists_elim; intro bs7_out
-        apply SepWPp.exists_elim; intro b0_out
-        apply SepWPp.exists_elim; intro w0_out
-        refine SepWPp.pure_left_focus _ (by sep_focus) fun hbs7 => ?_
-        apply SepWPp.of_sepWP_ret
-        wp_steps
-        rw [hcf_eq]
-        dsimp only [chainResultAt]
-        refine SepWP.fold (fold_chainErrorAt (s0.readReg64 (.gpr 0#5)) .stateDecode 0#8 rfl hbs7 w1_out w2_out)
-          (by sep_focus) ?_
-        refine SepWP.fold (word_rest72_to_memRegion_80 (s0.readReg64 (.gpr 1#5)) 18446744073709551615#64)
-          (by sep_focus) ?_
-        refine SepWP.fold (stackAt_chainFrom_join s0.sp _ _ _ _ _ _) (by sep_focus) ?_
-        wp_done
 
 private theorem stackAt_chainFromExt_split_x (sp : BitVec 64) :
     stackAt sp chainFromStackExt =
@@ -880,260 +558,5 @@ private theorem stackAt_chainFromExt_split_chainNewExt (sp : BitVec 64) :
   exact ProofLib.memRegion_split' (b := sp - BitVec.ofNat 64 chainFromStackExt)
     (n := 336) (k := chainNewStackExt) (b' := sp - BitVec.ofNat 64 chainNewStackExt)
     rfl hbase (by decide)
-
-set_option maxHeartbeats 1600000 in
-/-- Contract-backed (`*Ext`) verification of `spqr::chain_from` (`0x531ac`, 76 instructions) at
-`chainFromStackExt` (`18176` B), assuming `ChainFromPbOkX img A ext` and
-`ChainNewOkExt img hkdf A ext`. -/
-theorem chainFrom_ok_of_contracts_ext {img : Obj.Image} {hkdf : HkdfFn}
-    {A : RustAlloc} {ext : String → Option (State → State)}
-    (hpb : ChainFromPbOkX img A ext)
-    (hnew : ChainNewOkExt img hkdf A ext) :
-    ChainFromOkExt img hkdf A ext := by
-  unfold ChainFromOkExt tripleRatchetProgAtExt
-  wpp_init x s0
-  have hfn : libsignalSessionCode.fnOff chainFromName = 0x4ddb4 := chainFrom_fnOff
-  code_fetches libsignalSessionCode libsignalSessionBin img.base
-    (Rust.withPanics ext) hfn 0x4ddb4 304
-  have h_from_pb := sub_ok_at_rebase (name := chainFromName) (callee := chainFromPbName)
-    (k := num% (0x5ac7c - 0x4ddb4)) (by rw [chainFrom_fnOff, chainFromPb_fnOff]) hpb
-  have h_new := sub_ok_at_rebase (name := chainFromName) (callee := chainNewName)
-    (k := num% (0x5aaac - 0x4ddb4)) (by rw [chainFrom_fnOff, chainNew_fnOff]) hnew
-  replace hpc : s0.pc =
-      (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr chainFromName :=
-    hpc.trans (by rw [Program.fnAddr_rebase, hfn])
-  clear hpb hnew hfn
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr chainFromName = entry
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  rcases x with ⟨out, pbPtr, vnOptPtr, gPb, vnPin, pb, vn⟩
-  have hinv0 : ImgCallInv img s0 := ⟨h_2, h_1⟩
-  subst h_4 h_3 h
-  refine SepWPp.rw_pre (by
-    simp only [stackAt_chainFromExt_split_x s0.sp, stackAt_chainFrom_split s0.sp,
-      sepExists_sepConj_left, sepExists_sepConj_right]
-    rfl) ?_
-  wp_elim_exists
-  cases pb with
-  | some chainPb =>
-    have hcf_eq : chainFrom hkdf (some chainPb) vn = Chain.fromPb chainPb := rfl
-    dsimp only [optChainPBAt]
-    refine SepWPp.fold (chainPBAt_expose_cap A gPb (s0.readReg64 (.gpr 1#5)) chainPb)
-      (by sep_focus) ?_
-    refine SepWPp.pure_left_focus _ (by sep_focus) fun hcap_ne => ?_
-    have hz_cap : (gPb.linksCap + 1#64 == 0#64) = false := add_one_beq_zero_of_ne_noneCap hcap_ne
-    refine SepWPp.of_sepWP_inImage (mid := entry + bv% (0x5ac7c - 0x4ddb4)) hinv0 ?_
-    wp_steps
-    refine SepWP.fold (chainPBAt_unexpose_cap A gPb (s0.readReg64 (.gpr 1#5)) chainPb)
-      (by sep_focus) ?_
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-    intro hinv1
-    apply (SepWPp.call_frame_inImage_ret h_from_pb
-      (⟨s0.sp - 120#64, s0.readReg64 (.gpr 1#5), gPb, chainPb⟩ : ChainFromPbCall)
-      hinv1 (callee_ret_pc := entry + 44#64))
-    · wp_focus_close wp_norm_goal
-    · wp_focus_close wp_norm_lhs
-    · wp_focus_close wp_norm_lhs
-    · wp_focus_close wp_norm_lhs
-    · rfl
-    · refine ⟨by wp_norm_lhs, by wp_norm_lhs⟩
-    · rw [sp_of_imgCallInv hinv1 (sp' := s0.sp - 144#64) (by wp_norm_lhs)]
-      sep_focus
-    · intro sf
-      exact onPanic_entails_of_trace_eq (by wp_norm_lhs)
-    · intro _ _; rfl
-    · intro sf hpc_sf hrun_sf hsp_sf hcs_sf
-      dsimp only [chainFromPbSpecX]
-      have hsp_sf' : sf.sp = s0.sp - 144#64 := hsp_sf.trans (by wp_norm_lhs)
-      have hx19_sf : sf.readReg64 (.gpr 19#5) = s0.readReg64 (.gpr 0#5) :=
-        hcs_sf.1.trans (by wp_norm_lhs)
-      rw [sp_of_imgCallInv hinv1 (sp' := s0.sp - 144#64) (by wp_norm_lhs)]
-      refine SepWP.focus_pure (by sep_focus) fun htr_sf => ?_
-      rw [hcf_eq]
-      cases hres : Chain.fromPb chainPb with
-      | ok ch =>
-        dsimp only [chainResultAt]
-        refine SepWP.fold (chainRepr_entails_words11 A (s0.sp - 120#64) ch)
-          (by sep_focus) ?_
-        refine SepWP.rw_pre (by
-          simp only [sepExists_sepConj_left, sepConj_assoc]
-          rfl) ?_
-        apply SepWP.exists_elim; intro G
-        apply SepWP.exists_elim; intro pad
-        refine SepWP.focus_pure (by sep_focus) fun hcap_ch_ne => ?_
-        have hz_ch : (G.linksCap + 1#64 == 0#64) = false := add_one_beq_zero_of_ne_noneCap hcap_ch_ne
-        refine SepWP.rw_pre (by
-          simp only [memRegion_88_words11 (s0.readReg64 (.gpr 0#5)),
-            sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-          rfl) ?_
-        wp_elim_exists
-        wp_steps
-        refine SepWP.fold (words11_entails_chainRepr A (s0.readReg64 (.gpr 0#5)) G ch pad)
-          (by sep_focus) ?_
-        refine SepWP.fold (words11_to_memRegion_88 (s0.sp - 120#64)
-          G.linksCap G.linksPtr G.linksHead (BitVec.ofNat 64 (G.epochs.zip ch.links).length)
-          G.nextRoot.cap G.nextRoot.ptr (BitVec.ofNat 64 ch.nextRoot.length)
-          ch.currentEpoch ch.sendEpoch (ch.params.maxOooKeys ++ ch.params.maxJump)
-          (pad ++ ch.dir.toI32)) (by sep_focus) ?_
-        refine SepWP.fold (stackAt_chainFrom_join s0.sp _ _ _ _ _ _) (by sep_focus) ?_
-        refine SepWP.fold (Entails.of_eq (stackAt_chainFromExt_split_x s0.sp).symm) (by sep_focus) ?_
-        wp_done
-      | error err =>
-        dsimp only [chainResultAt]
-        refine SepWP.rw_pre (by
-          simp only [chainErrorAt_unpack_words4 (s0.sp - 120#64) err,
-            sepExists_sepConj_left, sepConj_assoc]
-          rfl) ?_
-        apply SepWP.exists_elim; intro q0_err
-        apply SepWP.exists_elim; intro w3_err
-        refine SepWP.rw_pre (by
-          simp only [memRegion_88_words4_rest (s0.readReg64 (.gpr 0#5)),
-            sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-          rfl) ?_
-        wp_elim_exists
-        refine SepWP.focus_pure (by sep_focus) fun htag_q0 => ?_
-        refine SepWP.rw_pre (by simp only [noneCap]; rfl) ?_
-        wp_steps
-        refine SepWP.fold (chainErrorAt_pack_words4 (s0.readReg64 (.gpr 0#5)) err q0_err w3_err htag_q0)
-          (by sep_focus) ?_
-        refine SepWP.fold (words4_rest_to_memRegion_88 (s0.sp - 120#64)
-          18446744073709551615#64 (q0_err.extractLsb' 0 64) (q0_err.extractLsb' 64 64) w3_err)
-          (by sep_focus) ?_
-        refine SepWP.fold (stackAt_chainFrom_join s0.sp _ _ _ _ _ _) (by sep_focus) ?_
-        refine SepWP.fold (Entails.of_eq (stackAt_chainFromExt_split_x s0.sp).symm) (by sep_focus) ?_
-        wp_done
-  | none =>
-    dsimp only [optChainPBAt, noneCap]
-    cases vn with
-    | none =>
-      have hcf_eq : chainFrom hkdf none none = .error .chainNotAvailable := rfl
-      dsimp only [optVersionNegotiationRefAt]
-      refine SepWPp.pure_left_focus _ (by sep_focus) fun hvn0 => ?_
-      refine SepWPp.rw_pre (by
-        simp only [memRegion_88_err_split (s0.readReg64 (.gpr 0#5)),
-          sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-        rfl) ?_
-      apply SepWPp.exists_elim; intro w2_out
-      apply SepWPp.exists_elim; intro w1_out
-      apply SepWPp.exists_elim; intro bs7_out
-      apply SepWPp.exists_elim; intro b0_out
-      apply SepWPp.exists_elim; intro w0_out
-      refine SepWPp.pure_left_focus _ (by sep_focus) fun hbs7 => ?_
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      rw [hcf_eq]
-      dsimp only [chainResultAt]
-      refine SepWP.fold (fold_chainErrorAt (s0.readReg64 (.gpr 0#5)) .chainNotAvailable 15#8 rfl hbs7 w1_out w2_out)
-        (by sep_focus) ?_
-      refine SepWP.fold (word_rest72_to_memRegion_80 (s0.readReg64 (.gpr 1#5)) 18446744073709551615#64)
-        (by sep_focus) ?_
-      refine SepWP.fold (stackAt_chainFrom_join s0.sp _ _ _ _ _ _) (by sep_focus) ?_
-      refine SepWP.fold (Entails.of_eq (stackAt_chainFromExt_split_x s0.sp).symm) (by sep_focus) ?_
-      wp_done
-    | some v =>
-      dsimp only [optVersionNegotiationRefAt, versionNegotiationPBAt]
-      refine SepWPp.pure_left_focus _ (by sep_focus) fun hvn_ne => ?_
-      rcases direction_fromI32_or v.direction with
-        ⟨dir, hdir_val, hdir_opt, hcond_hi⟩ | ⟨hdir_opt, hcond_hi⟩
-      · cases hcp : v.chainParams with
-        | none =>
-          have hcf_eq : chainFrom hkdf none (some v) = .error .chainNotAvailable := by
-            simp [chainFrom, chainFromVersionNegotiation, hdir_opt, hcp]; rfl
-          dsimp only [optChainParamsPBAt]
-          refine SepWPp.rw_pre (by
-            simp only [memRegion_88_err_split (s0.readReg64 (.gpr 0#5)),
-              sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-            rfl) ?_
-          apply SepWPp.exists_elim; intro w2_out
-          apply SepWPp.exists_elim; intro w1_out
-          apply SepWPp.exists_elim; intro bs7_out
-          apply SepWPp.exists_elim; intro b0_out
-          apply SepWPp.exists_elim; intro w0_out
-          refine SepWPp.pure_left_focus _ (by sep_focus) fun hbs7 => ?_
-          apply SepWPp.of_sepWP_ret
-          wp_steps
-          rw [hcf_eq]
-          dsimp only [chainResultAt]
-          refine SepWP.fold (fold_chainErrorAt (s0.readReg64 (.gpr 0#5)) .chainNotAvailable 15#8 rfl hbs7 w1_out w2_out)
-            (by sep_focus) ?_
-          refine SepWP.fold (word_rest72_to_memRegion_80 (s0.readReg64 (.gpr 1#5)) 18446744073709551615#64)
-            (by sep_focus) ?_
-          refine SepWP.fold (stackAt_chainFrom_join s0.sp _ _ _ _ _ _) (by sep_focus) ?_
-          refine SepWP.fold (Entails.of_eq (stackAt_chainFromExt_split_x s0.sp).symm) (by sep_focus) ?_
-          wp_done
-        | some cp =>
-          have hcf_eq : chainFrom hkdf none (some v) =
-              .ok (chainNewVal hkdf v.authKey dir cp) := by
-            simp [chainFrom, chainFromVersionNegotiation, hdir_opt, hcp]; rfl
-          dsimp only [optChainParamsPBAt]
-          refine SepWPp.fold (vecU8At_entails_header_bytesAt_rest A
-            (s0.readReg64 (.gpr 2#5)) vnPin.cap vnPin.ptr v.authKey) (by sep_focus) ?_
-          refine SepWPp.pure_left_focus _ (by sep_focus) fun hlen64 => ?_
-          refine SepWPp.of_sepWP_inImage (mid := entry + bv% (0x5aaac - 0x4ddb4)) hinv0 ?_
-          wp_steps
-          refine SepWP.fold (word_rest72_to_memRegion_80 (s0.readReg64 (.gpr 1#5)) 18446744073709551615#64)
-            (by sep_focus) ?_
-          refine SepWP.fold (stackAt_chainFrom_join s0.sp _ _ _ _ _ _) (by sep_focus) ?_
-          refine SepWP.fold (Entails.of_eq (stackAt_chainFromExt_split_x s0.sp).symm) (by sep_focus) ?_
-          refine SepWP.rw_pre (by
-            simp only [stackAt_chainFromExt_split_chainNewExt s0.sp, sepConj_assoc]
-            rfl) ?_
-          apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-          intro hinv1
-          apply (SepWPp.tail_call_frame_inImage h_new
-            (⟨s0.readReg64 (.gpr 0#5), false, vnPin.ptr, v.authKey, dir, cp⟩ : ChainNewGhost)
-            hinv1)
-          · wp_focus_close wp_norm_goal
-          · wp_focus_close wp_norm_lhs
-          · wp_focus_close wp_norm_lhs
-          · wp_focus_close wp_norm_lhs
-          · rfl
-          · refine ⟨by wp_norm_lhs, by wp_norm_lhs, by wp_norm_lhs, by wp_norm_lhs, by wp_norm_lhs, by wp_norm_lhs, hlen64, Or.inl Bool.noConfusion⟩
-          · rw [sp_of_imgCallInv hinv1 (sp' := s0.sp) (by wp_norm_lhs)]
-            sep_focus
-          · intro sf
-            exact onPanic_entails_of_trace_eq (by wp_norm_lhs)
-          · intro _ _; rfl
-          · intro sf hpc_sf hrun_sf hsp_sf hcs_sf
-            dsimp only [chainNewSpecExt]
-            rw [sp_of_imgCallInv hinv1 (sp' := s0.sp) (by wp_norm_lhs)]
-            refine SepWP.focus_pure (by sep_focus) fun htr_sf => ?_
-            rw [hcf_eq]
-            dsimp only [chainResultAt]
-            refine SepWP.fold (chainNew_post_entails_chainRepr A (s0.readReg64 (.gpr 0#5)) _)
-              (by sep_focus) ?_
-            refine SepWP.fold (header_bytesAt_rest_entails_vecU8At A
-              (s0.readReg64 (.gpr 2#5)) vnPin.cap vnPin.ptr v.authKey) (by sep_focus) ?_
-            refine SepWP.fold (Entails.of_eq (stackAt_chainFromExt_split_chainNewExt s0.sp).symm)
-              (by sep_focus) ?_
-            wp_done
-      · have hcf_eq : chainFrom hkdf none (some v) = .error .stateDecode := by
-          simp [chainFrom, chainFromVersionNegotiation, hdir_opt]; rfl
-        refine SepWPp.rw_pre (by
-          simp only [memRegion_88_err_split (s0.readReg64 (.gpr 0#5)),
-            sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-          rfl) ?_
-        apply SepWPp.exists_elim; intro w2_out
-        apply SepWPp.exists_elim; intro w1_out
-        apply SepWPp.exists_elim; intro bs7_out
-        apply SepWPp.exists_elim; intro b0_out
-        apply SepWPp.exists_elim; intro w0_out
-        refine SepWPp.pure_left_focus _ (by sep_focus) fun hbs7 => ?_
-        apply SepWPp.of_sepWP_ret
-        wp_steps
-        rw [hcf_eq]
-        dsimp only [chainResultAt]
-        refine SepWP.fold (fold_chainErrorAt (s0.readReg64 (.gpr 0#5)) .stateDecode 0#8 rfl hbs7 w1_out w2_out)
-          (by sep_focus) ?_
-        refine SepWP.fold (word_rest72_to_memRegion_80 (s0.readReg64 (.gpr 1#5)) 18446744073709551615#64)
-          (by sep_focus) ?_
-        refine SepWP.fold (stackAt_chainFrom_join s0.sp _ _ _ _ _ _) (by sep_focus) ?_
-        refine SepWP.fold (Entails.of_eq (stackAt_chainFromExt_split_x s0.sp).symm) (by sep_focus) ?_
-        wp_done
-
-abbrev chainFrom_ok_ext := @chainFrom_ok_of_contracts_ext
 
 end CryptoVerification.SpqrV1.Top.ChainFrom

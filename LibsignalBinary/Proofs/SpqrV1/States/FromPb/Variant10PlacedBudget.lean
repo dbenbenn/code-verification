@@ -10,14 +10,22 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10Placed
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Variant 10 (`Ct2Sampled`, `+1632`) — Encoder Dispatch
@@ -27,7 +35,7 @@ Variant 10 (`+1632 -> +1720`, `+5728 -> +7212`, `+5728 -> lsmpl.base 374 -> +580
 and `+5808 -> +7904`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -70,16 +78,6 @@ theorem v10_sub_ok_encoder_from_pb_placed [LibsignalPlacement]
       (lsmpl.base 374)
       (withLsCodeLoaded lsmpl (encoderFromPbSpec M A lim)) :=
   hEnc
-
-/-- Discharge `v10_sub_ok_encoder_from_pb_placed` unconditionally from `FromPbAllocHooksBudget`. -/
-theorem v10_sub_ok_encoder_from_pb_of_alloc_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksBudget M A lim ext) :
-    subroutine_ok (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 374)
-      (withLsCodeLoaded lsmpl (encoderFromPbSpec M A lim)) :=
-  encoder_from_pb_ok_of_alloc_placed hA
 
 /-! ## 1. `+1632 -> +1720`: Loading `Authenticator` PB and `epoch` -/
 
@@ -538,49 +536,6 @@ theorem v10_ct2Sent_call_encoder_374_to_5808_placed [LibsignalPlacement]
     ⟨htr_f.trans htr3.1, hvregs_f.trans htr3.2⟩⟩
   rw [hsp3]
   exact Entails.of_eq (by sep_ac_rfl)
-
-theorem v10_ct2Sent_call_encoder_374_to_5808_of_alloc_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksBudget M A lim ext)
-    (st : M.σ) (s0 s3 : State) (fsp : BitVec 64)
-    (pb : ProtoPolynomialEncoder) (Rest : SepProp)
-    (hcl3 : LibsignalCodeLoaded lsmpl s3.mem)
-    (hpts : ∀ bs ∈ pb.pts, bs.length ≤ 2 * 0x0555555555555555)
-    (hfits : FitsEnv M lim st (EncoderFromPbAllocEnv pb))
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (hpc3 : s3.pc = lsmpl.base 374)
-    (hrun3 : s3.status = .Running)
-    (hsp3 : s3.sp = fsp)
-    (hx0_3 : s3.readReg64 .x0 = fsp + 1888#64)
-    (hx1_3 : s3.readReg64 .x1 = fsp + 1392#64)
-    (hx30_3 : s3.readReg64 .x30 = lsmpl.base 333 + 5808#64)
-    (htr3 : TraceCalleeSaved s3 s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333 + 5808#64) s3
-      ((memRegion (fsp + 1888#64) polyEncoderSize ∗
-        protoPolynomialEncoderAt A.repAlloc (fsp + 1392#64) pb ∗
-        A.pool lim st s3 ∗
-        stackAt fsp encoderFromPbStack) ∗
-       Rest)
-      (fun sm Pm =>
-        ∃ evs : List AllocEvent,
-          EncoderFromPbEnv pb evs ∧
-          (Pm ⊢
-            resultPolyEncoderFromPbAt A.repAlloc (fsp + 1888#64) (fromPbResult pb) ∗
-            memRegion (fsp + 1392#64) protoPolynomialEncoderSize ∗
-            A.pool lim (M.stepEvents evs st) sm ∗
-            stackAt fsp encoderFromPbStack ∗
-            Rest) ∧
-          sm.sp = fsp ∧
-          CalleeSavedPreserved s3 sm ∧
-          sm.readReg64 .x19 = s3.readReg64 .x19 ∧
-          sm.readReg64 .x21 = s3.readReg64 .x21 ∧
-          sm.readReg64 .x26 = s3.readReg64 .x26 ∧
-          TraceCalleeSaved sm s0) :=
-  v10_ct2Sent_call_encoder_374_to_5808_placed
-    (encoder_from_pb_ok_of_alloc_placed hA)
-    st s0 s3 fsp pb Rest hcl3 hpts hfits hfsp_align hpc3 hrun3 hsp3 hx0_3 hx1_3 hx30_3 htr3
 
 /-! ## 4. Post-`<PolyEncoder>::from_pb` Error and Ok Branches (`+5808 -> +5820` and `+5808 -> +7904`) -/
 

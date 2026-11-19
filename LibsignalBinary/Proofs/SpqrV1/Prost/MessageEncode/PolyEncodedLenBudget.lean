@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncodedLen
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncodedLenBaseBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncodedLen
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncodedLenBaseBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ProtoReprCodeSym -- proof-setup: allow-public-import
 
 /-!
 # `VmPreserved` `[LibsignalPlacement]` Proofs for `PolynomialDecoder::encoded_len` and `PolynomialEncoder::encoded_len`
@@ -20,7 +21,7 @@ Proves `[LibsignalPlacement]` `VmPreserved` contracts for `PolynomialDecoder::en
 (`Blocks 186 & 413`) and `PolynomialEncoder::encoded_len [local#1, #2]` (`Blocks 173 & 401`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

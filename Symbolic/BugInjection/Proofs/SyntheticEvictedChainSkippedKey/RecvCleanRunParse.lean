@@ -113,11 +113,6 @@ theorem lt_25_of_mem_recvCallIndices {k : Nat} (hk : k ∈ recvCallIndices) : k 
   revert k
   decide +kernel
 
-theorem lt_25_of_mem_whisperOrReplayIndices {k : Nat} (hk : k ∈ whisperOrReplayIndices) :
-    k < 25 := by
-  revert k
-  decide +kernel
-
 theorem ev1_to_ev24 : (ev 1).exit = some (0, (ev 24).input) := rfl
 theorem ev2_to_ev3 : (ev 2).exit = some (0, (ev 3).input) := rfl
 theorem ev3_pt_eq_ev2 : (ev 3).exit = some (0, (ev 2).input) := rfl
@@ -274,55 +269,6 @@ theorem send_coins_ge_64 {s : Nat} (hs : s < 12) :
           hexBytes_ofList, hexBytes_go_length]; decide
     · rw [show (ev 22).coins = hexBytes (nfe_str_of_hex (ev 22).coins) from rfl,
           show (nfe_str_of_hex (ev 22).coins) = String.ofList (nfe_chars_of_hex (ev 22).coins) from rfl,
-          hexBytes_ofList, hexBytes_go_length]; decide
-  apply h1
-  revert hs
-  match s with
-  | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 => intro _; decide
-  | n + 12 => intro h; omega
-
-theorem send_input_len_lt_16 {s : Nat} (hs : s < 12) :
-    (ev (sendCallOf s)).input.length < 16 := by
-  have h1 : ∀ k ∈ ([1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22] : List Nat),
-      (ev k).input.length < 16 := by
-    intro k hk
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hk
-    rcases hk with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
-    · rw [show (ev 1).input = hexBytes (nfe_str_of_hex (ev 1).input) from rfl,
-          show (nfe_str_of_hex (ev 1).input) = String.ofList (nfe_chars_of_hex (ev 1).input) from rfl,
-          hexBytes_ofList, hexBytes_go_length]; decide
-    · rw [show (ev 2).input = hexBytes (nfe_str_of_hex (ev 2).input) from rfl,
-          show (nfe_str_of_hex (ev 2).input) = String.ofList (nfe_chars_of_hex (ev 2).input) from rfl,
-          hexBytes_ofList, hexBytes_go_length]; decide
-    · rw [show (ev 4).input = hexBytes (nfe_str_of_hex (ev 4).input) from rfl,
-          show (nfe_str_of_hex (ev 4).input) = String.ofList (nfe_chars_of_hex (ev 4).input) from rfl,
-          hexBytes_ofList, hexBytes_go_length]; decide
-    · rw [show (ev 6).input = hexBytes (nfe_str_of_hex (ev 6).input) from rfl,
-          show (nfe_str_of_hex (ev 6).input) = String.ofList (nfe_chars_of_hex (ev 6).input) from rfl,
-          hexBytes_ofList, hexBytes_go_length]; decide
-    · rw [show (ev 8).input = hexBytes (nfe_str_of_hex (ev 8).input) from rfl,
-          show (nfe_str_of_hex (ev 8).input) = String.ofList (nfe_chars_of_hex (ev 8).input) from rfl,
-          hexBytes_ofList, hexBytes_go_length]; decide
-    · rw [show (ev 10).input = hexBytes (nfe_str_of_hex (ev 10).input) from rfl,
-          show (nfe_str_of_hex (ev 10).input) = String.ofList (nfe_chars_of_hex (ev 10).input) from rfl,
-          hexBytes_ofList, hexBytes_go_length]; decide
-    · rw [show (ev 12).input = hexBytes (nfe_str_of_hex (ev 12).input) from rfl,
-          show (nfe_str_of_hex (ev 12).input) = String.ofList (nfe_chars_of_hex (ev 12).input) from rfl,
-          hexBytes_ofList, hexBytes_go_length]; decide
-    · rw [show (ev 14).input = hexBytes (nfe_str_of_hex (ev 14).input) from rfl,
-          show (nfe_str_of_hex (ev 14).input) = String.ofList (nfe_chars_of_hex (ev 14).input) from rfl,
-          hexBytes_ofList, hexBytes_go_length]; decide
-    · rw [show (ev 16).input = hexBytes (nfe_str_of_hex (ev 16).input) from rfl,
-          show (nfe_str_of_hex (ev 16).input) = String.ofList (nfe_chars_of_hex (ev 16).input) from rfl,
-          hexBytes_ofList, hexBytes_go_length]; decide
-    · rw [show (ev 18).input = hexBytes (nfe_str_of_hex (ev 18).input) from rfl,
-          show (nfe_str_of_hex (ev 18).input) = String.ofList (nfe_chars_of_hex (ev 18).input) from rfl,
-          hexBytes_ofList, hexBytes_go_length]; decide
-    · rw [show (ev 20).input = hexBytes (nfe_str_of_hex (ev 20).input) from rfl,
-          show (nfe_str_of_hex (ev 20).input) = String.ofList (nfe_chars_of_hex (ev 20).input) from rfl,
-          hexBytes_ofList, hexBytes_go_length]; decide
-    · rw [show (ev 22).input = hexBytes (nfe_str_of_hex (ev 22).input) from rfl,
-          show (nfe_str_of_hex (ev 22).input) = String.ofList (nfe_chars_of_hex (ev 22).input) from rfl,
           hexBytes_ofList, hexBytes_go_length]; decide
   apply h1
   revert hs

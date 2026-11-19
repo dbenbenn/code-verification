@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledUcBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledUcBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -23,6 +23,9 @@ import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledUc
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Inner `bytes::merge` & `skip_field` Steps for `Chunked.KeysSampled::merge` (Block `304`)
@@ -31,7 +34,7 @@ Proves the budget-threaded inner `skip_field`, `tag = 3` (`ek`), and `tag = 4` (
 of `Unchunked.HeaderSent` inside `Chunked.KeysSampled::merge` on Block `304`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

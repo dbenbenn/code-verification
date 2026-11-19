@@ -9,12 +9,62 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.InitiateCodeSym
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.InitiateCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Defs
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.MuslStage1Init
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Musl.Spec
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable Shared Definitions and Cut-Point Invariants for `initiate`
@@ -24,12 +74,10 @@ on block `521` (`lsProg_521`), `coinsCursorAtPlaced`, and the Stage 1–5 cut-po
 `LibsignalCodeRoLoaded lsmpl`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs
 
@@ -45,7 +93,7 @@ open CryptoVerification.SignalSession.Cli.RunSkeleton
 open CryptoVerification.SignalSession.Cli.RunCompose
 
 /-- Relocatable `[LibsignalPlacement]` counterpart of `RunCompose.slotFrame`. -/
-def slotFramePlaced [LibsignalPlacement] (A : RustAlloc) (x : SlotCtx) : SepProp :=
+@[expose] def slotFramePlaced [LibsignalPlacement] (A : RustAlloc) (x : SlotCtx) : SepProp :=
   ⌜x.coins.length < 2 ^ 63⌝ ∗
   storesAt A x.stores StoresGhost.opened ∗ protocolAddressAt A x.peer x.peerA ∗
     protocolAddressAt A x.me x.meA ∗ coinsInstalledPlaced x.coinsP x.coins ∗
@@ -53,7 +101,7 @@ def slotFramePlaced [LibsignalPlacement] (A : RustAlloc) (x : SlotCtx) : SepProp
 
 /-- Relocatable `[LibsignalPlacement]` counterpart of `RunCompose.initSlotSpec` on
 `LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl`. -/
-def initSlotSpecPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (stk : Nat) :
+@[expose] def initSlotSpecPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (stk : Nat) :
     Spec InitGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
@@ -103,12 +151,12 @@ open LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 /-! ## Program and symbolic PC definitions -/
 
 /-- Block `521` (`signal_session_handshake::initiate`)'s program at arbitrary `H : LibsignalHooks`. -/
-abbrev initProgExtPlaced [LibsignalPlacement] (H : LibsignalHooks) : Program :=
+noncomputable abbrev initProgExtPlaced [LibsignalPlacement] (H : LibsignalHooks) : Program :=
   lsProg_521 H
 
 /-- Block `521` (`signal_session_handshake::initiate`)'s program with
 `cliGhostExterns g (cliExternsPlaced mmpl W)` over the 39-row `cliHookTablePlaced mmpl W`. -/
-abbrev initProgPlaced [LibsignalPlacement] (mmpl : MultiPlacement) (g : CliGhostHooks)
+noncomputable abbrev initProgPlaced [LibsignalPlacement] (mmpl : MultiPlacement) (g : CliGhostHooks)
     (W : CliHooks) : Program :=
   initProgExtPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))
 
@@ -132,7 +180,7 @@ theorem sessDeserialize_false_placed_ok [LibsignalPlacement] {prog : Program} {e
 /-! ## Coin cursor invariant -/
 
 /-- Monotonic cursor view of `Coins.coinsNextPlaced`, `Coins.coinsLeftPlaced`, and `p₀ ↦ₛ coins`. -/
-def coinsCursorAtPlaced [LibsignalPlacement] (p₀ : BitVec 64) (coins : List (BitVec 8))
+@[expose] def coinsCursorAtPlaced [LibsignalPlacement] (p₀ : BitVec 64) (coins : List (BitVec 8))
     (pos : Nat) : SepProp :=
   (Coins.coinsNextPlaced ↦₆₄ (p₀ + BitVec.ofNat 64 (min pos coins.length))) ∗
     (Coins.coinsLeftPlaced ↦₆₄ BitVec.ofNat 64 (coins.length - min pos coins.length)) ∗
@@ -175,7 +223,7 @@ structure InInitiatePlaced [LibsignalPlacement] (s0 s : State) (k : Nat) : Prop 
   spAligned : s0.spAligned = true
 
 /-- Immutable 88-byte argument spill table at `[fsp + 0xd0, fsp + 0x128)` written in BB000. -/
-def initArgsAtPlaced [LibsignalPlacement] (fsp : BitVec 64) (x : InitGhost) (s0 : State) : SepProp :=
+@[expose] def initArgsAtPlaced [LibsignalPlacement] (fsp : BitVec 64) (x : InitGhost) (s0 : State) : SepProp :=
   ((fsp + 0xd0#64) ↦₆₄ x.peerA) ∗
     ((fsp + 0xd8#64) ↦₆₄ x.meA) ∗
     ((fsp + 0xe0#64) ↦₆₄ (x.stores + 0xf0#64)) ∗
@@ -189,14 +237,14 @@ def initArgsAtPlaced [LibsignalPlacement] (fsp : BitVec 64) (x : InitGhost) (s0 
     ((fsp + 0x120#64) ↦₆₄ (x.bundleA + 0x78#64))
 
 /-- Shared postcondition predicate for any completed exit path reaching `lr`. -/
-def InitExitPostPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (x : InitGhost)
+@[expose] def InitExitPostPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (x : InitGhost)
     (stk : Nat) (s0 : State) : State → SepProp → Prop :=
   fun sf Pf =>
     sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧
       (Pf ⊢ (initSlotSpecPlaced A S stk).post x s0 sf)
 
 /-- Shared panic predicate matching `initSlotSpecPlaced`. -/
-def InitPanicPostPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (x : InitGhost)
+@[expose] def InitPanicPostPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (x : InitGhost)
     (stk : Nat) (s0 : State) : State → SepProp → Prop :=
   fun sf Pf => Pf ⊢ (initSlotSpecPlaced A S stk).onPanic x s0 sf
 
@@ -216,7 +264,7 @@ structure AtStage2Placed [LibsignalPlacement] (W : CliHooks) (X : UnreachedPqxdh
   x26 : s.readReg64 (.gpr 26#5) = 8#64
   x27 : s.readReg64 (.gpr 27#5) = 0#64
 
-def stage2MemPlaced [LibsignalPlacement] (A : RustAlloc) (x : InitGhost) (stk : Nat)
+@[expose] def stage2MemPlaced [LibsignalPlacement] (A : RustAlloc) (x : InitGhost) (stk : Nat)
     (s0 : State) : SepProp :=
   let fsp := s0.sp - BitVec.ofNat 64 cliInitiateFrame
   storesAt A x.stores StoresGhost.opened ∗
@@ -256,7 +304,7 @@ structure AtStage3Placed [LibsignalPlacement] (W : CliHooks) (X : UnreachedPqxdh
   x23 : s.readReg64 (.gpr 23#5) = (s0.sp - BitVec.ofNat 64 cliInitiateFrame) + 0x80#64
   x24 : s.readReg64 (.gpr 24#5) = (s0.sp - BitVec.ofNat 64 cliInitiateFrame) + 0x3e8#64
 
-def stage3MemPlaced [LibsignalPlacement] (A : RustAlloc) (x : InitGhost)
+@[expose] def stage3MemPlaced [LibsignalPlacement] (A : RustAlloc) (x : InitGhost)
     (kp : CryptoVerification.RecordCodecs.IdentityKeyPair)
     (ekASk ekAPk : List (BitVec 8)) (pqspkPtr : BitVec 64) (opkId : BitVec 32)
     (stk : Nat) (s0 : State) : SepProp :=
@@ -307,7 +355,7 @@ structure AtStage4Placed [LibsignalPlacement] (W : CliHooks) (X : UnreachedPqxdh
   x21 : s.readReg64 (.gpr 21#5) = (s0.sp - BitVec.ofNat 64 cliInitiateFrame) + 0x388#64
   x22 : s.readReg64 (.gpr 22#5) = (s0.sp - BitVec.ofNat 64 cliInitiateFrame) + 0x900#64
 
-def stage4MemPlaced [LibsignalPlacement] (A : RustAlloc) (x : InitGhost)
+@[expose] def stage4MemPlaced [LibsignalPlacement] (A : RustAlloc) (x : InitGhost)
     (kp : CryptoVerification.RecordCodecs.IdentityKeyPair)
     (ekASk ekAPk kemCtBytes hkSlotBytes : List (BitVec 8))
     (pqspkPtr kemCtPtr : BitVec 64) (opkId : BitVec 32)
@@ -380,7 +428,7 @@ structure AtStage5Placed [LibsignalPlacement] (W : CliHooks) (X : UnreachedPqxdh
   pqspkNonNull : pqspkPtr ≠ 0#64
   x20 : s.readReg64 (.gpr 20#5) = (s0.sp - BitVec.ofNat 64 cliInitiateFrame) + 0x460#64
 
-def stage5MemPlaced [LibsignalPlacement] (A : RustAlloc) (x : InitGhost)
+@[expose] def stage5MemPlaced [LibsignalPlacement] (A : RustAlloc) (x : InitGhost)
     (kp : CryptoVerification.RecordCodecs.IdentityKeyPair)
     (ekASk ekAPk : List (BitVec 8)) (pqspkPtr : BitVec 64) (opkId : BitVec 32)
     (sg : SessionGhost) (ss : SessionState (List (BitVec 8)))

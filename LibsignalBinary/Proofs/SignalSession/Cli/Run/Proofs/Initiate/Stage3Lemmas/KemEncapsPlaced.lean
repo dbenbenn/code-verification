@@ -9,10 +9,35 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemEncaps
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemCoinsHelpersPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemEncaps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemCoinsHelpersPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDerive -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFill -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhHelpersPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemCoinsHelpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Collapse
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.CollapsePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DefsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.EarlyExit
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Model
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymE
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Stage 3 KEM Seed Packing & `kyber::encapsulate` (`+0x0ee8 → +0x0fb4`, `[LibsignalPlacement]`)
@@ -20,7 +45,7 @@ import Arm64.Trusted.Spec.SepLogic
 Relocatable `[LibsignalPlacement]` counterpart of `Stage3Lemmas/KemEncaps.lean`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option warningAsError false
 set_option linter.unusedSimpArgs false
@@ -28,8 +53,6 @@ set_option linter.unusedTactic false
 set_option linter.unreachableTactic false
 set_option linter.unusedVariables false
 set_option maxRecDepth 200000
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage3Lemmas
 
@@ -57,6 +80,9 @@ open CryptoVerification.CliHandshake.InitiatePlaced
 open Arm64.Obj (MultiPlacement)
 open LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
   (CliGhostHooks cliGhostExterns)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
+open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraRowSpecs.CryptoMlKemRowSpecs
+  (kemEncapsTightStack)
 
 attribute [local irreducible] Program.fetch Program.externAt? S3InvPrefixPlaced coinsCursorAtPlaced coinWord
 attribute [local simp, local arm64_norm, local wp_norm]
@@ -306,6 +332,8 @@ theorem kem_encaps_placed_ok [LibsignalPlacement] {A : RustAlloc} {mmpl : MultiP
     Nat.le_trans (by decide) (stk_sub_ge_base hstk)
   have hsub_pq : pqxdhEntryStack ≤ stk - cliInitiateFrame :=
     Nat.le_trans (by decide) (stk_sub_ge_base hstk)
+  have hsub_kem : kemEncapsTightStack ≤ stk - cliInitiateFrame :=
+    Nat.le_trans (by decide) (stk_sub_ge_base hstk)
   have hstk_le64 := stk_sub_le_2pow64 hstk64
   have hfe0_split : memRegion (fsp + 0xfe0#64) 32 =
       memRegion (fsp + 0xfe0#64) 4 ∗ memRegion (fsp + 0xfe4#64) 4 ∗
@@ -374,15 +402,11 @@ theorem kem_encaps_placed_ok [LibsignalPlacement] {A : RustAlloc} {mmpl : MultiP
             memRegion (fsp - BitVec.ofNat 64 (stk - cliInitiateFrame))
               (stk - cliInitiateFrame - cliCoinsFillStack) =
           memRegion (fsp - BitVec.ofNat 64 (stk - cliInitiateFrame))
-            (stk - cliInitiateFrame - pqxdhEntryStack) ∗
-          memRegion (fsp - BitVec.ofNat 64 pqxdhEntryStack)
-            (pqxdhEntryStack - pqxdhHookStack) ∗
-          stackAt fsp pqxdhHookStack := by
+            (stk - cliInitiateFrame - kemEncapsTightStack) ∗
+          stackAt fsp kemEncapsTightStack := by
         rw [sepConj_comm (stackAt fsp cliCoinsFillStack),
             ← stackAt_sub_split_init fsp hsub_cf hstk_le64,
-            stackAt_sub_split_init fsp hsub_pq hstk_le64,
-            stackAt_sub_split_init fsp (by decide : pqxdhHookStack ≤ pqxdhEntryStack) (by decide),
-            ← sepConj_assoc]
+            stackAt_sub_split_init fsp hsub_kem hstk_le64]
       have hout1600 :
           ((fsp + 0x1600#64) ↦₃₂ coinWord t 31 (by decide)) ∗
             memRegion (fsp + 0x1604#64) 20 ∗ memRegion (fsp + 0x1618#64) 0x648 ⊢
@@ -420,8 +444,9 @@ theorem kem_encaps_placed_ok [LibsignalPlacement] {A : RustAlloc} {mmpl : MultiP
       refine s3_call_placed hh (kyberEncaps_ok_at_init_placed mmpl gh W X hh) g _
         hc2 htr2 hp2 hl2 hpanic
         (by
-          simp only [kyberEncapsStubSpec, hpk_bv, hcoins_bv, hc2.sp, sepConj_assoc]
+          simp only [withLsRet, kyberEncapsStubAtSpec, hpk_bv, hcoins_bv, hc2.sp, sepConj_assoc]
           dsimp only [g, fsp] at hx0_2 hx1_2 hx8_2 ⊢
+          refine Entails.pure_right ⟨521, by decide, 0xfb4, by decide, hl2⟩ ?_
           refine Entails.pure_right ⟨hx0_2, hx1_2, hx8_2, hpk_len, hcoins_len, h_some⟩ ?_
           have hkem := kemCoins32_pointsTo_eq (s0.sp - BitVec.ofNat 64 cliInitiateFrame) t
           dsimp only [t, fsp] at hkem hcollapse_pre hout1600 hstk_merge ⊢
@@ -431,11 +456,11 @@ theorem kem_encaps_placed_ok [LibsignalPlacement] {A : RustAlloc} {mmpl : MultiP
           refine sep_replace (Entails.of_eq hstk_merge) (by sep_frame) ?_
           simp only [sepConj_assoc]
           sep_frame) ?_ ?_ ?_ ?_
-      · intro _ _ h; simp [kyberEncapsStubSpec, Spec.onPanic] at h
-      · intro _ _ _ h; simp [kyberEncapsStubSpec, Spec.onExit] at h
-      · intro _ _ h; simp [kyberEncapsStubSpec, Spec.onOom] at h
+      · intro _ _ h; simp [withLsRet, kyberEncapsStubAtSpec, Spec.onPanic] at h
+      · intro _ _ _ h; simp [withLsRet, kyberEncapsStubAtSpec, Spec.onExit] at h
+      · intro _ _ h; simp [withLsRet, kyberEncapsStubAtSpec, Spec.onOom] at h
       · intro sf _ _ _ hcs_f _ hof
-        simp only [kyberEncapsStubSpec, hpk_bv, hcoins_bv, h_out, hc2.sp, sepConj_assoc]
+        simp only [withLsRet, kyberEncapsStubAtSpec, hpk_bv, hcoins_bv, h_out, hc2.sp, sepConj_assoc]
         refine sepWPp_pure_elim_oom fun htr_f => ?_
         let ct := (W.Q.encaps be.kpkPub (initiateKemCoins t)).1
         let ss := (W.Q.encaps be.kpkPub (initiateKemCoins t)).2
@@ -445,10 +470,14 @@ theorem kem_encaps_placed_ok [LibsignalPlacement] {A : RustAlloc} {mmpl : MultiP
           rw [pointsToBytes_append, ct.toList_length]
           simp only [BitVec.ofNat_eq_ofNat, BitVec.add_assoc, BitVec.reduceAdd]
         have hstk_back :
-            memRegion (fsp - BitVec.ofNat 64 pqxdhEntryStack)
-                (pqxdhEntryStack - pqxdhHookStack) ∗ stackAt fsp pqxdhHookStack =
-              stackAt fsp pqxdhEntryStack :=
-          (stackAt_sub_split_init fsp (by decide : pqxdhHookStack ≤ pqxdhEntryStack) (by decide)).symm
+            memRegion (fsp - BitVec.ofNat 64 (stk - cliInitiateFrame))
+                (stk - cliInitiateFrame - kemEncapsTightStack) ∗ stackAt fsp kemEncapsTightStack =
+              stackAt fsp pqxdhEntryStack ∗
+                memRegion (fsp - BitVec.ofNat 64 (stk - cliInitiateFrame))
+                  (stk - cliInitiateFrame - pqxdhEntryStack) := by
+          rw [← stackAt_sub_split_init fsp hsub_kem hstk_le64,
+              stackAt_sub_split_init fsp hsub_pq hstk_le64,
+              sepConj_comm]
         refine sepWPp_conseq_oom ?_
           (hnext sf (hof htr_f) (htr_f.trans htr2)
             (hcs_f.2.1.trans hx20_2) (hcs_f.2.2.1.trans hx21_2))

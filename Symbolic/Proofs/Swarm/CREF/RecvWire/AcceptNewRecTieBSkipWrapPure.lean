@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Hooks2.BridgeXPure
-public import Symbolic.Proofs.SR.SendSpecWPure
+public import Symbolic.Proofs.Hooks2.BridgeXPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SR.SendSpecWPure -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatementDefs
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecBasePure
-public import Symbolic.Proofs.Swarm.CREF.Sem
-public import Symbolic.Proofs.Swarm.CREF.TR.PureRecvEval
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecBasePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PureRecvEval -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecTieBSkipPure
 import Symbolic.Proofs.Swarm.CREF.TROpen
@@ -23,6 +23,7 @@ import Symbolic.Proofs.Swarm.CREF.Xpl.InvCommon
 import Symbolic.Proofs.Swarm.CREF.Xpl.SkippedHit
 import Symbolic.Proofs.Swarm.CREF.TR.Leaks -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- shake: keep
+import Symbolic.Proofs.Swarm.CREF.CBad
 
 /-!
 # Whisper Decrypt Cached Skipped-Key Block Tie
@@ -31,7 +32,7 @@ Lifts `a2b_tieB_skip_core` to an accepting `XplBlock` containing a `decryptSkipp
 framed by `InvisibleNoEffect` prefixes and suffixes.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false

@@ -31,7 +31,7 @@ Assembles the six placed `mallocng` entrypoint verifications (`malloc`, `free`, 
 
 set_option autoImplicit false
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 
@@ -70,9 +70,6 @@ theorem placed_calloc_fine_ok
     mallocngMultiEntryOk mpl svc "calloc"
       (fineCallocSpec svc γ (mallocngAddrsOfPlacement mpl)) :=
   placed_calloc_fine_entry_ok placed_defaultMalloc_fine_ok mpl svc hPlace hSvc γ
-
-theorem placed_libcRealloc_fine_uncond_ok : LibcReallocFineStmt :=
-  placed_libcRealloc_fine_ok realloc_stage2_fine_ok realloc_stage3_fine_ok
 
 theorem placed_realloc_fine_ok
     (mpl : Obj.MultiPlacement) (svc : State → State)
@@ -129,27 +126,10 @@ theorem fineCostModelSound : MallocngCostModelSound fineCostModel fineCostModelI
 
 /-! ## Budget-Threaded Rust Pool and C Entrypoint Contracts -/
 
-/-- Budget-threaded `RustCliAllocBudget fineCostModel` pool at concrete `MallocngAddrs`. -/
-def fineRustCliAllocBudgetAt
-    (γ : GhostName) (A : MallocngAddrs) (tp brkStart : BitVec 64) :
-    RustCliAllocBudget fineCostModel :=
-  mallocngRustCliAllocBudgetAt fineCostModel fineCostModelIface fineCostModelSound γ A tp brkStart
-
 /-- Budget-threaded `RustCliAllocBudget fineCostModel` pool at a `MultiPlacement`. -/
 def fineRustCliAllocBudget
     (γ : GhostName) (mpl : Obj.MultiPlacement) (tp brkStart : BitVec 64) :
     RustCliAllocBudget fineCostModel :=
   mallocngRustCliAllocBudget fineCostModel fineCostModelIface fineCostModelSound γ mpl tp brkStart
-
-/-- Program-level C entrypoint contracts (`malloc`, `free`, `calloc`, `realloc`, `aligned_alloc`,
-    `posix_memalign`) over `fineCostModel` for any program `P` containing `mallocngLib`. -/
-theorem fineProgBudgetCContracts
-    {P : Program} {mpl : Obj.MultiPlacement}
-    (hP : ProgContainsMallocng P mpl)
-    (γ : GhostName) (tp brkStart : BitVec 64) :
-    MallocngProgBudgetCContracts fineCostModel fineCostModelIface γ
-      (mallocngAddrsOfPlacement mpl) tp brkStart
-      P (mallocngPlacedCAddrs mpl) (VerifiedLibraries.mallocngLib.fnAddr mpl "calloc") :=
-  mallocngProgBudgetCContracts_of_placed fineCostModelSound hP γ tp brkStart
 
 end LibsignalBinary.Heap.Fine

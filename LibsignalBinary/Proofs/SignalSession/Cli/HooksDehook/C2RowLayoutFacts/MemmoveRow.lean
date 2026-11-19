@@ -10,12 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.CodeSubslice -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.RowCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.RowCommon
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveExtraReplays -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.NarrowF3R1Witness -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts -- proof-setup: allow-public-import
 import ProofLib.ProgramReflection
 meta import ProofLib.ProgramReflection
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Cutover-2 (`C2`) Full `GhostRowOk` Discharge for `"memmove"` (`C2RowLayoutFacts.MemmoveRow`)
@@ -66,7 +73,7 @@ namespace LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib ProofLib.ProgramReflection ProofLib.StdStartup
 open VerifiedLibraries.Mallocng (mallocngBlockProg)
-open CryptoVerification (LibsignalPlacement)
+open CryptoVerification (LibsignalPlacement libsignalHookedExterns)
 open CryptoVerification.SignalSession
   (CliHooks cliElfBytes cliExternsPlaced libsignalSessionLib lsMemcpySym lsMemsetSym
    lsReadFileSym lsReadStdinSym lsRustAllocSymCli lsRustAllocZeroedSymCli lsRustDeallocSymCli
@@ -78,7 +85,8 @@ open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced (cliProgExt
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.CodeSubslice
   (checkProgCodeSubslice codeLoaded_of_checkProgCodeSubslice)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.RowCommon
-  (c2_keepTextBPre_of_sub_lt f3CodeInv_and_fs_keepsFrozen resolve_c2RxSym_eq_cliElf_rho)
+  (c2_keepTextBPre_of_sub_lt f3CodeInv_and_fs_keepsFrozen
+   isLinkedPanicAddr_false_of_keepTextBPre resolve_c2RxSym_eq_cliElf_rho)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay (GhostRowOk)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyCode
   (mallocngBlockProg20_externAt_none mallocngBlockProg20_hasWords)
@@ -181,7 +189,9 @@ theorem c2_memmove_hRealHullNoExt {mpl mmpl : Obj.MultiPlacement}
     ∀ (W : CliHooks) {pc : BitVec 64},
       keepR_memmove mpl pc = true →
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none :=
-  fun W {_} hk => f3RxSeg_realProg617_externAt_none hExt W (keepR_memmove_sub_rxProg hLs hk)
+  fun W {_} hk =>
+    f3RxSeg_realProg617_externAt_none hExt W (keepR_memmove_sub_rxProg hLs hk)
+      (isLinkedPanicAddr_false_of_keepTextBPre (keepR_memmove_sub_keepTextBPre hLs hk))
 
 /-- Exact `hGhostEntry` premise of `memmoveGhost_rowOk` over `["memmove", "memcpy", "memset"]`. -/
 theorem c2_memmove_hGhostEntry {mpl : Obj.MultiPlacement}
@@ -192,13 +202,15 @@ theorem c2_memmove_hGhostEntry {mpl : Obj.MultiPlacement}
       (cliProgExtPlacedAt mpl EG 617 W).externAt? (libsignalSessionLib.resolve mpl sym) =
         EG W sym := by
   intro W sym hsym
+  simp only [List.mem_cons, List.not_mem_nil, or_false] at hsym
   have hrx : sym ∈ c2RxDehookedSyms := by
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hsym
     rcases hsym with rfl | rfl | rfl
     · exact memmove_mem_c2RxDehookedSyms
     · exact memcpy_mem_c2RxDehookedSyms
     · exact memset_mem_c2RxDehookedSyms
-  exact hExt.ghostRxEntry EG W hrx
+  have hhooked : sym ∈ libsignalHookedExterns := by
+    rcases hsym with rfl | rfl | rfl <;> decide
+  exact hExt.ghostRxEntry EG W hrx hhooked
 
 /-- Every symbol in generated `c2RxDehookedSyms` outside `["memmove", "memcpy", "memset"]` resolves
     under `cliElfMultiPlacement.ρ` outside `keepBPreHull wp4MemcpyRealAddr` (verified by
@@ -250,6 +262,7 @@ theorem c2_cliExternsPlaced_memcpy_none {mpl : Obj.MultiPlacement} (mmpl : Obj.M
     rw [resolve_memcpy_eq_wp4MemcpyRealAddr hLs]
     exact decide_eq_true_eq.mp (by rfl_kernel)
   have hReal := hExt.realRxNoExtern mmpl W (keepTextBPre_sub_rxProg hInBPre)
+    (isLinkedPanicAddr_false_of_keepTextBPre hInBPre)
   exact hEntry.symm.trans hReal
 
 /-- Derive `cliExternsPlaced mmpl W "memset" = none` directly from `hExt : C2ExternTableFacts mpl`
@@ -264,6 +277,7 @@ theorem c2_cliExternsPlaced_memset_none {mpl : Obj.MultiPlacement} (mmpl : Obj.M
     rw [resolve_memset_eq_wp4MemsetRealAddr hLs]
     exact decide_eq_true_eq.mp (by rfl_kernel)
   have hReal := hExt.realRxNoExtern mmpl W (keepTextBPre_sub_rxProg hInBPre)
+    (isLinkedPanicAddr_false_of_keepTextBPre hInBPre)
   exact hEntry.symm.trans hReal
 
 private theorem cliGhostExternsWithExtra_memcpy (g : CliGhostHooks) (extra : ExtraGhostTable)

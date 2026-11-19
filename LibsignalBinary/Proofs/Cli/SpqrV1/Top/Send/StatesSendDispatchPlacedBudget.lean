@@ -10,12 +10,17 @@ limitations under the License.
 module
 
 meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves2PlacedBudgetAux
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves1PlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves2PlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves2PlacedBudgetAux
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
 
 /-!
 # Budget-Threaded Relocatable Unified 11-Arm `<States>::send` Dispatch (Block `427`)
@@ -24,7 +29,7 @@ Assembles all 11 budget-threaded `<States>::send` arms and post-arm reassembly (
 under `StatesSendTightEnv` and `StatesSendEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -108,6 +113,9 @@ open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves2PlacedBudget
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves2PlacedBudgetAux
   (step_send_arm_ct1Received_placed_sepWP_ofEnv step_send_arm_headerSent_placed_sepWP_ofEnv
    step_send_arm_keysSampled_placed_sepWP_ofEnv)
+open LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase
+  (mlkemEncaps1AtSpec mlkemFromSeedAtSpec)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 
 variable [LibsignalPlacement]
 
@@ -135,10 +143,12 @@ theorem step_send_statesSend_sepWP_placed_ofEnv {F : ShaCompress} {K : MlKem} {c
     (hA : AllocContractsPlaced M A lim ext)
     (hZero : HookSat (Rust.withPanics ext) spqrRustAllocZeroedSym (rustAllocZeroedBudgetSpec M A lim))
     (hcoinsFill : CoinsFillPlacedOkX ext)
-    (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym (withVmPreserved (mlkemFromSeedSpec K)))
+    (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym
+      (withLsRet (withVmPreserved (mlkemFromSeedAtSpec 36864 K))))
     (hpk1 : HookSat (Rust.withPanics ext) spqrMlkemPk1Sym (withVmPreserved mlkemPk1Spec))
     (hpk2 : HookSat (Rust.withPanics ext) spqrMlkemPk2Sym (withVmPreserved mlkemPk2Spec))
-    (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym (withVmPreserved (mlkemEncaps1Spec K)))
+    (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym
+      (withLsRet (withVmPreserved (mlkemEncaps1AtSpec 36864 K))))
     (hpk1_slice : ∀ s : List.Vector (BitVec 8) 64,
       ((K.fromSeed s).2.2.toList.drop 2304).take 64 = (K.fromSeed s).1.toList)
     (hpk2_slice : ∀ s : List.Vector (BitVec 8) 64,
@@ -409,10 +419,12 @@ theorem step_send_statesSend_placed_ofEnv {F : ShaCompress} {K : MlKem} {ctl : B
     (hA : AllocContractsPlaced M A lim ext)
     (hZero : HookSat (Rust.withPanics ext) spqrRustAllocZeroedSym (rustAllocZeroedBudgetSpec M A lim))
     (hcoinsFill : CoinsFillPlacedOkX ext)
-    (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym (withVmPreserved (mlkemFromSeedSpec K)))
+    (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym
+      (withLsRet (withVmPreserved (mlkemFromSeedAtSpec 36864 K))))
     (hpk1 : HookSat (Rust.withPanics ext) spqrMlkemPk1Sym (withVmPreserved mlkemPk1Spec))
     (hpk2 : HookSat (Rust.withPanics ext) spqrMlkemPk2Sym (withVmPreserved mlkemPk2Spec))
-    (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym (withVmPreserved (mlkemEncaps1Spec K)))
+    (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym
+      (withLsRet (withVmPreserved (mlkemEncaps1AtSpec 36864 K))))
     (hpk1_slice : ∀ s : List.Vector (BitVec 8) 64,
       ((K.fromSeed s).2.2.toList.drop 2304).take 64 = (K.fromSeed s).1.toList)
     (hpk2_slice : ∀ s : List.Vector (BitVec 8) 64,
@@ -476,10 +488,12 @@ theorem step_send_statesSend_sepWP_placed {F : ShaCompress} {K : MlKem} {ctl : B
     (hA : AllocContractsPlaced M A lim ext)
     (hZero : HookSat (Rust.withPanics ext) spqrRustAllocZeroedSym (rustAllocZeroedBudgetSpec M A lim))
     (hcoinsFill : CoinsFillPlacedOkX ext)
-    (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym (withVmPreserved (mlkemFromSeedSpec K)))
+    (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym
+      (withLsRet (withVmPreserved (mlkemFromSeedAtSpec 36864 K))))
     (hpk1 : HookSat (Rust.withPanics ext) spqrMlkemPk1Sym (withVmPreserved mlkemPk1Spec))
     (hpk2 : HookSat (Rust.withPanics ext) spqrMlkemPk2Sym (withVmPreserved mlkemPk2Spec))
-    (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym (withVmPreserved (mlkemEncaps1Spec K)))
+    (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym
+      (withLsRet (withVmPreserved (mlkemEncaps1AtSpec 36864 K))))
     (hpk1_slice : ∀ s : List.Vector (BitVec 8) 64,
       ((K.fromSeed s).2.2.toList.drop 2304).take 64 = (K.fromSeed s).1.toList)
     (hpk2_slice : ∀ s : List.Vector (BitVec 8) 64,
@@ -538,10 +552,12 @@ theorem step_send_statesSend_placed {F : ShaCompress} {K : MlKem} {ctl : BitVec 
     (hA : AllocContractsPlaced M A lim ext)
     (hZero : HookSat (Rust.withPanics ext) spqrRustAllocZeroedSym (rustAllocZeroedBudgetSpec M A lim))
     (hcoinsFill : CoinsFillPlacedOkX ext)
-    (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym (withVmPreserved (mlkemFromSeedSpec K)))
+    (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym
+      (withLsRet (withVmPreserved (mlkemFromSeedAtSpec 36864 K))))
     (hpk1 : HookSat (Rust.withPanics ext) spqrMlkemPk1Sym (withVmPreserved mlkemPk1Spec))
     (hpk2 : HookSat (Rust.withPanics ext) spqrMlkemPk2Sym (withVmPreserved mlkemPk2Spec))
-    (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym (withVmPreserved (mlkemEncaps1Spec K)))
+    (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym
+      (withLsRet (withVmPreserved (mlkemEncaps1AtSpec 36864 K))))
     (hpk1_slice : ∀ s : List.Vector (BitVec 8) 64,
       ((K.fromSeed s).2.2.toList.drop 2304).take 64 = (K.fromSeed s).1.toList)
     (hpk2_slice : ∀ s : List.Vector (BitVec 8) 64,
@@ -600,10 +616,12 @@ theorem step_send_statesSend_tight_sepWP_placed {F : ShaCompress} {K : MlKem} {c
     (hA : AllocContractsPlaced M A lim ext)
     (hZero : HookSat (Rust.withPanics ext) spqrRustAllocZeroedSym (rustAllocZeroedBudgetSpec M A lim))
     (hcoinsFill : CoinsFillPlacedOkX ext)
-    (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym (withVmPreserved (mlkemFromSeedSpec K)))
+    (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym
+      (withLsRet (withVmPreserved (mlkemFromSeedAtSpec 36864 K))))
     (hpk1 : HookSat (Rust.withPanics ext) spqrMlkemPk1Sym (withVmPreserved mlkemPk1Spec))
     (hpk2 : HookSat (Rust.withPanics ext) spqrMlkemPk2Sym (withVmPreserved mlkemPk2Spec))
-    (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym (withVmPreserved (mlkemEncaps1Spec K)))
+    (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym
+      (withLsRet (withVmPreserved (mlkemEncaps1AtSpec 36864 K))))
     (hpk1_slice : ∀ s : List.Vector (BitVec 8) 64,
       ((K.fromSeed s).2.2.toList.drop 2304).take 64 = (K.fromSeed s).1.toList)
     (hpk2_slice : ∀ s : List.Vector (BitVec 8) 64,
@@ -662,10 +680,12 @@ theorem step_send_statesSend_tight_placed {F : ShaCompress} {K : MlKem} {ctl : B
     (hA : AllocContractsPlaced M A lim ext)
     (hZero : HookSat (Rust.withPanics ext) spqrRustAllocZeroedSym (rustAllocZeroedBudgetSpec M A lim))
     (hcoinsFill : CoinsFillPlacedOkX ext)
-    (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym (withVmPreserved (mlkemFromSeedSpec K)))
+    (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym
+      (withLsRet (withVmPreserved (mlkemFromSeedAtSpec 36864 K))))
     (hpk1 : HookSat (Rust.withPanics ext) spqrMlkemPk1Sym (withVmPreserved mlkemPk1Spec))
     (hpk2 : HookSat (Rust.withPanics ext) spqrMlkemPk2Sym (withVmPreserved mlkemPk2Spec))
-    (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym (withVmPreserved (mlkemEncaps1Spec K)))
+    (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym
+      (withLsRet (withVmPreserved (mlkemEncaps1AtSpec 36864 K))))
     (hpk1_slice : ∀ s : List.Vector (BitVec 8) 64,
       ((K.fromSeed s).2.2.toList.drop 2304).take 64 = (K.fromSeed s).1.toList)
     (hpk2_slice : ∀ s : List.Vector (BitVec 8) 64,

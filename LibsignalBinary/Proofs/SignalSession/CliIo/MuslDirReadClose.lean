@@ -26,7 +26,7 @@ Extends `VerifiedLibraries.Musl.SyscallProof` over `muslSysPlacedLib` with:
    `.localFile` or `.localDir` descriptors.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -202,7 +202,7 @@ private theorem muslSccpCloseLocal_blk_ok [MuslSysPlacement] :
 
 /-- Contract for `int close(int fd)` (`blk05`, `48`-byte stack frame) on an open `.localFile` or
     `.localDir` descriptor (`fd < 2 ^ 31`). -/
-def muslClose48LocalSpec : Spec (BitVec 64 × FdEntry) where
+@[expose] def muslClose48LocalSpec : Spec (BitVec 64 × FdEntry) where
   pre := fun (fd, desc) s0 =>
     ⌜(s0.readReg32 .x0).zeroExtend 64 = fd ∧ fd.toNat < 2 ^ 31 ∧
       s0.fs.fds fd = some desc ∧ (desc.kind = .localFile ∨ desc.kind = .localDir)⌝ ∗
@@ -265,33 +265,43 @@ theorem muslClose48Local_ok [MuslSysPlacement] {P : Program}
 /-! ## 3. `read` on `.localDir` (`muslReadDir32_block_ok` / `muslReadDir32_ok`) -/
 
 /-- Exact `errno` (`Nat`) written by `musl` `read(fd, buf, count)` on a readable `.localDir`:
-    `14` (`EFAULT`) if `buf + count > USER_VA_LIMIT`, else `21` (`EISDIR`). -/
-def dirReadErrnoNat (buf count : BitVec 64) : Nat :=
-  if buf.toNat + count.toNat > USER_VA_LIMIT then 14 else 21
+    `14` (`EFAULT`) if `buf + count > USER_VA_LIMIT`, `22` (`EINVAL`) if
+    `offset + count > MAX_LFS_FILESIZE`, else `21` (`EISDIR`). -/
+@[expose] def dirReadErrnoNat (buf count : BitVec 64) (offset : Nat := 0) : Nat :=
+  if buf.toNat + count.toNat > USER_VA_LIMIT then 14
+  else if offset + count.toNat > MAX_LFS_FILESIZE then 22
+  else 21
 
 /-- Exact 32-bit `errno` written by `musl` `read(fd, buf, count)` on a readable `.localDir`. -/
-def dirReadErrno32 (buf count : BitVec 64) : BitVec 32 :=
-  BitVec.ofNat 32 (dirReadErrnoNat buf count)
+@[expose] def dirReadErrno32 (buf count : BitVec 64) (offset : Nat := 0) : BitVec 32 :=
+  BitVec.ofNat 32 (dirReadErrnoNat buf count offset)
 
-theorem dirReadErrnoNat_bounds (buf count : BitVec 64) :
-    1 ≤ dirReadErrnoNat buf count ∧ dirReadErrnoNat buf count ≤ 4095 := by
+theorem dirReadErrnoNat_bounds (buf count : BitVec 64) (offset : Nat := 0) :
+    1 ≤ dirReadErrnoNat buf count offset ∧ dirReadErrnoNat buf count offset ≤ 4095 := by
   unfold dirReadErrnoNat
-  by_cases h : buf.toNat + count.toNat > USER_VA_LIMIT <;> simp [h]
+  by_cases h : buf.toNat + count.toNat > USER_VA_LIMIT
+  · simp [h]
+  · by_cases hlfs : offset + count.toNat > MAX_LFS_FILESIZE <;> simp [h, hlfs]
 
-theorem dirReadErrno32_cases (buf count : BitVec 64) :
-    dirReadErrno32 buf count = 21#32 ∨ dirReadErrno32 buf count = 14#32 := by
+theorem dirReadErrno32_cases (buf count : BitVec 64) (offset : Nat := 0) :
+    dirReadErrno32 buf count offset = 21#32 ∨ dirReadErrno32 buf count offset = 14#32 ∨
+      dirReadErrno32 buf count offset = 22#32 := by
   unfold dirReadErrno32 dirReadErrnoNat
-  by_cases h : buf.toNat + count.toNat > USER_VA_LIMIT <;> simp [h]
+  by_cases h : buf.toNat + count.toNat > USER_VA_LIMIT
+  · simp [h]
+  · by_cases hlfs : offset + count.toNat > MAX_LFS_FILESIZE <;> simp [h, hlfs]
 
-theorem dirReadErrno32_ne_eintr (buf count : BitVec 64) :
-    dirReadErrno32 buf count ≠ 4#32 := by
-  rcases dirReadErrno32_cases buf count with h | h <;> (rw [h]; decide)
+theorem dirReadErrno32_ne_eintr (buf count : BitVec 64) (offset : Nat := 0) :
+    dirReadErrno32 buf count offset ≠ 4#32 := by
+  rcases dirReadErrno32_cases buf count offset with h | h | h <;> (rw [h]; decide)
 
-theorem dirReadErrno32_eq_eisdir_of_le {buf count : BitVec 64}
-    (hle : buf.toNat + count.toNat ≤ USER_VA_LIMIT) :
-    dirReadErrno32 buf count = 21#32 := by
+theorem dirReadErrno32_eq_eisdir_of_le {buf count : BitVec 64} {offset : Nat}
+    (hle : buf.toNat + count.toNat ≤ USER_VA_LIMIT)
+    (hlfs : offset + count.toNat ≤ MAX_LFS_FILESIZE) :
+    dirReadErrno32 buf count offset = 21#32 := by
   have hnot : ¬(buf.toNat + count.toNat > USER_VA_LIMIT) := Nat.not_lt.mpr hle
-  simp [dirReadErrno32, dirReadErrnoNat, hnot]
+  have hnot_lfs : ¬(offset + count.toNat > MAX_LFS_FILESIZE) := Nat.not_lt.mpr hlfs
+  simp [dirReadErrno32, dirReadErrnoNat, hnot, hnot_lfs]
 
 /-- `SVC #0` rule for `read` (`X8 = 63`) on an open readable `.localDir` descriptor `fd`. -/
 theorem step_svc_read_dir {prog : Program} {target_pc : BitVec 64}
@@ -308,7 +318,7 @@ theorem step_svc_read_dir {prog : Program} {target_pc : BitVec 64}
     (hkind : desc.kind = .localDir)
     (hrd : desc.accMode.canRead = true)
     (hnext :
-      let s' := (s.writeReg64 .x0 (-BitVec.ofNat 64 (dirReadErrnoNat buf count))).setPC (pc + 4#64)
+      let s' := (s.writeReg64 .x0 (-BitVec.ofNat 64 (dirReadErrnoNat buf count desc.offset))).setPC (pc + 4#64)
       SepWP prog target_pc s' P post oom)
     (hsvc : prog.evalInst (.system false 0#16) s = execRead s := by
       simp [wp_norm, arm64_norm, Reg.x8, execRead, *]) :
@@ -316,7 +326,7 @@ theorem step_svc_read_dir {prog : Program} {target_pc : BitVec 64}
   have hpc_eq : s.setPC pc = s := state_setPC_eq_self hpc
   have hslt : (s.readReg32 .x0).slt 0#32 = false := readReg32_slt_zero_false hfd hfd_lt
   have hexec : execRead s =
-      (s.writeReg64 .x0 (-BitVec.ofNat 64 (dirReadErrnoNat buf count))).setPC (pc + 4#64) := by
+      (s.writeReg64 .x0 (-BitVec.ofNat 64 (dirReadErrnoNat buf count desc.offset))).setPC (pc + 4#64) := by
     have hk_dir : (FdKind.localDir == FdKind.localDir) = true := rfl
     refine Eq.trans ?_ (state_advancePC_eq_setPC hpc)
     dsimp only [execRead, execReadCommon, dirReadErrnoNat]
@@ -324,7 +334,9 @@ theorem step_svc_read_dir {prog : Program} {target_pc : BitVec 64}
     rw [hkind, hrd, hk_dir]
     by_cases hva : buf.toNat + count.toNat > USER_VA_LIMIT
     · simp [hva, EFAULT_RET]
-    · simp [hva, EISDIR]
+    · by_cases hlfs : desc.offset + count.toNat > MAX_LFS_FILESIZE
+      · simp [hva, hlfs, EINVAL]
+      · simp [hva, hlfs, EISDIR]
   exact SepWP.step_pure hpc hrun hfetch
     (by rw [hpc_eq, hsvc, hexec])
     (by cases s; rfl)
@@ -340,8 +352,8 @@ private def muslSccpReadDirSpec : Spec (BitVec 64 × BitVec 64 × BitVec 64 × F
       s0.fs.fds fd = some desc ∧
       desc.kind = .localDir ∧
       desc.accMode.canRead = true⌝
-  post := fun (_, buf, count, _) s0 sf =>
-    ⌜sf.readReg64 .x0 = -BitVec.ofNat 64 (dirReadErrnoNat buf count) ∧
+  post := fun (_, buf, count, desc) s0 sf =>
+    ⌜sf.readReg64 .x0 = -BitVec.ofNat 64 (dirReadErrnoNat buf count desc.offset) ∧
       sf.fs = s0.fs ∧
       sf.mem = s0.mem ∧
       sf.trace = s0.trace ∧
@@ -375,20 +387,23 @@ private theorem muslSccpReadDir_blk_ok [MuslSysPlacement] :
 
 /-- Contract for `ssize_t read(int fd, void *buf, size_t count)` (`blk06`, `32`-byte stack frame +
     `muslErrnoAddr`) on an open readable `.localDir` descriptor (`fd < 2 ^ 31`), without any
-    `buf` memory or `USER_VA_LIMIT` hypothesis. Returns `-1` and writes `dirReadErrno32 buf count`
-    (`21#32` = `EISDIR`, or `14#32` = `EFAULT` if `buf + count > USER_VA_LIMIT`; never `4#32`). -/
-def muslReadDir32Spec : Spec (BitVec 64 × BitVec 64 × BitVec 64 × FdEntry × BitVec 32) where
+    `buf` memory or `USER_VA_LIMIT` hypothesis. Returns `-1` and writes
+    `dirReadErrno32 buf count desc.offset` (`21#32` = `EISDIR`, `14#32` = `EFAULT`, or
+    `22#32` = `EINVAL`; never `4#32`). -/
+@[expose] def muslReadDir32Spec : Spec (BitVec 64 × BitVec 64 × BitVec 64 × FdEntry × BitVec 32) where
   pre := fun (fd, buf, count, desc, e0) s0 =>
     ⌜(s0.readReg32 .x0).zeroExtend 64 = fd ∧ fd.toNat < 2 ^ 31 ∧
       s0.readReg64 .x1 = buf ∧ s0.readReg64 .x2 = count ∧
       s0.fs.fds fd = some desc ∧ desc.kind = .localDir ∧ desc.accMode.canRead = true⌝ ∗
     (stackAt s0.sp 32 ∗ (muslErrnoAddr s0 ↦₃₂ e0))
-  post := fun (_, buf, count, _, _) s0 sf =>
+  post := fun (_, buf, count, desc, _) s0 sf =>
     ⌜sf.readReg64 .x0 = -1#64 ∧
-      (dirReadErrno32 buf count = 21#32 ∨ dirReadErrno32 buf count = 14#32) ∧
-      dirReadErrno32 buf count ≠ 4#32 ∧
+      (dirReadErrno32 buf count desc.offset = 21#32 ∨
+        dirReadErrno32 buf count desc.offset = 14#32 ∨
+        dirReadErrno32 buf count desc.offset = 22#32) ∧
+      dirReadErrno32 buf count desc.offset ≠ 4#32 ∧
       sf.fs = s0.fs ∧ sf.trace = s0.trace ∧ SyscallPreserved s0 sf⌝ ∗
-    (stackAt s0.sp 32 ∗ (muslErrnoAddr sf ↦₃₂ dirReadErrno32 buf count))
+    (stackAt s0.sp 32 ∗ (muslErrnoAddr sf ↦₃₂ dirReadErrno32 buf count desc.offset))
   onPanic := fun _ _ _ => ⌜False⌝
   onExit  := fun _ _ _ _ => ⌜False⌝
   onOom   := fun _ _ _ => ⌜False⌝
@@ -420,15 +435,15 @@ theorem muslReadDir32_block_ok [MuslSysPlacement] :
   · rw [show stackAt s0.sp 32 = stackAt (s0.sp - 16#64) 16 ∗ cells (s0.sp - 16#64) 2 from
       stackAt_split_cells s0.sp 16 2 (by decide)]
     cells_unfold; simp only [wp_norm, arm64_norm]; sep_frame
-  have ⟨h1_err, h2_err⟩ := dirReadErrnoNat_bounds a a_2
-  wp_call_block muslSyscallRetErr_block_ok (dirReadErrnoNat a a_2, a_rest_1)
+  have ⟨h1_err, h2_err⟩ := dirReadErrnoNat_bounds a a_2 a_3.offset
+  wp_call_block muslSyscallRetErr_block_ok (dirReadErrnoNat a a_2 a_3.offset, a_rest_1)
   rcases ‹StdStatePreserved _ _› with ⟨hfs2, htr2, htp2, hsig2, hb2, hbs2, hp2, hmp2⟩
   simp only [wp_norm, arm64_norm, htp1, hsig1, hb1, hbs1, hp1, hmp1] at hfs2 htr2 htp2 hsig2 hb2 hbs2 hp2 hmp2
   apply SepWP.done (by simp [wp_norm, arm64_norm, *]) (by simp [wp_norm, arm64_norm, *])
   refine ⟨fun hmem => ?_, by simp [wp_norm, arm64_norm, *], ?_⟩
   · first | rw [satisfies_pure_sepConj] | rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨by simp [wp_norm, arm64_norm, *], dirReadErrno32_cases a a_2,
-      dirReadErrno32_ne_eintr a a_2, by simp_all [wp_norm, arm64_norm],
+    refine ⟨⟨by simp [wp_norm, arm64_norm, *], dirReadErrno32_cases a a_2 a_3.offset,
+      dirReadErrno32_ne_eintr a a_2 a_3.offset, by simp_all [wp_norm, arm64_norm],
       by simp_all [wp_norm, arm64_norm], ?_⟩, ProofLib.Satisfies.of_entails hmem ?_⟩
     · refine ⟨?_, ?_, ?_, ?_, ?_, fun _ => ?_⟩ <;> simp [wp_norm, arm64_norm, *]
     · simp only [dirReadErrno32, muslErrnoAddr, wp_norm, arm64_norm, *] at *; sep_frame
@@ -441,12 +456,14 @@ theorem muslReadDir32_ok [MuslSysPlacement] {P : Program}
       (muslSysPlacedLib.withCodeLoaded muslSysMpl muslReadDir32Spec) :=
   muslSysPlacedLib.subroutine_ok_of_block (j := 6) (by decide) muslReadDir32_block_ok hext hsvc
 
-/-- Specialized `read` contract on `.localDir` when `buf + count ≤ USER_VA_LIMIT` (`errno = 21#32` = `EISDIR`). -/
-def muslReadDirEisdir32Spec : Spec (BitVec 64 × BitVec 64 × BitVec 64 × FdEntry × BitVec 32) where
+/-- Specialized `read` contract on `.localDir` when `buf + count ≤ USER_VA_LIMIT` and
+    `desc.offset + count ≤ MAX_LFS_FILESIZE` (`errno = 21#32` = `EISDIR`). -/
+@[expose] def muslReadDirEisdir32Spec : Spec (BitVec 64 × BitVec 64 × BitVec 64 × FdEntry × BitVec 32) where
   pre := fun (fd, buf, count, desc, e0) s0 =>
     ⌜(s0.readReg32 .x0).zeroExtend 64 = fd ∧ fd.toNat < 2 ^ 31 ∧
       s0.readReg64 .x1 = buf ∧ s0.readReg64 .x2 = count ∧
       buf.toNat + count.toNat ≤ USER_VA_LIMIT ∧
+      desc.offset + count.toNat ≤ MAX_LFS_FILESIZE ∧
       s0.fs.fds fd = some desc ∧ desc.kind = .localDir ∧ desc.accMode.canRead = true⌝ ∗
     (stackAt s0.sp 32 ∗ (muslErrnoAddr s0 ↦₃₂ e0))
   post := fun _ s0 sf =>
@@ -465,13 +482,13 @@ theorem muslReadDirEisdir32_block_ok [MuslSysPlacement] :
   rintro ⟨fd, buf, count, desc, e0⟩ R s0 hpre
   simp only [MultiPlacedLib.withCodeLoaded, muslReadDirEisdir32Spec, sepConj_assoc,
     satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hfd, hlt, hbuf, hcnt, hva, hopen, hk, hrd⟩, hm⟩
+  rcases hpre with ⟨⟨hfd, hlt, hbuf, hcnt, hva, hlfs, hopen, hk, hrd⟩, hm⟩
   refine ⟨(fd, buf, count, desc, e0), ?_, fun sf => ?_⟩
   · simp only [MultiPlacedLib.withCodeLoaded, muslReadDir32Spec, sepConj_assoc,
       satisfies_pure_sepConj]
     exact ⟨⟨hfd, hlt, hbuf, hcnt, hopen, hk, hrd⟩, hm⟩
   · simp only [MultiPlacedLib.withCodeLoaded, muslReadDir32Spec, muslReadDirEisdir32Spec,
-      dirReadErrno32_eq_eisdir_of_le hva]
+      dirReadErrno32_eq_eisdir_of_le hva hlfs]
     exact sepConj_mono_left (Entails.pure_mono fun ⟨hx0, _, _, hfs, htr, hsp⟩ =>
       ⟨hx0, hfs, htr, hsp⟩)
 
@@ -491,7 +508,7 @@ inductive OpenatLocalOutcome where
 /-- Hypothesis asserting that `execOpenat` on `(AT_FDCWD, path, flags ||| O_LARGEFILE_W32)` from
     any state with filesystem `fs0` and trace `tr0` behaves according to `out` (with
     `desc.kind = .localFile ∨ desc.kind = .localDir` in `.ok`). -/
-def OpenatLocalExecSpec (fs0 : FsState) (tr0 : List TraceEvent) (path : String)
+@[expose] def OpenatLocalExecSpec (fs0 : FsState) (tr0 : List TraceEvent) (path : String)
     (flags : BitVec 32) (out : OpenatLocalOutcome) : Prop :=
   ∀ {s : State},
     readCString s.mem (s.readReg64 .x1) = .ok path →
@@ -691,7 +708,7 @@ private theorem or_largefile_sxtw_truncate32 (flags : BitVec 32) :
 /-- Generic `execOpenat`-parameterized contract for `open(path, flags, mode)` (`blk08`, `112`-byte
     stack frame) on the non-`O_CREAT` path (`O_CREAT = 0`, not `O_TMPFILE`, `O_CLOEXEC = 1`),
     allowing both `.localFile` and `.localDir` descriptors. -/
-def muslOpenNoCreatCloexecLocalExecSpec :
+@[expose] def muslOpenNoCreatCloexecLocalExecSpec :
     Spec (BitVec 64 × String × BitVec 32 × BitVec 32 × OpenatLocalOutcome) where
   pre := fun (cstr, path, flags, e0, out) s0 =>
     ⌜s0.readReg64 .x0 = cstr ∧
@@ -895,11 +912,13 @@ theorem execOpenat_rdonly_cloexec_dir {s : State} {path : String} {fd : BitVec 6
   rw [hdfd, hflags, hf_bad, hf_m0, hf_cr, hf_ex, hf_tr, hf_ap, hf_dr, hf_cl, hcs]
   simp only [Bool.false_eq_true, Bool.false_and, ↓reduceIte]
   have hrd_ne : (FdAccessMode.rdonly != FdAccessMode.rdonly) = false := rfl
-  rw [hres, hsanc.1]
+  rw [hres, halloc]
+  dsimp only
+  rw [hsanc.1]
   dsimp only
   rw [hsanc.2]
   simp only [Bool.false_eq_true, ↓reduceIte]
-  rw [hge, hrd_ne, halloc]
+  rw [hge, hrd_ne]
   simp
 
 private theorem setFs_appendTrace_nil (s : State) (fs' : FsState) :

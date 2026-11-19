@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.LitsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FramePlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.LitsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FramePlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import all Init.Data.String.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # Relocatable `Stores::open()` Packaging & Stack-Frame Partitions for `main_m4` (Block `617`)
@@ -24,7 +26,7 @@ Relocatable `[LibsignalPlacement]` `.rodata` directory-literal packaging for `St
 `m5CellsPlaced`) for `main_m4`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -85,7 +87,7 @@ theorem dirAt_new_intro (A : RustAlloc) (d p : BitVec 64) (bs : List (BitVec 8))
   exact sepConj_mono hvec hstr
 
 /-- The 5 stack words of an opened empty `Dir` at stack offset `fsp + base` with path `(p, len)`. -/
-def openDirWords (fsp : BitVec 64) (base : Nat) (p : BitVec 64) (len : Nat) : SepProp :=
+@[expose] def openDirWords (fsp : BitVec 64) (base : Nat) (p : BitVec 64) (len : Nat) : SepProp :=
   ((fsp + BitVec.ofNat 64 base) ↦₆₄ 0#64) ∗
   ((fsp + BitVec.ofNat 64 (base + 8)) ↦₆₄ 8#64) ∗
   ((fsp + BitVec.ofNat 64 (base + 16)) ↦₆₄ 0#64) ∗
@@ -109,7 +111,7 @@ theorem openDir0_to_dirAt (A : RustAlloc) (fsp : BitVec 64) :
 
 /-- All 40 words written into `fsp + 0x310 .. fsp + 0x448` by `Stores::open()` in `main_m4`
 under `[LibsignalPlacement]`. -/
-def m4OpenStoresWordsPlaced [LibsignalPlacement] (fsp : BitVec 64) : SepProp :=
+@[expose] def m4OpenStoresWordsPlaced [LibsignalPlacement] (fsp : BitVec 64) : SepProp :=
   openDirWords fsp 0x310 1#64 0 ∗
   openDirWords fsp 0x338 (lsρ dirLit0Sym) 10 ∗
   openDirWords fsp 0x360 (lsρ dirLit1Sym) 15 ∗
@@ -207,7 +209,7 @@ theorem pointsToBytes_to_memRegion (p : BitVec 64) (bs : List (BitVec 8)) :
   (IsBlock.pointsToBytes p bs).entails_memRegion
 
 /-- Remainder of `ownedBytes A cap ptr (BitVec.ofNat 64 bs.length) bs` when `(ptr ↦ₛ bs)` is borrowed. -/
-def ownedBytesRest (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def ownedBytesRest (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗
@@ -277,7 +279,7 @@ theorem ownedBytes_dealloc (A : RustAlloc) {cap ptr len : BitVec 64} {bs : List 
   exact Entails.refl _
 
 /-- The 7 stack words of `Call` written at `fsp + 0x78 .. fsp + 0xa8` in `M+0x678 .. M+0x744`. -/
-def m4CallWords (fsp : BitVec 64) (w : CallW) : SepProp :=
+@[expose] def m4CallWords (fsp : BitVec 64) (w : CallW) : SepProp :=
   ((fsp + 0x78#64) ↦₆₄ w.w0) ∗
   ((fsp + 0x80#64) ↦₆₄ w.w1) ∗
   ((fsp + 0x88#64) ↦₆₄ w.w2) ∗
@@ -384,7 +386,7 @@ theorem runOkAt_open (A : RustAlloc) (r : BitVec 64) (g : StoresGhost) (out : Li
 /-! ## 3. Stack-Frame Open & Close Lemmas for `main_m4` (`m4CellsPlaced`, `m5CellsPlaced`) -/
 
 /-- Untouched uninitialized frame gaps of `main`'s `0x480`-byte local frame during `main_m4`. -/
-def m4Gaps (fsp : BitVec 64) : SepProp :=
+@[expose] def m4Gaps (fsp : BitVec 64) : SepProp :=
   memRegion fsp 0x40 ∗
   memRegion (fsp + 0x60#64) 0x18 ∗
   memRegion (fsp + 0xb0#64) 0x108 ∗
@@ -392,7 +394,7 @@ def m4Gaps (fsp : BitVec 64) : SepProp :=
 
 /-- Untouched portion of `main`'s `0x480`-byte local frame across `signal_session::run`
 (`[0x40] = w.w3`, `[0x48] = w.w4`, `[0x58] = w.w1`; `[0x50] = inPtr` is carried alongside). -/
-def m4RestFramePlaced (fsp : BitVec 64) (w : CallW) : SepProp :=
+@[expose] def m4RestFramePlaced (fsp : BitVec 64) (w : CallW) : SepProp :=
   m4Gaps fsp ∗
   ((fsp + 0x40#64) ↦₆₄ w.w3) ∗
   ((fsp + 0x48#64) ↦₆₄ w.w4) ∗
@@ -658,11 +660,11 @@ theorem m4_locals_close_err_cell_placed (fsp : BitVec 64) (w : CallW) (inPtr tag
 /-! ## 4. Per-Block Slot Partitions for `M+0x678 .. M+0x7a0` -/
 
 /-- One uninitialized 64-bit word at `fsp + off`. -/
-def m4Slot (fsp : BitVec 64) (off : Nat) : SepProp :=
+@[expose] def m4Slot (fsp : BitVec 64) (off : Nat) : SepProp :=
   ∃∗ v : BitVec 64, (fsp + BitVec.ofNat 64 off) ↦₆₄ v
 
 /-- `k` consecutive `m4Slot`s starting at `fsp + off`. -/
-def m4SlotsFrom (fsp : BitVec 64) (off : Nat) : Nat → SepProp
+@[expose] def m4SlotsFrom (fsp : BitVec 64) (off : Nat) : Nat → SepProp
   | 0 => emp
   | k + 1 => m4Slot fsp off ∗ m4SlotsFrom fsp (off + 8) k
 
@@ -680,20 +682,20 @@ theorem memRegion_to_m4SlotsFrom (fsp : BitVec 64) :
     exact sepConj_mono (Entails.refl _) (memRegion_to_m4SlotsFrom fsp k (off + 8) (by omega))
 
 /-- Uninitialized slots written by `M+0x678 .. M+0x6f8` (14 words). -/
-def m4UninitP1 (fsp : BitVec 64) : SepProp :=
+@[expose] def m4UninitP1 (fsp : BitVec 64) : SepProp :=
   m4Slot fsp 0x78 ∗ m4Slot fsp 0x80 ∗ m4Slot fsp 0x88 ∗ m4Slot fsp 0x90 ∗ m4Slot fsp 0xa8 ∗
   m4Slot fsp 0x328 ∗ m4Slot fsp 0x350 ∗ m4Slot fsp 0x358 ∗ m4Slot fsp 0x378 ∗ m4Slot fsp 0x380 ∗
   m4Slot fsp 0x3a0 ∗ m4Slot fsp 0x3a8 ∗ m4Slot fsp 0x3c8 ∗ m4Slot fsp 0x3d0
 
 /-- Uninitialized slots written by `M+0x6fc .. M+0x744` (13 words). -/
-def m4UninitP2 (fsp : BitVec 64) : SepProp :=
+@[expose] def m4UninitP2 (fsp : BitVec 64) : SepProp :=
   m4Slot fsp 0x98 ∗ m4Slot fsp 0xa0 ∗
   m4Slot fsp 0x318 ∗ m4Slot fsp 0x340 ∗ m4Slot fsp 0x368 ∗ m4Slot fsp 0x390 ∗ m4Slot fsp 0x3b8 ∗
   m4Slot fsp 0x3e0 ∗ m4Slot fsp 0x3f0 ∗ m4Slot fsp 0x408 ∗ m4Slot fsp 0x418 ∗ m4Slot fsp 0x420 ∗
   m4Slot fsp 0x430
 
 /-- Uninitialized slots written by `M+0x748 .. M+0x7a0` (20 words). -/
-def m4UninitP3 (fsp : BitVec 64) : SepProp :=
+@[expose] def m4UninitP3 (fsp : BitVec 64) : SepProp :=
   m4Slot fsp 0x310 ∗ m4Slot fsp 0x320 ∗ m4Slot fsp 0x330 ∗ m4Slot fsp 0x338 ∗
   m4Slot fsp 0x348 ∗ m4Slot fsp 0x360 ∗ m4Slot fsp 0x370 ∗ m4Slot fsp 0x388 ∗
   m4Slot fsp 0x398 ∗ m4Slot fsp 0x3b0 ∗ m4Slot fsp 0x3c0 ∗ m4Slot fsp 0x3d8 ∗
@@ -701,7 +703,7 @@ def m4UninitP3 (fsp : BitVec 64) : SepProp :=
   m4Slot fsp 0x428 ∗ m4Slot fsp 0x438 ∗ m4Slot fsp 0x440 ∗ m4Slot fsp 0x448
 
 /-- Concrete words written by `M+0x678 .. M+0x6f8` (14 stack words) under `[LibsignalPlacement]`. -/
-def m4WrittenP1Placed [LibsignalPlacement] (fsp : BitVec 64) (w : CallW) : SepProp :=
+@[expose] def m4WrittenP1Placed [LibsignalPlacement] (fsp : BitVec 64) (w : CallW) : SepProp :=
   ((fsp + 0x78#64) ↦₆₄ w.w0) ∗
   ((fsp + 0x80#64) ↦₆₄ w.w1) ∗
   ((fsp + 0x88#64) ↦₆₄ w.w2) ∗
@@ -718,7 +720,7 @@ def m4WrittenP1Placed [LibsignalPlacement] (fsp : BitVec 64) (w : CallW) : SepPr
   ((fsp + 0x3d0#64) ↦₆₄ 26#64)
 
 /-- Concrete words written by `M+0x6fc .. M+0x744` (13 stack words) under `[LibsignalPlacement]`. -/
-def m4WrittenP2Placed [LibsignalPlacement] (fsp : BitVec 64) (w : CallW) : SepProp :=
+@[expose] def m4WrittenP2Placed [LibsignalPlacement] (fsp : BitVec 64) (w : CallW) : SepProp :=
   ((fsp + 0x98#64) ↦₆₄ w.w4) ∗
   ((fsp + 0xa0#64) ↦₆₄ w.w5) ∗
   ((fsp + 0x318#64) ↦₆₄ 8#64) ∗
@@ -734,7 +736,7 @@ def m4WrittenP2Placed [LibsignalPlacement] (fsp : BitVec 64) (w : CallW) : SepPr
   ((fsp + 0x430#64) ↦₆₄ 8#64)
 
 /-- Concrete words written by `M+0x748 .. M+0x7a0` (20 stack words) under `[LibsignalPlacement]`. -/
-def m4WrittenP3Placed [LibsignalPlacement] (fsp : BitVec 64) : SepProp :=
+@[expose] def m4WrittenP3Placed [LibsignalPlacement] (fsp : BitVec 64) : SepProp :=
   ((fsp + 0x310#64) ↦₆₄ 0#64) ∗
   ((fsp + 0x320#64) ↦₆₄ 0#64) ∗
   ((fsp + 0x330#64) ↦₆₄ 0#64) ∗

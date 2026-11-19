@@ -9,13 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.AddressRO.AllocRoBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.AllocPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.AddressRO.AllocRoBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.AllocPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Alloc
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.BasePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.WritePaths
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Placed Budgeted Read-Only `argv` Exit and Allocation Paths for `signal_session::address`
@@ -24,7 +31,7 @@ Establishes `step_none_exit_ro_placed` and `step_sxtb_and_alloc_ro_placed` on Bl
 `M24.CalleesRO.addressSpecRO` for read-only (`↦ᵣ`) input slices.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -69,7 +76,7 @@ attribute [local irreducible] Program.fetch Program.externAt?
 /-! ## Read-only `memcpy` call-site specification -/
 
 /-- Read-only-source twin of `session2MemcpyBudgetSpecX` (`src ↦ᵣ bs`, `dst ↦ₛ bs`). -/
-def session2MemcpyROBudgetSpecX : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def session2MemcpyROBudgetSpecX : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ (s0.readReg64 .x2).toNat = bs.length⌝ ∗
       memRegion dst bs.length ∗ (src ↦ᵣ bs) ∗ stackAt s0.sp extHookStack

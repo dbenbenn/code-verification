@@ -11,11 +11,11 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.Fine.ClientBounds
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptLeavesPeak
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCmkDhPeak
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptTrialPeak
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W2DecryptLeavesPeak -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCmkDhPeak -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W2DecryptTrialPeak -- proof-setup: allow-public-import
 
 /-!
 # W2 `message_decrypt` `PhaseCreditSpec` and `DeallocCreditSpec` Combinators
@@ -26,7 +26,7 @@ Segments `S3`/`S4`/`S7`/`S8`/`S9`, multi-buffer `SessionClone` deallocation canc
 `≤ n`-session `TrialLoopEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -93,19 +93,19 @@ theorem req_align_rustRealloc_le {old new al maxReq : Nat}
   subst hev
   exact ⟨hnew, hal⟩
 
-def isNonFreeEv : AllocEvent → Bool
+@[expose] def isNonFreeEv : AllocEvent → Bool
   | .free _ _ => false
   | _ => true
 
 /-- Envelope of event lists of total length `≤ maxLen` containing at most `k` non-`.free` events,
 with per-event `eventStepReq ≤ maxReq`, `eventStepAlign ≤ 16`. -/
-def BoundedNonFreeEvs (k maxLen maxReq : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def BoundedNonFreeEvs (k maxLen maxReq : Nat) (evs : List AllocEvent) : Prop :=
   evs.length ≤ maxLen ∧
   (evs.filter isNonFreeEv).length ≤ k ∧
   ∀ ev ∈ evs, eventStepReq ev ≤ maxReq ∧ eventStepAlign ev ≤ 16
 
 /-- Envelope of event lists of total length `≤ k` with `eventStepReq ≤ maxReq`, `eventStepAlign ≤ 16`. -/
-def BoundedLenEvs (k maxReq : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def BoundedLenEvs (k maxReq : Nat) (evs : List AllocEvent) : Prop :=
   evs.length ≤ k ∧
   ∀ ev ∈ evs, eventStepReq ev ≤ maxReq ∧ eventStepAlign ev ≤ 16
 
@@ -260,19 +260,9 @@ theorem phaseCreditSpec_boundedNonFree_aff {M : AllocCostModel} [HasFineReallocC
         k * (maxReq + 8195) := Nat.mul_le_mul_right _ h.2.1
     omega
 
-theorem phaseCreditSpec_boundedLen_aff {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (k maxReq : Nat) :
-    PhaseCreditSpec M (BoundedLenEvs k maxReq)
-      (k * (2 * maxReq + 9539))
-      (k * (maxReq + 8195))
-      (k * (maxReq + 8195))
-      maxReq :=
-  (phaseCreditSpec_boundedNonFree_aff hM k k maxReq).of_imp fun _ =>
-    BoundedLenEvs.toBoundedNonFreeEvs
-
 /-- Bounded W2 Segment 9 `apply_to_session_state` envelope (`≤ 6` small `≤ 34 B` allocations
 surrounded by `.free` events). -/
-def TrApplyBoundedEnv : List AllocEvent → Prop :=
+@[expose] def TrApplyBoundedEnv : List AllocEvent → Prop :=
   SeqEnv FreeOnlyEvs (SeqEnv (BoundedLenEvs 6 34) FreeOnlyEvs)
 
 theorem phaseCreditSpec_trApplyBounded {M : AllocCostModel} [HasFineReallocCredit M]
@@ -284,7 +274,7 @@ theorem phaseCreditSpec_trApplyBounded {M : AllocCostModel} [HasFineReallocCredi
 
 /-! ## 2. W2 Segments `S3`, `S4`, `S7`, `S8` as `PhaseCreditSpec M` -/
 
-def dhCommitStep12Evs : List AllocEvent :=
+@[expose] def dhCommitStep12Evs : List AllocEvent :=
   rustAllocEvents 33 1 ++ rustAllocEvents 33 1 ++ rustAllocEvents 32 1
 
 theorem phaseCreditSpec_dhCommitStep12 (M : AllocCostModel) [HasFineReallocCredit M]
@@ -307,7 +297,7 @@ theorem phaseCreditSpec_dhCommitStep12 (M : AllocCostModel) [HasFineReallocCredi
     obtain ⟨hc, hl, hp⟩ := stepEvents_dhCommitStep12_small M st0 h33
     omega
 
-def dhCommitStep3Evs (cap : Nat) (needGrow : Bool) : List AllocEvent :=
+@[expose] def dhCommitStep3Evs (cap : Nat) (needGrow : Bool) : List AllocEvent :=
   (if needGrow then growOne104Evs cap else []) ++ rustDeallocEvents 33 1
 
 theorem req_align_growOne104 {c maxOldCap : Nat} (hc : c ≤ maxOldCap) :
@@ -480,7 +470,7 @@ theorem stepEvents_growOne104_first (M : AllocCostModel) [HasFineReallocCredit M
 
 /-- `Vec<104>` doubling chain starting from an arbitrary initial capacity `c₀`, with every growth at `c ≤ maxOldCap`.
 -/
-def DoublingChainLe (maxOldCap : Nat) : List Nat → Prop
+@[expose] def DoublingChainLe (maxOldCap : Nat) : List Nat → Prop
   | [] => True
   | [c] => c ≤ maxOldCap
   | c₁ :: c₂ :: rest =>
@@ -490,7 +480,7 @@ private def DoublingTailPred (maxOldCap c_cur : Nat) : List Nat → Prop
   | [] => True
   | c_next :: rest => c_next = c_cur ∧ DoublingChainLe maxOldCap (c_next :: rest)
 
-def doublingChain104Evs : List Nat → List AllocEvent
+@[expose] def doublingChain104Evs : List Nat → List AllocEvent
   | [] => []
   | c :: rest => growOne104Evs c ++ doublingChain104Evs rest
 
@@ -681,7 +671,7 @@ theorem phaseCreditSpec_s7Core (M : AllocCostModel) [HasFineReallocCredit M]
 
 /-- Event-shape predicate for W2 Segment 8 `AesDecCtEnv ctLen` (`[]`, `alloc`, or `alloc ++ dealloc`).
 -/
-def AesDecCtShape (ctLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def AesDecCtShape (ctLen : Nat) (evs : List AllocEvent) : Prop :=
   evs = [] ∨
   evs = rustAllocEvents ctLen 1 ∨
   evs = rustAllocEvents ctLen 1 ++ rustDeallocEvents ctLen 1
@@ -729,22 +719,6 @@ theorem phaseCreditSpec_aesDecCt_err {M : AllocCostModel} [HasFineReallocCredit 
 
 /-! ## 3. `SessionClone` `DeallocCreditSpec` and `TrialLoopEnv` -/
 
-theorem DeallocCreditSpec.opt_free_singleAllocLarge (M : AllocCostModel) [HasFineReallocCredit M]
-    {req al : Nat} (hal : al ≤ 16) :
-    DeallocCreditSpec M
-      (· = if req = 0 then [] else rustDeallocEvents req al)
-      (if req = 0 then 0 else singleAllocLarge M req) := by
-  by_cases h0 : req = 0
-  · subst h0
-    simpa using DeallocCreditSpec.nil M
-  · simp only [h0, ↓reduceIte, singleAllocLarge]
-    by_cases hle : req ≤ HasFineReallocCredit.smallMaxReq M
-    · simp only [hle, ↓reduceIte]
-      exact DeallocCreditSpec.free_small M hal hle
-    · have hgt : HasFineReallocCredit.smallMaxReq M < req := Nat.lt_of_not_ge hle
-      simp only [hle, ↓reduceIte]
-      exact DeallocCreditSpec.free_large M hal hgt
-
 /-- `DeallocCreditSpec` for `optDeallocListEvs pairs` (`align ≤ 16`), crediting `optDeallocListLarge M pairs`.
 -/
 theorem DeallocCreditSpec.optDeallocList (M : AllocCostModel) [HasFineReallocCredit M]
@@ -788,7 +762,7 @@ theorem phaseCreditSpec_failedTrial_done {M : AllocCostModel} [HasFineReallocCre
 /-- Trial-decrypt loop envelope (`≤ n` sessions): each iteration either halts early (`HaltStep x`) or
 completes `DoneStep x` (`Δlive = 0` after `DropClone`) and continues to the remaining trials, ending in `FinalEnv`.
 -/
-def TrialLoopEnv {α : Type}
+@[expose] def TrialLoopEnv {α : Type}
     (HaltStep DoneStep : α → List AllocEvent → Prop)
     (FinalEnv : List AllocEvent → Prop) : List α → List AllocEvent → Prop
   | [], evs => FinalEnv evs

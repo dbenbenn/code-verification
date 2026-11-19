@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -19,13 +19,12 @@ import DY.Actions.Random
 import DY.Actions.ProtocolEvent
 import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
-public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful
+public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import ProofLib.Lemmas
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.CREF.Prelude
-import Symbolic.Proofs.Swarm.CREF.Xpl.InvCommon
+public import Symbolic.Proofs.Swarm.CREF.Xpl.InvCommon -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Xpl.StepsMix
 import VCVio.Prelude.Core
 import Symbolic.DYBridge.DY.ALaCarte.Basic
@@ -45,7 +44,7 @@ Proves that Bob's one-time pre-key is unused on `setupTrace r` and that `opkUsed
 by quiet (`NoSessionEffect`) moves and by any move sequence outside an OPK-consuming `Move.bobStart`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

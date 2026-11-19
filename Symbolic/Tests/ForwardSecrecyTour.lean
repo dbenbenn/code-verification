@@ -11,7 +11,6 @@ module
 
 public import Symbolic.Specifications.Security.Model
 public import Symbolic.Specifications.Security.Binary
-public import Symbolic.Proofs.SpecLemmas.SecurityBinaryFixed
 
 /-!
 # Overview of Symbolic Forward Secrecy
@@ -39,8 +38,8 @@ open DY.Libsignal.TripleRatchet.Cheval
 /-!
 `ForwardSecrecy` quantifies `FSQuery tr` over every reachable model trace. At the CLI layer,
 `AllSecurityQueriesHoldOnHwTrace` instantiates `FSQuery` on `runTrace r ss` with
-`HwAttackerKnows r vis` in place of `Bytes.AttackerKnows tr`, and `SignalSessionSecure` lifts that
-guarantee to the ARM64 ELF binary.
+`HwAttackerKnows r vis` in place of `Bytes.AttackerKnows tr`, and `SignalSessionSecure` lifts
+that guarantee to the ARM64 ELF binary.
 -/
 
 section Overview

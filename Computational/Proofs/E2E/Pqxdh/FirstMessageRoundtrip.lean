@@ -10,21 +10,22 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhSessionModel
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSpqrWindowHonest
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.ModelBridge -- shake: keep
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RoundTrip -- shake: keep
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSpqrCorrect -- shake: keep
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSpqrWindowHonest
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.ModelBridge -- shake: keep
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RoundTrip -- shake: keep
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSpqrCorrect -- shake: keep
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.Crypto
 import Computational.Proofs.SignalWireRoundTrip
 import LibsignalBinary.Proofs.SpecLemmas.SignalPqxdh.Model
 import LibsignalBinary.Proofs.SpqrV1.InitFacts
-import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDec
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.CBCDec
 public import Computational.Proofs.E2E.PqxdhSessionModelProofDefs
-public import Computational.Proofs.E2E.ComposedBinaryLinkV1
+public import Computational.Proofs.E2E.ComposedBinaryLinkV1 -- proof-setup: allow-public-import
 import Computational.Proofs.LibsignalCli.PqFirstMessageSpqr
+import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhCorrectModelProofDefs
 
-@[expose] public section
+public section
 
 /-!
 # First-Message Roundtrip for PQXDH Sessions
@@ -254,6 +255,35 @@ theorem initiateKeys_hdr_eq (X : UnreachedPqxdhPrimitives) (W : PEParams)
     · exact vecU8_length _
     · exact vecU8_length _
 
+private theorem upd9_isCanonical_eq_isCanonicalRef (B1 : SignalPqxdh.Primitives)
+    (sv h96 rcc cks ckn dmk ae ad) (pk : List UInt8) :
+    ({ B1 with
+        sigVerify := sv
+        isCanonical := SignalPqxdh.isCanonicalRef B1
+        hkdfDerive96 := h96
+        rootCreateChain := rcc
+        chainKdfSeed := cks
+        chainKdfNext := ckn
+        deriveMsgKeys := dmk
+        aeadEnc := ae
+        aeadDec := ad } : SignalPqxdh.Primitives).isCanonical pk =
+      SignalPqxdh.isCanonicalRef
+        { B1 with
+            sigVerify := sv
+            isCanonical := SignalPqxdh.isCanonicalRef B1
+            hkdfDerive96 := h96
+            rootCreateChain := rcc
+            chainKdfSeed := cks
+            chainKdfNext := ckn
+            deriveMsgKeys := dmk
+            aeadEnc := ae
+            aeadDec := ad } pk := rfl
+
+private theorem modelPrims_isCanonical_eq (X : UnreachedPqxdhPrimitives) (W : PEParams)
+    (pk : List UInt8) :
+    (modelPrims X W).isCanonical pk = SignalPqxdh.isCanonicalRef (modelPrims X W) pk :=
+  upd9_isCanonical_eq_isCanonicalRef _ _ _ _ _ _ _ _ _ pk
+
 theorem initiateKeys_acceptKeys_roundtrip (X : UnreachedPqxdhPrimitives) (W : PEParams)
     (meA meB : LocalIdentity) (k : ResponderPreKeySecrets) (spkSig kpkSig : List.Vector (BitVec 8) 64)
     (t : List.Vector (BitVec 8) initiateTapeLen)
@@ -327,10 +357,17 @@ theorem initiateKeys_acceptKeys_roundtrip (X : UnreachedPqxdhPrimitives) (W : PE
     dsimp only [accInp, acceptInput, P, modelPrims, blockLevelPrims, ss, kemCt]
     simp only [vecU8_length, SignalPqxdh.kyberCtLen, beq_self_eq_true, ↓reduceIte]
     rw [u8Vec_vecU8, u8Vec_vecU8, hKyber]
+  have hCanonP : ∀ e, P.isCanonical (P.x25519Base e) = true := fun e => by
+    have hEq : P.isCanonical (P.x25519Base e) =
+        SignalPqxdh.isCanonicalRef (modelPrims X W) (P.x25519Base e) :=
+      modelPrims_isCanonical_eq X W (P.x25519Base e)
+    have hBaseEq : P.x25519Base e = vecU8 (W.C.pubKey (Ratchet.clampScalar (u8Vec 32 e))) := rfl
+    rw [hEq, hBaseEq]
+    exact hCanon (u8Vec 32 e)
   obtain ⟨drKey, hdr', rk1, ck1_1, msg, hInit', hAcc', -, -⟩ :=
     SignalPqxdh.pqxdh_handshake_roundtrip P
       (modelPrims_x25519_comm X W hXcomm)
-      (fun e => hCanon (u8Vec 32 e))
+      hCanonP
       (fun _ => vecU8_length _)
       (modelPrims_x25519Base_ne_zero X W hXnz)
       (modelPrims_aead_roundtrip X W hAes)

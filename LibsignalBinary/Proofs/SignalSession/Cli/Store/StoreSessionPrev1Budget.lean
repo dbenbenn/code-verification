@@ -10,7 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreSessionPrev1
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreSessionPrev1 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Cell and Inner Specifications for `StoreSessionPrev1`
@@ -20,7 +22,7 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreSessionPrev1
 `store_session::{closure#0}` on a `Prev1` record.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,7 +43,7 @@ open CryptoVerification.SignalSession.Cli.Store.StoreSessionPrev1
 
 /-- Composed `AllocEvent` envelope for `store_session::{closure#0}` on a `Prev1` record:
 `address_text` followed by `SessionRecord::serialize` (`Prev1`) followed by `Dir::put`. -/
-def CliStorePollPrev1Env
+@[expose] def CliStorePollPrev1Env
     (AddrEnv : AddrGhost → List AllocEvent → Prop)
     (SerPrev1Env : SessionGhost → Session (List (BitVec 8)) → List (BitVec 8) →
       List AllocEvent → Prop)
@@ -51,7 +53,7 @@ def CliStorePollPrev1Env
     (SeqEnv (SerPrev1Env x.G x.sess x.enc)
       (PutEnv x.dir (addressText x.addr.val) (encodeRecordPrev1Mem x.G x.sess x.enc)))
 
-def serializePrev1CellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def serializePrev1CellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (SerPrev1Env : SessionGhost → Session (List (BitVec 8)) → List (BitVec 8) →
       List AllocEvent → Prop)
     (calleeStk : Nat) : Spec (SerPrev1CellsGhost × M.σ) where
@@ -75,7 +77,7 @@ def serializePrev1CellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim
       vecU8Buf A.repAlloc bCap bPtr (encodeRecordPrev1Mem g.G g.sess g.enc) ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt g.fsp calleeStk
 
-def cliStorePollPrev1InnerSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def cliStorePollPrev1InnerSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AddrEnv : AddrGhost → List AllocEvent → Prop)
     (SerPrev1Env : SessionGhost → Session (List (BitVec 8)) → List (BitVec 8) →
       List AllocEvent → Prop)

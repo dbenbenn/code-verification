@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 import all Init.Data.Nat.Bitwise.Basic
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesInnerHeaderPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesInnerHeaderPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked1
@@ -24,6 +24,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesInnerChunked1Placed
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesVnEncode
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesVnEncodePlaced
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable `spqr::send`: `V1State::encode_raw` Branches (`idx = 0, 2, 5`)
@@ -32,7 +33,7 @@ Relocatable symbolic execution of the `.keysUnsampled` (`idx = 0`), `.headerSent
 `.noHeaderReceived` (`idx = 5`) encoding branches in `spqr::send::<HookRng>` (Block `124`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -71,7 +72,7 @@ attribute [local arm64_norm]
   ls_resolve_blk_186 ls_resolve_blk_188 ls_resolve_blk_189 ls_resolve_blk_192
   ls_resolve_blk_193
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   EncodedLen.zeroExtend64_beq_zero32
   EncodedLen.ofNat_countLeadingZeros_64 EncodedLen.ofNat_countLeadingZeros_32

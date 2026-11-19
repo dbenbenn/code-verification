@@ -11,16 +11,26 @@ module
 
 public import Arm64.Trusted.Spec.Hoare
 public import LibsignalBinary.Heap.IfaceBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonStage2PathAOfEnvPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonStage2PathAPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.StagesOverCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1KitsPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonStage2PathAOfEnvPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonStage2PathAPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.StagesOverCliPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1KitsPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Closed All-4-Kits `[LibsignalFullPlacement]` Stage P2 Path-A Wrapper
@@ -29,7 +39,7 @@ Instantiates `stageP2PathAQpan_cli_d3_at_frozen_placed_of_seams_ofEnv` at all fo
 (`self`, `spk`, `kpk`, `pk`) from `hDropNz` and `SpqrV1PlacedSeamsOfEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -124,6 +134,9 @@ theorem stageP2PathAQpan_cli_d3_full_placed_of_seams_ofEnv [LibsignalFullPlaceme
           g))
     (hDropNz : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hDecaps : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
     (hSpqr : SpqrV1PlacedSeamsOfEnv M A lim mmpl gh W (InitialStateEnv W.C.F) RecvEnv SendEnv) :
     StageP2PathAQpanCliD3AtFrozenPlacedBudgetStmt A lim ReadEnv DeserEnv X mmpl gh W B
       P2PathAErrEnv P2PathAOkEnv :=
@@ -131,7 +144,7 @@ theorem stageP2PathAQpan_cli_d3_full_placed_of_seams_ofEnv [LibsignalFullPlaceme
     (kitEnvs :=
       cliStageP2KitEnvs (A := A.repAlloc) ReadEnv B
         (fun F0 peer => cliPollSelfBudgetEnv A.repAlloc F0 peer (cliKitStk B) ReadEnv))
-    hErrEnv hOkEnv hFitsSplit hDropNz hG hSpqr
+    hErrEnv hOkEnv hFitsSplit hDropNz hG hF hX hDecaps hSpqr
     (fun F0 peer _ _ _ _ hh hRead =>
       cliPollSelf_kitPlacedOk_stagesHooks mmpl gh W B F0 peer hDropNz hh hRead)
     (fun F0 _ spkId _ _ _ hh hRead =>
@@ -153,11 +166,14 @@ theorem StageP2PathAQpan_cli_d3_full_placed_of_seams [LibsignalFullPlacement]
     (W : CliHooks) (B : RunBudgets)
     (hDropNz : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hDecaps : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
     (hSpqr : SpqrV1PlacedSeamsOfEnv M A lim mmpl gh W (InitialStateEnv W.C.F) RecvEnv SendEnv) :
     StageP2PathAQpanCliD3AtFrozenPlacedBudgetStmt A lim ReadEnv DeserEnv X mmpl gh W B
       (cliP2PathAD3OptFieldsErrEnv A.repAlloc ReadEnv X W B)
       (cliP2PathAD3OptFieldsOkEnv A.repAlloc ReadEnv X W B) :=
   stageP2PathAQpan_cli_d3_full_placed_of_seams_ofEnv A lim X mmpl gh W B
-    (fun _ _ h => h) (fun _ _ h => h) (fun _ _ h => h) hDropNz hG hSpqr
+    (fun _ _ h => h) (fun _ _ h => h) (fun _ _ h => h) hDropNz hG hF hX hDecaps hSpqr
 
 end LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonStage2PathAFullPlacedBudget

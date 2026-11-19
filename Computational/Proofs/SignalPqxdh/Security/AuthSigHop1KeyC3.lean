@@ -9,12 +9,19 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyB
-public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyC1
-public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyC2
-public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyW
+public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyB -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyC1
+import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyC2
+import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyW
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdPre -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdPreSample -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC5 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyC0 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.SigHop1KeyA -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # One-key `Auth` bad-signature hop: per-principal coupling induction
@@ -24,7 +31,7 @@ one-key FG step coupling `Auth1KeySigCoupling`, relating the pre-sampled real ru
 `pqxdhAuthSigPreImpl1Key` to the `GapSigEufCma` reduction `sigReductionAuth1KeyAt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -173,12 +180,63 @@ structure Auth1KeySigCoupling (S : Setup) (P : Primitives) (b : QueryBudget) (k 
       𝒟[(fgAuth1KeySimImpl P sk P.isValidDhTriple true k S.N_spk_tot S b.q_total
           (P.sigPkGen sk) (P.sigPkGen sk) q).run st >>= k2] {true}
 
-noncomputable def authSigGuardK {S : Setup} (P : Primitives) (k : ℕ) (sk : Bytes) (l : List Bytes)
+private def decValidPrincipals (S : Setup) (ps : List (Nat × PrincipalEntry)) :
+    Decidable (ValidPrincipals S ps) := by
+  unfold ValidPrincipals
+  infer_instance
+
+private def decCleanPeers (S : Setup) (P : Primitives) (k : ℕ)
+    (ps : List (Nat × PrincipalEntry)) (peers : List Bytes) :
+    Decidable (CleanPeers S P k ps peers) :=
+  decidable_of_iff
+    (∀ ikB ∈ peers, ∃ p ∈ ps, p.1 < S.N_id ∧ p.1 ≠ k ∧ (P.pow8 ikB == P.pow8 p.2.ikAPk) = true)
+    ⟨fun h ikB hm => let ⟨⟨u, e⟩, hp, h1, h2, h3⟩ := h ikB hm; ⟨u, e, hp, h1, h2, h3⟩,
+     fun h ikB hm => let ⟨u, e, hp, h1, h2, h3⟩ := h ikB hm; ⟨(u, e), hp, h1, h2, h3⟩⟩
+
+private def decAuthSigGood1Key (S : Setup) (P : Primitives) (k : ℕ) (sk : Bytes)
+    (st : AuthState S) : Decidable (authSigGood1Key S P k sk st) :=
+  letI := decValidPrincipals S st.principals
+  letI := decCleanPeers S P k st.principals (badPeersAuth st)
+  decidable_of_iff
+    (ValidPrincipals S st.principals ∧
+      (∀ p ∈ st.principals, p.1 = k →
+        p.2.secIKAsign = sk ∧ p.2.ikSignPk = P.sigPkGen sk ∧ p.2.corrupted = false) ∧
+      CleanPeers S P k st.principals (badPeersAuth st))
+    (by
+      refine ⟨fun ⟨h1, h2, h3⟩ => ⟨h1, fun e he => h2 (k, e) he rfl, h3⟩, ?_⟩
+      rintro ⟨h1, h2, h3⟩
+      refine ⟨h1, ?_, h3⟩
+      rintro ⟨u, e⟩ hp rfl
+      exact h2 e hp)
+
+private def decAuthSigSafe (S : Setup) (P : Primitives) (k : ℕ)
+    (st : AuthState S) : Decidable ((authSigLens S).Safe P k st) :=
+  letI := decValidPrincipals S st.principals
+  letI := decCleanPeers S P k st.principals (badPeersAuth st)
+  decidable_of_iff
+    (ValidPrincipals S st.principals ∧
+      (∃ p ∈ st.principals, p.1 = k) ∧
+      (∀ p ∈ st.principals, p.1 = k → p.2.corrupted = true) ∧
+      CleanPeers S P k st.principals (badPeersAuth st))
+    (by
+      refine ⟨?_, ?_⟩
+      · rintro ⟨h1, ⟨⟨u, e⟩, hp, rfl⟩, h3, h4⟩
+        exact ⟨h1, ⟨e, hp⟩, fun e' he' => h3 (u, e') he' rfl, h4⟩
+      · rintro ⟨h1, ⟨e, he⟩, h3, h4⟩
+        refine ⟨h1, ⟨(k, e), he, rfl⟩, ?_, h4⟩
+        rintro ⟨u, e'⟩ hp rfl
+        exact h3 e' hp)
+
+def authSigGuardK {S : Setup} (P : Primitives) (k : ℕ) (sk : Bytes) (l : List Bytes)
     (Kr : AuthResponse × AuthState S → ProbComp Bool) (x : AuthResponse × AuthState S) :
     ProbComp Bool :=
-  @ite _ ((authSigGood1Key S P k sk x.2 ∨ (authSigLens S).Safe P k x.2) ∧
-      x.2.hasWonAuth = false ∧ (∀ m ∈ l, m ∈ bundleSignedMessages k x.2.spkBundles))
-    (Classical.propDecidable _) (Kr x) (pure false)
+  letI := decAuthSigGood1Key S P k sk x.2
+  letI := decAuthSigSafe S P k x.2
+  if (authSigGood1Key S P k sk x.2 ∨ (authSigLens S).Safe P k x.2) ∧
+      x.2.hasWonAuth = false ∧ (∀ m ∈ l, m ∈ bundleSignedMessages k x.2.spkBundles) then
+    Kr x
+  else
+    pure false
 
 def SigAuth1KeyRel (S : Setup) (P : Primitives) (b : QueryBudget) (k : ℕ) (sk : Bytes)
     (C : Auth1KeySigCoupling S P b k sk) (rem : ℕ) (s : AuthState S) (st : SigAuth1KeySimState S)

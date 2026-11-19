@@ -12,17 +12,14 @@ module
 public import LibsignalBinary.Heap.MuslMemOpsRunsToPlaced -- proof-setup: allow-public-import
 
 /-!
-# Lightweight `HookExactMemcpy` Predicate & Placed `RunsToFrom` Steppers (`HooksDehook.MemcpyExactCore`)
+# Lightweight `HookExactMemcpy` Predicate and Placed `RunsToFrom` Steppers (`HooksDehook.MemcpyExactCore`)
 
-- **Role:** `Role::Proof` (untrusted proof module outside the TCB; #1255 H3 / mc2 L0 core).
-- **Overview:**
-  Factors the CLI-independent `HookExactMemcpy` / `HookSatExactMemcpy` definitions, `hookMemcpy` /
-  `memcpyHook` exactness witnesses, and placed `RunsToFrom` step wrappers
-  (`s2_memcpy_step_placed_of_exact`, `placed_memcpy_step_of_exact`) out of
-  `HooksDehook.MemcpyGhostExact` so `CommonSat`, `DefsSat`, and downstream `*Sat` modules can
-  `public import` them without pulling in the 601-module `MemcpyGhostReplaysOn` CLI/allocator
-  `@[simp, arm64_norm]` environment. `HooksDehook.MemcpyGhostExact` re-exports all declarations
-  from this module.
+Factors the CLI-independent `HookExactMemcpy` / `HookSatExactMemcpy` definitions, `hookMemcpy` /
+`memcpyHook` exactness witnesses, and placed `RunsToFrom` step wrappers
+(`s2_memcpy_step_placed_of_exact`, `placed_memcpy_step_of_exact`) out of
+`HooksDehook.MemcpyGhostExact` so `CommonSat`, `DefsSat`, and downstream `*Sat` modules can
+`public import` them without pulling in the `MemcpyGhostReplaysOn` CLI/allocator simp environment.
+`HooksDehook.MemcpyGhostExact` re-exports all declarations from this module.
 -/
 
 set_option autoImplicit false

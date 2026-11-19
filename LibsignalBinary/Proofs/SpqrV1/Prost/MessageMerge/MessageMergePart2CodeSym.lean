@@ -9,10 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import ProofLib.GenPlacedFetches
+meta import GeneratedLean.LibsignalSessionPlacedObjShard12
+meta import GeneratedLean.LibsignalSessionPlacedObjShard13
+meta import LibsignalBinary.Proofs.Placed.BlocksTreeDefs
+import LibsignalBinary.Proofs.Placed.BlocksTreeDefs
 
 /-!
 # Block Code Definitions for SPQR V1 `Prost.MessageMerge` (Part 2)
@@ -196,10 +200,12 @@ elab "gen_ls_blk_mm2 " idxStx:num : command => do
           (LibsignalPlacement.block_placeable $idxStx:num (by decide) (by decide))
     ))
     elabCommand (← `(command|
+      -- noncomputable: the generated `blkLib_*` constants have no compiled code (added with `addDecl` only); compiling this def panics in LCNF.ExplicitBoxing
       noncomputable def $blkPCId:ident [LibsignalPlacement] : Program :=
         ($blkLibId:ident).program $blkPlId:ident
     ))
     elabCommand (← `(command|
+      -- noncomputable: the generated `blkLib_*` constants have no compiled code (added with `addDecl` only); compiling this def panics in LCNF.ExplicitBoxing
       noncomputable abbrev $lsProgId:ident [LibsignalPlacement] (H : LibsignalHooks) : Program :=
         ($blkPCId:ident).rebase ($blkPlId:ident).base H
     ))

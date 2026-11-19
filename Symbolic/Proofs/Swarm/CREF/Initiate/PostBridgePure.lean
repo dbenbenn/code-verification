@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
-public import Symbolic.Proofs.Swarm.CREF.Initiate.PostTrace
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Initiate.PostTrace -- proof-setup: allow-public-import
 import DY.Actions.ProtocolEvent
-public import Symbolic.Proofs.Swarm.CREF.Initiate.InitOk35CliPure
+public import Symbolic.Proofs.Swarm.CREF.Initiate.InitOk35CliPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
+import Symbolic.Proofs.Refinement.RecordBytesBridge
 
 /-!
 # Session Initiation Postcondition Bridge
@@ -23,7 +25,7 @@ Connects the byte-level postcondition `AliceInitiatedV1PostPure` of a successful
 and an `aliceStart` trace step to `PureAliceInitPending`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,7 +44,7 @@ open Symbolic.Swarm.COMPOSED
 open CryptoVerification.E2E.Record
 
 /-- Session-record postcondition of a successful `initiate` run producing `recState`. -/
-def AliceInitiatedV1PostPure (interpretation : ExternInterpretation) (r : ProtocolSetup)
+@[expose] def AliceInitiatedV1PostPure (interpretation : ExternInterpretation) (r : ProtocolSetup)
     (bundle : HwBytes) (ds : List HwBytes) (recState : HwBytes) : Prop :=
   let g0 : Ghost := ⟨fun _ _ => [], fun _ => []⟩
   let S0 : OpaqueSymbolSemantics := compSemOf interpretation r

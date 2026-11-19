@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.EkSentCt1Received1PlacedAuxBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.EkSentCt1Received1PlacedAuxBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCSBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBase
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCSBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBase
 import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FetchPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.ReprPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.Ct1Sent1PlacedAuxBudget
@@ -26,6 +26,13 @@ import LibsignalBinary.Proofs.SpqrV1.Auth.Encode1
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EpochEncodedLen -- shake: keep
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedBase
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedBaseStagesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCS -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Stages 5–6 and Core Proof of `encode<EkSentCt1Received> [local#3]` (Block `458`)
@@ -35,7 +42,7 @@ Proves budget-threaded `SepWPp` lemmas for Stage 5 (`ct1`), the epilogue, and
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

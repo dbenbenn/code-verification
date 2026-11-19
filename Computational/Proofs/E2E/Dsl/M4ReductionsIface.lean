@@ -9,16 +9,19 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables
+public import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables -- proof-setup: allow-public-import
 public import Computational.Specifications.Reductions.Pqxdh.StatementPqReds
 public import Computational.Specifications.Composition.StatementModel
-public import Computational.Proofs.E2E.Dsl.TablesHonest
-public import Computational.Proofs.E2E.BinaryHarnessCostedRedsV1
-public import Computational.Proofs.LibsignalCli.GenericGameModel
+import Computational.Proofs.E2E.Dsl.TablesHonest
+public import Computational.Proofs.E2E.BinaryHarnessCostedRedsV1 -- proof-setup: allow-public-import
+import Computational.Proofs.LibsignalCli.GenericGameModel
 import Computational.Proofs.LibsignalCli.CliPqPrefixBridge
 import Computational.Proofs.LibsignalCli.PrefixCouplingWith
 import Computational.Proofs.LibsignalCli.PrefixLazy1KeyReal
 import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+public import Computational.Proofs.LibsignalCli.KeyInd1RealReds -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.Size -- proof-setup: allow-public-import
+import Computational.Proofs.LibsignalCli.KeyInd1RealRedsCosted
 
 /-!
 # Honest Costed Reduction Interfaces and Statement Contracts for Multi-Session Composition
@@ -29,7 +32,7 @@ Defines the honest `ReductionDsl` reduction structures, closed-form step-cost bu
 contracts, and model security theorems `ModelSecureHonestStmt` and `ModelSecureHonestFamilyStmt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -76,7 +79,7 @@ open Computational.Proofs.E2E.Dsl.TablesHonest (e2eSamplers_sizeHonest
 
 /-! ## Control-Query Projections, `BHPrefixCtx` Codec, and Game-Spec Bridges -/
 
-def bhCtlUnStart {S : SignalPqxdh.Setup} : BHDRCtlQuery S → SignalPqxdh.SessionId S
+@[expose] def bhCtlUnStart {S : SignalPqxdh.Setup} : BHDRCtlQuery S → SignalPqxdh.SessionId S
   | .startDR sid => sid
 
 @[simp] theorem bhCtlUnStart_startDR {S : SignalPqxdh.Setup} (sid : SignalPqxdh.SessionId S) :
@@ -90,19 +93,15 @@ theorem e2eComposedGameSpec_target_eq (S : SignalPqxdh.Setup) (ℓ : ℕ) :
     e2eComposedGameSpec S (BHDRCtlQuery S) (GhostState Bytes) ℓ =
       bhTargetGameSpec S ℓ (BitVec 512) := rfl
 
-theorem e2eComposedGameSpec_bh_eq (S : SignalPqxdh.Setup) (ℓ : ℕ) :
-    e2eComposedGameSpec S (BHDRCtlQuery S) BinState ℓ =
-      bhGameSpec S ℓ (BitVec 512) := rfl
-
-@[reducible] def e2eTargetGameCodec (S : SignalPqxdh.Setup) (ℓ : ℕ) :
+@[expose, reducible] def e2eTargetGameCodec (S : SignalPqxdh.Setup) (ℓ : ℕ) :
     GameCodec (e2eSig ℓ) (bhTargetGameSpec S ℓ (BitVec 512)) :=
   e2eGameCodec S ℓ bhCtlUnStart
 
-@[reducible] def e2eBhAdapterIface (S : SignalPqxdh.Setup) (ℓ : ℕ) :
+@[expose, reducible] def e2eBhAdapterIface (S : SignalPqxdh.Setup) (ℓ : ℕ) :
     Iface (e2eSig ℓ) (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) :=
   e2eAdapterIface S ℓ BHDRCtlQuery.startDR
 
-@[reducible] def e2eBhAdapterCodec (S : SignalPqxdh.Setup) (ℓ : ℕ) :
+@[expose, reducible] def e2eBhAdapterCodec (S : SignalPqxdh.Setup) (ℓ : ℕ) :
     GameCodec (e2eSig ℓ) (bhGameSpec S ℓ (BitVec 512)) :=
   e2eAdapterCodec S ℓ bhCtlUnStart
 
@@ -145,7 +144,7 @@ abbrev CompositionCostedReductionFamilyHonest (S : SignalPqxdh.Setup) {Pt : Type
   (b : SignalPqxdh.QueryBudget) → (qStart qDR : ℕ) →
     CompositionCostedReductionsHonest S ℓ P C K qep decT encT
 
-def CompositionCostedReductionsHonest.toFamily {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
+@[expose] def CompositionCostedReductionsHonest.toFamily {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
     {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem} {qep : ℕ}
     {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     (R : CompositionCostedReductionsHonest S ℓ P C K qep decT encT) :
@@ -158,14 +157,14 @@ abbrev CliToModelAdapterProgHonest (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Typ
   CostedReduction (e2eAdapterOps ℓ decT encT) (e2eBhAdapterIface S ℓ)
     (bhGameSpec S ℓ (BitVec 512)) (e2eBhAdapterCodec S ℓ) .unit .unit .bool .bool
 
-def twoStageTotalQueries₁ {S0 : Sig} {O : Ops S0} {ι κ : Type}
+@[expose] def twoStageTotalQueries₁ {S0 : Sig} {O : Ops S0} {ι κ : Type}
     {T : OracleSpec ι} {I : Iface S0 T} {G : OracleSpec κ}
     {C : GameCodec S0 G} {rIn aIn aOut ch rIn2 out : Ty S0}
     (R : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out)
     (wTag : I.Tag → ℕ) (wSamp : I.smp.Samp → ℕ) : ℕ :=
   R.init.queries wTag wSamp + R.handlePre.queries wTag wSamp + R.chDone.queries wTag wSamp
 
-def twoStageTotalQueries₂ {S0 : Sig} {O : Ops S0} {ι κ : Type}
+@[expose] def twoStageTotalQueries₂ {S0 : Sig} {O : Ops S0} {ι κ : Type}
     {T : OracleSpec ι} {I : Iface S0 T} {G : OracleSpec κ}
     {C : GameCodec S0 G} {rIn aIn aOut ch rIn2 out : Ty S0}
     (R : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out)
@@ -190,13 +189,13 @@ def twoStageTotalQueries₂ {S0 : Sig} {O : Ops S0} {ι κ : Type}
   rfl
 
 /-- Closed-form concrete step-cost budget for `CliToModelAdapterProgHonest`. -/
-def bhAdapterCostBudgetHonest (S : SignalPqxdh.Setup) (b : SignalPqxdh.QueryBudget)
+@[expose] def bhAdapterCostBudgetHonest (S : SignalPqxdh.Setup) (b : SignalPqxdh.QueryBudget)
     (qStart qDR ℓ : ℕ) : ℕ :=
   2 ^ 8 * (b.q_total + qStart + qDR + 1) *
     (S.N_id + 16 * S.N_spk_tot + S.N_opk_tot + S.N_send_tot + qStart + ℓ + 2 ^ 10)
 
 /-- Closed-form concrete step-cost budget for `CompositionCostedReductionsHonest`. -/
-def bhE2ECostBudgetHonest (S : SignalPqxdh.Setup) (b : SignalPqxdh.QueryBudget)
+@[expose] def bhE2ECostBudgetHonest (S : SignalPqxdh.Setup) (b : SignalPqxdh.QueryBudget)
     (qStart qDR qep ℓ : ℕ) : ℕ :=
   2 ^ 10 * (b.q_total + qStart + qDR + 1) *
       (10 * b.q_total + qStart + qDR + qep + S.N_opk_tot +
@@ -206,7 +205,7 @@ def bhE2ECostBudgetHonest (S : SignalPqxdh.Setup) (b : SignalPqxdh.QueryBudget)
       (S.N_id + S.N_spk_tot + S.N_send_tot + S.N_recv_tot + qStart + maxForwardJumps + 1)
 
 /-- Step-cost, query-count, and size-honesty boundedness predicate for `CompositionCostedReductionsHonest`. -/
-def CompositionCostedReductionsBoundedHonest {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
+@[expose] def CompositionCostedReductionsBoundedHonest {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (b : SignalPqxdh.QueryBudget) (qStart : ℕ) (qs : ℕ → ℕ)
@@ -219,7 +218,7 @@ def CompositionCostedReductionsBoundedHonest {S : SignalPqxdh.Setup} {Pt : Type}
     GRed2Bounded (R.prefixRed k) (fun _ => 1) (fun _ => 0) qTot qTot B false)
 
 /-- Boundedness predicate for `CompositionCostedReductionsHonest` against the clamped `bhE2ECostBudget`. -/
-def CompositionCostedReductionsBoundedHonestV2 {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
+@[expose] def CompositionCostedReductionsBoundedHonestV2 {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (b : SignalPqxdh.QueryBudget) (qStart : ℕ) (qs : ℕ → ℕ)
@@ -233,7 +232,7 @@ def CompositionCostedReductionsBoundedHonestV2 {S : SignalPqxdh.Setup} {Pt : Typ
     GRed2Bounded (R.prefixRed k) (fun _ => 1) (fun _ => 0) qTot qTot B false)
 
 /-- Family-level boundedness predicate for `CompositionCostedReductionFamilyHonest`. -/
-def CompositionCostedReductionFamilyBoundedHonest {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
+@[expose] def CompositionCostedReductionFamilyBoundedHonest {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (R_fam : CompositionCostedReductionFamilyHonest S ℓ P C K qep decT encT) : Prop :=
@@ -242,7 +241,7 @@ def CompositionCostedReductionFamilyBoundedHonest {S : SignalPqxdh.Setup} {Pt : 
       (R_fam b qStart (∑ k ∈ Finset.range qStart, qs k))
 
 /-- Step-cost, query-count, and size-honesty boundedness predicate for `CliToModelAdapterProgHonest`. -/
-def CliAdapterCostBoundedHonest {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def CliAdapterCostBoundedHonest {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (b : SignalPqxdh.QueryBudget) (qStart qDR : ℕ)
     (L : CliToModelAdapterProgHonest S ℓ decT encT) : Prop :=
@@ -261,100 +260,6 @@ theorem CompositionCostedReductionsBoundedHonest.kindRed_totalCost_le
     R.kindRed.totalCost qTot ≤ bhE2ECostBudgetHonest S b qStart qDR qep ℓ :=
   h.1.1
 
-theorem CompositionCostedReductionsBoundedHonest.kindRed_size_le
-    {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
-    {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem} {qep : ℕ}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    {b : SignalPqxdh.QueryBudget} {qStart : ℕ} {qs : ℕ → ℕ}
-    {R : CompositionCostedReductionsHonest S ℓ P C K qep decT encT}
-    (h : CompositionCostedReductionsBoundedHonest P C K qep decT encT b qStart qs R) :
-    let qDR := ∑ k ∈ Finset.range qStart, qs k
-    R.kindRed.size ≤
-      reductionSizeBudget + 2 ^ 12 * bits (bhE2ECostBudgetHonest S b qStart qDR qep ℓ) :=
-  h.1.2.1
-
-theorem CompositionCostedReductionsBoundedHonest.kindRed_totalQueries_le
-    {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
-    {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem} {qep : ℕ}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    {b : SignalPqxdh.QueryBudget} {qStart : ℕ} {qs : ℕ → ℕ}
-    {R : CompositionCostedReductionsHonest S ℓ P C K qep decT encT}
-    (h : CompositionCostedReductionsBoundedHonest P C K qep decT encT b qStart qs R) :
-    let qDR := ∑ k ∈ Finset.range qStart, qs k
-    let qTot := b.q_total + qStart + qDR
-    R.kindRed.totalQueries (fun _ => 1) (fun _ => 0) qTot ≤ 2 * qTot :=
-  h.1.2.2.1
-
-theorem CompositionCostedReductionsBoundedHonest.ops_costedSizeHonest
-    {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
-    {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem} {qep : ℕ}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    {b : SignalPqxdh.QueryBudget} {qStart : ℕ} {qs : ℕ → ℕ}
-    {R : CompositionCostedReductionsHonest S ℓ P C K qep decT encT}
-    (h : CompositionCostedReductionsBoundedHonest P C K qep decT encT b qStart qs R) :
-    CostedOpsSizeHonest (e2eOps ℓ P C K decT encT) :=
-  h.1.2.2.2.1
-
-theorem CompositionCostedReductionsBoundedHonest.samplers_costedSizeHonest
-    {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
-    {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem} {qep : ℕ}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    {b : SignalPqxdh.QueryBudget} {qStart : ℕ} {qs : ℕ → ℕ}
-    {R : CompositionCostedReductionsHonest S ℓ P C K qep decT encT}
-    (h : CompositionCostedReductionsBoundedHonest P C K qep decT encT b qStart qs R) :
-    CostedSampSizeHonest (e2eSamplers ℓ) :=
-  h.1.2.2.2.2.1
-
-theorem CompositionCostedReductionsBoundedHonest.prefixRed_totalCost_le
-    {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
-    {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem} {qep : ℕ}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    {b : SignalPqxdh.QueryBudget} {qStart : ℕ} {qs : ℕ → ℕ}
-    {R : CompositionCostedReductionsHonest S ℓ P C K qep decT encT}
-    (h : CompositionCostedReductionsBoundedHonest P C K qep decT encT b qStart qs R)
-    {k : ℕ} (hk : k < qStart) :
-    let qDR := ∑ j ∈ Finset.range qStart, qs j
-    let qTot := b.q_total + qStart + qDR
-    (R.prefixRed k).totalCost qTot ≤ bhE2ECostBudgetHonest S b qStart qDR qep ℓ :=
-  (h.2 k hk).1
-
-theorem CompositionCostedReductionsBoundedHonest.prefixRed_size_le
-    {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
-    {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem} {qep : ℕ}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    {b : SignalPqxdh.QueryBudget} {qStart : ℕ} {qs : ℕ → ℕ}
-    {R : CompositionCostedReductionsHonest S ℓ P C K qep decT encT}
-    (h : CompositionCostedReductionsBoundedHonest P C K qep decT encT b qStart qs R)
-    {k : ℕ} (hk : k < qStart) :
-    let qDR := ∑ j ∈ Finset.range qStart, qs j
-    (R.prefixRed k).size ≤
-      reductionSizeBudget + 2 ^ 12 * bits (bhE2ECostBudgetHonest S b qStart qDR qep ℓ) :=
-  (h.2 k hk).2.1
-
-theorem CompositionCostedReductionsBoundedHonest.prefixRed_totalQueries₁_eq_zero
-    {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
-    {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem} {qep : ℕ}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    {b : SignalPqxdh.QueryBudget} {qStart : ℕ} {qs : ℕ → ℕ}
-    {R : CompositionCostedReductionsHonest S ℓ P C K qep decT encT}
-    (h : CompositionCostedReductionsBoundedHonest P C K qep decT encT b qStart qs R)
-    {k : ℕ} (hk : k < qStart) :
-    twoStageTotalQueries₁ (R.prefixRed k) (fun _ => 1) (fun _ => 0) = 0 :=
-  (h.2 k hk).2.2.1
-
-theorem CompositionCostedReductionsBoundedHonest.prefixRed_totalQueries₂_le
-    {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
-    {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem} {qep : ℕ}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    {b : SignalPqxdh.QueryBudget} {qStart : ℕ} {qs : ℕ → ℕ}
-    {R : CompositionCostedReductionsHonest S ℓ P C K qep decT encT}
-    (h : CompositionCostedReductionsBoundedHonest P C K qep decT encT b qStart qs R)
-    {k : ℕ} (hk : k < qStart) :
-    let qDR := ∑ j ∈ Finset.range qStart, qs j
-    let qTot := b.q_total + qStart + qDR
-    twoStageTotalQueries₂ (R.prefixRed k) (fun _ => 1) (fun _ => 0) qTot ≤ qTot :=
-  (h.2 k hk).2.2.2.1
-
 /-! ## Size-Honesty, `CostedFits`, and `GRedBounded` / `GRed2Bounded` Lemmas -/
 
 theorem m4_e2eOps_sizeHonest (ℓ : ℕ) {Pt : Type} (P : SignalPqxdh.Primitives) (C : Crypto)
@@ -362,26 +267,8 @@ theorem m4_e2eOps_sizeHonest (ℓ : ℕ) {Pt : Type} (P : SignalPqxdh.Primitives
     OpsSizeHonest (e2eOps ℓ P C K decT encT) :=
   e2eOps_sizeHonest ℓ P C K decT encT
 
-theorem m4_e2eOps_costedSizeHonest (ℓ : ℕ) {Pt : Type} (P : SignalPqxdh.Primitives) (C : Crypto)
-    (K : MlKem) (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
-    CostedOpsSizeHonest (e2eOps ℓ P C K decT encT) :=
-  e2eOps_costedSizeHonest ℓ P C K decT encT
-
-theorem m4_e2eAdapterOps_sizeHonest (ℓ : ℕ) {Pt : Type}
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
-    OpsSizeHonest (e2eAdapterOps ℓ decT encT) :=
-  e2eAdapterOps_sizeHonest ℓ decT encT
-
-theorem m4_e2eAdapterOps_costedSizeHonest (ℓ : ℕ) {Pt : Type}
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
-    CostedOpsSizeHonest (e2eAdapterOps ℓ decT encT) :=
-  e2eAdapterOps_costedSizeHonest ℓ decT encT
-
 theorem m4_e2eSamplers_sizeHonest (ℓ : ℕ) : SampSizeHonest (e2eSamplers ℓ) :=
   e2eSamplers_sizeHonest ℓ
-
-theorem m4_e2eSamplers_costedSizeHonest (ℓ : ℕ) : CostedSampSizeHonest (e2eSamplers ℓ) :=
-  e2eSamplers_costedSizeHonest ℓ
 
 @[simp] theorem costedFits_bool {S0 : Sig} (B : ℕ) (b : Bool) :
     CostedFits B (Ty.bool (S := S0)) b :=
@@ -608,21 +495,6 @@ theorem compositionBoundedHonestV2_of_bounds {S : SignalPqxdh.Setup} {Pt : Type}
   · exact gRed2Bounded_of_bounds (R.prefixRed k) (fun _ => 1) (fun _ => 0) _ _ _ false
       (hPrefCost k hk) (hPrefSize k hk) (hPrefQ1 k hk) (hPrefQ2 k hk)
       (e2eOps_sizeHonest ℓ P C K decT encT) (e2eSamplers_sizeHonest ℓ)
-
-/-- Discharges `CliAdapterCostBoundedHonest` from numeric step, size, and query bounds on `L`. -/
-theorem cliAdapterCostBoundedHonest_of_bounds {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
-    (b : SignalPqxdh.QueryBudget) (qStart qDR : ℕ)
-    (L : CliToModelAdapterProgHonest S ℓ decT encT)
-    (hCost : L.totalCost (b.q_total + qStart + qDR) ≤ bhAdapterCostBudgetHonest S b qStart qDR ℓ)
-    (hSize :
-      L.size ≤ reductionSizeBudget + 2 ^ 12 * bits (bhAdapterCostBudgetHonest S b qStart qDR ℓ))
-    (hQueries : L.totalQueries (fun _ => 1) (fun _ => 0) (b.q_total + qStart + qDR) ≤
-      b.q_total + qStart + qDR) :
-    CliAdapterCostBoundedHonest decT encT b qStart qDR L := by
-  unfold CliAdapterCostBoundedHonest
-  exact gRedBounded_of_bounds L (fun _ => 1) (fun _ => 0) _ _ _
-    hCost hSize hQueries (e2eAdapterOps_sizeHonest ℓ decT encT) (e2eSamplers_sizeHonest ℓ)
 
 /-! ## Target-Game Query Bounds, Equivalence Contracts, and Model Security Statements -/
 
@@ -983,7 +855,7 @@ theorem M4CompositionBundleSpec.target_advantage_le {S : SignalPqxdh.Setup} {Pt 
     (add_le_add le_rfl (h.prefixSpec.advantage_le hP B_A hB))
 
 /-- Family-level composition contract over `R_fam : CompositionCostedReductionFamilyHonest`. -/
-def M4CompositionFamilySpec {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
+@[expose] def M4CompositionFamilySpec {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (R_fam : CompositionCostedReductionFamilyHonest S ℓ P C K qep decT encT) : Prop :=
@@ -1030,50 +902,6 @@ structure M4AdapterBundleSpec {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
           ((L_bh (S := S) (ℓ := ℓ) (PQC := BitVec 512) decT encT).eval
             (fun _ => cliGameAdversaryReassoc A) ())]
 
-theorem M4AdapterBundleSpec.costBounded {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    {L : CliToModelAdapterProgHonest S ℓ decT encT}
-    (h : M4AdapterBundleSpec decT encT L)
-    (b : SignalPqxdh.QueryBudget) (qStart qDR : ℕ) :
-    CliAdapterCostBoundedHonest decT encT b qStart qDR L :=
-  cliAdapterCostBoundedHonest_of_bounds decT encT b qStart qDR L
-    (h.totalCost_le b qStart qDR) (h.size_le b qStart qDR)
-    (h.totalQueries_le (b.q_total + qStart + qDR))
-
-/-- Honest per-session concrete advantage bound for `R_e2e` against session `k` on `B_A`. -/
-noncomputable def bhPrefixFullBoundMixV1Honest {Pt : Type}
-    [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
-    (ℓ : ℕ) (D : SessionCostedReductionFamily Pt ℓ)
-    (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
-    (lam : Pt) (qep qTot q : ℕ) (δ : ℝ≥0∞) (k : ℕ) (flip : Bool)
-    (R_e2e : CompositionCostedReductionsHonest S ℓ P C K qep decT encT)
-    (B_A : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool) : ℝ≥0∞ :=
-  let oa := stageOneAsProbComp ((R_e2e.prefixRed k).eval1 (fun _ => B_A) () qTot false)
-  let Ak := fun o => (R_e2e.prefixRed k).eval2 o.2 flip qTot false
-  let R := fun o => D C K o.1.1 o.1.2.1 Dh encPt encT decT lam qep q
-  let Rspk := fun o => (R o).spk
-  uniformStartMixtureBound C K ℓ Dh encPt encT decT lam qep q δ oa
-      (fun o => o.1.1) (fun o => o.1.2.1) R Ak
-    + 2 * (extractPRF C.F encPt).prfAdvantage
-        (prefixPrfAvg oa (fun o =>
-          evalSpkLeakRed (Rspk o).spkLeakRed o.1.2.2 (Ak o)))
-    + 2 * (extractPRF C.F encPt).prfAdvantage
-        (prefixPrfAvg oa (fun o =>
-          evalSpkLeakRedU (Rspk o).spkLeakRedU
-            (fun x => evalSpkLeakRed (Rspk o).spkLeakRed x (Ak o))))
-    + 2 * (epoch0ChainForgeryTerm C.F q
-        + (∑ j ∈ Finset.range spkSwapHybridCount,
-            ((expandPRG C.F).prgAdvantage
-                (prefixPrgAvg oa (fun o =>
-                  evalSpkSwapPrgHybrid ((Rspk o).hop2PrgRedK j) o.1.2.2 (Ak o)))
-              + (extractPRF C.F encPt).prfAdvantage
-                (prefixPrfAvg oa (fun o =>
-                  evalSpkSwapPrfHybrid ((Rspk o).hop2PrfRedK j) o.1.2.2 (Ak o)))))
-        + hop2CreateCollTerm Dh q + spkSwapSpuriousStepTerm C.F q
-        + spkSwapCreationPointHitTerm Dh q + spkSwapHiddenScalarGuessTerm Dh q)
-
 /-- Multi-session model security statement over `CompositionCostedReductionsHonest` specialized to
 `SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P`. -/
 def ModelSecureHonestStmt {Pt : Type} (S : SignalPqxdh.Setup) (ℓ : ℕ) : Prop :=
@@ -1111,7 +939,7 @@ def ModelSecureHonestStmt {Pt : Type} (S : SignalPqxdh.Setup) (ℓ : ℕ) : Prop
 
 /-- Budget-indexed family formulation of multi-session model security over
 `CompositionCostedReductionFamilyHonest`. -/
-def ModelSecureHonestFamilyStmt {Pt : Type} (S : SignalPqxdh.Setup) (ℓ : ℕ) : Prop :=
+@[expose] def ModelSecureHonestFamilyStmt {Pt : Type} (S : SignalPqxdh.Setup) (ℓ : ℕ) : Prop :=
   ∀ (P : SignalPqxdh.Primitives)
     (C : Crypto) (K : MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey),
@@ -1186,13 +1014,5 @@ theorem modelSecureHonestFamily_of_spec {Pt : Type} (S : SignalPqxdh.Setup) (ℓ
   unfold ComposedAdvantage
   rw [composedExp_modelIface]
   exact hCur.target_advantage_le hP (modelAdvRun A) hB
-
-theorem modelSecureHonestFamily_of_modelSecureHonest {Pt : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
-    (h : ModelSecureHonestStmt (Pt := Pt) S ℓ) :
-    ModelSecureHonestFamilyStmt (Pt := Pt) S ℓ := by
-  unfold ModelSecureHonestFamilyStmt
-  intro P C K qep decT encT
-  obtain ⟨R_e2e, hBnd, hSec⟩ := h P C K qep decT encT
-  exact ⟨R_e2e.toFamily, fun b qStart qs => hBnd b qStart qs, hSec⟩
 
 end Computational.Proofs.E2E.Dsl.M4ReductionsIface

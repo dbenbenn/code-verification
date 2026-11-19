@@ -9,11 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
 public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefs
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<NoHeaderReceived>::recv_hdr_chunk`: Budget-Threaded Specifications (Block `369`)
@@ -23,7 +28,7 @@ Allocator-event envelopes (`NoHeaderReceivedRecvHdrChunkEnv`) and budget-threade
 and contracts (`NoHeaderReceivedRecvHdrChunkPlacedOkX{,OfEnv}`) for Block `369`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -60,13 +65,13 @@ open LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
 
 /-- Heap allocation events for splitting `hdrFull` (`64 ≤ hdrFullLen`) into `mac` (`hdrFull.drop 64`)
     and `hdr` (`hdrFull.take 64`, 64 bytes). -/
-def recvHdrChunkAllocMacHdrEvents (hdrFullLen : Nat) : List AllocEvent :=
+@[expose] def recvHdrChunkAllocMacHdrEvents (hdrFullLen : Nat) : List AllocEvent :=
   (if hdrFullLen = 64 then [] else rustAllocEvents (hdrFullLen - 64) 1) ++
     rustAllocEvents 64 1
 
 /-- Heap allocation events for `slice_concat_3` (`33 + 8 + 64 = 105` bytes) followed by
     `libcrux_hmac::hmac` (`SHA256`) inside `Authenticator::verify_hdr`. -/
-def recvHdrChunkHmacEvents : List AllocEvent :=
+@[expose] def recvHdrChunkHmacEvents : List AllocEvent :=
   rustAllocEvents 105 1 ++ libcruxHmacSha256Events
 
 /-- Post-`decoded_message` allocation envelope of `<NoHeaderReceived>::recv_hdr_chunk`:
@@ -74,7 +79,7 @@ def recvHdrChunkHmacEvents : List AllocEvent :=
     - `some hdrFull` with `hdrFull.length < 64` (slice bounds panic before `mac`/`hdr` alloc): `[]`;
     - `some hdrFull` with `64 ≤ hdrFull.length`: `mac`/`hdr` slice allocations + `slice_concat_3` +
       `libcrux_hmac::hmac`, followed by `FreeOnlyEvs` from epilogue buffer drops. -/
-def RecvHdrChunkTailEnv : Option Bytes → List AllocEvent → Prop
+@[expose] def RecvHdrChunkTailEnv : Option Bytes → List AllocEvent → Prop
   | none, evs => evs = []
   | some hdrFull, evs =>
     if hdrFull.length < 64 then
@@ -100,7 +105,7 @@ theorem recvHdrChunkTailEnv_nonempty (optHdr : Option Bytes) :
     - `x.epoch == x.self.uc.epoch`: sequential composition of `<PolyDecoder>::add_chunk`
       (`AddChunkSlotsEnv`), `<PolyDecoder>::decoded_message` (`DecodedMessageEnv`), and
       `RecvHdrChunkTailEnv`. -/
-def NoHeaderReceivedRecvHdrChunkEnv {F : ShaCompress}
+@[expose] def NoHeaderReceivedRecvHdrChunkEnv {F : ShaCompress}
     (x : NoHeaderReceivedRecvHdrChunkGhost F) (evs : List AllocEvent) : Prop :=
   if x.epoch != x.self.uc.epoch then
     evs = []
@@ -132,7 +137,7 @@ theorem noHeaderReceivedRecvHdrChunkEnv_nonempty {F : ShaCompress}
     `<NoHeaderReceived>::recv_hdr_chunk` (Block `369`). Retains the genuine model-level panic
     disjunct `(x.self.recv_hdr_chunk x.epoch x.chunk).isPanic = true` while eliminating
     `∨ allocFailedIn s0 sf`. -/
-def noHeaderReceivedRecvHdrChunkPlacedSpecOfPrePostEnv [LibsignalPlacement]
+@[expose] def noHeaderReceivedRecvHdrChunkPlacedSpecOfPrePostEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress)
     (PreEnv PostEnv : NoHeaderReceivedRecvHdrChunkGhost F → List AllocEvent → Prop) :
@@ -185,7 +190,7 @@ abbrev noHeaderReceivedRecvHdrChunkPlacedSpec [LibsignalPlacement]
 
 /-- Envelope-parametric relocatable contract for `<NoHeaderReceived>::recv_hdr_chunk` (Block `369`)
     wrapped with `withLsCodeRoLoaded lsmpl`. -/
-def NoHeaderReceivedRecvHdrChunkPlacedOkXOfEnv [LibsignalPlacement]
+@[expose] def NoHeaderReceivedRecvHdrChunkPlacedOkXOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress)
     (Env : NoHeaderReceivedRecvHdrChunkGhost F → List AllocEvent → Prop)

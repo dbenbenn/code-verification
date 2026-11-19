@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.FSAEAD.AeadRedBound
-public import Computational.Proofs.CryptoGames.FSAEAD.HybridLazy
-public import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Start
+public import Computational.Proofs.CryptoGames.FSAEAD.AeadRedBound -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.FSAEAD.HybridLazy -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Start -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.FSAEAD.HybridOTReal
 import Computational.Proofs.CryptoGames.FSAEAD.Theorem5
 import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Final
 public import Computational.Proofs.CryptoGames.FSAEAD.FSAEADProofDefs
+import Computational.Proofs.CryptoGames.FSAEAD.HybridOT
 
 /-!
 # ACD19 Theorem 5 with Restricted AEAD Correctness
@@ -31,7 +32,7 @@ round-trips only bounded-length public headers, correctness is assumed only on A
 for adversaries whose encryption queries satisfy `FSAEAD.EncADsOk ok A`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -879,7 +880,7 @@ theorem hOut_L2_gen (A : RatchetAdversary CK MK AD M C) (k t₀ : ℕ) (la : Boo
     (fun (a : Bool) (h : HState CK MK AD M C) => if la then h.lf else (h.b == a || h.win)) _)
 
 /-- Observational agreement of two `SP` computations from states with `s.2 ≠ .unknown`, preserving `s.2 ≠ .unknown`. -/
-def EqKnown {α : Type} (m₁ m₂ : SP α) : Prop :=
+@[expose] def EqKnown {α : Type} (m₁ m₂ : SP α) : Prop :=
   ∀ {β : Type} (s : St) (g₁ g₂ : α × St → ProbComp β),
     s.2 ≠ .unknown →
     (∀ z : α × St, z.2.2 ≠ .unknown → g₁ z = g₂ z) →
@@ -1217,7 +1218,7 @@ local notation "HS" => HState CK MK AD M C
 local notation "SP" => StateT (HSt CK MK AD M C) ProbComp
 local notation "SO" => StateT (HSt CK MK AD M C) (OracleComp (IndexedOtccaSpec AD M C))
 
-def slotLiftOtcca {S : Type}
+@[expose] def slotLiftOtcca {S : Type}
     (impl : QueryImpl (IndexedOtccaSpec AD M C) (StateT S ProbComp)) :
     QueryImpl (AEADScheme.otccaSpec (ℕ × AD) M C) (StateT (ℕ → S) ProbComp)
   | .inl (h, msg) => StateT.mk fun σ => do
@@ -1228,7 +1229,7 @@ def slotLiftOtcca {S : Type}
       pure (r, Function.update σ h.1 s')
 
 /-- Lifts a single-slot `IndexedOtccaSpec` implementation to `ℕ → S` by dispatching on the header index. -/
-def slotLift {S : Type}
+@[expose] def slotLift {S : Type}
     (impl : QueryImpl (IndexedOtccaSpec AD M C) (StateT S ProbComp)) :
     QueryImpl (IndexedOtccaSpec AD M C) (StateT (ℕ → S) ProbComp) :=
   (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (ℕ → S) ProbComp)
@@ -1282,7 +1283,7 @@ theorem sampleKeys_set_deq {α : Type} {n k : ℕ} (hk : k < n) (f : List MK →
       exact DEq.bind_right ($ᵗ MK) fun K => ih hk' fun ks => f (K :: ks)
 
 /-- Multi-slot OT-CCA experiment with hidden bit `b` and `N` pre-sampled slot keys. -/
-def multiOtBranch (b : Bool) (N : ℕ) (B : AEADScheme.OTCCAAdversary (ℕ × AD) M C) :
+@[expose] def multiOtBranch (b : Bool) (N : ℕ) (B : AEADScheme.OTCCAAdversary (ℕ × AD) M C) :
     ProbComp Bool := do
   let K₀ ← $ᵗ MK
   let ks ← sampleKeys N
@@ -1291,7 +1292,7 @@ def multiOtBranch (b : Bool) (N : ℕ) (B : AEADScheme.OTCCAAdversary (ℕ × AD
 /-- Joint state pairing the hybrid state with per-slot OT-CCA states. -/
 abbrev JStM (CK MK AD M C : Type) := HSt CK MK AD M C × (ℕ → IndexedOtccaState MK AD C)
 
-def YM {α : Type} (y : SO α) (σ : JStM CK MK AD M C) : ProbComp (α × JStM CK MK AD M C) :=
+@[expose] def YM {α : Type} (y : SO α) (σ : JStM CK MK AD M C) : ProbComp (α × JStM CK MK AD M C) :=
   (fun r => (r.1.1, (r.1.2, r.2))) <$>
     (simulateQ (slotLift (otImpl ideal ae)) (y.run σ.1)).run σ.2
 
@@ -1321,7 +1322,7 @@ theorem YM_lift {α : Type} (o : OracleComp (IndexedOtccaSpec AD M C) α) (σ : 
   simp [YM]
 
 /-- Relational judgment coupling a left computation on `S` with a right computation in `SO` via projection `f`. -/
-def JM {S : Type} (f : JStM CK MK AD M C → S) {α : Type}
+@[expose] def JM {S : Type} (f : JStM CK MK AD M C → S) {α : Type}
     (P : JStM CK MK AD M C → Prop) (x : StateT S ProbComp α) (y : SO α)
     (Q : α → JStM CK MK AD M C → Prop) : Prop :=
   ∀ σ, P σ → DEq (x.run (f σ)) ((fun r => (r.1, f r.2)) <$> YM ideal ae y σ) ∧
@@ -1437,7 +1438,7 @@ end JMOnHSt
 
 /-! ### Multi-slot ideal world (`b = true`) -/
 
-def IdIM (σ : JStM CK MK AD M C) : Prop := ∀ i, (σ.2 i).b = true
+@[expose] def IdIM (σ : JStM CK MK AD M C) : Prop := ∀ i, (σ.2 i).b = true
 
 theorem jm_enc_ideal (h : ℕ × AD) (msg : M) :
     JM ideal ae Prod.fst IdIM
@@ -1760,11 +1761,11 @@ abbrev HStK (CK MK AD M C : Type) := HSt CK MK AD M C × Option (List MK)
 
 local notation "SPK" => StateT (HStK CK MK AD M C) ProbComp
 
-def liftK {α : Type} (x : SP α) : SPK α :=
+@[expose] def liftK {α : Type} (x : SP α) : SPK α :=
   StateT.mk fun s => (fun z => (z.1, (z.2, s.2))) <$> x.run s.1
 
 /-- Eagerly samples the remaining `N - h.keys.length` message keys when the slot is `.unknown` and the queue is `none`. -/
-def keysFill (N : ℕ) (hst : HSt CK MK AD M C) :
+@[expose] def keysFill (N : ℕ) (hst : HSt CK MK AD M C) :
     Option (List MK) → ProbComp (Option (List MK))
   | none =>
     match hst.2 with
@@ -1813,7 +1814,7 @@ theorem comm_modifyHK (N : ℕ) (g : HS → HS) (hg : ∀ h, (g h).keys = h.keys
   simpa only [bind_assoc] using
     DEq.bind_left (idem_keysFill N (h, sl) opt) fun opt' => pure ((), (g h, sl), opt')
 
-def genStepK (P : Params) (D : ℕ → ProbComp (CK × MK)) : SPK Unit :=
+@[expose] def genStepK (P : Params) (D : ℕ → ProbComp (CK × MK)) : SPK Unit :=
   StateT.mk fun ⟨⟨h, sl⟩, opt⟩ =>
     match sl with
     | .seed w =>
@@ -1839,11 +1840,11 @@ def genStepK (P : Params) (D : ℕ → ProbComp (CK × MK)) : SPK Unit :=
         let mt ← D h.keys.length
         pure ((), (({ h with keys := h.keys ++ [mt.2] }, .seed mt.1), none))
 
-def genNK (P : Params) (D : ℕ → ProbComp (CK × MK)) : ℕ → SPK Unit
+@[expose] def genNK (P : Params) (D : ℕ → ProbComp (CK × MK)) : ℕ → SPK Unit
   | 0 => pure ()
   | n + 1 => do genStepK G P D; genNK P D n
 
-def genUpToK (P : Params) (D : ℕ → ProbComp (CK × MK)) (i : ℕ) : SPK Unit := do
+@[expose] def genUpToK (P : Params) (D : ℕ → ProbComp (CK × MK)) (i : ℕ) : SPK Unit := do
   let st ← liftK getH
   genNK G P D (i - st.keys.length)
 
@@ -1856,7 +1857,7 @@ def senderKeyK : SPK CK := do
   | some c, some w => pure (chainFrom G c w (st.lastSentIdx - c))
   | _, _ => revealK
 
-def receiveHK (P : Params) (D : ℕ → ProbComp (CK × MK))
+@[expose] def receiveHK (P : Params) (D : ℕ → ProbComp (CK × MK))
     (ops : Option (SpecialOps AD M C ProbComp)) (hint : Option M) (a : AD) (c : ℕ × C) :
     SPK (Option (ℕ × M)) := do
   let (i, e) := c
@@ -1877,7 +1878,7 @@ def receiveHK (P : Params) (D : ℕ → ProbComp (CK × MK))
       pure (some (i, msg))
     | none => pure none
 
-def transmitHWithK (P : Params) (D : ℕ → ProbComp (CK × MK))
+@[expose] def transmitHWithK (P : Params) (D : ℕ → ProbComp (CK × MK))
     (ops : Option (SpecialOps AD M C ProbComp)) (q : AD × M) : SPK (Option (ℕ × C)) := do
   let st ← liftK getH
   if st.ended then pure none else
@@ -1888,7 +1889,7 @@ def transmitHWithK (P : Params) (D : ℕ → ProbComp (CK × MK))
                                      inTransit := ⟨i, q.1, q.2, (i, e)⟩ :: st.inTransit })
   pure (some (i, e))
 
-def challengeHWithK (P : Params) (D : ℕ → ProbComp (CK × MK))
+@[expose] def challengeHWithK (P : Params) (D : ℕ → ProbComp (CK × MK))
     (ops : Option (SpecialOps AD M C ProbComp)) (q : AD × M × M) : SPK (Option (ℕ × C)) := do
   let st ← liftK getH
   if st.ended || st.senderCorruptedAt.isSome then pure none else
@@ -1902,7 +1903,7 @@ def challengeHWithK (P : Params) (D : ℕ → ProbComp (CK × MK))
                                      challengesInTransit := i :: st.challengesInTransit })
   pure (some (i, e))
 
-def corruptSenderHK (P : Params) (_ : Unit) : SPK (Option (RatchetSenderState CK)) := do
+@[expose] def corruptSenderHK (P : Params) (_ : Unit) : SPK (Option (RatchetSenderState CK)) := do
   let st ← liftK getH
   if st.ended then pure none
   else if P.la then do liftK (modifyH fun st => { st with ended := true }); pure none
@@ -1912,7 +1913,7 @@ def corruptSenderHK (P : Params) (_ : Unit) : SPK (Option (RatchetSenderState CK
                                        corrKey := some (st.corrKey.getD w) })
   pure (some ⟨w, st.lastSentIdx⟩)
 
-def corruptReceiverHK (P : Params) (_ : Unit) :
+@[expose] def corruptReceiverHK (P : Params) (_ : Unit) :
     SPK (Option (RatchetSenderState CK × RatchetReceiverState CK MK)) := do
   let st ← liftK getH
   if st.ended || !st.challengesInTransit.isEmpty ||
@@ -1928,7 +1929,7 @@ def corruptReceiverHK (P : Params) (_ : Unit) :
   liftK (modifyH fun st => { st with ended := true })
   pure (some (⟨wA, st.lastSentIdx⟩, ⟨wB, st.receiverIdx, D⟩))
 
-def deliverHK (P : Params) (D : ℕ → ProbComp (CK × MK))
+@[expose] def deliverHK (P : Params) (D : ℕ → ProbComp (CK × MK))
     (ops : Option (SpecialOps AD M C ProbComp)) (q : AD × (ℕ × C)) :
     SPK (Option (ReceiveResult M)) := do
   let st ← liftK getH
@@ -1949,7 +1950,7 @@ def deliverHK (P : Params) (D : ℕ → ProbComp (CK × MK))
                                             win := st'.win || incorrect }).removeFromTransit r.idx)
       pure (some (.accepted i' out))
 
-def injectHK (P : Params) (D : ℕ → ProbComp (CK × MK))
+@[expose] def injectHK (P : Params) (D : ℕ → ProbComp (CK × MK))
     (ops : Option (SpecialOps AD M C ProbComp)) (q : AD × (ℕ × C)) :
     SPK (Option (ReceiveResult M)) := do
   let st ← liftK getH
@@ -1964,7 +1965,7 @@ def injectHK (P : Params) (D : ℕ → ProbComp (CK × MK))
                                           ended := st'.ended || (P.la && lfNow) }).removeFromTransit i')
     pure (some (.accepted i' (some m')))
 
-def implWithK (P : Params) (D : ℕ → ProbComp (CK × MK))
+@[expose] def implWithK (P : Params) (D : ℕ → ProbComp (CK × MK))
     (ops : Option (SpecialOps AD M C ProbComp)) :
     QueryImpl (unifSpec + spec (RatchetSenderState CK) (RatchetReceiverState CK MK) AD M (ℕ × C))
       SPK
@@ -2196,7 +2197,7 @@ theorem comm_implWithK (P : Params) (D : ℕ → ProbComp (CK × MK))
   · exact comm_deliverHK ae G maxSkip P D q
   · exact comm_injectHK ae G maxSkip P D q
 
-def EqNone {α : Type} (x : SP α) (y : SPK α) : Prop :=
+@[expose] def EqNone {α : Type} (x : SP α) (y : SPK α) : Prop :=
   ∀ s, y.run (s, none) = (liftK x).run (s, none)
 
 theorem EqNone.lift {α : Type} (x : SP α) : EqNone x (liftK x) := fun _ => rfl
@@ -2436,22 +2437,22 @@ theorem JM.sampleK {α : Type} {P : JStM CK MK AD M C → Prop}
 
 end JMOnHStK
 
-def fixKeysAux (N : ℕ) (σ : ℕ → IndexedOtccaState MK AD C) (cmp : ℕ → Bool) (ks : List MK) : List MK :=
+@[expose] def fixKeysAux (N : ℕ) (σ : ℕ → IndexedOtccaState MK AD C) (cmp : ℕ → Bool) (ks : List MK) : List MK :=
   (List.range ks.length).map fun k =>
     match ks[k]? with
     | some K => if k < N && !cmp (k + 1) then (σ (k + 1)).key else K
     | none => (σ 0).key
 
-def fixKeys (N : ℕ) (σ : ℕ → IndexedOtccaState MK AD C) (h : HState CK MK AD M C) : List MK :=
+@[expose] def fixKeys (N : ℕ) (σ : ℕ → IndexedOtccaState MK AD C) (h : HState CK MK AD M C) : List MK :=
   fixKeysAux N σ h.isCompromised h.keys
 
-def fixHM (N : ℕ) (σ : ℕ → IndexedOtccaState MK AD C) (h : HState CK MK AD M C) : HState CK MK AD M C :=
+@[expose] def fixHM (N : ℕ) (σ : ℕ → IndexedOtccaState MK AD C) (h : HState CK MK AD M C) : HState CK MK AD M C :=
   { h with keys := fixKeys N σ h }
 
-def remKeys (N : ℕ) (σ : ℕ → IndexedOtccaState MK AD C) (len : ℕ) : List MK :=
+@[expose] def remKeys (N : ℕ) (σ : ℕ → IndexedOtccaState MK AD C) (len : ℕ) : List MK :=
   ((List.range N).drop len).map fun k => (σ (k + 1)).key
 
-def fRM (N : ℕ) (σ : JStM CK MK AD M C) : HStK CK MK AD M C :=
+@[expose] def fRM (N : ℕ) (σ : JStM CK MK AD M C) : HStK CK MK AD M C :=
   ((fixHM N σ.2 σ.1.1, σ.1.2),
     match σ.1.2 with
     | .unknown => some (remKeys N σ.2 σ.1.1.keys.length)
@@ -2638,7 +2639,7 @@ def LenInvM (la : Bool) (σ : JStM CK MK AD M C) : Prop :=
   (σ.1.1.senderCorruptedAt = none → la = false → σ.1.1.keys.length = σ.1.1.lastSentIdx) ∧
     ∀ c, σ.1.1.senderCorruptedAt = some c → c ≤ σ.1.1.keys.length
 
-def KeyExtM (σ σ' : JStM CK MK AD M C) : Prop :=
+@[expose] def KeyExtM (σ σ' : JStM CK MK AD M C) : Prop :=
   σ'.2 = σ.2 ∧ σ'.1.1 = { σ.1.1 with keys := σ'.1.1.keys }
 
 variable {N}
@@ -3529,12 +3530,12 @@ theorem multiOtBranch_false_eq_hRunWith (N : ℕ) (la : Bool)
 
 /-! ### Multi-slot query bounds -/
 
-def multiOffRange (N : ℕ) : (IndexedOtccaSpec AD M C).Domain → Bool
+@[expose] def multiOffRange (N : ℕ) : (IndexedOtccaSpec AD M C).Domain → Bool
   | .inl _ => false
   | .inr (.inl ⟨h, _⟩) => !decide (1 ≤ h.1 ∧ h.1 ≤ N)
   | .inr (.inr ⟨h, _⟩) => !decide (1 ≤ h.1 ∧ h.1 ≤ N)
 
-def hybSlotOtcca {SL SR : Type}
+@[expose] def hybSlotOtcca {SL SR : Type}
     (implL : QueryImpl (IndexedOtccaSpec AD M C) (StateT SL ProbComp))
     (implR : QueryImpl (IndexedOtccaSpec AD M C) (StateT SR ProbComp))
     (k : ℕ) : QueryImpl (AEADScheme.otccaSpec (ℕ × AD) M C)
@@ -3555,7 +3556,7 @@ def hybSlotOtcca {SL SR : Type}
         (implL (.inr (.inr ⟨h, e⟩))).run (s.1 h.1)
 
 /-- `k`-slot hybrid implementation of `IndexedOtccaSpec AD M C`, running `implR` on slots `1 ≤ i ≤ k` and `implL` elsewhere. -/
-def hybSlot {SL SR : Type}
+@[expose] def hybSlot {SL SR : Type}
     (implL : QueryImpl (IndexedOtccaSpec AD M C) (StateT SL ProbComp))
     (implR : QueryImpl (IndexedOtccaSpec AD M C) (StateT SR ProbComp))
     (k : ℕ) : QueryImpl (IndexedOtccaSpec AD M C) (StateT ((ℕ → SL) × (ℕ → SR)) ProbComp) :=

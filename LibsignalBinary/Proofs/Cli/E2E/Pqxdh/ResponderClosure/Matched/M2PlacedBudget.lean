@@ -11,18 +11,18 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2AuxPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsAPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2AuxPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsAPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
@@ -33,6 +33,16 @@ import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3b2
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import ProofLib.SepLogic.WPp
+public import ProofLib.MallocngBridge
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Shared Error Record Teardown
@@ -42,7 +52,7 @@ Budget-threaded `[LibsignalPlacement]` counterpart of `Matched.M2Placed` on Bloc
 `FreeOnlyEvs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -50,8 +60,6 @@ set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
 namespace LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2PlacedBudget
-
-noncomputable section
 
 open Arm64 ProofLib ProofLib.ProgramReflection SepProp
 open CryptoGames.LibsignalSession (SessionState)
@@ -507,7 +515,5 @@ theorem closure_err_drop_record_tail_placed_ok [LibsignalPlacement]
       Entails.sepExists_right evs (Entails.pure_right hfree (Entails.refl _))
     exact entails_replace_sub hpack (by sep_focus) (by sep_ac_rfl)
   · exact ⟨sf, hsteps, Or.inr hpan_oom⟩
-
-end
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2PlacedBudget

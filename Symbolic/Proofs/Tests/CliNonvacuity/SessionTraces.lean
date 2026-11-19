@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.SessionCliModel58
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionCliModel58 -- proof-setup: allow-public-import
 import all Init.Data.Nat.Bitwise.Basic
 import all Init.Data.Repr
 import all Init.Data.String.Defs
@@ -26,7 +26,7 @@ calls with two chain-key `.leak` events before Call 7), quantified over all
 `(X : UnreachedPqxdhPrimitives)` and `(run : CliRun)` satisfying `CliSpecPqxdh run X myParams`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -92,38 +92,38 @@ open Swarm.Phase0WholeFunctionBridge (sessionToRecordRec)
 
 /-! ## Concrete `CliCall`s, Leaked Keys, and CLI Event Sequences -/
 
-def call0 : CliCall := ⟨"alice", .init (peerOf r0 "alice") bundleDir,
+@[expose] def call0 : CliCall := ⟨"alice", .init (peerOf r0 "alice") bundleDir,
   (publicBundleOf bE_cli).files bundleDir, [], tapeInitBytes⟩
-def call1 : CliCall := ⟨"alice", .send (peerOf r0 "alice"), [], pt0, cSend0⟩
-def call2 : CliCall := ⟨"alice", .send (peerOf r0 "alice"), [], pt1, cSend1⟩
-def call3 : CliCall := ⟨"bob", .recv (peerOf r0 "bob"), [], wire0, rc3Bytes⟩
-def call4 : CliCall := ⟨"bob", .recv (peerOf r0 "bob"), [], wire1, rc4Bytes⟩
-def call5 : CliCall := ⟨"bob", .send (peerOf r0 "bob"), [], ptReply0, cSendReply0⟩
-def call6 : CliCall := ⟨"alice", .recv (peerOf r0 "alice"), [], wireReply0, rc6Bytes⟩
-def call7 : CliCall := ⟨"alice", .send (peerOf r0 "alice"), [], pt2, cSend2⟩
-def call8 : CliCall := ⟨"bob", .recv (peerOf r0 "bob"), [], wire2, rc8Bytes⟩
+@[expose] def call1 : CliCall := ⟨"alice", .send (peerOf r0 "alice"), [], pt0, cSend0⟩
+@[expose] def call2 : CliCall := ⟨"alice", .send (peerOf r0 "alice"), [], pt1, cSend1⟩
+@[expose] def call3 : CliCall := ⟨"bob", .recv (peerOf r0 "bob"), [], wire0, rc3Bytes⟩
+@[expose] def call4 : CliCall := ⟨"bob", .recv (peerOf r0 "bob"), [], wire1, rc4Bytes⟩
+@[expose] def call5 : CliCall := ⟨"bob", .send (peerOf r0 "bob"), [], ptReply0, cSendReply0⟩
+@[expose] def call6 : CliCall := ⟨"alice", .recv (peerOf r0 "alice"), [], wireReply0, rc6Bytes⟩
+@[expose] def call7 : CliCall := ⟨"alice", .send (peerOf r0 "alice"), [], pt2, cSend2⟩
+@[expose] def call8 : CliCall := ⟨"bob", .recv (peerOf r0 "bob"), [], wire2, rc8Bytes⟩
 
-def ckrBytes : HwBytes := CryptoGames.HMAC.keyToBytes32 rck_A0
-def cksBytes : HwBytes := CryptoGames.HMAC.keyToBytes32 sck_A4
+@[expose] def ckrBytes : HwBytes := CryptoGames.HMAC.keyToBytes32 rck_A0
+@[expose] def cksBytes : HwBytes := CryptoGames.HMAC.keyToBytes32 sck_A4
 
-def runEv0 : RunEvent := runEventOf call0 (some (0, []))
-def runEv1 : RunEvent := runEventOf call1 (some (0, wire0))
-def runEv2 : RunEvent := runEventOf call2 (some (0, wire1))
-def runEv3 : RunEvent := runEventOf call3 (some (0, pt0))
-def runEv4 : RunEvent := runEventOf call4 (some (0, pt1))
-def runEv5 : RunEvent := runEventOf call5 (some (0, wireReply0))
-def runEv6 : RunEvent := runEventOf call6 (some (0, ptReply0))
-def runEv7 : RunEvent := runEventOf call7 (some (0, wire2))
-def runEv8 : RunEvent := runEventOf call8 (some (0, pt2))
+@[expose] def runEv0 : RunEvent := runEventOf call0 (some (0, []))
+@[expose] def runEv1 : RunEvent := runEventOf call1 (some (0, wire0))
+@[expose] def runEv2 : RunEvent := runEventOf call2 (some (0, wire1))
+@[expose] def runEv3 : RunEvent := runEventOf call3 (some (0, pt0))
+@[expose] def runEv4 : RunEvent := runEventOf call4 (some (0, pt1))
+@[expose] def runEv5 : RunEvent := runEventOf call5 (some (0, wireReply0))
+@[expose] def runEv6 : RunEvent := runEventOf call6 (some (0, ptReply0))
+@[expose] def runEv7 : RunEvent := runEventOf call7 (some (0, wire2))
+@[expose] def runEv8 : RunEvent := runEventOf call8 (some (0, pt2))
 
-def leakEvCkr : EnvEvent := .leak "alice" ckrBytes
-def leakEvCks : EnvEvent := .leak "alice" cksBytes
-def evLeaks : List CliEvent := [.env leakEvCkr, .env leakEvCks]
+@[expose] def leakEvCkr : EnvEvent := .leak "alice" ckrBytes
+@[expose] def leakEvCks : EnvEvent := .leak "alice" cksBytes
+@[expose] def evLeaks : List CliEvent := [.env leakEvCkr, .env leakEvCks]
 
-def evsHonest : List CliEvent :=
+@[expose] def evsHonest : List CliEvent :=
   [.run runEv0, .run runEv1, .run runEv2, .run runEv3, .run runEv4, .run runEv5, .run runEv6]
 
-def evsExposed : List CliEvent :=
+@[expose] def evsExposed : List CliEvent :=
   evsHonest ++ [.env leakEvCkr, .env leakEvCks, .run runEv7, .run runEv8]
 
 theorem runEv0_input : runEv0.input = bundleBlob (publicBundleOf bE_cli) := by
@@ -133,7 +133,7 @@ theorem runEv0_input : runEv0.input = bundleBlob (publicBundleOf bE_cli) := by
 
 /-! ## Turn Representation and Provisioned Directory Equations -/
 
-def mkTurn (stA stB : PqParty) (sent : List HwBytes) : CliTurn where
+@[expose] def mkTurn (stA stB : PqParty) (sent : List HwBytes) : CliTurn where
   dirs p :=
     if p = "alice" then filesOf (encodeDir myParams stA)
     else if p = "bob" then filesOf (encodeDir myParams stB)
@@ -157,7 +157,7 @@ private theorem initDirs_alice_eq :
     unfold idSecret DY.Libsignal.Composed.Refinement.ProtocolSetup.ikASecBytes
     simp only [(show ("alice" : Participant) = r0.alice from rfl), ↓reduceIte, r0_secretBytes_eq]
     rfl
-  have hpid : peerIdSecret r0 "alice" = (List.Vector.replicate 32 6#8).toList := by
+  have hpid : peerIdSecret r0 "alice" = (List.Vector.replicate 32 9#8).toList := by
     unfold peerIdSecret DY.Libsignal.Composed.Refinement.ProtocolSetup.ikBSecBytes
     simp only [(show ("alice" : Participant) = r0.alice from rfl), ↓reduceIte, r0_secretBytes_eq]
     rfl
@@ -175,7 +175,7 @@ private theorem initDirs_alice_eq :
 private theorem initDirs_bob_eq :
     initDirs myInterp r0 "bob" = filesOf (encodeDir myParams stB0_cli) := by
   have hAg : ModelAgree myInterp myParams := myHooks_agree
-  have hid : idSecret r0 "bob" = (List.Vector.replicate 32 6#8).toList := by
+  have hid : idSecret r0 "bob" = (List.Vector.replicate 32 9#8).toList := by
     unfold idSecret DY.Libsignal.Composed.Refinement.ProtocolSetup.ikBSecBytes
     simp only [(show ("bob" : Participant) = r0.bob from rfl),
       (show (r0.bob = r0.alice) = False by decide), ↓reduceIte, r0_secretBytes_eq]
@@ -365,9 +365,9 @@ private theorem honestBundle_bE_cli :
       rw [r0_secretBytes_eq]
       exact pubBytes_eq_keyPairOf_of_modelAgree hAg (List.Vector.replicate 32 11#8)
     have hpub1 : pubBytes myInterp (secretBytes r0 1) =
-        (keyPairOf myParams.C (List.Vector.replicate 32 6#8)).publicKey.bytes.toList := by
+        (keyPairOf myParams.C (List.Vector.replicate 32 9#8)).publicKey.bytes.toList := by
       rw [r0_secretBytes_eq]
-      exact pubBytes_eq_keyPairOf_of_modelAgree hAg (List.Vector.replicate 32 6#8)
+      exact pubBytes_eq_keyPairOf_of_modelAgree hAg (List.Vector.replicate 32 9#8)
     rw [hpub2, kp_spkB, hpub1, kp_idB, r0_opaque5, r0_opaque6, r0_opaque7]
     rfl
   have h2len : (ecKey (pubBytes myInterp (secretBytes r0 2))).length = 33 := by

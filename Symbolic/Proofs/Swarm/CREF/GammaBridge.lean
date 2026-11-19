@@ -30,7 +30,7 @@ Registers `DY.Bytes.SubFunction` instances into `concretizeAll` and proves `gamm
 equations for concatenation and KDF extraction.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

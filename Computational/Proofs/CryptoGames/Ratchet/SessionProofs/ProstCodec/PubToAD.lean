@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalShortDefs
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.PubToAD
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.PubToAD -- proof-setup: allow-public-import
 public import Computational.Proofs.CryptoGames.FSAEAD.FSAEADProofDefs
 
 /-!
@@ -22,7 +22,7 @@ Proves `pubMsg_red_on`, extending `PubToAD.pubMsg_red` to codecs where public-pa
 only on `ok` public parts (`EncMsgsOk`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 

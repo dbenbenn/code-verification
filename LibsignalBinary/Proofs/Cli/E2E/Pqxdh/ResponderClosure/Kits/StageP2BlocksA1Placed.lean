@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA1
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
@@ -21,6 +21,12 @@ import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step244
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Defs
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSaveAux
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegTrustAux
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegUntrusted
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.SessionOnlyKitE
 
 /-!
 # Relocatable Stage P2 Basic Blocks — Substages P2.1 and P2.2
@@ -29,7 +35,7 @@ Relocatable `[LibsignalPlacement]` basic-block lemmas (`+0x0868 → +0x145c`) fo
 P2.2 on Block `518` (`stageP1ProgPlaced ext`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

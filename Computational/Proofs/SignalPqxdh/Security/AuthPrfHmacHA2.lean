@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHA
+public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHA -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AeadMacInputInj
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M1
 import VCVio.EvalDist.Monad.Basic
@@ -22,7 +22,7 @@ queries are answered deterministically by `P`, and proves that `aeadMuIntReducti
 this discipline over `goodFirstMsgAD`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,7 +34,7 @@ open SignalPqxdh
 
 /-! ## Deterministic primitive answers -/
 
-def primAns (P : Primitives) : (op : PrimQuery) → primSpec.Range op
+@[expose] def primAns (P : Primitives) : (op : PrimQuery) → primSpec.Range op
   | .x25519 sk pk          => P.x25519 sk pk
   | .x25519Base sk         => P.x25519Base sk
   | .isCanonical pk        => P.isCanonical pk
@@ -60,7 +60,7 @@ theorem primImpl_eq_pure (P : Primitives) (op : PrimQuery) :
   cases op <;> rfl
 
 /-- Answer primitive queries by `P`; re-issue uniform and AEAD-game queries. -/
-def primDetImpl (P : Primitives) : QueryImpl AeadMuIntSimSpec (OracleComp AeadMuIntSimSpec) :=
+@[expose] def primDetImpl (P : Primitives) : QueryImpl AeadMuIntSimSpec (OracleComp AeadMuIntSimSpec) :=
   fun t => match t with
   | .inl (.inl n) => liftM (OracleSpec.query (spec := AeadMuIntSimSpec) (.inl (.inl n)))
   | .inl (.inr op) => pure (primAns P op)
@@ -68,7 +68,7 @@ def primDetImpl (P : Primitives) : QueryImpl AeadMuIntSimSpec (OracleComp AeadMu
 
 /-- Semantic MAC-input discipline: with primitives answered by `P`, `B` never issues a bad-AD
     query. -/
-def MacInputDisciplined' (P : Primitives) (Good : Bytes → Bool) (B : AeadMuIntCtxtAdv) : Prop :=
+@[expose] def MacInputDisciplined' (P : Primitives) (Good : Bytes → Bool) (B : AeadMuIntCtxtAdv) : Prop :=
   OracleComp.IsQueryBoundP (simulateQ (primDetImpl P) B.run) (badAdQuery Good) 0
 
 /-- `simulateQ impl` factors through `primDetImpl P` when `impl` answers primitive queries by `P`
@@ -154,7 +154,7 @@ section PW
 
 variable (P : Primitives)
 
-def PW {α : Type} (oa : OracleComp PrimBaseSpec α) (Q : α → Prop) : Prop :=
+@[expose] def PW {α : Type} (oa : OracleComp PrimBaseSpec α) (Q : α → Prop) : Prop :=
   ∀ x ∈ support (simulateQ (primBaseImpl P) oa), Q x
 
 theorem pw_pure {α : Type} (a : α) (Q : α → Prop) (h : Q a) : PW P (pure a) Q := by
@@ -232,7 +232,7 @@ variable (P : Primitives)
 
 /-- No bad-AD (non-`goodFirstMsgAD`) game query once primitives are answered by `P`, and every
     output satisfies `Q`. -/
-def MuOK {α : Type} (oa : OracleComp AeadMuIntSimSpec α) (Q : α → Prop) : Prop :=
+@[expose] def MuOK {α : Type} (oa : OracleComp AeadMuIntSimSpec α) (Q : α → Prop) : Prop :=
   IsQueryBoundP (simulateQ (primDetImpl P) oa) (badAdQuery goodFirstMsgAD) 0 ∧
     ∀ x ∈ support (simulateQ (primDetImpl P) oa), Q x
 
@@ -309,7 +309,7 @@ section Reduction
 
 variable (P : Primitives)
 
-def PrinInv {S : Setup} (hst : AuthHybridStateFixed S) : Prop :=
+@[expose] def PrinInv {S : Setup} (hst : AuthHybridStateFixed S) : Prop :=
   ∀ e ∈ hst.toAuthHybridState.base.principals, ∃ sk, e.2.ikAPk = P.x25519Base sk
 
 theorem pw_prepAuthIntSendPrim (hP : WellFormedPrimitivesδ P)

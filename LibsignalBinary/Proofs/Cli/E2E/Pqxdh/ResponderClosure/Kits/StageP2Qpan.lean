@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBob
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKit
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBob -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKit -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Defs
 
 /-!
@@ -22,7 +22,7 @@ subroutine-call combinators, lifting `(∀ sf Pf, PanicOomProp s0 sf Pf → Qp s
 boundaries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,46 +56,6 @@ theorem p2_cut_qpan {prog : Program} {mid ret : BitVec 64} {s0 s : State}
   · exact ⟨sm, hsteps, Or.inr (Or.inl ⟨hp, Pm, hmm, hpan sm Pm hqp⟩)⟩
   · exact ⟨sm, hsteps, Or.inr (Or.inr hoom)⟩
 
-theorem p2_bind_loaded_qpan {prog : Program} {img : Obj.Image} {mid target : BitVec 64}
-    {s0 s : State} {P : SepProp} {Qm post Qp : State → SepProp → Prop}
-    (hpan : ∀ sf Pf, PanicOomProp s0 sf Pf → Qp sf Pf)
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h1 : SepWPp prog mid s P Qm (PanicOomProp s0))
-    (h2 : ∀ sm Pm, Steps prog s sm → sm.pc = mid → sm.status = .Running →
-      img.FrozenLoaded sm → sm.symtab = img.symtab → Qm sm Pm →
-      SepWPp prog target sm Pm post Qp) :
-    SepWPp prog target s P post Qp := by
-  intro R hm hL
-  obtain ⟨sm, hsteps, ⟨hpcm, hrunm, Pm, hmm, hQ⟩ | ⟨hp, Pm, hmm, hqp⟩ | hoom⟩ := h1 R hm hL
-  · obtain ⟨sf, hsteps', hout⟩ :=
-      h2 sm Pm hsteps hpcm hrunm (hF.of_keepsFrozen hsteps.keepsFrozen)
-        (hsteps.symtab_eq.trans hsym) hQ R hmm (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout⟩
-  · exact ⟨sm, hsteps, Or.inr (Or.inl ⟨hp, Pm, hmm, hpan sm Pm hqp⟩)⟩
-  · exact ⟨sm, hsteps, Or.inr (Or.inr hoom)⟩
-
-theorem p2_bind_sepWP_steps_frame_qpan {prog : Program} {img : Obj.Image} {mid ret : BitVec 64}
-    {s : State} {P P_seg F P_seg_post : SepProp} {Q_regs : State → Prop}
-    {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hseg : SepWP prog mid s P_seg (fun sm P_m => (P_m ⊢ P_seg_post) ∧ Q_regs sm))
-    (hP : P = P_seg ∗ F)
-    (hnext : ∀ sm : State, Steps prog s sm → sm.pc = mid → sm.status = .Running →
-      img.FrozenLoaded sm → sm.symtab = img.symtab → Q_regs sm →
-      SepWPp prog ret sm (P_seg_post ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm hL
-  rw [hP, sepConj_assoc] at hm
-  rcases hseg.elim hm hL with ⟨sm, hsteps, ⟨hpcm, hrunm, P_m, hmm, hent, hregs⟩ | ⟨_, hmo⟩⟩
-  · have hmm' : sm.mem ⊨ (P_seg_post ∗ F) ∗ R := by
-      rw [sepConj_assoc]
-      exact Arm64.Satisfies.mono (sepConj_mono_left hent) hmm
-    obtain ⟨sf, hsteps', hout'⟩ :=
-      hnext sm hsteps hpcm hrunm (hF.of_keepsFrozen hsteps.keepsFrozen)
-        (hsteps.symtab_eq.trans hsym) hregs R hmm' (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout'⟩
-  · exact (not_satisfies_false_sepConj hmo).elim
-
 theorem p2_bind_sepWPp_oom_frame_qpan {prog : Program} {mid ret : BitVec 64}
     {s0 s : State} {P P_stage F : SepProp} {P_stage_post : State → SepProp}
     {Q_regs : State → Prop} {Q Qp : State → SepProp → Prop}
@@ -126,147 +86,6 @@ theorem p2_bind_sepWPp_oom_frame_qpan {prog : Program} {mid ret : BitVec 64}
     exact allowPanic_frame id h1
   · exact (not_satisfies_false_sepConj hoom).elim
 
-theorem p2_call_oom_steps_frame_qpan {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s0 s : State}
-    {P P_spec F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpan_qp : ∀ sf Pf, PanicOomProp s0 sf Pf → Qp sf Pf)
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (htr : s0.trace <+: s.trace)
-    (hcall : subroutine_ok prog entry spec)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hpre : P_spec ⊢ spec.pre x s)
-    (hP : P = P_spec ∗ F)
-    (hpan : ∀ sf, spec.onPanic x s sf ⊢ ⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap)
-    (hnext : ∀ sf : State, Steps prog s sf → sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by
-      intro _ _; repeat (first | simp only [Spec.inImage] | simp only [withLogOff] | simp only [withEnvPre]); rfl)
-    (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by
-      intro _; repeat (first | simp only [Spec.inImage] | simp only [withLogOff] | simp only [withEnvPre]); rfl) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm hL
-  rw [hP, sepConj_assoc] at hm
-  have hm' : s.mem ⊨ spec.pre x s ∗ (F ∗ R) :=
-    Arm64.Satisfies.mono (sepConj_mono_left hpre) hm
-  obtain ⟨sm, hsteps, hout, -⟩ :=
-    subroutine_ok.no_fault_before_outcome hcall x (F ∗ R) s hpc hrun hm' hsp hL
-  rcases hout with ⟨⟨hpcm, _, hrunm⟩, ⟨hspm, hcsm⟩, hpost⟩ | ⟨hpanm, hpost⟩ |
-    ⟨code, _, hpost⟩ | ⟨_, _hoom_post⟩
-  rotate_right; · rw [hoom_false] at _hoom_post; exact (not_satisfies_false_sepConj _hoom_post).elim
-  · rw [← sepConj_assoc] at hpost
-    rw [hlr] at hpcm
-    have hsp_alm : sm.spAligned = true := by simpa [State.spAligned, hspm] using hsp
-    obtain ⟨sf, hsteps', hout'⟩ :=
-      hnext sm hsteps hpcm hrunm hspm hsp_alm hcsm
-        (hF.of_keepsFrozen hsteps.keepsFrozen) (hsteps.symtab_eq.trans hsym)
-        R hpost (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout'⟩
-  · have hpost' : sm.mem ⊨ ((⌜allocFailedIn s sm ∧ s.trace <+: sm.trace⌝ ∗ anyHeap) ∗ F) ∗ R := by
-      rw [sepConj_assoc]
-      exact Arm64.Satisfies.mono (sepConj_mono_left (hpan sm)) hpost
-    exact ⟨sm, hsteps, Or.inr (Or.inl ⟨hpanm,
-      (⌜allocFailedIn s sm ∧ s.trace <+: sm.trace⌝ ∗ anyHeap) ∗ F, hpost',
-      hpan_qp sm _ (p2_allowPanic_oom_of_trace_prefix htr)⟩)⟩
-  · rw [hexit_false] at hpost
-    exact (allowPanic_not_exited hpost).elim
-
-theorem p2_call_frame_frozen_oom_prefix_qpan {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s0 s : State} {φ : Prop}
-    {P T F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpan_qp : ∀ sf Pf, PanicOomProp s0 sf Pf → Qp sf Pf)
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (htr : s0.trace <+: s.trace)
-    (hcall : subroutine_ok prog entry spec)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hpan_eq : ∀ sf, spec.onPanic x s sf =
-      (⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap) := by intro _; rfl)
-    (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by intro _ _; rfl)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      Steps prog s sf →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by
-      intro sf; first | rfl | simp only [Spec.inImage]) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm hL
-  have hm' : s.mem ⊨ spec.pre x s ∗ (F ∗ R) := by
-    rw [hspec, sepConj_assoc, satisfies_pure_sepConj, ← sepConj_assoc, ← hP]
-    exact ⟨hφ, hm⟩
-  obtain ⟨sm, hsteps, hout, -⟩ :=
-    subroutine_ok.no_fault_before_outcome hcall x (F ∗ R) s hpc hrun hm' hsp hL
-  rcases hout with ⟨⟨hpcm, _, hrunm⟩, ⟨hspm, hcsm⟩, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, _, hpost⟩ |
-    ⟨_hoom_st, _hoom_post⟩
-  rotate_right; · rw [hoom_false] at _hoom_post; exact (not_satisfies_false_sepConj _hoom_post).elim
-  · rw [← sepConj_assoc] at hpost
-    rw [hlr] at hpcm
-    have hsp_alm : sm.spAligned = true := by simpa [State.spAligned, hspm] using hsp
-    obtain ⟨sf, hsteps', hout'⟩ :=
-      hnext sm hpcm hrunm hspm hsp_alm hcsm
-        (hF.of_keepsFrozen hsteps.keepsFrozen) (hsteps.symtab_eq.trans hsym) hsteps
-        R hpost (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout'⟩
-  · rw [hpan_eq, ← sepConj_assoc] at hpost
-    exact ⟨sm, hsteps, Or.inr (Or.inl ⟨hpan, _, hpost,
-      hpan_qp sm _ (p2_allowPanic_oom_of_trace_prefix htr)⟩)⟩
-  · rw [hexit_false] at hpost
-    exact (allowPanic_not_exited hpost).elim
-
-theorem p2_call_inImage_oom_steps_frame_qpan {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s0 s : State} {φ : Prop}
-    {P T F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpan_qp : ∀ sf Pf, PanicOomProp s0 sf Pf → Qp sf Pf)
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (htr : s0.trace <+: s.trace)
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hpan_eq : ∀ sf, spec.onPanic x s sf =
-      (⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap) := by intro _; rfl)
-    (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by intro _ _; rfl)
-    (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intro _; rfl)
-    (hnext : ∀ sf : State, Steps prog s sf → sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm hL
-  have hm' : s.mem ⊨ (spec.inImage img).pre x s ∗ (F ∗ R) := by
-    dsimp only [Spec.inImage]
-    rw [hspec, sepConj_assoc, satisfies_pure_sepConj, sepConj_assoc, satisfies_pure_sepConj,
-      ← sepConj_assoc, ← hP]
-    exact ⟨⟨hF, hsym⟩, hφ, hm⟩
-  obtain ⟨sm, hsteps, hout, -⟩ :=
-    subroutine_ok.no_fault_before_outcome hcall x (F ∗ R) s hpc hrun hm' hsp hL
-  rcases hout with ⟨⟨hpcm, _, hrunm⟩, ⟨hspm, hcsm⟩, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, _, hpost⟩ |
-    ⟨_hoom_st, _hoom_post⟩
-  rotate_right
-  · dsimp only [Spec.inImage] at _hoom_post
-    rw [hoom_false] at _hoom_post
-    exact (not_satisfies_false_sepConj _hoom_post).elim
-  · dsimp only [Spec.inImage] at hpost
-    rw [← sepConj_assoc] at hpost
-    rw [hlr] at hpcm
-    have hsp_alm : sm.spAligned = true := by simpa [State.spAligned, hspm] using hsp
-    obtain ⟨sf, hsteps', hout'⟩ :=
-      hnext sm hsteps hpcm hrunm hspm hsp_alm hcsm
-        (hF.of_keepsFrozen hsteps.keepsFrozen) (hsteps.symtab_eq.trans hsym)
-        R hpost (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout'⟩
-  · dsimp only [Spec.inImage] at hpost
-    rw [hpan_eq, ← sepConj_assoc] at hpost
-    exact ⟨sm, hsteps, Or.inr (Or.inl ⟨hpan, _, hpost,
-      hpan_qp sm _ (p2_allowPanic_oom_of_trace_prefix htr)⟩)⟩
-  · dsimp only [Spec.inImage] at hpost
-    rw [hexit_false] at hpost
-    exact (allowPanic_not_exited hpost).elim
-
 section InitBobErrOwned
 
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
@@ -292,7 +111,7 @@ open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure
 - `isStr = true`: tag 24 (`InvalidMessage`, `0x8000000000000018#64`) with heap `String` buffer at
   `(cap = w2, ptr = w3, len = w4)`,
 - `isStr = false`: tag 10 (`InvalidKeyAgreement`, `0x800000000000000a#64`), plain payload. -/
-def pqxdhAcceptErrPayloadAt (A : RustAlloc) (errTag w2 w3 w4 : BitVec 64) : SepProp :=
+@[expose] def pqxdhAcceptErrPayloadAt (A : RustAlloc) (errTag w2 w3 w4 : BitVec 64) : SepProp :=
   ∃∗ isStr : Bool,
     if isStr then
       ⌜errTag = 0x8000000000000018#64⌝ ∗
@@ -307,7 +126,7 @@ def pqxdhAcceptErrPayloadAt (A : RustAlloc) (errTag w2 w3 w4 : BitVec 64) : SepP
 `Result<SessionState, SignalProtocolError>` sret slot `outPtr` of `initialize_bob_session`:
 `Result::Err` discriminant (`-1`) at `outPtr`, 48-byte `SignalProtocolError` at `outPtr + 8#64`,
 its `pqxdhAcceptErrPayloadAt`, and 288 trailing bytes at `outPtr + 56#64`. -/
-def initBobErrOwnedAt (A : RustAlloc) (outPtr : BitVec 64) : SepProp :=
+@[expose] def initBobErrOwnedAt (A : RustAlloc) (outPtr : BitVec 64) : SepProp :=
   (outPtr ↦₆₄ 0xffffffffffffffff#64) ∗
   ∃∗ errTag : BitVec 64, ∃∗ w2 : BitVec 64, ∃∗ w3 : BitVec 64,
   ∃∗ w4 : BitVec 64, ∃∗ w5 : BitVec 64, ∃∗ w6 : BitVec 64,
@@ -315,131 +134,6 @@ def initBobErrOwnedAt (A : RustAlloc) (outPtr : BitVec 64) : SepProp :=
     speWordsAt (outPtr + 8#64) errTag w2 w3 w4 w5 w6 ∗
     pqxdhAcceptErrPayloadAt A errTag w2 w3 w4 ∗
     memRegion (outPtr + 56#64) 288
-
-/-- `initializeBobSessionErrInnerSpec` strengthened so the `none` postcondition exposes
-`initBobErrOwnedAt A g.outPtr` (retaining the tag-24 heap buffer or tag-10 witness) instead of
-forgetting it into `initBobErrAt g.outPtr`. -/
-def initializeBobSessionErrOwnedInnerSpec (P : Primitives) (A : RustAlloc) (img : Obj.Image) :
-    Spec InitBobCallGhost where
-  pre := fun (g : InitBobCallGhost) s =>
-    ⌜s.readReg64 .x0 = g.argPtr ∧
-      s.readReg64 .x1 = g.ratchetKeyPairPtr ∧
-      s.readReg64 .x8 = g.outPtr ∧
-      g.inp.trustedPeer = true ∧
-      g.inp.replayOk = true ∧
-      g.inp.hdr.opkId?.isSome = g.inp.opkBSk?.isSome ∧
-      WellSizedAcceptKeysInput g.inp ∧
-      g.ikBPk.length = 32 ∧
-      g.spkBPk.length = 32 ∧
-      Model.acceptKeys P g.inp = none⌝ ∗
-    bobParamsFieldsAt g.argPtr g.pqskPtr g.ctSlicePtr g.ctBufPtr g.ratchetKeyPairPtr
-      g.inp g.ikBPk g.spkBPk g.sameAccountByte ∗
-    memRegion g.outPtr 344 ∗
-    (logFilterAddr img ↦₆₄ 0#64) ∗
-    stackAt s.sp (768 + pqxdhEntryStack) ∗
-    A.pool
-  post := fun (g : InitBobCallGhost) s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-    bobParamsFieldsAt g.argPtr g.pqskPtr g.ctSlicePtr g.ctBufPtr g.ratchetKeyPairPtr
-      g.inp g.ikBPk g.spkBPk g.sameAccountByte ∗
-    (initBobErrOwnedAt A g.outPtr ∗ anyHeap) ∗
-    (logFilterAddr img ↦₆₄ 0#64) ∗
-    stackAt s0.sp (768 + pqxdhEntryStack) ∗
-    A.pool
-  onPanic := rustPanicOnOom img
-
-def initializeBobSessionErrOwnedSpec (P : Primitives) (A : RustAlloc) (img : Obj.Image) :
-    Spec InitBobCallGhost :=
-  (initializeBobSessionErrOwnedInnerSpec P A img).inImage img
-
-/-- Stack-parameterized `initializeBobSessionErrOwnedInnerSpec` (`stk = 768 + pqxdhEntryStack` for 0-stack, `stk = 768 + Initiator.pqxdhEntryStackExt` for 4K/`Ext`). -/
-def initializeBobSessionErrOwnedAtInnerSpec (P : Primitives) (A : RustAlloc) (img : Obj.Image)
-    (stk : Nat) : Spec InitBobCallGhost where
-  pre := fun (g : InitBobCallGhost) s =>
-    ⌜s.readReg64 .x0 = g.argPtr ∧
-      s.readReg64 .x1 = g.ratchetKeyPairPtr ∧
-      s.readReg64 .x8 = g.outPtr ∧
-      g.inp.trustedPeer = true ∧
-      g.inp.replayOk = true ∧
-      g.inp.hdr.opkId?.isSome = g.inp.opkBSk?.isSome ∧
-      WellSizedAcceptKeysInput g.inp ∧
-      g.ikBPk.length = 32 ∧
-      g.spkBPk.length = 32 ∧
-      Model.acceptKeys P g.inp = none⌝ ∗
-    bobParamsFieldsAt g.argPtr g.pqskPtr g.ctSlicePtr g.ctBufPtr g.ratchetKeyPairPtr
-      g.inp g.ikBPk g.spkBPk g.sameAccountByte ∗
-    memRegion g.outPtr 344 ∗
-    (logFilterAddr img ↦₆₄ 0#64) ∗
-    stackAt s.sp stk ∗
-    A.pool
-  post := fun (g : InitBobCallGhost) s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-    bobParamsFieldsAt g.argPtr g.pqskPtr g.ctSlicePtr g.ctBufPtr g.ratchetKeyPairPtr
-      g.inp g.ikBPk g.spkBPk g.sameAccountByte ∗
-    (initBobErrOwnedAt A g.outPtr ∗ anyHeap) ∗
-    (logFilterAddr img ↦₆₄ 0#64) ∗
-    stackAt s0.sp stk ∗
-    A.pool
-  onPanic := rustPanicOnOom img
-
-def initializeBobSessionErrOwnedAtSpec (P : Primitives) (A : RustAlloc) (img : Obj.Image)
-    (stk : Nat) : Spec InitBobCallGhost :=
-  (initializeBobSessionErrOwnedAtInnerSpec P A img stk).inImage img
-
-/-- 4K/`Ext` variant of `initializeBobSessionErrOwnedInnerSpec` using
-`768 + Initiator.pqxdhEntryStackExt` (`33536` B) stack budget. -/
-def initializeBobSessionErrOwned4KInnerSpec (P : Primitives) (A : RustAlloc) (img : Obj.Image) :
-    Spec InitBobCallGhost :=
-  initializeBobSessionErrOwnedAtInnerSpec P A img (768 + Initiator.pqxdhEntryStackExt)
-
-def initializeBobSessionErrOwned4KSpec (P : Primitives) (A : RustAlloc) (img : Obj.Image) :
-    Spec InitBobCallGhost :=
-  (initializeBobSessionErrOwned4KInnerSpec P A img).inImage img
-
-abbrev initializeBobSessionErrOwnedExtSpec := initializeBobSessionErrOwned4KSpec
-
-theorem initializeBobSessionErrOwnedSpec_to_4K {prog : Program} {entry : BitVec 64}
-    {P : Primitives} {A : RustAlloc} {img : Obj.Image}
-    (h : subroutine_ok prog entry (initializeBobSessionErrOwnedSpec P A img)) :
-    subroutine_ok prog entry (initializeBobSessionErrOwned4KSpec P A img) := by
-  refine subroutine_ok_map_panic h ?_
-    (fun _ _ _ _ _ _ he => by
-      dsimp only [initializeBobSessionErrOwnedSpec, initializeBobSessionErrOwnedInnerSpec,
-        Spec.inImage] at he
-      exact not_satisfies_false_sepConj he)
-    (fun _ _ _ _ _ _ _ ho => by
-      dsimp only [initializeBobSessionErrOwnedSpec, initializeBobSessionErrOwnedInnerSpec,
-        Spec.inImage] at ho
-      exact (not_satisfies_false_sepConj ho).elim)
-  intro g R s0 hpre
-  let F_stk : SepProp :=
-    memRegion (s0.sp - BitVec.ofNat 64 (768 + Initiator.pqxdhEntryStackExt))
-      ((768 + Initiator.pqxdhEntryStackExt) - (768 + pqxdhEntryStack))
-  refine ⟨g, F_stk ∗ R, ?_, fun sf hpost => ?_, fun sf hpan => ?_⟩
-  · dsimp only [initializeBobSessionErrOwned4KSpec, initializeBobSessionErrOwned4KInnerSpec,
-      initializeBobSessionErrOwnedAtInnerSpec, initializeBobSessionErrOwnedSpec,
-      initializeBobSessionErrOwnedInnerSpec, Spec.inImage, F_stk] at hpre ⊢
-    rw [p2_stackAt_split_of_le s0.sp (768 + Initiator.pqxdhEntryStackExt)
-      (768 + pqxdhEntryStack) (by decide) (by decide)] at hpre
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-    rcases hpre with ⟨hinv, hpure, hmem⟩
-    exact ⟨hinv, hpure, Satisfies.of_eq hmem (by ac_rfl)⟩
-  · dsimp only [initializeBobSessionErrOwned4KSpec, initializeBobSessionErrOwned4KInnerSpec,
-      initializeBobSessionErrOwnedAtInnerSpec, initializeBobSessionErrOwnedSpec,
-      initializeBobSessionErrOwnedInnerSpec, Spec.inImage, F_stk] at hpost ⊢
-    rw [p2_stackAt_split_of_le s0.sp (768 + Initiator.pqxdhEntryStackExt)
-      (768 + pqxdhEntryStack) (by decide) (by decide)]
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    exact ⟨hpost.1, Satisfies.of_eq hpost.2 (by ac_rfl)⟩
-  · dsimp only [initializeBobSessionErrOwned4KSpec, initializeBobSessionErrOwned4KInnerSpec,
-      initializeBobSessionErrOwnedAtInnerSpec, initializeBobSessionErrOwnedSpec,
-      initializeBobSessionErrOwnedInnerSpec, Spec.inImage, rustPanicOnOom, F_stk] at hpan ⊢
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpan ⊢
-    rcases hpan with ⟨hp, hmem_pan⟩
-    exact ⟨hp, Arm64.Satisfies.mono (Entails.trans
-      (Entails.of_eq (show anyHeap ∗ (memRegion _ _ ∗ R) =
-        (anyHeap ∗ memRegion _ _) ∗ R by ac_rfl))
-      (sepConj_mono_left (entails_anyHeap _))) hmem_pan⟩
 
 end InitBobErrOwned
 

@@ -9,9 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhRestDh3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdPre
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhRestDh3 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdPre -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SignalPqxdh.Security.Collisions
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # One-key `Auth` Case C (`DH3`) `GapDhWithSign` bound
@@ -22,7 +25,7 @@ identity scalars locally with zero signing queries and reuses `AuthDh3.fgAuthSte
 `.initPrin`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

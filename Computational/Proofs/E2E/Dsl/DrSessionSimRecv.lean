@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.DrSessionSimHooks
+public import Computational.Proofs.E2E.Dsl.DrSessionSimHooks -- proof-setup: allow-public-import
 import Computational.Proofs.E2E.ComposedBinaryLinkV1
+public import Computational.Proofs.E2E.Dsl.SmReachInvParty -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.TablesHonest -- proof-setup: allow-public-import
 
 /-!
 # Double Ratchet + SPQR V1 Receive Simulator
@@ -20,7 +22,7 @@ Constructs the `ReductionDsl` receive subprogram `drReceiveC` over `e2eOps` (par
 `Params.receive` and `sessionSchemeFixedSpk.receive` under `PartyReachInv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -74,29 +76,29 @@ local notation "OO" => e2eOps ℓ P C K decT encT
 
 /-! ## Stages of `drReceiveC` -/
 
-@[reducible] def drRecvOutT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def drRecvOutT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .opt (.prod GhostStT (.prod .nat (.prod .nat PlainT)))
 
-@[reducible] def drRecvMsgT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def drRecvMsgT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod PK (.prod U32 (.prod (B 32) (B 32)))
 
-@[reducible] def drRecvPreT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def drRecvPreT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .opt (.prod ghostPartsT (.prod IdKey (drRecvMsgT ℓ)))
 
-@[reducible] def drRatchetMidT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def drRatchetMidT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod BV256 (.prod U32 (.prod (.opt drSenderChainT)
     (.prod (.list drRecvChainT) (.prod .nat (.prod .nat (.list .nat))))))
 
-@[reducible] def drChainActiveT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def drChainActiveT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod (.prod BV256 U32) (.list (.prod BV256 U32))
 
-@[reducible] def drRecvSetupOutT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def drRecvSetupOutT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .opt (.prod (drRatchetMidT ℓ) (drChainActiveT ℓ))
 
-@[reducible] def drRecvConsumeOutT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def drRecvConsumeOutT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .opt (.prod (.prod BV256 U32) (.list drRecvChainT))
 
-def drRecvPreE {Γ : List (Ty S)} (gE : Expr OO Γ GhostStT) (cE : Expr OO Γ (B 32)) :
+@[expose] def drRecvPreE {Γ : List (Ty S)} (gE : Expr OO Γ GhostStT) (cE : Expr OO Γ (B 32)) :
     Expr OO Γ (drRecvPreT ℓ) :=
   .letE (.pair gE cE)
     (.caseOpt (e2ePureOp .signalMsgParse (.snd .v0))
@@ -123,7 +125,7 @@ theorem cost_drRecvPreE_le {Γ : List (Ty S)} (gE : Expr OO Γ GhostStT) (cE : E
     Expr.v0, Expr.v1, Expr.v2, cost_e2ePureOp, E2EPureOp.cost]
   omega
 
-def drRecvDhStepE {Γ : List (Ty S)}
+@[expose] def drRecvDhStepE {Γ : List (Ty S)}
     (partsE : Expr OO Γ ghostPartsT)
     (theirE : Expr OO Γ PK)
     (rcCoinsE : Expr OO Γ BV256) :
@@ -194,7 +196,7 @@ theorem cost_drRecvDhStepE_le {Γ : List (Ty S)}
     E2EPureOp.cost, E2ECryptoOp.cost, hb1] at hp1 hp2 ⊢
   omega
 
-def drRecvChainSetupE {Γ : List (Ty S)}
+@[expose] def drRecvChainSetupE {Γ : List (Ty S)}
     (partsE : Expr OO Γ ghostPartsT)
     (theirE : Expr OO Γ PK)
     (rcCoinsE : Expr OO Γ BV256) :
@@ -245,7 +247,7 @@ theorem cost_drRecvChainSetupE_le {Γ : List (Ty S)}
     Expr.v0, Expr.v1, Expr.v2, Expr.v3] at hfind hdh hget ⊢
   omega
 
-def drRecvTakeSkippedE {Γ : List (Ty S)}
+@[expose] def drRecvTakeSkippedE {Γ : List (Ty S)}
     (theirE : Expr OO Γ PK)
     (msgCtrE : Expr OO Γ U32)
     (rcs1E : Expr OO Γ (.list drRecvChainT))
@@ -290,7 +292,7 @@ theorem cost_drRecvTakeSkippedE_le {Γ : List (Ty S)}
   simp only [drRecvTakeSkippedE, Expr.cost, Expr.v0, Expr.v1, Expr.v2] at htake hrep ⊢
   omega
 
-def drRecvAfterAdvE {Γ : List (Ty S)}
+@[expose] def drRecvAfterAdvE {Γ : List (Ty S)}
     (theirE : Expr OO Γ PK)
     (rcs1E : Expr OO Γ (.list drRecvChainT))
     (advPairE : Expr OO Γ (drChainActiveT ℓ)) :
@@ -327,7 +329,7 @@ theorem cost_drRecvAfterAdvE_le {Γ : List (Ty S)}
     E2ECryptoOp.cost] at hrep ⊢
   omega
 
-def drRecvConsumeC {ι : Type} {T : OracleSpec ι} (I : Iface S T) {Γ : List (Ty S)}
+@[expose] def drRecvConsumeC {ι : Type} {T : OracleSpec ι} (I : Iface S T) {Γ : List (Ty S)}
     (theirE : Expr OO Γ PK)
     (msgCtrE : Expr OO Γ U32)
     (rcs1E : Expr OO Γ (.list drRecvChainT))
@@ -394,7 +396,7 @@ theorem drRecvConsumeC_cost_le {ι : Type} {T : OracleSpec ι} (I : Iface S T) {
     E2EPureOp.cost, hb] at hskip hadv hafter ⊢
   omega
 
-def drRecvFinishE {Γ : List (Ty S)}
+@[expose] def drRecvFinishE {Γ : List (Ty S)}
     (cE : Expr OO Γ (B 32))
     (partsE : Expr OO Γ ghostPartsT)
     (remIdE : Expr OO Γ IdKey)
@@ -476,7 +478,7 @@ theorem cost_drRecvFinishE_le {Γ : List (Ty S)}
   omega
 
 /-- `ReductionDsl` simulator for `Params.receive` and `sessionSchemeFixedSpk.receive`. -/
-def drReceiveC (hooks : SpqrDslHooks ℓ P C K decT encT)
+@[expose] def drReceiveC (hooks : SpqrDslHooks ℓ P C K decT encT)
     {ι : Type} {T : OracleSpec ι} (I : Iface S T) {Γ : List (Ty S)}
     (e : Expr OO Γ (.prod GhostStT (.prod (B 32) BV256))) :
     Comp OO I Γ (drRecvOutT ℓ) :=

@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ConstsMerge
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ConstsMerge -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Proto
 public import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Defs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
 
 /-!
 # Handshake `bytes::merge` Contract Definitions and Codec Bridges
@@ -22,7 +23,7 @@ Defines `bytesMerge3Stack` (`33120` B), `bytesMerge3RawSpec`, `bytesMerge3Spec`,
 `LibsignalSpqrV1.Proto.mergeBytes` equivalence lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,6 +36,7 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalP
 open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalTripleRatchet.Prost
 open CryptoVerification.LibsignalTripleRatchet.Prost.BytesMergeFacts
+open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH (decodeVarint2StackX)
 
 /-! ## `bytesMerge3Stack` (`33120` B) and `bytesMerge3Spec` -/
 
@@ -44,7 +46,7 @@ abbrev bytesMerge3Stack : Nat := 0xe0 + decodeVarint2StackX
 
 /-- Raw contract of `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#6]`
 (`888` B, `222` instructions). -/
-def bytesMerge3RawSpec (A : RustAlloc) : Spec BytesMergeGhost where
+@[expose] def bytesMerge3RawSpec (A : RustAlloc) : Spec BytesMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.valPtr ∧ s.readReg64 .x2 = x.bufRef ∧ x.bs.length < 2 ^ 63 ∧
@@ -65,20 +67,6 @@ def bytesMerge3RawSpec (A : RustAlloc) : Spec BytesMergeGhost where
           vecU8At A x.valPtr x.valCap x.valBuf x.valBs ∗
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- Contract of `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#6]` in a loaded image `img`. -/
-def bytesMerge3Spec (A : RustAlloc) (img : Obj.Image) : Spec BytesMergeGhost :=
-  (bytesMerge3RawSpec A).inImage img
-
-/-- `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#6]`
-meets `bytesMerge3Spec A img` on `tripleRatchetProgAtExt img.base ext`. -/
-def BytesMerge6OkExt (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr bytesMerge6Name)
-    (bytesMerge3Spec A img)
-
-/-! ## Stack Layout and `MergePost3` / `MergePanic3` Lifting Lemmas -/
 
 theorem stackAt_varint2_to_slice (sp0 : BitVec 64) :
     stackAt (sp0 - 224#64) decodeVarint2StackX =
@@ -110,18 +98,6 @@ abbrev MergePost3 (A : RustAlloc) (x : BytesMergeGhost) (s0 : State) (R : SepPro
 abbrev MergePanic3 (A : RustAlloc) (x : BytesMergeGhost) (s0 : State) (R : SepProp)
     (sf : State) (P_f : SepProp) : Prop :=
   (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (bytesMerge3RawSpec A).onPanic x s0 sf ∗ R)
-
-theorem SepWPp.to_subroutineOutcome3 {prog : Program} {A : RustAlloc} {img : Obj.Image}
-    {x : BytesMergeGhost} {s0 : State} {P R : SepProp}
-    (_hsp_align : s0.spAligned = true)
-    (hm : s0.mem ⊨ P ∗ R) (hL : prog.CodeLoaded s0.mem)
-    (h : SepWPp prog (s0.readReg64 .lr) s0 P (MergePost3 A x s0 R) (MergePanic3 A x s0 R)) :
-    ∃ sf, Steps prog s0 sf ∧
-      SubroutineOutcome (bytesMerge3Spec A img) x R s0 sf := by
-  obtain ⟨sf, hsteps, ⟨hpc, hrun, P_f, hmf, hpost, hsp, hcs⟩ | ⟨hpan, P_f, hmf, hpanic⟩ | ⟨_, hfalse⟩⟩ := h R hm hL
-  · exact ⟨sf, hsteps, Or.inl ⟨⟨hpc, hsp, hrun⟩, ⟨hsp, hcs⟩, hpost hmf⟩⟩
-  · exact ⟨sf, hsteps, Or.inr (Or.inl ⟨hpan, hpanic hmf⟩)⟩
-  · exact False.elim (not_satisfies_false_sepConj hfalse)
 
 theorem SepWPp.lift_merge3 {prog : Program} {A : RustAlloc}
     {x : BytesMergeGhost} {s0 s : State} {P R : SepProp}
@@ -158,7 +134,7 @@ theorem SepWPp.lift_merge3 {prog : Program} {A : RustAlloc}
 /-! ## Equivalence with `LibsignalSpqrV1.Proto.mergeBytes` -/
 
 /-- Bijection from `LibsignalSpqrV1.Proto.WireType` to `LibsignalProtoCodec.WireType`. -/
-def protoWireTypeToCodec : LibsignalSpqrV1.Proto.WireType → WireType
+@[expose] def protoWireTypeToCodec : LibsignalSpqrV1.Proto.WireType → WireType
   | .varint => .varint
   | .SixtyFourBit => .sixtyFourBit
   | .lengthDelimited => .lengthDelimited
@@ -267,7 +243,7 @@ structure BytesMergeProtoGhost where
   ptr : BitVec 64
   bs : List (BitVec 8)
 
-def BytesMergeProtoGhost.toCodec (x : BytesMergeProtoGhost) : BytesMergeGhost :=
+@[expose] def BytesMergeProtoGhost.toCodec (x : BytesMergeProtoGhost) : BytesMergeGhost :=
   { wt := protoWireTypeToCodec x.wt
     valPtr := x.valPtr
     valCap := x.valCap
@@ -280,7 +256,7 @@ def BytesMergeProtoGhost.toCodec (x : BytesMergeProtoGhost) : BytesMergeGhost :=
 
 /-- Raw contract of `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#6]`
 stated directly in terms of `LibsignalSpqrV1.Proto.mergeBytes`. -/
-def bytesMerge3ProtoRawSpec (A : RustAlloc) : Spec BytesMergeProtoGhost where
+@[expose] def bytesMerge3ProtoRawSpec (A : RustAlloc) : Spec BytesMergeProtoGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = x.wt.toU32.setWidth 8 ∧
       s.readReg64 .x1 = x.valPtr ∧ s.readReg64 .x2 = x.bufRef ∧ x.bs.length < 2 ^ 63 ∧
@@ -302,34 +278,8 @@ def bytesMerge3ProtoRawSpec (A : RustAlloc) : Spec BytesMergeProtoGhost where
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-/-- Contract of `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#6]`
-in a loaded image `img` against `LibsignalSpqrV1.Proto.mergeBytes`. -/
-def bytesMerge3ProtoSpec (A : RustAlloc) (img : Obj.Image) : Spec BytesMergeProtoGhost :=
-  (bytesMerge3ProtoRawSpec A).inImage img
-
-/-- `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#6]`
-meets `bytesMerge3ProtoSpec A img` on `tripleRatchetProgAtExt img.base ext`. -/
-def BytesMerge6ProtoOkExt (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr bytesMerge6Name)
-    (bytesMerge3ProtoSpec A img)
-
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH
-
-export CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec (
-  bytesMerge6Name
-  bytesMerge3Stack
-  bytesMerge3RawSpec
-  bytesMerge3Spec
-  BytesMerge6OkExt
-  protoWireTypeToCodec
-  BytesMergeProtoGhost
-  bytesMerge3ProtoRawSpec
-  bytesMerge3ProtoSpec
-  BytesMerge6ProtoOkExt
-)
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH

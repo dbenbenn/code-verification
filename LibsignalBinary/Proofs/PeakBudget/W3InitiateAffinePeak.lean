@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.W3InitiateHelpers
-public import LibsignalBinary.Proofs.PeakBudget.W3InitiateStagesPeak
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W3InitiateHelpers
+public import LibsignalBinary.Proofs.PeakBudget.W3InitiateStagesPeak -- proof-setup: allow-public-import
 
 /-!
 # Regime-Free Affine `PhaseCreditSpec` Bounds for W3 `process_prekey_bundle`
@@ -21,7 +21,7 @@ Proves `W3BoundedEvs` constructors for Stage 4/5 `SessionState` operations, boxe
 `PhaseCreditSpec` bounds across `W3Stage1Env`..`W3Stage5Env` and `W3InitiateFullEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -44,11 +44,6 @@ open LibsignalBinary.Proofs.PeakBudget.W3InitiateStagesPeak
 
 /-! ## 1. `W3BoundedEvs` Builders for Stage 4 and Stage 5 Events -/
 
-theorem w3BoundedEvs_mono {n₁ n₂ r₁ r₂ : Nat} {evs : List AllocEvent}
-    (hn : n₁ ≤ n₂) (hr : r₁ ≤ r₂) (h : W3BoundedEvs n₁ r₁ evs) :
-    W3BoundedEvs n₂ r₂ evs :=
-  ⟨Nat.le_trans h.1 hn, fun ev hev => ⟨Nat.le_trans (h.2 ev hev).1 hr, (h.2 ev hev).2⟩⟩
-
 theorem w3BoundedEvs_rustAlloc {req al maxReq : Nat} (hal : al ≤ 16) (hreq : req ≤ maxReq) :
     W3BoundedEvs 1 maxReq (rustAllocEvents req al) := by
   unfold rustAllocEvents
@@ -59,12 +54,6 @@ theorem w3BoundedEvs_rustAlloc {req al maxReq : Nat} (hal : al ≤ 16) (hreq : r
   · refine ⟨Nat.le_refl 1, fun ev hev => ?_⟩
     simp only [List.mem_singleton] at hev; subst hev
     exact ⟨hreq, by dsimp [eventStepAlign]; omega⟩
-
-theorem w3BoundedEvs_rustDealloc (req al maxReq : Nat) :
-    W3BoundedEvs 0 maxReq (rustDeallocEvents req al) := by
-  refine ⟨Nat.le_refl 0, fun ev hev => ?_⟩
-  simp only [rustDeallocEvents, List.mem_singleton] at hev; subst hev
-  exact ⟨Nat.zero_le _, by dsimp [eventStepAlign]; omega⟩
 
 theorem w3BoundedEvs_rustRealloc {old new al maxReq : Nat}
     (hal : al ≤ 16) (hnew : new ≤ maxReq) :
@@ -80,70 +69,6 @@ theorem w3BoundedEvs_rustRealloc {old new al maxReq : Nat}
     · exact ⟨hnew, by dsimp [eventStepAlign]; omega⟩
     · exact ⟨Nat.zero_le _, by dsimp [eventStepAlign]; omega⟩
 
-theorem w3BoundedEvs_doReserve {oldCap cap elemSz al maxReq : Nat}
-    (hal : al ≤ 16) (hcap : cap * elemSz ≤ maxReq) :
-    W3BoundedEvs 1 maxReq
-      (if oldCap = 0 then rustAllocEvents (cap * elemSz) al
-       else rustReallocEvents (oldCap * elemSz) (cap * elemSz) al) := by
-  split_ifs
-  · exact w3BoundedEvs_rustAlloc hal hcap
-  · exact w3BoundedEvs_rustRealloc hal hcap
-
-theorem w3BoundedEvs_sessionStateNew :
-    W3BoundedEvs 4 33
-      (rustAllocEvents 33 1 ++ rustAllocEvents 33 1 ++
-        rustAllocEvents 32 1 ++ rustAllocEvents 33 1) := by
-  have a33 := w3BoundedEvs_rustAlloc (req := 33) (al := 1) (maxReq := 33) (by decide) (by decide)
-  have a32 := w3BoundedEvs_rustAlloc (req := 32) (al := 1) (maxReq := 33) (by decide) (by decide)
-  exact w3BoundedEvs_append (w3BoundedEvs_append (w3BoundedEvs_append a33 a33) a32) a33
-
-theorem w3BoundedEvs_withSenderChainNone :
-    W3BoundedEvs 5 33
-      (rustAllocEvents 32 1 ++ rustAllocEvents 33 1 ++ rustAllocEvents 33 1 ++
-        rustAllocEvents 32 1 ++ rustAllocEvents 32 1 ++
-        rustDeallocEvents 32 1 ++ rustDeallocEvents 33 1) := by
-  have a33 := w3BoundedEvs_rustAlloc (req := 33) (al := 1) (maxReq := 33) (by decide) (by decide)
-  have a32 := w3BoundedEvs_rustAlloc (req := 32) (al := 1) (maxReq := 33) (by decide) (by decide)
-  have d32 := w3BoundedEvs_rustDealloc 32 1 33
-  have d33 := w3BoundedEvs_rustDealloc 33 1 33
-  exact w3BoundedEvs_append
-    (w3BoundedEvs_append
-      (w3BoundedEvs_append
-        (w3BoundedEvs_append
-          (w3BoundedEvs_append
-            (w3BoundedEvs_append a32 a33) a33) a32) a32) d32) d33
-
-theorem w3BoundedEvs_withReceiverChainEmpty :
-    W3BoundedEvs 4 416
-      (rustAllocEvents 32 1 ++ rustAllocEvents 33 1 ++ rustAllocEvents 33 1 ++
-        rustDeallocEvents 33 1 ++ rustAllocEvents 416 8) := by
-  have a32 := w3BoundedEvs_rustAlloc (req := 32) (al := 1) (maxReq := 416) (by decide) (by decide)
-  have a33 := w3BoundedEvs_rustAlloc (req := 33) (al := 1) (maxReq := 416) (by decide) (by decide)
-  have d33 := w3BoundedEvs_rustDealloc 33 1 416
-  have a416 := w3BoundedEvs_rustAlloc (req := 416) (al := 8) (maxReq := 416) (by decide) (by decide)
-  exact w3BoundedEvs_append
-    (w3BoundedEvs_append (w3BoundedEvs_append (w3BoundedEvs_append a32 a33) a33) d33) a416
-
-theorem w3BoundedEvs_stage4_sessionState :
-    W3BoundedEvs 13 416
-      ((rustAllocEvents 33 1 ++ rustAllocEvents 33 1 ++
-          rustAllocEvents 32 1 ++ rustAllocEvents 33 1) ++
-       (rustAllocEvents 32 1 ++ rustAllocEvents 33 1 ++ rustAllocEvents 33 1 ++
-          rustAllocEvents 32 1 ++ rustAllocEvents 32 1 ++
-          rustDeallocEvents 32 1 ++ rustDeallocEvents 33 1) ++
-       (rustAllocEvents 32 1 ++ rustAllocEvents 33 1 ++ rustAllocEvents 33 1 ++
-          rustDeallocEvents 33 1 ++ rustAllocEvents 416 8)) := by
-  have hnew := w3BoundedEvs_mono (r₂ := 416) (Nat.le_refl 4) (by decide) w3BoundedEvs_sessionStateNew
-  have hsnd := w3BoundedEvs_mono (r₂ := 416) (Nat.le_refl 5) (by decide) w3BoundedEvs_withSenderChainNone
-  exact w3BoundedEvs_append (w3BoundedEvs_append hnew hsnd) w3BoundedEvs_withReceiverChainEmpty
-
-theorem w3BoundedEvs_setUnackPreKeyMsg :
-    W3BoundedEvs 2 33
-      (rustAllocEvents 33 1 ++ rustAllocEvents 33 1 ++ rustDeallocEvents 33 1) := by
-  have a33 := w3BoundedEvs_rustAlloc (req := 33) (al := 1) (maxReq := 33) (by decide) (by decide)
-  have d33 := w3BoundedEvs_rustDealloc 33 1 33
-  exact w3BoundedEvs_append (w3BoundedEvs_append a33 a33) d33
-
 /-! ## 2. Boxed-Future Envelopes and Bounded `rustAlloc` -/
 
 theorem phaseCreditSpec_rustAlloc_aff_bounded
@@ -154,7 +79,7 @@ theorem phaseCreditSpec_rustAlloc_aff_bounded
   (PhaseCreditSpec.rustAlloc_aff hM hal).mono (by omega) (by omega) (by omega) hreq
 
 /-- Boxed-future async call envelope (`Box::new` shim, `E_poll`, and `Box` drop). -/
-def BoxedPollDropEnv (boxSz : Nat) (E_poll : List AllocEvent → Prop)
+@[expose] def BoxedPollDropEnv (boxSz : Nat) (E_poll : List AllocEvent → Prop)
     (evs : List AllocEvent) : Prop :=
   ConcatEnv
     (ConcatEnv (fun e => e = [] ∨ e = rustAllocEvents boxSz 8) E_poll)
@@ -170,21 +95,6 @@ theorem phaseCreditSpec_exactBoxPollDrop_aff
       (ConcatEnv (ConcatEnv (· = rustAllocEvents boxSz 8) E_poll) (· = rustDeallocEvents boxSz 8))
       (2 * boxSz + 9539 + c_p) l_p (boxSz + 8195 + p_p) (max boxSz r_p) :=
   PhaseCreditSpec.tempAllocBodyFree_aff hM (by decide) hpoll
-
-/-- Optional boxed-future shim + `E_poll` + `FreeOnlyEvs` bound under `ModelHyps M`. -/
-theorem phaseCreditSpec_optBoxPollFree_aff
-    {M : AllocCostModel} [HasFineReallocCredit M] (hM : ModelHyps M)
-    (boxSz : Nat) {E_poll : List AllocEvent → Prop} {c_p l_p p_p r_p : Nat}
-    (hpoll : PhaseCreditSpec M E_poll c_p l_p p_p r_p) :
-    PhaseCreditSpec M
-      (SeqEnv (fun e => e = [] ∨ e = rustAllocEvents boxSz 8) (SeqEnv E_poll FreeOnlyEvs))
-      (2 * boxSz + 9539 + c_p) (boxSz + 8195 + l_p) (boxSz + 8195 + p_p) (max boxSz r_p) := by
-  have hbox : PhaseCreditSpec M (fun e => e = [] ∨ e = rustAllocEvents boxSz 8)
-      (2 * boxSz + 9539) (boxSz + 8195) (boxSz + 8195) boxSz := by
-    refine ((PhaseCreditSpec.nil M).or (PhaseCreditSpec.rustAlloc_aff hM (by decide))).mono
-      (by omega) (by omega) (by omega) (by omega)
-  have hpollF := phaseCreditSpec_seq_freeOnly hM hpoll
-  exact (hbox.seq hpollF).mono (by omega) (by omega) (by omega) (Nat.le_refl _)
 
 /-! ## 3. Regime-Uniform Stage 1–5 and End-to-End `PhaseCreditSpec`s -/
 
@@ -314,7 +224,7 @@ where
   s5_peak (a p : Nat) : max a (a + p) ≤ a + p := by omega
 
 /-- Native non-callee affine `Δlive` upper bound across Stages 1–5. -/
-def w3InitiateNativeAffLive : Nat :=
+@[expose] def w3InitiateNativeAffLive : Nat :=
   ((33 + 8195) + (1569 + 8195)) +
   (1568 + 8195) +
   8 * (1569 + 8195) +

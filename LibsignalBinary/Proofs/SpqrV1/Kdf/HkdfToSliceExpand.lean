@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.NewFromSliceFirstHalf
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Kdf.NewFromSliceFirstHalf -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import LibsignalBinary.Proofs.SpqrV1.Kdf.FinalizeFixedGen
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `spqr::kdf::hkdf_to_slice`: Extract Completion and Expand Block 1
@@ -23,7 +23,7 @@ Proves the final HKDF-Extract segments (`0x633cc → 0x634fc`) and the first HKD
 (`0x634fc → 0x636f0`) of `spqr::kdf::hkdf_to_slice`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -47,9 +47,6 @@ open CryptoVerification.LibsignalSpqrV1 CryptoVerification.CodeLayout
 open CryptoVerification.SpqrV1.Kdf
 open CryptoVerification.SpqrV1.Kdf.FinalizeFixed3Proof
 open CryptoVerification.SpqrV1.Kdf.NewFromSlice3Proof
-
-@[local simp, local arm64_norm] private
-gen_decodes libsignalSessionCode_tree libsignalSessionCode [(ls_off% hkdfToSliceName + 328) → (ls_off% hkdfToSliceName + 1148)]
 
 attribute [local simp, local arm64_norm] bv_sub_add_lit hkdfCodeFakeB bv_sub_add_lit_ge
 
@@ -114,16 +111,6 @@ local macro "hkdf_seg_e1d_body" : tactic => `(tactic| (
   refine HmacStN.of_copy_208_32 hhm ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ <;>
     simp (config := { decide := true }) only [arm64_norm]))
 
-/-- Segment `E1d` (`b + 0x633cc` → `b + 0x6ce50`, 13 steps): copies `Hmac` from `hsp s₀ + 208#64`
-to `hsp s₀ + 32#64` and calls `finalize_fixed(hsp s₀ + 507#64, hsp s₀ + 32#64)`. -/
-theorem seg_e1d_runsTo [HkdfHooks C.F ext] {salt ikm info : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀)
-    (hx : StateE3cc b C.F salt ikm info infoA okmA okmLen s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s
-      (StateEFin b C.F salt ikm info infoA okmA okmLen s₀) := by
-  hkdf_seg_e1d_body
-
 theorem seg_e1d_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     {b_iv : BitVec 64} {aligned : Prop} {salt ikm info : List (BitVec 8)}
     {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ s : State}
@@ -132,40 +119,6 @@ theorem seg_e1d_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     RunsTo ((blkPC_379).rebase (blkPl_379).base H) s
       (StateEFin hkdfCodeFakeB C.F salt ikm info infoA okmA okmLen s₀ · (blkPl_425).base) := by
   hkdf_seg_e1d_body
-
-/-- `finalize_fixed` in Extract (`b + 0x6ce50` → `b + 0x63400`): produces
-`PRK = hkdfExtractBytes C.F salt ikm` at `hsp s₀ + 507#64`. -/
-theorem fin_extract_runsTo [HkdfHooks C.F ext] {salt ikm info : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀)
-    (hx : StateEFin b C.F salt ikm info infoA okmA okmLen s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s
-      (StateERetFin b C.F salt ikm info infoA okmA okmLen s₀) := by
-  rcases hx.hmac_32 with ⟨pfx, tail, hpt, hmod, hlt, hhm⟩
-  have hrw_hsp := HFrame.rw_hsp hpre hx.common.frame
-  have hrw_sub := HFrame.rw_sub_544 hpre hx.common.frame
-  have hfin_pre : FinPre3PfxGen b C.F (effectiveHmacKey C.F salt) pfx tail s :=
-    { pc_eq := hx.pc_eq, status := hx.common.status, key_le := effectiveHmacKey_length_le C.F salt,
-      tail_lt := hlt, hmac_st := by rw [hx.x1_eq]; exact hhm,
-      rw_out := by rw [hx.x0_eq]; exact hrw_hsp.sub (by bv_omega),
-      rw_hm := by rw [hx.x1_eq]; exact hrw_hsp.sub (by bv_omega),
-      rw_fsp := by rw [hx.common.sp_eq]; exact hrw_sub.sub (by bv_omega),
-      disj_out_hm := by rw [hx.x0_eq, hx.x1_eq]; unfold DisjointRegions; bv_omega,
-      disj_out_fsp := by rw [hx.x0_eq, hx.common.sp_eq]; unfold DisjointRegions; bv_omega,
-      disj_hm_fsp := by rw [hx.x1_eq, hx.common.sp_eq]; unfold DisjointRegions; bv_omega,
-      sp_aligned := by rw [hx.common.sp_eq]; exact (hsp_aligned hpre.sp_aligned).2.1 }
-  refine (FinalizeFixed3GenProof.finalize_fixed3_pfx_lt64_runsTo_ext (ext := ext) hfin_pre).mono
-    fun s' ⟨hpc', hrun', hcs, hout, hfr⟩ => ?_
-  rw [hx.lr_eq] at hpc'; rw [hx.x0_eq, hpt, hmacWith_effectiveHmacKey] at hout
-  rw [hx.x0_eq, hx.x1_eq, hx.common.sp_eq] at hfr
-  have hm16' : s'.mem.read64 (hsp s₀ + 16#64) = BitVec.ofNat 64 info.length := by
-    refine (Expand.Frame.read64_eq hfr fun r hr => ?_).trans hx.m16_eq
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-    rcases hr with rfl | rfl | rfl <;> (unfold DisjointRegions; bv_omega)
-  exact ⟨hpc', HCommon.of_fin_frame (outOff := 507#64) hx.common hrun' hcs hfr (by decide),
-    (CalleeSaved.x19 hcs).trans hx.x19_eq, (CalleeSaved.x22 hcs).trans hx.x22_eq,
-    (CalleeSaved.x25 hcs).trans hx.x25_eq, (CalleeSaved.x26 hcs).trans hx.x26_eq,
-    (CalleeSaved.x27 hcs).trans hx.x27_eq, hm16', hout⟩
 
 theorem fin_extract_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     (h_memcpy : H lsMemcpySym = some memcpyHook)
@@ -220,16 +173,6 @@ local macro "hkdf_seg_e2_body" : tactic => `(tactic| (
   exact ⟨by kdf_reg, ⟨by kdf_reg, by kdf_reg, by kdf_reg, hx.common.saved, hx.common.frame⟩,
     by kdf_reg, by kdf_reg, by kdf_reg, by kdf_reg,
     by kdf_reg, by kdf_reg, by kdf_reg, by kdf_reg, by kdf_reg, hx.m16_eq, hx.prk_507⟩))
-
-/-- Segment `E2` (`b + 0x63400` → `b + 0x66fa0`, 4 steps): sets up `new_from_slice` #2 with
-`x0 = hsp s₀ + 352#64`, `x1 = hsp s₀ + 507#64`, `x2 = 32#64`. -/
-theorem seg_e2_runsTo [HkdfHooks C.F ext] {salt ikm info : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀)
-    (hx : StateERetFin b C.F salt ikm info infoA okmA okmLen s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s
-      (StateENfs2 b C.F salt ikm info infoA okmA okmLen s₀) := by
-  hkdf_seg_e2_body
 
 theorem seg_e2_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     {b_iv : BitVec 64} {aligned : Prop} {salt ikm info : List (BitVec 8)}
@@ -355,17 +298,6 @@ local macro "hkdf_seg_e3_body" : tactic => `(tactic| (
   refine HmacSt.of_copy_empty_360_208 hx.hmac_360 ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ <;>
     simp (config := { decide := true }) only [arm64_norm]))
 
-/-- Segment `E3` (`b + 0x63410` → `b + 0x5e020`, 34 steps): checks `tag_352 = 0`, copies
-`Hmac(PRK, [])` from `hsp s₀ + 360#64` to `hsp s₀ + 208#64`, stores `[sp + 0] = okmLen` and
-`[sp + 8] = infoA`, checks `okmLen ≤ 8160`, and branches to `0x5e020`. -/
-theorem seg_e3_runsTo [HkdfHooks C.F ext] {salt ikm info : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀)
-    (hx : StateERet2 b C.F salt ikm info infoA okmA okmLen s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s
-      (StateExtractDone b C.F salt ikm info infoA okmA okmLen s₀) := by
-  hkdf_seg_e3_body
-
 theorem seg_e3_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     {b_iv : BitVec 64} {aligned : Prop} {salt ikm info : List (BitVec 8)}
     {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ s : State}
@@ -374,25 +306,6 @@ theorem seg_e3_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     RunsTo ((blkPC_379).rebase (blkPl_379).base H) s
       (StateExtractDone hkdfCodeFakeB C.F salt ikm info infoA okmA okmLen s₀) := by
   hkdf_seg_e3_body
-
-/-- Full Extract phase (`b + 0x63284` → `b + 0x634fc`) of `spqr::kdf::hkdf_to_slice`. -/
-theorem extract_phase_runsTo [HkdfHooks C.F ext]
-    (hNfs : Nfs3GenRunsToExt b C.F ext)
-    {salt ikm info : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀) :
-    RunsTo (tripleRatchetProgAtExt b ext) s₀
-      (StateExtractDone b C.F salt ikm info infoA okmA okmLen s₀) :=
-  (seg_e0_runsTo (C := C) hpre).trans fun _ hs0 =>
-  (nfs1_runsTo (alignedM := fun _ => (b &&& 0xfff#64) = 0#64) hNfs hpre hs0
-    (fun _ => hpre.base_al)).trans fun _ hs1 =>
-  (seg_e1_runsTo hpre hs1).trans fun _ hs2 =>
-  (seg_e1d_runsTo hpre hs2).trans fun _ hs3 =>
-  (fin_extract_runsTo hpre hs3).trans fun _ hs4 =>
-  (seg_e2_runsTo hpre hs4).trans fun _ hs5 =>
-  (nfs2_runsTo (alignedM := fun _ => (b &&& 0xfff#64) = 0#64) hNfs hpre hs5
-    (fun _ => hpre.base_al)).trans fun _ hs6 =>
-  seg_e3_runsTo hpre hs6
 
 theorem extract_phase_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     (h_memcpy : H lsMemcpySym = some memcpyHook)
@@ -588,9 +501,11 @@ theorem HmacSt.of_copy_empty_208_352 {m₀ m : Memory} {s₀ : State}
     (Expand.read64_add_off h104) (Expand.read64_add_off h112) (Expand.read64_add_off h120)
     (Expand.read64_add_off h128) (Expand.read64_add_off h136)
 
+abbrev offB1MemcpyTarget : Nat := 558412
+
 structure StateB1Memcpy (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (salt ikm info : List (BitVec 8)) (infoA okmA : BitVec 64) (okmLen : ℕ)
-    (s₀ s : State) (pc_target : BitVec 64 := b + bv% (ls_off% "memcpy")) : Prop where
+    (s₀ s : State) (pc_target : BitVec 64 := b + bv% offB1MemcpyTarget) : Prop where
   pc_eq    : s.pc = pc_target
   exp      : HExpCommon F (hkdfExtractBytes F salt ikm) info infoA okmLen s₀ s
   lr_eq    : s.readReg64 .lr = b + 0x5e194#64
@@ -638,17 +553,6 @@ local macro "hkdf_seg_b1a_body" : tactic => `(tactic| (
   simp only [Expand.mem_setMem]
   refine HmacSt.of_copy_empty_208_352 hx.hmac_208 ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ <;>
     simp (config := { decide := true }) only [arm64_norm]))
-
-/-- Segment `B1a` (`b + 0x5e020` → `b + 0x97228`, 36 steps): copies `Hmac(PRK, [])` from
-`hsp s₀ + 208#64` to `hsp s₀ + 352#64`, stores `hsp s₀ + 508#64` at `[sp + 24]`, sets `x24 = 32`,
-and calls `memcpy(hsp s₀ + 352#64, infoA, info.length)`. -/
-theorem seg_b1a_runsTo [HkdfHooks C.F ext] {salt ikm info : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀)
-    (hx : StateExtractDone b C.F salt ikm info infoA okmA okmLen s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s
-      (StateB1Memcpy b C.F salt ikm info infoA okmA okmLen s₀) := by
-  hkdf_seg_b1a_body
 
 theorem seg_b1a_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     {b_iv : BitVec 64} {aligned : Prop} {salt ikm info : List (BitVec 8)}
@@ -936,29 +840,6 @@ local macro "hkdf_seg_b1b_post" : tactic => `(tactic| (
     (by simp (config := { decide := true }) only [m₁, arm64_norm])
     (by simp (config := { decide := true }) only [m₁, arm64_norm])))
 
-/-- Segment `B1b` (`b + 0x97228` → `b + 0x67974`, 1 `memcpy` + 26 steps): `memcpy` of `info` to
-`hsp s₀ + 352#64`, appends counter byte `1#8`, sets `x26 = okmLen - 32`, copies `Hmac` to
-`hsp s₀ + 32#64`, and calls `finalize_fixed(hsp s₀ + 540#64, hsp s₀ + 32#64)`. -/
-theorem seg_b1b_runsTo [HkdfHooks C.F ext] {salt ikm info : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀)
-    (hx : StateB1Memcpy b C.F salt ikm info infoA okmA okmLen s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s
-      (StateB1Fin b C.F salt ikm info infoA okmA okmLen s₀) := by
-  have hpc := hx.pc_eq; have hrun := hx.exp.common.status
-  have hsp_eq := hx.exp.common.sp_eq; have hx29 := hx.exp.common.x29_eq
-  have hlr := hx.lr_eq; have hx0 := hx.x0_eq; have hx1 := hx.x1_eq; have hx2 := hx.x2_eq
-  have hx20 := hx.x20_eq; have hx21 := hx.x21_eq; have hx22 := hx.x22_eq
-  have hx24 := hx.x24_eq; have hx25 := hx.x25_eq; have hx28 := hx.x28_eq
-  have hhsp := hsp_aligned hpre.sp_aligned; have hinfo_lt := hpre.info_lt
-  have hrw_hsp : s.mem.RW (hsp s₀) 688 := HFrame.rw_hsp hpre hx.exp.common.frame
-  have hrw_dst : s.mem.RW (hsp s₀ + 352#64) info.length := hrw_hsp.sub (by bv_omega)
-  have hread_info : s.mem.readBytes infoA info.length = info := HFrame.info_bytes hpre hx.exp.common.frame
-  have hx2_nat : (s.readReg64 .x2).toNat = info.length := by
-    rw [hx2, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  refine s2_memcpy_step_ext b C ext hrun hpc hx0 hx1 hx2_nat hlr hread_info hrw_dst ?_
-  hkdf_seg_b1b_post
-
 theorem seg_b1b_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     (h_memcpy : H lsMemcpySym = some memcpyHook)
     {b_iv : BitVec 64} {aligned : Prop} {salt ikm info : List (BitVec 8)}
@@ -981,37 +862,6 @@ theorem seg_b1b_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     rw [hx2, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
   refine s2_memcpy_step_placed_429 h_memcpy hrun hpc hx0 hx1 hx2_nat hlr hread_info hrw_dst ?_
   hkdf_seg_b1b_post
-
-/-- `finalize_fixed` #1 (`b + 0x6ce50` → `b + 0x636cc`): computes `T(1) = Expand.t1 C.F prk info`
-at `hsp s₀ + 540#64`. -/
-theorem fin_b1_runsTo [HkdfHooks C.F ext] {salt ikm info : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀)
-    (hx : StateB1Fin b C.F salt ikm info infoA okmA okmLen s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s
-      (StateB1RetFin b C.F salt ikm info infoA okmA okmLen s₀) := by
-  have hrw_hsp := HFrame.rw_hsp hpre hx.exp.common.frame
-  have hrw_sub := HFrame.rw_sub_544 hpre hx.exp.common.frame
-  have hfin_pre : FinPre3 b C.F (hkdfExtractBytes C.F salt ikm) (info ++ [1#8]) s :=
-    { pc_eq := hx.pc_eq, status := hx.exp.common.status,
-      key_le := by simp [hkdfExtractBytes, hmacWith],
-      msg_lt := by have := hpre.info_lt; simp; omega,
-      hmac_st := by rw [hx.x1_eq]; exact hx.hmac_32,
-      rw_out := by rw [hx.x0_eq]; exact hrw_hsp.sub (by bv_omega),
-      rw_hm := by rw [hx.x1_eq]; exact hrw_hsp.sub (by bv_omega),
-      rw_fsp := by rw [hx.exp.common.sp_eq]; exact hrw_sub.sub (by bv_omega),
-      disj_out_hm := by rw [hx.x0_eq, hx.x1_eq]; unfold DisjointRegions; bv_omega,
-      disj_out_fsp := by rw [hx.x0_eq, hx.exp.common.sp_eq]; unfold DisjointRegions; bv_omega,
-      disj_hm_fsp := by rw [hx.x1_eq, hx.exp.common.sp_eq]; unfold DisjointRegions; bv_omega,
-      sp_aligned := by rw [hx.exp.common.sp_eq]; exact (hsp_aligned hpre.sp_aligned).2.1 }
-  refine (FinalizeFixed3Proof.finalize_fixed3_runsTo_ext (ext := ext) hfin_pre).mono
-    fun s' ⟨hpc', hrun', hcs, ht1, hfr⟩ => ?_
-  rw [hx.lr_eq] at hpc'; rw [hx.x0_eq] at ht1
-  rw [hx.x0_eq, hx.x1_eq, hx.exp.common.sp_eq] at hfr
-  exact ⟨hpc', HExpCommon.of_fin_frame hx.exp hrun' hcs hfr,
-    (CalleeSaved.x21 hcs).trans hx.x21_eq, (CalleeSaved.x22 hcs).trans hx.x22_eq,
-    (CalleeSaved.x24 hcs).trans hx.x24_eq, (CalleeSaved.x25 hcs).trans hx.x25_eq,
-    (CalleeSaved.x26 hcs).trans hx.x26_eq, (CalleeSaved.x28 hcs).trans hx.x28_eq, ht1⟩
 
 theorem fin_b1_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     (h_memcpy : H lsMemcpySym = some memcpyHook)
@@ -1113,25 +963,6 @@ local macro "hkdf_seg_b1d_post" : tactic => `(tactic| (
       (Expand.t1 C.F (hkdfExtractBytes C.F salt ikm) info)
       (by rw [Expand.t1_length]; decide)))
 
-/-- Segment `B1d` (`b + 0x5e1f0` → `b + 0x5e214`, 4 steps + `memcpy` + 5 steps): copies `T(1)`
-(32 B) from `hsp s₀ + 540#64` to `okmA` and caches `T(1)` at `hsp s₀ + 508#64`. -/
-theorem seg_b1d_runsTo [HkdfHooks C.F ext] {salt ikm info : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀)
-    (hx : StateB1RetFin b C.F salt ikm info infoA okmA okmLen s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s
-      (StateB1Done b C.F salt ikm info infoA okmA okmLen s₀) := by
-  have hpc := hx.pc_eq; have hrun := hx.exp.common.status
-  have hsp_eq := hx.exp.common.sp_eq; have hx29 := hx.exp.common.x29_eq
-  have hx21 := hx.x21_eq; have hx22 := hx.x22_eq; have hx24 := hx.x24_eq
-  have hx25 := hx.x25_eq; have hx26 := hx.x26_eq; have hx28 := hx.x28_eq
-  have hhsp := hsp_aligned hpre.sp_aligned
-  have hrw_okm : s.mem.RW okmA okmLen := HFrame.rw_okm hpre hx.exp.common.frame
-  have hrw_dst : s.mem.RW okmA 32 := hrw_okm.sub (by have := hpre.okm_len; bv_omega)
-  iterate 4 kdf_step
-  refine s2_memcpy_step_ext b C ext hrun rfl rfl rfl rfl rfl hx.t1_540 hrw_dst ?_
-  hkdf_seg_b1d_post
-
 theorem seg_b1d_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     (h_memcpy : H lsMemcpySym = some memcpyHook)
     {b_iv : BitVec 64} {aligned : Prop} {salt ikm info : List (BitVec 8)}
@@ -1150,20 +981,6 @@ theorem seg_b1d_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
   iterate 4 kdf_step
   refine s2_memcpy_step_placed_429 h_memcpy hrun rfl rfl rfl rfl rfl hx.t1_540 hrw_dst ?_
   hkdf_seg_b1d_post
-
-/-- Full Extract + Expand Block 1 (`b + 0x63284` → `b + 0x636f0`) of `spqr::kdf::hkdf_to_slice`. -/
-theorem block1_phase_runsTo [HkdfHooks C.F ext]
-    (hNfs : Nfs3GenRunsToExt b C.F ext)
-    {salt ikm info : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀) :
-    RunsTo (tripleRatchetProgAtExt b ext) s₀
-      (StateB1Done b C.F salt ikm info infoA okmA okmLen s₀) :=
-  (extract_phase_runsTo hNfs hpre).trans fun _ hs0 =>
-  (seg_b1a_runsTo hpre hs0).trans fun _ hs1 =>
-  (seg_b1b_runsTo hpre hs1).trans fun _ hs2 =>
-  (fin_b1_runsTo hpre hs2).trans fun _ hs3 =>
-  seg_b1d_runsTo hpre hs3
 
 theorem block1_phase_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     (h_memcpy : H lsMemcpySym = some memcpyHook)

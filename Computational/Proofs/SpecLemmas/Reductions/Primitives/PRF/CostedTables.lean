@@ -19,7 +19,7 @@ public import Computational.Specifications.Reductions.ReductionDsl.Core
 interface, and source game codec for pseudorandom functions (`MACScheme.prfSpec`).
 -/
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.SpecLemmas.Reductions.Primitives.PRF.CostedTables
 
@@ -30,13 +30,13 @@ open OracleSpec OracleComp
 inductive PrfSort | inp | tag
 
 /-- Two-sort signature (`inp`, `tag`) with unit-sized sorts for standalone PRF reductions. -/
-@[reducible] def prfSig (Input Tag : Type) : Sig where
+@[expose, reducible] def prfSig (Input Tag : Type) : Sig where
   Base := PrfSort
   den := fun | .inp => Input | .tag => Tag
   sz := fun _ _ => 1
 
 /-- Polymorphic operation table supplying named constant PRF inputs `c` at unit cost. -/
-@[reducible] def prfConstantInputOps {S : Sig} (inpT : Ty S) {C : Type} (c : C → inpT.denote) : Ops S where
+@[expose, reducible] def prfConstantInputOps {S : Sig} (inpT : Ty S) {C : Type} (c : C → inpT.denote) : Ops S where
   Op := C
   dom := fun _ => .unit
   cod := fun _ => inpT
@@ -44,7 +44,7 @@ inductive PrfSort | inp | tag
   cost := fun _ => 1
 
 /-- Target oracle interface for `unifSpec + MACScheme.prfSpec` at unit query and coin cost. -/
-def prfIface {S : Sig} (inpT tagT : Ty S) :
+@[expose] def prfIface {S : Sig} (inpT tagT : Ty S) :
     Iface S (unifSpec + CryptoGames.MACScheme.prfSpec inpT.denote tagT.denote) where
   fwdU := fun n =>
     query (spec := unifSpec + CryptoGames.MACScheme.prfSpec inpT.denote tagT.denote) (.inl n)
@@ -58,7 +58,7 @@ def prfIface {S : Sig} (inpT tagT : Ty S) :
   smp := ReductionDsl.Samplers.empty
 
 /-- Source game codec for `MACScheme.prfSpec` (`codecCost = 1`). -/
-def prfCodec {S : Sig} (inpT tagT : Ty S) :
+@[expose] def prfCodec {S : Sig} (inpT tagT : Ty S) :
     GameCodec S (CryptoGames.MACScheme.prfSpec inpT.denote tagT.denote) where
   Q := inpT
   R := tagT

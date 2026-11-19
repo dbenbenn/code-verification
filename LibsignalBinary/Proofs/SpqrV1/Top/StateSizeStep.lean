@@ -24,7 +24,7 @@ Proves `raw*` size bounds across `Chain` (`fromPb`, `new`, `chainFromVersionNego
 `nextChunk`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.StateSize
 
@@ -225,7 +225,7 @@ theorem ChainEpochDirection.key_raw_le (hkdf : HkdfFn) (ed : ChainEpochDirection
                 simp only [ChainEpochDirection.intoPb, rawEpochDir]; omega
 
 /-- Model-level per-link weight `rawChainEpoch link.intoPb + 200`. -/
-def linkRaw (link : ChainEpoch) : Nat :=
+@[expose] def linkRaw (link : ChainEpoch) : Nat :=
   rawEpochDir link.send.intoPb + rawEpochDir link.recv.intoPb + 200
 
 private theorem map_intoPb_links (links : List ChainEpoch) :
@@ -599,7 +599,7 @@ private theorem Poly.serialize_length (p : Poly) :
     p.serialize.length = 2 * p.coefficients.length :=
   flatMap_u16ToBeBytes_length p.coefficients
 
-def pointRaw (pt : Point) : Nat := 2 * pt.value.length + 22
+@[expose] def pointRaw (pt : Point) : Nat := 2 * pt.value.length + 22
 def polyRaw (p : Poly) : Nat := 2 * p.coefficients.length + 22
 
 private theorem map_intoPb_encoder_pts (pts : List Point) :

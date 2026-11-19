@@ -19,9 +19,9 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.SendWire.WhisperPureA
-public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
-public import Symbolic.Proofs.Swarm.CREF.TR.SendRetCoinsCliPure
+public import Symbolic.Proofs.Swarm.CREF.SendWire.WhisperPureA -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.SendRetCoinsCliPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.SendRetCoinsCliPureB
 import Symbolic.Proofs.Swarm.TRREF.EncodeRecordPqInj
@@ -36,6 +36,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+import Symbolic.Proofs.Refinement.TripleRatchet.WireCovered
 
 /-!
 # Pending-PreKey `SendWire` Model-to-Wire Bridge
@@ -45,7 +46,7 @@ Defines `PendingRecordCanon`, reduces `PureRecPending` under `PureCRecRelH` to
 correspondence on pending-prekey records.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -70,7 +71,7 @@ open CryptoVerification.LibsignalProtoCodec
 open Proofs.libsignal.SR (interpW)
 open Symbolic.Swarm.TRREF.SpqrSemOf (spqrModelOf)
 
-def PendingRecordCanon (rec : HwBytes) : Prop :=
+@[expose] def PendingRecordCanon (rec : HwBytes) : Prop :=
   ∃ sess : Session (List (BitVec 8)),
     TR.Pure.slots_RecordCanonical_Q TR.Pure.slots_NonEmptyV1Q rec sess ∧
     TR.Pure.slots_RecordInScopeP ⟨some sess⟩ ∧
@@ -104,10 +105,7 @@ theorem ooo_of_pureTRRecordCanon_sess {r : ProtocolSetup} {p : Participant} {rec
 
 theorem pqStateOf_recordBytes_pure (rr : RecordRec) :
     pqStateOf (recordBytes rr) = rr.current.pqRatchetState := by
-  have hex : ∃ r' : RecordRec, recordBytes rr = recordBytes r' := ⟨rr, rfl⟩
-  simp only [pqStateOf, hex, ↓reduceDIte]
-  have hinj := Symbolic.Swarm.CREF.TR.recordBytes_injective (Classical.choose_spec hex).symm
-  exact congrArg (fun x => x.current.pqRatchetState) hinj
+  rw [pqStateOf, DY.Libsignal.Rust.decodeRecordBytes?_recordBytes]; rfl
 
 theorem pqStateOf_eq_gamma_of_stateRel_pure {interpretation : ExternInterpretation}
     {S : OpaqueSymbolSemantics} {g : Ghost} {st : TRState} {recR : RecordRec} {b : HwBytes}

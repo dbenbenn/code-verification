@@ -10,9 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.ProofPlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.ProofPlacedBudgetAux -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Relocatable Main Proof for `<PolyDecoder as Decoder>::add_chunk`
@@ -22,7 +26,7 @@ Threads `RustCliAllocBudget M` through the 16-iteration outer loop and proves
 Block `419`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

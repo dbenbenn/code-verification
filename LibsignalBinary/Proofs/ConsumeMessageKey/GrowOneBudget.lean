@@ -9,13 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.CoreBudget
+import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.CoreBudget
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable `RawVec<MessageKey>::grow_one` Entrypoints
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -14,7 +14,7 @@ public import ProofLib.SepLogic.Bytes
 import ProofLib.SepLogic.WP.Structural
 public import ProofLib.Process.Core
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,7 +41,7 @@ open Arm64 Arm64.Process ProofLib
 /-! ## Closed Form of `packCStringList` -/
 
 /-- Addresses of NUL-terminated strings packed from `base + off` on. -/
-def packAddrs (base : BitVec 64) : Nat → List (List (BitVec 8)) → List (BitVec 64)
+@[expose] def packAddrs (base : BitVec 64) : Nat → List (List (BitVec 8)) → List (BitVec 64)
   | _, [] => []
   | off, s :: ss => (base + BitVec.ofNat 64 off) :: packAddrs base (off + s.length + 1) ss
 
@@ -104,9 +104,6 @@ theorem flatMap_cstr_length (strs : List (List (BitVec 8))) :
       List.sum_cons]
 
 theorem le_alignUp16 (n : Nat) : n ≤ alignUp16 n := by unfold alignUp16; omega
-theorem alignUp16_lt (n : Nat) : alignUp16 n < n + 16 := by unfold alignUp16; omega
-theorem alignUp16_mod (n : Nat) : alignUp16 n % 16 = 0 := by unfold alignUp16; omega
-
 /-- `buildInitialStack` pads the table to an even number of words. -/
 theorem pad_eq (ws : List (BitVec 64)) (n : Nat) (h : ws.length = n) :
     (if (ws.length % 2 == 0) = true then ws else ws ++ [0#64]) =
@@ -124,19 +121,15 @@ theorem flatMap_pair_length (ps : List (BitVec 64 × BitVec 64)) :
 
 /-! ## Stack Frame Layout -/
 
-def top : Nat := defaultStackTop.toNat
+@[expose] def top : Nat := defaultStackTop.toNat
 
 /-- CLI stack size (8 MiB): `processInputs` sets `stackSize := 8388608` (DEV-CLI7) rather than `defaultStackSize` (128 KiB). -/
-def cliStackSize : Nat := 8388608
+@[expose] def cliStackSize : Nat := 8388608
 
 theorem cliStackSize_eq : cliStackSize = 8388608 := rfl
 
-theorem processInputs_stackSize (argv : List String) (stdin : List (BitVec 8))
-    (files : List (String × List (BitVec 8))) (dirs : List String) :
-    (processInputs argv stdin files dirs).stackSize = cliStackSize := rfl
-
 /-- Lowest stack address `defaultStackTop - cliStackSize` (`0x7fffff7f0000`). -/
-def stackBase : Nat := defaultStackTop.toNat - cliStackSize
+@[expose] def stackBase : Nat := defaultStackTop.toNat - cliStackSize
 
 theorem top_eq : top = 0x7fffffff0000 := rfl
 theorem stackBase_eq : stackBase = 0x7fffff7f0000 := by decide
@@ -146,39 +139,39 @@ section Frame
 variable (elf : ElfImage) (strs : List (List (BitVec 8)))
 
 /-- Total byte length of NUL-terminated `argv` strings. -/
-def strLen : Nat := (strs.map fun s => s.length + 1).sum
+@[expose] def strLen : Nat := (strs.map fun s => s.length + 1).sum
 
 /-- `upperRawLen` with `envp = []` and `execfn = []`: `"aarch64\0"` (8), `argv` strings, `"\0"` (1), and 8-byte sentinel. -/
-def upperRawLen : Nat := 8 + strLen strs + 0 + 1 + 8
+@[expose] def upperRawLen : Nat := 8 + strLen strs + 0 + 1 + 8
 
-def infoPadLen : Nat := alignUp16 (upperRawLen strs) - upperRawLen strs
+@[expose] def infoPadLen : Nat := alignUp16 (upperRawLen strs) - upperRawLen strs
 
 /-- `infoLen` with `envp = []` and `execfn = []`: 16-byte `AT_RANDOM` buffer plus 16-byte-aligned `upperRawLen`. -/
-def infoLen : Nat := 16 + alignUp16 (upperRawLen strs)
+@[expose] def infoLen : Nat := 16 + alignUp16 (upperRawLen strs)
 
-def infoBase : Nat := top - infoLen strs
+@[expose] def infoBase : Nat := top - infoLen strs
 
 /-- Word count of `[sp0, infoBase)`: `argc`, `argv` pointers, `argv` `NULL`, `envp` `NULL`, and 19 `auxv` pairs, padded to even length. -/
-def tableWords : Nat := strs.length + 41 + (strs.length + 41) % 2
+@[expose] def tableWords : Nat := strs.length + 41 + (strs.length + 41) % 2
 
-def sp0 : Nat := infoBase strs - 8 * tableWords strs
+@[expose] def sp0 : Nat := infoBase strs - 8 * tableWords strs
 
 /-- Address of the platform string `"aarch64\0"`. -/
-def platformAddr : BitVec 64 :=
+@[expose] def platformAddr : BitVec 64 :=
   BitVec.ofNat 64 (infoBase strs) + BitVec.ofNat 64 (16 + infoPadLen strs)
 
 /-- Start of the packed NUL-terminated `argv` strings (`platformAddr + 8`). -/
-def argvBase : BitVec 64 :=
+@[expose] def argvBase : BitVec 64 :=
   platformAddr strs + 8#64
 
 /-- `AT_EXECFN` address (NUL-terminated `inputs.execfn` following `argv` and `envp`). -/
-def execfnAddr : BitVec 64 :=
+@[expose] def execfnAddr : BitVec 64 :=
   argvBase strs + BitVec.ofNat 64 (strLen strs) + 0#64
 
-def ptrWords : List (BitVec 64) := packAddrs (argvBase strs) 0 strs ++ [0#64]
+@[expose] def ptrWords : List (BitVec 64) := packAddrs (argvBase strs) 0 strs ++ [0#64]
 
 /-- `envp` `NULL`, the 19 `auxv` pairs, and optional alignment padding word. -/
-def restWords : List (BitVec 64) :=
+@[expose] def restWords : List (BitVec 64) :=
   [ 0#64
   , AuxvTag.phdr,     elf.phdrVaddr
   , AuxvTag.phent,    BitVec.ofNat 64 elf.phent
@@ -192,7 +185,7 @@ def restWords : List (BitVec 64) :=
   , AuxvTag.gid,      1000#64
   , AuxvTag.egid,     1000#64
   , AuxvTag.platform, platformAddr strs
-  , AuxvTag.hwcap,    0x3#64
+  , AuxvTag.hwcap,    0x1b#64
   , AuxvTag.clktck,   100#64
   , AuxvTag.secure,   0#64
   , AuxvTag.random,   BitVec.ofNat 64 (infoBase strs)
@@ -201,7 +194,7 @@ def restWords : List (BitVec 64) :=
   , AuxvTag.null,     0#64 ] ++ List.replicate ((strs.length + 41) % 2) 0#64
 
 /-- The 39 unpadded words of `restWords` (`envp` `NULL` and 19 `auxv` pairs) read by musl startup. -/
-def auxWords : List (BitVec 64) :=
+@[expose] def auxWords : List (BitVec 64) :=
   [ 0#64
   , AuxvTag.phdr,     elf.phdrVaddr
   , AuxvTag.phent,    BitVec.ofNat 64 elf.phent
@@ -215,7 +208,7 @@ def auxWords : List (BitVec 64) :=
   , AuxvTag.gid,      1000#64
   , AuxvTag.egid,     1000#64
   , AuxvTag.platform, platformAddr strs
-  , AuxvTag.hwcap,    0x3#64
+  , AuxvTag.hwcap,    0x1b#64
   , AuxvTag.clktck,   100#64
   , AuxvTag.secure,   0#64
   , AuxvTag.random,   BitVec.ofNat 64 (infoBase strs)
@@ -223,25 +216,25 @@ def auxWords : List (BitVec 64) :=
   , AuxvTag.execfn,   execfnAddr strs
   , AuxvTag.null,     0#64 ]
 
-def argcBytes : List (BitVec 8) := Obj.bytesLE 8 (BitVec.ofNat 64 strs.length)
+@[expose] def argcBytes : List (BitVec 8) := Obj.bytesLE 8 (BitVec.ofNat 64 strs.length)
 
-def ptrBytes : List (BitVec 8) := (ptrWords strs).flatMap (Obj.bytesLE 8)
+@[expose] def ptrBytes : List (BitVec 8) := (ptrWords strs).flatMap (Obj.bytesLE 8)
 
-def restBytes : List (BitVec 8) := (restWords elf strs).flatMap (Obj.bytesLE 8)
+@[expose] def restBytes : List (BitVec 8) := (restWords elf strs).flatMap (Obj.bytesLE 8)
 
 /-- 16 zero `AT_RANDOM` bytes, 16-byte alignment padding, and `"aarch64\0"` (`[infoBase, argvBase)`). -/
-def headBytes : List (BitVec 8) :=
+@[expose] def headBytes : List (BitVec 8) :=
   List.replicate 16 0#8 ++ List.replicate (infoPadLen strs) 0#8 ++
     [0x61#8, 0x61#8, 0x72#8, 0x63#8, 0x68#8, 0x36#8, 0x34#8, 0x00#8]
 
-def strBytes : List (BitVec 8) := strs.flatMap (· ++ [0#8])
+@[expose] def strBytes : List (BitVec 8) := strs.flatMap (· ++ [0#8])
 
 /-- `inputs.execfn` (`"\0"`) followed by the 8-byte top-of-stack zero sentinel. -/
-def tailBytes : List (BitVec 8) :=
+@[expose] def tailBytes : List (BitVec 8) :=
   (0#8 :: List.replicate 8 0#8)
 
 /-- Complete initial stack frame bytes in `[sp0, top)`. -/
-def frameBytes : List (BitVec 8) :=
+@[expose] def frameBytes : List (BitVec 8) :=
   argcBytes strs ++
     (ptrBytes strs ++ ((restBytes elf strs ++ headBytes strs) ++ (strBytes strs ++ tailBytes)))
 
@@ -249,11 +242,11 @@ end Frame
 
 /-! ## Closed Form of `buildInitialStack` -/
 
-/-- `buildInitialStack` with the CLI's stack, the default auxv and no envp, on NUL-free strings that fit. -/
+/-- `buildInitialStack` with the CLI's stack, `hwcap := 0x1b#64` auxv and no envp, on NUL-free strings that fit. -/
 theorem buildInitialStack_eq (elf : ElfImage) (inputs : ProcessInputs)
     (strs : List (List (BitVec 8)))
     (hargv : inputs.argv = strs) (henvp : inputs.envp = []) (hexecfn : inputs.execfn = [])
-    (hauxv : inputs.auxv = {})
+    (hauxv : inputs.auxv = { hwcap := 0x1b#64 })
     (htop : inputs.stackTop = defaultStackTop) (hsize : inputs.stackSize = cliStackSize)
     (hnul : ∀ s ∈ strs, ∀ b ∈ s, b ≠ 0#8)
     (hbrk : elf.brkStart.toNat ≤ stackBase)
@@ -331,16 +324,6 @@ def stackMem (segs : List Snapshot.Region) (sp : BitVec 64) (bs : List (BitVec 8
   Memory.mapZero ⟨Snapshot.loadCellAt (segs ++ [{ start := sp, perm := Perm.rw, bytes := bs }])⟩
     (BitVec.ofNat 64 stackBase) cliStackSize
 
-theorem cellAt_none_of (rs : List Snapshot.Region) (a : BitVec 64)
-    (h : ∀ r ∈ rs, ¬ (a - r.start).toNat < r.bytes.length) : Snapshot.cellAt rs a = none := by
-  unfold Snapshot.cellAt
-  rw [List.findSome?_eq_none_iff]
-  intro r hr
-  dsimp only
-  split
-  · rename_i hlt; exact absurd hlt (h r hr)
-  · rfl
-
 private theorem loadCellAt_none_of (rs : List Snapshot.Region) (a : BitVec 64)
     (h : ∀ r ∈ rs, ¬ (a - r.start).toNat < r.bytes.length) : Snapshot.loadCellAt rs a = none := by
   unfold Snapshot.loadCellAt
@@ -350,14 +333,6 @@ private theorem loadCellAt_none_of (rs : List Snapshot.Region) (a : BitVec 64)
   split
   · rename_i hlt; exact absurd hlt (h r hr)
   · rfl
-
-theorem cellAt_segs_none (segs : List Snapshot.Region)
-    (hsegs : ∀ r ∈ segs, r.start.toNat + r.bytes.length ≤ stackBase) (a : BitVec 64)
-    (ha : stackBase ≤ a.toNat) : Snapshot.cellAt segs a = none := by
-  refine cellAt_none_of segs a fun r hr => ?_
-  have h1 := hsegs r hr
-  rw [sub_toNat _ _ (by omega)]
-  omega
 
 /-- The frame bytes are in `stackMem`, read-write. -/
 theorem stackMem_holdsBytes (segs : List Snapshot.Region) (sp : BitVec 64) (bs : List (BitVec 8))
@@ -520,25 +495,10 @@ theorem segs_below (elf : ElfImage) (hwf : elf.WellFormed = true)
 
 /-! ## Generic Loader Layout -/
 
-/-- `rawState` stack pointer and memory layout for NUL-free `strs` fitting within `cliStackSize`. -/
-theorem rawState_layout (elf : ElfImage) (inputs : ProcessInputs) (strs : List (List (BitVec 8)))
-    (hargv : inputs.argv = strs) (henvp : inputs.envp = []) (hexecfn : inputs.execfn = [])
-    (hauxv : inputs.auxv = {})
-    (htop : inputs.stackTop = defaultStackTop) (hsize : inputs.stackSize = cliStackSize)
-    (hnul : ∀ s ∈ strs, ∀ b ∈ s, b ≠ 0#8)
-    (hbrk : elf.brkStart.toNat ≤ stackBase)
-    (hfit : 8 * tableWords strs + infoLen strs ≤ cliStackSize) :
-    (elf.rawState inputs).sp = BitVec.ofNat 64 (sp0 strs) ∧
-      (elf.rawState inputs).mem =
-        stackMem elf.segments (BitVec.ofNat 64 (sp0 strs)) (frameBytes elf strs) :=
-  rawState_eq elf inputs _ _
-    (buildInitialStack_eq elf inputs strs hargv henvp hexecfn hauxv htop hsize hnul hbrk hfit)
-    htop hsize
-
 /-- `ElfImage.loadState` layout for NUL-free `strs` fitting within `cliStackSize`. -/
 theorem load_layout (elf : ElfImage) (inputs : ProcessInputs) (strs : List (List (BitVec 8)))
     (hargv : inputs.argv = strs) (henvp : inputs.envp = []) (hexecfn : inputs.execfn = [])
-    (hauxv : inputs.auxv = {})
+    (hauxv : inputs.auxv = { hwcap := 0x1b#64 })
     (htop : inputs.stackTop = defaultStackTop) (hsize : inputs.stackSize = cliStackSize)
     (hnul : ∀ s ∈ strs, ∀ b ∈ s, b ≠ 0#8)
     (hwf : elf.WellFormed = true) (hbrk : elf.brkStart.toNat ≤ stackBase)
@@ -555,40 +515,13 @@ theorem load_layout (elf : ElfImage) (inputs : ProcessInputs) (strs : List (List
   obtain ⟨hsp, hmem⟩ := rawState_eq elf inputs _ _ hb htop hsize
   exact ⟨loadState_eq elf inputs _ _ hwf hb hdirs hfiles, hsp, hmem⟩
 
-theorem readBytes_of_holdsBytes {m : Memory} {addr : BitVec 64} {bs : List (BitVec 8)}
-    {p : BitVec 64 → Perm} (h : Obj.HoldsBytes m addr bs p) : m.readBytes addr bs.length = bs := by
-  induction bs generalizing addr with
-  | nil => rfl
-  | cons b rest ih =>
-    simp only [List.length_cons, Memory.readBytes_succ, List.cons.injEq]
-    refine ⟨?_, ih fun i hi => ?_⟩
-    · have := (h 0 (Nat.zero_lt_succ _)).1
-      simpa using this
-    · have hadd : addr + 1#64 + BitVec.ofNat 64 i = addr + BitVec.ofNat 64 (i + 1) := by
-        rw [BitVec.add_assoc]; congr 1
-        change BitVec.ofNat 64 1 + BitVec.ofNat 64 i = BitVec.ofNat 64 (i + 1)
-        rw [BitVec.ofNat_add_ofNat, Nat.add_comm]
-      rw [hadd]
-      exact h (i + 1) (Nat.succ_lt_succ hi)
-
-/-- A block that is read-write in `m` and whose contents `m` has is satisfied by `m`. -/
-theorem sat_of_isBlock_rw {P : SepProp} {b : BitVec 64} {n : Nat} {Φ : Memory → Prop} {m : Memory}
-    (hb : IsBlock P b n Φ) (hrw : m.RW b n) (hΦ : Φ m) :
-    m ⊨ P := by
-  have hm0 : m ⊨ memRegion b n ∗ emp := by
-    rw [sepConj_emp]
-    exact ProofLib.satisfies_memRegion m b n hrw
-  have hm1 : m ⊨ P ∗ emp :=
-    (IsBlock.memRegion b n).update hb (Nat.le_refl _) hm0 (AgreesOutside.rfl' m b n) hΦ
-  rwa [sepConj_emp] at hm1
-
 /-! ## C `argv` Table Predicate -/
 
 /-- NUL-terminated byte slice `s ++ [0#8]` at `p`. -/
-def cStrAt (p : BitVec 64) (s : List (BitVec 8)) : SepProp := p ↦ₛ (s ++ [0#8])
+@[expose] def cStrAt (p : BitVec 64) (s : List (BitVec 8)) : SepProp := p ↦ₛ (s ++ [0#8])
 
 /-- C `argv` pointer table at `a` terminated by `0#64`, with separate NUL-terminated strings. -/
-def argvAt : BitVec 64 → List (List (BitVec 8)) → SepProp
+@[expose] def argvAt : BitVec 64 → List (List (BitVec 8)) → SepProp
   | a, [] => a ↦₆₄ 0#64
   | a, s :: ss => ∃∗ p, (a ↦₆₄ p) ∗ cStrAt p s ∗ argvAt (a + 8#64) ss
 
@@ -668,62 +601,6 @@ theorem frame_entails (elf : ElfImage) (strs : List (List (BitVec 8)))
 
 /-! ## Separation-Logic Stack Frame -/
 
-/-- The loaded stack holds the frame bytes at `sp0` and the free stack below them. -/
-theorem stackMem_sat_frame (elf : ElfImage) (strs : List (List (BitVec 8)))
-    (hsegs : ∀ r ∈ elf.segments, r.start.toNat + r.bytes.length ≤ stackBase)
-    (hfit : 8 * tableWords strs + infoLen strs ≤ cliStackSize) :
-    stackMem elf.segments (BitVec.ofNat 64 (sp0 strs)) (frameBytes elf strs) ⊨
-      memRegion (BitVec.ofNat 64 stackBase) (sp0 strs - stackBase) ∗
-        (BitVec.ofNat 64 (sp0 strs) ↦ₛ frameBytes elf strs) := by
-  obtain ⟨hlen, hsb⟩ := sp0_add_frame elf strs hfit
-  have htop := top_eq
-  have hsbe := stackBase_eq
-  have hsp := toNat_sp0 strs
-  have hh := stackMem_holdsBytes elf.segments (BitVec.ofNat 64 (sp0 strs)) (frameBytes elf strs)
-    hsegs (by rw [hsp]; exact hsb) (by rw [hsp]; omega)
-  have hadd : BitVec.ofNat 64 (sp0 strs) =
-      BitVec.ofNat 64 stackBase + BitVec.ofNat 64 (sp0 strs - stackBase) := by
-    rw [BitVec.ofNat_add_ofNat, Nat.add_sub_cancel' hsb]
-  have hnk : sp0 strs - stackBase + (frameBytes elf strs).length ≤ 2 ^ 64 := by omega
-  have hblock := IsBlock.sepConj (IsBlock.memRegion (BitVec.ofNat 64 stackBase) (sp0 strs - stackBase))
-    (IsBlock.pointsToBytes (BitVec.ofNat 64 (sp0 strs)) (frameBytes elf strs)) hadd hnk
-  have hrw : (stackMem elf.segments (BitVec.ofNat 64 (sp0 strs)) (frameBytes elf strs)).RW
-      (BitVec.ofNat 64 stackBase) (sp0 strs - stackBase + (frameBytes elf strs).length) := by
-    intro a ha
-    rw [Memory.permNoLazy_eq_some_rw_iff]
-    unfold InRegion at ha
-    rw [BitVec.toNat_sub, toNat_stackBase] at ha
-    have hlt := a.isLt
-    have ha1 : stackBase ≤ a.toNat := by omega
-    have ha2 : a.toNat < top := by omega
-    by_cases hlo : a.toNat < sp0 strs
-    · have hz := stackMem_zero elf.segments (BitVec.ofNat 64 (sp0 strs)) (frameBytes elf strs)
-        hsegs (by rw [hsp]; exact hlen) a ha1 (by rw [hsp]; exact hlo)
-      refine ⟨?_, ?_⟩
-      · simp only [Memory.perm, hz]; rfl
-      · simp only [Memory.isLazyFree, hz]; rfl
-    · have hi : a.toNat - sp0 strs < (frameBytes elf strs).length := by omega
-      have hae : BitVec.ofNat 64 (sp0 strs) + BitVec.ofNat 64 (a.toNat - sp0 strs) = a := by
-        rw [BitVec.ofNat_add_ofNat]
-        apply BitVec.eq_of_toNat_eq
-        rw [BitVec.toNat_ofNat]
-        omega
-      have := (hh (a.toNat - sp0 strs) hi).2
-      rw [hae] at this
-      exact this
-  exact sat_of_isBlock_rw hblock hrw ⟨trivial, by omega, readBytes_of_holdsBytes hh⟩
-
-theorem stackMem_sat (elf : ElfImage) (strs : List (List (BitVec 8)))
-    (hsegs : ∀ r ∈ elf.segments, r.start.toNat + r.bytes.length ≤ stackBase)
-    (hfit : 8 * tableWords strs + infoLen strs ≤ cliStackSize) :
-    stackMem elf.segments (BitVec.ofNat 64 (sp0 strs)) (frameBytes elf strs) ⊨
-      argvAt (BitVec.ofNat 64 (sp0 strs) + 8#64) strs ∗
-        memRegion (BitVec.ofNat 64 stackBase) (sp0 strs - stackBase) ∗ anyHeap := by
-  refine Arm64.Satisfies.mono ?_ (stackMem_sat_frame elf strs hsegs hfit)
-  refine Arm64.Entails.trans (sepConj_mono_right (frame_entails elf strs hfit)) ?_
-  rw [sepConj_left_comm]
-  exact Entails.refl _
-
 /-! ## Auxiliary Vector Words -/
 
 theorem auxWords_length (elf : ElfImage) (strs : List (List (BitVec 8))) :
@@ -732,88 +609,10 @@ theorem auxWords_length (elf : ElfImage) (strs : List (List (BitVec 8))) :
 theorem restWords_eq (elf : ElfImage) (strs : List (List (BitVec 8))) :
     restWords elf strs = auxWords elf strs ++ List.replicate ((strs.length + 41) % 2) 0#64 := rfl
 
-private theorem rearr3 {A P W D S T X : SepProp} (h : P ∗ S ⊢ X) :
-    A ∗ (P ∗ ((W ∗ D) ∗ (S ∗ T))) ⊢ A ∗ (X ∗ (W ∗ anyHeap)) := by
-  have e : A ∗ (P ∗ ((W ∗ D) ∗ (S ∗ T))) = A ∗ ((P ∗ S) ∗ (W ∗ (D ∗ T))) := by ac_rfl
-  rw [e]
-  exact sepConj_mono_right (sepConj_mono h (sepConj_mono_right (entails_any _)))
-
-/-- The frame entails argc at `sp0`, `argvAt (sp0 + 8)`, the envp `NULL` and the auxv
-    (`auxWords`) after the argv table, and junk. -/
-theorem frame_entails_aux (elf : ElfImage) (strs : List (List (BitVec 8)))
-    (hfit : 8 * tableWords strs + infoLen strs ≤ cliStackSize) :
-    (BitVec.ofNat 64 (sp0 strs) ↦ₛ frameBytes elf strs) ⊢
-      (BitVec.ofNat 64 (sp0 strs) ↦₆₄ BitVec.ofNat 64 strs.length) ∗
-        (argvAt (BitVec.ofNat 64 (sp0 strs) + 8#64) strs ∗
-          ((BitVec.ofNat 64 (sp0 strs) + BitVec.ofNat 64 (8 * (strs.length + 2))) ↦₆₄*
-            auxWords elf strs) ∗ anyHeap) := by
-  have e1 : BitVec.ofNat 64 (argcBytes strs).length = 8#64 := rfl
-  have hp : (ptrBytes strs).length = 8 * (strs.length + 1) := by
-    unfold ptrBytes ptrWords
-    simp only [flatMap_bytesLE_length, List.length_append, packAddrs_length, List.length_singleton]
-  have hu : (unpackL (auxWords elf strs)).length = 8 * 39 := by
-    rw [unpackL_length, auxWords_length]
-  have hr : (restBytes elf strs).length = 8 * (39 + (strs.length + 41) % 2) := by
-    unfold restBytes restWords
-    simp only [flatMap_bytesLE_length, List.length_append, List.length_cons, List.length_nil,
-      List.length_replicate]
-  have hh : (headBytes strs).length = 16 + infoPadLen strs + 8 := by
-    unfold headBytes
-    simp only [List.length_append, List.length_replicate, List.length_cons, List.length_nil]
-  have e2 : BitVec.ofNat 64 (sp0 strs) + 8#64 + BitVec.ofNat 64 (ptrBytes strs).length =
-      BitVec.ofNat 64 (sp0 strs) + BitVec.ofNat 64 (8 * (strs.length + 2)) := by
-    rw [hp, BitVec.add_assoc]
-    congr 1
-    simp only [BitVec.ofNat_add_ofNat]
-    congr 1
-    omega
-  have e3 : BitVec.ofNat 64 (sp0 strs) + BitVec.ofNat 64 (8 * (strs.length + 2)) +
-      BitVec.ofNat 64 (restBytes elf strs ++ headBytes strs).length =
-      argvBase strs + BitVec.ofNat 64 0 := by
-    rw [List.length_append, hr, hh]
-    unfold argvBase platformAddr
-    simp only [BitVec.ofNat_add_ofNat]
-    congr 1
-    have := top_eq
-    have := cliStackSize_eq
-    unfold sp0 infoBase tableWords at *
-    omega
-  have hrest : restBytes elf strs ++ headBytes strs =
-      unpackL (auxWords elf strs) ++
-        ((List.replicate ((strs.length + 41) % 2) (0#64)).flatMap (Obj.bytesLE 8) ++
-          headBytes strs) := by
-    unfold restBytes unpackL
-    rw [restWords_eq, List.flatMap_append, List.append_assoc]
-    rfl
-  unfold frameBytes
-  rw [pointsToBytes_append, pointsToBytes_append, pointsToBytes_append,
-    pointsToBytes_append _ (strBytes strs), e1,
-    e2, e3, hrest, pointsToBytes_append, hu, ← pointsToWords64_eq_pointsToBytes,
-    show argcBytes strs = unpack64 (BitVec.ofNat 64 strs.length) from rfl,
-    ← pointsTo64_eq_pointsToBytes]
-  exact rearr3 (argvAt_of_packed (argvBase strs) strs _ 0)
-
-/-- Loaded stack separation-logic layout with `argc` at `sp0`, `argvAt (sp0 + 8)`, `auxWords`, and free stack `[stackBase, sp0)`. -/
-theorem stackMem_sat_aux (elf : ElfImage) (strs : List (List (BitVec 8)))
-    (hsegs : ∀ r ∈ elf.segments, r.start.toNat + r.bytes.length ≤ stackBase)
-    (hfit : 8 * tableWords strs + infoLen strs ≤ cliStackSize) :
-    stackMem elf.segments (BitVec.ofNat 64 (sp0 strs)) (frameBytes elf strs) ⊨
-      (BitVec.ofNat 64 (sp0 strs) ↦₆₄ BitVec.ofNat 64 strs.length) ∗
-        argvAt (BitVec.ofNat 64 (sp0 strs) + 8#64) strs ∗
-        ((BitVec.ofNat 64 (sp0 strs) + BitVec.ofNat 64 (8 * (strs.length + 2))) ↦₆₄*
-          auxWords elf strs) ∗
-        memRegion (BitVec.ofNat 64 stackBase) (sp0 strs - stackBase) ∗ anyHeap := by
-  refine Arm64.Satisfies.mono ?_ (stackMem_sat_frame elf strs hsegs hfit)
-  refine Arm64.Entails.trans (sepConj_mono_right (frame_entails_aux elf strs hfit)) ?_
-  have e : ∀ M A X W : SepProp, M ∗ (A ∗ (X ∗ W ∗ anyHeap)) = A ∗ X ∗ W ∗ M ∗ anyHeap := by
-    intro M A X W; ac_rfl
-  rw [e]
-  exact Entails.refl _
-
 /-! ## CLI Argument Strings -/
 
 /-- CLI argument byte slices with `argv[0] = "signal-session"`. -/
-def cliStrs (argv : List String) : List (List (BitVec 8)) :=
+@[expose] def cliStrs (argv : List String) : List (List (BitVec 8)) :=
   ("libsignal-cli" :: argv).map bytesOfString
 
 theorem bytesOfString_nul (a : String) (ha : ∀ c ∈ a.toList, 0 < c.toNat ∧ c.toNat < 128) :
@@ -871,15 +670,6 @@ theorem cli_bounds (argv : List String) (hfits : (argv.map fun a => a.length + 1
   unfold sp0 infoBase tableWords infoLen alignUp16 upperRawLen
   refine ⟨?_, ?_, ?_⟩ <;> omega
 
-theorem sp0_sub (strs : List (List (BitVec 8))) (h : stackBase ≤ sp0 strs) :
-    BitVec.ofNat 64 (sp0 strs) - BitVec.ofNat 64 (sp0 strs - stackBase) =
-      BitVec.ofNat 64 stackBase := by
-  apply BitVec.eq_of_toNat_eq
-  have := sp0_le_top strs
-  have := top_eq
-  rw [BitVec.toNat_sub, toNat_sp0, BitVec.toNat_ofNat, BitVec.toNat_ofNat]
-  omega
-
 /-! ## CLI Stack Layout Theorems -/
 
 /-- Loading the CLI (`argv[0] = "signal-session"`) on NUL-free ASCII arguments satisfying
@@ -931,24 +721,6 @@ theorem loadState_cli_layout (elf : ElfImage) (argv : List String) (stdin : List
     rw [hmem]
     exact stackMem_outside _ _ _ (by rw [hspn]; exact hsb) (by rw [hspn]; exact hlen) a hseg ha
 
-/-- Loaded CLI memory satisfies `argvAt (sp0 + 8) (cliStrs argv) ∗ memRegion stackBase (sp0 - stackBase) ∗ anyHeap`. -/
-theorem satisfies_initStack (elf : ElfImage) (argv : List String) (stdin : List (BitVec 8))
-    (files : List (String × List (BitVec 8))) (dirs : List String)
-    (hwf : elf.WellFormed = true)
-    (hbrk : elf.brkStart.toNat ≤ defaultStackTop.toNat - cliStackSize)
-    (hargs : ∀ a ∈ argv, ∀ c ∈ a.toList, 0 < c.toNat ∧ c.toNat < 128)
-    (hfits : (argv.map fun a => a.length + 1 + 8).sum ≤ 16384) :
-    (elf.rawState (processInputs ("libsignal-cli" :: argv) stdin files dirs)).mem ⊨
-      argvAt (BitVec.ofNat 64 (sp0 (cliStrs argv)) + 8#64) (cliStrs argv) ∗
-        memRegion (BitVec.ofNat 64 stackBase) (sp0 (cliStrs argv) - stackBase) ∗ anyHeap := by
-  have hnul := cliStrs_nul argv hargs
-  obtain ⟨hfit, -, -⟩ := cli_bounds argv hfits
-  obtain ⟨-, hmem⟩ :=
-    rawState_layout elf (processInputs ("libsignal-cli" :: argv) stdin files dirs) (cliStrs argv)
-      rfl rfl rfl rfl rfl rfl hnul hbrk hfit
-  rw [hmem]
-  exact stackMem_sat elf (cliStrs argv) (segs_below elf hwf hbrk) hfit
-
 /-- Under `ArgvFitsInitialStack`, there are at most 1820 arguments (each takes at least 9 bytes). -/
 theorem argv_length_le (argv : List String)
     (hfits : (argv.map fun a => a.length + 1 + 8).sum ≤ 16384) : argv.length ≤ 1820 := by
@@ -959,30 +731,5 @@ theorem argv_length_le (argv : List String)
     | cons a as ih => simp only [List.length_cons, List.map_cons, List.sum_cons]; omega
   have := h argv
   omega
-
-/-- Loaded CLI memory holds `argc` at `sp0`, `argvAt (sp0 + 8)`, `auxWords` at
-`sp0 + 8 * (argc + 2)`, and the free stack `[stackBase, sp0)`. -/
-theorem satisfies_initStack_aux (elf : ElfImage) (argv : List String) (stdin : List (BitVec 8))
-    (files : List (String × List (BitVec 8))) (dirs : List String)
-    (hwf : elf.WellFormed = true)
-    (hbrk : elf.brkStart.toNat ≤ defaultStackTop.toNat - cliStackSize)
-    (hargs : ∀ a ∈ argv, ∀ c ∈ a.toList, 0 < c.toNat ∧ c.toNat < 128)
-    (hfits : (argv.map fun a => a.length + 1 + 8).sum ≤ 16384) :
-    (elf.rawState (processInputs ("libsignal-cli" :: argv) stdin files dirs)).mem ⊨
-      (BitVec.ofNat 64 (sp0 (cliStrs argv)) ↦₆₄ BitVec.ofNat 64 (argv.length + 1)) ∗
-        argvAt (BitVec.ofNat 64 (sp0 (cliStrs argv)) + 8#64) (cliStrs argv) ∗
-        ((BitVec.ofNat 64 (sp0 (cliStrs argv)) + BitVec.ofNat 64 (8 * (argv.length + 3))) ↦₆₄*
-          auxWords elf (cliStrs argv)) ∗
-        memRegion (BitVec.ofNat 64 stackBase) (sp0 (cliStrs argv) - stackBase) ∗ anyHeap := by
-  have hnul := cliStrs_nul argv hargs
-  obtain ⟨hfit, -, -⟩ := cli_bounds argv hfits
-  obtain ⟨-, hmem⟩ :=
-    rawState_layout elf (processInputs ("libsignal-cli" :: argv) stdin files dirs) (cliStrs argv)
-      rfl rfl rfl rfl rfl rfl hnul hbrk hfit
-  have h := stackMem_sat_aux elf (cliStrs argv) (segs_below elf hwf hbrk) hfit
-  have hk : 8 * (argv.length + 1 + 2) = 8 * (argv.length + 3) := rfl
-  rw [cliStrs_length, hk] at h
-  rw [hmem]
-  exact h
 
 end CryptoVerification.SignalSession.InitStack

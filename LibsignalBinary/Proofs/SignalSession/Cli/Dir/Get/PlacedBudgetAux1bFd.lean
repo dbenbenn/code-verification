@@ -9,12 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1aFd
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1aFd -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # `FdsGe3Closed`-Threaded Loop Advance and Entry-Scan Loop for `Dir::get`
@@ -23,7 +28,7 @@ Verifies `step_loop_advance_budget_fd` (`+68`..`+80` / `+164`) and `step_loop_bu
 (`+80`..`+108`) for `Dir::get` on Block 589.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false

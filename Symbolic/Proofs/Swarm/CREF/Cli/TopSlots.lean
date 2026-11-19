@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.InitiateSlot
-public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge
+public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.InitiateSlot -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 
 /-!
@@ -20,7 +20,7 @@ Relates `PqPartyInv` and `PqDirInv` to `Slots.AliceInitPartyInv` and `Slots.Alic
 for Alice's `init` calls, and proves injectivity of `HMAC.keyToBytes32`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

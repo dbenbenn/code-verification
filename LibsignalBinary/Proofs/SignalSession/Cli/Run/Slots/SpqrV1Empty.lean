@@ -20,7 +20,7 @@ key, empty message, and zero consumed randomness bytes, allowing `spqrV1` to ser
 empty-PQ Signal-Message sessions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

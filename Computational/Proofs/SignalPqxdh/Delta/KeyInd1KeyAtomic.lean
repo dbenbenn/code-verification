@@ -9,11 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Headline
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigWire
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyShcr
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhWire
+import Computational.Proofs.SignalPqxdh.Headline
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigWire -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyShcr -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhWire -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKemBounds
+public import Computational.Proofs.SignalPqxdh.AtomicLift -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigBounds
+import Computational.Proofs.ReductionDsl.AtomicSizeHonest
 
 /-!
 # Atomic-signature one-key PQXDH `KeyInd` reductions and bounds
@@ -25,7 +28,7 @@ query-count, and output block-size bounds, semantic `.Bounded` query compliance,
 transfer theorems.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -152,27 +155,6 @@ theorem shcrKeyInd1KeyProg_handlePre_unsupported (S : Setup) (Q K : Nat) :
   simp only [letV, bindV, caseOptV, caseSumV, onBase, initPrin1KeyB_prim_unsupported,
     Comp.queries] at h2 ⊢
   omega
-
-theorem fgKeyInd1KeyGapDhProg_init_unsupported (S : Setup) (K : Nat) :
-    (fgKeyInd1KeyGapDhProg S K).init.queries tlSigDdhKeyInd.unsupportedW (fun _ => 0) = 0 := by
-  change (fgKeyInd1KeyGapDhProg S K).init.queries zSigDdhW zSigDdhWS = 0
-  simp [fgKeyInd1KeyGapDhProg, initAdv4_1Key, initAdv4_1KeyBase,
-    letV, bindV, Comp.queries]
-
-theorem fgKeyInd1KeyGapDhProg_handle_unsupported (S : Setup) (K : Nat) :
-    (fgKeyInd1KeyGapDhProg S K).handle.queries tlSigDdhKeyInd.unsupportedW (fun _ => 0) = 0 := by
-  change (gdh1KeyHandle S K).queries zSigDdhW zSigDdhWS = 0
-  have hGdh : (gdhHandle S K).queries zGapDhW zGapDhWS = 0 := gdhHandle_unsupported S K
-  simp [gdh1KeyHandle,
-    _root_.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDh.initPrin1KeyB,
-    genSpk1KeyB, callGdhHandle, hGdh,
-    letV, bindV, caseOptV, caseSumV, Comp.queries]
-
-theorem fgKeyInd1KeyGapDhProg_finish_unsupported (S : Setup) (K : Nat) :
-    (fgKeyInd1KeyGapDhProg S K).finish.queries tlSigDdhKeyInd.unsupportedW (fun _ => 0) = 0 := by
-  change (gdh1KeyFinish S K).queries zSigDdhW zSigDdhWS = 0
-  have hGdh : (gdhFinish S K).queries zGapDhW zGapDhWS = 0 := gdhFinish_unsupported S K
-  simp [gdh1KeyFinish, hGdh, letV, Comp.queries]
 
 @[simp] private theorem wrapBase2_unsupported
     {Γ₁ Γ₂ Δ : List (Ty SignalPqxdh.LegacyCosted.pqSig)}
@@ -1023,43 +1005,6 @@ private theorem fgKeyInd1KeyGapDh2Prog_r64_le (S : Setup) (K q : ℕ) :
   have hMul := Nat.mul_le_mul_left q hH
   omega
 
-theorem sigKeyInd1KeyProg_r64_le (S : Setup) (K q : ℕ) :
-    (sigKeyInd1KeyProg S K).totalQueries (fun _ => 0) (sampR64W tlSigDdhKeyInd.hsmp) q ≤
-      4 * q := by
-  change (sigKeyInd1KeyProg S K).totalQueries zSigDdh0W kiR64WS q ≤ 4 * q
-  have hInit : (sigKeyInd1KeyProg S K).init.queries zSigDdh0W kiR64WS = 0 := by
-    simp [sigKeyInd1KeyProg, bindV, Comp.queries]
-  have hFin : (sigKeyInd1KeyProg S K).finish.queries zSigDdh0W kiR64WS = 0 := rfl
-  have hGdh := gdhHandle2_r64_le S K
-  have hPre : ∀ {Γ₁ Γ₂ Δ} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
-      (s : Var Γ₁ sig1KeyStTy) (qv : Var Γ₂ keyIndQueryTy),
-      (sig1KeyPreDispatchC S K (Δ := Δ) s qv).queries zSigDdh0W kiR64WS ≤ 1 := by
-    intros
-    simp only [sig1KeyPreDispatchC, sig1KeyInitPrinB, sig1KeyTargetGenSpkB,
-      sig1KeyInitiateCheckC, extract1KeyC,
-      s1Prim_r64, qSigDdhSign_r64, honestPeerC_r64,
-      sBytes32_r64, sRandom64_r64, qX25519Base_r64, qKemKeyGen_r64, qSigVerify_r64,
-      letV, bindV, caseOptV, caseSumV, Comp.queries]
-    omega
-  have hDel : ∀ {Γ₁ Γ₂ Δ} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
-      (s : Var Γ₁ sig1KeyStTy) (qv : Var Γ₂ keyIndQueryTy),
-      (delegateFgC S K (Δ := Δ) s qv).queries zSigDdh0W kiR64WS ≤ 3 := by
-    intros
-    simp only [delegateFgC, liftGdhToSigDdh_r64, comp_rename_queries_gdh, letV, bindV, Comp.queries]
-    omega
-  have hH : (sigKeyInd1KeyProg S K).handle.queries zSigDdh0W kiR64WS ≤ 4 := by
-    dsimp only [sigKeyInd1KeyProg, SignalPqxdh.LegacyCosted.keyIndCodec, sig1KeyHandleC]
-    have hp := hPre (Γ₁ := [sig1KeyStTy, keyIndQueryTy]) (Γ₂ := [sig1KeyStTy, keyIndQueryTy])
-      (Δ := [sig1KeyStTy, keyIndQueryTy]) .zero (.succ .zero)
-    have hd := hDel (Γ₁ := [sig1KeyStTy, keyIndQueryTy]) (Γ₂ := [sig1KeyStTy, keyIndQueryTy])
-      (Δ := .unit :: .sum S1RS .unit :: [sig1KeyStTy, keyIndQueryTy]) .zero (.succ .zero)
-    simp only [bindV, caseSumV, Comp.queries]
-    omega
-  unfold CostedReduction.totalQueries
-  rw [hInit, hFin]
-  have hMul := Nat.mul_le_mul_left q hH
-  omega
-
 end Sig1KeyR64
 
 section OneKeySizeBounds
@@ -1192,18 +1137,6 @@ variable {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T}
 
 end K1SizeSimp
 
-private theorem k1_bits_mono_local {x y : ℕ} (h : x ≤ y) : bits x ≤ bits y := by
-  unfold bits
-  exact Nat.add_le_add_right (Nat.log_mono_right h) 1
-
-private theorem k1_bits_le_of_le_four_mul_sq {x N : ℕ} (h : x ≤ 4 * (N * N)) :
-    bits x ≤ 2 * bits N + 3 := by
-  have h1 := k1_bits_mono_local h
-  have h2 := bits_mul 4 (N * N)
-  have h3 := bits_mul N N
-  have h4 : bits 4 = 3 := by decide
-  omega
-
 private def k1_qSampWeight {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T} :
     {Γ : List PT} → {t : PT} → Comp pqxdhOps I Γ t → ℕ
   | _, _, .ret _ => 0
@@ -1219,81 +1152,6 @@ private def k1_qSampWeight {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T} :
   | _, _, .mapM _ _ p => k1_qSampWeight p
   | _, _, .consumeFirstM _ _ p _ => k1_qSampWeight p
   | _, _, .foldM _ _ _ f => k1_qSampWeight f
-
-private theorem k1_mapComp_size_le_add_qSampWeight {ι : Type} {T : OracleSpec ι}
-    {I : Iface pqSig T} {A : AtomicIface T}
-    (tl : TagLift I A) (htl : tl.QuerySizeLe) :
-    ∀ {Γ : List PT} {t : PT} (c : Comp pqxdhOps I Γ t),
-      (mapComp tl c).size ≤ c.size + k1_qSampWeight c + compLitSize c
-  | _, _, .ret e => by
-    simp only [mapComp, Comp.size, mapExpr_size, k1_qSampWeight, compLitSize]; omega
-  | _, _, .bind c k => by
-    have ihc := k1_mapComp_size_le_add_qSampWeight tl htl c
-    have ihk := k1_mapComp_size_le_add_qSampWeight tl htl k
-    simp only [mapComp, Comp.size, k1_qSampWeight, compLitSize]; omega
-  | _, _, .ite b c d => by
-    have ihc := k1_mapComp_size_le_add_qSampWeight tl htl c
-    have ihd := k1_mapComp_size_le_add_qSampWeight tl htl d
-    simp only [mapComp, Comp.size, mapExpr_size, k1_qSampWeight, compLitSize]; omega
-  | _, _, .caseOpt b c d => by
-    have ihc := k1_mapComp_size_le_add_qSampWeight tl htl c
-    have ihd := k1_mapComp_size_le_add_qSampWeight tl htl d
-    simp only [mapComp, Comp.size, mapExpr_size, k1_qSampWeight, compLitSize]; omega
-  | _, _, .caseSum b c d => by
-    have ihc := k1_mapComp_size_le_add_qSampWeight tl htl c
-    have ihd := k1_mapComp_size_le_add_qSampWeight tl htl d
-    simp only [mapComp, Comp.size, mapExpr_size, k1_qSampWeight, compLitSize]; omega
-  | Γ', _, .sample s e => by
-    have he := one_le_expr_size e
-    have hs := mapSampH_size_le A tl.hsmp (Γ := embedCtx Γ') s
-    simp only [mapComp, mapSampCast, Comp.size, k1_qSampWeight, compLitSize]; omega
-  | _, _, .query g e => by
-    have hq := htl g (mapExpr e)
-    rw [mapExpr_size] at hq
-    simp only [mapComp, Comp.size, k1_qSampWeight, compLitSize]; omega
-  | _, _, .iter n e body => by
-    have ih := k1_mapComp_size_le_add_qSampWeight tl htl body
-    simp only [mapComp, Comp.size, mapExpr_size, k1_qSampWeight, compLitSize]; omega
-  | _, _, .findM K l p => by
-    have ih := k1_mapComp_size_le_add_qSampWeight tl htl p
-    simp only [mapComp, Comp.size, mapExpr_size, k1_qSampWeight, compLitSize]; omega
-  | _, _, .anyM K l p => by
-    have ih := k1_mapComp_size_le_add_qSampWeight tl htl p
-    simp only [mapComp, Comp.size, mapExpr_size, k1_qSampWeight, compLitSize]; omega
-  | _, _, .mapM K l p => by
-    have ih := k1_mapComp_size_le_add_qSampWeight tl htl p
-    simp only [mapComp, Comp.size, mapExpr_size, k1_qSampWeight, compLitSize]; omega
-  | _, _, .consumeFirstM K l p mk => by
-    have ih := k1_mapComp_size_le_add_qSampWeight tl htl p
-    simp only [mapComp, Comp.size, mapExpr_size, k1_qSampWeight, compLitSize]; omega
-  | _, _, .foldM K l z f => by
-    have ih := k1_mapComp_size_le_add_qSampWeight tl htl f
-    simp only [mapComp, Comp.size, mapExpr_size, k1_qSampWeight, compLitSize]; omega
-
-private theorem k1_liftKeyInd1Stage_size_le_add_qSampWeight {ι : Type} {T : OracleSpec ι}
-    {I : Iface pqSig T} {A : AtomicIface T}
-    (tl : TagLift I A) (htl : tl.QuerySizeLe) (S : Setup)
-    {rIn out : PT}
-    (R : CostedReduction pqxdhOps I (keyIndSpec S) (keyIndCodec S) rIn .unit .bool out) :
-    (liftKeyInd1Stage tl S R).size ≤
-      R.size + (k1_qSampWeight R.init + k1_qSampWeight R.handle + k1_qSampWeight R.finish) +
-        red1LitSize R + 402 := by
-  have hI : (liftKeyInd1Stage tl S R).init.size ≤
-      R.init.size + k1_qSampWeight R.init + compLitSize R.init :=
-    k1_mapComp_size_le_add_qSampWeight tl htl R.init
-  have hH : (liftKeyInd1Stage tl S R).handle.size ≤
-      R.handle.size + k1_qSampWeight R.handle + compLitSize R.handle + 402 := by
-    have hq := finKeyIndQToNatExpr_v1_size_le S (σ' := embedTy R.σ)
-    have hm := k1_mapComp_size_le_add_qSampWeight tl htl R.handle
-    have hcr := compRename_size (fun {a} => swapHandlerVar (Q_fin := (pqKeyIndCodec S).Q)) (mapComp tl R.handle)
-    change ((finKeyIndQToNatExpr S .v1).size + 1) +
-      (compRename (fun {a} => swapHandlerVar (Q_fin := (pqKeyIndCodec S).Q)) (mapComp tl R.handle)).size + 1 ≤ _
-    omega
-  have hF : (liftKeyInd1Stage tl S R).finish.size ≤
-      R.finish.size + k1_qSampWeight R.finish + compLitSize R.finish :=
-    k1_mapComp_size_le_add_qSampWeight tl htl R.finish
-  unfold CostedReduction.size red1LitSize
-  omega
 
 section K1QSampWeightSimp
 
@@ -1374,39 +1232,6 @@ variable {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T}
 
 end K1QSampWeightSimp
 
-set_option linter.unusedSimpArgs false in
-set_option maxRecDepth 100000 in
-set_option maxHeartbeats 800000 in
-private theorem k1_gdhHandle_qSampWeight_le (S : Setup) (K : Nat) :
-    k1_qSampWeight (gdhHandle S K) ≤ 10000 := by
-  simp (config := { maxSteps := 1000000 }) only [gdhHandle, initPrinGdhB, corruptB, genSpkGdhB,
-    genOpkGdhB, initiateGdhB, finishAcceptGdhC, acceptOpkGdhB, acceptNoOpkGdhB,
-    testB, roParsedC, roRawFallbackC, revealB, registerGdhB, revealSpkB,
-    wrapBase, wrapSim,
-    mkSecretPosC, mkPairPosC, computePosC, computeOptPosInitC,
-    ddhEqC, ddhEqOptC, entryMatchesC, fgPatchC,
-    findHonestC, isGameSpkC, isGameOpkC, koskSenderOkPowsC, koskBundleOkPowsC,
-    lookupSpkSkC, resolveSigPkC, honestPeerC, checkProvC, partnerC,
-    chooseRespRandC, chooseInitRandC,
-    k1_gPrim_qsw, k1_letV_qsw, k1_bindV_qsw, k1_caseOptV_qsw, k1_caseSumV_qsw,
-    k1_findMV_qsw, k1_anyMV_qsw, k1_mapMV_qsw, k1_foldMV_qsw,
-    k1_sBool_qsw, k1_sBytes32_qsw, k1_sRandom64_qsw, k1_sDrKey96_qsw, k1_sIndex_qsw,
-    k1_qX25519_qsw, k1_qX25519Base_qsw, k1_qIsCanonical_qsw, k1_qPow8_qsw,
-    k1_qSigPkGen_qsw, k1_qSigSign_qsw, k1_qSigVerify_qsw,
-    k1_qKemKeyGen_qsw, k1_qKemEncaps_qsw, k1_qKemDecaps_qsw, k1_ddhQ_qsw,
-    k1_qSampWeight, ↓reduceIte, Bool.false_eq_true]
-  omega
-
-set_option linter.unusedSimpArgs false in
-private theorem k1_gdhFinish_qSampWeight_le (S : Setup) (K : Nat) :
-    k1_qSampWeight (gdhFinish S K) ≤ 500 := by
-  simp only [gdhFinish, extractMode0C, logFindC, spkPowsC, findMapStepC,
-    initDh1CandC, respDh1CandC,
-    k1_gPrim_qsw, k1_letV_qsw, k1_bindV_qsw, k1_caseOptV_qsw,
-    k1_findMV_qsw, k1_mapMV_qsw, k1_foldMV_qsw,
-    k1_qPow8_qsw, k1_qX25519_qsw, k1_ddhQ_qsw, k1_qSampWeight]
-  omega
-
 @[simp] private theorem k1_s1Prim_qsw {Γ : List PT} {τ : PT}
     (c : Comp pqxdhOps pqPrimIface Γ τ) :
     k1_qSampWeight (s1Prim c) = k1_qSampWeight c := k1_liftBase_qsw c
@@ -1472,54 +1297,6 @@ private theorem k1_gdhFinish_qSampWeight_le (S : Setup) (K : Nat) :
     compLitSize (renameComp ρ c) = compLitSize c := by
   induction c generalizing Δ <;> simp only [renameComp, compLitSize, k1_renameExpr_litSize, *]
 
-set_option linter.unusedSimpArgs false in
-private theorem k1_initPrin1KeyB_litSize_eq (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (st : Var Γ₁ keyIndStateTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    compLitSize (_root_.SignalPqxdh.Security.ReductionDsl.KeyInd.initPrin1KeyB (Δ := Δ) K st u) =
-      compLitSize (_root_.SignalPqxdh.Security.ReductionDsl.KeyInd.initPrinB (Δ := Δ) K st u) := by
-  simp only [_root_.SignalPqxdh.Security.ReductionDsl.KeyInd.initPrin1KeyB,
-    _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.initPrinB, bindV, eAny, natEq,
-    stPrin, stSecb, stSpks, stOpks, stSess, stResps, stUsedO, stUsedN, stKyb, stRo, stAdv,
-    stUpd, stMk, peMk, rs, rNone, rInitPrin,
-    sBytes32, qX25519Base, qSigPkGen, v, compLitSize, exprLitSize, pqOpLitSize]
-
-private theorem k1_shcr1KeyPostC_litSize_eq (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    compLitSize (shcr1KeyPostC (Δ := Δ) S K s q) = compLitSize (shcrPostC (Δ := Δ) S K s q) := by
-  rw [shcrPostC_eq_tail]
-  simp only [shcr1KeyPostC, caseSumV, onBase, bindV, letV, k1_initPrin1KeyB_litSize_eq, compLitSize]
-
-private theorem k1_shcr1KeyPreC_litSize_eq (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    compLitSize (shcr1KeyPreC (Δ := Δ) S K s q) = compLitSize (shcrPreC (Δ := Δ) S K s q) := by
-  simp only [shcr1KeyPreC, shcrPreC, bindV, caseOptV, k1_shcr1KeyPostC_litSize_eq, compLitSize]
-
-private theorem k1_shcrKeyInd1KeyProg_litSize_eq (S : Setup) (Q K : Nat) :
-    red2LitSize (shcrKeyInd1KeyProg S Q K) = red2LitSize (shcrKeyIndProg S Q K) := by
-  dsimp only [red2LitSize, shcrKeyInd1KeyProg, shcrKeyIndProg, SignalPqxdh.LegacyCosted.keyIndCodec]
-  rw [k1_shcr1KeyPreC_litSize_eq, k1_shcr1KeyPostC_litSize_eq]
-
-set_option linter.unusedSimpArgs false in
-private theorem k1_sig1KeyPreDispatchC_litSize_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] (s : Var Γ₁ sig1KeyStTy) (q : Var Γ₂ keyIndQueryTy) :
-    compLitSize (sig1KeyPreDispatchC S K (Δ := Δ) s q) ≤ 200 := by
-  simp only [sig1KeyPreDispatchC, sig1KeyInitPrinB, sig1KeyTargetGenSpkB,
-    sig1KeyInitiateCheckC, extract1KeyC, honestPeerC, findHonestC,
-    s1Fg, s1Target, s1Pk, s1Budget, s1Forgery, s1Base, s1Mk, s1Upd,
-    smBase, smFgL, smRaw, smLog, smPows, smMk, smUpd,
-    stPrin, stSpks, stOpks, stSess, stResps, stUsedO, stUsedN, stKyb, stRo, stAdv, stMk, stUpd,
-    peIkAPk, peMk, sbSpkPk, sbPqspkPk, sbMk,
-    buIkB, buSpkB, buSpkSig, buPqspkB, buPqspkSig, buMk,
-    rNone, rInitPrin, rBundle, isSomeE, natEq, nat2Eq,
-    encEC, encKEM, widenEC, consB, widenB,
-    letV, bindV, caseOptV, caseSumV, findMV,
-    k1_s1Prim_litSize, s1Prim, liftBase,
-    qSigDdhSign, qSigVerify, qPow8, sBytes32, sRandom64, qX25519Base, qKemKeyGen,
-    eCaseOpt, eAny, eFind, eqB, litB, u32OfNat,
-    v, compLitSize, exprLitSize, pqOpLitSize,
-    List.length_nil, List.length_cons, Nat.add_zero, Nat.zero_add]
-  omega
-
 @[simp] private theorem k1_F_X25519_length : F_X25519.length = 32 := by decide
 
 @[simp] private theorem k1_callGdhHandle2_litSize (S : Setup) (K : Nat) {Δ : List PT}
@@ -1527,200 +1304,6 @@ private theorem k1_sig1KeyPreDispatchC_litSize_le (S : Setup) (K : Nat) {Γ₁ �
     compLitSize (callGdhHandle2 S K st1 q) = compLitSize (gdhHandle2 S K) := by
   simp only [callGdhHandle2, letV, bindV, v, compLitSize, exprLitSize,
     k1_renameComp_litSize, k1_liftGdhComp_litSize, Nat.add_zero, Nat.zero_add]
-
-set_option linter.unusedSimpArgs false in
-private theorem k1_gdhFinish2_litSize_le (S : Setup) (K : Nat) :
-    compLitSize (gdhFinish2 S K) ≤ 1000 := by
-  simp only [gdhFinish2, extractMode0_2C, logFind2C, spkPowsC, findMapStep2C,
-    initDh1CandC, respDh1CandC, lookupFromPowsE, respBundleKeyE, slice32,
-    smBase, smLog, smPows, pa2U, pa2V, pa2Mode, natEq, nat2Eq,
-    letV, bindV, caseOptV, findMV, mapMV, foldMV,
-    eCaseOpt, eCaseSum, eFind, eMap,
-    k1_gPrim_litSize, gPrim, liftBase, qPow8, qX25519, ddhQ,
-    litB, takeKB, dropB, eqB, v,
-    compLitSize, exprLitSize, pqOpLitSize,
-    List.length_nil, List.length_cons, List.length_replicate, k1_F_X25519_length,
-    Nat.add_zero, Nat.zero_add]
-  omega
-
-set_option linter.unusedSimpArgs false in
-private theorem k1_gdhHandle2_litSize_le (S : Setup) (K : Nat) :
-    compLitSize (gdhHandle2 S K) ≤ 10000 := by
-  simp (config := { maxSteps := 1000000 }) only [gdhHandle2, initPrinGdh2B, corruptB, genSpkGdh2B,
-    genOpkGdh2B, initiateGdh2B, finishAcceptGdhC, acceptOpkGdh2B, acceptNoOpkGdhB,
-    testB, roParsedC, roRawFallbackC, revealB, registerGdhB, revealSpkB,
-    wrapBase2, wrapSim2, ephSidMatchesE,
-    fePos1, fePos2, fePos3, fePos4, feSs, feDk, feMk,
-    pa2U, pa2V, pa2Up, pa2PrinTarget, pa2DhFlag, pa2EphTarget,
-    pa2SpkTarget, pa2OpkMode, pa2OpkTarget, pa2Mode,
-    smBase, smFgL, smRaw, smLog, smPows, smMk, smUpd,
-    stPrin, stSpks, stOpks, stSess, stResps, stUsedO, stUsedN, stKyb, stRo, stAdv, stSecb, stMk, stUpd,
-    peSecIKA0, peIkAPk, peSecIKAsign, peIkSignPk, peCorrupted, peMk, peUpd,
-    sbSpkSk, sbSpkPk, sbSpkSig, sbPqspkSk, sbPqspkPk, sbPqspkSig, sbRevealed, sbMk, sbUpd,
-    oeMk, oeUpd,
-    buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk,
-    hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk,
-    seSid, seHdr, sePeerSpk, seTested, seRevealed, seMk, seUpd,
-    reSid, reHdr, reMk, reUpd,
-    qKJO, qK, qJ, qO, qHdr, rs, slice32,
-    rNone, rInitPrin, rPk, rCorr, rBundle, rHdr, rInitUnfresh, rAccFresh, rDrKey, rSpkSk,
-    initSidE,
-    natEq, nat2Eq, nat3Eq, sidEq, kyberEq, kyberCheckE, freshE,
-    optU32Eq, optBytesEq, getDBytes, isSomeE, optFst, optSnd, nonZero32,
-    orE, mulRight, eLet2, isAdvPowsE,
-    mkSecretPosC, mkPairPosC, computePosC, computeOptPosInitC,
-    ddhEqC, ddhEqOptC, entryMatchesC, fgPatchC,
-    findHonestC, isAdvRegC, isGameSpkC, isGameOpkC, koskSenderOkPowsC, koskBundleOkPowsC,
-    lookupSpkSkC, resolveSigPkC, honestPeerC, checkProvC, partnerC,
-    chooseRespRandC, chooseInitRandC,
-    k1_gPrim_litSize, gPrim, liftBase,
-    v, letV, bindV, caseOptV, caseSumV, findMV, anyMV, mapMV, foldMV,
-    eLet, eCaseOpt, eCaseSum, eFind, eAny, eMap,
-    litB, catB, consB, widenB, takeKB, dropB, lenB, eqB, u32OfNat, eqU32,
-    sBool, sBytes32, sRandom64, sDrKey96, sIndex,
-    qX25519, qX25519Base, qIsCanonical, qPow8,
-    qSigPkGen, qSigSign, qSigVerify,
-    qKemKeyGen, qKemEncaps, qKemDecaps, qHkdfDerive96, ddhQ, encEC, encKEM,
-    compLitSize, exprLitSize, pqOpLitSize,
-    List.length_nil, List.length_cons, List.length_replicate, k1_F_X25519_length,
-    Nat.add_zero, Nat.zero_add,
-    ↓reduceIte, Bool.false_eq_true, Bool.true_eq_false, Bool.not_true, Bool.not_false]
-  omega
-
-set_option linter.unusedSimpArgs false in
-private theorem k1_delegateFgC_litSize_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] (s : Var Γ₁ sig1KeyStTy) (q : Var Γ₂ keyIndQueryTy) :
-    compLitSize (delegateFgC S K (Δ := Δ) s q) ≤ 10200 := by
-  have hH := k1_gdhHandle2_litSize_le S K
-  simp only [delegateFgC, pa2Zero, pa2Mk, s1Fg, s1Target, s1Pk, s1Budget, s1Forgery,
-    s1Mk, s1Upd, letV, bindV, k1_liftGdhToSigDdh_litSize, k1_comp_rename_litSize,
-    litB, v, compLitSize, exprLitSize, pqOpLitSize,
-    List.length_nil, Nat.add_zero, Nat.zero_add]
-  generalize compLitSize (gdhHandle2 S K) = cGH at hH ⊢
-  omega
-
-private theorem k1_sig1KeyHandleC_litSize_le (S : Setup) (K : Nat) :
-    compLitSize (sig1KeyHandleC S K) ≤ 10500 := by
-  have hPre := k1_sig1KeyPreDispatchC_litSize_le S K
-    (Γ₁ := [sig1KeyStTy, keyIndQueryTy]) (Γ₂ := [sig1KeyStTy, keyIndQueryTy])
-    (Δ := [sig1KeyStTy, keyIndQueryTy]) .zero (.succ .zero)
-  have hDel := k1_delegateFgC_litSize_le S K
-    (Γ₁ := [sig1KeyStTy, keyIndQueryTy]) (Γ₂ := [sig1KeyStTy, keyIndQueryTy])
-    (Δ := .unit :: (.sum S1RS .unit) :: [sig1KeyStTy, keyIndQueryTy]) .zero (.succ .zero)
-  simp only [sig1KeyHandleC, bindV, caseSumV, v, compLitSize, exprLitSize]
-  omega
-
-set_option linter.unusedSimpArgs false in
-private theorem k1_sigKeyInd1KeyProg_litSize_le (S : Setup) (K : Nat) :
-    red1LitSize (sigKeyInd1KeyProg S K) ≤ 20000 := by
-  have hH := k1_sig1KeyHandleC_litSize_le S K
-  have hI : compLitSize (sigKeyInd1KeyProg S K).init ≤ 100 := by
-    dsimp only [sigKeyInd1KeyProg]
-    simp only [s1Mk, emptySimE, smMk, emptyStE, stMk,
-      bindV, k1_s1Prim_litSize, s1Prim, liftBase, sIndex, sBool, v,
-      compLitSize, exprLitSize, pqOpLitSize, Nat.add_zero, Nat.zero_add]
-    omega
-  have hF : compLitSize (sigKeyInd1KeyProg S K).finish ≤ 100 := by
-    dsimp only [sigKeyInd1KeyProg]
-    simp only [s1Forgery, eCaseOpt, litB, v, compLitSize, exprLitSize, pqOpLitSize,
-      List.length_nil, Nat.add_zero, Nat.zero_add]
-    omega
-  have hEq : red1LitSize (sigKeyInd1KeyProg S K) =
-      compLitSize (sigKeyInd1KeyProg S K).init + compLitSize (sig1KeyHandleC S K) +
-      compLitSize (sigKeyInd1KeyProg S K).finish := rfl
-  rw [hEq]
-  generalize compLitSize (sigKeyInd1KeyProg S K).init = cI at hI ⊢
-  generalize compLitSize (sig1KeyHandleC S K) = cH at hH ⊢
-  generalize compLitSize (sigKeyInd1KeyProg S K).finish = cF at hF ⊢
-  omega
-
-private theorem k1_bernoulliRatioGdhC_litSize {Δ : List PT} (A B : Nat) :
-    compLitSize (bernoulliRatioGdhC (Δ := Δ) A B) = 0 := by
-  unfold bernoulliRatioGdhC
-  split_ifs <;> simp [bindV, gPrim, liftBase, sIndex, v, compLitSize, exprLitSize]
-
-private theorem k1_chooseArm2C_litSize {Γ₁ Δ : List PT} [Ext Γ₁ Δ] {α : PT} (w1 w2 : Nat)
-    (c1 c2 : ∀ {Δ' : List PT} [Ext Γ₁ Δ'], Comp pqxdhOps pqGapDhIface Δ' α)
-    (h1 : ∀ {Δ' : List PT} [Ext Γ₁ Δ'], compLitSize (c1 (Δ' := Δ')) = 0)
-    (h2 : ∀ {Δ' : List PT} [Ext Γ₁ Δ'], compLitSize (c2 (Δ' := Δ')) = 0) :
-    compLitSize (chooseArm2C (Γ₁ := Γ₁) (Δ := Δ) w1 w2 c1 c2) = 0 := by
-  unfold chooseArm2C
-  split_ifs <;> simp [bindV, v, compLitSize, exprLitSize, k1_bernoulliRatioGdhC_litSize, h1, h2]
-
-private theorem k1_initParams1Key2C_litSize (S : Setup) {Γ₁ Δ : List PT} [Ext Γ₁ Δ]
-    (uv : Var Γ₁ (.prod (SignalPqxdh.LegacyCosted.B 32) (SignalPqxdh.LegacyCosted.B 32))) :
-    compLitSize (initParams1Key2C S (Δ := Δ) uv) = 0 := by
-  have hp : ∀ {Δ' : List PT}, compLitSize (samplePrin2C S (Δ := Δ')) = 0 := by
-    intro Δ'; unfold samplePrin2C; split_ifs <;>
-      simp [bindV, gPrim, liftBase, sIndex, v, compLitSize, exprLitSize]
-  have hs : ∀ {Δ' : List PT}, compLitSize (sampleSpkPair2C S (Δ := Δ')) = 0 := by
-    intro Δ'; unfold sampleSpkPair2C; split_ifs <;>
-      simp [bindV, gPrim, liftBase, sIndex, v, compLitSize, exprLitSize]
-  have ho : ∀ {Δ' : List PT}, compLitSize (sampleOpkTriple2C S (Δ := Δ')) = 0 := by
-    intro Δ'; unfold sampleOpkTriple2C; split_ifs <;>
-      simp [bindV, gPrim, liftBase, sIndex, v, compLitSize, exprLitSize]
-  have hso : ∀ {Δ' : List PT}, compLitSize (sampleSendOpkTarget2C S (Δ := Δ')) = 0 := by
-    intro Δ'; unfold sampleSendOpkTarget2C; split_ifs <;>
-      simp [bindV, gPrim, liftBase, sIndex, v, compLitSize, exprLitSize]
-  have hsno : ∀ {Δ' : List PT}, compLitSize (sampleSendNoOpkTarget2C S (Δ := Δ')) = 0 := by
-    intro Δ'; unfold sampleSendNoOpkTarget2C; split_ifs <;>
-      simp [bindV, gPrim, liftBase, sIndex, v, compLitSize, exprLitSize]
-  have hst : ∀ {Δ' : List PT}, compLitSize (sampleSendTarget2C S (Δ := Δ')) = 0 := by
-    intro Δ'; unfold sampleSendTarget2C
-    split_ifs
-    · rfl
-    · exact k1_chooseArm2C_litSize (Γ₁ := Δ') _ _ _ _ hso hsno
-  unfold initParams1Key2C
-  split_ifs
-  · simp [pa2Mk, v, compLitSize, exprLitSize]
-  · refine k1_chooseArm2C_litSize _ _ _ _ ?_ ?_
-    · intro Δ' _; refine k1_chooseArm2C_litSize _ _ _ _ ?_ ?_ <;>
-        (intro Δ'' _; simp [pa2Mk, bindV, v, compLitSize, exprLitSize, hp, hs, hst])
-    · intro Δ' _; refine k1_chooseArm2C_litSize _ _ _ _ ?_ ?_ <;>
-        (intro Δ'' _; simp [pa2Mk, bindV, v, compLitSize, exprLitSize, hp, hst, hso, ho])
-
-set_option linter.unusedSimpArgs false in
-private theorem k1_fgKeyInd1KeyGapDh2Prog_litSize_le (S : Setup) (K : Nat) :
-    red1LitSize (fgKeyInd1KeyGapDh2Prog S K) ≤ 35000 := by
-  have hGH := k1_gdhHandle2_litSize_le S K
-  have hGF := k1_gdhFinish2_litSize_le S K
-  have hH : compLitSize (gdh1KeyHandle2 S K) ≤ 30600 := by
-    simp only [gdh1KeyHandle2, initPrin1Key2B,
-      genSpk1Key2B, k1_callGdhHandle2_litSize,
-      pa2Up, pa2PrinTarget, pa2V, pa2SpkTarget, eCaseOpt,
-      smBase, smFgL, smRaw, smLog, smPows, smMk, smUpd,
-      stPrin, stSpks, stOpks, stSess, stResps, stUsedO, stUsedN, stKyb, stRo, stAdv, stSecb, stMk, stUpd,
-      peSecIKA0, peIkAPk, peSecIKAsign, peIkSignPk, peCorrupted, peMk,
-      sbSpkSk, sbSpkPk, sbSpkSig, sbPqspkSk, sbPqspkPk, sbPqspkSig, sbRevealed, sbMk,
-      buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk,
-      rNone, rInitPrin, rBundle, natEq, nat2Eq, encEC, encKEM, consB,
-      letV, bindV, caseOptV, caseSumV, eAny, eFind,
-      k1_liftGdhComp_litSize, liftGdhComp, k1_gPrim_litSize, gPrim, liftBase, sigChalQ_dsl,
-      sBytes32, sRandom64, qX25519Base, qKemKeyGen,
-      litB, u32OfNat, v, compLitSize, exprLitSize, pqOpLitSize,
-      List.length_nil, List.length_cons, Nat.add_zero, Nat.zero_add]
-    generalize compLitSize (gdhHandle2 S K) = cGH at hGH ⊢
-    omega
-  have hF : compLitSize (gdh1KeyFinish2 S K) ≤ 1000 := by
-    simp only [gdh1KeyFinish2, letV, v, compLitSize, exprLitSize,
-      k1_renameComp_litSize, k1_liftGdhComp_litSize, Nat.add_zero, Nat.zero_add]
-    generalize compLitSize (gdhFinish2 S K) = cGF at hGF ⊢
-    omega
-  have hI : compLitSize (fgKeyInd1KeyGapDh2Prog S K).init ≤ 100 := by
-    dsimp only [fgKeyInd1KeyGapDh2Prog]
-    simp only [initAdv4_1Key2, initAdv4_1Key2Base, k1_initParams1Key2C_litSize,
-      emptySimE, smMk, emptyStE, stMk,
-      letV, bindV, k1_liftGdhComp_litSize, k1_gPrim_litSize, gPrim, liftBase,
-      sBool, v, compLitSize, exprLitSize, Nat.add_zero, Nat.zero_add]
-    omega
-  have hEq : red1LitSize (fgKeyInd1KeyGapDh2Prog S K) =
-      compLitSize (fgKeyInd1KeyGapDh2Prog S K).init + compLitSize (gdh1KeyHandle2 S K) +
-      compLitSize (gdh1KeyFinish2 S K) := rfl
-  rw [hEq]
-  generalize compLitSize (fgKeyInd1KeyGapDh2Prog S K).init = cI at hI ⊢
-  generalize compLitSize (gdh1KeyHandle2 S K) = cH at hH ⊢
-  generalize compLitSize (gdh1KeyFinish2 S K) = cF at hF ⊢
-  omega
 
 end OneKeySizeBounds
 
@@ -1817,375 +1400,6 @@ private theorem k1_gdhHandle2_cost_tight (S : Setup) (K : Nat) :
       ↓reduceIte, Bool.false_eq_true]
     omega)
 
-private theorem k1_bernoulliRatioGdhC_costUB_le {Δ : List PT} (A B : Nat) :
-    (bernoulliRatioGdhC (Δ := Δ) A B).costUB ≤
-      if A = 0 ∨ B = 0 then 2 else 3 * bits (A + B) + 25 := by
-  unfold bernoulliRatioGdhC
-  by_cases hA : A = 0
-  · simp [hA, Comp.costUB, Expr.costUB]
-  by_cases hB : B = 0
-  · simp [hA, hB, Comp.costUB, Expr.costUB]
-  simp only [hA, hB, or_self, ↓reduceIte]
-  split_ifs
-  · simp only [bindV_costUB, gPrim_costUB, sIndex_costUB, v_costUB, Comp.costUB, Expr.costUB, bits_1]
-    have hm : bits A ≤ bits (A + B) := bits_mono (by omega)
-    omega
-  · simp only [bindV_costUB, gPrim_costUB, sIndex_costUB, v_costUB, Comp.costUB, Expr.costUB, bits_1]
-    have hm : bits B ≤ bits (A + B) := bits_mono (by omega)
-    omega
-
-private theorem k1_chooseArm2C_cost_le {Γ₁ Δ : List PT} [Ext Γ₁ Δ] {τ : PT} (A B : Nat)
-    (c1 c2 : ∀ {Δ' : List PT} [Ext Γ₁ Δ'], Comp pqxdhOps pqGapDhIface Δ' τ)
-    (M : Nat) (_hN : A + B ≠ 0)
-    (h1 : ∀ {Δ' : List PT} [Ext Γ₁ Δ'], (c1 (Δ' := Δ')).cost ≤ M)
-    (h2 : ∀ {Δ' : List PT} [Ext Γ₁ Δ'], (c2 (Δ' := Δ')).cost ≤ M) :
-    (chooseArm2C (Γ₁ := Γ₁) (Δ := Δ) A B c1 c2).cost ≤ 3 * bits (A + B) + M + 30 := by
-  rw [chooseArm2C]
-  by_cases hw1 : A = 0
-  · simp only [hw1, ↓reduceIte]; exact h2.trans (by omega)
-  · by_cases hw2 : B = 0
-    · simp only [hw1, hw2, ↓reduceIte]; exact h1.trans (by omega)
-    · simp only [hw1, hw2, ↓reduceIte, bindV, v, Comp.cost, Expr.cost]
-      have hb := (bernoulliRatioGdhC (Δ := Δ) A B).cost_le_costUB.trans
-        (k1_bernoulliRatioGdhC_costUB_le (Δ := Δ) A B)
-      simp only [hw1, hw2, or_self, ↓reduceIte] at hb
-      have hc1 := h1 (Δ' := .bool :: Δ); have hc2 := h2 (Δ' := .bool :: Δ); omega
-
-private theorem k1_coordSamplers2_costUB_le (S : Setup) {Δ : List PT} :
-    (samplePrin2C S (Δ := Δ)).costUB ≤ bits S.N_dh + 10 ∧
-    (sampleSpkPair2C S (Δ := Δ)).costUB ≤ 2 * bits S.N_dh + 15 ∧
-    (sampleOpkTriple2C S (Δ := Δ)).costUB ≤ 3 * bits S.N_dh + 20 ∧
-    (sampleSendOpkTarget2C S (Δ := Δ)).costUB ≤ 2 * bits S.N_dh + 20 ∧
-    (sampleSendNoOpkTarget2C S (Δ := Δ)).costUB ≤ 2 * bits S.N_dh + 20 := by
-  have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
-  have hs : S.N_send_tot = S.N_send_opk_tot + S.N_send_no_opk_tot := rfl
-  refine ⟨?_, ?_, ?_, ?_, ?_⟩
-  · unfold samplePrin2C; split_ifs
-    · simp [Comp.costUB, Expr.costUB]
-    · simp only [bindV_costUB, gPrim_costUB, sIndex_costUB, v_costUB, Comp.costUB, Expr.costUB]
-      have := bits_mono (a := S.N_id) (b := S.N_dh) (by omega); omega
-  · unfold sampleSpkPair2C; split_ifs with h0
-    · simp [Comp.costUB, Expr.costUB]
-    · have hId : 0 < S.N_id := Nat.pos_of_ne_zero fun hc => h0 (by simp [Setup.N_spk_tot, hc])
-      have hR : S.N_recv ≤ S.N_spk_tot := Nat.le_mul_of_pos_left _ hId
-      simp only [bindV_costUB, gPrim_costUB, sIndex_costUB, v_costUB, Comp.costUB, Expr.costUB]
-      have := bits_mono (a := S.N_id) (b := S.N_dh) (by omega)
-      have := bits_mono (a := S.N_recv) (b := S.N_dh) (by omega); omega
-  · unfold sampleOpkTriple2C; split_ifs with h0
-    · simp [Comp.costUB, Expr.costUB]
-    · have hSpk : 0 < S.N_spk_tot := Nat.pos_of_ne_zero fun hc => h0 (by simp [Setup.N_opk_tot, hc])
-      have hId : 0 < S.N_id := Nat.pos_of_ne_zero fun hc => Nat.ne_of_gt hSpk (by simp [Setup.N_spk_tot, hc])
-      have hR : S.N_recv ≤ S.N_spk_tot := Nat.le_mul_of_pos_left _ hId
-      have hO : S.N_opk ≤ S.N_opk_tot := Nat.le_mul_of_pos_left _ hSpk
-      simp only [bindV_costUB, gPrim_costUB, sIndex_costUB, v_costUB, Comp.costUB, Expr.costUB]
-      have := bits_mono (a := S.N_id) (b := S.N_dh) (by omega)
-      have := bits_mono (a := S.N_recv) (b := S.N_dh) (by omega)
-      have := bits_mono (a := S.N_opk) (b := S.N_dh) (by omega); omega
-  · unfold sampleSendOpkTarget2C; split_ifs with h0
-    · simp [Comp.costUB, Expr.costUB]
-    · have hId : 0 < S.N_id := Nat.pos_of_ne_zero fun hc => h0 (by simp [Setup.N_send_opk_tot, hc])
-      have hS : S.N_send_opk ≤ S.N_send_opk_tot := Nat.le_mul_of_pos_left _ hId
-      simp only [bindV_costUB, gPrim_costUB, sIndex_costUB, v_costUB, Comp.costUB, Expr.costUB]
-      have := bits_mono (a := S.N_id) (b := S.N_dh) (by omega)
-      have := bits_mono (a := S.N_send_opk) (b := S.N_dh) (by omega); omega
-  · unfold sampleSendNoOpkTarget2C; split_ifs with h0
-    · simp [Comp.costUB, Expr.costUB]
-    · have hId : 0 < S.N_id := Nat.pos_of_ne_zero fun hc => h0 (by simp [Setup.N_send_no_opk_tot, hc])
-      have hS : S.N_send_no_opk ≤ S.N_send_no_opk_tot := Nat.le_mul_of_pos_left _ hId
-      simp only [bindV_costUB, gPrim_costUB, sIndex_costUB, v_costUB, Comp.costUB, Expr.costUB]
-      have := bits_mono (a := S.N_id) (b := S.N_dh) (by omega)
-      have := bits_mono (a := S.N_send_no_opk_tot) (b := S.N_dh) (by omega)
-      have := bits_mono (a := S.N_send_no_opk) (b := S.N_dh) (by omega); omega
-
-private theorem k1_sampleSendTarget2C_cost_le (S : Setup) {Δ : List PT} :
-    (sampleSendTarget2C S (Δ := Δ)).cost ≤ 5 * bits S.N_dh + 60 := by
-  have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
-  have hs : S.N_send_tot = S.N_send_opk_tot + S.N_send_no_opk_tot := rfl
-  unfold sampleSendTarget2C; split_ifs with h0
-  · simp [Comp.cost, Expr.cost]
-  · have hb := k1_chooseArm2C_cost_le (Γ₁ := Δ) (Δ := Δ) S.N_send_opk_tot S.N_send_no_opk_tot
-      _ _ (2 * bits S.N_dh + 20) (by omega)
-      (fun {Δ'} [_] => (Comp.cost_le_costUB _).trans (k1_coordSamplers2_costUB_le S (Δ := Δ')).2.2.2.1)
-      (fun {Δ'} [_] => (Comp.cost_le_costUB _).trans (k1_coordSamplers2_costUB_le S (Δ := Δ')).2.2.2.2)
-    have bm : bits (S.N_send_opk_tot + S.N_send_no_opk_tot) ≤ bits S.N_dh := bits_mono (by omega)
-    omega
-
-private theorem k1_fgKeyInd1KeyGapDh2Prog_init_cost_le (S : Setup) (K : Nat) :
-    (fgKeyInd1KeyGapDh2Prog S K).init.cost ≤ 22 * bits S.N_dh + K + 320 := by
-  have hfg : _root_.SignalPqxdh.Security.fgTotalIndexCount S =
-      S.N_id * S.N_spk_tot + S.N_send_tot * S.N_spk_tot +
-      S.N_send_tot * S.N_id + S.N_send_opk_tot * S.N_opk_tot := rfl
-  have hs : S.N_send_tot = S.N_send_opk_tot + S.N_send_no_opk_tot := rfl
-  have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
-  have hsq : ∀ x, x ≤ S.N_dh * S.N_dh → bits x ≤ 2 * bits S.N_dh + 1 := fun x hx =>
-    le_trans (bits_mono hx) (by have hm := bits_mul S.N_dh S.N_dh; omega)
-  have hInitP : ∀ {Γ₁ Δ : List PT} [Ext Γ₁ Δ]
-      (uv : Var Γ₁ (.prod (SignalPqxdh.LegacyCosted.B 32) (SignalPqxdh.LegacyCosted.B 32))),
-      (initParams1Key2C S (Δ := Δ) uv).cost ≤ 19 * bits S.N_dh + 220 := by
-    intro Γ₁ Δ _ uv; unfold initParams1Key2C; split_ifs with h0
-    · simp only [pa2Mk, v, Comp.cost, Expr.cost, bits_0, bits_3]; omega
-    · refine (k1_chooseArm2C_cost_le _ _ _ _ (13 * bits S.N_dh + 150) (by omega) ?_ ?_).trans ?_
-      · intro Δ₁ _
-        by_cases hAC : S.N_id * S.N_spk_tot + S.N_send_tot * S.N_spk_tot = 0
-        · have hA0 : S.N_id * S.N_spk_tot = 0 := by omega
-          simp only [chooseArm2C, hA0, ↓reduceIte, bindV, pa2Mk,
-            v, Comp.cost, Expr.cost, bits_1]
-          have h1 := k1_sampleSendTarget2C_cost_le S (Δ := Δ₁)
-          have h2 := (Comp.cost_le_costUB _).trans (k1_coordSamplers2_costUB_le S (Δ := .opt ephTargetTy :: Δ₁)).2.1
-          omega
-        · refine (k1_chooseArm2C_cost_le _ _ _ _ (7 * bits S.N_dh + 110) hAC ?_ ?_).trans ?_
-          · intro Δ₂ _; simp only [bindV, pa2Mk, v, Comp.cost, Expr.cost, bits_0]
-            have h1 := (Comp.cost_le_costUB _).trans (k1_coordSamplers2_costUB_le S (Δ := Δ₂)).1
-            have h2 := (Comp.cost_le_costUB _).trans (k1_coordSamplers2_costUB_le S (Δ := .opt .nat :: Δ₂)).2.1
-            omega
-          · intro Δ₂ _; simp only [bindV, pa2Mk, v, Comp.cost, Expr.cost, bits_1]
-            have h1 := k1_sampleSendTarget2C_cost_le S (Δ := Δ₂)
-            have h2 := (Comp.cost_le_costUB _).trans (k1_coordSamplers2_costUB_le S (Δ := .opt ephTargetTy :: Δ₂)).2.1
-            omega
-          · have bsum := hsq (S.N_id * S.N_spk_tot + S.N_send_tot * S.N_spk_tot) (by nlinarith); omega
-      · intro Δ₁ _
-        by_cases hBD : S.N_send_tot * S.N_id + S.N_send_opk_tot * S.N_opk_tot = 0
-        · have hB0 : S.N_send_tot * S.N_id = 0 := by omega
-          simp only [chooseArm2C, hB0, ↓reduceIte, bindV, pa2Mk,
-            v, Comp.cost, Expr.cost, bits_3]
-          have h1 := (Comp.cost_le_costUB _).trans (k1_coordSamplers2_costUB_le S (Δ := Δ₁)).2.2.2.1
-          have h2 := (Comp.cost_le_costUB _).trans (k1_coordSamplers2_costUB_le S (Δ := .opt ephTargetTy :: Δ₁)).2.2.1
-          omega
-        · refine (k1_chooseArm2C_cost_le _ _ _ _ (7 * bits S.N_dh + 110) hBD ?_ ?_).trans ?_
-          · intro Δ₂ _; simp only [bindV, pa2Mk, v, Comp.cost, Expr.cost, bits_2]
-            have h1 := k1_sampleSendTarget2C_cost_le S (Δ := Δ₂)
-            have h2 := (Comp.cost_le_costUB _).trans (k1_coordSamplers2_costUB_le S (Δ := .opt ephTargetTy :: Δ₂)).1
-            omega
-          · intro Δ₂ _; simp only [bindV, pa2Mk, v, Comp.cost, Expr.cost, bits_3]
-            have h1 := (Comp.cost_le_costUB _).trans (k1_coordSamplers2_costUB_le S (Δ := Δ₂)).2.2.2.1
-            have h2 := (Comp.cost_le_costUB _).trans (k1_coordSamplers2_costUB_le S (Δ := .opt ephTargetTy :: Δ₂)).2.2.1
-            omega
-          · have bsum := hsq (S.N_send_tot * S.N_id + S.N_send_opk_tot * S.N_opk_tot)
-              (by nlinarith [Nat.zero_le (S.N_send_no_opk_tot * S.N_opk_tot)]); omega
-      · have bsum := hsq (S.N_id * S.N_spk_tot + S.N_send_tot * S.N_spk_tot +
-            (S.N_send_tot * S.N_id + S.N_send_opk_tot * S.N_opk_tot))
-          (by nlinarith [Nat.zero_le (S.N_send_no_opk_tot * S.N_opk_tot)]); omega
-  have hsBool : ∀ {Δ' : List PT}, (gPrim (Γ := Δ') sBool).cost ≤ 10 := fun {Δ'} =>
-    (Comp.cost_le_costUB _).trans (by simp [sBool_costUB])
-  simp only [fgKeyInd1KeyGapDh2Prog, initAdv4_1Key2, initAdv4_1Key2Base, emptySimE, smMk, emptyStE, stMk,
-    letV, bindV, liftGdhComp_cost, v, Comp.cost, Expr.cost]
-  have hp := hInitP
-    (Γ₁ := [.prod (SignalPqxdh.LegacyCosted.B 32) (SignalPqxdh.LegacyCosted.B 32),
-            .prod (SignalPqxdh.LegacyCosted.B 32) (SignalPqxdh.LegacyCosted.B 32)])
-    (Δ := [.prod (SignalPqxdh.LegacyCosted.B 32) (SignalPqxdh.LegacyCosted.B 32),
-           .prod (SignalPqxdh.LegacyCosted.B 32) (SignalPqxdh.LegacyCosted.B 32)]) .zero
-  have hsB := hsBool (Δ' := params2Ty ::
-    [.prod (SignalPqxdh.LegacyCosted.B 32) (SignalPqxdh.LegacyCosted.B 32),
-     .prod (SignalPqxdh.LegacyCosted.B 32) (SignalPqxdh.LegacyCosted.B 32)])
-  have hbK : bits (min K (min S.N_spk_tot S.N_recv)) ≤ K + 1 :=
-    (bits_mono (Nat.min_le_left _ _)).trans (bits_le_succ K)
-  omega
-
-private theorem k1_gdh1KeyHandle2_cost_tight (S : Setup) (K : Nat) :
-    (gdh1KeyHandle2 S K).cost ≤
-      20000 * K + 10000 * min K S.N_dh + 10000 * min K S.N_sess_tot + 30050 := by
-  have hCall : ∀ {Δ : List PT} (st1 : Var Δ gdh1KeyState2Ty) (q : Var Δ keyIndQueryTy),
-      (callGdhHandle2 S K st1 q).cost ≤
-        20000 * K + 10000 * min K S.N_dh + 10000 * min K S.N_sess_tot + 30020 := by
-    intro Δ st1 q
-    have hEq : (callGdhHandle2 S K st1 q).cost = (gdhHandle2 S K).cost + 14 := by
-      simp only [callGdhHandle2, letV, bindV, v, Comp.cost, Expr.cost,
-        renameComp_cost, liftGdhComp_cost]; omega
-    have hH := k1_gdhHandle2_cost_tight S K
-    rw [hEq]
-    generalize (gdhHandle2 S K).cost = cGH at hH ⊢
-    omega
-  have hIp : ∀ {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
-      (st1 : Var Γ₁ gdh1KeyState2Ty) (u : Var Γ₂ .nat),
-      (initPrin1Key2B K (Δ := Δ) st1 u).cost ≤ 7 * K + 450 := by
-    intro Γ₁ Γ₂ Δ _ _ st1 u
-    refine le_trans (initPrin1Key2B K (Δ := Δ) st1 u).cost_le_costUB ?_
-    simp only [initPrin1Key2B, stPrin, stUpd, stSecb, stSpks, stOpks, stSess, stResps,
-      stUsedO, stUsedN, stKyb, stRo, stAdv, stMk, peMk, smUpd, smMk,
-      smBase_costUB, smFgL_costUB, smRaw_costUB, smLog_costUB, smPows_costUB,
-      pa2Up, pa2PrinTarget, rNone, rInitPrin, natEq,
-      letV_costUB, bindV_costUB, eCaseOpt_costUB, eAny_costUB, liftGdhComp_costUB, gPrim_costUB,
-      sBytes32_costUB, qX25519Base_costUB, litB_costUB, v_costUB,
-      Comp.costUB, Expr.costUB, List.length_nil, PNat.val_ofNat]; omega
-  have hGs : ∀ {Δ : List PT} (st1 : Var Δ gdh1KeyState2Ty) (q : Var Δ keyIndQueryTy)
-      (x : Var Δ (.prod .nat .nat)),
-      (genSpk1Key2B S K st1 q x).cost ≤
-        20000 * K + 10000 * min K S.N_dh + 10000 * min K S.N_sess_tot + 30040 := by
-    intro Δ st1 q x
-    let arm : Comp pqxdhOps pqSigAndDdhIface Δ (.prod keyIndRespTy gdh1KeyState2Ty) :=
-      let pa := Expr.fst (.fst (v st1))
-      letV pa fun paV => letV (.snd (.fst (v st1))) fun sm => letV (smBase (v sm)) fun bSt =>
-      letV (.snd (v st1)) fun sigB =>
-      .ite (eAny K (stSpks (v bSt)) fun p => nat2Eq (.fst (v p)) (v x)) (.ret (.pair rNone (v st1)))
-        (caseOptV (eFind K (stPrin (v bSt)) fun p => natEq (.fst (v p)) (.fst (v x)))
-          (.ret (.pair rNone (v st1))) fun ue =>
-          .ite (natEq (v sigB) (.nat 0)) (.ret (.pair rNone (v st1)))
-            (letV (eCaseOpt (pa2SpkTarget (v paV)) (.bool false) fun sp => nat2Eq (v x) (v sp)) fun isT =>
-             bindV (liftGdhComp (gPrim sBytes32)) fun spkSkRaw =>
-             bindV (liftGdhComp (gPrim (qX25519Base (v spkSkRaw)))) fun spkPkRaw =>
-             letV (.ite (v isT) (litB 32 []) (v spkSkRaw)) fun spkSk =>
-             letV (.ite (v isT) (pa2V (v paV)) (v spkPkRaw)) fun spkPk =>
-             bindV (sigChalQ_dsl 33 (encEC (v spkPk))) fun spkSig =>
-             bindV (liftGdhComp (gPrim sRandom64)) fun seed =>
-             bindV (liftGdhComp (gPrim (qKemKeyGen (v seed)))) fun kp =>
-             bindV (sigChalQ_dsl 1569 (encKEM (.fst (v kp)))) fun pqSig =>
-             let jId := u32OfNat (.snd (v x))
-             let bE := sbMk (v spkSk) (v spkPk) (v spkSig) (.snd (v kp)) (.fst (v kp)) (v pqSig) (.bool false)
-             let buOut := buMk (peIkAPk (.snd (v ue))) jId (v spkPk) (v spkSig) .none jId (.fst (v kp)) (v pqSig)
-             let bSt' := stUpd (v bSt) (spks := .cons (.pair (v x) bE) (stSpks (v bSt)))
-             let sm' := smUpd (v sm) (base := bSt')
-             .ret (.pair (rBundle buOut) (.pair (.pair (v paV) sm') (.sub (v sigB) (.nat 1))))))
-    have hArm : arm.cost ≤ 20 * K + 9000 := by
-      refine le_trans arm.cost_le_costUB ?_
-      simp only [arm, stPrin, stSpks, stUpd, stSecb, stOpks, stSess, stResps,
-        stUsedO, stUsedN, stKyb, stRo, stAdv, stMk, peIkAPk, sbMk, buMk, smUpd, smMk,
-        smBase_costUB, smFgL_costUB, smRaw_costUB, smLog_costUB, smPows_costUB,
-        pa2V, pa2SpkTarget, rNone, rBundle, natEq, nat2Eq, encEC_costUB, encKEM_costUB,
-        letV_costUB, bindV_costUB, caseOptV_costUB, eCaseOpt_costUB, eAny_costUB, eFind_costUB,
-        liftGdhComp_costUB, gPrim_costUB, sigChalQ_dsl_costUB, sBytes32_costUB, sRandom64_costUB,
-        qX25519Base_costUB, qKemKeyGen_costUB, litB_costUB, u32OfNat_costUB, v_costUB,
-        Comp.costUB, Expr.costUB, List.length_nil, PNat.val_ofNat, bits_0, bits_1]; omega
-    have hEq : genSpk1Key2B S K st1 q x =
-        .ite (eCaseOpt (pa2PrinTarget (.fst (.fst (v st1)))) (.bool false) fun uT => natEq (.fst (v x)) (v uT))
-          arm (callGdhHandle2 S K st1 q) := rfl
-    rw [hEq]; have hc := hCall st1 q
-    simp only [Comp.cost, eCaseOpt, pa2PrinTarget, natEq, v, Expr.cost]
-    generalize arm.cost = cArm at hArm ⊢
-    generalize (callGdhHandle2 S K st1 q).cost = cCall at hc ⊢
-    omega
-  have step : ∀ {a b m₁ m₂ n : Nat}, a ≤ m₁ → b ≤ m₂ → m₁ + 2 ≤ n → m₂ + 2 ≤ n →
-      1 + max a b + 1 ≤ n :=
-    fun _ _ _ _ => by omega
-  unfold gdh1KeyHandle2
-  simp only [caseSumV, v, Comp.cost, Expr.cost]
-  refine step (m₂ := 20000 * K + 10000 * min K S.N_dh + 10000 * min K S.N_sess_tot + 30044)
-    (hIp _ _) ?_ (by omega) (by omega)
-  refine step (m₂ := 20000 * K + 10000 * min K S.N_dh + 10000 * min K S.N_sess_tot + 30042)
-    (hCall _ _) ?_ (by omega) (by omega)
-  exact step (hGs _ _ _) (hCall _ _) (by omega) (by omega)
-
-private theorem k1_gdh1KeyFinish2_cost_le_min (S : Setup) (K : Nat) :
-    (gdh1KeyFinish2 S K).cost ≤
-      69 * (min K S.N_dh * min K S.N_dh) + 69 * (K * min K S.N_dh) +
-        66 * (min K S.N_dh * min K S.N_sess_tot) +
-        423 * min K S.N_dh + 263 * min K S.N_sess_tot + 2132 * K + 420 := by
-  have hF : (gdhFinish2 S K).cost ≤
-      69 * (min K S.N_dh * min K S.N_dh) + 69 * (K * min K S.N_dh) +
-        66 * (min K S.N_dh * min K S.N_sess_tot) +
-        423 * min K S.N_dh + 263 * min K S.N_sess_tot + 2132 * K + 409 := by
-    refine le_trans (gdhFinish2 S K).cost_le_costUB ?_
-    simp only [gdhFinish2, extractMode0_2C, logFind2C, spkPowsC_costUB, findMapStep2C,
-      initDh1CandC_costUB, respDh1CandC_costUB, slice32_costUB,
-      smBase_costUB, smLog_costUB, smPows_costUB, pa2U, pa2V, pa2Mode,
-      natEq, letV_costUB, bindV_costUB, caseOptV_costUB, findMV_costUB, foldMV_costUB,
-      eCaseOpt_costUB, eMap_costUB, ddhQ_costUB, litB_costUB, v_costUB,
-      Comp.costUB, Expr.costUB, List.length_replicate, PNat.val_ofNat,
-      bits_0, bits_1, bits_2, bits_32, bits_64, bits_96, bits_128]
-    nlinarith
-  have hEq : (gdh1KeyFinish2 S K).cost = (gdhFinish2 S K).cost + 4 := by
-    simp only [gdh1KeyFinish2, letV, v, Comp.cost, Expr.cost, renameComp_cost, liftGdhComp_cost]; omega
-  rw [hEq]
-  generalize (gdhFinish2 S K).cost = cGF at hF ⊢
-  omega
-
-private theorem k1_fgKeyInd1KeyGapDh2Prog_totalCost_tight (S : Setup) (K q : Nat) :
-    (fgKeyInd1KeyGapDh2Prog S K).totalCost q ≤
-      q * (20000 * K + 10000 * min K S.N_dh + 10000 * min K S.N_sess_tot + 30082) +
-        69 * (min K S.N_dh * min K S.N_dh) + 69 * (K * min K S.N_dh) +
-        66 * (min K S.N_dh * min K S.N_sess_tot) +
-        423 * min K S.N_dh + 263 * min K S.N_sess_tot +
-        22 * bits S.N_dh + 2133 * K + 760 := by
-  have hI := k1_fgKeyInd1KeyGapDh2Prog_init_cost_le S K
-  have hH := k1_gdh1KeyHandle2_cost_tight S K
-  have hF := k1_gdh1KeyFinish2_cost_le_min S K
-  have hEq : (fgKeyInd1KeyGapDh2Prog S K).totalCost q =
-      (fgKeyInd1KeyGapDh2Prog S K).init.cost +
-        q * max 1 ((gdh1KeyHandle2 S K).cost + 32) +
-        (gdh1KeyFinish2 S K).cost := rfl
-  rw [hEq]
-  generalize (fgKeyInd1KeyGapDh2Prog S K).init.cost = cI at hI ⊢
-  generalize (gdh1KeyHandle2 S K).cost = cH at hH ⊢
-  generalize (gdh1KeyFinish2 S K).cost = cF at hF ⊢
-  have hmax : max 1 (cH + 32) ≤
-      20000 * K + 10000 * min K S.N_dh + 10000 * min K S.N_sess_tot + 30082 :=
-    max_le (by omega) (by omega)
-  have hq := Nat.mul_le_mul_left q hmax
-  omega
-
-private theorem k1_sigKeyInd1KeyProg_totalCost_tight (S : Setup) (K q : Nat) :
-    (sigKeyInd1KeyProg S K).totalCost q ≤
-      q * (26612 * K + 10412 * min K S.N_dh + 10000 * min K S.N_sess_tot + 15 * bits S.N_dh + 56532) +
-        2 * bits S.N_dh + 1800 := by
-  have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
-  have hI : (sigKeyInd1KeyProg S K).init.cost ≤ 2 * bits S.N_dh + 100 := by
-    refine le_trans (sigKeyInd1KeyProg S K).init.cost_le_costUB ?_
-    have bId : bits S.N_id ≤ bits S.N_dh := bits_mono (by omega)
-    have bSpk : bits (min K (min S.N_spk_tot S.N_recv)) ≤ bits S.N_dh :=
-      (bits_mono ((Nat.min_le_right _ _).trans (Nat.min_le_left _ _))).trans (bits_mono (by omega))
-    dsimp only [sigKeyInd1KeyProg]
-    simp only [s1Mk, emptySimE, smMk, emptyStE, stMk,
-      bindV_costUB, s1Prim_costUB, sIndex_costUB, sBool_costUB, v_costUB,
-      Comp.costUB, Expr.costUB]
-    omega
-  have hPre : ∀ {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
-      (s : Var Γ₁ sig1KeyStTy) (qv : Var Γ₂ keyIndQueryTy),
-      (sig1KeyPreDispatchC S K (Δ := Δ) s qv).cost ≤ 412 * min K S.N_dh + 6612 * K + 26000 := by
-    intro Γ₁ Γ₂ Δ _ _ s qv
-    refine le_trans (sig1KeyPreDispatchC S K (Δ := Δ) s qv).cost_le_costUB ?_
-    simp only [sig1KeyPreDispatchC, sig1KeyInitPrinB, sig1KeyTargetGenSpkB,
-      sig1KeyInitiateCheckC, extract1KeyC,
-      s1Fg, s1Target, s1Pk, s1Budget, s1Forgery, s1Base, s1Mk, s1Upd,
-      smBase_costUB, smFgL_costUB, smRaw_costUB, smLog_costUB, smPows_costUB, smMk, smUpd,
-      stPrin, stSpks, stOpks, stSess, stResps, stUsedO, stUsedN, stKyb, stRo, stAdv, stMk, stUpd,
-      peIkAPk, peMk, sbSpkPk, sbPqspkPk, sbMk,
-      buIkB, buSpkB, buSpkSig, buPqspkB, buPqspkSig, buMk,
-      rNone, rInitPrin, rBundle, isSomeE, natEq, nat2Eq,
-      encEC_costUB, encKEM_costUB, widenEC_costUB,
-      letV_costUB, bindV_costUB, caseOptV_costUB, caseSumV_costUB,
-      s1Prim_costUB, honestPeerC_costUB, qSigVerify_costUB, qSigDdhSign_costUB,
-      sBytes32_costUB, sRandom64_costUB, qX25519Base_costUB, qKemKeyGen_costUB,
-      eCaseOpt_costUB, eAny_costUB, eFind_costUB, eqB_costUB, litB_costUB, u32OfNat_costUB,
-      v_costUB, Comp.costUB, Expr.costUB, List.length_nil, PNat.val_ofNat, bits_0, bits_1]
-    omega
-  have hDel : ∀ {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
-      (s : Var Γ₁ sig1KeyStTy) (qv : Var Γ₂ keyIndQueryTy),
-      (delegateFgC S K (Δ := Δ) s qv).cost ≤
-        20000 * K + 10000 * min K S.N_dh + 10000 * min K S.N_sess_tot + 15 * bits S.N_dh + 30400 := by
-    intro Γ₁ Γ₂ Δ _ _ s qv
-    have hH := k1_gdhHandle2_cost_tight S K
-    have hLit : (litB (Γ := Δ) 32 []).cost ≤ 40 := by
-      simp [litB, Expr.cost, pqxdhOps, pqBytesOps, Ops.sum]
-    simp only [delegateFgC, pa2Zero, pa2Mk, s1Fg, s1Target, s1Pk, s1Budget, s1Forgery,
-      s1Mk, s1Upd, letV, bindV, liftGdhToSigDdh_cost, Comp.rename_cost,
-      v, Comp.cost, Expr.cost, bits_1]
-    generalize (gdhHandle2 S K).cost = cGH at hH ⊢
-    generalize (litB (Γ := Δ) 32 []).cost = cL at hLit ⊢
-    omega
-  have hH : (sig1KeyHandleC S K).cost ≤
-      26612 * K + 10412 * min K S.N_dh + 10000 * min K S.N_sess_tot + 15 * bits S.N_dh + 56500 := by
-    let s : Var [sig1KeyStTy, keyIndQueryTy] sig1KeyStTy := .zero
-    let q : Var [sig1KeyStTy, keyIndQueryTy] keyIndQueryTy := .succ .zero
-    have hp := hPre (Δ := [sig1KeyStTy, keyIndQueryTy]) s q
-    have hd' := hDel (Δ := .unit :: (.sum S1RS .unit) :: [sig1KeyStTy, keyIndQueryTy]) s q
-    simp only [sig1KeyHandleC, bindV, caseSumV, v, Comp.cost, Expr.cost]
-    generalize (sig1KeyPreDispatchC S K (Δ := [sig1KeyStTy, keyIndQueryTy]) s q).cost = cPre at hp ⊢
-    generalize (delegateFgC S K (Δ := .unit :: (.sum S1RS .unit) :: [sig1KeyStTy, keyIndQueryTy])
-      s q).cost = cDel at hd' ⊢
-    omega
-  have hF := sigKeyInd1KeyProg_finish_cost_le S K
-  have hEq : (sigKeyInd1KeyProg S K).totalCost q =
-      (sigKeyInd1KeyProg S K).init.cost + q * max 1 ((sig1KeyHandleC S K).cost + 32) +
-        (sigKeyInd1KeyProg S K).finish.cost := rfl
-  rw [hEq]
-  generalize (sigKeyInd1KeyProg S K).init.cost = cI at hI ⊢
-  generalize (sig1KeyHandleC S K).cost = cH at hH ⊢
-  generalize (sigKeyInd1KeyProg S K).finish.cost = cF at hF ⊢
-  have hmax : max 1 (cH + 32) ≤
-      26612 * K + 10412 * min K S.N_dh + 10000 * min K S.N_sess_tot + 15 * bits S.N_dh + 56532 :=
-    max_le (by omega) (by omega)
-  have hq := Nat.mul_le_mul_left q hmax
-  omega
-
 end K1TightHandleCost
 
 /-! ## Atomic programs, syntactic bounds, and advantage equalities -/
@@ -2202,18 +1416,18 @@ open Computational.Proofs.ReductionDsl.AtomicSizeHonest
 open Computational.Proofs.SignalPqxdh.AtomicLift
 open OracleSpec OracleComp
 
-def sigKeyInd1KeyAtomicProg (S : Setup) (b : QueryBudget) :
+@[expose] def sigKeyInd1KeyAtomicProg (S : Setup) (b : QueryBudget) :
     CostedReduction pqAtomicOps pqSigAndDdhIface (keyIndSpec S) (pqKeyIndCodec S)
       (PB 32) .unit .bool (.prod (PB 1569) (PB 64)) :=
   liftKeyInd1Stage tlSigDdhKeyInd S (sigKeyInd1KeyDslProg S b)
 
-def shcrKeyInd1KeyAtomicProg (S : Setup) (b : QueryBudget) :
+@[expose] def shcrKeyInd1KeyAtomicProg (S : Setup) (b : QueryBudget) :
     TwoStageCostedReduction pqAtomicOps pqPrimIface (keyIndSpec S) (pqKeyIndCodec S)
       (.prod (PB 1568) (PB 3168)) .unit .bool (PB 1568)
       (.prod (PB 32) (PB 1568)) (PB 1568) :=
   liftKeyInd2Stage tlPrimKeyInd S (shcrKeyInd1KeyDslProg S b)
 
-def fgKeyInd1KeyGapDhAtomicProg (S : Setup) (b : QueryBudget) :
+@[expose] def fgKeyInd1KeyGapDhAtomicProg (S : Setup) (b : QueryBudget) :
     CostedReduction pqAtomicOps pqSigAndDdhIface (keyIndSpec S) (pqKeyIndCodec S)
       (.prod (PB 32) (PB 32)) .unit .bool (PB 32) :=
   liftKeyInd1Stage tlSigDdhKeyInd S (fgKeyInd1KeyGapDhDslProg S b)
@@ -2272,293 +1486,6 @@ private theorem k1_liftKeyInd2Stage_totalCost_two_mul_le {ι : Type} {T : Oracle
   rw [hu]
   omega
 
-private theorem k1_two_mul_clamped_le_stepCostBudget {c : ℕ} (S : Setup) (b : QueryBudget)
-    (h2 : 2 * c ≤ 131072 + 262144 * b.q_total +
-      65536 * min b.q_total S.N_dh + 65536 * min b.q_total S.N_sess_tot +
-      2048 * (b.q_total + 1) * (Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot) +
-      131072 * (b.q_total * b.q_total) +
-      65536 * (b.q_total * min b.q_total S.N_dh) +
-      65536 * (b.q_total * min b.q_total S.N_sess_tot) +
-      4096 * (min b.q_total S.N_dh * min b.q_total S.N_dh) +
-      512 * (min b.q_total S.N_dh * min b.q_total S.N_sess_tot)) :
-    c ≤ _root_.SignalPqxdh.Security.stepCostBudget S b := by
-  unfold _root_.SignalPqxdh.Security.stepCostBudget
-  dsimp only
-  have hEq : 2 * (2 ^ 16 * (b.q_total + 1) * (b.q_total + 1) +
-      2 ^ 15 * (b.q_total + 1) * (min b.q_total S.N_dh + min b.q_total S.N_sess_tot) +
-      2 ^ 10 * (b.q_total + 1) * (Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot) +
-      2 ^ 11 * min b.q_total S.N_dh ^ 2 +
-      2 ^ 8 * min b.q_total S.N_dh * min b.q_total S.N_sess_tot) =
-      131072 + 262144 * b.q_total +
-        65536 * min b.q_total S.N_dh + 65536 * min b.q_total S.N_sess_tot +
-        2048 * (b.q_total + 1) * (Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot) +
-        131072 * (b.q_total * b.q_total) +
-        65536 * (b.q_total * min b.q_total S.N_dh) +
-        65536 * (b.q_total * min b.q_total S.N_sess_tot) +
-        4096 * (min b.q_total S.N_dh * min b.q_total S.N_dh) +
-        512 * (min b.q_total S.N_dh * min b.q_total S.N_sess_tot) := by ring
-  exact Nat.le_of_mul_le_mul_left (h2.trans_eq hEq.symm) (by omega)
-
-theorem sigKeyInd1KeyAtomicProg_totalCost_le_stepCostBudget (S : Setup) (b : QueryBudget) :
-    (sigKeyInd1KeyAtomicProg S b).totalCost b.q_total ≤
-      _root_.SignalPqxdh.Security.stepCostBudget S b := by
-  refine k1_two_mul_clamped_le_stepCostBudget S b ?_
-  have hLift := liftKeyInd1Stage_totalCost_two_mul_le tlSigDdhKeyInd rfl S
-    (sigKeyInd1KeyDslProg S b) b.q_total
-  have hCost := k1_sigKeyInd1KeyProg_totalCost_tight S b.q_total b.q_total
-  have hR64 := sigKeyInd1KeyProg_r64_le S b.q_total b.q_total
-  dsimp only [sigKeyInd1KeyAtomicProg, sigKeyInd1KeyDslProg] at hLift ⊢
-  have hbits : _root_.ReductionDsl.bits S.N_dh = Nat.log 2 S.N_dh + 1 := rfl
-  rw [hbits] at hCost
-  set q := b.q_total
-  set md := min b.q_total S.N_dh
-  set ms := min b.q_total S.N_sess_tot
-  set ld := Nat.log 2 S.N_dh
-  set ls := Nat.log 2 S.N_sess_tot
-  have hExp : q * (26612 * q + 10412 * md + 10000 * ms + 15 * (ld + 1) + 56532) =
-      26612 * (q * q) + 10412 * (q * md) + 10000 * (q * ms) + 15 * (q * ld) + 56547 * q := by ring
-  rw [hExp] at hCost
-  have hLog : 45 * (q * ld) + 6 * ld ≤ 2048 * (q + 1) * (ld + ls) := by
-    have h1 : 45 * (q * ld) + 6 * ld ≤ 45 * (q + 1) * ld := by
-      have : 45 * (q + 1) * ld = 45 * (q * ld) + 45 * ld := by ring
-      omega
-    have h2 : 45 * (q + 1) * ld ≤ 2048 * (q + 1) * (ld + ls) :=
-      Nat.mul_le_mul (Nat.mul_le_mul_right (q + 1) (show 45 ≤ 2048 by decide))
-        (Nat.le_add_right ld ls)
-    exact h1.trans h2
-  generalize (liftKeyInd1Stage tlSigDdhKeyInd S (sigKeyInd1KeyProg S q)).totalCost q = cL at hLift ⊢
-  generalize (sigKeyInd1KeyProg S q).totalCost q = cD at hLift hCost
-  generalize (sigKeyInd1KeyProg S q).totalQueries (fun _ => 0) (sampR64W tlSigDdhKeyInd.hsmp) q = cQ at hLift hR64
-  omega
-
-theorem shcrKeyInd1KeyAtomicProg_totalCost_le_stepCostBudget (S : Setup) (b : QueryBudget) :
-    (shcrKeyInd1KeyAtomicProg S b).totalCost b.q_total ≤
-      _root_.SignalPqxdh.Security.stepCostBudget S b := by
-  refine k1_two_mul_clamped_le_stepCostBudget S b ?_
-  have hLift := k1_liftKeyInd2Stage_totalCost_two_mul_le tlPrimKeyInd rfl S
-    (shcrKeyInd1KeyDslProg S b) b.q_total
-  have hTwo := shcrKeyInd1KeyProg_totalCost_le_twoKey S b.q_total (keyIndLoopBound b) b.q_total
-  have hR64 := shcrKeyInd1KeyProg_r64_le S b.q_total (keyIndLoopBound b) b.q_total
-  dsimp only [shcrKeyInd1KeyAtomicProg, shcrKeyInd1KeyDslProg] at hLift ⊢
-  set q := b.q_total
-  set K := keyIndLoopBound b
-  have hKB : K = 2 * q + 1 := rfl
-  have hPre := shcrKeyIndProg_handlePre_cost_tight_le S q K
-  have hPost := shcrKeyIndProg_handlePost_cost_tight_le S q K
-  have hRes := shcrKeyIndProg_resume_cost S q K
-  have hFin := shcrKeyIndProg_finish_cost S q K
-  have hInit := shcrKeyIndProg_init_cost_le S q K
-  have hDone := shcrKeyIndProg_chDone_cost S q K
-  have hu : SignalPqxdh.LegacyCosted.pqPrimIface.uCost = 1 := rfl
-  have hc : (SignalPqxdh.LegacyCosted.keyIndCodec S).codecCost = 32 := rfl
-  generalize (liftKeyInd2Stage tlPrimKeyInd S (shcrKeyInd1KeyProg S q K)).totalCost q = cL at hLift ⊢
-  generalize (shcrKeyInd1KeyProg S q K).totalCost q = cD at hLift hTwo
-  generalize (shcrKeyInd1KeyProg S q K).totalQueries (fun _ => 0) (sampR64W tlPrimKeyInd.hsmp) q = cQ at hLift hR64
-  rw [TwoStageCostedReduction.totalCost, hu, hc, hFin, hDone] at hTwo
-  generalize (shcrKeyIndProg S q K).handlePre.cost = cPre at hTwo hPre
-  generalize (shcrKeyIndProg S q K).handlePost.cost = cPost at hTwo hPost
-  generalize (shcrKeyIndProg S q K).resume.cost = cRes at hTwo hRes
-  generalize (shcrKeyIndProg S q K).init.cost = cInit at hTwo hInit
-  set md := min b.q_total S.N_dh
-  set ms := min b.q_total S.N_sess_tot
-  set ld := Nat.log 2 S.N_dh
-  set ls := Nat.log 2 S.N_sess_tot
-  have hmd : min K S.N_dh ≤ 2 * md + 1 := by omega
-  have hms : min K S.N_sess_tot ≤ 2 * ms + 1 := by omega
-  have hMaxH : max 1 (max cPre cPost + 32) ≤
-      43039 + 17608 * md + 14724 * ms + 8126 * q := by omega
-  have hMul := Nat.mul_le_mul_left q hMaxH
-  have hExp : q * (43039 + 17608 * md + 14724 * ms + 8126 * q) =
-      43039 * q + 17608 * (q * md) + 14724 * (q * ms) + 8126 * (q * q) := by ring
-  rw [hExp] at hMul
-  have hLog : 9 * ld ≤ 2048 * (q + 1) * (ld + ls) := by
-    have h1 : 9 ≤ 2048 * (q + 1) := by omega
-    exact Nat.mul_le_mul h1 (Nat.le_add_right _ _)
-  omega
-
-theorem fgKeyInd1KeyGapDhAtomicProg_totalCost_le_stepCostBudget (S : Setup) (b : QueryBudget) :
-    (fgKeyInd1KeyGapDhAtomicProg S b).totalCost b.q_total ≤
-      _root_.SignalPqxdh.Security.stepCostBudget S b := by
-  refine k1_two_mul_clamped_le_stepCostBudget S b ?_
-  have hLift := liftKeyInd1Stage_totalCost_two_mul_le tlSigDdhKeyInd rfl S
-    (fgKeyInd1KeyGapDhDslProg S b) b.q_total
-  have hCost := k1_fgKeyInd1KeyGapDh2Prog_totalCost_tight S b.q_total b.q_total
-  have hR64 := fgKeyInd1KeyGapDh2Prog_r64_le S b.q_total b.q_total
-  dsimp only [fgKeyInd1KeyGapDhAtomicProg, fgKeyInd1KeyGapDhDslProg] at hLift ⊢
-  have hbits : _root_.ReductionDsl.bits S.N_dh = Nat.log 2 S.N_dh + 1 := rfl
-  rw [hbits] at hCost
-  set q := b.q_total
-  set md := min b.q_total S.N_dh
-  set ms := min b.q_total S.N_sess_tot
-  set ld := Nat.log 2 S.N_dh
-  set ls := Nat.log 2 S.N_sess_tot
-  have hExp : q * (20000 * q + 10000 * md + 10000 * ms + 30082) =
-      20000 * (q * q) + 10000 * (q * md) + 10000 * (q * ms) + 30082 * q := by ring
-  rw [hExp] at hCost
-  have hLog : 66 * ld ≤ 2048 * (q + 1) * (ld + ls) := by
-    have h1 : 66 ≤ 2048 * (q + 1) := by omega
-    exact Nat.mul_le_mul h1 (Nat.le_add_right _ _)
-  generalize (liftKeyInd1Stage tlSigDdhKeyInd S (fgKeyInd1KeyGapDh2Prog S q)).totalCost q = cL at hLift ⊢
-  generalize (fgKeyInd1KeyGapDh2Prog S q).totalCost q = cD at hLift hCost
-  generalize (fgKeyInd1KeyGapDh2Prog S q).totalQueries (fun _ => 0) (sampR64W tlSigDdhKeyInd.hsmp) q = cQ at hLift hR64
-  omega
-
-theorem sigKeyInd1KeyAtomicProg_sigQueries_le (S : Setup) (b : QueryBudget) :
-    (sigKeyInd1KeyAtomicProg S b).totalQueries
-      chalIfaceSigQueryWeight samplerZeroQueryWeight b.q_total ≤ 2 * b.q_total :=
-  (liftKeyInd1Stage_totalQueries_le tlSigDdhKeyInd S
-    SignalPqxdh.LegacyCosted.chalIfaceSigQueryWeight
-    SignalPqxdh.LegacyCosted.samplerZeroQueryWeight
-    chalIfaceSigQueryWeight tlSigDdhKeyInd_sigW
-    (sigKeyInd1KeyDslProg S b) b.q_total).trans
-    (sigKeyInd1KeyDslProg_sigQueries_le S b)
-
-theorem sigKeyInd1KeyAtomicProg_ddhQueries_le (S : Setup) (b : QueryBudget) :
-    (sigKeyInd1KeyAtomicProg S b).totalQueries
-      chalIfaceDdhQueryWeight samplerZeroQueryWeight b.q_total ≤
-      4 * b.q_total ^ 2 + b.q_total + S.N_dh + S.N_sess_tot :=
-  (liftKeyInd1Stage_totalQueries_le tlSigDdhKeyInd S
-    SignalPqxdh.LegacyCosted.chalIfaceDdhQueryWeight
-    SignalPqxdh.LegacyCosted.samplerZeroQueryWeight
-    chalIfaceDdhQueryWeight tlSigDdhKeyInd_ddhW
-    (sigKeyInd1KeyDslProg S b) b.q_total).trans
-    (sigKeyInd1KeyDslProg_ddhQueries_le S b)
-
-theorem sigKeyInd1KeyAtomicProg_primQueries_le (S : Setup) (b : QueryBudget) :
-    (sigKeyInd1KeyAtomicProg S b).totalQueries
-      chalIfacePrimQueryWeight samplerZeroQueryWeight b.q_total ≤ primQueryBudget S b :=
-  (liftKeyInd1Stage_totalQueries_le tlSigDdhKeyInd S
-    SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight
-    SignalPqxdh.LegacyCosted.samplerZeroQueryWeight
-    chalIfacePrimQueryWeight tlSigDdhKeyInd_primW
-    (sigKeyInd1KeyDslProg S b) b.q_total).trans
-    (sigKeyInd1KeyDslProg_primQueries_le S b)
-
-theorem shcrKeyInd1KeyAtomicProg_totalPrimQueries_le (S : Setup) (b : QueryBudget) :
-    (shcrKeyInd1KeyAtomicProg S b).totalQueries
-      primIfacePrimQueryWeight samplerZeroQueryWeight b.q_total ≤ primQueryBudget S b :=
-  (liftKeyInd2Stage_totalQueries_le tlPrimKeyInd S
-    SignalPqxdh.LegacyCosted.primIfacePrimQueryWeight
-    SignalPqxdh.LegacyCosted.samplerZeroQueryWeight
-    primIfacePrimQueryWeight tlPrimKeyInd_primW
-    (shcrKeyInd1KeyDslProg S b) b.q_total).trans
-    (shcrKeyInd1KeyDslProg_totalPrimQueries_le S b)
-
-theorem fgKeyInd1KeyGapDhAtomicProg_totalSigQueries_le (S : Setup) (b : QueryBudget) :
-    (fgKeyInd1KeyGapDhAtomicProg S b).totalQueries
-      chalIfaceSigQueryWeight samplerZeroQueryWeight b.q_total ≤ 2 * b.q_total := by
-  dsimp only [fgKeyInd1KeyGapDhAtomicProg, fgKeyInd1KeyGapDhDslProg]
-  exact (liftKeyInd1Stage_totalQueries_le tlSigDdhKeyInd S
-    SignalPqxdh.LegacyCosted.chalIfaceSigQueryWeight
-    SignalPqxdh.LegacyCosted.samplerZeroQueryWeight
-    chalIfaceSigQueryWeight tlSigDdhKeyInd_sigW
-    (fgKeyInd1KeyGapDh2Prog S b.q_total) b.q_total).trans
-    (fgKeyInd1KeyGapDh2Prog_totalSigQueries_le S b)
-
-theorem fgKeyInd1KeyGapDhAtomicProg_totalDdhQueries_le (S : Setup) (b : QueryBudget) :
-    (fgKeyInd1KeyGapDhAtomicProg S b).totalQueries
-      chalIfaceDdhQueryWeight samplerZeroQueryWeight b.q_total ≤
-      4 * b.q_total ^ 2 + b.q_total + S.N_dh + S.N_sess_tot := by
-  dsimp only [fgKeyInd1KeyGapDhAtomicProg, fgKeyInd1KeyGapDhDslProg]
-  exact (liftKeyInd1Stage_totalQueries_le tlSigDdhKeyInd S
-    SignalPqxdh.LegacyCosted.chalIfaceDdhQueryWeight
-    SignalPqxdh.LegacyCosted.samplerZeroQueryWeight
-    chalIfaceDdhQueryWeight tlSigDdhKeyInd_ddhW
-    (fgKeyInd1KeyGapDh2Prog S b.q_total) b.q_total).trans
-    (fgKeyInd1KeyGapDh2Prog_totalDdhQueries_le S b)
-
-theorem fgKeyInd1KeyGapDhAtomicProg_totalPrimQueries_le (S : Setup) (b : QueryBudget) :
-    (fgKeyInd1KeyGapDhAtomicProg S b).totalQueries
-      chalIfacePrimQueryWeight samplerZeroQueryWeight b.q_total ≤ primQueryBudget S b := by
-  dsimp only [fgKeyInd1KeyGapDhAtomicProg, fgKeyInd1KeyGapDhDslProg]
-  exact (liftKeyInd1Stage_totalQueries_le tlSigDdhKeyInd S
-    SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight
-    SignalPqxdh.LegacyCosted.samplerZeroQueryWeight
-    chalIfacePrimQueryWeight tlSigDdhKeyInd_primW
-    (fgKeyInd1KeyGapDh2Prog S b.q_total) b.q_total).trans
-    (fgKeyInd1KeyGapDh2Prog_totalPrimQueries_le S b)
-
-theorem sigKeyInd1KeyAtomicProg_size_le_budget (S : Setup) (b : QueryBudget) :
-    (sigKeyInd1KeyAtomicProg S b).size ≤
-      _root_.ReductionDsl.reductionSizeBudget +
-        2 ^ 12 * _root_.ReductionDsl.bits (_root_.SignalPqxdh.Security.stepCostBudget S b) := by
-  have hLift := liftKeyInd1Stage_size_le tlSigDdhKeyInd tlSigDdhKeyInd_sizeLe S (sigKeyInd1KeyDslProg S b)
-  have hSz := sigKeyInd1KeyDslProg_size_le_stepCostBudget S b
-  dsimp only [sigKeyInd1KeyAtomicProg, sigKeyInd1KeyDslProg] at hLift hSz ⊢
-  have hLit := k1_sigKeyInd1KeyProg_litSize_le S b.q_total
-  have h0 : 205402 ≤ _root_.ReductionDsl.reductionSizeBudget := by decide
-  have h1 : 1250 * _root_.ReductionDsl.bits (_root_.SignalPqxdh.Security.stepCostBudget S b) ≤
-      2 ^ 12 * _root_.ReductionDsl.bits (_root_.SignalPqxdh.Security.stepCostBudget S b) :=
-    Nat.mul_le_mul_right _ (by decide)
-  generalize (liftKeyInd1Stage tlSigDdhKeyInd S (sigKeyInd1KeyProg S b.q_total)).size = sL at hLift ⊢
-  generalize (sigKeyInd1KeyProg S b.q_total).size = sD at hLift hSz
-  generalize red1LitSize (sigKeyInd1KeyProg S b.q_total) = sR at hLift hLit
-  generalize _root_.ReductionDsl.reductionSizeBudget = sB at h0 ⊢
-  generalize _root_.ReductionDsl.bits (_root_.SignalPqxdh.Security.stepCostBudget S b) = sBits at hSz h1 ⊢
-  omega
-
-theorem shcrKeyInd1KeyAtomicProg_size_le_budget (S : Setup) (b : QueryBudget) :
-    (shcrKeyInd1KeyAtomicProg S b).size ≤
-      _root_.ReductionDsl.reductionSizeBudget +
-        2 ^ 12 * _root_.ReductionDsl.bits (_root_.SignalPqxdh.Security.stepCostBudget S b) := by
-  have hLift := liftKeyInd2Stage_size_le tlPrimKeyInd tlPrimKeyInd_sizeLe S (shcrKeyInd1KeyDslProg S b)
-  have hSz := shcrKeyInd1KeyDslProg_size_le_stepCostBudget S b
-  dsimp only [shcrKeyInd1KeyAtomicProg, shcrKeyInd1KeyDslProg] at hLift hSz ⊢
-  have hLitEq := k1_shcrKeyInd1KeyProg_litSize_eq S b.q_total (keyIndLoopBound b)
-  have hLit := ki_shcrKeyIndProg_litSize_le S b.q_total (keyIndLoopBound b)
-  rw [hLitEq] at hLift
-  have h0 : 310804 ≤ _root_.ReductionDsl.reductionSizeBudget := by decide
-  have h1 : 2660 * _root_.ReductionDsl.bits (_root_.SignalPqxdh.Security.stepCostBudget S b) ≤
-      2 ^ 12 * _root_.ReductionDsl.bits (_root_.SignalPqxdh.Security.stepCostBudget S b) :=
-    Nat.mul_le_mul_right _ (by decide)
-  generalize (liftKeyInd2Stage tlPrimKeyInd S (shcrKeyInd1KeyProg S b.q_total (keyIndLoopBound b))).size = sL at hLift ⊢
-  generalize (shcrKeyInd1KeyProg S b.q_total (keyIndLoopBound b)).size = sD at hLift hSz
-  generalize red2LitSize (shcrKeyIndProg S b.q_total (keyIndLoopBound b)) = sR at hLift hLit
-  generalize _root_.ReductionDsl.reductionSizeBudget = sB at h0 ⊢
-  generalize _root_.ReductionDsl.bits (_root_.SignalPqxdh.Security.stepCostBudget S b) = sBits at hSz h1 ⊢
-  omega
-
-theorem fgKeyInd1KeyGapDhAtomicProg_size_le_budget (S : Setup) (b : QueryBudget) :
-    (fgKeyInd1KeyGapDhAtomicProg S b).size ≤
-      _root_.ReductionDsl.reductionSizeBudget +
-        2 ^ 12 * _root_.ReductionDsl.bits (_root_.SignalPqxdh.Security.stepCostBudget S b) := by
-  have hLift := liftKeyInd1Stage_size_le tlSigDdhKeyInd tlSigDdhKeyInd_sizeLe S
-    (fgKeyInd1KeyGapDhDslProg S b)
-  have hSz := fgKeyInd1KeyGapDh2Prog_size_le_stepCostBudget S b
-  dsimp only [fgKeyInd1KeyGapDhAtomicProg, fgKeyInd1KeyGapDhDslProg] at hLift ⊢
-  have hLit := k1_fgKeyInd1KeyGapDh2Prog_litSize_le S b.q_total
-  have h0 : 515402 ≤ _root_.ReductionDsl.reductionSizeBudget := by decide
-  have h1 : 2800 * _root_.ReductionDsl.bits (_root_.SignalPqxdh.Security.stepCostBudget S b) ≤
-      2 ^ 12 * _root_.ReductionDsl.bits (_root_.SignalPqxdh.Security.stepCostBudget S b) :=
-    Nat.mul_le_mul_right _ (by decide)
-  generalize (liftKeyInd1Stage tlSigDdhKeyInd S (fgKeyInd1KeyGapDh2Prog S b.q_total)).size = sL at hLift ⊢
-  generalize (fgKeyInd1KeyGapDh2Prog S b.q_total).size = sD at hLift hSz
-  generalize red1LitSize (fgKeyInd1KeyGapDh2Prog S b.q_total) = sR at hLift hLit
-  generalize _root_.ReductionDsl.reductionSizeBudget = sB at h0 ⊢
-  generalize _root_.ReductionDsl.bits (_root_.SignalPqxdh.Security.stepCostBudget S b) = sBits at hSz h1 ⊢
-  omega
-
-theorem sigKeyInd1KeyAtomicProg_blocks (S : Setup) (b : QueryBudget) (ℓ : Nat) :
-    GRedBlockBounded S b ℓ (sigKeyInd1KeyAtomicProg S b) :=
-  gredBlockBounded_of_cost one_le_pqSigAndDdhIface_qCost S b ℓ
-    (sigKeyInd1KeyAtomicProg S b) rfl
-    (sigKeyInd1KeyAtomicProg_totalCost_le_stepCostBudget S b)
-    (sigKeyInd1KeyAtomicProg_size_le_budget S b)
-
-theorem shcrKeyInd1KeyAtomicProg_blocks (S : Setup) (b : QueryBudget) (ℓ : Nat) :
-    GRed2BlockBounded S b ℓ (shcrKeyInd1KeyAtomicProg S b) :=
-  gred2BlockBounded_of_cost one_le_pqPrimIface_qCost S b ℓ
-    (shcrKeyInd1KeyAtomicProg S b) rfl
-    (shcrKeyInd1KeyAtomicProg_totalCost_le_stepCostBudget S b)
-    (shcrKeyInd1KeyAtomicProg_size_le_budget S b)
-
-theorem fgKeyInd1KeyGapDhAtomicProg_blocks (S : Setup) (b : QueryBudget) (ℓ : Nat) :
-    GRedBlockBounded S b ℓ (fgKeyInd1KeyGapDhAtomicProg S b) :=
-  gredBlockBounded_of_cost one_le_pqSigAndDdhIface_qCost S b ℓ
-    (fgKeyInd1KeyGapDhAtomicProg S b) rfl
-    (fgKeyInd1KeyGapDhAtomicProg_totalCost_le_stepCostBudget S b)
-    (fgKeyInd1KeyGapDhAtomicProg_size_le_budget S b)
-
 theorem sigKeyInd1KeyAtomicProg_eval_eq (S : Setup) (b : QueryBudget)
     (adv : Unit → OracleComp (unifSpec + keyIndSpec S) Bool) (pk : Bytes) :
     (sigKeyInd1KeyAtomicProg S b).eval adv pk = (sigKeyInd1KeyDslProg S b).eval adv pk := by
@@ -2585,7 +1512,7 @@ theorem fgKeyInd1KeyGapDhAtomicProg_eval_eq (S : Setup) (b : QueryBudget)
   exact h
 
 /-- Evaluated atomic `GapSigEufCmaAdv` matching `(KeyIndCostedReductionFamily.eval R).sig b A`. -/
-def sigKeyInd1KeyAtomicAdv (S : Setup) (b : QueryBudget)
+@[expose] def sigKeyInd1KeyAtomicAdv (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (KeyIndAdversary S) b) : GapSigEufCmaAdv where
   run pk := (sigKeyInd1KeyAtomicProg S b).eval (fun _ => A.1.run) pk
   q_sig := 2 * min S.N_spk_tot S.N_recv
@@ -2593,7 +1520,7 @@ def sigKeyInd1KeyAtomicAdv (S : Setup) (b : QueryBudget)
   q_prim := gdhPrimQueryBudget S b
 
 /-- Evaluated atomic `KemShCrAdv` matching `(KeyIndCostedReductionFamily.eval R).shcr b A`. -/
-def shcrKeyInd1KeyAtomicAdv (S : Setup) (b : QueryBudget)
+@[expose] def shcrKeyInd1KeyAtomicAdv (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (KeyIndAdversary S) b) : KemShCrAdv where
   State := Mid (keyIndSpec S) Bool (shcrKeyInd1KeyAtomicProg S b).π.denote
     (shcrKeyInd1KeyAtomicProg S b).σ.denote (PB 1568).denote
@@ -2604,7 +1531,7 @@ def shcrKeyInd1KeyAtomicAdv (S : Setup) (b : QueryBudget)
   q_prim := primQueryBudget S b
 
 /-- Evaluated atomic `GapDhWithSignAdv` matching `(KeyIndCostedReductionFamily.eval R).gdh b A`. -/
-def fgKeyInd1KeyGapDhAtomicAdv (S : Setup) (b : QueryBudget)
+@[expose] def fgKeyInd1KeyGapDhAtomicAdv (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (KeyIndAdversary S) b) : GapDhWithSignAdv where
   run U V := (fgKeyInd1KeyGapDhAtomicProg S b).eval (fun _ => A.1.run) (U, V)
   q_ddh := gdhQueryBudget S b
@@ -2626,45 +1553,6 @@ theorem fgKeyInd1KeyGapDhAtomicAdv_eq_dsl (S : Setup) (b : QueryBudget)
     (fun r => GapDhWithSignAdv.mk r (gdhQueryBudget S b)
       (2 * min S.N_spk_tot S.N_recv) (gdhPrimQueryBudget S b))
     (funext fun U => funext fun V => fgKeyInd1KeyGapDhAtomicProg_eval_eq S b (fun _ => A.1.run) U V)
-
-theorem sigKeyInd1KeyAtomicAdv_bounded (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (KeyIndAdversary S) b) :
-    (sigKeyInd1KeyAtomicAdv S b A).Bounded := by
-  rw [sigKeyInd1KeyAtomicAdv_eq_dsl]
-  exact sigKeyInd1KeyDslAdv_bounded S b A
-
-theorem shcrKeyInd1KeyAtomicAdv_bounded (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (KeyIndAdversary S) b) :
-    (shcrKeyInd1KeyAtomicAdv S b A).Bounded := by
-  refine kemShCrAdv_bounded_of_state_retract (A := shcrKeyInd1KeyDslAdv S b A) rfl
-    (embedMid (π := (shcrKeyInd1KeyDslProg S b).π) (σ := (shcrKeyInd1KeyDslProg S b).σ)
-      (ch := SignalPqxdh.LegacyCosted.B 1568))
-    (projMid (π := (shcrKeyInd1KeyDslProg S b).π) (σ := (shcrKeyInd1KeyDslProg S b).σ)
-      (ch := SignalPqxdh.LegacyCosted.B 1568))
-    (fun pk sk => ?_) (fun st' ss ct => ?_) (shcrKeyInd1KeyDslAdv_bounded S b A)
-  · exact liftKeyInd2Stage_eval1 tlPrimKeyInd S (shcrKeyInd1KeyDslProg S b)
-      (shcrKeyInd1KeyProg_init_unsupported S b.q_total (keyIndLoopBound b))
-      (shcrKeyInd1KeyProg_handlePre_unsupported S b.q_total (keyIndLoopBound b))
-      (shcrKeyInd1KeyProg_chDone_unsupported S b.q_total (keyIndLoopBound b))
-      (fun _ => A.1.run) (pk, sk) b.q_total false
-  · have hId : embedVal (SignalPqxdh.LegacyCosted.B 1568) = id := rfl
-    have hRet := embedMid_projMid
-      (π := (shcrKeyInd1KeyDslProg S b).π) (σ := (shcrKeyInd1KeyDslProg S b).σ)
-      (ch := SignalPqxdh.LegacyCosted.B 1568) st'
-    have h := liftKeyInd2Stage_eval2 tlPrimKeyInd S (shcrKeyInd1KeyDslProg S b)
-      (shcrKeyInd1KeyProg_resume_unsupported S b.q_total (keyIndLoopBound b))
-      (shcrKeyInd1KeyProg_handlePost_unsupported S b.q_total (keyIndLoopBound b))
-      (shcrKeyInd1KeyProg_finish_unsupported S b.q_total (keyIndLoopBound b))
-      (projMid (π := (shcrKeyInd1KeyDslProg S b).π) (σ := (shcrKeyInd1KeyDslProg S b).σ)
-        (ch := SignalPqxdh.LegacyCosted.B 1568) st') (ss, ct) b.q_total false
-    rw [hRet, hId, id_map] at h
-    exact h
-
-theorem fgKeyInd1KeyGapDhAtomicAdv_bounded (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (KeyIndAdversary S) b) :
-    (fgKeyInd1KeyGapDhAtomicAdv S b A).Bounded := by
-  rw [fgKeyInd1KeyGapDhAtomicAdv_eq_dsl]
-  exact fgKeyInd1KeyGapDhDslAdv_bounded S b A
 
 theorem GapSigEufCma_sigKeyInd1KeyAtomicAdv (P : Primitives)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool)

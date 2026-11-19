@@ -9,14 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.LayoutPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.LayoutPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Defs
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Defs
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.Layout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable Helpers for `load_session::{closure#0}`
@@ -25,7 +35,7 @@ Defines `OptLoadDeserEnv` and `CliLoadPollEnv`, and provides `lpoll_call_total_p
 Block `569` (`lsProg_569 H`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -82,7 +92,7 @@ theorem freeOnlyEvs_optDeallocBufEvents (cap : BitVec 64) :
   · exact FreeOnlyEvs.singleton 1 cap.toNat
 
 /-- Optional `SessionRecord::deserialize` event envelope on `gr = x.dir.get rd F0 ...`. -/
-def OptLoadDeserEnv (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] def OptLoadDeserEnv (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
     (gr : Except Unit (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
   match gr with
@@ -92,7 +102,7 @@ def OptLoadDeserEnv (Scope : SessionRecord (List (BitVec 8)) → Prop)
 
 /-- Composed `AllocEvent` envelope for `load_session::{closure#0}`: `address_text` followed by
 `Dir::get`, optional `SessionRecord::deserialize`, and `FreeOnlyEvs` buffer drops. -/
-def CliLoadPollEnv (rd : ReadRule) (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] def CliLoadPollEnv (rd : ReadRule) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (AddrEnv : AddrGhost → List AllocEvent → Prop)
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)

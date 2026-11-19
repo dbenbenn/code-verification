@@ -9,9 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyTailDefsPlaced
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyTailDefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPure
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Seam Definitions for the `segPreKey` Tail
@@ -20,7 +24,7 @@ Allocation event envelopes `PreKeyFromEncryptEnv` (`+0x8b4 → exit`) and `PreKe
 (`+0x8c8 → exit`), concrete `FitsEnv` witnesses, and budget-threaded seam states on block `198`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -58,7 +62,7 @@ set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
 /-- Remaining allocation event envelope from `+0x8c8` (after `OTR::encrypt`) to return. -/
-def PreKeyFromRetEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : UuidParser)
+@[expose] def PreKeyFromRetEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : UuidParser)
     (kit : SessionStoreSpec A 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
     (x : WithStoresEncGhost) (sess : Session (List (BitVec 8)))
@@ -67,7 +71,7 @@ def PreKeyFromRetEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : UuidP
   PreKeyPostEncryptEnv C S parse kit kitEnv st0 ikit ikitEnv ist0 x sess otr taken k items evs'
 
 /-- Remaining allocation event envelope from `+0x8b4` (after `kyberMap`) to return. -/
-def PreKeyFromEncryptEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
+@[expose] def PreKeyFromEncryptEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
     (parse : UuidParser)
     (kit : SessionStoreSpec A 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -240,7 +244,7 @@ theorem preKeyFromEncryptEnv_fitsEnv_witness :
       (OtrEncryptCoreEnv witnessCrypto witnessSpqrModel witnessSendEnv witnessUuidParse
         witnessOtr witnessWithStoresGhost.ptext (some witnessWithStoresGhost.loc)
         witnessWithStoresGhost.rem witnessWithStoresGhost.rest)
-      118000 101000 101000 256 := by
+      118000 101000 101000 320 := by
     refine (otrEncryptCoreEnv_phaseCreditSpec_bounded fineCostModel_modelHyps
       witnessCrypto witnessSpqrModel witnessSendEnv witnessUuidParse
       witnessOtr witnessWithStoresGhost.ptext (some witnessWithStoresGhost.loc)
@@ -271,7 +275,7 @@ theorem preKeyFromEncryptEnv_fitsEnv_witness :
     decide
 
 /-- Budget-threaded seam state at `+0x8b4`, immediately after `kyberMap` returns. -/
-def PreKeyEncryptState'Budget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def PreKeyEncryptState'Budget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -291,7 +295,7 @@ def PreKeyEncryptState'Budget [LibsignalPlacement] {M : AllocCostModel}
     x r sess otr taken pqCap pqPtr k items R0 s0 s
 
 /-- Budget-threaded seam state at `+0x8c8`, immediately after `OTR::encrypt` returns. -/
-def PreKeyEncryptRetStateBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def PreKeyEncryptRetStateBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)

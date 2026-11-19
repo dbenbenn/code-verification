@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroBPlacedBudgetAux
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroBPlacedBudgetAux -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -21,6 +21,14 @@ import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.ChainMergeAux.PrologueS
 import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.ChainMergeAux.Pure
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.KeyDefs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.CodePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.KeyInner
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.KeySeg3a
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.KeySeg3c
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `VerNe.Chain3` (Block `516`) Part B (`ChainKey` Slice)
@@ -30,7 +38,7 @@ Total-correctness (`RustCliAllocBudget M`) verification of the `ChainKey` (`tag 
 `StoreKit.LibsignalCodeRoLoaded`, re-exporting the `Srk` slice from `Chain3CroBPlacedBudgetAux`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

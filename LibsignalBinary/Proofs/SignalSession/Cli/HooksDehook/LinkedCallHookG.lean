@@ -12,8 +12,12 @@ module
 public import LibsignalBinary.Proofs.HookDischarge.RustStd.Common -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.Ghost617Transfer -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookOn -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookOn
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # State-Guarded `linkedCallHook` & `.rodata` Table Guards (`HooksDehook.LinkedCallHookG`)
@@ -633,68 +637,6 @@ theorem ghostExternReplaysOn_of_linkedCallHookG {α : Type}
     hStubSteps.trans hBodySteps
   exact ⟨hSteps, hfr_out, hInvKf u.mem _ hinv hSteps.keepsFrozen⟩
 
-/-- **Conditional `StepsUntil` `P_run → P_real` replay for `linkedCallHookG`:**
-    Replays a `W`-independent ghost hook defined against an auxiliary program `P_run` onto `P_real`
-    given a `StepsUntil` lift `hLift`. Note: for stock-ELF `W`-polymorphic row ghosts (`emptyStdProg` /
-    `hole2_emptyProg`), prefer `ghostExternReplaysOn_of_linkedCallHookG_liftVis` below, whose
-    `h2fsgen_StepsVisitedIn` premise discharges via `h2sl_steps_realW_of_visitedIn_keepSub`. -/
-theorem ghostExternReplaysOn_of_linkedCallHookG_lift {α : Type}
-    {InvMem : Memory → Prop} {Guard : State → Prop}
-    {keep : BitVec 64 → Bool} {P_run P_real P_sub : Program}
-    {stubPc entryTarget : BitVec 64} {spec : Spec α} {fallback : State → State}
-    (hsvc_run : P_run.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hrun_no : ∀ pc, keep pc = true → P_run.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hreal_stub_none : P_real.externAt? stubPc = none)
-    (hStub : StubReachesTargetOn InvMem P_real stubPc entryTarget)
-    (hLift : ∀ u sf : State,
-      ExecFrozen u.mem → InvMem u.mem → keep (u.readReg64 .lr) = false →
-      StepsUntil P_run (SubroutineStop u) (u.setPC entryTarget) sf →
-      SubroutineStop u sf →
-      Steps P_real (u.setPC entryTarget) sf)
-    (hInvLoaded : ∀ m : Memory, ExecFrozen m → InvMem m →
-      P_sub.CodeLoaded (stripExecOutside keep m))
-    (hInvKf : ∀ m m' : Memory, InvMem m → m.KeepsFrozen m' → InvMem m')
-    (hGuard : ∀ u : State, ExecFrozen u.mem → InvMem u.mem → Guard u)
-    (hGuardStrip : ∀ s0 : State, ExecFrozen s0.mem → Guard s0 →
-      Guard (stripS keep (s0.setPC entryTarget)))
-    (hOk : subroutine_ok P_sub entryTarget (withStateGuard Guard spec))
-    (hInv : SpecStripSInvariant keep spec)
-    (hFsT : SpecPreservesFsTrace spec)
-    (hPrePC : ∀ x (s : State) (pc : BitVec 64), spec.pre x (s.setPC pc) = spec.pre x s)
-    (hOutPC : ∀ x (R : SepProp) (s0 sf : State) (pc : BitVec 64),
-      SubroutineOutcome spec x R (s0.setPC pc) sf → SubroutineOutcome spec x R s0 sf) :
-    P_real.externAt? stubPc = none ∧
-    ∀ u : State,
-      u.pc = stubPc →
-      u.status = .Running →
-      (∀ msg,
-        (linkedCallHookG Guard keep P_run P_sub entryTarget spec fallback u).status ≠
-          .Exception msg) →
-      ExecFrozen u.mem →
-      keep (u.readReg64 .lr) = false →
-      InvMem u.mem →
-      Steps P_real u (linkedCallHookG Guard keep P_run P_sub entryTarget spec fallback u) ∧
-      ExecFrozen (linkedCallHookG Guard keep P_run P_sub entryTarget spec fallback u).mem ∧
-      InvMem (linkedCallHookG Guard keep P_run P_sub entryTarget spec fallback u).mem := by
-  refine ⟨hreal_stub_none, fun u hpc hrun hnoex hfr hlr hinv => ?_⟩
-  have hGu : Guard u := hGuard u hfr hinv
-  have hActPre : ActiveRealPre spec u := linkedCallHookG_activeRealPre_of_noException hnoex
-  have hCodeSub : P_sub.CodeLoaded (stripExecOutside keep u.mem) := hInvLoaded u.mem hfr hinv
-  have hStubSteps : Steps P_real u (u.setPC entryTarget) := hStub u hpc hrun hfr hinv
-  obtain ⟨huntil, hstop, hfr_out⟩ :=
-    linkedCallHookG_stepsUntil hsvc_run hsvc_sub hrun_no hsub_no hGuardStrip hOk
-      hInv hFsT hPrePC hOutPC hGu hActPre hfr hlr hCodeSub
-  have hBodySteps :
-      Steps P_real (u.setPC entryTarget)
-        (linkedCallHookG Guard keep P_run P_sub entryTarget spec fallback u) :=
-    hLift u _ hfr hinv hlr huntil hstop
-  have hSteps :
-      Steps P_real u (linkedCallHookG Guard keep P_run P_sub entryTarget spec fallback u) :=
-    hStubSteps.trans hBodySteps
-  exact ⟨hSteps, hfr_out, hInvKf u.mem _ hinv hSteps.keepsFrozen⟩
-
 /-- **Stock-safe `StepsVisitedIn` `P_run → P_real` replay for `linkedCallHookG`:**
     Replays a `W`-independent ghost hook defined against an auxiliary program `P_run` (such as
     `emptyStdProg` / `hole2_emptyProg`) onto `P_real` via `hLiftVis` over
@@ -756,87 +698,6 @@ theorem ghostExternReplaysOn_of_linkedCallHookG_liftVis {α : Type}
     hStubSteps.trans hBodySteps
   exact ⟨hSteps, hfr_out, hInvKf u.mem _ hinv hSteps.keepsFrozen⟩
 
-/-- Single-stub `GhostExternReplaysS` packager for `linkedCallHookG` (note:
-    `LinkedCallHookOn.ghostExternReplaysS_of_single_stub` is polymorphic in `f_stub : State → State`
-    and applies directly as well). -/
-theorem ghostExternReplaysS_of_linkedCallHookG_single_stub {α : Type}
-    {InvMem : Memory → Prop} {Guard : State → Prop}
-    {keep : BitVec 64 → Bool} {P_ghost P_real P_sub : Program}
-    {stubPc entryTarget : BitVec 64} {spec : Spec α} {fallback : State → State}
-    (hghost_stub : P_ghost.externAt? stubPc =
-      some (linkedCallHookG Guard keep P_real P_sub entryTarget spec fallback))
-    (hother : ∀ pc, pc ≠ stubPc → P_ghost.externAt? pc = P_real.externAt? pc)
-    (hreal_pres : ∀ pc f, P_real.externAt? pc = some f →
-      ∀ u : State, u.status = .Running → u.mem.KeepsFrozen (f u).mem →
-        ExecFrozen u.mem → InvMem u.mem → ExecFrozen (f u).mem ∧ InvMem (f u).mem)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hreal_stub_none : P_real.externAt? stubPc = none)
-    (hStub : StubReachesTargetOn InvMem P_real stubPc entryTarget)
-    (hInvLoaded : ∀ m : Memory, ExecFrozen m → InvMem m →
-      P_sub.CodeLoaded (stripExecOutside keep m))
-    (hInvKf : ∀ m m' : Memory, InvMem m → m.KeepsFrozen m' → InvMem m')
-    (hGuard : ∀ u : State, ExecFrozen u.mem → InvMem u.mem → Guard u)
-    (hGuardStrip : ∀ s0 : State, ExecFrozen s0.mem → Guard s0 →
-      Guard (stripS keep (s0.setPC entryTarget)))
-    (hOk : subroutine_ok P_sub entryTarget (withStateGuard Guard spec))
-    (hInv : SpecStripSInvariant keep spec)
-    (hFsT : SpecPreservesFsTrace spec)
-    (hPrePC : ∀ x (s : State) (pc : BitVec 64), spec.pre x (s.setPC pc) = spec.pre x s)
-    (hOutPC : ∀ x (R : SepProp) (s0 sf : State) (pc : BitVec 64),
-      SubroutineOutcome spec x R (s0.setPC pc) sf → SubroutineOutcome spec x R s0 sf) :
-    GhostExternReplaysS keep (fun u => InvMem u.mem) P_ghost P_real :=
-  ghostExternReplaysS_of_single_stub hghost_stub hother hreal_pres
-    (ghostExternReplaysOn_of_linkedCallHookG hsvc_real hsvc_sub hreal_no hsub_no
-      hreal_stub_none hStub hInvLoaded hInvKf hGuard hGuardStrip hOk hInv hFsT hPrePC hOutPC)
-
-/-- Trajectory-aware single-stub `GhostExternReplaysOn` packager for `linkedCallHookG`
-    (`LinkedCallHookOn.ghostExternReplaysOn_of_single_stub` also applies directly). -/
-theorem ghostExternReplaysOn_of_linkedCallHookG_single_stub {α : Type}
-    {InvMem : Memory → Prop} {Guard : State → Prop}
-    {keep : BitVec 64 → Bool} {P_ghost P_real P_sub : Program} {s0 sf : State}
-    {stubPc entryTarget : BitVec 64} {spec : Spec α} {fallback : State → State}
-    (hghost_stub : P_ghost.externAt? stubPc =
-      some (linkedCallHookG Guard keep P_real P_sub entryTarget spec fallback))
-    (hother : ∀ pc, pc ≠ stubPc → P_ghost.externAt? pc = P_real.externAt? pc)
-    (hreal_pres : ∀ pc f, P_real.externAt? pc = some f →
-      ∀ u : State,
-        Steps P_ghost s0 u →
-        Steps P_ghost (f u) sf →
-        u.pc = pc →
-        u.status = .Running →
-        (∀ msg, (f u).status ≠ .Exception msg) →
-        u.mem.KeepsFrozen (f u).mem →
-        ExecFrozen u.mem →
-        InvMem u.mem →
-        ExecFrozen (f u).mem ∧ InvMem (f u).mem)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hreal_stub_none : P_real.externAt? stubPc = none)
-    (hStub : StubReachesTargetOn InvMem P_real stubPc entryTarget)
-    (hInvLoaded : ∀ m : Memory, ExecFrozen m → InvMem m →
-      P_sub.CodeLoaded (stripExecOutside keep m))
-    (hInvKf : ∀ m m' : Memory, InvMem m → m.KeepsFrozen m' → InvMem m')
-    (hGuard : ∀ u : State, ExecFrozen u.mem → InvMem u.mem → Guard u)
-    (hGuardStrip : ∀ s0 : State, ExecFrozen s0.mem → Guard s0 →
-      Guard (stripS keep (s0.setPC entryTarget)))
-    (hOk : subroutine_ok P_sub entryTarget (withStateGuard Guard spec))
-    (hInv : SpecStripSInvariant keep spec)
-    (hFsT : SpecPreservesFsTrace spec)
-    (hPrePC : ∀ x (s : State) (pc : BitVec 64), spec.pre x (s.setPC pc) = spec.pre x s)
-    (hOutPC : ∀ x (R : SepProp) (s0 sf : State) (pc : BitVec 64),
-      SubroutineOutcome spec x R (s0.setPC pc) sf → SubroutineOutcome spec x R s0 sf) :
-    GhostExternReplaysOn keep (fun u => InvMem u.mem) P_ghost P_real s0 sf := by
-  have ⟨hnone, hrep⟩ :=
-    ghostExternReplaysOn_of_linkedCallHookG (fallback := fallback) hsvc_real hsvc_sub hreal_no
-      hsub_no hreal_stub_none hStub hInvLoaded hInvKf hGuard hGuardStrip hOk hInv hFsT hPrePC hOutPC
-  exact ghostExternReplaysOn_of_single_stub hghost_stub hother hreal_pres
-    ⟨hnone, fun u _ _ hpc hrun hnoex _ hfr hlr hinv => hrep u hpc hrun hnoex hfr hlr hinv⟩
-
 /-! ## 4. Concrete `.rodata` Table Guard (`roTableGuard`) & `↦ᵣ` Framing Bridges -/
 
 /-- State guard asserting that `[tbl, tbl + bytes.length)` is mapped read-only (`Perm.ro`, not
@@ -881,12 +742,6 @@ theorem roDataAt_of_keepsFrozen {m m' : Memory} {tbl : BitVec 64} {bytes : List 
     exact ⟨hpeq.trans hpa, hlfeq.trans hlfa⟩
   · exact (readBytes_eq_of_ro_keepsFrozen hkf bytes.length tbl h.1).trans h.2
 
-/-- State-level `KeepsFrozen` preservation of `roTableGuard`. -/
-theorem roTableGuard_of_keepsFrozen {tbl : BitVec 64} {bytes : List (BitVec 8)} {s0 s1 : State}
-    (h : roTableGuard tbl bytes s0) (hkf : s0.mem.KeepsFrozen s1.mem) :
-    roTableGuard tbl bytes s1 :=
-  roDataAt_of_keepsFrozen h hkf
-
 private theorem readBytes_stripExecOutside (keep : BitVec 64 → Bool) (m : Memory) :
     ∀ (n : Nat) (base : BitVec 64),
       (stripExecOutside keep m).readBytes base n = m.readBytes base n
@@ -925,35 +780,6 @@ theorem roTableGuard_intro_sep_left {tbl : BitVec 64} {bytes : List (BitVec 8)}
     (hPR : s0.mem ⊨ P ∗ R) :
     s0.mem ⊨ (tbl ↦ᵣ bytes) ∗ P ∗ R :=
   Satisfies.rodata_intro hG.1 hG.2 hlen hPR
-
-/-- Separating `.rodata` introduction (`P ∗ (tbl ↦ᵣ bytes) ∗ R`, directly matching engine specs
-    whose precondition has the shape `(p ↦ₛ bs) ∗ (tbl ↦ᵣ bytes)` with unchanged frame `R`). -/
-theorem roTableGuard_intro_sep {tbl : BitVec 64} {bytes : List (BitVec 8)}
-    {P R : SepProp} {s0 : State}
-    (hG : roTableGuard tbl bytes s0)
-    (hlen : bytes.length ≤ 2 ^ 64 := by decide)
-    (hPR : s0.mem ⊨ P ∗ R) :
-    s0.mem ⊨ P ∗ (tbl ↦ᵣ bytes) ∗ R := by
-  have h := roTableGuard_intro_sep_left hG hlen hPR
-  rwa [sepConj_left_comm (tbl ↦ᵣ bytes) P] at h
-
-/-- Separating `.rodata` elimination on return: drops `(tbl ↦ᵣ bytes)` from `Q ∗ (tbl ↦ᵣ bytes) ∗ R`
-    leaving `Q ∗ R`. -/
-theorem roTableGuard_elim_sep {tbl : BitVec 64} {bytes : List (BitVec 8)}
-    {Q R : SepProp} {sf : State}
-    (hQR : sf.mem ⊨ Q ∗ (tbl ↦ᵣ bytes) ∗ R) :
-    sf.mem ⊨ Q ∗ R := by
-  rw [sepConj_left_comm Q (tbl ↦ᵣ bytes)] at hQR
-  exact Satisfies.of_sep_right hQR
-
-/-- Lower any region-local `subroutine_ok` stated with separating `withRoDataSep tbl bytes spec`
-    (for arbitrary `onPanic` / `onExit` / `onOom`) to `withStateGuard (roTableGuard tbl bytes) spec`. -/
-theorem subroutine_ok_withStateGuard_roTableGuard_of_sep {α : Type}
-    {P_sub : Program} {entryTarget tbl : BitVec 64} {bytes : List (BitVec 8)} {spec : Spec α}
-    (hlen : bytes.length ≤ 2 ^ 64)
-    (h : subroutine_ok P_sub entryTarget (withRoDataSep tbl bytes spec)) :
-    subroutine_ok P_sub entryTarget (withStateGuard (roTableGuard tbl bytes) spec) :=
-  (SpecSimulates.withRoData_of_sep hlen).subroutine_ok h
 
 /-- Ready-to-call `HookOk` for `linkedCallHookG (roTableGuard tbl bytes) …` from a `withRoData`
     real-code proof (such as `coreFromUtf8_fromUtf8AsciiSpec_ok` or
@@ -1021,55 +847,6 @@ theorem ghostExternReplaysOn_of_linkedCallHookG_roTable {α : Type}
     hStub hInvLoaded hInvKf (fun u hfr hinv => hRoInv u.mem hfr hinv)
     (roTableGuard_stripS keep entryTarget tbl bytes) hOk hInv hFsT hPrePC hOutPC
 
-/-- Conditional `StepsUntil` `P_run → P_real` replay specialized to `roTableGuard tbl bytes`
-    (for stock-ELF `W`-polymorphic row ghosts, prefer
-    `ghostExternReplaysOn_of_linkedCallHookG_roTable_liftVis` below). -/
-theorem ghostExternReplaysOn_of_linkedCallHookG_roTable_lift {α : Type}
-    {InvMem : Memory → Prop}
-    {keep : BitVec 64 → Bool} {P_run P_real P_sub : Program}
-    {stubPc entryTarget tbl : BitVec 64} {bytes : List (BitVec 8)}
-    {spec : Spec α} {fallback : State → State}
-    (hsvc_run : P_run.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hrun_no : ∀ pc, keep pc = true → P_run.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hreal_stub_none : P_real.externAt? stubPc = none)
-    (hStub : StubReachesTargetOn InvMem P_real stubPc entryTarget)
-    (hLift : ∀ u sf : State,
-      ExecFrozen u.mem → InvMem u.mem → keep (u.readReg64 .lr) = false →
-      StepsUntil P_run (SubroutineStop u) (u.setPC entryTarget) sf →
-      SubroutineStop u sf →
-      Steps P_real (u.setPC entryTarget) sf)
-    (hInvLoaded : ∀ m : Memory, ExecFrozen m → InvMem m →
-      P_sub.CodeLoaded (stripExecOutside keep m))
-    (hInvKf : ∀ m m' : Memory, InvMem m → m.KeepsFrozen m' → InvMem m')
-    (hRoInv : ∀ m : Memory, ExecFrozen m → InvMem m → RoDataAt m tbl bytes)
-    (hOk : subroutine_ok P_sub entryTarget (withRoData tbl bytes spec))
-    (hInv : SpecStripSInvariant keep spec)
-    (hFsT : SpecPreservesFsTrace spec)
-    (hPrePC : ∀ x (s : State) (pc : BitVec 64), spec.pre x (s.setPC pc) = spec.pre x s)
-    (hOutPC : ∀ x (R : SepProp) (s0 sf : State) (pc : BitVec 64),
-      SubroutineOutcome spec x R (s0.setPC pc) sf → SubroutineOutcome spec x R s0 sf) :
-    P_real.externAt? stubPc = none ∧
-    ∀ u : State,
-      u.pc = stubPc →
-      u.status = .Running →
-      (∀ msg,
-        (linkedCallHookG (roTableGuard tbl bytes) keep P_run P_sub entryTarget spec fallback u).status ≠
-          .Exception msg) →
-      ExecFrozen u.mem →
-      keep (u.readReg64 .lr) = false →
-      InvMem u.mem →
-      Steps P_real u
-        (linkedCallHookG (roTableGuard tbl bytes) keep P_run P_sub entryTarget spec fallback u) ∧
-      ExecFrozen
-        (linkedCallHookG (roTableGuard tbl bytes) keep P_run P_sub entryTarget spec fallback u).mem ∧
-      InvMem
-        (linkedCallHookG (roTableGuard tbl bytes) keep P_run P_sub entryTarget spec fallback u).mem :=
-  ghostExternReplaysOn_of_linkedCallHookG_lift hsvc_run hsvc_sub hrun_no hsub_no hreal_stub_none
-    hStub hLift hInvLoaded hInvKf (fun u hfr hinv => hRoInv u.mem hfr hinv)
-    (roTableGuard_stripS keep entryTarget tbl bytes) hOk hInv hFsT hPrePC hOutPC
-
 /-- **Stock-safe `StepsVisitedIn` `P_run → P_real` replay specialized to `roTableGuard tbl bytes`:**
     Replays a `W`-independent ghost hook defined against `P_run` (`emptyStdProg` / `hole2_emptyProg`)
     onto `P_real` from a `withRoData tbl bytes spec` real-code proof, `hRoInv`, and `hLiftVis`
@@ -1120,49 +897,5 @@ theorem ghostExternReplaysOn_of_linkedCallHookG_roTable_liftVis {α : Type}
     (roTableGuard_stripS keep entryTarget tbl bytes) hOk hInv hFsT hPrePC hOutPC
 
 /-! ## 5. Smoke Instance (`Guard := fun _ => True`) -/
-
-/-- Any unguarded `subroutine_ok` immediately lifts to `withStateGuard (fun _ => True) spec`. -/
-theorem subroutine_ok_withStateGuard_true {α : Type}
-    {P_sub : Program} {entryTarget : BitVec 64} {spec : Spec α}
-    (hOk : subroutine_ok P_sub entryTarget spec) :
-    subroutine_ok P_sub entryTarget (withStateGuard (fun _ => True) spec) := by
-  apply subroutine_ok.of_codeLoaded
-  intro x R s0 hpc hrun hpre hsp _hL
-  dsimp only [withStateGuard] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact hOk.mono_outcome x R s0 hpc hrun hpre.2 hsp (fun _ hout => hout)
-
-/-- **Smoke equality (`Guard := fun _ => True`):**
-    `linkedCallHookG (fun _ => True)` is extensionally equal to `linkedCallHook`, so existing
-    unguarded users (`memset`, `memcpy`) instantiate `linkedCallHookG` seamlessly. -/
-theorem linkedCallHookG_true_eq {α : Type}
-    (keep : BitVec 64 → Bool) (P_real P_sub : Program)
-    (entryTarget : BitVec 64) (spec : Spec α) (fallback : State → State) :
-    linkedCallHookG (fun _ => True) keep P_real P_sub entryTarget spec fallback =
-      linkedCallHook keep P_real P_sub entryTarget spec fallback := by
-  funext s0
-  exact linkedCallHookG_eq_of_guard trivial
-
-/-- Smoke instantiation of `hookOk_linkedCallHookG` at `Guard := fun _ => True`, recovering
-    `AllocGhostLinkTransfer.linkedCallHook_ok` via `linkedCallHookG_true_eq`. -/
-theorem hookOk_linkedCallHook_via_G {α : Type}
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program}
-    {entryTarget : BitVec 64} {spec : Spec α} {fallback : State → State}
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hOk : subroutine_ok P_sub entryTarget spec)
-    (hInv : SpecStripSInvariant keep spec)
-    (hFsT : SpecPreservesFsTrace spec)
-    (hPrePC : ∀ x (s : State) (pc : BitVec 64), spec.pre x (s.setPC pc) = spec.pre x s)
-    (hOutPC : ∀ x (R : SepProp) (s0 sf : State) (pc : BitVec 64),
-      SubroutineOutcome spec x R (s0.setPC pc) sf → SubroutineOutcome spec x R s0 sf)
-    (hFallbackOk : HookOk (keepFsTrace fallback) spec) :
-    HookOk (linkedCallHook keep P_real P_sub entryTarget spec fallback) spec := by
-  rw [← linkedCallHookG_true_eq]
-  exact hookOk_linkedCallHookG hsvc_real hsvc_sub hreal_no hsub_no
-    (fun _ _ _ => trivial) (subroutine_ok_withStateGuard_true hOk)
-    hInv hFsT hPrePC hOutPC hFallbackOk
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookG

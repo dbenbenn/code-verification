@@ -9,20 +9,31 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserCloneTailPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserCloneTailPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b
 public meta import Lean
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.BV.Bits
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEq
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSites
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserCloneTail -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserClonePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserCloneErr
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadKpk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadKpkPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkSpinePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadRegSpk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadRegSpkSpinePlaced
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # Relocatable Arm `R1b` Proof (`run_hop_init2_placed_ok`, `0x074c → 0x28f0`)
@@ -32,7 +43,7 @@ composes all stages of Arm `R1b` on Block `579` into `run_hop_init2_of_slots` an
 `run_hop_init2_placed_ok` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,11 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1Mark
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1Store
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseStepsAPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1Mark
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1Store
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseStepsAPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4KyberRefused -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Trap.SameAccount
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34Defs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 
 /-!
 # Placed Stage P4 Over-Path `mark_kyber_pre_key_used`, `store_session`, and Exit Assertions
@@ -23,11 +29,9 @@ assertion at `+0x3cc`, and common exit assertion across all five Stage P4 outcom
 with one previous session.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 
@@ -69,7 +73,7 @@ abbrev stageP4Prev1PrePlaced [LibsignalPlacement] {A : RustAlloc} (b : BitVec 64
     sst0 ist0 pst0 kst0 G st
 
 /-- Four-kit Stage P4 spatial assertion at `+0x3cc` (`store_session` entry). -/
-def stageP4At3ccPrev1PrePlaced [LibsignalPlacement] {A : RustAlloc} (b : BitVec 64)
+@[expose] def stageP4At3ccPrev1PrePlaced [LibsignalPlacement] {A : RustAlloc} (b : BitVec 64)
     (kit : SessionStoreSpec A b) (ikit : IdentityStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
     (s0 s : State)
@@ -104,7 +108,7 @@ def stageP4At3ccPrev1PrePlaced [LibsignalPlacement] {A : RustAlloc} (b : BitVec 
   kit.storeAt sessionStorePtr sst0
 
 /-- Common exit spatial assertion shared by all five Stage P4 outcomes. -/
-def stageP4Prev1ExitAtPlaced [LibsignalPlacement] {A : RustAlloc} (b : BitVec 64)
+@[expose] def stageP4Prev1ExitAtPlaced [LibsignalPlacement] {A : RustAlloc} (b : BitVec 64)
     (kit : SessionStoreSpec A b) (ikit : IdentityStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
     (s0 s : State)
@@ -131,4 +135,3 @@ def stageP4Prev1ExitAtPlaced [LibsignalPlacement] {A : RustAlloc} (b : BitVec 64
   kit.storeAt sessionStorePtr sstf
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
-end

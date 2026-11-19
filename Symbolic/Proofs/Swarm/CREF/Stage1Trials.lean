@@ -9,8 +9,8 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
 
 /-!
 # Receiver Trials and MAC Forgery Algebra Re-exports
@@ -19,7 +19,7 @@ Re-exports the receiver-trial membership and `MacTagForgeryOrCollision` lemmas f
 `Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials` under `Symbolic.Swarm.CREF.Stage1Trials`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

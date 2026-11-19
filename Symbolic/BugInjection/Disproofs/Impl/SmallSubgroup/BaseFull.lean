@@ -56,18 +56,18 @@ open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.BaseLines14 (sub14)
 open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.BaseLines15 (sub15)
 
 def ssSpec : ElfFullSpecPlaced :=
-  { entry := 0x46a000#64 -- layout-bypass: concrete-mutant-trace-checkpoint
+  { entry := 0x46c000#64 -- layout-bypass: concrete-mutant-trace-checkpoint
     phdrVaddr := 0x400040#64 -- layout-bypass: concrete-mutant-trace-checkpoint
     phnum := 7
-    brkStart := 0x471000#64 -- layout-bypass: concrete-mutant-trace-checkpoint
-    tokStorageAddr := 0x46f000#64 -- layout-bypass: concrete-mutant-trace-checkpoint
-    tokOnceAddr := 0x46f008#64 -- layout-bypass: concrete-mutant-trace-checkpoint
-    callocAddr := 0x46bbfc#64 -- layout-bypass: concrete-mutant-trace-checkpoint
-    callocSentinel := 0x46bbfd#64 -- layout-bypass: concrete-mutant-trace-checkpoint
-    mallocAddr := 0x46bce0#64 -- layout-bypass: concrete-mutant-trace-checkpoint
-    mallocSentinel := 0x46bce1#64 -- layout-bypass: concrete-mutant-trace-checkpoint
-    freeAddr := 0x46bcdc#64 -- layout-bypass: concrete-mutant-trace-checkpoint
-    freeSentinel := 0x46bcdd#64 -- layout-bypass: concrete-mutant-trace-checkpoint
+    brkStart := 0x479000#64 -- layout-bypass: concrete-mutant-trace-checkpoint
+    tokStorageAddr := 0x477000#64 -- layout-bypass: concrete-mutant-trace-checkpoint
+    tokOnceAddr := 0x477008#64 -- layout-bypass: concrete-mutant-trace-checkpoint
+    callocAddr := 0x46dbfc#64 -- layout-bypass: concrete-mutant-trace-checkpoint
+    callocSentinel := 0x46dbfd#64 -- layout-bypass: concrete-mutant-trace-checkpoint
+    mallocAddr := 0x46dce0#64 -- layout-bypass: concrete-mutant-trace-checkpoint
+    mallocSentinel := 0x46dce1#64 -- layout-bypass: concrete-mutant-trace-checkpoint
+    freeAddr := 0x46dcdc#64 -- layout-bypass: concrete-mutant-trace-checkpoint
+    freeSentinel := 0x46dcdd#64 -- layout-bypass: concrete-mutant-trace-checkpoint
     hooks := baseHooks
     baseLines := mkDepth3
       (.branch sub0 sub8) (.branch sub1 sub9) (.branch sub2 sub10) (.branch sub3 sub11)

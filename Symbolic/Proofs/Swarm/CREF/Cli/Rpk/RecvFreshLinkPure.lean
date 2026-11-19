@@ -44,7 +44,7 @@ Proves that every `TREvent.SkippedKeyUsed` event on a reachable composed trace
 refers to a strictly earlier trace index (`skippedKeyUsedB tr k = false` for `tr.length ≤ k`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false

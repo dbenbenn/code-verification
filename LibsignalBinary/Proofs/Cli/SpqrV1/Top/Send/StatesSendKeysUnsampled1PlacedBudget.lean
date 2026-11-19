@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1PlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
@@ -24,6 +24,12 @@ import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderBudgetAux
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled1
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable `.keysUnsampled` Sub-Steps (`+372..+684`, Block `427`)
@@ -32,7 +38,7 @@ Threads `RustCliAllocBudget` through `signal_session_coins_fill`, ML-KEM key gen
 and the 64-byte `hdr`, 1152-byte `ek`, and 2400-byte `dk` allocations (`+372..+684`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -80,7 +86,10 @@ open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBud
    spqrSend_allocNoOom_ok_placed spqrSend_alloc_ok_placed spqrSend_dealloc_ok_placed
    spqrSend_handle_error_extern spqrSend_noAllocShim_ok_placed
    spqrSend_session_memcpy_region_ok_placed spqrSend_shim_ok_placed)
+open LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase
+  (mlkemEncaps1AtSpec mlkemFromSeedAtSpec)
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderBudgetAux
   (call_memcpy_bytes_budget call_rustAllocNoOom_budget call_sessionShim_budget)
 open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
@@ -120,10 +129,21 @@ export LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedB
 
 abbrev spqrSend_handle_error_placed := @spqrSend_handle_error_extern
 
+theorem stackAt_spqrSendCallee_to_mlkem (sp : BitVec 64) :
+    stackAt sp spqrSendCalleeStack ⊢
+    memRegion (sp - 123008#64) 86144 ∗ stackAt sp 36864 :=
+  Entails.of_eq (ProofLib.stackAt_split_bottom sp 36864 86144 (by decide))
+
+theorem stackAt_spqrSendCallee_from_mlkem (sp : BitVec 64) :
+    memRegion (sp - 123008#64) 86144 ∗ stackAt sp 36864 ⊢
+    stackAt sp spqrSendCalleeStack :=
+  Entails.of_eq (ProofLib.stackAt_split_bottom sp 36864 86144 (by decide)).symm
+
 theorem spqrSend_mlkemFromSeed_ok_placed {K : MlKem} {ext : String → Option (State → State)}
-    (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym (withVmPreserved (mlkemFromSeedSpec K))) :
+    (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym
+      (withLsRet (withVmPreserved (mlkemFromSeedAtSpec 36864 K)))) :
     subroutine_ok (spqrSendPlacedProg ext) (lsρ spqrMlkemFromSeedSym)
-      (withVmPreserved (mlkemFromSeedSpec K)) :=
+      (withLsRet (withVmPreserved (mlkemFromSeedAtSpec 36864 K))) :=
   spqr_hook_ok_of_mem hseed
 
 theorem spqrSend_mlkemPk1_ok_placed {ext : String → Option (State → State)}
@@ -139,17 +159,18 @@ theorem spqrSend_mlkemPk2_ok_placed {ext : String → Option (State → State)}
   spqr_hook_ok_of_mem hpk2
 
 theorem spqrSend_encapsulate1_ok_placed {K : MlKem} {ext : String → Option (State → State)}
-    (henc : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym (withVmPreserved (mlkemEncaps1Spec K))) :
+    (henc : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym
+      (withLsRet (withVmPreserved (mlkemEncaps1AtSpec 36864 K)))) :
     subroutine_ok (spqrSendPlacedProg ext) (lsρ spqrMlkemEncaps1Sym)
-      (withVmPreserved (mlkemEncaps1Spec K)) :=
+      (withLsRet (withVmPreserved (mlkemEncaps1AtSpec 36864 K))) :=
   spqr_hook_ok_of_mem henc
 
 /-! ## 2. Exact Allocator Event Sequence & Envelope (`+512 -> +684`) -/
 
-def keysUnsampledAllocEvents : List AllocEvent :=
+@[expose] def keysUnsampledAllocEvents : List AllocEvent :=
   rustAllocEvents 64 1 ++ (rustAllocEvents 1152 1 ++ rustAllocEvents 2400 1)
 
-def KeysUnsampledAllocEnv (evs : List AllocEvent) : Prop :=
+@[expose] def KeysUnsampledAllocEnv (evs : List AllocEvent) : Prop :=
   evs = keysUnsampledAllocEvents
 
 theorem keysUnsampledAllocEnv_nonempty : ∃ evs, KeysUnsampledAllocEnv evs :=
@@ -231,7 +252,7 @@ private theorem kp_add_pk2Off (sp : BitVec 64) :
 
 private theorem call_mlkemFromSeed_lscro {K : MlKem} {prog : Program}
     {entry ret_pc tgt : BitVec 64}
-    (hcall : subroutine_ok prog entry (withVmPreserved (mlkemFromSeedSpec K)))
+    (hcall : subroutine_ok prog entry (withLsRet (withVmPreserved (mlkemFromSeedAtSpec 36864 K))))
     (seedA kpA : BitVec 64) (seed : List.Vector (BitVec 8) 64)
     {s0 s : State} {sp_call : BitVec 64} {P Frame : SepProp}
     {post : State → SepProp → Prop}
@@ -246,26 +267,28 @@ private theorem call_mlkemFromSeed_lscro {K : MlKem} {prog : Program}
       CalleeSavedPreserved s sf → sf.trace = s0.trace →
       SepWP prog tgt sf
         (((seedA ↦ₛ seed.toList) ∗ (kpA ↦ₛ (K.fromSeed seed).2.2.toList) ∗
-          stackAt sp_call spqrSendCalleeStack) ∗ Frame) post) :
+          stackAt sp_call spqrSendCalleeStack) ∗ Frame) post)
+    (hlr_ls : LsRetAddr624 ret_pc := by
+      first | assumption | simp (config := { decide := true }) only [Reg.x30, Reg.lr, BitVec.add_assoc, arm64_norm, wp_norm]) :
     SepWP prog tgt s P post := by
   rw [hsplit]
   refine of_sepWP_lscro_plain (mid := ret_pc) hcrl ?_
-  refine SepWP.fold (stackAt_spqrSendCallee_to_extHook sp_call) (by sep_focus) ?_
+  refine SepWP.fold (stackAt_spqrSendCallee_to_mlkem sp_call) (by sep_focus) ?_
   refine SepWP.call_subroutine_frame hcall
     (x := ({ seedA := seedA, kpA := kpA, seed := seed } : MlkemFromSeedCall))
-    (F := memRegion (sp_call - 123008#64) 106624 ∗ Frame)
+    (F := memRegion (sp_call - 123008#64) 86144 ∗ Frame)
     hpc hrun (by rw [State.spAligned, hsp]; exact hsp_align) hlr ?_
     (fun _ _ _ h => not_satisfies_false_sepConj h)
     (fun _ _ _ _ h => not_satisfies_false_sepConj h)
     (fun sf hpc_sf hrun_sf hsp_sf hcs_sf => ?_)
   · intro R hm
-    dsimp only [withVmPreserved, mlkemFromSeedSpec]
+    dsimp only [withLsRet, withVmPreserved, mlkemFromSeedAtSpec]
     rw [hsp]; simp only [sepConj_assoc, satisfies_pure_sepConj] at hm ⊢
-    exact ⟨⟨hx0, hx8⟩, by ac_nf at hm ⊢⟩
-  · dsimp only [withVmPreserved, mlkemFromSeedSpec]
+    exact ⟨hlr ▸ hlr_ls, ⟨hx0, hx8⟩, by ac_nf at hm ⊢⟩
+  · dsimp only [withLsRet, withVmPreserved, mlkemFromSeedAtSpec]
     rw [hsp, sepConj_assoc, sepConj_assoc]
     refine SepWP.pure_elim fun hvm1 => SepWP.pure_elim fun htr1 => ?_
-    refine SepWP.fold (stackAt_spqrSendCallee_from_extHook sp_call) (by sep_focus) ?_
+    refine SepWP.fold (stackAt_spqrSendCallee_from_mlkem sp_call) (by sep_focus) ?_
     exact SepWP.done hpc_sf hrun_sf fun hcrl1 =>
       SepWP.weaken_pre (Entails.of_eq (by sep_ac_rfl))
         (hnext sf hcrl1 (hvm0.trans hvm1) hpc_sf hrun_sf (hsp_sf.trans hsp) hcs_sf (htr1.trans htrace))
@@ -467,7 +490,8 @@ theorem step_keysUnsampled_372_to_512_vm_placed
     {K : MlKem} {RA : RustAlloc} {ctl tgt : BitVec 64}
     {ext : String → Option (State → State)}
     (hcoinsFill : CoinsFillPlacedOkX ext)
-    (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym (withVmPreserved (mlkemFromSeedSpec K)))
+    (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym
+      (withLsRet (withVmPreserved (mlkemFromSeedAtSpec 36864 K))))
     (hpk1 : HookSat (Rust.withPanics ext) spqrMlkemPk1Sym (withVmPreserved mlkemPk1Spec))
     (g : AuthenticatorGhost) (auth : Authenticator) (epoch sp cur : BitVec 64)
     (tape : List (BitVec 8)) (h64 : 64 ≤ tape.length)
@@ -704,7 +728,8 @@ theorem step_keysUnsampled_372_to_512_placed
     {K : MlKem} {ctl tgt : BitVec 64}
     {ext : String → Option (State → State)}
     (hcoinsFill : CoinsFillPlacedOkX ext)
-    (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym (withVmPreserved (mlkemFromSeedSpec K)))
+    (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym
+      (withLsRet (withVmPreserved (mlkemFromSeedAtSpec 36864 K))))
     (hpk1 : HookSat (Rust.withPanics ext) spqrMlkemPk1Sym (withVmPreserved mlkemPk1Spec))
     (g : AuthenticatorGhost) (auth : Authenticator) (epoch sp cur : BitVec 64)
     (tape : List (BitVec 8)) (h64 : 64 ≤ tape.length)

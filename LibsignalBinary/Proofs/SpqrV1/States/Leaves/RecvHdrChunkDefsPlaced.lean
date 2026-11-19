@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefs
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesCodeSymB
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesCodeSymB -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<NoHeaderReceived>::recv_hdr_chunk`: Relocatable Specifications (Block `369`)
@@ -21,7 +22,7 @@ contract abbreviation (`NoHeaderReceivedRecvHdrChunkPlacedOkX`), and `.rodata` l
 (`rodata_hdrLabel_placed`) for Block `369`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -49,7 +50,7 @@ open CryptoVerification.SpqrV1.States.RecvCt2Chunk
 abbrev hdrLabelSym : String := "spqr:.rodata..Lanon.140"
 
 /-- Relocatable specification of `<NoHeaderReceived>::recv_hdr_chunk` (Block `369`). -/
-def noHeaderReceivedRecvHdrChunkPlacedSpec [LibsignalPlacement]
+@[expose] def noHeaderReceivedRecvHdrChunkPlacedSpec [LibsignalPlacement]
     (F : ShaCompress) (A : RustAlloc) :
     Spec (NoHeaderReceivedRecvHdrChunkGhost F) where
   pre := fun x s =>
@@ -81,7 +82,7 @@ def noHeaderReceivedRecvHdrChunkPlacedSpec [LibsignalPlacement]
 
 /-- Relocatable contract for `<NoHeaderReceived>::recv_hdr_chunk` (Block `369`)
     wrapped with `withLsCodeRoLoaded lsmpl`. -/
-def NoHeaderReceivedRecvHdrChunkPlacedOkX [LibsignalPlacement]
+@[expose] def NoHeaderReceivedRecvHdrChunkPlacedOkX [LibsignalPlacement]
     (F : ShaCompress) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_369 (Rust.withPanics ext))
     (blkPl_369).base

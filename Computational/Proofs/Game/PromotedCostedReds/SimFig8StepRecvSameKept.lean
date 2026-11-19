@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvSameCost
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvSameCost -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling -- proof-setup: allow-public-import
 
 /-!
 # Pure and `Kept` Receive Sub-Branch Evaluation Lemmas for `SimFig8`
 
 Proves `.eval` agreement for the pure accept/answer, `Kept` evaluation, seed-decryption, and wire
-helper programs used in the `SimFig8` receive step.
--/
+helper programs used in the `SimFig8` receive step.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,23 +31,23 @@ open _root_.ReductionDsl (Sig Ty Var Env Ops Iface Expr Comp
   fig8StT fig8StV fig8StOfV fsSendStV fsSendStOfV fsRecvStV fsRecvStOfV
   ckaStV ckaStOfV wireSaltCtV wireSaltCtOfV
   partyToBool boolToParty smRrEnc recvResultEnc)
-open CryptoGames (Party)
-open CryptoGames.CBC (Plain)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart LibsignalCiphertextWithSalt32
+open _root_.CryptoGames (Party)
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart LibsignalCiphertextWithSalt32
   ratchetKeyAdmissible)
-open CryptoGames.Ratchet.LibsignalSim (SimFig8C SimState GhostChain pushChain toWire
+open _root_.CryptoGames.Ratchet.LibsignalSim (SimFig8C SimState GhostChain pushChain toWire
   fig8Clamp fsClampSim onAcceptPure onAnswerPure)
-open CryptoGames.Ratchet.LibsignalSimC (Kept LibsignalToModularSchemeSimState
+open _root_.CryptoGames.Ratchet.LibsignalSimC (Kept LibsignalToModularSchemeSimState
   predictReceive sentEval)
-open CryptoGames.SM (Pos RecvResult partyEnc partyDec posTy posEnc posDec
+open _root_.CryptoGames.SM (Pos RecvResult partyEnc partyDec posTy posEnc posDec
   orE boolEq isSomeE otherE senderOfE pGet pSet
   ite_eval orE_eval boolEq_eval isSomeE_eval otherE_eval senderOfE_eval
   pGet_eval pSet_eval partyEnc_other)
-open CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey)
-open CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
-open CryptoVerification.LibsignalSpqrV1 (MlKem)
-open CryptoVerification.E2E (Bytes paramsV1)
+open _root_.CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey)
+open _root_.CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem)
+open _root_.CryptoVerification.E2E (Bytes paramsV1)
 open Computational.Proofs.ReductionDsl.Fig8Atomic (salt32V_salt32OfV)
 open Computational.Proofs.Game.PromotedCostedReds.SanOracleCore (figS fsS evalCKS)
 open Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost

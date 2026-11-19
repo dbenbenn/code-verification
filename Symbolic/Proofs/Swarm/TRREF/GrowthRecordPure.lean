@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecord.DRBound
-public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
-public import Symbolic.Proofs.SR.RecvSpecWPure
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
+public import Symbolic.Proofs.Swarm.TRREF.GrowthRecord.DRBound -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SR.RecvSpecWPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
 import Symbolic.Proofs.RngG.R3Canon
 import Symbolic.Proofs.RngG.R3ModelInv
 import Symbolic.Proofs.SR.MsgX.TopPureX
 import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.TopPure
+public import Symbolic.Proofs.Swarm.CREF.Grow.Defs
 
 /-!
 # Pure Record-Length and OOO Bounds After Decrypt
@@ -25,7 +26,7 @@ Record-length `< 2^32` and `SpqrOooBounded` preservation lemmas for `messageDecr
 `pureSpqr (spqrModelOf i)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,7 +43,7 @@ open Symbolic.Swarm.TRREF.GrowthRecord (DRCaps extLen_add_pq_le_encodeRecord ext
   encodeRecord_lt_of_growth)
 
 /-- Projection of an `SpqrModel` to `CryptoGames.LibsignalSession.Spqr`. -/
-def pureSpqr (M : SpqrModel) : Spqr (List (BitVec 8)) (List (BitVec 8)) :=
+@[expose] def pureSpqr (M : SpqrModel) : Spqr (List (BitVec 8)) (List (BitVec 8)) :=
   ⟨fun _ _ => [], M.send, M.recv, M.sendPanics, M.recvPanics⟩
 
 theorem drCaps_of_pureBinCanonSession {s : Session (List (BitVec 8))}

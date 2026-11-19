@@ -12,20 +12,20 @@ module
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.MallocngBridgeBudget
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.Phase
-public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.PhaseBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.Phase -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.PhaseBudget
 public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangeComplete.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Epilogue
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.NextChunkCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Epilogue -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.NextChunkCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.ProofBudget
@@ -33,6 +33,7 @@ import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangeComplete.Proof
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.ProofBudget
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Budget-Threaded Placed Prologue and Epilogue
@@ -42,7 +43,7 @@ and shared epilogue (`+4484`) for Block `416` threading `RustCliAllocBudget M`, 
 `NextChunkPrologueEnv`, and `NextChunkEpilogueEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -60,7 +61,7 @@ open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.SpqrV1.Alloc
   (spqrHandleErrorSym spqrMemcpySym spqrRustAllocSym spqrRustNoAllocShimSym spqrRustReallocSym
    spqr_externAt?_of_mem spqr_hook_ok_of_mem)
-open CryptoVerification.SpqrV1.GF.Mul2U16 (tokenInitPlacedAt)
+open CryptoVerification.SpqrV1.GF.Mul2U16 (OnceCallHookOk tokenInitPlacedAt)
 open CryptoVerification.SpqrV1.GF.UnacceleratedMul (reduceTablePlacedAt)
 open CryptoVerification.SpqrV1.Poly
   (chunkAt chunkDataOff chunkIndexOff chunkSize encoderStateAt polyEncoderAt polyEncoderIdxOff
@@ -182,10 +183,10 @@ private theorem acp_trans {s0 s1 s2 : State}
 
 /-- Exact allocator event sequence of the `<PolyEncoder as Encoder>::next_chunk` prologue
     (`+0..+92`, Block `416`): one `32`-byte output buffer allocation at alignment `1`. -/
-def nextChunkPrologueEvents : List AllocEvent :=
+@[expose] def nextChunkPrologueEvents : List AllocEvent :=
   rustAllocEvents 32 1
 
-def NextChunkPrologueEnv (evs : List AllocEvent) : Prop :=
+@[expose] def NextChunkPrologueEnv (evs : List AllocEvent) : Prop :=
   evs = nextChunkPrologueEvents
 
 theorem fitsEnv_nextChunkPrologue_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :
@@ -199,10 +200,10 @@ theorem fitsEnv_nextChunkPrologue_iff {M : AllocCostModel} {lim : BudgetLimits} 
 
 /-- Exact allocator event sequence of the `<PolyEncoder as Encoder>::next_chunk` shared epilogue
     (`+4484`, Block `416`): one `32`-byte output buffer deallocation at alignment `1`. -/
-def nextChunkEpilogueEvents : List AllocEvent :=
+@[expose] def nextChunkEpilogueEvents : List AllocEvent :=
   rustDeallocEvents 32 1
 
-def NextChunkEpilogueEnv (evs : List AllocEvent) : Prop :=
+@[expose] def NextChunkEpilogueEnv (evs : List AllocEvent) : Prop :=
   evs = nextChunkEpilogueEvents
 
 theorem nextChunkEpilogueEvents_freeOnly : FreeOnlyEvs nextChunkEpilogueEvents :=
@@ -249,6 +250,7 @@ structure AllocContractsPlaced [LibsignalPlacement] (M : AllocCostModel) (A : Ru
     HookSat (Rust.withPanics ext) spqrMemcpySym (sessionMemcpyBudgetSpec hookStack)
   session_memset_region :
     HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec
+  once_ok : OnceCallHookOk (Rust.withPanics ext)
 
 namespace AllocContractsPlaced
 
@@ -326,13 +328,6 @@ theorem session_memcpy_ok [LibsignalPlacement] {M : AllocCostModel}
       (lsρ spqrMemcpySym) (sessionMemcpyBudgetSpec hookStack) :=
   spqr_hook_ok_of_mem (hA.session_memcpy hookStack)
 
-theorem session_memset_region_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)} (hA : AllocContractsPlaced M A lim ext) :
-    subroutine_ok ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
-      (lsρ memsetName) sessionMemsetRegionBudgetSpec :=
-  spqr_hook_ok_of_mem hA.session_memset_region
-
 theorem computeAt_blk_ok [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ext : String → Option (State → State)} (hA : AllocContractsPlaced M A lim ext)
@@ -340,7 +335,7 @@ theorem computeAt_blk_ok [LibsignalPlacement] {M : AllocCostModel}
     subroutine_ok ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
       (lsmpl.base 371) (withMemEq m (computeAtPlacedSpec M A lim)) :=
   lscall_blk_cl
-    (computeAt_placed_ok M A lim ext hA.handle_error hA.noAllocShim hA.alloc hA.realloc hA.dealloc)
+    (computeAt_placed_ok M A lim ext hA.once_ok hA.handle_error hA.noAllocShim hA.alloc hA.realloc hA.dealloc)
     hcl
 
 theorem lagrangePrepare_blk_ok [LibsignalPlacement] {M : AllocCostModel}
@@ -349,17 +344,17 @@ theorem lagrangePrepare_blk_ok [LibsignalPlacement] {M : AllocCostModel}
     {m : Memory} (hcl : LibsignalCodeLoaded lsmpl m) :
     subroutine_ok ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
       (lsmpl.base 372) (withMemEq m (lagrangePreparePlacedSpec M A lim)) :=
-  lscall_blk
-    (lagrangePrepare_placed_ok_of_hookSat M A lim ext hA.shim hA.alloc hA.session_memset_region)
+  lscall_blk_cl
+    (lagrangePrepare_placed_ok_of_hookSat M A lim ext hA.shim hA.alloc hA.session_memset_region hA.once_ok)
     hcl
 
 theorem lagrangeComplete_blk_ok [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)} (_hA : AllocContractsPlaced M A lim ext)
+    {ext : String → Option (State → State)} (hA : AllocContractsPlaced M A lim ext)
     {m : Memory} (hcl : LibsignalCodeLoaded lsmpl m) :
     subroutine_ok ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
       (lsmpl.base 373) (withMemEq m lagrangeCompletePlacedSpec) :=
-  lscall_blk_cl (lagrangeComplete_placed_ok ext) hcl
+  lscall_blk_cl (lagrangeComplete_placed_ok ext hA.once_ok) hcl
 
 theorem dropGluePoly16_blk_ok [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -888,176 +883,5 @@ theorem prologue_lscl_placed_sepWPp [LibsignalPlacement]
       fun s1 _P1 out_ptr hout hpc1 hrun1 hsp1 htr1 hvregs1 hx9 hx19 hx24 hx27 hx29 hent hcl1 =>
         SepWPp.weaken_pre hent
           (hcont s1 out_ptr hout hpc1 hrun1 hsp1 htr1 hvregs1 hcl1 hx9 hx19 hx24 hx27 hx29))
-
-set_option maxHeartbeats 800000 in
-/-- `AllocCallPreserved`-strengthened prologue (`+0..+92`, Block `416`) when the caller additionally
-    supplies `HookSat (Rust.withPanics ext) spqrRustNoAllocShimSym rustAllocShimVmSpec`. -/
-theorem prologue_placed_acp_sepWPp [LibsignalPlacement]
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
-    (ext : String → Option (State → State))
-    (hA : AllocContractsPlaced M A lim ext)
-    (hshim_vm : HookSat (Rust.withPanics ext) spqrRustNoAllocShimSym rustAllocShimVmSpec)
-    (x : PolyNextChunkGhost) (tag : BitVec 64) (restEnc _R : SepProp)
-    {Q Q_panic : State → SepProp → Prop}
-    (s0 : State)
-    (hpc : s0.pc = (blkPl_416).base)
-    (hrun : s0.status = .Running)
-    (hsp0 : s0.sp &&& 0xf#64 = 0#64)
-    (hx0 : s0.readReg64 .x0 = x.encA)
-    (hx8 : s0.readReg64 .x8 = x.outA)
-    (hfit : FitsEnv M lim st NextChunkPrologueEnv)
-    (hcont : ∀ s1 (out_ptr : BitVec 64),
-      out_ptr ≠ 0#64 →
-      s1.pc = (blkPl_416).base + 92#64 →
-      s1.status = .Running →
-      s1.sp = s0.sp - 1200#64 →
-      s1.trace = s0.trace →
-      AllocCallPreserved s0 s1 →
-      calleeSavedVRegs s1 = calleeSavedVRegs s0 →
-      s1.readReg64 .x9 = (tag.setWidth 32).setWidth 64 →
-      s1.readReg64 .x19 = x.encA + 8#64 →
-      s1.readReg64 .x24 = x.encA →
-      s1.readReg64 .x27 = (x.enc.idx.setWidth 16).setWidth 64 →
-      s1.readReg64 .x29 = s0.sp - 96#64 →
-      SepWPp ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext)) (s0.readReg64 Reg.lr) s1
-        (memRegion out_ptr 32 ∗
-         A.live out_ptr 32 1 ∗
-         memRegion x.outA chunkSize ∗
-         (x.encA ↦₆₄ tag) ∗
-         restEnc ∗
-         ((x.encA + polyEncoderIdxOff) ↦₃₂ x.enc.idx) ∗
-         memRegion (x.encA + polyEncoderPadOff) polyEncoderPadSize ∗
-         (((s0.sp - 1200#64) + 56#64) ↦₆₄ x.outA) ∗
-         (((s0.sp - 1200#64) + 232#64) ↦₆₄ 32#64) ∗
-         (((s0.sp - 1200#64) + 240#64) ↦₆₄ out_ptr) ∗
-         (((s0.sp - 1200#64) + 248#64) ↦₆₄ 0#64) ∗
-         localFrameRest (s0.sp - 1200#64) ∗
-         savedCells s0 ∗
-         tokenInitPlacedAt ∗
-         reduceTablePlacedAt ∗
-         A.pool lim (M.stepEvents (rustAllocEvents 32 1) st) s1 ∗
-         stackAt (s0.sp - 1200#64) nextChunkCalleeStack)
-        Q Q_panic) :
-    SepWPp ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext)) (s0.readReg64 Reg.lr) s0
-      (memRegion x.outA chunkSize ∗
-       (x.encA ↦₆₄ tag) ∗
-       restEnc ∗
-       ((x.encA + polyEncoderIdxOff) ↦₃₂ x.enc.idx) ∗
-       memRegion (x.encA + polyEncoderPadOff) polyEncoderPadSize ∗
-       tokenInitPlacedAt ∗
-       reduceTablePlacedAt ∗
-       A.pool lim st s0 ∗
-       stackAt s0.sp polyNextChunkStack)
-      Q Q_panic := by
-  have hlayout : RustLayoutOk 32 1 := ⟨⟨by decide, ⟨0, rfl⟩, by decide⟩, by decide⟩
-  have hfit_ev : FitsEvents M lim st (rustAllocEvents 32 1) :=
-    (fitsEnv_nextChunkPrologue_iff).mp hfit
-  rcases (by simpa [rustAllocEvents] using hfit_ev : FitsEvent M lim st (.alloc 32) ∧ True) with
-    ⟨⟨_hwmax, henf, hram, hva⟩, _⟩
-  have h32_toNat : (32#64 : BitVec 64).toNat = 32 := rfl
-  have h1_toNat : (1#64 : BitVec 64).toNat = 1 := rfl
-  have hshim :
-      subroutine_ok ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
-        (lsρ spqrRustNoAllocShimSym) rustAllocShimVmSpec :=
-    spqr_hook_ok_of_mem hshim_vm
-  dsimp only [rustAllocShimVmSpec] at hshim
-  have halloc := hA.allocNoOom_ok
-  dsimp only [rustCliAllocNoOomSpec, Bool.false_eq_true, ↓reduceIte] at halloc
-  clear hA hshim_vm
-  apply SepWPp.of_sepWP (mid := (blkPl_416).base + 92#64)
-  apply SepWP.fold (prologue_stack_split s0) (by sep_focus)
-  apply sepWP_exists_left_sep; intro v29
-  apply sepWP_exists_left_sep; intro v30
-  apply sepWP_exists_left_sep; intro v28
-  apply sepWP_exists_left_sep; intro v27
-  apply sepWP_exists_left_sep; intro v26
-  apply sepWP_exists_left_sep; intro v25
-  apply sepWP_exists_left_sep; intro v24
-  apply sepWP_exists_left_sep; intro v23
-  apply sepWP_exists_left_sep; intro v22
-  apply sepWP_exists_left_sep; intro v21
-  apply sepWP_exists_left_sep; intro v20
-  apply sepWP_exists_left_sep; intro v19
-  apply sepWP_exists_left_sep; intro u0
-  apply sepWP_exists_left_sep; intro u56
-  apply sepWP_exists_left_sep; intro u232
-  apply sepWP_exists_left_sep; intro u240
-  apply sepWP_exists_left_sep; intro u248
-  wp_conv_pre =>
-    rw [CryptoVerification.SpqrV1.Poly.NextChunk.pointsTo32_eq_pointsTo16_pair
-          (x.encA + polyEncoderIdxOff) x.enc.idx,
-        pointsTo64_eq_pointsTo32_pair x.encA tag]
-    dsimp only [polyEncoderIdxOff]
-  wp_steps_sync_pool (lsρ spqrRustNoAllocShimSym)
-  simp only [State.setMem_setMem]
-  wp_call hshim ()
-  have hacp1 : AllocCallPreserved s0 sf := by assumption
-  refine SepWP.transport_budgetPool (by assumption) (hnext := ?_)
-  wp_steps_sync_pool (lsρ spqrRustAllocSym)
-  simp only [State.setMem_setMem]
-  wp_call halloc (32, 1, st)
-  have hacp2 : AllocCallPreserved sf sf_1 := by assumption
-  have hacp3 : AllocCallPreserved s0 sf_1 := acp_trans hacp1 hacp2
-  have hoom : sf_1.readReg64 (Reg.gpr 0#5) ≠ 0#64 := by assumption
-  have hbeq0 : (sf_1.readReg64 (Reg.gpr 0#5) == 0#64) = false := beq_eq_false_iff_ne.mpr hoom
-  wp_steps_sync_pool ((blkPl_416).base + 92#64)
-  simp only [State.setMem_setMem]
-  have hfold_tag :
-      (x.encA ↦₃₂ tag.setWidth 32) ∗ ((x.encA + 4#64) ↦₃₂ (tag >>> 32).setWidth 32) ⊢
-        (x.encA ↦₆₄ tag) := by
-    rw [← pointsTo64_eq_pointsTo32_pair x.encA tag]
-    exact Entails.refl _
-  apply SepWP.fold hfold_tag (by sep_focus)
-  have hfold_idx :
-      ((x.encA + 392#64) ↦₁₆ x.enc.idx.setWidth 16) ∗
-        (((x.encA + 392#64) + 2#64) ↦₁₆ (x.enc.idx >>> 16).setWidth 16) ⊢
-        ((x.encA + polyEncoderIdxOff) ↦₃₂ x.enc.idx) := by
-    dsimp only [polyEncoderIdxOff]
-    rw [← CryptoVerification.SpqrV1.Poly.NextChunk.pointsTo32_eq_pointsTo16_pair
-          (x.encA + 392#64) x.enc.idx]
-    exact Entails.refl _
-  apply SepWP.fold hfold_idx (by sep_focus)
-  have hfold_rest :
-      ((s0.sp - 1200#64) ↦₆₄ 0#64) ∗
-        memRegion ((s0.sp - 1200#64) + 8#64) 48 ∗
-        memRegion ((s0.sp - 1200#64) + 64#64) 168 ∗
-        memRegion ((s0.sp - 1200#64) + 256#64) 848 ⊢
-        localFrameRest (s0.sp - 1200#64) :=
-    localFrameRest_fold_prologue (s0.sp - 1200#64) 0#64
-  apply SepWP.fold hfold_rest (by sep_focus)
-  have hfold_saved :
-      ((s0.sp - 96#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5)) ∗
-        ((s0.sp - 88#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5)) ∗
-        ((s0.sp - 80#64) ↦₆₄ s0.readReg64 (Reg.gpr 28#5)) ∗
-        ((s0.sp - 72#64) ↦₆₄ s0.readReg64 (Reg.gpr 27#5)) ∗
-        ((s0.sp - 64#64) ↦₆₄ s0.readReg64 (Reg.gpr 26#5)) ∗
-        ((s0.sp - 56#64) ↦₆₄ s0.readReg64 (Reg.gpr 25#5)) ∗
-        ((s0.sp - 48#64) ↦₆₄ s0.readReg64 (Reg.gpr 24#5)) ∗
-        ((s0.sp - 40#64) ↦₆₄ s0.readReg64 (Reg.gpr 23#5)) ∗
-        ((s0.sp - 32#64) ↦₆₄ s0.readReg64 (Reg.gpr 22#5)) ∗
-        ((s0.sp - 24#64) ↦₆₄ s0.readReg64 (Reg.gpr 21#5)) ∗
-        ((s0.sp - 16#64) ↦₆₄ s0.readReg64 (Reg.gpr 20#5)) ∗
-        ((s0.sp - 8#64) ↦₆₄ s0.readReg64 (Reg.gpr 19#5)) ⊢
-        savedCells s0 := by
-    unfold savedCells
-    exact Entails.refl _
-  apply SepWP.fold hfold_saved (by sep_focus)
-  wp_conv_pre => simp only [arm64_norm, wp_norm, *]
-  have hfold_callee :
-      memRegion ((s0.sp - 1200#64) - 17232#64) 13136 ∗
-        stackAt (s0.sp - 1200#64) allocHookStack ⊢
-        stackAt (s0.sp - 1200#64) nextChunkCalleeStack := by
-    rw [← stackAt_nextChunkCallee_split_allocHook (s0.sp - 1200#64)]
-    exact Entails.refl _
-  apply SepWP.fold hfold_callee (by sep_focus)
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  refine SepWPp.weaken_pre ?_
-    (hcont _ (sf_1.readReg64 (Reg.gpr 0#5)) hoom ?_ ?_ ?_ ?_ (acp_trans hacp3 acp_of_PureStep)
-      ?_ ?_ ?_ ?_ ?_ ?_)
-  · simp only [arm64_norm]
-    exact Entails.of_eq (by sep_ac_rfl)
-  all_goals
-    simp only [arm64_norm, wp_norm, Reg.x0, Reg.x8, Reg.x9, Reg.x19, Reg.x24, Reg.x27, Reg.x29,
-      Reg.lr, hacp3.2.1, *]
 
 end LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget

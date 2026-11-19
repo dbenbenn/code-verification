@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyDecode
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyDecode
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded `IdentityKey::decode` Proof
@@ -19,7 +21,7 @@ Relocatable `[LibsignalPlacement]` proof of `IdentityKey::decode` (Block `18`, `
 allocations) over `RustCliAllocBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

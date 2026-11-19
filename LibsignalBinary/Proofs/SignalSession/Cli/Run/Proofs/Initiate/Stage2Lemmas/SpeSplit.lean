@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwned
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwned -- proof-setup: allow-public-import
 import LibsignalBinary.Specifications.AsmConstants
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Six-Word Register Move for `RunDrop.speOwnedAt`
@@ -21,12 +23,10 @@ Proves `speOwnedAt_split_move` for every variant of `RunDrop.SpeOwned`, decompos
 `RunDrop.speOwnedAt A dst k` once `w0..w5` are stored to `dst + 0..40`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage2Lemmas
 

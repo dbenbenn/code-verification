@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecTieBExclPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CHistStepPure
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptSplitPure
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1LeavesPure
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecTieBExclPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CHistStepPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptSplitPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1LeavesPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
 import Symbolic.Proofs.Swarm.CREF.ModelSplit
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -26,6 +26,7 @@ import Symbolic.Proofs.Swarm.CREF.TROpen
 import Symbolic.Proofs.Swarm.CREF.TR.Leaks -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 
 /-!
 # Whisper Decrypt Case Dispatcher
@@ -35,7 +36,7 @@ Dispatches the three implementation evaluation branches against `Move.decrypt` a
 theorems and cross-branch exclusions.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -91,7 +92,7 @@ theorem a2b_modelRun_pre {interpretation : ExternInterpretation} {r₀ : Protoco
   exact modelRun_prefix_of_reachable h hreach
 
 /-- Three-way evaluation branch disjunction for `pureEvalRecvWireWithCoinsW`. -/
-def A2bBranches (g_rw : RecvWireGhost) (m : SignalMessage) (mid : List MachineEvent)
+@[expose] def A2bBranches (g_rw : RecvWireGhost) (m : SignalMessage) (mid : List MachineEvent)
     (coins : BitVec 256) : Prop :=
   (∃ (ci : Nat) (rc : ReceiverChain) (ck : ChainKey),
     mid = [] ∧ coins = 0#256 ∧

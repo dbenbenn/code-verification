@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommon
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommon -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Received1
@@ -24,6 +24,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch3Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommonPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
 
 /-!
 # `<States>::recv` (Block `332`) — `.ekSentCt1Received` Arm, Part 1 (Relocatable)
@@ -33,7 +34,7 @@ paths and `<EkSentCt1Received>::recv_ct2_chunk` call rule of `.ekSentCt1Received
 Block `332`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

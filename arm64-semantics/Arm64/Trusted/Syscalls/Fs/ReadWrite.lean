@@ -96,6 +96,8 @@ def execReadCommon (s : State) (useExplicitPos : Bool) : State :=
       if !useExplicitPos && desc.kind == .localDir then
         if !desc.accMode.canRead then (s.writeReg64 Reg.x0 (-EBADF)).advancePC
         else if buf.toNat + count.toNat > USER_VA_LIMIT then (s.writeReg64 Reg.x0 EFAULT_RET).advancePC
+        else if decide (desc.offset + count.toNat > MAX_LFS_FILESIZE) then
+          (s.writeReg64 Reg.x0 (-EINVAL)).advancePC
         else (s.writeReg64 Reg.x0 (-EISDIR)).advancePC
       else if !(desc.kind == .localFile || (!useExplicitPos && desc.kind == .stdio)) then
         s.setStatus (.Exception "unmodeled non-file fd")
@@ -175,10 +177,10 @@ def execWrite (s : State) : State :=
         else if !desc.accMode.canWrite then (s.writeReg64 Reg.x0 (-EBADF)).advancePC
         else if decide (buf.toNat + count.toNat > USER_VA_LIMIT) then
           (s.writeReg64 Reg.x0 EFAULT_RET).advancePC
-        else if count == 0#64 then
-          (s.writeReg64 Reg.x0 0#64).advancePC
         else if desc.offset + count.toNat > MAX_LFS_FILESIZE then
           (s.writeReg64 Reg.x0 (-EINVAL)).advancePC
+        else if count == 0#64 then
+          (s.writeReg64 Reg.x0 0#64).advancePC
         else
           let count' := min count.toNat MAX_RW_COUNT
           let oldBytes := s.fs.fileBytes desc.path

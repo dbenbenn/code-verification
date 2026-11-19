@@ -9,20 +9,20 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake
-public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
-public import Computational.Proofs.SignalPqxdh.Security.SigHopC
-public import Computational.Proofs.SignalPqxdh.Security.SigHop
+import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake
+import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
+public import Computational.Proofs.SignalPqxdh.Security.SigHopC -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.SigHop
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_ReductionsAuthHandshake
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_ReductionsAuthHandshake
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
 public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
-public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyA
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyA -- proof-setup: allow-public-import
 
 /-!
 # One-Key Simplified `Auth` Simulator
@@ -31,11 +31,9 @@ Defines the simplified `Auth` oracle simulator `pqxdhAuthSimImpl1Key` over `pqxd
 relates it to `pqxdhAuthWithProvImpl1Key` via `projAuthSim`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal
 open MeasureTheory
@@ -46,7 +44,7 @@ namespace Proofs.SignalPqxdh.Security
 
 /-- Simplified one-key `Auth` oracle omitting win/event logs and caching `(P.pow8 pk, pk)` in
 `advKeys`. -/
-def pqxdhAuthSimImpl1Key (S : Setup) (P : Primitives) :
+@[expose] def pqxdhAuthSimImpl1Key (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthState S) ProbComp) := fun q =>
   match q with
   | .sendOPK u i bundle m0 m1 => do
@@ -552,4 +550,3 @@ theorem simulateQ_pqxdhAuthSimImplPrim1Key (S : Setup) (P : Primitives)
 
 end Proofs.SignalPqxdh.Security
 
-end

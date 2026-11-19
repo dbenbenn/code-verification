@@ -8,9 +8,9 @@ limitations under the License.
 -/
 
 module
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreK -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreK
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCr -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyShCr -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyShCr
 
 /-!
 # Two-Fuel `(K_on, K_ro)` Handshake and ShCR Branches

@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet4
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet4Placed
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet4 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet4Placed
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase
@@ -28,6 +28,9 @@ import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
 
 /-!
 # Budget-Threaded Relocatable V1 `chain_from` & `add_epoch` (`+1856 -> +1976`)
@@ -36,7 +39,7 @@ Deterministic `v1ChainAfterKeyEvents` and budget-threaded steppers for `spqr::ch
 (`+1856..+1884`) and optional `<Chain>::add_epoch` (`+1888..+1976`) in `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -150,7 +153,7 @@ private theorem onPanic_of_v1_chainAddEpoch_budget {F : ShaCompress} {K : MlKem}
 /-- Deterministic allocator event list emitted across the optional `<Chain>::add_epoch` step
     (`+1888 .. +1976`): `[]` when `v.key = none`, and `chainAddEpochEvents ⟨selfPtr, esPtr, G0,
     ⟨kw0, kw1⟩, chain0, es⟩` when `v.key = some es`. -/
-def v1ChainAfterKeyEvents (selfPtr esPtr : BitVec 64) (G0 : ChainGhost)
+@[expose] def v1ChainAfterKeyEvents (selfPtr esPtr : BitVec 64) (G0 : ChainGhost)
     (kw0 kw1 : BitVec 64) (chain0 : Chain) : Option EpochSecret → List AllocEvent
   | none => []
   | some es => chainAddEpochEvents ⟨selfPtr, esPtr, G0, ⟨kw0, kw1⟩, chain0, es⟩

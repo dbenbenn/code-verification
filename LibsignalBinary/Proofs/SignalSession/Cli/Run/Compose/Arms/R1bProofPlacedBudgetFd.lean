@@ -10,21 +10,23 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.HopSpecsPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserCloneTailPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadKpkPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkSpinePlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.WorkFramePlacedFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlacedBudgetAuxFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.HopSpecsPlacedBudgetFd -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserCloneTailPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadKpkPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkSpinePlacedBudgetFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.WorkFramePlacedFd -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlacedBudgetAuxFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudgetFd
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `FdsGe3Closed`-Threaded `signal_session::run` Arm `R1b`
@@ -36,7 +38,7 @@ dealloc/OPK staging (`R1bStepTail25f4PlacedFd`), and final bundle assembly
 (`r1b_step_init2_27bc_placed_fd`) — into `run_hop_init2_placed_ok_fd` (`RunHopInit2PlacedFd`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -108,7 +110,7 @@ export LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlacedB
 
 /-- Stage 1 (`1868 → 4704`, `0x074c → 0x1260`) contract matching
 `ReadRegSpkSpinePlacedBudgetFd.r1b_step_reg_spk_placed_fd` on `RunCalleesPlacedFd`. -/
-def R1bStepRegSpkPlacedFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def R1bStepRegSpkPlacedFd [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (cEnvs : RunCalleesEnvs)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (σ : RunSlots) (resStack : Nat) : Prop :=
   ∀ {st : M.σ} {EnvAt : StoresGhost → RejectKind → M.σ → Prop}
@@ -275,7 +277,7 @@ def R1bStepRegSpkPlacedFd [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Stage 4a (`9452 → 9716`, `0x24ec → 0x25f4`) contract (`DeserClonePlacedBudgetFd`),
 threaded with `slotWithFdsGe3Closed` on `kemDeserialize` and `r1b_OkCtxPlacedFd`. -/
-def R1bStepDeserCloneOfKemPlacedFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def R1bStepDeserCloneOfKemPlacedFd [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (sEnvs : RunSlotEnvs)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (needs : RunNeeds) (resStack : Nat) :
     Prop :=
@@ -406,7 +408,7 @@ def R1bStepDeserCloneOfKemPlacedFd [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Stage 4b (`9716 → 10172`, `0x25f4 → 0x27bc`) contract (`DeserCloneTailPlacedBudgetFd`),
 preserving `r1b_OkCtxPlacedFd` across the three `dealloc` calls and `opk` staging. -/
-def R1bStepTail25f4PlacedFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def R1bStepTail25f4PlacedFd [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (resStack : Nat) : Prop :=
   ∀ {st : M.σ} {g : RunCall} {d : Init1Data} {s0 s : State}
@@ -838,18 +840,5 @@ theorem run_hop_init2_of_slots_placed_ok_fd [LibsignalPlacement] {M : AllocCostM
       exact sepWPp_weaken_pre (Entails.of_eq (by sep_ac_rfl)) hstep
   dsimp only [tailFrame, fsp, st4] at htail ⊢
   exact sepWPp_weaken_pre (Entails.of_eq (by sep_ac_rfl)) htail
-
-/-- `FdsGe3Closed`-threaded top-level hop theorem for Arm `R1b`
-(`R + 1868 → R + 10480`, `0x074c → 0x28f0`) on `slotsOfPlaced A lim sEnvs S needs`. -/
-theorem run_hop_init2_placed_ok_fd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {cEnvs : RunCalleesEnvs} {sEnvs : RunSlotEnvs}
-    {H : LibsignalHooks} {B : RunBudgets} {S : RunSem} {needs : RunNeeds} {resStack : Nat}
-    (hstep1 : R1bStepRegSpkPlacedFd A lim cEnvs H B S (slotsOfPlaced A lim sEnvs S needs) resStack)
-    (hstep4a : R1bStepDeserCloneOfKemPlacedFd A lim sEnvs H B S needs resStack)
-    (hstep4b : R1bStepTail25f4PlacedFd A lim H B S resStack) :
-    RunHopInit2PlacedFd (LibsignalCodeRoLoaded lsmpl)
-      A lim cEnvs sEnvs (Init2Env cEnvs) H B S needs resStack :=
-  run_hop_init2_of_slots_placed_ok_fd hstep1 hstep4a hstep4b rfl rfl
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlacedBudgetFd

@@ -10,18 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefs
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
-public import LibsignalBinary.Proofs.CodeLayout
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.FnOffEq
-
-/-!
-# Pure and separation-logic helper lemmas for `SignalMessage::new` (`0x1d918`)
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 
@@ -31,183 +25,6 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalP
 open CryptoVerification.LibsignalTripleRatchet.Prost
 
 /-! ## Callee and panic-stub address helpers -/
-
-theorem fnAddr_new_add_eq_ext {b : BitVec 64} {ext : String → Option (State → State)}
-    {target : String} {off : BitVec 64}
-    (h : BitVec.ofNat 64 (libsignalSessionCode.fnOff signalMessageNewName) + off =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff target) := by fnoff_eq) :
-    (tripleRatchetProgAtExt b ext).fnAddr signalMessageNewName + off =
-      (tripleRatchetProgAtExt b ext).fnAddr target := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, BitVec.add_assoc, h]
-
-theorem fnAddr_new_add_eq {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    {target : String} {off : BitVec 64}
-    (h : BitVec.ofNat 64 (libsignalSessionCode.fnOff signalMessageNewName) + off =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff target) := by fnoff_eq) :
-    (tripleRatchetProgAt b C ctl abs).fnAddr signalMessageNewName + off =
-      (tripleRatchetProgAt b C ctl abs).fnAddr target :=
-  fnAddr_new_add_eq_ext h
-
-theorem signalMessageNew_panic_at_handle_alloc_error2_ext {b : BitVec 64}
-    {ext : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "alloc::alloc::handle_alloc_error" := by fnoff_eq) :
-    (tripleRatchetProgAtExt b ext).externAt?
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k) =
-      some Rust.panicked :=
-  panic_at_panicSymbol (hname := "alloc::alloc::handle_alloc_error") rfl hk
-    (by fnoff_eq)
-    (by fnoff_eq) (by simp [Rust.isPanicSymbol])
-
-theorem signalMessageNew_panic_at_handle_alloc_error2 {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "alloc::alloc::handle_alloc_error" := by fnoff_eq) :
-    (tripleRatchetProgAt b C ctl abs).externAt?
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) =
-      some Rust.panicked :=
-  signalMessageNew_panic_at_handle_alloc_error2_ext hk
-
-theorem serializeAddresses_ok_at_new_ext {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (h : SerializeAddressesOkExt b A uuidTryParse ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr signalMessageNewName + bv% (2 ^ 64 + (ls_off% "<libsignal_protocol::protocol::SignalMessage>::serialize_addresses") - (ls_off% "<libsignal_protocol::protocol::SignalMessage>::new")))
-      (serializeAddressesSpec A uuidTryParse) := by
-  rw [fnAddr_new_add_eq_ext (target := serializeAddressesName)]
-  exact h
-
-theorem serializeAddresses_ok_at_new {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : SerializeAddressesOk b C A ctl uuidTryParse abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr signalMessageNewName + bv% (2 ^ 64 + (ls_off% "<libsignal_protocol::protocol::SignalMessage>::serialize_addresses") - (ls_off% "<libsignal_protocol::protocol::SignalMessage>::new")))
-      (serializeAddressesSpec A uuidTryParse) :=
-  serializeAddresses_ok_at_new_ext h
-
-theorem publicKeySerialize_ok_at_new_ext {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (h : PublicKeySerializeOkExt b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr signalMessageNewName + bv% (ls_off% "<libsignal_core::curve::PublicKey>::serialize" - ls_off% "<libsignal_protocol::protocol::SignalMessage>::new"))
-      (publicKeySerializeSpec A) := by
-  rw [fnAddr_new_add_eq_ext (target := publicKeySerializeName)]
-  exact h
-
-theorem publicKeySerialize_ok_at_new {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : PublicKeySerializeOk b C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr signalMessageNewName + bv% (ls_off% "<libsignal_core::curve::PublicKey>::serialize" - ls_off% "<libsignal_protocol::protocol::SignalMessage>::new"))
-      (publicKeySerializeSpec A) :=
-  publicKeySerialize_ok_at_new_ext h
-
-theorem encodedLen_ok_at_new_ext {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (h : EncodedLenOkExt b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr signalMessageNewName + bv% (ls_off% "<libsignal_protocol::proto::wire::SignalMessage as prost::message::Message>::encoded_len" - ls_off% "<libsignal_protocol::protocol::SignalMessage>::new"))
-      (encodedLenSpec A) := by
-  rw [fnAddr_new_add_eq_ext (target := encodedLenName)]
-  exact h
-
-theorem encodedLen_ok_at_new {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : EncodedLenOk b C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr signalMessageNewName + bv% (ls_off% "<libsignal_protocol::proto::wire::SignalMessage as prost::message::Message>::encoded_len" - ls_off% "<libsignal_protocol::protocol::SignalMessage>::new"))
-      (encodedLenSpec A) :=
-  encodedLen_ok_at_new_ext h
-
-theorem encodeVarint_ok_at_new_ext {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (h : EncodeVarintOkExt b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr signalMessageNewName + bv% (2 ^ 64 + (ls_off% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]") - (ls_off% "<libsignal_protocol::protocol::SignalMessage>::new")))
-      (encodeVarintSpec A) := by
-  rw [fnAddr_new_add_eq_ext (target := encodeVarintName)]
-  exact h
-
-theorem encodeVarint_ok_at_new {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : EncodeVarintOk b C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr signalMessageNewName + bv% (2 ^ 64 + (ls_off% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]") - (ls_off% "<libsignal_protocol::protocol::SignalMessage>::new")))
-      (encodeVarintSpec A) :=
-  encodeVarint_ok_at_new_ext h
-
-theorem computeMac_ok_at_new_ext {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (h : ComputeMacRawOkExt b C A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr signalMessageNewName + bv% (2 ^ 64 + (ls_off% "<libsignal_protocol::protocol::SignalMessage>::compute_mac") - (ls_off% "<libsignal_protocol::protocol::SignalMessage>::new")))
-      (computeMacSpec C.F A) := by
-  rw [fnAddr_new_add_eq_ext (target := computeMacName)]
-  exact h
-
-theorem computeMac_ok_at_new {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : ComputeMacRawOk b C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr signalMessageNewName + bv% (2 ^ 64 + (ls_off% "<libsignal_protocol::protocol::SignalMessage>::compute_mac") - (ls_off% "<libsignal_protocol::protocol::SignalMessage>::new")))
-      (computeMacSpec C.F A) :=
-  computeMac_ok_at_new_ext h
-
-theorem signalMessageNew_computeMac_inImage_ok_at_new_ext {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (h : ComputeMacOkExt img C A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr signalMessageNewName + bv% (2 ^ 64 + (ls_off% "<libsignal_protocol::protocol::SignalMessage>::compute_mac") - (ls_off% "<libsignal_protocol::protocol::SignalMessage>::new")))
-      ((computeMacSpec C.F A).inImage img) := by
-  rw [fnAddr_new_add_eq_ext (target := computeMacName)]
-  exact h
-
-theorem signalMessageNew_computeMac_inImage_ok_at_new {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (h : ComputeMacOk img C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr signalMessageNewName + bv% (2 ^ 64 + (ls_off% "<libsignal_protocol::protocol::SignalMessage>::compute_mac") - (ls_off% "<libsignal_protocol::protocol::SignalMessage>::new")))
-      ((computeMacSpec C.F A).inImage img) :=
-  signalMessageNew_computeMac_inImage_ok_at_new_ext h
-
-theorem serializeAddresses_ok_at_new_ext_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (h : SerializeAddressesOkX img A uuidTryParse ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr signalMessageNewName + bv% (2 ^ 64 + (ls_off% "<libsignal_protocol::protocol::SignalMessage>::serialize_addresses") - (ls_off% "<libsignal_protocol::protocol::SignalMessage>::new")))
-      ((serializeAddressesSpecX A uuidTryParse).inImage img) := by
-  rw [fnAddr_new_add_eq_ext (target := serializeAddressesName)]
-  exact h
-
-theorem publicKeySerialize_ok_at_new_ext_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (h : PublicKeySerializeOkX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr signalMessageNewName + bv% (ls_off% "<libsignal_core::curve::PublicKey>::serialize" - ls_off% "<libsignal_protocol::protocol::SignalMessage>::new"))
-      ((publicKeySerializeSpecX A).inImage img) := by
-  rw [fnAddr_new_add_eq_ext (target := publicKeySerializeName)]
-  exact h
-
-theorem encodeVarint_ok_at_new_ext_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (h : EncodeVarintOkExtX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr signalMessageNewName + bv% (2 ^ 64 + (ls_off% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]") - (ls_off% "<libsignal_protocol::protocol::SignalMessage>::new")))
-      ((encodeVarintSpecX A).inImage img) := by
-  rw [fnAddr_new_add_eq_ext (target := encodeVarintName)]
-  exact h
-
-theorem signalMessageNew_computeMac_inImage_ok_at_new_ext_x {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (h : ComputeMacOkX img C A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr signalMessageNewName + bv% (2 ^ 64 + (ls_off% "<libsignal_protocol::protocol::SignalMessage>::compute_mac") - (ls_off% "<libsignal_protocol::protocol::SignalMessage>::new")))
-      ((computeMacSpecX C.F A).inImage img) := by
-  rw [fnAddr_new_add_eq_ext (target := computeMacName)]
-  exact h
-
-/-! ## Pure field-length and protobuf-encoding lemmas -/
 
 theorem publicKey_serialize_length (pk : PublicKey) :
     pk.serialize.length = 33 := by
@@ -384,36 +201,36 @@ theorem signalMessageNew_computeMac_length (F : ShaCompress) (s r : IdentityKey)
 /-! ## Prefix definitions for inlined `encode_raw` (`+0x1b8..+0x3dc`) -/
 
 /-- Prefix 0 of `serialized` (`+0x1a0`): `[versionByte x.messageVersion]`. -/
-def SignalMessageNewGhost.serPrefix0 (x : SignalMessageNewGhost) : List (BitVec 8) :=
+@[expose] def SignalMessageNewGhost.serPrefix0 (x : SignalMessageNewGhost) : List (BitVec 8) :=
   [versionByte x.messageVersion]
 
 /-- Prefix 1 of `serialized` (`+0x210`, after tag 1 `ratchet_key`). -/
-def SignalMessageNewGhost.serPrefix1 (parse : UuidParser) (x : SignalMessageNewGhost) :
+@[expose] def SignalMessageNewGhost.serPrefix1 (parse : UuidParser) (x : SignalMessageNewGhost) :
     List (BitVec 8) :=
   x.serPrefix0 ++ encodeBytesField 1 (x.protoMsg parse).ratchetKey
 
 /-- Prefix 2 of `serialized` (`+0x240`, after tag 2 `counter`). -/
-def SignalMessageNewGhost.serPrefix2 (parse : UuidParser) (x : SignalMessageNewGhost) :
+@[expose] def SignalMessageNewGhost.serPrefix2 (parse : UuidParser) (x : SignalMessageNewGhost) :
     List (BitVec 8) :=
   x.serPrefix1 parse ++ encodeUint32Field 2 (x.protoMsg parse).counter
 
 /-- Prefix 3 of `serialized` (`+0x274`, after tag 3 `previous_counter`). -/
-def SignalMessageNewGhost.serPrefix3 (parse : UuidParser) (x : SignalMessageNewGhost) :
+@[expose] def SignalMessageNewGhost.serPrefix3 (parse : UuidParser) (x : SignalMessageNewGhost) :
     List (BitVec 8) :=
   x.serPrefix2 parse ++ encodeUint32Field 3 (x.protoMsg parse).previousCounter
 
 /-- Prefix 4 of `serialized` (`+0x2dc`, after tag 4 `ciphertext`). -/
-def SignalMessageNewGhost.serPrefix4 (parse : UuidParser) (x : SignalMessageNewGhost) :
+@[expose] def SignalMessageNewGhost.serPrefix4 (parse : UuidParser) (x : SignalMessageNewGhost) :
     List (BitVec 8) :=
   x.serPrefix3 parse ++ encodeBytesField 4 (x.protoMsg parse).ciphertext
 
 /-- Prefix 5 of `serialized` (`+0x360`, after tag 5 `pq_ratchet`). -/
-def SignalMessageNewGhost.serPrefix5 (parse : UuidParser) (x : SignalMessageNewGhost) :
+@[expose] def SignalMessageNewGhost.serPrefix5 (parse : UuidParser) (x : SignalMessageNewGhost) :
     List (BitVec 8) :=
   x.serPrefix4 parse ++ encodeBytesField 5 (x.protoMsg parse).pqRatchet
 
 /-- Prefix 6 of `serialized` (`+0x3dc`, after tag 6 `addresses`) = `serializeContent`. -/
-def SignalMessageNewGhost.serPrefix6 (parse : UuidParser) (x : SignalMessageNewGhost) :
+@[expose] def SignalMessageNewGhost.serPrefix6 (parse : UuidParser) (x : SignalMessageNewGhost) :
     List (BitVec 8) :=
   x.serPrefix5 parse ++ encodeBytesField 6 (x.protoMsg parse).addresses
 

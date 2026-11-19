@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedNoHeaderReceivedUc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedNoHeaderReceivedUc
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -25,6 +25,7 @@ import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Inner Exits & Auth Steps for `Chunked.NoHeaderReceived::merge` (Block `308`)
@@ -34,7 +35,7 @@ Provides budget-threaded loop preconditions, error frames, shared error exits, a
 lemmas on Block `308` with `withLsCodeRoLoaded lsmpl` callees.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -108,7 +109,7 @@ attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero chunkedNoHe
 /-! ## Budget Preconditions, Error Frame, and Placed Exits for `Chunked.NoHeaderReceived::merge` -/
 
 /-- Budget-threaded outer loop-header separation-logic bundle at `+0x0a8` (`entry + 168#64`). -/
-def chunkedNoHeaderReceivedLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedNoHeaderReceivedLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (m : V1State.Chunked.NoHeaderReceived) (bs cur : List (BitVec 8)) (polyBound : Nat) : SepProp :=
@@ -118,7 +119,7 @@ def chunkedNoHeaderReceivedLoopPre {M : AllocCostModel} (A : RustCliAllocBudget 
     chunkedInlSavedRegs10 s0.sp s0 ∗ (bufRef ↦₆₄ slot) ∗ sliceCursorAfter slot ptr bs cur
 
 /-- Budget-threaded inner `Unchunked.NoHeaderReceived` loop-header bundle (`entry + 408#64`). -/
-def chunkedNoHeaderReceivedUcLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedNoHeaderReceivedUcLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (hdr : Option PolynomialDecoder) (uc : V1State.Unchunked.NoHeaderReceived)
@@ -130,7 +131,7 @@ def chunkedNoHeaderReceivedUcLoopPre {M : AllocCostModel} (A : RustCliAllocBudge
     chunkedInlSavedRegs10 s0.sp s0 ∗ (bufRef ↦₆₄ slot) ∗ sliceCursorAfter slot ptr bs cur
 
 /-- Budget-threaded error-exit separation-logic bundle at fuel `f` (`f ≤ 6 * bs.length + 12`). -/
-def chunkedNoHeaderReceivedErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedNoHeaderReceivedErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (f polyBound : Nat) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (m : V1State.Chunked.NoHeaderReceived) (bs : List (BitVec 8)) : SepProp :=

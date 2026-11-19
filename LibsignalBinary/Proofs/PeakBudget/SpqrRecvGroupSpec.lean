@@ -9,8 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightSpec
+public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightSpec
+public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
+public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvPeakSpec
+public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightBranches -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
+import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvRaw
+import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Tight `PhaseGroupSpec` Bounds for SPQR `spqr::recv`
@@ -22,7 +32,7 @@ scaled units = `6,410` groups across up to `25,001` `35`-byte HKDF info allocati
 group hypotheses across all three version-ordering branches.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -67,6 +77,8 @@ open LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightBranches
   (SpqrRecvC07TightEnv SpqrRecvEqualTightEnv SpqrRecvTightDomain SpqrRecvTightEnv
    V1ChainAndEncodeTightEnv)
 open LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvRaw (states_recv_raw_le_2976)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
+  (phaseGroupSpec_msgDeserErrEnv)
 open LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps (ValidChainParams ValidChainParamsPB ValidEncoderPts640)
 open LibsignalBinary.Proofs.PeakBudget.SpqrTightCapsAux
   (StatesPtsBoundedAt ValidPqPtsAt ValidV1PtsAt statesPtsBoundedAt_of_from_pb
@@ -88,13 +100,13 @@ open LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
 
 /-- Scaled group bound for `<Chain>::recv_key` (`25,001 * 16,659 + 16,659 + 18 * 196,608 = 420,047,262`, `6,410` groups).
 -/
-def chainRecvKeyTightGroupS : Nat := 420047262
+@[expose] def chainRecvKeyTightGroupS : Nat := 420047262
 
-def chainRecvKeyTightGroups : Nat := 6410
+@[expose] def chainRecvKeyTightGroups : Nat := 6410
 
 /-- Scaled group bound for `V1ChainAndEncodeTightEnv` excluding `StatesIntoPbEnv'` (`421,107,504`, `6,426` groups).
 -/
-def v1ChainAndEncodeTightGroupS : Nat := 421107504
+@[expose] def v1ChainAndEncodeTightGroupS : Nat := 421107504
 
 theorem chainRecvKeyTightGroups_eq :
     (chainRecvKeyTightGroupS + FineScale - 1) / FineScale = chainRecvKeyTightGroups := by
@@ -978,8 +990,11 @@ theorem spqrRecvOrderingEqual_phaseGroupSpec_tight
     · exact phaseGroupSpec_of_false _ fun _ h => absurd h.1 hfrom
   have hFull := phaseGroupSpec_seq_freeOnly_left
     (phaseGroupSpec_or_freeOnly (hFrom.seq (phaseGroupSpec_or_freeOnly hAfterFromOk)))
+  have hMdErr := phaseGroupSpec_seq_freeOnly_right (phaseGroupSpec_msgDeserErrEnv fineCostModel)
   unfold SpqrRecvEqualTightEnv
-  exact hFull.mono (by simp only [Nat.add_assoc]; exact Nat.le_refl _)
+  exact (hMdErr.or hFull).mono
+    (Nat.max_le.mpr ⟨by unfold v1ChainAndEncodeTightGroupS LibsignalBinary.Heap.Fine.FineScale; omega,
+      by simp only [Nat.add_assoc]; exact Nat.le_refl _⟩)
 
 private theorem validV1PtsAt640_of_validEncoderPts640_grp {stBytes : Bytes} {pre_pb : PqRatchetState}
     {pb : V1State} (hPts : ValidEncoderPts640 stBytes)

@@ -9,19 +9,34 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.ReadFileHookPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitId.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.ProofPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.ReadFileHookPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitId.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.ProofPlaced
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KemDeserializeSlot
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.AssemblyPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooksPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainOkA1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Proofs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserializePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bounds
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable Instantiation of `run` into `main`
@@ -31,7 +46,7 @@ Instantiates the relocatable `run` subroutine contract into `main` (Block `617`)
 functional specifications over `cliGhostExterns gh (cliExternsPlaced mmpl W)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -72,6 +87,12 @@ structure CliA0MainHooks [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
   readFile : subroutine_ok (lsProg_617 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (lsρ lsReadFileSym)
     (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo E2E.HooksE.A0 cliHookStack))
+  writeFile : subroutine_ok (lsProg_617 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
+    (lsρ lsWriteFileSym)
+    (withLsRoCl lsmpl (writeFileSpecPlaced cliIo cliHookStack))
+  writeStdout : subroutine_ok (lsProg_617 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
+    (lsρ lsWriteStdoutSym)
+    (withLsRoCl lsmpl (writeStdoutSpecPlaced cliHookStack))
 
 theorem CliA0MainHooks.of_hookSat [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (gh : CliGhostHooks) (W : CliHooks)
@@ -83,10 +104,16 @@ theorem CliA0MainHooks.of_hookSat [LibsignalPlacement] (mmpl : Obj.MultiPlacemen
     (hReadStdin : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsReadStdinSym
       (readStdinSpecPlaced cliIo E2E.HooksE.A0 cliHookStack))
     (hReadFile : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsReadFileSym
-      (readFileLitSpecPlaced cliIo E2E.HooksE.A0 cliHookStack)) :
+      (readFileLitSpecPlaced cliIo E2E.HooksE.A0 cliHookStack))
+    (hWriteFile : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsWriteFileSym
+      (writeFileSpecPlaced cliIo cliHookStack))
+    (hWriteStdout : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsWriteStdoutSym
+      (writeStdoutSpecPlaced cliHookStack)) :
     CliA0MainHooks mmpl gh W :=
   ⟨hAllocFs, hExtra, hStrlen, readStdin_rocl_ok_of_hookSat hReadStdin,
-    readFile_rocl_ok_of_hookSat hReadFile⟩
+    readFile_rocl_ok_of_hookSat hReadFile,
+    writeFile_rocl_ok_of_hookSat hWriteFile,
+    writeStdout_rocl_ok_of_hookSat hWriteStdout⟩
 
 /-- Hook and `read_file` bundle for `run` (Block `579`) under `cliHookTablePlaced mmpl W` and `CliGhostHooks`. -/
 structure CliA0RunHooks [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
@@ -97,7 +124,7 @@ structure CliA0RunHooks [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (readFileSpecPlaced cliIo.rd cliWrOk E2E.HooksE.A0 cliRunBudgets_placed.readFile)
 
 /-- Default `UnreachedPqxdhPrimitives` witness for the SM domain, which never invokes `initiate` or `decrypt_prekey`. -/
-def defaultModelExtras_placed : UnreachedPqxdhPrimitives where
+@[expose] def defaultModelExtras_placed : UnreachedPqxdhPrimitives where
   sigPkGen _ := []
   sigSign _ _ _ := []
   scalarMul _ _ := []
@@ -107,7 +134,7 @@ def defaultModelExtras_placed : UnreachedPqxdhPrimitives where
   isValidDhTriple _ _ _ := false
 
 /-- Concrete `RunSem` at `Slots.scopeIn`, parameterized over `decrypt_prekey` and `PreKeySignalMessage::try_from`. -/
-noncomputable def cliRunSem_placed (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+@[expose] noncomputable def cliRunSem_placed (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (decPk : FsFiles → AddrVal → AddrVal → PreKeySignalMessage → List (BitVec 8) →
       SlotAns (List (BitVec 8)))
     (decPkOk : FsFiles → AddrVal → AddrVal → PreKeySignalMessage → Prop)
@@ -123,7 +150,7 @@ noncomputable def cliRunSem_placed (X : UnreachedPqxdhPrimitives) (W : CliHooks)
   decPkOk := decPkOk
 
 /-- Existential witness for the all-inputs `PreKeySignalMessage::try_from` slot on Block `579`. -/
-def CliPksmSlotExistsPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
+@[expose] def CliPksmSlotExistsPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (gh : CliGhostHooks) (W : CliHooks) : Prop :=
   ∃ pksmParse : List (BitVec 8) → Option PreKeySignalMessage,
     ∀ S : RunSem, S.pksmParse = pksmParse →
@@ -132,7 +159,7 @@ def CliPksmSlotExistsPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
         (pksmSlotSpecPlaced E2E.HooksE.A0 S)
 
 /-- Existential witness for the `decrypt_prekey` slot on Block `579`. -/
-def CliDecPkSlotExistsPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
+@[expose] def CliDecPkSlotExistsPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (gh : CliGhostHooks) (W : CliHooks) : Prop :=
   ∃ (decPk : FsFiles → AddrVal → AddrVal → PreKeySignalMessage → List (BitVec 8) →
         SlotAns (List (BitVec 8)))
@@ -148,7 +175,7 @@ def CliDecPkSlotExistsPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
         (lsProg_579 (cliGhostExterns gh (cliExternsPlaced mmpl W))) (lsmpl.base 520)
 
 /-- Existential witness for the frozen `decrypt_prekey` slot (`slotsOfSigPkFrozenPlaced`) on Block `579`. -/
-def CliDecPkSlotExistsFrozenPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
+@[expose] def CliDecPkSlotExistsFrozenPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (gh : CliGhostHooks) (W : CliHooks) : Prop :=
   ∃ (decPk : FsFiles → AddrVal → AddrVal → PreKeySignalMessage → List (BitVec 8) →
         SlotAns (List (BitVec 8)))
@@ -636,7 +663,8 @@ theorem main_ok_cli_placed_of_runTight [LibsignalPlacement]
       (mainSpecTightPlaced CodeOk E2E.HooksE.A0 cliMainStk cliStaticsPlaced
         (runRel (cliRunSem_placed X W decPk decPkOk pksmParse))) :=
   main_ok_a1_tight_placed mmpl gh W hMainHooks.allocFs hMainHooks.extraOk hMainHooks.strlen
-    hMainHooks.readStdin hMainHooks.readFile hrun (fun _ _ hr => RunCompose.runRel_dom hr)
+    hMainHooks.readStdin hMainHooks.readFile hMainHooks.writeFile hMainHooks.writeStdout
+    hrun (fun _ _ hr => RunCompose.runRel_dom hr)
 
 /-- Tightened `main` subroutine contract on Block `617` instantiated with `hrun_cli_placed`. -/
 theorem main_ok_cli_tight_placed [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
@@ -773,7 +801,7 @@ theorem preKeyMsgE_bytes_lt_2_32_placed {m : PreKeyMessageFields}
   omega
 
 /-- Relocatable `main`-level SM-domain functional specification on `mProgPlaced`. -/
-def MainOkCliSmPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
+@[expose] def MainOkCliSmPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (gh : CliGhostHooks) : Prop :=
   lsmpl.base 547 ≠ 0#64 →
   ∀ W : CliHooks, ∃ Run : Inputs → Cli.RunAnswer → Prop,
@@ -793,7 +821,7 @@ def MainOkCliSmPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
         Cli.CommitOk (smRecvInputs g c rc) (Cli.MainResult.ofAnswer a))
 
 /-- Tightened `main`-level SM-domain functional specification on `mProgPlaced`. -/
-def MainOkCliSmTightPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
+@[expose] def MainOkCliSmTightPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (gh : CliGhostHooks) : Prop :=
   lsmpl.base 547 ≠ 0#64 →
   ∀ W : CliHooks, ∃ Run : Inputs → Cli.RunAnswer → Prop,
@@ -820,7 +848,7 @@ theorem MainOkCliSmTightPlaced.toMainOkCliSmPlaced [LibsignalPlacement]
   exact ⟨Run, Cli.subroutine_ok_mainSpecPlaced_of_tight hmain, hsend, hrecv⟩
 
 /-- Relocatable `main`-level 5-clause PQXDH functional specification on `mProgPlaced`. -/
-def MainOkCliPqPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
+@[expose] def MainOkCliPqPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (gh : CliGhostHooks) : Prop :=
   lsmpl.base 547 ≠ 0#64 →
   ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
@@ -864,7 +892,7 @@ def MainOkCliPqPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
             Cli.CommitOk (pqRecvInputs WP st c rc) (Cli.MainResult.ofAnswer a))
 
 /-- Tightened `main`-level 5-clause PQXDH functional specification on `mProgPlaced`. -/
-def MainOkCliPqTightPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
+@[expose] def MainOkCliPqTightPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (gh : CliGhostHooks) : Prop :=
   lsmpl.base 547 ≠ 0#64 →
   ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),

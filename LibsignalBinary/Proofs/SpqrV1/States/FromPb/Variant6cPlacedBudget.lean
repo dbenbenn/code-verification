@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6cPlacedBudgetAux
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6cPlacedBudgetAux
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch1Placed
@@ -20,6 +20,21 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6b
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6c
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Repr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6aPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6aPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6cPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Placed Variant 6 (`HeaderReceived`, `+1464`, Block `333`) — Part C
@@ -29,7 +44,7 @@ Proves `FreeOnlyEvs` deallocation helpers (`+9852 -> +9936`, `+10456 -> +10396`,
 `ProtoAuthenticator` buffer clone theorems from `Variant6cPlacedBudgetAux`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -412,35 +427,6 @@ theorem v6hr_dealloc_c0_10456_to_10396_of_sub_placed [LibsignalPlacement]
       (by simp only [wp_norm, arm64_norm]; sep_ac_rfl) ?_
     wp_done
 
-theorem v6hr_dealloc_c0_10456_to_10396_of_placedHooks [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksPlacedBudget M A lim ext)
-    (st : M.σ) (s0 s1 : State) (out c0 p0 : BitVec 64) (Rest : SepProp)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = lsmpl.base 333 + 10456#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64)
-    (hx19_1 : s1.readReg64 .x19 = out)
-    (hx27_1 : s1.readReg64 .x27 = c0)
-    (htr1 : TraceCalleeSaved s1 s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333 + 10396#64) s1
-      (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        (((s0.sp - 2400#64) + 144#64) ↦₆₄ p0) ∗
-        vecCapPtrDealloc A.repAlloc c0 p0 ∗ A.pool lim st s1 ∗ Rest)
-      (fun sm Pm =>
-        ∃ evs : List AllocEvent,
-          FreeOnlyEvs evs ∧
-          (Pm ⊢
-            stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-            (((s0.sp - 2400#64) + 144#64) ↦₆₄ p0) ∗
-            A.pool lim (M.stepEvents evs st) sm ∗ Rest) ∧
-          sm.sp = s0.sp - 2400#64 ∧ sm.readReg64 .x19 = out ∧
-          sm.readReg64 .x25 = 0#64 ∧ TraceCalleeSaved sm s0) :=
-  v6hr_dealloc_c0_10456_to_10396_of_sub_placed (v6hr_sub_ok_dealloc_of_placedHooks hA)
-    st s0 s1 out c0 p0 Rest hsp0_align hpc1 hrun1 hsp1 hx19_1 hx27_1 htr1
-
 theorem v6hr_dealloc_c0_10532_to_10396_of_sub_placed [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ext : String → Option (State → State)}
@@ -547,35 +533,6 @@ theorem v6hr_dealloc_c0_10456_to_10396_placed [LibsignalPlacement]
           sm.sp = s0.sp - 2400#64 ∧ sm.readReg64 .x19 = out ∧
           sm.readReg64 .x25 = 0#64 ∧ TraceCalleeSaved sm s0) :=
   v6hr_dealloc_c0_10456_to_10396_of_sub_placed (v6hr_sub_ok_dealloc_placed hA)
-    st s0 s1 out c0 p0 Rest hsp0_align hpc1 hrun1 hsp1 hx19_1 hx27_1 htr1
-
-theorem v6hr_dealloc_c0_10532_to_10396_of_placedHooks [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksPlacedBudget M A lim ext)
-    (st : M.σ) (s0 s1 : State) (out c0 p0 : BitVec 64) (Rest : SepProp)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = lsmpl.base 333 + 10532#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64)
-    (hx19_1 : s1.readReg64 .x19 = out)
-    (hx27_1 : s1.readReg64 .x27 = c0)
-    (htr1 : TraceCalleeSaved s1 s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333 + 10396#64) s1
-      (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        (((s0.sp - 2400#64) + 144#64) ↦₆₄ p0) ∗
-        vecCapPtrDealloc A.repAlloc c0 p0 ∗ A.pool lim st s1 ∗ Rest)
-      (fun sm Pm =>
-        ∃ evs : List AllocEvent,
-          FreeOnlyEvs evs ∧
-          (Pm ⊢
-            stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-            (((s0.sp - 2400#64) + 144#64) ↦₆₄ p0) ∗
-            A.pool lim (M.stepEvents evs st) sm ∗ Rest) ∧
-          sm.sp = s0.sp - 2400#64 ∧ sm.readReg64 .x19 = out ∧
-          sm.readReg64 .x25 = 0#64 ∧ TraceCalleeSaved sm s0) :=
-  v6hr_dealloc_c0_10532_to_10396_of_sub_placed (v6hr_sub_ok_dealloc_of_placedHooks hA)
     st s0 s1 out c0 p0 Rest hsp0_align hpc1 hrun1 hsp1 hx19_1 hx27_1 htr1
 
 theorem v6hr_dealloc_c0_10532_to_10396_placed [LibsignalPlacement]
@@ -750,44 +707,6 @@ theorem v6hr_dealloc_cloned_10416_to_10396_of_sub_placed [LibsignalPlacement]
       rw [LibsignalBinary.Heap.AllocCostModel.stepEvents_append,
           LibsignalBinary.Heap.AllocCostModel.stepEvents_append]
       exact Entails.trans hPm (Entails.of_eq (by sep_ac_rfl))
-
-theorem v6hr_dealloc_cloned_10416_to_10396_of_placedHooks [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksPlacedBudget M A lim ext)
-    (st : M.σ) (s0 s1 : State)
-    (out c0 p0 l1 p1_new l2 p2_new : BitVec 64)
-    (rootKey macKey hdr : List (BitVec 8)) (Rest : SepProp)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = lsmpl.base 333 + 10416#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64)
-    (hx19_1 : s1.readReg64 .x19 = out)
-    (hx21_1 : s1.readReg64 .x21 = p1_new)
-    (hx26_1 : s1.readReg64 .x26 = l1)
-    (hx27_1 : s1.readReg64 .x27 = c0)
-    (htr1 : TraceCalleeSaved s1 s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333 + 10396#64) s1
-      (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        (((s0.sp - 2400#64) + 136#64) ↦₆₄ p2_new) ∗ (((s0.sp - 2400#64) + 144#64) ↦₆₄ p0) ∗
-        (((s0.sp - 2400#64) + 216#64) ↦₆₄ l2) ∗
-        vecU8Payload A.repAlloc l1 p1_new rootKey ∗
-        vecU8Payload A.repAlloc l2 p2_new macKey ∗
-        vecU8Payload A.repAlloc c0 p0 hdr ∗ A.pool lim st s1 ∗ Rest)
-      (fun sm Pm =>
-        ∃ evs : List AllocEvent,
-          FreeOnlyEvs evs ∧
-          (Pm ⊢
-            stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-            (((s0.sp - 2400#64) + 136#64) ↦₆₄ p2_new) ∗ (((s0.sp - 2400#64) + 144#64) ↦₆₄ p0) ∗
-            (((s0.sp - 2400#64) + 216#64) ↦₆₄ l2) ∗
-            A.pool lim (M.stepEvents evs st) sm ∗ Rest) ∧
-          sm.sp = s0.sp - 2400#64 ∧ sm.readReg64 .x19 = out ∧
-          sm.readReg64 .x25 = 0#64 ∧ TraceCalleeSaved sm s0) :=
-  v6hr_dealloc_cloned_10416_to_10396_of_sub_placed (v6hr_sub_ok_dealloc_of_placedHooks hA)
-    st s0 s1 out c0 p0 l1 p1_new l2 p2_new rootKey macKey hdr Rest
-    hsp0_align hpc1 hrun1 hsp1 hx19_1 hx21_1 hx26_1 hx27_1 htr1
 
 theorem v6hr_dealloc_cloned_10416_to_10396_placed [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}

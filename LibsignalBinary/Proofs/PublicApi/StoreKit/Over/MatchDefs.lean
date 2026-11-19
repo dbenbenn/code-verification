@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.RecordX.Scope
+public import LibsignalBinary.Proofs.E2E.RecordX.Scope -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.PqDir
 public import LibsignalBinary.Specifications.AsmConstants -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `SessionRecord::promote_matching_session` Miss Contracts and Decompositions
@@ -28,7 +29,7 @@ All three paths converge at `+0xec`, step `Map<Iter<Vec<u8>>, ...>::next` on the
 write `Ok(false)` (`0#64` at `outPtr`, `0#8` at `outPtr + 8`) with `sessionRecordAt` preserved.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -63,14 +64,10 @@ abbrev promoteMatchingSessionMatchStackExt : Nat := 1184 + extHookStack
 `CliExt.blackBoxSpec` (`1248 + extHookStack = 17632` bytes). -/
 abbrev p2PromoteMissStackExt : Nat := 1248 + extHookStack
 
-/-- Alias for `p2PromoteMissStackExt` (`1248 + extHookStack = 17632` bytes), mirroring
-`promoteMatchingSessionMissStack`. -/
-abbrev promoteMatchingSessionMissStackExt : Nat := p2PromoteMissStackExt
-
 /-- Whether a `Session` matches `(msgVer, serBytes)` in `SessionRecord::promote_matching_session`:
 its effective protocol version (`2` if raw `sessionVersion = 0`, else `sessionVersion`) equals
 `msgVer.zeroExtend 32` and its `alice_base_key` equals `serBytes`. -/
-def SessMatchesMsg (s : Session (List (BitVec 8))) (msgVer : BitVec 8)
+@[expose] def SessMatchesMsg (s : Session (List (BitVec 8))) (msgVer : BitVec 8)
     (serBytes : List (BitVec 8)) : Prop :=
   s.state.version = msgVer.zeroExtend 32 ∧ s.aliceBaseKey = serBytes
 
@@ -104,7 +101,7 @@ theorem sessMatchesMsg_sessionOfX_iff_pqSessionMatches
 - `recPtr + 0x80`: `alice_base_key.ptr` (`abkPtr`)
 - `recPtr + 0x88`: `alice_base_key.len` (`abkLen`)
 - `recPtr + 0x160`: `session_version` (`sessVer`) -/
-def sessionRecordMissPromoteFieldsAt
+@[expose] def sessionRecordMissPromoteFieldsAt
     (recPtr prevPtr curDiscr abkPtr abkLen : BitVec 64) (sessVer : BitVec 32) : SepProp :=
   ((recPtr + 8#64) ↦₆₄ prevPtr) ∗
   ((recPtr + 16#64) ↦₆₄ 0#64) ∗
@@ -119,7 +116,7 @@ def sessionRecordMissPromoteFieldsAt
 - `cells (sp - 1184) 10`: local scratch slots `[sp .. sp + 0x50)` at `sp_inner = sp - 1184`
 - `(sp - 448) ↦₆₄ _`: iterator return tag at `sp_inner + 0x2e0` (`-2` = `None`)
 - `cells (sp - 96) 12`: saved frame/callee-saved registers `[sp - 96 .. sp)` -/
-def promoteMissStackCells (sp : BitVec 64) : SepProp :=
+@[expose] def promoteMissStackCells (sp : BitVec 64) : SepProp :=
   cells (sp - 1248#64) 8 ∗
   cells (sp - 1184#64) 10 ∗
   (∃∗ w2e0 : BitVec 64, (sp - 448#64) ↦₆₄ w2e0) ∗
@@ -137,7 +134,7 @@ structure PromoteVerMissRawGhost where
   serPtr : BitVec 64
   outPtr : BitVec 64
 
-def promoteMatchingSessionVerMissRawSpec : Spec PromoteVerMissRawGhost where
+@[expose] def promoteMatchingSessionVerMissRawSpec : Spec PromoteVerMissRawGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.recPtr ∧
      s.readReg64 .x1 = x.msgVer.zeroExtend 64 ∧
@@ -170,7 +167,7 @@ structure PromoteLenMissRawGhost where
   serPtr : BitVec 64
   outPtr : BitVec 64
 
-def promoteMatchingSessionLenMissRawSpec : Spec PromoteLenMissRawGhost where
+@[expose] def promoteMatchingSessionLenMissRawSpec : Spec PromoteLenMissRawGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.recPtr ∧
      s.readReg64 .x1 = x.msgVer.zeroExtend 64 ∧
@@ -205,7 +202,7 @@ structure PromoteKeyMissRawGhost where
   serBytes : List (BitVec 8)
   ak : List (BitVec 8)
 
-def promoteMatchingSessionKeyMissRawSpec : Spec PromoteKeyMissRawGhost where
+@[expose] def promoteMatchingSessionKeyMissRawSpec : Spec PromoteKeyMissRawGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.recPtr ∧
      s.readReg64 .x1 = x.msgVer.zeroExtend 64 ∧
@@ -249,7 +246,7 @@ structure PromoteMissGhost where
 populated `SessionRecord` (`r.currentSession = some s`, `¬ SessMatchesMsg s msgVer serBytes`,
 empty `previous_sessions` of arbitrary capacity `g.prevCap`): returns `Ok(false)` (`outPtr ↦₆₄ 0#64
 ∗ (outPtr + 8#64) ↦₈ 0#8`) with `sessionRecordAt A recPtr g r` unchanged. -/
-def promoteMatchingSessionMissSpec (A : RustAlloc) : Spec PromoteMissGhost where
+@[expose] def promoteMatchingSessionMissSpec (A : RustAlloc) : Spec PromoteMissGhost where
   pre := fun x st =>
     ⌜st.readReg64 .x0 = x.recPtr ∧
      st.readReg64 .x1 = x.msgVer.zeroExtend 64 ∧
@@ -274,7 +271,7 @@ def promoteMatchingSessionMissSpec (A : RustAlloc) : Spec PromoteMissGhost where
 
 /-- Tuple-shaped 9-byte-outPtr / `rpkPromoteMatchStackX` form for callers with pre-split `outPtr`
 cells (`(outPtr ↦₆₄ _) ∗ ((outPtr + 8) ↦₈ _)`) and arbitrary `prevCap` / `¬ SessMatchesMsg`. -/
-def promoteMatchingSessionRecordOverSpec (A : RustAlloc) :
+@[expose] def promoteMatchingSessionRecordOverSpec (A : RustAlloc) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × SessionGhost × Session (List (BitVec 8)) ×
       BitVec 8 × BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (recPtr, prevCap, prevPtr, G, sess, msgVer, serPtr, outPtr, key) s =>
@@ -301,14 +298,14 @@ def promoteMatchingSessionRecordOverSpec (A : RustAlloc) :
 /-! ## 4. Record & Stack Decompositions -/
 
 /-- The `alice_base_key` heap buffer of `sessionRecordAt`. -/
-def aliceBufOverAt (A : RustAlloc) (G : SessionGhost) : SepProp :=
+@[expose] def aliceBufOverAt (A : RustAlloc) (G : SessionGhost) : SepProp :=
   if G.alice.cap = 0 then emp
   else A.live G.alice.ptr G.alice.cap.toNat 1 ∗ (G.alice.ptr ↦ₛ G.alice.bytes) ∗
     memRegion (G.alice.ptr + BitVec.ofNat 64 G.alice.bytes.length)
       (G.alice.cap.toNat - G.alice.bytes.length)
 
 /-- Rest of `VecGhost` after exposing the capacity word at `v`. -/
-def vecGhostCapRestAt (A : RustAlloc) (vg : VecGhost) (v : BitVec 64) : SepProp :=
+@[expose] def vecGhostCapRestAt (A : RustAlloc) (vg : VecGhost) (v : BitVec 64) : SepProp :=
   ((v + 8#64) ↦₆₄ vg.ptr) ∗ ((v + 16#64) ↦₆₄ BitVec.ofNat 64 vg.bytes.length) ∗
   ⌜vg.bytes.length ≤ vg.cap.toNat ∧ vg.cap.toNat < 2 ^ 63 ∧ vg.ptr ≠ 0⌝ ∗
   (if vg.cap = 0 then emp
@@ -322,7 +319,7 @@ theorem vecGhostAt_split_cap_over (A : RustAlloc) (vg : VecGhost) (v : BitVec 64
 
 /-- Rest of `sessionRecordAt A recPtr ⟨prevCap, prevPtr, some G⟩ ⟨some s⟩` after exposing
 `sessionRecordMissPromoteFieldsAt` and `aliceBufOverAt`. -/
-def sessionRecordMissRestAt (A : RustAlloc) (recPtr prevCap prevPtr : BitVec 64)
+@[expose] def sessionRecordMissRestAt (A : RustAlloc) (recPtr prevCap prevPtr : BitVec 64)
     (G : SessionGhost) (s : Session (List (BitVec 8))) : SepProp :=
   (recPtr ↦₆₄ prevCap) ∗
   vecBuf A 24 8 (fun (_ : Unit) _ => emp) prevCap prevPtr [] ∗
@@ -488,7 +485,7 @@ theorem ofNat_len_ne_33 {n : Nat} (hlt : n < 2 ^ 63) (hne : n ≠ 33) :
 
 /-- Byte-list comparison accumulator matching the loop `+0x80..+0x9c` of `promote_matching_session`:
 processes `(ks, as_)` left-to-right, AND-ing `(k == a)` into `acc`. -/
-def ctBytesEqAcc : List (BitVec 8) → List (BitVec 8) → Bool → Bool
+@[expose] def ctBytesEqAcc : List (BitVec 8) → List (BitVec 8) → Bool → Bool
   | [], _, acc => acc
   | _, [], acc => acc
   | k :: ks, a :: as_, acc => ctBytesEqAcc ks as_ ((k == a) && acc)
@@ -537,13 +534,13 @@ theorem ctBytesEqAcc_true_of_ne {ks as_ : List (BitVec 8)} (hlen : ks.length = a
 /-- Stack slots touched by `promote_matching_session` on any miss path with empty
 `previous_sessions` under `CliExt.blackBoxSpec` (`extHookStack = 16384` bytes below
 `sp_inner = sp - 1184`, which also covers `cells (sp - 1248) 8` used sequentially at `+0xec`). -/
-def promoteMissStackCellsExt (sp : BitVec 64) : SepProp :=
+@[expose] def promoteMissStackCellsExt (sp : BitVec 64) : SepProp :=
   stackAt (sp - 1184#64) extHookStack ∗
   cells (sp - 1184#64) 10 ∗
   (∃∗ w2e0 : BitVec 64, (sp - 448#64) ↦₆₄ w2e0) ∗
   cells (sp - 96#64) 12
 
-def promoteMatchingSessionVerMissRawSpecExt : Spec PromoteVerMissRawGhost where
+@[expose] def promoteMatchingSessionVerMissRawSpecExt : Spec PromoteVerMissRawGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.recPtr ∧
      s.readReg64 .x1 = x.msgVer.zeroExtend 64 ∧
@@ -563,7 +560,7 @@ def promoteMatchingSessionVerMissRawSpecExt : Spec PromoteVerMissRawGhost where
     ((x.outPtr + 8#64) ↦₈ 0#8) ∗
     promoteMissStackCellsExt s0.sp
 
-def promoteMatchingSessionLenMissRawSpecExt : Spec PromoteLenMissRawGhost where
+@[expose] def promoteMatchingSessionLenMissRawSpecExt : Spec PromoteLenMissRawGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.recPtr ∧
      s.readReg64 .x1 = x.msgVer.zeroExtend 64 ∧
@@ -584,7 +581,7 @@ def promoteMatchingSessionLenMissRawSpecExt : Spec PromoteLenMissRawGhost where
     ((x.outPtr + 8#64) ↦₈ 0#8) ∗
     promoteMissStackCellsExt s0.sp
 
-def promoteMatchingSessionKeyMissRawSpecExt : Spec PromoteKeyMissRawGhost where
+@[expose] def promoteMatchingSessionKeyMissRawSpecExt : Spec PromoteKeyMissRawGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.recPtr ∧
      s.readReg64 .x1 = x.msgVer.zeroExtend 64 ∧
@@ -614,7 +611,7 @@ def promoteMatchingSessionKeyMissRawSpecExt : Spec PromoteKeyMissRawGhost where
 /-- Public specification of `<SessionRecord>::promote_matching_session` on any non-matching
 populated `SessionRecord` under `CliExt.blackBoxSpec` at `p2PromoteMissStackExt` (`1248 +
 extHookStack = 17632` bytes). -/
-def promoteMatchingSessionMissSpecExt (A : RustAlloc) : Spec PromoteMissGhost where
+@[expose] def promoteMatchingSessionMissSpecExt (A : RustAlloc) : Spec PromoteMissGhost where
   pre := fun x st =>
     ⌜st.readReg64 .x0 = x.recPtr ∧
      st.readReg64 .x1 = x.msgVer.zeroExtend 64 ∧
@@ -639,7 +636,7 @@ def promoteMatchingSessionMissSpecExt (A : RustAlloc) : Spec PromoteMissGhost wh
 
 /-- Tuple-shaped 9-byte-`outPtr` miss contract under `CliExt.blackBoxSpec` at
 `p2PromoteMissStackExt` (`1248 + extHookStack = 17632` bytes). -/
-def promoteMatchingSessionRecordOverSpecExt (A : RustAlloc) :
+@[expose] def promoteMatchingSessionRecordOverSpecExt (A : RustAlloc) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × SessionGhost × Session (List (BitVec 8)) ×
       BitVec 8 × BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (recPtr, prevCap, prevPtr, G, sess, msgVer, serPtr, outPtr, key) s =>
@@ -665,7 +662,7 @@ def promoteMatchingSessionRecordOverSpecExt (A : RustAlloc) :
 
 /-- Tight `17568`-byte (`promoteMatchingSessionMatchStackExt = rpkPromoteMatchStackX`) variant of
 `promoteMatchingSessionRecordOverSpecExt` for callers that allocate `1184 + extHookStack`. -/
-def promoteMatchingSessionRecordOverMatchStackSpecExt (A : RustAlloc) :
+@[expose] def promoteMatchingSessionRecordOverMatchStackSpecExt (A : RustAlloc) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × SessionGhost × Session (List (BitVec 8)) ×
       BitVec 8 × BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (recPtr, prevCap, prevPtr, G, sess, msgVer, serPtr, outPtr, key) s =>
@@ -691,7 +688,7 @@ def promoteMatchingSessionRecordOverMatchStackSpecExt (A : RustAlloc) :
 
 /-- Tight `17568`-byte (`promoteMatchingSessionMatchStackExt`) variant of
 `promoteMatchingSessionMissSpecExt`. -/
-def promoteMatchingSessionMissMatchStackSpecExt (A : RustAlloc) : Spec PromoteMissGhost where
+@[expose] def promoteMatchingSessionMissMatchStackSpecExt (A : RustAlloc) : Spec PromoteMissGhost where
   pre := fun x st =>
     ⌜st.readReg64 .x0 = x.recPtr ∧
      st.readReg64 .x1 = x.msgVer.zeroExtend 64 ∧

@@ -266,19 +266,6 @@ private theorem eFind_kon_eq {a : Ty pqSig} {Γ₁ Γ₂ : List (Ty pqSig)}
   simp only [eFind, Expr.eval, hxs]
   congr 1; funext x; exact hp x
 
-private theorem eMap_kon_eq {a c : Ty pqSig} {Γ₁ Γ₂ : List (Ty pqSig)}
-    (K M : ℕ) (xs₁ : Expr pqxdhOps Γ₁ (.list a))
-    (f₁ : Var (a :: Γ₁) a → Expr pqxdhOps (a :: Γ₁) c) (ρ₁ : Env Γ₁)
-    (xs₂ : Expr pqxdhOps Γ₂ (.list a))
-    (f₂ : Var (a :: Γ₂) a → Expr pqxdhOps (a :: Γ₂) c) (ρ₂ : Env Γ₂)
-    (hxs : xs₁.eval ρ₁ = xs₂.eval ρ₂)
-    (hf : ∀ x, (f₁ .vz).eval (.cons x ρ₁) = (f₂ .vz).eval (.cons x ρ₂))
-    (hlen : (xs₁.eval ρ₁).length ≤ M) :
-    (eMap (min K M) xs₁ f₁).eval ρ₁ = (eMap K xs₂ f₂).eval ρ₂ := by
-  rw [eMap, mapB_min_eval_eq K M _ _ ρ₁ hlen]
-  simp only [eMap, Expr.eval, hxs]
-  congr 1; funext x; exact hf x
-
 private theorem eq_and_inv_retC {Γ₁ Γ₂ : List (Ty pqSig)} {t₁ t₂ : Ty pqSig}
     (projB : t₁.denote → t₂.denote) (P : t₁.denote → Prop)
     (e₁ : Expr pqxdhOps Γ₁ t₁) (ρ₁ : Env Γ₁)
@@ -906,6 +893,7 @@ private theorem embed_bind_liftGdhToSign (sigB : ℕ)
   rw [oracleComp_bind_pure_eq_map, oracleComp_map_map]
   rfl
 
+set_option maxHeartbeats 400000 in
 theorem fgArmSim_recvOPK (S : Setup) (b : QueryBudget) :
     FgArmSim S b
       (fun p => AuthQuery.recvOPK p.1 p.2.1 p.2.2.1 p.2.2.2)
@@ -973,9 +961,8 @@ theorem fgArmSim_recvOPK (S : Setup) (b : QueryBudget) :
       hon hn1 hn2 hbound hroom hInv).1, liftGdhToSign_map, oracleComp_map_map]
     rfl
   · intro pOut hpOut
-    rw [hArm] at hpOut
-    have hpImg := Eq.mp (congrArg (pOut ∈ ·) (support_map _ _)) hpOut
-    rcases hpImg with ⟨out, houtSign, rfl⟩
+    rw [hArm, support_map _ mxSign, Set.mem_image] at hpOut
+    rcases hpOut with ⟨out, houtSign, rfl⟩
     have hSim2 := (fgRecvShadowB_sim S b true
       (.zero : Var [fgSimTy, recvQTy] fgSimTy)
       (.succ .zero : Var [fgSimTy, recvQTy] recvQTy)
@@ -984,6 +971,7 @@ theorem fgArmSim_recvOPK (S : Setup) (b : QueryBudget) :
       hon hn1 hn2 hbound hroom hInv).2
     exact hSim2 out (mem_support_liftGdhToSign houtSign)
 
+set_option maxHeartbeats 400000 in
 theorem fgArmSim_recvNoOPK (S : Setup) (b : QueryBudget) :
     FgArmSim S b
       (fun p => AuthQuery.recvNoOPK p.1 p.2.1 p.2.2.1 p.2.2.2)
@@ -1051,9 +1039,8 @@ theorem fgArmSim_recvNoOPK (S : Setup) (b : QueryBudget) :
       hon hn1 hn2 hbound hroom hInv).1, liftGdhToSign_map, oracleComp_map_map]
     rfl
   · intro pOut hpOut
-    rw [hArm] at hpOut
-    have hpImg := Eq.mp (congrArg (pOut ∈ ·) (support_map _ _)) hpOut
-    rcases hpImg with ⟨out, houtSign, rfl⟩
+    rw [hArm, support_map _ mxSign, Set.mem_image] at hpOut
+    rcases hpOut with ⟨out, houtSign, rfl⟩
     have hSim2 := (fgRecvShadowB_sim S b false
       (.zero : Var [fgSimTy, recvQTy] fgSimTy)
       (.succ .zero : Var [fgSimTy, recvQTy] recvQTy)

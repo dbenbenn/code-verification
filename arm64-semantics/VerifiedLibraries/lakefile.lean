@@ -64,6 +64,16 @@ def muslExportOutputs : Array String :=
   muslExportSpecs.foldl (fun acc s => acc ++ s.outputs) #[]
 
 def rustStdExportSpecs : Array ExportTargetSpec := #[
+  { name := "rust-core-os-fn"
+    config := "RustStd/Implementation/core_os_fn.toml"
+    inputs := #[
+      "RustStd/Implementation/core_os_fn.toml",
+      "RustStd/Implementation/build.sh"
+    ]
+    outputs := #[
+      "RustStd/Generated/RustCoreOsFnPlacedObj.lean",
+      "RustStd/Generated/RustCoreOsFnPlacedObj.bin"
+    ] },
   { name := "rust-std-io"
     config := "RustStd/Implementation/translation.toml"
     inputs := #[
@@ -83,6 +93,16 @@ def rustStdExportSpecs : Array ExportTargetSpec := #[
     outputs := #[
       "RustStd/Generated/CorePlacedObj.lean",
       "RustStd/Generated/CorePlacedObj.bin"
+    ] },
+  { name := "rust-core-fmt"
+    config := "RustStd/Implementation/core_fmt.toml"
+    inputs := #[
+      "RustStd/Implementation/core_fmt.toml",
+      "RustStd/Implementation/build.sh"
+    ]
+    outputs := #[
+      "RustStd/Generated/CoreFmtPlacedObj.lean",
+      "RustStd/Generated/CoreFmtPlacedObj.bin"
     ] },
   { name := "rust-alloc"
     config := "RustStd/Implementation/alloc.toml"
@@ -121,7 +141,7 @@ require prooflib from "../ProofLib"
 
 meta if get_config? env = some "dev" then
 require «doc-gen4» from git
-  "https://github.com/leanprover/doc-gen4" @ "v4.34.0"
+  "https://github.com/leanprover/doc-gen4" @ "v4.35.0"
 
 target rustExports pkg : Array FilePath := Job.async do
   setTraceCaption "rustExports"
@@ -156,16 +176,26 @@ target rustExports pkg : Array FilePath := Job.async do
 lean_lib Generated where
   roots := #[`VerifiedLibraries.Mallocng.Generated.MallocngPlacedObj,
              `VerifiedLibraries.Musl.Generated.MuslStringPlacedObj,
+             `VerifiedLibraries.RustStd.Generated.RustCoreOsFnPlacedObj,
              `VerifiedLibraries.RustStd.Generated.RustStdIoPlacedObj,
              `VerifiedLibraries.RustStd.Generated.CorePlacedObj,
+             `VerifiedLibraries.RustStd.Generated.CoreFmtPlacedObj,
              `VerifiedLibraries.RustStd.Generated.AllocPlacedObj,
              `VerifiedLibraries.RustStd.Generated.TimePlacedObj]
   globs := #[.one `VerifiedLibraries.Mallocng.Generated.MallocngPlacedObj,
              .one `VerifiedLibraries.Musl.Generated.MuslStringPlacedObj,
+             .one `VerifiedLibraries.RustStd.Generated.RustCoreOsFnPlacedObj,
              .one `VerifiedLibraries.RustStd.Generated.RustStdIoPlacedObj,
              .one `VerifiedLibraries.RustStd.Generated.CorePlacedObj,
+             .one `VerifiedLibraries.RustStd.Generated.CoreFmtPlacedObj,
              .one `VerifiedLibraries.RustStd.Generated.AllocPlacedObj,
              .one `VerifiedLibraries.RustStd.Generated.TimePlacedObj]
+  leanOptions := #[⟨`autoImplicit, false⟩, ⟨`relaxedAutoImplicit, false⟩]
+
+@[default_target]
+lean_lib «VerifiedLibraries.Common» where
+  roots := #[]
+  globs := #[.one `VerifiedLibraries.Common.Spec.Curve25519]
   leanOptions := #[⟨`autoImplicit, false⟩, ⟨`relaxedAutoImplicit, false⟩]
 
 @[default_target]

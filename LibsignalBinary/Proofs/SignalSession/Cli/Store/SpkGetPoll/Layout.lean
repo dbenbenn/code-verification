@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.PreKey
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeHeap
+public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.PreKey -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeHeap -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.PublicSpecs
 public import LibsignalBinary.Proofs.SignalSession.Cli.Specs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Specifications.AsmConstants
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Frame Layout and Struct Decompositions for `get_signed_pre_key::{closure#0}`
@@ -40,7 +42,7 @@ borrow/dealloc lemmas, and word-level decompositions of `speAt` (6 words) and
 `signedPreKeyStructAt` (11 words).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -55,61 +57,6 @@ open CryptoVerification.RecordCodecs CryptoVerification.RecordCodecsBinary
 open CryptoVerification.CodeLayout CryptoVerification.SignalSession.Cli
 
 /-! ## 1. Relative symbol-offset equations -/
-
-theorem spk_fnAddr_rel {b : BitVec 64} {ext : String → Option (State → State)}
-    {target : String} {off : BitVec 64}
-    (h : BitVec.ofNat 64 (libsignalSessionCode.fnOff spkGetPollName) + off =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff target)) :
-    (tripleRatchetProgAtExt b ext).fnAddr spkGetPollName + off =
-      (tripleRatchetProgAtExt b ext).fnAddr target := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, BitVec.add_assoc, h]
-
-abbrev decimalRelOff : BitVec 64 :=
-  bv% ((2 ^ 64 + ls_off% "libsignal_cli::stores::decimal" -
-    ls_off% "<libsignal_cli::stores::SignedPreKeyFiles as libsignal_protocol::storage::traits::SignedPreKeyStore>::get_signed_pre_key::{closure#0}") % 2 ^ 64)
-
-abbrev dirGetRelOff : BitVec 64 :=
-  bv% ((2 ^ 64 + ls_off% "<libsignal_cli::stores::Dir>::get" -
-    ls_off% "<libsignal_cli::stores::SignedPreKeyFiles as libsignal_protocol::storage::traits::SignedPreKeyStore>::get_signed_pre_key::{closure#0}") % 2 ^ 64)
-
-abbrev decodeSpkRelOff : BitVec 64 :=
-  bv% ((2 ^ 64 + ls_off% "libsignal_cli::stores::decode_kyber_pre_key" -
-    ls_off% "<libsignal_cli::stores::SignedPreKeyFiles as libsignal_protocol::storage::traits::SignedPreKeyStore>::get_signed_pre_key::{closure#0}") % 2 ^ 64)
-
-abbrev dropSpeRelOff : BitVec 64 :=
-  bv% ((2 ^ 64 + ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" -
-    ls_off% "<libsignal_cli::stores::SignedPreKeyFiles as libsignal_protocol::storage::traits::SignedPreKeyStore>::get_signed_pre_key::{closure#0}") % 2 ^ 64)
-
-abbrev deallocRelOff : BitVec 64 :=
-  bv% ((2 ^ 64 + ls_off% "__rustc::__rust_dealloc" -
-    ls_off% "<libsignal_cli::stores::SignedPreKeyFiles as libsignal_protocol::storage::traits::SignedPreKeyStore>::get_signed_pre_key::{closure#0}") % 2 ^ 64)
-
-theorem decimal_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr decimalName =
-      (tripleRatchetProgAtExt b ext).fnAddr spkGetPollName + decimalRelOff :=
-  (spk_fnAddr_rel (by rw [spkGetPoll_fnOff, decimal_fnOff]; decide)).symm
-
-theorem dirGet_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr dirGetName =
-      (tripleRatchetProgAtExt b ext).fnAddr spkGetPollName + dirGetRelOff :=
-  (spk_fnAddr_rel (by rw [spkGetPoll_fnOff, dirGet_fnOff]; decide)).symm
-
-theorem decodeSpk_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr decodeKyberPreKeyName =
-      (tripleRatchetProgAtExt b ext).fnAddr spkGetPollName + decodeSpkRelOff :=
-  (spk_fnAddr_rel (by rw [spkGetPoll_fnOff, decodeKyberPreKey_fnOff]; decide)).symm
-
-theorem cliDropSpe_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr cliDropSpeName =
-      (tripleRatchetProgAtExt b ext).fnAddr spkGetPollName + dropSpeRelOff :=
-  (spk_fnAddr_rel (by rw [spkGetPoll_fnOff, cliDropSpe_fnOff]; decide)).symm
-
-theorem dealloc_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr deallocName =
-      (tripleRatchetProgAtExt b ext).fnAddr spkGetPollName + deallocRelOff :=
-  (spk_fnAddr_rel (by rw [spkGetPoll_fnOff, ls_stub% "__rustc::__rust_dealloc"]; decide)).symm
-
-/-! ## 2. Stack and sub-word region decompositions -/
 
 theorem memRegion_bound_of_pointsTo64 {m : Memory} {b a v : BitVec 64} {n : Nat} {R : SepProp}
     (h : m ⊨ memRegion b n ∗ ((a ↦₆₄ v) ∗ R)) : n ≤ 2 ^ 64 := by
@@ -167,11 +114,11 @@ theorem memRegion_40_cells (a : BitVec 64) :
     ProofLib.memRegion_eight, memRegion_32_cells]
   simp only [sepExists_sepConj_left, sepExists_sepConj_right, BitVec.add_assoc, BitVec.reduceAdd]
 
-def words6At (a : BitVec 64) (u0 u1 u2 u3 u4 u5 : BitVec 64) : SepProp :=
+@[expose] def words6At (a : BitVec 64) (u0 u1 u2 u3 u4 u5 : BitVec 64) : SepProp :=
   (a ↦₆₄ u0) ∗ ((a + 8#64) ↦₆₄ u1) ∗ ((a + 16#64) ↦₆₄ u2) ∗
   ((a + 24#64) ↦₆₄ u3) ∗ ((a + 32#64) ↦₆₄ u4) ∗ ((a + 40#64) ↦₆₄ u5)
 
-def words11At (a : BitVec 64)
+@[expose] def words11At (a : BitVec 64)
     (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 : BitVec 64) : SepProp :=
   (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) ∗ ((a + 16#64) ↦₆₄ w2) ∗
   ((a + 24#64) ↦₆₄ w3) ∗ ((a + 32#64) ↦₆₄ w4) ∗ ((a + 40#64) ↦₆₄ w5) ∗
@@ -270,7 +217,7 @@ theorem byte_pad7_pack (a : BitVec 64) (u : BitVec 64) (v : BitVec 8)
 
 /-! ## 3. `vecU8Buf` borrow/dealloc algebra -/
 
-def vecU8BufRest (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8BufRest (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗
@@ -325,14 +272,14 @@ theorem vecU8Buf_ne_zero_dealloc (A : RustAlloc) {cap ptr : BitVec 64} (bs : Lis
 
 /-! ## 4. Detached-heap decompositions of `speAt` (6 words) and `signedPreKeyStructAt` (11 words) -/
 
-def invalidMsgBytesOk : InvalidMessageReason → List (BitVec 8) → Prop
+@[expose] def invalidMsgBytesOk : InvalidMessageReason → List (BitVec 8) → Prop
   | .tooFarInFuture, bs => bs = tooFarInFutureStr
   | .macFailed, bs => bs = macFailedStr
   | .pqRatchet, _ => True
   | .badCiphertext, _ => True
   | .decryptionFailed, _ => False
 
-def speDetached (A : RustAlloc) (fnName : List (BitVec 8))
+@[expose] def speDetached (A : RustAlloc) (fnName : List (BitVec 8))
     (u0 u1 u2 u3 u4 u5 : BitVec 64) : SignalProtocolError → SepProp
   | .invalidState =>
     ∃∗ bs : List (BitVec 8),
@@ -897,7 +844,7 @@ theorem speAt_pack (A : RustAlloc) (fnName : List (BitVec 8)) (a : BitVec 64)
     rw [sepConj_comm]
     exact Entails.pure_left fun hf => False.elim hf
 
-def spkStructDetached (A : RustAlloc) (m : SignedPreKeyRecordStructure)
+@[expose] def spkStructDetached (A : RustAlloc) (m : SignedPreKeyRecordStructure)
     (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 : BitVec 64) : SepProp :=
   ⌜w2 = BitVec.ofNat 64 m.publicKey.length ∧
     w5 = BitVec.ofNat 64 m.privateKey.length ∧

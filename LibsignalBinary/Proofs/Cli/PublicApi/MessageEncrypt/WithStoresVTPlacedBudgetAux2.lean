@@ -9,21 +9,35 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.WithStoresVTPlacedBudgetAux1
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyUnackStalenessPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyStalePlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyBodyPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyStale
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyBody
-public import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.WithStoresVTPlacedBudgetAux1
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyUnackStalenessPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyStalePlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyBodyPlacedBudget
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyStale
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyBody
+import LibsignalBinary.Proofs.Common.SharedHelpers
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegLoadCommonPlaced
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegLoadDispatch
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyTailPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.WithStoresVT.Seg4PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.WithStoresVT.Seg5PlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyCommonPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CommonPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.WithStoresVT.Seg5PlacedBudget
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyTailBuildMessagePlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyTailEncryptPlaced
 
 /-!
 # Budget-Threaded Relocatable `WithStoresVT` (Aux 2): `SegPreKey` Prefix (`+0x344..+0x8b4`)
@@ -33,7 +47,7 @@ Proves `h45_segPreKey_unackItems_to_dur_placed_ok`, `h45_segPreKey_staleness_to_
 `EncEnvTFullBudget` on Block `464` (`lsProg_464 H`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -322,7 +336,7 @@ theorem h45_segPreKey_unackItems_to_dur_placed_ok [LibsignalPlacement] {M : Allo
   · wp_norm_goal
   · wp_norm_goal
   · wp_norm_goal
-  · dsimp only [encSpillsAt, encSpillsAtV, encCommonPlaced] at hmf ⊢
+  · dsimp only [encSpillsAtV, encCommonPlaced] at hmf ⊢
     rw [show (retagSessionStore (A' := A.atState lim st _) kit).ss_vt = kit.ss_vt from rfl,
         show (retagIdentityStore (A' := A.atState lim st _) ikit).id_vt = ikit.id_vt from rfl,
         show encStoreExtraPlaced (retagSessionStore (A' := A.atState lim st _) kit) st0
@@ -488,7 +502,7 @@ theorem h45_segPreKey_staleness_to_add_placed_ok [LibsignalPlacement] {M : Alloc
   · refine ⟨hstat2, hsp2, hsp0Al,
       by unfold State.spAligned at hsp0Al ⊢; rw [hsp2]; wp_norm_goal,
       hx29_2, hx19_2, hcrl_f, hvregs_2⟩
-  · dsimp only [encSpillsAt, encSpillsAtV, encCommonPlaced] at hmf ⊢
+  · dsimp only [encSpillsAtV, encCommonPlaced] at hmf ⊢
     rw [show (retagSessionStore (A' := A.atState lim st _) kit).ss_vt = kit.ss_vt from rfl,
         show (retagIdentityStore (A' := A.atState lim st _) ikit).id_vt = ikit.id_vt from rfl,
         show encStoreExtraPlaced (retagSessionStore (A' := A.atState lim st _) kit) st0
@@ -563,7 +577,7 @@ theorem h45_segPreKey_stale_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     apply segExitBudget_of_sepWPp_lscro hcrl
       (target := (blkPl_464).base + 1132#64)
       (dur_mem_group hmem)
-    dsimp only [encSpillsAt, encSpillsAtV, encCommonPlaced, protocolAddressAt, lsLogOff_eq]
+    dsimp only [encSpillsAtV, encCommonPlaced, protocolAddressAt, lsLogOff_eq]
     rw [show vecAt (A.atState lim st s) = vecAt A.repAlloc from rfl,
         show sessionStateReprAt (A.atState lim st s) = sessionStateReprAt A.repAlloc from rfl,
         show otrAt (A.atState lim st s) = otrAt A.repAlloc from rfl,
@@ -653,7 +667,7 @@ theorem h45_segPreKey_stale_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     · rw [preKey_encTail_mem_retag_eq (A' := A.atState lim (M.stepEvents evs_clone st) _)
         kit st0 ikit ist0 C ctl S x (preKeyErrAnswers r) _ R s0]
       dsimp only [encEntryPlaced, encStoreExtraPlaced,
-        tailRegs, dropRecordSlots, otrSlotAt, encSpillsAt, encSpillsAtV, encCommonPlaced,
+        tailRegs, dropRecordSlots, otrSlotAt, encSpillsAtV, encCommonPlaced,
         protocolAddressAt, lsLogOff_eq, AddrGhost.val, sp]
         at hmf ⊢
       rw [hdraws, hfinal, hidfinal,
@@ -748,7 +762,7 @@ theorem h45_segPreKey_regId_kyber_placed_ok [LibsignalPlacement] {M : AllocCostM
   refine sepWPp_elim_ex fun w14 => ?_
   refine SepWPp.fold (pollWithBaseKey_regId_unpack sp items) (by sep_focus) ?_
   refine sepWPp_elim_ex fun w590 => sepWPp_elim_ex fun w588 => sepWPp_elim_ex fun w580 => ?_
-  dsimp only [encSpillsAt, encSpillsAtV, encCommonPlaced, nowAt, lsLogOff_eq]
+  dsimp only [encSpillsAtV, encCommonPlaced, nowAt, lsLogOff_eq]
   rw [show protocolAddressAt (A.atState lim st s) = protocolAddressAt A.repAlloc from rfl,
       show (A.atState lim st s).pool = A.pool lim st s from rfl,
       encSubStack_split_kyber hsp]
@@ -835,7 +849,7 @@ theorem h45_segPreKey_regId_kyber_placed_ok [LibsignalPlacement] {M : AllocCostM
       refine ⟨st', hbud_enc, ?_⟩
       dsimp only [PreKeyEncryptState'Placed,
         preKeyEncryptScratch, preKeyEncryptScratch', pollPreKeyEncrypt, pollE6c', encMidMetaPlaced,
-        encEntryPlaced, encSpillsAt, encSpillsAtV, encCommonPlaced, nowAt, lsLogOff_eq, sp]
+        encEntryPlaced, encSpillsAtV, encCommonPlaced, nowAt, lsLogOff_eq, sp]
         at hsp1 hx19_1 hx20_1 hx22_1 hx24_1' hx25_1 hx26_1 hx27_1 hx28_1 hx29_1 hvregs_1 hmf ⊢
       refine ⟨prevCap, prevPtr, G, ts, expiry, pkVal, bp, hts, hexp, hlt, hpkVal,
         hpc1,
@@ -955,7 +969,7 @@ theorem h45_segPreKey_regId_kyber_placed_ok [LibsignalPlacement] {M : AllocCostM
       refine ⟨st', hbud_enc, ?_⟩
       dsimp only [PreKeyEncryptState'Placed,
         preKeyEncryptScratch, preKeyEncryptScratch', pollPreKeyEncrypt, pollE6c', encMidMetaPlaced,
-        encEntryPlaced, encSpillsAt, encSpillsAtV, encCommonPlaced, nowAt, lsLogOff_eq, sp]
+        encEntryPlaced, encSpillsAtV, encCommonPlaced, nowAt, lsLogOff_eq, sp]
         at hsp1 hx19_1 hx20_1 hx22_1 hx24_1' hx25_1 hx26_1 hx27_1 hx28_1 hx29_1 hvregs_1 hmf ⊢
       refine ⟨prevCap, prevPtr, G, ts, expiry, pkVal, bp, hts, hexp, hlt, hpkVal,
         hpc1,

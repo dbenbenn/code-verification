@@ -9,13 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymE
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymE
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib.GenDecodes
+public import ProofLib.Placed.Multi
 
 /-!
 # Umbrella for `signal_session` Helper Block Fetch Lemmas
@@ -24,4 +27,4 @@ Re-exports relocatable per-block instruction-fetch lemmas (`CliSessionCodeSymA`â
 for `signal_session` helper blocks `542`â€“`613`.
 -/
 
-@[expose] public section
+public section

@@ -24,7 +24,7 @@ import Symbolic.Specifications.Model.PQXDH
 import Init.Data.Nat.Bitwise.Basic
 import Init.Data.Repr
 import Init.Data.String.Defs
-public import Symbolic.Proofs.Tests.CliNonvacuity.SessionStepsAux
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionStepsAux -- proof-setup: allow-public-import
 import Symbolic.Proofs.Tests.CliNonvacuity.PtNoCollision
 import Symbolic.Proofs.Tests.CliNonvacuity.SessionCollisionsRecv4
 import Symbolic.Proofs.Tests.CliNonvacuity.SessionCollisionsRecv6
@@ -43,6 +43,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionTraces -- proof-setup: allow-public-import
 
 /-!
 # CLI-Level Reachability of `honestSessionTrace` and `exposedSessionTrace`
@@ -52,7 +53,7 @@ using `PtNoCollision`, `RecvNoCollision`, and the prefix explanations in `Sessio
 `cliReachable_honestSessionTrace` and `cliReachable_exposedSessionTrace`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

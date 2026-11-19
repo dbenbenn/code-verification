@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1Placed
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase
@@ -33,7 +33,7 @@ Relocatable symbolic execution of `<States>::into_pb`, `<Chain>::into_pb`,
 (Block `329`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.Recv
 

@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedEkSentCt1Received
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedEkSentCt1Received
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
@@ -23,6 +22,9 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoder
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedEkSentCt1Received
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergePart2CodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Step Helpers for `Chunked.EkSentCt1Received::merge` (Block `309`)
@@ -32,7 +34,7 @@ initialization helpers (`tag1_init`, `tag2_init`), `loop_le_exit`, and `decode_k
 Block `309` with `withLsCodeRoLoaded lsmpl` callees.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -63,23 +65,7 @@ open CryptoVerification.SpqrV1.ProtoRepr
 open CryptoVerification.SpqrV1.ProtoRepr.EncodedLen
   (cap_add_one_beq_zero_false cap_add_one_bne_zero_true
    noneCap_add_one_beq_zero noneCap_add_one_bne_zero)
-open CryptoVerification.SpqrV1.Prost.MessageMerge
-  (ChunkedEkSentCt1ReceivedMergeGhost ChunkedHighCalleeSaved ChunkedLoopRegs SepWPpLscro
-   bv64_add_zero bv64_sub_zero chunkedBelow chunkedBelow_err chunkedBelow_err_entails
-   chunkedBelow_leaf chunkedBelow_leaf_entails chunkedEkSentCt1ReceivedMerge_fnOff
-   chunkedEkSentCt1ReceivedPBAt chunkedEkSentCt1ReceivedPBAt_entails_exists
-   chunkedEkSentCt1ReceivedPBCapAt chunkedEkSentCt1ReceivedPBCapAt_entails_pb
-   chunkedEkSentCt1ReceivedPBCapAt_mono chunkedMergeStack chunkedSavedRegs
-   cmp_len_limit_of_eq cmp_len_limit_of_gt cmp_len_limit_of_lt codecWireTypeToProto
-   default_ekSentCt1Received_entails_cap default_polyDecoder_entails_pb
-   memRegion8_memRegion40_entails_48_128 memRegion_48_split2_128 memRegion_48_split_128
-   memRegion_ekSentCt1Received_none_split memRegion_polyDecoder_none_split mergeLoopBin
-   mergeLoopBin_eq_limit mergeLoopBin_lt_limit mergeLoopBin_of_decodeVarint_none
-   mergeLoopBin_of_key_ge mergeLoopBin_of_tag_zero mergeLoopBin_of_wt_none
-   optUnchunkedEkSentCt1ReceivedPBCapAt pointsTo64_memRegion32_entails_40_128
-   pointsTo64_memRegion40_entails_48_128 protoPrefixStep_chunked_ekSentCt1Received_mergeField
-   stackAt_chunkedMerge unchunkedEkSentCt1ReceivedPBCapAt vecU8At_eq_header_sep_buf vecU8Buf
-   vecU8Buf_entails_cap_lt vecVecU8Buf_entails_cap_lt)
+open CryptoVerification.SpqrV1.Prost.MessageMerge (ChunkedEkSentCt1ReceivedMergeGhost ChunkedHighCalleeSaved ChunkedLoopRegs SepWPpLscro bv64_add_zero bv64_sub_zero chunkedBelow chunkedBelow_err chunkedBelow_err_entails chunkedBelow_leaf chunkedBelow_leaf_entails chunkedEkSentCt1ReceivedPBAt chunkedEkSentCt1ReceivedPBAt_entails_exists chunkedEkSentCt1ReceivedPBCapAt chunkedEkSentCt1ReceivedPBCapAt_entails_pb chunkedEkSentCt1ReceivedPBCapAt_mono chunkedMergeStack chunkedSavedRegs cmp_len_limit_of_eq cmp_len_limit_of_gt cmp_len_limit_of_lt codecWireTypeToProto default_ekSentCt1Received_entails_cap default_polyDecoder_entails_pb memRegion8_memRegion40_entails_48_128 memRegion_48_split2_128 memRegion_48_split_128 memRegion_ekSentCt1Received_none_split memRegion_polyDecoder_none_split mergeLoopBin mergeLoopBin_eq_limit mergeLoopBin_lt_limit mergeLoopBin_of_decodeVarint_none mergeLoopBin_of_key_ge mergeLoopBin_of_tag_zero mergeLoopBin_of_wt_none optUnchunkedEkSentCt1ReceivedPBCapAt pointsTo64_memRegion32_entails_40_128 pointsTo64_memRegion40_entails_48_128 protoPrefixStep_chunked_ekSentCt1Received_mergeField stackAt_chunkedMerge unchunkedEkSentCt1ReceivedPBCapAt vecU8At_eq_header_sep_buf vecU8Buf vecU8Buf_entails_cap_lt vecVecU8Buf_entails_cap_lt)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.Part2 (blkPC_309 blkPl_309)
 open CryptoVerification.SpqrV1.Varint (decodeVarint2Stack)
 open LibsignalBinary.Heap
@@ -103,10 +89,10 @@ open LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff VmPreserved
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   noneCap_add_one_beq_zero noneCap_add_one_bne_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero chunkedEkSentCt1ReceivedMerge_fnOff
+attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero
 
 /-- Budget-threaded error-exit separation-logic bundle at fuel `f` (`f ≤ 6 * bs.length + 12`). -/
-def ekSentCt1ReceivedErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def ekSentCt1ReceivedErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (f polyBound : Nat) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (m : V1State.Chunked.EkSentCt1Received) (bs : List (BitVec 8)) : SepProp :=
@@ -115,7 +101,7 @@ def ekSentCt1ReceivedErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M)
     (bufRef ↦₆₄ slot) ∗ memRegion slot 16 ∗ (ptr ↦ₛ bs)
 
 /-- Budget-threaded loop-head (`+192#64`) separation-logic bundle for `Chunked.EkSentCt1Received::merge`. -/
-def ekSentCt1ReceivedLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def ekSentCt1ReceivedLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (m : V1State.Chunked.EkSentCt1Received) (bs cur : List (BitVec 8))

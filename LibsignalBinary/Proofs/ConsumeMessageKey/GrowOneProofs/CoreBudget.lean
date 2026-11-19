@@ -10,20 +10,21 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.FinishGrowBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.DefsBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.Core
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.Fetch
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.FinishGrowBudget
+public import LibsignalBinary.Proofs.ConsumeMessageKey.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.Core
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget
 
 /-!
 # Budget-Threaded Relocatable Contracts for `RawVec<MessageKey>::grow_one` (Blocks 43 and 45)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

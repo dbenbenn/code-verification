@@ -57,11 +57,10 @@ set_option autoImplicit false
 namespace Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagData
 
 open DY.Libsignal (HwBytes)
-open Symbolic.BugInjection.Disproofs.Hyp.FrozenSSC.Interp0 (bytesToNat)
 open Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagDefs
   (DagOp dagNodeOk)
 open Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagFastSha
-  (dagNodeFastOk dagNodeFastOk_eq)
+  (fastTreeNodeOk fastTreeNodeOk_sound)
 open Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagTree (BinTree btGet)
 
 def dagSize : Nat := 6720
@@ -79,72 +78,62 @@ def dagBytes (id : Nat) : HwBytes :=
   | some p => p.2
   | none => []
 
-/-- 64-byte prefix hash key, collision-free on `isAI` nodes in `dagTree`. -/
+/-- Unboxed 54-bit polynomial hash over up to 64 prefix bytes, collision-free on `isAI` nodes. -/
+def fastByteHash64 : Nat → Nat → HwBytes → Nat
+  | 0, acc, _ => acc
+  | _, acc, [] => acc
+  | fuel + 1, acc, b :: bs =>
+    fastByteHash64 fuel ((acc * 131 + b.toFin.val + 1) % 18014398509481984) bs
+
 def fastBytesKey (bs : HwBytes) : Nat :=
-  bs.length + 2048 * bytesToNat (bs.take 64)
+  fastByteHash64 64 0 bs
 
-def fastBucketIdx (hk : Nat) : Nat := hk % 251
+def fastBucketIdx (hk : Nat) : Nat := hk % 512
 
-def certRangeOk (lo count : Nat) : Bool :=
-  (List.range count).all fun k => dagNodeFastOk dagOp dagBytes (lo + k)
+def rangeAll (f : Nat → Bool) (lo hi : Nat) : Bool :=
+  (List.range (hi - lo)).all fun k => f (lo + k)
 
-theorem dagNodeOk_of_certRangeOk {lo count : Nat} (h : certRangeOk lo count = true)
-    {i : Nat} (hlo : lo ≤ i) (hhi : i < lo + count) :
+theorem rangeAll_trans {f : Nat → Bool} {a b c : Nat}
+    (h1 : rangeAll f a b = true) (h2 : rangeAll f b c = true)
+    (hab : a ≤ b := by decide) (hbc : b ≤ c := by decide) :
+    rangeAll f a c = true := by
+  unfold rangeAll at h1 h2 ⊢
+  have hsub : c - a = (b - a) + (c - b) := by omega
+  rw [hsub, List.range_add, List.all_append, h1, Bool.true_and, List.all_map]
+  apply List.all_eq_true.mpr
+  intro k hk
+  have heq : a + (b - a + k) = b + k := by omega
+  simpa [Function.comp_def, heq] using List.all_eq_true.mp h2 k hk
+
+def certRangeOk (lo hi : Nat) : Bool :=
+  rangeAll (fastTreeNodeOk dagTree dagBytes) lo hi
+
+theorem certRangeOk_trans {a b c : Nat}
+    (h1 : certRangeOk a b = true) (h2 : certRangeOk b c = true)
+    (hab : a ≤ b := by decide) (hbc : b ≤ c := by decide) :
+    certRangeOk a c = true :=
+  rangeAll_trans h1 h2 hab hbc
+
+private theorem dagOp_of_btGet {id : Nat} (p : DagOp × HwBytes)
+    (h : btGet 13 dagTree id = some p) : dagOp id = p.1 := by
+  simp [dagOp, h]
+
+private theorem dagBytes_of_btGet {id : Nat} (p : DagOp × HwBytes)
+    (h : btGet 13 dagTree id = some p) : dagBytes id = p.2 := by
+  simp [dagBytes, h]
+
+theorem dagNodeOk_of_certRangeOk {lo hi : Nat} (h : certRangeOk lo hi = true)
+    {i : Nat} (hlo : lo ≤ i) (hhi : i < hi) :
     dagNodeOk dagOp dagBytes i = true := by
-  unfold certRangeOk at h
-  have hmem : i - lo ∈ List.range count := List.mem_range.mpr (by omega)
+  unfold certRangeOk rangeAll at h
+  have hmem : i - lo ∈ List.range (hi - lo) := List.mem_range.mpr (by omega)
   have hk := List.all_eq_true.mp h (i - lo) hmem
   have heq : lo + (i - lo) = i := by omega
-  rw [heq, dagNodeFastOk_eq] at hk
-  exact hk
+  rw [heq] at hk
+  exact fastTreeNodeOk_sound dagOp_of_btGet dagBytes_of_btGet hk
 
-def emptyId : Nat := 0
-def b00Id : Nat := 1
-def b01Id : Nat := 2
-def b02Id : Nat := 3
-def b03Id : Nat := 4
-def b05Id : Nat := 5
-def b08Id : Nat := 6
-def ff32Id : Nat := 7
-def zero32Id : Nat := 8
-def wrLblId : Nat := 10
-def wmkLblId : Nat := 11
-def pqxdhLblId : Nat := 12
 def wmkInfo1Id : Nat := 13
 def wmkInfo2Id : Nat := 14
 def wmkInfo3Id : Nat := 15
-def wrInfo1Id : Nat := 16
-def wrInfo2Id : Nat := 17
-def pqxdhInfo1Id : Nat := 18
-def pqxdhInfo2Id : Nat := 19
-def pqxdhInfo3Id : Nat := 20
-def sk0Id : Nat := 21
-def sk1Id : Nat := 22
-def sk2Id : Nat := 23
-def pqskId : Nat := 25
-def pk0Id : Nat := 27
-def pk1Id : Nat := 28
-def pk2Id : Nat := 29
-def sk3Id : Nat := 65
-def kemEntId : Nat := 66
-def sk4Id : Nat := 67
-def pk3Id : Nat := 68
-def pk4Id : Nat := 69
-def ik0SerId : Nat := 30
-def ik1SerId : Nat := 31
-def spkSerId : Nat := 32
-def ek0SerId : Nat := 70
-def pqpkId : Nat := 71
-def pqpkSerId : Nat := 72
-def kctId : Nat := 73
-def kssId : Nat := 74
-def rkInitId : Nat := 83
-def ckInitId : Nat := 85
-def pqrId : Nat := 87
-def sidSessionId : Nat := 88
-def rkAId : Nat := 93
-def cksAId : Nat := 95
 def honestSaltIds : List Nat := [8, 100, 120, 165, 258, 414, 649, 979, 1420, 1988, 2699, 3569, 4614]
-def pqSecretRootIds : List Nat := [42, 50, 57, 64]
-
 end Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagData

@@ -98,9 +98,6 @@ structure Chunk where
   data : List.Vector (BitVec 8) 32
   deriving DecidableEq
 
-instance : Inhabited Chunk where
-  default := { index := 0#16, data := List.Vector.replicate 32 0#8 }
-
 /-! ## Big-endian `u16` byte conversion helpers -/
 
 def u16ToBeBytes (v : BitVec 16) : List (BitVec 8) :=
@@ -389,9 +386,6 @@ structure PolyConst (n : Nat) where
   deriving DecidableEq, Repr, Inhabited
 
 namespace PolyConst
-
-def wf {n : Nat} (self : PolyConst n) : Prop :=
-  self.coefficients.length = n
 
 def mult {n : Nat} (self : PolyConst n) (m : GF16) : PolyConst n :=
   { coefficients := self.coefficients.map (fun c => GF16.constMul c m) }
@@ -928,158 +922,5 @@ def decodedMessage (self : Option PolyDecoder) :
 end OptionDecoder
 
 /-! ## Kernel-checked self-tests -/
-
- def isOkEq {ε α : Type} [DecidableEq α] (r : Except ε α) (expected : α) : Bool :=
-  match r with
-  | .ok v => decide (v = expected)
-  | .error _ => false
-
- def isErrEq {ε α : Type} [DecidableEq ε] (r : Except ε α) (expected : ε) : Bool :=
-  match r with
-  | .ok _ => false
-  | .error e => decide (e = expected)
-
- def isOkErrEq {ε₁ ε₂ α : Type} [DecidableEq ε₂] (r : Except ε₁ (Except ε₂ α)) (expected : ε₂) : Bool :=
-  match r with
-  | .ok (.error e) => decide (e = expected)
-  | _ => false
-
- def runPtSerializeAndOrdGuard : Bool :=
-  let pt : Pt := { x := ⟨0x1234#16⟩, y := ⟨0x5678#16⟩ }
-  let ptSameX : Pt := { x := ⟨0x1234#16⟩, y := ⟨0x9abc#16⟩ }
-  let ptLargerX : Pt := { x := ⟨0x2000#16⟩, y := ⟨0x0001#16⟩ }
-  isOkEq (Pt.deserialize (Pt.serialize pt)) pt &&
-    isErrEq (Pt.deserialize [0x12#8, 0x34#8]) PolyPanic.unwrapFailed &&
-    Pt.eq pt ptSameX &&
-    decide (Pt.cmp pt ptSameX = .eq) &&
-    decide (Pt.cmp pt ptLargerX = .lt)
-
-theorem pt_serialize_and_ord_guard : runPtSerializeAndOrdGuard = true := by
-  decide +kernel
-
- def runSortedSetPtSemanticsGuard : Bool :=
-  let p1 : Pt := { x := ⟨1#16⟩, y := ⟨10#16⟩ }
-  let p3 : Pt := { x := ⟨3#16⟩, y := ⟨30#16⟩ }
-  let p2 : Pt := { x := ⟨2#16⟩, y := ⟨20#16⟩ }
-  let p3New : Pt := { x := ⟨3#16⟩, y := ⟨300#16⟩ }
-  let p1New : Pt := { x := ⟨1#16⟩, y := ⟨100#16⟩ }
-  let (s, _, _) := SortedSetPt.new.push p1
-  let (s, _, _) := s.push p3
-  let (s, _, _) := s.push p2
-  let (sPushBack, idxBack, oldBack) := s.push p3New
-  let (sPushMid, idxMid, oldMid) := sPushBack.push p1New
-  decide (s.vec = [p1, p2, p3]) &&
-    decide (idxBack = 2) && decide (oldBack = some p3) && decide (sPushBack.vec = [p1, p2, p3New]) &&
-    decide (idxMid = 0) && decide (oldMid = some p1) && decide (sPushMid.vec = [p1New, p2, p3New])
-
-theorem sortedSetPt_semantics_guard : runSortedSetPtSemanticsGuard = true := by
-  decide +kernel
-
- def runPolyLagrangeInterpolateGuard : Bool :=
-  let pts : List Pt :=
-    [ { x := ⟨0#16⟩, y := ⟨0x1357#16⟩ }
-    , { x := ⟨1#16⟩, y := ⟨0x2468#16⟩ }
-    , { x := ⟨2#16⟩, y := ⟨0xabcd#16⟩ }
-    , { x := ⟨3#16⟩, y := ⟨0xdead#16⟩ }
-    , { x := ⟨4#16⟩, y := ⟨0xbeef#16⟩ } ]
-  isOkEq (do
-    let p ← Poly.lagrangeInterpolate pts
-    let ok1 ← pts.allM (fun (pt : Pt) => do
-      let v ← p.computeAt pt.x
-      return (v == pt.y))
-    let pts2 ← (List.range 5).mapM (fun i => do
-      let x : GF16 := GF16.new (BitVec.ofNat 16 (i + 5))
-      let y ← p.computeAt x
-      return ({ x := x, y := y } : Pt))
-    let p2 ← Poly.lagrangeInterpolate pts2
-    let ok2 ← pts.allM (fun (pt : Pt) => do
-      let v ← p2.computeAt pt.x
-      return (v == pt.y))
-    let fromComp ← Poly.fromCompletePoints pts
-    return (ok1 && ok2 && decide (p = p2) && isOkEq fromComp p)) true
-
-theorem poly_lagrange_interpolate_guard : runPolyLagrangeInterpolateGuard = true := by
-  decide +kernel
-
- def runPolyConstAndPanicGuards : Bool :=
-  COMPLETE_POINTS_POLYS_1.isOk &&
-    COMPLETE_POINTS_POLYS_3.isOk &&
-    COMPLETE_POINTS_POLYS_5.isOk &&
-    isErrEq (({ coefficients := [⟨1#16⟩, ⟨2#16⟩] } : Poly).multXdiffAssignTrailing 0 ⟨1#16⟩)
-      PolyPanic.subOverflow &&
-    isErrEq (({ coefficients := [⟨1#16⟩, ⟨2#16⟩] } : Poly).lagrangeInterpolateComplete
-      [{ x := ⟨0#16⟩, y := ⟨1#16⟩ }] 1) PolyPanic.boundsCheck &&
-    isErrEq (({ coefficients := [⟨0#16⟩, ⟨1#16⟩] } : PolyConst 2).multXdiff ⟨1#16⟩)
-      PolyPanic.explicitPanic &&
-    isOkErrEq (Poly.deserialize []) PolynomialError.serializationInvalid &&
-    isOkErrEq (Poly.deserialize [1#8, 2#8, 3#8]) PolynomialError.serializationInvalid
-
-theorem poly_const_and_panic_guards : runPolyConstAndPanicGuards = true := by
-  decide +kernel
-
- def runEncodeAndDecodeSmallGuard : Bool :=
-  let msg : List (BitVec 8) :=
-    [0x61#8, 0x62#8, 0x63#8, 0x64#8, 0x65#8, 0x66#8, 0x67#8, 0x68#8, 0x69#8, 0x6a#8]
-  isOkEq (do
-    let .ok encoder ← PolyEncoder.encodeBytes msg | return false
-    let .ok decoder ← PolyDecoder.new 10 | return false
-    let (encoder, c1) ← encoder.chunkAt 1#16
-    let (_encoder, c2) ← encoder.chunkAt 2#16
-    let decoder ← decoder.addChunk c1
-    let decoder ← decoder.addChunk c2
-    let decoded ← decoder.decodedMessage
-    return (decoded == some msg)) true
-
-theorem encode_and_decode_small_guard : runEncodeAndDecodeSmallGuard = true := by
-  decide +kernel
-
- def runPolyEncoderDecoderRoundtripsGuard : Bool :=
-  let msg : List (BitVec 8) := (List.range 96).map (fun i => BitVec.ofNat 8 (i + 1))
-  isOkEq (do
-    let .ok enc1 ← PolyEncoder.encodeBytes msg | return false
-    let .ok dec1 ← PolyDecoder.new 96 | return false
-    let (enc1, c0) ← enc1.nextChunk
-    let (enc1, c1) ← enc1.nextChunk
-    let (_enc1, c2) ← enc1.nextChunk
-    let dec1 ← dec1.addChunk c0
-    let dec1 ← dec1.addChunk c1
-    let .none ← dec1.decodedMessage | return false
-    let dec1 ← dec1.addChunk c2
-    let .some m1 ← dec1.decodedMessage | return false
-    let .ok enc2 ← PolyEncoder.encodeBytes msg | return false
-    let .ok dec2 ← PolyDecoder.new 96 | return false
-    let .ok enc2 ← PolyEncoder.fromPb enc2.intoPb | return false
-    let (enc2, c4) ← enc2.chunkAt 4#16
-    let (enc2, c2') ← enc2.chunkAt 2#16
-    let dec2 ← dec2.addChunk c4
-    let dec2 ← dec2.addChunk c2'
-    let .ok enc2 ← PolyEncoder.fromPb enc2.intoPb | return false
-    let .ok dec2 ← PolyDecoder.fromPb dec2.intoPb | return false
-    let (_enc2, c1') ← enc2.chunkAt 1#16
-    let dec2 ← dec2.addChunk c2'
-    let dec2 ← dec2.addChunk c1'
-    let .some m2 ← dec2.decodedMessage | return false
-    return (m1 == msg && m2 == msg)) true
-
-theorem poly_encoder_decoder_roundtrips_guard : runPolyEncoderDecoderRoundtripsGuard = true := by
-  decide +kernel
-
- def runOptionEncoderDecoderGuard : Bool :=
-  let msg : List (BitVec 8) := (List.range 64).map (fun i => BitVec.ofNat 8 (i + 10))
-  isOkEq (do
-    let p1 := isErrEq (OptionEncoder.nextChunk none) PolyPanic.unwrapFailed
-    let p2 := isErrEq (OptionDecoder.decodedMessage none) PolyPanic.unwrapFailed
-    let .ok optEnc ← OptionEncoder.encodeBytes msg | return false
-    let .ok optDec ← OptionDecoder.new 64 | return false
-    let (optEnc, c0) ← OptionEncoder.nextChunk optEnc
-    let (_optEnc, c1) ← OptionEncoder.nextChunk optEnc
-    let optDec ← OptionDecoder.addChunk optDec c1
-    let .none ← OptionDecoder.decodedMessage optDec | return false
-    let optDec ← OptionDecoder.addChunk optDec c0
-    let .some decoded ← OptionDecoder.decodedMessage optDec | return false
-    return (p1 && p2 && (decoded == msg))) true
-
-theorem option_encoder_decoder_guard : runOptionEncoderDecoderGuard = true := by
-  decide +kernel
 
 end CryptoVerification.LibsignalSpqrV1

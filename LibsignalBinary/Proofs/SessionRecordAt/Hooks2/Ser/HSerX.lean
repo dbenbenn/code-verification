@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Bin.SpecsCommon
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.Common
+public import LibsignalBinary.Proofs.E2E.Bin.SpecsCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.Common -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DropSsLocal1Ext
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeChainX
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRawX
@@ -18,8 +18,9 @@ import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.RecordSerializeExt
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyX
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerializeLenExt
 import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarint
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,35 +43,6 @@ open CryptoVerification.LibsignalTripleRatchetRepr
 open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.E2E.Record CryptoVerification.E2E.Record.Serialization
 open CryptoVerification.E2E.Bin
-
-/-- `encodeRaw` contract from the stub contracts alone. -/
-theorem encodeRaw_ok_of_serContractsX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hC : SerContractsX img A ext) :
-    EncodeRawOkX img A ext := by
-  have hEV : EncodeVarintOkX img A ext :=
-    Prost.encodeVarint_ok_ext_x img A ext (do_reserve_ok_ext_x hC.alloc)
-  have hDR : DoReserveOkX img A ext := do_reserve_ok_ext_x hC.alloc
-  have hmk := msgKeyLen_ok_ext img.base ext A
-  have hchain := chainLen_ok_ext img.base ext A hmk
-  have hEC : EncodeChainOkX img A ext := encodeChain_ok_ext A ext hC hEV hDR hchain hmk
-  exact encodeRaw_ok_ext A ext hC hEV hDR hEC
-
-/-- `SessionRecord::serialize` contract on `SP2Ext` from `SerContractsX` and `SessionCloneOkX`. -/
-theorem hSer_ext_of_clone {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hC : SerContractsX img A ext)
-    (hClone : SessionCloneOkX img A ext) :
-    subroutine_ok (CryptoVerification.LibsignalTripleRatchet.contractProg img.base ext)
-      (img.base + CryptoVerification.E2E.Bin.serializeOff)
-      ((CryptoVerification.E2E.Bin.recordSerializeSpec A).inImage img) := by
-  have hEV : EncodeVarintOkX img A ext :=
-    Prost.encodeVarint_ok_ext_x img A ext (do_reserve_ok_ext_x hC.alloc)
-  have hRaw := encodeRaw_ok_of_serContractsX hC
-  have hDrop : DropSessionStructureLocal1OkX img A ext :=
-    drop_session_structure_local1_ok_ext hC.alloc
-  exact recordSerialize_ok_ext_of_serializeX
-    (SerializeBodyAuxX.serialize_ok_of_leaves_ext hC hClone hEV hRaw hDrop)
-
-/-! ## Relocatable `[LibsignalPlacement]` assembly (Block `52`) -/
 
 section Placed
 

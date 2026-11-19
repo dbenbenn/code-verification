@@ -10,10 +10,12 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Assumptions.KeyInd1KeyReal
-public import Computational.Proofs.E2E.ComposedPrefixHelpers
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingF
+public import Computational.Proofs.E2E.ComposedPrefixHelpers -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingF -- proof-setup: allow-public-import
 import Computational.Proofs.E2E.ComposedPrefixTagSync
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.GameHop.Advantage
+import Computational.Proofs.GameHop.GlobalHybrid
 
 /-!
 # Tag-Synchronized Lazy `KeyInd` Stepping for the 1-Key Real-HKDF Game
@@ -26,7 +28,7 @@ Proves eager-to-lazy equivalence between the 1-key (`DEV-PQ13`) real-HKDF `KeyIn
 `DrvTagSyncInv1KeyReal` and its bridge to `SignalPqxdh.pqxdhKeyIndImpl1KeyReal`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -54,7 +56,7 @@ private theorem stateT_run_liftM_1key {M : Type → Type} [Monad M] {σ α : Typ
 /-! ## 1-key real-HKDF `KeyInd` oracle -/
 
 /-- Single-scalar `.initPrin` handler for the 1-key identity (`DEV-PQ13`). -/
-def runKeyIndInitPrin1Key (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
+@[expose] def runKeyIndInitPrin1Key (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
     (u : Fin S.N_id) :
     StateT (SignalPqxdh.KeyIndState S) ProbComp SignalPqxdh.KeyIndResponse := do
   let st ← get
@@ -74,7 +76,7 @@ def runKeyIndInitPrin1Key (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
   return .initPrinResp ikAPk ikSignPk
 
 /-- Standard-model 1-key real-HKDF `KeyInd` oracle with `.revealDhSecrets` disabled. -/
-def pqxdhKeyIndImpl1KeyReal (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives) :
+@[expose] def pqxdhKeyIndImpl1KeyReal (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives) :
     QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp) := fun q =>
   match q with
   | .initPrin u => runKeyIndInitPrin1Key S P u
@@ -107,10 +109,10 @@ structure KeyInd1KeyLazyState (S : SignalPqxdh.Setup) where
   base      : SignalPqxdh.KeyIndState S
   randCache : List (SignalPqxdh.Bytes × SignalPqxdh.DRKey) := []
 
-def KeyInd1KeyLazyState.empty (S : SignalPqxdh.Setup) : KeyInd1KeyLazyState S :=
+@[expose] def KeyInd1KeyLazyState.empty (S : SignalPqxdh.Setup) : KeyInd1KeyLazyState S :=
   { base := SignalPqxdh.KeyIndState.empty S false, randCache := [] }
 
-def randLens1Key (S : SignalPqxdh.Setup) :
+@[expose] def randLens1Key (S : SignalPqxdh.Setup) :
     CacheLens (KeyInd1KeyLazyState S) SignalPqxdh.Bytes where
   get lst := lst.randCache
   set lst c := { lst with randCache := c }
@@ -123,7 +125,7 @@ inductive Lazy1KeyPost where
   | evalRand  (pid : SignalPqxdh.Bytes) (mkResp : SignalPqxdh.DRKey → SignalPqxdh.KeyIndResponse)
   | handshake (resp : SignalPqxdh.KeyIndResponse) (pid? : Option SignalPqxdh.Bytes)
 
-def runLazy1KeyPost (eagerRand : Bool) (S : SignalPqxdh.Setup)
+@[expose] def runLazy1KeyPost (eagerRand : Bool) (S : SignalPqxdh.Setup)
     (post : Lazy1KeyPost) (lst : KeyInd1KeyLazyState S) :
     ProbComp (SignalPqxdh.KeyIndResponse × KeyInd1KeyLazyState S) :=
   match post with
@@ -140,7 +142,7 @@ def runLazy1KeyPost (eagerRand : Bool) (S : SignalPqxdh.Setup)
       else
         pure (resp, lst)
 
-def tagStepInitiate1KeyReal (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
+@[expose] def tagStepInitiate1KeyReal (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
     (sid : SignalPqxdh.SessionId S) (u : Fin S.N_id) (bundle : SignalPqxdh.PreKeyBundleInput)
     (st : SignalPqxdh.KeyIndState S) :
     ProbComp (Lazy1KeyPost × SignalPqxdh.KeyIndState S) := do
@@ -202,7 +204,7 @@ def tagStepInitiate1KeyReal (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
   return (.handshake resp pid?,
           { st with sessions := { s0 with drKeyRand := randTag } :: st.sessions })
 
-def tagStepAcceptOPK1KeyReal (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
+@[expose] def tagStepAcceptOPK1KeyReal (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
     (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) (hdr : SignalPqxdh.HandshakeHdr)
     (st : SignalPqxdh.KeyIndState S) :
     ProbComp (Lazy1KeyPost × SignalPqxdh.KeyIndState S) := do
@@ -266,7 +268,7 @@ def tagStepAcceptOPK1KeyReal (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives
       seenKyberBaseKeys := usedTriples'
       respSessions     := { r0 with drKeyRand := randTag } :: st.respSessions })
 
-def tagStepAcceptNoOPK1KeyReal (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
+@[expose] def tagStepAcceptNoOPK1KeyReal (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
     (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk) (hdr : SignalPqxdh.HandshakeHdr)
     (st : SignalPqxdh.KeyIndState S) :
     ProbComp (Lazy1KeyPost × SignalPqxdh.KeyIndState S) := do
@@ -322,7 +324,7 @@ def tagStepAcceptNoOPK1KeyReal (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitiv
       seenKyberBaseKeys := usedTriples'
       respSessions     := { r0 with drKeyRand := randTag } :: st.respSessions })
 
-def tagStepTestSession1KeyReal (testReal : Bool) (S : SignalPqxdh.Setup)
+@[expose] def tagStepTestSession1KeyReal (testReal : Bool) (S : SignalPqxdh.Setup)
     (sid : SignalPqxdh.SessionId S) (st : SignalPqxdh.KeyIndState S) :
     ProbComp (Lazy1KeyPost × SignalPqxdh.KeyIndState S) := do
   if !SignalPqxdh.isKeyIndSessionTestable st sid then
@@ -344,7 +346,7 @@ def tagStepTestSession1KeyReal (testReal : Bool) (S : SignalPqxdh.Setup)
                   else .evalRand r.drKeyRand.rootKey SignalPqxdh.KeyIndResponse.drKeyResp
       return (post, { st with respSessions := resp' })
 
-def tagStepView1KeyReal (testReal : Bool) (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
+@[expose] def tagStepView1KeyReal (testReal : Bool) (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
     (q : SignalPqxdh.KeyIndQuery S) (st : SignalPqxdh.KeyIndState S) :
     ProbComp (Lazy1KeyPost × SignalPqxdh.KeyIndState S) :=
   match q with
@@ -362,7 +364,7 @@ def tagStepView1KeyReal (testReal : Bool) (S : SignalPqxdh.Setup) (P : SignalPqx
     return (.done r, st')
 
 /-- Tag-synchronized lazy-`drKeyRand` query implementation parameterized by `eagerRand` and `testReal`. -/
-def pqxdhKeyIndTagImpl1KeyReal (eagerRand testReal : Bool) (S : SignalPqxdh.Setup)
+@[expose] def pqxdhKeyIndTagImpl1KeyReal (eagerRand testReal : Bool) (S : SignalPqxdh.Setup)
     (P : SignalPqxdh.Primitives) :
     QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (KeyInd1KeyLazyState S) ProbComp) := fun q =>
   StateT.mk fun lst => do
@@ -460,17 +462,17 @@ theorem evalDist_simulateQ_tagImpl1KeyReal_eagerRand_eq {S : SignalPqxdh.Setup} 
 
 /-! ## Eager-to-lazy equivalence -/
 
-def resolveRandSessionEntry {S : SignalPqxdh.Setup}
+@[expose] def resolveRandSessionEntry {S : SignalPqxdh.Setup}
     (randCache : List (SignalPqxdh.Bytes × SignalPqxdh.DRKey))
     (s : SignalPqxdh.KeyIndInitiatorEntry S) : SignalPqxdh.KeyIndInitiatorEntry S :=
   { s with drKeyRand := lookupCacheKey randCache s.drKeyRand.rootKey }
 
-def resolveRandRespEntry {S : SignalPqxdh.Setup}
+@[expose] def resolveRandRespEntry {S : SignalPqxdh.Setup}
     (randCache : List (SignalPqxdh.Bytes × SignalPqxdh.DRKey))
     (r : SignalPqxdh.KeyIndRespEntry S) : SignalPqxdh.KeyIndRespEntry S :=
   { r with drKeyRand := lookupCacheKey randCache r.drKeyRand.rootKey }
 
-def resolveRandBase {S : SignalPqxdh.Setup}
+@[expose] def resolveRandBase {S : SignalPqxdh.Setup}
     (randCache : List (SignalPqxdh.Bytes × SignalPqxdh.DRKey))
     (st : SignalPqxdh.KeyIndState S) : SignalPqxdh.KeyIndState S :=
   { st with

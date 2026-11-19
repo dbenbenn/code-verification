@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Run
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.Composed.Cli.ParD3ModelV2SlotsBase
 import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot
 import Symbolic.Proofs.Refinement.Composed.Cli.Transfer
@@ -37,7 +37,7 @@ within-cap steps to `PqModelPost`, maps above-cap rejected steps to `RunRejected
 `comp_refines_cli_model_b2` from `comp_refines_cli_model`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -72,11 +72,11 @@ open Symbolic.Swarm.TRREF.SpqrSemOf (bytesToVec)
 /-! ## Guarded model postcondition and relation -/
 
 /-- The five bundle filenames opened by `read_bundle`. -/
-def bundleReadNamesB2 : List String :=
+@[expose] def bundleReadNamesB2 : List String :=
   ["identity-key", "registration-id", "signed-pre-key", "kyber-pre-key", "one-time-pre-key"]
 
 /-- Every bundle file under `dirName` has length at most `fileCapBytes`. -/
-def BundleReadWithinCapB2 (d : DirectorySnapshot) (dirName : String) : Prop :=
+@[expose] def BundleReadWithinCapB2 (d : DirectorySnapshot) (dirName : String) : Prop :=
   ∀ name ∈ bundleReadNamesB2, ((d (dirName ++ "/" ++ name)).getD []).length ≤ fileCapBytes
 
 instance (d : DirectorySnapshot) (dirName : String) :
@@ -211,12 +211,12 @@ structure PqModelPostB2 (_interp : ExternInterpretation) (P : PEParams) (i : Inp
     o = .exited 1 [] (filesOf (pqInitInputsF P st files t).files)
 
 /-- Guarded PQXDH run relation allowing aborts, missing outcomes, or `PqModelPostB2` exits. -/
-def PqModelRelB2 (interp : ExternInterpretation) (P : PEParams) (i : Inputs)
+@[expose] def PqModelRelB2 (interp : ExternInterpretation) (P : PEParams) (i : Inputs)
     (o : Option Outcome) : Prop :=
   (o = some .aborted ∨ o = none) ∨ ∃ out_o, o = some out_o ∧ PqModelPostB2 interp P i out_o
 
 /-- Whole-protocol CLI refinement instantiated with `ModelAgree` and `PqModelRelB2`. -/
-def CompRefinesCliModelB2 : Prop :=
+@[expose] def CompRefinesCliModelB2 : Prop :=
   CompRefinesCli ModelAgree PqModelRelB2
 
 /-! ## Within-cap reduction -/

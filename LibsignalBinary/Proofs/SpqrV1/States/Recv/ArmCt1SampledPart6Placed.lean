@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart6
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart6 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.Common
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1
@@ -32,7 +32,7 @@ Relocatable `[LibsignalPlacement]` proofs for Path 5c (`outMsg = some decoded`,
 `recv_ek = .ok uc_ek`, `ack = true`) and epilogue convergence (`+16596 -> +18996`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

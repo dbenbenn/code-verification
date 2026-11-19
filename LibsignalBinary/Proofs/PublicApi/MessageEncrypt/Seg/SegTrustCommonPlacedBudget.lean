@@ -12,20 +12,25 @@ module
 public meta import Lean
 public meta import ProofLib
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PlacedDefs
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.TailsPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommon
-public import LibsignalBinary.Proofs.Common.StringClonePlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlaced
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.TailsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommon
+import LibsignalBinary.Proofs.Common.StringClonePlacedBudget
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPure
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Shared Infrastructure for Relocatable `MessageEncrypt` Segments
@@ -35,7 +40,7 @@ segment specifications on `lsProg_198 H`, concrete `FitsEnv` non-vacuity witness
 call/stepping combinators under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -90,7 +95,7 @@ theorem freeOnlyEvs_rustDeallocEvents (size align : Nat) :
 
 /-- Relates entry cost-model state `st_init` (`TopEnv`) to an intermediate seam state `st`
 with remaining allocation envelope `RemEnv`. -/
-def SeamBudget {M : AllocCostModel} (lim : BudgetLimits)
+@[expose] def SeamBudget {M : AllocCostModel} (lim : BudgetLimits)
     (TopEnv : List AllocEvent → Prop) (st_init st : M.σ)
     (RemEnv : List AllocEvent → Prop) : Prop :=
   FitsEnv M lim st RemEnv ∧
@@ -138,21 +143,21 @@ theorem SeamBudget.finish {M : AllocCostModel} {lim : BudgetLimits}
 
 /-! ## Store Retags, Allocation Envelopes, and Callee Budget Contracts -/
 
-def retagSessionStore {A A' : RustAlloc} {b : BitVec 64}
+@[expose] def retagSessionStore {A A' : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) : SessionStoreSpec A' b :=
   { kit with }
 
-def retagIdentityStore {A A' : RustAlloc} {b : BitVec 64}
+@[expose] def retagIdentityStore {A A' : RustAlloc} {b : BitVec 64}
     (ikit : IdentityStoreSpec A b) : IdentityStoreSpec A' b :=
   { ikit with }
 
 /-- Allocation envelope for boxed store-future shims (`size = 0` or `rustAllocEvents size 8`). -/
-def BoxAllocEnv (boxSize : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def BoxAllocEnv (boxSize : Nat) (evs : List AllocEvent) : Prop :=
   (boxSize = 0 ∧ evs = []) ∨
   (0 < boxSize ∧ evs = rustAllocEvents boxSize 8)
 
 /-- Allocation envelope for `<String as Clone>::clone` (`len = 0` or `rustAllocEvents len 1`). -/
-def StringCloneEnv (g : VecGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def StringCloneEnv (g : VecGhost) (evs : List AllocEvent) : Prop :=
   (g.bytes.length = 0 ∧ evs = []) ∨
   (0 < g.bytes.length ∧ evs = rustAllocEvents g.bytes.length 1)
 
@@ -176,7 +181,7 @@ structure IdentityStoreBudgetEnv {A : RustAlloc} {b : BitVec 64}
   trustPollEnv : ikit.IdState → AddrVal → IdentityKey → Direction → List AllocEvent → Prop
   savePollEnv : ikit.IdState → AddrVal → IdentityKey → List AllocEvent → Prop
 
-def stringCloneBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def stringCloneBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (BitVec 64 × BitVec 64 × VecGhost × M.σ) where
   pre := fun (p, ret, g, st) s =>
     ⌜s.readReg64 .x0 = p ∧ s.readReg64 .x8 = ret ∧ FitsEnv M lim st (StringCloneEnv g)⌝ ∗
@@ -187,11 +192,11 @@ def stringCloneBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim :
       vecGhostAt A.repAlloc g p ∗ vecU8 A.repAlloc ret g.bytes ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp extHookStack
 
-def futDropBudgetSpec : Spec Unit where
+@[expose] def futDropBudgetSpec : Spec Unit where
   pre := fun _ _ => emp
   post := fun _ s0 sf => ⌜sf.trace = s0.trace ∧ VmPreserved s0 sf⌝
 
-def kitTrustShimBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitTrustShimBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (ikit : IdentityStoreSpec A.repAlloc b) :
     Spec (IdentityShimCall × BitVec 8 × M.σ) where
   pre := fun (x, d, st) s =>
@@ -207,7 +212,7 @@ def kitTrustShimBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim 
       ikit.trustBoxAt (sf.readReg64 .x0) x.self x.addrA x.keyA 0#8 d ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp ikit.trustShimStack
 
-def kitSaveShimBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitSaveShimBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (ikit : IdentityStoreSpec A.repAlloc b) :
     Spec (IdentityShimCall × M.σ) where
   pre := fun (x, st) s =>
@@ -223,7 +228,7 @@ def kitSaveShimBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim :
       ikit.saveBoxAt (sf.readReg64 .x0) x.self x.addrA x.keyA 0#8 ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp ikit.saveShimStack
 
-def kitTrustPollBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitTrustPollBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) :
     Spec (IdentityPollCall × Direction × BitVec 64 × ikit.IdState × M.σ) where
   pre := fun (x, d, self, ist0, st) s =>
@@ -258,7 +263,7 @@ abbrev kitTrustPollBudgetSpecI [LibsignalPlacement] (M : AllocCostModel) (A : Ru
     Spec (IdentityPollCall × Direction × BitVec 64 × ikit.IdState × M.σ) :=
   withLsLogOff (kitTrustPollBudgetSpecE M A lim ikit ikitEnv)
 
-def kitSavePollBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitSavePollBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) :
     Spec (IdentityPollCall × BitVec 64 × ikit.IdState × M.σ) where
   pre := fun (x, self, ist0, st) s =>
@@ -320,20 +325,20 @@ structure IdentityStoreKitBudgetOkI [LibsignalPlacement] {M : AllocCostModel}
     callerBlk < 619 →
     subroutine_ok callerProg (0#64 + ikit.saveFutDropOff) (withLsRoCl lsmpl futDropBudgetSpec)
 
-def remoteIdentityKeyBudgetSpec [LibsignalPlacement] (A : RustAlloc) :
+@[expose] def remoteIdentityKeyBudgetSpec [LibsignalPlacement] (A : RustAlloc) :
     Spec CryptoVerification.LibsignalTripleRatchet.Getters.RemoteIdentityKeyGhost :=
   let base := CryptoVerification.LibsignalTripleRatchet.Getters.remoteIdentityKeyPlacedSpec A
   { base with
     post := fun x s0 sf => ⌜VmPreserved s0 sf⌝ ∗ base.post x s0 sf }
 
-def unackItemsBudgetSpec [LibsignalPlacement] (A : RustAlloc) :
+@[expose] def unackItemsBudgetSpec [LibsignalPlacement] (A : RustAlloc) :
     Spec UnackCall :=
   let base := CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.UnackItems.unackItemsPlacedSpec A
   { base with
     post := fun x s0 sf => ⌜VmPreserved s0 sf⌝ ∗ base.post x s0 sf }
 
 /-- Budget-threaded relocatable `OTR::encrypt::<HookRng>` contract (`onOom = ⌜False⌝`). -/
-def otrEncryptBudgetSpec [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def otrEncryptBudgetSpec [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv) :
     Spec (OtrEncryptGhost × M.σ) where
@@ -349,7 +354,7 @@ def otrEncryptBudgetSpec [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
       s0.trace <+: sf.trace⌝ ∗
       anyHeap
 
-def otrEncryptBudgetSpecQ [LibsignalPlacement] {M : AllocCostModel} (Q : List (BitVec 8) → Prop)
+@[expose] def otrEncryptBudgetSpecQ [LibsignalPlacement] {M : AllocCostModel} (Q : List (BitVec 8) → Prop)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv) :
     Spec (OtrEncryptGhost × M.σ) :=
@@ -390,21 +395,21 @@ structure EncCalleesBudget [LibsignalPlacement] {M : AllocCostModel} (Q : List (
 
 /-! ## Seam Envelopes, Seam States, and Segment Contracts -/
 
-def TrustStepEnv {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b)
+@[expose] def TrustStepEnv {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b)
     (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
     (rem : AddrVal) (k : IdentityKey) : List AllocEvent → Prop :=
   SeqEnv (BoxAllocEnv ikit.trustBoxSize)
     (SeqEnv (ikitEnv.trustPollEnv ist0 rem k .sending)
       (· = rustDeallocEvents ikit.trustBoxSize 8))
 
-def SaveStepEnv {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b)
+@[expose] def SaveStepEnv {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b)
     (ikitEnv : IdentityStoreBudgetEnv ikit) (ist1 : ikit.IdState)
     (rem : AddrVal) (k : IdentityKey) : List AllocEvent → Prop :=
   SeqEnv (BoxAllocEnv ikit.saveBoxSize)
     (SeqEnv (ikitEnv.savePollEnv ist1 rem k)
       (· = rustDeallocEvents ikit.saveBoxSize 8))
 
-def FromApplyEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
+@[expose] def FromApplyEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (x : WithStoresEncGhost) (sess : Session (List (BitVec 8)))
     (otr' : OutgoingTripleRatchet (List (BitVec 8)))
@@ -414,7 +419,7 @@ def FromApplyEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
       (SeqEnv (kitEnv.storePollEnv st0 x.rem.val (storedRecord sess otr' taken))
         (SeqEnv (· = rustDeallocEvents kit.storeBoxSize 8) FreeOnlyEvs)))
 
-def FromSaveEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
+@[expose] def FromSaveEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (ist1 : ikit.IdState) (x : WithStoresEncGhost)
@@ -423,7 +428,7 @@ def FromSaveEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
   SeqEnv (SaveStepEnv ikit ikitEnv ist1 x.rem.val k)
     (fun evs => FreeOnlyEvs evs ∨ FromApplyEnv kit kitEnv st0 x sess otr' taken evs)
 
-def FromCmEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
+@[expose] def FromCmEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (ist0 : ikit.IdState) (x : WithStoresEncGhost)
@@ -436,15 +441,15 @@ def FromCmEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
       FromSaveEnv kit kitEnv st0 ikit ikitEnv
         (ikit.trustUpdate ist0 x.rem.val k .sending (.ok true)) x sess otr' taken k evs)
 
-def pendingKyberPayload (sess : Session (List (BitVec 8))) : Option KyberPayload :=
+@[expose] def pendingKyberPayload (sess : Session (List (BitVec 8))) : Option KyberPayload :=
   sess.pendingKyberPreKey.map fun k => (⟨k.preKeyId, k.ciphertext⟩ : KyberPayload)
 
-def preKeyMsgFromItems (sess : Session (List (BitVec 8))) (items : PendingPreKey)
+@[expose] def preKeyMsgFromItems (sess : Session (List (BitVec 8))) (items : PendingPreKey)
     (otr' : OutgoingTripleRatchet (List (BitVec 8))) (sm : SignalMessage) : PreKeySignalMessage :=
   PreKeySignalMessage.new otr'.sessionVersion sess.localRegistrationId items.preKeyId
     items.signedPreKeyId (pendingKyberPayload sess) items.baseKey otr'.localIdentityKey sm
 
-def PreKeyPostEncryptEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : UuidParser)
+@[expose] def PreKeyPostEncryptEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : UuidParser)
     (kit : SessionStoreSpec A 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
     (x : WithStoresEncGhost) (sess : Session (List (BitVec 8)))
@@ -463,7 +468,7 @@ def PreKeyPostEncryptEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : U
         FreeOnlyEvs evs'' ∨
         FromCmEnv kit kitEnv st0 ikit ikitEnv ist0 x sess res.2 taken k evs'') evs'
 
-def FromKeyEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
+@[expose] def FromKeyEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
     (parse : UuidParser)
     (kit : SessionStoreSpec A 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit)
@@ -485,7 +490,7 @@ def FromKeyEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendB
           (PreKeyPostEncryptEnv C S parse kit kitEnv st0 ikit ikitEnv ist0
             x sess otr taken k items)) evs))
 
-def FromOtrEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
+@[expose] def FromOtrEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
     (parse : UuidParser)
     (kit : SessionStoreSpec A 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit)
@@ -498,7 +503,7 @@ def FromOtrEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendB
     FromKeyEnv C S sendEnv parse kit kitEnv st0 ikit ikitEnv ist0 x sess otr taken k evs
 
 /-- End-to-end allocation event envelope for `session_message_encrypt_with_stores`. -/
-def WithStoresEncEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
+@[expose] def WithStoresEncEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (ist0 : ikit.IdState) (Scope : SessionRecord (List (BitVec 8)) → Prop)
@@ -522,7 +527,7 @@ def WithStoresEncEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
 
 /-- Budget-threaded relocatable contract for `session_message_encrypt_with_stores`
 (block `198`, `onOom = ⌜False⌝`). -/
-def withStoresEncBudgetSpecV [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def withStoresEncBudgetSpecV [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -571,7 +576,7 @@ def withStoresEncBudgetSpecV [LibsignalPlacement] {M : AllocCostModel}
             ((x.model C S uuidParse answers).1 = .error .panic ∨ x.sendPanics S answers)⌝ ∗
           anyHeap }
 
-def OtrStateVBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OtrStateVBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -588,7 +593,7 @@ def OtrStateVBudget [LibsignalPlacement] {M : AllocCostModel}
     (retagIdentityStore (A' := A.atState lim st s) ikit) ist0 Scope ctl encRecord
     x r sess otr taken pqCap pqPtr R s0 s
 
-def KeyStateVBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def KeyStateVBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -605,7 +610,7 @@ def KeyStateVBudget [LibsignalPlacement] {M : AllocCostModel}
     (retagIdentityStore (A' := A.atState lim st s) ikit) ist0 Scope ctl encRecord
     x r sess otr taken pqCap pqPtr k R s0 s
 
-def CmStateVBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CmStateVBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -623,7 +628,7 @@ def CmStateVBudget [LibsignalPlacement] {M : AllocCostModel}
     (retagIdentityStore (A' := A.atState lim st s) ikit) ist0 Scope C ctl parse S encRecord
     x r sess otr taken k m otr' pqCap' pqPtr' R s0 s
 
-def SaveStateVBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SaveStateVBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -642,7 +647,7 @@ def SaveStateVBudget [LibsignalPlacement] {M : AllocCostModel}
     (retagIdentityStore (A' := A.atState lim st s) ikit) ist0 Scope C ctl parse S encRecord
     x r sess otr taken k m otr' pqCap' pqPtr' R s0 s
 
-def ApplyStateVBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ApplyStateVBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -661,7 +666,7 @@ def ApplyStateVBudget [LibsignalPlacement] {M : AllocCostModel}
     x r sess otr taken k m otr' pqCap' pqPtr' c R s0 s
 
 /-- Budget-threaded error-tail entry state (`FreeOnlyEvs` remaining to exit). -/
-def EncTailVBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncTailVBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -677,7 +682,7 @@ def EncTailVBudget [LibsignalPlacement] {M : AllocCostModel}
     x answers pc regs slots R s0 s
 
 /-- Budget-threaded segment-exit relation on `lsProg_198 H`. -/
-def SegExitBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegExitBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -906,7 +911,7 @@ theorem EncEnvBudget.q_otr [LibsignalPlacement] {M : AllocCostModel}
     Q otr.pqrState :=
   fromSessionState_pqrState hfrom ▸ env.scopeQ r sess hsc hcur
 
-def SegIdentitySpecVBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegIdentitySpecVBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -924,7 +929,7 @@ def SegIdentitySpecVBudget [LibsignalPlacement] {M : AllocCostModel}
           KeyStateVBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv encRecord
             x st_init st r sess otr taken pqCap pqPtr k R s0 s')
 
-def SegSignalSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegSignalSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -944,7 +949,7 @@ def SegSignalSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
           CmStateVBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv encRecord
             x st_init st' r sess otr taken k m otr' pqCap' pqPtr' R s0 s')
 
-def SegTrustSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegTrustSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -964,7 +969,7 @@ def SegTrustSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
           SaveStateVBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv encRecord
             x st_init st' r sess otr taken k m otr' pqCap' pqPtr' R s0 s')
 
-def SegSaveSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegSaveSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -986,21 +991,21 @@ def SegSaveSpecVBudget [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## `FitsEnv` Non-Vacuity Witnesses -/
 
-def witnessRustAlloc : RustAlloc := ⟨.emp, fun _ _ _ => .emp⟩
-def witnessKit : SessionStoreSpec witnessRustAlloc 0#64 := hookSessionStoreSpec witnessRustAlloc 0#64
-def witnessKitEnv : SessionStoreBudgetEnv witnessKit :=
+@[expose] def witnessRustAlloc : RustAlloc := ⟨.emp, fun _ _ _ => .emp⟩
+@[expose] def witnessKit : SessionStoreSpec witnessRustAlloc 0#64 := hookSessionStoreSpec witnessRustAlloc 0#64
+@[expose] def witnessKitEnv : SessionStoreBudgetEnv witnessKit :=
   ⟨fun _ _ evs => evs = rustAllocEvents 16 1, fun _ _ _ evs => evs = rustAllocEvents 16 1⟩
-def witnessIkit : IdentityStoreSpec witnessRustAlloc 0#64 := hookIdentityStoreSpec witnessRustAlloc 0#64
-def witnessIkitEnv : IdentityStoreBudgetEnv witnessIkit :=
+@[expose] def witnessIkit : IdentityStoreSpec witnessRustAlloc 0#64 := hookIdentityStoreSpec witnessRustAlloc 0#64
+@[expose] def witnessIkitEnv : IdentityStoreBudgetEnv witnessIkit :=
   ⟨fun _ _ _ _ evs => evs = rustAllocEvents 16 1, fun _ _ _ evs => evs = rustAllocEvents 16 1⟩
-def witnessPendingPreKey : PendingPreKey := ⟨some 2#32, 3#32, witnessPublicKey, 0#64⟩
-def witnessEncSession : Session (List (BitVec 8)) :=
+@[expose] def witnessPendingPreKey : PendingPreKey := ⟨some 2#32, 3#32, witnessPublicKey, 0#64⟩
+@[expose] def witnessEncSession : Session (List (BitVec 8)) :=
   { state := ⟨4#32, witnessIdentityKey, some witnessIdentityKey, 0#256, 0#32,
       some ⟨witnessKeyPair, ⟨0#256, 0#32⟩⟩, [], true, [1#8]⟩
     pendingPreKey := some witnessPendingPreKey, pendingKyberPreKey := some ⟨4#32, [0x44#8]⟩
     localRegistrationId := 1#32, remoteRegistrationId := 2#32, aliceBaseKey := [0x45#8] }
-def witnessEncRecord : SessionRecord (List (BitVec 8)) := ⟨some witnessEncSession⟩
-def witnessWithStoresGhost : WithStoresEncGhost :=
+@[expose] def witnessEncRecord : SessionRecord (List (BitVec 8)) := ⟨some witnessEncSession⟩
+@[expose] def witnessWithStoresGhost : WithStoresEncGhost :=
   ⟨⟨0#64, 0#64, [0x41#8], 0#64, witnessAddrGhost, 0#64, witnessAddrGhost,
     SystemTime.unixEpoch, 0#64, [0x42#8]⟩, 0#64, 0#64⟩
 
@@ -1109,7 +1114,7 @@ theorem fromCurBody_phaseCreditSpec :
       (OtrEncryptCoreEnv witnessCrypto witnessSpqrModel witnessSendEnv witnessUuidParse
         witnessOtr witnessWithStoresGhost.ptext (some witnessWithStoresGhost.loc)
         witnessWithStoresGhost.rem witnessWithStoresGhost.rest)
-      118000 101000 101000 256 := by
+      118000 101000 101000 320 := by
     refine (otrEncryptCoreEnv_phaseCreditSpec_bounded fineCostModel_modelHyps
       witnessCrypto witnessSpqrModel witnessSendEnv witnessUuidParse
       witnessOtr witnessWithStoresGhost.ptext (some witnessWithStoresGhost.loc)
@@ -2298,11 +2303,11 @@ private theorem stc_stringClone_hasInstrs_ok [LibsignalPlacement] {M : AllocCost
     hShim hAlloc hMemcpy hlr_al
 
 private theorem stc_ls_hook_ok_623 [LibsignalPlacement] {α : Type} {H : LibsignalHooks} {sym : String}
-    {spec : Spec α} (hmem : sym ∈ libsignalSessionExterns := by decide) (h : HookSat H sym spec) :
+    {spec : Spec α} (hmem : sym ∈ libsignalHookedExterns := by decide) (h : HookSat H sym spec) :
     subroutine_ok (lsProg_623 H) (lsρ sym) spec := by
-  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem hmem
+  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
   exact ls_hook_ok (prog := lsProg_623 H) (i := 623) (k := k)
-    (by rw [List.getElem?_eq_getElem hlt, hk]) h
+    (by rw [List.getElem?_eq_getElem hlt, hk]) h (hhooked := hmem)
 
 private theorem stc_stringClone_blk623_ok [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}

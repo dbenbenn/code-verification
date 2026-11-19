@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.Repr
-public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Poly.Repr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<Poly>::lagrange_interpolate_prepare`: Definitions and Specifications
@@ -21,7 +21,7 @@ Pure totality characterizations, slice focus/update helpers, and subroutine spec
 `<spqr::encoding::polynomial::Poly>::lagrange_interpolate_prepare` (`0x61c1c`, Block `372`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.LagrangePrepare
 
@@ -36,11 +36,6 @@ open CryptoVerification.SpqrV1.Poly
 abbrev lagrangePrepareName : String :=
   "<spqr::encoding::polynomial::Poly>::lagrange_interpolate_prepare"
 
-theorem lagrangePrepare_fnOff : libsignalSessionCode.fnOff lagrangePrepareName = 0x5c824 :=
-  ls_lemma% fnOff "<spqr::encoding::polynomial::Poly>::lagrange_interpolate_prepare"
-
-gen_decodes libsignalSessionCode_tree lagrangePrepareBin [0x5c824 → 0x5cacc]
-
 /-- Stack budget of `lagrange_interpolate_prepare` (`0x61c1c`):
 `0xd0` (`208` bytes own frame) + `allocHookStack` (`4096` bytes for `__rust_alloc` / `memset`). -/
 abbrev lagrangePrepareStack : Nat := 0xd0 + allocHookStack
@@ -48,7 +43,7 @@ abbrev lagrangePrepareStack : Nat := 0xd0 + allocHookStack
 /-! ## Pure Totality & Loop Characterization -/
 
 /-- Pure total version of `Poly.multXdiffAssignTrailingLoop`. -/
-def multXdiffLoopPure (diff : GF16) : Nat → Nat → List GF16 → List GF16
+@[expose] def multXdiffLoopPure (diff : GF16) : Nat → Nat → List GF16 → List GF16
   | _, 0, coeffs => coeffs
   | i, rem + 1, coeffs =>
     let ci := coeffs[i]?.getD GF16.ZERO
@@ -86,7 +81,7 @@ theorem multXdiffAssignTrailingLoop_eq_ok (diff : GF16) :
     omega
 
 /-- Pure total version of `Poly.multXdiffAssignTrailing`. -/
-def multXdiffPure (self : Poly) (start : Nat) (diff : GF16) : Poly :=
+@[expose] def multXdiffPure (self : Poly) (start : Nat) (diff : GF16) : Poly :=
   let l := self.coefficients.length
   if start ≥ l then self
   else ⟨multXdiffLoopPure diff start (l - start) self.coefficients⟩
@@ -110,7 +105,7 @@ theorem multXdiffAssignTrailing_eq_ok (self : Poly) (start : Nat) (diff : GF16)
     rfl
 
 /-- Pure total version of `Poly.lagrangeInterpolatePrepareLoop`. -/
-def prepareLoopPure (pts : List Pt) (offset : Nat) : Nat → Nat → Poly → Poly
+@[expose] def prepareLoopPure (pts : List Pt) (offset : Nat) : Nat → Nat → Poly → Poly
   | _, 0, p => p
   | i, rem + 1, p =>
     let pi := pts[i]?.getD { x := GF16.ZERO, y := GF16.ZERO }
@@ -147,7 +142,7 @@ theorem lagrangeInterpolatePrepareLoop_eq_ok (pts : List Pt) (offset : Nat)
     exact lagrangeInterpolatePrepareLoop_eq_ok pts offset hoff rem (i + 1) _ (by omega)
 
 /-- Pure total version of `Poly.lagrangeInterpolatePrepare`. -/
-def lagrangePreparePure (pts : List Pt) : Poly :=
+@[expose] def lagrangePreparePure (pts : List Pt) : Poly :=
   let offset := pts.length
   let p0 : Poly := { coefficients := List.replicate offset GF16.ZERO ++ [GF16.ONE] }
   prepareLoopPure pts offset 0 offset p0
@@ -214,32 +209,9 @@ structure LagrangePrepareArgs where
   pts : List Pt
   hlen_bound : 4 * (pts.length + 1) < 2 ^ 63
 
-/-- Subroutine specification for `<spqr::encoding::polynomial::Poly>::lagrange_interpolate_prepare` (`0x61c1c`). -/
-def lagrangePrepareSpec (A : RustAlloc) (b : BitVec 64) : Spec LagrangePrepareArgs where
-  pre := fun a s =>
-    ⌜s.readReg64 .x0 = a.out ∧
-      s.readReg64 .x1 = a.ptsPtr ∧
-      s.readReg64 .x2 = BitVec.ofNat 64 a.pts.length⌝ ∗
-    memRegion a.out 24 ∗
-    ptSliceAt a.ptsPtr a.pts ∗
-    reduceTableAt b ∗
-    tokenInitAt b ∗
-    A.pool ∗
-    stackAt s.sp lagrangePrepareStack
-  post := fun a s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-    polyOf A a.out (lagrangePreparePure a.pts) ∗
-    ptSliceAt a.ptsPtr a.pts ∗
-    reduceTableAt b ∗
-    tokenInitAt b ∗
-    A.pool ∗
-    stackAt s0.sp lagrangePrepareStack
-  onPanic := fun _ s0 sf =>
-    ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
 /-- Relocatable (`[LibsignalPlacement]`) subroutine specification for
 `<spqr::encoding::polynomial::Poly>::lagrange_interpolate_prepare` (Block `372`). -/
-def lagrangePreparePlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec LagrangePrepareArgs where
+@[expose] def lagrangePreparePlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec LagrangePrepareArgs where
   pre := fun a s =>
     ⌜s.readReg64 .x0 = a.out ∧
       s.readReg64 .x1 = a.ptsPtr ∧
@@ -286,7 +258,7 @@ theorem polyOf_eq (A : RustAlloc) (v : BitVec 64) (p : Poly) :
   simp only [sepConj_assoc]
 
 /-- Context of `gf16SliceAt ptr cs` with the `k`-th element removed. -/
-def gf16SliceRest (ptr : BitVec 64) : List GF16 → Nat → SepProp
+@[expose] def gf16SliceRest (ptr : BitVec 64) : List GF16 → Nat → SepProp
   | [], _ => emp
   | _ :: cs, 0 => gf16SliceAt (ptr + 2#64) cs
   | c :: cs, k + 1 => gf16At c ptr ∗ gf16SliceRest (ptr + 2#64) cs k
@@ -345,7 +317,7 @@ theorem gf16SliceAt_update_assoc {cs : List GF16} {k : Nat} (hk : k < cs.length)
   rw [← sepConj_assoc, gf16SliceAt_update hk ptr]
 
 /-- Context of `ptSliceAt ptr pts` with the `k`-th `Pt.x` field removed. -/
-def ptSliceRestX (ptr : BitVec 64) : List Pt → Nat → SepProp
+@[expose] def ptSliceRestX (ptr : BitVec 64) : List Pt → Nat → SepProp
   | [], _ => emp
   | pt :: pts, 0 => ((ptr + 2#64) ↦₁₆ pt.y.value) ∗ ptSliceAt (ptr + 4#64) pts
   | pt :: pts, k + 1 => ptAt pt ptr ∗ ptSliceRestX (ptr + 4#64) pts k

@@ -30,13 +30,6 @@ open VerifiedLibraries VerifiedLibraries.Mallocng VerifiedLibraries.Mallocng.Pro
 
 /-! ## `FineBlock` Ghost-Token Laws -/
 
-@[scoped simp]
-theorem noRO_fineBlock (γ : GhostName) (p : BitVec 64) (n effAlign : Nat) :
-    SepProp.NoRO (FineBlock γ p n effAlign) :=
-  SepProp.NoRO.sepConj (SepProp.NoRO.pure _)
-    (SepProp.NoRO.sepConj (noRO_mallocngBlockToken (fineBaseGam γ) p n)
-      (SepProp.NoRO.ghostMapElem (fineAlignGam γ) p effAlign))
-
 /-- Discharges `MallocngCostModelIface.block_noWrap`. -/
 theorem fineBlock_noWrap (γ : GhostName) (p : BitVec 64) (n effAlign : Nat) :
     FineBlock γ p n effAlign ⊢ ⌜p.toNat + n ≤ 2 ^ 64⌝ ∗ FineBlock γ p n effAlign := by
@@ -142,68 +135,6 @@ theorem fineBlock_lookup (γ : GhostName)
     (sepConj_mono_right (Entails.pure_right hal (Entails.refl _))) ?_
   exact Entails.of_eq (by ac_rfl)
 
-/-- Frame-preserving allocation of `FineBlock γ p n effAlign` when `L p = none` and `alignMap p = none`. -/
-theorem fineBlock_alloc_bupd (γ : GhostName)
-    (L : MallocngLiveMap) (alignMap : BitVec 64 → Option Nat) (p : BitVec 64) (n effAlign : Nat)
-    (hal : 16 ≤ effAlign) (hwf : MallocngBlockWf p n)
-    (hLnone : L p = none) (hAnone : alignMap p = none) :
-    ghostMapAuth (fineAlignGam γ) alignMap ∗ MallocngLiveAuth (fineBaseGam γ) L ⊢
-      |==> (ghostMapAuth (fineAlignGam γ) (fun k => if k = p then some effAlign else alignMap k) ∗
-        MallocngLiveAuth (fineBaseGam γ) (L.insert p n (effAlign - 16)) ∗
-        FineBlock γ p n effAlign) := by
-  have h1 := ghostMap_alloc (fineAlignGam γ) alignMap p effAlign hAnone
-  have h2 := mallocngBlock_alloc_bupd (fineBaseGam γ) L p n (effAlign - 16) hwf hLnone
-  refine Entails.trans (bupd_sep h1 h2) (bupd_mono ?_)
-  unfold FineBlock
-  rw [pure_sepConj_of_true hal]
-  exact Entails.of_eq (by ac_rfl)
-
-/-- Frame-preserving deletion of `FineBlock γ p n effAlign`. -/
-theorem fineBlock_delete_bupd (γ : GhostName)
-    (L : MallocngLiveMap) (alignMap : BitVec 64 → Option Nat) (p : BitVec 64) (n effAlign : Nat) :
-    ghostMapAuth (fineAlignGam γ) alignMap ∗ MallocngLiveAuth (fineBaseGam γ) L ∗
-      FineBlock γ p n effAlign ⊢
-      |==> (ghostMapAuth (fineAlignGam γ) (fun k => if k = p then none else alignMap k) ∗
-        MallocngLiveAuth (fineBaseGam γ) (L.erase p)) := by
-  unfold FineBlock
-  have hPerm :
-      ghostMapAuth (fineAlignGam γ) alignMap ∗ MallocngLiveAuth (fineBaseGam γ) L ∗
-        ⌜16 ≤ effAlign⌝ ∗ MallocngBlockToken (fineBaseGam γ) p n ∗
-          ghostMapElem (fineAlignGam γ) p effAlign =
-      ⌜16 ≤ effAlign⌝ ∗
-        (ghostMapAuth (fineAlignGam γ) alignMap ∗ ghostMapElem (fineAlignGam γ) p effAlign) ∗
-        (MallocngLiveAuth (fineBaseGam γ) L ∗ MallocngBlockToken (fineBaseGam γ) p n) := by
-    ac_rfl
-  rw [hPerm]
-  refine Entails.pure_left fun _ => ?_
-  exact bupd_sep
-    (ghostMap_delete (fineAlignGam γ) alignMap p effAlign)
-    (mallocngBlock_delete_bupd (fineBaseGam γ) L p n)
-
-/-- Frame-preserving update of `(p ↦ oldN, oldAl)` to `(p ↦ newN, newAl)` (for in-place `realloc`). -/
-theorem fineBlock_update_bupd (γ : GhostName)
-    (L : MallocngLiveMap) (alignMap : BitVec 64 → Option Nat) (p : BitVec 64)
-    (oldN oldAl newN newAl : Nat)
-    (hal : 16 ≤ newAl) (hwf : MallocngBlockWf p newN) :
-    ghostMapAuth (fineAlignGam γ) alignMap ∗ MallocngLiveAuth (fineBaseGam γ) L ∗
-      FineBlock γ p oldN oldAl ⊢
-      |==> (ghostMapAuth (fineAlignGam γ) (fun k => if k = p then some newAl else alignMap k) ∗
-        MallocngLiveAuth (fineBaseGam γ) ((L.erase p).insert p newN (newAl - 16)) ∗
-        FineBlock γ p newN newAl) := by
-  let alignDel : BitVec 64 → Option Nat := fun k => if k = p then none else alignMap k
-  let liveDel : MallocngLiveMap := L.erase p
-  have hDel := fineBlock_delete_bupd γ L alignMap p oldN oldAl
-  have hLnone : liveDel p = none := by
-    show (L.erase p).req p = none
-    simp
-  have hIns := fineBlock_alloc_bupd γ liveDel alignDel p newN newAl hal hwf
-    hLnone (by simp [alignDel])
-  have hEqA : (fun k => if k = p then some newAl else alignDel k) =
-      (fun k => if k = p then some newAl else alignMap k) := by
-    funext k; by_cases hk : k = p <;> simp [alignDel, hk]
-  rw [hEqA] at hIns
-  exact Entails.trans (Entails.trans hDel (bupd_mono hIns)) (bupd_trans _)
-
 /-! ## Runtime Split and Startup Initialization -/
 
 /-- Discharges `MallocngCostModelSound.heap_split_runtime`. -/
@@ -214,66 +145,52 @@ theorem fineHeap_split_runtime
       (FineCoreImpl γ A brkStart brk b ivs ∗ MallocngRuntime A tp) :=
   FineHeapImpl_eq γ A tp brkStart brk b ivs
 
-private theorem ghostTriple_init_untracked :
+private theorem ghostPair_init_empty :
     emp ⊢ |==> (∃∗ γ : GhostName,
       ghostMapAuth (fineAlignGam γ) (fun _ => none) ∗
-      MallocngLiveAuth (fineBaseGam γ) MallocngLiveMap.empty ∗
-      ghostMapAuth (auxvGhost (fineBaseGam γ)) (fun _ => none)) := by
+      MallocngLiveAuth (fineBaseGam γ) MallocngLiveMap.empty) := by
   have h1 : emp ⊢ |==> (∃∗ gA : GhostName, ghostMapAuth gA (fun _ : BitVec 64 => (none : Option Nat))) :=
     ghostMap_init (fun _ => none)
   have h2 : emp ⊢ |==> (∃∗ gL : GhostName, ghostMapAuth gL (fun _ : BitVec 64 => (none : Option Nat))) :=
     ghostMap_init (fun _ => none)
-  have h3 : emp ⊢ |==> (∃∗ gX : GhostName, ghostMapAuth gX (fun _ : BitVec 64 => (none : Option Nat))) :=
-    ghostMap_init (fun _ => none)
-  have h23 : emp ⊢ |==> ((∃∗ gL : GhostName, ghostMapAuth gL (fun _ => none)) ∗
-      (∃∗ gX : GhostName, ghostMapAuth gX (fun _ => none))) := by
+  have h12 : emp ⊢ |==> ((∃∗ gA : GhostName, ghostMapAuth gA (fun _ => none)) ∗
+      (∃∗ gL : GhostName, ghostMapAuth gL (fun _ => none))) := by
     conv => lhs; rw [← emp_sepConj emp]
-    exact bupd_sep h2 h3
-  have h123 : emp ⊢ |==> ((∃∗ gA : GhostName, ghostMapAuth gA (fun _ => none)) ∗
-      ((∃∗ gL : GhostName, ghostMapAuth gL (fun _ => none)) ∗
-        (∃∗ gX : GhostName, ghostMapAuth gX (fun _ => none)))) := by
-    conv => lhs; rw [← emp_sepConj emp]
-    exact bupd_sep h1 h23
-  refine Entails.trans h123 (bupd_mono ?_)
+    exact bupd_sep h1 h2
+  refine Entails.trans h12 (bupd_mono ?_)
   rw [sepExists_sepConj_left]
   refine Entails.sepExists_elim fun gA => ?_
-  rw [sepExists_sepConj_left, sepExists_sepConj_right]
+  rw [sepExists_sepConj_right]
   refine Entails.sepExists_elim fun gL => ?_
-  rw [sepExists_sepConj_right, sepExists_sepConj_right]
-  refine Entails.sepExists_elim fun gX => ?_
-  let γ := natPair (natPair gL gX) gA
+  let γ := natPair (natPair gL 0) gA
   have hAlign : fineAlignGam γ = gA := by simp [γ, fineAlignGam, natUnpair_natPair]
   have hLive : liveGhost (fineBaseGam γ) = gL := by
     simp [γ, fineBaseGam, liveGhost, natUnpair_natPair]
-  have hAuxv : auxvGhost (fineBaseGam γ) = gX := by
-    simp [γ, fineBaseGam, auxvGhost, natUnpair_natPair]
   refine Entails.trans ?_
     (Entails.sepExists_intro
       (P := fun g =>
         ghostMapAuth (fineAlignGam g) (fun _ => none) ∗
-        MallocngLiveAuth (fineBaseGam g) MallocngLiveMap.empty ∗
-        ghostMapAuth (auxvGhost (fineBaseGam g)) (fun _ => none))
+        MallocngLiveAuth (fineBaseGam g) MallocngLiveMap.empty)
       γ)
   have hEncEmpty : MallocngLiveMap.empty.enc = (fun _ => none) := rfl
   unfold MallocngLiveAuth
-  rw [hAlign, hLive, hAuxv, hEncEmpty]
+  rw [hAlign, hLive, hEncEmpty]
   exact Entails.of_eq (by ac_rfl)
 
-/-- Packs `MallocngStartupResources` + fresh triple ghost state into `FineHeapImpl` at
+/-- Packs already-frozen `.ro` startup resources + fresh ghost state into `FineHeapImpl` at
     `FineBudget.init` and `ivs = []`. -/
-theorem fineStartup_packA (γ : GhostName) (A : MallocngAddrs) (tp brkStart auxvPtr : BitVec 64)
+theorem fineStartup_packA_ro (γ : GhostName) (A : MallocngAddrs) (tp brkStart auxvPtr : BitVec 64)
     (hBrkWf : MallocngBrkStartWf brkStart) :
     (ghostMapAuth (fineAlignGam γ) (fun _ => none) ∗
-     MallocngLiveAuth (fineBaseGam γ) MallocngLiveMap.empty ∗
-     ghostMapAuth (auxvGhost (fineBaseGam γ)) (fun _ => none)) ∗
+     MallocngLiveAuth (fineBaseGam γ) MallocngLiveMap.empty) ∗
     MallocngRoTablesAt A ∗
     (A.ctx ↦ₛ List.replicate 928 0#8) ∗
     (A.lock ↦₃₂ 0#32) ∗
     (A.replaced ↦₃₂ 0#32) ∗
     (A.aaReplaced ↦₃₂ 0#32) ∗
     MallocngRuntime A tp ∗
-    ((A.libc + 8#64) ↦₆₄ auxvPtr) ∗
-    MallocngAuxvAt auxvPtr ⊢
+    ((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+    MallocngAuxvRoAt auxvPtr ⊢
       FineHeapImpl γ A tp brkStart brkStart FineBudget.init [] := by
   rw [FineHeapImpl_eq, FineCoreImpl_eq]
   let st0 := emptyMallocngSt auxvPtr
@@ -283,63 +200,58 @@ theorem fineStartup_packA (γ : GhostName) (A : MallocngAddrs) (tp brkStart auxv
     emptyMallocngStOpt_fineInv auxvPtr none
   have hStep1 :
       (ghostMapAuth (fineAlignGam γ) (fun _ => none) ∗
-       MallocngLiveAuth (fineBaseGam γ) MallocngLiveMap.empty ∗
-       ghostMapAuth (auxvGhost (fineBaseGam γ)) (fun _ => none)) ∗
+       MallocngLiveAuth (fineBaseGam γ) MallocngLiveMap.empty) ∗
       MallocngRoTablesA A ∗
       (A.ctx ↦ₛ st0.ctx.toBytes) ∗
       (A.lock ↦₃₂ 0#32) ∗
       (A.replaced ↦₃₂ 0#32) ∗
       (A.aaReplaced ↦₃₂ 0#32) ∗
       MallocngRuntime A tp ∗
-      ((A.libc + 8#64) ↦₆₄ st0.auxvPtr) ∗
-      MallocngAuxvAt st0.auxvPtr ⊢
+      ((A.libc + 8#64) ↦₆₄ᵣ st0.auxvPtr) ∗
+      MallocngAuxvRoAt st0.auxvPtr ⊢
       (MallocngRoTablesA A ∗
         FineCoreStInflightA 0 γ A brkStart brkStart FineBudget.init [] (fun _ => none) 0 0 st0) ∗
         MallocngRuntime A tp := by
-    unfold FineCoreStInflightA MallocngCoreStInflightA MallocngAuxvState ByteMap ProtNoneByteMap
-      MappedSet SetSep
+    unfold FineCoreStInflightA MallocngCoreStInflightModeA MallocngAuxvPtrCell MallocngAuxvStateRo
+      ByteMap ProtNoneByteMap MappedSet SetSep
+    simp only [↓reduceIte]
     rw [pure_sepConj_of_true hFine0, pure_sepConj_of_true hWf]
     have hDom : st0.masterDom = [] := rfl
     have hMap : st0.liveMap = MallocngLiveMap.empty := rfl
-    have hSnap : st0.auxvSnap = none := rfl
-    rw [hDom, hMap, hSnap]
-    dsimp only [MallocngAuxvAuthMap]
+    rw [hDom, hMap]
     simp only [BigSep_nil, sepConj_emp]
     generalize (ghostMapAuth (fineAlignGam γ) (fun _ => none)) = P0
     generalize (MallocngLiveAuth (fineBaseGam γ) MallocngLiveMap.empty) = P1
-    generalize (ghostMapAuth (auxvGhost (fineBaseGam γ)) (fun _ => none)) = P1b
     generalize (MallocngRoTablesA A) = P2
     generalize (A.ctx ↦ₛ st0.ctx.toBytes) = P3
     generalize (A.lock ↦₃₂ 0#32) = P4
     generalize (A.replaced ↦₃₂ 0#32) = P5
     generalize (A.aaReplaced ↦₃₂ 0#32) = P6
     generalize (MallocngRuntime A tp) = P7
-    generalize ((A.libc + 8#64) ↦₆₄ st0.auxvPtr) = P8
-    generalize (MallocngAuxvAt st0.auxvPtr) = P9
+    generalize ((A.libc + 8#64) ↦₆₄ᵣ st0.auxvPtr) = P8
+    generalize (MallocngAuxvRoAt st0.auxvPtr) = P9
     exact Entails.of_eq (by ac_rfl)
   have hEqLhs :
       (ghostMapAuth (fineAlignGam γ) (fun _ => none) ∗
-       MallocngLiveAuth (fineBaseGam γ) MallocngLiveMap.empty ∗
-       ghostMapAuth (auxvGhost (fineBaseGam γ)) (fun _ => none)) ∗
+       MallocngLiveAuth (fineBaseGam γ) MallocngLiveMap.empty) ∗
       MallocngRoTablesAt A ∗
       (A.ctx ↦ₛ List.replicate 928 0#8) ∗
       (A.lock ↦₃₂ 0#32) ∗
       (A.replaced ↦₃₂ 0#32) ∗
       (A.aaReplaced ↦₃₂ 0#32) ∗
       MallocngRuntime A tp ∗
-      ((A.libc + 8#64) ↦₆₄ auxvPtr) ∗
-      MallocngAuxvAt auxvPtr =
+      ((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+      MallocngAuxvRoAt auxvPtr =
       (ghostMapAuth (fineAlignGam γ) (fun _ => none) ∗
-       MallocngLiveAuth (fineBaseGam γ) MallocngLiveMap.empty ∗
-       ghostMapAuth (auxvGhost (fineBaseGam γ)) (fun _ => none)) ∗
+       MallocngLiveAuth (fineBaseGam γ) MallocngLiveMap.empty) ∗
       MallocngRoTablesA A ∗
       (A.ctx ↦ₛ st0.ctx.toBytes) ∗
       (A.lock ↦₃₂ 0#32) ∗
       (A.replaced ↦₃₂ 0#32) ∗
       (A.aaReplaced ↦₃₂ 0#32) ∗
       MallocngRuntime A tp ∗
-      ((A.libc + 8#64) ↦₆₄ st0.auxvPtr) ∗
-      MallocngAuxvAt st0.auxvPtr := by
+      ((A.libc + 8#64) ↦₆₄ᵣ st0.auxvPtr) ∗
+      MallocngAuxvRoAt st0.auxvPtr := by
     simp only [MallocngRoTablesA, st0, emptyMallocngSt, emptyCtxFields_toBytes]
   rw [hEqLhs]
   refine Entails.trans hStep1 ?_
@@ -370,7 +282,84 @@ theorem fineStartup_packA (γ : GhostName) (A : MallocngAddrs) (tp brkStart auxv
         FineCoreStInflightA 0 γ A brkStart brkStart FineBudget.init [] alignMap liveCost peakCost st)
     st0
 
-/-- Discharges `MallocngCostModelSound.init_resources`. -/
+/-- Direct RO startup resource packing from already-frozen `__libc.auxv` and `MallocngAuxvRoAt`. -/
+theorem fineHeap_init_resources_ro
+    (A : MallocngAddrs) (tp brkStart auxvPtr : BitVec 64)
+    (hBrkWf : MallocngBrkStartWf brkStart) :
+    MallocngRoTablesAt A ∗
+    (A.ctx ↦ₛ List.replicate 928 0#8) ∗
+    (A.lock ↦₃₂ 0#32) ∗
+    (A.replaced ↦₃₂ 0#32) ∗
+    (A.aaReplaced ↦₃₂ 0#32) ∗
+    MallocngRuntime A tp ∗
+    ((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+    MallocngAuxvRoAt auxvPtr ⊢
+      |==> (∃∗ γ : GhostName,
+        FineHeapImpl γ A tp brkStart brkStart FineBudget.init []) := by
+  let body :=
+    MallocngRoTablesAt A ∗
+    (A.ctx ↦ₛ List.replicate 928 0#8) ∗
+    (A.lock ↦₃₂ 0#32) ∗
+    (A.replaced ↦₃₂ 0#32) ∗
+    (A.aaReplaced ↦₃₂ 0#32) ∗
+    MallocngRuntime A tp ∗
+    ((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+    MallocngAuxvRoAt auxvPtr
+  have h1 : body ⊢
+      (|==> (∃∗ γ : GhostName,
+        ghostMapAuth (fineAlignGam γ) (fun _ => none) ∗
+        MallocngLiveAuth (fineBaseGam γ) MallocngLiveMap.empty)) ∗ body := by
+    conv => lhs; rw [← emp_sepConj body]
+    exact sepConj_mono_left ghostPair_init_empty
+  refine Entails.trans (Entails.trans h1 (bupd_frame_r _ _)) (bupd_mono ?_)
+  rw [sepExists_sepConj_left]
+  refine Entails.sepExists_mono fun γ => ?_
+  exact fineStartup_packA_ro γ A tp brkStart auxvPtr hBrkWf
+
+/-- Direct RO startup initialization for `FineHeapImpl` from already-frozen
+    `((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗ MallocngAuxvRoAt auxvPtr`. -/
+theorem fineHeap_init_ro
+    (mpl : Obj.MultiPlacement) (tp brkStart auxvPtr : BitVec 64) (R : SepProp) (m : Memory) :
+    let A := mallocngAddrsOfPlacement mpl
+    0xa4 ≤ tp.toNat →
+    tp.toNat ≤ 2 ^ 48 →
+    MallocngBrkStartWf brkStart →
+    (m ⊨
+      VerifiedLibraries.mallocngLib.dataInit mpl ∗
+      MallocngRuntime A tp ∗
+      ((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+      MallocngAuxvRoAt auxvPtr ∗ R) →
+    ∃ γ : GhostName,
+      m ⊨ |==> (FineHeapImpl γ A tp brkStart brkStart FineBudget.init [] ∗ R) := by
+  intro A _hTpGe _hTpLe hBrkWf hSat
+  have hPrep :
+      (VerifiedLibraries.mallocngLib.dataInit mpl ∗
+       MallocngRuntime A tp ∗
+       ((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+       MallocngAuxvRoAt auxvPtr ∗ R) ⊢
+      (MallocngRoTablesAt A ∗
+       (A.ctx ↦ₛ List.replicate 928 0#8) ∗
+       (A.lock ↦₃₂ 0#32) ∗
+       (A.replaced ↦₃₂ 0#32) ∗
+       (A.aaReplaced ↦₃₂ 0#32) ∗
+       MallocngRuntime A tp ∗
+       ((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+       MallocngAuxvRoAt auxvPtr) ∗ R := by
+    rw [mallocngLib_dataInit_eq mpl]
+    exact Entails.of_eq (by ac_rfl)
+  have hSatPrep := Satisfies.of_entails hSat hPrep
+  have hInit :=
+    Satisfies.of_bupd_frame_left
+      (fineHeap_init_resources_ro A tp brkStart auxvPtr hBrkWf)
+      hSatPrep
+  rw [sepExists_sepConj_left, satisfies_sepExists] at hInit
+  obtain ⟨γ, hγ⟩ := hInit
+  refine ⟨γ, ?_⟩
+  rw [satisfies_bupd]
+  exact hγ
+
+/-- Discharges `MallocngCostModelSound.init_resources` (backwards-compatible RW startup, freezing
+    `__libc.auxv` and `MallocngAuxvAt` to `.ro`). -/
 theorem fineHeap_init_resources
     (A : MallocngAddrs) (tp brkStart : BitVec 64)
     (_hTpGe : 0xa4 ≤ tp.toNat)
@@ -381,26 +370,38 @@ theorem fineHeap_init_resources
         FineHeapImpl γ A tp brkStart brkStart FineBudget.init []) := by
   unfold MallocngStartupResources
   refine Entails.sepExists_elim fun auxvPtr => ?_
-  let body :=
-    MallocngRoTablesAt A ∗
-    (A.ctx ↦ₛ List.replicate 928 0#8) ∗
-    (A.lock ↦₃₂ 0#32) ∗
-    (A.replaced ↦₃₂ 0#32) ∗
-    (A.aaReplaced ↦₃₂ 0#32) ∗
-    MallocngRuntime A tp ∗
-    ((A.libc + 8#64) ↦₆₄ auxvPtr) ∗
-    MallocngAuxvAt auxvPtr
-  have h1 : body ⊢
-      (|==> (∃∗ γ : GhostName,
-        ghostMapAuth (fineAlignGam γ) (fun _ => none) ∗
-        MallocngLiveAuth (fineBaseGam γ) MallocngLiveMap.empty ∗
-        ghostMapAuth (auxvGhost (fineBaseGam γ)) (fun _ => none))) ∗ body := by
-    conv => lhs; rw [← emp_sepConj body]
-    exact sepConj_mono_left ghostTriple_init_untracked
-  refine Entails.trans (Entails.trans h1 (bupd_frame_r _ _)) (bupd_mono ?_)
-  rw [sepExists_sepConj_left]
-  refine Entails.sepExists_mono fun γ => ?_
-  exact fineStartup_packA γ A tp brkStart auxvPtr hBrkWf
+  have hFreeze :
+      (MallocngRoTablesAt A ∗
+       (A.ctx ↦ₛ List.replicate 928 0#8) ∗
+       (A.lock ↦₃₂ 0#32) ∗
+       (A.replaced ↦₃₂ 0#32) ∗
+       (A.aaReplaced ↦₃₂ 0#32) ∗
+       MallocngRuntime A tp ∗
+       ((A.libc + 8#64) ↦₆₄ auxvPtr) ∗
+       MallocngAuxvAt auxvPtr) ⊢
+      |==> (MallocngRoTablesAt A ∗
+       (A.ctx ↦ₛ List.replicate 928 0#8) ∗
+       (A.lock ↦₃₂ 0#32) ∗
+       (A.replaced ↦₃₂ 0#32) ∗
+       (A.aaReplaced ↦₃₂ 0#32) ∗
+       MallocngRuntime A tp ∗
+       ((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+       MallocngAuxvRoAt auxvPtr) := by
+    refine Entails.trans (Q :=
+        (MallocngRoTablesAt A ∗
+         (A.ctx ↦ₛ List.replicate 928 0#8) ∗
+         (A.lock ↦₃₂ 0#32) ∗
+         (A.replaced ↦₃₂ 0#32) ∗
+         (A.aaReplaced ↦₃₂ 0#32) ∗
+         MallocngRuntime A tp) ∗
+        (|==> (((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗ MallocngAuxvRoAt auxvPtr))) ?_ ?_
+    · refine Entails.trans (Entails.of_eq (by ac_rfl))
+        (sepConj_mono_right
+          (bupd_sep (pointsTo64_freeze_ro (A.libc + 8#64) auxvPtr) (mallocngAuxvAt_freeze_ro auxvPtr)))
+    · refine Entails.trans (bupd_frame_l _ _) (bupd_mono ?_)
+      exact Entails.of_eq (by ac_rfl)
+  exact Entails.trans hFreeze
+    (Entails.trans (bupd_mono (fineHeap_init_resources_ro A tp brkStart auxvPtr hBrkWf)) (bupd_trans _))
 
 /-- Discharges `MallocngCostModelSound.init`. -/
 theorem fineHeap_init

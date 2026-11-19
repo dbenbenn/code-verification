@@ -9,13 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.BytesMerge6Phase23PlacedBudgetAux
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.BytesMerge6Phase23PlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.Basic
 import ProofLib.SepLogic.WP
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.TripleRatchet.Bytes.BytesCodeSym
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23BudgetAux
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DoReserve10
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Placed Handshake `bytes::merge [local#5]` Phases 2 and 3
@@ -25,7 +31,7 @@ Re-exports the unified `bytesMergeRawSpecXBoth` specification, epilogues, and Ph
 Block-`514` Phase 2 suffixes and entry (`+0x094`, `+0x0e4`, `+0x1b8`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

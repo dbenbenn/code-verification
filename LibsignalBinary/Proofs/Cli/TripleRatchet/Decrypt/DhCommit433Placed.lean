@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMain
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStep
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMain
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStep
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitEvict
@@ -19,6 +19,9 @@ import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep12
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep5
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitWp
 import ProofLib.RegChain
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitPack -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.ProtoExt
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.Apply
 
 /-!
 # Relocatable S3 Commit Sub-Segment on Block `433`
@@ -27,7 +30,7 @@ Proves the relocatable `[LibsignalPlacement]` DH ratchet commit sub-segment (`+0
 `CliS3CommitSeamPlaced`) for `try_decrypt_with_state::<Coins>` (block `433`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -56,7 +59,7 @@ open CryptoVerification.Cli.CoinsTape
 open CryptoVerification.Cli.LibsignalTripleRatchet.Decrypt
 
 /-- CLI relocatable S3 commit checkpoint state at `entry + 2220#64` (`+0x8ac`). -/
-def CliDhCommitStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
+@[expose] def CliDhCommitStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
     (receiverChainKey : ChainKey) (newSenderKey : KeyPair)
@@ -84,7 +87,7 @@ def CliDhCommitStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAll
       cliTryDecryptCommonHeapPlaced A ctl x draws s0 ∗ R)
 
 /-- CLI relocatable S3 commit sub-segment seam (`entry + 2220#64 → entry + 996#64` or panic). -/
-def CliS3CommitSeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
+@[expose] def CliS3CommitSeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel) : Prop :=
   ∀ (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (sc : SenderChain) (receiverChainKey : ChainKey)

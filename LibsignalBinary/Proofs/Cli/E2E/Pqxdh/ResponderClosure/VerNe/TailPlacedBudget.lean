@@ -9,13 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ErrK2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlacedBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ErrK2PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3b
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Defs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropSessionStructure3
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderStore.SessionRecordCallees
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSpe2Ext
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3GenVerNeBlocks
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -29,6 +32,12 @@ import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneBase
 import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologue
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.PrevBridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyBase
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP1 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3b2
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable Version-Mismatch Error Tail (`+0x2cfc → s0.readReg64 .x30`)
@@ -38,7 +47,7 @@ composition (`over_ver_ne_tail_2cfc_cro_placed_at`, `over_ver_ne_tail_2cfc_cli_p
 Block `518` (`lsProg_518`) under `FitsEnv M lim st0 VerNeTailEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -193,7 +202,7 @@ theorem p3_ver_ne_3410_exit_cli_placed_wp [LibsignalPlacement]
     by simp_all [wp_norm, arm64_norm]⟩
 
 /-- Pointwise `(M, A, lim, ext)` body of `ErrK2PlacedBudget.OverK2SegCliPlacedStmt`. -/
-def OverK2SegCliPlacedAt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def OverK2SegCliPlacedAt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   ∀ (st : M.σ) (s : State) (coroPtr outPtr errTag prevCap prevPtr
@@ -602,7 +611,7 @@ theorem over_ver_ne_tail_2cfc_cro_placed_at [LibsignalPlacement]
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` Stage P3/P4 `VerNe` tail statement
 (`(blkPl_518).base + 0x2cfc → s0.readReg64 .x30` with `errs.len = 2`) on `lsProg_518 ext`. -/
-def OverVerNeTail2cfcCliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverVerNeTail2cfcCliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {Qp : State → SepProp → Prop}
     (ext : String → Option (State → State))

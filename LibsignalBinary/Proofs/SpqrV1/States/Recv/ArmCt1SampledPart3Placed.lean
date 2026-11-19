@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymBasePlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DecodesPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DecodesPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
@@ -33,7 +33,7 @@ Relocatable `[LibsignalPlacement]` message-kind dispatch (`+7052`), unchanged re
 (`Path 2` and `Path 3`), and `recv_ek_chunk` common prefix (`+11404 -> +11508`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

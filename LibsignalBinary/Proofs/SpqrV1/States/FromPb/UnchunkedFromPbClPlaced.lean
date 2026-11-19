@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Unchunked.FromPbBase
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.FromPb
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.FromPbEk
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Closed `[LibsignalPlacement]` Contracts for Unchunked `from_pb` (`UnchunkedFromPbClPlaced`)
@@ -24,7 +25,7 @@ Discharges `<Authenticator>::from_pb` (Block `330`) and `drop_glue::<unchunked::
 (Block `286`) for `<Ct1Sent>::from_pb` (Block `339`) and `<EkSentCt1Received>::from_pb` (Block `348`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -12,22 +12,23 @@ module
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget
-public import LibsignalBinary.Proofs.SpqrV1.Auth.Update
-public meta import LibsignalBinary.Proofs.SpqrV1.Auth.Update -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget
+import LibsignalBinary.Proofs.SpqrV1.Auth.Update
+public meta import LibsignalBinary.Proofs.SpqrV1.Auth.Update -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
 import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `<spqr::authenticator::Authenticator>::update` (Block `341`)
@@ -37,7 +38,7 @@ Defines pinned and length-indexed allocation envelopes (`AuthUpdatePinnedEnv`, `
 proofs for `<Authenticator>::update` (Block `341`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -46,13 +47,12 @@ set_option linter.unusedSimpArgs false
 
 namespace LibsignalBinary.Proofs.SpqrV1.Auth.UpdateBudgetAux
 
+open CryptoVerification.LibsignalTripleRatchet (extHookStack sessionShimSpec withStack)
+
 open Arm64 ProofLib
 open CryptoGames.HMAC (ShaState toBEBytes)
 open CryptoVerification (LibsignalPlacement blkLib_eq_341 blkPC_341 blkPl_341 lsmpl lsρ)
 open CryptoVerification.RustHeap (LayoutOk RustAlloc vecHeader vecU8 vecU8At)
-open CryptoVerification.LibsignalTripleRatchet (
-  ImgCallInv extHookStack sessionShimSpec tripleRatchetProgAtExt withStack
-)
 open CryptoVerification.LibsignalTripleRatchet.Keys (SepWPp.rw_pre memRegion_32_cells)
 open CryptoVerification.LibsignalTripleRatchet.Keys.AgreeStateSimp (
   readReg32_setMem_setPC_pre readReg32_setPC_pre readReg64_setMem_setPC_pre readReg64_setPC_pre
@@ -119,10 +119,10 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 
 /-! ## Allocation Envelopes -/
 
-def optCapDeallocEvents (cap : BitVec 64) : List AllocEvent :=
+@[expose] def optCapDeallocEvents (cap : BitVec 64) : List AllocEvent :=
   if cap = 0#64 then [] else rustDeallocEvents cap.toNat 1
 
-def sliceConcat2DeallocEvents (n : Nat) : List AllocEvent :=
+@[expose] def sliceConcat2DeallocEvents (n : Nat) : List AllocEvent :=
   if n = 0 then [] else rustDeallocEvents n 1
 
 theorem optCapDeallocEvents_ofNat {n : Nat} (hn : n < 2 ^ 64) :
@@ -156,7 +156,7 @@ theorem freeOnlyEvs_sliceConcat2DeallocEvents (n : Nat) :
 /-- Deterministic `AllocEvent` trace of `<spqr::authenticator::Authenticator>::update` for pinned
 capacities `g` and slice lengths `(rkLen, kLen)`: `ikm` and 53-byte `info` concatenations, 64-byte
 zeroed `kdf_out`, two 32-byte key allocations interleaved with old-key drops, and temporary drops. -/
-def authUpdatePinnedEvents (g : AuthenticatorGhost) (rkLen kLen : Nat) : List AllocEvent :=
+@[expose] def authUpdatePinnedEvents (g : AuthenticatorGhost) (rkLen kLen : Nat) : List AllocEvent :=
   sliceConcat2Events (rkLen + kLen) ++
     rustAllocEvents 53 1 ++
     rustAllocEvents 64 1 ++
@@ -168,7 +168,7 @@ def authUpdatePinnedEvents (g : AuthenticatorGhost) (rkLen kLen : Nat) : List Al
     rustDeallocEvents 53 1 ++
     sliceConcat2DeallocEvents (rkLen + kLen)
 
-def AuthUpdatePinnedEnv (x : AuthUpdatePinnedGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def AuthUpdatePinnedEnv (x : AuthUpdatePinnedGhost) (evs : List AllocEvent) : Prop :=
   evs = authUpdatePinnedEvents x.g x.auth.rootKey.length x.k.length
 
 theorem fitsEnv_authUpdatePinned_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
@@ -177,15 +177,15 @@ theorem fitsEnv_authUpdatePinned_iff {M : AllocCostModel} {lim : BudgetLimits} {
       FitsEvents M lim st (authUpdatePinnedEvents x.g x.auth.rootKey.length x.k.length) :=
   FitsEnv.eq_iff
 
-def AuthUpdatePreAlloc1Env (rkLen kLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def AuthUpdatePreAlloc1Env (rkLen kLen : Nat) (evs : List AllocEvent) : Prop :=
   evs = sliceConcat2Events (rkLen + kLen) ++
     rustAllocEvents 53 1 ++ rustAllocEvents 64 1 ++ rustAllocEvents 32 1
 
-def AuthUpdateAlloc2Env (evs : List AllocEvent) : Prop :=
+@[expose] def AuthUpdateAlloc2Env (evs : List AllocEvent) : Prop :=
   evs = rustAllocEvents 32 1
 
 /-- Length-indexed unpinned allocation envelope for `<Authenticator>::update`. -/
-def AuthUpdateLenEnv (rkLen kLen : Nat) : List AllocEvent → Prop :=
+@[expose] def AuthUpdateLenEnv (rkLen kLen : Nat) : List AllocEvent → Prop :=
   SeqEnv
     (SeqEnv
       (SeqEnv (AuthUpdatePreAlloc1Env rkLen kLen) FreeOnlyEvs)
@@ -344,7 +344,7 @@ theorem fitsEvents_authUpdatePinned_unpack {M : AllocCostModel} {lim : BudgetLim
 
 /-- Stack-parameterized budget-threaded pinned specification of `<Authenticator>::update`
 (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def authUpdatePinnedSpecAt (stk : Nat) (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def authUpdatePinnedSpecAt (stk : Nat) (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthUpdatePinnedGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -363,7 +363,7 @@ def authUpdatePinnedSpecAt (stk : Nat) (F : ShaState → List (BitVec 8) → Sha
 
 /-- Stack-parameterized budget-threaded unpinned specification of `<Authenticator>::update`
 (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def authUpdateSpecAt (stk : Nat) (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def authUpdateSpecAt (stk : Nat) (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthUpdateGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -400,27 +400,11 @@ abbrev authUpdateSpecExt (F : ShaState → List (BitVec 8) → ShaState)
     Spec (AuthUpdateGhost × M.σ) :=
   authUpdateSpecAt authUpdateStackExt F M A lim
 
-def AuthUpdatePlacedOk [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def AuthUpdatePlacedOk [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_341).rebase (blkPl_341).base H) (blkPl_341).base
     (withLsCallInv lsmpl (authUpdateSpec F M A lim))
-
-def AuthUpdateOkX (img : Obj.Image) (F : ShaState → List (BitVec 8) → ShaState)
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr authUpdateName)
-    ((authUpdateSpec F M A lim).inImage img)
-
-def AuthUpdateOkExt (img : Obj.Image) (F : ShaState → List (BitVec 8) → ShaState)
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr authUpdateName)
-    ((authUpdateSpecExt F M A lim).inImage img)
-
-/-! ## Conditional-Drop Framing Combinators -/
 
 theorem seq_frame_lsCallInv_pool {prog : Program} {pl : Obj.MultiPlacement}
     {mid_pc ret_pc : BitVec 64} {s : State} {P F : SepProp}
@@ -433,30 +417,6 @@ theorem seq_frame_lsCallInv_pool {prog : Program} {pl : Obj.MultiPlacement}
         sm.trace = s.trace ∧ (Pm ⊢ Q_local sm)))
     (h2 : ∀ sm : State, sm.pc = mid_pc → sm.status = .Running →
       sm.sp = s.sp → CalleeSavedPreserved s sm → sm.trace = s.trace → LsCallInv pl sm.mem →
-      SepWPp prog ret_pc sm (Q_local sm ∗ F) Q Qp) :
-    SepWPp prog ret_pc s P Q Qp := by
-  intro R hm hL
-  rw [hframe, sepConj_assoc] at hm
-  rcases h1.elim (R := F ∗ R) hm hL with
-    ⟨sm, hsteps1, ⟨hpc, hrun, Pm, hPm, hsp, hcs, htr, hent⟩ | ⟨_, hoom⟩⟩
-  · have hPm' : sm.mem ⊨ (Q_local sm ∗ F) ∗ R := by
-      rw [sepConj_assoc]; exact Satisfies.mono (sepConj_mono_left hent) hPm
-    obtain ⟨sf, hsteps2, hout2⟩ :=
-      h2 sm hpc hrun hsp hcs htr (hF.of_steps hsteps1) R hPm' (hsteps1.codeLoaded hL)
-    exact ⟨sf, hsteps1.trans hsteps2, hout2⟩
-  · exact False.elim (not_satisfies_false_sepConj hoom)
-
-theorem seq_frame_inImage_pool {prog : Program} {img : Obj.Image}
-    {mid_pc ret_pc : BitVec 64} {s : State} {P F : SepProp}
-    {P_local Q_local : State → SepProp}
-    {Q Qp : State → SepProp → Prop}
-    (hF : ImgCallInv img s)
-    (hframe : P = P_local s ∗ F)
-    (h1 : SepWP prog mid_pc s (P_local s)
-      (fun sm Pm => sm.sp = s.sp ∧ CalleeSavedPreserved s sm ∧
-        sm.trace = s.trace ∧ (Pm ⊢ Q_local sm)))
-    (h2 : ∀ sm : State, sm.pc = mid_pc → sm.status = .Running →
-      sm.sp = s.sp → CalleeSavedPreserved s sm → sm.trace = s.trace → ImgCallInv img sm →
       SepWPp prog ret_pc sm (Q_local sm ∗ F) Q Qp) :
     SepWPp prog ret_pc s P Q Qp := by
   intro R hm hL

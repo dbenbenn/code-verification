@@ -12,7 +12,7 @@ module
 public import LibsignalBinary.Proofs.SpqrV1Sync.ErasureDefs
 import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.LagrangeSum
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -101,7 +101,7 @@ theorem map_replicate_zero_constMul (r : Nat) (d : GF16) :
       List.replicate r GF16.ZERO := by
   rw [List.map_replicate, constMul_eq_mul, zero_mul']
 
-def Padded (n r : Nat) (p : PolyConst n) : Prop :=
+@[expose] def Padded (n r : Nat) (p : PolyConst n) : Prop :=
   ∃ cs : List GF16, cs.length + r = n ∧ p.coefficients = cs ++ List.replicate r GF16.ZERO
 
 theorem Padded.length {n r : Nat} {p : PolyConst n} (h : Padded n r p) :
@@ -166,7 +166,7 @@ theorem multXdiff_spec {n r : Nat} (p : PolyConst n) (d : GF16)
     rw [hpoly_xp, hpoly_dp]
     ring
 
-def onesPts (n : Nat) : List Pt :=
+@[expose] def onesPts (n : Nat) : List Pt :=
   (List.range n).map (fun i => { x := GF16.new (BitVec.ofNat 16 i), y := GF16.ONE })
 
 theorem getElem?_onesPts {n j : Nat} (hj : j < n) :

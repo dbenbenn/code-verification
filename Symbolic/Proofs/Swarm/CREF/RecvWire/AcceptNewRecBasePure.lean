@@ -9,16 +9,17 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.CBad
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA
-public import Symbolic.Proofs.Swarm.CREF.Cli.World.XplTransferPure
-import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
+public import Symbolic.Proofs.Swarm.CREF.CBad -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.World.XplTransferPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
 import Symbolic.Proofs.Swarm.CREF.TROpen
 import Symbolic.Proofs.Swarm.CREF.TR.Leaks -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- shake: keep
+import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR
 
 /-!
 # Current-Read Premise, Quiet Prefix/Suffix Helpers, and Snapshot/Chain Uniqueness
@@ -28,7 +29,7 @@ for invisible no-effect prefixes and suffixes, block-visibility inversion, curre
 uniqueness, and receiver-chain uniqueness under `StateRel`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -46,7 +47,7 @@ open Symbolic.Swarm.CREF Symbolic.Swarm.CREF.CliPure Symbolic.Swarm.CREF.CliPure
 open DY.Libsignal.TripleRatchet.Refinement (wireWhisperTag)
 
 /-- Current-snapshot and `recvRepresentations` premise for a decrypt move `m` at `ms`. -/
-def RcvCurrentRead (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def RcvCurrentRead (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ms : List Move) (body : HwBytes) : Move → Prop
   | m@(.decrypt _ stateIdx ..) => TripleRatchet.isCurrentSnapshot (runTraceMoves r ms) stateIdx = true ∧
       ∀ t, rcvMoveTerm (runTraceMoves r ms) m = some t → t ∈ recvRepresentations interpretation r S g ms body

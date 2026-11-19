@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2Placed
@@ -32,7 +32,7 @@ Relocatable `[LibsignalPlacement]` Path 4b (`outMsg = none, ack = true`), `outMs
 prefix helpers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

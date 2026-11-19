@@ -11,10 +11,10 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.GenLsBlock
 public import LibsignalBinary.Proofs.TripleRatchet.Prost.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Prost Decoding Leaf Specifications
@@ -23,11 +23,13 @@ Deterministic allocator event envelopes and `RustCliAllocBudget`-threaded specif
 `drop_glue::<prost::error::DecodeError>`, `decode_varint_slice`, `int32::merge`, and `skip_field`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
+
+open CryptoVerification.LibsignalTripleRatchet (decodeErrorAt decodeErrorAtStackLen decodeErrorHookStack extHookStack)
 
 open Arm64 ProofLib SepProp
 open LibsignalBinary.Heap
@@ -41,8 +43,6 @@ open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 open CryptoVerification.RustHeap (allocHookStack)
 open CryptoVerification.LibsignalProtoCodec
   (WireType decodeVarint mergeUint32 skipField)
-open CryptoVerification.LibsignalTripleRatchet
-  (extHookStack decodeErrorHookStack decodeErrorAt decodeErrorAtStackLen tripleRatchetProgAt)
 open CryptoVerification.LibsignalTripleRatchet.Prost
   (decodeVarintSliceName int32MergeName skipFieldName dropDecodeErrorName
    decodeErrorHookStackX
@@ -53,14 +53,14 @@ open CryptoVerification.LibsignalTripleRatchet.Prost
 
 /-- Callee-fixed allocator event envelope of `drop_glue::<prost::error::DecodeError>`:
 frees optional stack buffer `(c * 32, 8)` when `c > 0`, followed by the 72-byte `Box<Inner>`. -/
-def DropDecodeErrorEnv (evs : List AllocEvent) : Prop :=
+@[expose] def DropDecodeErrorEnv (evs : List AllocEvent) : Prop :=
   evs = rustDeallocEvents 72 8 ∨
   ∃ c : Nat, 0 < c ∧ c * 32 < 2 ^ 63 ∧
     evs = rustDeallocEvents (c * 32) 8 ++ rustDeallocEvents 72 8
 
 /-- Stack-parameterized budget-threaded contract of `drop_glue::<prost::error::DecodeError>`
 (`0x20 + dStack`; `dealloc` never allocates or panics). -/
-def dropDecodeErrorSpecGen [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def dropDecodeErrorSpecGen [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (dStack : Nat) : Spec (BitVec 64 × M.σ) where
   pre := fun (e, st) s =>
     ⌜s.readReg64 .x0 = e ∧ LsRetAddr624 (s.readReg64 .lr)⌝ ∗ decodeErrorAt A.repAlloc e ∗
@@ -72,12 +72,12 @@ def dropDecodeErrorSpecGen [LibsignalPlacement] {M : AllocCostModel} (A : RustCl
       stackAt s0.sp (0x20 + dStack)
 
 /-- Budget-threaded contract of `drop_glue::<prost::error::DecodeError>` at `dropDecodeErrorStack`. -/
-def dropDecodeErrorSpec [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def dropDecodeErrorSpec [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BitVec 64 × M.σ) :=
   dropDecodeErrorSpecGen A lim allocHookStack
 
 /-- Budget-threaded contract of `drop_glue::<prost::error::DecodeError>` at `dropDecodeErrorStackX`. -/
-def dropDecodeErrorSpecX [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def dropDecodeErrorSpecX [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BitVec 64 × M.σ) :=
   dropDecodeErrorSpecGen A lim extHookStack
 
@@ -85,19 +85,19 @@ def dropDecodeErrorSpecX [LibsignalPlacement] {M : AllocCostModel} (A : RustCliA
 
 /-- Deterministic allocator events of `decode_varint_slice` (`[]` on `Ok`,
 `rustAllocEvents 72 8` via `DecodeError::from` on `Err`). -/
-def decodeVarintSliceEvents (bs : List (BitVec 8)) : List AllocEvent :=
+@[expose] def decodeVarintSliceEvents (bs : List (BitVec 8)) : List AllocEvent :=
   match decodeVarint bs with
   | some _ => []
   | none => rustAllocEvents 72 8
 
 /-- Callee-fixed allocator event envelope of `decode_varint_slice`. -/
-def DecodeVarintSliceEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def DecodeVarintSliceEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   evs = decodeVarintSliceEvents bs
 
 /-- Stack-parameterized budget-threaded contract of `decode_varint_slice`
 (`0x50 + errStack`: `= decodeVarintSliceSpec` at `decodeErrorHookStack`,
 `= decodeVarintSliceSpecX` at `decodeErrorHookStackX`). -/
-def decodeVarintSliceSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def decodeVarintSliceSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (errStack : Nat) : Spec (DecodeVarintSliceGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.ptr ∧
@@ -113,12 +113,12 @@ def decodeVarintSliceSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
       stackAt s0.sp (0x50 + errStack)
 
 /-- Budget-threaded contract of `decode_varint_slice` at `decodeVarintSliceStack`. -/
-def decodeVarintSliceSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def decodeVarintSliceSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DecodeVarintSliceGhost × M.σ) :=
   decodeVarintSliceSpecGen A lim decodeErrorHookStack
 
 /-- Budget-threaded contract of `decode_varint_slice` at `decodeVarintSliceStackX`. -/
-def decodeVarintSliceSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def decodeVarintSliceSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DecodeVarintSliceGhost × M.σ) :=
   decodeVarintSliceSpecGen A lim decodeErrorHookStackX
 
@@ -126,18 +126,18 @@ def decodeVarintSliceSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
 
 /-- Deterministic allocator events of `int32::merge::<&mut &[u8]>` (`[]` on `Ok`,
 `rustAllocEvents 72 8` via `DecodeError::from` on `Err`). -/
-def int32MergeEvents (wt : WireType) (bs : List (BitVec 8)) : List AllocEvent :=
+@[expose] def int32MergeEvents (wt : WireType) (bs : List (BitVec 8)) : List AllocEvent :=
   match mergeUint32 wt bs with
   | some _ => []
   | none => rustAllocEvents 72 8
 
 /-- Callee-fixed allocator event envelope of `int32::merge::<&mut &[u8]>`. -/
-def Int32MergeEnv (x : Int32MergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def Int32MergeEnv (x : Int32MergeGhost) (evs : List AllocEvent) : Prop :=
   evs = int32MergeEvents x.wt x.bs
 
 /-- Stack-parameterized budget-threaded contract of `int32::merge::<&mut &[u8]>`
 (`0x50 + (0x50 + errStack)`). -/
-def int32MergeSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def int32MergeSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (errStack : Nat) : Spec (Int32MergeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
@@ -159,12 +159,12 @@ def int32MergeSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
           memRegion x.valPtr 4 ∗ memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
 /-- Budget-threaded contract of `int32::merge::<&mut &[u8]>` at `int32MergeStack`. -/
-def int32MergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def int32MergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (Int32MergeGhost × M.σ) :=
   int32MergeSpecGen A lim decodeErrorHookStack
 
 /-- Budget-threaded contract of `int32::merge::<&mut &[u8]>` at `int32MergeStackX`. -/
-def int32MergeSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def int32MergeSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (Int32MergeGhost × M.σ) :=
   int32MergeSpecGen A lim decodeErrorHookStackX
 
@@ -172,19 +172,19 @@ def int32MergeSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
 
 /-- Deterministic allocator events of `skip_field::<&mut &[u8]>` (`[]` on `Ok`,
 `rustAllocEvents 72 8` via `DecodeError::from` on `Err`). -/
-def skipFieldEventsCore (depth tag : Nat) (wt : WireType) (bs : List (BitVec 8)) :
+@[expose] def skipFieldEventsCore (depth tag : Nat) (wt : WireType) (bs : List (BitVec 8)) :
     List AllocEvent :=
   match skipField (2 * bs.length + 2) depth tag wt bs with
   | some _ => []
   | none => rustAllocEvents 72 8
 
 /-- Callee-fixed allocator event envelope of `skip_field::<&mut &[u8]>`. -/
-def SkipFieldEnv (x : SkipFieldGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def SkipFieldEnv (x : SkipFieldGhost) (evs : List AllocEvent) : Prop :=
   evs = skipFieldEventsCore x.depth x.tag x.wt x.bs
 
 /-- Stack-parameterized budget-threaded contract of `skip_field::<&mut &[u8]> [local#1]`
 (`(x.depth + 1) * 0x60 + (0x50 + errStack)`). -/
-def skipFieldSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def skipFieldSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (errStack : Nat) : Spec (SkipFieldGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
@@ -207,44 +207,16 @@ def skipFieldSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
 /-- Budget-threaded contract of `skip_field::<&mut &[u8]> [local#1]` at `skipFieldStack`. -/
-def skipFieldSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def skipFieldSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SkipFieldGhost × M.σ) :=
   skipFieldSpecGen A lim decodeErrorHookStack
 
 /-- Budget-threaded contract of `skip_field::<&mut &[u8]> [local#1]` at `skipFieldStackX`. -/
-def skipFieldSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def skipFieldSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SkipFieldGhost × M.σ) :=
   skipFieldSpecGen A lim decodeErrorHookStackX
 
 /-! ## Target `subroutine_ok` propositions -/
-
-def DropDecodeErrorOk [LibsignalPlacement] {M : AllocCostModel} (b : BitVec 64) (C : Crypto)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr dropDecodeErrorName)
-    (dropDecodeErrorSpec A lim)
-
-def DecodeVarintSliceOk {M : AllocCostModel} (b : BitVec 64) (C : Crypto)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr decodeVarintSliceName)
-    (decodeVarintSliceSpec A lim)
-
-def Int32MergeOk {M : AllocCostModel} (b : BitVec 64) (C : Crypto)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr int32MergeName)
-    (int32MergeSpec A lim)
-
-def SkipFieldOk {M : AllocCostModel} (b : BitVec 64) (C : Crypto)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr skipFieldName)
-    (skipFieldSpec A lim)
 
 abbrev DropDecodeErrorPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=

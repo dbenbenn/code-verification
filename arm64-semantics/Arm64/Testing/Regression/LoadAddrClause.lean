@@ -17,8 +17,8 @@ public import Arm64.Testing.Regression.CExamplesFixture
 # `load_addr` Specification Clause Tests
 
 Regression tests for the `load_addr <ident>` binder in `c_spec` and `rust_spec` and for
-`[ToBaseSpec S α]` instantiation across `Program.subroutineOk`, `Obj.LinkedImage.subroutineOk`,
-`Spec.liftedSubroutineHook`, `#spec_lint!`, and `#spec_nonvacuous!`.
+`[ToBaseSpec S α]` instantiation across `Program.subroutineOk`, `Spec.liftedSubroutineHook`,
+`#spec_lint!`, and `#spec_nonvacuous!`.
 -/
 
 @[expose] public section
@@ -92,10 +92,6 @@ example (b : BitVec 64) (H : String → Option (State → State)) :
       subroutine_ok (cExamplesCode.rebase b H) ((cExamplesCode.rebase b H).fnAddr "f")
         (loadAddrHeaderSpec k b) := by
   simp only [Program.subroutineOk, ToBaseSpec.toSpec, Program.rebase_base]
-
-example (li : Obj.LinkedImage) : li.subroutineOk "f" (loadAddrCtxSpec k n) ↔
-    ∀ img, Obj.Loads li img →
-      (Program.ofImage img).subroutineOk "f" (loadAddrCtxSpec k n img.base) := Iff.rfl
 
 example : Spec.liftedSubroutineHook prog "f" (loadAddrCtxSpec k n) =
     Spec.liftedSubroutineHook prog "f" (loadAddrCtxSpec k n prog.base) := rfl

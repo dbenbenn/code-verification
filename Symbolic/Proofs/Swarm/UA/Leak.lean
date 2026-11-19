@@ -34,6 +34,9 @@ import Symbolic.DYBridge.DY.Actions.Network
 import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+public import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
+import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
 
 /-!
 # Invariant Preservation across Environment Leak Events
@@ -43,7 +46,7 @@ combined invariant `UAInv` by stepping `CliLiveAtCli` on `flatEvents`, transport
 `AliceRecordPendingInSession`, and extending clean explanations with compromise or exposure steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -10,18 +10,21 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.ReceiveRatchetCodeSym
+public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.ReceiveRatchetCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Mac.Defs
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContracts
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContracts -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerialize
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.Calls
+import ProofLib.Sep
+meta import Lean
 import ProofLib.SepLogic.WPp
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
 
 /-!
 # Verification of `TripleRatchet::apply_to_session_state`
@@ -30,7 +33,7 @@ Proves that `<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_sessi
 satisfies `trApplySpec` and `trApplySpecX`, both in-image and under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 
@@ -43,40 +46,6 @@ open ProofLib.ProgramReflection
 open CryptoVerification.InImageLift
 /-! ## Drop-glue callee hypotheses for `TR::apply_to_session_state` -/
 
-/-- `drop_glue<Vec<chain::MessageKey>>` (`0x1f28`) meets `dropVecMessageKeySpec A` on `tripleRatchetProgAtExt`. -/
-def DropVecMessageKeyOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr dropVecMessageKeyName)
-    (dropVecMessageKeySpec A)
-
-/-- `drop_glue<Vec<chain::MessageKey>>` (`0x1f28`) meets `dropVecMessageKeySpec A` on `tripleRatchetProgAt`. -/
-def DropVecMessageKeyOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  DropVecMessageKeyOkExt b A (tripleRatchetExterns C ctl abs)
-
-/-- `drop_glue<Vec<session_structure::Chain>>` (`0x1e74`) meets `dropVecChainSpec A` on `tripleRatchetProgAtExt`. -/
-def DropVecChainOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr dropVecChainName)
-    (dropVecChainSpec A)
-
-/-- `drop_glue<Vec<session_structure::Chain>>` (`0x1e74`) meets `dropVecChainSpec A` on `tripleRatchetProgAt`. -/
-def DropVecChainOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  DropVecChainOkExt b A (tripleRatchetExterns C ctl abs)
-
-/-- `drop_glue<Vec<chain::MessageKey>>` (`0x1f28`) meets `(dropVecMessageKeySpecX A).inImage img` on `tripleRatchetProgAtExt`. -/
-def DropVecMessageKeyOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext) ((tripleRatchetProgAtExt img.base ext).fnAddr dropVecMessageKeyName)
-    ((dropVecMessageKeySpecX A).inImage img)
-
-/-- `drop_glue<Vec<session_structure::Chain>>` (`0x1e74`) meets `(dropVecChainSpecX A).inImage img` on `tripleRatchetProgAtExt`. -/
-def DropVecChainOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext) ((tripleRatchetProgAtExt img.base ext).fnAddr dropVecChainName)
-    ((dropVecChainSpecX A).inImage img)
-
 namespace ReceiveRatchetApply
 
 set_option maxRecDepth 200000
@@ -85,143 +54,15 @@ set_option maxHeartbeats 1600000
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
+run_meta do
+  let env ← Lean.getEnv
+  for (h, ks) in #[(``vecGhostAt, #[2]), (``vecU8At, #[1]), (``vecAt, #[5]), (``vecBuf, #[5, 6]), (``vecU8Buf, #[1, 2]), (``optSenderChainAt, #[1]), (``optTailVecAt, #[2]), (``sessionStateAt, #[1])] do
+    let n := Lean.mkPrivateName env (((ks.foldl Lean.Name.mkNum ProofLib.Sep.sepKeyMarker).str "_TARGET_") ++ h)
+    unless env.contains n do
+      Lean.withExporting (isExporting := false) do
+        Lean.addDecl <| .defnDecl { name := n, levelParams := [], type := .const ``Unit [], value := .const ``Unit.unit [], hints := .abbrev, safety := .safe }
+
 -- Instruction decode lemmas for `TR::apply_to_session_state` (`0x1cbf4`).
-gen_decodes libsignalSessionCode_tree libsignalSessionBin [(ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state") → (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state" + 184), (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state" + 192) → (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state" + 488),
-    (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state" + 496) → (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state" + 504), (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state" + 536) → (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state" + 664), (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state" + 696) → (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state" + 704)]
-
-open Lean Meta Elab Tactic in
-/-- Fetch `count` instructions of `TR::apply_to_session_state` (`0x1cbf4`) starting at relative
-byte offset `relStart`, rewriting the entry address with `hentry`. -/
-elab "tr_apply_fetches " b:term:max H:term:max hfn:term:max hentry:term:max relStart:num count:num : tactic => do
-  let _ := hentry
-  let r0 := relStart.getNat
-  let n := count.getNat
-  let fnOff := num% (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")
-  let fetchEntry := mkIdent ``CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent ``CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  if n == 999 then
-    let blocks : Array (Nat × Nat) := #[
-      (0, 26), (0x68, 9), (0x8c, 10), (0xb4, 2), (0xc0, 3), (0xcc, 1),
-      (0x120, 11), (0x184, 8),
-      (0x1a4, 7), (0x1c0, 9), (0x1e4, 2), (0x1f0, 3), (0x218, 7), (0x234, 10),
-      (0x25c, 16), (0x2b8, 3)
-    ]
-    for (rStart, cnt) in blocks do
-      for i in [0:cnt] do
-        let k := rStart + 4 * i
-        let off := fnOff + k
-        let hexStr := String.ofList (Nat.toDigits 16 off)
-        let dec := mkIdent (Name.str `CryptoVerification.LibsignalTripleRatchet.ReceiveRatchetApply
-          ("libsignalSessionBin_decode_0x" ++ hexStr))
-        let kq := Syntax.mkNumLit (toString k)
-        if k == 0 then
-          evalTactic (← `(tactic|
-            have _ := $fetchEntry (b := $b) (H := $H) $hfn (of_decide_eq_true rfl) $dec))
-        else
-          evalTactic (← `(tactic|
-            have _ := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (of_decide_eq_true rfl) $dec))
-  else
-    for i in [0:n] do
-      let k := r0 + 4 * i
-      let off := fnOff + k
-      let hexStr := String.ofList (Nat.toDigits 16 off)
-      let dec := mkIdent (Name.str `CryptoVerification.LibsignalTripleRatchet.ReceiveRatchetApply
-          ("libsignalSessionBin_decode_0x" ++ hexStr))
-      let kq := Syntax.mkNumLit (toString k)
-      if k == 0 then
-        evalTactic (← `(tactic|
-          have _ := $fetchEntry (b := $b) (H := $H) $hfn (of_decide_eq_true rfl) $dec))
-      else
-        evalTactic (← `(tactic|
-          have _ := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (of_decide_eq_true rfl) $dec))
-
-/-! ## Callee and stub relocation lemmas -/
-
-/-- Relocation wrapper for the in-image `PrivateKey::serialize` (`0x3e6dc`) at call distance `k`. -/
-theorem privSerialize_ok_at2_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hA : AllocContracts b A ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff privSerializeName := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k) (privSerializeSpec A) :=
-  priv_serialize_ok_at_ext b A ext hA name k hk
-
-theorem privSerialize_ok_at_tripleRatchet {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {S : SpqrModel} {abs : String → Option (State → State)}
-    (hS : TripleRatchetHooks C A S abs) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff privSerializeName := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) (privSerializeSpec A) :=
-  privSerialize_ok_at2_ext (AllocContracts.of_tripleRatchetProgAt b C A ctl abs hS.alloc) hk
-
-theorem pkSerialize_ok_at_apply_ext {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hPk : PublicKeySerializeOkExt b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr trApplyName + bv% (ls_off% "<libsignal_core::curve::PublicKey>::serialize" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) (publicKeySerializeSpec A) := by
-  have h : (tripleRatchetProgAtExt b ext).fnAddr trApplyName + bv% (ls_off% "<libsignal_core::curve::PublicKey>::serialize" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state") =
-      (tripleRatchetProgAtExt b ext).fnAddr publicKeySerializeName := by
-    simp only [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state"),
-      (ls_lemma% fnOff "<libsignal_core::curve::PublicKey>::serialize")]
-    bv_omega
-  rw [h]
-  exact hPk
-
-theorem pkSerialize_ok_at_apply {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hPk : PublicKeySerializeOk b C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr trApplyName + bv% (ls_off% "<libsignal_core::curve::PublicKey>::serialize" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) (publicKeySerializeSpec A) :=
-  pkSerialize_ok_at_apply_ext hPk
-
-theorem dropVecMessageKey_ok_at_apply_ext {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hDropMk : DropVecMessageKeyOkExt b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr trApplyName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::chain::MessageKey>>") - (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")))
-      (dropVecMessageKeySpec A) := by
-  have h : (tripleRatchetProgAtExt b ext).fnAddr trApplyName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::chain::MessageKey>>") - (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) =
-      (tripleRatchetProgAtExt b ext).fnAddr dropVecMessageKeyName := by
-    simp only [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state"),
-      (ls_lemma% fnOff "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::chain::MessageKey>>")]
-    bv_omega
-  rw [h]
-  exact hDropMk
-
-theorem dropVecMessageKey_ok_at_apply {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hDropMk : DropVecMessageKeyOk b C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr trApplyName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::chain::MessageKey>>") - (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")))
-      (dropVecMessageKeySpec A) :=
-  dropVecMessageKey_ok_at_apply_ext hDropMk
-
-theorem dropVecChain_ok_at_apply_ext {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hDropCh : DropVecChainOkExt b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr trApplyName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::Chain>>") - (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")))
-      (dropVecChainSpec A) := by
-  have h : (tripleRatchetProgAtExt b ext).fnAddr trApplyName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::Chain>>") - (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) =
-      (tripleRatchetProgAtExt b ext).fnAddr dropVecChainName := by
-    simp only [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state"),
-      (ls_lemma% fnOff "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::Chain>>")]
-    bv_omega
-  rw [h]
-  exact hDropCh
-
-theorem dropVecChain_ok_at_apply {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hDropCh : DropVecChainOk b C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr trApplyName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::Chain>>") - (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")))
-      (dropVecChainSpec A) :=
-  dropVecChain_ok_at_apply_ext hDropCh
-
-/-! ## Arithmetic and byte-unpacking helpers -/
-
 theorem sp_sub_224_orr_4 {sp : BitVec 64} (h : (sp &&& 15#64 == 0#64) = true) :
     (sp - 224#64) ||| 4#64 = sp - 220#64 := by
   bv_kernel
@@ -359,7 +200,7 @@ theorem stackAt_sub_split (sp : BitVec 64) (n k : Nat) (h : k ≤ n) (hn : n < 2
   rw [h1, h2, h3]
   omega
 
-def trApplySavedRegs (sp : BitVec 64) (s : State) : SepProp :=
+@[expose] def trApplySavedRegs (sp : BitVec 64) (s : State) : SepProp :=
   ((sp - 96#64) ↦₆₄ s.readReg64 .x29) ∗ ((sp - 88#64) ↦₆₄ s.readReg64 .lr) ∗
   ((sp - 80#64) ↦₆₄ s.readReg64 .x28) ∗ ((sp - 72#64) ↦₆₄ s.readReg64 .x27) ∗
   ((sp - 64#64) ↦₆₄ s.readReg64 .x26) ∗ ((sp - 56#64) ↦₆₄ s.readReg64 .x25) ∗
@@ -396,38 +237,8 @@ theorem stackAt_trApply (sp : BitVec 64) :
       (∃∗ r9 : BitVec 64, (sp - 24#64) ↦₆₄ r9) ∗
       (∃∗ r10 : BitVec 64, (sp - 16#64) ↦₆₄ r10) ∗
       (∃∗ r11 : BitVec 64, (sp - 8#64) ↦₆₄ r11) := by
-  show memRegion (sp - BitVec.ofNat 64 16608) 16608 = _
-  rw [mr_cut' sp 16608 224 16384 224 16608 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 224 216 8 216 224 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 216 208 8 208 216 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 208 200 8 200 208 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 200 192 8 192 200 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 192 184 8 184 192 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 184 176 8 176 184 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 176 168 8 168 176 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 168 160 8 160 168 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 160 152 8 152 160 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 152 144 8 144 152 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 144 136 8 136 144 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 136 128 8 128 136 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 128 120 8 120 128 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 120 96 24 96 120 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 96 88 8 88 96 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 88 80 8 80 88 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 80 72 8 72 80 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 72 64 8 64 72 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 64 56 8 56 64 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 56 48 8 48 56 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 48 40 8 40 48 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 40 32 8 32 40 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 32 24 8 24 32 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 24 16 8 16 24 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 16 8 8 8 16 rfl rfl (by decide) (by decide) (by decide)]
-  have hstk : memRegion (sp - BitVec.ofNat 64 16608) 16384 = stackAt (sp - 224#64) extHookStack := by
-    simp only [stackAt, extHookStack]
-    exact congrArg (fun x => memRegion x 16384) (by bv_omega)
-  rw [hstk]
-  simp only [memRegion_eight]
+  simp only [stackAt, trApplyStack, extHookStack, Nat.reducePow, Nat.reduceAdd]
+  sep_interval_eq
 
 theorem stackAt_trApply_fold (sp : BitVec 64) (s0 : State) :
     (stackAt (sp - 224#64) extHookStack ∗
@@ -440,38 +251,8 @@ theorem stackAt_trApply_fold (sp : BitVec 64) (s0 : State) :
       ((sp - 32#64) ↦₆₄ s0.readReg64 .x22) ∗ ((sp - 24#64) ↦₆₄ s0.readReg64 .x21) ∗
       ((sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗ ((sp - 8#64) ↦₆₄ s0.readReg64 .x19)) ⊢
       stackAt sp trApplyStack := by
-  show (stackAt (sp - 224#64) extHookStack ∗ memRegion (sp - 224#64) 104 ∗
-    memRegion (sp - 120#64) 24 ∗ _) ⊢ memRegion (sp - BitVec.ofNat 64 16608) 16608
-  rw [mr_cut' sp 16608 224 16384 224 16608 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 224 120 104 120 224 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 120 96 24 96 120 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 96 88 8 88 96 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 88 80 8 80 88 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 80 72 8 72 80 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 72 64 8 64 72 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 64 56 8 56 64 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 56 48 8 48 56 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 48 40 8 40 48 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 40 32 8 32 40 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 32 24 8 24 32 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 24 16 8 16 24 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 16 8 8 8 16 rfl rfl (by decide) (by decide) (by decide)]
-  have hstk : memRegion (sp - BitVec.ofNat 64 16608) 16384 = stackAt (sp - 224#64) extHookStack := by
-    simp only [stackAt, extHookStack]
-    exact congrArg (fun x => memRegion x 16384) (by bv_omega)
-  rw [hstk]
-  refine sepConj_mono (Entails.refl _) (sepConj_mono (Entails.refl _) (sepConj_mono (Entails.refl _) ?_))
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) (pointsTo64_entails_memRegion _ _)
+  simp only [stackAt, trApplyStack, extHookStack, Nat.reducePow, Nat.reduceAdd]
+  sep_interval
 
 /-! ## `trAt` and `sessionStateAt` exposure and reassembly -/
 
@@ -499,19 +280,17 @@ theorem trAt_expose (A : RustAlloc) (t : BitVec 64) (trG : TrGhost)
       vecU8Buf A trG.pq.cap trG.pq.ptr tr.pqrState ∗
       ((t + 200#64) ↦ₛ tr.localIdentityKey.publicKey.bytes.toList) ∗
       ((t + 232#64) ↦ₛ tr.remoteIdentityKey.publicKey.bytes.toList) := by
-  unfold trAt ratchetAt
-  apply Entails.pure_left; intro hclamp
-  simp only [sepConj_assoc]
-  apply Entails.pure_left; rintro ⟨hchains_len, hpad_len, hmax_jumps⟩
-  apply Entails.pure_right ⟨hclamp, hchains_len, hpad_len, hmax_jumps⟩
+  dsimp only [trAt, ratchetAt]
+  refine Entails.pure_left fun hclamp => ?_
+  rw [sepConj_assoc]
+  refine Entails.pure_left fun ⟨hchains_len, hpad_len, hmax_jumps⟩ => ?_
   have hzip_len : (trG.ratchet.chains.zip tr.ratchet.receiverChains).length =
-      tr.ratchet.receiverChains.length := by
-    simp [hchains_len]
-  unfold vecAt
+      tr.ratchet.receiverChains.length := by simp [hchains_len]
+  dsimp only [vecAt]
   rw [hzip_len, vecU8At_eq_header_sep_buf]
-  unfold vecHeader
-  simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-  exact Entails.refl _
+  dsimp only [vecHeader]
+  simp only [BitVec.add_assoc, BitVec.reduceAdd]
+  bi_entail
 
 theorem mr_cut_add (a : BitVec 64) (c n k : Nat) (h : n + k ≤ 2 ^ 64) :
     memRegion (a + BitVec.ofNat 64 c) (n + k) =
@@ -535,48 +314,13 @@ theorem trAt_in_struct_entails_memRegion (t : BitVec 64) (trG : TrGhost)
       ((t + 200#64) ↦ₛ tr.localIdentityKey.publicKey.bytes.toList) ∗
       ((t + 232#64) ↦ₛ tr.remoteIdentityKey.publicKey.bytes.toList)) ⊢
       memRegion t 264 := by
-  have h0 : memRegion t 264 = memRegion (t + BitVec.ofNat 64 0) 264 := by simp
-  rw [h0]
-  rw [mr_cut_add t 0 8 256 (by decide)]
-  rw [mr_cut_add t 8 8 248 (by decide)]
-  rw [mr_cut_add t 16 8 240 (by decide)]
-  rw [mr_cut_add t 24 104 136 (by decide)]
-  rw [mr_cut_add t 128 32 104 (by decide)]
-  rw [mr_cut_add t 160 8 96 (by decide)]
-  rw [mr_cut_add t 168 4 92 (by decide)]
-  rw [mr_cut_add t 172 4 88 (by decide)]
-  rw [mr_cut_add t 176 8 80 (by decide)]
-  rw [mr_cut_add t 184 8 72 (by decide)]
-  rw [mr_cut_add t 192 8 64 (by decide)]
-  rw [mr_cut_add t 200 32 32 (by decide)]
-  have ht0 : t + BitVec.ofNat 64 0 = t := by simp
-  rw [ht0]
-  have hsc := pointsToBytes_entails_memRegion (t + 24#64)
-    (optSenderChainBytes tr.ratchet.senderChain trG.ratchet.senderPad)
-  rw [optSenderChainBytes_length tr.ratchet.senderChain hpad] at hsc
-  have hrk := pointsToBytes_entails_memRegion (t + 128#64)
-    (CryptoGames.HMAC.keyToBytes32 tr.ratchet.rootKey)
-  rw [length_keyToBytes32] at hrk
-  have hlik := pointsToBytes_entails_memRegion (t + 200#64)
-    tr.localIdentityKey.publicKey.bytes.toList
-  rw [tr.localIdentityKey.publicKey.bytes.toList_length] at hlik
-  have hrik := pointsToBytes_entails_memRegion (t + 232#64)
-    tr.remoteIdentityKey.publicKey.bytes.toList
-  rw [tr.remoteIdentityKey.publicKey.bytes.toList_length] at hrik
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono hsc ?_
-  refine sepConj_mono hrk ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo32_entails_memRegion _ _) ?_
-  refine sepConj_mono (Entails.refl _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  exact sepConj_mono hlik hrik
+  have := optSenderChainBytes_length tr.ratchet.senderChain hpad
+  have := length_keyToBytes32 tr.ratchet.rootKey
+  have := tr.localIdentityKey.publicKey.bytes.toList_length
+  have := tr.remoteIdentityKey.publicKey.bytes.toList_length
+  sep_interval
 
-def sessionApplyFrame (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
+@[expose] def sessionApplyFrame (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
     (st : SessionState (List (BitVec 8))) : SepProp :=
   ⌜PublicKey.deserialize G.localIk.bytes = .ok st.localIdentity.publicKey ∧
     (match st.remoteIdentity with
@@ -592,6 +336,14 @@ def sessionApplyFrame (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
   optTailVecAt A 32 (ss + 0x128#64) G.kyber ∗
   ((ss + 0x148#64) ↦₃₂ st.sessionVersion) ∗
   ((ss + 0x150#64) ↦ₛ G.regIds)
+
+run_meta do
+  let env ← Lean.getEnv
+  for (h, ks) in #[(``sessionApplyFrame, #[1])] do
+    let n := Lean.mkPrivateName env (((ks.foldl Lean.Name.mkNum ProofLib.Sep.sepKeyMarker).str "_TARGET_") ++ h)
+    unless env.contains n do
+      Lean.withExporting (isExporting := false) do
+        Lean.addDecl <| .defnDecl { name := n, levelParams := [], type := .const ``Unit [], value := .const ``Unit.unit [], hints := .abbrev, safety := .safe }
 
 theorem deserialize_ok_nonempty {bs : List (BitVec 8)} {pk : PublicKey}
     (h : PublicKey.deserialize bs = .ok pk) : 0 < bs.length := by
@@ -679,13 +431,9 @@ theorem sessionStateAt_expose_apply (A : RustAlloc) (ss : BitVec 64) (G : Sessio
       vecU8At A (ss + 0x78#64) G.pq.cap G.pq.ptr st.pqRatchetState ∗
       optSenderChainAt A (ss + 0x90#64) G.sender st.senderChain ∗
       ((ss + 0x14c#64) ↦₃₂ st.previousCounter) := by
-    unfold sessionStateAt sessionApplyFrame
-    apply Entails.pure_left
-    rintro ⟨hlik, hrik, hchains, hpend, hreg, hlik_len, hrik_len⟩
-    apply Entails.pure_right hchains
-    simp only [sepConj_assoc]
-    apply Entails.pure_right ⟨hlik, hrik, hpend, hreg, hlik_len, hrik_len⟩
-    exact Entails.of_eq (by ac_rfl)
+    dsimp only [sessionStateAt, sessionApplyFrame]
+    refine Entails.pure_left fun ⟨hlik, hrik, hchains, hpend, hreg, hlik_len, hrik_len⟩ => ?_
+    bi_entail
   refine Entails.trans h1 ?_
   apply Entails.pure_left; intro hchains
   have hroot := vecU8At_expose_nonempty_dealloc A (ss + 48#64) G.root.cap G.root.ptr
@@ -695,7 +443,7 @@ theorem sessionStateAt_expose_apply (A : RustAlloc) (ss : BitVec 64) (G : Sessio
       ((ss + 120#64) ↦₆₄ G.pq.cap) ∗ ((ss + 128#64) ↦₆₄ G.pq.ptr) ∗
       ((ss + 136#64) ↦₆₄ BitVec.ofNat 64 st.pqRatchetState.length) ∗
       vecU8Buf A G.pq.cap G.pq.ptr st.pqRatchetState := by
-    rw [vecU8At_eq_header_sep_buf]; unfold vecHeader
+    rw [vecU8At_eq_header_sep_buf]; dsimp only [vecHeader]
     simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
     exact Entails.refl _
   have hsc_eq : optSenderChainAt A (ss + 144#64) G.sender st.senderChain ⊢
@@ -710,16 +458,7 @@ theorem sessionStateAt_expose_apply (A : RustAlloc) (ss : BitVec 64) (G : Sessio
   refine Entails.trans (sepConj_mono (Entails.refl _)
     (sepConj_mono hroot (sepConj_mono (Entails.refl _)
       (sepConj_mono hpq (sepConj_mono hsc_eq (Entails.refl _)))))) ?_
-  simp only [sepConj_assoc]
-  rw [sepConj_pure_left_comm]
-  apply Entails.pure_left; rintro ⟨hr1, hr2, hr3, _, _, hr6⟩
-  rw [sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm]
-  apply Entails.pure_left; intro hsc_some
-  apply Entails.pure_right ⟨hchains, hr1, hr2, hr3, hr6, hsc_some⟩
-  exact Entails.refl _
+  bi_entail
 
 theorem layoutOk_of_pos_lt {n : Nat} (hpos : 0 < n) (hlt : n < 2 ^ 63) :
     LayoutOk n 1 :=
@@ -757,15 +496,13 @@ theorem sessionStateAt_reassemble_apply (A : RustAlloc) (ss : BitVec 64) (G : Se
       optSenderChainAt A (ss + 0x90#64) sender' tr.ratchet.senderChain ∗
       ((ss + 0x14c#64) ↦₃₂ tr.ratchet.previousCounter)) ⊢
       sessionStateAt A ss (mkApplyGhost G trG rootPtr sender') (tr.applyToSessionState st) := by
-  unfold sessionStateAt sessionApplyFrame mkApplyGhost TripleRatchet.applyToSessionState
-  rw [vecU8At_eq_header_sep_buf (v := ss + 0x78#64)]; unfold vecHeader
+  dsimp only [sessionStateAt, sessionApplyFrame, mkApplyGhost, TripleRatchet.applyToSessionState]
+  rw [vecU8At_eq_header_sep_buf (v := ss + 0x78#64)]; dsimp only [vecHeader]
   simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-  apply Entails.pure_left
-  rintro ⟨hlik, hrik, hpend, hreg, hlik_len, hrik_len⟩
-  apply Entails.pure_right ⟨hlik, hrik, hchains, hpend, hreg, hlik_len, hrik_len⟩
-  exact Entails.of_eq (by ac_rfl)
+  refine Entails.pure_left fun ⟨hlik, hrik, hpend, hreg, hlik_len, hrik_len⟩ => ?_
+  bi_entail
 
-def senderChainRawSlots (ss : BitVec 64) : SepProp :=
+@[expose] def senderChainRawSlots (ss : BitVec 64) : SepProp :=
   memRegion (ss + 144#64) 8 ∗
   memRegion (ss + 152#64) 8 ∗
   memRegion (ss + 160#64) 8 ∗
@@ -797,27 +534,8 @@ theorem optSenderChainAt_none_expose (A : RustAlloc) (ss : BitVec 64) :
       (∃∗ d232 : BitVec 64, (ss + 232#64) ↦₆₄ d232) ∗
       (∃∗ d240 : BitVec 32, (ss + 240#64) ↦₃₂ d240) ∗
       memRegion (ss + 244#64) 4 := by
-  unfold optSenderChainAt
-  simp only [BitVec.add_assoc, BitVec.reduceAdd]
-  rw [mr_cut_add ss 152 8 88 (by decide)]
-  rw [mr_cut_add ss 160 8 80 (by decide)]
-  rw [mr_cut_add ss 168 8 72 (by decide)]
-  rw [mr_cut_add ss 176 8 64 (by decide)]
-  rw [mr_cut_add ss 184 8 56 (by decide)]
-  rw [mr_cut_add ss 192 8 48 (by decide)]
-  rw [mr_cut_add ss 200 8 40 (by decide)]
-  rw [mr_cut_add ss 208 8 32 (by decide)]
-  rw [mr_cut_add ss 216 8 24 (by decide)]
-  rw [mr_cut_add ss 224 8 16 (by decide)]
-  rw [mr_cut_add ss 232 8 8 (by decide)]
-  rw [mr_cut_add ss 240 4 4 (by decide)]
-  rw [← memRegion_eight (ss + 152#64), ← memRegion_eight (ss + 160#64),
-      ← memRegion_eight (ss + 168#64), ← memRegion_eight (ss + 176#64),
-      ← memRegion_eight (ss + 184#64), ← memRegion_eight (ss + 192#64),
-      ← memRegion_eight (ss + 200#64), ← memRegion_eight (ss + 208#64),
-      ← memRegion_eight (ss + 216#64), ← memRegion_eight (ss + 224#64),
-      ← memRegion_eight (ss + 232#64), ← memRegion_four (ss + 240#64)]
-  exact Entails.refl _
+  dsimp only [optSenderChainAt]
+  exact Entails.of_eq (by sep_interval_eq)
 
 theorem optSenderChainAt_some_expose (A : RustAlloc) (ss : BitVec 64)
     (sg : SenderChainGhost) (sc : SenderChain) :
@@ -854,20 +572,10 @@ theorem optSenderChainAt_some_expose (A : RustAlloc) (ss : BitVec 64)
     (CryptoGames.HMAC.keyToBytes32 sc.chainKey.key) hck_ne
   rw [hck_len] at h4
   simp only [BitVec.add_assoc, BitVec.reduceAdd, BitVec.ofNat_eq_ofNat] at h1 h2 h4
+  rw [← and_assoc, ← and_assoc] at h4
   refine Entails.trans (sepConj_mono h1 (sepConj_mono h2 (sepConj_mono (Entails.refl _)
     (sepConj_mono h4 (Entails.refl _))))) ?_
-  simp only [sepConj_assoc]
-  apply Entails.pure_left; rintro ⟨hs1, hs2, hs3, hs4, _, hs6⟩
-  rw [sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm]
-  apply Entails.pure_left; rintro ⟨hp1, hp2, hp3, _, _, hp6⟩
-  rw [sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm]
-  apply Entails.pure_left; rintro ⟨hc1, hc2, _, _, hc5, hc6⟩
-  apply Entails.pure_right ⟨hs1, hs2, hs3, hs4, hs6, hp1, hp2, hp3, hp6, hc1, hc2, hc5, hc6⟩
-  exact Entails.refl _
+  bi_entail
 
 theorem optSenderChainAt_none_fold (A : RustAlloc) (ss : BitVec 64)
     (v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 : BitVec 64) (v12 : BitVec 32) :
@@ -886,33 +594,7 @@ theorem optSenderChainAt_none_fold (A : RustAlloc) (ss : BitVec 64)
       ((ss + 240#64) ↦₃₂ v12) ∗
       memRegion (ss + 244#64) 4) ⊢
       optSenderChainAt A (ss + 144#64) none none := by
-  unfold optSenderChainAt noneCap
-  simp only [BitVec.add_assoc, BitVec.reduceAdd]
-  rw [mr_cut_add ss 152 8 88 (by decide)]
-  rw [mr_cut_add ss 160 8 80 (by decide)]
-  rw [mr_cut_add ss 168 8 72 (by decide)]
-  rw [mr_cut_add ss 176 8 64 (by decide)]
-  rw [mr_cut_add ss 184 8 56 (by decide)]
-  rw [mr_cut_add ss 192 8 48 (by decide)]
-  rw [mr_cut_add ss 200 8 40 (by decide)]
-  rw [mr_cut_add ss 208 8 32 (by decide)]
-  rw [mr_cut_add ss 216 8 24 (by decide)]
-  rw [mr_cut_add ss 224 8 16 (by decide)]
-  rw [mr_cut_add ss 232 8 8 (by decide)]
-  rw [mr_cut_add ss 240 4 4 (by decide)]
-  refine sepConj_mono (Entails.refl _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  exact sepConj_mono (pointsTo32_entails_memRegion _ _) (Entails.refl _)
+  dsimp only [optSenderChainAt, noneCap]; sep_interval
 
 theorem vecU8At_fold_exact (A : RustAlloc) (v cap ptr : BitVec 64) (bs : List (BitVec 8)) (n : Nat)
     (hcap : cap.toNat = n) (hlen : bs.length = n) (hc0 : cap ≠ 0) (hlt : cap.toNat < 2 ^ 63) (hptr : ptr ≠ 0) :
@@ -944,7 +626,7 @@ theorem vecAt_nil_0_8 (A : RustAlloc) (v : BitVec 64) :
       (0#64 : BitVec 64).toNat * 104 < 2 ^ 63 ∧ (8#64 : BitVec 64) ≠ 0 := by decide
   exact Entails.pure_right hp (Entails.refl _)
 
-def mkSenderChainGhost (sc : SenderChain) (srkPtr privPtr ckPtr : BitVec 64) : SenderChainGhost :=
+@[expose] def mkSenderChainGhost (sc : SenderChain) (srkPtr privPtr ckPtr : BitVec 64) : SenderChainGhost :=
   { srk := ⟨33#64, srkPtr, sc.ratchetKey.publicKey.serialize⟩
     priv := ⟨32#64, privPtr, sc.ratchetKey.privateKey.bytes.toList⟩
     mkCap := 0#64
@@ -1032,19 +714,13 @@ theorem memRegion_32_unpack (a : BitVec 64) :
        (∃∗ d1 : BitVec 64, (a + 8#64) ↦₆₄ d1) ∗
        (∃∗ d2 : BitVec 64, (a + 16#64) ↦₆₄ d2) ∗
        (∃∗ d3 : BitVec 64, (a + 24#64) ↦₆₄ d3)) := by
-  rw [memRegion_split a 8 24 (by decide)]
-  rw [mr_cut_add a 8 8 16 (by decide)]
-  rw [mr_cut_add a 16 8 8 (by decide)]
-  rw [← memRegion_eight a, ← memRegion_eight (a + 8#64),
-      ← memRegion_eight (a + 16#64), ← memRegion_eight (a + 24#64)]
+  sep_interval_eq
 
 theorem SepWPp_pure_elim3 {prog : Program} {ret : BitVec 64} {s : State}
     {P1 P2 P3 : SepProp} {φ : Prop} {Q Qp : State → SepProp → Prop}
     (h : φ → SepWPp prog ret s (P1 ∗ P2 ∗ P3) Q Qp) :
-    SepWPp prog ret s (P1 ∗ P2 ∗ ⌜φ⌝ ∗ P3) Q Qp := by
-  have heq : (P1 ∗ P2 ∗ ⌜φ⌝ ∗ P3) = (⌜φ⌝ ∗ (P1 ∗ P2 ∗ P3)) := by ac_rfl
-  rw [heq]
-  exact SepWPp.pure_elim h
+    SepWPp prog ret s (P1 ∗ P2 ∗ ⌜φ⌝ ∗ P3) Q Qp :=
+  SepWPp.weaken_pre (by bi_entail) (SepWPp.pure_elim h)
 
 theorem allocFailedIn_of_trace_eq {s0 sm sf : State} (htr : sm.trace = s0.trace)
     (h : allocFailedIn sm sf ∧ sm.trace <+: sf.trace) :
@@ -1247,14 +923,7 @@ theorem hck_tr_pack {t : BitVec 64} {sc : SenderChain} (pad : List (BitVec 8))
 theorem stack_24_to_memRegion (sp v0 v1 v2 : BitVec 64) :
     (((sp - 120#64) ↦₆₄ v0) ∗ ((sp - 112#64) ↦₆₄ v1) ∗ ((sp - 104#64) ↦₆₄ v2)) ⊢
       memRegion (sp - 120#64) 24 := by
-  have h := mr_split_24 (sp - 120#64) 0
-  have h0 : sp - 120#64 + BitVec.ofNat 64 0 = sp - 120#64 := by bv_omega
-  have h1 : sp - 120#64 + BitVec.ofNat 64 (0 + 8) = sp - 112#64 := by bv_omega
-  have h2 : sp - 120#64 + BitVec.ofNat 64 (0 + 8 + 8) = sp - 104#64 := by bv_omega
-  rw [h0, h1, h2] at h
-  rw [h]
-  exact sepConj_mono (pointsTo64_entails_memRegion _ _)
-    (sepConj_mono (pointsTo64_entails_memRegion _ _) (pointsTo64_entails_memRegion _ _))
+  sep_interval
 
 theorem spAligned_sub_224 {sp sp' : BitVec 64} (halign : (sp &&& 15#64 == 0#64) = true)
     (hsp : sp' = sp - 224#64) : (sp' &&& 15#64 == 0#64) = true := by
@@ -1347,59 +1016,6 @@ theorem priv_buf_to_memRegion (ptr cap : BitVec 64) (k : List.Vector (BitVec 8) 
 
 /-! ## Top-level `TrApplyOk` theorem -/
 
-
-theorem privSerialize_ok_at2_ext_x {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (hA : AllocContractsX img A ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff privSerializeName := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((privSerializeSpecX A).inImage img) :=
-  priv_serialize_ok_at_ext_x img A ext hA name k hk
-
-theorem pkSerialize_ok_at_apply_ext_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hPk : PublicKeySerializeOkX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr trApplyName + bv% (ls_off% "<libsignal_core::curve::PublicKey>::serialize" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state"))
-      ((publicKeySerializeSpecX A).inImage img) := by
-  have h : (tripleRatchetProgAtExt img.base ext).fnAddr trApplyName + bv% (ls_off% "<libsignal_core::curve::PublicKey>::serialize" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state") =
-      (tripleRatchetProgAtExt img.base ext).fnAddr publicKeySerializeName := by
-    simp only [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state"),
-      (ls_lemma% fnOff "<libsignal_core::curve::PublicKey>::serialize")]
-    bv_omega
-  rw [h]
-  exact hPk
-
-theorem dropVecMessageKey_ok_at_apply_ext_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hDropMk : DropVecMessageKeyOkX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr trApplyName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::chain::MessageKey>>") - (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")))
-      ((dropVecMessageKeySpecX A).inImage img) := by
-  have h : (tripleRatchetProgAtExt img.base ext).fnAddr trApplyName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::chain::MessageKey>>") - (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) =
-      (tripleRatchetProgAtExt img.base ext).fnAddr dropVecMessageKeyName := by
-    simp only [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state"),
-      (ls_lemma% fnOff "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::chain::MessageKey>>")]
-    bv_omega
-  rw [h]
-  exact hDropMk
-
-theorem dropVecChain_ok_at_apply_ext_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hDropCh : DropVecChainOkX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr trApplyName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::Chain>>") - (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")))
-      ((dropVecChainSpecX A).inImage img) := by
-  have h : (tripleRatchetProgAtExt img.base ext).fnAddr trApplyName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::Chain>>") - (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) =
-      (tripleRatchetProgAtExt img.base ext).fnAddr dropVecChainName := by
-    simp only [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state"),
-      (ls_lemma% fnOff "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::Chain>>")]
-    bv_omega
-  rw [h]
-  exact hDropCh
-
 theorem stackAt_trApply_x (sp : BitVec 64) :
     stackAt sp trApplyStackX =
       stackAt (sp - 224#64) dropVecChainStackX ∗
@@ -1429,38 +1045,9 @@ theorem stackAt_trApply_x (sp : BitVec 64) :
       (∃∗ r9 : BitVec 64, (sp - 24#64) ↦₆₄ r9) ∗
       (∃∗ r10 : BitVec 64, (sp - 16#64) ↦₆₄ r10) ∗
       (∃∗ r11 : BitVec 64, (sp - 8#64) ↦₆₄ r11) := by
-  show memRegion (sp - BitVec.ofNat 64 16704) 16704 = _
-  rw [mr_cut' sp 16704 224 16480 224 16704 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 224 216 8 216 224 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 216 208 8 208 216 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 208 200 8 200 208 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 200 192 8 192 200 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 192 184 8 184 192 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 184 176 8 176 184 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 176 168 8 168 176 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 168 160 8 160 168 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 160 152 8 152 160 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 152 144 8 144 152 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 144 136 8 136 144 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 136 128 8 128 136 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 128 120 8 120 128 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 120 96 24 96 120 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 96 88 8 88 96 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 88 80 8 80 88 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 80 72 8 72 80 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 72 64 8 64 72 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 64 56 8 56 64 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 56 48 8 48 56 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 48 40 8 40 48 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 40 32 8 32 40 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 32 24 8 24 32 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 24 16 8 16 24 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 16 8 8 8 16 rfl rfl (by decide) (by decide) (by decide)]
-  have hstk : memRegion (sp - BitVec.ofNat 64 16704) 16480 = stackAt (sp - 224#64) dropVecChainStackX := by
-    simp only [stackAt, dropVecChainStackX, dropVecMessageKeyStackX, extHookStack]
-    exact congrArg (fun x => memRegion x 16480) (by bv_omega)
-  rw [hstk]
-  simp only [memRegion_eight]
+  simp only [stackAt, trApplyStackX, dropVecChainStackX, dropVecMessageKeyStackX, extHookStack,
+    Nat.reducePow, Nat.reduceAdd]
+  sep_interval_eq
 
 theorem stackAt_trApply_fold_x (sp : BitVec 64) (s0 : State) :
     (stackAt (sp - 224#64) dropVecChainStackX ∗
@@ -1473,52 +1060,13 @@ theorem stackAt_trApply_fold_x (sp : BitVec 64) (s0 : State) :
       ((sp - 32#64) ↦₆₄ s0.readReg64 .x22) ∗ ((sp - 24#64) ↦₆₄ s0.readReg64 .x21) ∗
       ((sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗ ((sp - 8#64) ↦₆₄ s0.readReg64 .x19)) ⊢
       stackAt sp trApplyStackX := by
-  show (stackAt (sp - 224#64) dropVecChainStackX ∗ memRegion (sp - 224#64) 104 ∗
-    memRegion (sp - 120#64) 24 ∗ _) ⊢ memRegion (sp - BitVec.ofNat 64 16704) 16704
-  rw [mr_cut' sp 16704 224 16480 224 16704 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 224 120 104 120 224 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 120 96 24 96 120 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 96 88 8 88 96 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 88 80 8 80 88 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 80 72 8 72 80 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 72 64 8 64 72 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 64 56 8 56 64 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 56 48 8 48 56 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 48 40 8 40 48 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 40 32 8 32 40 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 32 24 8 24 32 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 24 16 8 16 24 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 16 8 8 8 16 rfl rfl (by decide) (by decide) (by decide)]
-  have hstk : memRegion (sp - BitVec.ofNat 64 16704) 16480 = stackAt (sp - 224#64) dropVecChainStackX := by
-    simp only [stackAt, dropVecChainStackX, dropVecMessageKeyStackX, extHookStack]
-    exact congrArg (fun x => memRegion x 16480) (by bv_omega)
-  rw [hstk]
-  refine sepConj_mono (Entails.refl _) (sepConj_mono (Entails.refl _) (sepConj_mono (Entails.refl _) ?_))
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  exact sepConj_mono (pointsTo64_entails_memRegion _ _) (pointsTo64_entails_memRegion _ _)
-
+  simp only [stackAt, trApplyStackX, dropVecChainStackX, dropVecMessageKeyStackX, extHookStack,
+    Nat.reducePow, Nat.reduceAdd]
+  sep_interval
 
 /-! ## Stack- and optional-image-parameterized proof (`trApply_ok_opt`) -/
 
 @[irreducible] private def frozenStop (pc : BitVec 64) : BitVec 64 := pc
-
-private theorem SepWP.of_sepWP_opt_frozen {prog : Program} {oimg : Option Obj.Image}
-    {mid target_pc : BitVec 64} {s : State} {P : SepProp} {post : State → SepProp → Prop}
-    (hinv : OptCallInv oimg s)
-    (h : SepWP prog (frozenStop mid) s P
-      (fun sm Pm => OptCallInv oimg sm → SepWP prog target_pc sm Pm post)) :
-    SepWP prog target_pc s P post := by
-  unfold frozenStop at h
-  exact SepWP.seq_optImage hinv h
 
 private theorem SepWP.done_frozen {prog : Program} {mid : BitVec 64}
     {s : State} {P : SepProp} {post : State → SepProp → Prop}
@@ -1638,1050 +1186,18 @@ theorem SepWPp_fold_stack_to_ext_gen {prog : Program} {ret : BitVec 64} {s : Sta
     SepWPp prog ret s P Q Qp :=
   SepWPp.fold (stackAt_to_ext_gen sp sp' calleeStack k hsp hcallee hk) hf h
 
-theorem SepWPp.call_opt_frame {α : Type} {prog : Program} {oimg : Option Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {φ : Prop}
-    {s : State} {P T F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hcall : subroutine_ok prog entry (specWithOptInv oimg spec))
-    (hinv : OptCallInv oimg s)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hexit : ∀ sf code R', sf.status = .Exited code → (sf.mem ⊨ spec.onExit x code s sf ∗ R') → False)
-    (hpanic : ∀ sf, sf.status = .Panicked → Qp sf (spec.onPanic x s sf ∗ F))
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf → OptCallInv oimg sf →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom_eq : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intros; rfl) :
-    SepWPp prog ret s P Q Qp := by
-  cases oimg with
-  | none =>
-    refine ProofLib.SepWPp.call (x := x) (F := F) hcall hpc hrun hsp hlr ?_ ?_ ?_ ?_ ?_
-    · intro R hm
-      dsimp only [specWithOptInv, OptCallInv]
-      rw [hspec, sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨trivial, ?_⟩
-      rw [sepConj_assoc, satisfies_pure_sepConj, ← sepConj_assoc, ← hP]
-      exact ⟨hφ, hm⟩
-    · intro sf code R' hex hpost
-      exact hexit sf code R' hex hpost
-    · intro sf hpan
-      exact hpanic sf hpan
-    · intro sf hpcm hrunm hspm hcsm
-      exact hnext sf hpcm hrunm hspm hcsm trivial
-    · intro sf R' _ hpost
-      dsimp only [specWithOptInv] at hpost
-      rw [hoom_eq] at hpost
-      exact (not_satisfies_false_sepConj hpost).elim
-  | some img =>
-    exact ProofLib.SepWPp.call_inImage_frame hcall hinv.1 hinv.2 hpc hrun hsp hlr hspec hφ hP
-      hexit hpanic (fun sf hpcm hrunm hspm hcsm hfz hsym =>
-        hnext sf hpcm hrunm hspm hcsm ⟨hfz, hsym⟩)
-      (fun sf R' _ hpost => by rw [hoom_eq] at hpost; exact (not_satisfies_false_sepConj hpost).elim)
-
-theorem SepWPp_call_pk_opt {prog : Program} {oimg : Option Obj.Image} {ret : BitVec 64} {s0 s : State}
-    {P F R : SepProp} {Q : State → SepProp → Prop}
-    {entry ret_pc : BitVec 64} {A : RustAlloc} {pkStack : Nat}
-    (hpk : subroutine_ok prog entry (specWithOptInv oimg (pkSerializeSpecAt A pkStack)))
-    (hinv : OptCallInv oimg s)
-    (pk : PublicKey)
-    (hpc : s.pc = entry) (hrun : s.status = .Running)
-    (hsp_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hsp_eq : s.sp = s0.sp - 224#64)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (htr : s.trace = s0.trace)
-    (hx0 : s.readReg64 Reg.x0 = s0.sp - 220#64)
-    (hP : P = (((s0.sp - 220#64) ↦ₛ pk.bytes.toList) ∗ A.pool ∗
-      stackAt (s0.sp - 224#64) pkStack) ∗ F)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s0.sp - 224#64 → CalleeSavedPreserved s sf → OptCallInv oimg sf →
-      SepWPp prog ret sf
-        ((⌜sf.readReg64 Reg.x1 = 33#64 ∧ sf.trace = s0.trace⌝ ∗
-          ((s0.sp - 220#64) ↦ₛ pk.bytes.toList) ∗
-          boxU8Buf A (sf.readReg64 Reg.x0) pk.serialize ∗
-          A.pool ∗ stackAt (s0.sp - 224#64) pkStack) ∗ F) Q
-        (fun sf P_f => (sf.mem ⊨ P_f ∗ R) →
-          (sf.mem ⊨ ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap ∗ R))) :
-    SepWPp prog ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) →
-        (sf.mem ⊨ ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap ∗ R)) := by
-  refine SepWPp.call_opt_frame (x := ⟨s0.sp - 220#64, pk⟩) hpk hinv hpc hrun
-    (spAligned_sub_224 hsp_align hsp_eq) hlr ?_ hx0 hP
-    (fun sf code R' _ h => not_satisfies_false_sepConj h)
-    (fun sf _ h => by rw [← sepConj_assoc]; exact allowPanic_frame (allocFailedIn_of_trace_eq htr) h)
-    (fun sf hpc_f hrun_f hsp_f hcs_f hinv_f => ?_)
-  · dsimp only [pkSerializeSpecAt]
-    rw [hsp_eq]
-  · dsimp only [pkSerializeSpecAt]
-    rw [hsp_eq, htr]
-    exact hnext sf hpc_f hrun_f (hsp_f.trans hsp_eq) hcs_f hinv_f
-
-theorem SepWPp_call_priv_opt {prog : Program} {oimg : Option Obj.Image} {ret : BitVec 64} {s0 s : State}
-    {P F R : SepProp} {Q : State → SepProp → Prop}
-    {entry ret_pc : BitVec 64} {A : RustAlloc} {privStack : Nat}
-    (hpriv : subroutine_ok prog entry (specWithOptInv oimg (privSerializeSpecAt A privStack)))
-    (hinv : OptCallInv oimg s)
-    (bs : List (BitVec 8))
-    (hpc : s.pc = entry) (hrun : s.status = .Running)
-    (hsp_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hsp_eq : s.sp = s0.sp - 224#64)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (htr : s.trace = s0.trace)
-    (hx : s.readReg64 Reg.x0 = s0.sp - 188#64 ∧ s.readReg64 Reg.x8 = s0.sp - 120#64 ∧ bs.length = 32)
-    (hP : P = (((s0.sp - 188#64) ↦ₛ bs) ∗ memRegion (s0.sp - 120#64) 24 ∗ A.pool ∗
-      stackAt (s0.sp - 224#64) privStack) ∗ F)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s0.sp - 224#64 → CalleeSavedPreserved s sf → OptCallInv oimg sf →
-      SepWPp prog ret sf
-        ((⌜sf.trace = s0.trace⌝ ∗ ((s0.sp - 188#64) ↦ₛ bs) ∗
-          vecU8 A (s0.sp - 120#64) bs ∗ A.pool ∗ stackAt (s0.sp - 224#64) privStack) ∗ F) Q
-        (fun sf P_f => (sf.mem ⊨ P_f ∗ R) →
-          (sf.mem ⊨ ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap ∗ R))) :
-    SepWPp prog ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) →
-        (sf.mem ⊨ ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap ∗ R)) := by
-  refine SepWPp.call_opt_frame (x := (s0.sp - 188#64, bs, s0.sp - 120#64)) hpriv hinv hpc hrun
-    (spAligned_sub_224 hsp_align hsp_eq) hlr ?_ hx hP
-    (fun sf code R' _ h => not_satisfies_false_sepConj h)
-    (fun sf _ h => by rw [← sepConj_assoc]; exact allowPanic_frame (allocFailedIn_of_trace_eq htr) h)
-    (fun sf hpc_f hrun_f hsp_f hcs_f hinv_f => ?_)
-  · dsimp only [privSerializeSpecAt]
-    rw [hsp_eq]
-  · dsimp only [privSerializeSpecAt]
-    rw [hsp_eq, htr]
-    exact hnext sf hpc_f hrun_f (hsp_f.trans hsp_eq) hcs_f hinv_f
-
 section FnOffShield
 attribute [local irreducible] _root_.Arm64.Program.fnOff
 
 namespace ApplyTailSteps
 
-theorem SepWPp_drop_old_sender_opt {oimg : Option Obj.Image} {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    {calleeStack stubStack mkStack chStack : Nat}
-    (hcallee : 224 + calleeStack < 2 ^ 64)
-    (hstub_le : stubStack ≤ calleeStack)
-    (hmk_le : mkStack ≤ calleeStack)
-    (hch_le : chStack ≤ calleeStack)
-    (hdealloc : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr trApplyName +
-        BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")))
-      (specWithOptInv oimg (rustDeallocExternSpecWithStack A stubStack)))
-    (hdropMk : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr trApplyName +
-        bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::chain::MessageKey>>") - (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")))
-      (specWithOptInv oimg (dropVecMessageKeySpecAt A mkStack)))
-    {ret : BitVec 64} {s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (sp ss : BitVec 64) {sp' : BitVec 64}
-    {G_sender : Option SenderChainGhost} {st_sender : Option SenderChain}
-    (hinv : OptCallInv oimg s)
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr trApplyName + 208#64)
-    (hrun : s.status = .Running)
-    (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    (hsp : s.sp = sp - 224#64)
-    (hx20 : s.readReg64 .x20 = ss)
-    (hGs_eq : G_sender.isSome = st_sender.isSome)
-    (hP : P = (optSenderChainAt A (ss + 144#64) G_sender st_sender ∗ A.pool ∗
-      memRegion (sp - BitVec.ofNat 64 (224 + calleeStack)) (calleeStack - stubStack) ∗
-      stackAt sp' stubStack) ∗ F)
-    (hsp' : sp' = sp - 224#64)
-    (hnext : ∀ (sf : State) (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 : BitVec 64) (v12 : BitVec 32),
-      sf.pc = (tripleRatchetProgAtExt b ext).fnAddr trApplyName + 288#64 →
-      sf.status = .Running →
-      sf.sp = sp - 224#64 →
-      sf.trace = s.trace →
-      CalleeSavedPreserved s sf →
-      OptCallInv oimg sf →
-      SepWPp (tripleRatchetProgAtExt b ext) ret sf
-        ((((ss + 144#64) ↦₆₄ v0) ∗ ((ss + 152#64) ↦₆₄ v1) ∗ ((ss + 160#64) ↦₆₄ v2) ∗
-          ((ss + 168#64) ↦₆₄ v3) ∗ ((ss + 176#64) ↦₆₄ v4) ∗ ((ss + 184#64) ↦₆₄ v5) ∗
-          ((ss + 192#64) ↦₆₄ v6) ∗ ((ss + 200#64) ↦₆₄ v7) ∗ ((ss + 208#64) ↦₆₄ v8) ∗
-          ((ss + 216#64) ↦₆₄ v9) ∗ ((ss + 224#64) ↦₆₄ v10) ∗ ((ss + 232#64) ↦₆₄ v11) ∗
-          ((ss + 240#64) ↦₃₂ v12) ∗ memRegion (ss + 244#64) 4 ∗ A.pool ∗
-          memRegion (sp - BitVec.ofNat 64 (224 + calleeStack)) (calleeStack - chStack) ∗
-          stackAt (sp - 224#64) chStack) ∗ F) Q Qp) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q Qp := by
-  have hfn := (ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")
-  tr_apply_fetches b (Rust.withPanics ext) hfn rfl 0xd0 18
-  tr_apply_fetches b (Rust.withPanics ext) hfn rfl 0x118 2
-  generalize_entry (tripleRatchetProgAtExt b ext).fnAddr trApplyName = entry
-  examples_hide_fetches
-  rw [hP, hsp']; clear hP hsp'
-  cases hGs : G_sender <;> cases hsts : st_sender
-  · refine SepWPp.fold (optSenderChainAt_none_expose A ss) (by sep_focus) ?_
-    simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    repeat refine SepWPp.exists_elim fun _ => ?_
-    refine SepWPp_fold_stack_gen sp calleeStack stubStack chStack hcallee hstub_le hch_le (by sep_focus) rfl ?_
-    apply SepWPp.of_sepWP_optImage (mid := entry + bv% (288)) hinv
-    wp_steps
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    intro hinv_f
-    refine SepWPp.weaken_pre (Entails.of_eq (by ac_rfl))
-      (hnext _ _ _ _ _ _ _ _ _ _ _ _ _ _
-        (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        (by simp only [CalleeSavedPreserved, arm64_norm, *]) hinv_f)
-  · simp [hGs, hsts] at hGs_eq
-  · simp [hGs, hsts] at hGs_eq
-  · rename_i sg sc0
-    refine SepWPp.fold (optSenderChainAt_some_expose A ss sg sc0) (by sep_focus) ?_
-    simp only [sepConj_assoc]
-    refine SepWPp.pure_elim fun ⟨hsrk_pos, hsrk_lt, hsrk_c0, hsrk_cmn, hsrk_ptr,
-      hpriv_pos, hpriv_lt, hpriv_c0, hpriv_ptr, hck_pos, hck_lt, hck_slt, hck_ptr⟩ => ?_
-    have hsrk_layout : LayoutOk sg.srk.cap.toNat 1 := layoutOk_of_pos_lt hsrk_pos hsrk_lt
-    have hpriv_layout : LayoutOk sg.priv.cap.toNat 1 := layoutOk_of_pos_lt hpriv_pos hpriv_lt
-    have hck_layout : LayoutOk sg.ck.cap.toNat 1 := layoutOk_of_pos_lt hck_pos hck_lt
-    have hpow1 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-    apply SepWPp.of_sepWP_optImage (mid := entry + bv% (280)) hinv
-    apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv
-    wp_steps
-    apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    intro hinv_d1
-    apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv_d1
-    wp_call hdealloc (sg.srk.ptr, sg.srk.cap.toNat, 1)
-    wp_steps
-    apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    intro hinv_d2
-    apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv_d2
-    wp_call hdealloc (sg.priv.ptr, sg.priv.cap.toNat, 1)
-    wp_steps
-    apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    intro hinv_call_d3
-    wp_call hdealloc (sg.ck.ptr, sg.ck.cap.toNat, 1)
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    intro hinv_280
-    refine SepWPp_fold_stack_gen sp calleeStack stubStack mkStack hcallee hstub_le hmk_le (by sep_focus) (by simp only [arm64_norm, *]) ?_
-    apply SepWPp.of_sepWP_optImage (mid := entry + bv% (288)) hinv_280
-    apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::chain::MessageKey>>") - (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state"))) hinv_280
-    wp_steps
-    apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    intro hinv_call_mk
-    wp_call hdropMk ⟨ss + 192#64, sg.mkCap, sg.mkPtr, []⟩
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    intro hinv_288
-    rw [memRegion_24_unpack ss 192]
-    simp only [Nat.reduceAdd, sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun d208 => SepWPp.exists_elim fun d200 => SepWPp.exists_elim fun d192 => ?_
-    refine SepWPp_fold_stack_gen sp calleeStack mkStack chStack hcallee hmk_le hch_le (by sep_focus) (by simp only [arm64_norm, *]) ?_
-    refine SepWPp.weaken_pre (Entails.of_eq (by ac_rfl))
-      (hnext _ sg.srk.cap sg.srk.ptr (BitVec.ofNat 64 sg.srk.bytes.length)
-        sg.priv.cap sg.priv.ptr (BitVec.ofNat 64 sg.priv.bytes.length)
-        d192 d200 d208 sg.ck.cap sg.ck.ptr 32#64 sc0.chainKey.index
-        (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        (by simp only [CalleeSavedPreserved, arm64_norm, *]) hinv_288)
-
-
-theorem SepWPp_tail_14c_to_184_opt {oimg : Option Obj.Image} {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    {calleeStack stubStack chStack : Nat}
-    (hcallee : 224 + calleeStack < 2 ^ 64)
-    (hstub_le : stubStack ≤ calleeStack)
-    (hch_le : chStack ≤ calleeStack)
-    (hdealloc : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr trApplyName +
-        BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")))
-      (specWithOptInv oimg (rustDeallocExternSpecWithStack A stubStack)))
-    {ret : BitVec 64} {s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (sp ss t : BitVec 64) {sp' : BitVec 64}
-    {G : SessionGhost} {st : SessionState (List (BitVec 8))}
-    {trG : TrGhost} {tr : TripleRatchet (List (BitVec 8))}
-    (hinv : OptCallInv oimg s)
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr trApplyName + 332#64)
-    (hrun : s.status = .Running)
-    (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    (hsp : s.sp = sp - 224#64)
-    (hx19 : s.readReg64 .x19 = t)
-    (hx20 : s.readReg64 .x20 = ss)
-    (hchains_len : trG.ratchet.chains.length = tr.ratchet.receiverChains.length)
-    (hP : P = (memRegion (ss + 72#64) 24 ∗
-      (t ↦₆₄ trG.ratchet.chainsCap) ∗
-      ((t + 8#64) ↦₆₄ trG.ratchet.chainsPtr) ∗
-      ((t + 16#64) ↦₆₄ BitVec.ofNat 64 tr.ratchet.receiverChains.length) ∗
-      vecBuf A 104 8 (chainAt A) trG.ratchet.chainsCap trG.ratchet.chainsPtr
-        (trG.ratchet.chains.zip tr.ratchet.receiverChains) ∗
-      ((t + 176#64) ↦₆₄ trG.pq.cap) ∗
-      ((t + 184#64) ↦₆₄ trG.pq.ptr) ∗
-      ((t + 192#64) ↦₆₄ BitVec.ofNat 64 tr.pqrState.length) ∗
-      ((ss + 120#64) ↦₆₄ G.pq.cap) ∗
-      ((ss + 128#64) ↦₆₄ G.pq.ptr) ∗
-      ((ss + 136#64) ↦₆₄ BitVec.ofNat 64 st.pqRatchetState.length) ∗
-      vecU8Buf A G.pq.cap G.pq.ptr st.pqRatchetState ∗
-      A.pool ∗
-      memRegion (sp - BitVec.ofNat 64 (224 + calleeStack)) (calleeStack - chStack) ∗
-      stackAt sp' chStack) ∗ F)
-    (hsp' : sp' = sp - 224#64)
-    (hnext : ∀ sf : State,
-      sf.pc = (tripleRatchetProgAtExt b ext).fnAddr trApplyName + 388#64 →
-      sf.status = .Running →
-      sf.sp = sp - 224#64 →
-      sf.trace = s.trace →
-      calleeSavedVRegs sf = calleeSavedVRegs s →
-      SepWPp (tripleRatchetProgAtExt b ext) ret sf
-        ((vecAt A 104 8 (chainAt A) (ss + 0x48#64) trG.ratchet.chainsCap trG.ratchet.chainsPtr
-            (trG.ratchet.chains.zip tr.ratchet.receiverChains) ∗
-          (t ↦₆₄ trG.ratchet.chainsCap) ∗
-          ((t + 8#64) ↦₆₄ trG.ratchet.chainsPtr) ∗
-          ((t + 16#64) ↦₆₄ BitVec.ofNat 64 tr.ratchet.receiverChains.length) ∗
-          ((t + 176#64) ↦₆₄ trG.pq.cap) ∗
-          ((t + 184#64) ↦₆₄ trG.pq.ptr) ∗
-          ((t + 192#64) ↦₆₄ BitVec.ofNat 64 tr.pqrState.length) ∗
-          ((ss + 120#64) ↦₆₄ trG.pq.cap) ∗
-          ((ss + 128#64) ↦₆₄ trG.pq.ptr) ∗
-          ((ss + 136#64) ↦₆₄ BitVec.ofNat 64 tr.pqrState.length) ∗
-          A.pool ∗
-          stackAt (sp - 224#64) calleeStack) ∗ F) Q Qp) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q Qp := by
-  have hfn := (ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")
-  tr_apply_fetches b (Rust.withPanics ext) hfn rfl 0x14c 6
-  tr_apply_fetches b (Rust.withPanics ext) hfn rfl 0x164 8
-  generalize_entry (tripleRatchetProgAtExt b ext).fnAddr trApplyName = entry
-  examples_hide_fetches
-  rw [hP, hsp']; clear hP hsp'
-  rw [memRegion_24_unpack ss 72]
-  simp only [Nat.reduceAdd, sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  refine SepWPp.exists_elim fun _ => SepWPp.exists_elim fun _ => SepWPp.exists_elim fun _ => ?_
-  apply SepWPp.of_sepWP_optImage (mid := entry + bv% (356)) hinv
-  wp_steps
-  apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-  intro hinv_356
-  refine SepWPp.fold (vecAt_chains_fold A ss trG tr hchains_len) (by sep_focus) ?_
-  by_cases hpq_cap : G.pq.cap = 0
-  · have hpq_beq : (G.pq.cap == 0#64) = true := by simp [hpq_cap]
-    refine SepWPp.fold (vecU8Buf_eq_zero_entails_emp A G.pq.ptr st.pqRatchetState hpq_cap) (by sep_focus) ?_
-    simp only [emp_sepConj]
-    refine SepWPp_fold_stack_to_ext_gen sp calleeStack chStack hcallee hch_le (by sep_focus) (by simp only [arm64_norm, *]) ?_
-    apply SepWPp.of_sepWP (mid := entry + bv% (388))
-    wp_steps
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    refine SepWPp.weaken_pre (Entails.of_eq (by ac_rfl))
-      (hnext _ (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]))
-  · have hpq_beq : (G.pq.cap == 0#64) = false := beq_false_of_ne hpq_cap
-    refine SepWPp.fold (vecU8Buf_dealloc A G.pq.cap G.pq.ptr st.pqRatchetState hpq_cap) (by sep_focus) ?_
-    simp only [sepConj_assoc]
-    refine SepWPp.pure_elim fun ⟨_, hpq_pos, hpq_lt, hpq_ptr⟩ => ?_
-    have hpq_layout : LayoutOk G.pq.cap.toNat 1 := layoutOk_of_pos_lt hpq_pos hpq_lt
-    have hpow1 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-    refine SepWPp_fold_stack_gen sp calleeStack chStack stubStack hcallee hch_le hstub_le (by sep_focus) (by simp only [arm64_norm, *]) ?_
-    apply SepWPp.of_sepWP (mid := entry + bv% (388))
-    apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv_356
-    wp_steps
-    apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    intro hinv_call_pq
-    wp_call hdealloc (G.pq.ptr, G.pq.cap.toNat, 1)
-    wp_steps
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    refine SepWPp_fold_stack_to_ext_gen sp calleeStack stubStack hcallee hstub_le (by sep_focus) (by simp only [arm64_norm, *]) ?_
-    refine SepWPp.weaken_pre (Entails.of_eq (by ac_rfl))
-      (hnext _ (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]))
-
-
 end ApplyTailSteps
-
-theorem trApply_ok_opt {oimg : Option Obj.Image} {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    {calleeStack stubStack mkStack chStack pkStack privStack : Nat}
-    (hcallee : 224 + calleeStack < 2 ^ 64)
-    (hstub_le : stubStack ≤ calleeStack)
-    (hmk_le : mkStack ≤ calleeStack)
-    (hch_le : chStack ≤ calleeStack)
-    (hpk_le : pkStack ≤ calleeStack)
-    (hpriv_le : privStack ≤ calleeStack)
-    (hstack_open : ∀ sp : BitVec 64,
-      stackAt sp (224 + calleeStack) =
-        stackAt (sp - 224#64) calleeStack ∗
-        (∃∗ u0 : BitVec 64, (sp - 224#64) ↦₆₄ u0) ∗
-        (∃∗ u1 : BitVec 64, (sp - 216#64) ↦₆₄ u1) ∗
-        (∃∗ u2 : BitVec 64, (sp - 208#64) ↦₆₄ u2) ∗
-        (∃∗ u3 : BitVec 64, (sp - 200#64) ↦₆₄ u3) ∗
-        (∃∗ u4 : BitVec 64, (sp - 192#64) ↦₆₄ u4) ∗
-        (∃∗ u5 : BitVec 64, (sp - 184#64) ↦₆₄ u5) ∗
-        (∃∗ u6 : BitVec 64, (sp - 176#64) ↦₆₄ u6) ∗
-        (∃∗ u7 : BitVec 64, (sp - 168#64) ↦₆₄ u7) ∗
-        (∃∗ u8 : BitVec 64, (sp - 160#64) ↦₆₄ u8) ∗
-        (∃∗ u9 : BitVec 64, (sp - 152#64) ↦₆₄ u9) ∗
-        (∃∗ u10 : BitVec 64, (sp - 144#64) ↦₆₄ u10) ∗
-        (∃∗ u11 : BitVec 64, (sp - 136#64) ↦₆₄ u11) ∗
-        (∃∗ u12 : BitVec 64, (sp - 128#64) ↦₆₄ u12) ∗
-        memRegion (sp - 120#64) 24 ∗
-        (∃∗ r0 : BitVec 64, (sp - 96#64) ↦₆₄ r0) ∗
-        (∃∗ r1 : BitVec 64, (sp - 88#64) ↦₆₄ r1) ∗
-        (∃∗ r2 : BitVec 64, (sp - 80#64) ↦₆₄ r2) ∗
-        (∃∗ r3 : BitVec 64, (sp - 72#64) ↦₆₄ r3) ∗
-        (∃∗ r4 : BitVec 64, (sp - 64#64) ↦₆₄ r4) ∗
-        (∃∗ r5 : BitVec 64, (sp - 56#64) ↦₆₄ r5) ∗
-        (∃∗ r6 : BitVec 64, (sp - 48#64) ↦₆₄ r6) ∗
-        (∃∗ r7 : BitVec 64, (sp - 40#64) ↦₆₄ r7) ∗
-        (∃∗ r8 : BitVec 64, (sp - 32#64) ↦₆₄ r8) ∗
-        (∃∗ r9 : BitVec 64, (sp - 24#64) ↦₆₄ r9) ∗
-        (∃∗ r10 : BitVec 64, (sp - 16#64) ↦₆₄ r10) ∗
-        (∃∗ r11 : BitVec 64, (sp - 8#64) ↦₆₄ r11))
-    (hstack_fold : ∀ (sp : BitVec 64) (s0 : State),
-      (stackAt (sp - 224#64) calleeStack ∗
-        memRegion (sp - 224#64) 104 ∗
-        memRegion (sp - 120#64) 24 ∗
-        ((sp - 96#64) ↦₆₄ s0.readReg64 .x29) ∗ ((sp - 88#64) ↦₆₄ s0.readReg64 .lr) ∗
-        ((sp - 80#64) ↦₆₄ s0.readReg64 .x28) ∗ ((sp - 72#64) ↦₆₄ s0.readReg64 .x27) ∗
-        ((sp - 64#64) ↦₆₄ s0.readReg64 .x26) ∗ ((sp - 56#64) ↦₆₄ s0.readReg64 .x25) ∗
-        ((sp - 48#64) ↦₆₄ s0.readReg64 .x24) ∗ ((sp - 40#64) ↦₆₄ s0.readReg64 .x23) ∗
-        ((sp - 32#64) ↦₆₄ s0.readReg64 .x22) ∗ ((sp - 24#64) ↦₆₄ s0.readReg64 .x21) ∗
-        ((sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗ ((sp - 8#64) ↦₆₄ s0.readReg64 .x19)) ⊢
-        stackAt sp (224 + calleeStack))
-    (hshim : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr trApplyName +
-        BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")))
-      (specWithOptInv oimg (shimSpecWithStack stubStack)))
-    (halloc : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr trApplyName +
-        BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")))
-      (specWithOptInv oimg (rustAllocSpecWithStack A stubStack)))
-    (hdealloc : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr trApplyName +
-        BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")))
-      (specWithOptInv oimg (rustDeallocExternSpecWithStack A stubStack)))
-    (hmemcpy : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr trApplyName +
-        BitVec.ofNat 64 (num% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")))
-      (specWithOptInv oimg (memcpySpecWithStack stubStack)))
-    (hpriv : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr trApplyName +
-        BitVec.ofNat 64 (num% (ls_off% "<libsignal_core::curve::PrivateKey>::serialize" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")))
-      (specWithOptInv oimg (privSerializeSpecAt A privStack)))
-    (hpk : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr trApplyName +
-        bv% (ls_off% "<libsignal_core::curve::PublicKey>::serialize" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state"))
-      (specWithOptInv oimg (pkSerializeSpecAt A pkStack)))
-    (hdropMk : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr trApplyName +
-        bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::chain::MessageKey>>") - (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")))
-      (specWithOptInv oimg (dropVecMessageKeySpecAt A mkStack)))
-    (hdropCh : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr trApplyName +
-        bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::Chain>>") - (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")))
-      (specWithOptInv oimg (dropVecChainSpecAt A chStack))) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr trApplyName)
-      (specWithOptInv oimg (trApplySpecAt A calleeStack)) := by
-  unfold specWithOptInv trApplySpecAt
-  have hpanic := panic_at_handle_error_norm_ext (b := b) (ext := ext)
-    (name := trApplyName) (k := num% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state"))
-  wpp_init x s0
-  have hinv0 : OptCallInv oimg s0 := by assumption
-  have hdropSender := @ApplyTailSteps.SepWPp_drop_old_sender_opt oimg b A ext
-    calleeStack stubStack mkStack chStack hcallee hstub_le hmk_le hch_le hdealloc hdropMk
-  have htail14c := @ApplyTailSteps.SepWPp_tail_14c_to_184_opt oimg b A ext
-    calleeStack stubStack chStack hcallee hstub_le hch_le hdealloc
-  have hpc' : s0.pc = (tripleRatchetProgAtExt b ext).fnAddr trApplyName :=
-    Eq.trans hpc (by simp only [Program.fnAddr_rebase, arm64_norm])
-  clear hpc; rename' hpc' => hpc
-  have hfn := (ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")
-  tr_apply_fetches b (Rust.withPanics ext) hfn rfl 0 999
-  generalize_entry (tripleRatchetProgAtExt b ext).fnAddr trApplyName = entry
-  examples_hide_fetches
-  obtain ⟨t, trG, tr, ss, G, st⟩ := x
-  dsimp only at *
-  have hx0_eq : s0.readReg64 .x0 = t := by assumption
-  have hx1_eq : s0.readReg64 .x1 = ss := by assumption
-  subst hx0_eq hx1_eq
-  refine SepWPp.weaken_pre (sepConj_mono (trAt_expose A (s0.readReg64 .x0) trG tr)
-    (sepConj_mono (sessionStateAt_expose_apply A (s0.readReg64 .x1) G st)
-      (sepConj_mono (Entails.of_eq (hstack_open s0.sp)) (Entails.refl _)))) ?_
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  repeat refine SepWPp.exists_elim fun _ => ?_
-  refine SepWPp.pure_elim fun ⟨hclamp, hchains_len, hpad_len, hmax_jumps⟩ => ?_
-  rw [sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm]
-  refine SepWPp.pure_elim fun ⟨hG_chains_len, hroot_pos, hroot_lt, hroot_c0, hroot_ptr, hGs_eq⟩ => ?_
-  have hroot_layout : LayoutOk G.root.cap.toNat 1 := layoutOk_of_pos_lt hroot_pos hroot_lt
-  obtain ⟨scw0, scw1, scw2, scw3, scw4, scw5, scw6, scw7, scw8, scw9, scw10, scw11, scw12, hsc_unpack⟩ :=
-    exists_unpack64_of_length_104 (optSenderChainBytes_length tr.ratchet.senderChain hpad_len)
-  obtain ⟨rkw0, rkw1, rkw2, rkw3, hrk_eq, hrk_unpack⟩ :=
-    exists_unpack64_of_length_32 (bs := CryptoGames.HMAC.keyToBytes32 tr.ratchet.rootKey)
-      (length_keyToBytes32 _)
-  clear hrk_eq
-  rw [hsc_unpack (s0.readReg64 .x0 + 24#64), hrk_unpack (s0.readReg64 .x0 + 128#64)]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-  have hpow1 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  have hlayout32 : LayoutOk 32 1 := ⟨by decide, hpow1, by decide⟩
-  have hlayout33 : LayoutOk 33 1 := ⟨by decide, hpow1, by decide⟩
-  refine SepWPp.fold (stackAt_ext_to_gen s0.sp calleeStack stubStack hcallee hstub_le) (by sep_focus) ?_
-  apply SepWPp.of_sepWP_optImage (mid := entry + bv% (104)) hinv0
-  apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv0
-  wp_steps
-  apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-  intro hinv_s1
-  apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv_s1
-  wp_call hshim ()
-  clear hinv_s1
-  wp_steps
-  apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-  intro hinv_call_s2
-  wp_call halloc (32, 1)
-  clear hinv_call_s2
-  apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-  intro hinv1
-  by_cases hoom1 : sf_1.readReg64 Reg.x0 = 0
-  · simp only [hoom1, ite_true]
-    have hoom1_beq : (sf_1.readReg64 Reg.x0 == 0#64) = true := by simp [hoom1]
-    refine SepWPp_pure_elim3 fun htr_oom => ?_
-    apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state"))
-    wp_steps
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    apply SepWPp_panic_oom (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) hpanic (by simp only [arm64_norm, *])
-  · simp only [hoom1, ite_false, sepConj_assoc]
-    have hoom1_beq : (sf_1.readReg64 Reg.x0 == 0#64) = false := beq_false_of_ne hoom1
-    refine SepWPp_pure_elim3 fun ⟨_halign1, htr1⟩ => ?_
-    rw [memRegion_32_unpack (sf_1.readReg64 Reg.x0)]
-    simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun _ => SepWPp.exists_elim fun _ =>
-      SepWPp.exists_elim fun _ => SepWPp.exists_elim fun _ => ?_
-    refine SepWPp.fold (hsc_stack_pack hsc_unpack) (by sep_focus) ?_
-    refine SepWPp.fold (hsc_tr_pack hsc_unpack) (by sep_focus) ?_
-    apply SepWPp.of_sepWP_optImage (mid := entry + bv% (140)) hinv1
-    apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv1
-    wp_steps
-    apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    intro hinv_call_droot
-    wp_call hdealloc (G.root.ptr, G.root.cap.toNat, 1)
-    clear hinv_call_droot
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    intro hinv2
-    refine SepWPp.fold (hrk_pack hrk_unpack) (by sep_focus) ?_
-    refine SepWPp.fold (hrk_tr_pack hrk_unpack) (by sep_focus) ?_
-    clear hsc_unpack hrk_unpack scw0 scw1 scw2 scw3 scw4 scw5 scw6 scw7 scw8 scw9 scw10 scw11 scw12 rkw0 rkw1 rkw2 rkw3
-    cases hsc : tr.ratchet.senderChain with
-    | none =>
-      rw [optSenderChainBytes_none_stack_eq s0.sp trG.ratchet.senderPad]
-      simp only [sepConj_assoc]
-      apply SepWPp.of_sepWP_optImage (mid := entry + bv% (208)) hinv2
-      wp_steps
-      apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      intro hinv_208
-      refine SepWPp.fold (stack_104_none_to_memRegion s0.sp trG.ratchet.senderPad hpad_len) (by sep_focus) ?_
-      refine SepWPp.fold (vecU8At_fold_exact A (s0.readReg64 .x1 + 48#64) 32#64 (sf_1.readReg64 .x0)
-        (CryptoGames.HMAC.keyToBytes32 tr.ratchet.rootKey) 32 rfl (length_keyToBytes32 _)
-        (by decide) (by decide) hoom1) (by sep_focus) ?_
-      refine hdropSender s0.sp (s0.readReg64 .x1) hinv_208 (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        hsp_align (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) hGs_eq (by sep_focus) (by simp only [arm64_norm, *])
-        fun sf_ds _ _ _ _ _ _ _ _ _ _ _ _ _ hpc_ds hrun_ds hsp_ds htr_ds hcs_ds hinv_ds => ?_
-      dsimp only [CalleeSavedPreserved, Reg.fp] at hcs_ds
-      rcases hcs_ds with ⟨hcs_d19, hcs_d20, hcs_d21, hcs_d22, hcs_d23, hcs_d24, hcs_d25, hcs_d26, hcs_d27, hcs_d28, hcs_d29, hcs_dv⟩
-      simp only [arm64_norm, *] at hcs_d19 hcs_d20 hcs_d21 hcs_d22 hcs_d23 hcs_d24 hcs_d25 hcs_d26 hcs_d27 hcs_d28 hcs_d29 hcs_dv
-      simp only [sepConj_assoc]
-      apply SepWPp.of_sepWP_optImage (mid := entry + bv% (332)) hinv_ds
-      apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::Chain>>") - (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state"))) hinv_ds
-      wp_steps
-      apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      intro hinv_call_dc
-      wp_call hdropCh ⟨s0.readReg64 .x1 + 72#64, G.chainsCap, G.chainsPtr, G.chains.zip st.receiverChains⟩
-      clear hinv_call_dc
-      apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      intro hinv_332
-      refine SepWPp.fold (optSenderChainAt_none_fold A (s0.readReg64 .x1) _ _ _ _ _ _ _ _ _ _ _ _) (by sep_focus) ?_
-      refine htail14c s0.sp (s0.readReg64 .x1) (s0.readReg64 .x0) hinv_332
-        (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        hsp_align (by simp only [arm64_norm, *])
-        (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        hchains_len (by sep_focus) (by simp only [arm64_norm, *]) fun sf_tl hpc_tl hrun_tl hsp_tl htr_tl hvregs_tl => ?_
-      simp only [arm64_norm, *] at hvregs_tl
-      simp only [sepConj_assoc]
-      have hsc_sym : (none : Option SenderChain) = tr.ratchet.senderChain := hsc.symm
-      rw [hsc_sym]
-      refine SepWPp.fold (sessionStateAt_reassemble_apply A (s0.readReg64 .x1) G st trG tr
-        (sf_1.readReg64 .x0) none hchains_len) (by sep_focus) ?_
-      refine SepWPp.fold (trAt_in_struct_entails_memRegion (s0.readReg64 .x0) trG tr hpad_len) (by sep_focus) ?_
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      refine SepWP.fold (hstack_fold s0.sp s0) (by sep_focus) ?_
-      apply SepWP_instantiate_post_exists_outer (mkApplyGhost G trG (sf_1.readReg64 .x0) none)
-      have hrel := trApplyRel_mkApplyGhost G trG (sf_1.readReg64 .x0) none
-      wp_done
-    | some sc =>
-      have hclamp_sc : Ratchet.clampScalar sc.ratchetKey.privateKey.bytes = sc.ratchetKey.privateKey.bytes :=
-        hclamp sc hsc
-      obtain ⟨ckw0, ckw1, ckw2, ckw3, hck_eq, hck_unpack⟩ :=
-        exists_unpack64_of_length_32 (bs := CryptoGames.HMAC.keyToBytes32 sc.chainKey.key)
-          (length_keyToBytes32 _)
-      clear hck_eq
-      rw [optSenderChainBytes_some_stack_eq s0.sp sc trG.ratchet.senderPad,
-          optSenderChainBytes_some_tr_eq (s0.readReg64 .x0) sc trG.ratchet.senderPad hck_unpack]
-      simp only [sepConj_assoc]
-      have horr4 : (s0.sp - 224#64) ||| 4#64 = s0.sp - 220#64 := sp_sub_224_orr_4 hsp_align
-      refine SepWPp_fold_stack_gen s0.sp calleeStack stubStack pkStack hcallee hstub_le hpk_le (by sep_focus) (by simp only [arm64_norm, *]) ?_
-      apply SepWPp.of_sepWP_optImage (mid := entry + bv% (ls_off% "<libsignal_core::curve::PublicKey>::serialize" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv2
-      wp_steps
-      apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      intro hinv_pk0
-      refine SepWPp.fold (vecU8At_fold_exact A (s0.readReg64 .x1 + 48#64) 32#64 (sf_1.readReg64 .x0)
-        (CryptoGames.HMAC.keyToBytes32 tr.ratchet.rootKey) 32 rfl (length_keyToBytes32 _)
-        (by decide) (by decide) hoom1) (by sep_focus) ?_
-      refine SepWPp_call_pk_opt hpk hinv_pk0 sc.ratchetKey.publicKey
-        (ret_pc := entry + bv% (180)) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        hsp_align (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        (by simp only [arm64_norm, *]) (by sep_focus) fun sf_pk hpc_pk hrun_pk hsp_pk hcs_pk hinv_pk => ?_
-      dsimp only [CalleeSavedPreserved, Reg.fp] at hcs_pk
-      rcases hcs_pk with ⟨hcs_k19, hcs_k20, hcs_k21, hcs_k22, hcs_k23, hcs_k24, hcs_k25, hcs_k26, hcs_k27, hcs_k28, hcs_k29, hcs_kv⟩
-      simp only [arm64_norm, *] at hcs_k19 hcs_k20 hcs_k21 hcs_k22 hcs_k23 hcs_k24 hcs_k25 hcs_k26 hcs_k27 hcs_k28 hcs_k29 hcs_kv
-      simp only [sepConj_assoc]
-      refine SepWPp.pure_elim fun ⟨hpk_x1, hpk_tr⟩ => ?_
-      refine SepWPp.fold (boxU8Buf_pk_expose A (sf_pk.readReg64 .x0) sc.ratchetKey.publicKey) (by sep_focus) ?_
-      simp only [sepConj_assoc]
-      refine SepWPp.pure_elim fun hpk_ptr => ?_
-      refine SepWPp_fold_stack_gen s0.sp calleeStack pkStack stubStack hcallee hpk_le hstub_le (by sep_focus) (by simp only [arm64_norm, *]) ?_
-      apply SepWPp.of_sepWP_optImage (mid := entry + bv% (448)) hinv_pk
-      apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv_pk
-      wp_steps
-      apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      intro hinv_s3
-      apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv_s3
-      wp_call hshim ()
-      clear hinv_s3
-      wp_steps
-      apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      intro hinv_call_s4
-      wp_call halloc (33, 1)
-      clear hinv_call_s4
-      apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      intro hinv4
-      by_cases hoom_srk : sf_4.readReg64 Reg.x0 = 0
-      · simp only [hoom_srk, ite_true]
-        have hoom_srk_beq : (sf_4.readReg64 Reg.x0 == 0#64) = true := by simp [hoom_srk]
-        refine SepWPp_pure_elim3 fun htr_oom_srk => ?_
-        apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state"))
-        wp_steps
-        apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        apply SepWPp_panic_oom (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) hpanic (by simp only [arm64_norm, *])
-      · simp only [hoom_srk, ite_false, sepConj_assoc]
-        have hoom_srk_beq : (sf_4.readReg64 Reg.x0 == 0#64) = false := beq_false_of_ne hoom_srk
-        refine SepWPp_pure_elim3 fun ⟨_halign_srk, htr_srk⟩ => ?_
-        have hsrk_len : sc.ratchetKey.publicKey.serialize.length = 33 :=
-          serialize_pk_length sc.ratchetKey.publicKey
-        have hpriv_len : sc.ratchetKey.privateKey.bytes.toList.length = 32 :=
-          sc.ratchetKey.privateKey.bytes.toList_length
-        have hfp_sub24 : s0.sp - 96#64 - 24#64 = s0.sp - 120#64 := by rw [BitVec.sub_sub]; rfl
-        apply SepWPp.of_sepWP_optImage (mid := entry + bv% (ls_off% "<libsignal_core::curve::PrivateKey>::serialize" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv4
-        apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv4
-        wp_steps
-        apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        intro hinv_call_mc1
-        wp_call hmemcpy (sf_4.readReg64 .x0, sf_pk.readReg64 .x0,
-          sc.ratchetKey.publicKey.serialize)
-        clear hinv_call_mc1
-        wp_steps
-        apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        intro hinv_priv0
-        refine SepWPp_fold_stack_gen s0.sp calleeStack stubStack privStack hcallee hstub_le hpriv_le (by sep_focus) (by simp only [arm64_norm, *]) ?_
-        refine SepWPp.fold (pk_buf_to_memRegion (sf_pk.readReg64 .x0) sc.ratchetKey.publicKey) (by sep_focus) ?_
-        refine SepWPp_call_priv_opt hpriv hinv_priv0 sc.ratchetKey.privateKey.bytes.toList
-          (ret_pc := entry + bv% (484)) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          hsp_align (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          (by simp only [arm64_norm, *]) (by sep_focus) fun sf_priv hpc_priv hrun_priv hsp_priv hcs_priv hinv_priv => ?_
-        dsimp only [CalleeSavedPreserved, Reg.fp] at hcs_priv
-        rcases hcs_priv with ⟨hcs_p19, hcs_p20, hcs_p21, hcs_p22, hcs_p23, hcs_p24, hcs_p25, hcs_p26, hcs_p27, hcs_p28, hcs_p29, hcs_pv⟩
-        simp only [arm64_norm, *] at hcs_p19 hcs_p20 hcs_p21 hcs_p22 hcs_p23 hcs_p24 hcs_p25 hcs_p26 hcs_p27 hcs_p28 hcs_p29 hcs_pv
-        simp only [sepConj_assoc]
-        refine SepWPp.pure_elim fun hpriv_tr => ?_
-        refine SepWPp.fold (vecU8_priv_expose_stack A s0.sp sc.ratchetKey.privateKey.bytes) (by sep_focus) ?_
-        simp only [sepExists_sepConj_left, sepConj_assoc]
-        refine SepWPp.exists_elim fun privTempCap => SepWPp.exists_elim fun privTempPtr => ?_
-        refine SepWPp.pure_elim fun ⟨hpt_le, hpt_lt, hpt_c0, hpt_ptr⟩ => ?_
-        have hpt_layout : LayoutOk privTempCap.toNat 1 :=
-          layoutOk_of_pos_lt (Nat.lt_of_lt_of_le (by decide : 0 < 32) hpt_le) hpt_lt
-        refine SepWPp_fold_stack_gen s0.sp calleeStack privStack stubStack hcallee hpriv_le hstub_le (by sep_focus) (by simp only [arm64_norm, *]) ?_
-        apply SepWPp.of_sepWP_optImage (mid := entry + bv% (564)) hinv_priv
-        apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv_priv
-        wp_steps
-        apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        intro hinv_s5
-        apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv_s5
-        wp_call hshim ()
-        clear hinv_s5
-        wp_steps
-        apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        intro hinv_call_s6
-        wp_call halloc (32, 1)
-        clear hinv_call_s6
-        apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        intro hinv7
-        by_cases hoom_priv : sf_7.readReg64 Reg.x0 = 0
-        · simp only [hoom_priv, ite_true]
-          have hoom_priv_beq : (sf_7.readReg64 Reg.x0 == 0#64) = true := by simp [hoom_priv]
-          refine SepWPp_pure_elim3 fun htr_oom_priv => ?_
-          apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state"))
-          wp_steps
-          apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          apply SepWPp_panic_oom (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) hpanic (by simp only [arm64_norm, *])
-        · simp only [hoom_priv, ite_false, sepConj_assoc]
-          have hoom_priv_beq : (sf_7.readReg64 Reg.x0 == 0#64) = false := beq_false_of_ne hoom_priv
-          refine SepWPp_pure_elim3 fun ⟨_halign_priv, htr_priv⟩ => ?_
-          apply SepWPp.of_sepWP_optImage (mid := entry + bv% (604)) hinv7
-          apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv7
-          wp_steps
-          apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          intro hinv_mc2
-          apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv_mc2
-          wp_call hmemcpy (sf_7.readReg64 .x0, privTempPtr, sc.ratchetKey.privateKey.bytes.toList)
-          clear hinv_mc2
-          wp_steps
-          apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          intro hinv_s7
-          apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv_s7
-          wp_call hshim ()
-          clear hinv_s7
-          wp_steps
-          apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          intro hinv_call_s8
-          wp_call halloc (32, 1)
-          clear hinv_call_s8
-          apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          intro hinv10
-          by_cases hoom_ck : sf_10.readReg64 Reg.x0 = 0
-          · simp only [hoom_ck, ite_true]
-            have hoom_ck_beq : (sf_10.readReg64 Reg.x0 == 0#64) = true := by simp [hoom_ck]
-            refine SepWPp_pure_elim3 fun htr_oom_ck => ?_
-            apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state"))
-            wp_steps
-            apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-            apply SepWPp_panic_oom (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) hpanic (by simp only [arm64_norm, *])
-          · simp only [hoom_ck, ite_false, sepConj_assoc]
-            have hoom_ck_beq : (sf_10.readReg64 Reg.x0 == 0#64) = false := beq_false_of_ne hoom_ck
-            refine SepWPp_pure_elim3 fun ⟨_halign_ck, htr_ck⟩ => ?_
-            rw [memRegion_32_unpack (sf_10.readReg64 Reg.x0)]
-            simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-            refine SepWPp.exists_elim fun _ => SepWPp.exists_elim fun _ =>
-              SepWPp.exists_elim fun _ => SepWPp.exists_elim fun _ => ?_
-            refine SepWPp.fold (priv_buf_to_memRegion privTempPtr privTempCap
-              sc.ratchetKey.privateKey.bytes hpt_le hpt_lt) (by sep_focus) ?_
-            apply SepWPp.of_sepWP_optImage (mid := entry + bv% (208)) hinv10
-            apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv10
-            wp_steps
-            apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-            intro hinv_d4
-            apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state")) hinv_d4
-            wp_call hdealloc (privTempPtr, privTempCap.toNat, 1)
-            clear hinv_d4
-            wp_steps
-            apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-            intro hinv_call_d5
-            wp_call hdealloc (sf_pk.readReg64 .x0, 33, 1)
-            clear hinv_call_d5
-            wp_steps
-            apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-            intro hinv_208
-            refine SepWPp.fold (hrk_pack hck_unpack) (by sep_focus) ?_
-            refine SepWPp.fold (hck_tr_pack trG.ratchet.senderPad hck_unpack) (by sep_focus) ?_
-            refine SepWPp.fold (stack_104_some_to_memRegion s0.sp sc trG.ratchet.senderPad hpad_len) (by sep_focus) ?_
-            refine SepWPp.fold (stack_24_to_memRegion s0.sp privTempCap privTempPtr 32#64) (by sep_focus) ?_
-            clear hck_unpack ckw0 ckw1 ckw2 ckw3
-            refine hdropSender s0.sp (s0.readReg64 .x1) hinv_208 (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-              hsp_align (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) hGs_eq (by sep_focus) (by simp only [arm64_norm, *])
-              fun sf_ds _ _ _ _ _ _ _ _ _ _ _ _ _ hpc_ds hrun_ds hsp_ds htr_ds hcs_ds hinv_ds => ?_
-            dsimp only [CalleeSavedPreserved, Reg.fp] at hcs_ds
-            rcases hcs_ds with ⟨hcs_d19, hcs_d20, hcs_d21, hcs_d22, hcs_d23, hcs_d24, hcs_d25, hcs_d26, hcs_d27, hcs_d28, hcs_d29, hcs_dv⟩
-            simp only [arm64_norm, *] at hcs_d19 hcs_d20 hcs_d21 hcs_d22 hcs_d23 hcs_d24 hcs_d25 hcs_d26 hcs_d27 hcs_d28 hcs_d29 hcs_dv
-            simp only [sepConj_assoc]
-            apply SepWPp.of_sepWP_optImage (mid := entry + bv% (332)) hinv_ds
-            apply SepWP.of_sepWP_opt_frozen (mid := entry + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<alloc::vec::Vec<libsignal_protocol::proto::storage::session_structure::Chain>>") - (ls_off% "<libsignal_protocol::triple_ratchet::TripleRatchet>::apply_to_session_state"))) hinv_ds
-            wp_steps
-            apply SepWP.done_frozen (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-            intro hinv_call_dc
-            wp_call hdropCh ⟨s0.readReg64 .x1 + 72#64, G.chainsCap, G.chainsPtr, G.chains.zip st.receiverChains⟩
-            clear hinv_call_dc
-            apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-            intro hinv_332
-            refine SepWPp.fold (optSenderChainAt_some_fold A (s0.readReg64 .x1) sc
-              (sf_4.readReg64 .x0) (sf_7.readReg64 .x0) (sf_10.readReg64 .x0)
-              hclamp_sc hoom_srk hoom_priv hoom_ck) (by sep_focus) ?_
-            refine htail14c s0.sp (s0.readReg64 .x1) (s0.readReg64 .x0) hinv_332
-              (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-              hsp_align (by simp only [arm64_norm, *])
-              (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-              hchains_len (by sep_focus) (by simp only [arm64_norm, *]) fun sf_tl hpc_tl hrun_tl hsp_tl htr_tl hvregs_tl => ?_
-            simp only [arm64_norm, *] at hvregs_tl
-            simp only [sepConj_assoc]
-            have hsc_sym : (some sc : Option SenderChain) = tr.ratchet.senderChain := hsc.symm
-            rw [hsc_sym]
-            refine SepWPp.fold (sessionStateAt_reassemble_apply A (s0.readReg64 .x1) G st trG tr
-              (sf_1.readReg64 .x0)
-              (some (mkSenderChainGhost sc (sf_4.readReg64 .x0) (sf_7.readReg64 .x0) (sf_10.readReg64 .x0)))
-              hchains_len) (by sep_focus) ?_
-            refine SepWPp.fold (trAt_in_struct_entails_memRegion (s0.readReg64 .x0) trG tr hpad_len) (by sep_focus) ?_
-            apply SepWPp.of_sepWP_ret
-            wp_steps
-            refine SepWP.fold (hstack_fold s0.sp s0) (by sep_focus) ?_
-            apply SepWP_instantiate_post_exists_outer (mkApplyGhost G trG (sf_1.readReg64 .x0)
-              (some (mkSenderChainGhost sc (sf_4.readReg64 .x0) (sf_7.readReg64 .x0) (sf_10.readReg64 .x0))))
-            have hrel := trApplyRel_mkApplyGhost G trG (sf_1.readReg64 .x0)
-              (some (mkSenderChainGhost sc (sf_4.readReg64 .x0) (sf_7.readReg64 .x0) (sf_10.readReg64 .x0)))
-            wp_done
-
 
 end FnOffShield
 
 namespace ApplyTailSteps
 
-theorem SepWPp_drop_old_sender {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hA : AllocContracts b A ext)
-    (hDropMk : DropVecMessageKeyOkExt b A ext)
-    {ret : BitVec 64} {s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (sp ss : BitVec 64) {sp' : BitVec 64}
-    {G_sender : Option SenderChainGhost} {st_sender : Option SenderChain}
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr trApplyName + 208#64)
-    (hrun : s.status = .Running)
-    (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    (hsp : s.sp = sp - 224#64)
-    (hx20 : s.readReg64 .x20 = ss)
-    (hGs_eq : G_sender.isSome = st_sender.isSome)
-    (hP : P = (optSenderChainAt A (ss + 144#64) G_sender st_sender ∗ A.pool ∗
-      memRegion (sp - 16608#64) (extHookStack - allocHookStack) ∗
-      stackAt sp' allocHookStack) ∗ F)
-    (hsp' : sp' = sp - 224#64)
-    (hnext : ∀ (sf : State) (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 : BitVec 64) (v12 : BitVec 32),
-      sf.pc = (tripleRatchetProgAtExt b ext).fnAddr trApplyName + 288#64 →
-      sf.status = .Running →
-      sf.sp = sp - 224#64 →
-      sf.trace = s.trace →
-      CalleeSavedPreserved s sf →
-      SepWPp (tripleRatchetProgAtExt b ext) ret sf
-        ((((ss + 144#64) ↦₆₄ v0) ∗ ((ss + 152#64) ↦₆₄ v1) ∗ ((ss + 160#64) ↦₆₄ v2) ∗
-          ((ss + 168#64) ↦₆₄ v3) ∗ ((ss + 176#64) ↦₆₄ v4) ∗ ((ss + 184#64) ↦₆₄ v5) ∗
-          ((ss + 192#64) ↦₆₄ v6) ∗ ((ss + 200#64) ↦₆₄ v7) ∗ ((ss + 208#64) ↦₆₄ v8) ∗
-          ((ss + 216#64) ↦₆₄ v9) ∗ ((ss + 224#64) ↦₆₄ v10) ∗ ((ss + 232#64) ↦₆₄ v11) ∗
-          ((ss + 240#64) ↦₃₂ v12) ∗ memRegion (ss + 244#64) 4 ∗ A.pool ∗
-          memRegion (sp - 16608#64) (extHookStack - dropVecChainStack) ∗
-          stackAt (sp - 224#64) dropVecChainStack) ∗ F) Q Qp) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q Qp :=
-  SepWPp_drop_old_sender_opt (oimg := none)
-    (calleeStack := extHookStack) (stubStack := allocHookStack)
-    (mkStack := dropVecMessageKeyStack) (chStack := dropVecChainStack)
-    (by decide) (by decide) (by decide) (by decide)
-    (dealloc_opt_of_base hA (by fnoff_eq))
-    (subroutine_ok_to_optNone (dropVecMessageKey_ok_at_apply_ext hDropMk))
-    sp ss trivial hpc hrun hsp_align hsp hx20 hGs_eq hP hsp'
-    (fun sf v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 h1 h2 h3 h4 h5 _ =>
-      hnext sf v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 h1 h2 h3 h4 h5)
-
-theorem SepWPp_drop_old_sender_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hA : AllocContractsX img A ext)
-    (hDropMk : DropVecMessageKeyOkX img A ext)
-    {ret : BitVec 64} {s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (sp ss : BitVec 64) {sp' : BitVec 64}
-    {G_sender : Option SenderChainGhost} {st_sender : Option SenderChain}
-    (hinv : ImgCallInv img s)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr trApplyName + 208#64)
-    (hrun : s.status = .Running)
-    (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    (hsp : s.sp = sp - 224#64)
-    (hx20 : s.readReg64 .x20 = ss)
-    (hGs_eq : G_sender.isSome = st_sender.isSome)
-    (hP : P = (optSenderChainAt A (ss + 144#64) G_sender st_sender ∗ A.pool ∗
-      memRegion (sp - 16704#64) (dropVecChainStackX - extHookStack) ∗
-      stackAt sp' extHookStack) ∗ F)
-    (hsp' : sp' = sp - 224#64)
-    (hnext : ∀ (sf : State) (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 : BitVec 64) (v12 : BitVec 32),
-      sf.pc = (tripleRatchetProgAtExt img.base ext).fnAddr trApplyName + 288#64 →
-      sf.status = .Running →
-      sf.sp = sp - 224#64 →
-      sf.trace = s.trace →
-      CalleeSavedPreserved s sf →
-      ImgCallInv img sf →
-      SepWPp (tripleRatchetProgAtExt img.base ext) ret sf
-        ((((ss + 144#64) ↦₆₄ v0) ∗ ((ss + 152#64) ↦₆₄ v1) ∗ ((ss + 160#64) ↦₆₄ v2) ∗
-          ((ss + 168#64) ↦₆₄ v3) ∗ ((ss + 176#64) ↦₆₄ v4) ∗ ((ss + 184#64) ↦₆₄ v5) ∗
-          ((ss + 192#64) ↦₆₄ v6) ∗ ((ss + 200#64) ↦₆₄ v7) ∗ ((ss + 208#64) ↦₆₄ v8) ∗
-          ((ss + 216#64) ↦₆₄ v9) ∗ ((ss + 224#64) ↦₆₄ v10) ∗ ((ss + 232#64) ↦₆₄ v11) ∗
-          ((ss + 240#64) ↦₃₂ v12) ∗ memRegion (ss + 244#64) 4 ∗ A.pool ∗
-          memRegion (sp - 16704#64) (dropVecChainStackX - dropVecChainStackX) ∗
-          stackAt (sp - 224#64) dropVecChainStackX) ∗ F) Q Qp) :
-    SepWPp (tripleRatchetProgAtExt img.base ext) ret s P Q Qp :=
-  SepWPp_drop_old_sender_opt (oimg := some img)
-    (calleeStack := dropVecChainStackX) (stubStack := extHookStack)
-    (mkStack := dropVecMessageKeyStackX) (chStack := dropVecChainStackX)
-    (by decide) (by decide) (by decide) (by decide)
-    (dealloc_opt_of_x hA (by fnoff_eq))
-    (dropVecMessageKey_ok_at_apply_ext_x hDropMk)
-    sp ss hinv hpc hrun hsp_align hsp hx20 hGs_eq hP hsp' hnext
-
-theorem SepWPp_tail_14c_to_184 {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hA : AllocContracts b A ext)
-    {ret : BitVec 64} {s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (sp ss t : BitVec 64) {sp' : BitVec 64}
-    {G : SessionGhost} {st : SessionState (List (BitVec 8))}
-    {trG : TrGhost} {tr : TripleRatchet (List (BitVec 8))}
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr trApplyName + 332#64)
-    (hrun : s.status = .Running)
-    (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    (hsp : s.sp = sp - 224#64)
-    (hx19 : s.readReg64 .x19 = t)
-    (hx20 : s.readReg64 .x20 = ss)
-    (hchains_len : trG.ratchet.chains.length = tr.ratchet.receiverChains.length)
-    (hP : P = (memRegion (ss + 72#64) 24 ∗
-      (t ↦₆₄ trG.ratchet.chainsCap) ∗
-      ((t + 8#64) ↦₆₄ trG.ratchet.chainsPtr) ∗
-      ((t + 16#64) ↦₆₄ BitVec.ofNat 64 tr.ratchet.receiverChains.length) ∗
-      vecBuf A 104 8 (chainAt A) trG.ratchet.chainsCap trG.ratchet.chainsPtr
-        (trG.ratchet.chains.zip tr.ratchet.receiverChains) ∗
-      ((t + 176#64) ↦₆₄ trG.pq.cap) ∗
-      ((t + 184#64) ↦₆₄ trG.pq.ptr) ∗
-      ((t + 192#64) ↦₆₄ BitVec.ofNat 64 tr.pqrState.length) ∗
-      ((ss + 120#64) ↦₆₄ G.pq.cap) ∗
-      ((ss + 128#64) ↦₆₄ G.pq.ptr) ∗
-      ((ss + 136#64) ↦₆₄ BitVec.ofNat 64 st.pqRatchetState.length) ∗
-      vecU8Buf A G.pq.cap G.pq.ptr st.pqRatchetState ∗
-      A.pool ∗
-      memRegion (sp - 16608#64) (extHookStack - dropVecChainStack) ∗
-      stackAt sp' dropVecChainStack) ∗ F)
-    (hsp' : sp' = sp - 224#64)
-    (hnext : ∀ sf : State,
-      sf.pc = (tripleRatchetProgAtExt b ext).fnAddr trApplyName + 388#64 →
-      sf.status = .Running →
-      sf.sp = sp - 224#64 →
-      sf.trace = s.trace →
-      calleeSavedVRegs sf = calleeSavedVRegs s →
-      SepWPp (tripleRatchetProgAtExt b ext) ret sf
-        ((vecAt A 104 8 (chainAt A) (ss + 0x48#64) trG.ratchet.chainsCap trG.ratchet.chainsPtr
-            (trG.ratchet.chains.zip tr.ratchet.receiverChains) ∗
-          (t ↦₆₄ trG.ratchet.chainsCap) ∗
-          ((t + 8#64) ↦₆₄ trG.ratchet.chainsPtr) ∗
-          ((t + 16#64) ↦₆₄ BitVec.ofNat 64 tr.ratchet.receiverChains.length) ∗
-          ((t + 176#64) ↦₆₄ trG.pq.cap) ∗
-          ((t + 184#64) ↦₆₄ trG.pq.ptr) ∗
-          ((t + 192#64) ↦₆₄ BitVec.ofNat 64 tr.pqrState.length) ∗
-          ((ss + 120#64) ↦₆₄ trG.pq.cap) ∗
-          ((ss + 128#64) ↦₆₄ trG.pq.ptr) ∗
-          ((ss + 136#64) ↦₆₄ BitVec.ofNat 64 tr.pqrState.length) ∗
-          A.pool ∗
-          stackAt (sp - 224#64) extHookStack) ∗ F) Q Qp) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q Qp :=
-  SepWPp_tail_14c_to_184_opt (oimg := none)
-    (calleeStack := extHookStack) (stubStack := allocHookStack) (chStack := dropVecChainStack)
-    (by decide) (by decide) (by decide)
-    (dealloc_opt_of_base hA (by fnoff_eq))
-    sp ss t trivial hpc hrun hsp_align hsp hx19 hx20 hchains_len hP hsp' hnext
-
-theorem SepWPp_tail_14c_to_184_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hA : AllocContractsX img A ext)
-    {ret : BitVec 64} {s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (sp ss t : BitVec 64) {sp' : BitVec 64}
-    {G : SessionGhost} {st : SessionState (List (BitVec 8))}
-    {trG : TrGhost} {tr : TripleRatchet (List (BitVec 8))}
-    (hinv : ImgCallInv img s)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr trApplyName + 332#64)
-    (hrun : s.status = .Running)
-    (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    (hsp : s.sp = sp - 224#64)
-    (hx19 : s.readReg64 .x19 = t)
-    (hx20 : s.readReg64 .x20 = ss)
-    (hchains_len : trG.ratchet.chains.length = tr.ratchet.receiverChains.length)
-    (hP : P = (memRegion (ss + 72#64) 24 ∗
-      (t ↦₆₄ trG.ratchet.chainsCap) ∗
-      ((t + 8#64) ↦₆₄ trG.ratchet.chainsPtr) ∗
-      ((t + 16#64) ↦₆₄ BitVec.ofNat 64 tr.ratchet.receiverChains.length) ∗
-      vecBuf A 104 8 (chainAt A) trG.ratchet.chainsCap trG.ratchet.chainsPtr
-        (trG.ratchet.chains.zip tr.ratchet.receiverChains) ∗
-      ((t + 176#64) ↦₆₄ trG.pq.cap) ∗
-      ((t + 184#64) ↦₆₄ trG.pq.ptr) ∗
-      ((t + 192#64) ↦₆₄ BitVec.ofNat 64 tr.pqrState.length) ∗
-      ((ss + 120#64) ↦₆₄ G.pq.cap) ∗
-      ((ss + 128#64) ↦₆₄ G.pq.ptr) ∗
-      ((ss + 136#64) ↦₆₄ BitVec.ofNat 64 st.pqRatchetState.length) ∗
-      vecU8Buf A G.pq.cap G.pq.ptr st.pqRatchetState ∗
-      A.pool ∗
-      memRegion (sp - 16704#64) (dropVecChainStackX - dropVecChainStackX) ∗
-      stackAt sp' dropVecChainStackX) ∗ F)
-    (hsp' : sp' = sp - 224#64)
-    (hnext : ∀ sf : State,
-      sf.pc = (tripleRatchetProgAtExt img.base ext).fnAddr trApplyName + 388#64 →
-      sf.status = .Running →
-      sf.sp = sp - 224#64 →
-      sf.trace = s.trace →
-      calleeSavedVRegs sf = calleeSavedVRegs s →
-      SepWPp (tripleRatchetProgAtExt img.base ext) ret sf
-        ((vecAt A 104 8 (chainAt A) (ss + 0x48#64) trG.ratchet.chainsCap trG.ratchet.chainsPtr
-            (trG.ratchet.chains.zip tr.ratchet.receiverChains) ∗
-          (t ↦₆₄ trG.ratchet.chainsCap) ∗
-          ((t + 8#64) ↦₆₄ trG.ratchet.chainsPtr) ∗
-          ((t + 16#64) ↦₆₄ BitVec.ofNat 64 tr.ratchet.receiverChains.length) ∗
-          ((t + 176#64) ↦₆₄ trG.pq.cap) ∗
-          ((t + 184#64) ↦₆₄ trG.pq.ptr) ∗
-          ((t + 192#64) ↦₆₄ BitVec.ofNat 64 tr.pqrState.length) ∗
-          ((ss + 120#64) ↦₆₄ trG.pq.cap) ∗
-          ((ss + 128#64) ↦₆₄ trG.pq.ptr) ∗
-          ((ss + 136#64) ↦₆₄ BitVec.ofNat 64 tr.pqrState.length) ∗
-          A.pool ∗
-          stackAt (sp - 224#64) dropVecChainStackX) ∗ F) Q Qp) :
-    SepWPp (tripleRatchetProgAtExt img.base ext) ret s P Q Qp :=
-  SepWPp_tail_14c_to_184_opt (oimg := some img)
-    (calleeStack := dropVecChainStackX) (stubStack := extHookStack) (chStack := dropVecChainStackX)
-    (by decide) (by decide) (by decide)
-    (dealloc_opt_of_x hA (by fnoff_eq))
-    sp ss t hinv hpc hrun hsp_align hsp hx19 hx20 hchains_len hP hsp' hnext
-
 end ApplyTailSteps
-
-theorem trApply_ok_ext {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hA : AllocContracts b A ext)
-    (hPk : PublicKeySerializeOkExt b A ext)
-    (hDropMk : DropVecMessageKeyOkExt b A ext)
-    (hDropCh : DropVecChainOkExt b A ext) :
-    TrApplyOkExt b A ext :=
-  subroutine_ok_of_optNone
-    (trApply_ok_opt (oimg := none)
-      (calleeStack := extHookStack) (stubStack := allocHookStack)
-      (mkStack := dropVecMessageKeyStack) (chStack := dropVecChainStack)
-      (pkStack := publicKeySerializeStack) (privStack := extHookStack)
-      (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
-      stackAt_trApply stackAt_trApply_fold
-      (shim_opt_of_base hA (by fnoff_eq))
-      (alloc_opt_of_base hA (by fnoff_eq))
-      (dealloc_opt_of_base hA (by fnoff_eq))
-      (memcpy_opt_of_base hA (by fnoff_eq))
-      (subroutine_ok_to_optNone (privSerialize_ok_at2_ext hA (by fnoff_eq)))
-      (subroutine_ok_to_optNone (pkSerialize_ok_at_apply_ext hPk))
-      (subroutine_ok_to_optNone (dropVecMessageKey_ok_at_apply_ext hDropMk))
-      (subroutine_ok_to_optNone (dropVecChain_ok_at_apply_ext hDropCh)))
-
-theorem trApply_ok {b : BitVec 64} {C : Crypto} {A : RustAlloc} {S : SpqrModel}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (hS : TripleRatchetHooks C A S abs)
-    (hPk : PublicKeySerializeOk b C A ctl abs)
-    (hDropMk : DropVecMessageKeyOk b C A ctl abs)
-    (hDropCh : DropVecChainOk b C A ctl abs) :
-    TrApplyOk b C A ctl abs :=
-  trApply_ok_ext (AllocContracts.of_tripleRatchetProgAt b C A ctl abs hS.alloc) hPk hDropMk hDropCh
-
-theorem trApply_ok_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hA : AllocContractsX img A ext)
-    (hPk : PublicKeySerializeOkX img A ext)
-    (hDropMk : DropVecMessageKeyOkX img A ext)
-    (hDropCh : DropVecChainOkX img A ext) :
-    TrApplyOkX img A ext :=
-  trApply_ok_opt (oimg := some img)
-    (calleeStack := dropVecChainStackX) (stubStack := extHookStack)
-    (mkStack := dropVecMessageKeyStackX) (chStack := dropVecChainStackX)
-    (pkStack := publicKeySerializeStackX) (privStack := privSerializeStackX)
-    (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
-    stackAt_trApply_x stackAt_trApply_fold_x
-    (shim_opt_of_x hA (by fnoff_eq))
-    (alloc_opt_of_x hA (by fnoff_eq))
-    (dealloc_opt_of_x hA (by fnoff_eq))
-    (memcpy_opt_of_x hA (by fnoff_eq))
-    (privSerialize_ok_at2_ext_x hA (by fnoff_eq))
-    (pkSerialize_ok_at_apply_ext_x hPk)
-    (dropVecMessageKey_ok_at_apply_ext_x hDropMk)
-    (dropVecChain_ok_at_apply_ext_x hDropCh)
-
-/-! ## Relocatable per-block proof (block 58) -/
 
 open ProofLib.GenPlacedFetches
 
@@ -2882,7 +1398,7 @@ theorem SepWPp_drop_old_sender_placed [LibsignalPlacement] {A : RustAlloc}
     wp_steps
     apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
     intro hinv_f
-    refine SepWPp.weaken_pre (Entails.of_eq (by ac_rfl))
+    refine SepWPp.weaken_pre (by bi_entail)
       (hnext _ _ _ _ _ _ _ _ _ _ _ _ _ _
         (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
         (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
@@ -2921,7 +1437,7 @@ theorem SepWPp_drop_old_sender_placed [LibsignalPlacement] {A : RustAlloc}
     simp only [Nat.reduceAdd, sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
     refine SepWPp.exists_elim fun d208 => SepWPp.exists_elim fun d200 => SepWPp.exists_elim fun d192 => ?_
     refine SepWPp_fold_stack_gen sp calleeStack mkStack chStack hcallee hmk_le hch_le (by sep_focus) (by simp only [arm64_norm, *]) ?_
-    refine SepWPp.weaken_pre (Entails.of_eq (by ac_rfl))
+    refine SepWPp.weaken_pre (by bi_entail)
       (hnext _ sg.srk.cap sg.srk.ptr (BitVec.ofNat 64 sg.srk.bytes.length)
         sg.priv.cap sg.priv.ptr (BitVec.ofNat 64 sg.priv.bytes.length)
         d192 d200 d208 sg.ck.cap sg.ck.ptr 32#64 sc0.chainKey.index
@@ -3002,7 +1518,7 @@ theorem SepWPp_tail_14c_to_184_placed [LibsignalPlacement] {A : RustAlloc}
     apply SepWPp.of_sepWP (mid := (blkPl_58).base + bv% (388))
     wp_steps
     apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    refine SepWPp.weaken_pre (Entails.of_eq (by ac_rfl))
+    refine SepWPp.weaken_pre (by bi_entail)
       (hnext _ (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
         (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]))
   · have hpq_beq : (G.pq.cap == 0#64) = false := beq_false_of_ne hpq_cap
@@ -3018,7 +1534,7 @@ theorem SepWPp_tail_14c_to_184_placed [LibsignalPlacement] {A : RustAlloc}
     wp_steps
     apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
     refine SepWPp_fold_stack_to_ext_gen sp calleeStack stubStack hcallee hstub_le (by sep_focus) (by simp only [arm64_norm, *]) ?_
-    refine SepWPp.weaken_pre (Entails.of_eq (by ac_rfl))
+    refine SepWPp.weaken_pre (by bi_entail)
       (hnext _ (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
         (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]))
 

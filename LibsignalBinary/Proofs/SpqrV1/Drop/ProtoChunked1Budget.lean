@@ -10,16 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.DecodesBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Heap.IfaceBudget
+import LibsignalBinary.Heap.IfaceBudgetBase
+import LibsignalBinary.Proofs.SpqrV1.Drop.Decodes
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Drop Glue for PB Chunked States (`Ct1Received`, `NoHeaderReceived`)
@@ -29,7 +32,7 @@ and proves relocatable `[LibsignalPlacement]` subroutine contracts for `chunked:
 (Block `282`) and `chunked::NoHeaderReceived` (Block `284`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -100,7 +103,7 @@ attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero noneCap_add_t
 
 /-! ## Budget-Threaded Specifications -/
 
-def dropProtoChunkedCt1ReceivedSpec [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def dropProtoChunkedCt1ReceivedSpec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropProtoChunkedCt1ReceivedGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -113,7 +116,7 @@ def dropProtoChunkedCt1ReceivedSpec [LibsignalPlacement] (M : AllocCostModel)
       memRegion x.a protoChunkedCt1ReceivedSize ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp dropStack48
 
-def dropProtoChunkedNoHeaderReceivedSpec [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def dropProtoChunkedNoHeaderReceivedSpec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropProtoChunkedNoHeaderReceivedGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -126,7 +129,7 @@ def dropProtoChunkedNoHeaderReceivedSpec [LibsignalPlacement] (M : AllocCostMode
       memRegion x.a protoChunkedNoHeaderReceivedSize ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp dropStack48
 
-def dropProtoChunkedHeaderReceivedSpec [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def dropProtoChunkedHeaderReceivedSpec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropProtoChunkedHeaderReceivedGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -139,7 +142,7 @@ def dropProtoChunkedHeaderReceivedSpec [LibsignalPlacement] (M : AllocCostModel)
       memRegion x.a protoChunkedHeaderReceivedSize ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp dropStack48
 
-def dropProtoChunkedEkSentCt1ReceivedSpec [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def dropProtoChunkedEkSentCt1ReceivedSpec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropProtoChunkedEkSentCt1ReceivedGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -152,7 +155,7 @@ def dropProtoChunkedEkSentCt1ReceivedSpec [LibsignalPlacement] (M : AllocCostMod
       memRegion x.a protoChunkedEkSentCt1ReceivedSize ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp dropStack48
 
-def dropProtoChunkedHeaderSentSpec [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def dropProtoChunkedHeaderSentSpec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropProtoChunkedHeaderSentGhost × M.σ) where
   pre := fun (x, st) s =>

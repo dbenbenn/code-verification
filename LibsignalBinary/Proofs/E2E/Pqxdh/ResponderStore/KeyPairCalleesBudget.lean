@@ -9,13 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesAuxBudget
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesAuxBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.Apply
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 meta import ProofLib.SepLogic.WP.Apply -- shake: keep
+import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym
+import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PrivateKeySerializeBudget
+import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Contracts for `KeyPairCallees`
@@ -25,7 +31,7 @@ contracts for the curve and ML-KEM key-pair constructors, `KeySerde::serialize` 
 (Blocks `107`, `109`, `87`), and `PreKeyRecord::new` (Block `66`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -146,13 +152,13 @@ theorem kemKeyPairSerde_placed_ok [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## `kemPubKeySerdeSerialize_placed_ok` and `kemSecretKeySerdeSerialize_placed_ok` (Block `109`) -/
 
-def kemPubKeySerdeSerializeEvents : List AllocEvent :=
+@[expose] def kemPubKeySerdeSerializeEvents : List AllocEvent :=
   rustAllocEvents 1569 1 ++ rustAllocEvents 1569 1 ++ rustDeallocEvents 1569 1
 
-def KemPubKeySerdeSerializeEnv (evs : List AllocEvent) : Prop :=
+@[expose] def KemPubKeySerdeSerializeEnv (evs : List AllocEvent) : Prop :=
   evs = kemPubKeySerdeSerializeEvents
 
-def kemPubKeySerdeSerializeOkSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def kemPubKeySerdeSerializeOkSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec ((BitVec 64 × BitVec 64 × List (BitVec 8) × BitVec 64) × M.σ) where
   pre := fun (x, st) s =>
@@ -257,13 +263,13 @@ theorem kemPubKeySerdeSerialize_placed_ok [LibsignalPlacement] {M : AllocCostMod
   simp only [hcons_len, kemPubKeySerdeSerializeEvents, AllocCostModel.stepEvents_append]
   wp_done
 
-def kemSecretKeySerdeSerializeEvents : List AllocEvent :=
+@[expose] def kemSecretKeySerdeSerializeEvents : List AllocEvent :=
   rustAllocEvents 3169 1 ++ rustAllocEvents 3169 1 ++ rustDeallocEvents 3169 1
 
-def KemSecretKeySerdeSerializeEnv (evs : List AllocEvent) : Prop :=
+@[expose] def KemSecretKeySerdeSerializeEnv (evs : List AllocEvent) : Prop :=
   evs = kemSecretKeySerdeSerializeEvents
 
-def kemSecretKeySerdeSerializeOkSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def kemSecretKeySerdeSerializeOkSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec ((BitVec 64 × BitVec 64 × List (BitVec 8) × BitVec 64) × M.σ) where
   pre := fun (x, st) s =>
@@ -370,13 +376,13 @@ theorem kemSecretKeySerdeSerialize_placed_ok [LibsignalPlacement] {M : AllocCost
 
 /-! ## `pubKeySerdeSerialize_placed_ok` (Block `87`) and `preKeyRecordNew_placed_ok` (Block `66`) -/
 
-def pubKeySerdeSerializeEvents : List AllocEvent :=
+@[expose] def pubKeySerdeSerializeEvents : List AllocEvent :=
   publicKeySerializeEvents ++ rustAllocEvents 33 1 ++ rustDeallocEvents 33 1
 
-def PubKeySerdeSerializeEnv (evs : List AllocEvent) : Prop :=
+@[expose] def PubKeySerdeSerializeEnv (evs : List AllocEvent) : Prop :=
   evs = pubKeySerdeSerializeEvents
 
-def pubKeySerdeSerializeOkSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def pubKeySerdeSerializeOkSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec ((BitVec 64 × PublicKey × BitVec 64) × M.σ) where
   pre := fun (x, st) s =>
@@ -480,14 +486,14 @@ theorem pubKeySerdeSerialize_placed_ok [LibsignalPlacement] {M : AllocCostModel}
   simp only [hser_len, pubKeySerdeSerializeEvents, AllocCostModel.stepEvents_append]
   wp_done
 
-def preKeyRecordNewEvents (cap : Nat) : List AllocEvent :=
+@[expose] def preKeyRecordNewEvents (cap : Nat) : List AllocEvent :=
   publicKeySerializeEvents ++ rustAllocEvents 33 1 ++ rustDeallocEvents 33 1 ++
     privSerializeEvents ++ rustAllocEvents 32 1 ++ rustDeallocEvents cap 1
 
-def PreKeyRecordNewEnv (evs : List AllocEvent) : Prop :=
+@[expose] def PreKeyRecordNewEnv (evs : List AllocEvent) : Prop :=
   ∃ cap : Nat, 32 ≤ cap ∧ cap < 2 ^ 63 ∧ evs = preKeyRecordNewEvents cap
 
-def preKeyRecordNewOkSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def preKeyRecordNewOkSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec ((BitVec 64 × BitVec 64 × PublicKey × List.Vector (BitVec 8) 32 × BitVec 64) × M.σ) where
   pre := fun (x, st) s =>

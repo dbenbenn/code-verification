@@ -190,22 +190,6 @@ theorem slots_set_nonLiveUser_iff
     exact ⟨fun h => False.elim (hNew q rq eq h), fun h => False.elim (hOld q rq eq h)⟩
   · exact Iff.rfl
 
-theorem sameLiveUserSub_mkFastFreeGroup
-    {st : MallocngSt} (hNd : (st.groups.map (·.metaPtr)).Nodup)
-    {g : GroupDesc} (hg : g ∈ st.groups) {idx : Nat} (hIdx : idx < g.slots.length)
-    (hClaimed : g.slots[idx]'hIdx = .claimed) (bv1 : BitVec 64 → BitVec 8) :
-    SameLiveUserSub
-      { st with
-        groups := replaceGroupByMeta st.groups g.metaPtr (mkFastFreeGroup g idx)
-        byteVal := bv1 }
-      st := by
-  refine sameLiveUserSub_of_replaceGroupByMeta hNd hg rfl rfl rfl
-    rfl rfl rfl rfl rfl rfl (by simp [mkFastFreeGroup]) ?_
-  intro j hj1 hj q rq eq
-  exact slots_set_nonLiveUser_iff hIdx
-    (by rw [hClaimed]; intro _ _ _ h; cases h)
-    (by intro _ _ _ h; cases h) j hj1 hj q rq eq
-
 theorem sameLiveUserSub_mkFreedKeepGroup
     {st : MallocngSt} (hNd : (st.groups.map (·.metaPtr)).Nodup)
     {g : GroupDesc} (hg : g ∈ st.groups) {idx : Nat} (hIdx : idx < g.slots.length)

@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSites
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Placed
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSites
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

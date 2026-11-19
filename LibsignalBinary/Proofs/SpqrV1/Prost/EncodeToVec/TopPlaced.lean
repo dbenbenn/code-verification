@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.FinalPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.FinalPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBase
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBase
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodePlaced
@@ -30,7 +30,7 @@ Discharges all 7 sub-message encoder callee contracts (`ChainParams`, `EpochDire
 under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.EncodeToVec
 
@@ -54,7 +54,7 @@ set_option autoImplicit false
 set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Obj.lookup
 
 private theorem elim_exact_cap_ptr_etv {A : RustAlloc} {v cap ptr : BitVec 64}
     {bs1 bs2 : List (BitVec 8)} (hfit : bs1.length + bs2.length ≤ cap.toNat) :

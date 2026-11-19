@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`): Relocatable Allocation & Decapsulation
@@ -23,7 +24,7 @@ Relocatable `[LibsignalPlacement]` proof of `mac`/`ct2_128` heap allocation (`+2
 and `decapsulate_compressed_key` (`+292 .. +480`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

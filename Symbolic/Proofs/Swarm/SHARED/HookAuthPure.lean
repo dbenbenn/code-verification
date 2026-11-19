@@ -21,7 +21,7 @@ external ML-KEM hooks (`mlkemOf`), proving agreement with `spqrAuthApi` and `spq
 instantiated with `hmacFnOfSha F`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,21 +39,21 @@ open DY.Libsignal.PQXDH.Refinement (
 abbrev HmacFn : Type := List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8))
 
 /-- Total SHA-256 HMAC instantiation of `HmacFn` from a compression function `F`. -/
-def hmacFnOfSha (F : ShaCompress) : HmacFn :=
+@[expose] def hmacFnOfSha (F : ShaCompress) : HmacFn :=
   fun k d => some (hmacWith F k d)
 
 /-- `HmacFn` induced by `i : ExternInterpretation` at `libcruxHmacSymbol`. -/
-def hmacFnOf (i : ExternInterpretation) : HmacFn :=
+@[expose] def hmacFnOf (i : ExternInterpretation) : HmacFn :=
   fun key data => i libcruxHmacSymbol [key, data]
 
 /-- Convert a byte list to a `List.Vector (BitVec 8) n`, padding with `0#8` or truncating to length `n`. -/
-def bytesToVec (n : Nat) (bs : List (BitVec 8)) : List.Vector (BitVec 8) n :=
+@[expose] def bytesToVec (n : Nat) (bs : List (BitVec 8)) : List.Vector (BitVec 8) n :=
   ⟨(bs ++ List.replicate n 0#8).take n, by
     rw [List.length_take, List.length_append, List.length_replicate]
     omega⟩
 
 /-- `MlKem` instance constructed from `i : ExternInterpretation`. -/
-def mlkemOf (i : ExternInterpretation) : MlKem where
+@[expose] def mlkemOf (i : ExternInterpretation) : MlKem where
   keyPair seed := bytesToVec 2400 ((i mlkem768FromSeedSymbol [seed.toList]).getD [])
   validPk hdr ek := (i mlkem768ValidatePkSymbol [hdr, ek]).isSome
   encaps1 hdr rand :=
@@ -72,7 +72,7 @@ def mlkemOf (i : ExternInterpretation) : MlKem where
 
 /-- `Authenticator.macCt` parameterized by `mac : HmacFn`, returning the raw tag on `some tag`,
 `.error (.site ...)` on `none`, and `.error hmacU32UnwrapPanic` when inputs exceed `2 ^ 32`. -/
-def macCtWithMac (mac : HmacFn) (self : Authenticator) (ep : Epoch) (ct : Bytes) :
+@[expose] def macCtWithMac (mac : HmacFn) (self : Authenticator) (ep : Epoch) (ct : Bytes) :
     Except SpqrPanic Mac :=
   let data := Authenticator.ctLabel ++ toBEBytes 8 ep ++ ct
   if self.macKey.length < 2 ^ 32 ∧ data.length < 2 ^ 32 then
@@ -93,7 +93,7 @@ theorem macCtWithMac_hmacFnOfSha (F : ShaCompress)
 
 /-- `Authenticator.macHdr` parameterized by `mac : HmacFn`, returning the raw tag on `some tag`,
 `.error (.site ...)` on `none`, and `.error hmacU32UnwrapPanic` when inputs exceed `2 ^ 32`. -/
-def macHdrWithMac (mac : HmacFn) (self : Authenticator) (ep : Epoch) (hdr : Bytes) :
+@[expose] def macHdrWithMac (mac : HmacFn) (self : Authenticator) (ep : Epoch) (hdr : Bytes) :
     Except SpqrPanic Mac :=
   let data := Authenticator.hdrLabel ++ toBEBytes 8 ep ++ hdr
   if self.macKey.length < 2 ^ 32 ∧ data.length < 2 ^ 32 then
@@ -113,7 +113,7 @@ theorem macHdrWithMac_hmacFnOfSha (F : ShaCompress)
   rw [List.take_of_length_le (by simp [Authenticator.macSize, length_hmacWith])]
 
 /-- `Authenticator.verifyCtError` parameterized by `mac : HmacFn`. -/
-def verifyCtErrorWithMac (mac : HmacFn) (self : Authenticator) (ep : Epoch)
+@[expose] def verifyCtErrorWithMac (mac : HmacFn) (self : Authenticator) (ep : Epoch)
     (ct expectedMac : Bytes) : Except SpqrPanic (Except Error Unit) := do
   let computed ← macCtWithMac mac self ep ct
   let diff ← CryptoVerification.LibsignalSpqrV1.compare expectedMac computed
@@ -137,7 +137,7 @@ theorem verifyCtErrorWithMac_hmacFnOfSha (F : ShaCompress)
       cases (diff != 0#8) <;> rfl
 
 /-- `Authenticator.verifyHdrError` parameterized by `mac : HmacFn`. -/
-def verifyHdrErrorWithMac (mac : HmacFn) (self : Authenticator) (ep : Epoch)
+@[expose] def verifyHdrErrorWithMac (mac : HmacFn) (self : Authenticator) (ep : Epoch)
     (hdr expectedMac : Bytes) : Except SpqrPanic (Except Error Unit) := do
   let computed ← macHdrWithMac mac self ep hdr
   let diff ← CryptoVerification.LibsignalSpqrV1.compare expectedMac computed
@@ -163,7 +163,7 @@ theorem verifyHdrErrorWithMac_hmacFnOfSha (F : ShaCompress)
 /-! ## Hook-Parameterized `AuthApi`, `SpqrApiDeps`, and SPQR Models -/
 
 /-- `AuthApi` instance parameterized by `F : ShaCompress` for HKDF and `mac : HmacFn` for MACs. -/
-def spqrAuthApiWithMac (F : ShaCompress) (mac : HmacFn := hmacFnOfSha F) : AuthApi where
+@[expose] def spqrAuthApiWithMac (F : ShaCompress) (mac : HmacFn := hmacFnOfSha F) : AuthApi where
   Authenticator := Authenticator
   new := fun rootKey ep => .ok (Authenticator.new F rootKey ep)
   update := fun auth ep k => .ok (auth.update F ep k)
@@ -182,7 +182,7 @@ theorem spqrAuthApiWithMac_hmacFnOfSha (F : ShaCompress) :
   simp
 
 /-- `SpqrApiDeps` bundle parameterized by `F : ShaCompress`, `K : MlKem`, and `mac : HmacFn`. -/
-def spqrDepsWithMac (F : ShaCompress) (K : MlKem) (mac : HmacFn := hmacFnOfSha F) : SpqrApiDeps where
+@[expose] def spqrDepsWithMac (F : ShaCompress) (K : MlKem) (mac : HmacFn := hmacFnOfSha F) : SpqrApiDeps where
   V1StatePB := V1State
   decodeState := fun bs =>
     match Proto.decodeState bs with
@@ -282,11 +282,11 @@ theorem spqrDepsWithMac_hmacFnOfSha (F : ShaCompress) (K : MlKem) :
   rw [spqrDepsWithMac_eq_ofAuth, spqrDeps_eq_ofAuth, spqrAuthApiWithMac_hmacFnOfSha]
 
 /-- Assembled SPQR V1 send model (`SpqrModel`) parameterized by `F`, `K`, and `mac : HmacFn`. -/
-def spqrV1WithMac (F : ShaCompress) (K : MlKem) (mac : HmacFn := hmacFnOfSha F) : SpqrModel :=
+@[expose] def spqrV1WithMac (F : ShaCompress) (K : MlKem) (mac : HmacFn := hmacFnOfSha F) : SpqrModel :=
   toSpqrModel (spqrDepsWithMac F K mac) (spqrHkdfWith F)
 
 /-- Assembled SPQR V1 recv model (`SpqrRecvModel`) parameterized by `F`, `K`, and `mac : HmacFn`. -/
-def spqrV1RecvWithMac (F : ShaCompress) (K : MlKem) (mac : HmacFn := hmacFnOfSha F) : SpqrRecvModel :=
+@[expose] def spqrV1RecvWithMac (F : ShaCompress) (K : MlKem) (mac : HmacFn := hmacFnOfSha F) : SpqrRecvModel :=
   toSpqrRecvModel (spqrDepsWithMac F K mac) (spqrHkdfWith F)
 
 end Symbolic.Swarm.SHARED.HookAuth

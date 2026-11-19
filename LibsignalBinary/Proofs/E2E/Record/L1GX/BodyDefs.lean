@@ -19,7 +19,7 @@ Extends `DeserializeGeneral/BodyDefs.lean` to PQXDH-scope records (`DeserializeS
 `prostSSGAt` with `prostSSGXAt` (`SSGX`) and stepping over `recFieldsX r` at field-loop head `+0x254`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.L1GX
 
@@ -29,14 +29,9 @@ open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalTripl
 open CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.E2E.Record.DeserializeSeed CryptoVerification.E2E.Record.DeserializeGeneral
 
-abbrev DeserStepX (C : Crypto) (ctl : BitVec 64) (x : DeserializeGenGhost)
-    (R : SepProp) (s0 s : State) (Q : State → Prop)
-    (abs : String → Option (State → State)) : Prop :=
-  SegStepG (recordProg C ctl abs) deserializeXSpec x R s0 s Q
-
 /-- Stack-frame locals of `SessionRecord::deserialize` in the field loop at `L`, with
 `SessionStructure` holding `v : SSGX`. -/
-def deserLocalsX (L p : BitVec 64) (bs rest : List (BitVec 8)) (v : SSGX) : SepProp :=
+@[expose] def deserLocalsX (L p : BitVec 64) (bs rest : List (BitVec 8)) (v : SSGX) : SepProp :=
   memRegion L 0x3f8 ∗ Prost.sliceCursorAfter (L + 0x3f8#64) p bs rest ∗
     ((L + 0x408#64) ↦₆₄ 0#64) ∗ ((L + 0x410#64) ↦₆₄ 8#64) ∗ ((L + 0x418#64) ↦₆₄ 0#64) ∗
     prostSSGXAt A0 (L + 0x420#64) v ∗ memRegion (L + 0x578#64) 0x170 ∗
@@ -47,29 +42,17 @@ theorem deserLocalsX_base (L p : BitVec 64) (bs rest : List (BitVec 8)) (v : SSG
   unfold deserLocalsX deserLocalsG
   rw [prostSSGXAt_empty]
 
-/-- Loop-head invariant at `+0x254` after decoding `k` fields of `recFieldsX r` at `img`. -/
-def DeserLoopX (C : Crypto) (ctl : BitVec 64) (x : DeserializeGenGhost)
-    (R : SepProp) (s0 : State) (k : Nat) (s : State) : Prop :=
-  s.pc = deserPC C ctl 0x254#64 ∧ s.status = .Running ∧ (s.trace = s0.trace ∧ calleeSavedVRegs s = calleeSavedVRegs s0) ∧
-    s.symtab = sessionImg0.symtab ∧ sessionImg0.FrozenLoaded s ∧
-    s.sp = deserSpL s0.sp ∧ s.spAligned = true ∧ s.readReg64 .x29 = deserSpL s0.sp + 0x710#64 ∧
-    s.readReg64 .x19 = x.out ∧ s.readReg64 .x20 = 0#64 ∧
-    s.readReg64 .x23 = deserSpL s0.sp + 0x408#64 ∧
-    (s.mem ⊨ deserLocalsX (deserSpL s0.sp) x.p (encodeRecord x.r)
-        (((recFieldsX x.r).drop k).flatMap GenFieldX.enc) (ssgxAfter x.r k) ∗
-      memRegion x.out 368 ∗ stackAt (deserSpL s0.sp) deserCalleeStack ∗ deserSaved s0 ∗ R)
-
 /-- Raw `RecordStructure` output at `out` with `prostSSGXAt` holding all decoded fields of
 `recFieldsX r` at `out + 0x18`. -/
-def deserOutRecordX (out : BitVec 64) (r : SessionRecord (List (BitVec 8))) : SepProp :=
+@[expose] def deserOutRecordX (out : BitVec 64) (r : SessionRecord (List (BitVec 8))) : SepProp :=
   (out ↦₆₄ 0#64) ∗ ((out + 8#64) ↦₆₄ 8#64) ∗ ((out + 0x10#64) ↦₆₄ 0#64) ∗
     prostSSGXAt A0 (out + 0x18#64) (ssgxAfter r (recFieldsX r).length)
 
-def deserOutRawX (x : DeserializeGenGhost) (s0 sf : State) : SepProp :=
+@[expose] def deserOutRawX (x : DeserializeGenGhost) (s0 sf : State) : SepProp :=
   ⌜sf.trace = s0.trace⌝ ∗ (x.p ↦ₛ encodeRecord x.r) ∗ deserOutRecordX x.out x.r ∗
     stackAt s0.sp recDeserializeStack
 
-def DeserRetX (x : DeserializeGenGhost) (R : SepProp) (s0 sf : State) : Prop :=
+@[expose] def DeserRetX (x : DeserializeGenGhost) (R : SepProp) (s0 sf : State) : Prop :=
   Returned s0 sf ∧ CallingConventionPreserved s0 sf ∧ (sf.mem ⊨ deserOutRawX x s0 sf ∗ R)
 
 end CryptoVerification.E2E.Record.L1GX

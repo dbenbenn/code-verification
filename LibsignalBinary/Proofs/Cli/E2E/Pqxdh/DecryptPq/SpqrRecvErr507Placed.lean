@@ -9,11 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.VerifyMacTrap507Placed
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecv
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.VerifyMacTrap507Placed
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecv -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import all Init.Data.String.Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlaced
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
 # Relocatable `[LibsignalPlacement]` SPQR Recv Error-Path Helpers (`blkPl_508`)
@@ -23,7 +29,7 @@ Proves `pqRecv_dealloc_tail_507_placed`, `pqRecv_recv_err_true_507_placed`, and
 `try_decrypt_with_state::<signal_session_handshake::Coins>` (`blkPC_508` / `blkPl_508`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -444,7 +444,7 @@ theorem large_meta_mem_writes (m mb : BitVec 64) (len : Nat) (hLenPos : 8 ≤ le
   rw [hz64, hz32]
   rfl
 
-theorem large_group_bundle [MallocngMultiPlacement]
+theorem large_group_bundle [MallocngMultiPlacement] {ro : Bool}
     {γ : GhostName} {brkStart brk m mb : BitVec 64}
     {liveCost peakCost len : Nat} {ivs0 : List (BitVec 64 × Nat)}
     {m0 m1 m2 m3 mf : Memory} {st1 : MallocngSt}
@@ -478,15 +478,15 @@ theorem large_group_bundle [MallocngMultiPlacement]
      (maddrs.lock ↦₃₂ 0#32) ∗
      (maddrs.replaced ↦₃₂ 0#32) ∗
      (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-     ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) ∗
-     MallocngAuxvState γ st1.auxvPtr st1.auxvSnap ∗
+     MallocngAuxvPtrCell ro maddrs.libc st1.auxvPtr ∗
+     MallocngAuxvStateRo ro γ st1.auxvPtr st1.auxvSnap ∗
      (m ↦ₛ gNew.metaBytes) ∗
      (mb ↦ₛ groupBytes) ∗
      memMapped mb len ∗
      ByteMap st1.masterDom (OwnedRwByte st1) st1.byteVal ∗
      ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal ∗
      MappedSet st1.masterDom (OwnedMappedByte st1) ⊢
-       MallocngCoreStInflightA 1 γ maddrs brkStart brk liveCost peakCost st2) := by
+       MallocngCoreStInflightModeA ro 1 γ maddrs brkStart brk liveCost peakCost st2) := by
   dsimp only
   have h2_48 : (2 : Nat) ^ 48 < 2 ^ 64 := by omega
   have hMbAl : mb.toNat % 4096 = 0 := Nat.mod_eq_zero_of_dvd hMbDiv
@@ -540,7 +540,7 @@ theorem large_group_bundle [MallocngMultiPlacement]
     (mallocngWFInflight_change_base (b2 := dummyBase) hwf1)
     hRes hMbNe hMbAl hLenPos hLenMod hMbBound hDisjDummy hDisjDyn
   have hwf2 := mallocngWFInflight_change_base (b2 := maddrs.base) hwf2Dummy
-  have hAbs := createLargeMmapGroup_absorb (γ := γ) (A := maddrs) hwf1 hRes hMbNe hMbAl
+  have hAbs := createLargeMmapGroup_absorb_mode (ro := ro) (γ := γ) (A := maddrs) hwf1 hRes hMbNe hMbAl
     hLenPos hLenMod hMbBound hDisjDyn
   exact ⟨rfl, hCnt, rfl, List.mem_cons_self, by simp [mkLargeGroup], rfl, rfl, rfl,
     hZero, hNoOrph, hwf2, hAbs⟩

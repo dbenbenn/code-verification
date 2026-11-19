@@ -10,8 +10,6 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Top.Send.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.Layout.Stubs
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
 import ProofLib.SepLogic.WPp
@@ -26,7 +24,7 @@ relocation/call combinators, and verifies the three immediate arms (`.ekSentCt1R
 `.noHeaderReceived`, `.ct1Acknowledged`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.Send
 
@@ -90,19 +88,19 @@ theorem Relocatable.withPad {n k m : Nat} {off : BitVec 64} {F : BitVec 64 → S
   Relocatable.sepConj hoff hm hF (Relocatable.of_memRegion k hk)
 
 /-- Tag word at offset `+0` of `PolyEncoder` (`0#64` for `.points`, `1#64` for `.polys`). -/
-def polyEncoderTagVal : EncoderState → BitVec 64
+@[expose] def polyEncoderTagVal : EncoderState → BitVec 64
   | .points _ => polyEncoderPointsTag
   | .polys _ => polyEncoderPolysTag
 
 /-- The 384-byte `Vec` array at offset `+8` of `EncoderState`. -/
-def encoderStateVecsAt (A : RustAlloc) (a : BitVec 64) : EncoderState → SepProp
+@[expose] def encoderStateVecsAt (A : RustAlloc) (a : BitVec 64) : EncoderState → SepProp
   | .points pts =>
     ⌜pts.length = NUM_POLYS ∧ (∀ pt ∈ pts, pt.value.length ≤ 0x0555555555555555)⌝ ∗
       pointListOf A a pts
   | .polys ps => ⌜ps.length = NUM_POLYS⌝ ∗ polyListOf A a ps
 
 /-- The 392-byte tail of `PolyEncoder` starting at `encA + 8#64`. -/
-def polyEncoderTail392At (A : RustAlloc) (a : BitVec 64) (enc : PolyEncoder) : SepProp :=
+@[expose] def polyEncoderTail392At (A : RustAlloc) (a : BitVec 64) (enc : PolyEncoder) : SepProp :=
   encoderStateVecsAt A a enc.s ∗ ((a + 384#64) ↦₃₂ enc.idx) ∗ memRegion (a + 388#64) 4
 
 theorem polyEncoderAt_eq_tag_tail392 (A : RustAlloc) (a : BitVec 64) (enc : PolyEncoder) :
@@ -138,7 +136,7 @@ theorem Relocatable.of_polyEncoderTail392At (A : RustAlloc) (enc : PolyEncoder) 
   rw [show (a + 384#64) + 4#64 = a + 388#64 by bv_omega]
 
 /-- The 920-byte tail of `chunkedCt1SampledAt` starting at `a` (`stA + 8#64`). -/
-def chunkedCt1SampledTail920At (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def chunkedCt1SampledTail920At (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Chunked.SendCt.Ct1Sampled spqrPolyApi (spqrAuthApi F)) : SepProp :=
   polyEncoderTail392At A a st.sending_ct1 ∗
     unchunkedCt1SentAt A (a + 392#64) st.uc ∗ polyDecoderAt A (a + 520#64) st.receiving_ek
@@ -164,14 +162,14 @@ theorem Relocatable.of_chunkedCt1SampledTail920At (A : RustAlloc) {F : ShaCompre
   rw [show (a + 392#64) + 128#64 = a + 520#64 by bv_omega]
 
 /-- Word 0 (`x20`) of `chunkedStatesAt A a st`. -/
-def chunkedStatesWord0 {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → BitVec 64
+@[expose] def chunkedStatesWord0 {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → BitVec 64
   | .keysUnsampled _ => 2#64 | .keysSampled _ => 3#64 | .headerSent _ => 4#64
   | .ct1Received _ => 5#64 | .ekSentCt1Received _ => 6#64 | .noHeaderReceived _ => 7#64
   | .headerReceived _ => 8#64 | .ct1Sampled s => polyEncoderTagVal s.sending_ct1.s
   | .ekReceivedCt1Sampled _ => 10#64 | .ct1Acknowledged _ => 11#64 | .ct2Sampled _ => 12#64
 
 /-- The 920-byte tail of `chunkedStatesAt` (bytes `8..928`, stored at `sp + 0x590..0x928` at `0x31458`). -/
-def chunkedStatesTail920At (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
+@[expose] def chunkedStatesTail920At (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
     States spqrPolyApi (spqrAuthApi F) → SepProp
   | .keysUnsampled s => chunkedKeysUnsampledAt A a s ∗ memRegion (a + 56#64) 864
   | .keysSampled s => chunkedKeysSampledAt A a s ∗ memRegion (a + 504#64) 416
@@ -225,7 +223,7 @@ theorem polyEncoderTagVal_add_one_beq_zero (es : EncoderState) :
     (polyEncoderTagVal es + 1#64 == 0#64) = false := by cases es <;> rfl
 
 /-- Representation of `v1send.msg.payload` at `0x31458` in `w24` and `sp + 0x550..0x576`. -/
-def spqrSendPayloadSlotAt (sp : BitVec 64) (w24 : BitVec 8) (p : MessagePayload spqrPolyApi) : SepProp :=
+@[expose] def spqrSendPayloadSlotAt (sp : BitVec 64) (w24 : BitVec 8) (p : MessagePayload spqrPolyApi) : SepProp :=
   match p with
   | .none => ⌜w24 = 0#8⌝ ∗ memRegion (sp + 0x550#64) 38
   | .hdr c => ⌜w24 = 1#8⌝ ∗ chunkAt (sp + 0x550#64) c ∗ memRegion (sp + 0x572#64) 4
@@ -236,7 +234,7 @@ def spqrSendPayloadSlotAt (sp : BitVec 64) (w24 : BitVec 8) (p : MessagePayload 
   | .ct2 c => ⌜w24 = 6#8⌝ ∗ chunkAt (sp + 0x550#64) c ∗ memRegion (sp + 0x572#64) 4
 
 /-- Representation of `v1send.key : Option EpochSecret` at `0x31458` in `(x21, x27)` and `sp + 0x580..0x590`. -/
-def spqrSendKeySlotAt (A : RustAlloc) (sp x21 x27 : BitVec 64) : Option EpochSecret → SepProp
+@[expose] def spqrSendKeySlotAt (A : RustAlloc) (sp x21 x27 : BitVec 64) : Option EpochSecret → SepProp
   | none => ⌜x21 = noneCap⌝ ∗ memRegion (sp + 0x580#64) 16
   | some es =>
     ⌜x21.toNat < 2 ^ 63⌝ ∗ vecU8Buf A x21 x27 es.secret ∗
@@ -363,18 +361,8 @@ theorem word0_tail920_entails_memRegion_928 (sp w : BitVec 64) :
 
 /-! ## Relocation Helper (`call_memcpy_relocate`) and Join State -/
 
-open CryptoVerification.CodeLayout in
-theorem libsignalSessionCode_fnOff_memcpy : libsignalSessionCode.fnOff "memcpy" = num% (ls_off% "memcpy") := ls_stub% "memcpy"
-
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.sub_add_cancel BitVec.toNat_zero
-
-open CryptoVerification.CodeLayout in
-theorem spqrSend_memcpy_ok {b : BitVec 64} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr spqrSendName + bv% (ls_rel% "spqr::send::<libsignal_session::HookRng>" "memcpy")) sessionMemcpyRegionSpec :=
-  hA.session_memcpy_region_ok_at spqrSendName (num% (ls_rel% "spqr::send::<libsignal_session::HookRng>" "memcpy"))
 
 theorem relocate_pre_entails {n : Nat} {F : BitVec 64 → SepProp}
     (hrel : Relocatable n F) (dst src : BitVec 64) (Rest : SepProp) :
@@ -435,24 +423,6 @@ theorem call_memcpy_relocate {prog : Program} {entry ret_pc target_pc : BitVec 6
       hcs_sf.2.2.2.2.2.1 hcs_sf.2.2.2.2.2.2.1 hcs_sf.2.2.2.2.2.2.2.1
       hcs_sf.2.2.2.2.2.2.2.2.1 hcs_sf.2.2.2.2.2.2.2.2.2.1 hcs_sf.2.2.2.2.2.2.2.2.2.2.2
 
-/-- Register and state conditions at the post-`States::send` join point `0x31458` (`entry + 3068#64`). -/
-structure SpqrSendJoinState {F : ShaCompress} (b sp : BitVec 64)
-    (ext : String → Option (State → State)) (s0 sf : State) (msg : Message spqrPolyApi)
-    (st1 : States spqrPolyApi (spqrAuthApi F)) : Prop where
-  pc : sf.pc = (tripleRatchetProgAtExt b ext).fnAddr spqrSendName + 3068#64
-  run : sf.status = .Running
-  sp_eq : sf.sp = sp
-  trace : sf.trace = s0.trace
-  x19 : sf.readReg64 .x19 = s0.readReg64 .x19
-  x20 : sf.readReg64 .x20 = chunkedStatesWord0 st1
-  x22 : sf.readReg64 .x22 = msg.epoch
-  x25 : sf.readReg64 .x25 = sp + 0x550#64
-  x26 : sf.readReg64 .x26 = sp + 0x1260#64
-  x28 : sf.readReg64 .x28 = s0.readReg64 .x28
-  vregs : calleeSavedVRegs sf = calleeSavedVRegs s0
-
-/-! ## Immediate Arms (`.ekSentCt1Received`, `.noHeaderReceived`, `.ct1Acknowledged`) -/
-
 theorem imm_arm_post_entails {F : ShaCompress} (A : RustAlloc) (sp w0 x21 x27 : BitVec 64)
     (tag : BitVec 8) (pay : MessagePayload spqrPolyApi) (st1 : States spqrPolyApi (spqrAuthApi F))
     (Frame : SepProp) (hx21 : x21 = noneCap) (hpay : spqrSendPayloadSlotAt sp tag pay = memRegion (sp + 0x550#64) 38) :
@@ -482,156 +452,6 @@ theorem finish_sepWP {prog : Program} {ret : BitVec 64} {s : State} {P Q : SepPr
     SepWP prog ret s P post := by
   refine SepWP.fold hent (sepConj_emp _).symm ?_; rw [sepConj_emp]; exact hnext
 
-/-- Immediate arm 1: `.ekSentCt1Received s` (`0x30bf8 -> 0x31454 -> 0x31458`). -/
-theorem step_send_arm_ekSentCt1Received {F : ShaCompress}
-    (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State))
-    (hA : AllocContracts b A ext) {s0 s : State} (sp : BitVec 64)
-    (st : Chunked.SendEk.EkSentCt1Received spqrPolyApi (spqrAuthApi F))
-    {P Frame : SepProp} {post : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr spqrSendName + 924#64)
-    (hrun : s.status = .Running) (hsp : s.sp = sp) (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    (htr : s.trace = s0.trace) (hx19 : s.readReg64 .x19 = s0.readReg64 .x19)
-    (hx20 : s.readReg64 .x20 = 6#64) (hx24 : s.readReg64 .x24 = sp + 0x950#64)
-    (hx25 : s.readReg64 .x25 = sp + 0x550#64) (hx26 : s.readReg64 .x26 = sp + 0x1260#64)
-    (hx28 : s.readReg64 .x28 = s0.readReg64 .x28)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hP : P = (chunkedStatesAt A (sp + 0x950#64) (.ekSentCt1Received st) ∗
-      memRegion (sp + 0x550#64) 38 ∗ memRegion (sp + 0x580#64) 16 ∗ memRegion (sp + 0x590#64) 920) ∗ Frame)
-    (hnext : ∀ sf : State, SpqrSendJoinState b sp ext s0 sf
-        { epoch := st.uc.epoch, payload := .ct1Ack true } (.ekSentCt1Received st) →
-      SepWP (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr spqrSendName + 3068#64) sf
-        ((memRegion (sp + 0x950#64) 928 ∗
-          spqrSendPayloadSlotAt sp ((sf.readReg64 .x24).setWidth 8) (.ct1Ack true) ∗
-          spqrSendKeySlotAt A sp (sf.readReg64 .x21) (sf.readReg64 .x27) none ∗
-          chunkedStatesTail920At A (sp + 0x590#64) (.ekSentCt1Received st)) ∗ Frame) post) :
-    SepWP (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr spqrSendName + 3068#64) s P post := by
-  have hmemcpy := spqrSend_memcpy_ok hA
-  spqr_send_fetches_range b (Rust.withPanics ext) 924 28
-  spqr_send_fetches_range b (Rust.withPanics ext) 3064 4
-  generalize_entry hentry : (tripleRatchetProgAtExt b ext).fnAddr spqrSendName = entry
-  examples_hide_fetches; subst hP
-  rw [chunkedStatesAt_eq_word0_tail920 A (sp + 0x950#64) (.ekSentCt1Received st),
-      show (sp + 0x950#64) + 8#64 = sp + 0x958#64 by bv_omega]
-  obtain ⟨R_ep, h_ep⟩ := expose_epoch_ekSentCt1Received A sp st; rw [h_ep]; wp_steps; rw [← h_ep]
-  refine call_memcpy_relocate hmemcpy (Relocatable.of_chunkedStatesTail920At A (.ekSentCt1Received st))
-    (sp + 0x590#64) (sp + 0x958#64) (s0 := s0) (sp_call := sp)
-    (Frame := ((sp + 0x950#64) ↦₆₄ 6#64) ∗ memRegion (sp + 0x550#64) 38 ∗ memRegion (sp + 0x580#64) 16 ∗ Frame)
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    hsp_align (ret_pc := entry + 944#64) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by simp only [arm64_norm])
-    (by dsimp only [chunkedStatesWord0]; ac_rfl) ?_
-  intro sf hpc_sf hrun_sf hsp_sf htr_sf hx19_sf hx20_sf _ hx22_sf _ _ hx25_sf hx26_sf _ hx28_sf hvregs_sf
-  simp only [arm64_norm, *] at hx19_sf hx20_sf hx22_sf hx25_sf hx26_sf hx28_sf hvregs_sf; wp_steps
-  refine finish_sepWP
-    (hnext _ ⟨by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, *], by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, chunkedStatesWord0, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, *], by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, *]⟩)
-    (imm_arm_post_entails A sp 6#64 _ _ _ (.ct1Ack true) (.ekSentCt1Received st) Frame
-      (by simp only [arm64_norm]; rfl) (by dsimp only [spqrSendPayloadSlotAt]; simp only [arm64_norm]))
-
-/-- Immediate arm 2: `.noHeaderReceived s` (`0x30d60 -> 0x31454 -> 0x31458`). -/
-theorem step_send_arm_noHeaderReceived {F : ShaCompress}
-    (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State))
-    (hA : AllocContracts b A ext) {s0 s : State} (sp : BitVec 64)
-    (st : Chunked.SendCt.NoHeaderReceived spqrPolyApi (spqrAuthApi F))
-    {P Frame : SepProp} {post : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr spqrSendName + 1284#64)
-    (hrun : s.status = .Running) (hsp : s.sp = sp) (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    (htr : s.trace = s0.trace) (hx19 : s.readReg64 .x19 = s0.readReg64 .x19)
-    (hx20 : s.readReg64 .x20 = 7#64) (hx24 : s.readReg64 .x24 = sp + 0x950#64)
-    (hx25 : s.readReg64 .x25 = sp + 0x550#64) (hx26 : s.readReg64 .x26 = sp + 0x1260#64)
-    (hx28 : s.readReg64 .x28 = s0.readReg64 .x28)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hP : P = (chunkedStatesAt A (sp + 0x950#64) (.noHeaderReceived st) ∗
-      memRegion (sp + 0x550#64) 38 ∗ memRegion (sp + 0x580#64) 16 ∗ memRegion (sp + 0x590#64) 920) ∗ Frame)
-    (hnext : ∀ sf : State, SpqrSendJoinState b sp ext s0 sf
-        { epoch := st.uc.epoch, payload := .none } (.noHeaderReceived st) →
-      SepWP (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr spqrSendName + 3068#64) sf
-        ((memRegion (sp + 0x950#64) 928 ∗
-          spqrSendPayloadSlotAt sp ((sf.readReg64 .x24).setWidth 8) .none ∗
-          spqrSendKeySlotAt A sp (sf.readReg64 .x21) (sf.readReg64 .x27) none ∗
-          chunkedStatesTail920At A (sp + 0x590#64) (.noHeaderReceived st)) ∗ Frame) post) :
-    SepWP (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr spqrSendName + 3068#64) s P post := by
-  have hmemcpy := spqrSend_memcpy_ok hA
-  spqr_send_fetches_range b (Rust.withPanics ext) 1284 28
-  spqr_send_fetches_range b (Rust.withPanics ext) 3064 4
-  generalize_entry hentry : (tripleRatchetProgAtExt b ext).fnAddr spqrSendName = entry
-  examples_hide_fetches; subst hP
-  rw [chunkedStatesAt_eq_word0_tail920 A (sp + 0x950#64) (.noHeaderReceived st),
-      show (sp + 0x950#64) + 8#64 = sp + 0x958#64 by bv_omega]
-  obtain ⟨R_ep, h_ep⟩ := expose_epoch_noHeaderReceived A sp st; rw [h_ep]; wp_steps; rw [← h_ep]
-  refine call_memcpy_relocate hmemcpy (Relocatable.of_chunkedStatesTail920At A (.noHeaderReceived st))
-    (sp + 0x590#64) (sp + 0x958#64) (s0 := s0) (sp_call := sp)
-    (Frame := ((sp + 0x950#64) ↦₆₄ 7#64) ∗ memRegion (sp + 0x550#64) 38 ∗ memRegion (sp + 0x580#64) 16 ∗ Frame)
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    hsp_align (ret_pc := entry + 1304#64) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by simp only [arm64_norm])
-    (by dsimp only [chunkedStatesWord0]; ac_rfl) ?_
-  intro sf hpc_sf hrun_sf hsp_sf htr_sf hx19_sf hx20_sf _ hx22_sf _ _ hx25_sf hx26_sf _ hx28_sf hvregs_sf
-  simp only [arm64_norm, *] at hx19_sf hx20_sf hx22_sf hx25_sf hx26_sf hx28_sf hvregs_sf; wp_steps
-  refine finish_sepWP
-    (hnext _ ⟨by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, *], by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, chunkedStatesWord0, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, *], by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, *]⟩)
-    (imm_arm_post_entails A sp 7#64 _ _ _ .none (.noHeaderReceived st) Frame
-      (by simp only [arm64_norm]; rfl) (by dsimp only [spqrSendPayloadSlotAt]; simp only [arm64_norm]))
-
-/-- Immediate arm 3: `.ct1Acknowledged s` (`0x30c14 -> 0x30d64 -> 0x31454 -> 0x31458`). -/
-theorem step_send_arm_ct1Acknowledged {F : ShaCompress}
-    (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State))
-    (hA : AllocContracts b A ext) {s0 s : State} (sp : BitVec 64)
-    (st : Chunked.SendCt.Ct1Acknowledged spqrPolyApi (spqrAuthApi F))
-    {P Frame : SepProp} {post : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr spqrSendName + 952#64)
-    (hrun : s.status = .Running) (hsp : s.sp = sp) (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    (htr : s.trace = s0.trace) (hx19 : s.readReg64 .x19 = s0.readReg64 .x19)
-    (hx20 : s.readReg64 .x20 = 11#64) (hx24 : s.readReg64 .x24 = sp + 0x950#64)
-    (hx25 : s.readReg64 .x25 = sp + 0x550#64) (hx26 : s.readReg64 .x26 = sp + 0x1260#64)
-    (hx28 : s.readReg64 .x28 = s0.readReg64 .x28)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hP : P = (chunkedStatesAt A (sp + 0x950#64) (.ct1Acknowledged st) ∗
-      memRegion (sp + 0x550#64) 38 ∗ memRegion (sp + 0x580#64) 16 ∗ memRegion (sp + 0x590#64) 920) ∗ Frame)
-    (hnext : ∀ sf : State, SpqrSendJoinState b sp ext s0 sf
-        { epoch := st.uc.epoch, payload := .none } (.ct1Acknowledged st) →
-      SepWP (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr spqrSendName + 3068#64) sf
-        ((memRegion (sp + 0x950#64) 928 ∗
-          spqrSendPayloadSlotAt sp ((sf.readReg64 .x24).setWidth 8) .none ∗
-          spqrSendKeySlotAt A sp (sf.readReg64 .x21) (sf.readReg64 .x27) none ∗
-          chunkedStatesTail920At A (sp + 0x590#64) (.ct1Acknowledged st)) ∗ Frame) post) :
-    SepWP (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr spqrSendName + 3068#64) s P post := by
-  have hmemcpy := spqrSend_memcpy_ok hA
-  spqr_send_fetches_range b (Rust.withPanics ext) 952 8
-  spqr_send_fetches_range b (Rust.withPanics ext) 1288 24
-  spqr_send_fetches_range b (Rust.withPanics ext) 3064 4
-  generalize_entry hentry : (tripleRatchetProgAtExt b ext).fnAddr spqrSendName = entry
-  examples_hide_fetches; subst hP
-  rw [chunkedStatesAt_eq_word0_tail920 A (sp + 0x950#64) (.ct1Acknowledged st),
-      show (sp + 0x950#64) + 8#64 = sp + 0x958#64 by bv_omega]
-  obtain ⟨R_ep, h_ep⟩ := expose_epoch_ct1Acknowledged A sp st; rw [h_ep]; wp_steps; rw [← h_ep]
-  refine call_memcpy_relocate hmemcpy (Relocatable.of_chunkedStatesTail920At A (.ct1Acknowledged st))
-    (sp + 0x590#64) (sp + 0x958#64) (s0 := s0) (sp_call := sp)
-    (Frame := ((sp + 0x950#64) ↦₆₄ 11#64) ∗ memRegion (sp + 0x550#64) 38 ∗ memRegion (sp + 0x580#64) 16 ∗ Frame)
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    hsp_align (ret_pc := entry + 1304#64) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by simp only [arm64_norm])
-    (by dsimp only [chunkedStatesWord0]; ac_rfl) ?_
-  intro sf hpc_sf hrun_sf hsp_sf htr_sf hx19_sf hx20_sf _ hx22_sf _ _ hx25_sf hx26_sf _ hx28_sf hvregs_sf
-  simp only [arm64_norm, *] at hx19_sf hx20_sf hx22_sf hx25_sf hx26_sf hx28_sf hvregs_sf; wp_steps
-  refine finish_sepWP
-    (hnext _ ⟨by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, *], by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, chunkedStatesWord0, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, *], by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, *]⟩)
-    (imm_arm_post_entails A sp 11#64 _ _ _ .none (.ct1Acknowledged st) Frame
-      (by simp only [arm64_norm]; rfl) (by dsimp only [spqrSendPayloadSlotAt]; simp only [arm64_norm]))
-
-/-! ## Leaf-Call Combinators -/
-
 theorem stackAt_spqrSendCallee_split (sp : BitVec 64) (n : Nat) (hle : n ≤ spqrSendCalleeStack) :
     stackAt sp spqrSendCalleeStack =
       memRegion (sp - BitVec.ofNat 64 spqrSendCalleeStack) (spqrSendCalleeStack - n) ∗ stackAt sp n := by
@@ -639,77 +459,6 @@ theorem stackAt_spqrSendCallee_split (sp : BitVec 64) (n : Nat) (hle : n ≤ spq
   have hbd : n + (spqrSendCalleeStack - n) ≤ 2 ^ 64 := by change n + (123008 - n) ≤ 2 ^ 64; omega
   have h := ProofLib.stackAt_split_bottom sp n (spqrSendCalleeStack - n) hbd
   rwa [Nat.add_sub_of_le hle] at h
-
-/-- Run a non-panicking `SepWP` segment to `mid`, propagating `ImgCallInv img` to the continuation. -/
-theorem of_sepWP_inImage {prog : Program} {ret mid : BitVec 64} {s : State} {P : SepProp}
-    {Q Qp : State → SepProp → Prop} (img : Obj.Image) (hinv : ImgCallInv img s)
-    (h : SepWP prog mid s P (fun sm Pm => ImgCallInv img sm → SepWPp prog ret sm Pm Q Qp)) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm hL; obtain ⟨sm, hsteps, ⟨-, -, Pm, hmm, hnext⟩ | hoom⟩ := h.elim hm hL
-  · obtain ⟨sf, hsteps', hout⟩ := hnext ⟨hsteps.frozenLoaded hinv.1, hsteps.symtab_eq.trans hinv.2⟩ R hmm (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout⟩
-  · exact ⟨sm, hsteps, Or.inr (Or.inr hoom)⟩
-
-/-- Call a panic-capable subroutine (`(spec.inImage img)`) that uses `n ≤ spqrSendCalleeStack` bytes of stack. -/
-theorem call_inImage_calleeStack {α : Type} {prog : Program} {img : Obj.Image}
-    {entry ret_pc ret : BitVec 64} {spec : Spec α} {x : α} {s0 s : State}
-    (sp : BitVec 64) (n : Nat) (hle : n ≤ spqrSendCalleeStack := by decide)
-    {P T_pre : SepProp} {T_post : State → SepProp} {Q : State → SepProp → Prop} {Fr F : SepProp}
-    {φ_pre : Prop} {φ_post : State → Prop}
-    (hcall : subroutine_ok prog entry (spec.inImage img)) (hinv : ImgCallInv img s)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.sp = sp)
-    (hsp_align : (sp &&& 15#64 == 0#64) = true) (htr : s.trace = s0.trace)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec_pre : spec.pre x s = (⌜φ_pre⌝ ∗ T_pre ∗ stackAt s.sp n)) (hφ : φ_pre)
-    (hP : P = (stackAt sp spqrSendCalleeStack ∗ T_pre) ∗ F)
-    (hexit_eq : ∀ code sf, spec.onExit x code s sf = ⌜False⌝)
-    (hpan_eq : ∀ sf, spec.onPanic x s sf = (⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap))
-    (hspec_post : ∀ sf, spec.post x s sf = (⌜φ_post sf⌝ ∗ T_post sf ∗ stackAt s.sp n))
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running → sf.sp = sp →
-      φ_post sf → ImgCallInv img sf →
-      sf.readReg64 .x19 = s.readReg64 .x19 → sf.readReg64 .x20 = s.readReg64 .x20 →
-      sf.readReg64 .x21 = s.readReg64 .x21 → sf.readReg64 .x22 = s.readReg64 .x22 →
-      sf.readReg64 .x23 = s.readReg64 .x23 → sf.readReg64 .x24 = s.readReg64 .x24 →
-      sf.readReg64 .x25 = s.readReg64 .x25 → sf.readReg64 .x26 = s.readReg64 .x26 →
-      sf.readReg64 .x27 = s.readReg64 .x27 → sf.readReg64 .x28 = s.readReg64 .x28 →
-      calleeSavedVRegs sf = calleeSavedVRegs s →
-      SepWPp prog ret sf ((stackAt sp spqrSendCalleeStack ∗ T_post sf) ∗ F) Q
-        (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) →
-          (sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr)))
-    (hoom_eq : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intros; rfl) :
-    SepWPp prog ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) →
-        (sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr)) := by
-  let F_ext := memRegion (sp - BitVec.ofNat 64 spqrSendCalleeStack) (spqrSendCalleeStack - n) ∗ F
-  have hsp_al : s.spAligned = true := by unfold State.spAligned; rw [hsp]; exact hsp_align
-  refine ProofLib.SepWPp.call_wpp_frozen (x := x) (F := F_ext) hcall hinv.1 hinv.2 hpc hrun hsp_al hlr
-    (fun R' hm => by
-      change s.mem ⊨ (⌜ImgCallInv img s⌝ ∗ spec.pre x s) ∗ (F_ext ∗ R')
-      rw [sepConj_assoc, satisfies_pure_sepConj]; refine ⟨hinv, ?_⟩
-      rw [hspec_pre, hsp, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]; refine ⟨hφ, ?_⟩
-      rw [hP, stackAt_spqrSendCallee_split sp n hle] at hm
-      exact Satisfies.mono (Entails.of_eq (by dsimp only [F_ext]; ac_rfl)) hm)
-    (fun sm code R' _ hpost => by
-      change sm.mem ⊨ spec.onExit x code s sm ∗ R' at hpost; rw [hexit_eq code sm] at hpost
-      exact allowPanic_not_exited hpost)
-    (fun sm _ _ hmFr => by
-      change sm.mem ⊨ (spec.onPanic x s sm ∗ F_ext) ∗ Fr at hmFr; rw [hpan_eq sm] at hmFr
-      refine allowPanic_frame ?_ hmFr
-      rintro ⟨haf, hpr⟩; unfold allocFailedIn at haf ⊢; rw [htr] at haf hpr; exact ⟨haf, hpr⟩)
-    (fun sm hpcm hrunm hspm hcsm hfzm hsymm R' hpost hLm => by
-      change sm.mem ⊨ (spec.post x s sm ∗ F_ext) ∗ R' at hpost
-      rw [sepConj_assoc, hspec_post sm, hsp] at hpost
-      have hpost' : sm.mem ⊨ ⌜φ_post sm⌝ ∗ (((stackAt sp spqrSendCalleeStack ∗ T_post sm) ∗ F) ∗ R') := by
-        rw [stackAt_spqrSendCallee_split sp n hle]
-        exact Satisfies.mono (Entails.of_eq (by dsimp only [F_ext]; ac_rfl)) hpost
-      rw [satisfies_pure_sepConj] at hpost'; rcases hpost' with ⟨hφ_post, hpost_mem⟩
-      rw [hsp] at hspm
-      rcases hcsm with ⟨hx19, hx20, hx21, hx22, hx23, hx24, hx25, hx26, hx27, hx28, _, hvregs⟩
-      exact hnext sm hpcm hrunm hspm hφ_post ⟨hfzm, hsymm⟩
-        hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx26 hx27 hx28 hvregs R' hpost_mem hLm)
-    (fun sm R' _ hpost => by
-      change sm.mem ⊨ spec.onOom x s sm ∗ (F_ext ∗ R') at hpost; rw [hoom_eq sm] at hpost
-      exact (allowPanic_not_exited hpost).elim)
 
 @[simp, arm64_norm, wp_norm]
 theorem setWidth_16_zeroExtend_64 (v : BitVec 16) : (v.zeroExtend 64).setWidth 16 = v := by bv_kernel
@@ -748,40 +497,5 @@ theorem chunkAt_sp_add_eq (sp off off8 off16 off24 off32 : BitVec 64) (c : Chunk
       ((sp + off) ↦₆₄ w0) ∗ ((sp + off8) ↦₆₄ w1) ∗ ((sp + off16) ↦₆₄ w2) ∗
       ((sp + off24) ↦₆₄ w3) ∗ ((sp + off32) ↦₁₆ c.index) := by
   rw [hw (sp + off), h8, h16, h24, h32]
-
-theorem finish_sepWP_inImage {prog : Program} {mid ret : BitVec 64} {s : State}
-    {P P' : SepProp} {Q onPanic : State → SepProp → Prop} {img : Obj.Image}
-    (hpc : s.pc = mid) (hrun : s.status = .Running)
-    (hnext : ImgCallInv img s → SepWPp prog ret s P' Q onPanic) (hent : P ⊢ P') :
-    SepWP prog mid s P (fun sm Pm => ImgCallInv img sm → SepWPp prog ret sm Pm Q onPanic) := by
-  refine SepWP.fold hent (sepConj_emp _).symm ?_; rw [sepConj_emp]; exact SepWP.done hpc hrun hnext
-
-theorem leaf_arm_post_entails {F : ShaCompress} (b : BitVec 64) (A : RustAlloc)
-    (sp w0 x21 x27 : BitVec 64) (x24_8 : BitVec 8) (sz : Nat)
-    (P F_out : SepProp) (chunk : Chunk)
-    (pay : MessagePayload spqrPolyApi) (nextSt : States spqrPolyApi (spqrAuthApi F))
-    (Frame : SepProp) (hsz : sz ≤ 920 := by decide) (hx21 : x21 = LibsignalTripleRatchetRepr.noneCap)
-    (hpay : chunkAt (sp + 0x550#64) chunk ∗ memRegion (sp + 0x572#64) 4 ⊢ spqrSendPayloadSlotAt sp x24_8 pay)
-    (htail : F_out ∗ memRegion ((sp + 0x590#64) + BitVec.ofNat 64 sz) (920 - sz) =
-      chunkedStatesTail920At A (sp + 0x590#64) nextSt)
-    (hP_eq : P = (stackAt sp spqrSendCalleeStack ∗ A.pool ∗ tokenInitAt b ∗ reduceTableAt b ∗
-        (((sp + 0x950#64) ↦₆₄ w0) ∗ memRegion (sp + 0x958#64) sz ∗
-          memRegion ((sp + 0x958#64) + BitVec.ofNat 64 sz) (920 - sz)) ∗
-        (memRegion (sp + 0x1260#64) sz ∗ chunkAt ((sp + 0x1260#64) + BitVec.ofNat 64 sz) chunk) ∗
-        (chunkAt (sp + 0x550#64) chunk ∗ memRegion (sp + 0x572#64) 4) ∗ memRegion (sp + 0x580#64) 16 ∗
-        (F_out ∗ memRegion ((sp + 0x590#64) + BitVec.ofNat 64 sz) (920 - sz))) ∗ Frame) :
-    P ⊢ (stackAt sp spqrSendCalleeStack ∗ A.pool ∗ tokenInitAt b ∗ reduceTableAt b ∗
-        memRegion (sp + 0x950#64) 928 ∗ memRegion (sp + 0x1260#64) (sz + chunkSize) ∗
-        spqrSendPayloadSlotAt sp x24_8 pay ∗ spqrSendKeySlotAt A sp x21 x27 none ∗
-        chunkedStatesTail920At A (sp + 0x590#64) nextSt) ∗ Frame := by
-  have hkey : memRegion (sp + 0x580#64) 16 ⊢ spqrSendKeySlotAt A sp x21 x27 none := by
-    dsimp only [spqrSendKeySlotAt]; exact Entails.pure_right hx21 (Entails.refl _)
-  have h1 := word0_sz_pad_entails_memRegion_928 sp w0 sz hsz
-  have h2 := scratch_and_chunk_entails_memRegion sp sz chunk (by omega)
-  rw [hP_eq, htail]
-  exact sepConj_mono_left (sepConj_mono_right (sepConj_mono_right
-    (sepConj_mono_right (sepConj_mono_right
-      (sepConj_mono h1 (sepConj_mono h2 (sepConj_mono hpay (sepConj_mono_left hkey))))))))
-
 
 end CryptoVerification.SpqrV1.Top.Send

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedPRNG2
-public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedPRNG2 -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10 -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma9
 import ProofLib.SepLogic.WP.StateNorm
 
@@ -18,12 +18,12 @@ import ProofLib.SepLogic.WP.StateNorm
 # Shifted-Paper Hop 2, Part 3
 
 New-epoch `transmitE` step lemma, main induction, and shifted-paper Lemma 10 bounds
-(`lemma10_df_shifted_paper` and `lemma10_df_shifted_dir2_paper`).
--/
+(`lemma10_df_shifted_paper` and `lemma10_df_shifted_dir2_paper`).-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
 open scoped BigOperators ENNReal
 open MeasureTheory ProbabilityTheory OracleComp OracleSpec
@@ -234,6 +234,7 @@ theorem startSendP_coins_DFShiftedPaper_le (cka : CKAScheme KC Γ CCoins T I)
             rw [hlt_tH] at h; cases h)
           (fun _ _ => ⟨rfl, rfl, hprng, fun _ => hprf⟩)
           (fun h => by omega)
+
 omit [SampleableType KC] in
 theorem startSendP_chall_DFShiftedPaper_le (cka : CKAScheme KC Γ CCoins T I)
     (prng : PRFPRNG KR Sig I K) (fs : FSAEADScheme K SS RS (Header T) M E)
@@ -366,6 +367,7 @@ theorem startSendP_chall_DFShiftedPaper_le (cka : CKAScheme KC Γ CCoins T I)
         rw [hlt_tH] at h; cases h)
       (fun _ _ => ⟨rfl, rfl, hprng, fun _ => hprf⟩)
       (fun h => by omega)
+
 theorem step_transmitE_new_epoch_DFShiftedPaper_le (cka : CKAScheme KC Γ CCoins T I)
     (prng : PRFPRNG KR Sig I K) (fs : FSAEADScheme K SS RS (Header T) M E)
     (Δ_off : ℕ) (b_auth : Bool) (qep l t : ℕ)
@@ -677,6 +679,7 @@ theorem step_transmitE_new_epoch_DFShiftedPaper_le (cka : CKAScheme KC Γ CCoins
                 (cka.send (esP.g.st P).γ coins).2.1)
               hsend hnot_tH hS.b_C fun _ => ?_
             simp [CKA.GameState.afterSend, Party.other_ne, hsc_epP, hsc_stO, hsc_epO, hO_ep]
+
 theorem step_transmitE_DFShiftedPaper_le (cka : CKAScheme KC Γ CCoins T I)
     (prng : PRFPRNG KR Sig I K) (fs : FSAEADScheme K SS RS (Header T) M E)
     (Δ_off : ℕ) (b_auth : Bool) (qep l t : ℕ)
@@ -761,7 +764,7 @@ theorem runRDFShiftedPaper_le_runRDFShifted10Paper (cka : CKAScheme KC Γ CCoins
     · exact step_deliverForgeE_DFShiftedPaper_le cka prng fs Δ_off b_auth qep l t P c c' esS sc esP
         sp k @ih hS
 
-def initES_S (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def initES_S (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (kr : KR) (kc : KC) :
     EState (PartyState (Option Γ) T Sig SS RS) M (Header T × E) (CKAStateShifted Γ T I) :=
   let out := prng.up (prng.init kr) lam
@@ -821,7 +824,7 @@ theorem sync10ShiftedPaper_init (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPR
       comp_inv := fun pos hpos => by cases hpos
       γPre_eq := fun P _ => by cases P <;> rfl }
 
-def engRunDFShiftedPaperGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
+@[expose] def engRunDFShiftedPaperGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
     {HS Γv Sv SSv RSv : Type} (b_auth : Bool) (l : ℕ)
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ_off qep maxSkip tStar : ℕ) (cfg : SM.Config M) (π : Policy)
@@ -840,7 +843,7 @@ def engRunDFShiftedPaperGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
       (simulateQ (AuthL10ShiftedPaper.implEDFG b_auth l hk Δ_off qep maxSkip tStar cfg π) A).run es₀
     return some res
 
-def authSimDFShiftedPaperGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
+@[expose] def authSimDFShiftedPaperGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
     {HS Γv Sv SSv RSv : Type} (b_auth : Bool) (l : ℕ)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δ_off qep : ℕ)
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)

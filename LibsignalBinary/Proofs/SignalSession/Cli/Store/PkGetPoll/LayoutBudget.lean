@@ -10,8 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.Layout
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.Layout -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Cell and Inner Specifications for `PkGetPoll`
@@ -21,7 +23,7 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.Layout
 `pkGetPollInnerSpec` with composed `AllocEvent` envelope `CliPkGetPollEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -43,14 +45,14 @@ open CryptoVerification.SignalSession.Cli.Store.PkGetPoll.Helpers
    DropSpeCellsGhost dirGetPayload pkDecPayload)
 
 /-- Optional `PreKeyRecord::deserialize` event envelope on a `Dir::get` result (`len > 0` only). -/
-def OptPkDecodeEnv (PkDecEnv : List (BitVec 8) → List AllocEvent → Prop)
+@[expose] def OptPkDecodeEnv (PkDecEnv : List (BitVec 8) → List AllocEvent → Prop)
     (gr : Except Unit (List (BitVec 8))) : List AllocEvent → Prop :=
   match gr with
   | .ok (b :: bs) => PkDecEnv (b :: bs)
   | _ => (· = [])
 
 /-- Composed `AllocEvent` envelope for `get_pre_key::{closure#0}`. -/
-def CliPkGetPollEnv
+@[expose] def CliPkGetPollEnv
     (DecEnv : BitVec 32 → List AllocEvent → Prop)
     (GetEnv : DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (PkDecEnv : List (BitVec 8) → List AllocEvent → Prop)
@@ -59,7 +61,7 @@ def CliPkGetPollEnv
     (SeqEnv (GetEnv x.dir (keyName x.id))
       (SeqEnv (OptPkDecodeEnv PkDecEnv (x.dir.get rd F0 (keyName x.id))) FreeOnlyEvs))
 
-def deallocBufCellsSpec [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def deallocBufCellsSpec [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (calleeStk : Nat) : Spec (DeallocCellsGhost × M.σ) where
   pre := fun ((ptr, cap, bs, fsp), st) s =>
     ⌜s.readReg64 .x0 = ptr ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = 1#64 ∧
@@ -69,7 +71,7 @@ def deallocBufCellsSpec [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAl
     ⌜sf.trace = s0.trace⌝ ∗
       A.pool lim (M.stepEvents (rustDeallocEvents cap.toNat 1) st) sf ∗ stackAt fsp calleeStk
 
-def decimalCellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def decimalCellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecEnv : BitVec 32 → List AllocEvent → Prop)
     (calleeStk : Nat) : Spec (DecimalCellsGhost × M.σ) where
   pre := fun ((n, ret, o0, o1, o2, fsp), st) s =>
@@ -85,7 +87,7 @@ def decimalCellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : Budg
       (nPtr ↦ₛ keyName n) ∗ vecU8BufRest A.repAlloc nCap nPtr (keyName n) ∗
       stackAt fsp calleeStk ∗ A.pool lim (M.stepEvents evs st) sf
 
-def dirGetCellsSpec {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def dirGetCellsSpec {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (GetEnv : DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (calleeStk : Nat) : Spec (DirGetCellsGhost × M.σ) where
@@ -110,7 +112,7 @@ def dirGetCellsSpec {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 
       dirAt A.repAlloc self dir ∗ (nameA ↦ₛ name) ∗ stackAt fsp calleeStk ∗
       A.pool lim (M.stepEvents evs st) sf
 
-def pkDecCellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def pkDecCellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PkDecEnv : List (BitVec 8) → List AllocEvent → Prop)
     (calleeStk : Nat) : Spec (PkDecCellsGhost × M.σ) where
   pre := fun ((bytesA, bytes, ret, o0, o1, o2, o3, o4, o5, o6, fsp), st) s =>
@@ -133,7 +135,7 @@ def pkDecCellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : Budget
       pkDecPayload A.repAlloc (PreKeyRecord.deserialize bytes) d0 d1 d2 d3 d4 d5 d6 ∗
       (bytesA ↦ₛ bytes) ∗ stackAt fsp calleeStk ∗ A.pool lim (M.stepEvents evs st) sf
 
-def dropSpeWordCellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def dropSpeWordCellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (calleeStk : Nat) : Spec (DropSpeCellsGhost × M.σ) where
   pre := fun ((a, c1, c2, c3, c4, c5, fsp), st) s =>
     ⌜s.readReg64 .x0 = a ∧ s.sp = fsp⌝ ∗
@@ -149,7 +151,7 @@ def dropSpeWordCellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : 
       ((a + 24#64) ↦₆₄ m3) ∗ ((a + 32#64) ↦₆₄ m4) ∗ ((a + 40#64) ↦₆₄ m5) ∗
       A.pool lim st sf ∗ stackAt fsp calleeStk
 
-def pkGetPollInnerSpec {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def pkGetPollInnerSpec {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecEnv : BitVec 32 → List AllocEvent → Prop)
     (GetEnv : DirGhost → List (BitVec 8) → List AllocEvent → Prop)

@@ -16,6 +16,10 @@ import Symbolic.Proofs.Swarm.UA.Assembly
 import Symbolic.Proofs.Swarm.UA.Base
 import Symbolic.Proofs.Swarm.UA.ClassicalBridge
 import Symbolic.Proofs.Swarm.UA.InitW
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
+public import Symbolic.Proofs.Swarm.UA.Defs
 
 /-!
 # Whole-Trace Run-After-Break Refinement Induction
@@ -25,7 +29,7 @@ induction over `CliTraces` (including `breakInvert` steps), maintaining `UAInvB`
 the final conclusion from `interpOfParams interp P` back to `interp` via `UAXportSpecB`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -272,7 +276,7 @@ theorem refines_all_of_specs
   · exact Or.inr (((hX interp P r _).2 evs).mp hcol)
 
 /-- Predicate stating that `evs` contains at least one run event after a break or invert event. -/
-def RunAfterBreakB (evs : List CliEvent) : Prop :=
+@[expose] def RunAfterBreakB (evs : List CliEvent) : Prop :=
   ∃ (pre post : List CliEvent) (e : EnvEvent), evs = pre ++ .env e :: post ∧ e.IsBreakInvert ∧
     ∃ ev : RunEvent, CliEvent.run ev ∈ post
 

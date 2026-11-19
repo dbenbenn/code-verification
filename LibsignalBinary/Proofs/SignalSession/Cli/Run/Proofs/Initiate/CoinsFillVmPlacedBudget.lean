@@ -10,12 +10,20 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.TripleRatchet.Hooks
 
 /-!
 # Cross-Block `withVmPreserved` Lifting for `coinsFillSpecPlacedW3`
@@ -25,15 +33,13 @@ Lifts `CoinsFillPlacedBudget.coinsFillSpecPlacedW3` to
 caller blocks `IsLsBlockProg callerProg i H` and on `initProgPlaced mmpl gh W`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
 set_option maxRecDepth 200000
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillVmPlacedBudget
-
-noncomputable section
 
 open Arm64 Arm64.Process ProofLib
 open CryptoVerification
@@ -107,26 +113,6 @@ theorem signal_session_coins_fill_vm_placed_ok_of_mc_ms [LibsignalPlacement]
   exact subroutine_ok_withLsCodeRoLoaded_of_rocl
     (ls_subroutine_ok_rocl_of_plain (callerProg := callerProg) h618 hi)
 
-/-- Cross-block `withVmPreserved (coinsFillSpecPlacedW3 cStk)` proof from `AllocContractsFsPlaced A lim H`. -/
-theorem signal_session_coins_fill_vm_placed_ok_of_allocFs [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {callerProg : Program} {i : Nat} {H : LibsignalHooks}
-    [IsLsBlockProg callerProg i H]
-    (hFs : AllocContractsFsPlaced A lim H)
-    {cStk : Nat} (hc1 : cliCoinsFillStackPlaced ≤ cStk) (hc2 : cStk ≤ 2 ^ 63)
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 618)
-      (withLsCodeRoLoaded lsmpl
-        (withVmPreserved
-          (CryptoVerification.SignalSession.Cli.RunProofs.Initiate.coinsFillSpecPlacedW3 cStk))) := by
-  have h618 : subroutine_ok ((blkPC_618).rebase (blkPl_618).base H) (lsmpl.base 618)
-      (withVmPreserved
-        (CryptoVerification.SignalSession.Cli.RunProofs.Initiate.coinsFillSpecPlacedW3 cStk)) :=
-    coinsFill_vm_of_budget
-      (CoinsFillPlacedBudget.signal_session_coins_fill_placed_ok hFs hc1 hc2)
-  exact subroutine_ok_withLsCodeRoLoaded_of_rocl
-    (ls_subroutine_ok_rocl_of_plain (callerProg := callerProg) h618 hi)
-
 /-- Instantiates `withVmPreserved (coinsFillSpecPlacedW3 cStk)` on `initProgPlaced mmpl gh W` for `cliCoinsFillStack ≤ cStk ≤ 2 ^ 63`. -/
 theorem signal_session_coins_fill_vm_placed_ok_at_init [LibsignalPlacement]
     (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
@@ -165,7 +151,5 @@ theorem signal_session_coins_fill_vm_placed_ok_at_init [LibsignalPlacement]
       (ls_hook_ok_ultra_of_mem
         (prog := (blkPC_618).rebase (blkPl_618).base (cliGhostExterns gh (cliExternsPlaced mmpl W)))
         hmsSat))
-
-end
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillVmPlacedBudget

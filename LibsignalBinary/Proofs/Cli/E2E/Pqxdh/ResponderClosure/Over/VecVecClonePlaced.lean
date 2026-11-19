@@ -9,13 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecClone
-import LibsignalBinary.Proofs.Common.CallInv
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecClone -- proof-setup: allow-public-import
+import ProofLib
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Placed `<Vec<Vec<u8>> as Clone>::clone` on 1 Element
@@ -24,7 +27,7 @@ Proves `VecVecClone1PlacedOkStmt A H` (`vecVecClone1_placed_okX_of_ser`) from `S
 at `lsmpl.base 117` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option relaxedAutoImplicit false

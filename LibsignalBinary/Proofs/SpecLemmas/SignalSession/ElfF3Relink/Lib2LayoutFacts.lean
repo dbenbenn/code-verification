@@ -9,28 +9,29 @@ limitations under the License.
 
 module
 
+public import LibsignalBinary.Proofs.HookDischarge.CryptoSha256.Sha256Cells -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen -- proof-setup: allow-public-import
 import ProofLib.ProgramReflection
 meta import ProofLib.ProgramReflection
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced
 
 /-!
-# Cutover-2 (`C2`) `.text.lib2` / `.rodata.lib2` & `.text.b_pre` Layout Bridges (`ElfF3Relink.Lib2LayoutFacts`)
+# `.text.lib2` / `.rodata.lib2` and `.text.b_pre` Layout Bridges (`ElfF3Relink.Lib2LayoutFacts`)
 
-Supplies the untrusted layout and `F3CodeInv` bridges for Cutover-2 (`D-C2f = 2C` + `lib2` de-hook,
-reference ELF `50066cbd…98ce`) without adding any fields to `F3CodeInv` or modifying
-`StartupStatics.lean`:
+`.text.lib2` / `.rodata.lib2` layout and `F3CodeInv` bridges on `cliElfBytes`, without adding
+fields to `F3CodeInv` or modifying `StartupStatics.lean`:
 1. `.rodata.lib2` `RoDataAt` derivation from `hInv.fromLoad` + `LinkedAt cliElfBytes mpl`
    (`holdsBytes_of_checkSegSlice` at `f3StdLayout.roSegIdx = 0` + `KeepsFrozen` + `holdsBytes_ro`).
-2. `rxCode` sub-slice `CodeLoaded` on `stripExecOutside` & contiguous multi-block `hasWords`
-   sub-slice projection (covering `bcmp + memcmp`, `duration_since + sub_timespec`,
+2. `rxCode` sub-slice `CodeLoaded` on `stripExecOutside` and contiguous multi-block `hasWords`
+   sub-slice projection (`bcmp + memcmp`, `duration_since + sub_timespec`,
    `SharedSecret::drop + zeroize32`, and `memcpy .. memmove`).
-3. Unified `rxSeg` real & ghost `externAt?` lemmas + `Steps` lift over any `keepR_row ⊆ rxProg`.
-4. Unconditional startup `s0.lr` (`ExtraEntryGuard`) and caller `LsRetAddr624` return-address guards
-   (covering both `.text.lib2` R0 `β′` / trap-safe rows and `.text.b_pre` Batch L rows, plus K3/K4
-   panic-stub exclusion).
+3. Unified `rxSeg` real and ghost `externAt?` lemmas and `Steps` lift over any `keepR_row ⊆ rxProg`.
+4. Unconditional startup `s0.lr` (`ExtraEntryGuard`) and caller `LsRetAddr624` return-address
+   guards across `.text.lib2` and `.text.b_pre` rows, plus panic-stub exclusion
+   (`expect_failed`, `slice_index_fail`).
 -/
 
 public section
@@ -40,11 +41,12 @@ set_option autoImplicit false
 namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib ProofLib.ProgramReflection ProofLib.StdStartup
-open CryptoVerification (LibsignalPlacement lsmpl)
+open CryptoVerification (LibsignalPlacement libsignalHookedExterns lsmpl)
 open CryptoVerification.SignalSession
   (CliHooks cliElfBytes cliElfImage cliElf_parse cliExternsPlaced libsignalSessionLib)
 open CryptoVerification.SignalSession.Placed (cliProgPlacedSig)
 open LibsignalBinary.Heap.Fine (f3RxWordCount f3StdLayout)
+open LibsignalBinary.Proofs.HookDischarge.CryptoSha256.Sha256Cells (sha256KBytes)
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624 lsLen)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
   (cliProgExtPlacedAt externAt?_cliProgExtPlacedSigAt_eq_none patchElfTokensPlacedAt)
@@ -55,14 +57,66 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGe
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics
   (F3CodeInv f3PatchedElf f3PatchedElf_eq_of_linkedAt)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen
-  (c2BatchLDehookedSyms c2DurationSinceCst16Addr c2FirstExternStubAddr c2FromUtf8TableAddr
-   c2Lib2DehookedSyms c2Lib2RoHi c2Lib2RoLo c2Lib2TextHi c2Lib2TextLo c2RxDehookedSyms
-   c2StartupLrLit c2TextBPreDehookedSyms c2TextBPreHi c2TextBPreLo)
+  (c2BatchLDehookedSyms c2Compress256K32Addr c2DurationSinceCst16Addr c2FirstExternStubAddr
+   c2FromUtf8TableAddr c2Lib2DehookedSyms c2Lib2RoHi c2Lib2RoLo c2Lib2TextHi c2Lib2TextLo
+   c2RxDehookedSyms c2StartupLrLit c2TextBPreDehookedSyms c2TextBPreHi c2TextBPreLo)
 
 /-! ## 0. Panic-Stub Symbols & `.rodata.lib2` Byte Constants -/
 
 abbrev lsExpectFailedSymC2 : String := "_RNvNtCskxtBwYRO61I_4core6option13expect_failed"
 abbrev lsSliceIndexFailSymC2 : String := "_RNvNtNtCskxtBwYRO61I_4core5slice5index16slice_index_fail"
+
+/-- Exact `18` linked Rust panic entry-point addresses in `.text.lib2` (all active externs of
+    intermediate `P_pan = cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W`). -/
+@[expose] def cliLinkedPanicAddrs : List (BitVec 64) :=
+  [ 0x479798#64, 0x4797b4#64,
+    0x47a20c#64, 0x47a23c#64, 0x47a258#64, 0x47a2a4#64, 0x47a2dc#64, 0x47a39c#64, 0x47a3b0#64,
+    0x47a9c4#64,
+    0x47aba0#64, 0x47abbc#64, 0x47abd8#64, 0x47abf4#64, 0x47ac10#64,
+    0x4cb070#64, 0x4cb088#64, 0x4cb0bc#64 ]
+
+/-- Membership test for the `18` linked Rust panic entry-point addresses in `.text.lib2`. -/
+@[expose] def isLinkedPanicAddr (pc : BitVec 64) : Bool :=
+  cliLinkedPanicAddrs.contains pc
+
+theorem isLinkedPanicAddr_false_of_lt {pc : BitVec 64} (hlt : pc.toNat < 0x479798) :
+    isLinkedPanicAddr pc = false := by
+  unfold isLinkedPanicAddr cliLinkedPanicAddrs
+  simp only [List.contains_cons, List.contains_nil, Bool.or_false, Bool.or_eq_false_iff,
+    beq_eq_false_iff_ne]
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
+    (intro h; rw [h] at hlt; exact absurd hlt (by decide))
+
+theorem isLinkedPanicAddr_false_of_mid {pc : BitVec 64}
+    (hlo : 0x47ac2c ≤ pc.toNat) (hhi : pc.toNat < 0x4cb070) :
+    isLinkedPanicAddr pc = false := by
+  unfold isLinkedPanicAddr cliLinkedPanicAddrs
+  simp only [List.contains_cons, List.contains_nil, Bool.or_false, Bool.or_eq_false_iff,
+    beq_eq_false_iff_ne]
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
+    (intro h; rw [h] at hlo hhi; first | exact absurd hlo (by decide) | exact absurd hhi (by decide))
+
+theorem isLinkedPanicAddr_false_of_ge {pc : BitVec 64} (hge : 0x4cb0e4 ≤ pc.toNat) :
+    isLinkedPanicAddr pc = false := by
+  unfold isLinkedPanicAddr cliLinkedPanicAddrs
+  simp only [List.contains_cons, List.contains_nil, Bool.or_false, Bool.or_eq_false_iff,
+    beq_eq_false_iff_ne]
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
+    (intro h; rw [h] at hge; exact absurd hge (by decide))
+
+theorem isLinkedPanicAddr_false_of_band {pc : BitVec 64}
+    (h1 : pc.toNat < 0x479798 ∨
+      (0x4797d0 ≤ pc.toNat ∧ pc.toNat < 0x47a20c) ∨
+      (0x47a3d8 ≤ pc.toNat ∧ pc.toNat < 0x47a9c4) ∨
+      (0x47aa78 ≤ pc.toNat ∧ pc.toNat < 0x47aba0) ∨
+      (0x47ac2c ≤ pc.toNat ∧ pc.toNat < 0x4cb070) ∨
+      0x4cb0e4 ≤ pc.toNat) :
+    isLinkedPanicAddr pc = false := by
+  unfold isLinkedPanicAddr cliLinkedPanicAddrs
+  simp only [List.contains_cons, List.contains_nil, Bool.or_false, Bool.or_eq_false_iff,
+    beq_eq_false_iff_ne]
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
+    (intro h; rw [h] at h1; exact absurd h1 (by decide))
 
 /-- Canonical 256-byte `core::str::converts::UTF8_CHAR_WIDTH` table (`rfl`-identical to
     `VerifiedLibraries.RustStd.corePlacedData1`). -/
@@ -162,9 +216,8 @@ theorem f3CodeInv_roDataAt_of_checkSegSlice
     simpa [hperm] using hhb0
   exact holdsBytes_ro (holdsBytes_ro_of_keepsFrozen hhb_ro0 hkf)
 
-/-- Pending 2-field `rfl_kernel` `.rodata.lib2` witness on the C2-pinned `cliElfImage`
-    (`50066cbd…98ce`); closed by `⟨⟨_, rfl, rfl, by rfl_kernel⟩, ⟨_, rfl, rfl, by rfl_kernel⟩⟩`
-    once C2 rebases onto the C2 ELF. -/
+/-- Three-field `.rodata.lib2` slice witness on `f3PatchedElf` (`UTF8_CHAR_WIDTH`,
+    `sub_timespec` constant, and `sha256KBytes`), discharged by `rfl_kernel` in `T4Witness`. -/
 structure C2RoSliceFacts : Prop where
   fromUtf8Slice :
     ∃ seg, f3PatchedElf.segments[f3StdLayout.roSegIdx]? = some seg ∧
@@ -174,6 +227,10 @@ structure C2RoSliceFacts : Prop where
     ∃ seg, f3PatchedElf.segments[f3StdLayout.roSegIdx]? = some seg ∧
       seg.perm.rwx = Perm.ro ∧
       checkSegSlice seg seg.bytes.length c2DurationSinceCst16Addr c2TimePlacedData0 = true
+  compress256K32Slice :
+    ∃ seg, f3PatchedElf.segments[f3StdLayout.roSegIdx]? = some seg ∧
+      seg.perm.rwx = Perm.ro ∧
+      checkSegSlice seg seg.bytes.length c2Compress256K32Addr sha256KBytes = true
 
 theorem f3CodeInv_roDataAt_fromUtf8Table
     (hRo : C2RoSliceFacts)
@@ -192,6 +249,15 @@ theorem f3CodeInv_roDataAt_durationSinceCst16
     RoDataAt m c2DurationSinceCst16Addr c2TimePlacedData0 :=
   f3CodeInv_roDataAt_of_checkSegSlice hLs hInv c2DurationSinceCst16Addr c2TimePlacedData0
     hRo.durationSinceSlice
+
+theorem f3CodeInv_roDataAt_compress256K32
+    (hRo : C2RoSliceFacts)
+    {mpl mmpl : Obj.MultiPlacement} {m : Memory}
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
+    (hInv : F3CodeInv mpl mmpl m) :
+    RoDataAt m c2Compress256K32Addr sha256KBytes :=
+  f3CodeInv_roDataAt_of_checkSegSlice hLs hInv c2Compress256K32Addr sha256KBytes
+    hRo.compress256K32Slice
 
 /-! ## 3. `rxCode` Sub-Slice `CodeLoaded` on `stripExecOutside` & Multi-Block `hasWords` -/
 
@@ -291,7 +357,7 @@ theorem hasWords_subslice_of_hasWords {prog : Program} {base : BitVec 64}
   rw [harr, hr]
   exact congrArg some (hsub i hi).symm
 
-/-! ## 4. Unified `rxSeg` Real & Ghost `externAt?` & `Steps` Lift (`T1`, `T2` + `2C`) -/
+/-! ## 4. Unified `rxSeg` Real & Ghost `externAt?` & `Steps` Lift -/
 
 private def lookupAddrTagNatC2 (tbl : List (Nat × UInt8)) (pc : Nat) : Option UInt8 :=
   match tbl with
@@ -311,13 +377,19 @@ private theorem lookupAddrTagNatC2_none_of_all_lt (tbl : List (Nat × UInt8)) (p
     simp only [lookupAddrTagNatC2, hne, Bool.false_eq_true, ↓reduceIte]
     exact ih hall.2
 
-/-- Pending C2 placement/table lookup witnesses on the C2-rekeyed `cliExternsPlaced` /
-    `ElfCodeMatchesData` (`50066cbd…98ce`); discharged by `rfl_kernel` at C2 rebase. -/
+/-- Placement/table lookup witnesses on the stock-ELF `cliExternsPlaced` /
+    `ElfCodeMatchesData`, discharged by `rfl_kernel`. -/
 structure C2ExternTableFacts (mpl : Obj.MultiPlacement) : Prop where
   realRxNoExtern :
     ∀ (mmpl : Obj.MultiPlacement) (W : CliHooks) {pc : BitVec 64},
       progKeep Tie.f3TrialRxProg pc = true →
+      isLinkedPanicAddr pc = false →
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none
+  ghostRxNoExternIfAllNoneAtPc :
+    ∀ (extFn : CliHooks → String → Option (State → State)) (W : CliHooks) {pc : BitVec 64},
+      progKeep Tie.f3TrialRxProg pc = true →
+      (∀ s ∈ c2RxDehookedSyms, libsignalSessionLib.resolve mpl s = pc → extFn W s = none) →
+      (cliProgExtPlacedAt mpl extFn 617 W).externAt? pc = none
   ghostRxNoExternOffEntries :
     ∀ (extFn : CliHooks → String → Option (State → State)) (W : CliHooks) {pc : BitVec 64},
       progKeep Tie.f3TrialRxProg pc = true →
@@ -326,6 +398,7 @@ structure C2ExternTableFacts (mpl : Obj.MultiPlacement) : Prop where
   ghostRxEntry :
     ∀ (extFn : CliHooks → String → Option (State → State)) (W : CliHooks) {sym : String},
       sym ∈ c2RxDehookedSyms →
+      (hhooked : sym ∈ libsignalHookedExterns := by decide) →
       (cliProgExtPlacedAt mpl extFn 617 W).externAt? (libsignalSessionLib.resolve mpl sym) =
         extFn W sym
   lib2InKeep :
@@ -339,9 +412,10 @@ theorem f3RxSeg_realProg617_externAt_none
     {mpl mmpl : Obj.MultiPlacement}
     (hExt : C2ExternTableFacts mpl)
     (W : CliHooks) {pc : BitVec 64}
-    (hpc : progKeep Tie.f3TrialRxProg pc = true) :
+    (hpc : progKeep Tie.f3TrialRxProg pc = true)
+    (hnp : isLinkedPanicAddr pc = false) :
     (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none :=
-  hExt.realRxNoExtern mmpl W hpc
+  hExt.realRxNoExtern mmpl W hpc hnp
 
 theorem f3RxSeg_ghostProg617_externAt_none_of_ne_entries
     {mpl : Obj.MultiPlacement}
@@ -356,10 +430,11 @@ theorem f3RxSeg_ghostProg617_externAt_entry
     {mpl : Obj.MultiPlacement}
     (hExt : C2ExternTableFacts mpl)
     (extFn : CliHooks → String → Option (State → State)) (W : CliHooks)
-    {sym : String} (hsym : sym ∈ c2RxDehookedSyms) :
+    {sym : String} (hsym : sym ∈ c2RxDehookedSyms)
+    (hhooked : sym ∈ libsignalHookedExterns := by decide) :
     (cliProgExtPlacedAt mpl extFn 617 W).externAt?
       (libsignalSessionLib.resolve mpl sym) = extFn W sym :=
-  hExt.ghostRxEntry extFn W hsym
+  hExt.ghostRxEntry extFn W hsym hhooked
 
 /-- Per-row entry-excluded `externAt? = none` on `P_ghost_W` (`cliProgExtPlacedAt mpl extFn 617 W`):
     for any row `(sym, keepR_row)` inside `rxSeg` whose `keepR_row` avoids other `c2RxDehookedSyms`
@@ -376,14 +451,12 @@ theorem f3Row_ghostProg617_externAt_none_of_ne_entry
     {pc : BitVec 64} (hkeep : keepR_row pc = true)
     (hne : pc ≠ libsignalSessionLib.resolve mpl sym) :
     (cliProgExtPlacedAt mpl extFn 617 W).externAt? pc = none := by
-  by_cases hmem : pc ∈ c2RxDehookedSyms.map (libsignalSessionLib.resolve mpl)
-  · obtain ⟨s, hs_mem, hs_eq⟩ := List.mem_map.mp hmem
-    have hs_ne : s ≠ sym := by
-      intro h_eq; subst h_eq; exact hne hs_eq.symm
-    rcases hOther s hs_mem hs_ne with hfalse | hnone
-    · rw [hs_eq] at hfalse; cases hkeep.symm.trans hfalse
-    · rw [← hs_eq, hExt.ghostRxEntry extFn W hs_mem, hnone]
-  · exact hExt.ghostRxNoExternOffEntries extFn W (hSub pc hkeep) hmem
+  refine hExt.ghostRxNoExternIfAllNoneAtPc extFn W (hSub pc hkeep) fun s hs_mem hs_eq => ?_
+  have hs_ne : s ≠ sym := by
+    intro h_eq; subst h_eq; exact hne hs_eq.symm
+  rcases hOther s hs_mem hs_ne with hfalse | hnone
+  · rw [hs_eq] at hfalse; cases hkeep.symm.trans hfalse
+  · exact hnone
 
 /-- Multi-entry generalization of `f3Row_ghostProg617_externAt_none_of_ne_entry` for hulls
     containing multiple active ghost entries (e.g. `rowSyms := ["memmove", "memcpy", "memset"]` on
@@ -400,15 +473,13 @@ theorem f3RowSyms_ghostProg617_externAt_none_of_ne_entries
     {pc : BitVec 64} (hkeep : keepR_row pc = true)
     (hne : pc ∉ rowSyms.map (libsignalSessionLib.resolve mpl)) :
     (cliProgExtPlacedAt mpl extFn 617 W).externAt? pc = none := by
-  by_cases hmem : pc ∈ c2RxDehookedSyms.map (libsignalSessionLib.resolve mpl)
-  · obtain ⟨s, hs_mem, hs_eq⟩ := List.mem_map.mp hmem
-    have hs_notin : s ∉ rowSyms := by
-      intro hs_in
-      exact hne (hs_eq ▸ List.mem_map.mpr ⟨s, hs_in, rfl⟩)
-    rcases hOther s hs_mem hs_notin with hfalse | hnone
-    · rw [hs_eq] at hfalse; cases hkeep.symm.trans hfalse
-    · rw [← hs_eq, hExt.ghostRxEntry extFn W hs_mem, hnone]
-  · exact hExt.ghostRxNoExternOffEntries extFn W (hSub pc hkeep) hmem
+  refine hExt.ghostRxNoExternIfAllNoneAtPc extFn W (hSub pc hkeep) fun s hs_mem hs_eq => ?_
+  have hs_notin : s ∉ rowSyms := by
+    intro hs_in
+    exact hne (hs_eq ▸ List.mem_map.mpr ⟨s, hs_in, rfl⟩)
+  rcases hOther s hs_mem hs_notin with hfalse | hnone
+  · rw [hs_eq] at hfalse; cases hkeep.symm.trans hfalse
+  · exact hnone
 
 theorem f3Lib2_dehookedSym_in_keepLib2Text
     {mpl : Obj.MultiPlacement} (hExt : C2ExternTableFacts mpl)
@@ -439,14 +510,15 @@ private theorem ofSvc_standard_externAt (pc : BitVec 64) :
     (Program.ofSvc Syscall.standard).externAt? pc = none :=
   rfl
 
-/-- Direct `rxSeg` analogue of `H2StepsLiftR2.h2sl_steps_realW_of_visitedIn_keepSub` (`:954`) for
-    ANY row predicate `keepR_row ⊆ progKeep Tie.f3TrialRxProg`. -/
+/-- Direct `rxSeg` analogue of `H2StepsLiftR2.h2sl_steps_realW_of_visitedIn_keepSub` for
+    any row predicate `keepR_row ⊆ progKeep Tie.f3TrialRxProg`. -/
 theorem f3RxSeg_steps_realW_of_visitedIn
     {mpl : Obj.MultiPlacement}
     (hExt : C2ExternTableFacts mpl)
     (mmpl : Obj.MultiPlacement) (W : CliHooks)
     {keepR_row : BitVec 64 → Bool}
     (hSub : ∀ pc, keepR_row pc = true → progKeep Tie.f3TrialRxProg pc = true)
+    (hNoPan : ∀ pc, keepR_row pc = true → isLinkedPanicAddr pc = false)
     {s sf : State}
     (hvis : StepsVisitedIn keepR_row (Program.ofSvc Syscall.standard) s sf) :
     Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) s sf :=
@@ -455,13 +527,13 @@ theorem f3RxSeg_steps_realW_of_visitedIn
     (P2 := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
     (ofSvc_standard_svc.trans (realProg617_svc mpl mmpl W).symm)
     (fun pc _ => ofSvc_standard_externAt pc)
-    (fun pc hkeep => hExt.realRxNoExtern mmpl W (hSub pc hkeep))
+    (fun pc hkeep => hExt.realRxNoExtern mmpl W (hSub pc hkeep) (hNoPan pc hkeep))
     hvis
 
 /-! ## 5. Unconditional Startup `s0.lr` (`ExtraEntryGuard`) & Caller `LsRetAddr624` Guards -/
 
-/-- Startup `s0.lr` (`ExtraEntryGuard` for `LinkedCallHookG`) on `.text.lib2` rows (`6` or `7` rows,
-    order-independent). Unconditional (`0` pending C2 hypotheses). -/
+/-- Unconditional startup `s0.lr` (`ExtraEntryGuard` for `LinkedCallHookG`) on `.text.lib2` rows
+    (6-row or 7-row layout, order-independent). -/
 theorem f3Lib2EntryGuard_of_startupLr
     {mpl : Obj.MultiPlacement}
     {s0 : State} (hlr : s0.readReg64 .lr = f3StartupLrVal)
@@ -480,8 +552,8 @@ theorem f3Lib2EntryGuard_of_startupLr
     rw [heq] at hfalse
     cases hfalse.symm.trans hsym
 
-/-- Startup `s0.lr` (`ExtraEntryGuard`) on `.text.b_pre` Batch L rows (`memmove + memcpy`,
-    `bcmp + memcmp`, `strlen`). Unconditional (`0` pending C2 hypotheses). -/
+/-- Unconditional startup `s0.lr` (`ExtraEntryGuard`) on `.text.b_pre` rows
+    (`memmove + memcpy`, `bcmp + memcmp`, `strlen`). -/
 theorem f3BatchLEntryGuard_of_startupLr
     {mpl : Obj.MultiPlacement}
     {s0 : State} (hlr : s0.readReg64 .lr = f3StartupLrVal)
@@ -505,7 +577,7 @@ set_option maxRecDepth 400000
 
 /-- Kernel check across all `624` crate blocks (`0 .. 623` in `.text.crate`): every block end
     `cliElfBlockBases[j] + lsLen j` sits at or below `c2FirstExternStubAddr`, and the
-    two K3/K4 panic stubs sit at or above `c2FirstExternStubAddr`. -/
+    `expect_failed` / `slice_index_fail` panic stubs sit at or above `c2FirstExternStubAddr`. -/
 noncomputable def c2CheckLsRetAddr624BoundsB : Bool :=
   Nat.beq libsignalSessionLib.blocks.length 624 &&
   Nat.beq cliElfBlockBases.length 624 &&
@@ -550,8 +622,8 @@ theorem f3LsRetAddr624_lt_firstExternStub [LibsignalPlacement]
     rw [BitVec.toNat_add, ho', Nat.mod_eq_of_lt (by omega)]
   omega
 
-/-- Unconditional K3/K4 panic-stub exclusion (`expect_failed`, `slice_index_fail`) for any caller
-    `LsRetAddr624 lr` (`T6`). -/
+/-- Unconditional panic-stub exclusion (`expect_failed`, `slice_index_fail`) for any caller
+    `LsRetAddr624 lr`. -/
 theorem f3LsRetAddr624_ne_panicStubs [LibsignalPlacement]
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes lsmpl)
     {lr : BitVec 64} (hRet : LsRetAddr624 lr) :
@@ -566,9 +638,9 @@ theorem f3LsRetAddr624_ne_panicStubs [LibsignalPlacement]
       huniq.2.1 lsSliceIndexFailSymC2 (decide_eq_true_eq.mp (by rfl_kernel))]
   refine ⟨?_, ?_⟩ <;> intro heq <;> rw [heq] at hlt <;> omega
 
-/-- Unconditional caller `LsRetAddr624` guard for R0 `β′` K-narrowed `lib2` rows (`memrchr`,
+/-- Unconditional caller `LsRetAddr624` guard for `.text.lib2` rows (`memrchr`,
     `duration_since`, and `SystemTime::add` in the 7-row layout; `add` stays hooked in the 6-row
-    layout) and `.text.b_pre` Batch L rows (`T6`, `T7`). -/
+    layout) and `.text.b_pre` rows. -/
 theorem f3LsRetAddr624_rxRegion_guard [LibsignalPlacement]
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes lsmpl)
     {lr : BitVec 64} (hRet : LsRetAddr624 lr)

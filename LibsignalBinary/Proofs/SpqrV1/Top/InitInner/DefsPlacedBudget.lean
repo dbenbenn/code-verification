@@ -10,7 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Specifications for `spqr::init_inner` (`Block 324`)
@@ -20,7 +21,7 @@ relocatable `[LibsignalPlacement]` budget specifications for `<States>::into_pb`
 and `spqr::init_inner` (`Block 324`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,7 +46,7 @@ set_option maxHeartbeats 400000
 /-! ## 1. Allocation-Count / Request-Size Bounded Event Envelopes (`SpqrBoundedEvs`) -/
 
 /-- Number of non-`free` (`alloc`, `aligned`, `realloc`) events in an `AllocEvent` list. -/
-def nonFreeCount : List AllocEvent → Nat
+@[expose] def nonFreeCount : List AllocEvent → Nat
   | [] => 0
   | .free _ _ :: evs => nonFreeCount evs
   | _ :: evs => nonFreeCount evs + 1
@@ -72,7 +73,7 @@ theorem nonFreeCount_eq_zero_of_freeOnly {evs : List AllocEvent} (h : FreeOnlyEv
 /-- Bounded `AllocEvent` envelope with at most `maxAllocs` non-`free` events, per-event request
     size `≤ maxReq`, and alignment `≤ 16` (preserving `0` cost for arbitrary `FreeOnlyEvs` drops
     and avoiding `MaxAlignedAllocAlign` overcharge under Tier T2 `FineCostModel`). -/
-def SpqrBoundedEvs (maxAllocs maxReq : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def SpqrBoundedEvs (maxAllocs maxReq : Nat) (evs : List AllocEvent) : Prop :=
   nonFreeCount evs ≤ maxAllocs ∧
   ∀ ev ∈ evs,
     ev.withinMaxAlloc ∧
@@ -110,12 +111,12 @@ theorem SpqrBoundedEvs.mono {c₁ c₂ r₁ r₂ : Nat} {evs : List AllocEvent}
 
 /-- Default allocation envelope of `<spqr::v1::chunked::states::States>::into_pb` (`Block 334`),
     bounded linearly in the serialized `V1State` length. -/
-def StatesIntoPbEnv {F : ShaCompress} (x : StatesIntoPbGhost F) (evs : List AllocEvent) : Prop :=
+@[expose] def StatesIntoPbEnv {F : ShaCompress} (x : StatesIntoPbGhost F) (evs : List AllocEvent) : Prop :=
   SpqrBoundedEvs 64 (2 * (V1State.encodeRaw x.st.into_pb).length + 1024) evs
 
 /-- Default allocation envelope of `spqr::init_inner` (`Block 324`): `evs = []` on `.v0`, and
     linearly bounded in `x.authKey.length` on `.v1`. -/
-def InitInnerEnv (_F : ShaCompress) (x : InitInnerGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def InitInnerEnv (_F : ShaCompress) (x : InitInnerGhost) (evs : List AllocEvent) : Prop :=
   match x.v with
   | .v0 => evs = []
   | .v1 => SpqrBoundedEvs 96 (2 * x.authKey.length + 2048) evs
@@ -124,7 +125,7 @@ def InitInnerEnv (_F : ShaCompress) (x : InitInnerGhost) (evs : List AllocEvent)
 
 /-- Envelope-parametric relocatable specification of `<States>::into_pb` (`Block 334`)
     carrying `statesIntoPbJumpTablePlacedAt` explicitly. -/
-def statesIntoPbPlacedSpecOfEnv [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def statesIntoPbPlacedSpecOfEnv [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : StatesIntoPbGhost F → List AllocEvent → Prop) :
     Spec (StatesIntoPbGhost F × M.σ) where
@@ -149,7 +150,7 @@ abbrev statesIntoPbPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
   statesIntoPbPlacedSpecOfEnv M A lim F StatesIntoPbEnv
 
 /-- Envelope-parametric per-variant relocatable specification of `<States>::into_pb` (`Block 334`). -/
-def statesIntoPbVariantPlacedSpecOfEnv [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def statesIntoPbVariantPlacedSpecOfEnv [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (stateVal : States spqrPolyApi (spqrAuthApi F))
     (Env : List AllocEvent → Prop) :
@@ -177,7 +178,7 @@ abbrev statesIntoPbVariantPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
     (SpqrBoundedEvs 64 (2 * (V1State.encodeRaw stateVal.into_pb).length + 1024))
 
 /-- Envelope-parametric extended-stack relocatable specification of `<States>::into_pb` (`Block 334`). -/
-def statesIntoPbPlacedSpecXOfEnv [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def statesIntoPbPlacedSpecXOfEnv [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : StatesIntoPbGhost F → List AllocEvent → Prop) :
     Spec (StatesIntoPbGhost F × M.σ) where
@@ -203,7 +204,7 @@ abbrev statesIntoPbPlacedSpecX [LibsignalPlacement] (M : AllocCostModel)
 
 /-- `<States>::into_pb` (`Block 334`) meets `withLsCodeLoaded lsmpl (statesIntoPbPlacedSpecX M A lim F)`
     on `libsignalSessionLib.blockProgram lsmpl 334 (Rust.withPanics ext)` at `lsmpl.base 334`. -/
-def StatesIntoPbPlacedOkX [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def StatesIntoPbPlacedOkX [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 334 (Rust.withPanics ext))
@@ -214,7 +215,7 @@ def StatesIntoPbPlacedOkX [LibsignalPlacement] (M : AllocCostModel)
 
 /-- Envelope-parametric relocatable Hoare specification of `spqr::init_inner` (`Block 324`)
     carrying `statesIntoPbJumpTablePlacedAt` explicitly. -/
-def initInnerPlacedSpecOfEnv [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def initInnerPlacedSpecOfEnv [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : InitInnerGhost → List AllocEvent → Prop) :
     Spec (InitInnerGhost × M.σ) where
@@ -245,7 +246,7 @@ abbrev initInnerPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
   initInnerPlacedSpecOfEnv M A lim F (InitInnerEnv F)
 
 /-- Envelope-parametric extended-stack relocatable specification of `spqr::init_inner` (`Block 324`). -/
-def initInnerPlacedSpecXOfEnv [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def initInnerPlacedSpecXOfEnv [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : InitInnerGhost → List AllocEvent → Prop) :
     Spec (InitInnerGhost × M.σ) where
@@ -277,7 +278,7 @@ abbrev initInnerPlacedSpecX [LibsignalPlacement] (M : AllocCostModel)
 
 /-- Envelope-parametric extended-stack relocatable specification of `spqr::init_inner` (`Block 324`)
     where `.rodata` is discharged from `LibsignalRoLoaded lsmpl s.mem`. -/
-def initInnerPlacedRoSpecXOfEnv (M : AllocCostModel)
+@[expose] def initInnerPlacedRoSpecXOfEnv (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : InitInnerGhost → List AllocEvent → Prop) :
     Spec (InitInnerGhost × M.σ) where
@@ -307,7 +308,7 @@ abbrev initInnerPlacedRoSpecX (M : AllocCostModel)
 
 /-- `spqr::init_inner` (`Block 324`) meets `withLsCodeLoaded lsmpl (initInnerPlacedSpecX M A lim F)`
     on `libsignalSessionLib.blockProgram lsmpl 324 (Rust.withPanics ext)` at `lsmpl.base 324`. -/
-def InitInnerPlacedOkX [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def InitInnerPlacedOkX [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 324 (Rust.withPanics ext))

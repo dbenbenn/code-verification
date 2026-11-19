@@ -9,10 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.EpiloguePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.EpiloguePlaced
 import Arm64.Trusted.Spec.Hoare
 import all Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Specs
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.Layout -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.LayoutPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable Branch Proofs for `remove_pre_key::{closure#0}`
@@ -21,7 +33,7 @@ Symbolic execution of the `Err`, `Ok([])`, and `Ok(b0 :: bsRest)` branches of Bl
 (`lsProg_575 H`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -141,7 +153,7 @@ theorem finish_common_reassemble_placed (A : RustAlloc) (s0 : State) (x : PkPoll
   refine Entails.trans (sepConj_mono_right hrstk) ?_
   exact Entails.of_eq (by ac_rfl)
 
-def postGetCommon_placed (A : RustAlloc) (s0 : State) (x : PkPollGhost)
+@[expose] def postGetCommon_placed (A : RustAlloc) (s0 : State) (x : PkPollGhost)
     (decStk getStk putStk stk : Nat)
     (nameCap namePtr : BitVec 64) (nameBs : List (BitVec 8))
     (q_sp0 : BitVec 128) : SepProp :=

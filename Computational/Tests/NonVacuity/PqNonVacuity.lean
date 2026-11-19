@@ -21,7 +21,11 @@ import Computational.Proofs.LibsignalCli.PqFirstMessageSpqr
 import Computational.Proofs.LibsignalCli.PqSteadyRefine
 import Computational.Proofs.SignalWireRoundTrip
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
+import LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Math.Edwards
+import LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4SymbolicBridge
 import LibsignalBinary.Proofs.SignalSession.PqClosure
+import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhModelLink
+import LibsignalBinary.Proofs.SpecLemmas.SignalPqxdh.Model
 import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.DecoderCodec
 import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.EncoderCodec
 import LibsignalBinary.Proofs.SpqrV1Sync.TopSize
@@ -702,18 +706,10 @@ open CryptoVerification.LibsignalProtoCodec
 
 def K0 : LibsignalSpqrV1.MlKem := LibsignalSpqrV1.MlKem.ideal
 
-/-- `PqxdhPrims` witness whose Kyber1024 `encaps` places the 32 coin bytes at the start of the
-1568-byte ciphertext for exact `decaps` recovery, and whose Ed25519 hooks accept the zero
-signature. -/
+/-- `PqxdhPrims` witness whose `F512` returns `0^8` and whose Kyber1024 `encaps`
+places the 32 coin bytes at the start of the 1568-byte ciphertext for exact `decaps` recovery. -/
 def Q0 : PqxdhPrims where
-  F512 := fun st _ => st
-  montToEd := fun _ _ => some (List.Vector.replicate 160 0#8)
-  compress := fun _ => List.Vector.replicate 32 0#8
-  edNeg := fun p => p
-  isTorsionFree := fun _ => true
-  dsmb := fun _ _ _ => List.Vector.replicate 160 0#8
-  scalarMod := fun _ => List.Vector.replicate 32 0#8
-  scalarWide := fun _ => List.Vector.replicate 32 0#8
+  F512 := fun _ _ => List.Vector.replicate 8 0#64
   encaps := fun _ coins =>
     (⟨coins.toList ++ List.replicate 1536 0#8, by
       simp only [List.length_append, List.Vector.toList_length, List.length_replicate]⟩, coins)
@@ -721,22 +717,35 @@ def Q0 : PqxdhPrims where
     ⟨ct.toList.take 32, by simp only [List.length_take, List.Vector.toList_length]; omega⟩
   K := K0
 
+def pubKeyA0 : List.Vector (BitVec 8) 32 :=
+  ⟨9#8 :: List.replicate 31 0#8, rfl⟩
+
+def pubKeyB0 : List.Vector (BitVec 8) 32 :=
+  ⟨[0xab#8, 0xbb#8, 0x90#8, 0x4f#8, 0x2c#8, 0x8f#8, 0x86#8, 0xf7#8,
+    0x13#8, 0x32#8, 0xb8#8, 0x05#8, 0x93#8, 0x13#8, 0xb1#8, 0xa1#8,
+    0xcb#8, 0xad#8, 0x7b#8, 0x33#8, 0x2d#8, 0x85#8, 0x92#8, 0x7b#8,
+    0x48#8, 0x5e#8, 0x5b#8, 0x0e#8, 0x10#8, 0x49#8, 0xc3#8, 0x4d#8], rfl⟩
+
 /-- `Crypto` witness with identity block cipher, constant non-zero DH output `1#8 :: 0^31`, and
-`pubKey` equal to byte `0` of the scalar padded with 31 zero bytes. -/
+two distinct canonical torsion-free Curve25519 `pubKey` values (`u = 9` when byte `0` is `0#8` and
+`ekAPubNat` otherwise). -/
 def C0 : Crypto where
   F := fun st _ => st
   E := fun _ blk => blk
   D := fun _ blk => blk
   X := fun _ _ => ⟨1#8 :: List.replicate 31 0#8, rfl⟩
-  pubKey := fun sk => ⟨sk.get 0 :: List.replicate 31 0#8, rfl⟩
+  pubKey := fun sk => if sk.get 0 == 0#8 then pubKeyA0 else pubKeyB0
 
 def W0 : PEParams where
   C := C0
   Q := Q0
 
+def sigZeroEd64 : List UInt8 :=
+  (1 : UInt8) :: List.replicate 63 0
+
 def X0 : UnreachedPqxdhPrimitives where
   sigPkGen := fun a => vecU8 (C0.pubKey (Ratchet.clampScalar (u8Vec 32 a)))
-  sigSign := fun _ _ _ => List.replicate 64 0
+  sigSign := fun _ _ _ => sigZeroEd64
   scalarMul := fun _ _ => List.replicate 32 0
   scalarAdd := fun _ _ => List.replicate 32 0
   kemKeyGen := fun _ => (List.replicate 1568 0, List.replicate 3168 0)
@@ -808,44 +817,205 @@ private theorem u8Vec_vecU8 {n : Nat} (v : List.Vector (BitVec 8) n) :
     u8Vec n (vecU8 v) = v := by
   apply List.Vector.eq
   rcases v with ⟨l, hl⟩
-  simp [u8Vec, vecU8, ofU8_toU8, fitVec, List.Vector.toList, hl]
+  simp [u8Vec, vecU8, fitVec, List.Vector.toList, hl]
 
 private theorem vecU8_u8Vec_of_length {n : Nat} (xs : List UInt8) (h : xs.length = n) :
     vecU8 (u8Vec n xs) = xs := by
   have hlen : (ofU8 xs).length = n := by simp [ofU8, h]
-  simp [vecU8, u8Vec, fitVec, List.Vector.toList, hlen, toU8_ofU8]
+  simp [vecU8, u8Vec, fitVec, List.Vector.toList, hlen]
+
+section W0CurveHelpers
+
+open VerifiedLibraries.Common (
+  p25519 edOrderL fpInv recoverXEven leBytesToNat
+  EdPoint edZero edBasepoint edOnCurve edAdd edNeg edSub edSmul encodeEd
+)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.CurveSpecs (decodeU255 montToEdwards)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4RefBridge (
+  montLiftEd signalMontLiftEd_eq montLiftEd_some_onCurve
+  isCanonicalRef_blockLevelPrims_eq xeddsaVerifyRef_blockLevelPrims_eq
+)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4SymbolicBridge (
+  ekAPubNat signalMontLiftEd_u9_torsionFree signalMontLiftEd_ekAPub_torsionFree
+)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Math.Edwards (
+  edOnCurve_edZero edOnCurve_edBasepoint edAdd_edZero edNeg_edZero edSmul_eq_edNatSmul
+)
+
+attribute [local irreducible] fpInv recoverXEven montLiftEd montToEdwards edSmul
+
+private theorem w0_ite_true {α : Sort _} {p : Prop} [Decidable p] (h : p) (a b : α) :
+    (if p then a else b) = a := by simp [h]
+
+private theorem w0_pubKey_cases (sk : List.Vector (BitVec 8) 32) :
+    W0.C.pubKey sk = pubKeyA0 ∨ W0.C.pubKey sk = pubKeyB0 := by
+  dsimp only [W0, C0]
+  split
+  · exact Or.inl rfl
+  · exact Or.inr rfl
+
+private theorem w0_pubKey_montLiftEd (v : List.Vector (BitVec 8) 32)
+    (hv : v = pubKeyA0 ∨ v = pubKeyB0) :
+    ∃ P : EdPoint, montLiftEd v 0#8 = some P ∧ (edSmul edOrderL P == edZero) = true := by
+  rcases hv with rfl | rfl
+  · rcases signalMontLiftEd_u9_torsionFree (b := pubKeyA0.toList) pubKeyA0.toList_length
+      (by decide) with ⟨P, hP, htf⟩
+    rw [signalMontLiftEd_eq] at hP
+    exact ⟨P, hP, htf⟩
+  · rcases signalMontLiftEd_ekAPub_torsionFree (b := pubKeyB0.toList) pubKeyB0.toList_length
+      (by decide) with ⟨P, hP, htf⟩
+    rw [signalMontLiftEd_eq] at hP
+    exact ⟨P, hP, htf⟩
+
+private theorem w0_pubKey_guard (v : List.Vector (BitVec 8) 32)
+    (hv : v = pubKeyA0 ∨ v = pubKeyB0) :
+    ((vecU8 v).length == 32 && (((vecU8 v).getD 31 0 &&& 0x80) == 0) &&
+      SignalPqxdh.scalarIsInRange (vecU8 v)) = true := by
+  rcases hv with rfl | rfl <;> decide
+
+private theorem w0_upd9_isCanonical (B1 : SignalPqxdh.Primitives)
+    (sv h96 rcc cks ckn dmk ae ad) (pk : List UInt8) :
+    ({ B1 with
+        sigVerify := sv
+        isCanonical := SignalPqxdh.isCanonicalRef B1
+        hkdfDerive96 := h96
+        rootCreateChain := rcc
+        chainKdfSeed := cks
+        chainKdfNext := ckn
+        deriveMsgKeys := dmk
+        aeadEnc := ae
+        aeadDec := ad } : SignalPqxdh.Primitives).isCanonical pk =
+      SignalPqxdh.isCanonicalRef B1 pk := rfl
+
+private theorem w0_upd1_isCanonicalRef (B : SignalPqxdh.Primitives) (s512) (pk : List UInt8) :
+    SignalPqxdh.isCanonicalRef { B with sha512 := s512 } pk =
+      SignalPqxdh.isCanonicalRef B pk := rfl
+
+private theorem w0_modelPrims_isCanonical_eq (pk : List UInt8) :
+    (modelPrims X0 W0).isCanonical pk =
+      SignalPqxdh.isCanonicalRef (blockLevelPrims X0 W0) pk :=
+  (w0_upd9_isCanonical _ _ _ _ _ _ _ _ _ pk).trans (w0_upd1_isCanonicalRef _ _ pk)
+
+private theorem w0_block_eq_upd :
+    blockLevelPrims X0 W0 =
+      { blockLevelPrims X0 W0 with isTorsionFree := fun P => edSmul edOrderL P == edZero } := rfl
+
+private theorem w0_upd_isTorsionFree (B : SignalPqxdh.Primitives) (f : EdPoint → Bool) (P : EdPoint) :
+    ({ B with isTorsionFree := f } : SignalPqxdh.Primitives).isTorsionFree P = f P := rfl
+
+private theorem w0_block_isTorsionFree (P : EdPoint) :
+    (blockLevelPrims X0 W0).isTorsionFree P = (edSmul edOrderL P == edZero) :=
+  (congrArg (fun B : SignalPqxdh.Primitives => B.isTorsionFree P) w0_block_eq_upd).trans
+    (w0_upd_isTorsionFree _ _ P)
+
+private theorem w0_block_montToEd_zero (pk : List UInt8) :
+    (blockLevelPrims X0 W0).montToEd pk 0 = montLiftEd (u8Vec 32 pk) 0#8 := by
+  change SignalPqxdh.montLiftEd (u8Vec 32 pk).toList (0 : UInt8).toBitVec = _
+  rw [show (0 : UInt8).toBitVec = 0#8 from rfl,
+    LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4RefBridge.signalMontLiftEd_eq]
+
+private theorem w0_isCanonicalRef_of_some (B : SignalPqxdh.Primitives) (pk : List UInt8) (P : EdPoint)
+    (hg : (pk.length == 32 && ((pk.getD 31 0 &&& 0x80) == 0) && SignalPqxdh.scalarIsInRange pk) = true)
+    (hm : B.montToEd pk 0 = some P) :
+    SignalPqxdh.isCanonicalRef B pk = B.isTorsionFree P := by
+  rw [SignalPqxdh.isCanonicalRef.eq_def, w0_ite_true hg]
+  split
+  · rename_i Q hQ; exact congrArg B.isTorsionFree (Option.some.inj (hQ.symm.trans hm))
+  · rename_i hQ; exact absurd (hQ.symm.trans hm) nofun
 
 theorem w0_isCanonical (sk : List.Vector (BitVec 8) 32) :
-    SignalPqxdh.isCanonicalRef (modelPrims X0 W0) (vecU8 (W0.C.pubKey sk)) = true := by
-  have hv : vecU8 (W0.C.pubKey sk) = UInt8.ofBitVec (sk.get 0) :: List.replicate 31 0 := by
-    simp [W0, C0, vecU8, toU8]
-  rw [hv]
-  unfold SignalPqxdh.isCanonicalRef SignalPqxdh.scalarIsInRange
-  have hlen : (UInt8.ofBitVec (sk.get 0) :: List.replicate 31 (0 : UInt8)).length = 32 := rfl
-  have hget : (UInt8.ofBitVec (sk.get 0) :: List.replicate 31 (0 : UInt8)).getD 31 0 = 0 := rfl
-  simp only [hlen, hget]
-  have h1 : ((32 : Nat) == 32) = true := rfl
-  have h2 : (((0 : UInt8) &&& 0x80) == 0) = true := rfl
-  have h3 : (((0 : UInt8) &&& 0x7F) == 0x7F) = false := rfl
-  simp only [h1, h2, h3, Bool.and_false, Bool.not_false, Bool.and_self, ↓reduceIte,
-    modelPrims, blockLevelPrims, W0, Q0]
-  rfl
+    (modelPrims X0 W0).isCanonical (vecU8 (W0.C.pubKey sk)) = true := by
+  have hv := w0_pubKey_cases sk
+  rcases w0_pubKey_montLiftEd _ hv with ⟨P, hP, htf⟩
+  have hm : (blockLevelPrims X0 W0).montToEd (vecU8 (W0.C.pubKey sk)) 0 = some P := by
+    rw [w0_block_montToEd_zero, u8Vec_vecU8]
+    exact hP
+  exact (w0_modelPrims_isCanonical_eq _).trans
+    ((w0_isCanonicalRef_of_some _ _ P (w0_pubKey_guard _ hv) hm).trans
+      ((w0_block_isTorsionFree P).trans htf))
 
-theorem w0_sigVerify_zero (pk m : List UInt8) (hpk : pk.length = 32) :
-    (modelPrims X0 W0).sigVerify pk m (List.replicate 64 0) = true := by
-  change SignalPqxdh.xeddsaVerifyRef (modelPrims X0 W0) pk m (List.replicate 64 0) = true
-  unfold SignalPqxdh.xeddsaVerifyRef
-  rw [hpk]
-  have hcond : (((32 : Nat) == 32 && (List.replicate 64 (0 : UInt8)).length == 64 &&
-      ((List.replicate 64 (0 : UInt8)).getD 63 0 &&& 0x60) == 0)) = true := rfl
-  rw [hcond]; simp only [↓reduceIte]
-  have hm2e : ∀ sb, (modelPrims X0 W0).montToEd pk sb =
-      some (vecU8 (List.Vector.replicate 160 0#8)) := fun _ => rfl
-  rw [hm2e]; dsimp only
-  have htake : (List.replicate 64 (0 : UInt8)).take 32 = List.replicate 32 0 := rfl
-  have hcmp : ∀ p, (modelPrims X0 W0).compress p = List.replicate 32 0 :=
-    fun _ => vecU8_replicate_zero 32
-  rw [htake, hcmp]; decide
+private theorem w0_sha512Pad_len_ge_128 (msg : List UInt8) :
+    128 ≤ (SignalPqxdh.sha512Pad msg).length := by
+  unfold SignalPqxdh.sha512Pad SignalPqxdh.encodeBitLen128BE SignalPqxdh.encodeBitLen64BE
+  simp only [List.length_append, List.length_cons, List.length_nil, List.length_replicate]
+  set rem := (msg.length + 17) % 128
+  have hrem_lt : rem < 128 := Nat.mod_lt _ (by decide)
+  by_cases h0 : rem == 0
+  · have hr0 : rem = 0 := beq_iff_eq.mp h0
+    simp only [h0, ↓reduceIte]; omega
+  · simp only [h0, Bool.false_eq_true, ↓reduceIte]; omega
+
+private theorem w0_foldl_const_aux {α β : Type} (f : α → β → α) (z : α)
+    (hf : ∀ s x, f s x = z) :
+    ∀ (l : List β), l.foldl f z = z
+  | [] => rfl
+  | _ :: rest => by simp only [List.foldl_cons, hf]; exact w0_foldl_const_aux f z hf rest
+
+private theorem w0_foldl_const {α β : Type} (f : α → β → α) (z : α)
+    (hf : ∀ s x, f s x = z) :
+    ∀ (l : List β) (init : α), l ≠ [] → l.foldl f init = z
+  | [], _, hne => absurd rfl hne
+  | _ :: rest, init, _ => by
+    simp only [List.foldl_cons, hf]
+    exact w0_foldl_const_aux f z hf rest
+
+private theorem w0_sha512_zero (msg : List UInt8) :
+    (modelPrims X0 W0).sha512 msg = List.replicate 64 0 := by
+  rw [modelPrims_sha512_eq_ref]
+  unfold SignalPqxdh.sha512Ref SignalPqxdh.chunkBlocks
+  dsimp only []
+  have hdiv : 1 ≤ (SignalPqxdh.sha512Pad msg).length / 128 :=
+    Nat.div_pos (w0_sha512Pad_len_ge_128 msg) (by decide)
+  have hne : ((List.range ((SignalPqxdh.sha512Pad msg).length / 128)).map
+      (fun i => ((SignalPqxdh.sha512Pad msg).drop (i * 128)).take 128)) ≠ [] := by
+    intro heq
+    have hl := congrArg List.length heq
+    simp at hl
+    omega
+  have hstep : ∀ s b, SignalPqxdh.sha512Step (modelPrims X0 W0) s b = List.replicate 64 0 := by
+    intro s b
+    unfold SignalPqxdh.sha512Step
+    dsimp only [modelPrims, blockLevelPrims, W0, Q0]
+    decide
+  rw [w0_foldl_const _ (List.replicate 64 0) hstep _ _ hne]
+  decide
+
+theorem w0_sigVerify_pubKey (sk : List.Vector (BitVec 8) 32) (m : List UInt8) :
+    (modelPrims X0 W0).sigVerify (vecU8 (W0.C.pubKey sk)) m sigZeroEd64 = true := by
+  have hv := w0_pubKey_cases sk
+  rcases w0_pubKey_montLiftEd _ hv with ⟨P, hmont, _⟩
+  have hP_on : edOnCurve P = true := montLiftEd_some_onCurve hmont
+  rw [modelPrims_sigVerify_eq_ref]
+  change SignalPqxdh.xeddsaVerifyRef
+    ({ blockLevelPrims X0 W0 with sha512 := (modelPrims X0 W0).sha512 })
+    (vecU8 (W0.C.pubKey sk)) m sigZeroEd64 = true
+  rw [xeddsaVerifyRef_blockLevelPrims_eq]
+  have hcond : ((vecU8 (W0.C.pubKey sk)).length == 32 &&
+      sigZeroEd64.length == 64 &&
+      ((sigZeroEd64.getD 63 0 &&& 0x60) == 0)) = true := by
+    rw [vecU8_length]; decide
+  rw [w0_ite_true hcond]
+  dsimp only
+  have hs0 : ((sigZeroEd64.getD 63 0 &&& 0x80) >>> 7).toBitVec = 0#8 := by decide
+  rw [hs0, u8Vec_vecU8, hmont]
+  dsimp only
+  rw [w0_sha512_zero]
+  have hh0 : leBytesToNat (u8Vec 64 (List.replicate 64 (0 : UInt8))).toList % edOrderL = 0 := by
+    decide
+  have hsNat0 : leBytesToNat (u8Vec 32
+      ((sigZeroEd64.drop 32).take 31 ++ [(sigZeroEd64.drop 32).getD 31 0 &&& 0x7F])).toList %
+      edOrderL = 0 := by decide
+  rw [hh0, hsNat0,
+    edSmul_eq_edNatSmul (by decide) edOnCurve_edBasepoint,
+    edSmul_eq_edNatSmul (by decide) hP_on]
+  change (toU8 (encodeEd (edSub edZero edZero)) == sigZeroEd64.take 32) = true
+  have hsub0 : edSub edZero edZero = edZero := by
+    change edAdd edZero (edNeg edZero) = edZero
+    rw [edNeg_edZero, edAdd_edZero edOnCurve_edZero]
+  rw [hsub0]
+  decide
+
+end W0CurveHelpers
 
 def aliceMe : LocalIdentity := ⟨⟨8#8 :: List.replicate 31 0#8, rfl⟩, 1#32⟩
 def bobMe : LocalIdentity := ⟨⟨16#8 :: List.replicate 31 0#8, rfl⟩, 2#32⟩
@@ -856,7 +1026,7 @@ def kpkId0 : BitVec 32 := 30#32
 
 def spkPriv0 : List.Vector (BitVec 8) 32 := List.Vector.replicate 32 0#8
 def opkPriv0 : List.Vector (BitVec 8) 32 := ⟨24#8 :: List.replicate 31 0#8, rfl⟩
-def sigZero64 : List.Vector (BitVec 8) 64 := List.Vector.replicate 64 0#8
+def sigZero64 : List.Vector (BitVec 8) 64 := ⟨1#8 :: List.replicate 63 0#8, rfl⟩
 def kpkPub0 : List.Vector (BitVec 8) 1568 := List.Vector.replicate 1568 0#8
 def kpkSec0 : List.Vector (BitVec 8) 3168 := List.Vector.replicate 3168 0#8
 
@@ -879,11 +1049,12 @@ def idKeyB : IdentityKey := ⟨(keyPairOf W0.C bobMe.idPriv).publicKey⟩
 
 theorem bundleB0_sigsOk : bundleB0.signaturesVerify X0 W0 = true := by
   unfold PreKeyBundleFields.signaturesVerify
-  have hsig : vecU8 sigZero64 = List.replicate 64 0 := vecU8_replicate_zero 64
-  have hpk : (vecU8 bundleB0.idPub).length = 32 := vecU8_length _
-  change ((modelPrims X0 W0).sigVerify (vecU8 bundleB0.idPub) _ (vecU8 sigZero64) &&
-      (modelPrims X0 W0).sigVerify (vecU8 bundleB0.idPub) _ (vecU8 sigZero64)) = true
-  rw [hsig, w0_sigVerify_zero _ _ hpk, w0_sigVerify_zero _ _ hpk]; rfl
+  have hsig : vecU8 sigZero64 = sigZeroEd64 := by decide
+  change ((modelPrims X0 W0).sigVerify
+      (vecU8 (W0.C.pubKey (Ratchet.clampScalar bobMe.idPriv))) _ (vecU8 sigZero64) &&
+    (modelPrims X0 W0).sigVerify
+      (vecU8 (W0.C.pubKey (Ratchet.clampScalar bobMe.idPriv))) _ (vecU8 sigZero64)) = true
+  rw [hsig, w0_sigVerify_pubKey, w0_sigVerify_pubKey]; rfl
 
 def aliceDir0 : PqParty :=
   { party := .A, me := aliceMe, peerId := some idKeyB, session := none,
@@ -1238,21 +1409,17 @@ theorem initiateKeys_acceptKeys_W0 :
         (SignalPqxdh.buildSecrets dh0 dh0 dh0 (some dh0) ss0) = x := ⟨_, rfl⟩
   obtain ⟨ekAPk0, hekAPk0⟩ : ∃ x, (modelPrims X0 W0).x25519Base i.ekASk = x := ⟨_, rfl⟩
   have htp : i.trustedPeer = true := by rw [← hi_def]; rfl
-  have hpkB : i.bundle.ikB.length = 32 := by
-    have h : i.bundle.ikB = vecU8 bundleB0.idPub := by rw [← hi_def]; rfl
-    rw [h]; exact vecU8_length _
+  have hikB : i.bundle.ikB = vecU8 (W0.C.pubKey (Ratchet.clampScalar bobMe.idPriv)) := by
+    rw [← hi_def]; rfl
+  have hsig_eq : vecU8 sigZero64 = sigZeroEd64 := by decide
   have hsig1 : (modelPrims X0 W0).sigVerify i.bundle.ikB (SignalPqxdh.encodeEC i.bundle.spkB)
       i.bundle.spkSig = true := by
-    have hspk : i.bundle.spkSig = List.replicate 64 0 := by
-      have h : i.bundle.spkSig = vecU8 sigZero64 := by rw [← hi_def]; rfl
-      rw [h]; exact vecU8_replicate_zero 64
-    rw [hspk]; exact w0_sigVerify_zero _ _ hpkB
+    have hspk : i.bundle.spkSig = vecU8 sigZero64 := by rw [← hi_def]; rfl
+    rw [hikB, hspk, hsig_eq]; exact w0_sigVerify_pubKey _ _
   have hsig2 : (modelPrims X0 W0).sigVerify i.bundle.ikB (SignalPqxdh.encodeKEM i.bundle.pqspkB)
       i.bundle.pqspkSig = true := by
-    have hpq : i.bundle.pqspkSig = List.replicate 64 0 := by
-      have h : i.bundle.pqspkSig = vecU8 sigZero64 := by rw [← hi_def]; rfl
-      rw [h]; exact vecU8_replicate_zero 64
-    rw [hpq]; exact w0_sigVerify_zero _ _ hpkB
+    have hpq : i.bundle.pqspkSig = vecU8 sigZero64 := by rw [← hi_def]; rfl
+    rw [hikB, hpq, hsig_eq]; exact w0_sigVerify_pubKey _ _
   have hEncaps : (modelPrims X0 W0).kemEncaps i.bundle.pqspkB i.kemCoins = some (ss0, kemCt0) := by
     have hpqB : i.bundle.pqspkB = vecU8 kpkPub0 := by rw [← hi_def]; rfl
     have hkc : i.kemCoins = vecU8 coinsK := by rw [← hi_def, ← hcoinsK]; rfl
@@ -1464,16 +1631,22 @@ private theorem spkPub_beq_ephB_false :
   apply beq_eq_false_iff_ne.mpr
   intro heq
   have h0 := congrArg (fun k : PublicKey => k.bytes.toList.head?) heq
-  have hl : (⟨(keyPairOf W0.C spkPriv0).publicKey.bytes⟩ : PublicKey).bytes.toList.head? =
-      some ((Ratchet.clampScalar spkPriv0).get 0) := rfl
-  have hr : (KeyPair.generate W0.C rcB0).publicKey.bytes.toList.head? =
-      some ((Ratchet.clampScalar (Ratchet.keyToBytesVec32 rcB0)).get 0) := rfl
+  have hl0 : (Ratchet.clampScalar spkPriv0).get 0 = 0#8 := by
+    rw [clampScalar_get]
+    simp only [↓reduceIte, spkPriv0]
+    decide
+  have hr0 : (Ratchet.clampScalar (Ratchet.keyToBytesVec32 rcB0)).get 0 = 0xf8#8 := by
+    rw [clampScalar_get]
+    simp only [↓reduceIte, keyVec_get, rcB0]
+    decide
+  have hl : (⟨(keyPairOf W0.C spkPriv0).publicKey.bytes⟩ : PublicKey).bytes = pubKeyA0 := by
+    change (if (Ratchet.clampScalar spkPriv0).get 0 == 0#8 then pubKeyA0 else pubKeyB0) = pubKeyA0
+    rw [hl0]; rfl
+  have hr : (KeyPair.generate W0.C rcB0).publicKey.bytes = pubKeyB0 := by
+    change (if (Ratchet.clampScalar (Ratchet.keyToBytesVec32 rcB0)).get 0 == 0#8 then
+      pubKeyA0 else pubKeyB0) = pubKeyB0
+    rw [hr0]; rfl
   rw [hl, hr] at h0
-  injection h0 with h0
-  rw [clampScalar_get, clampScalar_get] at h0
-  simp only [↓reduceIte, keyVec_get, spkPriv0, rcB0] at h0
-  have hs : (List.Vector.replicate 32 0#8).get 0 = 0#8 := rfl
-  rw [hs] at h0
   revert h0
   decide
 
@@ -1704,13 +1877,11 @@ theorem pqConversation_5steps :
   have hStep1 : pqInitModel X0 W0 aliceDir0 bundleB0 tape0 = some (some (aliceDir1, [])) := by
     unfold pqInitModel
     have htr : aliceDir0.trusts idKeyB = true := by simp [aliceDir0, PqParty.trusts]
+    have hp0 : aliceDir0.party = .A := rfl
+    have hm0 : aliceDir0.me = aliceMe := rfl
     rw [hbundle_idPub, htr]
-    simp only [Bool.not_true, Bool.false_eq_true, ↓reduceIte]
-    change (match initiateState X0 W0 .A aliceMe bundleB0 tape0 with
-      | none => some none
-      | some (x, g) => some (some ({ aliceDir0 with peerId := some idKeyB, session := some (x, g) },
-          []))) = some (some (aliceDir1, []))
-    rw [hIS]
+    simp only [Bool.not_true, Bool.false_eq_true, ↓reduceIte, hp0, hm0, hIS]
+    rfl
   let addrsAB := serializedPartyAddresses LibsignalTripleRatchetRepr.uuidTryParse .A .B
   obtain ⟨msg1, hmsg1⟩ : ∃ x, SignalMessage.new W0.C.F protoSignalCodec currentVersion mk1.macKey
       addrsAB ephA.publicKey 0#32 0 ctext1 idKeyA idKeyB pqMsg1 = x := ⟨_, rfl⟩

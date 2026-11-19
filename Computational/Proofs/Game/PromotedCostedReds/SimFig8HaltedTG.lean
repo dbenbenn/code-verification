@@ -12,6 +12,7 @@ module
 public import Computational.Proofs.Game.PromotedCostedReds.SimFig8HaltedSanGame -- proof-setup: allow-public-import
 import Computational.Proofs.GameHop.CompDedup
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.GhostStep
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanGame -- proof-setup: allow-public-import
 
 /-!
 # Canonicalization and Step Alignment for Tracker-Halted Figure 8
@@ -26,8 +27,6 @@ public section
 set_option autoImplicit false
 
 namespace Computational.Proofs.Game.PromotedCostedReds.SimFig8HaltedTG
-
-noncomputable section
 
 open OracleComp OracleSpec
 open CryptoGames (Party effectiveHkdfSalt32)
@@ -1172,7 +1171,5 @@ theorem predictReceiveWithSnapshots_epoch_eq {PQ Pt : Type} [DecidableEq Pt] [Ze
       exact (lFig8_receive_tcur_epoch P Dh encPt encT idOf lam st st' c' t' i' pm' hrcv).1
 
 end TGInvHelpers
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimFig8HaltedTG

@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeIdInv
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeIdInv -- proof-setup: allow-public-import
 import Batteries.Data.UInt
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SendRetCoinsCliPureB
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj
-public import Symbolic.Proofs.Swarm.CREF.TR.SrHonestVer
-public import Symbolic.Proofs.Swarm.TRREF.B3DefsPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SendRetCoinsCliPureB -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.SrHonestVer -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.B3DefsPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.TripleRatchet.WireCovered
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RatchetDHRkSwapStepTRPureA
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSpqrHonestPure
@@ -27,6 +27,7 @@ import Symbolic.Proofs.Swarm.CREF.TR.Leaks -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.RecvRep -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
 
 /-!
 # Forged Decrypt Representation and SPQR Step Bridge Under Ratchet-Key Swap
@@ -36,7 +37,7 @@ key to a `gamma`-equivalent key `rk_c` during a DH ratchet step, and bridges `sp
 swapped state.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false

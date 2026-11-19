@@ -14,6 +14,8 @@ public import Computational.Proofs.SessionCostedFig8.Bundles -- proof-setup: all
 import Computational.Proofs.ReductionDsl.SM.RedPRNGPotOK
 import Computational.Proofs.SessionCostedFig8.BundlesEval
 import Computational.Proofs.SessionCostedFig8.QuerySubsumes
+import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperCKA
+import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperTMinusSim
 
 /-!
 # Shifted Paper PRF-PRNG Potential Query Bounds

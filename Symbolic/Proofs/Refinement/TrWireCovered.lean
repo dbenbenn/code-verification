@@ -9,7 +9,7 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import Symbolic.Proofs.Refinement.TripleRatchet.WireCovered
+import Symbolic.Proofs.Refinement.TripleRatchet.WireCovered
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
 
@@ -20,7 +20,7 @@ Re-exports the `Composed` wire-coverage lemmas from `TripleRatchet.WireCovered` 
 `DY.Libsignal.PQXDH.Refinement`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

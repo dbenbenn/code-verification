@@ -9,16 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3Stmt
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4StoreSession
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Placed
-public import LibsignalBinary.Proofs.PeakBudget.W4PostBobPrev1Dom
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathACore
-public import LibsignalBinary.Proofs.SignalSession.SessionCap.TopStateTight
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3Stmt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4StoreSession -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W4PostBobPrev1Dom -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathACore
+import LibsignalBinary.Proofs.SignalSession.SessionCap.TopStateTight
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefs
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3d
 import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
 import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodedLen
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Post-Decrypt Arm-4 `prev1` Derivation Leaves & `PostBobPrev1Dom` Closer
@@ -36,7 +47,7 @@ Derivation leaves and Arm-4 `PostBobPrev1Dom` closers for post-`try_decrypt` Pat
    `postBobPrev1Dom_of_arm4_midPrev1Placed`).
 -/
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.PeakBudget.W4PostBobPrev1Derive
 
@@ -97,70 +108,7 @@ open ProofLib (sepConj_assoc sepConj_comm)
 
 /-! ## `rfl` Cross-Checks Against `W4PostBobPrev1Dom` Constants -/
 
-theorem derive_w4PostBobMaxSkippedKeys_eq : w4PostBobMaxSkippedKeys = maxMessageKeys := rfl
-theorem derive_w4PostBobOneChainBytes_eq : w4PostBobOneChainBytes = 84081 := rfl
-theorem derive_w4PostBobFixedNonChainBytes_eq : w4PostBobFixedNonChainBytes = 1922 := rfl
-theorem derive_postBobRecordCapOf_286K_eq : postBobRecordCapOf w4PostBobPqCap = 372207 := rfl
-theorem derive_postBobPrev1Overhead286K_eq : postBobPrev1Overhead286K = 372212 := rfl
-theorem derive_postBobTotalPrev1Cap286K_eq : postBobTotalPrev1Cap286K = 2469364 := rfl
-theorem derive_postBobTotalPrev1Cap286K_decomp :
-    postBobTotalPrev1Cap286K = 2097152 + postBobPrev1Overhead286K := rfl
-theorem derive_w4PostBobCloneTightCum_eq : w4PostBobCloneTightCum = 2373456 := rfl
-theorem derive_w4PostBobSerializePrev1TightCum_eq : w4PostBobSerializePrev1TightCum = 2660912 := rfl
-
 /-! ## `SessionGhostValid G' ses'`, `mk ≤ 2000`, & `SessionCloneDom 286196` on Arm 4 -/
-
-/-- Extract `SessionGhostValid G ses` from `SessionExtraRel G ses` and spatial `sessionStateAt`. -/
-theorem sessionGhostValid_of_extraRel_and_stateAt
-    {A : RustAlloc} {ss : BitVec 64} {G : SessionGhost} {ses : Session (List (BitVec 8))}
-    {m : Memory} {R : SepProp}
-    (hExtra : SessionExtraRel G ses)
-    (hm : Arm64.Satisfies (Arm64.sepConj (sessionStateAt A ss G ses.state) R) m) :
-    SessionGhostValid G ses :=
-  ⟨hExtra, A, ss, m, R, hm⟩
-
-private theorem h10b_ex_frame_drop_left {m : Memory} {P Q : SepProp}
-    (h : ∃ R, Satisfies (Arm64.sepConj (Arm64.sepConj P Q) R) m) :
-    ∃ R, Satisfies (Arm64.sepConj Q R) m :=
-  let ⟨R, hR⟩ := h
-  ⟨Arm64.sepConj P R, by rwa [sepConj_comm P Q, sepConj_assoc] at hR⟩
-
-/-- Extract `SessionGhostValid G' ses'` directly on Path C Arm-4 Stage-P4 entry (`+0x34dc#64`,
-`stageP3DispatchOkMidPrev1Placed`, `D3NonCanonValidOverPollAuxPlacedBudget.lean:1801`). -/
-theorem sessionGhostValid_of_stageP3DispatchOkMidPrev1Placed [LibsignalPlacement]
-    {A : RustAlloc} {s0 s : State}
-    {coroPtr outPtr initErrsPtr prevCap prevPtr ptCap ptPtr : BitVec 64}
-    {enc pt : List (BitVec 8)} {b_2c0 : BitVec 8}
-    {G' : SessionGhost} {ses' : Session (List (BitVec 8))}
-    {m : Memory} {R : SepProp}
-    (hExtra : SessionExtraRel G' ses')
-    (hm : Arm64.Satisfies
-      (Arm64.sepConj
-        (stageP3DispatchOkMidPrev1Placed A s0 s coroPtr outPtr initErrsPtr prevCap prevPtr
-          ptCap ptPtr enc pt b_2c0 G' ses'.state) R) m) :
-    SessionGhostValid G' ses' := by
-  have h0 : ∃ R', Satisfies
-      (Arm64.sepConj
-        (stageP3DispatchOkMidPrev1Placed A s0 s coroPtr outPtr initErrsPtr prevCap prevPtr
-          ptCap ptPtr enc pt b_2c0 G' ses'.state) R') m := ⟨R, hm⟩
-  dsimp only [stageP3DispatchOkMidPrev1Placed] at h0
-  have h1 := h10b_ex_frame_drop_left h0
-  have h2 := h10b_ex_frame_drop_left h1
-  have h3 := h10b_ex_frame_drop_left h2
-  have h4 := h10b_ex_frame_drop_left h3
-  have h5 := h10b_ex_frame_drop_left h4
-  have h6 := h10b_ex_frame_drop_left h5
-  have h7 := h10b_ex_frame_drop_left h6
-  have h8 := h10b_ex_frame_drop_left h7
-  have h9 := h10b_ex_frame_drop_left h8
-  have h10 := h10b_ex_frame_drop_left h9
-  have h11 := h10b_ex_frame_drop_left h10
-  have h12 := h10b_ex_frame_drop_left h11
-  have h13 := h10b_ex_frame_drop_left h12
-  have h14 := h10b_ex_frame_drop_left h13
-  obtain ⟨R', h15⟩ := h10b_ex_frame_drop_left h14
-  rw [sepConj_assoc] at h15
-  exact sessionGhostValid_of_extraRel_and_stateAt hExtra h15
 
 private theorem h10b_exists_mem_zip_of_mem_right {α β : Type} :
     ∀ (xs : List α) (ys : List β) (y : β),
@@ -186,32 +134,6 @@ theorem receiverChains_messageKeys_le_of_sessionGhostValid
   obtain ⟨cg, hzip⟩ :=
     h10b_exists_mem_zip_of_mem_right G.chains ses.state.receiverChains rc hgcv.chains_len hrc
   exact (hgcv.chains_ok (cg, rc) hzip).2.2
-
-/-- When `ses.state.receiverChains.length ≤ 1`, `SessionGhostValid G ses` bounds the zipped
-receiver-chain skipped-key sum by `w4PostBobMaxSkippedKeys` (`2000`). -/
-theorem zip_messageKeys_sum_le_2000_of_rc_le_one
-    {G : SessionGhost} {ses : Session (List (BitVec 8))}
-    (hgv : SessionGhostValid G ses)
-    (hrc : ses.state.receiverChains.length ≤ 1) :
-    ((G.chains.zip ses.state.receiverChains).map
-      (fun gc => gc.2.messageKeys.length)).sum ≤ w4PostBobMaxSkippedKeys := by
-  have hgcv := ghostCloneValid_of_sessionGhostValid hgv
-  cases hcs : ses.state.receiverChains with
-  | nil => simp
-  | cons rc tl =>
-    rw [hcs] at hrc
-    have htl : tl = [] := by
-      cases tl with
-      | nil => rfl
-      | cons _ _ => simp at hrc
-    subst htl
-    cases hgs : G.chains with
-    | nil => simp
-    | cons cg gtl =>
-      have hzip : (cg, rc) ∈ G.chains.zip ses.state.receiverChains := by
-        simp [hgs, hcs]
-      have hmk := (hgcv.chains_ok (cg, rc) hzip).2.2
-      simpa [w4PostBobMaxSkippedKeys] using hmk
 
 private theorem h10b_Mut_exec_bind {σ α β : Type} (m : Mut σ α) (f : α → Mut σ β) (s : σ) :
     Mut.exec (m >>= f) s =
@@ -512,21 +434,6 @@ private theorem h10b_tryDecryptWithState_ok_struct {PQC : Type}
                       SessionState.clearUnacknowledgedPreKeyMessage, hpq2, hpq1, tr0] using hspqr
           · simp [hpan, h10b_Mut_exec_throw] at hd
 
-/-- Pure model preservation across `SessionState.tryDecryptWithState` from `st0.receiverChains = []`:
-on `.ok pt`, `st'.receiverChains` has length `= 1`, every chain has `≤ maxMessageKeys` (`2000`)
-skipped keys, and every skipped-key seed has length `32`. -/
-theorem tryDecryptWithState_freshBob_chains_bound {PQC : Type}
-    (C : Crypto) (spqr : Spqr (List (BitVec 8)) PQC) (expected : Option (List (BitVec 8)))
-    (msg : SignalMessage) (msgType : MessageType) (coins : BitVec 256)
-    {st0 st' : SessionState (List (BitVec 8))} {pt : List (BitVec 8)}
-    (hrc0 : st0.receiverChains = [])
-    (hdec : Mut.exec (SessionState.tryDecryptWithState C spqr expected msg msgType coins) st0 =
-      (.ok pt, st')) :
-    st'.receiverChains.length = 1 ∧
-      ∀ rc ∈ st'.receiverChains,
-        rc.messageKeys.length ≤ maxMessageKeys ∧ ∀ mk ∈ rc.messageKeys, mk.seed.length = 32 :=
-  (h10b_tryDecryptWithState_ok_struct C spqr expected msg msgType coins hrc0 hdec).1
-
 /-- On Arm 4 (`genP3S5Model ... (pathAInitState W me k m dk) = (.ok pt, st')`), the post-decrypt
 session `ses'` satisfies `SessionCloneDom w4PostBobPqCap ses'` (`pqCap = 286,196`) and
 `ses'.state.receiverChains.length = 1`. -/
@@ -558,29 +465,6 @@ theorem sessionCloneDom_postBob_of_genP3S5Model_ok
   · simp [pathAInitSession, djbKey]
 
 /-! ## `ses'.state.receiverChains.length ≤ 1` on Post-Decrypt `ses'.state` -/
-
-/-- Direct `length ≤ 1` corollary on `tryDecryptWithState` from `st0.receiverChains = []`. -/
-theorem tryDecryptWithState_receiverChains_length_le_one_of_nil {PQC : Type}
-    (C : Crypto) (spqr : Spqr (List (BitVec 8)) PQC) (expected : Option (List (BitVec 8)))
-    (msg : SignalMessage) (msgType : MessageType) (coins : BitVec 256)
-    {st0 st' : SessionState (List (BitVec 8))} {pt : List (BitVec 8)}
-    (hrc0 : st0.receiverChains = [])
-    (hdec : Mut.exec (SessionState.tryDecryptWithState C spqr expected msg msgType coins) st0 =
-      (.ok pt, st')) :
-    st'.receiverChains.length ≤ 1 := by
-  have h1 := (tryDecryptWithState_freshBob_chains_bound C spqr expected msg msgType coins hrc0 hdec).1
-  omega
-
-/-- Direct `length ≤ 1` corollary for Arm-4 `genP3S5Model` on `pathAInitState W me k m dk`. -/
-theorem genP3S5Model_postBob_receiverChains_length_le_one
-    (W : PEParams) (me : LocalIdentity) (k : ResponderPreKeySecrets) (m : PreKeyMessageFields)
-    (dk : SignalPqxdh.DRKey) (rem loc : AddrGhost) (msg : SignalMessage) (coins : List (BitVec 8))
-    {pt : List (BitVec 8)} {st' : SessionState (List (BitVec 8))}
-    (hok : genP3S5Model W.C W.Q.K rem loc msg coins (pathAInitState W me k m dk) = (.ok pt, st')) :
-    st'.receiverChains.length ≤ 1 := by
-  have h1 := (sessionCloneDom_postBob_of_genP3S5Model_ok W me k m dk rem loc msg coins hok).2
-  dsimp only at h1
-  omega
 
 /-! ## Serialization Length Bound & 1-Chain `SessionClone` / `SerializePrev1` Bounds -/
 
@@ -1001,173 +885,6 @@ theorem encodeRecordPrev1Mem_length_le_of_postBob {bobPqCap prevEncCap : Nat}
     (encodeRecord_some_length_le_of_rc_le_one hgv hdom hrc hpq56)
     (h10b_lenField_length_le rfl hprev hprev64)
 
-/-- Post-decrypt Arm-4 `T'` bound at `(bobPqCap := 286196, prevEncCap := 2097152)`:
-`(encodeRecordPrev1Mem G ses enc).length ≤ postBobTotalPrev1Cap286K` (`= 2,469,364` B). -/
-theorem encodeRecordPrev1Mem_length_le_postBob286K
-    {G : SessionGhost} {ses : Session (List (BitVec 8))} {enc : List (BitVec 8)}
-    (hgv : SessionGhostValid G ses)
-    (hdom : SessionCloneDom w4PostBobPqCap ses)
-    (hrc : ses.state.receiverChains.length ≤ 1)
-    (hprev : enc.length ≤ 2097152) :
-    (encodeRecordPrev1Mem G ses enc).length ≤ postBobTotalPrev1Cap286K :=
-  encodeRecordPrev1Mem_length_le_of_postBob hgv hdom hrc hprev (by decide) (by decide)
-
-/-- 1-chain `segCloneTightCum` bound (`≤ 2,373,456` B) for `PostBobPrev1Dom` consumers. -/
-theorem segCloneTightCum_fine_rc_le_one {bobPqCap : Nat}
-    {G : SessionGhost} {ses : Session (List (BitVec 8))}
-    (hgv : SessionGhostValid G ses)
-    (hdom : SessionCloneDom bobPqCap ses)
-    (hrc : ses.state.receiverChains.length ≤ 1) :
-    segCloneTightCum fineCostModel G ses.state ≤ w4PostBobCloneTightCum :=
-  LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds.segCloneTightCum_fine_keys_le_of_dom
-    hgv hdom (zip_messageKeys_sum_le_2000_of_rc_le_one hgv hrc)
-
-private theorem h10b_vecCloneLarge_fine_of_le {len : Nat} (h : len ≤ 135167) :
-    vecCloneLarge fineCostModel len = 0 := by
-  unfold vecCloneLarge
-  split
-  · rfl
-  · rw [optLargeCost_fine_eq]
-    exact fineOptLarge_of_le h
-
-private theorem h10b_senderChainLarge_fine_eq_zero {gs : SenderChainGhost} {sc : SenderChain}
-    (hsrk : gs.srk.bytes.length = 33) (hpriv : gs.priv.bytes.length = 32) :
-    chainCloneLarge fineCostModel (senderChainAsProtoGhost gs sc) = 0 := by
-  unfold chainCloneLarge senderChainAsProtoGhost
-  dsimp only
-  rw [h10b_vecCloneLarge_fine_of_le (by omega),
-      h10b_vecCloneLarge_fine_of_le (by omega),
-      optLargeCost_fine_eq 32, fineOptLarge_of_le (by decide)]
-  rfl
-
-private theorem h10b_map_sum_eq_zero {α : Type} (f : α → Nat) :
-    ∀ (l : List α), (∀ x ∈ l, f x = 0) → (l.map f).sum = 0
-  | [], _ => rfl
-  | x :: xs, hf => by
-    simp only [List.map_cons, List.sum_cons, hf x (List.mem_cons_self ..), Nat.zero_add]
-    exact h10b_map_sum_eq_zero f xs (fun y hy => hf y (List.mem_cons_of_mem x hy))
-
-private theorem h10b_recvChainLarge_fine_le {gc : ChainGhost × ReceiverChain}
-    (hsrk : gc.1.srk.bytes.length = 33) (hpriv : gc.1.priv.bytes.length = 0)
-    (hmk : gc.2.messageKeys.length ≤ 2000)
-    (hseeds : ∀ k ∈ gc.2.messageKeys, k.seed.length = 32) :
-    chainCloneLarge fineCostModel gc ≤ w4PostBobOneChainLarge := by
-  unfold chainCloneLarge w4PostBobOneChainLarge
-  have h1 : vecCloneLarge fineCostModel gc.1.srk.bytes.length = 0 :=
-    h10b_vecCloneLarge_fine_of_le (by omega)
-  have h2 : vecCloneLarge fineCostModel gc.1.priv.bytes.length = 0 :=
-    h10b_vecCloneLarge_fine_of_le (by omega)
-  have hmsgs : (if gc.2.messageKeys = [] then 0
-      else optLargeCost fineCostModel (104 * gc.2.messageKeys.length) +
-        (gc.2.messageKeys.map fun mkg => optLargeCost fineCostModel mkg.seed.length).sum) ≤
-      216195 := by
-    split_ifs with hnil
-    · exact Nat.zero_le _
-    · have hbuf : optLargeCost fineCostModel (104 * gc.2.messageKeys.length) ≤ 216195 := by
-        rw [optLargeCost_fine_eq]
-        exact Nat.le_trans
-          (fineOptLarge_mono (Nat.mul_le_mul_left 104 hmk))
-          (by decide)
-      have hseeds0 :
-          (gc.2.messageKeys.map fun mkg => optLargeCost fineCostModel mkg.seed.length).sum = 0 :=
-        h10b_map_sum_eq_zero (fun mkg => optLargeCost fineCostModel mkg.seed.length)
-          gc.2.messageKeys (fun mkg hm => by
-            rw [hseeds mkg hm, optLargeCost_fine_eq 32]
-            exact fineOptLarge_of_le (by decide))
-      rw [hseeds0, Nat.add_zero]
-      exact hbuf
-  rw [h1, h2]
-  cases gc.2.chainKey with
-  | none => simpa only [Nat.zero_add] using hmsgs
-  | some _ =>
-    dsimp only
-    rw [optLargeCost_fine_eq 32, fineOptLarge_of_le (by decide)]
-    simpa only [Nat.zero_add] using hmsgs
-
-/-- 1-chain `segCloneLarge` bound (`≤ 216,195 + fineOptLarge bobPqCap`) for `PostBobPrev1Dom`. -/
-theorem segCloneLarge_fine_rc_le_one {bobPqCap : Nat}
-    {G : SessionGhost} {ses : Session (List (BitVec 8))}
-    (hgv : SessionGhostValid G ses)
-    (hdom : SessionCloneDom bobPqCap ses)
-    (hrc : ses.state.receiverChains.length ≤ 1) :
-    segCloneLarge fineCostModel G ses.state ≤ w4PostBobOneChainLarge + fineOptLarge bobPqCap := by
-  obtain ⟨hloc_len, hrem_len, _, hch_ok, hsend_ok, hpend_len, hkyb_len, halice_eq, _⟩ :=
-    ghostCloneValid_of_sessionGhostValid hgv
-  unfold segCloneLarge
-  have hloc : vecCloneLarge fineCostModel G.localIk.bytes.length = 0 :=
-    h10b_vecCloneLarge_fine_of_le (by omega)
-  have hrem : vecCloneLarge fineCostModel G.remoteIk.bytes.length = 0 :=
-    h10b_vecCloneLarge_fine_of_le (by omega)
-  have hroot : optLargeCost fineCostModel 32 = 0 := by
-    rw [optLargeCost_fine_eq]; exact fineOptLarge_of_le (by decide)
-  have hpend : vecCloneLarge fineCostModel (optTailCloneLen G.pending) = 0 :=
-    h10b_vecCloneLarge_fine_of_le (by omega)
-  have hkyb_le : optTailCloneLen G.kyber ≤ 1569 := by
-    rw [hkyb_len]
-    cases hk : ses.pendingKyberPreKey with
-    | none => simp
-    | some k => exact hdom.kyber_cap k hk
-  have hkyb : vecCloneLarge fineCostModel (optTailCloneLen G.kyber) = 0 :=
-    h10b_vecCloneLarge_fine_of_le (Nat.le_trans hkyb_le (by decide))
-  have halice : vecCloneLarge fineCostModel G.alice.bytes.length = 0 :=
-    h10b_vecCloneLarge_fine_of_le (by rw [halice_eq]; exact Nat.le_trans hdom.alice_len (by decide))
-  have hpq : vecCloneLarge fineCostModel ses.state.pqRatchetState.length ≤
-      fineOptLarge bobPqCap := by
-    unfold vecCloneLarge
-    split
-    · exact Nat.zero_le _
-    · rw [optLargeCost_fine_eq]
-      exact fineOptLarge_mono hdom.pq_len
-  have hchains : (if ses.state.receiverChains = [] then 0
-      else optLargeCost fineCostModel (104 * ses.state.receiverChains.length) +
-        ((G.chains.zip ses.state.receiverChains).map (chainCloneLarge fineCostModel)).sum) ≤
-      w4PostBobOneChainLarge := by
-    split_ifs with hnil
-    · exact Nat.zero_le _
-    · have houter : optLargeCost fineCostModel (104 * ses.state.receiverChains.length) = 0 := by
-        rw [optLargeCost_fine_eq]
-        exact fineOptLarge_of_le (by omega)
-      rw [houter, Nat.zero_add]
-      cases hcs : ses.state.receiverChains with
-      | nil => exact False.elim (hnil hcs)
-      | cons rc tl =>
-        rw [hcs] at hrc
-        have htl : tl = [] := by
-          cases tl with
-          | nil => rfl
-          | cons _ _ => simp at hrc
-        subst htl
-        cases hgs : G.chains with
-        | nil => simp
-        | cons cg gtl =>
-          have hzip : (cg, rc) ∈ G.chains.zip ses.state.receiverChains := by
-            simp [hgs, hcs]
-          obtain ⟨hsrk, hpriv, hmk⟩ := hch_ok (cg, rc) hzip
-          have hsd := hdom.seeds32 rc (by simp [hcs])
-          have h1 := h10b_recvChainLarge_fine_le hsrk hpriv hmk hsd
-          simpa using h1
-  rw [hloc, hrem, hroot, hpend, hkyb, halice]
-  rcases hsend_ok with ⟨h1, h2⟩ | ⟨gs, sc, h1, h2, hsrk, hpriv⟩
-  · rw [h1, h2]
-    simp only [Nat.zero_add, Nat.add_zero]
-    exact Nat.add_le_add hchains hpq
-  · rw [h1, h2]
-    dsimp only
-    rw [h10b_senderChainLarge_fine_eq_zero hsrk hpriv]
-    simp only [Nat.zero_add, Nat.add_zero]
-    exact Nat.add_le_add hchains hpq
-
-/-- 1-chain `serializePrev1TightCum` bound (`≤ 2,660,912` B) for `PostBobPrev1Dom` consumers. -/
-theorem serializePrev1TightCum_fine_rc_le_one {bobPqCap : Nat}
-    {G : SessionGhost} {ses : Session (List (BitVec 8))} {enc : List (BitVec 8)}
-    (hgv : SessionGhostValid G ses)
-    (hdom : SessionCloneDom bobPqCap ses)
-    (hrc : ses.state.receiverChains.length ≤ 1) :
-    serializePrev1TightCum fineCostModel G ses enc ≤ w4PostBobSerializePrev1TightCum :=
-  Nat.le_trans
-    (serializePrev1TightCum_fine_le_of_clone (segCloneTightCum_fine_rc_le_one hgv hdom hrc))
-    (by decide)
-
 /-! ## Arm-4 `PostBobPrev1Dom` Closers -/
 
 /-- Generic `PostBobPrev1Dom` assembly from `rc.length ≤ 1`, `SessionGhostValid`,
@@ -1208,37 +925,5 @@ theorem postBobPrev1Dom_of_arm4
   obtain ⟨hdom, hrc1⟩ := sessionCloneDom_postBob_of_genP3S5Model_ok W me k m dk rem loc msg coins hp
   dsimp only at hdom hrc1
   exact postBobPrev1Dom_of_leaves (by dsimp only; omega) hgv hdom hprev (by decide) (by decide)
-
-/-- Memory-level Arm-4 `PostBobPrev1Dom` closer: extracts `SessionGhostValid G' ses'` from
-`stageP3DispatchOkMidPrev1Placed` at `+0x34dc` and `SessionExtraRel G' ses'`, packaging
-`PostBobPrev1Dom w4PostBobPqCap 2097152 postBobTotalPrev1Cap286K G' ses' enc`. -/
-theorem postBobPrev1Dom_of_arm4_midPrev1Placed [LibsignalPlacement]
-    {A : RustAlloc} {s0 s : State}
-    {coroPtr outPtr initErrsPtr prevCap prevPtr ptCap ptPtr : BitVec 64}
-    {enc pt : List (BitVec 8)} {b_2c0 : BitVec 8}
-    (W : PEParams) (me : LocalIdentity) (k : ResponderPreKeySecrets) (m : PreKeyMessageFields)
-    (dk : SignalPqxdh.DRKey) (rem loc : AddrGhost) (msg : SignalMessage) (coins : List (BitVec 8))
-    {st' : SessionState (List (BitVec 8))} {G' : SessionGhost}
-    {mem : Memory} {R : SepProp}
-    (hok : genP3S5Model W.C W.Q.K rem loc msg coins (pathAInitState W me k m dk) = (.ok pt, st'))
-    (hExtra : SessionExtraRel G'
-      { pathAInitSession W me k m dk with
-        state := st', pendingPreKey := none, pendingKyberPreKey := none })
-    (hm : Arm64.Satisfies
-      (Arm64.sepConj
-        (stageP3DispatchOkMidPrev1Placed A s0 s coroPtr outPtr initErrsPtr prevCap prevPtr
-          ptCap ptPtr enc pt b_2c0 G' st') R) mem)
-    (hprev : enc.length ≤ 2097152) :
-    PostBobPrev1Dom w4PostBobPqCap 2097152 postBobTotalPrev1Cap286K G'
-      { pathAInitSession W me k m dk with
-        state := st', pendingPreKey := none, pendingKyberPreKey := none }
-      enc := by
-  have hgv := sessionGhostValid_of_stageP3DispatchOkMidPrev1Placed hExtra hm
-  have h1 : (genP3S5Model W.C W.Q.K rem loc msg coins (pathAInitState W me k m dk)).1 = .ok pt := by
-    rw [hok]
-  have h2 : (genP3S5Model W.C W.Q.K rem loc msg coins (pathAInitState W me k m dk)).2 = st' := by
-    rw [hok]
-  rw [← h2] at hgv ⊢
-  exact postBobPrev1Dom_of_arm4 W me k m dk rem loc msg coins h1 hgv hprev
 
 end LibsignalBinary.Proofs.PeakBudget.W4PostBobPrev1Derive

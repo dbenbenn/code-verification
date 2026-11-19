@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndGapDh
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndGapDh -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.QueryTracking.SubSpec
 
-@[expose] public section
+public section
 
 /-!
 # Query Bounds and Pure Semantics of the Fiedler–Günther `GapDH` Reduction
@@ -80,12 +80,12 @@ theorem runWithGdhStep_query_inr {ιI : Type}
 
 /-! ## Pure semantics under `gapDhFullImpl` -/
 
-def gapDhDdhImpl (isValidDhTriple : Bytes → Bytes → Bytes → Bool) :
+@[expose] def gapDhDdhImpl (isValidDhTriple : Bytes → Bytes → Bytes → Bool) :
     QueryImpl gapDhOracleSpec ProbComp := fun (X, Y, Z) =>
   pure (isValidDhTriple X Y Z)
 
 /-- Full `GdhSimSpec = PrimBaseSpec + gapDhOracleSpec` oracle implementation used by `gapDhExp`. -/
-def gapDhFullImpl (P : Primitives) (isValidDhTriple : Bytes → Bytes → Bytes → Bool) :
+@[expose] def gapDhFullImpl (P : Primitives) (isValidDhTriple : Bytes → Bytes → Bytes → Bool) :
     QueryImpl GdhSimSpec ProbComp :=
   primBaseImpl P + gapDhDdhImpl isValidDhTriple
 
@@ -169,7 +169,7 @@ theorem simulateQ_gapDhFullImpl_findMGdh {α : Type} (P : Primitives)
     · rfl
 
 /-- Pure deterministic `DDH-eq` corresponding to `ddhEqGdh` under `gapDhFullImpl P ddh`. -/
-def ddhEqPure (ddh : Bytes → Bytes → Bytes → Bool) : FgPoS → FgPoS → Bool
+@[expose] def ddhEqPure (ddh : Bytes → Bytes → Bytes → Bool) : FgPoS → FgPoS → Bool
   | .secret z1 _, .secret z2 _ =>
     z1 == z2
   | .pair _ _ w1 w2, .pair _ _ w3 w4 =>
@@ -189,7 +189,7 @@ theorem simulateQ_gapDhFullImpl_ddhEqGdh (P : Primitives)
   · split_ifs <;> simp
   · rfl
 
-def ddhEqOptPure (ddh : Bytes → Bytes → Bytes → Bool) : Option FgPoS → Option FgPoS → Bool
+@[expose] def ddhEqOptPure (ddh : Bytes → Bytes → Bytes → Bool) : Option FgPoS → Option FgPoS → Bool
   | none, none => true
   | some p1, some p2 => ddhEqPure ddh p1 p2
   | _, _ => false
@@ -200,7 +200,7 @@ theorem simulateQ_gapDhFullImpl_ddhEqOptGdh (P : Primitives)
     simulateQ (gapDhFullImpl P ddh) (ddhEqOptGdh o1 o2) = pure (ddhEqOptPure ddh o1 o2) := by
   cases o1 <;> cases o2 <;> simp [ddhEqOptGdh, ddhEqOptPure]
 
-def fgEntryMatchesPure (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def fgEntryMatchesPure (ddh : Bytes → Bytes → Bytes → Bool)
     (pos1 pos2 pos3 : FgPoS) (pos4? : Option FgPoS) (ss : Bytes) (e : FgPatchEntry) : Bool :=
   if ss != e.ss then
     false
@@ -221,7 +221,7 @@ theorem simulateQ_gapDhFullImpl_fgEntryMatches (P : Primitives)
   · rfl
   · simp
 
-def fgPatchPure (ddh : Bytes → Bytes → Bytes → Bool) (maxLen : ℕ)
+@[expose] def fgPatchPure (ddh : Bytes → Bytes → Bytes → Bool) (maxLen : ℕ)
     (pos1 pos2 pos3 : FgPoS) (pos4? : Option FgPoS) (ss : Bytes)
     (L : List FgPatchEntry) : ProbComp (DRKey × List FgPatchEntry) := do
   match (L.take maxLen).find? (fgEntryMatchesPure ddh pos1 pos2 pos3 pos4? ss) with
@@ -244,7 +244,7 @@ theorem simulateQ_gapDhFullImpl_fgPatch (P : Primitives)
     pure_bind]
   cases (L.take maxLen).find? (fgEntryMatchesPure ddh pos1 pos2 pos3 pos4? ss) <;> simp
 
-def pureExtractCdhFromAdvRoLog (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def pureExtractCdhFromAdvRoLog (ddh : Bytes → Bytes → Bytes → Bool)
     (useDh1 : Bool) (maxLen : ℕ) (U V : Bytes) (advRoLog : List Bytes) : Bytes :=
   let cands := (advRoLog.take maxLen).map (fun sec =>
     if useDh1 then extractDh1 sec else extractDh3 sec)
@@ -267,7 +267,7 @@ theorem simulateQ_gapDhFullImpl_extractCdhFromAdvRoLog (P : Primitives)
     (fun sec => if useDh1 then extractDh1 sec else extractDh3 sec)).find? (fun z =>
       ddh U V z) <;> simp
 
-def lookupSpkSkTake (S : Setup) (P : Primitives)
+@[expose] def lookupSpkSkTake (S : Setup) (P : Primitives)
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (advKeyPows : List (Bytes × Bytes))
     (spkPk : Bytes) : Bytes :=
@@ -279,7 +279,7 @@ def lookupSpkSkTake (S : Setup) (P : Primitives)
     | some (sk, _) => sk
     | none => []
 
-def spkPowsPure (P : Primitives) (L : List ((Nat × Nat) × SpkBundleEntry)) :
+@[expose] def spkPowsPure (P : Primitives) (L : List ((Nat × Nat) × SpkBundleEntry)) :
     List (Bytes × Bytes) :=
   L.map (fun x => (x.2.spkSk, P.pow8 x.2.spkPk))
 
@@ -303,7 +303,7 @@ theorem lookupSpkSkFromPows_map_eq (P : Primitives) (advKeyPows : List (Bytes ×
 
 /-- Candidate `dh1` secret reconstructed from an initiator session `s` using non-target SPK/KOSK
     scalars (`spkBundles` with `bIdx` erased and `advKeyPows`). -/
-def initDh1Cand (S : Setup) (P : Primitives)
+@[expose] def initDh1Cand (S : Setup) (P : Primitives)
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (advKeyPows : List (Bytes × Bytes))
     (s : KeyIndInitiatorEntry S) : Bytes :=
@@ -312,7 +312,7 @@ def initDh1Cand (S : Setup) (P : Primitives)
 
 /-- Candidate `dh1` secret reconstructed from a responder session `r` using non-target SPK
     scalars (`spkBundles` with `bIdx` erased). -/
-def respDh1Cand (S : Setup) (P : Primitives)
+@[expose] def respDh1Cand (S : Setup) (P : Primitives)
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (r : KeyIndRespEntry S) : Bytes :=
   let spkSk := match (spkBundles.take S.N_dh).find? (fun (idx, _) =>
@@ -371,7 +371,7 @@ theorem simulateQ_gapDhFullImpl_respDh1CandGdh (S : Setup) (P : Primitives)
   unfold respDh1CandGdh respDh1Cand
   simp; rfl
 
-def pureExtractCdhFromSimState (S : Setup) (P : Primitives)
+@[expose] def pureExtractCdhFromSimState (S : Setup) (P : Primitives)
     (ddh : Bytes → Bytes → Bytes → Bool)
     (useDh1 : Bool) (maxLen : ℕ) (U V : Bytes) (st : FgKeyIndSimState S) : Bytes :=
   if useDh1 then
@@ -484,7 +484,7 @@ theorem simulateQ_gapDhFullImpl_runWithGdhStep {ιI : Type}
       exact ih p.1 p.2
 
 /-- Pure `QueryImpl` induced by simulating `fgKeyIndStep` under `gapDhFullImpl P ddh`. -/
-noncomputable def fgKeyIndSimImpl (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def fgKeyIndSimImpl (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
     (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (S : Setup) (maxLen : ℕ) (U V : Bytes) :
     QueryImpl (keyIndSpec S) (StateT (FgKeyIndSimState S) ProbComp) :=

@@ -10,9 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
-import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecDecode
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -23,7 +21,7 @@ Proves `subroutine_ok` on `tripleRatchetProgAt` for the fast paths of
 `<alloc::raw_vec::RawVecInner>::try_allocate_in [local#2]` (`0x764a0`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -144,7 +142,7 @@ abbrev vecAppendElementsSym : String :=
 
 /-- Fast-path contract for `<Vec<u8>>::append_elements` (`0x1af54`) when `cap = 192`,
 `len = 128`, and `bs.length = 32` (`192 - 128 = 64 ≥ 32`). -/
-def pqxdhVecAppendElementsFastSpec :
+@[expose] def pqxdhVecAppendElementsFastSpec :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (vecHdr, vecPtr, srcPtr, bs) s =>
     ⌜s.readReg64 .x0 = vecHdr ∧ s.readReg64 .x1 = srcPtr ∧
@@ -157,44 +155,6 @@ def pqxdhVecAppendElementsFastSpec :
     (vecHdr ↦₆₄ 192#64) ∗ ((vecHdr + 8#64) ↦₆₄ vecPtr) ∗ ((vecHdr + 16#64) ↦₆₄ 160#64) ∗
     ((vecPtr + 128#64) ↦ₛ bs) ∗ (srcPtr ↦ₛ bs) ∗
     cells (s0.sp - 48#64) 6
-
-theorem vecAppendElements_fast_ok_trap {b : BitVec 64} {C : Crypto}
-    {absHooks : String → Option (State → State)} :
-    subroutine_ok (trTrapProgAt b C absHooks)
-      ((trTrapProgAt b C absHooks).fnAddr vecAppendElementsSym)
-      pqxdhVecAppendElementsFastSpec := by
-  unfold pqxdhVecAppendElementsFastSpec
-  cells_unfold
-  have hfn : libsignalSessionCode.fnOff vecAppendElementsSym = 0x1af54 :=
-    libsignalSessionCode_fnOff_0x1af54
-  have hmemcpy := framelessMemcpy_ok_at_trap (b := b) (C := C) (abs := absHooks)
-      (name := vecAppendElementsSym) (k := num% (ls_off% "memcpy" - 0x1af54))
-    (by rw [hfn, (ls_stub% "memcpy")])
-  dsimp only [framelessMemcpySpec] at hmemcpy
-  code_fetches CryptoVerification.libsignalSessionCode vecAppendElements b
-    (Rust.withPanics (trTrapExterns C absHooks)) hfn 0x1af54 88
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨vecHdr, vecPtr, srcPtr, bs⟩ := x
-  dsimp only at *
-  subst h_1 h_2
-  wp_steps
-  rw [← h]
-  wp_call hmemcpy (vecPtr + 128#64, s0.readReg64 (.gpr 1#5), bs)
-  simp only [h] at *
-  wp_steps
-  wp_done
-
-theorem vecAppendElements_fast_ok {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {absHooks : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl absHooks)
-      ((tripleRatchetProgAt b C ctl absHooks).fnAddr vecAppendElementsSym)
-      pqxdhVecAppendElementsFastSpec := by
-  simp only [← trTrapProgAt_fnAddr_eq] at *
-  exact subroutine_ok_kit_of_trTrap vecAppendElements_fast_ok_trap
-
-/-! ## General Fast-Path `<alloc::vec::Vec<u8>>::append_elements` -/
 
 abbrev vecAppendElements2Sym : String := vecAppendElementsSym
 
@@ -210,7 +170,7 @@ structure VecAppendFastCall where
 
 /-- General fast-path contract for `<Vec<u8>>::append_elements` (`len + bs.length ≤ cap`,
 `cap < 2^64`). Covers both `bs = []` (`cbz` taken, skipping `memcpy`) and `bs ≠ []` (`memcpy`). -/
-def vecAppendElementsGenFastSpec : Spec VecAppendFastCall where
+@[expose] def vecAppendElementsGenFastSpec : Spec VecAppendFastCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.vecHdr ∧ s.readReg64 .x1 = x.srcPtr ∧
       s.readReg64 .x2 = BitVec.ofNat 64 x.bs.length ∧
@@ -229,68 +189,6 @@ def vecAppendElementsGenFastSpec : Spec VecAppendFastCall where
     ((x.vecPtr + BitVec.ofNat 64 x.len) ↦ₛ x.bs) ∗
     (x.srcPtr ↦ₛ x.bs) ∗
     cells (s0.sp - 48#64) 6
-
-theorem vecAppendElements1_gen_fast_ok_trap {b : BitVec 64} {C : Crypto}
-    {absHooks : String → Option (State → State)} :
-    subroutine_ok (trTrapProgAt b C absHooks)
-      ((trTrapProgAt b C absHooks).fnAddr vecAppendElementsSym)
-      vecAppendElementsGenFastSpec := by
-  unfold vecAppendElementsGenFastSpec
-  cells_unfold
-  have hfn : libsignalSessionCode.fnOff vecAppendElementsSym = 0x1af54 :=
-    libsignalSessionCode_fnOff_0x1af54
-  have hmemcpy := framelessMemcpy_ok_at_trap (b := b) (C := C) (abs := absHooks)
-      (name := vecAppendElementsSym) (k := num% (ls_off% "memcpy" - 0x1af54))
-    (by rw [hfn, (ls_stub% "memcpy")])
-  dsimp only [framelessMemcpySpec] at hmemcpy
-  code_fetches CryptoVerification.libsignalSessionCode vecAppendElements b
-    (Rust.withPanics (trTrapExterns C absHooks)) hfn 0x1af54 88
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨vecHdr, vecPtr, srcPtr, cap, len, bs⟩ := x
-  dsimp only at *
-  have hle : len + bs.length ≤ cap := ‹len + bs.length ≤ cap›
-  have hcap : cap < 2 ^ 64 := ‹cap < 2 ^ 64›
-  have hhi := hi_append_eq_false hle hcap
-  cases bs with
-  | nil =>
-    simp only [List.length_nil, Nat.add_zero, BitVec.ofNat_eq_ofNat,
-      memRegion_zero, pointsToBytes_nil] at *
-    wp_steps
-    wp_done
-  | cons b0 bs' =>
-    have hpos : 0 < (b0 :: bs').length := by simp
-    have hlt : (b0 :: bs').length < 2 ^ 64 := by omega
-    have hcbz := ofNat_beq_zero_eq_false hpos hlt
-    wp_steps
-    wp_call hmemcpy (vecPtr + BitVec.ofNat 64 len, s0.readReg64 (.gpr 1#5), b0 :: bs')
-    wp_steps
-    wp_done
-
-theorem vecAppendElements1_gen_fast_ok {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {absHooks : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl absHooks)
-      ((tripleRatchetProgAt b C ctl absHooks).fnAddr vecAppendElementsSym)
-      vecAppendElementsGenFastSpec := by
-  simp only [← trTrapProgAt_fnAddr_eq] at *
-  exact subroutine_ok_kit_of_trTrap vecAppendElements1_gen_fast_ok_trap
-
-theorem vecAppendElements2_gen_fast_ok_trap {b : BitVec 64} {C : Crypto}
-    {absHooks : String → Option (State → State)} :
-    subroutine_ok (trTrapProgAt b C absHooks)
-      ((trTrapProgAt b C absHooks).fnAddr vecAppendElements2Sym)
-      vecAppendElementsGenFastSpec :=
-  vecAppendElements1_gen_fast_ok_trap
-
-theorem vecAppendElements2_gen_fast_ok {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {absHooks : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl absHooks)
-      ((tripleRatchetProgAt b C ctl absHooks).fnAddr vecAppendElements2Sym)
-      vecAppendElementsGenFastSpec :=
-  vecAppendElements1_gen_fast_ok
-
-/-! ## `<alloc::raw_vec::RawVecInner>::try_allocate_in [local#2]` (`0x764a0`) -/
 
 abbrev tryAllocateIn2Sym : String :=
   "<alloc::raw_vec::RawVecInner>::try_allocate_in [local#2]"
@@ -311,7 +209,7 @@ structure TryAllocateInCall where
   yielding `A.live p' (new * stride) align ∗ memRegion p' (new * stride)`.
 - On `Err` (`tag = 1#64`): writes `1#64` at `out + 0`, `align` at `out + 8`, and `new * stride`
   at `out + 16`, appending `allocFailedEvent` to `sf.trace`. -/
-def tryAllocateInSpec (A : RustAlloc) : Spec TryAllocateInCall where
+@[expose] def tryAllocateInSpec (A : RustAlloc) : Spec TryAllocateInCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.new ∧
       s.readReg64 .x2 = x.align ∧ s.readReg64 .x3 = x.stride ∧
@@ -332,75 +230,5 @@ def tryAllocateInSpec (A : RustAlloc) : Spec TryAllocateInCall where
           A.live p' (x.new.toNat * x.stride.toNat) x.align.toNat ∗
           memRegion p' (x.new.toNat * x.stride.toNat)) ∗
       A.pool ∗ stackAt s0.sp finishGrowStack
-
-theorem tryAllocateIn2_ok_trap {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr tryAllocateIn2Sym)
-      (tryAllocateInSpec A) := by
-  unfold tryAllocateInSpec
-  simp only [memRegion_24, stackAt_tryAllocateIn, sepExists_sepConj_left, sepExists_sepConj_right]
-  cells_unfold
-  have hfn : libsignalSessionCode.fnOff tryAllocateIn2Sym =
-      (ls_off% "<alloc::raw_vec::RawVecInner>::try_allocate_in [local#2]") :=
-    (ls_lemma% fnOff "<alloc::raw_vec::RawVecInner>::try_allocate_in [local#2]")
-  have hshim := noAllocShim_ok_at_trap (b := b) (C := C) (abs := abs)
-    (name := tryAllocateIn2Sym)
-    (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" -
-      (ls_off% "<alloc::raw_vec::RawVecInner>::try_allocate_in [local#2]")))
-    (by rw [hfn, (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")])
-  have halloc := alloc_ok_at_norm_trap (b := b) (C := C) hA
-    (name := tryAllocateIn2Sym)
-    (k := num% (ls_off% "__rustc::__rust_alloc" -
-      (ls_off% "<alloc::raw_vec::RawVecInner>::try_allocate_in [local#2]")))
-    (by rw [hfn, (ls_stub% "__rustc::__rust_alloc")])
-  dsimp only [noAllocShimSpec] at hshim
-  code_fetches CryptoVerification.libsignalSessionCode tryAllocateIn2 b
-    (Rust.withPanics (trTrapExterns C abs)) hfn
-    (ls_off% "<alloc::raw_vec::RawVecInner>::try_allocate_in [local#2]") 188
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨out, new, align, stride⟩ := x
-  dsimp only at *
-  rcases h with ⟨hsz_pos, hpow, hbound⟩
-  have hlt64 : new.toNat * stride.toNat < 2 ^ 64 := by omega
-  have humulh := umulh_stride_eq_zero hlt64
-  have hhi := hi_stride_eq_false hbound
-  have hcbz := beq_mul_stride_zero_eq_false hsz_pos hlt64
-  have hmul : (stride * new).toNat = new.toNat * stride.toNat := mul_stride_toNat hlt64
-  have hlay : LayoutOk (new.toNat * stride.toNat) align.toNat := ⟨hsz_pos, hpow, hbound⟩
-  wp_steps
-  wp_call hshim ()
-  wp_steps
-  wp_call halloc (new.toNat * stride.toNat, align.toNat)
-  wp_steps
-  wp_if hoom
-  · have hoom0 : sf_1.readReg64 Reg.x0 = 0 := hoom
-    have hmul_bv : stride * new = BitVec.ofNat 64 (new.toNat * stride.toNat) :=
-      mul_stride_eq_ofNat hlt64
-    simp only [hoom0, ite_true]
-    wp_steps
-    apply SepWP.instantiate_post_exists 1#64
-    apply SepWP.instantiate_post_exists 0#64
-    simp only [ite_true, hmul_bv]
-    wp_done
-  · have hoom' : sf_1.readReg64 Reg.x0 ≠ 0 := hoom
-    simp only [hoom', ite_false]
-    wp_steps
-    apply SepWP.instantiate_post_exists 0#64
-    apply SepWP.instantiate_post_exists (sf_1.readReg64 Reg.x0)
-    simp only [(by decide : (0#64 : BitVec 64) = 1#64 ↔ False), ite_false]
-    wp_done
-
-theorem tryAllocateIn2_ok {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr tryAllocateIn2Sym)
-      (tryAllocateInSpec A) := by
-  simp only [← trTrapProgAt_fnAddr_eq] at *
-  exact subroutine_ok_kit_of_trTrap (tryAllocateIn2_ok_trap hA)
 
 end CryptoVerification.E2E.Pqxdh.Shared

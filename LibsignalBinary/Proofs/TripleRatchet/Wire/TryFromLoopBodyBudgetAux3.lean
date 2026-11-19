@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBody
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBudget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBody
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBudget -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.Wire.WireCodeSym
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Common.SharedHelpers
 
 /-!
 # Budget-Threaded `<SignalMessage>::try_from` Loop Body: Tags 4, 5 & Dispatch
@@ -23,7 +23,7 @@ Relocatable `[LibsignalPlacement]` CPS proofs for the `bytes::merge` branches (`
 `pq_ratchet` tag 5) and tag dispatch (`+0x16c..+0x1c4`) on Block `85` under `TryFromLoopEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

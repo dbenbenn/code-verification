@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Mac.Defs
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Budget-Threaded `SignalMessage` MAC Specifications
@@ -21,7 +22,7 @@ public import LibsignalBinary.Proofs.TripleRatchet.Mac.Defs
 `SignalMessage::verify_mac_with_addresses`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -78,13 +79,13 @@ abbrev macLsLogOff := @CryptoVerification.LibsignalTripleRatchet.macLsLogOff
 
 /-- Exact allocator event sequence of `<SignalMessage>::serialize_addresses`:
 `[]` when either address fails `serviceIdParse`, and `rustAllocEvents 36 1` when both parse. -/
-def serializeAddressesEvents (parse : UuidParser) (x : SerializeAddressesGhost) :
+@[expose] def serializeAddressesEvents (parse : UuidParser) (x : SerializeAddressesGhost) :
     List AllocEvent :=
   match serializeAddresses (serviceIdParse parse) x.sender x.recipient with
   | none => []
   | some _ => rustAllocEvents 36 1
 
-def SerializeAddressesEnv (parse : UuidParser) (x : SerializeAddressesGhost)
+@[expose] def SerializeAddressesEnv (parse : UuidParser) (x : SerializeAddressesGhost)
     (evs : List AllocEvent) : Prop :=
   evs = serializeAddressesEvents parse x
 
@@ -97,11 +98,11 @@ theorem fitsEnv_serializeAddresses_iff {M : AllocCostModel} {lim : BudgetLimits}
 /-- Exact allocator event sequence of `<SignalMessage>::compute_mac`:
 two `PublicKey::serialize` allocations (`33` bytes, align `1`) each paired with
 `__rust_dealloc(ptr, 33, 1)`. -/
-def computeMacEvents : List AllocEvent :=
+@[expose] def computeMacEvents : List AllocEvent :=
   (publicKeySerializeEvents ++ rustDeallocEvents 33 1) ++
     (publicKeySerializeEvents ++ rustDeallocEvents 33 1)
 
-def ComputeMacEnv (evs : List AllocEvent) : Prop :=
+@[expose] def ComputeMacEnv (evs : List AllocEvent) : Prop :=
   evs = computeMacEvents
 
 theorem fitsEnv_computeMac_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :
@@ -112,7 +113,7 @@ theorem fitsEnv_computeMac_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M
 `computeMacEvents`, followed (when the 8-byte MAC matches, `x.msg.addresses.isSome`, and
 `serializeAddresses (serviceIdParse parse) x.senderAddr x.receiverAddr` is `some _`) by
 `rustAllocEvents 36 1 ++ rustDeallocEvents 36 1`. -/
-def verifyMacWithAddressesEvents (F : ShaCompress) (parse : UuidParser)
+@[expose] def verifyMacWithAddressesEvents (F : ShaCompress) (parse : UuidParser)
     (x : VerifyMacWithAddressesGhost) : List AllocEvent :=
   let macMatches :=
     computeMac F x.senderIk x.receiverIk x.macKey
@@ -124,7 +125,7 @@ def verifyMacWithAddressesEvents (F : ShaCompress) (parse : UuidParser)
   else
     computeMacEvents
 
-def VerifyMacWithAddressesEnv (F : ShaCompress) (parse : UuidParser)
+@[expose] def VerifyMacWithAddressesEnv (F : ShaCompress) (parse : UuidParser)
     (x : VerifyMacWithAddressesGhost) (evs : List AllocEvent) : Prop :=
   evs = verifyMacWithAddressesEvents F parse x
 
@@ -140,7 +141,7 @@ theorem fitsEnv_verifyMacWithAddresses_iff {M : AllocCostModel} {lim : BudgetLim
 (`saStack = serializeAddressesStack` or `serializeAddressesStackX`).
 Under `FitsEnv M lim st (SerializeAddressesEnv parse x)`, `onPanic = ⌜False⌝` and
 `onOom = ⌜False⌝`. -/
-def serializeAddressesSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def serializeAddressesSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (parse : UuidParser) (saStack : Nat) :
     Spec (SerializeAddressesGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -175,17 +176,12 @@ abbrev serializeAddressesSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     Spec (SerializeAddressesGhost × M.σ) :=
   serializeAddressesSpecWithStack M A lim parse serializeAddressesStackX
 
-abbrev serializeAddressesBudgetSpecWithStack := @serializeAddressesSpecWithStack
-abbrev serializeAddressesBudgetSpecAt := @serializeAddressesSpecAt
-abbrev serializeAddressesBudgetSpec := @serializeAddressesSpec
-abbrev serializeAddressesBudgetSpecX := @serializeAddressesSpecX
-
 /-! ## `SignalMessage::compute_mac` budget contracts -/
 
 /-- Stack-parameterized budget contract of `<SignalMessage>::compute_mac`
 (`cmStack = computeMacStack` or `computeMacStackX`).
 Under `FitsEnv M lim st ComputeMacEnv`, `onPanic = ⌜False⌝` and `onOom = ⌜False⌝`. -/
-def computeMacSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def computeMacSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (F : ShaCompress) (cmStack : Nat) :
     Spec (ComputeMacGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -226,18 +222,13 @@ abbrev computeMacSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     Spec (ComputeMacGhost × M.σ) :=
   computeMacSpecWithStack M A lim F computeMacStackX
 
-abbrev computeMacBudgetSpecWithStack := @computeMacSpecWithStack
-abbrev computeMacBudgetSpecAt := @computeMacSpecAt
-abbrev computeMacBudgetSpec := @computeMacSpec
-abbrev computeMacBudgetSpecX := @computeMacSpecX
-
 /-! ## `SignalMessage::verify_mac_with_addresses` placed budget contracts -/
 
 /-- Stack-parameterized relocatable `[LibsignalPlacement]` budget contract of
 `<SignalMessage>::verify_mac_with_addresses` (Block `62`).
 Under `FitsEnv M lim st (VerifyMacWithAddressesEnv F parse x)`, `onPanic = ⌜False⌝` and
 `onOom = ⌜False⌝`. -/
-def verifyMacWithAddressesPlacedSpecWithStack [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def verifyMacWithAddressesPlacedSpecWithStack [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress) (parse : UuidParser)
     (totalStack : Nat) : Spec (VerifyMacWithAddressesGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -280,9 +271,5 @@ abbrev verifyMacWithAddressesPlacedSpecX [LibsignalPlacement] (M : AllocCostMode
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress) (parse : UuidParser) :
     Spec (VerifyMacWithAddressesGhost × M.σ) :=
   verifyMacWithAddressesPlacedSpecWithStack M A lim F parse verifyMacWithAddressesStackX
-
-abbrev verifyMacWithAddressesPlacedBudgetSpecWithStack := @verifyMacWithAddressesPlacedSpecWithStack
-abbrev verifyMacWithAddressesPlacedBudgetSpec := @verifyMacWithAddressesPlacedSpec
-abbrev verifyMacWithAddressesPlacedBudgetSpecX := @verifyMacWithAddressesPlacedSpecX
 
 end LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget

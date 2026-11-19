@@ -23,7 +23,7 @@ Proves that `PolyDecoder.addChunk` preserves `DecWF n` on arbitrary chunks (`st_
 all `16` `SortedSetPt` lanes strictly sorted by `x : GF16`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 

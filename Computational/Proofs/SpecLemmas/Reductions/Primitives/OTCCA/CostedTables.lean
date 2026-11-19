@@ -19,7 +19,7 @@ public import LibsignalBinary.Specifications.CryptoGames.Primitives
 oracle interface, and source game codec for one-time chosen-ciphertext AEAD (`AEADScheme.otccaSpec`).
 -/
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.SpecLemmas.Reductions.Primitives.OTCCA.CostedTables
 
@@ -32,7 +32,7 @@ inductive OtccaOp | enc | dec | saltOf | eqAD | eqM | eqC | eqSalt
 
 /-- Polymorphic AEAD operation table over `S`: `enc`, `dec`, and `saltOf` at cost `k`, and equality
 tests at cost `1`. -/
-@[reducible] def otccaOps {S : Sig} (keyT aeadAdT adT msgT ctT : Ty S)
+@[expose, reducible] def otccaOps {S : Sig} (keyT aeadAdT adT msgT ctT : Ty S)
     [DecidableEq adT.denote] [DecidableEq msgT.denote] [DecidableEq ctT.denote]
     (ae : AEADScheme keyT.denote aeadAdT.denote msgT.denote ctT.denote) (k : ℕ)
     (saltT : Ty S) [DecidableEq saltT.denote]
@@ -65,7 +65,7 @@ tests at cost `1`. -/
 
 /-- Sampler table drawing from the game's AD-dependent ideal ciphertext distribution `ideal` at
 cost `kIdeal`. -/
-@[reducible] def idealSamplers {S : Sig} (adT ctT : Ty S)
+@[expose, reducible] def idealSamplers {S : Sig} (adT ctT : Ty S)
     (ideal : adT.denote → ProbComp ctT.denote) (kIdeal : ℕ) : Samplers S where
   Samp := Unit
   sDom := fun _ => adT
@@ -77,7 +77,7 @@ inductive OtccaTag | enc | dec
 
 /-- Target oracle interface for `unifSpec + AEADScheme.otccaSpec` with unit query cost and
 `idealSamplers`. -/
-def otccaIface {S : Sig} (adT msgT ctT : Ty S) (ideal : adT.denote → ProbComp ctT.denote)
+@[expose] def otccaIface {S : Sig} (adT msgT ctT : Ty S) (ideal : adT.denote → ProbComp ctT.denote)
     (kIdeal : ℕ) :
     Iface S (unifSpec + CryptoGames.AEADScheme.otccaSpec adT.denote msgT.denote ctT.denote) where
   fwdU := fun n =>
@@ -100,7 +100,7 @@ def otccaIface {S : Sig} (adT msgT ctT : Ty S) (ideal : adT.denote → ProbComp 
   smp := idealSamplers adT ctT ideal kIdeal
 
 /-- Source game codec for `AEADScheme.otccaSpec` (`codecCost = 2`). -/
-def otccaCodec {S : Sig} (adT msgT ctT : Ty S) :
+@[expose] def otccaCodec {S : Sig} (adT msgT ctT : Ty S) :
     GameCodec S (CryptoGames.AEADScheme.otccaSpec adT.denote msgT.denote ctT.denote) where
   Q := .sum (.prod adT msgT) (.prod adT ctT)
   R := .sum (.opt ctT) (.opt msgT)

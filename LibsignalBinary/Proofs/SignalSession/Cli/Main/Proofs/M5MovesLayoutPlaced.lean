@@ -9,11 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5IfacePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5MovesLayout
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5IfacePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5MovesLayout -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable Frame Open/Close and `memcpy` Helpers for `main` M5 Moves (Block `617`)
@@ -22,7 +26,7 @@ Relocatable `[LibsignalPlacement]` `locals` open/mid/close bridges (`m5CellsPlac
 `m5LoopCellsPlaced … 0`) and `.keepsFs` `memcpy` call helper on Block `617`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -48,7 +52,7 @@ namespace M5MovesHelpers
 
 /-- Untouched uninitialized stack sub-gaps inside `locals fsp` during M5's payload moves:
 `[0x20, 0x50)`, `[0x60, 0x78)`, and `[0x450, 0x480)`. -/
-def m5LocalsRestPlaced (fsp : BitVec 64) : SepProp :=
+@[expose] def m5LocalsRestPlaced (fsp : BitVec 64) : SepProp :=
   memRegion (fsp + 0x20#64) 0x30 ∗
     memRegion (fsp + 0x60#64) 0x18 ∗
     memRegion (fsp + 0x450#64) 0x30
@@ -159,7 +163,7 @@ theorem m5_locals_open_placed (A : RustAlloc) (fsp inPtr : BitVec 64)
 `[0x2f8, 0x308)` into `memRegion (fsp + 0x1c8) 0x140`, expose `(fsp + 0x310) ↦ₛ storesBytes ws`, and
 pack dead scratch regions (`[0x60, 0x1c8)` and `[0x308, 0x310)`) together with `m5LocalsRestPlaced`
 into `m5PreMemcpy2RestPlaced fsp`. -/
-def m5PreMemcpy2RestPlaced (fsp : BitVec 64) : SepProp :=
+@[expose] def m5PreMemcpy2RestPlaced (fsp : BitVec 64) : SepProp :=
   memRegion (fsp + 0x20#64) 0x30 ∗
     memRegion (fsp + 0x60#64) 0x168 ∗
     memRegion (fsp + 0x308#64) 0x08 ∗

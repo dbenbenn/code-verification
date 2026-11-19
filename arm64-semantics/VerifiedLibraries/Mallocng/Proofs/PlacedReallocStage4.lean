@@ -81,20 +81,18 @@ theorem realloc_oop_budget {oldSz newSz : Nat} {origBs : List (BitVec 8)} {bgt :
   unfold mallocngFreeBudget mallocngAllocBudget mallocngReallocBudget
   simp only [↓reduceIte, Bool.false_eq_true]; congr 1 <;> omega
 
-theorem pack_mallocImpl_env [MallocngMultiPlacement]
+theorem pack_mallocImpl_env [MallocngMultiPlacement] {ro : Bool}
     (γ : GhostName) (tp brkStart : BitVec 64) (bf : MallocngBudget)
     (st' : MallocngSt) (sf : State)
     (htp : sf.tpidrEl0 = tp) (hbrks : sf.brkStart = brkStart)
     (hCount : MallocngCountIvsWF bf (dynamicRootRegions st') st') :
     MallocngRoTablesA maddrs ∗
-    MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+    MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
     MallocngRuntime maddrs tp ⊢
-      MallocngEnv mallocngIface γ maddrs tp brkStart bf (dynamicRootRegions st') sf := by
+      MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bf (dynamicRootRegions st') sf := by
   unfold MallocngEnv
   refine Entails.pure_right ⟨htp, hbrks⟩ ?_
-  rw [mallocngHeap_split_runtime]
-  change _ ⊢ MallocngCoreImpl γ maddrs brkStart sf.brk bf (dynamicRootRegions st') ∗ MallocngRuntime maddrs tp
-  rw [MallocngCoreImpl_eq, ← sepConj_assoc]
+  rw [mallocngModeIface_heap_eq, mallocngModeIface_core_eq, ← sepConj_assoc]
   refine sepConj_mono_left (sepConj_mono_right ?_)
   exact Entails.sepExists_right st' (Entails.pure_right hCount (Entails.refl _))
 
@@ -138,7 +136,7 @@ theorem ule_ite_toNat_eq_min (a b : BitVec 64) :
 
 /-! ## `ENOMEM` Overflow Path -/
 
-theorem realloc_enomem_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkBase 14 b)
+theorem realloc_enomem_ok [MallocngMultiPlacement] {ro : Bool} {b : BitVec 64} (hb : BlkBase 14 b)
     (γ : GhostName) (tp brkStart : BitVec 64) (bgt : MallocngBudget) (ivs0 : List (BitVec 64 × Nat))
     (s0 s : State) {Rest : SepProp} {oom : State → SepProp}
     (hpc : s.pc = b + 0x2b8#64) (hrun : s.status = .Running)
@@ -155,13 +153,13 @@ theorem realloc_enomem_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkBase
        (memRegion (sp1 + 48#64) 8 ∗ memRegion (sp1 + 56#64) 8 ∗
         memRegion (sp1 + 64#64) 8 ∗ memRegion (sp1 + 72#64) 8) ∗
        stackFrameAt sp1 720 ∗
-       MallocngEnv mallocngIface γ maddrs tp brkStart bgt ivs0 s ∗
+       MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bgt ivs0 s ∗
        Rest)
       (fun sf Pf =>
         sf.mem.perm = s0.mem.perm ∧ sf.brk = s0.brk ∧ MallocngProcPreserved s0 sf ∧
         sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.readReg64 .x0 = 0#64 ∧
         (Pf ⊢ stackFrame s0 800 ∗
-          MallocngPostEnv mallocngIface γ maddrs tp brkStart bgt ivs0 s0 sf ∗ Rest)) oom := by
+          MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bgt ivs0 s0 sf ∗ Rest)) oom := by
   intro sp1; have _ := hb
   refine SepWP.weaken_pre (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
     (sepConj_mono_left (mallocngEnv_focus_errno γ maddrs tp brkStart bgt ivs0 s))))) ?_
@@ -173,13 +171,13 @@ theorem realloc_enomem_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkBase
          (memRegion (sp1 + 48#64) 8 ∗ memRegion (sp1 + 56#64) 8 ∗
           memRegion (sp1 + 64#64) 8 ∗ memRegion (sp1 + 72#64) 8) ∗
          stackFrameAt sp1 720 ∗
-         (mallocngIface.MallocngCore γ maddrs brkStart s.brk bgt ivs0 ∗
+         ((mallocngModeIface ro).MallocngCore γ maddrs brkStart s.brk bgt ivs0 ∗
           ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64)) ∗
          Rest))
     (by
       simp only [sepExists_sepConj_left, sepExists_sepConj_right]
       refine Entails.sepExists_mono fun ev => Entails.of_eq ?_
-      generalize (mallocngIface.MallocngCore γ maddrs brkStart s.brk bgt ivs0) = PCore
+      generalize ((mallocngModeIface ro).MallocngCore γ maddrs brkStart s.brk bgt ivs0) = PCore
       generalize (s.tpidrEl0 = tp ∧ s.brkStart = brkStart) = PureE
       ac_rfl) ?_
   apply SepWP.pure_elim; rintro ⟨htp, hbrks⟩
@@ -193,7 +191,7 @@ theorem realloc_enomem_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkBase
        (memRegion (sp1 + 48#64) 8 ∗ memRegion (sp1 + 56#64) 8 ∗
         memRegion (sp1 + 64#64) 8 ∗ memRegion (sp1 + 72#64) 8) ∗
        stackFrameAt sp1 720 ∗
-       (mallocngIface.MallocngCore γ maddrs brkStart s.brk bgt ivs0 ∗
+       ((mallocngModeIface ro).MallocngCore γ maddrs brkStart s.brk bgt ivs0 ∗
         ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64)) ∗
        Rest))
     (ret_pc := b + 0x2bc#64)
@@ -220,7 +218,7 @@ theorem realloc_enomem_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkBase
         (memRegion (sp1 + 48#64) 8 ∗ memRegion (sp1 + 56#64) 8 ∗
          memRegion (sp1 + 64#64) 8 ∗ memRegion (sp1 + 72#64) 8) ∗
         stackFrameAt sp1 720 ∗
-        (mallocngIface.MallocngCore γ maddrs brkStart s.brk bgt ivs0 ∗
+        ((mallocngModeIface ro).MallocngCore γ maddrs brkStart s.brk bgt ivs0 ∗
          ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64)) ∗
         Rest)))
     (by
@@ -270,11 +268,11 @@ theorem realloc_enomem_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkBase
       (memRegion (sp1 + 48#64) 8 ∗ memRegion (sp1 + 56#64) 8 ∗
        memRegion (sp1 + 64#64) 8 ∗ memRegion (sp1 + 72#64) 8) ∗
       stackFrameAt sp1 720 ∗
-      (MallocngPostEnv mallocngIface γ maddrs tp brkStart bgt ivs0 s0 sFin ∗ Rest))
+      (MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bgt ivs0 s0 sFin ∗ Rest))
     (by
       have htp0 : s0.tpidrEl0 = tp := hproc.2.2.1.symm.trans htp
       have hbrks0 : s0.brkStart = brkStart := hproc.2.2.2.1.symm.trans hbrks
-      have hUnf := mallocngEnv_unfocus_errno γ maddrs tp brkStart bgt ivs0 (s0 := s0) (sf := sFin)
+      have hUnf := mallocngEnv_unfocus_errno (ro := ro) γ maddrs tp brkStart bgt ivs0 (s0 := s0) (sf := sFin)
         12#32 hPermF hbrkF (hprocF.2.2.1.trans htp0) (hprocF.2.2.2.1.trans hbrks0)
       rw [← hbrk] at hUnf
       refine Entails.trans (Q := ReallocSavedLo s0 sp1 ∗
@@ -282,10 +280,10 @@ theorem realloc_enomem_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkBase
            memRegion (sp1 + 64#64) 8 ∗ memRegion (sp1 + 72#64) 8) ∗
           stackFrameAt sp1 720 ∗
           ((((tp - 0xa4#64) ↦₃₂ 12#32) ∗
-            (mallocngIface.MallocngCore γ maddrs brkStart s.brk bgt ivs0 ∗
+            ((mallocngModeIface ro).MallocngCore γ maddrs brkStart s.brk bgt ivs0 ∗
              ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64))) ∗ Rest))
         (Entails.of_eq (by
-          generalize (mallocngIface.MallocngCore γ maddrs brkStart s.brk bgt ivs0) = PCore
+          generalize ((mallocngModeIface ro).MallocngCore γ maddrs brkStart s.brk bgt ivs0) = PCore
           ac_rfl)) ?_
       exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left hUnf)))) ?_
   refine SepWP.mono (realloc_epilogue_ok hb hpcF hrunF hspF halF hsp0 hx20F
@@ -293,7 +291,7 @@ theorem realloc_enomem_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkBase
   intro sf Pf _ _ ⟨hmemEq, hbrkEq, hprocE, hspE, hcsE, hx0E, hPf⟩
   refine ⟨by rw [hmemEq]; exact hPermF, hbrkEq.trans hbrkF,
     mallocngProcPreserved_trans hprocF hprocE, hspE, hcsE, hx0E, ?_⟩
-  have hPostCongr := mallocngPostEnv_congr_state (J := mallocngIface) (γ := γ) (A := maddrs)
+  have hPostCongr := mallocngPostEnv_congr_state (J := (mallocngModeIface ro)) (γ := γ) (A := maddrs)
     (tp := tp) (brkStart := brkStart) (bf := bgt) (ivs0 := ivs0) (s0 := s0)
     hmemEq hbrkEq hprocE.2.2.1 hprocE.2.2.2.1
   rw [hPostCongr] at hPf
@@ -301,8 +299,8 @@ theorem realloc_enomem_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkBase
 
 /-! ## Out-of-Place `malloc + memcpy + free` Path -/
 
-private theorem realloc_s4_free_ok [MallocngMultiPlacement]
-    (hFree : LibcFreePlacedStmt) {b : BitVec 64} (hb : BlkBase 14 b)
+private theorem realloc_s4_free_ok [MallocngMultiPlacement] {ro : Bool}
+    (hFree : LibcFreePlacedStmt ro) {b : BitVec 64} (hb : BlkBase 14 b)
     (γ : GhostName) (tp brkStart : BitVec 64) (bgt : MallocngBudget)
     (ivs0 ivs1 : List (BitVec 64 × Nat))
     (s0 s3 : State) {p q : BitVec 64} {oldSz newSz al : Nat} (origBs : List (BitVec 8))
@@ -321,8 +319,8 @@ private theorem realloc_s4_free_ok [MallocngMultiPlacement]
     let bf := mallocngReallocBudget true (some (oldSz, origBs)) newSz bgt
     let keptBs := origBs.take newSz
     SepWP (blkPC_b14.rebase b (fun _ => none)) (s0.readReg64 .x30) s3
-      (MallocngEnv mallocngIface γ maddrs tp brkStart bf1 ivs1 s3 ∗
-       memRegion p oldSz ∗ mallocngIface.Block γ p oldSz ∗
+      (MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bf1 ivs1 s3 ∗
+       memRegion p oldSz ∗ (mallocngModeIface ro).Block γ p oldSz ∗
        stackFrameAt sp1 720 ∗ ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗
        MallocngTightBlock γ q newSz al ∗ (q ↦ₛ keptBs) ∗
        memRegion (q + BitVec.ofNat 64 keptBs.length) (newSz - keptBs.length) ∗ Frame)
@@ -332,7 +330,7 @@ private theorem realloc_s4_free_ok [MallocngMultiPlacement]
             (MallocngTightStepBound (mallocngReallocRes al newSz) bgt.peakCount) s0 sf ∧
           sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.readReg64 .x0 = q' ∧
           (Pf ⊢ stackFrame s0 800 ∗
-            MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf ∗
+            MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf ∗
             ⌜(MallocngTightInitBlock γ al).pureWf q' (newSz, keptBs)⌝ ∗
             (MallocngTightInitBlock γ al).interp q' (newSz, keptBs) ∗ Frame))
       (fun sf => ⌜MallocngTightOomCond msvc newSz bgt.peakCount s0 sf⌝) := by
@@ -344,8 +342,8 @@ private theorem realloc_s4_free_ok [MallocngMultiPlacement]
   have hmem4Eq : s4.mem = s3.mem := by rw [hs4]; rfl
   have hFreeCall := call_placed_libcFree hFree (P := blkPC_b14.rebase b (fun _ => none))
     γ tp brkStart p oldSz bf1 ivs1 (by intro pc; simp) rfl
-  have hEnvS4 : MallocngEnv mallocngIface γ maddrs tp brkStart bf1 ivs1 s3 =
-      MallocngEnv mallocngIface γ maddrs tp brkStart bf1 ivs1 s4 := by rw [hs4]; rfl
+  have hEnvS4 : MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bf1 ivs1 s3 =
+      MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bf1 ivs1 s4 := by rw [hs4]; rfl
   have hSf272 : stackFrameAt sp1 720 = (stackFrame s4 272 ∗ stackFrameAt (sp1 - 272#64) 448) := by
     rw [stackFrameAt_720_split sp1 272 448 (by decide),
         ← stackFrame_eq_stackFrameAt_720 272 (by decide) hsp4Eq]
@@ -363,13 +361,13 @@ private theorem realloc_s4_free_ok [MallocngMultiPlacement]
       have hcl_s4 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl s4.mem := by rwa [hmem4Eq]
       refine Satisfies.mono ?_ hm; rw [hSf272, hEnvS4]
       refine Entails.trans (Q :=
-          (stackFrame s4 272 ∗ MallocngEnv mallocngIface γ maddrs tp brkStart bf1 ivs1 s4 ∗
-            (memRegion p oldSz ∗ mallocngIface.Block γ p oldSz)) ∗
+          (stackFrame s4 272 ∗ MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bf1 ivs1 s4 ∗
+            (memRegion p oldSz ∗ (mallocngModeIface ro).Block γ p oldSz)) ∗
           (stackFrameAt (sp1 - 272#64) 448 ∗ ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗
            MallocngTightBlock γ q newSz al ∗ (q ↦ₛ keptBs) ∗
            memRegion (q + BitVec.ofNat 64 keptBs.length) (newSz - keptBs.length) ∗ Frame) ∗ R')
         (Entails.of_eq (by
-          generalize (MallocngEnv mallocngIface γ maddrs tp brkStart bf1 ivs1 s4) = PEnv4
+          generalize (MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bf1 ivs1 s4) = PEnv4
           ac_rfl)) ?_
       refine sepConj_mono_left ?_; rw [sepConj_comm _ ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl s4.mem⌝]
       exact Entails.pure_right hcl_s4 (Entails.pure_right hx0_s4 (Entails.refl _)))
@@ -389,7 +387,7 @@ private theorem realloc_s4_free_ok [MallocngMultiPlacement]
       ((((s0.sp - 32#64) ↦₆₄ s0.readReg64 .x23) ∗ ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x24) ∗
         ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x25) ∗ ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x26)) ∗
        ReallocSavedLo s0 sp1 ∗ stackFrameAt sp1 720 ∗
-       MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs1 s4 s5 ∗
+       MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs1 s4 s5 ∗
        MallocngTightBlock γ q newSz al ∗ (q ↦ₛ keptBs) ∗
        memRegion (q + BitVec.ofNat 64 keptBs.length) (newSz - keptBs.length) ∗ Frame))
     (by
@@ -398,17 +396,17 @@ private theorem realloc_s4_free_ok [MallocngMultiPlacement]
           ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl s5.mem⌝ ∗
           ((stackFrame s4 272 ∗ stackFrameAt (sp1 - 272#64) 448) ∗
            ReallocSavedHi s0 sp1 ∗ ReallocSavedLo s0 sp1 ∗
-           MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs1 s4 s5 ∗
+           MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs1 s4 s5 ∗
            MallocngTightBlock γ q newSz al ∗ (q ↦ₛ keptBs) ∗
            memRegion (q + BitVec.ofNat 64 keptBs.length) (newSz - keptBs.length) ∗ Frame))
         (Entails.of_eq (by
-          generalize (MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs1 s4 s5) = PPost5
+          generalize (MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs1 s4 s5) = PPost5
           generalize (MallocngProcPreserved s4 s5 ∧ MallocngMappedDelta 0 0 s4.mem s5.mem) = Pure5
           ac_rfl)) ?_
       refine Entails.pure_left fun hP5 => Entails.pure_left fun _hcl5 => Entails.pure_right hP5 ?_
       rw [hSf272.symm, ← reallocSavedHi_eq s0]
       exact Entails.of_eq (by
-        generalize (MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs1 s4 s5) = PPost5
+        generalize (MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs1 s4 s5) = PPost5
         ac_rfl)) ?_
   apply SepWP.pure_elim; rintro ⟨hProc45, hDelta45⟩
   have _ := hpc5; wp_step; wp_step
@@ -440,8 +438,8 @@ private theorem realloc_s4_free_ok [MallocngMultiPlacement]
            by simp [hProc05.2.2.2.1], by simp [hProc05.2.2.2.2.1],
            by simp [hProc05.2.2.2.2.2.1], by simp [hProc05.2.2.2.2.2.2]⟩
   clear hsFin; rw [hmem4Eq] at hDelta45
-  have hPostTrans : MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs1 s4 s5 ⊢
-      MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sFin := by
+  have hPostTrans : MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs1 s4 s5 ⊢
+      MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sFin := by
     unfold MallocngPostEnv
     refine Entails.sepExists_elim fun ivsf => Entails.pure_left fun hNoOrph45 => ?_
     rw [hmem4Eq] at hNoOrph45
@@ -462,7 +460,7 @@ private theorem realloc_s4_free_ok [MallocngMultiPlacement]
       (memRegion (sp1 + 48#64) 8 ∗ memRegion (sp1 + 56#64) 8 ∗
        memRegion (sp1 + 64#64) 8 ∗ memRegion (sp1 + 72#64) 8) ∗
       stackFrameAt sp1 720 ∗
-      (MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sFin ∗
+      (MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sFin ∗
        ⌜(MallocngTightInitBlock γ al).pureWf q (newSz, keptBs)⌝ ∗
        (MallocngTightInitBlock γ al).interp q (newSz, keptBs) ∗ Frame))
     (by
@@ -472,11 +470,11 @@ private theorem realloc_s4_free_ok [MallocngMultiPlacement]
           (memRegion (sp1 + 48#64) 8 ∗ memRegion (sp1 + 56#64) 8 ∗
            memRegion (sp1 + 64#64) 8 ∗ memRegion (sp1 + 72#64) 8) ∗
           stackFrameAt sp1 720 ∗
-          (MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs1 s4 s5 ∗
+          (MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs1 s4 s5 ∗
            ((MallocngTightBlock γ q newSz al ∗ (q ↦ₛ keptBs) ∗
              memRegion (q + BitVec.ofNat 64 keptBs.length) (newSz - keptBs.length)) ∗ Frame)))
         (Entails.of_eq (by
-          generalize (MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs1 s4 s5) = PPost5
+          generalize (MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs1 s4 s5) = PPost5
           ac_rfl)) ?_
       refine sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono hPostTrans ?_)))
       exact Entails.trans (sepConj_mono_left hInitInterp) (Entails.of_eq (by ac_rfl))) ?_
@@ -490,15 +488,15 @@ private theorem realloc_s4_free_ok [MallocngMultiPlacement]
       (MallocngTightStepBound_mono (le_mallocngReallocRes al newSz))
       (mappedDelta_trans_zero_right hDelta03 hDelta45)
   refine ⟨q, ⟨mallocngProcPreserved_trans hProc0F hprocE, hDelta0Sf⟩, hspE, hcsE, hx0E, ?_⟩
-  rw [mallocngPostEnv_congr_state (J := mallocngIface) (γ := γ) (A := maddrs)
+  rw [mallocngPostEnv_congr_state (J := (mallocngModeIface ro)) (γ := γ) (A := maddrs)
     (tp := tp) (brkStart := brkStart) (bf := bf) (ivs0 := ivs0) (s0 := s0)
     hmemEq hbrkEq hprocE.2.2.1 hprocE.2.2.2.1] at hPf
   dsimp only [MallocngTightInitBlock] at hPf ⊢
   exact Entails.trans hPf (Entails.of_eq (by ac_rfl))
 
 set_option maxHeartbeats 400000 in
-theorem realloc_stage4_oop_ok [MallocngMultiPlacement]
-    (hImpl : LibcMallocImplPlacedTightKStmt) (hFree : LibcFreePlacedStmt)
+theorem realloc_stage4_oop_ok [MallocngMultiPlacement] {ro : Bool}
+    (hImpl : LibcMallocImplPlacedTightKStmt ro) (hFree : LibcFreePlacedStmt ro)
     {b : BitVec 64} (hb : BlkBase 14 b)
     (γ : GhostName) (tp brkStart : BitVec 64) (bgt : MallocngBudget) (ivs0 : List (BitVec 64 × Nat))
     (s0 s : State) {p : BitVec 64} {oldSz newSz al : Nat} (origBs : List (BitVec 8))
@@ -516,7 +514,7 @@ theorem realloc_stage4_oop_ok [MallocngMultiPlacement]
     let keptBs := origBs.take newSz
     SepWP (blkPC_b14.rebase b (fun _ => none)) (s0.readReg64 .x30) s
       (ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ stackFrameAt sp1 720 ∗
-       MallocngEnv mallocngIface γ maddrs tp brkStart bgt ivs0 s ∗
+       MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bgt ivs0 s ∗
        MallocngTightBlock γ p oldSz al ∗
        (p ↦ₛ origBs) ∗ memRegion (p + BitVec.ofNat 64 origBs.length) (oldSz - origBs.length) ∗
        Frame)
@@ -526,14 +524,16 @@ theorem realloc_stage4_oop_ok [MallocngMultiPlacement]
             (MallocngTightStepBound (mallocngReallocRes al newSz) bgt.peakCount) s0 sf ∧
           sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.readReg64 .x0 = q ∧
           (Pf ⊢ stackFrame s0 800 ∗
-            MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf ∗
+            MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf ∗
             ⌜(MallocngTightInitBlock γ al).pureWf q (newSz, keptBs)⌝ ∗
             (MallocngTightInitBlock γ al).interp q (newSz, keptBs) ∗
             Frame))
       (fun sf => ⌜MallocngTightOomCond msvc newSz bgt.peakCount s0 sf⌝) := by
   intro sp1 bf keptBs; have _ := hb
+  have hTokEnt : MallocngTightBlock γ p oldSz al ⊢ (mallocngModeIface ro).Block γ p oldSz := by
+    rw [mallocngModeIface_block_eq]; exact mallocngTightBlock_to_token γ p oldSz al
   refine SepWP.weaken_pre (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-    (sepConj_mono_right (sepConj_mono_left (mallocngTightBlock_to_token γ p oldSz al)))))) ?_
+    (sepConj_mono_right (sepConj_mono_left hTokEnt))))) ?_
   have h2_48 : (2 : Nat) ^ 48 < 2 ^ 64 := by omega
   have hMaxLt64 : MallocngMaxAllocSize < 2 ^ 64 := maxAllocSize_lt_pow64
   apply sepWP_pure_of_sat (φ := max oldSz MallocngMinBlockCost ≤ bgt.liveCost) (fun R hm =>
@@ -542,7 +542,7 @@ theorem realloc_stage4_oop_ok [MallocngMultiPlacement]
        (p ↦ₛ origBs) ∗ memRegion (p + BitVec.ofNat 64 origBs.length) (oldSz - origBs.length) ∗
        Frame ∗ R)
       (Satisfies.mono (Entails.of_eq (by
-        generalize (MallocngEnv mallocngIface γ maddrs tp brkStart bgt ivs0 s) = PEnv
+        generalize (MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bgt ivs0 s) = PEnv
         ac_rfl)) hm))
   intro hCostGe
   have hNewBvNat : (BitVec.ofNat 64 newSz).toNat = newSz := by
@@ -558,14 +558,14 @@ theorem realloc_stage4_oop_ok [MallocngMultiPlacement]
   have hmem1Eq : s1.mem = s.mem := by rw [hs1]; rfl
   have hMalloc := call_placed_libcMallocImpl_tightK hImpl (P := blkPC_b14.rebase b (fun _ => none))
     γ tp brkStart bgt ivs0 newSz (by intro pc; simp) rfl
-  have hEnvS1 : MallocngEnv mallocngIface γ maddrs tp brkStart bgt ivs0 s =
-      MallocngEnv mallocngIface γ maddrs tp brkStart bgt ivs0 s1 := by rw [hs1]; rfl
+  have hEnvS1 : MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bgt ivs0 s =
+      MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bgt ivs0 s1 := by rw [hs1]; rfl
   have hSf704 : stackFrameAt sp1 720 = (stackFrame s1 704 ∗ stackFrameAt (sp1 - 704#64) 16) := by
     rw [stackFrameAt_720_split sp1 704 16 (by decide),
         ← stackFrame_eq_stackFrameAt_720 704 (by decide) hsp1Eq]
   refine SepWP.call_subroutine_frame hMalloc (x := ())
     (F := stackFrameAt (sp1 - 704#64) 16 ∗ ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗
-      mallocngIface.Block γ p oldSz ∗ (p ↦ₛ keptBs) ∗
+      (mallocngModeIface ro).Block γ p oldSz ∗ (p ↦ₛ keptBs) ∗
       memRegion (p + BitVec.ofNat 64 keptBs.length) (oldSz - keptBs.length) ∗ Frame)
     (ret_pc := b + 0x268#64)
     (by rw [hs1]; simp only [wp_norm, arm64_norm, hb]; bv_lin)
@@ -578,13 +578,13 @@ theorem realloc_stage4_oop_ok [MallocngMultiPlacement]
       have hcl_s1 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl s1.mem := by rwa [hmem1Eq]
       refine Satisfies.mono ?_ hm; rw [hSf704, hEnvS1]
       refine Entails.trans (Q :=
-          (stackFrame s1 704 ∗ MallocngEnv mallocngIface γ maddrs tp brkStart bgt ivs0 s1) ∗
+          (stackFrame s1 704 ∗ MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bgt ivs0 s1) ∗
           (stackFrameAt (sp1 - 704#64) 16 ∗ ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗
-           mallocngIface.Block γ p oldSz ∗ (p ↦ₛ keptBs) ∗
+           (mallocngModeIface ro).Block γ p oldSz ∗ (p ↦ₛ keptBs) ∗
            memRegion (p + BitVec.ofNat 64 keptBs.length) (oldSz - keptBs.length) ∗ Frame) ∗ R')
         (Entails.of_eq (by
           dsimp only [keptBs]
-          generalize (MallocngEnv mallocngIface γ maddrs tp brkStart bgt ivs0 s1) = PEnv
+          generalize (MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bgt ivs0 s1) = PEnv
           ac_rfl)) ?_
       refine sepConj_mono_left ?_; rw [sepConj_comm _ ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl s1.mem⌝]
       exact Entails.pure_right hcl_s1 (Entails.pure_right hx0_s1 (Entails.refl _)))
@@ -613,17 +613,17 @@ theorem realloc_stage4_oop_ok [MallocngMultiPlacement]
          MallocngBlockWf q newSz ∧ bsNew.length = newSz ∧
          MallocngNoOrphanMappings ivs0 (dynamicRootRegions st') s1.mem s2.mem ∧
          MallocngCountIvsWF bf1 (dynamicRootRegions st') st'⌝ ∗
-        (MallocngEnv mallocngIface γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2 ∗
+        (MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2 ∗
          memRegion q newSz ∗ MallocngTightBlock γ q newSz al ∗
          stackFrameAt sp1 720 ∗ ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗
-         mallocngIface.Block γ p oldSz ∗
+         (mallocngModeIface ro).Block γ p oldSz ∗
          (p ↦ₛ keptBs) ∗ memRegion (p + BitVec.ofNat 64 keptBs.length) (oldSz - keptBs.length) ∗
          Frame))
     (by
       simp only [sepExists_sepConj_left, sepExists_sepConj_right]
       refine Entails.sepExists_mono fun q => Entails.sepExists_mono fun bsNew =>
         Entails.sepExists_mono fun st' => ?_
-      have hPackEnv := pack_mallocImpl_env γ tp brkStart bf1 st' s2
+      have hPackEnv := pack_mallocImpl_env (ro := ro) γ tp brkStart bf1 st' s2
       refine Entails.trans (Q :=
           ⌜MallocngProcPreserved s1 s2 ∧
             MallocngMappedDelta 16 (MallocngTightStepBound newSz bgt.peakCount) s1.mem s2.mem⌝ ∗
@@ -637,16 +637,16 @@ theorem realloc_stage4_oop_ok [MallocngMultiPlacement]
               (g'.isMmapped = true → bsNew = List.replicate newSz 0#8)⌝ ∗
           ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl s2.mem⌝ ∗
           ((MallocngRoTablesA maddrs ∗
-            MallocngCoreStA γ maddrs brkStart s2.brk bf1.liveCost bf1.peakCost st' ∗
+            MallocngCoreStModeA ro γ maddrs brkStart s2.brk bf1.liveCost bf1.peakCost st' ∗
             MallocngRuntime maddrs tp) ∗ (q ↦ₛ bsNew) ∗ MallocngBlockTokenK γ q newSz 0 ∗
            (stackFrame s1 704 ∗ stackFrameAt (sp1 - 704#64) 16) ∗
            ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗
-           mallocngIface.Block γ p oldSz ∗ (p ↦ₛ keptBs) ∗
+           (mallocngModeIface ro).Block γ p oldSz ∗ (p ↦ₛ keptBs) ∗
            memRegion (p + BitVec.ofNat 64 keptBs.length) (oldSz - keptBs.length) ∗ Frame))
         (Entails.of_eq (by
           dsimp only [bf1, keptBs]
           generalize (MallocngRoTablesA maddrs) = PRo
-          generalize (MallocngCoreStA γ maddrs brkStart s2.brk
+          generalize (MallocngCoreStModeA ro γ maddrs brkStart s2.brk
             (mallocngAllocBudget true newSz bgt).liveCost
             (mallocngAllocBudget true newSz bgt).peakCost st') = PSt
           generalize (MallocngRuntime maddrs tp) = PRt
@@ -687,26 +687,26 @@ theorem realloc_stage4_oop_ok [MallocngMultiPlacement]
           (((q ↦ₛ dstBs) ∗ (p ↦ₛ (keptBs ++ midBs))) ∗
            (memRegion (p + BitVec.ofNat 64 copyLen) (oldSz - copyLen) ∗
             memRegion (q + BitVec.ofNat 64 copyLen) (newSz - copyLen) ∗
-            MallocngEnv mallocngIface γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2 ∗
+            MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2 ∗
             MallocngTightBlock γ q newSz al ∗
             stackFrameAt sp1 720 ∗ ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗
-            mallocngIface.Block γ p oldSz ∗ Frame)))
+            (mallocngModeIface ro).Block γ p oldSz ∗ Frame)))
       (by
         have hPrep := copyPrep_entails p q keptBs oldSz newSz copyLen
           hKeptLenLe (Nat.min_le_left _ _) (Nat.min_le_right _ _) (by omega) (by omega)
         refine Entails.trans (Q :=
             ((p ↦ₛ keptBs) ∗ memRegion (p + BitVec.ofNat 64 keptBs.length) (oldSz - keptBs.length) ∗
               memRegion q newSz) ∗
-            (MallocngEnv mallocngIface γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2 ∗
+            (MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2 ∗
              MallocngTightBlock γ q newSz al ∗ stackFrameAt sp1 720 ∗
-             ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ mallocngIface.Block γ p oldSz ∗ Frame))
+             ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ (mallocngModeIface ro).Block γ p oldSz ∗ Frame))
           (Entails.of_eq (by
-            generalize (MallocngEnv mallocngIface γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2) = PEnv2
+            generalize (MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2) = PEnv2
             ac_rfl)) ?_
         refine Entails.trans (sepConj_mono_left hPrep) ?_
         simp only [sepExists_sepConj_left]
         refine Entails.sepExists_mono fun dstBs => Entails.sepExists_mono fun midBs => Entails.of_eq ?_
-        generalize (MallocngEnv mallocngIface γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2) = PEnv2
+        generalize (MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2) = PEnv2
         generalize (dstBs.length = copyLen ∧ (keptBs ++ midBs).length = copyLen) = PurePrep
         ac_rfl) ?_
     apply SepWP.exists_left; intro dstBs; apply SepWP.exists_left; intro midBs
@@ -721,9 +721,9 @@ theorem realloc_stage4_oop_ok [MallocngMultiPlacement]
     refine SepWP.call_subroutine_frame hMemcpy (x := ())
       (F := memRegion (p + BitVec.ofNat 64 copyLen) (oldSz - copyLen) ∗
             memRegion (q + BitVec.ofNat 64 copyLen) (newSz - copyLen) ∗
-            MallocngEnv mallocngIface γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2 ∗
+            MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2 ∗
             MallocngTightBlock γ q newSz al ∗ stackFrameAt sp1 720 ∗
-            ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ mallocngIface.Block γ p oldSz ∗ Frame)
+            ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ (mallocngModeIface ro).Block γ p oldSz ∗ Frame)
       (ret_pc := b + 0x284#64)
       (by rw [hs2c]; simp only [wp_norm, arm64_norm, hb]; bv_lin)
       (by rw [hs2c]; simp [hrun2]) (by rw [hs2c]; simpa [State.spAligned] using hal2)
@@ -747,8 +747,8 @@ theorem realloc_stage4_oop_ok [MallocngMultiPlacement]
     refine SepWP.weaken_pre (P' :=
         ⌜(MallocngProcPreserved s2 s3 ∧ s3.brk = s2.brk ∧ s3.mem.perm = s2.mem.perm) ∧
          VerifiedLibraries.mallocngLib.CodeLoaded mmpl s3.mem⌝ ∗
-        (MallocngEnv mallocngIface γ maddrs tp brkStart bf1 (dynamicRootRegions st') s3 ∗
-         memRegion p oldSz ∗ mallocngIface.Block γ p oldSz ∗
+        (MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bf1 (dynamicRootRegions st') s3 ∗
+         memRegion p oldSz ∗ (mallocngModeIface ro).Block γ p oldSz ∗
          stackFrameAt sp1 720 ∗ ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗
          MallocngTightBlock γ q newSz al ∗ (q ↦ₛ keptBs) ∗
          memRegion (q + BitVec.ofNat 64 keptBs.length) (newSz - keptBs.length) ∗ Frame))
@@ -762,11 +762,11 @@ theorem realloc_stage4_oop_ok [MallocngMultiPlacement]
             (((q ↦ₛ (keptBs ++ midBs)) ∗ (p ↦ₛ (keptBs ++ midBs)) ∗
               memRegion (p + BitVec.ofNat 64 copyLen) (oldSz - copyLen) ∗
               memRegion (q + BitVec.ofNat 64 copyLen) (newSz - copyLen)) ∗
-             MallocngEnv mallocngIface γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2 ∗
+             MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2 ∗
              MallocngTightBlock γ q newSz al ∗ stackFrameAt sp1 720 ∗
-             ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ mallocngIface.Block γ p oldSz ∗ Frame))
+             ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ (mallocngModeIface ro).Block γ p oldSz ∗ Frame))
           (Entails.of_eq (by
-            generalize (MallocngEnv mallocngIface γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2) = PEnv2
+            generalize (MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2) = PEnv2
             generalize (MallocngProcPreserved s2c s3 ∧ s3.brk = s2c.brk ∧
               s3.mem.perm = s2c.mem.perm ∧ s3.readReg64 .x0 = q) = Pure3
             ac_rfl)) ?_
@@ -774,14 +774,14 @@ theorem realloc_stage4_oop_ok [MallocngMultiPlacement]
         have hp3' : MallocngProcPreserved s2 s3 := by rw [hs2c] at hp3; exact hp3
         have hbrk3' : s3.brk = s2.brk := by rw [hs2c] at hbrk3; exact hbrk3
         have hperm3' : s3.mem.perm = s2.mem.perm := by rw [hs2c] at hperm3; exact hperm3
-        have hEnv23 : MallocngEnv mallocngIface γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2 =
-            MallocngEnv mallocngIface γ maddrs tp brkStart bf1 (dynamicRootRegions st') s3 := by
+        have hEnv23 : MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2 =
+            MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bf1 (dynamicRootRegions st') s3 := by
           unfold MallocngEnv; rw [hbrk3', hp3'.2.2.1, hp3'.2.2.2.1]
         rw [hEnv23]
         refine Entails.pure_right ⟨⟨hp3', hbrk3', hperm3'⟩, hcl3⟩ ?_
         refine Entails.trans (sepConj_mono_left hFin) ?_
         exact Entails.of_eq (by
-          generalize (MallocngEnv mallocngIface γ maddrs tp brkStart bf1 (dynamicRootRegions st') s3) = PEnv3
+          generalize (MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bf1 (dynamicRootRegions st') s3) = PEnv3
           ac_rfl)) ?_
     apply SepWP.pure_elim; rintro ⟨⟨hProc23, _hbrk23, hperm23⟩, hcl3⟩
     have hsp3Eq : s3.sp = sp1 := by rw [hs2c] at hsp3; simpa [hsp2Eq] using hsp3

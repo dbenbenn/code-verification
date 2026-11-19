@@ -10,14 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalPublicApiRepr
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import LibsignalBinary.Specifications.AsmConstants
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Exact-Stack Symbolic Execution for `PreKeySignalMessage` Drop Glue
@@ -27,7 +28,7 @@ Decomposes `preKeyMsgAt` (248 bytes) into deallocatable slice capabilities and p
 `32 + extHookStack`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -42,10 +43,6 @@ open CryptoVerification.LibsignalPublicApiRepr
 open CryptoVerification.LibsignalTripleRatchet.Getters
 open CryptoVerification.CodeLayout
 open CryptoVerification.SignalSession.Cli
-
-gen_decodes CryptoVerification.libsignalSessionCode_tree pkmDec
-  [(ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::PreKeySignalMessage>") →
-   (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::PreKeySignalMessage>" + 160)]
 
 attribute [local irreducible] Program.fetch Program.externAt?
 
@@ -123,7 +120,7 @@ private theorem stack_restore_32X (sp fp lr x19 c3 : BitVec 64) :
 
 /-! ## Heap decomposition for `PreKeySignalMessage` -/
 
-def sliceDeallocX (A : RustAlloc) (ptr sz : BitVec 64) : SepProp :=
+@[expose] def sliceDeallocX (A : RustAlloc) (ptr sz : BitVec 64) : SepProp :=
   if (sz == 0#64) = true then emp
   else ⌜0 < sz.toNat ∧ sz.toNat < 2 ^ 63⌝ ∗ A.live ptr sz.toNat 1 ∗ memRegion ptr sz.toNat
 
@@ -133,7 +130,7 @@ private theorem sliceDeallocX_eq (A : RustAlloc) (ptr sz : BitVec 64) :
       else ⌜0 < sz.toNat ∧ sz.toNat < 2 ^ 63⌝ ∗ A.live ptr sz.toNat 1 ∗ memRegion ptr sz.toNat :=
   rfl
 
-def optSliceDeallocX (A : RustAlloc) (ptr sz : BitVec 64) : SepProp :=
+@[expose] def optSliceDeallocX (A : RustAlloc) (ptr sz : BitVec 64) : SepProp :=
   if (ptr == 0#64) = true then emp else sliceDeallocX A ptr sz
 
 private theorem optSliceDeallocX_eq (A : RustAlloc) (ptr sz : BitVec 64) :
@@ -273,11 +270,11 @@ theorem trailer16_entails_memRegion16 (a : BitVec 64) (u1 u2 : BitVec 32) (b : B
       (sepConj_mono_left
         (IsBlock.entails (IsBlock.pointsTo8 (a + 8#64) b) (IsBlock.memRegion (a + 8#64) 1) fun _ _ => trivial)))
 
-def pkmPassiveAt (a : BitVec 64) : SepProp :=
+@[expose] def pkmPassiveAt (a : BitVec 64) : SepProp :=
   memRegion (a + 16#64) 8 ∗ memRegion (a + 56#64) 32 ∗
     memRegion (a + 104#64) 24 ∗ memRegion (a + 160#64) 88
 
-@[reducible]
+@[expose, reducible]
 def pkmHeadersAt (a pqCap pqPtr ctPtr ctLen mserPtr mserLen
     adPtr adLen serPtr serLen kPtr kLen : BitVec 64) : SepProp :=
   (a ↦₆₄ pqCap) ∗ ((a + 8#64) ↦₆₄ pqPtr) ∗
@@ -585,18 +582,6 @@ private def Saved32Preserved (s0 s : State) (fsp : BitVec 64) : Prop :=
   s.trace = s0.trace ∧
   calleeSavedVRegs s = calleeSavedVRegs s0
 
-private theorem seq_cleanX {prog : Program} {img : Obj.Image} {mid target : BitVec 64} {s : State}
-    {P P_mid : SepProp} {Q : State → Prop} {post : State → SepProp → Prop}
-    (hfrozen : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h1 : SepWP prog mid s P (fun sm Pm => (Pm ⊢ P_mid) ∧ Q sm))
-    (h2 : ∀ sm : State, sm.pc = mid → sm.status = .Running →
-      img.FrozenLoaded sm → sm.symtab = img.symtab → Q sm →
-      SepWP prog target sm P_mid post) :
-    SepWP prog target s P post := by
-  refine ProofLib.SepWP.of_sepWP_inv hfrozen hsym (SepWP.mono h1 ?_)
-  intro sm Pm hpc hrun ⟨hent, hQ⟩ hfrozen_m hsym_m
-  exact SepWP.weaken_pre hent (h2 sm hpc hrun hfrozen_m hsym_m hQ)
-
 private theorem align_to_post {prog : Program} {mid : BitVec 64} {s : State}
     {P P_mid : SepProp} {Q : State → Prop}
     (heq : P = P_mid)
@@ -606,225 +591,11 @@ private theorem align_to_post {prog : Program} {mid : BitVec 64} {s : State}
 
 /-! ## Exact-stack contract (`32 + extHookStack`) -/
 
-def dropPreKeyMsgExactSpec (A : RustAlloc) :
+@[expose] def dropPreKeyMsgExactSpec (A : RustAlloc) :
     Spec (BitVec 64 × PreKeyMsgGhost × PreKeySignalMessage) where
   pre := fun (a, g, m) s =>
     ⌜s.readReg64 .x0 = a⌝ ∗ preKeyMsgAt A g a m ∗ A.pool ∗ stackAt s.sp (32 + extHookStack)
   post := fun (a, _, _) s0 sf =>
     ⌜sf.trace = s0.trace⌝ ∗ memRegion a 248 ∗ A.pool ∗ stackAt s0.sp (32 + extHookStack)
-
-set_option maxHeartbeats 1600000 in
-theorem dropPreKeyMsgExact_ok {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)} (hA : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr
-        "core::ptr::drop_glue::<libsignal_protocol::protocol::PreKeySignalMessage>")
-      ((dropPreKeyMsgExactSpec A).inImage img) := by
-  simp only [Spec.inImage, dropPreKeyMsgExactSpec]
-  have hdealloc := hA.dealloc_ok_at
-    "core::ptr::drop_glue::<libsignal_protocol::protocol::PreKeySignalMessage>"
-    (num% (ls_off% "__rustc::__rust_dealloc" -
-      ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::PreKeySignalMessage>"))
-    (by rw [(ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::protocol::PreKeySignalMessage>")];
-        simp only [arm64_norm])
-  simp only [Spec.inImage, rustDeallocExternSpecWithStack, LayoutOk] at hdealloc
-  code_fetches libsignalSessionCode pkmDec img.base
-    (Rust.withPanics ext)
-    (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::protocol::PreKeySignalMessage>")
-    (num% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::PreKeySignalMessage>")) 164
-  dsimp only [tripleRatchetProgAtExt, BitVec.ofNat_eq_ofNat] at hdealloc ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<libsignal_protocol::protocol::PreKeySignalMessage>" = entry
-  examples_hide_fetches
-  wp_init x s0
-  rcases x with ⟨a, g, m⟩
-  dsimp only at *
-  subst h
-  set a0 := s0.readReg64 (Reg.gpr 0#5)
-  set ctLen := BitVec.ofNat 64 m.message.ciphertext.length
-  set mserLen := BitVec.ofNat 64 m.message.serialized.length
-  set serLen := BitVec.ofNat 64 m.serialized.length
-  have hfsp_align : ((s0.sp - 32#64) &&& 15#64 == 0#64) = true :=
-    spAligned_sub s0.sp 32#64 (by assumption) (by decide)
-  nth_rw 1 [stackAt_pkm_split s0.sp]
-  cells_unfold
-  wp_pull_exists
-  rename_i c0 c1 c2 c3
-  refine SepWP.weaken_pre (sepConj_mono_left (preKeyMsgAt_entails_deallocX A g a0 m)) ?_
-  wp_pull_exists
-  rename_i adPtr adLen kPtr kLen
-  let Hdrs : SepProp :=
-    pkmHeadersAt a0 g.msg.pqCap g.msg.pqPtr g.msg.ctPtr ctLen g.msg.serPtr mserLen
-      adPtr adLen g.serPtr serLen kPtr kLen
-  let SavedSlots : SepProp :=
-    ((s0.sp - 32#64) ↦₆₄ s0.readReg64 .fp) ∗ ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .lr) ∗
-      ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x19) ∗ ((s0.sp - 8#64) ↦₆₄ c3)
-  refine seq_cleanX (mid := entry + bv% (16))
-    (P_mid := optSliceDeallocX A kPtr kLen ∗
-      sliceDeallocX A g.msg.ctPtr ctLen ∗
-      sliceDeallocX A g.msg.pqPtr g.msg.pqCap ∗
-      optSliceDeallocX A adPtr adLen ∗
-      sliceDeallocX A g.msg.serPtr mserLen ∗
-      sliceDeallocX A g.serPtr serLen ∗
-      Hdrs ∗ A.pool ∗ stackAt (s0.sp - 32#64) extHookStack ∗ SavedSlots)
-    (Q := fun sm => Saved32Preserved s0 sm (s0.sp - 32#64) ∧
-      sm.readReg64 .x0 = a0 ∧ sm.readReg64 .x19 = a0)
-    h_2 h_1 ?_ ?_
-  · wp_steps
-    refine align_to_post (by dsimp only [Hdrs, SavedSlots, pkmHeadersAt]; ac_rfl) ?_
-    wp_done
-  · intro s0p hpc0 hrun0 hfrozen0 hsym0
-      ⟨⟨hx20_0, hx21_0, hx22_0, hx23_0, hx24_0, hx25_0, hx26_0, hx27_0, hx28_0, hsp_0, htrace_0, hvregs_0⟩, hx0_0, hx19_0⟩
-    refine seq_cleanX (mid := entry + bv% (40))
-      (P_mid := sliceDeallocX A g.msg.ctPtr ctLen ∗
-        sliceDeallocX A g.msg.pqPtr g.msg.pqCap ∗
-        optSliceDeallocX A adPtr adLen ∗
-        sliceDeallocX A g.msg.serPtr mserLen ∗
-        sliceDeallocX A g.serPtr serLen ∗
-        Hdrs ∗ A.pool ∗ stackAt (s0.sp - 32#64) extHookStack ∗ SavedSlots)
-      (Q := fun sm => Saved32Preserved s0 sm (s0.sp - 32#64) ∧ sm.readReg64 .x19 = a0)
-      hfrozen0 hsym0 ?_ ?_
-    · dsimp only [Hdrs, pkmHeadersAt]
-      rw [optSliceDeallocX_eq]
-      by_cases hk1 : (kPtr == 0#64) = true
-      · simp only [hk1, ↓reduceIte, emp_sepConj]
-        wp_steps
-        wp_done
-      · simp only [hk1, Bool.false_eq_true, ↓reduceIte]
-        rw [sliceDeallocX_eq]
-        by_cases hk2 : (kLen == 0#64) = true
-        · simp only [hk2, ↓reduceIte, emp_sepConj]
-          wp_steps
-          wp_done
-        · simp only [hk2, Bool.false_eq_true, ↓reduceIte]
-          rw [sepConj_assoc]
-          refine SepWP.pure_elim ?_
-          rintro ⟨hpos, hlt⟩
-          wp_steps
-          wp_call hdealloc (kPtr, kLen.toNat, 1)
-          refine align_to_post (by rw [hsp_0]; ac_rfl) ?_
-          wp_done
-    · intro s1 hpc1 hrun1 hfrozen1 hsym1
-        ⟨⟨hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hsp_1, htrace_1, hvregs_1⟩, hx19_1⟩
-      refine seq_cleanX (mid := entry + bv% (60))
-        (P_mid := sliceDeallocX A g.msg.pqPtr g.msg.pqCap ∗
-          optSliceDeallocX A adPtr adLen ∗
-          sliceDeallocX A g.msg.serPtr mserLen ∗
-          sliceDeallocX A g.serPtr serLen ∗
-          Hdrs ∗ A.pool ∗ stackAt (s0.sp - 32#64) extHookStack ∗ SavedSlots)
-        (Q := fun sm => Saved32Preserved s0 sm (s0.sp - 32#64) ∧ sm.readReg64 .x19 = a0)
-        hfrozen1 hsym1 ?_ ?_
-      · dsimp only [Hdrs, pkmHeadersAt]
-        rw [sliceDeallocX_eq]
-        by_cases hct : (ctLen == 0#64) = true
-        · simp only [hct, ↓reduceIte, emp_sepConj]
-          wp_steps
-          wp_done
-        · simp only [hct, Bool.false_eq_true, ↓reduceIte]
-          rw [sepConj_assoc]
-          refine SepWP.pure_elim ?_
-          rintro ⟨hpos, hlt⟩
-          wp_steps
-          wp_call hdealloc (g.msg.ctPtr, ctLen.toNat, 1)
-          refine align_to_post (by rw [hsp_1]; ac_rfl) ?_
-          wp_done
-      · intro s2 hpc2 hrun2 hfrozen2 hsym2
-          ⟨⟨hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hx28_2, hsp_2, htrace_2, hvregs_2⟩, hx19_2⟩
-        refine seq_cleanX (mid := entry + bv% (80))
-          (P_mid := optSliceDeallocX A adPtr adLen ∗
-            sliceDeallocX A g.msg.serPtr mserLen ∗
-            sliceDeallocX A g.serPtr serLen ∗
-            Hdrs ∗ A.pool ∗ stackAt (s0.sp - 32#64) extHookStack ∗ SavedSlots)
-          (Q := fun sm => Saved32Preserved s0 sm (s0.sp - 32#64) ∧ sm.readReg64 .x19 = a0)
-          hfrozen2 hsym2 ?_ ?_
-        · dsimp only [Hdrs, pkmHeadersAt]
-          rw [sliceDeallocX_eq]
-          by_cases hpq : (g.msg.pqCap == 0#64) = true
-          · simp only [hpq, ↓reduceIte, emp_sepConj]
-            wp_steps
-            wp_done
-          · simp only [hpq, Bool.false_eq_true, ↓reduceIte]
-            rw [sepConj_assoc]
-            refine SepWP.pure_elim ?_
-            rintro ⟨hpos, hlt⟩
-            wp_steps
-            wp_call hdealloc (g.msg.pqPtr, g.msg.pqCap.toNat, 1)
-            refine align_to_post (by rw [hsp_2]; ac_rfl) ?_
-            wp_done
-        · intro s3 hpc3 hrun3 hfrozen3 hsym3
-            ⟨⟨hx20_3, hx21_3, hx22_3, hx23_3, hx24_3, hx25_3, hx26_3, hx27_3, hx28_3, hsp_3, htrace_3, hvregs_3⟩, hx19_3⟩
-          refine seq_cleanX (mid := entry + bv% (104))
-            (P_mid := sliceDeallocX A g.msg.serPtr mserLen ∗
-              sliceDeallocX A g.serPtr serLen ∗
-              Hdrs ∗ A.pool ∗ stackAt (s0.sp - 32#64) extHookStack ∗ SavedSlots)
-            (Q := fun sm => Saved32Preserved s0 sm (s0.sp - 32#64) ∧ sm.readReg64 .x19 = a0)
-            hfrozen3 hsym3 ?_ ?_
-          · dsimp only [Hdrs, pkmHeadersAt]
-            rw [optSliceDeallocX_eq]
-            by_cases had1 : (adPtr == 0#64) = true
-            · simp only [had1, ↓reduceIte, emp_sepConj]
-              wp_steps
-              wp_done
-            · simp only [had1, Bool.false_eq_true, ↓reduceIte]
-              rw [sliceDeallocX_eq]
-              by_cases had2 : (adLen == 0#64) = true
-              · simp only [had2, ↓reduceIte, emp_sepConj]
-                wp_steps
-                wp_done
-              · simp only [had2, Bool.false_eq_true, ↓reduceIte]
-                rw [sepConj_assoc]
-                refine SepWP.pure_elim ?_
-                rintro ⟨hpos, hlt⟩
-                wp_steps
-                wp_call hdealloc (adPtr, adLen.toNat, 1)
-                refine align_to_post (by rw [hsp_3]; ac_rfl) ?_
-                wp_done
-          · intro s4 hpc4 hrun4 hfrozen4 hsym4
-              ⟨⟨hx20_4, hx21_4, hx22_4, hx23_4, hx24_4, hx25_4, hx26_4, hx27_4, hx28_4, hsp_4, htrace_4, hvregs_4⟩, hx19_4⟩
-            refine seq_cleanX (mid := entry + bv% (124))
-              (P_mid := sliceDeallocX A g.serPtr serLen ∗
-                Hdrs ∗ A.pool ∗ stackAt (s0.sp - 32#64) extHookStack ∗ SavedSlots)
-              (Q := fun sm => Saved32Preserved s0 sm (s0.sp - 32#64) ∧ sm.readReg64 .x19 = a0)
-              hfrozen4 hsym4 ?_ ?_
-            · dsimp only [Hdrs, pkmHeadersAt]
-              rw [sliceDeallocX_eq]
-              by_cases hmser : (mserLen == 0#64) = true
-              · simp only [hmser, ↓reduceIte, emp_sepConj]
-                wp_steps
-                wp_done
-              · simp only [hmser, Bool.false_eq_true, ↓reduceIte]
-                rw [sepConj_assoc]
-                refine SepWP.pure_elim ?_
-                rintro ⟨hpos, hlt⟩
-                wp_steps
-                wp_call hdealloc (g.msg.serPtr, mserLen.toNat, 1)
-                refine align_to_post (by rw [hsp_4]; ac_rfl) ?_
-                wp_done
-            · intro s5 hpc5 hrun5 hfrozen5 hsym5
-                ⟨⟨hx20_5, hx21_5, hx22_5, hx23_5, hx24_5, hx25_5, hx26_5, hx27_5, hx28_5, hsp_5, htrace_5, hvregs_5⟩, hx19_5⟩
-              dsimp only [Hdrs, SavedSlots, pkmHeadersAt]
-              rw [sliceDeallocX_eq]
-              by_cases hser : (serLen == 0#64) = true
-              · simp only [hser, ↓reduceIte, emp_sepConj]
-                wp_steps
-                refine SepWP.weaken_pre
-                  (pkm_empty_epilogue_weaken a0 g.msg.pqCap g.msg.pqPtr g.msg.ctPtr ctLen
-                    g.msg.serPtr mserLen adPtr adLen g.serPtr serLen kPtr kLen
-                    A.pool s0.sp (s0.readReg64 .fp) (s0.readReg64 .lr) (s0.readReg64 .x19) c3) ?_
-                wp_done
-              · simp only [hser, Bool.false_eq_true, ↓reduceIte]
-                rw [sepConj_assoc]
-                refine SepWP.pure_elim ?_
-                rintro ⟨hpos, hlt⟩
-                wp_steps
-                have hpre6 := pkm_tail_dealloc_pre_weaken a0 g.msg.pqCap g.msg.pqPtr g.msg.ctPtr ctLen
-                  g.msg.serPtr mserLen adPtr adLen g.serPtr serLen kPtr kLen
-                  (A.live g.serPtr serLen.toNat 1 ∗ memRegion g.serPtr serLen.toNat) A.pool
-                  s0.sp (s0.readReg64 .fp) (s0.readReg64 .lr) (s0.readReg64 .x19) c3
-                refine SepWP.weaken_pre (Entails.trans (Entails.of_eq (by dsimp only [pkmHeadersAt]; ac_rfl)) hpre6) ?_
-                wp_call hdealloc (g.serPtr, serLen.toNat, 1)
-                refine SepWP.weaken_pre (pkm_tail_dealloc_post_weaken a0 A.pool s0.sp) ?_
-                wp_done
 
 end CryptoVerification.SignalSession.Cli.RunProofs.DropPreKeyMsgHelpers

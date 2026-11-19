@@ -11,10 +11,10 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitEvict
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Root
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitEvict -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Root
 
 /-!
 # Seam Event Envelopes & Precondition Helpers for `RootBudget`
@@ -24,7 +24,7 @@ Defines `TrGhostCaps` capacity profiles, remaining-events seam envelopes (`FromS
 budget-form precondition/panic helpers for `RootBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -71,13 +71,13 @@ structure TrGhostCaps where
   deriving DecidableEq
 
 /-- Extract the allocation-relevant capacity profile of `trG`. -/
-def trGhostCaps (trG : TrGhost) : TrGhostCaps where
+@[expose] def trGhostCaps (trG : TrGhost) : TrGhostCaps where
   chainsCap := trG.ratchet.chainsCap
   mkCaps := trG.ratchet.chains.map ChainGhost.mkCap
   pqCap := trG.pq.cap
 
 /-- Canonical `ChainGhost` representative for a given `mkCap`. -/
-def dummyChainOfMkCap (mkCap : BitVec 64) : ChainGhost where
+@[expose] def dummyChainOfMkCap (mkCap : BitVec 64) : ChainGhost where
   srk := ⟨33#64, 1#64, []⟩
   priv := ⟨0#64, 1#64, []⟩
   mkCap := mkCap
@@ -86,7 +86,7 @@ def dummyChainOfMkCap (mkCap : BitVec 64) : ChainGhost where
   ck := ⟨32#64, 1#64⟩
 
 /-- Canonical `TrGhost` representative realizing capacity profile `c`. -/
-def trGhostOfCaps (c : TrGhostCaps) : TrGhost where
+@[expose] def trGhostOfCaps (c : TrGhostCaps) : TrGhost where
   ratchet :=
     { chainsCap := c.chainsCap
       chainsPtr := 8#64
@@ -99,13 +99,13 @@ theorem caps_trGhostOfCaps (c : TrGhostCaps) : trGhostCaps (trGhostOfCaps c) = c
   simp [trGhostCaps, trGhostOfCaps, List.map_map, Function.comp_def, dummyChainOfMkCap]
 
 /-- Deterministic post-`S1` (`from_session_state`) capacity profile moved from `G`. -/
-def s1InitCaps (G : SessionGhost) : TrGhostCaps where
+@[expose] def s1InitCaps (G : SessionGhost) : TrGhostCaps where
   chainsCap := G.chainsCap
   mkCaps := G.chains.map ChainGhost.mkCap
   pqCap := G.pq.cap
 
 /-- Deterministic post-`S3` (`dh_ratchet_step`) `receiver_chains` buffer capacity. -/
-def dhStepNewChainsCap (chainsCap : BitVec 64) (rcLen : Nat) : BitVec 64 :=
+@[expose] def dhStepNewChainsCap (chainsCap : BitVec 64) (rcLen : Nat) : BitVec 64 :=
   if BitVec.ofNat 64 rcLen = chainsCap then
     BitVec.ofNat 64 (max (2 * chainsCap.toNat) 4)
   else
@@ -113,17 +113,17 @@ def dhStepNewChainsCap (chainsCap : BitVec 64) (rcLen : Nat) : BitVec 64 :=
 
 /-- Deterministic post-`S3` (`dh_ratchet_step`) capacity profile after optional `grow_one`,
     pushing a fresh receiver chain (`mkCap = 0#64`), and evicting beyond `maxReceiverChains`. -/
-def s3AfterCaps (c : TrGhostCaps) (rcLen : Nat) : TrGhostCaps where
+@[expose] def s3AfterCaps (c : TrGhostCaps) (rcLen : Nat) : TrGhostCaps where
   chainsCap := dhStepNewChainsCap c.chainsCap rcLen
   mkCaps := evictList (c.mkCaps ++ [0#64])
   pqCap := c.pqCap
 
 /-- Canonical deterministic `TrGhost` at `S2` entry derived from pre-state `G`. -/
-def s1InitTrGhost (G : SessionGhost) : TrGhost :=
+@[expose] def s1InitTrGhost (G : SessionGhost) : TrGhost :=
   trGhostOfCaps (s1InitCaps G)
 
 /-- Canonical deterministic `TrGhost` at `S4` entry after `S3` (`dh_ratchet_step`). -/
-def s3AfterTrGhost (trG : TrGhost) (rcLen : Nat) : TrGhost :=
+@[expose] def s3AfterTrGhost (trG : TrGhost) (rcLen : Nat) : TrGhost :=
   trGhostOfCaps (s3AfterCaps (trGhostCaps trG) rcLen)
 
 theorem freeOnlyEvs_nil : FreeOnlyEvs [] := by
@@ -188,7 +188,7 @@ structure SeamEnvsInhabited
     trGhostCaps trG₁ = trGhostCaps trG₂ → s3Env x trG₁ tr evs → s3Env x trG₂ tr evs
 
 /-- Pinned `S1` (`LoadRatchet`) seam contract recording `trGhostCaps trG = s1InitCaps x.G`. -/
-def S1SeamPinnedPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S1SeamPinnedPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -209,7 +209,7 @@ def S1SeamPinnedPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Pinned `S3` (`DhStep`) seam contract recording
     `trGhostCaps trG' = s3AfterCaps (trGhostCaps trG) tr.ratchet.receiverChains.length`. -/
-def S3SeamPinnedPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S3SeamPinnedPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -245,7 +245,7 @@ def S3SeamPinnedPlaced [LibsignalPlacement] {M : AllocCostModel}
            (s'.mem ⊨ tryDecryptOnPanic C parse S x s0 s' ∗ R)))
 
 /-- Pinned `decFn` (`X`) `S1` (`LoadRatchet`) seam contract recording `trGhostCaps trG = s1InitCaps x.G`. -/
-def S1SeamPinnedXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S1SeamPinnedXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
@@ -269,7 +269,7 @@ def S1SeamPinnedXPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Pinned `decFn` (`X`) `S3` (`DhStep`) seam contract recording
     `trGhostCaps trG' = s3AfterCaps (trGhostCaps trG) tr.ratchet.receiverChains.length`. -/
-def S3SeamPinnedXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S3SeamPinnedXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
@@ -306,7 +306,7 @@ def S3SeamPinnedXPlaced [LibsignalPlacement] {M : AllocCostModel}
          (s'.status = .Panicked ∧
            (s'.mem ⊨ tryDecryptFnOnPanic C decFn parse S x s0 s' ∗ R)))
 
-def FromS8GenEnv
+@[expose] def FromS8GenEnv
     (aesOpt : MessageKeys → SignalMessage → Option (List (BitVec 8)))
     (s8Env : TryDecryptGhost → MessageKeys → List (BitVec 8) → List AllocEvent → Prop)
     (s9Env : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) →
@@ -318,7 +318,7 @@ def FromS8GenEnv
   | some _ => SeqEnv (s8Env x mks newPqrState) (s9Env x trG tr st1 newPqrState)
   | none => SeqEnv (s8Env x mks newPqrState) FreeOnlyEvs
 
-def FromS7GenEnv (C : Crypto) (parse : UuidParser)
+@[expose] def FromS7GenEnv (C : Crypto) (parse : UuidParser)
     (aesOpt : MessageKeys → SignalMessage → Option (List (BitVec 8)))
     (s7Env : TryDecryptGhost → TripleRatchet (List (BitVec 8)) → MessageKeys →
       List (BitVec 8) → List AllocEvent → Prop)
@@ -335,7 +335,7 @@ def FromS7GenEnv (C : Crypto) (parse : UuidParser)
   else
     SeqEnv (s7Env x tr mks newPqrState) FreeOnlyEvs
 
-def FromS6GenEnv (C : Crypto) (parse : UuidParser)
+@[expose] def FromS6GenEnv (C : Crypto) (parse : UuidParser)
     (aesOpt : MessageKeys → SignalMessage → Option (List (BitVec 8)))
     (s6Env : MessageKeyGenerator → List AllocEvent → Prop)
     (s7Env : TryDecryptGhost → TripleRatchet (List (BitVec 8)) → MessageKeys →
@@ -351,7 +351,7 @@ def FromS6GenEnv (C : Crypto) (parse : UuidParser)
     (FromS7GenEnv C parse aesOpt s7Env s8Env s9Env
       x trG tr st1 (mkg.generateKeys C.F pqrKey) newPqrState)
 
-def FromS5GenEnv (C : Crypto) (parse : UuidParser) (S : SpqrModel)
+@[expose] def FromS5GenEnv (C : Crypto) (parse : UuidParser) (S : SpqrModel)
     (aesOpt : MessageKeys → SignalMessage → Option (List (BitVec 8)))
     (s5Env : TryDecryptGhost → TripleRatchet (List (BitVec 8)) → List AllocEvent → Prop)
     (s6Env : MessageKeyGenerator → List AllocEvent → Prop)
@@ -370,7 +370,7 @@ def FromS5GenEnv (C : Crypto) (parse : UuidParser) (S : SpqrModel)
   | .error _ =>
     SeqEnv (s5Env x tr) FreeOnlyEvs
 
-def FromS4GenEnv (C : Crypto) (parse : UuidParser) (S : SpqrModel)
+@[expose] def FromS4GenEnv (C : Crypto) (parse : UuidParser) (S : SpqrModel)
     (aesOpt : MessageKeys → SignalMessage → Option (List (BitVec 8)))
     (s4Env : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) → ChainKey →
       List AllocEvent → Prop)
@@ -393,7 +393,7 @@ def FromS4GenEnv (C : Crypto) (parse : UuidParser) (S : SpqrModel)
   | (.error _, _) =>
     SeqEnv (s4Env x trG tr ck) FreeOnlyEvs
 
-def FromS3GenEnv (C : Crypto) (parse : UuidParser) (S : SpqrModel)
+@[expose] def FromS3GenEnv (C : Crypto) (parse : UuidParser) (S : SpqrModel)
     (aesOpt : MessageKeys → SignalMessage → Option (List (BitVec 8)))
     (s3Env : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) → List AllocEvent → Prop)
     (s4Env : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) → ChainKey →
@@ -418,7 +418,7 @@ def FromS3GenEnv (C : Crypto) (parse : UuidParser) (S : SpqrModel)
   | (.error _, _) =>
     SeqEnv (s3Env x trG tr) FreeOnlyEvs
 
-def FromS2GenEnv (C : Crypto) (parse : UuidParser) (S : SpqrModel)
+@[expose] def FromS2GenEnv (C : Crypto) (parse : UuidParser) (S : SpqrModel)
     (aesOpt : MessageKeys → SignalMessage → Option (List (BitVec 8)))
     (s3Env : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) → List AllocEvent → Prop)
     (s4Env : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) → ChainKey →
@@ -442,7 +442,7 @@ def FromS2GenEnv (C : Crypto) (parse : UuidParser) (S : SpqrModel)
     FreeOnlyEvs
 
 /-- Full seam-composed allocator event envelope from `S1` (`LoadRatchet`) parameterized by `aesOpt`. -/
-def FromS1GenEnv (C : Crypto) (parse : UuidParser) (S : SpqrModel)
+@[expose] def FromS1GenEnv (C : Crypto) (parse : UuidParser) (S : SpqrModel)
     (aesOpt : MessageKeys → SignalMessage → Option (List (BitVec 8)))
     (s1OkEnv : TryDecryptGhost → List AllocEvent → Prop)
     (s3Env : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) → List AllocEvent → Prop)
@@ -464,11 +464,11 @@ def FromS1GenEnv (C : Crypto) (parse : UuidParser) (S : SpqrModel)
         x (s1InitTrGhost x.G) tr0 st1)
 
 /-- Standard `aesCbcDecrypt` selector for `FromS8GenEnv` .. `FromS1GenEnv`. -/
-def stdAesOpt (C : Crypto) (mks : MessageKeys) (msg : SignalMessage) : Option (List (BitVec 8)) :=
+@[expose] def stdAesOpt (C : Crypto) (mks : MessageKeys) (msg : SignalMessage) : Option (List (BitVec 8)) :=
   aesCbcDecrypt C.D mks.cipherKey mks.iv msg.ciphertext
 
 /-- `decFn` selector for `FromS8GenEnv` .. `FromS1GenEnv`. -/
-def fnAesOpt (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
+@[expose] def fnAesOpt (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
     (mks : MessageKeys) (msg : SignalMessage) : Option (List (BitVec 8)) :=
   decFn msg.ciphertext (keyToBytes32 mks.cipherKey) (blockToBytesLE mks.iv)
 

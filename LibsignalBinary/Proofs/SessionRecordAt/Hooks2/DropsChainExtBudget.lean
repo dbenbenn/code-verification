@@ -9,13 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DropsChainExt
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DropsMessageKeyExtBudget
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DropsChainExt
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DropsMessageKeyExtBudget
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.Common
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `drop_glue::<Vec<Chain>>` (Block `2`)
@@ -25,7 +33,7 @@ Verifies relocatable `core::ptr::drop_glue::<Vec<session_structure::Chain>>` (Bl
 `__rust_dealloc`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

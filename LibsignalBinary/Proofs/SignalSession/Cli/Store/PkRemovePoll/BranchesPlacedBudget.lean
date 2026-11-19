@@ -9,13 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.BranchesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.EpiloguePlacedBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.BranchesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.EpiloguePlacedBudget
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.Layout -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.LayoutPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.EpiloguePlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
 
 /-!
 # Budget-Threaded Relocatable Branch Proofs for `remove_pre_key::{closure#0}`
@@ -24,7 +34,7 @@ Budget-threaded `Err`, `Ok([])`, and `Ok(b0 :: bsRest)` branch proofs for Block 
 (`lsProg_575 H`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -130,7 +140,7 @@ theorem finish_common_reassemble_placed {M : AllocCostModel} (A : RustCliAllocBu
   refine Entails.trans (sepConj_mono_right hrstk) ?_
   exact Entails.of_eq (by sep_ac_rfl)
 
-def postGetCommon_placed {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def postGetCommon_placed {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s0 sm2 : State) (x : PkPollGhost)
     (decStk getStk putStk stk : Nat)
     (nameCap namePtr : BitVec 64) (nameBs : List (BitVec 8))

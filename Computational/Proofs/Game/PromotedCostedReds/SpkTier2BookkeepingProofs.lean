@@ -741,16 +741,4 @@ theorem hop2TblRel_cons {Pt : Type} [DecidableEq Pt] {encT : Pt → PublicKey}
     simp only [hbeq]
     exact hrel t Q
 
-theorem hop2TblRel_cons_of_dec {Pt : Type} [DecidableEq Pt]
-    {encT : Pt → PublicKey} {decT : PublicKey → Option Pt}
-    (hdec : ∀ T, decT (encT T) = some T)
-    {L : List ((ℕ × Pt) × BitVec 256)} {tbl : ℕ → ℕ → Option (BitVec 256)}
-    (hrel : Hop2TblRel encT L tbl) (t0 : ℕ) (Q0 : Pt) (v : BitVec 256) :
-    Hop2TblRel encT (((t0, Q0), v) :: L) (hop2TblSet encT tbl t0 Q0 v) := by
-  have hinj : Function.Injective encT := fun a b h => by
-    have ha := hdec a
-    rw [h, hdec b] at ha
-    exact (Option.some.inj ha).symm
-  exact hop2TblRel_cons hinj hrel t0 Q0 v
-
 end Computational.Proofs.Game.PromotedCostedReds.SpkTier2BookkeepingProofs

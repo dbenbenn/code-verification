@@ -9,10 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhStepsB
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhHelpersPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhStepsB
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhHelpersPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Collapse
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.CollapsePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DefsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.EarlyExit
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Model
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymE
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Stage 3 PQXDH Step B1 (`[LibsignalPlacement]`, `+0x0858 → +0x0968`: `DH2`)
@@ -22,7 +40,7 @@ Advances from `+0x0858` (`F_X25519 ++ dh1` at `secretsPtr`, `len = 64`) across
 and `(fsp + 0x9a0) ↦ₛ ekASk` materialized on the stack.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -31,8 +49,6 @@ set_option linter.unusedTactic false
 set_option linter.unreachableTactic false
 set_option linter.unusedVariables false
 set_option maxRecDepth 200000
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage3Lemmas
 

@@ -9,8 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyStatements
-public import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyFinal
+import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyStatements
+import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyFinal
+public import Computational.Specifications.Pqxdh.Game
+public import Computational.Specifications.Pqxdh.Security.Auth.Headline
+public import Computational.Specifications.Pqxdh.Security.HeadlineDelta
+import Computational.Proofs.SpecLemmas.Pqxdh.Security.HeadlineDelta
 
 /-!
 # One-Key PQXDH Headline Security under Imperfect KEM Correctness
@@ -20,7 +24,7 @@ indistinguishability (`pqxdh_key_indδ`), and one-key first-message authenticati
 (`pqxdh_auth1KeySecureδ`, DEV-C5) to prove `PqxdhCorrectAndSecureδ`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

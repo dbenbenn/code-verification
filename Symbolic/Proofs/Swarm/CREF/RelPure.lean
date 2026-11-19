@@ -9,13 +9,15 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots
+public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.CREF.Grow.Defs
-public import Symbolic.Proofs.Swarm.CREF.TR.SlotsZ6Pure
-public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix
+public import Symbolic.Proofs.Swarm.CREF.TR.SlotsZ6Pure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import VCVio.Prelude.Core
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR -- proof-setup: allow-public-import
+public import Symbolic.Specifications.Concrete.SessionRecordDecidable
 
 /-!
 # Pure Composed Refinement Relation Predicates
@@ -24,7 +26,7 @@ Defines `Clean` accessors, `pqStateOf`, `COooAll`, `CBook`, `BobRecordBaseKeyInA
 and `CHistRole`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,17 +59,16 @@ theorem _root_.DY.Libsignal.Composed.Refinement.Clean.path
 
 end CleanAccessors
 
-open Classical in
-/-- Extracts the SPQR state bytes from raw record bytes `b`, well-defined on `recordBytes r` by
-`TR.recordBytes_injective`. -/
-noncomputable def pqStateOf (b : HwBytes) : HwBytes :=
-  if h : ∃ r : RecordRec, b = recordBytes r then
-    (Classical.choose h).current.pqRatchetState
-  else
-    []
+/-- Extracts the SPQR state bytes from raw record bytes `b` via `DY.Libsignal.Rust.decodeRecordBytes?`
+(`[]` outside the image of `recordBytes`; see `Symbolic.Swarm.CREF.pqStateOf_eq_classical` in
+`Symbolic/Proofs/Swarm/CREF/OooPure.lean` for pointwise agreement with the `Classical.choose` definition). -/
+@[expose] def pqStateOf (b : HwBytes) : HwBytes :=
+  match DY.Libsignal.Rust.decodeRecordBytes? b with
+  | some rr => rr.current.pqRatchetState
+  | none => []
 
 /-- Every held record in `records` satisfies `SpqrOooBounded (pqStateOf rec)`. -/
-def COooAll (records : Participant → Option HwBytes) : Prop :=
+@[expose] def COooAll (records : Participant → Option HwBytes) : Prop :=
   ∀ p rec, records p = some rec → SpqrOooBounded (pqStateOf rec)
 
 theorem cOOO_step_update {records : Participant → Option HwBytes} {caller : Participant}
@@ -86,7 +87,7 @@ theorem cOOO_step_update {records : Participant → Option HwBytes} {caller : Pa
 /-- Trace bookkeeping against one explanation: `sent` equals `TR.sentBodies acc` and bounds every
 stored sender index (`DEV-TR-NS`), and `accepted` matches `ecKey` applied to `gamma` of the run's
 `BobDone` base keys. -/
-def CBook (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def CBook (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ms : List Move) (sent accepted : List HwBytes) (acc : List MachineEvent) : Prop :=
   sent = TR.sentBodies acc ∧
   TR.TRNsBound r ms sent ∧
@@ -94,13 +95,13 @@ def CBook (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : Opaqu
   (∀ ek ∈ bobDoneBaseKeys (runTraceMoves r ms), ecKey (gamma interpretation S g ek) ∈ accepted)
 
 /-- Bob's held record has its `aliceBaseKey` in `accepted`. -/
-def BobRecordBaseKeyInAccepted (r : ProtocolSetup) (records : Participant → Option HwBytes)
+@[expose] def BobRecordBaseKeyInAccepted (r : ProtocolSetup) (records : Participant → Option HwBytes)
     (accepted : List HwBytes) : Prop :=
   ∀ rr, records r.bob = some (recordBytes rr) → rr.current.aliceBaseKey ∈ accepted
 
 /-- Receiver-chain history invariants on `runTraceMoves r ms`: 32-byte non-low-order ratchet keys,
 byte-fresh skipped-key installs, and `Nodup` receiver keys. -/
-def CHist (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def CHist (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ms : List Move) : Prop :=
   TR.RecvRkLensAll interpretation S g r ms ∧
   TR.RecvRkNotLowAll interpretation S g r ms ∧
@@ -108,7 +109,7 @@ def CHist (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : Opaqu
   TR.G1.RecvHistInvTR interpretation S g r ms
 
 /-- Receiver-chain history invariants together with `RoleSnapshots`. -/
-def CHistRole (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def CHistRole (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ms : List Move) : Prop :=
   CHist interpretation r S g ms ∧ RoleSnapshots r (runTraceMoves r ms)
 

@@ -26,7 +26,7 @@ Proves `closeByStateC_deliver_evictedMismatch_inWin`, closing an evicted-epoch `
 salt mismatch when `inReceiveOnlyEpoch` holds via the evicted stopping condition `evictStopsC`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

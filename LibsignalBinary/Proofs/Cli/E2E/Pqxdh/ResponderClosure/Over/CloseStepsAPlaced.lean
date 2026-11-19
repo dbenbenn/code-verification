@@ -9,12 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1Defs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1SaveId
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1Remove
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1Defs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1SaveId
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1Remove
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.HeapDefs
+public import ProofLib.FsTrace
+public import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Trap.SameAccount
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34Defs
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 
 /-!
 # Placed Stage P4 Over-Path Entry Assertions, `save_identity`, and `remove_pre_key`
@@ -24,11 +32,9 @@ over-path Stage P4 (`previous_sessions = [enc]`), together with re-exports of th
 `save_identity` and `remove_pre_key` substage proofs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 
@@ -53,7 +59,7 @@ open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.OverP34
 
 /-- Shared spatial resources preserved across Stage P4 (`+0x34dc → s0.readReg64 .x30`) under
 `[LibsignalPlacement]`. -/
-def stageP4Prev1SharedPlaced [LibsignalPlacement] {A : RustAlloc} (b : BitVec 64)
+@[expose] def stageP4Prev1SharedPlaced [LibsignalPlacement] {A : RustAlloc} (b : BitVec 64)
     (kit : SessionStoreSpec A b) (ikit : IdentityStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
     (s0 s : State)
@@ -100,7 +106,7 @@ def stageP4Prev1SharedPlaced [LibsignalPlacement] {A : RustAlloc} (b : BitVec 64
 
 /-- Parameterized 4-kit Stage P4 entry assertion at `+0x34dc` with one previous session under
 `[LibsignalPlacement]`. -/
-def stageP4Prev1RawPrePlaced [LibsignalPlacement] {A : RustAlloc} (b : BitVec 64)
+@[expose] def stageP4Prev1RawPrePlaced [LibsignalPlacement] {A : RustAlloc} (b : BitVec 64)
     (kit : SessionStoreSpec A b) (ikit : IdentityStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
     (s0 s : State)
@@ -133,4 +139,3 @@ def stageP4Prev1RawPrePlaced [LibsignalPlacement] {A : RustAlloc} (b : BitVec 64
   kit.storeAt sessionStorePtr sst0
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
-end

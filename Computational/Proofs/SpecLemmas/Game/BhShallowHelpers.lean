@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
+public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables -- proof-setup: allow-public-import
 public import Computational.Specifications.Game.StatementBinaryHarnessCore
-public import Computational.Proofs.SpecLemmas.Game.StatementBinaryHarnessCore
-public import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables
+public import Computational.Proofs.SpecLemmas.Game.StatementBinaryHarnessCore -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables -- proof-setup: allow-public-import
 public import Computational.Specifications.Reductions.Pqxdh.StatementPqReds
 
 /-!
@@ -24,7 +24,7 @@ Defines shallow `OracleComp` reference runners (`L_bh`, `bhKindRedWith`, and
 sampler tables.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,13 +46,13 @@ abbrev BHTargetQuery (S : SignalPqxdh.Setup) (ℓ : ℕ) (PQC : Type) : Type :=
 abbrev BHTargetResp (ℓ : ℕ) : Type :=
   (SignalPqxdh.KeyIndResponse ⊕ Option ℕ) ⊕ BHE2ESmResp ℓ
 
-def bhTargetQenc {S : SignalPqxdh.Setup} {ℓ : ℕ} {PQC : Type} :
+@[expose] def bhTargetQenc {S : SignalPqxdh.Setup} {ℓ : ℕ} {PQC : Type} :
     (bhTargetGameSpec S ℓ PQC).Domain → BHTargetQuery S ℓ PQC
   | .inl (.inl kq) => .inl (.inl kq)
   | .inl (.inr (.startDR sid)) => .inl (.inr sid)
   | .inr ⟨i, sq⟩ => .inr (i, sq)
 
-def bhTargetRdec {S : SignalPqxdh.Setup} {ℓ : ℕ} {PQC : Type}
+@[expose] def bhTargetRdec {S : SignalPqxdh.Setup} {ℓ : ℕ} {PQC : Type}
     (t : (bhTargetGameSpec S ℓ PQC).Domain) (r : BHTargetResp ℓ) :
     (bhTargetGameSpec S ℓ PQC).Range t :=
   match t, r with
@@ -69,11 +69,11 @@ def bhTargetDefaultResp {S : SignalPqxdh.Setup} {ℓ : ℕ} {PQC : Type} :
   | .inl (.inr _) => .inl (.inr none)
   | .inr _ => .inr (none, none, none)
 
-def bhFwdU {κ : Type} {G : OracleSpec κ} (n : unifSpec.Domain) :
+@[expose] def bhFwdU {κ : Type} {G : OracleSpec κ} (n : unifSpec.Domain) :
     OracleComp (unifSpec + G) (unifSpec.Range n) :=
   query (spec := unifSpec + G) (.inl n)
 
-def bhLiftP {κ α : Type} {G : OracleSpec κ} (p : ProbComp α) :
+@[expose] def bhLiftP {κ α : Type} {G : OracleSpec κ} (p : ProbComp α) :
     OracleComp (unifSpec + G) α :=
   simulateQ (bhFwdU (G := G)) p
 
@@ -115,7 +115,7 @@ structure BhShallowRed {κ ι : Type} (G : OracleSpec κ) (T : OracleSpec ι)
   impl : QueryImpl (unifSpec + G) (StateT St (OracleComp T))
   finish : St → AOut → OracleComp T Out
 
-def BhShallowRed.eval {κ ι : Type} {G : OracleSpec κ} {T : OracleSpec ι}
+@[expose] def BhShallowRed.eval {κ ι : Type} {G : OracleSpec κ} {T : OracleSpec ι}
     {In Out AIn AOut St : Type}
     (R : BhShallowRed G T In Out AIn AOut St)
     (A : AIn → OracleComp (unifSpec + G) AOut) (x : In) : OracleComp T Out := do
@@ -123,7 +123,7 @@ def BhShallowRed.eval {κ ι : Type} {G : OracleSpec κ} {T : OracleSpec ι}
   let (b, s') ← (simulateQ R.impl (A a)).run s
   R.finish s' b
 
-def bhShallowImplOfHandle {κ ι Q R St : Type} {G : OracleSpec κ} {T : OracleSpec ι}
+@[expose] def bhShallowImplOfHandle {κ ι Q R St : Type} {G : OracleSpec κ} {T : OracleSpec ι}
     (qenc : G.Domain → Q) (rdec : (t : G.Domain) → R → G.Range t)
     (handle : St → Q → OracleComp (unifSpec + T) (R × St)) :
     QueryImpl (unifSpec + G) (StateT St (OracleComp (unifSpec + T)))
@@ -135,7 +135,7 @@ def bhShallowImplOfHandle {κ ι Q R St : Type} {G : OracleSpec κ} {T : OracleS
     return (rdec t r, s')
 
 /-- Runs an adversary computation for at most `fuel` game queries using shallow handler `h`. -/
-def bhShallowRunFuel {κ ι Q R St α : Type} {G : OracleSpec κ} {T : OracleSpec ι}
+@[expose] def bhShallowRunFuel {κ ι Q R St α : Type} {G : OracleSpec κ} {T : OracleSpec ι}
     (qenc : G.Domain → Q) (rdec : (t : G.Domain) → R → G.Range t)
     (h : St → Q → OracleComp (unifSpec + T) (R × St))
     (dflt : α) (oa : OracleComp (unifSpec + G) α) :
@@ -163,7 +163,7 @@ structure BhShallowTwoStageRed {κ ι : Type} (G : OracleSpec κ) (T : OracleSpe
   handlePost : σ → Q → OracleComp (unifSpec + T) (R × σ)
   finish : σ → aOut → rIn2 → OracleComp (unifSpec + T) out
 
-def BhShallowTwoStageRed.run1 {κ ι Q R rIn aIn aOut ch rIn2 out σ π : Type}
+@[expose] def BhShallowTwoStageRed.run1 {κ ι Q R rIn aIn aOut ch rIn2 out σ π : Type}
     {G : OracleSpec κ} {T : OracleSpec ι}
     (Red : BhShallowTwoStageRed G T Q R rIn aIn aOut ch rIn2 out σ π)
     {α : Type} (dflt : α) (oa : OracleComp (unifSpec + G) α) :
@@ -181,7 +181,7 @@ def BhShallowTwoStageRed.run1 {κ ι Q R rIn aIn aOut ch rIn2 out σ π : Type}
           | .inr (c, p, s') => pure (.paused t c p s' k))
     oa
 
-def BhShallowTwoStageRed.eval1 {κ ι Q R rIn aIn aOut ch rIn2 out σ π : Type}
+@[expose] def BhShallowTwoStageRed.eval1 {κ ι Q R rIn aIn aOut ch rIn2 out σ π : Type}
     {G : OracleSpec κ} {T : OracleSpec ι}
     (Red : BhShallowTwoStageRed G T Q R rIn aIn aOut ch rIn2 out σ π)
     (A : aIn → OracleComp (unifSpec + G) aOut) (x : rIn) (fuel : ℕ) (dflt : aOut) :
@@ -192,7 +192,7 @@ def BhShallowTwoStageRed.eval1 {κ ι Q R rIn aIn aOut ch rIn2 out σ π : Type}
   | .done b s' => do let c ← Red.chDone s' b; pure (c, m)
   | .paused _ c _ _ _ => pure (c, m)
 
-def BhShallowTwoStageRed.eval2 {κ ι Q R rIn aIn aOut ch rIn2 out σ π : Type}
+@[expose] def BhShallowTwoStageRed.eval2 {κ ι Q R rIn aIn aOut ch rIn2 out σ π : Type}
     {G : OracleSpec κ} {T : OracleSpec ι}
     (Red : BhShallowTwoStageRed G T Q R rIn aIn aOut ch rIn2 out σ π)
     (m : ReductionDsl.Mid G aOut π σ ch) (y : rIn2) (fuel : ℕ) (dflt : aOut) :
@@ -286,7 +286,7 @@ def BhShallowTwoStageRed.eval2 {κ ι Q R rIn aIn aOut ch rIn2 out σ π : Type}
 
 /-! ## Shallow E2E driver transitions and `KeyInd` reduction -/
 
-def bhShallowStepStartU {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhShallowStepStartU {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (C : Crypto) (K : LibsignalSpqrV1.MlKem)
     (σ : BHE2EDrvState S ℓ) (sid : SignalPqxdh.SessionId S) (kU : KeyU) :
     Option ℕ × BHE2EDrvState S ℓ :=
@@ -306,7 +306,7 @@ def bhShallowStepStartU {S : SignalPqxdh.Setup} {ℓ : ℕ}
      { σ with insts := σ.insts ++ [inst], instMeta := σ.instMeta ++ [im] })
 
 /-- Pre-query admissibility and PreKey header-stripping check for external session slot `k`. -/
-def bhShallowCheckExtSm {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhShallowCheckExtSm {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (k : ℕ) (σ : BHE2EDrvState S ℓ) (i : ℕ)
     (sq : (SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Domain) :
     BHTargetResp ℓ ⊕ (SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Domain :=
@@ -358,7 +358,7 @@ def bhShallowCheckExtSm {S : SignalPqxdh.Setup} {ℓ : ℕ}
     | _, _ => .inl (.inr (none, none, none))
 
 /-- Post-query metadata update after forwarding a query to external session slot `k`. -/
-def bhShallowCommitExtSm {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhShallowCommitExtSm {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (k : ℕ) (σ : BHE2EDrvState S ℓ)
     (sq : (SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Domain)
     (sr : BHE2ESmResp ℓ) : BHTargetResp ℓ × BHE2EDrvState S ℓ :=
@@ -378,7 +378,7 @@ def bhShallowCommitExtSm {S : SignalPqxdh.Setup} {ℓ : ℕ}
       | _, _ => σ
   (.inr sr, σ1)
 
-def bhShallowStepPreNonCtl {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhShallowStepPreNonCtl {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : LibsignalSpqrV1.MlKem) (qep : ℕ)
@@ -399,7 +399,7 @@ def bhShallowStepPreNonCtl {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     let (sr, σ') ← bhE2EStepLocalSm C K qep decT encT σ i sq
     return (.inr sr, σ')
 
-def bhShallowStepPreCtl {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhShallowStepPreCtl {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : LibsignalSpqrV1.MlKem)
     (k : ℕ) (σ : BHE2EDrvState S ℓ) (sid : SignalPqxdh.SessionId S) :
@@ -414,7 +414,7 @@ def bhShallowStepPreCtl {S : SignalPqxdh.Setup} {ℓ : ℕ}
     return .inr (ctx, (idx?, { σ' with insts := insts', paused := true }))
   else return .inl (idx?, σ')
 
-def bhShallowStepPostLocal {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhShallowStepPostLocal {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : LibsignalSpqrV1.MlKem) (qep : ℕ)
@@ -437,7 +437,7 @@ def bhShallowStepPostLocal {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     let (sr, σ') ← bhE2EStepLocalSm C K qep decT encT σ i sq
     return (.inr sr, σ')
 
-def bhShallowFinishPrefix {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhShallowFinishPrefix {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (P : SignalPqxdh.Primitives) (σ : BHE2EDrvState S ℓ) (b' flip : Bool) :
     ProbComp Bool := do
   if !σ.paused then return false
@@ -448,7 +448,7 @@ def bhShallowFinishPrefix {S : SignalPqxdh.Setup} {ℓ : ℕ}
     let out := if bhE2EDrvWon σ true then true else if bhE2EDrvWon σ false then false else b'
     return (out ^^ flip)
 
-def bhKindHandleWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhKindHandleWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (P : SignalPqxdh.Primitives)
     (_ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : LibsignalSpqrV1.MlKem) (qep : ℕ)
@@ -481,7 +481,7 @@ def bhKindHandleWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     return (.inr res.1, res.2)
 
 /-- Shallow 1-stage `KeyInd` reference reduction `bhKindRedWith`. -/
-def bhKindRedWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhKindRedWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : LibsignalSpqrV1.MlKem) (qep : ℕ)
@@ -504,20 +504,20 @@ acknowledgement flags, and public `KeyInd` transcript mirror. -/
 abbrev CliAdapterState (S : SignalPqxdh.Setup) : Type :=
   (ℕ → Option (BHAdapterInstMeta S)) × (ℕ → Bool) × ModelDriverBase S
 
-def cliAdapterInitState (S : SignalPqxdh.Setup) : CliAdapterState S :=
+@[expose] def cliAdapterInitState (S : SignalPqxdh.Setup) : CliAdapterState S :=
   (fun _ => none, (fun _ => false, {}))
 
-def bhShallowWrapWhisper (ct : Bytes) : Bytes :=
+@[expose] def bhShallowWrapWhisper (ct : Bytes) : Bytes :=
   if ct.isEmpty then [] else wireWhisper :: ct
 
-def bhShallowSplitWhisper : Bytes → Option Bytes
+@[expose] def bhShallowSplitWhisper : Bytes → Option Bytes
   | t :: body => if t == wireWhisper then some body else none
   | [] => none
 
-def bhShallowParsePreKey (c : Bytes) : Option (SignalPqxdh.HandshakeHdr × Bytes) :=
+@[expose] def bhShallowParsePreKey (c : Bytes) : Option (SignalPqxdh.HandshakeHdr × Bytes) :=
   (bhDecodePreKeyMsgE c).map (fun m => (bhHdrOfPreKeyMsg m, m.inner))
 
-def bhShallowStepMirrorGuard {S : SignalPqxdh.Setup} :
+@[expose] def bhShallowStepMirrorGuard {S : SignalPqxdh.Setup} :
     ((ModelDriverBase S × (SignalPqxdh.KeyIndQuery S × SignalPqxdh.KeyIndResponse)) ⊕
       (ModelDriverBase S × SignalPqxdh.SessionId S)) →
     ModelDriverBase S × Option (BHAdapterInstMeta S)
@@ -539,7 +539,7 @@ def bhShallowStepMirrorGuard {S : SignalPqxdh.Setup} :
                        bobRemoteRegId := regIdA })
         else (drv, none)
 
-def bhShallowUpdateInstMeta {S : SignalPqxdh.Setup}
+@[expose] def bhShallowUpdateInstMeta {S : SignalPqxdh.Setup}
     (inst : BHAdapterInstMeta S) (setAck setAcc : Bool) (c : Bytes) :
     Bool × BHAdapterInstMeta S :=
   let regId' :=
@@ -555,7 +555,7 @@ def bhShallowUpdateInstMeta {S : SignalPqxdh.Setup}
                       bobRemoteRegId := if !inst.bobAccepted && setAcc then regId'
                                         else inst.bobRemoteRegId })
 
-def bhShallowBobUpdate {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhShallowBobUpdate {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (σ : CliAdapterState S) (i : ℕ) (inst : BHAdapterInstMeta S) (c : Bytes)
     (optRr : Option (SM.RecvResult (Plain ℓ))) : CliAdapterState S :=
   match optRr with
@@ -564,7 +564,7 @@ def bhShallowBobUpdate {S : SignalPqxdh.Setup} {ℓ : ℕ}
     ((fun j => if j = i then some inst' else σ.1 j), σ.2)
   | _ => σ
 
-def bhShallowAliceUpdate {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhShallowAliceUpdate {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (σ : CliAdapterState S) (i : ℕ)
     (optRr : Option (SM.RecvResult (Plain ℓ))) : CliAdapterState S :=
   match optRr with
@@ -572,14 +572,14 @@ def bhShallowAliceUpdate {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (σ.1, ((fun j => if j = i then true else σ.2.1 j), σ.2.2))
   | _ => σ
 
-def bhShallowQueryTarget {S : SignalPqxdh.Setup} {ℓ : ℕ} {PQC : Type}
+@[expose] def bhShallowQueryTarget {S : SignalPqxdh.Setup} {ℓ : ℕ} {PQC : Type}
     (q : (bhTargetGameSpec S ℓ PQC).Domain) :
     OracleComp (unifSpec + bhTargetGameSpec S ℓ PQC) ((bhTargetGameSpec S ℓ PQC).Range q) :=
   (liftM ((unifSpec + bhTargetGameSpec S ℓ PQC).query (.inr q)) :
     OracleComp (unifSpec + bhTargetGameSpec S ℓ PQC) _)
 
 /-- Single game-query handler of the shallow adapter `L_bh`. -/
-def bhShallowAdapterGameStep {S : SignalPqxdh.Setup} {ℓ : ℕ} {PQC : Type}
+@[expose] def bhShallowAdapterGameStep {S : SignalPqxdh.Setup} {ℓ : ℕ} {PQC : Type}
     (t : (bhGameSpec S ℓ PQC).Domain) (σ : CliAdapterState S) :
     OracleComp (unifSpec + bhTargetGameSpec S ℓ PQC)
       ((bhGameSpec S ℓ PQC).Range t × CliAdapterState S) :=
@@ -764,7 +764,7 @@ def bhShallowAdapterGameStep {S : SignalPqxdh.Setup} {ℓ : ℕ} {PQC : Type}
       | none => return (none, σ)
       | some g => return (some (bhBinStateOfParty inst g), σ)
 
-def bhShallowAdapterImpl (S : SignalPqxdh.Setup) (ℓ : ℕ) (PQC : Type) :
+@[expose] def bhShallowAdapterImpl (S : SignalPqxdh.Setup) (ℓ : ℕ) (PQC : Type) :
     QueryImpl (unifSpec + bhGameSpec S ℓ PQC)
       (StateT (CliAdapterState S) (OracleComp (unifSpec + bhTargetGameSpec S ℓ PQC)))
   | .inl n => StateT.mk fun σ => do
@@ -773,7 +773,7 @@ def bhShallowAdapterImpl (S : SignalPqxdh.Setup) (ℓ : ℕ) (PQC : Type) :
   | .inr t => StateT.mk fun σ => bhShallowAdapterGameStep t σ
 
 /-- Shallow reference wire/state adapter `L_bh` from `bhGameSpec` to `bhTargetGameSpec`. -/
-def L_bh {S : SignalPqxdh.Setup} {ℓ : ℕ} {PQC Pt : Type}
+@[expose] def L_bh {S : SignalPqxdh.Setup} {ℓ : ℕ} {PQC Pt : Type}
     (_decT : PublicKey → Option Pt) (_encT : Pt → PublicKey) :
     BhShallowRed (bhGameSpec S ℓ PQC) (unifSpec + bhTargetGameSpec S ℓ PQC)
       Unit Bool Unit Bool (CliAdapterState S) where
@@ -787,7 +787,7 @@ namespace CryptoVerification.E2E.Prefix1Key
 
 open CryptoVerification.E2E
 
-def bhPrefixHandlePreWith (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
+@[expose] def bhPrefixHandlePreWith (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : LibsignalSpqrV1.MlKem) (qep : ℕ)
@@ -812,7 +812,7 @@ def bhPrefixHandlePreWith (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
       (bhShallowStepPreNonCtl P ki C K qep decT encT drv (.inr iSq))
     return .inl res
 
-def bhPrefixHandlePostWith (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
+@[expose] def bhPrefixHandlePostWith (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : LibsignalSpqrV1.MlKem) (qep : ℕ)
@@ -836,7 +836,7 @@ def bhPrefixHandlePostWith (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
       return bhShallowCommitExtSm k drv sq' (bhPackSmResp sq' r)
 
 /-- Shallow 2-stage prefix reference reduction `bhPrefixRedWith`. -/
-def bhPrefixRedWith (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
+@[expose] def bhPrefixRedWith (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : LibsignalSpqrV1.MlKem) (qep : ℕ)

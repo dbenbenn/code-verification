@@ -11,13 +11,17 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbInnerPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbInnerPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbInner -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Relocatable Inner `bsearchPush` Steps for `<PolyDecoder>::from_pb`
@@ -26,7 +30,7 @@ Threads `VmPreserved` and `AllocCallPreserved` through the inner binary-search, 
 insertion, `bsearchReplace`, and `bsearchPush` steps on Block `376`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -90,7 +94,7 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 
 /-- `sessionMemmoveSpec` strengthened with `AllocCallPreserved` and `VmPreserved` so both
     `A.pool lim st` and `AllocCallPreserved` transport across `memmove` in `<PolyDecoder>::from_pb`. -/
-def sessionMemmoveVmAcpSpec (hookStack : Nat := 4096) :
+@[expose] def sessionMemmoveVmAcpSpec (hookStack : Nat := 4096) :
     Spec (BitVec 64 × List (BitVec 8) × Nat × Nat × Nat) where
   pre := (sessionMemmoveSpec hookStack).pre
   post := fun (base, buf, dst, src, len) s0 sf =>
@@ -101,7 +105,7 @@ def sessionMemmoveVmAcpSpec (hookStack : Nat := 4096) :
 /-- Bounded (`MemmoveArithBound`) counterpart of `sessionMemmoveVmAcpSpec`:
     same `AllocCallPreserved ∧ VmPreserved` postcondition, gated by `MemmoveArithBound base buf`
     in `.pre` so real `libc.a` `memmove` satisfies it (`<PolyDecoder>::from_pb`). -/
-def sessionMemmoveBoundedVmAcpSpec (hookStack : Nat := 4096) :
+@[expose] def sessionMemmoveBoundedVmAcpSpec (hookStack : Nat := 4096) :
     Spec (BitVec 64 × List (BitVec 8) × Nat × Nat × Nat) :=
   { sessionMemmoveVmAcpSpec hookStack with
     pre := (sessionMemmoveBoundedSpec hookStack).pre }
@@ -1136,47 +1140,5 @@ theorem fromPb_bsearchPush_at_320_placed_sepWP [LibsignalPlacement] {A : RustAll
     · simpa [wp_norm, arm64_norm] using hvregs_f
 
 /-! ## `HookSat` Convenience Wrappers -/
-
-theorem fromPb_bsearchPush_at_320_placed_sepWP_of_hookSat [LibsignalPlacement] {A : RustAlloc}
-    {ext : String → Option (State → State)} {target_pc : BitVec 64}
-    (hmemmove_sat : HookSat (Rust.withPanics ext) spqrMemmoveSym (sessionMemmoveBoundedVmAcpSpec 0))
-    (fsp cap ptr : BitVec 64) (s : SortedSetPt) (pt : Pt)
-    (hlt_cap : s.vec.length < cap.toNat) (hcap : cap.toNat * 4 < 2 ^ 63)
-    (hptr_nw : ptr.toNat + cap.toNat * 4 < 2 ^ 64)
-    (hlen : s.vec.length ≤ 65536)
-    (st : State) (P : SepProp) (post : State → SepProp → Prop)
-    (hpc : st.pc = (blkPl_376).base + 320#64)
-    (hrun : st.status = .Running)
-    (hsp_al : st.spAligned = true)
-    (hx19 : st.readReg64 .x19 = 1#64)
-    (hx20 : st.readReg64 .x20 = pt.y.value.zeroExtend 64)
-    (hx22 : st.readReg64 .x22 = ptr)
-    (hx26 : st.readReg64 .x26 = BitVec.ofNat 64 s.vec.length)
-    (hx27 : BitVec.truncate 16 (st.readReg64 .x27) = pt.x.value)
-    (hx29 : st.readReg64 .x29 = fsp + 448#64)
-    (hnext : ∀ sf : State,
-      sf.pc = (blkPl_376).base + 296#64 →
-      sf.status = .Running →
-      sf.sp = st.sp →
-      sf.trace = st.trace →
-      VmPreserved st sf →
-      AllocCallPreserved st sf →
-      sf.readReg64 .x19 = 1#64 →
-      sf.readReg64 .x21 = st.readReg64 .x21 →
-      sf.readReg64 .x22 = ptr →
-      sf.readReg64 .x24 = st.readReg64 .x24 →
-      sf.readReg64 .x25 = st.readReg64 .x25 →
-      sf.readReg64 .x26 = BitVec.ofNat 64 (bsearchPush s pt).vec.length →
-      sf.readReg64 .x28 = st.readReg64 .x28 →
-      sf.readReg64 .x29 = fsp + 448#64 →
-      calleeSavedVRegs sf = calleeSavedVRegs st →
-      SepWP ((blkPC_376).rebase (blkPl_376).base (Rust.withPanics ext)) target_pc sf
-        (tempVecPtAt A fsp cap ptr (bsearchPush s pt) ∗ stackAt st.sp 0 ∗ P)
-        post) :
-    SepWP ((blkPC_376).rebase (blkPl_376).base (Rust.withPanics ext)) target_pc st
-      (tempVecPtAt A fsp cap ptr s ∗ stackAt st.sp 0 ∗ P)
-      post :=
-  fromPb_bsearchPush_at_320_placed_sepWP (spqr_hook_ok_of_mem hmemmove_sat) fsp cap ptr s pt
-    hlt_cap hcap hptr_nw hlen st P post hpc hrun hsp_al hx19 hx20 hx22 hx26 hx27 hx29 hnext
 
 end LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbInnerPlacedBudget

@@ -42,18 +42,12 @@ LibsignalBinary.Specifications.LibsignalHmac
 LibsignalBinary.Specifications.LibsignalPublicApi
 LibsignalBinary.Specifications.LibsignalPublicApiRepr
 LibsignalBinary.Specifications.LibsignalSession
-LibsignalBinary.Specifications.LibsignalSessionGuards
 LibsignalBinary.Specifications.LibsignalSessionRepr
 LibsignalBinary.Specifications.LibsignalSpqrV1.Entries
-LibsignalBinary.Specifications.LibsignalSpqrV1.Guards
 LibsignalBinary.Specifications.LibsignalSpqrV1.Hooks
 LibsignalBinary.Specifications.LibsignalSpqrV1.Statements
 LibsignalBinary.Specifications.LibsignalTripleRatchet
-LibsignalBinary.Specifications.LibsignalTripleRatchetGuards
-LibsignalBinary.Specifications.LibsignalTripleRatchetProst
 LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
-LibsignalBinary.Specifications.RecordCodecsBinary
-LibsignalBinary.Specifications.RecordCodecsBinary.SignedPreKey
 LibsignalBinary.Specifications.RustHeap.Alloc
 LibsignalBinary.Specifications.RustHeap.Vec
 LibsignalBinary.Specifications.SignalSession.CliBinaryPq
@@ -68,6 +62,8 @@ Symbolic.Specifications.Refinement.ElfBinding
 LibsignalBinary.Specifications.SignalSession.CliElf
 # Rust type layouts, hashbrown internals and vtable slots taken from the compiled binary.
 LibsignalBinary.Specifications.AsmConstants
+# SPQR V1 CPU-feature detection symbol names (`TOKEN` and `STORAGE.0`).
+LibsignalBinary.Specifications.LibsignalSpqrV1.TokenNames
 
 # 5. Not specifications: proofs, theorems, tests and the computational development. A trusted
 # statement must not rest on any of their definitions. Denied as whole trees for the statement

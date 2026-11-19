@@ -19,10 +19,10 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.Initiate.EntryPure
+public import Symbolic.Proofs.Swarm.CREF.Initiate.EntryPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Initiate.EntryPureA
 import Symbolic.Proofs.Swarm.CREF.Initiate.ModelPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.InitiateDefs -- shake: keep
+import Symbolic.Proofs.Swarm.CREF.Cli.Slots.InitiateDefs -- shake: keep
 import Symbolic.DYBridge.DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Trace.Monad
@@ -33,6 +33,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+import Symbolic.Proofs.Swarm.CREF.Xpl.StepsMix
 
 /-!
 # `init` Coin-Cut Determinism and Failed-Move State Invariance
@@ -43,7 +44,7 @@ and that non-accepting moves on `init` cuts and failed `Move.aliceStart` steps p
 `storedStates`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

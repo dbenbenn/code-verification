@@ -9,17 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.ProofPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsgPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsjPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.ProofPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsgPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsjPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
 public import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -27,6 +27,14 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsb0PlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsbPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsg -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsb0
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Budget-Threaded Variant 2 (`HeaderSent`, `+508`)
@@ -35,7 +43,7 @@ Allocator event envelopes, `StatesFromPbEnv` subsumption, and total-correctness 
 `subroutine_ok` contracts for `InnerState.headerSent` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.style.longLine false
@@ -133,12 +141,12 @@ attribute [local simp, local arm64_norm, local wp_norm]
 
 /-- Exact allocator event envelope for `ProtoAuthenticator` clone + input deallocations
     (`+3436 -> +8944`, plus any trailing `FreeOnlyEvs` cleanup on `sendingEk = none`). -/
-def HeaderSentAuthEnv (auth : ProtoAuthenticator) (evs : List AllocEvent) : Prop :=
+@[expose] def HeaderSentAuthEnv (auth : ProtoAuthenticator) (evs : List AllocEvent) : Prop :=
   ∃ evs_free : List AllocEvent, FreeOnlyEvs evs_free ∧ evs = authFromPbEvents auth ++ evs_free
 
 /-- Complete binary allocator event envelope from `+3436 -> s0.x30` (`u.dk.length = 2400`,
     `u.auth = some auth`). -/
-def HeaderSent3436Env (s : V1State.Chunked.HeaderSent) (auth : ProtoAuthenticator)
+@[expose] def HeaderSent3436Env (s : V1State.Chunked.HeaderSent) (auth : ProtoAuthenticator)
     (evs : List AllocEvent) : Prop :=
   match s.sendingEk with
   | none => HeaderSentAuthEnv auth evs
@@ -151,7 +159,7 @@ def HeaderSent3436Env (s : V1State.Chunked.HeaderSent) (auth : ProtoAuthenticato
 
 /-- Complete binary allocator event envelope from `+3348 -> s0.x30` (after optional `ptsNeeded`
     validation succeeds). -/
-def HeaderSent3348Env (s : V1State.Chunked.HeaderSent) (evs : List AllocEvent) : Prop :=
+@[expose] def HeaderSent3348Env (s : V1State.Chunked.HeaderSent) (evs : List AllocEvent) : Prop :=
   match s.uc with
   | none => FreeOnlyEvs evs
   | some u =>
@@ -164,7 +172,7 @@ def HeaderSent3348Env (s : V1State.Chunked.HeaderSent) (evs : List AllocEvent) :
 
 /-- Complete binary allocator event envelope for Variant 2 (`InnerState.headerSent s`, `+508 -> s0.x30`)
     of `<spqr::v1::chunked::states::States>::from_pb`. -/
-def HeaderSentFromPbEnv (s : V1State.Chunked.HeaderSent) (evs : List AllocEvent) : Prop :=
+@[expose] def HeaderSentFromPbEnv (s : V1State.Chunked.HeaderSent) (evs : List AllocEvent) : Prop :=
   match s.receivingCt1 with
   | none => HeaderSent3348Env s evs
   | some d =>
@@ -570,7 +578,7 @@ private theorem sepWPp_mono_post {prog : Program} {target : BitVec 64} {s : Stat
 
 /-- `Qpan`-polymorphic `+9036 -> s0.x30` continuation shape unifying `v2hstop_SomeEnc9036HypPlaced`
     (`statesFromPbOnPanic`) and `v2hstop_SomeEnc9036SepWPHypPlaced` (`⌜False⌝` panic). -/
-def v2hstop_SomeEnc9036HypPlacedQpan [LibsignalPlacement]
+@[expose] def v2hstop_SomeEnc9036HypPlacedQpan [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (ext : String → Option (State → State))
     (s : V1State.Chunked.HeaderSent)
@@ -1848,19 +1856,5 @@ theorem states_from_pb_headerSent_ok_of_env_alloc_placed [LibsignalPlacement]
           (HeaderSentFromPbEnv s))) :=
   states_from_pb_headerSent_ok_of_env_placed hA (encoder_from_pb_ok_of_alloc_placed hA) hdec s
 
-theorem states_from_pb_headerSent_ok_of_alloc_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksBudget M A lim ext)
-    (hdec : DefsBudget.DecoderFromPbPlacedOkExt M A lim ext)
-    (s : V1State.Chunked.HeaderSent) :
-    subroutine_ok (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333)
-      (withLsCodeLoaded lsmpl
-        (DefsBudget.statesFromPbVariantPlacedSpec M A lim F { innerState := some (.headerSent s) })) :=
-  states_from_pb_headerSent_ok_ext_placed hA (encoder_from_pb_ok_of_alloc_placed hA) hdec s
-
 abbrev states_from_pb_variant1_placed := @states_from_pb_headerSent_ok_ext_placed
-abbrev states_from_pb_variant1_of_alloc_placed := @states_from_pb_headerSent_ok_of_alloc_placed
-
 end LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsPlacedBudget

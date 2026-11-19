@@ -9,16 +9,34 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegAPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_PrepPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_DropErrPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_Step4OkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegB_ErrPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegC_FinishPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegAPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_PrepPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_DropErrPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_Step4OkPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegB_ErrPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegC_FinishPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccount -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFill -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Helpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.HelpersPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_DropErrPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_PrepPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_Step4OkPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegB_ErrPlaced
 
 /-!
 # Budget-Threaded Relocatable Stage 2 Composition (`0x0390 → 0x0760`)
@@ -29,15 +47,13 @@ Composes `segA_step1_coins_placed`, `segA_step2_ek_placed`, `segA_step3_poll_pla
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option warningAsError false
 set_option linter.dupNamespace false
 set_option linter.unusedSimpArgs false
 set_option linter.unusedTactic false
 set_option maxRecDepth 200000
-
-noncomputable section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegAPlacedBudget
 
@@ -74,7 +90,8 @@ open LibsignalBinary.Heap
 open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
 open LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
   (BoxAllocEnv futDropBudgetSpec)
-open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (derivePublicKeyBytesBudgetSpec)
+open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+  (derivePublicKeyBytesBudgetSpec derivePublicKeyBytesStackBudgetSpec)
 open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget (AllocContractsXCliPlaced)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
   (InitExitPostPlaced InitPanicPostPlaced stage2MemPlaced stage3MemPlaced)
@@ -266,7 +283,9 @@ theorem segA_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       subroutine_ok (initProgPlaced mmpl gh W) (lsmpl.base 618)
         (withLsCodeRoLoaded lsmpl (withVmPreserved (coinsFillSpecPlacedW3 cStk))))
     (hDerivePub : subroutine_ok (initProgPlaced mmpl gh W) (lsmpl.base 200)
-      (withLsCodeRoLoaded lsmpl (derivePublicKeyBytesBudgetSpec W.C.pubKey)))
+      (withLsCodeRoLoaded lsmpl
+        (LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet.withLsRet
+          (derivePublicKeyBytesStackBudgetSpec W.C.pubKey 1904))))
     (hZeroize : subroutine_ok (initProgPlaced mmpl gh W) (lsρ lsStaticSecretDropSym)
       (withVmPreserved zeroizeSecretSpec))
     (hRoKeyPairSlot : ∀ {m : Memory} {P : SepProp},
@@ -375,7 +394,7 @@ theorem segA_placed_ok [LibsignalPlacement] {M : AllocCostModel}
   have hsp_a1 : s_a1.sp = s2.sp := hctrl_a1.sp.trans hfsp.symm
   rw [← hsp_a1] at hx21_a1 hx23_a1 ⊢
   refine' sepWPp_weaken_pre ?_
-    (segA_step2_ek_placed (st := st) hDerivePub hZeroize hctrl_a1 htr_a1 hx21_a1 hx23_a1 hpanic
+    (segA_step2_ek_placed (st := st) hDerivePub hZeroize hstk hstk64 hctrl_a1 htr_a1 hx21_a1 hx23_a1 hpanic
       fun s_a2 ekASk ekAPk hctrl_a2 htr_a2 hekPair hx20_a2 hx21_a2 hx23_a2 => ?_)
   · try simp only [sepConj_assoc]
     sep_frame
@@ -460,4 +479,3 @@ theorem segA_placed_ok [LibsignalPlacement] {M : AllocCostModel}
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegAPlacedBudget
 
-end

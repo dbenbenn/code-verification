@@ -17,7 +17,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame
+public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.UA.Defs
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyMono
@@ -36,6 +36,8 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot -- proof-setup: allow-public-import
 
 /-!
 # Pre-Key Receive Slot Helpers
@@ -46,7 +48,7 @@ preservation across decrypt-free step extensions, and `AliceRecordPendingInSessi
 across Bob `recv` runs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

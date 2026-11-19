@@ -10,11 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodedLen
 import ProofLib.SepLogic.WPp
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
 
 /-!
 # `<chain::MessageKey as prost::Message>::encoded_len` (`0x2d6bc`)
@@ -23,7 +24,7 @@ Proves `msgKeyLen_ok` and `msgKeyLen_placed_ok` (block `118`): sums the encoded 
 stored skipped `MessageKey` (`index` at `+96`, three empty key/IV `Vec`s, and `seed` at `+72`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.Serialization
 
@@ -149,34 +150,7 @@ private theorem mkHwVarintLen_eq_encodeVarint_length (v : BitVec 64) :
   rw [hclz] at hfin
   rw [hfin, encodeVarint_length_eq_clzTree]
 
-
 /-! ## Instruction decode and fetch lemmas (`0x2d6bc..0x2d7b8`) -/
-
-private gen_decodes libsignalSessionCode_tree mkLen [(ls_off% "<libsignal_protocol::proto::storage::session_structure::chain::MessageKey as prost::message::Message>::encoded_len") → (ls_off% "<libsignal_protocol::proto::storage::session_structure::chain::MessageKey as prost::message::Message>::encoded_len" + 48), (ls_off% "<libsignal_protocol::proto::storage::session_structure::chain::MessageKey as prost::message::Message>::encoded_len" + 120) → (ls_off% "<libsignal_protocol::proto::storage::session_structure::chain::MessageKey as prost::message::Message>::encoded_len" + 132),
-    (ls_off% "<libsignal_protocol::proto::storage::session_structure::chain::MessageKey as prost::message::Message>::encoded_len" + 164) → (ls_off% "<libsignal_protocol::proto::storage::session_structure::chain::MessageKey as prost::message::Message>::encoded_len" + 248)]
-
-open Lean Elab Tactic in
-/-- Generates instruction fetch hypotheses for `MessageKey::encoded_len` in `[kStart, kEnd)`. -/
-elab "mkLen_fetches_range " b:term:max H:term:max kStart:num kEnd:num : tactic => do
-  let off := num% (ls_off% "<libsignal_protocol::proto::storage::session_structure::chain::MessageKey as prost::message::Message>::encoded_len")
-  let kStart := kStart.getNat
-  let kEnd := kEnd.getNat
-  let fetchEntry := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  let hfn ← `(ls_lemma% fnOff "<libsignal_protocol::proto::storage::session_structure::chain::MessageKey as prost::message::Message>::encoded_len")
-  for i in [kStart / 4 : kEnd / 4] do
-    let k := 4 * i
-    let dec := mkIdent (`CryptoVerification.E2E.Record.Serialization |>.str
-      s!"mkLen_decode_0x{String.ofList (Nat.toDigits 16 (off + k))}")
-    let kq := Syntax.mkNumLit (toString k)
-    if k == 0 then
-      evalTactic (← `(tactic|
-        have := $fetchEntry (b := $b) (H := $H) $hfn (by decide) $dec))
-    else
-      evalTactic (← `(tactic|
-        have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
-
-/-! ## Layout decomposition and arithmetic helpers -/
 
 private def msgKeyCells (a : BitVec 64) (mk : MessageKeyGenerator) : SepProp :=
   ((a + 16#64) ↦₆₄ 0#64) ∗
@@ -288,153 +262,6 @@ private theorem ult_self_64 (x : BitVec 64) : BitVec.ult x x = false := by
   simp [BitVec.ult]
 
 /-! ## Stepping lemmas -/
-
-private theorem step_mkLen_f1 (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (a sp v16 v8 : BitVec 64) (mk : MessageKeyGenerator)
-    {ret : BitVec 64} {s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr msgKeyLenName)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp)
-    (halign : sp &&& 15#64 = 0#64)
-    (hx0 : s.readReg64 .x0 = a)
-    (hP : P = (msgKeyCells a mk ∗ ((sp - 16#64) ↦₆₄ v16) ∗ ((sp - 8#64) ↦₆₄ v8)) ∗ F)
-    (hnext : ∀ sm : State,
-      sm.pc = (tripleRatchetProgAt b C ctl abs).fnAddr msgKeyLenName + 120#64 →
-      sm.status = .Running →
-      sm.sp = sp - 16#64 →
-      sm.trace = s.trace →
-      sm.readReg64 .x0 = a →
-      sm.readReg64 .x8 = BitVec.ofNat 64 (uint32Field 1 mk.counter).length →
-      sm.readReg64 .x9 = 0#64 →
-      EncLenCalleeSaved s sm →
-      SepWPp (tripleRatchetProgAt b C ctl abs) ret sm
-        ((msgKeyCells a mk ∗
-          ((sp - 16#64) ↦₆₄ s.readReg64 .fp) ∗ ((sp - 8#64) ↦₆₄ s.readReg64 .lr)) ∗ F) Q Qp) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q Qp := by
-  mkLen_fetches_range b (Rust.withPanics (tripleRatchetExterns C ctl abs)) 0 52
-  mkLen_fetches_range b (Rust.withPanics (tripleRatchetExterns C ctl abs)) 224 252
-  generalize_entry (tripleRatchetProgAt b C ctl abs).fnAddr msgKeyLenName = entry
-  subst hP
-  have hcells : msgKeyCells a mk =
-      ((a + 16#64) ↦₆₄ 0#64) ∗ ((a + 40#64) ↦₆₄ 0#64) ∗ ((a + 64#64) ↦₆₄ 0#64) ∗
-      ((a + 88#64) ↦₆₄ BitVec.ofNat 64 mk.seed.length) ∗ ((a + 96#64) ↦₃₂ mk.counter) := rfl
-  by_cases hcnt : (mk.counter == 0#32) = true
-  · have hcnt0 : mk.counter = 0#32 := by rwa [beq_iff_eq] at hcnt
-    rw [hcells]
-    apply SepWPp.of_sepWP (mid := entry + bv% (120))
-    wp_steps
-    apply SepWP.done (by simp_all) (by simp_all)
-    rw [← hcells]
-    exact hnext _ (by simp_all) (by simp_all) (by simp_all) (by simp_all)
-      (by simp_all) (by simp_all [uint32Field]) (by simp_all)
-      (by simp_all [EncLenCalleeSaved])
-  · have hcnt_f : (mk.counter == 0#32) = false := Bool.eq_false_iff.mpr hcnt
-    have henc := bv_uint32Field_1_ne_zero hcnt_f
-    rw [hcells]
-    apply SepWPp.of_sepWP (mid := entry + bv% (120))
-    wp_steps
-    apply SepWP.done (by simp_all) (by simp_all)
-    rw [← hcells]
-    exact hnext _ (by simp_all) (by simp_all) (by simp_all) (by simp_all)
-      (by simp_all) (by simp_all) (by simp_all)
-      (by simp_all [EncLenCalleeSaved])
-
-private theorem step_mkLen_f2 (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (a sp : BitVec 64) (mk : MessageKeyGenerator) (s1 : Nat)
-    (hseed_ne : mk.seed ≠ [])
-    (hseed_lt : mk.seed.length < 2 ^ 63)
-    (hfit : s1 + (bytesField 5 mk.seed).length < 2 ^ 64)
-    {s0 s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr msgKeyLenName + 120#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp - 16#64)
-    (halign : sp &&& 15#64 = 0#64)
-    (hx0 : s.readReg64 .x0 = a)
-    (hx8 : s.readReg64 .x8 = BitVec.ofNat 64 s1)
-    (hx9 : s.readReg64 .x9 = 0#64)
-    (hcs : EncLenCalleeSaved s0 s)
-    (hP : P = (msgKeyCells a mk ∗
-      ((sp - 16#64) ↦₆₄ s0.readReg64 .fp) ∗ ((sp - 8#64) ↦₆₄ s0.readReg64 .lr)) ∗ F)
-    (hnext : ∀ sf : State,
-      sf.pc = s0.readReg64 .lr →
-      sf.status = .Running →
-      sf.sp = sp →
-      sf.trace = s.trace →
-      sf.readReg64 .x0 = BitVec.ofNat 64 (s1 + (bytesField 5 mk.seed).length) →
-      CalleeSavedPreserved s0 sf →
-      Q sf P) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) (s0.readReg64 .lr) s P Q Qp := by
-  mkLen_fetches_range b (Rust.withPanics (tripleRatchetExterns C ctl abs)) 120 136
-  mkLen_fetches_range b (Rust.withPanics (tripleRatchetExterns C ctl abs)) 164 224
-  generalize_entry (tripleRatchetProgAt b C ctl abs).fnAddr msgKeyLenName = entry
-  rcases hcs with ⟨h19, h20, h21, h22, h23, h24, h25, h26, h27, h28⟩
-  have hseed_beq := seed_len_beq_zero_false hseed_ne hseed_lt
-  have henc := bv_bytesField_5_ne_nil hseed_ne
-  have hcs_ovf := ult_ofNat_add_of_lt hfit
-  have hule_ovf := ule_ofNat_add_of_lt hfit
-  have hadd := bv_add_ofNat_comm s1 (bytesField 5 mk.seed).length
-  subst hP
-  have hcells : msgKeyCells a mk =
-      ((a + 16#64) ↦₆₄ 0#64) ∗ ((a + 40#64) ↦₆₄ 0#64) ∗ ((a + 64#64) ↦₆₄ 0#64) ∗
-      ((a + 88#64) ↦₆₄ BitVec.ofNat 64 mk.seed.length) ∗ ((a + 96#64) ↦₃₂ mk.counter) := rfl
-  rw [hcells]
-  apply SepWPp.of_sepWP (mid := s0.readReg64 .lr)
-  wp_steps
-  apply SepWP.done (by simp_all) (by simp_all)
-  rw [← hcells]
-  apply SepWPp.done (by simp_all) (by simp_all)
-  exact hnext _ (by simp_all) (by simp_all) (by simp_all) (by simp_all)
-    (by simp_all) (by encodedLen_cc_close)
-
-/-- `<chain::MessageKey as prost::Message>::encoded_len` (`0x2d6bc`) satisfies `msgKeyLenSpec`. -/
-theorem msgKeyLen_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    OkAt b C ctl abs msgKeyLenName (msgKeyLenSpec A) := by
-  apply subroutine_ok_of_sepWPp
-  intro ⟨a, gk⟩ R s0 hpc0 hrun hpre hsp
-  have halign : s0.sp &&& 15#64 = 0#64 := by
-    simp only [State.spAligned, beq_iff_eq] at hsp; exact hsp
-  simp only [msgKeyLenSpec, messageKeyAt_eq_cells_sep_rest, stackAt_msgKeyLen_eq,
-    sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists,
-    sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨v16, v8, hx0, hpre⟩
-  have hrest_sat : s0.mem ⊨ msgKeyRest A gk a ∗
-      (msgKeyCells a gk.2 ∗ ((s0.sp - 16#64) ↦₆₄ v16) ∗ ((s0.sp - 8#64) ↦₆₄ v8) ∗ R) := by
-    convert hpre using 1; ac_rfl
-  obtain ⟨hseed_ne, hseed_lt⟩ := msgKeyRest_seed_bounds hrest_sat
-  let FRest : SepProp := msgKeyRest A gk a ∗ R
-  have hmem0 : s0.mem ⊨
-      (msgKeyCells a gk.2 ∗ ((s0.sp - 16#64) ↦₆₄ v16) ∗ ((s0.sp - 8#64) ↦₆₄ v8)) ∗ FRest := by
-    dsimp [FRest]; convert hpre using 1; ac_rfl
-  refine ⟨(msgKeyCells a gk.2 ∗
-      ((s0.sp - 16#64) ↦₆₄ v16) ∗ ((s0.sp - 8#64) ↦₆₄ v8)) ∗ FRest, emp,
-      by rwa [sepConj_emp], ?_⟩
-  refine step_mkLen_f1 (F := FRest) b C ctl abs a s0.sp v16 v8 gk.2
-    hpc0 hrun rfl halign hx0 rfl ?_
-  intro s1 hpc1 hrun1 hsp1 htr1 hx0_1 hx8_1 hx9_1 hcs1
-  have h1 := uint32Field_1_length_le gk.2.counter
-  have h5 := bytesField_5_length_lt hseed_ne
-  refine step_mkLen_f2 (F := FRest) b C ctl abs a s0.sp gk.2
-    (uint32Field 1 gk.2.counter).length
-    hseed_ne hseed_lt (by omega)
-    hpc1 hrun1 hsp1 halign hx0_1 hx8_1 hx9_1 hcs1 rfl ?_
-  intro sf hpcf hrunf hspf htrf hx0_f hcsf
-  have htr_all : sf.trace = s0.trace := by rw [htrf, htr1]
-  rw [← encMessageKey_length_eq] at hx0_f
-  refine ⟨?_, hspf, hcsf⟩
-  intro hm_f
-  rw [sepConj_emp] at hm_f
-  simp only [msgKeyLenSpec, messageKeyAt_eq_cells_sep_rest, stackAt_msgKeyLen_eq,
-    sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists,
-    sepConj_assoc, satisfies_pure_sepConj]
-  refine ⟨s0.readReg64 .fp, s0.readReg64 .lr, ⟨hx0_f, htr_all⟩, ?_⟩
-  dsimp [FRest] at hm_f
-  convert hm_f using 1
-  ac_rfl
-
-/-! ## Relocatable `[LibsignalPlacement]` proofs (block `118`) -/
 
 section Placed
 

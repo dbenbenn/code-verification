@@ -9,15 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanup
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanup -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSites
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # Relocatable OOM Stubs and Error Cleanup Chain for Arm `R1b`
@@ -26,7 +30,7 @@ Relocatable (`[LibsignalPlacement]`) error-context structure and cleanup continu
 Arm `R1b` on Block `579`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,10 +9,35 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.FsAtomicMacros
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalShortDefs
+import Computational.Proofs.ReductionDsl.FsAtomicMacros
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalShortDefs
 public import Computational.Specifications.Reductions.ReductionDsl.TargetCodecs
 import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+public import Computational.Proofs.ReductionDsl.FsAtomicMacrosBase
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.CostedTables
+import Init.Data.List.Control
+import Init.Data.Range.Basic
+import Init.Data.String.Defs
+import Init.Data.String.Pattern.Basic
+import Init.Data.String.Pattern.String
+import Init.Data.String.Slice
+import Init.Data.String.TakeDrop
+import Lean
+import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSession
+import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionSM
+import LibsignalBinary.Specifications.LibsignalE2E.PqxdhInputs
+import LibsignalBinary.Specifications.LibsignalSignalMessage
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.Tactic.Linarith
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.Monad.Bool
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Atomic `ReductionDsl` Primitive Macros for FS-AEAD Reductions
@@ -22,7 +47,7 @@ FS-AEAD public headers, chain PRG, clamped AEAD, equality checks, and uniform/id
 samplers, together with evaluation and `CoinSimEquiv` soundness lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -77,14 +102,14 @@ variable (ℓ : ℕ) (Pt : Type) (C : Crypto) (encT : Pt → PublicKey)
 local notation "S" => atomicSig ℓ Pt
 local notation "O" => atomicFsOps ℓ Pt C encT
 
-def opPure {Γ : List (Ty S)} (o : AtomicPureOp)
+@[expose] def opPure {Γ : List (Ty S)} (o : AtomicPureOp)
     (e : Expr O Γ (o.dom ℓ Pt)) : Expr O Γ (o.cod ℓ Pt) :=
   @Expr.op S O Γ (Sum.inl o) e
 
-def opPtEncPk {Γ : List (Ty S)} (e : Expr O Γ PtT) : Expr O Γ PK :=
+@[expose] def opPtEncPk {Γ : List (Ty S)} (e : Expr O Γ PtT) : Expr O Γ PK :=
   @Expr.op S O Γ (Sum.inr (Sum.inl AtomicPtEncOp.ptEncPk)) e
 
-def opSym {Γ : List (Ty S)} (o : AtomicSymOp)
+@[expose] def opSym {Γ : List (Ty S)} (o : AtomicSymOp)
     (e : Expr O Γ (o.dom ℓ Pt)) : Expr O Γ (o.cod ℓ Pt) :=
   @Expr.op S O Γ (Sum.inr (Sum.inr o)) e
 
@@ -119,7 +144,7 @@ def opSym {Γ : List (Ty S)} (o : AtomicSymOp)
 private theorem vecU8_length32 (v : List.Vector (BitVec 8) 32) : (vecU8 v).length = 32 := by
   simp [vecU8, toU8, v.toList_length]
 
-def pkLitExpr {Γ : List (Ty S)} (pk : PublicKey) : Expr O Γ PK :=
+@[expose] def pkLitExpr {Γ : List (Ty S)} (pk : PublicKey) : Expr O Γ PK :=
   opPure ℓ Pt C encT .pkOfPbytes
     (opPure ℓ Pt C encT (.pbytesLit 32 (vecU8 pk.bytes)) .unit)
 
@@ -132,7 +157,7 @@ theorem pkLitExpr_cost {Γ : List (Ty S)} (pk : PublicKey) :
     (pkLitExpr ℓ Pt C encT (Γ := Γ) pk).cost = 98 := by
   simp [pkLitExpr, AtomicPureOp.cost, Expr.cost, vecU8_length32]
 
-def idKeyLitExpr {Γ : List (Ty S)} (ik : IdentityKey) : Expr O Γ IdKey :=
+@[expose] def idKeyLitExpr {Γ : List (Ty S)} (ik : IdentityKey) : Expr O Γ IdKey :=
   opPure ℓ Pt C encT .idKeyOfPbytes
     (opPure ℓ Pt C encT (.pbytesLit 32 (vecU8 ik.publicKey.bytes)) .unit)
 
@@ -145,7 +170,7 @@ theorem idKeyLitExpr_cost {Γ : List (Ty S)} (ik : IdentityKey) :
     (idKeyLitExpr ℓ Pt C encT (Γ := Γ) ik).cost = 98 := by
   simp [idKeyLitExpr, AtomicPureOp.cost, Expr.cost, vecU8_length32]
 
-def optBytesEqExpr {Γ : List (Ty S)} (x y : Expr O Γ (.opt (B 32))) : Expr O Γ .bool :=
+@[expose] def optBytesEqExpr {Γ : List (Ty S)} (x y : Expr O Γ (.opt (B 32))) : Expr O Γ .bool :=
   .caseOpt x
     (.caseOpt y (.bool true) (.bool false))
     (.caseOpt (Expr.renameM (Δ := B 32 :: Γ) (fun ⦃_⦄ v => Var.succ v) y) (.bool false)
@@ -170,7 +195,7 @@ theorem optBytesEqExpr_cost {Γ : List (Ty S)} (x y : Expr O Γ (.opt (B 32))) :
     PNat.val_ofNat]
   omega
 
-def optPtEqExpr {Γ : List (Ty S)} (x y : Expr O Γ (.opt PtT)) : Expr O Γ .bool :=
+@[expose] def optPtEqExpr {Γ : List (Ty S)} (x y : Expr O Γ (.opt PtT)) : Expr O Γ .bool :=
   .caseOpt x
     (.caseOpt y (.bool true) (.bool false))
     (.caseOpt (Expr.renameM (Δ := PtT :: Γ) (fun ⦃_⦄ v => Var.succ v) y) (.bool false)
@@ -202,7 +227,7 @@ theorem optPtEqExpr_cost {Γ : List (Ty S)} (x y : Expr O Γ (.opt PtT)) :
     Expr.renameM_cost]
   omega
 
-def eqLpubExpr {Γ : List (Ty S)} (x y : Expr O Γ lpubT) : Expr O Γ .bool :=
+@[expose] def eqLpubExpr {Γ : List (Ty S)} (x y : Expr O Γ lpubT) : Expr O Γ .bool :=
   .letE (.pair x y)
     (let p : Expr O (.prod lpubT lpubT :: Γ) (.prod lpubT lpubT) := .var .zero
      let a := Expr.fst p
@@ -243,7 +268,7 @@ theorem eqLpubExpr_cost {Γ : List (Ty S)} (x y : Expr O Γ lpubT) :
   simp only [eqLpubExpr, opPure_cost, AtomicPureOp.cost, Expr.cost, PNat.val_ofNat]
   omega
 
-def eqFig8PubAdExpr {Γ : List (Ty S)} (x y : Expr O Γ fig8PubAdT) : Expr O Γ .bool :=
+@[expose] def eqFig8PubAdExpr {Γ : List (Ty S)} (x y : Expr O Γ fig8PubAdT) : Expr O Γ .bool :=
   .letE (.pair x y)
     (let p : Expr O (.prod fig8PubAdT fig8PubAdT :: Γ) (.prod fig8PubAdT fig8PubAdT) := .var .zero
      let a := Expr.fst p
@@ -282,7 +307,7 @@ theorem eqFig8PubAdExpr_cost {Γ : List (Ty S)} (x y : Expr O Γ fig8PubAdT) :
   simp only [eqFig8PubAdExpr, Expr.cost]
   omega
 
-def eqSlotAdExpr {Γ : List (Ty S)} (x y : Expr O Γ slotAdT) : Expr O Γ .bool :=
+@[expose] def eqSlotAdExpr {Γ : List (Ty S)} (x y : Expr O Γ slotAdT) : Expr O Γ .bool :=
   .letE (.pair x y)
     (let p : Expr O (.prod slotAdT slotAdT :: Γ) (.prod slotAdT slotAdT) := .var .zero
      .and (.eqN (.fst (.fst p)) (.fst (.snd p)))
@@ -316,7 +341,7 @@ theorem eqSlotAdExpr_cost {Γ : List (Ty S)} (x y : Expr O Γ slotAdT) :
   simp only [eqSlotAdExpr, Expr.cost]
   omega
 
-def eqWireSaltCtExpr {Γ : List (Ty S)} (x y : Expr O Γ wireSaltCtT) : Expr O Γ .bool :=
+@[expose] def eqWireSaltCtExpr {Γ : List (Ty S)} (x y : Expr O Γ wireSaltCtT) : Expr O Γ .bool :=
   .letE (.pair x y)
     (let p : Expr O (.prod wireSaltCtT wireSaltCtT :: Γ) (.prod wireSaltCtT wireSaltCtT) := .var .zero
      let a := Expr.fst p
@@ -348,7 +373,7 @@ theorem eqWireSaltCtExpr_cost {Γ : List (Ty S)} (x y : Expr O Γ wireSaltCtT) :
   simp only [eqWireSaltCtExpr, opPure_cost, AtomicPureOp.cost, Expr.cost, PNat.val_ofNat]
   omega
 
-def eqLctExpr {Γ : List (Ty S)} (x y : Expr O Γ lctT) : Expr O Γ .bool :=
+@[expose] def eqLctExpr {Γ : List (Ty S)} (x y : Expr O Γ lctT) : Expr O Γ .bool :=
   .letE (.pair x y)
     (let p : Expr O (.prod lctT lctT :: Γ) (.prod lctT lctT) := .var .zero
      .and (.eqN (.fst (.fst p)) (.fst (.snd p)))
@@ -381,7 +406,7 @@ theorem eqLctExpr_cost {Γ : List (Ty S)} (x y : Expr O Γ lctT) :
   simp only [eqLctExpr, Expr.cost]
   omega
 
-def lPubOfExpr {Γ : List (Ty S)} (cV : Expr O Γ wireSaltCtT) : Expr O Γ (.opt lpubT) :=
+@[expose] def lPubOfExpr {Γ : List (Ty S)} (cV : Expr O Γ wireSaltCtT) : Expr O Γ (.opt lpubT) :=
   .letE cV
     (.caseOpt
       (opPure ℓ Pt C encT .signalMsgParse
@@ -418,7 +443,7 @@ theorem lPubOfExpr_cost {Γ : List (Ty S)} (cV : Expr O Γ wireSaltCtT) :
     PNat.val_ofNat]
   omega
 
-def chainGenExpr {Γ : List (Ty S)} (ck : Expr O Γ BV256) : Expr O Γ (.prod BV256 BV256) :=
+@[expose] def chainGenExpr {Γ : List (Ty S)} (ck : Expr O Γ BV256) : Expr O Γ (.prod BV256 BV256) :=
   .letE ck
     (.pair
       (opSym ℓ Pt C encT (.hmacSha256Op 1)
@@ -440,7 +465,7 @@ theorem chainGenExpr_cost {Γ : List (Ty S)} (ck : Expr O Γ BV256) :
     List.length_singleton, PNat.val_ofNat]
   omega
 
-def lIdsExpr (idOf : Party → IdentityKey) {Γ : List (Ty S)} (tE : Expr O Γ .nat) :
+@[expose] def lIdsExpr (idOf : Party → IdentityKey) {Γ : List (Ty S)} (tE : Expr O Γ .nat) :
     Expr O Γ (B 66) :=
   .ite (.eqN (.modK 2 tE) (.nat 1))
     (opPure ℓ Pt C encT (.bytesLit 66 (lIds idOf 1).toList) .unit)
@@ -460,7 +485,7 @@ theorem lIdsExpr_cost (idOf : Party → IdentityKey) {Γ : List (Ty S)} (tE : Ex
   have hb2 : bits 2 ≤ 2 := by decide
   omega
 
-def lHeaderExpr {Γ : List (Ty S)} (aE : Expr O Γ slotAdT) : Expr O Γ wireSignalHdrT :=
+@[expose] def lHeaderExpr {Γ : List (Ty S)} (aE : Expr O Γ slotAdT) : Expr O Γ wireSignalHdrT :=
   .letE aE
     (let v : Expr O (slotAdT :: Γ) slotAdT := .var .zero
      let i := Expr.fst v
@@ -492,7 +517,7 @@ theorem lHeaderExpr_cost {Γ : List (Ty S)} (aE : Expr O Γ slotAdT) :
   have hb1 : bits 1 ≤ 2 := by decide
   omega
 
-def eqWireSignalHdrExpr {Γ : List (Ty S)} (x y : Expr O Γ wireSignalHdrT) : Expr O Γ .bool :=
+@[expose] def eqWireSignalHdrExpr {Γ : List (Ty S)} (x y : Expr O Γ wireSignalHdrT) : Expr O Γ .bool :=
   .letE (.pair x y)
     (let p : Expr O (.prod wireSignalHdrT wireSignalHdrT :: Γ)
          (.prod wireSignalHdrT wireSignalHdrT) := .var .zero
@@ -535,7 +560,7 @@ theorem eqWireSignalHdrExpr_cost {Γ : List (Ty S)} (x y : Expr O Γ wireSignalH
   simp only [eqWireSignalHdrExpr, opPure_cost, AtomicPureOp.cost, Expr.cost, PNat.val_ofNat]
   omega
 
-def fitPlainExpr {Γ : List (Ty S)} (m : Expr O Γ (B 32)) : Expr O Γ PlainT :=
+@[expose] def fitPlainExpr {Γ : List (Ty S)} (m : Expr O Γ (B 32)) : Expr O Γ PlainT :=
   opPure ℓ Pt C encT .fitPlain m
 
 @[simp] theorem fitPlainExpr_eval {Γ : List (Ty S)} (m : Expr O Γ (B 32)) (ρ : Env Γ) :
@@ -546,7 +571,7 @@ theorem fitPlainExpr_cost {Γ : List (Ty S)} (m : Expr O Γ (B 32)) :
   simp only [fitPlainExpr, opPure_cost, AtomicPureOp.cost]
   omega
 
-def eqPlainExpr {Γ : List (Ty S)} (x y : Expr O Γ PlainT) : Expr O Γ .bool :=
+@[expose] def eqPlainExpr {Γ : List (Ty S)} (x y : Expr O Γ PlainT) : Expr O Γ .bool :=
   opPure ℓ Pt C encT .plainEq (.pair x y)
 
 @[simp] theorem eqPlainExpr_eval {Γ : List (Ty S)} (x y : Expr O Γ PlainT) (ρ : Env Γ) :
@@ -557,7 +582,7 @@ theorem eqPlainExpr_cost {Γ : List (Ty S)} (x y : Expr O Γ PlainT) :
   simp only [eqPlainExpr, opPure_cost, AtomicPureOp.cost, Expr.cost]
   omega
 
-def eqSaltExpr {Γ : List (Ty S)} (x y : Expr O Γ BV256) : Expr O Γ .bool :=
+@[expose] def eqSaltExpr {Γ : List (Ty S)} (x y : Expr O Γ BV256) : Expr O Γ .bool :=
   opPure ℓ Pt C encT .bv256Eq (.pair x y)
 
 theorem eqSaltExpr_eval {Γ : List (Ty S)} (x y : Expr O Γ BV256) (ρ : Env Γ) :
@@ -573,7 +598,7 @@ theorem eqSaltExpr_cost {Γ : List (Ty S)} (x y : Expr O Γ BV256) :
   simp only [eqSaltExpr, opPure_cost, AtomicPureOp.cost, Expr.cost]
   omega
 
-def saltOfSlotAdExpr {Γ : List (Ty S)} (a : Expr O Γ slotAdT) : Expr O Γ BV256 :=
+@[expose] def saltOfSlotAdExpr {Γ : List (Ty S)} (a : Expr O Γ slotAdT) : Expr O Γ BV256 :=
   .fst (.snd (.snd (.snd (.snd a))))
 
 @[simp] theorem saltOfSlotAdExpr_eval {Γ : List (Ty S)} (a : Expr O Γ slotAdT) (ρ : Env Γ) :
@@ -591,7 +616,7 @@ section ClampedCodecAndByteHelpers
 
 /-- Protobuf `SignalMessage` codec clamping `pqRatchet` to 96 bytes and `addresses` to 128 bytes on
 `encode`, agreeing with `protoSignalCodec` under `atomicShortB`. -/
-def clampedProtoSignalCodec : SignalMessageProtoCodec where
+@[expose] def clampedProtoSignalCodec : SignalMessageProtoCodec where
   encode p := protoSignalCodec.encode
     { p with
       pqRatchet := p.pqRatchet.map (·.take 96)
@@ -835,7 +860,7 @@ variable (ℓ : ℕ) (Pt : Type) (C : Crypto) (encT : Pt → PublicKey) (idOf : 
 local notation "S" => atomicSig ℓ Pt
 local notation "O" => atomicFsOps ℓ Pt C encT
 
-@[reducible] def exprWkTop1 {Γ : List (Ty S)} {a b : Ty S} (e : Expr O [a] b) :
+@[expose, reducible] def exprWkTop1 {Γ : List (Ty S)} {a b : Ty S} (e : Expr O [a] b) :
     Expr O (a :: Γ) b :=
   Expr.renameM (fun ⦃_⦄ v => match v with | .zero => .zero | .succ w => nomatch w) e
 
@@ -860,7 +885,7 @@ private theorem eval_snd {Γ : List (Ty S)} {a b : Ty S}
     (x : Expr O Γ (.prod a b)) (ρ : Env Γ) :
     (Expr.snd x).eval ρ = (x.eval ρ).2 := rfl
 
-def aeadKEncExpr :
+@[expose] def aeadKEncExpr :
     Expr O [.prod derivedMsgKeysT (.prod slotAdT PlainT)] wireSaltCtT :=
   let argT : Ty S := .prod derivedMsgKeysT (.prod slotAdT PlainT)
   let Γ₀ : List (Ty S) := [argT]
@@ -987,7 +1012,7 @@ theorem aeadKEncExpr_cost :
   have hb128 : bits 128 ≤ 9 := by decide
   omega
 
-def aeadKDecExpr :
+@[expose] def aeadKDecExpr :
     Expr O [.prod derivedMsgKeysT (.prod slotAdT wireSaltCtT)] (.opt PlainT) :=
   let argT : Ty S := .prod derivedMsgKeysT (.prod slotAdT wireSaltCtT)
   let Γ₀ : List (Ty S) := [argT]
@@ -1131,7 +1156,7 @@ theorem aeadKDecExpr_cost :
   have hb2 : bits 2 ≤ 2 := by decide
   omega
 
-def aeadREncExpr :
+@[expose] def aeadREncExpr :
     Expr O [.prod BV256 (.prod slotAdT PlainT)] wireSaltCtT :=
   let argT : Ty S := .prod BV256 (.prod slotAdT PlainT)
   let mksT : Ty S := .prod BV256 (.prod BV256 (.prod BV128 U32))
@@ -1169,7 +1194,7 @@ theorem aeadREncExpr_cost :
     Expr.cost, exprWkTop1_cost, hsalt]
   omega
 
-def aeadRDecExpr :
+@[expose] def aeadRDecExpr :
     Expr O [.prod BV256 (.prod slotAdT wireSaltCtT)] (.opt PlainT) :=
   let argT : Ty S := .prod BV256 (.prod slotAdT wireSaltCtT)
   let mksT : Ty S := .prod BV256 (.prod BV256 (.prod BV128 U32))
@@ -1234,7 +1259,7 @@ variable (ℓ : ℕ) (Pt : Type) (C : Crypto) (encT : Pt → PublicKey)
 local notation "S" => atomicSig ℓ Pt
 local notation "O" => atomicFsOps ℓ Pt C encT
 
-def signalEncodeSerOnlyExpr : Expr O [.prod wireSignalHdrT (B 32)] (B 32) :=
+@[expose] def signalEncodeSerOnlyExpr : Expr O [.prod wireSignalHdrT (B 32)] (B 32) :=
   let argT : Ty S := .prod wireSignalHdrT (B 32)
   let hdr := Expr.fst (.var .zero : Expr O [argT] argT)
   let ctBody := Expr.snd (.var .zero : Expr O [argT] argT)
@@ -1324,7 +1349,7 @@ private theorem flatMap_blockToBytesLE_len :
     simp only [List.flatMap_cons, List.length_append, List.length_cons, blockToBytesLE,
       List.length_ofFn, flatMap_blockToBytesLE_len bs]; omega
 
-def sampleU64Comp {ι : Type} {T : OracleSpec.{0, 0} ι} {I : Iface S T}
+@[expose] def sampleU64Comp {ι : Type} {T : OracleSpec.{0, 0} ι} {I : Iface S T}
     (sampU : ∀ {Γ : List (Ty S)} (b : AtomicBaseUnif), Comp O I Γ (.base b.sort))
     {Γ : List (Ty S)} : Comp O I Γ U64 :=
   .bind (sampU .bv128)
@@ -1332,13 +1357,13 @@ def sampleU64Comp {ι : Type} {T : OracleSpec.{0, 0} ι} {I : Iface S T}
       (opPure ℓ Pt C encT (.bytesTakeK 16 8)
         (opPure ℓ Pt C encT .bv128ToBytes16 (.var .zero)))))
 
-def sampleMsgKeyComp {ι : Type} {T : OracleSpec.{0, 0} ι} {I : Iface S T}
+@[expose] def sampleMsgKeyComp {ι : Type} {T : OracleSpec.{0, 0} ι} {I : Iface S T}
     (sampU : ∀ {Γ : List (Ty S)} (b : AtomicBaseUnif), Comp O I Γ (.base b.sort))
     {Γ : List (Ty S)} : Comp O I Γ derivedMsgKeysT :=
   .bind (sampU .bv256) (.bind (sampU .bv128) (.bind (sampU .bv256)
     (.ret (.pair (.pair (.var (.succ (.succ .zero))) (.var (.succ .zero))) (.var .zero)))))
 
-def sampleIdealComp {ι : Type} {T : OracleSpec.{0, 0} ι} {I : Iface S T}
+@[expose] def sampleIdealComp {ι : Type} {T : OracleSpec.{0, 0} ι} {I : Iface S T}
     (sampU : ∀ {Γ : List (Ty S)} (b : AtomicBaseUnif), Comp O I Γ (.base b.sort)) :
     Comp O I [slotAdT] wireSaltCtT :=
   let blocksC : Comp O I [slotAdT] (B 32) :=

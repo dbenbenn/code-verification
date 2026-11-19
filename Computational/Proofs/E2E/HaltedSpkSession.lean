@@ -10,20 +10,20 @@ limitations under the License.
 module
 
 public import Computational.Proofs.E2E.HaltedSpkDefs
-public import Computational.Proofs.E2E.HaltedSpkHop2Lemmas
-public import Computational.Proofs.E2E.SpkHop2
+public import Computational.Proofs.E2E.HaltedSpkHop2Lemmas -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.SpkHop2
 import Computational.Proofs.E2E.Relabel.GameEq
 import Computational.Proofs.SpqrV1Sync.SendTotalExtras
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.Theorem8And12Statements
 
 /-!
 # Tracker-Halted Leaked-SPK Session Chain
 
 Re-exports the `KemFailSessionTrack`-halted session reductions and mixture combinators, proves Hops
 1 and 3 and the Hop-2 PRG-to-PRF bridge, and assembles the three-hop leaked-SPK mixture bound
-`boolBias_mixSpkTrackHaltedWithSpqr_le_of_support`.
--/
+`boolBias_mixSpkTrackHaltedWithSpqr_le_of_support`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -1044,9 +1044,6 @@ theorem boolBias_mixSpkTrackHaltedWithSpqr_le_of_support
     qep q oa ida idb s _ _ hsup
   rw [hg1, hg2, hl1, hl2, hh2] at hle
   exact hle
-
-abbrev boolBias_mixSpkHaltedWithSpqr_le_of_support :=
-  @boolBias_mixSpkTrackHaltedWithSpqr_le_of_support
 
 end Proofs
 

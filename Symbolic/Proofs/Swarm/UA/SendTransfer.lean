@@ -17,10 +17,10 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical
-public import Symbolic.Proofs.Swarm.CREF.Sem
-public import Symbolic.Proofs.Swarm.CREF.SendWire.Ghosts
-public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.SendWire.Ghosts -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.CREF.CBadG2.MacGuess
 import Symbolic.Proofs.Swarm.CREF.CBadG2.Stamps
@@ -42,6 +42,9 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
+import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials
+import Symbolic.Proofs.Swarm.CREF.Stage1Trials
 
 /-!
 # Step and Ghost Transfer for the `send` Slot
@@ -51,7 +54,7 @@ extension for `Step.messageEncrypt`, and step-level clean-explanation extensions
 Whisper, and pending-pre-key `send` runs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5Placed
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5Placed
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`): Shared `RustCliAllocBudget` Helpers for Arms 7, 8, and 9
@@ -23,7 +26,7 @@ hook projections and non-null branch simplification eliminating the `+1700` / `+
 under `FitsEvents`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -113,14 +116,6 @@ abbrev outWords28_entails_ekReceivedCt1Sampled :=
 
 /-! ## 2. Placed Block-`334` Budget Hook Projections & Non-Null Branch Elimination -/
 
-theorem alloc_ok_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ spqrRustAllocSym) (rustCliAllocBudgetSpec M A lim false) :=
-  hA.alloc_ok
-
 theorem allocNoOom_ok_placed [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ext : String → Option (State → State)}
@@ -136,14 +131,6 @@ theorem dealloc_ok_placed [LibsignalPlacement]
     subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
       (lsρ spqrRustDeallocSym) (rustCliDeallocBudgetSpec M A lim) :=
   hA.dealloc_ok
-
-theorem shimVm_ok_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ spqrRustNoAllocShimSym) rustAllocShimVmSpec :=
-  hA.shim_ok
 
 theorem sessionShim_ok_placed [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -161,14 +148,6 @@ theorem noAllocShim_ok_placed [LibsignalPlacement]
       (lsρ spqrRustNoAllocShimSym) noAllocShimBudgetSpec :=
   subroutine_ok_noAllocShim_of_sessionShimBudget (sessionShim_ok_placed hA)
 
-theorem memcpyVm_ok_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") allocMemcpyVmSpec :=
-  hA.memcpy_ok
-
 theorem sessionMemcpyRegion_ok_placed [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ext : String → Option (State → State)}
@@ -184,11 +163,5 @@ theorem framelessMemcpy_ok_placed [LibsignalPlacement]
     subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
       (lsρ "memcpy") framelessMemcpyBudgetSpec :=
   subroutine_ok_framelessMemcpy_of_sessionMemcpyRegionBudget (sessionMemcpyRegion_ok_placed hA)
-
-/-- Under `FitsEvents`, `rustCliAllocNoOomSpec` guarantees `ptr ≠ 0#64`, ruling out the OOM
-    panic branches at `+1700` and `+884` in Block `334`. -/
-theorem states_into_pb_no_oom_placed {ptr : BitVec 64} (h : ptr ≠ 0#64) :
-    (ptr == 0#64) = false ∧ (ptr != 0#64) = true :=
-  ⟨beq_eq_false_iff_ne.mpr h, bne_iff_ne.mpr h⟩
 
 end LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget

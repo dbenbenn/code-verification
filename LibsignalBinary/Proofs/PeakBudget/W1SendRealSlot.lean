@@ -10,41 +10,48 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
-public import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Defs
-public import LibsignalBinary.Proofs.E2E.RecordX.ScopeP
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Defs
+import LibsignalBinary.Proofs.E2E.RecordX.ScopeP
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakSpec
 public import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
 public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
-public import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.SpqrSendPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
-public import LibsignalBinary.Proofs.PeakBudget.W1EncryptPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W1EncryptSlotPeak
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptSlotPeak
-public import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromHelpers
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seams
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
-public import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhCorrectModelProofDefs
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
+import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps
+import LibsignalBinary.Proofs.PeakBudget.SpqrSendPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
+import LibsignalBinary.Proofs.PeakBudget.W1EncryptPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W1EncryptSlotPeak
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptSlotPeak
+import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromHelpers
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seams
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
+public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
+import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhCorrectModelProofDefs
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
 import LibsignalBinary.Proofs.E2E.Epochs
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Concrete W1 (`send` / `encrypt`) Real Slot Closure
@@ -54,7 +61,7 @@ under `CliPqxdhInputs W i` and `.send peerAddr`, both parametrically in `DeserEn
 `RecordDeserializeCancelEnv`, and discharges the `cliSendSlot*Cap` numerical ceilings.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -115,13 +122,8 @@ open LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps
 open LibsignalBinary.Proofs.PeakBudget.SpqrSendPeakSpec
   (SpqrSendTightCapEnv spqrSendTightDeltaCum spqrSendTightDeltaLive spqrSendTightDeltaPeak
    spqrSendTightMaxReq spqrSend_phaseCreditSpec_tight)
-open LibsignalBinary.Proofs.PeakBudget.SpqrSendTightSpec
-  (spqrSendTightCap_groupSpec spqrSendTightGroupS w1CliOpenedTightSendCum
-   w1CliOpenedTightSendLive w1CliOpenedTightSendMaxReq w1CliOpenedTightSendPeak
-   w1CliOpenedTightSend_fine_groupSpec w1CliOpenedTightSend_fine_phaseCredit)
-open LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
-  (PeerSpqrStateTight640 peerSpqrStateTight640_of_cliPqInputs_send
-   peerSpqrStateTight640_of_w1ScopeAt)
+open LibsignalBinary.Proofs.PeakBudget.SpqrSendTightSpec (spqrSendTightCap_groupSpec spqrSendTightGroupS w1CliOpenedTightSendCum w1CliOpenedTightSendLive w1CliOpenedTightSendMaxReq w1CliOpenedTightSendPeak)
+open LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift (PeerSpqrStateTight640 peerSpqrStateTight640_of_cliPqInputs_send)
 open LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
   (TopStateTight topStateTight_length_le topStateTight_spqrV1_send topStateTight_to_tightValid640)
 open LibsignalBinary.Proofs.PeakBudget.W1EncryptPeakSpec
@@ -163,43 +165,43 @@ attribute [local simp]
 /-! ## 1. W1 Numerical Cap Constants -/
 
 /-- AES-256-CBC PKCS#7 padded ciphertext byte cap at `msgCapBytes = 1 MiB` (`1,048,592` B). -/
-def w1CtLenCap : Nat := (msgCapBytes / 16 + 1) * 16
+@[expose] def w1CtLenCap : Nat := (msgCapBytes / 16 + 1) * 16
 
 /-- Serialized `SignalMessage` byte cap (`1,052,953` B). -/
-def w1SmSerCap : Nat := w1CtLenCap + 4096 + 265
+@[expose] def w1SmSerCap : Nat := w1CtLenCap + 4096 + 265
 
 /-- Serialized `PreKeySignalMessage` byte cap (`1,054,778` B, covering `≤ 1,569` B ML-KEM-1024). -/
-def w1PkOutCap : Nat := w1SmSerCap + 1569 + 256
+@[expose] def w1PkOutCap : Nat := w1SmSerCap + 1569 + 256
 
-def w1SigCumCap : Nat := 4 * w1CtLenCap + 4 * 4096 + 2 * w1SmSerCap + 86121
-def w1SigLiveCap : Nat := w1CtLenCap + 4096 + w1SmSerCap + 32816
-def w1SigPeakCap : Nat := 2 * w1CtLenCap + 2 * 4096 + w1SmSerCap + 65662
-def w1SigReqCap : Nat := w1SmSerCap
+@[expose] def w1SigCumCap : Nat := 4 * w1CtLenCap + 4 * 4096 + 2 * w1SmSerCap + 86121
+@[expose] def w1SigLiveCap : Nat := w1CtLenCap + 4096 + w1SmSerCap + 32816
+@[expose] def w1SigPeakCap : Nat := 2 * w1CtLenCap + 2 * 4096 + w1SmSerCap + 65662
+@[expose] def w1SigReqCap : Nat := w1SmSerCap
 
-def w1PkCumCap : Nat := 2 * 1569 + 2 * w1SmSerCap + 2 * w1PkOutCap + 47827
-def w1PkLiveCap : Nat := w1PkOutCap + 8195
-def w1PkPeakCap : Nat := 1569 + w1SmSerCap + w1PkOutCap + 41041
-def w1PkReqCap : Nat := w1PkOutCap
+@[expose] def w1PkCumCap : Nat := 2 * 1569 + 2 * w1SmSerCap + 2 * w1PkOutCap + 47827
+@[expose] def w1PkLiveCap : Nat := w1PkOutCap + 8195
+@[expose] def w1PkPeakCap : Nat := 1569 + w1SmSerCap + w1PkOutCap + 41041
+@[expose] def w1PkReqCap : Nat := w1PkOutCap
 
 /-- Post-`encrypt` `pqRatchetState` byte cap (`spqrSendTightMaxReq = 286,196` B). -/
-def w1PostPqCap : Nat := spqrSendTightMaxReq
+@[expose] def w1PostPqCap : Nat := spqrSendTightMaxReq
 
 /-- Post-`encrypt` serialized `SessionRecord` byte cap (`spqrSendTightMaxReq + 2097192 = 2,383,388` B). -/
-def w1StoreEncCap : Nat := w1PostPqCap + 2097192
+@[expose] def w1StoreEncCap : Nat := w1PostPqCap + 2097192
 
-def w1StoreCumCap : Nat := sessStorePollTightDeltaCum 8420940 0
-def w1StoreLiveCap : Nat := sessStorePollTightDeltaLive (w1StoreEncCap + 8195) 0
-def w1StorePeakCap : Nat :=
+@[expose] def w1StoreCumCap : Nat := sessStorePollTightDeltaCum 8420940 0
+@[expose] def w1StoreLiveCap : Nat := sessStorePollTightDeltaLive (w1StoreEncCap + 8195) 0
+@[expose] def w1StorePeakCap : Nat :=
   sessStorePollTightDeltaPeak
     (1080975 + (w1PostPqCap + 8195) + (w1StoreEncCap + 8195)) 0
-def w1StoreMaxReqCap : Nat :=
+@[expose] def w1StoreMaxReqCap : Nat :=
   sessStorePollMaxReq (max (max 208000 w1PostPqCap) w1StoreEncCap) 0
 
 /-- Small-allocation slack (`143,362` B) covering `tryCloneSmallDelta` when `x.ptext.length ≤ msgCapBytes`.
 -/
-def w1SmallCtDeltaCap : Nat := 143362
+@[expose] def w1SmallCtDeltaCap : Nat := 143362
 
-def w1SendRealCum (deserCum : Nat) : Nat :=
+@[expose] def w1SendRealCum (deserCum : Nat) : Nat :=
   let c_otr := spqrSendTightDeltaCum + 738 + 122 + w1SigCumCap
   let c_ld := sessLoadPollDeltaCum sessionCapBytes deserCum
   let c_id := smallStorePollDeltaCum sessionCapBytes 0
@@ -209,7 +211,7 @@ def w1SendRealCum (deserCum : Nat) : Nat :=
   let c_fo := max 9619 (2792 + c_otr + w1PkCumCap + c_cm)
   (488 + c_ld) + max 9619 c_fo + w1SmallCtDeltaCap
 
-def w1SendRealLive (deserLive : Nat) : Nat :=
+@[expose] def w1SendRealLive (deserLive : Nat) : Nat :=
   let l_otr := spqrSendTightDeltaLive + (w1CtLenCap + 8195) + w1SigLiveCap
   let l_ld := sessLoadPollDeltaLive sessionCapBytes deserLive
   let l_id := smallStorePollDeltaLive sessionCapBytes 0
@@ -217,7 +219,7 @@ def w1SendRealLive (deserLive : Nat) : Nat :=
   let l_fo := l_otr + w1PkLiveCap + l_cm
   l_ld + l_fo
 
-def w1SendRealPeak (deserLive deserPeak : Nat) : Nat :=
+@[expose] def w1SendRealPeak (deserLive deserPeak : Nat) : Nat :=
   let l_otr := spqrSendTightDeltaLive + (w1CtLenCap + 8195) + w1SigLiveCap
   let p_otr :=
     max spqrSendTightDeltaPeak (spqrSendTightDeltaLive + (w1CtLenCap + 8195) + w1SigPeakCap)
@@ -229,11 +231,11 @@ def w1SendRealPeak (deserLive deserPeak : Nat) : Nat :=
   let p_fo := max p_otr (l_otr + max w1PkPeakCap (w1PkLiveCap + p_cm))
   max p_ld (l_ld + p_fo)
 
-def w1SendRealMaxReq (deserMaxReq : Nat) : Nat :=
+@[expose] def w1SendRealMaxReq (deserMaxReq : Nat) : Nat :=
   w1CliOpenedTightSendMaxReq msgCapBytes sessionCapBytes deserMaxReq
     w1SigReqCap w1PkReqCap w1StoreMaxReqCap
 
-def w1SendRealGrpS (deserGrpS : Nat) : Nat :=
+@[expose] def w1SendRealGrpS (deserGrpS : Nat) : Nat :=
   24 * FineScale + spqrSendTightGroupS + (42 * FineScale + deserGrpS) +
     signalMessageNewDeltaGrpS + preKeyMsgNewDeltaGrpS +
     144 * FineScale + 144 * FineScale + (6 * FineScale + recordSerializeDomFineGrpS)
@@ -260,70 +262,9 @@ abbrev W1PkCallGuard
     call.msg.serialized.length ≤ w1SmSerCap ∧
     call.model.serialized.length ≤ w1PkOutCap
 
-/-- `SessionStoreBudgetEnv` for `w1SessKit B img F peer` on `StoresGhost.opened`, parameterized by `DeserEnv`.
--/
-def w1RealSessKitBudget
-    (F : FsFiles) (peer : AddrGhost)
-    (DeserEnv : List (BitVec 8) → List AllocEvent → Prop)
-    (B : RunBudgets) (img : Arm64.Obj.Image) :
-    SessionStoreBudgetEnv (w1SessKit B img F peer) where
-  loadPollEnv :=
-    cliSessionKitLoadPollEnv cliIo.rd scopeKit
-      (fun _ => CliAddrTextEnv peer)
-      (CliDirGetEnv (ReadFileRuleEnv cliIo.rd))
-      (fun r => DeserEnv (encodeRecord r))
-      F
-  storePollEnv := fun d _ r evs =>
-    ∃ g : RecordGhost,
-      (RecordGhostValid g r ∧ (encodeRecord r).length ≤ w1StoreEncCap) ∧
-      CliSessStorePollEnv d peer g r evs
-
-/-- `IdentityStoreBudgetEnv` for `w1IdKit B img F peer` on `StoresGhost.opened`. -/
-def w1RealIdKitBudget
-    (F : FsFiles) (peer : AddrGhost) (B : RunBudgets) (img : Arm64.Obj.Image) :
-    IdentityStoreBudgetEnv (w1IdKit B img F peer) where
-  trustPollEnv := fun _ rem _ _ =>
-    CliSmallStorePollEnv cliIo.rd F StoresGhost.opened.identity.peers rem.name
-  savePollEnv := fun _ rem _ =>
-    CliSmallStorePollEnv cliIo.rd F StoresGhost.opened.identity.peers rem.name
 
 /-- `WithStoresEncTightEnv` instantiation for W1 (`send`) on `StoresGhost.opened`, parametric in `DeserEnv`.
 -/
-def W1SendRealEnv
-    (B : RunBudgets) (img : Arm64.Obj.Image) (F : FsFiles) (peer : AddrGhost)
-    (W : PEParams) (x : WithStoresEncGhost)
-    (DeserEnv : List (BitVec 8) → List AllocEvent → Prop)
-    (evs : List AllocEvent) : Prop :=
-  WithStoresEncTightEnv scopeKit
-    (w1SessKit B img F peer) (w1RealSessKitBudget F peer DeserEnv B img)
-      StoresGhost.opened.sessions
-    (w1IdKit B img F peer) (w1RealIdKitBudget F peer B img)
-      StoresGhost.opened.identity
-    W.C (pqxdhSpqrModel W) uuidTryParse x
-    (fun _ _ otr _ =>
-      OtrEncryptStepEnv (SpqrSendTightCapEnv otr.pqrState x.rest) x.ptext.length
-        (fun evs' =>
-          ∃ g : SignalMessageNewGhost,
-            (g.ciphertext.length ≤ w1CtLenCap ∧
-              g.pqRatchet.length ≤ 4096 ∧
-              signalMessageNewSerLen uuidTryParse g ≤ w1SmSerCap) ∧
-            SignalMessageNewEnv uuidTryParse g evs'))
-    (fun _ _ otr _ =>
-      OtrEncryptStepEnv (SpqrSendTightCapEnv otr.pqrState x.rest) x.ptext.length
-        (fun evs' =>
-          ∃ g : SignalMessageNewGhost,
-            (g.ciphertext.length ≤ w1CtLenCap ∧
-              g.pqRatchet.length ≤ 4096 ∧
-              signalMessageNewSerLen uuidTryParse g ≤ w1SmSerCap) ∧
-            SignalMessageNewEnv uuidTryParse g evs'))
-    (fun _ _ _ _ evs' =>
-      ∃ call : PreKeyMsgNewCall,
-        (kyberPayloadLen call.kp ≤ 1569 ∧
-          call.msg.serialized.length ≤ w1SmSerCap ∧
-          call.model.serialized.length ≤ w1PkOutCap) ∧
-        PreKeyMsgNewEnv call evs')
-    evs
-
 theorem w1_real_hLoadEq_placed [LibsignalPlacement]
     {A : RustAlloc} {F : FsFiles} {pathOk : List (BitVec 8) → Prop}
     {peer : AddrGhost} {s1 s2 s3 s4 : Nat}
@@ -345,20 +286,6 @@ theorem w1_real_hLoadEq_placed [LibsignalPlacement]
       CliSessLoadPollEnv cliIo.rd DeserEnv F StoresGhost.opened.sessions peer evs :=
   w1_hLoadEq_of_cliSessionKitBudgetEnv hrem (by unfold sessionCapBytes; decide) hSessFileCap
     (fun _ h => h) (fun _ h => h) (fun _ _ _ h => h)
-
-/-- Allocating non-vacuity witness for `W1SendRealEnv`. -/
-theorem w1SendRealEnv_nonvacuous_alloc
-    (B : RunBudgets) (img : Arm64.Obj.Image) (F : FsFiles) (peer : AddrGhost)
-    (W : PEParams) (x : WithStoresEncGhost)
-    (DeserEnv : List (BitVec 8) → List AllocEvent → Prop) :
-    ∃ evs, (∃ req, AllocEvent.alloc req ∈ evs) ∧
-      W1SendRealEnv B img F peer W x DeserEnv evs := by
-  have hbox : (w1SessKit B img F peer).loadBoxSize = 24 := rfl
-  refine ⟨rustAllocEvents (w1SessKit B img F peer).loadBoxSize 8, ?_, ?_⟩
-  · exact ⟨24, by simp [hbox, rustAllocEvents]⟩
-  · exact Or.inl (Or.inl (Or.inr ⟨by rw [hbox]; decide, rfl⟩))
-
-/-! ## 3. Wire-Message Cap Bounds and `OutgoingTripleRatchet` Invariants -/
 
 private theorem w1SigGuard_bounds {r : SessionRecord (List (BitVec 8))}
     {sess : Session (List (BitVec 8))} {otr : OutgoingTripleRatchet (List (BitVec 8))}
@@ -559,35 +486,6 @@ private theorem optLargeCost_fine_w1StoreEncCap :
     decide
   simp only [hnot, ↓reduceIte]
 
-private theorem w1StorePoll_credit_and_group
-    {F : FsFiles} {peer : AddrGhost}
-    {DeserEnv : List (BitVec 8) → List AllocEvent → Prop}
-    {B : RunBudgets} {img : Arm64.Obj.Image}
-    {rem : AddrVal} {r' : SessionRecord (List (BitVec 8))}
-    (hpeerLen : peer.name.bytes.length ≤ 40)
-    (hDom : ∀ ses, r'.currentSession = some ses → SessionCloneDom w1PostPqCap ses)
-    (hEnc : (encodeRecord r').length ≤ w1StoreEncCap) :
-    PhaseCreditSpec fineCostModel
-      ((w1RealSessKitBudget F peer DeserEnv B img).storePollEnv
-        StoresGhost.opened.sessions rem r')
-      w1StoreCumCap w1StoreLiveCap w1StorePeakCap w1StoreMaxReqCap ∧
-    PhaseGroupSpec fineCostModel
-      ((w1RealSessKitBudget F peer DeserEnv B img).storePollEnv
-        StoresGhost.opened.sessions rem r')
-      (6 * FineScale + recordSerializeDomFineGrpS) := by
-  constructor
-  · have hcr :=
-      cliSessStorePoll_exists_dom_phaseCredit_tight dirDomainCaps_opened_sess hpeerLen hDom hEnc
-    rw [optLargeCost_fine_w1PostPqCap, optLargeCost_fine_w1StoreEncCap] at hcr
-    exact PhaseCreditSpec.of_imp
-      (fun _ ⟨g, ⟨hgv, _⟩, hevs⟩ => ⟨g, hgv, hevs⟩)
-      hcr
-  · exact phaseGroupSpec_exists_guarded fineCostModel
-      (fun g ⟨hgv, _⟩ =>
-        cliSessStorePollEnv_dom_fine_groupSpec StoresGhost.opened.sessions peer hgv hDom)
-
-/-! ## 4. Plaintext-Length Monotonicity -/
-
 private theorem smallAllocCost_fine_24 :
     HasFineReallocCredit.smallAllocCost fineCostModel 24 = 488 := by
   change fineSmallAllocCost 24 = 488
@@ -603,9 +501,9 @@ private theorem smallAllocCost_fine_1569 :
   change fineSmallAllocCost 1569 = 2792
   decide
 
-private theorem w1Cum_mono_aux {L N p0 p1 s b sm pk cm k : Nat} (h : s ≤ b + k) :
-    L + max N (max N (p0 + (p1 + s + sm) + pk + cm)) ≤
-      L + max N (max N (p0 + (p1 + b + sm) + pk + cm)) + k := by
+private theorem w1Cum_mono_aux {L N p0 cs p1 s b sm pk cm k : Nat} (h : s ≤ b + k) :
+    L + max N (max N (p0 + (cs + (p1 + s + sm)) + pk + cm)) ≤
+      L + max N (max N (p0 + (cs + p1 + b + sm) + pk + cm)) + k := by
   omega
 
 private theorem w1Live_mono_aux {l_ld l_s x y l_sig l_pk l_cm : Nat} (h : x ≤ y) :
@@ -669,7 +567,13 @@ private theorem w1SendReal_ptext_mono
   refine ⟨?_, ?_, ?_, ?_⟩
   · unfold w1SendRealCum w1CliOpenedTightSendCum w1CliOpenedCustomSendCum
     dsimp only
-    rw [smallAllocCost_fine_24, smallAllocCost_fine_32, smallAllocCost_fine_1569]
+    have hmax30537 :
+        max 30537
+          (738 + tryCloneSmallDelta fineCostModel ((ptextLen / 16 + 1) * 16) + w1SigCumCap) =
+        738 + tryCloneSmallDelta fineCostModel ((ptextLen / 16 + 1) * 16) + w1SigCumCap := by
+      have : 30537 ≤ w1SigCumCap := by decide
+      omega
+    rw [smallAllocCost_fine_24, smallAllocCost_fine_32, smallAllocCost_fine_1569, hmax30537]
     exact w1Cum_mono_aux hsm
   · unfold w1SendRealLive w1CliOpenedTightSendLive w1CliOpenedCustomSendLive
     dsimp only
@@ -693,267 +597,7 @@ theorem w1SendReal_live_le_peak (deserLive deserPeak : Nat) :
 
 /-! ## 5. Parametric `SingleSlotFineSpec` -/
 
-/-- `SingleSlotFineSpec` taking a direct `cliIo.rd (runFiles i)` byte bound, parametric in `(DeserEnv, deserCum, deserLive, deserPeak, deserMaxReq, deserGrpS)`.
--/
-def w1SendReal_singleSlotFineSpec_of_rdBounded
-    {W : PEParams} {i : Inputs} {peerAddr : AddrV}
-    {B : RunBudgets} {img : Arm64.Obj.Image} {peer : AddrGhost}
-    {x : WithStoresEncGhost}
-    (DeserEnv : List (BitVec 8) → List AllocEvent → Prop)
-    (deserCum deserLive deserPeak deserMaxReq deserGrpS : Nat)
-    (hi : CliPqxdhInputs W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.send peerAddr))
-    (hptext : x.ptext.length ≤ msgCapBytes)
-    (hfileCap : ∀ p bs, cliIo.rd (runFiles i) p = .ok bs → bs.length ≤ sessionCapBytes)
-    (hpeerVal : peer.val = addrValOf peerAddr)
-    (hrem : x.rem.val = peer.val)
-    (hpeerLen : peer.name.bytes.length ≤ 40)
-    (hremName : x.rem.name.bytes.length ≤ 40)
-    (hDeserCredit : ∀ bs, bs.length ≤ 2097152 →
-      PhaseCreditSpec fineCostModel (DeserEnv bs) deserCum deserLive deserPeak deserMaxReq)
-    (hDeserGrp : ∀ bs, bs.length ≤ 2097152 →
-      PhaseGroupSpec fineCostModel (DeserEnv bs) deserGrpS) :
-    SingleSlotFineSpec (W1SendRealEnv B img (runFiles i) peer W x DeserEnv) where
-  cumB := w1SendRealCum deserCum
-  liveB := w1SendRealLive deserLive
-  peakB := w1SendRealPeak deserLive deserPeak
-  maxReq := w1SendRealMaxReq deserMaxReq
-  grpS := w1SendRealGrpS deserGrpS
-  credit_spec := by
-    have _hValid : PeerSpqrValid (runFiles i) (addrValOf peerAddr) :=
-      peerSpqrValid_of_cliPqInputs_send hi hparse
-    have hTopPeer : PeerSpqrStateTight640 W.C.F W.Q.K (runFiles i) (addrValOf peerAddr) :=
-      peerSpqrStateTight640_of_cliPqInputs_send hi hparse
-    have hTopRem : PeerSpqrStateTight640 W.C.F W.Q.K (runFiles i) x.rem.val := by
-      rwa [hrem, hpeerVal]
-    have hidKeyLen : x.rem.val.name.length ≤ 64 :=
-      Nat.le_trans hremName (by decide)
-    have hLoadEq : ∀ evs,
-        (w1RealSessKitBudget (runFiles i) peer DeserEnv B img).loadPollEnv
-          StoresGhost.opened.sessions x.rem.val evs →
-        CliSessLoadPollEnv cliIo.rd DeserEnv (runFiles i) StoresGhost.opened.sessions peer evs := by
-      dsimp only [w1RealSessKitBudget]
-      refine cliSessionKitLoadPollEnv_imp_cliSessLoadPollEnv hrem ?_ ?_ ?_ ?_
-      · exact fun _ h => h
-      · exact fun _ h => h
-      · exact fun bs hbs =>
-          Nat.le_trans
-            (hfileCap (pathOf StoresGhost.opened.sessions.path (addressText peer.val)) bs hbs)
-            (by unfold sessionCapBytes; decide)
-      · exact fun _ _ _ h => h
-    have hSend : ∀ r sess otr taken,
-        (w1SessKit B img (runFiles i) peer).ScopeAt scopeKit
-          StoresGhost.opened.sessions x.rem.val r →
-        r.currentSession = some sess →
-        execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-        PhaseCreditSpec fineCostModel (SpqrSendTightCapEnv otr.pqrState x.rest)
-          spqrSendTightDeltaCum spqrSendTightDeltaLive
-          spqrSendTightDeltaPeak spqrSendTightMaxReq := by
-      intro r sess otr taken hScAt hcur hfrom
-      obtain ⟨hpqr, _⟩ := fromSessionState_pqr_and_taken_local hfrom
-      have hTopOtr : TopStateTight W.C.F W.Q.K otr.pqrState :=
-        peerSpqrStateTight640_of_w1ScopeAt hScAt hcur hpqr hTopRem
-      obtain ⟨hPts, hChain, _⟩ := topStateTight_to_tightValid640 hTopOtr
-      exact spqrSend_phaseCreditSpec_tight (ptext := x.rest) hPts hChain
-    have hStoreNone : ∀ r sess otr taken (k : CryptoGames.LibsignalSession.IdentityKey),
-        (w1SessKit B img (runFiles i) peer).ScopeAt scopeKit
-          StoresGhost.opened.sessions x.rem.val r →
-        r.currentSession = some sess →
-        execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-        taken.remoteIdentity = some k →
-        PhaseCreditSpec fineCostModel
-          ((w1RealSessKitBudget (runFiles i) peer DeserEnv B img).storePollEnv
-            StoresGhost.opened.sessions x.rem.val
-            (storedRecord sess (otrAfterNone W.C (pqxdhSpqrModel W) x otr) taken))
-          w1StoreCumCap w1StoreLiveCap w1StorePeakCap w1StoreMaxReqCap := by
-      intro r sess otr taken _ hScAt hcur hfrom _
-      obtain ⟨hpqr, htaken⟩ := fromSessionState_pqr_and_taken_local hfrom
-      have hTopOtr : TopStateTight W.C.F W.Q.K otr.pqrState :=
-        peerSpqrStateTight640_of_w1ScopeAt hScAt hcur hpqr hTopRem
-      have hTop' :
-          TopStateTight W.C.F W.Q.K (otrAfterNone W.C (pqxdhSpqrModel W) x otr).pqrState :=
-        otr_encrypt_topStateTight W.C rfl x.ptext none x.rest otr hTopOtr
-      obtain ⟨hDom, hEnc⟩ := storedRecord_scopeKit_and_bounds hScAt.1 hcur htaken hTop'
-      exact (w1StorePoll_credit_and_group hpeerLen hDom hEnc).1
-    have hStoreSome : ∀ r sess otr taken (k : CryptoGames.LibsignalSession.IdentityKey),
-        (w1SessKit B img (runFiles i) peer).ScopeAt scopeKit
-          StoresGhost.opened.sessions x.rem.val r →
-        r.currentSession = some sess →
-        execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-        taken.remoteIdentity = some k →
-        PhaseCreditSpec fineCostModel
-          ((w1RealSessKitBudget (runFiles i) peer DeserEnv B img).storePollEnv
-            StoresGhost.opened.sessions x.rem.val
-            (storedRecord sess (otrAfterSome W.C (pqxdhSpqrModel W) uuidTryParse x otr) taken))
-          w1StoreCumCap w1StoreLiveCap w1StorePeakCap w1StoreMaxReqCap := by
-      intro r sess otr taken _ hScAt hcur hfrom _
-      obtain ⟨hpqr, htaken⟩ := fromSessionState_pqr_and_taken_local hfrom
-      have hTopOtr : TopStateTight W.C.F W.Q.K otr.pqrState :=
-        peerSpqrStateTight640_of_w1ScopeAt hScAt hcur hpqr hTopRem
-      have hTop' :
-          TopStateTight W.C.F W.Q.K
-            (otrAfterSome W.C (pqxdhSpqrModel W) uuidTryParse x otr).pqrState :=
-        otr_encrypt_topStateTight W.C rfl x.ptext _ x.rest otr hTopOtr
-      obtain ⟨hDom, hEnc⟩ := storedRecord_scopeKit_and_bounds hScAt.1 hcur htaken hTop'
-      exact (w1StorePoll_credit_and_group hpeerLen hDom hEnc).1
-    have hcr :=
-      w1CliOpenedTightSend_fine_phaseCredit
-        B img (runFiles i) peer W.C (pqxdhSpqrModel W) x DeserEnv x.rem.val.name
-        (w1RealSessKitBudget (runFiles i) peer DeserEnv B img)
-        (w1RealIdKitBudget (runFiles i) peer B img)
-        SpqrSendTightCapEnv W1SigGuard W1SigGuard W1PkCallGuard
-        (nameCum := 9619) (fileCap := sessionCapBytes)
-        hpeerLen hremName (Nat.le_refl 9619) hidKeyLen
-        (fun bs hbs => hfileCap _ bs hbs)
-        (fun bs hbs => hfileCap _ bs hbs)
-        hDeserCredit hLoadEq
-        (fun _ _ h => h)
-        (fun _ _ h => h)
-        hSend
-        (fun _ _ _ _ _ hg => w1SigGuard_bounds hg)
-        (fun _ _ _ _ _ hg => w1SigGuard_bounds hg)
-        (fun _ _ _ _ _ hc => w1PkCallGuard_bounds hc)
-        hStoreNone hStoreSome
-    obtain ⟨hm1, hm2, hm3, hm4⟩ :=
-      w1SendReal_ptext_mono
-        (deserCum := deserCum) (deserLive := deserLive)
-        (deserPeak := deserPeak) (deserMaxReq := deserMaxReq) hptext
-    exact hcr.mono hm1 hm2 hm3 hm4
-  live_le_peak := w1SendReal_live_le_peak deserLive deserPeak
-  group_spec := by
-    have hTopPeer : PeerSpqrStateTight640 W.C.F W.Q.K (runFiles i) (addrValOf peerAddr) :=
-      peerSpqrStateTight640_of_cliPqInputs_send hi hparse
-    have hTopRem : PeerSpqrStateTight640 W.C.F W.Q.K (runFiles i) x.rem.val := by
-      rwa [hrem, hpeerVal]
-    have hLoadEq : ∀ evs,
-        (w1RealSessKitBudget (runFiles i) peer DeserEnv B img).loadPollEnv
-          StoresGhost.opened.sessions x.rem.val evs →
-        CliSessLoadPollEnv cliIo.rd DeserEnv (runFiles i) StoresGhost.opened.sessions peer evs := by
-      dsimp only [w1RealSessKitBudget]
-      refine cliSessionKitLoadPollEnv_imp_cliSessLoadPollEnv hrem ?_ ?_ ?_ ?_
-      · exact fun _ h => h
-      · exact fun _ h => h
-      · exact fun bs hbs =>
-          Nat.le_trans
-            (hfileCap (pathOf StoresGhost.opened.sessions.path (addressText peer.val)) bs hbs)
-            (by unfold sessionCapBytes; decide)
-      · exact fun _ _ _ h => h
-    have hLoadGrp :
-        PhaseGroupSpec fineCostModel
-          ((w1RealSessKitBudget (runFiles i) peer DeserEnv B img).loadPollEnv
-            StoresGhost.opened.sessions x.rem.val)
-          (42 * FineScale + deserGrpS) :=
-      (cliSessLoadPollEnv_groupSpec fineCostModel (rd := cliIo.rd) (runFiles i)
-        StoresGhost.opened.sessions peer hDeserGrp).of_imp hLoadEq
-    have hSigGrp :
-        PhaseGroupSpec fineCostModel
-          (fun evs' =>
-            ∃ g : SignalMessageNewGhost,
-              (g.ciphertext.length ≤ w1CtLenCap ∧
-                g.pqRatchet.length ≤ 4096 ∧
-                signalMessageNewSerLen uuidTryParse g ≤ w1SmSerCap) ∧
-              SignalMessageNewEnv uuidTryParse g evs')
-          signalMessageNewDeltaGrpS :=
-      phaseGroupSpec_exists_guarded fineCostModel
-        (fun g _ => signalMessageNew_phaseGroup fineCostModel_wireGroupHyps uuidTryParse g)
-    have hPkGrp :
-        PhaseGroupSpec fineCostModel
-          (fun evs' =>
-            ∃ call : PreKeyMsgNewCall,
-              (kyberPayloadLen call.kp ≤ 1569 ∧
-                call.msg.serialized.length ≤ w1SmSerCap ∧
-                call.model.serialized.length ≤ w1PkOutCap) ∧
-              PreKeyMsgNewEnv call evs')
-          preKeyMsgNewDeltaGrpS :=
-      phaseGroupSpec_exists_guarded fineCostModel
-        (fun call _ => preKeyMsgNew_phaseGroup fineCostModel_wireGroupHyps call)
-    have hStoreNoneGrp : ∀ r sess otr taken (k : CryptoGames.LibsignalSession.IdentityKey),
-        (w1SessKit B img (runFiles i) peer).ScopeAt scopeKit
-          StoresGhost.opened.sessions x.rem.val r →
-        r.currentSession = some sess →
-        execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-        taken.remoteIdentity = some k →
-        PhaseGroupSpec fineCostModel
-          ((w1RealSessKitBudget (runFiles i) peer DeserEnv B img).storePollEnv
-            StoresGhost.opened.sessions x.rem.val
-            (storedRecord sess (otrAfterNone W.C (pqxdhSpqrModel W) x otr) taken))
-          (6 * FineScale + recordSerializeDomFineGrpS) := by
-      intro r sess otr taken _ hScAt hcur hfrom _
-      obtain ⟨hpqr, htaken⟩ := fromSessionState_pqr_and_taken_local hfrom
-      have hTopOtr : TopStateTight W.C.F W.Q.K otr.pqrState :=
-        peerSpqrStateTight640_of_w1ScopeAt hScAt hcur hpqr hTopRem
-      have hTop' :
-          TopStateTight W.C.F W.Q.K (otrAfterNone W.C (pqxdhSpqrModel W) x otr).pqrState :=
-        otr_encrypt_topStateTight W.C rfl x.ptext none x.rest otr hTopOtr
-      obtain ⟨hDom, hEnc⟩ := storedRecord_scopeKit_and_bounds hScAt.1 hcur htaken hTop'
-      exact (w1StorePoll_credit_and_group hpeerLen hDom hEnc).2
-    have hStoreSomeGrp : ∀ r sess otr taken (k : CryptoGames.LibsignalSession.IdentityKey),
-        (w1SessKit B img (runFiles i) peer).ScopeAt scopeKit
-          StoresGhost.opened.sessions x.rem.val r →
-        r.currentSession = some sess →
-        execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-        taken.remoteIdentity = some k →
-        PhaseGroupSpec fineCostModel
-          ((w1RealSessKitBudget (runFiles i) peer DeserEnv B img).storePollEnv
-            StoresGhost.opened.sessions x.rem.val
-            (storedRecord sess (otrAfterSome W.C (pqxdhSpqrModel W) uuidTryParse x otr) taken))
-          (6 * FineScale + recordSerializeDomFineGrpS) := by
-      intro r sess otr taken _ hScAt hcur hfrom _
-      obtain ⟨hpqr, htaken⟩ := fromSessionState_pqr_and_taken_local hfrom
-      have hTopOtr : TopStateTight W.C.F W.Q.K otr.pqrState :=
-        peerSpqrStateTight640_of_w1ScopeAt hScAt hcur hpqr hTopRem
-      have hTop' :
-          TopStateTight W.C.F W.Q.K
-            (otrAfterSome W.C (pqxdhSpqrModel W) uuidTryParse x otr).pqrState :=
-        otr_encrypt_topStateTight W.C rfl x.ptext _ x.rest otr hTopOtr
-      obtain ⟨hDom, hEnc⟩ := storedRecord_scopeKit_and_bounds hScAt.1 hcur htaken hTop'
-      exact (w1StorePoll_credit_and_group hpeerLen hDom hEnc).2
-    exact w1CliOpenedTightSend_fine_groupSpec
-      B img (runFiles i) peer W.C (pqxdhSpqrModel W) x
-      (w1RealSessKitBudget (runFiles i) peer DeserEnv B img)
-      (w1RealIdKitBudget (runFiles i) peer B img)
-      SpqrSendTightCapEnv
-      hLoadGrp
-      (fun _ _ otr _ _ _ _ => spqrSendTightCap_groupSpec fineCostModel otr.pqrState x.rest)
-      (fun _ _ _ _ _ _ _ => hSigGrp)
-      (fun _ _ _ _ _ _ _ => hSigGrp)
-      (fun _ _ _ _ _ _ _ => hPkGrp)
-      (fun _ _ _ _ _ _ _ _ _ =>
-        cliSmallStorePollEnv_groupSpec fineCostModel cliIo.rd (runFiles i)
-          StoresGhost.opened.identity.peers x.rem.val.name)
-      (fun _ _ _ _ _ _ _ _ _ =>
-        cliSmallStorePollEnv_groupSpec fineCostModel cliIo.rd (runFiles i)
-          StoresGhost.opened.identity.peers x.rem.val.name)
-      hStoreNoneGrp hStoreSomeGrp
 
-/-- Primary `SingleSlotFineSpec` for `W1SendRealEnv` under `CliPqxdhInputs W i` and `FilesBounded sessionCapBytes`, parametric in `DeserEnv`.
--/
-def w1SendReal_singleSlotFineSpec
-    {W : PEParams} {i : Inputs} {peerAddr : AddrV}
-    {B : RunBudgets} {img : Arm64.Obj.Image} {peer : AddrGhost}
-    {x : WithStoresEncGhost}
-    (DeserEnv : List (BitVec 8) → List AllocEvent → Prop)
-    (deserCum deserLive deserPeak deserMaxReq deserGrpS : Nat)
-    (hi : CliPqxdhInputs W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.send peerAddr))
-    (hptext : x.ptext.length ≤ msgCapBytes)
-    (hfiles : FilesBounded sessionCapBytes (initFsState (cliInputs i)))
-    (hpeerVal : peer.val = addrValOf peerAddr)
-    (hrem : x.rem.val = peer.val)
-    (hpeerLen : peer.name.bytes.length ≤ 40)
-    (hremName : x.rem.name.bytes.length ≤ 40)
-    (hDeserCredit : ∀ bs, bs.length ≤ 2097152 →
-      PhaseCreditSpec fineCostModel (DeserEnv bs) deserCum deserLive deserPeak deserMaxReq)
-    (hDeserGrp : ∀ bs, bs.length ≤ 2097152 →
-      PhaseGroupSpec fineCostModel (DeserEnv bs) deserGrpS) :
-    SingleSlotFineSpec (W1SendRealEnv B img (runFiles i) peer W x DeserEnv) :=
-  w1SendReal_singleSlotFineSpec_of_rdBounded DeserEnv
-    deserCum deserLive deserPeak deserMaxReq deserGrpS
-    hi hparse hptext
-    (fun p bs hrd => cliIo_rd_runFiles_length_le_of_filesBounded hfiles p bs hrd)
-    hpeerVal hrem hpeerLen hremName hDeserCredit hDeserGrp
-
-/-! ## 6. Kernel `decide` Cap Lemmas -/
 
 /-- Set A `cliSendSlot*Cap` numerical check. -/
 theorem w1SendReal_caps_setA :
@@ -973,62 +617,6 @@ theorem w1SendReal_caps_setB :
       w1SendRealGrpS 346829088 ≤ cliSendSlotGrpSCap := by
   decide
 
-theorem w1SendReal_spec_caps_setA
-    {W : PEParams} {i : Inputs} {peerAddr : AddrV}
-    {B : RunBudgets} {img : Arm64.Obj.Image} {peer : AddrGhost}
-    {x : WithStoresEncGhost}
-    (DeserEnv : List (BitVec 8) → List AllocEvent → Prop)
-    (hi : CliPqxdhInputs W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.send peerAddr))
-    (hptext : x.ptext.length ≤ msgCapBytes)
-    (hfiles : FilesBounded sessionCapBytes (initFsState (cliInputs i)))
-    (hpeerVal : peer.val = addrValOf peerAddr)
-    (hrem : x.rem.val = peer.val)
-    (hpeerLen : peer.name.bytes.length ≤ 40)
-    (hremName : x.rem.name.bytes.length ≤ 40)
-    (hDeserCredit : ∀ bs, bs.length ≤ 2097152 →
-      PhaseCreditSpec fineCostModel (DeserEnv bs) 20638720 3211282 5316629 2097152)
-    (hDeserGrp : ∀ bs, bs.length ≤ 2097152 →
-      PhaseGroupSpec fineCostModel (DeserEnv bs) 371994912) :
-    let spec := w1SendReal_singleSlotFineSpec (B := B) (img := img)
-      DeserEnv 20638720 3211282 5316629 2097152 371994912
-      hi hparse hptext hfiles hpeerVal hrem hpeerLen hremName hDeserCredit hDeserGrp
-    spec.cumB ≤ cliSendSlotCumCap ∧
-      spec.liveB ≤ cliSendSlotLiveCap ∧
-      spec.peakB ≤ cliSendSlotPeakCap ∧
-      spec.maxReq ≤ cliSendSlotReqCap ∧
-      spec.grpS ≤ cliSendSlotGrpSCap :=
-  w1SendReal_caps_setA
-
-theorem w1SendReal_spec_caps_setB
-    {W : PEParams} {i : Inputs} {peerAddr : AddrV}
-    {B : RunBudgets} {img : Arm64.Obj.Image} {peer : AddrGhost}
-    {x : WithStoresEncGhost}
-    (DeserEnv : List (BitVec 8) → List AllocEvent → Prop)
-    (hi : CliPqxdhInputs W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.send peerAddr))
-    (hptext : x.ptext.length ≤ msgCapBytes)
-    (hfiles : FilesBounded sessionCapBytes (initFsState (cliInputs i)))
-    (hpeerVal : peer.val = addrValOf peerAddr)
-    (hrem : x.rem.val = peer.val)
-    (hpeerLen : peer.name.bytes.length ≤ 40)
-    (hremName : x.rem.name.bytes.length ≤ 40)
-    (hDeserCredit : ∀ bs, bs.length ≤ 2097152 →
-      PhaseCreditSpec fineCostModel (DeserEnv bs) 19417728 3211282 5316629 2097152)
-    (hDeserGrp : ∀ bs, bs.length ≤ 2097152 →
-      PhaseGroupSpec fineCostModel (DeserEnv bs) 346829088) :
-    let spec := w1SendReal_singleSlotFineSpec (B := B) (img := img)
-      DeserEnv 19417728 3211282 5316629 2097152 346829088
-      hi hparse hptext hfiles hpeerVal hrem hpeerLen hremName hDeserCredit hDeserGrp
-    spec.cumB ≤ cliSendSlotCumCap ∧
-      spec.liveB ≤ cliSendSlotLiveCap ∧
-      spec.peakB ≤ cliSendSlotPeakCap ∧
-      spec.maxReq ≤ cliSendSlotReqCap ∧
-      spec.grpS ≤ cliSendSlotGrpSCap :=
-  w1SendReal_caps_setB
-
-/-! ## 7. Hard-Wired `RecordDeserializeCancelEnv` Slot Bundle -/
-
 theorem peer_and_rem_name_le_40_of_send {i : Inputs} {peerAddr : AddrV}
     {peer : AddrGhost} {x : WithStoresEncGhost}
     (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.send peerAddr))
@@ -1046,17 +634,17 @@ theorem peer_and_rem_name_le_40_of_send {i : Inputs} {peerAddr : AddrV}
     exact hp40
   exact ⟨hpeer, hremName⟩
 
-def w1SendRealNoDeserCum : Nat := w1SendRealCum 0
+@[expose] def w1SendRealNoDeserCum : Nat := w1SendRealCum 0
 
-def w1SendRealDcanCum : Nat := w1SendRealCum deserCancelFineCum
+@[expose] def w1SendRealDcanCum : Nat := w1SendRealCum deserCancelFineCum
 
-def w1SendRealDcanLive : Nat := w1SendRealLive deserCancelFineLive
+@[expose] def w1SendRealDcanLive : Nat := w1SendRealLive deserCancelFineLive
 
-def w1SendRealDcanPeak : Nat := w1SendRealPeak deserCancelFineLive deserCancelFinePeak
+@[expose] def w1SendRealDcanPeak : Nat := w1SendRealPeak deserCancelFineLive deserCancelFinePeak
 
-def w1SendRealDcanMaxReq : Nat := w1SendRealMaxReq deserCancelFineMaxReq
+@[expose] def w1SendRealDcanMaxReq : Nat := w1SendRealMaxReq deserCancelFineMaxReq
 
-def w1SendRealDcanGrpS : Nat := w1SendRealGrpS deserCancelFineGrpS
+@[expose] def w1SendRealDcanGrpS : Nat := w1SendRealGrpS deserCancelFineGrpS
 
 theorem w1SendRealDcan_live_le_peak :
     w1SendRealDcanLive ≤ w1SendRealDcanPeak :=
@@ -1080,52 +668,13 @@ structure W1SendRealParams where
   x : WithStoresEncGhost
 
 /-- Call-site alignment and 1 MiB plaintext bound for `W1SendRealParams` on `.send peerAddr`. -/
-def W1SendRealDom (c : CallV) (R : W1SendRealParams) : Prop :=
+@[expose] def W1SendRealDom (c : CallV) (R : W1SendRealParams) : Prop :=
   ∀ peerAddr, c = .send peerAddr →
     R.peer.val = addrValOf peerAddr ∧
     R.x.rem.val = R.peer.val ∧
     R.x.ptext.length ≤ msgCapBytes
 
-/-- Real CLI W1 (`send`) slot envelope with `RecordDeserializeCancelEnv` wired into `w1RealSessKitBudget`.
--/
-def W1SendRealSlotEnv
-    (img : Arm64.Obj.Image) (W : PEParams) (i : Inputs) (R : W1SendRealParams)
-    (evs : List AllocEvent) : Prop :=
-  W1SendRealEnv R.B img (runFiles i) R.peer W R.x RecordDeserializeCancelEnv evs
 
-theorem w1SendRealSlotEnv_nonvacuous_alloc
-    (img : Arm64.Obj.Image) (W : PEParams) (i : Inputs) (R : W1SendRealParams) :
-    ∃ evs, (∃ req, AllocEvent.alloc req ∈ evs) ∧
-      W1SendRealSlotEnv img W i R evs :=
-  w1SendRealEnv_nonvacuous_alloc R.B img (runFiles i) R.peer W R.x RecordDeserializeCancelEnv
-
-/-- Closed `SingleSlotFineSpec` for `W1SendRealSlotEnv` with `RecordDeserializeCancelEnv` wired in.
--/
-def w1SendRealSlot_dcan_singleSlotFineSpec
-    {img : Arm64.Obj.Image} {W : PEParams} {i : Inputs} {peerAddr : AddrV}
-    (R : W1SendRealParams)
-    (hi : CliPqxdhInputs W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.send peerAddr))
-    (hdom : W1SendRealDom (.send peerAddr) R)
-    (hfb : FilesBounded sessionCapBytes (initFsState (cliInputs i))) :
-    CliSlotFineSpec.SingleSlotFineSpec (W1SendRealSlotEnv img W i R) :=
-  let h := hdom peerAddr rfl
-  let hn := peer_and_rem_name_le_40_of_send hparse h.1 h.2.1
-  let S := w1SendReal_singleSlotFineSpec (B := R.B) (img := img)
-    RecordDeserializeCancelEnv
-    deserCancelFineCum deserCancelFineLive deserCancelFinePeak deserCancelFineMaxReq
-    deserCancelFineGrpS
-    hi hparse h.2.2 hfb h.1 h.2.1 hn.1 hn.2
-    (fun _ hbs => recordDeserializeCancelEnv_fine_phaseCreditSpec hbs)
-    (fun bs _ => recordDeserializeCancelEnv_fine_groupSpec bs)
-  { cum := w1SendRealDcanCum
-    live := w1SendRealDcanLive
-    peak := w1SendRealDcanPeak
-    maxReq := w1SendRealDcanMaxReq
-    grpS := w1SendRealDcanGrpS
-    credit := S.credit_spec
-    live_le_peak := S.live_le_peak
-    groups := S.group_spec }
 
 end LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot
 

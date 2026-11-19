@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.BaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.BaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Base Step Lemmas for `spqr::encode_varint` (`Block 326`)
@@ -20,7 +22,7 @@ continuation-byte stages 1..2, and `SpqrVecPushBudgetInv` algebra from `BaseBudg
 `BaseBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

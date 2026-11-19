@@ -9,21 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Common
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Defs
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
 import LibsignalBinary.Proofs.AesCbc.Bytes
-import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.Transfer
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Verification of `<Hmac<Sha256> as FixedOutput>::finalize_fixed`
 
-Proves `finalizeFixedSpec` for `Hmac<Sha256>::finalize_fixed` on `tripleRatchetProgAtExt`,
-`tripleRatchetProgAt`, and under `[LibsignalPlacement]`.
+Proves `finalizeFixedSpec` for `Hmac<Sha256>::finalize_fixed` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
@@ -46,59 +44,18 @@ set_option maxHeartbeats 400000
 
 /-! ## `tripleRatchetProgAtExt` Predicates, `HkdfHooks`, and Step Lemmas -/
 
-def FinalizeFixedOkExt (b : BitVec 64) (C : Crypto)
+@[expose] def FinalizeFixedOkExt (b : BitVec 64) (C : Crypto)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr finalizeFixedName)
     (finalizeFixedSpec C.F)
 
-theorem FinalizeFixedOk.of_tripleRatchetProgAtExt {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : FinalizeFixedOkExt b C (tripleRatchetExterns C ctl abs)) :
-    FinalizeFixedOk b C ctl abs :=
-  h
-
-theorem FinalizeFixedOkExt.of_tripleRatchetProgAt {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : FinalizeFixedOk b C ctl abs) :
-    FinalizeFixedOkExt b C (tripleRatchetExterns C ctl abs) :=
-  h
-
-def ExtractOkExt (img : Obj.Image) (C : Crypto)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext) ((tripleRatchetProgAtExt img.base ext).fnAddr extractName)
-    ((extractSpec C.F).inImage img)
-
-theorem ExtractOk.of_tripleRatchetProgAtExt {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : ExtractOkExt img C (tripleRatchetExterns C ctl abs)) :
-    ExtractOk img C ctl abs :=
-  h
-
-theorem ExtractOkExt.of_tripleRatchetProgAt {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : ExtractOk img C ctl abs) :
-    ExtractOkExt img C (tripleRatchetExterns C ctl abs) :=
-  h
-
-def ExpandMultiInfoOkExt (b : BitVec 64) (C : Crypto)
+@[expose] def ExpandMultiInfoOkExt (b : BitVec 64) (C : Crypto)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr expandMultiInfoName)
     (expandMultiInfoSpec C.F)
 
-theorem ExpandMultiInfoOk.of_tripleRatchetProgAtExt {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : ExpandMultiInfoOkExt b C (tripleRatchetExterns C ctl abs)) :
-    ExpandMultiInfoOk b C ctl abs :=
-  h
-
-theorem ExpandMultiInfoOkExt.of_tripleRatchetProgAt {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : ExpandMultiInfoOk b C ctl abs) :
-    ExpandMultiInfoOkExt b C (tripleRatchetExterns C ctl abs) :=
-  h
-
 /-- Packaged `RunsTo` contract for `finalize_fixed` on `tripleRatchetProgAtExt b ext`. -/
-def Fin.FinalizeFixedRunsToExt (b : BitVec 64) (C : Crypto)
+@[expose] def Fin.FinalizeFixedRunsToExt (b : BitVec 64) (C : Crypto)
     (ext : String → Option (State → State)) : Prop :=
   ∀ {key msg : List (BitVec 8)} {s0 : State},
     FinalizeFixedProof.FinPre b C.F key msg s0 →
@@ -173,139 +130,6 @@ theorem HkdfHooks.of_le_tripleRatchetExterns {C : Crypto} {ctl : BitVec 64}
       Rust.withPanics ext n = some f) :
     HkdfHooks C.F ext :=
   HkdfHooks.of_mono (ext1 := tripleRatchetExterns C ctl abs) hle
-
-@[scoped simp, arm64_norm]
-theorem tripleRatchetProgAtExt_fetch (b : BitVec 64) (ext : String → Option (State → State)) (addr : BitVec 64) :
-    (tripleRatchetProgAtExt b ext).fetch addr =
-      (libsignalSessionCode.rebase b (Rust.withPanics ext)).fetch addr := rfl
-
-@[scoped simp, arm64_norm]
-theorem tripleRatchetProgAtExt_externAt_272972 (b : BitVec 64) {F : ShaCompress}
-    (ext : String → Option (State → State)) [hH : HkdfHooks F ext] :
-    (tripleRatchetProgAtExt b ext).externAt? (b + bv% (ls_off% "memset")) = some memsetHook := by
-  rw [show (bv% (ls_off% "memset") : BitVec 64) = BitVec.ofNat 64 (num% (ls_off% "memset")) from rfl,
-    Program.externAt?_rebase_add (num% (ls_off% "memset")), (ls_hook% "memset")]
-  exact hH.memset
-
-@[scoped simp, arm64_norm]
-theorem tripleRatchetProgAtExt_externAt_273012 (b : BitVec 64) {F : ShaCompress}
-    (ext : String → Option (State → State)) [hH : HkdfHooks F ext] :
-    (tripleRatchetProgAtExt b ext).externAt? (b + bv% (ls_off% "memcpy")) = some memcpyHook := by
-  rw [show (bv% (ls_off% "memcpy") : BitVec 64) = BitVec.ofNat 64 (num% (ls_off% "memcpy")) from rfl,
-    Program.externAt?_rebase_add (num% (ls_off% "memcpy")), (ls_hook% "memcpy")]
-  exact hH.memcpy
-
-@[scoped simp, arm64_norm]
-theorem tripleRatchetProgAtExt_externAt_273212 (b : BitVec 64) {F : ShaCompress}
-    (ext : String → Option (State → State)) [hH : HkdfHooks F ext] :
-    (tripleRatchetProgAtExt b ext).externAt? (b + bv% (ls_off% "sha2::sha256::compress256")) = some (compress256Hook F) := by
-  rw [show (bv% (ls_off% "sha2::sha256::compress256") : BitVec 64) = BitVec.ofNat 64 (num% (ls_off% "sha2::sha256::compress256")) from rfl,
-    Program.externAt?_rebase_add (num% (ls_off% "sha2::sha256::compress256")), (ls_hook% "sha2::sha256::compress256")]
-  exact hH.compress256
-
-theorem s2_compress256_step_ext (b : BitVec 64) (C : Crypto)
-    (ext : String → Option (State → State)) [HkdfHooks C.F ext]
-    {s₀ s : State} {Q : State → Prop}
-    {stPtr blkPtr lr : BitVec 64} {st : ShaState} {blk : List (BitVec 8)}
-    (hrun : s.status = .Running)
-    (hpc : s.pc = b + bv% (ls_off% "sha2::sha256::compress256"))
-    (hx0 : s.readReg64 .x0 = stPtr)
-    (hx1 : s.readReg64 .x1 = blkPtr)
-    (hx2 : s.readReg64 .x2 = 1#64)
-    (hlr : s.readReg64 .lr = lr)
-    (hst : s.mem.readBytes stPtr 32 = shaStateBytes st)
-    (hblk : s.mem.readBytes blkPtr 64 = blk)
-    (hlen : blk.length = 64)
-    (hrw : s.mem.RW stPtr 32)
-    (h : RunsToFrom (tripleRatchetProgAtExt b ext) s₀
-      ((s.setMem (s.mem.writeBytes stPtr (shaStateBytes (C.F st blk)))).setPC lr) Q) :
-    RunsToFrom (tripleRatchetProgAtExt b ext) s₀ s Q := by
-  have hcan : s.mem.canWrite stPtr (shaStateBytes (C.F st blk)).length = true := by
-    rw [shaStateBytes_length]
-    exact hrw.canWrite_sub (by simp) (by decide)
-  have hhook : (tripleRatchetProgAtExt b ext).externAt? s.pc = some (compress256Hook C.F) := by
-    rw [hpc]; exact tripleRatchetProgAtExt_externAt_273212 b (F := C.F) ext
-  have hstate := compress256Hook_eq C.F hx0 hx1 hx2 hlr hst hblk hlen
-  have hkeep : s.mem.KeepsFrozen (compress256Hook C.F s).mem := by
-    rw [hstate]; exact Memory.keepsFrozen_writeBytes _ hcan
-  have hsym : (compress256Hook C.F s).symtab = s.symtab := by rw [hstate]; rfl
-  refine RunsTo.hook hrun hhook hkeep hsym ?_
-  rwa [hstate]
-
-theorem s2_memset_step_ext (b : BitVec 64) (C : Crypto)
-    (ext : String → Option (State → State)) [HkdfHooks C.F ext]
-    {s₀ s : State} {Q : State → Prop}
-    {dst lr : BitVec 64} {len : ℕ}
-    (hrun : s.status = .Running)
-    (hpc : s.pc = b + bv% (ls_off% "memset"))
-    (hx0 : s.readReg64 .x0 = dst)
-    (hx1 : (s.readReg64 .x1).truncate 8 = 0#8)
-    (hx2 : (s.readReg64 .x2).toNat = len)
-    (hlr : s.readReg64 .lr = lr)
-    (hrw : s.mem.RW dst len)
-    (h : RunsToFrom (tripleRatchetProgAtExt b ext) s₀
-      ((s.setMem (s.mem.writeBytes dst (List.replicate len 0#8))).setPC lr) Q) :
-    RunsToFrom (tripleRatchetProgAtExt b ext) s₀ s Q := by
-  have hlen_le : len ≤ 2 ^ 64 := by rw [← hx2]; have := (s.readReg64 .x2).isLt; omega
-  have hcan : s.mem.canWrite dst (List.replicate len 0#8).length = true := by
-    rw [List.length_replicate]
-    exact hrw.canWrite_sub (by simp) hlen_le
-  have hhook : (tripleRatchetProgAtExt b ext).externAt? s.pc = some memsetHook := by
-    rw [hpc]; exact tripleRatchetProgAtExt_externAt_272972 b (F := C.F) ext
-  have hstate := memsetHook_eq hx0 hx1 hx2 hlr
-  have hkeep : s.mem.KeepsFrozen (memsetHook s).mem := by
-    rw [hstate]; exact Memory.keepsFrozen_writeBytes _ hcan
-  have hsym : (memsetHook s).symtab = s.symtab := by rw [hstate]; rfl
-  refine RunsTo.hook hrun hhook hkeep hsym ?_
-  rwa [hstate]
-
-theorem s2_memcpy_step_ext (b : BitVec 64) (C : Crypto)
-    (ext : String → Option (State → State)) [HkdfHooks C.F ext]
-    {s₀ s : State} {Q : State → Prop}
-    {dst src lr : BitVec 64} {len : ℕ} {bs : List (BitVec 8)}
-    (hrun : s.status = .Running)
-    (hpc : s.pc = b + bv% (ls_off% "memcpy"))
-    (hx0 : s.readReg64 .x0 = dst)
-    (hx1 : s.readReg64 .x1 = src)
-    (hx2 : (s.readReg64 .x2).toNat = len)
-    (hlr : s.readReg64 .lr = lr)
-    (hread : s.mem.readBytes src len = bs)
-    (hrw : s.mem.RW dst len)
-    (h : RunsToFrom (tripleRatchetProgAtExt b ext) s₀
-      ((s.setMem (s.mem.writeBytes dst bs)).setPC lr) Q) :
-    RunsToFrom (tripleRatchetProgAtExt b ext) s₀ s Q := by
-  have hlen_bs : bs.length = len := by rw [← hread, Memory.readBytes_length]
-  have hlen_le : len ≤ 2 ^ 64 := by rw [← hx2]; have := (s.readReg64 .x2).isLt; omega
-  have hcan : s.mem.canWrite dst bs.length = true := by
-    rw [hlen_bs]
-    exact hrw.canWrite_sub (by simp) hlen_le
-  have hhook : (tripleRatchetProgAtExt b ext).externAt? s.pc = some memcpyHook := by
-    rw [hpc]; exact tripleRatchetProgAtExt_externAt_273012 b (F := C.F) ext
-  have hstate := memcpyHook_eq hx0 hx1 hx2 hlr hread
-  have hkeep : s.mem.KeepsFrozen (memcpyHook s).mem := by
-    rw [hstate]; exact Memory.keepsFrozen_writeBytes _ hcan
-  have hsym : (memcpyHook s).symtab = s.symtab := by rw [hstate]; rfl
-  refine RunsTo.hook hrun hhook hkeep hsym ?_
-  rwa [hstate]
-
-theorem RunsTo.rebase_mono {b : BitVec 64} {X1 X2 : String → Option (State → State)}
-    (hle : ∀ n f, X1 n = some f → X2 n = some f)
-    {s : State} {P : State → Prop}
-    (hnh : ∀ s', P s' → s'.status ≠ .Halted)
-    (h : RunsTo (libsignalSessionCode.rebase b X1) s P) :
-    RunsTo (libsignalSessionCode.rebase b X2) s P := by
-  intro hL2
-  have hL1 : (libsignalSessionCode.rebase b X1).CodeLoaded s.mem := by
-    rw [Program.codeLoaded_iff] at hL2 ⊢
-    dsimp only [Program.rebase] at hL2 ⊢
-    exact hL2
-  obtain ⟨s', hst, htr, hP, hL1'⟩ := h hL1
-  have hL2' : (libsignalSessionCode.rebase b X2).CodeLoaded s'.mem := by
-    rw [Program.codeLoaded_iff] at hL1' ⊢
-    dsimp only [Program.rebase] at hL1' ⊢
-    exact hL1'
-  exact ⟨s', ConsumeMessageKeyTransfer.steps_mono libsignalSessionCode_stubs_offsets_fresh
-    ConsumeMessageKeyTransfer.libsignalSessionCode_stubsDead hle hst hL1 (hnh s' hP), htr, hP, hL2'⟩
 
 /-! ## Arithmetic and Memory Helpers -/
 
@@ -831,61 +655,21 @@ theorem frame_seg4a {m0 m1 m2 m3 m4 m5 : Memory} {out hm fsp : BitVec 64}
 
 namespace FinalizeFixedProof
 
-variable {C : Crypto} {ctl : BitVec 64}
-  {abs ext : String → Option (State → State)}
+variable {C : Crypto}
 
-/-- Cut `F0p` at `b + 0x3069c` (7 steps after entry): prologue complete. -/
+/-- Cut `F0p` at `+28` (7 steps after entry): prologue complete. -/
 private structure StateF0p (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (key msg : List (BitVec 8)) (s0 s : State) : Prop where
-  pc_eq   : s.pc = b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]" + 28)
+  pc_eq   : s.pc = b + bv% (offFinalizeFixed1 + 28)
   common  : FinCommon s0 s
   x0_eq   : s.readReg64 .x0 = s0.readReg64 .x0
   x1_eq   : s.readReg64 .x1 = s0.readReg64 .x1
   hmac_st : HmacSt s.mem (s0.readReg64 .x1) F key msg
 
-private theorem seg1a_runsTo [HkdfHooks C.F ext] {b : BitVec 64} {key msg : List (BitVec 8)} {s0 : State}
-    (hpre : FinPre b C.F key msg s0) :
-    RunsTo (tripleRatchetProgAtExt b ext) s0 (StateF0p b C.F key msg s0) := by
-  have hpc := hpre.pc_eq
-  have hstat := hpre.status
-  have hal0 : (s0.sp &&& 15#64) = 0#64 := hpre.sp_aligned
-  have hal_fsp : ((s0.sp - 144#64) &&& 15#64) = 0#64 := fsp_aligned hpre.sp_aligned
-  have hrw_fsp : s0.mem.RW (s0.sp - 144#64) 144 := hpre.rw_fsp
-  iterate 7 s2_step
-  refine RunsTo.refl ?_
-  have hag : AgreesOutside s0.mem
-      (((((((((s0.mem.write64 (s0.sp - 144#64 + 64#64) (s0.readReg64 .x29)).write64
-        (s0.sp - 144#64 + 72#64) (s0.readReg64 .lr)).write64
-        (s0.sp - 144#64 + 80#64) (s0.readReg64 .x25)).write64
-        (s0.sp - 144#64 + 96#64) (s0.readReg64 .x24)).write64
-        (s0.sp - 144#64 + 104#64) (s0.readReg64 .x23)).write64
-        (s0.sp - 144#64 + 112#64) (s0.readReg64 .x22)).write64
-        (s0.sp - 144#64 + 120#64) (s0.readReg64 .x21)).write64
-        (s0.sp - 144#64 + 128#64) (s0.readReg64 .x20)).write64
-        (s0.sp - 144#64 + 136#64) (s0.readReg64 .x19))
-      (s0.sp - 144#64) 144 := by
-    agrees_outside_writes
-  refine
-    { pc_eq := by fin_reg
-      common :=
-        { status := by fin_reg
-          sp_eq := by fin_reg
-          x29_eq := by fin_reg
-          x26_eq := by fin_reg
-          x27_eq := by fin_reg
-          x28_eq := by fin_reg
-          saved := ⟨by solve_fin_saved, by solve_fin_saved, by solve_fin_saved,
-                    by solve_fin_saved, by solve_fin_saved, by solve_fin_saved,
-                    by solve_fin_saved, by solve_fin_saved, by solve_fin_saved⟩
-          frame := by rw [mem_setMem]; exact Frame.trans_agreesOutside (Frame.refl s0.mem _) (by simp) hag }
-      x0_eq := by fin_reg
-      x1_eq := by fin_reg
-      hmac_st := by rw [mem_setMem]; exact HmacSt.of_agreesOutside hpre.hmac_st hag hpre.disj_hm_fsp.symm }
-
-/-- Cut `F1` at `b + 0x306cc` (after `memsetHook`): buffer `hm[0..64]` holds `msg ++ [0x80] ++ 0…0`. -/
+/-- Cut `F1` at `+76` (after `memsetHook`): buffer `hm[0..64]` holds `msg ++ [0x80] ++ 0…0`. -/
 private structure StateF1 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (key msg : List (BitVec 8)) (s0 s : State) : Prop where
-  pc_eq   : s.pc = b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]" + 76)
+  pc_eq   : s.pc = b + bv% (offFinalizeFixed1 + 76)
   common  : FinCommon s0 s
   x19_eq  : s.readReg64 .x19 = s0.readReg64 .x0
   x20_eq  : s.readReg64 .x20 = s0.readReg64 .x1
@@ -900,72 +684,10 @@ private structure StateF1 (b : BitVec 64) (F : ShaState → List (BitVec 8) → 
   ost_eq  : s.mem.readBytes (s0.readReg64 .x1 + 0x68#64) 32 = shaStateBytes (hmacOuterInit F key)
   obl_eq  : s.mem.read64 (s0.readReg64 .x1 + 0x88#64) = 1#64
 
-private theorem seg1b_runsTo [HkdfHooks C.F ext] {b : BitVec 64} {key msg : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre b C.F key msg s0)
-    (hs : StateF0p b C.F key msg s0 s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s (StateF1 b C.F key msg s0) := by
-  rcases hs with ⟨hpc, hcom, hx0, hx1, hhmac⟩
-  rcases hcom with ⟨hstat, hsp, hx29, hx26, hx27, hx28, hsaved, hframe⟩
-  rcases hhmac with ⟨hmsg_lt64, hmsg_eq, hpos_eq, hin_eq, hibl_eq, hout_eq, hobl_eq⟩
-  have hrw_hm : s.mem.RW (s0.readReg64 .x1) 0x90 := rw_of_perm_eq hframe.2 hpre.rw_hm
-  have hcw_pos : s.mem.canWrite (s0.readReg64 .x1 + BitVec.ofNat 64 msg.length) 1 = true :=
-    hrw_hm.canWrite_sub (by bv_omega) (by decide)
-  have hze32 := zeroExtend64_truncate32_ofNat64 hmsg_lt64
-  have hze64 := zeroExtend64_ofNat8 hmsg_lt64
-  have hxor63 := xor_63_of_lt_64 hmsg_lt64
-  iterate 12 s2_step
-  have htoNat_sub : (BitVec.ofNat 64 (63 - msg.length)).toNat = 63 - msg.length := by
-    rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  have hrw_memset :
-      (s.mem.write8 (s0.readReg64 .x1 + BitVec.ofNat 64 msg.length) 128#8).RW
-        (s0.readReg64 .x1 + BitVec.ofNat 64 msg.length + 1#64) (63 - msg.length) := by
-    refine Memory.RW.of_perm_eq (by simp) (fun _ => Memory.isLazyFree_write8_of_false _ _) (hrw_hm.sub ?_)
-    have := hpre.msg_lt
-    bv_omega
-  refine s2_memset_step_ext b C ext
-    (dst := s0.readReg64 .x1 + BitVec.ofNat 64 msg.length + 1#64)
-    (lr := b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]" + 76)) (len := 63 - msg.length)
-    hstat rfl
-    (by simp only [arm64_norm])
-    (by simp (config := { decide := true }) only [arm64_norm]) htoNat_sub rfl hrw_memset ?_
-  refine RunsTo.refl ?_
-  have hag := agreesOutside_pad_memset s.mem (s0.readReg64 .x1) msg hpre.msg_lt
-  have hd_hm64_fsp : DisjointRegions (s0.readReg64 .x1) 64 (s0.sp - 144#64 + 0x40#64) 0x50 :=
-    (hpre.disj_hm_fsp.sub_left _ ⟨by decide, by bv_omega⟩).sub_right _ ⟨by decide, by bv_omega⟩
-  have hd_hm64_ist : DisjointRegions (s0.readReg64 .x1) 64 (s0.readReg64 .x1 + 0x40#64) 32 := by
-    unfold DisjointRegions; bv_omega
-  have hd_hm64_ost : DisjointRegions (s0.readReg64 .x1) 64 (s0.readReg64 .x1 + 0x68#64) 32 := by
-    unfold DisjointRegions; bv_omega
-  have hd_hm64_obl : DisjointRegions (s0.readReg64 .x1) 64 (s0.readReg64 .x1 + 0x88#64) 8 := by
-    unfold DisjointRegions; bv_omega
-  refine
-    { pc_eq := rfl
-      common :=
-        { status := by fin_reg
-          sp_eq := by fin_reg
-          x29_eq := by fin_reg
-          x26_eq := by fin_reg
-          x27_eq := by fin_reg
-          x28_eq := by fin_reg
-          saved := FinSaved.of_agreesOutside hsaved hag hd_hm64_fsp
-          frame := Frame.trans_agreesOutside_sub hframe (rbase := s0.readReg64 .x1) (rlen := 0x90)
-            (by simp) (by bv_omega) hag }
-      x19_eq := by fin_reg
-      x20_eq := by fin_reg
-      x21_eq := by fin_reg
-      x22_eq := by fin_reg
-      x23_eq := by fin_reg
-      x24_eq := by fin_reg
-      x25_eq := by fin_reg
-      buf_eq := readBytes_64_after_pad_memset s.mem (s0.readReg64 .x1) msg hmsg_eq hpre.msg_lt
-      ist_eq := (hag.readBytes_eq hd_hm64_ist (by decide)).trans hin_eq
-      ost_eq := (hag.readBytes_eq hd_hm64_ost (by decide)).trans hout_eq
-      obl_eq := (hag.read64_eq hd_hm64_obl).trans hobl_eq }
-
-/-- Cut `F2` at `b + 0x30730` (right before inner `bl compress256`). -/
+/-- Cut `F2` at `+176` (right before inner `bl compress256`). -/
 private structure StateF2 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (key msg : List (BitVec 8)) (s0 s : State) : Prop where
-  pc_eq   : s.pc = b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]" + 176)
+  pc_eq   : s.pc = b + bv% (offFinalizeFixed1 + 176)
   common  : FinCommon s0 s
   x0_eq   : s.readReg64 .x0 = s0.readReg64 .x1 + 0x40#64
   x1_eq   : s.readReg64 .x1 = s0.sp - 144#64
@@ -979,10 +701,10 @@ private structure StateF2 (b : BitVec 64) (F : ShaState → List (BitVec 8) → 
   ost_eq  : s.mem.readBytes (s0.readReg64 .x1 + 0x68#64) 32 = shaStateBytes (hmacOuterInit F key)
   obl_eq  : s.mem.read64 (s0.readReg64 .x1 + 0x88#64) = 1#64
 
-/-- Cut `F3` at `b + 0x30734` (after inner `compress256Hook`). -/
+/-- Cut `F3` at `+180` (after inner `compress256Hook`). -/
 private structure StateF3 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (key msg : List (BitVec 8)) (s0 s : State) : Prop where
-  pc_eq   : s.pc = b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]" + 180)
+  pc_eq   : s.pc = b + bv% (offFinalizeFixed1 + 180)
   common  : FinCommon s0 s
   x19_eq  : s.readReg64 .x19 = s0.readReg64 .x0
   x20_eq  : s.readReg64 .x20 = s0.readReg64 .x1
@@ -1002,130 +724,10 @@ private theorem finSaved_seg2a {s0 : State} {m1 m2 m3 m4 : Memory} {hm fsp : Bit
   FinSaved.of_agreesOutside
     (FinSaved.of_agreesOutside (FinSaved.of_agreesOutside hs hag1 hd_fsp) hag2 hd_hm) hag3 hd_fsp
 
-private theorem seg2a_runsTo [HkdfHooks C.F ext] {b : BitVec 64} {key msg : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre b C.F key msg s0)
-    (hs : StateF1 b C.F key msg s0 s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s (StateF2 b C.F key msg s0) := by
-  rcases hs with ⟨hpc, hcom, hx19, hx20, hx21, hx22, hx23, hx24, hx25, hbuf, hist, host, hobl⟩
-  rcases hcom with ⟨hstat, hsp, hx29, hx26, hx27, hx28, hsaved, hframe⟩
-  have hrw_hm : s.mem.RW (s0.readReg64 .x1) 0x90 := rw_of_perm_eq hframe.2 hpre.rw_hm
-  have hrw_fsp : s.mem.RW (s0.sp - 144#64) 144 := rw_of_perm_eq hframe.2 hpre.rw_fsp
-  have hsp_align : ((s0.sp - 144#64) &&& 15#64) = 0#64 := fsp_aligned hpre.sp_aligned
-  have hult_7 := ult_7_of_lt_56 hpre.msg_lt
-  obtain ⟨hbit_len1, hbit_len2⟩ := bit_len_inner_eq hpre.msg_lt
-  have hd_hm64_fsp64 : DisjointRegions (s0.readReg64 .x1) 64 (s0.sp - 144#64) 64 :=
-    (hpre.disj_hm_fsp.sub_left _ ⟨by decide, by bv_omega⟩).sub_right _ ⟨by decide, by bv_omega⟩
-  iterate 6 s2_step
-  have hread32 := fun u0 u1 u2 u3 w56 =>
-    read64_seg2a_mid s.mem _ _ u0 u1 u2 u3 w56 32#64 (by decide) hd_hm64_fsp64
-  have hread40 := fun u0 u1 u2 u3 w56 =>
-    read64_seg2a_mid s.mem _ _ u0 u1 u2 u3 w56 40#64 (by decide) hd_hm64_fsp64
-  have hread48 := fun u0 u1 u2 u3 w56 =>
-    read64_seg2a_mid s.mem _ _ u0 u1 u2 u3 w56 48#64 (by decide) hd_hm64_fsp64
-  iterate 7 s2_step
-  clear hread32 hread40 hread48
-  refine RunsTo.refl ?_
-  obtain ⟨hag1, hag2, hag3⟩ := agreesOutside_seg2a s.mem (s0.readReg64 .x1) (s0.sp - 144#64)
-    _ _ _ _ _ _ _ _ _
-  have hd_fsp64_saved : DisjointRegions (s0.sp - 144#64) 64 (s0.sp - 144#64 + 0x40#64) 0x50 := by
-    unfold DisjointRegions; bv_omega
-  have hd_hm64_saved : DisjointRegions (s0.readReg64 .x1) 64 (s0.sp - 144#64 + 0x40#64) 0x50 :=
-    (hpre.disj_hm_fsp.sub_left _ ⟨by decide, by bv_omega⟩).sub_right _ ⟨by decide, by bv_omega⟩
-  have hd_fsp64_ist : DisjointRegions (s0.sp - 144#64) 64 (s0.readReg64 .x1 + 0x40#64) 32 :=
-    (hpre.disj_hm_fsp.symm.sub_left _ ⟨by decide, by bv_omega⟩).sub_right _ ⟨by decide, by bv_omega⟩
-  have hd_hm64_ist : DisjointRegions (s0.readReg64 .x1) 64 (s0.readReg64 .x1 + 0x40#64) 32 := by
-    unfold DisjointRegions; bv_omega
-  have hd_fsp64_ost : DisjointRegions (s0.sp - 144#64) 64 (s0.readReg64 .x1 + 0x68#64) 32 :=
-    (hpre.disj_hm_fsp.symm.sub_left _ ⟨by decide, by bv_omega⟩).sub_right _ ⟨by decide, by bv_omega⟩
-  have hd_hm64_ost : DisjointRegions (s0.readReg64 .x1) 64 (s0.readReg64 .x1 + 0x68#64) 32 := by
-    unfold DisjointRegions; bv_omega
-  have hd_fsp64_obl : DisjointRegions (s0.sp - 144#64) 64 (s0.readReg64 .x1 + 0x88#64) 8 :=
-    (hpre.disj_hm_fsp.symm.sub_left _ ⟨by decide, by bv_omega⟩).sub_right _ ⟨by decide, by bv_omega⟩
-  have hd_hm64_obl : DisjointRegions (s0.readReg64 .x1) 64 (s0.readReg64 .x1 + 0x88#64) 8 := by
-    unfold DisjointRegions; bv_omega
-  refine
-    { pc_eq := by fin_reg
-      common :=
-        { status := by fin_reg, sp_eq := by fin_reg, x29_eq := by fin_reg,
-          x26_eq := by fin_reg, x27_eq := by fin_reg, x28_eq := by fin_reg,
-          saved := by
-            rw [mem_setMem]
-            exact finSaved_seg2a hsaved hag1 hag2 hag3 hd_fsp64_saved hd_hm64_saved
-          frame := by rw [mem_setMem]; exact frame_seg2a hframe hag1 hag2 hag3 }
-      x0_eq := by fin_reg, x1_eq := by fin_reg, x2_eq := by fin_reg,
-      x19_eq := by fin_reg, x20_eq := by fin_reg, x21_eq := by fin_reg, x22_eq := by fin_reg
-      blk_eq := by
-        rw [mem_setMem]
-        refine (readBytes_fsp_64_seg2 _ _ _ _ _ _ _ _ _ _ _ _ hd_hm64_fsp64).trans ?_
-        rw [toLEBytes_8_read64, toLEBytes_8_read64, toLEBytes_8_read64, toLEBytes_8_read64,
-            toLEBytes_8_read64, toLEBytes_8_read64, toLEBytes_8_read64, toLEBytes_8_rev64,
-            readBytes_56_eq_append_8 s.mem (s0.readReg64 .x1),
-            readBytes_56_of_buf_eq s.mem (s0.readReg64 .x1) msg hbuf hpre.msg_lt]
-        rfl
-      ist_eq := by
-        rw [mem_setMem]
-        exact (hag3.readBytes_eq hd_fsp64_ist (by decide)).trans
-          ((hag2.readBytes_eq hd_hm64_ist (by decide)).trans
-            ((hag1.readBytes_eq hd_fsp64_ist (by decide)).trans hist))
-      ost_eq := by
-        rw [mem_setMem]
-        exact (hag3.readBytes_eq hd_fsp64_ost (by decide)).trans
-          ((hag2.readBytes_eq hd_hm64_ost (by decide)).trans
-            ((hag1.readBytes_eq hd_fsp64_ost (by decide)).trans host))
-      obl_eq := by
-        rw [mem_setMem]
-        exact (hag3.read64_eq hd_fsp64_obl).trans
-          ((hag2.read64_eq hd_hm64_obl).trans
-            ((hag1.read64_eq hd_fsp64_obl).trans hobl)) }
-
-private theorem seg2b_runsTo [HkdfHooks C.F ext] {b : BitVec 64} {key msg : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre b C.F key msg s0)
-    (hs : StateF2 b C.F key msg s0 s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s (StateF3 b C.F key msg s0) := by
-  rcases hs with ⟨hpc, hcom, hx0, hx1, hx2, hx19, hx20, hx21, hx22, hblk, hist, host, hobl⟩
-  rcases hcom with ⟨hstat, hsp, hx29, hx26, hx27, hx28, hsaved, hframe⟩
-  have hrw_hm : s.mem.RW (s0.readReg64 .x1) 0x90 := rw_of_perm_eq hframe.2 hpre.rw_hm
-  have hrw_ist : s.mem.RW (s0.readReg64 .x1 + 0x40#64) 32 := hrw_hm.sub (by bv_omega)
-  s2_step
-  refine s2_compress256_step_ext b C ext
-    (stPtr := s0.readReg64 .x1 + 0x40#64) (blkPtr := s0.sp - 144#64)
-    (lr := b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]" + 180)) (st := hmacInnerInit C.F key) (blk := innerLastBlock msg)
-    hstat rfl
-    (by fin_reg) (by fin_reg) (by fin_reg) rfl
-    hist hblk (innerLastBlock_length hpre.msg_lt) hrw_ist ?_
-  refine RunsTo.refl ?_
-  set blk_in := shaStateBytes (C.F (hmacInnerInit C.F key) (innerLastBlock msg))
-  have hag_comp : AgreesOutside s.mem (s.mem.writeBytes (s0.readReg64 .x1 + 0x40#64) blk_in)
-      (s0.readReg64 .x1 + 0x40#64) 32 := by
-    have hlen : blk_in.length = 32 := shaStateBytes_length _
-    rw [← hlen]
-    exact ProofLib.AgreesOutside.writeBytes_self s.mem _ blk_in
-  have hd_ist_saved : DisjointRegions (s0.readReg64 .x1 + 0x40#64) 32 (s0.sp - 144#64 + 0x40#64) 0x50 :=
-    (hpre.disj_hm_fsp.sub_left _ ⟨by decide, by bv_omega⟩).sub_right _ ⟨by decide, by bv_omega⟩
-  have hd_ist_ost : DisjointRegions (s0.readReg64 .x1 + 0x40#64) 32 (s0.readReg64 .x1 + 0x68#64) 32 := by
-    unfold DisjointRegions; bv_omega
-  have hd_ist_obl : DisjointRegions (s0.readReg64 .x1 + 0x40#64) 32 (s0.readReg64 .x1 + 0x88#64) 8 := by
-    unfold DisjointRegions; bv_omega
-  refine
-    { pc_eq := rfl
-      common :=
-        { status := by fin_reg, sp_eq := by fin_reg, x29_eq := by fin_reg,
-          x26_eq := by fin_reg, x27_eq := by fin_reg, x28_eq := by fin_reg,
-          saved := FinSaved.of_agreesOutside hsaved hag_comp hd_ist_saved
-          frame := Frame.trans_agreesOutside_sub hframe (rbase := s0.readReg64 .x1) (rlen := 0x90)
-            (by simp) (by bv_omega) hag_comp }
-      x19_eq := by fin_reg, x20_eq := by fin_reg, x21_eq := by fin_reg, x22_eq := by fin_reg
-      ist_eq := by
-        have hlen : blk_in.length = 32 := shaStateBytes_length _
-        rw [← hlen]
-        exact Bytes.readBytes_writeBytes_same s.mem _ blk_in (by rw [hlen]; decide)
-      ost_eq := (hag_comp.readBytes_eq hd_ist_ost (by decide)).trans host
-      obl_eq := (hag_comp.read64_eq hd_ist_obl).trans hobl }
-
-/-- Cut `F3b` at `b + 0x307b0` (right before outer `bl compress256`). -/
+/-- Cut `F3b` at `+304` (right before outer `bl compress256`). -/
 private structure StateF3b (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (key msg : List (BitVec 8)) (s0 s : State) : Prop where
-  pc_eq   : s.pc = b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]" + 304)
+  pc_eq   : s.pc = b + bv% (offFinalizeFixed1 + 304)
   common  : FinCommon s0 s
   x0_eq   : s.readReg64 .x0 = s0.readReg64 .x1 + 0x68#64
   x1_eq   : s.readReg64 .x1 = s0.sp - 144#64
@@ -1136,10 +738,10 @@ private structure StateF3b (b : BitVec 64) (F : ShaState → List (BitVec 8) →
     outerBlock (digestBytes (F (hmacInnerInit F key) (innerLastBlock msg)))
   ost_eq  : s.mem.readBytes (s0.readReg64 .x1 + 0x68#64) 32 = shaStateBytes (hmacOuterInit F key)
 
-/-- Cut `F4` at `b + 0x307b4` (after outer `compress256Hook`). -/
+/-- Cut `F4` at `+308` (after outer `compress256Hook`). -/
 private structure StateF4 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (key msg : List (BitVec 8)) (s0 s : State) : Prop where
-  pc_eq   : s.pc = b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]" + 308)
+  pc_eq   : s.pc = b + bv% (offFinalizeFixed1 + 308)
   common  : FinCommon s0 s
   x19_eq  : s.readReg64 .x19 = s0.readReg64 .x0
   x20_eq  : s.readReg64 .x20 = s0.readReg64 .x1
@@ -1147,108 +749,10 @@ private structure StateF4 (b : BitVec 64) (F : ShaState → List (BitVec 8) → 
     shaStateBytes (F (hmacOuterInit F key)
       (outerBlock (digestBytes (F (hmacInnerInit F key) (innerLastBlock msg)))))
 
-private theorem seg3a_runsTo [HkdfHooks C.F ext] {b : BitVec 64} {key msg : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre b C.F key msg s0)
-    (hs : StateF3 b C.F key msg s0 s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s (StateF3b b C.F key msg s0) := by
-  rcases hs with ⟨hpc, hcom, hx19, hx20, hx21, hx22, hist, host, hobl⟩
-  rcases hcom with ⟨hstat, hsp, hx29, hx26, hx27, hx28, hsaved, hframe⟩
-  have hrw_hm : s.mem.RW (s0.readReg64 .x1) 0x90 := rw_of_perm_eq hframe.2 hpre.rw_hm
-  have hrw_fsp : s.mem.RW (s0.sp - 144#64) 144 := rw_of_perm_eq hframe.2 hpre.rw_fsp
-  have hsp_align : ((s0.sp - 144#64) &&& 15#64) = 0#64 := fsp_aligned hpre.sp_aligned
-  set h_in := C.F (hmacInnerInit C.F key) (innerLastBlock msg)
-  obtain ⟨hw0, hw1, hw2, hw3, hw4, hw5, hw6, hw7⟩ :=
-    read32_words_at_64_of_shaStateBytes s.mem (s0.readReg64 .x1) h_in hist
-  have hd_hm64_fsp64 : DisjointRegions (s0.readReg64 .x1) 64 (s0.sp - 144#64) 64 :=
-    (hpre.disj_hm_fsp.sub_left _ ⟨by decide, by bv_omega⟩).sub_right _ ⟨by decide, by bv_omega⟩
-  have hrev768 : rev64 (256#64 ||| 512#64) = 0x0003000000000000#64 := by decide
-  have hread32 := fun w0 w1 w2 w3 w4 w5 w6 w7 u0 u1 u2 u3 =>
-    read64_seg3a_pad_32 s.mem _ _ w0 w1 w2 w3 w4 w5 w6 w7 u0 u1 u2 u3 hd_hm64_fsp64
-  have hread40 := fun w0 w1 w2 w3 w4 w5 w6 w7 u0 u1 u2 u3 =>
-    read64_seg3a_pad_40 s.mem _ _ w0 w1 w2 w3 w4 w5 w6 w7 u0 u1 u2 u3 hd_hm64_fsp64
-  iterate 31 s2_step
-  clear hread32 hread40
-  refine RunsTo.refl ?_
-  obtain ⟨hag1, hag2, hag3, hag4⟩ := agreesOutside_seg3a s.mem (s0.readReg64 .x1) (s0.sp - 144#64)
-    _ _ _ _ _ _ _ _ _ _ _ _ 0#64 0x0003000000000000#64 0x80#64 0#64 0#64 0x0003000000000000#64
-  have hd_fsp64_saved : DisjointRegions (s0.sp - 144#64) 64 (s0.sp - 144#64 + 0x40#64) 0x50 := by
-    unfold DisjointRegions; bv_omega
-  have hd_hm64_saved : DisjointRegions (s0.readReg64 .x1) 64 (s0.sp - 144#64 + 0x40#64) 0x50 :=
-    (hpre.disj_hm_fsp.sub_left _ ⟨by decide, by bv_omega⟩).sub_right _ ⟨by decide, by bv_omega⟩
-  have hd_fsp64_ost : DisjointRegions (s0.sp - 144#64) 64 (s0.readReg64 .x1 + 0x68#64) 32 :=
-    (hpre.disj_hm_fsp.symm.sub_left _ ⟨by decide, by bv_omega⟩).sub_right _ ⟨by decide, by bv_omega⟩
-  have hd_hm64_ost : DisjointRegions (s0.readReg64 .x1) 64 (s0.readReg64 .x1 + 0x68#64) 32 := by
-    unfold DisjointRegions; bv_omega
-  refine
-    { pc_eq := by fin_reg
-      common :=
-        { status := by fin_reg, sp_eq := by fin_reg, x29_eq := by fin_reg,
-          x26_eq := by fin_reg, x27_eq := by fin_reg, x28_eq := by fin_reg,
-          saved := by
-            rw [mem_setMem]
-            exact finSaved_seg3a hsaved hag1 hag2 hag3 hag4 hd_hm64_saved hd_fsp64_saved
-          frame := by rw [mem_setMem]; exact frame_seg3a hframe hag1 hag2 hag3 hag4 }
-      x0_eq := by fin_reg, x1_eq := by fin_reg, x2_eq := by fin_reg,
-      x19_eq := by fin_reg, x20_eq := by fin_reg
-      blk_eq := by
-        rw [mem_setMem]
-        refine (readBytes_fsp_64_seg3 _ _ _ _ _ _ _ _ _ _ _ _ _ hd_hm64_fsp64).trans ?_
-        rw [toLEBytes_8_rev32_append, toLEBytes_8_rev32_append,
-            toLEBytes_8_rev32_append, toLEBytes_8_rev32_append]
-        have htail : toLEBytes 8 0x80#64 ++ toLEBytes 8 0#64 ++ toLEBytes 8 0#64 ++
-            toLEBytes 8 (rev64 768#64) =
-            [0x80#8] ++ List.replicate 23 0#8 ++ toBEBytes 8 768#64 := by decide
-        unfold outerBlock
-        rw [digestBytes_eq_append h_in]
-        simp only [List.append_assoc] at htail ⊢
-        rw [htail]; rfl
-      ost_eq := by
-        rw [mem_setMem]
-        exact ost_eq_seg3a host hag1 hag2 hag3 hag4 hd_hm64_ost hd_fsp64_ost }
-
-private theorem seg3b_runsTo [HkdfHooks C.F ext] {b : BitVec 64} {key msg : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre b C.F key msg s0)
-    (hs : StateF3b b C.F key msg s0 s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s (StateF4 b C.F key msg s0) := by
-  rcases hs with ⟨hpc, hcom, hx0, hx1, hx2, hx19, hx20, hblk, host⟩
-  rcases hcom with ⟨hstat, hsp, hx29, hx26, hx27, hx28, hsaved, hframe⟩
-  have hrw_hm : s.mem.RW (s0.readReg64 .x1) 0x90 := rw_of_perm_eq hframe.2 hpre.rw_hm
-  have hrw_ost : s.mem.RW (s0.readReg64 .x1 + 0x68#64) 32 := hrw_hm.sub (by bv_omega)
-  set h_in := C.F (hmacInnerInit C.F key) (innerLastBlock msg)
-  s2_step
-  refine s2_compress256_step_ext b C ext
-    (stPtr := s0.readReg64 .x1 + 0x68#64) (blkPtr := s0.sp - 144#64)
-    (lr := b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]" + 308)) (st := hmacOuterInit C.F key) (blk := outerBlock (digestBytes h_in))
-    hstat rfl
-    (by fin_reg) (by fin_reg) (by fin_reg) rfl
-    host hblk (outerBlock_digestBytes_length h_in) hrw_ost ?_
-  refine RunsTo.refl ?_
-  set blk_out := shaStateBytes (C.F (hmacOuterInit C.F key) (outerBlock (digestBytes h_in)))
-  have hag_comp : AgreesOutside s.mem (s.mem.writeBytes (s0.readReg64 .x1 + 0x68#64) blk_out)
-      (s0.readReg64 .x1 + 0x68#64) 32 := by
-    have hlen : blk_out.length = 32 := shaStateBytes_length _
-    rw [← hlen]
-    exact ProofLib.AgreesOutside.writeBytes_self s.mem _ blk_out
-  have hd_ost_saved : DisjointRegions (s0.readReg64 .x1 + 0x68#64) 32 (s0.sp - 144#64 + 0x40#64) 0x50 :=
-    (hpre.disj_hm_fsp.sub_left _ ⟨by decide, by bv_omega⟩).sub_right _ ⟨by decide, by bv_omega⟩
-  refine
-    { pc_eq := rfl
-      common :=
-        { status := by fin_reg, sp_eq := by fin_reg, x29_eq := by fin_reg,
-          x26_eq := by fin_reg, x27_eq := by fin_reg, x28_eq := by fin_reg,
-          saved := FinSaved.of_agreesOutside hsaved hag_comp hd_ost_saved
-          frame := Frame.trans_agreesOutside_sub hframe (rbase := s0.readReg64 .x1) (rlen := 0x90)
-            (by simp) (by bv_omega) hag_comp }
-      x19_eq := by fin_reg, x20_eq := by fin_reg
-      ost_eq := by
-        have hlen : blk_out.length = 32 := shaStateBytes_length _
-        rw [← hlen]
-        exact Bytes.readBytes_writeBytes_same s.mem _ blk_out (by rw [hlen]; decide) }
-
-/-- Cut `F5` at `b + 0x30824` (right before the 7-instruction epilogue). -/
+/-- Cut `F5` at `+420` (right before the 7-instruction epilogue). -/
 private structure StateF5 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (key msg : List (BitVec 8)) (s0 s : State) : Prop where
-  pc_eq  : s.pc = b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]" + 420)
+  pc_eq  : s.pc = b + bv% (offFinalizeFixed1 + 420)
   common : FinCommon s0 s
   out_eq : s.mem.readBytes (s0.readReg64 .x0) 32 = hmacWith F key msg
 
@@ -1291,97 +795,6 @@ private theorem extractLsb'_0_64_zero128 : BitVec.extractLsb' 0 64 0#128 = 0#64 
 
 @[local simp, local arm64_norm]
 private theorem extractLsb'_64_64_zero128 : BitVec.extractLsb' 64 64 0#128 = 0#64 := rfl
-
-private theorem seg4a_runsTo [HkdfHooks C.F ext] {b : BitVec 64} {key msg : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre b C.F key msg s0)
-    (hs : StateF4 b C.F key msg s0 s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s (StateF5 b C.F key msg s0) := by
-  rcases hs with ⟨hpc, hcom, hx19, hx20, host⟩
-  rcases hcom with ⟨hstat, hsp, hx29, hx26, hx27, hx28, hsaved, hframe⟩
-  have hrw_hm : s.mem.RW (s0.readReg64 .x1) 0x90 := rw_of_perm_eq hframe.2 hpre.rw_hm
-  have hrw_fsp : s.mem.RW (s0.sp - 144#64) 144 := rw_of_perm_eq hframe.2 hpre.rw_fsp
-  have hrw_out : s.mem.RW (s0.readReg64 .x0) 32 := rw_of_perm_eq hframe.2 hpre.rw_out
-  have hsp_align : ((s0.sp - 144#64) &&& 15#64) = 0#64 := fsp_aligned hpre.sp_aligned
-  set h_out := C.F (hmacOuterInit C.F key)
-    (outerBlock (digestBytes (C.F (hmacInnerInit C.F key) (innerLastBlock msg))))
-  obtain ⟨hw0, hw1, hw2, hw3, hw4, hw5, hw6, hw7⟩ :=
-    read32_words_at_104_of_shaStateBytes s.mem (s0.readReg64 .x1) h_out host
-  have hzero64 : (0#8 ++ 0#8 ++ 0#8 ++ 0#8 ++ 0#8 ++ 0#8 ++ 0#8 ++ 0#8 : BitVec 64) = 0#64 := rfl
-  iterate 11 s2_step
-  have hd_fsp64_hm := (seg4a_disj hpre).1
-  have hread128 := read32_seg4a_mid s.mem (s0.readReg64 .x1) (s0.sp - 144#64) 128#64 (h_out.get 6)
-    (Or.inl rfl) hd_fsp64_hm hw6
-  have hread132 := read32_seg4a_mid s.mem (s0.readReg64 .x1) (s0.sp - 144#64) 132#64 (h_out.get 7)
-    (Or.inr rfl) hd_fsp64_hm hw7
-  iterate 2 s2_step
-  clear hw0 hw1 hw2 hw3 hw4 hw5 hw6 hw7 hread128 hread132 hd_fsp64_hm host
-  iterate 15 s2_step
-  refine RunsTo.refl ?_
-  obtain ⟨hag1, hag2, hag3, hag4⟩ := agreesOutside_seg4a s.mem
-    (s0.readReg64 .x0) (s0.readReg64 .x1) (s0.sp - 144#64) _ _ _ _ _ _ _ _
-  obtain ⟨_, hd_hm_saved, hd_fsp64_saved, hd_out_saved⟩ := seg4a_disj hpre
-  refine
-    { pc_eq := by fin_reg
-      common :=
-        { status := by fin_reg, sp_eq := by fin_reg, x29_eq := by fin_reg,
-          x26_eq := by fin_reg, x27_eq := by fin_reg, x28_eq := by fin_reg,
-          saved := by
-            rw [mem_setMem]
-            exact finSaved_seg4a hsaved hag1 hag2 hag3 hag4 hd_hm_saved hd_fsp64_saved hd_out_saved
-          frame := by rw [mem_setMem]; exact frame_seg4a hframe hag1 hag2 hag3 hag4 }
-      out_eq := by
-        rw [mem_setMem]
-        exact (readBytes_write32_8_digestBytes _ (s0.readReg64 .x0) h_out _ _ _ _ _ _ _ _
-          (toLEBytes_4_rev32 _) (toLEBytes_4_rev32 _) (toLEBytes_4_rev32 _) (toLEBytes_4_rev32 _)
-          (toLEBytes_4_rev32 _) (toLEBytes_4_rev32 _) (toLEBytes_4_rev32 _) (toLEBytes_4_rev32 _)).trans
-          (hmacWith_short C.F key msg hpre.key_le hpre.msg_lt).symm }
-
-private theorem seg4b_runsTo [HkdfHooks C.F ext] {b : BitVec 64} {key msg : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre b C.F key msg s0)
-    (hs : StateF5 b C.F key msg s0 s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s (FinPost C.F key msg s0) := by
-  rcases hs with ⟨hpc, hcom, hout⟩
-  rcases hcom with ⟨hstat, hsp, hx29, hx26, hx27, hx28, hsaved, hframe⟩
-  have hrw_fsp : s.mem.RW (s0.sp - 144#64) 144 := rw_of_perm_eq hframe.2 hpre.rw_fsp
-  have hsp_align : ((s0.sp - 144#64) &&& 15#64) = 0#64 := fsp_aligned hpre.sp_aligned
-  rcases hsaved with ⟨hs29, hslr, hs25, hs24, hs23, hs22, hs21, hs20, hs19⟩
-  have hs29' : s.mem.read64 (s0.sp - 144#64 + 64#64) = s0.readReg64 .x29 := hs29
-  have hslr' : s.mem.read64 (s0.sp - 144#64 + 72#64) = s0.readReg64 .lr := hslr
-  have hs25' : s.mem.read64 (s0.sp - 144#64 + 80#64) = s0.readReg64 .x25 := hs25
-  have hs24' : s.mem.read64 (s0.sp - 144#64 + 96#64) = s0.readReg64 .x24 := hs24
-  have hs23' : s.mem.read64 (s0.sp - 144#64 + 104#64) = s0.readReg64 .x23 := hs23
-  have hs22' : s.mem.read64 (s0.sp - 144#64 + 112#64) = s0.readReg64 .x22 := hs22
-  have hs21' : s.mem.read64 (s0.sp - 144#64 + 120#64) = s0.readReg64 .x21 := hs21
-  have hs20' : s.mem.read64 (s0.sp - 144#64 + 128#64) = s0.readReg64 .x20 := hs20
-  have hs19' : s.mem.read64 (s0.sp - 144#64 + 136#64) = s0.readReg64 .x19 := hs19
-  iterate 7 s2_step
-  refine RunsTo.refl ⟨by simp (config := { decide := true }) only [arm64_norm], hstat,
-    ⟨by simp (config := { decide := true }) only [arm64_norm], fun r hr => ?_⟩, hout, hframe⟩
-  simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-  rcases hr with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
-  all_goals simp only [arm64_norm, hx26, hx27, hx28]
-
-theorem finalize_fixed_runsTo_ext [HkdfHooks C.F ext] {b : BitVec 64} {key msg : List (BitVec 8)} {s0 : State}
-    (hpre : FinPre b C.F key msg s0) :
-    RunsTo (tripleRatchetProgAtExt b ext) s0 (FinPost C.F key msg s0) :=
-  (seg1a_runsTo hpre).trans fun _ hs1 =>
-  (seg1b_runsTo hpre hs1).trans fun _ hs2 =>
-  (seg2a_runsTo hpre hs2).trans fun _ hs3 =>
-  (seg2b_runsTo hpre hs3).trans fun _ hs4 =>
-  (seg3a_runsTo hpre hs4).trans fun _ hs5 =>
-  (seg3b_runsTo hpre hs5).trans fun _ hs6 =>
-  (seg4a_runsTo hpre hs6).trans fun _ hs7 =>
-  seg4b_runsTo hpre hs7
-
-theorem finalize_fixed_runsTo_trap {b : BitVec 64} {key msg : List (BitVec 8)} {s0 : State}
-    (hpre : FinPre b C.F key msg s0) :
-    RunsTo (trTrapProgAt b C abs) s0 (FinPost C.F key msg s0) :=
-  finalize_fixed_runsTo_ext (ext := trTrapExterns C abs) hpre
-
-theorem finalize_fixed_runsTo {b : BitVec 64} {key msg : List (BitVec 8)} {s0 : State}
-    (hpre : FinPre b C.F key msg s0) :
-    RunsTo (tripleRatchetProgAt b C ctl abs) s0 (FinPost C.F key msg s0) :=
-  finalize_fixed_runsTo_ext (ext := tripleRatchetExterns C ctl abs) hpre
 
 /-! ## Relocatable `[LibsignalPlacement]` Segment Proofs -/
 
@@ -1793,89 +1206,8 @@ end FinalizeFixedProof
 
 /-! ## Separation-Logic Contract -/
 
-theorem finalize_fixed_ok_ext (b : BitVec 64) (C : Crypto)
-    (ext : String → Option (State → State)) [HkdfHooks C.F ext] :
-    FinalizeFixedOkExt b C ext := by
-  unfold FinalizeFixedOkExt
-  have hfn : (tripleRatchetProgAtExt b ext).fnAddr finalizeFixedName = b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]") := by
-    unfold tripleRatchetProgAtExt finalizeFixedName
-    rw [Program.fnAddr_rebase, (ls_lemma% fnOff "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]")]
-  rw [hfn]
-  refine subroutine_ok_intro fun x R s0 hpc hrun hpre hsp => ?_
-  rw [finalizeFixedSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hkey_le, hmsg_lt⟩, hsep⟩
-  have hmsg_lt64 : x.msg.length < 64 := by omega
-  have hb_out := IsBlock.memRegion x.out 32
-  have hb_hm := isBlock_hmacCoreAt C.F x.hm x.key x.msg hmsg_lt64
-  have hb_stk := IsBlock.memRegion (s0.sp - 144#64) 144
-  change s0.mem ⊨
-    (memRegion x.out 32 ∗ hmacCoreAt C.F x.hm x.key x.msg ∗ memRegion (s0.sp - 144#64) 144) ∗ R at hsep
-  have hsep_out : s0.mem ⊨ memRegion x.out 32 ∗
-      (hmacCoreAt C.F x.hm x.key x.msg ∗ (memRegion (s0.sp - 144#64) 144 ∗ R)) := by ac_nf at hsep ⊢
-  have hsep_out_stk : s0.mem ⊨ memRegion x.out 32 ∗
-      (memRegion (s0.sp - 144#64) 144 ∗ (hmacCoreAt C.F x.hm x.key x.msg ∗ R)) := by ac_nf at hsep ⊢
-  have hsep_hm : s0.mem ⊨ hmacCoreAt C.F x.hm x.key x.msg ∗
-      (memRegion x.out 32 ∗ (memRegion (s0.sp - 144#64) 144 ∗ R)) := by ac_nf at hsep ⊢
-  have hsep_stk : s0.mem ⊨ memRegion (s0.sp - 144#64) 144 ∗
-      (memRegion x.out 32 ∗ (hmacCoreAt C.F x.hm x.key x.msg ∗ R)) := by ac_nf at hsep ⊢
-  have hsep_hm_stk : s0.mem ⊨ hmacCoreAt C.F x.hm x.key x.msg ∗
-      (memRegion (s0.sp - 144#64) 144 ∗ (memRegion x.out 32 ∗ R)) := by ac_nf at hsep ⊢
-  have hhmac_st : HmacSt s0.mem x.hm C.F x.key x.msg := hb_hm.read hsep_hm
-  have hrw_out : RW s0.mem x.out 32 := fun a ha => hb_out.permNoLazy_rw hsep_out ha
-  have hrw_hm : RW s0.mem x.hm 0x90 := fun a ha => hb_hm.permNoLazy_rw hsep_hm ha
-  have hrw_stk : RW s0.mem (s0.sp - 144#64) 144 := fun a ha => hb_stk.permNoLazy_rw hsep_stk ha
-  have hd_out_hm : DisjointRegions x.out 32 x.hm 0x90 :=
-    hb_out.disjoint hb_hm (by decide) (by decide) hsep_out
-  have hd_out_stk : DisjointRegions x.out 32 (s0.sp - 144#64) 144 :=
-    hb_out.disjoint hb_stk (by decide) (by decide) hsep_out_stk
-  have hd_hm_stk : DisjointRegions x.hm 0x90 (s0.sp - 144#64) 144 :=
-    hb_hm.disjoint hb_stk (by decide) (by decide) hsep_hm_stk
-  have hfin_pre : FinalizeFixedProof.FinPre b C.F x.key x.msg s0 :=
-    { pc_eq := hpc
-      status := hrun
-      key_le := hkey_le
-      msg_lt := hmsg_lt
-      hmac_st := by rw [hx1]; exact hhmac_st
-      rw_out := by rw [hx0]; exact hrw_out
-      rw_hm := by rw [hx1]; exact hrw_hm
-      rw_fsp := hrw_stk
-      disj_out_hm := by rw [hx0, hx1]; exact hd_out_hm
-      disj_out_fsp := by rw [hx0]; exact hd_out_stk
-      disj_hm_fsp := by rw [hx1]; exact hd_hm_stk
-      sp_aligned := by simpa [State.spAligned] using hsp }
-  refine (FinalizeFixedProof.finalize_fixed_runsTo_ext (ext := ext) hfin_pre).to_reaches_pc fun sf hpost _ _ htr => ?_
-  rcases hpost with ⟨hpc_sf, hstat_sf, hcallee, hout_sf, hframe_sf⟩
-  refine ⟨hpc_sf, hstat_sf, ?_, CallingConventionPreserved_of_calleeSaved hcallee⟩
-  rw [finalizeFixedSpec]
-  dsimp only []
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  refine ⟨htr.1, ?_⟩
-  rw [hx0] at hout_sf
-  rw [hx0, hx1] at hframe_sf
-  have hb_out' := IsBlock.pointsToBytes_len (a := x.out) (length_hmacWith C.F x.key x.msg)
-  have hb_hm' := IsBlock.memRegion x.hm 0x90
-  have hpost_sep : sf.mem ⊨ (x.out ↦ₛ hmacWith C.F x.key x.msg) ∗
-      (memRegion x.hm 0x90 ∗ (memRegion (s0.sp - 144#64) 144 ∗ R)) :=
-    Frame.update_three_blocks hb_out hb_out' hb_hm hb_hm' hb_stk hb_stk hsep_out hframe_sf
-      ⟨by rw [length_hmacWith]; decide, by rwa [length_hmacWith]⟩ trivial trivial
-  change sf.mem ⊨
-    ((x.out ↦ₛ hmacWith C.F x.key x.msg) ∗ memRegion x.hm 0x90 ∗ memRegion (s0.sp - 144#64) 144) ∗ R
-  ac_nf at hpost_sep ⊢
-
-theorem finalize_fixed_ok_trap (b : BitVec 64) (C : Crypto)
-    (abs : String → Option (State → State)) :
-    FinalizeFixedOk_trap b C abs :=
-  finalize_fixed_ok_ext b C (trTrapExterns C abs)
-
-theorem finalize_fixed_ok (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    FinalizeFixedOk b C ctl abs := by
-  unfold FinalizeFixedOk
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr finalizeFixedName]
-  exact subroutine_ok_kit_of_trTrap (finalize_fixed_ok_trap b C abs)
-
 /-- Relocatable `[LibsignalPlacement]` contract predicate for `finalize_fixed`. -/
-def FinalizeFixedPlacedOk [LibsignalPlacement] (C : Crypto) (H : LibsignalHooks) : Prop :=
+@[expose] def FinalizeFixedPlacedOk [LibsignalPlacement] (C : Crypto) (H : LibsignalHooks) : Prop :=
   subroutine_ok ((blkPC_123).rebase (blkPl_123).base H) (blkPl_123).base (finalizeFixedSpec C.F)
 
 theorem finalize_fixed_placed_ok [LibsignalPlacement] (C : Crypto)

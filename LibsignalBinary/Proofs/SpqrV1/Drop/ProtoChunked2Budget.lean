@@ -10,18 +10,21 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.DecodesBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2BudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1Budget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Heap.IfaceBudget
+import LibsignalBinary.Heap.IfaceBudgetBase
+import LibsignalBinary.Proofs.SpqrV1.Drop.Decodes
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2BudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1Budget
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Drop Glue for PB Chunked States (`EkSentCt1Received`, `HeaderSent`)
@@ -31,7 +34,7 @@ for `chunked::EkSentCt1Received` (Block `285`) and `chunked::HeaderSent` (Block 
 re-exporting `chunked::HeaderReceived` (Block `283`) from `ProtoChunked2BudgetAux`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

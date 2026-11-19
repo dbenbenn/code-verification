@@ -12,7 +12,7 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBase
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS
 import LibsignalBinary.Proofs.Common.SharedHelpers
 
 /-!
@@ -23,11 +23,13 @@ Defines the multi-step `Vec<u8>` growth event-chain relation `VecU8ReserveChain`
 specifications for `encode<ChainParams>` (`[local#1, 2]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget
+
+open CryptoVerification.LibsignalTripleRatchet (doReserveStack doReserveStackX)
 
 open Arm64 Arm64.Obj ProofLib SepProp
 open LibsignalBinary.Heap
@@ -35,8 +37,6 @@ open LibsignalBinary.Heap
    rustAllocEvents rustReallocEvents)
 open CryptoVerification.RustHeap (RustAlloc vecU8At)
 open CryptoVerification.LibsignalSpqrV1 (ChainParamsPB)
-open CryptoVerification.LibsignalTripleRatchet
-  (doReserveStack doReserveStackX tripleRatchetProgAtExt)
 open CryptoVerification.SpqrV1.Prost.MessageEncode
   (EncodeChainParamsGhost encodeChainParams1Name encodeChainParams2Name
    encodeChainParamsMsg msgEnc48VarintStackOf)
@@ -117,7 +117,7 @@ theorem VecU8ReserveChain.single_reserve {cap0 curLen additional finalLen : Nat}
 
 /-- Allocator event envelope for appending up to `finalLen - bs.length` bytes into a `Vec<u8>`
 with initial capacity `cap0`. -/
-def VecU8EncodeEnv (cap0 finalLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def VecU8EncodeEnv (cap0 finalLen : Nat) (evs : List AllocEvent) : Prop :=
   ∃ capOut, VecU8ReserveChain cap0 capOut finalLen evs
 
 theorem VecU8EncodeEnv.nil (cap0 finalLen : Nat) : VecU8EncodeEnv cap0 finalLen [] :=
@@ -143,7 +143,7 @@ theorem fitsEnv_vecU8EncodeEnv_of_spare (M : AllocCostModel) (lim : BudgetLimits
 /-! ## 2. Budget-Threaded Specifications of `encode<ChainParams>` (`[local#1, 2]`) -/
 
 /-- Concrete allocator event envelope of `prost::encoding::message::encode::<ChainParams, Vec<u8>>`. -/
-def EncodeChainParamsEnv (x : EncodeChainParamsGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def EncodeChainParamsEnv (x : EncodeChainParamsGhost) (evs : List AllocEvent) : Prop :=
   VecU8EncodeEnv x.cap.toNat (x.bs.length + (encodeChainParamsMsg x.tag x.p).length) evs
 
 theorem encodeChainParamsEnv_eq_nil_of_spare {x : EncodeChainParamsGhost} {evs : List AllocEvent}
@@ -153,7 +153,7 @@ theorem encodeChainParamsEnv_eq_nil_of_spare {x : EncodeChainParamsGhost} {evs :
 
 /-- Envelope-parameterized budget specification of
 `prost::encoding::message::encode::<ChainParams, Vec<u8>>` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def encodeChainParamsSpecOfEnv (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodeChainParamsSpecOfEnv (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PreEnv : EncodeChainParamsGhost → (List AllocEvent → Prop) → Prop)
     (PostEnv : EncodeChainParamsGhost → List AllocEvent → Prop) :
@@ -185,7 +185,7 @@ def encodeChainParamsSpecOfEnv (resStack : Nat) {M : AllocCostModel}
 
 /-- Concrete budget specification of `prost::encoding::message::encode::<ChainParams, Vec<u8>>`
 instantiated with `EncodeChainParamsEnv`. -/
-def encodeChainParamsSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodeChainParamsSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EncodeChainParamsGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -215,7 +215,7 @@ def encodeChainParamsSpecOf (resStack : Nat) {M : AllocCostModel}
 
 /-- Exact-capacity 0-allocation (`VmPreserved`) contract of `encode<ChainParams>` (`A.live`-only,
 no `A.pool` required since `x.bs.length + msgLen ≤ x.cap.toNat` skips all allocator calls). -/
-def encodeChainParamsExactVmSpecOf (resStack : Nat) (A : RustAlloc) :
+@[expose] def encodeChainParamsExactVmSpecOf (resStack : Nat) (A : RustAlloc) :
     Spec EncodeChainParamsGhost where
   pre := fun x s =>
     ⌜s.readReg32 .x0 = x.tag ∧
@@ -315,33 +315,5 @@ theorem subroutine_ok_encodeChainParamsExact_of_budget {resStack : Nat} {M : All
   · exact (not_satisfies_false_sepConj hq).elim
   · exact (not_satisfies_false_sepConj hq).elim
   · exact (not_satisfies_false_sepConj hq).elim
-
-def EncodeChainParams1OkExt {M : AllocCostModel} (b : BitVec 64)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr encodeChainParams1Name)
-    (encodeChainParamsSpec A lim)
-
-def EncodeChainParams1OkX {M : AllocCostModel} (img : Obj.Image)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr encodeChainParams1Name)
-    ((encodeChainParamsSpecX A lim).inImage img)
-
-def EncodeChainParams2OkExt {M : AllocCostModel} (b : BitVec 64)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr encodeChainParams2Name)
-    (encodeChainParamsSpec A lim)
-
-def EncodeChainParams2OkX {M : AllocCostModel} (img : Obj.Image)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr encodeChainParams2Name)
-    ((encodeChainParamsSpecX A lim).inImage img)
 
 end LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget

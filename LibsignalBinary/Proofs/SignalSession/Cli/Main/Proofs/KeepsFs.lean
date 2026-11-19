@@ -9,7 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Filesystem and Stack Framing for Hook Contracts (`Spec.keepsFs`)
@@ -19,7 +20,7 @@ Lifts `HookOk` contracts to `Spec.keepsFs` (`sf.fs = s0.fs`) and stack-framed al
 `rustReallocExternSpecWithStack`) for `allocHookStack ≤ stk ≤ 2 ^ 64`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SignalSession.Cli.MainHops
 
@@ -70,10 +71,6 @@ theorem retHook_fs {f : State → State} (hf : ∀ s, (f s).fs = s.fs) :
     ∀ s, (retHook f s).fs = s.fs := by
   intro s
   simp only [retHook, State.fs_setPC, hf]
-
-/-- `keepsFs` (post) and `Spec.inImage` (pre) touch disjoint fields, so they commute. -/
-theorem Spec.keepsFs_inImage {α : Type} (spec : Spec α) (img : Obj.Image) :
-    (spec.keepsFs).inImage img = (spec.inImage img).keepsFs := rfl
 
 /-- A hook that satisfies `spec` (with `⌜False⌝` panic, exit, and OOM outcomes) satisfies
 `withStack spec stk` by framing `stackAt s0.sp stk`. -/

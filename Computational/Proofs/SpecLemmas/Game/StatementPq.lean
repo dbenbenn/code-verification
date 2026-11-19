@@ -11,7 +11,7 @@ module
 
 public import Computational.Specifications.Game.StatementPq
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +36,7 @@ open CryptoGames CryptoGames.LibsignalSM Ratchet LibsignalInst LibsignalSession
 namespace Dir
 
 /-- Run `A` on the retained-directory CLI driver `Dir.cliDrvImpl` from the empty state. -/
-def runCliDriver (S : SignalPqxdh.Setup) (l : Nat) {Pt : Type}
+@[expose] def runCliDriver (S : SignalPqxdh.Setup) (l : Nat) {Pt : Type}
     (P : SignalPqxdh.Primitives) (run : CliRun) (W : PEParams) (qep : Nat)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (ext : QueryImpl (cliGameSmSpec l (BitVec 512)) (CliDrvM S l)) (mode : BHDrvMode S)
@@ -274,7 +274,7 @@ end Dir
 /-! ## Projected-directory staging -/
 
 /-- Encode `st`'s directory with the peer session file replaced by `rec` (omitted when empty). -/
-def cliPqDirRaw (W : PEParams) (st : PqParty) (rec : List (BitVec 8)) :
+@[expose] def cliPqDirRaw (W : PEParams) (st : PqParty) (rec : List (BitVec 8)) :
     List (String × List (BitVec 8)) :=
   let hdrOnly : PqParty :=
     { st with session := none, signed := [], oneTime := [], kyberOneTime := [],
@@ -284,7 +284,7 @@ def cliPqDirRaw (W : PEParams) (st : PqParty) (rec : List (BitVec 8)) :
     (encodeDir W { st with session := none, peerId := none }).drop 3
 
 /-- CLI invocation inputs for party `st` with session record `rec`, extra files, coins, and stdin. -/
-def cliPqInputs (W : PEParams) (st : PqParty) (rec : List (BitVec 8)) (cmd : Cmd)
+@[expose] def cliPqInputs (W : PEParams) (st : PqParty) (rec : List (BitVec 8)) (cmd : Cmd)
     (extra : List (String × List (BitVec 8))) (coins stdin : List (BitVec 8)) : Inputs :=
   { argv := cmd.argv
     dirs := partyDirs ++ (match cmd with | .init _ dir => [dir] | _ => [])
@@ -292,41 +292,41 @@ def cliPqInputs (W : PEParams) (st : PqParty) (rec : List (BitVec 8)) (cmd : Cmd
     stdin := stdin }
 
 /-- Extract the updated peer session file and stdout on exit `0`. -/
-def cliPqAfter (P : Party) : Option Outcome → Option (List (BitVec 8) × List (BitVec 8))
+@[expose] def cliPqAfter (P : Party) : Option Outcome → Option (List (BitVec 8) × List (BitVec 8))
   | some (.exited 0 out fs) => some ((fs (sessionFile (partyAddress P.other))).getD [], out)
   | _ => none
 
-def cliPqDirA {S : SignalPqxdh.Setup} {l : Nat} (bi : ModelDriverInstance S l) : PqParty :=
+@[expose] def cliPqDirA {S : SignalPqxdh.Setup} {l : Nat} (bi : ModelDriverInstance S l) : PqParty :=
   { party := .A, me := bi.meA, peerId := some (bhIdKeyOf bi.idBBytes), session := none,
     signed := [], oneTime := [], kyberOneTime := [], kyberLastResort := [] }
 
 /-- Bob's directory after accepting the expected pre-key message of `bi`. -/
-def cliPqxdhDirBobAfterAccept {S : SignalPqxdh.Setup} {l : Nat} (bi : ModelDriverInstance S l)
+@[expose] def cliPqxdhDirBobAfterAccept {S : SignalPqxdh.Setup} {l : Nat} (bi : ModelDriverInstance S l)
     (sigs : List.Vector (BitVec 8) 64 × List.Vector (BitVec 8) 64) : PqParty :=
   let m := bhExpectedPreKeyMsg bi.meA.regId bi.hdr []
   let d0 := cliPqxdhDirBobBeforeAccept bi sigs
   removeOpk ((markKyberUsed d0 m).getD d0) m
 
 /-- Reconstructed party directory for `s` in instance `bi`. -/
-def cliPqDirOf {S : SignalPqxdh.Setup} {l : Nat} (bi : ModelDriverInstance S l)
+@[expose] def cliPqDirOf {S : SignalPqxdh.Setup} {l : Nat} (bi : ModelDriverInstance S l)
     (sigs : List.Vector (BitVec 8) 64 × List.Vector (BitVec 8) 64) (s : BinState) : PqParty :=
   match s.party with
   | .A => cliPqDirA bi
   | .B => if s.bytes.isEmpty then cliPqxdhDirBobBeforeAccept bi sigs else cliPqxdhDirBobAfterAccept bi sigs
 
-def cliPqInit (run : CliRun) (W : PEParams) (dA : PqParty) (b : PreKeyBundleFields)
+@[expose] def cliPqInit (run : CliRun) (W : PEParams) (dA : PqParty) (b : PreKeyBundleFields)
     (t : List.Vector (BitVec 8) initiateTapeLen) : Option BinState :=
   (cliPqAfter .A (run (pqInitInputs W dA b t))).map fun (recA, _) =>
     { party := .A, bytes := recA, epochs := { epoch := 0, chains := [(⟨b.spkPub⟩, 0)] } }
 
-def cliPqSend (run : CliRun) (W : PEParams) (d : PqParty) (s : BinState)
+@[expose] def cliPqSend (run : CliRun) (W : PEParams) (d : PqParty) (s : BinState)
     (m : List (BitVec 8)) (rs : BitVec 512) : BinState × List (BitVec 8) :=
   match cliPqAfter s.party (run (cliPqInputs W d s.bytes (.send (partyAddress s.party.other)) []
       (LibsignalSpqrV1.coinBytes rs) m)) with
   | some (recB, wire) => ({ party := s.party, bytes := recB, epochs := s.epochs.send s.party }, wire)
   | none => (s, [])
 
-def cliPqRecv (run : CliRun) (W : PEParams) (d : PqParty) (s : BinState)
+@[expose] def cliPqRecv (run : CliRun) (W : PEParams) (d : PqParty) (s : BinState)
     (c : List (BitVec 8)) (rc : BitVec 256) : Option (BinState × Nat × Nat × List (BitVec 8)) :=
   (cliPqAfter s.party (run (cliPqInputs W d s.bytes (.recv (partyAddress s.party.other)) []
       (HMAC.keyToBytes32 rc) c))).map fun (recB, pt) =>
@@ -337,7 +337,7 @@ def cliPqRecv (run : CliRun) (W : PEParams) (d : PqParty) (s : BinState)
     | _ => ({ party := s.party, bytes := recB, epochs := s.epochs }, s.epochs.epoch, 0, pt)
 
 /-- Projected `BinState` receive step with pre-key header filtering for instance `bi`. -/
-def cliPqReceive (run : CliRun) (W : PEParams) (l : Nat) {S : SignalPqxdh.Setup}
+@[expose] def cliPqReceive (run : CliRun) (W : PEParams) (l : Nat) {S : SignalPqxdh.Setup}
     {l' : Nat} (bi : ModelDriverInstance S l')
     (sigs : List.Vector (BitVec 8) 64 × List.Vector (BitVec 8) 64)
     (s : BinState) (c : List (BitVec 8)) (rc : BitVec 256) :
@@ -363,7 +363,7 @@ def cliPqReceive (run : CliRun) (W : PEParams) (l : Nat) {S : SignalPqxdh.Setup}
         else none
 
 /-- Projected `BinState` secure-messaging scheme for instance `bi`. -/
-def cliPqScheme (run : CliRun) (W : PEParams) (l : Nat) {S : SignalPqxdh.Setup}
+@[expose] def cliPqScheme (run : CliRun) (W : PEParams) (l : Nat) {S : SignalPqxdh.Setup}
     {l' : Nat} (bi : ModelDriverInstance S l')
     (sigs : List.Vector (BitVec 8) 64 × List.Vector (BitVec 8) 64) (stA0 stB0 : BinState) :
     SMSchemeR Unit BinState (Plain l) (BitVec 512) (BitVec 256) Bytes where
@@ -372,7 +372,7 @@ def cliPqScheme (run : CliRun) (W : PEParams) (l : Nat) {S : SignalPqxdh.Setup}
   send s m rs := cliPqSend run W (cliPqDirOf bi sigs s) s m.toList rs
   receive s c rc := cliPqReceive run W l bi sigs s c rc
 
-def cliDrvStart (S : SignalPqxdh.Setup) (l : Nat) (P : SignalPqxdh.Primitives)
+@[expose] def cliDrvStart (S : SignalPqxdh.Setup) (l : Nat) (P : SignalPqxdh.Primitives)
     (run : CliRun) (W : PEParams) (mode : BHDrvMode S) (sid : SignalPqxdh.SessionId S) :
     BHDrvM S l (Option Nat) := do
   let ds ← get
@@ -422,7 +422,7 @@ def cliDrvStart (S : SignalPqxdh.Setup) (l : Nat) (P : SignalPqxdh.Primitives)
   set { ds with bhInsts := ds.bhInsts ++ [bi], instMeta := ds.instMeta ++ [im0] }
   return some ds.bhInsts.length
 
-def cliRunStdSM (S : SignalPqxdh.Setup) (l : Nat) {Pt : Type}
+@[expose] def cliRunStdSM (S : SignalPqxdh.Setup) (l : Nat) {Pt : Type}
     (run : CliRun) (W : PEParams) (qep : Nat)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (ds : ModelDriverState S l) (i : Nat) (bi : ModelDriverInstance S l) (im : ModelDriverInstanceMeta S)
@@ -449,7 +449,7 @@ def cliRunStdSM (S : SignalPqxdh.Setup) (l : Nat) {Pt : Type}
                 instMeta := ds.instMeta.set i im' }
   return r
 
-def cliStepLocalSM (S : SignalPqxdh.Setup) (l : Nat) {Pt : Type}
+@[expose] def cliStepLocalSM (S : SignalPqxdh.Setup) (l : Nat) {Pt : Type}
     (run : CliRun) (W : PEParams) (qep : Nat)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (ds : ModelDriverState S l) (i : Nat) (bi : ModelDriverInstance S l) (im : ModelDriverInstanceMeta S)
@@ -472,7 +472,7 @@ def cliStepLocalSM (S : SignalPqxdh.Setup) (l : Nat) {Pt : Type}
     else cliRunStdSM S l run W qep decT encT ds i bi im gs (.inl (.inr (.B, c)))
   | q => cliRunStdSM S l run W qep decT encT ds i bi im gs q
 
-def cliDrvSM (S : SignalPqxdh.Setup) (l : Nat) {Pt : Type}
+@[expose] def cliDrvSM (S : SignalPqxdh.Setup) (l : Nat) {Pt : Type}
     (run : CliRun) (W : PEParams) (qep : Nat)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (ext : QueryImpl (cliGameSmSpec l (BitVec 512)) (BHDrvM S l)) :
@@ -493,12 +493,12 @@ def cliDrvSM (S : SignalPqxdh.Setup) (l : Nat) {Pt : Type}
         | some gs => cliStepLocalSM S l run W qep decT encT ds i bi im gs q
     | _, _ => return bhSmDefaultWithSpqr q
 
-def cliDrvCtl (S : SignalPqxdh.Setup) (l : Nat) (P : SignalPqxdh.Primitives)
+@[expose] def cliDrvCtl (S : SignalPqxdh.Setup) (l : Nat) (P : SignalPqxdh.Primitives)
     (run : CliRun) (W : PEParams) (mode : BHDrvMode S) : QueryImpl (bhDrCtlSpec S) (BHDrvM S l)
   | .startDR sid => cliDrvStart S l P run W mode sid
 
 /-- Full projected CLI oracle implementation over `BHDrvM S l`. -/
-def cliDrvImpl (S : SignalPqxdh.Setup) (l : Nat) {Pt : Type}
+@[expose] def cliDrvImpl (S : SignalPqxdh.Setup) (l : Nat) {Pt : Type}
     (P : SignalPqxdh.Primitives) (run : CliRun) (W : PEParams) (qep : Nat)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (ext : QueryImpl (cliGameSmSpec l (BitVec 512)) (BHDrvM S l)) (mode : BHDrvMode S) :
@@ -506,7 +506,7 @@ def cliDrvImpl (S : SignalPqxdh.Setup) (l : Nat) {Pt : Type}
   (QueryImpl.ofLift unifSpec ProbComp).liftTarget (BHDrvM S l) + bhDrvKeyInd S l P false +
     cliDrvCtl S l P run W mode + cliDrvSM S l run W qep decT encT ext
 
-def runCliDriver (S : SignalPqxdh.Setup) (l : Nat) {Pt : Type}
+@[expose] def runCliDriver (S : SignalPqxdh.Setup) (l : Nat) {Pt : Type}
     (P : SignalPqxdh.Primitives) (run : CliRun) (W : PEParams) (qep : Nat)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (ext : QueryImpl (cliGameSmSpec l (BitVec 512)) (BHDrvM S l)) (mode : BHDrvMode S)
@@ -515,7 +515,7 @@ def runCliDriver (S : SignalPqxdh.Setup) (l : Nat) {Pt : Type}
   (simulateQ (cliDrvImpl S l P run W qep decT encT ext mode) A.run).run {}
 
 /-- Composed `BinState` game interface for the projected CLI experiment. -/
-def cliIfaceProj (S : SignalPqxdh.Setup) (run : CliRun) (X : UnreachedPqxdhPrimitives)
+@[expose] def cliIfaceProj (S : SignalPqxdh.Setup) (run : CliRun) (X : UnreachedPqxdhPrimitives)
     (W : PEParams) (l qep : Nat) {Pt : Type} (decT : PublicKey → Option Pt)
     (encT : Pt → PublicKey) : ComposedIface S l where
   St := BinState
@@ -527,13 +527,13 @@ def cliIfaceProj (S : SignalPqxdh.Setup) (run : CliRun) (X : UnreachedPqxdhPrimi
   won := driverSomeInstanceWon
 
 /-- Projected CLI security experiment over `cliIfaceProj`. -/
-def cliPqExpProj (S : SignalPqxdh.Setup) (run : CliRun) (X : UnreachedPqxdhPrimitives)
+@[expose] def cliPqExpProj (S : SignalPqxdh.Setup) (run : CliRun) (X : UnreachedPqxdhPrimitives)
     (W : PEParams) (l qep : Nat) {Pt : Type} (decT : PublicKey → Option Pt)
     (encT : Pt → PublicKey) (A : CliGameAdversary S l (BitVec 512)) : ProbComp Bool :=
   composedExp (cliIfaceProj S run X W l qep decT encT) A.run
 
 /-- Adversary advantage in the projected CLI security experiment `cliPqExpProj`. -/
-noncomputable def CliPqxdhAdvantageProj (S : SignalPqxdh.Setup) (run : CliRun)
+@[expose] noncomputable def CliPqxdhAdvantageProj (S : SignalPqxdh.Setup) (run : CliRun)
     (X : UnreachedPqxdhPrimitives) (W : PEParams) (l qep : Nat) {Pt : Type}
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (A : CliGameAdversary S l (BitVec 512)) : ℝ≥0∞ :=

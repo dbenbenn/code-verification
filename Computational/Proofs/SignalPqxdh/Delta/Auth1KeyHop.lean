@@ -9,13 +9,15 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyAuthDefs
-public import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyGlue
-public import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyRecvOPK
-public import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyRecvNoOPK
-public import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyMono
-public import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyTransfer
-public import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyCorrAt
+import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyAuthDefs
+import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyGlue
+import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyRecvOPK
+import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyRecvNoOPK
+import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyMono
+import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyTransfer
+import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyCorrAt
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid -- proof-setup: allow-public-import
 
 /-!
 # One-key `G3 → G3.5` authentication hop with imperfect KEM correctness
@@ -25,7 +27,7 @@ Combines `authCutoffGlue1Key`, `authRecvOPKδ1Key`, `authRecvNoOPKδ1Key`, `auth
 `auth_hop_G3_G3_5_leδ1Key`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

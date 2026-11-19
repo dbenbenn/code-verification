@@ -10,14 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Received1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommon
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Received1PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommon -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
@@ -34,6 +34,12 @@ import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudgetAux
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
 
 /-!
 # `<States>::recv` (Block `332`) — `.ct1Received` Arm, Part 2 Aux (Budget-Threaded)
@@ -43,7 +49,7 @@ subsumption, `VmPreserved`/pool-threaded helper blocks, and the `<Ct1Received>::
 (`.ct2`) path (`ct1Received_arm_eq_ct2_placed`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -202,7 +208,7 @@ theorem ct1ReceivedRecvCt2ChunkPostEnv_sub_statesRecvEnv {F : ShaCompress}
   exact SpqrBoundedEvs.mono (by omega) (by omega) (ct1ReceivedRecvCt2ChunkPostEnv_bounded h)
 
 /-- Allocation-phase prefix envelope for the `.ct1Received` arm of `<States>::recv`. -/
-def Ct1ReceivedArmPreEnv {F : ShaCompress}
+@[expose] def Ct1ReceivedArmPreEnv {F : ShaCompress}
     (st : Chunked.SendEk.Ct1Received spqrPolyApi (spqrAuthApi F))
     (msg : Message spqrPolyApi) (evs : List AllocEvent) : Prop :=
   if msg.epoch > st.uc.epoch then
@@ -215,7 +221,7 @@ def Ct1ReceivedArmPreEnv {F : ShaCompress}
     | _ => evs = []
 
 /-- Postcondition allocation envelope for the `.ct1Received` arm of `<States>::recv`. -/
-def Ct1ReceivedArmPostEnv {F : ShaCompress}
+@[expose] def Ct1ReceivedArmPostEnv {F : ShaCompress}
     (st : Chunked.SendEk.Ct1Received spqrPolyApi (spqrAuthApi F))
     (msg : Message spqrPolyApi) (evs : List AllocEvent) : Prop :=
   if msg.epoch > st.uc.epoch then

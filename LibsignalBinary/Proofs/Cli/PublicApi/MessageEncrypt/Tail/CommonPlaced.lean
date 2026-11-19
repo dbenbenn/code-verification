@@ -10,16 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.Common
-public import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.Common
+import LibsignalBinary.Proofs.Common.SharedHelpers
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Relocatable (`[LibsignalPlacement]`) Tail Common Definitions & `SegExitPlaced` Bridges
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +42,7 @@ open CryptoVerification.LibsignalPublicApi.StoreKit
 open CryptoVerification.LibsignalPublicApi.MessageEncrypt
 
 /-- Relocatable tail entry state on Block `464` (`lsProg_464 H`) under `[LibsignalPlacement]`. -/
-def EncTailVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def EncTailVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (C : Crypto) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel)

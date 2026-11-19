@@ -9,26 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Placed.GenLsBlock
-import LibsignalBinary.Proofs.SpqrV1.Alloc.Fetch
 import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrow
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-
-/-!
-# `RawVec<{ChainEpoch, Pt, Poly, GF16, &[Pt]}>::grow_one`
-
-Verifies the five 26-instruction `<alloc::raw_vec::RawVec<T>>::grow_one` monomorphizations
-calling `finish_grow [local#8]` (`ChainEpoch`, `Pt`, `Poly`, `GF16`, and `&[Pt]`) on
-`tripleRatchetProgAtExt` and under `[LibsignalPlacement]` (blocks 356..360).
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Alloc
 
@@ -218,13 +207,6 @@ private theorem finish_grow_8_zero_cells_of_fg8 {A : RustAlloc} {P : Program} {a
       exact ⟨hq.1, by simpa only [sepConj_assoc] using hq.2⟩
   · exact Or.inr hfail
 
-private theorem finish_grow_8_zero_cells_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrow8Name)
-      (finishGrow8ZeroCellsSpec A) :=
-  finish_grow_8_zero_cells_of_fg8 (finish_grow_8_ok_ext hA)
-
 private def finishGrow8NeCellsSpec (A : RustAlloc) : Spec FG8CellsGhost where
   pre := fun (out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
@@ -282,17 +264,8 @@ private theorem finish_grow_8_ne_cells_of_fg8 {A : RustAlloc} {P : Program} {add
       exact ⟨hq.1, by simpa only [sepConj_assoc] using hq.2⟩
   · exact Or.inr hfail
 
-private theorem finish_grow_8_ne_cells_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrow8Name)
-      (finishGrow8NeCellsSpec A) :=
-  finish_grow_8_ne_cells_of_fg8 (finish_grow_8_ok_ext hA)
-
-/-! ## Generic `(stride, align)` `grow_one` Specifications -/
-
 /-- Prefix-preserving contract for `RawVec<T>::grow_one` (`stride > 1`, `bs.length ≤ cap.toNat * stride`). -/
-def growOneStrideBsSpec (A : RustAlloc) (stride align : Nat) : Spec GrowGhost where
+@[expose] def growOneStrideBsSpec (A : RustAlloc) (stride align : Nat) : Spec GrowGhost where
   pre := fun (v, cap, ptr, bs) s =>
     ⌜s.readReg64 .x0 = v ∧ bs.length ≤ cap.toNat * stride ∧ ptr ≠ 0#64 ∧
       max (2 * cap.toNat) 4 * stride + align ≤ 2 ^ 63⌝ ∗
@@ -312,7 +285,7 @@ def growOneStrideBsSpec (A : RustAlloc) (stride align : Nat) : Spec GrowGhost wh
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Full-buffer contract for `RawVec<T>::grow_one` (`bs.length = cap.toNat * stride`). -/
-def growOneStrideFullSpec (A : RustAlloc) (stride align : Nat) : Spec GrowGhost where
+@[expose] def growOneStrideFullSpec (A : RustAlloc) (stride align : Nat) : Spec GrowGhost where
   pre := fun (v, cap, ptr, bs) s =>
     ⌜s.readReg64 .x0 = v ∧ bs.length = cap.toNat * stride ∧ ptr ≠ 0#64 ∧
       max (2 * cap.toNat) 4 * stride + align ≤ 2 ^ 63⌝ ∗
@@ -330,7 +303,7 @@ def growOneStrideFullSpec (A : RustAlloc) (stride align : Nat) : Spec GrowGhost 
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Uninitialized (`memRegion`) contract for `RawVec<T>::grow_one` (`bs = []`). -/
-def growOneStrideEmptySpec (A : RustAlloc) (stride align : Nat) :
+@[expose] def growOneStrideEmptySpec (A : RustAlloc) (stride align : Nat) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64) where
   pre := fun (v, cap, ptr) s =>
     ⌜s.readReg64 .x0 = v ∧ ptr ≠ 0#64 ∧
@@ -349,178 +322,12 @@ def growOneStrideEmptySpec (A : RustAlloc) (stride align : Nat) :
     A.pool ∗ stackAt s0.sp growOneStack
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-theorem grow_one_stride_full_of_bs {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} {name : String} {stride align : Nat}
-    (hbs : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name)
-      (growOneStrideBsSpec A stride align)) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name)
-      (growOneStrideFullSpec A stride align) := by
-  refine subroutine_ok_outcome_intro fun ⟨v, cap, ptr, bs⟩ R s0 hpc hrun hpre hsp => ?_
-  simp only [growOneStrideFullSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hlen, hptr, hbound⟩, hmem⟩
-  have hpre' : s0.mem ⊨ (growOneStrideBsSpec A stride align).pre (v, cap, ptr, bs) s0 ∗ R := by
-    simp only [growOneStrideBsSpec, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, Nat.le_of_eq hlen, hptr, hbound⟩, ?_⟩
-    by_cases hcap0 : cap = 0#64
-    · simp only [hcap0, ite_true] at hmem ⊢
-      exact hmem
-    · simp only [hcap0, ite_false, ← hlen, Nat.sub_self, memRegion_zero, sepConj_emp,
-        sepConj_assoc] at hmem ⊢
-      exact hmem
-  refine hbs.mono_outcome (v, cap, ptr, bs) R s0 hpc hrun hpre' hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | hfail
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    have hsub_mul : (max (2 * cap.toNat) 4 - cap.toNat) * stride =
-        max (2 * cap.toNat) 4 * stride - bs.length := by
-      rw [Nat.sub_mul, hlen]
-    simp only [growOneStrideBsSpec, growOneStrideFullSpec, hsub_mul] at hq ⊢
-    exact hq
-  · exact Or.inr hfail
-
-theorem grow_one_stride_empty_of_bs {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} {name : String} {stride align : Nat}
-    (hbs : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name)
-      (growOneStrideBsSpec A stride align)) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name)
-      (growOneStrideEmptySpec A stride align) := by
-  refine subroutine_ok_outcome_intro fun ⟨v, cap, ptr⟩ R s0 hpc hrun hpre hsp => ?_
-  simp only [growOneStrideEmptySpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hptr, hbound⟩, hmem⟩
-  have hpre' : s0.mem ⊨ (growOneStrideBsSpec A stride align).pre (v, cap, ptr, []) s0 ∗ R := by
-    simp only [growOneStrideBsSpec, List.length_nil, pointsToBytes_nil,
-      BitVec.add_zero, Nat.sub_zero, emp_sepConj, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, Nat.zero_le _, hptr, hbound⟩, hmem⟩
-  refine hbs.mono_outcome (v, cap, ptr, []) R s0 hpc hrun hpre' hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | hfail
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    simp only [growOneStrideBsSpec, growOneStrideEmptySpec, List.length_nil,
-      pointsToBytes_nil, BitVec.add_zero, Nat.sub_zero,
-      emp_sepConj] at hq ⊢
-    exact hq
-  · exact Or.inr hfail
-
-/-! ## `RawVec<ChainEpoch>::grow_one` (`stride = 112, align = 8`) -/
-
 abbrev growOneChainEpochName : String :=
   "<alloc::raw_vec::RawVec<spqr::chain::ChainEpoch>>::grow_one"
 
 abbrev growOneChainEpochBsSpec (A : RustAlloc) := growOneStrideBsSpec A 112 8
 abbrev growOneChainEpochFullSpec (A : RustAlloc) := growOneStrideFullSpec A 112 8
 abbrev growOneChainEpochSpec (A : RustAlloc) := growOneStrideEmptySpec A 112 8
-
-/-- `RawVec<ChainEpoch>::grow_one` meets `growOneChainEpochBsSpec A`. -/
-theorem grow_one_chain_epoch_bs_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr growOneChainEpochName)
-      (growOneChainEpochBsSpec A) := by
-  simp only [growOneChainEpochBsSpec, growOneStrideBsSpec, stackAt_growOne, sepExists_sepConj_right]
-  have hfn : libsignalSessionCode.fnOff growOneChainEpochName = 0x5a6e0 :=
-    libsignalSessionCode_fnOff_0x5a6e0
-  have hpanic := panic_at_handle_error_norm_ext (b := b) (ext := ext)
-    (name := growOneChainEpochName) (k := num% (ls_off% "alloc::raw_vec::handle_error" - 0x5a6e0))
-    (by rw [hfn, (ls_stub% "alloc::raw_vec::handle_error")])
-  have hfg0 := finish_grow_8_zero_cells_ok_ext hA
-  have hfg1 := finish_grow_8_ne_cells_ok_ext hA
-  rw [Program.fnAddr_rel (name := growOneChainEpochName)
-    hfn libsignalSessionCode_fnOff_0x5a8e8 (k := 520) (by decide)] at hfg0 hfg1
-  code_fetches CryptoVerification.libsignalSessionCode spqrAllocBin b
-    (Rust.withPanics ext) hfn 0x5a6e0 104
-  dsimp only [tripleRatchetProgAtExt] at hpanic hfg0 hfg1 ⊢
-  clear hfn hA
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)).fnAddr growOneChainEpochName = entry
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  wpp_init x s0
-  obtain ⟨v, cap, ptr, bs⟩ := x
-  dsimp only at *
-  have hnew_lt63 : max (2 * cap.toNat) 4 < 2 ^ 63 := by omega
-  have hnew_eq := grow_new_cap_eq hnew_lt63
-  let new := BitVec.ofNat 64 (max (2 * cap.toNat) 4)
-  have hnew_toNat : new.toNat = max (2 * cap.toNat) 4 := by
-    dsimp [new]; rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  have hcap_le_new : cap.toNat ≤ new.toNat := by omega
-  have hnew_pos : 0 < new.toNat := by omega
-  have hpow : ∃ k, 8 = 2 ^ k := ⟨3, rfl⟩
-  have hnew_lay : LayoutOk (new.toNat * (112#64 : BitVec 64).toNat) (8#64 : BitVec 64).toNat := by
-    refine ⟨by change 0 < new.toNat * 112; omega, hpow, ?_⟩
-    change new.toNat * 112 + 8 ≤ 2 ^ 63; omega
-  by_cases hcap0 : cap = 0#64
-  · subst hcap0
-    have h0_mul : (0#64 : BitVec 64).toNat * 112 = 0 := rfl
-    have hbs : bs = [] := List.eq_nil_of_length_eq_zero (by omega)
-    subst hbs
-    have hnew_eq0 : (if (4#64).ult (0#64 <<< 1) = true then 0#64 <<< 1 else 4#64) = new := hnew_eq
-    have hmul_eq : max (2 * 0) 4 * 112 = new.toNat * 112 := by rw [hnew_toNat]; rfl
-    simp only [ite_true, emp_sepConj, pointsToBytes_nil,
-      List.length_nil, BitVec.add_zero, BitVec.toNat_ofNat, Nat.zero_mod, Nat.sub_zero, hmul_eq]
-    apply SepWPp.of_sepWP (mid := entry + 60#64)
-    wp_steps
-    wp_apply
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    by_cases htag : w = 1#64
-    · simp only [htag, ite_true, sepConj_assoc]
-      refine SepWPp.pure_elim fun htrace => ?_
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x5a6e0))
-      wp_steps
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-      refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-      simpa only [sepConj_assoc] using
-        allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-    · simp only [htag, ite_false, sepConj_assoc]
-      refine SepWPp.pure_elim fun ⟨hw0, hp', halign, htrace⟩ => ?_
-      subst hw0
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      wp_done
-  · simp only [hcap0, ite_false, sepConj_assoc]
-    have hsub_eq : max (2 * cap.toNat) 4 * 112 - bs.length = new.toNat * 112 - bs.length := by
-      rw [hnew_toNat]
-    have hmul_eq : max (2 * cap.toNat) 4 * 112 = new.toNat * 112 := by
-      rw [hnew_toNat]
-    rw [hsub_eq, hmul_eq]
-    apply SepWPp.of_sepWP (mid := entry + 60#64)
-    wp_steps
-    wp_apply
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    by_cases htag : w = 1#64
-    · simp only [htag, ite_true, sepConj_assoc]
-      refine SepWPp.pure_elim fun htrace => ?_
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x5a6e0))
-      wp_steps
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-      refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-      simpa only [sepConj_assoc] using
-        allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-    · simp only [htag, ite_false, BitVec.toNat_ofNat, sepConj_assoc]
-      refine SepWPp.pure_elim fun ⟨hw0, hp', halign, htrace⟩ => ?_
-      subst hw0
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      wp_done
-
-theorem grow_one_chain_epoch_full_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr growOneChainEpochName)
-      (growOneChainEpochFullSpec A) :=
-  grow_one_stride_full_of_bs (grow_one_chain_epoch_bs_ok_ext hA)
-
-theorem grow_one_chain_epoch_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr growOneChainEpochName)
-      (growOneChainEpochSpec A) :=
-  grow_one_stride_empty_of_bs (grow_one_chain_epoch_bs_ok_ext hA)
-
-/-! ## `RawVec<Pt>::grow_one` (`stride = 4, align = 2`) -/
 
 abbrev growOnePtName : String :=
   "<alloc::raw_vec::RawVec<spqr::encoding::polynomial::Pt>>::grow_one"
@@ -529,232 +336,12 @@ abbrev growOnePtBsSpec (A : RustAlloc) := growOneStrideBsSpec A 4 2
 abbrev growOnePtFullSpec (A : RustAlloc) := growOneStrideFullSpec A 4 2
 abbrev growOnePtSpec (A : RustAlloc) := growOneStrideEmptySpec A 4 2
 
-/-- `RawVec<Pt>::grow_one` meets `growOnePtBsSpec A`. -/
-theorem grow_one_pt_bs_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr growOnePtName)
-      (growOnePtBsSpec A) := by
-  simp only [growOnePtBsSpec, growOneStrideBsSpec, stackAt_growOne, sepExists_sepConj_right]
-  have hfn : libsignalSessionCode.fnOff growOnePtName = 0x5a748 :=
-    libsignalSessionCode_fnOff_0x5a748
-  have hpanic := panic_at_handle_error_norm_ext (b := b) (ext := ext)
-    (name := growOnePtName) (k := num% (ls_off% "alloc::raw_vec::handle_error" - 0x5a748))
-    (by rw [hfn, (ls_stub% "alloc::raw_vec::handle_error")])
-  have hfg0 := finish_grow_8_zero_cells_ok_ext hA
-  have hfg1 := finish_grow_8_ne_cells_ok_ext hA
-  rw [Program.fnAddr_rel (name := growOnePtName)
-    hfn libsignalSessionCode_fnOff_0x5a8e8 (k := 416) (by decide)] at hfg0 hfg1
-  code_fetches CryptoVerification.libsignalSessionCode spqrAllocBin b
-    (Rust.withPanics ext) hfn 0x5a748 104
-  dsimp only [tripleRatchetProgAtExt] at hpanic hfg0 hfg1 ⊢
-  clear hfn hA
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)).fnAddr growOnePtName = entry
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  wpp_init x s0
-  obtain ⟨v, cap, ptr, bs⟩ := x
-  dsimp only at *
-  have hnew_lt63 : max (2 * cap.toNat) 4 < 2 ^ 63 := by omega
-  have hnew_eq := grow_new_cap_eq hnew_lt63
-  let new := BitVec.ofNat 64 (max (2 * cap.toNat) 4)
-  have hnew_toNat : new.toNat = max (2 * cap.toNat) 4 := by
-    dsimp [new]; rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  have hcap_le_new : cap.toNat ≤ new.toNat := by omega
-  have hnew_pos : 0 < new.toNat := by omega
-  have hpow : ∃ k, 2 = 2 ^ k := ⟨1, rfl⟩
-  have hnew_lay : LayoutOk (new.toNat * (4#64 : BitVec 64).toNat) (2#64 : BitVec 64).toNat := by
-    refine ⟨by change 0 < new.toNat * 4; omega, hpow, ?_⟩
-    change new.toNat * 4 + 2 ≤ 2 ^ 63; omega
-  by_cases hcap0 : cap = 0#64
-  · subst hcap0
-    have h0_mul : (0#64 : BitVec 64).toNat * 4 = 0 := rfl
-    have hbs : bs = [] := List.eq_nil_of_length_eq_zero (by omega)
-    subst hbs
-    have hnew_eq0 : (if (4#64).ult (0#64 <<< 1) = true then 0#64 <<< 1 else 4#64) = new := hnew_eq
-    have hmul_eq : max (2 * 0) 4 * 4 = new.toNat * 4 := by rw [hnew_toNat]; rfl
-    simp only [ite_true, emp_sepConj, pointsToBytes_nil,
-      List.length_nil, BitVec.add_zero, BitVec.toNat_ofNat, Nat.zero_mod, Nat.sub_zero, hmul_eq]
-    apply SepWPp.of_sepWP (mid := entry + 60#64)
-    wp_steps
-    wp_apply
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    by_cases htag : w = 1#64
-    · simp only [htag, ite_true, sepConj_assoc]
-      refine SepWPp.pure_elim fun htrace => ?_
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x5a748))
-      wp_steps
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-      refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-      simpa only [sepConj_assoc] using
-        allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-    · simp only [htag, ite_false, sepConj_assoc]
-      refine SepWPp.pure_elim fun ⟨hw0, hp', halign, htrace⟩ => ?_
-      subst hw0
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      wp_done
-  · simp only [hcap0, ite_false, sepConj_assoc]
-    have hsub_eq : max (2 * cap.toNat) 4 * 4 - bs.length = new.toNat * 4 - bs.length := by
-      rw [hnew_toNat]
-    have hmul_eq : max (2 * cap.toNat) 4 * 4 = new.toNat * 4 := by
-      rw [hnew_toNat]
-    rw [hsub_eq, hmul_eq]
-    apply SepWPp.of_sepWP (mid := entry + 60#64)
-    wp_steps
-    wp_apply
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    by_cases htag : w = 1#64
-    · simp only [htag, ite_true, sepConj_assoc]
-      refine SepWPp.pure_elim fun htrace => ?_
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x5a748))
-      wp_steps
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-      refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-      simpa only [sepConj_assoc] using
-        allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-    · simp only [htag, ite_false, BitVec.toNat_ofNat, sepConj_assoc]
-      refine SepWPp.pure_elim fun ⟨hw0, hp', halign, htrace⟩ => ?_
-      subst hw0
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      wp_done
-
-theorem grow_one_pt_full_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr growOnePtName)
-      (growOnePtFullSpec A) :=
-  grow_one_stride_full_of_bs (grow_one_pt_bs_ok_ext hA)
-
-theorem grow_one_pt_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr growOnePtName)
-      (growOnePtSpec A) :=
-  grow_one_stride_empty_of_bs (grow_one_pt_bs_ok_ext hA)
-
-/-! ## `RawVec<Poly>::grow_one` (`stride = 24, align = 8`) -/
-
 abbrev growOnePolyName : String :=
   "<alloc::raw_vec::RawVec<spqr::encoding::polynomial::Poly>>::grow_one"
 
 abbrev growOnePolyBsSpec (A : RustAlloc) := growOneStrideBsSpec A 24 8
 abbrev growOnePolyFullSpec (A : RustAlloc) := growOneStrideFullSpec A 24 8
 abbrev growOnePolySpec (A : RustAlloc) := growOneStrideEmptySpec A 24 8
-
-/-- `RawVec<Poly>::grow_one` meets `growOnePolyBsSpec A`. -/
-theorem grow_one_poly_bs_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr growOnePolyName)
-      (growOnePolyBsSpec A) := by
-  simp only [growOnePolyBsSpec, growOneStrideBsSpec, stackAt_growOne, sepExists_sepConj_right]
-  have hfn : libsignalSessionCode.fnOff growOnePolyName = 0x5a7b0 :=
-    libsignalSessionCode_fnOff_0x5a7b0
-  have hpanic := panic_at_handle_error_norm_ext (b := b) (ext := ext)
-    (name := growOnePolyName) (k := num% (ls_off% "alloc::raw_vec::handle_error" - 0x5a7b0))
-    (by rw [hfn, (ls_stub% "alloc::raw_vec::handle_error")])
-  have hfg0 := finish_grow_8_zero_cells_ok_ext hA
-  have hfg1 := finish_grow_8_ne_cells_ok_ext hA
-  rw [Program.fnAddr_rel (name := growOnePolyName)
-    hfn libsignalSessionCode_fnOff_0x5a8e8 (k := 312) (by decide)] at hfg0 hfg1
-  code_fetches CryptoVerification.libsignalSessionCode spqrAllocBin b
-    (Rust.withPanics ext) hfn 0x5a7b0 104
-  dsimp only [tripleRatchetProgAtExt] at hpanic hfg0 hfg1 ⊢
-  clear hfn hA
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)).fnAddr growOnePolyName = entry
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  wpp_init x s0
-  obtain ⟨v, cap, ptr, bs⟩ := x
-  dsimp only at *
-  have hnew_lt63 : max (2 * cap.toNat) 4 < 2 ^ 63 := by omega
-  have hnew_eq := grow_new_cap_eq hnew_lt63
-  let new := BitVec.ofNat 64 (max (2 * cap.toNat) 4)
-  have hnew_toNat : new.toNat = max (2 * cap.toNat) 4 := by
-    dsimp [new]; rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  have hcap_le_new : cap.toNat ≤ new.toNat := by omega
-  have hnew_pos : 0 < new.toNat := by omega
-  have hpow : ∃ k, 8 = 2 ^ k := ⟨3, rfl⟩
-  have hnew_lay : LayoutOk (new.toNat * (24#64 : BitVec 64).toNat) (8#64 : BitVec 64).toNat := by
-    refine ⟨by change 0 < new.toNat * 24; omega, hpow, ?_⟩
-    change new.toNat * 24 + 8 ≤ 2 ^ 63; omega
-  by_cases hcap0 : cap = 0#64
-  · subst hcap0
-    have h0_mul : (0#64 : BitVec 64).toNat * 24 = 0 := rfl
-    have hbs : bs = [] := List.eq_nil_of_length_eq_zero (by omega)
-    subst hbs
-    have hnew_eq0 : (if (4#64).ult (0#64 <<< 1) = true then 0#64 <<< 1 else 4#64) = new := hnew_eq
-    have hmul_eq : max (2 * 0) 4 * 24 = new.toNat * 24 := by rw [hnew_toNat]; rfl
-    simp only [ite_true, emp_sepConj, pointsToBytes_nil,
-      List.length_nil, BitVec.add_zero, BitVec.toNat_ofNat, Nat.zero_mod, Nat.sub_zero, hmul_eq]
-    apply SepWPp.of_sepWP (mid := entry + 60#64)
-    wp_steps
-    wp_apply
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    by_cases htag : w = 1#64
-    · simp only [htag, ite_true, sepConj_assoc]
-      refine SepWPp.pure_elim fun htrace => ?_
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x5a7b0))
-      wp_steps
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-      refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-      simpa only [sepConj_assoc] using
-        allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-    · simp only [htag, ite_false, sepConj_assoc]
-      refine SepWPp.pure_elim fun ⟨hw0, hp', halign, htrace⟩ => ?_
-      subst hw0
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      wp_done
-  · simp only [hcap0, ite_false, sepConj_assoc]
-    have hsub_eq : max (2 * cap.toNat) 4 * 24 - bs.length = new.toNat * 24 - bs.length := by
-      rw [hnew_toNat]
-    have hmul_eq : max (2 * cap.toNat) 4 * 24 = new.toNat * 24 := by
-      rw [hnew_toNat]
-    rw [hsub_eq, hmul_eq]
-    apply SepWPp.of_sepWP (mid := entry + 60#64)
-    wp_steps
-    wp_apply
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    by_cases htag : w = 1#64
-    · simp only [htag, ite_true, sepConj_assoc]
-      refine SepWPp.pure_elim fun htrace => ?_
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x5a7b0))
-      wp_steps
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-      refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-      simpa only [sepConj_assoc] using
-        allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-    · simp only [htag, ite_false, BitVec.toNat_ofNat, sepConj_assoc]
-      refine SepWPp.pure_elim fun ⟨hw0, hp', halign, htrace⟩ => ?_
-      subst hw0
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      wp_done
-
-theorem grow_one_poly_full_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr growOnePolyName)
-      (growOnePolyFullSpec A) :=
-  grow_one_stride_full_of_bs (grow_one_poly_bs_ok_ext hA)
-
-theorem grow_one_poly_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr growOnePolyName)
-      (growOnePolySpec A) :=
-  grow_one_stride_empty_of_bs (grow_one_poly_bs_ok_ext hA)
-
-/-! ## `RawVec<GF16>::grow_one` (`stride = 2, align = 2`) -/
 
 abbrev growOneGF16Name : String :=
   "<alloc::raw_vec::RawVec<spqr::encoding::gf::GF16>>::grow_one"
@@ -763,232 +350,12 @@ abbrev growOneGF16BsSpec (A : RustAlloc) := growOneStrideBsSpec A 2 2
 abbrev growOneGF16FullSpec (A : RustAlloc) := growOneStrideFullSpec A 2 2
 abbrev growOneGF16Spec (A : RustAlloc) := growOneStrideEmptySpec A 2 2
 
-/-- `RawVec<GF16>::grow_one` meets `growOneGF16BsSpec A`. -/
-theorem grow_one_gf16_bs_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr growOneGF16Name)
-      (growOneGF16BsSpec A) := by
-  simp only [growOneGF16BsSpec, growOneStrideBsSpec, stackAt_growOne, sepExists_sepConj_right]
-  have hfn : libsignalSessionCode.fnOff growOneGF16Name = 0x5a818 :=
-    libsignalSessionCode_fnOff_0x5a818
-  have hpanic := panic_at_handle_error_norm_ext (b := b) (ext := ext)
-    (name := growOneGF16Name) (k := num% (ls_off% "alloc::raw_vec::handle_error" - 0x5a818))
-    (by rw [hfn, (ls_stub% "alloc::raw_vec::handle_error")])
-  have hfg0 := finish_grow_8_zero_cells_ok_ext hA
-  have hfg1 := finish_grow_8_ne_cells_ok_ext hA
-  rw [Program.fnAddr_rel (name := growOneGF16Name)
-    hfn libsignalSessionCode_fnOff_0x5a8e8 (k := 208) (by decide)] at hfg0 hfg1
-  code_fetches CryptoVerification.libsignalSessionCode spqrAllocBin b
-    (Rust.withPanics ext) hfn 0x5a818 104
-  dsimp only [tripleRatchetProgAtExt] at hpanic hfg0 hfg1 ⊢
-  clear hfn hA
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)).fnAddr growOneGF16Name = entry
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  wpp_init x s0
-  obtain ⟨v, cap, ptr, bs⟩ := x
-  dsimp only at *
-  have hnew_lt63 : max (2 * cap.toNat) 4 < 2 ^ 63 := by omega
-  have hnew_eq := grow_new_cap_eq hnew_lt63
-  let new := BitVec.ofNat 64 (max (2 * cap.toNat) 4)
-  have hnew_toNat : new.toNat = max (2 * cap.toNat) 4 := by
-    dsimp [new]; rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  have hcap_le_new : cap.toNat ≤ new.toNat := by omega
-  have hnew_pos : 0 < new.toNat := by omega
-  have hpow : ∃ k, 2 = 2 ^ k := ⟨1, rfl⟩
-  have hnew_lay : LayoutOk (new.toNat * (2#64 : BitVec 64).toNat) (2#64 : BitVec 64).toNat := by
-    refine ⟨by change 0 < new.toNat * 2; omega, hpow, ?_⟩
-    change new.toNat * 2 + 2 ≤ 2 ^ 63; omega
-  by_cases hcap0 : cap = 0#64
-  · subst hcap0
-    have h0_mul : (0#64 : BitVec 64).toNat * 2 = 0 := rfl
-    have hbs : bs = [] := List.eq_nil_of_length_eq_zero (by omega)
-    subst hbs
-    have hnew_eq0 : (if (4#64).ult (0#64 <<< 1) = true then 0#64 <<< 1 else 4#64) = new := hnew_eq
-    have hmul_eq : max (2 * 0) 4 * 2 = new.toNat * 2 := by rw [hnew_toNat]; rfl
-    simp only [ite_true, emp_sepConj, pointsToBytes_nil,
-      List.length_nil, BitVec.add_zero, BitVec.toNat_ofNat, Nat.zero_mod, Nat.sub_zero, hmul_eq]
-    apply SepWPp.of_sepWP (mid := entry + 60#64)
-    wp_steps
-    wp_apply
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    by_cases htag : w = 1#64
-    · simp only [htag, ite_true, sepConj_assoc]
-      refine SepWPp.pure_elim fun htrace => ?_
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x5a818))
-      wp_steps
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-      refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-      simpa only [sepConj_assoc] using
-        allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-    · simp only [htag, ite_false, sepConj_assoc]
-      refine SepWPp.pure_elim fun ⟨hw0, hp', halign, htrace⟩ => ?_
-      subst hw0
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      wp_done
-  · simp only [hcap0, ite_false, sepConj_assoc]
-    have hsub_eq : max (2 * cap.toNat) 4 * 2 - bs.length = new.toNat * 2 - bs.length := by
-      rw [hnew_toNat]
-    have hmul_eq : max (2 * cap.toNat) 4 * 2 = new.toNat * 2 := by
-      rw [hnew_toNat]
-    rw [hsub_eq, hmul_eq]
-    apply SepWPp.of_sepWP (mid := entry + 60#64)
-    wp_steps
-    wp_apply
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    by_cases htag : w = 1#64
-    · simp only [htag, ite_true, sepConj_assoc]
-      refine SepWPp.pure_elim fun htrace => ?_
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x5a818))
-      wp_steps
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-      refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-      simpa only [sepConj_assoc] using
-        allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-    · simp only [htag, ite_false, BitVec.toNat_ofNat, sepConj_assoc]
-      refine SepWPp.pure_elim fun ⟨hw0, hp', halign, htrace⟩ => ?_
-      subst hw0
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      wp_done
-
-theorem grow_one_gf16_full_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr growOneGF16Name)
-      (growOneGF16FullSpec A) :=
-  grow_one_stride_full_of_bs (grow_one_gf16_bs_ok_ext hA)
-
-theorem grow_one_gf16_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr growOneGF16Name)
-      (growOneGF16Spec A) :=
-  grow_one_stride_empty_of_bs (grow_one_gf16_bs_ok_ext hA)
-
-/-! ## `RawVec<&[Pt]>::grow_one` (`stride = 16, align = 8`) -/
-
 abbrev growOnePtSliceName : String :=
   "<alloc::raw_vec::RawVec<&[spqr::encoding::polynomial::Pt]>>::grow_one"
 
 abbrev growOnePtSliceBsSpec (A : RustAlloc) := growOneStrideBsSpec A 16 8
 abbrev growOnePtSliceFullSpec (A : RustAlloc) := growOneStrideFullSpec A 16 8
 abbrev growOnePtSliceSpec (A : RustAlloc) := growOneStrideEmptySpec A 16 8
-
-/-- `RawVec<&[Pt]>::grow_one` meets `growOnePtSliceBsSpec A`. -/
-theorem grow_one_pt_slice_bs_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr growOnePtSliceName)
-      (growOnePtSliceBsSpec A) := by
-  simp only [growOnePtSliceBsSpec, growOneStrideBsSpec, stackAt_growOne, sepExists_sepConj_right]
-  have hfn : libsignalSessionCode.fnOff growOnePtSliceName = 0x5a880 :=
-    libsignalSessionCode_fnOff_0x5a880
-  have hpanic := panic_at_handle_error_norm_ext (b := b) (ext := ext)
-    (name := growOnePtSliceName) (k := num% (ls_off% "alloc::raw_vec::handle_error" - 0x5a880))
-    (by rw [hfn, (ls_stub% "alloc::raw_vec::handle_error")])
-  have hfg0 := finish_grow_8_zero_cells_ok_ext hA
-  have hfg1 := finish_grow_8_ne_cells_ok_ext hA
-  rw [Program.fnAddr_rel (name := growOnePtSliceName)
-    hfn libsignalSessionCode_fnOff_0x5a8e8 (k := 104) (by decide)] at hfg0 hfg1
-  code_fetches CryptoVerification.libsignalSessionCode spqrAllocBin b
-    (Rust.withPanics ext) hfn 0x5a880 104
-  dsimp only [tripleRatchetProgAtExt] at hpanic hfg0 hfg1 ⊢
-  clear hfn hA
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)).fnAddr growOnePtSliceName = entry
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  wpp_init x s0
-  obtain ⟨v, cap, ptr, bs⟩ := x
-  dsimp only at *
-  have hnew_lt63 : max (2 * cap.toNat) 4 < 2 ^ 63 := by omega
-  have hnew_eq := grow_new_cap_eq hnew_lt63
-  let new := BitVec.ofNat 64 (max (2 * cap.toNat) 4)
-  have hnew_toNat : new.toNat = max (2 * cap.toNat) 4 := by
-    dsimp [new]; rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  have hcap_le_new : cap.toNat ≤ new.toNat := by omega
-  have hnew_pos : 0 < new.toNat := by omega
-  have hpow : ∃ k, 8 = 2 ^ k := ⟨3, rfl⟩
-  have hnew_lay : LayoutOk (new.toNat * (16#64 : BitVec 64).toNat) (8#64 : BitVec 64).toNat := by
-    refine ⟨by change 0 < new.toNat * 16; omega, hpow, ?_⟩
-    change new.toNat * 16 + 8 ≤ 2 ^ 63; omega
-  by_cases hcap0 : cap = 0#64
-  · subst hcap0
-    have h0_mul : (0#64 : BitVec 64).toNat * 16 = 0 := rfl
-    have hbs : bs = [] := List.eq_nil_of_length_eq_zero (by omega)
-    subst hbs
-    have hnew_eq0 : (if (4#64).ult (0#64 <<< 1) = true then 0#64 <<< 1 else 4#64) = new := hnew_eq
-    have hmul_eq : max (2 * 0) 4 * 16 = new.toNat * 16 := by rw [hnew_toNat]; rfl
-    simp only [ite_true, emp_sepConj, pointsToBytes_nil,
-      List.length_nil, BitVec.add_zero, BitVec.toNat_ofNat, Nat.zero_mod, Nat.sub_zero, hmul_eq]
-    apply SepWPp.of_sepWP (mid := entry + 60#64)
-    wp_steps
-    wp_apply
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    by_cases htag : w = 1#64
-    · simp only [htag, ite_true, sepConj_assoc]
-      refine SepWPp.pure_elim fun htrace => ?_
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x5a880))
-      wp_steps
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-      refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-      simpa only [sepConj_assoc] using
-        allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-    · simp only [htag, ite_false, sepConj_assoc]
-      refine SepWPp.pure_elim fun ⟨hw0, hp', halign, htrace⟩ => ?_
-      subst hw0
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      wp_done
-  · simp only [hcap0, ite_false, sepConj_assoc]
-    have hsub_eq : max (2 * cap.toNat) 4 * 16 - bs.length = new.toNat * 16 - bs.length := by
-      rw [hnew_toNat]
-    have hmul_eq : max (2 * cap.toNat) 4 * 16 = new.toNat * 16 := by
-      rw [hnew_toNat]
-    rw [hsub_eq, hmul_eq]
-    apply SepWPp.of_sepWP (mid := entry + 60#64)
-    wp_steps
-    wp_apply
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    by_cases htag : w = 1#64
-    · simp only [htag, ite_true, sepConj_assoc]
-      refine SepWPp.pure_elim fun htrace => ?_
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x5a880))
-      wp_steps
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-      refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-      simpa only [sepConj_assoc] using
-        allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-    · simp only [htag, ite_false, BitVec.toNat_ofNat, sepConj_assoc]
-      refine SepWPp.pure_elim fun ⟨hw0, hp', halign, htrace⟩ => ?_
-      subst hw0
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      wp_done
-
-theorem grow_one_pt_slice_full_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr growOnePtSliceName)
-      (growOnePtSliceFullSpec A) :=
-  grow_one_stride_full_of_bs (grow_one_pt_slice_bs_ok_ext hA)
-
-theorem grow_one_pt_slice_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr growOnePtSliceName)
-      (growOnePtSliceSpec A) :=
-  grow_one_stride_empty_of_bs (grow_one_pt_slice_bs_ok_ext hA)
-
-/-! ## Relocatable Contracts (Blocks 356..360) -/
 
 theorem grow_one_stride_full_placed_of_bs [LibsignalPlacement] {A : RustAlloc}
     {P : Program} {addr : BitVec 64} {stride align : Nat}

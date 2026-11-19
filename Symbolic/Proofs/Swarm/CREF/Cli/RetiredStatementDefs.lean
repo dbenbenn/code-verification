@@ -18,7 +18,7 @@ Auxiliary result-buffer and single-session record predicates used by the move-ba
 refinement proofs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,7 +38,7 @@ open DY DY.Comparse
 open CryptoProofLib.Refinement (ExternInterpretation)
 
 /-- Every parsed pre-key wire message carries Alice's identity key (`DEV-PQS-IDENTITY`). -/
-def HonestIdentity (interpretation : ExternInterpretation) (r : ProtocolSetup) (b : HwBytes) : Prop :=
+@[expose] def HonestIdentity (interpretation : ExternInterpretation) (r : ProtocolSetup) (b : HwBytes) : Prop :=
   ∀ p, parsePreKeyWire b = some p →
     p.identityKey.take 33 = ecKey (pubBytes interpretation (secretBytes r 0))
 
@@ -49,7 +49,7 @@ abbrev opkRemovedIdx : Nat := 42
 abbrev kyberUsedIdx : Nat := 0
 
 /-- Serialized session record with `previous = []` (`DEV-C-PREV`). -/
-def SingleSession (rec : HwBytes) : Prop :=
+@[expose] def SingleSession (rec : HwBytes) : Prop :=
   ∃ rr, rec = recordBytes rr ∧ rr.previous = []
 
 end DY.Libsignal.Composed.Refinement

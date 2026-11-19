@@ -18,10 +18,14 @@ public import LibsignalBinary.Heap.IfaceSimp
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Strlen -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetCode -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyCode -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRun -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRun
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Region-Local `strlen` Code Verification & Master Spec (`HooksDehook.StrlenCode`)
@@ -96,7 +100,7 @@ open Arm64 ProofLib SepProp
 open Arm64.Process (pureWordsProg pureWordsProg_hasWords)
 open ProofLib.StdStartup (StdStatePreserved muslStrlenWords stdStrlenROSpec muslStrlen_ro_ok)
 open CryptoVerification.LibsignalTripleRatchet (extHookStack)
-open CryptoVerification.SignalSession (strlenHook)
+open CryptoVerification.SignalSession (strlenHook strlenHook_eq_classical)
 open LibsignalBinary.Heap (AllocCallPreserved VmPreserved FdsHiFrame)
 open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
 open LibsignalBinary.Heap.IfaceSimp (withOomPoolPreserved)
@@ -513,7 +517,7 @@ theorem hookStrlen_processStrlen_ok : HookOk strlenHook processStrlenSpec := by
     exact hno0 (hm0 ▸ List.getElem_mem hm)
   have heq : strlenHook s0 =
       retHook (fun st => st.writeReg64 .x0 (BitVec.ofNat 64 s.length)) s0 := by
-    unfold strlenHook
+    rw [strlenHook_eq_classical]
     dsimp only
     simp only [hx0, hex, ↓reduceDIte, hfind]
   rw [heq]
@@ -601,32 +605,6 @@ theorem hookOk_strlenSpecK_map_frame_pureAbort (keep : BitVec 64 → Bool)
     (hoom : ∀ x s0 sf, base.onOom x s0 sf = ⌜False⌝ := by intros; rfl) :
     HookOk f (strlenSpecK keep target) :=
   hookOk_memcpySpecK_map_frame_pureAbort keep g F hh hpre hpost hpan hex hoom
-
-/-- Any `HookOk f spec` weakens to `HookOk f (spec.inImage img)` (dropping `⌜img.CodeLoaded s0.mem⌝`
-    from `pre`). -/
-theorem hookOk_inImage (img : Obj.Image) {α : Type} {f : State → State} {spec : Spec α}
-    (hh : HookOk f spec) :
-    HookOk f (spec.inImage img) := by
-  intro x R s0 hrun hpre hsp
-  dsimp only [Spec.inImage] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact hh x R s0 hrun hpre.2 hsp
-
-/-- Any `HookOk f (strlenSpecK keep spec)` weakens to
-    `HookOk f (strlenSpecK keep (spec.inImage img))`. -/
-theorem hookOk_strlenSpecK_inImage (keep : BitVec 64 → Bool) (img : Obj.Image)
-    {α : Type} {f : State → State} {spec : Spec α}
-    (hh : HookOk f (strlenSpecK keep spec)) :
-    HookOk f (strlenSpecK keep (spec.inImage img)) := by
-  intro x R s0 hrun hpre hsp
-  dsimp only [strlenSpecK, memcpySpecK, Spec.inImage] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  obtain ⟨hlr, hpre⟩ := hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  refine hh x R s0 hrun ?_ hsp
-  dsimp only [strlenSpecK, memcpySpecK]
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨hlr, hpre.2⟩
 
 /-- Lift `HookOk f processStrlenSpec` to `HookOk f masterStrlenSpec`. -/
 theorem hookOk_masterStrlen_of_processStrlen {f : State → State}

@@ -9,17 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCap
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevVerNePlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
-public import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
-public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCap -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevVerNePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+public import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3Gen
@@ -31,6 +31,7 @@ import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3GenBlocks
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3GenSub5
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
 
 /-!
 # Relocatable Stage P3 over General `prevSessionsEmptyAt`
@@ -39,7 +40,7 @@ Relocatable `[LibsignalPlacement]` and `[LibsignalFullPlacement]` counterparts o
 on Block `518` (`lsProg_518 ext`, `(blkPl_518).base = lsmpl.base 518`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -119,7 +120,7 @@ abbrev LsTokenInitM3 [LibsignalPlacement] : SepProp :=
 
 /-- Relocatable `[LibsignalPlacement]` `stageP3DispatchPrePrevEmpty` at
 `dpClosureEntryM3Placed + 0x1cd8#64`. -/
-def stageP3DispatchPrePrevEmptyPlaced [LibsignalPlacement] (A : RustAlloc) (s0 s : State)
+@[expose] def stageP3DispatchPrePrevEmptyPlaced [LibsignalPlacement] (A : RustAlloc) (s0 s : State)
     (coroPtr outPtr initErrsPtr : BitVec 64) (g : RecordGhost)
     (res : Except SignalProtocolError (List (BitVec 8))) (b_2c0 : BitVec 8)
     (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8))) : SepProp :=
@@ -137,7 +138,7 @@ def stageP3DispatchPrePrevEmptyPlaced [LibsignalPlacement] (A : RustAlloc) (s0 s
 
 /-- Relocatable `[LibsignalPlacement]` `stageP3DispatchOkMidPrevEmpty` at
 `dpClosureEntryM3Placed + 0x34dc#64` (`Ok pt`). -/
-def stageP3DispatchOkMidPrevEmptyPlaced [LibsignalPlacement] (A : RustAlloc) (s0 s : State)
+@[expose] def stageP3DispatchOkMidPrevEmptyPlaced [LibsignalPlacement] (A : RustAlloc) (s0 s : State)
     (coroPtr outPtr initErrsPtr ptCap ptPtr : BitVec 64) (g : RecordGhost)
     (pt : List (BitVec 8)) (b_2c0 : BitVec 8)
     (G₂ : SessionGhost) (st₂ : SessionState (List (BitVec 8))) : SepProp :=
@@ -159,7 +160,7 @@ def stageP3DispatchOkMidPrevEmptyPlaced [LibsignalPlacement] (A : RustAlloc) (s0
   memRegion (s.sp + 0x370#64) 36 ∗ memRegion (s.sp + 0x930#64) 48 ∗
   decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗ A.pool ∗ stackAt s.sp growOneSpeStack
 
-def genP3S5PostFramePlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def genP3S5PostFramePlaced [LibsignalPlacement] (A : RustAlloc)
     (sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr : BitVec 64)
     (msgVer : BitVec 32)
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
@@ -482,7 +483,7 @@ theorem stageP3_sub5_decResult_placed_ok [LibsignalPlacement] {A : RustAlloc}
   exact ⟨ptCap, ptPtr, hpt_le, hpt_lt, hpt_ne, Entails.of_eq (P3P4.eq_of_sep_emp (by sep_focus)),
     hspf, htrf, hcrof, hx19f, hx24f, hx25f, hx26f, hx27f, hx28f, hx29f, hvregsf⟩
 
-def genP3CallFramePlaced [LibsignalPlacement] (A : RustAlloc) (sp remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
+@[expose] def genP3CallFramePlaced [LibsignalPlacement] (A : RustAlloc) (sp remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8)) (rem loc : AddrGhost)
     (msgG : SignalMessageGhost) (msg : SignalMessage) : SepProp :=
   memRegion (sp + 0xa90#64) 344 ∗ ((sp + 0xa0#64) ↦₆₄ locAddrPtr) ∗
@@ -493,7 +494,7 @@ def genP3CallFramePlaced [LibsignalPlacement] (A : RustAlloc) (sp remAddrPtr loc
     coinsAtPlaced cur rest ∗ FromRecordCallees.lsLogOff ∗
     memRegion (sp - BitVec.ofNat 64 rootStack) (rootStack - chainCloneStack)
 
-def genP3PrePlaced [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr
+@[expose] def genP3PrePlaced [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr
     whisperMsgPtr cur : BitVec 64) (msgVer : BitVec 32) (rest : List (BitVec 8))
     (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage) (s : State) : SepProp :=
@@ -503,7 +504,7 @@ def genP3PrePlaced [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr re
     genP3CallFramePlaced A sp remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest rem loc msgG msg ∗
     genP3SpillAll sp
 
-def genP3PostSpatialPlaced [LibsignalPlacement] (A : RustAlloc) (sp coroPtr ctxPtr remAddrPtr locAddrPtr
+@[expose] def genP3PostSpatialPlaced [LibsignalPlacement] (A : RustAlloc) (sp coroPtr ctxPtr remAddrPtr locAddrPtr
     whisperMsgPtr cur : BitVec 64) (msgVer : BitVec 32) (rest : List (BitVec 8))
     (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage) : SepProp :=
@@ -516,7 +517,7 @@ def genP3PostSpatialPlaced [LibsignalPlacement] (A : RustAlloc) (sp coroPtr ctxP
     ((sp + 0xb0#64) ↦₆₄ whisperMsgPtr) ∗ ((sp + 0xb8#64) ↦₃₂ msgVer) ∗
     ((sp + 0x3a0#64) ↦₆₄ remAddrPtr) ∗ ((sp + 0x3ac#64) ↦₈ 3#8) ∗ genP3SpillAll sp
 
-def genP3PostEqPlaced [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr
+@[expose] def genP3PostEqPlaced [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr
     whisperMsgPtr cur : BitVec 64) (msgVer : BitVec 32) (rest : List (BitVec 8))
     (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage) (s : State) : SepProp :=
@@ -527,7 +528,7 @@ def genP3PostEqPlaced [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr
     genP3PostSpatialPlaced A sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest
       recG st rem loc msgG msg
 
-def genP3PostNePlaced [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr
+@[expose] def genP3PostNePlaced [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr
     whisperMsgPtr cur : BitVec 64) (msgVer : BitVec 32) (rest : List (BitVec 8))
     (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage) (s : State) : SepProp :=
@@ -536,7 +537,7 @@ def genP3PostNePlaced [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr
     genP3PostSpatialPlaced A sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest
       recG st rem loc msgG msg
 
-def genP3PostPlaced [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr
+@[expose] def genP3PostPlaced [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr
     whisperMsgPtr cur : BitVec 64) (msgVer : BitVec 32) (rest : List (BitVec 8))
     (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage) (s : State) : SepProp :=
@@ -550,7 +551,7 @@ def genP3PostPlaced [LibsignalPlacement] (A : RustAlloc) (sp fp coroPtr ctxPtr r
 abbrev cloneExitPCPlaced [LibsignalPlacement] (st : SessionState (List (BitVec 8))) (msgVer : BitVec 32) : BitVec 64 :=
   if st.version = msgVer then dpClosureEntryM3Placed + 0x1cd4#64 else dpClosureEntryM3Placed + 0x1e04#64
 
-def CloneGenVRegsPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def CloneGenVRegsPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {A : RustAlloc} (ext : String → Option (State → State)),
     subroutine_ok (lsProg_518 ext) (lsρ "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2") noAllocShimSpec →
     subroutine_ok (lsProg_518 ext) (lsρ "_RNvCs1njKG4L9aB3_7___rustc12___rust_alloc") (rustAllocSpec A) →
@@ -581,7 +582,7 @@ def CloneGenVRegsPlacedStmt [LibsignalPlacement] : Prop :=
 
 /-- Relocatable `[LibsignalPlacement]` CLI `tryDecryptPlacedSpec` weakened to `DistinctSid`
 (matching `Poll.pollTryDecryptPlacedSpecP`). -/
-def pollTryDecryptM3PlacedSpecP [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def pollTryDecryptM3PlacedSpecP [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.ss ∧ s.readReg64 .x2 = x.remA ∧
@@ -598,7 +599,7 @@ def pollTryDecryptM3PlacedSpecP [LibsignalPlacement] (C : Crypto) (A : RustAlloc
   onPanic := (_root_.CryptoVerification.Cli.LibsignalTripleRatchet.Record.tryDecryptPlacedSpec C A ctl uuidParse S).onPanic
 
 /-- Relocatable `[LibsignalPlacement]` `tryDecryptPlacedSpecTPTight` (matching `Poll.pollTryDecryptPlacedSpecTPTight`). -/
-def pollTryDecryptM3PlacedSpecTPTight [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def pollTryDecryptM3PlacedSpecTPTight [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (uuidParse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost :=
   { pollTryDecryptM3PlacedSpecP C A ctl uuidParse S with
     pre := fun x s =>
@@ -861,7 +862,7 @@ private theorem stageP3_call_tryDecrypt_placed_steps [LibsignalPlacement] {A : R
   · exact (not_satisfies_false_sepConj hexit).elim
   · exact (not_satisfies_false_sepConj hoom).elim
 
-def stageP3ErrPrePrevEmptyM3Placed [LibsignalPlacement] (A : RustAlloc) (s0 s : State)
+@[expose] def stageP3ErrPrePrevEmptyM3Placed [LibsignalPlacement] (A : RustAlloc) (s0 s : State)
     (coroPtr outPtr initErrsPtr : BitVec 64) (g : RecordGhost)
     (e : SignalProtocolError) (b_2c0 : BitVec 8)
     (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8))) : SepProp :=
@@ -877,7 +878,7 @@ def stageP3ErrPrePrevEmptyM3Placed [LibsignalPlacement] (A : RustAlloc) (s0 s : 
 
 /-- Relocatable `[LibsignalPlacement]` Substage P3.5 error path (`dpClosureEntryM3Placed + 0x1cd8 → s0.readReg64 .x30`)
 for `Matched/M3PrevErrBPlaced`. -/
-def StageP3Sub5ErrPrevEmptyPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP3Sub5ErrPrevEmptyPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {A : RustAlloc} (ext : String → Option (State → State)),
     subroutine_ok (lsProg_518 ext)
       (lsρ "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2") noAllocShimSpec →
@@ -932,7 +933,7 @@ theorem grow_one_spe_placed_ok_at [LibsignalPlacement] {A : RustAlloc}
   ls_subroutine_ok_of_block (callerProg := lsProg_518 ext)
     (grow_one_spe_placed_ok hshim halloc hrealloc hpanic) (by decide)
 
-def StageP3PrevEmptyVRegsM3PlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP3PrevEmptyVRegsM3PlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {A : RustAlloc} (ext : String → Option (State → State))
     (C : Crypto) (ctl : BitVec 64) (K : LibsignalSpqrV1.MlKem),
     subroutine_ok (lsProg_518 ext)
@@ -1178,7 +1179,7 @@ theorem stageP3Gen_prevEmpty_vregs_placed_ok_of_parts [LibsignalPlacement]
 /-- Relocatable `[LibsignalFullPlacement]` Substage P3.5 error path
 (`dpClosureEntryM3Placed + 0x1cd8 → s0.readReg64 .x30`) discharging Block `519` internally
 from `LibsignalFrozen lsmpl s.mem`. -/
-def StageP3Sub5ErrPrevEmptyFullPlacedStmt [LibsignalFullPlacement] : Prop :=
+@[expose] def StageP3Sub5ErrPrevEmptyFullPlacedStmt [LibsignalFullPlacement] : Prop :=
   ∀ {A : RustAlloc} (ext : String → Option (State → State)),
     subroutine_ok (lsProg_518 ext)
       (lsρ "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2") noAllocShimSpec →
@@ -1213,7 +1214,7 @@ def StageP3Sub5ErrPrevEmptyFullPlacedStmt [LibsignalFullPlacement] : Prop :=
 
 /-- Relocatable `[LibsignalFullPlacement]` `StageP3PrevEmptyVRegsStmt` on `lsProg_518 ext`,
 discharging Block `519` internally from `LibsignalFrozen lsmpl s.mem`. -/
-def StageP3PrevEmptyVRegsM3FullPlacedStmt [LibsignalFullPlacement] : Prop :=
+@[expose] def StageP3PrevEmptyVRegsM3FullPlacedStmt [LibsignalFullPlacement] : Prop :=
   ∀ {A : RustAlloc} (ext : String → Option (State → State))
     (C : Crypto) (ctl : BitVec 64) (K : LibsignalSpqrV1.MlKem),
     subroutine_ok (lsProg_518 ext)

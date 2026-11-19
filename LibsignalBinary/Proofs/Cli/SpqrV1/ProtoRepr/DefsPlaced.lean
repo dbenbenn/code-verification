@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.LayoutPlaced
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.LayoutPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.Defs
-public import GeneratedLean.LibsignalSessionPlacedObj
+public import GeneratedLean.LibsignalSessionPlacedObj -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.PlacedCallSym
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
@@ -22,7 +22,7 @@ import VCVio.Prelude.Core
 Entry-offset lemmas for CLI `ProtoRepr` blocks under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000

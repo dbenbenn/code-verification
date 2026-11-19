@@ -9,15 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ConsumeMsgKeyTrap507PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.ConsumeMsgKeyTrapPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ConsumeMsgKeyTrap507PlacedBudget
+import LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudgetSat
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexBudgetSat
 import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove
 import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.InstancesBudgetSat
 import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.Transfer
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.CallsBudget
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Block `507` CLI Segment `S4` Seams (`s4_507_cli_ofEnv`, `s4_507_cli`)
@@ -25,7 +31,7 @@ import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.CallsBudget
 CLI hook-table instantiations of `S4SeamPlaced` (`ConsumeMsgKey`) on Block `507`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,32 +40,15 @@ namespace LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.RootTrapPlacedBudgetPar
 open Arm64 ProofLib
 open CryptoVerification (
   LibsignalPlacement libsignalSessionExterns lsBlackBoxU8Sym lsRustDeallocSym ls_hook_ok lsmpl
-  lsρ
 )
 open CryptoVerification.CliHandshake.TryDecPlaced (blkPC_508 blkPl_508 instIsLsBlockProg_508)
-open CryptoVerification.E2E (fmtWriteHook0)
-open CryptoVerification.LibsignalPublicApi.StoreKit (
-  subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
-)
 open CryptoVerification.LibsignalTripleRatchet (SpqrModel)
 open CryptoVerification.LibsignalTripleRatchetRepr (uuidTryParse)
-open CryptoVerification.SignalSession (
-  CliHooks cliExternsPlaced cliHookTablePlaced lsFmtWriteSym lsRustAllocSymCli
-  lsRustAllocZeroedSymCli lsRustDeallocSymCli lsRustNoAllocShimSymCli lsRustReallocSymCli
-  lsStringCloneSym
-)
-open CryptoVerification.SignalSession.Cli.RunGlue (
-  CliGhostHooks cliExternsPlaced_row cliGhostExterns cliGhostExterns_other
-)
-open CryptoVerification.SignalSession.Cli.Slots (
-  cliGhostExterns_panic_all cliGhostExterns_sat_of_cliExternsPlaced
-  compress256_row_placed fmtWrite_row_placed
-)
+open CryptoVerification.SignalSession (CliHooks cliExternsPlaced lsFmtWriteSym)
+open CryptoVerification.SignalSession.Cli.RunGlue (CliGhostHooks cliGhostExterns)
+open CryptoVerification.SignalSession.Cli.Slots (cliGhostExterns_panic_all)
 open LibsignalBinary.Heap (
   AllocCostModel AllocEvent BudgetLimits RustCliAllocBudget
-)
-open LibsignalBinary.Heap.SpecBudget (
-  fmtWriteBudgetEnvSpec fmtWriteBudgetSpec
 )
 open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ConsumeMsgKeyTrap507PlacedBudget (
   consumeMsgKey_507_placed_ok_ofEnv
@@ -71,6 +60,10 @@ open LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget (S4SeamPl
 open LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget (
   CmkAllocHooks
 )
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs (
+  fmtWriteProtoAddrCliLsSpec fmtWriteProtoAddrLsEnvSpec
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (CliFmtWriteEnv)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget (
   CliGhostAllocHooks cliExternsPlaced_alloc_budget_sat cliExternsPlaced_dealloc_budget_sat
   cliExternsPlaced_exactMemcpy_sat cliExternsPlaced_realloc_budget_sat
@@ -135,8 +128,8 @@ private theorem cmk_raw_placed_cro_ok_at_block_bb_sat [LibsignalPlacement]
     (h_mc : HookSatExactMemcpy H CryptoVerification.LibsignalSession.CryptoHmacSha256.lsMemcpySym)
     (h_ms : HookSat H CryptoVerification.LibsignalSession.CryptoHmacSha256.lsMemsetSym
       sessionMemsetRegionBudgetSpec)
-    (h_c256 : H CryptoVerification.LibsignalSession.CryptoHmacSha256.lsCompress256Sym =
-      some (CryptoVerification.LibsignalHmac.compress256Hook F))
+    (h_c256 : LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat.HookSatCompress256 H
+      CryptoVerification.LibsignalSession.CryptoHmacSha256.lsCompress256Sym F)
     (hi : i < 619 := by decide) :
     subroutine_ok callerProg (lsmpl.base 24)
       (withLsCodeRoLoaded lsmpl (cmkRawSpecPlaced F A lim CmkEnv)) := by
@@ -176,19 +169,6 @@ end CmkBbSat
 
 /-! ## Hook and Bundle Witnesses -/
 
-private theorem cliGhost_row (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    {sym : String} {f : State → State} (hrow : (sym, f) ∈ cliHookTablePlaced mmpl W)
-    (h1 : sym ≠ lsRustAllocSymCli := by decide) (h2 : sym ≠ lsRustDeallocSymCli := by decide)
-    (h3 : sym ≠ lsRustReallocSymCli := by decide) (h4 : sym ≠ lsRustAllocZeroedSymCli := by decide)
-    (h5 : sym ≠ lsRustNoAllocShimSymCli := by decide) (h6 : sym ≠ lsStringCloneSym := by decide)
-    (h7 : sym ≠ CryptoVerification.SignalSession.lsReadFileSym := by decide)
-    (h8 : sym ≠ CryptoVerification.SignalSession.lsReadStdinSym := by decide)
-    (h9 : sym ≠ CryptoVerification.SignalSession.lsMemsetSym := by decide)
-    (h10 : sym ≠ CryptoVerification.SignalSession.lsMemcpySym := by decide)
-    (hExtra : CryptoVerification.SignalSession.Cli.RunGlue.cliExtraGhostSyms.contains sym = false := by decide) :
-    cliGhostExterns g (cliExternsPlaced mmpl W) sym = some f :=
-  (cliGhostExterns_other g _ h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 (Or.inl hExtra)).trans (cliExternsPlaced_row mmpl W hrow)
-
 private theorem cmkAllocHooks_cli [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
@@ -201,24 +181,6 @@ private theorem cmkAllocHooks_cli [LibsignalPlacement] {M : AllocCostModel}
    cliGhostExterns_panic_all mmpl g W _ (by decide),
    cliGhostExterns_panic_all mmpl g W _ (by decide)⟩
 
-private theorem fmtWriteHook0_budget_ok {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) :
-    HookOk fmtWriteHook0 (fmtWriteBudgetSpec M A lim) := by
-  intro ⟨v, bs, st⟩ R s0 hrun hpre _
-  dsimp only [fmtWriteBudgetSpec, fmtWriteBudgetEnvSpec] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨_, hmem⟩
-  refine ⟨Memory.KeepsFrozen.refl s0.mem, rfl, Or.inl ⟨⟨rfl, rfl, hrun⟩,
-    ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, ?_⟩⟩
-  dsimp only [fmtWriteBudgetSpec, fmtWriteBudgetEnvSpec]
-  have hpool : A.pool lim (M.stepEvents [] st) (fmtWriteHook0 s0) = A.pool lim st s0 :=
-    A.pool_transport lim st s0 (fmtWriteHook0 s0) ⟨⟨rfl, rfl, rfl⟩, rfl, fun _ => rfl, fun _ _ _ => rfl⟩
-  refine Satisfies.mono (sepConj_mono_left
-    (Entails.sepExists_right ([] : List AllocEvent) ?_)) hmem
-  rw [hpool]
-  exact Entails.pure_right ⟨by simp only [fmtWriteHook0, retHook, wp_norm], rfl, rfl⟩
-    (sepConj_mono_left (Entails.sepExists_right bs (Entails.refl _)))
-
 /-! ## Segment `S4` CLI Seams -/
 
 theorem s4_507_cli_ofEnv [LibsignalPlacement] {M : AllocCostModel}
@@ -226,17 +188,18 @@ theorem s4_507_cli_ofEnv [LibsignalPlacement] {M : AllocCostModel}
     {fmtWriteEnv : List AllocEvent → Prop}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
     (hG : CliGhostAllocHooks M A lim g)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
     (hFmtWrite : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFmtWriteSym
-      (fmtWriteBudgetEnvSpec M A lim fmtWriteEnv))
-    (ctl : BitVec 64) (S : SpqrModel) :
+      (fmtWriteProtoAddrLsEnvSpec M A lim fmtWriteEnv))
+    (ctl : BitVec 64) (S : SpqrModel)
+    (hFmtWriteSub : ∀ evs, CliFmtWriteEnv evs → fmtWriteEnv evs := by exact fun _ h => h) :
     S4SeamPlaced
       ((blkPC_508).rebase (blkPl_508).base (cliGhostExterns g (cliExternsPlaced mmpl W)))
       (blkPl_508).base W.C A lim ctl uuidTryParse S (CmkSeg4Env fmtWriteEnv) := by
   let H := cliGhostExterns g (cliExternsPlaced mmpl W)
   have _ := instIsLsBlockProg_508 H
-  have haddrDisplay := subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
-    (addr_display_placed_ok_at
-      (prog := (blkPC_508).rebase (blkPl_508).base H) hFmtWrite)
+  have haddrDisplay := addr_display_placed_ok_at
+    (prog := (blkPC_508).rebase (blkPl_508).base H) hFmtWrite
   have hcmk := cmk_raw_placed_cro_ok_at_block_bb_sat
     (callerProg := (blkPC_508).rebase (blkPl_508).base H)
     W.C.F A lim (cmkAllocHooks_cli mmpl g W hG)
@@ -245,24 +208,26 @@ theorem s4_507_cli_ofEnv [LibsignalPlacement] {M : AllocCostModel}
     (cliExternsPlaced_realloc_budget_sat mmpl g W hG)
     (cliExternsPlaced_exactMemcpy_sat mmpl g W hG)
     (cliExternsPlaced_sessionMemsetRegion_budget_sat mmpl g W hG)
-    (cliGhost_row mmpl g W (compress256_row_placed mmpl W))
+    (LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs.hookSatCompress256_cliGhostExterns_of_extraOk_eq
+      g (cliExternsPlaced mmpl W) hG.extraOk hF)
   have hdealloc := ls_hook_ok
     (prog := (blkPC_508).rebase (blkPl_508).base H)
     (k := libsignalSessionExterns.idxOf lsRustDeallocSym) (by decide)
     (cliExternsPlaced_dealloc_budget_sat mmpl g W hG)
   exact consumeMsgKey_507_placed_ok_ofEnv W.C A lim ctl S fmtWriteEnv H
-    haddrDisplay hcmk hdealloc
+    haddrDisplay hcmk hdealloc hFmtWriteSub
 
 theorem s4_507_cli [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    (hG : CliGhostAllocHooks M A lim g) (ctl : BitVec 64) (S : SpqrModel) :
+    (hG : CliGhostAllocHooks M A lim g)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hFmtWrite : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFmtWriteSym
+      (fmtWriteProtoAddrCliLsSpec M A lim))
+    (ctl : BitVec 64) (S : SpqrModel) :
     S4SeamPlaced
       ((blkPC_508).rebase (blkPl_508).base (cliGhostExterns g (cliExternsPlaced mmpl W)))
-      (blkPl_508).base W.C A lim ctl uuidTryParse S s4DefaultEnv := by
-  have hFmtWrite : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFmtWriteSym
-      (fmtWriteBudgetSpec M A lim) :=
-    ⟨fmtWriteHook0, cliGhost_row mmpl g W (fmtWrite_row_placed mmpl W), fmtWriteHook0_budget_ok A lim⟩
-  exact s4_507_cli_ofEnv mmpl g W hG hFmtWrite ctl S
+      (blkPl_508).base W.C A lim ctl uuidTryParse S s4DefaultEnv :=
+  s4_507_cli_ofEnv mmpl g W hG hF hFmtWrite ctl S
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.RootTrapPlacedBudgetPart5

@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.Defs
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPFrozen
 import ProofLib.SepLogic.WPp
 
@@ -24,7 +24,7 @@ Separation-logic contracts, result layouts, and stack budgets for:
 - `<MessageKeyGenerator>::generate_keys` (`generateKeysSpec` ↔ `MessageKeyGenerator.generateKeys`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 
@@ -71,25 +71,25 @@ abbrev generateKeysStack : Nat := 496 + allocHookStack
 
 /-- `<[u8] as subtle::ConstantTimeEq>::ct_eq` contract with a read-only second operand
 `p2 ↦ᵣ k2` in `pre` and `post`. -/
-noncomputable def ctEqSliceROSpec : Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) where
+@[expose] def ctEqSliceROSpec : Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (p1, k1, p2, k2, sp) s =>
     ⌜s.readReg64 .x0 = p1 ∧ s.readReg64 .x1 = p2 ∧ s.sp = sp ∧ k1.length = 32 ∧ k2.length = 32⌝ ∗
-      (p1 ↦ₛ k1) ∗ (p2 ↦ᵣ k2) ∗ stackFrameFor libsignalSessionImage ctEqName sp
+      (p1 ↦ₛ k1) ∗ (p2 ↦ᵣ k2) ∗ stackFrameAt sp 48
   post := fun (p1, k1, p2, k2, sp) s0 sf =>
     ⌜sf.readReg64 .x0 = (if k1 = k2 then 1#64 else 0#64) ∧ sf.trace = s0.trace⌝ ∗
-      (p1 ↦ₛ k1) ∗ (p2 ↦ᵣ k2) ∗ stackFrameFor libsignalSessionImage ctEqName sp
+      (p1 ↦ₛ k1) ∗ (p2 ↦ᵣ k2) ∗ stackFrameAt sp 48
 
 /-- `ct_eq` meets `ctEqSliceROSpec` on `tripleRatchetProgAtExt`. -/
-def CtEqROOkExt (b : BitVec 64) (ext : String → Option (State → State)) : Prop :=
+@[expose] def CtEqROOkExt (b : BitVec 64) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr ctEqName) ctEqSliceROSpec
 
 /-- `ct_eq` satisfies `ctEqSliceROSpec` on `tripleRatchetProgAt`. -/
-def CtEqROOk (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
+@[expose] def CtEqROOk (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
     (abs : String → Option (State → State)) : Prop :=
   CtEqROOkExt b (tripleRatchetExterns C ctl abs)
 
 /-- `ct_eq` meets `ctEqSliceROSpec` on `trTrapProgAt`. -/
-def CtEqROOk_trap (b : BitVec 64) (C : Crypto)
+@[expose] def CtEqROOk_trap (b : BitVec 64) (C : Crypto)
     (abs : String → Option (State → State)) : Prop :=
   CtEqROOkExt b (trTrapExterns C abs)
 
@@ -97,7 +97,7 @@ def CtEqROOk_trap (b : BitVec 64) (C : Crypto)
 
 /-- Pure model of `<PrivateKey>::calculate_agreement`: clamps `our.bytes`, applies `X`, and
 returns `none` (`CurveError::InvalidKeyAgreement`) iff the 32-byte shared secret is all zero. -/
-def calculateAgreement (X : Ratchet.X25519Fn) (their : PublicKey) (our : PrivateKey) :
+@[expose] def calculateAgreement (X : Ratchet.X25519Fn) (their : PublicKey) (our : PrivateKey) :
     Option (List.Vector (BitVec 8) 32) :=
   let ss := X (Ratchet.clampScalar our.bytes) their.bytes
   if ss.toList = List.replicate 32 0#8 then none else some ss
@@ -106,7 +106,7 @@ def calculateAgreement (X : Ratchet.X25519Fn) (their : PublicKey) (our : Private
 - `some shared`: tag `0#64` at `r` and `boxU8At A (r + 8) ptr shared.toList` at `r + 8..r + 24`;
 - `none`: tag `1#64` at `r`, discriminant `3#8` (`InvalidKeyAgreement`) at `r + 8`, and
   `memRegion (r + 9) 15`. -/
-def calculateAgreementResultAt (A : RustAlloc) (r : BitVec 64) :
+@[expose] def calculateAgreementResultAt (A : RustAlloc) (r : BitVec 64) :
     Option (List.Vector (BitVec 8) 32) → SepProp
   | some shared => (r ↦₆₄ 0#64) ∗ (∃∗ ptr : BitVec 64, boxU8At A (r + 8#64) ptr shared.toList)
   | none => (r ↦₆₄ 1#64) ∗ ((r + 8#64) ↦₈ 3#8) ∗ memRegion (r + 9#64) 15
@@ -126,7 +126,7 @@ structure CalculateAgreementGhost where
 24 bytes): clamps `our`, computes X25519 `X`, checks for an all-zero shared secret via `ct_eq`,
 writes `calculateAgreementResultAt A x.ret (calculateAgreement X x.their x.our)`, and zeroizes
 temporary stack secrets. -/
-def calculateAgreementSpec (X : Ratchet.X25519Fn) (A : RustAlloc) :
+@[expose] def calculateAgreementSpec (X : Ratchet.X25519Fn) (A : RustAlloc) :
     Spec CalculateAgreementGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ourA ∧ s.readReg64 .x1 = x.theirA ∧ s.readReg64 .x8 = x.ret⌝ ∗
@@ -139,20 +139,6 @@ def calculateAgreementSpec (X : Ratchet.X25519Fn) (A : RustAlloc) :
       A.pool ∗ stackAt s0.sp calculateAgreementStack
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def CalculateAgreementOkExt (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr calculateAgreementName)
-    ((calculateAgreementSpec C.X A).inImage img)
-
-def CalculateAgreementOk (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  CalculateAgreementOkExt img C A (tripleRatchetExterns C ctl abs)
-
-def CalculateAgreementOk_trap (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (abs : String → Option (State → State)) : Prop :=
-  CalculateAgreementOkExt img C A (trTrapExterns C abs)
-
 /-! ## `<RootKey>::create_chain` -/
 
 /-- 72-byte `Result<(RootKey, ChainKey), SignalProtocolError>` layout at `r`:
@@ -160,7 +146,7 @@ def CalculateAgreementOk_trap (img : Obj.Image) (C : Crypto) (A : RustAlloc)
   at `r + 36`;
 - `.error .invalidKeyAgreement`: `u32` tag `1` at `r`, `speWord 10` at `r + 8`, and trailing
   padding at `r + 4..r + 8` and `r + 16..r + 72`. -/
-def createChainResultAt (r : BitVec 64) :
+@[expose] def createChainResultAt (r : BitVec 64) :
     Except SignalProtocolError (RootKey × ChainKey) → SepProp
   | .ok (rk', ck) =>
     (r ↦₃₂ 0#32) ∗ ((r + 4#64) ↦ₛ keyToBytes32 rk') ∗ ((r + 0x24#64) ↦ₛ chainKeyBytes ck)
@@ -188,7 +174,7 @@ structure CreateChainGhost where
 72 bytes): runs `calculate_agreement`, derives `(rk', ck)` via HKDF-SHA256 with info
 `"WhisperRatchet"`, frees the temporary shared-secret box, and writes
 `createChainResultAt x.ret (rootCreateChain C x.rk x.their x.our)`. -/
-def createChainSpec (C : Crypto) (A : RustAlloc) : Spec CreateChainGhost where
+@[expose] def createChainSpec (C : Crypto) (A : RustAlloc) : Spec CreateChainGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.rkA ∧ s.readReg64 .x1 = x.theirA ∧ s.readReg64 .x2 = x.ourA ∧
       s.readReg64 .x8 = x.ret ∧ x.rkA ≠ 0#64⌝ ∗
@@ -203,26 +189,12 @@ def createChainSpec (C : Crypto) (A : RustAlloc) : Spec CreateChainGhost where
       A.pool ∗ stackAt s0.sp createChainStack
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def CreateChainOkExt (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr createChainName)
-    ((createChainSpec C A).inImage img)
-
-def CreateChainOk (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  CreateChainOkExt img C A (tripleRatchetExterns C ctl abs)
-
-def CreateChainOk_trap (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (abs : String → Option (State → State)) : Prop :=
-  CreateChainOkExt img C A (trTrapExterns C abs)
-
 /-! ## `<MessageKeyGenerator>::generate_keys` -/
 
 /-- 84-byte `MessageKeys { cipher_key, mac_key, iv, counter }` layout at `r`:
 32-byte `cipher_key` at `+0`, 32-byte `mac_key` at `+32`, 16-byte `iv` at `+64`, and
 `u32` `counter` at `+80`. -/
-def messageKeysAt (r : BitVec 64) (mk : MessageKeys) : SepProp :=
+@[expose] def messageKeysAt (r : BitVec 64) (mk : MessageKeys) : SepProp :=
   (r ↦ₛ keyToBytes32 mk.cipherKey) ∗
     ((r + 0x20#64) ↦ₛ keyToBytes32 mk.macKey) ∗
     ((r + 0x40#64) ↦ₛ CBC.blockToBytesLE mk.iv) ∗
@@ -244,7 +216,7 @@ structure GenerateKeysGhost where
 `x8 = ret`, 84 bytes) on a `Seed` generator (`mkgAt A x.genA x.g`): derives 80 HKDF-SHA256
 bytes with info `"WhisperMessageKeys"`, writes `messageKeysAt x.ret (x.g.generateKeys F x.pqrKey)`,
 and frees the consumed `seed` and `pqrKey` heap buffers. -/
-def generateKeysSpec (F : ShaCompress) (A : RustAlloc) : Spec GenerateKeysGhost where
+@[expose] def generateKeysSpec (F : ShaCompress) (A : RustAlloc) : Spec GenerateKeysGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.genA ∧ s.readReg64 .x1 = x.pqrKeyA ∧ s.readReg64 .x8 = x.ret ∧
       x.g.seed.length = 32⌝ ∗
@@ -255,20 +227,6 @@ def generateKeysSpec (F : ShaCompress) (A : RustAlloc) : Spec GenerateKeysGhost 
       memRegion x.genA 40 ∗ memRegion x.pqrKeyA 24 ∗
       messageKeysAt x.ret (x.g.generateKeys F x.pqrKey) ∗
       A.pool ∗ stackAt s0.sp generateKeysStack
-
-def GenerateKeysOkExt (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr generateKeysName)
-    ((generateKeysSpec C.F A).inImage img)
-
-def GenerateKeysOk (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  GenerateKeysOkExt img C A (tripleRatchetExterns C ctl abs)
-
-def GenerateKeysOk_trap (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (abs : String → Option (State → State)) : Prop :=
-  GenerateKeysOkExt img C A (trTrapExterns C abs)
 
 /-! ## `extHookStack` stack budgets, specs, and `OkX` predicates -/
 
@@ -282,7 +240,7 @@ abbrev createChainStackX : Nat := createChainExtStack
 abbrev generateKeysStackX : Nat := 496 + extHookStack
 
 /-- `calculateAgreementSpec X A` at `calculateAgreementStackX`. -/
-def calculateAgreementSpecX (X : Ratchet.X25519Fn) (A : RustAlloc) :
+@[expose] def calculateAgreementSpecX (X : Ratchet.X25519Fn) (A : RustAlloc) :
     Spec CalculateAgreementGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ourA ∧ s.readReg64 .x1 = x.theirA ∧ s.readReg64 .x8 = x.ret⌝ ∗
@@ -295,14 +253,8 @@ def calculateAgreementSpecX (X : Ratchet.X25519Fn) (A : RustAlloc) :
       A.pool ∗ stackAt s0.sp calculateAgreementStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def CalculateAgreementOkX (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr calculateAgreementName)
-    ((calculateAgreementSpecX C.X A).inImage img)
-
 /-- `createChainSpec C A` at `createChainStackX`. -/
-def createChainSpecX (C : Crypto) (A : RustAlloc) : Spec CreateChainGhost where
+@[expose] def createChainSpecX (C : Crypto) (A : RustAlloc) : Spec CreateChainGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.rkA ∧ s.readReg64 .x1 = x.theirA ∧ s.readReg64 .x2 = x.ourA ∧
       s.readReg64 .x8 = x.ret ∧ x.rkA ≠ 0#64⌝ ∗
@@ -317,14 +269,8 @@ def createChainSpecX (C : Crypto) (A : RustAlloc) : Spec CreateChainGhost where
       A.pool ∗ stackAt s0.sp createChainStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def CreateChainOkX (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr createChainName)
-    ((createChainSpecX C A).inImage img)
-
 /-- `generateKeysSpec F A` at `generateKeysStackX`. -/
-def generateKeysSpecX (F : ShaCompress) (A : RustAlloc) : Spec GenerateKeysGhost where
+@[expose] def generateKeysSpecX (F : ShaCompress) (A : RustAlloc) : Spec GenerateKeysGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.genA ∧ s.readReg64 .x1 = x.pqrKeyA ∧ s.readReg64 .x8 = x.ret ∧
       x.g.seed.length = 32⌝ ∗
@@ -336,16 +282,10 @@ def generateKeysSpecX (F : ShaCompress) (A : RustAlloc) : Spec GenerateKeysGhost
       messageKeysAt x.ret (x.g.generateKeys F x.pqrKey) ∗
       A.pool ∗ stackAt s0.sp generateKeysStackX
 
-def GenerateKeysOkX (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr generateKeysName)
-    ((generateKeysSpecX C.F A).inImage img)
-
 /-! ## Relocatable `[LibsignalPlacement]` helpers -/
 
 /-- Both code blocks (`LibsignalCodeLoaded`) and `.rodata` (`LibsignalRoLoaded`) are loaded in `m`. -/
-def LibsignalCodeRoLoaded (pl : Obj.MultiPlacement) (m : Memory) : Prop :=
+@[expose] def LibsignalCodeRoLoaded (pl : Obj.MultiPlacement) (m : Memory) : Prop :=
   LibsignalCodeLoaded pl m ∧ LibsignalRoLoaded pl m
 
 theorem LibsignalCodeRoLoaded.of_keepsFrozen {pl : Obj.MultiPlacement} {m m' : Memory}
@@ -497,17 +437,17 @@ theorem keys_ls_subroutine_ok_of_block_cro [LibsignalPlacement] {α : Type} {cal
 
 theorem keys_ls_externAt?_of_mem [LibsignalPlacement] {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
-    {sym : String} (hmem : sym ∈ libsignalSessionExterns := by decide)
+    {sym : String} (hmem : sym ∈ libsignalHookedExterns := by decide)
     {bi : Nat} [LsBlockBound bi]
     (hi : i < bi := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     prog.externAt? (lsρ sym) = H sym := by
-  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem hmem
-  exact ls_externAt?_of_blockProg (k := k) (by rw [List.getElem?_eq_getElem hlt, hk]) hi hunmut
+  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
+  exact ls_externAt?_of_blockProg (k := k) (by rw [List.getElem?_eq_getElem hlt, hk]) hi hunmut (hhooked := hmem)
 
 theorem keys_ls_hook_ok_of_mem [LibsignalPlacement] {α : Type} {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
     {sym : String} {spec : Spec α} (hsat : HookSat H sym spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide)
+    (hmem : sym ∈ libsignalHookedExterns := by decide)
     {bi : Nat} [LsBlockBound bi]
     (hi : i < bi := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     subroutine_ok prog (lsρ sym) spec := by
@@ -515,7 +455,7 @@ theorem keys_ls_hook_ok_of_mem [LibsignalPlacement] {α : Type} {prog : Program}
   exact subroutine_ok_of_hookOk ((keys_ls_externAt?_of_mem hmem hi hunmut).trans hf) hok
 
 /-- Image-free relocatable `ct_eq` contract with a read-only second operand and `memRegion (sp - 48#64) 48` own frame. -/
-def ctEqSliceROMemSpec : Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) where
+@[expose] def ctEqSliceROMemSpec : Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (p1, k1, p2, k2, sp) s =>
     ⌜s.readReg64 .x0 = p1 ∧ s.readReg64 .x1 = p2 ∧ s.sp = sp ∧ k1.length = 32 ∧ k2.length = 32⌝ ∗
       (p1 ↦ₛ k1) ∗ (p2 ↦ᵣ k2) ∗ memRegion (sp - 48#64) 48

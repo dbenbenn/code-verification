@@ -9,11 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.ConsumeMsgKeyTrapPlacedBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
-public import LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinked
-public import LibsignalBinary.Proofs.PeakBudget.VecGrowCreditHelpers
-public import LibsignalBinary.Proofs.PeakBudget.W2Seg4CmkSeeds738
+public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.ConsumeMsgKeyTrapPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+public import LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinked -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
+import LibsignalBinary.Proofs.PeakBudget.VecGrowCreditHelpers
+import LibsignalBinary.Proofs.PeakBudget.W2Seg4CmkSeeds738
+public import LibsignalBinary.Proofs.PeakBudget.W2DecryptPeakSpec
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.PeakBudget.VecGrowCredit
 
 /-!
 # `CmkLoopAdvanceEvs`, `CmkStepEnv`, and `CmkSeg4Env` Credit and Group Specifications
@@ -27,7 +33,7 @@ State-threaded `fineCostModel` `PhaseCreditSpec` and `PhaseGroupSpec` bounds for
   `maxReq = 416,000` B) and amortized `cumSmall` (`(n + 2) * 738 + 636,058` B).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,7 +47,6 @@ open LibsignalBinary.Heap
 open LibsignalBinary.Heap.Fine (FineScale fineCostModel)
 open LibsignalBinary.Heap.Fine.ClientBounds
   (eventStepAlign eventStepReq fineCostModel_smallMaxReq_eq smallAllocCost_le_738_of_le_44)
-open LibsignalBinary.Heap.SpecBudget (FmtWriteEnv)
 open LibsignalBinary.Proofs.Cli.SpqrV1.M4.ConsumeMsgKeyTrapPlacedBudget
   (CmkSeg4Env CmkStepEnv)
 open LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget
@@ -54,6 +59,9 @@ open LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
   (HasFineGroupCredit NonFreeBound PhaseGroupSpec nonFreeCount_rustAllocEvents
    nonFreeCount_rustReallocEvents)
 open LibsignalBinary.Proofs.PeakBudget.SeqCreditKit (PhaseCreditSpec stepEvents_freeOnly_le)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (CliFmtWriteEnv)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
+  (phaseCreditSpec_cliFmtWriteEnv_80 phaseGroupSpec_cliFmtWriteEnv)
 open LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
   (fineCostModel_freeNonInc fineCostModel_modelHyps fineCostModel_smallAff freeOnly_fineCostModel)
 open LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec (optLargeCost_fine_mono)
@@ -897,9 +905,10 @@ theorem tryDecryptCmkStepEnv_fine_groupSpec
 
 private theorem cmkr1_seg4_credit_wrap {E : List AllocEvent → Prop} {c : Nat}
     (h : PhaseCreditSpec fineCostModel E c (w2CmkChainTightLive 2000) (w2CmkChainTightPeak 2000) 416000) :
-    PhaseCreditSpec fineCostModel (SeqEnv FmtWriteEnv (SeqEnv E FreeOnlyEvs))
-      c (w2CmkChainTightLive 2000) (w2CmkChainTightPeak 2000) 416000 := by
-  have hfmt : PhaseCreditSpec fineCostModel FmtWriteEnv 0 0 0 0 := PhaseCreditSpec.nil fineCostModel
+    PhaseCreditSpec fineCostModel (SeqEnv CliFmtWriteEnv (SeqEnv E FreeOnlyEvs))
+      (c + 29097) (w2CmkChainTightLive 2000) (w2CmkChainTightPeak 2000) 416000 := by
+  have hfmt : PhaseCreditSpec fineCostModel CliFmtWriteEnv 29097 0 0 80 :=
+    phaseCreditSpec_cliFmtWriteEnv_80
   have hlp : w2CmkChainTightLive 2000 ≤ w2CmkChainTightPeak 2000 := Nat.le_add_left _ _
   have h1 : PhaseCreditSpec fineCostModel (SeqEnv E FreeOnlyEvs)
       c (w2CmkChainTightLive 2000) (w2CmkChainTightPeak 2000) 416000 :=
@@ -909,42 +918,45 @@ private theorem cmkr1_seg4_credit_wrap {E : List AllocEvent → Prop} {c : Nat}
       (Nat.max_le.mpr ⟨Nat.le_refl _, Nat.le_trans (Nat.le_of_eq (Nat.add_zero _)) hlp⟩)
       (Nat.max_eq_left (Nat.zero_le _)).le
   exact (hfmt.seq h1).mono
-    (Nat.le_of_eq (Nat.zero_add c))
+    (by omega)
     (Nat.le_of_eq (Nat.zero_add _))
     (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_of_eq (Nat.zero_add _)⟩)
-    (Nat.max_eq_right (Nat.zero_le _)).le
+    (by decide)
 
 private theorem cmkr1_seg4_group_wrap {E : List AllocEvent → Prop} {g : Nat}
     (h : PhaseGroupSpec fineCostModel E g) :
-    PhaseGroupSpec fineCostModel (SeqEnv FmtWriteEnv (SeqEnv E FreeOnlyEvs)) g := by
-  have hfmt : PhaseGroupSpec fineCostModel FmtWriteEnv 0 := PhaseGroupSpec.nil fineCostModel
+    PhaseGroupSpec fineCostModel (SeqEnv CliFmtWriteEnv (SeqEnv E FreeOnlyEvs))
+      (g + 9 * FineScale) := by
+  have hfmt : PhaseGroupSpec fineCostModel CliFmtWriteEnv (9 * FineScale) :=
+    phaseGroupSpec_cliFmtWriteEnv fineCostModel
   have h1 := (h.seq (PhaseGroupSpec.freeOnly fineCostModel)).mono (Nat.le_of_eq (Nat.add_zero g))
-  exact (hfmt.seq h1).mono (Nat.le_of_eq (Nat.zero_add g))
+  exact (hfmt.seq h1).mono (by omega)
 
-/-- Tight amortized Segment-4 `PhaseCreditSpec` for `CmkSeg4Env FmtWriteEnv` (`s4DefaultEnv`). -/
+/-- Tight amortized Segment-4 `PhaseCreditSpec` for `CmkSeg4Env CliFmtWriteEnv`. -/
 theorem cmkSeg4Env_fine_phaseCreditSpec_tight
     {maxJumps : Nat} (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (ck : ChainKey)
     (hjumps : tr.ratchet.maxForwardJumps ≤ maxJumps)
     (hchains : ∀ c ∈ tr.ratchet.receiverChains, c.messageKeys.length ≤ maxMessageKeys) :
-    PhaseCreditSpec fineCostModel (CmkSeg4Env FmtWriteEnv x trG tr ck)
-      ((maxJumps + 2) * 738 + 636058)
+    PhaseCreditSpec fineCostModel (CmkSeg4Env CliFmtWriteEnv x trG tr ck)
+      ((maxJumps + 2) * 738 + 665155)
       (w2CmkChainTightLive 2000)
       (w2CmkChainTightPeak 2000)
       416000 :=
-  cmkr1_seg4_credit_wrap
+  (cmkr1_seg4_credit_wrap
     (cmkStepEnv_fine_phaseCreditSpec_tight x.msg.counter x.msg.senderRatchetKey trG tr.ratchet ck
-      hjumps hchains)
+      hjumps hchains)).mono
+    (by omega) (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _)
 
-/-- Segment-4 `PhaseCreditSpec` for `CmkSeg4Env FmtWriteEnv` (`s4DefaultEnv`, matching `s4DefaultEnv`
-and `DecPkD2cSlotOkLinked.tryDecryptCmkSeg4Env FmtWriteEnv`). -/
+/-- Segment-4 `PhaseCreditSpec` for `CmkSeg4Env CliFmtWriteEnv` (matching
+`DecPkD2cSlotOkLinked.tryDecryptCmkSeg4Env CliFmtWriteEnv`). -/
 theorem cmkSeg4Env_fine_phaseCreditSpec
     {maxJumps : Nat} (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (ck : ChainKey)
     (hjumps : tr.ratchet.maxForwardJumps ≤ maxJumps)
     (hchains : ∀ c ∈ tr.ratchet.receiverChains, c.messageKeys.length ≤ maxMessageKeys) :
-    PhaseCreditSpec fineCostModel (CmkSeg4Env FmtWriteEnv x trG tr ck)
-      ((maxJumps + 2) * 738 + 11 * 143484)
+    PhaseCreditSpec fineCostModel (CmkSeg4Env CliFmtWriteEnv x trG tr ck)
+      ((maxJumps + 2) * 738 + 11 * 143484 + 29097)
       (w2CmkChainTightLive 2000)
       (w2CmkChainTightPeak 2000)
       416000 :=
@@ -952,37 +964,37 @@ theorem cmkSeg4Env_fine_phaseCreditSpec
     (cmkStepEnv_fine_phaseCreditSpec x.msg.counter x.msg.senderRatchetKey trG tr.ratchet ck
       hjumps hchains)
 
-/-- Tight `10`-grow Segment-4 `PhaseGroupSpec` for `CmkSeg4Env FmtWriteEnv` (`s4DefaultEnv`). -/
+/-- Tight `10`-grow Segment-4 `PhaseGroupSpec` for `CmkSeg4Env CliFmtWriteEnv`. -/
 theorem cmkSeg4Env_fine_groupSpec_tight
     {maxJumps : Nat} (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (ck : ChainKey)
     (hjumps : tr.ratchet.maxForwardJumps ≤ maxJumps)
     (hchains : ∀ c ∈ tr.ratchet.receiverChains, c.messageKeys.length ≤ maxMessageKeys) :
-    PhaseGroupSpec fineCostModel (CmkSeg4Env FmtWriteEnv x trG tr ck)
-      ((maxJumps + 2) * 16659 + 10 * (3 * FineScale)) :=
-  cmkr1_seg4_group_wrap
+    PhaseGroupSpec fineCostModel (CmkSeg4Env CliFmtWriteEnv x trG tr ck)
+      ((maxJumps + 2) * 16659 + 13 * (3 * FineScale)) :=
+  (cmkr1_seg4_group_wrap
     (cmkStepEnv_fine_groupSpec_tight x.msg.counter x.msg.senderRatchetKey trG tr.ratchet ck
-      hjumps hchains)
+      hjumps hchains)).mono (by unfold FineScale; omega)
 
-/-- Segment-4 `PhaseGroupSpec` for `CmkSeg4Env FmtWriteEnv` (`s4DefaultEnv`). -/
+/-- Segment-4 `PhaseGroupSpec` for `CmkSeg4Env CliFmtWriteEnv`. -/
 theorem cmkSeg4Env_fine_groupSpec
     {maxJumps : Nat} (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (ck : ChainKey)
     (hjumps : tr.ratchet.maxForwardJumps ≤ maxJumps)
     (hchains : ∀ c ∈ tr.ratchet.receiverChains, c.messageKeys.length ≤ maxMessageKeys) :
-    PhaseGroupSpec fineCostModel (CmkSeg4Env FmtWriteEnv x trG tr ck)
-      ((maxJumps + 2) * 16659 + 11 * (3 * FineScale)) :=
-  cmkr1_seg4_group_wrap
+    PhaseGroupSpec fineCostModel (CmkSeg4Env CliFmtWriteEnv x trG tr ck)
+      ((maxJumps + 2) * 16659 + 14 * (3 * FineScale)) :=
+  (cmkr1_seg4_group_wrap
     (cmkStepEnv_fine_groupSpec x.msg.counter x.msg.senderRatchetKey trG tr.ratchet ck
-      hjumps hchains)
+      hjumps hchains)).mono (by unfold FineScale; omega)
 
 theorem tryDecryptCmkSeg4Env_fine_phaseCreditSpec_tight
     {maxJumps : Nat} (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (ck : ChainKey)
     (hjumps : tr.ratchet.maxForwardJumps ≤ maxJumps)
     (hchains : ∀ c ∈ tr.ratchet.receiverChains, c.messageKeys.length ≤ maxMessageKeys) :
-    PhaseCreditSpec fineCostModel (tryDecryptCmkSeg4Env FmtWriteEnv x trG tr ck)
-      ((maxJumps + 2) * 738 + 636058)
+    PhaseCreditSpec fineCostModel (tryDecryptCmkSeg4Env CliFmtWriteEnv x trG tr ck)
+      ((maxJumps + 2) * 738 + 665155)
       (w2CmkChainTightLive 2000)
       (w2CmkChainTightPeak 2000)
       416000 :=
@@ -993,8 +1005,8 @@ theorem tryDecryptCmkSeg4Env_fine_phaseCreditSpec
     (tr : TripleRatchet (List (BitVec 8))) (ck : ChainKey)
     (hjumps : tr.ratchet.maxForwardJumps ≤ maxJumps)
     (hchains : ∀ c ∈ tr.ratchet.receiverChains, c.messageKeys.length ≤ maxMessageKeys) :
-    PhaseCreditSpec fineCostModel (tryDecryptCmkSeg4Env FmtWriteEnv x trG tr ck)
-      ((maxJumps + 2) * 738 + 11 * 143484)
+    PhaseCreditSpec fineCostModel (tryDecryptCmkSeg4Env CliFmtWriteEnv x trG tr ck)
+      ((maxJumps + 2) * 738 + 11 * 143484 + 29097)
       (w2CmkChainTightLive 2000)
       (w2CmkChainTightPeak 2000)
       416000 :=
@@ -1005,8 +1017,8 @@ theorem tryDecryptCmkSeg4Env_fine_groupSpec_tight
     (tr : TripleRatchet (List (BitVec 8))) (ck : ChainKey)
     (hjumps : tr.ratchet.maxForwardJumps ≤ maxJumps)
     (hchains : ∀ c ∈ tr.ratchet.receiverChains, c.messageKeys.length ≤ maxMessageKeys) :
-    PhaseGroupSpec fineCostModel (tryDecryptCmkSeg4Env FmtWriteEnv x trG tr ck)
-      ((maxJumps + 2) * 16659 + 10 * (3 * FineScale)) :=
+    PhaseGroupSpec fineCostModel (tryDecryptCmkSeg4Env CliFmtWriteEnv x trG tr ck)
+      ((maxJumps + 2) * 16659 + 13 * (3 * FineScale)) :=
   cmkSeg4Env_fine_groupSpec_tight x trG tr ck hjumps hchains
 
 theorem tryDecryptCmkSeg4Env_fine_groupSpec
@@ -1014,28 +1026,28 @@ theorem tryDecryptCmkSeg4Env_fine_groupSpec
     (tr : TripleRatchet (List (BitVec 8))) (ck : ChainKey)
     (hjumps : tr.ratchet.maxForwardJumps ≤ maxJumps)
     (hchains : ∀ c ∈ tr.ratchet.receiverChains, c.messageKeys.length ≤ maxMessageKeys) :
-    PhaseGroupSpec fineCostModel (tryDecryptCmkSeg4Env FmtWriteEnv x trG tr ck)
-      ((maxJumps + 2) * 16659 + 11 * (3 * FineScale)) :=
+    PhaseGroupSpec fineCostModel (tryDecryptCmkSeg4Env CliFmtWriteEnv x trG tr ck)
+      ((maxJumps + 2) * 16659 + 14 * (3 * FineScale)) :=
   cmkSeg4Env_fine_groupSpec x trG tr ck hjumps hchains
 
 /-! ## 7. Closed `25,000`-Jump Constants and Non-Vacuity Witness -/
 
-/-- Closed `Δcum` at `maxJumps = 25,000` (`tight`: `19,087,534` B; `11 * 143,484`: `20,029,800` B). -/
-def cmkLoop25000TightCum : Nat := 19087534
-def cmkLoop25000Cum : Nat := 20029800
-def cmkLoop25000Live : Nat := 424195
-def cmkLoop25000Peak : Nat := 640390
-def cmkLoop25000MaxReq : Nat := 416000
-def cmkLoop25000TightGrpS : Nat := 418474398
-def cmkLoop25000GrpS : Nat := 418671006
+/-- Closed `Δcum` at `maxJumps = 25,000` (`tight`: `19,116,631` B; `11 * 143,484 + 29,097`: `20,058,897` B). -/
+@[expose] def cmkLoop25000TightCum : Nat := 19116631
+@[expose] def cmkLoop25000Cum : Nat := 20058897
+@[expose] def cmkLoop25000Live : Nat := 424195
+@[expose] def cmkLoop25000Peak : Nat := 640390
+@[expose] def cmkLoop25000MaxReq : Nat := 416000
+@[expose] def cmkLoop25000TightGrpS : Nat := 419064222
+@[expose] def cmkLoop25000GrpS : Nat := 419260830
 
 theorem cmkLoop25000_constants_eq :
-    (25000 + 2) * 738 + 636058 = cmkLoop25000TightCum ∧
-    (25000 + 2) * 738 + 11 * 143484 = cmkLoop25000Cum ∧
+    (25000 + 2) * 738 + 665155 = cmkLoop25000TightCum ∧
+    (25000 + 2) * 738 + 11 * 143484 + 29097 = cmkLoop25000Cum ∧
     w2CmkChainTightLive 2000 = cmkLoop25000Live ∧
     w2CmkChainTightPeak 2000 = cmkLoop25000Peak ∧
-    (25000 + 2) * 16659 + 10 * (3 * FineScale) = cmkLoop25000TightGrpS ∧
-    (25000 + 2) * 16659 + 11 * (3 * FineScale) = cmkLoop25000GrpS := by
+    (25000 + 2) * 16659 + 13 * (3 * FineScale) = cmkLoop25000TightGrpS ∧
+    (25000 + 2) * 16659 + 14 * (3 * FineScale) = cmkLoop25000GrpS := by
   decide
 
 /-- Concrete allocating non-vacuity witness at the exact-fit `len0 = 2000, cap0 = 2000#64` edge case

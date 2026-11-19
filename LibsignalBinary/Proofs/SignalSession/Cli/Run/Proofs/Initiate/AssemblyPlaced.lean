@@ -9,23 +9,30 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Assembly
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFill
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.Callees
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.CliExternsWitness
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Common
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DeriveKeysA
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Pure
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable Top-Level Stage Assembly for `signal_session_handshake::initiate`
@@ -35,7 +42,7 @@ Composes `signal_session_coins_fill_placed_ok_at_init`, `initStoreCallees_placed
 `[LibsignalPlacement]`, and transfers the contract to caller blocks `i < 619`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -63,7 +70,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
   (CliGhostHooks cliGhostExterns)
 
 /-- Stage 2 (`0x0390 → 0x0760`) continuation contract under `[LibsignalPlacement]`. -/
-def Stage2PlacedOk [LibsignalPlacement] (A : RustAlloc) (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) (X : UnreachedPqxdhPrimitives)
+@[expose] def Stage2PlacedOk [LibsignalPlacement] (A : RustAlloc) (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) (X : UnreachedPqxdhPrimitives)
     (B : RunBudgets) (S : RunSem) : Prop :=
   ∀ {x : InitGhost} {be : PreKeyBundleFields} {stk : Nat} {s0 s2 : State}
     {Q Qp : State → SepProp → Prop},
@@ -91,7 +98,7 @@ def Stage2PlacedOk [LibsignalPlacement] (A : RustAlloc) (mmpl : MultiPlacement) 
       (stage2MemPlaced A x stk s0) Q Qp (initOom s0)
 
 /-- Stage 3 (`0x0760 → 0x10a4`) continuation contract under `[LibsignalPlacement]`. -/
-def Stage3PlacedOk [LibsignalPlacement] (A : RustAlloc) (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) (X : UnreachedPqxdhPrimitives)
+@[expose] def Stage3PlacedOk [LibsignalPlacement] (A : RustAlloc) (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) (X : UnreachedPqxdhPrimitives)
     (B : RunBudgets) (S : RunSem) : Prop :=
   ∀ {x : InitGhost} {be : PreKeyBundleFields} {kp : IdentityKeyPair}
     {ekASk ekAPk : List (BitVec 8)} {pqspkPtr : BitVec 64} {opkId : BitVec 32}

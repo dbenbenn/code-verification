@@ -10,10 +10,11 @@ limitations under the License.
 module
 
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhProofsBase -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhProofsInit -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhProofsAccept -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhProofsInit
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhProofsAccept
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreSim
 import Computational.Proofs.ReductionDsl.Size
+public import Computational.Proofs.ReductionDsl.SoundnessTwoClass -- proof-setup: allow-public-import
 
 /-!
 # Cost and Query Bounds for `fgKeyIndGapDhProg`

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
+public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
@@ -28,7 +28,7 @@ Proves uniqueness of current snapshots for a participant (`a2b_currentSnapshot_u
 (`a2b_block_vis`), and receive-chain uniqueness under `StateRel` (`a2b_recvChain_eq_of_gamma`).
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

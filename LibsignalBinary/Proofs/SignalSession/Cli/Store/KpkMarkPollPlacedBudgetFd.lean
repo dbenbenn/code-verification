@@ -9,12 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPollPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.SymPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPollPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPollPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.SymPlacedBudgetFd
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.SymPlacedBudgetAux -- proof-setup: allow-public-import
+public import ProofLib.Disproof.Basic
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
 
 /-!
 # `FdsGe3Closed`-Threaded Relocatable `<KyberPreKeyFiles as KyberPreKeyStore>::mark_kyber_pre_key_used::{closure#0}`
@@ -23,7 +37,7 @@ Proves `withFdsGe3Closed (kpkMarkPollSpecPlaced …)` on Block `578` (`lsProg_57
 generic-envelope (`KpkMarkEnvSpec`) and canonical `CliKpkMarkPollEnv` forms.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,46 +70,6 @@ export LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.SymPlacedBudge
   (CliKpkMarkPollEnv KpkMarkEnvSpec cliKpkMarkPollEnv_spec)
 
 section Placed
-
-theorem kpkMarkPoll_placed_ok_of_deps_gen_fd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {DecEnv : BitVec 32 → List AllocEvent → Prop}
-    {GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop}
-    {PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
-    {MarkEnv : FsFiles → KpkMarkPollGhost → List AllocEvent → Prop}
-    {decProg getProg putProg : Program} {decBlk getBlk putBlk : Nat}
-    [IsLsBlockProg decProg decBlk H]
-    [IsLsBlockProg getProg getBlk H]
-    [IsLsBlockProg putProg putBlk H]
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop} {decStk getStk putStk stk : Nat}
-    (hFsAlloc : AllocContractsFsPlaced A lim H)
-    (hP : CliPanicHooksPlaced H)
-    (hBcmp : HookSat H cliBcmpName (withVmPreserved cliBcmpSpec).keepsFs)
-    (hDecimal : subroutine_ok decProg (lsmpl.base 597)
-      (withFdsGe3Closed (decimalSpecPlaced A lim DecEnv decStk)))
-    (hGet : subroutine_ok getProg (lsmpl.base 589)
-      (withFdsGe3Closed (dirGetSpecPlaced rd pathOk A lim GetEnv getStk)))
-    (hPut : subroutine_ok putProg (lsmpl.base 542)
-      (withFdsGe3Closed (dirPutSpecPlaced A lim PutEnv putStk)))
-    (hFs : TraceFsSound (lsProg_578 H))
-    (hEnv : ∀ (F0 : FsFiles) (x : KpkMarkPollGhost) (st0 : M.σ),
-      KpkMarkEnvSpec M lim rd DecEnv GetEnv PutEnv MarkEnv F0 x st0)
-    (hstk : 0xf0 + max (max decStk getStk) (max putStk doReserveStackX) ≤ stk)
-    (hDecBlk : decBlk < 619 := by decide)
-    (hDecUnmut : (decBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hGetBlk : getBlk < 619 := by decide)
-    (hGetUnmut : (getBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hPutBlk : putBlk < 619 := by decide)
-    (hPutUnmut : (putBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok (lsProg_578 H) (lsmpl.base 578)
-      (withFdsGe3Closed (kpkMarkPollSpecPlaced rd pathOk A lim MarkEnv stk)) := by
-  have hDecimal' := ls_transfer_withFdsGe3Closed_lscro (callerProg := lsProg_578 H)
-    hDecimal (by decide) hDecBlk hDecUnmut
-  have hGet' := ls_transfer_withFdsGe3Closed_lscro (callerProg := lsProg_578 H)
-    hGet (by decide) hGetBlk hGetUnmut
-  have hPut' := ls_transfer_withFdsGe3Closed_lscro (callerProg := lsProg_578 H)
-    hPut (by decide) hPutBlk hPutUnmut
-  exact kpkMarkPoll_placed_ok_of_envSpec_fd hFsAlloc hP hBcmp hDecimal' hGet' hPut' hFs hEnv hstk
 
 /-- Block `578` (`mark_kyber_pre_key_used::{closure#0}`) meets two-sided
 `withFdsGe3Closed (kpkMarkPollSpecPlaced rd pathOk A lim (CliKpkMarkPollEnv rd DecEnv GetEnv PutEnv) stk)`
@@ -141,83 +115,6 @@ theorem kpkMarkPoll_placed_ok_of_deps_fd [LibsignalPlacement] {M : AllocCostMode
   have hPut' := ls_transfer_withFdsGe3Closed_lscro (callerProg := lsProg_578 H)
     hPut (by decide) hPutBlk hPutUnmut
   exact kpkMarkPoll_placed_ok_fd hFsAlloc hP hBcmp hDecimal' hGet' hPut' hFs hstk
-
-theorem kpkMarkPoll_placed_caller_ok_of_deps_gen_fd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {DecEnv : BitVec 32 → List AllocEvent → Prop}
-    {GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop}
-    {PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
-    {MarkEnv : FsFiles → KpkMarkPollGhost → List AllocEvent → Prop}
-    {callerProg decProg getProg putProg : Program}
-    {callerBlk decBlk getBlk putBlk : Nat}
-    [IsLsBlockProg callerProg callerBlk H]
-    [IsLsBlockProg decProg decBlk H]
-    [IsLsBlockProg getProg getBlk H]
-    [IsLsBlockProg putProg putBlk H]
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop} {decStk getStk putStk stk : Nat}
-    (hFsAlloc : AllocContractsFsPlaced A lim H)
-    (hP : CliPanicHooksPlaced H)
-    (hBcmp : HookSat H cliBcmpName (withVmPreserved cliBcmpSpec).keepsFs)
-    (hDecimal : subroutine_ok decProg (lsmpl.base 597)
-      (withFdsGe3Closed (decimalSpecPlaced A lim DecEnv decStk)))
-    (hGet : subroutine_ok getProg (lsmpl.base 589)
-      (withFdsGe3Closed (dirGetSpecPlaced rd pathOk A lim GetEnv getStk)))
-    (hPut : subroutine_ok putProg (lsmpl.base 542)
-      (withFdsGe3Closed (dirPutSpecPlaced A lim PutEnv putStk)))
-    (hFs : TraceFsSound (lsProg_578 H))
-    (hEnv : ∀ (F0 : FsFiles) (x : KpkMarkPollGhost) (st0 : M.σ),
-      KpkMarkEnvSpec M lim rd DecEnv GetEnv PutEnv MarkEnv F0 x st0)
-    (hstk : 0xf0 + max (max decStk getStk) (max putStk doReserveStackX) ≤ stk)
-    (hCallerBlk : callerBlk < 619 := by decide)
-    (hDecBlk : decBlk < 619 := by decide)
-    (hDecUnmut : (decBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hGetBlk : getBlk < 619 := by decide)
-    (hGetUnmut : (getBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hPutBlk : putBlk < 619 := by decide)
-    (hPutUnmut : (putBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsmpl.base 578)
-      (withFdsGe3Closed (kpkMarkPollSpecPlaced rd pathOk A lim MarkEnv stk)) :=
-  ls_transfer_withFdsGe3Closed_lscro (callerProg := callerProg) (j := 578)
-    (kpkMarkPoll_placed_ok_of_deps_gen_fd hFsAlloc hP hBcmp hDecimal hGet hPut hFs hEnv hstk
-      hDecBlk hDecUnmut hGetBlk hGetUnmut hPutBlk hPutUnmut) hCallerBlk
-
-theorem kpkMarkPoll_placed_caller_ok_of_deps_fd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {DecEnv : BitVec 32 → List AllocEvent → Prop}
-    {GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop}
-    {PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
-    {callerProg decProg getProg putProg : Program}
-    {callerBlk decBlk getBlk putBlk : Nat}
-    [IsLsBlockProg callerProg callerBlk H]
-    [IsLsBlockProg decProg decBlk H]
-    [IsLsBlockProg getProg getBlk H]
-    [IsLsBlockProg putProg putBlk H]
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop} {decStk getStk putStk stk : Nat}
-    (hFsAlloc : AllocContractsFsPlaced A lim H)
-    (hP : CliPanicHooksPlaced H)
-    (hBcmp : HookSat H cliBcmpName (withVmPreserved cliBcmpSpec).keepsFs)
-    (hDecimal : subroutine_ok decProg (lsmpl.base 597)
-      (withFdsGe3Closed (decimalSpecPlaced A lim DecEnv decStk)))
-    (hGet : subroutine_ok getProg (lsmpl.base 589)
-      (withFdsGe3Closed (dirGetSpecPlaced rd pathOk A lim GetEnv getStk)))
-    (hPut : subroutine_ok putProg (lsmpl.base 542)
-      (withFdsGe3Closed (dirPutSpecPlaced A lim PutEnv putStk)))
-    (hFs : TraceFsSound (lsProg_578 H))
-    (hstk : 0xf0 + max (max decStk getStk) (max putStk doReserveStackX) ≤ stk)
-    (hCallerBlk : callerBlk < 619 := by decide)
-    (hDecBlk : decBlk < 619 := by decide)
-    (hDecUnmut : (decBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hGetBlk : getBlk < 619 := by decide)
-    (hGetUnmut : (getBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hPutBlk : putBlk < 619 := by decide)
-    (hPutUnmut : (putBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsmpl.base 578)
-      (withFdsGe3Closed
-        (kpkMarkPollSpecPlaced rd pathOk A lim
-          (CliKpkMarkPollEnv rd DecEnv GetEnv PutEnv) stk)) :=
-  ls_transfer_withFdsGe3Closed_lscro (callerProg := callerProg) (j := 578)
-    (kpkMarkPoll_placed_ok_of_deps_fd hFsAlloc hP hBcmp hDecimal hGet hPut hFs hstk
-      hDecBlk hDecUnmut hGetBlk hGetUnmut hPutBlk hPutUnmut) hCallerBlk
 
 end Placed
 

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieNormPure
-public import Symbolic.Proofs.Swarm.CREF.RelPure
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieNormPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RelPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Grow.PqInit
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptRecRelT1PureA
@@ -18,6 +18,9 @@ import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj
 import Symbolic.Proofs.Swarm.SHARED.HmacLen
 import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.TopPure
 import Symbolic.Proofs.Swarm.TRREF.MacFormBridge
+public import Symbolic.Proofs.SR.SendSpecWPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SessionPrimsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
 
 /-!
 # SPQR Out-of-Order Bound for Bob's New Session Record
@@ -26,7 +29,7 @@ Proves `SpqrOooBounded` for the post-decrypt SPQR state and returned session rec
 an accepting `session_recv_prekey` call.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,10 +53,7 @@ open Symbolic.Swarm.CREF.CliPure.RpkCli (pureCoinsOf)
 
 private theorem pqStateOf_recordBytes_aux (recR : RecordRec) :
     pqStateOf (recordBytes recR) = recR.current.pqRatchetState := by
-  have hex : ∃ r' : RecordRec, recordBytes recR = recordBytes r' := ⟨recR, rfl⟩
-  simp only [pqStateOf, hex, ↓reduceDIte]
-  exact congrArg (fun r => r.current.pqRatchetState)
-    (TR.recordBytes_injective (Classical.choose_spec hex).symm)
+  rw [pqStateOf, DY.Libsignal.Rust.decodeRecordBytes?_recordBytes]; rfl
 
 theorem spqrSemOf_spqrRecvB_of_spqrV1WithMacEmptyAsNone_recv_ok
     (F : ShaCompress) (K : CryptoVerification.LibsignalSpqrV1.MlKem)

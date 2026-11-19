@@ -14,16 +14,65 @@ public meta import Arm64
 public meta import ProofLib.ProgramReflection
 public meta import ProofLib.Placed.Multi
 public meta import VerifiedLibraries.Mallocng.Proofs.PlacedInterned
-public meta import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers
+public meta import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers -- proof-setup: allow-public-import
 public meta import LibsignalBinary.Specifications.SignalSession.CliElf
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.CliElfProof
-public meta import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSymChars
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.CliElfProof -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSymChars -- proof-setup: allow-public-import
 public import ProofLib.Placed.Multi
 public import VerifiedLibraries.Mallocng.Proofs.PlacedInterned
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliElf
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliElfProof
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSymChars
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliElfProof -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSymChars -- proof-setup: allow-public-import
+public meta import Lean.Elab.SyntheticMVars
+public meta import Lean.Meta.Reduce
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib.BV
+public import ProofLib.GenDecodes
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Hoare.LibcHooks
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Process.FsLemmas
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.StepsProcess
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.StackInit
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.Alloc
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.IoCommon
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.RustStd.Spec.Top
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+import LibsignalBinary.Proofs.Placed.Bridge
 
 /-!
 # `VerifiedLibraries.mallocngLib` Placement and Uniqueness in `cliElfBytes`
@@ -39,12 +88,12 @@ bytes via `gen_elf_mallocng_interned`.
 set_option autoImplicit false
 set_option maxRecDepth 400000
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMallocngPlaced
 
 open Arm64 Arm64.Obj Arm64.Obj.Interned Arm64.Process
-open ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection
+open ProofLib ProofLib.ProgramReflection
 open VerifiedLibraries.Mallocng.Proofs (
   mallocngMultiL mallocngMultiL_names mallocngMultiL_toMultiPlacedLib mallocngNameChars
 )
@@ -72,7 +121,7 @@ theorem targetElfSyms_eq :
 
 /-- Static 66-step relocation-inversion DAG for `VerifiedLibraries.mallocngLib`
 (6 global `.symtab` exports resolving 24 blocks and 42 symbols). -/
-def mallocngRelocInvSteps : List Obj.Interned.InvStep :=
+@[expose] def mallocngRelocInvSteps : List Obj.Interned.InvStep :=
   [ .exportSym 29 4 0, .exportSym 28 3 0, .exportSym 24 2 0,
     .exportSym 40 13 0, .exportSym 22 12 0, .exportSym 39 11 0,
     .symOfBlock 2 24 0, .symOfBlock 3 28 0, .symOfBlock 4 27 0,
@@ -450,12 +499,12 @@ private theorem checkMultiSplitAnyOrder_spec {lib : Obj.MultiPlacedLib}
       exact ⟨⟨⟨⟨⟨⟨⟨hnn, hids⟩, hmatch⟩, hmp⟩, htwalk⟩, hdwalk⟩, hexp⟩, hddisj'⟩
 
 /-- Interned `MultiLayout` for `mallocngMultiL` decoded from `targetElfImage`. -/
-noncomputable def cliElfMallocngMultiLayout : Obj.Interned.MultiLayout where
+@[expose] noncomputable def cliElfMallocngMultiLayout : Obj.Interned.MultiLayout where
   bases := cliElfMallocngBlockBases
   addrs := cliElfMallocngSymAddrs
 
 /-- Concrete `MultiPlacement` for `VerifiedLibraries.mallocngLib` in `targetElfBytes`. -/
-noncomputable def cliElfMallocngPlacement : Obj.MultiPlacement :=
+@[expose] noncomputable def cliElfMallocngPlacement : Obj.MultiPlacement :=
   cliElfMallocngMultiLayout.toMultiPlacement mallocngMultiL.names
 
 theorem cliElf_mallocng_metaCore_ok :

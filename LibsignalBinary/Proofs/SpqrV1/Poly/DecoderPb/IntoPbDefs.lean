@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Poly
-import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Poly -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyDecoder>::into_pb`: Definitions and Specifications
@@ -24,7 +25,7 @@ Separation-logic specifications (`decoderIntoPbSpec`, `decoderIntoPbSpecX`) for
 `drop_glue::<[SortedSet<Pt>; 16]>` and writing `ProtoPolynomialDecoder` at `x0`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.DecoderPb
 
@@ -66,7 +67,7 @@ structure DecoderIntoPbGhost where
   dec : PolyDecoder
 
 /-- Specification of `<PolyDecoder>::into_pb` (`0x63030`): consumes `polyDecoderAt A decA dec` at `x1` into `memRegion decA 400` and writes `protoPolynomialDecoderAt A out dec.intoPb` to `x0 = out` (or panics on OOM). -/
-def decoderIntoPbSpec (A : RustAlloc) : Spec DecoderIntoPbGhost where
+@[expose] def decoderIntoPbSpec (A : RustAlloc) : Spec DecoderIntoPbGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.decA⌝ ∗
       memRegion x.out protoPolynomialDecoderSize ∗
@@ -80,7 +81,7 @@ def decoderIntoPbSpec (A : RustAlloc) : Spec DecoderIntoPbGhost where
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Extended-stack variant of `decoderIntoPbSpec` (`decoderIntoPbStackX = 160 + extHookStack`). -/
-def decoderIntoPbSpecX (A : RustAlloc) : Spec DecoderIntoPbGhost where
+@[expose] def decoderIntoPbSpecX (A : RustAlloc) : Spec DecoderIntoPbGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.decA⌝ ∗
       memRegion x.out protoPolynomialDecoderSize ∗
@@ -93,25 +94,13 @@ def decoderIntoPbSpecX (A : RustAlloc) : Spec DecoderIntoPbGhost where
       A.pool ∗ stackAt s0.sp decoderIntoPbStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def DecoderIntoPbOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr decoderIntoPbName)
-    (decoderIntoPbSpec A)
-
-def DecoderIntoPbOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr decoderIntoPbName)
-    ((decoderIntoPbSpecX A).inImage img)
-
-def DecoderIntoPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def DecoderIntoPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_377).rebase (blkPl_377).base (Rust.withPanics ext))
     (blkPl_377).base
     (decoderIntoPbSpec A)
 
-def DecoderIntoPbPlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def DecoderIntoPbPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_377).rebase (blkPl_377).base (Rust.withPanics ext))
     (blkPl_377).base

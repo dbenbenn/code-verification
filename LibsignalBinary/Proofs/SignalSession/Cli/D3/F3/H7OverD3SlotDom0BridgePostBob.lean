@@ -9,28 +9,41 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotDom0BridgePostBobDispatchAux
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget
 public import LibsignalBinary.Proofs.PeakBudget.W4PathCVerNeWideDefs
-public import LibsignalBinary.Proofs.PeakBudget.W4PostBobPrev1Dom
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0TdAux
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverEnvPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverPollAuxPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverPollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverStage2PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3StageP3Prev1PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4ContPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.StagesOverCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1KitsPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.W4PostBobPrev1Dom -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0TdAux
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverEnvPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverPollAuxPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverPollPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverStage2PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3StageP3Prev1PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4ContPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.StagesOverCliPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1KitsPlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotDom0BridgePostBobProducerAux
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TopPlacedBudget
 
 /-!
 # `SessionGhostValid`-Retaining `OverD3` Envelope & `PostBobPrev1Dom` Bridge
@@ -42,7 +55,7 @@ ratchet-decrypted sessions from Stage P3 memory states, proves the matching poll
 `W4BinaryRecvPrekeyDomCmk0'` and `W4BinaryRecvPrekeyWideSlotEnvCmkVerNeSrFixedOf`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -140,7 +153,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (TryDecryptEnvArgs)
 
 /-- Variant of `DecPkD3ValidOverOfEnv` retaining `SessionGhostValid` on the initialized
 session in Arms 2–5 and on the ratchet-decrypted session `(G', ses')` in Arm 5. -/
-def DecPkD3ValidOverOfEnv' [LibsignalPlacement] (A : RustAlloc)
+@[expose] def DecPkD3ValidOverOfEnv' [LibsignalPlacement] (A : RustAlloc)
     (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
     (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
@@ -270,7 +283,7 @@ abbrev DecPkD3ValidOverTightOfEnv' [LibsignalPlacement] (A : RustAlloc)
     P2OverErrEnv P2OverOkEnv tdEnv p4Envs g evs
 
 /-- `SeqFree` `Prev1` Stage-P4 kit bundle (`cliPollSessPrev1SeqFreeBudgetEnv`). -/
-def h7pb_cliStageP4Prev1SeqFreeEnvs [LibsignalPlacement] (A : RustAlloc)
+@[expose] def h7pb_cliStageP4Prev1SeqFreeEnvs [LibsignalPlacement] (A : RustAlloc)
     (B : RunBudgets) (F0 : FsFiles) (peer : AddrGhost)
     (pid kpkId spkId : BitVec 32) (kbk : PublicKey)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop) :

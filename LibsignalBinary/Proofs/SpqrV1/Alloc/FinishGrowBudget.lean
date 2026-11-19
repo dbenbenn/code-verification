@@ -9,18 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrow
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrow -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.Alloc.Fetch
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
@@ -33,7 +32,7 @@ blocks 361 (generic `(stride, align)`), 160 (`[local#2]`, `stride = 1`),
 221 (`[local#4]`, `stride = 1`), and 259 (`[local#6]`, `stride = 32, align = 8`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -87,12 +86,12 @@ abbrev FinishGrow1Call := CryptoVerification.SpqrV1.Alloc.FinishGrow1Call
 /-! ## `VmPreserved` Shim and `memcpy` Specs -/
 
 /-- Stack-equipped `VmPreserved` no-op shim specification. -/
-def session2ShimSpecWithStack (hookStack : Nat) : Spec Unit where
+@[expose] def session2ShimSpecWithStack (hookStack : Nat) : Spec Unit where
   pre := fun _ s => stackAt s.sp hookStack
   post := fun _ s0 sf => ⌜sf.trace = s0.trace ∧ VmPreserved s0 sf⌝ ∗ stackAt s0.sp hookStack
 
 /-- Stack-equipped `VmPreserved` `memcpy` specification. -/
-def session2MemcpySpecWithStack (hookStack : Nat) :
+@[expose] def session2MemcpySpecWithStack (hookStack : Nat) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ (s0.readReg64 .x2).toNat = bs.length⌝ ∗
@@ -252,11 +251,11 @@ private theorem stackAt_finishGrow32_gen (sp : BitVec 64) {hookStack : Nat}
 /-! ## Specialized `finishGrow1` and `finishGrow7` Budget Specs -/
 
 /-- Deterministic allocator events of `finish_grow` for `stride = 1, align = 1`. -/
-def finishGrow1Events (x : FinishGrow1Call) : List AllocEvent :=
+@[expose] def finishGrow1Events (x : FinishGrow1Call) : List AllocEvent :=
   if x.cap = 0#64 then rustAllocEvents x.new.toNat 1
   else rustReallocEvents x.cap.toNat x.new.toNat 1
 
-def FinishGrow1Env (x : FinishGrow1Call) (evs : List AllocEvent) : Prop :=
+@[expose] def FinishGrow1Env (x : FinishGrow1Call) (evs : List AllocEvent) : Prop :=
   evs = finishGrow1Events x
 
 theorem fitsEnv_finishGrow1_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
@@ -274,7 +273,7 @@ theorem finishGrow1Events_eq_finishGrowEvents (x : FinishGrow1Call) :
     simp only [hcap, hcap_nat, ↓reduceIte]
 
 /-- Budget contract of `finish_grow [local#2, 4]` (`stride = 1, align = 1`, 32-byte frame). -/
-def finishGrow1SpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow1SpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FinishGrow1Call × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.cap ∧ s.readReg64 .x2 = x.ptr ∧
@@ -302,11 +301,11 @@ abbrev finishGrow1SpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
   finishGrow1SpecWithStack M A lim extHookStack
 
 /-- Deterministic allocator events of `finish_grow` for `stride = 32, align = 8`. -/
-def finishGrow7Events (x : FinishGrow1Call) : List AllocEvent :=
+@[expose] def finishGrow7Events (x : FinishGrow1Call) : List AllocEvent :=
   if x.cap = 0#64 then rustAllocEvents (x.new.toNat * 32) 8
   else rustReallocEvents (x.cap.toNat * 32) (x.new.toNat * 32) 8
 
-def FinishGrow7Env (x : FinishGrow1Call) (evs : List AllocEvent) : Prop :=
+@[expose] def FinishGrow7Env (x : FinishGrow1Call) (evs : List AllocEvent) : Prop :=
   evs = finishGrow7Events x
 
 theorem fitsEnv_finishGrow7_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
@@ -323,7 +322,7 @@ theorem finishGrow7Events_eq_finishGrowEvents (x : FinishGrow1Call) :
     simp only [hcap, hcap_nat, ↓reduceIte]
 
 /-- Budget contract of `finish_grow [local#6]` (`stride = 32, align = 8`, 32-byte frame). -/
-def finishGrow7SpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow7SpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FinishGrow1Call × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.cap ∧ s.readReg64 .x2 = x.ptr ∧
@@ -352,7 +351,7 @@ abbrev finishGrow7SpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-! ## Block 361: `finish_grow [local#8]` -/
 
-def finishGrow8AllocSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow8AllocSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FinishGrowCall × M.σ) :=
   { finishGrowSpecWithStack M A lim hookStack with
     pre := fun (x, st) s =>
@@ -364,7 +363,7 @@ def finishGrow8AllocSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
         FitsEnv M lim st (FinishGrowEnv x)⌝ ∗
       memRegion x.out 24 ∗ A.pool lim st s ∗ stackAt s.sp (hookStack + 48) }
 
-def finishGrow8ReallocSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow8ReallocSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FinishGrowCall × M.σ) :=
   { finishGrowSpecWithStack M A lim hookStack with
     pre := fun (x, st) s =>
@@ -548,7 +547,7 @@ theorem finish_grow_8_placed_ok_x [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## Blocks 160 (`[local#2]`) and 221 (`[local#4]`) -/
 
-def finishGrow1AllocSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow1AllocSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FinishGrow1Call × M.σ) :=
   { finishGrow1SpecWithStack M A lim hookStack with
     pre := fun (x, st) s =>
@@ -558,7 +557,7 @@ def finishGrow1AllocSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
         FitsEnv M lim st (FinishGrow1Env x)⌝ ∗
       memRegion x.out 24 ∗ A.pool lim st s ∗ stackAt s.sp (hookStack + 32) }
 
-def finishGrow1ReallocSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow1ReallocSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FinishGrow1Call × M.σ) :=
   { finishGrow1SpecWithStack M A lim hookStack with
     pre := fun (x, st) s =>
@@ -861,7 +860,7 @@ theorem finish_grow_4_placed_ok_x [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## Block 259: `finish_grow [local#7]` (`stride = 32, align = 8`) -/
 
-def finishGrow7AllocSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow7AllocSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FinishGrow1Call × M.σ) :=
   { finishGrow7SpecWithStack M A lim hookStack with
     pre := fun (x, st) s =>
@@ -871,7 +870,7 @@ def finishGrow7AllocSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
         FitsEnv M lim st (FinishGrow7Env x)⌝ ∗
       memRegion x.out 24 ∗ A.pool lim st s ∗ stackAt s.sp (hookStack + 32) }
 
-def finishGrow7ReallocSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow7ReallocSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FinishGrow1Call × M.σ) :=
   { finishGrow7SpecWithStack M A lim hookStack with
     pre := fun (x, st) s =>

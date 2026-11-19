@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
 import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
@@ -20,6 +20,7 @@ import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Proof
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<Ct1SentEkReceived>::send_ct2`: Closed `[LibsignalPlacement]` Contract (Block `347`)
@@ -29,7 +30,7 @@ Discharges the cross-block callees `do_reserve_and_handle` (Block `320`) and `sl
 `HookSat` and panic hooks under `withLsCodeLoaded` and `withLsCodeRoLoaded`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

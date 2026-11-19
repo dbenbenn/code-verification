@@ -9,19 +9,19 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.BinaryHarnessCostedRedsHonest
+public import Computational.Proofs.E2E.Dsl.BinaryHarnessCostedRedsHonest -- proof-setup: allow-public-import
 
 /-!
 # Multi-Session Composition Statement Contracts over `M3SubprogramsIface`
 
 Instantiates `M4KindRedSpec`, `M4PrefixRedSpec`, `M4CompositionBundleSpec`,
 `M4CompositionFamilySpec`, and `ModelSecureHonestFamilyStmt` from `kindRedHonest` and
-`prefixRedHonest` given step-cost and size bounds against `bhE2ECostBudgetHonest`.
--/
+`prefixRedHonest` given step-cost and size bounds against `bhE2ECostBudgetHonest`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
 open scoped BigOperators
 

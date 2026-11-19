@@ -24,7 +24,7 @@ Exports the loop-entry, loop-iteration, loop-exit, 344-byte `SessionStructure` r
 representation conversion theorems composed in `Root.lean`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.DeserializeGeneral
 
@@ -36,38 +36,6 @@ open CryptoVerification.E2E.Record CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.E2E.Record
 open CryptoVerification.E2E.Record.DeserializeSeed
 open CryptoVerification.E2E.Record.Serialization (CanonRecord CanonSession)
-
-/-- Entry segment (`+0x000 → +0x254`, `k = 0`) of `SessionRecord::deserialize`: initializes
-`previous_sessions`, reads outer `RecordStructure` key `0x0a` and 1–3 byte length varint, writes
-`SessionStructure::default()` (`prostSSGAt A0 … SSG.empty`), and enters the field loop. -/
-theorem deserLoopEntryG_ok (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (hC : DeserializeCallees C ctl abs) (x : DeserializeGenGhost) (R : SepProp) (s0 : State)
-    (hpc : s0.pc = (recordProg C ctl abs).fnAddr recDeserializeName)
-    (hrun : s0.status = .Running)
-    (hpre : s0.mem ⊨ deserializeGenSpec.pre x s0 ∗ R) (hal : s0.spAligned = true) :
-    DeserStepG C ctl x R s0 s0 (DeserLoopG C ctl x R s0 0) abs := by
-  exact Leaf.DeserLoopEntryG.deserLoopEntryG_ok C ctl hC x R s0 hpc hrun hpre hal
-
-/-- Single field-loop iteration (`+0x254 → +0x254`, `k → k + 1`): reads the 1-byte field key,
-checks tag and wire type, and invokes `SessionStructure::merge_field`. -/
-theorem deserLoopIterG_ok (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (hMF : MergeFieldGenOk C ctl (fun _ => True) abs) (x : DeserializeGenGhost) (R : SepProp)
-    (s0 : State) (k : Nat) (s : State) (hr : DeserializeScope x.r) (hk : k < (recFields x.r).length)
-    (hs : DeserLoopG C ctl x R s0 k s) :
-    DeserStepG C ctl x R s0 s (DeserLoopG C ctl x R s0 (k + 1)) abs := by
-  exact Leaf.DeserLoopIterG.deserLoopIterG_ok C ctl hMF x R s0 k s hr hk hs
-
-/-- Loop exit (`+0x254 → ret`) when `remaining = 0`: relocates the 344-byte `SessionStructure` into
-the `sret` slot (`prostSSGAt_move`) as `current_session = Some` and runs the epilogue to
-`deserOutRawG`. -/
-theorem deserLoopExitG_ok (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (x : DeserializeGenGhost) (R : SepProp) (s0 s : State) (hr : DeserializeScope x.r)
-    (hs : DeserLoopG C ctl x R s0 (recFields x.r).length s) :
-    DeserStepG C ctl x R s0 s (DeserRetG x R s0) abs := by
-  exact Leaf.DeserLoopExitG.deserLoopExitG_ok C ctl x R s0 s hr hs
 
 /-- Relocates `prostSSGAt A src v` across a 344-byte `memcpy` to `dst`, establishing that word `0`
 (`lik` capacity) avoids the `None` niche. -/

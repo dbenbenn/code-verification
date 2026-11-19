@@ -14,6 +14,14 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhostK 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.NarrowMemOpsR1 -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.NarrowF3R1Witness -- proof-setup: allow-public-import
 import ProofLib.Process.OracleEq
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Pointwise `sigActions ∧ oracle` Preservation for `memset` Ghost Hooks (`HooksDehook.MemsetGhostAcp`)
@@ -157,56 +165,6 @@ theorem memsetGhostHook_acp
     · rw [keepFsTrace_hookMemset_eq]
       cases s0; exact ⟨rfl, rfl⟩
   · exact ⟨rfl, rfl⟩
-
-/-- Pointwise `sigActions ∧ oracle` preservation for `memsetGhostHookK`. -/
-theorem memsetGhostHookK_acp
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entryTarget : BitVec 64}
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entryTarget memsetWordsSym)
-    (s0 : State) :
-    (memsetGhostHookK keep P_real P_sub entryTarget s0).sigActions = s0.sigActions ∧
-      (memsetGhostHookK keep P_real P_sub entryTarget s0).oracle = s0.oracle := by
-  classical
-  unfold memsetGhostHookK linkedCallHook
-  split
-  · rename_i hActPre
-    split
-    · rename_i hReal
-      rcases hActPre with ⟨hrun, hsp, x, R, hpre⟩
-      dsimp only [memsetSpecK] at hpre
-      rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-      exact activeRealRun_sigActions_and_oracle hsvc_real hsvc_sub hreal_no hsub_no hwords
-        hrun hsp hpre.2 hReal
-    · rw [keepFsTrace_hookMemset_eq]
-      cases s0; exact ⟨rfl, rfl⟩
-  · exact ⟨rfl, rfl⟩
-
-/-- Pointwise `sigActions ∧ oracle` preservation for `f3EmptyMemsetGhostHook`. -/
-theorem f3EmptyMemsetGhostHook_acp
-    {keep : BitVec 64 → Bool} {P_sub : Program} {entryTarget : BitVec 64}
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entryTarget memsetWordsSym)
-    (s0 : State) :
-    (f3EmptyMemsetGhostHook keep P_sub entryTarget s0).sigActions = s0.sigActions ∧
-      (f3EmptyMemsetGhostHook keep P_sub entryTarget s0).oracle = s0.oracle := by
-  rw [f3EmptyMemsetGhostHook_eq]
-  exact memsetGhostHook_acp rfl hsvc_sub (fun _ _ => rfl) hsub_no hwords s0
-
-/-- Pointwise `sigActions ∧ oracle` preservation for `f3EmptyMemsetGhostHookK`. -/
-theorem f3EmptyMemsetGhostHookK_acp
-    {keep : BitVec 64 → Bool} {P_sub : Program} {entryTarget : BitVec 64}
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entryTarget memsetWordsSym)
-    (s0 : State) :
-    (f3EmptyMemsetGhostHookK keep P_sub entryTarget s0).sigActions = s0.sigActions ∧
-      (f3EmptyMemsetGhostHookK keep P_sub entryTarget s0).oracle = s0.oracle := by
-  rw [f3EmptyMemsetGhostHookK_eq]
-  exact memsetGhostHookK_acp rfl hsvc_sub (fun _ _ => rfl) hsub_no hwords s0
 
 private theorem mallocngBlockProg21_svc_eq (mmpl : MultiPlacement) :
     (mallocngBlockProg mmpl 21 Syscall.standard).svc = Syscall.standard := rfl

@@ -9,16 +9,30 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMainBudgetCore
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMainBudgetCore -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitEvict
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep12
-import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep5
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep5 -- proof-setup: allow-public-import
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMain
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMainBudgetStep5
+public import ProofLib.SepLogic.WP.Apply
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.MuslStage1Init
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Pinned-Capacity Budget-Threaded DH Commit Composition
@@ -27,7 +41,7 @@ Tracks exact post-commit ghost buffer capacities (`trGhostCaps trG' = s3AfterCap
 `receiver_chains` push, optional `grow_one`, and oldest-chain eviction loop (`+0x8ac → +0x3e4`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

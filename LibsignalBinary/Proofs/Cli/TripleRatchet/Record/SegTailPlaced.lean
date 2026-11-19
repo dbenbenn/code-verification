@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Record.SegTail
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegTail
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import all Init.Data.String.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable CLI `SegTail` (`segTail_placed_ok`)
@@ -22,7 +23,7 @@ Proves the `[LibsignalPlacement]` `"decryption failed"` error-tail segment (`+0x
 CLI Block `463`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -319,7 +320,7 @@ theorem segTail_placed_ok [LibsignalPlacement] {C : Crypto} {A : RustAlloc} {ctl
     have hmeta' : recMetaPlaced s0 s' :=
       ⟨hrun', hsp', hsp_align', hx29', htr', hfl.of_keepsFrozen hsteps.keepsFrozen, hvregs'⟩
     have hno_pan : (x.model C S uuidTryParse).1 ≠ .error .panic := by
-      rw [hmodel]; decide
+      rw [hmodel]; nofun
     have htag : s'.readReg64 .x28 = recordResultTag (x.model C S uuidTryParse).1 := by
       rw [hmodel, recordResultTag]; exact hx28'
     refine ⟨hpc', hmeta', hno_pan, hx26', hx27', htag, ?_⟩

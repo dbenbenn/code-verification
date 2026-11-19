@@ -9,10 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5BufDeallocPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropLoopCorePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5BufDeallocPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropLoopCorePlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Hops -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable M5 Post-Commit Entry Drop Loop (`M+0xa90 .. M+0xabc`, Block `617`)
@@ -21,7 +27,7 @@ Verifies `m5_entry_drop_loop_placed` (`M+0xa90 .. M+0xabc`) on Block `617` under
 `[LibsignalPlacement]` via `m5_drop_loop_body_0xa84_placed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

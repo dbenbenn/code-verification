@@ -9,16 +9,10 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
-
-/-!
-# Instruction Decodes for `<SessionRecord>::promote_matching_session`
--/
-
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -29,17 +23,5 @@ open Arm64 ProofLib ProofLib.ProgramReflection
 
 abbrev promoteMatchingSessionName : String :=
   "<libsignal_protocol::state::session::SessionRecord>::promote_matching_session"
-
-set_option maxHeartbeats 1200000 in
-gen_decodes libsignalSessionCode_tree promoteBinCli [
-  (ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_matching_session" + 0) →
-    (ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_matching_session" + 124)]
-
-set_option maxHeartbeats 1200000 in
-gen_decodes libsignalSessionCode_tree promoteBinCli [
-  (ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_matching_session" + 128) →
-    (ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_matching_session" + 208),
-  (ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_matching_session" + 740) →
-    (ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_matching_session" + 800)]
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched

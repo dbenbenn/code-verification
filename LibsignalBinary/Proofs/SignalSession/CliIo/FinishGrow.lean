@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.CliIo.Sym
+public import LibsignalBinary.Proofs.SignalSession.CliIo.Sym -- proof-setup: allow-public-import
 public import VerifiedLibraries.RustStd.Proofs.Wave2.AllocRawVecGrow
 public meta import ProofLib.ProgramReflection
 
@@ -21,7 +21,7 @@ Proves `cliIoFinishGrow_ok` and `cliIoFinishGrow_ok_withCodeLoaded` against
 (`168` B, `0x20`-byte stack frame, specialized to `elem_size = 1, elem_align = 1`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

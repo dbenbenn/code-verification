@@ -11,7 +11,7 @@ module
 
 public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkSeedSepDefs
 import all Init.Data.String.Defs
-public import Symbolic.Proofs.Swarm.COMPOSED.CompClosed
+public import Symbolic.Proofs.Swarm.COMPOSED.CompClosed -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.COMPOSED.CompTermAlgebra
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -21,6 +21,10 @@ import Symbolic.Proofs.Swarm.CREF.TR.G1.RkHist
 import Symbolic.Proofs.Swarm.CREF.TR.G1.RkPairUniq
 import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
 import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepMac
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkSeedSepBase
 
 /-!
 # Root-Key Shape Twin Elimination
@@ -30,7 +34,7 @@ stored root key with the same shape as an honest intermediate root node (`RkInte
 whenever Alice/Bob PQXDH root twins are ruled out (`AliceBobTwin`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

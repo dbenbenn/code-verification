@@ -11,7 +11,7 @@ module
 
 public import Arm64
 public import ProofLib.Placed.Multi
-public import LibsignalBinary.Proofs.HookDischarge.Libc.Common
+public import LibsignalBinary.Proofs.HookDischarge.Libc.Common -- proof-setup: allow-public-import
 
 /-!
 # Shared `.rodata` image-fact and `Spec` simulation combinators
@@ -21,7 +21,7 @@ and separating `Spec` wrappers (`withRoData`, `withRoDataSep`), and the forward-
 `SpecSimulates` for transporting `subroutine_ok` and `MultiPlacedLib.subroutineOk` across specs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,17 +33,17 @@ open LibsignalBinary.Proofs.HookDischarge.Libc.Common (keepsFs)
 
 /-- Pure read-only image-byte fact: `[addr, addr + bytes.length)` is mapped read-only (`Perm.ro`,
     not `lazyFree`) and holds `bytes` in `m`. -/
-def RoDataAt (m : Memory) (addr : BitVec 64) (bytes : List (BitVec 8)) : Prop :=
+@[expose] def RoDataAt (m : Memory) (addr : BitVec 64) (bytes : List (BitVec 8)) : Prop :=
   m.RO addr bytes.length ∧ m.readBytes addr bytes.length = bytes
 
 /-- Adjoin the pure read-only `.rodata` image fact `⌜RoDataAt s0.mem addr bytes⌝` to `spec.pre`,
     preserving `spec`'s spatial footprint while supplying `(addr ↦ᵣ bytes)` via
     `Satisfies.rodata_intro`. -/
-def withRoData {α : Type} (addr : BitVec 64) (bytes : List (BitVec 8)) (spec : Spec α) : Spec α :=
+@[expose] def withRoData {α : Type} (addr : BitVec 64) (bytes : List (BitVec 8)) (spec : Spec α) : Spec α :=
   { spec with pre := fun x s0 => ⌜RoDataAt s0.mem addr bytes⌝ ∗ spec.pre x s0 }
 
 /-- Frame `(addr ↦ᵣ bytes)` explicitly in `spec.pre` and `spec.post`. -/
-def withRoDataSep {α : Type} (addr : BitVec 64) (bytes : List (BitVec 8)) (spec : Spec α) :
+@[expose] def withRoDataSep {α : Type} (addr : BitVec 64) (bytes : List (BitVec 8)) (spec : Spec α) :
     Spec α :=
   { spec with
     pre := fun x s0 => (addr ↦ᵣ bytes) ∗ spec.pre x s0
@@ -56,7 +56,7 @@ theorem keepsFs_withRoData {α : Type} (addr : BitVec 64) (bytes : List (BitVec 
 /-- Relational forward-simulation witness from `spec₁` to `spec₂`: any entry state satisfying
     `spec₂.pre y s0 ∗ R` instantiates a ghost `x` and callee frame `R₁` satisfying
     `spec₁.pre x s0 ∗ R₁` whose `SubroutineOutcome` implies `SubroutineOutcome spec₂ y R s0 sf`. -/
-def SpecSimulates {α β : Type} (spec₁ : Spec α) (spec₂ : Spec β) : Prop :=
+@[expose] def SpecSimulates {α β : Type} (spec₁ : Spec α) (spec₂ : Spec β) : Prop :=
   ∀ (y : β) (R : SepProp) (s0 : State),
     (s0.mem ⊨ spec₂.pre y s0 ∗ R) →
     ∃ (x : α) (R₁ : SepProp),

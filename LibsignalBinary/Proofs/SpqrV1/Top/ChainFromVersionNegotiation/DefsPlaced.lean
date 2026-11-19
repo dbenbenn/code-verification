@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternal
+public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternal -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Specifications for `spqr::chain_from_version_negotiation` (Block `328`)
@@ -19,7 +20,7 @@ public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternal
 Relocatable `withLsCallInv` contract `ChainFromVersionNegotiationPlacedOkX` for Block `328`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -38,7 +39,7 @@ open CryptoVerification.SpqrV1.ChainProofs.NextKeyInternalFacts
 open CryptoVerification.SpqrV1.Top.Placed
 
 /-- Relocatable callee-contract predicate for `spqr::chain_from_version_negotiation` (Block `328`). -/
-def ChainFromVersionNegotiationPlacedOkX [LibsignalPlacement] (hkdf : HkdfFn) (A : RustAlloc)
+@[expose] def ChainFromVersionNegotiationPlacedOkX [LibsignalPlacement] (hkdf : HkdfFn) (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_328).rebase (blkPl_328).base (Rust.withPanics ext))
     (blkPl_328).base

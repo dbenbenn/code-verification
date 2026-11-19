@@ -20,7 +20,7 @@ bridges, and Hoare specifications for `Vec<Vec<u8>>`, `PolynomialDecoder`, `Poly
 `V1State.Chunked.Ct1Sampled`, and `V1State.Chunked.HeaderSent`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ProtoRepr
 
@@ -36,16 +36,16 @@ set_option maxHeartbeats 400000
 /-! ## 1. `Vec<Vec<u8>>` (`24` bytes header, element stride `24`, align `8`) -/
 
 /-- Heap buffer of `Vec<Vec<u8>>` (element stride `24`, align `8`) detached from its 24-byte `vecHeader`. -/
-def vecVecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bss : List (List (BitVec 8))) : SepProp :=
+@[expose] def vecVecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bss : List (List (BitVec 8))) : SepProp :=
   vecBuf A 24 8 (fun bs addr => rustBytesVecAt A addr bs) cap ptr bss
 
 /-- Pinned `Vec<Vec<u8>>` at `v` (24-byte header `{cap, ptr, len}`, element stride `24`, align `8`). -/
-def vecVecU8PinnedAt (A : RustAlloc) (pin : VecPin) (v : BitVec 64)
+@[expose] def vecVecU8PinnedAt (A : RustAlloc) (pin : VecPin) (v : BitVec 64)
     (bss : List (List (BitVec 8))) : SepProp :=
   vecAt A 24 8 (fun bs addr => rustBytesVecAt A addr bs) v pin.cap pin.ptr bss
 
 /-- Unpinned `Vec<Vec<u8>>` at `v` (24-byte header `{cap, ptr, len}`, element stride `24`, align `8`). -/
-def vecVecU8At (A : RustAlloc) (v : BitVec 64) (bss : List (List (BitVec 8))) : SepProp :=
+@[expose] def vecVecU8At (A : RustAlloc) (v : BitVec 64) (bss : List (List (BitVec 8))) : SepProp :=
   vecOf A 24 8 (fun bs addr => rustBytesVecAt A addr bs) v bss
 
 theorem vecVecU8PinnedAt_eq_header_buf (A : RustAlloc) (pin : VecPin) (h : BitVec 64)
@@ -91,7 +91,7 @@ theorem ofNat_vecVec_length_beq_zero_of_lt {bss : List (List (BitVec 8))} (hlt :
 
 /-- Remainder of an element `rustBytesVecAt A p bs` (`cap` at `p`, `ptr` at `p + 8`, and heap buffer)
     detached from its `.len` word at `p + 16#64`. -/
-def vecU8ElemRest (A : RustAlloc) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8ElemRest (A : RustAlloc) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ∃∗ cap : BitVec 64, ∃∗ ptr : BitVec 64,
     (p ↦₆₄ cap) ∗ ((p + 8#64) ↦₆₄ ptr) ∗ vecU8Buf A cap ptr bs
 
@@ -118,7 +118,7 @@ theorem vecVecU8At_eq_exists_pin (A : RustAlloc) (v : BitVec 64) (bss : List (Li
 /-! ## 2. `PolynomialDecoder` (`40` bytes = `0x28`, align `8`) and `Option<PolynomialDecoder>` -/
 
 /-- Rust ABI `bool` byte encoding (`1#8` for `true`, `0#8` for `false`). -/
-def boolByte (b : Bool) : BitVec 8 :=
+@[expose] def boolByte (b : Bool) : BitVec 8 :=
   if b then 1#8 else 0#8
 
 /-- Ghost `(cap, ptr)` pin for `pts: Vec<Vec<u8>>` of a `PolynomialDecoder` (`40` bytes). -/
@@ -132,7 +132,7 @@ structure PolynomialDecoderPBGhost where
     * `a + 0x1c` (`28`): `polys: u32` (tag 2, 4B)
     * `a + 0x20` (`32`): `is_complete: bool` (tag 4, 1B, `boolByte pb.isComplete`)
     * `a + 0x21` (`33`): 7 bytes trailing padding (`memRegion (a + 33#64) 7`) -/
-def polynomialDecoderPBPinnedAt (A : RustAlloc) (g : PolynomialDecoderPBGhost)
+@[expose] def polynomialDecoderPBPinnedAt (A : RustAlloc) (g : PolynomialDecoderPBGhost)
     (a : BitVec 64) (pb : PolynomialDecoder) : SepProp :=
   vecVecU8PinnedAt A g.pts a pb.pts ∗
     ((a + 24#64) ↦₃₂ pb.ptsNeeded) ∗
@@ -141,7 +141,7 @@ def polynomialDecoderPBPinnedAt (A : RustAlloc) (g : PolynomialDecoderPBGhost)
     memRegion (a + 33#64) 7
 
 /-- Unpinned `spqr::proto::pq_ratchet::PolynomialDecoder` at `a` (`40` bytes = `0x28`, align `8`). -/
-def polynomialDecoderPBAt (A : RustAlloc) (a : BitVec 64) (pb : PolynomialDecoder) : SepProp :=
+@[expose] def polynomialDecoderPBAt (A : RustAlloc) (a : BitVec 64) (pb : PolynomialDecoder) : SepProp :=
   vecVecU8At A a pb.pts ∗
     ((a + 24#64) ↦₃₂ pb.ptsNeeded) ∗
     ((a + 28#64) ↦₃₂ pb.polys) ∗
@@ -151,13 +151,13 @@ def polynomialDecoderPBAt (A : RustAlloc) (a : BitVec 64) (pb : PolynomialDecode
 /-- Pinned `Option<spqr::proto::pq_ratchet::PolynomialDecoder>` at `a` (`40` bytes = `0x28`, align `8`):
     * `none`: `(a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 32` (`pts.cap = usize::MAX` niche)
     * `some pb`: `polynomialDecoderPBPinnedAt A g a pb` -/
-def optPolynomialDecoderPBPinnedAt (A : RustAlloc) (g : PolynomialDecoderPBGhost)
+@[expose] def optPolynomialDecoderPBPinnedAt (A : RustAlloc) (g : PolynomialDecoderPBGhost)
     (a : BitVec 64) : Option PolynomialDecoder → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 32
   | some pb => polynomialDecoderPBPinnedAt A g a pb
 
 /-- Unpinned `Option<spqr::proto::pq_ratchet::PolynomialDecoder>` at `a` (`40` bytes = `0x28`, align `8`). -/
-def optPolynomialDecoderPBAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optPolynomialDecoderPBAt (A : RustAlloc) (a : BitVec 64) :
     Option PolynomialDecoder → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 32
   | some pb => polynomialDecoderPBAt A a pb
@@ -204,7 +204,7 @@ structure PolynomialEncoderPBGhost where
     * `a + 0x18` (`24`): `polys: Vec<Vec<u8>>` (tag 3, 24B)
     * `a + 0x30` (`48`): `idx: u32` (tag 1, 4B)
     * `a + 0x34` (`52`): 4 bytes trailing padding (`memRegion (a + 52#64) 4`) -/
-def polynomialEncoderPBPinnedAt (A : RustAlloc) (g : PolynomialEncoderPBGhost)
+@[expose] def polynomialEncoderPBPinnedAt (A : RustAlloc) (g : PolynomialEncoderPBGhost)
     (a : BitVec 64) (pb : PolynomialEncoder) : SepProp :=
   vecVecU8PinnedAt A g.pts a pb.pts ∗
     vecVecU8PinnedAt A g.polys (a + 24#64) pb.polys ∗
@@ -212,7 +212,7 @@ def polynomialEncoderPBPinnedAt (A : RustAlloc) (g : PolynomialEncoderPBGhost)
     memRegion (a + 52#64) 4
 
 /-- Unpinned `spqr::proto::pq_ratchet::PolynomialEncoder` at `a` (`56` bytes = `0x38`, align `8`). -/
-def polynomialEncoderPBAt (A : RustAlloc) (a : BitVec 64) (pb : PolynomialEncoder) : SepProp :=
+@[expose] def polynomialEncoderPBAt (A : RustAlloc) (a : BitVec 64) (pb : PolynomialEncoder) : SepProp :=
   vecVecU8At A a pb.pts ∗
     vecVecU8At A (a + 24#64) pb.polys ∗
     ((a + 48#64) ↦₃₂ pb.idx) ∗
@@ -221,13 +221,13 @@ def polynomialEncoderPBAt (A : RustAlloc) (a : BitVec 64) (pb : PolynomialEncode
 /-- Pinned `Option<spqr::proto::pq_ratchet::PolynomialEncoder>` at `a` (`56` bytes = `0x38`, align `8`):
     * `none`: `(a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 48` (`pts.cap = usize::MAX` niche)
     * `some pb`: `polynomialEncoderPBPinnedAt A g a pb` -/
-def optPolynomialEncoderPBPinnedAt (A : RustAlloc) (g : PolynomialEncoderPBGhost)
+@[expose] def optPolynomialEncoderPBPinnedAt (A : RustAlloc) (g : PolynomialEncoderPBGhost)
     (a : BitVec 64) : Option PolynomialEncoder → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 48
   | some pb => polynomialEncoderPBPinnedAt A g a pb
 
 /-- Unpinned `Option<spqr::proto::pq_ratchet::PolynomialEncoder>` at `a` (`56` bytes = `0x38`, align `8`). -/
-def optPolynomialEncoderPBAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optPolynomialEncoderPBAt (A : RustAlloc) (a : BitVec 64) :
     Option PolynomialEncoder → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 48
   | some pb => polynomialEncoderPBAt A a pb
@@ -260,13 +260,13 @@ theorem optPolynomialEncoderPBAt_eq_exists_pinned (A : RustAlloc) (a : BitVec 64
 /-- Pinned `Option<V1State.Unchunked.Ct1Sent>` at `a` (`128` bytes = `0x80`, align `8`):
     * `none`: `(a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 120` (`hdr.cap = usize::MAX` niche at `+0x00`)
     * `some u`: `ct1SentPBPinnedAt A g a u` -/
-def optCt1SentPBPinnedAt (A : RustAlloc) (g : Unchunked5PBGhost) (a : BitVec 64) :
+@[expose] def optCt1SentPBPinnedAt (A : RustAlloc) (g : Unchunked5PBGhost) (a : BitVec 64) :
     Option V1State.Unchunked.Ct1Sent → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 120
   | some u => ct1SentPBPinnedAt A g a u
 
 /-- Unpinned `Option<V1State.Unchunked.Ct1Sent>` at `a` (`128` bytes = `0x80`, align `8`). -/
-def optCt1SentPBAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optCt1SentPBAt (A : RustAlloc) (a : BitVec 64) :
     Option V1State.Unchunked.Ct1Sent → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 120
   | some u => ct1SentPBAt A a u
@@ -285,13 +285,13 @@ theorem optCt1SentPBAt_eq_exists_pinned (A : RustAlloc) (a : BitVec 64)
 /-- Pinned `Option<V1State.Unchunked.EkSent>` at `a` (`80` bytes = `0x50`, align `8`):
     * `none`: `(a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 72` (`dk.cap = usize::MAX` niche at `+0x00`)
     * `some u`: `ekSentPBPinnedAt A g a u` -/
-def optEkSentPBPinnedAt (A : RustAlloc) (g : Unchunked3PBGhost) (a : BitVec 64) :
+@[expose] def optEkSentPBPinnedAt (A : RustAlloc) (g : Unchunked3PBGhost) (a : BitVec 64) :
     Option V1State.Unchunked.EkSent → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 72
   | some u => ekSentPBPinnedAt A g a u
 
 /-- Unpinned `Option<V1State.Unchunked.EkSent>` at `a` (`80` bytes = `0x50`, align `8`). -/
-def optEkSentPBAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optEkSentPBAt (A : RustAlloc) (a : BitVec 64) :
     Option V1State.Unchunked.EkSent → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 72
   | some u => ekSentPBAt A a u
@@ -322,14 +322,14 @@ structure ChunkedCt1SampledPBGhost where
     * `a + 0x00` (`0..128`): `uc: Option<Unchunked.Ct1Sent>` (tag 1, 128B)
     * `a + 0x80` (`128..184`): `sending_ct1: Option<PolynomialEncoder>` (tag 2, 56B)
     * `a + 0xb8` (`184..224`): `receiving_ek: Option<PolynomialDecoder>` (tag 3, 40B) -/
-def chunkedCt1SampledPBPinnedAt (A : RustAlloc) (g : ChunkedCt1SampledPBGhost)
+@[expose] def chunkedCt1SampledPBPinnedAt (A : RustAlloc) (g : ChunkedCt1SampledPBGhost)
     (a : BitVec 64) (m : V1State.Chunked.Ct1Sampled) : SepProp :=
   optCt1SentPBPinnedAt A g.uc a m.uc ∗
     optPolynomialEncoderPBPinnedAt A g.sendingCt1 (a + 128#64) m.sendingCt1 ∗
     optPolynomialDecoderPBPinnedAt A g.receivingEk (a + 184#64) m.receivingEk
 
 /-- Unpinned `spqr::proto::pq_ratchet::v1_state::chunked::Ct1Sampled` at `a` (`224` bytes = `0xe0`, align `8`). -/
-def chunkedCt1SampledPBAt (A : RustAlloc) (a : BitVec 64) (m : V1State.Chunked.Ct1Sampled) : SepProp :=
+@[expose] def chunkedCt1SampledPBAt (A : RustAlloc) (a : BitVec 64) (m : V1State.Chunked.Ct1Sampled) : SepProp :=
   optCt1SentPBAt A a m.uc ∗
     optPolynomialEncoderPBAt A (a + 128#64) m.sendingCt1 ∗
     optPolynomialDecoderPBAt A (a + 184#64) m.receivingEk
@@ -361,14 +361,14 @@ structure ChunkedHeaderSentPBGhost where
     * `a + 0x00` (`0..80`): `uc: Option<Unchunked.EkSent>` (tag 1, 80B)
     * `a + 0x50` (`80..136`): `sending_ek: Option<PolynomialEncoder>` (tag 2, 56B)
     * `a + 0x88` (`136..176`): `receiving_ct1: Option<PolynomialDecoder>` (tag 3, 40B) -/
-def chunkedHeaderSentPBPinnedAt (A : RustAlloc) (g : ChunkedHeaderSentPBGhost)
+@[expose] def chunkedHeaderSentPBPinnedAt (A : RustAlloc) (g : ChunkedHeaderSentPBGhost)
     (a : BitVec 64) (m : V1State.Chunked.HeaderSent) : SepProp :=
   optEkSentPBPinnedAt A g.uc a m.uc ∗
     optPolynomialEncoderPBPinnedAt A g.sendingEk (a + 80#64) m.sendingEk ∗
     optPolynomialDecoderPBPinnedAt A g.receivingCt1 (a + 136#64) m.receivingCt1
 
 /-- Unpinned `spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent` at `a` (`176` bytes = `0xb0`, align `8`). -/
-def chunkedHeaderSentPBAt (A : RustAlloc) (a : BitVec 64) (m : V1State.Chunked.HeaderSent) : SepProp :=
+@[expose] def chunkedHeaderSentPBAt (A : RustAlloc) (a : BitVec 64) (m : V1State.Chunked.HeaderSent) : SepProp :=
   optEkSentPBAt A a m.uc ∗
     optPolynomialEncoderPBAt A (a + 80#64) m.sendingEk ∗
     optPolynomialDecoderPBAt A (a + 136#64) m.receivingCt1
@@ -391,21 +391,21 @@ theorem chunkedHeaderSentPBAt_eq_exists_pinned (A : RustAlloc) (a : BitVec 64)
 
 /-- Proto3 encoded length of a `bool` field with a 1-byte tag (`tag ∈ 1..15`):
     `2` when `v = true`, `0` when `v = false`. -/
-def boolFieldEncodedLen (v : Bool) : Nat :=
+@[expose] def boolFieldEncodedLen (v : Bool) : Nat :=
   if v then 2 else 0
 
 /-- Per-element body length (without 1-byte tag) of `bs : List (BitVec 8)` in a repeated `bytes` field:
     `bs.length + varintLen (BitVec.ofNat 64 bs.length)`. -/
-def bytesElemBodyEncodedLen (bs : List (BitVec 8)) : Nat :=
+@[expose] def bytesElemBodyEncodedLen (bs : List (BitVec 8)) : Nat :=
   bs.length + varintLen (BitVec.ofNat 64 bs.length)
 
 /-- Sum of `bytesElemBodyEncodedLen` over `vs : List (List (BitVec 8))`. -/
-def repeatedBytesBodiesEncodedLen (vs : List (List (BitVec 8))) : Nat :=
+@[expose] def repeatedBytesBodiesEncodedLen (vs : List (List (BitVec 8))) : Nat :=
   vs.foldl (fun acc bs => acc + bytesElemBodyEncodedLen bs) 0
 
 /-- Proto3 encoded length of a `repeated bytes` (`Vec<Vec<u8>>`) field with a 1-byte tag (`tag ∈ 1..15`):
     `repeatedBytesBodiesEncodedLen vs + vs.length`. -/
-def repeatedBytesFieldEncodedLen (vs : List (List (BitVec 8))) : Nat :=
+@[expose] def repeatedBytesFieldEncodedLen (vs : List (List (BitVec 8))) : Nat :=
   repeatedBytesBodiesEncodedLen vs + vs.length
 
 private theorem foldl_bytesElemBody_add (init : Nat) (vs : List (List (BitVec 8))) :
@@ -462,14 +462,14 @@ theorem repeatedBytesFieldEncodedLen_eq_proto (tag : BitVec 32) (vs : List (List
 
 /-- Encoded length of `spqr::proto::pq_ratchet::PolynomialDecoder`:
     tag 1 `pts_needed: u32` + tag 2 `polys: u32` + tag 3 `pts: Vec<Vec<u8>>` + tag 4 `is_complete: bool`. -/
-def polynomialDecoderPBEncodedLen (pb : PolynomialDecoder) : Nat :=
+@[expose] def polynomialDecoderPBEncodedLen (pb : PolynomialDecoder) : Nat :=
   u32VarintFieldEncodedLen pb.ptsNeeded +
     u32VarintFieldEncodedLen pb.polys +
     repeatedBytesFieldEncodedLen pb.pts +
     boolFieldEncodedLen pb.isComplete
 
 /-- Encoded length of an optional `PolynomialDecoder` field with a 1-byte tag (`tag ∈ 1..15`). -/
-def optPolynomialDecoderPBFieldEncodedLen : Option PolynomialDecoder → Nat
+@[expose] def optPolynomialDecoderPBFieldEncodedLen : Option PolynomialDecoder → Nat
   | none => 0
   | some pb =>
     let len := polynomialDecoderPBEncodedLen pb
@@ -498,13 +498,13 @@ theorem optPolynomialDecoderPBFieldEncodedLen_eq_proto (tag : BitVec 32)
 
 /-- Encoded length of `spqr::proto::pq_ratchet::PolynomialEncoder`:
     tag 1 `idx: u32` + tag 2 `pts: Vec<Vec<u8>>` + tag 3 `polys: Vec<Vec<u8>>`. -/
-def polynomialEncoderPBEncodedLen (pb : PolynomialEncoder) : Nat :=
+@[expose] def polynomialEncoderPBEncodedLen (pb : PolynomialEncoder) : Nat :=
   u32VarintFieldEncodedLen pb.idx +
     repeatedBytesFieldEncodedLen pb.pts +
     repeatedBytesFieldEncodedLen pb.polys
 
 /-- Encoded length of an optional `PolynomialEncoder` field with a 1-byte tag (`tag ∈ 1..15`). -/
-def optPolynomialEncoderPBFieldEncodedLen : Option PolynomialEncoder → Nat
+@[expose] def optPolynomialEncoderPBFieldEncodedLen : Option PolynomialEncoder → Nat
   | none => 0
   | some pb =>
     let len := polynomialEncoderPBEncodedLen pb
@@ -531,7 +531,7 @@ theorem optPolynomialEncoderPBFieldEncodedLen_eq_proto (tag : BitVec 32)
       ← protoEncodedLenVarint_eq_varintLen, Proto.encodedLenVarint]
 
 /-- Encoded length of an optional `Unchunked.Ct1Sent` field with a 1-byte tag (`tag ∈ 1..15`). -/
-def optCt1SentPBFieldEncodedLen : Option V1State.Unchunked.Ct1Sent → Nat
+@[expose] def optCt1SentPBFieldEncodedLen : Option V1State.Unchunked.Ct1Sent → Nat
   | none => 0
   | some u =>
     let len := ct1SentPBEncodedLen u
@@ -550,7 +550,7 @@ theorem optCt1SentPBFieldEncodedLen_eq_proto (tag : BitVec 32)
       ← protoEncodedLenVarint_eq_varintLen, Proto.encodedLenVarint]
 
 /-- Encoded length of an optional `Unchunked.EkSent` field with a 1-byte tag (`tag ∈ 1..15`). -/
-def optEkSentPBFieldEncodedLen : Option V1State.Unchunked.EkSent → Nat
+@[expose] def optEkSentPBFieldEncodedLen : Option V1State.Unchunked.EkSent → Nat
   | none => 0
   | some u =>
     let len := ekSentPBEncodedLen u
@@ -571,7 +571,7 @@ theorem optEkSentPBFieldEncodedLen_eq_proto (tag : BitVec 32)
 /-- Encoded length of `V1State.Chunked.Ct1Sampled`:
     tag 1 `uc: Option<Unchunked.Ct1Sent>` + tag 2 `sending_ct1: Option<PolynomialEncoder>` +
     tag 3 `receiving_ek: Option<PolynomialDecoder>`. -/
-def chunkedCt1SampledPBEncodedLen (m : V1State.Chunked.Ct1Sampled) : Nat :=
+@[expose] def chunkedCt1SampledPBEncodedLen (m : V1State.Chunked.Ct1Sampled) : Nat :=
   optCt1SentPBFieldEncodedLen m.uc +
     optPolynomialEncoderPBFieldEncodedLen m.sendingCt1 +
     optPolynomialDecoderPBFieldEncodedLen m.receivingEk
@@ -588,7 +588,7 @@ theorem chunkedCt1SampledPBEncodedLen_eq_proto (m : V1State.Chunked.Ct1Sampled) 
 /-- Encoded length of `V1State.Chunked.HeaderSent`:
     tag 1 `uc: Option<Unchunked.EkSent>` + tag 2 `sending_ek: Option<PolynomialEncoder>` +
     tag 3 `receiving_ct1: Option<PolynomialDecoder>`. -/
-def chunkedHeaderSentPBEncodedLen (m : V1State.Chunked.HeaderSent) : Nat :=
+@[expose] def chunkedHeaderSentPBEncodedLen (m : V1State.Chunked.HeaderSent) : Nat :=
   optEkSentPBFieldEncodedLen m.uc +
     optPolynomialEncoderPBFieldEncodedLen m.sendingEk +
     optPolynomialDecoderPBFieldEncodedLen m.receivingCt1
@@ -637,7 +637,7 @@ abbrev chunkedEncodedLenStack : Nat := chunkedEncodedLenFrame + polyEncodedLenSt
 abbrev PolynomialDecoderEncodedLenPinnedGhost := PinnedEncLenGhost PolynomialDecoderPBGhost PolynomialDecoder
 abbrev PolynomialDecoderEncodedLenGhost := UnpinnedEncLenGhost PolynomialDecoder
 
-def polynomialDecoderEncodedLenPinnedSpec (A : RustAlloc) : Spec PolynomialDecoderEncodedLenPinnedGhost where
+@[expose] def polynomialDecoderEncodedLenPinnedSpec (A : RustAlloc) : Spec PolynomialDecoderEncodedLenPinnedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ polynomialDecoderPBEncodedLen x.m < 2 ^ 64⌝ ∗
       polynomialDecoderPBPinnedAt A x.g x.a x.m ∗ stackAt s.sp polyEncodedLenStack
@@ -645,7 +645,7 @@ def polynomialDecoderEncodedLenPinnedSpec (A : RustAlloc) : Spec PolynomialDecod
     ⌜sf.readReg64 .x0 = BitVec.ofNat 64 (polynomialDecoderPBEncodedLen x.m) ∧ sf.trace = s0.trace⌝ ∗
       polynomialDecoderPBPinnedAt A x.g x.a x.m ∗ stackAt s0.sp polyEncodedLenStack
 
-def polynomialDecoderEncodedLenSpec (A : RustAlloc) : Spec PolynomialDecoderEncodedLenGhost where
+@[expose] def polynomialDecoderEncodedLenSpec (A : RustAlloc) : Spec PolynomialDecoderEncodedLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ polynomialDecoderPBEncodedLen x.m < 2 ^ 64⌝ ∗
       polynomialDecoderPBAt A x.a x.m ∗ stackAt s.sp polyEncodedLenStack
@@ -656,7 +656,7 @@ def polynomialDecoderEncodedLenSpec (A : RustAlloc) : Spec PolynomialDecoderEnco
 abbrev PolynomialEncoderEncodedLenPinnedGhost := PinnedEncLenGhost PolynomialEncoderPBGhost PolynomialEncoder
 abbrev PolynomialEncoderEncodedLenGhost := UnpinnedEncLenGhost PolynomialEncoder
 
-def polynomialEncoderEncodedLenPinnedSpec (A : RustAlloc) : Spec PolynomialEncoderEncodedLenPinnedGhost where
+@[expose] def polynomialEncoderEncodedLenPinnedSpec (A : RustAlloc) : Spec PolynomialEncoderEncodedLenPinnedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ polynomialEncoderPBEncodedLen x.m < 2 ^ 64⌝ ∗
       polynomialEncoderPBPinnedAt A x.g x.a x.m ∗ stackAt s.sp polyEncodedLenStack
@@ -664,7 +664,7 @@ def polynomialEncoderEncodedLenPinnedSpec (A : RustAlloc) : Spec PolynomialEncod
     ⌜sf.readReg64 .x0 = BitVec.ofNat 64 (polynomialEncoderPBEncodedLen x.m) ∧ sf.trace = s0.trace⌝ ∗
       polynomialEncoderPBPinnedAt A x.g x.a x.m ∗ stackAt s0.sp polyEncodedLenStack
 
-def polynomialEncoderEncodedLenSpec (A : RustAlloc) : Spec PolynomialEncoderEncodedLenGhost where
+@[expose] def polynomialEncoderEncodedLenSpec (A : RustAlloc) : Spec PolynomialEncoderEncodedLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ polynomialEncoderPBEncodedLen x.m < 2 ^ 64⌝ ∗
       polynomialEncoderPBAt A x.a x.m ∗ stackAt s.sp polyEncodedLenStack
@@ -675,7 +675,7 @@ def polynomialEncoderEncodedLenSpec (A : RustAlloc) : Spec PolynomialEncoderEnco
 abbrev ChunkedCt1SampledEncodedLenPinnedGhost := PinnedEncLenGhost ChunkedCt1SampledPBGhost V1State.Chunked.Ct1Sampled
 abbrev ChunkedCt1SampledEncodedLenGhost := UnpinnedEncLenGhost V1State.Chunked.Ct1Sampled
 
-def chunkedCt1SampledEncodedLenPinnedSpec (A : RustAlloc) : Spec ChunkedCt1SampledEncodedLenPinnedGhost where
+@[expose] def chunkedCt1SampledEncodedLenPinnedSpec (A : RustAlloc) : Spec ChunkedCt1SampledEncodedLenPinnedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ chunkedCt1SampledPBEncodedLen x.m < 2 ^ 64⌝ ∗
       chunkedCt1SampledPBPinnedAt A x.g x.a x.m ∗ stackAt s.sp chunkedEncodedLenStack
@@ -683,7 +683,7 @@ def chunkedCt1SampledEncodedLenPinnedSpec (A : RustAlloc) : Spec ChunkedCt1Sampl
     ⌜sf.readReg64 .x0 = BitVec.ofNat 64 (chunkedCt1SampledPBEncodedLen x.m) ∧ sf.trace = s0.trace⌝ ∗
       chunkedCt1SampledPBPinnedAt A x.g x.a x.m ∗ stackAt s0.sp chunkedEncodedLenStack
 
-def chunkedCt1SampledEncodedLenSpec (A : RustAlloc) : Spec ChunkedCt1SampledEncodedLenGhost where
+@[expose] def chunkedCt1SampledEncodedLenSpec (A : RustAlloc) : Spec ChunkedCt1SampledEncodedLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ chunkedCt1SampledPBEncodedLen x.m < 2 ^ 64⌝ ∗
       chunkedCt1SampledPBAt A x.a x.m ∗ stackAt s.sp chunkedEncodedLenStack
@@ -694,7 +694,7 @@ def chunkedCt1SampledEncodedLenSpec (A : RustAlloc) : Spec ChunkedCt1SampledEnco
 abbrev ChunkedHeaderSentEncodedLenPinnedGhost := PinnedEncLenGhost ChunkedHeaderSentPBGhost V1State.Chunked.HeaderSent
 abbrev ChunkedHeaderSentEncodedLenGhost := UnpinnedEncLenGhost V1State.Chunked.HeaderSent
 
-def chunkedHeaderSentEncodedLenPinnedSpec (A : RustAlloc) : Spec ChunkedHeaderSentEncodedLenPinnedGhost where
+@[expose] def chunkedHeaderSentEncodedLenPinnedSpec (A : RustAlloc) : Spec ChunkedHeaderSentEncodedLenPinnedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ chunkedHeaderSentPBEncodedLen x.m < 2 ^ 64⌝ ∗
       chunkedHeaderSentPBPinnedAt A x.g x.a x.m ∗ stackAt s.sp chunkedEncodedLenStack
@@ -702,7 +702,7 @@ def chunkedHeaderSentEncodedLenPinnedSpec (A : RustAlloc) : Spec ChunkedHeaderSe
     ⌜sf.readReg64 .x0 = BitVec.ofNat 64 (chunkedHeaderSentPBEncodedLen x.m) ∧ sf.trace = s0.trace⌝ ∗
       chunkedHeaderSentPBPinnedAt A x.g x.a x.m ∗ stackAt s0.sp chunkedEncodedLenStack
 
-def chunkedHeaderSentEncodedLenSpec (A : RustAlloc) : Spec ChunkedHeaderSentEncodedLenGhost where
+@[expose] def chunkedHeaderSentEncodedLenSpec (A : RustAlloc) : Spec ChunkedHeaderSentEncodedLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ chunkedHeaderSentPBEncodedLen x.m < 2 ^ 64⌝ ∗
       chunkedHeaderSentPBAt A x.a x.m ∗ stackAt s.sp chunkedEncodedLenStack

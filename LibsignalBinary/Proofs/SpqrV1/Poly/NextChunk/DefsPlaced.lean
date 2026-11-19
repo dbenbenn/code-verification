@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.NextChunkCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.NextChunkCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk`: Relocatable Specification (Block `416`)
@@ -20,7 +21,7 @@ Relocatable `[LibsignalPlacement]` specification (`polyNextChunkPlacedSpec`) and
 (`PolyNextChunkPlacedOkExt`) for `<PolyEncoder as Encoder>::next_chunk`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,7 +43,7 @@ open CryptoVerification.CodeLayout
     given `x8 = outA` (`34` bytes for `Chunk`) and `x0 = encA` (`&mut PolyEncoder`),
     when `enc.nextChunk = .ok (enc', chunk)`, updates `encA` in place to `polyEncoderAt A encA enc'`
     and writes `chunkAt outA chunk`, or panics on out-of-memory (`allocFailedIn`). -/
-def polyNextChunkPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec PolyNextChunkGhost where
+@[expose] def polyNextChunkPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec PolyNextChunkGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.outA ∧ s.readReg64 .x0 = x.encA ∧
       x.enc.nextChunk = .ok (x.enc', x.chunk)⌝ ∗
@@ -62,7 +63,7 @@ def polyNextChunkPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec PolyNext
 
 /-- Relocatable `[LibsignalPlacement]` contract for `<PolyEncoder as Encoder>::next_chunk`
     (Block `416`) wrapped with `withLsCodeRoLoaded lsmpl`. -/
-def PolyNextChunkPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PolyNextChunkPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
     (blkPl_416).base

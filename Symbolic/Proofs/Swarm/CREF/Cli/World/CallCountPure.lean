@@ -9,8 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement
-public import ProofLib.Lemmas
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -23,7 +22,7 @@ Proves that `callStarts` ignores `.rng` events, is preserved under `CoinSplit`, 
 `cliEntryEvents` into `cliInputEvent` followed by `.rng`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -65,7 +64,7 @@ theorem coinSplit_callStarts_length_eq {τ τhw : List MachineEvent} (h : CoinSp
   congrArg List.length (coinSplit_callStarts_eq h)
 
 /-- Input event of a `CliCall` (the unique `recv` or `pt` event at entry). -/
-def cliInputEvent (c : CliCall) : MachineEvent :=
+@[expose] def cliInputEvent (c : CliCall) : MachineEvent :=
   match c.cmd with
   | .init _ _ =>
     .recv (((DY.Libsignal.Composed.Refinement.Cli.parseBundleFiles

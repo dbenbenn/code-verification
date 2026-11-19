@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.TopDecodes
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Unchunked
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Drop.TopDecodes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Unchunked -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 /-!
 # Drop Glue for `Option<v1_state::InnerState>` (Specifications and Simple/Compound Variants)
@@ -55,33 +55,23 @@ attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero noneCap_add_t
 
 /-- The 10-byte jump table for `Option<spqr::proto::pq_ratchet::v1_state::InnerState>`
     (base `entry + 92`, scaled by `<< 2`). -/
-def optProtoInnerStateJumpTableBytes : List (BitVec 8) :=
+@[expose] def optProtoInnerStateJumpTableBytes : List (BitVec 8) :=
   [34#8, 0#8, 54#8, 0#8, 5#8, 97#8, 102#8, 59#8, 135#8, 10#8]
 
 /-- Read-only separation-logic assertion for the 10-byte jump table. -/
-def optProtoInnerStateJumpTableAt (b : BitVec 64) : SepProp :=
-  (b + bv% (ls_bytes% "220036000561663b870a")) ↦ᵣ optProtoInnerStateJumpTableBytes
+@[expose] def optProtoInnerStateJumpTableAt (b : BitVec 64) : SepProp :=
+  (b + bv% 659800) ↦ᵣ optProtoInnerStateJumpTableBytes
 
 abbrev optProtoInnerStateJumpTableSym : String :=
   "spqr:.rodata.core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>"
 
-def optProtoInnerStateJumpTablePlacedAt [LibsignalPlacement] : SepProp :=
+@[expose] def optProtoInnerStateJumpTablePlacedAt [LibsignalPlacement] : SepProp :=
   (lsmpl.ρ optProtoInnerStateJumpTableSym) ↦ᵣ optProtoInnerStateJumpTableBytes
-
-theorem fnAddr_adrp_4c118 {b : BitVec 64} {H : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr dropOptProtoInnerStateName + 68#64) &&&
-      0xfffffffffffff000#64) =
-      b + bv% (page% ((ls_off% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>") + 68)) := by
-  rw [Program.fnAddr_rebase, dropOptProtoInnerState_fnOff]
-  revert hb; bv_bits
-
-/-! ## Representation Predicates for `V1State.InnerState` (`224` B) and `PqRatchetState` (`352` B) -/
 
 /-- `spqr::proto::pq_ratchet::v1_state::unchunked::KeysUnsampled` at `a` (`56` bytes = `0x38`):
     * `+0`: `auth: Option<ProtoAuthenticator>` (48B)
     * `+48`: `epoch: u64` (8B) -/
-def protoUnchunkedKeysUnsampledAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoUnchunkedKeysUnsampledAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Unchunked.KeysUnsampled) : SepProp :=
   optProtoAuthenticatorAt A a st.auth ∗
     ((a + 48#64) ↦₆₄ st.epoch)
@@ -89,7 +79,7 @@ def protoUnchunkedKeysUnsampledAt (A : RustAlloc) (a : BitVec 64)
 /-- `Option<spqr::proto::pq_ratchet::v1_state::unchunked::KeysUnsampled>` at `a` (`56` bytes = `0x38`):
     * `none`: `(a ↦₆₄ none2Cap) ∗ memRegion (a + 8#64) 48` (`-2` niche)
     * `some st`: `protoUnchunkedKeysUnsampledAt A a st` -/
-def optProtoUnchunkedKeysUnsampledAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optProtoUnchunkedKeysUnsampledAt (A : RustAlloc) (a : BitVec 64) :
     Option V1State.Unchunked.KeysUnsampled → SepProp
   | none => (a ↦₆₄ none2Cap) ∗ memRegion (a + 8#64) 48
   | some st => protoUnchunkedKeysUnsampledAt A a st
@@ -97,7 +87,7 @@ def optProtoUnchunkedKeysUnsampledAt (A : RustAlloc) (a : BitVec 64) :
 /-- `spqr::proto::pq_ratchet::v1_state::unchunked::Ct2Sent` at `a` (`56` bytes = `0x38`):
     * `+0`: `auth: Option<ProtoAuthenticator>` (48B)
     * `+48`: `epoch: u64` (8B) -/
-def protoUnchunkedCt2SentAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoUnchunkedCt2SentAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Unchunked.Ct2Sent) : SepProp :=
   optProtoAuthenticatorAt A a st.auth ∗
     ((a + 48#64) ↦₆₄ st.epoch)
@@ -105,7 +95,7 @@ def protoUnchunkedCt2SentAt (A : RustAlloc) (a : BitVec 64)
 /-- `Option<spqr::proto::pq_ratchet::v1_state::unchunked::Ct2Sent>` at `a` (`56` bytes = `0x38`):
     * `none`: `(a ↦₆₄ none2Cap) ∗ memRegion (a + 8#64) 48` (`-2` niche)
     * `some st`: `protoUnchunkedCt2SentAt A a st` -/
-def optProtoUnchunkedCt2SentAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optProtoUnchunkedCt2SentAt (A : RustAlloc) (a : BitVec 64) :
     Option V1State.Unchunked.Ct2Sent → SepProp
   | none => (a ↦₆₄ none2Cap) ∗ memRegion (a + 8#64) 48
   | some st => protoUnchunkedCt2SentAt A a st
@@ -115,7 +105,7 @@ def optProtoUnchunkedCt2SentAt (A : RustAlloc) (a : BitVec 64) :
     * `+24`: `dk: Vec<u8>` (24B)
     * `+48`: `auth: Option<ProtoAuthenticator>` (48B)
     * `+96`: `epoch: u64` (8B) -/
-def protoUnchunkedHeaderSentAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoUnchunkedHeaderSentAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Unchunked.HeaderSent) : SepProp :=
   vecU8 A a st.ek ∗
     vecU8 A (a + 24#64) st.dk ∗
@@ -125,21 +115,21 @@ def protoUnchunkedHeaderSentAt (A : RustAlloc) (a : BitVec 64)
 /-- `Option<spqr::proto::pq_ratchet::v1_state::unchunked::HeaderSent>` at `a` (`104` bytes = `0x68`):
     * `none`: `(a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 96` (`-1` niche)
     * `some st`: `protoUnchunkedHeaderSentAt A a st` -/
-def optProtoUnchunkedHeaderSentAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optProtoUnchunkedHeaderSentAt (A : RustAlloc) (a : BitVec 64) :
     Option V1State.Unchunked.HeaderSent → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 96
   | some st => protoUnchunkedHeaderSentAt A a st
 
 /-- `spqr::proto::pq_ratchet::v1_state::chunked::KeysUnsampled` at `a` (`56` bytes = `0x38`, align `8`):
     * `+0..+56`: `uc: Option<V1State.Unchunked.KeysUnsampled>` (`56`B) -/
-def protoChunkedKeysUnsampledAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoChunkedKeysUnsampledAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Chunked.KeysUnsampled) : SepProp :=
   optProtoUnchunkedKeysUnsampledAt A a st.uc
 
 /-- `spqr::proto::pq_ratchet::v1_state::chunked::KeysSampled` at `a` (`160` bytes = `0xa0`, align `8`):
     * `+0..+104`: `uc: Option<V1State.Unchunked.HeaderSent>` (`104`B)
     * `+104..+160`: `sending_hdr: Option<PolynomialEncoder>` (`56`B) -/
-def protoChunkedKeysSampledAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoChunkedKeysSampledAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Chunked.KeysSampled) : SepProp :=
   optProtoUnchunkedHeaderSentAt A a st.uc ∗
     optProtoPolynomialEncoderAt A (a + 104#64) (st.sendingHdr.map pbToProtoPolyEncoder)
@@ -148,7 +138,7 @@ def protoChunkedKeysSampledAt (A : RustAlloc) (a : BitVec 64)
     * `+0..+128`: `uc: Option<V1State.Unchunked.Ct1Sent>` (`128`B)
     * `+128..+184`: `sending_ct1: Option<PolynomialEncoder>` (`56`B)
     * `+184..+224`: `receiving_ek: Option<PolynomialDecoder>` (`40`B) -/
-def protoChunkedCt1SampledAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoChunkedCt1SampledAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Chunked.Ct1Sampled) : SepProp :=
   optProtoUnchunkedCt1SentAt A a st.uc ∗
     optProtoPolynomialEncoderAt A (a + 128#64) (st.sendingCt1.map pbToProtoPolyEncoder) ∗
@@ -157,7 +147,7 @@ def protoChunkedCt1SampledAt (A : RustAlloc) (a : BitVec 64)
 /-- `spqr::proto::pq_ratchet::v1_state::chunked::EkReceivedCt1Sampled` at `a` (`184` bytes = `0xb8`, align `8`):
     * `+0..+128`: `uc: Option<V1State.Unchunked.Ct1SentEkReceived>` (`128`B)
     * `+128..+184`: `sending_ct1: Option<PolynomialEncoder>` (`56`B) -/
-def protoChunkedEkReceivedCt1SampledAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoChunkedEkReceivedCt1SampledAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Chunked.EkReceivedCt1Sampled) : SepProp :=
   optProtoUnchunkedCt1SentEkReceivedAt A a st.uc ∗
     optProtoPolynomialEncoderAt A (a + 128#64) (st.sendingCt1.map pbToProtoPolyEncoder)
@@ -165,7 +155,7 @@ def protoChunkedEkReceivedCt1SampledAt (A : RustAlloc) (a : BitVec 64)
 /-- `spqr::proto::pq_ratchet::v1_state::chunked::Ct1Acknowledged` at `a` (`168` bytes = `0xa8`, align `8`):
     * `+0..+128`: `uc: Option<V1State.Unchunked.Ct1Sent>` (`128`B)
     * `+128..+168`: `receiving_ek: Option<PolynomialDecoder>` (`40`B) -/
-def protoChunkedCt1AcknowledgedAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoChunkedCt1AcknowledgedAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Chunked.Ct1Acknowledged) : SepProp :=
   optProtoUnchunkedCt1SentAt A a st.uc ∗
     optProtoPolynomialDecoderAt A (a + 128#64) (st.receivingEk.map pbToProtoPolyDecoder)
@@ -173,13 +163,13 @@ def protoChunkedCt1AcknowledgedAt (A : RustAlloc) (a : BitVec 64)
 /-- `spqr::proto::pq_ratchet::v1_state::chunked::Ct2Sampled` at `a` (`112` bytes = `0x70`, align `8`):
     * `+0..+56`: `sending_ct2: Option<PolynomialEncoder>` (`56`B)
     * `+56..+112`: `uc: Option<V1State.Unchunked.Ct2Sent>` (`56`B) -/
-def protoChunkedCt2SampledAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoChunkedCt2SampledAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Chunked.Ct2Sampled) : SepProp :=
   optProtoPolynomialEncoderAt A a (st.sendingCt2.map pbToProtoPolyEncoder) ∗
     optProtoUnchunkedCt2SentAt A (a + 56#64) st.uc
 
 /-- Representation predicate for `spqr::proto::pq_ratchet::v1_state::InnerState` at `a` (`224` bytes = `0xe0`). -/
-def protoInnerStateAt (A : RustAlloc) (a : BitVec 64) : V1State.InnerState → SepProp
+@[expose] def protoInnerStateAt (A : RustAlloc) (a : BitVec 64) : V1State.InnerState → SepProp
   | .keysUnsampled s =>
       (a ↦₆₄ 0x8000000000000000#64) ∗
       protoChunkedKeysUnsampledAt A (a + 8#64) s ∗
@@ -226,23 +216,23 @@ def protoInnerStateAt (A : RustAlloc) (a : BitVec 64) : V1State.InnerState → S
 /-- `Option<spqr::proto::pq_ratchet::v1_state::InnerState>` at `a` (`224` bytes = `0xe0`, align `8`):
     * `none`: `(a ↦₆₄ none2Cap) ∗ memRegion (a + 8#64) 216` (`0xFFFFFFFFFFFFFFFE` niche)
     * `some st`: `protoInnerStateAt A a st` -/
-def optProtoInnerStateAt (A : RustAlloc) (a : BitVec 64) : Option V1State.InnerState → SepProp
+@[expose] def optProtoInnerStateAt (A : RustAlloc) (a : BitVec 64) : Option V1State.InnerState → SepProp
   | none    => (a ↦₆₄ none2Cap) ∗ memRegion (a + 8#64) 216
   | some st => protoInnerStateAt A a st
 
 /-- Niche value `0xFFFFFFFFFFFFFFFD` (`-3`) used for `Option<pq_ratchet_state::Inner>::None`. -/
-def none3Cap' : BitVec 64 := 0xfffffffffffffffd#64
+@[expose] def none3Cap' : BitVec 64 := 0xfffffffffffffffd#64
 
 /-- `Option<spqr::proto::pq_ratchet::pq_ratchet_state::Inner>` at `a` (`224` bytes = `0xe0`, align `8`):
     * `none`: `(a ↦₆₄ none3Cap') ∗ memRegion (a + 8#64) 216` (`0xFFFFFFFFFFFFFFFD` niche)
     * `some (.v1 v1)`: `optProtoInnerStateAt A a v1.innerState` -/
-def optProtoPqRatchetInnerAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optProtoPqRatchetInnerAt (A : RustAlloc) (a : BitVec 64) :
     Option PqRatchetState.Inner → SepProp
   | none           => (a ↦₆₄ none3Cap') ∗ memRegion (a + 8#64) 216
   | some (.v1 v1) => optProtoInnerStateAt A a v1.innerState
 
 /-- Representation predicate for `spqr::proto::pq_ratchet::PqRatchetState` at `a` (`352` bytes = `0x160`). -/
-def protoPqRatchetStateAt (A : RustAlloc) (a : BitVec 64) (st : PqRatchetState) : SepProp :=
+@[expose] def protoPqRatchetStateAt (A : RustAlloc) (a : BitVec 64) (st : PqRatchetState) : SepProp :=
   optVersionNegotiationPBAt A a st.versionNegotiation ∗
     optChainPBAt A (a + 48#64) st.chain ∗
     optProtoPqRatchetInnerAt A (a + 128#64) st.inner
@@ -265,7 +255,7 @@ theorem cap_xor_highBit_cc_11_false {cap : BitVec 64} (hlt : cap.toNat < 2 ^ 63)
   rw [conditionHolds_cc_subsPState64, cap_xor_highBit_ult_11_false hlt]
 
 /-- Remainder of `protoUnchunkedCt1SentEkReceivedAt A d st` when `d ↦₆₄ cap` is split out. -/
-def protoUnchunkedCt1SentEkReceivedRestAt (A : RustAlloc) (d cap ptr : BitVec 64)
+@[expose] def protoUnchunkedCt1SentEkReceivedRestAt (A : RustAlloc) (d cap ptr : BitVec 64)
     (st : V1State.Unchunked.Ct1SentEkReceived) : SepProp :=
   ((d + 8#64) ↦₆₄ ptr) ∗ ((d + 16#64) ↦₆₄ BitVec.ofNat 64 st.es.length) ∗
     ⌜st.es.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
@@ -334,11 +324,11 @@ theorem protoUnchunkedCt1SentEkReceivedAt_unexpose_cap (A : RustAlloc) (d cap pt
   unfold protoUnchunkedCt1SentEkReceivedRestAt vecU8At vecHeader
   exact Entails.of_eq (by ac_rfl)
 
-def headerSentToEkSentCt1Received (u : V1State.Unchunked.HeaderSent) :
+@[expose] def headerSentToEkSentCt1Received (u : V1State.Unchunked.HeaderSent) :
     V1State.Unchunked.EkSentCt1Received :=
   { dk := u.ek, ct1 := u.dk, auth := u.auth, epoch := u.epoch }
 
-def keysSampledToCt1Received (st : V1State.Chunked.KeysSampled) :
+@[expose] def keysSampledToCt1Received (st : V1State.Chunked.KeysSampled) :
     V1State.Chunked.Ct1Received :=
   { uc := st.uc.map headerSentToEkSentCt1Received, sendingEk := st.sendingHdr }
 
@@ -372,14 +362,14 @@ theorem stackAt_dropStack96_split_48 (sp : BitVec 64) :
 
 /-! ## Specifications for `0x4c0d4` (`Option<InnerState>`) and `0x4c460` (`PqRatchetState`) -/
 
-def optProtoInnerStateSize : Nat := 224
-def protoPqRatchetStateSize : Nat := 352
+@[expose] def optProtoInnerStateSize : Nat := 224
+@[expose] def protoPqRatchetStateSize : Nat := 352
 
 structure DropOptProtoInnerStateGhost where
   a : BitVec 64
   st : Option V1State.InnerState
 
-def dropOptProtoInnerStateSpec (A : RustAlloc) (b : BitVec 64) :
+@[expose] def dropOptProtoInnerStateSpec (A : RustAlloc) (b : BitVec 64) :
     Spec DropOptProtoInnerStateGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ b &&& 0xfff#64 = 0#64⌝ ∗
@@ -396,7 +386,7 @@ structure DropProtoPqRatchetStateGhost where
   a : BitVec 64
   st : PqRatchetState
 
-def dropProtoPqRatchetStateSpec (A : RustAlloc) (b : BitVec 64) :
+@[expose] def dropProtoPqRatchetStateSpec (A : RustAlloc) (b : BitVec 64) :
     Spec DropProtoPqRatchetStateGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ b &&& 0xfff#64 = 0#64⌝ ∗
@@ -409,7 +399,7 @@ def dropProtoPqRatchetStateSpec (A : RustAlloc) (b : BitVec 64) :
       optProtoInnerStateJumpTableAt b ∗
       A.pool ∗ stackAt s0.sp dropStack96
 
-def dropOptProtoInnerStatePlacedSpec [LibsignalPlacement] (A : RustAlloc) :
+@[expose] def dropOptProtoInnerStatePlacedSpec [LibsignalPlacement] (A : RustAlloc) :
     Spec DropOptProtoInnerStateGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗ optProtoInnerStateAt A x.a x.st ∗
@@ -418,7 +408,7 @@ def dropOptProtoInnerStatePlacedSpec [LibsignalPlacement] (A : RustAlloc) :
     ⌜sf.trace = s0.trace⌝ ∗ memRegion x.a optProtoInnerStateSize ∗
       optProtoInnerStateJumpTablePlacedAt ∗ A.pool ∗ stackAt s0.sp dropStack96
 
-def dropProtoPqRatchetStatePlacedSpec [LibsignalPlacement] (A : RustAlloc) :
+@[expose] def dropProtoPqRatchetStatePlacedSpec [LibsignalPlacement] (A : RustAlloc) :
     Spec DropProtoPqRatchetStateGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗ protoPqRatchetStateAt A x.a x.st ∗
@@ -430,7 +420,7 @@ def dropProtoPqRatchetStatePlacedSpec [LibsignalPlacement] (A : RustAlloc) :
 /-- Per-variant specification of `0x4c0d4` (`Option<InnerState>`) for a fixed `st`.
     Used for modular per-variant `subroutine_ok` proofs; `dropOptProtoInnerStateSpec` is
     definitionally equal to `dropOptProtoInnerStateVariantSpec A b x.st` at `x.a`. -/
-def dropOptProtoInnerStateVariantSpec (A : RustAlloc) (b : BitVec 64)
+@[expose] def dropOptProtoInnerStateVariantSpec (A : RustAlloc) (b : BitVec 64)
     (st : Option V1State.InnerState) : Spec (BitVec 64) where
   pre := fun a s =>
     ⌜s.readReg64 .x0 = a ∧ b &&& 0xfff#64 = 0#64⌝ ∗
@@ -443,7 +433,7 @@ def dropOptProtoInnerStateVariantSpec (A : RustAlloc) (b : BitVec 64)
       optProtoInnerStateJumpTableAt b ∗
       A.pool ∗ stackAt s0.sp dropStack96
 
-def dropOptProtoInnerStatePlacedVariantSpec [LibsignalPlacement] (A : RustAlloc)
+@[expose] def dropOptProtoInnerStatePlacedVariantSpec [LibsignalPlacement] (A : RustAlloc)
     (st : Option V1State.InnerState) : Spec (BitVec 64) where
   pre := fun a s =>
     ⌜s.readReg64 .x0 = a⌝ ∗ optProtoInnerStateAt A a st ∗
@@ -458,26 +448,6 @@ theorem optProtoInnerState_none_entails_224 (a : BitVec 64) :
     (a ↦₆₄ none2Cap) ∗ memRegion (a + 8#64) 216 ⊢ memRegion a 224 := by
   rw [ProofLib.memRegion_split' (b := a) (n := 8) (k := 216) (b' := a + 8#64) rfl rfl (by decide)]
   exact sepConj_mono_left (pointsTo64_entails_memRegion a none2Cap)
-
-theorem drop_opt_proto_inner_state_none {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName)
-      (dropOptProtoInnerStateVariantSpec A b none) := by
-  simp only [dropOptProtoInnerStateVariantSpec]
-  ls_code_fetches libsignalSessionCode spqrDropTopBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>"
-  dsimp only [dropProgAtExt, dropOptProtoInnerStateName, optProtoInnerStateAt,
-    optProtoInnerStateSize, BitVec.ofNat_eq_ofNat] at ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" = entry
-  examples_hide_fetches; wp_init a s0
-  nth_rw 1 [stackAt_dropStack96_split s0.sp]; cells_unfold; wp_pull_exists
-  rename_i v_fp v_lr v_x22 v_x21 v_x20 v_x19; wp_steps
-  refine SepWP.focus_weaken (optProtoInnerState_none_entails_224 a) (by sep_focus) ?_
-  refine SepWP.focus_weaken (stack_restore_96_allocHook s0.sp (s0.readReg64 .fp) (s0.readReg64 .lr)
-    (s0.readReg64 .x22) (s0.readReg64 .x21) (s0.readReg64 .x20) (s0.readReg64 .x19)) (by sep_focus) ?_
-  wp_done
 
 local macro "opt_proto_tail48_steps " tag:term:max sz1:term:max sz2:term:max off:term:max arg:term:max : tactic => `(tactic| (
   nth_rw 1 [stackAt_dropStack96_split s0.sp]; cells_unfold; wp_pull_exists
@@ -499,126 +469,6 @@ local macro "opt_proto_tail96_steps " tag:term:max sz1:term:max sz2:term:max off
   refine SepWP.focus_weaken (tag_and_two_regions_entails_224 a $tag $sz1 $sz2 $off
     (BitVec.add_assoc a 8#64 (BitVec.ofNat 64 $sz1)).symm rfl) (by sep_focus) ?_
   wp_done))
-
-theorem drop_opt_proto_inner_state_keysSampled {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) (st : V1State.Chunked.KeysSampled) :
-    subroutine_ok (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName)
-      (dropOptProtoInnerStateVariantSpec A b (some (.keysSampled st))) := by
-  simp only [dropOptProtoInnerStateVariantSpec]
-  have hcallee : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::Ct1Received>"))
-      (dropProtoChunkedCt1ReceivedSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::Ct1Received>")) (b := b) (X := Rust.withPanics ext)
-      dropOptProtoInnerState_fnOff (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::Ct1Received>") (by decide))
-    (drop_proto_chunked_ct1_received_ok_ext hdealloc)
-  have hadrp : ∀ (hb : b &&& 0xfff#64 = 0#64),
-      (((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr dropOptProtoInnerStateName + 68#64) &&& 0xfffffffffffff000#64) =
-      b + bv% (page% ((ls_off% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>") + 68)) := fnAddr_adrp_4c118
-  ls_code_fetches libsignalSessionCode spqrDropTopBin b (Rust.withPanics ext) "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>"
-  dsimp only [dropProgAtExt, dropOptProtoInnerStateName, optProtoInnerStateAt, protoInnerStateAt, optProtoInnerStateJumpTableAt, optProtoInnerStateJumpTableBytes, optProtoInnerStateSize, BitVec.ofNat_eq_ofNat] at hcallee hadrp ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" = entry
-  examples_hide_fetches; wp_init a s0; rw [protoChunkedKeysSampledAt_eq_ct1ReceivedAt]; have hadrp' := hadrp h
-  opt_proto_tail48_steps 0x8000000000000001#64 160 56 168#64 (keysSampledToCt1Received st)
-
-theorem drop_opt_proto_inner_state_headerSent {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) (st : V1State.Chunked.HeaderSent) :
-    subroutine_ok (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName)
-      (dropOptProtoInnerStateVariantSpec A b (some (.headerSent st))) := by
-  simp only [dropOptProtoInnerStateVariantSpec]
-  have hcallee : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>"))
-      (dropProtoChunkedHeaderSentSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>")) (b := b) (X := Rust.withPanics ext)
-      dropOptProtoInnerState_fnOff (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>") (by decide))
-    (drop_proto_chunked_header_sent_ok_ext hdealloc)
-  have hadrp : ∀ (hb : b &&& 0xfff#64 = 0#64),
-      (((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr dropOptProtoInnerStateName + 68#64) &&& 0xfffffffffffff000#64) =
-      b + bv% (page% ((ls_off% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>") + 68)) := fnAddr_adrp_4c118
-  ls_code_fetches libsignalSessionCode spqrDropTopBin b (Rust.withPanics ext) "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>"
-  dsimp only [dropProgAtExt, dropOptProtoInnerStateName, optProtoInnerStateAt, protoInnerStateAt, optProtoInnerStateJumpTableAt, optProtoInnerStateJumpTableBytes, optProtoInnerStateSize, BitVec.ofNat_eq_ofNat] at hcallee hadrp ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" = entry
-  examples_hide_fetches; wp_init a s0; have hadrp' := hadrp h
-  opt_proto_tail96_steps 0x8000000000000002#64 176 40 184#64 st
-
-theorem drop_opt_proto_inner_state_ct1Received {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) (st : V1State.Chunked.Ct1Received) :
-    subroutine_ok (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName)
-      (dropOptProtoInnerStateVariantSpec A b (some (.ct1Received st))) := by
-  simp only [dropOptProtoInnerStateVariantSpec]
-  have hcallee : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::Ct1Received>"))
-      (dropProtoChunkedCt1ReceivedSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::Ct1Received>")) (b := b) (X := Rust.withPanics ext)
-      dropOptProtoInnerState_fnOff (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::Ct1Received>") (by decide))
-    (drop_proto_chunked_ct1_received_ok_ext hdealloc)
-  have hadrp : ∀ (hb : b &&& 0xfff#64 = 0#64),
-      (((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr dropOptProtoInnerStateName + 68#64) &&& 0xfffffffffffff000#64) =
-      b + bv% (page% ((ls_off% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>") + 68)) := fnAddr_adrp_4c118
-  ls_code_fetches libsignalSessionCode spqrDropTopBin b (Rust.withPanics ext) "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>"
-  dsimp only [dropProgAtExt, dropOptProtoInnerStateName, optProtoInnerStateAt, protoInnerStateAt, optProtoInnerStateJumpTableAt, optProtoInnerStateJumpTableBytes, optProtoInnerStateSize, BitVec.ofNat_eq_ofNat] at hcallee hadrp ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" = entry
-  examples_hide_fetches; wp_init a s0; have hadrp' := hadrp h
-  opt_proto_tail48_steps 0x8000000000000003#64 160 56 168#64 st
-
-theorem drop_opt_proto_inner_state_ekSentCt1Received {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) (st : V1State.Chunked.EkSentCt1Received) :
-    subroutine_ok (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName)
-      (dropOptProtoInnerStateVariantSpec A b (some (.ekSentCt1Received st))) := by
-  simp only [dropOptProtoInnerStateVariantSpec]
-  have hcallee : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::EkSentCt1Received>"))
-      (dropProtoChunkedEkSentCt1ReceivedSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::EkSentCt1Received>")) (b := b) (X := Rust.withPanics ext)
-      dropOptProtoInnerState_fnOff (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::EkSentCt1Received>") (by decide))
-    (drop_proto_chunked_ek_sent_ct1_received_ok_ext hdealloc)
-  have hadrp : ∀ (hb : b &&& 0xfff#64 = 0#64),
-      (((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr dropOptProtoInnerStateName + 68#64) &&& 0xfffffffffffff000#64) =
-      b + bv% (page% ((ls_off% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>") + 68)) := fnAddr_adrp_4c118
-  ls_code_fetches libsignalSessionCode spqrDropTopBin b (Rust.withPanics ext) "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>"
-  dsimp only [dropProgAtExt, dropOptProtoInnerStateName, optProtoInnerStateAt, protoInnerStateAt, optProtoInnerStateJumpTableAt, optProtoInnerStateJumpTableBytes, optProtoInnerStateSize, BitVec.ofNat_eq_ofNat] at hcallee hadrp ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" = entry
-  examples_hide_fetches; wp_init a s0; have hadrp' := hadrp h
-  opt_proto_tail48_steps 0x8000000000000004#64 144 72 152#64 st
-
-theorem drop_opt_proto_inner_state_noHeaderReceived {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) (st : V1State.Chunked.NoHeaderReceived) :
-    subroutine_ok (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName)
-      (dropOptProtoInnerStateVariantSpec A b (some (.noHeaderReceived st))) := by
-  simp only [dropOptProtoInnerStateVariantSpec]
-  have hcallee : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::NoHeaderReceived>"))
-      (dropProtoChunkedNoHeaderReceivedSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::NoHeaderReceived>")) (b := b) (X := Rust.withPanics ext)
-      dropOptProtoInnerState_fnOff (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::NoHeaderReceived>") (by decide))
-    (drop_proto_chunked_no_header_received_ok_ext hdealloc)
-  have hadrp : ∀ (hb : b &&& 0xfff#64 = 0#64),
-      (((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr dropOptProtoInnerStateName + 68#64) &&& 0xfffffffffffff000#64) =
-      b + bv% (page% ((ls_off% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>") + 68)) := fnAddr_adrp_4c118
-  ls_code_fetches libsignalSessionCode spqrDropTopBin b (Rust.withPanics ext) "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>"
-  dsimp only [dropProgAtExt, dropOptProtoInnerStateName, optProtoInnerStateAt, protoInnerStateAt, optProtoInnerStateJumpTableAt, optProtoInnerStateJumpTableBytes, optProtoInnerStateSize, BitVec.ofNat_eq_ofNat] at hcallee hadrp ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" = entry
-  examples_hide_fetches; wp_init a s0; have hadrp' := hadrp h
-  opt_proto_tail48_steps 0x8000000000000005#64 96 120 104#64 st
-
-theorem drop_opt_proto_inner_state_headerReceived {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) (st : V1State.Chunked.HeaderReceived) :
-    subroutine_ok (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName)
-      (dropOptProtoInnerStateVariantSpec A b (some (.headerReceived st))) := by
-  simp only [dropOptProtoInnerStateVariantSpec]
-  have hcallee : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderReceived>"))
-      (dropProtoChunkedHeaderReceivedSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderReceived>")) (b := b) (X := Rust.withPanics ext)
-      dropOptProtoInnerState_fnOff (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderReceived>") (by decide))
-    (drop_proto_chunked_header_received_ok_ext hdealloc)
-  have hadrp : ∀ (hb : b &&& 0xfff#64 = 0#64),
-      (((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr dropOptProtoInnerStateName + 68#64) &&& 0xfffffffffffff000#64) =
-      b + bv% (page% ((ls_off% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>") + 68)) := fnAddr_adrp_4c118
-  ls_code_fetches libsignalSessionCode spqrDropTopBin b (Rust.withPanics ext) "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>"
-  dsimp only [dropProgAtExt, dropOptProtoInnerStateName, optProtoInnerStateAt, protoInnerStateAt, optProtoInnerStateJumpTableAt, optProtoInnerStateJumpTableBytes, optProtoInnerStateSize, BitVec.ofNat_eq_ofNat] at hcallee hadrp ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" = entry
-  examples_hide_fetches; wp_init a s0; have hadrp' := hadrp h
-  opt_proto_tail48_steps 0x8000000000000006#64 120 96 128#64 st
 
 section PlacedSimpleVariants
 variable [LibsignalPlacement] {A : RustAlloc} {H : String → Option (State → State)}
@@ -707,14 +557,14 @@ theorem stackAt_sub48_split_32 (sp : BitVec 64) :
   have hsub : (sp - 48#64) - 4144#64 = sp - 4192#64 := by bv_omega
   rw [hsub]
 
-def optProtoInnerStateJumpTableExpanded (b : BitVec 64) : SepProp :=
-  ((b + bv% (ls_bytes% "220036000561663b870a")) ↦₈ᵣ 34#8) ∗ ((b + bv% ((ls_bytes% "220036000561663b870a") + 1)) ↦₈ᵣ 0#8) ∗
-  ((b + bv% ((ls_bytes% "220036000561663b870a") + 2)) ↦₈ᵣ 54#8) ∗ ((b + bv% ((ls_bytes% "220036000561663b870a") + 3)) ↦₈ᵣ 0#8) ∗
-  ((b + bv% ((ls_bytes% "220036000561663b870a") + 4)) ↦₈ᵣ 5#8) ∗ ((b + bv% ((ls_bytes% "220036000561663b870a") + 5)) ↦₈ᵣ 97#8) ∗
-  ((b + bv% ((ls_bytes% "220036000561663b870a") + 6)) ↦₈ᵣ 102#8) ∗ ((b + bv% ((ls_bytes% "220036000561663b870a") + 7)) ↦₈ᵣ 59#8) ∗
-  ((b + bv% ((ls_bytes% "220036000561663b870a") + 8)) ↦₈ᵣ 135#8) ∗ ((b + bv% ((ls_bytes% "220036000561663b870a") + 9)) ↦₈ᵣ 10#8)
+@[expose] def optProtoInnerStateJumpTableExpanded (b : BitVec 64) : SepProp :=
+  ((b + bv% 659800) ↦₈ᵣ 34#8) ∗ ((b + bv% (659800 + 1)) ↦₈ᵣ 0#8) ∗
+  ((b + bv% (659800 + 2)) ↦₈ᵣ 54#8) ∗ ((b + bv% (659800 + 3)) ↦₈ᵣ 0#8) ∗
+  ((b + bv% (659800 + 4)) ↦₈ᵣ 5#8) ∗ ((b + bv% (659800 + 5)) ↦₈ᵣ 97#8) ∗
+  ((b + bv% (659800 + 6)) ↦₈ᵣ 102#8) ∗ ((b + bv% (659800 + 7)) ↦₈ᵣ 59#8) ∗
+  ((b + bv% (659800 + 8)) ↦₈ᵣ 135#8) ∗ ((b + bv% (659800 + 9)) ↦₈ᵣ 10#8)
 
-def optProtoInnerStateJumpTablePlacedExpanded [LibsignalPlacement] : SepProp :=
+@[expose] def optProtoInnerStateJumpTablePlacedExpanded [LibsignalPlacement] : SepProp :=
   ((lsmpl.ρ optProtoInnerStateJumpTableSym) ↦₈ᵣ 34#8) ∗ ((lsmpl.ρ optProtoInnerStateJumpTableSym + 1#64) ↦₈ᵣ 0#8) ∗
   ((lsmpl.ρ optProtoInnerStateJumpTableSym + 2#64) ↦₈ᵣ 54#8) ∗ ((lsmpl.ρ optProtoInnerStateJumpTableSym + 3#64) ↦₈ᵣ 0#8) ∗
   ((lsmpl.ρ optProtoInnerStateJumpTableSym + 4#64) ↦₈ᵣ 5#8) ∗ ((lsmpl.ρ optProtoInnerStateJumpTableSym + 5#64) ↦₈ᵣ 97#8) ∗
@@ -789,39 +639,6 @@ local macro "opt_proto_ekReceivedCt1Sampled_steps " entry:term:max jtExp:term:ma
       refine SepWP.focus_weaken hjoin224 (by sep_focus) ?_
       wp_done))
 
-theorem drop_opt_proto_inner_state_ekReceivedCt1Sampled {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext)
-    (st : V1State.Chunked.EkReceivedCt1Sampled) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName)
-      (dropOptProtoInnerStateVariantSpec A b (some (.ekReceivedCt1Sampled st))) := by
-  simp only [dropOptProtoInnerStateVariantSpec]
-  have hct1_sent : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1SentEkReceived>"))
-      (dropProtoUnchunkedCt1SentEkReceivedSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1SentEkReceived>")) (b := b) (X := Rust.withPanics ext)
-      dropOptProtoInnerState_fnOff (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1SentEkReceived>") (by decide))
-    (drop_proto_unchunked_ct1_sent_ek_received_ok_ext hdealloc)
-  have hpoly_enc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>"))
-      (dropProtoPolyEncoderSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>")) (b := b) (X := Rust.withPanics ext)
-      dropOptProtoInnerState_fnOff (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>") (by decide))
-    (drop_glue_proto_poly_encoder_ok_ext hdealloc)
-  have hadrp : ∀ (hb : b &&& 0xfff#64 = 0#64),
-      (((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr dropOptProtoInnerStateName + 68#64) &&&
-        0xfffffffffffff000#64) = b + bv% (page% ((ls_off% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>") + 68)) := fnAddr_adrp_4c118
-  ls_code_fetches libsignalSessionCode spqrDropTopBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>"
-  dsimp only [dropProgAtExt, dropOptProtoInnerStateName, optProtoInnerStateAt,
-    protoInnerStateAt, protoChunkedEkReceivedCt1SampledAt,
-    optProtoInnerStateJumpTableAt, optProtoInnerStateJumpTableBytes,
-    optProtoInnerStateSize, BitVec.ofNat_eq_ofNat] at hct1_sent hpoly_enc hadrp ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" = entry
-  examples_hide_fetches; wp_init a s0; have hadrp' := hadrp h
-  opt_proto_ekReceivedCt1Sampled_steps entry (optProtoInnerStateJumpTableExpanded b)
-
 theorem drop_opt_proto_inner_state_ekReceivedCt1Sampled_placed [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}
     (hct1_sent : subroutine_ok ((blkPC_267).rebase (blkPl_267).base H) (lsmpl.base 286) (dropProtoUnchunkedCt1SentEkReceivedSpec A))
@@ -836,7 +653,7 @@ theorem drop_opt_proto_inner_state_ekReceivedCt1Sampled_placed [LibsignalPlaceme
   wp_init a s0
   opt_proto_ekReceivedCt1Sampled_steps (blkPl_267).base optProtoInnerStateJumpTablePlacedExpanded
 
-def auth8HeadersAt (a : BitVec 64) (ga : TwoVecGhost) : SepProp :=
+@[expose] def auth8HeadersAt (a : BitVec 64) (ga : TwoVecGhost) : SepProp :=
   ((a + 8#64) ↦₆₄ ga.v1.cap) ∗ ((a + 16#64) ↦₆₄ ga.v1.ptr) ∗ memRegion (a + 24#64) 8 ∗
   ((a + 32#64) ↦₆₄ ga.v2.cap) ∗ ((a + 40#64) ↦₆₄ ga.v2.ptr) ∗ memRegion (a + 48#64) 8
 
@@ -870,7 +687,7 @@ theorem optProtoAuthenticatorAt_8_none_entails_memRegion_56 (A : RustAlloc) (a :
     (b' := (a + 8#64) + 48#64) rfl rfl (by decide)]
   exact sepConj_mono (optProtoAuthenticatorAt_none_entails_memRegion_48 A (a + 8#64)) (pointsTo64_entails_memRegion _ _)
 
-def auth64HeadersAt (a : BitVec 64) (ga : TwoVecGhost) : SepProp :=
+@[expose] def auth64HeadersAt (a : BitVec 64) (ga : TwoVecGhost) : SepProp :=
   ((a + 64#64) ↦₆₄ ga.v1.cap) ∗ ((a + 72#64) ↦₆₄ ga.v1.ptr) ∗ memRegion (a + 80#64) 8 ∗
   ((a + 88#64) ↦₆₄ ga.v2.cap) ∗ ((a + 96#64) ↦₆₄ ga.v2.ptr) ∗ memRegion (a + 104#64) 8
 
@@ -975,32 +792,6 @@ local macro "opt_proto_keysUnsampled_steps " entry:term:max jtExp:term:max : tac
           refine SepWP.focus_weaken (Entails.of_eq (stackAt_dropStack96_split_bottom s0.sp)) (by sep_focus) ?_
           wp_call hdealloc_raw (ga.v2.ptr, ga.v2.cap.toNat, 1)
           refine SepWP.focus_weaken (Entails.of_eq (stackAt_dropStack96_split_bottom s0.sp).symm) (by sep_focus) ?_; wp_done))
-
-theorem drop_opt_proto_inner_state_keysUnsampled {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext)
-    (st : V1State.Chunked.KeysUnsampled) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName)
-      (dropOptProtoInnerStateVariantSpec A b (some (.keysUnsampled st))) := by
-  simp only [dropOptProtoInnerStateVariantSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "__rustc::__rust_dealloc")) (b := b) (X := Rust.withPanics ext)
-      dropOptProtoInnerState_fnOff (ls_stub% "__rustc::__rust_dealloc") (by decide)) hdealloc
-  simp only [rustDeallocSpec] at hdealloc_raw
-  have hadrp : ∀ (hb : b &&& 0xfff#64 = 0#64),
-      (((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr dropOptProtoInnerStateName + 68#64) &&&
-        0xfffffffffffff000#64) = b + bv% (page% ((ls_off% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>") + 68)) := fnAddr_adrp_4c118
-  ls_code_fetches libsignalSessionCode spqrDropTopBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>"
-  dsimp only [dropProgAtExt, dropOptProtoInnerStateName, optProtoInnerStateAt,
-    protoInnerStateAt, protoChunkedKeysUnsampledAt, optProtoInnerStateJumpTableAt,
-    optProtoInnerStateJumpTableBytes, optProtoInnerStateSize, BitVec.ofNat_eq_ofNat] at hdealloc_raw hadrp ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" = entry
-  examples_hide_fetches; wp_init a s0; have hadrp' := hadrp h
-  opt_proto_keysUnsampled_steps entry (optProtoInnerStateJumpTableExpanded b)
 
 theorem drop_opt_proto_inner_state_keysUnsampled_placed [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}
@@ -1120,35 +911,6 @@ local macro "opt_proto_ct2Sampled_steps " entry:term:max jtExp:term:max : tactic
       refine SepWP.focus_weaken hjoin112 (by sep_focus) ?_
       refine SepWP.focus_weaken hjoin224 (by sep_focus) ?_
       wp_done))
-
-theorem drop_opt_proto_inner_state_ct2Sampled {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext)
-    (st : V1State.Chunked.Ct2Sampled) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName)
-      (dropOptProtoInnerStateVariantSpec A b (some (.ct2Sampled st))) := by
-  simp only [dropOptProtoInnerStateVariantSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "__rustc::__rust_dealloc")) (b := b) (X := Rust.withPanics ext)
-      dropOptProtoInnerState_fnOff (ls_stub% "__rustc::__rust_dealloc") (by decide)) hdealloc
-  simp only [rustDeallocSpec] at hdealloc_raw
-  have hpoly_enc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>"))
-      (dropProtoPolyEncoderSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>")) (b := b) (X := Rust.withPanics ext)
-      dropOptProtoInnerState_fnOff (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>") (by decide))
-    (drop_glue_proto_poly_encoder_ok_ext hdealloc)
-  ls_code_fetches libsignalSessionCode spqrDropTopBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>"
-  dsimp only [dropProgAtExt, dropOptProtoInnerStateName, optProtoInnerStateAt,
-    protoInnerStateAt, protoChunkedCt2SampledAt, optProtoInnerStateJumpTableAt,
-    optProtoInnerStateJumpTableBytes, optProtoInnerStateSize, BitVec.ofNat_eq_ofNat] at hdealloc_raw hpoly_enc ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" = entry
-  examples_hide_fetches; wp_init a s0
-  opt_proto_ct2Sampled_steps entry (optProtoInnerStateJumpTableExpanded b)
 
 theorem drop_opt_proto_inner_state_ct2Sampled_placed [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}

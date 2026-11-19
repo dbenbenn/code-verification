@@ -21,7 +21,7 @@ Exports Bhargavan et al.'s Theorems 7-9 (`alice_initiator_secrecy`, `bob_respond
 `hndl_resistance`) from them for `Symbolic.Theorems.Composed.ComposedHandshake`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

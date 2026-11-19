@@ -9,28 +9,40 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.RealCliDecPkLinked
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
-public import LibsignalBinary.Proofs.PeakBudget.WireFieldDomainCaps
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2ProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.TopPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Encrypt
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInnerPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollXPlacedBudget
+import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
+public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.RealCliDecPkLinked -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
+import LibsignalBinary.Proofs.PeakBudget.WireFieldDomainCaps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cProofPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2ProofPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aProofPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bProofPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.TopPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Encrypt
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInnerPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollXPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.V1.SpqrV1FactsPure
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.PanicAndWire
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Binary-Kit Store-Kit Lift and Per-Arm Callee Slot Bridges
@@ -43,14 +55,14 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas
    `mkBinaryKitRealCalleeEnvs img S X W g`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemSlots
 
-open Arm64 Arm64.Obj ProofLib
+open Arm64 ProofLib
 open Arm64.Process (bytesOfString)
 open CryptoGames.LibsignalSession
   (IdentityKey Mut OutgoingTripleRatchet PublicKey ShaCompress SignalMessage SignalProtocolError
@@ -200,7 +212,7 @@ private theorem seqEnv_mono {P₁ P₂ Q₁ Q₂ : List AllocEvent → Prop}
 /-- Budget-threaded canonical `SessionRecord::serialize` contract (`lsProg_52`) at `serializeStackX`
 with spare-capacity `RecordSerializeSeqFreeEnv x.g x.r` (definitionally equal to
 `SerializeSeqFreeXBudget.serializeCanonSeqFreeSpecX`). -/
-def serializeCanonSeqFreeSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def serializeCanonSeqFreeSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SerializeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.out ∧ CanonRecord x.g x.r ∧
@@ -1034,7 +1046,7 @@ private theorem encDef_some_out_bounds (P : PEParams) (F : FsFiles)
 
 /-- Binary-kit `W3` (`init`) slot envelope (`InitGhost → List AllocEvent → Prop`,
 `RecordAliceInitiatedAnyCkBounds`). -/
-def realCliInitBinarySlotEnv (W : CliHooks) (x : InitGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def realCliInitBinarySlotEnv (W : CliHooks) (x : InitGhost) (evs : List AllocEvent) : Prop :=
   ∃ w : W3BinaryInitParams,
     w.x = x ∧ w.F = W.C.F ∧
     w.x_spqr.p.authKey.length ≤ 32 ∧
@@ -1101,7 +1113,7 @@ theorem realCliDecPkBinaryWideSlotEnv_ghost_congr [LibsignalPlacement]
 
 /-- Canonical-outer split `PksmGhost` envelope: `PksmCanonSliceEnv x.bytes` on canonical outer
 `PreKeyMessageFields` slices (`∃ m, x.bytes = m.bytes`), and `FallbackEnv x` otherwise. -/
-def CanonicalOrFallbackPksmEnv
+@[expose] def CanonicalOrFallbackPksmEnv
     (FallbackEnv : PksmGhost → List AllocEvent → Prop)
     (x : PksmGhost) (evs : List AllocEvent) : Prop :=
   ((∃ m : PreKeyMessageFields, x.bytes = m.bytes) ∧ PksmCanonSliceEnv x.bytes evs) ∨
@@ -1112,7 +1124,7 @@ def CanonicalOrFallbackPksmEnv
 canonical outer `PreKeyMessageFields`. -/
 theorem pksmCanonicalGuard_sub_binaryKit [LibsignalPlacement]
     {PksmTryFromEnv : PksmGhost → List AllocEvent → Prop}
-    (img : Arm64.Obj.Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    {Img : Type} (img : Img) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) (peerV : AddrV) (rest : List (BitVec 8))
     (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c)
@@ -1131,7 +1143,7 @@ theorem pksmCanonicalGuard_sub_binaryKit [LibsignalPlacement]
 `(mkBinaryKitRealCalleeEnvs img S X W g).pksmEnv` under `CliPqxdhInputs ⟨W.C, W.Q⟩ g.i`. -/
 theorem pksmCanonicalOrFallback_sub_binaryKit [LibsignalPlacement]
     {FallbackEnv : PksmGhost → List AllocEvent → Prop}
-    (img : Arm64.Obj.Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    {Img : Type} (img : Img) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) (peerV : AddrV) (rest : List (BitVec 8))
     (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c)
@@ -1148,7 +1160,7 @@ theorem pksmCanonicalOrFallback_sub_binaryKit [LibsignalPlacement]
 `(mkBinaryKitRealCalleeEnvs img S X W g).pksmEnv` on canonical `PreKeyMessageFields` under
 `CliPqxdhInputs ⟨W.C, W.Q⟩ g.i`. -/
 theorem pksmPreKeyTryFrom_sub_binaryKit [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    {Img : Type} (img : Img) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) (peerV : AddrV) (rest : List (BitVec 8))
     (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c)
@@ -1165,7 +1177,7 @@ theorem pksmPreKeyTryFrom_sub_binaryKit [LibsignalPlacement]
 
 /-- `PksmCanonSliceEnv` containment into `(mkBinaryKitRealCalleeEnvs img S X W g).pksmEnv`. -/
 theorem pksmCanonSlice_sub_binaryKit [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    {Img : Type} (img : Img) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) (rest : List (BitVec 8)) {evs : List AllocEvent}
     (hevs : PksmCanonSliceEnv rest evs) :
     (mkBinaryKitRealCalleeEnvs img S X W g).pksmEnv rest evs :=
@@ -1173,7 +1185,7 @@ theorem pksmCanonSlice_sub_binaryKit [LibsignalPlacement]
 
 /-- `W3` (`init`) containment into `(mkBinaryKitRealCalleeEnvs img S X W g).initEnv`. -/
 theorem w3_realCliInitBinarySlotEnv_sub_binaryKit [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    {Img : Type} (img : Img) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) (peerV : AddrV) (dir : List (BitVec 8)) (d2 : Init2Data)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c)
     (hc : g.c = .init peerV dir)
@@ -1205,7 +1217,7 @@ theorem w3_realCliInitBinarySlotEnv_sub_binaryKit [LibsignalPlacement]
 
 /-- `W1` (`send`) containment into `(mkBinaryKitRealCalleeEnvs img S X W g).encEnv`. -/
 theorem w1_cliEncryptSlotEnv_sub_binaryKit [LibsignalPlacement] {M : AllocCostModel}
-    (img : Arm64.Obj.Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    {Img : Type} (img : Img) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     (g : RunCall) (meG : AddrGhost) (peerV : AddrV)
     (hin : (inputOf g.i g.c).length ≤ stdinCapBytes)
@@ -1259,7 +1271,7 @@ theorem w1_send_outPk_serialized_le_sessionCapBytes
 
 /-- `W2` (`recv` whisper) containment into `(mkBinaryKitRealCalleeEnvs img S X W g).decSigEnv`. -/
 theorem w2_cliDecryptSignalSlotEnv_sub_binaryKit [LibsignalPlacement] {M : AllocCostModel}
-    (img : Arm64.Obj.Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    {Img : Type} (img : Img) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     (g : RunCall) (meG : AddrGhost) (peerV : AddrV) (rest : List (BitVec 8)) (m : SignalMessage)
     (hin : (inputOf g.i g.c).length ≤ stdinCapBytes)
@@ -1292,7 +1304,7 @@ theorem w2_cliDecryptSignalSlotEnv_sub_binaryKit [LibsignalPlacement] {M : Alloc
 
 /-- `W4` (`recv-prekey`) containment into `(mkBinaryKitRealCalleeEnvs img S X W g).decPkEnv`. -/
 theorem w4_realCliDecPkBinaryWideSlotEnv_sub_binaryKit [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    {Img : Type} (img : Img) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) (meV : AddrV) (peerV : AddrV)
     (rest : List (BitVec 8)) (pm : PreKeySignalMessage)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c)

@@ -10,10 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBase
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MessageEncodeCodeSym
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MessageEncodeCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
 import ProofLib.SepLogic.WPp
@@ -25,7 +24,7 @@ Provides relocatable `[LibsignalPlacement]` basic-block steppers shared between
 `ChainParams::encode [local#1]` (`Block 150`) and `[local#2]` (`Block 313`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageEncode
 
@@ -68,8 +67,8 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
     BitVec.zeroExtend 64 (w ||| 1#32) = BitVec.zeroExtend 64 w ||| 1#64 := by bv_bits
 
 
-def IsChainParamsEncodeEntryProg (prog : Program) (entry : BitVec 64) : Prop :=
-  (∃ b ext, prog = tripleRatchetProgAtExt b ext ∧ IsChainParamsEncodeEntry b ext entry) ∨
+@[expose] def IsChainParamsEncodeEntryProg (prog : Program) (entry : BitVec 64) : Prop :=
+  False ∨
   (∃ (inst : LibsignalPlacement) (H : String → Option (State → State)),
     prog = lsProg_150 H ∧ entry = (@blkPl_150 inst).base) ∨
   (∃ (inst : LibsignalPlacement) (H : String → Option (State → State)),
@@ -78,49 +77,35 @@ def IsChainParamsEncodeEntryProg (prog : Program) (entry : BitVec 64) : Prop :=
 
 theorem chainParamsEncodeProg_fetch_entry {prog : Program} {entry : BitVec 64}
     (hfn : IsChainParamsEncodeEntryProg prog entry) {ins : Instr}
-    (h_ext : ∀ b ext, IsChainParamsEncodeEntry b ext entry →
-      (tripleRatchetProgAtExt b ext).fetch entry = some ins)
     (h_179 : ∀ [LibsignalPlacement] H,
       (lsProg_150 H).fetch ((blkPl_150).base + 0#64) = some ins)
     (h_363 : ∀ [LibsignalPlacement] H,
       (lsProg_313 H).fetch ((blkPl_313).base + 0#64) = some ins) :
     prog.fetch entry = some ins := by
-  rcases hfn with ⟨b, ext, rfl, h⟩ | ⟨inst, H, rfl, rfl⟩ | ⟨inst, H, rfl, rfl⟩
-  · exact h_ext b ext h
+  rcases hfn with h | ⟨inst, H, rfl, rfl⟩ | ⟨inst, H, rfl, rfl⟩
+  · nomatch h
   · simpa using @h_179 inst H
   · simpa using @h_363 inst H
 
 theorem chainParamsEncodeProg_fetch_add {prog : Program} {entry : BitVec 64}
     (hfn : IsChainParamsEncodeEntryProg prog entry) {k : Nat} {ins : Instr}
-    (h_ext : ∀ b ext, IsChainParamsEncodeEntry b ext entry →
-      (tripleRatchetProgAtExt b ext).fetch (entry + BitVec.ofNat 64 k) = some ins)
     (h_179 : ∀ [LibsignalPlacement] H,
       (lsProg_150 H).fetch ((blkPl_150).base + BitVec.ofNat 64 k) = some ins)
     (h_363 : ∀ [LibsignalPlacement] H,
       (lsProg_313 H).fetch ((blkPl_313).base + BitVec.ofNat 64 k) = some ins) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some ins := by
-  rcases hfn with ⟨b, ext, rfl, h⟩ | ⟨inst, H, rfl, rfl⟩ | ⟨inst, H, rfl, rfl⟩
-  · exact h_ext b ext h
+  rcases hfn with h | ⟨inst, H, rfl, rfl⟩ | ⟨inst, H, rfl, rfl⟩
+  · nomatch h
   · exact @h_179 inst H
   · exact @h_363 inst H
 
 open Lean Elab Tactic in
 elab "chainParams_fetches_range_placed " _entry:term:max hfn:ident
     kStart:num kEnd:num : tactic => do
-  let off1 := 0x37278
-  let off2 := 0x4cd78
   let kStart := kStart.getNat
   let kEnd := kEnd.getNat
-  let fetchEntry := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  let fnOff1 := mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x37278
-  let fnOff2 := mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x4cd78
   for i in [kStart / 4 : kEnd / 4] do
     let k := 4 * i
-    let dec1 := mkIdent (`CryptoVerification.SpqrV1.Prost.MessageEncode |>.str
-      s!"libsignalSessionBin_decode_0x{String.ofList (Nat.toDigits 16 (off1 + k))}")
-    let dec2 := mkIdent (`CryptoVerification.SpqrV1.Prost.MessageEncode |>.str
-      s!"libsignalSessionBin_decode_0x{String.ofList (Nat.toDigits 16 (off2 + k))}")
     let kHex := String.ofList (Nat.toDigits 16 k)
     let p179 := mkIdent (`CryptoVerification |>.str s!"blkPC_150_rebase_fetch_0x{kHex}")
     let p363 := mkIdent (`CryptoVerification |>.str s!"blkPC_313_rebase_fetch_0x{kHex}")
@@ -128,17 +113,11 @@ elab "chainParams_fetches_range_placed " _entry:term:max hfn:ident
     if k == 0 then
       evalTactic (← `(tactic|
         have := chainParamsEncodeProg_fetch_entry $hfn
-          (fun b ext h => chainParamsEncode_fetch_entry h
-            ($fetchEntry (b := b) (H := Rust.withPanics ext) $fnOff1 (by decide) $dec1)
-            ($fetchEntry (b := b) (H := Rust.withPanics ext) $fnOff2 (by decide) $dec2))
           (fun [LibsignalPlacement] H => $p179 _ H)
           (fun [LibsignalPlacement] H => $p363 _ H)))
     else
       evalTactic (← `(tactic|
         have := chainParamsEncodeProg_fetch_add $hfn (k := $kq)
-          (fun b ext h => chainParamsEncode_fetch_add h (k := $kq)
-            ($fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff1 (by decide) $dec1)
-            ($fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff2 (by decide) $dec2))
           (fun [LibsignalPlacement] H => $p179 _ H)
           (fun [LibsignalPlacement] H => $p363 _ H)))
 
@@ -452,7 +431,7 @@ theorem step_chainParams_epilogue_placed {prog : Program} {resStack : Nat} (hres
       sf.sp = sp →
       sf.trace = s0.trace →
       CalleeSavedPreserved s0 sf →
-      StepInv s0 sf →
+      StepInvPlaced s0 sf →
       Q sf (stackAt sp (msgEnc48VarintStackOf resStack) ∗ F)) :
     SepWPp prog (s0.readReg64 .lr) s P Q
       (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ msgEncOnPanic s0 sf ∗ R)) := by
@@ -471,7 +450,7 @@ theorem step_chainParams_epilogue_placed {prog : Program} {resStack : Nat} (hres
       (hnext _
         (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
         (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        (by epochEncLen_cc_close) (hinv0.trans hinv1).1))
+        (by epochEncLen_cc_close) (hinv0.trans hinv1)))
   exact sepConj_mono_left
     (stackAt_msgEnc48_varint_recombine hres sp (s0.readReg64 .fp) (s0.readReg64 .lr)
       (s0.readReg64 .x21) sv3 (s0.readReg64 .x20) (s0.readReg64 .x19))

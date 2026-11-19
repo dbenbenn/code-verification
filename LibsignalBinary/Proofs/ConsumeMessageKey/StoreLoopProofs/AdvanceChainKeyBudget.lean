@@ -9,15 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.AdvanceChainKey
-public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DefsBudget
-import LibsignalBinary.Proofs.Common.SharedHelpers
-meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.AdvanceChainKey
+public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DeriveSeed
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import ProofLib.Sep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+
+section AdvanceChainKeyBudgetSepHelpers
+
+set_option autoImplicit false
+
+open Arm64 ProofLib
+
+@[sep_footprint]
+theorem stackAt_footprint (sp : BitVec 64) (n : Nat) :
+    ProofLib.Sep.HasFootprint (stackAt sp n) true (sp - BitVec.ofNat 64 n) n := by
+  unfold stackAt; infer_instance
+
+end AdvanceChainKeyBudgetSepHelpers
 
 /-!
 # Budget-Threaded `AdvanceChainKey` Sub-Segment (Block 24)
@@ -26,7 +38,7 @@ Proves `AdvanceChainKeyPlacedSpec` and `AdvanceChainKeyPlacedRoSpec` under `Rust
 and `SeamBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -54,8 +66,7 @@ open CryptoVerification.LibsignalSession (
 open CryptoVerification.LibsignalSession.StoreLoop (
   add_one_ne_zero_of_lt chainKeyBytes_pointsTo hmacWith_length
   keyToBytes32_bytesToKey32 keyToBytes32_length memRegion_32_eq_exists_words
-  memRegion_one_eq_exists_pointsTo8 pack64 pointsTo64_4_entails_memRegion_32
-  pointsTo8_eq_pointsToBytes_singleton pointsToBytes_32_eq_pointsTo64
+  pack64 pointsTo8_eq_pointsToBytes_singleton pointsToBytes_32_eq_pointsTo64
 )
 open LibsignalBinary.Heap (
   AllocCostModel BudgetLimits RustCliAllocBudget VmPreserved
@@ -78,16 +89,7 @@ private theorem ratchetAt_atState {M : AllocCostModel} (A : RustCliAllocBudget M
 private theorem stackAt_7712_split_2048 (sp0 : BitVec 64) :
     stackAt (sp0 - 480#64) 7712 =
       memRegion (sp0 - 8192#64) 5664 ∗ stackAt (sp0 - 480#64) 2048 := by
-  simp only [stackAt]
-  have h := memRegion_split (sp0 - 8192#64) 5664 2048 (by decide)
-  have a1 : sp0 - 480#64 - 7712#64 = sp0 - 8192#64 := by bv_omega
-  have a2 : sp0 - 8192#64 + 5664#64 = sp0 - 480#64 - 2048#64 := by bv_omega
-  change memRegion (sp0 - 8192#64) 7712 =
-    memRegion (sp0 - 8192#64) 5664 ∗ memRegion (sp0 - 8192#64 + 5664#64) 2048 at h
-  rw [a2] at h
-  change memRegion (sp0 - 480#64 - 7712#64) 7712 = _
-  rw [a1]
-  exact h
+  dsimp only [stackAt]; sep_interval_eq
 
 private theorem memRegion_256_advanceChainKey_split (sp0 : BitVec 64) :
     memRegion (sp0 - 352#64) 256 =
@@ -98,23 +100,9 @@ private theorem memRegion_256_advanceChainKey_split (sp0 : BitVec 64) :
         (memRegion (sp0 - 352#64) 32 ∗
          memRegion (sp0 - 288#64) 64 ∗
          memRegion (sp0 - 192#64) 96) := by
-  rw [show (256 : Nat) = 32 + (1 + (31 + (64 + (32 + 96)))) from rfl,
-      memRegion_split (sp0 - 352#64) 32 224 (by decide),
-      memRegion_split (sp0 - 352#64 + 32#64) 1 223 (by decide),
-      memRegion_split (sp0 - 352#64 + 32#64 + 1#64) 31 192 (by decide),
-      memRegion_split (sp0 - 352#64 + 32#64 + 1#64 + 31#64) 64 128 (by decide),
-      memRegion_split (sp0 - 352#64 + 32#64 + 1#64 + 31#64 + 64#64) 32 96 (by decide)]
-  have ha1 : sp0 - 352#64 + 32#64 = sp0 - 320#64 := by bv_omega
-  have ha2 : sp0 - 320#64 + 1#64 = sp0 - 319#64 := by bv_omega
-  have ha3 : sp0 - 319#64 + 31#64 = sp0 - 288#64 := by bv_omega
-  have ha4 : sp0 - 288#64 + 64#64 = sp0 - 224#64 := by bv_omega
-  have ha5 : sp0 - 224#64 + 32#64 = sp0 - 192#64 := by bv_omega
-  rw [ha1, ha2, ha3, ha4, ha5, memRegion_one_eq_exists_pointsTo8 (sp0 - 320#64)]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  apply congrArg SepProp.sepExists; funext b320
-  sep_ac_rfl
+  sep_interval_eq
 
-private def advanceChainKeyFrame (A : RustAlloc) (img : Obj.Image) (x : ConsumeMessageKeyGhost)
+private def advanceChainKeyFrame [LibsignalPlacement] (A : RustAlloc) (img : Unit) (x : ConsumeMessageKeyGhost)
     (G' : RatchetGhost) (st' : RatchetState) (s0 : State) : SepProp :=
   ratchetAt A x.self G' st' ∗
   (x.theirA ↦ₛ x.their.bytes.toList) ∗
@@ -130,7 +118,7 @@ private def advanceChainKeyFrame (A : RustAlloc) (img : Obj.Image) (x : ConsumeM
   cmkSavedRegs s0.sp s0 ∗
   A.pool
 
-private theorem cmkLoopHeap_advanceChainKey_split (A : RustAlloc) (img : Obj.Image)
+private theorem cmkLoopHeap_advanceChainKey_split [LibsignalPlacement] (A : RustAlloc) (img : Unit)
     (x : ConsumeMessageKeyGhost) (G' : RatchetGhost) (st' : RatchetState)
     (ckc : ChainKey) (s0 : State) :
     cmkLoopHeap A img x G' st' ckc s0 =
@@ -149,11 +137,13 @@ private theorem cmkLoopHeap_advanceChainKey_split (A : RustAlloc) (img : Obj.Ima
       memRegion_256_advanceChainKey_split s0.sp]
   simp only [sepExists_sepConj_left, sepExists_sepConj_right]
   apply congrArg SepProp.sepExists; funext b320
-  sep_ac_rfl
+  generalize hrat : ratchetAt A x.self G' st' = vRat
+  generalize hsr : cmkSavedRegs s0.sp s0 = vSr
+  exact Entails.antisymm (by bi_entail) (by bi_entail)
 
-private theorem advanceChainKeyPost_entails_cmkLoopHeap
+private theorem advanceChainKeyPost_entails_cmkLoopHeap [LibsignalPlacement]
     (F : ShaState → List (BitVec 8) → ShaState)
-    (A : RustAlloc) (img : Obj.Image) (x : ConsumeMessageKeyGhost)
+    (A : RustAlloc) (img : Unit) (x : ConsumeMessageKeyGhost)
     (G' : RatchetGhost) (st' : RatchetState) (ckc : ChainKey)
     (q0_lo q0_hi q1_lo q1_hi : BitVec 64)
     (hq0_lo : q0_lo = pack64 ((hmacWith F (keyToBytes32 ckc.key) [2#8]).take 8))
@@ -195,88 +185,25 @@ private theorem advanceChainKeyPost_entails_cmkLoopHeap
        ((x.ckA + 32#64) ↦₃₂ (ckc.index + 1#32))) =
       (x.ckA ↦ₛ chainKeyBytes (chainStepN F 1 ckc)) := by
     rw [chainKeyBytes_pointsTo x.ckA (chainStepN F 1 ckc), hck'_key, hck'_idx, ← hckA_words]
-    sep_ac_rfl
-  have h224 := pointsTo64_4_entails_memRegion_32 (s0.sp - 224#64) q0_lo q0_hi q1_lo q1_hi
-  have h320 := pointsTo64_4_entails_memRegion_32 (s0.sp - 320#64) q0_lo q0_hi q1_lo q1_hi
-  have ha216 : s0.sp - 224#64 + 8#64 = s0.sp - 216#64 := by bv_omega
-  have ha208 : s0.sp - 224#64 + 16#64 = s0.sp - 208#64 := by bv_omega
-  have ha200 : s0.sp - 224#64 + 24#64 = s0.sp - 200#64 := by bv_omega
-  have ha312 : s0.sp - 320#64 + 8#64 = s0.sp - 312#64 := by bv_omega
-  have ha304 : s0.sp - 320#64 + 16#64 = s0.sp - 304#64 := by bv_omega
-  have ha296 : s0.sp - 320#64 + 24#64 = s0.sp - 296#64 := by bv_omega
-  rw [ha216, ha208, ha200] at h224
-  rw [ha312, ha304, ha296] at h320
-  have h256 :
-      (memRegion (s0.sp - 352#64) 32 ∗
-       memRegion (s0.sp - 320#64) 32 ∗
-       memRegion (s0.sp - 288#64) 64 ∗
-       memRegion (s0.sp - 224#64) 32 ∗
-       memRegion (s0.sp - 192#64) 96) =
+    exact Entails.antisymm (by bi_entail) (by bi_entail)
+  have hstk_merge :
+      (((s0.sp - 224#64) ↦₆₄ q0_lo) ∗ ((s0.sp - 216#64) ↦₆₄ q0_hi) ∗
+       ((s0.sp - 208#64) ↦₆₄ q1_lo) ∗ ((s0.sp - 200#64) ↦₆₄ q1_hi) ∗
+       ((s0.sp - 320#64) ↦₆₄ q0_lo) ∗ ((s0.sp - 312#64) ↦₆₄ q0_hi) ∗
+       ((s0.sp - 304#64) ↦₆₄ q1_lo) ∗ ((s0.sp - 296#64) ↦₆₄ q1_hi) ∗
+       memRegion (s0.sp - 352#64) 32 ∗ memRegion (s0.sp - 288#64) 64 ∗
+       memRegion (s0.sp - 192#64) 96) ⊢
       memRegion (s0.sp - 352#64) 256 := by
-    have hb1 : s0.sp - 352#64 + 32#64 = s0.sp - 320#64 := by bv_omega
-    have hb2 : s0.sp - 320#64 + 32#64 = s0.sp - 288#64 := by bv_omega
-    have hb3 : s0.sp - 288#64 + 64#64 = s0.sp - 224#64 := by bv_omega
-    have hb4 : s0.sp - 224#64 + 32#64 = s0.sp - 192#64 := by bv_omega
-    rw [← hb4, ← memRegion_split (s0.sp - 224#64) 32 96 (by decide),
-        ← hb3, ← memRegion_split (s0.sp - 288#64) 64 128 (by decide),
-        ← hb2, ← memRegion_split (s0.sp - 320#64) 32 192 (by decide),
-        ← hb1, ← memRegion_split (s0.sp - 352#64) 32 224 (by decide)]
+    sep_interval
   unfold cmkLoopHeap cmkLoopFrame advanceChainKeyFrame
   rw [stackAt_7712_split_2048 s0.sp]
-  have hreord1 :
-      (((s0.sp - 224#64) ↦₆₄ q0_lo) ∗
-       ((s0.sp - 216#64) ↦₆₄ q0_hi) ∗
-       ((s0.sp - 208#64) ↦₆₄ q1_lo) ∗
-       ((s0.sp - 200#64) ↦₆₄ q1_hi) ∗
-       ((s0.sp - 356#64) ↦₃₂ x.counter) ∗
-       ((s0.sp - 320#64) ↦₆₄ q0_lo) ∗
-       ((s0.sp - 312#64) ↦₆₄ q0_hi) ∗
-       ((s0.sp - 304#64) ↦₆₄ q1_lo) ∗
-       ((s0.sp - 296#64) ↦₆₄ q1_hi) ∗
-       (x.ckA ↦₆₄ q0_lo) ∗
-       ((x.ckA + 8#64) ↦₆₄ q0_hi) ∗
-       ((x.ckA + 16#64) ↦₆₄ q1_lo) ∗
-       ((x.ckA + 24#64) ↦₆₄ q1_hi) ∗
-       ((x.ckA + 32#64) ↦₃₂ (ckc.index + 1#32)) ∗
-       stackAt (s0.sp - 480#64) 2048 ∗
-       (ratchetAt A x.self G' st' ∗
-        (x.theirA ↦ₛ x.their.bytes.toList) ∗
-        memRegion x.ret 88 ∗
-        (logFilterAddr img ↦₆₄ 0#64) ∗
-        memRegion (s0.sp - 8192#64) 5664 ∗
-        memRegion (s0.sp - 480#64) 112 ∗
-        ((s0.sp - 368#64) ↦₆₄ x.ret) ∗
-        memRegion (s0.sp - 360#64) 4 ∗
-        memRegion (s0.sp - 352#64) 32 ∗
-        memRegion (s0.sp - 288#64) 64 ∗
-        memRegion (s0.sp - 192#64) 96 ∗
-        cmkSavedRegs s0.sp s0 ∗
-        A.pool)) =
-      ((((s0.sp - 224#64) ↦₆₄ q0_lo) ∗ ((s0.sp - 216#64) ↦₆₄ q0_hi) ∗
-        ((s0.sp - 208#64) ↦₆₄ q1_lo) ∗ ((s0.sp - 200#64) ↦₆₄ q1_hi)) ∗
-       (((s0.sp - 320#64) ↦₆₄ q0_lo) ∗ ((s0.sp - 312#64) ↦₆₄ q0_hi) ∗
-        ((s0.sp - 304#64) ↦₆₄ q1_lo) ∗ ((s0.sp - 296#64) ↦₆₄ q1_hi)) ∗
-       ((x.ckA ↦₆₄ q0_lo) ∗ ((x.ckA + 8#64) ↦₆₄ q0_hi) ∗
-        ((x.ckA + 16#64) ↦₆₄ q1_lo) ∗ ((x.ckA + 24#64) ↦₆₄ q1_hi) ∗
-        ((x.ckA + 32#64) ↦₃₂ (ckc.index + 1#32))) ∗
-       (ratchetAt A x.self G' st' ∗
-        (x.theirA ↦ₛ x.their.bytes.toList) ∗
-        memRegion x.ret 88 ∗
-        (logFilterAddr img ↦₆₄ 0#64) ∗
-        (memRegion (s0.sp - 8192#64) 5664 ∗ stackAt (s0.sp - 480#64) 2048) ∗
-        memRegion (s0.sp - 480#64) 112 ∗
-        ((s0.sp - 368#64) ↦₆₄ x.ret) ∗
-        memRegion (s0.sp - 360#64) 4 ∗
-        ((s0.sp - 356#64) ↦₃₂ x.counter) ∗
-        memRegion (s0.sp - 352#64) 32 ∗
-        memRegion (s0.sp - 288#64) 64 ∗
-        memRegion (s0.sp - 192#64) 96 ∗
-        cmkSavedRegs s0.sp s0 ∗
-        A.pool)) := by sep_ac_rfl
-  rw [hreord1, hckA_full]
-  refine Entails.trans (sepConj_mono h224 (sepConj_mono_left h320)) ?_
-  rw [← h256]
-  exact Entails.of_eq (by sep_ac_rfl)
+  generalize hrat : ratchetAt A x.self G' st' = vRat
+  generalize hsr : cmkSavedRegs s0.sp s0 = vSr
+  refine' Entails.trans (Entails.trans ?_ (sepConj_mono_left (Entails.of_eq hckA_full))) ?_
+  · bi_frame
+  refine' Entails.trans (Entails.trans ?_ (sepConj_mono_left hstk_merge)) ?_
+  · bi_frame
+  · bi_entail
 
 private theorem cmkLoopHeap_placed_transport [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) {s1 s2 : State}
@@ -395,7 +322,7 @@ private theorem advanceChainKey_hmac_placed_wp [LibsignalPlacement]
   · intro R hm
     have hsp_sf0 : s.sp = s0.sp - 480#64 := hsp
     rw [hsp_sf0, pointsTo8_eq_pointsToBytes_singleton (s0.sp - 320#64) 2#8] at hm
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hm
+    bi_entail
   all_goals simp only [State.spAligned, wp_norm, arm64_norm, *]
 
 private theorem advanceChainKey_postHmac_placed_wp [LibsignalPlacement]
@@ -470,6 +397,7 @@ private theorem advanceChainKey_postHmac_placed_wp [LibsignalPlacement]
     then (blkPl_24).base + 820#64
     else (blkPl_24).base + 1244#64
   change SepWP ((blkPC_24).rebase (blkPl_24).base H) tgt s _ _
+  wp_disjoint _hdisj_ck_sp : DisjointRegions x.ckA 8 (s0.sp - 224#64) 8
   apply sepWP_seg_ls_vm
     (Q := (blkPC_24).rebase (blkPl_24).base (hooksException H))
     blkLib_eq_24 (mid := tgt)
@@ -482,7 +410,7 @@ private theorem advanceChainKey_postHmac_placed_wp [LibsignalPlacement]
     have hvm := _hnsp.toVmPreserved (by wp_norm_lhs)
     refine SepWP.done (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *])
       ⟨?_, hvm, ?_, ?_, ⟨?_, ?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-    · intro R hm; exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hm
+    · intro R hm; bi_entail
     all_goals simp only [State.spAligned, wp_norm, arm64_norm, *]
   · have hnlt' : ¬ (ckc.index + 1#32 < x.counter) := mt BitVec.ult_iff_lt.mpr hloop
     simp only [tgt, hnlt', ↓reduceIte]
@@ -491,7 +419,7 @@ private theorem advanceChainKey_postHmac_placed_wp [LibsignalPlacement]
     have hvm := _hnsp.toVmPreserved (by wp_norm_lhs)
     refine SepWP.done (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *])
       ⟨?_, hvm, ?_, ?_, ⟨?_, ?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-    · intro R hm; exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hm
+    · intro R hm; bi_entail
     all_goals simp only [State.spAligned, wp_norm, arm64_norm, *]
 
 private theorem advanceChainKey_placed_ok_of_hmac [LibsignalPlacement] {M : AllocCostModel}
@@ -543,29 +471,23 @@ private theorem advanceChainKey_placed_ok_of_hmac [LibsignalPlacement] {M : Allo
   swap; · exact (not_satisfies_false_sepConj hoom).elim
   have hmem1 := hpost1 R1 hm1
   rw [pointsTo8_eq_pointsToBytes_singleton (s0.sp - 320#64) 2#8] at hmem1
-  have hreord1 :
-      (((s0.sp - 320#64) ↦ₛ [2#8]) ∗ R1) =
-      ((memRegion (s0.sp - 224#64) 32 ∗
-        (x.ckA ↦ₛ keyToBytes32 ckc.key) ∗
-        ((s0.sp - 320#64) ↦ₛ [2#8]) ∗
-        stackAt (s0.sp - 480#64) 2048) ∗
-       (memRegion (s0.sp - 319#64) 31 ∗
-        ((s0.sp - 356#64) ↦₃₂ x.counter) ∗
-        ((x.ckA + 32#64) ↦₃₂ ckc.index) ∗
-        advanceChainKeyFrame A0 cmkDummyImg x G' st' s0 ∗ R)) := by
-    dsimp +zetaDelta only [R1]
-    sep_ac_rfl
-  rw [hreord1] at hmem1
   let R2 : SepProp :=
     memRegion (s0.sp - 319#64) 31 ∗
     ((s0.sp - 356#64) ↦₃₂ x.counter) ∗
     ((x.ckA + 32#64) ↦₃₂ ckc.index) ∗
     advanceChainKeyFrame A0 cmkDummyImg x G' st' s0 ∗ R
+  have hmem1' :
+      s1.mem ⊨
+        (memRegion (s0.sp - 224#64) 32 ∗
+         (x.ckA ↦ₛ keyToBytes32 ckc.key) ∗
+         ((s0.sp - 320#64) ↦ₛ [2#8]) ∗
+         stackAt (s0.sp - 480#64) 2048) ∗ R2 :=
+    Satisfies.of_eq hmem1 (by dsimp +zetaDelta only [R1, R2]; ac_rfl)
   have hinv1 : Inv s1.mem := hinv_kf _ _ hinv hsteps1.keepsFrozen
   have hL1 : ((blkPC_24).rebase (blkPl_24).base H).CodeLoaded s1.mem := hsteps1.codeLoaded hL
   rcases (advanceChainKey_hmac_placed_wp F H (xg := x) ckc s0 s1 (hhmac_at hinv1) hstat1 _hpc1 hsp1 hsp0_align
       hx0_1 hx1_1 hx2_1 hx3_1 hx4_1 hx19_1 hx21_1 hx22_1 hx23_1 hx27_1 hx29_1 hx30_1
-      htr1).elim hmem1 hL1 with
+      htr1).elim hmem1' hL1 with
     ⟨s2, hsteps2, ⟨_hpc2, hstat2, P_f2, hm2, hpost2, hvm2,
       hsp2, _hsp2_align, htr2, hx19_2, hx21_2, hx22_2, hx23_2, hx27_2, hx29_2⟩ | ⟨_, hoom⟩⟩
   swap; · exact (not_satisfies_false_sepConj hoom).elim
@@ -576,27 +498,22 @@ private theorem advanceChainKey_placed_ok_of_hmac [LibsignalPlacement] {M : Allo
   have h320_combine :
       (((s0.sp - 320#64) ↦ₛ [2#8]) ∗ memRegion (s0.sp - 319#64) 31) ⊢
         memRegion (s0.sp - 320#64) 32 := by
-    refine Entails.trans (sepConj_mono_left (pointsToBytes_entails_memRegion (s0.sp - 320#64) [2#8])) ?_
-    have ha319 : s0.sp - 320#64 + 1#64 = s0.sp - 319#64 := by bv_omega
-    change (memRegion (s0.sp - 320#64) 1 ∗ memRegion (s0.sp - 319#64) 31) ⊢ _
-    rw [← ha319, ← memRegion_split (s0.sp - 320#64) 1 31 (by decide)]
-    exact Entails.refl _
-  have hreord2 :
-      ((((s0.sp - 224#64) ↦ₛ bs) ∗
+    rw [← pointsTo8_eq_pointsToBytes_singleton]; sep_interval
+  have hmem2' :
+      s2.mem ⊨
+        memRegion (s0.sp - 320#64) 32 ∗
+        ((s0.sp - 224#64) ↦ₛ bs) ∗
         (x.ckA ↦ₛ keyToBytes32 ckc.key) ∗
-        ((s0.sp - 320#64) ↦ₛ [2#8]) ∗
-        stackAt (s0.sp - 480#64) 2048) ∗ R2) =
-      ((((s0.sp - 320#64) ↦ₛ [2#8]) ∗ memRegion (s0.sp - 319#64) 31) ∗
-       ((s0.sp - 224#64) ↦ₛ bs) ∗
-       (x.ckA ↦ₛ keyToBytes32 ckc.key) ∗
-       ((s0.sp - 356#64) ↦₃₂ x.counter) ∗
-       ((x.ckA + 32#64) ↦₃₂ ckc.index) ∗
-       stackAt (s0.sp - 480#64) 2048 ∗
-       advanceChainKeyFrame A0 cmkDummyImg x G' st' s0 ∗ R) := by
-    dsimp +zetaDelta only [R2]
-    sep_ac_rfl
-  rw [hreord2] at hmem2
-  have hmem2' := Satisfies.mono (sepConj_mono_left h320_combine) hmem2
+        ((s0.sp - 356#64) ↦₃₂ x.counter) ∗
+        ((x.ckA + 32#64) ↦₃₂ ckc.index) ∗
+        stackAt (s0.sp - 480#64) 2048 ∗
+        advanceChainKeyFrame A0 cmkDummyImg x G' st' s0 ∗ R := by
+    dsimp +zetaDelta only [R2] at hmem2
+    generalize hf : advanceChainKeyFrame A0 cmkDummyImg x G' st' s0 = vFrame at hmem2 ⊢
+    refine Satisfies.mono ?_ hmem2
+    refine' Entails.trans (Entails.trans ?_ (sepConj_mono_left h320_combine)) ?_
+    · bi_frame
+    · bi_entail
   rw [memRegion_32_eq_exists_words (s0.sp - 320#64),
       pointsToBytes_32_eq_pointsTo64 (s0.sp - 224#64) bs hbs,
       pointsToBytes_32_eq_pointsTo64 x.ckA (keyToBytes32 ckc.key) hkey_len] at hmem2'
@@ -617,81 +534,39 @@ private theorem advanceChainKey_placed_ok_of_hmac [LibsignalPlacement] {M : Allo
   let k1 := pack64 (((keyToBytes32 ckc.key).drop 8).take 8)
   let k2 := pack64 (((keyToBytes32 ckc.key).drop 16).take 8)
   let k3 := pack64 ((keyToBytes32 ckc.key).drop 24)
-  have hreord3 :
-      ((((s0.sp - 320#64) ↦₆₄ t0) ∗ ((s0.sp - 312#64) ↦₆₄ t1) ∗
-        ((s0.sp - 304#64) ↦₆₄ t2) ∗ ((s0.sp - 296#64) ↦₆₄ t3)) ∗
-       (((s0.sp - 224#64) ↦₆₄ q0_lo) ∗ ((s0.sp - 216#64) ↦₆₄ q0_hi) ∗
-        ((s0.sp - 208#64) ↦₆₄ q1_lo) ∗ ((s0.sp - 200#64) ↦₆₄ q1_hi)) ∗
-       ((x.ckA ↦₆₄ k0) ∗ ((x.ckA + 8#64) ↦₆₄ k1) ∗
-        ((x.ckA + 16#64) ↦₆₄ k2) ∗ ((x.ckA + 24#64) ↦₆₄ k3)) ∗
-       ((s0.sp - 356#64) ↦₃₂ x.counter) ∗
-       ((x.ckA + 32#64) ↦₃₂ ckc.index) ∗
-       stackAt (s0.sp - 480#64) 2048 ∗
-       advanceChainKeyFrame A0 cmkDummyImg x G' st' s0 ∗ R) =
-      ((((s0.sp - 224#64) ↦₆₄ q0_lo) ∗
-        ((s0.sp - 216#64) ↦₆₄ q0_hi) ∗
-        ((s0.sp - 208#64) ↦₆₄ q1_lo) ∗
-        ((s0.sp - 200#64) ↦₆₄ q1_hi) ∗
-        ((s0.sp - 356#64) ↦₃₂ x.counter) ∗
-        ((s0.sp - 320#64) ↦₆₄ t0) ∗
-        ((s0.sp - 312#64) ↦₆₄ t1) ∗
-        ((s0.sp - 304#64) ↦₆₄ t2) ∗
-        ((s0.sp - 296#64) ↦₆₄ t3) ∗
-        (x.ckA ↦₆₄ k0) ∗
-        ((x.ckA + 8#64) ↦₆₄ k1) ∗
-        ((x.ckA + 16#64) ↦₆₄ k2) ∗
-        ((x.ckA + 24#64) ↦₆₄ k3) ∗
-        ((x.ckA + 32#64) ↦₃₂ ckc.index)) ∗
-       (stackAt (s0.sp - 480#64) 2048 ∗ advanceChainKeyFrame A0 cmkDummyImg x G' st' s0 ∗ R)) := by
-    sep_ac_rfl
-  rw [hreord3] at hmem2'
   let R3 : SepProp := stackAt (s0.sp - 480#64) 2048 ∗ advanceChainKeyFrame A0 cmkDummyImg x G' st' s0 ∗ R
+  have hmem2'' :
+      s2.mem ⊨
+        (((s0.sp - 224#64) ↦₆₄ q0_lo) ∗
+         ((s0.sp - 216#64) ↦₆₄ q0_hi) ∗
+         ((s0.sp - 208#64) ↦₆₄ q1_lo) ∗
+         ((s0.sp - 200#64) ↦₆₄ q1_hi) ∗
+         ((s0.sp - 356#64) ↦₃₂ x.counter) ∗
+         ((s0.sp - 320#64) ↦₆₄ t0) ∗
+         ((s0.sp - 312#64) ↦₆₄ t1) ∗
+         ((s0.sp - 304#64) ↦₆₄ t2) ∗
+         ((s0.sp - 296#64) ↦₆₄ t3) ∗
+         (x.ckA ↦₆₄ k0) ∗
+         ((x.ckA + 8#64) ↦₆₄ k1) ∗
+         ((x.ckA + 16#64) ↦₆₄ k2) ∗
+         ((x.ckA + 24#64) ↦₆₄ k3) ∗
+         ((x.ckA + 32#64) ↦₃₂ ckc.index)) ∗ R3 :=
+    Satisfies.of_eq hmem2' (by dsimp +zetaDelta only [R3, q0_lo, q0_hi, q1_lo, q1_hi, k0, k1, k2, k3]; ac_rfl)
   have hL2 : ((blkPC_24).rebase (blkPl_24).base H).CodeLoaded s2.mem := hsteps2.codeLoaded hL1
   rcases (advanceChainKey_postHmac_placed_wp H x ckc q0_lo q0_hi q1_lo q1_hi k0 k1 k2 k3 t0 t1 t2 t3
       s0 s2 hstat2 _hpc2 hsp2 hsp0_align hx19_2 hx21_2 hx22_2 hx23_2 hx27_2 hx29_2
-      htr2 hlt).elim hmem2' hL2 with
+      htr2 hlt).elim hmem2'' hL2 with
     ⟨s', hsteps3, ⟨hpc'', hstat', P_f3, hm3, hpost3, hvm3,
       hsp', hsp'_align, htr', hx19', hx21', hx23', hx26', hx27', hx28', hx29'⟩ | ⟨_, hoom⟩⟩
   swap; · exact (not_satisfies_false_sepConj hoom).elim
   have hmem3 := hpost3 R3 hm3
-  have hreord4 :
-      ((((s0.sp - 224#64) ↦₆₄ q0_lo) ∗
-        ((s0.sp - 216#64) ↦₆₄ q0_hi) ∗
-        ((s0.sp - 208#64) ↦₆₄ q1_lo) ∗
-        ((s0.sp - 200#64) ↦₆₄ q1_hi) ∗
-        ((s0.sp - 356#64) ↦₃₂ x.counter) ∗
-        ((s0.sp - 320#64) ↦₆₄ q0_lo) ∗
-        ((s0.sp - 312#64) ↦₆₄ q0_hi) ∗
-        ((s0.sp - 304#64) ↦₆₄ q1_lo) ∗
-        ((s0.sp - 296#64) ↦₆₄ q1_hi) ∗
-        (x.ckA ↦₆₄ q0_lo) ∗
-        ((x.ckA + 8#64) ↦₆₄ q0_hi) ∗
-        ((x.ckA + 16#64) ↦₆₄ q1_lo) ∗
-        ((x.ckA + 24#64) ↦₆₄ q1_hi) ∗
-        ((x.ckA + 32#64) ↦₃₂ (ckc.index + 1#32))) ∗ R3) =
-      ((((s0.sp - 224#64) ↦₆₄ q0_lo) ∗
-        ((s0.sp - 216#64) ↦₆₄ q0_hi) ∗
-        ((s0.sp - 208#64) ↦₆₄ q1_lo) ∗
-        ((s0.sp - 200#64) ↦₆₄ q1_hi) ∗
-        ((s0.sp - 356#64) ↦₃₂ x.counter) ∗
-        ((s0.sp - 320#64) ↦₆₄ q0_lo) ∗
-        ((s0.sp - 312#64) ↦₆₄ q0_hi) ∗
-        ((s0.sp - 304#64) ↦₆₄ q1_lo) ∗
-        ((s0.sp - 296#64) ↦₆₄ q1_hi) ∗
-        (x.ckA ↦₆₄ q0_lo) ∗
-        ((x.ckA + 8#64) ↦₆₄ q0_hi) ∗
-        ((x.ckA + 16#64) ↦₆₄ q1_lo) ∗
-        ((x.ckA + 24#64) ↦₆₄ q1_hi) ∗
-        ((x.ckA + 32#64) ↦₃₂ (ckc.index + 1#32)) ∗
-        stackAt (s0.sp - 480#64) 2048 ∗
-        advanceChainKeyFrame A0 cmkDummyImg x G' st' s0) ∗ R) := by
-    dsimp +zetaDelta only [R3]
-    sep_ac_rfl
-  rw [hreord4] at hmem3
-  have hmem_A0 := Satisfies.mono
-    (sepConj_mono_left
-      (advanceChainKeyPost_entails_cmkLoopHeap F A0 cmkDummyImg x G' st' ckc q0_lo q0_hi q1_lo q1_hi rfl rfl rfl rfl s0))
-    hmem3
+  have hmem_A0 : s'.mem ⊨ cmkLoopHeap A0 cmkDummyImg x G' st' (chainStepN F 1 ckc) s0 ∗ R := by
+    dsimp +zetaDelta only [R3] at hmem3
+    refine Satisfies.mono ?_ hmem3
+    exact Entails.trans (Entails.of_eq (by ac_rfl))
+      (sepConj_mono_left
+        (advanceChainKeyPost_entails_cmkLoopHeap F A0 cmkDummyImg x G' st' ckc
+          q0_lo q0_hi q1_lo q1_hi rfl rfl rfl rfl s0))
   rw [← cmkLoopHeap_placed_eq] at hmem_A0
   have hvm_all : VmPreserved sD s' := (hvm1.trans hvm2).trans hvm3
   have hmem_final : s'.mem ⊨ cmkLoopHeap_placed (A.atState lim stD s') x G' st' (chainStepN F 1 ckc) s0 ∗ R :=

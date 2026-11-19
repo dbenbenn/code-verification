@@ -21,7 +21,7 @@ Defines protobuf session-record encoders (`encodeRecord`), record scope predicat
 and in-memory `StoreAnswers` helpers.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 namespace Symbolic.Proofs.SpecLemmas.CliPureBytes
 open CryptoGames CryptoGames.HMAC CryptoGames.HKDF CryptoGames.CBC
@@ -133,11 +133,11 @@ private theorem length_eraseIdx_le {α : Type} (l : List α) (i : ℕ) :
 abbrev Bytes := List (BitVec 8)
 
 /-- Every stored skipped-key seed in `s.receiverChains` has length 32 bytes. -/
-def SeedsLen32 {PQ : Type} (s : SessionState PQ) : Prop :=
+@[expose] def SeedsLen32 {PQ : Type} (s : SessionState PQ) : Prop :=
   ∀ c ∈ s.receiverChains, ∀ k ∈ c.messageKeys, k.seed.length = 32
 
 /-- `SeedsLen32` for a bare `RatchetState`. -/
-def RatchetSeedsLen32 (r : RatchetState) : Prop :=
+@[expose] def RatchetSeedsLen32 (r : RatchetState) : Prop :=
   ∀ c ∈ r.receiverChains, ∀ k ∈ c.messageKeys, k.seed.length = 32
 
 private theorem length_sha256With (F : ShaCompress) (m : List (BitVec 8)) :
@@ -381,11 +381,11 @@ theorem tryDecryptFromRecord_preserves {PQ PQC : Type} [Inhabited PQ] (C : Crypt
 /-! ## Protobuf `SessionRecord` encoding and scope predicates -/
 
 /-- Session-model `send` ghost update (`Params.send`, success branch). -/
-def ghostAfterSend {PQ : Type} (g : GhostState PQ) (s : SessionState PQ) : GhostState PQ :=
+@[expose] def ghostAfterSend {PQ : Type} (g : GhostState PQ) (s : SessionState PQ) : GhostState PQ :=
   { g with session := s, epoch := if g.party.sendsIn g.epoch then g.epoch else g.epoch + 1 }
 
 /-- Session-model `receive` ghost update (`Params.receive`, success branch). -/
-def ghostAfterRecv {PQ : Type} (g : GhostState PQ) (rk : PublicKey) (counter : BitVec 32)
+@[expose] def ghostAfterRecv {PQ : Type} (g : GhostState PQ) (rk : PublicKey) (counter : BitVec 32)
     (s : SessionState PQ) (m : Bytes) : GhostState PQ × ℕ × ℕ × Bytes :=
   let idx := g.session.receiverChains.findIdx? (·.senderRatchetKey == rk)
   let (t, epochs, cur) := match idx with
@@ -412,36 +412,36 @@ theorem receive_eq_afterRecv {PQ PQC : Type} [Inhabited PQ] (P : Params PQ PQC)
         | (.error _, _) => none
         | (.ok m, s) => some (ghostAfterRecv g msg.senderRatchetKey msg.counter s m) := rfl
 
-def lenField (tag : ℕ) (payload : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def lenField (tag : ℕ) (payload : List (BitVec 8)) : List (BitVec 8) :=
   encodeKey tag .lengthDelimited ++ encodeVarint (BitVec.ofNat 64 payload.length) ++ payload
-def bytesField (tag : ℕ) (v : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def bytesField (tag : ℕ) (v : List (BitVec 8)) : List (BitVec 8) :=
   if v = [] then [] else lenField tag v
-def uint32Field (tag : ℕ) (v : BitVec 32) : List (BitVec 8) :=
+@[expose] def uint32Field (tag : ℕ) (v : BitVec 32) : List (BitVec 8) :=
   if v = 0 then [] else encodeKey tag .varint ++ encodeVarint (v.setWidth 64)
-def uint64Field (tag : ℕ) (v : BitVec 64) : List (BitVec 8) :=
+@[expose] def uint64Field (tag : ℕ) (v : BitVec 64) : List (BitVec 8) :=
   if v = 0 then [] else encodeKey tag .varint ++ encodeVarint v
-def int32Field (tag : ℕ) (v : BitVec 32) : List (BitVec 8) :=
+@[expose] def int32Field (tag : ℕ) (v : BitVec 32) : List (BitVec 8) :=
   if v = 0 then [] else encodeKey tag .varint ++ encodeVarint (v.signExtend 64)
-def optUint32Field (tag : ℕ) : Option (BitVec 32) → List (BitVec 8)
+@[expose] def optUint32Field (tag : ℕ) : Option (BitVec 32) → List (BitVec 8)
   | none => [] | some v => encodeKey tag .varint ++ encodeVarint (v.setWidth 64)
-def msgField (tag : ℕ) : Option (List (BitVec 8)) → List (BitVec 8)
+@[expose] def msgField (tag : ℕ) : Option (List (BitVec 8)) → List (BitVec 8)
   | none => [] | some body => lenField tag body
-def encChainKey (ck : ChainKey) : List (BitVec 8) :=
+@[expose] def encChainKey (ck : ChainKey) : List (BitVec 8) :=
   uint32Field 1 ck.index ++ bytesField 2 (HMAC.keyToBytes32 ck.key)
-def encMessageKey (mk : MessageKeyGenerator) : List (BitVec 8) :=
+@[expose] def encMessageKey (mk : MessageKeyGenerator) : List (BitVec 8) :=
   uint32Field 1 mk.counter ++ bytesField 5 mk.seed
-def encSenderChain (c : SenderChain) : List (BitVec 8) :=
+@[expose] def encSenderChain (c : SenderChain) : List (BitVec 8) :=
   bytesField 1 c.ratchetKey.publicKey.serialize ++ bytesField 2 c.ratchetKey.privateKey.bytes.toList ++
     msgField 3 (some (encChainKey c.chainKey))
-def encReceiverChain (c : ReceiverChain) : List (BitVec 8) :=
+@[expose] def encReceiverChain (c : ReceiverChain) : List (BitVec 8) :=
   bytesField 1 c.senderRatchetKey.serialize ++ msgField 3 (c.chainKey.map encChainKey) ++
     (c.messageKeys.map fun mk => lenField 4 (encMessageKey mk)).flatten
-def encPendingPreKey (p : PendingPreKey) : List (BitVec 8) :=
+@[expose] def encPendingPreKey (p : PendingPreKey) : List (BitVec 8) :=
   optUint32Field 1 p.preKeyId ++ bytesField 2 p.baseKey.serialize ++ int32Field 3 p.signedPreKeyId ++
     uint64Field 4 p.timestamp
-def encPendingKyber (p : PendingKyberPreKey) : List (BitVec 8) :=
+@[expose] def encPendingKyber (p : PendingKyberPreKey) : List (BitVec 8) :=
   uint32Field 1 p.preKeyId ++ bytesField 2 p.ciphertext
-def encSession (s : Session (List (BitVec 8))) : List (BitVec 8) :=
+@[expose] def encSession (s : Session (List (BitVec 8))) : List (BitVec 8) :=
   let st := s.state
   uint32Field 1 st.sessionVersion ++ bytesField 2 st.localIdentity.serialize ++
   bytesField 3 ((st.remoteIdentity.map IdentityKey.serialize).getD []) ++
@@ -452,7 +452,7 @@ def encSession (s : Session (List (BitVec 8))) : List (BitVec 8) :=
   uint32Field 10 s.remoteRegistrationId ++ uint32Field 11 s.localRegistrationId ++
   bytesField 13 s.aliceBaseKey ++ msgField 14 (s.pendingKyberPreKey.map encPendingKyber) ++
   bytesField 15 st.pqRatchetState
-def encodeRecord (r : SessionRecord (List (BitVec 8))) : List (BitVec 8) :=
+@[expose] def encodeRecord (r : SessionRecord (List (BitVec 8))) : List (BitVec 8) :=
   msgField 1 (r.currentSession.map encSession)
 def RecordPqEmpty (r : SessionRecord (List (BitVec 8))) : Prop :=
   ∀ s, r.currentSession = some s → s.state.pqRatchetState = []
@@ -472,12 +472,12 @@ def RecordInScopeP (r : SessionRecord Bytes) : Prop :=
     SeedsLen32 s.state ∧ s.state.receiverChains.length < 2 ^ 32 ∧
       ∀ k, s.pendingKyberPreKey = some k → k.ciphertext.length < 2 ^ 32
 def InScopeP (r : SessionRecord Bytes) : Prop := RecordInScopeP r ∧ RecordPqEmpty r ∧ RecordRepr r
-def DeserializeScopeP (r : SessionRecord Bytes) : Prop :=
+@[expose] def DeserializeScopeP (r : SessionRecord Bytes) : Prop :=
   InScopeP r ∧ ∃ s, r.currentSession = some s ∧ SessionScopeP s
 
 /-! ## `SessRepr` and `RatchetRepr` preservation -/
 
-def SessRepr (st : SessionState Bytes) : Prop :=
+@[expose] def SessRepr (st : SessionState Bytes) : Prop :=
   (∀ c ∈ st.receiverChains, c.messageKeys.length ≤ maxMessageKeys) ∧
     (∀ sc, st.senderChain = some sc →
       Ratchet.clampScalar sc.ratchetKey.privateKey.bytes = sc.ratchetKey.privateKey.bytes)
@@ -978,25 +978,25 @@ theorem tryDecryptFromRecord_ok_props_gen {PQC : Type} (C : Crypto) (S : Spqr By
 /-! ## Two-party `Role` and store helpers -/
 
 inductive Role where | alice | bob deriving DecidableEq, Repr
-def Role.ofWho (who : BitVec 32) : Option Role :=
+@[expose] def Role.ofWho (who : BitVec 32) : Option Role :=
   if who = 0#32 then some .alice else if who = 1#32 then some .bob else none
-def Role.peer : Role → Role | .alice => .bob | .bob => .alice
-def Role.ofParty : Party → Role | .A => .alice | .B => .bob
-def evalOpen (who : BitVec 32) (sess : Session (List (BitVec 8))) :
+@[expose] def Role.peer : Role → Role | .alice => .bob | .bob => .alice
+@[expose] def Role.ofParty : Party → Role | .A => .alice | .B => .bob
+@[expose] def evalOpen (who : BitVec 32) (sess : Session (List (BitVec 8))) :
     Option (Role × Session (List (BitVec 8))) :=
   match Role.ofWho who with | some r => some (r, sess) | none => none
-def storedSession {Addr PQ : Type} (s0 : Session PQ) (calls : List (StoreCall Addr PQ)) :
+@[expose] def storedSession {Addr PQ : Type} (s0 : Session PQ) (calls : List (StoreCall Addr PQ)) :
     Session PQ :=
   calls.foldl (fun cur c => match c with | .storeSession _ ⟨some s'⟩ => s' | _ => cur) s0
-def inMemAnswers (s : Session (List (BitVec 8))) : StoreAnswers (List (BitVec 8)) Unit where
+@[expose] def inMemAnswers (s : Session (List (BitVec 8))) : StoreAnswers (List (BitVec 8)) Unit where
   loadSession := .ok (some ⟨some s⟩)
   isTrustedIdentity := .ok true
   saveIdentity := .ok .newOrUnchanged
   storeSession := .ok ()
 
-def RecordCanonical (stateBytes : List (BitVec 8)) (s : Session (List (BitVec 8))) : Prop :=
+@[expose] def RecordCanonical (stateBytes : List (BitVec 8)) (s : Session (List (BitVec 8))) : Prop :=
   stateBytes = encodeRecord ⟨some s⟩ ∧ DeserializeScopeP ⟨some s⟩
-def recordDeserializeOpenSpec : Unit := ()
+@[expose] def recordDeserializeOpenSpec : Unit := ()
 
 end Symbolic.Proofs.SpecLemmas.CliPureBytes
 

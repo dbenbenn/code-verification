@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.OpkRelC
-public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat
+public import Symbolic.Proofs.Swarm.CREF.OpkRelC -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -20,8 +20,8 @@ import DY.Actions.Network
 import DY.Actions.PersistentGlobalState
 import DY.Actions.PersistentLocalState
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
-public import Symbolic.Proofs.Swarm.CREF.TR.Leaks
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.Leaks -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyFrame
 import Symbolic.Proofs.Swarm.CREF.Cli.World.HeldRecPure
 import Symbolic.Proofs.Swarm.CREF.Cli.World.LeakModelPure
@@ -39,6 +39,14 @@ import Symbolic.DYBridge.DY.Actions.Network
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.SpecLemmas.LeakableSecretProofDefs
+import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
+import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSession
+import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApi
+import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
+import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR
+import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR2
+import Symbolic.Proofs.Swarm.CREF.TR.SlotsZ6Pure
 
 /-!
 # Leak-Phase Stepping for `Clean`, `PureCRel`, and `COpkRelC`
@@ -47,7 +55,7 @@ Steps `Clean`, `PureCRel`, and `COpkRelC` across blocks of `.leak` events drawn 
 `LeakableSecret` or `KeyInDirsV1`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

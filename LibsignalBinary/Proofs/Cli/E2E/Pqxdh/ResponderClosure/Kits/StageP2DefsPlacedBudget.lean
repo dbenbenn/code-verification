@@ -12,19 +12,25 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerializeBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerializeBudget
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Shared Definitions and Callee Bundles
@@ -34,7 +40,7 @@ Defines placed budget-threaded call-framing combinators, `StageP2ClosureHooksPla
 `StageP2BaseCalleesPlaced4K` bundles on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -83,7 +89,9 @@ open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsBudge
   p2Memcpy4KSpec p2_framelessMemcpy_to_4K promoteStateEmpty4KSpec promoteStateEmptySpec
   promoteStateEmptySpec_to_4K
 )
-open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget (acceptSuccessEvents)
+open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget (
+  acceptSuccessEvents pqxdhAcceptPlacedStack
+)
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobPlacedBudget (
   InitBobSessionBuildEnv fitsEnv_initBobSessionBuildEnv_iff
   initBobSessionBuildEvents initializeBobSessionInnerPlacedSpec
@@ -139,7 +147,7 @@ theorem p2_call_frame_qp_placed {α : Type} {prog : Program}
       Steps prog s sf →
       SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
     (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by
-      intro sf; first | rfl | simp only [Spec.inImage]) :
+      intro sf; rfl) :
     SepWPp prog ret s P Q Qp := by
   have hmid :
       SepWPp prog ret_pc s P
@@ -184,7 +192,7 @@ theorem p2_call_frame_cro_qp_placed [LibsignalPlacement] {α : Type} {prog : Pro
       Steps prog s sf →
       SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
     (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by
-      intro sf; first | rfl | simp only [Spec.inImage]) :
+      intro sf; rfl) :
     SepWPp prog ret s P Q Qp :=
   p2_call_frame_qp_placed hcall hpc hrun hsp hlr hspec hφ hP hexit_false hpanic
     (fun sf hpcm hrunm hspm hsp_alm hcsm hsteps =>
@@ -207,7 +215,7 @@ theorem p2_call_frame_nopanic_placed {α : Type} {prog : Program}
       Steps prog s sf →
       SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
     (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by
-      intro sf; first | rfl | simp only [Spec.inImage]) :
+      intro sf; rfl) :
     SepWPp prog ret s P Q Qp :=
   p2_call_frame_qp_placed hcall hpc hrun hsp hlr hspec hφ hP hexit_false
     (fun sf _ ⟨_, hpan⟩ => by
@@ -231,7 +239,7 @@ theorem p2_call_frame_cro_nopanic_placed [LibsignalPlacement] {α : Type} {prog 
       Steps prog s sf →
       SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
     (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by
-      intro sf; first | rfl | simp only [Spec.inImage]) :
+      intro sf; rfl) :
     SepWPp prog ret s P Q Qp :=
   p2_call_frame_cro_qp_placed hCode hcall hpc hrun hsp hlr hspec hφ hP hexit_false
     (fun sf _ ⟨_, hpan⟩ => by
@@ -387,14 +395,14 @@ theorem StageP2ClosureHooksPlaced.of_sessionFramelessHooks [LibsignalPlacement]
 
 /-- Bounded SPQR `.v1` `spqr::initial_state` (`Block 327`) allocator event envelope at
 `p2BobSpqrParams pqrKey`, matching `InitialStateEnv F` on `.v1` (`SpqrBoundedEvs 128 ...`). -/
-def BobSpqrInitialStateEnv (_F : ShaCompress) (pqrKey : Bytes)
+@[expose] def BobSpqrInitialStateEnv (_F : ShaCompress) (pqrKey : Bytes)
     (evs : List AllocEvent) : Prop :=
   SpqrBoundedEvs 128 (4 * (p2BobSpqrParams pqrKey).authKey.length + 4096) evs
 
 /-- Default sequential allocator event envelope for the accepting SPQR V1 path of
 `initialize_bob_session` (`Block 75`): `AcceptSuccessEnv inp`, followed by
 `BobSpqrInitialStateEnv F drKey.pqrKey`, followed by `InitBobSessionBuildEnv`. -/
-def InitializeBobV1Env (F : ShaCompress) (inp : AcceptKeysInput) (drKey : DRKey) :
+@[expose] def InitializeBobV1Env (F : ShaCompress) (inp : AcceptKeysInput) (drKey : DRKey) :
     List AllocEvent → Prop :=
   SeqEnv (AcceptSuccessEnv inp)
     (SeqEnv (BobSpqrInitialStateEnv F drKey.pqrKey) InitBobSessionBuildEnv)
@@ -458,7 +466,7 @@ example (inp : AcceptKeysInput) :
 /-- Envelope- and stack-parameterized SPQR V1 `initialize_bob_session` success contract under
 `[LibsignalPlacement]` on `stageP1ProgPlaced ext` (`lsProg_518 ext`), polymorphic in `{st : M.σ}`
 and `{Qp : State → SepProp → Prop}` (panic- and OOM-free under `FitsEnv M lim st (BobV1Env inp drKey)`). -/
-def InitializeBobV1OkAtPlacedOfEnv [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def InitializeBobV1OkAtPlacedOfEnv [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (BobV1Env : AcceptKeysInput → DRKey → List AllocEvent → Prop)
     (ext : String → Option (State → State)) (bobV1Stk : Nat) : Prop :=
@@ -515,17 +523,17 @@ def InitializeBobV1OkAtPlacedOfEnv [LibsignalPlacement] {M : AllocCostModel}
             CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace))
       Qp
 
-def InitializeBobV1OkPlacedOfEnv [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def InitializeBobV1OkPlacedOfEnv [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (BobV1Env : AcceptKeysInput → DRKey → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=
-  InitializeBobV1OkAtPlacedOfEnv P A lim F BobV1Env ext (stageP2bStack + 0x700)
+  InitializeBobV1OkAtPlacedOfEnv P A lim F BobV1Env ext (768 + pqxdhAcceptPlacedStack)
 
-def InitializeBobV1OkPlaced4KOfEnv [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def InitializeBobV1OkPlaced4KOfEnv [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (BobV1Env : AcceptKeysInput → DRKey → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=
-  InitializeBobV1OkAtPlacedOfEnv P A lim F BobV1Env ext (768 + pqxdhEntryStackExt)
+  InitializeBobV1OkAtPlacedOfEnv P A lim F BobV1Env ext (768 + pqxdhAcceptPlacedStack)
 
 abbrev InitializeBobV1OkAtPlaced [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
@@ -597,34 +605,8 @@ theorem InitializeBobV1OkPlacedOfEnv.to_4K [LibsignalPlacement] {M : AllocCostMo
     {BobV1Env : AcceptKeysInput → DRKey → List AllocEvent → Prop}
     {ext : String → Option (State → State)}
     (h : InitializeBobV1OkPlacedOfEnv P A lim F BobV1Env ext) :
-    InitializeBobV1OkPlaced4KOfEnv P A lim F BobV1Env ext := by
-  intro st Qp s0 inp ikBPk spkBPk argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr
-    drKey Frame hCode hrun hpc hsp hpqr hx0 hx1 hx8 htr hrep hopk hwell hik hspk hacc hfits
-  let F_stk : SepProp :=
-    memRegion (s0.sp - BitVec.ofNat 64 (768 + pqxdhEntryStackExt))
-      ((768 + pqxdhEntryStackExt) - (stageP2bStack + 0x700))
-  have hsplit := p2_stackAt_split_of_le s0.sp (768 + pqxdhEntryStackExt)
-    (stageP2bStack + 0x700) (by decide) (by decide)
-  have hcall := h (st := st) (Qp := Qp) s0 inp ikBPk spkBPk argPtr pqskPtr ctSlicePtr ctBufPtr
-    ratchetKeyPairPtr outPtr drKey (F_stk ∗ Frame)
-    hCode hrun hpc hsp hpqr hx0 hx1 hx8 htr hrep hopk hwell hik hspk hacc hfits
-  intro R hm hL
-  have hm' : s0.mem ⊨
-      (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr inp ikBPk spkBPk 0#8 ∗
-        memRegion outPtr 344 ∗ lsLogFilterAddr ↦₆₄ 0#64 ∗
-        stackAt s0.sp (stageP2bStack + 0x700) ∗ A.pool lim st s0 ∗ (F_stk ∗ Frame)) ∗ R := by
-    refine Satisfies.of_eq hm ?_; dsimp only [F_stk]; rw [hsplit]; ac_rfl
-  obtain ⟨sf, hst, ⟨hpc', hrun', Pf, hmf, evs, hevs, localIkBoxPtr, remoteIkBoxPtr, rootKeyBoxPtr,
-    baseKeyBoxPtr, ratchetPubBoxPtr, ratchetPrivBoxPtr, chainKeyBoxPtr, spqrCap, spqrBufPtr,
-    pad_f4, c0, c1, c2, c3, c4, d0, d1, d2, hn1, hn2, hn3, hn4, hn5, hn6, hn7,
-    hPf, hst'⟩ | hpan⟩ := hcall R hm' hL
-  · refine ⟨sf, hst, Or.inl ⟨hpc', hrun', Pf, hmf, evs, hevs, localIkBoxPtr,
-      remoteIkBoxPtr, rootKeyBoxPtr, baseKeyBoxPtr, ratchetPubBoxPtr, ratchetPrivBoxPtr,
-      chainKeyBoxPtr, spqrCap, spqrBufPtr, pad_f4, c0, c1, c2, c3, c4, d0, d1, d2,
-      hn1, hn2, hn3, hn4, hn5, hn6, hn7,
-      Entails.trans hPf (Entails.of_eq ?_), hst'⟩⟩
-    dsimp only [F_stk]; rw [hsplit]; ac_rfl
-  · exact ⟨sf, hst, Or.inr hpan⟩
+    InitializeBobV1OkPlaced4KOfEnv P A lim F BobV1Env ext :=
+  h
 
 theorem InitializeBobV1OkPlaced.to_4K [LibsignalPlacement] {M : AllocCostModel}
     {P : Primitives} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -635,9 +617,9 @@ theorem InitializeBobV1OkPlaced.to_4K [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## 4. 4K/`Ext` Rejecting `initialize_bob_session` Contracts & `_to_4K` Bridges -/
 
-/-- 4K/`Ext` variant of `initializeBobSessionErrInnerPlacedSpec` at `768 + pqxdhEntryStackExt`
+/-- 4K/`Ext` variant of `initializeBobSessionErrInnerPlacedSpec` at `768 + pqxdhAcceptPlacedStack`
 (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝` under `FitsEnv M lim st (AcceptErrEnv g.inp)`). -/
-def initializeBobSessionErr4KInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionErr4KInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobCallGhost × M.σ) where
@@ -657,7 +639,7 @@ def initializeBobSessionErr4KInnerPlacedSpec [LibsignalPlacement] {M : AllocCost
       g.inp g.ikBPk g.spkBPk g.sameAccountByte ∗
     memRegion g.outPtr 344 ∗
     (lsLogFilterAddr ↦₆₄ 0#64) ∗
-    stackAt s.sp (768 + pqxdhEntryStackExt) ∗
+    stackAt s.sp (768 + pqxdhAcceptPlacedStack) ∗
     A.pool lim st s
   post := fun (g, st) s0 sf =>
     ∃∗ evs : List AllocEvent,
@@ -666,10 +648,10 @@ def initializeBobSessionErr4KInnerPlacedSpec [LibsignalPlacement] {M : AllocCost
         g.inp g.ikBPk g.spkBPk g.sameAccountByte ∗
       (initBobErrAt g.outPtr ∗ anyHeap) ∗
       (lsLogFilterAddr ↦₆₄ 0#64) ∗
-      stackAt s0.sp (768 + pqxdhEntryStackExt) ∗
+      stackAt s0.sp (768 + pqxdhAcceptPlacedStack) ∗
       A.pool lim (M.stepEvents evs st) sf
 
-def initializeBobSessionErr4KPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionErr4KPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobCallGhost × M.σ) :=
@@ -686,39 +668,30 @@ theorem initializeBobSessionErrPlacedSpec_to_4K [LibsignalPlacement]
     subroutine_ok prog entry (initializeBobSessionErr4KPlacedSpec P A lim AcceptErrEnv) := by
   refine subroutine_ok_map h ?_
   rintro ⟨g, st⟩ R s0 hpre
-  let F_stk : SepProp :=
-    memRegion (s0.sp - BitVec.ofNat 64 (768 + pqxdhEntryStackExt))
-      ((768 + pqxdhEntryStackExt) - (768 + pqxdhEntryStack))
   dsimp only [initializeBobSessionErr4KPlacedSpec, withLsCodeRoLoaded] at hpre
   rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨hro, hpre⟩
   dsimp only [initializeBobSessionErr4KInnerPlacedSpec] at hpre
-  rw [p2_stackAt_split_of_le s0.sp (768 + pqxdhEntryStackExt)
-    (768 + pqxdhEntryStack) (by decide) (by decide)] at hpre
   simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨hpure, hmem⟩
   have hnone : acceptKeys P g.inp = none := hpure.2.2.2.2.2.2.2.2.2.1
-  refine ⟨(g, st), F_stk ∗ R, ?_, fun sf hpost => ?_⟩
+  refine ⟨(g, st), R, ?_, fun sf hpost => ?_⟩
   · dsimp only [initializeBobSessionErrPlacedSpec, withLsCodeRoLoaded]
     rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
     refine ⟨hro, ?_⟩
-    dsimp only [initializeBobSessionErrInnerPlacedSpec, F_stk]
+    dsimp only [initializeBobSessionErrInnerPlacedSpec]
     simp only [sepConj_assoc, satisfies_pure_sepConj]
     exact ⟨hpure, Satisfies.of_eq hmem (by ac_rfl)⟩
   · dsimp only [initializeBobSessionErrPlacedSpec, initializeBobSessionErrInnerPlacedSpec,
       initializeBobSessionInnerPlacedSpec, initializeBobSessionErr4KPlacedSpec,
-      initializeBobSessionErr4KInnerPlacedSpec, withLsCodeRoLoaded, F_stk] at hpost ⊢
+      initializeBobSessionErr4KInnerPlacedSpec, withLsCodeRoLoaded] at hpost ⊢
     rw [sepExists_sepConj_left] at hpost ⊢
     refine Satisfies.of_eq hpost ?_
     congr 1; funext evs
     rw [hnone]
-    dsimp only
-    rw [p2_stackAt_split_of_le s0.sp (768 + pqxdhEntryStackExt)
-      (768 + pqxdhEntryStack) (by decide) (by decide)]
-    ac_rfl
 
 /-- 4K/`Ext` variant of `initializeBobSessionErrOwnedInnerPlacedSpec` at `768 + pqxdhEntryStackExt`. -/
-def initializeBobSessionErrOwned4KInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionErrOwned4KInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobCallGhost × M.σ) where
@@ -750,7 +723,7 @@ def initializeBobSessionErrOwned4KInnerPlacedSpec [LibsignalPlacement] {M : Allo
       stackAt s0.sp (768 + pqxdhEntryStackExt) ∗
       A.pool lim (M.stepEvents evs st) sf
 
-def initializeBobSessionErrOwned4KPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionErrOwned4KPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobCallGhost × M.σ) :=
@@ -800,12 +773,12 @@ theorem initializeBobSessionErrOwnedPlacedSpec_to_4K [LibsignalPlacement]
 
 /-- `VmPreserved`-augmented `SessionRecord::promote_matching_session` (empty-record fast path,
 `0` allocations). -/
-def promoteMatchingSessionEmptySpec : Spec (BitVec 64 × BitVec 64) :=
+@[expose] def promoteMatchingSessionEmptySpec : Spec (BitVec 64 × BitVec 64) :=
   withVmPreserved CryptoVerification.E2E.Pqxdh.ResponderStore.promoteMatchingSessionEmptySpec
 
 /-- `VmPreserved`-augmented `drop_glue<process_prekey_impl::{closure#0}>` state-1 fast path
 (`0` allocations). -/
-def dropProcessPrekeyImplState1Spec : Spec (BitVec 64) :=
+@[expose] def dropProcessPrekeyImplState1Spec : Spec (BitVec 64) :=
   withVmPreserved CryptoVerification.E2E.Pqxdh.ResponderStore.dropProcessPrekeyImplState1Spec
 
 /-- `<PublicKey>::serialize` (`lsmpl.base 205`) meets `publicKeySerializeSpec M A lim` on
@@ -1002,7 +975,7 @@ theorem StageP2PureCalleesPlaced4KOfEnv.of_trapsOnly [LibsignalPlacement] {M : A
 export CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits (StageP2MemInv)
 export CryptoVerification.E2E.Pqxdh.ResponderCore (withBobMemInv)
 
-def InitializeBobV1MemInvOkAtPlacedOfEnv [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def InitializeBobV1MemInvOkAtPlacedOfEnv [LibsignalPlacement] {M : AllocCostModel}
     (Φ : Memory → Prop)
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (BobV1Env : AcceptKeysInput → DRKey → List AllocEvent → Prop)
@@ -1060,19 +1033,19 @@ def InitializeBobV1MemInvOkAtPlacedOfEnv [LibsignalPlacement] {M : AllocCostMode
             CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace))
       Qp
 
-def InitializeBobV1MemInvOkPlacedOfEnv [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def InitializeBobV1MemInvOkPlacedOfEnv [LibsignalPlacement] {M : AllocCostModel}
     (Φ : Memory → Prop)
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (BobV1Env : AcceptKeysInput → DRKey → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=
-  InitializeBobV1MemInvOkAtPlacedOfEnv Φ P A lim F BobV1Env ext (stageP2bStack + 0x700)
+  InitializeBobV1MemInvOkAtPlacedOfEnv Φ P A lim F BobV1Env ext (768 + pqxdhAcceptPlacedStack)
 
-def InitializeBobV1MemInvOkPlaced4KOfEnv [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def InitializeBobV1MemInvOkPlaced4KOfEnv [LibsignalPlacement] {M : AllocCostModel}
     (Φ : Memory → Prop)
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (BobV1Env : AcceptKeysInput → DRKey → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=
-  InitializeBobV1MemInvOkAtPlacedOfEnv Φ P A lim F BobV1Env ext (768 + pqxdhEntryStackExt)
+  InitializeBobV1MemInvOkAtPlacedOfEnv Φ P A lim F BobV1Env ext (768 + pqxdhAcceptPlacedStack)
 
 abbrev InitializeBobV1MemInvOkAtPlaced [LibsignalPlacement] {M : AllocCostModel}
     (Φ : Memory → Prop)
@@ -1149,34 +1122,8 @@ theorem InitializeBobV1MemInvOkPlacedOfEnv.to_4K [LibsignalPlacement] {M : Alloc
     {F : ShaCompress} {BobV1Env : AcceptKeysInput → DRKey → List AllocEvent → Prop}
     {ext : String → Option (State → State)}
     (h : InitializeBobV1MemInvOkPlacedOfEnv Φ P A lim F BobV1Env ext) :
-    InitializeBobV1MemInvOkPlaced4KOfEnv Φ P A lim F BobV1Env ext := by
-  intro st Qp s0 inp ikBPk spkBPk argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr
-    drKey Frame hΦ hrun hpc hsp hpqr hx0 hx1 hx8 htr hrep hopk hwell hik hspk hacc hfits
-  let F_stk : SepProp :=
-    memRegion (s0.sp - BitVec.ofNat 64 (768 + pqxdhEntryStackExt))
-      ((768 + pqxdhEntryStackExt) - (stageP2bStack + 0x700))
-  have hsplit := p2_stackAt_split_of_le s0.sp (768 + pqxdhEntryStackExt)
-    (stageP2bStack + 0x700) (by decide) (by decide)
-  have hcall := h (st := st) (Qp := Qp) s0 inp ikBPk spkBPk argPtr pqskPtr ctSlicePtr ctBufPtr
-    ratchetKeyPairPtr outPtr drKey (F_stk ∗ Frame)
-    hΦ hrun hpc hsp hpqr hx0 hx1 hx8 htr hrep hopk hwell hik hspk hacc hfits
-  intro R hm hL
-  have hm' : s0.mem ⊨
-      (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr inp ikBPk spkBPk 0#8 ∗
-        memRegion outPtr 344 ∗ lsLogFilterAddr ↦₆₄ 0#64 ∗
-        stackAt s0.sp (stageP2bStack + 0x700) ∗ A.pool lim st s0 ∗ (F_stk ∗ Frame)) ∗ R := by
-    refine Satisfies.of_eq hm ?_; dsimp only [F_stk]; rw [hsplit]; ac_rfl
-  obtain ⟨sf, hst, ⟨hpc', hrun', Pf, hmf, evs, hevs, localIkBoxPtr, remoteIkBoxPtr, rootKeyBoxPtr,
-    baseKeyBoxPtr, ratchetPubBoxPtr, ratchetPrivBoxPtr, chainKeyBoxPtr, spqrCap, spqrBufPtr,
-    pad_f4, c0, c1, c2, c3, c4, d0, d1, d2, hn1, hn2, hn3, hn4, hn5, hn6, hn7,
-    hPf, hst'⟩ | hpan⟩ := hcall R hm' hL
-  · refine ⟨sf, hst, Or.inl ⟨hpc', hrun', Pf, hmf, evs, hevs, localIkBoxPtr,
-      remoteIkBoxPtr, rootKeyBoxPtr, baseKeyBoxPtr, ratchetPubBoxPtr, ratchetPrivBoxPtr,
-      chainKeyBoxPtr, spqrCap, spqrBufPtr, pad_f4, c0, c1, c2, c3, c4, d0, d1, d2,
-      hn1, hn2, hn3, hn4, hn5, hn6, hn7,
-      Entails.trans hPf (Entails.of_eq ?_), hst'⟩⟩
-    dsimp only [F_stk]; rw [hsplit]; ac_rfl
-  · exact ⟨sf, hst, Or.inr hpan⟩
+    InitializeBobV1MemInvOkPlaced4KOfEnv Φ P A lim F BobV1Env ext :=
+  h
 
 theorem InitializeBobV1MemInvOkPlaced.to_4K [LibsignalPlacement] {M : AllocCostModel}
     {Φ : Memory → Prop} {P : Primitives} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -1185,21 +1132,21 @@ theorem InitializeBobV1MemInvOkPlaced.to_4K [LibsignalPlacement] {M : AllocCostM
     InitializeBobV1MemInvOkPlaced4K Φ P A lim F ext := by
   exact InitializeBobV1MemInvOkPlacedOfEnv.to_4K h
 
-def InitializeBobV1FrozenOkAtPlacedOfEnv [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def InitializeBobV1FrozenOkAtPlacedOfEnv [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (BobV1Env : AcceptKeysInput → DRKey → List AllocEvent → Prop)
     (ext : String → Option (State → State)) (bobV1Stk : Nat) : Prop :=
   InitializeBobV1MemInvOkAtPlacedOfEnv (CryptoVerification.LibsignalFrozen lsmpl)
     P A lim F BobV1Env ext bobV1Stk
 
-def InitializeBobV1FrozenOkPlacedOfEnv [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def InitializeBobV1FrozenOkPlacedOfEnv [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (BobV1Env : AcceptKeysInput → DRKey → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=
   InitializeBobV1MemInvOkPlacedOfEnv (CryptoVerification.LibsignalFrozen lsmpl)
     P A lim F BobV1Env ext
 
-def InitializeBobV1FrozenOkPlaced4KOfEnv [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def InitializeBobV1FrozenOkPlaced4KOfEnv [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (BobV1Env : AcceptKeysInput → DRKey → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=
@@ -1275,28 +1222,28 @@ theorem InitializeBobV1FrozenOkPlaced.to_4K [LibsignalPlacement] {M : AllocCostM
     InitializeBobV1FrozenOkPlaced4K P A lim F ext := by
   exact InitializeBobV1MemInvOkPlacedOfEnv.to_4K h
 
-def initializeBobSessionErrMemInv4KPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionErrMemInv4KPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (Φ : Memory → Prop) (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobCallGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl
     (withBobMemInv Φ (initializeBobSessionErr4KInnerPlacedSpec P A lim AcceptErrEnv))
 
-def initializeBobSessionErrFrozen4KPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionErrFrozen4KPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobCallGhost × M.σ) :=
   initializeBobSessionErrMemInv4KPlacedSpec (CryptoVerification.LibsignalFrozen lsmpl)
     P A lim AcceptErrEnv
 
-def initializeBobSessionErrOwnedMemInv4KPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionErrOwnedMemInv4KPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (Φ : Memory → Prop) (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobCallGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl
     (withBobMemInv Φ (initializeBobSessionErrOwned4KInnerPlacedSpec P A lim AcceptErrEnv))
 
-def initializeBobSessionErrOwnedFrozen4KPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionErrOwnedFrozen4KPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobCallGhost × M.σ) :=
@@ -1312,9 +1259,6 @@ theorem initializeBobSessionErrFrozenPlacedSpec_to_4K [LibsignalPlacement]
     subroutine_ok prog entry (initializeBobSessionErrFrozen4KPlacedSpec P A lim AcceptErrEnv) := by
   refine subroutine_ok_map h ?_
   rintro ⟨g, st⟩ R s0 hpre
-  let F_stk : SepProp :=
-    memRegion (s0.sp - BitVec.ofNat 64 (768 + pqxdhEntryStackExt))
-      ((768 + pqxdhEntryStackExt) - (768 + pqxdhEntryStack))
   dsimp only [initializeBobSessionErrFrozen4KPlacedSpec,
     initializeBobSessionErrMemInv4KPlacedSpec, withLsCodeRoLoaded, withBobMemInv] at hpre
   rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj] at hpre
@@ -1322,19 +1266,17 @@ theorem initializeBobSessionErrFrozenPlacedSpec_to_4K [LibsignalPlacement]
   rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨hfr, hpre⟩
   dsimp only [initializeBobSessionErr4KInnerPlacedSpec] at hpre
-  rw [p2_stackAt_split_of_le s0.sp (768 + pqxdhEntryStackExt)
-    (768 + pqxdhEntryStack) (by decide) (by decide)] at hpre
   simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨hpure, hmem⟩
   have hnone : acceptKeys P g.inp = none := hpure.2.2.2.2.2.2.2.2.2.1
-  refine ⟨(g, st), F_stk ∗ R, ?_, fun sf hpost => ?_⟩
+  refine ⟨(g, st), R, ?_, fun sf hpost => ?_⟩
   · dsimp only [initializeBobSessionErrFrozenPlacedSpec,
       CryptoVerification.LibsignalTripleRatchet.withLsFrozen, withLsCodeRoLoaded]
     rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
     refine ⟨hro, ?_⟩
     rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
     refine ⟨hfr, ?_⟩
-    dsimp only [initializeBobSessionErrInnerPlacedSpec, F_stk]
+    dsimp only [initializeBobSessionErrInnerPlacedSpec]
     simp only [sepConj_assoc, satisfies_pure_sepConj]
     exact ⟨hpure, Satisfies.of_eq hmem (by ac_rfl)⟩
   · dsimp only [initializeBobSessionErrFrozenPlacedSpec,
@@ -1344,15 +1286,11 @@ theorem initializeBobSessionErrFrozenPlacedSpec_to_4K [LibsignalPlacement]
       initializeBobSessionErrMemInv4KPlacedSpec,
       initializeBobSessionErr4KInnerPlacedSpec,
       CryptoVerification.LibsignalTripleRatchet.withLsFrozen,
-      withLsCodeRoLoaded, withBobMemInv, F_stk] at hpost ⊢
+      withLsCodeRoLoaded, withBobMemInv] at hpost ⊢
     rw [sepExists_sepConj_left] at hpost ⊢
     refine Satisfies.of_eq hpost ?_
     congr 1; funext evs
     rw [hnone]
-    dsimp only
-    rw [p2_stackAt_split_of_le s0.sp (768 + pqxdhEntryStackExt)
-      (768 + pqxdhEntryStack) (by decide) (by decide)]
-    ac_rfl
 
 theorem initializeBobSessionErrOwnedFrozenPlacedSpec_to_4K [LibsignalPlacement]
     {prog : Program} {entry : BitVec 64} {M : AllocCostModel}
@@ -1447,7 +1385,7 @@ structure StageP2BaseCalleesPlaced4K [LibsignalPlacement] {M : AllocCostModel}
       (lsmpl.base 512)
       (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim))
 
-def VacuousBobAllocEnv (evs : List AllocEvent) : Prop :=
+@[expose] def VacuousBobAllocEnv (evs : List AllocEvent) : Prop :=
   evs = [.alloc (VerifiedLibraries.Mallocng.MallocngMaxAllocSize + 1)]
 
 theorem not_fitsEnv_vacuousBobAllocEnv {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :

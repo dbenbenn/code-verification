@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.SM.DeliverForge
+public import Computational.Proofs.ReductionDsl.SM.DeliverForge -- proof-setup: allow-public-import
 public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperDefs
 import Computational.Proofs.ReductionDsl.Bridge
 import Computational.Proofs.ReductionDsl.Notation
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux
 
 /-!
 # Costed Challenge Simulators for `DeliverForgePaper`
@@ -22,7 +24,7 @@ Defines the `CostedReduction` programs `challSimDFPaperProg` and coin-stripping
 and cost bounds.
 -/
 
-@[expose] public section
+public section
 
 open ReductionDsl OracleSpec OracleComp
 open scoped Computational.Proofs.ReductionDsl.Notation
@@ -66,7 +68,7 @@ local notation "SR" => smR Key St St₂ Msg Coins RCoins C stSort
 local notation "SQDF" => smQDF Key St St₂ Msg Coins RCoins C
 local notation "SRDF" => smRDF Key St St₂ Msg Coins RCoins C stSort
 
-def mCorrAllowedPaperE
+@[expose] def mCorrAllowedPaperE
     {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ mirrorTy) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   rdslExpr =>
@@ -96,7 +98,7 @@ theorem mCorrAllowedPaperE_eval {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ mirr
   congr 1; funext pos
   simp [ρ₁, posSender, otherE, posEnc, ← partyEnc_other, partyEnc_beq, Expr.eval, Expr.v0, Expr.v1]
 
-def simCorrCDFPaper (K : ℕ) {Γ}
+@[expose] def simCorrCDFPaper (K : ℕ) {Γ}
     (s : Expr OO Γ mirrorTy)
     (p : Expr OO Γ .bool) :
     Comp OO SIfaceDF Γ (.prod (.opt (.base stSort)) mirrorTy) :=
@@ -111,7 +113,7 @@ def simCorrCDFPaper (K : ℕ) {Γ}
       else
         return (res, s0)
 
-def simHandleCDFPaper (K Δ qep : ℕ) :
+@[expose] def simHandleCDFPaper (K Δ qep : ℕ) :
     Comp OO SIfaceDF [mirrorTy, SQDF] (.prod SRDF mirrorTy) :=
   rdsl [s, q] do
     match q with
@@ -135,7 +137,7 @@ def simHandleCDFPaper (K Δ qep : ℕ) :
       return (.inr r, s')
 
 /-- Costed `DeliverForge.challSimDFPaper` challenge simulator over `SM.specDF`. -/
-@[reducible] def challSimDFPaperProg (K Δ qep : ℕ) :
+@[expose, reducible] def challSimDFPaperProg (K Δ qep : ℕ) :
     CostedReduction OO SIfaceDF
       (SM.specDF (SMSort.den Key St St₂ Msg Coins RCoins C stSort) Msg Coins C)
       SCodecDF .unit .unit .bool .bool where
@@ -393,7 +395,7 @@ theorem challSimDFPaperProg_step_clearComp [DecidableEq C] (K Δ qep m : ℕ)
   · rw [challSimDFPaperProg_impl_run_eq_of_ne_cr K Δ qep _ (by intro _ h; cases h) v]
     exact challSimDFProg_step_clearComp K Δ qep m heqCt (.inr (P, c, c')) v hInv
 
-def simTransmitC'DFPaper (Δ qep : ℕ) {Γ}
+@[expose] def simTransmitC'DFPaper (Δ qep : ℕ) {Γ}
     (s : Expr OO Γ mirrorTy)
     (arg : Expr OO Γ (.prod .bool (.prod (.base .msg) (.opt (.base .coins))))) :
     Comp OO SIfaceDF Γ (.prod (.opt (.base .ct)) mirrorTy) :=
@@ -410,7 +412,7 @@ def simTransmitC'DFPaper (Δ qep : ℕ) {Γ}
         let rec_ := (pos, m, ct)
         return (some ct, mRecordE Δ s₁ p rec_ false)
 
-def simChallC'DFPaper (Δ qep : ℕ) {Γ}
+@[expose] def simChallC'DFPaper (Δ qep : ℕ) {Γ}
     (s : Expr OO Γ mirrorTy)
     (arg : Expr OO Γ
       (.prod .bool (.prod (.base .msg) (.prod (.base .msg) (.opt (.base .coins)))))) :
@@ -432,7 +434,7 @@ def simChallC'DFPaper (Δ qep : ℕ) {Γ}
           let rec_ := (pos, mb, ct)
           return (some ct, mRecordE Δ s1 p rec_ true)
 
-def simHandleC'DFPaper (K Δ qep : ℕ) :
+@[expose] def simHandleC'DFPaper (K Δ qep : ℕ) :
     Comp OO SIfaceDF [mirrorTy, SQDF] (.prod SRDF mirrorTy) :=
   rdsl [s, q] do
     match q with
@@ -456,7 +458,7 @@ def simHandleC'DFPaper (K Δ qep : ℕ) :
       return (.inr r, s')
 
 /-- Costed coin-stripping `DeliverForge.challSimDF'Paper` challenge simulator over `SM.specDF`. -/
-@[reducible] def challSimDF'PaperProg (K Δ qep : ℕ) :
+@[expose, reducible] def challSimDF'PaperProg (K Δ qep : ℕ) :
     CostedReduction OO SIfaceDF
       (SM.specDF (SMSort.den Key St St₂ Msg Coins RCoins C stSort) Msg Coins C)
       SCodecDF .unit .unit .bool .bool where

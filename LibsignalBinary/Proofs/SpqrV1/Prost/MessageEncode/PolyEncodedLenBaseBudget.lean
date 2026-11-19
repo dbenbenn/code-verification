@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncodedLenBase
 
 /-!
@@ -19,7 +19,7 @@ Defines `VmPreserved`-strengthened (`0`-allocation) contracts
 `polynomial{Decoder,Encoder}EncodedLen{Pinned,}Spec` and `subroutine_ok_withMsgEnc48CS_of_no_panic`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,21 +33,21 @@ open CryptoVerification.SpqrV1.Prost.MessageEncode
    PolynomialEncoderEncodedLenPinnedGhost PolynomialEncoderEncodedLenGhost
    withMsgEnc48CS subroutine_ok_withMsgEnc48CS_ext)
 
-def polynomialDecoderEncodedLenPinnedSpec (A : RustAlloc) :
+@[expose] def polynomialDecoderEncodedLenPinnedSpec (A : RustAlloc) :
     Spec PolynomialDecoderEncodedLenPinnedGhost :=
   withVmPreserved
     (CryptoVerification.SpqrV1.Prost.MessageEncode.polynomialDecoderEncodedLenPinnedSpec A)
 
-def polynomialDecoderEncodedLenSpec (A : RustAlloc) : Spec PolynomialDecoderEncodedLenGhost :=
+@[expose] def polynomialDecoderEncodedLenSpec (A : RustAlloc) : Spec PolynomialDecoderEncodedLenGhost :=
   withVmPreserved
     (CryptoVerification.SpqrV1.Prost.MessageEncode.polynomialDecoderEncodedLenSpec A)
 
-def polynomialEncoderEncodedLenPinnedSpec (A : RustAlloc) :
+@[expose] def polynomialEncoderEncodedLenPinnedSpec (A : RustAlloc) :
     Spec PolynomialEncoderEncodedLenPinnedGhost :=
   withVmPreserved
     (CryptoVerification.SpqrV1.Prost.MessageEncode.polynomialEncoderEncodedLenPinnedSpec A)
 
-def polynomialEncoderEncodedLenSpec (A : RustAlloc) : Spec PolynomialEncoderEncodedLenGhost :=
+@[expose] def polynomialEncoderEncodedLenSpec (A : RustAlloc) : Spec PolynomialEncoderEncodedLenGhost :=
   withVmPreserved
     (CryptoVerification.SpqrV1.Prost.MessageEncode.polynomialEncoderEncodedLenSpec A)
 

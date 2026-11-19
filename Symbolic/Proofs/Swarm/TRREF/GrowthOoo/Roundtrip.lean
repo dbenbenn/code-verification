@@ -9,12 +9,12 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import Symbolic.Proofs.Swarm.TRREF.GrowthOoo.Prims
-public import Symbolic.Proofs.Swarm.TRREF.GrowthOoo.Chain
-public import Symbolic.Proofs.Swarm.TRREF.GrowthOoo.State
+import Symbolic.Proofs.Swarm.TRREF.GrowthOoo.Prims
+import Symbolic.Proofs.Swarm.TRREF.GrowthOoo.Chain
+import Symbolic.Proofs.Swarm.TRREF.GrowthOoo.State
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
 
-@[expose] public section
+public section
 
 set_option autoImplicit false

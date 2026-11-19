@@ -11,94 +11,29 @@ module
 
 public import ProofLib.SepLogic.WP
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 /-!
-# musl Exit Path and Hook-Free Addresses Above Image Code
+# musl Exit Path Stepping and Weakest Precondition
 
 Verifies musl's post-`main` exit sequence (`B + 0x854` -> `exit` at `B + 0xb48` ->
 `libc_exit_fini` -> `_Exit` at `B + 0xb64`, invoking `exit_group` with `w0` sign-extended)
-symbolically in page-aligned musl base `B`:
-
-- `externAt?_ofImage_eq_none_of_ge` and `muslHookFree_ofImage`: `Program.ofImage img E`
-  has no extern hooks at or above `img.base + img.code.length`.
-- `musl_exit_ofImage`: from any `Returned sm sr` with `lr = B + 0x854`, 48 stack bytes
-  below `sp`, and equal `__fini_array_start` / `__fini_array_end` `.got` words
-  (`muslFiniFr B`), execution reaches `.Exited (signExtend 64 w0)` with unchanged
-  filesystem and trace.
+symbolically in page-aligned musl base `B`: from any `Returned sm sr` with `lr = B + 0x854`,
+48 stack bytes below `sp`, and equal `__fini_array_start` / `__fini_array_end` `.got` words
+(`muslFiniFr B`), execution reaches `.Exited (signExtend 64 w0)` with unchanged filesystem
+and trace (`musl_exit_wp`, `musl_exit_steps`).
 -/
 
 namespace CryptoVerification.SignalSession.MuslExit
 
 open Arm64 ProofLib
 
-/-! ## Hook-Free Range Above Image Code -/
-
-/-- Every extern stub of a loaded image lies inside its code. -/
-theorem stub_lt_code {li : Obj.LinkedImage} {img : Obj.Image} (h : Obj.Loads li img)
-    {n : String} {o : Nat} (hmem : (n, o) ∈ img.stubs) : o + 4 ≤ img.code.length := by
-  obtain ⟨hcode, -, hstubs⟩ := ProofLib.ObjectLoad.Loads.canonical h
-  have hwf := ProofLib.ObjectLoad.Loads.wellFormed h
-  simp only [Obj.LinkedImage.wellFormed, Bool.and_eq_true] at hwf
-  have hall := hwf.1.2
-  rw [List.all_eq_true] at hall
-  rw [hstubs] at hmem
-  have := hall _ hmem
-  simp only [decide_eq_true_eq] at this
-  rw [hcode]
-  exact this
-
-/-- `Program.ofImage img E` has no extern hook at any non-wrapping `pc ≥ img.base + img.code.length`. -/
-theorem externAt?_ofImage_eq_none_of_ge {li : Obj.LinkedImage} {img : Obj.Image}
-    (h : Obj.Loads li img) (E : String → Option (State → State)) {pc : BitVec 64}
-    (hpc : img.base.toNat + img.code.length ≤ pc.toNat) :
-    (Program.ofImage img E).externAt? pc = none := by
-  have hle : img.base ≤ pc := by
-    rw [BitVec.le_def]; omega
-  have hoff : (pc - img.base).toNat = pc.toNat - img.base.toNat := BitVec.toNat_sub_of_le hle
-  simp only [Program.externAt?, Program.hookAtOff?, Program.ofImage, hoff]
-  have e1 : (img.stubs.findSome? fun (n, o) =>
-      if o == pc.toNat - img.base.toNat then E n else none) = none := by
-    rw [List.findSome?_eq_none_iff]
-    rintro ⟨n, o⟩ hmem
-    have := stub_lt_code h hmem
-    have hne : (o == pc.toNat - img.base.toNat) = false := by
-      rw [beq_eq_false_iff_ne]; omega
-    simp only [hne, Bool.false_eq_true, ↓reduceIte]
-  have e2 : (img.symbols.findSome? fun (n, o) =>
-      if o == pc.toNat - img.base.toNat then (none : Option (State → State)) else none) =
-      none := by
-    rw [List.findSome?_eq_none_iff]
-    rintro ⟨n, o⟩ _
-    simp only [ite_self]
-  rw [e1, e2]
-  rfl
-
-/-- Range-form `MuslHookFree` for `Program.ofImage img E` when `img.base + img.code.length ≤ lo`. -/
-theorem muslHookFree_ofImage {li : Obj.LinkedImage} {img : Obj.Image}
-    (h : Obj.Loads li img) (E : String → Option (State → State)) {lo hi : BitVec 64}
-    (hlo : img.base.toNat + img.code.length ≤ lo.toNat) :
-    ∀ pc, lo ≤ pc → pc < hi → ((Program.ofImage img E).externAt? pc).isNone = true := by
-  intro pc hpc _
-  rw [BitVec.le_def] at hpc
-  rw [externAt?_ofImage_eq_none_of_ge h E (by omega)]
-  rfl
-
-/-- List-form `MuslHookFree` for `Program.ofImage img E` when every `pc ∈ pcs` lies at or above `img.base + img.code.length`. -/
-theorem muslHookFree_list_ofImage {li : Obj.LinkedImage} {img : Obj.Image}
-    (h : Obj.Loads li img) (E : String → Option (State → State)) {pcs : List (BitVec 64)}
-    (hpcs : ∀ pc ∈ pcs, img.base.toNat + img.code.length ≤ pc.toNat) :
-    ∀ pc ∈ pcs, ((Program.ofImage img E).externAt? pc).isNone = true := by
-  intro pc hpc
-  rw [externAt?_ofImage_eq_none_of_ge h E (hpcs pc hpc)]
-  rfl
-
 /-! ## Exit-Path Instruction Fetches and Stepping -/
 
 /-- The decoded musl exit-path instructions at musl text base `B`. -/
-def MuslExitFetch (Q : Program) (B : BitVec 64) : Prop :=
+@[expose] def MuslExitFetch (Q : Program) (B : BitVec 64) : Prop :=
   Q.fetch (B + 0x854#64) = some (Arm64.Instr.bl 0x00000000000002f4#64) ∧
   Q.fetch (B + 0xb00#64) = some (Arm64.Instr.ret (Arm64.Reg.gpr 0x1e#5)) ∧
   Q.fetch (B + 0xb04#64) = some (Arm64.Instr.str (Arm64.MemWidth.X64) (Arm64.Reg.gpr 0x1e#5) (Arm64.AddrMode.PreIndex (Arm64.Reg.sp) 0xffffffffffffffe0#64)) ∧
@@ -124,7 +59,7 @@ def MuslExitFetch (Q : Program) (B : BitVec 64) : Prop :=
   Q.fetch (B + 0xb6c#64) = some (Arm64.Instr.logicalShift (Arm64.RegWidth.W64) (Arm64.LogicalOp.ORR) (Arm64.Reg.gpr 0x00#5) (Arm64.Reg.xzr) (Arm64.Reg.gpr 0x09#5) (Arm64.ShiftType.LSL) 0) ∧
   Q.fetch (B + 0xb70#64) = some (Arm64.Instr.system false 0x0000#16)
 
-def muslFiniFr (B : BitVec 64) : SepProp :=
+@[expose] def muslFiniFr (B : BitVec 64) : SepProp :=
   ∃∗ F, ((B + 0x2030#64) ↦₆₄ᵣ F) ∗ ((B + 0x2038#64) ↦₆₄ᵣ F)
 
 theorem musl_exit_wp (Q : Program) (B : BitVec 64) (hf : MuslExitFetch Q B)
@@ -215,7 +150,7 @@ theorem musl_exit_steps {P Q : Program} {B : BitVec 64}
 /-! ## Auxiliary Program `muslProg` -/
 
 /-- Program combining `P`'s extern hooks at the same absolute addresses with musl `code` based at `B`. -/
-def muslProg (P : Program) (B : BitVec 64) (code : List (BitVec 8)) : Program where
+@[expose] def muslProg (P : Program) (B : BitVec 64) (code : List (BitVec 8)) : Program where
   base := B
   code := code
   stubs := P.stubs.map fun (n, o) => (n, ((P.base + BitVec.ofNat 64 o) - B).toNat)
@@ -290,46 +225,5 @@ theorem muslExitFetch_muslProg (P : Program) (B : BitVec 64) (code : List (BitVe
     (e _ (by decide)).trans f15, (e _ (by decide)).trans f16, (e _ (by decide)).trans f17,
     (e _ (by decide)).trans f18, (e _ (by decide)).trans f19, (e _ (by decide)).trans f20,
     (e _ (by decide)).trans f21, (e _ (by decide)).trans f22, (e _ (by decide)).trans f23⟩
-
-/-! ## Exit Path for `Program.ofImage img E` -/
-
-/-- From a return state with `lr = B + 0x854`, 16-byte-aligned `sp`, 48 stack bytes below `sp`,
-and `muslFiniFr B`, `Program.ofImage img E` steps through musl's exit path to
-`.Exited (signExtend 64 w0)` without modifying the filesystem or trace. -/
-theorem musl_exit_ofImage {li : Obj.LinkedImage} {img : Obj.Image} (himg : Obj.Loads li img)
-    (E : String → Option (State → State)) {B : BitVec 64} {code : List (BitVec 8)}
-    (hB : B &&& 0xfff#64 = 0#64) (hend : img.base.toNat + img.code.length ≤ B.toNat)
-    (hnw : B.toNat + 0xb74 ≤ 2 ^ 64)
-    (hf : MuslExitFetch ({ code } : Program) 0#64)
-    {sm sr : State} (hL : ({ base := B, code } : Program).CodeLoaded sm.mem)
-    (hlr : sm.readReg64 .lr = B + 0x854#64) (hal : sm.spAligned = true)
-    (hsteps : Steps (Program.ofImage img E) sm sr) (hret : Returned sm sr)
-    (hm : sr.mem ⊨ stackAt sm.sp 48 ∗ muslFiniFr B ∗ anyHeap) :
-    ∃ sx, Steps (Program.ofImage img E) sr sx ∧
-      sx.status = .Exited (((sr.readReg64 .x0).setWidth 32).signExtend 64) ∧
-      sx.fs = sr.fs ∧ sx.trace = sr.trace := by
-  obtain ⟨hpc, hsp, hrun⟩ := hret
-  have hst : ∀ x ∈ (Program.ofImage img E).stubs, x.2 < 2 ^ 64 := by
-    rintro ⟨n, o⟩ hmem
-    have h1 := stub_lt_code himg hmem
-    have h2 := B.isLt
-    simp only at h1 ⊢
-    omega
-  have hPQ : ∀ pc, (muslProg (Program.ofImage img E) B code).externAt? pc =
-      (Program.ofImage img E).externAt? pc :=
-    muslProg_externAt? _ B code hst (fun _ => rfl)
-  have hfQ : MuslExitFetch (muslProg (Program.ofImage img E) B code) B := by
-    refine muslExitFetch_muslProg _ B code (fun k hk => ?_) hf
-    rw [hPQ]
-    apply externAt?_ofImage_eq_none_of_ge himg E
-    have : (B + k).toNat = B.toNat + k.toNat := by
-      rw [BitVec.toNat_add]; exact Nat.mod_eq_of_lt (by omega)
-    omega
-  have hLQ : (muslProg (Program.ofImage img E) B code).CodeLoaded sr.mem :=
-    Steps.codeLoaded hsteps (hL.of_base_code rfl rfl)
-  have hal' : sr.spAligned = true := by
-    simp only [State.spAligned, hsp] at hal ⊢; exact hal
-  rw [← hsp] at hm
-  exact musl_exit_steps hPQ hfQ hB hLQ (hpc.trans hlr) hrun hal' hm
 
 end CryptoVerification.SignalSession.MuslExit

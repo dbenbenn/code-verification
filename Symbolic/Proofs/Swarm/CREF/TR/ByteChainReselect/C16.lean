@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.ByteChainReselect.WireRebuild
 
@@ -23,7 +23,7 @@ state matches the received message's ratchet key in bytes and neither `RecvColli
 `c.ratchetKey` with identical wire and MAC bytes, `recvSeed`, and `ownKeys`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

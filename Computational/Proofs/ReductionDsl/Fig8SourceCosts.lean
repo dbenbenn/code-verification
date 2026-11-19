@@ -9,26 +9,28 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatements
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound
-public import Computational.Proofs.ReductionDsl.PureAuxMacroLift
-public import Computational.Proofs.ReductionDsl.SM.RedCKA
-public import Computational.Proofs.ReductionDsl.SM.RedFS
-public import Computational.Proofs.ReductionDsl.SM.RedPRNG
-public import Computational.Proofs.ReductionDsl.SM.Theorem1
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatements -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.PureAuxMacroLift -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.RedCKA -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.RedFS -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.RedPRNG -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.Theorem1 -- proof-setup: allow-public-import
 public import Computational.Proofs.SessionCostedBase
 import Computational.Proofs.GameHop.ReductionDsl.CostUB
+public import Computational.Proofs.SpecLemmas.Reductions.ReductionDsl.Core -- proof-setup: allow-public-import
+public import Computational.Specifications.Session.ACD19.Ratchet.LibsignalBound
 
 /-!
 # Source AST cost bounds for Figure 8 `ReductionDsl` programs
 
 Logarithmic `bits`-aware source `.cost` bounds (`fig8StepBound`) for `SM.simHandleC`,
-`SM.Engine.implEC`, `hooksCKAC`, `hooksPRNGC`, `hooksFSC`, and their initializers and finalizers.
--/
+`SM.Engine.implEC`, `hooksCKAC`, `hooksPRNGC`, `hooksFSC`, and their initializers and finalizers.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
 open OracleComp OracleSpec CryptoGames CryptoGames.LibsignalSM Ratchet LibsignalInst
   LibsignalSession HMAC HKDF CBC LibsignalAead SM SM.Construction SM.Engine
@@ -2154,7 +2156,7 @@ lemma fig8_poly_le_ratchetCostBudget (q qep : ℕ) :
       _ ≤ L * M := Nat.mul_le_mul_right M hL_pos
   have h1_LM : 25001 ≤ L * M := by
     calc 25001 = 1 * 25001 := (Nat.one_mul _).symm
-      _ ≤ L * M := Nat.mul_le_mul hL_pos hM_lb
+      _ ≤ L * M := Nat.mul_le_mul_right 25001 hL_pos |>.trans (Nat.mul_le_mul_left L hM_lb)
   have hsum :
       20000 * L + L * (3 * ReductionDsl.bits qep + 60) + 3 * B +
         200 * ReductionDsl.bits qep + 350000 ≤

@@ -9,22 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyDecoderExactBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyDecoderExactPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactPlacedABudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCSBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyDecoderBasePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncodedLenBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBasePlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyDecoderExactBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyDecoderExactPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactPlacedABudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCSBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyDecoderBasePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncodedLenBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBasePlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridges
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactPlacedA
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` Exact-Capacity `PolynomialDecoder::encode [local#2]` (`Block 315`)
@@ -34,7 +36,7 @@ contracts for `PolynomialDecoder::encode [local#2]` on `lsProg_315 H`, together 
 callee bridges consumed by `PqRatchetState::encode_to_vec` (`Block 426`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -867,43 +869,6 @@ theorem encode_polyDecoder_2_exact_vm_pinned_placed_ok_x [LibsignalPlacement]
     subroutine_ok (lsProg_315 H) (blkPl_315).base
       (withLsCodeLoaded lsmpl (encodePolyDecoderExactVmSpecOf doReserveStackX A.repAlloc)) :=
   encode_polyDecoder_2_exact_vm_pinned_placed_ok_of_resStack (by decide) hmc
-
-private theorem subroutine_ok_pinnedExactVm_of_exactVm [LibsignalPlacement] {resStack : Nat}
-    {prog : Program} {entry : BitVec 64} {A : RustAlloc}
-    (hok : subroutine_ok prog entry
-      (withLsCodeLoaded lsmpl (encodePolyDecoderExactVmSpecOf resStack A))) :
-    subroutine_ok prog entry
-      (withLsCodeLoaded lsmpl (encodePolyDecoderPinnedExactVmSpecOf resStack A)) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  have hpre' : s0.mem ⊨
-      (withLsCodeLoaded lsmpl (encodePolyDecoderExactVmSpecOf resStack A)).pre x s0 ∗ R := by
-    dsimp only [withLsCodeLoaded] at hpre ⊢
-    rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj] at hpre ⊢
-    obtain ⟨hcl, hpre⟩ := hpre
-    refine ⟨hcl, ?_⟩
-    dsimp only [encodePolyDecoderPinnedExactVmSpecOf, encodePolyDecoderExactVmSpecOf] at hpre ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-    exact ⟨⟨hpre.1.1, hpre.1.2.1, hpre.1.2.2.1, hpre.1.2.2.2.2⟩, hpre.2⟩
-  refine hok.mono_outcome x R s0 hpc hrun hpre' hsp ?_
-  rintro sf (⟨hret, hcc, hpost⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩)
-  · exact Or.inl ⟨hret, hcc, hpost⟩
-  · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hq⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨hoom, hq⟩))
-
-theorem encode_polyDecoder_315_pinned_exact_placed_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {H : LibsignalHooks}
-    (hmc : HookSat H lsMemcpySym sessionMemcpyRegionBudgetSpec) :
-    EncodePolyDecoder315PinnedExactPlacedOk doReserveStack A.repAlloc H :=
-  subroutine_ok_pinnedExactVm_of_exactVm
-    (encode_polyDecoder_2_exact_vm_pinned_placed_ok hmc)
-
-theorem encode_polyDecoder_315_pinned_exact_placed_ok_x [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {H : LibsignalHooks}
-    (hmc : HookSat H lsMemcpySym sessionMemcpyRegionBudgetSpec) :
-    EncodePolyDecoder315PinnedExactPlacedOk doReserveStackX A.repAlloc H :=
-  subroutine_ok_pinnedExactVm_of_exactVm
-    (encode_polyDecoder_2_exact_vm_pinned_placed_ok_x hmc)
 
 theorem encode_polyDecoder_2_exact_pinned_placed_ok_of_memcpy [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}

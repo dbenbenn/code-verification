@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.Bridge
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
 public import ProofLib.SepLogic.Bytes
 import ProofLib.BV.WidthNorm
 
@@ -21,7 +21,7 @@ slice introduction lemmas (`lsro_slice_intro`, `lsro64_intro`, `lsro32_intro`, `
 `lsro8_intro`), and relocated `abs64` word lemmas (`lsro_reloc64_intro`) under `LibsignalRoLoaded`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -53,13 +53,13 @@ theorem holdsBytes_slice {m : Memory} {addr : BitVec 64} {L bs : List (BitVec 8)
 
 /-! ## 2. Checks (`$O(\log N)$` via `lsroFind`) -/
 
-def relocsInBounds (d : SymDataInfo) : Bool :=
+@[expose] def relocsInBounds (d : SymDataInfo) : Bool :=
   d.relocs.all fun r => decide (r.off + dataRelocWidth r.kind ≤ d.bytes.length)
 
-def relocsDisjoint (d : SymDataInfo) (off n : Nat) : Bool :=
+@[expose] def relocsDisjoint (d : SymDataInfo) (off n : Nat) : Bool :=
   d.relocs.all fun r => decide (off + n ≤ r.off ∨ r.off + dataRelocWidth r.kind ≤ off)
 
-def lsroSliceCheck (sym : String) (off : Nat) (bs : List (BitVec 8)) : Bool :=
+@[expose] def lsroSliceCheck (sym : String) (off : Nat) (bs : List (BitVec 8)) : Bool :=
   match lsroFind sym with
   | some d =>
     d.readOnly && relocsInBounds d && relocsDisjoint d off bs.length &&
@@ -149,7 +149,7 @@ theorem lsro_slice_read {pl : MultiPlacement} {m : Memory} (hro : LibsignalRoLoa
     {sym : String} {off : Nat} {bs : List (BitVec 8)} (h : lsroSliceCheck sym off bs = true) :
     m.RO (pl.ρ sym + BitVec.ofNat 64 off) bs.length ∧
       m.readBytes (pl.ρ sym + BitVec.ofNat 64 off) bs.length = bs :=
-  ProofLib.ObjectLoad.holdsBytes_ro (lsro_slice_holds hro h)
+  Bridge.holdsBytes_ro (lsro_slice_holds hro h)
 
 theorem lsro_slice_intro {pl : MultiPlacement} {m : Memory} (hro : LibsignalRoLoaded pl m)
     {sym : String} {off : Nat} {addr : BitVec 64} {bs : List (BitVec 8)}
@@ -190,10 +190,10 @@ theorem lsro8_intro {pl : MultiPlacement} {m : Memory} (hro : LibsignalRoLoaded 
 
 /-! ## 4. Relocated `abs64` Words -/
 
-def isReloc64To (off : Nat) (tgt : String) (r : RelocEntry) : Bool :=
+@[expose] def isReloc64To (off : Nat) (tgt : String) (r : RelocEntry) : Bool :=
   decide (r.off = off) && decide (r.kind = .abs64) && decide (r.sym = tgt) && decide (r.addend = 0)
 
-def lsroReloc64Check (sym : String) (off : Nat) (tgt : String) : Bool :=
+@[expose] def lsroReloc64Check (sym : String) (off : Nat) (tgt : String) : Bool :=
   match lsroFind sym with
   | some d =>
     d.readOnly && relocsInBounds d && d.relocs.any (isReloc64To off tgt) &&
@@ -339,7 +339,7 @@ theorem lsro_reloc64_intro {pl : MultiPlacement} {m : Memory} (hro : LibsignalRo
     (h : lsroReloc64Check sym off tgt = true) {P : SepProp} (hP : m ⊨ P) :
     m ⊨ (addr ↦₆₄ᵣ v) ∗ P := by
   subst haddr
-  obtain ⟨hro', hrd⟩ := ProofLib.ObjectLoad.holdsBytes_ro (lsro_reloc64_holds hro hv h)
+  obtain ⟨hro', hrd⟩ := Bridge.holdsBytes_ro (lsro_reloc64_holds hro hv h)
   rw [pointsTo64RO_eq_pointsToBytesRO]
   exact IsBlockRO.intro_of_ro (IsBlockRO.pointsToBytesRO _ _ (by simp [unpack64_length]))
     hro' hrd hP

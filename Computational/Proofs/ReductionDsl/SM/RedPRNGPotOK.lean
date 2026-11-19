@@ -10,8 +10,11 @@ limitations under the License.
 module
 
 public import Computational.Proofs.ReductionDsl.SM.RedPRNG -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Potential -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Potential
 import Computational.Proofs.ReductionDsl.Notation
+public import Computational.Proofs.GameHop.ReductionDsl.SupportWP -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.SpecLemmas.Reductions.ReductionDsl.Core
 
 /-!
 # Potential-Based PRF-PRNG Query Bounds

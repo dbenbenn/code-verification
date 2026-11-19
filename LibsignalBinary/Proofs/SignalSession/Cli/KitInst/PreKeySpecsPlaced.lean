@@ -10,10 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecs
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Placed CLI Pre-Key, Signed Pre-Key, and Kyber Store Specifications
@@ -22,7 +24,7 @@ Relocatable `[LibsignalPlacement]` instantiations of `cliPreKeyStoreSpec`,
 `cliSignedPreKeyStoreSpec`, and `cliKyberPreKeyStoreSpec` at base `0#64`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 
 namespace CryptoVerification.SignalSession.Cli.KitInst
@@ -97,13 +99,6 @@ theorem cliSignedPreKeyStoreSpecPlaced_quiet [LibsignalPlacement] {A : RustAlloc
     (sid : BitVec 32) (s1 s2 : Nat) :
     (cliSignedPreKeyStoreSpecPlaced A rd F0 pathOk sid s1 s2).Quiet :=
   cliSignedPreKeyStoreSpec_quiet (A := A) (b := 0#64) rd F0 pathOk sid s1 s2
-
-theorem cliKyberPreKeyStoreSpecPlaced_quiet [LibsignalPlacement] {A : RustAlloc}
-    (rd : ReadRule) (F0 : FsFiles) (pathOk : List (BitVec 8) → Prop)
-    (kid ksid : BitVec 32) (kbk : PublicKey) (s1 s2 s3 s4 : Nat) :
-    (cliKyberPreKeyStoreSpecPlaced A rd F0 pathOk kid ksid kbk s1 s2 s3 s4).Quiet :=
-  cliKpkStoreSpec_quiet (A := A) (b := 0#64) rd F0 pathOk kid ksid kbk
-    (cliKpkGetSide A rd F0 pathOk kid) s1 s2 s3 s4 pkBoxAt_memRegion kpkMarkBoxAt_memRegion
 
 theorem pkGetAnsAt_entails_pollOut_placed [LibsignalPlacement] (A : RustAlloc)
     (rd : ReadRule) (F0 : FsFiles) (pathOk : List (BitVec 8) → Prop) (pid : BitVec 32)

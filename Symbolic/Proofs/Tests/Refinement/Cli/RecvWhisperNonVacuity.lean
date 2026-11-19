@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import all Init.Data.Repr
 import all Init.Data.List.SplitOn.Basic
-public import Symbolic.Proofs.Tests.Refinement.Cli.RecvWhisperNonVacuitySteps12
+public import Symbolic.Proofs.Tests.Refinement.Cli.RecvWhisperNonVacuitySteps12 -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.DirStepAux
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.SendRecordInj
 import Symbolic.Proofs.Swarm.CREF.Cli.TopSlots
@@ -31,7 +31,7 @@ SPQR ratchet state. Also proves `pqModelPost_recvWhisper_nonvacuous_spqr_on`, sh
 of `PqModelPost` on an accepted SPQR-ON whisper `recv` call inside `PqxdhPartyInSpecDomain`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -854,24 +854,29 @@ def nvMlKem : CryptoVerification.LibsignalSpqrV1.MlKem where
   decaps := fun _ _ _ => List.Vector.replicate 32 1#8
   validPk := fun _ _ => true
 
+def nvPubKeyA : List.Vector (BitVec 8) 32 :=
+  ⟨9#8 :: List.replicate 31 0#8, rfl⟩
+
+def nvPubKeyB : List.Vector (BitVec 8) 32 :=
+  ⟨[0xab#8, 0xbb#8, 0x90#8, 0x4f#8, 0x2c#8, 0x8f#8, 0x86#8, 0xf7#8,
+    0x13#8, 0x32#8, 0xb8#8, 0x05#8, 0x93#8, 0x13#8, 0xb1#8, 0xa1#8,
+    0xcb#8, 0xad#8, 0x7b#8, 0x33#8, 0x2d#8, 0x85#8, 0x92#8, 0x7b#8,
+    0x48#8, 0x5e#8, 0x5b#8, 0x0e#8, 0x10#8, 0x49#8, 0xc3#8, 0x4d#8], rfl⟩
+
+def nvSigZero64 : List.Vector (BitVec 8) 64 :=
+  ⟨1#8 :: List.replicate 63 0#8, rfl⟩
+
 def nvCrypto : Crypto where
   F := fun s _ => s
   E := fun _ b => b
   D := fun _ b => b
   X := fun _ _ => List.Vector.replicate 32 1#8
-  pubKey := fun sk => sk
+  pubKey := fun sk => if sk.get 1 == 2#8 then nvPubKeyA else nvPubKeyB
 
 def nvW : PEParams where
   C := nvCrypto
   Q := {
-    F512 := fun s _ => s
-    scalarMod := fun _ => List.Vector.replicate 32 0#8
-    scalarWide := fun _ => List.Vector.replicate 32 0#8
-    montToEd := fun _ _ => some (List.Vector.replicate 160 0#8)
-    isTorsionFree := fun _ => true
-    edNeg := fun _ => List.Vector.replicate 160 0#8
-    dsmb := fun _ _ _ => List.Vector.replicate 160 0#8
-    compress := fun _ => List.Vector.replicate 32 0#8
+    F512 := fun _ _ => List.Vector.replicate 8 0#64
     encaps := fun _ _ => (List.Vector.replicate 1568 0#8, List.Vector.replicate 32 1#8)
     decaps := fun _ _ => List.Vector.replicate 32 1#8
     K := nvMlKem
@@ -902,14 +907,14 @@ def nvStB0 : PqParty :=
     me := ⟨List.Vector.replicate 32 4#8, 20#32⟩
     peerId := none
     session := none
-    signed := [(1#32, ⟨List.Vector.replicate 32 2#8, List.Vector.replicate 64 0#8, 0#64⟩)]
+    signed := [(1#32, ⟨List.Vector.replicate 32 2#8, nvSigZero64, 0#64⟩)]
     oneTime := []
     kyberOneTime := [(2#32, some ⟨List.Vector.replicate 1568 0#8, List.Vector.replicate 3168 0#8,
-      List.Vector.replicate 64 0#8, 0#64⟩)]
+      nvSigZero64, 0#64⟩)]
     kyberLastResort := [] }
 
 def nvBundleB : PreKeyBundleFields :=
-  honestBundle nvW.C nvStB0.me nvKeysB (List.Vector.replicate 64 0#8) (List.Vector.replicate 64 0#8)
+  honestBundle nvW.C nvStB0.me nvKeysB nvSigZero64 nvSigZero64
 
 private def nvPrekeyMsgFromSend (stA1 : PqParty) (pt1 coins : HwBytes) : Option PreKeyMessageFields :=
   match stA1.session with
@@ -949,7 +954,7 @@ private theorem of_nvWhisperBodyOf {wire body : HwBytes}
 
 def nvTapeA : List.Vector (BitVec 8) initiateTapeLen :=
   List.Vector.replicate initiateTapeLen 5#8
-def nvCoins64A : HwBytes := List.replicate 64 6#8
+@[expose] def nvCoins64A : HwBytes := List.replicate 64 6#8
 def nvCoins64B : HwBytes := List.replicate 64 7#8
 def nvPt1 : HwBytes := [0x48#8, 0x69#8]
 def nvPt2 : HwBytes := [0x4F#8, 0x4B#8]

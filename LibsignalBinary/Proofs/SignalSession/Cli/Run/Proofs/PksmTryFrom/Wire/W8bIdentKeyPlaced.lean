@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bIdentKey
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.IdentKeyWPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bKyberPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bIdentKey -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.IdentKeyWPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bKyberPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPost
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.IdentKey -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W6StatesPlaced -- proof-setup: allow-public-import
 
 /-!
 # Relocatable `[LibsignalPlacement]` `+0x830` Continuation (`preKey830OkW_placed_of_864`)
@@ -23,7 +25,7 @@ Defines `w8bRowIPostPlaced`, `PreKey864OkWPlaced`, and `PreKeyIdentErrWPlaced`, 
 proves `preKey830OkW_placed_of_864` on `preKeyPlacedProg H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -50,7 +52,7 @@ open CryptoVerification.SignalSession.Cli.RunProofs
 /-! ## 1. Frames and the `+0x864` continuation (`[LibsignalPlacement]`) -/
 
 /-- `identity_key` `Ok` post-frame at `+0x864` (`2148`): the `Pf` of `preKey_ident_ok_830_to_864_placed_wpX`. -/
-def w8bRowIPostPlaced [LibsignalPlacement] (sp' ikPtr : BitVec 64) (regTag regVal : BitVec 32)
+@[expose] def w8bRowIPostPlaced [LibsignalPlacement] (sp' ikPtr : BitVec 64) (regTag regVal : BitVec 32)
     (ik : List (BitVec 8)) (ipk : PublicKey) : SepProp :=
   ((sp' + 48#64) ↦₃₂ regTag) ∗ ((sp' + 52#64) ↦₃₂ regVal) ∗
     ((sp' + 56#64) ↦₆₄ BitVec.ofNat 64 ik.length) ∗ ((sp' + 104#64) ↦₆₄ ikPtr) ∗ (ikPtr ↦ₛ ik) ∗
@@ -60,7 +62,7 @@ def w8bRowIPostPlaced [LibsignalPlacement] (sp' ikPtr : BitVec 64) (regTag regVa
     lsLogOff ∗ stackAt sp' (Prost.skipFieldStackX 100)
 
 /-- `+0x864` (`2148`) → `ret` after `identity_key` deserialization succeeds. -/
-def PreKey864OkWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def PreKey864OkWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   ∀ (x : RunCompose.PksmGhost) (s0 sf : State) (vb b1 : BitVec 8) (bs1 : List (BitVec 8))
     (m : ProtoPreKeySignalMessage) (bk ik msg : List (BitVec 8)) (spkId : BitVec 32)
     (pk ipk : PublicKey)
@@ -99,7 +101,7 @@ def PreKey864OkWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks)
 
 /-- `PreKey830OkWPlaced` restricted to `identity_key` deserialization failure
 (`PublicKey.deserialize ik = .error e`; `identity_key` `Err` edge `+0x830 → +0x978` → ret). -/
-def PreKeyIdentErrWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def PreKeyIdentErrWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   ∀ (x : RunCompose.PksmGhost) (s0 sf : State) (vb b1 : BitVec 8) (bs1 : List (BitVec 8))
     (m : ProtoPreKeySignalMessage) (bk ik msg : List (BitVec 8)) (spkId : BitVec 32)
     (pk : PublicKey) (e : SignalProtocolError)

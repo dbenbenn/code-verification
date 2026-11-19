@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -39,7 +39,7 @@ Proves composed-run extension and visible-entry lemmas for Triple Ratchet exposu
 `AppendsOnlyExposure`, preserving `TRRecordStateInv` and `TRNsBound`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -263,7 +263,7 @@ theorem exposeSkipped_trace (evH : Nat) (t : ExecTrace) :
   · left; rfl
 
 /-- Any exposure event on a Triple Ratchet trace (the 5 DR exposure events plus `ExposedSpqr`). -/
-def IsAnyExposureEv : TREvent → Prop
+@[expose] def IsAnyExposureEv : TREvent → Prop
   | .ExposedRK .. | .ExposedDHs .. | .ExposedCKs .. | .ExposedCKr .. | .ExposedMK ..
   | .ExposedSpqr .. => True
   | _ => False
@@ -406,12 +406,12 @@ theorem visOf_exposeSkipped {skIdx : Nat} {tr : ExecTrace}
 
 /-- Every entry appended is not a stored-state snapshot (`StEntry`), and any protocol event entry
 (`TREntry`) is an exposure event (`IsAnyExposureEv`). -/
-def IsExposureEntry (ent : ExecTrace.Entry) : Prop :=
+@[expose] def IsExposureEntry (ent : ExecTrace.Entry) : Prop :=
   (TraceEntryHas.proj ent : Option StEntry) = none ∧
   ∀ ev : TREntry, TraceEntryHas.proj ent = some ev → IsAnyExposureEv ev.ev
 
 /-- Every entry appended from `t` to `t'` satisfies `IsExposureEntry`. -/
-def AppendsOnlyExposure (t t' : ExecTrace) : Prop :=
+@[expose] def AppendsOnlyExposure (t t' : ExecTrace) : Prop :=
   t ≤ t' ∧ ∀ i (h : i < t'.length), t.length ≤ i → IsExposureEntry (t'.at i h)
 
 theorem AppendsOnlyExposure.refl (t : ExecTrace) : AppendsOnlyExposure t t :=

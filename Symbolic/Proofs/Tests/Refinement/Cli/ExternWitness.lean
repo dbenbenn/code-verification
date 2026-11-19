@@ -10,11 +10,10 @@ limitations under the License.
 module
 
 public import Symbolic.Specifications.Refinement.ElfBinding
-public import Symbolic.Proofs.SpecLemmas.ElfBindingFixed
 public import Symbolic.Proofs.SpecLemmas.ElfBindingProofDefs
-public import Symbolic.Proofs.Swarm.WIT.Pure
+public import Symbolic.Proofs.Swarm.WIT.Pure -- proof-setup: allow-public-import
 public import Symbolic.Proofs.SpecLemmas.ByteSpecs
-public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
 import Init.Data.Repr
 import Init.Data.String.Defs
 import Symbolic.Proofs.Swarm.CREF.Sem
@@ -42,13 +41,12 @@ import Symbolic.Specifications.Model.EquationalTheory.X25519
 import Symbolic.Specifications.Model.EquationalTheory.Kem
 import Symbolic.Specifications.Model.EquationalTheory.Spqr
 import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
-public import LibsignalBinary.Proofs.SpecLemmas.FsFold
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement
+public import LibsignalBinary.Proofs.SpecLemmas.FsFold -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import Symbolic.Proofs.Refinement.Composed.Cli.ParD7PureGates
 import Symbolic.Proofs.Swarm.CREF.Cli.DirCodecBridge
 import Symbolic.Proofs.Tests.Refinement.Cli.FilesVisibleTest -- shake: keep
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredElfBinding -- shake: keep
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Trace.Basic
@@ -62,6 +60,7 @@ import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.Bytes.AttackerKnowledge
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
+import Symbolic.Proofs.Swarm.CREF.Cli.RetiredAsmLevelSecurity
 
 /-!
 # Non-Vacuity and Witness Tests for `Composed/Cli/`
@@ -73,7 +72,7 @@ proving `CompExternsSatisfiableCli`, provides directory and bundle helpers (`Cli
 `CliTurn.init (initDirs ...)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -86,8 +85,8 @@ open DY.Libsignal (HwBytes)
 open DY.Libsignal.HwEvents (MachineEvent)
 open DY.Libsignal.Refinement (ExternCryptoLawsHold sha256CompressFunction x25519AgreementSymbol
   x25519PublicKeySymbol x25519TorsionSymbol aesCbcEncryptSymbol aesCbcDecryptSymbol)
-open DY.Libsignal.PQXDH.Refinement (kyberEncapsSymbol kyberDecapsSymbol toEdwardsSymbol
-  torsionFreeSymbol X25519TorsionShiftsRejected preKeyBundleByteLength)
+open DY.Libsignal.PQXDH.Refinement (kyberEncapsSymbol kyberDecapsSymbol
+  X25519TorsionShiftsRejected preKeyBundleByteLength)
 open DY.Libsignal.Composed.Refinement
 open DY.Libsignal.Composed.Refinement.Cli
 open CryptoVerification.SignalSession (Inputs Outcome PublicBundle CliHooks filesOf fsView
@@ -100,7 +99,7 @@ open Symbolic.Proofs.Swarm.WIT.Pure
 
 section AesCbcIdentity
 
-def idBlock : CryptoGames.CBC.AesKey → CryptoGames.CBC.Block → CryptoGames.CBC.Block :=
+@[expose] def idBlock : CryptoGames.CBC.AesKey → CryptoGames.CBC.Block → CryptoGames.CBC.Block :=
   fun _ b => b
 
 private theorem cbcEncrypt_eq (f : ByteSpecs.Block → ByteSpecs.Block) :
@@ -323,7 +322,7 @@ end AesCbcIdentity
 
 /-! ## Witness Interpretation and Hooks (`CompExternsSatisfiableCli`) -/
 
-def cliWitnessInterp : ExternInterpretation := fun s args =>
+@[expose] def cliWitnessInterp : ExternInterpretation := fun s args =>
   if s = aesCbcEncryptSymbol then
     match args with
     | [p, k, iv] =>
@@ -359,13 +358,6 @@ theorem cliWitnessInterp_total : ExternInterpretationTotalOnUsedSymbols cliWitne
     ⟨fun _ _ _ _ => rl (by decide) _,
      fun _ _ _ _ => rl (by decide) _,
      fun _ _ _ _ => rl (by decide) _,
-     fun _ _ _ => rl (by decide) _,
-     fun _ _ => rl (by decide) _,
-     fun _ _ => rl (by decide) _,
-     fun _ _ => by rw [cliWitnessInterp_of_witnessLength (n := 1) (by decide)]; rfl,
-     fun _ _ _ _ _ _ => rl (by decide) _,
-     fun _ _ => rl (by decide) _,
-     fun _ _ => rl (by decide) _,
      fun _ _ => rl (by decide) _,
      fun _ _ _ => rl (by decide) _,
      fun _ _ _ _ => rl (by decide) _,
@@ -418,11 +410,18 @@ theorem cliWitnessInterp_contracts : ExternContractsHoldCli cliWitnessInterp := 
   · intro s
     rw [cliWitnessInterp_other (by decide) (by decide)]
     exact witnessInterpretation_pubCanonical s
-  · rintro _ _ _ _ _ _ ⟨pt, -, -, htf⟩
-    rw [cliWitnessInterp_of_witnessLength (n := 1) (by decide)] at htf
-    cases htf
+  · intro s t k _ hu hne _
+    apply hne
+    have hts : DY.Libsignal.Refinement.torsionShift cliWitnessInterp
+        ((cliWitnessInterp x25519PublicKeySymbol [s]).getD []) t =
+        (cliWitnessInterp x25519PublicKeySymbol [s]).getD [] := by
+      unfold DY.Libsignal.Refinement.torsionShift
+      rw [cliWitnessInterp_other (by decide) (by decide),
+        witnessInterpretation_of_none (by decide)]
+      split <;> rfl
+    rwa [hts] at hu
 
-def cliWitnessMlKem : CryptoVerification.LibsignalSpqrV1.MlKem where
+@[expose] def cliWitnessMlKem : CryptoVerification.LibsignalSpqrV1.MlKem where
   keyPair _ := List.Vector.replicate 2400 0#8
   encaps1 _ _ :=
     some (List.Vector.replicate 960 0#8,
@@ -432,7 +431,7 @@ def cliWitnessMlKem : CryptoVerification.LibsignalSpqrV1.MlKem where
   decaps _ _ _ := List.Vector.replicate 32 0#8
   validPk _ _ := true
 
-def cliWitnessBcmp (a b : List (BitVec 8)) : BitVec 64 :=
+@[expose] def cliWitnessBcmp (a b : List (BitVec 8)) : BitVec 64 :=
   if a == b then 0#64 else 1#64
 
 theorem cliWitnessBcmp_ok (a b : List (BitVec 8)) (_ : a.length = b.length) :
@@ -443,7 +442,7 @@ theorem cliWitnessBcmp_ok (a b : List (BitVec 8)) (_ : a.length = b.length) :
   · have hb : (a == b) = false := beq_eq_false_iff_ne.mpr h
     simp [hb, h]
 
-def cliWitnessHooks : CliHooks where
+@[expose] def cliWitnessHooks : CliHooks where
   C :=
     { F := sha256CompressFunction cliWitnessInterp
       E := idBlock
@@ -454,13 +453,6 @@ def cliWitnessHooks : CliHooks where
          length_exampleAgreement a.toList exampleBasepoint⟩ }
   Q :=
     { F512 := fun st _ => st
-      montToEd := fun _ _ => some (List.Vector.replicate 160 0#8)
-      compress := fun _ => List.Vector.replicate 32 0#8
-      edNeg := fun p => p
-      isTorsionFree := fun _ => false
-      dsmb := fun _ A _ => A
-      scalarMod := fun s => s
-      scalarWide := fun w => CryptoVerification.E2E.fitVec 32 w.toList
       encaps := fun _ _ => (List.Vector.replicate 1568 0#8, List.Vector.replicate 32 0#8)
       decaps := fun _ _ => List.Vector.replicate 32 0#8
       K := cliWitnessMlKem }
@@ -469,7 +461,7 @@ private theorem toList_vector_replicate (n : Nat) (x : BitVec 8) :
     (List.Vector.replicate n x).toList = List.replicate n x := rfl
 
 theorem cliWitnessHooks_agree : HooksMatchInterpretation cliWitnessInterp cliWitnessHooks := by
-  refine ⟨rfl, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨rfl, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · intro p k iv _ _
     simp only [cliWitnessInterp, ↓reduceIte]
     rfl
@@ -492,13 +484,6 @@ theorem cliWitnessHooks_agree : HooksMatchInterpretation cliWitnessInterp cliWit
   · intro sk ct
     rw [cliWitnessInterp_of_witnessLength (n := 32) (by decide)]
     rfl
-  · intro u sign
-    rw [cliWitnessInterp_of_witnessLength (n := 160) (by decide)]
-    rfl
-  · intro pt
-    rw [cliWitnessInterp_of_witnessLength (n := 1) (by decide)]
-    dsimp only [cliWitnessHooks]
-    decide
 
 /-- `CompExternsSatisfiableCli` holds, witnessed by `cliWitnessInterp` and `cliWitnessHooks`. -/
 theorem comp_externsSatisfiable_cli_test : CompExternsSatisfiableCli :=
@@ -507,11 +492,11 @@ theorem comp_externsSatisfiable_cli_test : CompExternsSatisfiableCli :=
 
 /-! ## Pointwise `filesOf` Overlay and Boundedness Helpers -/
 
-def cliParentDirs : List String :=
+@[expose] def cliParentDirs : List String :=
   ["bundle", "identities", "sessions", "signed-pre-keys", "one-time-pre-keys",
    "one-time-kyber-pre-keys", "last-resort-kyber-pre-keys"]
 
-def CliFilePath (p : String) : Prop :=
+@[expose] def CliFilePath (p : String) : Prop :=
   (normalizePath p).isEmpty = false ∧
   (∀ d ∈ cliParentDirs, normalizePath p ≠ [d]) ∧
   (∀ pref ∈ (FsPath.nonEmptyPrefixes (normalizePath p)).dropLast,
@@ -553,10 +538,10 @@ private theorem foldl_cliAnc_keep {a : FsState} {prefs : List FsPath}
     obtain ⟨h1, h2⟩ := ih ha' (fun p hp' => hp p (List.mem_cons_of_mem _ hp'))
     exact ⟨h1, fun q => (h2 q).trans (hs' q)⟩
 
-def cliStepAt (q : FsPath) (v : Option HwBytes) (x : String × HwBytes) : Option HwBytes :=
+@[expose] def cliStepAt (q : FsPath) (v : Option HwBytes) (x : String × HwBytes) : Option HwBytes :=
   if q = normalizePath x.1 then some x.2 else v
 
-def cliEvalAt (q : FsPath) (v : Option HwBytes) (l : List (String × HwBytes)) : Option HwBytes :=
+@[expose] def cliEvalAt (q : FsPath) (v : Option HwBytes) (l : List (String × HwBytes)) : Option HwBytes :=
   l.foldl (cliStepAt q) v
 
 private theorem filesFold_cliEvalAt :
@@ -839,7 +824,7 @@ theorem clearSession_filesOf_eq {r : ProtocolSetup} {p : Participant}
 
 /-! ## `HonestBundleDir` Builder and `CliTracesMoves` Satisfiability -/
 
-def honestPublicBundle (interp : ExternInterpretation) (r : ProtocolSetup) : PublicBundle where
+@[expose] def honestPublicBundle (interp : ExternInterpretation) (r : ProtocolSetup) : PublicBundle where
   registrationId := r.regIdB
   identityKey := ecKey (pubBytes interp (secretBytes r 1))
   signedId := r.spkId
@@ -1203,7 +1188,7 @@ theorem bytesField_aliceBaseKey_isInfix_recordBytes (rr : DY.Libsignal.Rust.Reco
 section TestRecordsWF
 open DY.Libsignal.Composed
 
-def testSem : OpaqueSymbolSemantics where
+@[expose] def testSem : OpaqueSymbolSemantics where
   init := fun _ _ => []
   chainKey := fun _ _ _ => []
   sendState := fun _ _ => []
@@ -1216,14 +1201,14 @@ def testSem : OpaqueSymbolSemantics where
   vk := fun _ => []
   sign := fun _ _ _ => List.replicate 64 0#8
 
-def testFresh (i n : Nat) : HwBytes :=
+@[expose] def testFresh (i n : Nat) : HwBytes :=
   if n = 0 then [] else BitVec.ofNat 8 i :: List.replicate (n - 1) 0#8
 
-def testGhost : Ghost where
+@[expose] def testGhost : Ghost where
   σ := testFresh
   addr := fun _ => []
 
-def testRecords : ProtocolSetup where
+@[expose] def testRecords : ProtocolSetup where
   alice := "alice"
   bob := "bob"
   withOpk := false
@@ -1323,7 +1308,7 @@ theorem honestBundleDir_to_flat_and_honest {interp : ExternInterpretation} {r : 
   subst hb'
   exact h.2
 
-def testInitCall : CliCall where
+@[expose] def testInitCall : CliCall where
   party := testRecords.alice
   cmd := .init (peerOf testRecords testRecords.alice) bundleDir
   bundle := (honestPublicBundle cliWitnessInterp testRecords).files bundleDir
@@ -1455,7 +1440,7 @@ theorem cliTraces_oom_stop_satisfiable :
   simpa [testInitCall] using hstop
 
 /-- Monotonicity of `CliTracesMoves` in the run relation `Rel`: widening `Rel` (such as dropping a
-conjunct from `elfRel`) only adds admitted CLI traces. -/
+conjunct from `elfRelPlaced`) only adds admitted CLI traces. -/
 theorem cliTraces_mono
     {Rel Rel' : Inputs → Option Outcome → Prop} {interp : ExternInterpretation} {r : ProtocolSetup}
     {t : CliTurn} {τ : List MachineEvent} {calls : List (DY.Participant × Bool)}
@@ -1488,9 +1473,8 @@ theorem cliTraces_mono
 #print axioms DY.Libsignal.Composed.Refinement.Cli.CompAsmSecurityCliMoves
 #print axioms DY.Libsignal.Composed.Refinement.Cli.HooksMatchInterpretation
 #print axioms DY.Libsignal.Composed.Refinement.Cli.elfRel
-#print axioms DY.Libsignal.Composed.Refinement.Cli.CompRefinesCliElfMoves
-#print axioms DY.Libsignal.Composed.Refinement.Cli.CompRefinesCliBinaryMoves
-#print axioms DY.Libsignal.Composed.Refinement.Cli.CompAsmSecurityCliBinaryMoves
+#print axioms DY.Libsignal.Composed.Refinement.Cli.CliElfProgress
+#print axioms DY.Libsignal.Composed.Refinement.Cli.CompRefinesCliBinary
 #print axioms DY.Libsignal.Composed.Refinement.Cli.CompExternsSatisfiableCli
 #print axioms comp_externsSatisfiable_cli_test
 #print axioms cliNextCall_alice_init_satisfiable

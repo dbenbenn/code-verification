@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.PqxdhTables
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndSigKem
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Potential
-public import Computational.Proofs.GameHop.ReductionDsl.TwoStageBridge
+import Computational.Proofs.ReductionDsl.PqxdhTables
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndSigKem -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Potential -- proof-setup: allow-public-import
+public import Computational.Proofs.GameHop.ReductionDsl.TwoStageBridge -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.CostedTablesCompat -- proof-setup: allow-public-import
 
 /-!
 # Simulation Lemmas for Two-Stage Reductions
@@ -22,7 +23,7 @@ Protocol specialization of `Computational.Proofs.GameHop.ReductionDsl.TwoStageBr
 `PrimBaseSpec` (`pqPrimIface`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 namespace SignalPqxdh.Security.ReductionDsl
@@ -195,19 +196,19 @@ theorem runWithFuelPrim_inr_succ {α St : Type} (defaultVal : α)
 
 end Unfold
 
-def Mid.mapSt {κ : Type} {G : OracleSpec.{0, 0} κ} {α π π' σ σ' χ : Type}
+@[expose] def Mid.mapSt {κ : Type} {G : OracleSpec.{0, 0} κ} {α π π' σ σ' χ : Type}
     (g : π → π') (f : σ → σ') : Mid G α π σ χ → Mid G α π' σ' χ
   | .done a s => .done a (f s)
   | .paused t c p s k => .paused t c (g p) (f s) k
 
 /-- Pre-pause step invariant: handled states satisfy `Inv (n + 1)` and paused results satisfy
     `PI n`. -/
-def PreStepInvP {R C P St : Type} (Inv : Nat → St → Prop) (PI : Nat → C → P → St → Prop)
+@[expose] def PreStepInvP {R C P St : Type} (Inv : Nat → St → Prop) (PI : Nat → C → P → St → Prop)
     (n : Nat) : (R × St) ⊕ (C × (P × St)) → Prop
   | .inl x => Inv (n + 1) x.2
   | .inr x => PI n x.1 x.2.1 x.2.2
 
-def Stage1InvP {ι : Type} {G : OracleSpec.{0, 0} ι} {AOut C P St : Type}
+@[expose] def Stage1InvP {ι : Type} {G : OracleSpec.{0, 0} ι} {AOut C P St : Type}
     (Inv : Nat → St → Prop) (PI : Nat → C → P → St → Prop) (K : Nat) :
     Option C × RedProg2State G AOut P St → Prop
   | (c, .done _ s) => c = none ∧ Inv K s
@@ -315,42 +316,6 @@ theorem runWithFuelPrim_map_boundedP {ι : Type} {G : OracleSpec.{0, 0} ι} {α 
       exact hLeaves.bind_congr _ _ (fun x hx =>
         (ih x.1 (rem - 1) (hCont x.1) fuel (n + 1) x.2 hx hBound').2)
 
-def PreStepInv {R C P St : Type} (Inv : Nat → St → Prop) (n : Nat) :
-    (R × St) ⊕ (C × (P × St)) → Prop :=
-  PreStepInvP Inv (fun n _ _ s => Inv n s) n
-
-def Stage1Inv {ι : Type} {G : OracleSpec.{0, 0} ι} {AOut C P St : Type} (Inv : Nat → St → Prop)
-    (K : Nat) : Option C × RedProg2State G AOut P St → Prop
-  | (_, .done _ s) => Inv K s
-  | (_, .paused _ _ s c) => ∃ n r, Inv n s ∧ n + 1 + r ≤ K ∧
-      ∀ x, IsQueryBoundP (c x) (fun q : ℕ ⊕ ι => q.isRight = true) r
-
-theorem stepUntilPauseFuel_map_bounded {ι : Type} {G : OracleSpec.{0, 0} ι}
-    {AOut C P P' St St' : Type}
-    (defaultAOut : AOut) (g : P → P') (f : St → St') (Inv : Nat → St → Prop)
-    (hMono : ∀ {n m st}, n ≤ m → Inv n st → Inv m st)
-    (step : (q : ι) → St → OracleComp PrimBaseSpec ((G.Range q × St) ⊕ (C × (P × St))))
-    (step' : (q : ι) → St' → OracleComp PrimBaseSpec ((G.Range q × St') ⊕ (C × (P' × St'))))
-    (K : Nat)
-    (hStepEq : ∀ q st, Inv K st →
-      step' q (f st) = Sum.map (Prod.map id f) (Prod.map id (Prod.map g f)) <$> step q st)
-    (hStepInv : ∀ n q st, Inv n st → HoldsOnLeaves (PreStepInv Inv n) (step q st))
-    (mx : OracleComp (unifSpec + G) AOut) (rem : Nat)
-    (hMx : IsQueryBoundP mx (fun q : ℕ ⊕ ι => q.isRight = true) rem)
-    (fuel n : Nat) (st : St) (hInv : Inv n st) (hBound : n + rem ≤ K) :
-    HoldsOnLeaves (Stage1Inv Inv K) (stepUntilPauseFuel defaultAOut step mx fuel st) ∧
-      stepUntilPauseFuel defaultAOut step' mx fuel (f st) =
-        Prod.map id (RedProg2State.mapSt g f) <$>
-          stepUntilPauseFuel defaultAOut step mx fuel st := by
-  have hP := stepUntilPauseFuel_map_boundedP defaultAOut g f Inv (fun n _ _ s => Inv n s) hMono
-    step step' K (fun n q st hle hI => hStepEq q st (hMono (by omega) hI)) hStepInv mx rem hMx
-    fuel n st hInv hBound
-  refine ⟨hP.1.mono fun x hx => ?_, hP.2⟩
-  rcases x with ⟨_, ⟨_, _⟩ | ⟨_, _, _, _⟩⟩
-  · exact hx.2
-  · rcases hx with ⟨_, n', r', _, hI, hle, hk⟩
-    exact ⟨n', r', hI, hle, hk⟩
-
 theorem runWithFuelPrim_map_bounded {ι : Type} {G : OracleSpec.{0, 0} ι} {α St St' : Type}
     (defaultVal : α) (f : St → St') (Inv : Nat → St → Prop)
     (hMono : ∀ {n m st}, n ≤ m → Inv n st → Inv m st)
@@ -370,11 +335,11 @@ theorem runWithFuelPrim_map_bounded {ι : Type} {G : OracleSpec.{0, 0} ι} {α S
     hBound
 
 /-- Pre-pause step invariant fixing the paused challenger output to `φ` of the pause payload. -/
-def PreStepInvC {R C P St : Type} (Inv : Nat → St → Prop) (φ : P → C) (n : Nat) :
+@[expose] def PreStepInvC {R C P St : Type} (Inv : Nat → St → Prop) (φ : P → C) (n : Nat) :
     (R × St) ⊕ (C × (P × St)) → Prop :=
   PreStepInvP Inv (fun n c p s => c = φ p ∧ Inv n s) n
 
-def Stage1InvC {ι : Type} {G : OracleSpec.{0, 0} ι} {AOut C P St : Type} (Inv : Nat → St → Prop)
+@[expose] def Stage1InvC {ι : Type} {G : OracleSpec.{0, 0} ι} {AOut C P St : Type} (Inv : Nat → St → Prop)
     (φ : P → C) (K : Nat) : Option C × RedProg2State G AOut P St → Prop
   | (c, .done _ s) => c = none ∧ Inv K s
   | (c, .paused _ p s k) => c = some (φ p) ∧ ∃ n r, Inv n s ∧ n + 1 + r ≤ K ∧

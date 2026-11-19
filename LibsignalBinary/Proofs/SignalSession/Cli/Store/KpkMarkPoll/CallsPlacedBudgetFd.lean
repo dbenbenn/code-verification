@@ -9,20 +9,34 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CallsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CallsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
 import ProofLib.Hoare.Safety
+public import LibsignalBinary.Proofs.SignalSession.Cli.Fs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPure
+public import ProofLib.Disproof.Basic
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # `FdsGe3Closed`-Threaded Relocatable Call Wrappers for `KpkMarkPoll`
@@ -32,7 +46,7 @@ sites (`Dir::get`, `decimal`, `Dir::put`) and `.keepsFs` on non-FS callees (`Pub
 `concat [local#3]`, `do_reserve_and_handle`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -370,57 +384,6 @@ theorem kpk_call_serialize_placed_fd [LibsignalPlacement] {prog : Program} {M : 
     refine SepWPp.pure_elim fun ⟨hp0, _⟩ =>
       hnext sm hpcm hrunm hspm hcsm hcrlm hfsm hp0 hx1 htrm
 
-theorem kpk_call_concat2_placed_fd [LibsignalPlacement] {prog : Program} {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {callee ret_pc ret : BitVec 64}
-    (hcall : subroutine_ok prog callee
-      (withLsCodeRoLoaded lsmpl (kpkConcat2PosSpec A lim stk).keepsFs))
-    (xg : Concat2PosCall) (st : M.σ) (F : SepProp)
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = callee) (hrun : s.status = .Running) (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hcrl : LibsignalCodeRoLoaded lsmpl s.mem)
-    (hx0 : s.readReg64 .x0 = xg.outVec) (hx1 : s.readReg64 .x1 = xg.slicesA)
-    (hx2 : s.readReg64 .x2 = 2#64)
-    (hpos0 : 0 < xg.bs0.length) (hpos1 : 0 < xg.bs1.length)
-    (hmax : xg.bs0.length + xg.bs1.length < 2 ^ 63)
-    (hfit : FitsEnv M lim st (KpkConcat2PosEnv xg))
-    (hpre : P ⊢ (memRegion xg.outVec 24 ∗
-      (xg.slicesA ↦₆₄ xg.p0) ∗ ((xg.slicesA + 8#64) ↦₆₄ BitVec.ofNat 64 xg.bs0.length) ∗
-      ((xg.slicesA + 16#64) ↦₆₄ xg.p1) ∗ ((xg.slicesA + 24#64) ↦₆₄ BitVec.ofNat 64 xg.bs1.length) ∗
-      (xg.p0 ↦ₛ xg.bs0) ∗ (xg.p1 ↦ₛ xg.bs1) ∗ A.pool lim st s ∗ stackAt s.sp stk) ∗ F)
-    (hnext : ∀ sm : State, sm.pc = ret_pc → sm.status = .Running →
-      sm.sp = s.sp → CalleeSavedPreserved s sm → LibsignalCodeRoLoaded lsmpl sm.mem →
-      sm.fs = s.fs → sm.trace = s.trace →
-      SepWPp prog ret sm
-        ((vecU8 A.repAlloc xg.outVec (xg.bs0 ++ xg.bs1) ∗
-          (xg.slicesA ↦₆₄ xg.p0) ∗ ((xg.slicesA + 8#64) ↦₆₄ BitVec.ofNat 64 xg.bs0.length) ∗
-          ((xg.slicesA + 16#64) ↦₆₄ xg.p1) ∗ ((xg.slicesA + 24#64) ↦₆₄ BitVec.ofNat 64 xg.bs1.length) ∗
-          (xg.p0 ↦ₛ xg.bs0) ∗ (xg.p1 ↦ₛ xg.bs1) ∗
-          A.pool lim (M.stepEvents (kpkConcat2PosEvents xg) st) sm ∗ stackAt s.sp stk) ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  refine kpk_call_total_raw_placed hcall (xg, st) F hpc hrun hsp_align hlr hcrl ?_ ?_ ?_ ?_ ?_
-  · refine entails_withLsCodeRoLoaded_pre hcrl (Entails.trans hpre ?_)
-    simp only [Spec.keepsFs, kpkConcat2PosSpec, sepConj_assoc]
-    exact Entails.pure_right ⟨hx0, hx1, hx2, hpos0, hpos1, hmax, hfit⟩ (Entails.refl _)
-  · intro sm R' hpost
-    simp only [withLsCodeRoLoaded, Spec.keepsFs, kpkConcat2PosSpec] at hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro code sm R' hpost
-    simp only [withLsCodeRoLoaded, Spec.keepsFs, kpkConcat2PosSpec] at hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm R' hpost
-    simp only [withLsCodeRoLoaded, Spec.keepsFs, kpkConcat2PosSpec] at hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm hpcm hrunm hspm hcsm hcrlm
-    simp only [withLsCodeRoLoaded, Spec.keepsFs, kpkConcat2PosSpec, KpkConcat2PosEnv,
-      sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun evs => SepWPp.pure_elim fun hfsm =>
-      SepWPp.pure_elim fun ⟨htrm, hevs⟩ => ?_
-    subst hevs
-    exact sepWPp_conseq (Entails.of_eq (by sep_ac_rfl))
-      (hnext sm hpcm hrunm hspm hcsm hcrlm hfsm htrm)
-
 theorem kpk_call_reserve_fs_placed_fd [LibsignalPlacement] {prog : Program} {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {resStack : Nat}
     {callee ret_pc ret : BitVec 64} {s0_files : FsFiles} {s0_trace : List TraceEvent}
@@ -486,72 +449,5 @@ theorem kpk_call_reserve_fs_placed_fd [LibsignalPlacement] {prog : Program} {M :
       rw [satisfies_pure_sepConj] at hm2
       exact hm2.1.2.2
     exact hnext sm p' hpcm hrunm hspm hcsm hcrlm hfsm hfs_eq htrm hp'_ne R' hm hL
-
-theorem kpk_call_reserve_placed_fd [LibsignalPlacement] {prog : Program} {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {resStack : Nat}
-    {callee ret_pc ret : BitVec 64}
-    (hcall : subroutine_ok prog callee
-      (withLsCodeRoLoaded lsmpl (doReserveSpecOf resStack A lim).keepsFs))
-    (xg : DoReserveCall) (st : M.σ) (F : SepProp)
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = callee) (hrun : s.status = .Running) (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hcrl : LibsignalCodeRoLoaded lsmpl s.mem)
-    (hx0 : s.readReg64 .x0 = xg.v) (hx1 : (s.readReg64 .x1).toNat = xg.bs.length)
-    (hx2 : (s.readReg64 .x2).toNat = xg.additional)
-    (hx3 : s.readReg64 .x3 = 1#64) (hx4 : s.readReg64 .x4 = 1#64)
-    (hbound : reserveCap xg.cap.toNat xg.bs.length xg.additional + 1 ≤ 2 ^ 63)
-    (hfit : FitsEnv M lim st (DoReserveEnv xg))
-    (hpre : P ⊢ (vecU8At A.repAlloc xg.v xg.cap xg.ptr xg.bs ∗
-      A.pool lim st s ∗ stackAt s.sp resStack) ∗ F)
-    (hnext : ∀ (sm : State) (p' : BitVec 64),
-      sm.pc = ret_pc → sm.status = .Running →
-      sm.sp = s.sp → CalleeSavedPreserved s sm → LibsignalCodeRoLoaded lsmpl sm.mem →
-      sm.fs = s.fs → sm.trace = s.trace → p' ≠ 0#64 →
-      SepWPp prog ret sm
-        ((vecU8At A.repAlloc xg.v
-            (BitVec.ofNat 64 (reserveCap xg.cap.toNat xg.bs.length xg.additional)) p' xg.bs ∗
-          A.pool lim (M.stepEvents (doReserveEvents xg) st) sm ∗
-          stackAt s.sp resStack) ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  refine kpk_call_total_raw_placed hcall (xg, st) F hpc hrun hsp_align hlr hcrl ?_ ?_ ?_ ?_ ?_
-  · refine entails_withLsCodeRoLoaded_pre hcrl (Entails.trans hpre ?_)
-    simp only [Spec.keepsFs, doReserveSpecOf, sepConj_assoc]
-    exact Entails.pure_right ⟨hx0, hx1, hx2, hx3, hx4, hbound, hfit⟩ (Entails.refl _)
-  · intro sm R' hpost
-    simp only [withLsCodeRoLoaded, Spec.keepsFs, doReserveSpecOf] at hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro code sm R' hpost
-    simp only [withLsCodeRoLoaded, Spec.keepsFs, doReserveSpecOf] at hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm R' hpost
-    simp only [withLsCodeRoLoaded, Spec.keepsFs, doReserveSpecOf] at hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm hpcm hrunm hspm hcsm hcrlm
-    simp only [withLsCodeRoLoaded, Spec.keepsFs, doReserveSpecOf, sepExists_sepConj_left,
-      sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun p' => SepWPp.pure_elim fun hfs_eq =>
-      SepWPp.pure_elim fun htrm => ?_
-    have hp'_pull :
-        vecU8At A.repAlloc xg.v
-            (BitVec.ofNat 64 (reserveCap xg.cap.toNat xg.bs.length xg.additional)) p' xg.bs ∗
-          A.pool lim (M.stepEvents (doReserveEvents xg) st) sm ∗ stackAt s.sp resStack ∗ F =
-        (vecU8At A.repAlloc xg.v
-            (BitVec.ofNat 64 (reserveCap xg.cap.toNat xg.bs.length xg.additional)) p' xg.bs ∗
-          A.pool lim (M.stepEvents (doReserveEvents xg) st) sm ∗ stackAt s.sp resStack) ∗ F := by
-      sep_ac_rfl
-    rw [hp'_pull]
-    intro R' hm hL
-    have hp'_ne : p' ≠ 0#64 := by
-      have hm1 : sm.mem ⊨ vecU8At A.repAlloc xg.v
-          (BitVec.ofNat 64 (reserveCap xg.cap.toNat xg.bs.length xg.additional)) p' xg.bs ∗
-          ((A.pool lim (M.stepEvents (doReserveEvents xg) st) sm ∗ stackAt s.sp resStack) ∗ F ∗ R') := by
-        simpa only [sepConj_assoc] using hm
-      unfold vecU8At at hm1
-      rw [sepConj_assoc] at hm1
-      have hm2 := Satisfies.of_sep_left (Satisfies.of_sep_right hm1)
-      rw [satisfies_pure_sepConj] at hm2
-      exact hm2.1.2.2
-    exact hnext sm p' hpcm hrunm hspm hcsm hcrlm hfs_eq htrm hp'_ne R' hm hL
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CallsPlacedBudgetFd

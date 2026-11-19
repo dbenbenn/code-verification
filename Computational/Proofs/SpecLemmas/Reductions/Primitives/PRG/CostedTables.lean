@@ -20,14 +20,14 @@ public import VCVio.CryptoFoundations.PRG
 interface, and source game codec for pseudorandom generators (`PRGScheme`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames.PRG.Costed
 
 open ReductionDsl OracleSpec OracleComp
 
 /-- Polymorphic PRG operation table evaluating `gen` at cost `k`. -/
-@[reducible] def prgOps {S : Sig} (seedT outT : Ty S) (gen : seedT.denote → outT.denote)
+@[expose, reducible] def prgOps {S : Sig} (seedT outT : Ty S) (gen : seedT.denote → outT.denote)
     (k : ℕ) : Ops S where
   Op := Unit
   dom := fun _ => seedT
@@ -36,7 +36,7 @@ open ReductionDsl OracleSpec OracleComp
   cost := fun _ => k
 
 /-- Coin-only target interface (`unifSpec`, `Tag = Empty`) for PRG reductions at unit coin cost. -/
-def prgIface (S : Sig) : Iface S unifSpec where
+@[expose] def prgIface (S : Sig) : Iface S unifSpec where
   fwdU := fun n => query (spec := unifSpec) n
   uCost := 1
   Tag := Empty
@@ -63,7 +63,7 @@ abbrev liftPRGAdv {R : Type} (B : PRGScheme.PRGAdversary R) :
   fun r => liftM (B r)
 
 /-- Trivial source game codec for a coin-only `PRGAdversary` (`codecCost = 1`). -/
-def prgCodec (S : Sig) : GameCodec S prgSpec where
+@[expose] def prgCodec (S : Sig) : GameCodec S prgSpec where
   Q := .unit
   R := .unit
   qenc := Empty.elim

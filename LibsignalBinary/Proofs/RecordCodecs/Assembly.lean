@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.Deps
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA
+public import LibsignalBinary.Proofs.RecordCodecs.Deps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyDecode
 import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom
 import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize
@@ -35,7 +35,7 @@ Discharges `DecodeDeps` and `PortDepsPlaced` from proved callee contracts and li
 (Block `257`).
 -/
 
-@[expose] public section
+public section
 
 set_option warningAsError false
 
@@ -43,67 +43,6 @@ namespace CryptoVerification.RecordCodecsBinary.Assembly
 
 open Arm64 ProofLib CryptoGames.LibsignalSession CryptoVerification.RustHeap
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
-
-/-- The callee contracts of the record decoders, from the hooks and the image loading. -/
-theorem decodeDeps {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {encFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → List (BitVec 8)}
-    {decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8))}
-    {ext : String → Option (State → State)}
-    (hC : Stage2ContractsX img C A encFn decFn ext)
-    (himg : Obj.Loads libsignalSessionImage img) :
-    DecodeDeps img A ext where
-  varintSlice := Prost.decodeVarintSlice_ok_ext_x hC
-  int32Merge := Prost.int32Merge_ok_ext_x hC
-  skipField := Prost.skipField_ok_ext_x hC
-  dropDecodeError := Prost.dropDecodeError_ok_ext_x hC.toAllocContractsX
-  bytesMerge := Prost.bytes_merge_ok_ext_x himg hC.toAllocContractsX
-    hC.decode_error_from hC.decode_varint_slow
-    (Prost.decodeVarintSlice_ok_ext_x hC)
-    (bytesFromVecOk_ext himg rfl)
-    (do_reserve_ok_ext_x hC.toAllocContractsX)
-    bytesVtableSlotLoaded
-    (fun p v => bytesVtableDropOk_ext_x p v v.length hC.toAllocContractsX himg rfl)
-  pkTryFrom := pkTryFrom_ok_ext img ext himg
-
-/-- `PreKeyRecord::deserialize` in the loaded image `img` (any base): `preKeyDeserializeSpec`. -/
-theorem preKeyDeserialize_run_ext_x {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {encFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → List (BitVec 8)}
-    {decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8))}
-    {ext : String → Option (State → State)}
-    (hC : Stage2ContractsX img C A encFn decFn ext)
-    (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (Program.ofImage img (Rust.withPanics ext))
-      (entryOf img preKeyDeserializeName) (preKeyDeserializeSpec A img) :=
-  root_of_tripleRatchetProgAtExt himg
-    (PreKeyDeserialize.preKeyDeserialize_ok_of_deps hC (decodeDeps hC himg)
-      (Wire.base_aligned himg))
-
-/-- `<IdentityKeyPair as TryFrom<&[u8]>>::try_from` in the loaded image `img` (any base):
-`identityKeyPairTryFromSpec`. -/
-theorem identityKeyPairTryFrom_run_ext_x {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {encFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → List (BitVec 8)}
-    {decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8))}
-    {ext : String → Option (State → State)}
-    (hC : Stage2ContractsX img C A encFn decFn ext)
-    (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (Program.ofImage img (Rust.withPanics ext))
-      (entryOf img identityKeyPairTryFromName) (identityKeyPairTryFromSpec A img) :=
-  root_of_tripleRatchetProgAtExt himg
-    (IdentityKeyPairTryFrom.identityKeyPairTryFrom_ok_of_deps hC (decodeDeps hC himg)
-      (Wire.base_aligned himg))
-
-/-- `IdentityKey::decode` in the loaded image `img` (any base, any hooks): `identityKeyDecodeSpec`.
-It calls only the in-image `PublicKey::try_from`, so it needs no hook contract. -/
-theorem identityKeyDecode_run_ext {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (Program.ofImage img (Rust.withPanics ext))
-      (entryOf img identityKeyDecodeName) (identityKeyDecodeSpec A img) :=
-  root_of_tripleRatchetProgAtExt himg
-    (IdentityKeyDecode.identityKeyDecode_ok_of_pkTryFrom (pkTryFrom_ok_ext img ext himg)
-      (Wire.base_aligned himg))
-
-/-! ## Relocatable `[LibsignalPlacement]` Assembly & Hook-Only Corollaries -/
 
 section Placed
 

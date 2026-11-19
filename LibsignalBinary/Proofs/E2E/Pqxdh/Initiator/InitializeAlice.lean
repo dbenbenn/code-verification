@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCallees
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1Common
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCallees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1Common -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage2
 import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1CommonExt -- shake: keep
@@ -24,7 +23,7 @@ Proves the `spqr::initial_state` cut (`initAlice_spqr_init`), `SessionState` con
 `initializeAliceSession_err` contracts (`0x6fcd0`).
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option maxHeartbeats 4000000
 set_option maxRecDepth 200000
@@ -39,22 +38,6 @@ open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalSessi
   CryptoVerification.E2E.Pqxdh
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero bv_sub_sub_lit bv_add_neg64
-ls_attribute [local arm64_norm ↓, local wp_norm ↓]
-  sp_setPC_pre sp_setMem_setPC_pre
-  readReg64_setPC_pre readReg64_setMem_setPC_pre
-  readReg32_setPC_pre readReg32_setMem_setPC_pre
-  readReg_setPC_pre readReg_setMem_setPC_pre
-  CryptoVerification.libsignalSessionCode_fnOff_0x21c6c
-  CryptoVerification.libsignalSessionCode_fnOff_0x125a4
-  CryptoVerification.libsignalSessionCode_fnOff_0x11c98
-  CryptoVerification.libsignalSessionCode_fnOff_0x117e8
-  CryptoVerification.libsignalSessionCode_fnOff_0x12064
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_stub% "memcpy")
-  (ls_stub% "alloc::raw_vec::handle_error")
-/-! ## 3. Segment 5: `initAlice_spqr_init` (`+2588..+2848`, `0x497ac..0x498b0`) -/
 @[local simp, local arm64_norm, local wp_norm]
 private theorem bv_add_5296_sub_48 (fsp : BitVec 64) :
     fsp + 5296#64 - 48#64 = fsp + 5248#64 := by bv_omega
@@ -182,7 +165,7 @@ theorem spqrParams_3648_merge_72 (fsp : BitVec 64)
 /-- The cells `initAlice_to_spqr` leaves at the `bl spqr::initial_state` (`+2700`): the `Params`
 block at `fsp + 3648` (`auth_key` = `fsp + 272`, the chain parameters, `A2B`, `V1`, `V1`), the
 `pqr_key` at `fsp + 272`, the new chain key at `fsp + 336` and the root key at `fsp + 5248`. -/
-def aliceSpqrCutCells (fsp paramsPtr : BitVec 64) (b_111 : BitVec 8) (rk1 ck1_0 pqrKey : Bytes) :
+@[expose] def aliceSpqrCutCells (fsp paramsPtr : BitVec 64) (b_111 : BitVec 8) (rk1 ck1_0 pqrKey : Bytes) :
     SepProp :=
   ((paramsPtr + 273#64) ↦₈ b_111) ∗ ((fsp + 272#64) ↦ₛ bytesToBv8 pqrKey) ∗
   ((fsp + 336#64) ↦ₛ bytesToBv8 ck1_0) ∗ ((fsp + 5248#64) ↦ₛ bytesToBv8 rk1) ∗
@@ -197,7 +180,7 @@ theorem aliceCut_entails {P T K F : SepProp} (h : P ⊢ (T ∗ K) ∗ F) : P ⊢
 
 /-- What every Alice cut proof leaves at `spqr::initial_state`'s entry: the cut cells, a kept
 part `K` and an arbitrary rest; `x0` = the `Params`, `x20` = `paramsPtr`, `x30` = `entry + 2704`. -/
-def AliceCutPost (entry : BitVec 64) (s0 : State) (fsp paramsPtr : BitVec 64)
+@[expose] def AliceCutPost (entry : BitVec 64) (s0 : State) (fsp paramsPtr : BitVec 64)
     (rk1 ck1_0 pqrKey : Bytes) (K : SepProp) (sf : State) (P_f : SepProp) : Prop :=
   (P_f ⊢ aliceSpqrCutCells fsp paramsPtr 0#8 rk1 ck1_0 pqrKey ∗ K ∗ anyHeap) ∧
   sf.status = ExecStatus.Running ∧ sf.sp = fsp ∧
@@ -228,7 +211,7 @@ private theorem sepWPp_pure_focus {prog : Program} {ret : BitVec 64} {s : State}
     SepWPp prog ret s P Q Qp :=
   hP ▸ SepWPp.pure_left h
 abbrev sessionBuildStack : Nat := 480 + allocHookStack
-def alicePre72Bv8 (localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr : BitVec 64) : List (BitVec 8) :=
+@[expose] def alicePre72Bv8 (localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr : BitVec 64) : List (BitVec 8) :=
   unpack64 33#64 ++ unpack64 localIkBoxPtr ++ unpack64 33#64 ++
   unpack64 33#64 ++ unpack64 remoteIkBoxPtr ++ unpack64 33#64 ++
   unpack64 32#64 ++ unpack64 rootKeyBoxPtr ++ unpack64 32#64
@@ -245,7 +228,7 @@ theorem alicePre72_eq_pointsToBytes (ptr p1 p2 p3 : BitVec 64) :
   unfold alicePre72Bv8
   simp only [List.append_assoc, pointsToBytes_append, unpack64_length,
     BitVec.add_assoc, BitVec.reduceAdd, ← pointsTo64_eq_pointsToBytes]
-def aliceMid48Bv8 (baseKeyBoxPtr spqrCap spqrBufPtr spqrLen : BitVec 64) : List (BitVec 8) :=
+@[expose] def aliceMid48Bv8 (baseKeyBoxPtr spqrCap spqrBufPtr spqrLen : BitVec 64) : List (BitVec 8) :=
   unpack64 33#64 ++ unpack64 baseKeyBoxPtr ++ unpack64 33#64 ++
   unpack64 spqrCap ++ unpack64 spqrBufPtr ++ unpack64 spqrLen
 @[simp]
@@ -259,7 +242,7 @@ theorem aliceMid48_eq_pointsToBytes (ptr p4 c5 p5 l5 : BitVec 64) :
   unfold aliceMid48Bv8
   simp only [List.append_assoc, pointsToBytes_append, unpack64_length,
     BitVec.add_assoc, BitVec.reduceAdd, ← pointsTo64_eq_pointsToBytes]
-def aliceHead144Bv8 (localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr chainBufPtr
+@[expose] def aliceHead144Bv8 (localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr chainBufPtr
     baseKeyBoxPtr spqrCap spqrBufPtr spqrLen : BitVec 64) : List (BitVec 8) :=
   alicePre72Bv8 localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr ++
   receiverChainVecBytes24 chainBufPtr ++
@@ -276,7 +259,7 @@ theorem aliceHead144_eq_pointsToBytes (ptr p1 p2 p3 cb p4 c5 p5 l5 : BitVec 64) 
   rw [receiverChainVecFieldsAt_eq_pointsToBytes]
   simp only [List.append_assoc, pointsToBytes_append, alicePre72Bv8_length,
     receiverChainVecBytes24_length, BitVec.add_assoc, BitVec.reduceAdd]
-def aliceTail100Bv8 (pad_f4 : BitVec 32) (pad40 : List (BitVec 8))
+@[expose] def aliceTail100Bv8 (pad_f4 : BitVec 32) (pad40 : List (BitVec 8))
     (kyberCap kyberPtr kyberLen : BitVec 64) (kyberId pad_144 : BitVec 32) : List (BitVec 8) :=
   unpack32 pad_f4 ++
   unpack64 0xffffffffffffffff#64 ++
@@ -309,7 +292,7 @@ theorem aliceTail100_eq_pointsToBytes (ptr : BitVec 64)
   simp only [List.append_assoc, pointsToBytes_append, unpack64_length, unpack32_length, hpad40,
     BitVec.add_assoc, BitVec.reduceAdd, ← pointsTo64_eq_pointsToBytes, ←
       pointsTo32_eq_pointsToBytes]
-def alicePost248Bv8 (baseKeyBoxPtr spqrCap spqrBufPtr spqrLen : BitVec 64)
+@[expose] def alicePost248Bv8 (baseKeyBoxPtr spqrCap spqrBufPtr spqrLen : BitVec 64)
     (pad92 tail100 : List (BitVec 8)) : List (BitVec 8) :=
   aliceMid48Bv8 baseKeyBoxPtr spqrCap spqrBufPtr spqrLen ++
   unpack64 0xffffffffffffffff#64 ++
@@ -327,7 +310,7 @@ theorem alicePost248_eq_pointsToBytes (ptr p4 c5 p5 l5 : BitVec 64)
   unfold alicePost248Bv8
   simp only [List.append_assoc, pointsToBytes_append, aliceMid48Bv8_length, unpack64_length, hpad92,
     BitVec.add_assoc, BitVec.reduceAdd, ← pointsTo64_eq_pointsToBytes]
-def aliceSession344Bv8 (localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr chainBufPtr
+@[expose] def aliceSession344Bv8 (localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr chainBufPtr
     baseKeyBoxPtr spqrCap spqrBufPtr spqrLen
     senderRatchetPubBoxPtr senderRatchetPrivBoxPtr senderChainKeyBoxPtr : BitVec 64)
     (pad_f4 : BitVec 32) (pad40 : List (BitVec 8))

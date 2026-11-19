@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DecodesPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SeamSpecsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SeamSpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced -- proof-setup: allow-public-import
 
 /-!
 # Relocatable Definitions, `.rodata` Bundle, & Callee Contracts for `spqr::send::<signal_session_ratchet::Coins>` (Block `427`)
@@ -21,7 +21,7 @@ Defines `[LibsignalPlacement]` entry/program abbreviations, `.rodata` table bund
 `SpqrSendPlacedContracts` for Block `427`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -76,9 +76,9 @@ noncomputable abbrev cliSpqrSendPlacedProg (ext : String → Option (State → S
   spqrSendPlacedProg ext
 
 /-- Symbolic entry address of Block `427` (`spqr::send::<signal_session_ratchet::Coins>`). -/
-noncomputable abbrev spqrSendPlacedEntry : BitVec 64 := (blkPl_427).base
+abbrev spqrSendPlacedEntry : BitVec 64 := (blkPl_427).base
 
-noncomputable abbrev cliSpqrSendPlacedEntry : BitVec 64 := spqrSendPlacedEntry
+abbrev cliSpqrSendPlacedEntry : BitVec 64 := spqrSendPlacedEntry
 
 /-- `.rodata` symbol name for the combined 64-byte jump-table block of
     `spqr::send::<signal_session_ratchet::Coins>` (Block `427`). -/
@@ -100,19 +100,19 @@ abbrev spqrLogLevelZeroPlacedAt : SepProp :=
   lsLogFilterAddr ↦₆₄ 0#64
 
 /-- Read-only separation-logic assertion for jump table 1 (`22` bytes = 11 `u16` entries at `+0`). -/
-def spqrSendStatesJumpTablePlacedAt : SepProp :=
+@[expose] def spqrSendStatesJumpTablePlacedAt : SepProp :=
   (lsρ spqrSendRoSym) ↦ᵣ spqrSendStatesJumpTableBytes
 
 /-- Read-only separation-logic assertion for jump table 2 (`22` bytes = 11 `u16` entries at `+22`). -/
-def spqrSendEncodeJumpTablePlacedAt : SepProp :=
+@[expose] def spqrSendEncodeJumpTablePlacedAt : SepProp :=
   (lsρ spqrSendRoSym + 22#64) ↦ᵣ spqrSendEncodeJumpTableBytes
 
 /-- Read-only separation-logic assertion for jump table 3 (`20` bytes = 10 `u16` entries at `+44`). -/
-def spqrSendDropJumpTablePlacedAt : SepProp :=
+@[expose] def spqrSendDropJumpTablePlacedAt : SepProp :=
   (lsρ spqrSendRoSym + 44#64) ↦ᵣ spqrSendDropJumpTableBytes
 
 /-- Bundle of all relocatable `.rodata` tables used by `spqr::send::<Coins>` (Block `427`) and its callees. -/
-def spqrSendRoPlacedAt : SepProp :=
+@[expose] def spqrSendRoPlacedAt : SepProp :=
   spqrSendStatesJumpTablePlacedAt ∗
   spqrSendEncodeJumpTablePlacedAt ∗
   spqrSendDropJumpTablePlacedAt ∗
@@ -131,47 +131,47 @@ theorem spqrSendStatesJumpTablePlacedAt_eq_words :
 /-! ## Leaf `PlacedOkX` Contracts on `spqrSendPlacedProg` (Block `427`) -/
 
 /-- `<PolyEncoder as Encoder>::next_chunk` (Block `416`) on `spqrSendPlacedProg ext`. -/
-def PolyNextChunkPlacedOkX (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def PolyNextChunkPlacedOkX (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 416)
     (withLsCodeRoLoaded lsmpl (polyNextChunkPlacedSpec A))
 
 /-- `<PolyEncoder as Encoder>::encode_bytes` (Block `417`) on `spqrSendPlacedProg ext`. -/
-def EncodeBytesPlacedOkX (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def EncodeBytesPlacedOkX (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 417)
     (withLsCodeRoLoaded lsmpl (encodeBytesSpecX A))
 
 /-- `<HeaderSent>::send_ek_chunk` (Block `336`) on `spqrSendPlacedProg ext`. -/
-def HeaderSentSendEkChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
+@[expose] def HeaderSentSendEkChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 336)
     (withLsCodeRoLoaded lsmpl (headerSentSendEkChunkPlacedSpec A F))
 
 /-- `<Ct1Received>::send_ek_chunk` (Block `345`) on `spqrSendPlacedProg ext`. -/
-def Ct1ReceivedSendEkChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
+@[expose] def Ct1ReceivedSendEkChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 345)
     (withLsCodeRoLoaded lsmpl (ct1ReceivedSendEkChunkPlacedSpec A F))
 
 /-- `<Ct1Sampled>::send_ct1_chunk` (Block `335`) on `spqrSendPlacedProg ext`. -/
-def Ct1SampledSendCt1ChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
+@[expose] def Ct1SampledSendCt1ChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 335)
     (withLsCodeRoLoaded lsmpl (ct1SampledSendCt1ChunkPlacedSpec A F))
 
 /-- `<EkReceivedCt1Sampled>::send_ct1_chunk` (Block `344`) on `spqrSendPlacedProg ext`. -/
-def EkReceivedCt1SampledSendCt1ChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
+@[expose] def EkReceivedCt1SampledSendCt1ChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 344)
     (withLsCodeRoLoaded lsmpl (ekReceivedCt1SampledSendCt1ChunkPlacedSpec A F))
 
 /-- `<Ct2Sampled>::send_ct2_chunk` (Block `354`) on `spqrSendPlacedProg ext`. -/
-def Ct2SampledSendCt2ChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
+@[expose] def Ct2SampledSendCt2ChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 354)
     (withLsCodeRoLoaded lsmpl (ct2SampledSendCt2ChunkPlacedSpec A F))
 
 /-- `signal_session_coins_fill` (Block `618`) on `spqrSendPlacedProg ext`. -/
-def CoinsFillPlacedOkX (ext : String → Option (State → State)) : Prop :=
+@[expose] def CoinsFillPlacedOkX (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 618)
     (withLsCodeRoLoaded lsmpl (spqrCoinsFillSpecPlaced spqrSendCalleeStack))
 

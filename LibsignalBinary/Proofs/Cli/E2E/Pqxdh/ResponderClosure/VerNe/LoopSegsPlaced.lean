@@ -9,12 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopSegs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ConstsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopSegs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ConstsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
-import ProofLib.SepLogic.WPp
+public import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Previous-Session Loop Head (`+0x1e78 → +0x1ee8`)
@@ -23,7 +29,7 @@ Relocatable (`[LibsignalPlacement]`) statement and proof for the `previous_sessi
 (`(blkPl_518).base + 0x1e78 → (blkPl_518).base + 0x1ee8`) on `lsProg_518` when `len = 1#64`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -48,7 +54,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Relocatable `[LibsignalPlacement]` statement for the loop head
 (`(blkPl_518).base + 0x1e78 → (blkPl_518).base + 0x1ee8`) on `lsProg_518 ext` when `len = 1#64`. -/
-def OverPrevLoopHeadCliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverPrevLoopHeadCliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ (ext : String → Option (State → State))
     (s : State) (coroPtr prevCap prevPtr u3e0 wd0 : BitVec 64),
     s.pc = (blkPl_518).base + 0x1e78#64 →
@@ -104,8 +110,5 @@ theorem overPrevLoop_head_cli_placed_wp [LibsignalPlacement]
     by simp_all [arm64_norm], by simp_all [arm64_norm], by simp_all [arm64_norm],
     by simp_all [arm64_norm], by simp_all [arm64_norm], by simp_all [arm64_norm],
     by simp_all [arm64_norm], by simp_all [arm64_norm], by simp_all [arm64_norm]⟩
-
-theorem overPrevLoopHead_cli_placed_ok [LibsignalPlacement] : OverPrevLoopHeadCliPlacedStmt :=
-  overPrevLoop_head_cli_placed_wp
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.VerNe

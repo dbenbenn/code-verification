@@ -9,13 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4StepsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4ErrPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3ErrTailPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4StepsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4ErrPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3ErrTailPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FramePlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `main` Hop M4 (`M+0x5dc → M+0x7b0 / M+0xb24 / M+0x650`, Block `617`)
@@ -25,7 +31,7 @@ Verifies `main`'s fourth hop on Block `617` under `[LibsignalPlacement]`: `coins
 `signal_session::run` (Block `579`), and post-`run` `Ok` / `Err` dispatch.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -1031,7 +1037,7 @@ private theorem m4_ok_tail_placed [LibsignalPlacement] {CodeOk : Memory → Prop
 
 set_option maxHeartbeats 1200000 in
 /-- Post-`run` (`M+0x7a4`) continuation of `main_m4` under `[LibsignalPlacement]`, factored out so
-`CliImgBridge` can supply `run`'s `Obj.Image` execution at `lsmpl.base 579` directly and resume on
+callers can supply `run`'s execution at `lsmpl.base 579` directly and resume on
 Block `617` (`mProgPlaced H`) from `M+0x7a4`. -/
 theorem m4_after_run_placed [LibsignalPlacement] {CodeOk : Memory → Prop}
     [LsCodeInv CodeOk] {H : LibsignalHooks} {A : RustAlloc} {uuidParse : UuidParser}

@@ -97,7 +97,7 @@ require «verified-libraries» from "../../VerifiedLibraries"
 
 meta if get_config? env = some "dev" then
 require «doc-gen4» from git
-  "https://github.com/leanprover/doc-gen4" @ "v4.34.0"
+  "https://github.com/leanprover/doc-gen4" @ "v4.35.0"
 
 target rustExports pkg : Array FilePath := Job.async do
   setTraceCaption "rustExports"

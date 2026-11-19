@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.WrapperOver
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverUntrusted -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.PqDirNoMatch
 import all Init.Data.String.Defs
 import all Init.Data.String.Basic
 import all Init.Data.Repr
 import all Init.Data.ToString.Basic
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Epochs
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.GamePaths
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.CommitOk
@@ -25,8 +26,10 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemma
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeTop
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.Ok
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,7 +59,7 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalT
 /-- Exact 2-session `SessionRecord` bytes written by libsignal on D2(c) (`NoMatch`):
 field 1 holds the newly promoted PQXDH responder session `(x', gs)` and field 2 archives the
 displaced current session `(x₀, g₀)` with its pending pre-key fields cleared. -/
-def d2cRecordBytes (x' x₀ : RecordExtras) (gs g₀ : GhostState (List (BitVec 8))) :
+@[expose] def d2cRecordBytes (x' x₀ : RecordExtras) (gs g₀ : GhostState (List (BitVec 8))) :
     List (BitVec 8) :=
   encodeRecordUnderExtras (fun _ => x') gs ++
     E2E.Record.lenField 2 (encStateUnderExtras x₀ { g₀.session with pendingPreKey := false })
@@ -67,7 +70,7 @@ responder model answer `pqRecvPrekeyModel X W { st with session := none } m rc`:
 * `some none`: rejection (`.exited 1 [] (filesOf i.files)`);
 * `some (some (st', out))`: exit `0` with `out` on stdout and `st'`'s directory overwritten at
   `sessionFile (partyAddress peer)` by the 2-session record `d2cRecordBytes x' x₀ gs g₀`. -/
-def d2cObserve (W : PEParams) (i : Inputs) (peer : Party)
+@[expose] def d2cObserve (W : PEParams) (i : Inputs) (peer : Party)
     (x₀ : RecordExtras) (g₀ : GhostState (List (BitVec 8)))
     (r : Option (Option (PqParty × List (BitVec 8)))) : Outcome :=
   match r with
@@ -742,7 +745,7 @@ theorem cliIo_rd_eq_readRule : Cli.MainHops.cliIo.rd = CliExt.readFileResult := 
 
 /-- `PEParams`-parameterized counterpart of `MainHops.cliRunSem`, dropping the unused `CliHooks`
 hook fields (`bcmp`, `utf8Err`). -/
-noncomputable def cliRunSemP (X : UnreachedPqxdhPrimitives) (P : PEParams)
+@[expose] noncomputable def cliRunSemP (X : UnreachedPqxdhPrimitives) (P : PEParams)
     (decPk : FsFiles → AddrVal → AddrVal → PreKeySignalMessage → List (BitVec 8) →
       SlotAns (List (BitVec 8)))
     (decPkOk : FsFiles → AddrVal → AddrVal → PreKeySignalMessage → Prop)
@@ -777,53 +780,5 @@ theorem cliRunSem_d2c_eq_cliRunSemD2cP (X : UnreachedPqxdhPrimitives) (W : CliHo
       (DecPkOkD2c ⟨W.C, W.Q⟩ Slots.scopeIn) Pksm.pksmParse =
     cliRunSemD2cP X ⟨W.C, W.Q⟩ :=
   rfl
-
-/-- Pointwise `(P, A, ext)` counterpart of `WrapperOver.DecPkD2cSlotOk img` for an arbitrary
-allocator `A : RustAlloc` and extern table `ext`. -/
-def DecPkD2cSlotAt (img : Obj.Image) (P : PEParams) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  ∀ (X : UnreachedPqxdhPrimitives) (S : RunSem) (needs : RunNeeds),
-    S.filesOk = Slots.filesOk₀ Slots.scopeIn (fun _ => True) →
-    S.decryptPrekey = decPkDefD2c X P Slots.scopeIn →
-    S.decPkOk = DecPkOkD2c P Slots.scopeIn →
-    needs.decryptPrekey = cliDecryptPrekeyNeed cliRunBudgets →
-    (slotsOf A img S needs).decryptPrekey.Ok img ext wrapDecryptPrekeyName
-
-/-- Fixed-table `DecPkD2cSlotOk img` specializes immediately to `DecPkD2cSlotAt` at
-`P := ⟨W.C, W.Q⟩`, `A := E2E.HooksE.A0`, `ext := cliExterns W`. -/
-theorem decPkD2cSlotAt_of_fixed {img : Obj.Image} (W : CliHooks) (hslot : DecPkD2cSlotOk img) :
-    DecPkD2cSlotAt img ⟨W.C, W.Q⟩ E2E.HooksE.A0 (cliExterns W) :=
-  fun X S needs hf hd hdo hn => hslot X W S needs hf hd hdo hn
-
-/-- Bundle of the 5 non-`decryptPrekey` `RunCallees` fields (`readFile`, `encrypt`,
-`decryptSignal`, `initiate`, `kemDeserialize`) at `(img, A, ext, S, decPkNeed)`. -/
-structure RunBaseCalleesAt (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) (S : RunSem) (decPkNeed : Nat) : Prop where
-  readFile : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr Cli.readFileName)
-    (readFileSpec cliIo.rd cliWrOk A img cliRunBudgets.readFile)
-  encrypt : (slotsOf A img S (cliRunNeeds decPkNeed)).encrypt.Ok img ext wrapEncryptName
-  decryptSignal :
-    (slotsOf A img S (cliRunNeeds decPkNeed)).decryptSignal.Ok img ext wrapDecryptSignalName
-  initiate : (slotsOf A img S (cliRunNeeds decPkNeed)).initiate.Ok img ext wrapInitiateName
-  kemDeserialize :
-    (slotsOf A img S (cliRunNeeds decPkNeed)).kemDeserialize.Ok img ext kemDeserializeName
-
-/-- Combine `RunBaseCalleesAt` with `DecPkD2cSlotAt` to build the full `RunCallees` at
-`cliRunSemD2cP X P`. -/
-theorem runCallees_d2c_of_slotAt {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (X : UnreachedPqxdhPrimitives) (P : PEParams)
-    (hbase : RunBaseCalleesAt img A ext (cliRunSemD2cP X P)
-      (cliDecryptPrekeyNeed cliRunBudgets))
-    (hslot : DecPkD2cSlotAt img P A ext) :
-    RunCallees img A ext cliRunBudgets
-      (slotsOf A img (cliRunSemD2cP X P) (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets))) where
-  readFile := hbase.readFile
-  encrypt := hbase.encrypt
-  decryptSignal := hbase.decryptSignal
-  initiate := hbase.initiate
-  decryptPrekey := hslot X (cliRunSemD2cP X P)
-    (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)) rfl rfl rfl rfl
-  kemDeserialize := hbase.kemDeserialize
 
 end CryptoVerification.SignalSession.Cli.RunCompose

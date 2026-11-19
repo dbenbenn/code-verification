@@ -24,7 +24,7 @@ Equivalence between the lazy tracker-halted `RefinementC` games and their eager-
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace CryptoGames.LibsignalSM.Proofs.Refinement
 

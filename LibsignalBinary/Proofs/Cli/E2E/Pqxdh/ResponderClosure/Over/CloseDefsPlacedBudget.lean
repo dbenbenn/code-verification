@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsPlaced
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsPlaced
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable `SessionRecord::serialize` with One Previous Session
@@ -22,7 +24,7 @@ and `SerializePrev1PlacedOkStmt` for `<SessionRecord>::serialize` (Block `52`) o
 one archived previous session, together with envelope-monotonicity lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,13 +41,13 @@ open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsBudget 
 
 /-- Envelope-parameterized `[LibsignalPlacement]` budget contract for `<SessionRecord>::serialize`
 (Block `52`) on a record with one previous session. -/
-def SerializePrev1PlacedOkWithEnvStmt [LibsignalPlacement] (prog : Program)
+@[expose] def SerializePrev1PlacedOkWithEnvStmt [LibsignalPlacement] (prog : Program)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Env : SessionGhost → Session (List (BitVec 8)) → List (BitVec 8) → List AllocEvent → Prop) :
     Prop :=
   subroutine_ok prog (lsmpl.base 52) (withLsCl lsmpl (serializePrev1SpecWithEnv M A lim Env))
 
-def SerializePrev1PlacedOkStmt [LibsignalPlacement] (prog : Program)
+@[expose] def SerializePrev1PlacedOkStmt [LibsignalPlacement] (prog : Program)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) : Prop :=
   subroutine_ok prog (lsmpl.base 52) (withLsCl lsmpl (serializePrev1Spec M A lim))
 
@@ -63,28 +65,6 @@ theorem serializePrev1PlacedOkWithEnvStmt_mono [LibsignalPlacement] {prog : Prog
     rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hp ⊢
     exact ⟨hp.1.mono (himp x.G x.sess x.enc), hp.2⟩
   · dsimp only [withLsCl, serializePrev1SpecWithEnv] at hq ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-    refine ⟨hq.1, ?_⟩
-    have hq2 := hq.2
-    rw [sepExists_sepConj_left, satisfies_sepExists] at hq2 ⊢
-    rcases hq2 with ⟨evs, hq2⟩
-    refine ⟨evs, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq2 ⊢
-    exact ⟨himp x.G x.sess x.enc evs hq2.1, hq2.2⟩
-
-theorem serializePrev1PlacedOkStmt_of_withEnv [LibsignalPlacement] {prog : Program}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Env : SessionGhost → Session (List (BitVec 8)) → List (BitVec 8) → List AllocEvent → Prop}
-    (himp : ∀ G sess enc evs, Env G sess enc evs → SerializePrev1Env G sess enc evs)
-    (h : SerializePrev1PlacedOkWithEnvStmt prog M A lim Env) :
-    SerializePrev1PlacedOkStmt prog M A lim := by
-  refine subroutine_ok_mono h
-    (fun ⟨x, st⟩ _ s0 hp => ?_)
-    (fun ⟨x, st⟩ _ s0 sf hq => ?_)
-  · dsimp only [withLsCl, serializePrev1Spec, serializePrev1SpecWithEnv] at hp ⊢
-    rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hp ⊢
-    exact ⟨hp.1.mono (himp x.G x.sess x.enc), hp.2⟩
-  · dsimp only [withLsCl, serializePrev1Spec, serializePrev1SpecWithEnv] at hq ⊢
     rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
     refine ⟨hq.1, ?_⟩
     have hq2 := hq.2

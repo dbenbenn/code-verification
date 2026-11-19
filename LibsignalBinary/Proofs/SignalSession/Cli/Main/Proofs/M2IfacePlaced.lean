@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Iface
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Hops
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # Relocatable Collect / Dispatch Boundary Invariant (`AtM2DispatchPlaced`)
@@ -20,7 +21,7 @@ import Arm64.Trusted.Spec.SepLogic
 Relocatable `[LibsignalPlacement]` counterpart of `AtM2Dispatch` (`M2Iface.lean`) on Block `617`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false

@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Game.StatementPq
-public import Computational.Proofs.LibsignalCli.CliPqHandshakeStepCore
-public import Computational.Proofs.LibsignalCli.Entry.CliPqSessionCap
-public import Computational.Proofs.E2E.Relabel.GameEq
+public import Computational.Proofs.SpecLemmas.Game.StatementPq -- proof-setup: allow-public-import
+import Computational.Proofs.LibsignalCli.CliPqHandshakeStepCore
+import Computational.Proofs.LibsignalCli.Entry.CliPqSessionCap
+public import Computational.Proofs.E2E.Relabel.GameEq -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -416,7 +416,7 @@ private theorem trusts_false_eq_peerId {st : PqParty} {peer k : IdentityKey}
   rw [hp, ht]
 
 /-- Per-party retained-directory invariant in a promoted CLI instance `bi`. -/
-def CliPartyDirInv {S : SignalPqxdh.Setup} {l : Nat} (W : PEParams)
+@[expose] def CliPartyDirInv {S : SignalPqxdh.Setup} {l : Nat} (W : PEParams)
     (bi : ModelDriverInstance S l)
     (sigs : List.Vector (BitVec 8) 64 × List.Vector (BitVec 8) 64) :
     Party → CliPartyState → Prop
@@ -1666,7 +1666,7 @@ theorem cliOracleImplR_step {S : SignalPqxdh.Setup} {l : Nat} {Pt : Type}
 
 /-! ### `KeyInd` `spkLookup` invariance and `projCliDrv` state invariant -/
 
-def spkLookup (idx₀ : Nat × Nat)
+@[expose] def spkLookup (idx₀ : Nat × Nat)
     (bs : List ((Nat × Nat) × SignalPqxdh.SpkBundleEntry)) :
     Option (SignalPqxdh.Bytes × SignalPqxdh.Bytes) :=
   (bs.find? (fun (idx, _) => idx == idx₀)).map (fun (_, e) => (e.spkSig, e.pqspkSig))
@@ -2041,19 +2041,19 @@ private theorem pqxdhKeyIndImpl_preserves_spkLookup {S : SignalPqxdh.Setup}
     simp at hz; subst hz; exact fun _ _ h => h
 
 /-- Projects `bhInsts` for `CliDriverState` by mapping party states through `CliPartyState.bin`. -/
-def projInsts {S : SignalPqxdh.Setup} {l : Nat} (cds : CliDriverState S l) :
+@[expose] def projInsts {S : SignalPqxdh.Setup} {l : Nat} (cds : CliDriverState S l) :
     List (ModelDriverInstance S l) :=
   cds.bhInsts.zipWith
     (fun bi gsOpt => { bi with gs := gsOpt.map (mapSt CliPartyState.bin) })
     cds.instGs
 
 /-- Project `CliDriverState` to `ModelDriverState` for `cliDrvImpl`. -/
-def projCliDrv {S : SignalPqxdh.Setup} {l : Nat} (cds : CliDriverState S l) :
+@[expose] def projCliDrv {S : SignalPqxdh.Setup} {l : Nat} (cds : CliDriverState S l) :
     ModelDriverState S l :=
   { cds.toModelDriverState with bhInsts := projInsts cds }
 
 /-- Driver + `KeyInd` state invariant for the retained-directory CLI game. -/
-def CliRetainedStateInv {S : SignalPqxdh.Setup} {l : Nat} (W : PEParams)
+@[expose] def CliRetainedStateInv {S : SignalPqxdh.Setup} {l : Nat} (W : PEParams)
     (cds : CliDriverState S l) (kst : SignalPqxdh.KeyIndState S) : Prop :=
   cds.instGs.length = cds.bhInsts.length ∧
   ∀ (i : Nat) (bi : ModelDriverInstance S l), cds.bhInsts[i]? = some bi →

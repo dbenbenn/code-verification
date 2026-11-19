@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SpkHop2A
-public import Computational.Proofs.E2E.SpkHop2Red
+public import Computational.Proofs.E2E.SpkHop2A -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkHop2Red -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
 
-@[expose] public section
+public section
 
 /-!
 # Hops 1 and 3 of the Leaked-SPK Session Chain and Hop 2 Combiner
@@ -279,7 +279,7 @@ theorem corrR_spk_preserve
     subst hz
     exact spkStateInv_afterCorr hs Q
 
-def spkPureStep
+@[expose] def spkPureStep
     (P : Params Bytes PQC) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
@@ -539,7 +539,7 @@ section Hop2RedK
 omit [SampleableType Pt]
 
 /-- Per-step collision supremum in `hop2CreateCollTerm`. -/
-noncomputable def hop2CreateCollUnit (Dh : DHFun (BitVec 256) Pt) : ℝ≥0∞ :=
+@[expose] noncomputable def hop2CreateCollUnit (Dh : DHFun (BitVec 256) Pt) : ℝ≥0∞ :=
   ⨆ (T : Pt) (Q : Pt),
     if Q = 0 then 0 else 𝒟[($ᵗ BitVec 256 : ProbComp (BitVec 256))] {r | Dh.dh r T = Q}
 

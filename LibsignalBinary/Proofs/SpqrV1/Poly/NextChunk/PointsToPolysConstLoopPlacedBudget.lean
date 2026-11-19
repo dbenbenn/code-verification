@@ -9,21 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
-public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst5PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConstLoopPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConstLoopPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst5PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConstLoopPlaced
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConstLoopPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlacedBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
-import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
-import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConstLoop
+public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConstLoop -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysDefs
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysInit
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst5Placed
+import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Budget-Threaded Constant Basis Loops (`n = 36, 34`)
@@ -33,7 +37,7 @@ Relocatable `[LibsignalPlacement]` verification of the `n = 34` constant Lagrang
 threading `RustCliAllocBudget M` and `BudgetLimits`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -123,7 +127,7 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 
 /-- Exact allocator event sequence for `k` remaining iterations of the `n = 34` basis copy loop
     (`+2372..+2428 -> +2332..+2368`), allocating `68` bytes (align `2`) per polynomial. -/
-def basisN34LoopEvents (k : Nat) : List AllocEvent :=
+@[expose] def basisN34LoopEvents (k : Nat) : List AllocEvent :=
   (List.replicate k (rustAllocEvents 68 2)).flatten
 
 theorem basisN34LoopEvents_one : basisN34LoopEvents 1 = rustAllocEvents 68 2 := rfl
@@ -131,7 +135,7 @@ theorem basisN34LoopEvents_one : basisN34LoopEvents 1 = rustAllocEvents 68 2 := 
 theorem basisN34LoopEvents_succ (k : Nat) :
     basisN34LoopEvents (k + 1) = rustAllocEvents 68 2 ++ basisN34LoopEvents k := rfl
 
-def BasisN34LoopEnv (k : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def BasisN34LoopEnv (k : Nat) (evs : List AllocEvent) : Prop :=
   evs = basisN34LoopEvents k
 
 theorem fitsEnv_basisN34Loop_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} (k : Nat) :
@@ -144,14 +148,14 @@ theorem fitsEnv_basisN34Loop_iff {M : AllocCostModel} {lim : BudgetLimits} {st :
     `816` bytes (align `8`) for `basisPtr`, thirty-four `68`-byte (align `2`) buffers for
     `basis[0..33]`, and `68` bytes (align `2`) for `accPtr`
     (matching `DefsBudget.PointsToPolysIterEnv 34`). -/
-def basisN34Events : List AllocEvent :=
+@[expose] def basisN34Events : List AllocEvent :=
   rustAllocEvents (24 * 34) 8 ++ (List.replicate (34 + 1) (rustAllocEvents (2 * 34) 2)).flatten
 
 theorem basisN34Events_split :
     basisN34Events =
       (rustAllocEvents 816 8 ++ basisN34LoopEvents 34) ++ basisLoopExitEvents 34 := rfl
 
-def BasisN34Env (evs : List AllocEvent) : Prop :=
+@[expose] def BasisN34Env (evs : List AllocEvent) : Prop :=
   evs = basisN34Events
 
 theorem fitsEnv_basisN34_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :

@@ -9,15 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5a
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch2Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch3Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.EpiloguePlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 5 (`NoHeaderReceived`, `+1344`) — Part A
@@ -26,7 +27,7 @@ Relocatable Block-`333` OOM cold path (`+11596`), `+6500` error exit, and inline
 `ProtoPolynomialDecoder` deallocation (`+6420..+6500`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

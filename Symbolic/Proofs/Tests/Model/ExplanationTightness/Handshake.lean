@@ -50,7 +50,7 @@ import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.Bytes.AttackerKnowledge
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

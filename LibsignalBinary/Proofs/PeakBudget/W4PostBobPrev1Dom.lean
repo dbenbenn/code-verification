@@ -10,34 +10,45 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefs
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
-public import LibsignalBinary.Proofs.PeakBudget.GateM2rGStatesRecvTwins
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3
-public import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit
-public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
-public import LibsignalBinary.Proofs.PeakBudget.W4PathCVerNeWideDefs
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0TdAux
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkSlot
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyDom0Record
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyDom0Tie
-public import LibsignalBinary.Proofs.PeakBudget.W4SlotGroupSpec
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefs
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.GateM2rGStatesRecvTwins -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit
+import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
+import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpec
+import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
+import LibsignalBinary.Proofs.PeakBudget.W4PathCVerNeWideDefs
+public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0TdAux
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkSlot
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyDom0Record
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyDom0Tie
+import LibsignalBinary.Proofs.PeakBudget.W4SlotGroupSpec
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
 public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSession
 import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
 import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
 import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
 import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Post-Decrypt Arm-4 `prev1` Domain & Canonical Slot Envelopes
@@ -52,7 +63,7 @@ slot envelopes:
   cumulative clone credit `segCloneTightCum fineCostModel G ses.state`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -129,7 +140,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (SegCloneEnv segClon
 /-! ## `PostBobPrev1Dom` & Named Per-Field Protobuf Cap Definitions -/
 
 /-- Pure `Nat` protobuf varint byte length for `n < 2 ^ 64` (mirrors `EncodedLen.varintLenBV`). -/
-def varintMaxLen (n : Nat) : Nat :=
+@[expose] def varintMaxLen (n : Nat) : Nat :=
   if n < 2 ^ 7 then 1
   else if n < 2 ^ 14 then 2
   else if n < 2 ^ 21 then 3
@@ -142,95 +153,89 @@ def varintMaxLen (n : Nat) : Nat :=
   else 10
 
 /-- Tight length-delimited field cap for tag `1 ≤ tag ≤ 15` (`1`-byte key + `varintMaxLen` + payload). -/
-def lenFieldCap1_15 (payloadCap : Nat) : Nat :=
+@[expose] def lenFieldCap1_15 (payloadCap : Nat) : Nat :=
   1 + varintMaxLen payloadCap + payloadCap
 
 /-- Tight reachable SPQR v1 `pqRatchetState` byte cap (`TopStateTight.topStateTight_length_le`). -/
-def w4PostBobPqCap : Nat := 286196
+@[expose] def w4PostBobPqCap : Nat := 286196
 
 /-- Maximum skipped message keys per receiver chain (`CryptoGames.LibsignalSession.maxMessageKeys`). -/
-def w4PostBobMaxSkippedKeys : Nat := 2000
+@[expose] def w4PostBobMaxSkippedKeys : Nat := 2000
 
 /-- Tight `ChainKey` message cap (`uint32Field 1 ≤ 6` + `bytesField 2 (32 B) = 34` = `40` B). -/
-def w4PostBobChainKeyBytes : Nat := 6 + lenFieldCap1_15 32
+@[expose] def w4PostBobChainKeyBytes : Nat := 6 + lenFieldCap1_15 32
 
 /-- Tight `lenField 4 (encMessageKey mk)` cap for `32`-B seed (`42` B). -/
-def w4PostBobMsgKeyFieldBytes : Nat :=
+@[expose] def w4PostBobMsgKeyFieldBytes : Nat :=
   lenFieldCap1_15 (6 + lenFieldCap1_15 32)
 
 /-- Tight `encReceiverChain c` payload cap for `≤ 2,000` skipped keys (`35 + 42 + 84,000 = 84,077` B). -/
-def w4PostBobEncReceiverChainBytes : Nat :=
+@[expose] def w4PostBobEncReceiverChainBytes : Nat :=
   lenFieldCap1_15 33 + lenFieldCap1_15 w4PostBobChainKeyBytes +
     w4PostBobMaxSkippedKeys * w4PostBobMsgKeyFieldBytes
 
 /-- Tight `lenField 7 (encReceiverChain c)` cap for `≤ 1` receiver chain (`84,081` B). -/
-def w4PostBobOneChainBytes : Nat :=
+@[expose] def w4PostBobOneChainBytes : Nat :=
   lenFieldCap1_15 w4PostBobEncReceiverChainBytes
 
 /-- Tight `msgField 6 (encSenderChain)` cap (`113` B). -/
-def w4PostBobSenderChainFieldBytes : Nat :=
+@[expose] def w4PostBobSenderChainFieldBytes : Nat :=
   lenFieldCap1_15 (lenFieldCap1_15 33 + lenFieldCap1_15 32 + lenFieldCap1_15 w4PostBobChainKeyBytes)
 
 /-- Tight `msgField 9 (pendingPreKey)` cap (`65` B). -/
-def w4PostBobPendingPreKeyFieldBytes : Nat :=
+@[expose] def w4PostBobPendingPreKeyFieldBytes : Nat :=
   lenFieldCap1_15 (6 + lenFieldCap1_15 33 + 11 + 11)
 
 /-- Tight `msgField 14 (pendingKyberPreKey)` cap under `SessionCloneDom` (`1,581` B). -/
-def w4PostBobPendingKyberFieldBytes : Nat :=
+@[expose] def w4PostBobPendingKyberFieldBytes : Nat :=
   lenFieldCap1_15 (6 + lenFieldCap1_15 1569)
 
 /-- Tight cap on fixed-bound fields `1..6, 9..11, 13, 14` of `Record.encSession` (`1,922` B). -/
-def w4PostBobFixedNonChainBytes : Nat :=
+@[expose] def w4PostBobFixedNonChainBytes : Nat :=
   6 + lenFieldCap1_15 33 + lenFieldCap1_15 33 + lenFieldCap1_15 32 + 6 +
     w4PostBobSenderChainFieldBytes + w4PostBobPendingPreKeyFieldBytes +
     6 + 6 + lenFieldCap1_15 33 + w4PostBobPendingKyberFieldBytes
 
 /-- Tight cap on `(Record.encSession ses').length` for `receiverChains.length ≤ 1` (`372,203` B at `286,196`). -/
-def postBobSessionCapOf (bobPqCap : Nat) : Nat :=
+@[expose] def postBobSessionCapOf (bobPqCap : Nat) : Nat :=
   w4PostBobFixedNonChainBytes + w4PostBobOneChainBytes + lenFieldCap1_15 bobPqCap
 
 /-- Tight cap on `(Record.encodeRecord ⟨some ses'⟩).length` (`372,207` B at `bobPqCap = 286,196`). -/
-def postBobRecordCapOf (bobPqCap : Nat) : Nat :=
+@[expose] def postBobRecordCapOf (bobPqCap : Nat) : Nat :=
   lenFieldCap1_15 (postBobSessionCapOf bobPqCap)
 
 /-- Cap on `(encodeRecordPrev1Mem G ses' enc).length`:
 `postBobRecordCapOf bobPqCap + lenFieldCap1_15 prevEncCap`. -/
-def postBobTotalPrev1CapOf (bobPqCap prevEncCap : Nat) : Nat :=
+@[expose] def postBobTotalPrev1CapOf (bobPqCap prevEncCap : Nat) : Nat :=
   postBobRecordCapOf bobPqCap + lenFieldCap1_15 prevEncCap
 
 /-- Overhead `postBobTotalPrev1CapOf 286196 2097152 - 2097152` (`= 372,212` B). -/
-def postBobPrev1Overhead286K : Nat :=
+@[expose] def postBobPrev1Overhead286K : Nat :=
   postBobRecordCapOf w4PostBobPqCap + (1 + varintMaxLen 2097152)
 
 /-- Cap `postBobTotalPrev1CapOf` instantiated at `(bobPqCap := 286196, prevEncCap := 2097152)`
 (`= 2,469,364` B). -/
-def postBobTotalPrev1Cap286K : Nat :=
+@[expose] def postBobTotalPrev1Cap286K : Nat :=
   postBobTotalPrev1CapOf w4PostBobPqCap 2097152
 
 /-- Separate small-pool cumulative Rust clone credit (`897,456 + 738 * 2,000 = 2,373,456` B) for
 `segCloneTightCum fineCostModel G ses.state` at `receiverChains.length ≤ 1` (NOT `total_len`). -/
-def w4PostBobCloneTightCum : Nat :=
+@[expose] def w4PostBobCloneTightCum : Nat :=
   897456 + 738 * w4PostBobMaxSkippedKeys
 
 /-- Single receiver-chain large-pool peak/live buffer cost on `fineCostModel` (`216,195` B). -/
-def w4PostBobOneChainLarge : Nat := 216195
+@[expose] def w4PostBobOneChainLarge : Nat := 216195
 
 /-- Tight `serializePrev1TightCum fineCostModel` cap for `≤ 1` receiver chain (`2,660,912` B). -/
-def w4PostBobSerializePrev1TightCum : Nat :=
+@[expose] def w4PostBobSerializePrev1TightCum : Nat :=
   w4PostBobCloneTightCum + 287456
 
 /-- Scaled group bound for `SegCloneEnv` under `PostBobPrev1Dom` (`≤ 1` receiver chain). -/
-def segClonePostBob1FineGrpS : Nat :=
+@[expose] def segClonePostBob1FineGrpS : Nat :=
   segCloneFreshBobFineGrpS + (3 * FineScale + chainCloneDomFineGrpS)
 
 theorem w4PostBobMaxSkippedKeys_eq : w4PostBobMaxSkippedKeys = maxMessageKeys := rfl
-theorem w4PostBobOneChainBytes_eq : w4PostBobOneChainBytes = 84081 := rfl
-theorem w4PostBobFixedNonChainBytes_eq : w4PostBobFixedNonChainBytes = 1922 := rfl
 theorem postBobRecordCapOf_286K_eq : postBobRecordCapOf w4PostBobPqCap = 372207 := rfl
-theorem postBobPrev1Overhead286K_eq : postBobPrev1Overhead286K = 372212 := rfl
-theorem postBobTotalPrev1Cap286K_eq : postBobTotalPrev1Cap286K = 2469364 := rfl
-theorem postBobTotalPrev1Cap286K_decomp :
-    postBobTotalPrev1Cap286K = 2097152 + postBobPrev1Overhead286K := rfl
 
 /-- Post-`try_decrypt` Path-C Arm-4 `prev1` output domain bundle on `out1`:
 - `rc_len1`: `ses.state.receiverChains.length ≤ 1` (`0` on unused default witness, `1` after Arm-4
@@ -445,14 +450,6 @@ theorem serializePrev1TightCum_fine_postBob_le {bobPqCap prevEncCap totalPrev1Ca
     serializePrev1TightCum fineCostModel G ses enc ≤ w4PostBobSerializePrev1TightCum := by
   exact serializePrev1TightCum_fine_le_of_clone (segCloneTightCum_fine_postBob_le h)
 
-/-- `serializePrev1OutLarge` bound (`≤ fineOptLarge totalPrev1Cap`) under `PostBobPrev1Dom`. -/
-theorem serializePrev1OutLarge_fine_postBob_le {bobPqCap prevEncCap totalPrev1Cap : Nat}
-    {G : SessionGhost} {ses : Session (List (BitVec 8))} {enc : List (BitVec 8)}
-    (h : PostBobPrev1Dom bobPqCap prevEncCap totalPrev1Cap G ses enc) :
-    serializePrev1OutLarge fineCostModel G ses enc ≤ fineOptLarge totalPrev1Cap := by
-  unfold serializePrev1OutLarge
-  rw [optLargeCost_fine_eq]
-  exact fineOptLarge_mono h.total_len
 
 /-- `serializePrev1Peak` bound under `PostBobPrev1Dom` (sum form mirroring
 `W4OuterTightSpecAux.serializePrev1Peak_fine_freshBob_le`, since `serializePrev1Peak` is
@@ -673,7 +670,7 @@ structure W4RecvPrekeyRealDomCmkSrOf' (SR : W4StatesRecvEnv)
   tdAC_dom : R.isPathAC = true → W4TryDecryptPathACDomCmkOf R.C.F R.K maxCt R.td_AC
 
 /-- `Dom0'` (`archivedTrials = []`) twin of `W4RecvPrekeyCmkDom0Of`. -/
-def W4RecvPrekeyCmkDom0Of' (SR : W4StatesRecvEnv)
+@[expose] def W4RecvPrekeyCmkDom0Of' (SR : W4StatesRecvEnv)
     (LoopAdvEnv : W4LoopAdvEnv) (maxOps smallFileCap maxCt : Nat)
     (R : W4RecvPrekeyRealParamsCmk) : Prop :=
   W4RecvPrekeyRealDomCmkSrOf' SR LoopAdvEnv maxOps smallFileCap maxCt R ∧ R.archivedTrials = []
@@ -684,7 +681,7 @@ abbrev W4RecvPrekeyCmkDom0' (SR : W4StatesRecvEnv) (maxOps : Nat)
   W4RecvPrekeyCmkDom0Of' SR CmkLoopAdvanceEvs maxOps sessionCapBytes msgCapBytes R
 
 /-- Call-site `Dom0'` guard `W4BinaryCallSiteDomCmk' ∧ R.archivedTrials = []`. -/
-def W4BinaryCallSiteDomCmk0' (C : Crypto) (K : MlKem)
+@[expose] def W4BinaryCallSiteDomCmk0' (C : Crypto) (K : MlKem)
     (maxCt : Nat) (peerVal : AddrVal) (files : FsFiles) (R : W4RecvPrekeyRealParamsCmk) : Prop :=
   W4BinaryCallSiteDomCmk' C K maxCt peerVal files R ∧ R.archivedTrials = []
 
@@ -793,7 +790,7 @@ theorem W4BinaryCallSiteDomCmk0'.toCmkDom0Of' (SR : W4StatesRecvEnv)
   ⟨W4BinaryCallSiteDomCmk'.toRealDomCmkSrOf' SR LoopAdvEnv maxOps hcs0.1 hparse hct, hcs0.2⟩
 
 /-- Binary-kit call-dispatched `Dom0'` guard on `W4BinaryRecvPrekeyParamsCmk`. -/
-def W4BinaryRecvPrekeyDomCmk0' (SR : W4StatesRecvEnv) (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
+@[expose] def W4BinaryRecvPrekeyDomCmk0' (SR : W4StatesRecvEnv) (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (c : CallV) (i : Inputs) (w : W4BinaryRecvPrekeyParamsCmk) : Prop :=
   ∀ peerAddr, c = .recv peerAddr →
     w.base.peer.val = addrValOf peerAddr ∧
@@ -818,26 +815,12 @@ theorem w4RecvPrekeyCmkDom0'Of_of_cliPqOrD3RecvDom_deserializeTie {W : PEParams}
   exact ⟨hDom, W4RecvPrekeyDom0Tie.list_eq_nil_of_cliPqOrD3RecvDom_deserializeTie hi hparse
     (fun bs orec hget hdes => hTie bs orec (hfiles.symm ▸ hpeer.symm ▸ hget) hdes)⟩
 
-/-- Honest `deserializeTie` `W4BinaryCallSiteDomCmk0'` lift on `CliPqOrD3RecvDom`. -/
-theorem w4BinaryCallSiteDomCmk0'_of_cliPqOrD3RecvDom_deserializeTie {W : PEParams}
-    {C : Crypto} {K : MlKem} {maxCt : Nat}
-    {i : Inputs} {peer : AddrV} {R : W4RecvPrekeyRealParamsCmk}
-    (hi : CliPqOrD3RecvDom W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.recv peer))
-    (hcs : W4BinaryCallSiteDomCmk' C K maxCt (addrValOf peer) (runFiles i) R)
-    (hTie : ∀ bs orec,
-      StoresGhost.opened.sessions.get cliIo.rd R.files (addressText R.peer.val) = .ok bs →
-      RecordStructure.deserialize bs = .ok orec →
-      R.archivedTrials.length ≤ (orec.map (·.previousSessions.length)).getD 0) :
-    W4BinaryCallSiteDomCmk0' C K maxCt (addrValOf peer) (runFiles i) R := by
-  exact ⟨hcs, W4RecvPrekeyDom0Tie.list_eq_nil_of_cliPqOrD3RecvDom_deserializeTie hi hparse
-    (fun bs orec hget hdes => hTie bs orec (hcs.eq_files.symm ▸ hcs.eq_peerVal.symm ▸ hget) hdes)⟩
 
 /-! ## Slot Envelopes, `cliDecPkCanonSlotEnvExact'`, & Inclusions -/
 
 /-- Binary-kit slot envelope reusing `m2rg_W4BinaryRecvPrekeyWideSlotEnvCmkWithP3CAllFixedOf'`
 with call-site domain witness `W4BinaryCallSiteDomCmk'`. -/
-def m2rg_realCliDecPkBinaryWideSlotEnvCmkWithP3CFixedOf'' [LibsignalPlacement]
+@[expose] def m2rg_realCliDecPkBinaryWideSlotEnvCmkWithP3CFixedOf'' [LibsignalPlacement]
     (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (StatesRecvFK : m2rg_StatesRecvEnvFam)
     (P3PathCEnv : W4BinaryRecvPrekeyParamsCmk → List AllocEvent → Prop)
@@ -892,7 +875,7 @@ abbrev realCliDecPkBinaryWideSlotEnvCmkDom0'Fixed [LibsignalPlacement]
 /-- Session-store reachability guard: raw `sessions.get` succeeds and prost
 `RecordStructure.deserialize` yields `0` previous sessions. Discharged at `main` level from
 `CliPqOrD3RecvDom` by `W4RecvPrekeyDom0Tie.sessions_get_deserialize_prev0_of_cliPqOrD3RecvDom`. -/
-def SessionGetPrev0Guard (files : FsFiles) (peerVal : AddrVal) : Prop :=
+@[expose] def SessionGetPrev0Guard (files : FsFiles) (peerVal : AddrVal) : Prop :=
   ∃ bs orec,
     StoresGhost.opened.sessions.get cliIo.rd files (addressText peerVal) = .ok bs ∧
     RecordStructure.deserialize bs = .ok orec ∧
@@ -950,7 +933,7 @@ abbrev realCliDecPkBinaryWideSlotEnvCmkDom0'Prev0GuardedFixed [LibsignalPlacemen
 When either guard is false, `cliDecPkCanonSlotEnvExact' X W x` reduces to `fun _ => True` (`⊤`),
 whose `FitsEnv M lim st` precondition is unsatisfiable at finite `lim`; both guards are discharged
 at `main` level from `CliPqOrD3RecvDom`. -/
-noncomputable def cliDecPkCanonSlotEnvExact' [LibsignalPlacement]
+@[expose] def cliDecPkCanonSlotEnvExact' [LibsignalPlacement]
     (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (x : DecPkGhost) (evs : List AllocEvent) : Prop :=
   PeerSpqrStateTight640 W.C.F W.Q.K x.F x.peer.val →
@@ -965,7 +948,7 @@ theorem cliDecPkCanonSlotEnvExact'_eq_dom0'Prev0GuardedFixed [LibsignalPlacement
 
 /-- Un-narrowed companion to `cliDecPkCanonSlotEnvExact'` (`archivedTrials.length ≤ 4`,
 without `SessionGetPrev0Guard`). -/
-noncomputable def cliDecPkCanonSlotEnvExactF2' [LibsignalPlacement]
+@[expose] def cliDecPkCanonSlotEnvExactF2' [LibsignalPlacement]
     (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (x : DecPkGhost) (evs : List AllocEvent) : Prop :=
   PeerSpqrStateTight640 W.C.F W.Q.K x.F x.peer.val →
@@ -993,25 +976,6 @@ theorem cliDecPkCanonSlotEnvExact'_ghost_congr [LibsignalPlacement]
   rw [hf, hp,
     realCliDecPkBinaryWideSlotEnvCmkDom0'FixedOf_ghost_congr _ _ _ X W x y hp hm hs hcp hf hc hmsg]
 
-/-- Inclusion lifting `realCliDecPkBinaryWideSlotEnvCmkDom0GuardedFixed'` traces into
-`cliDecPkCanonSlotEnvExact'` via `w4BinaryCallSiteDomCmk0_toPostBob`. -/
-theorem realCliDecPkBinaryWideSlotEnvCmkDom0GuardedFixed_sub_canon' [LibsignalPlacement]
-    {X : UnreachedPqxdhPrimitives} {W : CliHooks} {x : DecPkGhost} {evs : List AllocEvent}
-    (h : realCliDecPkBinaryWideSlotEnvCmkDom0GuardedFixed w4c_repairedStatesRecvEnvFam X W x evs) :
-    cliDecPkCanonSlotEnvExact' X W x evs := by
-  intro hTight _hPrev0
-  obtain ⟨w4, hw4, hrem, hbase, henv⟩ := h hTight
-  exact ⟨w4, w4BinaryCallSiteDomCmk0_toPostBob hw4, hrem, hbase, henv⟩
 
-/-- Inclusion lifting `m2rg_realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixed'` traces into
-`cliDecPkCanonSlotEnvExactF2'` via `w4BinaryCallSiteDomCmk_toPostBob`. -/
-theorem m2rg_realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixed'_sub_canonF2' [LibsignalPlacement]
-    {X : UnreachedPqxdhPrimitives} {W : CliHooks} {x : DecPkGhost} {evs : List AllocEvent}
-    (h : m2rg_realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixed'
-      w4c_repairedStatesRecvEnvFam X W x evs) :
-    cliDecPkCanonSlotEnvExactF2' X W x evs := by
-  intro hTight
-  obtain ⟨w4, hw4, hrem, hbase, henv⟩ := h hTight
-  exact ⟨w4, w4BinaryCallSiteDomCmk_toPostBob hw4, hrem, hbase, henv⟩
 
 end LibsignalBinary.Proofs.PeakBudget.W4PostBobPrev1Dom

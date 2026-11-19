@@ -9,10 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKey
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKey
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Defs
+public import ProofLib.BV
+public import ProofLib.SepLogic.WP.Apply
+public import ProofLib.StdStartup.MuslStage1Init
 
 /-!
 # Relocatable Segment 4 (`ConsumeMsgKey`) Helpers on CLI Block `433`
@@ -21,7 +26,7 @@ Byte-splitting, error-word packing/unpacking, `consumeMessageKey_senderChain`, a
 `steps_call_out_placed` combinators under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -278,7 +283,7 @@ theorem consumeMessageKey_senderChain (F : ShaCompress) (their : PublicKey) (ck 
             (Mut.exec (RatchetState.advanceChain F their counter (counter - ck.index).toNat ck) s).2).1 <;>
             exact hset.trans hadv
 
-def ErrWordsRel (A : RustAlloc) (e : SignalProtocolError)
+@[expose] def ErrWordsRel (A : RustAlloc) (e : SignalProtocolError)
     (w416 w424 w432 w440 : BitVec 64) (restHeap : SepProp) : Prop :=
   match e with
   | .duplicatedMessage i c =>

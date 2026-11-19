@@ -9,13 +9,17 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge
-public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.SendWhisperSlot
+import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge
+import Symbolic.Proofs.Swarm.CREF.Cli.Slots.SendWhisperSlot
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.SendCoinsBridge
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.SendRetBridge
 import Symbolic.Proofs.Swarm.CREF.Cli.World.TurnPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.SendWire.SlotPure
+public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhInputs
+public import LibsignalBinary.Specifications.SignalSession.PqDir
+public import Symbolic.Specifications.Concrete.MachineEvents
+public import Symbolic.Specifications.Refinement.CliSetup
 
 /-!
 # Exited Outcomes for `pqSendModel`
@@ -24,7 +28,7 @@ Unpacks `Outcome.exited` against `pqxdhExpectedOutcome` for `pqSendModel` into s
 with updated directory files) or failure (exit `1` with unchanged directory files).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

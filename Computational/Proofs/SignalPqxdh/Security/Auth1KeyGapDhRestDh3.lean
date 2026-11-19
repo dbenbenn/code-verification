@@ -9,10 +9,23 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC4
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC4
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
 
 /-!
 # Pre-sampling and dead-flag preservation for one-key `Auth` Case C (`DH3`)
@@ -22,7 +35,7 @@ Case C pre-sampled oracle `pqxdhAuthFgPreImpl1KeyDh3`, proving unlatch equivalen
 pre-sampling equivalence, and preservation of `deadAuthDh3`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,7 +69,7 @@ theorem mem_support_pqxdhAuthImpl1Key_initPrin {S : Setup} (P : Primitives) (u :
     intro hEq; exact Or.inl (by rw [hEq])
 
 /-- Unlatched one-key reference `.g3` `Auth` simulation (`pqxdhAuthFgImpl1Key`). -/
-noncomputable def runAuthFgSim1Key (S : Setup) (P : Primitives) (A : AuthAdversary S) :
+@[expose] def runAuthFgSim1Key (S : Setup) (P : Primitives) (A : AuthAdversary S) :
     ProbComp (Bool × Bool × AuthFgCutoffState S) := do
   let secb ← $ᵗ Bool
   let initSt := AuthFgCutoffState.empty S secb
@@ -118,7 +131,7 @@ theorem evalDist_runAuthFgLatchedSim1Key_badAuthFgDh3At_eq (S : Setup) (P : Prim
   runAuthFgLatchedSim1Key_bind_of_unlatch_inv S P A _ (fun _ _ _ => rfl)
 
 /-- Pre-sampled one-key `.g3` `Auth` oracle for Case C (`DH3`). -/
-noncomputable def pqxdhAuthFgPreImpl1KeyDh3 (targetIdx targetSpkIdx : ℕ)
+@[expose] def pqxdhAuthFgPreImpl1KeyDh3 (targetIdx targetSpkIdx : ℕ)
     (optUsk optVsk : Option Bytes) (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthFgCutoffState S) ProbComp)
   | .initPrin u => liftAuthFgBase (pqxdhAuthImpl1Key S P (.initPrin u))

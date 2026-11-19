@@ -10,8 +10,6 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ChainEncodedLenBase
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.Fetch
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -22,7 +20,7 @@ Completes symbolic execution of `<spqr::proto::pq_ratchet::Chain as prost::messa
 in-image copies (`[local#1]` at `0x39698`, `[local#2]` at `0x68790`) and their placed blocks.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ProtoRepr
 
@@ -48,17 +46,17 @@ attribute [local simp] sext64_truncate32 signExtend64_beq_zero64
 /-! ## Step 3A: `direction + current_epoch + links + next_root` (`+0x0b8..+0x0ec`) -/
 
 /-- Prefix sum of fields 1..3 (`direction + current_epoch + links`). -/
-def chainPrefix3 (ch : ChainPB) : Nat :=
+@[expose] def chainPrefix3 (ch : ChainPB) : Nat :=
   i32VarintFieldEncodedLen ch.direction +
     u64VarintFieldEncodedLen ch.currentEpoch +
     chainLinksFieldEncodedLen ch.links
 
 /-- Prefix sum of fields 1..4 (`direction + current_epoch + links + next_root`). -/
-def chainPrefix4 (ch : ChainPB) : Nat :=
+@[expose] def chainPrefix4 (ch : ChainPB) : Nat :=
   chainPrefix3 ch + bytesFieldEncodedLen ch.nextRoot
 
 /-- Prefix sum of fields 1..5 (`direction + current_epoch + links + next_root + send_epoch`). -/
-def chainPrefix5 (ch : ChainPB) : Nat :=
+@[expose] def chainPrefix5 (ch : ChainPB) : Nat :=
   chainPrefix4 ch + u64VarintFieldEncodedLen ch.sendEpoch
 
 theorem step_chain_next_root (prog : Program) (A : RustAlloc)
@@ -506,20 +504,6 @@ theorem subroutine_ok_withMemPred_true {α : Type} {prog : Program} {entry : Bit
       exact hp.2)
     (fun _ _ _ _ hq => hq)
 
-theorem chainEncodedLen_entry_pinned_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) (entry epochEntry : BitVec 64)
-    (hfn :
-      ((tripleRatchetProgAtExt b ext).fnAddr chainEncodedLenLocal1Name = entry ∧
-       (tripleRatchetProgAtExt b ext).fnAddr epochEncodedLenLocal1Name = epochEntry) ∨
-      ((tripleRatchetProgAtExt b ext).fnAddr chainEncodedLenLocal2Name = entry ∧
-       (tripleRatchetProgAtExt b ext).fnAddr epochEncodedLenLocal2Name = epochEntry))
-    (hepoch : subroutine_ok (tripleRatchetProgAtExt b ext) epochEntry (epochEncodedLenSpec A)) :
-    subroutine_ok (tripleRatchetProgAtExt b ext) entry (chainEncodedLenPinnedSpec A) :=
-  subroutine_ok_of_withMemPred_true
-    (chainEncodedLen_entry_pinned_ok (tripleRatchetProgAtExt b ext) A entry epochEntry
-      (fun _ _ _ _ => trivial) (Or.inl ⟨b, ext, rfl, hfn⟩)
-      (subroutine_ok_withMemPred_true hepoch))
-
 /-- Bridge from `chainEncodedLenPinnedSpec A` to unpinned `chainEncodedLenSpec A`. -/
 theorem chainEncodedLen_ok_of_pinned {prog : Program} {entry : BitVec 64} {A : RustAlloc}
     (hpinned : subroutine_ok prog entry (chainEncodedLenPinnedSpec A)) :
@@ -565,48 +549,6 @@ theorem chainEncodedLen_withMemPred_ok_of_pinned {prog : Program} {entry : BitVe
   · exact Or.inr (Or.inr hex)
 
 /-! ### `[local#1]` (`0x39698`) and `[local#2]` (`0x68790`) Corollaries -/
-
-theorem chainEncodedLen_local1_pinned_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) :
-    ChainEncodedLenLocal1PinnedOkExt b A ext :=
-  chainEncodedLen_entry_pinned_ok_ext b A ext _ _ (Or.inl ⟨rfl, rfl⟩)
-    (epochEncodedLen_local1_ok_ext b A ext)
-
-theorem chainEncodedLen_local1_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) :
-    ChainEncodedLenLocal1OkExt b A ext :=
-  chainEncodedLen_ok_of_pinned (chainEncodedLen_local1_pinned_ok_ext b A ext)
-
-theorem chainEncodedLen_local1_pinned_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (abs : String → Option (State → State)) :
-    ChainEncodedLenLocal1PinnedOk b C A ctl abs :=
-  chainEncodedLen_local1_pinned_ok_ext b A (tripleRatchetExterns C ctl abs)
-
-theorem chainEncodedLen_local1_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (abs : String → Option (State → State)) :
-    ChainEncodedLenLocal1Ok b C A ctl abs :=
-  chainEncodedLen_local1_ok_ext b A (tripleRatchetExterns C ctl abs)
-
-theorem chainEncodedLen_local2_pinned_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) :
-    ChainEncodedLenLocal2PinnedOkExt b A ext :=
-  chainEncodedLen_entry_pinned_ok_ext b A ext _ _ (Or.inr ⟨rfl, rfl⟩)
-    (epochEncodedLen_local2_ok_ext b A ext)
-
-theorem chainEncodedLen_local2_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) :
-    ChainEncodedLenLocal2OkExt b A ext :=
-  chainEncodedLen_ok_of_pinned (chainEncodedLen_local2_pinned_ok_ext b A ext)
-
-theorem chainEncodedLen_local2_pinned_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (abs : String → Option (State → State)) :
-    ChainEncodedLenLocal2PinnedOk b C A ctl abs :=
-  chainEncodedLen_local2_pinned_ok_ext b A (tripleRatchetExterns C ctl abs)
-
-theorem chainEncodedLen_local2_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (abs : String → Option (State → State)) :
-    ChainEncodedLenLocal2Ok b C A ctl abs :=
-  chainEncodedLen_local2_ok_ext b A (tripleRatchetExterns C ctl abs)
 
 theorem chainEncodedLen_local1_pinned_placed_ok_ext [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) :

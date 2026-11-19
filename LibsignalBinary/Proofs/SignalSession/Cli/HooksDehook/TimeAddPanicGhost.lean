@@ -9,14 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.HooksE.WrapperHooksCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.HooksE.WrapperHooksCommon
 public import LibsignalBinary.Proofs.HookDischarge.RustStd.TimeAdd -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhostReplays -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StripRunPanicExterns -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhostReplays
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StripRunPanicExterns
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
 import ProofLib.Placed.OpcodeExclusion
 import ProofLib.SepLogic.WP.Structural
+public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookOn
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<SystemTime as Add<Duration>>::add` Panic-Stub Ghost Hook & Replay (`HooksDehook.TimeAddPanicGhost`)
@@ -264,11 +272,6 @@ theorem codeLoaded_stripExecOutside_timeAddBlk2
     definitionally `WithLsRet.withLsRet` at `lrOk := LsRetAddr624`). -/
 abbrev withLrGuard {α : Type} (lrOk : BitVec 64 → Prop) (spec : Spec α) : Spec α :=
   withPreGuard (fun s => lrOk (s.readReg64 .lr)) spec
-
-/-- Definitional bridge (`rfl`) identifying `withLrGuard LsRetAddr624 spec` with
-    `HooksDehook.WithLsRet.withLsRet spec`. -/
-theorem withLrGuard_lsRet_eq [LibsignalPlacement] {α : Type} (spec : Spec α) :
-    withLrGuard LsRetAddr624 spec = withLsRet spec := rfl
 
 /-- Master `<SystemTime as Add<Duration>>::add` contract preserving `sf.fs = s0.fs` and
     `sf.trace = s0.trace` on **both** normal return and `i64`-overflow `.Panicked` outcomes. -/

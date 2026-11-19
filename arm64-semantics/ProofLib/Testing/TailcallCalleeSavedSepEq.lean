@@ -11,7 +11,7 @@ module
 
 public import Arm64
 public import ProofLib
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 public import ProofLib.GenDecodes
 
 /-!

@@ -10,6 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.InMem.SessionStoreImpl.Defs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # In-Memory Session Store State-Transition Relations
@@ -18,7 +20,7 @@ Pure state-update, answer, and trace relations (`inMemStoreUpdate`, `inMemLoadRe
 `inMemStoreRel`, `inMemSessCallEvs`, `inMemSessTraceOf`) for `InMemSessionStore`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,18 +35,13 @@ open CryptoVerification.LibsignalPublicApi CryptoVerification.LibsignalSession
 open CryptoGames CryptoGames.LibsignalSessionApi
 open CryptoVerification.E2E.InMem.HashbrownBin
 
-/-- Updates `st.record` to `r'` after `store_session` (for matching peer address `rem`). -/
-def inMemStoreUpdate (st : InMemSessState) (_rem : AddrVal)
-    (r' : SessionRecord (List (BitVec 8))) (_ans : Except Unit Unit) : InMemSessState :=
-  { st with record := r' }
-
 /-- Answer relation for `load_session`: deterministically returns `.ok (some st.record)`. -/
-def inMemLoadRel (st : InMemSessState) (_rem : AddrVal)
+@[expose] def inMemLoadRel (st : InMemSessState) (_rem : AddrVal)
     (ans : Except Unit (Option (SessionRecord (List (BitVec 8))))) : Prop :=
   ans = .ok (some st.record)
 
 /-- Answer relation for `store_session`: deterministically returns `.ok ()`. -/
-def inMemStoreRel (_st : InMemSessState) (_rem : AddrVal)
+@[expose] def inMemStoreRel (_st : InMemSessState) (_rem : AddrVal)
     (_r' : SessionRecord (List (BitVec 8))) (ans : Except Unit Unit) : Prop :=
   ans = .ok ()
 
@@ -57,16 +54,5 @@ def inMemSessCallEvs
   | .isTrustedIdentity rem k dir => [trustEvent rem k dir ans.isTrustedIdentity]
   | .saveIdentity rem k => [saveEvent rem k ans.saveIdentity]
   | .storeSession _ _ => []
-
-/-- Trace events emitted across a sequence of store calls. -/
-def inMemSessTraceOf
-    (_encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (ans : StoreAnswers (List (BitVec 8)) Unit)
-    (calls : List (StoreCall AddrVal (List (BitVec 8)))) : List TraceEvent :=
-  (calls.map (inMemSessCallEvs ans)).flatten
-
-theorem inMemLoadRel_ok (st : InMemSessState) (rem : AddrVal) :
-    inMemLoadRel st rem (.ok (some st.record)) :=
-  rfl
 
 end CryptoVerification.E2E.InMem.SessionStoreImpl

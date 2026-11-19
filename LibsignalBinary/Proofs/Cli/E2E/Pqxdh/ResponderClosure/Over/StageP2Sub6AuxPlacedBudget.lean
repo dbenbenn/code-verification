@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub4PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6Aux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6AuxPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksB6PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub6AuxPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub4PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6Aux
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6AuxPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksB6PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub6AuxPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
@@ -29,6 +29,14 @@ import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2bAux
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1Common -- shake: keep
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ArmsA -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub6Aux
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksB6Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub6AuxPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlaced
 
 /-!
 # Budget-Threaded Placed Stage P2 Over-Path Substage P2.6 Tail
@@ -38,7 +46,7 @@ proves budget-threaded `[LibsignalPlacement]` specifications for the Over-path S
 (`+0x0b3c → +0x1778`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -153,12 +161,12 @@ private theorem p2_over_alloc_le_overPure :
 /-- Allocator event sequence for the Over-path Substage P2.6 tail (`+0x0b3c → +0x1778`): frees
 `regIdFutPtr` (`regIdBoxSize`, align 8), runs `<SessionRecord>::promote_state` (`evsProm`), and
 frees `kyberKpPubPtr` (1568 B) and `kyberKpSecPtr` (3168 B). -/
-def p2OverSub6TailEvents (regIdBoxSize : Nat) (evsProm : List AllocEvent) : List AllocEvent :=
+@[expose] def p2OverSub6TailEvents (regIdBoxSize : Nat) (evsProm : List AllocEvent) : List AllocEvent :=
   rustDeallocEvents regIdBoxSize 8 ++ evsProm ++
     (rustDeallocEvents 1568 1 ++ rustDeallocEvents 3168 1)
 
 /-- Envelope-parameterized allocation envelope for the Over-path Substage P2.6 tail (`+0x0b3c → +0x1778`). -/
-def P2OverSub6TailEnvOf
+@[expose] def P2OverSub6TailEnvOf
     (Env : SessionGhost → Session (List (BitVec 8)) → List AllocEvent → Prop)
     (regIdBoxSize : Nat) (recG : SessionGhost) (sess : Session (List (BitVec 8))) :
     List AllocEvent → Prop :=
@@ -656,24 +664,6 @@ theorem stageP2_over_sub6_tail_v1_kits_callees_placed [LibsignalPlacement]
     stageP2OverSub6TailV1AtPlacedProp A lim ext skit coroPtr g recG sess :=
   stageP2_over_sub6_tail_v1_kits_callees_withEnv_placed ext skit hH hskitVt
     coroPtr g recG sess hPromoteOver hDrop
-
-theorem stageP2_over_sub6_tail_v1_kits_ext_placed_withEnv_ofEnv [LibsignalPlacement]
-    {M : AllocCostModel} {P : Primitives} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {F : ShaCompress}
-    {BobV1Env : AcceptKeysInput → DRKey → List AllocEvent → Prop}
-    {AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop}
-    {Env : SessionGhost → Session (List (BitVec 8)) → List AllocEvent → Prop}
-    (ext : String → Option (State → State))
-    {ikit : IdentityStoreSpec A.repAlloc 0#64} (skit : IdentitySelfStoreSpec ikit)
-    (hH : StageP2ClosureHooksPlaced A lim ext)
-    (hskitVt : IdentitySelfVtablesPlacedOk ikit skit)
-    (hPure : StageP2PureCalleesPlaced4KOfEnv P A lim F BobV1Env AcceptErrEnv ext)
-    (coroPtr : BitVec 64) (g : RecordGhost) (recG : SessionGhost)
-    (sess : Session (List (BitVec 8)))
-    (hPromoteOver : PromoteOverAtPlacedWithEnvProp M A lim Env ext coroPtr g recG sess) :
-    stageP2OverSub6TailV1AtPlacedWithEnvProp A lim Env ext skit coroPtr g recG sess :=
-  stageP2_over_sub6_tail_v1_kits_callees_withEnv_placed ext skit hH hskitVt
-    coroPtr g recG sess hPromoteOver hPure.dropProcessPrekeyImplState1
 
 theorem stageP2_over_sub6_tail_v1_kits_ext_placed_ofEnv [LibsignalPlacement]
     {M : AllocCostModel} {P : Primitives} {A : RustCliAllocBudget M}

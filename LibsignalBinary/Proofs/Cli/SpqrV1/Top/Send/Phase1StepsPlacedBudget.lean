@@ -11,19 +11,30 @@ module
 
 meta import Lean -- shake: keep
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1StepsPlaced
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1StepsPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1PlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1Steps
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1StepsPlacedBudget
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable Phase 1a Steps for `spqr::send::<signal_session_ratchet::Coins>` (Block `427`)
@@ -32,7 +43,7 @@ Threads `VmPreserved` through the `decode_state` `Err(e)` early-return path (`+8
 and `Ok(pq)` header relocation (`+80 -> +156`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -70,6 +81,9 @@ open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
   (AllocContractsPlaced spqrSendPlacedEntry spqrSendPlacedProg)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1PlacedBudget
   (spqr_send_epilogue_4632_placed)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag (SpqrErrorValidTag spqrSendResultDispAt)
+open LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1StepsPlacedBudget
+  (decodeStateResultAt_err_entails_head32_320_tag err_ret_entails_sendResultDispAt_none)
 open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
   (sessionMemcpyBudgetSpec sessionMemcpyRegionBudgetSpec)
 
@@ -280,6 +294,158 @@ theorem spqr_send_decode_state_err_step_placed_pool {M : AllocCostModel}
         sf.trace = s.trace) := by
   have herr := spqr_send_decode_state_err_step_placed (H_inner := H_inner) (A := A.repAlloc)
     (ext := ext) s0 s ret e (A.pool lim st s ∗ Rest) hsp0_align hpc hrun hsp hx19 hx26 hvregs
+  refine SepWP.weaken_pre (Entails.of_eq (by sep_ac_rfl)) (SepWP.mono herr ?_)
+  intro sf Pf _ _ ⟨hvm, hacp, hPf, hspf, hccf, htrf⟩
+  refine ⟨hvm, hacp, ?_, hspf, hccf, htrf⟩
+  rw [A.pool_transport lim st s sf hvm]
+  exact Entails.trans hPf (Entails.of_eq (by sep_ac_rfl))
+
+/-- Display-tag-strengthened VM-preserving `Err(e)` return path after `spqr::decode_state`
+    (`+80 -> s0.lr`), writing `spqrSendResultDispAt A ret none` under
+    `SpqrErrorValidTag (DecodeState.spqrErrorTag e)`. -/
+theorem spqr_send_decode_state_err_step_disp_placed {H_inner : V1InnerHeapPred} {A : RustAlloc}
+    {ext : String → Option (State → State)}
+    (s0 s : State) (ret : BitVec 64) (e : Error) (Rest : SepProp)
+    (htag : SpqrErrorValidTag (CryptoVerification.SpqrV1.Top.DecodeState.spqrErrorTag e))
+    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
+    (hpc : s.pc = spqrSendPlacedEntry + 80#64)
+    (hrun : s.status = .Running)
+    (hsp : s.sp = s0.sp - 0x1f80#64)
+    (hx19 : s.readReg64 .x19 = ret)
+    (hx26 : s.readReg64 .x26 = (s0.sp - 0x1f80#64) + 0x1260#64)
+    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0 := by simp only [wp_norm, arm64_norm, *]) :
+    SepWP (spqrSendPlacedProg ext) (s0.readReg64 .x30) s
+      (stackAt (s0.sp - 0x1f80#64) spqrSendCalleeStack ∗
+        memRegion (s0.sp - 0x1f80#64) 0x1260 ∗
+        decodeStateResultAt H_inner A ((s0.sp - 0x1f80#64) + 0x1260#64) (.error e) ∗
+        memRegion ((s0.sp - 0x1f80#64) + 0x13c0#64) (0x1f20 - 0x13c0) ∗
+        spqrSendSavedRegs (s0.sp - 0x1f80#64) s0 ∗
+        memRegion ret 72 ∗
+        Rest)
+      (fun sf Pf =>
+        VmPreserved s sf ∧
+        AllocCallPreserved s sf ∧
+        (Pf ⊢ stackAt s0.sp spqrSendStack ∗ spqrSendResultDispAt A ret none ∗ Rest) ∧
+        sf.sp = s0.sp ∧
+        CalleeSavedPreserved s0 sf ∧
+        sf.trace = s.trace) := by
+  have hfsp_align : ((s0.sp - 0x1f80#64) &&& 15#64 == 0#64) = true :=
+    ProofLib.spAligned_sub s0.sp 0x1f80#64 hsp0_align (by decide)
+  refine SepWP.seq
+    (mid := spqrSendPlacedEntry + 4632#64)
+    (Mid := fun sm Pm =>
+      VmPreserved s sm ∧
+      AllocCallPreserved s sm ∧
+      (Pm ⊢
+        stackAt (s0.sp - 0x1f80#64) spqrSendCalleeStack ∗
+        memRegion (s0.sp - 0x1f80#64) 0x1f20 ∗
+        spqrSendSavedRegs (s0.sp - 0x1f80#64) s0 ∗
+        (spqrSendResultDispAt A ret none ∗ Rest)) ∧
+      sm.sp = s0.sp - 0x1f80#64 ∧
+      sm.trace = s.trace ∧
+      calleeSavedVRegs sm = calleeSavedVRegs s0)
+    ?_ ?_
+  · dsimp only [spqrSendPlacedProg, spqrSendPlacedEntry, BitVec.ofNat_eq_ofNat] at hpc ⊢
+    generalize hfsp_eq : s0.sp - 8064#64 = fsp at hsp hfsp_align hx26 ⊢
+    by_vm_steps (
+      refine SepWP.weaken_pre
+        (sepConj_mono_right
+          (sepConj_mono (memRegion_1260_split_190 fsp)
+            (sepConj_mono (decodeStateResultAt_err_entails_head32_320_tag H_inner A (fsp + 4704#64) e)
+              (sepConj_mono_right (sepConj_mono_right
+                (sepConj_mono_left (memRegion_ret_72_split_err ret))))))) ?_
+      wp_simp_pre [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
+      apply ProofLib.SepWP.exists_left; intro r0
+      apply ProofLib.SepWP.exists_left; intro rw8
+      apply ProofLib.SepWP.exists_left; intro rw16
+      apply ProofLib.SepWP.exists_left; intro rw24
+      apply ProofLib.SepWP.exists_left; intro w1
+      apply ProofLib.SepWP.exists_left; intro w2
+      apply ProofLib.SepWP.exists_left; intro w3
+      apply ProofLib.SepWP.exists_left; intro w190
+      apply ProofLib.SepWP.exists_left; intro w198
+      apply ProofLib.SepWP.exists_left; intro w1a0
+      wp_focus_pure; intro hw1_eq
+      have htag_w1 : SpqrErrorValidTag (w1.truncate 8) := by
+        dsimp only [BitVec.truncate] at hw1_eq ⊢
+        rw [hw1_eq]; exact htag
+      wp_steps
+      refine ProofLib.SepWP.done (by simp only [wp_norm, arm64_norm, *])
+        (by simp only [wp_norm, arm64_norm, *])
+        ⟨by simp only [wp_norm, arm64_norm, *],
+          by simp only [wp_norm, arm64_norm, *], ?_,
+          by simp only [wp_norm, arm64_norm, *],
+          by simp only [wp_norm, arm64_norm, *],
+          by simp only [wp_norm, arm64_norm, *]⟩
+      have hframe := decode_state_err_frame_rejoin fsp w1 w2 w3
+      have hret := err_ret_entails_sendResultDispAt_none A ret w1 w2 w3 htag_w1
+      refine Entails.trans
+        (Entails.of_eq (show _ =
+          (memRegion fsp 400 ∗
+           ((fsp + 400#64) ↦₆₄ w1) ∗
+           ((fsp + 408#64) ↦₆₄ w2) ∗
+           ((fsp + 416#64) ↦₆₄ w3) ∗
+           memRegion (fsp + 424#64) (0x1260 - 0x1a8) ∗
+           ((fsp + 4704#64) ↦₆₄ none2Cap) ∗
+           ((fsp + 4712#64) ↦₆₄ w1) ∗
+           ((fsp + 4720#64) ↦₆₄ w2) ∗
+           ((fsp + 4728#64) ↦₆₄ w3) ∗
+           memRegion (fsp + 4736#64) 320 ∗
+           memRegion (fsp + 5056#64) (0x1f20 - 0x13c0)) ∗
+          ((ret ↦₆₄ 18446744073709551615#64) ∗
+           ((ret + 8#64) ↦₆₄ w1) ∗
+           ((ret + 16#64) ↦₆₄ w2) ∗
+           ((ret + 24#64) ↦₆₄ w3) ∗
+           memRegion (ret + 32#64) 40) ∗
+          (stackAt fsp spqrSendCalleeStack ∗
+           spqrSendSavedRegs fsp s0 ∗
+           Rest) by sep_ac_rfl)) ?_
+      refine Entails.trans (sepConj_mono hframe (sepConj_mono_left hret)) ?_
+      exact Entails.of_eq (by sep_ac_rfl))
+  · intro s2 P2 hpc2 hrun2 ⟨hvm1, hacp1, hP2, hsp2, htr2, hvregs2⟩
+    refine SepWP.weaken_pre hP2 ?_
+    have hep := spqr_send_epilogue_4632_placed (ext := ext) s0 s2
+      (spqrSendResultDispAt A ret none ∗ Rest) hsp0_align hpc2 hrun2 hsp2 hvregs2
+    refine SepWP.mono hep ?_
+    intro sf Pf _ _ ⟨hvm2, hacp2, hPf, hsp_f, hcc_f, htr_f⟩
+    exact ⟨hvm1.trans hvm2, hacp1.trans hacp2,
+      Entails.trans hPf (Entails.of_eq (by sep_ac_rfl)), hsp_f, hcc_f, htr_f.trans htr2⟩
+
+/-- Pool-threading corollary of `spqr_send_decode_state_err_step_disp_placed`. -/
+theorem spqr_send_decode_state_err_step_placed_pool_disp {M : AllocCostModel}
+    {H_inner : V1InnerHeapPred} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {ext : String → Option (State → State)}
+    (s0 s : State) (st : M.σ) (ret : BitVec 64) (e : Error) (Rest : SepProp)
+    (htag : SpqrErrorValidTag (CryptoVerification.SpqrV1.Top.DecodeState.spqrErrorTag e))
+    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
+    (hpc : s.pc = spqrSendPlacedEntry + 80#64)
+    (hrun : s.status = .Running)
+    (hsp : s.sp = s0.sp - 0x1f80#64)
+    (hx19 : s.readReg64 .x19 = ret)
+    (hx26 : s.readReg64 .x26 = (s0.sp - 0x1f80#64) + 0x1260#64)
+    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0 := by simp only [wp_norm, arm64_norm, *]) :
+    SepWP (spqrSendPlacedProg ext) (s0.readReg64 .x30) s
+      (stackAt (s0.sp - 0x1f80#64) spqrSendCalleeStack ∗
+        memRegion (s0.sp - 0x1f80#64) 0x1260 ∗
+        decodeStateResultAt H_inner A.repAlloc ((s0.sp - 0x1f80#64) + 0x1260#64) (.error e) ∗
+        memRegion ((s0.sp - 0x1f80#64) + 0x13c0#64) (0x1f20 - 0x13c0) ∗
+        spqrSendSavedRegs (s0.sp - 0x1f80#64) s0 ∗
+        memRegion ret 72 ∗
+        A.pool lim st s ∗
+        Rest)
+      (fun sf Pf =>
+        VmPreserved s sf ∧
+        AllocCallPreserved s sf ∧
+        (Pf ⊢
+          stackAt s0.sp spqrSendStack ∗
+          spqrSendResultDispAt A.repAlloc ret none ∗
+          A.pool lim st sf ∗
+          Rest) ∧
+        sf.sp = s0.sp ∧
+        CalleeSavedPreserved s0 sf ∧
+        sf.trace = s.trace) := by
+  have herr := spqr_send_decode_state_err_step_disp_placed (H_inner := H_inner) (A := A.repAlloc)
+    (ext := ext) s0 s ret e (A.pool lim st s ∗ Rest) htag hsp0_align hpc hrun hsp hx19 hx26 hvregs
   refine SepWP.weaken_pre (Entails.of_eq (by sep_ac_rfl)) (SepWP.mono herr ?_)
   intro sf Pf _ _ ⟨hvm, hacp, hPf, hspf, hccf, htrf⟩
   refine ⟨hvm, hacp, ?_, hspf, hccf, htrf⟩

@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import ProofLib.Placed.Interned
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 
 /-!
 # Extern Symbol Agreement with ELF `.symtab`

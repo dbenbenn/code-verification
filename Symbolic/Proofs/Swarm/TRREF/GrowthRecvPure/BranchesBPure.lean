@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecv.HelpersB
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers3APure
+public import Symbolic.Proofs.Swarm.TRREF.GrowthRecv.HelpersB -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers3APure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesAPure
+public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvB.Defs
+public import Symbolic.Proofs.Swarm.SHARED.StateSizePure -- proof-setup: allow-public-import
 
 /-!
 # SPQR V1 Receive Growth Bounds: `headerReceived` and `ct1Sampled` States
@@ -21,7 +23,7 @@ Proves `≤ st.length + 2^17` encoded state growth for `States.headerReceived` a
 `v1_recv_finish_length_le`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

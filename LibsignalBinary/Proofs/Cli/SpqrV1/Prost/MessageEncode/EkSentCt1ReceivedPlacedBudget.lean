@@ -9,15 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.UnchunkedBasePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EkSentCt1ReceivedPlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.UnchunkedBasePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EkSentCt1ReceivedPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.EkSentCt1Received1PlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EpochEncodedLen -- shake: keep
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Top-Level Contracts for `encode<EkSentCt1Received> [local#3]` (Block `458`)
@@ -27,7 +28,7 @@ Instantiates budget-threaded pinned/unpinned `subroutine_ok` contracts and exact
 `[LibsignalPlacement]` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -227,48 +228,6 @@ private theorem elim_exact_evs {M : AllocCostModel} {A : RustCliAllocBudget M}
       rw [hnil evs hP]
       dsimp only [AllocCostModel.stepEvents]
       exact Entails.refl _
-
-/-- Generic `withStepInv` exact-capacity bridge from `ekSentCt1ReceivedEncodePinnedSpecOfS` to
-`etvEkSentCt1ReceivedBudgetExactSpecOf`. -/
-theorem etv_ekSentCt1ReceivedEncode_of_spec_s {resStack : Nat}
-    {M : AllocCostModel} {prog : Program} {call_pc : BitVec 64}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {s0 : State}
-    (hek_ok : subroutine_ok prog call_pc
-      (withStepInv s0 (ekSentCt1ReceivedEncodePinnedSpecOfS resStack A lim))) :
-    subroutine_ok prog call_pc
-      (withStepInv s0 (etvEkSentCt1ReceivedBudgetExactSpecOf resStack A lim)) := by
-  refine etv_ekSentCt1ReceivedEncode_budget_exact_of_exact ?_
-  refine subroutine_ok_outcome_intro fun ⟨x, st⟩ R s hpc hrun hpre hal => ?_
-  dsimp only [withStepInv, ekSentCt1ReceivedEncodeExactSpecOf] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv0, ⟨hx0, hx1, hfit⟩, hm⟩
-  have hfits : FitsEnv M lim st
-      (EkSentCt1ReceivedEncodeEnvS (ekSentCt1ReceivedPinnedToUnpinned x)) :=
-    fitsEnv_ekSentCt1ReceivedEncodeS_of_spare hfit
-  have hpre' : s.mem ⊨
-      (withStepInv s0 (ekSentCt1ReceivedEncodePinnedSpecOfS resStack A lim)).pre (x, st) s ∗ R := by
-    dsimp only [withStepInv, ekSentCt1ReceivedEncodePinnedSpecOfS,
-      ekSentCt1ReceivedEncodePinnedSpecOfEnv]
-    rw [sepConj_assoc, satisfies_pure_sepConj, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hinv0, ⟨hx0, hx1, Or.inl hfit, hfits⟩, hm⟩
-  refine hek_ok.mono_outcome (x, st) R s hpc hrun hpre' hal fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨_, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [withStepInv, ekSentCt1ReceivedEncodePinnedSpecOfS,
-      ekSentCt1ReceivedEncodePinnedSpecOfEnv, ekSentCt1ReceivedEncodeExactSpecOf] at hpost ⊢
-    refine Satisfies.mono ?_ hpost
-    refine Entails.trans
-      (sepConj_mono_left
-        (sepConj_mono_right
-          (sepConj_mono_right
-            (sepConj_mono (elim_exact_cap_ptr hfit)
-              (sepConj_mono_left
-                (elim_exact_evs (fun _ hev =>
-                  ekSentCt1ReceivedEncodeEnvS_eq_nil_of_spare hfit hev))))))) ?_
-    exact Entails.of_eq (by sep_ac_rfl)
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
 
 /-- `EncodeToVec` (`etvEkSentCt1ReceivedBudgetExactSpecOf doReserveStack`) contract on Block `458`. -/
 theorem etv_ekSentCt1ReceivedEncode_1_placed_ok [LibsignalPlacement]

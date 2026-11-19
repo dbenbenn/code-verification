@@ -44,7 +44,7 @@ Defines `spk_DoneOpkEkAk` and `spk_NoDoneEv`, proving per-action non-logging of 
 events together with PQXDH input-key-material injectivity and MAC memo propagation lemmas.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -113,7 +113,7 @@ attribute [local instance 2000]
   DY.Libsignal.Composed.instHasExecBytes
   DY.Libsignal.Composed.instHasExecTrace
 
-def spk_DoneOpkEkAk (tr : ExecTrace) : Prop :=
+@[expose] def spk_DoneOpkEkAk (tr : ExecTrace) : Prop :=
   (∀ a b ikA ikB spk pqpk opk ek ct keys i,
     tr.EventLoggedAt (PQXDHEvent.AliceDone a b ikA ikB spk pqpk opk ek ct keys) i →
     ∀ o, opk = some o → o.AttackerKnows tr) ∧
@@ -127,7 +127,7 @@ local notation "isDoneEv_sppa223" => (fun (ev : PQXDHEvent) => match ev with
   | .BobDone .. => true
   | _ => false)
 
-def spk_NoDoneEv {α : Type} (f : Traceful α) : Prop :=
+@[expose] def spk_NoDoneEv {α : Type} (f : Traceful α) : Prop :=
   ∀ tr ev idx, isDoneEv_sppa223 ev = true → ((f.run tr).2.val).EventLoggedAt ev idx →
     tr.EventLoggedAt ev idx
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Top.Send.Defs
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
@@ -18,6 +18,7 @@ import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable Phase 1 Prologue and Shared Epilogues for `spqr::send::<HookRng>` (Block 124)
@@ -26,7 +27,7 @@ Proves `.rodata` jump-table extraction from `LibsignalRoLoaded`, the prologue (`
 and the shared cleanup epilogues (`+4632`, `+4608`, `+904`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

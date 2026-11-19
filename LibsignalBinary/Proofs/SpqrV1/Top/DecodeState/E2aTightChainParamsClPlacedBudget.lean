@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.E2aTightBytesZeroAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParamsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Loop
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.E2aTightBytesZeroAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParamsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Loop -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym -- shake: keep
@@ -23,11 +23,14 @@ import LibsignalBinary.Proofs.Placed.PlacedCallSym
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
-import LibsignalBinary.Proofs.TripleRatchet.InImage.Prost
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
+import LibsignalBinary.Proofs.TripleRatchet.TrapRng
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
 import ProofLib.Hoare.Hooks
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.DefsClPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Canonical Zero-Allocation `ChainParams::merge` (`Block 294`) Contract
@@ -37,7 +40,7 @@ with `evs = []` on canonical length-prefixed `ChainParamsPB.encodeRaw cp` wire s
 (`e2a_ChainParamsCanonicalDom`), delegating non-canonical inputs to `hc.chainParamsMerge`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -167,7 +170,7 @@ theorem e2a_mergeMessage_chainParams_encode (cp : ChainParamsPB) (rest : Bytes) 
     (e2a_loopsTo_chainParams cp) (by omega) (by decide)
 
 /-- Canonical `Ok`-path domain for `ChainParams::merge` (Block `294`). -/
-def e2a_ChainParamsCanonicalDom (x : ChainParamsMergeGhost) : Prop :=
+@[expose] def e2a_ChainParamsCanonicalDom (x : ChainParamsMergeGhost) : Prop :=
   x.wt = .lengthDelimited ∧
     x.msg = default ∧
     ∃ (cp : ChainParamsPB) (rest : Bytes),
@@ -175,13 +178,13 @@ def e2a_ChainParamsCanonicalDom (x : ChainParamsMergeGhost) : Prop :=
 
 /-- Pre-envelope requiring `evs = []` on `e2a_ChainParamsCanonicalDom` and `SpecsBudget.ChainParamsMergeEnv`
 outside it. -/
-def E2aChainParamsCanonicalPreEnv (x : ChainParamsMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def E2aChainParamsCanonicalPreEnv (x : ChainParamsMergeGhost) (evs : List AllocEvent) : Prop :=
   (e2a_ChainParamsCanonicalDom x ∧ evs = []) ∨
     (¬ e2a_ChainParamsCanonicalDom x ∧ ChainParamsMergeEnv x evs)
 
 /-- Post-envelope giving `evs = []` on `e2a_ChainParamsCanonicalDom` and `SpecsBudget.ChainParamsMergePostEnv`
 outside it. -/
-def E2aChainParamsCanonicalPostEnv (x : ChainParamsMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def E2aChainParamsCanonicalPostEnv (x : ChainParamsMergeGhost) (evs : List AllocEvent) : Prop :=
   (e2a_ChainParamsCanonicalDom x ∧ evs = []) ∨
     (¬ e2a_ChainParamsCanonicalDom x ∧ ChainParamsMergePostEnv x evs)
 

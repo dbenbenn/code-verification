@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4A.T2NoOomBridge
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.PlacedOomRecovery2
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4A.T2NoOomBridge
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.PlacedOomRecovery2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # `¬ CliReachesOOMPlaced` Bridge for `CliPqxdhElfCorrectStrictPlaced2`
@@ -19,7 +20,7 @@ Specializes `T2NoOomBridge.not_cliReachesOOMPlaced_of_strict` to `CliPqxdhElfCor
 to discharge the `_hAlloc` premise of `CliPqxdhElfSecurePlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -27,11 +28,12 @@ namespace LibsignalBinary.Proofs.SignalSession.Cli.F3.L4A.T2Strict2Bridge
 
 open Arm64 Arm64.Obj Arm64.Process
 open CryptoVerification.SignalSession
-  (CliHooks CliPqxdhInputs CliReachesOOMPlaced Inputs)
+  (CliHooks CliPqxdhInputs Inputs)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (CliReachesOOMPlaced)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4A.T2NoOomBridge
   (not_cliReachesOOMPlaced_of_strict)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.PlacedOomRecovery2
-  (CliPqxdhElfCorrectStrictPlaced2)
+  (CliPqxdhElfCorrectStrictPlaced2 CliPqxdhElfCorrectStrictPlaced2Aes)
 
 theorem not_cliReachesOOMPlaced_of_strict2
     {mpl mmpl : Obj.MultiPlacement} {elf : ElfImage}
@@ -48,5 +50,38 @@ theorem hAlloc_of_cliPqxdhElfCorrectStrictPlaced2
     (W : CliHooks) :
     ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i → ¬ CliReachesOOMPlaced mpl mmpl elf W i :=
   not_cliReachesOOMPlaced_of_strict2 hStrict W
+
+theorem not_cliReachesOOMPlaced_of_strict2Aes
+    {mpl mmpl : Obj.MultiPlacement} {elf : ElfImage}
+    (hStrict : CliPqxdhElfCorrectStrictPlaced2Aes mpl mmpl elf)
+    (W : CliHooks)
+    (hE : W.C.E = CryptoGames.AES256.aes256Enc)
+    (hD : W.C.D = CryptoGames.AES256.aes256Dec)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hF512 : W.Q.F512 = CryptoGames.SHA512.sha512CompressState)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec)
+    (hDec : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
+    (i : Inputs) (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ i) :
+    ¬ CliReachesOOMPlaced mpl mmpl elf W i :=
+  not_cliReachesOOMPlaced_of_strict (hStrict.2 W hE hD hX hPub hF512 hEnc hDec hK) i hi
+
+/-- `_hAlloc` hypothesis of `CliPqxdhElfSecurePlaced` derived from
+`CliPqxdhElfCorrectStrictPlaced2Aes mpl mmpl elf`. -/
+theorem hAlloc_of_cliPqxdhElfCorrectStrictPlaced2Aes
+    {mpl mmpl : Obj.MultiPlacement} {elf : ElfImage}
+    (hStrict : CliPqxdhElfCorrectStrictPlaced2Aes mpl mmpl elf)
+    (W : CliHooks)
+    (hE : W.C.E = CryptoGames.AES256.aes256Enc)
+    (hD : W.C.D = CryptoGames.AES256.aes256Dec)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hF512 : W.Q.F512 = CryptoGames.SHA512.sha512CompressState)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec)
+    (hDec : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental) :
+    ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i → ¬ CliReachesOOMPlaced mpl mmpl elf W i :=
+  not_cliReachesOOMPlaced_of_strict2Aes hStrict W hE hD hX hPub hF512 hEnc hDec hK
 
 end LibsignalBinary.Proofs.SignalSession.Cli.F3.L4A.T2Strict2Bridge

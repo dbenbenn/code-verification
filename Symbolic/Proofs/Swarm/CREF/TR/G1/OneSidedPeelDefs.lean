@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Stage1Kyber -- shake: keep
+import Symbolic.Proofs.Swarm.CREF.Stage1Kyber -- shake: keep
 import DY.Bytes.Basic
 import DY.Bytes.AttackerKnowledge
 import DY.ALaCarte.Basic
@@ -50,7 +50,7 @@ import Symbolic.Specifications.Model.EquationalTheory.SymEnc
 import Symbolic.Specifications.Model.EquationalTheory.Trunc
 import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
 import Symbolic.Specifications.Model.EquationalTheory.X25519
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Spqr
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.SymEnc
@@ -76,7 +76,7 @@ Proves `gamma'`-shape inversion for `Concat`- and `Dh`-headed terms (`concat_sha
 shared secrets, and implicit-rejection keys on reachable composed traces.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

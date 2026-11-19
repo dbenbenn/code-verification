@@ -9,12 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2Placed
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Hops -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `signal_session::run` Arm `R2`: `Send` Hop Contract
@@ -23,7 +28,7 @@ Budget-threaded (`RustCliAllocBudget M`) hop contracts `RunHopSendPlaced` and `R
 for Arm `R2` (`R+0x214` → Join/Reject) on Block `579` (`signal_session::run`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -51,7 +56,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
 `AtDispatchPlaced` (`R+0x214`) on `g.c = .send peerV` at cost-model state `st` under
 `FitsEnv M lim st (SendEnv g me peerV)`, calls `wrap_encrypt` and prepends wire tag `0x02` or
 `0x03` to reach `JoinKPlacedEnv` or `RejectKPlacedEnv` with `Qo = ⌜False⌝`. -/
-def RunHopSendPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopSendPlaced [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs) (sEnvs : RunSlotEnvs)
     (SendEnv : RunCall → MeAtDispatch → AddrV → List AllocEvent → Prop)
@@ -80,7 +85,7 @@ def RunHopSendPlaced [LibsignalPlacement] {M : AllocCostModel}
       (fun _ => ⌜False⌝)
 
 
-def RunHopSendPlacedOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopSendPlacedOf [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs)
     (SendEnv : RunCall → MeAtDispatch → AddrV → List AllocEvent → Prop)

@@ -102,15 +102,78 @@ theorem bits_le_of_lt {n k : ℕ} (h : n < 2 ^ k) : bits n ≤ k + 1 := by
   · have := Nat.log_lt_of_lt_pow (b := 2) (Nat.pos_iff_ne_zero.mp hn) h
     omega
 
-/-- Right inverse of `h` on `[0, 2 ^ 256)`, defaulting to `0` outside its image. -/
-noncomputable def inv (h : ℕ → ℕ) (y : ℕ) : ℕ :=
-  if hy : ∃ x, x < 2 ^ 256 ∧ h x = y then Classical.choose hy else 0
+/-- Upward linear search over `[cur, cur + fuel)` for the least `x` with `h x = y`, defaulting to `0`
+when `fuel` runs out. Computable, though for large `fuel` (e.g. `2 ^ 256` in `inv`) evaluation is
+practical only on inputs with an early match. -/
+def findPreimageFrom (h : ℕ → ℕ) (y cur fuel : ℕ) : ℕ :=
+  match fuel with
+  | 0 => 0
+  | fuel' + 1 => if h cur == y then cur else findPreimageFrom h y (cur + 1) fuel'
 
-theorem inv_lt (h : ℕ → ℕ) (y : ℕ) : inv h y < 2 ^ 256 := by
-  unfold inv
+private theorem findPreimageFrom_lt (h : ℕ → ℕ) (y : ℕ) :
+    ∀ (cur fuel B : ℕ), 0 < B → cur + fuel ≤ B → findPreimageFrom h y cur fuel < B
+  | _, 0, _, hB, _ => hB
+  | cur, fuel' + 1, B, hB, hle => by
+    unfold findPreimageFrom
+    split_ifs
+    · omega
+    · exact findPreimageFrom_lt h y (cur + 1) fuel' B hB (by omega)
+
+/-- Completeness of `findPreimageFrom`: if `x ∈ [cur, cur + fuel)` satisfies `h x = y`, the returned
+index is a preimage of `y` under `h`. -/
+theorem findPreimageFrom_spec (h : ℕ → ℕ) (y x : ℕ) (hx : h x = y) :
+    ∀ (cur fuel : ℕ), cur ≤ x → x < cur + fuel → h (findPreimageFrom h y cur fuel) = y
+  | _, 0, hge, hlt => by omega
+  | cur, fuel' + 1, hge, hlt => by
+    unfold findPreimageFrom
+    by_cases hc : (h cur == y) = true
+    · simp [beq_iff_eq.mp hc]
+    · simp only [hc, Bool.false_eq_true, ↓reduceIte]
+      have hne : cur ≠ x := fun heq => hc (beq_iff_eq.mpr (heq ▸ hx))
+      exact findPreimageFrom_spec h y x hx (cur + 1) fuel' (by omega) (by omega)
+
+/-- Outside the `[cur, cur + fuel)` image of `h`, `findPreimageFrom` returns `0`. -/
+theorem findPreimageFrom_eq_zero_of_forall_ne (h : ℕ → ℕ) (y : ℕ) :
+    ∀ (cur fuel : ℕ), (∀ x, cur ≤ x → x < cur + fuel → h x ≠ y) →
+      findPreimageFrom h y cur fuel = 0
+  | _, 0, _ => rfl
+  | cur, fuel' + 1, hno => by
+    have hc : (h cur == y) = false :=
+      beq_eq_false_iff_ne.mpr (hno cur (Nat.le_refl _) (by omega))
+    simp only [findPreimageFrom, hc, Bool.false_eq_true, ↓reduceIte]
+    exact findPreimageFrom_eq_zero_of_forall_ne h y (cur + 1) fuel'
+      (fun x hx1 hx2 => hno x (by omega) (by omega))
+
+/-- Right inverse of `h` on `[0, 2 ^ 256)`, defaulting to `0` outside its image. Scans `[0, 2 ^ 256)`
+upward from `0`; computable, but practical to evaluate only when a small preimage exists (inputs
+without an early match take `2 ^ 256` steps). -/
+def inv (h : ℕ → ℕ) (y : ℕ) : ℕ :=
+  findPreimageFrom h y 0 (2 ^ 256)
+
+theorem inv_lt (h : ℕ → ℕ) (y : ℕ) : inv h y < 2 ^ 256 :=
+  findPreimageFrom_lt h y 0 (2 ^ 256) (2 ^ 256) (Nat.two_pow_pos 256) (by simp)
+
+/-- Completeness of `inv`: returns a valid `< 2 ^ 256` preimage whenever one exists. -/
+theorem inv_spec {h : ℕ → ℕ} {x y : ℕ} (hx : x < 2 ^ 256) (hxy : h x = y) :
+    h (inv h y) = y :=
+  findPreimageFrom_spec h y x hxy 0 (2 ^ 256) (Nat.zero_le x) (by simpa using hx)
+
+/-- Default-value case outside the `[0, 2 ^ 256)` image: `inv h y = 0`. -/
+theorem inv_of_not_mem {h : ℕ → ℕ} {y : ℕ} (hy : ¬ ∃ x, x < 2 ^ 256 ∧ h x = y) :
+    inv h y = 0 :=
+  findPreimageFrom_eq_zero_of_forall_ne h y 0 (2 ^ 256)
+    (fun x _ hlt hxy => hy ⟨x, by simpa using hlt, hxy⟩)
+
+open Classical in
+/-- `inv` agrees with the `Classical.choose` definition at any `y` having at most one preimage below `2 ^ 256`. -/
+theorem inv_eq_classical {h : ℕ → ℕ} {y : ℕ}
+    (huniq : ∀ x₁ x₂, x₁ < 2 ^ 256 → x₂ < 2 ^ 256 → h x₁ = y → h x₂ = y → x₁ = x₂) :
+    inv h y = (if hy : ∃ x, x < 2 ^ 256 ∧ h x = y then Classical.choose hy else 0) := by
   split_ifs with hy
-  · exact (Classical.choose_spec hy).1
-  · exact Nat.two_pow_pos 256
+  · exact huniq (inv h y) (Classical.choose hy) (inv_lt h y) (Classical.choose_spec hy).1
+      (inv_spec (Classical.choose_spec hy).1 (Classical.choose_spec hy).2)
+      (Classical.choose_spec hy).2
+  · exact inv_of_not_mem hy
 
 /-- `tree (inv h) 256` inverts any `h : ℕ → ℕ` on `256`-bit inputs at `Expr.cost ≤ 2817`. -/
 theorem invert_any (h : ℕ → ℕ) {Γ : List (Ty S)} :
@@ -123,10 +186,10 @@ theorem invert_any (h : ℕ → ℕ) {Γ : List (Ty S)} :
     exact this
   · intro x y ρ hx hy hxy
     rw [tree_eval, Nat.mod_eq_of_lt hy]
-    have hex : ∃ x, x < 2 ^ 256 ∧ h x = y := ⟨x, hx, hxy⟩
-    unfold inv
-    split_ifs
-    exact (Classical.choose_spec hex).2
+    exact findPreimageFrom_spec h y x hxy 0 (2 ^ 256) (Nat.zero_le x) (by simpa using hx)
+
+/-- Sanity check: `inv` computes constructively by kernel reduction on small preimages. -/
+example : inv (fun x => x * 7 + 3) 38 = 5 := rfl
 
 theorem bits_pos (n : ℕ) : 1 ≤ bits n := by
   unfold bits; omega

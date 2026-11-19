@@ -9,28 +9,40 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionSpecPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionVtablesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityVtablesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.ReadFileHookPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXCliPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.AddressText.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.FinishGrowPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadShimPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreShimPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollXPlaced
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionSpecPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionVtablesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityVtablesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.ReadFileHookPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDetPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXCliPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.AddressText.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.FinishGrowPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadShimPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreShimPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollXPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsX -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordMin.Deserialize -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionSpec
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Placed CLI `SessionOnlyKitPlacedOkSE` Assembly and Instantiation
@@ -40,7 +52,7 @@ Defines `cliSessionKitSpecPlaced`, proves `SessionOnlyVtablesPlacedOk`, assemble
 `cliExternsPlaced mmpl W`, `E2E.HooksE.A0`, `cliIo.rd`, and `cliWrOk`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 
 namespace CryptoVerification.SignalSession.Cli.KitInst.SessKit
@@ -84,7 +96,7 @@ abbrev storePollNeedXPlaced : Nat :=
 
 /-- Relocatable `SessionStoreSpec` for CLI `SessionFiles` with placed block bases and `.rodata`
 symbol addresses. -/
-def cliSessionKitSpecPlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def cliSessionKitSpecPlaced [LibsignalPlacement] (A : RustAlloc)
     (rd : ReadRule) (F0 : FsFiles) (pathOk : List (BitVec 8) → Prop)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (peer : AddrGhost)
     (loadShimStk loadPollStk storeShimStk storePollStk : Nat)

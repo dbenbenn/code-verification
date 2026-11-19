@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
-public import LibsignalBinary.Proofs.Placed.PublicApiCodeSymB
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PublicApiCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalPublicApi
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `drop_glue::<CiphertextMessage>` (`0x35494`)
@@ -27,7 +27,7 @@ Proves `cmDrop_ok` (96 instructions) and its relocatable `[LibsignalPlacement]` 
 block `135`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.CmDrop
 
@@ -50,10 +50,6 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 @[simp, arm64_norm]
 abbrev cmDropName : String :=
   "core::ptr::drop_glue::<libsignal_protocol::protocol::CiphertextMessage> [local#1]"
-
-gen_decodes libsignalSessionCode_tree cmDropBin [0x35494 → 0x35610]
-
-/-! ## Stack and Separation-Logic Helpers -/
 
 private abbrev cmActiveStack : Nat := allocHookStack + 32
 
@@ -598,296 +594,6 @@ private theorem msb_eq_false_of_lt {cap : BitVec 64} (h : cap.toNat < 2 ^ 63) :
     cap.msb = false := by
   rw [BitVec.msb_eq_false_iff_two_mul_lt]
   omega
-
-private theorem fnAddr_tripleRatchetProgAt {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {off : Nat}
-    (h : libsignalSessionCode.fnOff name = off) :
-    (tripleRatchetProgAt b C ctl abs).fnAddr name = b + BitVec.ofNat 64 off := by
-  simp only [tripleRatchetProgAt, Program.fnAddr_rebase, h]
-
-set_option maxHeartbeats 1600000 in
-theorem cmDrop_fn_ok {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr cmDropName)
-      (cmDropSpec A) := by
-  simp only [cmDropSpec, stackAt_cmDrop_outer]
-  have hfn : libsignalSessionCode.fnOff cmDropName = 0x35494 := by
-    simp only [cmDropName, arm64_norm]
-  have hdealloc := dealloc_ok_at_norm (b := b) (C := C) (ctl := ctl)
-    (name := cmDropName) (k := num% (ls_off% "__rustc::__rust_dealloc" - 0x35494)) hA
-  simp only [rustDeallocSpec] at hdealloc
-  code_fetches CryptoVerification.libsignalSessionCode cmDropBin b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x35494 384
-  dsimp only [tripleRatchetProgAt, cmDropName, BitVec.ofNat_eq_ofNat] at hdealloc ⊢
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨p, m⟩ := x
-  dsimp only at *
-  subst h
-  let p := s0.readReg64 (Reg.gpr 0#5)
-  nth_rw 1 [stackAt_cmActive_split s0.sp]
-  cells_unfold
-  wp_pull_exists
-  cases m with
-  | signalMessage sm =>
-    refine SepWP.weaken_pre (sepConj_mono_left (apiEncResultAt_signal_entails_dealloc A p sm)) ?_
-    wp_pull_exists
-    rename_i g ctLen serLen addrP addrL
-    refine seq_clean (mid := entry + 264#64) (P_mid :=
-      (sigHeadersAt p g ctLen serLen addrP addrL ∗
-        vecPinDealloc A ⟨g.pqCap, g.pqPtr⟩ ∗
-        optBoxDealloc A addrP addrL ∗
-        vecPinDealloc A ⟨serLen, g.serPtr⟩) ∗
-      A.pool ∗ stackAt (s0.sp - 32#64) allocHookStack ∗
-      (((s0.sp - 32#64) ↦₆₄ s0.readReg64 .x29) ∗
-       ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x30) ∗
-       ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗
-       ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19) ∗
-       memRegion (s0.sp - 4160#64) 32))
-      (Q := fun s1 => Saved32Preserved s0 s1 (s0.sp - 32#64) ∧ s1.readReg64 .x19 = p)
-      ?_ ?_
-    · dsimp only [sigHeadersAt, ctSignalTag, vecPinDealloc]
-      by_cases hct : (ctLen == 0#64) = true <;>
-        simp only [hct, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-      · wp_steps
-        refine SepWP.align_pre (by ac_rfl) ?_
-        wp_done
-      · wp_steps
-        wp_apply
-        refine SepWP.align_pre (by ac_rfl) ?_
-        wp_done
-    · intro s1 hpc1 hrun1 ⟨⟨hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hvregs_1, hsp_1, htrace_1⟩, hx19_1⟩
-      refine seq_clean (mid := entry + 284#64) (P_mid :=
-        (sigHeadersAt p g ctLen serLen addrP addrL ∗
-          optBoxDealloc A addrP addrL ∗
-          vecPinDealloc A ⟨serLen, g.serPtr⟩) ∗
-        A.pool ∗ stackAt (s0.sp - 32#64) allocHookStack ∗
-        (((s0.sp - 32#64) ↦₆₄ s0.readReg64 .x29) ∗
-         ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x30) ∗
-         ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗
-         ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19) ∗
-         memRegion (s0.sp - 4160#64) 32))
-        (Q := fun s2 => Saved32Preserved s0 s2 (s0.sp - 32#64) ∧ s2.readReg64 .x19 = p)
-        ?_ ?_
-      · dsimp only [sigHeadersAt, vecPinDealloc]
-        by_cases hpq : (g.pqCap == 0#64) = true <;>
-          simp only [hpq, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-        · wp_steps
-          wp_done
-        · wp_steps
-          wp_apply
-          refine SepWP.align_pre (by rw [hsp_1]; ac_rfl) ?_
-          wp_done
-      · intro s2 hpc2 hrun2 ⟨⟨hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hx28_2, hvregs_2, hsp_2, htrace_2⟩, hx19_2⟩
-        refine seq_clean (mid := entry + 308#64) (P_mid :=
-          (sigHeadersAt p g ctLen serLen addrP addrL ∗
-            vecPinDealloc A ⟨serLen, g.serPtr⟩) ∗
-          A.pool ∗ stackAt (s0.sp - 32#64) allocHookStack ∗
-          (((s0.sp - 32#64) ↦₆₄ s0.readReg64 .x29) ∗
-           ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x30) ∗
-           ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗
-           ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19) ∗
-           memRegion (s0.sp - 4160#64) 32))
-          (Q := fun s3 => Saved32Preserved s0 s3 (s0.sp - 32#64) ∧ s3.readReg64 .x19 = p)
-          ?_ ?_
-        · dsimp only [sigHeadersAt, optBoxDealloc, vecPinDealloc]
-          by_cases hp0 : (addrP == 0#64) = true <;>
-            simp only [hp0, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-          · wp_steps
-            wp_done
-          · by_cases hl0 : (addrL == 0#64) = true <;>
-              simp only [hl0, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-            · wp_steps
-              wp_done
-            · wp_steps
-              wp_apply
-              refine SepWP.align_pre (by rw [hsp_2]; ac_rfl) ?_
-              wp_done
-        · intro s3 hpc3 hrun3 ⟨⟨hx21_3, hx22_3, hx23_3, hx24_3, hx25_3, hx26_3, hx27_3, hx28_3, hvregs_3, hsp_3, htrace_3⟩, hx19_3⟩
-          dsimp only [sigHeadersAt, vecPinDealloc]
-          by_cases hser : (serLen == 0#64) = true <;>
-            simp only [hser, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-          · wp_steps
-            have hpost := cm_cap0_weaken p (sigHeadersAt_entails_memRegion_248 p g ctLen serLen addrP addrL)
-              A.pool s0.sp (s0.readReg64 .x29) (s0.readReg64 .x30) (s0.readReg64 .x20) (s0.readReg64 .x19)
-            dsimp only [sigHeadersAt] at hpost
-            refine SepWP.weaken_pre (Entails.trans (Entails.of_eq (by ac_rfl)) hpost) ?_
-            wp_done
-          · wp_steps
-            have hpre := cm_tail_dealloc_pre_weaken p (sigHeadersAt_entails_memRegion_248 p g ctLen serLen addrP addrL)
-              (A.live g.serPtr serLen.toNat 1 ∗ memRegion g.serPtr serLen.toNat)
-              A.pool s0.sp (s0.readReg64 .x29) (s0.readReg64 .x30) (s0.readReg64 .x20) (s0.readReg64 .x19)
-            dsimp only [sigHeadersAt] at hpre
-            refine SepWP.weaken_pre (Entails.trans (Entails.of_eq (by ac_rfl)) hpre) ?_
-            wp_apply
-            refine SepWP.weaken_pre (Entails.trans (Entails.of_eq (by ac_rfl)) (cm_tail_dealloc_post p A.pool s0.sp)) ?_
-            wp_done
-  | preKeySignalMessage psm =>
-    dsimp only [apiEncResultAt]
-    wp_pull_exists
-    rename_i g
-    refine SepWP.weaken_pre (sepConj_mono_left (preKeyMsgAt_entails_dealloc A g p psm)) ?_
-    wp_pull_exists
-    rename_i ctLen serLen addrP addrL pserLen kyP kyL
-    refine SepWP.pure_elim_left fun hpq_lt => ?_
-    have hmsb : g.msg.pqCap.msb = false := msb_eq_false_of_lt hpq_lt
-    refine seq_clean (mid := entry + 128#64) (P_mid :=
-      (preKeyMsgHeadersAt p g ctLen serLen addrP addrL pserLen kyP kyL ∗
-        vecPinDealloc A ⟨ctLen, g.msg.ctPtr⟩ ∗
-        vecPinDealloc A ⟨g.msg.pqCap, g.msg.pqPtr⟩ ∗
-        optBoxDealloc A addrP addrL ∗
-        vecPinDealloc A ⟨serLen, g.msg.serPtr⟩ ∗
-        vecPinDealloc A ⟨pserLen, g.serPtr⟩) ∗
-      A.pool ∗ stackAt (s0.sp - 32#64) allocHookStack ∗
-      (((s0.sp - 32#64) ↦₆₄ s0.readReg64 .x29) ∗
-       ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x30) ∗
-       ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗
-       ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19) ∗
-       memRegion (s0.sp - 4160#64) 32))
-      (Q := fun s1 => Saved32Preserved s0 s1 (s0.sp - 32#64) ∧
-        s1.readReg64 .x19 = p ∧ s1.readReg64 .x20 = g.msg.pqCap)
-      ?_ ?_
-    · dsimp only [preKeyMsgHeadersAt, smHeadersAt, optBoxDealloc, vecPinDealloc]
-      by_cases hkyP : (kyP == 0#64) = true <;>
-        simp only [hkyP, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-      · wp_steps
-        refine SepWP.align_pre (by ac_rfl) ?_
-        wp_done
-      · by_cases hkyL : (kyL == 0#64) = true <;>
-          simp only [hkyL, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-        · wp_steps
-          refine SepWP.align_pre (by ac_rfl) ?_
-          wp_done
-        · wp_steps
-          wp_apply
-          refine SepWP.align_pre (by ac_rfl) ?_
-          wp_done
-    · intro s1 hpc1 hrun1 ⟨⟨hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hvregs_1, hsp_1, htrace_1⟩, hx19_1, hx20_1⟩
-      refine seq_clean (mid := entry + 148#64) (P_mid :=
-        (preKeyMsgHeadersAt p g ctLen serLen addrP addrL pserLen kyP kyL ∗
-          vecPinDealloc A ⟨g.msg.pqCap, g.msg.pqPtr⟩ ∗
-          optBoxDealloc A addrP addrL ∗
-          vecPinDealloc A ⟨serLen, g.msg.serPtr⟩ ∗
-          vecPinDealloc A ⟨pserLen, g.serPtr⟩) ∗
-        A.pool ∗ stackAt (s0.sp - 32#64) allocHookStack ∗
-        (((s0.sp - 32#64) ↦₆₄ s0.readReg64 .x29) ∗
-         ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x30) ∗
-         ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗
-         ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19) ∗
-         memRegion (s0.sp - 4160#64) 32))
-        (Q := fun s2 => Saved32Preserved s0 s2 (s0.sp - 32#64) ∧
-          s2.readReg64 .x19 = p ∧ s2.readReg64 .x20 = g.msg.pqCap)
-        ?_ ?_
-      · dsimp only [preKeyMsgHeadersAt, smHeadersAt, vecPinDealloc]
-        by_cases hct : (ctLen == 0#64) = true <;>
-          simp only [hct, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-        · wp_steps
-          wp_done
-        · wp_steps
-          wp_apply
-          refine SepWP.align_pre (by rw [hsp_1]; ac_rfl) ?_
-          wp_done
-      · intro s2 hpc2 hrun2 ⟨⟨hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hx28_2, hvregs_2, hsp_2, htrace_2⟩, hx19_2, hx20_2⟩
-        refine seq_clean (mid := entry + 168#64) (P_mid :=
-          (preKeyMsgHeadersAt p g ctLen serLen addrP addrL pserLen kyP kyL ∗
-            optBoxDealloc A addrP addrL ∗
-            vecPinDealloc A ⟨serLen, g.msg.serPtr⟩ ∗
-            vecPinDealloc A ⟨pserLen, g.serPtr⟩) ∗
-          A.pool ∗ stackAt (s0.sp - 32#64) allocHookStack ∗
-          (((s0.sp - 32#64) ↦₆₄ s0.readReg64 .x29) ∗
-           ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x30) ∗
-           ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗
-           ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19) ∗
-           memRegion (s0.sp - 4160#64) 32))
-          (Q := fun s3 => Saved32Preserved s0 s3 (s0.sp - 32#64) ∧ s3.readReg64 .x19 = p)
-          ?_ ?_
-        · dsimp only [preKeyMsgHeadersAt, smHeadersAt, vecPinDealloc]
-          by_cases hpq : (g.msg.pqCap == 0#64) = true <;>
-            simp only [hpq, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-          · wp_steps
-            wp_done
-          · wp_steps
-            wp_apply
-            refine SepWP.align_pre (by rw [hsp_2]; ac_rfl) ?_
-            wp_done
-        · intro s3 hpc3 hrun3 ⟨⟨hx21_3, hx22_3, hx23_3, hx24_3, hx25_3, hx26_3, hx27_3, hx28_3, hvregs_3, hsp_3, htrace_3⟩, hx19_3⟩
-          refine seq_clean (mid := entry + 192#64) (P_mid :=
-            (preKeyMsgHeadersAt p g ctLen serLen addrP addrL pserLen kyP kyL ∗
-              vecPinDealloc A ⟨serLen, g.msg.serPtr⟩ ∗
-              vecPinDealloc A ⟨pserLen, g.serPtr⟩) ∗
-            A.pool ∗ stackAt (s0.sp - 32#64) allocHookStack ∗
-            (((s0.sp - 32#64) ↦₆₄ s0.readReg64 .x29) ∗
-             ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x30) ∗
-             ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗
-             ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19) ∗
-             memRegion (s0.sp - 4160#64) 32))
-            (Q := fun s4 => Saved32Preserved s0 s4 (s0.sp - 32#64) ∧ s4.readReg64 .x19 = p)
-            ?_ ?_
-          · dsimp only [preKeyMsgHeadersAt, smHeadersAt, optBoxDealloc, vecPinDealloc]
-            by_cases hp0 : (addrP == 0#64) = true <;>
-              simp only [hp0, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-            · wp_steps
-              wp_done
-            · by_cases hl0 : (addrL == 0#64) = true <;>
-                simp only [hl0, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-              · wp_steps
-                wp_done
-              · wp_steps
-                wp_apply
-                refine SepWP.align_pre (by rw [hsp_3]; ac_rfl) ?_
-                wp_done
-          · intro s4 hpc4 hrun4 ⟨⟨hx21_4, hx22_4, hx23_4, hx24_4, hx25_4, hx26_4, hx27_4, hx28_4, hvregs_4, hsp_4, htrace_4⟩, hx19_4⟩
-            refine seq_clean (mid := entry + 212#64) (P_mid :=
-              (preKeyMsgHeadersAt p g ctLen serLen addrP addrL pserLen kyP kyL ∗
-                vecPinDealloc A ⟨pserLen, g.serPtr⟩) ∗
-              A.pool ∗ stackAt (s0.sp - 32#64) allocHookStack ∗
-              (((s0.sp - 32#64) ↦₆₄ s0.readReg64 .x29) ∗
-               ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x30) ∗
-               ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗
-               ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19) ∗
-               memRegion (s0.sp - 4160#64) 32))
-              (Q := fun s5 => Saved32Preserved s0 s5 (s0.sp - 32#64) ∧ s5.readReg64 .x19 = p)
-              ?_ ?_
-            · dsimp only [preKeyMsgHeadersAt, smHeadersAt, vecPinDealloc]
-              by_cases hser : (serLen == 0#64) = true <;>
-                simp only [hser, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-              · wp_steps
-                wp_done
-              · wp_steps
-                wp_apply
-                refine SepWP.align_pre (by rw [hsp_4]; ac_rfl) ?_
-                wp_done
-            · intro s5 hpc5 hrun5 ⟨⟨hx21_5, hx22_5, hx23_5, hx24_5, hx25_5, hx26_5, hx27_5, hx28_5, hvregs_5, hsp_5, htrace_5⟩, hx19_5⟩
-              dsimp only [preKeyMsgHeadersAt, smHeadersAt, vecPinDealloc]
-              by_cases hpser : (pserLen == 0#64) = true <;>
-                simp only [hpser, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-              · wp_steps
-                have hpost := cm_cap0_weaken p (preKeyMsgHeadersAt_entails_memRegion_248 p g ctLen serLen addrP addrL pserLen kyP kyL)
-                  A.pool s0.sp (s0.readReg64 .x29) (s0.readReg64 .x30) (s0.readReg64 .x20) (s0.readReg64 .x19)
-                dsimp only [preKeyMsgHeadersAt, smHeadersAt] at hpost
-                refine SepWP.weaken_pre (Entails.trans (Entails.of_eq (by ac_rfl)) hpost) ?_
-                wp_done
-              · wp_steps
-                have hpre := cm_tail_dealloc_pre_weaken p (preKeyMsgHeadersAt_entails_memRegion_248 p g ctLen serLen addrP addrL pserLen kyP kyL)
-                  (A.live g.serPtr pserLen.toNat 1 ∗ memRegion g.serPtr pserLen.toNat)
-                  A.pool s0.sp (s0.readReg64 .x29) (s0.readReg64 .x30) (s0.readReg64 .x20) (s0.readReg64 .x19)
-                dsimp only [preKeyMsgHeadersAt, smHeadersAt] at hpre
-                refine SepWP.weaken_pre (Entails.trans (Entails.of_eq (by ac_rfl)) hpre) ?_
-                wp_apply
-                refine SepWP.weaken_pre (Entails.trans (Entails.of_eq (by ac_rfl)) (cm_tail_dealloc_post p A.pool s0.sp)) ?_
-                wp_done
-
-theorem cmDrop_ok {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {abs : String → Option (State → State)} (h3 : PublicApiHooks C A S encRecord abs)
-    (_himg : Obj.Loads libsignalSessionImage img) : CmDropOk img C A ctl abs := by
-  unfold CmDropOk
-  have h := cmDrop_fn_ok (b := img.base) (C := C) (ctl := ctl) h3.alloc
-  rwa [fnAddr_tripleRatchetProgAt (off := 0x35494) libsignalSessionCode_fnOff_0x35494] at h
-
-/-! ## Relocatable `[LibsignalPlacement]` Proofs -/
 
 open CryptoVerification.LibsignalPublicApi.Placed
 

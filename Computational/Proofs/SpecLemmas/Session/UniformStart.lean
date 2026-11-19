@@ -20,7 +20,7 @@ Defines the shallow PRG distinguisher `uniformStartDistinguisher` for replacing 
 keys with uniform keys in `libsignalSessionSchemeFromEpoch0Keys`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,7 +34,7 @@ open CryptoGames CryptoGames.LibsignalSM Ratchet LibsignalInst LibsignalSession
 
 /-- PRG distinguisher running `SM.runR` on `libsignalSessionSchemeFromEpoch0Keys` with epoch-0 keys
 `rc` and a uniform hidden bit. -/
-def uniformStartDistinguisher {PQ PQC : Type} [Inhabited PQ] [SampleableType PQC]
+@[expose] def uniformStartDistinguisher {PQ PQC : Type} [Inhabited PQ] [SampleableType PQC]
     (P : Params PQ PQC) (ℓ : ℕ) (cfg : SM.ConfigR (GhostState PQ) (Plain ℓ) (List (BitVec 8)))
     (qep : ℕ) (A : SM.Adversary (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))) :
     PRGScheme.PRGAdversary (Ratchet.RootKey × BitVec 256) := fun rc => do

@@ -59,7 +59,7 @@ Bob's matching-session promotion `recv` slot preserves `PqTurnSim1A` and `UAInvB
 containing break and invert steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

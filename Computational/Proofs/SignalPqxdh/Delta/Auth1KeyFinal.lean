@@ -9,20 +9,20 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyHeadline
+public import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyHeadline -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindBundle
-public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyD
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigWire
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhWire
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyShCrEval
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfCk
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfMk
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfBounds
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyAeadCpa
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfHmac
-public import Computational.Proofs.SignalPqxdh.Headline
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrProofs
+import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyD
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigWire
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhWire
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyShCrEval
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfCk
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfMk
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfBounds
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyAeadCpa
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfHmac
+import Computational.Proofs.SignalPqxdh.Headline
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrProofs
 
 /-!
 # One-Key PQXDH `Auth` Headline Theorems
@@ -32,7 +32,7 @@ combined correctness, `KeyInd`, and `Auth` theorem (`pqxdhCorrectAndSecureWithAu
 `auth1KeyKindDslFamily` and the per-principal signature bound.
 -/
 
-@[expose] public section
+public section
 
 open scoped ENNReal
 open MeasureTheory

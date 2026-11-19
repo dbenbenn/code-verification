@@ -21,6 +21,7 @@ import Computational.Proofs.Game.PromotedCostedReds.SpkTier2BookkeepingBase
 import Computational.Proofs.Game.PromotedCostedReds.SpkTier2Bookkeeping
 import Computational.Proofs.E2E.Dsl.SmReachInvParty
 import Computational.Proofs.SpqrV1Sync.TopStateTight
+import Computational.Proofs.ReductionDsl.SM.GameCosted
 
 /-!
 # Relational Evaluation Equivalence for Tier-2 Tracker-Halted Hop 2
@@ -82,7 +83,7 @@ open Computational.Proofs.Game.PromotedCostedReds.SpkTier2Bookkeeping (
   recordCiphertextTier2E eval_recordCiphertextTier2E
   hop2TblTy hop2TblInitE eval_hop2TblInitE hop2TblSetE eval_hop2TblSetE
   sessionSchemeU_send_wire_length_le)
-open Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg (
+open Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs (
   compCoinToPrf compCoinToPrf_wk1Comp compCoinToPrf_eval_eq_liftM eval_redCoinToPrf
   Hop2Mode Hop2EvalSpec prgCoinMode prgLiftedMode prgLiftedMode_evalSpec
   prfOracleMode prfOracleMode_evalSpec
@@ -1038,7 +1039,7 @@ private theorem hop2StepTier2TrackC_rel
     exact OracleCompRel.bind hcr fun r₁ r₂ ⟨hr1, hauxEq, hd', hinv'⟩ =>
       .pureP ⟨hr1, ⟨rfl, hd', hauxEq ▸ haux, rfl⟩, hinv', rfl, htrInv, rfl, hhwLen⟩
 
-private noncomputable def hop2InitBridgeTrackImplLocal (k : ℕ)
+private def hop2InitBridgeTrackImplLocal (k : ℕ)
     (sc : BitVec 256 × (BitVec 256 × BitVec 256)) :
     Hop2Comp Pt
       (Unit × ((GameState (GhostState Bytes) (Plain ℓ) Bytes × Hop2Aux Pt) ×
@@ -1107,7 +1108,7 @@ private theorem hop2InitBodyTier2TrackC_rel
   have hl := liftExpr_eval (Pt := Pt) (C := C) (K := K) (Dh := Dh) (encPt := encPt)
     (encT := encT) (decT := decT) (lam := lam)
     (hop2InitGsE2EE (ℓ := ℓ) (C := C) (K := K) (decT := decT) (encT := encT) idA idB)
-    (.cons (t := Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg.hop2InitArgT ℓ)
+    (.cons (t := Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs.hop2InitArgT ℓ)
       (b, (x, ((0, ck1), (ck0, (alice, pqr))))) .nil)
   have hgs := eval_hop2InitGsE2EE (ℓ := ℓ) (C := C) (K := K) (decT := decT) (encT := encT)
     idA idB b x 0 ck1 ck0 alice pqr
@@ -1116,7 +1117,7 @@ private theorem hop2InitBodyTier2TrackC_rel
       (if k = 0 then (.snd (.snd .v6)) else .v0)) (.pair .v4 (.pair .v2 .v1))))
   have harg : argE.eval ρ6 =
       liftVal (Pt := Pt)
-        (t := Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg.hop2InitArgT ℓ)
+        (t := Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs.hop2InitArgT ℓ)
         (b, (x, ((0, ck1), (ck0, (alice, pqr))))) := by
     simp only [argE, pair_eval, hck1Eval]; rfl
   let abE : Expr AOps Γ6 _ :=
@@ -1125,10 +1126,10 @@ private theorem hop2InitBodyTier2TrackC_rel
       (hop2InitGsE2EE (ℓ := ℓ) (C := C) (K := K) (decT := decT) (encT := encT) idA idB))))
   have habEval : abE.eval ρ6 = (stA, stB) := by
     have henv : (Env.cons (liftVal (Pt := Pt)
-          (t := Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg.hop2InitArgT ℓ)
+          (t := Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs.hop2InitArgT ℓ)
           (b, (x, ((0, ck1), (ck0, (alice, pqr)))))) .nil : Env (S := ASig) [_]) =
       liftEnv (Pt := Pt)
-        (.cons (t := Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg.hop2InitArgT ℓ)
+        (.cons (t := Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs.hop2InitArgT ℓ)
           (b, (x, ((0, ck1), (ck0, (alice, pqr))))) .nil) := rfl
     dsimp only [abE]; rw [fst_ev, letE_eval, harg, wk1Expr_eval, henv, hl, hgs]; rfl
   have hgs0Eval :

@@ -9,7 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyC0
+import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyC0
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyPre -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeySigKem -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.SigHop1KeyA -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyB
 
 /-!
 # One-key `Auth` bad-signature hop: signing-log lemmas for the `GapSigEufCma` simulator
@@ -19,7 +24,7 @@ to `gapDhWithSignFullImpl` when forgetting the log, and under `fgAuth1KeyStepHal
 target principal's newly signed pre-keys.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

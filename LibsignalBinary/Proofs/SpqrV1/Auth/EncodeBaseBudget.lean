@@ -10,18 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBaseBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBaseBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Specifications and Event Transitions for `Authenticator::encode`
@@ -32,7 +33,7 @@ exact-fit `0`-allocation lemmas, and budget-threaded contracts (`authEncodePinne
 `authEncodeSpecOfEnv`, `authEncodeExactSpecOf`) for `encode<Authenticator> [local#1, 2]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -66,7 +67,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
 /-! ## Deterministic Allocator Event Transitions -/
 
 /-- Deterministic `(newCap, evs)` transition for `Vec<u8>` capacity reservation. -/
-def reserveStep (cap len additional : Nat) : Nat × List AllocEvent :=
+@[expose] def reserveStep (cap len additional : Nat) : Nat × List AllocEvent :=
   if len + additional ≤ cap then
     (cap, [])
   else
@@ -114,7 +115,7 @@ theorem reserveStep_fst_ge (cap len additional : Nat) :
   split_ifs with h h0 <;> simp only [reserveCap] <;> omega
 
 /-- Capacity-and-events transition for pushing `n` bytes one-by-one into `Vec<u8>`. -/
-def pushBytesStep : Nat → Nat → Nat → Nat × List AllocEvent
+@[expose] def pushBytesStep : Nat → Nat → Nat → Nat × List AllocEvent
   | 0, cap, _ => (cap, [])
   | n + 1, cap, len =>
     let s1 := pushByteStep cap len
@@ -145,7 +146,7 @@ theorem pushBytesStep_fst_ge :
     exact Nat.le_trans h1 (pushBytesStep_fst_ge n (pushByteStep cap len).1 (len + 1))
 
 /-- Capacity-and-events transition for an optional `bytes` field with a 1-byte tag. -/
-def optBytesField1ByteTagStep (cap len : Nat) (bs : List (BitVec 8)) : Nat × List AllocEvent :=
+@[expose] def optBytesField1ByteTagStep (cap len : Nat) (bs : List (BitVec 8)) : Nat × List AllocEvent :=
   if bs.isEmpty then
     (cap, [])
   else
@@ -176,7 +177,7 @@ theorem optBytesField1ByteTagStep_of_spare {cap len : Nat} {bs : List (BitVec 8)
   · rfl
 
 /-- Capacity-and-events transition for `Authenticator::encode` (`tag = 2#32`). -/
-def authEncodeStep (cap len : Nat) (auth : AuthenticatorPB) : Nat × List AllocEvent :=
+@[expose] def authEncodeStep (cap len : Nat) (auth : AuthenticatorPB) : Nat × List AllocEvent :=
   let hdrVlen := (encodeVarint (BitVec.ofNat 64 (authenticatorPBEncodedLen auth))).length
   let s1 := pushBytesStep (hdrVlen + 1) cap len
   let rkLen := (encodeBytesField 1#32 auth.rootKey).length
@@ -213,14 +214,14 @@ theorem authEncodeStep_of_spare {cap len : Nat} {auth : AuthenticatorPB}
   rw [hs3]
   rfl
 
-def authPinnedToUnpinned (x : AuthEncodePinnedGhost) : AuthEncodeGhost :=
+@[expose] def authPinnedToUnpinned (x : AuthEncodePinnedGhost) : AuthEncodeGhost :=
   ⟨x.authA, x.auth, x.v, x.cap, x.ptr, x.bs⟩
 
 /-- Deterministic `AllocEvent` list emitted by `Authenticator::encode`. -/
-def authEncodeEvents (x : AuthEncodeGhost) : List AllocEvent :=
+@[expose] def authEncodeEvents (x : AuthEncodeGhost) : List AllocEvent :=
   (authEncodeStep x.cap.toNat x.bs.length x.auth).2
 
-def AuthEncodeEnv (x : AuthEncodeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def AuthEncodeEnv (x : AuthEncodeGhost) (evs : List AllocEvent) : Prop :=
   evs = authEncodeEvents x
 
 theorem authEncodeEnv_events (x : AuthEncodeGhost) :
@@ -245,7 +246,7 @@ theorem authEncodeEnv_eq_nil_of_spare {x : AuthEncodeGhost} {evs : List AllocEve
 /-! ## Budget-Threaded Specifications -/
 
 /-- Envelope-parameterized pinned budget specification of `Authenticator::encode`. -/
-def authEncodePinnedSpecOfEnv (resStack : Nat)
+@[expose] def authEncodePinnedSpecOfEnv (resStack : Nat)
     (Env : AuthEncodeGhost → List AllocEvent → Prop)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthEncodePinnedGhost × M.σ) where
@@ -271,7 +272,7 @@ def authEncodePinnedSpecOfEnv (resStack : Nat)
       stackAt s0.sp (authEncodeStackOf resStack)
 
 /-- Envelope-parameterized unpinned budget specification of `Authenticator::encode`. -/
-def authEncodeSpecOfEnv (resStack : Nat)
+@[expose] def authEncodeSpecOfEnv (resStack : Nat)
     (Env : AuthEncodeGhost → List AllocEvent → Prop)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthEncodeGhost × M.σ) where
@@ -327,7 +328,7 @@ abbrev authEncodeSpecX {M : AllocCostModel}
   authEncodeSpecOf doReserveStackX A lim
 
 /-- Exact-capacity (`0`-allocation) pinned budget specification of `Authenticator::encode`. -/
-def authEncodeExactSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def authEncodeExactSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthEncodePinnedGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -345,7 +346,7 @@ def authEncodeExactSpecOf (resStack : Nat) {M : AllocCostModel}
       stackAt s0.sp (authEncodeStackOf resStack)
 
 /-- Exact-capacity (`0`-allocation) unpinned budget specification of `Authenticator::encode`. -/
-def authEncodeExactUnpinnedSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def authEncodeExactUnpinnedSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthEncodeGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -446,42 +447,42 @@ theorem subroutine_ok_authEncodeExactUnpinned_of_unpinned {resStack : Nat} {prog
 
 /-! ## Placed Contract Propositions and Call Helpers -/
 
-def AuthEncode1PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def AuthEncode1PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_151 H) (blkPl_151).base
     (withLsCodeLoaded lsmpl (authEncodePinnedSpec A lim))
 
-def AuthEncode1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def AuthEncode1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_151 H) (blkPl_151).base
     (withLsCodeLoaded lsmpl (authEncodeSpec A lim))
 
-def AuthEncode1PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def AuthEncode1PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_151 H) (blkPl_151).base
     (withLsCodeLoaded lsmpl (authEncodePinnedSpecX A lim))
 
-def AuthEncode1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def AuthEncode1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_151 H) (blkPl_151).base
     (withLsCodeLoaded lsmpl (authEncodeSpecX A lim))
 
-def AuthEncode2PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def AuthEncode2PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_314 H) (blkPl_314).base
     (withLsCodeLoaded lsmpl (authEncodePinnedSpec A lim))
 
-def AuthEncode2PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def AuthEncode2PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_314 H) (blkPl_314).base
     (withLsCodeLoaded lsmpl (authEncodeSpec A lim))
 
-def AuthEncode2PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def AuthEncode2PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_314 H) (blkPl_314).base
     (withLsCodeLoaded lsmpl (authEncodePinnedSpecX A lim))
 
-def AuthEncode2PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def AuthEncode2PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_314 H) (blkPl_314).base
     (withLsCodeLoaded lsmpl (authEncodeSpecX A lim))
@@ -500,49 +501,5 @@ theorem sepWPp_extract_vecU8At_bounds {A : RustAlloc} {v cap ptr : BitVec 64} {b
   unfold vecU8Buf at hhm
   rw [sepConj_assoc, satisfies_pure_sepConj] at hhm
   exact h hhm.1.1 hhm.1.2.1 hhm.1.2.2 R hm hL
-
-/-- Executes `sessionMemcpyRegionBudgetSpec` at `s.sp = sp - 64#64`, propagating `VmPreserved` and `StepInvPlaced`. -/
-theorem step_auth_memcpy_call_placed {prog : Program} {call_pc : BitVec 64}
-    (hmemcpy : subroutine_ok prog call_pc sessionMemcpyRegionBudgetSpec)
-    (dst src sp ret_pc : BitVec 64) (bs : List (BitVec 8))
-    {s0 s : State} {ret : BitVec 64} {P F : SepProp}
-    {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hpc : s.pc = call_pc) (hrun : s.status = .Running) (hsp : s.sp = sp - 64#64)
-    (halign : sp &&& 15#64 = 0#64) (htr : s.trace = s0.trace) (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = dst) (hx1 : s.readReg64 .x1 = src)
-    (hx2 : (s.readReg64 .x2).toNat = bs.length)
-    (hP : P = (memRegion dst bs.length ∗ (src ↦ₛ bs)) ∗ F)
-    (hnext : ∀ (sm : State),
-      sm.pc = ret_pc → sm.status = .Running → sm.sp = sp - 64#64 → sm.trace = s0.trace →
-      CalleeSavedPreserved s sm → StepInvPlaced s sm → VmPreserved s sm →
-      SepWPp prog ret sm (((dst ↦ₛ bs) ∗ (src ↦ₛ bs)) ∗ F) Q Qp oom) :
-    SepWPp prog ret s P Q Qp oom := by
-  have hsp_aligned : s.spAligned = true := by
-    simp only [State.spAligned, hsp, beq_iff_eq]; exact sp_sub_64_aligned halign
-  intro R hm hL
-  have hpre : s.mem ⊨ sessionMemcpyRegionBudgetSpec.pre (dst, src, bs) s ∗ (F ∗ R) := by
-    rw [hP] at hm
-    simp only [sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec, memcpyRegionSpec,
-      sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1, hx2⟩, by convert hm using 1; sep_ac_rfl⟩
-  obtain ⟨sm, hsteps, hout, -⟩ :=
-    hmemcpy.no_fault_before_outcome (dst, src, bs) (F ∗ R) s hpc hrun hpre hsp_aligned hL
-  rcases hout with
-      ⟨⟨hpcm, _, hrunm⟩, ⟨hspm, hcsm⟩, hpost⟩ | ⟨_, hpan_mem⟩ | ⟨_, _, hex_mem⟩ | ⟨_, hoom_mem⟩
-  · rw [hlr] at hpcm; rw [hsp] at hspm
-    simp only [sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec,
-      sepConj_assoc, satisfies_pure_sepConj] at hpost
-    obtain ⟨hvm, ⟨_, htrm⟩, hmem_post⟩ := hpost
-    have hmem_post' : sm.mem ⊨ (((dst ↦ₛ bs) ∗ (src ↦ₛ bs)) ∗ F) ∗ R := by
-      convert hmem_post using 1; sep_ac_rfl
-    obtain ⟨sf, hsteps', hout'⟩ :=
-      hnext sm hpcm hrunm hspm (htrm.trans htr) hcsm (StepInvPlaced.of_steps hsteps) hvm R
-        hmem_post' (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout'⟩
-  · simp only [sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec,
-      satisfies_pure_sepConj] at hpan_mem
-    exact hpan_mem.1.elim
-  · exact (allowPanic_not_exited hex_mem).elim
-  · exact (not_satisfies_false_sepConj hoom_mem).elim
 
 end LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBaseBudget

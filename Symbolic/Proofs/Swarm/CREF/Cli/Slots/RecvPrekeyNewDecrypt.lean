@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.PinCoinsPure
-public import Symbolic.Proofs.Swarm.CREF.TR.PureSessionBounds
-public import Symbolic.Proofs.Refinement.RecordBytesBridge
-public import Symbolic.Proofs.SR.ModelW
-public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridgeAux
-public import Symbolic.Proofs.Swarm.SHARED.HookAuthPure
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.PinCoinsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PureSessionBounds -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SR.ModelW -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridgeAux -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.SHARED.HookAuthPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
 public import Symbolic.Specifications.Refinement.Statement
 import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewSpqrSalt
@@ -29,7 +29,7 @@ post-accept session record scope and serialization equations, and relates `SpqrS
 to empty-key-as-`none` SPQR decryption.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

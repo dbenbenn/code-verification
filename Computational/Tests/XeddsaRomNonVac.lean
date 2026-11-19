@@ -20,6 +20,7 @@ public meta import Computational.Proofs.SignalPqxdh.CwfPrimitives -- shake: keep
 public meta import Computational.Proofs.SignalPqxdh.XeddsaRom.PrimeL25519 -- shake: keep
 public meta import Computational.Proofs.SignalPqxdh.XeddsaRom.Statements -- shake: keep
 import LibsignalBinary.Proofs.SpecLemmas.SignalPqxdh.Model
+import Mathlib.Algebra.Field.ZMod
 import VCVio.EvalDist.Monad.Basic
 
 /-!
@@ -165,12 +166,12 @@ def compressEdZMod (x : ZMod l25519) : Bytes :=
   let raw := bytesOfNatLE 32 (absZMod x)
   raw.take 31 ++ [(raw.getD 31 (0 : UInt8) &&& (0x7F : UInt8)) ||| (edSignZMod x <<< 7)]
 
-/-- 160-byte uncompressed Edwards point encoding on `ZMod l25519`. -/
-def encodeEdZMod (x : ZMod l25519) : Bytes :=
-  encodeScalarBytes x ++ List.replicate 128 0
+/-- Affine Edwards point encoding on `ZMod l25519`. -/
+def encodeEdZMod (x : ZMod l25519) : VerifiedLibraries.Common.EdPoint :=
+  ⟨x.val, 0⟩
 
-def decodeEdZMod (pt : Bytes) : ZMod l25519 :=
-  decodeScalarBytes (pt.take 32)
+def decodeEdZMod (pt : VerifiedLibraries.Common.EdPoint) : ZMod l25519 :=
+  (pt.x : ZMod l25519)
 
 /-- Montgomery 32-byte `u`-coordinate encoding `absZMod x` (`±x` share the same coordinate). -/
 def encodeMontZMod (x : ZMod l25519) : Bytes :=
@@ -193,7 +194,7 @@ def x25519BaseZMod (sk : Bytes) : Bytes :=
 def x25519ZMod (sk pk : Bytes) : Bytes :=
   encodeMontZMod (clampedScalarZMod sk * decodeMont32 (fitBytesRef 32 pk))
 
-def montToEdZMod (u : Bytes) (b : UInt8) : Option Bytes :=
+def montToEdZMod (u : Bytes) (b : UInt8) : Option VerifiedLibraries.Common.EdPoint :=
   if (b == 0 || b == 1) && isCanonMont32 u then
     let x₀ : ZMod l25519 := (natOfBytesLE u : ZMod l25519)
     some (if b == 0 then encodeEdZMod x₀ else encodeEdZMod (-x₀))
@@ -329,14 +330,8 @@ theorem compressEdZMod_inj : Function.Injective compressEdZMod := by
       rcases edSignZMod_bool y with hs | hs <;> rw [hs] at hsign <;>
         exact False.elim (by revert hsign; decide)
 
-theorem encodeEdZMod_len (x : ZMod l25519) : (encodeEdZMod x).length = 160 := by
-  simp [encodeEdZMod, encodeScalarBytes_length]
-
-theorem decodeEdZMod_encodeEdZMod (x : ZMod l25519) : decodeEdZMod (encodeEdZMod x) = x := by
-  unfold decodeEdZMod encodeEdZMod
-  rw [List.take_append_of_le_length (by rw [encodeScalarBytes_length]),
-    List.take_of_length_le (by rw [encodeScalarBytes_length]),
-    decodeScalarBytes_encodeScalarBytes]
+theorem decodeEdZMod_encodeEdZMod (x : ZMod l25519) : decodeEdZMod (encodeEdZMod x) = x :=
+  ZMod.natCast_zmod_val x
 
 theorem encodeMontZMod_len (x : ZMod l25519) : (encodeMontZMod x).length = 32 :=
   bytesOfNatLE_length 32 _
@@ -508,12 +503,19 @@ def pZModPre : Primitives :=
     sigSign   := xeddsaSignRef pZModStep1
     sigVerify := xeddsaVerifyRef pZModStep1 }
 
-/-- Noncomputable extension of `pZModPre` with the classical `isValidDhTripleRef` DDH oracle;
+/-- Closed-form `O(1)` DDH check over `ZMod l25519` using `recoverClampedScalar`. -/
+def isValidDhTripleZMod (X Y Z : Bytes) : Bool :=
+  isCanonMont32 X && isCanonMont32 Y &&
+    ((let a := recoverClampedScalar (decodeMont32 X)
+      X == x25519BaseZMod a && pow8ZMod Z == pow8ZMod (x25519ZMod a Y)) ||
+     (let b := recoverClampedScalar (decodeMont32 Y)
+      Y == x25519BaseZMod b && pow8ZMod Z == pow8ZMod (x25519ZMod b X)))
+
+/-- Computable extension of `pZModPre` with the closed-form `isValidDhTripleZMod` DDH oracle;
     agrees definitionally with `pZModPre` on `sigSign` and `sigVerify`. -/
-noncomputable def pZMod : Primitives :=
+def pZMod : Primitives :=
   { pZModPre with
-    isValidDhTriple := fun X Y Z =>
-      @decide (isValidDhTripleRef pZModPre X Y Z) (Classical.propDecidable _) }
+    isValidDhTriple := isValidDhTripleZMod }
 
 private theorem sha256Ref_congr {P Q : Primitives} (h : P.sha256Compress = Q.sha256Compress) :
     sha256Ref P = sha256Ref Q := by
@@ -716,10 +718,58 @@ theorem pZMod_x25519_comm (a b : Bytes) :
   unfold x25519BaseZMod
   rw [x25519ZMod_encodeMontZMod, x25519ZMod_encodeMontZMod, mul_comm]
 
+private theorem onCurveKey_pZModPre_iff (pk : Bytes) :
+    onCurveKey pZModPre pk ↔ isCanonMont32 pk = true := by
+  unfold onCurveKey
+  have hc_eq : pZModPre.isCanonical = isCanonMont32 := rfl
+  have hp_eq : pZModPre.pow8 = pow8ZMod := rfl
+  have hb_eq : pZModPre.x25519Base = x25519BaseZMod := rfl
+  rw [hc_eq, hp_eq, hb_eq]
+  refine ⟨?_, Or.inl⟩
+  rintro (hc | ⟨e, _, hpow⟩)
+  · exact hc
+  · cases hcan : isCanonMont32 pk with
+    | true => rfl
+    | false =>
+      have hp0 : pow8ZMod pk = List.replicate 32 0 := by
+        unfold pow8ZMod
+        split_ifs
+        · unfold decodeMont32
+          simp [hcan, encodeMontZMod_zero]
+        · rfl
+      rw [hp0, x25519BaseZMod, pow8ZMod_encodeMontZMod] at hpow
+      exact False.elim (clampedScalarZMod_ne_zero e ((encodeMontZMod_eq_zero_iff _).mp hpow.symm))
+
+private theorem dhBranchZMod_iff (U V Z : Bytes) :
+    ((let a := recoverClampedScalar (decodeMont32 U)
+      U == x25519BaseZMod a && pow8ZMod Z == pow8ZMod (x25519ZMod a V)) = true) ↔
+      (∃ a', U = x25519BaseZMod a' ∧ pow8ZMod Z = pow8ZMod (x25519ZMod a' V)) := by
+  simp only [Bool.and_eq_true, beq_iff_eq]
+  refine ⟨fun ⟨h1, h2⟩ => ⟨recoverClampedScalar (decodeMont32 U), h1, h2⟩, ?_⟩
+  rintro ⟨a', rfl, hZ⟩
+  set a := recoverClampedScalar (decodeMont32 (x25519BaseZMod a'))
+  have hpm := decodeMont32_encodeMontZMod_pm (clampedScalarZMod a')
+  have hspec := (recoverClampedScalar_spec (aExt := decodeMont32 (x25519BaseZMod a')) hpm).2
+  have hbase : x25519BaseZMod a' = x25519BaseZMod a := by
+    unfold x25519BaseZMod
+    exact (encodeMontZMod_eq_iff _ _).mpr (hspec.elim (fun h => Or.inl h.symm)
+      (fun h => Or.inr (by rw [h, neg_neg])))
+  exact ⟨hbase, hZ.trans (congrArg pow8ZMod (x25519ZMod_congr_of_base_eq_any a' a V hbase))⟩
+
 private theorem pZMod_isValidDhTriple_eq_ref (X Y Z : Bytes) :
-    pZMod.isValidDhTriple X Y Z = true ↔ isValidDhTripleRef pZMod X Y Z :=
-  (Iff.of_eq (@decide_eq_true_eq _ (Classical.propDecidable _))).trans
-    (isValidDhTripleRef_congr (P := pZModPre) (Q := pZMod) rfl rfl rfl rfl X Y Z)
+    pZMod.isValidDhTriple X Y Z = true ↔ isValidDhTripleRef pZMod X Y Z := by
+  refine Iff.trans ?_ (isValidDhTripleRef_congr (P := pZModPre) (Q := pZMod) rfl rfl rfl rfl X Y Z)
+  change isValidDhTripleZMod X Y Z = true ↔ isValidDhTripleRef pZModPre X Y Z
+  unfold isValidDhTripleZMod isValidDhTripleRef
+  have hp_eq : pZModPre.pow8 = pow8ZMod := rfl
+  have hb_eq : pZModPre.x25519Base = x25519BaseZMod := rfl
+  have hx_eq : pZModPre.x25519 = x25519ZMod := rfl
+  rw [onCurveKey_pZModPre_iff X, onCurveKey_pZModPre_iff Y, hp_eq, hb_eq, hx_eq]
+  simp only [Bool.and_eq_true, Bool.or_eq_true, and_assoc]
+  have h1 := dhBranchZMod_iff X Y Z
+  have h2 := dhBranchZMod_iff Y X Z
+  simp only [Bool.and_eq_true] at h1 h2
+  rw [h1, h2]
 
 private theorem pZMod_ddh_symm (pk1 pk2 z : Bytes) :
     pZMod.isValidDhTriple pk1 pk2 z = pZMod.isValidDhTriple pk2 pk1 z := by
@@ -987,16 +1037,6 @@ theorem pZMod_wellFormedδ : WellFormedPrimitivesδ pZMod where
   scalarAdd_len := fun _ _ => encodeScalarBytes_length _
   scalarFromBytesModOrder_len := fun _ => encodeScalarBytes_length _
   scalarFromWide_len := fun _ => encodeScalarBytes_length _
-  montToEd_len := fun u s pt h => by
-    change montToEdZMod u s = some pt at h
-    unfold montToEdZMod at h
-    split at h
-    · injection h with hpt
-      subst hpt
-      split <;> exact encodeEdZMod_len _
-    · contradiction
-  edNeg_len := fun _ => encodeEdZMod_len _
-  doubleScalarMulBasepoint_len := fun _ _ _ => encodeEdZMod_len _
   compress_len := fun _ => compressEdZMod_len _
   sigVerify_eq_xeddsaVerifyRef := fun pk m s =>
     congrFun (congrFun (congrFun pZMod_sigVerify_eq_ref pk) m) s
@@ -1390,5 +1430,15 @@ info: 'Computational.Tests.XeddsaRomNonVac.xeddsaRom_hypotheses_satisfiable' dep
 -/
 #guard_msgs in
 #print axioms xeddsaRom_hypotheses_satisfiable
+
+-- Sanity check: `pZMod` and `pZMod.isValidDhTriple` compute constructively on valid, non-DH,
+-- and off-curve inputs.
+#guard
+  let X := pZMod.x25519Base [8]
+  let Y := pZMod.x25519Base [16]
+  pZMod.isValidDhTriple X Y (pZMod.x25519 [8] Y) == true &&
+    pZMod.isValidDhTriple X Y (pZMod.x25519Base [24]) == false
+
+example : pZMod.isValidDhTriple [] [] [] = false := rfl
 
 end Computational.Tests.XeddsaRomNonVac

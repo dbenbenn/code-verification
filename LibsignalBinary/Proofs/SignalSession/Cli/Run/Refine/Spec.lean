@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.PqDir
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.SmDirProofDefs
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.SmDirProofDefs
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Per-Slot Model-Agreement Predicates for `RunSem`
@@ -21,7 +23,7 @@ callee slot of `S : RunSem` (`initiate`, `encrypt`, `decryptSignal`, `pksmParse`
 to the PQXDH (`CliSpecPqxdh`) and Signal-Message (`CliSpecE`) protocol models on domain inputs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,12 +38,12 @@ open CryptoVerification.SignalSession.Cli.MainHops
 open CryptoVerification.SignalSession.Cli.RunCompose
 
 /-- Session-API `AddrVal` of party `P` (UUID bytes and device ID `1`). -/
-def addrValE (P : Party) : AddrVal := ⟨utf8 (partyAddressName P), 1#8⟩
+@[expose] def addrValE (P : Party) : AddrVal := ⟨utf8 (partyAddressName P), 1#8⟩
 
 /-! ## PQXDH directories (`CliSpecPqxdh`) -/
 
 /-- Agreement between `S.initiate` and `pqInitModel` on PQXDH `init` inputs. -/
-def PqInitiateAgrees (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : PEParams) : Prop :=
+@[expose] def PqInitiateAgrees (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : PEParams) : Prop :=
   ∀ (st : PqParty) (b : PreKeyBundleFields) (t : List.Vector (BitVec 8) initiateTapeLen) (bv : BundleV),
     PqxdhPartyInSpecDomain W st → st.session = none →
     readBundleV (runFiles (pqInitInputs W st b t)) (bytesOfString bundleDir) 1#8 = some bv →
@@ -51,7 +53,7 @@ def PqInitiateAgrees (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : PEParams) 
       pqxdhExpectedOutcome W (pqInitInputs W st b t) (pqInitModel X W st b t)
 
 /-- Agreement between `S.encrypt` and `pqSendModel` on PQXDH `send` inputs. -/
-def PqEncryptAgrees (S : RunSem) (W : PEParams) : Prop :=
+@[expose] def PqEncryptAgrees (S : RunSem) (W : PEParams) : Prop :=
   ∀ (st : PqParty) (m : List (BitVec 8)) (r : List.Vector (BitVec 8) 64),
     PqxdhPartyInSpecDomain W st → m.length < 2 ^ 32 →
     observe (pqSendInputs W st m r).files
@@ -60,7 +62,7 @@ def PqEncryptAgrees (S : RunSem) (W : PEParams) : Prop :=
       pqxdhExpectedOutcome W (pqSendInputs W st m r) (pqSendModel W st m r.toList)
 
 /-- Agreement between `S.decryptSignal` and `pqRecvWhisperModel` on PQXDH `2 ‖ c` inputs. -/
-def PqDecryptSignalAgrees (S : RunSem) (W : PEParams) : Prop :=
+@[expose] def PqDecryptSignalAgrees (S : RunSem) (W : PEParams) : Prop :=
   ∀ (st : PqParty) (c : List (BitVec 8)) (rc : BitVec 256) (msg : SignalMessage),
     PqxdhPartyInSpecDomain W st → c.length < 2 ^ 32 → SignalMessage.tryFrom protoSignalCodec c = .ok msg →
     observe (pqRecvInputs W st (wireWhisper :: c) rc).files
@@ -70,12 +72,12 @@ def PqDecryptSignalAgrees (S : RunSem) (W : PEParams) : Prop :=
 
 /-- `S.pksmParse` on typed `PreKeyMessageFields` returns `none` only when `m.inner` fails
 `SignalMessage.tryFrom`. -/
-def PksmParseAgrees (S : RunSem) : Prop :=
+@[expose] def PksmParseAgrees (S : RunSem) : Prop :=
   ∀ m : PreKeyMessageFields, m.inner.length + 2048 < 2 ^ 32 → S.pksmParse m.bytes = none →
     ∀ inner : SignalMessage, SignalMessage.tryFrom protoSignalCodec m.inner ≠ .ok inner
 
 /-- Agreement between `S.decryptPrekey` and `pqRecvPrekeyModel` on PQXDH `3 ‖ m.bytes` inputs. -/
-def PqDecryptPrekeyAgrees (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : PEParams) : Prop :=
+@[expose] def PqDecryptPrekeyAgrees (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : PEParams) : Prop :=
   ∀ (st : PqParty) (m : PreKeyMessageFields) (rc : BitVec 256) (pm : PreKeySignalMessage),
     PqxdhPartyInSpecDomain W st → m.inner.length + 2048 < 2 ^ 32 →
     (∀ x g, st.session = some (x, g) → PqSessionMatches x g m) →
@@ -96,7 +98,7 @@ structure RunSemOkPq (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : PEParams) 
 /-! ## Signal-Message directories (`CliSpecE`) -/
 
 /-- Agreement between `S.encrypt` and `smSendModel` on reachable Signal-Message states. -/
-def SmEncryptAgrees (S : RunSem) (C : Crypto) : Prop :=
+@[expose] def SmEncryptAgrees (S : RunSem) (C : Crypto) : Prop :=
   ∀ (g : GhostState (List (BitVec 8))) (m : List (BitVec 8)),
     Reach (spqrOffSessionParams C) g → m.length < 2 ^ 32 →
     observe (smSendInputs g m).files
@@ -105,7 +107,7 @@ def SmEncryptAgrees (S : RunSem) (C : Crypto) : Prop :=
       observe (smSendInputs g m).files (smSendModel C g m)
 
 /-- Agreement between `S.decryptSignal` and `smRecvModel` on reachable Signal-Message `2 ‖ c` inputs. -/
-def SmDecryptSignalAgrees (S : RunSem) (C : Crypto) : Prop :=
+@[expose] def SmDecryptSignalAgrees (S : RunSem) (C : Crypto) : Prop :=
   ∀ (g : GhostState (List (BitVec 8))) (c : List (BitVec 8)) (rc : BitVec 256) (msg : SignalMessage),
     Reach (spqrOffSessionParams C) g → c.length < 2 ^ 32 → SignalMessage.tryFrom protoSignalCodec c = .ok msg →
     observe (smRecvInputs g c rc).files

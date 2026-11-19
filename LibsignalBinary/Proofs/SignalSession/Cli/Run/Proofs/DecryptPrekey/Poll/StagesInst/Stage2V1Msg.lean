@@ -9,8 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Bridge
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedPre
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedPre -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathAKeys
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # CLI Poll Stage P2 V1 Message Header and Unpack Bridges
@@ -20,7 +23,7 @@ Defines `mkPathAHdr` and proves bidirectional spatial message unpacking and reas
 `pathAMsgRemInnerAt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -28,7 +31,7 @@ set_option linter.unusedSimpArgs false
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Poll
 
-open Arm64 Arm64.Process ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection ProofLib.Variant
+open Arm64 Arm64.Process ProofLib ProofLib.ProgramReflection ProofLib.Variant
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSession CryptoVerification.LibsignalSessionRepr
@@ -49,7 +52,7 @@ open CryptoVerification.SignalSession.Cli
 open CryptoVerification.SignalSession.Cli.RunProofs
 
 /-- Canonical `HandshakeHdr` extracted from a typed `PreKeyMessageFields`. -/
-def mkPathAHdr (m : PreKeyMessageFields) : HandshakeHdr where
+@[expose] def mkPathAHdr (m : PreKeyMessageFields) : HandshakeHdr where
   ikAPk := E2E.vecU8 m.idPub
   ekAPk := E2E.vecU8 m.baseKey
   spkId := u32 m.spkId
@@ -86,7 +89,7 @@ theorem vecU8_length {n : Nat} (v : List.Vector (BitVec 8) n) :
   simp [E2E.vecU8, E2E.toU8, v.toList_length]
 
 /-- Remainder of `preKeyMsgRemBaseIdKeyAt` after carving out the read-only fields in `p2MsgFieldsAt`. -/
-def pathAMsgRemInnerAt (g : PreKeyMsgGhost) (msgA : BitVec 64)
+@[expose] def pathAMsgRemInnerAt (g : PreKeyMsgGhost) (msgA : BitVec 64)
     (m : PreKeyMessageFields) (i : SignalMessage) : SepProp :=
   ⌜g.kyberPtr ≠ 0 ∧ 1569 < 2 ^ 63⌝ ∗
   E2E.HooksE.A0.live g.kyberPtr 1569 1 ∗
@@ -95,7 +98,7 @@ def pathAMsgRemInnerAt (g : PreKeyMsgGhost) (msgA : BitVec 64)
   memRegion (msgA + 0xf1#64) 7
 
 /-- `A`-polymorphic generalization of `pathAMsgRemInnerAt` over `(A : RustAlloc)`. -/
-def pathAMsgRemInnerAtExt (A : RustAlloc) (g : PreKeyMsgGhost) (msgA : BitVec 64)
+@[expose] def pathAMsgRemInnerAtExt (A : RustAlloc) (g : PreKeyMsgGhost) (msgA : BitVec 64)
     (m : PreKeyMessageFields) (i : SignalMessage) : SepProp :=
   ⌜g.kyberPtr ≠ 0 ∧ 1569 < 2 ^ 63⌝ ∗
   A.live g.kyberPtr 1569 1 ∗
@@ -250,7 +253,7 @@ theorem coro_scratch_736_split (fut : BitVec 64) :
   ac_rfl
 
 /-- Untouched sub-regions of `memRegion (sp + 0x550#64) 1824` outside `stageP2PreAt`. -/
-def sp550P2V1RemAt (sp : BitVec 64) : SepProp :=
+@[expose] def sp550P2V1RemAt (sp : BitVec 64) : SepProp :=
   memRegion (sp + 0x550#64) 16 ∗ memRegion (sp + 0x580#64) 288 ∗
   memRegion (sp + 0x6c0#64) 288 ∗ memRegion (sp + 0x800#64) 304 ∗
   memRegion (sp + 0x970#64) 32 ∗ memRegion (sp + 0x990#64) 256 ∗

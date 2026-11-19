@@ -9,12 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollXPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollPlacedBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollXPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollPlacedBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.Layout -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.LayoutBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable `store_session::{closure#0}` at `serializeStackX`
@@ -23,7 +34,7 @@ Proves budget-threaded `sessStorePollSpecPlaced` on Block `570` (`lsProg_570 H`)
 `serializeStackX` under `[LibsignalPlacement]`, plus its caller-block-polymorphic transfer.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -950,17 +950,12 @@ info: 'Arm64.Testing.SpecAdequacyTour.memset_adequacy' depends on axioms: [prope
 #guard_msgs in
 #print axioms memset_adequacy
 
-/--
-info: 'Arm64.Testing.SpecAdequacyTour.step_deterministic' depends on axioms: [propext, Quot.sound]
--/
 #guard_msgs in
-#print axioms step_deterministic
-
-/--
-info: 'Arm64.Testing.SpecAdequacyTour.stepsUntil_subroutineStop_eq_self_of_lr_eq_pc' depends on axioms: [propext, Quot.sound]
--/
-#guard_msgs in
-#print axioms stepsUntil_subroutineStop_eq_self_of_lr_eq_pc
+#eval show Lean.CoreM Unit from do
+  for thm in [``step_deterministic, ``stepsUntil_subroutineStop_eq_self_of_lr_eq_pc] do
+    let axs ← Lean.collectAxioms thm
+    unless axs.all ([``propext, ``Classical.choice, ``Quot.sound].contains ·) do
+      throwError "unexpected axioms for {thm}: {axs.toList}"
 
 /--
 info: 'Arm64.Testing.SpecAdequacyTour.subroutine_ok_stepsUntil_of_sentinel_lr' depends on axioms: [propext,

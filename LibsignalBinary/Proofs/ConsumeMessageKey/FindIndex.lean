@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop -- proof-setup: allow-public-import
 
 /-!
 # Refinement of `RatchetState::find_receiver_chain_index`
@@ -19,19 +19,12 @@ Proves that `RatchetState::find_receiver_chain_index` (`0xea88`) with callees
 satisfies `findIndexSpec`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalSession
 
 open Arm64 ProofLib CryptoGames CryptoGames.HMAC CryptoGames.LibsignalSession
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
-
-/-- `RatchetState::find_receiver_chain_index` satisfies `FindIndexOk`. -/
-theorem find_receiver_chain_index_ok (img : Obj.Image) (F : ShaState → List (BitVec 8) → ShaState)
-    (alloc : String → Option (State → State)) (A : RustAlloc)
-    (himg : Obj.Loads libsignalSessionImage img) :
-    FindIndexOk img F alloc A := by
-  exact FindReceiverChainIndex.find_receiver_chain_index_bridge img F alloc A himg
 
 theorem find_receiver_chain_index_placed_ok [LibsignalPlacement]
     {H : String → Option (State → State)} (A : RustAlloc)

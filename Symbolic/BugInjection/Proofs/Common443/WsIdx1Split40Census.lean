@@ -21,7 +21,6 @@ open DY.Libsignal.TripleRatchet (TRSignalMsg parseTrSignalMsg)
 open Symbolic.BugInjection Symbolic.BugInjection.Disproofs.Hyp.FrozenSSC.Interp0 Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1 Symbolic.BugInjection.Proofs.Common443.Census443Defs Symbolic.BugInjection.Proofs.Common443.WsIdx1CensusDefs
 theorem kemDecap_kemEncap_fst (sk e : DY.Bytes) : PQKem.kemDecap sk (PQKem.kemEncap (PQKem.kemPk sk) e).1 = some (PQKem.kemEncap (PQKem.kemPk sk) e).2 := by simp only [PQKem.kemDecap, PQKem.CanPQKem.kemDecap, PQKem.kemEncap, PQKem.CanPQKem.kemEncap, PQKem.kemPk, PQKem.CanPQKem.kemPk, BytesView.view_pack, ↓reduceIte]
 theorem aliceAgreement_fst (ikA ek ikBPk spkPk pqPk : DY.Bytes) (opk : Option DY.Bytes) (e : DY.Bytes) : (DY.Libsignal.PQXDH.aliceAgreement ikA ek ikBPk spkPk pqPk opk e).1 = (PQKem.kemEncap pqPk e).1 := rfl
-def Split40PkPin : Prop := ∀ r : Records, compFitsPinned setup compI0 r → setupPublic r 6 = PQKem.kemPk (setupSecret r 4)
 def split40NewTerms (r : Records) (ms' : List Move) (p : PreKeyFields) (x : PreKeyRep) : List DY.Bytes :=
   match parseTrSignalMsg x.msg with
   | none => [x.ek, x.ct, x.msg]

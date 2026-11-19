@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeProofs
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeSigEval
-public import Computational.Proofs.ReductionDsl.Soundness
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeProofs -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeSigEval -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.Soundness
 import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
@@ -21,7 +21,7 @@ Establishes step-cost, AST-size, and primitive/signing query-budget bounds (`Sig
 for the `ReductionDsl` `SigEufCma` reductions `sigReductionAuthProg` and `sigReductionAuthProg2`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,54 +31,11 @@ open _root_.ReductionDsl hiding B PTag U32 bundleOfV bundleT bundleV dhSecretsT 
 open SignalPqxdh SignalPqxdh.LegacyCosted SignalPqxdh.Security SignalPqxdh.Security.ReductionDsl
 open OracleSpec OracleComp
 
-abbrev sigReductionAuthDslProg (S : Setup) (b : QueryBudget) :=
-  sigReductionAuthProg S b.q_total
-
-theorem sigReductionAuthDslProg_totalCost_le (S : Setup) (b : QueryBudget) :
-    (sigReductionAuthDslProg S b).totalCost b.q_total ≤ stepCostBudget S b :=
-  sigReductionAuthProg_totalCost_le S b
-
 theorem sigReductionAuthProg_primQueries_le_budget (S : Setup) (b : QueryBudget) (K : Nat) :
     (sigReductionAuthProg S K).totalQueries sigPrimW sigWS b.q_total ≤ primQueryBudget S b := by
   have h := sigReductionAuthProg_totalQueries_prim_le S K b.q_total
   unfold primQueryBudget
   nlinarith
-
-theorem sigReductionAuthDslProg_totalPrimQueries_le (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    (sigReductionAuthDslProg S b).totalQueries sigPrimW sigWS b.q_total ≤
-      (sigReductionAuthDslAdv S b A).q_prim :=
-  sigReductionAuthProg_primQueries_le_budget S b b.q_total
-
-theorem sigReductionAuthProg_primBounded (S : Setup) (K q : Nat)
-    (A : Unit → OracleComp (unifSpec + authSpec S) Bool)
-    (hA : ∀ u, (A u).IsQueryBoundP (_root_.ReductionDsl.isGameQuery (G := authSpec S)) q)
-    (pk : Bytes) :
-    ((sigReductionAuthProg S K).eval A pk).IsQueryBoundP
-      (fun q => SignalPqxdh.isPrimQuery q = true)
-      ((sigReductionAuthProg S K).totalQueries sigPrimW sigWS q) :=
-  CostedReduction.queryBound_eval (sigReductionAuthProg S K)
-    (fun q => SignalPqxdh.isPrimQuery q = true) sigPrimW sigWS
-    (fun g _ hg => by cases g with | inl _ => exact le_rfl | inr _ => cases hg)
-    (fun n => (isQueryBoundP_query_iff (spec := PrimBaseSpec + eufCmaSignOracle.spec)
-      (fun q => SignalPqxdh.isPrimQuery q = true) (Sum.inl (Sum.inl n)) 0).2
-      (fun h => by cases h))
-    A q hA pk
-
-/-- `sigReductionAuthDslAdv` respects its declared signing and primitive query budgets. -/
-theorem sigReductionAuthDslAdv_bounded (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    (sigReductionAuthDslAdv S b A).Bounded := by
-  have hA : ∀ u : Unit,
-      A.1.run.IsQueryBoundP (_root_.ReductionDsl.isGameQuery (G := authSpec S)) b.q_total := by
-    intro _
-    have h := SignalPqxdh.QueryBounded.auth_total A.2
-    convert h using 1; funext q; cases q <;>
-      simp [_root_.ReductionDsl.isGameQuery, SignalPqxdh.isGameQuery]
-  refine ⟨fun pk => ?_, fun pk => ?_⟩
-  · exact sigReductionAuthProg_chalBounded S b.q_total (fun _ => A.1.run) pk
-  · exact (sigReductionAuthProg_primBounded S b.q_total b.q_total (fun _ => A.1.run) hA pk).mono
-      (sigReductionAuthDslProg_totalPrimQueries_le S b A)
 
 abbrev sigReductionAuthDslProg2 (S : Setup) (b : QueryBudget) :=
   sigReductionAuthProg2 S b.q_total
@@ -156,12 +113,6 @@ theorem sigReductionAuthDslProg2_two_mul_totalCost_le_stepCostBudget (S : Setup)
     nlinarith [Nat.zero_le (m * M_dh), Nat.zero_le (m * M_sess),
       Nat.zero_le (M_dh ^ 2), Nat.zero_le (M_dh * M_sess),
       Nat.zero_le (m * L_dh), Nat.zero_le (m * L_sess)]
-
-theorem sigReductionAuthDslProg2_totalCost_le_stepCostBudget (S : Setup) (b : QueryBudget) :
-    (sigReductionAuthDslProg2 S b).totalCost b.q_total ≤
-      _root_.SignalPqxdh.Security.stepCostBudget S b := by
-  have := sigReductionAuthDslProg2_two_mul_totalCost_le_stepCostBudget S b
-  omega
 
 private theorem ah2_bits_mono {a b : ℕ} (h : a ≤ b) : bits a ≤ bits b :=
   Nat.add_le_add_right (Nat.log_mono_right h) 1

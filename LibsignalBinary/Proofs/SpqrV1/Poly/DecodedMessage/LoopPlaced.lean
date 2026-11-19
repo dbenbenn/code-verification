@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.Loop
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.Loop -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::decoded_message`: Relocatable Loop Lemmas
@@ -20,7 +21,7 @@ Relocatable `[LibsignalPlacement]` proofs of the inner binary-search loop (`+568
 `collectPointsVecs` loops (`+128..+352` and `+128..+288`) on Block `418`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.DecodedMessage
 

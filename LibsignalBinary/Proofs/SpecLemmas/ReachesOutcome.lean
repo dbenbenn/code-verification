@@ -20,7 +20,7 @@ Defines inductive demonic reachability (`DemonicReaches`) and provides `reaches_
 introduction, consequence, congruence, `SepWPp` bridge, and `withStepsPost` combinators.
 -/
 
-@[expose] public section
+public section
 
 namespace Arm64
 
@@ -71,49 +71,7 @@ theorem DemonicReaches.of_steps {prog : Program} {done : State → Prop}
     DemonicReaches prog done s :=
   DemonicReaches.of_steps_deterministic (fun _ _ _ h1 h2 => Step.deterministic h1 h2) hsteps hdone
 
-theorem DemonicReaches.to_exists_steps {prog : Program} {done : State → Prop}
-    {s : State} (h : DemonicReaches prog done s) :
-    ∃ sf, Steps prog s sf ∧ done sf := by
-  induction h with
-  | @here s hdone => exact ⟨s, .refl s, hdone⟩
-  | @step s _ _ hex _ ih =>
-    rcases hex with ⟨s', hs'⟩
-    rcases ih s' hs' with ⟨sf, hsteps, hdone⟩
-    exact ⟨sf, .step hs' hsteps, hdone⟩
-
-theorem DemonicReaches.withSteps_aux {prog : Program} {done : State → Prop}
-    {s0 s : State} (h : DemonicReaches prog done s) (hpre : Steps prog s0 s) :
-    DemonicReaches prog (fun sf => Steps prog s0 sf ∧ done sf) s := by
-  induction h with
-  | @here s hdone => exact .here ⟨hpre, hdone⟩
-  | @step s hnot hrun hex _ ih =>
-    exact .step (fun ⟨_, hd⟩ => hnot hd) hrun hex
-      (fun s' hs' => ih s' hs' (Steps.trans hpre (.step hs' (.refl s'))))
-
-/-- Enrich every reached terminal state of `DemonicReaches` with the witnessing
-    execution trace `Steps prog s0 sf`. -/
-theorem DemonicReaches.withSteps {prog : Program} {done : State → Prop}
-    {s0 : State} (h : DemonicReaches prog done s0) :
-    DemonicReaches prog (fun sf => Steps prog s0 sf ∧ done sf) s0 :=
-  h.withSteps_aux (.refl s0)
-
-theorem reaches_outcome_of_demonicReaches {α : Type} {prog : Program}
-    {spec : Spec α} {x : α} {R : SepProp} {s0 s : State}
-    (h : prog.CodeLoaded s.mem → DemonicReaches prog (SubroutineOutcome spec x R s0) s) :
-    reaches_outcome prog spec x R s0 s :=
-  reaches_outcome.of_codeLoaded fun hL => by
-    rcases (h hL).to_exists_steps with ⟨sf, hsteps, hout⟩
-    exact reaches_outcome_steps hsteps (reaches_outcome.of_outcome hout)
-
 /-! ## `reaches_outcome` introduction & consequence helpers -/
-
-/-- Introduce `reaches_outcome` from `Steps prog s sf` and `SubroutineOutcome spec x R s0 sf`. -/
-theorem reaches_outcome_of_outcome_steps {α : Type} {prog : Program}
-    {spec : Spec α} {x : α} {R : SepProp} {s0 s sf : State}
-    (hsteps : Steps prog s sf)
-    (hout : SubroutineOutcome spec x R s0 sf) :
-    reaches_outcome prog spec x R s0 s :=
-  reaches_outcome_steps hsteps (reaches_outcome.of_outcome hout)
 
 /-- Introduce `reaches_outcome` at a panicked terminal state reached via `Steps`. -/
 theorem reaches_outcome_of_panic_steps {α : Type} {prog : Program}
@@ -123,32 +81,6 @@ theorem reaches_outcome_of_panic_steps {α : Type} {prog : Program}
     (hq : sf.mem ⊨ spec.onPanic x s0 sf ∗ R) :
     reaches_outcome prog spec x R s0 s :=
   reaches_outcome_steps hsteps (reaches_outcome_refl_panic hpan hq)
-
-/-- Map the `post` and `onPanic` clauses of `reaches_outcome` when `onExit` and
-    `onOom` of `spec₁` are `⌜False⌝`. -/
-theorem reaches_outcome_mono_post_panic {α β : Type} {prog : Program}
-    {spec₁ : Spec α} {spec₂ : Spec β} {x : α} {y : β}
-    {R₁ R₂ : SepProp} {s0 s : State}
-    (h : reaches_outcome prog spec₁ x R₁ s0 s)
-    (hpost : ∀ sf, Returned s0 sf → CallingConventionPreserved s0 sf →
-      (sf.mem ⊨ spec₁.post x s0 sf ∗ R₁) →
-      (sf.mem ⊨ spec₂.post y s0 sf ∗ R₂))
-    (hpan : ∀ sf, sf.status = .Panicked →
-      (sf.mem ⊨ spec₁.onPanic x s0 sf ∗ R₁) →
-      (sf.mem ⊨ spec₂.onPanic y s0 sf ∗ R₂))
-    (hexit : ∀ code sf, sf.status = .Exited code →
-      (sf.mem ⊨ spec₁.onExit x code s0 sf ∗ R₁) →
-      (sf.mem ⊨ spec₂.onExit y code s0 sf ∗ R₂))
-    (hoom : ∀ sf, sf.status = .OutOfMemory →
-      (sf.mem ⊨ spec₁.onOom x s0 sf ∗ R₁) →
-      (sf.mem ⊨ spec₂.onOom y s0 sf ∗ R₂)) :
-    reaches_outcome prog spec₂ y R₂ s0 s :=
-  h.mono_outcome fun sf hout => by
-    rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan_sf, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom_sf, hq⟩
-    · exact Or.inl ⟨hret, hcc, hpost sf hret hcc hq⟩
-    · exact Or.inr (Or.inl ⟨hpan_sf, hpan sf hpan_sf hq⟩)
-    · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hexit code sf hex hq⟩))
-    · exact Or.inr (Or.inr (Or.inr ⟨hoom_sf, hoom sf hoom_sf hq⟩))
 
 /-! ## Congruence of `SubroutineOutcome` and `reaches_outcome` -/
 

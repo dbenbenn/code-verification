@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommon
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommon -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -22,7 +22,7 @@ Lifts the Hoare contracts of the five inlined `V1State.Chunked.*::merge` subrout
 combinators, `SpqrMergeLoopEnv` specializations, and panic-free `SepWPpLscro` call-frame helpers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -58,10 +58,10 @@ open CryptoVerification.SpqrV1.Prost.MessageMerge
 
 /-! ## 1. `V1State.Chunked.KeysUnsampled::merge` -/
 
-def ChunkedKeysUnsampledMergeEnv (x : ChunkedKeysUnsampledMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChunkedKeysUnsampledMergeEnv (x : ChunkedKeysUnsampledMergeGhost) (evs : List AllocEvent) : Prop :=
   SpqrMergeLoopEnv (6 * x.bs.length + 12) x.bs.length 0 evs
 
-def ChunkedKeysUnsampledMergePostEnv (x : ChunkedKeysUnsampledMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChunkedKeysUnsampledMergePostEnv (x : ChunkedKeysUnsampledMergeGhost) (evs : List AllocEvent) : Prop :=
   match (mergeMessage V1State.Chunked.KeysUnsampled.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 99).toOption with
   | some (_, rest) =>
     SpqrMergeLoopEnv (6 * (x.bs.length - rest.length)) x.bs.length 0 evs
@@ -77,7 +77,7 @@ theorem chunkedKeysUnsampledMergePostEnv_imp_pre {x : ChunkedKeysUnsampledMergeG
   · exact h
 
 /-- Envelope-parameterized budget-threaded contract of `V1State.Chunked.KeysUnsampled::merge`. -/
-def chunkedKeysUnsampledMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedKeysUnsampledMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : ChunkedKeysUnsampledMergeGhost → List AllocEvent → Prop) :
     Spec (ChunkedKeysUnsampledMergeGhost × M.σ) where
@@ -105,7 +105,7 @@ def chunkedKeysUnsampledMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBud
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
 /-- Budget-threaded contract of `V1State.Chunked.KeysUnsampled::merge` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def chunkedKeysUnsampledMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedKeysUnsampledMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChunkedKeysUnsampledMergeGhost × M.σ) :=
   chunkedKeysUnsampledMergeSpecOfEnv A lim
     ChunkedKeysUnsampledMergeEnv ChunkedKeysUnsampledMergePostEnv
@@ -113,13 +113,13 @@ def chunkedKeysUnsampledMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M
 /-! ## 2. `V1State.Chunked.NoHeaderReceived::merge` -/
 
 /-- `PolynomialDecoder` capacity upper bound for `Chunked.NoHeaderReceived::merge`. -/
-def noHeaderReceivedPolyCapBound (x : ChunkedNoHeaderReceivedMergeGhost) : Nat :=
+@[expose] def noHeaderReceivedPolyCapBound (x : ChunkedNoHeaderReceivedMergeGhost) : Nat :=
   optPolyDecoderPtsLen x.msg.receivingHdr + x.bs.length
 
-def ChunkedNoHeaderReceivedMergeEnv (x : ChunkedNoHeaderReceivedMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChunkedNoHeaderReceivedMergeEnv (x : ChunkedNoHeaderReceivedMergeGhost) (evs : List AllocEvent) : Prop :=
   SpqrMergeLoopEnv (6 * x.bs.length + 12) x.bs.length (noHeaderReceivedPolyCapBound x) evs
 
-def ChunkedNoHeaderReceivedMergePostEnv (x : ChunkedNoHeaderReceivedMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChunkedNoHeaderReceivedMergePostEnv (x : ChunkedNoHeaderReceivedMergeGhost) (evs : List AllocEvent) : Prop :=
   match (mergeMessage V1State.Chunked.NoHeaderReceived.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 99).toOption with
   | some (_, rest) =>
     SpqrMergeLoopEnv (6 * (x.bs.length - rest.length)) x.bs.length (noHeaderReceivedPolyCapBound x) evs
@@ -135,7 +135,7 @@ theorem chunkedNoHeaderReceivedMergePostEnv_imp_pre {x : ChunkedNoHeaderReceived
   · exact h
 
 /-- Envelope-parameterized budget-threaded contract of `V1State.Chunked.NoHeaderReceived::merge`. -/
-def chunkedNoHeaderReceivedMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedNoHeaderReceivedMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : ChunkedNoHeaderReceivedMergeGhost → List AllocEvent → Prop) :
     Spec (ChunkedNoHeaderReceivedMergeGhost × M.σ) where
@@ -163,7 +163,7 @@ def chunkedNoHeaderReceivedMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAlloc
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
 /-- Budget-threaded contract of `V1State.Chunked.NoHeaderReceived::merge` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def chunkedNoHeaderReceivedMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedNoHeaderReceivedMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChunkedNoHeaderReceivedMergeGhost × M.σ) :=
   chunkedNoHeaderReceivedMergeSpecOfEnv A lim
     ChunkedNoHeaderReceivedMergeEnv ChunkedNoHeaderReceivedMergePostEnv
@@ -171,13 +171,13 @@ def chunkedNoHeaderReceivedMergeSpec {M : AllocCostModel} (A : RustCliAllocBudge
 /-! ## 3. `V1State.Chunked.Ct2Sampled::merge` -/
 
 /-- `PolynomialEncoder` capacity upper bound for `Chunked.Ct2Sampled::merge`. -/
-def ct2SampledPolyCapBound (x : ChunkedCt2SampledMergeGhost) : Nat :=
+@[expose] def ct2SampledPolyCapBound (x : ChunkedCt2SampledMergeGhost) : Nat :=
   Nat.max (optPolyEncoderPtsLen x.msg.sendingCt2) (optPolyEncoderPolysLen x.msg.sendingCt2) + x.bs.length
 
-def ChunkedCt2SampledMergeEnv (x : ChunkedCt2SampledMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChunkedCt2SampledMergeEnv (x : ChunkedCt2SampledMergeGhost) (evs : List AllocEvent) : Prop :=
   SpqrMergeLoopEnv (6 * x.bs.length + 12) x.bs.length (ct2SampledPolyCapBound x) evs
 
-def ChunkedCt2SampledMergePostEnv (x : ChunkedCt2SampledMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChunkedCt2SampledMergePostEnv (x : ChunkedCt2SampledMergeGhost) (evs : List AllocEvent) : Prop :=
   match (mergeMessage V1State.Chunked.Ct2Sampled.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 99).toOption with
   | some (_, rest) =>
     SpqrMergeLoopEnv (6 * (x.bs.length - rest.length)) x.bs.length (ct2SampledPolyCapBound x) evs
@@ -193,7 +193,7 @@ theorem chunkedCt2SampledMergePostEnv_imp_pre {x : ChunkedCt2SampledMergeGhost}
   · exact h
 
 /-- Envelope-parameterized budget-threaded contract of `V1State.Chunked.Ct2Sampled::merge`. -/
-def chunkedCt2SampledMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedCt2SampledMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : ChunkedCt2SampledMergeGhost → List AllocEvent → Prop) :
     Spec (ChunkedCt2SampledMergeGhost × M.σ) where
@@ -221,7 +221,7 @@ def chunkedCt2SampledMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
 /-- Budget-threaded contract of `V1State.Chunked.Ct2Sampled::merge` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def chunkedCt2SampledMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedCt2SampledMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChunkedCt2SampledMergeGhost × M.σ) :=
   chunkedCt2SampledMergeSpecOfEnv A lim
     ChunkedCt2SampledMergeEnv ChunkedCt2SampledMergePostEnv
@@ -229,13 +229,13 @@ def chunkedCt2SampledMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
 /-! ## 4. `V1State.Chunked.HeaderReceived::merge` -/
 
 /-- `PolynomialDecoder` capacity upper bound for `Chunked.HeaderReceived::merge`. -/
-def headerReceivedPolyCapBound (x : ChunkedHeaderReceivedMergeGhost) : Nat :=
+@[expose] def headerReceivedPolyCapBound (x : ChunkedHeaderReceivedMergeGhost) : Nat :=
   optPolyDecoderPtsLen x.msg.receivingEk + x.bs.length
 
-def ChunkedHeaderReceivedMergeEnv (x : ChunkedHeaderReceivedMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChunkedHeaderReceivedMergeEnv (x : ChunkedHeaderReceivedMergeGhost) (evs : List AllocEvent) : Prop :=
   SpqrMergeLoopEnv (6 * x.bs.length + 12) x.bs.length (headerReceivedPolyCapBound x) evs
 
-def ChunkedHeaderReceivedMergePostEnv (x : ChunkedHeaderReceivedMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChunkedHeaderReceivedMergePostEnv (x : ChunkedHeaderReceivedMergeGhost) (evs : List AllocEvent) : Prop :=
   match (mergeMessage V1State.Chunked.HeaderReceived.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 99).toOption with
   | some (_, rest) =>
     SpqrMergeLoopEnv (6 * (x.bs.length - rest.length)) x.bs.length (headerReceivedPolyCapBound x) evs
@@ -251,7 +251,7 @@ theorem chunkedHeaderReceivedMergePostEnv_imp_pre {x : ChunkedHeaderReceivedMerg
   · exact h
 
 /-- Envelope-parameterized budget-threaded contract of `V1State.Chunked.HeaderReceived::merge`. -/
-def chunkedHeaderReceivedMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedHeaderReceivedMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : ChunkedHeaderReceivedMergeGhost → List AllocEvent → Prop) :
     Spec (ChunkedHeaderReceivedMergeGhost × M.σ) where
@@ -279,7 +279,7 @@ def chunkedHeaderReceivedMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBu
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
 /-- Budget-threaded contract of `V1State.Chunked.HeaderReceived::merge` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def chunkedHeaderReceivedMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedHeaderReceivedMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChunkedHeaderReceivedMergeGhost × M.σ) :=
   chunkedHeaderReceivedMergeSpecOfEnv A lim
     ChunkedHeaderReceivedMergeEnv ChunkedHeaderReceivedMergePostEnv
@@ -287,13 +287,13 @@ def chunkedHeaderReceivedMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget 
 /-! ## 5. `V1State.Chunked.KeysSampled::merge` -/
 
 /-- `PolynomialEncoder` capacity upper bound for `Chunked.KeysSampled::merge`. -/
-def keysSampledPolyCapBound (x : ChunkedKeysSampledMergeGhost) : Nat :=
+@[expose] def keysSampledPolyCapBound (x : ChunkedKeysSampledMergeGhost) : Nat :=
   Nat.max (optPolyEncoderPtsLen x.msg.sendingHdr) (optPolyEncoderPolysLen x.msg.sendingHdr) + x.bs.length
 
-def ChunkedKeysSampledMergeEnv (x : ChunkedKeysSampledMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChunkedKeysSampledMergeEnv (x : ChunkedKeysSampledMergeGhost) (evs : List AllocEvent) : Prop :=
   SpqrMergeLoopEnv (6 * x.bs.length + 12) x.bs.length (keysSampledPolyCapBound x) evs
 
-def ChunkedKeysSampledMergePostEnv (x : ChunkedKeysSampledMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChunkedKeysSampledMergePostEnv (x : ChunkedKeysSampledMergeGhost) (evs : List AllocEvent) : Prop :=
   match (mergeMessage V1State.Chunked.KeysSampled.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 99).toOption with
   | some (_, rest) =>
     SpqrMergeLoopEnv (6 * (x.bs.length - rest.length)) x.bs.length (keysSampledPolyCapBound x) evs
@@ -309,7 +309,7 @@ theorem chunkedKeysSampledMergePostEnv_imp_pre {x : ChunkedKeysSampledMergeGhost
   · exact h
 
 /-- Envelope-parameterized budget-threaded contract of `V1State.Chunked.KeysSampled::merge`. -/
-def chunkedKeysSampledMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedKeysSampledMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : ChunkedKeysSampledMergeGhost → List AllocEvent → Prop) :
     Spec (ChunkedKeysSampledMergeGhost × M.σ) where
@@ -337,7 +337,7 @@ def chunkedKeysSampledMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudge
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
 /-- Budget-threaded contract of `V1State.Chunked.KeysSampled::merge` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def chunkedKeysSampledMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedKeysSampledMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChunkedKeysSampledMergeGhost × M.σ) :=
   chunkedKeysSampledMergeSpecOfEnv A lim
     ChunkedKeysSampledMergeEnv ChunkedKeysSampledMergePostEnv
@@ -345,15 +345,15 @@ def chunkedKeysSampledMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
 /-! ## 6. `V1State.Chunked.HeaderSent::merge` -/
 
 /-- `Polynomial{Encoder,Decoder}` capacity upper bound for `Chunked.HeaderSent::merge`. -/
-def headerSentPolyCapBound (x : ChunkedHeaderSentMergeGhost) : Nat :=
+@[expose] def headerSentPolyCapBound (x : ChunkedHeaderSentMergeGhost) : Nat :=
   Nat.max
     (Nat.max (optPolyEncoderPtsLen x.msg.sendingEk) (optPolyEncoderPolysLen x.msg.sendingEk))
     (optPolyDecoderPtsLen x.msg.receivingCt1) + x.bs.length
 
-def ChunkedHeaderSentMergeEnv (x : ChunkedHeaderSentMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChunkedHeaderSentMergeEnv (x : ChunkedHeaderSentMergeGhost) (evs : List AllocEvent) : Prop :=
   SpqrMergeLoopEnv (6 * x.bs.length + 12) x.bs.length (headerSentPolyCapBound x) evs
 
-def ChunkedHeaderSentMergePostEnv (x : ChunkedHeaderSentMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChunkedHeaderSentMergePostEnv (x : ChunkedHeaderSentMergeGhost) (evs : List AllocEvent) : Prop :=
   match (mergeMessage V1State.Chunked.HeaderSent.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 99).toOption with
   | some (_, rest) =>
     SpqrMergeLoopEnv (6 * (x.bs.length - rest.length)) x.bs.length (headerSentPolyCapBound x) evs
@@ -369,7 +369,7 @@ theorem chunkedHeaderSentMergePostEnv_imp_pre {x : ChunkedHeaderSentMergeGhost}
   · exact h
 
 /-- Envelope-parameterized budget-threaded contract of `V1State.Chunked.HeaderSent::merge`. -/
-def chunkedHeaderSentMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedHeaderSentMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : ChunkedHeaderSentMergeGhost → List AllocEvent → Prop) :
     Spec (ChunkedHeaderSentMergeGhost × M.σ) where
@@ -398,7 +398,7 @@ def chunkedHeaderSentMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
 /-- Budget-threaded contract of `V1State.Chunked.HeaderSent::merge` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def chunkedHeaderSentMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedHeaderSentMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChunkedHeaderSentMergeGhost × M.σ) :=
   chunkedHeaderSentMergeSpecOfEnv A lim
     ChunkedHeaderSentMergeEnv ChunkedHeaderSentMergePostEnv
@@ -406,13 +406,13 @@ def chunkedHeaderSentMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
 /-! ## 7. `V1State.Chunked.EkReceivedCt1Sampled::merge` -/
 
 /-- `PolynomialEncoder` capacity upper bound for `Chunked.EkReceivedCt1Sampled::merge`. -/
-def ekReceivedCt1SampledPolyCapBound (x : ChunkedEkReceivedCt1SampledMergeGhost) : Nat :=
+@[expose] def ekReceivedCt1SampledPolyCapBound (x : ChunkedEkReceivedCt1SampledMergeGhost) : Nat :=
   Nat.max (optPolyEncoderPtsLen x.msg.sendingCt1) (optPolyEncoderPolysLen x.msg.sendingCt1) + x.bs.length
 
-def ChunkedEkReceivedCt1SampledMergeEnv (x : ChunkedEkReceivedCt1SampledMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChunkedEkReceivedCt1SampledMergeEnv (x : ChunkedEkReceivedCt1SampledMergeGhost) (evs : List AllocEvent) : Prop :=
   SpqrMergeLoopEnv (6 * x.bs.length + 12) x.bs.length (ekReceivedCt1SampledPolyCapBound x) evs
 
-def ChunkedEkReceivedCt1SampledMergePostEnv (x : ChunkedEkReceivedCt1SampledMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChunkedEkReceivedCt1SampledMergePostEnv (x : ChunkedEkReceivedCt1SampledMergeGhost) (evs : List AllocEvent) : Prop :=
   match (mergeMessage V1State.Chunked.EkReceivedCt1Sampled.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 99).toOption with
   | some (_, rest) =>
     SpqrMergeLoopEnv (6 * (x.bs.length - rest.length)) x.bs.length (ekReceivedCt1SampledPolyCapBound x) evs
@@ -428,7 +428,7 @@ theorem chunkedEkReceivedCt1SampledMergePostEnv_imp_pre {x : ChunkedEkReceivedCt
   · exact h
 
 /-- Envelope-parameterized budget-threaded contract of `V1State.Chunked.EkReceivedCt1Sampled::merge`. -/
-def chunkedEkReceivedCt1SampledMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedEkReceivedCt1SampledMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : ChunkedEkReceivedCt1SampledMergeGhost → List AllocEvent → Prop) :
     Spec (ChunkedEkReceivedCt1SampledMergeGhost × M.σ) where
@@ -456,7 +456,7 @@ def chunkedEkReceivedCt1SampledMergeSpecOfEnv {M : AllocCostModel} (A : RustCliA
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
 /-- Budget-threaded contract of `V1State.Chunked.EkReceivedCt1Sampled::merge` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def chunkedEkReceivedCt1SampledMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedEkReceivedCt1SampledMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChunkedEkReceivedCt1SampledMergeGhost × M.σ) :=
   chunkedEkReceivedCt1SampledMergeSpecOfEnv A lim
     ChunkedEkReceivedCt1SampledMergeEnv ChunkedEkReceivedCt1SampledMergePostEnv

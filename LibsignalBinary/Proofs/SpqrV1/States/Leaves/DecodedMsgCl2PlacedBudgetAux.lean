@@ -11,20 +11,22 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop
-public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.MainLoop
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.MainLoopPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl1PlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop
+public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.MainLoop
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.MainLoopPlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl1PlacedBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolateFull -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyDecoder as Decoder>::decoded_message` (Block `418`): `withLsCodeLoaded` `RustCliAllocBudget` Main Loop
@@ -34,7 +36,7 @@ and main evaluation loop (`decodedMessageLoop_cl_placed_*`) of `<PolyDecoder as 
 (Block `418`) under `RustCliAllocBudget M` and `LibsignalCodeLoaded lsmpl`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

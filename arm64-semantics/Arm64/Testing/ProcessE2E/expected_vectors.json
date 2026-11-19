@@ -2798,7 +2798,7 @@
       "id": "stderr_stdio/panic_formatted",
       "program": "stderr_stdio",
       "elf_path": "Arm64/Testing/ProcessE2E/bin/stderr_stdio.elf",
-      "category": "unmodeled_trap",
+      "category": "match",
       "args": [
         "stderr_stdio",
         "panic-fmt"
@@ -2867,19 +2867,19 @@
         ]
       },
       "expected_lean": {
-        "kind": "exception",
-        "lean_exit_code": null,
-        "syscall_nr": 135,
-        "syscall_name": "rt_sigprocmask",
-        "exception_substr": "unmodeled non-zero signal mask in rt_sigprocmask",
-        "notes": "Heap-allocated formatted `panic!(...)` emits the message on `stderr` and calls musl `abort()` -> `raise(SIGABRT)` -> `rt_sigprocmask(SIG_BLOCK, &app_mask, ...)` (`135`), which fails closed with `.Exception` on non-zero signal masks."
+        "kind": "signaled",
+        "lean_exit_code": 134,
+        "syscall_nr": null,
+        "syscall_name": null,
+        "exception_substr": null,
+        "notes": "Heap-allocated formatted `panic!(...)` emits the message on `stderr` and calls musl `abort()` -> `raise(SIGABRT)` -> `rt_sigprocmask` + `tkill(1, SIGABRT)` -> `rt_sigprocmask(SIG_SETMASK)` delivering `.Signaled 6#7` (`134`, matching QEMU)."
       }
     },
     {
       "id": "stderr_stdio/abort_after_stdout",
       "program": "stderr_stdio",
       "elf_path": "Arm64/Testing/ProcessE2E/bin/stderr_stdio.elf",
-      "category": "unmodeled_trap",
+      "category": "match",
       "args": [
         "stderr_stdio",
         "abort-flush"
@@ -2942,12 +2942,12 @@
         ]
       },
       "expected_lean": {
-        "kind": "exception",
-        "lean_exit_code": null,
-        "syscall_nr": 135,
-        "syscall_name": "rt_sigprocmask",
-        "exception_substr": "unmodeled non-zero signal mask in rt_sigprocmask",
-        "notes": "Flushes `\"before-abort\\n\"` to `stdout` under `BrkMmapAlloc`, then calls `std::process::abort()` -> musl `raise(SIGABRT)` -> `rt_sigprocmask(SIG_BLOCK, &app_mask, ...)` (`135`), which fails closed with `.Exception` on non-zero signal masks."
+        "kind": "signaled",
+        "lean_exit_code": 134,
+        "syscall_nr": null,
+        "syscall_name": null,
+        "exception_substr": null,
+        "notes": "Flushes `\"before-abort\\n\"` to `stdout` under `BrkMmapAlloc`, then calls `std::process::abort()` -> musl `raise(SIGABRT)` -> `.Signaled 6#7` (`134`, matching QEMU)."
       }
     },
     {
@@ -4893,7 +4893,7 @@
       "id": "unmodified_std_probe/panic_gettid",
       "program": "unmodified_std_probe",
       "elf_path": "Arm64/Testing/ProcessE2E/bin/unmodified_std_probe.elf",
-      "category": "unmodeled_trap",
+      "category": "match",
       "args": [
         "unmodified_std_probe",
         "panic"
@@ -4950,19 +4950,19 @@
         ]
       },
       "expected_lean": {
-        "kind": "exception",
-        "lean_exit_code": null,
-        "syscall_nr": 135,
-        "syscall_name": "rt_sigprocmask",
-        "exception_substr": "unmodeled non-zero signal mask in rt_sigprocmask",
-        "notes": "`panic!(...)` queries `gettid` (`178` -> `SIM_TID = 1`), writes the panic message to `stderr`, and calls musl `abort()` -> `raise(SIGABRT)` -> `rt_sigprocmask(SIG_BLOCK, &app_mask, ...)` (`135`), which fails closed with `.Exception` on non-zero signal masks."
+        "kind": "signaled",
+        "lean_exit_code": 134,
+        "syscall_nr": null,
+        "syscall_name": null,
+        "exception_substr": null,
+        "notes": "`panic!(...)` queries `gettid` (`178` -> `SIM_TID = 1`), writes the panic message to `stderr`, and calls musl `abort()` -> `raise(SIGABRT)` -> `.Signaled 6#7` (`134`, matching QEMU)."
       }
     },
     {
       "id": "unmodified_std_probe/abort_sigabrt",
       "program": "unmodified_std_probe",
       "elf_path": "Arm64/Testing/ProcessE2E/bin/unmodified_std_probe.elf",
-      "category": "unmodeled_trap",
+      "category": "match",
       "args": [
         "unmodified_std_probe",
         "abort"
@@ -5007,12 +5007,12 @@
         ]
       },
       "expected_lean": {
-        "kind": "exception",
-        "lean_exit_code": null,
-        "syscall_nr": 135,
-        "syscall_name": "rt_sigprocmask",
-        "exception_substr": "unmodeled non-zero signal mask in rt_sigprocmask",
-        "notes": "`std::process::abort()` calls musl `abort()` -> `raise(SIGABRT)` -> `rt_sigprocmask(SIG_BLOCK, &app_mask, ...)` (`135`), which fails closed with `.Exception` on non-zero signal masks."
+        "kind": "signaled",
+        "lean_exit_code": 134,
+        "syscall_nr": null,
+        "syscall_name": null,
+        "exception_substr": null,
+        "notes": "`std::process::abort()` calls musl `abort()` -> `raise(SIGABRT)` -> `.Signaled 6#7` (`134`, matching QEMU)."
       }
     },
     {

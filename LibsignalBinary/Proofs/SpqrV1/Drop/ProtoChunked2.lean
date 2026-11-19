@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Drop Glue for Protobuf Chunked States (`HeaderReceived`, `EkSentCt1Received`, `HeaderSent`)
@@ -26,7 +26,7 @@ Proves subroutine contracts for:
 - `core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>` (`0x4ca84`, Block `281`)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Drop
 
@@ -311,56 +311,6 @@ local macro "proto_chunked_header_received_main_steps" entry:term : tactic =>
           rw [← stackAt_dropStack48_split_bottom s0.sp]
           wp_done))
 
-private theorem drop_proto_chunked_header_received_body {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoChunkedHeaderReceivedName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderReceived>" "__rustc::__rust_dealloc")) (rustDeallocSpec A))
-    (s0 : State) (fsp ptsPtr ptsCap : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (cur cnt : BitVec 64) (bs : List (BitVec 8)) (s : State) (Frame : SepProp),
-      s.pc = (dropProgAtExt b ext).fnAddr dropProtoChunkedHeaderReceivedName + 140#64 → s.status = .Running → Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = ptsPtr → s.readReg64 .x20 = ptsCap → s.readReg64 .x21 = cnt → s.readReg64 .x22 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropProtoChunkedHeaderReceivedName + 128#64) s
-        (vecU8 A cur bs ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm => (Pm ⊢ memRegion cur 24 ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧ sm.readReg64 .x19 = ptsPtr ∧ sm.readReg64 .x20 = ptsCap ∧
-          sm.readReg64 .x21 = cnt ∧ sm.readReg64 .x22 = cur + 8#64) := by
-  simp only [rustDeallocSpec] at hdealloc; dsimp only [dropProgAtExt, dropProtoChunkedHeaderReceivedName, BitVec.ofNat_eq_ofNat] at *
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderReceived>"
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderReceived>" = entry
-  examples_hide_fetches; proto_chunked2_body_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry 128#64
-
-private theorem drop_proto_chunked_header_received_loop {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoChunkedHeaderReceivedName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderReceived>" "__rustc::__rust_dealloc")) (rustDeallocSpec A))
-    (s0 : State) (fsp ptsPtr ptsCap : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (rest : List (List (BitVec 8))) (cur : BitVec 64) (s : State) (Frame : SepProp),
-      rest ≠ [] → rest.length * 24 < 2 ^ 63 →
-      s.pc = (dropProgAtExt b ext).fnAddr dropProtoChunkedHeaderReceivedName + 140#64 → s.status = .Running → Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = ptsPtr → s.readReg64 .x20 = ptsCap → s.readReg64 .x21 = BitVec.ofNat 64 rest.length → s.readReg64 .x22 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropProtoChunkedHeaderReceivedName + 164#64) s
-        (arrayAt (fun bs addr => vecU8 A addr bs) 24 cur rest ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm => (Pm ⊢ memRegion cur (rest.length * 24) ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧ sm.readReg64 .x19 = ptsPtr ∧ sm.readReg64 .x20 = ptsCap) := by
-  have hbody := drop_proto_chunked_header_received_body (b := b) (ext := ext) hdealloc s0 fsp ptsPtr ptsCap hfsp_align
-  dsimp only [dropProgAtExt, dropProtoChunkedHeaderReceivedName, BitVec.ofNat_eq_ofNat] at *
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderReceived>"
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderReceived>" = entry
-  examples_hide_fetches; proto_chunked2_loop_steps entry 128#64 140#64
-
-theorem drop_proto_chunked_header_received_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropProtoChunkedHeaderReceivedName) (dropProtoChunkedHeaderReceivedSpec A) := by
-  simp only [dropProtoChunkedHeaderReceivedSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoChunkedHeaderReceivedName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderReceived>" "__rustc::__rust_dealloc")) (rustDeallocSpec A) :=
-    sub_ok_of_addr_eq (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderReceived>" "__rustc::__rust_dealloc")) (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderReceived>") (ls_stub% "__rustc::__rust_dealloc") (by decide)) hdealloc
-  have hloop := drop_proto_chunked_header_received_loop (b := b) (ext := ext) hdealloc_raw
-  simp only [rustDeallocSpec] at hdealloc_raw
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderReceived>"
-  dsimp only [dropProgAtExt, dropProtoChunkedHeaderReceivedName, protoChunkedHeaderReceivedSize, BitVec.ofNat_eq_ofNat] at hloop hdealloc_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderReceived>" = entry
-  examples_hide_fetches; proto_chunked_header_received_main_steps entry
-
 section PlacedHeaderReceived
 variable [LibsignalPlacement]
 
@@ -591,56 +541,6 @@ local macro "proto_chunked_ek_sent_ct1_received_main_steps" entry:term : tactic 
           wp_call hdealloc_raw (g.ptr, g.cap.toNat * 24, 8)
           rw [← stackAt_dropStack48_split_bottom s0.sp]
           wp_done))
-
-private theorem drop_proto_chunked_ek_sent_ct1_received_body {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoChunkedEkSentCt1ReceivedName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::EkSentCt1Received>" "__rustc::__rust_dealloc")) (rustDeallocSpec A))
-    (s0 : State) (fsp ptsPtr ptsCap : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (cur cnt : BitVec 64) (bs : List (BitVec 8)) (s : State) (Frame : SepProp),
-      s.pc = (dropProgAtExt b ext).fnAddr dropProtoChunkedEkSentCt1ReceivedName + 160#64 → s.status = .Running → Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = ptsPtr → s.readReg64 .x20 = ptsCap → s.readReg64 .x21 = cnt → s.readReg64 .x22 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropProtoChunkedEkSentCt1ReceivedName + 148#64) s
-        (vecU8 A cur bs ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm => (Pm ⊢ memRegion cur 24 ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧ sm.readReg64 .x19 = ptsPtr ∧ sm.readReg64 .x20 = ptsCap ∧
-          sm.readReg64 .x21 = cnt ∧ sm.readReg64 .x22 = cur + 8#64) := by
-  simp only [rustDeallocSpec] at hdealloc; dsimp only [dropProgAtExt, dropProtoChunkedEkSentCt1ReceivedName, BitVec.ofNat_eq_ofNat] at *
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::EkSentCt1Received>"
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::EkSentCt1Received>" = entry
-  examples_hide_fetches; proto_chunked2_body_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry 148#64
-
-private theorem drop_proto_chunked_ek_sent_ct1_received_loop {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoChunkedEkSentCt1ReceivedName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::EkSentCt1Received>" "__rustc::__rust_dealloc")) (rustDeallocSpec A))
-    (s0 : State) (fsp ptsPtr ptsCap : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (rest : List (List (BitVec 8))) (cur : BitVec 64) (s : State) (Frame : SepProp),
-      rest ≠ [] → rest.length * 24 < 2 ^ 63 →
-      s.pc = (dropProgAtExt b ext).fnAddr dropProtoChunkedEkSentCt1ReceivedName + 160#64 → s.status = .Running → Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = ptsPtr → s.readReg64 .x20 = ptsCap → s.readReg64 .x21 = BitVec.ofNat 64 rest.length → s.readReg64 .x22 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropProtoChunkedEkSentCt1ReceivedName + 184#64) s
-        (arrayAt (fun bs addr => vecU8 A addr bs) 24 cur rest ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm => (Pm ⊢ memRegion cur (rest.length * 24) ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧ sm.readReg64 .x19 = ptsPtr ∧ sm.readReg64 .x20 = ptsCap) := by
-  have hbody := drop_proto_chunked_ek_sent_ct1_received_body (b := b) (ext := ext) hdealloc s0 fsp ptsPtr ptsCap hfsp_align
-  dsimp only [dropProgAtExt, dropProtoChunkedEkSentCt1ReceivedName, BitVec.ofNat_eq_ofNat] at *
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::EkSentCt1Received>"
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::EkSentCt1Received>" = entry
-  examples_hide_fetches; proto_chunked2_loop_steps entry 148#64 160#64
-
-theorem drop_proto_chunked_ek_sent_ct1_received_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropProtoChunkedEkSentCt1ReceivedName) (dropProtoChunkedEkSentCt1ReceivedSpec A) := by
-  simp only [dropProtoChunkedEkSentCt1ReceivedSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoChunkedEkSentCt1ReceivedName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::EkSentCt1Received>" "__rustc::__rust_dealloc")) (rustDeallocSpec A) :=
-    sub_ok_of_addr_eq (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::EkSentCt1Received>" "__rustc::__rust_dealloc")) (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::EkSentCt1Received>") (ls_stub% "__rustc::__rust_dealloc") (by decide)) hdealloc
-  have hloop := drop_proto_chunked_ek_sent_ct1_received_loop (b := b) (ext := ext) hdealloc_raw
-  simp only [rustDeallocSpec] at hdealloc_raw
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::EkSentCt1Received>"
-  dsimp only [dropProgAtExt, dropProtoChunkedEkSentCt1ReceivedName, protoChunkedEkSentCt1ReceivedSize, BitVec.ofNat_eq_ofNat] at hloop hdealloc_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::EkSentCt1Received>" = entry
-  examples_hide_fetches; proto_chunked_ek_sent_ct1_received_main_steps entry
 
 section PlacedEkSentCt1Received
 variable [LibsignalPlacement]
@@ -896,65 +796,6 @@ local macro "proto_chunked_header_sent_main_steps" entry:term : tactic =>
             wp_call hdealloc_raw (g.ptr, g.cap.toNat * 24, 8)
             rw [← stackAt_dropStack96_split_bottom s0.sp]
             wp_done))
-
-private theorem drop_proto_chunked_header_sent_body {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoChunkedHeaderSentName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>" "__rustc::__rust_dealloc")) (rustDeallocSpec A))
-    (s0 : State) (fsp ptsPtr ptsCap : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (cur cnt : BitVec 64) (bs : List (BitVec 8)) (s : State) (Frame : SepProp),
-      s.pc = (dropProgAtExt b ext).fnAddr dropProtoChunkedHeaderSentName + 160#64 → s.status = .Running → Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = ptsPtr → s.readReg64 .x20 = ptsCap → s.readReg64 .x21 = cnt → s.readReg64 .x22 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropProtoChunkedHeaderSentName + 148#64) s
-        (vecU8 A cur bs ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm => (Pm ⊢ memRegion cur 24 ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧ sm.readReg64 .x19 = ptsPtr ∧ sm.readReg64 .x20 = ptsCap ∧
-          sm.readReg64 .x21 = cnt ∧ sm.readReg64 .x22 = cur + 8#64) := by
-  simp only [rustDeallocSpec] at hdealloc; dsimp only [dropProgAtExt, dropProtoChunkedHeaderSentName, BitVec.ofNat_eq_ofNat] at *
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>"
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>" = entry
-  examples_hide_fetches; proto_chunked2_body_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry 148#64
-
-private theorem drop_proto_chunked_header_sent_loop {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoChunkedHeaderSentName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>" "__rustc::__rust_dealloc")) (rustDeallocSpec A))
-    (s0 : State) (fsp ptsPtr ptsCap : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (rest : List (List (BitVec 8))) (cur : BitVec 64) (s : State) (Frame : SepProp),
-      rest ≠ [] → rest.length * 24 < 2 ^ 63 →
-      s.pc = (dropProgAtExt b ext).fnAddr dropProtoChunkedHeaderSentName + 160#64 → s.status = .Running → Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = ptsPtr → s.readReg64 .x20 = ptsCap → s.readReg64 .x21 = BitVec.ofNat 64 rest.length → s.readReg64 .x22 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropProtoChunkedHeaderSentName + 184#64) s
-        (arrayAt (fun bs addr => vecU8 A addr bs) 24 cur rest ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm => (Pm ⊢ memRegion cur (rest.length * 24) ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧ sm.readReg64 .x19 = ptsPtr ∧ sm.readReg64 .x20 = ptsCap) := by
-  have hbody := drop_proto_chunked_header_sent_body (b := b) (ext := ext) hdealloc s0 fsp ptsPtr ptsCap hfsp_align
-  dsimp only [dropProgAtExt, dropProtoChunkedHeaderSentName, BitVec.ofNat_eq_ofNat] at *
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>"
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>" = entry
-  examples_hide_fetches; proto_chunked2_loop_steps entry 148#64 160#64
-
-theorem drop_proto_chunked_header_sent_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropProtoChunkedHeaderSentName) (dropProtoChunkedHeaderSentSpec A) := by
-  simp only [dropProtoChunkedHeaderSentSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoChunkedHeaderSentName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>" "__rustc::__rust_dealloc")) (rustDeallocSpec A) :=
-    sub_ok_of_addr_eq (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>" "__rustc::__rust_dealloc")) (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>") (ls_stub% "__rustc::__rust_dealloc") (by decide)) hdealloc
-  have hpoly_enc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoChunkedHeaderSentName + bv% (2 ^ 64 - ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>"))
-      (dropProtoPolyEncoderSpec A) := by
-    have hrel : (dropProgAtExt b ext).fnAddr dropProtoChunkedHeaderSentName =
-        (dropProgAtExt b ext).fnAddr dropProtoPolyEncoderName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>") :=
-      Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>")) (b := b) (X := Rust.withPanics ext)
-        (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>") (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>") (by decide)
-    refine sub_ok_of_addr_eq ?_ (drop_glue_proto_poly_encoder_ok_ext hdealloc)
-    rw [hrel, BitVec.add_assoc]; simp
-  have hloop := drop_proto_chunked_header_sent_loop (b := b) (ext := ext) hdealloc_raw
-  simp only [rustDeallocSpec] at hdealloc_raw
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>"
-  dsimp only [dropProgAtExt, dropProtoChunkedHeaderSentName, protoChunkedHeaderSentSize, BitVec.ofNat_eq_ofNat] at hloop hdealloc_raw hpoly_enc_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent>" = entry
-  examples_hide_fetches; proto_chunked_header_sent_main_steps entry
 
 section PlacedHeaderSent
 variable [LibsignalPlacement]

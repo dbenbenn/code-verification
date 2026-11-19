@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.Defs
 
 /-!
@@ -20,7 +20,7 @@ public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.Defs
 with `ChainFromEnv` (`FreeOnlyEvs` + optional 32-byte `Chain::new` root-key allocation).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,8 +33,6 @@ open LibsignalBinary.Heap
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 open CryptoVerification.LibsignalSpqrV1
   (Chain ChainPB Direction HkdfFn VersionNegotiationPB chainFrom)
-open CryptoVerification.LibsignalTripleRatchet
-  (tripleRatchetProgAtExt)
 open CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation
   (chainResultAt)
 open CryptoVerification.SpqrV1.Top.ChainFrom
@@ -44,7 +42,7 @@ open CryptoVerification.SpqrV1.Top.ChainFrom
 /-- Deterministic `AllocEvent` list emitted by `<spqr::chain::Chain>::new` (`0x5fea4`):
 four `Vec<u8>` allocations (`72, 32, 72, 32`), initial `<VecDeque<ChainEpoch>>::grow`
 from `0` to `4` (`4 * 112 = 448`, align `8`), and the 32-byte `next_root` `Vec<u8>`. -/
-def chainNewEvents : List AllocEvent :=
+@[expose] def chainNewEvents : List AllocEvent :=
   rustAllocEvents 72 1 ++ rustAllocEvents 32 1 ++
   rustAllocEvents 72 1 ++ rustAllocEvents 32 1 ++
   rustAllocEvents 448 8 ++ rustAllocEvents 32 1
@@ -52,7 +50,7 @@ def chainNewEvents : List AllocEvent :=
 /-- Allocation envelope of `spqr::chain_from_version_negotiation`:
 `chainNewEvents` when `Direction.fromI32? v.direction` and `v.chainParams` are both `some`,
 otherwise `[]`. -/
-def ChainFromVersionNegotiationEnv (v : VersionNegotiationPB) (evs : List AllocEvent) : Prop :=
+@[expose] def ChainFromVersionNegotiationEnv (v : VersionNegotiationPB) (evs : List AllocEvent) : Prop :=
   if (Direction.fromI32? v.direction).isSome && v.chainParams.isSome then
     evs = chainNewEvents
   else
@@ -60,7 +58,7 @@ def ChainFromVersionNegotiationEnv (v : VersionNegotiationPB) (evs : List AllocE
 
 /-- Precondition allocation envelope of `spqr::chain_from` (only the `pb = none, vn = some v`
 branch allocates; `pb = some _` only deallocates via `Chain::from_pb`). -/
-def ChainFromAllocEnv (pb : Option ChainPB) (vn : Option VersionNegotiationPB)
+@[expose] def ChainFromAllocEnv (pb : Option ChainPB) (vn : Option VersionNegotiationPB)
     (evs : List AllocEvent) : Prop :=
   match pb, vn with
   | none, some v => ChainFromVersionNegotiationEnv v evs
@@ -70,7 +68,7 @@ def ChainFromAllocEnv (pb : Option ChainPB) (vn : Option VersionNegotiationPB)
 - `pb = some _`: `FreeOnlyEvs evs` (`Chain::from_pb` converts in place and only deallocates);
 - `pb = none, vn = some v`: `ChainFromVersionNegotiationEnv v evs`;
 - `pb = none, vn = none`: `evs = []`. -/
-def ChainFromEnv (pb : Option ChainPB) (vn : Option VersionNegotiationPB)
+@[expose] def ChainFromEnv (pb : Option ChainPB) (vn : Option VersionNegotiationPB)
     (evs : List AllocEvent) : Prop :=
   match pb, vn with
   | some _, _ => FreeOnlyEvs evs
@@ -98,7 +96,7 @@ theorem fitsEnv_chainFromAllocEnv_of_chainFromEnv {M : AllocCostModel}
 
 /-- Unplaced base spec of `<spqr::chain::Chain>::from_pb` (`FreeOnlyEvs`, `onPanic = ⌜False⌝`,
 `onOom = ⌜False⌝`, no `FitsEnv` precondition required). -/
-def chainFromPbSpecXBase (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def chainFromPbSpecXBase (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (ChainFromPbCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.pbPtr⌝ ∗
@@ -113,7 +111,7 @@ def chainFromPbSpecXBase (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : 
 
 /-- Budget-threaded spec of `<spqr::chain::Chain>::from_pb` (`FreeOnlyEvs`, `onPanic = ⌜False⌝`,
 `onOom = ⌜False⌝`, no `FitsEnv` precondition required). -/
-def chainFromPbSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def chainFromPbSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec (ChainFromPbCall × M.σ) where
   pre := fun (x, st) s =>
@@ -128,16 +126,8 @@ def chainFromPbSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAlloc
       memRegion x.pbPtr 80 ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp chainFromPbStackX
 
-/-- `<spqr::chain::Chain>::from_pb` meets `(chainFromPbSpecXBase M A lim).inImage img` on
-`tripleRatchetProgAtExt img.base ext`. -/
-def ChainFromPbOkX (img : Obj.Image) (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainFromPbName)
-    ((chainFromPbSpecXBase M A lim).inImage img)
-
 /-- Budget-threaded spec of `spqr::chain_from` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def chainFromSpecX (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def chainFromSpecX (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec (ChainFromCall × M.σ) where
   pre := fun (x, st) s =>
@@ -155,18 +145,9 @@ def chainFromSpecX (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudget 
       optVersionNegotiationRefAt A.repAlloc x.vnPin x.vnOptPtr x.vn ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp chainFromStackX
 
-/-- `spqr::chain_from` meets `(chainFromSpecX hkdf M A lim).inImage img` on
-`tripleRatchetProgAtExt img.base ext`. -/
-def ChainFromOkX (img : Obj.Image) (hkdf : HkdfFn) (M : AllocCostModel)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainFromName)
-    ((chainFromSpecX hkdf M A lim).inImage img)
-
 /-- Budget-threaded contract-backed (`chainFromStackExt`) spec of `spqr::chain_from`
 (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def chainFromSpecExt (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def chainFromSpecExt (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec (ChainFromCall × M.σ) where
   pre := fun (x, st) s =>
@@ -183,13 +164,5 @@ def chainFromSpecExt (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudge
       memRegion x.pbPtr 80 ∗
       optVersionNegotiationRefAt A.repAlloc x.vnPin x.vnOptPtr x.vn ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp chainFromStackExt
-
-/-- Contract-backed callee-contract predicate for `spqr::chain_from` (`0x531ac`). -/
-def ChainFromOkExt (img : Obj.Image) (hkdf : HkdfFn) (M : AllocCostModel)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainFromName)
-    ((chainFromSpecExt hkdf M A lim).inImage img)
 
 end LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget

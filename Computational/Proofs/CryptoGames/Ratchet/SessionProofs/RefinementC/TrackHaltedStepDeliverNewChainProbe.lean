@@ -34,7 +34,7 @@ Proves `closeByStateCTrack_deliver_newChain_probe` and
 `closeByStateCTrack_deliver_newChain_saltMismatch_safe`.
 -/
 
-@[expose] public section
+public section
 
 open scoped ENNReal
 open OracleComp OracleSpec MeasureTheory

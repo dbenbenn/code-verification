@@ -9,11 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegDispatchAuxPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegSaveAuxPlacedBudget
-public import LibsignalBinary.Proofs.Common.StringClonePlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegDispatchAuxPlaced
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegSaveAuxPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.StringClonePlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Common.StringClonePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `<String as Clone>::clone` and Dispatch Helpers
@@ -22,7 +31,7 @@ Proves budget-threaded correctness of `<alloc::string::String as core::clone::Cl
 `lsProg_623` (`stringCloneBudgetSpec M A lim`) and cross-block transfer helpers for `SegDispatch`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -1133,11 +1142,11 @@ private theorem stringCloneSeg_hasInstrs_ok [LibsignalPlacement] {M : AllocCostM
     hShim hAlloc hMemcpy hlr_al
 
 private theorem ls_hook_ok_623 [LibsignalPlacement] {α : Type} {H : LibsignalHooks} {sym : String}
-    {spec : Spec α} (hmem : sym ∈ libsignalSessionExterns := by decide) (h : HookSat H sym spec) :
+    {spec : Spec α} (hmem : sym ∈ libsignalHookedExterns := by decide) (h : HookSat H sym spec) :
     subroutine_ok (lsProg_623 H) (lsρ sym) spec := by
-  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem hmem
+  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
   exact ls_hook_ok (prog := lsProg_623 H) (i := 623) (k := k)
-    (by rw [List.getElem?_eq_getElem hlt, hk]) h
+    (by rw [List.getElem?_eq_getElem hlt, hk]) h (hhooked := hmem)
 
 /-- Correctness of `<String as Clone>::clone` on `lsProg_623 H` under external allocator, shim, and `memcpy` hooks. -/
 theorem stringCloneSeg_blk623_ok [LibsignalPlacement]

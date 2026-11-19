@@ -20,13 +20,13 @@ Proof-side helpers for `SM/LibsignalGame.lean`: `SMScheme.toR`, bounded-receiver
 predicates (`mustBounded`, `mustLibsignal`), and `hybridAdvantageR`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 namespace CryptoGames
 
 /-- Embeds a deterministic-receive `SMScheme` as an `SMSchemeR` ignoring receive coins. -/
-def SMScheme.toR {Key St Msg Coins C : Type} (RCoins : Type) (sm : SMScheme Key St Msg Coins C) :
+@[expose] def SMScheme.toR {Key St Msg Coins C : Type} (RCoins : Type) (sm : SMScheme Key St Msg Coins C) :
     SMSchemeR Key St Msg Coins RCoins C :=
   { initA := sm.initA, initB := sm.initB, send := sm.send,
     receive := fun s c _ => sm.receive s c }
@@ -53,7 +53,7 @@ variable (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ)
   [SampleableType RCoins]
 
 /-- Bias `2·|Pr[win] − 1/2|` in the R-game variant `cfg` (DEV-LS1, DEV-LS6, DEV-SM1, DEV-SM10). -/
-noncomputable def hybridAdvantageR (cfg : ConfigR St Msg C) (A : Adversary St Msg Coins C) :
+@[expose] noncomputable def hybridAdvantageR (cfg : ConfigR St Msg C) (A : Adversary St Msg Coins C) :
     ℝ≥0∞ :=
   𝒟[gameR sm Δ qep cfg A].boolBias
 

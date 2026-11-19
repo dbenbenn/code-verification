@@ -60,9 +60,6 @@ def intoPb (self : ChainParams) : ChainParamsPB :=
     maxOooKeys :=
       if self.maxOooKeys == DEFAULT_CHAIN_PARAMS.maxOooKeys then 0#32 else self.maxOooKeys }
 
-def intoPbTest (self : ChainParams) : ChainParamsPB :=
-  self.intoPb
-
 end ChainParams
 
 namespace ChainParamsPB
@@ -110,7 +107,6 @@ structure VersionNegotiationPB where
   minVersion : BitVec 32 := 0#32
   chainParams : Option ChainParamsPB := none
   deriving DecidableEq, Repr, Inhabited
-
 
 /-- `pqrpb::Authenticator` (`src/proto/pq_ratchet.proto:61–64`). -/
 structure ProtoAuthenticator where

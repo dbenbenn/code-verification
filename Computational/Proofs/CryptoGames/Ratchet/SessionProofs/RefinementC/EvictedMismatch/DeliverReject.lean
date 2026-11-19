@@ -28,7 +28,7 @@ salt mismatch outside `inReceiveOnlyEpoch` when the message counter exceeds the 
 bound.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

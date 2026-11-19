@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndSigKem
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndGapDh
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndSigKem -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndGapDh -- proof-setup: allow-public-import
 
 /-!
 # One-key `KeyInd` `GapSigEufCma` and `KemShCr` simulators
@@ -21,7 +21,7 @@ game `pqxdhKeyIndImpl1KeyRo`: `shcrReductionKeyInd1Key` (`KemShCr` for `G2 → G
 Fiedler–Günther random-oracle consistency while the target principal's scalar is unknown).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +37,7 @@ open SignalPqxdh.Security.FgGapDh
 namespace RoKem
 
 /-- One-key `PrimBaseSpec` implementation of `keyIndSpec S` matching `pqxdhKeyIndImpl1KeyRo`. -/
-def pqxdhKeyIndImpl1KeyRoPrim (S : Setup) :
+@[expose] def pqxdhKeyIndImpl1KeyRoPrim (S : Setup) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndState S) (OracleComp PrimBaseSpec)) := fun q => do
   let st ← get
   match q with
@@ -57,12 +57,12 @@ def pqxdhKeyIndImpl1KeyRoPrim (S : Setup) :
     return .initPrinResp ikAPk ikAPk
   | q_other => pqxdhKeyIndImplPrim true S q_other
 
-def pqxdhKeyIndShCrPrimImpl1Key (embedTarget : Bool) (S : Setup) :
+@[expose] def pqxdhKeyIndShCrPrimImpl1Key (embedTarget : Bool) (S : Setup) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndShCrState S) (OracleComp PrimBaseSpec))
   | .initPrin u => liftShCrBasePrim (pqxdhKeyIndImpl1KeyRoPrim S (.initPrin u))
   | q_other     => pqxdhKeyIndShCrPrimImpl embedTarget S q_other
 
-def runWithFuelKeyInd1KeyShCrPrim (S : Setup)
+@[expose] def runWithFuelKeyInd1KeyShCrPrim (S : Setup)
     (oa : OracleComp (unifSpec + keyIndSpec S) Bool)
     (hst : KeyIndShCrState S) (fuel : ℕ) :
     OracleComp PrimBaseSpec (Bool × KeyIndShCrState S) :=
@@ -82,7 +82,7 @@ def runWithFuelKeyInd1KeyShCrPrim (S : Setup)
           r out hst' f)
     oa hst fuel
 
-def stepUntilShCrFuelKeyInd1KeyPrim (S : Setup) (sIdx : ℕ)
+@[expose] def stepUntilShCrFuelKeyInd1KeyPrim (S : Setup) (sIdx : ℕ)
     (oa : OracleComp (unifSpec + keyIndSpec S) Bool)
     (hst : KeyIndShCrState S) (fuel : ℕ) :
     OracleComp PrimBaseSpec (Sum (Bool × KeyIndShCrState S) (PausedShCrData S)) :=
@@ -106,12 +106,12 @@ def stepUntilShCrFuelKeyInd1KeyPrim (S : Setup) (sIdx : ℕ)
             r out hst' f)
     oa hst fuel
 
-def resumePausedKeyInd1KeyPrim (S : Setup) (fuel : ℕ) (d : PausedShCrData S)
+@[expose] def resumePausedKeyInd1KeyPrim (S : Setup) (fuel : ℕ) (d : PausedShCrData S)
     (ss kemCt : Bytes) : OracleComp PrimBaseSpec (Bool × KeyIndShCrState S) := do
   let (resp, hst') ← postKemKeyIndPrim S d.sid d.bundle d.uEntry d.hst ss kemCt
   runWithFuelKeyInd1KeyShCrPrim S (d.cont resp) hst' fuel
 
-def choosePkKeyInd1KeyPrimAt (S : Setup) (b : QueryBudget) (bIdx sIdx : ℕ)
+@[expose] def choosePkKeyInd1KeyPrimAt (S : Setup) (b : QueryBudget) (bIdx sIdx : ℕ)
     (A : KeyIndAdversary S) (pk sk : Bytes) :
     OracleComp PrimBaseSpec (Bytes × ShCrFinishState S) := do
   let secb ← embedUnif ($ᵗ Bool)
@@ -127,7 +127,7 @@ def choosePkKeyInd1KeyPrimAt (S : Setup) (b : QueryBudget) (bIdx sIdx : ℕ)
     | Sum.inr d => d.bundle.pqspkB
   return (chosenPk, (pk, sk, chosenPk, res))
 
-def findCollisionKeyInd1KeyPrim (S : Setup) (b : QueryBudget)
+@[expose] def findCollisionKeyInd1KeyPrim (S : Setup) (b : QueryBudget)
     (st : ShCrFinishState S) (ss ct : Bytes) : OracleComp PrimBaseSpec Bytes := do
   let (pk, sk, chosenPk, res) := st
   let (_, finalHst) ← match res with
@@ -135,7 +135,7 @@ def findCollisionKeyInd1KeyPrim (S : Setup) (b : QueryBudget)
     | Sum.inr d    => resumePausedKeyInd1KeyPrim S b.q_total d ss ct
   extractCollidingKemCtPrim b.q_total pk sk chosenPk ct ss finalHst.recvKemRecs
 
-def shcrReductionKeyInd1KeyCore (S : Setup) (b : QueryBudget) (A : KeyIndAdversary S) :
+@[expose] def shcrReductionKeyInd1KeyCore (S : Setup) (b : QueryBudget) (A : KeyIndAdversary S) :
     KemShCrAdv where
   State := ShCrFinishState S
   choosePk := fun pk sk => do
@@ -145,7 +145,7 @@ def shcrReductionKeyInd1KeyCore (S : Setup) (b : QueryBudget) (A : KeyIndAdversa
   q_prim := primQueryBudget S b
 
 /-- Two-stage `KemShCr` reduction adversary for one-key `KeyInd` (`G2 → G3`). -/
-def shcrReductionKeyInd1Key (S : Setup) (b : QueryBudget)
+@[expose] def shcrReductionKeyInd1Key (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (KeyIndAdversary S) b) : KemShCrAdv :=
   shcrReductionKeyInd1KeyCore S b A.1
 
@@ -169,19 +169,19 @@ namespace Sig1Key
 
 abbrev SigDdhSimSpec := PrimBaseSpec + sigAndDdhSpec
 
-def unifSigDdh {α : Type} (mx : ProbComp α) : OracleComp SigDdhSimSpec α :=
+@[expose] def unifSigDdh {α : Type} (mx : ProbComp α) : OracleComp SigDdhSimSpec α :=
   embedPrim (spec := sigAndDdhSpec) (embedUnif mx)
 
-def primSigDdhQ (q : PrimQuery) : OracleComp SigDdhSimSpec (primSpec.Range q) :=
+@[expose] def primSigDdhQ (q : PrimQuery) : OracleComp SigDdhSimSpec (primSpec.Range q) :=
   liftM (OracleSpec.query (spec := SigDdhSimSpec) (Sum.inl (Sum.inr q)))
 
-def sigChalQ (msg : Bytes) : OracleComp SigDdhSimSpec Bytes :=
+@[expose] def sigChalQ (msg : Bytes) : OracleComp SigDdhSimSpec Bytes :=
   liftM (OracleSpec.query (spec := SigDdhSimSpec) (Sum.inr (Sum.inl (.sign msg))))
 
 def ddhSigDdhQ (X Y Z : Bytes) : OracleComp SigDdhSimSpec Bool :=
   liftM (OracleSpec.query (spec := SigDdhSimSpec) (Sum.inr (Sum.inr (X, Y, Z))))
 
-def embedGdhSigDdh {α : Type} (mx : OracleComp GdhSimSpec α) : OracleComp SigDdhSimSpec α :=
+@[expose] def embedGdhSigDdh {α : Type} (mx : OracleComp GdhSimSpec α) : OracleComp SigDdhSimSpec α :=
   OracleComp.construct
     (C := fun _ => OracleComp SigDdhSimSpec α)
     pure
@@ -203,7 +203,7 @@ structure Sig1KeySimState (S : Setup) where
   signBudget  : Nat
   forgery     : Option (Bytes × Bytes) := none
 
-def Sig1KeySimState.empty (S : Setup) (secb : Bool) (targetParty : Nat) (targetPk : Bytes) :
+@[expose] def Sig1KeySimState.empty (S : Setup) (secb : Bool) (targetParty : Nat) (targetPk : Bytes) :
     Sig1KeySimState S :=
   { fg          := FgKeyIndSimState.empty S secb
     targetParty := targetParty
@@ -212,7 +212,7 @@ def Sig1KeySimState.empty (S : Setup) (secb : Bool) (targetParty : Nat) (targetP
     forgery     := none }
 
 /-- Single-query handler for the one-key `GapSigEufCma` simulator, freezing once a forgery is found. -/
-def sig1KeyStep (S : Setup) (maxLen : ℕ) (q : KeyIndQuery S) (st : Sig1KeySimState S) :
+@[expose] def sig1KeyStep (S : Setup) (maxLen : ℕ) (q : KeyIndQuery S) (st : Sig1KeySimState S) :
     OracleComp SigDdhSimSpec (KeyIndResponse × Sig1KeySimState S) := do
   if st.forgery.isSome then
     return (.noneResp, st)
@@ -300,7 +300,7 @@ def sig1KeyStep (S : Setup) (maxLen : ℕ) (q : KeyIndQuery S) (st : Sig1KeySimS
       (fgKeyIndStep false S.N_send_tot S.N_spk_tot S maxLen [] st.targetPk q_other st.fg)
     return (out, { st with fg := fg' })
 
-def runWithSigDdhStep {ιI : Type}
+@[expose] def runWithSigDdhStep {ιI : Type}
     {GSpec : OracleSpec.{0, 0} ιI} {St α : Type}
     (step : (q : ιI) → St → OracleComp SigDdhSimSpec (GSpec.Range q × St))
     (mx : OracleComp (unifSpec + GSpec) α) (st : St) :
@@ -318,14 +318,14 @@ def runWithSigDdhStep {ιI : Type}
         r p.1 p.2)
     mx st
 
-def sigReductionKeyInd1KeyRunAt (targetParty : Nat) (S : Setup) (b : QueryBudget)
+@[expose] def sigReductionKeyInd1KeyRunAt (targetParty : Nat) (S : Setup) (b : QueryBudget)
     (A : KeyIndAdversary S) (pk : Bytes) : OracleComp SigDdhSimSpec (Bytes × Bytes) := do
   let secb ← unifSigDdh ($ᵗ Bool)
   let initSt := Sig1KeySimState.empty S secb targetParty pk
   let (_, finalSt) ← runWithSigDdhStep (sig1KeyStep S b.q_total) A.run initSt
   return finalSt.forgery.getD ([], [])
 
-def sigReductionKeyInd1KeyAt (targetParty : Nat) (S : Setup) (b : QueryBudget)
+@[expose] def sigReductionKeyInd1KeyAt (targetParty : Nat) (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (KeyIndAdversary S) b) : GapSigEufCmaAdv where
   run := sigReductionKeyInd1KeyRunAt targetParty S b A.1
   q_sig := 2 * min S.N_spk_tot S.N_recv
@@ -333,7 +333,7 @@ def sigReductionKeyInd1KeyAt (targetParty : Nat) (S : Setup) (b : QueryBudget)
   q_prim := primQueryBudget S b
 
 /-- Per-principal-sampled `GapSigEufCma` reduction adversary for one-key `KeyInd` (`G0_1 → G1`). -/
-def sigReductionKeyInd1Key (S : Setup) (b : QueryBudget)
+@[expose] def sigReductionKeyInd1Key (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (KeyIndAdversary S) b) : GapSigEufCmaAdv where
   run pk := do
     let k ← unifSigDdh (RoKem.sampleIndexRange S.N_id)

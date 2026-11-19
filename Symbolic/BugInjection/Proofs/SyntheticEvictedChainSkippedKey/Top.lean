@@ -15,14 +15,13 @@ public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.PtNoC
 public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.NoFullExplains
 public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvNoCollision
 public import Symbolic.BugInjection.Proofs.Common.CoinsFresh
-public import Symbolic.Proofs.SpecLemmas.SecurityBinaryFixed
 
 /-!
 # Spec-Half Disproof for `EvictedChainSkippedKeyCli`
 
 Assembles `not_explains_full`, `not_nextEventCollides_send`, and `not_nextEventCollides_recv`
 under `evictedCompFitsPinned` to prove `spec_half_pinned` and
-`not_signalSessionSecure_of_implHalf` for `EvictedChainSkippedKeyCli`.
+`not_signalSessionSecurePlaced_of_implHalf` for `EvictedChainSkippedKeyCli`.
 -/
 
 @[expose] public section
@@ -33,7 +32,8 @@ namespace Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.Top
 
 open DY.Libsignal.Composed.Refinement (ProtocolSetup)
 open DY.Libsignal.Composed.Refinement.Cli (NextEventCollides)
-open Symbolic.BugInjection (cliCompShape not_signalSessionSecure_of_witness)
+open Symbolic.BugInjection
+  (cliCompShape cliCompShapePlaced not_signalSessionSecurePlaced_of_witness)
 open Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.DefsI0
   (evictedI0 evictedHooks0)
 open Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.I0Laws
@@ -80,12 +80,15 @@ theorem spec_half_pinned :
       exact not_nextEventCollides_recv r S g ss vis evs₁ ev evs₂ hfit0
         (fun g' ss' vis' => not_explains_full r S g' ss' vis' hfit0) hsplit hex ⟨peer, hcmd⟩ hcol
 
-theorem not_signalSessionSecure_of_implHalf {bytes : List (BitVec 8)}
+theorem not_signalSessionSecurePlaced_of_implHalf {bytes : List (BitVec 8)}
+    {mpl mmpl : Arm64.Obj.MultiPlacement}
+    (hls : CryptoVerification.SignalSession.libsignalSessionLib.LinkedAt bytes mpl)
+    (hmg : VerifiedLibraries.mallocngLib.LinkedAt bytes mmpl)
     (hi : ∀ elf : Arm64.Process.ElfImage, Arm64.Process.ElfImage.parse bytes = .ok elf →
-      cliCompShape.ImplHalf evictedCompFitsPinned elf
+      (cliCompShapePlaced mpl mmpl).ImplHalf evictedCompFitsPinned elf
         Symbolic.BugInjection.Synthetic.Witnesses.EvictedChainSkippedKeyCli.trace) :
-    ¬ DY.Libsignal.Composed.Security.SignalSessionSecure bytes :=
-  not_signalSessionSecure_of_witness spec_half_pinned hi
+    ¬ DY.Libsignal.Composed.Security.SignalSessionSecurePlaced bytes :=
+  not_signalSessionSecurePlaced_of_witness hls hmg spec_half_pinned hi
     (fun iw r hf => Symbolic.BugInjection.Proofs.Common.CoinsFresh.coinsFresh_unpinned_evictedChainSkippedKeyCli iw r ⟨hf.1.1, hf.2.1, hf.2.2⟩)
 
 end Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.Top

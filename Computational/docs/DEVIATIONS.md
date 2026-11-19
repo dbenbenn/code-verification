@@ -73,30 +73,30 @@ FG24 Thm 5.1:
 | [DEV-LS5](#dev-ls5) | injections only with on-curve ratchet keys and `< 2^32`-byte parseable wires | restricts the adversary |
 | [DEV-M1](#dev-m1) | injections shorter than 2^32 bytes | restricts the adversary |
 | [DEV-LS27](#dev-ls27), [DEV-AEAD2](#dev-aead2) | one message length per session | restricts the adversary |
-| [DEV-LS31](#dev-ls31) | the bound has an 8-byte MAC tag floor (reaches 1 at `q = 480,191,941` for `q_ep = 1`, `38,967` for `q_ep = q`) | constants |
+| [DEV-LS31](#dev-ls31) | the bound has an 8-byte MAC tag floor (`(92 · q_ep + 96) · q · 2^-64` for `q_ep ≥ 1`, `112 · q · 2^-64` at `q_ep = 0`; reaches 1 at `q = 447,781,295` for `q_ep = q`, and stays below `2^-23.01` up to the `_hq32` cap `q = 2,147,471,145` for `q_ep ≤ 10`; bucket partitioning trades a linear (instead of quadratic) MAC term against up to `1.95×` PRF-PRNG and `1.74×` FS-AEAD (`q ≥ 1`; `2.33×` at `q = 0, q_ep = 1`) terms and re-indexed reductions, so it is incomparable with the earlier per-cell bound, DEV-C14) | constants |
 | [DEV-M5](#dev-m5) | the binary Double Ratchet statements start from the handshake's output key (PQXDH is covered by separate theorems, DEV-PQ*; model-level composition is in `ModelSecure`, DEV-C5) | out of scope |
 | [DEV-LS24](#dev-ls24) | SPQR abstract in the binary Double Ratchet statements (empty-SPQR sessions only); SPQR V1 session security and model-level composition are in `SessionSecure` and `ModelSecure` (DEV-C5) | out of scope |
-| [DEV-E8](#dev-e8) | the primitives' machine code is hooked, not verified | out of scope |
+| [DEV-E8](#dev-e8) | all cryptographic primitives execute verified linked ELF code directly from `cliElfBytes` (0 non-panic hooks; `cliProgElf` overrides only the 18 `.symtab` Rust panics as `SIGABRT`, DEV-E7; instantiated directly at `realPEParams` in the computational headlines, guarded per input by `RealHooksAgreeOnInput` in `comp_refines_cli`/`signal_session_secure`, and instantiated unfiltered at `realCliHooks` via `real_prims_admissible` in `comp_refines_cli_real`/`signal_session_secure_real`; legacy fixed-image `cliHookTable` still hooks primitives) | out of scope (legacy `cliHookTable`) / none (ELF headlines) |
 | [DEV-M7](#dev-m7) | the theorem is about one ELF and its build | out of scope |
 | [DEV-M9](#dev-m9) | no libsignal session initialisation; no pre-key messages in the SM statements | out of scope |
-| [DEV-M17](#dev-m17) | spqr's PMULL probe has already run and found no PMULL (`TOKEN` patched in each CLI process state by `Placed.cliTokenPatchPlaced` / `cliTokenPatch`) | out of scope |
-| [DEV-CLI9](#dev-cli9) | no allocation of the CLI's run fails, by hypothesis (`CliAllocNeverFails`) | out of scope |
-| [DEV-CLI10](#dev-cli10) | the CLI run starts after spqr's CPU probe, which found no AES/PMULL (`Placed.cliTokenPatchPlaced` / `cliTokenPatch`) | out of scope |
+| [DEV-M17](#dev-m17) | merged into [DEV-CLI10](#dev-cli10) (plain `ElfImage.loadState`, `aes` and SPQR CPU probes run on pinned `AT_HWCAP = 0x1b`, `AT_HWCAP2 = 0`; legacy `cliTokenPatch` only) | out of scope (LSE / other `AT_HWCAP` values) |
+| [DEV-CLI10](#dev-cli10) | pinned auxiliary vector (`AT_HWCAP = 0x1b`, `AT_HWCAP2 = 0`, `AT_RANDOM = 0^16`); plain `ElfImage.loadState` runs `aes` and SPQR CPU probes (ARMv8 hardware AES and `PMULL` GF(2¹⁶)) and LL/SC outline atomics (`LSE = 0`) | out of scope (LSE / other `AT_HWCAP` values) |
 | [DEV-CLI11](#dev-cli11) | after a pre-key `recv` over a session that does not match it is accepted, the session file's bytes and that party's later calls are not claimed (`CliSpecPqxdhNoMatch`) | out of scope |
-| [DEV-CLI15](#dev-cli15) | a PQXDH-mode run in which an allocation fails may abort instead of having the spec's outcome; after such an abort stdout and the files are not claimed (`CliPqxdhElfCorrectPlaced`) | out of scope |
+| [DEV-CLI15](#dev-cli15) | a PQXDH-mode run that hits `.OutOfMemory` (`CliReachesOOMElf`) has no outcome (`run i = none`) and is excused in `CliPqxdhElfCorrect` (the Main Theorem's security clause has no `.OutOfMemory` premise) | out of scope |
+| [DEV-CLI22](#dev-cli22) | a PQXDH-mode run that reaches one of the 5 `libcrux_ml_kem` `SampleNTT` (`sample_from_xof`) entry points with a SHAKE-128 matrix seed that never yields 256 coefficients `< 3329` may fail to terminate (`CliReachesSampleNttStuckElf`) | availability only; the headline security bound gains an unbounded `2·CliPqxdhFlagProb` SampleNTT-divergence term |
 | [DEV-CLI13](#dev-cli13) | in the CLI security game on PQXDH directories, Alice refuses every pre-key (`3`-tagged) input without running the CLI | restricts the adversary |
 | [DEV-CLI14](#dev-cli14) | in the CLI security game on PQXDH directories, a `recv` input of `2^32` bytes or more, or a canonical pre-key message whose inner message has `2^32 - 2048` bytes or more, is refused without running the CLI (`cliPqLenOk`), and on `inject` an input above `stdinCapBytes` (`2^20`, DEV-CLI21) is refused before `receive` (`bhInjOK`); no honest delivery is refused for `l < 10^6` | restricts the adversary |
 | [DEV-CLI16](#dev-cli16) | the CLI security bound keeps the key-indistinguishability advantage of the real handshake (one-key identities, HKDF) as a term; its reduction to the one-key PQXDH bound takes the named hypothesis `KeyIndRoGap` (the ROM instantiation of assumption 2 `HkdfRO` on the one-key game, `ε_ro = 0` in the ROM) | hypothesis |
 | [DEV-CLI18](#dev-cli18) | in the CLI security game on PQXDH directories, each `exit 0` call retains the full party directory (`cliPqReadBack` over `cliPqPartyPathsOf`), `corr-P` leaks only the session-record state `BinState` (`cliOracleImplR`), and any non-zero exit leaves the party directory unchanged (`Dir.cliPqAfter`); partial-write crash recovery on mid-commit OS/I/O failures is not modeled (`DEV-CLI4`) | out of scope |
 | [DEV-LS30](#dev-ls30) | Thm 3 and the wire OT-CCA reduction are not composed | out of scope |
 | [DEV-LS33](#dev-ls33), [DEV-LS34](#dev-ls34) | no `corr-B` in epoch 0 (`noBobCorrInEpoch0`) or while Alice is before epoch 10 (`noBobCorrWhileAliceBelowEpoch10`) in the leaked-SPK game | restricts the adversary |
-| [DEV-PQ1](#dev-pq1), [DEV-PQ3](#dev-pq3), [DEV-PQ10](#dev-pq10) | SHA-512, Ed25519 curve core, Kyber1024, and SPQR V1 stubs hooked; SPQR V1 active (`CliSpecPqxdh`, the conclusion of the PQXDH binary statement `CliPqxdhBinaryCorrectPlaced`, is stated with `pqxdhSpqrSession W`); pre-key messages `< 2^32` bytes and `ReachablePqxdhSession` records `< 2^31` bytes | out of scope / restricts the adversary |
+| [DEV-PQ1](#dev-pq1), [DEV-PQ3](#dev-pq3), [DEV-PQ10](#dev-pq10) | SHA-512, Kyber1024, and all 7 SPQR ML-KEM-768 functions (alongside the 7 `curve25519_dalek` Ed25519/scalar operations, X25519, and `libcrux_hmac::hmac` with its SHA-256 helpers) execute linked ELF code directly with no non-panic hooks (`cliProgElf` overrides only the 18 Rust panic entry points, DEV-E7; instantiated directly at `realPqxdhPrims` in `realPEParams`); SPQR V1 active (`CliSpecPqxdh`, the conclusion of the PQXDH binary statement `CliPqxdhBinaryCorrect`, is stated with `pqxdhSpqrSession realPEParams`); pre-key messages `< 2^32` bytes and `ReachablePqxdhSession` records `< 2^31` bytes | out of scope / restricts the adversary |
 | [DEV-PQ13](#dev-pq13), [DEV-PQ14](#dev-pq14), [DEV-PQ15](#dev-pq15), [DEV-PQ16](#dev-pq16) | two-key X25519 + XEdDSA identity idealization in the standalone untrusted two-key `KeyInd` and `Auth` games (Lemma 1 `PqxdhCorrectAndSecureδ`, both `KeyInd` and `Auth`, uses one-key identities under `GapSigEufCma` and `GapDhWithSign`, with standalone SHA-512 ROM reductions to `GapDH` in `Computational/Proofs/SignalPqxdh/XeddsaRom/`); random oracle `HkdfRO` (and `RootKdfRO` in `Auth`); KOSK adversary key registration; canonical X25519 point checks (`isCanonical`) | formalization / restricts the adversary |
-| [DEV-PQ21](#dev-pq21) | replaced in `PqxdhCorrectAndSecureδ` and the PQXDH CLI headlines by `KemDeltaCorrect P δ_kem` (paying `2 · N_spk_tot · N_send_tot · δ_kem`); retained only in the untrusted `δ_kem = 0` statements in `Computational/Proofs/` | hypothesis |
+| [DEV-PQ21](#dev-pq21) | replaced in `PqxdhCorrectAndSecureδ` and `CliPqxdhSecurityForAnyKem` by `KemDeltaCorrect P δ_kem` (paying `2 · N_spk_tot · N_send_tot · δ_kem`), and instantiated directly in the Main Theorem `libsignal_cli_pq_secure_elf_binary` (`CliPqxdhSecurityFor`, `StatementPqElf.lean`) at concrete Round-3 Kyber-1024 (`kyber1024KemKeyGen`) with `δ_kem = ε + 1 / 2^112` under `KyberNoiseGap ε` (`Kyber1024Correct.lean`) via `kyber1024_kem_delta_correct` (`Computational/Theorems/Lemmas.lean`, `Kyber1024Delta.lean`); retained only in the untrusted `δ_kem = 0` statements in `Computational/Proofs/` | hypothesis |
 | [DEV-PQ20](#dev-pq20), [DEV-PQ22](#dev-pq22) | no case of the bound rests on the KEM (no `min(ε_GDH, ε_CCA)`); no one-time Kyber pre-key: every session uses the last-resort `PQSPK` | restricts the adversary / out of scope |
 | [DEV-PQ23](#dev-pq23), [DEV-PQ24](#dev-pq24) | corruption only of identity keys and (in `KeyInd`) EC signed pre-keys, no `RevealRand`; a tested session needs its peer uncorrupted when it starts | restricts the adversary |
 | [DEV-KFF1](#dev-kff1) | adversary-chosen send coins on SPQR V1 sends require an explicit-reduction (`KemFailFind`) reading for ML-KEM-768 decapsulation failure in `SessionSecure` and the PQXDH CLI headlines | hypothesis / constants |
-| [DEV-C5](#dev-c5), [DEV-C8](#dev-c8)–[DEV-C20](#dev-c20) | model-level (`SessionSecure` and `ModelSecure`, proved unconditionally in `Computational/Theorems/Lemmas.lean`) and CLI-level (`libsignal_cli_pq_secure_elf_binary_placed` in `Computational/Theorems/Main.lean` and `LibsignalCliPqSecure`, whose clause 2 assumes `KeyIndRoGap`, DEV-CLI16) composition of `KeyInd` + DR with SPQR V1 (established/promoted sessions + partnered first pre-key message; unpartnered first-message payload privacy and authentication are covered by the one-key `Auth` conjunct of Lemma 1, DEV-C5, but not folded into the composed / CLI statements); `startDR` guard, byte-exact `ikA`/`ikB`/`spkB` pins, `qep²` epoch-guessing loss | out of scope / restricts the adversary / constants |
+| [DEV-C5](#dev-c5), [DEV-C8](#dev-c8)–[DEV-C20](#dev-c20) | model-level (`SessionSecure` and `ModelSecure`, proved unconditionally in `Computational/Theorems/Lemmas.lean`) and CLI-level (`libsignal_cli_pq_secure_elf_binary` in `Computational/Theorems/Main.lean` and `LibsignalCliPqSecure`, whose clause 2 assumes `KeyIndRoGap`, DEV-CLI16) composition of `KeyInd` + DR with SPQR V1 (established/promoted sessions + partnered first pre-key message; unpartnered first-message payload privacy and authentication are covered by the one-key `Auth` conjunct of Lemma 1, DEV-C5, but not folded into the composed / CLI statements); `startDR` guard, byte-exact `ikA`/`ikB`/`spkB` pins, `qep²` epoch-guessing loss | out of scope / restricts the adversary / constants |
 
 ## Counts
 
@@ -112,8 +112,8 @@ FG24 Thm 5.1:
 | PQ (PQXDH binary & security) | 16 | 0 | 11 | 3 | 30 |
 | SPQR (SPQR V1) | 1 | 0 | 2 | 4 | 7 |
 | C, KFF (PQXDH ∘ DR composition) | 15 | 0 | 0 | 0 | 15 |
-| CLI (`libsignal-cli` CLI) | 5 | 0 | 5 | 7 | 17 |
-| total | 95 | 15 | 66 | 31 | 207 |
+| CLI (`libsignal-cli` CLI) | 5 | 0 | 5 | 8 | 18 |
+| total | 95 | 15 | 66 | 32 | 208 |
 
 An entry with two classes (for example "libsignal, paper fix") is counted under the first. The one
 `abstraction` entry (DEV-PQ31) is counted under formalization.
@@ -270,7 +270,7 @@ effect: none
 
 - ACD19's `(t, q, q_ep)`-attackers and "`t' ≈ t`". Lean: adversaries are arbitrary `OracleComp`s,
   and bounds name explicit reductions. Their efficiency is checked by reading, so they are part of
-  the trusted base (`TRUSTED_BASE.md` §4). The paper-shaped "uniform"
+  the trusted base ([`TRUSTED_BASE.md`](TRUSTED_BASE.md) §4). The paper-shaped "uniform"
   corollaries (`theorem6_of_uniform_bounds`) are satisfiable only with `ε = 1`.
 
 ### DEV-SM19
@@ -729,7 +729,7 @@ Homes: `LibsignalBinary/Specifications/CryptoGames/Primitives.lean` (DEV-AEAD1),
 
 **AES and the SHA-256 compression are arbitrary functions** · class: machine model · effect: none
 
-- `E`, `D`, `F` are parameters; in the binary they are hooks (DEV-E8).
+- `E`, `D`, `F` are parameters in the model-level games; on the stock ELF (0 non-panic external hooks, DEV-E7) they are instantiated to FIPS 197 AES-256 and FIPS 180-4 SHA-256 and execute verified linked code (DEV-E8).
 
 ## LS: the libsignal session against Fig. 8 (ACD19 §5.2, Fig. 9)
 
@@ -982,7 +982,12 @@ restricts the adversary relative to deployed libsignal
   global MAC-forgery hop (`CellForgery.lean`, `SignalWireShortProto.lean`) hoists non-honest
   decryption forgeries out of the `fsSlotCount qR` hybrid slot sum, so
   `macForgeryTerm C qd = qd · macForgeryProb C.F` is paid once per chain (`4 · q · macForgeryProb`
-  per FS-AEAD instance at `qd = q`; DEV-SM26).
+  per FS-AEAD instance at `qd = q`; DEV-SM26). In `StatementComposed.lean`
+  (`fig8MixShortAuthV1`, `hiddenSaltMixtureBound`, `fsAeadAuthMixtureCompBound`,
+  `fsAeadAuthSlotSumBound`), non-honest wire-MAC forgeries are hoisted further out of the `(t, j)`
+  loop so `4 * macForgeryTerm Z q` is paid once per last-leak bucket (`8 * macForgeryTerm Z q`
+  across honest-header and forged-header modes in `fig8MixShortAuthV1`) and once per `DeliverForge`
+  boundary cell or `(t_L, par)` parity bucket (DEV-LS31, DEV-C14).
 
 ### DEV-LS24
 
@@ -1076,10 +1081,19 @@ adversary
 
 ### DEV-LS29
 
-**An abstract DH group** · class: formalization · effect: none
+**An abstract DH group (session lemma `L2`; concrete X25519 in the CLI headline `Main`)** · class: formalization · effect: none
 
-- The CKA and PRF-PRNG terms are over an abstract `Dh`; the machine's X25519 is tied to it by `hX`
-  and the encoding hypotheses. Nothing here is a proof about real Curve25519.
+- In Lemma 2 (`SessionSecure`, `StatementSession.lean`) and the standalone session theorems, the CKA
+  and PRF-PRNG terms are parameterized over an abstract `Dh` tied to `C.X`/`C.pubKey` by
+  `X25519RealizesDh` and encoding hypotheses.
+- In the CLI security headline (`CliPqxdhSecurityFor` / `CliPqxdhElfSecure` /
+  `CliPqxdhBinaryCorrectAndSecure`, `StatementPqElf.lean`), the group is fixed to the concrete
+  Curve25519 prime-order x-only subgroup (`X25519Pt`, `x25519Dh`, `x25519EncPt`, `x25519EncT`,
+  `x25519DecT`, explicit `x25519Delta = 1 / 2 ^ 250` in
+  `LibsignalBinary/Specifications/CryptoGames/DH/X25519Group.lean`) and `realUnreachedPrims
+  kemKeyGen`, with all seven session group laws and all 55 non-`kemKeyGen` fields of
+  `CryptoWellFormedPrimitivesδ` discharged as proved lemmas (`ConcreteX25519Group.lean`,
+  `ConcreteX25519Pow8.lean`, `ConcreteX25519Prims.lean`).
 
 ### DEV-LS30
 
@@ -1097,19 +1111,37 @@ adversary
 
 ### DEV-LS31
 
-**The bound has an 8-byte MAC tag floor (reaches 1 at ~6.2·10^8 queries for `q_ep = 0`, 38,967 for `q_ep = q`)** · class: formalization · effect: constants
+**The bound has an 8-byte MAC tag floor (reaches 1 at `q = 447,781,295` for `q_ep = q`, not reached below the `_hq32` cap for `q_ep ≤ 10`)** · class: formalization · effect: constants
 
-- With `macForgeryProb ≥ 2^-64`, the MAC-forgery part of the bound alone reaches `2^-32` at
-  `q = 9,459` (`q_ep = 0`), `7,327` (`q_ep = 1`), `1,986` (`q_ep = 10`), `214` (`q_ep = q/2`),
-  `151` (`q_ep = q`), and reaches 1 at `q = 619,925,131` (`q_ep = 0`), `480,191,941` (`q_ep = 1`),
-  `130,210,321` (`q_ep = 10`), `55,108` (`q_ep = q/2`), `38,967` (`q_ep = q`). Source:
-  `scripts/bound_thresholds.py`.
-- Factors on `macForgeryProb`: `2` copies of `fig8ShortBound` (H1 + the window/signed-pre-key
-  authenticity copy, DEV-LS12), `q` authenticity FS-AEAD instances + `3` privacy FS-AEAD instances
-  per `(t*, t*_L)` guess (ACD19 Thm 8, Lemma 15; DEV-SM25), the `(t*, t*_L)` guess sums (Thm 1,
-  DEV-SM19, DEV-LS7), and `4·q` per FS-AEAD instance (`4 * macForgeryTerm C q` outside the
-  `fsSlotCount (2q) = 4q + 25001` computational slot sum; DEV-LS23, DEV-SM26). [`README.md`](README.md) §3
-  compares with ACD19's composed shape.
+- With `macForgeryProb ≥ 2^-64` (and `2^-64` per uniform-key 8-byte tag test in the companion
+  spurious-step and epoch-0 / SPK terms), the per-session 8-byte tag part of
+  `sessionAdvantageBound` (`(92 · q_ep + 96) · q · 2^-64` for `q_ep ≥ 1`, `112 · q · 2^-64` at
+  `q_ep = 0`) reaches `2^-32` at `q = 38,347,923` (`q_ep = 0`), `22,845,571` (`q_ep = 1`),
+  `4,227,331` (`q_ep = 10`), `9,662` (`q_ep = q/2`), `6,833` (`q_ep = q`), and reaches `1` at
+  `q = 633,258,380` (`q_ep = q/2`) and `447,781,295` (`q_ep = q`), while for `q_ep = 0 / 1 / 10`
+  it stays below `1` across the entire `_hq32` per-session counter range `q ≤ 2,147,471,145`
+  (`≈ 2^-26.19` at `q_ep = 0` and `≈ 2^-23.01` at `q_ep = 10` at `q = 2,147,471,145`; algebraically
+  `164,703,072,086,692,426` / `98,120,979,115,476,339` / `18,156,244,167,036,961` without the cap,
+  evaluated directly from the closed-form formula above).
+- Factors on `macForgeryProb` in `StatementComposed.lean` / `StatementSession.lean`:
+  `32 · (q_ep + 1) · q` from `2 * fig8MixShortAuthV1` (`2 × 2 × (q_ep + 1)` last-leak `t_L`
+  buckets in `admissibleLastLeakGuesses 3 (q_ep + 2)` × `8 * macForgeryTerm Z q`, split into `4 · q`
+  honest-header and `4 · q` forged-header modes while computational slot hops use
+  `fsAeadAuthMixtureCompBound`), `24 · (q_ep + 2) · q` from `fig8MixShortPrivV1` (`2 × (q_ep + 2)`
+  challenge epochs `i < q_ep + 2` × `3` `t_L`-free `fsAeadMixtureBound` instances `redFSPriv i` and
+  `2 * redFSPrivCoin i`, each paying `4 · q`), `(32 · q_ep + 8) · q` for `q_ep ≥ 1` (`24 · q` at
+  `q_ep = 0`) from `2 * hiddenSaltMixtureBound` (`2 × ((q_ep + 1)` `B1` cells `+ q_ep` `B2` cells
+  `+ 2 · max(1, q_ep)` `(t_L, par)` parity buckets) × `4 * macForgeryTerm Z q`, with computational
+  slot hops in `fsAeadAuthSlotSumBound`; DEV-LS23, DEV-LS36), plus `(4 · q_ep + 8) · q · 2^-64`
+  from the companion 8-byte tag-test suprema (DEV-C14). (The standalone uncosted `fig8ShortBound` in
+  `Computational/Proofs/SpecLemmas/` retains the pre-bucket per-`(t, t_L, j)` sum;
+  [`README.md`](README.md) §3 compares with ACD19's composed shape.)
+- **Incomparability with the earlier per-cell bound:** hoisting MAC forgeries into these buckets
+  drops the MAC term from `O(q_ep² · q² · μ)` to `O(q_ep · q · μ)` in exchange for up to `1.95×`
+  more PRF-PRNG terms, up to `1.74×` more FS-AEAD terms (for `q ≥ 1`; `2.33×` at `q = 0, q_ep = 1`),
+  and a re-indexed, enlarged reduction family under `ratchetCostBudget q (qep + 1)`, so the session
+  statement is formally incomparable with the earlier per-cell form rather than a strict tightening
+  (see [DEV-C14](#dev-c14) for the full breakdown).
 
 ### DEV-LS32
 
@@ -1262,10 +1294,9 @@ formalization · effect: adds a term (refinement under decision C only)
 
 ## M, E: the compiled binary
 
-Homes: `LibsignalBinary/Specifications/SignalSession/SmScheme.lean` and
-`LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean` (T; legacy SM-mode definitions
-demoted to proof-side `LibsignalBinary/Proofs/SpecLemmas/SignalSession/CliBinaryFixed.lean`, as
-`CliBinary.lean` was removed on the move to `main`), and for the shared entries,
+Homes: `LibsignalBinary/Proofs/SignalSession/SmScheme.lean` and
+`LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean` (T; the legacy fixed-image SM-mode
+definitions `CliBinary.lean` and `CliBinaryFixed.lean` have been removed), and for the shared entries,
 `LibsignalBinary/Specifications/LibsignalE2E/` (T). The list "Deviations of a run of the ELF" in
 `CliBinaryPq.lean`'s docstring is authoritative. The binary adds no term to the bound: each entry below changes which scheme and game
 the bound is about, never its terms. `DEV-E2` to `DEV-E5`, `DEV-M8` and `DEV-M13` are retired.
@@ -1281,7 +1312,7 @@ the bound is about, never its terms. `DEV-E2` to `DEV-E5`, `DEV-M8` and `DEV-M13
 
 **The receive's epoch and index are computed in Lean** · class: machine model · effect: none
 
-- Home: `LibsignalBinary/Specifications/SignalSession/SmScheme.lean`: `cliRecvE`.
+- Home: `LibsignalBinary/Proofs/SignalSession/SmScheme.lean`: `cliRecvE`.
 - The CLI does not output ACD19 Def. 7 (B)'s `(t, i)`; they come from Lean's header parse
   (`SignalMessage.tryFrom`) and the epoch bookkeeping: index = counter + 1; a ciphertext whose
   header does not parse in Lean but which the CLI accepts gets the current epoch and index 0. They
@@ -1321,13 +1352,12 @@ effect: out of scope
 **One fixed memory layout** · class: machine model · effect: out of scope
 
 - Home: `LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean` (T), section "Deviations of a run of the ELF".
-- Each valid pair of multi-block placements `mpl` (`libsignalSessionLib.LinkedAt bytes mpl`) and
-  `mmpl` (`VerifiedLibraries.mallocngLib.LinkedAt bytes mmpl`,
-  `Placed.CliElfCodeMatchesPlaced mpl mmpl elf`) places code and data where `elf` maps them (for the
+- The ELF image `elf` (`ElfImage.parse bytes = .ok elf`) is loaded at its static segment addresses (for the
   pinned static non-PIE ELF `cliElfBytes`, linked with stock `ld.lld` under `third_party/libsignal/libsignal-session/cli-elf/stock/stock_c2.ld` at base `0x400000`, 4
   `PT_LOAD` segments). The process gets an 8 MiB stack with its top at `0x7fff_ffff_0000`
-  (DEV-CLI7), the engine's default auxiliary vector (`AT_RANDOM` = 16 zero bytes, `AT_HWCAP` =
-  `0x3`), `mmap` slots from `0x6000_0000_0000` (`SignalSession/Process.lean`), and `brk` starting at
+  (DEV-CLI7), the auxiliary vector of `SignalSession/Process.lean` (`AT_RANDOM` = 16 zero bytes,
+  `AT_HWCAP` = `0x1b` enabling FP, ASIMD, AES, and PMULL while keeping LSE bit 8 `= 0`), `mmap`
+  slots from `0x6000_0000_0000`, and `brk` starting at
   `elf.brkStart`.
 - A real kernel places the stack, `brk`, and the `mmap` area at random addresses; no claim is made
   for another stack/`mmap`/`brk` layout.
@@ -1344,37 +1374,40 @@ effect: out of scope
   `third_party/libsignal/libsignal-session/cli-elf/stock/inputs_stock_stdbin.lock`) from the
   compiled `rustc 1.98.1` crate objects and trimmed `alloc`/`std` sysroot members
   (`translation.toml` and `cli/io/translation.toml`: release profile
-  with overflow checks on, the software AES and SHA-2 backends), `rustc 1.98.1`'s bundled musl
+  with overflow checks on, ARMv8 hardware AES autodetection, and the software SHA-2 backend), `rustc 1.98.1`'s bundled musl
   runtime `self-contained/{crt1.o, crti.o, crtn.o, libc.a}`, `cli-elf/stock/rdl_shim.S` and the
   zero-word extern-stub object `extern_stubs_clean.o` (both assembled with `zig 0.16.0`; no
   Zig-compiled `libc` routines are linked), and the StdBin entry harness (`cli-elf/std-main`).
   Production builds, other compilers, and other flags are not covered.
-- In the promoted placed headlines (`libsignal_cli_pq_secure_elf_binary_placed`,
-  `libsignal_cli_pq_binary_correct_placed`, `comp_refines_cli_placed`,
-  `signal_session_secure_placed`), code bytes, relocations, addresses and layout are kernel-checked
-  against the pinned ELF (`Placed.CliElfCodeMatchesPlaced` / `InElf`, `cliElf_linkedAt_unique`).
-  Name labels (hook/panic tags, spqr's CPU-probe token) rest on the trusted `.o` extractor's output
-  (label gate A: `CliLabelsFromObjects` in
-  `LibsignalBinary/Specifications/SignalSession/CliLabels.lean`, proved as
-  `libsignal_cli_labels_from_objects`) together with assumption A-LINK, machine-checked on the stock
-  `ld.lld` ELF in CI by `scripts/stock-pin/alink_check.py` (`Computational/docs/TRUSTED_BASE.md` §5);
-  the legacy linker's output (`untrusted_legacy_linker` / `libsignalSessionImage`) is out of both
-  the shipped ELF build and the kernel-checked statement closure, and is an untrusted cache used by
-  proofs only.
+- In the promoted ELF-direct headlines (`libsignal_cli_pq_secure_elf_binary`,
+  `libsignal_cli_pq_binary_correct`, `comp_refines_cli`, `signal_session_secure`), execution is
+  stated directly on `cliElfBytes` with no library placement (`libsignalSessionLib`,
+  `ProofLib.Placed.Multi`, `LinkedAt`/`LinkedIn`, `CliLabelsFromObjects`, `CliElfCodeMatchesPlaced`,
+  `DirectOrBranchStub`, and assumption `A-LINK` leave the trusted statements). Every instruction
+  outside the 18 Rust panic entry points is fetched from plain loaded ELF memory (zero initial
+  memory patches). What enters the trusted statement closure is engine
+  `Arm64.Trusted.Process.Overrides` (`parseSymtabFull`, `resolveSym`, `overrideProgram`, already
+  engine TCB) plus `CliElfAddrs` and `resolveCliElfAddrs` in `CliBinaryPq.lean`. The remaining
+  symbol-naming trust point is that `cliElfBytes`'s `.symtab` labels the 18 panic entry points and
+  5 `SampleNTT` entries accurately (cross-checked against the extracted objects in untrusted
+  `ElfDirectBridge.cliElf_symtab_agrees_with_placement` and `CliLabelsFromObjects`, and checked
+  at build time by `scripts/stock-pin/alink_check.py`; see `Computational/docs/TRUSTED_BASE.md` §5).
+  The legacy linker (`untrusted_legacy_linker`) is retired from both the shipped ELF build and the
+  repository's statement and proof closures.
 
 ### DEV-M9
 
 **No pre-key layer and no libsignal session initialisation** · class: libsignal · effect: out of
 scope
 
-- Home: `LibsignalBinary/Specifications/SignalSession/SmScheme.lean`, module docstring.
+- Home: `LibsignalBinary/Proofs/SignalSession/SmScheme.lean`, module docstring.
 - Init writes the session model's records directly (`binStateOf`, `encodeRecord`): libsignal's
   session initialisation and PQXDH never run in the SM statements. While Alice's record is
   unacknowledged it holds the constant pending pre-key of `encodeRecord` (base key `0x05 ‖ 0^32`,
   no Kyber pre-key).
 - A send gives the inner `SignalMessage` of a pre-key message (DEV-CLI1); a receive takes `2 ‖ c`
   only (DEV-CLI2). The pre-key layer and PQXDH are claimed by the PQXDH-mode statements
-  (`PqStatement.lean`), not by the SM statements.
+  (`LibsignalBinary/Proofs/SignalSession/PqStatement.lean`), not by the SM statements.
 
 ### DEV-M10
 
@@ -1387,8 +1420,8 @@ scope
 **Each call is a fresh process** · class: machine model · effect: out of scope
 
 - Home: `LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean` (T), section "Deviations of a run of the ELF".
-- Each `init` / `send` / `recv` in `Placed.cliRunPlacedSig` (`Placed.CliRunsToPlaced`) is one run of
-  the ELF from `loadState` (after `Placed.cliTokenPatchPlaced`) to `exit_group` or `SIGABRT`. In
+- Each `init` / `send` / `recv` in `cliRunElf` (`CliRunsToElf`) is one run of
+  the ELF from plain `ElfImage.loadState` to `exit_group` or `SIGABRT`. In
   `ElfImage.loadState`, the trusted loader's `Arm64.Process.initFsState`
   (`arm64-semantics/Arm64/Trusted/Process/Loader.lean`, l.467) opens only standard streams on file
   descriptors `0`, `1`, and `2` (the initial state from which the proofs establish `FdsGe3Closed`,
@@ -1406,53 +1439,41 @@ scope
 
 ### DEV-M17
 
-**spqr's PMULL probe has already run and found no PMULL (`cliTokenPatch`)** · class: machine model ·
-effect: out of scope
+**Merged into [DEV-CLI10](#dev-cli10): plain `loadState` runs `aes` and SPQR CPU probes on pinned `AT_HWCAP = 0x1b`, `AT_HWCAP2 = 0` (legacy `cliTokenPatch` only)** · class: machine model ·
+effect: out of scope (LSE / other `AT_HWCAP` values)
 
-- Home: `LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean` (T): `Placed.cliTokenPatchPlaced` (and proof-side `LibsignalBinary/Proofs/SpecLemmas/SignalSession/CliProcessFixed.lean`: `cliTokenPatch`).
-- Every CLI call (a fresh process, DEV-M11) starts from `cliTokenPatch` of the ELF's loaded state,
-  which writes `0#8` (not accelerated) to spqr's `check_accelerated::use_accelerated::STORAGE.0` at
-  `cliBase + tokenStorageOff` and `[0#8, 0#8, 0#8, 0#8]` (`0#32`, `COMPLETE`) to the 4-byte
-  `futex::Once` state word of `check_accelerated::TOKEN` at `cliBase + tokenOnceOff`: the cells
-  `TokenInit` constrains (`LibsignalBinary/Specifications/LibsignalSpqrV1/Hooks.lean`). Before the
-  patch these bytes are `0xff` and `3` (in the export image, `token_cells_initial`; in the ELF,
-  `cliElf_token_cells_initial`); the five bytes lie in initialised read-write `.data` that no other
-  symbol covers (guards `token_cells_rw_data`, `token_cells_owned`,
-  `LibsignalBinary/Specifications/LibsignalSpqrV1/Guards.lean`).
-- GF(2^16) multiplication therefore takes `unaccelerated::mul`, and the `cpufeatures`
-  initialisation (`Once::call`, then `getauxval(AT_HWCAP)`) is not reached. `Once::call` has no
-  hook row; that it is not reached is a totality obligation of the binary proofs, not an
-  assumption.
-- Why: the engine models neither `getauxval` / HWCAP nor `PMULL` (DEV-SPQR1).
-- Effect: as DEV-SPQR1, no claim for a CPU with PMULL or for the first call's detection. A real
-  process on a CPU without PMULL reaches this state after its first SPQR call.
-- Discharges the `TokenInit` precondition of the SPQR V1 statements (DEV-SPQR1) at the start of
-  every CLI call (DEV-CLI10).
+- Home: `LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean` (T) (`CliRunsToElf` starts
+  from plain `elf.loadState (cliProcessInputs i)` with no initial `.data` patch; legacy
+  `cliTokenPatch` remains only in proof-side `CliBinaryTokenPatch.lean` / `CliProcessFixed.lean`).
+- See [DEV-CLI10](#dev-cli10) for the pinned `AT_HWCAP = 0x1b` / `AT_HWCAP2 = 0` / `LSE = 0` scope.
 
 ### DEV-E1
 
-**Hooks write only their outputs** · class: machine model · effect: w.l.o.g., argued
+**Hooks write only their outputs** · class: machine model · effect: none (ELF-direct headlines: panic-only `cliProgElf`); w.l.o.g., argued (legacy `cliHookTable`)
 
 - Home: `LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean` (T), section "Deviations of a run of the ELF".
-- Under AAPCS64 (the Arm 64-bit procedure call standard) a callee may clobber all caller-saved
-  state: `x0`–`x18`, the caller-saved SIMD/FP (vector / floating-point) registers and the NZCV
-  condition flags. Each hook of `cliHookTablePlaced` writes only what its definition names and keeps
-  every other register (e.g. `writeStdoutHook` writes only `x0` and
-  the trace), so a compiled caller that wrongly relied on a caller-saved register surviving a
-  hooked call would still verify.
-- Argued, not proved: correct compiler output never relies on caller-saved registers across a
+- On the 0-hook stock `ld.lld` ELF (`cliProgElf` intercepts only the `18` panic entry points
+  `cliPanicSymbolsPlaced` resolved from `.symtab`, which terminate the process with `SIGABRT`), no hooked extern remains in
+  the ELF-direct headlines, so every non-panic call executes linked ELF code under the machine's full
+  AArch64 instruction semantics and DEV-E1 has no effect on the headlines.
+- For the legacy fixed-image hook table `cliHookTable` (`CliRunFixed.lean`, outside the headline
+  closures): under AAPCS64 (the Arm 64-bit procedure call standard) a callee may clobber all
+  caller-saved state (`x0`–`x18`, caller-saved SIMD/FP registers, NZCV flags), whereas each hook of
+  `cliHookTable` writes only what its definition names and keeps every other register (e.g.
+  `writeStdoutHook` writes only `x0` and the trace), so a compiled caller that wrongly relied on a
+  caller-saved register surviving a hooked call would still verify.
+- Argued, not proved (for legacy `cliHookTable`): correct compiler output never relies on caller-saved registers across a
   call; every reached call site keeps its live values in callee-saved registers and reads only the
   outputs.
-- Future work that would make it machine-checked: have these hooks havoc (overwrite with arbitrary
+- Future work that would make it machine-checked on legacy `cliHookTable`: have those hooks havoc (overwrite with arbitrary
   values) every caller-saved register, the values drawn from the hook choice `W`, and re-run the
   proofs; the result would then hold for every AAPCS64-conforming libc (still for one ELF,
   DEV-M7).
 - The CLI does not hook `hashmap_random_keys` (reaching its
   stub halts the run).
-- **CLI statements (`…Ext`, `LibsignalBinary/Proofs/SpecLemmas/SignalSession/CliBinaryExtProofDefs.lean`):
-  closed by quantification.** The CLI binary statements hold for every extern
-  table `ext` that meets `CliExternsOk P A ext` (`LibsignalBinary/Proofs/SpecLemmas/SignalSession/CliExternsFixed.lean`), one `HookSat` contract per
-  row of the CLI's table (47 rows, not only the hooks above). `HookOk` keeps only
+- **Proof-side fixed-image extern contracts (`LibsignalBinary/Proofs/SpecLemmas/SignalSession/CliExternsFixed.lean`):
+  closed by quantification.** `CliExternsOk P A ext` specifies one `HookSat` contract per
+  row of the legacy fixed-image CLI table (47 rows, not only the hooks above). `HookOk` keeps only
   the callee-saved registers, `sp` and the memory a contract names, so a caller that relied on a
   caller-saved register, a flag or result bits the ABI leaves free would fail to verify, and each
   call site must prove the callee's precondition. The trusted base for the CLI's externs is these
@@ -1466,10 +1487,11 @@ effect: out of scope
 
 **`__rust_dealloc` frees nothing** · class: machine model · effect: w.l.o.g., argued
 
+- Home: `LibsignalBinary/Proofs/SpecLemmas/SignalSession/HooksCommonLegacy.lean`: `deallocHook`.
 - No block is reused within a call; a reused block's old bytes would be one more kind of residue.
-- **CLI statements (`…Ext`, `LibsignalBinary/Proofs/SpecLemmas/SignalSession/CliBinaryExtProofDefs.lean`):
-  closed by quantification.** The CLI binary statements hold for every
-  allocator `A : RustAlloc` and extern table that meets `CliExternsOk P A ext` (`LibsignalBinary/Proofs/SpecLemmas/SignalSession/CliExternsFixed.lean`).
+- **Proof-side fixed-image extern contracts (`LibsignalBinary/Proofs/SpecLemmas/SignalSession/CliExternsFixed.lean`):
+  closed by quantification.** `CliExternsOk P A ext` quantifies over every
+  allocator `A : RustAlloc` and extern table meeting the contracts.
   `rustDeallocSpec` consumes the block's `live` token, so a use-after-free in the binary cannot be
   proved, and a freed block may be handed out again. One idealization remains (`poolEmp`): the
   allocator's pool needs no program memory at entry, i.e. its blocks come from memory that no other
@@ -1485,35 +1507,84 @@ effect: out of scope
 
 - Home: `LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean` (T), section "Deviations of a run of the ELF".
 - The session model's panic (a `u32` chain-index overflow) is the outcome `aborted` of the specs;
-  the ELF's panic functions end the process with `SIGABRT` (`CliProcess.lean`). Availability only:
-  an abort is a denial of service and reveals no secret. Unreachable for sends in the game; for
-  receives it needs MAC-valid injected jumps, that is a corruption.
+  `cliProgElf addrs` intercepts the `18` `.symtab`-resolved Rust panic entry points
+  (`cliPanicSymbolsPlaced`) via `abortOnPanic` and ends the process with `SIGABRT`
+  (`CliProcess.lean`). In the pinned ELF, the linked bodies of those panic functions reach musl
+  `abort` only via the abort-only `rdl_shim.S` handlers `rust_begin_unwind` (from `panic_fmt`) and
+  `__rust_alloc_error_handler` (from `handle_alloc_error`); the real ELF writes no stderr panic
+  message either, so this is not a modelling gap (executing the linked panic chain directly without
+  `abortOnPanic` is deferred to a follow-up). Availability only: an abort is a denial of service
+  and reveals no secret. Unreachable for sends in the game; for receives it needs MAC-valid
+  injected jumps, that is a corruption.
 
 ### DEV-E8
 
-**The primitives' machine code is hooked, not verified** · class: machine model · effect: out of
-scope
+**All cryptographic primitives execute verified linked ELF code with no non-panic hooks (18 Rust panic overrides, DEV-E7; legacy `cliHookTable` hooks primitives)** · class: machine model · effect: none (ELF-direct headlines) / out of scope (legacy `cliHookTable`)
 
-- SHA-256 compression, AES-256-CBC, X25519 and the RNG are hooks. The primitives are universally
-  quantified: functional correctness holds for every semantics; security holds for the primitives
-  related to the abstract group by `hX`.
-- AES-256-CBC is hooked at the level of the whole function, not the block cipher:
-  `signal_crypto::aes_cbc::aes_256_cbc_encrypt` / `aes_256_cbc_decrypt` (two stubs, rows of
-  `cliHookTable`, `LibsignalBinary/Specifications/SignalSession/CliRun.lean`). So the trusted code is the CBC (cipher
-  block chaining) mode, PKCS#7 padding on encrypt, and unpadding with its padding check (the
-  `BadCiphertext` error) on decrypt, besides the AES block cipher `C.E` / `C.D`: the hooks are the
-  session model's `aesCbcEncrypt` / `aesCbcDecrypt` over the free block cipher. The build pins the
-  portable software AES backend (`--cfg aes_backend="soft"`, the `rustflags` of
-  `third_party/libsignal/libsignal-session/translation.toml`), so the compiled code has no run-time CPU
-  feature detection and does not use the ARMv8 AES instructions: what would run is the `aes`
-  crate's (v0.9.1) software fixslice implementation, which is outside the image (`signal_crypto`,
-  `cbc` and `aes` are not among the extracted crates). A build without that flag would dispatch at
-  run time to the hardware AES path, which this result says nothing about.
-- **No machine-checked evidence links the whole-function AES-CBC hooks to libsignal's code.** The
-  hooks `aesCbcEncrypt` / `aesCbcDecrypt` (CBC mode, PKCS#7 padding, and the unpadding check with
-  its `BadCiphertext` error) are trusted as transcriptions of `signal_crypto` v0.105.4
-  (`rust/crypto/src/aes_cbc.rs`). No proof compares them with compiled `signal_crypto::aes_cbc`
-  code; the session image links no `signal_crypto` code.
+- On the stock `ld.lld` ELF (`cliProgElf` in
+  `LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean` has 0 non-panic hooks and
+  intercepts only the `18` Rust panic
+  entry points `cliPanicSymbolsPlaced` resolved from `.symtab` as `SIGABRT`, DEV-E7; the proof-side `55`-symbol `cliDehookedSymsPlaced`
+  inventory and empty `cliHookTablePlaced := []` live in untrusted
+  `LibsignalBinary/Proofs/Placed/CliBinaryPqPlaced.lean`), **all cryptographic, I/O, CPU-probe, and
+  formatting externs are de-hooked** (and the CLI's coins are plain Rust `cli/src/coins.rs`):
+  - **SHA-256 + HMAC and AES-256-CBC (ARMv8 hardware AES + `fixslice64`)**: `sha2::sha256::compress256` and `libcrux_hmac::hmac`
+    (together with its `libcrux_sha2::hacl::*` SHA-256 helpers) are verified against FIPS 180-4
+    SHA-256 `CryptoVerification.LibsignalSpqrV1.sha256Compress`
+    (`LibsignalBinary/Proofs/HookDischarge/CryptoSha256/`); and
+    `signal_crypto::aes_cbc::aes_256_cbc_encrypt` and `aes_256_cbc_decrypt` together with `aes`
+    0.9.1 `autodetect::Aes256` (`cpufeatures::aarch64::getauxval_hwcap` -> musl `getauxval(AT_HWCAP)`,
+    selecting ARMv8 `AESE`/`AESD`/`AESMC`/`AESIMC` at `AT_HWCAP = 0x1b` with `fixslice64` fallback)
+    are verified against `aesCbcEncrypt` / `aesCbcDecrypt` at the trusted FIPS 197 AES-256
+    specification `CryptoGames.AES256.{aes256Enc, aes256Dec}`
+    (`LibsignalBinary/Specifications/CryptoGames/AEAD/Aes256.lean`, proved in
+    `LibsignalBinary/Proofs/HookDischarge/CryptoAes/`, with `W.C.E` / `W.C.D` also pinned in
+    `HooksMatchPlaced` in `ElfBinding.lean`).
+  - **Stage B cutover (`14 → 0` rows in `cliHookTablePlaced`)**: de-hooked `sha2::sha512::compress512`
+    (proved against FIPS 180-4 SHA-512 `CryptoGames.SHA512.sha512CompressState` in
+    `LibsignalBinary/Proofs/HookDischarge/CryptoSha512/`), x25519-dalek's
+    `PublicKey::from(&StaticSecret)` and `StaticSecret::diffie_hellman` (proved against RFC 7748
+    `CryptoGames.RFC7748.{x25519PubFromSecretRef, x25519Ref}` in
+    `LibsignalBinary/Proofs/HookDischarge/CryptoX25519/`), the `7` `libcrux_ml_kem` Kyber-1024 and
+    ML-KEM-768 incremental entry points (proved against round-3 Kyber-1024 and FIPS 203 ML-KEM-768
+    over FIPS 202 Keccak/SHA-3 `CryptoGames.{SHA3, MLKEM}` in
+    `LibsignalBinary/Proofs/HookDischarge/CryptoMlKem/`), plus `libsignal_cli_io::{write_file,
+    write_stdout}`, `core::fmt::write`, and `alloc::fmt::format::format_inner` (proved in
+    `LibsignalBinary/Proofs/HookDischarge/CliIoFmt/`).
+  - **Closed primitive bundle (`realPEParams`), symbolic per-call guard (`RealHooksAgreeOnInput`),
+    and real-primitive symbolic headlines (`real_prims_admissible`, `comp_refines_cli_real`,
+    `signal_session_secure_real`)**:
+    `CliPqxdhElfCorrect` and `CliPqxdhElfSecure` instantiate the closed primitive bundle
+    `realPEParams` (`realCrypto`, `realPqxdhPrims`) directly without quantifying over `CliHooks`, and
+    discharge `MlKemEncaps1SucceedsOn64ByteHeaderAndSeeds` and AES-256 round-trip `D k (E k x) = x`
+    unconditionally on `mlkem768Incremental` and `aes256Enc`/`aes256Dec` (removing both premises from
+    `CliPqxdhSecurityFor`). On the symbolic side, the hook-parametric ELF-direct headlines
+    (`comp_refines_cli`, `signal_session_secure`) guard all 9 primitives per input via
+    `RealHooksAgreeOnInput` (`realCliHooks` in `Symbolic/Specifications/Refinement/ElfBinding.lean`),
+    combining `ElfGuard.DirsAgreeOnInput` (agreement of the calling party's encoded X25519 key files
+    `encodeDir` and `PqxdhPartyInSpecDomain` membership with `realCliHooks`) and
+    `ElfGuard.ModelAgreesOnInput`, guarding both `elfRel` and `CliElfProgress` (trivially `True` at
+    `W = realCliHooks`). In addition, `Proven.Refinement.real_prims_admissible` proves
+    `RealPrimsAdmissible` (`∃ interp, ExternContractsHoldCli interp ∧ RealPrimsMatch interp`),
+    showing that `realCliHooks` obeys the symbolic extern laws, and
+    `Proven.Refinement.comp_refines_cli_real` / `Proven.Security.signal_session_secure_real`
+    fix the primitives to `realCliHooks` via `RealPrimsMatch` over guarded execution traces with no
+    `RealHooksAgreeOnInput` filter (`elfRelReal`, `0 sorry`, `std3` axioms).
+    On the computational side, the Main Theorem `libsignal_cli_pq_secure_elf_binary`
+    (`CliPqxdhSecurityFor`) instantiates `realPqxdhPrims` and `kyber1024KemKeyGen` with concrete
+    `δ_kem = ε + 1 / 2 ^ 112` under `KyberNoiseGap ε` via `kyber1024_kem_delta_correct` (DEV-PQ21;
+    witnessed by `cliPqxdhElfSecure_kyber1024_instantiable` in `ModelPrimsWitnessReal.lean`, while
+    `cliPqxdhElfSecure_real_9eq_instantiable` witnesses the KEM-generic `CliPqxdhElfSecureAnyKem` at
+    `δ_kem = 1` for dummy `XReal.kemKeyGen` and `PrimeOrderX25519Satisfiable` continues to witness
+    `KemDeltaCorrect … 0` at `Q255`).
+- Whole-function AES-256-CBC and HMAC hooks (`aesEncHook0` / `aesDecHook0` and `aesEncHookMallocng` /
+  `aesDecHookMallocng` moved out of trusted `HooksCommon.lean` / `HooksMallocng.lean` into untrusted
+  `LibsignalBinary/Proofs/E2E/AesHooks0.lean`, and `libcruxHmacHookMallocng` moved into untrusted
+  `LibsignalBinary/Proofs/HookDischarge/CryptoMallocngBudgetBase.lean`) and the legacy X25519,
+  SHA-512, Kyber-1024, ML-KEM-768, `write_*`, and `fmt` hooks remain only in untrusted ghost-table
+  replay proofs and the retired fixed-image `cliHookTable`
+  (`LibsignalBinary/Proofs/SpecLemmas/SignalSession/CliRunFixed.lean`), outside the closure of
+  `Computational/Theorems/` and `Symbolic/Theorems/`.
 - The UUID parser is not a hook: `<uuid::Uuid>::try_parse` is in the image (the whole `uuid` crate
   is compiled in) and is verified against the trusted model `uuidTryParse`
   (`LibsignalBinary/Specifications/LibsignalTripleRatchetRepr.lean`, a transcription of uuid 1.26.1 `src/parser.rs`).
@@ -1523,37 +1594,27 @@ scope
   `bcmp` (and the `memcmp` it tail-calls) from the pinned ELF, and the `CliHooks` fields `bcmp` /
   `bcmp_ok` / `utf8Err` were removed from the structure (D-C2b;
   `LibsignalBinary/Specifications/SignalSession/CliRun.lean`).
-- Alongside the cryptographic primitives, the CLI's hook table `cliHookTablePlaced`
-  (`LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean`, `27` rows: `18` PQXDH/SPQR + `9`
-  base/IO/crypto, with hook definitions in `CliRun.lean` and retired fixed-image `cliHookTable` in
-  `CliRunFixed.lean`) keeps `core::fmt::write` and `alloc::fmt::format::format_inner` (error-message
-  formatting) hooked in this release by design (memory safety proved post-release together with the
-  cryptographic primitives), and hooks the non-crypto rows not yet de-hooked: the two write
-  functions `write_file` and `write_stdout` of the I/O crate (`libsignal_cli_io`). The second stock
-  `ld.lld` cutover (C2) de-hooked `memmove`, `bcmp`, `strlen`, `core::slice::memchr::memrchr`,
-  `core::str::converts::from_utf8`, `<SystemTime>::duration_since`, `<SystemTime as
-  Add<Duration>>::add`, `subtle::black_box`, and the two X25519 `Drop::drop` destructors, whose
-  linked code runs. `read_file`, `read_stdin` (`1 MiB` stdin cap, `2 MiB` file
-  cap, `< 4096`-B NUL-free paths), `memcpy`, and `memset` are no longer hooks: across `B2-TLIT`
-  (`49 → 47`), F3 (`47 → 39`), and the stock `ld.lld` cutover (`39 → 37`, `cliHookTablePlaced_length_guard`—`9`
-  external de-hooked symbols in `cliDehookedSymsPlaced` (`2` read, `5` `__rust_*` allocator, and
-  `memcpy`/`memset` executed as `VerifiedLibraries.mallocngLib` blocks `20`/`21`) plus
-  `<String as Clone>::clone` as an intra-library block under SC-1 route (I)), the compiled read
-  blocks (`SignalSessionIoPlacedObj`), proved against musl `open`/`read`/`close`/`__errno_location`
-  in `LibsignalBinary/Proofs/SignalSession/CliIo/`, and `mallocngLib`'s `memcpy`/`memset` blocks
-  execute in the placed headlines' proof (transferred via per-call `FdsHiFrame` in `VmPreserved` and
-  the K-route ghost-to-real proof `ElfSlicesPqOomH2KM1.h2k_ghostArms_closed`; see DEV-CLI19)—while
-  `write_file` and `write_stdout` are 0-allocation C-ABI musl `open`/`write`/`close`/`__errno_location`
-  loops in `cli/io/src/lib.rs` (linked into the stock ELF from `lib1_0.o`) that remain intercepted at
-  entry as disclosed trusted hooks until `W-DIS0` proves their compiled blocks (see DEV-CLI4,
-  DEV-CLI8, DEV-CLI21, DEV-CLI19). Their contracts are trusted transcriptions of the functions they
-  replace.
-- In `cliHookTablePlaced`, `aesEncHookMallocng`, `aesDecHookMallocng`, and `libcruxHmacHookMallocng`
-  (`LibsignalBinary/Specifications/LibsignalE2E/HooksMallocng.lean`) replay the compiled functions'
-  exact `calloc` / `malloc` / `free` sequences through `VerifiedLibraries.mallocngLib.codeROSubroutineHook`
-  at their measured frame sizes while keeping their whole-function cryptographic contracts. (In the
-  retired fixed-image bump-allocator hooks of `HooksCommon.lean`, outside the `Computational/Theorems/`
-  closure, the hooks allocated only the returned `Vec` with `cap = len`, DEV-E6.)
+- Cutover history across `cliHookTablePlaced` (`49 → 0` rows, `55` external de-hooked symbols in
+  `cliDehookedSymsPlaced` plus intra-library `<String as Clone>::clone` under SC-1 route (I)):
+  `B2-TLIT` (`49 → 47`, `RawVec::grow_one`), F3 + IO.6b (`47 → 39`, `5` `__rust_*` allocator shims,
+  `<String as Clone>::clone`, and `read_file`/`read_stdin` proved against musl
+  `open`/`read`/`close`/`__errno_location` in `LibsignalBinary/Proofs/SignalSession/CliIo/`), first
+  stock `ld.lld` cutover (`39 → 37`, `memcpy`/`memset` on `VerifiedLibraries.mallocngLib` blocks
+  `20`/`21`), second stock `ld.lld` cutover C2 (`37 → 27`, `memmove`, `bcmp`, `strlen`, `memrchr`,
+  `from_utf8`, `duration_since`, `<SystemTime as Add<Duration>>::add`, `subtle::black_box`, and the
+  `2` X25519 `Drop::drop` destructors), `D1.A` crypto cutover (`27 → 18`, the `7`
+  `curve25519_dalek` Ed25519/scalar operations and `KeyPairCompressedBytes::{pk1, pk2}`), SHA-256 +
+  HMAC (`18 → 16`, `compress256` and `libcrux_hmac::hmac`), AES-256-CBC (`16 → 14`,
+  `aes_256_cbc_{encrypt, decrypt}`), and Stage B (`14 → 0` hook rows, adding the `14` former hook
+  symbols — `compress512`, the `7` `libcrux_ml_kem` entries, `write_file`, `write_stdout`,
+  `core::fmt::write`, `format_inner`, x25519 `PublicKey::from` and `diffie_hellman` — plus the `7`
+  `core::fmt` `Formatter::{write_str, pad}` and `<str / u8 / u32 / u64 / usize as Display>::fmt`
+  externs in `lib2_0.o`, transferred via per-call `FdsHiFrame` in `VmPreserved` and
+  `ElfSlicesPqOomH2KM1.h2k_ghostArms_closed`; see DEV-CLI4, DEV-CLI8, DEV-CLI19, DEV-CLI21).
+- No shared-pool (`mallocng`) or stub hook remains in `cliHookTablePlaced`. (In the retired
+  fixed-image bump-allocator hooks of `HooksCommonLegacy.lean` and `AesHooks0.lean`, outside the
+  `Computational/Theorems/` closure, the hooks allocated only the returned `Vec` with `cap = len`,
+  DEV-E6.)
 
 ## PQ: the PQXDH entries and security games
 
@@ -1561,7 +1622,7 @@ Homes: `LibsignalBinary/Specifications/LibsignalE2E/PqxdhHooksCommon.lean`, `Pqx
 `PqxdhModelLink.lean`, `PqxdhCorrectModel.lean`, `PqxdhSessionModel.lean` and
 `LibsignalBinary/Specifications/SignalSession/PqDir.lean`, `PqDirNoMatch.lean`, `CliBinaryPq.lean`
 for the binary PQXDH entries (`DEV-PQ1`–`DEV-PQ11`; statements `CliSpecPqxdh`,
-`CliSpecPqxdhNoMatch`, `CliPqxdhBinaryCorrectPlaced`), and
+`CliSpecPqxdhNoMatch`, `CliPqxdhBinaryCorrect`), and
 `Computational/Specifications/{Pqxdh,Assumptions,SignalPqxdh}/` for the model-level PQXDH computational security statements
 (`DEV-PQ12`–`DEV-PQ32`, statement `SignalPqxdh.Security.PqxdhCorrectAndSecureδ`, theorem `headlineδ`).
 
@@ -1574,24 +1635,47 @@ for the binary PQXDH entries (`DEV-PQ1`–`DEV-PQ11`; statements `CliSpecPqxdh`,
 
 ### DEV-PQ1
 
-**SHA-512, the Ed25519 curve core, Kyber1024 and SPQR's ML-KEM-768 / HMAC stubs are hooked, not verified** · class: machine model ·
-effect: out of scope
+**SHA-512, Kyber1024, and SPQR's ML-KEM-768 functions execute verified linked ELF code with no non-panic hooks (18 Rust panic overrides, DEV-E7; hooked only in legacy unplaced tables)** · class: machine model ·
+effect: none (ELF-direct headlines) / out of scope (legacy unplaced tables)
 
-- The extension of DEV-E8: `pqxdhHookTable` (`LibsignalBinary/Specifications/LibsignalE2E/PqxdhHooksCommon.lean`, 18
-  rows) adds `compress512`, seven `curve25519_dalek` functions,
-  `kyber::{encapsulate, decapsulate}` over `Q : PqxdhPrims`, and the 8 SPQR V1 rows in
-  `spqrHookTable C Q.K` (seven `libcrux_ml_kem::mlkem768` stubs over `Q.K : MlKem` and
-  `libcrux_hmac::hmac` over `C.F`). The XEdDSA logic around the curve core, the `spqr` 1.6.0 state
-  machine, and `RawVec::grow_one` stay in-image machine code.
-- HMAC allocator fidelity under the bump hooks: see [DEV-E8](#dev-e8).
+- The extension of DEV-E8: after the Stage B cutover (`14 → 0`) and ELF-direct run cutover,
+  `cliProgElf` (`LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean`) intercepts only
+  the `18` panic symbols of `cliPanicSymbolsPlaced` resolved directly from `.symtab` (`cliHookTablePlaced := []` in untrusted `LibsignalBinary/Proofs/Placed/CliBinaryPqPlaced.lean`): `compress512`,
+  `kyber::{encapsulate, decapsulate}`, and all `7` `libcrux_ml_kem::mlkem768::incremental` functions
+  (`pk1`, `pk2`, `from_seed`, `encapsulate1`, `encapsulate2`, `decapsulate_compressed_key`,
+  `validate_pk_bytes`), together with all `7` `curve25519_dalek` Ed25519/scalar operations, X25519,
+  and `libcrux_hmac::hmac` (with its `libcrux_sha2::hacl::*` SHA-256/SHA-512 helpers), execute
+  verified linked ELF code on the stock ELF, alongside
+  the in-image XEdDSA wrapper logic, the `spqr` 1.6.0 state machine, and `RawVec::grow_one`. The
+  computational ELF-direct headlines instantiate `realPqxdhPrims` in `realPEParams` directly from
+  `CryptoGames.{SHA512, MLKEM}`, and the symbolic ELF-direct headlines guard them per input via
+  `RealHooksAgreeOnInput` (`comp_refines_cli` / `signal_session_secure`) or instantiate them
+  unfiltered at `realCliHooks` (`comp_refines_cli_real` / `signal_session_secure_real` via
+  `real_prims_admissible`). Legacy hook definitions in `PqxdhHooksCommon.lean` and
+  `LibsignalBinary/Proofs/SpecLemmas/SignalSession/PqxdhHooksLegacy.lean` remain outside the
+  ELF-direct headline closure.
 
 ### DEV-PQ2
 
 **Kyber1024 round 3, not FIPS 203 ML-KEM-1024** · class: libsignal · effect: none
 
 - libsignal v0.105.4's `kem::KeyType::Kyber1024` (type byte `0x08`) calls libcrux's round-3
-  `mlkem1024::kyber`. The KEM is abstract here; a security layer's KEM assumption is about Kyber1024
-  round 3.
+  `mlkem1024::kyber`. The KEM is abstract in the model-level games and pinned to
+  `CryptoGames.MLKEM.{kyber1024EncapsVec, kyber1024DecapsVec}` in the placed ELF headlines; a
+  security layer's KEM assumption is about Kyber1024 round 3.
+- On implicit rejection (`ct ≠ c'`), the trusted Kyber-1024 decapsulation specification
+  (`kyber1024DecapsWith` / `kyber1024DecapsVec` in
+  `LibsignalBinary/Specifications/CryptoGames/KEM/MlKem.lean`) follows `libcrux` `variant::Kyber`
+  (`ind_cca.rs:422–450`), computing `KDF(J(z‖c) ‖ H(c))`
+  (`SHAKE-256_32(SHAKE-256_32(z ‖ c) ‖ SHA3-256(c))`), not `pqcrystals` round-3 `KDF(z ‖ H(c))`.
+  The specification is what the linked binary runs, so this is a faithful model, disclosed.
+- Test vectors: `LibsignalBinary/Proofs/HookDischarge/CryptoMlKem/Spec/MlKemOfficialKat.lean`
+  checks the trusted Kyber-1024 encapsulation and decapsulation against counts 0–9 of the NIST
+  Round 3 KAT `PQCkemKAT_3168.rsp`. That file has only valid ciphertexts. Its
+  `kyber1024RejectionDiffersFromRound3Reference` guard shows the rejection key above on a modified
+  official ciphertext. The same file checks the ML-KEM-768 definitions behind
+  `mlkem768Incremental` against all 70 ML-KEM-768 cases of the NIST ACVP FIPS 203 vectors.
+  `Spec/MlKemKat.lean` checks both specs against `libcrux-ml-kem` 0.0.10.
 
 ### DEV-PQ3
 
@@ -1601,16 +1685,17 @@ effect: out of scope
 - The image is built from stock libsignal v0.105.4, with no patch. `initialize_alice_session` and
   `initialize_bob_session` call `spqr::initial_state` with `version: V1, min_version: V1`
   (`rust/protocol/src/ratchet.rs`), so every session that a PQXDH handshake creates has SPQR V1 on.
-  `spqr::initial_state`, `spqr::send`, and `spqr::recv` (together with `RawVec::grow_one`) are
-  in-image machine code; only their libcrux ML-KEM-768 and `libcrux_hmac::hmac` callees are hooked
+  `spqr::initial_state`, `spqr::send`, and `spqr::recv` (together with `RawVec::grow_one`, and on
+  the stock ELF with 0 non-panic external hooks all `7` `libcrux_ml_kem::mlkem768::incremental` callees, `libcrux_hmac::hmac`,
+  and its `libcrux_sha2::hacl::*` SHA-256 helpers) are in-image or de-hooked verified machine code
   (DEV-PQ1).
 - **Binary functional correctness of the CLI's PQXDH mode with SPQR V1 (`CliSpecPqxdh`).**
   `CliSpecPqxdh` (`LibsignalBinary/Specifications/SignalSession/PqDir.lean`) specifies the CLI's `init`,
   `send` and `recv` (of a `2`-tagged message, and of a pre-key message with a matching session or
   none) against the session model `pqxdhSessionParams W` with the SPQR V1 model `pqxdhSpqrSession W`; `CliSpecPqxdhNoMatch`
   (`PqDirNoMatch.lean`, DEV-CLI11) covers a pre-key message over a session that does not match. Both
-  are proved for the CLI's ELF by Lemma 4 `libsignal_cli_pq_binary_correct_placed`
-  (`Computational/Theorems/Main.lean`, statement `CliPqxdhBinaryCorrectPlaced`), up to an abort of a run in which an allocation fails (DEV-CLI15).
+  are proved for the CLI's ELF by Lemma 4 `libsignal_cli_pq_binary_correct`
+  (`Computational/Theorems/Main.lean`, statement `CliPqxdhBinaryCorrect`), up to an abort of a run in which an allocation fails (DEV-CLI15) or `SampleNTT` seed divergence (DEV-CLI22).
 - **What remains out of scope for SPQR.** No computational security claim is made for SPQR V1 or for
   a composed PQXDH + Triple Ratchet (Double Ratchet + SPQR V1) game: no Double Ratchet security
   statement covers SPQR beyond empty-SPQR sessions from the initial records the game writes
@@ -1643,22 +1728,17 @@ effect: out of scope
      `chainPanic_init_epoch1_idx0_false`, and `recvPanicsB_spqrV1Init_false`). This proves that on
      freshly initialized V1 state (`epoch = 1`, `ctr = 0`), `spqr::recv` never panics on well-formed
      v1 messages.
-  2. **Honest-schedule send totality (`#355`,
-     `LibsignalBinary/Proofs/SpqrV1Sync/SendTotal/{Defs,Assembly}.lean`, namespace
+  2. **Honest-schedule send totality
+     (`LibsignalBinary/Proofs/SpqrV1Sync/SendTotal/{Defs,Assembly}.lean`, namespace
      `CryptoVerification.SpqrV1Sync.SendTotal`):**
      Under `Encaps1Total K` (`∀ hdr : List (BitVec 8), hdr.length = 64 → (K.encaps1 hdr).isSome = true`),
      `topStmts`, `sendPanics_eq_false_of_isSome`, `sendCorrectQ_of`, `spqrV1SessionB_sendCorrectQ`,
      and `spqrSendTotalReachable_v1` prove that `(spqrV1SessionUniformCoins F K).sendPanics s r = false` and
      `((spqrV1SessionUniformCoins F K).send s r).isSome = true` on every state reachable in the honest SPQR
      game with `< 2^32` sends per epoch.
-  3. **Honest-braid send and receive no-panic (`#354`,
-     `Computational/Proofs/SpqrV1Sync/{HonestNoPanic,DeltaLift}.lean`, removed on the move to
-     `main` — proved on `stage3/train` `3d2dbef149`):**
-     Under `Encaps1Total K`, `topInv_noSendPanic`, `topInv_noRecvPanic_inWindow`,
-     `topInv_noRecvPanic`, `spqrV1_honest_noSendPanic`, `spqrV1_honest_noRecvPanic`,
-     `spqrV1_honestCorrect`, and `libsignal_corr_spqr_v1` prove that `sendPanics = false` and
-     `recvPanics = false` hold along all honest-braid executions with `q + 2000 ≤ 2^32` messages
-     per epoch (see DEV-SPQR7).
+  3. **Honest-braid send and receive no-panic** (superseded standalone modules
+     `Computational/Proofs/SpqrV1Sync/{HonestNoPanic,DeltaLift}.lean`, not part of the current
+     repository tree; see DEV-SPQR7 for the current SPQR V1 send/receive coverage).
 
   **When the three O14 panic predicates CAN be `true` in stock `spqr` 1.6.0 (status labels):**
   - **(a) `SpqrInitialStatePanics`: `not-excluded`** (under-specified `spqrInitialStateSpecP` leaves
@@ -1675,10 +1755,10 @@ effect: out of scope
        DEV-LS36 / DEV-SPQR7) when `ctr ≥ 2^32 - max_ooo_keys` (`2^32 - 2000`), or on 64-bit epoch
        overflow `epoch = u64::MAX` (`ChainPanic.addEpochOverflow`), or on synthetic states with
        `sent_keys.len = 2000` at epoch `< 3`.
-    2. *ML-KEM `encaps1` hook returning `none`:* in `incremental_mlkem768::encaps1`
-       (`src/incremental_mlkem768.rs:60`, `StatesPanic.encaps1Failed`) if the uninterpreted `K.encaps1`
+    2. *ML-KEM `encaps1` returning `none`:* in `incremental_mlkem768::encaps1`
+       (`src/incremental_mlkem768.rs:60`, `StatesPanic.encaps1Failed`) if the parameter `K.encaps1`
        returns `none` (`Err`) on the 64-byte header (excluded for valid ML-KEM-768 instances by
-       `Encaps1Total K`).
+       `Encaps1Total K`, and proved unconditionally for `realPEParams.Q.K`).
   - **(c) `recvPanics` (`recvPanicsSaltB = true`, equivalent to `recvPanicsB = true` by
     `recvPanicsSaltB_eq_recvPanicsB` in `LibsignalSpqrV1/Assemble.lean:1008`):
     `proved-reachable`** on adversarial 4-byte v0 wire `[0, _, _, _]` (`Serialize.lean:162`,
@@ -1702,7 +1782,7 @@ effect: out of scope
 
 **Trust on first use** · class: libsignal · effect: out of scope
 
-- Home: `LibsignalBinary/Specifications/SignalSession/PqStatement.lean`.
+- Home: `LibsignalBinary/Proofs/SignalSession/PqStatement.lean`.
 - The first call that meets the peer's identity key pins it in `identities/<peer>`, and every
   later call checks the pinned key (`PqParty.trusts`, `PqDir.lean`). No claim against identity
   substitution at first contact; which keys are honest is the game's decision.
@@ -1720,7 +1800,7 @@ effect: out of scope
 
 **The CLI's fixed environment** · class: libsignal · effect: out of scope
 
-- Home: `LibsignalBinary/Specifications/SignalSession/PqStatement.lean`.
+- Home: `LibsignalBinary/Proofs/SignalSession/PqStatement.lean`.
 - The clock is `UNIX_EPOCH`, so every record's timestamp is 0; identities are trusted on first use
   (DEV-PQ5); Bob's pre-keys are files, looked up by id.
 - The replay state is in the directory (`PqDir.lean`): one-time pre-keys and one-time Kyber
@@ -1731,7 +1811,7 @@ effect: out of scope
 
 **Unacknowledged sessions never expire** · class: libsignal · effect: none
 
-- Home: `LibsignalBinary/Specifications/SignalSession/PqStatement.lean`.
+- Home: `LibsignalBinary/Proofs/SignalSession/PqStatement.lean`.
 - `message_encrypt` refuses to send on a pending session older than
   `MAX_UNACKNOWLEDGED_SESSION_AGE` (30 days) at `now`. The CLI's `now` is `UNIX_EPOCH` and every
   reachable record has timestamp 0 (DEV-PQ8), so the check never fires.
@@ -1740,7 +1820,7 @@ effect: out of scope
 
 **Pre-key messages below `2^32` bytes; session records and directory files below `2^31` bytes, with non-`.base-keys` files at most `2^21` bytes (`fileCapBytes`, DEV-CLI21)** · class: machine model · effect: restricts the adversary
 
-- Home: `LibsignalBinary/Specifications/SignalSession/PqStatement.lean`.
+- Home: `LibsignalBinary/Proofs/SignalSession/PqStatement.lean`.
 - `CliRecvPrekeyCorrect` covers `recv` of a pre-key message whose inner message is below
   `2^32 - 2048` bytes: the other fields of the serialized `PreKeySignalMessage` (version byte, ids,
   the 1568-byte Kyber ciphertext, base and identity keys, field keys and lengths; about 1.7 KB) are
@@ -1767,7 +1847,7 @@ effect: out of scope
 **No sessions with one's own account (`is_same_account`)** · class: libsignal · effect: restricts
 the adversary
 
-- Home: `LibsignalBinary/Specifications/SignalSession/PqStatement.lean`.
+- Home: `LibsignalBinary/Proofs/SignalSession/PqStatement.lean`.
 - libsignal's `process_prekey` (`session_cipher.rs`) treats a session with one's own account
   specially (`self_session`). The models fix `self_session = false`. The two parties' addresses
   (`partyAddress`) are distinct UUIDs, so the CLI's `is_same_account` check is false on these
@@ -1826,14 +1906,17 @@ formalization · effect: none (Lemma 1 and Main Theorem); restricts the adversar
   `pZMod` over `ZMod l25519` witnesses joint satisfiability of `WellFormedPrimitivesδ` and
   `XeddsaCurveLaws` (`Computational/Tests/XeddsaRomNonVac.lean`), and `pReal` over `GF(2^255 - 19)`
   with FIPS 180-4 SHA-512 checks byte-exact agreement with `libsignal` v0.105.4 test vectors
-  (`Computational/Tests/Kat/XeddsaKatTest.lean`). Four boundaries separate these ROM theorems from
-  the trusted headlines: (a) `WellFormedPrimitivesδ` does not pin `P.sigSign = xeddsaSignRef P`
-  (`libsignal-cli` only verifies bundle signatures), (b) `XeddsaCurveLaws P` is not proved for
-  concrete `GF(2^255 - 19)` Curve25519/Ed25519 arithmetic (`curve25519-dalek` lies outside binary
-  proof scope, [DEV-PQ3](#dev-pq3)), (c) `P.sha512` in `modelPrims` is concrete Merkle–Damgård
-  SHA-512 rather than `sha512RoSpec` ([DEV-PQ1](#dev-pq1)), and (d) the Forking-Lemma
-  `√(2(q_H + 1) · GapDH)` loss makes the signature reduction qualitative rather than concrete-tight
-  at `deploymentSetup` parameters (`N_id = 2^20`, `q_H = 2^64`).
+  (`Computational/Tests/Kat/XeddsaKatTest.lean`). `XeddsaCurveLaws` is also instantiated directly
+  for the concrete `GF(2^255 - 19)` model `modelPrims (realUnreachedPrims kemKeyGen) realPEParams`
+  (`xeddsaCurveWitness_realUnreachedPrims` in
+  `Computational/Proofs/LibsignalCli/ConcreteX25519Prims.lean`, used via `realXeddsaSign_correct`
+  to discharge `sig_corr` in the Main Theorem's proof). Three boundaries separate the standalone
+  ROM theorems from the trusted headlines: (a) `WellFormedPrimitivesδ` does not pin
+  `P.sigSign = xeddsaSignRef P` (`libsignal-cli` only verifies bundle signatures, though the
+  concrete Main Theorem witness sets `realXeddsaSign = xeddsaSignRef`), (b) `P.sha512` in
+  `modelPrims` is concrete Merkle–Damgård SHA-512 rather than `sha512RoSpec` ([DEV-PQ1](#dev-pq1)),
+  and (c) the Forking-Lemma `√(2(q_H + 1) · GapDH)` loss makes the signature reduction qualitative
+  rather than concrete-tight at `deploymentSetup` parameters (`N_id = 2^20`, `q_H = 2^64`).
 - Following FG24 (fn. 12, which analyses separate DH and signing keys) and BJKS24 (which does the
   same), the standalone two-key games `pqxdhKeyIndExp` and `pqxdhAuthExp` (together with
   `Pqxdh2KeyKeyIndSecureδ`, `PqxdhAuthSecureδ`, `Pqxdh2KeySecureδ`, and `Pqxdh2KeyCorrectAndSecureδ`
@@ -1987,7 +2070,34 @@ effect: restricts the adversary
 - Kyber1024 round 3 (DEV-PQ2) has a small, nonzero decryption-failure probability, so `kem_corr`
   does not hold for the deployed KEM; FG24 Thm 5.1 likewise assumes `δ_corr`-correctness and pays
   `n_s · δ_corr`.
-- Reference: FG24 §2 (δ-correct KEM) and Thm 5.1 proof, Game 2 (`n_s · δ_corr`).
+- For concrete Round-3 CRYSTALS-Kyber-1024 (`kyber1024KemKeyGen` in
+  `LibsignalBinary/Specifications/CryptoGames/KEM/Kyber1024KeyGen.lean` paired with
+  `realPEParams.Q.{encaps, decaps}` = `kyber1024{EncapsVec, DecapsVec}`),
+  `kyber1024_kem_delta_correct` (`Computational/Theorems/Lemmas.lean`, statement
+  `Kyber1024KemDeltaCorrect` in `Computational/Specifications/LibsignalCli/Kyber1024Delta.lean`,
+  proof in `Computational/Proofs/Kyber1024Delta/HeadlineProof.lean`) proves `(1568B, 3168B)`
+  key-generation length validity and
+  `KemDeltaCorrect (modelPrims (realUnreachedPrims kyber1024KemKeyGen) realPEParams) (ε + 1 / 2^112)`
+  from the single noise-idealization hypothesis `KyberNoiseGap ε`
+  (`Computational/Specifications/Assumptions/Kyber1024Correct.lean`), which bounds the honest K-PKE
+  decryption-failure probability under real `SHA3-512` (`G`) / `SHAKE-256` (`PRF`) `CBD_2` noise by
+  that under uniform `CBD_2` noise plus `ε` (`ε ≤ Pr[σ = coins]` when `SHAKE-256` is modeled as a
+  random oracle, `= 2^-256` if `SHA3-512` is also a random oracle, and `ε = 0` for independent
+  key-generation/encapsulation `PRF` random functions, analogous to `KeyIndRoGap` in DEV-CLI16),
+  while keeping the `SHAKE-128` `SampleNTT` matrix `Â`, `SHA3-256` message hash `H(r)`, polynomial
+  arithmetic, compression rounding, and Fujisaki–Okamoto re-encryption completely concrete.
+- The Main Theorem `libsignal_cli_pq_secure_elf_binary` (`CliPqxdhBinaryCorrectAndSecure` /
+  `CliPqxdhElfSecure` / `CliPqxdhSecurityFor` in
+  `Computational/Specifications/LibsignalCli/StatementPqElf.lean`, proved from
+  `libsignal_cli_pq_secure_elf_binary_any_kem` in `Computational/Theorems/Main.lean` — statement in
+  `StatementPqElfAnyKem.lean` — and `kyber1024_kem_delta_correct`) fixes
+  `kemKeyGen := kyber1024KemKeyGen`, discharges `_hKemValid` unconditionally, and substitutes
+  `δ_kem = ε + 1 / 2^112` under `KyberNoiseGap ε` directly into both conclusion bounds. The
+  `≤ 1 / 2^255` public-key collision premise `_hKemColl` on `kyber1024KemKeyGen` remains an
+  explicit hypothesis because `pk` is determined from uniform 32-byte `d` through concrete unkeyed
+  `SHA3-512` (`G`), for which collision/multi-collision bounds cannot be proved unconditionally
+  without an idealization on `SHA3-512` (see [`PQXDH.md`](PQXDH.md) §2 fn. 1).
+- Reference: FG24 §2 (δ-correct KEM) and Thm 5.1 proof, Game 2 (`n_s · δ_corr`); Kyber v3.02 §1.4.
 
 ### DEV-PQ22
 
@@ -2263,21 +2373,19 @@ Homes: `LibsignalBinary/Specifications/LibsignalSpqrV1/Statements.lean`, `Entrie
 
 ### DEV-SPQR1
 
-**`TokenInit`: spqr's PMULL detection has run and found no PMULL** · class: machine model ·
-effect: out of scope
+**`TokenInit`: standalone SPQR V1 library statements frame `TokenInit` (closed in CLI ELF headlines via `Once::call` + `PMULL`)** · class: machine model ·
+effect: out of scope (standalone SPQR V1 library statements) / closed (CLI ELF headlines, see DEV-CLI10)
 
-- The engine has no `PMULL`, so both statements frame `TokenInit img` (`Hooks.lean`): spqr's
-  `check_accelerated::TOKEN` is initialized to "not accelerated", GF(2^16) multiplication takes
-  `unaccelerated::mul`, and the `cpufeatures` initialisation (`Once::call`) is not reached. The
-  accelerated path and the first call's detection are not covered.
-- The M4 Triple Ratchet and public-API entry-point specs (`Statements.lean`, `Entries.lean`)
-  frame it too (`otrEncryptSpecT`, `tryDecryptSpecT`, `recordDecryptSpecT`, `encryptSpecBounded`,
-  `decryptSignalSpecBounded`).
-- Every CLI call starts from `cliTokenPatch` of the loaded process state
-  (`LibsignalBinary/Specifications/SignalSession/CliProcess.lean`, DEV-M17, DEV-CLI10), which writes
-  the `TokenInit` cells, so `TokenInit` is discharged at the process boundary rather than assumed.
-- Closing it needs engine `PMULL` support, a contract for `Once::call` and a proof that
-  `accelerated::mul2 = unaccelerated::mul`.
+- The standalone SPQR V1 library statements (`Statements.lean`, `Entries.lean`) and M4 Triple
+  Ratchet / public-API entry-point specs (`otrEncryptSpecT`, `tryDecryptSpecT`, `recordDecryptSpecT`,
+  `encryptSpecBounded`, `decryptSignalSpecBounded`) still frame `TokenInit img` (`Hooks.lean`) for
+  the unaccelerated path.
+- In the promoted CLI ELF headlines (`CliBinaryPq.lean`), every CLI call starts from plain
+  `ElfImage.loadState (cliProcessInputs i)` with no initial `.data` patch and `AT_HWCAP = 0x1b`,
+  runs SPQR's linked `Once::call` CPU probe (`use_accelerated::init` → `getauxval_hwcap` → musl
+  `getauxval(AT_HWCAP)`), initializes `STORAGE.0 := 1#8` and `TOKEN.state := 0#32`, and executes
+  `accelerated::mul2_unreduced` (`PMULL` 64-bit polynomial multiplication over GF(2)[X], proved
+  equal to `unaccelerated.polyMul`; see [DEV-CLI10](#dev-cli10)).
 
 ### DEV-SPQR2
 
@@ -2526,9 +2634,9 @@ Homes: `Computational/Specifications/Session/StatementSession.lean` (T),
   (`CryptoVerification.E2E.model_secure_costed : ModelSecure (Pt := Pt) S ℓ` in
   `Computational/Theorems/Lemmas.lean`, proved by `model_secure_costed_proof` in
   `Computational/Proofs/LibsignalCli/HeadlineModel.lean`) and the compiled-binary Main Theorem
-  (`CryptoVerification.LibsignalCli.libsignal_cli_pq_secure_elf_binary_placed :
-  CliPqxdhBinaryCorrectAndSecurePlaced cliElfBytes` in
-  `Computational/Theorems/Main.lean`, proved from Lemmas 1–4 via `main_of_lemmas_placed` in
+  (`CryptoVerification.LibsignalCli.libsignal_cli_pq_secure_elf_binary :
+  CliPqxdhBinaryCorrectAndSecure cliElfBytes` in
+  `Computational/Theorems/Main.lean`, proved from Lemmas 1–4 via `main_of_lemmas` in
   `Computational/Proofs/LibsignalCli/MainOfLemmas.lean` and
   `Computational/Proofs/LibsignalCli/ElfHeadlinePq.lean`) are **proved unconditionally** with no
   open hypotheses (depending only on `propext`, `Classical.choice`, and `Quot.sound`). In particular, the
@@ -2584,15 +2692,19 @@ Homes: `Computational/Specifications/Session/StatementSession.lean` (T),
   remain separate:
   - `CliSpecPqxdh` (`LibsignalBinary/Specifications/SignalSession/PqDir.lean`) gives functional
     correctness of the CLI's PQXDH-mode calls with SPQR V1 (`pqxdhSpqrSession W`), proved for the CLI's ELF
-    by Lemma 4 `libsignal_cli_pq_binary_correct_placed` (`Computational/Theorems/Main.lean`), up to an
-    abort of a run in which an allocation fails (DEV-CLI15),
+    by Lemma 4 `libsignal_cli_pq_binary_correct` (`Computational/Theorems/Main.lean`), up to an
+    abort of a run in which an allocation fails (DEV-CLI15) or `SampleNTT` seed divergence (DEV-CLI22),
   - `LibsignalCliPqSecure` (`Computational/Proofs/LibsignalCli/StatementPqSecure.lean`) is the
     CLI's PQXDH-mode security statement, its clause 2 under `KeyIndRoGap` (DEV-CLI16), proved as
     `libsignalCliPqSecure_holds` (`Computational/Proofs/LibsignalCli/HeadlinePqCliClosed.lean`) and
-    instantiated on the CLI's ELF by the Main Theorem `libsignal_cli_pq_secure_elf_binary_placed`
-    (`Computational/Theorems/Main.lean`, statement `CliPqxdhBinaryCorrectAndSecurePlaced` in
-    `Computational/Specifications/LibsignalCli/StatementPqElf.lean`), via `main_of_lemmas_placed`
-    (`Computational/Proofs/LibsignalCli/MainOfLemmas.lean`).
+    instantiated on the CLI's ELF at arbitrary `kemKeyGen` by
+    `libsignal_cli_pq_secure_elf_binary_any_kem` (`Computational/Theorems/Main.lean`, statement in
+    `StatementPqElfAnyKem.lean`, via `main_of_lemmas` in
+    `Computational/Proofs/LibsignalCli/MainOfLemmas.lean`) and at concrete Round-3
+    CRYSTALS-Kyber-1024 (`kyber1024KemKeyGen`, `δ_kem = ε + 1 / 2^112` under `KyberNoiseGap ε`,
+    [DEV-PQ21](#dev-pq21)) by the Main Theorem `libsignal_cli_pq_secure_elf_binary`
+    (`Computational/Theorems/Main.lean`, statement `CliPqxdhBinaryCorrectAndSecure` in
+    `Computational/Specifications/LibsignalCli/StatementPqElf.lean`).
 
 ### DEV-C8
 
@@ -2685,53 +2797,76 @@ Homes: `Computational/Specifications/Session/StatementSession.lean` (T),
 
 ### DEV-C14
 
-**Per-session query budget `2 * (qs k + 1) + 25002 < 2^32`, `qep²` epoch-guessing loss, and loose per-session MAC term (`~qep · q² · 2^-64`)** · class: formalization · effect: constants
+**Per-session query budget `2 * (qs k + 1) + 25002 < 2^32`, `qep²` epoch-guessing loss, and linear per-session MAC term (`(92 · qep + 96) · q · 2^-64`)** · class: formalization · effect: constants
 
 - **Consolidated `u32` counter budget:** `SessionSecure`
   (`Computational/Specifications/Session/StatementSession.lean`, applied at `q = qs k` for each
   promoted session `k < qStart`) requires
-  `_hq32 : 2 * (q + 1) + 25002 < 2 ^ 32` (`q ≤ 2^31 - 12503`), which simultaneously
+  `_hq32 : 2 * (q + 1) + 25002 < 2 ^ 32` (`q ≤ 2^31 - 12503 = 2,147,471,145`), which simultaneously
   discharges SPQR V1's `u32` counter/window bound `q + 2000 ≤ 2^32` ([DEV-SPQR7](#dev-spqr7)),
   `q + 1 < 2^32`, and the simulator clamp budget `B = 2 ^ 32`.
-- **Loose per-session MAC term (`~qep · q² · 2^-64`, meaningful for `q ≲ 2^16` per session):**
-  In `fig8MixShortAuthV1`, `fsAeadMixtureBound`, and `hiddenSaltMixtureBound`
-  (`Computational/Specifications/Session/StatementComposed.lean`), the per-session MAC forgery
-  and spurious-step contribution is
-  `(((16 * nAuthGuesses qep + 8 * nAuthGuessesDir2 qep) * q^2 + (24 * nPrivGuesses qep + 4 * qep + 8) * q) : ℝ≥0∞) / 2^64`
-  (where `nAuthGuesses qep = 2 + (qep + 1) * (qep + 2) / 2`,
-  `nAuthGuessesDir2 qep = 1 + (qep + 2) * (qep + 3) / 2`, and
-  `nPrivGuesses qep = 2 + qep * (qep + 1) / 2`, and `(4 * qep + 8) * q` collects
-  `4 * spuriousStepTerm = 4 * qep * q` across `2 * refineConst` and
-  `2 * hiddenSaltMixtureBound`, `2 * forgedEpochStartSpuriousStepTerm = 2 * q`, and `6 * q` from
-  epoch-0, SPK, and Hop-2 fresh terms; [DEV-LS11](#dev-ls11), [DEV-LS36](#dev-ls36)).
-  Because Lemma 15's `q` authenticity FS-AEAD instances (in both `fig8MixShortAuthV1` and
-  `hiddenSaltMixtureBound`) each pay `4 * q / 2^64` inside the `(t*, t*_L)` epoch-guessing sum
-  (`DEV-LS23`, `DEV-LS31`), the leading MAC term grows as `~12 · qep² · q² · 2^-64`
-  (or `~qep · q² · 2^-64` at small `qep`), which at `q = 2^16` per session already reaches `~2^-32`
-  for `qep = 0` (`q = 9,459`, `DEV-LS31`) and makes the per-session bound meaningful for `q ≲ 2^16`
-  messages per session. Tightening the `q² · 2^-64` dependence to linear `q · 2^-64` is tracked as
-  follow-up work.
+- **Linear per-session MAC and spurious-step term (`(92 · qep + 96) · q · 2^-64` for `qep ≥ 1`, `112 · q · 2^-64` at `qep = 0`):**
+  In `sessionAdvantageBound` (`StatementSession.lean`) and `uniformStartMixtureBound`,
+  `fig8MixShortAuthV1`, `fig8MixShortPrivV1`, `fsAeadMixtureBound`, and `hiddenSaltMixtureBound`
+  (`Computational/Specifications/Session/StatementComposed.lean`), hoisting non-honest decryption
+  forgeries out of the `(t, j)` loop yields a per-session MAC-forgery and 8-byte tag-test
+  contribution of `112 * q / 2^64` at `qep = 0` and `(92 * qep + 96) * q / 2^64` for `qep ≥ 1`
+  (`(88 * qep + 88) * q * macForgeryProb` for `qep ≥ 1` and `104 * q * macForgeryProb` at `qep = 0`
+  across `2 * fig8MixShortAuthV1`, `fig8MixShortPrivV1`, and `2 * hiddenSaltMixtureBound`, plus
+  `(4 * qep + 8) * q / 2^64` collecting `4 * spuriousStepTerm = 4 * qep * q` across
+  `2 * refineConst` and `2 * hiddenSaltMixtureBound`, `2 * forgedEpochStartSpuriousStepTerm = 2 * q`,
+  `2 * q * eps0IdealUnit = 2 * q`, `2 * epoch0ChainForgeryTerm = 2 * q`, and
+  `2 * spkSwapSpuriousStepTerm = 2 * q`; [DEV-LS11](#dev-ls11), [DEV-LS23](#dev-ls23),
+  [DEV-LS31](#dev-ls31), [DEV-LS36](#dev-ls36)). At `q = 2^16 = 65,536` per session with `qep = 0`,
+  this single-session contribution is `≈ 2^-41.19` (reaching `2^-32` only at `q = 38,347,923` for
+  `qep = 0` or `q = 6,833` for `qep = q`).
 - **Regime in which the summed MAC term stays below 1:** the headline bound adds this
-  per-session term once per promoted session (`k < qStart`), so its total is about
-  `qStart · c(qep, q) · 2^-64`, where `c` is the coefficient above. Computed with
-  `scripts/bound_thresholds.py` and the formula above (`μ = 2^-64`, i.e. assuming
-  truncated HMAC-SHA256 is a PRF; see `macForgeryProb`):
+  per-session term once per promoted session (`k < qStart`), so its total is
+  `qStart · ours(qep, q) · 2^-64`, where `ours(qep, q)` is `112 · q` (`qep = 0`) or
+  `(92 · qep + 96) · q` (`qep ≥ 1`), evaluated at
+  `μ = 2^-64` (assuming truncated HMAC-SHA256 behaves like a uniform 8-byte tag on distinct
+  inputs; see `macForgeryProb`):
 
   | promoted sessions | `q` per session | `qep` | summed MAC term |
   |---|---:|---:|---:|
-  | `2^20` | 100 | 10 | `≈ 2^-20.0` |
-  | `2^20` | 1,024 | 0 | `≈ 2^-17.7` |
-  | `2^20` | 1,024 | 10 | `≈ 2^-13.3` |
-  | `2^20` | 4,096 | 100 | `≈ 2^-3.1` |
-  | `2^20` | 1,024 | 1,024 | `≈ 2^-0.4` |
-  | `2^25` | 1,024 | 1,024 | `≈ 2^4.6` (vacuous) |
-  | 1 | 26,816 | 26,816 | `≈ 2^-1.6` (one session at the counter cap) |
+  | `2^20` | 100 | 10 | `≈ 2^-27.37` |
+  | `2^20` | 1,024 | 0 | `≈ 2^-27.19` |
+  | `2^20` | 1,024 | 10 | `≈ 2^-24.01` |
+  | `2^20` | 4,096 | 100 | `≈ 2^-18.82` |
+  | `2^20` | 1,024 | 1,024 | `≈ 2^-17.47` |
+  | `2^25` | 1,024 | 1,024 | `≈ 2^-12.47` |
+  | 1 | 2,147,471,145 | 0 | `≈ 2^-26.19` (one session at the `_hq32` counter cap) |
+  | 1 | 2,147,471,145 | 10 | `≈ 2^-23.01` (one session at the `_hq32` counter cap) |
 
-  The term stays below 1 for at most about `2^40` sessions at `(q, qep) = (100, 10)`,
-  `2^33.3` at `(1024, 10)`, `2^25.7` at `(2^16, 0)` and `2^20.4` at `(1024, 1024)`. A single
-  session already reaches 1 at `q = 38,967` when `qep = q` (`bound_thresholds.py`). So the bound is
-  meaningful for a moderate number of sessions with few epochs, and near-vacuous or vacuous at
-  multi-session deployment scale with many epochs, mainly because of this `q²` term.
+  The summed term stays below 1 for up to `2^47.4` promoted sessions at `(q, qep) = (100, 10)`,
+  `2^44.0` at `(1024, 10)`, `2^41.2` at `(2^16, 0)`, and `2^37.5` at `(1024, 1024)`. A single
+  session reaches 1 at `q = 447,781,295` when `qep = q`, and stays below `2^-23.01` across the
+  entire `_hq32` counter range `q ≤ 2,147,471,145` when `qep ≤ 10`, so the
+  8-byte MAC term remains non-vacuous at multi-session deployment scale (`≈ 2^-12.47` across
+  `2^25` sessions at `q = qep = 1,024`).
+- **Incomparability with the earlier per-cell session bound:** The bucket-partitioned session
+  statement (`SessionSecure`, and through `sessionAdvantageBound` / `uniformStartMixtureBound` the
+  CLI headline `CliPqxdhSecurityFor` and Main Theorem `libsignal_cli_pq_secure_elf_binary`; `L1`
+  `headlineδ` and `L3` `model_secure_costed` are unaffected) is **formally incomparable** with the
+  earlier per-`(t, t_L, j)` cell bound—neither statement implies the other, so it is a trade-off
+  rather than a pure tightening:
+  - *MAC-forgery term (much smaller):* drops asymptotically from `O(qep² · q² · μ)` (`≈ 12 · qep² · q² · 2^-64`,
+    e.g. `≈ 2^4.59` vacuous at `2^25` sessions with `q = qep = 1,024`) to `O(qep · q · μ)`
+    (`(92 · qep + 96) · q · 2^-64` for `qep ≥ 1`, `≈ 2^-12.47` at the same point).
+  - *Computational advantage term counts (mixed; PRF-PRNG and FS-AEAD grow):* CKA term counts shrink
+    (`0.80×` at `q = qep = 1,024`, at most `0.95×` for `q ≥ 1`; authenticity and deliver-forgery CKA
+    drop from quadratic to linear while privacy CKA doubles via `redCKAPrivU`), whereas PRF-PRNG term
+    counts grow by up to **`1.95×`** (at `qep = 3, q = 1`; `1.60×` at `q = qep = 1,024`, limit `1.6×`)
+    and per-session FS-AEAD slot-sum counts grow by up to **`1.74×`** for `q ≥ 1` (at `qep = 2, q = 1`;
+    `1.34×` at `q = qep = 1,024`, limit `1.33×`; reaching `2.33×` at `q = 0, qep = 1`). Under a uniform
+    per-primitive advantage bound `ε` shared across reductions meeting the cost and query budgets,
+    the computational part grows by less than 1 bit for every `q ≥ 1`.
+  - *Re-indexed and enlarged reduction family under `ratchetCostBudget q (qep + 1)`:* the
+    existentially quantified family `D : SessionCostedReductionFamily` is re-indexed and adds
+    `redCKAPrivU`, `B_cka_u`, `B_prng_u`, `B_fs_u`, `prgRedAuth`, and `multiRedAuth`, constrained
+    under `ratchetCostBudget q (qep + 1)` (with `fsRatchetCostBudget (min (2 * q) (q + 2)) (qep + 1)`
+    and `ratchetFsAdapterBudget (min (2 * q) (q + 2)) (qep + 1)` for `FsCostedReds`, the same budget
+    functions of `(q, qep)`).
 
 ### DEV-C15
 
@@ -2762,7 +2897,8 @@ Homes: `Computational/Specifications/Session/StatementSession.lean` (T),
   written by its own `init` or its own first `recv` (`StatementPq.lean`).
 - **Non-circular `ReductionDsl` E2E and adapter reduction packages (`CompositionCostedReductionFamily`, `CompositionCostedReductionFamilyBounded`, `CliAdapterCostBounded`, `SessionCostedReductionFamily`, `C7` / `R3`):**
   `CliPqxdhSecurityFor` (`Computational/Specifications/LibsignalCli/StatementPqElf.lean`, specialized
-  with `exc? := none` by `CliPqxdhElfSecurePlaced` and `LibsignalCliPqSecure`) quantifies
+  with `exc? := some (CliReachesSampleNttStuckElf elf addrs)` by `CliPqxdhElfSecure` and
+  with `exc? := none` by `LibsignalCliPqSecure`) quantifies
   existentially over four `ReductionDsl` packages:
   - `L_cli : CliToModelAdapterProg S ℓ decT encT` (`C2` / `R1`), a `ReductionDsl.CostedReduction` adapter over the
     32-byte block signature `atomicSig ℓ Pt`, single-step parsing/codec/public-transcript table
@@ -2798,13 +2934,12 @@ Homes: `Computational/Specifications/Session/StatementSession.lean` (T),
     (`StatementBinaryHarnessCore.lean`, clamping dynamic table sizes at `nId`, `nSpk`, `nOpk`, `nSend`, `nRecv` `= min b.q_total S.N_*`
     and `nInst := min qStart nSend`, with `qInst := Finset.sup (Finset.range qStart) qs` and the 25,000-step
     Double Ratchet and SPQR symmetric-chain skips unpacked into bounded `ReductionDsl` loops).
-  - The CLI headline's reductions and cost budgets are `main`'s costed forms (#1103, #1148:
-    `CompositionCostedReductionFamily`, adapter arity `CliToModelAdapterProg S ℓ decT encT`, query
-    bound `2·qTot`); the staged branch's `CompositionCostedReductions … pqxdhKeyIndImpl1KeyReal`
-    form (query bound `2·qTot+2`, `80·(…)·(qStart+1)` step budgets in the older cost model) is not
-    kept. The step budgets are measured in `main`'s cost model (real table-op charges) and the staged
-    branch's in the older one, so the two forms are not directly comparable; no claim is made that
-    either is weaker. The staged form's extra point parameter `lam` of the prefix bound
+  - The CLI headline's reductions and cost budgets use the real-table-op costed forms
+    (`CompositionCostedReductionFamily`, adapter arity `CliToModelAdapterProg S ℓ decT encT`, query
+    bound `2·qTot`), replacing an earlier `CompositionCostedReductions … pqxdhKeyIndImpl1KeyReal`
+    form (query bound `2·qTot+2`, `80·(…)·(qStart+1)` step budgets in the older cost model).
+    Because the two cost models charge table operations differently, they are not directly
+    comparable; no claim is made that either is weaker. The older form's extra point parameter `lam` of the prefix bound
     (`bhPrefixFullBoundMixV1With`) is gone: `main`'s costed bound has no such parameter.
 - **The `useRo` flag, constant `secb := true`, and the clause-2 random-oracle hypothesis (`C3` / `R2` / `M1`):**
   The CLI PQXDH game runs `bhDrvKeyInd` at `useRo = false` (`cliDrvImpl`) and initializes the
@@ -2871,7 +3006,7 @@ Homes: `Computational/Specifications/Session/StatementSession.lean` (T),
   `ikA` after Bob's first accept sets nothing. `bhDrvMirror` prepends `(u, j)` to `revealedSpks`
   when the adversary queries `revealSpkSk u j`; the driver's own reveal at `startDR` (DEV-C10)
   does not.
-- The check is per instance (#1147, replacing the earlier global `bhDrvClean` / `advRevealedSpk`
+- The check is per instance (replacing the earlier global `bhDrvClean` / `advRevealedSpk`
   gate flagged in Sam Schlesinger's review). `bhDrvInstClean ds i` (and `bhE2EDrvInstClean σ i` for
   the end-to-end driver, which reads the responder slot from `respPrin`/`respSpkIdx`) is false when
   instance `i` has no initiator principal, has `ikACorrAtAccept`, or its own responder slot is in
@@ -3041,43 +3176,38 @@ section that puts a term in a bound (DEV-CLI17, the excused-abort term, is retir
 
 **The CLI's I/O does not fail except as specified** · class: machine model · effect: out of scope
 
-- In the hook-form CLI statements (`cliHookTablePlaced`, `CliBinaryPq.lean` / `CliRun.lean`), the
-  CLI's four I/O functions (crate `libsignal-cli-io`, `cli/io/`: kept out of `libsignalSessionObj`
-  and translated separately by `cli/io/translation.toml` into `SignalSessionIoPlacedObj`) are modeled
-  at their `libsignalSessionMultiLib` externs by bounded specifications over the engine's file system.
-  Both the hook contracts (`writeFileHook`, `writeStdoutHook`, and the legacy `readFileHook`,
-  `readStdinHook`, outside the headline closure since F3) and the compiled C-ABI musl read paths
-  (`read_file` and `read_stdin` over `open`/`read`/`close`/`__errno_location`, proved against
-  `SignalSessionIoPlacedObj` in `LibsignalBinary/Proofs/SignalSession/CliIo/`, de-hooked across F3
-  `47 → 39` and the stock `ld.lld` cutover `39 → 37` (`cliDehookedSymsPlaced` `9` plus `<String as Clone>::clone`
-  under SC-1 (I); `cliHookTablePlaced_length_guard`), and part of the placed headlines' proof; see DEV-CLI19) fail only where modeled: a path of
-  `cliPathMaxBytes = 4096` bytes or more (`ENAMETOOLONG`) or containing an interior NUL byte (checked
-  on the stack without heap allocation on reads, and before `openat` / `TraceEvent.fileChanged` on
-  `writeFileHook`), a path through a regular file (`ENOTDIR`), a missing parent on write (`ENOENT`),
-  a directory where a file is expected (`EISDIR`), a regular file above `fileCapBytes` (`2^21`) on
-  `read_file`, standard input above `stdinCapBytes` (`2^20`) on `read_stdin`, or an OOM abort
-  (`ENOENT` maps to `Ok([])` on `read_file`, and `EBADF` on `fd 0` maps to `Ok(out)` in the C-ABI
-  loop; see DEV-CLI21). On the write side, `write_file` and `write_stdout` are 0-allocation C-ABI
-  musl `open`/`write`/`close`/`__errno_location` loops (`O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC`
+- In the CLI statements (`CliBinaryPq.lean` / `CliRun.lean`), the CLI's four I/O functions (crate
+  `libsignal-cli-io`, `cli/io/`: kept out of `libsignalSessionObj` and translated separately by
+  `cli/io/translation.toml` into `SignalSessionIoPlacedObj`) are proved against bounded
+  specifications over the engine's file system (with legacy hook contracts `writeFileHook` and
+  `writeStdoutHook` in `CliRun.lean` and `readFileHook` and `readStdinHook` in `CliRunFixed.lean`
+  retained outside the ELF-direct headline closure). All four compiled C-ABI musl paths in `lib1_0.o`
+  execute directly on the stock ELF (0 non-panic external hooks, DEV-E7; `read_file` and `read_stdin` over
+  `open`/`read`/`close`/`__errno_location`, de-hooked at F3 and proved in
+  `LibsignalBinary/Proofs/SignalSession/CliIo/`; `write_file` and `write_stdout` over 0-allocation
+  `open`/`write`/`close`/`__errno_location` loops with `O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC`
   mode `0o666`, `< 4096`-byte NUL-free stack path check before `open`, `EINTR` retry, `n == 0`
   treated as `Err`, `close` on every exit after `open`, and `EBADF` on closed `fd 1` treated as
-  `Ok(())` matching `std`'s `handle_ebadf` and `read_stdin`), linked into the stock ELF from `lib1_0.o`
-  and intercepted at entry as trusted disclosed hooks (`B2-TLIT` `49 → 47`, F3 `47 → 39`, and the stock
-  `ld.lld` cutover `39 → 37`, `cliHookTablePlaced_length_guard`: `9` de-hooked in `cliDehookedSymsPlaced`—`2`
-  read, `5` `__rust_*`, and `memcpy`/`memset` on `VerifiedLibraries.mallocngLib` blocks `20`/`21`—plus
-  `<String as Clone>::clone` under SC-1 route (I), while `write_file` and `write_stdout` stay trusted
-  hooks until `W-DIS0` proves their compiled blocks, see DEV-CLI19).
-- At the `cliHookTablePlaced` hook boundary (`write_file` / `write_stdout`) no file descriptors are
-  opened or closed and no system calls are executed until the musl write loops are discharged
-  (`W-DIS0`); the de-hooked `read_file` / `read_stdin` run musl `open`/`read`/`close` in the linked
-  code.
+  `Ok(())` matching `std`'s `handle_ebadf` and `read_stdin`, de-hooked at Stage B `14 → 0` and
+  proved in `LibsignalBinary/Proofs/HookDischarge/CliIoFmt/`, DEV-CLI19) and fail only where
+  modeled: a path of `cliPathMaxBytes = 4096` bytes or more (`ENAMETOOLONG`) or containing an
+  interior NUL byte (checked on the stack without heap allocation before `openat` /
+  `TraceEvent.fileChanged`), a path through a regular file (`ENOTDIR`), a missing parent on write
+  (`ENOENT`), a directory where a file is expected (`EISDIR`), a regular file above `fileCapBytes`
+  (`2^21`) on `read_file`, standard input above `stdinCapBytes` (`2^20`) on `read_stdin`, or an OOM
+  abort on a read buffer (`ENOENT` maps to `Ok([])` on `read_file`, and `EBADF` on `fd 0` maps to
+  `Ok(out)` in the C-ABI loop; see DEV-CLI21).
+- On the stock ELF (0 non-panic external hooks, DEV-E7; proof-side `cliHookTablePlaced = []`), both `read_file` / `read_stdin` and
+  `write_file` / `write_stdout` execute real musl `open`/`read`/`write`/`close` system calls in the
+  linked code (only in the legacy hook table `cliHookTable` do `writeFileHook` / `writeStdoutHook`
+  bypass file descriptors and system calls).
   A real kernel can also fail in other ways (`EMFILE`, `ENOSPC`, `EIO`, a short write, a full disk
   during the commit); the CLI then exits 2, possibly after a partial commit. On a non-empty
   `write_stdout` to a pipe whose reader has closed (after `Stores::commit` has written the party's
   files), the CLI is killed by `SIGPIPE` (signal `13`, shell status `141`, empty stderr) when
   `SIGPIPE` has its default disposition, and exits `2` on `EPIPE` (empty stderr) when `SIGPIPE` is
   inherited as ignored. No claim about such runs.
-- Permission bits and ownership are not modelled (the engine's file system has no mode bits). Where Linux denies an access (`EACCES`, e.g. writing a mode-0444 file or into a mode-0555 directory as a non-root user), the specifications return `Ok` and change the file, while the real CLI exits 2 and changes nothing. Measured under QEMU for writes (write-path matrix cases 7a/7b, `scripts/io-qemu-matrix.py` on `stage3/io-qemu-matrix` 6ad76caa64, not in this repository): on an unstubbed static-musl build of the CLI before this rewrite (`std::fs::write`), and on the rewritten `write_file` called directly in a crypto-stubbed link; neither run uses the pinned `cliElfBytes`. No claim about runs in which permissions deny an access the CLI makes.
+- Permission bits and ownership are not modelled (the engine's file system has no mode bits). Where Linux denies an access (`EACCES`, e.g. writing a mode-0444 file or into a mode-0555 directory as a non-root user), the specifications return `Ok` and change the file, while the real CLI exits 2 and changes nothing (observed under QEMU on static-musl builds, not on the pinned `cliElfBytes`). No claim about runs in which permissions deny an access the CLI makes.
 
 ### DEV-CLI6
 
@@ -3107,116 +3237,50 @@ section that puts a term in a bound (DEV-CLI17, the excused-abort term, is retir
 
 **The CLI's hooked I/O model omits real read `Vec`-growth allocations** · class: machine model · effect: out of scope
 
-- Both the hook-form I/O contracts (`CliRun.lean`: `writeFileHook` / `writeStdoutHook` in
-  `cliHookTablePlaced`, and the legacy `readFileHook` / `readStdinHook`, outside the headline closure
-  since F3) and the compiled `libsignal-cli-io`
+- Both the legacy hook-form I/O contracts (`CliRun.lean`: `writeFileHook` / `writeStdoutHook`, and
+  `CliRunFixed.lean`: `readFileHook` / `readStdinHook`, all outside the placed headline closure after
+  F3 and Stage B) and the compiled `libsignal-cli-io`
   crate (`cli/io/src/lib.rs`, Rust 1.98.1) enforce the same byte and path caps (`stdinCapBytes = 2^20`,
   `fileCapBytes = 2^21`, `cliPathMaxBytes = 4096` with no interior NUL; see DEV-CLI21), whereas at
-  the hook boundary the hooks allocate only the bytes they return (`vecOk`'s exact-size block for a
-  non-empty read, nothing for a write). In compiled `libsignal-cli-io`:
-  - Read side (`read_stdin`, `read_file`, de-hooked across F3 `47 → 39` and the stock `ld.lld` cutover `39 → 37` (`cliDehookedSymsPlaced` `9` plus `<String as Clone>::clone` under SC-1 (I); `cliHookTablePlaced_length_guard`), with compiled `SignalSessionIoPlacedObj` proved in
-    `LibsignalBinary/Proofs/SignalSession/CliIo/` and part of the placed headlines' proof; see DEV-CLI19):
+  the legacy hook boundary the read hooks allocate only the bytes they return (`vecOk`'s exact-size
+  block for a non-empty read, nothing for a write). In compiled `libsignal-cli-io` (all four functions
+  executed directly on the stock ELF with 0 non-panic external hooks, DEV-E7):
+  - Read side (`read_stdin`, `read_file`, de-hooked at F3 and proved against `SignalSessionIoPlacedObj` in
+    `LibsignalBinary/Proofs/SignalSession/CliIo/`, DEV-CLI19):
     neither `std::io::BufReader` nor a heap `CString` is used; both read through a `4096`-B stack
     buffer (frames `4,224` B and `8,320` B with stack probes, plus `read_file`'s `4096`-B stack path
     buffer, allocating nothing on an empty read or rejected path) and grow their output `Vec<u8>` via
     `Vec::reserve_exact` on a verified doubling schedule (`4096 B .. 1 MiB` across 9 capacities for
     `read_stdin`, `4096 B .. 2 MiB` across 10 capacities for `read_file`, aborting via
     `handle_alloc_error` on OOM and freeing the buffer before returning `Err` above `1 MiB` / `2 MiB`).
-  - Write side (`write_file`, `write_stdout`, linked in `lib1_0.o` and intercepted at entry as trusted hooks until `W-DIS0`, DEV-CLI19):
+  - Write side (`write_file`, `write_stdout`, linked in `lib1_0.o`, de-hooked at Stage B `14 → 0`, and
+    proved in `LibsignalBinary/Proofs/HookDischarge/CliIoFmt/`, DEV-CLI19):
     both perform 0 heap allocations (`write_file` checks and NUL-terminates `< 4096`-byte paths on a
     `4096`-B stack buffer before `open` and loops on `write`/`close`; `write_stdout` loops directly on
     `write(1, …)` with no `LineWriter` buffer).
-- At the hook boundary, no claim is made about runs in which one of `read_stdin` / `read_file`'s extra
-  `Vec`-growth or transient over-cap allocations fails where `vecOk`'s exact-size block fits. In the
-  allocator-budget contracts (`LibsignalBinary/Heap/SpecBudget.lean`), `readFileName`, `readStdinName`,
-  `writeFileName`, and `writeStdoutName` are all in `cliAllocNames` (`WriteFileEnv` and `WriteStdoutEnv`
-  remain conservative sound supersets of `[]` until tightened with `W-DIS0`; `CLI-ATOMIC` dropped
-  2026-11-02).
-
-### DEV-CLI9
-
-**No allocation of the CLI's run fails (`CliAllocNeverFails`)** · class: machine model · effect: out of scope
-
-- Home: `LibsignalBinary/Proofs/SpecLemmas/SignalSession/CliBinaryFixed.lean`: `CliAllocNeverFails`, a
-  hypothesis of `CliBinaryCorrect` for each choice of hooks `W`. It concerns only the SM-mode
-  statement `CliBinaryCorrect`, which is no headline's; Lemma 4 and the Main Theorem (PQXDH mode)
-  do not take it (the PQXDH-mode security clause has no allocation premise; DEV-CLI12, retired).
-- On every input of `CliSpecE`'s domain, no state that the run reaches from the loaded state
-  (`cliTokenPatch s0`, DEV-CLI10) has logged `allocFailedEvent`. Every failed allocation of the model
-  logs that event: the allocator hooks' `x0 = 0` branch (`E2E.allocFail`), and `E2E.allocPanicHook`
-  in every other allocating hook.
-- Why: no heap bound is proved for the CLI's whole run, from `loadState` to `exit_group`.
-- Effect: no claim about runs in which an allocation fails. The hypothesis is per `W`, so for a `W`
-  where it fails the statement says nothing. It is plausible for every `W`: the arena is `2^60`
-  bytes (`heapSize`), inputs are shorter than `2^32` bytes, and the allocator is a bump allocator
-  that never frees. It is not measured for `send` / `recv`.
-- Closing it needs a heap-demand bound for the CLI's run.
+- At the legacy hook boundary (`cliHookTable`, outside the placed headlines), no claim is made about
+  runs in which one of `read_stdin` / `read_file`'s extra `Vec`-growth or transient over-cap
+  allocations fails where `vecOk`'s exact-size block fits. In the allocator-budget contracts
+  (`LibsignalBinary/Heap/SpecBudget.lean`), `readFileName`, `readStdinName`, `writeFileName`, and
+  `writeStdoutName` are all in `cliAllocNames` (`CLI-ATOMIC` dropped 2026-11-02).
 
 ### DEV-CLI10
 
-**The CLI run starts after spqr's CPU probe, which found no AES/PMULL (`cliTokenPatch`)** · class: machine model · effect: out of scope
+**Pinned auxiliary vector (`AT_HWCAP = 0x1b`, `AT_HWCAP2 = 0`, `AT_RANDOM = 0^16`); plain `loadState` runs `aes` and SPQR CPU probes (ARMv8 hardware AES + `PMULL` GF(2¹⁶)) with LL/SC outline atomics (`LSE = 0`)** · class: machine model · effect: out of scope (ARMv8.1+ LSE / other `AT_HWCAP` values)
 
-- Home: `LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean` (T): `Placed.cliTokenPatchPlaced`,
-  `Placed.CliRunsToPlaced` (and proof-side `CliProcessFixed.lean`: `cliTokenPatch`, `CliRunsTo`; `CliBinaryFixed.lean`: `CliAllocNeverFails`).
-- The CLI statement runs the real ELF from `ElfImage.loadState`, with 5 bytes of initialised
-  read-write `.data` rewritten before the first instruction:
-  - spqr's `check_accelerated::use_accelerated::STORAGE.0`, `0xff` → `0`;
-  - the `futex::Once` state word of `check_accelerated::TOKEN`, `3` → `0` (`COMPLETE`).
-  - The old values `0xff` and `3` are measured in the pinned ELF and proved from its `loadState` by
-    `cliElf_token_cells_initial` (CliElf proofs, untrusted); `token_cells_initial` states them for
-    the export image.
-  - DEV-M17 describes the same writes.
-- Why:
-  - The first GF(2¹⁶) operation would call `<futex::Once>::call`, which runs
-    `use_accelerated::init`.
-  - `init` reads `AT_HWCAP` through `cpufeatures::aarch64::getauxval_hwcap` and stores whether AES
-    or PMULL is present.
-  - Both functions are unlinked stubs (`udf #0`), and the engine models neither `getauxval`/HWCAP
-    nor PMULL.
-  - The patch agrees with the model's own inputs. `processInputs` keeps the engine default
-    `AuxvConfig.hwcap = 0x3#64` (`Arm64/Trusted/Process/Types.lean`, FP bit 0 and ASIMD bit 1 only;
-    AES bit 3 and PMULL bit 4 are `0`): the modelled `AT_HWCAP` has
-    neither AES nor PMULL. So the probe, run on the modelled auxv, would store exactly these 5 bytes.
-- Effect:
-  - No claim for a CPU with AES or PMULL, which takes the accelerated PMULL path. Most current
-    ARMv8 CPUs have them.
-  - No claim for the probe itself.
-  - On a CPU without AES/PMULL, a real process writes the same 5 bytes at its first SPQR
-    multiplication. That code before that point never reads them is not proved; the scan below
-    measures it.
-  - With the patch, `Once::call` and `getauxval_hwcap` are unreached; that is a totality obligation
-    of the proofs (a run that reached either would halt on `udf #0`, which `CliRunsTo` forbids).
-    The other `Once::call` site (sealed sender's `CERT_MAP`) is dead code: no caller, no address
-    reference.
-- Who else touches these bytes (measured on the pinned ELF). A per-function control-flow scan of all
-  1626 functions in `.img.text` and musl `.text` tracks every `adrp`-based address
-  (`adrp`/`add`/`sub`/`mov`, offsets with `lsl #12`, code reachable only through jump tables
-  included). It flags any access or address formation that can overlap the 20 bytes from `STORAGE.0`
-  to the end of `TOKEN` (`STORAGE.0`, `TOKEN`'s init fn pointer, its `Once` word):
-  - Only 11 functions do. They are `use_accelerated::init`, which reads `STORAGE.0` once and writes
-    it once, and 10 spqr GF(2¹⁶)/polynomial functions with the 14 `Once::call` sites. Those 10 only
-    read: 14 `ldar` of the `Once` word and 28 `ldrb` of `STORAGE.0`.
-  - The address of the `Once` word leaves those functions only as `x0` of `bl Once::call` (14
-    sites). `TOKEN` itself is stored only into a stack slot (14 stores, one per site: the closure
-    environment passed to that call). Code reaches the bytes through those pointers only inside
-    `Once::call` and its closure, which the patch makes unreached.
-  - musl `.text` forms no address on that page. No `ldr`-literal loads exist. No loaded byte sequence
-    (4 or 8 bytes) holds an address of the page's initialised data, apart from the program header
-    (`p_vaddr`/`p_paddr` of the data segment).
-  - The ELF is static and non-PIE: it has no relocation sections and no dynamic section.
-  - Sealed sender's `CERT_MAP` is adjacent, just below `STORAGE.0`. Its code, in dead `signer`,
-    touches only `CERT_MAP`'s own bytes (`ldar` of its own `Once` word).
-- Closing it needs: engine PMULL, a `getauxval` hook, a contract for `Once::call` (a hook that calls
-  back into the image), and `accelerated::mul2 = unaccelerated::mul`.
-  - An alternative that keeps the literal load state is a trusted `Once::call` hook. It needs a
-    rework of the `TokenInit` frames in the SPQR proofs.
+- Home: `LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean` (T) (`CliRunsToElf` runs `cliProgElf addrs` directly from plain `elf.loadState (cliProcessInputs i)` with zero initial `.data` patches; legacy `cliTokenPatch` remains only in proof-side `CliBinaryTokenPatch.lean` / `CliProcessFixed.lean`), `LibsignalBinary/Specifications/SignalSession/CliProcess.lean` (T) (`cliProcessInputs`), `LibsignalBinary/Specifications/SignalSession/Process.lean` (T) (`processInputs`), and `arm64-semantics/Arm64/Trusted/Process/Loader.lean` (`AuxvConfig`).
+- The pinned ELF links `std::sys::sync::once::futex::Once::call`, `cpufeatures::aarch64::getauxval_hwcap`, `__aarch64_cas4_acq`, `__aarch64_swp4_rel`, and musl `getauxval`. On the first `aes` 0.9.1 operation and the first SPQR GF(2¹⁶) operation, their runtime feature probes call `getauxval(AT_HWCAP)` against the initial stack auxiliary vector set up by `ElfImage.loadState` and read via `__libc.auxv` after musl's `__init_libc`; SPQR's `Once::call` runs `spqr::encoding::gf::check_accelerated::use_accelerated::init`, writing `STORAGE.0 := 1#8` and `TOKEN.state := 0#32` (`COMPLETE`) so GF(2¹⁶) multiplication takes `accelerated::mul2_unreduced` (`PMULL` 64-bit polynomial multiplication over GF(2)[X], proved equal to packed `unaccelerated.polyMul`).
+- **Pinned auxv scope (not quantified over `hwcap`):** `processInputs` fixes the auxiliary vector to `AT_HWCAP = 0x1b#64` (`HWCAP_FP | HWCAP_ASIMD | HWCAP_AES | HWCAP_PMULL`, with bit 8 `ATOMICS/LSE = 0`), `AT_HWCAP2 = 0#64`, and `AT_RANDOM` = 16 zero bytes. This pins two runtime feature-dispatch choices in the verified run:
+  1. Both `aes` 0.9.1 and SPQR 1.6.0 see `(AT_HWCAP & 0x18) != 0` and execute their ARMv8 Cryptographic Extension paths (`AESE`/`AESD`/`AESMC`/`AESIMC` and `PMULL`); CPUs without AES/PMULL (`AT_HWCAP = 0x3`) are not covered by the single-`hwcap` process input.
+  2. During `.init_array` startup, `RUST_LSE_INIT::init_lse` calls `std_detect`, reads `AT_HWCAP`/`AT_HWCAP2`, sees `ATOMICS = 0`, and leaves the outline-atomics dispatch byte at `0`. Consequently, outline atomics (including `__aarch64_cas4_acq` / `__aarch64_swp4_rel` inside `Once::call`) take the LL/SC (`ldaxr`/`stlxr`) path in the verified run, whereas ARMv8.1+ CPUs with `ATOMICS` (bit 8) set take the LSE (`casa`/`swpal`) path.
+- Also covers [DEV-M17](#dev-m17).
 
 ### DEV-CLI11
 
 **After a pre-key `recv` over a session that does not match it is accepted, the session file and the party's later calls are not claimed (`CliSpecPqxdhNoMatch`)** · class: libsignal · effect: out of scope
 
 - Home: `LibsignalBinary/Specifications/SignalSession/PqDirNoMatch.lean` (T): `CliSpecPqxdhNoMatch`,
-  a conjunct of `CliPqxdhElfCorrectPlaced` (`CliBinaryPq.lean`).
+  a conjunct of `CliPqxdhElfCorrect` (`CliBinaryPq.lean`).
 - `CliSpecPqxdh` leaves out `recv` of a typed pre-key message `m` while the party holds a session that
   `m` does not match (`¬ PqSessionMatches`). `CliSpecPqxdhNoMatch` covers it: the run's exit code
   and stdout are those of `pqRecvPrekeyModel` on the same party state with no session, and so are
@@ -3294,35 +3358,30 @@ section that puts a term in a bound (DEV-CLI17, the excused-abort term, is retir
 
 ### DEV-CLI15
 
-**A run in which an allocation fails may abort; after the abort, stdout and the files are not claimed (`CliPqxdhElfCorrectPlaced`)** · class: formalization · effect: out of scope
+**A run that reaches `.OutOfMemory` has no outcome (`run i = none`) and is excused in `CliPqxdhElfCorrect`** · class: formalization · effect: out of scope
 
-- Home: `LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean` (T): `CliRunAllocFailsPlaced`,
-  the excuse of `CliPqxdhElfCorrectPlaced` (through `CliSpecPqxdhOrExcusedAbort` / `CliSpecPqxdhNoMatchOrExcusedAbort`).
-- On each input that a clause of `CliSpecPqxdh` or `CliSpecPqxdhNoMatch` names,
-  the run has exactly that clause's outcome, or it aborts and some state it reaches has logged `allocFailedEvent`
-  (`CliRunAllocFailsPlaced`). The statement names `CliPqxdhElfCorrectPlaced` and
-  `CliPqxdhBinaryCorrectPlaced` are kept and now mean correctness up to excused aborts. There is no
-  hypothesis on the hooks `W`. `Outcome.aborted` claims death by
-  `SIGABRT` (exit status `134`, `OutcomeMatchesProcess`) and nothing else.
-- Why: the CLI writes the changed stores one file at a time before it prints (`Stores::commit`,
-  `cli/src/stores.rs`, which allocates each path just before its write; every command, in both
-  modes, ends there, `cli/src/lib.rs`). An allocation that fails in
-  between leaves some store files written and others not, a directory that no `PqParty` encodes.
-- Effect: no claim about stdout or the files after such an abort; a caller must treat that party's
-  directory as unknown afterwards. Still claimed: the run ends (no fault, halt, hang or
-  non-termination: a run with no outcome is never excused), it ends by `SIGABRT`, and an allocation
-  of that run failed. Not claimed: that the failed allocation is what made the run abort.
-- Compared with the Main Theorem's security clause: since NOOM-CLOSE (DEV-CLI12, retired) it has no
-  allocation premise; this excuse remains in Lemma 4 and in the correctness clause. A strict Lemma 4 (correctness without the
-  `CliRunAllocFailsPlaced` excused abort) is deferred past the move to `main`.
+- Home: `LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean` (T): `CliReachesOOMElf`,
+  the `.OutOfMemory` excuse of `CliPqxdhElfCorrect` (through `OutcomeOrExcusedAbort` in
+  `CliSpecPqxdhOrExcusedAbort` / `CliSpecPqxdhNoMatchOrExcusedAbort`; for `SampleNTT` seed
+  divergence see [DEV-CLI22](#dev-cli22)).
+- On each input `i` that a clause of `CliSpecPqxdh` or `CliSpecPqxdhNoMatch` names, either the run
+  terminates with that clause's exact outcome (`run i = some o`), or `run i = none` and `i` reaches
+  `.OutOfMemory` (`CliReachesOOMElf elf addrs i`) or a non-terminating `libcrux_ml_kem`
+  `SampleNTT` entry ([DEV-CLI22](#dev-cli22)).
+- Why: an allocation exhausted at `brk` / `mmap` / `mprotect` / `mremap` stops at
+  `s.status = .OutOfMemory` (`run i = none`).
+- Effect: no claim about stdout or the files on an excused `run i = none` input. On the security
+  side, `.OutOfMemory` is discharged unconditionally on `cliElfBytes` (DEV-CLI12, retired), so
+  `CliPqxdhElfSecure` carries no `.OutOfMemory` premise and no allocation-failure term
+  (its `exc?` counts only `SampleNTT` seed divergence, [DEV-CLI22](#dev-cli22)).
 - **Retired with `AllocNeverFails` at Route B2: the fixed-address statements with no allocation premise.**
-  - What they were: until Route B2, proof-side theorems over the fixed-address image (none of them a headline) stated Lemma 4 and the Main Theorem with no excused abort and no allocation premise: `libsignal_cli_pq_binary_correct`, `libsignal_cli_pq_secure_elf_binary` (each with its `_proof`), `libsignalCliPqSecureElfBinary`, `libsignalCliPqSecureElfBinary_of_main` and `cliElfBytes_pqElfSecure_of_main5` (`Computational/Proofs/LibsignalCli/ElfHeadlinePq.lean`).
+  - What they were: until Route B2, proof-side theorems over the fixed-address image (none of them a headline) stated Lemma 4 and the Main Theorem with no excused abort and no allocation premise (`libsignalCliPqSecureElfBinary`, `libsignalCliPqSecureElfBinary_of_main`, `cliElfBytes_pqElfSecure_of_main5`, and earlier fixed-image `libsignal_cli_pq_binary_correct` / `libsignal_cli_pq_secure_elf_binary` in `Computational/Proofs/LibsignalCli/ElfHeadlinePq.lean`).
   - Why retired: they rested on `AllocNeverFails`, the proof that no allocation fails for every `W` on the CLI ELF pinned before the Route B2 relink. They are retired with it.
-  - What remains proved: the code match, the functional clauses and the PQ security bound.
-    - Placed: Lemma 4 `libsignal_cli_pq_binary_correct_placed` (up to the excused abort above) and the Main Theorem `libsignal_cli_pq_secure_elf_binary_placed` (its security clause has no allocation premise since NOOM-CLOSE; DEV-CLI12, retired).
+  - What remains proved: the ELF-direct functional clauses and the PQ security bound.
+    - ELF-direct headlines: Lemma 4 `libsignal_cli_pq_binary_correct` (up to `.OutOfMemory` and divergent `SampleNTT`, [DEV-CLI22](#dev-cli22)) and the Main Theorem `libsignal_cli_pq_secure_elf_binary` (its security clause has no `.OutOfMemory` premise since NOOM-CLOSE, and accounts for divergent `SampleNTT` via `withExcusedAbortTerm`, [DEV-CLI22](#dev-cli22)).
     - Fixed-address run: none on `main`. The proof-side `…Ext` ELF theorems (`libsignalCliPqBinaryCorrectExt_cliElf` and `libsignalCliPqSecureElfBinaryExt` under `CliAllocNeverFailsPqWith`, and `cliPqBinaryCorrectOomExt_cliElf_runs` up to an excused abort) were removed on the move to `main`.
-  - What is lost: the conclusion that no allocation fails.
-    - Placed headlines: NOOM-CLOSE and FD-RM S4 (`ElfNoOomPlacedInstK.cliElf_noOOM_of_parseK` with `ElfSlicesPqOomH2KM1.h2k_ghostArms_closed`, 0 premises) proved unconditionally, for `cliElfBytes` and every `W`, that no PQXDH-mode run reaches `.OutOfMemory`; that removed the Main Theorem's security-clause premise (DEV-CLI12, retired). Removing this excuse from Lemma 4 (a strict `CliPqxdhElfCorrectPlaced`) is deferred.
+  - What is lost: the conclusion that no allocation fails in Lemma 4.
+    - ELF-direct headlines: NOOM-CLOSE and FD-RM S4 (`cliElf_noOOM_elf`, via `ElfNoOomPlacedInstK.cliElf_noOOM_of_parseK` with `ElfSlicesPqOomH2KM1.h2k_ghostArms_closed`, 0 premises) proved unconditionally, for `cliElfBytes`, that no PQXDH-mode run reaches `.OutOfMemory`; that removed the Main Theorem's `.OutOfMemory` premise (DEV-CLI12, retired). Removing `.OutOfMemory` from Lemma 4 is deferred.
     - Fixed-address run: no plan item proves it. `CliAllocNeverFailsPqWith` and `∀ W, CliPqxdhAllocNeverFails cliElfImage W` stay open.
 
 ### DEV-CLI16
@@ -3377,14 +3436,12 @@ section that puts a term in a bound (DEV-CLI17, the excused-abort term, is retir
     only through `H`. With it, a CLI game that samples `H` would have a bound with no
     random-oracle-to-HKDF gap term. A bound on the real binary (real HKDF) would still need the step from the
     random oracle to HKDF.
-- Merge note: before the move to `main`, the staged branch's clause 2 assumed `SigEufCma` + `GapDH`
-  plus an unanalysed one-key residual `KeyIndOneKeyGap` (`ε_1k`). `main` (#883) proved one-key
-  random-oracle key indistinguishability in Lemma 1 under the joint X25519/XEdDSA assumptions
-  `GapSigEufCma` and `GapDhWithSign`, and retired `KeyIndOneKeyGap`. The merged clause takes `main`'s
-  form: it assumes more of the shared key (each gap game gives the adversary one more oracle) and
-  has no `ε_1k` term, which #883 argues cannot be bounded by a small primitive-independent quantity
-  from separate black-box `GapDH` and `SigEufCma` (an argument, not a Lean theorem). Neither clause
-  implies the other; the merge takes `main`'s (D1).
+- One-key random-oracle key indistinguishability in Lemma 1 is proved under the joint X25519/XEdDSA
+  assumptions `GapSigEufCma` and `GapDhWithSign`, retiring an earlier unanalysed one-key residual
+  `KeyIndOneKeyGap` (`ε_1k`, which cannot be bounded by a small primitive-independent quantity from
+  separate black-box `GapDH` and `SigEufCma` alone — an argument, not a Lean theorem). The joint
+  assumptions give the adversary an additional oracle in each gap game while eliminating the
+  unbounded `ε_1k` term; neither clause implies the other.
 
 ### DEV-CLI18
 
@@ -3426,49 +3483,45 @@ section that puts a term in a bound (DEV-CLI17, the excused-abort term, is retir
 
 ### DEV-CLI19
 
-**`libsignal_cli_io` write hooks in `cliHookTablePlaced` (`write_file`/`write_stdout` until `W-DIS0`; `read_file`/`read_stdin` de-hooked at F3's re-link)** · class: machine model · effect: out of scope
+**`libsignal_cli_io` I/O de-hooked: `read_*` at F3, `write_*` at Stage B (`cliHookTablePlaced = []`; legacy `cliHookTable` hooks I/O)** · class: machine model · effect: none (placed ELF) / out of scope (legacy `cliHookTable`)
 
-- Homes: `LibsignalBinary/Specifications/SignalSession/CliRun.lean` (`writeFileHook`,
-  `writeStdoutHook`; the legacy `readFileHook`, `readStdinHook` stay there outside the headline
-  closure for fixed-image/legacy proofs), `LibsignalBinary/Heap/SpecBudget.lean` (`ReadFileEnv`,
+- Homes: `LibsignalBinary/Specifications/SignalSession/CliRun.lean` (home docstring; legacy
+  `writeFileHook` and `writeStdoutHook`, retained for untrusted ghost-table replay and legacy
+  fixed-image `cliHookTable` outside the placed headline closures now that `cliHookTablePlaced = []`,
+  live in `LibsignalBinary/Proofs/SpecLemmas/SignalSession/IoHooksLegacy.lean`, and legacy
+  `readFileHook` / `readStdinHook` live in `CliRunFixed.lean`), `LibsignalBinary/Heap/SpecBudget.lean` (`ReadFileEnv`,
   `ReadStdinEnv`, `WriteFileEnv`, `WriteStdoutEnv`).
-- `libsignal_cli_io::{read_file, read_stdin}` are no longer hooks: F3's re-link de-hooked them
-  (`cliDehookedSymsPlaced`; across `B2-TLIT` `49 → 47`, F3 `47 → 39`, and the stock `ld.lld` cutover `39 → 37`,
-  `cliHookTablePlaced_length_guard`—`9` external de-hooked symbols in `cliDehookedSymsPlaced` (`2` read,
-  `5` `__rust_*`, and `memcpy`/`memset` on `VerifiedLibraries.mallocngLib` blocks `20`/`21`) plus
-  `<String as Clone>::clone` as an intra-library block under SC-1 route (I)),
-  and the stock `ld.lld` ELF runs their linked compiled blocks (`lib1_0.o` /
-  `SignalSessionIoPlacedObj`). Those blocks are proved against musl
-  `open`/`read`/`close`/`__errno_location` in `LibsignalBinary/Proofs/SignalSession/CliIo/`, and the
-  proofs are part of the placed headlines' proof: `hole2_readFileCond_ok` and
-  `hole2_readStdinCond_ok` (`ElfSlicesPqOomPlacedInst.lean`) prove the read entry points of the
-  production ELF's code segment against their budgeted specifications, per-call closedness of
-  `fds ≥ 3` at each `read_file` boundary is carried as a proof-side fact in `VmPreserved`
-  (`FdsHiFrame`), and the ghost-to-real transfer from `main`'s ghost-hook run to the real ELF run is
-  proved on the K route (`H2KGhostArms`, discharged by
-  `ElfSlicesPqOomH2KM1.h2k_ghostArms_closed`). The `2` write functions
-  `libsignal_cli_io::{write_file, write_stdout}` are 0-allocation C-ABI musl
-  `open`/`write`/`close`/`__errno_location` loops in `cli/io/src/lib.rs`, linked into the stock ELF
-  from `lib1_0.o` and intercepted at entry as disclosed trusted hooks (`writeFileHook`,
-  `writeStdoutHook`) until `W-DIS0` proves their compiled blocks in `SignalSessionIoPlacedObj`
-  (`304` B `write_file`, `184` B `write_stdout`, reusing `muslOpenCreateTrunc_ok` /
-  `muslWriteFile32_ok`).
+- All four `libsignal_cli_io` functions (`read_file`, `read_stdin`, `write_file`, `write_stdout`) are
+  de-hooked on the stock `ld.lld` ELF (0 non-panic external hooks, DEV-E7; proof-side `cliHookTablePlaced = []`, `55` external de-hooked
+  symbols in `cliDehookedSymsPlaced` across `B2-TLIT` `49 → 47`, F3 `47 → 39`, first stock `ld.lld`
+  `39 → 37`, C2 `37 → 27`, `D1.A` `27 → 18`, SHA-256 + HMAC `18 → 16`, AES-256-CBC `16 → 14`,
+  Stage B `14 → 0`, and ARMv8 hardware AES + `cpufeatures::aarch64::getauxval_hwcap`, `cliHookTablePlaced_length_guard`, plus `<String as Clone>::clone` as an
+  intra-library block under SC-1 route (I)), and the stock `ld.lld` ELF runs their linked compiled
+  blocks (`lib1_0.o` / `SignalSessionIoPlacedObj`). `read_file` and `read_stdin` were de-hooked at
+  F3's re-link and proved against musl `open`/`read`/`close`/`__errno_location` in
+  `LibsignalBinary/Proofs/SignalSession/CliIo/` (`hole2_readFileCond_ok` and `hole2_readStdinCond_ok`
+  in `ElfSlicesPqOomPlacedInst.lean`); `write_file` (`304` B) and `write_stdout` (`184` B), which are
+  0-allocation C-ABI musl `open`/`write`/`close`/`__errno_location` loops in `cli/io/src/lib.rs`,
+  were de-hooked at Stage B and proved in `LibsignalBinary/Proofs/HookDischarge/CliIoFmt/` (reusing
+  `muslOpenCreateTrunc_ok` / `muslWriteFile32_ok`). Per-call closedness of `fds ≥ 3` at each I/O
+  boundary is carried as a proof-side fact in `VmPreserved` (`FdsHiFrame`), and the ghost-to-real
+  transfer from `main`'s ghost-hook run to the real ELF run is proved on the K route
+  (`H2KGhostArms`, discharged by `ElfSlicesPqOomH2KM1.h2k_ghostArms_closed`). `writeFileHook` and
+  `writeStdoutHook` remain only in untrusted ghost-table replay proofs and the legacy fixed-image
+  `cliHookTable` (`CliRunFixed.lean`).
 - In the `SignalSessionIoPlacedObj` crate export (`lib1_0.o`), the undefined symbol set has 11
   symbols—6 musl (`__errno_location`, `close`, `memcpy`, `open`, `read`, `write`), 4 `__rustc::__rust_*`
   allocator shims (referenced only by `read_*` / `finish_grow`), and `alloc::raw_vec::handle_error`—with
   0 GNU-`std` / `core::io` undefineds and 0 allocator or panic relocations in `write_file` /
   `write_stdout`. `WriteFileEnv` and `WriteStdoutEnv` in `SpecBudget.lean` remain conservative sound
-  supersets of `[]` until tightened with `W-DIS0`.
-- Success-path non-vacuity (sanity check, not part of any headline statement): the `init`, `send`
-  and `recv` success witnesses (`LibsignalBinary/Proofs/PeakBudget/RealMainEnvNonVacSuccInit.lean`,
-  `RealMainEnvNonVacSuccSend.lean`, `RealMainEnvNonVacSuccWhisper.lean`) are stated on the generic
-  binary-kit environment `realCliMainBinaryKitEnvOf`. The placed release chain instead uses the
-  `Exact` slot environments (`cliDecPkCanonSlotEnvExact'`: `mkBinaryKitRealCalleeEnvsFixed`
-  `initEnv` plus encrypt/decrypt slots guarded by `PeerSpqrStateTight640`). The `init` witness
-  carries over: that arm reads only `initEnv`, which is the same in both (Lean-checked by a review
-  probe, not by a repository lemma). For `send` and `recv` no inclusion lemma exists, so success is
-  not shown reachable in the release environment. No headline statement or trusted closure changes;
-  only this sanity claim is narrower. Tracked as FU-SUCC-EXACT (#1193).
+  supersets of `[]`.
+- Success-path non-vacuity (sanity check, not part of any headline statement): the whisper `recv`
+  success witness (`LibsignalBinary/Proofs/PeakBudget/RealMainEnvNonVacSuccWhisper.lean`) is stated
+  on the generic binary-kit environment `realCliMainBinaryKitEnvOf`, whereas the ELF release chain
+  uses the `Exact` slot environments (`cliDecPkCanonSlotEnvExact'`: `mkBinaryKitRealCalleeEnvsFixed`
+  `initEnv` plus encrypt/decrypt slots guarded by `PeerSpqrStateTight640`). No inclusion lemma
+  exists for the `Exact` environment, so success is not shown reachable in the release environment.
+  No headline statement or trusted closure depends on this sanity witness.
 
 ### DEV-CLI21
 
@@ -3477,8 +3530,8 @@ section that puts a term in a bound (DEV-CLI17, the excused-abort term, is retir
 - Home: `LibsignalBinary/Specifications/SignalSession/PqDir.lean` (T): `PqxdhPartyInSpecDomain` and
   `markKyberUsed` (with cap constants `stdinCapBytes = 2^20`, `fileCapBytes = 2^21`,
   `cliPathMaxBytes = 4096`, and `maxPlaintextBytes = 1_000_000` in
-  `LibsignalBinary/Specifications/SignalSession/Run.lean`, hook contracts `readFileHook`,
-  `writeFileHook`, and `readStdinHook` in `CliRun.lean`, top-level refusal clauses in `CliSpecPqxdh`,
+  `LibsignalBinary/Specifications/SignalSession/Run.lean`, legacy hook contracts `writeFileHook` in
+  `IoHooksLegacy.lean` and `readFileHook` / `readStdinHook` in `CliRunFixed.lean` (outside the placed headline closures now that `cliHookTablePlaced = []`), top-level refusal clauses in `CliSpecPqxdh`,
   `CliSpecPqxdhNoMatch`, and `CliSpecE`
   (`LibsignalBinary/Proofs/SpecLemmas/SignalSession/SmDirProofDefs.lean`), and completeness proofs
   in `Computational/Proofs/LibsignalCli/CliCapsCompleteness.lean`).
@@ -3486,14 +3539,25 @@ section that puts a term in a bound (DEV-CLI17, the excused-abort term, is retir
   cutover removed `<String as Clone>::clone` and `7` external de-hooked symbols, `47 → 39`; the
   stock `ld.lld` cutover removed `memcpy` and `memset`—executed as `VerifiedLibraries.mallocngLib`
   blocks `20` and `21` on the stock ELF—leaving `9` external de-hooked symbols and `37` rows
-  (`39 → 37`); and the second stock `ld.lld` cutover (C2) removes `memmove`, `bcmp`, and `strlen`
+  (`39 → 37`); the second stock `ld.lld` cutover (C2) removes `memmove`, `bcmp`, and `strlen`
   (`self-contained/libc.a`; `bcmp` tail-calls the unhooked `memcmp`) and `memrchr`, `from_utf8`,
   `SystemTime::duration_since`, `<SystemTime as Add<Duration>>::add`, `subtle::black_box`, and the
-  `2` X25519 `Drop::drop` destructors (compiled Rust in the C2 `lib2_*.o` objects), bringing
-  `cliDehookedSymsPlaced` to `19` external de-hooked symbols and `cliHookTablePlaced` to `27` rows
-  (`37 → 27`), with `libsignal_cli_io::{read_file, read_stdin}` running their linked `lib1_0.o` code
-  while `write_file` and `write_stdout` stay linked in `lib1_0.o` and intercepted at entry as
-  disclosed trusted hooks until `W-DIS0`, see DEV-CLI19):
+  `2` X25519 `Drop::drop` destructors (`37 → 27`), the `D1.A` crypto cutover removes the `7`
+  `curve25519_dalek` Ed25519/scalar operations and `libcrux_ml_kem`'s
+  `KeyPairCompressedBytes::{pk1, pk2}` (`27 → 18`), the SHA-256 + HMAC de-hook removes
+  `sha2::sha256::compress256` and `libcrux_hmac::hmac` (with its `libcrux_sha2::hacl::*` SHA-256
+  helpers in `.text.lib2`, `18 → 16`), and the AES-256-CBC cutover removes
+  `signal_crypto::aes_cbc::{aes_256_cbc_encrypt, aes_256_cbc_decrypt}` (with `aes` 0.9.1
+  `fixslice64` in `.text.lib2`, `16 → 14`), and the Stage B cutover removes
+  `sha2::sha512::compress512`, the `7` remaining `libcrux_ml_kem` Kyber-1024 and ML-KEM-768
+  functions, `libsignal_cli_io::{write_file, write_stdout}`, `core::fmt::write` (adding its `7`
+  `core::fmt` `Formatter` / `Display::fmt` externs in `lib2_0.o`),
+  `alloc::fmt::format::format_inner`, and `x25519_dalek`'s `PublicKey::from(&StaticSecret)` and
+  `StaticSecret::diffie_hellman` (`14 → 0`), and the ARMv8 hardware AES + SPQR CPU-probe cutovers
+  add `cpufeatures::aarch64::getauxval_hwcap` and `Once::call`, bringing `cliDehookedSymsPlaced` to
+  `55` external de-hooked symbols and `cliHookTablePlaced` to `0` rows, with all four
+  `libsignal_cli_io::{read_file, read_stdin, write_file, write_stdout}` functions running their
+  linked `lib1_0.o` code, see DEV-CLI19):
   - `read_stdin` caps standard input at `stdinCapBytes = 2^20` (`1,048,576` B), exiting `2` with
     files unchanged when `stdin.length > stdinCapBytes`;
   - `read_file` caps file reads at `fileCapBytes = 2^21` (`2,097,152` B), and both `read_file` and
@@ -3530,16 +3594,65 @@ section that puts a term in a bound (DEV-CLI17, the excused-abort term, is retir
     (`cliPqxdhDirBobBeforeAccept`) and undergoes at most one `markKyberUsed`
     (`cliPqxdhDirBobAfterAccept`, `StatementPq.lean:151`), so `seen.length ≤ 1` (`0` or `37` B,
     proved in `cliPqExp_lastResort_never_cap_rejected` and `cliPqExp_dir_files_le_fileCap`).
-- Merge note: before the move to `main`, `main`'s CLI specs had none of these I/O-cap branches and no
-  `fileCapBytes` clause in `PqxdhPartyInSpecDomain`; the merged specs (`PqDir.lean`, `Run.lean`,
-  `CliRun.lean`) take the staged branch's capped forms (#1032: the domain narrowing (i) and the
-  exit-`2` cap branches above). Effect: none; no reachable state is excluded (i).
+- The CLI specifications (`PqDir.lean`, `Run.lean`, `CliRun.lean`) include the domain narrowing (i)
+  and exit-`2` cap branches above; effect is none, because no reachable state is excluded (i).
+
+### DEV-CLI22
+
+**Unbounded `SampleNTT` (`sample_from_xof`) rejection loop in `libcrux_ml_kem` (`MlKemSampleNttStuckAtElf`, `CliReachesSampleNttStuckElf`)** · class: machine model · effect: availability only; the headline security bound gains an unbounded `2·CliPqxdhFlagProb` SampleNTT-divergence term
+
+- Home: `LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean` (T): `MlKemSampleNttStuckAtElf`
+  and `CliReachesSampleNttStuckElf` (with the 6 seed-termination predicates
+  `Shake128MatrixTerminates`, `Mlkem768FromSeedTerminates`, `Mlkem768Encaps1Terminates`,
+  `Mlkem768DecapsTerminates`, `Kyber1024EncapsTerminates`, and `Kyber1024DecapsTerminates` next to
+  `Shake128SeedTerminates` in `LibsignalBinary/Specifications/CryptoGames/KEM/MlKem.lean`, progress
+  clause `CliElfProgress` in `Symbolic/Specifications/Refinement/ElfBinding.lean`, and
+  excused-abort bound wiring `CliPqxdhExcusedAbort` / `CliPqxdhElfSecure` in
+  `Computational/Specifications/LibsignalCli/StatementPqElf.lean`).
+- Reference: `libsignal` (`libcrux_ml_kem` `0.0.10` `sampling::sample_from_xof`, `while !done`
+  rejection loop over 12-bit candidates `< 3329` squeezed from SHAKE-128).
+- At 0 non-panic hooks (`cliProgElf addrs`), the 5 matrix-sampling entry points in the linked ELF
+  — Kyber-1024 `encapsulate` (`x0`, `1,568` B; `ρ = pk[1536..1568]`) and `decapsulate` (`x0`,
+  `3,168` B; `ρ = sk[3072..3104]`), and incremental ML-KEM-768 `KeyPairCompressedBytes::from_seed`
+  (`x0`, `64` B; `ρ = SHA3-512(seed[0..32] ‖ 3)[0..32]`), `encapsulate1` (`x0`, length `x1`;
+  returns `Err` when `< 64` B and otherwise samples from `hdr[0..32]`), and
+  `decapsulate_compressed_key` (`x0`, `2,400` B; `ρ = dk[2304..2336]`) — execute the compiled
+  `sample_from_xof` loop rather than total specification hooks. Because `∀ seed34,
+  Shake128SeedTerminates seed34` ranges over all `2^272` concrete SHAKE-128 inputs (including
+  adversary-chosen bundle public keys, SPQR V1 headers, stored secret keys, and send coins),
+  whole-domain totality cannot be proved by finite evaluation.
+- Per-call trajectory excuse (Option A + R1a):
+  - `CliReachesSampleNttStuckElf elf addrs i` holds iff the deterministic trajectory from
+    plain `elf.loadState (cliProcessInputs i) = .ok s0` on `i` reaches a `.Running` state `u` at one of the 5 `.symtab`-resolved
+    symbol addresses (`addrs.{kyberEncapsVa, kyberDecapsVa, mlkemFromSeedVa, mlkemEncaps1Va, mlkemDecapsVa}`)
+    whose ABI-passed input bytes negate the corresponding `*Terminates` predicate
+    (`MlKemSampleNttStuckAtElf addrs u`).
+  - `CliPqxdhElfCorrect` instantiates `OutcomeOrExcusedAbort` at
+    `cliExcusedElf elf addrs` (`fun i => CliReachesOOMElf elf addrs i ∨ CliReachesSampleNttStuckElf elf addrs i`),
+    and `CliElfProgress` concludes
+    `cliRunElf elf addrs i ≠ none ∨ CliReachesSampleNttStuckElf elf addrs i`.
+    `OutcomeOrExcusedAbort` never alters a `some o` claim, and any fault or divergence *before*
+    reaching a stuck `SampleNTT` entry stays unexcused.
+  - On the computational security side (`StatementPqElf.lean`), `CliPqxdhExcusedAbort` counts PQXDH
+    inputs satisfying `exc i` with `run i = none ∨ run i = some .aborted`, and
+    `CliPqxdhElfSecure` sets `exc? := some (CliReachesSampleNttStuckElf elf addrs)`,
+    adding `+ 2 * CliPqxdhFlagProb … (CliPqxdhExcusedAbort (CliReachesSampleNttStuckElf elf addrs) …)` to
+    both clauses of the headline security bound (`withExcusedAbortTerm`). This `2 * CliPqxdhFlagProb`
+    term is **not bounded in the theorem**: under an idealized random XOF each 12-bit candidate is
+    `< 3329` independently with probability `3329 / 4096`, so non-termination has probability `0`,
+    but the theorem does not bound this probability for concrete SHAKE-128 and the adversary
+    influences the inputs (e.g., bundle public keys and `encapsulate1` headers). If a pathological
+    concrete SHAKE-128 seed existed and an adversary supplied it, the flag term reflects that
+    denial-of-service / non-termination probability.
 
 ## Retired IDs
 
 - `DEV-E4`, `DEV-E5`: retired in an earlier revision of the binary statement.
-- `DEV-M14`, `DEV-M15`, `DEV-M16`: reserved in the superseded `*V1.lean` draft (#359); retired so
+- `DEV-M14`, `DEV-M15`, `DEV-M16`: reserved in the superseded `*V1.lean` draft; retired so
   that subsequent M-series IDs do not collide.
+- `DEV-CLI9` (legacy SM-mode `CliAllocNeverFails` hypothesis on `CliBinaryCorrect`): retired with the
+  removal of `LibsignalBinary/Proofs/SpecLemmas/SignalSession/CliBinaryFixed.lean`; the ELF-direct
+  PQXDH headlines do not take this hypothesis.
 - `DEV-C6`: never assigned (the C entries were numbered with a gap); retired so that it is not
   reused.
 - `DEV-C1`–`DEV-C4`, `DEV-C7`: described the earlier SPQR-off composed PQXDH + Double Ratchet draft;
@@ -3554,8 +3667,8 @@ section that puts a term in a bound (DEV-CLI17, the excused-abort term, is retir
     writes the initial records, and no libsignal code initialises the session (M, E section:
     "No pre-key layer and no libsignal session initialisation").
   - `DEV-M13` (no allocation fails, `HeapDemandBound`): the hypothesis was removed with the harness
-    statement; the SM-mode `CliAllocNeverFails` ([dev-cli9](#dev-cli9)) replaced it; the PQXDH-mode premise that
-    replaced it (DEV-CLI12) was retired at NOOM-CLOSE, and `CliPqxdhElfCorrectPlaced` covers runs in
+    statement; the legacy SM-mode `CliAllocNeverFails` (`DEV-CLI9`, retired) replaced it; the PQXDH-mode premise that
+    replaced it (`DEV-CLI12`, retired) was discharged unconditionally for `cliElfBytes`, and `CliPqxdhElfCorrect` covers runs in
     which an allocation fails (CLI section).
   - `DEV-PQ4` (the responder starts from no session): `CliRecvPrekeyCorrect` covers both no session
     and a matching session; a session that does not match is covered by `CliSpecPqxdhNoMatch` (CLI
@@ -3576,25 +3689,27 @@ section that puts a term in a bound (DEV-CLI17, the excused-abort term, is retir
   (argument vectors of at most 16 KiB, `ArgvFitsInitialStack`): both subjects are proof-side
   definitions outside the trusted closure of every theorem of `Computational/Theorems/`, so neither
   restricts what a theorem claims.
-- `DEV-CLI17` (the excused-abort term in the CLI security bound, `CliPqxdhFlagProb` /
+- `DEV-CLI17` (the allocation-failure excused-abort term in the CLI security bound,
   `CliPqxdhAllocFailureAbortProb`): the bound has no allocation-failure term, and since NOOM-CLOSE
   the security clause has no allocation premise either (DEV-CLI12, retired).
   The generic excused-abort form (`CliPqxdhSecurityFor` with `exc? := some exc`,
   `withExcusedAbortTerm`) stays in `Computational/Specifications/LibsignalCli/StatementPqElf.lean`,
   and `CliPqxdhFlagProb` in `Computational/Specifications/Game/StatementPqOomGame.lean`; no theorem
-  of `Computational/Theorems/` instantiates it with `some exc`.
+  of `Computational/Theorems/` instantiates it for allocation failure (`CliPqxdhElfSecure`
+  instantiates `some (CliReachesSampleNttStuckElf elf addrs)` for `SampleNTT` seed divergence only,
+  [dev-cli22](#dev-cli22)).
 - `DEV-CLI12` (the security clause assumed that no PQXDH-mode run reaches `.OutOfMemory`): retired
-  at NOOM-CLOSE (2026-11-07). `CliPqxdhElfSecurePlaced` has no such premise. For `cliElfBytes`, the
-  Main Theorem's proof shows unconditionally on the modelled 1 GiB machine, for every pair of
-  placements linked at `cliElfBytes` and every `W`, that no such run reaches `.OutOfMemory`
-  (`ElfNoOomPlacedInstK.cliElf_noOOMK` with `ElfSlicesPqOomH2KM1.h2k_ghostArms_closed`, 0 premises). Lemma 4's statement, and with it the correctness
-  conjunct `CliPqxdhElfCorrectPlaced` of the Main Theorem, still allows `.OutOfMemory` ([dev-cli15](#dev-cli15)).
+  at NOOM-CLOSE (2026-11-07). `CryptoVerification.LibsignalCli.CliPqxdhElfSecure` has no such premise. For `cliElfBytes`, the
+  Main Theorem's proof shows unconditionally on the modelled 1 GiB machine
+  that no such run reaches `.OutOfMemory`
+  (`cliElf_noOOM_elf`, via `ElfNoOomPlacedInstK.cliElf_noOOMK` with `ElfSlicesPqOomH2KM1.h2k_ghostArms_closed`, 0 premises). Lemma 4's statement, and with it the correctness
+  conjunct `CliPqxdhElfCorrect` of the Main Theorem, still allows `.OutOfMemory` ([dev-cli15](#dev-cli15)).
   The docstrings of `CliBinaryPq.lean` and `RustHeap/Alloc.lean` that described `¬OOM` as a
   premise of the security statement were corrected on the move to `main`.
 - `DEV-C21` (per-session SM query cap `_hq32 : ∀ k < qStart, 80000 * (qs k + 1) + 2100000 < 2 ^ 31` in
-  `LibsignalCliPqSecure`, proof-side `CliPqxdhElfSecure`, and `CliPqxdhElfSecurePlaced`): `_hq32` in
-  `LibsignalCliPqSecure`, proof-side `CliPqxdhElfSecure`, and `CliPqxdhElfSecurePlaced` is now the consolidated
-  `u32` counter/window bound `2 * (qs k + 1) + 25002 < 2 ^ 32` (`DEV-C14`), because every
+  `LibsignalCliPqSecure` and `CryptoVerification.LibsignalCli.CliPqxdhElfSecure`): `_hq32` in
+  `LibsignalCliPqSecure` and `CryptoVerification.LibsignalCli.CliPqxdhElfSecure` is now the consolidated
+  `u32` counter/window bound `2 * (qs k + 1) + 25002 < 2 ^ 32` ([dev-c14](#dev-c14)), because every
   `ReachablePqxdhSession` record encodes to at most `1,209,331 < 2 ^ 21 < 2 ^ 31` bytes
   (`encodeRecordX_length_le_1209331_cli`, `CliPqSessionCap.lean`) independently of `qs k`. The former
   `DEV-C21` claim that a receive-only party accumulates SPQR chain links and skipped keys (so the cap

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.RecvRep
@@ -22,7 +22,7 @@ Proves `parsePreKeyWire_inner_tryFrom` and deduces non-emptiness of `recvReprese
 `pf.message` whenever `parsePreKeyWire b = some pf`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

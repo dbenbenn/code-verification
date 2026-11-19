@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSpqrHyp
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Simulation
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSpqrHyp -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Simulation -- proof-setup: allow-public-import
 
 /-!
 # Definitions for the refinement under the weak SPQR hypothesis
@@ -18,7 +18,7 @@ public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.
 Defines `SpqrWLocal`, `HonestEntryInvW`, and `SimInvW`, weakening the SPQR assumptions of `SimInv` to hold relative to an inductive SPQR state invariant `Inv`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -36,11 +36,11 @@ variable {Pt PQ PQC : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt] [Inha
   [SampleableType PQC] {ℓ : ℕ}
 
 /-- `Corr.SpqrWeakCorrect S` specialized to a fixed invariant `Inv`. -/
-def SpqrWLocal (S : Spqr PQ PQC) (Inv : PQ → Prop) : Prop :=
+@[expose] def SpqrWLocal (S : Spqr PQ PQC) (Inv : PQ → Prop) : Prop :=
   Corr.SpqrInvClosed S Inv ∧ Corr.SpqrSendTotalOn S Inv ∧ Corr.SpqrSaltBindingOn S Inv
 
 /-- Variant of `HonestEntryInv` weakening SPQR salt agreement to states satisfying `Inv`. -/
-def HonestEntryInvW (P : Params PQ PQC) (Inv : PQ → Prop) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def HonestEntryInvW (P : Params PQ PQC) (Inv : PQ → Prop) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (epExp : ℕ → BitVec 256)
     (wc : List (BitVec 8) × Fig8C Pt) : Prop :=
   let w := wc.1

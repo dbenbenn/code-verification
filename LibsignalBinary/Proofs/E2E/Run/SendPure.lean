@@ -12,7 +12,7 @@ module
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
 import LibsignalBinary.Proofs.ConsumeMessageKey.CanonKey
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -22,7 +22,7 @@ open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalProtoCodec CryptoVerification.E2E
 
-def canonChainGhostOf (rc : ReceiverChain) : ChainGhost where
+@[expose] def canonChainGhostOf (rc : ReceiverChain) : ChainGhost where
   srk   := ⟨0#64, 0#64, rc.senderRatchetKey.serialize⟩
   priv  := ⟨0#64, 0#64, []⟩
   mkCap := 0#64
@@ -30,7 +30,7 @@ def canonChainGhostOf (rc : ReceiverChain) : ChainGhost where
   keys  := []
   ck    := ⟨0#64, 0#64⟩
 
-def canonGhostOf (s : Session (List (BitVec 8))) : SessionGhost where
+@[expose] def canonGhostOf (s : Session (List (BitVec 8))) : SessionGhost where
   localIk   := ⟨0#64, 0#64, s.state.localIdentity.serialize⟩
   remoteIk  := ⟨0#64, 0#64, (s.state.remoteIdentity.map IdentityKey.serialize).getD []⟩
   root      := ⟨0#64, 0#64⟩
@@ -57,51 +57,6 @@ private theorem canonChain_of_mem_zip_canonChainGhostOf :
     rcases h with rfl | h
     · exact ⟨rfl, rfl⟩
     · exact canonChain_of_mem_zip_canonChainGhostOf cs gc h
-
-theorem canonGhostOf_remoteIk (s : Session (List (BitVec 8))) :
-    match s.state.remoteIdentity with
-    | none => (canonGhostOf s).remoteIk.bytes = []
-    | some ik => (canonGhostOf s).remoteIk.bytes = ik.serialize := by
-  unfold canonGhostOf
-  cases s.state.remoteIdentity <;> rfl
-
-theorem canonGhostOf_canonSender (s : Session (List (BitVec 8))) :
-    Record.Serialization.CanonSender (canonGhostOf s).sender s.state.senderChain := by
-  unfold canonGhostOf Record.Serialization.CanonSender
-  cases s.state.senderChain with
-  | none => exact True.intro
-  | some _ => exact ⟨rfl, rfl⟩
-
-theorem canonGhostOf_sender (s : Session (List (BitVec 8))) :
-    match (canonGhostOf s).sender, s.state.senderChain with
-    | none, none => True
-    | some sg, some sc => sg.srk.bytes = sc.ratchetKey.publicKey.serialize
-    | _, _ => False := by
-  unfold canonGhostOf
-  cases s.state.senderChain with
-  | none => exact True.intro
-  | some _ => rfl
-
-theorem canonGhostOf_canonPending (s : Session (List (BitVec 8))) :
-    Record.Serialization.CanonPending (canonGhostOf s).pending s.pendingPreKey := by
-  unfold canonGhostOf Record.Serialization.CanonPending
-  cases s.pendingPreKey with
-  | none => exact True.intro
-  | some _ => rfl
-
-theorem canonGhostOf_chains_srk_priv (s : Session (List (BitVec 8))) :
-    ∀ cg ∈ (canonGhostOf s).chains, cg.srk.bytes.length = 33 ∧ cg.priv.bytes = [] := by
-  intro cg hcg
-  unfold canonGhostOf at hcg
-  simp only [List.mem_map] at hcg
-  rcases hcg with ⟨rc, _, rfl⟩
-  exact ⟨PublicKey.serialize_length rc.senderRatchetKey, rfl⟩
-
-theorem serializationCanonSession_canonGhostOf (s : Session (List (BitVec 8))) :
-    Record.Serialization.CanonSession (canonGhostOf s) s :=
-  ⟨rfl, rfl, canonGhostOf_canonSender s, List.length_map canonChainGhostOf,
-   fun gc hgc => canonChain_of_mem_zip_canonChainGhostOf s.state.receiverChains gc hgc,
-   canonGhostOf_canonPending s⟩
 
 theorem encSession_length_le_encodeRecord (s : Session (List (BitVec 8))) :
     (Record.encSession s).length ≤ (Record.encodeRecord ⟨some s⟩).length := by

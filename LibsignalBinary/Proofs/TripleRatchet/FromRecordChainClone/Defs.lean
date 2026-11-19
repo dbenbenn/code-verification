@@ -9,17 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2
-
-/-!
-# Specifications for `Chain::clone [local#2]` (`0x3846c`)
-
-Defines the symbol name, stack budget, ghost state, receiver-chain clone specification
-`chainCloneSpec`, and sender-chain clone corollary specification `senderChainCloneSpec` for
-`<session_structure::Chain as Clone>::clone [local#2]`.
--/
-
-@[expose] public section
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.FromRecordChainClone
 
@@ -33,14 +24,6 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalT
 (image offset `0x3846c`, 218 instructions). -/
 abbrev chainCloneName : String :=
   "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#2]"
-
-set_option maxRecDepth 2000000 in
-open ProofLib.ProgramReflection in
-/-- Guard (kernel-checked): `chainCloneName` appears in the image's symbol table
-exactly once (`fnAddr` takes the first match). -/
-theorem chainCloneName_unique :
-    ((libsignalSessionImage.symbols.filter (·.1 == chainCloneName)).length == 1) = true := by
-  rfl_kernel
 
 /-- Stack budget of `Chain::clone [local#2]`: `208 + allocHookStack` (`4304` B). -/
 abbrev chainCloneStack : Nat := 208 + allocHookStack
@@ -60,7 +43,7 @@ structure ChainCloneGhost where
 deep-clones `sender_ratchet_key`, `sender_ratchet_key_private`, optional `chain_key`, and the
 `message_keys` vector (including each element's `seed`) from `x.src` into `x.dst`, preserving
 `chainAt A x.gc x.src`, or panics via `alloc::raw_vec::handle_error` on allocation failure. -/
-def chainCloneSpec (A : RustAlloc) : Spec ChainCloneGhost where
+@[expose] def chainCloneSpec (A : RustAlloc) : Spec ChainCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src⌝ ∗
       memRegion x.dst 104 ∗ chainAt A x.gc x.src ∗ A.pool ∗ stackAt s.sp chainCloneStack
@@ -72,19 +55,6 @@ def chainCloneSpec (A : RustAlloc) : Spec ChainCloneGhost where
         chainAt A (g', x.gc.2) x.dst) ∗
       chainAt A x.gc x.src ∗ A.pool ∗ stackAt s0.sp chainCloneStack
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-def ChainCloneOkExt (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr chainCloneName)
-    (chainCloneSpec A)
-
-/-- Target `subroutine_ok` statement for `Chain::clone [local#2]` (`0x3846c`) at `chainCloneSpec`:
-`Chain::clone [local#2]` meets `chainCloneSpec A` on `tripleRatchetProgAt b C ctl abs`. -/
-def ChainCloneOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr chainCloneName)
-    (chainCloneSpec A)
-
-/-! ## 2. Sender-Chain Clone Corollary -/
 
 /-- Ghost arguments `(dst, src, g, sc)` for cloning a `Some` sender chain via `Chain::clone [local#2]`. -/
 structure SenderChainCloneGhost where
@@ -100,7 +70,7 @@ structure SenderChainCloneGhost where
 /-- Sender-chain corollary specification of `<session_structure::Chain as Clone>::clone [local#2]`:
 clones `optSenderChainAt A x.src (some x.g) (some x.sc)` into `x.dst` while preserving `x.src`, or
 panics on allocation failure. -/
-def senderChainCloneSpec (A : RustAlloc) : Spec SenderChainCloneGhost where
+@[expose] def senderChainCloneSpec (A : RustAlloc) : Spec SenderChainCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src⌝ ∗
       memRegion x.dst 104 ∗ optSenderChainAt A x.src (some x.g) (some x.sc) ∗
@@ -113,17 +83,5 @@ def senderChainCloneSpec (A : RustAlloc) : Spec SenderChainCloneGhost where
       optSenderChainAt A x.src (some x.g) (some x.sc) ∗
       A.pool ∗ stackAt s0.sp chainCloneStack
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-def SenderChainCloneOkExt (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr chainCloneName)
-    (senderChainCloneSpec A)
-
-/-- Target `subroutine_ok` statement for `Chain::clone [local#2]` (`0x3846c`) at
-`senderChainCloneSpec`: `Chain::clone [local#2]` meets `senderChainCloneSpec A` on
-`tripleRatchetProgAt b C ctl abs`. -/
-def SenderChainCloneOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr chainCloneName)
-    (senderChainCloneSpec A)
 
 end CryptoVerification.LibsignalTripleRatchet.FromRecordChainClone

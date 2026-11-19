@@ -9,24 +9,31 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Chunked -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # SPQR V1 Send-Leaf Transitions: `RustCliAllocBudget` Specifications & Call Helpers
 
-Exact `AllocEvent` envelopes (`*Env` and `*_nonempty`), fixed-base and `[LibsignalPlacement]`
+Exact `AllocEvent` envelopes (`*Env` and `*_nonempty`), `[LibsignalPlacement]`
 specifications under `RustCliAllocBudget M` (`*SpecOfEnv`, `*Spec`, `*PlacedOkX`) for
 `<Ct2Sampled>::recv_next_epoch` and the five `send_*_chunk` leaf transitions, and `VmPreserved` /
 `PolyEncoder::next_chunk` subroutine call helpers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -47,8 +54,8 @@ open CryptoVerification.SpqrV1.Drop
   (chunkedCt1ReceivedAt chunkedCt1SampledAt chunkedCt2SampledAt
    chunkedEkReceivedCt1SampledAt chunkedHeaderSentAt chunkedKeysUnsampledAt
    dropGluePoly16Stack vecGF16ListOf)
-open CryptoVerification.SpqrV1.GF.Mul2U16 (tokenInitAt tokenInitPlacedAt)
-open CryptoVerification.SpqrV1.GF.UnacceleratedMul (reduceTableAt reduceTablePlacedAt)
+open CryptoVerification.SpqrV1.GF.Mul2U16 (tokenInitPlacedAt)
+open CryptoVerification.SpqrV1.GF.UnacceleratedMul (reduceTablePlacedAt)
 open CryptoVerification.SpqrV1.Poly (chunkAt chunkSize polyArrayBytes polyEncoderAt)
 open CryptoVerification.SpqrV1.Poly.NextChunk (PolyNextChunkGhost polyNextChunkStack)
 open CryptoVerification.SpqrV1.States.Leaves
@@ -64,14 +71,13 @@ open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 open LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget (dropGluePoly16Spec)
 open LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget
   (PolyNextChunkEnv polyNextChunkEnv_nonempty
-   polyNextChunkPlacedSpec polyNextChunkPlacedSpecOfEnv
-   polyNextChunkSpec polyNextChunkSpecOfEnv)
+   polyNextChunkPlacedSpec polyNextChunkPlacedSpecOfEnv)
 
 /-! ## 1. Allocator Event Envelopes & Non-Vacuity Witnesses -/
 
 /-- Exact allocator event envelope of `<Ct2Sampled>::recv_next_epoch` (`0x5fa5c`, Block `355`):
     only `drop_glue::<[Poly; 16]>` runs, emitting `FreeOnlyEvs`. -/
-def Ct2SampledRecvNextEpochEnv : List AllocEvent → Prop :=
+@[expose] def Ct2SampledRecvNextEpochEnv : List AllocEvent → Prop :=
   FreeOnlyEvs
 
 theorem ct2SampledRecvNextEpochEnv_nonempty :
@@ -80,7 +86,7 @@ theorem ct2SampledRecvNextEpochEnv_nonempty :
 
 /-- `PolyEncoder`-indexed specialization of `PolyNextChunkEnv` (`PolyNextChunkEnv` inspects only
     `x.enc`). -/
-def PolyEncoderNextChunkEnv (enc : PolyEncoder) (evs : List AllocEvent) : Prop :=
+@[expose] def PolyEncoderNextChunkEnv (enc : PolyEncoder) (evs : List AllocEvent) : Prop :=
   PolyNextChunkEnv
     ⟨0#64, 0#64, enc, enc, ⟨0#16, ⟨List.replicate 32 0#8, by decide⟩⟩⟩
     evs
@@ -95,7 +101,7 @@ theorem polyEncoderNextChunkEnv_nonempty (enc : PolyEncoder) :
   polyNextChunkEnv_nonempty _
 
 /-- Exact allocator event envelope of `<EkReceivedCt1Sampled>::send_ct1_chunk` (Block `344`). -/
-def EkReceivedCt1SampledSendCt1ChunkEnv {F : ShaCompress}
+@[expose] def EkReceivedCt1SampledSendCt1ChunkEnv {F : ShaCompress}
     (x : EkReceivedCt1SampledSendCt1ChunkGhost F) (evs : List AllocEvent) : Prop :=
   PolyEncoderNextChunkEnv x.st.sending_ct1 evs
 
@@ -105,7 +111,7 @@ theorem ekReceivedCt1SampledSendCt1ChunkEnv_nonempty {F : ShaCompress}
   polyEncoderNextChunkEnv_nonempty x.st.sending_ct1
 
 /-- Exact allocator event envelope of `<Ct2Sampled>::send_ct2_chunk` (Block `354`). -/
-def Ct2SampledSendCt2ChunkEnv {F : ShaCompress}
+@[expose] def Ct2SampledSendCt2ChunkEnv {F : ShaCompress}
     (x : Ct2SampledSendCt2ChunkGhost F) (evs : List AllocEvent) : Prop :=
   PolyEncoderNextChunkEnv x.st.sending_ct2 evs
 
@@ -115,7 +121,7 @@ theorem ct2SampledSendCt2ChunkEnv_nonempty {F : ShaCompress}
   polyEncoderNextChunkEnv_nonempty x.st.sending_ct2
 
 /-- Exact allocator event envelope of `<HeaderSent>::send_ek_chunk` (Block `336`). -/
-def HeaderSentSendEkChunkEnv {F : ShaCompress}
+@[expose] def HeaderSentSendEkChunkEnv {F : ShaCompress}
     (x : HeaderSentSendEkChunkGhost F) (evs : List AllocEvent) : Prop :=
   PolyEncoderNextChunkEnv x.st.sending_ek evs
 
@@ -125,7 +131,7 @@ theorem headerSentSendEkChunkEnv_nonempty {F : ShaCompress}
   polyEncoderNextChunkEnv_nonempty x.st.sending_ek
 
 /-- Exact allocator event envelope of `<Ct1Received>::send_ek_chunk` (Block `345`). -/
-def Ct1ReceivedSendEkChunkEnv {F : ShaCompress}
+@[expose] def Ct1ReceivedSendEkChunkEnv {F : ShaCompress}
     (x : Ct1ReceivedSendEkChunkGhost F) (evs : List AllocEvent) : Prop :=
   PolyEncoderNextChunkEnv x.st.sending_ek evs
 
@@ -135,7 +141,7 @@ theorem ct1ReceivedSendEkChunkEnv_nonempty {F : ShaCompress}
   polyEncoderNextChunkEnv_nonempty x.st.sending_ek
 
 /-- Exact allocator event envelope of `<Ct1Sampled>::send_ct1_chunk` (Block `335`). -/
-def Ct1SampledSendCt1ChunkEnv {F : ShaCompress}
+@[expose] def Ct1SampledSendCt1ChunkEnv {F : ShaCompress}
     (x : Ct1SampledSendCt1ChunkGhost F) (evs : List AllocEvent) : Prop :=
   PolyEncoderNextChunkEnv x.st.sending_ct1 evs
 
@@ -144,12 +150,12 @@ theorem ct1SampledSendCt1ChunkEnv_nonempty {F : ShaCompress}
     ∃ evs, Ct1SampledSendCt1ChunkEnv x evs :=
   polyEncoderNextChunkEnv_nonempty x.st.sending_ct1
 
-/-! ## 2. Fixed-Base (`b : BitVec 64`) Specifications -/
+/-! ## 2. `<Ct2Sampled>::recv_next_epoch` Specifications -/
 
 /-- Canonical specification of `<Ct2Sampled>::recv_next_epoch` (`0x5fa5c`,
     Block `355`): deallocation-only (`Ct2SampledRecvNextEpochEnv = FreeOnlyEvs`), requiring no
     `FitsEnv` hypothesis. -/
-def ct2SampledRecvNextEpochSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def ct2SampledRecvNextEpochSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (F : ShaCompress) :
     Spec (Ct2SampledRecvNextEpochGhost F × M.σ) where
   pre := fun (x, st) s =>
@@ -168,7 +174,7 @@ def ct2SampledRecvNextEpochSpecBase (M : AllocCostModel) (A : RustCliAllocBudget
 /-- Canonical specification of `<Ct2Sampled>::recv_next_epoch` (`0x5fa5c`,
     Block `355`): deallocation-only (`Ct2SampledRecvNextEpochEnv = FreeOnlyEvs`), requiring no
     `FitsEnv` hypothesis. -/
-def ct2SampledRecvNextEpochSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def ct2SampledRecvNextEpochSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (F : ShaCompress) :
     Spec (Ct2SampledRecvNextEpochGhost F × M.σ) where
   pre := fun (x, st) s =>
@@ -185,7 +191,7 @@ def ct2SampledRecvNextEpochSpec [LibsignalPlacement] (M : AllocCostModel) (A : R
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp (dropGluePoly16Stack + 32)
 
 /-- Envelope-parametric specification of `<Ct2Sampled>::recv_next_epoch`. -/
-def ct2SampledRecvNextEpochSpecOfEnvBase (M : AllocCostModel)
+@[expose] def ct2SampledRecvNextEpochSpecOfEnvBase (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : Ct2SampledRecvNextEpochGhost F → List AllocEvent → Prop) :
     Spec (Ct2SampledRecvNextEpochGhost F × M.σ) where
@@ -203,7 +209,7 @@ def ct2SampledRecvNextEpochSpecOfEnvBase (M : AllocCostModel)
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp (dropGluePoly16Stack + 32)
 
 /-- Envelope-parametric specification of `<Ct2Sampled>::recv_next_epoch`. -/
-def ct2SampledRecvNextEpochSpecOfEnv [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def ct2SampledRecvNextEpochSpecOfEnv [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : Ct2SampledRecvNextEpochGhost F → List AllocEvent → Prop) :
     Spec (Ct2SampledRecvNextEpochGhost F × M.σ) where
@@ -232,165 +238,10 @@ theorem subroutine_ok_ct2SampledRecvNextEpochSpecOfEnv_freeOnly [LibsignalPlacem
   rw [sepConj_assoc, satisfies_pure_sepConj] at hp ⊢
   exact ⟨⟨hp.1.1, hp.1.2.1, hp.1.2.2.1, hp.1.2.2.2.1, hp.1.2.2.2.2.2⟩, hp.2⟩
 
-/-- Envelope-parametric fixed-base budget specification of
-    `<EkReceivedCt1Sampled>::send_ct1_chunk` (`0x5e1d0`). -/
-def ekReceivedCt1SampledSendCt1ChunkSpecOfEnv (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (F : ShaCompress) (b : BitVec 64)
-    (Env : EkReceivedCt1SampledSendCt1ChunkGhost F → List AllocEvent → Prop) :
-    Spec (EkReceivedCt1SampledSendCt1ChunkGhost F × M.σ) where
-  pre := fun (x, st) s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      s.readReg64 .x8 = x.outA ∧ s.readReg64 .x0 = x.stA ∧
-      x.st.send_ct1_chunk = .ok (x.outSt, x.chunk) ∧
-      FitsEnv M lim st (Env x)⌝ ∗
-      memRegion x.outA (528 + chunkSize) ∗
-      chunkedEkReceivedCt1SampledAt A.repAlloc x.stA x.st ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool lim st s ∗ stackAt s.sp (polyNextChunkStack + 960)
-  post := fun (x, st) s0 sf =>
-    ∃∗ evs : List AllocEvent,
-      ⌜sf.trace = s0.trace ∧ Env x evs⌝ ∗
-      chunkedEkReceivedCt1SampledAt A.repAlloc x.outA x.outSt ∗
-      chunkAt (x.outA + 528#64) x.chunk ∗
-      memRegion x.stA 528 ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp (polyNextChunkStack + 960)
-
-abbrev ekReceivedCt1SampledSendCt1ChunkSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (F : ShaCompress) (b : BitVec 64) :
-    Spec (EkReceivedCt1SampledSendCt1ChunkGhost F × M.σ) :=
-  ekReceivedCt1SampledSendCt1ChunkSpecOfEnv M A lim F b EkReceivedCt1SampledSendCt1ChunkEnv
-
-/-- Envelope-parametric fixed-base budget specification of
-    `<Ct2Sampled>::send_ct2_chunk` (`0x5f9d4`). -/
-def ct2SampledSendCt2ChunkSpecOfEnv (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (F : ShaCompress) (b : BitVec 64)
-    (Env : Ct2SampledSendCt2ChunkGhost F → List AllocEvent → Prop) :
-    Spec (Ct2SampledSendCt2ChunkGhost F × M.σ) where
-  pre := fun (x, st) s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      s.readReg64 .x8 = x.outA ∧ s.readReg64 .x0 = x.stA ∧
-      x.st.send_ct2_chunk = .ok (x.outSt, x.chunk) ∧
-      FitsEnv M lim st (Env x)⌝ ∗
-      memRegion x.outA (456 + chunkSize) ∗
-      chunkedCt2SampledAt A.repAlloc x.stA x.st ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool lim st s ∗ stackAt s.sp (polyNextChunkStack + 896)
-  post := fun (x, st) s0 sf =>
-    ∃∗ evs : List AllocEvent,
-      ⌜sf.trace = s0.trace ∧ Env x evs⌝ ∗
-      chunkedCt2SampledAt A.repAlloc x.outA x.outSt ∗
-      chunkAt (x.outA + 456#64) x.chunk ∗
-      memRegion x.stA 456 ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp (polyNextChunkStack + 896)
-
-abbrev ct2SampledSendCt2ChunkSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (F : ShaCompress) (b : BitVec 64) :
-    Spec (Ct2SampledSendCt2ChunkGhost F × M.σ) :=
-  ct2SampledSendCt2ChunkSpecOfEnv M A lim F b Ct2SampledSendCt2ChunkEnv
-
-/-- Envelope-parametric fixed-base budget specification of
-    `<HeaderSent>::send_ek_chunk` (`0x5d860`). -/
-def headerSentSendEkChunkSpecOfEnv (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (F : ShaCompress) (b : BitVec 64)
-    (Env : HeaderSentSendEkChunkGhost F → List AllocEvent → Prop) :
-    Spec (HeaderSentSendEkChunkGhost F × M.σ) where
-  pre := fun (x, st) s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      s.readReg64 .x8 = x.outA ∧ s.readReg64 .x0 = x.stA ∧
-      x.st.send_ek_chunk = .ok (x.outSt, x.chunk) ∧
-      FitsEnv M lim st (Env x)⌝ ∗
-      memRegion x.outA (880 + chunkSize) ∗
-      chunkedHeaderSentAt A.repAlloc x.stA x.st ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool lim st s ∗ stackAt s.sp (polyNextChunkStack + 1328)
-  post := fun (x, st) s0 sf =>
-    ∃∗ evs : List AllocEvent,
-      ⌜sf.trace = s0.trace ∧ Env x evs⌝ ∗
-      chunkedHeaderSentAt A.repAlloc x.outA x.outSt ∗
-      chunkAt (x.outA + 880#64) x.chunk ∗
-      memRegion x.stA 880 ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp (polyNextChunkStack + 1328)
-
-abbrev headerSentSendEkChunkSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (F : ShaCompress) (b : BitVec 64) :
-    Spec (HeaderSentSendEkChunkGhost F × M.σ) :=
-  headerSentSendEkChunkSpecOfEnv M A lim F b HeaderSentSendEkChunkEnv
-
-/-- Envelope-parametric fixed-base budget specification of
-    `<Ct1Received>::send_ek_chunk` (`0x5e250`). -/
-def ct1ReceivedSendEkChunkSpecOfEnv (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (F : ShaCompress) (b : BitVec 64)
-    (Env : Ct1ReceivedSendEkChunkGhost F → List AllocEvent → Prop) :
-    Spec (Ct1ReceivedSendEkChunkGhost F × M.σ) where
-  pre := fun (x, st) s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      s.readReg64 .x8 = x.outA ∧ s.readReg64 .x0 = x.stA ∧
-      x.st.send_ek_chunk = .ok (x.outSt, x.chunk) ∧
-      FitsEnv M lim st (Env x)⌝ ∗
-      memRegion x.outA (504 + chunkSize) ∗
-      chunkedCt1ReceivedAt A.repAlloc x.stA x.st ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool lim st s ∗ stackAt s.sp (polyNextChunkStack + 944)
-  post := fun (x, st) s0 sf =>
-    ∃∗ evs : List AllocEvent,
-      ⌜sf.trace = s0.trace ∧ Env x evs⌝ ∗
-      chunkedCt1ReceivedAt A.repAlloc x.outA x.outSt ∗
-      chunkAt (x.outA + 504#64) x.chunk ∗
-      memRegion x.stA 504 ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp (polyNextChunkStack + 944)
-
-abbrev ct1ReceivedSendEkChunkSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (F : ShaCompress) (b : BitVec 64) :
-    Spec (Ct1ReceivedSendEkChunkGhost F × M.σ) :=
-  ct1ReceivedSendEkChunkSpecOfEnv M A lim F b Ct1ReceivedSendEkChunkEnv
-
-/-- Envelope-parametric fixed-base budget specification of
-    `<Ct1Sampled>::send_ct1_chunk` (`0x5d7bc`). -/
-def ct1SampledSendCt1ChunkSpecOfEnv (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (F : ShaCompress) (b : BitVec 64)
-    (Env : Ct1SampledSendCt1ChunkGhost F → List AllocEvent → Prop) :
-    Spec (Ct1SampledSendCt1ChunkGhost F × M.σ) where
-  pre := fun (x, st) s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      s.readReg64 .x8 = x.outA ∧ s.readReg64 .x0 = x.stA ∧
-      x.st.send_ct1_chunk = .ok (x.outSt, x.chunk) ∧
-      FitsEnv M lim st (Env x)⌝ ∗
-      memRegion x.outA (928 + chunkSize) ∗
-      chunkedCt1SampledAt A.repAlloc x.stA x.st ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool lim st s ∗ stackAt s.sp (polyNextChunkStack + 1376)
-  post := fun (x, st) s0 sf =>
-    ∃∗ evs : List AllocEvent,
-      ⌜sf.trace = s0.trace ∧ Env x evs⌝ ∗
-      chunkedCt1SampledAt A.repAlloc x.outA x.outSt ∗
-      chunkAt (x.outA + 928#64) x.chunk ∗
-      memRegion x.stA 928 ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp (polyNextChunkStack + 1376)
-
-abbrev ct1SampledSendCt1ChunkSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (F : ShaCompress) (b : BitVec 64) :
-    Spec (Ct1SampledSendCt1ChunkGhost F × M.σ) :=
-  ct1SampledSendCt1ChunkSpecOfEnv M A lim F b Ct1SampledSendCt1ChunkEnv
-
 /-! ## 3. Relocatable `[LibsignalPlacement]` Budget Specifications & `*PlacedOkX` Contracts -/
 
 /-- Relocatable budget specification of `<EkReceivedCt1Sampled>::send_ct1_chunk` (Block `344`). -/
-def ekReceivedCt1SampledSendCt1ChunkPlacedSpecOfEnv [LibsignalPlacement]
+@[expose] def ekReceivedCt1SampledSendCt1ChunkPlacedSpecOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : EkReceivedCt1SampledSendCt1ChunkGhost F → List AllocEvent → Prop) :
     Spec (EkReceivedCt1SampledSendCt1ChunkGhost F × M.σ) where
@@ -419,7 +270,7 @@ abbrev ekReceivedCt1SampledSendCt1ChunkPlacedSpec [LibsignalPlacement]
   ekReceivedCt1SampledSendCt1ChunkPlacedSpecOfEnv M A lim F EkReceivedCt1SampledSendCt1ChunkEnv
 
 /-- Relocatable budget specification of `<Ct2Sampled>::send_ct2_chunk` (Block `354`). -/
-def ct2SampledSendCt2ChunkPlacedSpecOfEnv [LibsignalPlacement]
+@[expose] def ct2SampledSendCt2ChunkPlacedSpecOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : Ct2SampledSendCt2ChunkGhost F → List AllocEvent → Prop) :
     Spec (Ct2SampledSendCt2ChunkGhost F × M.σ) where
@@ -448,7 +299,7 @@ abbrev ct2SampledSendCt2ChunkPlacedSpec [LibsignalPlacement]
   ct2SampledSendCt2ChunkPlacedSpecOfEnv M A lim F Ct2SampledSendCt2ChunkEnv
 
 /-- Relocatable budget specification of `<HeaderSent>::send_ek_chunk` (Block `336`). -/
-def headerSentSendEkChunkPlacedSpecOfEnv [LibsignalPlacement]
+@[expose] def headerSentSendEkChunkPlacedSpecOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : HeaderSentSendEkChunkGhost F → List AllocEvent → Prop) :
     Spec (HeaderSentSendEkChunkGhost F × M.σ) where
@@ -477,7 +328,7 @@ abbrev headerSentSendEkChunkPlacedSpec [LibsignalPlacement]
   headerSentSendEkChunkPlacedSpecOfEnv M A lim F HeaderSentSendEkChunkEnv
 
 /-- Relocatable budget specification of `<Ct1Received>::send_ek_chunk` (Block `345`). -/
-def ct1ReceivedSendEkChunkPlacedSpecOfEnv [LibsignalPlacement]
+@[expose] def ct1ReceivedSendEkChunkPlacedSpecOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : Ct1ReceivedSendEkChunkGhost F → List AllocEvent → Prop) :
     Spec (Ct1ReceivedSendEkChunkGhost F × M.σ) where
@@ -506,7 +357,7 @@ abbrev ct1ReceivedSendEkChunkPlacedSpec [LibsignalPlacement]
   ct1ReceivedSendEkChunkPlacedSpecOfEnv M A lim F Ct1ReceivedSendEkChunkEnv
 
 /-- Relocatable budget specification of `<Ct1Sampled>::send_ct1_chunk` (Block `335`). -/
-def ct1SampledSendCt1ChunkPlacedSpecOfEnv [LibsignalPlacement]
+@[expose] def ct1SampledSendCt1ChunkPlacedSpecOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : Ct1SampledSendCt1ChunkGhost F → List AllocEvent → Prop) :
     Spec (Ct1SampledSendCt1ChunkGhost F × M.σ) where
@@ -534,20 +385,20 @@ abbrev ct1SampledSendCt1ChunkPlacedSpec [LibsignalPlacement]
     Spec (Ct1SampledSendCt1ChunkGhost F × M.σ) :=
   ct1SampledSendCt1ChunkPlacedSpecOfEnv M A lim F Ct1SampledSendCt1ChunkEnv
 
-def Ct2SampledRecvNextEpochPlacedOkX [LibsignalPlacement]
+@[expose] def Ct2SampledRecvNextEpochPlacedOkX [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_355 (Rust.withPanics ext)) (blkPl_355).base
     (withLsCodeLoaded lsmpl (ct2SampledRecvNextEpochSpec M A lim F))
 
-def Ct2SampledRecvNextEpochPlacedOkXOfEnv [LibsignalPlacement]
+@[expose] def Ct2SampledRecvNextEpochPlacedOkXOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State))
     (Env : Ct2SampledRecvNextEpochGhost F → List AllocEvent → Prop) : Prop :=
   subroutine_ok (lsProg_355 (Rust.withPanics ext)) (blkPl_355).base
     (withLsCodeLoaded lsmpl (ct2SampledRecvNextEpochSpecOfEnv M A lim F Env))
 
-def HeaderSentSendEkChunkPlacedOkXOfEnv [LibsignalPlacement]
+@[expose] def HeaderSentSendEkChunkPlacedOkXOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State))
     (Env : HeaderSentSendEkChunkGhost F → List AllocEvent → Prop) : Prop :=
@@ -559,7 +410,7 @@ abbrev HeaderSentSendEkChunkPlacedOkX [LibsignalPlacement]
     (ext : String → Option (State → State)) : Prop :=
   HeaderSentSendEkChunkPlacedOkXOfEnv M A lim F ext HeaderSentSendEkChunkEnv
 
-def Ct1ReceivedSendEkChunkPlacedOkXOfEnv [LibsignalPlacement]
+@[expose] def Ct1ReceivedSendEkChunkPlacedOkXOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State))
     (Env : Ct1ReceivedSendEkChunkGhost F → List AllocEvent → Prop) : Prop :=
@@ -571,7 +422,7 @@ abbrev Ct1ReceivedSendEkChunkPlacedOkX [LibsignalPlacement]
     (ext : String → Option (State → State)) : Prop :=
   Ct1ReceivedSendEkChunkPlacedOkXOfEnv M A lim F ext Ct1ReceivedSendEkChunkEnv
 
-def Ct1SampledSendCt1ChunkPlacedOkXOfEnv [LibsignalPlacement]
+@[expose] def Ct1SampledSendCt1ChunkPlacedOkXOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State))
     (Env : Ct1SampledSendCt1ChunkGhost F → List AllocEvent → Prop) : Prop :=
@@ -583,7 +434,7 @@ abbrev Ct1SampledSendCt1ChunkPlacedOkX [LibsignalPlacement]
     (ext : String → Option (State → State)) : Prop :=
   Ct1SampledSendCt1ChunkPlacedOkXOfEnv M A lim F ext Ct1SampledSendCt1ChunkEnv
 
-def EkReceivedCt1SampledSendCt1ChunkPlacedOkXOfEnv [LibsignalPlacement]
+@[expose] def EkReceivedCt1SampledSendCt1ChunkPlacedOkXOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State))
     (Env : EkReceivedCt1SampledSendCt1ChunkGhost F → List AllocEvent → Prop) : Prop :=
@@ -595,7 +446,7 @@ abbrev EkReceivedCt1SampledSendCt1ChunkPlacedOkX [LibsignalPlacement]
     (ext : String → Option (State → State)) : Prop :=
   EkReceivedCt1SampledSendCt1ChunkPlacedOkXOfEnv M A lim F ext EkReceivedCt1SampledSendCt1ChunkEnv
 
-def Ct2SampledSendCt2ChunkPlacedOkXOfEnv [LibsignalPlacement]
+@[expose] def Ct2SampledSendCt2ChunkPlacedOkXOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State))
     (Env : Ct2SampledSendCt2ChunkGhost F → List AllocEvent → Prop) : Prop :=
@@ -763,101 +614,6 @@ theorem call_dropGluePoly16_cl [LibsignalPlacement]
     rw [sepConj_assoc]
     refine SepWP.pure_elim fun ⟨htr, hacp, hevs⟩ => ?_
     exact hnext sf evs hpc_sf hrun_sf (hsp_sf.trans hsp) hcs_sf (htr.trans htrace) hacp hevs
-
-/-- Envelope-parametric framed fixed-base call rule for
-    `(polyNextChunkSpecOfEnv Env M A lim img.base).inImage img` (`0x6a384`). -/
-theorem call_polyNextChunk_ofEnv {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {img : Obj.Image} {prog : Program} {entry ret_pc : BitVec 64}
-    {Env : PolyNextChunkGhost → List AllocEvent → Prop}
-    (hcall : subroutine_ok prog entry ((polyNextChunkSpecOfEnv Env M A lim img.base).inImage img))
-    (hb : img.base &&& 0xfff#64 = 0#64)
-    (outChunkA encA : BitVec 64) (enc enc' : PolyEncoder) (chunk : Chunk) (st : M.σ)
-    {s0 s : State} {sp_call v19 v20 : BitVec 64} {P Frame : SepProp}
-    {post : State → SepProp → Prop}
-    (hpc : s.pc = entry)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp_call)
-    (hsp_align : (sp_call &&& 15#64 == 0#64) = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (htrace : s.trace = s0.trace)
-    (hregs : Regs19To27Eq s v19 v20 s0)
-    (hx8 : s.readReg64 Reg.x8 = outChunkA)
-    (hx0 : s.readReg64 Reg.x0 = encA)
-    (hnc : enc.nextChunk = .ok (enc', chunk))
-    (hfit : FitsEnv M lim st (Env ⟨outChunkA, encA, enc, enc', chunk⟩))
-    (hsplit : P = (memRegion outChunkA chunkSize ∗ polyEncoderAt A.repAlloc encA enc ∗
-      tokenInitAt img.base ∗ reduceTableAt img.base ∗
-      A.pool lim st s ∗ stackAt sp_call polyNextChunkStack) ∗ Frame)
-    (hnext : ∀ (sf : State) (evs : List AllocEvent),
-      sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = sp_call → Regs19To27Eq sf v19 v20 s0 → sf.trace = s0.trace →
-      Env ⟨outChunkA, encA, enc, enc', chunk⟩ evs →
-      SepWP prog (s0.readReg64 Reg.lr) sf
-        ((chunkAt outChunkA chunk ∗ polyEncoderAt A.repAlloc encA enc' ∗
-          tokenInitAt img.base ∗ reduceTableAt img.base ∗
-          A.pool lim (M.stepEvents evs st) sf ∗ stackAt sp_call polyNextChunkStack) ∗ Frame) post) :
-    SepWP prog entry s P
-      (fun sm Pm =>
-        img.FrozenLoaded sm ∧ sm.symtab = img.symtab →
-        SepWP prog (s0.readReg64 Reg.lr) sm Pm post) := by
-  apply SepWP.done hpc hrun
-  intro hinv
-  refine SepWP.call_subroutine_frame hcall (x := (⟨outChunkA, encA, enc, enc', chunk⟩, st))
-    (F := Frame)
-    hpc hrun (by rw [State.spAligned, hsp]; exact hsp_align) hlr ?_
-    (fun _ _ _ h => ((satisfies_pure_sepConj _ _ _).mp h).1)
-    (fun _ _ _ _ h => ((satisfies_pure_sepConj _ _ _).mp h).1)
-    (fun sf hpc_sf hrun_sf hsp_sf hcs_sf => ?_)
-  · intro R' hm
-    rw [hsplit] at hm
-    dsimp only [Spec.inImage, polyNextChunkSpecOfEnv]
-    rw [hsp]
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hm ⊢
-    exact ⟨⟨hinv.1, hinv.2⟩, ⟨hb, hx8, hx0, hnc, hfit⟩, hm⟩
-  · dsimp only [Spec.inImage, polyNextChunkSpecOfEnv]
-    rw [hsp, sepExists_sepConj_left]
-    apply SepWP.exists_left; intro evs
-    rw [sepConj_assoc]
-    refine SepWP.pure_elim fun ⟨hevs, htr⟩ => ?_
-    exact hnext sf evs hpc_sf hrun_sf (hsp_sf.trans hsp) (hregs.of_cs hcs_sf)
-      (htr.trans htrace) hevs
-
-/-- Canonical framed fixed-base call rule for `(polyNextChunkSpec M A lim img.base).inImage img`. -/
-theorem call_polyNextChunk {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {img : Obj.Image} {prog : Program} {entry ret_pc : BitVec 64}
-    (hcall : subroutine_ok prog entry ((polyNextChunkSpec M A lim img.base).inImage img))
-    (hb : img.base &&& 0xfff#64 = 0#64)
-    (outChunkA encA : BitVec 64) (enc enc' : PolyEncoder) (chunk : Chunk) (st : M.σ)
-    {s0 s : State} {sp_call v19 v20 : BitVec 64} {P Frame : SepProp}
-    {post : State → SepProp → Prop}
-    (hpc : s.pc = entry)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp_call)
-    (hsp_align : (sp_call &&& 15#64 == 0#64) = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (htrace : s.trace = s0.trace)
-    (hregs : Regs19To27Eq s v19 v20 s0)
-    (hx8 : s.readReg64 Reg.x8 = outChunkA)
-    (hx0 : s.readReg64 Reg.x0 = encA)
-    (hnc : enc.nextChunk = .ok (enc', chunk))
-    (hfit : FitsEnv M lim st (PolyEncoderNextChunkEnv enc))
-    (hsplit : P = (memRegion outChunkA chunkSize ∗ polyEncoderAt A.repAlloc encA enc ∗
-      tokenInitAt img.base ∗ reduceTableAt img.base ∗
-      A.pool lim st s ∗ stackAt sp_call polyNextChunkStack) ∗ Frame)
-    (hnext : ∀ (sf : State) (evs : List AllocEvent),
-      sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = sp_call → Regs19To27Eq sf v19 v20 s0 → sf.trace = s0.trace →
-      PolyEncoderNextChunkEnv enc evs →
-      SepWP prog (s0.readReg64 Reg.lr) sf
-        ((chunkAt outChunkA chunk ∗ polyEncoderAt A.repAlloc encA enc' ∗
-          tokenInitAt img.base ∗ reduceTableAt img.base ∗
-          A.pool lim (M.stepEvents evs st) sf ∗ stackAt sp_call polyNextChunkStack) ∗ Frame) post) :
-    SepWP prog entry s P
-      (fun sm Pm =>
-        img.FrozenLoaded sm ∧ sm.symtab = img.symtab →
-        SepWP prog (s0.readReg64 Reg.lr) sm Pm post) :=
-  call_polyNextChunk_ofEnv hcall hb outChunkA encA enc enc' chunk st
-    hpc hrun hsp hsp_align hlr htrace hregs hx8 hx0 hnc hfit hsplit hnext
 
 /-- Envelope-parametric framed relocatable call rule for
     `withLsCodeRoLoaded lsmpl (polyNextChunkPlacedSpecOfEnv Env M A lim)` (Block `416`). -/

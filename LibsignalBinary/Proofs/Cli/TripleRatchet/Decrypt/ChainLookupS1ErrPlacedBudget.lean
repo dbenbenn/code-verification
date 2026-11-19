@@ -9,17 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupErrSymPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupS1ErrPlaced
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.LoadRatchetProofBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step244PlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupErrSymPlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupS1ErrPlaced
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.LoadRatchetProofBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudgetAux
+public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step244PlacedBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatchBudget
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailProof
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatch
+import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Main
 
 /-!
 # Budget-Threaded Relocatable Segment `S1` and `ErrTail` on Block `433`
@@ -28,7 +33,7 @@ Proves the budget-threaded relocatable `S1` (`LoadRatchet`, pinned and unpinned)
 seam contracts under `RustCliAllocBudget M` for `try_decrypt_with_state::<Coins>` (block `433`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -745,35 +750,6 @@ theorem loadRatchet_after_call_error_tight_433_placed [LibsignalPlacement] {M : 
     hmf_re
   dsimp only [sp] at hmf2 ⊢; convert hmf2 using 1; sep_ac_rfl
 
-theorem loadRatchet_after_call_error_433_placed [LibsignalPlacement] {M : AllocCostModel}
-    {C : Crypto} {A : RustCliAllocBudget M} {lim : BudgetLimits} {ctl : BitVec 64}
-    {S : SpqrModel} {H : String → Option (State → State)}
-    {tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop}
-    {remEnv : List AllocEvent → Prop}
-    {x : TryDecryptGhost} {st_init st : M.σ} {evs : List AllocEvent}
-    {e : SignalProtocolError} {st1 : SessionState (List (BitVec 8))}
-    {R : SepProp} {s0 s : State}
-    (hsb : SeamBudget M lim (tdEnv (tryDecryptEnvArgs x)) st_init st remEnv)
-    (hevs : remEnv evs)
-    (herr : Mut.exec TripleRatchet.fromSessionState x.st = (.error e, st1))
-    (hpc : s.pc = (blkPl_434).base + 484#64)
-    (hmeta : tryDecryptMidMeta_placed s0 s)
-    (hx19 : s.readReg64 .x19 = x.ret)
-    (hx20 : s.readReg64 .x20 = (s0.sp - 1504#64) + 320#64)
-    (hx23 : s.readReg64 .x23 = (s0.sp - 1504#64) + 1280#64)
-    (hm : s.mem ⊨
-      sessionStateAt A.repAlloc x.ss x.G.afterTrFrom st1 ∗
-      trResultAt A.repAlloc ((s0.sp - 1504#64) + 400#64) x.G (.error e) ∗
-      memRegion x.ret 48 ∗ memRegion (s0.sp - 1504#64) 48 ∗
-      (((s0.sp - 1504#64) + 48#64) ↦₆₄ x.remA) ∗
-      memRegion ((s0.sp - 1504#64) + 56#64) 344 ∗
-      memRegion ((s0.sp - 1504#64) + 664#64) 744 ∗
-      cliTryDecryptCommonHeapPlaced A lim (M.stepEvents evs st) ctl x 0 s0 s ∗ R) :
-    reaches_outcome ((blkPC_434).rebase (blkPl_434).base H)
-      (cliTryDecryptSpecPlaced C A lim ctl uuidTryParse S tdEnv) (x, st_init) R s0 s :=
-  reaches_outcome_weaken_tight_placed
-    (loadRatchet_after_call_error_tight_433_placed hsb hevs herr hpc hmeta hx19 hx20 hx23 hm)
-
 theorem loadRatchet_after_call_ok_433_placed [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {st : M.σ} {ctl : BitVec 64}
     {H : String → Option (State → State)}
@@ -958,7 +934,7 @@ theorem loadRatchet_after_call_ok_433_placed [LibsignalPlacement] {M : AllocCost
 
 /-! ## Budget-Threaded `ErrTail` Seam Theorems -/
 
-def ErrTailSeamPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ErrTailSeamPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -1209,7 +1185,7 @@ theorem errTail_433_placed_ok [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## Budget-Threaded Segment `S1` (`LoadRatchet`) Seam Contracts -/
 
-def S1SeamGenPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S1SeamGenPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -1230,7 +1206,7 @@ def S1SeamGenPlaced [LibsignalPlacement] {M : AllocCostModel}
         ∃ evs trG, s1OkEnv x evs ∧
           FindChainStatePlaced entry A lim (M.stepEvents evs st) ctl x trG tr st1 R s0 s'
 
-def S1TightSeamGenPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S1TightSeamGenPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -1251,7 +1227,7 @@ def S1TightSeamGenPlaced [LibsignalPlacement] {M : AllocCostModel}
         ∃ evs trG, s1OkEnv x evs ∧
           FindChainStatePlaced entry A lim (M.stepEvents evs st) ctl x trG tr st1 R s0 s'
 
-def S1SeamPinnedGenPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S1SeamPinnedGenPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -1272,7 +1248,7 @@ def S1SeamPinnedGenPlaced [LibsignalPlacement] {M : AllocCostModel}
         ∃ evs trG, s1OkEnv x evs ∧ trGhostCaps trG = s1InitCaps x.G ∧
           FindChainStatePlaced entry A lim (M.stepEvents evs st) ctl x trG tr st1 R s0 s'
 
-def S1TightSeamPinnedGenPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S1TightSeamPinnedGenPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)

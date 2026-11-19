@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KyberKitOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.SelfKitOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KyberKitOk -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.SelfKitOk -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDet
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Initial Store Invariants and Kit/Model Agreement
@@ -23,7 +25,7 @@ Establishes initial store invariants (`CliSessInv`, `CliIdOwnInv`, `CliIdInv`, `
 together with pure store-answer totality, determinism, and `decPkDef` commit agreement lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -68,6 +70,7 @@ theorem filesOkPeer_scopeKit {Scope : SessionRecord (List (BitVec 8)) → Prop}
     · exact .inl rfl
     · exact .inr ⟨r, rfl, Slots.scopeKit_of_scopeIn (hsub r hsc)⟩
   idGet := hf.idGet
+  nameLe40 := hf.nameLe40
 
 private theorem storeDir_len_lt {d : List (BitVec 8)} (hd : d ∈ storeDirs) : d.length < 2 ^ 32 :=
   Nat.lt_of_le_of_lt (storeDirs_ok d hd).2 (by decide)

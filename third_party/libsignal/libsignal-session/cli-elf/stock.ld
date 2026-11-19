@@ -122,6 +122,7 @@ SECTIONS
 
   .data.crate : {
     *lib0_*.o(.data .data.*)
+    *lib2_*.o(.data._RNvNtNtNtCseLFX6RtqVKc_3aes5armv88features12features_aes7STORAGE)
     main.o(.data .data.*)
     */main.o(.data .data.*)
     *extern_stubs_clean.o(.data .data.*)

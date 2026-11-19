@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.KeyInd1RealReds
-public import Computational.Proofs.LibsignalCli.PrefixCouplingWithCore
+public import Computational.Proofs.LibsignalCli.KeyInd1RealReds -- proof-setup: allow-public-import
+import Computational.Proofs.LibsignalCli.PrefixCouplingWithCore
 import Computational.Proofs.LibsignalCli.PrefixCouplingWith
 import ProofLib.BV.WidthNorm
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Composition.ModelLazyCond -- proof-setup: allow-public-import
 
 /-!
 # The model interface `Σ_model^H` and Lemma 3
@@ -24,7 +26,7 @@ through `modelAdvRun`, and proves model security (`model_secure`, Lemma 3) for a
 admitting lazy session-key sampling.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -64,7 +66,7 @@ theorem run_run_simulateQ_flattenImpl {ι : Type} {spec : OracleSpec ι} {M : Ty
 /-! ## Model interface and query bounds -/
 
 /-- Query index map underlying `modelReassoc`. -/
-def modelReassocQuery :
+@[expose] def modelReassocQuery :
     (composedSpec S ℓ (GhostState Bytes)).Domain →
       (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)).Domain
   | .inl (.inl (.inl n)) => .inl n
@@ -92,7 +94,7 @@ theorem IsQueryBoundP.modelAdvRun
     (fun t ht => by simpa [ht] using isQueryBoundP_modelReassoc p t)
 
 /-- Predicate selecting `startDR` control queries of `composedSpec`. -/
-def modelIsStartQuery (t : (composedSpec S ℓ (GhostState Bytes)).Domain) : Prop :=
+@[expose] def modelIsStartQuery (t : (composedSpec S ℓ (GhostState Bytes)).Domain) : Prop :=
   bhClassifyTarget (S := S) (ℓ := ℓ) (PQC := BitVec 512) (fun _ => false) (fun _ => true)
     (fun _ => false) (modelReassocQuery t) = true
 
@@ -100,7 +102,7 @@ instance : DecidablePred (modelIsStartQuery (S := S) (ℓ := ℓ)) := fun t => b
   unfold modelIsStartQuery; infer_instance
 
 /-- Predicate selecting all non-coin game queries of `composedSpec`. -/
-def modelIsGameQuery (t : (composedSpec S ℓ (GhostState Bytes)).Domain) : Prop :=
+@[expose] def modelIsGameQuery (t : (composedSpec S ℓ (GhostState Bytes)).Domain) : Prop :=
   isGameQuery (G := bhTargetGameSpec S ℓ (BitVec 512)) (modelReassocQuery t)
 
 instance : DecidablePred (modelIsGameQuery (S := S) (ℓ := ℓ)) := fun t => by

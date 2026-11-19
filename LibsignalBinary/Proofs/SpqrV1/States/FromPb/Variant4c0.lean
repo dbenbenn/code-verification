@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4b
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Epilogue
-import LibsignalBinary.Proofs.SpqrV1.Layout.Stubs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4b -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Epilogue -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Variant 4 (`EkSentCt1Received`, `+248`) — Part C0
@@ -22,7 +22,7 @@ import ProofLib.SepLogic.WPp
 `<PolyDecoder>::from_pb` staging (`+2308..+2468`) and post-call branches (`+2472 -> +8500 | +8180`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.FromPb
 
@@ -45,20 +45,14 @@ set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
-attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff libsignalSessionCode
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   extractLsb'_0_64_append extractLsb'_64_64_append
 
-attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  statesFromPb_fnOff
-  stubOff_rust_no_alloc_shim
-  stubOff_rust_alloc
-  stubOff_rust_dealloc
-  stubOff_memcpy
-  stubOff_handle_error
+
 
 /-- 10 stack spill slots written at `+2308..+2464` when `receivingCt2 = some d`. -/
-def v4c_ucSpillSlots (fsp : BitVec 64)
+@[expose] def v4c_ucSpillSlots (fsp : BitVec 64)
     (v32 v40 v48 v56 v72 v80 v128 v136 v144 v216 : BitVec 64) : SepProp :=
   ((fsp + 32#64) ↦₆₄ v32) ∗
   ((fsp + 40#64) ↦₆₄ v40) ∗
@@ -105,124 +99,6 @@ theorem v4c_pointsTo64_eq_split_1_4_2_1 (a : BitVec 64) (v : BitVec 64) :
     h1, h2, h3, h4, h5, h6,
     BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
 
-/-- Execution segment `+2308..+2468 -> +35448` (`decoderFromPb`) when `ekSentCt1ReceivedFromPb` succeeds
-    (`rkCap.toNat < 2^63`) and `receivingCt2 = some d` (`d0.toNat < 2^63`). -/
-theorem v4c_step_2308_ok_some_to_35448
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (s : State) (fsp out d0 d8 d16 d32 : BitVec 64) (d24 d28 : BitVec 32)
-    (rkCap rkPtr rkLen mkCap mkPtr mkLen dkCap dkPtr dkLen ct1Cap ct1Ptr ct1Len epoch : BitVec 64)
-    (v32 v40 v48 v56 v72 v80 v128 v136 v144 v216 : BitVec 64)
-    (s896 s904 s912 : BitVec 64) (s920 s924 : BitVec 32) (s928 : BitVec 64)
-    (Frame : SepProp)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (hrk_lt : rkCap.toNat < 2 ^ 63)
-    (hd0_lt : d0.toNat < 2 ^ 63)
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 2308#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = fsp)
-    (hx19 : s.readReg64 .x19 = out)
-    (hx20 : s.readReg64 .x20 = d16)
-    (hx23 : s.readReg64 .x23 = d24.zeroExtend 64)
-    (hx24 : s.readReg64 .x24 = d8)
-    (hx28 : s.readReg64 .x28 = d0) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 35448#64) s
-      (v4c_ucSpillSlots fsp v32 v40 v48 v56 v72 v80 v128 v136 v144 v216 ∗
-        ((fsp + 224#64) ↦₆₄ d32) ∗
-        ((fsp + 232#64) ↦₃₂ d28) ∗
-        v4b_optProtoPolyDecoderWordsAt (fsp + 896#64) s896 s904 s912 s920 s924 s928 ∗
-        v4b_optProtoUcWordsAt (fsp + 1888#64)
-          rkCap rkPtr rkLen mkCap mkPtr mkLen dkCap dkPtr dkLen ct1Cap ct1Ptr ct1Len epoch ∗
-        Frame)
-      (fun s' P' =>
-        (P' ⊢ v4c_ucSpillSlots fsp
-            ((ct1Len.extractLsb' 0 8).zeroExtend 64)
-            mkLen epoch rkCap ct1Ptr dkLen ct1Cap mkPtr dkPtr mkCap ∗
-          ((fsp + 224#64) ↦₆₄ d32) ∗
-          ((fsp + 232#64) ↦₃₂ d28) ∗
-          v4b_optProtoPolyDecoderWordsAt (fsp + 896#64)
-            d0 d8 d16 d24 d28 d32 ∗
-          v4b_optProtoUcWordsAt (fsp + 1888#64)
-            rkCap rkPtr rkLen mkCap mkPtr mkLen dkCap dkPtr dkLen ct1Cap ct1Ptr ct1Len epoch ∗
-          Frame) ∧
-        s'.sp = fsp ∧
-        s'.readReg64 .x0 = fsp + 1888#64 ∧
-        s'.readReg64 .x1 = fsp + 896#64 ∧
-        s'.readReg64 .x19 = out ∧
-        s'.readReg64 .x20 = (ct1Len.extractLsb' 8 32).zeroExtend 64 ∧
-        s'.readReg64 .x21 = (ct1Len.extractLsb' 56 8).zeroExtend 64 ∧
-        s'.readReg64 .x22 = dkCap ∧
-        s'.readReg64 .x23 = fsp + 1888#64 ∧
-        s'.readReg64 .x24 = (ct1Len.extractLsb' 40 16).zeroExtend 64 ∧
-        s'.readReg64 .x25 = rkLen ∧
-        s'.readReg64 .x26 = rkPtr ∧
-        s'.readReg64 .x27 = fsp + 1792#64 ∧
-        s'.readReg64 .x30 = (tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 2472#64 ∧
-        TraceCalleeSaved s' s) := by
-  have hrk_ne := cap_add_one_beq_zero_false hrk_lt
-  have hd0_ne := cap_add_one_beq_zero_false hd0_lt
-  states_from_pb_fetches_range b (Rust.withPanics ext) 2308 164
-  dsimp only [tripleRatchetProgAtExt, statesFromPbName, BitVec.ofNat_eq_ofNat] at hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::from_pb" = entry
-  examples_hide_fetches
-  simp only [v4c_ucSpillSlots, v4b_optProtoPolyDecoderWordsAt, v4b_optProtoUcWordsAt,
-    BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-  rw [v4c_pointsTo64_eq_split_1_4_2_1 (fsp + 1976#64) ct1Len]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-  wp_steps
-  wp_done
-
-/-- Execution segment `+2472..+2480 -> +8500` when `decoderFromPb` returns `.error e`. -/
-theorem v4c_step_2472_err_to_8500
-    {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (s : State) (fsp out dkCap rkPtr : BitVec 64)
-    (e : PolynomialError)
-    (Frame : SepProp)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 2472#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = fsp)
-    (hx19 : s.readReg64 .x19 = out)
-    (hx22 : s.readReg64 .x22 = dkCap)
-    (hx26 : s.readReg64 .x26 = rkPtr) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 8500#64) s
-      (resultPolyDecoderFromPbAt A (fsp + 1888#64) (.error e) ∗ Frame)
-      (fun s' P' =>
-        (P' ⊢ memRegion (fsp + 1888#64) 400 ∗ Frame) ∧
-        s'.sp = fsp ∧
-        s'.readReg64 .x19 = out ∧
-        s'.readReg64 .x22 = dkCap ∧
-        s'.readReg64 .x26 = rkPtr ∧
-        TraceCalleeSaved s' s) := by
-  states_from_pb_fetches_range b (Rust.withPanics ext) 2472 12
-  dsimp only [tripleRatchetProgAtExt, statesFromPbName, BitVec.ofNat_eq_ofNat] at hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::from_pb" = entry
-  examples_hide_fetches
-  dsimp only [resultPolyDecoderFromPbAt, resultPolyDecoderErrByteOff,
-    resultPolyDecoderErrTailSize, noneCap]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-  wp_steps
-  refine EncoderFromPb.align_pre ?_ ?_
-  · have hcol :
-        ((fsp + 1888#64) ↦₆₄ 0xffffffffffffffff#64) ∗
-        ((fsp + 1896#64) ↦₈ polynomialErrorByte e) ∗
-        memRegion (fsp + 1897#64) 391 ⊢ memRegion (fsp + 1888#64) 400 := by
-      rw [ProofLib.memRegion_split (fsp + 1888#64) 8 392 (by decide),
-          show (fsp + 1888#64) + 8#64 = fsp + 1896#64 by bv_omega,
-          ProofLib.memRegion_split (fsp + 1896#64) 1 391 (by decide),
-          show (fsp + 1896#64) + 1#64 = fsp + 1897#64 by bv_omega]
-      exact sepConj_mono (Drop.pointsTo64_entails_memRegion (fsp + 1888#64) 0xffffffffffffffff#64)
-        (sepConj_mono_left (pointsTo8_entails_memRegion (fsp + 1896#64) (polynomialErrorByte e)))
-    refine Entails.trans (Entails.of_eq (show _ =
-      (((fsp + 1888#64) ↦₆₄ 0xffffffffffffffff#64) ∗
-       ((fsp + 1896#64) ↦₈ polynomialErrorByte e) ∗
-       memRegion (fsp + 1897#64) 391) ∗ Frame by ac_rfl)) ?_
-    exact sepConj_mono_left hcol
-  · wp_done
-
 theorem v4c_ucSpillSlots_eq_8500 (fsp : BitVec 64)
     (v32 v40 v48 v56 v72 v80 v128 v136 v144 v216 : BitVec 64) :
     v4c_ucSpillSlots fsp v32 v40 v48 v56 v72 v80 v128 v136 v144 v216 =
@@ -241,7 +117,7 @@ theorem v4c_ucSpillSlots_eq_8500 (fsp : BitVec 64)
 
 /-! ## `Ok` Branch After `decoderFromPb` (`+2472..+2764 -> +8180`) -/
 
-def v4c_ct1Len_x27 (ct1Len : BitVec 64) : BitVec 64 :=
+@[expose] def v4c_ct1Len_x27 (ct1Len : BitVec 64) : BitVec 64 :=
   (ct1Len.extractLsb' 8 32).zeroExtend 64 |||
     ((((ct1Len.extractLsb' 40 16).zeroExtend 32 |||
        ((ct1Len.extractLsb' 56 8).zeroExtend 32 <<< 16)).zeroExtend 64) <<< 32)
@@ -435,7 +311,7 @@ structure v4c_DecWords where
   g3 : v4c_DecG3
   g4 : v4c_DecG4
 
-def v4c_decoderTriples (dw : v4c_DecWords) : List (BitVec 64 × BitVec 64 × BitVec 64) :=
+@[expose] def v4c_decoderTriples (dw : v4c_DecWords) : List (BitVec 64 × BitVec 64 × BitVec 64) :=
   [ (dw.g0.w0, dw.g0.u8, dw.g0.w16),
     (dw.g0.u24, dw.g0.u32, dw.g0.u40),
     (dw.g0.u48, dw.g1.q56.extractLsb' 0 64, dw.g1.q56.extractLsb' 64 64),
@@ -453,13 +329,13 @@ def v4c_decoderTriples (dw : v4c_DecWords) : List (BitVec 64 × BitVec 64 × Bit
     (dw.g3.u336, dw.g4.u344, dw.g4.u352),
     (dw.g4.u360, dw.g4.u368, dw.g4.u376) ]
 
-def v4c_triplesWordsAt : BitVec 64 → List (BitVec 64 × BitVec 64 × BitVec 64) → SepProp
+@[expose] def v4c_triplesWordsAt : BitVec 64 → List (BitVec 64 × BitVec 64 × BitVec 64) → SepProp
   | _, [] => emp
   | a, (c, p, l) :: ts =>
     (a ↦₆₄ c) ∗ ((a + 8#64) ↦₆₄ p) ∗ ((a + 16#64) ↦₆₄ l) ∗
     v4c_triplesWordsAt (a + 24#64) ts
 
-def v4c_triplesHeapAt (A : RustAlloc) :
+@[expose] def v4c_triplesHeapAt (A : RustAlloc) :
     List (BitVec 64 × BitVec 64 × BitVec 64) → List SortedSetPt → SepProp
   | [], [] => emp
   | (c, p, l) :: ts, s :: ss =>
@@ -468,7 +344,7 @@ def v4c_triplesHeapAt (A : RustAlloc) :
     v4c_triplesHeapAt A ts ss
   | _, _ => ⌜False⌝
 
-def v4c_decWordsAt (a : BitVec 64) (dw : v4c_DecWords) : SepProp :=
+@[expose] def v4c_decWordsAt (a : BitVec 64) (dw : v4c_DecWords) : SepProp :=
   (a ↦₆₄ dw.g0.w0) ∗ ((a + 8#64) ↦₆₄ dw.g0.u8) ∗ ((a + 16#64) ↦₆₄ dw.g0.w16) ∗
   ((a + 24#64) ↦₆₄ dw.g0.u24) ∗ ((a + 32#64) ↦₆₄ dw.g0.u32) ∗
   ((a + 40#64) ↦₆₄ dw.g0.u40) ∗ ((a + 48#64) ↦₆₄ dw.g0.u48) ∗
@@ -488,7 +364,7 @@ def v4c_decWordsAt (a : BitVec 64) (dw : v4c_DecWords) : SepProp :=
   ((a + 376#64) ↦₆₄ dw.g4.u376) ∗ ((a + 384#64) ↦₆₄ dw.g4.u384) ∗
   ((a + 392#64) ↦₆₄ dw.g4.u392)
 
-def v4c_decHeap (A : RustAlloc) (dec : PolyDecoder) (dw : v4c_DecWords) : SepProp :=
+@[expose] def v4c_decHeap (A : RustAlloc) (dec : PolyDecoder) (dw : v4c_DecWords) : SepProp :=
   ⌜dec.pts.length = NUM_POLYS ∧ dec.ptsNeeded < 2 ^ 64 ∧
     dw.g0.w0.toNat < 2 ^ 63 ∧
     dw.g4.u384 = BitVec.ofNat 64 dec.ptsNeeded ∧
@@ -970,7 +846,7 @@ theorem v4c_fsp_32_8 (fsp : BitVec 64) : fsp + 32#64 + 8#64 = fsp + 40#64 := by 
 theorem v4c_loByte_eq_setWidth_8 (w : BitVec 64) : loByte w = w.setWidth 8 := by
   unfold loByte; bv_slice
 
-def v4c_destStackSlots (fsp : BitVec 64)
+@[expose] def v4c_destStackSlots (fsp : BitVec 64)
     (w160 : BitVec 64) (d172 : BitVec 32) (w192 w208 w224 w232 : BitVec 64)
     (q608 q624 q640 q656 q672 q688 q704 q720 q736 q752 q768 q784 q800 q816 : BitVec 128)
     (w832 : BitVec 64) (q848 : BitVec 128) (w864 w880 w888 : BitVec 64) : SepProp :=
@@ -986,125 +862,5 @@ def v4c_destStackSlots (fsp : BitVec 64)
   ((fsp + 832#64) ↦₆₄ w832) ∗
   ((fsp + 848#64) ↦₁₂₈ q848) ∗ ((fsp + 864#64) ↦ₛ EncoderFromPb.loBytes7 w864) ∗
   ((fsp + 880#64) ↦₆₄ w880) ∗ ((fsp + 888#64) ↦ₛ EncoderFromPb.loBytes7 w888)
-
-set_option maxHeartbeats 1600000 in
-/-- Execution segment `+2472..+2764 -> +8180` when `decoderFromPb` returns `.ok dec`. -/
-theorem v4c_step_2472_ok_to_8180
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (s : State) (fsp out : BitVec 64)
-    (rkCap rkPtr rkLen mkCap mkPtr mkLen dkCap dkPtr dkLen ct1Cap ct1Ptr ct1Len epoch : BitVec 64)
-    (dw : v4c_DecWords)
-    (w160 : BitVec 64) (d172 : BitVec 32) (w192 w208 w224 w232 : BitVec 64)
-    (q608 q624 q640 q656 q672 q688 q704 q720 q736 q752 q768 q784 q800 q816 : BitVec 128)
-    (w832 : BitVec 64) (q848 : BitVec 128) (w864 w880 w888 : BitVec 64)
-    (Frame : SepProp)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (hw0_lt : dw.g0.w0.toNat < 2 ^ 63)
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 2472#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = fsp)
-    (hx19 : s.readReg64 .x19 = out)
-    (hx20 : s.readReg64 .x20 = (ct1Len.extractLsb' 8 32).zeroExtend 64)
-    (hx21 : s.readReg64 .x21 = (ct1Len.extractLsb' 56 8).zeroExtend 64)
-    (hx22 : s.readReg64 .x22 = dkCap)
-    (hx23 : s.readReg64 .x23 = fsp + 1888#64)
-    (hx24 : s.readReg64 .x24 = (ct1Len.extractLsb' 40 16).zeroExtend 64)
-    (hx25 : s.readReg64 .x25 = rkLen)
-    (hx26 : s.readReg64 .x26 = rkPtr)
-    (hx27 : s.readReg64 .x27 = fsp + 1792#64) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 8180#64) s
-      (v4c_ucSpillSlots fsp
-          ((ct1Len.extractLsb' 0 8).zeroExtend 64)
-          mkLen epoch rkCap ct1Ptr dkLen ct1Cap mkPtr dkPtr mkCap ∗
-        v4c_destStackSlots fsp w160 d172 w192 w208 w224 w232
-          q608 q624 q640 q656 q672 q688 q704 q720 q736 q752 q768 q784 q800 q816
-          w832 q848 w864 w880 w888 ∗
-        v4c_decWordsAt (fsp + 1888#64) dw ∗
-        Frame)
-      (fun s' P' =>
-        (P' ⊢ v4c_ucSpillSlots fsp
-            ((ct1Len.extractLsb' 0 8).zeroExtend 64)
-            mkLen epoch rkCap ct1Ptr dkLen ct1Cap mkPtr dkPtr mkCap ∗
-          v4c_destStackSlots fsp
-            dw.g3.u336 ((loByte dw.g0.u32).zeroExtend 32) dw.g4.u384 rkPtr dw.g4.u368 dw.g3.u320
-            dw.g1.q56 dw.g1.q72 dw.g1.q88 dw.g1.q104 dw.g1.q120 dw.g1.q136 dw.g1.q152
-            dw.g2.q168 dw.g2.q184 dw.g2.q200 dw.g2.q216 dw.g2.q232 dw.g2.q248 dw.g2.q264
-            dw.g3.u280
-            (unshiftWord dw.g0.u40 (loByte dw.g0.u48) ++ unshiftWord dw.g0.u32 (loByte dw.g0.u40))
-            (dw.g0.u48 >>> 8)
-            (unshiftWord dw.g0.u8 (loByte dw.g0.w16))
-            (dw.g0.w16 >>> 8) ∗
-          v4c_decWordsAt (fsp + 1888#64) dw ∗
-          Frame) ∧
-        s'.sp = fsp ∧
-        s'.readReg64 .x0 = ct1Ptr ∧
-        s'.readReg64 .x1 = dw.g4.u360 ∧
-        s'.readReg64 .x2 = dw.g3.u288 ∧
-        s'.readReg32 .x3 = ((ct1Len.extractLsb' 0 8).zeroExtend 64).setWidth 32 ∧
-        s'.readReg64 .x4 = epoch ∧
-        s'.readReg64 .x5 = dw.g0.w0 ∧
-        s'.readReg64 .x6 = fsp + 576#64 ∧
-        s'.readReg64 .x7 = dw.g0.u24 ∧
-        s'.readReg64 .x8 = 6#64 ∧
-        s'.readReg64 .x9 = dkCap ∧
-        s'.readReg64 .x10 = dw.g3.u328 ∧
-        s'.readReg64 .x11 = dw.g3.u296 ∧
-        s'.readReg64 .x12 = dw.g4.u352 ∧
-        s'.readReg64 .x13 = mkCap ∧
-        s'.readReg64 .x14 = dkPtr ∧
-        s'.readReg64 .x15 = rkCap ∧
-        s'.readReg64 .x16 = dw.g4.u392 ∧
-        s'.readReg64 .x17 = ct1Cap ∧
-        s'.readReg64 .x18 = dkLen ∧
-        s'.readReg64 .x19 = out ∧
-        s'.readReg64 .x20 = rkLen ∧
-        s'.readReg32 .x21 = (loByte dw.g0.u8).zeroExtend 32 ∧
-        s'.readReg64 .x22 = dw.g3.u304 ∧
-        s'.readReg64 .x23 = fsp + 848#64 ∧
-        s'.readReg64 .x24 = dw.g3.u312 ∧
-        s'.readReg64 .x25 = mkPtr ∧
-        s'.readReg64 .x26 = dw.g4.u344 ∧
-        s'.readReg64 .x27 = v4c_ct1Len_x27 ct1Len ∧
-        s'.readReg64 .x28 = dw.g4.u376 ∧
-        s'.readReg64 .x30 = mkLen ∧
-        TraceCalleeSaved s' s) := by
-  have hw0_ne := cap_add_one_beq_zero_false hw0_lt
-  states_from_pb_fetches_range b (Rust.withPanics ext) 2472 296
-  dsimp only [tripleRatchetProgAtExt, statesFromPbName, BitVec.ofNat_eq_ofNat] at hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::from_pb" = entry
-  examples_hide_fetches
-  wp_conv_pre =>
-    simp only [v4c_ucSpillSlots, v4c_destStackSlots, v4c_decWordsAt,
-      BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-    simp only [pointsTo128, sepConj_assoc]
-    rw [v4c_fsp_1920_to_byte_q128_tail7_assoc fsp dw.g0.u32 dw.g0.u40 dw.g0.u48]
-  wp_steps
-  wp_conv_pre =>
-    rw [v4c_fsp_1896_to_byte_word_tail7_assoc fsp dw.g0.u8 dw.g0.w16,
-        v4c_fsp_1920_to_byte_word_tail7_word_assoc fsp dw.g0.u32 dw.g0.u40 dw.g0.u48]
-  wp_steps
-  wp_conv_pre =>
-    rw [v4c_fsp_856_871_realign_assoc fsp (unshiftWord dw.g0.u40 (loByte dw.g0.u48)) w864,
-        v4c_fsp_880_895_realign_assoc fsp (unshiftWord dw.g0.u8 (loByte dw.g0.w16)) w888]
-  wp_steps
-  refine EncoderFromPb.align_pre ?_ ?_
-  · rw [show (fsp + 863#64) ↦₆₄ dw.g0.u48 =
-          (fsp + 863#64) ↦₆₄ overlapWord7 (unshiftWord dw.g0.u40 (loByte dw.g0.u48)) (dw.g0.u48 >>> 8) by
-          rw [v4c_overlapWord7_unshift],
-        ← v4c_fsp_856_871_realign_assoc fsp (unshiftWord dw.g0.u40 (loByte dw.g0.u48)) (dw.g0.u48 >>> 8),
-        show (fsp + 887#64) ↦₆₄ dw.g0.w16 =
-          (fsp + 887#64) ↦₆₄ overlapWord7 (unshiftWord dw.g0.u8 (loByte dw.g0.w16)) (dw.g0.w16 >>> 8) by
-          rw [v4c_overlapWord7_unshift],
-        ← v4c_fsp_880_895_realign_assoc fsp (unshiftWord dw.g0.u8 (loByte dw.g0.w16)) (dw.g0.w16 >>> 8),
-        ← v4c_fsp_1896_to_byte_word_tail7_assoc fsp dw.g0.u8 dw.g0.w16,
-        v4c_fsp_1920_restore_assoc fsp dw.g0.u32 dw.g0.u40 dw.g0.u48]
-    simp only [v4c_ucSpillSlots, v4c_destStackSlots, v4c_decWordsAt, pointsTo128,
-      extractLsb'_0_64_append, extractLsb'_64_64_append, BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-    exact Entails.of_eq (by ac_rfl)
-  · simp only [v4c_loByte_eq_setWidth_8 dw.g0.u8]
-    unfold v4c_ct1Len_x27
-    wp_done
 
 end CryptoVerification.SpqrV1.States.FromPb

@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpers
-public import LibsignalBinary.Proofs.SpqrV1.Chain.ChainPbCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.ChainPbCodeSym -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Helpers and Specifications for `<spqr::chain::Chain>::recv_key` (`0x608d0`, 312 instructions)
@@ -21,7 +22,7 @@ Output representation predicates (`recvKeyOkAt`, `recvKeyErrAt`, `recvKeyPostAt`
 `chainRecvKeySpecExt`, magic-constant division by 36, and `KeyHistory` `Vec<u8>` pack/unpack lemmas.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ChainProofs
 
@@ -48,7 +49,7 @@ abbrev chainRecvKeyStackX : Nat := 128 + nextKeyInternalStackX
 /-- `Ok(outKey)` in the 32-byte `Result<Vec<u8>, spqr::Error>` return slot at `out`:
 * `+0x00..+0x08` (8B): `0#64` (`Ok` tag)
 * `+0x08..+0x20` (24B): `vecU8 A (out + 0x08#64) outKey` -/
-def recvKeyOkAt (A : RustAlloc) (out : BitVec 64) (outKey : Bytes) : SepProp :=
+@[expose] def recvKeyOkAt (A : RustAlloc) (out : BitVec 64) (outKey : Bytes) : SepProp :=
   (out ↦₆₄ 0#64) ∗ vecU8 A (out + 0x08#64) outKey
 
 /-- `Err(err)` in the 32-byte `Result<Vec<u8>, spqr::Error>` return slot at `out`:
@@ -57,7 +58,7 @@ def recvKeyOkAt (A : RustAlloc) (out : BitVec 64) (outKey : Bytes) : SepProp :=
   `10#8` for `KeyTrimmed`, `11#8` for `KeyAlreadyRequested`)
 * Payload fields at `+0x0c` / `+0x10` and uninitialized padding in the remaining bytes of
   `[out + 0x08 .. out + 0x20)`. -/
-def recvKeyErrAt (out : BitVec 64) : Error → SepProp
+@[expose] def recvKeyErrAt (out : BitVec 64) : Error → SepProp
   | .epochOutOfRange epoch =>
     (out ↦₆₄ 1#64) ∗ ((out + 0x08#64) ↦₈ 4#8) ∗ memRegion (out + 0x09#64) 7 ∗
       ((out + 0x10#64) ↦₆₄ epoch) ∗ memRegion (out + 0x18#64) 8
@@ -73,7 +74,7 @@ def recvKeyErrAt (out : BitVec 64) : Error → SepProp
   | _ => ⌜False⌝
 
 /-- Combined postcondition state at `(selfPtr, out)` for a non-panicking `Chain.recvKey` result. -/
-def recvKeyPostAt (A : RustAlloc) (selfPtr out : BitVec 64) (self : Chain) :
+@[expose] def recvKeyPostAt (A : RustAlloc) (selfPtr out : BitVec 64) (self : Chain) :
     ChainResult (Chain × Bytes) → SepProp
   | .ok (self', outKey) =>
     recvKeyOkAt A out outKey ∗ chainRepr A selfPtr self'
@@ -156,7 +157,7 @@ structure ChainRecvKeyGhost where
 `keyAdvanceLoop`) stays within `isize::MAX` (`< 2^63`).
 Discharge source: `StateSizeStep.lean` / `StateSize.lean` (`rawChain self.intoPb < 2^61` from
 `DEV-SPQR3` `state.length < 2^32`, or `Chain.new` / `Chain.addEpoch` where `prev.data = []`). -/
-def RecvPrevFits (c : Chain) : Prop :=
+@[expose] def RecvPrevFits (c : Chain) : Prop :=
   ∀ link ∈ c.links, link.recv.prev.data.length < 2 ^ 61
 
 /-- Spec of `<spqr::chain::Chain>::recv_key` (`src/chain.rs:416–422`, image offset `0x608d0`,
@@ -169,7 +170,7 @@ def RecvPrevFits (c : Chain) : Prop :=
     (or panics on OOM).
   - Returns `Err(err)` and leaves `*selfPtr` unchanged when `Chain.recvKey = .error (.err err)`.
   - Panics in Rust with `sf.trace = s0.trace` when `(Chain.recvKey hkdf x.self x.epoch x.index).isPanic = true`. -/
-def chainRecvKeySpecX (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainRecvKeyGhost where
+@[expose] def chainRecvKeySpecX (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainRecvKeyGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.selfPtr ∧
       s.readReg64 .x2 = x.epoch ∧ (s.readReg64 .x3).setWidth 32 = x.index ∧
@@ -185,13 +186,7 @@ def chainRecvKeySpecX (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainRecvKeyGhost w
     ⌜((Chain.recvKey hkdf x.self x.epoch x.index).isPanic = true ∧ sf.trace = s0.trace) ∨
       (allocFailedIn s0 sf ∧ s0.trace <+: sf.trace)⌝ ∗ anyHeap
 
-def ChainRecvKeyOkX (img : Obj.Image) (hkdf : HkdfFn) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainRecvKeyName)
-    ((chainRecvKeySpecX hkdf A).inImage img)
-
-def ChainRecvKeyPlacedOkX [LibsignalPlacement] (hkdf : HkdfFn) (A : RustAlloc)
+@[expose] def ChainRecvKeyPlacedOkX [LibsignalPlacement] (hkdf : HkdfFn) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_366).rebase (blkPl_366).base H)
     (blkPl_366).base
@@ -570,7 +565,7 @@ abbrev rev32Trunc (w : BitVec 32) : BitVec 32 :=
   BitVec.truncate 32 (rev32_64 (w.zeroExtend 64))
 
 /-- Pack a 4-byte list in little-endian order into a `BitVec 32`. -/
-def pack32LE (bs : List (BitVec 8)) : BitVec 32 :=
+@[expose] def pack32LE (bs : List (BitVec 8)) : BitVec 32 :=
   match bs with
   | [b0, b1, b2, b3] => b3 ++ b2 ++ b1 ++ b0
   | _ => 0#32
@@ -1029,7 +1024,7 @@ theorem vecU8At_pack_remove_swap (A : RustAlloc) (a cap ptr : BitVec 64) (bs : B
 abbrev chainRecvKeyStackExt : Nat := 128 + nextKeyInternalStackExt
 
 /-- Spec of `<spqr::chain::Chain>::recv_key` (`0x608d0`) under `CliExternsOk` (`17920` B stack). -/
-def chainRecvKeySpecExt (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainRecvKeyGhost where
+@[expose] def chainRecvKeySpecExt (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainRecvKeyGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.selfPtr ∧
       s.readReg64 .x2 = x.epoch ∧ (s.readReg64 .x3).setWidth 32 = x.index ∧
@@ -1045,13 +1040,7 @@ def chainRecvKeySpecExt (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainRecvKeyGhost
     ⌜((Chain.recvKey hkdf x.self x.epoch x.index).isPanic = true ∧ sf.trace = s0.trace) ∨
       (allocFailedIn s0 sf ∧ s0.trace <+: sf.trace)⌝ ∗ anyHeap
 
-def ChainRecvKeyOkExt (img : Obj.Image) (hkdf : HkdfFn) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainRecvKeyName)
-    ((chainRecvKeySpecExt hkdf A).inImage img)
-
-def nextKeyInternalSpecRecvCore (hkdf : HkdfFn) (A : RustAlloc) (extra : Nat) :
+@[expose] def nextKeyInternalSpecRecvCore (hkdf : HkdfFn) (A : RustAlloc) (extra : Nat) :
     Spec NextKeyInternalGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.nextA ∧
@@ -1068,7 +1057,7 @@ def nextKeyInternalSpecRecvCore (hkdf : HkdfFn) (A : RustAlloc) (extra : Nat) :
       stackAt s0.sp nextKeyInternalStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def chainRecvKeySpecCore (hkdf : HkdfFn) (A : RustAlloc) (extra : Nat) :
+@[expose] def chainRecvKeySpecCore (hkdf : HkdfFn) (A : RustAlloc) (extra : Nat) :
     Spec ChainRecvKeyGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.selfPtr ∧

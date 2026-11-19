@@ -10,23 +10,30 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4a
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4aPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4PlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.EpiloguePlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4a -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4aPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4PlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch0Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch2Placed
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import VerifiedLibraries.Musl.Spec
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Budget-Threaded Variant 4 (`EkSentCt1Received`) — Part A
@@ -35,7 +42,7 @@ Relocatable Block-`333` `+5348` error exit, `FreeOnlyEvs` decoder deallocation (
 and `EkSentCt1Received` cleanup paths under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

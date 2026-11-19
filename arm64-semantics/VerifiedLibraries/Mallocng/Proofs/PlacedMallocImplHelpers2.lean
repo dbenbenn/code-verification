@@ -41,7 +41,7 @@ theorem mallocngMetaCountInv_holds : MallocngMetaCountInv :=
   fun _ _ _ h => h.2.2.2.2.1
 
 /-- Internal contract for placed `__malloc_alloc_meta()` (`blk07`). -/
-def AllocMetaPlacedFullStmt : Prop :=
+def AllocMetaPlacedFullStmt (ro : Bool := false) : Prop :=
   ∀ [MallocngMultiPlacement]
     (inflight : Nat) (_hInflight : inflight ≤ 7)
     (γ : GhostName) (tp brkStart : BitVec 64)
@@ -51,7 +51,7 @@ def AllocMetaPlacedFullStmt : Prop :=
       pre := fun (_ : Unit) s0 =>
         ⌜s0.tpidrEl0 = tp ∧ s0.brkStart = brkStart⌝ ∗
         stackFrame s0 224 ∗
-        MallocngCoreStInflightA inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗
+        MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗
         MallocngRuntime maddrs tp
       post := fun _ s0 sf =>
         ∃∗ st' : MallocngSt,
@@ -79,13 +79,13 @@ def AllocMetaPlacedFullStmt : Prop :=
           stackFrame s0 224 ∗
           MallocngRuntime maddrs tp ∗
           (m ↦ₛ List.replicate 40 0#8) ∗
-          MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st'
+          MallocngCoreStInflightModeA ro (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st'
       onOom := fun _ s0 sf =>
         ⌜MallocngPlacedOomCond msvc 1 (allocMetaPlacedByteBound peakCount) s0 sf⌝
     })
 
 /-- Internal contract for placed `alloc_slot(sc, req)` (`blk08`). -/
-def AllocSlotPlacedFullStmt : Prop :=
+def AllocSlotPlacedFullStmt (ro : Bool := false) : Prop :=
   ∀ [MallocngMultiPlacement]
     (sc req inflight : Nat)
     (_hSc : sc < 48)
@@ -101,7 +101,7 @@ def AllocSlotPlacedFullStmt : Prop :=
          (s0.readReg64 .x1).toNat = req⌝ ∗
         stackFrame s0 ((allocSlotDepthBound sc + 1) * 96 + 224) ∗
         MallocngRoTablesA maddrs ∗
-        MallocngCoreStInflightA inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗
+        MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗
         MallocngRuntime maddrs tp
       post := fun _ s0 sf =>
         ∃∗ st' : MallocngSt,
@@ -128,7 +128,7 @@ def AllocSlotPlacedFullStmt : Prop :=
           stackFrame s0 ((allocSlotDepthBound sc + 1) * 96 + 224) ∗
           MallocngRoTablesA maddrs ∗
           MallocngRuntime maddrs tp ∗
-          MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st'
+          MallocngCoreStInflightModeA ro (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st'
       onOom := fun _ s0 sf =>
         ⌜MallocngPlacedOomCond msvc (2 * (allocSlotDepthBound sc + 1))
            (allocSlotPlacedByteBound sc peakCount) s0 sf⌝

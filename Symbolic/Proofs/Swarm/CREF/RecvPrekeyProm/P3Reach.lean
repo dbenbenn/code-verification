@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 import DY.Actions.Network
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -40,7 +40,7 @@ Proves `allStoredRecvNonEmpty_runTrace`: every Triple Ratchet state stored along
 has `st.recv ≠ []`, so any `RecordRec` matching `st.recv.length` also has non-empty `receiverChains`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

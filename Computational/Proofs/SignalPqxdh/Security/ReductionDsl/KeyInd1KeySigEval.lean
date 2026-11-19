@@ -9,10 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigProg
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigEval
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEvalEq
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigProg -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigEval
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEvalEq
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreSim -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhGrow -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhStep -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEval
 
 /-!
 # Evaluation Equivalence for `sigKeyInd1KeyProg`
@@ -22,7 +26,7 @@ evaluates identically to `(sigReductionKeyInd1Key S b A).run pk` for every bound
 adversary `A`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

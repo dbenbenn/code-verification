@@ -9,26 +9,26 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H1
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3D
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H2
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H1
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3D
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H2
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3B
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3D
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3E
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3F
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3H1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3H2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H3 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3B
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3D
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3F
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3H1
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3H2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
 
 /-!
 # One-Key `PrfMsgKeys` Reduction Simulation
@@ -37,7 +37,7 @@ Relates the single-identity-key `PrfMsgKeys` reduction over `PrimBaseSpec` to pr
 simulators and proves `ValidAuthHybrid` preservation.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 open OracleSpec OracleComp MeasureTheory ENNReal BigOperators
 namespace SignalPqxdh.Security
@@ -45,7 +45,7 @@ open SignalPqxdh
 open _root_.Proofs.SignalPqxdh.Security
 namespace AuthSubHops1to3
 
-def authMkStepRedProb1Key (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
+@[expose] def authMkStepRedProb1Key (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
     (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache))
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) (sentChal : Bool) (cache : Cache) :
     ProbComp ((authSpec S).Range q × ((AuthHybridStateFixed S × Bool) × Cache)) :=
@@ -67,13 +67,13 @@ def authMkStepRedProb1Key (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type
   | qOther => do
     let (resp, hst') ← authCkOtherStep1Key S P qOther hst
     pure (resp, ((hst', sentChal), cache))
-def authMkRedProbImpl1Key (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
+@[expose] def authMkRedProbImpl1Key (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
     (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache)) :
     QueryImpl (authSpec S) (StateT ((AuthHybridStateFixed S × Bool) × Cache) ProbComp) :=
   fun q => StateT.mk (fun ((hst, sentChal), cache) =>
     authMkStepRedProb1Key S P idx evalPrf q hst sentChal cache)
 
-def authMkSlotsStepRedProb1Key (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
+@[expose] def authMkSlotsStepRedProb1Key (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
     (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache))
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) (sentChal : Bool) (cache : Cache) :
     ProbComp ((authSpec S).Range q × ((AuthHybridStateFixed S × Bool) × Cache)) :=
@@ -96,7 +96,7 @@ def authMkSlotsStepRedProb1Key (S : Setup) (P : Primitives) (idx : Nat) {Cache :
     let (resp, hst') ← authCkOtherStep1Key S P qOther hst
     pure (resp, ((hst', sentChal), cache))
 
-def authMkSlotsRedProbImpl1Key (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
+@[expose] def authMkSlotsRedProbImpl1Key (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
     (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache)) :
     QueryImpl (authSpec S) (StateT ((AuthHybridStateFixed S × Bool) × Cache) ProbComp) :=
   fun q => StateT.mk (fun ((hst, sentChal), cache) =>
@@ -428,14 +428,6 @@ theorem simulateQ_authMkReductionRun_eq_redProb1Key {Cache : Type} (S : Setup) (
                                                         hst').toAuthHybridState
             hVC.principals_le hVC.spkBundles_le hVC.opkEntries_le hVC.sessions_le hVC.validKem]
       simp [cacheAuthAdvKeysFixed, finalizeAuthFixed_cacheAuthAdvKeys])
-
-theorem authCkOtherStep_restoreAuthFixedMkAtIdx1Key {S : Setup} (P : Primitives)
-    (idx : Nat) (mkSeedStar : Bytes) (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
-    authCkOtherStep1Key S P q (restoreAuthFixedMkAtIdx idx mkSeedStar hst) =
-      Prod.map id (restoreAuthFixedMkAtIdx idx mkSeedStar) <$> authCkOtherStep1Key S P q hst := by
-  unfold authCkOtherStep1Key restoreAuthFixedMkAtIdx restoreAuthMkAtIdx
-  dsimp only
-  cases hst.toAuthHybridState.base.hasWonAuth <;> simp [map_eq_bind_pure_comp, Prod.map]
 
 end AuthSubHops1to3
 end SignalPqxdh.Security

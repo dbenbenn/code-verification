@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.PlacedOomRecovery
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.M2ExternNoAllocFail
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.PlacedOomRecovery -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.M2ExternNoAllocFail -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.Fine.ElfInitFine
 public import LibsignalBinary.Heap.Fine.SpecBudgetFine
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.IfaceBudgetBase
+import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # Peak-Bound `CliPqxdhAllocNeverFailsPlaced` and Strict Recovery
@@ -25,7 +27,7 @@ correctness from a whole-CLI `PhaseCreditSpec` or `FitsEnv` peak allocation boun
 defines the concrete `1 GiB` budget limits `cliM24DefaultLimits`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -35,14 +37,17 @@ namespace LibsignalBinary.Proofs.SignalSession.Cli.M24.AllocNeverFailsOfPeak
 open Arm64 Arm64.Obj Arm64.Process ProofLib
 open CryptoVerification.E2E (PEParams)
 open CryptoVerification.SignalSession
-  (CliHooks CliPqxdhBinaryCorrectPlaced CliPqxdhBinaryCorrectPlacedAt CliPqxdhElfCorrectPlaced
-   CliPqxdhInputs CliReachesOOMPlaced Inputs cliProcessInputs libsignalSessionLib)
-open CryptoVerification.SignalSession.Placed (CliElfCodeMatchesPlaced cliProgPlacedSig)
+  (CliHooks
+   CliPqxdhInputs Inputs cliProcessInputs libsignalSessionLib)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced
+  (CliElfCodeMatchesPlaced CliPqxdhBinaryCorrectPlaced CliPqxdhBinaryCorrectPlacedAt
+   CliPqxdhElfCorrectPlaced CliReachesOOMPlaced CliReachesSampleNttStuckPlaced)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliProgPlacedSig)
 open LibsignalBinary.Heap
   (AllocEvent BudgetLimits FitsEnv RustAllocAddrs RustCliAllocBudget RustCliAllocNoOomEntriesBase
    rustCliAllocNoOomSpecBase subroutine_ok_allocNoOom_of_budgetBase)
 open LibsignalBinary.Heap.Fine
-  (CliElfMallocngLayout FineBudget FineStepBound StartupVmPreserved allocMemsetVmSpec
+  (CliElfMallocngLayout FineBudget FineStepBound StartupVmPreserved aesStorageCell allocMemsetVmSpec
    cliElf_fineBudgetPool_of_init fineCostModel fineHookBudgetPool_of_codeLoaded
    fineHookRustCliAllocBudget fineHookRustCliAllocBudgetEntries_thunks
    fineHookRustCliAllocZeroedBudget_thunk_ok rdlAllocZeroedInstrs stringCloneHookMallocng)
@@ -56,9 +61,9 @@ open LibsignalBinary.Proofs.SignalSession.Cli.M24.M2ExternNoAllocFail
   (PreservesNoAllocFailed cliM2ProgPlacedSig cliM2_allocNeverFailsPlaced
    preservesNoAllocFailed_stepRustAlloc1)
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.PlacedOomRecovery
-  (CliPqxdhAllocNeverFailsPlaced CliPqxdhBinaryCorrectStrictPlaced
-   CliPqxdhBinaryCorrectStrictPlacedAt CliPqxdhElfCorrectStrictPlaced CliRunAllocFailsPlaced
-   cliPqxdhBinaryCorrectStrictPlaced_of_upToAllocFailure
+  (CliPqxdhAllocNeverFailsPlaced CliPqxdhBinaryCorrectStrictPlacedAtExists
+   CliPqxdhBinaryCorrectStrictPlacedExists CliPqxdhElfCorrectStrictPlacedExists
+   CliRunAllocFailsPlaced cliPqxdhBinaryCorrectStrictPlaced_of_upToAllocFailure
    cliPqxdhBinaryCorrectStrictPlacedAt_of_upToAllocFailure
    cliPqxdhElfCorrectStrictPlaced_of_upToAllocFailure)
 open ProofLib.StdStartup (hasInstrs)
@@ -71,14 +76,14 @@ open VerifiedLibraries.RustStd
 /-! ## Peak allocation bound predicates -/
 
 /-- Top-level `PhaseCreditSpec` bound across all inputs in `CliPqxdhInputs W`. -/
-def M23bPhaseCreditHyp
+@[expose] def M23bPhaseCreditHyp
     (EnvOf : PEParams → Inputs → List AllocEvent → Prop)
     (W : PEParams) (cumB liveB peakB maxReq : Nat) : Prop :=
   ∀ i : Inputs, CliPqxdhInputs W i →
     PhaseCreditSpec fineCostModel (EnvOf W i) cumB liveB peakB maxReq
 
 /-- Top-level `FitsEnv fineCostModel lim fineCostModel.init` bound across `CliPqxdhInputs W`. -/
-def M23bFitsEnvHyp
+@[expose] def M23bFitsEnvHyp
     (lim : BudgetLimits)
     (EnvOf : PEParams → Inputs → List AllocEvent → Prop)
     (W : PEParams) : Prop :=
@@ -142,7 +147,7 @@ theorem cliElf_fineHookNoOomInit_of_startup
       VerifiedLibraries.mallocngLib.dataInit mpl ∗
         MallocngRuntime (mallocngAddrsOfPlacement mpl) s0.tpidrEl0 ∗
         (((mallocngAddrsOfPlacement mpl).libc + 8#64) ↦₆₄ auxvPtr) ∗
-        MallocngAuxvAt auxvPtr ∗ R) :
+        MallocngAuxvAt auxvPtr ∗ aesStorageCell s0.brkStart ∗ R) :
     ∃ γ : GhostName,
       let A := fineHookRustCliAllocBudget γ mpl s0.tpidrEl0 s0.brkStart
       (s0.mem ⊨ A.pool lim fineCostModel.init s0 ∗ R) ∧
@@ -205,6 +210,7 @@ theorem cliPqxdhAllocNeverFailsPlaced_of_m2ProgEq
     (hProg : cliProgPlacedSig mpl mmpl W = cliM2ProgPlacedSig mpl mmpl W) :
     CliPqxdhAllocNeverFailsPlaced mpl mmpl elf W := by
   intro i _ s0 s hload hsteps
+  change Steps (cliProgPlacedSig mpl mmpl W) _ _ at hsteps
   rw [hProg] at hsteps
   exact cliM2_allocNeverFailsPlaced mpl mmpl elf W i s0 s hload hsteps
 
@@ -230,10 +236,23 @@ theorem cliPqxdhElfCorrectStrictPlaced_of_peak
     (hRunEnv : ∀ W : CliHooks, CliElfMallocngLayout elf lim →
       ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i →
         CliReachesOOMPlaced mpl mmpl elf W i →
-        ¬ FitsEnv fineCostModel lim fineCostModel.init (EnvOf ⟨W.C, W.Q⟩ i)) :
-    CliPqxdhElfCorrectStrictPlaced mpl mmpl elf :=
-  cliPqxdhElfCorrectStrictPlaced_of_upToAllocFailure hElf fun W =>
-    cliPqxdhNoOomPlaced_of_peak (hPeak ⟨W.C, W.Q⟩) hLayout (hRunEnv W)
+        ¬ FitsEnv fineCostModel lim fineCostModel.init (EnvOf ⟨W.C, W.Q⟩ i))
+    (hNoStuck : ∀ (W : CliHooks),
+      W.C.E = CryptoGames.AES256.aes256Enc →
+      W.C.D = CryptoGames.AES256.aes256Dec →
+      W.C.X = CryptoGames.RFC7748.x25519Ref →
+      W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+      W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+      W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+      W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+      W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+      ∀ (i : Inputs), CliPqxdhInputs ⟨W.C, W.Q⟩ i →
+        ¬ CliReachesSampleNttStuckPlaced mpl mmpl elf W i) :
+    CliPqxdhElfCorrectStrictPlacedExists mpl mmpl elf :=
+  cliPqxdhElfCorrectStrictPlaced_of_upToAllocFailure hElf
+    (fun W _ _ _ _ _ _ _ _ =>
+      cliPqxdhNoOomPlaced_of_peak (hPeak ⟨W.C, W.Q⟩) hLayout (hRunEnv W))
+    hNoStuck
 
 theorem cliPqxdhBinaryCorrectStrictPlacedAt_of_peak
     {mpl mmpl : Obj.MultiPlacement} {bytes : List (BitVec 8)} {lim : BudgetLimits}
@@ -247,11 +266,26 @@ theorem cliPqxdhBinaryCorrectStrictPlacedAt_of_peak
       CliElfMallocngLayout elf lim →
       ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i →
         CliReachesOOMPlaced mpl mmpl elf W i →
-        ¬ FitsEnv fineCostModel lim fineCostModel.init (EnvOf ⟨W.C, W.Q⟩ i)) :
-    CliPqxdhBinaryCorrectStrictPlacedAt mpl mmpl bytes :=
-  cliPqxdhBinaryCorrectStrictPlacedAt_of_upToAllocFailure hBin fun elf W hparse hCode =>
-    cliPqxdhNoOomPlaced_of_peak (hPeak ⟨W.C, W.Q⟩) (hLayout elf hparse)
-      (hRunEnv elf W hparse hCode)
+        ¬ FitsEnv fineCostModel lim fineCostModel.init (EnvOf ⟨W.C, W.Q⟩ i))
+    (hNoStuck : ∀ (elf : ElfImage) (W : CliHooks),
+      ElfImage.parse bytes = .ok elf →
+      CliElfCodeMatchesPlaced mpl mmpl elf →
+      W.C.E = CryptoGames.AES256.aes256Enc →
+      W.C.D = CryptoGames.AES256.aes256Dec →
+      W.C.X = CryptoGames.RFC7748.x25519Ref →
+      W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+      W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+      W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+      W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+      W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+      ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i →
+        ¬ CliReachesSampleNttStuckPlaced mpl mmpl elf W i) :
+    CliPqxdhBinaryCorrectStrictPlacedAtExists mpl mmpl bytes :=
+  cliPqxdhBinaryCorrectStrictPlacedAt_of_upToAllocFailure hBin
+    (fun elf W hparse hCode _ _ _ _ _ _ _ _ =>
+      cliPqxdhNoOomPlaced_of_peak (hPeak ⟨W.C, W.Q⟩) (hLayout elf hparse)
+        (hRunEnv elf W hparse hCode))
+    hNoStuck
 
 theorem cliPqxdhBinaryCorrectStrictPlaced_of_peak
     {bytes : List (BitVec 8)} {lim : BudgetLimits}
@@ -267,12 +301,28 @@ theorem cliPqxdhBinaryCorrectStrictPlaced_of_peak
       CliElfMallocngLayout elf lim →
       ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i →
         CliReachesOOMPlaced mpl mmpl elf W i →
-        ¬ FitsEnv fineCostModel lim fineCostModel.init (EnvOf ⟨W.C, W.Q⟩ i)) :
-    CliPqxdhBinaryCorrectStrictPlaced bytes :=
+        ¬ FitsEnv fineCostModel lim fineCostModel.init (EnvOf ⟨W.C, W.Q⟩ i))
+    (hNoStuck : ∀ (mpl mmpl : Obj.MultiPlacement) (elf : ElfImage) (W : CliHooks),
+      libsignalSessionLib.LinkedAt bytes mpl →
+      VerifiedLibraries.mallocngLib.LinkedAt bytes mmpl →
+      ElfImage.parse bytes = .ok elf →
+      CliElfCodeMatchesPlaced mpl mmpl elf →
+      W.C.E = CryptoGames.AES256.aes256Enc →
+      W.C.D = CryptoGames.AES256.aes256Dec →
+      W.C.X = CryptoGames.RFC7748.x25519Ref →
+      W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+      W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+      W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+      W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+      W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+      ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i →
+        ¬ CliReachesSampleNttStuckPlaced mpl mmpl elf W i) :
+    CliPqxdhBinaryCorrectStrictPlacedExists bytes :=
   cliPqxdhBinaryCorrectStrictPlaced_of_upToAllocFailure hBin
-    fun mpl mmpl elf W hLink hMLink hparse hCode =>
+    (fun mpl mmpl elf W hLink hMLink hparse hCode _ _ _ _ _ _ _ _ =>
       cliPqxdhNoOomPlaced_of_peak (hPeak ⟨W.C, W.Q⟩) (hLayout elf hparse)
-        (hRunEnv mpl mmpl elf W hLink hMLink hparse hCode)
+        (hRunEnv mpl mmpl elf W hLink hMLink hparse hCode))
+    hNoStuck
 
 /-! ## Concrete `1 GiB` `BudgetLimits` -/
 

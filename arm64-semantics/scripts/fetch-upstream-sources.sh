@@ -17,7 +17,7 @@
 # Usage:
 #   scripts/fetch-upstream-sources.sh [--force] [--print-env] [TARGET...]
 #
-#   TARGET           musl musl-string hashbrown sail-arm fp-tools (plus additional campaign
+#   TARGET           musl musl-1.2.6 musl-string hashbrown sail-arm fp-tools (plus additional campaign
 #                    and specification-audit targets when `scripts/dev/fetch-campaign-sources.sh`
 #                    is present), or `all`.
 #                    Default: all configured non-opt-in targets.
@@ -248,6 +248,58 @@ ensure_musl() {
   with_stamp musl "$MUSL_SHA256" install_musl "$ROOT/third_party/musl-1.2.5"
 }
 
+# --- musl 1.2.6 (`third_party/musl-1.2.6`) -------------------------------------
+MUSL_126_URL="${MUSL_126_URL:-https://musl.libc.org/releases/musl-1.2.6.tar.gz}"
+MUSL_126_MIRROR_URL="${MUSL_126_MIRROR_URL:-https://deb.debian.org/debian/pool/main/m/musl/musl_1.2.6.orig.tar.gz}"
+MUSL_126_SHA256="d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"
+install_musl_126() {
+  local dir="$1" up="$1/upstream"
+  fetch_archive "$MUSL_126_URL" "$MUSL_126_SHA256" "$MUSL_126_MIRROR_URL"
+  unpack "$ARCHIVE" "$up"
+  # Verify all `mallocng` + runtime files compiled by `VerifiedLibraries/MallocngZig` exist.
+  local s
+  for s in \
+    COPYRIGHT \
+    tools/mkalltypes.sed \
+    arch/aarch64/bits/alltypes.h.in \
+    arch/aarch64/bits/syscall.h.in \
+    include/alltypes.h.in \
+    src/malloc/mallocng/meta.h \
+    src/malloc/mallocng/glue.h \
+    src/malloc/mallocng/malloc.c \
+    src/malloc/mallocng/free.c \
+    src/malloc/mallocng/realloc.c \
+    src/malloc/mallocng/aligned_alloc.c \
+    src/malloc/mallocng/malloc_usable_size.c \
+    src/malloc/free.c \
+    src/malloc/realloc.c \
+    src/malloc/lite_malloc.c \
+    src/malloc/calloc.c \
+    src/malloc/posix_memalign.c \
+    src/malloc/memalign.c \
+    src/malloc/reallocarray.c \
+    src/malloc/replaced.c \
+    src/mman/mmap.c \
+    src/mman/munmap.c \
+    src/mman/mprotect.c \
+    src/mman/mremap.c \
+    src/internal/syscall_ret.c \
+    src/errno/__errno_location.c \
+    src/thread/__lock.c \
+    src/string/aarch64/memcpy.S \
+    src/string/aarch64/memset.S
+  do
+    [ -f "$up/$s" ] || die "musl-1.2.6 archive has no \`$s\`"
+    echo "upstream/$s"
+  done
+}
+
+ensure_musl_126() {
+  with_stamp musl-1.2.6 "$MUSL_126_SHA256" install_musl_126 "$ROOT/third_party/musl-1.2.6"
+  [ "$PRINT_ENV" = 1 ] && echo "MUSL_126_SRC=$ROOT/third_party/musl-1.2.6/upstream"
+  return 0
+}
+
 # --- hashbrown 0.17.1 (`third_party/hashbrown-0.17.1`) -------------------------
 fetch_hashbrown() {
   # `third_party/hashbrown-0.17.1/` is committed in the repository; this target verifies that
@@ -366,6 +418,7 @@ fetch_fp_tools() {
 run_release_target() {
   case "$1" in
     musl|musl-string) ensure_musl ;;
+    musl-1.2.6) ensure_musl_126 ;;
     hashbrown) fetch_hashbrown ;;
     sail-arm) fetch_sail_arm ;;
     fp-tools) fetch_fp_tools ;;
@@ -389,7 +442,7 @@ while [ $# -gt 0 ]; do
     -h|--help) sed -n '2,/^set -euo/p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
     all) SAW_ALL=1 ;;
     -*) die "unknown option \`$1\`" ;;
-    musl|musl-string|hashbrown|sail-arm|fp-tools) TARGETS+=("$1") ;;
+    musl|musl-1.2.6|musl-string|hashbrown|sail-arm|fp-tools) TARGETS+=("$1") ;;
     *)
       NEED_CAMPAIGN_SCRIPT=1
       TARGETS+=("$1")
@@ -406,12 +459,12 @@ if [ "$SAW_ALL" = 1 ] || [ ${#TARGETS[@]} -eq 0 ] || [ "$NEED_CAMPAIGN_SCRIPT" =
   if [ "$NEED_CAMPAIGN_SCRIPT" = 1 ]; then
     for t in "${TARGETS[@]}"; do
       case "$t" in
-        musl|musl-string|hashbrown|sail-arm|fp-tools) ;;
+        musl|musl-1.2.6|musl-string|hashbrown|sail-arm|fp-tools) ;;
         *) die "unknown target \`$t\`" ;;
       esac
     done
   fi
-  DEFAULT_TARGETS=(musl hashbrown sail-arm fp-tools)
+  DEFAULT_TARGETS=(musl musl-1.2.6 hashbrown sail-arm fp-tools)
   TARGETS=("${DEFAULT_TARGETS[@]}")
 fi
 

@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Record.Defs
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -25,7 +25,7 @@ Defines `SeamBudget` combinators, per-seam remaining-allocation envelopes (`SegC
 relocatable `try_decrypt_from_record` region.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -73,7 +73,7 @@ open LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget (
 /-- At an intermediate seam with current cost-model state `st`, some `evs_pre` has already been
     emitted from `st_init` (`st = M.stepEvents evs_pre st_init`), every event sequence in `remEnv`
     fits from `st`, and prepending `evs_pre` to any `evs_rem` in `remEnv` lands in `fullEnv`. -/
-def SeamBudget (M : AllocCostModel) (lim : BudgetLimits)
+@[expose] def SeamBudget (M : AllocCostModel) (lim : BudgetLimits)
     (fullEnv : List AllocEvent → Prop) (st_init st : M.σ)
     (remEnv : List AllocEvent → Prop) : Prop :=
   FitsEnv M lim st remEnv ∧
@@ -156,7 +156,7 @@ structure TryDecryptEnvArgs where
   rest : List (BitVec 8)
 
 /-- Project `TryDecryptGhost` to its stack-pointer-independent `TryDecryptEnvArgs`. -/
-def tryDecryptEnvArgs (x : TryDecryptGhost) : TryDecryptEnvArgs where
+@[expose] def tryDecryptEnvArgs (x : TryDecryptGhost) : TryDecryptEnvArgs where
   G := x.G
   st := x.st
   rem := x.rem
@@ -168,7 +168,7 @@ def tryDecryptEnvArgs (x : TryDecryptGhost) : TryDecryptEnvArgs where
 
 /-- `TryDecryptEnvArgs` at the `try_decrypt_from_record` call site for clone `G₁`
     (`tryDecryptEnvArgs (mkTryDecryptGhost sp x G₁) = recordTryDecryptEnvArgs x G₁` by `rfl`). -/
-def recordTryDecryptEnvArgs (x : RecordDecryptGhost) (G₁ : SessionGhost) : TryDecryptEnvArgs where
+@[expose] def recordTryDecryptEnvArgs (x : RecordDecryptGhost) (G₁ : SessionGhost) : TryDecryptEnvArgs where
   G := G₁
   st := x.st
   rem := x.rem
@@ -179,35 +179,35 @@ def recordTryDecryptEnvArgs (x : RecordDecryptGhost) (G₁ : SessionGhost) : Try
   rest := x.rest
 
 /-- Event envelope for `Vec<u8>::clone` on a ghost `VecGhost`. -/
-def vecCloneEvents (v : VecGhost) : List AllocEvent :=
+@[expose] def vecCloneEvents (v : VecGhost) : List AllocEvent :=
   if v.bytes.length = 0 then [] else rustAllocEvents v.bytes.length 1
 
 /-- Event envelope for `Option<{ Vec<u8>, tail }>::clone` (`PendingPreKey` / `PendingKyberPreKey`). -/
-def optTailCloneEvents : Option TailVecGhost → List AllocEvent
+@[expose] def optTailCloneEvents : Option TailVecGhost → List AllocEvent
   | none => []
   | some g => vecCloneEvents g.vec
 
 /-- Event envelope for `SegTail` (`F → J`): drop local `SessionStructure` (`FreeOnlyEvs`) followed
     by allocating the 17-byte `"decryption failed"` message (`rustAllocEvents 17 1`). -/
-def SegTailEnv : List AllocEvent → Prop :=
+@[expose] def SegTailEnv : List AllocEvent → Prop :=
   SeqEnv FreeOnlyEvs (fun evs => evs = rustAllocEvents 17 1)
 
 /-- Remaining-events envelope from seam `F` to region exit (`F → J → exit`). -/
-def FromFEnv : List AllocEvent → Prop :=
+@[expose] def FromFEnv : List AllocEvent → Prop :=
   SeqEnv SegTailEnv FreeOnlyEvs
 
 /-- Remaining-events envelope from seam `M` to region exit (`M → F → J → exit`). -/
-def FromMEnv : List AllocEvent → Prop :=
+@[expose] def FromMEnv : List AllocEvent → Prop :=
   SeqEnv (GrowOneSpeEnv 0#64) FromFEnv
 
 /-- Remaining-events envelope after `try_decrypt_with_state` inside `SegDecrypt`:
     either `Ok` / `duplicatedMessage` (`→ J → exit`, only `.free` events) or non-duplicate error
     (`grow_one` at `cap = 0` → `F → J → exit`, i.e., `FromMEnv`). -/
-def FromVPostTdEnv (evs : List AllocEvent) : Prop :=
+@[expose] def FromVPostTdEnv (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ FromMEnv evs
 
 /-- Remaining-events envelope from seam `V` to region exit (`V → J/F → exit`) for clone `G₁`. -/
-def FromVEnv (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
+@[expose] def FromVEnv (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (x : RecordDecryptGhost) (G₁ : SessionGhost) : List AllocEvent → Prop :=
   SeqEnv (tdEnv (recordTryDecryptEnvArgs x G₁)) FromVPostTdEnv
 
@@ -215,7 +215,7 @@ def FromVEnv (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (`+0x1fc..+0x638`), in binary execution order (`localIk`, `remoteIk`, `rootKey`,
     `senderChain`, `receiverChains`, `pendingPreKey`, `pendingKyber`, `aliceBaseKey`,
     `pqRatchetState`). -/
-def segCloneEvents (G : SessionGhost) (st : SessionState (List (BitVec 8))) : List AllocEvent :=
+@[expose] def segCloneEvents (G : SessionGhost) (st : SessionState (List (BitVec 8))) : List AllocEvent :=
   vecCloneEvents G.localIk ++
   vecCloneEvents G.remoteIk ++
   rustAllocEvents 32 1 ++
@@ -231,13 +231,13 @@ def segCloneEvents (G : SessionGhost) (st : SessionState (List (BitVec 8))) : Li
   (if st.pqRatchetState.length = 0 then [] else rustAllocEvents st.pqRatchetState.length 1)
 
 /-- Event envelope for `SegClone` (`entry → V / M`). -/
-def SegCloneEnv (G : SessionGhost) (st : SessionState (List (BitVec 8)))
+@[expose] def SegCloneEnv (G : SessionGhost) (st : SessionState (List (BitVec 8)))
     (evs : List AllocEvent) : Prop :=
   evs = segCloneEvents G st
 
 /-- Full allocator event envelope of the `try_decrypt_from_record` region (`+0x1a8 → +0x1f50`),
     parameterized by the `try_decrypt_with_state` callee envelope `tdEnv`. -/
-def RecordDecryptEnv (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
+@[expose] def RecordDecryptEnv (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (x : RecordDecryptGhost) (evs : List AllocEvent) : Prop :=
   if x.st.version.toNat = x.msg.messageVersion.toNat then
     ∃ G₁ : SessionGhost, CloneRel x.G G₁ ∧
@@ -249,7 +249,7 @@ def RecordDecryptEnv (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
 
 /-- Budget-threaded `[LibsignalPlacement]` `try_decrypt_with_state` callee contract, reusing
     `Record.tryDecryptPlacedSpec` via `A.atState` and dropping `allocFailedIn` from `onPanic`. -/
-def tryDecryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tryDecryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) :
@@ -269,7 +269,7 @@ def tryDecryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded `[LibsignalPlacement]` `try_decrypt_from_record` region contract, reusing
     `Record.recordDecryptPlacedSpec` via `A.atState` and dropping `allocFailedIn` from `onPanic`. -/
-def recordDecryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def recordDecryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) :
@@ -289,7 +289,7 @@ def recordDecryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
       s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Seam `V` (`+0x69c`) with budget state `st` and `SeamBudget` for `FromVEnv tdEnv x G₁`. -/
-def VStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def VStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (x : RecordDecryptGhost) (st_init st : M.σ) (G₁ : SessionGhost)
@@ -299,7 +299,7 @@ def VStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A.atState lim st s) ctl x G₁ R s0 s
 
 /-- Seam `M` (`+0x7e4`) with budget state `st` and `SeamBudget` for `FromMEnv`. -/
-def MStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def MStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (x : RecordDecryptGhost) (st_init st : M.σ) (G₁ : SessionGhost)
@@ -309,7 +309,7 @@ def MStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A.atState lim st s) ctl x G₁ R s0 s
 
 /-- Seam `F` (`+0x850`) with budget state `st` and `SeamBudget` for `FromFEnv`. -/
-def FStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def FStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -320,7 +320,7 @@ def FStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     C (A.atState lim st s) ctl parse S x R s0 s
 
 /-- Seam `J` (`+0x1e8c`) with budget state `st` and `SeamBudget` for `FreeOnlyEvs`. -/
-def JStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def JStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -332,7 +332,7 @@ def JStatePlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## Budget-threaded segment specifications and composition -/
 
-def SegClonePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegClonePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -358,7 +358,7 @@ def SegClonePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
          regionOutcome (recordDecryptPlacedSpec C A lim ctl parse S tdEnv)
            recExitPlaced (x, st_init) R s0 s')
 
-def SegDecryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegDecryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -384,7 +384,7 @@ def SegDecryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
          regionOutcome (recordDecryptPlacedSpec C A lim ctl parse S tdEnv)
            recExitPlaced (x, st_init) R s0 s')
 
-def SegMismatchPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegMismatchPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -402,7 +402,7 @@ def SegMismatchPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
          regionOutcome (recordDecryptPlacedSpec C A lim ctl parse S tdEnv)
            recExitPlaced (x, st_init) R s0 s')
 
-def SegTailPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegTailPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -420,7 +420,7 @@ def SegTailPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
          regionOutcome (recordDecryptPlacedSpec C A lim ctl parse S tdEnv)
            recExitPlaced (x, st_init) R s0 s')
 
-def SegExitPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegExitPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)

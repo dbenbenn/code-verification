@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.Size
+public import Computational.Proofs.ReductionDsl.Size -- proof-setup: allow-public-import
 public import Computational.Specifications.Session.ACD19.Ratchet.LibsignalBound
 import ProofLib.Lemmas
 
@@ -22,7 +22,7 @@ derives the `GRedBounded` bundle from static cost, program-size, and query bound
 honesty (`gRedBounded_of_bounds`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -435,7 +435,7 @@ theorem runFuel_fits_when {κ : Type} {G : OracleSpec κ} {C : GameCodec S G} {�
 
 /-- Run-local size predicate on a stage-1 `Mid` state, carrying `AllGameQueriesFit qB C` on paused
 continuations. -/
-def Mid.FitsWhen {κ : Type} {G : OracleSpec κ} {α : Type} (C : GameCodec S G)
+@[expose] def Mid.FitsWhen {κ : Type} {G : OracleSpec κ} {α : Type} (C : GameCodec S G)
     (π σ ch : Ty S) (qB B : ℕ) :
     Mid G α π.denote σ.denote ch.denote → Prop
   | .done _ s => σ.Fits B s

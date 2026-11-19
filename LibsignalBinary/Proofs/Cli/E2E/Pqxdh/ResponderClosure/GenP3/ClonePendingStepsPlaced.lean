@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePendingSteps
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneChainsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePendingSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneChainsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologue
@@ -20,13 +20,16 @@ import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCo
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpoch
-import LibsignalBinary.Proofs.SpqrV1.Layout.Stubs
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommon
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneBase
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

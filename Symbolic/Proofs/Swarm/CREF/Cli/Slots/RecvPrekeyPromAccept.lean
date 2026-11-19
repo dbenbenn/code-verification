@@ -9,11 +9,27 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyPromModel
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure
-public import Symbolic.Proofs.Swarm.CREF.Sem
+public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyPromModel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.SlotPure
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApi
+public import Symbolic.Proofs.SpecLemmas.CliPureBytes -- proof-setup: allow-public-import
+public import Symbolic.Specifications.Concrete.ExternInterpretation
+public import Symbolic.Specifications.Concrete.MachineEvents
+public import Symbolic.Specifications.Refinement.Concretization
+public import Symbolic.Specifications.Refinement.ModelTraces
+public import Symbolic.Proofs.Swarm.CREF.OpkRelC -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatementDefs
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
+public import Symbolic.Specifications.Concrete.SessionRecord
+public import Symbolic.Specifications.Refinement.Statement
+public import Symbolic.Specifications.Refinement.TraceExplanation
 
 /-!
 # Promote Pre-Key Receive Accept Step Contract
@@ -22,7 +38,7 @@ Defines and proves `PurePromAcceptStepSpec` (`purePromAcceptStepSpec_proved`) fo
 promote pre-key `recv` call from `PromPureAcceptOut`, `PureCRel`, `COpkRelC`, and `Clean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -48,7 +64,7 @@ theorem rpkProm_encodeRecord_some_ne_nil (sess : Session HwBytes) :
     show (encodeKey 1 WireType.lengthDelimited).length = 1 by decide]
 
 /-- Symbolic accept step specification for a matching-session promote pre-key `recv` call. -/
-def PurePromAcceptStepSpec (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) : Prop :=
+@[expose] def PurePromAcceptStepSpec (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) : Prop :=
   ProtocolSetupWF r →
   ExternContractsHoldCli interp →
   S = compSemOf interp r →

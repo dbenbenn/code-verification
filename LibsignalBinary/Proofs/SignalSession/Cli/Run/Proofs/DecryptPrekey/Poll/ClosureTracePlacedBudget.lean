@@ -10,12 +10,25 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTracePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTracePlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import ProofLib.Disproof.Basic
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.MuslStage1Init
+public import VerifiedLibraries.Musl.Spec
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.E2E.Bin.Record
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` Trace and Exit Postcondition Packagers
@@ -24,7 +37,7 @@ Proves `dpPollPost_of_slotTraceFT_placed` packaging closure exit states and `A.p
 `dpPollSpecStateBudget.post` from `DecPkEnv`, `slotTraceFT`, and `slotOutTr`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false

@@ -10,20 +10,23 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
 public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvC09aWire
-public import LibsignalBinary.Proofs.PeakBudget.SpqrSendPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrSendRodataCaps
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
-public import LibsignalBinary.Proofs.PeakBudget.W1EncryptPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W1EncryptSlotPeak
-public import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvC09aWire
+import LibsignalBinary.Proofs.PeakBudget.SpqrSendPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrSendRodataCaps
+import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
+import LibsignalBinary.Proofs.PeakBudget.W1EncryptPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W1EncryptSlotPeak
+import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Tight `fineCostModel` Credit and Group Specifications for SPQR `spqr::send::<Coins>`
@@ -35,7 +38,7 @@ credit, group, and `1 GiB` `FitsEnv` specs for `spqr::send::<Coins>` and `Stores
 encrypt.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -68,9 +71,7 @@ open LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
    fitsEnv_fineCostModel_of_group_literal_bounds)
 open LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
   (otrEncryptStepEnv_groupSpec spqrNonFreeCount_eq withStoresEncTightEnv_groupSpec)
-open LibsignalBinary.Proofs.PeakBudget.CliRunPeakSpec
-  (w1CliOpenedCustomSendCum w1CliOpenedCustomSendLive w1CliOpenedCustomSendMaxReq
-   w1CliOpenedCustomSendPeak w1CliOpenedCustomSend_live_le_peak w1CliOpenedCustomSend_phaseCredit)
+open LibsignalBinary.Proofs.PeakBudget.CliRunPeakSpec (w1CliOpenedCustomSendCum w1CliOpenedCustomSendLive w1CliOpenedCustomSendMaxReq w1CliOpenedCustomSendPeak w1CliOpenedCustomSend_live_le_peak)
 open LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
   (HasFineGroupCredit NonFreeBound PhaseGroupSpec)
 open LibsignalBinary.Proofs.PeakBudget.SeqCreditKit (PhaseCreditSpec)
@@ -137,11 +138,11 @@ export SpqrRecvC09aWire
 
 /-- Upper bound on non-`.free` allocator operations across all 10 `spqr::send` sub-phases (`1,432`).
 -/
-def spqrSendTightMaxNonFree : Nat := 1432
+@[expose] def spqrSendTightMaxNonFree : Nat := 1432
 
 /-- `FineScale`-scaled slot-group bound (`3 * FineScale * 1432 = 281,542,656` = `4,296` groups) for tight `spqr::send` envelopes.
 -/
-def spqrSendTightGroupS : Nat := 3 * FineScale * spqrSendTightMaxNonFree
+@[expose] def spqrSendTightGroupS : Nat := 3 * FineScale * spqrSendTightMaxNonFree
 
 theorem spqrSendTightGroupS_val :
     spqrSendTightGroupS = 281542656 ∧
@@ -248,23 +249,23 @@ theorem spqrSendTightCap_fitsEnv_cliBudgetLimits
 
 /-! ## `StoresGhost.opened` Encrypt Tight Credit and Group Corollaries -/
 
-def w1CliOpenedTightSendCum
+@[expose] def w1CliOpenedTightSendCum
     (ptextLen nameCum fileCap deserCum c_sig c_pk c_st : Nat) : Nat :=
   w1CliOpenedCustomSendCum fineCostModel spqrSendTightDeltaCum
     ptextLen nameCum fileCap deserCum c_sig c_pk c_st
 
-def w1CliOpenedTightSendLive
+@[expose] def w1CliOpenedTightSendLive
     (ptextLen fileCap deserLive l_sig l_pk l_st : Nat) : Nat :=
   w1CliOpenedCustomSendLive fineCostModel spqrSendTightDeltaLive
     ptextLen fileCap deserLive l_sig l_pk l_st
 
-def w1CliOpenedTightSendPeak
+@[expose] def w1CliOpenedTightSendPeak
     (ptextLen fileCap deserLive deserPeak l_sig p_sig l_pk p_pk p_st : Nat) : Nat :=
   w1CliOpenedCustomSendPeak fineCostModel
     spqrSendTightDeltaLive spqrSendTightDeltaPeak
     ptextLen fileCap deserLive deserPeak l_sig p_sig l_pk p_pk p_st
 
-def w1CliOpenedTightSendMaxReq
+@[expose] def w1CliOpenedTightSendMaxReq
     (ptextLen fileCap deserMaxReq r_sig r_pk r_st : Nat) : Nat :=
   w1CliOpenedCustomSendMaxReq spqrSendTightMaxReq
     ptextLen fileCap deserMaxReq r_sig r_pk r_st
@@ -291,228 +292,5 @@ private theorem fineSmallAlloc_le_of_le_40 {nameCum : Nat} (hNameCum : 9619 ≤ 
     omega
   have haff := fineCostModel_modelHyps.smallAlloc_le hsm
   omega
-
-/-- `PhaseCreditSpec fineCostModel` for `StoresGhost.opened` encrypt instantiated with tight `spqr::send` bounds (`4,355,111 / 294,391 / 294,391 / 286,196`).
--/
-theorem w1CliOpenedTightSend_fine_phaseCredit
-    (B : RunBudgets) (img : Arm64.Obj.Image) (F : FsFiles) (peer : AddrGhost)
-    (C : Crypto) (S : SpqrModel) (x : WithStoresEncGhost)
-    (DeserEnv : List (BitVec 8) → List AllocEvent → Prop)
-    (peerIdKeyName : List (BitVec 8))
-    (kitEnv : SessionStoreBudgetEnv (w1SessKit B img F peer))
-    (ikitEnv : IdentityStoreBudgetEnv (w1IdKit B img F peer))
-    (E_send : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
-    (SigNoneGuard :
-      SessionRecord (List (BitVec 8)) → Session (List (BitVec 8)) →
-      OutgoingTripleRatchet (List (BitVec 8)) → SessionState (List (BitVec 8)) →
-      SignalMessageNewGhost → Prop)
-    (SigSomeGuard :
-      SessionRecord (List (BitVec 8)) → Session (List (BitVec 8)) →
-      OutgoingTripleRatchet (List (BitVec 8)) → SessionState (List (BitVec 8)) →
-      SignalMessageNewGhost → Prop)
-    (PkCallGuard :
-      SessionRecord (List (BitVec 8)) → Session (List (BitVec 8)) →
-      OutgoingTripleRatchet (List (BitVec 8)) → SessionState (List (BitVec 8)) →
-      PreKeyMsgNewCall → Prop)
-    {nameCum fileCap deserCum deserLive deserPeak deserMaxReq : Nat}
-    {c_sig l_sig p_sig r_sig c_pk l_pk p_pk r_pk c_st l_st p_st r_st : Nat}
-    (hpeer : peer.name.bytes.length ≤ 40)
-    (hremName : x.rem.name.bytes.length ≤ 40)
-    (hNameCum : 9619 ≤ nameCum)
-    (hidKeyLen : peerIdKeyName.length ≤ 64)
-    (hSessFileCap : ∀ bs,
-      cliIo.rd F (pathOf StoresGhost.opened.sessions.path (addressText peer.val)) = .ok bs →
-      bs.length ≤ fileCap)
-    (hIdFileCap : ∀ bs,
-      cliIo.rd F (pathOf StoresGhost.opened.identity.peers.path peerIdKeyName) = .ok bs →
-      bs.length ≤ fileCap)
-    (hDeser : ∀ bs, bs.length ≤ 2097152 →
-      PhaseCreditSpec fineCostModel (DeserEnv bs) deserCum deserLive deserPeak deserMaxReq)
-    (hLoadEq : ∀ evs,
-      kitEnv.loadPollEnv StoresGhost.opened.sessions x.rem.val evs →
-      CliSessLoadPollEnv cliIo.rd DeserEnv F StoresGhost.opened.sessions peer evs)
-    (hTrustEq : ∀ k evs,
-      ikitEnv.trustPollEnv StoresGhost.opened.identity x.rem.val k .sending evs →
-      CliSmallStorePollEnv cliIo.rd F StoresGhost.opened.identity.peers peerIdKeyName evs)
-    (hSaveEq : ∀ k evs,
-      ikitEnv.savePollEnv
-        ((w1IdKit B img F peer).trustUpdate StoresGhost.opened.identity x.rem.val k
-          .sending (.ok true))
-        x.rem.val k evs →
-      CliSmallStorePollEnv cliIo.rd F StoresGhost.opened.identity.peers peerIdKeyName evs)
-    (hSend : ∀ r sess otr taken,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      PhaseCreditSpec fineCostModel (E_send otr.pqrState x.rest)
-        spqrSendTightDeltaCum spqrSendTightDeltaLive spqrSendTightDeltaPeak spqrSendTightMaxReq)
-    (hSigNone : ∀ r sess otr taken g, SigNoneGuard r sess otr taken g →
-      signalMessageNewDeltaCum uuidTryParse g ≤ c_sig ∧
-      signalMessageNewDeltaLive uuidTryParse g ≤ l_sig ∧
-      signalMessageNewDeltaPeak uuidTryParse g ≤ p_sig ∧
-      signalMessageNewMaxReq uuidTryParse g ≤ r_sig)
-    (hSigSome : ∀ r sess otr taken g, SigSomeGuard r sess otr taken g →
-      signalMessageNewDeltaCum uuidTryParse g ≤ c_sig ∧
-      signalMessageNewDeltaLive uuidTryParse g ≤ l_sig ∧
-      signalMessageNewDeltaPeak uuidTryParse g ≤ p_sig ∧
-      signalMessageNewMaxReq uuidTryParse g ≤ r_sig)
-    (hPkCap : ∀ r sess otr taken call, PkCallGuard r sess otr taken call →
-      preKeyMsgNewDeltaCum call ≤ c_pk ∧
-      preKeyMsgNewDeltaLive call ≤ l_pk ∧
-      preKeyMsgNewDeltaPeak call ≤ p_pk ∧
-      preKeyMsgNewMaxReq call ≤ r_pk)
-    (hStoreNone : ∀ r sess otr taken k,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      taken.remoteIdentity = some k →
-      PhaseCreditSpec fineCostModel
-        (kitEnv.storePollEnv StoresGhost.opened.sessions x.rem.val
-          (storedRecord sess (otrAfterNone C S x otr) taken))
-        c_st l_st p_st r_st)
-    (hStoreSome : ∀ r sess otr taken k,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      taken.remoteIdentity = some k →
-      PhaseCreditSpec fineCostModel
-        (kitEnv.storePollEnv StoresGhost.opened.sessions x.rem.val
-          (storedRecord sess (otrAfterSome C S uuidTryParse x otr) taken))
-        c_st l_st p_st r_st) :
-    PhaseCreditSpec fineCostModel
-      (WithStoresEncTightEnv scopeKit
-        (w1SessKit B img F peer) kitEnv StoresGhost.opened.sessions
-        (w1IdKit B img F peer) ikitEnv StoresGhost.opened.identity
-        C S uuidTryParse x
-        (fun r sess otr taken =>
-          OtrEncryptStepEnv (E_send otr.pqrState x.rest) x.ptext.length
-            (fun evs => ∃ g, SigNoneGuard r sess otr taken g ∧
-              SignalMessageNewEnv uuidTryParse g evs))
-        (fun r sess otr taken =>
-          OtrEncryptStepEnv (E_send otr.pqrState x.rest) x.ptext.length
-            (fun evs => ∃ g, SigSomeGuard r sess otr taken g ∧
-              SignalMessageNewEnv uuidTryParse g evs))
-        (fun r sess otr taken evs =>
-          ∃ call, PkCallGuard r sess otr taken call ∧ PreKeyMsgNewEnv call evs))
-      (w1CliOpenedTightSendCum x.ptext.length nameCum fileCap deserCum c_sig c_pk c_st)
-      (w1CliOpenedTightSendLive x.ptext.length fileCap deserLive l_sig l_pk l_st)
-      (w1CliOpenedTightSendPeak x.ptext.length fileCap deserLive deserPeak
-        l_sig p_sig l_pk p_pk p_st)
-      (w1CliOpenedTightSendMaxReq x.ptext.length fileCap deserMaxReq r_sig r_pk r_st) :=
-  w1CliOpenedCustomSend_phaseCredit
-    fineCostModel_modelHyps
-    (by rw [fineCostModel_smallMaxReq_eq]; decide)
-    B img F peer C S x DeserEnv peerIdKeyName kitEnv ikitEnv E_send
-    SigNoneGuard SigSomeGuard PkCallGuard
-    hpeer hremName (fineSmallAlloc_le_of_le_40 hNameCum) hidKeyLen hSessFileCap hIdFileCap hDeser
-    hLoadEq hTrustEq hSaveEq hSend hSigNone hSigSome hPkCap hStoreNone hStoreSome
-
-private theorem w1Group_sum_le
-    (fs gs g_ld g_sig g_pk g_tr g_sv g_st : Nat) :
-    18 * fs + g_ld + (gs + 6 * fs + g_sig) + g_pk + g_tr + g_sv + g_st ≤
-      24 * fs + gs + g_ld + g_sig + g_pk + g_tr + g_sv + g_st := by
-  omega
-
-/-- `PhaseGroupSpec fineCostModel` for `StoresGhost.opened` encrypt instantiated with `spqrSendTightGroupS`.
--/
-theorem w1CliOpenedTightSend_fine_groupSpec
-    (B : RunBudgets) (img : Arm64.Obj.Image) (F : FsFiles) (peer : AddrGhost)
-    (C : Crypto) (S : SpqrModel) (x : WithStoresEncGhost)
-    (kitEnv : SessionStoreBudgetEnv (w1SessKit B img F peer))
-    (ikitEnv : IdentityStoreBudgetEnv (w1IdKit B img F peer))
-    (E_send : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
-    {E_sigNone E_sigSome E_pksmNew :
-      SessionRecord (List (BitVec 8)) → Session (List (BitVec 8)) →
-      OutgoingTripleRatchet (List (BitVec 8)) → SessionState (List (BitVec 8)) →
-      List AllocEvent → Prop}
-    {g_ld g_sig g_pk g_tr g_sv g_st : Nat}
-    (hLoad : PhaseGroupSpec fineCostModel
-      (kitEnv.loadPollEnv StoresGhost.opened.sessions x.rem.val) g_ld)
-    (hSend : ∀ r sess otr taken,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      PhaseGroupSpec fineCostModel (E_send otr.pqrState x.rest) spqrSendTightGroupS)
-    (hSigNone : ∀ r sess otr taken,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      PhaseGroupSpec fineCostModel (E_sigNone r sess otr taken) g_sig)
-    (hSigSome : ∀ r sess otr taken,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      PhaseGroupSpec fineCostModel (E_sigSome r sess otr taken) g_sig)
-    (hPksmNew : ∀ r sess otr taken,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      PhaseGroupSpec fineCostModel (E_pksmNew r sess otr taken) g_pk)
-    (hTrust : ∀ r sess otr taken k,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      taken.remoteIdentity = some k →
-      PhaseGroupSpec fineCostModel
-        (ikitEnv.trustPollEnv StoresGhost.opened.identity x.rem.val k .sending) g_tr)
-    (hSave : ∀ r sess otr taken k,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      taken.remoteIdentity = some k →
-      PhaseGroupSpec fineCostModel
-        (ikitEnv.savePollEnv
-          ((w1IdKit B img F peer).trustUpdate StoresGhost.opened.identity x.rem.val k
-            .sending (.ok true))
-          x.rem.val k)
-        g_sv)
-    (hStoreNone : ∀ r sess otr taken k,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      taken.remoteIdentity = some k →
-      PhaseGroupSpec fineCostModel
-        (kitEnv.storePollEnv StoresGhost.opened.sessions x.rem.val
-          (storedRecord sess (otrAfterNone C S x otr) taken))
-        g_st)
-    (hStoreSome : ∀ r sess otr taken k,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      taken.remoteIdentity = some k →
-      PhaseGroupSpec fineCostModel
-        (kitEnv.storePollEnv StoresGhost.opened.sessions x.rem.val
-          (storedRecord sess (otrAfterSome C S uuidTryParse x otr) taken))
-        g_st) :
-    PhaseGroupSpec fineCostModel
-      (WithStoresEncTightEnv scopeKit
-        (w1SessKit B img F peer) kitEnv StoresGhost.opened.sessions
-        (w1IdKit B img F peer) ikitEnv StoresGhost.opened.identity
-        C S uuidTryParse x
-        (fun r sess otr taken =>
-          OtrEncryptStepEnv (E_send otr.pqrState x.rest) x.ptext.length
-            (E_sigNone r sess otr taken))
-        (fun r sess otr taken =>
-          OtrEncryptStepEnv (E_send otr.pqrState x.rest) x.ptext.length
-            (E_sigSome r sess otr taken))
-        E_pksmNew)
-      (24 * FineScale + spqrSendTightGroupS + g_ld + g_sig + g_pk + g_tr + g_sv + g_st) := by
-  have h := withStoresEncTightEnv_groupSpec fineCostModel scopeKit
-    (w1SessKit B img F peer) kitEnv StoresGhost.opened.sessions
-    (w1IdKit B img F peer) ikitEnv StoresGhost.opened.identity
-    C S uuidTryParse x
-    (E_otrNone := fun r sess otr taken =>
-      OtrEncryptStepEnv (E_send otr.pqrState x.rest) x.ptext.length (E_sigNone r sess otr taken))
-    (E_otrSome := fun r sess otr taken =>
-      OtrEncryptStepEnv (E_send otr.pqrState x.rest) x.ptext.length (E_sigSome r sess otr taken))
-    hLoad
-    (fun r sess otr taken hsc hcur hex =>
-      otrEncryptStepEnv_groupSpec fineCostModel
-        (hSend r sess otr taken hsc hcur hex) (hSigNone r sess otr taken hsc hcur hex))
-    (fun r sess otr taken hsc hcur hex =>
-      otrEncryptStepEnv_groupSpec fineCostModel
-        (hSend r sess otr taken hsc hcur hex) (hSigSome r sess otr taken hsc hcur hex))
-    hPksmNew hTrust hSave hStoreNone hStoreSome
-  exact h.mono (w1Group_sum_le FineScale spqrSendTightGroupS g_ld g_sig g_pk g_tr g_sv g_st)
 
 end LibsignalBinary.Proofs.PeakBudget.SpqrSendTightSpec

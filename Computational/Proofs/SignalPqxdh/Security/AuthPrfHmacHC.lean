@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacD
+public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacD -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.SigHopA
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
@@ -22,7 +22,7 @@ the hybrid at the target rank `j` is at a point not yet in the random-function c
 fresh uniform sample, exactly like `unifTag`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,7 +42,7 @@ theorem lookup_cons_nat {β : Type} (a k : ℕ) (b : β) (l : List (ℕ × β)) 
   · have h' : (a == k) = false := by simpa using h
     simp [List.lookup_cons, h, h']
 
-def Cpl {α β : Type} (R : α → β → Prop) (mx : ProbComp α) (my : ProbComp β) : Prop :=
+@[expose] def Cpl {α β : Type} (R : α → β → Prop) (mx : ProbComp α) (my : ProbComp β) : Prop :=
   ∀ (FL : α → ProbComp Bool) (FR : β → ProbComp Bool),
     (∀ a b, R a b → 𝒟[FL a] = 𝒟[FR b]) → 𝒟[mx >>= FL] = 𝒟[my >>= FR]
 
@@ -149,7 +149,7 @@ theorem HCInv_init (j : ℕ) : HCInv j {} [] where
   cache := by simp
   pend := by simp
 
-noncomputable def muKeyP (i : ℕ) (st : PrfHmacMuState) :
+def muKeyP (i : ℕ) (st : PrfHmacMuState) :
     ProbComp ((ℕ × MessageKeys) × PrfHmacMuState) :=
   match st.keys.lookup i with
   | some e => pure (e, st)
@@ -266,7 +266,7 @@ theorem HCInv_fresh {j : ℕ} {st : PrfHmacMuState} {c : List (Bytes × Bytes)} 
   rw [hn] at hc0
   cases hc0
 
-def freshB (st : PrfHmacMuState) (i : ℕ) (x : Bytes) : Bool :=
+@[expose] def freshB (st : PrfHmacMuState) (i : ℕ) (x : Bytes) : Bool :=
   match st.chal.lookup i with
   | some (ad0, ct0) => x != aeadMacInput ad0 (etmBody ct0)
   | none => true
@@ -327,7 +327,7 @@ theorem HCInv_encEq {j : ℕ} {st : PrfHmacMuState} {c : List (Bytes × Bytes)} 
 
 /-! ## One step of `gStep` -/
 
-def encK (D : ℕ → Prop) [DecidablePred D] (tag : ℕ → Bytes → OracleComp PrfHmacSimSpec Bytes)
+@[expose] def encK (D : ℕ → Prop) [DecidablePred D] (tag : ℕ → Bytes → OracleComp PrfHmacSimSpec Bytes)
     (i : ℕ) (ad : Bytes) (p : (ℕ × MessageKeys) × PrfHmacMuState) (ct : Bytes) :
     OracleComp PrfHmacSimSpec (Option Bytes × PrfHmacMuState) :=
   if D p.1.1 then do
@@ -357,7 +357,7 @@ theorem gStep_enc_some (D : ℕ → Prop) [DecidablePred D]
     gStep D tag (.encOnce i ad pt) st = pure (none, st) := by
   simp only [gStep, hv]
 
-def forgeK (D : ℕ → Prop) [DecidablePred D] (i : ℕ) (ad ct : Bytes)
+@[expose] def forgeK (D : ℕ → Prop) [DecidablePred D] (i : ℕ) (ad ct : Bytes)
     (p : (ℕ × MessageKeys) × PrfHmacMuState) :
     OracleComp PrfHmacSimSpec (Bool × PrfHmacMuState) :=
   if freshB p.2 i (aeadMacInput ad (etmBody ct)) = true ∧ 24 ≤ ct.length then
@@ -386,7 +386,7 @@ theorem gStep_forge_eq (D : ℕ → Prop) [DecidablePred D]
 
 /-! ## Per-step coupling -/
 
-def StepR (j : ℕ) {α : Type} (p : (α × PrfHmacMuState) × List (Bytes × Bytes))
+@[expose] def StepR (j : ℕ) {α : Type} (p : (α × PrfHmacMuState) × List (Bytes × Bytes))
     (q : (α × PrfHmacMuState) × List (Bytes × Bytes)) : Prop :=
   p.1 = q.1 ∧ HCInv j p.1.2 p.2
 
@@ -488,7 +488,7 @@ theorem Cpl_map {α β γ δ : Type} {R : α → β → Prop} {S : γ → δ →
   rw [map_eq_bind_pure_comp, map_eq_bind_pure_comp]
   exact Cpl_bind h (fun a b hab => Cpl_pure (hfg a b hab))
 
-def OutR (j : ℕ) (s₁ s₂ : PrfHmacMuState × List (Bytes × Bytes)) : Prop :=
+@[expose] def OutR (j : ℕ) (s₁ s₂ : PrfHmacMuState × List (Bytes × Bytes)) : Prop :=
   s₁.1 = s₂.1 ∧ HCInv j s₁.1 s₁.2
 
 section Run

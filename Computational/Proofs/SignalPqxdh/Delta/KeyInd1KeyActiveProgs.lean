@@ -13,7 +13,7 @@ public import Computational.Proofs.SignalPqxdh.AtomicLift -- proof-setup: allow-
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKemBounds -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigProg -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyShcr -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndShcrLoop -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndShcrLoop
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDh -- proof-setup: allow-public-import
 public import Computational.Specifications.Pqxdh.Bound
 

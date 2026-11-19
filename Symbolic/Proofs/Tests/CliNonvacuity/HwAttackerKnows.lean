@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Specifications.Security.AsmSecure
-public import Symbolic.Proofs.Tests.CliNonvacuity.SessionCollisionsAux
+import Symbolic.Proofs.Tests.CliNonvacuity.SessionCollisionsAux
 import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon
 import DY.Misc.Fixpoint
 import DY.Bytes.Basic
@@ -34,6 +34,9 @@ import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.EquationalTheory.DiffieHellman
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
 import Symbolic.DYBridge.DY.EquationalTheory.Sign
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionDefs
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionStepsAux -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionTraces -- proof-setup: allow-public-import
 
 /-!
 # Positive `HwAttackerKnows` Non-Vacuity Proof
@@ -44,7 +47,7 @@ Alice's leaked receiving chain key `keys1.ck` matches the leaked bytes `ckrBytes
 `HwAttackerKnows r0 (visAt 11) keys1.ck`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -98,7 +101,7 @@ open Symbolic.Proofs.Tests.CliNonvacuity.SessionCollisionsAux
   (t1Pure t2Pure t3Pure t4Pure t4_eq_pure)
 
 /-- The visible `.leak` entry emitted by `move7_leakCkr` at trace index `72` of `t12`. -/
-def leakCkrEntry : VisEntry :=
+@[expose] def leakCkrEntry : VisEntry :=
   ⟨.leak, [keys1.ck], .leakRecord, some 72⟩
 
 private theorem length_append {E : Type} [ExecTraceTypes.Has E] (tr : ExecTrace) (e : E) :

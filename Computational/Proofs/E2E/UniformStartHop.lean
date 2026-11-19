@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Session.UniformStart
+public import Computational.Proofs.SpecLemmas.Session.UniformStart -- proof-setup: allow-public-import
 public import Computational.Specifications.Session.ACD19.Ratchet.LibsignalSim
 import Computational.Proofs.SpecLemmas.Session.ACD19.SM.Theorem8And12Statements
 import ProofLib.Lemmas
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
-public import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
+import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
 
 /-!
 # Session Model from Uniform Keys and the PRG Hop
@@ -26,7 +26,7 @@ its game bias against `libsignalSessionScheme` via the `rootKdfAsPrg` advantage 
 `uniformStartDistinguisher`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,7 +41,7 @@ open CryptoGames Ratchet LibsignalInst
 open CryptoVerification.E2E
 
 /-- Variant of `libsignalSessionScheme` using the key's `(rk, ck)` directly as epoch-0 keys without `rootKdf`. -/
-def libSessionU {PQ PQC : Type} [Inhabited PQ] (P : Params PQ PQC) (ℓ : ℕ) :
+@[expose] def libSessionU {PQ PQC : Type} [Inhabited PQ] (P : Params PQ PQC) (ℓ : ℕ) :
     SMSchemeR KeyU (GhostState PQ) (Plain ℓ) PQC (BitVec 256) (List (BitVec 8)) where
   initA k := P.initA ⟨k.1.1, k.1.2, k.2.1, k.2.2.1, k.2.2.2⟩
   initB k := P.initB ⟨k.1.1, k.1.2, k.2.1, k.2.2.1, k.2.2.2⟩

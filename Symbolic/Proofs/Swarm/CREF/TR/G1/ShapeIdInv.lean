@@ -26,7 +26,7 @@ and proves closure over Double Ratchet term constructors (`Literal`, `randTerm 3
 `dhPk`, `dh`, `normalizeX25519Key`, and `kdfExtract`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

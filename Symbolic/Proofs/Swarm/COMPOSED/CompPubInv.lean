@@ -42,7 +42,7 @@ import Symbolic.Specifications.Model.EquationalTheory.X25519
 import Symbolic.Specifications.Model.EquationalTheory.Kem
 import Symbolic.Specifications.Model.EquationalTheory.Spqr
 import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
-public import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.X25519
+public import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.X25519 -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Spqr
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Trunc
 import Symbolic.Proofs.Swarm.COMPOSED.CompTermAlgebra
@@ -55,7 +55,7 @@ establishes `CompExposure` domain separation and per-block `pqxdhKdf` inversion,
 honest identity-key secrecy (`pub_IK`) and prekey bundle signature origin (`bundleOK_of_verify`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -282,25 +282,6 @@ theorem Pub.inv_ss_of_spqrInv {tr : ExecTrace} (hinv : SpqrInv tr) {pk e : Bytes
     try dsimp [rnd, Literal.literalToBytes, Concat.concat, KdfExtract.kdfExtract,
       Trunc.trunc8, TrWire.trWireMsg, SymEnc.symEnc,
       DiffieHellman.dhPk, PQKem.kemPk, PQKem.kemEncap,
-      Signature.vk, Signature.sign, Spqr.spqrInit, Spqr.spqrChainKey] at hq
-    exact False.elim (Symbolic.DYBridge.DY.BytesView.pack_ne_pack_of_proj_none hq)
-
-theorem Pub.inv_rejKey_of_spqrInv {tr : ExecTrace} (hinv : SpqrInv tr) {sk ct : Bytes}
-    (h : Pub tr (PQKem.kemRejKey sk ct)) : Pub tr sk ∧ Pub tr ct := by
-  generalize hq : PQKem.kemRejKey sk ct = q at h
-  cases h with
-  | rejKey hsk hct =>
-    obtain ⟨rfl, rfl⟩ := kemRejKey_inj.mp hq
-    exact ⟨hsk, hct⟩
-  | exp hexp =>
-    obtain ⟨_, _, rfl⟩ := hexp.exists_kdfExtract hinv
-    dsimp [PQKem.kemRejKey, PQKem.CanPQKem.kemRejKey,
-      KdfExtract.kdfExtract, KdfExtract.CanKdfExtract.kdfExtract] at hq
-    exact False.elim (Symbolic.DYBridge.DY.BytesView.pack_ne_pack_of_proj_none hq)
-  | _ =>
-    try dsimp [rnd, Literal.literalToBytes, Concat.concat, KdfExtract.kdfExtract,
-      Trunc.trunc8, TrWire.trWireMsg, SymEnc.symEnc,
-      DiffieHellman.dhPk, PQKem.kemPk, PQKem.kemEncap, PQKem.kemRejKey, PQKem.CanPQKem.kemRejKey,
       Signature.vk, Signature.sign, Spqr.spqrInit, Spqr.spqrChainKey] at hq
     exact False.elim (Symbolic.DYBridge.DY.BytesView.pack_ne_pack_of_proj_none hq)
 
@@ -864,10 +845,6 @@ theorem Pub.inv_ss {tr : ExecTrace} (hinv : SpqrInv tr) {pk e : Bytes}
     (h : Pub tr (PQKem.kemEncap pk e).2) :
     (Pub tr pk ∧ Pub tr e) ∨ (∃ sk, pk = PQKem.kemPk sk ∧ Pub tr sk) :=
   CompPubInv.Pub.inv_ss_of_spqrInv hinv h
-
-theorem Pub.inv_rejKey {tr : ExecTrace} (hinv : SpqrInv tr) {sk ct : Bytes}
-    (h : Pub tr (PQKem.kemRejKey sk ct)) : Pub tr sk ∧ Pub tr ct :=
-  CompPubInv.Pub.inv_rejKey_of_spqrInv hinv h
 
 /-- Per-block `pqxdhKdf` and `pqxdhIkm` inversion over `Pub tr` on a `SpqrInv tr` trace,
 splitting into `Pub tr` of all five IKM inputs or `SessionStateExposed tr keys k`. -/

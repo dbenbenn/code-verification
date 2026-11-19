@@ -356,7 +356,7 @@ theorem memRegion_entails_pointsToWords64 :
 elab "close_ghost_oom_default" : tactic => do
   let _ ← Lean.Elab.Tactic.tryTactic (Lean.Elab.Tactic.evalTactic (← `(tactic| (
     dsimp only [Program.relocSubroutineOk, Program.alignedSubroutineOk,
-      Obj.LinkedImage.subroutineOk, Program.subroutineOk, fn_subroutine_ok,
+      Program.subroutineOk, fn_subroutine_ok,
       ToBaseSpec.toSpec, instToBaseSpecId, instToBaseSpecFn]))))
   for _ in [:3] do
     let mvarId ← Lean.Elab.Tactic.getMainGoal

@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Computational.Proofs.Game.PromotedCostedReds.SpkTier2Keys -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.SmReachInv -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.SmReachInv
 
 /-!
 # Pure Table Bookkeeping and Invariants for Tier-2 SPK Reductions

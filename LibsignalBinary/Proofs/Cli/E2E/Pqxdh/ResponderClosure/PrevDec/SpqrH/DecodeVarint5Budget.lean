@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Handshake `decode_varint [local#5]` Specifications
@@ -21,7 +21,7 @@ and total-correctness (`onPanic = ⌜False⌝` under `FitsEnv`) specifications `
 `decodeVarint2SpecX` for `prost::encoding::varint::decode_varint::<&mut &[u8]> [local#5]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +50,7 @@ abbrev DecodeVarint2Env (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
 
 /-- Budget-threaded contract of `prost::encoding::varint::decode_varint::<&mut &[u8]>`
 at `decodeVarint2Stack`. -/
-def decodeVarint2Spec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def decodeVarint2Spec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DecodeVarintSlowGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.bufRef ∧ x.bs.length < 2 ^ 63 ∧
@@ -75,7 +75,7 @@ def decodeVarint2Spec {M : AllocCostModel} (A : RustCliAllocBudget M)
 
 /-- Budget-threaded contract of `prost::encoding::varint::decode_varint::<&mut &[u8]>`
 under `Stage2ContractsX` (`decodeVarint2StackX`). -/
-def decodeVarint2SpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def decodeVarint2SpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DecodeVarintSlowGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.bufRef ∧ x.bs.length < 2 ^ 63 ∧

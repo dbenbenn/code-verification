@@ -14,7 +14,7 @@ import DY.Bytes.Basic
 import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
 import DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Bytes.Basic
-public import Symbolic.Proofs.Refinement.EncodeWithSound
+public import Symbolic.Proofs.Refinement.EncodeWithSound -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Refinement.EncodeWithCovered
 import VCVio.EvalDist.ProbabilityNotation
@@ -28,7 +28,7 @@ non-canonical sentinel variation `v` (`trWireBytes_covered_uniform`), characteri
 canonical layout (`trWireBytes_canonical`), and unfolds `gamma` on literals and `trWireMsg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,7 +38,7 @@ open CryptoGames.LibsignalSession CryptoVerification.LibsignalProtoCodec
 open DY.Libsignal.Refinement DY.TrWire
 
 /-- Prepends a zero-tag sentinel item to `v.fields`. -/
-def withSentinel (v : EncodingVariation) : EncodingVariation :=
+@[expose] def withSentinel (v : EncodingVariation) : EncodingVariation :=
   { v with fields := .known 0 0 0 :: v.fields }
 
 theorem withSentinel_ne_canonical (v : EncodingVariation) :

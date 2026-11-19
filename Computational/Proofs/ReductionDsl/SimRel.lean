@@ -19,7 +19,7 @@ along an encoding `enc` on states satisfying a query-counted invariant produce e
 any adversary within the query budget.
 -/
 
-@[expose] public section
+public section
 
 namespace ReductionDsl
 

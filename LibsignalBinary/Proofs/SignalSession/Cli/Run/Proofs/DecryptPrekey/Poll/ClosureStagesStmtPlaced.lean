@@ -9,15 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmt
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageDefsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP2DefsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StageP3StepsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KitCodecsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageDefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP2DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StageP3StepsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KitCodecsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathACore -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable `[LibsignalPlacement]` Poll Stage P2, P3, and P4 Interface Statements
@@ -27,7 +33,7 @@ P4 (`StageP4MatchedPlacedStmt`, `StageP4PathAPlacedStmt`, `StageP2MatchedCliPlac
 `StageP2PathACliPlacedStmt`), bundled into `ClosureStagesPlacedStmt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -77,7 +83,7 @@ attribute [-arm64_norm]
 
 /-- Shared spatial resources across `P4.1` (`save_identity`) and `P4.4` (`store_session`) on
 matched-session Path B (`opkIdIsSome = 2#32`, skipping `P4.2` and `P4.3`) under `[LibsignalPlacement]`. -/
-def stageP4MatchedSharedPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
+@[expose] def stageP4MatchedSharedPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (ikit : IdentityStoreSpec A b)
     (s0 s : State)
     (coroPtr msgPtr remoteAddrPtr remoteIkPtr sessionStorePtr idStorePtr
@@ -123,7 +129,7 @@ def stageP4MatchedSharedPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 
   stackAt s.sp (stageP4MatchedCallStack kit ikit)
 
 /-- Spatial precondition at `+0x34dc` for matched-session Path B Stage P4 (`M4`) under `[LibsignalPlacement]`. -/
-def stageP4MatchedPrePlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
+@[expose] def stageP4MatchedPrePlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (ikit : IdentityStoreSpec A b)
     (s0 s : State)
     (coroPtr msgPtr outPtr remoteAddrPtr remoteIkPtr sessionStorePtr idStorePtr
@@ -149,7 +155,7 @@ def stageP4MatchedPrePlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
 
 /-- Spatial postcondition at `s0.readReg64.x30` for matched-session Path B Stage P4 (`M4`)
 under `[LibsignalPlacement]`. -/
-def stageP4MatchedExitAtPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
+@[expose] def stageP4MatchedExitAtPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (ikit : IdentityStoreSpec A b)
     (s0 s : State)
     (coroPtr msgPtr remoteAddrPtr remoteIkPtr sessionStorePtr idStorePtr
@@ -213,7 +219,7 @@ inductive StageP4MatchedBranchPlaced [LibsignalPlacement] {A : RustAlloc} {b : B
 
 /-- Relocatable `[LibsignalPlacement]` Path B Stage P4 (`+0x34dc → s0.readReg64.x30`, `M4`)
 contract on `dpPollProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))` for `cliPollSessKitPlaced` and `cliPollIdKitPlaced`. -/
-def StageP4MatchedPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP4MatchedPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     (B : RunBudgets) (F0 : FsFiles) (peer : AddrGhost),
     let σ := cliKitStk B
@@ -262,7 +268,7 @@ def StageP4MatchedPlacedStmt [LibsignalPlacement] : Prop :=
 
 /-- Shared spatial resources preserved across all of 4-kit Stage P4 (`+0x34dc → s0.readReg64.x30`)
 under `[LibsignalPlacement]`. -/
-def stageP4SharedPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
+@[expose] def stageP4SharedPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (ikit : IdentityStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
     (s0 s : State)
@@ -312,7 +318,7 @@ def stageP4SharedPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
 
 /-- Full 4-kit Stage P4 entry assertion at `+0x34dc` parameterized by an `opkSlot` assertion
 at `coroPtr + 0x298..0x2a0` under `[LibsignalPlacement]`. -/
-def stageP4RawPrePlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
+@[expose] def stageP4RawPrePlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (ikit : IdentityStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
     (s0 s : State)
@@ -362,7 +368,7 @@ abbrev stageP4PrePlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
     sst0 ist0 pst0 kst0 G st
 
 /-- Exit spatial assertion common to all five Stage P4 outcomes under `[LibsignalPlacement]`. -/
-def stageP4ExitAtPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
+@[expose] def stageP4ExitAtPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (ikit : IdentityStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
     (s0 s : State)
@@ -500,7 +506,7 @@ abbrev StageP4BranchPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
 
 /-- Relocatable `[LibsignalPlacement]` Path A 4-kit Stage P4 (`+0x34dc → s0.readReg64.x30`)
 contract on `dpPollProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))` for the placed CLI 4-kit bundle. -/
-def StageP4PathAPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP4PathAPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     (B : RunBudgets) (F0 : FsFiles) (peer : AddrGhost)
     (pid kpkId spkId : BitVec 32) (kbk : PublicKey),
@@ -559,7 +565,7 @@ def StageP4PathAPlacedStmt [LibsignalPlacement] : Prop :=
 
 /-- Relocatable `[LibsignalPlacement]` CPS Stage P2 contract for Path B (`opt = some ⟨some sess⟩`)
 at `dpPollEntryPlaced + 0x0868#64`. -/
-def StageP2MatchedCliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP2MatchedCliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) (B : RunBudgets) (S : RunSem)
     (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (y : DpPollGhostState (dpSlotPollKStatePlaced E2E.HooksE.A0 B S))
@@ -687,7 +693,7 @@ inductive StageP2PathAErrPlaced [LibsignalPlacement] (X : UnreachedPqxdhPrimitiv
 
 /-- Relocatable `[LibsignalPlacement]` CPS Stage P2 contract for Path A (`opt = none`, `DecPkOk₀`)
 at `dpPollEntryPlaced + 0x0868#64`. -/
-def StageP2PathACliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP2PathACliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ (X : UnreachedPqxdhPrimitives) (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks)
     (W : CliHooks) (B : RunBudgets) (S : RunSem)
     (Scope : SessionRecord (List (BitVec 8)) → Prop)

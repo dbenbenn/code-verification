@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.SepLogic.WPp
 
@@ -24,7 +24,7 @@ Joint `StepInvVm` (`StepInv ∧ VmPreserved`) invariant, `withStepInvVm` call co
 polymorphic `VersionNegotiation.authKey` length-step helper (`+52..+88`) for Block `426`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -68,7 +68,7 @@ theorem StepInvVm.libsignalRoLoaded {s0 s : State} (hinv : StepInvVm s0 s) {pl :
   hinv.1.libsignalRoLoaded hro
 
 /-- Wrap `spec : Spec α` with `⌜StepInvVm s0 s⌝` in the precondition. -/
-def withStepInvVm {α : Type} (s0 : State) (spec : Spec α) : Spec α :=
+@[expose] def withStepInvVm {α : Type} (s0 : State) (spec : Spec α) : Spec α :=
   { spec with pre := fun x s => ⌜StepInvVm s0 s⌝ ∗ spec.pre x s }
 
 theorem subroutine_ok_withStepInvVm {α : Type} {prog : Program} {entry : BitVec 64} {spec : Spec α}

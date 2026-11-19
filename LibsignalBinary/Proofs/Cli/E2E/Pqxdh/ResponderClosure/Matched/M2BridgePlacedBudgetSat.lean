@@ -13,10 +13,10 @@ public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4StoreSession -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1PlacedBudgetSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlacedBudget
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
 import Arm64.Trusted.Spec.Hoare
@@ -25,6 +25,16 @@ import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Steps
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2OkPlacedBudgetAux
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Aux
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1PlacedBudget
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `HookSat`-Backed Budget-Threaded Stage P2 Entry Bridge (`Matched/M2BridgePlacedBudgetSat`)
@@ -43,8 +53,6 @@ set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
 namespace LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlacedBudgetSat
-
-noncomputable section
 
 open Arm64 ProofLib SepProp
 open CryptoGames.LibsignalSession (PublicKey)
@@ -521,7 +529,5 @@ theorem stageP2_matched_0868_to_094c_of_bridgeEnv_placed_sat [LibsignalPlacement
       ⟨stageP2MatchedBridgeEvents, rfl, hent⟩, hregs⟩⟩
   · exact False.elim hpan
   · exact (not_satisfies_false_sepConj hoom).elim
-
-end
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlacedBudgetSat

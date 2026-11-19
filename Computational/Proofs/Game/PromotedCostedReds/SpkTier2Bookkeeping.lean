@@ -10,7 +10,10 @@ limitations under the License.
 module
 
 public import Computational.Proofs.Game.PromotedCostedReds.SpkTier2BookkeepingBase
-public import Computational.Proofs.E2E.Dsl.DrSessionSimSend -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.DrSessionSimSend
+public import Computational.Proofs.Game.PromotedCostedReds.SpkTier2BookkeepingProofs -- proof-setup: allow-public-import
+public import Computational.Specifications.Session.StatementIdsModel
+import Computational.Proofs.ReductionDsl.SM.GameCosted
 
 /-!
 # Tier-2 SPK Table Bookkeeping Expressions

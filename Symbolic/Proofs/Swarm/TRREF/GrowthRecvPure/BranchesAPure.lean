@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecv.HelpersB
+public import Symbolic.Proofs.Swarm.TRREF.GrowthRecv.HelpersB -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvB.Defs
 import Symbolic.Proofs.Swarm.TRREF.GrowthOoo.State
 import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers3APure
+import Symbolic.Proofs.Swarm.SHARED.StateSizePure
 
 /-!
 # SPQR V1 Receive Growth and OOO Bounds: Version-Greater Branch and V1 Helpers
@@ -22,7 +23,7 @@ Proves `≤ st.length + 2^17` byte-length growth and `SpqrOooBounded` preservati
 polynomial encoder/decoder weight bounds for V1 state decoding.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

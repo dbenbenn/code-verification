@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.EncodeWithSound
+public import Symbolic.Proofs.Refinement.EncodeWithSound -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.EvalDist.ProbabilityNotation
 
@@ -21,7 +21,7 @@ Proves `tryFrom_covered`, the converse of `tryFrom_encodeWith`: every byte strin
 `v` satisfying `HonestWF v f`, with decoded message fields matching `f`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -98,7 +98,7 @@ theorem mergeField_inv {m m' : ProtoSignalMessage} {tag : ℕ} {wt : WireType} {
 
 /-! ## Field list inversion -/
 
-def RawItem (it : FieldItem) : Prop := ∃ t x kp vp, it = .extra t x kp vp ∧ FieldWF t kp vp x
+@[expose] def RawItem (it : FieldItem) : Prop := ∃ t x kp vp, it = .extra t x kp vp ∧ FieldWF t kp vp x
 
 theorem RawItem.itemWF {it : FieldItem} (h : RawItem it) (v : EncodingVariation) (f : WireFields) :
     ItemWF v f it := by
@@ -136,13 +136,13 @@ theorem decodeLoop_inv : ∀ (fuel : ℕ) (m r : ProtoSignalMessage) (bs : HwByt
 /-! ## Marking the last item of each known tag -/
 
 /-- Converts `it` to `.known` when it is an `.extra` item with tag in `1..4` absent from `rest`. -/
-def markOne (rest : List FieldItem) : FieldItem → FieldItem
+@[expose] def markOne (rest : List FieldItem) : FieldItem → FieldItem
   | .extra t x kp vp =>
     if 1 ≤ t ∧ t ≤ 4 ∧ rest.all (·.tag != t) then .known t kp vp else .extra t x kp vp
   | it => it
 
 /-- Replaces the last occurrence of each tag in `1..4` with `.known`. -/
-def markLast : List FieldItem → List FieldItem
+@[expose] def markLast : List FieldItem → List FieldItem
   | [] => []
   | it :: rest => markOne rest it :: markLast rest
 

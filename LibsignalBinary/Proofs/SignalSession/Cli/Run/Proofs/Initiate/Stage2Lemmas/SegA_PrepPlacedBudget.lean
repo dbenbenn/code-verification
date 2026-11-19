@@ -9,14 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_Prep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.HelpersPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_Prep
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.HelpersPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFill -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegC_Ok -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.Defs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Helpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegC_OkPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.PollCommonPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable Stage 2 Prefix Steps (`0x0390 → 0x0464`)
@@ -25,15 +40,13 @@ Verifies `segA_step1_coins_placed`, `segA_step2_ek_placed`, and `segA_step3_poll
 `initProgPlaced` over `RustCliAllocBudget M` and `VmPreserved`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option warningAsError false
 set_option linter.dupNamespace false
 set_option linter.unusedSimpArgs false
 set_option linter.unusedTactic false
 set_option maxRecDepth 200000
-
-noncomputable section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_PrepPlacedBudget
 
@@ -61,7 +74,8 @@ open LibsignalBinary.Heap
   (VmPreserved AllocEvent AllocCostModel BudgetLimits FitsEnv RustCliAllocBudget)
 open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
 open LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget (BoxAllocEnv)
-open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (derivePublicKeyBytesBudgetSpec)
+open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+  (derivePublicKeyBytesBudgetSpec derivePublicKeyBytesStackBudgetSpec)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
   (InitPanicPostPlaced initPanicPostPlaced_of_false)
 
@@ -242,13 +256,17 @@ set_option maxHeartbeats 1600000 in
 theorem segA_step2_ek_placed [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {InitEnv : InitGhost → List AllocEvent → Prop}
-    {mmpl : MultiPlacement} {gh : CliGhostHooks} {W : CliHooks} [InitTraceFsSound mmpl gh W] {S : RunSem}
+    {mmpl : MultiPlacement} {gh : CliGhostHooks} {W : CliHooks} [InitTraceFsSound mmpl gh W] {B : RunBudgets} {S : RunSem}
     {x : InitGhost} {st0 st : M.σ} {stk : Nat} {s0 s : State}
     {Q Qp : State → SepProp → Prop} {oom : State → SepProp} {F : SepProp}
     (hDerivePub : subroutine_ok (initProgPlaced mmpl gh W) (lsmpl.base 200)
-      (withLsCodeRoLoaded lsmpl (derivePublicKeyBytesBudgetSpec W.C.pubKey)))
+      (withLsCodeRoLoaded lsmpl
+        (LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet.withLsRet
+          (derivePublicKeyBytesStackBudgetSpec W.C.pubKey 1904))))
     (hZeroize : subroutine_ok (initProgPlaced mmpl gh W) (lsρ lsStaticSecretDropSym)
       (withVmPreserved zeroizeSecretSpec))
+    (hstk : cliInitiateNeed B ≤ stk)
+    (hstk64 : stk ≤ 2 ^ 63)
     (hctrl : InInitiatePlaced s0 s 0x03b8)
     (htrace : s.trace = s0.trace)
     (hx21 : s.readReg64 (.gpr 21#5) = s.sp + 664#64)
@@ -267,15 +285,19 @@ theorem segA_step2_ek_placed [LibsignalPlacement] {M : AllocCostModel}
           ((s.sp + 664#64) ↦ₛ ekAPk) ∗
           ((s.sp + 696#64) ↦ₛ ekASk) ∗
           memRegion (s.sp + 4064#64) 32 ∗
-          memRegion (s.sp + 5632#64) 32 ∗ F)
+          memRegion (s.sp + 5632#64) 32 ∗
+          stackAt s.sp (stk - cliInitiateFrame) ∗ F)
         Q Qp oom) :
     SepWPp (initProgPlaced mmpl gh W) (s0.readReg64 .lr) s
       (A.pool lim st s ∗
         memRegion (s.sp + 664#64) 32 ∗
         memRegion (s.sp + 696#64) 32 ∗
         memRegion (s.sp + 4064#64) 32 ∗
-        ((s.sp + 5632#64) ↦ₛ (padCoins x.coins).toList.take 32) ∗ F)
+        ((s.sp + 5632#64) ↦ₛ (padCoins x.coins).toList.take 32) ∗
+        stackAt s.sp (stk - cliInitiateFrame) ∗ F)
       Q Qp oom := by
+  have hstk1904 : 1904 ≤ stk - cliInitiateFrame :=
+    Nat.le_trans (by decide : 1904 ≤ 516880) (stk_sub_ge_base hstk)
   let rawVec : List.Vector (BitVec 8) 32 :=
     ⟨(padCoins x.coins).toList.take 32, by simp; decide⟩
   let ekKP := keyPairOf W.C rawVec
@@ -289,7 +311,8 @@ theorem segA_step2_ek_placed [LibsignalPlacement] {M : AllocCostModel}
   have hclampSk : ekASk = [b0 &&& 0xf8#8] ++ mid ++ [(b31 &&& 0x7f#8) ||| 0x40#8] := by
     dsimp only [ekASk]; rw [hkpEq.1]; exact hclamp
   rw [hrawList, pointsToBytes_ends (s.sp + 5632#64) b0 b31 mid hmid,
-      mr_32_eq_words4 (s.sp + 4064#64)]
+      mr_32_eq_words4 (s.sp + 4064#64),
+      stackAt_sub_split_need s.sp hstk1904 (sub_frame_le_64 hstk64)]
   simp only [sepExists_sepConj_left, sepExists_sepConj_right, BitVec.add_assoc, BitVec.reduceAdd,
     sepConj_assoc]
   apply sepWPp_exists_left; intro t3
@@ -312,7 +335,10 @@ theorem segA_step2_ek_placed [LibsignalPlacement] {M : AllocCostModel}
         ((s.sp + 4064#64) ↦₆₄ t0) ∗ ((s.sp + 4072#64) ↦₆₄ t1) ∗
         ((s.sp + 4080#64) ↦₆₄ t2) ∗ ((s.sp + 4088#64) ↦₆₄ t3) ∗
         ((s.sp + 5632#64) ↦₆₄ eks0) ∗ ((s.sp + 5640#64) ↦₆₄ eks1) ∗
-        ((s.sp + 5648#64) ↦₆₄ eks2) ∗ ((s.sp + 5656#64) ↦₆₄ eks3) ∗ F) (by
+        ((s.sp + 5648#64) ↦₆₄ eks2) ∗ ((s.sp + 5656#64) ↦₆₄ eks3) ∗
+        stackAt s.sp 1904 ∗
+        memRegion (s.sp - BitVec.ofNat 64 (stk - cliInitiateFrame))
+          (stk - cliInitiateFrame - 1904) ∗ F) (by
       have hends :
           ((s.sp + 5632#64) ↦₈ (b0 &&& 0xf8#8)) ∗
             (((s.sp + 5633#64) ↦ₛ mid) ∗
@@ -344,7 +370,10 @@ theorem segA_step2_ek_placed [LibsignalPlacement] {M : AllocCostModel}
         memRegion (s.sp + 664#64) 32 ∗
         A.pool lim st s ∗
         memRegion (s.sp + 696#64) 32 ∗
-        memRegion (s.sp + 5632#64) 32 ∗ F) (by
+        memRegion (s.sp + 5632#64) 32 ∗
+        stackAt s.sp 1904 ∗
+        memRegion (s.sp - BitVec.ofNat 64 (stk - cliInitiateFrame))
+          (stk - cliInitiateFrame - 1904) ∗ F) (by
       have hm5632 := words4_entails_mr32 (s.sp + 5632#64) eks0 eks1 eks2 eks3
       rw [← hkpEq.1]
       change _ ⊢ ((s.sp + 4064#64) ↦ₛ ekASk) ∗ _
@@ -359,7 +388,9 @@ theorem segA_step2_ek_placed [LibsignalPlacement] {M : AllocCostModel}
     refine sepWPp_call_cli_lscro (traceFsSound_initPlaced mmpl gh W)
       hDerivePub
       (x := { secret := s.sp + 4064#64, sec := Ratchet.clampScalar rawVec, out := s.sp + 664#64 })
-      (F := A.pool lim st s ∗ memRegion (s.sp + 696#64) 32 ∗ memRegion (s.sp + 5632#64) 32 ∗ F)
+      (F := A.pool lim st s ∗ memRegion (s.sp + 696#64) 32 ∗ memRegion (s.sp + 5632#64) 32 ∗
+        memRegion (s.sp - BitVec.ofNat 64 (stk - cliInitiateFrame))
+          (stk - cliInitiateFrame - 1904) ∗ F)
       (ret_pc := initPcPlaced 0x03f4)
       (by simp only [arm64_norm, hpc0]; try rfl)
       (by simp only [arm64_norm, *])
@@ -368,22 +399,41 @@ theorem segA_step2_ek_placed [LibsignalPlacement] {M : AllocCostModel}
       (by simp only [arm64_norm, initPcPlaced, initEntryPlaced, hpc0,
         show (blkPl_521).base = lsmpl.base 521 from rfl]; try bv_omega)
       (by
-        dsimp only [derivePublicKeyBytesBudgetSpec]
+        dsimp only [LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet.withLsRet,
+          derivePublicKeyBytesStackBudgetSpec, derivePublicKeyBytesBudgetSpec]
         simp only [sepConj_assoc]
+        refine Entails.pure_right
+          (LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet.lsRetAddr624_of_lr_eq_base_add
+            521 0x03f4#64 (by
+              simp only [arm64_norm, hpc0, show (blkPl_521).base = lsmpl.base 521 from rfl]
+              try bv_omega)) ?_
         refine Entails.pure_right
           ⟨by simp only [arm64_norm], by simp only [arm64_norm, hx23]; try bv_omega⟩ ?_
         try simp only [arm64_norm, sepConj_assoc]
         sep_frame)
       (fun sf => hpanic sf _ (initPanicPostPlaced_of_false A lim InitEnv S x st0 stk _))
       (fun _ _ => rfl)
-      (fun _ => by dsimp only [derivePublicKeyBytesBudgetSpec]; exact Entails.pure_left False.elim)
+      (fun _ => by
+        dsimp only [LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet.withLsRet,
+          derivePublicKeyBytesStackBudgetSpec, derivePublicKeyBytesBudgetSpec]
+        exact Entails.pure_left False.elim)
       fun s2 hpc2 hrun2 hsp2 hcs2 hkf2 _hsym2 hf2 => ?_
-    dsimp only [derivePublicKeyBytesBudgetSpec]
+    dsimp only [LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet.withLsRet,
+      derivePublicKeyBytesStackBudgetSpec, derivePublicKeyBytesBudgetSpec]
     simp only [arm64_norm, sepConj_assoc] at hsp2 ⊢
     apply sepWPp_pure_left; rintro ⟨htr2, hvm2⟩
     have hpool2 : A.pool lim st s2 = A.pool lim st s :=
       A.pool_of_vmPreserved (hvm1.trans hvm2)
     rw [← hpool2]
+    apply sepWPp_weaken_pre (P' :=
+      ((s.sp + 4064#64) ↦ₛ (Ratchet.clampScalar rawVec).toList) ∗
+        ((s.sp + 664#64) ↦ₛ (W.C.pubKey (Ratchet.clampScalar rawVec)).toList) ∗
+        A.pool lim st s2 ∗
+        memRegion (s.sp + 696#64) 32 ∗
+        memRegion (s.sp + 5632#64) 32 ∗
+        stackAt s.sp (stk - cliInitiateFrame) ∗ F) (Entails.of_eq (by
+      rw [stackAt_sub_split_need s.sp hstk1904 (sub_frame_le_64 hstk64)]
+      ac_rfl))
     have htr2_eq : s2.trace = s0.trace := by simpa only [arm64_norm, htrace] using htr2
     have hctrl2 : InInitiatePlaced s0 s2 0x03f4 :=
       inInitiatePlaced_after_call hctrl
@@ -420,7 +470,8 @@ theorem segA_step2_ek_placed [LibsignalPlacement] {M : AllocCostModel}
           A.pool lim st s2 ∗
           ((s2.sp + 664#64) ↦ₛ ekAPk) ∗
           ((s2.sp + 696#64) ↦ₛ ekASk) ∗
-          memRegion (s2.sp + 5632#64) 32 ∗ F) (by
+          memRegion (s2.sp + 5632#64) 32 ∗
+          stackAt s2.sp (stk - cliInitiateFrame) ∗ F) (by
         have hm4064 := words4_entails_mr32 (s2.sp + 4064#64) eks0 eks1 eks2 eks3
         rw [heks (s2.sp + 696#64) (s2.sp + 704#64) (s2.sp + 712#64) (s2.sp + 720#64)
           (by bv_omega) (by bv_omega) (by bv_omega)]
@@ -436,7 +487,7 @@ theorem segA_step2_ek_placed [LibsignalPlacement] {M : AllocCostModel}
         hZeroize
         (x := s.sp + 4064#64)
         (F := A.pool lim st s2 ∗ ((s.sp + 664#64) ↦ₛ ekAPk) ∗ ((s.sp + 696#64) ↦ₛ ekASk) ∗
-          memRegion (s.sp + 5632#64) 32 ∗ F)
+          memRegion (s.sp + 5632#64) 32 ∗ stackAt s.sp (stk - cliInitiateFrame) ∗ F)
         (ret_pc := initPcPlaced 0x040c)
         (by simp only [arm64_norm, hpc2]; try rfl)
         (by simp only [arm64_norm, *])
@@ -473,7 +524,8 @@ theorem segA_step2_ek_placed [LibsignalPlacement] {M : AllocCostModel}
           ((s.sp + 664#64) ↦ₛ ekAPk) ∗
           ((s.sp + 696#64) ↦ₛ ekASk) ∗
           memRegion (s.sp + 4064#64) 32 ∗
-          memRegion (s.sp + 5632#64) 32 ∗ F) (by
+          memRegion (s.sp + 5632#64) 32 ∗
+          stackAt s.sp (stk - cliInitiateFrame) ∗ F) (by
         have hmZero : ((s.sp + 4064#64) ↦ₛ List.replicate 32 0#8) ⊢ memRegion (s.sp + 4064#64) 32 :=
           mr_of_bytes _ _ 32 (by simp)
         refine entails_by_focus (by sep_frame) hmZero ?_
@@ -762,4 +814,3 @@ theorem segA_step3_poll_placed [LibsignalPlacement] {M : AllocCostModel}
       sep_frame
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_PrepPlacedBudget
-end

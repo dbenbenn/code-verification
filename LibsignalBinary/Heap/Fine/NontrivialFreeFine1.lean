@@ -34,7 +34,7 @@ open scoped LibsignalBinary.Heap.Fine.VendorFree
 
 /-! ## `NfFuelFinePost`, Epilogue, Commit, and `free_meta` -/
 
-noncomputable def NfFuelFinePost [MallocngMultiPlacement]
+def NfFuelFinePost [MallocngMultiPlacement]
     (k fuel : Nat) (γ : GhostName) (brkStart : BitVec 64) (liveCost peakCost : Nat)
     (st : MallocngSt) (s0 sf : State) (P_f : SepProp) : Prop :=
   (P_f ⊢ ∃∗ st' : MallocngSt,
@@ -45,7 +45,7 @@ noncomputable def NfFuelFinePost [MallocngMultiPlacement]
      totalLiveCount st' ≤ totalLiveCount st ∧
      (dynamicRootRegions st').length ≤ (dynamicRootRegions st).length⌝ ∗
     stackFrameAt s0.sp (32 * (fuel + 1)) ∗ MallocngRoTablesA maddrs ∗
-    MallocngCoreStInflightA k γ maddrs brkStart s0.brk liveCost peakCost st' ∗
+    MallocngCoreStInflightModeA true k γ maddrs brkStart s0.brk liveCost peakCost st' ∗
     NfRetSep st st' (sf.readReg64 .x0) (sf.readReg64 .x1)) ∧
   sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf
 
@@ -65,7 +65,7 @@ theorem sepWP_nf_epilogue_490_fine [MallocngMultiPlacement]
     (hDynLen : (dynamicRootRegions st').length ≤ (dynamicRootRegions st).length) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' ∗
+       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' true ∗
        (maddrs.ctx ↦ₛ st'.ctx.toBytes) ∗
        ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗
        ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
@@ -119,7 +119,7 @@ theorem sepWP_nf_commit_474_fine [MallocngMultiPlacement]
       ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' ∗
+       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' true ∗
        (maddrs.ctx ↦ₛ st'.ctx.toBytes) ∗ (gPre.metaPtr ↦ₛ gPre.metaBytes) ∗ ByteRest ∗
        ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
        MappedSet st'.masterDom (OwnedMappedByte st'))
@@ -132,13 +132,13 @@ theorem sepWP_nf_commit_474_fine [MallocngMultiPlacement]
     change (gPre.metaPtr.toNat + 28) % 4 = 0; omega
   wp_step
   have hFocus : (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' ∗
+       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' true ∗
        (maddrs.ctx ↦ₛ st'.ctx.toBytes) ∗ (gPre.metaPtr ↦ₛ gPre.metaBytes) ∗ ByteRest ∗
        ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
        MappedSet st'.masterDom (OwnedMappedByte st')) =
       (((gPre.metaPtr + 28#64) ↦₃₂ gPre.freedMask) ∗
        (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-        MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' ∗
+        MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' true ∗
         (maddrs.ctx ↦ₛ st'.ctx.toBytes) ∗
         ((gPre.metaPtr ↦₆₄ gPre.prev) ∗ ((gPre.metaPtr + 8#64) ↦₆₄ gPre.next) ∗
          ((gPre.metaPtr + 16#64) ↦₆₄ gPre.mem) ∗ ((gPre.metaPtr + 24#64) ↦₃₂ gPre.availMask) ∗
@@ -160,7 +160,7 @@ theorem sepWP_nf_commit_474_fine [MallocngMultiPlacement]
   intro s1 P1 hpc1 hrun1 ⟨hsp1, hbrk1, hperm1, hProc1, hcs1, _hx0_1, hx1_1, hP1⟩
   have hUnfocus : (((gPre.metaPtr + 28#64) ↦₃₂ (gPre.freedMask ||| self32)) ∗
        (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-        MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' ∗
+        MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' true ∗
         (maddrs.ctx ↦ₛ st'.ctx.toBytes) ∗
         ((gPre.metaPtr ↦₆₄ gPre.prev) ∗ ((gPre.metaPtr + 8#64) ↦₆₄ gPre.next) ∗
          ((gPre.metaPtr + 16#64) ↦₆₄ gPre.mem) ∗ ((gPre.metaPtr + 24#64) ↦₃₂ gPre.availMask) ∗
@@ -168,7 +168,7 @@ theorem sepWP_nf_commit_474_fine [MallocngMultiPlacement]
         ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
         MappedSet st'.masterDom (OwnedMappedByte st'))) ⊢
       (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' ∗
+       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' true ∗
        (maddrs.ctx ↦ₛ st'.ctx.toBytes) ∗
        ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗
        ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
@@ -206,7 +206,7 @@ theorem sepWP_nf_freeMeta_224_fine [MallocngMultiPlacement]
     (hDynLen_m : (dynamicRootRegions st_m).length ≤ (dynamicRootRegions st).length) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st_m ∗
+       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st_m true ∗
        (maddrs.ctx ↦ₛ st_m.ctx.toBytes) ∗ (gZero.metaPtr ↦ₛ gZero.metaBytes) ∗
        ByteMap st_m.masterDom (OwnedRwByte st_m) st_m.byteVal ∗
        ProtNoneByteMap st_m.masterDom (OwnedProtNoneByte st_m) st_m.byteVal ∗
@@ -363,7 +363,7 @@ theorem sepWP_nf_enqueue_nonempty_45c_fine [MallocngMultiPlacement]
     (hHeadNeG : st.ctx.active[g.sc]'hActLt ≠ g.metaPtr) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ∗
+       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st true ∗
        (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
        ((g.metaPtr ↦₆₄ g.prev) ∗ ((g.metaPtr + 8#64) ↦₆₄ g.next) ∗
         ((g.metaPtr + 16#64) ↦₆₄ g.mem) ∗ ((g.metaPtr + 24#64) ↦₃₂ g.availMask) ∗
@@ -506,7 +506,7 @@ theorem sepWP_nf_nonAllFree_fine [MallocngMultiPlacement]
     (hNotAll : (g.availMask ||| g.freedMask) + (1#32 <<< idx) ≠ (2#32 <<< g.lastIdx) - 1#32) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ∗
+       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st true ∗
        (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
        ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
@@ -729,7 +729,7 @@ theorem sepWP_nf_retire_root_from_218_fine [MallocngMultiPlacement]
     (hUSeqLen : unmapSeq1.length = 32) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ∗
+       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st true ∗
        (maddrs.ctx ↦ₛ { st.ctx with active := active1, usageByClass := usage1, unmapSeq := unmapSeq1, seq := seq1 }.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) bvDeq ∗
        ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
@@ -824,7 +824,7 @@ theorem sepWP_nf_retire_root_from_1fc_fine [MallocngMultiPlacement]
     (hUMid : uSeqMid.length = 32) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ∗
+       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st true ∗
        (maddrs.ctx ↦ₛ { st.ctx with active := active1, usageByClass := usage1, unmapSeq := uSeqMid, seq := seq1 }.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) bvDeq ∗
        ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗

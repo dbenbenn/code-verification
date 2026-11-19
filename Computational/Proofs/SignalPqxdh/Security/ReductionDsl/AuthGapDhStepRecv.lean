@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepPows
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepPows -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepBase
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimRecv
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimSend
 import VCVio.EvalDist.Monad.Basic
 
-@[expose] public section
+public section
 
 /-!
 # Recv-branch evaluation for the `Auth` Gap-DH DSL

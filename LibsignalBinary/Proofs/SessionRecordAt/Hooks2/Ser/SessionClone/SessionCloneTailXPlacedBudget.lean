@@ -9,15 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.BaseBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.BaseX
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneBaseXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.EpilogueReassemblyXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.KyberBaseKeyPqStateXPlacedBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.SessionCloneTailXPlaced
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.BaseBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.BaseX -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneBaseXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.EpilogueReassemblyXBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.KyberBaseKeyPqStateXPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.SessionCloneTailXPlaced
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneBaseX -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `SessionStructure::clone` Tail (`+592 ∨ +648` → `ret`, Block `80`)
@@ -26,7 +32,7 @@ Chains the budget-threaded proofs of fields 7–9 (`pending_kyber_pre_key`, `ali
 `pq_ratchet_state`) and the epilogue from `+592 ∨ +648` to `ret` on Block `80`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -74,7 +80,7 @@ set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
 /-- Allocation events emitted by the tail (`s4 → ret`: fields 7, 8, and 9). -/
-def scTailEvents (x : SessionCloneGhost) : List AllocEvent :=
+@[expose] def scTailEvents (x : SessionCloneGhost) : List AllocEvent :=
   optTailCloneEvents x.G.kyber ++
   vecCloneEvents x.G.alice ++
   pqCloneEvents x.s.state.pqRatchetState

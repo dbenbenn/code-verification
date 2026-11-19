@@ -13,6 +13,11 @@ public import Symbolic.Proofs.Swarm.UA.Defs
 import Symbolic.Proofs.Swarm.CREF.Cli.World.InitPure
 import Symbolic.Proofs.Swarm.CREF.Cli.World.TurnPure
 import Symbolic.Proofs.Swarm.UA.Base
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
 
 /-!
 # CLI Model Refinement Trace Assembly
@@ -22,7 +27,7 @@ slot lemmas (`uaSlot_dispatch`) and preserves `PqTurnSim1A` and `UAInv` across t
 (`uaTraces_refines`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

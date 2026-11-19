@@ -4,25 +4,29 @@
 # Loaded alongside `Symbolic/scripts/machine_free_allow_proofdeps.txt` via repeatable `--allow-file`.
 # If any pinned source file changes blob, `machine_free_check.py` fails closed (exit 1) until re-signed.
 # blob-pin: LibsignalBinary/Specifications/LibsignalTripleRatchetRepr.lean = e1b0ceb39e3a3afd4b546809ac9a729fabf98835
-# blob-pin: LibsignalBinary/Specifications/LibsignalAesCbc.lean = c069e18e7a9c23c24482f53b68c21af4e8368993
-# blob-pin: LibsignalBinary/Specifications/LibsignalTripleRatchet.lean = 907c8f78eb0fa76affaf359d0c1074fddf56c94b
-# Re-pinned after dead-declaration removal; no pinned constant changed; approved by swarat.
-# Re-pinned again after the trust-banner edit of #808: one comment line changed in each of LibsignalTripleRatchetRepr.lean and LibsignalAesCbc.lean; no line moved, no pinned constant changed.
+# blob-pin: LibsignalBinary/Specifications/LibsignalAesCbc.lean = 16ebb1b56f6ddd264615dda79470e9c72e330764
+# blob-pin: LibsignalBinary/Specifications/LibsignalTripleRatchet.lean = 2956fed482979e23b0b7531e132b1bce6c5a3382
+# Re-pinned after dead-declaration removal; no pinned constant changed.
+# Re-pinned after trust-banner comment edits in LibsignalTripleRatchetRepr.lean and LibsignalAesCbc.lean; no line moved, no pinned constant changed.
 # Re-pinned after the computational-TCB rename (`scripts/rename_computational_tcb.tsv`): identifier renames in all three files, no line added or removed, no pinned constant renamed or changed.
 # Re-pinned again after the TCB docstring rewrite: comment-only edits to all three files; code lines shifted (l.NNN references below remapped), no pinned constant changed.
-# Re-pinned after the Lean module-system port (#831): `module` / `public import` / `import all` header lines and `@[expose] public section` added; l.NNN references below shifted accordingly; no pinned constant changed.
-# Re-pinned after the `lake shake` import narrowing: header import lines only (LibsignalTripleRatchetRepr: `-- shake: keep` comment on 1 import; LibsignalTripleRatchet: 2 `public import` lines removed, so l.NNN references below shift by −2); no pinned constant changed (GK ledger rows 84/85: statement hashes identical).
-# Re-pinned after merging #846 onto the import-narrowed main; proof-side definitions moved to *ProofDefs and unused open removed (l.NNN references below remapped by declaration); no pinned constant changed.
-# Pinned engine submodule commit for the `Arm64.*` entries (Arm64/Trusted/ISA/State.lean): engine submodule c2ef2f44e5988bf39d73cbf7fb5c784417818bd3
-# Re-pinned after the C2 trust-banner edit of LibsignalTripleRatchet.lean (second stock `ld.lld` cutover: `zeroizeSecretHook` left the hook table): comment-only, 5 docstring lines rewritten, no line added or removed, l.NNN references unchanged, no pinned constant changed.
+# Re-pinned after the Lean module-system port: `module` / `public import` / `import all` header lines and `@[expose] public section` added; l.NNN references below shifted accordingly; no pinned constant changed.
+# Re-pinned after the `lake shake` import narrowing: header import lines only (LibsignalTripleRatchetRepr: `-- shake: keep` comment on 1 import; LibsignalTripleRatchet: 2 `public import` lines removed, so l.NNN references below shift by −2); no pinned constant changed (statement hashes identical).
+# Re-pinned after moving proof-side definitions to *ProofDefs and removing unused opens (l.NNN references below remapped by declaration); no pinned constant changed.
+# Pinned engine submodule commit for the `Arm64.*` entries (Arm64/Trusted/ISA/State.lean): engine submodule b62b68b034305cd68f0feefe6f128947a8edf6f3
+# Re-pinned after the trust-banner edit of LibsignalTripleRatchet.lean (`zeroizeSecretHook` left the hook table): comment-only, 5 docstring lines rewritten, no line added or removed, l.NNN references unchanged, no pinned constant changed.
+# Re-pinned after the B2→B3 trust-banner edit of LibsignalAesCbc.lean: comment-only docstring edit, code lines shift +3 (toLEBytes remapped to l.61), no pinned constant changed (.olean.hash unchanged).
+# Re-pinned after retiring dead fixed-image tripleRatchetProg / entryOf / fixed-image specs: l.NNN reference below remapped (682->565), no pinned constant changed.
+# Re-pinned after docstring cleanup of LibsignalAesCbc.lean (replaced `cliHookTablePlaced is empty` with `under the panic-only cliExternsPlacedSig`): comment-only, 1 line rewritten in place, l.NNN references unchanged, no pinned constant changed.
+# Re-pinned for the trust-banner docstring of LibsignalTripleRatchet.lean (`pubFromSecretHook`/`diffieHellmanHook`/`readVec32` outside headline closures; `cliHookTablePlaced` in `CliBinaryPqPlaced.lean`): comment-only, 5 lines in place, l.NNN references unchanged, no pinned constant changed.
 # require-tag: [MODEL]
 
 # --- Realized lemmas of signed parents (Q1 addendum, GK row 138) ---
 # Lean creates `.eq_<k>` / `.eq_def` / `.eq_unfold` lemmas lazily, in the first module that unfolds the
 # parent, and the checker attributes them to the parent's module. Each entry states only the parent's
 # defining equation, and the parent has its own signed entry in `machine_free_allow_proofdeps.txt`.
-CryptoVerification.LibsignalAesCbc.toLEBytes.eq_1 : [MODEL] Q1 realized equation lemma of toLEBytes (row 109, l.49): toLEBytes n x = List.ofFn fun j => x.extractLsb' (8 * j) 8; pure; realized in LibsignalSpqrV1.Init
-CryptoVerification.LibsignalTripleRatchet.SeedsLen32.eq_1 : [MODEL] Q1 realized equation lemma of SeedsLen32 (row 100, l.682): SeedsLen32 st = forall c in st.receiverChains, forall k in c.messageKeys, k.seed.length = 32; pure; realized in Proofs.TripleRatchet.Seeds.Model
+CryptoVerification.LibsignalAesCbc.toLEBytes.eq_1 : [MODEL] Q1 realized equation lemma of toLEBytes (row 109, l.61): toLEBytes n x = List.ofFn fun j => x.extractLsb' (8 * j) 8; pure; realized in LibsignalSpqrV1.Init
+CryptoVerification.LibsignalTripleRatchet.SeedsLen32.eq_1 : [MODEL] Q1 realized equation lemma of SeedsLen32 (row 100, l.565): SeedsLen32 st = forall c in st.receiverChains, forall k in c.messageKeys, k.seed.length = 32; pure; realized in Proofs.TripleRatchet.Seeds.Model
 CryptoVerification.LibsignalTripleRatchetRepr.addrBytes.eq_1 : [MODEL] Q1 realized equation lemma of addrBytes (row 109, l.431): addrBytes sid device = kindByte sid.1 :: (sid.2.toList ++ [device]); pure; realized in Proofs.E2E.Epochs
 CryptoVerification.LibsignalTripleRatchetRepr.decodeHex.eq_def : [MODEL] Q1 realized equation lemma of decodeHex (row 109, l.346): decodeHex x = match hi :: lo :: rest via hexNibble and decodeHex | _ => some []; pure; realized in Proofs.TripleRatchet.InImage.UuidTryParse.DecodeHex32
 CryptoVerification.LibsignalTripleRatchetRepr.kindByte.eq_1 : [MODEL] Q1 realized equation lemma of kindByte (row 109, l.427): kindByte pni = if pni = true then 1#8 else 0#8; pure; realized in Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccount
@@ -33,9 +37,9 @@ CryptoVerification.LibsignalTripleRatchetRepr.utf8.eq_1 : [MODEL] Q1 realized eq
 # declaration in the engine), states only the parent's defining equation (proof `Eq.refl`), and the parent
 # is signed `[SIGN]` in `Symbolic/scripts/machine_free_allow.txt` (loaded in every proof-dependency run).
 # Parents are defined in arm64-semantics Arm64/Trusted/ISA/State.lean at the engine pin above.
-Arm64.FsState.files.eq_1 : [MODEL] B4b realized equation lemma of Arm64.FsState.files (State.lean:362; [SIGN] machine_free_allow.txt l.51): fs.files path = fs.getEntry (normalizePath path); pure file-system lookup; type/value use only FsState, FsEntry, files, getEntry, normalizePath (all [SIGN]) and Init
-Arm64.normalizePath.eq_1 : [MODEL] B4b realized equation lemma of Arm64.normalizePath (State.lean:308; [SIGN] machine_free_allow.txt l.40): normalizePath path = (splitSlash path).filter (fun seg => !seg.isEmpty && seg != "."); pure; type/value use only FsPath, normalizePath, splitSlash (all [SIGN]) and Init
-Arm64.splitSlash.go.eq_2 : [MODEL] B4b realized equation lemma of Arm64.splitSlash.go (State.lean:293; [SIGN] machine_free_allow.txt l.42): go cur ('/' :: cs) = String.ofList cur.reverse :: go [] cs; pure; type/value use only splitSlash.go ([SIGN]) and Init
-Arm64.FsState.setEntry.eq_1 : [MODEL] B4b realized equation lemma of Arm64.FsState.setEntry (State.lean:358; [SIGN] machine_free_allow.txt l.50): fs.setEntry p e = { entries := fun q => if (q == p) = true then e else fs.entries q, stdin := fs.stdin, fds := fs.fds }; pure functional update; type/value use only FsState, FsState.mk, entries, stdin, fds, FsPath, FsEntry, setEntry (all [SIGN]) and Init
-Arm64.FsState.getEntry.eq_1 : [MODEL] B4b realized equation lemma of Arm64.FsState.getEntry (State.lean:354; [SIGN] machine_free_allow.txt l.49): fs.getEntry p = if List.isEmpty p = true then some FsEntry.dir else fs.entries p; pure lookup (CWD always dir); type/value use only FsState, FsPath, FsEntry, FsEntry.dir, entries, getEntry (all [SIGN]) and Init
-Arm64.FsState.setFile.eq_1 : [MODEL] B4b realized equation lemma of Arm64.FsState.setFile (State.lean:366; [SIGN] machine_free_allow.txt l.52): fs.setFile path e = fs.setEntry (normalizePath path) e; pure; type/value use only FsState, FsEntry, setFile, setEntry, normalizePath (all [SIGN]) and Init
+Arm64.FsState.files.eq_1 : [MODEL] B4b realized equation lemma of Arm64.FsState.files (State.lean:410; [SIGN] machine_free_allow.txt l.56): fs.files path = fs.getEntry (normalizePath path); pure file-system lookup; type/value use only FsState, FsEntry, files, getEntry, normalizePath (all [SIGN]) and Init
+Arm64.normalizePath.eq_1 : [MODEL] B4b realized equation lemma of Arm64.normalizePath (State.lean:356; [SIGN] machine_free_allow.txt l.45): normalizePath path = (splitSlash path).filter (fun seg => !seg.isEmpty && seg != "."); pure; type/value use only FsPath, normalizePath, splitSlash (all [SIGN]) and Init
+Arm64.splitSlash.go.eq_2 : [MODEL] B4b realized equation lemma of Arm64.splitSlash.go (State.lean:341; [SIGN] machine_free_allow.txt l.47): go cur ('/' :: cs) = String.ofList cur.reverse :: go [] cs; pure; type/value use only splitSlash.go ([SIGN]) and Init
+Arm64.FsState.setEntry.eq_1 : [MODEL] B4b realized equation lemma of Arm64.FsState.setEntry (State.lean:406; [SIGN] machine_free_allow.txt l.55): fs.setEntry p e = { entries := fun q => if (q == p) = true then e else fs.entries q, stdin := fs.stdin, fds := fs.fds }; pure functional update; type/value use only FsState, FsState.mk, entries, stdin, fds, FsPath, FsEntry, setEntry (all [SIGN]) and Init
+Arm64.FsState.getEntry.eq_1 : [MODEL] B4b realized equation lemma of Arm64.FsState.getEntry (State.lean:402; [SIGN] machine_free_allow.txt l.54): fs.getEntry p = if List.isEmpty p = true then some FsEntry.dir else fs.entries p; pure lookup (CWD always dir); type/value use only FsState, FsPath, FsEntry, FsEntry.dir, entries, getEntry (all [SIGN]) and Init
+Arm64.FsState.setFile.eq_1 : [MODEL] B4b realized equation lemma of Arm64.FsState.setFile (State.lean:414; [SIGN] machine_free_allow.txt l.57): fs.setFile path e = fs.setEntry (normalizePath path) e; pure; type/value use only FsState, FsEntry, setFile, setEntry, normalizePath (all [SIGN]) and Init

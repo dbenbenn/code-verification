@@ -58,42 +58,11 @@ def otccaGameAdIdeal [SampleableType Key] [DecidableEq AD] [DecidableEq C]
   let b' ← (simulateQ impl A).run' { key, b }
   return b == b'
 
-/-- OT-CCA advantage `Adv^{ot-cca}_{AE, ideal}(A)` with AD-dependent ideal ciphertexts. -/
-noncomputable def otccaAdvantageAdIdeal [SampleableType Key] [DecidableEq AD] [DecidableEq C]
-    (ae : AEADScheme Key AD M C) (ideal : AD → ProbComp C) (A : OTCCAAdversary AD M C) : ℝ≥0∞ :=
-  𝒟[ae.otccaGameAdIdeal ideal A].boolBias
-
-theorem otccaAdvantageWith_uniform [SampleableType Key] [DecidableEq AD] [DecidableEq C]
-    [SampleableType C] (ae : AEADScheme Key AD M C) (A : OTCCAAdversary AD M C) :
-    ae.otccaAdvantageAdIdeal (fun _ => $ᵗ C) A = ae.otccaAdvantage A := rfl
-
 end AEADScheme
 
 namespace FSAEAD
 
 variable {CK MK AD M C : Type}
-
-/-- ACD19 Thm 5 security bound (`Theorem5Statement`) with AD-dependent OT-CCA ideal ciphertexts
-`ideal`. -/
-def Theorem5StatementAdIdeal [DecidableEq AD] [DecidableEq M] [DecidableEq C] [SampleableType CK]
-    [SampleableType MK] (ae : AEADScheme MK (ℕ × AD) M C) (ideal : ℕ × AD → ProbComp C)
-    (G : ℕ → PRGScheme CK (CK × MK)) (maxSkip : ℕ)
-    (prgRed : ℕ → RatchetAdversary CK MK AD M C → PRGScheme.PRGAdversary (CK × MK))
-    (aeadRed : ℕ → RatchetAdversary CK MK AD M C → AEADScheme.OTCCAAdversary (ℕ × AD) M C) :
-    Prop :=
-  ∀ (A : RatchetAdversary CK MK AD M C) (q : ℕ),
-    MakesAtMostQueries A q →
-    advantage (fromAEADPRG ae G maxSkip) A ≤
-      2 * ∑ j ∈ Finset.range (2 * ((q + 1) * (maxSkip + 1))),
-        ((G (j / 2)).prgAdvantage (prgRed j A) + ae.otccaAdvantageAdIdeal ideal (aeadRed j A))
-
-theorem theorem5With_uniform [DecidableEq AD] [DecidableEq M] [DecidableEq C] [SampleableType CK]
-    [SampleableType MK] [SampleableType C] (ae : AEADScheme MK (ℕ × AD) M C)
-    (G : ℕ → PRGScheme CK (CK × MK)) (maxSkip : ℕ)
-    (prgRed : ℕ → RatchetAdversary CK MK AD M C → PRGScheme.PRGAdversary (CK × MK))
-    (aeadRed : ℕ → RatchetAdversary CK MK AD M C → AEADScheme.OTCCAAdversary (ℕ × AD) M C) :
-    Theorem5StatementAdIdeal ae (fun _ => $ᵗ C) G maxSkip prgRed aeadRed ↔
-      Theorem5Statement ae G maxSkip prgRed aeadRed := Iff.rfl
 
 end FSAEAD
 

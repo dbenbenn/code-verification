@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Specifications.Refinement.TraceExplanation
-public import Symbolic.Proofs.SpecLemmas.CliPureBytes
+public import Symbolic.Proofs.SpecLemmas.CliPureBytes -- proof-setup: allow-public-import
 public import ProofLib.Lemmas
 import Symbolic.Proofs.Refinement.Composed.Cli.Model -- shake: keep
 
@@ -22,7 +22,7 @@ session specification's `encodeRecord` on canonical sessions without pending pre
 (`recordBytes_sessionToRecordRec_eq_encodeRecord`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -250,21 +250,21 @@ theorem encMessageKey_length_le (mk : CryptoGames.LibsignalSession.MessageKeyGen
   rw [List.length_append]
   omega
 
-def senderChainToChainRec (sc : CryptoGames.LibsignalSession.SenderChain) :
+@[expose] def senderChainToChainRec (sc : CryptoGames.LibsignalSession.SenderChain) :
     DY.Libsignal.Rust.ChainRec where
   senderRatchetKey := sc.ratchetKey.publicKey.serialize
   senderRatchetKeyPrivate := sc.ratchetKey.privateKey.bytes.toList
   chainKey := some (sc.chainKey.index, CryptoGames.HMAC.keyToBytes32 sc.chainKey.key)
   messageKeys := []
 
-def receiverChainToChainRec (rc : CryptoGames.LibsignalSession.ReceiverChain) :
+@[expose] def receiverChainToChainRec (rc : CryptoGames.LibsignalSession.ReceiverChain) :
     DY.Libsignal.Rust.ChainRec where
   senderRatchetKey := rc.senderRatchetKey.serialize
   senderRatchetKeyPrivate := []
   chainKey := rc.chainKey.map fun ck => (ck.index, CryptoGames.HMAC.keyToBytes32 ck.key)
   messageKeys := rc.messageKeys.map fun mk => (mk.counter, mk.seed)
 
-def sessionToSessionRec (s : CryptoGames.LibsignalSessionApi.Session (List (BitVec 8))) :
+@[expose] def sessionToSessionRec (s : CryptoGames.LibsignalSessionApi.Session (List (BitVec 8))) :
     DY.Libsignal.Rust.SessionRec where
   sessionVersion := s.state.sessionVersion
   localIdentityPublic := s.state.localIdentity.serialize
@@ -281,7 +281,7 @@ def sessionToSessionRec (s : CryptoGames.LibsignalSessionApi.Session (List (BitV
   pendingKyberPreKey := none
   pqRatchetState := s.state.pqRatchetState
 
-def sessionToRecordRec (s : CryptoGames.LibsignalSessionApi.Session (List (BitVec 8))) :
+@[expose] def sessionToRecordRec (s : CryptoGames.LibsignalSessionApi.Session (List (BitVec 8))) :
     DY.Libsignal.Rust.RecordRec where
   current := sessionToSessionRec s
   previous := []

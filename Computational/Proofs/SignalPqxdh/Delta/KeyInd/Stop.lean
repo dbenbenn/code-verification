@@ -10,6 +10,7 @@ limitations under the License.
 module
 
 public import Computational.Proofs.SignalPqxdh.Delta.KeyIndDefs
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingF -- proof-setup: allow-public-import
 
 /-!
 # PQXDH δ key indistinguishability: lazy stop event
@@ -18,7 +19,7 @@ public import Computational.Proofs.SignalPqxdh.Delta.KeyIndDefs
 Gap-DH bad event, an abort, or the KEM correctness bad event `hasBadKemCorrRecords`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

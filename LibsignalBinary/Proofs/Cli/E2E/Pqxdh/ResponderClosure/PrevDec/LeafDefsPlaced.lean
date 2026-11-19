@@ -10,13 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafDefs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafVarintPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafReservePlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafVarintPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafReservePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
 import LibsignalBinary.Proofs.VarintBridge
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
 
 /-!
 # Relocatable Leaf Callee Contracts for Inlined `SessionStructure::decode`
@@ -25,7 +26,7 @@ Relocatable (`[LibsignalPlacement]`) callee contract propositions (`SkipField6Pl
 Block `510` and `GrowOneMessageKeyPlacedOkExtX` on Block `519`) on `lsProg_518 ext`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,7 +46,7 @@ open Proofs.libsignal.Stage1X
 
 /-- Relocatable `[LibsignalPlacement]` contract for `prost::encoding::skip_field::<&mut &[u8]> [local#5]`
 (Block `510`, `(blkPl_510).base = lsmpl.base 510`) on `lsProg_518 ext`. -/
-def SkipField6PlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def SkipField6PlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 510)
     (withLsCl lsmpl (skipField3Spec A))
@@ -53,7 +54,7 @@ def SkipField6PlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
 /-- Relocatable `[LibsignalPlacement]` contract for
 `<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::chain::MessageKey>>::grow_one`
 (Block `519`, `(blkPl_519).base = lsmpl.base 519`) on `lsProg_518 ext`. -/
-def GrowOneMessageKeyPlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def GrowOneMessageKeyPlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 519)
     (withLsCl lsmpl (growOneChainSpecX A))

@@ -11,15 +11,19 @@ module
 
 meta import Lean -- shake: keep
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSlice
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSlice
 import LibsignalBinary.Proofs.TripleRatchet.InImage.DecodeErrorFrom.Core
 import ProofLib.SepLogic.WP.Apply
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
 
 /-!
 # Budget-Threaded Verification of `prost::encoding::varint::decode_varint_slice`
@@ -28,7 +32,7 @@ Relocatable `RustCliAllocBudget`-threaded verification of `<DecodeError as From<
 (block 261) and `prost::encoding::varint::decode_varint_slice` (block 76).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

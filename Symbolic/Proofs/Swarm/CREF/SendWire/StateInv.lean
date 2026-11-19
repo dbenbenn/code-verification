@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.SendWire.ModelSteps
+public import Symbolic.Proofs.Swarm.CREF.SendWire.ModelSteps -- proof-setup: allow-public-import
 import Batteries.Data.UInt
 import DY.Bytes.Basic
 import DY.Trace.Basic
@@ -21,7 +21,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
@@ -45,7 +45,7 @@ Proves `TRKeyShape`, `isCurrentSnapshot`, `TRNsBound`, `bobDoneBaseKeys`, and vi
 across `Move.encryptAbort` and `Move.encrypt` (with or without prekey wrapping).
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

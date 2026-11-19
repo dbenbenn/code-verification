@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard17
+meta import GeneratedLean.LibsignalSessionPlacedObjShard18
 
 /-!
 # SPQR V1 Leaf Transitions: Relocatable Block Programs (Blocks `350`, `369`)
@@ -22,7 +24,7 @@ Generates `[LibsignalPlacement]` `Program` reflections (`gen_ls_blk`) for Block 
 (`<NoHeaderReceived>::recv_hdr_chunk`, 325 instructions).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

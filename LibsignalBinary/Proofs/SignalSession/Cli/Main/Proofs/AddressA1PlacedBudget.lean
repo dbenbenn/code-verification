@@ -11,15 +11,21 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooksPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooksPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+public import VerifiedLibraries.Musl.Spec
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable `memrchr` Hook Discharge for `signal_session::address`
@@ -29,7 +35,7 @@ import Arm64.Trusted.Spec.SepLogic
 against `CliRun.memrchrHook`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -96,28 +102,6 @@ theorem address_placed_ok_a1_of_hooks [LibsignalPlacement]
     subroutine_ok (lsProg_617 H) (lsmpl.base 580)
       (withLsRoCl lsmpl (addressSpec A lim uuidTryParse resStack)) := by
   refine address_placed_ok hFs ?_ hres hres64
-  have hsat : HookSat H lsMemrchrSym (memrchrSpec extHookStack) :=
-    ⟨memrchrHook, hext, memrchrHook_ok extHookStack⟩
-  have hsat_vm : HookSat H lsMemrchrSym (withVmPreserved (memrchrSpec extHookStack)) :=
-    hookSat_withVmPreserved hsat (fun f hf s => by
-      cases hext.symm.trans hf
-      exact memrchrHook_vmPreserved s)
-  have hplain : subroutine_ok (lsProg_580 H) (lsρ lsMemrchrSym)
-      (withVmPreserved (memrchrSpec extHookStack)) := by
-    dsimp only [lsProg_580]
-    exact ls_hook_ok_ultra_of_mem hsat_vm (by decide)
-  exact subroutine_ok_rocl_of_plain hplain
-
-theorem address_placed_ok_a1_rocl_of_hooks [LibsignalPlacement] {prog : Program} {i : Nat}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} [IsLsBlockProg prog i H] {resStack : Nat}
-    (hFs : AllocContractsFsPlaced A lim H)
-    (hext : H lsMemrchrSym = some memrchrHook)
-    (hres : 0xB0 + extHookStack ≤ resStack) (hres64 : resStack ≤ 2 ^ 63)
-    (hi : i < 619 := by decide) :
-    subroutine_ok prog (lsmpl.base 580)
-      (withLsRoCl lsmpl (addressSpec A lim uuidTryParse resStack)) := by
-  refine address_placed_ok_rocl (prog := prog) (i := i) hFs ?_ hres hres64 hi
   have hsat : HookSat H lsMemrchrSym (memrchrSpec extHookStack) :=
     ⟨memrchrHook, hext, memrchrHook_ok extHookStack⟩
   have hsat_vm : HookSat H lsMemrchrSym (withVmPreserved (memrchrSpec extHookStack)) :=

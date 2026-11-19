@@ -9,19 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitSubBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitSubBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Shared Loop Frame & Call Wrappers for `spqr::decode_state` (Block `325`)
@@ -31,7 +32,7 @@ error-frame folding lemmas, and provides panic-aware relocatable call wrappers (
 `skip_field`, `bytes::merge`, and `ChainParams::merge`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -514,7 +515,7 @@ theorem SepWPpIPlaced.call_skipField3 [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Envelope-parameterized budget-threaded contract of `prost::encoding::bytes::merge` (`Block 290`),
 generalizing `SignedDepsBudget.bytesMerge3RawBudgetSpec` over `PreEnv` / `PostEnv`. -/
-def bytesMerge3RawBudgetSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def bytesMerge3RawBudgetSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (PreEnv PostEnv : BytesMergeGhost → List AllocEvent → Prop) :
     Spec (BytesMergeGhost × M.σ) where
   pre := fun (x, st) s =>

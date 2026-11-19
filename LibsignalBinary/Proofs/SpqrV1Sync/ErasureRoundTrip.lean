@@ -22,7 +22,7 @@ containing at least `needed msg.length 0` distinct chunk indices (in arbitrary o
 arbitrary duplicates) to a fresh `PolyDecoder` recovers `some msg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -1924,26 +1924,6 @@ private theorem addChunk_spec (msg : List (BitVec 8)) (S : Finset Nat) (dec : Po
     (fun j hj pt hpt => by simpa using hdec.atNode j hj pt hpt)
     (fun j hj => by simpa using hdec.enough j hj)
 
-/-- Adding honest chunks of `msg` preserves `DecInv` and accumulates their indices. -/
-theorem foldl_addChunk_spec (msg : List (BitVec 8)) (_hlen : msg.length ≤ 2 ^ 20) :
-    ∀ (rcv : List Chunk) (S : Finset Nat) (dec : PolyDecoder), DecInv msg S dec →
-      (∀ c ∈ rcv, c.data = chunkData msg c.index) →
-      ∃ dec', rcv.foldlM PolyDecoder.addChunk dec = .ok dec' ∧
-        DecInv msg (S ∪ (rcv.map fun c => c.index.toNat).toFinset) dec'
-  | [], S, dec, hdec, _ => ⟨dec, rfl, by simpa using hdec⟩
-  | c :: rcv, S, dec, hdec, hhon => by
-    obtain ⟨dec1, h1, hdec1⟩ := addChunk_spec msg S dec hdec c (hhon c List.mem_cons_self)
-    obtain ⟨dec', hrest, hdec'⟩ :=
-      foldl_addChunk_spec msg _hlen rcv (insert c.index.toNat S) dec1 hdec1
-        (fun c' hc' => hhon c' (List.mem_cons_of_mem c hc'))
-    have hfold : (c :: rcv).foldlM PolyDecoder.addChunk dec = .ok dec' := by
-      simp only [List.foldlM_cons, h1, bind, Except.bind, hrest]
-    have hset_eq : insert c.index.toNat S ∪ (rcv.map fun c => c.index.toNat).toFinset =
-        S ∪ ((c :: rcv).map fun c => c.index.toNat).toFinset := by
-      ext x; simp only [Finset.mem_union, Finset.mem_insert, List.map_cons, List.toFinset_cons]
-      tauto
-    exact ⟨dec', hfold, hset_eq ▸ hdec'⟩
-
 private theorem collectPointsVecs_enough (msg : List (BitVec 8)) (S : Finset Nat) (dec : PolyDecoder)
     (hdec : DecInv msg S dec) (henough : needed msg.length 0 ≤ S.card) :
     ∀ (rem i : Nat) (pv : List (List Pt)), i + rem = 16 → pv.length = i →
@@ -2111,33 +2091,8 @@ private theorem decodedMessage_spec (msg : List (BitVec 8)) (heven : msg.length 
   simp only [hdec.notComplete, Bool.false_eq_true, ↓reduceIte, hdec.len, hcoll, bind, Except.bind,
     hdec.ptsNeeded, husize, hloop, pure, Except.pure]
 
-private theorem new_decInv (msg : List (BitVec 8)) (heven : msg.length % 2 = 0) :
-    ∃ dec0, PolyDecoder.new msg.length = .ok (.ok dec0) ∧ DecInv msg ∅ dec0 := by
-  unfold PolyDecoder.new PolyDecoder.newWithPolyCount
-  have hev : (msg.length % 2 != 0) = false := by simp [heven]
-  simp only [hev, Bool.false_eq_true, ↓reduceIte, pure, Except.pure]
-  refine ⟨_, rfl, ⟨rfl, rfl, by simp, ?_, ?_, ?_, ?_⟩⟩
-  · intro j _; rw [List.getElem_replicate]; simp [SortedSetPt.new]
-  · intro j _ pt hpt; rw [List.getElem_replicate] at hpt; simp [SortedSetPt.new] at hpt
-  · intro j _ pt hpt; rw [List.getElem_replicate] at hpt; simp [SortedSetPt.new] at hpt
-  · intro j _; rw [List.getElem_replicate]; simp [SortedSetPt.new]
-
-/-- A fresh decoder receiving honest chunks with at least `needed msg.length 0` distinct indices
-reconstructs `some msg`. -/
-theorem decode_honest_chunks (msg : List (BitVec 8)) (heven : msg.length % 2 = 0)
-    (hlen : msg.length ≤ 2 ^ 20) (rcv : List Chunk)
-    (hhonest : ∀ c ∈ rcv, c.data = chunkData msg c.index)
-    (henough : needed msg.length 0 ≤ (rcv.map fun c => c.index.toNat).toFinset.card) :
-    ∃ dec0 dec, PolyDecoder.new msg.length = .ok (.ok dec0) ∧
-      rcv.foldlM PolyDecoder.addChunk dec0 = .ok dec ∧
-      dec.decodedMessage = .ok (some msg) := by
-  obtain ⟨dec0, hnew, hdec0⟩ := new_decInv msg heven
-  obtain ⟨dec, hfold, hdec⟩ := foldl_addChunk_spec msg hlen rcv ∅ dec0 hdec0 hhonest
-  rw [Finset.empty_union] at hdec
-  exact ⟨dec0, dec, hnew, hfold, decodedMessage_spec msg heven hlen _ dec hdec henough⟩
-
 /-- Emits `n` consecutive chunks from `PolyEncoder.nextChunk`. -/
-def runChunks : Nat → PolyEncoder → Except PolyPanic (PolyEncoder × List Chunk)
+@[expose] def runChunks : Nat → PolyEncoder → Except PolyPanic (PolyEncoder × List Chunk)
   | 0, e => .ok (e, [])
   | n + 1, e => do
     let (e1, c) ← e.nextChunk
@@ -2145,7 +2100,7 @@ def runChunks : Nat → PolyEncoder → Except PolyPanic (PolyEncoder × List Ch
     return (e2, c :: cs)
 
 /-- The `n` consecutive 16-bit chunk indices emitted by `runChunks n` starting from counter `i`. -/
-def honestIdxs : Nat → BitVec 32 → List (BitVec 16)
+@[expose] def honestIdxs : Nat → BitVec 32 → List (BitVec 16)
   | 0, _ => []
   | n + 1, i => i.setWidth 16 :: honestIdxs n (i + 1#32)
 
@@ -2161,26 +2116,5 @@ theorem runChunks_spec (msg : List (BitVec 8)) (hlen : msg.length ≤ 2 ^ 20) :
     obtain ⟨e2, hrun, he2⟩ := runChunks_spec msg hlen n e1 he1
     simp only [runChunks, honestIdxs, List.map_cons, hnext, bind, Except.bind, hrun, he1_idx, pure, Except.pure]
     exact ⟨e2, rfl, he2⟩
-
-/-- End-to-end erasure-code round-trip: any sublist of emitted chunks containing at least
-`needed msg.length 0` distinct indices decodes to `some msg`. -/
-theorem encode_decode_roundtrip (msg : List (BitVec 8)) (heven : msg.length % 2 = 0)
-    (hlen : msg.length ≤ 2 ^ 20) (n : Nat) :
-    ∃ e0 e cs, PolyEncoder.encodeBytes msg = .ok (.ok e0) ∧ runChunks n e0 = .ok (e, cs) ∧
-      cs = (honestIdxs n 0#32).map (fun idx => { index := idx, data := chunkData msg idx }) ∧
-      ∀ rcv : List Chunk, (∀ c ∈ rcv, c ∈ cs) →
-        needed msg.length 0 ≤ (rcv.map fun c => c.index.toNat).toFinset.card →
-        ∃ dec0 dec, PolyDecoder.new msg.length = .ok (.ok dec0) ∧
-          rcv.foldlM PolyDecoder.addChunk dec0 = .ok dec ∧
-          dec.decodedMessage = .ok (some msg) := by
-  have henc := encodeBytes_spec msg heven hlen
-  set e0 : PolyEncoder := { idx := 0#32, s := .points (msgPoints msg) }
-  obtain ⟨e, hrun, _⟩ := runChunks_spec msg hlen n e0 (Or.inl rfl)
-  refine ⟨e0, e, _, henc, hrun, rfl, ?_⟩
-  intro rcv hsub henough
-  refine decode_honest_chunks msg heven hlen rcv ?_ henough
-  intro c hc
-  rcases List.mem_map.mp (hsub c hc) with ⟨idx, _, rfl⟩
-  rfl
 
 end CryptoVerification.SpqrV1Sync.Erasure

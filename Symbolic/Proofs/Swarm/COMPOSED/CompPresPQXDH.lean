@@ -42,7 +42,7 @@ Proves preservation of `SpqrInv` across the network, identity registration, prek
 `DY.Libsignal.Composed`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 namespace Symbolic.Swarm.COMPOSED.CompPresPQXDH
 open DY DY.Comparse
@@ -1087,7 +1087,7 @@ theorem bind_lookupIdentity_at {Inv : ExecTrace → Prop} {α : Type}
       rw [run_bind_snd, Traceful.run_failure]
       exact hInv
 
-def aliceOut (tr : ExecTrace) (ikA ikBPk spkPk pqPk : Bytes) (opk : Option Bytes) :
+@[expose] def aliceOut (tr : ExecTrace) (ikA ikBPk spkPk pqPk : Bytes) (opk : Option Bytes) :
     AliceHandshakeOut :=
   let ek := rnd tr.length 32
   let e := rnd (tr.length + 1) 32

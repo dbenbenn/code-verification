@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.ConstPolys
+public import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.ConstPolys -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.LagrangeSum
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

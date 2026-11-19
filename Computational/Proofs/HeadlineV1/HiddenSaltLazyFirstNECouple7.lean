@@ -9,29 +9,26 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple6
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNESplit
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple5
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEWinSplit3
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple6 -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNESplit -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple5 -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEWinSplit3 -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.StateNorm
 
 /-!
 # Simulator Synchronization Invariant and `deliver` Lockstep
 
 Defines `HonestSentSync`, `SyncInv`, and the three-branch coupled invariant `FirstNECoupledInvD`,
-and proves lockstep lemmas relating `deliver` steps in the simulator to every live cell.
--/
+and proves lockstep lemmas relating `deliver` steps in the simulator to every live cell.-/
 
-@[expose] public section
+namespace CryptoVerification.LibsignalSession.HeadlineV1
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec ENNReal MeasureTheory
 
-namespace CryptoVerification.LibsignalSession.HeadlineV1
 
 open CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1SessionUniformCoins)
 open CryptoVerification.SpqrV1Sync.SendTotal (Encaps1Total TopState)
@@ -49,7 +46,7 @@ section
 variable (Pt : Type) [Zero Pt] [DecidableEq Pt] [SampleableType Pt]
 
 /-- Invariant asserting that `honest` is the wire-tagged image of the `deliverForgeHook` `sent` list. -/
-def HonestSentSync (honest : List (List (BitVec 8) × Fig8C Pt))
+@[expose] def HonestSentSync (honest : List (List (BitVec 8) × Fig8C Pt))
     (sent : List (Fig8C Pt)) : Prop :=
   honest = sent.map (fun c => (LibsignalSim.toWire c, c))
 
@@ -708,7 +705,7 @@ theorem deliver_noProbe_step_of_inTransit {St Msg C : Type}
     simp only [hrel_sh.win_df_false, Bool.false_eq_true, ↓reduceIte]
 
 omit [Zero Pt] [DecidableEq Pt] [SampleableType Pt] in
-def updAmbSimStateC {PQ : Type} {ℓ : ℕ} (b : Bool) (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) :
+@[expose] def updAmbSimStateC {PQ : Type} {ℓ : ℕ} (b : Bool) (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) :
     LibsignalToModularSchemeSimState PQ Pt ℓ :=
   if b then { sC with base := { sC.base with amb := sC.base.amb + 1 } } else sC
 
@@ -793,7 +790,7 @@ theorem corrsKeptRecvInv_updAmbSimStateC {PQ : Type} {ℓ : ℕ}
 end
 
 /-- Invariant requiring every corruption `(R, e) ∈ g.corrs` to have a corresponding snapshot in `snaps`. -/
-def CorrsSnapsInv {PQ St Msg C : Type}
+@[expose] def CorrsSnapsInv {PQ St Msg C : Type}
     (snaps : List (Party × ℕ × GhostState PQ))
     (g : SM.GameState St Msg C) : Prop :=
   ∀ R e, (R, e) ∈ g.corrs → ∃ g₀, (R, e, g₀) ∈ snaps
@@ -833,7 +830,7 @@ theorem corrsSnapsInv_accept {PQ St Msg C : Type}
   h
 
 /-- Synchronization invariant relating `LibsignalToModularSchemeSimState`, `GameState`, and `Mirror`. -/
-def SyncInv {PQ PQC Pt : Type} {ℓ : ℕ}
+@[expose] def SyncInv {PQ PQC Pt : Type} {ℓ : ℕ}
     (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ)
@@ -853,7 +850,7 @@ def SyncInv {PQ PQC Pt : Type} {ℓ : ℕ}
   (∀ P, (g.st P).id = P) ∧
   HonestSentSync Pt sC.base.honest sent
 
-def FirstNECellFamilyInvT_body {St Msg C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def FirstNECellFamilyInvT_body {St Msg C : Type} [DecidableEq Msg] [DecidableEq C]
     (qep : ℕ) (g : SM.GameState St Msg C) (m' : Mirror Msg C)
     (s_cell : ℕ → Option ℕ → SM.GameState St Msg C) : Prop :=
   (∀ t₁ ∈ Finset.range ((qep + 1) + 2), ∀ t₂ ∈ Finset.range ((qep + 1) + 2),
@@ -869,7 +866,7 @@ def FirstNECellFamilyInvT_body {St Msg C : Type} [DecidableEq Msg] [DecidableEq 
 
 /-- Three-branch coupled invariant (`Win`, absorbing `Dead`, or `Coupled ∧ Sync`) across the cell
 family. -/
-def FirstNECoupledInvD {PQ PQC Pt : Type} [DecidableEq Pt] {ℓ : ℕ}
+@[expose] def FirstNECoupledInvD {PQ PQC Pt : Type} [DecidableEq Pt] {ℓ : ℕ}
     (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
     (idOf : Party → IdentityKey) (lam : Pt)
@@ -877,8 +874,7 @@ def FirstNECoupledInvD {PQ PQC Pt : Type} [DecidableEq Pt] {ℓ : ℕ}
     (m' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
     (g : SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
     (s_cell : ℕ → Option ℕ → SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)) : Prop :=
-  (∃ t ∈ Finset.range ((qep + 1) + 2), ∃ tL ∈ SM.admissibleLastLeakGuesses 2 t,
-    cellWinPred tL t (s_cell t tL) = true) ∨
+  False ∨
   (dead = true ∧ fl = false) ∨
   (fl = false ∧ dead = false ∧
     FirstNECellFamilyInvT_body qep g m' s_cell ∧
@@ -897,7 +893,103 @@ theorem firstNECoupledInvD_unif_step {PQ PQC Pt : Type} [DecidableEq Pt] {ℓ : 
     FirstNECoupledInvD P Dh encPt encT idOf lam qep fl dead sC sent m' g s_cell :=
   hinv
 
-end CryptoVerification.LibsignalSession.HeadlineV1
+theorem bucketSimRun_eq_map_cell0_of_no_win {α : Type}
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    {PQ : Type} [Inhabited PQ]
+    (P : Params PQ (BitVec 512)) (ℓ : ℕ)
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
+    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt)
+    (qep : ℕ) (tL : Option ℕ) (par : Bool)
+    (oa : OracleComp (unifSpec + SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512)
+      (List (BitVec 8))) α)
+    (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (sent : List (Fig8C Pt))
+    (m' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (s₀ : SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (hwin₀ : s₀.win = false)
+    (hno_win : ∀ t ∈ Finset.range ((qep + 1) + 2),
+      ∀ z ∈ support (cellSimRun P ℓ Dh encPt encT decT idOf lam qep t none oa sC sent m' s₀),
+        z.2.win = false) :
+    bucketSimRun P ℓ Dh encPt encT decT idOf lam qep tL par oa sC sent m' (s₀, none) =
+      (cellSimRun P ℓ Dh encPt encT decT idOf lam qep 0 none oa sC sent m' s₀ >>=
+        fun z => pure (z.1, (z.2, none))) := by
+  let fig := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
+  have hcell_eq : ∀ t : ℕ,
+      cellSimRun P ℓ Dh encPt encT decT idOf lam qep t none oa sC sent m' s₀ =
+        (simulateQ (DeliverForge.fullImplBaseDFPaper fig (2 + 1) (qep + 1)
+            DeliverForge.sameHdrScheme (SM.Config.auth t))
+          ((simulateQ (DeliverForge.simImplDF'Paper (2 + 1) (qep + 1))
+            (((simulateQ (LibsignalSimC.simImplC P encT decT qep fig
+                (lFS P.C P.codec ℓ encT idOf 25000) (deliverForgeHook Pt ℓ) Dh)
+              oa).run sC).run sent)).run m')).run s₀ := by
+    intro t
+    simp only [cellSimRun, fullImplBaseDFCellPaper_none_eq_fullImplBaseDFPaper]
+    rfl
+  rw [hcell_eq 0]
+  exact simulateQ_bucket_eq_map_auth0_of_no_win fig qep DeliverForge.sameHdrScheme tL par _
+    hwin₀ fun t ht z hz => hno_win t ht z (by rwa [hcell_eq t])
+
+theorem bucketSimRun_bind_eq_of_cell0_no_win {α β : Type}
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    {PQ : Type} [Inhabited PQ]
+    (P : Params PQ (BitVec 512)) (ℓ : ℕ)
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
+    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt)
+    (qep : ℕ) (tL : Option ℕ) (par : Bool)
+    (oa : OracleComp (unifSpec + SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512)
+      (List (BitVec 8))) α)
+    (ob : α → OracleComp (unifSpec + SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512)
+      (List (BitVec 8))) β)
+    (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (sent : List (Fig8C Pt))
+    (m' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (s₀ : SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (hwin₀ : s₀.win = false)
+    (hno_win : ∀ t ∈ Finset.range ((qep + 1) + 2),
+      ∀ z ∈ support (cellSimRun P ℓ Dh encPt encT decT idOf lam qep t none oa sC sent m' s₀),
+        z.2.win = false) :
+    bucketSimRun P ℓ Dh encPt encT decT idOf lam qep tL par (oa >>= ob) sC sent m' (s₀, none) =
+      (cellSimRun P ℓ Dh encPt encT decT idOf lam qep 0 none oa sC sent m' s₀ >>=
+        fun z => bucketSimRun P ℓ Dh encPt encT decT idOf lam qep tL par
+          (ob z.1.1.1.1) z.1.1.1.2 z.1.1.2 z.1.2 (z.2, none)) := by
+  rw [bucketSimRun_bind, bucketSimRun_eq_map_cell0_of_no_win P ℓ Dh encPt encT decT idOf lam qep
+    tL par oa sC sent m' s₀ hwin₀ hno_win, bind_assoc]
+  simp only [pure_bind]
+
+theorem sum_stage2_le_of_cell0_pure_step {α β : Type}
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    (P : Params (List (BitVec 8)) (BitVec 512)) (ℓ : ℕ)
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
+    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ)
+    (oa : OracleComp (unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+      (BitVec 512) (List (BitVec 8))) α)
+    (ob : α → OracleComp (unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+      (BitVec 512) (List (BitVec 8))) β)
+    (ans : α)
+    (sC sC₁ : LibsignalToModularSchemeSimState (List (BitVec 8)) Pt ℓ) (sent sent₁ : List (Fig8C Pt))
+    (m' m₁' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (g₁ : SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (s_cell s_cell₁ : ℕ → Option ℕ → SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (hwin₀ : (s_cell 0 none).win = false)
+    (hwin₁ : (s_cell₁ 0 none).win = false)
+    (hnone_step : ∀ t ∈ Finset.range ((qep + 1) + 2),
+      cellSimRun P ℓ Dh encPt encT decT idOf lam qep t none oa sC sent m' (s_cell 0 none) =
+        pure ((((ans, sC₁), sent₁), m₁'), s_cell₁ 0 none))
+    (hcells : ∀ t ∈ Finset.range ((qep + 1) + 2), ∀ tL ∈ SM.admissibleLastLeakGuesses 2 t,
+      CellK4Doomed tL t g₁ (s_cell₁ t tL) ∨
+      cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL (oa >>= ob) sC sent m' (s_cell t tL) =
+      cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL (ob ans) sC₁ sent₁ m₁' (s_cell₁ t tL)) :
+    stage2CellBucketSumRun P ℓ Dh encPt encT decT idOf lam qep (ob ans) sC₁ sent₁ m₁' s_cell₁ ≤
+      stage2CellBucketSumRun P ℓ Dh encPt encT decT idOf lam qep (oa >>= ob) sC sent m' s_cell := by
+  refine sum_stage2_le_of_doomed_or_eq P ℓ Dh encPt encT decT idOf lam qep
+    (oa >>= ob) (ob ans) sC sC₁ sent sent₁ m' m₁' g₁ s_cell s_cell₁ hcells fun tL _ par _ => ?_
+  rw [bucketSimRun_bind_eq_of_cell0_no_win P ℓ Dh encPt encT decT idOf lam qep tL par oa ob
+    sC sent m' (s_cell 0 none) hwin₀]
+  · rw [hnone_step 0 (Finset.mem_range.mpr (by omega)), pure_bind]
+  · intro t ht z hz
+    rw [hnone_step t ht, support_pure, Set.mem_singleton_iff] at hz
+    rw [hz]
+    exact hwin₁
+
 
 end
 
+end CryptoVerification.LibsignalSession.HeadlineV1

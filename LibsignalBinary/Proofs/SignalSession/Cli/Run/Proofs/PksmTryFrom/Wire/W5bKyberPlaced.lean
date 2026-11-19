@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKyber
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5aBaseKeyPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedB
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKyber
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5aBaseKeyPlaced
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedB -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import ProofLib.FsTrace
 
 /-!
 # Relocatable `[LibsignalPlacement]` Kyber Exit States and Segment `+0x684 → +0x830`
@@ -24,7 +25,7 @@ Defines `[LibsignalPlacement]` `KyberExitA1cStatePlaced`, `KyberExitA24StatePlac
 `post_seg2_1b4_to_360_placed_wp` (`+0x684 → +0x830`) on `preKeyPlacedProg H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -60,7 +61,7 @@ attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_add_neg96_eq_hsp_592
 
 /-- `[LibsignalPlacement]` Error-tail entry at `+0xa1c` (`2588`). -/
-def KyberExitA1cStatePlaced [LibsignalPlacement] (s0 : State)
+@[expose] def KyberExitA1cStatePlaced [LibsignalPlacement] (s0 : State)
     (sp' sret len ptr0 kyberCap kyberPtr ikCap msgCap : BitVec 64) (vb : BitVec 8)
     (sf : State) : Prop :=
   PostEpilogueStatePlaced s0 sp' sf ∧
@@ -71,7 +72,7 @@ def KyberExitA1cStatePlaced [LibsignalPlacement] (s0 : State)
   sf.readReg64 .x21 = ptr0 ∧ sf.readReg64 .x20 = len ∧ sf.readReg64 .x19 = sret
 
 /-- `[LibsignalPlacement]` Error-tail entry at `+0xa24` (`2596`). -/
-def KyberExitA24StatePlaced [LibsignalPlacement] (s0 : State)
+@[expose] def KyberExitA24StatePlaced [LibsignalPlacement] (s0 : State)
     (sp' sret len ptr0 ikCap msgCap : BitVec 64) (vb : BitVec 8)
     (sf : State) : Prop :=
   PostEpilogueStatePlaced s0 sp' sf ∧
@@ -80,12 +81,12 @@ def KyberExitA24StatePlaced [LibsignalPlacement] (s0 : State)
   sf.readReg64 .x21 = ptr0 ∧ sf.readReg64 .x20 = len ∧ sf.readReg64 .x19 = sret
 
 /-- `[LibsignalPlacement]` Allocation-failure panic entry at `+0xa74` (`2676`). -/
-def KyberExitA74StatePlaced [LibsignalPlacement] (s0 : State) (sp' : BitVec 64) (sf : State) : Prop :=
+@[expose] def KyberExitA74StatePlaced [LibsignalPlacement] (s0 : State) (sp' : BitVec 64) (sf : State) : Prop :=
   sf.sp = sp' ∧ sf.spAligned = true ∧ LibsignalCodeRoLoaded lsmpl sf.mem ∧
   allocFailedIn s0 sf ∧ s0.trace <+: sf.trace
 
 /-- `[LibsignalPlacement]` Allocation-failure panic entry at `+0xa80` (`2688`). -/
-def KyberExitA80StatePlaced [LibsignalPlacement] (s0 : State) (sp' : BitVec 64) (sf : State) : Prop :=
+@[expose] def KyberExitA80StatePlaced [LibsignalPlacement] (s0 : State) (sp' : BitVec 64) (sf : State) : Prop :=
   sf.sp = sp' ∧ sf.spAligned = true ∧ LibsignalCodeRoLoaded lsmpl sf.mem ∧
   allocFailedIn s0 sf ∧ s0.trace <+: sf.trace
 

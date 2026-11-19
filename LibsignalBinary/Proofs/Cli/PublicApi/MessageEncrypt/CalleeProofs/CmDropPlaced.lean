@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleeProofs.CmDrop
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleeProofs.CmDrop
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
@@ -18,6 +18,8 @@ import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 
 /-!
 # Relocatable CLI `drop_glue<CiphertextMessage>` Proof
@@ -26,7 +28,7 @@ Verifies `drop_glue<CiphertextMessage>` (`blkPl_438`) on `lsProg_438 H` under
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.Cli.LibsignalPublicApi.MessageEncrypt.Pf.CmDrop
 

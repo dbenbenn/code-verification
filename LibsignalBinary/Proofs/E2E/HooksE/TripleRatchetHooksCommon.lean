@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.HooksE.Common
+public import LibsignalBinary.Proofs.E2E.HooksE.Common -- proof-setup: allow-public-import
 import ProofLib.VCGen
 import LibsignalBinary.Proofs.ConsumeMessageKey.NonVacProofs.StateWitness -- shake: keep
 
@@ -20,7 +20,7 @@ Proves `HookOk` for the allocator, AES-256-CBC, and formatting hooks in
 `TripleRatchetHooks C A0 spqrModelE (absE C env)`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.HooksE
 

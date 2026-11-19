@@ -16,7 +16,7 @@ public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrf
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfMk -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyAeadCpa -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfHmac -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SplitRo.AvlRoTableSpec -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SplitRo.AvlRoTableSpec
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreK -- proof-setup: allow-public-import
 
 /-!
@@ -90,42 +90,6 @@ theorem authSimPred_partition {S : Setup} (t : AuthQuery S) :
       (if authSimPred S 1 t then 1 else 0) +
       (if authSimPred S 2 t then 1 else 0) = 1 := by
   cases t <;> rfl
-
-private theorem isQueryBoundP_imp {ι₀ : Type} {spec : OracleSpec ι₀} {α : Type}
-    {oa : OracleComp spec α} {p p₁ : ι₀ → Prop} [DecidablePred p] [DecidablePred p₁]
-    (hImp : ∀ q, p q → p₁ q) {m : ℕ} (h₁ : oa.IsQueryBoundP p₁ m) :
-    oa.IsQueryBoundP p m := by
-  induction oa using OracleComp.inductionOn generalizing m with
-  | pure x => exact isQueryBoundP_pure p x m
-  | query_bind t mx ih =>
-    rw [isQueryBoundP_query_bind_iff] at h₁ ⊢
-    refine ⟨?_, fun u => ?_⟩
-    · by_cases hp : p t
-      · exact Or.inr (h₁.1.resolve_left (not_not.mpr (hImp t hp)))
-      · exact Or.inl hp
-    · refine (ih u (h₁.2 u)).mono ?_
-      by_cases hp : p t
-      · simp only [hp, hImp t hp, ite_true, le_refl]
-      · simp only [hp, ite_false]; split <;> omega
-
-/-- Bridges `HasQueryBound.QueryBounded A b` to per-slot `IsQueryBoundP` bounds under `authSimBounds`. -/
-theorem authSimPred_bounded {S : Setup} (A : AuthAdversary S) (b : QueryBudget)
-    (hQB : HasQueryBound.QueryBounded A b) :
-    ∀ j : Fin 4,
-      A.run.IsQueryBoundP (isGamePred (G := authSpec S) (authSimPred S j)) (authSimBounds b j) := by
-  obtain ⟨hRo, _, _, hRoRoot, hTot, hOn⟩ := hQB
-  intro j
-  have hTotJ : A.run.IsQueryBoundP (isGamePred (G := authSpec S) (authSimPred S j)) b.q_total :=
-    isQueryBoundP_imp (fun | .inl _, h => nomatch h | .inr _, _ => rfl) hTot
-  rcases j with ⟨_ | _ | _ | _ | n, hj⟩
-  · exact Computational.Proofs.ReductionDsl.StepSim.isQueryBoundP_min
-      (isQueryBoundP_imp (fun | .inl _, h => nomatch h | .inr _, h => h) hOn) hTotJ
-  · exact Computational.Proofs.ReductionDsl.StepSim.isQueryBoundP_min
-      (isQueryBoundP_imp (fun | .inl _, h => nomatch h | .inr _, h => h) hRo) hTotJ
-  · exact Computational.Proofs.ReductionDsl.StepSim.isQueryBoundP_min
-      (isQueryBoundP_imp (fun | .inl _, h => nomatch h | .inr _, h => h) hRoRoot) hTotJ
-  · exact hTotJ
-  · omega
 
 /-- Query-count invariant relating per-kind counts (`c 0`, `c 1`, `c 2`) and total count (`c 3`) to `b`. -/
 structure AuthCounterInv (b : QueryBudget) (c : Fin 4 → ℕ) : Prop where
@@ -297,25 +261,6 @@ theorem AuthBaseAtomOnlineBounded.iff_embedVal {n : ℕ} (st : authStateTy.denot
         recvdOPKEvents_le    := by simpa only [authStateTy, embedVal_fst, embedVal_snd, embedVal_list, List.length_map] using h.recvdOPKEvents_le
         recvdNoOPKEvents_le  := by simpa only [authStateTy, embedVal_fst, embedVal_snd, embedVal_list, List.length_map] using h.recvdNoOPKEvents_le
         advKeys_le           := by simpa only [authStateTy, embedVal_fst, embedVal_snd, embedVal_list, List.length_map] using h.advKeys_le }
-
-theorem AuthBaseValOnlineBounded.of_authStateToVal {S : Setup} {n : ℕ} {s : AuthState S}
-    (h : AuthBaseListsBounded n s)
-    (hSOE : s.sentOPKEvents.length ≤ n) (hSNE : s.sentNoOPKEvents.length ≤ n)
-    (hROE : s.recvdOPKEvents.length ≤ n) (hRNE : s.recvdNoOPKEvents.length ≤ n) :
-    AuthBaseValOnlineBounded n (authStateToVal s) where
-  principals_le        := by simpa only [authStateToVal, List.length_map] using h.principals_le
-  spkBundles_le        := by simpa only [authStateToVal, List.length_map] using h.spkBundles_le
-  opkEntries_le        := by simpa only [authStateToVal, List.length_map] using h.opkEntries_le
-  sessions_le          := by simpa only [authStateToVal, List.length_map] using h.sessions_le
-  usedSendSessions_le  := by simpa only [authStateToVal, List.length_map] using h.usedSendSessions_le
-  usedRecvOPK_le       := by simpa only [authStateToVal, List.length_map] using h.usedRecvOPK_le
-  usedRecvNoOPK_le     := by simpa only [authStateToVal, List.length_map] using h.usedRecvNoOPK_le
-  seenKyberBaseKeys_le := by simpa only [authStateToVal, List.length_map] using h.usedKyberTriples_le
-  sentOPKEvents_le     := by simpa only [authStateToVal, List.length_map] using hSOE
-  sentNoOPKEvents_le   := by simpa only [authStateToVal, List.length_map] using hSNE
-  recvdOPKEvents_le    := by simpa only [authStateToVal, List.length_map] using hROE
-  recvdNoOPKEvents_le  := by simpa only [authStateToVal, List.length_map] using hRNE
-  advKeys_le           := by simpa only [authStateToVal] using h.advKeys_le
 
 /-- Online list-length bound on `authHybridStateFixedTy.denote`. -/
 structure AuthFixedValOnlineBounded (n : ℕ)

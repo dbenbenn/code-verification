@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Chain.Repr
+public import LibsignalBinary.Proofs.SpqrV1.Chain.Repr -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
 public import ProofLib.SepLogic.WP
 import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeHeap
@@ -22,7 +22,7 @@ preservation predicates, stride-112 arithmetic, `Vec<u8>` / `ChainEpoch` / `prot
 deallocation entailments, and `VecDeque` ring-buffer exposure lemmas.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Drop
 
@@ -122,13 +122,6 @@ theorem tail_stack_48_from_bottom (sp : BitVec 64) :
       show allocHookStack + 48 = dropStack48 from rfl,
       ← stackAt_dropStack48_split sp]
 
-theorem tail_stack_48_from_dropStack80_bottom (sp : BitVec 64) :
-    memRegion (sp - 4176#64) 80 ∗ stackAt sp allocHookStack =
-      stackAt (sp - 48#64) dropStack32 ∗ cells (sp - 48#64) 6 := by
-  rw [← stackAt_split_bottom sp allocHookStack 80 (by decide),
-      show allocHookStack + 80 = dropStack80 from rfl,
-      ← stackAt_dropStack80_split sp]
-
 theorem stackAt_dropStack32_split_bottom (sp : BitVec 64) :
     stackAt sp dropStack32 = memRegion (sp - 4128#64) 32 ∗ stackAt sp allocHookStack :=
   stackAt_split_bottom sp allocHookStack 32 (by decide)
@@ -143,13 +136,6 @@ abbrev dropStack32X : Nat := 16384 + 32
 
 abbrev dropStack48X : Nat := 16384 + 48
 
-abbrev dropStack80X : Nat := dropStack32X + 48
-
-theorem stackAt_dropStack32X_split (sp : BitVec 64) :
-    stackAt sp dropStack32X =
-      stackAt (sp - 32#64) 16384 ∗ cells (sp - 32#64) 4 :=
-  stackAt_split_cells sp 16384 4 (by decide)
-
 theorem stackAt_dropStack48X_split (sp : BitVec 64) :
     stackAt sp dropStack48X =
       stackAt (sp - 48#64) 16384 ∗ cells (sp - 48#64) 6 :=
@@ -158,19 +144,6 @@ theorem stackAt_dropStack48X_split (sp : BitVec 64) :
 theorem stackAt_dropStack48X_split_bottom (sp : BitVec 64) :
     stackAt sp dropStack48X = memRegion (sp - 16432#64) 48 ∗ stackAt sp 16384 :=
   stackAt_split_bottom sp 16384 48 (by decide)
-
-theorem stackAt_dropStack80X_split (sp : BitVec 64) :
-    stackAt sp dropStack80X =
-      stackAt (sp - 48#64) dropStack32X ∗ cells (sp - 48#64) 6 :=
-  stackAt_split_cells sp dropStack32X 6 (by decide)
-
-theorem stack_restore_32_extHook (sp fp lr x20 x19 : BitVec 64) :
-    stackAt (sp - 32#64) 16384 ∗
-      (((sp - 32#64) ↦₆₄ fp) ∗ ((sp - 24#64) ↦₆₄ lr) ∗
-       ((sp - 16#64) ↦₆₄ x20) ∗ ((sp - 8#64) ↦₆₄ x19)) ⊢
-    stackAt sp dropStack32X := by
-  rw [stackAt_dropStack32X_split sp]
-  exact sepConj_mono_right (cells4_sub32_entails sp fp lr x20 x19)
 
 theorem stack_restore_48_extHook (sp fp lr x22 x21 x20 x19 : BitVec 64) :
     stackAt (sp - 48#64) 16384 ∗
@@ -181,35 +154,13 @@ theorem stack_restore_48_extHook (sp fp lr x22 x21 x20 x19 : BitVec 64) :
   rw [stackAt_dropStack48X_split sp]
   exact sepConj_mono_right (cells6_sub48_entails sp fp lr x22 x21 x20 x19)
 
-theorem stack_restore_48_dropStack80X (sp fp lr x22 x21 x20 x19 : BitVec 64) :
-    stackAt (sp - 48#64) dropStack32X ∗
-      (((sp - 48#64) ↦₆₄ fp) ∗ ((sp - 40#64) ↦₆₄ lr) ∗
-       ((sp - 32#64) ↦₆₄ x22) ∗ ((sp - 24#64) ↦₆₄ x21) ∗
-       ((sp - 16#64) ↦₆₄ x20) ∗ ((sp - 8#64) ↦₆₄ x19)) ⊢
-    stackAt sp dropStack80X := by
-  rw [stackAt_dropStack80X_split sp]
-  exact sepConj_mono_right (cells6_sub48_entails sp fp lr x22 x21 x20 x19)
-
-theorem stackAt_dropStack32X_split_bottom (sp : BitVec 64) :
-    stackAt sp dropStack32X = memRegion (sp - 16416#64) 32 ∗ stackAt sp 16384 :=
-  stackAt_split_bottom sp 16384 32 (by decide)
-
-theorem stackAt_dropStack80X_split_bottom (sp : BitVec 64) :
-    stackAt sp dropStack80X = memRegion (sp - 16464#64) 80 ∗ stackAt sp 16384 :=
-  stackAt_split_bottom sp 16384 80 (by decide)
-
 theorem tail_stack_48_from_bottomX (sp : BitVec 64) :
     memRegion (sp - 16432#64) 48 ∗ stackAt sp 16384 =
       stackAt (sp - 48#64) 16384 ∗ cells (sp - 48#64) 6 := by
   rw [← stackAt_dropStack48X_split_bottom sp, ← stackAt_dropStack48X_split sp]
 
-theorem tail_stack_48_from_dropStack80X_bottom (sp : BitVec 64) :
-    memRegion (sp - 16464#64) 80 ∗ stackAt sp 16384 =
-      stackAt (sp - 48#64) dropStack32X ∗ cells (sp - 48#64) 6 := by
-  rw [← stackAt_dropStack80X_split_bottom sp, ← stackAt_dropStack80X_split sp]
-
 /-- Callee-saved registers not saved in `[sp..sp+32]` when `x19, x20, x29, x30` ARE saved in `[sp..sp+32]`. -/
-@[reducible]
+@[expose, reducible]
 def Saved32x20Preserved (s0 s : State) (fsp : BitVec 64) : Prop :=
   s.readReg64 .x21 = s0.readReg64 .x21 ∧
   s.readReg64 .x22 = s0.readReg64 .x22 ∧
@@ -224,7 +175,7 @@ def Saved32x20Preserved (s0 s : State) (fsp : BitVec 64) : Prop :=
   calleeSavedVRegs s = calleeSavedVRegs s0
 
 /-- Callee-saved registers not saved in `[sp..sp+48]` when `x19..x22, x29, x30` ARE saved in `[sp..sp+48]`. -/
-@[reducible]
+@[expose, reducible]
 def Saved48Preserved (s0 s : State) (fsp : BitVec 64) : Prop :=
   s.readReg64 .x23 = s0.readReg64 .x23 ∧
   s.readReg64 .x24 = s0.readReg64 .x24 ∧
@@ -425,7 +376,7 @@ theorem vecU8At_entails_dealloc (A : RustAlloc) (a cap ptr : BitVec 64) (bs : Li
     conv_rhs => arg 2; rw [hsplit, ProofLib.memRegion_split ptr bs.length (cap.toNat - bs.length) hbound]
     exact sepConj_mono_right (sepConj_mono_left (pointsToBytes_entails_memRegion ptr bs))
 
-def vecCapPtrDealloc (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
+@[expose] def vecCapPtrDealloc (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
   if (cap == 0#64) = true then emp
   else A.live ptr cap.toNat 1 ∗ memRegion ptr cap.toNat
 
@@ -496,7 +447,7 @@ theorem vecU8_entails_capPtr_dealloc_bound (A : RustAlloc) (a : BitVec 64) (bs :
   exact Entails.sepExists_right cap (Entails.sepExists_right ptr
     (vecU8At_entails_capPtr_dealloc_bound A a cap ptr bs))
 
-@[reducible]
+@[expose, reducible]
 def chainEpochHeadersAt (cur : BitVec 64) (g : ChainEpochGhost) : SepProp :=
   (cur ↦₆₄ g.send.next.cap) ∗ ((cur + 8#64) ↦₆₄ g.send.next.ptr) ∗ memRegion (cur + 16#64) 8 ∗
   ((cur + 24#64) ↦₆₄ g.send.prev.cap) ∗ ((cur + 32#64) ↦₆₄ g.send.prev.ptr) ∗ memRegion (cur + 40#64) 16 ∗
@@ -556,26 +507,6 @@ theorem chainEpochDirectionAt_entails_dealloc (A : RustAlloc) (a : BitVec 64)
     rw [← ProofLib.memRegion_split' (b := a + 40#64) (n := 8) (k := 8)
           (b' := a + 48#64) rfl (by bv_omega) (by decide)]
   rw [← h16]
-  exact Entails.of_eq (by ac_rfl)
-
-theorem chainEpochAt_entails_dealloc (A : RustAlloc) (cur : BitVec 64)
-    (g : ChainEpochGhost) (ce : ChainEpoch) :
-    chainEpochAt A (g, ce) cur ⊢
-      chainEpochHeadersAt cur g ∗
-      vecCapPtrDealloc A g.send.next.cap g.send.next.ptr ∗
-      vecCapPtrDealloc A g.send.prev.cap g.send.prev.ptr ∗
-      vecCapPtrDealloc A g.recv.next.cap g.recv.next.ptr ∗
-      vecCapPtrDealloc A g.recv.prev.cap g.recv.prev.ptr := by
-  unfold chainEpochAt chainEpochHeadersAt
-  have h1 := chainEpochDirectionAt_entails_dealloc A cur g.send ce.send
-  have h2 := chainEpochDirectionAt_entails_dealloc A (cur + 56#64) g.recv ce.recv
-  have hb1 : (cur + 56#64) + 8#64 = cur + 64#64 := by bv_omega
-  have hb2 : (cur + 56#64) + 16#64 = cur + 72#64 := by bv_omega
-  have hb3 : (cur + 56#64) + 24#64 = cur + 80#64 := by bv_omega
-  have hb4 : (cur + 56#64) + 32#64 = cur + 88#64 := by bv_omega
-  have hb5 : (cur + 56#64) + 40#64 = cur + 96#64 := by bv_omega
-  rw [hb1, hb2, hb3, hb4, hb5] at h2
-  refine Entails.trans (sepConj_mono h1 h2) ?_
   exact Entails.of_eq (by ac_rfl)
 
 /-! ## `VecDeque` Physical Slot Splitting and Exposure Lemmas -/

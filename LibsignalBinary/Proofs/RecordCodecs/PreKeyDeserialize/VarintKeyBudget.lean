@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.DefsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.VarintKey
+public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.VarintKey
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBody
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded `PreKeyRecord::deserialize` Tag Varint Decode
@@ -21,7 +22,7 @@ import ProofLib.SepLogic.WPp
 `PreKeyRecord::deserialize` (Block `65`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

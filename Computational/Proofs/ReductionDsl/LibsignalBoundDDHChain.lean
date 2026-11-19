@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRG.CostedTables
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRF.CostedTables
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRG.CostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRF.CostedTables -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound
 public import LibsignalBinary.Specifications.CryptoGames.CKA.LibsignalCKA
-public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
 public import Computational.Specifications.Reductions.ReductionDsl.Samplers
-public import Computational.Proofs.ReductionDsl.Soundness
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
 
 /-!
 # Costed PRF Operation Honesty and Lifted PRG Adversary Lemmas
@@ -25,7 +25,7 @@ bounds (`simulateQ_liftPRGAdv_run`, `isQueryBoundP_liftPRGAdv`) for `ProbComp` P
 lifted to `unifSpec + prgSpec`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalSession.Costed
 

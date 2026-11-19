@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChain
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.FinalPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5Placed
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChain -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.FinalPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -25,6 +25,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.StepsPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable Verification of `spqr::initial_state`
@@ -33,7 +34,7 @@ Proves `InitialStatePlacedOkX` and `InitialStatePlacedOkBlockProgram` for `spqr:
 (Block `327`) under `[LibsignalPlacement]` by dispatching on `params.version` (`.v0` and `.v1`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -64,7 +65,7 @@ set_option maxHeartbeats 400000
 set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [-arm64_norm]
   Expand.sp_sub_496_eq_esp Expand.sp_add_neg496_eq_esp Expand.esp_add_496_sub_496
   Kdf.HkdfToSliceProof.sp_sub_688_eq_hsp Kdf.HkdfToSliceProof.sp_add_neg688_eq_hsp
@@ -91,7 +92,7 @@ structure InitialStateContractsPlaced [LibsignalPlacement] (A : RustAlloc) (F : 
 /-! ## 2. Dispatch on `params.version` -/
 
 /-- `initialStatePlacedSpecX` restricted to `p.version = v`. -/
-def initialStateVPlacedSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) (v : Version) :
+@[expose] def initialStateVPlacedSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) (v : Version) :
     Spec InitialStateGhost :=
   { initialStatePlacedSpecX A F with
     pre := fun x s => ⌜x.p.version = v⌝ ∗ (initialStatePlacedSpecX A F).pre x s }

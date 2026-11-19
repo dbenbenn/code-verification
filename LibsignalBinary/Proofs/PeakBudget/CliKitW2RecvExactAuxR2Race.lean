@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliKitW1W2ExactSlotSpecR2
+public import LibsignalBinary.Proofs.PeakBudget.CliKitW1W2ExactSlotSpecR2 -- proof-setup: allow-public-import
 import LibsignalBinary.Heap.Fine.ClientBounds
 import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhErr
@@ -76,6 +76,25 @@ import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMacBudgetAux
 import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.DefsBudget
 import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.PeakBudget.CmkLoopAdvanceCredit
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.PeakBudget.W4InnerPeakSpec
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegsBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
 
 /-!
 # Guarded-Tight `W2` (`decryptSignal` `@109`) Exact Slot Credit and Group Specs
@@ -86,7 +105,7 @@ Proves `ckx2_w2DecSigExact_phaseCredit`, `ckx2_w2DecSigExact_groupSpec`, and
 `ckx2_w2DecSigExact_singleSlotFineSpec` for `ckx2_cliDecryptSignalBinaryKitSlotEnvExact`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -140,7 +159,7 @@ open LibsignalBinary.Heap
 open LibsignalBinary.Heap.Fine (FineScale fineCostModel)
 open LibsignalBinary.Heap.Fine.ClientBounds
   (eventStepAlign eventStepReq fineCostModel_smallMaxReq_eq smallAllocCost_le_738_of_le_44)
-open LibsignalBinary.Heap.SpecBudget (FmtWriteEnv FormatInnerEnv libcruxHmacSha256Events)
+open LibsignalBinary.Heap.SpecBudget (libcruxHmacSha256Events)
 open LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget (CmkLoopAdvanceEvs)
 open LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
   (BoundedFreshEvs aesDecCtShape_groupSpec dhCommitStep12Evs_fine_groupSpec
@@ -234,6 +253,10 @@ open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit (HasFi
 open LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget (GrowOne104Env growOne104Events)
 open LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a (DirGetEnv)
 open LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget (PathEnv)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs
+  (CliFmtWriteEnv CliFormatInnerEnv)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
+  (phaseCreditSpec_cliFormatInnerEnv_320 phaseGroupSpec_cliFormatInnerEnv)
 open LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
   (cliIdentityKitSavePollEnv cliIdentityKitTrustPollEnv)
 open LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
@@ -1318,14 +1341,20 @@ private abbrev w4cTdS4Peak : Nat := cmkLoop25000Peak
 private abbrev w4cTdS4MaxReq : Nat := cmkLoop25000MaxReq
 private abbrev w4cTdS4GrpS : Nat := cmkLoop25000TightGrpS
 
-/-- Tight linked `spqr::recv` (`S5`) bounds. -/
-private abbrev w4cTdS5Cum : Nat := 23313687
+/-- Tight linked `spqr::recv` (`S5` inner) bounds before `CliFormatInnerEnv` error formatting. -/
+private abbrev w4cSpqrRecvCum : Nat := 23313687
+private abbrev w4cSpqrRecvGrpSOf (maxOps : Nat) : Nat :=
+  140011 * maxOps + (statesFromPbTightGroupS_split + statesRecvTightGroupS_split +
+    (421107504 + statesIntoPbTightGroupS_split))
+
+/-- Tight linked `PqRecvEnv` (`S5`) bounds (`spqr::recv` + `CliFormatInnerEnv`). -/
+private abbrev w4cTdS5Cum : Nat := 23344224
 private abbrev w4cTdS5Live : Nat := 605066
 private abbrev w4cTdS5Peak : Nat := 621350
 private abbrev w4cTdS5MaxReq : Nat := 302480
 private abbrev w4cTdS5GrpSOf (maxOps : Nat) : Nat :=
   140011 * maxOps + (statesFromPbTightGroupS_split + statesRecvTightGroupS_split +
-    (421107504 + statesIntoPbTightGroupS_split))
+    (421697328 + statesIntoPbTightGroupS_split))
 
 /-- Tight `verify_mac_with_addresses` + `23`-B error box (`S7`) bounds. -/
 private abbrev w4cTdS7Cum : Nat := 2952
@@ -1333,10 +1362,10 @@ private abbrev w4cTdS7MaxReq : Nat := 36
 private abbrev w4cTdS7GrpS : Nat := 3 * 16659 + 11056
 
 /-- Tight `aes_cbc_decrypt` (`S8`) and `apply_to_session_state` (`S9`) bounds. -/
-private abbrev w4cTdS8CumOf (maxCt : Nat) : Nat := 2 * maxCt + 9539
+private abbrev w4cTdS8CumOf (maxCt : Nat) : Nat := 2 * maxCt + 40076
 private abbrev w4cTdS8LiveOf (maxCt : Nat) : Nat := maxCt + 8195
 private abbrev w4cTdS8PeakOf (maxCt : Nat) : Nat := maxCt + 8195
-private abbrev w4cTdS8GrpS : Nat := 3 * FineScale
+private abbrev w4cTdS8GrpS : Nat := 12 * FineScale
 
 private abbrev w4cTdS9Cum : Nat := 4428
 private abbrev w4cTdS9MaxReq : Nat := 33
@@ -1514,15 +1543,16 @@ private theorem td0_s3DefaultEnv_group (C : Crypto) (x : TryDecryptGhost) (trG :
 private theorem td0_pqRecvEnv_credit {S : SpqrModel}
     {RecvEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
     {c l p r : Nat} {x : TryDecryptGhost} {tr : TripleRatchet (List (BitVec 8))}
-    (hlp : l ≤ p)
+    (hlp : l ≤ p) (hr320 : 320 ≤ r)
     (hR : PhaseCreditSpec fineCostModel (RecvEnv tr.pqrState x.msg.pqRatchet) c l p r) :
-    PhaseCreditSpec fineCostModel (PqRecvEnv S RecvEnv FormatInnerEnv x tr) c l p r := by
+    PhaseCreditSpec fineCostModel (PqRecvEnv S RecvEnv CliFormatInnerEnv x tr)
+      (c + 30537) l p r := by
   unfold PqRecvEnv
   cases S.recv tr.pqrState x.msg.pqRatchet with
-  | ok _ => exact hR
+  | ok _ =>
+    exact hR.mono (Nat.le_add_right c 30537) (Nat.le_refl l) (Nat.le_refl p) (Nat.le_refl r)
   | error _ =>
-    have hf : PhaseCreditSpec fineCostModel FormatInnerEnv 0 0 0 0 :=
-      PhaseCreditSpec.nil fineCostModel
+    have hf := phaseCreditSpec_cliFormatInnerEnv_320
     have hfr := PhaseCreditSpec.freeOnly_of_hyps fineCostModel_modelHyps
     exact ((hR.seq hf).seq hfr).mono
       (by omega) (by omega)
@@ -1533,12 +1563,13 @@ private theorem td0_pqRecvEnv_group {S : SpqrModel}
     {RecvEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
     {g : Nat} {x : TryDecryptGhost} {tr : TripleRatchet (List (BitVec 8))}
     (hR : PhaseGroupSpec fineCostModel (RecvEnv tr.pqrState x.msg.pqRatchet) g) :
-    PhaseGroupSpec fineCostModel (PqRecvEnv S RecvEnv FormatInnerEnv x tr) g := by
+    PhaseGroupSpec fineCostModel (PqRecvEnv S RecvEnv CliFormatInnerEnv x tr)
+      (g + 9 * FineScale) := by
   unfold PqRecvEnv
   cases S.recv tr.pqrState x.msg.pqRatchet with
-  | ok _ => exact hR
+  | ok _ => exact hR.mono (Nat.le_add_right g _)
   | error _ =>
-    have hf : PhaseGroupSpec fineCostModel FormatInnerEnv 0 := PhaseGroupSpec.nil fineCostModel
+    have hf := phaseGroupSpec_cliFormatInnerEnv fineCostModel
     have hfr := PhaseGroupSpec.freeOnly fineCostModel
     exact ((hR.seq hf).seq hfr).mono (by omega)
 
@@ -1600,7 +1631,7 @@ private theorem td0_s8Env_credit {maxCt : Nat} (x : TryDecryptGhost)
     (mks : MessageKeys) (pqr : List (BitVec 8))
     (hct : x.msg.ciphertext.length ≤ maxCt) :
     PhaseCreditSpec fineCostModel (s8Env x mks pqr)
-      (w4cTdS8CumOf maxCt) (w4cTdS8LiveOf maxCt) (w4cTdS8PeakOf maxCt) maxCt := by
+      (w4cTdS8CumOf maxCt) (w4cTdS8LiveOf maxCt) (w4cTdS8PeakOf maxCt) (max maxCt 320) := by
   unfold s8Env
   have haes : PhaseCreditSpec fineCostModel (AesDecCtEnv x.msg.ciphertext.length)
       (2 * maxCt + 9539) (maxCt + 8195) (maxCt + 8195) maxCt := by
@@ -1610,7 +1641,8 @@ private theorem td0_s8Env_credit {maxCt : Nat} (x : TryDecryptGhost)
     split at h
     · exact Or.inl h
     · exact Or.inr h
-  exact (haes.seq (PhaseCreditSpec.freeOnly_of_hyps fineCostModel_modelHyps)).mono
+  exact (haes.seq (phaseCreditSpec_cliFormatInnerEnv_320.seq
+    (PhaseCreditSpec.freeOnly_of_hyps fineCostModel_modelHyps))).mono
     (by unfold w4cTdS8CumOf; omega) (by unfold w4cTdS8LiveOf; omega)
     (by unfold w4cTdS8PeakOf; omega) (by omega)
 
@@ -1625,7 +1657,8 @@ private theorem td0_s8Env_group (x : TryDecryptGhost)
     split at h
     · exact Or.inl h
     · exact Or.inr h
-  exact (haes.seq (PhaseGroupSpec.freeOnly fineCostModel)).mono (by unfold w4cTdS8GrpS; omega)
+  exact (haes.seq ((phaseGroupSpec_cliFormatInnerEnv fineCostModel).seq
+    (PhaseGroupSpec.freeOnly fineCostModel))).mono (by unfold w4cTdS8GrpS; omega)
 
 private theorem td0_s9Env_credit (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
@@ -1845,7 +1878,7 @@ private theorem ckx2_spqrRecvC07C09aBytesEnvOf_phaseCreditSpec
     {F : ShaCompress} {K : MlKem} (maxOps : Nat)
     {stBs msgBs : Bytes} (hTop : TopStateTight F K stBs) :
     PhaseCreditSpec fineCostModel (ckx2_SpqrRecvC07C09aBytesEnvOf maxOps F K stBs msgBs)
-      w4cTdS5Cum w4cTdS5Live w4cTdS5Peak w4cTdS5MaxReq := by
+      w4cSpqrRecvCum w4cTdS5Live w4cTdS5Peak w4cTdS5MaxReq := by
   let _ := msgBs
   unfold ckx2_SpqrRecvC07C09aBytesEnvOf ckx2_SpqrRecvC07C09aTightLinkedEnvOf
     ckx2_SpqrRecvC07C09aTightLinkedEnvRecvOf SpqrRecvTightLinkedEnv
@@ -1873,7 +1906,7 @@ private theorem ckx2_spqrRecvC07C09aBytesEnvOf_phaseGroupSpec_split
     {F : ShaCompress} {K : MlKem} (maxOps : Nat)
     {stBs msgBs : Bytes} (hTop : TopStateTight F K stBs) :
     PhaseGroupSpec fineCostModel (ckx2_SpqrRecvC07C09aBytesEnvOf maxOps F K stBs msgBs)
-      (w4cTdS5GrpSOf maxOps) := by
+      (w4cSpqrRecvGrpSOf maxOps) := by
   let _ := msgBs
   unfold ckx2_SpqrRecvC07C09aBytesEnvOf ckx2_SpqrRecvC07C09aTightLinkedEnvOf
     ckx2_SpqrRecvC07C09aTightLinkedEnvRecvOf SpqrRecvTightLinkedEnv
@@ -1910,32 +1943,32 @@ private theorem ckx2_fromS4_credit
     (hmk : ∀ c ∈ tr.ratchet.receiverChains, c.messageKeys.length ≤ maxMessageKeys)
     (hTop : TopStateTight C.F K tr.pqrState)
     (hS8 : ∀ mks pqr, PhaseCreditSpec fineCostModel (s8Env' x mks pqr)
-      (w4cTdS8CumOf maxCt) l8 (w4cTdS8PeakOf maxCt) maxCt)
+      (w4cTdS8CumOf maxCt) l8 (w4cTdS8PeakOf maxCt) (max maxCt 320))
     (hS9 : ∀ trG' tr' pqr, PhaseCreditSpec fineCostModel (s9Env' x trG' tr' st1 pqr)
       c9 0 0 w4cTdS9MaxReq) :
     PhaseCreditSpec fineCostModel
       (FromS4GenEnv C uuidTryParse (spqrV1 C.F K) aesOpt
-        (ckx2_tryDecryptCmkSeg4EnvOf CmkLoopAdvanceEvs FmtWriteEnv)
-        (PqRecvEnv (spqrV1 C.F K) (ckx2_SpqrRecvC07C09aBytesEnvOf maxOps C.F K) FormatInnerEnv)
+        (ckx2_tryDecryptCmkSeg4EnvOf CmkLoopAdvanceEvs CliFmtWriteEnv)
+        (PqRecvEnv (spqrV1 C.F K) (ckx2_SpqrRecvC07C09aBytesEnvOf maxOps C.F K) CliFormatInnerEnv)
         s6FreeOnlyEnv (s7Env C.F uuidTryParse) s8Env' s9Env' x trG tr st1 ck)
       (w4cTdS4Cum + (w4cTdS5Cum + (0 + (w4cTdS7Cum + (w4cTdS8CumOf maxCt + c9)))))
       (w4cTdS4Live + (w4cTdS5Live + (0 + (0 + (l8 + 0)))))
       (max w4cTdS4Peak (w4cTdS4Live + max w4cTdS5Peak (w4cTdS5Live +
         max 0 (0 + max 0 (0 + max (w4cTdS8PeakOf maxCt) (l8 + 0))))))
-      (max w4cTdS4MaxReq (max w4cTdS5MaxReq (max 0 (max w4cTdS7MaxReq (max maxCt w4cTdS9MaxReq))))) := by
+      (max w4cTdS4MaxReq (max w4cTdS5MaxReq (max 0 (max w4cTdS7MaxReq (max (max maxCt 320) w4cTdS9MaxReq))))) := by
   unfold FromS4GenEnv
   have hS4 : PhaseCreditSpec fineCostModel
-      (ckx2_tryDecryptCmkSeg4EnvOf CmkLoopAdvanceEvs FmtWriteEnv x trG tr ck)
+      (ckx2_tryDecryptCmkSeg4EnvOf CmkLoopAdvanceEvs CliFmtWriteEnv x trG tr ck)
       w4cTdS4Cum w4cTdS4Live w4cTdS4Peak w4cTdS4MaxReq := by
     rw [ckx2_tryDecryptCmkSeg4EnvOf_cmk_eq]
     exact tryDecryptCmkSeg4Env_fine_phaseCreditSpec_tight x trG tr ck hjumps hmk
   split
   · next mkg r2 _ =>
     have hS5 : PhaseCreditSpec fineCostModel
-        (PqRecvEnv (spqrV1 C.F K) (ckx2_SpqrRecvC07C09aBytesEnvOf maxOps C.F K) FormatInnerEnv
+        (PqRecvEnv (spqrV1 C.F K) (ckx2_SpqrRecvC07C09aBytesEnvOf maxOps C.F K) CliFormatInnerEnv
           x { tr with ratchet := r2 })
         w4cTdS5Cum w4cTdS5Live w4cTdS5Peak w4cTdS5MaxReq :=
-      td0_pqRecvEnv_credit (by decide)
+      td0_pqRecvEnv_credit (by decide) (by decide)
         (ckx2_spqrRecvC07C09aBytesEnvOf_phaseCreditSpec maxOps hTop)
     have hS6 : PhaseCreditSpec fineCostModel (s6FreeOnlyEnv mkg) 0 0 0 0 :=
       PhaseCreditSpec.freeOnly_of_hyps fineCostModel_modelHyps
@@ -1961,22 +1994,23 @@ private theorem ckx2_fromS4_group
     (hS9 : ∀ trG' tr' pqr, PhaseGroupSpec fineCostModel (s9Env' x trG' tr' st1 pqr) g9) :
     PhaseGroupSpec fineCostModel
       (FromS4GenEnv C uuidTryParse (spqrV1 C.F K) aesOpt
-        (ckx2_tryDecryptCmkSeg4EnvOf CmkLoopAdvanceEvs FmtWriteEnv)
-        (PqRecvEnv (spqrV1 C.F K) (ckx2_SpqrRecvC07C09aBytesEnvOf maxOps C.F K) FormatInnerEnv)
+        (ckx2_tryDecryptCmkSeg4EnvOf CmkLoopAdvanceEvs CliFmtWriteEnv)
+        (PqRecvEnv (spqrV1 C.F K) (ckx2_SpqrRecvC07C09aBytesEnvOf maxOps C.F K) CliFormatInnerEnv)
         s6FreeOnlyEnv (s7Env C.F uuidTryParse) s8Env' s9Env' x trG tr st1 ck)
       (w4cTdS4GrpS + (w4cTdS5GrpSOf maxOps + (0 + (w4cTdS7GrpS + (w4cTdS8GrpS + g9))))) := by
   unfold FromS4GenEnv
   have hS4 : PhaseGroupSpec fineCostModel
-      (ckx2_tryDecryptCmkSeg4EnvOf CmkLoopAdvanceEvs FmtWriteEnv x trG tr ck) w4cTdS4GrpS := by
+      (ckx2_tryDecryptCmkSeg4EnvOf CmkLoopAdvanceEvs CliFmtWriteEnv x trG tr ck) w4cTdS4GrpS := by
     rw [ckx2_tryDecryptCmkSeg4EnvOf_cmk_eq]
     exact tryDecryptCmkSeg4Env_fine_groupSpec_tight x trG tr ck hjumps hmk
   split
   · next mkg r2 _ =>
     have hS5 : PhaseGroupSpec fineCostModel
-        (PqRecvEnv (spqrV1 C.F K) (ckx2_SpqrRecvC07C09aBytesEnvOf maxOps C.F K) FormatInnerEnv
+        (PqRecvEnv (spqrV1 C.F K) (ckx2_SpqrRecvC07C09aBytesEnvOf maxOps C.F K) CliFormatInnerEnv
           x { tr with ratchet := r2 })
         (w4cTdS5GrpSOf maxOps) :=
-      td0_pqRecvEnv_group (ckx2_spqrRecvC07C09aBytesEnvOf_phaseGroupSpec_split maxOps hTop)
+      (td0_pqRecvEnv_group (ckx2_spqrRecvC07C09aBytesEnvOf_phaseGroupSpec_split maxOps hTop)).mono
+        (by unfold w4cSpqrRecvGrpSOf w4cTdS5GrpSOf FineScale; omega)
     have hS6 : PhaseGroupSpec fineCostModel (s6FreeOnlyEnv mkg) 0 :=
       PhaseGroupSpec.freeOnly fineCostModel
     exact hS4.seq (td0_phaseGroup_fromS5GenEnv hS5 hS6 (td0_s7Env_group C.F x _) hS8 (hS9 trG _))
@@ -2039,8 +2073,8 @@ private theorem ckx2_tryDecryptCliLinkedEnvOf_phaseCreditSpec
       have hfr := PhaseCreditSpec.freeOnly_of_hyps fineCostModel_modelHyps
       have hS2 : PhaseCreditSpec fineCostModel
           (FromS2GenEnv C uuidTryParse (spqrV1 C.F K) (stdAesOpt C)
-            (s3DefaultEnv C) (ckx2_tryDecryptCmkSeg4EnvOf CmkLoopAdvanceEvs FmtWriteEnv)
-            (PqRecvEnv (spqrV1 C.F K) (ckx2_SpqrRecvC07C09aBytesEnvOf maxOps C.F K) FormatInnerEnv)
+            (s3DefaultEnv C) (ckx2_tryDecryptCmkSeg4EnvOf CmkLoopAdvanceEvs CliFmtWriteEnv)
+            (PqRecvEnv (spqrV1 C.F K) (ckx2_SpqrRecvC07C09aBytesEnvOf maxOps C.F K) CliFormatInnerEnv)
             s6FreeOnlyEnv (s7Env C.F uuidTryParse)
             LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudget.s8Env
             LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchetBudget.s9Env
@@ -2113,8 +2147,8 @@ private theorem ckx2_tryDecryptCliLinkedEnvOf_phaseGroupSpec
       have hfr := PhaseGroupSpec.freeOnly fineCostModel
       have hS2 : PhaseGroupSpec fineCostModel
           (FromS2GenEnv C uuidTryParse (spqrV1 C.F K) (stdAesOpt C)
-            (s3DefaultEnv C) (ckx2_tryDecryptCmkSeg4EnvOf CmkLoopAdvanceEvs FmtWriteEnv)
-            (PqRecvEnv (spqrV1 C.F K) (ckx2_SpqrRecvC07C09aBytesEnvOf maxOps C.F K) FormatInnerEnv)
+            (s3DefaultEnv C) (ckx2_tryDecryptCmkSeg4EnvOf CmkLoopAdvanceEvs CliFmtWriteEnv)
+            (PqRecvEnv (spqrV1 C.F K) (ckx2_SpqrRecvC07C09aBytesEnvOf maxOps C.F K) CliFormatInnerEnv)
             s6FreeOnlyEnv (s7Env C.F uuidTryParse)
             LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudget.s8Env
             LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchetBudget.s9Env

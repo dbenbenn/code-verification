@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndGapDh
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndGapDh -- proof-setup: allow-public-import
 
 /-!
 # One-Step Growth Bounds for the Shallow `KeyInd` Gap-DH Simulator
@@ -18,7 +18,7 @@ One step of `fgKeyIndStep`, `fgKeyIndStepIk`, or `fgKeyIndStepOpk` grows each st
 `fgL` and `advRoLog`) by at most one entry.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -28,7 +28,7 @@ open OracleSpec OracleComp
 namespace SignalPqxdh.Security.ReductionDsl.KeyIndGapDh
 
 /-- Every list of the state grows by at most one entry. -/
-def Grow {S : Setup} (st st' : FgKeyIndSimState S) : Prop :=
+@[expose] def Grow {S : Setup} (st st' : FgKeyIndSimState S) : Prop :=
   st'.base.principals.length ≤ st.base.principals.length + 1 ∧
   st'.base.spkBundles.length ≤ st.base.spkBundles.length + 1 ∧
   st'.base.opkEntries.length ≤ st.base.opkEntries.length + 1 ∧
@@ -43,7 +43,7 @@ def Grow {S : Setup} (st st' : FgKeyIndSimState S) : Prop :=
   st'.advKeyPows.length ≤ st.advKeyPows.length + 1
 
 /-- Every output in the support of `mx` satisfies `P`. -/
-def AllOut {ι : Type} {spec : OracleSpec.{0, 0} ι} {α : Type} (mx : OracleComp spec α)
+@[expose] def AllOut {ι : Type} {spec : OracleSpec.{0, 0} ι} {α : Type} (mx : OracleComp spec α)
     (P : α → Prop) : Prop :=
   ∀ x ∈ support mx, P x
 

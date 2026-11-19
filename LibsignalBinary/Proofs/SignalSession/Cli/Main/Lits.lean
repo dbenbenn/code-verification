@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Layout
-public import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Layout -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.RoLiterals -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -44,40 +45,5 @@ theorem foldr_lits_eq_roLits (base : BitVec 64) (ls : List (BitVec 64 × String)
   | nil => rfl
   | cons l ls ih => rw [List.foldr_cons, ih, List.map_cons, roLits_cons, BitVec.ofNat_toNat,
       BitVec.setWidth_eq]
-
-theorem mainLits_eq_roLits (img : Obj.Image) : mainLits img = roLits img.base mainLitList := by
-  rw [mainLits, foldr_lits_eq_roLits, mainLitList, roLits_cons, BitVec.ofNat_toNat,
-    BitVec.setWidth_eq]
-
-open ProofLib.ProgramReflection in
-/-- Kernel check that all 8 entries of `mainLitList` are relocation-free `.rodata` literals of `libsignalSessionImage`. -/
-theorem mainLitList_roLitAt :
-    mainLitList.all (fun l => libsignalSessionImage.RoLitAt l.1 l.2) = true := by
-  rfl_kernel
-
-/-- Extracts `mainLits img` from `img.FrozenLoaded s` without consuming separation-logic frame `P`. -/
-theorem mainLits_of_frozenLoaded {img : Obj.Image} {s : State}
-    (himg : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s)
-    {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ mainLits img ∗ P := by
-  rw [mainLits_eq_roLits]
-  exact hF.sat_roLits himg mainLitList_roLitAt hP
-
-@[simp] theorem mainLits_dup (img : Obj.Image) : (mainLits img ∗ mainLits img) = mainLits img := by
-  rw [mainLits_eq_roLits, roLits_dup]
-
-/-- Eliminates `mainLits img` from `mainFrame`'s statics hypothesis whenever `img.FrozenLoaded s` holds. -/
-theorem sepWPp_mainFrame_mainLits {img : Obj.Image} {prog : Program} {ret : BitVec 64}
-    {s : State} {A : RustAlloc} {stk : Nat} {Statics : SepProp} {i : Inputs}
-    {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (himg : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s)
-    (hwp : SepWPp prog ret s (mainFrame A stk (Statics ∗ mainLits img) i s) Q Qp oom) :
-    SepWPp prog ret s (mainFrame A stk Statics i s) Q Qp oom := by
-  intro R hm
-  apply hwp R
-  have h := mainLits_of_frozenLoaded himg hF hm
-  refine Satisfies.of_eq h ?_
-  simp only [mainFrame]
-  ac_rfl
 
 end CryptoVerification.SignalSession.Cli.MainHops

@@ -9,13 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1Placed
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part2
 import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`) — Part 3 Placed: Arm 1 (`States.keysSampled`)
@@ -24,7 +26,7 @@ Relocatable (`[LibsignalPlacement]`) proof of Arm 1 (`States.keysSampled`, tag `
 `+0 -> +60 -> +896 -> +1000 -> +1544 -> ret`) in Block `334`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -51,7 +53,7 @@ open CryptoVerification.SpqrV1.ProtoRepr
 open CryptoVerification.CodeLayout
 open CryptoVerification.SpqrV1.States.IntoPb.Placed
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero bv_sub_sub_lit bv_add_add_lit
 attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero noneCap_add_two_beq_zero
 

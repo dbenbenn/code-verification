@@ -9,11 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import ProofLib.Sep
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym433 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecv -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKeyBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Segment S5 (`PqRecv`) Error-Path Lemmas — Block `433` (`549`)
@@ -22,7 +34,7 @@ Proves `pqRecv_dealloc_tail_549_placed`, `pqRecv_recv_err_true_549_placed`, and
 `pqRecv_recv_err_false_549_placed` on block `433` over `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -94,6 +106,21 @@ open LibsignalBinary.Heap (
 open LibsignalBinary.Heap.SpecBudget (
   FormatInnerEnv formatInnerBudgetEnvSpec formatInnerBudgetSpec
 )
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs (
+  CliFormatInnerLsCall cliFormatInnerLsCallSpec
+  cliFormatInnerLsCall_exactEvs_mem_spqrErrorDisplayPrefixed
+  formatInnerCallLsEnvSpec intro_withLsRetFormatInner
+  lsRetAddrFormatInner_blockPlacement_base_add lsSpqrErrorDisplayBlock
+  prefixedOneArgTplBytes withLsRetFormatInner
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (
+  CliFormatInnerEnv formatInnerLsEnvSpec intro_withLsRet624 withLsRet624
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.SpqrErrorDisplayAux (spqrErrorCellsAt)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag (
+  SpqrErrorValidTag spqrErrorPayload24_split spqrErrorPayload24_unsplit spqrErrorValidTag_zero
+)
+open VerifiedLibraries.RustStd (fmtArgEntriesAt fmtArgumentsAt)
 open LibsignalBinary.Proofs.Placed.BudgetPoolSync (
   hooksException sepWP_seg_ls_vm
 )
@@ -109,6 +136,7 @@ attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero BitVec.add_assoc
 attribute [local wp_norm] BitVec.add_assoc
 attribute [local simp, local wp_norm, local arm64_norm] extractLsb0_8_append56
+
 
 theorem pqRecv_dealloc_tail_549_placed [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (ctl : BitVec 64)
@@ -340,6 +368,171 @@ theorem pqRecv_dealloc_tail_549_placed [LibsignalPlacement] {M : AllocCostModel}
       wp_steps_sync_pool ((blkPl_434).base + 780#64)
       wp_done
 
+/-- `.rodata` symbol for `"post-quantum ratchet error: {}"` in Block `434` (`libsignal_session`). -/
+private abbrev lsPqErrTplRoSym_434 : String := "libsignal_cli_ratchet:.rodata.str1.1+0x5a8"
+
+/-- Literal 28-byte prefix `"post-quantum ratchet error: "`. -/
+private def pqErrPfxBs : List (BitVec 8) :=
+  [0x70#8, 0x6f#8, 0x73#8, 0x74#8, 0x2d#8, 0x71#8, 0x75#8, 0x61#8,
+   0x6e#8, 0x74#8, 0x75#8, 0x6d#8, 0x20#8, 0x72#8, 0x61#8, 0x74#8,
+   0x63#8, 0x68#8, 0x65#8, 0x74#8, 0x20#8, 0x65#8, 0x72#8, 0x72#8,
+   0x6f#8, 0x72#8, 0x3a#8, 0x20#8]
+
+private theorem lsroCheck_pqErrTplRoSym_434 :
+    lsroCheck lsPqErrTplRoSym_434 (prefixedOneArgTplBytes pqErrPfxBs) = true := by
+  exact eagerReduce (Eq.refl true)
+
+/-- Concrete `CliFormatInnerLsCall` descriptor for `"post-quantum ratchet error: {}"` in
+    `try_decrypt_with_state` (`ret = sp + 408`, `x1 = sp + 944`, `errPtr = sp + 1024`). -/
+private def pqRecvErrFmtCall [LibsignalPlacement] (tplSym : String) (sp : BitVec 64)
+    (d b1 : BitVec 8) (u1 : BitVec 32) (q1 q2 : BitVec 64) : CliFormatInnerLsCall where
+  ret := sp + 408#64
+  x0 := lsρ tplSym
+  x1 := sp + 944#64
+  argsRo := false
+  shape := .spqrErrorDisplayPrefixed pqErrPfxBs (sp + 1024#64) d b1 u1 q1 q2
+
+private theorem sp_add_944_even {sp : BitVec 64} (hsp : (sp &&& 15#64 == 0#64) = true) :
+    (sp + 944#64).getLsbD 0 = false := by
+  have h16 : sp &&& 15#64 = 0#64 := beq_iff_eq.mp hsp
+  have hnot : ¬ (sp + 944#64).getLsbD 0 = true := by
+    revert h16; bv_kernel
+  exact Bool.eq_false_iff.mpr hnot
+
+private theorem pqRecvErrFmtCall_args_eq [LibsignalPlacement] (tplSym : String) {sp : BitVec 64}
+    (hsp : (sp &&& 15#64 == 0#64) = true) (d b1 : BitVec 8) (u1 : BitVec 32) (q1 q2 : BitVec 64) :
+    fmtArgumentsAt (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).argsRo
+      (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).x0
+      (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).x1
+      (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).tpl
+      (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).args =
+      (lsρ tplSym ↦ᵣ prefixedOneArgTplBytes pqErrPfxBs) ∗
+      ((sp + 944#64) ↦₆₄ (sp + 1024#64)) ∗
+      ((sp + 952#64) ↦₆₄ lsmpl.base 412) := by
+  have heven := sp_add_944_even hsp
+  have ha8 : sp + 944#64 + 8#64 = sp + 952#64 := by bv_omega
+  dsimp only [pqRecvErrFmtCall, CliFormatInnerLsCall.argsRo, CliFormatInnerLsCall.x0,
+    CliFormatInnerLsCall.x1, CliFormatInnerLsCall.tpl, CliFormatInnerLsCall.args,
+    lsSpqrErrorDisplayBlock, fmtArgumentsAt, fmtArgEntriesAt]
+  simp only [heven, Bool.false_eq_true, ↓reduceIte, ha8, sepConj_emp]
+
+private theorem unpack_pqRecvErrFmtCall_pre [LibsignalPlacement]
+    {tplSym : String} {sp : BitVec 64} {d : BitVec 8} {m : Memory} {Q : SepProp}
+    (hsp : (sp &&& 15#64 == 0#64) = true)
+    (hm : m ⊨
+      (lsρ tplSym ↦ᵣ prefixedOneArgTplBytes pqErrPfxBs) ∗
+      (((sp + 944#64) ↦₆₄ (sp + 1024#64)) ∗
+       ((sp + 952#64) ↦₆₄ lsmpl.base 412) ∗
+       (((sp + 1024#64) ↦₈ d) ∗ memRegion ((sp + 1024#64) + 1#64) 23) ∗
+       Q)) :
+    ∃ (b1 : BitVec 8) (u1 : BitVec 32) (q1 q2 : BitVec 64),
+      m ⊨
+        fmtArgumentsAt (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).argsRo
+          (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).x0
+          (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).x1
+          (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).tpl
+          (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).args ∗
+        (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).clientSep ∗
+        Q := by
+  rw [spqrErrorPayload24_split (sp + 1024#64) d] at hm
+  simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hm
+  rcases hm with ⟨b1, u1, q1, q2, hm⟩
+  refine ⟨b1, u1, q1, q2, ?_⟩
+  rw [pqRecvErrFmtCall_args_eq tplSym hsp d b1 u1 q1 q2]
+  dsimp only [pqRecvErrFmtCall, CliFormatInnerLsCall.clientSep, spqrErrorCellsAt]
+  exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hm
+
+private theorem pqRecvErrFmtCall_post_refold [LibsignalPlacement] (tplSym : String) {sp : BitVec 64}
+    (hsp : (sp &&& 15#64 == 0#64) = true) (d b1 : BitVec 8) (u1 : BitVec 32) (q1 q2 : BitVec 64) :
+    fmtArgumentsAt (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).argsRo
+      (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).x0
+      (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).x1
+      (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).tpl
+      (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).args ∗
+    (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).clientSep ∗
+    memRegion (sp + 432#64) 512 ∗
+    memRegion (sp + 960#64) 64 ∗
+    memRegion (sp + 1048#64) 360 ⊢
+      (lsρ tplSym ↦ᵣ prefixedOneArgTplBytes pqErrPfxBs) ∗
+      memRegion (sp + 432#64) 976 := by
+  rw [pqRecvErrFmtCall_args_eq tplSym hsp d b1 u1 q1 q2]
+  dsimp only [pqRecvErrFmtCall, CliFormatInnerLsCall.clientSep, spqrErrorCellsAt]
+  sep_interval
+
+private theorem pqr_err_pre_sp320 (sp : BitVec 64) :
+    memRegion (sp + 320#64) 784 =
+      memRegion (sp + 320#64) 88 ∗ memRegion (sp + 408#64) 24 ∗ memRegion (sp + 432#64) 512 ∗
+      cells (sp + 944#64) 2 ∗ memRegion (sp + 960#64) 64 ∗
+      cells (sp + 1024#64) 3 ∗ memRegion (sp + 1048#64) 56 := by
+  sep_interval_eq
+
+private theorem pqr_err_pre_sp1296 (sp : BitVec 64) :
+    memRegion (sp + 1296#64) 32 = cells (sp + 1296#64) 2 ∗ memRegion (sp + 1312#64) 16 := by
+  sep_interval_eq
+
+private theorem pqr_err_pre2_sp320 (sp : BitVec 64) :
+    memRegion (sp + 320#64) 88 = memRegion (sp + 320#64) 40 ∗ cells (sp + 360#64) 6 := by
+  sep_interval_eq
+
+private theorem pqr_err_true_pre2_sp432 (sp : BitVec 64) :
+    memRegion (sp + 432#64) 976 = cells (sp + 432#64) 2 ∗ memRegion (sp + 448#64) 960 := by
+  sep_interval_eq
+
+private theorem pqr_err_false_pre2_sp432 (sp : BitVec 64) :
+    memRegion (sp + 432#64) 976 =
+      (∃∗ b : BitVec 8, (sp + 432#64) ↦₈ b) ∗ memRegion (sp + 433#64) 7 ∗
+      cells (sp + 440#64) 1 ∗ memRegion (sp + 448#64) 960 := by
+  rw [← memRegion_one]; sep_interval_eq
+
+private theorem pqr_post_mr24 (sp : BitVec 64) :
+    memRegion (sp + 24#64) 16 =
+      memRegion (sp + 24#64) 4 ∗ (memRegion (sp + 28#64) 4 ∗ memRegion (sp + 32#64) 8) := by
+  sep_interval_eq
+
+private theorem pqr_post_mr1025 (sp : BitVec 64) :
+    memRegion ((sp + 1024#64) + 1#64) 23 =
+      memRegion ((sp + 1024#64) + 1#64) 7 ∗
+        (memRegion (sp + 1032#64) 8 ∗ memRegion (sp + 1040#64) 8) := by
+  sep_interval_eq
+
+private theorem pqr_post_mr1048 (sp : BitVec 64) :
+    memRegion (sp + 1048#64) 360 =
+      memRegion (sp + 1048#64) 56 ∗ (memRegion (sp + 1104#64) 8 ∗
+      (memRegion (sp + 1112#64) 4 ∗ (memRegion (sp + 1116#64) 164 ∗ (memRegion (sp + 1280#64) 8 ∗
+      (memRegion (sp + 1288#64) 8 ∗ (memRegion (sp + 1296#64) 8 ∗ (memRegion (sp + 1304#64) 8 ∗
+      (memRegion (sp + 1312#64) 16 ∗ memRegion (sp + 1328#64) 80)))))))) := by
+  sep_interval_eq
+
+private theorem pqr_post_mr400 (sp : BitVec 64) :
+    memRegion (sp + 400#64) 1008 =
+      memRegion (sp + 400#64) 8 ∗ (memRegion (sp + 408#64) 8 ∗ (memRegion (sp + 416#64) 8 ∗
+      (memRegion (sp + 424#64) 8 ∗ (memRegion (sp + 432#64) 8 ∗ (memRegion (sp + 440#64) 8 ∗
+      memRegion (sp + 448#64) 960))))) := by
+  sep_interval_eq
+
+private theorem satisfies_drop_left {m : Memory} {P Q : SepProp} (hm : m ⊨ P ∗ Q) : m ⊨ Q :=
+  ((satisfies_pure_sepConj True Q m).mp (satisfies_true_sepConj hm)).2
+
+private theorem refold_and_drop_pqRecvErrFmtCall_post [LibsignalPlacement]
+    {tplSym : String} {sp : BitVec 64} {d b1 : BitVec 8} {u1 : BitVec 32} {q1 q2 : BitVec 64}
+    {m : Memory} {Q : SepProp}
+    (hsp : (sp &&& 15#64 == 0#64) = true)
+    (hm : m ⊨
+      (fmtArgumentsAt (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).argsRo
+        (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).x0
+        (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).x1
+        (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).tpl
+        (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).args ∗
+       (pqRecvErrFmtCall tplSym sp d b1 u1 q1 q2).clientSep ∗
+       memRegion (sp + 432#64) 512 ∗
+       memRegion (sp + 960#64) 64 ∗
+       memRegion (sp + 1048#64) 360) ∗ Q) :
+    m ⊨ memRegion (sp + 432#64) 976 ∗ Q := by
+  have hm0 := Satisfies.mono
+    (sepConj_mono_left (pqRecvErrFmtCall_post_refold tplSym hsp d b1 u1 q1 q2)) hm
+  rw [sepConj_assoc] at hm0
+  exact satisfies_drop_left hm0
+
 set_option maxHeartbeats 800000 in
 theorem pqRecv_recv_err_true_549_placed [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (ctl : BitVec 64)
@@ -353,9 +546,10 @@ theorem pqRecv_recv_err_true_549_placed [LibsignalPlacement] {M : AllocCostModel
     (hseed1 : mkg.seed.length ≤ seedCap.toNat)
     (hseed2 : seedCap.toNat < 2 ^ 63)
     (hfmt_call : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsρ lsFormatInnerSym) (formatInnerBudgetEnvSpec M A lim fmtEnv))
+      (lsρ lsFormatInnerSym) (formatInnerCallLsEnvSpec M A lim fmtEnv))
     (hdealloc_call : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
       (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
+    (hfmt_sub : ∀ evs, CliFormatInnerEnv evs → fmtEnv evs := by exact fun _ h => h)
     (hsp_def : s0.sp - 1504#64 = sp)
     (sf1 : State)
     (hpcf1 : sf1.pc = (blkPl_434).base + 1488#64)
@@ -416,6 +610,8 @@ theorem pqRecv_recv_err_true_549_placed [LibsignalPlacement] {M : AllocCostModel
   refine steps_of_sepWP_placed_state hpost1' hLf1 hclf1
     (mid := lsρ lsFormatInnerSym)
     (RegMid := fun sm2 =>
+      sm2.readReg64 .x0 = lsρ lsPqErrTplRoSym_434 ∧
+      sm2.readReg64 .x1 = sp + 944#64 ∧
       sm2.readReg64 .x8 = sp + 408#64 ∧
       sm2.readReg64 .lr = (blkPl_434).base + 2452#64 ∧
       sm2.readReg64 .x19 = x.ret ∧
@@ -426,6 +622,10 @@ theorem pqRecv_recv_err_true_549_placed [LibsignalPlacement] {M : AllocCostModel
       sm2.sp = sp ∧ sm2.spAligned = true ∧ sm2.trace = s0.trace ∧
       calleeSavedVRegs sm2 = calleeSavedVRegs s0)
     (P_mid := fun sm2 =>
+      ((sp + 944#64) ↦₆₄ (sp + 1024#64)) ∗
+      ((sp + 952#64) ↦₆₄ lsmpl.base 412) ∗
+      ((sp + 1024#64) ↦₈ 0#8) ∗
+      memRegion ((sp + 1024#64) + 1#64) 23 ∗
       memRegion (sp + 408#64) 24 ∗ A.pool lim st sm2 ∗ stackAt sp extHookStack ∗
       sessionStateAt A.repAlloc x.ss x.G.afterTrFrom st1 ∗
       trAt A.repAlloc (sp + 56#64) trG tr ∗
@@ -439,7 +639,9 @@ theorem pqRecv_recv_err_true_549_placed [LibsignalPlacement] {M : AllocCostModel
       ((sp + 40#64) ↦₆₄ seedCap) ∗
       memRegion (sp + 48#64) 8 ∗
       memRegion (sp + 320#64) 88 ∗
-      memRegion (sp + 432#64) 976 ∗
+      memRegion (sp + 432#64) 512 ∗
+      memRegion (sp + 960#64) 64 ∗
+      memRegion (sp + 1048#64) 360 ∗
       protocolAddressAt A.repAlloc x.rem x.remA ∗
       protocolAddressAt A.repAlloc x.loc x.locA ∗
       signalMessageAt A.repAlloc x.msgG x.msgA x.msg ∗
@@ -448,63 +650,31 @@ theorem pqRecv_recv_err_true_549_placed [LibsignalPlacement] {M : AllocCostModel
       memRegion (sp - BitVec.ofNat 64 tryDecryptSubStack) (tryDecryptSubStack - extHookStack) ∗
       tryDecryptSavedRegs s0.sp s0) ?_ ?_
   · wp_conv_pre =>
-      rw [mr_cut sp 320 88 696 784 408#64,
-        mr_cut sp 408 24 672 696 432#64,
-        mr_cut sp 432 512 160 672 944#64,
-        mr_cut sp 944 8 152 160 952#64,
-        mr_cut sp 952 8 144 152 960#64,
-        mr_cut sp 960 64 80 144 1024#64,
-        mr_cut sp 1024 8 72 80 1032#64,
-        mr_cut sp 1032 8 64 72 1040#64,
-        mr_cut sp 1040 8 56 64 1048#64,
-        mr_cut sp 1296 8 24 32 1304#64,
-        mr_cut sp 1304 8 16 24 1312#64,
+      rw [pqr_err_pre_sp320 sp, pqr_err_pre_sp1296 sp,
         stackAt_sub sp tryDecryptSubStack extHookStack]
-      simp only [sepConj_assoc,
-        memRegion_eight (sp + 944#64),
-        memRegion_eight (sp + 952#64),
-        memRegion_eight (sp + 1024#64),
-        memRegion_eight (sp + 1032#64),
-        memRegion_eight (sp + 1040#64),
-        memRegion_eight (sp + 1296#64),
-        memRegion_eight (sp + 1304#64)]
+      simp only [cells_succ, cells_zero, sepConj_emp, sepExists_sepConj_left,
+        sepExists_sepConj_right, BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
+      rw [show sp + 1289#64 = (sp + 1288#64) + 1#64 by simp only [BitVec.add_assoc, BitVec.reduceAdd]]
     wp_pull_exists
     refine sepWP_8_mr7_to_64 (fun hi_d => ?_)
     have hcbz0 := concat56_8_cbz64_zero hi_d
     wp_steps_sync_pool (lsρ lsFormatInnerSym)
-    have hm24 : memRegion (sp + 24#64) 16 =
-        memRegion (sp + 24#64) 4 ∗ (memRegion (sp + 28#64) 4 ∗ memRegion (sp + 32#64) 8) := by
-      rw [mr_cut_add sp 24 4 12 (by decide), mr_cut_add sp 28 4 8 (by decide)]
-    have hm432 : memRegion (sp + 432#64) 976 =
-        memRegion (sp + 432#64) 512 ∗ (memRegion (sp + 944#64) 8 ∗ (memRegion (sp + 952#64) 8 ∗
-        (memRegion (sp + 960#64) 64 ∗ (memRegion (sp + 1024#64) 8 ∗ (memRegion (sp + 1032#64) 8 ∗
-        (memRegion (sp + 1040#64) 8 ∗ (memRegion (sp + 1048#64) 56 ∗ (memRegion (sp + 1104#64) 8 ∗
-        (memRegion (sp + 1112#64) 4 ∗ (memRegion (sp + 1116#64) 164 ∗ (memRegion (sp + 1280#64) 8 ∗
-        (memRegion (sp + 1288#64) 8 ∗ (memRegion (sp + 1296#64) 8 ∗ (memRegion (sp + 1304#64) 8 ∗
-        (memRegion (sp + 1312#64) 16 ∗ memRegion (sp + 1328#64) 80))))))))))))))) := by
-      rw [mr_cut_add sp 432 512 464 (by decide),
-        mr_cut_add sp 944 8 456 (by decide),
-        mr_cut_add sp 952 8 448 (by decide),
-        mr_cut_add sp 960 64 384 (by decide),
-        mr_cut_add sp 1024 8 376 (by decide),
-        mr_cut_add sp 1032 8 368 (by decide),
-        mr_cut_add sp 1040 8 360 (by decide),
-        mr_cut_add sp 1048 56 304 (by decide),
-        mr_cut_add sp 1104 8 296 (by decide),
-        mr_cut_add sp 1112 4 292 (by decide),
-        mr_cut_add sp 1116 164 128 (by decide),
-        mr_cut_add sp 1280 8 120 (by decide),
-        mr_cut_add sp 1288 8 112 (by decide),
-        mr_cut_add sp 1296 8 104 (by decide),
-        mr_cut_add sp 1304 8 96 (by decide),
-        mr_cut_add sp 1312 16 80 (by decide)]
-    rw [hm24, hm432]
+    refine SepWP.focus_weaken (pointsTo64_to_8_memRegion7 (sp + 1024#64) hi_d 0#8)
+      (by sep_focus) ?_
+    rw [pqr_post_mr24 sp, pqr_post_mr1025 sp, pqr_post_mr1048 sp]
     wp_done
-  · intro sm2 hpcm2 hrunm2 hclm2 hLm2 ⟨hx8_2, hlr_2, hx19_2, hx20_2,
+  · intro sm2 hpcm2 hrunm2 hclm2 hLm2 ⟨hx0_2, hx1_2, hx8_2, hlr_2, hx19_2, hx20_2,
       hw24_2, hx25_2, hfp_2, hsp_2, hsp_al2, htr_2, hvregs_2⟩ hmm2
+    have hmm2_ro := lsro_intro_chk hclm2.2 lsroCheck_pqErrTplRoSym_434 hmm2
+    obtain ⟨b1, u1, q1, q2, hmm2_c⟩ := unpack_pqRecvErrFmtCall_pre hsp_al'
+      (Satisfies.mono (Entails.of_eq (by simp only [sepConj_assoc]; sep_ac_rfl)) hmm2_ro)
+    set c := pqRecvErrFmtCall lsPqErrTplRoSym_434 sp 0#8 b1 u1 q1 q2
     have hpre_fmt : sm2.mem ⊨
-        ((formatInnerBudgetEnvSpec M A lim fmtEnv).pre (sp + 408#64, st) sm2 ∗
-         ((sessionStateAt A.repAlloc x.ss x.G.afterTrFrom st1 ∗
+        ((formatInnerCallLsEnvSpec M A lim fmtEnv).pre (c, st) sm2 ∗
+         ((memRegion (sp + 432#64) 512 ∗
+           memRegion (sp + 960#64) 64 ∗
+           memRegion (sp + 1048#64) 360 ∗
+           sessionStateAt A.repAlloc x.ss x.G.afterTrFrom st1 ∗
            trAt A.repAlloc (sp + 56#64) trG tr ∗
            (if seedCap = 0 then emp else A.live seedPtr seedCap.toNat 1 ∗
              (seedPtr ↦ₛ mkg.seed) ∗
@@ -517,7 +687,6 @@ theorem pqRecv_recv_err_true_549_placed [LibsignalPlacement] {M : AllocCostModel
            ((sp + 40#64) ↦₆₄ seedCap) ∗
            memRegion (sp + 48#64) 8 ∗
            memRegion (sp + 320#64) 88 ∗
-           memRegion (sp + 432#64) 976 ∗
            protocolAddressAt A.repAlloc x.rem x.remA ∗
            protocolAddressAt A.repAlloc x.loc x.locA ∗
            signalMessageAt A.repAlloc x.msgG x.msgA x.msg ∗
@@ -526,19 +695,27 @@ theorem pqRecv_recv_err_true_549_placed [LibsignalPlacement] {M : AllocCostModel
            memRegion (sp - BitVec.ofNat 64 tryDecryptSubStack)
              (tryDecryptSubStack - extHookStack) ∗
            tryDecryptSavedRegs s0.sp s0) ∗ R)) := by
-      dsimp only [formatInnerBudgetEnvSpec]
+      dsimp only [formatInnerCallLsEnvSpec]
+      refine intro_withLsRetFormatInner
+        (by rw [hlr_2]; simpa only [wp_norm] using
+          lsRetAddrFormatInner_blockPlacement_base_add 434 2452#64 (by decide) (by decide) (by decide)) ?_
+      dsimp only [cliFormatInnerLsCallSpec]
       rw [hsp_2, sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨⟨hx8_2, hfits_fmt⟩, ?_⟩
-      simp only [sepConj_assoc] at hmm2 ⊢
-      arm64_sep_close
-    refine steps_call_out_placed (sp + 408#64, st) hfmt_call
+      refine ⟨⟨hx8_2, hx0_2, hx1_2,
+        ⟨sp_add_944_even hsp_al', spqrErrorValidTag_zero, by decide, by decide⟩,
+        hfits_fmt,
+        hfmt_sub _ (cliFormatInnerLsCall_exactEvs_mem_spqrErrorDisplayPrefixed
+          _ _ _ _ _ _ _ _ _ _ _ (by decide) (by decide))⟩, ?_⟩
+      rw [show c.ret = sp + 408#64 from rfl]
+      exact Satisfies.mono (Entails.of_eq (by simp only [sepConj_assoc]; sep_ac_rfl)) hmm2_c
+    refine steps_call_out_placed (c, st) hfmt_call
       hpcm2 hrunm2 hsp_al2 hlr_2 hclm2 hLm2 hpre_fmt
       (fun sf _ hp => False.elim (by
-        dsimp only [formatInnerBudgetEnvSpec] at hp
+        dsimp only [formatInnerCallLsEnvSpec, withLsRetFormatInner, cliFormatInnerLsCallSpec] at hp
         rw [sepConj_assoc] at hp
         exact not_satisfies_false_sepConj hp)) ?_
     intro sf2 hpcf2 hrunf2 hspf2 hsp_alf2 hcsf2 hclf2 hLf2 hpost2
-    dsimp only [formatInnerBudgetEnvSpec] at hpost2
+    dsimp only [formatInnerCallLsEnvSpec, withLsRetFormatInner, cliFormatInnerLsCallSpec] at hpost2
     rw [hsp_2] at hspf2 hpost2
     have hsp_alf2' : (sf2.sp &&& 15#64 == 0#64) = true := hsp_alf2
     have hcs2 := hcsf2
@@ -547,16 +724,16 @@ theorem pqRecv_recv_err_true_549_placed [LibsignalPlacement] {M : AllocCostModel
     rw [hx25_2] at hx25_f2; rw [hfp_2] at hfp_f2; rw [hvregs_2] at hvregs_f2
     have hw24_f2 : (sf2.readReg64 .x24).setWidth 32 = 1#32 := by rw [hx24_f2]; exact hw24_2
     simp only [sepExists_sepConj_left, satisfies_sepExists] at hpost2
-    rcases hpost2 with ⟨evs2, hpost2⟩
+    rcases hpost2 with ⟨evs2, fmtBs, hpost2⟩
     rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpost2
-    rcases hpost2 with ⟨⟨htr_f2, hevs2⟩, hpost2⟩
+    rcases hpost2 with ⟨⟨_hacp, _hfs, htr_f2, hevs2⟩, hpost2⟩
     rw [htr_2] at htr_f2
-    simp only [sepExists_sepConj_left, satisfies_sepExists] at hpost2
-    rcases hpost2 with ⟨fmtBs, hpost2⟩
     unfold vecU8 at hpost2
     simp only [sepExists_sepConj_left, satisfies_sepExists] at hpost2
     rcases hpost2 with ⟨fmtCap, fmtPtr, hpost2⟩
     set st_f := M.stepEvents evs2 st
+    have hpost2_refold := refold_and_drop_pqRecvErrFmtCall_post hsp_al'
+      (Satisfies.mono (Entails.of_eq (by dsimp only [c]; simp only [sepConj_assoc]; sep_ac_rfl)) hpost2)
     have hpost2' : sf2.mem ⊨
         vecU8At A.repAlloc (sp + 408#64) fmtCap fmtPtr fmtBs ∗
         (sessionStateAt A.repAlloc x.ss x.G.afterTrFrom st1 ∗
@@ -581,9 +758,9 @@ theorem pqRecv_recv_err_true_549_placed [LibsignalPlacement] {M : AllocCostModel
          stackAt sp tryDecryptSubStack ∗
          tryDecryptSavedRegs s0.sp s0 ∗
          A.pool lim st_f sf2) ∗ R := by
+      dsimp only [c, pqRecvErrFmtCall] at hpost2_refold
       rw [stackAt_sub sp tryDecryptSubStack extHookStack]
-      simp only [sepConj_assoc] at hpost2 ⊢
-      arm64_sep_close
+      exact Satisfies.mono (Entails.of_eq (by simp only [sepConj_assoc]; sep_ac_rfl)) hpost2_refold
     unfold vecU8At vecHeader at hpost2'
     simp only [sepConj_assoc] at hpost2'
     rw [sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
@@ -627,23 +804,9 @@ theorem pqRecv_recv_err_true_549_placed [LibsignalPlacement] {M : AllocCostModel
         tryDecryptSavedRegs s0.sp s0 ∗
         A.pool lim st_f st2) ?_ ?_
     · wp_conv_pre =>
-        rw [mr_cut sp 320 40 48 88 360#64,
-          mr_cut sp 360 8 40 48 368#64,
-          mr_cut sp 368 8 32 40 376#64,
-          mr_cut sp 376 8 24 32 384#64,
-          mr_cut sp 384 8 16 24 392#64,
-          mr_cut sp 392 8 8 16 400#64,
-          mr_cut sp 432 8 968 976 440#64,
-          mr_cut sp 440 8 960 968 448#64]
-        simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc,
-          memRegion_eight (sp + 360#64),
-          memRegion_eight (sp + 368#64),
-          memRegion_eight (sp + 376#64),
-          memRegion_eight (sp + 384#64),
-          memRegion_eight (sp + 392#64),
-          memRegion_eight (sp + 400#64),
-          memRegion_eight (sp + 432#64),
-          memRegion_eight (sp + 440#64)]
+        rw [pqr_err_pre2_sp320 sp, pqr_err_true_pre2_sp432 sp]
+        simp only [cells_succ, cells_zero, sepConj_emp, sepExists_sepConj_left,
+          sepExists_sepConj_right, BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
       dsimp only [speTag, speWord]
       wp_pull_exists
       apply sepWP_seg_ls_vm
@@ -658,17 +821,7 @@ theorem pqRecv_recv_err_true_549_placed [LibsignalPlacement] {M : AllocCostModel
         (hnext := ?_)
       refine SepWP.focus_weaken
         (speBodyAt_invalidState_fold A.repAlloc sp fmtCap fmtPtr _ fmtBs hfb) (by sep_focus) ?_
-      have hm400 : memRegion (sp + 400#64) 1008 =
-          memRegion (sp + 400#64) 8 ∗ (memRegion (sp + 408#64) 8 ∗ (memRegion (sp + 416#64) 8 ∗
-          (memRegion (sp + 424#64) 8 ∗ (memRegion (sp + 432#64) 8 ∗ (memRegion (sp + 440#64) 8 ∗
-          memRegion (sp + 448#64) 960))))) := by
-        rw [mr_cut_add sp 400 8 1000 (by decide),
-          mr_cut_add sp 408 8 992 (by decide),
-          mr_cut_add sp 416 8 984 (by decide),
-          mr_cut_add sp 424 8 976 (by decide),
-          mr_cut_add sp 432 8 968 (by decide),
-          mr_cut_add sp 440 8 960 (by decide)]
-      rw [hm400]
+      rw [pqr_post_mr400 sp]
       wp_done
     · intro st2 hpc2 hrun2 hcl2 hL2 ⟨hx19_2, hx20_2, hx26_2, hfp_2, hsp_2, hsp_al2, htr_2, hvregs_2⟩ hm2
       obtain ⟨s', hsteps, (⟨evs3, hevs3, hok⟩ | hpan)⟩ :=
@@ -692,11 +845,13 @@ theorem pqRecv_recv_err_false_549_placed [LibsignalPlacement] {M : AllocCostMode
     (hseed1 : mkg.seed.length ≤ seedCap.toNat)
     (hseed2 : seedCap.toNat < 2 ^ 63)
     (hfmt_call : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsρ lsFormatInnerSym) (formatInnerBudgetEnvSpec M A lim fmtEnv))
+      (lsρ lsFormatInnerSym) (formatInnerCallLsEnvSpec M A lim fmtEnv))
     (hdealloc_call : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
       (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
+    (hfmt_sub : ∀ evs, CliFormatInnerEnv evs → fmtEnv evs := by exact fun _ h => h)
     (hsp_def : s0.sp - 1504#64 = sp)
     (hd_ne : d ≠ 0#8)
+    (hd_valid : SpqrErrorValidTag d)
     (sf1 : State)
     (hpcf1 : sf1.pc = (blkPl_434).base + 1488#64)
     (hrunf1 : sf1.status = .Running)
@@ -759,6 +914,8 @@ theorem pqRecv_recv_err_false_549_placed [LibsignalPlacement] {M : AllocCostMode
   refine steps_of_sepWP_placed_state hpost1' hLf1 hclf1
     (mid := lsρ lsFormatInnerSym)
     (RegMid := fun sm2 =>
+      sm2.readReg64 .x0 = lsρ lsPqErrTplRoSym_434 ∧
+      sm2.readReg64 .x1 = sp + 944#64 ∧
       sm2.readReg64 .x8 = sp + 408#64 ∧
       sm2.readReg64 .lr = (blkPl_434).base + 2156#64 ∧
       sm2.readReg64 .x19 = x.ret ∧
@@ -770,6 +927,10 @@ theorem pqRecv_recv_err_false_549_placed [LibsignalPlacement] {M : AllocCostMode
       sm2.sp = sp ∧ sm2.spAligned = true ∧ sm2.trace = s0.trace ∧
       calleeSavedVRegs sm2 = calleeSavedVRegs s0)
     (P_mid := fun sm2 =>
+      ((sp + 944#64) ↦₆₄ (sp + 1024#64)) ∗
+      ((sp + 952#64) ↦₆₄ lsmpl.base 412) ∗
+      ((sp + 1024#64) ↦₈ d) ∗
+      memRegion ((sp + 1024#64) + 1#64) 23 ∗
       memRegion (sp + 408#64) 24 ∗ A.pool lim st sm2 ∗ stackAt sp extHookStack ∗
       sessionStateAt A.repAlloc x.ss x.G.afterTrFrom st1 ∗
       trAt A.repAlloc (sp + 56#64) trG tr ∗
@@ -785,7 +946,9 @@ theorem pqRecv_recv_err_false_549_placed [LibsignalPlacement] {M : AllocCostMode
       ((sp + 40#64) ↦₆₄ seedCap) ∗
       memRegion (sp + 48#64) 8 ∗
       memRegion (sp + 320#64) 88 ∗
-      memRegion (sp + 432#64) 976 ∗
+      memRegion (sp + 432#64) 512 ∗
+      memRegion (sp + 960#64) 64 ∗
+      memRegion (sp + 1048#64) 360 ∗
       protocolAddressAt A.repAlloc x.rem x.remA ∗
       protocolAddressAt A.repAlloc x.loc x.locA ∗
       signalMessageAt A.repAlloc x.msgG x.msgA x.msg ∗
@@ -795,61 +958,32 @@ theorem pqRecv_recv_err_false_549_placed [LibsignalPlacement] {M : AllocCostMode
       tryDecryptSavedRegs s0.sp s0) ?_ ?_
   · dsimp only [speTag, speWord]
     wp_conv_pre =>
-      rw [mr_cut sp 320 88 696 784 408#64,
-        mr_cut sp 408 24 672 696 432#64,
-        mr_cut sp 432 512 160 672 944#64,
-        mr_cut sp 944 8 152 160 952#64,
-        mr_cut sp 952 8 144 152 960#64,
-        mr_cut sp 960 64 80 144 1024#64,
-        mr_cut sp 1024 8 72 80 1032#64,
-        mr_cut sp 1032 8 64 72 1040#64,
-        mr_cut sp 1040 8 56 64 1048#64,
-        mr_cut sp 1296 8 24 32 1304#64,
-        mr_cut sp 1304 8 16 24 1312#64,
+      rw [pqr_err_pre_sp320 sp, pqr_err_pre_sp1296 sp,
         stackAt_sub sp tryDecryptSubStack extHookStack]
-      simp only [sepConj_assoc,
-        memRegion_eight (sp + 944#64),
-        memRegion_eight (sp + 952#64),
-        memRegion_eight (sp + 1024#64),
-        memRegion_eight (sp + 1032#64),
-        memRegion_eight (sp + 1040#64),
-        memRegion_eight (sp + 1296#64),
-        memRegion_eight (sp + 1304#64)]
+      simp only [cells_succ, cells_zero, sepConj_emp, sepExists_sepConj_left,
+        sepExists_sepConj_right, BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
+      rw [show sp + 1289#64 = (sp + 1288#64) + 1#64 by simp only [BitVec.add_assoc, BitVec.reduceAdd]]
     wp_pull_exists
     refine sepWP_8_mr7_to_64 (fun hi_d => ?_)
     have hcbz1 := concat56_8_cbz64_ne_zero hi_d hd_ne
     have hcbz2 := concat56_8_cbz32_ne_zero hi_d hd_ne
     wp_steps_sync_pool (lsρ lsFormatInnerSym)
-    have hm432 : memRegion (sp + 432#64) 976 =
-        memRegion (sp + 432#64) 512 ∗ (memRegion (sp + 944#64) 8 ∗ (memRegion (sp + 952#64) 8 ∗
-        (memRegion (sp + 960#64) 64 ∗ (memRegion (sp + 1024#64) 8 ∗ (memRegion (sp + 1032#64) 8 ∗
-        (memRegion (sp + 1040#64) 8 ∗ (memRegion (sp + 1048#64) 56 ∗ (memRegion (sp + 1104#64) 8 ∗
-        (memRegion (sp + 1112#64) 4 ∗ (memRegion (sp + 1116#64) 164 ∗ (memRegion (sp + 1280#64) 8 ∗
-        (memRegion (sp + 1288#64) 8 ∗ (memRegion (sp + 1296#64) 8 ∗ (memRegion (sp + 1304#64) 8 ∗
-        (memRegion (sp + 1312#64) 16 ∗ memRegion (sp + 1328#64) 80))))))))))))))) := by
-      rw [mr_cut_add sp 432 512 464 (by decide),
-        mr_cut_add sp 944 8 456 (by decide),
-        mr_cut_add sp 952 8 448 (by decide),
-        mr_cut_add sp 960 64 384 (by decide),
-        mr_cut_add sp 1024 8 376 (by decide),
-        mr_cut_add sp 1032 8 368 (by decide),
-        mr_cut_add sp 1040 8 360 (by decide),
-        mr_cut_add sp 1048 56 304 (by decide),
-        mr_cut_add sp 1104 8 296 (by decide),
-        mr_cut_add sp 1112 4 292 (by decide),
-        mr_cut_add sp 1116 164 128 (by decide),
-        mr_cut_add sp 1280 8 120 (by decide),
-        mr_cut_add sp 1288 8 112 (by decide),
-        mr_cut_add sp 1296 8 104 (by decide),
-        mr_cut_add sp 1304 8 96 (by decide),
-        mr_cut_add sp 1312 16 80 (by decide)]
-    rw [hm432]
+    refine SepWP.focus_weaken (pointsTo64_to_8_memRegion7 (sp + 1024#64) hi_d d)
+      (by sep_focus) ?_
+    rw [pqr_post_mr1025 sp, pqr_post_mr1048 sp]
     wp_done
-  · intro sm2 hpcm2 hrunm2 hclm2 hLm2 ⟨hx8_2, hlr_2, hx19_2, hx20_2,
+  · intro sm2 hpcm2 hrunm2 hclm2 hLm2 ⟨hx0_2, hx1_2, hx8_2, hlr_2, hx19_2, hx20_2,
       hw24_2, hx25_2, hx26_2, hfp_2, hsp_2, hsp_al2, htr_2, hvregs_2⟩ hmm2
+    have hmm2_ro := lsro_intro_chk hclm2.2 lsroCheck_pqErrTplRoSym_434 hmm2
+    obtain ⟨b1, u1, q1, q2, hmm2_c⟩ := unpack_pqRecvErrFmtCall_pre hsp_al'
+      (Satisfies.mono (Entails.of_eq (by simp only [sepConj_assoc]; sep_ac_rfl)) hmm2_ro)
+    set c := pqRecvErrFmtCall lsPqErrTplRoSym_434 sp d b1 u1 q1 q2
     have hpre_fmt : sm2.mem ⊨
-        ((formatInnerBudgetEnvSpec M A lim fmtEnv).pre (sp + 408#64, st) sm2 ∗
-         ((sessionStateAt A.repAlloc x.ss x.G.afterTrFrom st1 ∗
+        ((formatInnerCallLsEnvSpec M A lim fmtEnv).pre (c, st) sm2 ∗
+         ((memRegion (sp + 432#64) 512 ∗
+           memRegion (sp + 960#64) 64 ∗
+           memRegion (sp + 1048#64) 360 ∗
+           sessionStateAt A.repAlloc x.ss x.G.afterTrFrom st1 ∗
            trAt A.repAlloc (sp + 56#64) trG tr ∗
            (if seedCap = 0 then emp else A.live seedPtr seedCap.toNat 1 ∗
              (seedPtr ↦ₛ mkg.seed) ∗
@@ -864,7 +998,6 @@ theorem pqRecv_recv_err_false_549_placed [LibsignalPlacement] {M : AllocCostMode
            ((sp + 40#64) ↦₆₄ seedCap) ∗
            memRegion (sp + 48#64) 8 ∗
            memRegion (sp + 320#64) 88 ∗
-           memRegion (sp + 432#64) 976 ∗
            protocolAddressAt A.repAlloc x.rem x.remA ∗
            protocolAddressAt A.repAlloc x.loc x.locA ∗
            signalMessageAt A.repAlloc x.msgG x.msgA x.msg ∗
@@ -873,19 +1006,27 @@ theorem pqRecv_recv_err_false_549_placed [LibsignalPlacement] {M : AllocCostMode
            memRegion (sp - BitVec.ofNat 64 tryDecryptSubStack)
              (tryDecryptSubStack - extHookStack) ∗
            tryDecryptSavedRegs s0.sp s0) ∗ R)) := by
-      dsimp only [formatInnerBudgetEnvSpec]
+      dsimp only [formatInnerCallLsEnvSpec]
+      refine intro_withLsRetFormatInner
+        (by rw [hlr_2]; simpa only [wp_norm] using
+          lsRetAddrFormatInner_blockPlacement_base_add 434 2156#64 (by decide) (by decide) (by decide)) ?_
+      dsimp only [cliFormatInnerLsCallSpec]
       rw [hsp_2, sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨⟨hx8_2, hfits_fmt⟩, ?_⟩
-      simp only [sepConj_assoc] at hmm2 ⊢
-      arm64_sep_close
-    refine steps_call_out_placed (sp + 408#64, st) hfmt_call
+      refine ⟨⟨hx8_2, hx0_2, hx1_2,
+        ⟨sp_add_944_even hsp_al', hd_valid, by decide, by decide⟩,
+        hfits_fmt,
+        hfmt_sub _ (cliFormatInnerLsCall_exactEvs_mem_spqrErrorDisplayPrefixed
+          _ _ _ _ _ _ _ _ _ _ _ (by decide) (by decide))⟩, ?_⟩
+      rw [show c.ret = sp + 408#64 from rfl]
+      exact Satisfies.mono (Entails.of_eq (by simp only [sepConj_assoc]; sep_ac_rfl)) hmm2_c
+    refine steps_call_out_placed (c, st) hfmt_call
       hpcm2 hrunm2 hsp_al2 hlr_2 hclm2 hLm2 hpre_fmt
       (fun sf _ hp => False.elim (by
-        dsimp only [formatInnerBudgetEnvSpec] at hp
+        dsimp only [formatInnerCallLsEnvSpec, withLsRetFormatInner, cliFormatInnerLsCallSpec] at hp
         rw [sepConj_assoc] at hp
         exact not_satisfies_false_sepConj hp)) ?_
     intro sf2 hpcf2 hrunf2 hspf2 hsp_alf2 hcsf2 hclf2 hLf2 hpost2
-    dsimp only [formatInnerBudgetEnvSpec] at hpost2
+    dsimp only [formatInnerCallLsEnvSpec, withLsRetFormatInner, cliFormatInnerLsCallSpec] at hpost2
     rw [hsp_2] at hspf2 hpost2
     have hsp_alf2' : (sf2.sp &&& 15#64 == 0#64) = true := hsp_alf2
     have hcs2 := hcsf2
@@ -894,16 +1035,16 @@ theorem pqRecv_recv_err_false_549_placed [LibsignalPlacement] {M : AllocCostMode
     rw [hx25_2] at hx25_f2; rw [hx26_2] at hx26_f2; rw [hfp_2] at hfp_f2; rw [hvregs_2] at hvregs_f2
     have hw24_f2 : (sf2.readReg64 .x24).setWidth 32 = 1#32 := by rw [hx24_f2]; exact hw24_2
     simp only [sepExists_sepConj_left, satisfies_sepExists] at hpost2
-    rcases hpost2 with ⟨evs2, hpost2⟩
+    rcases hpost2 with ⟨evs2, fmtBs, hpost2⟩
     rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpost2
-    rcases hpost2 with ⟨⟨htr_f2, hevs2⟩, hpost2⟩
+    rcases hpost2 with ⟨⟨_hacp, _hfs, htr_f2, hevs2⟩, hpost2⟩
     rw [htr_2] at htr_f2
-    simp only [sepExists_sepConj_left, satisfies_sepExists] at hpost2
-    rcases hpost2 with ⟨fmtBs, hpost2⟩
     unfold vecU8 at hpost2
     simp only [sepExists_sepConj_left, satisfies_sepExists] at hpost2
     rcases hpost2 with ⟨fmtCap, fmtPtr, hpost2⟩
     set st_f := M.stepEvents evs2 st
+    have hpost2_refold := refold_and_drop_pqRecvErrFmtCall_post hsp_al'
+      (Satisfies.mono (Entails.of_eq (by dsimp only [c]; simp only [sepConj_assoc]; sep_ac_rfl)) hpost2)
     have hpost2' : sf2.mem ⊨
         vecU8At A.repAlloc (sp + 408#64) fmtCap fmtPtr fmtBs ∗
         (sessionStateAt A.repAlloc x.ss x.G.afterTrFrom st1 ∗
@@ -930,9 +1071,9 @@ theorem pqRecv_recv_err_false_549_placed [LibsignalPlacement] {M : AllocCostMode
          stackAt sp tryDecryptSubStack ∗
          tryDecryptSavedRegs s0.sp s0 ∗
          A.pool lim st_f sf2) ∗ R := by
+      dsimp only [c, pqRecvErrFmtCall] at hpost2_refold
       rw [stackAt_sub sp tryDecryptSubStack extHookStack]
-      simp only [sepConj_assoc] at hpost2 ⊢
-      arm64_sep_close
+      exact Satisfies.mono (Entails.of_eq (by simp only [sepConj_assoc]; sep_ac_rfl)) hpost2_refold
     unfold vecU8At vecHeader at hpost2'
     simp only [sepConj_assoc] at hpost2'
     rw [sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
@@ -976,24 +1117,9 @@ theorem pqRecv_recv_err_false_549_placed [LibsignalPlacement] {M : AllocCostMode
         tryDecryptSavedRegs s0.sp s0 ∗
         A.pool lim st_f st2) ?_ ?_
     · wp_conv_pre =>
-        rw [mr_cut sp 320 40 48 88 360#64,
-          mr_cut sp 360 8 40 48 368#64,
-          mr_cut sp 368 8 32 40 376#64,
-          mr_cut sp 376 8 24 32 384#64,
-          mr_cut sp 384 8 16 24 392#64,
-          mr_cut sp 392 8 8 16 400#64,
-          mr_cut sp 432 1 975 976 433#64,
-          mr_cut sp 433 7 968 975 440#64,
-          mr_cut sp 440 8 960 968 448#64]
-        simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc,
-          memRegion_eight (sp + 360#64),
-          memRegion_eight (sp + 368#64),
-          memRegion_eight (sp + 376#64),
-          memRegion_eight (sp + 384#64),
-          memRegion_eight (sp + 392#64),
-          memRegion_eight (sp + 400#64),
-          memRegion_one (sp + 432#64),
-          memRegion_eight (sp + 440#64)]
+        rw [pqr_err_pre2_sp320 sp, pqr_err_false_pre2_sp432 sp]
+        simp only [cells_succ, cells_zero, sepConj_emp, sepExists_sepConj_left,
+          sepExists_sepConj_right, BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
       wp_pull_exists
       apply sepWP_seg_ls_vm
         (Q := (blkPC_434).rebase (blkPl_434).base (hooksException H))
@@ -1014,20 +1140,7 @@ theorem pqRecv_recv_err_false_549_placed [LibsignalPlacement] {M : AllocCostMode
       refine SepWP.focus_weaken
         (speBodyAt_pqRatchet_fold A.repAlloc sp fmtCap fmtPtr _ fmtBs x.msgType hfb)
         (by sep_focus) ?_
-      have hm24 : memRegion (sp + 24#64) 16 =
-          memRegion (sp + 24#64) 4 ∗ (memRegion (sp + 28#64) 4 ∗ memRegion (sp + 32#64) 8) := by
-        rw [mr_cut_add sp 24 4 12 (by decide), mr_cut_add sp 28 4 8 (by decide)]
-      have hm400 : memRegion (sp + 400#64) 1008 =
-          memRegion (sp + 400#64) 8 ∗ (memRegion (sp + 408#64) 8 ∗ (memRegion (sp + 416#64) 8 ∗
-          (memRegion (sp + 424#64) 8 ∗ (memRegion (sp + 432#64) 8 ∗ (memRegion (sp + 440#64) 8 ∗
-          memRegion (sp + 448#64) 960))))) := by
-        rw [mr_cut_add sp 400 8 1000 (by decide),
-          mr_cut_add sp 408 8 992 (by decide),
-          mr_cut_add sp 416 8 984 (by decide),
-          mr_cut_add sp 424 8 976 (by decide),
-          mr_cut_add sp 432 8 968 (by decide),
-          mr_cut_add sp 440 8 960 (by decide)]
-      rw [hm24, hm400]
+      rw [pqr_post_mr24 sp, pqr_post_mr400 sp]
       wp_done
     · intro st2 hpc2 hrun2 hcl2 hL2 ⟨hx19_2, hx20_2, hx26_2, hfp_2, hsp_2, hsp_al2, htr_2, hvregs_2⟩ hm2
       obtain ⟨s', hsteps, (⟨evs3, hevs3, hok⟩ | hpan)⟩ :=

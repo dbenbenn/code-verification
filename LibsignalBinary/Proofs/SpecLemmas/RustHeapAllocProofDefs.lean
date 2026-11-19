@@ -20,7 +20,7 @@ Defines `AllocSucceedsWithRoom`, asserting that `__rust_alloc` and `__rust_reall
 non-null whenever an unmapped aligned block of the requested size exists.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.RustHeap
 open Arm64 ProofLib
@@ -32,7 +32,7 @@ open Arm64 ProofLib
 "Never fails" cannot be required: a frame owning all mapped memory forces `x0 = 0`. Satisfiable
 by mapping a fresh unmapped block (`Memory.mapFresh`). Used only to state non-vacuity
 (`ConsumeMessageKeySpecSatisfiable`), never as a proof assumption. -/
-def AllocSucceedsWithRoom (A : RustAlloc) (hooks : String → Option (State → State)) : Prop :=
+@[expose] def AllocSucceedsWithRoom (A : RustAlloc) (hooks : String → Option (State → State)) : Prop :=
   (∀ f, hooks "__rustc::__rust_alloc" = some f →
     ∀ size align R (s : State), s.status = .Running → s.spAligned = true →
       (s.mem ⊨ (rustAllocSpec A).pre (size, align) s ∗ R) →

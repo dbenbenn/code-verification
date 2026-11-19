@@ -9,7 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopMovesDefs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopPeelDefs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Fetch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -20,6 +22,7 @@ import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Previous-Session `memcpy` Chain Proof (`+0x2620 → +0x1fd4`)
@@ -29,7 +32,7 @@ the five 320-byte `memcpy` transfers on `sp + 0x948`, loading `w8 = 4` (`x8 = 4#
 `sp + 0xa78`, and preserving `calleeSavedVRegs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -51,23 +54,6 @@ attribute [-arm64_norm]
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  (ls_lemma% fnOff "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}")
-  (ls_stub% "memcpy")
-
-private gen_decodes libsignalSessionCode_tree verNeLoopMovesCliDec [
-  (ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}" + 0x1f94) →
-  (ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}" + 0x1fd0),
-  (ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}" + 0x2620) →
-  (ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}" + 0x2668)]
-
-local macro "loopMoves_fetches_range " b:term:max H:term:max lo:num hi:num : tactic => do
-  let s := lo.getNat
-  let l := Lean.Syntax.mkNumLit (toString (hi.getNat - s + 4))
-  `(tactic| code_fetches_range libsignalSessionCode verNeLoopMovesCliDec $b $H
-    (ls_lemma% fnOff "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}")
-    (ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}") $lo $l)
 
 private theorem entails_replace_sub_mv {P A A' F Q : SepProp}
     (hA : A ⊢ A') (hP : P = A ∗ F) (hQ : Q = A' ∗ F) : P ⊢ Q := by
@@ -119,91 +105,5 @@ private theorem pointsToBytes_320_entails_memRegion (p : BitVec 64) (bs : List (
     (p ↦ₛ bs) ⊢ memRegion p 320 := by
   rw [← hbs]
   exact pointsToBytes_entails_memRegion p bs
-
-set_option maxHeartbeats 1200000 in
-/-- Proves `OverPrevMovesCliStmt4K` (`+0x2620 → +0x1fd4`) under `AllocContractsMem4K`. -/
-theorem overPrevMoves_cli_4k_ok : OverPrevMovesCliStmt4K := by
-  intro A img ext hA s w0 w1 w2 u920 r1 r2 hw0 hr1 hr2 hpc hrun hsp_align hx21
-  let bs := r1 ++ unpack32 4#32 ++ r2
-  have hbs : bs.length = 320 := by
-    simp only [bs, List.length_append, hr1, hr2, unpack32_length]
-  have hcmn1 : (w0 + 1#64 == 0#64) = false := cmn_1_ne_zero hw0
-  have hcmn2 : (w0 + 2#64 == 0#64) = false := cmn_2_ne_zero hw0
-  have hmemcpy : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr decryptPrekeyClosureName +
-        bv% ((2^64 + ls_off% "memcpy" -
-          (ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}")) % 2^64))
-      (sessionMemcpySpec allocHookStack) :=
-    hA.session_memcpy_ok_at decryptPrekeyClosureName
-      (num% ((2^64 + ls_off% "memcpy" -
-        (ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}")) % 2^64))
-  clear hA
-  rw [overPrevMovesSS_merge_eq s.sp w0 w1 w2 r1 r2 hr1]
-  change SepWP (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr decryptPrekeyClosureName + 0x1fd4#64) s
-    ((((s.sp + 0x930#64) ↦₆₄ w0) ∗ ((s.sp + 0x938#64) ↦₆₄ w1) ∗ ((s.sp + 0x940#64) ↦₆₄ w2) ∗
-      ((s.sp + 0x948#64) ↦ₛ bs)) ∗
-      memRegion (s.sp + 0x560#64) 320 ∗ memRegion (s.sp + 0x6a0#64) 320 ∗
-      memRegion (s.sp + 0x7e0#64) 320 ∗ ((s.sp + 0x920#64) ↦₆₄ u920) ∗
-      stackAt s.sp allocHookStack) _
-  conv => arg 4; rw [← hbs]
-  simp only [sepConj_assoc]
-  loopMoves_fetches_range img.base (Rust.withPanics ext) 0x2620 0x2668
-  loopMoves_fetches_range img.base (Rust.withPanics ext) 0x1f94 0x1fd0
-  dsimp only [tripleRatchetProgAtExt] at hmemcpy hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr decryptPrekeyClosureName = entry
-  examples_hide_fetches
-  have hx21' : s.readReg64 (Reg.gpr 21#5) = s.sp + 0x930#64 := hx21
-  have h948 : s.sp + 0x930#64 + 0x18#64 = s.sp + 0x948#64 := by bv_omega
-  have hlen_nat : (0x140#64).toNat = bs.length := hbs.symm
-  wp_steps
-  wp_call hmemcpy (s.sp + 0x7e0#64, s.sp + 0x948#64, bs)
-  wp_steps
-  wp_call hmemcpy (s.sp + 0x6a0#64, s.sp + 0x7e0#64, bs)
-  wp_steps
-  wp_call hmemcpy (s.sp + 0x560#64, s.sp + 0x6a0#64, bs)
-  refine SepWP.weaken_pre
-    (entails_replace_sub_mv
-      (pointsToBytes_entails_memRegion (s.sp + 0x7e0#64) bs)
-      (by sep_focus) rfl) ?_
-  wp_steps
-  wp_call hmemcpy (s.sp + 0x7e0#64, s.sp + 0x560#64, bs)
-  refine SepWP.weaken_pre
-    (entails_replace_sub_mv
-      (pointsToBytes_entails_memRegion (s.sp + 0x948#64) bs)
-      (by sep_focus) rfl) ?_
-  wp_steps
-  wp_call hmemcpy (s.sp + 0x948#64, s.sp + 0x7e0#64, bs)
-  refine SepWP.weaken_pre
-    (entails_replace_sub_mv
-      (Entails.of_eq (ss320_bytes_eq s.sp r1 r2 hr1).symm)
-      (by sep_focus) rfl) ?_
-  simp only [sepConj_assoc]
-  wp_steps
-  refine SepWP.weaken_pre
-    (entails_replace_sub_mv
-      (pointsToBytes_320_entails_memRegion (s.sp + 0x560#64) bs hbs)
-      (by sep_focus) rfl) ?_
-  refine SepWP.weaken_pre
-    (entails_replace_sub_mv
-      (pointsToBytes_320_entails_memRegion (s.sp + 0x6a0#64) bs hbs)
-      (by sep_focus) rfl) ?_
-  refine SepWP.weaken_pre
-    (entails_replace_sub_mv
-      (pointsToBytes_320_entails_memRegion (s.sp + 0x7e0#64) bs hbs)
-      (by sep_focus) rfl) ?_
-  refine SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) ?_
-  refine ⟨?_,
-    by simp_all [arm64_norm], by simp_all [arm64_norm],
-    by simp_all [arm64_norm], by simp_all [arm64_norm],
-    by simp_all [arm64_norm], by simp_all [arm64_norm],
-    by simp_all [arm64_norm], by simp_all [arm64_norm, wp_norm, CalleeSavedPreserved]⟩
-  rw [← ss320_bytes_eq s.sp r1 r2 hr1]
-  simp_all only [sepConj_assoc]
-  exact Entails.of_eq (by ac_rfl)
-
-theorem overPrevMoves_cli_ok : OverPrevMovesCliStmt :=
-  fun img ext hA => overPrevMoves_cli_4k_ok img ext (.of_AllocContracts hA)
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.VerNe

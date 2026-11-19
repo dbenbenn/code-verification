@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.SessionCollisionsAux
-public import Symbolic.Proofs.Tests.CliNonvacuity.RecvNoCollision
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionCollisionsAux -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.RecvNoCollision -- proof-setup: allow-public-import
 import all DY.Bytes.Basic
 import all DY.ALaCarte.Basic
 import all DY.ALaCarte.DecidableEq
@@ -59,7 +59,7 @@ import Symbolic.Proofs.Tests.CliNonvacuity.Table.Cli
 Discharges `noRecvMemo_call8` from the pre-certified `Table.Cli.cliTable` and `cliGamma`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

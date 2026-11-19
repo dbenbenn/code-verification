@@ -9,18 +9,26 @@ limitations under the License.
 
 module
 
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSaveAuxBudget
-public meta import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSaveAuxBudget -- shake: keep
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.ExtDefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegBatch1Placed
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSaveAuxBudget
+public meta import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSaveAuxBudget -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.ExtDefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegBatch1Placed
 import LibsignalBinary.Proofs.PublicApi.StoreKit.RecordMove
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegLoadPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegRegionSomePlaced
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegLoad
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegPostNone
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegRegionSome
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegWrite
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable `SegLoad`, `SegPostNone`, `SegRegionSome`, and `SegWrite`
@@ -30,7 +38,7 @@ Proves budget-threaded (`RustCliAllocBudget M`) relocatable `segLoadVX_placed_ok
 and `segWriteVX_placed_ok` (`+0x24d4 → ret`) on `lsProg_463 H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

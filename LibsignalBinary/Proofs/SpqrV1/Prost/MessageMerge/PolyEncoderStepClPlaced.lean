@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoder
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.DefsClPlaced
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoder -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.DefsClPlaced
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
@@ -29,7 +28,7 @@ Proves the `[LibsignalPlacement]` shared error-exit, unknown-tag skip, and per-t
 step lemmas for `PolynomialEncoder::merge` on Block `297` with `withLsCodeRoLoaded lsmpl` callees.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

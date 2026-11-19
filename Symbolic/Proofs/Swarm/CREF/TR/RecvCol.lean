@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape
+import Symbolic.Proofs.Refinement.Composed.Cli.OldShape
 import Symbolic.Proofs.Swarm.CREF.Prelude
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 
 /-!
 # Accept-Collision Predicate for Whisper Receive
@@ -19,7 +20,7 @@ Defines `TRRecvAllCollide`, stating that `body` has a receive representation and
 representation across `PrefixGhosts` exhibits `RecvCollision`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

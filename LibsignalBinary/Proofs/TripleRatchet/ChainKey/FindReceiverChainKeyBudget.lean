@@ -10,16 +10,17 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.FindReceiverChainKey
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.FindReceiverChainKey -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.TripleRatchet.ChainKey.ChainKeyCodeSym
 import ProofLib.SepLogic.WP.Apply
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.LoopBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable `VmPreserved` Contract for `RatchetState::find_receiver_chain_key` (Block `25`)
@@ -29,7 +30,7 @@ zero heap allocations) against `findReceiverChainKeyPlacedAllocSpec` and its `Ru
 specialization `findReceiverChainKeyPlacedSpec` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
@@ -157,13 +158,13 @@ local macro "findReceiverChainKey_cc_close" : tactic => `(tactic| (
 
 /-- `VmPreserved`-strengthened relocatable specification of `RatchetState::find_receiver_chain_key`
 (Block `25`, zero heap allocations). -/
-def findReceiverChainKeyPlacedAllocSpec [LibsignalPlacement] (A : RustAlloc) :
+@[expose] def findReceiverChainKeyPlacedAllocSpec [LibsignalPlacement] (A : RustAlloc) :
     Spec FindReceiverChainKeyGhost :=
   withVmPreserved (CryptoVerification.LibsignalTripleRatchet.findReceiverChainKeyPlacedSpec A)
 
 /-- Budget-allocator (`RustCliAllocBudget M`) specialization of
 `findReceiverChainKeyPlacedAllocSpec` via `A.repAlloc`. -/
-def findReceiverChainKeyPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def findReceiverChainKeyPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) : Spec FindReceiverChainKeyGhost :=
   findReceiverChainKeyPlacedAllocSpec A.repAlloc
 
@@ -199,7 +200,7 @@ private theorem toUTF8_data_toList (s : String) :
   simp [List.utf8Encode]
 
 private theorem lsroCheck_missingReceiverChainKey :
-    CryptoVerification.lsroCheck "libsignal_protocol:.rodata..Lanon.290"
+    CryptoVerification.lsroCheck "libsignal_protocol:.rodata..Lanon.297"
       (invalidSessionStructureStr .missingReceiverChainKey) = true := by
   have h :
       invalidSessionStructureStr .missingReceiverChainKey =
@@ -215,14 +216,14 @@ private theorem sepWPp_intro_rodata_missingReceiverChainKey_placed [LibsignalPla
     {prog : Program} {ret : BitVec 64} {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
     (hro : LibsignalRoLoaded lsmpl s.mem)
     (h : SepWPp prog ret s
-      (((lsmpl.ρ "libsignal_protocol:.rodata..Lanon.290") ↦ᵣ
+      (((lsmpl.ρ "libsignal_protocol:.rodata..Lanon.297") ↦ᵣ
           invalidSessionStructureStr .missingReceiverChainKey) ∗ P)
       Q Qp) :
     SepWPp prog ret s P Q Qp := by
   intro R hm hL
   have hm' :
       s.mem ⊨
-        (((lsmpl.ρ "libsignal_protocol:.rodata..Lanon.290") ↦ᵣ
+        (((lsmpl.ρ "libsignal_protocol:.rodata..Lanon.297") ↦ᵣ
             invalidSessionStructureStr .missingReceiverChainKey) ∗ P) ∗ R := by
     rw [sepConj_assoc]
     exact lsro_intro_chk hro lsroCheck_missingReceiverChainKey hm
@@ -384,7 +385,7 @@ theorem find_receiver_chain_key_alloc_placed_ok_of_find_index [LibsignalPlacemen
       rw [findReceiverChainKey_of_some_none hchains_len hfind_res hi hck]
       refine Entails.pure_right ⟨hro3, by simp only [wp_norm, arm64_norm, *]⟩ ?_
       have herr :=
-        findReceiverChainKeyResultAt_err_repack x.ret (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.290")
+        findReceiverChainKeyResultAt_err_repack x.ret (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.297")
       have hrat := ratchetAt_reassemble_findIndex A x.self x.G x.st
       have hstk := stackAt_findReceiverChainKeyStack_repack s0.sp
         (s0.readReg64 Reg.x29) (s0.readReg64 Reg.lr) (s0.readReg64 Reg.x21)

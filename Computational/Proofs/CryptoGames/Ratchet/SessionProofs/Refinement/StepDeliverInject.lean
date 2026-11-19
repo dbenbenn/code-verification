@@ -22,7 +22,7 @@ Proves `closeByState_inject_step`, preserving `CloseByState` across `inject` que
 `SimInv`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

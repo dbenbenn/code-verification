@@ -10,12 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Kdf.FinalizeFixedGen -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.FinalizeFixedSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Kdf.FinalizeFixedSat
 public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.FinalizeFixedSat -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.NewFromSliceInvariants
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.FinalizeFixedExt
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `HookSat` Contracts for Generalized `Hmac<Sha256>::finalize_fixed` (Block `425`)
@@ -38,14 +39,14 @@ open Arm64 ProofLib
 open CryptoGames.LibsignalSession (Crypto)
 open CryptoGames.HMAC (ShaState chunks64 hmacWith toBEBytes)
 open CryptoVerification
-  (IsLsBlockProg LibsignalCodeLoaded LibsignalHooks LibsignalPlacement blkPC_425 blkPl_425 lsmpl)
+  (IsLsBlockProg LibsignalCodeLoaded LibsignalHooks LibsignalPlacement blkPC_425 blkPl_425 lsmpl lsρ)
 open CryptoVerification.LibsignalAesCbc (toLEBytes)
 open CryptoVerification.LibsignalHmac (shaStateBytes)
 open CryptoVerification.LibsignalTripleRatchet
-  (CalleeSaved FinSaved RW RunsTo TraceEq agreesOutside_seg2a
+  (CalleeSaved FinSaved Frame RW RunsTo RunsToFrom TraceEq agreesOutside_seg2a
    agreesOutside_seg3a agreesOutside_seg4a digestBytes digestBytes_eq_append finSaved_seg3a
-   finSaved_seg4a fsp_aligned hmacInnerInit hmacOuterInit lsCompress256Sym lsMemsetSym
-   outerBlock outerBlock_digestBytes_length
+   finSaved_seg4a frame_seg2a frame_seg3a frame_seg4a fsp_aligned hmacInnerInit hmacOuterInit
+   lsCompress256Sym lsMemsetSym outerBlock outerBlock_digestBytes_length
    read32_words_at_104_of_shaStateBytes read32_words_at_64_of_shaStateBytes read64_seg2a_mid
    read64_seg3a_pad_32 read64_seg3a_pad_40 readBytes_fsp_64_seg2 readBytes_fsp_64_seg3
    readBytes_write32_8_digestBytes shaStateBytes_length toLEBytes_4_rev32
@@ -65,12 +66,13 @@ open CryptoVerification.SpqrV1.Kdf
    innerPadBlock1 innerPadBlock1_length innerPadBlock2 innerPadBlock2_length
    read64_fsp32_hm readBytes_64_after_pad_memset_lt64 readBytes_64_eq_append_8
    readBytes_fsp_64_copy toLEBytes_8_zero_7 ult_7_of_ge_56)
+open LibsignalBinary.Heap (AllocCallPreserved VmPreserved)
 open LibsignalBinary.Proofs.SpqrV1.Kdf.FinalizeFixedSat
-  (StateF0p3Sat finalize_fixed3_pfx_placed_runsTo_sat frame_seg2a_s2 frame_seg3a_s2 frame_seg4a_s2
-   s2_compress256_step_425_sat s2_memset_step_425_sat)
+  (StateF0p3Sat finalize_fixed3_pfx_placed_runsTo_sat)
 open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat
   (CallingConventionPreserved.x23 CallingConventionPreserved.x24 CallingConventionPreserved.x25
-   CallingConventionPreserved.x26 CallingConventionPreserved.x28 HkdfPlacedHooksExactSat)
+   CallingConventionPreserved.x26 CallingConventionPreserved.x28 HkdfPlacedHooksExactSat
+   s2_compress256_step_placed_sat_exact s2_memset_step_placed_sat_exact)
 open LibsignalBinary.Proofs.TripleRatchet.Hkdf.FinalizeFixedSat (FinCommonSat FinPostSat)
 
 attribute [local arm64_norm] MemWidth.bytes SimdMemSize.bytes
@@ -82,6 +84,156 @@ private theorem extractLsb'_0_64_zero128 : BitVec.extractLsb' 0 64 0#128 = 0#64 
 
 @[local simp, local arm64_norm]
 private theorem extractLsb'_64_64_zero128 : BitVec.extractLsb' 64 64 0#128 = 0#64 := rfl
+
+/-- `320`-byte stack precondition for generalized `finalize_fixed [local#3]` (`144` B frame +
+`176` B `compress256` slack) with prefix `pfx` and tail `tail` (`|tail| < 64`). -/
+public structure FinPre3PfxGenSat (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
+    (key pfx tail : List (BitVec 8)) (s0 : State) : Prop extends FinPre3PfxGen b F key pfx tail s0 where
+  rw_stk320       : RW s0.mem (s0.sp - 320#64) 320
+  disj_out_stk320 : DisjointRegions (s0.readReg64 .x0) 32 (s0.sp - 320#64) 320
+  disj_hm_stk320  : DisjointRegions (s0.readReg64 .x1) 0x90 (s0.sp - 320#64) 320
+
+public theorem FinPre3PfxGenSat.of_320 [LibsignalPlacement] {F : ShaState → List (BitVec 8) → ShaState}
+    {key pfx tail : List (BitVec 8)} {s0 : State}
+    (hpc : s0.pc = (blkPl_425).base) (hstat : s0.status = .Running)
+    (hkey : key.length ≤ 64) (htail : tail.length < 64)
+    (hhmac : HmacStN s0.mem (s0.readReg64 .x1) F key pfx tail)
+    (hrw_out : RW s0.mem (s0.readReg64 .x0) 32)
+    (hrw_hm : RW s0.mem (s0.readReg64 .x1) 0x90)
+    (hrw_stk320 : RW s0.mem (s0.sp - 320#64) 320)
+    (hd_out_hm : DisjointRegions (s0.readReg64 .x0) 32 (s0.readReg64 .x1) 0x90)
+    (hd_out_stk320 : DisjointRegions (s0.readReg64 .x0) 32 (s0.sp - 320#64) 320)
+    (hd_hm_stk320 : DisjointRegions (s0.readReg64 .x1) 0x90 (s0.sp - 320#64) 320)
+    (hsp : (s0.sp &&& 0b1111#64) = 0#64) :
+    FinPre3PfxGenSat fin3PlacedFakeB F key pfx tail s0 :=
+  { toFinPre3PfxGen :=
+      { pc_eq := by rw [fin3PlacedFakeB_off_0]; exact hpc
+        status := hstat, key_le := hkey, tail_lt := htail, hmac_st := hhmac,
+        rw_out := hrw_out, rw_hm := hrw_hm,
+        rw_fsp := hrw_stk320.sub (by bv_omega),
+        disj_out_hm := hd_out_hm,
+        disj_out_fsp := by unfold DisjointRegions at hd_out_stk320 ⊢; bv_omega,
+        disj_hm_fsp := by unfold DisjointRegions at hd_hm_stk320 ⊢; bv_omega,
+        sp_aligned := hsp }
+    rw_stk320 := hrw_stk320
+    disj_out_stk320 := hd_out_stk320
+    disj_hm_stk320 := hd_hm_stk320 }
+
+private theorem s2Frame_144_to_320_gen {m1 m2 : Memory} {x0 x1 sp : BitVec 64}
+    (h : S2Frame m1 m2 [(x0, 32), (x1, 0x90), (sp - 144#64, 144)]) :
+    S2Frame m1 m2 [(x0, 32), (x1, 0x90), (sp - 320#64, 320)] := by
+  refine h.mono fun a ha r hr => ?_
+  simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
+  rcases hr with rfl | rfl | rfl
+  · exact ha (x0, 32) (by simp)
+  · exact ha (x1, 0x90) (by simp)
+  · have ha320 := ha (sp - 320#64, 320) (by simp)
+    unfold OutsideRegion at ha320 ⊢; bv_omega
+
+private theorem frame_seg2a_s2_320 {m0 m1 m2 m3 m4 : Memory} {out hm sp : BitVec 64}
+    (hf : S2Frame m0 m1 [(out, 32), (hm, 0x90), (sp - 320#64, 320)])
+    (hag1 : AgreesOutside m1 m2 (sp - 144#64) 64)
+    (hag2 : AgreesOutside m2 m3 hm 64)
+    (hag3 : AgreesOutside m3 m4 (sp - 144#64) 64) :
+    S2Frame m0 m4 [(out, 32), (hm, 0x90), (sp - 320#64, 320)] :=
+  hf.trans (s2Frame_144_to_320_gen (S2Frame.of_frame (frame_seg2a (Frame.refl m1 _) hag1 hag2 hag3)))
+
+private theorem frame_seg3a_s2_320 {m0 m1 m2 m3 m4 m5 : Memory} {out hm sp : BitVec 64}
+    (hf : S2Frame m0 m1 [(out, 32), (hm, 0x90), (sp - 320#64, 320)])
+    (hag1 : AgreesOutside m1 m2 hm 64)
+    (hag2 : AgreesOutside m2 m3 (sp - 144#64) 64)
+    (hag3 : AgreesOutside m3 m4 hm 64)
+    (hag4 : AgreesOutside m4 m5 (sp - 144#64) 64) :
+    S2Frame m0 m5 [(out, 32), (hm, 0x90), (sp - 320#64, 320)] :=
+  hf.trans (s2Frame_144_to_320_gen (S2Frame.of_frame (frame_seg3a (Frame.refl m1 _) hag1 hag2 hag3 hag4)))
+
+private theorem frame_seg4a_s2_320 {m0 m1 m2 m3 m4 m5 : Memory} {out hm sp : BitVec 64}
+    (hf : S2Frame m0 m1 [(out, 32), (hm, 0x90), (sp - 320#64, 320)])
+    (hag1 : AgreesOutside m1 m2 hm 0x90)
+    (hag2 : AgreesOutside m2 m3 (sp - 144#64) 64)
+    (hag3 : AgreesOutside m3 m4 hm 0x90)
+    (hag4 : AgreesOutside m4 m5 out 32) :
+    S2Frame m0 m5 [(out, 32), (hm, 0x90), (sp - 320#64, 320)] :=
+  hf.trans (s2Frame_144_to_320_gen (S2Frame.of_frame (frame_seg4a (Frame.refl m1 _) hag1 hag2 hag3 hag4)))
+
+private theorem s2_memset_step_425_gen_sat [LibsignalPlacement] (C : Crypto) (H : LibsignalHooks)
+    [HkdfPlacedHooksExactSat C.F H] {s₀ s : State} {Q : State → Prop} {dst lr : BitVec 64} {len : ℕ}
+    (hrun : s.status = .Running) (hpc : s.pc = lsρ lsMemsetSym)
+    (hx0 : s.readReg64 .x0 = dst) (hx1 : (s.readReg64 .x1).truncate 8 = 0#8)
+    (hx2 : (s.readReg64 .x2).toNat = len) (hlr : s.readReg64 .lr = lr)
+    (hsp_al : (s.sp &&& 15#64) = 0#64) (hrw : s.mem.RW dst len)
+    (h : ∀ sf : State,
+      TraceEq s₀ sf →
+      sf.pc = lr →
+      sf.status = .Running →
+      CallingConventionPreserved s sf →
+      sf.readReg64 .x0 = dst →
+      s.mem.KeepsFrozen sf.mem →
+      sf.mem.readBytes dst len = List.replicate len 0#8 →
+      S2Frame s.mem sf.mem [(dst, len)] →
+      AgreesOn (fun a => (s.mem.perm a).r = true ∧ s.mem.isLazyFree a = false)
+        sf.mem (s.mem.writeBytes dst (List.replicate len 0#8)) →
+      RunsToFrom ((blkPC_425).rebase (blkPl_425).base H) s₀ sf Q)
+    (htr_s : TraceEq s₀ s := by
+      repeat' (first
+        | with_reducible exact TraceEq.refl _
+        | with_reducible apply TraceEq.advancePC_step
+        | with_reducible apply TraceEq.setMem_step
+        | with_reducible apply TraceEq.setPC_step
+        | with_reducible apply TraceEq.setPState_step
+        | with_reducible apply TraceEq.writeReg64_step
+        | with_reducible apply TraceEq.writeReg32_step
+        | with_reducible apply TraceEq.writeVReg128_step (by decide))) :
+    RunsToFrom ((blkPC_425).rebase (blkPl_425).base H) s₀ s Q :=
+  s2_memset_step_placed_sat_exact C H hrun hpc hx0 hx1 hx2 hlr hsp_al hrw h htr_s
+
+open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
+
+private theorem s2_compress256_step_425_gen_sat [LibsignalPlacement] (C : Crypto) (H : LibsignalHooks)
+    [HkdfPlacedHooksExactSat C.F H] {s₀ s : State} {Q : State → Prop}
+    {stPtr blkPtr lr : BitVec 64} {st : ShaState} {blk : List (BitVec 8)}
+    (hrun : s.status = .Running) (hpc : s.pc = lsρ lsCompress256Sym)
+    (hx0 : s.readReg64 .x0 = stPtr) (hx1 : s.readReg64 .x1 = blkPtr)
+    (hx2 : s.readReg64 .x2 = 1#64) (hlr : s.readReg64 .lr = lr)
+    (hsp_al : (s.sp &&& 15#64) = 0#64)
+    (hst : s.mem.readBytes stPtr 32 = shaStateBytes st) (hblk : s.mem.readBytes blkPtr 64 = blk)
+    (hlen : blk.length = 64)
+    (hrw_st : s.mem.RW stPtr 32)
+    (hrw_stk : s.mem.RW (s.sp - 176#64) 176)
+    (hread_blk : s.mem.Readable blkPtr 64)
+    (hdisj_st_stk : DisjointRegions stPtr 32 (s.sp - 176#64) 176)
+    (hdisj_st_blk : DisjointRegions stPtr 32 blkPtr 64)
+    (hdisj_stk_blk : DisjointRegions (s.sp - 176#64) 176 blkPtr 64)
+    (h : ∀ s' : State,
+      TraceEq s₀ s' →
+      s'.pc = lr →
+      s'.status = .Running →
+      CallingConventionPreserved s s' →
+      VmPreserved s s' →
+      AllocCallPreserved s s' →
+      s.mem.KeepsFrozen s'.mem →
+      s'.mem.readBytes stPtr 32 = shaStateBytes (C.F st blk) →
+      S2Frame s.mem s'.mem [(stPtr, 32), (s.sp - 176#64, 176)] →
+      AgreesOn
+        (fun a => (s.mem.perm a).r = true ∧ s.mem.isLazyFree a = false ∧
+          OutsideRegion (s.sp - 176#64) 176 a)
+        s'.mem (s.mem.writeBytes stPtr (shaStateBytes (C.F st blk))) →
+      RunsToFrom ((blkPC_425).rebase (blkPl_425).base H) s₀ s' Q)
+    (htr_s : TraceEq s₀ s := by
+      repeat' (first
+        | with_reducible exact TraceEq.refl _
+        | with_reducible apply TraceEq.advancePC_step
+        | with_reducible apply TraceEq.setMem_step
+        | with_reducible apply TraceEq.setPC_step
+        | with_reducible apply TraceEq.setPState_step
+        | with_reducible apply TraceEq.writeReg64_step
+        | with_reducible apply TraceEq.writeReg32_step
+        | with_reducible apply TraceEq.writeVReg128_step (by decide)))
+    (hlr_ls : LsRetAddr624 lr := by prove_ls_ret624) :
+    RunsToFrom ((blkPC_425).rebase (blkPl_425).base H) s₀ s Q :=
+  s2_compress256_step_placed_sat_exact C H hrun hpc hx0 hx1 hx2 hlr hsp_al hst hblk hlen
+    hrw_st hrw_stk hread_blk hdisj_st_stk hdisj_st_blk hdisj_stk_blk h htr_s
+    (by decide) (by decide) hlr_ls
 
 /-! ## 1. `S2Frame`-Framed Two-Block Cut Predicates (`56 ≤ tail.length < 64`) -/
 
@@ -258,7 +410,7 @@ variable [LibsignalPlacement] {C : Crypto} {H : LibsignalHooks} [HkdfPlacedHooks
 
 set_option maxHeartbeats 1600000 in
 private theorem seg1a_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0 : State}
-    (hpre : FinPre3PfxGen fin3PlacedFakeB C.F key pfx tail s0) :
+    (hpre : FinPre3PfxGenSat fin3PlacedFakeB C.F key pfx tail s0) :
     RunsTo ((blkPC_425).rebase (blkPl_425).base H) s0 (StateF0p3Sat C.F key pfx tail s0) := by
   have hpc : s0.pc = (blkPl_425).base := by simpa only [fin3PlacedFakeB_off_0] using hpre.pc_eq
   have hstat := hpre.status
@@ -283,13 +435,15 @@ private theorem seg1a_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0 : S
       ⟨by solve_fin3_saved, by solve_fin3_saved, by solve_fin3_saved,
        by solve_fin3_saved, by solve_fin3_saved, by solve_fin3_saved,
        by solve_fin3_saved, by solve_fin3_saved, by solve_fin3_saved⟩,
-      by rw [mem_setMem]; exact S2Frame.trans_agreesOutside (S2Frame.refl s0.mem _) (by simp) hag⟩,
+      by rw [mem_setMem]
+         exact S2Frame.trans_agreesOutside_sub (S2Frame.refl s0.mem _)
+           (rbase := s0.sp - 320#64) (rlen := 320) (by simp) (by bv_omega) hag⟩,
     by fin3_reg, by fin3_reg,
     by rw [mem_setMem]; exact HmacStN.of_agreesOutside hpre.hmac_st hag hpre.disj_hm_fsp.symm⟩
 
 set_option maxHeartbeats 1600000 in
 private theorem seg1b_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre3PfxGen fin3PlacedFakeB C.F key pfx tail s0)
+    (hpre : FinPre3PfxGenSat fin3PlacedFakeB C.F key pfx tail s0)
     (hs : StateF0p3Sat C.F key pfx tail s0 s) :
     RunsTo ((blkPC_425).rebase (blkPl_425).base H) s (StateF1GenSat C.F key pfx tail s0) := by
   rcases hs with ⟨hpc, hcom, hx0, hx1, hhmac⟩
@@ -312,7 +466,7 @@ private theorem seg1b_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0 s :
     refine Memory.RW.of_perm_eq (by simp [m_pad]) (fun _ => Memory.isLazyFree_write8_of_false _ _)
       (hrw_hm.sub ?_)
     have := hpre.tail_lt; dsimp only [dst, len]; bv_omega
-  refine s2_memset_step_425_sat C H
+  refine s2_memset_step_425_gen_sat C H
     (dst := dst) (lr := (blkPl_425).base + 76#64) (len := len)
     hstat (by simp only [arm64_norm, lsMemsetSym])
     (by simp only [dst, arm64_norm])
@@ -354,12 +508,12 @@ private theorem seg1b_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0 s :
   have hd_hm64_obl : DisjointRegions (s0.readReg64 .x1) 64 (s0.readReg64 .x1 + 0x88#64) 8 := by
     unfold DisjointRegions; bv_omega
   have hframe_sf : S2Frame s0.mem sf.mem
-      [(s0.readReg64 .x0, 32), (s0.readReg64 .x1, 0x90), (s0.sp - 144#64, 144)] := by
+      [(s0.readReg64 .x0, 32), (s0.readReg64 .x1, 0x90), (s0.sp - 320#64, 320)] := by
     have hag_pad : AgreesOutside s.mem m_pad
         (s0.readReg64 .x1 + BitVec.ofNat 64 tail.length) 1 := by
       dsimp only [m_pad]; agrees_outside_writes
     have hframe_pad : S2Frame s0.mem m_pad
-        [(s0.readReg64 .x0, 32), (s0.readReg64 .x1, 0x90), (s0.sp - 144#64, 144)] :=
+        [(s0.readReg64 .x0, 32), (s0.readReg64 .x1, 0x90), (s0.sp - 320#64, 320)] :=
       S2Frame.trans_agreesOutside_sub hframe (rbase := s0.readReg64 .x1) (rlen := 0x90)
         (by simp) (by have := hpre.tail_lt; bv_omega) hag_pad
     have hsf_frame' : S2Frame m_pad sf.mem [(dst, len)] := by
@@ -401,7 +555,7 @@ private theorem seg1b_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0 s :
 
 set_option maxHeartbeats 1600000 in
 private theorem seg2_two_a_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre3PfxGen fin3PlacedFakeB C.F key pfx tail s0)
+    (hpre : FinPre3PfxGenSat fin3PlacedFakeB C.F key pfx tail s0)
     (hge : 56 ≤ tail.length)
     (hs : StateF1GenSat C.F key pfx tail s0 s) :
     RunsTo ((blkPC_425).rebase (blkPl_425).base H) s (StateF2aSat C.F key pfx tail s0) := by
@@ -442,7 +596,7 @@ private theorem seg2_two_a_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s
   refine ⟨by fin3_reg,
     ⟨by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg,
       by rw [mem_setMem]; exact FinSaved.of_agreesOutside hsaved hag hd_fsp64_saved,
-      by rw [mem_setMem]; exact S2Frame.trans_agreesOutside_sub hframe (rbase := s0.sp - 144#64) (rlen := 144) (by simp) (by bv_omega) hag⟩,
+      by rw [mem_setMem]; exact S2Frame.trans_agreesOutside_sub hframe (rbase := s0.sp - 320#64) (rlen := 320) (by simp) (by bv_omega) hag⟩,
     by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg,
     by fin3_reg, by fin3_reg,
     by rw [mem_setMem]; refine (readBytes_fsp_64_copy _ _ _ _ _ _ _ _ _ _).trans ?_
@@ -455,47 +609,117 @@ private theorem seg2_two_a_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s
 
 set_option maxHeartbeats 1600000 in
 private theorem seg2_two_b_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre3PfxGen fin3PlacedFakeB C.F key pfx tail s0)
+    (hpre : FinPre3PfxGenSat fin3PlacedFakeB C.F key pfx tail s0)
     (hs : StateF2aSat C.F key pfx tail s0 s) :
     RunsTo ((blkPC_425).rebase (blkPl_425).base H) s (StateF2bSat C.F key pfx tail s0) := by
   rcases hs with ⟨hpc, hcom, hx0, hx1, hx2, hx19, hx20, hx21, hx22, hx23, hx24, hblk, hist, host, hobl⟩
   rcases hcom with ⟨hstat, hsp, hx29, hx26, hx27, hx28, hsaved, hframe⟩
   have hrw_hm : s.mem.RW (s0.readReg64 .x1) 0x90 := hframe.rw_of_rw _ _ hpre.rw_hm
   have hrw_ist : s.mem.RW (s0.readReg64 .x1 + 0x40#64) 32 := hrw_hm.sub (by bv_omega)
+  have hrw_stk320 : s.mem.RW (s0.sp - 320#64) 320 := hframe.rw_of_rw _ _ hpre.rw_stk320
+  have hsp_sub176 : s.sp - 176#64 = s0.sp - 320#64 := by rw [hsp]; bv_omega
+  have hrw_c256 : s.mem.RW (s.sp - 176#64) 176 := by
+    rw [hsp_sub176]; exact hrw_stk320.sub (by bv_omega)
+  have hread_blk : s.mem.Readable (s0.sp - 144#64) 64 :=
+    Memory.RW.readable (hrw_stk320.sub (by bv_omega))
+  have hd_ist_c256 : DisjointRegions (s0.readReg64 .x1 + 0x40#64) 32 (s.sp - 176#64) 176 := by
+    rw [hsp_sub176]
+    have := hpre.disj_hm_stk320; unfold DisjointRegions at this ⊢; bv_omega
+  have hd_ist_blk : DisjointRegions (s0.readReg64 .x1 + 0x40#64) 32 (s0.sp - 144#64) 64 := by
+    have := hpre.disj_hm_fsp; unfold DisjointRegions at this ⊢; bv_omega
+  have hd_c256_blk : DisjointRegions (s.sp - 176#64) 176 (s0.sp - 144#64) 64 := by
+    rw [hsp_sub176]; unfold DisjointRegions; bv_omega
   s2_step
-  refine s2_compress256_step_425_sat C H
+  refine s2_compress256_step_425_gen_sat C H
     (stPtr := s0.readReg64 .x1 + 0x40#64) (blkPtr := s0.sp - 144#64)
     (lr := (blkPl_425).base + 116#64)
     (st := (chunks64 pfx).foldl C.F (hmacInnerInit C.F key))
     (blk := innerPadBlock1 tail)
     hstat (by simp only [arm64_norm, lsCompress256Sym])
     (by fin3_reg) (by fin3_reg) (by fin3_reg) (by fin3_reg)
-    hist hblk (innerPadBlock1_length hpre.tail_lt) hrw_ist ?_
-  refine RunsTo.refl ?_
+    (by simp only [arm64_norm, hsp]; exact hpre.sp_aligned)
+    hist hblk (innerPadBlock1_length hpre.tail_lt)
+    hrw_ist (by simpa only [arm64_norm] using hrw_c256) hread_blk
+    (by simpa only [arm64_norm] using hd_ist_c256) hd_ist_blk
+    (by simpa only [arm64_norm] using hd_c256_blk)
+    fun s2 htr2 hpc2 hstat2 hcc2 _ _ _ hread_ist hs2_frame hag_on => ?_
+  refine RunsTo.refl ?_ htr2
   set blk_in := shaStateBytes (C.F ((chunks64 pfx).foldl C.F (hmacInnerInit C.F key)) (innerPadBlock1 tail))
   have hag_comp : AgreesOutside s.mem (s.mem.writeBytes (s0.readReg64 .x1 + 0x40#64) blk_in)
       (s0.readReg64 .x1 + 0x40#64) 32 := by
     have hlen : blk_in.length = 32 := shaStateBytes_length _
     rw [← hlen]; exact ProofLib.AgreesOutside.writeBytes_self s.mem _ blk_in
+  have hag_on' : AgreesOn
+      (fun a => (s.mem.perm a).r = true ∧ s.mem.isLazyFree a = false ∧
+        OutsideRegion (s0.sp - 320#64) 176 a)
+      s2.mem (s.mem.writeBytes (s0.readReg64 .x1 + 0x40#64) blk_in) := by
+    simpa only [arm64_norm, hsp_sub176] using hag_on
+  have hP_rw : ∀ {a : BitVec 64}, s.mem.permNoLazy a = some Perm.rw →
+      OutsideRegion (s0.sp - 320#64) 176 a →
+      (s.mem.perm a).r = true ∧ s.mem.isLazyFree a = false ∧ OutsideRegion (s0.sp - 320#64) 176 a := by
+    intro a hnl hout_a
+    obtain ⟨hrw_a, hlf_a⟩ := Memory.permNoLazy_eq_some_rw_iff.mp hnl
+    exact ⟨by rw [hrw_a]; rfl, hlf_a, hout_a⟩
+  have hP_saved : ∀ a, InRegion (s0.sp - 144#64 + 0x40#64) 0x50 a →
+      (s.mem.perm a).r = true ∧ s.mem.isLazyFree a = false ∧ OutsideRegion (s0.sp - 320#64) 176 a :=
+    fun a ha => hP_rw (hrw_stk320 a (by unfold InRegion at ha ⊢; bv_omega))
+      (by unfold InRegion at ha; unfold OutsideRegion; bv_omega)
+  have hd_hm_c256 : DisjointRegions (s0.readReg64 .x1) 0x90 (s0.sp - 320#64) 176 := by
+    have := hpre.disj_hm_stk320; unfold DisjointRegions at this ⊢; bv_omega
+  have hP_ost : ∀ a, InRegion (s0.readReg64 .x1 + 0x68#64) 32 a →
+      (s.mem.perm a).r = true ∧ s.mem.isLazyFree a = false ∧ OutsideRegion (s0.sp - 320#64) 176 a :=
+    fun a ha =>
+      have ha_hm : InRegion (s0.readReg64 .x1) 0x90 a := by unfold InRegion at ha ⊢; bv_omega
+      hP_rw (hrw_hm a ha_hm) (by unfold DisjointRegions at hd_hm_c256; unfold InRegion at ha_hm; unfold OutsideRegion; bv_omega)
+  have hP_obl : ∀ a, InRegion (s0.readReg64 .x1 + 0x88#64) 8 a →
+      (s.mem.perm a).r = true ∧ s.mem.isLazyFree a = false ∧ OutsideRegion (s0.sp - 320#64) 176 a :=
+    fun a ha =>
+      have ha_hm : InRegion (s0.readReg64 .x1) 0x90 a := by unfold InRegion at ha ⊢; bv_omega
+      hP_rw (hrw_hm a ha_hm) (by unfold DisjointRegions at hd_hm_c256; unfold InRegion at ha_hm; unfold OutsideRegion; bv_omega)
   have hd_ist_saved : DisjointRegions (s0.readReg64 .x1 + 0x40#64) 32 (s0.sp - 144#64 + 0x40#64) 0x50 :=
     (hpre.disj_hm_fsp.sub_left _ ⟨by decide, by bv_omega⟩).sub_right _ ⟨by decide, by bv_omega⟩
   have hd_ist_ost : DisjointRegions (s0.readReg64 .x1 + 0x40#64) 32 (s0.readReg64 .x1 + 0x68#64) 32 := by
     unfold DisjointRegions; bv_omega
   have hd_ist_obl : DisjointRegions (s0.readReg64 .x1 + 0x40#64) 32 (s0.readReg64 .x1 + 0x88#64) 8 := by
     unfold DisjointRegions; bv_omega
-  refine ⟨by fin3_reg,
-    ⟨by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg,
-      FinSaved.of_agreesOutside hsaved hag_comp hd_ist_saved,
-      S2Frame.trans_agreesOutside_sub hframe (rbase := s0.readReg64 .x1) (rlen := 0x90) (by simp) (by bv_omega) hag_comp⟩,
-    by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg,
-    by have hlen : blk_in.length = 32 := shaStateBytes_length _
-       rw [← hlen]; exact readBytes_writeBytes_same s.mem _ blk_in (by rw [hlen]; decide),
-    (hag_comp.readBytes_eq hd_ist_ost (by decide)).trans host,
-    (hag_comp.read64_eq hd_ist_obl).trans hobl⟩
+  have hframe_s2 : S2Frame s0.mem s2.mem
+      [(s0.readReg64 .x0, 32), (s0.readReg64 .x1, 0x90), (s0.sp - 320#64, 320)] := by
+    have hs2_frame' : S2Frame s.mem s2.mem
+        [(s0.readReg64 .x1 + 0x40#64, 32), (s0.sp - 320#64, 176)] := by
+      simpa only [arm64_norm, hsp_sub176] using hs2_frame
+    refine hframe.trans (hs2_frame'.mono fun a ha r hr => ?_)
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
+    rcases hr with rfl | rfl
+    · have ha_hm := ha (s0.readReg64 .x1, 0x90) (by simp)
+      unfold OutsideRegion at ha_hm ⊢; bv_omega
+    · have ha_stk := ha (s0.sp - 320#64, 320) (by simp)
+      unfold OutsideRegion at ha_stk ⊢; bv_omega
+  refine
+    { pc_eq := hpc2
+      common :=
+        { status := hstat2
+          sp_eq := (CallingConventionPreserved.sp_eq hcc2).trans (by fin3_reg)
+          x29_eq := (CallingConventionPreserved.x29 hcc2).trans (by fin3_reg)
+          x26_eq := (CallingConventionPreserved.x26 hcc2).trans (by fin3_reg)
+          x27_eq := (CallingConventionPreserved.x27 hcc2).trans (by fin3_reg)
+          x28_eq := (CallingConventionPreserved.x28 hcc2).trans (by fin3_reg)
+          saved := AgreesOn.finSaved_of hag_on' (FinSaved.of_agreesOutside hsaved hag_comp hd_ist_saved) hP_saved
+          frame := hframe_s2 }
+      x19_eq := (CallingConventionPreserved.x19 hcc2).trans (by fin3_reg)
+      x20_eq := (CallingConventionPreserved.x20 hcc2).trans (by fin3_reg)
+      x21_eq := (CallingConventionPreserved.x21 hcc2).trans (by fin3_reg)
+      x22_eq := (CallingConventionPreserved.x22 hcc2).trans (by fin3_reg)
+      x23_eq := (CallingConventionPreserved.x23 hcc2).trans (by fin3_reg)
+      x24_eq := (CallingConventionPreserved.x24 hcc2).trans (by fin3_reg)
+      ist_eq := hread_ist
+      ost_eq := (AgreesOn.readBytes_eq hag_on' (s0.readReg64 .x1 + 0x68#64) 32 (by decide) hP_ost).trans
+        ((hag_comp.readBytes_eq hd_ist_ost (by decide)).trans host)
+      obl_eq := (AgreesOn.read64_eq hag_on' (s0.readReg64 .x1 + 0x88#64) hP_obl).trans
+        ((hag_comp.read64_eq hd_ist_obl).trans hobl) }
 
 set_option maxHeartbeats 1600000 in
 private theorem seg2_two_c_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre3PfxGen fin3PlacedFakeB C.F key pfx tail s0)
+    (hpre : FinPre3PfxGenSat fin3PlacedFakeB C.F key pfx tail s0)
     (hs : StateF2bSat C.F key pfx tail s0 s) :
     RunsTo ((blkPC_425).rebase (blkPl_425).base H) s (StateF2cSat C.F key pfx tail s0) := by
   rcases hs with ⟨hpc, hcom, hx19, hx20, hx21, hx22, hx23, hx24, hist, host, hobl⟩
@@ -540,7 +764,7 @@ private theorem seg2_two_c_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s
   have hd_hm64_obl : DisjointRegions (s0.readReg64 .x1) 64 (s0.readReg64 .x1 + 0x88#64) 8 := by
     unfold DisjointRegions; bv_omega
   have hsaved0 : FinSaved s0 (s0.sp - 144#64) mz := FinSaved.of_agreesOutside hsaved hag0 hd_hm64_saved
-  have hframe0 : S2Frame s0.mem mz [(s0.readReg64 .x0, 32), (s0.readReg64 .x1, 0x90), (s0.sp - 144#64, 144)] :=
+  have hframe0 : S2Frame s0.mem mz [(s0.readReg64 .x0, 32), (s0.readReg64 .x1, 0x90), (s0.sp - 320#64, 320)] :=
     S2Frame.trans_agreesOutside_sub hframe (rbase := s0.readReg64 .x1) (rlen := 0x90) (by simp) (by bv_omega) hag0
   refine ⟨by fin3_reg,
     ⟨by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg,
@@ -548,7 +772,7 @@ private theorem seg2_two_c_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s
          exact FinSaved.of_agreesOutside
            (FinSaved.of_agreesOutside (FinSaved.of_agreesOutside hsaved0 hag1 hd_fsp64_saved)
              hag2 hd_hm64_saved) hag3 hd_fsp64_saved,
-      by rw [mem_setMem]; exact frame_seg2a_s2 hframe0 hag1 hag2 hag3⟩,
+      by rw [mem_setMem]; exact frame_seg2a_s2_320 hframe0 hag1 hag2 hag3⟩,
     by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg,
     by rw [mem_setMem]; refine (readBytes_fsp_64_seg2 mz _ _ _ _ _ _ _ _ _ _ _ hd_hm64_fsp64).trans ?_
        rw [toLEBytes_8_zero_7, toLEBytes_8_rev64]; rfl,
@@ -570,48 +794,116 @@ private theorem seg2_two_c_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s
 
 set_option maxHeartbeats 1600000 in
 private theorem seg2_two_d_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre3PfxGen fin3PlacedFakeB C.F key pfx tail s0)
+    (hpre : FinPre3PfxGenSat fin3PlacedFakeB C.F key pfx tail s0)
     (hs : StateF2cSat C.F key pfx tail s0 s) :
     RunsTo ((blkPC_425).rebase (blkPl_425).base H) s (StateF3TwoSat C.F key pfx tail s0) := by
   rcases hs with ⟨hpc, hcom, hx0, hx1, hx2, hx19, hx20, hx21, hx22, hblk, hist, host, hobl⟩
   rcases hcom with ⟨hstat, hsp, hx29, hx26, hx27, hx28, hsaved, hframe⟩
   have hrw_hm : s.mem.RW (s0.readReg64 .x1) 0x90 := hframe.rw_of_rw _ _ hpre.rw_hm
   have hrw_ist : s.mem.RW (s0.readReg64 .x1 + 0x40#64) 32 := hrw_hm.sub (by bv_omega)
+  have hrw_stk320 : s.mem.RW (s0.sp - 320#64) 320 := hframe.rw_of_rw _ _ hpre.rw_stk320
+  have hsp_sub176 : s.sp - 176#64 = s0.sp - 320#64 := by rw [hsp]; bv_omega
+  have hrw_c256 : s.mem.RW (s.sp - 176#64) 176 := by
+    rw [hsp_sub176]; exact hrw_stk320.sub (by bv_omega)
+  have hread_blk : s.mem.Readable (s0.sp - 144#64) 64 :=
+    Memory.RW.readable (hrw_stk320.sub (by bv_omega))
+  have hd_ist_c256 : DisjointRegions (s0.readReg64 .x1 + 0x40#64) 32 (s.sp - 176#64) 176 := by
+    rw [hsp_sub176]
+    have := hpre.disj_hm_stk320; unfold DisjointRegions at this ⊢; bv_omega
+  have hd_ist_blk : DisjointRegions (s0.readReg64 .x1 + 0x40#64) 32 (s0.sp - 144#64) 64 := by
+    have := hpre.disj_hm_fsp; unfold DisjointRegions at this ⊢; bv_omega
+  have hd_c256_blk : DisjointRegions (s.sp - 176#64) 176 (s0.sp - 144#64) 64 := by
+    rw [hsp_sub176]; unfold DisjointRegions; bv_omega
   s2_step
-  refine s2_compress256_step_425_sat C H
+  refine s2_compress256_step_425_gen_sat C H
     (stPtr := s0.readReg64 .x1 + 0x40#64) (blkPtr := s0.sp - 144#64)
     (lr := (blkPl_425).base + 180#64)
     (st := C.F ((chunks64 pfx).foldl C.F (hmacInnerInit C.F key)) (innerPadBlock1 tail))
     (blk := innerPadBlock2 (1 + pfx.length / 64) tail)
     hstat (by simp only [arm64_norm, lsCompress256Sym])
     (by fin3_reg) (by fin3_reg) (by fin3_reg) (by fin3_reg)
-    hist hblk (innerPadBlock2_length (1 + pfx.length / 64) tail) hrw_ist ?_
-  refine RunsTo.refl ?_
+    (by simp only [arm64_norm, hsp]; exact hpre.sp_aligned)
+    hist hblk (innerPadBlock2_length (1 + pfx.length / 64) tail)
+    hrw_ist (by simpa only [arm64_norm] using hrw_c256) hread_blk
+    (by simpa only [arm64_norm] using hd_ist_c256) hd_ist_blk
+    (by simpa only [arm64_norm] using hd_c256_blk)
+    fun s2 htr2 hpc2 hstat2 hcc2 _ _ _ hread_ist hs2_frame hag_on => ?_
+  refine RunsTo.refl ?_ htr2
   set blk_in := shaStateBytes (C.F (C.F ((chunks64 pfx).foldl C.F (hmacInnerInit C.F key))
     (innerPadBlock1 tail)) (innerPadBlock2 (1 + pfx.length / 64) tail))
   have hag_comp : AgreesOutside s.mem (s.mem.writeBytes (s0.readReg64 .x1 + 0x40#64) blk_in)
       (s0.readReg64 .x1 + 0x40#64) 32 := by
     have hlen : blk_in.length = 32 := shaStateBytes_length _
     rw [← hlen]; exact ProofLib.AgreesOutside.writeBytes_self s.mem _ blk_in
+  have hag_on' : AgreesOn
+      (fun a => (s.mem.perm a).r = true ∧ s.mem.isLazyFree a = false ∧
+        OutsideRegion (s0.sp - 320#64) 176 a)
+      s2.mem (s.mem.writeBytes (s0.readReg64 .x1 + 0x40#64) blk_in) := by
+    simpa only [arm64_norm, hsp_sub176] using hag_on
+  have hP_rw : ∀ {a : BitVec 64}, s.mem.permNoLazy a = some Perm.rw →
+      OutsideRegion (s0.sp - 320#64) 176 a →
+      (s.mem.perm a).r = true ∧ s.mem.isLazyFree a = false ∧ OutsideRegion (s0.sp - 320#64) 176 a := by
+    intro a hnl hout_a
+    obtain ⟨hrw_a, hlf_a⟩ := Memory.permNoLazy_eq_some_rw_iff.mp hnl
+    exact ⟨by rw [hrw_a]; rfl, hlf_a, hout_a⟩
+  have hP_saved : ∀ a, InRegion (s0.sp - 144#64 + 0x40#64) 0x50 a →
+      (s.mem.perm a).r = true ∧ s.mem.isLazyFree a = false ∧ OutsideRegion (s0.sp - 320#64) 176 a :=
+    fun a ha => hP_rw (hrw_stk320 a (by unfold InRegion at ha ⊢; bv_omega))
+      (by unfold InRegion at ha; unfold OutsideRegion; bv_omega)
+  have hd_hm_c256 : DisjointRegions (s0.readReg64 .x1) 0x90 (s0.sp - 320#64) 176 := by
+    have := hpre.disj_hm_stk320; unfold DisjointRegions at this ⊢; bv_omega
+  have hP_ost : ∀ a, InRegion (s0.readReg64 .x1 + 0x68#64) 32 a →
+      (s.mem.perm a).r = true ∧ s.mem.isLazyFree a = false ∧ OutsideRegion (s0.sp - 320#64) 176 a :=
+    fun a ha =>
+      have ha_hm : InRegion (s0.readReg64 .x1) 0x90 a := by unfold InRegion at ha ⊢; bv_omega
+      hP_rw (hrw_hm a ha_hm) (by unfold DisjointRegions at hd_hm_c256; unfold InRegion at ha_hm; unfold OutsideRegion; bv_omega)
+  have hP_obl : ∀ a, InRegion (s0.readReg64 .x1 + 0x88#64) 8 a →
+      (s.mem.perm a).r = true ∧ s.mem.isLazyFree a = false ∧ OutsideRegion (s0.sp - 320#64) 176 a :=
+    fun a ha =>
+      have ha_hm : InRegion (s0.readReg64 .x1) 0x90 a := by unfold InRegion at ha ⊢; bv_omega
+      hP_rw (hrw_hm a ha_hm) (by unfold DisjointRegions at hd_hm_c256; unfold InRegion at ha_hm; unfold OutsideRegion; bv_omega)
   have hd_ist_saved : DisjointRegions (s0.readReg64 .x1 + 0x40#64) 32 (s0.sp - 144#64 + 0x40#64) 0x50 :=
     (hpre.disj_hm_fsp.sub_left _ ⟨by decide, by bv_omega⟩).sub_right _ ⟨by decide, by bv_omega⟩
   have hd_ist_ost : DisjointRegions (s0.readReg64 .x1 + 0x40#64) 32 (s0.readReg64 .x1 + 0x68#64) 32 := by
     unfold DisjointRegions; bv_omega
   have hd_ist_obl : DisjointRegions (s0.readReg64 .x1 + 0x40#64) 32 (s0.readReg64 .x1 + 0x88#64) 8 := by
     unfold DisjointRegions; bv_omega
-  refine ⟨by fin3_reg,
-    ⟨by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg,
-      FinSaved.of_agreesOutside hsaved hag_comp hd_ist_saved,
-      S2Frame.trans_agreesOutside_sub hframe (rbase := s0.readReg64 .x1) (rlen := 0x90) (by simp) (by bv_omega) hag_comp⟩,
-    by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg,
-    by have hlen : blk_in.length = 32 := shaStateBytes_length _
-       rw [← hlen]; exact readBytes_writeBytes_same s.mem _ blk_in (by rw [hlen]; decide),
-    (hag_comp.readBytes_eq hd_ist_ost (by decide)).trans host,
-    (hag_comp.read64_eq hd_ist_obl).trans hobl⟩
+  have hframe_s2 : S2Frame s0.mem s2.mem
+      [(s0.readReg64 .x0, 32), (s0.readReg64 .x1, 0x90), (s0.sp - 320#64, 320)] := by
+    have hs2_frame' : S2Frame s.mem s2.mem
+        [(s0.readReg64 .x1 + 0x40#64, 32), (s0.sp - 320#64, 176)] := by
+      simpa only [arm64_norm, hsp_sub176] using hs2_frame
+    refine hframe.trans (hs2_frame'.mono fun a ha r hr => ?_)
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
+    rcases hr with rfl | rfl
+    · have ha_hm := ha (s0.readReg64 .x1, 0x90) (by simp)
+      unfold OutsideRegion at ha_hm ⊢; bv_omega
+    · have ha_stk := ha (s0.sp - 320#64, 320) (by simp)
+      unfold OutsideRegion at ha_stk ⊢; bv_omega
+  refine
+    { pc_eq := hpc2
+      common :=
+        { status := hstat2
+          sp_eq := (CallingConventionPreserved.sp_eq hcc2).trans (by fin3_reg)
+          x29_eq := (CallingConventionPreserved.x29 hcc2).trans (by fin3_reg)
+          x26_eq := (CallingConventionPreserved.x26 hcc2).trans (by fin3_reg)
+          x27_eq := (CallingConventionPreserved.x27 hcc2).trans (by fin3_reg)
+          x28_eq := (CallingConventionPreserved.x28 hcc2).trans (by fin3_reg)
+          saved := AgreesOn.finSaved_of hag_on' (FinSaved.of_agreesOutside hsaved hag_comp hd_ist_saved) hP_saved
+          frame := hframe_s2 }
+      x19_eq := (CallingConventionPreserved.x19 hcc2).trans (by fin3_reg)
+      x20_eq := (CallingConventionPreserved.x20 hcc2).trans (by fin3_reg)
+      x21_eq := (CallingConventionPreserved.x21 hcc2).trans (by fin3_reg)
+      x22_eq := (CallingConventionPreserved.x22 hcc2).trans (by fin3_reg)
+      ist_eq := hread_ist
+      ost_eq := (AgreesOn.readBytes_eq hag_on' (s0.readReg64 .x1 + 0x68#64) 32 (by decide) hP_ost).trans
+        ((hag_comp.readBytes_eq hd_ist_ost (by decide)).trans host)
+      obl_eq := (AgreesOn.read64_eq hag_on' (s0.readReg64 .x1 + 0x88#64) hP_obl).trans
+        ((hag_comp.read64_eq hd_ist_obl).trans hobl) }
 
 set_option maxHeartbeats 1600000 in
 private theorem seg3a_two_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre3PfxGen fin3PlacedFakeB C.F key pfx tail s0)
+    (hpre : FinPre3PfxGenSat fin3PlacedFakeB C.F key pfx tail s0)
     (hs : StateF3TwoSat C.F key pfx tail s0 s) :
     RunsTo ((blkPC_425).rebase (blkPl_425).base H) s (StateF3bTwoSat C.F key pfx tail s0) := by
   rcases hs with ⟨hpc, hcom, hx19, hx20, hx21, hx22, hist, host, hobl⟩
@@ -646,7 +938,7 @@ private theorem seg3a_two_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0
   refine ⟨by fin3_reg,
     ⟨by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg,
       by rw [mem_setMem]; exact finSaved_seg3a hsaved hag1 hag2 hag3 hag4 hd_hm64_saved hd_fsp64_saved,
-      by rw [mem_setMem]; exact frame_seg3a_s2 hframe hag1 hag2 hag3 hag4⟩,
+      by rw [mem_setMem]; exact frame_seg3a_s2_320 hframe hag1 hag2 hag3 hag4⟩,
     by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg,
     by rw [mem_setMem]; refine (readBytes_fsp_64_seg3 _ _ _ _ _ _ _ _ _ _ _ _ _ hd_hm64_fsp64).trans ?_
        rw [toLEBytes_8_rev32_append, toLEBytes_8_rev32_append,
@@ -660,43 +952,91 @@ private theorem seg3a_two_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0
 
 set_option maxHeartbeats 1600000 in
 private theorem seg3b_two_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre3PfxGen fin3PlacedFakeB C.F key pfx tail s0)
+    (hpre : FinPre3PfxGenSat fin3PlacedFakeB C.F key pfx tail s0)
     (hs : StateF3bTwoSat C.F key pfx tail s0 s) :
     RunsTo ((blkPC_425).rebase (blkPl_425).base H) s (StateF4TwoSat C.F key pfx tail s0) := by
   rcases hs with ⟨hpc, hcom, hx0, hx1, hx2, hx19, hx20, hblk, host⟩
   rcases hcom with ⟨hstat, hsp, hx29, hx26, hx27, hx28, hsaved, hframe⟩
   have hrw_hm : s.mem.RW (s0.readReg64 .x1) 0x90 := hframe.rw_of_rw _ _ hpre.rw_hm
   have hrw_ost : s.mem.RW (s0.readReg64 .x1 + 0x68#64) 32 := hrw_hm.sub (by bv_omega)
+  have hrw_stk320 : s.mem.RW (s0.sp - 320#64) 320 := hframe.rw_of_rw _ _ hpre.rw_stk320
+  have hsp_sub176 : s.sp - 176#64 = s0.sp - 320#64 := by rw [hsp]; bv_omega
+  have hrw_c256 : s.mem.RW (s.sp - 176#64) 176 := by
+    rw [hsp_sub176]; exact hrw_stk320.sub (by bv_omega)
+  have hread_blk : s.mem.Readable (s0.sp - 144#64) 64 :=
+    Memory.RW.readable (hrw_stk320.sub (by bv_omega))
+  have hd_ost_c256 : DisjointRegions (s0.readReg64 .x1 + 0x68#64) 32 (s.sp - 176#64) 176 := by
+    rw [hsp_sub176]
+    have := hpre.disj_hm_stk320; unfold DisjointRegions at this ⊢; bv_omega
+  have hd_ost_blk : DisjointRegions (s0.readReg64 .x1 + 0x68#64) 32 (s0.sp - 144#64) 64 := by
+    have := hpre.disj_hm_fsp; unfold DisjointRegions at this ⊢; bv_omega
+  have hd_c256_blk : DisjointRegions (s.sp - 176#64) 176 (s0.sp - 144#64) 64 := by
+    rw [hsp_sub176]; unfold DisjointRegions; bv_omega
   set h_in := C.F (C.F ((chunks64 pfx).foldl C.F (hmacInnerInit C.F key)) (innerPadBlock1 tail))
     (innerPadBlock2 (1 + pfx.length / 64) tail)
   s2_step
-  refine s2_compress256_step_425_sat C H
+  refine s2_compress256_step_425_gen_sat C H
     (stPtr := s0.readReg64 .x1 + 0x68#64) (blkPtr := s0.sp - 144#64)
     (lr := (blkPl_425).base + 308#64)
     (st := hmacOuterInit C.F key)
     (blk := outerBlock (digestBytes h_in))
     hstat (by simp only [arm64_norm, lsCompress256Sym])
     (by fin3_reg) (by fin3_reg) (by fin3_reg) (by fin3_reg)
-    host hblk (outerBlock_digestBytes_length h_in) hrw_ost ?_
-  refine RunsTo.refl ?_
+    (by simp only [arm64_norm, hsp]; exact hpre.sp_aligned)
+    host hblk (outerBlock_digestBytes_length h_in)
+    hrw_ost (by simpa only [arm64_norm] using hrw_c256) hread_blk
+    (by simpa only [arm64_norm] using hd_ost_c256) hd_ost_blk
+    (by simpa only [arm64_norm] using hd_c256_blk)
+    fun s2 htr2 hpc2 hstat2 hcc2 _ _ _ hread_ost hs2_frame hag_on => ?_
+  refine RunsTo.refl ?_ htr2
   set blk_out := shaStateBytes (C.F (hmacOuterInit C.F key) (outerBlock (digestBytes h_in)))
   have hag_comp : AgreesOutside s.mem (s.mem.writeBytes (s0.readReg64 .x1 + 0x68#64) blk_out)
       (s0.readReg64 .x1 + 0x68#64) 32 := by
     have hlen : blk_out.length = 32 := shaStateBytes_length _
     rw [← hlen]; exact ProofLib.AgreesOutside.writeBytes_self s.mem _ blk_out
+  have hag_on' : AgreesOn
+      (fun a => (s.mem.perm a).r = true ∧ s.mem.isLazyFree a = false ∧
+        OutsideRegion (s0.sp - 320#64) 176 a)
+      s2.mem (s.mem.writeBytes (s0.readReg64 .x1 + 0x68#64) blk_out) := by
+    simpa only [arm64_norm, hsp_sub176] using hag_on
+  have hP_saved : ∀ a, InRegion (s0.sp - 144#64 + 0x40#64) 0x50 a →
+      (s.mem.perm a).r = true ∧ s.mem.isLazyFree a = false ∧ OutsideRegion (s0.sp - 320#64) 176 a := by
+    intro a ha
+    have hnl := hrw_stk320 a (by unfold InRegion at ha ⊢; bv_omega)
+    obtain ⟨hrw_a, hlf_a⟩ := Memory.permNoLazy_eq_some_rw_iff.mp hnl
+    exact ⟨by rw [hrw_a]; rfl, hlf_a, by unfold InRegion at ha; unfold OutsideRegion; bv_omega⟩
   have hd_ost_saved : DisjointRegions (s0.readReg64 .x1 + 0x68#64) 32 (s0.sp - 144#64 + 0x40#64) 0x50 :=
     (hpre.disj_hm_fsp.sub_left _ ⟨by decide, by bv_omega⟩).sub_right _ ⟨by decide, by bv_omega⟩
-  refine ⟨by fin3_reg,
-    ⟨by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg,
-      FinSaved.of_agreesOutside hsaved hag_comp hd_ost_saved,
-      S2Frame.trans_agreesOutside_sub hframe (rbase := s0.readReg64 .x1) (rlen := 0x90) (by simp) (by bv_omega) hag_comp⟩,
-    by fin3_reg, by fin3_reg,
-    by have hlen : blk_out.length = 32 := shaStateBytes_length _
-       rw [← hlen]; exact readBytes_writeBytes_same s.mem _ blk_out (by rw [hlen]; decide)⟩
+  have hframe_s2 : S2Frame s0.mem s2.mem
+      [(s0.readReg64 .x0, 32), (s0.readReg64 .x1, 0x90), (s0.sp - 320#64, 320)] := by
+    have hs2_frame' : S2Frame s.mem s2.mem
+        [(s0.readReg64 .x1 + 0x68#64, 32), (s0.sp - 320#64, 176)] := by
+      simpa only [arm64_norm, hsp_sub176] using hs2_frame
+    refine hframe.trans (hs2_frame'.mono fun a ha r hr => ?_)
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
+    rcases hr with rfl | rfl
+    · have ha_hm := ha (s0.readReg64 .x1, 0x90) (by simp)
+      unfold OutsideRegion at ha_hm ⊢; bv_omega
+    · have ha_stk := ha (s0.sp - 320#64, 320) (by simp)
+      unfold OutsideRegion at ha_stk ⊢; bv_omega
+  refine
+    { pc_eq := hpc2
+      common :=
+        { status := hstat2
+          sp_eq := (CallingConventionPreserved.sp_eq hcc2).trans (by fin3_reg)
+          x29_eq := (CallingConventionPreserved.x29 hcc2).trans (by fin3_reg)
+          x26_eq := (CallingConventionPreserved.x26 hcc2).trans (by fin3_reg)
+          x27_eq := (CallingConventionPreserved.x27 hcc2).trans (by fin3_reg)
+          x28_eq := (CallingConventionPreserved.x28 hcc2).trans (by fin3_reg)
+          saved := AgreesOn.finSaved_of hag_on' (FinSaved.of_agreesOutside hsaved hag_comp hd_ost_saved) hP_saved
+          frame := hframe_s2 }
+      x19_eq := (CallingConventionPreserved.x19 hcc2).trans (by fin3_reg)
+      x20_eq := (CallingConventionPreserved.x20 hcc2).trans (by fin3_reg)
+      ost_eq := hread_ost }
 
 set_option maxHeartbeats 1600000 in
 private theorem seg4a_two_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre3PfxGen fin3PlacedFakeB C.F key pfx tail s0)
+    (hpre : FinPre3PfxGenSat fin3PlacedFakeB C.F key pfx tail s0)
     (hge : 56 ≤ tail.length)
     (hs : StateF4TwoSat C.F key pfx tail s0 s) :
     RunsTo ((blkPC_425).rebase (blkPl_425).base H) s (StateF5GenSat C.F key pfx tail s0) := by
@@ -714,7 +1054,7 @@ private theorem seg4a_two_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0
     read32_words_at_104_of_shaStateBytes s.mem (s0.readReg64 .x1) h_out host
   have hzero64 : (0#8 ++ 0#8 ++ 0#8 ++ 0#8 ++ 0#8 ++ 0#8 ++ 0#8 ++ 0#8 : BitVec 64) = 0#64 := rfl
   iterate 11 s2_step
-  have hd_fsp64_hm := (seg4a_disj hpre).1
+  have hd_fsp64_hm := (seg4a_disj hpre.toFinPre3PfxGen).1
   have hread128 := read32_seg4a_mid s.mem (s0.readReg64 .x1) (s0.sp - 144#64) 128#64 (h_out.get 6)
     (Or.inl rfl) hd_fsp64_hm hw6
   have hread132 := read32_seg4a_mid s.mem (s0.readReg64 .x1) (s0.sp - 144#64) 132#64 (h_out.get 7)
@@ -725,11 +1065,11 @@ private theorem seg4a_two_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0
   refine RunsTo.refl ?_
   obtain ⟨hag1, hag2, hag3, hag4⟩ := agreesOutside_seg4a s.mem
     (s0.readReg64 .x0) (s0.readReg64 .x1) (s0.sp - 144#64) _ _ _ _ _ _ _ _
-  obtain ⟨_, hd_hm_saved, hd_fsp64_saved, hd_out_saved⟩ := seg4a_disj hpre
+  obtain ⟨_, hd_hm_saved, hd_fsp64_saved, hd_out_saved⟩ := seg4a_disj hpre.toFinPre3PfxGen
   refine ⟨by fin3_reg,
     ⟨by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg, by fin3_reg,
       by rw [mem_setMem]; exact finSaved_seg4a hsaved hag1 hag2 hag3 hag4 hd_hm_saved hd_fsp64_saved hd_out_saved,
-      by rw [mem_setMem]; exact frame_seg4a_s2 hframe hag1 hag2 hag3 hag4⟩,
+      by rw [mem_setMem]; exact frame_seg4a_s2_320 hframe hag1 hag2 hag3 hag4⟩,
     by rw [mem_setMem]
        exact (readBytes_write32_8_digestBytes _ (s0.readReg64 .x0) h_out _ _ _ _ _ _ _ _
          (toLEBytes_4_rev32 _) (toLEBytes_4_rev32 _) (toLEBytes_4_rev32 _) (toLEBytes_4_rev32 _)
@@ -738,7 +1078,7 @@ private theorem seg4a_two_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0
 
 set_option maxHeartbeats 1600000 in
 private theorem seg4b_two_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre3PfxGen fin3PlacedFakeB C.F key pfx tail s0)
+    (hpre : FinPre3PfxGenSat fin3PlacedFakeB C.F key pfx tail s0)
     (hs : StateF5GenSat C.F key pfx tail s0 s) :
     RunsTo ((blkPC_425).rebase (blkPl_425).base H) s (FinPostSat C.F key (pfx ++ tail) s0) := by
   rcases hs with ⟨hpc, hcom, hout⟩
@@ -763,14 +1103,18 @@ private theorem seg4b_two_runsTo_placed_sat {key pfx tail : List (BitVec 8)} {s0
   all_goals simp only [arm64_norm, hx26, hx27, hx28]
 
 public theorem finalize_fixed3_pfx_lt64_placed_runsTo_sat {key pfx tail : List (BitVec 8)} {s0 : State}
-    (hpre : FinPre3PfxGen fin3PlacedFakeB C.F key pfx tail s0) :
+    (hpre : FinPre3PfxGenSat fin3PlacedFakeB C.F key pfx tail s0) :
     RunsTo ((blkPC_425).rebase (blkPl_425).base H) s0 (FinPostSat C.F key (pfx ++ tail) s0) := by
   by_cases hlt56 : tail.length < 56
   · exact finalize_fixed3_pfx_placed_runsTo_sat
-      { pc_eq := hpre.pc_eq, status := hpre.status, key_le := hpre.key_le, tail_lt := hlt56,
-        hmac_st := hpre.hmac_st, rw_out := hpre.rw_out, rw_hm := hpre.rw_hm, rw_fsp := hpre.rw_fsp,
-        disj_out_hm := hpre.disj_out_hm, disj_out_fsp := hpre.disj_out_fsp,
-        disj_hm_fsp := hpre.disj_hm_fsp, sp_aligned := hpre.sp_aligned }
+      { toFinPre3Pfx :=
+          { pc_eq := hpre.pc_eq, status := hpre.status, key_le := hpre.key_le, tail_lt := hlt56,
+            hmac_st := hpre.hmac_st, rw_out := hpre.rw_out, rw_hm := hpre.rw_hm, rw_fsp := hpre.rw_fsp,
+            disj_out_hm := hpre.disj_out_hm, disj_out_fsp := hpre.disj_out_fsp,
+            disj_hm_fsp := hpre.disj_hm_fsp, sp_aligned := hpre.sp_aligned }
+        rw_stk320 := hpre.rw_stk320
+        disj_out_stk320 := hpre.disj_out_stk320
+        disj_hm_stk320 := hpre.disj_hm_stk320 }
   · have hge56 : 56 ≤ tail.length := Nat.le_of_not_lt hlt56
     exact
       (seg1a_runsTo_placed_sat hpre).trans fun _ hs1 =>
@@ -788,7 +1132,7 @@ public theorem finalize_fixed3_pfx_lt64_placed_runsTo_of_other_block_sat
     {callerProg : Program} {i : Nat} [hcaller : IsLsBlockProg callerProg i H]
     {key pfx tail : List (BitVec 8)} {s0 : State}
     (hcl : LibsignalCodeLoaded lsmpl s0.mem)
-    (hpre : FinPre3PfxGen fin3PlacedFakeB C.F key pfx tail s0)
+    (hpre : FinPre3PfxGenSat fin3PlacedFakeB C.F key pfx tail s0)
     (hi : i < 619 := by decide) :
     RunsTo callerProg s0 (FinPostSat C.F key (pfx ++ tail) s0) :=
   RunsTo.of_other_block hcl (finalize_fixed3_pfx_lt64_placed_runsTo_sat hpre) hi (by decide) (by decide)
@@ -796,7 +1140,7 @@ public theorem finalize_fixed3_pfx_lt64_placed_runsTo_of_other_block_sat
 end PlacedGenSat
 
 /-- Generalized relocatable `RunsTo` contract for `finalize_fixed` (Block `425`) over `HmacStN`
-(`tail.length < 64`, arbitrary `key`) under `[HkdfPlacedHooksSat C.F H]`. -/
+(`tail.length < 64`, arbitrary `key`, `320`-B stack) under `[HkdfPlacedHooksExactSat C.F H]`. -/
 public theorem finalize_fixed3_gen_placed_runsTo_sat [LibsignalPlacement] (C : Crypto)
     (H : LibsignalHooks) [HkdfPlacedHooksExactSat C.F H]
     (key pfx tail : List (BitVec 8)) (s₀ : State)
@@ -805,28 +1149,20 @@ public theorem finalize_fixed3_gen_placed_runsTo_sat [LibsignalPlacement] (C : C
     (hhmac : HmacStN s₀.mem (s₀.readReg64 .x1) C.F (effectiveHmacKey C.F key) pfx tail)
     (hrw_out : RW s₀.mem (s₀.readReg64 .x0) 32)
     (hrw_hm : RW s₀.mem (s₀.readReg64 .x1) 0x90)
-    (hrw_fsp : RW s₀.mem (s₀.sp - 144#64) 144)
+    (hrw_stk320 : RW s₀.mem (s₀.sp - 320#64) 320)
     (hd_out_hm : DisjointRegions (s₀.readReg64 .x0) 32 (s₀.readReg64 .x1) 0x90)
-    (hd_out_fsp : DisjointRegions (s₀.readReg64 .x0) 32 (s₀.sp - 144#64) 144)
-    (hd_hm_fsp : DisjointRegions (s₀.readReg64 .x1) 0x90 (s₀.sp - 144#64) 144)
+    (hd_out_stk320 : DisjointRegions (s₀.readReg64 .x0) 32 (s₀.sp - 320#64) 320)
+    (hd_hm_stk320 : DisjointRegions (s₀.readReg64 .x1) 0x90 (s₀.sp - 320#64) 320)
     (hsp : (s₀.sp &&& 0b1111#64) = 0#64) :
     RunsTo ((blkPC_425).rebase (blkPl_425).base H) s₀ (fun s' =>
       s'.pc = s₀.readReg64 .lr ∧ s'.status = .Running ∧ CalleeSaved s₀ s' ∧
       s'.mem.readBytes (s₀.readReg64 .x0) 32 = hmacWith C.F key (pfx ++ tail) ∧
-      S2Frame s₀.mem s'.mem [(s₀.readReg64 .x0, 32), (s₀.readReg64 .x1, 0x90), (s₀.sp - 144#64, 144)]) := by
-  have hpre' : FinPre3PfxGen fin3PlacedFakeB C.F (effectiveHmacKey C.F key) pfx tail s₀ :=
-    { pc_eq := by simp only [arm64_norm]; exact hpc
-      status := hstat
-      key_le := effectiveHmacKey_length_le C.F key
-      tail_lt := htail
-      hmac_st := hhmac
-      rw_out := hrw_out
-      rw_hm := hrw_hm
-      rw_fsp := hrw_fsp
-      disj_out_hm := hd_out_hm
-      disj_out_fsp := hd_out_fsp
-      disj_hm_fsp := hd_hm_fsp
-      sp_aligned := hsp }
+      S2Frame s₀.mem s'.mem [(s₀.readReg64 .x0, 32), (s₀.readReg64 .x1, 0x90), (s₀.sp - 320#64, 320)]) := by
+  have hpre' : FinPre3PfxGenSat fin3PlacedFakeB C.F (effectiveHmacKey C.F key) pfx tail s₀ :=
+    FinPre3PfxGenSat.of_320
+      hpc hstat
+      (effectiveHmacKey_length_le C.F key) htail hhmac
+      hrw_out hrw_hm hrw_stk320 hd_out_hm hd_out_stk320 hd_hm_stk320 hsp
   refine (finalize_fixed3_pfx_lt64_placed_runsTo_sat (C := C) (H := H) hpre').mono
     fun s' ⟨hpc'', hstat', hcs', hout', hfr'⟩ => ?_
   rw [hmacWith_effectiveHmacKey] at hout'
@@ -842,19 +1178,19 @@ public theorem finalize_fixed3_gen_placed_runsTo_of_other_block_sat [LibsignalPl
     (hhmac : HmacStN s₀.mem (s₀.readReg64 .x1) C.F (effectiveHmacKey C.F key) pfx tail)
     (hrw_out : RW s₀.mem (s₀.readReg64 .x0) 32)
     (hrw_hm : RW s₀.mem (s₀.readReg64 .x1) 0x90)
-    (hrw_fsp : RW s₀.mem (s₀.sp - 144#64) 144)
+    (hrw_stk320 : RW s₀.mem (s₀.sp - 320#64) 320)
     (hd_out_hm : DisjointRegions (s₀.readReg64 .x0) 32 (s₀.readReg64 .x1) 0x90)
-    (hd_out_fsp : DisjointRegions (s₀.readReg64 .x0) 32 (s₀.sp - 144#64) 144)
-    (hd_hm_fsp : DisjointRegions (s₀.readReg64 .x1) 0x90 (s₀.sp - 144#64) 144)
+    (hd_out_stk320 : DisjointRegions (s₀.readReg64 .x0) 32 (s₀.sp - 320#64) 320)
+    (hd_hm_stk320 : DisjointRegions (s₀.readReg64 .x1) 0x90 (s₀.sp - 320#64) 320)
     (hsp : (s₀.sp &&& 0b1111#64) = 0#64)
     (hi : i < 619 := by decide) :
     RunsTo callerProg s₀ (fun s' =>
       s'.pc = s₀.readReg64 .lr ∧ s'.status = .Running ∧ CalleeSaved s₀ s' ∧
       s'.mem.readBytes (s₀.readReg64 .x0) 32 = hmacWith C.F key (pfx ++ tail) ∧
-      S2Frame s₀.mem s'.mem [(s₀.readReg64 .x0, 32), (s₀.readReg64 .x1, 0x90), (s₀.sp - 144#64, 144)]) :=
+      S2Frame s₀.mem s'.mem [(s₀.readReg64 .x0, 32), (s₀.readReg64 .x1, 0x90), (s₀.sp - 320#64, 320)]) :=
   RunsTo.of_other_block hcl
-    (finalize_fixed3_gen_placed_runsTo_sat C H key pfx tail s₀ hpc hstat htail hhmac hrw_out hrw_hm hrw_fsp
-      hd_out_hm hd_out_fsp hd_hm_fsp hsp)
+    (finalize_fixed3_gen_placed_runsTo_sat C H key pfx tail s₀ hpc hstat htail hhmac hrw_out hrw_hm hrw_stk320
+      hd_out_hm hd_out_stk320 hd_hm_stk320 hsp)
     hi (by decide) (by decide)
 
 end LibsignalBinary.Proofs.SpqrV1.Kdf.FinalizeFixedGenSat

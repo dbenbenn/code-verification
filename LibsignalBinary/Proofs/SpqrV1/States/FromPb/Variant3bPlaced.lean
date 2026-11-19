@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch0Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.EpiloguePlaced
@@ -17,6 +17,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10a
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3b
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 3 (`Ct1Received`, `+692`) — Error Cleanup
@@ -25,7 +26,7 @@ Relocatable Block-`333` subroutine call bridges and shared error-cleanup paths (
 `+4176`, `+4924`, `+4908`, `+4884`, `+1024`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

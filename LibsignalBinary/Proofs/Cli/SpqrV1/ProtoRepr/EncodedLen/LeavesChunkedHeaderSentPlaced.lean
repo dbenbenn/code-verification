@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1Placed
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1 -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesPolyPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked59_71Placed
@@ -24,7 +24,7 @@ Proves `[LibsignalPlacement]` `subroutine_ok` contracts for CLI Block `495` (cal
 `480`, and `493`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -675,23 +675,23 @@ private theorem headerSent_495_pinned_lscl_ok [LibsignalPlacement] (A : RustAllo
 
 /-! ## Exported Placed Contracts for Block `495` (`chunked::HeaderSent::encoded_len [local#3]`) -/
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedHeaderSentEncodedLenLocal1PinnedPlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedHeaderSentEncodedLenLocal1PinnedPlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_495 (Rust.withPanics ext)) (blkPl_495).base
     (withLsCodeLoaded lsmpl (chunkedHeaderSentEncodedLenPinnedSpec A))
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedHeaderSentEncodedLenLocal1PlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedHeaderSentEncodedLenLocal1PlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_495 (Rust.withPanics ext)) (blkPl_495).base
     (withLsCodeLoaded lsmpl (chunkedHeaderSentEncodedLenSpec A))
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedHeaderSentEncodedLenLocal1PinnedPlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedHeaderSentEncodedLenLocal1PinnedPlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (abs : String → Option (State → State)) : Prop :=
   CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedHeaderSentEncodedLenLocal1PinnedPlacedOkExt
     A (tripleRatchetExterns C ctl abs)
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedHeaderSentEncodedLenLocal1PlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedHeaderSentEncodedLenLocal1PlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (abs : String → Option (State → State)) : Prop :=
   CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedHeaderSentEncodedLenLocal1PlacedOkExt

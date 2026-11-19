@@ -177,7 +177,7 @@ theorem step_str64_fast {prog : Program} {target_pc : BitVec 64}
     hnext
 
 set_option maxHeartbeats 400000 in
-theorem sepWP_nf_enqueue_nonempty_45c [MallocngMultiPlacement]
+theorem sepWP_nf_enqueue_nonempty_45c [MallocngMultiPlacement] {ro : Bool}
     {b : BitVec 64} (hb : BlkBase 5 b) {k fuel : Nat} (hFuel : fuel ≤ 6)
     {γ : GhostName} {brkStart : BitVec 64} {bud : MallocngBudget}
     {st : MallocngSt} {g : GroupDesc} {idx : Nat} {head : BitVec 64}
@@ -200,7 +200,7 @@ theorem sepWP_nf_enqueue_nonempty_45c [MallocngMultiPlacement]
     (hHeadNeG : st.ctx.active[g.sc]'hActLt ≠ g.metaPtr) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ∗
+       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ro ∗
        (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
        ((g.metaPtr ↦₆₄ g.prev) ∗ ((g.metaPtr + 8#64) ↦₆₄ g.next) ∗
         ((g.metaPtr + 16#64) ↦₆₄ g.mem) ∗ ((g.metaPtr + 24#64) ↦₃₂ g.availMask) ∗
@@ -208,7 +208,7 @@ theorem sepWP_nf_enqueue_nonempty_45c [MallocngMultiPlacement]
        ByteMap st.masterDom (fun a => OwnedRwByte st a ∧ ¬ InRegion g.metaPtr 40 a) st.byteVal ∗
        ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
        MappedSet st.masterDom (OwnedMappedByte st))
-      (NfFuelPost k fuel γ brkStart bud st s0) oom := by
+      (NfFuelPost (ro := ro) k fuel γ brkStart bud st s0) oom := by
   have _ := hb
   obtain ⟨_, hmAl, hmFit, _, hOwnG⟩ := meta_ownedRw_of_mem_groups hwf hg
   obtain ⟨_, _, hdG, hhdG, tlG, htlG, hHdPtr, _, hTlPtr, _, hHdNeG', hTlNeG',
@@ -314,7 +314,10 @@ theorem sepWP_nf_enqueue_nonempty_45c [MallocngMultiPlacement]
                  by simpa only [arm64_norm] using c27, by simpa only [arm64_norm] using c28,
                  by simpa [calleeSavedVRegs] using cv⟩)
       hWf1 rfl rfl (by omega) hDyn1
-      (Cost.groupsGrpMono_updateQueuedGroups hg _ _ rfl rfl) hByte1
+      (Cost.groupsGrpMono_updateQueuedGroups hg _ _ rfl rfl)
+      (Cost.groupsFreeMono_updateQueuedGroups hg _ _ rfl rfl rfl rfl rfl
+        (Cost.Fine.SlotUserSub.set_nonUser _ _ _ (fun _ _ _ h => nomatch h)))
+      hByte1
   · have hPreCells := metaBytes_eq_cells gPre
     dsimp only [gPre] at hPreCells
     dsimp only [NfStaticRest]
@@ -323,7 +326,7 @@ theorem sepWP_nf_enqueue_nonempty_45c [MallocngMultiPlacement]
     sep_frame
 
 set_option maxHeartbeats 400000 in
-theorem sepWP_nf_nonAllFree [MallocngMultiPlacement]
+theorem sepWP_nf_nonAllFree [MallocngMultiPlacement] {ro : Bool}
     {b : BitVec 64} (hb : BlkBase 5 b) {k fuel : Nat} (hFuel : fuel ≤ 6)
     {γ : GhostName} {brkStart : BitVec 64} {bud : MallocngBudget}
     {st : MallocngSt} {g : GroupDesc} {idx : Nat} {s0 s : State} {oom : State → SepProp}
@@ -342,12 +345,12 @@ theorem sepWP_nf_nonAllFree [MallocngMultiPlacement]
     (hNotAll : (g.availMask ||| g.freedMask) + (1#32 <<< idx) ≠ (2#32 <<< g.lastIdx) - 1#32) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ∗
+       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ro ∗
        (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
        ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
        MappedSet st.masterDom (OwnedMappedByte st))
-      (NfFuelPost k fuel γ brkStart bud st s0) oom := by
+      (NfFuelPost (ro := ro) k fuel γ brkStart bud st s0) oom := by
   have _ := hb
   obtain ⟨hSc48, _, hNeNat⟩ := claimed_notAllFree_props hwf hg hIdx hClaimed hNotAll
   obtain ⟨_, hmAl, hmFit, hReadG, hOwnG⟩ := meta_ownedRw_of_mem_groups hwf hg
@@ -387,7 +390,10 @@ theorem sepWP_nf_nonAllFree [MallocngMultiPlacement]
                    by simpa [arm64_norm] using c27, by simpa [arm64_norm] using c28,
                    by simpa [calleeSavedVRegs] using cv⟩)
         hWf1 rfl rfl (by omega) hDyn1
-        (Cost.groupsGrpMono_replaceGroupByMeta hg _ rfl rfl) hByte1
+        (Cost.groupsGrpMono_replaceGroupByMeta hg _ rfl rfl)
+        (Cost.groupsFreeMono_replaceGroupByMeta hg _ rfl rfl rfl rfl rfl
+          (Cost.Fine.SlotUserSub.set_nonUser _ _ _ (fun _ _ _ h => nomatch h)))
+        hByte1
     · dsimp only [NfStaticRest]
       rw [hProt1, hMap1]
       sep_frame
@@ -456,7 +462,10 @@ theorem sepWP_nf_nonAllFree [MallocngMultiPlacement]
                      by simpa only [arm64_norm] using c27, by simpa only [arm64_norm] using c28,
                      by simpa [calleeSavedVRegs] using cv⟩)
           hWf1 rfl rfl (by omega) hDyn1
-          (Cost.groupsGrpMono_replaceGroupByMeta hg _ rfl rfl) hByte1
+          (Cost.groupsGrpMono_replaceGroupByMeta hg _ rfl rfl)
+          (Cost.groupsFreeMono_replaceGroupByMeta hg _ rfl rfl rfl rfl rfl
+            (Cost.Fine.SlotUserSub.set_nonUser _ _ _ (fun _ _ _ h => nomatch h)))
+          hByte1
       · dsimp only [NfStaticRest]
         rw [← hCtxRead, hProt1, hMap1]
         sep_frame
@@ -513,7 +522,10 @@ theorem sepWP_nf_nonAllFree [MallocngMultiPlacement]
                        by simpa only [arm64_norm] using c27, by simpa only [arm64_norm] using c28,
                        by simpa [calleeSavedVRegs] using cv⟩)
             hWf1 rfl rfl (by omega) hDyn1
-            (Cost.groupsGrpMono_replaceGroupByMeta hg _ rfl rfl) hByte1
+            (Cost.groupsGrpMono_replaceGroupByMeta hg _ rfl rfl)
+            (Cost.groupsFreeMono_replaceGroupByMeta hg _ rfl rfl rfl rfl rfl
+              (Cost.Fine.SlotUserSub.set_nonUser _ _ _ (fun _ _ _ h => nomatch h)))
+            hByte1
         · have hPreCells := metaBytes_eq_cells gPre
           dsimp only [gPre] at hPreCells
           dsimp only [NfStaticRest]
@@ -706,7 +718,7 @@ theorem signExtend64_of_lt_pow31 {v : BitVec 32} (h : v.toNat < 2 ^ 31) :
   have hZ : v.zeroExtend 64 = BitVec.ofNat 64 v.toNat := by simp
   rw [← hZ]; revert hUlt; bv_robdd
 
-private theorem sepWP_nf_retire_root_from_218 [MallocngMultiPlacement]
+private theorem sepWP_nf_retire_root_from_218 [MallocngMultiPlacement] {ro : Bool}
     {b : BitVec 64} (hb : BlkBase 5 b) {k fuel : Nat} (hFuel : fuel ≤ 6)
     {γ : GhostName} {brkStart : BitVec 64} {bud : MallocngBudget}
     {st : MallocngSt} {g : GroupDesc} {idx : Nat}
@@ -729,12 +741,12 @@ private theorem sepWP_nf_retire_root_from_218 [MallocngMultiPlacement]
     (hUSeqLen : unmapSeq1.length = 32) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ∗
+       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ro ∗
        (maddrs.ctx ↦ₛ { st.ctx with active := active1, usageByClass := usage1, unmapSeq := unmapSeq1, seq := seq1 }.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) bvDeq ∗
        ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
        MappedSet st.masterDom (OwnedMappedByte st))
-      (NfFuelPost k fuel γ brkStart bud st s0) oom := by
+      (NfFuelPost (ro := ro) k fuel γ brkStart bud st s0) oom := by
   have _ := hb
   let nBytes := g.maplen * 4096
   let gZero : GroupDesc := { g with prev := 0#64, next := 0#64 }
@@ -771,6 +783,7 @@ private theorem sepWP_nf_retire_root_from_218 [MallocngMultiPlacement]
                  by simpa only [arm64_norm] using c27, by simpa only [arm64_norm] using c28,
                  by simpa [calleeSavedVRegs] using cv⟩)
       hWf1 hResErase rfl (by omega) (by omega) (Cost.DequeueOutcome.groupsGrpMono hDeq)
+      (Cost.DequeueOutcome.groupsFreeMono hDeq)
   · dsimp only [NfStaticRest]
     have hMaskNeg : g.packedWord &&& -4096#64 = BitVec.ofNat 64 (g.maplen * 4096) :=
       packedWord_and_pageMask g
@@ -803,7 +816,7 @@ theorem packedWord_and_neg4096 (g : GroupDesc) :
     g.packedWord &&& -4096#64 = BitVec.ofNat 64 (g.maplen * 4096) :=
   packedWord_and_pageMask g
 
-theorem sepWP_nf_retire_root_from_1fc [MallocngMultiPlacement]
+theorem sepWP_nf_retire_root_from_1fc [MallocngMultiPlacement] {ro : Bool}
     {b : BitVec 64} (hb : BlkBase 5 b) {k fuel : Nat} (hFuel : fuel ≤ 6)
     {γ : GhostName} {brkStart : BitVec 64} {bud : MallocngBudget}
     {st : MallocngSt} {g : GroupDesc} {idx : Nat}
@@ -827,12 +840,12 @@ theorem sepWP_nf_retire_root_from_1fc [MallocngMultiPlacement]
     (hUMid : uSeqMid.length = 32) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ∗
+       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ro ∗
        (maddrs.ctx ↦ₛ { st.ctx with active := active1, usageByClass := usage1, unmapSeq := uSeqMid, seq := seq1 }.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) bvDeq ∗
        ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
        MappedSet st.masterDom (OwnedMappedByte st))
-      (NfFuelPost k fuel γ brkStart bud st s0) oom := by
+      (NfFuelPost (ro := ro) k fuel γ brkStart bud st s0) oom := by
   have _ := hb
   let cMid : CtxFields := { st.ctx with active := active1, usageByClass := usage1, unmapSeq := uSeqMid, seq := seq1 }
   wp_step

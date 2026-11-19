@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard11
+meta import GeneratedLean.LibsignalSessionPlacedObjShard12
+meta import GeneratedLean.LibsignalSessionPlacedObjShard13
 
 /-!
 # Block Code Definitions for SPQR V1 `Prost.MessageMerge` (Part 1)
@@ -24,7 +27,7 @@ Per-block `Program` (`blkPC_<idx>`), `Placement` (`blkPl_<idx>`), instruction-fe
 (`Chunked.NoHeaderReceived::merge`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

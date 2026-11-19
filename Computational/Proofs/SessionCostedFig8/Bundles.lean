@@ -9,26 +9,29 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.Fig8Atomic
-public import Computational.Proofs.ReductionDsl.PureAuxMacroLift
-public import Computational.Proofs.ReductionDsl.MacroLift
-public import Computational.Proofs.ReductionDsl.SM.Theorem1
-public import Computational.Proofs.ReductionDsl.SM.RedCKA
-public import Computational.Proofs.ReductionDsl.SM.RedPRNG
-public import Computational.Proofs.ReductionDsl.SM.RedFS
-public import Computational.Proofs.ReductionDsl.SM.DeliverForge
-public import Computational.Proofs.SessionCostedFig8.QuerySubsumes
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound
+public import Computational.Proofs.ReductionDsl.Fig8Atomic -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.PureAuxMacroLift -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.MacroLift -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.Theorem1 -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.SM.RedCKA
+import Computational.Proofs.ReductionDsl.SM.RedPRNG
+import Computational.Proofs.ReductionDsl.SM.RedFS
+public import Computational.Proofs.CryptoGames.SM.Theorem8.BucketPRNGAuthDefs -- proof-setup: allow-public-import
+public import Computational.Proofs.SessionCostedFig8.BundlesMultiFsBase
+public import Computational.Proofs.ReductionDsl.SM.DeliverForge -- proof-setup: allow-public-import
+public import Computational.Proofs.SessionCostedFig8.QuerySubsumes -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound -- proof-setup: allow-public-import
 public import Computational.Specifications.Session.StatementComposed
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.CKA.CostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRNG.CostedTables -- proof-setup: allow-public-import
 
 /-!
 # Atomic `PureAuxBundle` and Adapter Infrastructure for Figure 8 Reductions
 
 Constructs `PureAuxAdapters`, `PureAuxBundle`, and `fig8RedsInst` lowering shallow Figure 8 (`SM`)
-and `DeliverForge` `CostedReduction` programs to `ReductionDsl.atomicFig8Ops`.
--/
+and `DeliverForge` `CostedReduction` programs to `ReductionDsl.atomicFig8Ops`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -90,9 +93,9 @@ variable (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero Pt]
 local notation "S₂" => atomicSig ℓ Pt
 local notation "O₂" => atomicFig8Ops ℓ Pt C Dh encPt encT lam
 
-@[reducible] def fig8MsgT : Ty S₂ := .prod lpubT PlainT
+@[expose, reducible] def fig8MsgT : Ty S₂ := .prod lpubT PlainT
 
-@[reducible] def fSortSM : SMSort → Ty S₂
+@[expose, reducible] def fSortSM : SMSort → Ty S₂
   | .key => .unit
   | .st => fig8StT
   | .st2 => .unit
@@ -101,7 +104,7 @@ local notation "O₂" => atomicFig8Ops ℓ Pt C Dh encPt encT lam
   | .rcoins => .unit
   | .ct => fig8CtT
 
-def toDenSM :
+@[expose] def toDenSM :
     (b : SMSort) →
       (smSig Unit (Fig8St Pt) Unit (LibsignalMsgPublicPart × Plain ℓ)
         (BitVec 256) Unit (Fig8C Pt)).den b →
@@ -114,7 +117,7 @@ def toDenSM :
   | .rcoins, () => ()
   | .ct, c => fig8CtV c
 
-@[reducible] def fSortCKA : CKASort → Ty S₂
+@[expose, reducible] def fSortCKA : CKASort → Ty S₂
   | .kc | .ccoins | .kr | .sig | .k => BV256
   | .γ => ckaStT
   | .t | .i => PtT
@@ -123,7 +126,7 @@ def toDenSM :
   | .msg => fig8MsgT ℓ Pt
   | .ct => lctT
 
-def toDenCKA :
+@[expose] def toDenCKA :
     (b : CKASort) →
       (ckaSig (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
         (BitVec 256) (BitVec 256) (BitVec 256)
@@ -138,7 +141,7 @@ def toDenCKA :
   | .msg, (pub, m) => (lpubV pub, m)
   | .ct, c => lctV c
 
-@[reducible] def fig8SrcQT : Ty S₂ :=
+@[expose, reducible] def fig8SrcQT : Ty S₂ :=
   .sum
     (.sum
       (.sum
@@ -149,7 +152,7 @@ def toDenCKA :
       (.prod .bool fig8CtT))
     .bool
 
-@[reducible] def fig8SrcRT : Ty S₂ :=
+@[expose, reducible] def fig8SrcRT : Ty S₂ :=
   .sum
     (.sum
       (.sum
@@ -158,13 +161,13 @@ def toDenCKA :
       (.opt (smRrT (fig8MsgT ℓ Pt))))
     (.opt fig8StT)
 
-@[reducible] def fig8SrcQDFT : Ty S₂ :=
+@[expose, reducible] def fig8SrcQDFT : Ty S₂ :=
   .sum (fig8SrcQT ℓ Pt) (.prod .bool (.prod fig8CtT fig8CtT))
 
-@[reducible] def fig8SrcRDFT : Ty S₂ :=
+@[expose, reducible] def fig8SrcRDFT : Ty S₂ :=
   .sum (fig8SrcRT ℓ Pt) (.opt (smRrT (fig8MsgT ℓ Pt)))
 
-def fig8SplitIn : Expr O₂ [.unit] (.prod .unit (.prod IdKey IdKey)) :=
+@[expose] def fig8SplitIn : Expr O₂ [.unit] (.prod .unit (.prod IdKey IdKey)) :=
   .pair .unit
     (.pair (idKeyLitExpr ℓ Pt C Dh encPt encT lam (idOf .A))
            (idKeyLitExpr ℓ Pt C Dh encPt encT lam (idOf .B)))
@@ -183,7 +186,7 @@ theorem fig8SplitIn_size : (fig8SplitIn ℓ Pt C Dh encPt encT idOf lam).size �
   simp only [fig8SplitIn, idKeyLitExpr_size, Expr.size]
   omega
 
-def fig8AdaptQ : Expr O₂ [(fig8SmCodec ℓ Pt).Q] (fig8SrcQT ℓ Pt) :=
+@[expose] def fig8AdaptQ : Expr O₂ [(fig8SmCodec ℓ Pt).Q] (fig8SrcQT ℓ Pt) :=
   .caseSum (.var .zero)
     (.inl (.inl (.inl (.inl (.var .zero)))))
     (.caseSum (.var .zero)
@@ -200,7 +203,7 @@ theorem fig8AdaptQ_cost : (fig8AdaptQ ℓ Pt C Dh encPt encT lam).cost ≤ 35 :=
 theorem fig8AdaptQ_size : (fig8AdaptQ ℓ Pt C Dh encPt encT lam).size ≤ 45 := by
   simp only [fig8AdaptQ, Expr.size]; omega
 
-def fig8AdaptR : Expr O₂ [fig8SrcRT ℓ Pt, (fig8SmCodec ℓ Pt).Q] (fig8SmCodec ℓ Pt).R :=
+@[expose] def fig8AdaptR : Expr O₂ [fig8SrcRT ℓ Pt, (fig8SmCodec ℓ Pt).Q] (fig8SmCodec ℓ Pt).R :=
   let r0 {Γ} : Expr O₂ (fig8SrcRT ℓ Pt :: Γ) (fig8SrcRT ℓ Pt) := .var .zero
   let onTr {Γ} : Expr O₂ (fig8SrcRT ℓ Pt :: Γ) (fig8SmCodec ℓ Pt).R :=
     .caseSum r0
@@ -246,7 +249,7 @@ theorem fig8AdaptR_cost : (fig8AdaptR ℓ Pt C Dh encPt encT lam).cost ≤ 120 :
 theorem fig8AdaptR_size : (fig8AdaptR ℓ Pt C Dh encPt encT lam).size ≤ 150 := by
   simp only [fig8AdaptR, Expr.size]; omega
 
-def fig8AdaptQDF : Expr O₂ [(fig8SmCodecDF ℓ Pt).Q] (fig8SrcQDFT ℓ Pt) :=
+@[expose] def fig8AdaptQDF : Expr O₂ [(fig8SmCodecDF ℓ Pt).Q] (fig8SrcQDFT ℓ Pt) :=
   .caseSum (.var .zero)
     (.inl (.inl (.inl (.inl (.inl (.var .zero))))))
     (.caseSum (.var .zero)
@@ -265,7 +268,7 @@ theorem fig8AdaptQDF_cost : (fig8AdaptQDF ℓ Pt C Dh encPt encT lam).cost ≤ 4
 theorem fig8AdaptQDF_size : (fig8AdaptQDF ℓ Pt C Dh encPt encT lam).size ≤ 60 := by
   simp only [fig8AdaptQDF, Expr.size]; omega
 
-def fig8AdaptRDF : Expr O₂ [fig8SrcRDFT ℓ Pt, (fig8SmCodecDF ℓ Pt).Q] (fig8SmCodecDF ℓ Pt).R :=
+@[expose] def fig8AdaptRDF : Expr O₂ [fig8SrcRDFT ℓ Pt, (fig8SmCodecDF ℓ Pt).Q] (fig8SmCodecDF ℓ Pt).R :=
   let rTop {Γ} : Expr O₂ (fig8SrcRDFT ℓ Pt :: Γ) (fig8SrcRDFT ℓ Pt) := .var .zero
   let onTr {Γ} : Expr O₂ (fig8SrcRDFT ℓ Pt :: Γ) (fig8SmCodecDF ℓ Pt).R :=
     .caseSum rTop
@@ -341,15 +344,15 @@ private theorem fig8StOfV_toVal_ckaPsTy
   rw [boolToParty_eq_partyDec, ckaStOfV_ckaStV]
   have hvs : Option.map (fsSendStOfV (ℓ := ℓ) (Pt := Pt))
       (Option.map (fun x => fsSendStV (ℓ := ℓ) (Pt := Pt) x) vs?) = vs? := by
-    cases vs? <;> simp [fsSendStOfV_fsSendStV]
+    cases vs? <;> simp
   have hvr : (fun t => Option.map (fsRecvStOfV (ℓ := ℓ) (Pt := Pt))
       (Option.map (fun x => fsRecvStV (ℓ := ℓ) (Pt := Pt) x) (vrTbl t))) = vrTbl := by
-    funext t; cases vrTbl t <;> simp [fsRecvStOfV_fsRecvStV]
+    funext t; cases vrTbl t <;> simp
   have hcur : Option.map (fun x => x) cur? = cur? := by
     cases cur? <;> rfl
   rw [hvs, hvr, hcur]
 
-@[reducible] def smToFig8Adapters :
+@[expose, reducible] def smToFig8Adapters :
     PureAuxAdapters (fSortSM ℓ Pt) O₂
       (smCodec Unit (Fig8St Pt) Unit (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) Unit (Fig8C Pt))
       (fig8SmCodec ℓ Pt) (.prod IdKey IdKey)
@@ -361,7 +364,7 @@ private theorem fig8StOfV_toVal_ckaPsTy
   adaptAOut := .var .zero
   adaptOut := .var .zero
 
-@[reducible] def smDFToFig8Adapters :
+@[expose, reducible] def smDFToFig8Adapters :
     PureAuxAdapters (fSortSM ℓ Pt) O₂
       (smCodecDF Unit (Fig8St Pt) Unit (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) Unit (Fig8C Pt))
       (fig8SmCodecDF ℓ Pt) (.prod IdKey IdKey)
@@ -373,7 +376,7 @@ private theorem fig8StOfV_toVal_ckaPsTy
   adaptAOut := .var .zero
   adaptOut := .var .zero
 
-@[reducible] def ckaToFig8Adapters :
+@[expose, reducible] def ckaToFig8Adapters :
     PureAuxAdapters (fSortCKA ℓ Pt) O₂
       (ckaSMCodec (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
         (BitVec 256) (BitVec 256) (BitVec 256)
@@ -388,7 +391,7 @@ private theorem fig8StOfV_toVal_ckaPsTy
   adaptAOut := .var .zero
   adaptOut := .var .zero
 
-@[reducible] def ckaDFToFig8Adapters :
+@[expose, reducible] def ckaDFToFig8Adapters :
     PureAuxAdapters (fSortCKA ℓ Pt) O₂
       (ckaSMCodecDF (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
         (BitVec 256) (BitVec 256) (BitVec 256)
@@ -530,9 +533,9 @@ theorem fig8AdaptR_eval_sm
   · cases r <;> simp [decodeSrcR, toVal, toDenSM, fig8CtOfV_fig8CtV]
   · cases r <;> simp [decodeSrcR, toVal, toDenSM, fig8CtOfV_fig8CtV]
   · rcases r with _ | ⟨⟨⟩ | ⟨_, _, _ | ⟨_, _⟩⟩⟩ <;>
-      simp [decodeSrcR, toVal, toDenSM, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec, lpubOfV_lpubV]
+      simp [decodeSrcR, toVal, toDenSM, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec]
   · rcases r with _ | ⟨⟨⟩ | ⟨_, _, _ | ⟨_, _⟩⟩⟩ <;>
-      simp [decodeSrcR, toVal, toDenSM, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec, lpubOfV_lpubV]
+      simp [decodeSrcR, toVal, toDenSM, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec]
   · cases r <;> simp [decodeSrcR, toVal, toDenSM, fig8StOfV_fig8StV]
 
 theorem fig8AdaptQDF_eval_sm
@@ -578,12 +581,12 @@ theorem fig8AdaptRDF_eval_sm
   · cases r <;> simp [decodeSrcRDF, decodeSrcR, toVal, toDenSM, fig8CtOfV_fig8CtV]
   · cases r <;> simp [decodeSrcRDF, decodeSrcR, toVal, toDenSM, fig8CtOfV_fig8CtV]
   · rcases r with _ | ⟨⟨⟩ | ⟨_, _, _ | ⟨_, _⟩⟩⟩ <;>
-      simp [decodeSrcRDF, decodeSrcR, toVal, toDenSM, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec, lpubOfV_lpubV]
+      simp [decodeSrcRDF, decodeSrcR, toVal, toDenSM, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec]
   · rcases r with _ | ⟨⟨⟩ | ⟨_, _, _ | ⟨_, _⟩⟩⟩ <;>
-      simp [decodeSrcRDF, decodeSrcR, toVal, toDenSM, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec, lpubOfV_lpubV]
+      simp [decodeSrcRDF, decodeSrcR, toVal, toDenSM, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec]
   · cases r <;> simp [decodeSrcRDF, decodeSrcR, toVal, toDenSM, fig8StOfV_fig8StV]
   · rcases r with _ | ⟨⟨⟩ | ⟨_, _, _ | ⟨_, _⟩⟩⟩ <;>
-      simp [decodeSrcRDF, toVal, toDenSM, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec, lpubOfV_lpubV]
+      simp [decodeSrcRDF, toVal, toDenSM, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec]
 
 theorem fig8AdaptQ_eval_cka
     (t : (CryptoGames.SM.spec (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
@@ -631,12 +634,12 @@ theorem fig8AdaptR_eval_cka
         (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)).rdec t r₁ := by
   rw [fig8SmCodec_rdec_adaptR]
   rcases t with (((_ | _) | _) | _) | _ <;> rcases r₁ with ((((r | r) | r) | r) | r) <;> try rfl
-  · rcases r with _ | ⟨⟨ep, t?⟩, c⟩ <;> [rfl; (cases t? <;> simp [decodeSrcR, fig8CtOfV, toVal, toDenCKA, lctOfV_lctV])]
-  · rcases r with _ | ⟨⟨ep, t?⟩, c⟩ <;> [rfl; (cases t? <;> simp [decodeSrcR, fig8CtOfV, toVal, toDenCKA, lctOfV_lctV])]
+  · rcases r with _ | ⟨⟨ep, t?⟩, c⟩ <;> [rfl; (cases t? <;> simp [decodeSrcR, fig8CtOfV, toVal, toDenCKA])]
+  · rcases r with _ | ⟨⟨ep, t?⟩, c⟩ <;> [rfl; (cases t? <;> simp [decodeSrcR, fig8CtOfV, toVal, toDenCKA])]
   · rcases r with _ | ⟨⟨⟩ | ⟨_, _, _ | ⟨_, _⟩⟩⟩ <;>
-      simp [decodeSrcR, toVal, toDenCKA, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec, lpubOfV_lpubV]
+      simp [decodeSrcR, toVal, toDenCKA, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec]
   · rcases r with _ | ⟨⟨⟩ | ⟨_, _, _ | ⟨_, _⟩⟩⟩ <;>
-      simp [decodeSrcR, toVal, toDenCKA, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec, lpubOfV_lpubV]
+      simp [decodeSrcR, toVal, toDenCKA, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec]
   · rcases r with _ | ps
     · rfl
     · dsimp only [decodeSrcR, ckaSMCodec, Option.map]
@@ -693,18 +696,18 @@ theorem fig8AdaptRDF_eval_cka
   rw [fig8SmCodecDF_rdec_adaptRDF]
   rcases t with ((((_ | _) | _) | _) | _) | _ <;>
     rcases r₁ with (((((r | r) | r) | r) | r) | r) <;> try rfl
-  · rcases r with _ | ⟨⟨ep, t?⟩, c⟩ <;> [rfl; (cases t? <;> simp [decodeSrcRDF, decodeSrcR, fig8CtOfV, toVal, toDenCKA, lctOfV_lctV])]
-  · rcases r with _ | ⟨⟨ep, t?⟩, c⟩ <;> [rfl; (cases t? <;> simp [decodeSrcRDF, decodeSrcR, fig8CtOfV, toVal, toDenCKA, lctOfV_lctV])]
+  · rcases r with _ | ⟨⟨ep, t?⟩, c⟩ <;> [rfl; (cases t? <;> simp [decodeSrcRDF, decodeSrcR, fig8CtOfV, toVal, toDenCKA])]
+  · rcases r with _ | ⟨⟨ep, t?⟩, c⟩ <;> [rfl; (cases t? <;> simp [decodeSrcRDF, decodeSrcR, fig8CtOfV, toVal, toDenCKA])]
   · rcases r with _ | ⟨⟨⟩ | ⟨_, _, _ | ⟨_, _⟩⟩⟩ <;>
-      simp [decodeSrcRDF, decodeSrcR, toVal, toDenCKA, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec, lpubOfV_lpubV]
+      simp [decodeSrcRDF, decodeSrcR, toVal, toDenCKA, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec]
   · rcases r with _ | ⟨⟨⟩ | ⟨_, _, _ | ⟨_, _⟩⟩⟩ <;>
-      simp [decodeSrcRDF, decodeSrcR, toVal, toDenCKA, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec, lpubOfV_lpubV]
+      simp [decodeSrcRDF, decodeSrcR, toVal, toDenCKA, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec]
   · rcases r with _ | ps
     · rfl
     · dsimp only [decodeSrcRDF, decodeSrcR, ckaSMCodecDF, ckaSMCodec, Option.map]
       exact congrArg some (fig8StOfV_toVal_ckaPsTy ℓ Pt ps)
   · rcases r with _ | ⟨⟨⟩ | ⟨_, _, _ | ⟨_, _⟩⟩⟩ <;>
-      simp [decodeSrcRDF, toVal, toDenCKA, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec, lpubOfV_lpubV]
+      simp [decodeSrcRDF, toVal, toDenCKA, ReductionDsl.smRrDec, CryptoGames.SM.smRrDec]
 
 end SortAndAdapters
 
@@ -717,10 +720,10 @@ variable (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
 local notation "S₂" => atomicSig ℓ Pt
 local notation "O₂" => atomicFig8Ops ℓ Pt C Dh encPt encT lam
 
-@[reducible] def sampBV256Atomic : ProbComp (BitVec 256) :=
+@[expose, reducible] def sampBV256Atomic : ProbComp (BitVec 256) :=
   ($ᵗ (BitVec 256) : ProbComp (BitVec 256))
 
-@[reducible] def fig8SmOpsShallow :
+@[expose, reducible] def fig8SmOpsShallow :
     Ops (smSig Unit (Fig8St Pt) Unit (LibsignalMsgPublicPart × Plain ℓ)
       (BitVec 256) Unit (Fig8C Pt)) :=
   smOps
@@ -737,7 +740,7 @@ local notation "O₂" => atomicFig8Ops ℓ Pt C Dh encPt encT lam
     (stOK := fun _ _ => true)
     (φ := fun _ => none)
 
-def smOpMacro :
+@[expose] def smOpMacro :
     (o : SMOp) →
       Expr O₂
         [mapTy (fSortSM ℓ Pt) ((fig8SmOpsShallow ℓ Pt).dom o), .prod IdKey IdKey]
@@ -752,7 +755,7 @@ def smOpMacro :
   | .stOK => .bool true
   | .relabelSt => .none
 
-def smSampMacro :
+@[expose] def smSampMacro :
     (s : SMSamp) →
       Comp O₂ (fig8SmIface ℓ Pt)
         [mapTy (fSortSM ℓ Pt) ((smIface Unit (Fig8St Pt) Unit
@@ -765,7 +768,7 @@ def smSampMacro :
   | .coins => .ret .none
   | .rcoins => .ret .none
 
-def smDFSampMacro :
+@[expose] def smDFSampMacro :
     (s : SMSamp) →
       Comp O₂ (fig8SmIfaceDF ℓ Pt)
         [mapTy (fSortSM ℓ Pt) ((smIfaceDF Unit (Fig8St Pt) Unit
@@ -778,7 +781,7 @@ def smDFSampMacro :
   | .coins => .ret .none
   | .rcoins => .ret .none
 
-@[reducible] def smPureAuxBundle :
+@[expose, reducible] def smPureAuxBundle :
     PureAuxBundle
       (smSig Unit (Fig8St Pt) Unit (LibsignalMsgPublicPart × Plain ℓ)
         (BitVec 256) Unit (Fig8C Pt))
@@ -799,7 +802,7 @@ def smDFSampMacro :
     | .ij => Comp.query (O := O₂) (I := fig8SmIface ℓ Pt) ReductionDsl.SMTag.ij (.var .zero)
     | .cr => Comp.query (O := O₂) (I := fig8SmIface ℓ Pt) ReductionDsl.SMTag.cr (.var .zero)
 
-@[reducible] def smDFPureAuxBundle :
+@[expose, reducible] def smDFPureAuxBundle :
     PureAuxBundle
       (smSig Unit (Fig8St Pt) Unit (LibsignalMsgPublicPart × Plain ℓ)
         (BitVec 256) Unit (Fig8C Pt))
@@ -822,14 +825,14 @@ def smDFSampMacro :
     | .df => Comp.query (O := O₂) (I := fig8SmIfaceDF ℓ Pt) ReductionDsl.SMTagDF.df (.var .zero)
 
 
-@[reducible] def fig8CkaOpsShallow (B0 : ℕ) :
+@[expose, reducible] def fig8CkaOpsShallow (B0 : ℕ) :
     Ops (ckaSig (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
       (BitVec 256) (BitVec 256) (BitVec 256)
       (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
       (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)) :=
   ckaSchemeOps (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsAtomicB C ℓ encT idOf B0) lam
 
-def ckaOpMacro (B0 : ℕ) :
+@[expose] def ckaOpMacro (B0 : ℕ) :
     (o : CKAOp) →
       Expr O₂
         [mapTy (fSortCKA ℓ Pt) ((fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0).dom o),
@@ -852,7 +855,7 @@ def ckaOpMacro (B0 : ℕ) :
   | .lamI => lamIExpr ℓ Pt C Dh encPt encT lam
   | .defaultE => defaultEExpr ℓ Pt C Dh encPt encT lam
 
-def ckaSampMacro (sampBV : ProbComp (BitVec 256)) :
+@[expose] def ckaSampMacro (sampBV : ProbComp (BitVec 256)) :
     (s : CKASamp) →
       Comp O₂ (ckaTargetIface ℓ Pt)
         [mapTy (fSortCKA ℓ Pt)
@@ -874,7 +877,7 @@ def ckaSampMacro (sampBV : ProbComp (BitVec 256)) :
   | .i =>
       Comp.sample (O := O₂) (I := ckaTargetIface ℓ Pt) (UniformSamplerTag.base AtomicUnifBase.pt) .unit
 
-def prngSampMacro (sampBV : ProbComp (BitVec 256)) :
+@[expose] def prngSampMacro (sampBV : ProbComp (BitVec 256)) :
     (s : CKASamp) →
       Comp O₂ (prngTargetIface ℓ Pt)
         [mapTy (fSortCKA ℓ Pt)
@@ -896,7 +899,7 @@ def prngSampMacro (sampBV : ProbComp (BitVec 256)) :
   | .i =>
       Comp.sample (O := O₂) (I := prngTargetIface ℓ Pt) (UniformSamplerTag.base AtomicUnifBase.pt) .unit
 
-def fsSampMacro (sampBV : ProbComp (BitVec 256)) :
+@[expose] def fsSampMacro (sampBV : ProbComp (BitVec 256)) :
     (s : CKASamp) →
       Comp O₂ (fsaeadHeaderIface ℓ Pt)
         [mapTy (fSortCKA ℓ Pt)
@@ -918,7 +921,7 @@ def fsSampMacro (sampBV : ProbComp (BitVec 256)) :
   | .i =>
       Comp.sample (O := O₂) (I := fsaeadHeaderIface ℓ Pt) (UniformSamplerTag.base AtomicUnifBase.pt) .unit
 
-@[reducible] def ckaPureAuxBundle (B0 : ℕ) (sampBV : ProbComp (BitVec 256)) :
+@[expose, reducible] def ckaPureAuxBundle (B0 : ℕ) (sampBV : ProbComp (BitVec 256)) :
     PureAuxBundle
       (ckaSig (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
         (BitVec 256) (BitVec 256) (BitVec 256)
@@ -944,7 +947,7 @@ def fsSampMacro (sampBV : ProbComp (BitVec 256)) :
     | .receive => Comp.query (O := O₂) (I := ckaTargetIface ℓ Pt) ReductionDsl.CKATag.receive (.var .zero)
     | .corr => Comp.query (O := O₂) (I := ckaTargetIface ℓ Pt) ReductionDsl.CKATag.corr (.var .zero)
 
-@[reducible] def prngPureAuxBundle (B0 : ℕ) (sampBV : ProbComp (BitVec 256)) :
+@[expose, reducible] def prngPureAuxBundle (B0 : ℕ) (sampBV : ProbComp (BitVec 256)) :
     PureAuxBundle
       (prngSig (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
         (BitVec 256) (BitVec 256) (BitVec 256)
@@ -969,7 +972,7 @@ def fsSampMacro (sampBV : ProbComp (BitVec 256)) :
     | .challPrf => Comp.query (O := O₂) (I := prngTargetIface ℓ Pt) ReductionDsl.PRNGTag.challPrf (.var .zero)
     | .corr => Comp.query (O := O₂) (I := prngTargetIface ℓ Pt) ReductionDsl.PRNGTag.corr (.var .zero)
 
-@[reducible] def fsPureAuxBundle (B0 : ℕ) (sampBV : ProbComp (BitVec 256)) :
+@[expose, reducible] def fsPureAuxBundle (B0 : ℕ) (sampBV : ProbComp (BitVec 256)) :
     PureAuxBundle
       (prngSig (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
         (BitVec 256) (BitVec 256) (BitVec 256)
@@ -1600,7 +1603,7 @@ theorem fsPureAuxBundle_query_eval (B0 : ℕ) (sampBV : ProbComp (BitVec 256))
        rw [lctOfV_lctV]
        congr 1; funext r; rcases r with _ | (_ | ⟨idx, _ | ⟨pub, m⟩⟩) <;> rfl)
 
-def compileSmAtomic
+@[expose] def compileSmAtomic
     (R : CostedReduction (fig8SmOpsShallow ℓ Pt)
       (smIface Unit (Fig8St Pt) Unit (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) Unit (Fig8C Pt))
       (CryptoGames.SM.spec (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
@@ -1614,7 +1617,7 @@ def compileSmAtomic
       (smToFig8Adapters ℓ Pt C Dh encPt encT idOf lam) R)
     .unit (.inl .none) (.bool false)
 
-def compileSmDFAtomic
+@[expose] def compileSmDFAtomic
     (R : CostedReduction (fig8SmOpsShallow ℓ Pt)
       (smIfaceDF Unit (Fig8St Pt) Unit (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) Unit (Fig8C Pt))
       (CryptoGames.SM.specDF (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
@@ -1628,7 +1631,7 @@ def compileSmDFAtomic
       (smDFToFig8Adapters ℓ Pt C Dh encPt encT idOf lam) R)
     .unit (.inl .none) (.bool false)
 
-def compileCkaAtomic (B0 : ℕ)
+@[expose] def compileCkaAtomic (B0 : ℕ)
     (R : CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
       (ckaIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
         (BitVec 256) (BitVec 256) (BitVec 256)
@@ -1649,7 +1652,7 @@ def compileCkaAtomic (B0 : ℕ)
       (ckaToFig8Adapters ℓ Pt C Dh encPt encT idOf lam) R)
     .unit (.inl .none) (.bool false)
 
-def compileCkaDFAtomic (B0 : ℕ)
+@[expose] def compileCkaDFAtomic (B0 : ℕ)
     (R : CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
       (ckaIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
         (BitVec 256) (BitVec 256) (BitVec 256)
@@ -1670,7 +1673,7 @@ def compileCkaDFAtomic (B0 : ℕ)
       (ckaDFToFig8Adapters ℓ Pt C Dh encPt encT idOf lam) R)
     .unit (.inl .none) (.bool false)
 
-def compilePrngAtomic (B0 : ℕ)
+@[expose] def compilePrngAtomic (B0 : ℕ)
     (R : CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
       (prngIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
         (BitVec 256) (BitVec 256) (BitVec 256)
@@ -1691,7 +1694,7 @@ def compilePrngAtomic (B0 : ℕ)
       (ckaToFig8Adapters ℓ Pt C Dh encPt encT idOf lam) R)
     .unit (.inl .none) (.bool false)
 
-def compilePrngDFAtomic (B0 : ℕ)
+@[expose] def compilePrngDFAtomic (B0 : ℕ)
     (R : CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
       (prngIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
         (BitVec 256) (BitVec 256) (BitVec 256)
@@ -1712,7 +1715,7 @@ def compilePrngDFAtomic (B0 : ℕ)
       (ckaDFToFig8Adapters ℓ Pt C Dh encPt encT idOf lam) R)
     .unit (.inl .none) (.bool false)
 
-def compileFsAtomic (B0 : ℕ)
+@[expose] def compileFsAtomic (B0 : ℕ)
     (R : CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
       (fsaeadHeaderAdIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
         (BitVec 256) (BitVec 256) (BitVec 256)
@@ -1733,7 +1736,7 @@ def compileFsAtomic (B0 : ℕ)
       (ckaToFig8Adapters ℓ Pt C Dh encPt encT idOf lam) R)
     .unit (.inl .none) (.bool false)
 
-def compileFsDFAtomic (B0 : ℕ)
+@[expose] def compileFsDFAtomic (B0 : ℕ)
     (R : CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
       (fsaeadHeaderAdIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
         (BitVec 256) (BitVec 256) (BitVec 256)
@@ -1763,7 +1766,7 @@ variable {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
 local instance : Inhabited Pt := ⟨0⟩
 
 /-- Concrete atomic `Fig8CostedReds` bundle over `ReductionDsl.atomicFig8Ops`. -/
-def fig8RedsInst (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+@[expose] def fig8RedsInst (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (C : Crypto) (codec : SignalMessageProtoCodec)
     (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt) (qep q : ℕ) :
     Fig8CostedReds Dh encPt C codec ℓ encT idOf lam :=
@@ -1774,29 +1777,38 @@ def fig8RedsInst (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     privRedB := fun i =>
       compileSmAtomic ℓ Pt C Dh encPt encT idOf lam
         (CryptoGames.SM.privRedBProg q (2 + 1) qep i)
-    redCKAAuth := fun tL t =>
+    redCKAAuth := fun tL =>
       compileCkaAtomic ℓ Pt C Dh encPt encT idOf lam B0
-        (CryptoGames.SM.Construction.redCKAAuthProg (q + 1) B0 1 qep maxForwardJumps tL t)
+        (CryptoGames.SM.Construction.redCKAAuthBucketProg (q + 1) B0 1 qep maxForwardJumps tL)
     redPRNGAuth := fun tL t =>
       compilePrngAtomic ℓ Pt C Dh encPt encT idOf lam B0
-        (CryptoGames.SM.Construction.redPRNGAuthProg (q + 1) B0 1 qep maxForwardJumps tL t)
-    redFSAuth := fun j tL t =>
-      compileFsAtomic ℓ Pt C Dh encPt encT idOf lam B0
-        (CryptoGames.SM.Construction.redFSAuthProg (q + 1) B0 1 qep maxForwardJumps j tL t)
+        (Computational.Proofs.CryptoGames.SM.Theorem8.BucketPRNGAuthDefs.redPRNGAuthBucketHybridProg
+          (q + 1) B0 1 qep maxForwardJumps tL t)
+    redFSAuth := fun stage la j tL t =>
+      let _ : Inhabited Pt := ⟨0⟩
+      Computational.Proofs.SessionCostedFig8.BundlesMultiFsBase.compileFsMultiAtomic
+        ℓ Pt C Dh encPt encT idOf lam stage la
+        ((q + 1) * (t - CryptoGames.SM.Construction.healEpoch tL) + j) qep (min (2 * q) (q + 2)) B0
+        (Computational.Proofs.CryptoGames.SM.Theorem8.BucketPRNGAuthDefs.redFSAuthMultiBucketProg
+          (q + 1) B0 1 qep maxForwardJumps (decide (j = 0)) la tL
+          (decide (CryptoGames.Party.senderOf t == .A)))
     redCKAPriv := fun tL i =>
       compileCkaAtomic ℓ Pt C Dh encPt encT idOf lam B0
         (CryptoGames.SM.Construction.redCKAPrivProg (q + 1) B0 1 qep maxForwardJumps tL i)
+    redCKAPrivU := fun tL i =>
+      compileCkaAtomic ℓ Pt C Dh encPt encT idOf lam B0
+        (CryptoGames.SM.Construction.redCKAPrivUProg (q + 1) B0 1 qep maxForwardJumps tL i)
     redPRNGPriv := fun tL i =>
       compilePrngAtomic ℓ Pt C Dh encPt encT idOf lam B0
         (CryptoGames.SM.Construction.redPRNGPrivProg (q + 1) B0 1 qep maxForwardJumps tL i)
-    redFSPriv := fun tL i =>
+    redFSPriv := fun i =>
       compileFsAtomic ℓ Pt C Dh encPt encT idOf lam B0
-        (CryptoGames.SM.Construction.redFSPrivProg (q + 1) B0 1 qep maxForwardJumps tL i)
-    redFSPrivCoin := fun tL i =>
+        (CryptoGames.SM.Construction.redFSPrivUniProg (q + 1) B0 1 qep maxForwardJumps i)
+    redFSPrivCoin := fun i =>
       compileFsAtomic ℓ Pt C Dh encPt encT idOf lam B0
-        (CryptoGames.SM.Construction.redFSPrivCoinProg (q + 1) B0 1 qep maxForwardJumps tL i) }
+        (CryptoGames.SM.Construction.redFSPrivUniCoinProg (q + 1) B0 1 qep maxForwardJumps i) }
 
-def challSimDFAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+@[expose] def challSimDFAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt)
     (qep q : ℕ) :
     CostedReduction (atomicFig8Ops ℓ Pt C Dh encPt encT lam) (fig8SmIfaceDF ℓ Pt)
@@ -1805,7 +1817,7 @@ def challSimDFAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitV
   compileSmDFAtomic ℓ Pt C Dh encPt encT idOf lam
     (CryptoGames.SM.challSimDFProg q (2 + 1) qep)
 
-def redCKAAuthDFAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+@[expose] def redCKAAuthDFAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt)
     (qep q : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction (atomicFig8Ops ℓ Pt C Dh encPt encT lam) (ckaTargetIface ℓ Pt)
@@ -1815,7 +1827,7 @@ def redCKAAuthDFAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (Bi
   compileCkaDFAtomic ℓ Pt C Dh encPt encT idOf lam B0
     (CryptoGames.SM.Construction.redCKAAuthDFProg (q + 1) B0 1 qep maxForwardJumps tL t)
 
-def redPRNGAuthDFAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+@[expose] def redPRNGAuthDFAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt)
     (qep q : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction (atomicFig8Ops ℓ Pt C Dh encPt encT lam) (prngTargetIface ℓ Pt)
@@ -1825,7 +1837,7 @@ def redPRNGAuthDFAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (B
   compilePrngDFAtomic ℓ Pt C Dh encPt encT idOf lam B0
     (CryptoGames.SM.Construction.redPRNGAuthDFProg (q + 1) B0 1 qep maxForwardJumps tL t)
 
-def redFSAuthDFAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+@[expose] def redFSAuthDFAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt)
     (qep q : ℕ) (j : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction (atomicFig8Ops ℓ Pt C Dh encPt encT lam) (fsaeadHeaderIface ℓ Pt)
@@ -1950,7 +1962,7 @@ section PureAuxSize
   Expr.renameM_size _ adR
 
 /-- Weighted AST node/bit size of `Expr O Γ t` with custom per-operator size weight `opS`. -/
-def exprSizeW {S : Sig} {O : Ops S} (opS : O.Op → ℕ) :
+@[expose] def exprSizeW {S : Sig} {O : Ops S} (opS : O.Op → ℕ) :
     {Γ : List (Ty S)} → {t : Ty S} → Expr O Γ t → ℕ
   | _, _, .var _ | _, _, .unit | _, _, .bool _ | _, _, .none | _, _, .nil => 1
   | _, _, .nat n => bits n
@@ -1970,7 +1982,7 @@ def exprSizeW {S : Sig} {O : Ops S} (opS : O.Op → ℕ) :
     exprSizeW opS l + exprSizeW opS z + exprSizeW opS f + bits K + 1
 
 /-- Weighted AST node/bit size of `Comp O I Γ t` with custom op, sampler, and query size weights. -/
-def compSizeW {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
+@[expose] def compSizeW {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (opS : O.Op → ℕ) (sS : I.smp.Samp → ℕ) (qS : I.Tag → ℕ) :
     {Γ : List (Ty S)} → {t : Ty S} → Comp O I Γ t → ℕ
   | _, _, .ret e => exprSizeW opS e + 1
@@ -2148,16 +2160,16 @@ theorem compSizeW_le_mul_size {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec 
     have hz := exprSizeW_le_mul_size opS K hK hOp z
     simp only [compSizeW, Comp.size]; nlinarith
 
-def smOpS : SMOp → ℕ := fun _ => 125
-def smSampS : SMSamp → ℕ := fun _ => 10
-def smQueryS {Tag : Type} : Tag → ℕ := fun _ => 10
+@[expose] def smOpS : SMOp → ℕ := fun _ => 125
+@[expose] def smSampS : SMSamp → ℕ := fun _ => 10
+@[expose] def smQueryS {Tag : Type} : Tag → ℕ := fun _ => 10
 
-def ckaOpS (B0 : ℕ) : CKAOp → ℕ
+@[expose] def ckaOpS (B0 : ℕ) : CKAOp → ℕ
   | .fsReceive B => 3 * bits B0 + 2 * bits B + 1205
   | _ => 305
 
-def ckaSampS : CKASamp → ℕ := fun _ => 10
-def ckaQueryS {Tag : Type} : Tag → ℕ := fun _ => 10
+@[expose] def ckaSampS : CKASamp → ℕ := fun _ => 10
+@[expose] def ckaQueryS {Tag : Type} : Tag → ℕ := fun _ => 10
 
 theorem smOpMacro_size_le (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero Pt]
     (C : Crypto) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))

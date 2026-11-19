@@ -9,18 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhModelLink -- shake: keep
-public import LibsignalBinary.Proofs.SpecLemmas.SignalPqxdh.Model -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.InitFacts -- shake: keep
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.Crypto -- shake: keep
+public import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhModelLink -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalPqxdh.Model -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.InitFacts -- shake: keep -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.Crypto -- shake: keep
 public import Computational.Specifications.Session.StatementComposed -- shake: keep
 public import Computational.Specifications.Game.StatementBinaryHarnessCore -- shake: keep
-public import Computational.Proofs.SpecLemmas.Game.StatementBinaryHarnessCore -- shake: keep
-public import Computational.Proofs.SpecLemmas.Session.StatementComposed -- shake: keep
-public import Computational.Proofs.SpecLemmas.Assumptions.KemCorrect -- shake: keep
-public import Computational.Proofs.SpecLemmas.SignalPqxdh.Assumptions -- shake: keep
+public import Computational.Proofs.SpecLemmas.Game.StatementBinaryHarnessCore -- shake: keep -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.Session.StatementComposed -- shake: keep
+import Computational.Proofs.SpecLemmas.Assumptions.KemCorrect -- shake: keep
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Assumptions -- shake: keep
 import Computational.Proofs.SpecLemmas.Pqxdh.Security.BoundProofDefs -- shake: keep
-import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDec -- shake: keep
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.CBCDec -- shake: keep
 import VCVio.EvalDist.Monad.Basic -- shake: keep
 
 /-!
@@ -33,7 +33,7 @@ Proves the definitional, clamping, CBC, and DH laws of `modelPrims X W`, assembl
 dependence witnesses showing that each external assumption can fail on unconstrained `(X, W, Dh)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -178,17 +178,14 @@ theorem modelPrims_aead_roundtrip (X : UnreachedPqxdhPrimitives) (W : PEParams)
   SignalPqxdh.aes256CbcHmac_roundtrip (modelPrims X W)
     (modelPrims_aesEncBlock_len X W) (modelPrims_aesBlock_corr X W hAes) mk ad pt
 
-private theorem uint8_ofNat_shift_toBitVec_eq_extractLsb' (w : BitVec 256) (j : ℕ) :
-    (UInt8.ofNat ((w.toNat >>> (8 * j)) % 256)).toBitVec = w.extractLsb' (8 * j) 8 := by
-  apply BitVec.eq_of_toNat_eq; simp [UInt8.ofNat, BitVec.extractLsb'_toNat]
-
 @[simp] theorem ofU8_word256ToBytes (w : BitVec 256) :
     ofU8 (SignalPqxdh.word256ToBytes w) = HMAC.keyToBytes32 w := by
   refine List.ext_getElem (by simp [ofU8, SignalPqxdh.word256ToBytes, HMAC.keyToBytes32])
     fun j h1 h2 => ?_
   simp only [ofU8, SignalPqxdh.word256ToBytes, HMAC.keyToBytes32, List.getElem_map,
     List.getElem_ofFn]
-  exact uint8_ofNat_shift_toBitVec_eq_extractLsb' w j
+  apply BitVec.eq_of_toNat_eq
+  simp [UInt8.ofNat, BitVec.extractLsb'_toNat]
 
 theorem word256ToBytes_eq_toU8_keyToBytes32 (w : BitVec 256) :
     SignalPqxdh.word256ToBytes w = toU8 (HMAC.keyToBytes32 w) := by
@@ -367,28 +364,18 @@ theorem modelPrims_sha512_len (X : UnreachedPqxdhPrimitives) (W : PEParams) (m :
     ((modelPrims X W).sha512 m).length = 64 := SignalPqxdh.sha512Ref_length (blockLevelPrims X W) m
 
 theorem modelPrims_scalarFromBytesModOrder_len (X : UnreachedPqxdhPrimitives) (W : PEParams) (b : List UInt8) :
-    ((modelPrims X W).scalarFromBytesModOrder b).length = 32 := by simp [modelPrims, blockLevelPrims]
+    ((modelPrims X W).scalarFromBytesModOrder b).length = 32 := by
+  simp [modelPrims, blockLevelPrims, toU8, VerifiedLibraries.Common.natToLeBytes]
 
 theorem modelPrims_scalarFromWide_len (X : UnreachedPqxdhPrimitives) (W : PEParams) (b : List UInt8) :
-    ((modelPrims X W).scalarFromWide b).length = 32 := by simp [modelPrims, blockLevelPrims]
+    ((modelPrims X W).scalarFromWide b).length = 32 := by
+  simp [modelPrims, blockLevelPrims, toU8, VerifiedLibraries.Common.natToLeBytes]
 
-theorem modelPrims_montToEd_len (X : UnreachedPqxdhPrimitives) (W : PEParams)
-    (u : List UInt8) (s : UInt8) (pt : List UInt8) (h : (modelPrims X W).montToEd u s = some pt) :
-    pt.length = 160 := by
-  dsimp only [modelPrims, blockLevelPrims] at h
-  rcases h1 : W.Q.montToEd (u8Vec 32 u) s.toBitVec with _ | v <;> simp [h1] at h
-  subst h; simp
-
-theorem modelPrims_edNeg_len (X : UnreachedPqxdhPrimitives) (W : PEParams) (pt : List UInt8) :
-    ((modelPrims X W).edNeg pt).length = 160 := by simp [modelPrims, blockLevelPrims]
-
-theorem modelPrims_doubleScalarMulBasepoint_len (X : UnreachedPqxdhPrimitives) (W : PEParams)
-    (h a s : List UInt8) :
-    ((modelPrims X W).doubleScalarMulBasepoint h a s).length = 160 := by
-  simp [modelPrims, blockLevelPrims]
-
-theorem modelPrims_compress_len (X : UnreachedPqxdhPrimitives) (W : PEParams) (pt : List UInt8) :
-    ((modelPrims X W).compress pt).length = 32 := by simp [modelPrims, blockLevelPrims]
+theorem modelPrims_compress_len (X : UnreachedPqxdhPrimitives) (W : PEParams)
+    (pt : VerifiedLibraries.Common.EdPoint) :
+    ((modelPrims X W).compress pt).length = 32 := by
+  simp [modelPrims, blockLevelPrims, toU8, VerifiedLibraries.Common.encodeEd,
+    VerifiedLibraries.Common.natToLeBytes]
 
 theorem modelPrims_kemEncaps_isSome (X : UnreachedPqxdhPrimitives) (W : PEParams) (pk r : List UInt8)
     (hpk : pk.length = SignalPqxdh.kyberPkLen) :
@@ -728,9 +715,6 @@ theorem wellFormedPrimitivesδ_modelPrims
   scalarAdd_len := hAssump.scalarAdd_len
   scalarFromBytesModOrder_len := modelPrims_scalarFromBytesModOrder_len X W
   scalarFromWide_len := modelPrims_scalarFromWide_len X W
-  montToEd_len := modelPrims_montToEd_len X W
-  edNeg_len := modelPrims_edNeg_len X W
-  doubleScalarMulBasepoint_len := modelPrims_doubleScalarMulBasepoint_len X W
   compress_len := modelPrims_compress_len X W
   sigVerify_eq_xeddsaVerifyRef := modelPrims_sigVerify_eq_ref X W
   isCanonical_eq_isCanonicalRef := modelPrims_isCanonical_eq_ref X W
@@ -761,192 +745,5 @@ theorem cryptoWellFormedPrimitivesδ_modelPrims
   kemEncaps_len_reject := modelPrims_kemEncaps_len_reject X W
 
 /-! ## Dependence witnesses for external hypotheses -/
-
-theorem not_kemKeyGen_valid_of_bad_len (X : UnreachedPqxdhPrimitives) (W : PEParams) (seed : List UInt8)
-    (h : (X.kemKeyGen seed).1.length ≠ SignalPqxdh.kyberPkLen) :
-    ¬ (((modelPrims X W).kemKeyGen seed).1.length = SignalPqxdh.kyberPkLen ∧
-      ((modelPrims X W).kemKeyGen seed).2.length = 3168) :=
-  fun hvalid => h hvalid.1
-
-theorem not_sig_corr_of_short_sig (X : UnreachedPqxdhPrimitives) (W : PEParams) (sk msg r : List UInt8)
-    (h : (X.sigSign sk msg r).length ≠ 64) :
-    (modelPrims X W).sigVerify (X.sigPkGen sk) msg (X.sigSign sk msg r) = false := by
-  dsimp only [modelPrims, SignalPqxdh.xeddsaVerifyRef]; simp [h]
-
-theorem not_canon_base_of_montToEd_none (X : UnreachedPqxdhPrimitives) (W : PEParams) (e : List UInt8)
-    (h : W.Q.montToEd (u8Vec 32 ((modelPrims X W).x25519Base e)) 0 = none) :
-    (modelPrims X W).isCanonical ((modelPrims X W).x25519Base e) = false := by
-  change SignalPqxdh.isCanonicalRef (blockLevelPrims X W) ((modelPrims X W).x25519Base e) = false
-  unfold SignalPqxdh.isCanonicalRef
-  have hm : (blockLevelPrims X W).montToEd ((modelPrims X W).x25519Base e) 0 = none := by
-    change Option.map vecU8 (W.Q.montToEd (u8Vec 32 ((modelPrims X W).x25519Base e)) 0) = none
-    rw [h]; rfl
-  rw [hm]; split <;> rfl
-
-theorem not_pow8_idemp_of_ne (X : UnreachedPqxdhPrimitives) (p : List UInt8) (h : X.pow8 (X.pow8 p) ≠ X.pow8 p) :
-    ¬ (∀ q : List UInt8, X.pow8 (X.pow8 q) = X.pow8 q) := fun hall => h (hall p)
-
-theorem not_isValidDhTriple_eq_ref_of_false (X : UnreachedPqxdhPrimitives) (W : PEParams) (a b : List UInt8)
-    (h : X.isValidDhTriple ((modelPrims X W).x25519Base a) ((modelPrims X W).x25519Base b)
-      ((modelPrims X W).x25519 a ((modelPrims X W).x25519Base b)) = false) :
-    ¬ (∀ A B Z : List UInt8,
-      X.isValidDhTriple A B Z = true ↔ SignalPqxdh.isValidDhTripleRef (modelPrims X W) A B Z) := by
-  intro hall
-  have href : SignalPqxdh.isValidDhTripleRef (modelPrims X W)
-      ((modelPrims X W).x25519Base a) ((modelPrims X W).x25519Base b)
-      ((modelPrims X W).x25519 a ((modelPrims X W).x25519Base b)) :=
-    ⟨modelPrims_onCurveKey_x25519Base X W a, modelPrims_onCurveKey_x25519Base X W b,
-      Or.inl ⟨a, rfl, rfl⟩⟩
-  have htrue := (hall _ _ _).mpr href; rw [h] at htrue; exact Bool.noConfusion htrue
-
-theorem not_pow8_base_len_of_eq_empty (X : UnreachedPqxdhPrimitives) (W : PEParams) (e : List UInt8)
-    (h : X.pow8 [] = X.pow8 ((modelPrims X W).x25519Base e)) :
-    ¬ (∀ p e' : List UInt8,
-      X.pow8 p = X.pow8 ((modelPrims X W).x25519Base e') → p.length = 32) := by
-  intro hall; have hlen := hall [] e h; revert hlen; decide
-
-theorem not_x25519_pow8_congr_of_const_pow8 (X : UnreachedPqxdhPrimitives) (W : PEParams)
-    (a pk1 pk2 : List UInt8) (h1 : pk1.length = 32) (h2 : pk2.length = 32)
-    (hpow : X.pow8 pk1 = X.pow8 pk2)
-    (hne : (modelPrims X W).x25519 a pk1 ≠ (modelPrims X W).x25519 a pk2) :
-    ¬ (∀ a' p1 p2 : List UInt8, p1.length = 32 → p2.length = 32 →
-      X.pow8 p1 = X.pow8 p2 →
-      (modelPrims X W).x25519 a' p1 = (modelPrims X W).x25519 a' p2) :=
-  fun hall => hne (hall a pk1 pk2 h1 h2 hpow)
-
-theorem not_canon_pow8_inj_of_const_pow8 (X : UnreachedPqxdhPrimitives) (W : PEParams) (pk1 pk2 : List UInt8)
-    (hc1 : (modelPrims X W).isCanonical pk1 = true) (hc2 : (modelPrims X W).isCanonical pk2 = true)
-    (hpow : X.pow8 pk1 = X.pow8 pk2) (hne : pk1 ≠ pk2) :
-    ¬ (∀ p1 p2 : List UInt8,
-      (modelPrims X W).isCanonical p1 = true → (modelPrims X W).isCanonical p2 = true →
-      X.pow8 p1 = X.pow8 p2 → p1 = p2) :=
-  fun hall => hne (hall pk1 pk2 hc1 hc2 hpow)
-
-theorem not_x25519_inj_pow8_of_id_pow8 (X : UnreachedPqxdhPrimitives) (W : PEParams)
-    (a pk1 pk2 : List UInt8) (ha : a.length = 32) (h1 : pk1.length = 32) (h2 : pk2.length = 32)
-    (hx : (modelPrims X W).x25519 a pk1 = (modelPrims X W).x25519 a pk2)
-    (hne : X.pow8 pk1 ≠ X.pow8 pk2) :
-    ¬ (∀ a' p1 p2 : List UInt8, a'.length = 32 → p1.length = 32 → p2.length = 32 →
-      (modelPrims X W).x25519 a' p1 = (modelPrims X W).x25519 a' p2 → X.pow8 p1 = X.pow8 p2) :=
-  fun hall => hne (hall a pk1 pk2 ha h1 h2 hx)
-
-theorem not_x25519_zero_iff_of_witness (X : UnreachedPqxdhPrimitives) (W : PEParams)
-    (a1 a2 pk : List UInt8) (ha1 : a1.length = 32) (ha2 : a2.length = 32) (hpk : pk.length = 32)
-    (h1 : (modelPrims X W).x25519 a1 pk = List.replicate 32 0)
-    (h2 : (modelPrims X W).x25519 a2 pk ≠ List.replicate 32 0) :
-    ¬ (∀ b1 b2 p : List UInt8, b1.length = 32 → b2.length = 32 → p.length = 32 →
-      ((modelPrims X W).x25519 b1 p = List.replicate 32 0 ↔
-        (modelPrims X W).x25519 b2 p = List.replicate 32 0)) :=
-  fun hall => h2 ((hall a1 a2 pk ha1 ha2 hpk).mp h1)
-
-theorem not_aesBlock_corr_of_const_zero (X : UnreachedPqxdhPrimitives) (W : PEParams)
-    (hD0 : ∀ k x, W.C.D k x = 0#128) :
-    (modelPrims X W).aesDecBlock (List.replicate 32 0)
-      ((modelPrims X W).aesEncBlock (List.replicate 32 0) (List.replicate 16 1)) ≠
-      List.replicate 16 1 := by
-  dsimp only [modelPrims, blockLevelPrims]; rw [hD0]; decide
-
-theorem not_aead_corr_of_const_zero (X : UnreachedPqxdhPrimitives) (W : PEParams)
-    (hD0 : ∀ k x, W.C.D k x = 0#128) :
-    (modelPrims X W).aeadDec ⟨List.replicate 32 0, List.replicate 32 0, List.replicate 16 0⟩ []
-      ((modelPrims X W).aeadEnc ⟨List.replicate 32 0, List.replicate 32 0, List.replicate 16 0⟩
-        [] []) = none := by
-  have hdec0 : ∀ k b : List UInt8, (modelPrims X W).aesDecBlock k b = List.replicate 16 0 := by
-    intro k b; dsimp only [modelPrims, blockLevelPrims]; rw [hD0]; decide
-  rw [modelPrims_aeadEnc_eq_ref, modelPrims_aeadDec_eq_ref]
-  set P := modelPrims X W
-  have hpad : SignalPqxdh.pkcs7Pad16 [] = List.replicate 16 16 := rfl
-  have hblk_pad : SignalPqxdh.toBlocks16 (List.replicate 16 16) = [List.replicate 16 16] := by
-    have h1 := SignalPqxdh.toBlocks16_append_of_len16
-      (List.length_replicate (n := 16) (a := (16 : UInt8))) []
-    rw [List.append_nil] at h1; rw [h1, SignalPqxdh.toBlocks16]; rfl
-  have henc_len :
-      (SignalPqxdh.aes256CbcEncRef P (List.replicate 32 0) (List.replicate 16 0) []).length =
-        16 := by
-    unfold SignalPqxdh.aes256CbcEncRef; rw [hpad, hblk_pad]
-    simp [SignalPqxdh.cbcEncBlocks, SignalPqxdh.cbcEncBlocksWith, SignalPqxdh.fromBlocks16,
-      SignalPqxdh.fitBytesRef_length]
-  set ct := SignalPqxdh.aes256CbcEncRef P (List.replicate 32 0) (List.replicate 16 0) []
-  set mac := (SignalPqxdh.hmacSha256Ref P (List.replicate 32 0)
-    (SignalPqxdh.aeadMacInput [] ct)).take 8
-  have hmac_len : mac.length = 8 := by simp [mac, SignalPqxdh.hmacSha256Ref_length]
-  have htot : (ct ++ mac).length ≥ 24 := by simp [henc_len, hmac_len]
-  have hsub : (ct ++ mac).length - 8 = ct.length := by simp [hmac_len]
-  have hblk_ct : SignalPqxdh.toBlocks16 ct = [ct] := by
-    have h1 := SignalPqxdh.toBlocks16_append_of_len16 henc_len []
-    rw [List.append_nil] at h1; rw [h1, SignalPqxdh.toBlocks16]; rfl
-  have hdec_ct :
-      SignalPqxdh.aes256CbcDecRef P (List.replicate 32 0) (List.replicate 16 0) ct = none := by
-    unfold SignalPqxdh.aes256CbcDecRef; rw [henc_len, hblk_ct]
-    dsimp only [SignalPqxdh.cbcDecBlocks, SignalPqxdh.cbcDecBlocksWith,
-      SignalPqxdh.fromBlocks16, List.foldr]
-    rw [hdec0]; decide
-  change SignalPqxdh.aes256CbcHmacDecRef P
-    ⟨List.replicate 32 0, List.replicate 32 0, List.replicate 16 0⟩ [] (ct ++ mac) = none
-  unfold SignalPqxdh.aes256CbcHmacDecRef
-  rw [ite_eq_left_iff.mpr fun h => absurd htot h]; dsimp only
-  rw [hsub, List.take_left' rfl, List.drop_left' rfl, beq_self_eq_true,
-    ite_eq_left_iff.mpr fun h => absurd rfl h]
-  exact hdec_ct
-
-theorem kemHonestFail_modelPrims_eq_true_of_ne (X : UnreachedPqxdhPrimitives) (W : PEParams)
-    (seed r : List UInt8) (hpk : (X.kemKeyGen seed).1.length = SignalPqxdh.kyberPkLen)
-    (hne : W.Q.decaps (u8Vec 3168 (X.kemKeyGen seed).2)
-        (W.Q.encaps (u8Vec 1568 (X.kemKeyGen seed).1) (u8Vec 32 r)).1 ≠
-      (W.Q.encaps (u8Vec 1568 (X.kemKeyGen seed).1) (u8Vec 32 r)).2) :
-    SignalPqxdh.kemHonestExchangeFails (modelPrims X W) seed r = true := by
-  unfold SignalPqxdh.kemHonestExchangeFails
-  have henc : (modelPrims X W).kemEncaps ((modelPrims X W).kemKeyGen seed).1 r =
-      some (vecU8 (W.Q.encaps (u8Vec 1568 (X.kemKeyGen seed).1) (u8Vec 32 r)).2,
-            vecU8 (W.Q.encaps (u8Vec 1568 (X.kemKeyGen seed).1) (u8Vec 32 r)).1) := by
-    dsimp only [modelPrims, blockLevelPrims]
-    simp [hpk, SignalPqxdh.kyberPkLen]
-  rw [henc, decide_eq_true_eq]
-  dsimp only [modelPrims, blockLevelPrims]
-  simp only [vecU8_length, SignalPqxdh.kyberCtLen, beq_self_eq_true, ↓reduceIte, u8Vec_vecU8]
-  intro heq; injection heq with hvec; exact hne (vecU8_inj hvec)
-
-theorem not_ec_coll_bound_of_const_pow8 (X : UnreachedPqxdhPrimitives) (W : PEParams) (targetPk : List UInt8)
-    (hconst : ∀ sk : List UInt8, X.pow8 ((modelPrims X W).x25519Base sk) = X.pow8 targetPk) :
-    ¬ (∀ t : List UInt8,
-      (𝒟[do
-        let sk ← SignalPqxdh.sampleScalar32
-        pure ((modelPrims X W).pow8 ((modelPrims X W).x25519Base sk) ==
-          (modelPrims X W).pow8 t)] {true}).toReal ≤ 1 / (2 : ℝ) ^ 250) := by
-  intro hall; have hbound := hall targetPk
-  have hbeq : ∀ sk : List UInt8,
-      ((modelPrims X W).pow8 ((modelPrims X W).x25519Base sk) ==
-        (modelPrims X W).pow8 targetPk) = true := by
-    intro sk; change (X.pow8 ((modelPrims X W).x25519Base sk) == X.pow8 targetPk) = true
-    rw [hconst sk, beq_self_eq_true]
-  simp only [hbeq, OracleComp.evalDist_bind_const, evalDist_pure,
-    Measure.dirac_apply' _ (measurableSet_singleton _), Set.mem_singleton_iff, Set.indicator_of_mem,
-    Pi.one_apply, ENNReal.toReal_one] at hbound
-  norm_num at hbound
-
-theorem not_kem_coll_bound_of_const_kemKeyGen (X : UnreachedPqxdhPrimitives) (W : PEParams)
-    (targetPk : List UInt8) (hconst : ∀ seed : List UInt8, (X.kemKeyGen seed).1 = targetPk) :
-    ¬ (∀ t : List UInt8,
-      (𝒟[do
-        let (pk, _) ← SignalPqxdh.sampleKemKeyGen (modelPrims X W)
-        pure (pk == t)] {true}).toReal ≤ 1 / (2 : ℝ) ^ 255) := by
-  intro hall; have hbound := hall targetPk
-  have hbeq : ∀ seed : List UInt8, (((modelPrims X W).kemKeyGen seed).1 == targetPk) = true := by
-    intro seed; change ((X.kemKeyGen seed).1 == targetPk) = true; rw [hconst seed, beq_self_eq_true]
-  simp only [SignalPqxdh.sampleKemKeyGen, bind_assoc, pure_bind, hbeq,
-    OracleComp.evalDist_bind_const, evalDist_pure,
-    Measure.dirac_apply' _ (measurableSet_singleton _), Set.mem_singleton_iff, Set.indicator_of_mem,
-    Pi.one_apply, ENNReal.toReal_one] at hbound
-  norm_num at hbound
-
-theorem not_encaps1Total_of_none (K : LibsignalSpqrV1.MlKem)
-    (hdr : Bytes) (rand : List.Vector (BitVec 8) 32) (hlen : hdr.length = 64)
-    (hnone : K.encaps1 hdr rand = none) : ¬ Encaps1Total K := by
-  intro htot; have hsome := htot hdr rand hlen; rw [hnone] at hsome; exact Bool.noConfusion hsome
-
-theorem not_dhKerUniform_of_witness {Pt : Type} (Dh : DHFun (BitVec 256) Pt)
-    (s x : BitVec 256) (Q Q' : Pt) (hx : Dh.dh x Q = Dh.dh x Q') (hs : Dh.dh s Q ≠ Dh.dh s Q') :
-    ¬ DhKerUniform Dh :=
-  fun hker => hs ((hker s x Q Q').mp hx)
 
 end CryptoVerification.E2E

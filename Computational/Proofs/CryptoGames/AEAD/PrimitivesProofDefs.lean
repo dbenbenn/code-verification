@@ -22,7 +22,7 @@ public import ToMathlib.Control.StateT
 Defines perfect decryption correctness `AEADScheme.Correct`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 namespace CryptoGames
@@ -30,7 +30,7 @@ namespace AEADScheme
 variable {Key AssocData Message Ciphertext : Type}
 
 /-- Perfect decryption correctness: `ae.dec k a (ae.enc k a m) = some m`. -/
-def Correct (ae : AEADScheme Key AssocData Message Ciphertext) : Prop :=
+@[expose] def Correct (ae : AEADScheme Key AssocData Message Ciphertext) : Prop :=
   ∀ k a m, ae.dec k a (ae.enc k a m) = some m
 
 end AEADScheme

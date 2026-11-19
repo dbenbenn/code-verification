@@ -10,10 +10,27 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrLeafCodecCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvPeakHelpers
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
+import LibsignalBinary.Proofs.PeakBudget.SpqrLeafCodecCredit
+public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvPeakHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrPolyBounds
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Small-Class and `fineCostModel` Leaf/Chain Credit Helpers for `spqr::recv`
@@ -24,7 +41,7 @@ Proves zero-live-growth (`Δlive = Δpeak = 0`) `PhaseCreditSpec` bounds for `Sp
 `PqRatchetStateEncodeToVecEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

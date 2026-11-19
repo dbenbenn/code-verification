@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudget
-public import LibsignalBinary.Proofs.Placed.Bridge
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 
 /-!
 # Budget-Threaded `get_local_registration_id` Callee Cell Specifications
@@ -20,7 +20,7 @@ Defines `shimCellsSpec` and `alloc14CellsSpec` (`__rust_alloc(14, 1)` under `Fit
 `IdRegIdPollPlacedBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,12 +33,12 @@ open LibsignalBinary.Heap
   (AllocCostModel BudgetLimits RustCliAllocBudget FitsEvents rustAllocEvents)
 
 /-- Cell-oriented specification for `__rust_no_alloc_shim_is_unstable_v2` with `onPanic := ⌜False⌝`. -/
-def shimCellsSpec (calleeStk : Nat) : Spec (BitVec 64) where
+@[expose] def shimCellsSpec (calleeStk : Nat) : Spec (BitVec 64) where
   pre := fun fsp s => ⌜s.sp = fsp⌝ ∗ stackAt fsp calleeStk
   post := fun fsp s0 sf => ⌜sf.trace = s0.trace⌝ ∗ stackAt fsp calleeStk
 
 /-- Cell-oriented specification for `__rust_alloc(14, 1)` guaranteeing non-null return under `FitsEvents`. -/
-def alloc14CellsSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def alloc14CellsSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (calleeStk : Nat) : Spec (BitVec 64 × M.σ) where
   pre := fun (fsp, st) s =>
     ⌜s.readReg64 .x0 = 14#64 ∧ s.readReg64 .x1 = 1#64 ∧ s.sp = fsp ∧

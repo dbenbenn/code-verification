@@ -16,6 +16,7 @@ public import ProofLib.Hoare.MultiCodeROHook
 public import VerifiedLibraries.Mallocng.Spec
 public import LibsignalBinary.Specifications.LibsignalE2E.HooksMallocng
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import Symbolic.BugInjection.Proofs.CliExec.RadixMemAux
 public import Symbolic.BugInjection.Proofs.CliExec.RadixMem
 public import Symbolic.BugInjection.Proofs.CliExec.FastHooksAux
@@ -24,6 +25,7 @@ public import Symbolic.BugInjection.Proofs.CliExec.CompHooks0Placed
 public import Symbolic.BugInjection.Proofs.CliExec.FastHooksPlaced
 public import Symbolic.BugInjection.Proofs.CliExec.SubroutineChoiceBridge
 meta import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+meta import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced
 meta import Symbolic.BugInjection.Proofs.CliExec.CompHooks0Placed
 meta import Symbolic.BugInjection.Proofs.CliExec.FastHooksPlaced
 
@@ -32,16 +34,13 @@ meta import Symbolic.BugInjection.Proofs.CliExec.FastHooksPlaced
 
 Proves `FastState.Agrees`, `Memory.KeepsFrozen`, and `symtab` soundness (`FastHookPost`) for
 `FastHooksPlaced.fastExecExternPlaced` and `FastHooksPlaced.hasCliHookPlaced` against
-`CryptoVerification.SignalSession.cliExternsPlacedSig mmpl W` (`27` rows in
+`CryptoVerification.SignalSession.cliExternsPlacedSig mmpl W` (`14` rows in
 `cliHookTablePlaced mmpl W` plus `isCliPanicSymbolPlaced`), including specialization to
 `CompHooks0Placed.compHooks0`:
 
-1. **17 PQXDH / SPQR rows**: reused directly from `FastHooksRows`.
-2. **7 pure I/O / `core` / `alloc` / session / ratchet rows + `Arm64.Rust.panicked`**: proved
+1. **8 PQXDH / SPQR rows**: reused directly from `FastHooksRows`.
+2. **6 pure I/O / `core` / `alloc` / session / ratchet rows + `Arm64.Rust.panicked`**: proved
    directly against `FastHooksPlaced` with zero fixed-image imports (`C1(b)`-clean).
-3. **3 shared-pool `mallocng` rows (`aesEncHookMallocng`, `aesDecHookMallocng`,
-   `libcruxHmacHookMallocng`)**: discharged via `SubroutineRunnerSound` and
-   `SubroutineChoiceBridge` (`subroutineRunnerSound_of_subStepSound`).
 -/
 
 @[expose] public section
@@ -57,23 +56,19 @@ open Arm64.Memory (KeepsFrozen keepsFrozen_write16 keepsFrozen_write32 keepsFroz
 open Arm64.Obj (MultiPlacedLib MultiPlacement lookupBlockSym)
 open Arm64.Rust (isPanicSymbol panicked)
 open ProofLib (hookMemcpy hookMemmove retHook)
-open CryptoGames.CBC (AesKey Block bytesToBlock)
-open CryptoGames.HKDF (bytesToKey32)
-open CryptoGames.HMAC (ShaState chunks64 hmacWith)
-open CryptoGames.LibsignalSession (PubKeyFn aesCbcDecrypt aesCbcEncrypt)
+open CryptoGames.HMAC (ShaState)
+open CryptoGames.LibsignalSession (PubKeyFn)
 open CryptoGames.Ratchet (X25519Fn)
 open CryptoVerification.LibsignalHmac (compress256Hook readShaState shaStateBytes)
 open CryptoVerification.LibsignalSession (blackBoxHook)
 open CryptoVerification.LibsignalTripleRatchet (diffieHellmanHook pubFromSecretHook
   zeroizeSecretHook)
-open CryptoVerification.LibsignalTripleRatchetRepr (errTag)
-open CryptoVerification.E2E (aesDecHookMallocng aesDecOut aesEncHookMallocng aesEncOut
-  fmtWriteHook0 formatInnerHook0 libcruxHmacHookMallocng restoreCallerRegs stepRustAlloc1
-  stepRustDealloc1 timeAddHook writeVecHeader)
-open CryptoVerification.SignalSession (CliHooks PathOk abortOnPanic cliBcmpHook
-  cliExternsPlaced cliExternsPlacedSig cliHookTablePlaced cliPanicSymbolsPlaced
+open CryptoVerification.E2E (fmtWriteHook0 formatInnerHook0
+  restoreCallerRegs stepRustAlloc1 stepRustDealloc1 timeAddHook)
+open CryptoVerification.SignalSession (CliHooks PathOk abortOnPanic cliBcmpHook cliCratePanicSyms cliExternsPlaced
   cliPqxdhHookTablePlaced cliPathMaxBytes durationSinceExactHook isCliPanicSymbolPlaced
   memrchrHook readPath unitResult unmodelled vecEmptyOk writeFileHook writeStdoutHook)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (cliExternsPlacedSig cliHookTablePlaced)
 open Symbolic.BugInjection.Proofs.CliExec.RadixMem (FastMem)
 open Symbolic.BugInjection.Proofs.CliExec.FastHooksAux (FastFs HeapIntervalsAgree
   fastPathOk fastPathOk_eq listUInt8Eq listUInt8Eq_strUtf8Bytes listUInt8IsPrefix
@@ -81,50 +76,46 @@ open Symbolic.BugInjection.Proofs.CliExec.FastHooksAux (FastFs HeapIntervalsAgre
   perm_write16_eq perm_write32_eq perm_write64_eq perm_writeBytes_eq strUtf8Bytes)
 open Symbolic.BugInjection.Proofs.CliExec.FastHooksRows (FastHookPost FastState
   canWrite_mono_le canWrite_of_perm_eq canWrite_split24 fastAbortOnPanic_post
-  fastCompress512_post fastCompress_post fastDsmb_post fastEdNeg_post fastKemDecaps_post
-  fastKemEncaps_post fastMlkemDecaps_post fastMlkemEncaps1_post fastMlkemEncaps2_post
-  fastMlkemFromSeed_post fastMlkemPk1_post fastMlkemPk2_post fastMlkemValidatePk_post
-  fastReadVec32_eq fastScalarMod_post fastScalarWide_post fastToEdwards_post
-  fastTorsionFree_post fastWriteBytesRet_retHook_post fastWriteBytesRet_returnToLr_post
-  fastWriteVecHeader fastWriteVecHeader_agrees keepsFrozen_writeVecHeader
-  perm_writeVecHeader_eq)
+  fastCompress512_post fastKemDecaps_post fastKemEncaps_post fastMlkemDecaps_post
+  fastMlkemEncaps1_post fastMlkemEncaps2_post fastMlkemFromSeed_post
+  fastMlkemValidatePk_post fastReadVec32_eq fastWriteBytesRet_retHook_post
+  fastWriteBytesRet_returnToLr_post fastWriteVecHeader fastWriteVecHeader_agrees
+  keepsFrozen_writeVecHeader perm_writeVecHeader_eq)
 open Symbolic.BugInjection.Proofs.CliExec.CompHooks0Placed (compHooks0)
 open Symbolic.BugInjection.Proofs.CliExec.FastHooksPlaced (MallocngCallAddrs
-  aesDecFrameBytes aesEncFrameBytes cliPanicSymbolsPlacedList fastAesDecMallocng
-  fastAesDecOut fastAesEncMallocng fastAesEncOut fastBlackBox
+  cliPanicSymbolsPlacedList fastBlackBox
   fastCallMallocngSubroutine fastCliBcmp fastCompress256 fastDiffieHellman
   fastDurationSince fastExecExternPlaced fastExternPlacedRaw? fastFmtWrite
   fastFormatInner fastFromUtf8_post fastHookTablePlaced fastIsCliPanicSymbolPlaced
-  fastIsCliPanicSymbolPlacedBs fastLibcruxHmacMallocng fastMemcpy fastMemrchr
+  fastIsCliPanicSymbolPlacedBs fastMemcpy fastMemrchr
   fastPanicked fastPubFromSecret fastReadPath fastRestoreCallerRegs
   fastRunSubroutineLoop fastStepRustAlloc1 fastStepRustDealloc1 fastStrlen_post
   fastTimeAdd fastUnitResult fastVecEmptyOk fastWriteFile fastWriteStdout
-  fastZeroizeSecret hasCliHookPlaced isSubroutineStopFast libcruxHmacFrameBytes
+  fastZeroizeSecret hasCliHookPlaced isSubroutineStopFast
   mallocngSubFuel panicPlacedExactNamesBs)
 open Symbolic.BugInjection.Proofs.CliExec.SubroutineChoiceBridge (
   codeROSubroutineHook_eq_of_stepsUntil isSubroutineStopB isSubroutineStopB_eq_true_iff
   multiCodeROHookEntry_eq_of_codeLoaded multiCodeROHookExit_eq_of_codeLoaded)
 
 #guard cliPanicSymbolsPlacedList.length == 18
-#guard cliPanicSymbolsPlacedList == cliPanicSymbolsPlaced
-#guard (fastHookTablePlaced (fun _ => none) {} compHooks0).length == 27
+#guard cliPanicSymbolsPlacedList == cliCratePanicSyms
+#guard (fastHookTablePlaced (fun _ => none) {} compHooks0).length == 0
 
 theorem cliPanicSymbolsPlacedList_length : cliPanicSymbolsPlacedList.length = 18 := rfl
-theorem cliPanicSymbolsPlaced_length : cliPanicSymbolsPlaced.length = 18 := rfl
+theorem cliPanicSymbolsPlaced_length : cliCratePanicSyms.length = 18 := rfl
 
 theorem cliPanicSymbolsPlacedList_eq :
-    cliPanicSymbolsPlacedList = cliPanicSymbolsPlaced := by decide
+    cliPanicSymbolsPlacedList = cliCratePanicSyms := by decide
 
 theorem fastHookTablePlaced_keys (subStep : FastState → Option FastState)
     (addrs : MallocngCallAddrs) (mmpl : MultiPlacement) (W : CliHooks) :
     (fastHookTablePlaced subStep addrs W).map Prod.fst =
-      (cliHookTablePlaced mmpl W).map Prod.fst := by
-  simp only [fastHookTablePlaced, cliHookTablePlaced, cliPqxdhHookTablePlaced,
-    List.map_cons, List.map_nil, List.cons_append, List.nil_append]
+      (cliHookTablePlaced mmpl W).map Prod.fst :=
+  rfl
 
 theorem fastHookTablePlaced_length (subStep : FastState → Option FastState)
     (addrs : MallocngCallAddrs) (W : CliHooks) :
-    (fastHookTablePlaced subStep addrs W).length = 27 := rfl
+    (fastHookTablePlaced subStep addrs W).length = 0 := rfl
 
 private theorem congr3 {α β γ δ : Type} (f : α → β → γ → δ)
     {a1 a2 : α} {b1 b2 : β} {c1 c2 : γ} (ha : a1 = a2) (hb : b1 = b2) (hc : c1 = c2) :
@@ -738,9 +729,6 @@ theorem fastRestoreCallerRegs_agrees {fsCaller fsCallee : FastState} {sCaller sC
     hCallee.fs, hCallee.oracle, hCallee.oracleIdx, hCallee.exclFails, hCallee.trace,
     hCallee.status, hCallee.sigAltStack⟩
 
-private theorem fastHookPost_const {h : State → State} {s : State} {fs' : FastState}
-    (hp : FastHookPost h s fs') : FastHookPost (fun _ => h s) s fs' := hp
-
 theorem fastStepRustAlloc1_post {mmpl : MultiPlacement} {m0 : Memory}
     {addrs : MallocngCallAddrs} {subStep : FastState → Option FastState}
     (hrun : SubroutineRunnerSound mmpl m0 addrs subStep)
@@ -888,221 +876,6 @@ theorem fastStepRustDealloc1_post {mmpl : MultiPlacement} {m0 : Memory}
       obtain ⟨hagOut, hkf2, hsym2⟩ := hk hkfKeep hagKeep hsome
       exact ⟨hagOut, KeepsFrozen.trans hkf1 hkf2, hsym2.trans hsym1⟩
 
-private theorem fastAesEncOut_eq {E : AesKey → Block → Block}
-    {fs : FastState} {s : State} (hag : fs.Agrees s) :
-    fastAesEncOut E fs = aesEncOut E s := by
-  have hk : fs.mem.readBytes (fs.readReg64 .x2) 32 = CryptoVerification.E2E.aesKey s := by
-    unfold CryptoVerification.E2E.aesKey
-    rw [FastState.readReg64_eq hag .x2, FastMem.readBytes_eq hag.mem]
-  have hiv : fs.mem.readBytes (fs.readReg64 .x4) 16 = CryptoVerification.E2E.aesIv s := by
-    unfold CryptoVerification.E2E.aesIv
-    rw [FastState.readReg64_eq hag .x4, FastMem.readBytes_eq hag.mem]
-  have hin : fs.mem.readBytes (fs.readReg64 .x0) (fs.readReg64 .x1).toNat =
-      CryptoVerification.E2E.aesInput s := by
-    unfold CryptoVerification.E2E.aesInput
-    rw [FastState.readReg64_eq hag .x0, FastState.readReg64_eq hag .x1, FastMem.readBytes_eq hag.mem]
-  exact congr3 (aesCbcEncrypt E) (congrArg bytesToKey32 hk) (congrArg bytesToBlock hiv) hin
-
-private theorem fastAesDecOut_eq {D : AesKey → Block → Block}
-    {fs : FastState} {s : State} (hag : fs.Agrees s) :
-    fastAesDecOut D fs = aesDecOut D s := by
-  have hk : fs.mem.readBytes (fs.readReg64 .x2) 32 = CryptoVerification.E2E.aesKey s := by
-    unfold CryptoVerification.E2E.aesKey
-    rw [FastState.readReg64_eq hag .x2, FastMem.readBytes_eq hag.mem]
-  have hiv : fs.mem.readBytes (fs.readReg64 .x4) 16 = CryptoVerification.E2E.aesIv s := by
-    unfold CryptoVerification.E2E.aesIv
-    rw [FastState.readReg64_eq hag .x4, FastMem.readBytes_eq hag.mem]
-  have hin : fs.mem.readBytes (fs.readReg64 .x0) (fs.readReg64 .x1).toNat =
-      CryptoVerification.E2E.aesInput s := by
-    unfold CryptoVerification.E2E.aesInput
-    rw [FastState.readReg64_eq hag .x0, FastState.readReg64_eq hag .x1, FastMem.readBytes_eq hag.mem]
-  exact congr3 (aesCbcDecrypt D) (congrArg bytesToKey32 hk) (congrArg bytesToBlock hiv) hin
-
-private theorem fastWritePlacedVecRet_post {fs fs' : FastState} {s : State}
-    (hag : fs.Agrees s) (p : BitVec 64) (bs : List (BitVec 8)) (cap len : BitVec 64)
-    (hsome : (if fs.mem.canWrite p bs.length && fs.mem.canWrite (fs.readReg64 .x8) 24 then
-        some ((fs.setMem (fastWriteVecHeader (fs.mem.writeBytes p bs) (fs.readReg64 .x8) cap p len)).setPC
-          (fs.readReg64 .lr))
-      else none) = some fs') :
-    FastHookPost
-      (retHook fun st =>
-        st.setMem (writeVecHeader (st.mem.writeBytes p bs) (st.readReg64 .x8) cap p len))
-      s fs' := by
-  dsimp only [FastHookPost, retHook]
-  rw [FastState.readReg64_eq hag .x8, FastState.readReg64_eq hag .lr] at hsome
-  set r := s.readReg64 .x8
-  cases hcw : (fs.mem.canWrite p bs.length && fs.mem.canWrite r 24) with
-  | false => simp only [hcw, Bool.false_eq_true, ↓reduceIte, reduceCtorEq] at hsome
-  | true =>
-    simp only [hcw, ↓reduceIte, Option.some.injEq] at hsome; subst hsome
-    simp only [Bool.and_eq_true, FastMem.canWrite_eq hag.mem] at hcw
-    have hm1 := FastMem.writeBytes_agrees hag.mem p bs
-    have hm2 := fastWriteVecHeader_agrees hm1 r cap p len
-    have hivs2 : HeapIntervalsAgree fs.heapIvs
-        (writeVecHeader (s.mem.writeBytes p bs) r cap p len) := by
-      apply HeapIntervalsAgree.of_perm_eq hag.heapIvs
-      intro a; rw [perm_writeVecHeader_eq, perm_writeBytes_eq]
-    have kf1 := keepsFrozen_writeBytes bs hcw.1
-    have hcwr2 : (s.mem.writeBytes p bs).canWrite r 24 = true := by
-      rw [canWrite_of_perm_eq (perm_writeBytes_eq s.mem p bs)]; exact hcw.2
-    have kf2 := keepsFrozen_writeVecHeader hcwr2 cap p len
-    exact ⟨FastState.setPC_agrees (FastState.setMem_agrees hag hm2 hivs2) (s.readReg64 .lr),
-      KeepsFrozen.trans kf1 kf2, rfl⟩
-
-private theorem fastWriteBadCiphertextRet_post {fs fs' : FastState} {s : State}
-    (hag : fs.Agrees s)
-    (hsome : (if fs.mem.canWrite (fs.readReg64 .x8) 8 &&
-          fs.mem.canWrite (fs.readReg64 .x8 + 8#64) 8 then
-        some ((fs.setMem ((fs.mem.write64 (fs.readReg64 .x8) errTag).write64
-          (fs.readReg64 .x8 + 8#64) 1#64)).setPC (fs.readReg64 .lr))
-      else none) = some fs') :
-    FastHookPost
-      (retHook fun st =>
-        let r := st.readReg64 .x8
-        st.setMem ((st.mem.write64 r errTag).write64 (r + 8#64) 1#64))
-      s fs' := by
-  dsimp only [FastHookPost, retHook]
-  rw [FastState.readReg64_eq hag .x8, FastState.readReg64_eq hag .lr] at hsome
-  set r := s.readReg64 .x8
-  cases hcw : (fs.mem.canWrite r 8 && fs.mem.canWrite (r + 8#64) 8) with
-  | false => simp only [hcw, Bool.false_eq_true, ↓reduceIte, reduceCtorEq] at hsome
-  | true =>
-    simp only [hcw, ↓reduceIte, Option.some.injEq] at hsome; subst hsome
-    simp only [Bool.and_eq_true, FastMem.canWrite_eq hag.mem] at hcw
-    have hm2 := FastMem.write64_agrees (FastMem.write64_agrees hag.mem r errTag) (r + 8#64) 1#64
-    have hivs2 : HeapIntervalsAgree fs.heapIvs
-        ((s.mem.write64 r errTag).write64 (r + 8#64) 1#64) :=
-      HeapIntervalsAgree.of_perm_eq hag.heapIvs fun addr => by rw [perm_write64_eq, perm_write64_eq]
-    have hcw2 : (s.mem.write64 r errTag).canWrite (r + 8#64) 8 = true := by
-      rw [canWrite_of_perm_eq (perm_write64_eq s.mem r errTag)]; exact hcw.2
-    exact ⟨FastState.setPC_agrees (FastState.setMem_agrees hag hm2 hivs2) (s.readReg64 .lr),
-      KeepsFrozen.trans (keepsFrozen_write64 hcw.1 errTag) (keepsFrozen_write64 hcw2 1#64), rfl⟩
-
-theorem fastAesEncMallocng_post {mmpl : MultiPlacement} {m0 : Memory}
-    {addrs : MallocngCallAddrs} {subStep : FastState → Option FastState}
-    (hrun : SubroutineRunnerSound mmpl m0 addrs subStep)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    {E : AesKey → Block → Block}
-    {fs0 fs' : FastState} {s0 : State}
-    (hkf0 : m0.KeepsFrozen s0.mem)
-    (hag : fs0.Agrees s0)
-    (hsome : fastAesEncMallocng subStep addrs E fs0 = some fs') :
-    FastHookPost (aesEncHookMallocng mmpl E) s0 fs' := by
-  unfold fastAesEncMallocng at hsome
-  dsimp only at hsome
-  dsimp only [FastHookPost, aesEncHookMallocng, unmodelled]
-  rw [FastState.readReg64_eq hag .x3, FastState.readReg64_eq hag .x5] at hsome
-  cases hkv : (s0.readReg64 .x3 != 32#64 || s0.readReg64 .x5 != 16#64) with
-  | true =>
-    simp only [hkv, ↓reduceIte, Option.some.injEq] at hsome ⊢; subst hsome
-    exact ⟨FastState.setStatus_agrees hag _, KeepsFrozen.refl s0.mem, rfl⟩
-  | false =>
-    simp only [hkv, Bool.false_eq_true, ↓reduceIte] at hsome ⊢
-    rw [FastState.readReg64_eq hag .x1] at hsome
-    set ctLen := ((s0.readReg64 .x1).toNat / 16 + 1) * 16
-    by_cases hov : 2 ^ 63 ≤ ctLen
-    · simp only [hov, ↓reduceIte, Option.some.injEq] at hsome ⊢; subst hsome
-      exact ⟨FastState.setStatus_agrees hag .Panicked, KeepsFrozen.refl s0.mem, rfl⟩
-    · simp only [hov, ↓reduceIte] at hsome ⊢
-      refine fastStepRustAlloc1_post hrun hcl0 true aesEncFrameBytes ctLen
-        (fun {_ _} {s1} p _ hag1 hcont => ?_) hkf0 hag hsome
-      rw [fastAesEncOut_eq hag1] at hcont
-      exact fastHookPost_const (fastWritePlacedVecRet_post hag1 p (aesEncOut E s1) _ _ hcont)
-
-theorem fastAesDecMallocng_post {mmpl : MultiPlacement} {m0 : Memory}
-    {addrs : MallocngCallAddrs} {subStep : FastState → Option FastState}
-    (hrun : SubroutineRunnerSound mmpl m0 addrs subStep)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    {D : AesKey → Block → Block}
-    {fs0 fs' : FastState} {s0 : State}
-    (hkf0 : m0.KeepsFrozen s0.mem)
-    (hag : fs0.Agrees s0)
-    (hsome : fastAesDecMallocng subStep addrs D fs0 = some fs') :
-    FastHookPost (aesDecHookMallocng mmpl D) s0 fs' := by
-  unfold fastAesDecMallocng at hsome
-  dsimp only at hsome
-  dsimp only [FastHookPost, aesDecHookMallocng, unmodelled]
-  rw [FastState.readReg64_eq hag .x3, FastState.readReg64_eq hag .x5] at hsome
-  cases hkv : (s0.readReg64 .x3 != 32#64 || s0.readReg64 .x5 != 16#64) with
-  | true =>
-    simp only [hkv, ↓reduceIte, Option.some.injEq] at hsome ⊢; subst hsome
-    exact ⟨FastState.setStatus_agrees hag _, KeepsFrozen.refl s0.mem, rfl⟩
-  | false =>
-    simp only [hkv, Bool.false_eq_true, ↓reduceIte] at hsome ⊢
-    rw [FastState.readReg64_eq hag .x1] at hsome
-    set ctLen := (s0.readReg64 .x1).toNat
-    cases hct : (ctLen == 0 || ctLen % 16 != 0) with
-    | true =>
-      simp only [hct, ↓reduceIte] at hsome ⊢
-      exact fastWriteBadCiphertextRet_post hag hsome
-    | false =>
-      simp only [hct, Bool.false_eq_true, ↓reduceIte] at hsome ⊢
-      refine fastStepRustAlloc1_post hrun hcl0 true aesDecFrameBytes ctLen
-        (fun {_ _} {s1} p hkf1 hag1 hcont => ?_) hkf0 hag hsome
-      rw [fastAesDecOut_eq hag1] at hcont
-      cases hdec : aesDecOut D s1 with
-      | some pt =>
-        rw [hdec] at hcont; dsimp only at hcont ⊢
-        exact fastHookPost_const (fastWritePlacedVecRet_post hag1 p pt _ _ hcont)
-      | none =>
-        rw [hdec] at hcont; dsimp only at hcont ⊢
-        exact fastStepRustDealloc1_post hrun hcl0 aesDecFrameBytes p
-          (fun _ hag2 hcont2 => fastHookPost_const (fastWriteBadCiphertextRet_post hag2 hcont2))
-          hkf1 hag1 hcont
-
-theorem fastLibcruxHmacMallocng_post {mmpl : MultiPlacement} {m0 : Memory}
-    {addrs : MallocngCallAddrs} {subStep : FastState → Option FastState}
-    (hrun : SubroutineRunnerSound mmpl m0 addrs subStep)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    {F : ShaState → List (BitVec 8) → ShaState}
-    {fs0 fs' : FastState} {s0 : State}
-    (hkf0 : m0.KeepsFrozen s0.mem)
-    (hag : fs0.Agrees s0)
-    (hsome : fastLibcruxHmacMallocng subStep addrs F fs0 = some fs') :
-    FastHookPost (libcruxHmacHookMallocng mmpl F) s0 fs' := by
-  unfold fastLibcruxHmacMallocng at hsome
-  dsimp only at hsome
-  dsimp only [FastHookPost, libcruxHmacHookMallocng, unmodelled]
-  rw [FastState.readReg64_eq hag .x0] at hsome
-  cases halg : ((s0.readReg64 .x0).setWidth 32 != 0#32) with
-  | true =>
-    simp only [halg, ↓reduceIte, Option.some.injEq] at hsome ⊢; subst hsome
-    exact ⟨FastState.setStatus_agrees hag _, KeepsFrozen.refl s0.mem, rfl⟩
-  | false =>
-    simp only [halg, Bool.false_eq_true, ↓reduceIte] at hsome ⊢
-    rw [FastState.readReg64_eq hag .x2, FastState.readReg64_eq hag .x4] at hsome
-    set keyLen := (s0.readReg64 .x2).toNat
-    set dataLen := (s0.readReg64 .x4).toNat
-    cases hov : (decide (2 ^ 32 ≤ keyLen) || decide (2 ^ 32 ≤ dataLen)) with
-    | true =>
-      simp only [hov, ↓reduceIte, Option.some.injEq] at hsome ⊢; subst hsome
-      exact ⟨FastState.setStatus_agrees hag .Panicked, KeepsFrozen.refl s0.mem, rfl⟩
-    | false =>
-      simp only [hov, Bool.false_eq_true, ↓reduceIte] at hsome ⊢
-      refine fastStepRustAlloc1_post hrun hcl0 true libcruxHmacFrameBytes 64
-        (fun {_ _} {s1} pKey hkf1 hag1 hc1 => ?_) hkf0 hag hsome
-      refine fastStepRustAlloc1_post hrun hcl0 false libcruxHmacFrameBytes 64
-        (fun pIpad hkf2 hag2 hc2 => ?_) hkf1 hag1 hc1
-      refine fastStepRustAlloc1_post hrun hcl0 false libcruxHmacFrameBytes 64
-        (fun {_ _} {s3} pOpad hkf3 hag3 hc3 => ?_) hkf2 hag2 hc2
-      refine fastStepRustDealloc1_post hrun hcl0 libcruxHmacFrameBytes pOpad
-        (fun hkf4 hag4 hc4 => ?_) hkf3 hag3 hc3
-      refine fastStepRustDealloc1_post hrun hcl0 libcruxHmacFrameBytes pIpad
-        (fun hkf5 hag5 hc5 => ?_) hkf4 hag4 hc4
-      refine fastStepRustDealloc1_post hrun hcl0 libcruxHmacFrameBytes pKey
-        (fun hkf6 hag6 hc6 => ?_) hkf5 hag5 hc5
-      refine fastStepRustAlloc1_post hrun hcl0 false libcruxHmacFrameBytes 32
-        (fun {_ _} {s7} pOut _ hag7 hc7 => ?_) hkf6 hag6 hc6
-      rw [FastState.readReg64_eq hag1 .x1, FastMem.readBytes_eq hag1.mem,
-        FastState.readReg64_eq hag3 .x3, FastMem.readBytes_eq hag3.mem,
-        FastState.readReg64_eq hag7 .x5, FastState.readReg64_eq hag7 .x6] at hc7
-      set tag := hmacWith F (s1.mem.readBytes (s1.readReg64 .x1) keyLen)
-        (s3.mem.readBytes (s3.readReg64 .x3) dataLen)
-      set outLen := if (s7.readReg64 .x5).setWidth 32 &&& 1#32 != 0#32 then
-        min (s7.readReg64 .x6).toNat 32 else 32
-      exact fastHookPost_const (fastWritePlacedVecRet_post hag7 pOut tag 32#64
-        (BitVec.ofNat 64 outLen) hc7)
-
 private theorem listUInt8IsPrefix_iff :
     ∀ (xs ys : List UInt8), listUInt8IsPrefix xs ys = true ↔ xs <+: ys
   | [], _ => by simp [listUInt8IsPrefix]
@@ -1187,11 +960,12 @@ theorem fastIsCliPanicSymbolPlaced_eq (name : String) :
       ascii_prefix_flatMap_iff _ _ hascii, String.startsWith_string_iff]
   rw [hpref]
   unfold panicExactNames isPanicSymbol
-  cases cliPanicSymbolsPlaced.contains name <;>
+  cases cliCratePanicSyms.contains name <;>
     cases (["core::result::unwrap_failed", "core::option::unwrap_failed",
       "core::option::expect_failed", "core::slice::index::slice_start_index_len_fail",
       "core::slice::index::slice_end_index_len_fail", "core::slice::index::slice_index_order_fail",
       "core::slice::index::slice_index_fail", "alloc::raw_vec::handle_error",
+      "alloc::raw_vec::capacity_overflow",
       "alloc::alloc::handle_alloc_error"].contains name) <;>
     cases name.startsWith "core::panicking::" <;> rfl
 
@@ -1234,41 +1008,12 @@ theorem hasCliHookPlaced_eq_isSome (mmpl : MultiPlacement) (W : CliHooks) (name 
 
 theorem fastHookTablePlaced_rel {mmpl : MultiPlacement} {m0 : Memory}
     {addrs : MallocngCallAddrs} {subStep : FastState → Option FastState}
-    (hrun : SubroutineRunnerSound mmpl m0 addrs subStep)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
+    (_hrun : SubroutineRunnerSound mmpl m0 addrs subStep)
+    (_hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
     (W : CliHooks) :
     List.Forall₂ (fun a b => a.1 = b.1 ∧ PlacedHookPairSound m0 a.2 b.2)
-      (fastHookTablePlaced subStep addrs W) (cliHookTablePlaced mmpl W) := by
-  dsimp only [fastHookTablePlaced, cliHookTablePlaced, cliPqxdhHookTablePlaced, List.append_eq]
-  refine
-    .cons ⟨rfl, liftPureHookPairSound (@fastCompress512_post W.Q.F512)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastToEdwards_post W.Q.montToEd)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastCompress_post W.Q.compress)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastEdNeg_post W.Q.edNeg)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastTorsionFree_post W.Q.isTorsionFree)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastDsmb_post W.Q.dsmb)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastScalarMod_post W.Q.scalarMod)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastScalarWide_post W.Q.scalarWide)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastKemEncaps_post W.Q.encaps)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastKemDecaps_post W.Q.decaps)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastMlkemFromSeed_post W.Q.K)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastMlkemPk1_post)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastMlkemPk2_post)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastMlkemEncaps1_post W.Q.K)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastMlkemEncaps2_post W.Q.K)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastMlkemDecaps_post W.Q.K)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastMlkemValidatePk_post W.Q.K)⟩ <|
-    .cons ⟨rfl, @fastLibcruxHmacMallocng_post mmpl m0 addrs subStep hrun hcl0 W.C.F⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastWriteFile_post)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastWriteStdout_post)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastFmtWrite_post)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastFormatInner_post)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastCompress256_post W.C.F)⟩ <|
-    .cons ⟨rfl, @fastAesEncMallocng_post mmpl m0 addrs subStep hrun hcl0 W.C.E⟩ <|
-    .cons ⟨rfl, @fastAesDecMallocng_post mmpl m0 addrs subStep hrun hcl0 W.C.D⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastPubFromSecret_post W.C.pubKey)⟩ <|
-    .cons ⟨rfl, liftPureHookPairSound (@fastDiffieHellman_post W.C.X)⟩ <|
-    .nil
+      (fastHookTablePlaced subStep addrs W) (cliHookTablePlaced mmpl W) :=
+  .nil
 
 private theorem lookup_forall2_placed_sound {m0 : Memory}
     {ft : List (String × (FastState → Option FastState))}

@@ -18,22 +18,19 @@ public import ProofLib.StdStartup.MuslStage1Init
 public import ProofLib.SepLogic.WP.StepsProcess
 public import ProofLib.SepLogic.WPp
 public import LibsignalBinary.Specifications.LibsignalPublicApi
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.CodeLayout
-public import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
 
 /-!
-# Flat In-Image `<String as Clone>::clone` Proofs
+# Flat `<String as Clone>::clone` Proof (`stringClone_hasInstrs_ok`)
 
 Proves `stringCloneSpec A` for the 33-instruction (`132`-byte) AArch64 implementation of
-`<alloc::string::String as core::clone::Clone>::clone` on `libsignalSessionCode.rebase`,
-`trTrapProgAt`, and `tripleRatchetProgAt`.
+`<alloc::string::String as core::clone::Clone>::clone` from `hasInstrs`.
 -/
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.Common.StringCloneFlat
 
@@ -43,7 +40,6 @@ open ProofLib.ProgramReflection
 open ProofLib.StdStartup
 open ProofLib.StdStartup.Stage1Internal (step_str64_perm)
 open CryptoGames.LibsignalSession (Crypto)
-open CryptoVerification (libsignalSessionCode libsignalSessionCode_tree)
 open CryptoVerification.RustHeap
   (RustAlloc vecHeader vecU8 vecU8At allocHookStack LayoutOk
    allocFailedEvent allocFailedIn rustAllocSpec AllocHooks)
@@ -51,11 +47,7 @@ open CryptoVerification.LibsignalSessionRepr (VecGhost vecGhostAt)
 open CryptoVerification.LibsignalPublicApi (stringCloneHookName stringCloneSpec)
 open CryptoVerification.LibsignalTripleRatchet
   (extHookStack shimName allocName memcpyName handleErrorName
-   sessionShimSpec sessionMemcpyRegionSpec sessionShim_hookOk
-   hookMemcpy_region_trace_ok trTrapProgAt tripleRatchetProgAt
-   trapsOnly_trTrap_kit subroutine_ok_kit_of_trTrap
-   shim_ok_at_trap alloc_ok_at_trap session_memcpy_region_ok_at_trap
-   panic_at_handle_error_trap)
+   sessionShimSpec sessionMemcpyRegionSpec)
 
 /-! ## Arithmetic, Memory, and Stack Helpers -/
 
@@ -185,7 +177,7 @@ private theorem memRegion24_eq_exists_pts (a : BitVec 64) :
 
 /-- Verbatim 33-instruction (`0x00..0x84`, `132` B) AArch64 machine code of
     `<alloc::string::String as core::clone::Clone>::clone` (`rustc 1.98.1`). -/
-def rustStringCloneInstrs
+@[expose] def rustStringCloneInstrs
     (fnAddr shimAddr allocAddr memcpyAddr handleErrorAddr : BitVec 64) : List Instr :=
   [ .stp .W64 .x29 .x30 (.PreIndex .sp (-0x30#64)), .stp .W64 .x22 .x21 (.Offset .sp 0x10#64),
     .stp .W64 .x20 .x19 (.Offset .sp 0x20#64), .addSubImm .W64 .ADD .x29 .sp 0x0#12 false,
@@ -868,205 +860,5 @@ theorem stringClone_hasInstrs_ok (A : RustAlloc) {P : Program}
   stringClone_fetches_ok A
     (fun i hi => hCode.fetch_off i (BitVec.ofNat 64 (4 * i)) hi rfl)
     hShim hAlloc hMemcpy hHandleErr
-
-theorem stringCloneName_fnOff :
-    libsignalSessionCode.fnOff stringCloneHookName =
-      (ls_off% "<alloc::string::String as core::clone::Clone>::clone") :=
-  (ls_lemma% fnOff "<alloc::string::String as core::clone::Clone>::clone")
-
-gen_decodes libsignalSessionCode_tree scFlatDec
-  [(ls_off% "<alloc::string::String as core::clone::Clone>::clone") →
-   (ls_off% "<alloc::string::String as core::clone::Clone>::clone" + 128)]
-
-section RebaseFetches
-
-attribute [local irreducible]
-  CryptoVerification.libsignalSessionCode Program.rebase
-  Program.fetch Program.externAt? Program.fnAddr Program.fnOff
-
-local macro "close_fetch " h:ident : tactic =>
-  `(tactic| (dsimp only [Nat.reduceMul, List.getElem_cons_zero, List.getElem_cons_succ]; exact $h))
-
-private theorem stringClone_rebase_fetches (b : BitVec 64) (H : String → Option (State → State)) :
-    FetchSeq (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr stringCloneHookName)
-      (rustStringCloneInstrs
-        ((libsignalSessionCode.rebase b H).fnAddr stringCloneHookName)
-        ((libsignalSessionCode.rebase b H).fnAddr shimName)
-        ((libsignalSessionCode.rebase b H).fnAddr allocName)
-        ((libsignalSessionCode.rebase b H).fnAddr memcpyName)
-        ((libsignalSessionCode.rebase b H).fnAddr handleErrorName)) := by
-  have hBlShim :
-      (libsignalSessionCode.rebase b H).fnAddr shimName -
-        ((libsignalSessionCode.rebase b H).fnAddr stringCloneHookName + 0x20#64) =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff shimName) -
-        (BitVec.ofNat 64 (libsignalSessionCode.fnOff stringCloneHookName) + 0x20#64) := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase, sub_add_base_cancel]
-  have hBlAlloc :
-      (libsignalSessionCode.rebase b H).fnAddr allocName -
-        ((libsignalSessionCode.rebase b H).fnAddr stringCloneHookName + 0x2c#64) =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff allocName) -
-        (BitVec.ofNat 64 (libsignalSessionCode.fnOff stringCloneHookName) + 0x2c#64) := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase, sub_add_base_cancel]
-  have hBlMemcpy :
-      (libsignalSessionCode.rebase b H).fnAddr memcpyName -
-        ((libsignalSessionCode.rebase b H).fnAddr stringCloneHookName + 0x40#64) =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff memcpyName) -
-        (BitVec.ofNat 64 (libsignalSessionCode.fnOff stringCloneHookName) + 0x40#64) := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase, sub_add_base_cancel]
-  have hBlHandle :
-      (libsignalSessionCode.rebase b H).fnAddr handleErrorName -
-        ((libsignalSessionCode.rebase b H).fnAddr stringCloneHookName + 0x80#64) =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff handleErrorName) -
-        (BitVec.ofNat 64 (libsignalSessionCode.fnOff stringCloneHookName) + 0x80#64) := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase, sub_add_base_cancel]
-  rw [stringCloneName_fnOff] at hBlShim hBlAlloc hBlMemcpy hBlHandle
-  dsimp only [shimName] at hBlShim
-  rw [(ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")] at hBlShim
-  dsimp only [allocName] at hBlAlloc
-  rw [(ls_stub% "__rustc::__rust_alloc")] at hBlAlloc
-  dsimp only [memcpyName] at hBlMemcpy
-  rw [(ls_stub% "memcpy")] at hBlMemcpy
-  dsimp only [handleErrorName] at hBlHandle
-  rw [(ls_stub% "alloc::raw_vec::handle_error")] at hBlHandle
-  simp only [BitVec.reduceAdd, BitVec.reduceSub] at hBlShim hBlAlloc hBlMemcpy hBlHandle
-  code_fetches CryptoVerification.libsignalSessionCode scFlatDec b H
-    (ls_lemma% fnOff "<alloc::string::String as core::clone::Clone>::clone")
-    (ls_off% "<alloc::string::String as core::clone::Clone>::clone") 132
-  rename_i hf0 hf1 hf2 hf3 hf4 hf5 hf6 hf7 hf8 hf9 hf10
-    hf11 hf12 hf13 hf14 hf15 hf16 hf17 hf18 hf19 hf20 hf21
-    hf22 hf23 hf24 hf25 hf26 hf27 hf28 hf29 hf30 hf31 hf32
-  intro i hi
-  dsimp only [rustStringCloneInstrs, List.length_cons, List.length_nil] at hi
-  dsimp only [rustStringCloneInstrs]
-  rw [hBlShim, hBlAlloc, hBlMemcpy, hBlHandle]
-  dsimp only [stringCloneHookName]
-  match i, hi with
-  | 0, _ =>
-    rw [show BitVec.ofNat 64 (4 * 0) = 0#64 from rfl, BitVec.add_zero]
-    dsimp only [List.getElem_cons_zero]
-    exact hf0
-  | 1, _ => close_fetch hf1
-  | 2, _ => close_fetch hf2
-  | 3, _ => close_fetch hf3
-  | 4, _ => close_fetch hf4
-  | 5, _ => close_fetch hf5
-  | 6, _ => close_fetch hf6
-  | 7, _ => close_fetch hf7
-  | 8, _ => close_fetch hf8
-  | 9, _ => close_fetch hf9
-  | 10, _ => close_fetch hf10
-  | 11, _ => close_fetch hf11
-  | 12, _ => close_fetch hf12
-  | 13, _ => close_fetch hf13
-  | 14, _ => close_fetch hf14
-  | 15, _ => close_fetch hf15
-  | 16, _ => close_fetch hf16
-  | 17, _ => close_fetch hf17
-  | 18, _ => close_fetch hf18
-  | 19, _ => close_fetch hf19
-  | 20, _ => close_fetch hf20
-  | 21, _ => close_fetch hf21
-  | 22, _ => close_fetch hf22
-  | 23, _ => close_fetch hf23
-  | 24, _ => close_fetch hf24
-  | 25, _ => close_fetch hf25
-  | 26, _ => close_fetch hf26
-  | 27, _ => close_fetch hf27
-  | 28, _ => close_fetch hf28
-  | 29, _ => close_fetch hf29
-  | 30, _ => close_fetch hf30
-  | 31, _ => close_fetch hf31
-  | 32, _ => close_fetch hf32
-  | n + 33, hi => omega
-
-end RebaseFetches
-
-theorem stringClone_rebase_ok (b : BitVec 64) (A : RustAlloc)
-    (H : String → Option (State → State))
-    (hShim : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr shimName) sessionShimSpec)
-    (hAlloc : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr allocName) (rustAllocSpec A))
-    (hMemcpy : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr memcpyName) sessionMemcpyRegionSpec)
-    (hHandleErr : (libsignalSessionCode.rebase b H).externAt?
-      ((libsignalSessionCode.rebase b H).fnAddr handleErrorName) = some Rust.panicked) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr stringCloneHookName) (stringCloneSpec A) :=
-  stringClone_fetches_ok A (stringClone_rebase_fetches b H) hShim hAlloc hMemcpy hHandleErr
-
-theorem stringClone_rebase_hooks_ok (b : BitVec 64) (A : RustAlloc)
-    (H : String → Option (State → State))
-    (hShim : H shimName = some hookNoop)
-    (hAlloc : HookSat H allocName (rustAllocSpec A))
-    (hMemcpy : H memcpyName = some hookMemcpy)
-    (hHandleErr : H handleErrorName = some Rust.panicked) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr stringCloneHookName) (stringCloneSpec A) := by
-  refine stringClone_rebase_ok b A H ?_ ?_ ?_ ?_
-  · have h := hook_ok_at_raw (P := libsignalSessionCode) (b := b) (H := H)
-      (name := shimName) (hname := shimName) (k := 0) (spec := sessionShimSpec)
-      (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2") (Nat.add_zero _) (by decide)
-      (ls_hook% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-      ⟨hookNoop, hShim, sessionShim_hookOk⟩
-    simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero] using h
-  · have h := hook_ok_at_raw (P := libsignalSessionCode) (b := b) (H := H)
-      (name := allocName) (hname := allocName) (k := 0) (spec := rustAllocSpec A)
-      (ls_stub% "__rustc::__rust_alloc") (Nat.add_zero _) (by decide)
-      (ls_hook% "__rustc::__rust_alloc") hAlloc
-    simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero] using h
-  · have h := hook_ok_at_raw (P := libsignalSessionCode) (b := b) (H := H)
-      (name := memcpyName) (hname := memcpyName) (k := 0) (spec := sessionMemcpyRegionSpec)
-      (ls_stub% "memcpy") (Nat.add_zero _) (by decide)
-      (ls_hook% "memcpy")
-      ⟨hookMemcpy, hMemcpy, hookMemcpy_region_trace_ok⟩
-    simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero] using h
-  · rw [← BitVec.add_zero ((libsignalSessionCode.rebase b H).fnAddr handleErrorName)]
-    rw [Program.externAt?_fnAddr_add
-      (ls_stub% "alloc::raw_vec::handle_error") (Nat.add_zero _) (by decide),
-      (ls_hook% "alloc::raw_vec::handle_error")]
-    exact hHandleErr
-
-theorem stringClone_withPanics_ok (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hShim : ext shimName = some hookNoop)
-    (hAlloc : HookSat ext allocName (rustAllocSpec A))
-    (hMemcpy : ext memcpyName = some hookMemcpy) :
-    subroutine_ok (libsignalSessionCode.rebase b (Rust.withPanics ext))
-      ((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr stringCloneHookName)
-      (stringCloneSpec A) := by
-  refine stringClone_rebase_hooks_ok b A (Rust.withPanics ext) ?_ ?_ ?_ ?_
-  · have hnp : Rust.isPanicSymbol shimName = false := by simp [shimName, Rust.isPanicSymbol]
-    simp [Rust.withPanics, hnp, hShim]
-  · obtain ⟨f, hf, hok⟩ := hAlloc
-    have hnp : Rust.isPanicSymbol allocName = false := by simp [allocName, Rust.isPanicSymbol]
-    exact ⟨f, by simp [Rust.withPanics, hnp, hf], hok⟩
-  · have hnp : Rust.isPanicSymbol memcpyName = false := by simp [memcpyName, Rust.isPanicSymbol]
-    simp [Rust.withPanics, hnp, hMemcpy]
-  · have hp : Rust.isPanicSymbol handleErrorName = true := by
-      simp [handleErrorName, Rust.isPanicSymbol]
-    simp [Rust.withPanics, hp]
-
-theorem stringClone_trTrapProgAt_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (abs : String → Option (State → State)) (hA : AllocHooks A abs) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr stringCloneHookName) (stringCloneSpec A) := by
-  refine stringClone_rebase_ok b A (Rust.withPanics _) ?_ ?_ ?_ ?_
-  · simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero] using
-      shim_ok_at_trap b C abs shimName 0 (Nat.add_zero _)
-  · simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero] using
-      alloc_ok_at_trap b C A abs hA allocName 0 (Nat.add_zero _)
-  · simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero] using
-      session_memcpy_region_ok_at_trap b C abs memcpyName 0 (Nat.add_zero _)
-  · simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero] using
-      panic_at_handle_error_trap b C abs handleErrorName 0 (Nat.add_zero _)
-
-theorem stringClone_tripleRatchetProgAt_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (abs : String → Option (State → State)) (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr stringCloneHookName) (stringCloneSpec A) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr stringCloneHookName]
-  exact subroutine_ok_kit_of_trTrap (stringClone_trTrapProgAt_ok b C A abs hA)
 
 end LibsignalBinary.Proofs.Common.StringCloneFlat

@@ -19,7 +19,7 @@ Defines CLI symbol-name abbreviations for the nine unchunked `v1_state::unchunke
 `Message::encoded_len [local#3]` routines.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ProtoRepr
 

@@ -9,12 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhBounds
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhEvalEq
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhBounds
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhEvalEq
 import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhSigBound
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhSessionSplit
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhSessionSplit
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyPre
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
+public import Computational.Proofs.SignalPqxdh.CostedTablesCompat -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDh -- proof-setup: allow-public-import
 
 /-!
 # One-Key `Auth` `GapDhWithSign` `ReductionDsl` Adversary Wiring
@@ -24,7 +29,7 @@ proves `gapDhWithSignExp` equivalence with `fgAuth1KeyGapDhAdv4` together with
 `GapDhWithSignAdv.Bounded` for both adversaries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +44,7 @@ open OracleSpec OracleComp
 
 /-- One-key `Auth` `GapDhWithSign` reduction `fgAuth1KeyGapDhProg S b.q_total` packaged as a
     `GapDhWithSignAdv`. -/
-def fgAuth1KeyGapDhDslAdv (S : Setup) (b : QueryBudget)
+@[expose] def fgAuth1KeyGapDhDslAdv (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : GapDhWithSignAdv where
   run U V := (fgAuth1KeyGapDhProg S b.q_total).eval (fun _ => A.1.run) (U, V)
   q_ddh  := authGdhQueryBudget S b
@@ -84,19 +89,6 @@ private theorem mem_support_unifGdhSign {α : Type} {mx : ProbComp α} {x : α}
     rw [MonadAttach.mem_support_bind] at hx ⊢
     rcases hx with ⟨u, _, hru⟩
     exact ⟨u, mem_support_query _ _, ih u hru⟩
-
-private theorem isQueryBoundP_fgAuth1KeyGapDhAdv4_of_runAt
-    (S : Setup) (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b) (U V : Bytes)
-    (P : (PrimBaseSpec + sigAndDdhOracle.spec).Domain → Prop) [DecidablePred P] (N : ℕ)
-    (hUnif : ∀ n : ℕ, ¬ P (Sum.inl (Sum.inl n)))
-    (hAt : ∀ useDh1 t sIdx, IsQueryBoundP (fgAuth1KeyGapDhRunAt useDh1 t sIdx S b A U V) P N) :
-    IsQueryBoundP ((fgAuth1KeyGapDhAdv4 S b A).run U V) P N := by
-  dsimp only [fgAuth1KeyGapDhAdv4]
-  refine (isQueryBoundP_bind (isQueryBoundP_unifGdhSign_zero _ P hUnif) fun p _ => ?_).mono
-    (Nat.zero_add N).le
-  rcases p with ⟨fl, bI⟩
-  dsimp only
-  split_ifs <;> exact hAt _ _ _
 
 private theorem isQueryBoundP_fgAuth1KeyGapDhProg_of_runAt
     (S : Setup) (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b) (U V : Bytes)
@@ -152,11 +144,6 @@ private def a1g2AtProg (S : Setup) (K : Nat) :
   handle := a1g2HandleDsl S K
   finish := a1g2FinishDsl S K
 
-private theorem a1g2AtInitDsl_prim (S : Setup) (K : Nat) :
-    (a1g2AtInitDsl S K).queries
-      SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight
-      SignalPqxdh.LegacyCosted.samplerZeroQueryWeight = 0 := rfl
-
 private theorem a1g2AtInitDsl_ddh (S : Setup) (K : Nat) :
     (a1g2AtInitDsl S K).queries
       SignalPqxdh.LegacyCosted.chalIfaceDdhQueryWeight
@@ -173,69 +160,6 @@ private theorem a1g2AtInitDsl_eval (S : Setup) (K : Nat) (pa : a1gParams2Ty.deno
     Ext.refl_wk, a1g2StToVal, a1gClampedSigB, FgAuth1KeySimState.empty,
     Nat.sub_self, Nat.sub_zero]
   rfl
-
-private theorem a1g_wire_split_arith (q k X F : ℕ) (hk : k ≤ q) (hX : 2 ≤ X) (hF : F ≤ 16 * X) :
-    0 + (q * 32 + k * (16 * X - 32)) + F ≤ 32 * (q - k) + 16 * (k + 1) * X := by
-  obtain ⟨r, rfl⟩ : ∃ r, q = k + r := ⟨q - k, by omega⟩
-  obtain ⟨d, hd⟩ : ∃ d, 16 * X = 32 + d := ⟨16 * X - 32, by omega⟩
-  have h1 : 16 * X - 32 = d := by omega
-  have h2 : k + r - k = r := by omega
-  have h3 : 16 * (k + 1) * X = (k + 1) * (32 + d) := by rw [← hd]; ring
-  rw [h1, h2, h3]
-  nlinarith
-
-private theorem isQueryBoundP_fgAuth1KeyGapDhRunAt_prim
-    (useDh1 : Bool) (t sIdx : ℕ) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) (U V : Bytes) :
-    IsQueryBoundP (fgAuth1KeyGapDhRunAt useDh1 t sIdx S b A U V)
-      (fun q => isPrimQuery q = true) (gdhPrimQueryBudget S b) := by
-  have hA : IsQueryBoundP A.1.run (fun q : ℕ ⊕ AuthQuery S => q.isRight = true) b.q_total := by
-    have h := SignalPqxdh.QueryBounded.auth_total A.2
-    convert h using 1
-    funext q; cases q <;> rfl
-  have hEvalEq : (a1g2AtProg S b.q_total).eval (fun _ => A.1.run) (pa2Val S U V useDh1 t sIdx) =
-      fgAuth1KeyGapDhRunAt useDh1 t sIdx S b A U V := by
-    unfold CostedReduction.eval CostedReduction.impl fgAuth1KeyGapDhRunAt
-    dsimp only [a1g2AtProg]
-    rw [a1g2AtInitDsl_eval]
-    simp only [bind_assoc, pure_bind]
-    exact congrArg (unifGdhSign ($ᵗ Bool) >>= ·)
-      (funext fun secb => a1g2Run_eq S b.q_total U V useDh1 t sIdx A.1.run hA secb)
-  rw [← hEvalEq]
-  refine (CostedReduction.queryBound_eval₂ (a1g2AtProg S b.q_total)
-    (fun q => isPrimQuery q = true)
-    SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight
-    SignalPqxdh.LegacyCosted.samplerZeroQueryWeight ?_ ?_
-    (fun t => isAuthSessionQ t = true) (kL := 32) (kH := 16 * (5 * S.N_dh + S.N_sess_tot + 12))
-    (by omega)
-    (fun q s _ => a1gHandle_primBound_heavy S b.q_total s q)
-    (fun q s hq => a1gHandle_primBound_light S b.q_total s q (by simpa using hq))
-    (fun _ => A.1.run) b.q_total (min b.q_on S.N_sess_tot)
-    (authAdv_gameBound S b A) (fun _ => authAdv_sessionBound_on S b A)
-    (pa2Val S U V useDh1 t sIdx)).mono ?_
-  · intro g x hx
-    cases g with
-    | inl t => simp [SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight]
-    | inr t => simp [pqSigAndDdhIface, pqChalIface, isPrimQuery] at hx
-  · intro k
-    change IsQueryBoundP
-      (liftM (OracleSpec.query (spec := PrimBaseSpec + sigAndDdhOracle.spec) (Sum.inl (Sum.inl k))))
-      (fun q => isPrimQuery q = true) 0
-    rw [isQueryBoundP_query_iff]
-    simp [isPrimQuery]
-  · have h0 : (a1g2AtProg S b.q_total).init.queries
-        SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight
-        SignalPqxdh.LegacyCosted.samplerZeroQueryWeight = 0 :=
-      a1g2AtInitDsl_prim S b.q_total
-    have hF : (a1g2AtProg S b.q_total).finish.queries
-        SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight
-        SignalPqxdh.LegacyCosted.samplerZeroQueryWeight ≤ S.N_dh * 4 + S.N_sess_tot * 2 := by
-      change (fgAuth1KeyGapDhProg S b.q_total).finish.queries
-        KeyInd1KeyGapDh.wPrim1Key KeyInd1KeyGapDh.wsZero1Key ≤ _
-      exact a1g_finish_prim_le S b.q_total
-    rw [h0, ← a1g_split_prim_eq_gdhPrimQueryBudget S b]
-    exact a1g_wire_split_arith b.q_total (min b.q_total (min b.q_on S.N_sess_tot)) _ _
-      (min_le_left _ _) (by omega) (hF.trans (by omega))
 
 section BilinearSignHelpers
 open Proofs.SignalPqxdh.Security.FgGapDh
@@ -1136,21 +1060,6 @@ theorem fgAuth1KeyGapDhDslAdv_bounded (S : Setup) (b : QueryBudget)
       (fun n => by simp [isSigChalQuery])
       (fun useDh1 t sIdx => isQueryBoundP_fgAuth1KeyGapDhRunAt_sig useDh1 t sIdx S b A U V)
   · exact fgAuth1KeyGapDhProg_primBounded_gdhPrimQueryBudget S b.q_total b A U V
-
-/-- `fgAuth1KeyGapDhAdv4` satisfies `GapDhWithSignAdv.Bounded`. -/
-theorem fgAuth1KeyGapDhAdv4_bounded (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    (fgAuth1KeyGapDhAdv4 S b A).Bounded := by
-  refine ⟨fun U V => ?_, fun U V => ?_, fun U V => ?_⟩
-  · exact isQueryBoundP_fgAuth1KeyGapDhAdv4_of_runAt S b A U V
-      (fun q => isDdhChalQuery q = true) (authGdhQueryBudget S b)
-      (fun n => by simp [isDdhChalQuery])
-      (fun useDh1 t sIdx => isQueryBoundP_fgAuth1KeyGapDhRunAt_ddh useDh1 t sIdx S b A U V)
-  · exact isQueryBoundP_fgAuth1KeyGapDhAdv4_sig S b A U V
-  · exact isQueryBoundP_fgAuth1KeyGapDhAdv4_of_runAt S b A U V
-      (fun q => isPrimQuery q = true) (gdhPrimQueryBudget S b)
-      (fun n => by simp [isPrimQuery])
-      (fun useDh1 t sIdx => isQueryBoundP_fgAuth1KeyGapDhRunAt_prim useDh1 t sIdx S b A U V)
 
 /-- `fgAuth1KeyGapDhDslAdv` and `fgAuth1KeyGapDhAdv4` have equal `GapDhWithSign` advantage. -/
 theorem fgAuth1KeyGapDhProg_gapDhWithSign_eq (P : Primitives)

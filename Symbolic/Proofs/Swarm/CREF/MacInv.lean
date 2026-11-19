@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.BobStartRun
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.BobStartRun -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
@@ -24,9 +24,9 @@ import DY.Actions.Random
 import DY.EquationalTheory.KdfExtract
 import Symbolic.Specifications.Model.EquationalTheory.Trunc
 public import Symbolic.Proofs.Swarm.COMPOSED.CompInvDefs
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.G1Rep
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpineRkCore
-public import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.G1Rep -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpineRkCore -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
 import Symbolic.Proofs.Swarm.COMPOSED.CompHsClass
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
@@ -57,6 +57,8 @@ import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
+import Symbolic.Proofs.Swarm.Leaves.IC13_Stage1Kyber
+import Symbolic.Proofs.Swarm.CREF.Stage1Kyber
 
 /-!
 # Whisper and Pre-Key MAC Inversion and Spine Lemmas
@@ -66,7 +68,7 @@ pre-key MAC case splitting under `bobTrials` (`bs_g1a_case_split`), and opposite
 equality on `LoggedOrBobIkmRk` (`oppParity_of_spineRk_bob`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -293,7 +295,7 @@ theorem bobOpk?_of_bobKeys {r : ProtocolSetup} {p : PreKeyFields} {x : PreKeyRep
     exact ⟨opk, rfl, hbk.symm⟩
 
 /-- Pre-MAC handshake guard Boolean for `(r, tr, p, x, msg)` when `bobOpk? r p` is defined. -/
-def BobTrialGuard (r : ProtocolSetup) (tr : ExecTrace) (p : PreKeyFields) (x : PreKeyRep)
+@[expose] def BobTrialGuard (r : ProtocolSetup) (tr : ExecTrace) (p : PreKeyFields) (x : PreKeyRep)
     (msg : TRSignalMsg) : Bool :=
   (Stage1Trials.bobOpk? r p).any (Stage1Trials.bobTrialGuard r tr p x msg)
 
@@ -486,7 +488,7 @@ theorem bs_g1_noSelfMemo_len8_of_notSpqrHeaded
 /-- Honest-send branch of pre-key MAC inversion: `msg₀.mac = Trunc.trunc8 inp₀` where `inp₀` is an
 honest send's `hmac` over `trHonestWireMsg` by an available state `st_s`, matching Bob's `hmac`
 shape under an honest salt `salt₁` whose `(cipherKey, macKey, iv)` bytes on `seed'` match `salt'`. -/
-def BsG1bHonestSendCase
+@[expose] def BsG1bHonestSendCase
     (interpretation : ExternInterpretation)
     (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost) (ms : List Move)
     (msg₀ : TRSignalMsg) (seed' salt' : DY.Bytes) : Prop :=
@@ -522,7 +524,7 @@ def BsG1bHonestSendCase
 /-- Attacker-input branch of pre-key MAC inversion: `msg₀.mac = Trunc.trunc8 inp₀` with
 `inp₀` attacker-known and matching Bob's `hmac` shape under an honest salt `salt₁` whose
 `(cipherKey, macKey, iv)` bytes on `seed'` match `salt'`. -/
-def BsG1cOwnKeyCase
+@[expose] def BsG1cOwnKeyCase
     (interpretation : ExternInterpretation)
     (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost) (ms : List Move)
     (msg₀ : TRSignalMsg) (seed' salt' : DY.Bytes) : Prop :=
@@ -628,7 +630,7 @@ theorem bs_g1a_case_split
 
 /-- KEM shared-secret term in `bobKeys r p x`: decapsulation if `kemDecap` succeeds, or the
 implicit-rejection `kemRejKey` fallback. -/
-def bobKemShare (r : ProtocolSetup) (x : PreKeyRep) : DY.Bytes :=
+@[expose] def bobKemShare (r : ProtocolSetup) (x : PreKeyRep) : DY.Bytes :=
   (DY.Libsignal.PQXDH.errToOption (DY.PQKem.kemDecap (setupSecret r 4) x.ct)).getD
     (DY.PQKem.kemRejKey (setupSecret r 4) x.ct)
 
@@ -647,7 +649,7 @@ theorem kemLeaf_bobKemShare (r : ProtocolSetup) (x : PreKeyRep) :
     exact .inl ⟨DY.PQKem.kemPk (setupSecret r 4), e, rfl⟩
 
 /-- The PQXDH input key material for Bob's pre-key handshake on `(r, p, x)`. -/
-def BobPreKeyIkm (r : ProtocolSetup) (p : PreKeyFields) (x : PreKeyRep) (ikm : DY.Bytes) : Prop :=
+@[expose] def BobPreKeyIkm (r : ProtocolSetup) (p : PreKeyFields) (x : PreKeyRep) (ikm : DY.Bytes) : Prop :=
   ∃ opk, OpkSel r p opk ∧
     ikm = DY.Libsignal.PQXDH.pqxdhIkm
       (DY.Libsignal.PQXDH.agree (setupPublic r 0) (setupSecret r 2))
@@ -665,7 +667,7 @@ theorem bobKeys_eq_some_iff_bobPreKeyIkm (r : ProtocolSetup) (p : PreKeyFields) 
 
 /-- Base-IKM predicate combining handshake IKMs logged on `runTraceMoves r ms` with Bob's
 in-progress pre-key handshake IKM at role `true`. -/
-def LoggedOrBobIkmRk (r : ProtocolSetup) (ms : List Move) (p : PreKeyFields) (x : PreKeyRep)
+@[expose] def LoggedOrBobIkmRk (r : ProtocolSetup) (ms : List Move) (p : PreKeyFields) (x : PreKeyRep)
     (c : Bool) (ikm : DY.Bytes) : Prop :=
   LoggedIkmRk (runTraceMoves r ms) c ikm ∨ (c = true ∧ BobPreKeyIkm r p x ikm)
 

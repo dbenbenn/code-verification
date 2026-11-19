@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncCalib
+public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncCalib -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.MlKemCorrect
 import LibsignalBinary.Proofs.SpqrV1Sync.ErasureCode
 
@@ -29,7 +29,7 @@ inter-epoch role swap on `States spqrPolyApi (spqrAuthApi F)`:
   receiving `.none` at `e + 1` swaps EK/CT roles for epoch `e + 1` (`inSyncE_next`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.Braid
 
@@ -49,68 +49,68 @@ inductive Coins where
   | seed (s : Seed)
   | both (s : Seed) (r : EncRand)
 
-def Coins.seed? : Coins → Option Seed
+@[expose] def Coins.seed? : Coins → Option Seed
   | .init => none
   | .seed s => some s
   | .both s _ => some s
 
 /-- Raw `K.encaps1` result on `hdrOf K s` and `r`. -/
-def encOf (K : MlKem) (s : Seed) (r : EncRand) :
+@[expose] def encOf (K : MlKem) (s : Seed) (r : EncRand) :
     Option (List.Vector (BitVec 8) 960 × List.Vector (BitVec 8) 2080 × List.Vector (BitVec 8) 32) :=
   K.encaps1 (hdrOf K s) r
 
 /-- First ciphertext `ct1` (960 bytes when `encaps1` succeeds). -/
-def ct1Of (K : MlKem) (s : Seed) (r : EncRand) : Bytes :=
+@[expose] def ct1Of (K : MlKem) (s : Seed) (r : EncRand) : Bytes :=
   ((encOf K s r).map fun t => t.1.toList).getD []
 
 /-- Encapsulation state `es` (2080 bytes when `encaps1` succeeds). -/
-def esOf (K : MlKem) (s : Seed) (r : EncRand) : Bytes :=
+@[expose] def esOf (K : MlKem) (s : Seed) (r : EncRand) : Bytes :=
   ((encOf K s r).map fun t => t.2.1.toList).getD []
 
 /-- Raw 32-byte ML-KEM shared secret output by `encaps1`. -/
-def ss0Of (K : MlKem) (s : Seed) (r : EncRand) : Bytes :=
+@[expose] def ss0Of (K : MlKem) (s : Seed) (r : EncRand) : Bytes :=
   ((encOf K s r).map fun t => t.2.2.toList).getD []
 
 /-- Second ciphertext `ct2` produced by `encaps2` on `ekOf K s` and `esOf K s r`. -/
-def ct2Of (K : MlKem) (s : Seed) (r : EncRand) : Bytes :=
+@[expose] def ct2Of (K : MlKem) (s : Seed) (r : EncRand) : Bytes :=
   match encaps2 K (ekOf K s) (esOf K s r) with
   | .ok ct2 => ct2
   | .error _ => []
 
 /-- 8-byte big-endian encoding of a 64-bit integer. -/
-def be64 (v : BitVec 64) : Bytes :=
+@[expose] def be64 (v : BitVec 64) : Bytes :=
   [ v.extractLsb' 56 8, v.extractLsb' 48 8, v.extractLsb' 40 8, v.extractLsb' 32 8,
     v.extractLsb' 24 8, v.extractLsb' 16 8, v.extractLsb'  8 8, v.extractLsb'  0 8 ]
 
 /-- 32-byte HKDF epoch secret derived from `ss0Of K s r` at epoch `e`. -/
-def secOf (F : ShaCompress) (K : MlKem) (e : Epoch) (s : Seed) (r : EncRand) : Bytes :=
+@[expose] def secOf (F : ShaCompress) (K : MlKem) (e : Epoch) (s : Seed) (r : EncRand) : Bytes :=
   hkdfToVecUnchecked F (List.replicate 32 0#8) (ss0Of K s r) (sckaKeyInfoPrefix ++ be64 e) 32
 
 /-- Updated authenticator `auth.update F e (secOf F K e s r)` after epoch `e`. -/
-def authNext (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
+@[expose] def authNext (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
     (r : EncRand) : Authenticator :=
   auth.update F e (secOf F K e s r)
 
 /-- 160-byte authenticated `ct2` payload `ct2Of K s r ++ auth'.macCtUnchecked F e (ct1 ‖ ct2)`. -/
-def c2Msg (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
+@[expose] def c2Msg (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
     (r : EncRand) : Bytes :=
   ct2Of K s r ++ (authNext F K e auth s r).macCtUnchecked F e (ct1Of K s r ++ ct2Of K s r)
 
 /-- Honest chunk `idx` of `msg` at epoch `e` wrapped in payload constructor `pl`. -/
-noncomputable def chunkMsg (pl : spqrPolyApi.Chunk → MessagePayload spqrPolyApi) (e : Epoch)
+@[expose] noncomputable def chunkMsg (pl : spqrPolyApi.Chunk → MessagePayload spqrPolyApi) (e : Epoch)
     (msg : Bytes) (idx : BitVec 16) : Msg where
   epoch := e
   payload := pl (spqrPolyApi.mkChunk idx (Erasure.chunkData msg idx))
 
-def noneMsg (e : Epoch) : Msg := { epoch := e, payload := .none }
+@[expose] def noneMsg (e : Epoch) : Msg := { epoch := e, payload := .none }
 
 /-- `Ct1Ack true` message at epoch `e`. -/
-def ackMsg (e : Epoch) : Msg := { epoch := e, payload := .ct1Ack true }
+@[expose] def ackMsg (e : Epoch) : Msg := { epoch := e, payload := .ct1Ack true }
 
 /-! ## ML-KEM exchange correctness condition -/
 
 /-- `encaps2` succeeds on `(ekOf K s, esOf K s r)` and `decaps` recovers `ss0Of K s r`. -/
-def DecapsRecovers (K : MlKem) (s : Seed) (r : EncRand) : Prop :=
+@[expose] def DecapsRecovers (K : MlKem) (s : Seed) (r : EncRand) : Prop :=
   ∃ ct2, encaps2 K (ekOf K s) (esOf K s r) = .ok ct2 ∧
     decaps K (dkOf K s) (ct1Of K s r) ct2 = .ok (ss0Of K s r)
 
@@ -274,7 +274,7 @@ theorem verifyCt_macCt (F : ShaCompress) (a : Authenticator) (ha : AuthWf a) (e 
 /-! ## Per-party state shapes at epoch `e` -/
 
 /-- `X_e` in `.headerSent`: sending `ek` chunks and decoding `ct1`. -/
-def XHS (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
+@[expose] def XHS (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
     (r : EncRand) (x : St F) : Prop :=
   ∃ (enc : PolyEncoder) (S : Finset Nat) (dec : PolyDecoder),
     EncInv (ekOf K s) enc ∧ DecInv (ct1Of K s r) S dec ∧ S.card < 30 ∧
@@ -282,14 +282,14 @@ def XHS (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Se
                       sending_ek := enc, receiving_ct1 := dec }
 
 /-- `X_e` in `.ct1Received`: `ct1` decoded, sending `ek` chunks as `.ekCt1Ack`. -/
-def XC1R (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
+@[expose] def XC1R (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
     (r : EncRand) (x : St F) : Prop :=
   ∃ enc : PolyEncoder, EncInv (ekOf K s) enc ∧
     x = .ct1Received { uc := { epoch := e, auth := auth, dk := dkOf K s, ct1 := ct1Of K s r },
                        sending_ek := enc }
 
 /-- `X_e` in `.ekSentCt1Received`: decoding the 160-byte `c2Msg` (`5 = needed 160 0`). -/
-def XESCR (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
+@[expose] def XESCR (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
     (r : EncRand) (x : St F) : Prop :=
   ∃ (S : Finset Nat) (dec : PolyDecoder), DecInv (c2Msg F K e auth s r) S dec ∧ S.card < 5 ∧
     x = .ekSentCt1Received { uc := { epoch := e, auth := auth, dk := dkOf K s,
@@ -297,13 +297,13 @@ def XESCR (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : 
                              receiving_ct2 := dec }
 
 /-- `X_e` already advanced to `.noHeaderReceived` at `e + 1` with `authNext`. -/
-def XLag (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
+@[expose] def XLag (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
     (r : EncRand) (x : St F) : Prop :=
   x = .noHeaderReceived { uc := { epoch := e + 1#64, auth := authNext F K e auth s r },
                           receiving_hdr := freshDec 96 }
 
 /-- Reachable EK-side state shape indexed by `Coins`. -/
-def XShapeE (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) :
+@[expose] def XShapeE (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) :
     Coins → St F → Prop
   | .init, x => XShape F K e auth none x
   | .seed s, x => XShape F K e auth (some s) x
@@ -311,7 +311,7 @@ def XShapeE (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) :
       XC1R F K e auth s r x ∨ XESCR F K e auth s r x ∨ XLag F K e auth s r x
 
 /-- `Y_e` in `.ct1Sampled`: sending `ct1` and decoding `ek` (`36 = needed 1152 0`). -/
-def YC1S (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
+@[expose] def YC1S (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
     (r : EncRand) (y : St F) : Prop :=
   ∃ (enc : PolyEncoder) (S : Finset Nat) (dec : PolyDecoder),
     EncInv (ct1Of K s r) enc ∧ DecInv (ekOf K s) S dec ∧ S.card < 36 ∧
@@ -320,7 +320,7 @@ def YC1S (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : S
                       sending_ct1 := enc, receiving_ek := dec }
 
 /-- `Y_e` in `.ekReceivedCt1Sampled`: `ek` decoded, `ct1` unacknowledged. -/
-def YEkR (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
+@[expose] def YEkR (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
     (r : EncRand) (y : St F) : Prop :=
   ∃ enc : PolyEncoder, EncInv (ct1Of K s r) enc ∧
     y = .ekReceivedCt1Sampled { uc := { epoch := e, auth := authNext F K e auth s r,
@@ -328,7 +328,7 @@ def YEkR (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : S
                                 sending_ct1 := enc }
 
 /-- `Y_e` in `.ct1Acknowledged`: `ct1` acknowledged, decoding `ek`. -/
-def YC1A (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
+@[expose] def YC1A (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
     (r : EncRand) (y : St F) : Prop :=
   ∃ (S : Finset Nat) (dec : PolyDecoder), DecInv (ekOf K s) S dec ∧ S.card < 36 ∧
     y = .ct1Acknowledged { uc := { epoch := e, auth := authNext F K e auth s r,
@@ -336,14 +336,14 @@ def YC1A (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : S
                            receiving_ek := dec }
 
 /-- `Y_e` in `.ct2Sampled`: sending `c2Msg` chunks until an epoch-`(e + 1)` message arrives. -/
-def YC2S (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
+@[expose] def YC2S (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (s : Seed)
     (r : EncRand) (y : St F) : Prop :=
   ∃ enc : PolyEncoder, EncInv (c2Msg F K e auth s r) enc ∧
     y = .ct2Sampled { uc := { epoch := e, auth := authNext F K e auth s r },
                       sending_ct2 := enc }
 
 /-- Reachable CT-side state shape indexed by `Coins`. -/
-def YShapeE (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) :
+@[expose] def YShapeE (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) :
     Coins → St F → Prop
   | .init, y => YShape F K e auth none y
   | .seed s, y => YShape F K e auth (some s) y
@@ -353,7 +353,7 @@ def YShapeE (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) :
 /-! ## In-flight message predicates -/
 
 /-- Honest messages in flight toward `Y_e` under ghost coins `c`. -/
-def ToYOkE (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (c : Coins)
+@[expose] def ToYOkE (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (c : Coins)
     (m : Msg) : Prop :=
   m.epoch < e ∨
   (∃ s, c.seed? = some s ∧ ∃ idx, m = hdrChunkMsg F K e auth s idx) ∨
@@ -363,7 +363,7 @@ def ToYOkE (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (c :
   m = noneMsg (e + 1#64)
 
 /-- Honest messages in flight toward `X_e` under ghost coins `c`. -/
-def ToXOkE (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (c : Coins)
+@[expose] def ToXOkE (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (c : Coins)
     (m : Msg) : Prop :=
   m.epoch < e ∨ m = noneMsg e ∨
   ∃ s r, c = .both s r ∧
@@ -400,10 +400,10 @@ inductive Party where
   deriving DecidableEq
 
 /-- Designates the EK side at epoch `e` (`Party.a` at odd epochs, `Party.b` at even epochs). -/
-def ekSide (e : Epoch) : Party := if e.toNat % 2 = 1 then .a else .b
+@[expose] def ekSide (e : Epoch) : Party := if e.toNat % 2 = 1 then .a else .b
 
 /-- Two-party synchronization invariant orienting `(stA, stB)` into `(X, Y)` via `ekSide e`. -/
-def InSync (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (c : Coins)
+@[expose] def InSync (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (c : Coins)
     (stA stB : St F) (toA toB : List Msg) : Prop :=
   match ekSide e with
   | .a => InSyncE F K e auth c stA stB toB toA

@@ -9,11 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.EpiloguePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.EpiloguePlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.Branches -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.Epilogue
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `Err` and `Ok([])` Branches for `load_session::{closure#0}`
@@ -22,7 +29,7 @@ Proves `lpoll_branch_err_placed` and `lpoll_branch_ok_nil_placed` on Block `569`
 under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

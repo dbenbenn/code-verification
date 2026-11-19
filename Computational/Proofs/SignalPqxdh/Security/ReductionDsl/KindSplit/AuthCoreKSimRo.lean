@@ -303,65 +303,6 @@ theorem syncRoBothC_sim {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T
   exact ⟨(roAvl', rootAvl'), rfl, ⟨⟨hRoValid', hRootValid'⟩, hRoNodup', hRootNodup'⟩⟩
 
 set_option linter.constructorNameAsVariable false in
-/-- Composing an online base step with `syncBaseShadowRespC` preserves its projection under
-    `forgetAuthBaseShadow` and re-establishes `RoBothShadowRel`. -/
-theorem syncBaseShadowRespC_bind_sim {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    {Γ : List (Ty pqAtomicSig)} (cap : ℕ)
-    (bs : authBaseShadowStTy.denote)
-    (c_leg : Comp pqAtomicOps I Γ
-      (.prod Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreK.authRespAtomicTy
-             authBaseAtomicTy))
-    (roBothE : Expr pqAtomicOps Γ roBothAvlTy)
-    (ρ : Env Γ)
-    (hRel : RoBothShadowRel cap bs.1 bs.2)
-    (hBothE : roBothE.eval ρ = bs.2)
-    (hStep : ∀ rs ∈ support (c_leg.eval ρ),
-      CacheStepAtMostOne (atomRoCache bs.1) (atomRoCache rs.2) ∧
-      CacheStepAtMostOne (atomRootRoCache bs.1) (atomRootRoCache rs.2) ∧
-      (atomRoCache rs.2).length ≤ cap ∧
-      (atomRootRoCache rs.2).length ≤ cap) :
-    let synced := Comp.bind c_leg
-      (syncBaseShadowRespC (I := I) cap (.var .zero) (exprRename Var.succ roBothE))
-    Prod.map id forgetAuthBaseShadow <$> synced.eval ρ = c_leg.eval ρ ∧
-    ∀ p ∈ support (synced.eval ρ), RoBothShadowRel cap p.2.1 p.2.2 := by
-  have hEach : ∀ rs ∈ support (c_leg.eval ρ),
-      ∃ avls' : roBothAvlTy.denote,
-        (syncBaseShadowRespC (I := I) cap (.var .zero) (exprRename Var.succ roBothE)).eval
-          (.cons rs ρ) = pure (rs.1, (rs.2, avls')) ∧
-        RoBothShadowRel cap rs.2 avls' := by
-    intro rs hrs
-    rcases hStep rs hrs with ⟨hRoS, hRtS, hRoC, hRtC⟩
-    have hBothSub : (exprRename Var.succ roBothE).eval (.cons rs ρ) = bs.2 :=
-      (exprRename_eval roBothE Var.succ ρ (.cons rs ρ) (fun _ => rfl)).trans hBothE
-    simp only [syncBaseShadowRespC, Comp.eval, Expr.eval, Env.get, hBothSub, pure_bind]
-    obtain ⟨avls', hSyncEval, hRel'⟩ :=
-      syncRoBothC_sim (I := I) cap bs.1 rs.2 bs.2
-        (baseRoCacheE (.snd (.fst .v0)))
-        (baseRootRoCacheE (.snd (.fst .v0)))
-        (.snd .v0)
-        (.cons (rs, bs.2) (.cons rs ρ))
-        hRel hRoS hRtS hRoC hRtC
-        (baseRoCacheE_eval _ _) (baseRootRoCacheE_eval _ _) rfl
-    rw [hSyncEval, pure_bind]
-    exact ⟨avls', rfl, hRel'⟩
-  constructor
-  · dsimp only [Comp.eval]
-    rw [map_bind]
-    conv_rhs => rw [← bind_pure (c_leg.eval ρ)]
-    refine OracleComp.bind_congr_of_forall_mem_support (c_leg.eval ρ) fun rs hrs => ?_
-    obtain ⟨avls', hEval, _⟩ := hEach rs hrs
-    rw [hEval]
-    rfl
-  · intro p hp
-    dsimp only [Comp.eval] at hp
-    rw [mem_support_bind_iff] at hp
-    rcases hp with ⟨rs, hrs, hp'⟩
-    obtain ⟨avls', hEval, hRel'⟩ := hEach rs hrs
-    rw [hEval, support_pure, Set.mem_singleton_iff] at hp'
-    subst hp'
-    exact hRel'
-
-set_option linter.constructorNameAsVariable false in
 /-- Composing an online fixed-hybrid step with `syncFixedShadowRespC` preserves its projection
     under `forgetAuthFixedShadow` and re-establishes `RoBothShadowRel`. -/
 theorem syncFixedShadowRespC_bind_sim {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}

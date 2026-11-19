@@ -32,7 +32,7 @@ Proves `explains_snoc_invertKEM` and `explains_snoc_invertKEM_step`: a guarded `
 environment event extends any `Explains` witness of `evs` by appending `Step.invertKEM 20`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

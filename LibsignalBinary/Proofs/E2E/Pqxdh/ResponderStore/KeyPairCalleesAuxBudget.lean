@@ -9,29 +9,30 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
-public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Frame
-public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerializeBudget
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PrivateKeySerializeBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.IsCanonical
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCallees
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
+import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Frame
+import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerializeBudget
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PrivateKeySerializeBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.IsCanonical
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCallees -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 meta import ProofLib.SepLogic.WP.Apply -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Helpers and Base Contracts for `KeyPairCallees`
@@ -41,7 +42,7 @@ Provides stack/memory framing bridges, `VmPreserved` curve key-pair contracts (B
 `113`), and budget-threaded tail-call `__rust_dealloc` contracts (`48`-B and `64`-B frames).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -362,7 +363,7 @@ private theorem subroutine_ok_withVmPreserved_intro {α : Type} {prog : Program}
   rw [sepConj_assoc, satisfies_pure_sepConj]
   exact ⟨hvm, hq hm⟩
 
-def curveKeyPairFromPubPrivBudgetSpec :
+@[expose] def curveKeyPairFromPubPrivBudgetSpec :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) :=
   withVmPreserved curveKeyPairFromPubPrivOkSpec
 
@@ -406,7 +407,7 @@ theorem curveKeyPairFromPubPriv_placed_ok [LibsignalPlacement] (H : LibsignalHoo
 
 attribute [local irreducible] VmPreserved
 
-def curveKeyPairSerdeBudgetSpec :
+@[expose] def curveKeyPairSerdeBudgetSpec :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) :=
   withVmPreserved curveKeyPairSerdeOkSpec
 
@@ -473,7 +474,7 @@ theorem curveKeyPairSerde_placed_ok [LibsignalPlacement] (H : LibsignalHooks) :
   simp only [wp_norm, arm64_norm] at hvm_f
   wp_done
 
-def preKeyRecordKeyPairBudgetSpec :
+@[expose] def preKeyRecordKeyPairBudgetSpec :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) :=
   withVmPreserved preKeyRecordKeyPairOkSpec
 
@@ -571,15 +572,15 @@ theorem privKeySerdeSerialize_placed_ok [LibsignalPlacement] {M : AllocCostModel
 
 /-! ## `kemKeyPairFromPubPriv_placed_ok` (Block `70`) and `kemKeyPairSerde_placed_ok` (Block `113`) -/
 
-def kemKeyPairFromPubPrivEvents : List AllocEvent :=
+@[expose] def kemKeyPairFromPubPrivEvents : List AllocEvent :=
   rustAllocEvents 1568 1 ++ rustAllocEvents 3168 1
 
-def KemKeyPairFromPubPrivEnv (evs : List AllocEvent) : Prop :=
+@[expose] def KemKeyPairFromPubPrivEnv (evs : List AllocEvent) : Prop :=
   evs = kemKeyPairFromPubPrivEvents
 
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 
-def kemKeyPairFromPubPrivOkSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def kemKeyPairFromPubPrivOkSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec ((BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) × M.σ) where
   pre := fun (x, st) s =>
@@ -592,7 +593,7 @@ def kemKeyPairFromPubPrivOkSpecBase (M : AllocCostModel) (A : RustCliAllocBudget
 
 set_option maxHeartbeats 1200000 in
 
-def kemKeyPairFromPubPrivOkSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def kemKeyPairFromPubPrivOkSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec ((BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) × M.σ) where
   pre := fun (x, st) s =>
@@ -714,7 +715,7 @@ abbrev DeallocTail48BudgetGhost (σ : Type) :=
   BitVec 64 × List (BitVec 8) × Nat ×
     BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × σ
 
-def rustDeallocTail48BudgetSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def rustDeallocTail48BudgetSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DeallocTail48BudgetGhost M.σ) where
   pre := fun (p, bs, align, v0, v1, v2, v3, v4, v5, st) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧ (s.readReg64 .x2).toNat = align⌝ ∗
@@ -728,7 +729,7 @@ def rustDeallocTail48BudgetSpecBase (M : AllocCostModel) (A : RustCliAllocBudget
       A.pool lim (M.stepEvents (rustDeallocEvents bs.length align) st) sf ∗
       stackAt (s0.sp - 48#64) allocHookStack ∗ cells (s0.sp - 48#64) 6
 
-def rustDeallocTail48BudgetSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def rustDeallocTail48BudgetSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DeallocTail48BudgetGhost M.σ) where
   pre := fun (p, bs, align, v0, v1, v2, v3, v4, v5, st) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧ (s.readReg64 .x2).toNat = align ∧
@@ -820,7 +821,7 @@ abbrev DeallocTail64BudgetGhost (σ : Type) :=
     BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 ×
     BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × σ
 
-def rustDeallocTail64BudgetSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def rustDeallocTail64BudgetSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DeallocTail64BudgetGhost M.σ) where
   pre := fun (p, bs, align, v0, v1, v2, v3, v4, v5, v6, v7, st) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧ (s.readReg64 .x2).toNat = align⌝ ∗
@@ -835,7 +836,7 @@ def rustDeallocTail64BudgetSpecBase (M : AllocCostModel) (A : RustCliAllocBudget
       A.pool lim (M.stepEvents (rustDeallocEvents bs.length align) st) sf ∗
       stackAt (s0.sp - 64#64) allocHookStack ∗ cells (s0.sp - 64#64) 8
 
-def rustDeallocTail64BudgetSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def rustDeallocTail64BudgetSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DeallocTail64BudgetGhost M.σ) where
   pre := fun (p, bs, align, v0, v1, v2, v3, v4, v5, v6, v7, st) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧ (s.readReg64 .x2).toNat = align ∧

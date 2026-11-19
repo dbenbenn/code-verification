@@ -13,7 +13,13 @@ public import LibsignalBinary.Heap.Fine.SpecBudgetHelpersFine -- proof-setup: al
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.TimeAddPanicGhost -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.TimeAddPanicGhostK -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Card `CC-R0` (Row 3) — `time add` Route-`R0` + `K4` `GhostRowReplayOn` (`HooksDehook.TimeAddGhostReplays`)
@@ -120,38 +126,10 @@ theorem timeAddSubProg_base (timeMpl : Obj.MultiPlacement) :
     (timeAddSubProg timeMpl).base = timeMpl.base 2 :=
   timeAddBlk2Prog_base timeMpl timeAddPanicExterns
 
-theorem timeAddSubProg_code_length (timeMpl : Obj.MultiPlacement) :
-    (timeAddSubProg timeMpl).code.length = 96 :=
-  timeAddBlk2Prog_code_length timeMpl timeAddPanicExterns
-
 theorem timeAddSubProg_codeLoaded_stripExecOutside {timeMpl : Obj.MultiPlacement} {mem : Memory}
     (hL : (timeAddSubProg timeMpl).CodeLoaded mem) :
     (timeAddSubProg timeMpl).CodeLoaded (stripExecOutside (keepR_timeAdd timeMpl) mem) :=
   codeLoaded_stripExecOutside_timeAddBlk2 (keepCoversTimeAddBlk2_keepTimeAddBlk2 timeMpl) hL
-
-theorem timeAddSubProg_codeLoaded_of_stripExecOutside {timeMpl : Obj.MultiPlacement} {mem : Memory}
-    (hL : (timeAddSubProg timeMpl).CodeLoaded (stripExecOutside (keepR_timeAdd timeMpl) mem)) :
-    (timeAddSubProg timeMpl).CodeLoaded mem := by
-  refine Program.CodeLoaded.intro hL.aligned hL.no_wrap fun i hi => ?_
-  have hi96 : i < 96 := by
-    rw [timeAddSubProg_code_length] at hi
-    exact hi
-  have hk : keepR_timeAdd timeMpl ((timeAddSubProg timeMpl).base + BitVec.ofNat 64 i) = true := by
-    rw [timeAddSubProg_base]
-    exact keepCoversTimeAddBlk2_keepTimeAddBlk2 timeMpl i hi96
-  have hbyte := hL.byte_eq i hi
-  have hperm := hL.perm_eq i hi
-  have hlf := hL.isLazyFree_eq i hi
-  rw [ProofLib.strip_read8] at hbyte
-  rw [ProofLib.strip_perm_of_keep hk] at hperm
-  rw [ProofLib.strip_isLazyFree] at hlf
-  exact ⟨hbyte, hperm, hlf⟩
-
-theorem timeAddSubProg_codeLoaded_stripExecOutside_iff {timeMpl : Obj.MultiPlacement}
-    {mem : Memory} :
-    (timeAddSubProg timeMpl).CodeLoaded (stripExecOutside (keepR_timeAdd timeMpl) mem) ↔
-      (timeAddSubProg timeMpl).CodeLoaded mem :=
-  ⟨timeAddSubProg_codeLoaded_of_stripExecOutside, timeAddSubProg_codeLoaded_stripExecOutside⟩
 
 /-- Route-`R0` + `K4` (`withLsRet` + `externOnlyStdProg`) `W`-independent ghost hook for
     `lsTimeAddSym`. -/
@@ -192,57 +170,6 @@ theorem timeAddGhost_timeAddSpec_ok [LibsignalPlacement]
     HookOk (timeAddGhost timeMpl)
       (withLsRet CryptoVerification.LibsignalPublicApi.timeAddSpec) :=
   timeAddGhostHookExternOnlyLsRet_timeAddSpec_ok hpl hkeep_stub
-    timeAddPanicExterns_expectFailed hlr_ne_stub
-
-theorem timeAddGhost_timeAddSpec_withVmPreserved_ok [LibsignalPlacement]
-    (timeMpl : Obj.MultiPlacement)
-    (hpl : timeMultiLib.Placeable timeMpl)
-    (hkeep_stub : keepR_timeAdd timeMpl (timeAddExpectFailedStubPc timeMpl) = false)
-    (hlr_ne_stub : ∀ lr : BitVec 64, LsRetAddr624 lr → lr ≠ timeAddExpectFailedStubPc timeMpl) :
-    HookOk (timeAddGhost timeMpl)
-      (withVmPreserved (withLsRet CryptoVerification.LibsignalPublicApi.timeAddSpec)) :=
-  hookOk_withVmPreserved
-    (timeAddGhost_timeAddSpec_ok timeMpl hpl hkeep_stub hlr_ne_stub)
-    (timeAddGhost_vmPreserved timeMpl hpl hkeep_stub hlr_ne_stub)
-
-theorem timeAddGhost_timeAddSpec_withAlloc_ls_ok [LibsignalPlacement]
-    (timeMpl : Obj.MultiPlacement)
-    (hpl : timeMultiLib.Placeable timeMpl)
-    (hkeep_stub : keepR_timeAdd timeMpl (timeAddExpectFailedStubPc timeMpl) = false)
-    (hlr_ne_stub : ∀ lr : BitVec 64, LsRetAddr624 lr → lr ≠ timeAddExpectFailedStubPc timeMpl)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
-    HookOk (timeAddGhost timeMpl)
-      (withAlloc A lim (withLsRet CryptoVerification.LibsignalPublicApi.timeAddSpec)) :=
-  hookOk_withAlloc_of_withVmPreserved A lim
-    (timeAddGhost_timeAddSpec_withVmPreserved_ok timeMpl hpl hkeep_stub hlr_ne_stub)
-
-theorem timeAddGhost_timeAddBudgetSpec_ok [LibsignalPlacement]
-    (timeMpl : Obj.MultiPlacement)
-    (hpl : timeMultiLib.Placeable timeMpl)
-    (hkeep_stub : keepR_timeAdd timeMpl (timeAddExpectFailedStubPc timeMpl) = false)
-    (hlr_ne_stub : ∀ lr : BitVec 64, LsRetAddr624 lr → lr ≠ timeAddExpectFailedStubPc timeMpl) :
-    HookOk (timeAddGhost timeMpl) (withLsRet timeAddBudgetSpec) :=
-  timeAddGhostHookExternOnlyLsRet_timeAddBudgetSpec_ok hpl hkeep_stub
-    timeAddPanicExterns_expectFailed hlr_ne_stub
-
-theorem timeAddGhost_timeAddSpec_withAlloc_ok [LibsignalPlacement]
-    (timeMpl : Obj.MultiPlacement)
-    (hpl : timeMultiLib.Placeable timeMpl)
-    (hkeep_stub : keepR_timeAdd timeMpl (timeAddExpectFailedStubPc timeMpl) = false)
-    (hlr_ne_stub : ∀ lr : BitVec 64, LsRetAddr624 lr → lr ≠ timeAddExpectFailedStubPc timeMpl)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
-    HookOk (timeAddGhost timeMpl)
-      (withLsRet (withAlloc A lim CryptoVerification.LibsignalPublicApi.timeAddSpec)) :=
-  timeAddGhostHookExternOnlyLsRet_timeAddSpec_withAlloc_ok hpl hkeep_stub
-    timeAddPanicExterns_expectFailed hlr_ne_stub A lim
-
-theorem timeAddGhost_e2eTimeAddSpec_ok [LibsignalPlacement]
-    (timeMpl : Obj.MultiPlacement)
-    (hpl : timeMultiLib.Placeable timeMpl)
-    (hkeep_stub : keepR_timeAdd timeMpl (timeAddExpectFailedStubPc timeMpl) = false)
-    (hlr_ne_stub : ∀ lr : BitVec 64, LsRetAddr624 lr → lr ≠ timeAddExpectFailedStubPc timeMpl) :
-    HookOk (timeAddGhost timeMpl) (withLsRet CryptoVerification.E2E.HooksE.timeAddSpec) :=
-  timeAddGhostHookExternOnlyLsRet_e2eTimeAddSpec_ok hpl hkeep_stub
     timeAddPanicExterns_expectFailed hlr_ne_stub
 
 /-! ## 3. `ExecFrozen` Preservation & Generic-`InvS` `GhostRowReplayOn` -/
@@ -407,7 +334,7 @@ theorem timeAddGhost_rowSpecOk [LibsignalPlacement]
     simp only [hd1, hd2, hd3, hd4, hd5, hd6, hd7, Bool.false_eq_true, ↓reduceIte]
     exact timeAddGhost_timeAddRowSpec timeMpl hpl hkeep_stub hlr_ne_stub
 
-private noncomputable def dummyCliHooks : CliHooks := by
+private def dummyCliHooks : CliHooks := by
   classical
   exact {
     C := {
@@ -419,13 +346,6 @@ private noncomputable def dummyCliHooks : CliHooks := by
     }
     Q := {
       F512 := fun s _ => s
-      montToEd := fun _ _ => none
-      compress := fun _ => List.Vector.replicate 32 0#8
-      edNeg := fun p => p
-      isTorsionFree := fun _ => false
-      dsmb := fun _ p _ => p
-      scalarMod := fun s => s
-      scalarWide := fun _ => List.Vector.replicate 32 0#8
       encaps := fun pk c => (pk, c)
       decaps := fun _ _ => List.Vector.replicate 32 0#8
       K := {
@@ -453,40 +373,6 @@ private theorem keepR_timeAdd_expectFailed_false
     rw [hPanReal dummyCliHooks] at hnone
     cases hnone
 
-/-- Behind-stub `GhostRowOk` bundle (`GhostRowSpecOk` ∧ `GhostRowReplayOn`) for `lsTimeAddSym`,
-    deriving `keepR_timeAdd timeMpl (timeAddExpectFailedStubPc timeMpl) = false` from
-    `hRealHullNoExt` + `hPanReal` (`TimeAddPanicGhostK.lean:539`). -/
-theorem timeAddGhost_rowOk_of_stub [LibsignalPlacement]
-    (mpl mmpl timeMpl : Obj.MultiPlacement)
-    (InvS : State → Prop)
-    (EG : CliHooks → String → Option (State → State))
-    (hpl : timeMultiLib.Placeable timeMpl)
-    (hCL : ∀ u : State, InvS u → (timeAddSubProg timeMpl).CodeLoaded u.mem)
-    (hInvKeep : ∀ u v : State, InvS u → u.mem.KeepsFrozen v.mem → v.fs = u.fs → InvS v)
-    (hKeep : ∀ lr : BitVec 64, LsRetAddr624 lr → keepR_timeAdd timeMpl lr = false)
-    (hlr_ne_stub : ∀ lr : BitVec 64, LsRetAddr624 lr → lr ≠ timeAddExpectFailedStubPc timeMpl)
-    (hRealHullNoExt : ∀ (W : CliHooks) {pc : BitVec 64},
-      keepR_timeAdd timeMpl pc = true →
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none)
-    (hPanReal : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt?
-        (timeAddExpectFailedStubPc timeMpl) = some Rust.panicked)
-    (hRealStubNone : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt?
-        (libsignalSessionLib.resolve mpl lsTimeAddSym) = none)
-    (hStub : ∀ W : CliHooks,
-      StubReachesTargetOn
-        (fun m => (timeAddSubProg timeMpl).CodeLoaded m)
-        (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-        (libsignalSessionLib.resolve mpl lsTimeAddSym)
-        (timeMultiLib.fnAddr timeMpl timeAddSym)) :
-    GhostRowOk mpl mmpl InvS EG lsTimeAddSym (fun _ => True)
-      (timeAddGhost timeMpl) :=
-  ⟨timeAddGhost_rowSpecOk timeMpl hpl
-     (keepR_timeAdd_expectFailed_false hRealHullNoExt hPanReal) hlr_ne_stub,
-   timeAddGhost_rowReplayOn_of_stub mpl mmpl timeMpl InvS EG hpl hCL hInvKeep hKeep
-     hlr_ne_stub hRealHullNoExt hPanReal hRealStubNone hStub⟩
-
 /-- **Full per-row `GhostRowOk` bundle (`GhostRowSpecOk` ∧ `GhostRowReplayOn`)** for `lsTimeAddSym`
     (`entryGuard := fun _ => True`), deriving `hkeep_stub` from `hRealHullNoExt` + `hPanReal`. -/
 theorem timeAddGhost_rowOk [LibsignalPlacement]
@@ -512,26 +398,5 @@ theorem timeAddGhost_rowOk [LibsignalPlacement]
      (keepR_timeAdd_expectFailed_false hRealHullNoExt hPanReal) hlr_ne_stub,
    timeAddGhost_rowReplayOn mpl mmpl timeMpl InvS EG hpl hTargetEq hCL hInvKeep hKeep
      hlr_ne_stub hRealHullNoExt hPanReal⟩
-
-theorem extraEntryGuard_timeAdd_arm
-    {mpl : Obj.MultiPlacement} {guardOf : String → State → Prop} {s0 : State}
-    (hGuardEq : guardOf lsTimeAddSym s0 ↔ timeAddEntryGuard mpl s0) :
-    guardOf lsTimeAddSym s0 :=
-  hGuardEq.mpr trivial
-
-theorem extraEntryGuard_singleton_timeAdd [LibsignalPlacement]
-    {mpl timeMpl : Obj.MultiPlacement} {guardOf : String → State → Prop}
-    {g : CliGhostHooks} {s0 : State}
-    (hg : g.extra = [(lsTimeAddSym, timeAddGhost timeMpl)])
-    (hGuardEq : guardOf lsTimeAddSym s0 ↔ timeAddEntryGuard mpl s0) :
-    ExtraEntryGuard guardOf g s0 := by
-  intro sym _ _ hLook
-  rw [hg] at hLook
-  simp only [List.lookup] at hLook
-  by_cases hSym : (sym == lsTimeAddSym) = true
-  · have hEq := eq_of_beq hSym
-    subst hEq
-    exact hGuardEq.mpr trivial
-  · simp [hSym] at hLook
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.TimeAddGhostReplays

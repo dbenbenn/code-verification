@@ -9,13 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.DefsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.Loop
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.LoopErrorBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.Decode
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.DefsBudget
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.Loop
+public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.LoopErrorBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.LoopError
 import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.LoopMerge
 import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.LoopMergeBudget
@@ -33,7 +31,7 @@ import LibsignalBinary.Proofs.Common.SharedHelpers
 `IdentityKeyPairStructure` protobuf decode loop (`+108 .. +728`) and prologue on Block `84`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

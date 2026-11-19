@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Session
-public import LibsignalBinary.Proofs.E2E.InMem.SessionStoreImpl.ReprBridge
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeHeap
+public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Session -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.InMem.SessionStoreImpl.ReprBridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeHeap -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -25,28 +26,6 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalT
 open CryptoVerification.LibsignalPublicApiRepr CryptoVerification.LibsignalPublicApi.StoreKit
 open CryptoVerification.LibsignalPublicApi.StoreSession CryptoGames.LibsignalSessionApi
 open CryptoVerification.CodeLayout CryptoVerification.SignalSession.Cli
-
-theorem recordSerialize_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr recordSerializeName =
-      (tripleRatchetProgAtExt b ext).fnAddr sessStorePollName -
-        bv% (ls_rel% "<libsignal_protocol::state::session::SessionRecord>::serialize"
-          "<libsignal_cli::stores::SessionFiles as libsignal_protocol::storage::traits::SessionStore>::store_session::{closure#0}") := by
-  have h1 := sessStorePoll_fnOff
-  have h2 := recordSerialize_fnOff
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, sessStorePollName,
-    recordSerializeName, h1, h2]
-  bv_omega
-
-theorem dirPut_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr dirPutName =
-      (tripleRatchetProgAtExt b ext).fnAddr sessStorePollName -
-        bv% (ls_rel% "<libsignal_cli::stores::Dir>::put::<alloc::string::String>"
-          "<libsignal_cli::stores::SessionFiles as libsignal_protocol::storage::traits::SessionStore>::store_session::{closure#0}") := by
-  have h1 := sessStorePoll_fnOff
-  have h2 := dirPut_fnOff
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, sessStorePollName,
-    dirPutName, h1, h2]
-  bv_omega
 
 theorem canonRecord_of_satisfies_sessionRecordAt (A : RustAlloc) (a : BitVec 64)
     (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) (R : SepProp) (m : Memory)
@@ -149,7 +128,7 @@ private theorem vecU8_intro (A : RustAlloc) (v bCap bPtr : BitVec 64) (bs : List
 abbrev AddrCellsGhost :=
   BitVec 64 × AddrGhost × BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64
 
-def addrTextCellsSpec (A : RustAlloc) (calleeStk : Nat) : Spec AddrCellsGhost where
+@[expose] def addrTextCellsSpec (A : RustAlloc) (calleeStk : Nat) : Spec AddrCellsGhost where
   pre := fun (addrA, g, ret, o0, o1, o2, fsp) s =>
     ⌜s.readReg64 .x0 = ret ∧ s.readReg64 .x1 = addrA ∧ s.sp = fsp ∧
       g.name.bytes.length < 2 ^ 32⌝ ∗
@@ -161,59 +140,11 @@ def addrTextCellsSpec (A : RustAlloc) (calleeStk : Nat) : Spec AddrCellsGhost wh
     protocolAddressAt A g addrA ∗ stackAt fsp calleeStk ∗ A.pool
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-theorem addrText_cells_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {addrStk calleeStk : Nat}
-    (hAddr : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr addressTextName)
-      (addrTextSpec A img addrStk))
-    (hle : addrStk ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr addressTextName)
-      ((addrTextCellsSpec A calleeStk).inImage img) := by
-  apply subroutine_ok.of_codeLoaded
-  intro ⟨addrA, g, ret, o0, o1, o2, fsp⟩ R s0 hpc hrun hpre hsp _
-  change s0.mem ⊨ (⌜ImgCallInv img s0⌝ ∗
-    (addrTextCellsSpec A calleeStk).pre (addrA, g, ret, o0, o1, o2, fsp) s0) ∗ R at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, hpre⟩
-  simp only [addrTextCellsSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hfsp, hlen⟩, hmem⟩
-  subst hfsp
-  rw [stackAt_sub_split s0.sp hle hhi] at hmem
-  let stkRem := memRegion (s0.sp - BitVec.ofNat 64 calleeStk) (calleeStk - addrStk)
-  let callG : AddrTextGhost := ⟨addrA, g, ret⟩
-  have hpre0 : s0.mem ⊨ (addrTextSpec A img addrStk).pre callG s0 ∗ (stkRem ∗ R) := by
-    dsimp only [addrTextSpec, callG]
-    refine satisfies_inImage_pre hinv ?_
-    simp only [memRegion_24_cells, sepExists_sepConj_left, sepExists_sepConj_right,
-      satisfies_sepExists]
-    refine ⟨o2, o1, o0, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hlen⟩, ?_⟩
-    dsimp only [stkRem]
-    convert hmem using 1; ac_rfl
-  exact hAddr.mono_outcome callG (stkRem ∗ R) s0 hpc hrun hpre0 hsp fun sf hout => by
-    rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩
-    · refine Or.inl ⟨hret, hcc, ?_⟩
-      dsimp only [Spec.inImage, addrTextSpec, addrTextCellsSpec, callG] at hq ⊢
-      rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-      rcases hq with ⟨htr, hq⟩
-      refine ⟨htr, ?_⟩
-      rw [stackAt_sub_split s0.sp hle hhi]
-      dsimp only [stkRem] at hq
-      convert hq using 1; ac_rfl
-    · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
-      dsimp only [Spec.inImage, addrTextSpec, addrTextCellsSpec] at hq ⊢
-      exact allowPanic_frame id (by rwa [sepConj_assoc])
-    · exact (allowPanic_not_exited hq).elim
-    · dsimp only [addrTextSpec, Spec.inImage] at hq
-      exact (not_satisfies_false_sepConj hq).elim
-
 abbrev SerCellsGhost :=
   BitVec 64 × BitVec 64 × E2E.Record.RecordGhost × SessionRecord (List (BitVec 8)) ×
     BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64
 
-def serializeCellsSpec (A : RustAlloc) (calleeStk : Nat) : Spec SerCellsGhost where
+@[expose] def serializeCellsSpec (A : RustAlloc) (calleeStk : Nat) : Spec SerCellsGhost where
   pre := fun (recA, out, g, r, o0, o1, o2, o3, fsp) s =>
     ⌜s.readReg64 .x0 = recA ∧ s.readReg64 .x8 = out ∧ s.sp = fsp ∧
       E2E.Record.Serialization.CanonRecord g r ∧
@@ -231,72 +162,11 @@ def serializeCellsSpec (A : RustAlloc) (calleeStk : Nat) : Spec SerCellsGhost wh
       A.pool ∗ stackAt fsp calleeStk
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-theorem serialize_cells_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {calleeStk : Nat}
-    (hSer : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recordSerializeName)
-      ((E2E.Record.Serialization.serializeCanonSpec A).inImage img))
-    (hle : E2E.Record.Serialization.serializeStack ≤ calleeStk)
-    (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recordSerializeName)
-      ((serializeCellsSpec A calleeStk).inImage img) := by
-  apply subroutine_ok.of_codeLoaded
-  intro ⟨recA, out, g, r, o0, o1, o2, o3, fsp⟩ R s0 hpc hrun hpre hsp _
-  change s0.mem ⊨ (⌜ImgCallInv img s0⌝ ∗
-    (serializeCellsSpec A calleeStk).pre (recA, out, g, r, o0, o1, o2, o3, fsp) s0) ∗ R at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, hpre⟩
-  simp only [serializeCellsSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx8, hfsp, hcanon, hlen⟩, hmem⟩
-  subst hfsp
-  rw [stackAt_sub_split s0.sp hle hhi] at hmem
-  let stkRem := memRegion (s0.sp - BitVec.ofNat 64 calleeStk)
-    (calleeStk - E2E.Record.Serialization.serializeStack)
-  let callG : E2E.Record.Serialization.SerializeGhost := ⟨recA, out, g, r⟩
-  have hpre0 : s0.mem ⊨ ((E2E.Record.Serialization.serializeCanonSpec A).inImage img).pre
-      callG s0 ∗ (stkRem ∗ R) := by
-    refine satisfies_inImage_pre hinv ?_
-    dsimp only [E2E.Record.Serialization.serializeCanonSpec, callG]
-    simp only [memRegion_32_cells, sepExists_sepConj_left, sepExists_sepConj_right,
-      satisfies_sepExists]
-    refine ⟨o3, o2, o1, o0, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx8, hcanon, hlen⟩, ?_⟩
-    dsimp only [stkRem]
-    convert hmem using 1; ac_rfl
-  exact hSer.mono_outcome callG (stkRem ∗ R) s0 hpc hrun hpre0 hsp fun sf hout => by
-    rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩
-    · refine Or.inl ⟨hret, hcc, ?_⟩
-      dsimp only [Spec.inImage, E2E.Record.Serialization.serializeCanonSpec,
-        serializeCellsSpec, callG] at hq ⊢
-      rw [sepConj_assoc, satisfies_pure_sepConj] at hq
-      rcases hq with ⟨htr, hq⟩
-      dsimp only [vecU8] at hq
-      simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨bCap, bPtr, hq⟩
-      refine ⟨bCap, bPtr, ?_⟩
-      rw [SpqrV1.Alloc.vecU8At_eq_header_sep_buf] at hq
-      dsimp only [vecHeader] at hq
-      simp only [BitVec.add_assoc, BitVec.reduceAdd] at hq
-      rw [sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨htr, ?_⟩
-      rw [stackAt_sub_split s0.sp hle hhi]
-      dsimp only [okTagVec, stkRem] at hq
-      convert hq using 1; ac_rfl
-    · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
-      dsimp only [Spec.inImage, E2E.Record.Serialization.serializeCanonSpec,
-        E2E.Record.Serialization.allocPanic, serializeCellsSpec] at hq ⊢
-      exact allowPanic_frame id (by rwa [sepConj_assoc])
-    · exact (allowPanic_not_exited hq).elim
-    · dsimp only [Spec.inImage] at hq
-      exact (not_satisfies_false_sepConj hq).elim
-
 abbrev PutCellsGhost :=
   BitVec 64 × DirGhost × BitVec 64 × List (BitVec 8) ×
     BitVec 64 × BitVec 64 × BitVec 64 × List (BitVec 8) × BitVec 64
 
-def dirPutCellsSpec (A : RustAlloc) (calleeStk : Nat) : Spec PutCellsGhost where
+@[expose] def dirPutCellsSpec (A : RustAlloc) (calleeStk : Nat) : Spec PutCellsGhost where
   pre := fun (self, dir, nameV, name, bytesV, bCap, bPtr, bytes, fsp) s =>
     ⌜s.readReg64 .x0 = self ∧ s.readReg64 .x1 = nameV ∧ s.readReg64 .x2 = bytesV ∧
       s.sp = fsp ∧ dir.changed.length < 2 ^ 32⌝ ∗
@@ -314,63 +184,7 @@ def dirPutCellsSpec (A : RustAlloc) (calleeStk : Nat) : Spec PutCellsGhost where
       stackAt fsp calleeStk ∗ A.pool
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-theorem dirPut_cells_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {putStk calleeStk : Nat}
-    (hPut : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirPutName)
-      (dirPutSpec A img putStk))
-    (hle : putStk ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirPutName)
-      ((dirPutCellsSpec A calleeStk).inImage img) := by
-  apply subroutine_ok.of_codeLoaded
-  intro ⟨self, dir, nameV, name, bytesV, bCap, bPtr, bytes, fsp⟩ R s0 hpc hrun hpre hsp _
-  change s0.mem ⊨ (⌜ImgCallInv img s0⌝ ∗
-    (dirPutCellsSpec A calleeStk).pre (self, dir, nameV, name, bytesV, bCap, bPtr, bytes, fsp) s0) ∗
-    R at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, hpre⟩
-  simp only [dirPutCellsSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx2, hfsp, hlen⟩, hmem⟩
-  subst hfsp
-  rw [stackAt_sub_split s0.sp hle hhi] at hmem
-  let stkRem := memRegion (s0.sp - BitVec.ofNat 64 calleeStk) (calleeStk - putStk)
-  let callG : DirPutGhost := ⟨self, dir, nameV, name, bytesV, bytes⟩
-  have hmem_vec : s0.mem ⊨ vecU8 A bytesV bytes ∗
-      (dirAt A self dir ∗ vecU8 A nameV name ∗ stackAt s0.sp putStk ∗ A.pool ∗ stkRem ∗ R) := by
-    refine Satisfies.mono (sepConj_mono_left (vecU8_intro A bytesV bCap bPtr bytes)) ?_
-    dsimp only [stkRem]
-    convert hmem using 1; ac_rfl
-  have hpre0 : s0.mem ⊨ (dirPutSpec A img putStk).pre callG s0 ∗ (stkRem ∗ R) := by
-    dsimp only [dirPutSpec, Spec.inImage, callG]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hinv, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hx2, hlen⟩, ?_⟩
-    convert hmem_vec using 1; ac_rfl
-  exact hPut.mono_outcome callG (stkRem ∗ R) s0 hpc hrun hpre0 hsp fun sf hout => by
-    rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩
-    · refine Or.inl ⟨hret, hcc, ?_⟩
-      dsimp only [Spec.inImage, dirPutSpec, dirPutCellsSpec, callG] at hq ⊢
-      rw [sepConj_assoc, satisfies_pure_sepConj] at hq
-      rcases hq with ⟨htr, hq⟩
-      simp only [memRegion_24_cells, sepExists_sepConj_left, sepExists_sepConj_right,
-        satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨m2, m1, m0, n2, n1, n0, hq⟩
-      refine ⟨n0, n1, n2, m0, m1, m2, ?_⟩
-      rw [sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨htr, ?_⟩
-      rw [stackAt_sub_split s0.sp hle hhi]
-      dsimp only [stkRem] at hq
-      convert hq using 1; ac_rfl
-    · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
-      dsimp only [Spec.inImage, dirPutSpec, dirPutCellsSpec] at hq ⊢
-      exact allowPanic_frame id (by rwa [sepConj_assoc])
-    · exact (allowPanic_not_exited hq).elim
-    · dsimp only [dirPutSpec, Spec.inImage] at hq
-      exact (not_satisfies_false_sepConj hq).elim
-
-def cliStorePollInnerSpec (A : RustAlloc) (calleeStk : Nat) : Spec SessStorePollGhost where
+@[expose] def cliStorePollInnerSpec (A : RustAlloc) (calleeStk : Nat) : Spec SessStorePollGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.call.fut ∧ s.readReg64 .x8 = x.call.out ∧
       x.call.call.addr.name.bytes.length < 2 ^ 32 ∧
@@ -397,89 +211,5 @@ def cliStorePollInnerSpec (A : RustAlloc) (calleeStk : Nat) : Spec SessStorePoll
         (E2E.InMem.SessionStoreImpl.toRecordGhost x.call.call.g) x.call.call.record ∗
       A.pool ∗ stackAt (s0.sp - 208#64) calleeStk ∗ cells (s0.sp - 208#64) 26
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-theorem sessStorePoll_of_inner {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {calleeStk stk : Nat}
-    (hInner : calleeStk ≤ 2 ^ 64 →
-      subroutine_ok (tripleRatchetProgAtExt img.base ext)
-        ((tripleRatchetProgAtExt img.base ext).fnAddr sessStorePollName)
-        ((cliStorePollInnerSpec A calleeStk).inImage img))
-    (hstk : 0xd0 + calleeStk ≤ stk) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr sessStorePollName)
-      (sessStorePollSpec A img stk) := by
-  apply subroutine_ok.of_codeLoaded
-  intro x R s0 hpc hrun hpre hsp _
-  change s0.mem ⊨ (⌜ImgCallInv img s0⌝ ∗
-    (⌜s0.readReg64 .x0 = x.call.fut ∧ s0.readReg64 .x8 = x.call.out ∧
-      x.call.call.addr.name.bytes.length < 2 ^ 32 ∧
-      (E2E.Record.encodeRecord x.call.call.record).length < 2 ^ 32 ∧
-      x.dir.changed.length < 2 ^ 32⌝ ∗
-      sessStoreBoxAt x.call.fut x.self x.call.call.addrA x.call.call.recA 0#8 ∗
-      dirAt A x.self x.dir ∗ memRegion x.call.out 48 ∗
-      protocolAddressAt A x.call.call.addr x.call.call.addrA ∗
-      sessionRecordAt A x.call.call.recA x.call.call.g x.call.call.record ∗
-      A.pool ∗ stackAt s0.sp stk)) ∗ R at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, hpre⟩
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx8, hname, henc, hdir⟩, hmem⟩
-  dsimp only [sessStoreBoxAt] at hmem
-  have hcanon : E2E.Record.Serialization.CanonRecord
-      (E2E.InMem.SessionStoreImpl.toRecordGhost x.call.call.g) x.call.call.record := by
-    refine canonRecord_of_satisfies_sessionRecordAt A x.call.call.recA
-      x.call.call.g x.call.call.record
-      ((x.call.fut ↦₆₄ x.self) ∗ ((x.call.fut + 8#64) ↦₆₄ x.call.call.addrA) ∗
-        ((x.call.fut + 16#64) ↦₆₄ x.call.call.recA) ∗ ((x.call.fut + 24#64) ↦₈ 0#8) ∗
-        memRegion (x.call.fut + 25#64) 7 ∗
-        dirAt A x.self x.dir ∗ memRegion x.call.out 48 ∗
-        protocolAddressAt A x.call.call.addr x.call.call.addrA ∗
-        A.pool ∗ stackAt s0.sp stk ∗ R) s0.mem ?_
-    convert hmem using 1; ac_rfl
-  have hstk_hi : stk ≤ 2 ^ 64 := by
-    refine memRegion_bound_of_pointsTo64 (m := s0.mem) (b := s0.sp - BitVec.ofNat 64 stk)
-      (a := x.call.fut) (v := x.self)
-      (R := ((x.call.fut + 8#64) ↦₆₄ x.call.call.addrA) ∗
-        ((x.call.fut + 16#64) ↦₆₄ x.call.call.recA) ∗ ((x.call.fut + 24#64) ↦₈ 0#8) ∗
-        memRegion (x.call.fut + 25#64) 7 ∗
-        dirAt A x.self x.dir ∗ memRegion x.call.out 48 ∗
-        protocolAddressAt A x.call.call.addr x.call.call.addrA ∗
-        sessionRecordAt A x.call.call.recA x.call.call.g x.call.call.record ∗
-        A.pool ∗ R) ?_
-    dsimp only [stackAt] at hmem
-    convert hmem using 1; ac_rfl
-  have hcal_hi : calleeStk ≤ 2 ^ 64 := by omega
-  have hframe_hi : calleeStk + 208 ≤ 2 ^ 64 := by omega
-  rw [← E2E.InMem.SessionStoreImpl.record_sessionRecordAt_eq] at hmem
-  rw [stackAt_sub_split s0.sp (subStk := calleeStk + 208) (by omega) hstk_hi,
-    stackAt_storePoll_frame s0.sp hframe_hi] at hmem
-  let F_extra := memRegion (x.call.fut + 25#64) 7 ∗
-    memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - (calleeStk + 208))
-  have hpre_in : s0.mem ⊨ ((cliStorePollInnerSpec A calleeStk).inImage img).pre x s0 ∗
-      (F_extra ∗ R) := by
-    refine satisfies_inImage_pre hinv ?_
-    dsimp only [cliStorePollInnerSpec]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx8, hname, henc, hdir, hcanon⟩, ?_⟩
-    dsimp only [F_extra]
-    convert hmem using 1; ac_rfl
-  exact (hInner hcal_hi).mono_outcome x (F_extra ∗ R) s0 hpc hrun hpre_in hsp fun sf hout => by
-    rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩
-    · refine Or.inl ⟨hret, hcc, ?_⟩
-      dsimp only [Spec.inImage, cliStorePollInnerSpec, sessStorePollSpec, sessStoreBoxAt] at hq ⊢
-      rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-      rcases hq with ⟨htr, hq⟩
-      refine ⟨htr, ?_⟩
-      rw [E2E.InMem.SessionStoreImpl.record_sessionRecordAt_eq] at hq
-      rw [stackAt_sub_split s0.sp (subStk := calleeStk + 208) (by omega) hstk_hi,
-        stackAt_storePoll_frame s0.sp hframe_hi]
-      dsimp only [F_extra] at hq
-      convert hq using 1; ac_rfl
-    · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
-      dsimp only [Spec.inImage, cliStorePollInnerSpec, sessStorePollSpec] at hq ⊢
-      exact allowPanic_frame id (by rwa [sepConj_assoc])
-    · exact (allowPanic_not_exited hq).elim
-    · dsimp only [Spec.inImage] at hq
-      exact (not_satisfies_false_sepConj hq).elim
 
 end CryptoVerification.SignalSession.Cli.Store.StorePoll.Helpers

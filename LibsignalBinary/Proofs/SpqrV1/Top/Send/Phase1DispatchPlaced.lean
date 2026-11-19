@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -25,6 +25,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1Steps
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1StepsPlaced
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable `spqr::send::<HookRng>` Phase 1c: `<States>::from_pb` Call, Error Path, and Dispatch
@@ -33,7 +34,7 @@ Verifies `spqr_send_pre_states_from_pb_224_placed`, `spqr_send_states_from_pb_er
 and `spqr_send_states_from_pb_ok_step_placed` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

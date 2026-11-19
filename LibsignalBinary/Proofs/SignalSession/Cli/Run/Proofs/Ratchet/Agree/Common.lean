@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.LoadRec
+public import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.LoadRec -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.CanonKey
 import LibsignalBinary.Proofs.E2E.Epochs
 import LibsignalBinary.Proofs.RecordCodecs.RoundTrip
@@ -18,8 +18,11 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Agree.CommitE
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.SpqrV1Empty
 public import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhCorrectModelProofDefs
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,7 +49,7 @@ open CryptoVerification.SignalSession.Cli.RunRefine
 
 /-! ## Store-step mirrors for `encrypt` and `decrypt_signal` -/
 
-noncomputable def cliAnswers (Scope : SessionRecord (List (BitVec 8)) → Prop) (F : FsFiles)
+@[expose] noncomputable def cliAnswers (Scope : SessionRecord (List (BitVec 8)) → Prop) (F : FsFiles)
     (peer : AddrVal) (k : Option IdentityKey) : StoreAnswers (List (BitVec 8)) Unit where
   loadSession := Slots.loadRec Scope F peer
   isTrustedIdentity := match k with
@@ -57,16 +60,16 @@ noncomputable def cliAnswers (Scope : SessionRecord (List (BitVec 8)) → Prop) 
     | none => .ok .newOrUnchanged
   storeSession := .ok ()
 
-def cliStep (F : FsFiles) (g : StoresGhost) : StoreCall AddrVal (List (BitVec 8)) → StoresGhost
+@[expose] def cliStep (F : FsFiles) (g : StoresGhost) : StoreCall AddrVal (List (BitVec 8)) → StoresGhost
   | .saveIdentity rem k => { g with identity := g.identity.saveUpd cliIo.rd F rem k }
   | .storeSession rem r =>
     { g with sessions := g.sessions.put (Cli.addressText rem) (E2E.Record.encodeRecord r) }
   | _ => g
 
-def cliFinal (F : FsFiles) (calls : List (StoreCall AddrVal (List (BitVec 8)))) : StoresGhost :=
+@[expose] def cliFinal (F : FsFiles) (calls : List (StoreCall AddrVal (List (BitVec 8)))) : StoresGhost :=
   calls.foldl (cliStep F) StoresGhost.opened
 
-noncomputable def encKey (Scope : SessionRecord (List (BitVec 8)) → Prop) (F : FsFiles)
+@[expose] noncomputable def encKey (Scope : SessionRecord (List (BitVec 8)) → Prop) (F : FsFiles)
     (peer : AddrVal) : Option IdentityKey :=
   match Slots.loadRec Scope F peer with
   | .ok (some r) =>
@@ -78,7 +81,7 @@ noncomputable def encKey (Scope : SessionRecord (List (BitVec 8)) → Prop) (F :
     | none => none
   | _ => none
 
-noncomputable def encDef (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] noncomputable def encDef (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer me : AddrVal) (ptext coins : List (BitVec 8)) :
     SlotAns CiphertextMessage :=
   match LibsignalSessionApi.messageEncrypt W.C protoSignalCodec (pqxdhSpqrModel W).spqr
@@ -88,15 +91,15 @@ noncomputable def encDef (W : PEParams) (Scope : SessionRecord (List (BitVec 8))
   | (.error .panic, _) => none
   | (.error _, _) => some none
 
-def RatchetScopeCoversPq (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop) : Prop :=
+@[expose] def RatchetScopeCoversPq (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop) : Prop :=
   ∀ (st : PqParty) x g, PqxdhPartyInSpecDomain W st → st.session = some (x, g) →
     Scope (E2E.Record.toRecord (E2E.RecordX.extrasOf fun _ => x) g)
 
-def RatchetScopeCoversSm (C : Crypto) (Scope : SessionRecord (List (BitVec 8)) → Prop) : Prop :=
+@[expose] def RatchetScopeCoversSm (C : Crypto) (Scope : SessionRecord (List (BitVec 8)) → Prop) : Prop :=
   ∀ g : GhostState (List (BitVec 8)), Reach (spqrOffSessionParams C) g →
     Scope (E2E.Record.toRecord E2E.Record.extrasM g)
 
-noncomputable def decSigKey (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] noncomputable def decSigKey (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer me : AddrVal) (msg : SignalMessage) (coins : List (BitVec 8)) :
     Option IdentityKey :=
   match Slots.loadRec Scope F peer with
@@ -108,7 +111,7 @@ noncomputable def decSigKey (W : PEParams) (Scope : SessionRecord (List (BitVec 
     | .error _ => none
   | _ => none
 
-noncomputable def decSigDef (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] noncomputable def decSigDef (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer me : AddrVal) (msg : SignalMessage) (coins : List (BitVec 8)) :
     SlotAns (List (BitVec 8)) :=
   match LibsignalSessionApi.messageDecryptSignal W.C (pqxdhSpqrModel W).spqr
@@ -188,11 +191,11 @@ theorem idPeer_of_get_pqIdBytes {F : FsFiles} {st : PqParty}
   | none => rfl
   | some k => exact record_decodeIdentityKey_serialize k
 
-@[simp, reducible]
+@[expose, simp, reducible]
 def trustedVal (p : Option IdentityKey) (k : IdentityKey) : Bool :=
   match p with | none => true | some known => decide (known = k)
 
-@[simp, reducible]
+@[expose, simp, reducible]
 def saveAnsVal (p : Option IdentityKey) (k : IdentityKey) : IdentityChange :=
   match p with
   | some known => if known = k then .newOrUnchanged else .replacedExisting
@@ -393,63 +396,5 @@ theorem tryDecrypt_spqrV1W_empty (W : PEParams) (expected : Option (List (BitVec
           simp only [hp1, hp2, Bool.false_eq_true, ↓reduceIte, hr1]
 
 /-! ## `RunFilesOk` on SM and PQXDH game inputs -/
-
-theorem runFilesOk_smSend {S : RunSem} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {extra : FsFiles → Prop} (hS : S.filesOk = Slots.filesOk₀ Scope extra)
-    (g : GhostState (List (BitVec 8))) (m : List (BitVec 8))
-    (hSc : Scope (E2E.Record.toRecord E2E.Record.extrasM g))
-    (hex : extra (runFiles (smSendInputs g m)))
-    (hcap : (E2E.encodeRecord g).length ≤ fileCapBytes) :
-    RunFilesOk S (smSendInputs g m) :=
-  Slots.runFilesOk_of_peer (.send (partyAddress g.party.other)) rfl rfl
-    (RunRefine.ownAddr_smSend g m)
-    (hS ▸ ⟨Slots.filesOkPeer_smSend g m hSc hcap, Slots.distinctSid_party g.party, hex⟩)
-
-theorem runFilesOk_smRecv {S : RunSem} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {extra : FsFiles → Prop} (hS : S.filesOk = Slots.filesOk₀ Scope extra)
-    (g : GhostState (List (BitVec 8))) (c : List (BitVec 8)) (rc : BitVec 256)
-    (hSc : Scope (E2E.Record.toRecord E2E.Record.extrasM g))
-    (hex : extra (runFiles (smRecvInputs g c rc)))
-    (hcap : (E2E.encodeRecord g).length ≤ fileCapBytes) :
-    RunFilesOk S (smRecvInputs g c rc) :=
-  Slots.runFilesOk_of_peer (.recv (partyAddress g.party.other)) rfl rfl
-    (RunRefine.ownAddr_smRecv g c rc)
-    (hS ▸ ⟨Slots.filesOkPeer_smRecv g c rc hSc hcap, Slots.distinctSid_party g.party, hex⟩)
-
-theorem runFilesOk_pqInit {S : RunSem} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {extra : FsFiles → Prop} (hS : S.filesOk = Slots.filesOk₀ Scope extra)
-    (W : PEParams) (st : PqParty) (b : PreKeyBundleFields) (t : List.Vector (BitVec 8) initiateTapeLen)
-    (hSc : ∀ x g, st.session = some (x, g) →
-      Scope (E2E.Record.toRecord (E2E.RecordX.extrasOf fun _ => x) g))
-    (hex : extra (runFiles (pqInitInputs W st b t)))
-    (hcap : (Slots.pqSessBytes st).length ≤ fileCapBytes) :
-    RunFilesOk S (pqInitInputs W st b t) :=
-  Slots.runFilesOk_of_peer (.init (partyAddress st.party.other) bundleDir) rfl rfl
-    (RunRefine.ownAddr_pqInit W st b t)
-    (hS ▸ ⟨Slots.filesOkPeer_pqInit W st b t hSc hcap, Slots.distinctSid_party st.party, hex⟩)
-
-theorem runFilesOk_pqSend {S : RunSem} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {extra : FsFiles → Prop} (hS : S.filesOk = Slots.filesOk₀ Scope extra)
-    (W : PEParams) (st : PqParty) (m : List (BitVec 8)) (r : List.Vector (BitVec 8) 64)
-    (hSc : ∀ x g, st.session = some (x, g) →
-      Scope (E2E.Record.toRecord (E2E.RecordX.extrasOf fun _ => x) g))
-    (hex : extra (runFiles (pqSendInputs W st m r)))
-    (hcap : (Slots.pqSessBytes st).length ≤ fileCapBytes) :
-    RunFilesOk S (pqSendInputs W st m r) :=
-  Slots.runFilesOk_of_peer (.send (partyAddress st.party.other)) rfl rfl
-    (RunRefine.ownAddr_pqSend W st m r)
-    (hS ▸ ⟨Slots.filesOkPeer_pqSend W st m r hSc hcap, Slots.distinctSid_party st.party, hex⟩)
-
-theorem runFilesOk_pqRecv {S : RunSem} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {extra : FsFiles → Prop} (hS : S.filesOk = Slots.filesOk₀ Scope extra)
-    (W : PEParams) (st : PqParty) (c : List (BitVec 8)) (rc : BitVec 256)
-    (hSc : ∀ x g, st.session = some (x, g) →
-      Scope (E2E.Record.toRecord (E2E.RecordX.extrasOf fun _ => x) g))
-    (hex : extra (runFiles (pqRecvInputs W st c rc)))
-    (hcap : (Slots.pqSessBytes st).length ≤ fileCapBytes) :
-    RunFilesOk S (pqRecvInputs W st c rc) :=
-  Slots.runFilesOk_of_peer (.recv (partyAddress st.party.other)) rfl rfl
-    (RunRefine.ownAddr_pqRecv W st c rc)
-    (hS ▸ ⟨Slots.filesOkPeer_pqRecv W st c rc hSc hcap, Slots.distinctSid_party st.party, hex⟩)
 
 end CryptoVerification.SignalSession.Cli.RunProofs.Agree

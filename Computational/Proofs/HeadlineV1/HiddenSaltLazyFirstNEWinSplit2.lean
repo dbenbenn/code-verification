@@ -9,10 +9,20 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEWinSplit
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEWinSplit -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.StateNorm
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.StateInv -- shake: keep
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv -- shake: keep
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv -- shake: keep
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatementsShort
+import Computational.Proofs.CryptoGames.SM.GameProofDefs
+import Computational.Proofs.CryptoGames.SM.PartyProofDefs
+import Computational.Proofs.CryptoGames.SM.Theorem1.Lemma17Aux
+import LibsignalBinary.Proofs.SpqrV1Sync.InSyncEpoch
+import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDefs
+import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
+import LibsignalBinary.Specifications.CryptoGames.Party
+import LibsignalBinary.Specifications.CryptoGames.SM.Game
 
 /-!
 # Corruption-Window Unpacking and Origin Invariant Preservation
@@ -21,11 +31,9 @@ Unpacks the `fwdCPure` probe flag into deliver-time corruption-window constraint
 per-oracle preservation of `FirstNEInTransOriginInv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec ENNReal MeasureTheory
@@ -567,7 +575,7 @@ theorem party_eq_receiverOf_or_senderOf (P : Party) (t : ℕ) :
   cases P <;> split_ifs <;> simp
 
 /-- Every recorded corruption `(P, e) ∈ s.corrs` occurred at an epoch `e ≤ s.epoch P`. -/
-def CorrsLeEpoch {St Msg C : Type} (s : SM.GameState St Msg C) : Prop :=
+@[expose] def CorrsLeEpoch {St Msg C : Type} (s : SM.GameState St Msg C) : Prop :=
   ∀ P e, (P, e) ∈ s.corrs → e ≤ s.epoch P
 
 theorem epMgmt_false_epoch_idx_of_epMgmt_some {St Msg C : Type} {s s₁ : SM.GameState St Msg C}

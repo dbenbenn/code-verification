@@ -9,18 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwnedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwnedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwnedPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwnedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwned.Common -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
 
 /-!
 # Budget-Threaded Plain and String-Carrying `SignalProtocolError` Drop Helpers
@@ -29,7 +35,7 @@ Proves exact-stack `[LibsignalPlacement]` budget-threaded drop contracts for pla
 `withString` variants of `SignalProtocolError`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -74,7 +80,7 @@ section DropSpeOwnedPlacedBudgetHelpers
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
-def freeOnlyPool {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def freeOnlyPool {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) (s : State) : SepProp :=
   ∃∗ evs : List AllocEvent,
     ⌜FreeOnlyEvs evs⌝ ∗ A.pool lim (M.stepEvents evs st) s
@@ -139,7 +145,7 @@ private theorem plain_tbl_weaken_placed (tbl a : BitVec 64) (i : Nat) (w : BitVe
       ((a ↦₆₄ w) ∗ memRegion (a + 8#64) 40 ∗ ((tbl + BitVec.ofNat 64 i) ↦₈ᵣ 0x1b#8) ∗ rest) :=
   spe_plain_tbl_pre_weakenX a i w hw (cliSpeJumpTable_byte_placed tbl i 0x1b#8 heq hlen) rest
 
-def dropSpePlainRawSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def dropSpePlainRawSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec ((BitVec 64 × Nat) × M.σ) where
   pre := fun (⟨a, i⟩, st) s =>
@@ -296,7 +302,7 @@ theorem cliDropSpeOwned_plain_placed_ok_x [LibsignalPlacement]
   · exact cliDropSpeOwned_plainTag_hi_placed_ok_x h3 a st
 
 /-! ## String-carrying (`withString`) error drop helpers -/
-def dropSpeWithStrRawSpecXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def dropSpeWithStrRawSpecXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec ((BitVec 64 × Nat) × M.σ) where
   pre := fun (⟨a, i⟩, st) s =>
@@ -602,7 +608,7 @@ private theorem cliDropSpeOwned_withStr2_placed_ok_x [LibsignalPlacement]
       refine SepWP.weaken_pre (Entails.trans (Entails.of_eq (by sep_ac_rfl)) (spe_tail_dealloc_postX _ _ s0.sp)) ?_
       wp_done
 
-def dropSpeWithStrSpecXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def dropSpeWithStrSpecXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec ((BitVec 64 × { i : Nat // StrSpeTag i }) × M.σ) where
   pre := fun (⟨a, ⟨i, hi⟩⟩, st) s =>

@@ -13,7 +13,7 @@ import all Init.Data.Repr
 public import LibsignalBinary.Specifications.SignalSession.PqDir
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Agree.CommitEval
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,37 +9,51 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.CliCBudget
-public import LibsignalBinary.Proofs.RecordCodecs.AssemblyBudget
-public import LibsignalBinary.Proofs.RecordCodecs.SignedAssemblyBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.DecPkPollKitsFdsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkCliPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdKeyPairPollPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdRegIdPollPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KemDeserializeSlotPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.DropSpeWordPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePollPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPollPlacedBudgetFd
+import LibsignalBinary.Proofs.CliCBudget
+import LibsignalBinary.Proofs.RecordCodecs.AssemblyBudget
+import LibsignalBinary.Proofs.RecordCodecs.SignedAssemblyBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudgetFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.DecPkPollKitsFdsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkCliPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkCliPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchPlacedBudgetFd -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdKeyPairPollPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdRegIdPollPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KemDeserializeSlotPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.DropSpeWordPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePollPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPollPlacedBudgetFd
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPollPlacedBudgetFdSat
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPollPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPollPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPollPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePollPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPollPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollXPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPollPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPollPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPollPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePollPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXCliPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPollPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollXPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Reserve11PlacedBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXCliPlaced
 
 /-!
 # `CliDecPkPollKitsPlacedOkFds` Instantiation from `CliRunHooksBundleFd`
@@ -50,7 +64,7 @@ Discharges `CliDecPkPollKitsPlacedOkFds` from `CliRunHooksBundleFd`, `CliGhostAl
 via `cliDecPkPollKitsPlacedOkFds_of_polls`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

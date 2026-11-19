@@ -1201,7 +1201,7 @@ structure MallocngCostModelSound (M : AllocCostModel) (I : MallocngCostModelIfac
 
 Non-`emp` consistency check for `AllocCostModel` and `RustCliAllocBudget`. -/
 
-private noncomputable def witnessCostModel : AllocCostModel where
+private def witnessCostModel : AllocCostModel where
   σ := Nat × Nat
   init := (0, 0)
   step := fun ev (live, cum) =>

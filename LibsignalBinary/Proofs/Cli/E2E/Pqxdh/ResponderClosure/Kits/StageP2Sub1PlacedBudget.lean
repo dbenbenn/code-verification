@@ -12,16 +12,16 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1Placed
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA1PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
@@ -30,6 +30,10 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2bAux
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA1Placed
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContracts
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Substage P2.1 and Call Combinators
@@ -39,7 +43,7 @@ introducers, `P2Sub1Env`, and budget-threaded placed Substage P2.1 (`+0x0868 →
 Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -259,11 +263,11 @@ theorem p2_call_rocl_nopanic_steps_frame_placed [LibsignalPlacement] {α : Type}
       StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem →
       SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
     (hpan_false : ∀ sf, spec.onPanic x s sf = ⌜False⌝ := by
-      intro _; first | rfl | dsimp only [withVmPreserved, StoreKit.withLsLogOff, withLogOff, withEnvPre]; rfl)
+      intro _; first | rfl | dsimp only [withVmPreserved, StoreKit.withLsLogOff, withEnvPre]; rfl)
     (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by
-      intro _ _; first | rfl | dsimp only [withVmPreserved, StoreKit.withLsLogOff, withLogOff, withEnvPre]; rfl)
+      intro _ _; first | rfl | dsimp only [withVmPreserved, StoreKit.withLsLogOff, withEnvPre]; rfl)
     (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by
-      intro _; first | rfl | dsimp only [withVmPreserved, StoreKit.withLsLogOff, withLogOff, withEnvPre]; rfl) :
+      intro _; first | rfl | dsimp only [withVmPreserved, StoreKit.withLsLogOff, withEnvPre]; rfl) :
     SepWPp prog ret s P Q Qp := by
   have hmid :
       SepWPp prog ret_pc s P
@@ -323,11 +327,11 @@ theorem p2_call_lscl_nopanic_steps_frame_placed [LibsignalPlacement] {α : Type}
       StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem →
       SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
     (hpan_false : ∀ sf, spec.onPanic x s sf = ⌜False⌝ := by
-      intro _; first | rfl | dsimp only [withVmPreserved, StoreKit.withLsLogOff, withLogOff, withEnvPre]; rfl)
+      intro _; first | rfl | dsimp only [withVmPreserved, StoreKit.withLsLogOff, withEnvPre]; rfl)
     (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by
-      intro _ _; first | rfl | dsimp only [withVmPreserved, StoreKit.withLsLogOff, withLogOff, withEnvPre]; rfl)
+      intro _ _; first | rfl | dsimp only [withVmPreserved, StoreKit.withLsLogOff, withEnvPre]; rfl)
     (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by
-      intro _; first | rfl | dsimp only [withVmPreserved, StoreKit.withLsLogOff, withLogOff, withEnvPre]; rfl) :
+      intro _; first | rfl | dsimp only [withVmPreserved, StoreKit.withLsLogOff, withEnvPre]; rfl) :
     SepWPp prog ret s P Q Qp :=
   p2_call_rocl_nopanic_steps_frame_placed hcrl
     (StoreKit.subroutine_ok_rocl_of_withLsCodeRoLoaded
@@ -475,7 +479,7 @@ theorem StageP2PureCalleesPlaced_to_4K [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Deterministic event list corresponding to `BoxAllocEnv boxSize`:
 `[]` when `boxSize = 0`, `rustAllocEvents boxSize 8` when `0 < boxSize`. -/
-def boxAllocEvents (boxSize : Nat) : List AllocEvent :=
+@[expose] def boxAllocEvents (boxSize : Nat) : List AllocEvent :=
   if boxSize = 0 then [] else rustAllocEvents boxSize 8
 
 theorem boxAllocEnv_iff_eq (boxSize : Nat) (evs : List AllocEvent) :
@@ -498,11 +502,11 @@ theorem fitsEnv_boxAllocEnv_iff {M : AllocCostModel} {lim : BudgetLimits} {st : 
 /-- Exact deterministic allocator event list of Substage P2.1 (`+0x0868 -> +0x0f14`):
 `PublicKey::serialize` (`33` B align `1`), `__rust_dealloc(33, 1)`, and `spkKit.getShim`
 (`boxAllocEvents spkBoxSize`). -/
-def p2Sub1Events (spkBoxSize : Nat) : List AllocEvent :=
+@[expose] def p2Sub1Events (spkBoxSize : Nat) : List AllocEvent :=
   publicKeySerializeEvents ++ rustDeallocEvents 33 1 ++ boxAllocEvents spkBoxSize
 
 /-- Exact allocator event envelope of Substage P2.1 (`+0x0868 -> +0x0f14`). -/
-def P2Sub1Env (spkBoxSize : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def P2Sub1Env (spkBoxSize : Nat) (evs : List AllocEvent) : Prop :=
   evs = p2Sub1Events spkBoxSize
 
 theorem fitsEnv_p2Sub1Env_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}

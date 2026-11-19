@@ -442,8 +442,8 @@ def driveFrameProc (t : Expr) (hook : FrameHook) : TacticM Unit := do
 /-- Find the ghost argument `x` of the call rule used in the proof `prf` (for `wp_apply?`). -/
 def findGhost? (prf : Expr) : MetaM (Option Expr) := do
   let callRules := #[``SepWP.call_subroutine, ``SepWP.call_subroutine_frame,
-    ``SepWP.call_subroutine_frame_frozen, ``SepWP.call_sep, ``SepWP.call_subroutine_frame_auto,
-    ``SepWPp.call_wpp, ``SepWPp.call_wpp_frozen, ``SepWPp.call_sep]
+    `ProofLib.SepWP.call_subroutine_frame_frozen, ``SepWP.call_sep, ``SepWP.call_subroutine_frame_auto,
+    ``SepWPp.call_wpp, `ProofLib.SepWPp.call_wpp_frozen, ``SepWPp.call_sep]
   let some app := prf.find? fun e => callRules.any (e.isAppOf ·) | return none
   let .const n _ := app.getAppFn | return none
   let info ← getConstInfo n

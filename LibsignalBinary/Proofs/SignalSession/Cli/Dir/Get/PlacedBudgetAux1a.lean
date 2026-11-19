@@ -9,16 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Envelopes, Epilogues, and Cache-Hit Exit for `Dir::get`
@@ -27,7 +35,7 @@ Defines the `DirGetEnv` allocator event envelopes matching `DirGhost.get`, `VmPr
 `bcmp` and `memcpy`, and the budget-threaded epilogues and cache-hit exit on Block 589.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -79,13 +87,13 @@ attribute [-arm64_norm]
 /-- Path-construction `AllocEvent` envelope on a cache miss in `Dir::get`:
     clones `name` (`allocBytes1Events name`) when `dirPath = []`, and runs `PathEnv dirPath name`
     when `dirPath ≠ []`. -/
-def DirGetPathEnv (PathEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
+@[expose] def DirGetPathEnv (PathEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (dirPath name : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   if dirPath = [] then evs = allocBytes1Events name else PathEnv dirPath name evs
 
 /-- Post-`read_file` error-allocation `AllocEvent` envelope on a cache miss in `Dir::get`:
     `[]` on `.ok _` and `rustAllocEvents 22 1` (`"file could not be read"`) on `.error ()`. -/
-def DirGetErrAllocEnv (rd : ReadRule) (F0 : FsFiles) (pth : List (BitVec 8))
+@[expose] def DirGetErrAllocEnv (rd : ReadRule) (F0 : FsFiles) (pth : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   match rd F0 pth with
   | .ok _ => evs = []
@@ -93,13 +101,13 @@ def DirGetErrAllocEnv (rd : ReadRule) (F0 : FsFiles) (pth : List (BitVec 8))
 
 /-- Post-`read_file` `AllocEvent` envelope including optional `FreeOnlyEvs` temporary path-buffer
     deallocation. -/
-def DirGetAfterReadEnv (rd : ReadRule) (F0 : FsFiles) (pth : List (BitVec 8)) :
+@[expose] def DirGetAfterReadEnv (rd : ReadRule) (F0 : FsFiles) (pth : List (BitVec 8)) :
     List AllocEvent → Prop :=
   SeqEnv (DirGetErrAllocEnv rd F0 pth) FreeOnlyEvs
 
 /-- Cache-miss `AllocEvent` envelope of `Dir::get`: `DirGetPathEnv` followed by `ReadEnv` and
     `DirGetAfterReadEnv`. -/
-def DirGetMissEnv
+@[expose] def DirGetMissEnv
     (PathEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (rd : ReadRule) (F0 : FsFiles) (dir : DirGhost) (name : List (BitVec 8)) :
@@ -111,7 +119,7 @@ def DirGetMissEnv
 /-- Composed `AllocEvent` envelope of `Dir::get` (`Block 589`), matching `DirGhost.get`:
     on a cache hit `d.changed.find? (fun e => e.1 == name) = some e`, clones `e.2`
     (`allocBytes1Events e.2`); on a cache miss (`none`), runs `DirGetMissEnv`. -/
-def DirGetEnv
+@[expose] def DirGetEnv
     (PathEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (rd : ReadRule) (F0 : FsFiles) (d : DirGhost) (name : List (BitVec 8))
@@ -229,7 +237,7 @@ theorem memcpy_bytesAt_lscro_vm_ok_at_589 [LibsignalPlacement] {M : AllocCostMod
 
 /-! ## 3. Postcondition & Panic Helpers for `SpecsPlacedBudget.dirGetSpecPlaced` -/
 
-def dirGetPostQPlacedBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def dirGetPostQPlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)
@@ -240,7 +248,7 @@ def dirGetPostQPlacedBudget [LibsignalPlacement] {M : AllocCostModel}
       (sf.mem ⊨ (SpecsPlacedBudget.dirGetSpecPlaced rd pathOk A lim GetEnv stk).post (x, st0) s0 sf ∗ R)) ∧
     sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf
 
-def dirGetPanicQpPlacedBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def dirGetPanicQpPlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)

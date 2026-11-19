@@ -9,17 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmBytesPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmVarintPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Compose
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.KeyPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.BytesMerge6PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.TopPlacedBudgetAux
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmBytesPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmVarintPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Compose -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.KeyPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.BytesMerge6PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.TopPlacedBudgetAux -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushAPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.ArmChain
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.ArmChainHeap
+public import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipField.BranchesXBudgetAux
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWPlaced
 
 /-!
 # Budget-Threaded Placed Top-Level Inlined `SessionStructure::decode`
@@ -29,7 +39,7 @@ Assembles the `[LibsignalPlacement]` budget-threaded `LibsignalCodeRoLoaded` dec
 `OverPrevDecodePlacedStmt` contracts on Block `518` (`lsProg_518 ext`) under `RustCliAllocBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -712,31 +722,6 @@ private theorem subroutine_ok_withLsCodeRoLoaded_of_withLsCl [LibsignalPlacement
       rw [sepConj_assoc, satisfies_pure_sepConj] at hq
       exact hq.2)
 
-theorem overDecRecv_segB_cro_placed_of_alloc [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hAlloc : AllocContractsPlaced M A lim ext) :
-    ∀ (st : M.σ) (s0 s : State) (g : OverDecG) (v : SSGQ) (c : ChainG) (rest : List (BitVec 8)),
-      (GenFieldQ.base (.recv c)).Ok →
-      (GenFieldQ.base (.recv c)).Fresh v →
-      ((GenFieldQ.base (.recv c)).enc ++ rest) <:+ g.enc →
-      g.enc.length < 2 ^ 62 →
-      FitsEnv M lim st (OverDecRecvSegBEnv v.base.recv.length) →
-      LibsignalCodeRoLoaded lsmpl s.mem →
-      OverDecRegsPlaced ext s0 g 0x2310#64 s →
-      s.readReg64 .x0 = 0#64 →
-      SepWPp (lsProg_518 ext) ((blkPl_518).base + 0x2160#64) s
-        (overDecRecvPostMergeHeapPlBudget A lim st s g rest v c)
-        (fun sf P_f => ∃ evs : List AllocEvent,
-          OverDecRecvSegBEnv v.base.recv.length evs ∧
-          OverDecRegsPlaced ext s0 g 0x2160#64 sf ∧
-          (P_f ⊢ overDecHeapPlBudget A lim (M.stepEvents evs st) sf g rest
-            (v.apply (.base (.recv c)))))
-        (fun _ _ => False) :=
-  overDecRecv_segB_cro_placed_of_grow
-    (subroutine_ok_withLsCodeRoLoaded_of_withLsCl
-      (growOneChain_placed_ok_cl (callerProg := lsProg_518 ext) (growOneChain_placed_ok_x hAlloc)))
-
 private theorem recv_cells_pool_reassoc
     (c0 c1 c2 c3 c4 c5 c6 c7 c8 c9 pool m24 restF : SepProp) :
     (c0 ∗ c1 ∗ c2 ∗ c3 ∗ c4 ∗ c5 ∗ c6 ∗ c7 ∗ c8 ∗ c9 ∗ pool) ∗ (m24 ∗ restF) =
@@ -988,15 +973,5 @@ theorem overPrevDecode_cro_placed_of_hooks_chain5 [LibsignalPlacement] {M : Allo
     (bytes_merge_6_placed_ok_w_cro (callerProg := lsProg_518 ext)
       hshim halloc hrealloc hdealloc hmc hpanic_raw)
     hChain5
-
-/-- `ext`-quantified `[LibsignalPlacement]` budget-threaded `SessionStructure::decode`
-(`OverPrevDecodePlacedStmt A lim`). -/
-theorem overPrevDecode_placed_of_alloc_bm6w_chain5 [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hAlloc : ∀ ext, AllocContractsPlaced M A lim ext)
-    (hBM6W : ∀ ext, BytesMerge6Placed514OkExtW A lim ext)
-    (hChain5 : ∀ ext, ChainMerge5CroPlacedOkExt A lim ext) :
-    OverPrevDecodePlacedStmt A lim :=
-  fun ext => overPrevDecode_cro_placed_of_alloc_bm6w_chain5 (hAlloc ext) (hBM6W ext) (hChain5 ext)
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.TopPlacedBudget

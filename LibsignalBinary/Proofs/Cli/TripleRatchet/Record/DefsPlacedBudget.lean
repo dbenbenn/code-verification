@@ -10,12 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Seam States and Segment Specifications for CLI `try_decrypt_from_record`
@@ -25,7 +26,7 @@ callee contracts, checkpoint seam states (`V`, `M`, `F`, `J`), segment contracts
 composition on CLI Block `463`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -77,7 +78,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (
 
 /-- Budget-threaded `[LibsignalPlacement]` CLI `try_decrypt_with_state` contract (`allocFailedIn`
 dropped from `onPanic`). -/
-def tryDecryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tryDecryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) :
@@ -97,7 +98,7 @@ def tryDecryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded `[LibsignalPlacement]` CLI `try_decrypt_from_record` region contract
 (`allocFailedIn` dropped from `onPanic`). -/
-def recordDecryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def recordDecryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) :
@@ -117,7 +118,7 @@ def recordDecryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
       s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Seam `V` (`+0x69c` on Block `463`) with budget state `st` and `SeamBudget` for `FromVEnv tdEnv x G₁`. -/
-def VStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def VStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (x : RecordDecryptGhost) (st_init st : M.σ) (G₁ : SessionGhost)
@@ -127,7 +128,7 @@ def VStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A.atState lim st s) ctl x G₁ R s0 s
 
 /-- Seam `M` (`+0x7e4` on Block `463`) with budget state `st` and `SeamBudget` for `FromMEnv`. -/
-def MStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def MStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (x : RecordDecryptGhost) (st_init st : M.σ) (G₁ : SessionGhost)
@@ -137,7 +138,7 @@ def MStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A.atState lim st s) ctl x G₁ R s0 s
 
 /-- Seam `F` (`+0x850` on Block `463`) with budget state `st` and `SeamBudget` for `FromFEnv`. -/
-def FStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def FStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -148,7 +149,7 @@ def FStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     C (A.atState lim st s) ctl parse S x R s0 s
 
 /-- Seam `J` (`+0x1e8c` on Block `463`) with budget state `st` and `SeamBudget` for `FreeOnlyEvs`. -/
-def JStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def JStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -160,7 +161,7 @@ def JStatePlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## Segment Specifications and Composition -/
 
-def SegClonePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegClonePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -186,7 +187,7 @@ def SegClonePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
          regionOutcome (recordDecryptPlacedSpec C A lim ctl parse S tdEnv)
            recExitPlaced (x, st_init) R s0 s')
 
-def SegDecryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegDecryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -212,7 +213,7 @@ def SegDecryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
          regionOutcome (recordDecryptPlacedSpec C A lim ctl parse S tdEnv)
            recExitPlaced (x, st_init) R s0 s')
 
-def SegMismatchPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegMismatchPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -230,7 +231,7 @@ def SegMismatchPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
          regionOutcome (recordDecryptPlacedSpec C A lim ctl parse S tdEnv)
            recExitPlaced (x, st_init) R s0 s')
 
-def SegTailPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegTailPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -248,7 +249,7 @@ def SegTailPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
          regionOutcome (recordDecryptPlacedSpec C A lim ctl parse S tdEnv)
            recExitPlaced (x, st_init) R s0 s')
 
-def SegExitPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SegExitPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -333,7 +334,7 @@ theorem recordDecrypt_placed_region_ok_of_seams [LibsignalPlacement] {M : AllocC
     · exact ⟨s'', hst'.trans hst'', hout⟩
   · exact ⟨s', hst', hout⟩
 
-def SegDecryptFullPlacedSpec [CryptoVerification.LibsignalFullPlacement] {M : AllocCostModel}
+@[expose] def SegDecryptFullPlacedSpec [CryptoVerification.LibsignalFullPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -357,7 +358,7 @@ def SegDecryptFullPlacedSpec [CryptoVerification.LibsignalFullPlacement] {M : Al
          regionOutcome (recordDecryptPlacedSpec C A lim ctl parse S tdEnv)
            recExitPlaced (x, st_init) R s0 s')
 
-def SegMismatchFullPlacedSpec [CryptoVerification.LibsignalFullPlacement] {M : AllocCostModel}
+@[expose] def SegMismatchFullPlacedSpec [CryptoVerification.LibsignalFullPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)

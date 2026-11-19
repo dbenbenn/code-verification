@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerialize
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerialize -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.Proof
 import ProofLib.SepLogic.WPp
 
@@ -24,7 +23,7 @@ frame decomposition, and `messageDeserializeSpecX` for
 `Message.deserialize`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.MessageDeserialize
 
@@ -39,8 +38,6 @@ open CryptoVerification.SpqrV1.Top.EncodeVarint
 open CryptoVerification.SpqrV1.Top.MessageSerialize
 open CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation
 
-gen_decodes libsignalSessionCode_tree libsignalSessionBin [0x5a03c → 0x5a388]
-
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
@@ -50,17 +47,17 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-! ## 1. Overlapping Unaligned `q0`/`q1` Swap Helpers and 32-Byte Chunk Decomposition -/
 
 /-- Pack `b : BitVec 8` followed by the low 7 bytes of `w : BitVec 64` into a 64-bit word. -/
-def shiftWord (b : BitVec 8) (w : BitVec 64) : BitVec 64 :=
+@[expose] def shiftWord (b : BitVec 8) (w : BitVec 64) : BitVec 64 :=
   (w <<< 8) ||| b.zeroExtend 64
 
-def hiByte (w : BitVec 64) : BitVec 8 :=
+@[expose] def hiByte (w : BitVec 64) : BitVec 8 :=
   w.extractLsb' 56 8
 
 def loByte (u : BitVec 64) : BitVec 8 :=
   u.extractLsb' 0 8
 
 /-- Pack the high 7 bytes of `u : BitVec 64` followed by `b : BitVec 8` into a 64-bit word. -/
-def unshiftWord (u : BitVec 64) (b : BitVec 8) : BitVec 64 :=
+@[expose] def unshiftWord (u : BitVec 64) (b : BitVec 8) : BitVec 64 :=
   (u >>> 8) ||| (b.zeroExtend 64 <<< 56)
 
 @[simp]
@@ -103,7 +100,7 @@ theorem shiftWord_byte_swap (a : BitVec 64) (c4 : BitVec 8) (c5 : BitVec 64) (b 
   rw [word64_byte_swap, loByte_shiftWord]
 
 /-- Assemble the 32-byte list corresponding to `(c0, c1, c2, c3, c4, c5, c6)`. -/
-def chunk32Bytes (c0 : BitVec 32) (c1 : BitVec 16) (c2 : BitVec 8)
+@[expose] def chunk32Bytes (c0 : BitVec 32) (c1 : BitVec 16) (c2 : BitVec 8)
     (c3 : BitVec 64) (c4 : BitVec 8) (c5 c6 : BitVec 64) : List (BitVec 8) :=
   unpack32 c0 ++ unpack16 c1 ++ [c2] ++ unpack64 c3 ++ [c4] ++ unpack64 c5 ++ unpack64 c6
 
@@ -115,7 +112,7 @@ theorem chunk32Bytes_length (c0 : BitVec 32) (c1 : BitVec 16) (c2 : BitVec 8)
 
 /-- 7-atom decomposition of 32 bytes at `p` (`4 + 2 + 1 + 8 + 1 + 8 + 8 = 32` bytes), aligned
     with the loads/stores in `<Message>::deserialize` (`0x5f65c..0x5f6b0`). -/
-def chunk32AtomsAt (p : BitVec 64) (c0 : BitVec 32) (c1 : BitVec 16) (c2 : BitVec 8)
+@[expose] def chunk32AtomsAt (p : BitVec 64) (c0 : BitVec 32) (c1 : BitVec 16) (c2 : BitVec 8)
     (c3 : BitVec 64) (c4 : BitVec 8) (c5 c6 : BitVec 64) : SepProp :=
   (p ↦₃₂ c0) ∗ ((p + 4#64) ↦₁₆ c1) ∗ ((p + 6#64) ↦₈ c2) ∗
     ((p + 7#64) ↦₆₄ c3) ∗ ((p + 15#64) ↦₈ c4) ∗
@@ -199,7 +196,7 @@ abbrev messageDeserializeStackX : Nat := 0x90 + extHookStack
     - `+0x10..+0x20` (`16B`): `q0 : BitVec 128` whose low byte `BitVec.truncate 8 q0` is `spqrErrorTag err`
     - `+0x20..+0x28` (`8B`): `w2 : BitVec 64`
     - `+0x28..+0x30` (`8B`): `memRegion (out + 0x28#64) 8` -/
-def messageErrorAt (out : BitVec 64) (err : Error) : SepProp :=
+@[expose] def messageErrorAt (out : BitVec 64) (err : Error) : SepProp :=
   ∃∗ q0 : BitVec 128, ∃∗ w2 : BitVec 64,
     ⌜BitVec.truncate 8 q0 = spqrErrorTag err⌝ ∗
     memRegion out 8 ∗
@@ -211,7 +208,7 @@ def messageErrorAt (out : BitVec 64) (err : Error) : SepProp :=
 
 /-- Representation of `Except Error (Message P)` (`Result<Message, spqr::Error>`, `48` bytes) at
     `out`. -/
-def messageResultAt (P : PolyApi) (out : BitVec 64) : Except Error (Message P) → SepProp
+@[expose] def messageResultAt (P : PolyApi) (out : BitVec 64) : Except Error (Message P) → SepProp
   | .ok m => messageAt P out m
   | .error err => messageErrorAt out err
 
@@ -229,7 +226,7 @@ structure MessageDeserializeCall where
 /-- Contract of `<spqr::v1::chunked::states::Message>::deserialize` (`0x5f434`, 212
     instructions) at `messageDeserializeStackX`, related to `Message.deserialize P x.epoch
     x.fromBytes`. -/
-def messageDeserializeSpecX (P : PolyApi) (A : RustAlloc) : Spec MessageDeserializeCall where
+@[expose] def messageDeserializeSpecX (P : PolyApi) (A : RustAlloc) : Spec MessageDeserializeCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧
       s.readReg64 .x1 = x.epoch ∧
@@ -248,20 +245,6 @@ def messageDeserializeSpecX (P : PolyApi) (A : RustAlloc) : Spec MessageDeserial
     stackAt s0.sp messageDeserializeStackX
   onPanic := fun _ s0 sf =>
     ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- Callee-contract predicate for `<spqr::v1::chunked::states::Message>::deserialize`
-    (`0x5f434`). -/
-def MessageDeserializeOkX (P : PolyApi) (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr messageDeserializeName)
-    ((messageDeserializeSpecX P A).inImage img)
-
-/-! ## 3. Output Buffer, Stack Frame, and Error/Success Folding Helpers -/
-
-theorem msgDeserialize_fnOff :
-    libsignalSessionCode.fnOff messageDeserializeName = 0x5a03c :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl) libsignalSessionCode_fnOff_0x5a03c
 
 theorem memRegion_48_err_split (out : BitVec 64) :
     memRegion out 48 =
@@ -390,7 +373,7 @@ theorem memRegion_48_ok_split (out : BitVec 64) :
     ProofLib.memRegion_two (out + 0x2a#64)]
 
 /-- Raw 48-byte layout produced by the shared `Ok` epilogue (`0x5f680..0x5f6c8`). -/
-def rawOkOutAt (out epoch : BitVec 64) (tag : BitVec 8)
+@[expose] def rawOkOutAt (out epoch : BitVec 64) (tag : BitVec 8)
     (c0 : BitVec 32) (c1 : BitVec 16) (c2 : BitVec 8)
     (c3 : BitVec 64) (c4 : BitVec 8) (c5 c6 : BitVec 64) (idx16 : BitVec 16) : SepProp :=
   (out ↦₆₄ epoch) ∗
@@ -462,7 +445,7 @@ theorem rawOkOutAt_entails_chunk (P : PolyApi) (out epoch : BitVec 64) (tag : Bi
   exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_left hm1))
 
 /-- Untouched stack regions in `<Message>::deserialize`'s `144`-byte frame plus `extHookStack`. -/
-def msgDeserFramePad (sp0 : BitVec 64) : SepProp :=
+@[expose] def msgDeserFramePad (sp0 : BitVec 64) : SepProp :=
   memRegion (sp0 - 144#64) 8 ∗
     memRegion (sp0 - 127#64) 7 ∗
     memRegion (sp0 - 87#64) 11 ∗
@@ -471,7 +454,7 @@ def msgDeserFramePad (sp0 : BitVec 64) : SepProp :=
     stackAt (sp0 - 144#64) extHookStack
 
 /-- Scratch cells in `<Message>::deserialize`'s `144`-byte frame. -/
-def msgDeserScratchAt (sp0 : BitVec 64) (f08 : BitVec 64) (f10 : BitVec 8) (f18 : BitVec 64)
+@[expose] def msgDeserScratchAt (sp0 : BitVec 64) (f08 : BitVec 64) (f10 : BitVec 8) (f18 : BitVec 64)
     (st3 : BitVec 64) (st4 : BitVec 8)
     (st5 st6 : BitVec 64) (st0 : BitVec 32) (st1 : BitVec 16) (fb0 : BitVec 8)
     (f50 f58 : BitVec 64) : SepProp :=
@@ -485,7 +468,7 @@ def msgDeserScratchAt (sp0 : BitVec 64) (f08 : BitVec 64) (f10 : BitVec 8) (f18 
     ((sp0 - 64#64) ↦₆₄ f50) ∗ ((sp0 - 56#64) ↦₆₄ f58)
 
 /-- Callee-saved register save slots `[sp0 - 48, sp0)`. -/
-def msgDeserSavedAt (sp0 s29 s30 s22 s21 s20 s19 : BitVec 64) : SepProp :=
+@[expose] def msgDeserSavedAt (sp0 s29 s30 s22 s21 s20 s19 : BitVec 64) : SepProp :=
   ((sp0 - 48#64) ↦₆₄ s29) ∗ ((sp0 - 40#64) ↦₆₄ s30) ∗
     ((sp0 - 32#64) ↦₆₄ s22) ∗ ((sp0 - 24#64) ↦₆₄ s21) ∗
     ((sp0 - 16#64) ↦₆₄ s20) ∗ ((sp0 - 8#64) ↦₆₄ s19)
@@ -632,7 +615,7 @@ theorem pointsTo64_entails_byte_memRegion7 (sp0 : BitVec 64) (w : BitVec 64) :
 open CryptoVerification.LibsignalSpqr
 
 /-- Construct the chunked `Message P` for `tag ∈ {1#8, 2#8, 3#8, 5#8, 6#8}`. -/
-def mkChunkMsg (P : PolyApi) (epoch : Epoch) (tag : BitVec 8) (c : P.Chunk) : Message P :=
+@[expose] def mkChunkMsg (P : PolyApi) (epoch : Epoch) (tag : BitVec 8) (c : P.Chunk) : Message P :=
   if tag = 1#8 then { epoch := epoch, payload := .hdr c }
   else if tag = 2#8 then { epoch := epoch, payload := .ek c }
   else if tag = 3#8 then { epoch := epoch, payload := .ekCt1Ack c }
@@ -641,13 +624,13 @@ def mkChunkMsg (P : PolyApi) (epoch : Epoch) (tag : BitVec 8) (c : P.Chunk) : Me
 
 /-- Law that `P.chunkIndex` and `P.chunkData` are projections of `P.mkChunk` (satisfied
     definitionally by `spqrPolyApi`). -/
-def PolyApiChunkLaw (P : PolyApi) : Prop :=
+@[expose] def PolyApiChunkLaw (P : PolyApi) : Prop :=
   ∀ (idx : BitVec 16) (d : List.Vector (BitVec 8) 32),
     P.chunkIndex (P.mkChunk idx d) = idx ∧ P.chunkData (P.mkChunk idx d) = d
 
 /-- Continuation of `Message.deserialize` after decoding the `index` varint for a chunk message
     tag. -/
-def deserAfterVarint (P : PolyApi) (epoch : Epoch) (tag : BitVec 8)
+@[expose] def deserAfterVarint (P : PolyApi) (epoch : Epoch) (tag : BitVec 8)
     (res : Option (BitVec 64 × List (BitVec 8))) : Except Error (Message P) :=
   match res with
   | none => .error .msgDecode
@@ -708,7 +691,7 @@ theorem rawOkOutAt_entails_mkChunkMsg (P : PolyApi) (hP : PolyApiChunkLaw P)
   }
 
 /-- Remainder of `fromPtr ↦ₛ fromBytes` when `b` at `fromPtr + pre.length` is focused. -/
-def fromByteFrame (fromPtr : BitVec 64) (pre post : List (BitVec 8)) : SepProp :=
+@[expose] def fromByteFrame (fromPtr : BitVec 64) (pre post : List (BitVec 8)) : SepProp :=
   (fromPtr ↦ₛ pre) ∗ ((fromPtr + BitVec.ofNat 64 pre.length + 1#64) ↦ₛ post)
 
 theorem fromBytes_expose_byte (fromPtr : BitVec 64) (fromBytes pre post : List (BitVec 8))
@@ -730,13 +713,13 @@ theorem fromBytes_unexpose_byte (fromPtr : BitVec 64) (fromBytes pre post : List
   exact Entails.of_eq (by ac_rfl)
 
 /-- Remainder of `fromPtr ↦ₛ fromBytes` when the 32-byte chunk payload is focused. -/
-def fromChunk32Frame (fromPtr : BitVec 64) (tag : BitVec 8) (pre₁ rest2 : List (BitVec 8)) : SepProp :=
+@[expose] def fromChunk32Frame (fromPtr : BitVec 64) (tag : BitVec 8) (pre₁ rest2 : List (BitVec 8)) : SepProp :=
   (fromPtr ↦ₛ (tag :: pre₁)) ∗
     ((fromPtr + BitVec.ofNat 64 (tag :: pre₁).length + 32#64) ↦ₛ rest2.drop 32)
 
 /-- 7-atom decomposition of 32 bytes at `x10 + 2#64`, written with offsets directly from `x10`
     (`+2, +6, +8, +9, +17, +18, +26`) matching `0x5f65c..0x5f66c`. -/
-def chunk32AtX10 (x10 : BitVec 64) (c0 : BitVec 32) (c1 : BitVec 16) (c2 : BitVec 8)
+@[expose] def chunk32AtX10 (x10 : BitVec 64) (c0 : BitVec 32) (c1 : BitVec 16) (c2 : BitVec 8)
     (c3 : BitVec 64) (c4 : BitVec 8) (c5 c6 : BitVec 64) : SepProp :=
   ((x10 + 2#64) ↦₃₂ c0) ∗ ((x10 + 6#64) ↦₁₆ c1) ∗ ((x10 + 8#64) ↦₈ c2) ∗
     ((x10 + 9#64) ↦₆₄ c3) ∗ ((x10 + 17#64) ↦₈ c4) ∗
@@ -785,7 +768,7 @@ theorem fromBytes_unexpose_chunk32 (fromPtr : BitVec 64) (fromBytes pre₁ rest2
     pointsToBytes_chunk32Bytes_eq, haddr, chunk32AtomsAt_eq_chunk32AtX10, ← haddr]
   exact Entails.of_eq (by ac_rfl)
 
-def rawOutBufAt (out : BitVec 64) (o0 : BitVec 64) (o8 o9 : BitVec 8)
+@[expose] def rawOutBufAt (out : BitVec 64) (o0 : BitVec 64) (o8 o9 : BitVec 8)
     (oc0 : BitVec 32) (oc1 : BitVec 16) (oc2 : BitVec 8)
     (oc3 : BitVec 64) (oc4 : BitVec 8) (oc5 oc6 : BitVec 64)
     (o2a : BitVec 16) : SepProp :=

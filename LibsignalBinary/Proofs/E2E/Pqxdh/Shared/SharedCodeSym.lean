@@ -9,14 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
-import ProofLib.GenPlacedFetches
+public import ProofLib.GenPlacedFetches
 import ProofLib.Hoare.Hooks
 import ProofLib.SepLogic.WPFrozen
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+meta import GeneratedLean.LibsignalSessionPlacedObjShard10
+meta import GeneratedLean.LibsignalSessionPlacedObjShard2
+meta import GeneratedLean.LibsignalSessionPlacedObjShard31
+meta import LibsignalBinary.Proofs.Placed.BlocksTreeDefs
+import LibsignalBinary.Proofs.Placed.BlocksTreeDefs
 
 /-!
 # Relocatable Per-Block Fetches and Cross-Block Transfers for `Shared`
@@ -235,10 +241,12 @@ private meta def elabGenLsBlkShared : CommandElab := fun stx => do
             (full_block_placeable $idxStx:num (by decide))
       ))
       elabCommand (← `(command|
+        -- noncomputable: the generated `blkLib_*` constants have no compiled code (added with `addDecl` only); compiling this def panics in LCNF.ExplicitBoxing
         noncomputable def $blkPCId:ident [LibsignalFullPlacement] : Program :=
           ($blkLibId:ident).program $blkPlId:ident
       ))
       elabCommand (← `(command|
+        -- noncomputable: the generated `blkLib_*` constants have no compiled code (added with `addDecl` only); compiling this def panics in LCNF.ExplicitBoxing
         noncomputable abbrev $lsProgId:ident [LibsignalFullPlacement] (H : LibsignalHooks) : Program :=
           ($blkPCId:ident).rebase ($blkPlId:ident).base H
       ))
@@ -264,10 +272,12 @@ private meta def elabGenLsBlkShared : CommandElab := fun stx => do
             (LibsignalPlacement.block_placeable $idxStx:num (by decide) (by decide))
       ))
       elabCommand (← `(command|
+        -- noncomputable: the generated `blkLib_*` constants have no compiled code (added with `addDecl` only); compiling this def panics in LCNF.ExplicitBoxing
         noncomputable def $blkPCId:ident [LibsignalPlacement] : Program :=
           ($blkLibId:ident).program $blkPlId:ident
       ))
       elabCommand (← `(command|
+        -- noncomputable: the generated `blkLib_*` constants have no compiled code (added with `addDecl` only); compiling this def panics in LCNF.ExplicitBoxing
         noncomputable abbrev $lsProgId:ident [LibsignalPlacement] (H : LibsignalHooks) : Program :=
           ($blkPCId:ident).rebase ($blkPlId:ident).base H
       ))
@@ -589,7 +599,7 @@ private instance instIsLsBlockProg_blk0_shared [LibsignalPlacement] (H : Libsign
 /-- Look up the external hook at `lsρ sym` in any block `i`'s program `prog` (including mutated blocks). -/
 theorem ls_externAt?_any [LibsignalPlacement] {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
-    {sym : String} (hmem : sym ∈ libsignalSessionExterns := by decide) :
+    {sym : String} (hmem : sym ∈ libsignalHookedExterns := by decide) :
     prog.externAt? (lsρ sym) = H sym := by
   have heq : prog.externAt? = (libsignalSessionLib.blockProgram lsmpl 0 H).externAt? := by
     rw [hprog.eq_blockProgram]
@@ -604,7 +614,7 @@ theorem ls_externAt?_any [LibsignalPlacement] {prog : Program} {i : Nat}
 theorem ls_hook_ok_any [LibsignalPlacement] {α : Type} {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
     {sym : String} {spec : Spec α} (hsat : HookSat H sym spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide) :
+    (hmem : sym ∈ libsignalHookedExterns := by decide) :
     subroutine_ok prog (lsρ sym) spec := by
   obtain ⟨f, hf, hok⟩ := hsat
   exact subroutine_ok_of_hookOk ((ls_externAt?_any hmem).trans hf) hok
@@ -614,7 +624,7 @@ theorem ls_hook_ok_any [LibsignalPlacement] {α : Type} {prog : Program} {i : Na
 theorem ls_hook_ok_panics_any [LibsignalPlacement] {α : Type} {prog : Program} {i : Nat}
     {hooks : LibsignalHooks} [hprog : IsLsBlockProg prog i (Rust.withPanics hooks)]
     {sym : String} {spec : Spec α} (hsat : HookSat hooks sym spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide)
+    (hmem : sym ∈ libsignalHookedExterns := by decide)
     (hnp : Rust.isPanicSymbol sym = false := by decide) :
     subroutine_ok prog (lsρ sym) spec := by
   obtain ⟨f, hf, hok⟩ := hsat
@@ -636,7 +646,7 @@ theorem full_ls_subroutine_ok_of_block [LibsignalPlacement] {α : Type} {callerP
   have hblk0 := hcl0 j (by rw [libsignalSessionLib_blocks_length]; omega)
   have hQL : calleeProg.CodeLoaded s0.mem := by
     rw [hcallee_prog.eq_blockProgram]
-    rwa [Program.codeLoaded_iff] at hblk0 ⊢
+    rw [Program.codeLoaded_iff] at hblk0 ⊢; exact hblk0
   obtain ⟨sf, hstepsQ, hout, _⟩ := hcallee.no_fault_before_outcome x R s0 hpc hrun hpre hsp hQL
   have hext : ∀ pc, calleeProg.externAt? pc = callerProg.externAt? pc := fun pc => by
     rw [hcallee_prog.eq_blockProgram, hcaller.eq_blockProgram,

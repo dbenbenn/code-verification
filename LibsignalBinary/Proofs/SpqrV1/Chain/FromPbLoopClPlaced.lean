@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbLoop
-public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbJoinClPlaced
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbDecodes
+public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbLoop -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbJoinClPlaced
+import ProofLib.ProgramReflection.SortedFresh
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Code-Loaded Loop Error Cleanup Proofs for `<spqr::chain::Chain>::from_pb` (Block `364`)
@@ -23,7 +23,7 @@ Code-loaded `[LibsignalPlacement]` loop error-cleanup lemmas (`+380`, `+452`, `+
 `+780`) for Block `364`, threading `LibsignalCodeLoaded lsmpl` into `fromPb_join_err_cl_placed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,7 +38,7 @@ open CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation
 open CryptoVerification.SpqrV1.Top.ChainFrom
 open CryptoVerification.CodeLayout
 open CryptoVerification.SpqrV1.Layout.L36
-open FromPbDecodes
+
 
 set_option maxRecDepth 800000
 set_option maxHeartbeats 400000

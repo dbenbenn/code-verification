@@ -10,9 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.Defs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.Callees
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.Callees -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Shared `.rodata`, Cell Wrappers, and `RelocatableBlock` Helpers for Store Polls
@@ -21,21 +24,17 @@ Symbolic `.rodata` string witnesses (`ls_xref%`), 72-byte and 14-byte cell decom
 cell-oriented `Dir::get` / `dealloc` / `IdentityKeyPair::try_from` wrappers, and `RelocatableBlock`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
 
-noncomputable section
-
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.PollCommon
 
-open Arm64 ProofLib ProofLib.ProgramReflection ProofLib.ObjectLoad
-open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
+open Arm64 ProofLib ProofLib.ProgramReflection open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr CryptoVerification.LibsignalTripleRatchetRepr
-open CryptoVerification.LibsignalTripleRatchet hiding
-  stackAt_split_cells memRegion_eight allocFailedIn_of_eq memRegion_cells
+open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalPublicApi.StoreKit
 open CryptoVerification.CodeLayout CryptoVerification.SignalSession.Cli
 open CryptoVerification.SignalSession.Cli.RunProofs.Initiate
@@ -43,115 +42,8 @@ open CryptoVerification.SignalSession.Cli.RunProofs.Initiate.StoreDefs
 
 /-! ## Symbolic `.rodata` Addresses and Loading Witnesses -/
 
-abbrev idKpFileNameAddr (base : BitVec 64) : BitVec 64 :=
-  base + bv% (ls_xref%
-    (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}" + 36)
-    (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}" + 40))
-
-abbrev idRegIdFileNameAddr (base : BitVec 64) : BitVec 64 :=
-  base + bv% (ls_xref%
-    (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 40)
-    (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 44))
-
-abbrev idRegIdFileNameAddr2 (base : BitVec 64) : BitVec 64 :=
-  base + bv% (ls_xref%
-    (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 216)
-    (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 220))
-
-abbrev malformedFileStrAddr (base : BitVec 64) : BitVec 64 :=
-  base + bv% (ls_xref%
-    (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 156)
-    (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 160))
-
-theorem idRegIdFileNameAddr2_eq (base : BitVec 64) :
-    idRegIdFileNameAddr2 base = idRegIdFileNameAddr base := rfl
-
 theorem utf8_idKp_length : (utf8 "identity-key-pair").length = 17 := by decide +kernel
 theorem utf8_regId_length : (utf8 "registration-id").length = 15 := by decide +kernel
-
-set_option maxRecDepth 2000000 in
-theorem rodata_idKpFileName {img : Obj.Image} {s : State} {P : SepProp}
-    (himg : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s) (hP : s.mem ⊨ P) :
-    s.mem ⊨ (idKpFileNameAddr img.base ↦ᵣ utf8 "identity-key-pair") ∗ P := by
-  have hh : Arm64.Obj.HoldsBytes s.mem (idKpFileNameAddr img.base)
-      (utf8 "identity-key-pair") (fun _ => .ro) :=
-    loads_rodata_holdsBytes himg hF
-      (off := num% (ls_xref%
-        (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}" + 36)
-        (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}" + 40)))
-      (n := 17)
-      (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel) (by rfl_kernel)
-      utf8_idKp_length (by decide +kernel)
-  exact Satisfies.of_holdsBytes_ro hh (by rw [utf8_idKp_length]; decide) hP
-
-set_option maxRecDepth 2000000 in
-theorem rodata_regId_and_malformed {img : Obj.Image} {s : State} {P : SepProp}
-    (himg : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s) (hP : s.mem ⊨ P) :
-    ∃ w0 wTail : BitVec 64,
-      s.mem ⊨ ((idRegIdFileNameAddr img.base ↦ᵣ utf8 "registration-id") ∗
-        (malformedFileStrAddr img.base ↦₆₄ᵣ w0) ∗
-        ((malformedFileStrAddr img.base + 6#64) ↦₆₄ᵣ wTail)) ∗ P := by
-  have hreg : Arm64.Obj.HoldsBytes s.mem (idRegIdFileNameAddr img.base)
-      (utf8 "registration-id") (fun _ => .ro) :=
-    loads_rodata_holdsBytes himg hF
-      (off := num% (ls_xref%
-        (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 40)
-        (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 44)))
-      (n := 15)
-      (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel) (by rfl_kernel)
-      utf8_regId_length (by decide +kernel)
-  let bs0 : List (BitVec 8) :=
-    (libsignalSessionImage.data.drop
-      (num% (ls_xref%
-        (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 156)
-        (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 160)) -
-       num% (ls_field% dataOff))).take 8
-  let bs6 : List (BitVec 8) :=
-    (libsignalSessionImage.data.drop
-      (num% (ls_xref%
-        (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 156)
-        (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 160) + 6) -
-       num% (ls_field% dataOff))).take 8
-  have hlen0 : bs0.length = 8 := by rfl_kernel
-  have hlen6 : bs6.length = 8 := by rfl_kernel
-  obtain ⟨w0, hw0⟩ := exists_unpack64_of_length_8 hlen0
-  obtain ⟨wTail, hwt⟩ := exists_unpack64_of_length_8 hlen6
-  have hb0 : Arm64.Obj.HoldsBytes s.mem (malformedFileStrAddr img.base) bs0 (fun _ => .ro) :=
-    loads_rodata_holdsBytes himg hF
-      (off := num% (ls_xref%
-        (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 156)
-        (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 160)))
-      (n := 8)
-      (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel) (by rfl_kernel)
-      hlen0 rfl
-  have hb6 : Arm64.Obj.HoldsBytes s.mem
-      (img.base + bv% (ls_xref%
-        (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 156)
-        (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 160) + 6))
-      bs6 (fun _ => .ro) :=
-    loads_rodata_holdsBytes himg hF
-      (off := num% (ls_xref%
-        (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 156)
-        (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 160) + 6))
-      (n := 8)
-      (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel) (by rfl_kernel)
-      hlen6 rfl
-  have hadd6 :
-      img.base + bv% (ls_xref%
-        (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 156)
-        (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 160) + 6) =
-      malformedFileStrAddr img.base + 6#64 := by
-    unfold malformedFileStrAddr; bv_omega
-  rw [hadd6] at hb6
-  refine ⟨w0, wTail, ?_⟩
-  have s1 := Satisfies.of_holdsBytes_ro hb6 (by rw [hlen6]; decide) hP
-  have s2 := Satisfies.of_holdsBytes_ro hb0 (by rw [hlen0]; decide) s1
-  have s3 := Satisfies.of_holdsBytes_ro hreg (by rw [utf8_regId_length]; decide) s2
-  rw [hw0, ← pointsTo64RO_eq_pointsToBytesRO] at s3
-  rw [hwt, ← pointsTo64RO_eq_pointsToBytesRO] at s3
-  simpa only [sepConj_assoc] using s3
-
-/-! ## `adrp + add` Lemmas and Read-Only `Dir::get` Wrapper -/
 
 theorem cap_reconstruct_u32_pair (cap : BitVec 64) :
     ((cap.truncate 32).zeroExtend 64 |||
@@ -172,7 +64,7 @@ theorem u64_pack_u32_pair (lo hi : BitVec 32) :
 abbrev DirGetRoCellsGhost :=
   BitVec 64 × BitVec 64 × DirGhost × BitVec 64 × List (BitVec 8) × BitVec 64
 
-def dirGetRoCellsSpec (rd : ReadRule) (pathOk : List (BitVec 8) → Prop) (A : RustAlloc)
+@[expose] def dirGetRoCellsSpec (rd : ReadRule) (pathOk : List (BitVec 8) → Prop) (A : RustAlloc)
     (calleeStk : Nat) : Spec DirGetRoCellsGhost where
   pre := fun (ret, self, dir, nameA, name, fsp) s =>
     ⌜s.readReg64 .x0 = ret ∧ s.readReg64 .x1 = self ∧ s.readReg64 .x2 = nameA ∧
@@ -185,54 +77,6 @@ def dirGetRoCellsSpec (rd : ReadRule) (pathOk : List (BitVec 8) → Prop) (A : R
         getResultAt A ret r) ∗
       dirAt A self dir ∗ (nameA ↦ᵣ name) ∗ stackAt fsp calleeStk ∗ A.pool
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-theorem dirGetRo_cells_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {rd : ReadRule} {pathOk : List (BitVec 8) → Prop}
-    {getStk calleeStk : Nat}
-    (hGet : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirGetName)
-      (dirGetSpec rd pathOk A img getStk))
-    (hle : getStk ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirGetName)
-      ((dirGetRoCellsSpec rd pathOk A calleeStk).inImage img) := by
-  refine subroutine_ok_outcome_intro fun ⟨ret, self, dir, nameA, name, fsp⟩ R s0 hpc hrun hpre hsp => ?_
-  change s0.mem ⊨ (⌜ImgCallInv img s0⌝ ∗
-    (dirGetRoCellsSpec rd pathOk A calleeStk).pre (ret, self, dir, nameA, name, fsp) s0) ∗ R at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, hpre⟩
-  simp only [dirGetRoCellsSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx2, hx3, hfsp, hnl, hpl, hpok⟩, hmem⟩
-  subst hfsp
-  rw [Store.IdTrustPoll.Helpers.stackAt_sub_split s0.sp hle hhi] at hmem
-  let stkRem := memRegion (s0.sp - BitVec.ofNat 64 calleeStk) (calleeStk - getStk)
-  let callG : DirGetGhost := ⟨ret, self, dir, nameA, name, true⟩
-  have hpre0 : s0.mem ⊨ (dirGetSpec rd pathOk A img getStk).pre callG s0 ∗ (stkRem ∗ R) := by
-    dsimp only [dirGetSpec, callG]
-    refine satisfies_inImage_pre hinv ?_
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hx2, hx3, hnl, hpl, hpok⟩, ?_⟩
-    have hif : (if true = true then (nameA ↦ᵣ name) else (nameA ↦ₛ name)) = (nameA ↦ᵣ name) := rfl
-    dsimp only [SpqrV1.ChainProofs.bytesAt, stkRem]
-    rw [hif]
-    convert hmem using 1; ac_rfl
-  refine (hGet.to_outcome callG (stkRem ∗ R) s0 hpc hrun hpre0 hsp).mono_outcome ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    have hif : (if true = true then (nameA ↦ᵣ name) else (nameA ↦ₛ name)) = (nameA ↦ᵣ name) := rfl
-    dsimp only [Spec.inImage, dirGetSpec, dirGetRoCellsSpec, SpqrV1.ChainProofs.bytesAt, callG] at hq ⊢
-    rw [hif] at hq
-    rw [Store.IdTrustPoll.Helpers.stackAt_sub_split s0.sp hle hhi]
-    dsimp only [stkRem] at hq
-    convert hq using 1; ac_rfl
-  · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
-    dsimp only [Spec.inImage, dirGetSpec, dirGetRoCellsSpec] at hq ⊢
-    exact allowPanic_frame id (by rwa [sepConj_assoc])
-  · exact (allowPanic_not_exited hq).elim
-  · dsimp only [dirGetSpec, Spec.inImage] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-
-/-! ## 72-Byte Block Split and Join -/
 
 theorem exists_pointsTo128_of_length_16 {bs : List (BitVec 8)} (h : bs.length = 16) :
     ∃ q : BitVec 128, ∀ a : BitVec 64, (a ↦ₛ bs) = (a ↦₁₂₈ q) := by
@@ -338,142 +182,11 @@ theorem write_14_overlap_length (w0 wTail : BitVec 64) :
 
 /-! ## Deallocation and `IdentityKeyPair::try_from` Cell Wrappers -/
 
-theorem deallocAt_cells_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {name : String} {k calleeStk : Nat}
-    (hC : AllocContractsX img A ext)
-    (hrel : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_dealloc")
-    (hle : extHookStack ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((Store.IdTrustPoll.Helpers.deallocVecBufSpec A calleeStk).inImage img) := by
-  have hDealloc := dealloc_ok_at_norm_ext_x hC (name := name) (k := k) hrel
-  refine subroutine_ok_outcome_intro fun ⟨bPtr, bCap, bs, fsp⟩ R s0 hpc hrun hpre hsp => ?_
-  change s0.mem ⊨ (⌜ImgCallInv img s0⌝ ∗
-    (Store.IdTrustPoll.Helpers.deallocVecBufSpec A calleeStk).pre
-      (bPtr, bCap, bs, fsp) s0) ∗ R at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, hpre⟩
-  simp only [Store.IdTrustPoll.Helpers.deallocVecBufSpec, sepConj_assoc,
-    satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx2, hfsp, hlen, hlt, hnz⟩, hmem⟩
-  subst hfsp
-  rw [Store.IdTrustPoll.Helpers.stackAt_sub_split s0.sp hle hhi] at hmem
-  dsimp only [Store.IdTrustPoll.Helpers.vecU8BufRest] at hmem
-  simp only [hnz, ↓reduceIte] at hmem
-  have hreg :
-      (bPtr ↦ₛ bs) ∗ memRegion (bPtr + BitVec.ofNat 64 bs.length) (bCap.toNat - bs.length) ⊢
-      memRegion bPtr bCap.toNat := by
-    have hsplit : memRegion bPtr bCap.toNat =
-        memRegion bPtr bs.length ∗
-        memRegion (bPtr + BitVec.ofNat 64 bs.length) (bCap.toNat - bs.length) := by
-      have heq : bCap.toNat = bs.length + (bCap.toNat - bs.length) := by omega
-      conv_lhs => rw [heq]
-      rw [memRegion_split bPtr bs.length (bCap.toNat - bs.length) (by omega)]
-    rw [hsplit]
-    exact sepConj_mono_left (IsBlock.entails_memRegion (IsBlock.pointsToBytes bPtr bs))
-  have hlay : LayoutOk bCap.toNat 1 := ⟨by bv_omega, ⟨0, rfl⟩, by omega⟩
-  let stkRem := memRegion (s0.sp - BitVec.ofNat 64 calleeStk) (calleeStk - extHookStack)
-  have hmem_reg : s0.mem ⊨
-      memRegion bPtr bCap.toNat ∗
-      (A.live bPtr bCap.toNat 1 ∗ A.pool ∗ stackAt s0.sp extHookStack ∗ stkRem ∗ R) := by
-    refine Satisfies.mono (sepConj_mono_left hreg) ?_
-    dsimp only [stkRem]
-    convert hmem using 1; ac_rfl
-  have hpre0 : s0.mem ⊨ ((rustDeallocExternSpecWithStack A extHookStack).inImage img).pre
-      (bPtr, bCap.toNat, 1) s0 ∗ (stkRem ∗ R) := by
-    refine satisfies_inImage_pre hinv ?_
-    dsimp only [rustDeallocExternSpecWithStack]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, by rw [hx1], by rw [hx2]; rfl, hlay⟩, ?_⟩
-    convert hmem_reg using 1; ac_rfl
-  refine (hDealloc.to_outcome (bPtr, bCap.toNat, 1) (stkRem ∗ R) s0 hpc hrun hpre0 hsp).mono_outcome ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [Spec.inImage, rustDeallocExternSpecWithStack,
-      Store.IdTrustPoll.Helpers.deallocVecBufSpec] at hq ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-    rcases hq with ⟨htr, hq⟩
-    refine ⟨htr, ?_⟩
-    rw [Store.IdTrustPoll.Helpers.stackAt_sub_split s0.sp hle hhi]
-    dsimp only [stkRem] at hq
-    convert hq using 1; ac_rfl
-  · dsimp only [Spec.inImage, rustDeallocExternSpecWithStack] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-  · exact (allowPanic_not_exited hq).elim
-  · dsimp only [rustDeallocExternSpecWithStack, Spec.inImage] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-
 abbrev IkpTryFromCellsGhost := BitVec 64 × List (BitVec 8) × BitVec 64 × BitVec 64
-
-def ikpTryFromCellsSpec (A : RustAlloc) (img : Obj.Image) (calleeStk : Nat) :
-    Spec IkpTryFromCellsGhost where
-  pre := fun (bytesA, bytes, ret, fsp) s =>
-    ⌜s.readReg64 .x0 = bytesA ∧ (s.readReg64 .x1).toNat = bytes.length ∧
-      bytes.length < 2 ^ 32 ∧ s.readReg64 .x8 = ret ∧ s.sp = fsp⌝ ∗
-      (bytesA ↦ₛ bytes) ∗ memRegion ret 72 ∗ logOff img ∗ stackAt fsp calleeStk ∗ A.pool
-  post := fun (bytesA, bytes, ret, fsp) s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      RecordCodecsBinary.identityKeyPairResultAt A ret
-        (RecordCodecs.IdentityKeyPair.tryFrom bytes) ∗
-      (bytesA ↦ₛ bytes) ∗ logOff img ∗ stackAt fsp calleeStk ∗ A.pool
-  onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-theorem ikpTryFrom_cells_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {calleeStk : Nat}
-    (hDec : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr
-        RecordCodecsBinary.identityKeyPairTryFromName)
-      (RecordCodecsBinary.identityKeyPairTryFromSpec A img))
-    (hle : smallRootStack ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr
-        RecordCodecsBinary.identityKeyPairTryFromName)
-      ((ikpTryFromCellsSpec A img calleeStk).inImage img) := by
-  refine subroutine_ok_outcome_intro fun ⟨bytesA, bytes, ret, fsp⟩ R s0 hpc hrun hpre hsp => ?_
-  change s0.mem ⊨ (⌜ImgCallInv img s0⌝ ∗
-    (ikpTryFromCellsSpec A img calleeStk).pre (bytesA, bytes, ret, fsp) s0) ∗ R at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, hpre⟩
-  simp only [ikpTryFromCellsSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hblt, hx8, hfsp⟩, hmem⟩
-  subst hfsp
-  rw [Store.IdTrustPoll.Helpers.stackAt_sub_split s0.sp hle hhi] at hmem
-  let stkRem := memRegion (s0.sp - BitVec.ofNat 64 calleeStk)
-    (calleeStk - smallRootStack)
-  let callG : RecordCodecsBinary.DecodeGhost := ⟨bytesA, bytes, ret⟩
-  have hpre0 : s0.mem ⊨ (RecordCodecsBinary.identityKeyPairTryFromSpec A img).pre
-      callG s0 ∗ (stkRem ∗ R) := by
-    dsimp only [RecordCodecsBinary.identityKeyPairTryFromSpec, callG]
-    refine satisfies_inImage_pre hinv ?_
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hblt, hx8⟩, ?_⟩
-    dsimp only [stkRem]
-    convert hmem using 1; ac_rfl
-  refine (hDec.to_outcome callG (stkRem ∗ R) s0 hpc hrun hpre0 hsp).mono_outcome ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [Spec.inImage, RecordCodecsBinary.identityKeyPairTryFromSpec,
-      ikpTryFromCellsSpec, callG] at hq ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-    rcases hq with ⟨htr, hq⟩
-    refine ⟨htr, ?_⟩
-    rw [Store.IdTrustPoll.Helpers.stackAt_sub_split s0.sp hle hhi]
-    dsimp only [stkRem] at hq
-    convert hq using 1; ac_rfl
-  · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
-    dsimp only [Spec.inImage, RecordCodecsBinary.identityKeyPairTryFromSpec,
-      ikpTryFromCellsSpec] at hq ⊢
-    exact allowPanic_frame id (by rwa [sepConj_assoc])
-  · exact (allowPanic_not_exited hq).elim
-  · dsimp only [RecordCodecsBinary.identityKeyPairTryFromSpec, Spec.inImage] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-
-/-! ## Position-Independent Byte-Block Relocation (`RelocatableBlock`) -/
 
 /-- A separation-logic predicate `F : BitVec 64 → SepProp` is a position-independent `n`-byte block
 if `F p` decomposes into `n` contiguous bytes at `p` plus a `p`-independent resource `B bs`. -/
-def RelocatableBlock (n : Nat) (F : BitVec 64 → SepProp) : Prop :=
+@[expose] def RelocatableBlock (n : Nat) (F : BitVec 64 → SepProp) : Prop :=
   ∃ B : List (BitVec 8) → SepProp,
     ∀ p : BitVec 64, F p = ∃∗ bs : List (BitVec 8), ⌜bs.length = n⌝ ∗ (p ↦ₛ bs) ∗ B bs
 

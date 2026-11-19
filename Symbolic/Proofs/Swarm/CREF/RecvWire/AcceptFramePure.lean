@@ -17,9 +17,9 @@ import DY.Actions.Random
 import DY.Trace.Basic
 import DY.Trace.Manipulation
 import DY.Trace.Monad
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
-public import Symbolic.Proofs.Swarm.CREF.Cli.World.XplTransferPure
-public import Symbolic.Proofs.Swarm.CREF.Xpl.InvRecv
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.World.XplTransferPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Xpl.InvRecv -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -31,6 +31,10 @@ import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.Trace.Monad
+import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
+import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSession
+import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApi
+import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
 
 /-!
 # Accepting `session_recv_wire` Trace Frame and Bookkeeping Preservation
@@ -40,7 +44,7 @@ other-participant `PureCRecRel` preservation (`rcv_frame_other`) and `CBook` pre
 (`rcv_book`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

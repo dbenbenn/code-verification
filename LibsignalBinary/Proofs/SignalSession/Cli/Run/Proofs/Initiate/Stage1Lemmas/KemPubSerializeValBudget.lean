@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.KemPubSerializeLocal2Budget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.KemPubSerializeLocal2Budget -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Stage 1 `<kem::Key<Public>>::serialize` Value Specification
@@ -18,7 +18,7 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.KemPu
 Re-exports `KemPubSerializeLocal2Budget.kemPubSerializeValAtStkSpec` in the `Stage1Lemmas` namespace.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -28,7 +28,7 @@ open Arm64 ProofLib
 open LibsignalBinary.Heap (AllocCostModel BudgetLimits RustCliAllocBudget)
 
 /-- Budget-threaded value-level specification of `<kem::Key<Public>>::serialize [local#1]` at `calleeStk`. -/
-def kemPubSerializeValAtStkSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def kemPubSerializeValAtStkSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (calleeStk : Nat) :
     Spec ((BitVec 64 × List (BitVec 8)) × M.σ) :=
   LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.KemPubSerializeLocal2Budget.kemPubSerializeValAtStkSpec

@@ -9,15 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.Hooks4KBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.Hooks4KBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Specs
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
 public import LibsignalBinary.Heap.IfaceBudgetBase
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `spqr::decode_state` Callee & Top-Level Specifications
@@ -27,11 +29,13 @@ along with budget-threaded merge, `drop_glue`, callee-bundle, and top-level `dec
 contracts (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget
+
+open CryptoVerification.LibsignalTripleRatchet (decodeErrorAtStackLen)
 
 open Arm64 Arm64.Obj ProofLib SepProp
 open LibsignalBinary.Heap
@@ -43,8 +47,7 @@ open LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget
   (SkipField3Env bytesMerge3RawBudgetSpec skipField3BudgetSpec skipField3EventsCore)
 open LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget
   (GrowOneStrideEnv growOneStrideFullSpec)
-open LibsignalBinary.Proofs.SpqrV1.Alloc.Hooks4KBudget
-  (AllocContracts4K)
+
 open LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget
   (v1StateMergeSpec v1StateMergeSpecOfEnv)
 open LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
@@ -55,9 +58,6 @@ open LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
   (BytesMergeEnv bytesMergeEventsCore doReserveClearEvents)
 open CryptoVerification.RustHeap (allocHookStack)
 open CryptoVerification.LibsignalProtoCodec (WireType decodeVarint mergeBytes skipField)
-open CryptoVerification.LibsignalTripleRatchet
-  (deallocName decodeErrorAtStackLen decodeErrorFromName decodeErrorPushName
-   memcpyName sessionMemcpySpec tripleRatchetProgAtExt)
 open CryptoVerification.LibsignalTripleRatchet.Prost
   (BytesMergeGhost SkipFieldGhost sliceCursorAfter sliceCursorAt)
 open CryptoVerification.LibsignalSpqrV1
@@ -228,7 +228,7 @@ theorem DecodeStateStepsEnv.append_steps {s₁ l₁ d maxLen polyCapBound : Nat}
     exact .step (by omega) head (ih (by omega) h₂)
 
 /-- Bounded-step sequential closure of `DecodeStateIterEnv maxLen polyCapBound` (`0..fuel`). -/
-def DecodeStateLoopEnv (fuel maxLen polyCapBound : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def DecodeStateLoopEnv (fuel maxLen polyCapBound : Nat) (evs : List AllocEvent) : Prop :=
   DecodeStateStepsEnv 0 fuel maxLen polyCapBound evs
 
 theorem DecodeStateLoopEnv.nil {fuel maxLen polyCapBound : Nat} :
@@ -295,19 +295,19 @@ theorem FitsEnv.decodeStateLoop_mono {M : AllocCostModel} {lim : BudgetLimits} {
     FitsEnv M lim st (DecodeStateLoopEnv f₁ m₁ p₁) :=
   hFit.mono fun _ h => h.mono hf hm hp
 
-def DecodeStateEnv (x : DecodeStateGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def DecodeStateEnv (x : DecodeStateGhost) (evs : List AllocEvent) : Prop :=
   DecodeStateLoopEnv (16 * x.st.bytes.length + 32) x.st.bytes.length
     (2 * x.st.bytes.length + 16) evs
 
 /-! ## 2. `ChainParams::merge` & `EpochDirection::merge` Envelopes and Contracts -/
 
 /-- Precondition allocation envelope of `ChainParams::merge` (`polyCapBound = 0`). -/
-def ChainParamsMergeEnv (x : ChainParamsMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChainParamsMergeEnv (x : ChainParamsMergeGhost) (evs : List AllocEvent) : Prop :=
   DecodeStateLoopEnv (4 * x.bs.length + 8) x.bs.length 0 evs
 
 /-- Postcondition allocation envelope of `ChainParams::merge`: proportional to consumed bytes
 `x.bs.length - rest.length` on `Ok`, and bounded by `4 * x.bs.length + 8` on `Err`. -/
-def ChainParamsMergePostEnv (x : ChainParamsMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChainParamsMergePostEnv (x : ChainParamsMergeGhost) (evs : List AllocEvent) : Prop :=
   match (mergeMessage ChainParamsPB.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 99).toOption with
   | some (_, rest) => DecodeStateLoopEnv (4 * (x.bs.length - rest.length)) x.bs.length 0 evs
   | none => DecodeStateLoopEnv (4 * x.bs.length + 8) x.bs.length 0 evs
@@ -321,7 +321,7 @@ theorem chainParamsMergePostEnv_imp_pre {x : ChainParamsMergeGhost} {evs : List 
   · exact h
 
 /-- Envelope-parameterized budget-threaded contract of `ChainParams::merge`. -/
-def chainParamsMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chainParamsMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : ChainParamsMergeGhost → List AllocEvent → Prop) :
     Spec (ChainParamsMergeGhost × M.σ) where
@@ -349,17 +349,17 @@ def chainParamsMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
 /-- Budget-threaded contract of `ChainParams::merge` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def chainParamsMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chainParamsMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainParamsMergeGhost × M.σ) :=
   chainParamsMergeSpecOfEnv A lim ChainParamsMergeEnv ChainParamsMergePostEnv
 
 /-- Precondition allocation envelope of `EpochDirection::merge` (`polyCapBound = 0`). -/
-def EpochDirectionMergeEnv (x : EpochDirectionMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def EpochDirectionMergeEnv (x : EpochDirectionMergeGhost) (evs : List AllocEvent) : Prop :=
   DecodeStateLoopEnv (4 * x.bs.length + 8) x.bs.length 0 evs
 
 /-- Postcondition allocation envelope of `EpochDirection::merge`: proportional to consumed bytes
 `x.bs.length - rest.length` on `Ok`, and bounded by `4 * x.bs.length + 8` on `Err`. -/
-def EpochDirectionMergePostEnv (x : EpochDirectionMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def EpochDirectionMergePostEnv (x : EpochDirectionMergeGhost) (evs : List AllocEvent) : Prop :=
   match (mergeMessage EpochDirectionPB.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 98).toOption with
   | some (_, rest) => DecodeStateLoopEnv (4 * (x.bs.length - rest.length)) x.bs.length 0 evs
   | none => DecodeStateLoopEnv (4 * x.bs.length + 8) x.bs.length 0 evs
@@ -373,7 +373,7 @@ theorem epochDirectionMergePostEnv_imp_pre {x : EpochDirectionMergeGhost} {evs :
   · exact h
 
 /-- Envelope-parameterized budget-threaded contract of `EpochDirection::merge`. -/
-def epochDirectionMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def epochDirectionMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : EpochDirectionMergeGhost → List AllocEvent → Prop) :
     Spec (EpochDirectionMergeGhost × M.σ) where
@@ -402,7 +402,7 @@ def epochDirectionMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
 /-- Budget-threaded contract of `EpochDirection::merge` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def epochDirectionMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def epochDirectionMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (EpochDirectionMergeGhost × M.σ) :=
   epochDirectionMergeSpecOfEnv A lim EpochDirectionMergeEnv EpochDirectionMergePostEnv
 
@@ -411,7 +411,7 @@ def epochDirectionMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
 /-- Budget-threaded contract for
 `core::ptr::drop_glue::<Option<spqr::proto::pq_ratchet::v1_state::InnerState>>`
 (`FreeOnlyEvs`, `onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def dropOptProtoInnerStateSpec (H_inner : V1InnerHeapPred) {M : AllocCostModel}
+@[expose] def dropOptProtoInnerStateSpec (H_inner : V1InnerHeapPred) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (b : BitVec 64) :
     Spec (DropOptProtoInnerStateGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -429,7 +429,7 @@ def dropOptProtoInnerStateSpec (H_inner : V1InnerHeapPred) {M : AllocCostModel}
 /-- Budget-threaded contract for
 `core::ptr::drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>`
 (`FreeOnlyEvs`, `onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def dropProtoPqRatchetStateSpec (H_inner : V1InnerHeapPred) {M : AllocCostModel}
+@[expose] def dropProtoPqRatchetStateSpec (H_inner : V1InnerHeapPred) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (b : BitVec 64) :
     Spec (DropProtoPqRatchetStateGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -446,164 +446,9 @@ def dropProtoPqRatchetStateSpec (H_inner : V1InnerHeapPred) {M : AllocCostModel}
 
 /-! ## 4. Callee Contract Bundles & Top-Level `decodeStateSpecX` -/
 
-/-- Minimal 4K-stack allocator/memcpy projection required by `spqr::decode_state` (`VmPreserved` on
-`memcpy` so `A.pool` syncs across `memcpy` calls). -/
-structure DecodeStateAllocContracts (b : BitVec 64) {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop where
-  dealloc : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr deallocName) (rustCliDeallocBudgetSpecBase M A lim)
-  memcpy : ∀ (hookStack : Nat), allocHookStack ≤ hookStack → hookStack ≤ 2 ^ 64 →
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr memcpyName)
-      (withVmPreserved (libcMemcpySpec hookStack))
-  session_memcpy : ∀ (hookStack : Nat), allocHookStack ≤ hookStack → hookStack ≤ 2 ^ 64 →
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr memcpyName)
-      (withVmPreserved (sessionMemcpySpec hookStack))
-
-/-- Bundle of budget-threaded callee contracts used by `spqr::decode_state` (backed by
-`AllocContracts4K`). -/
-structure DecodeStateCalleeContracts (H_inner : V1InnerHeapPred) (b : BitVec 64)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop where
-  b_page_aligned : b &&& 0xfff#64 = 0#64
-  of_drop_inner : ∀ a opt,
-    CryptoVerification.SpqrV1.Drop.optProtoInnerStateAt A.repAlloc a opt ⊢
-      optProtoInnerStateAt H_inner A.repAlloc a opt
-  of_cap_inner : ∀ a remLen opt,
-    OptInnerStatePolyBound remLen opt →
-    optProtoInnerStateCapAt A.repAlloc a remLen opt ⊢
-      optProtoInnerStateCapOkAt H_inner A.repAlloc a remLen opt
-  alloc : AllocContracts4K b A lim ext
-  decodeErrorFrom : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr decodeErrorFromName)
-    (decodeErrorFromBudgetSpec M A lim)
-  decodeErrorPush : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr decodeErrorPushName)
-    (decodeErrorPushBudgetSpec M A lim)
-  decodeVarint2 : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr decodeVarint2Name)
-    (decodeVarint2Spec A lim)
-  skipField3 : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr skipField3Name)
-    (skipField3BudgetSpec M A lim)
-  chainParamsMerge : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr chainParamsMergeName)
-    (chainParamsMergeSpec A lim)
-  growOneChainEpoch : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr growOneChainEpochName)
-    (growOneStrideFullSpec M A lim 112 8)
-  dropOptProtoInnerState : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr dropOptProtoInnerStateName)
-    (dropOptProtoInnerStateSpec H_inner A lim b)
-  dropProtoPqRatchetState : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr dropProtoPqRatchetStateName)
-    (dropProtoPqRatchetStateSpec H_inner A lim b)
-
-/-- Full budget-threaded callee contracts for `spqr::decode_state`, extending
-`DecodeStateCalleeContracts` with `.inImage img` contracts for `bytesMerge3`,
-`epochDirectionMerge`, and `v1StateMerge`. -/
-structure DecodeStateCalleeContractsX (H_inner : V1InnerHeapPred) (img : Obj.Image)
-    (b : BitVec 64) {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop extends
-    DecodeStateCalleeContracts H_inner b A lim ext where
-  bytesMerge3 : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr bytesMerge3Name)
-    ((bytesMerge3RawBudgetSpec M A lim).inImage img)
-  epochDirectionMerge : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr epochDirectionMergeName)
-    ((epochDirectionMergeSpec A lim).inImage img)
-  v1StateMerge : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr v1StateMergeName)
-    ((v1StateMergeSpec A lim b).inImage img)
-
-/-- 4K-stack bundle of budget-threaded callee contracts used by `spqr::decode_state`. -/
-structure DecodeStateCalleeContracts4K (H_inner : V1InnerHeapPred) (b : BitVec 64)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop where
-  b_page_aligned : b &&& 0xfff#64 = 0#64
-  of_drop_inner : ∀ a opt,
-    CryptoVerification.SpqrV1.Drop.optProtoInnerStateAt A.repAlloc a opt ⊢
-      optProtoInnerStateAt H_inner A.repAlloc a opt
-  of_cap_inner : ∀ a remLen opt,
-    OptInnerStatePolyBound remLen opt →
-    optProtoInnerStateCapAt A.repAlloc a remLen opt ⊢
-      optProtoInnerStateCapOkAt H_inner A.repAlloc a remLen opt
-  alloc : DecodeStateAllocContracts b A lim ext
-  decodeErrorFrom : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr decodeErrorFromName)
-    (decodeErrorFromBudgetSpec M A lim)
-  decodeErrorPush : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr decodeErrorPushName)
-    (decodeErrorPushBudgetSpec M A lim)
-  decodeVarint2 : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr decodeVarint2Name)
-    (decodeVarint2Spec A lim)
-  skipField3 : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr skipField3Name)
-    (skipField3BudgetSpec M A lim)
-  chainParamsMerge : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr chainParamsMergeName)
-    (chainParamsMergeSpec A lim)
-  growOneChainEpoch : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr growOneChainEpochName)
-    (growOneStrideFullSpec M A lim 112 8)
-  dropOptProtoInnerState : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr dropOptProtoInnerStateName)
-    (dropOptProtoInnerStateSpec H_inner A lim b)
-  dropProtoPqRatchetState : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr dropProtoPqRatchetStateName)
-    (dropProtoPqRatchetStateSpec H_inner A lim b)
-
-/-- Full 4K-stack budget-threaded callee contracts for `spqr::decode_state`, extending
-`DecodeStateCalleeContracts4K` with `.inImage img` contracts for `bytesMerge3`,
-`epochDirectionMerge`, and `v1StateMerge`. -/
-structure DecodeStateCalleeContractsX4K (H_inner : V1InnerHeapPred) (img : Obj.Image)
-    (b : BitVec 64) {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop extends
-    DecodeStateCalleeContracts4K H_inner b A lim ext where
-  bytesMerge3 : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr bytesMerge3Name)
-    ((bytesMerge3RawBudgetSpec M A lim).inImage img)
-  epochDirectionMerge : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr epochDirectionMergeName)
-    ((epochDirectionMergeSpec A lim).inImage img)
-  v1StateMerge : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr v1StateMergeName)
-    ((v1StateMergeSpec A lim b).inImage img)
-
-theorem DecodeStateCalleeContracts.to4K {H_inner : V1InnerHeapPred} {b : BitVec 64}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hc : DecodeStateCalleeContracts H_inner b A lim ext) :
-    DecodeStateCalleeContracts4K H_inner b A lim ext :=
-  { b_page_aligned := hc.b_page_aligned
-    of_drop_inner := hc.of_drop_inner
-    of_cap_inner := hc.of_cap_inner
-    alloc := ⟨hc.alloc.dealloc, hc.alloc.memcpy, hc.alloc.session_memcpy⟩
-    decodeErrorFrom := hc.decodeErrorFrom
-    decodeErrorPush := hc.decodeErrorPush
-    decodeVarint2 := hc.decodeVarint2
-    skipField3 := hc.skipField3
-    chainParamsMerge := hc.chainParamsMerge
-    growOneChainEpoch := hc.growOneChainEpoch
-    dropOptProtoInnerState := hc.dropOptProtoInnerState
-    dropProtoPqRatchetState := hc.dropProtoPqRatchetState }
-
-theorem DecodeStateCalleeContractsX.to4K {H_inner : V1InnerHeapPred} {img : Obj.Image}
-    {b : BitVec 64} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hc : DecodeStateCalleeContractsX H_inner img b A lim ext) :
-    DecodeStateCalleeContractsX4K H_inner img b A lim ext :=
-  { hc.toDecodeStateCalleeContracts.to4K with
-    bytesMerge3 := hc.bytesMerge3
-    epochDirectionMerge := hc.epochDirectionMerge
-    v1StateMerge := hc.v1StateMerge }
-
 /-- Envelope-parameterized budget-threaded specification of `spqr::decode_state` against
 trusted `spqrDecodeState` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def decodeStateSpecXOfEnv (H_inner : V1InnerHeapPred) (b : BitVec 64) {M : AllocCostModel}
+@[expose] def decodeStateSpecXOfEnv (H_inner : V1InnerHeapPred) (b : BitVec 64) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PreEnv PostEnv : DecodeStateGhost → List AllocEvent → Prop) :
     Spec (DecodeStateGhost × M.σ) where
@@ -625,25 +470,9 @@ def decodeStateSpecXOfEnv (H_inner : V1InnerHeapPred) (b : BitVec 64) {M : Alloc
       decodeStateResultAt H_inner A.repAlloc x.outPtr (spqrDecodeState x.st.bytes) ∗
       stackAt s0.sp decodeStateStackX
 
-def decodeStateSpecX (H_inner : V1InnerHeapPred) (b : BitVec 64) {M : AllocCostModel}
+@[expose] def decodeStateSpecX (H_inner : V1InnerHeapPred) (b : BitVec 64) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DecodeStateGhost × M.σ) :=
   decodeStateSpecXOfEnv H_inner b A lim DecodeStateEnv DecodeStateEnv
-
-/-- Envelope-parameterized `subroutine_ok` predicate for `spqr::decode_state` on `img`. -/
-def DecodeStateOkXOfEnv (H_inner : V1InnerHeapPred) (img : Obj.Image) {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (PreEnv PostEnv : DecodeStateGhost → List AllocEvent → Prop)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr decodeStateName)
-    ((decodeStateSpecXOfEnv H_inner img.base A lim PreEnv PostEnv).inImage img)
-
-/-- `spqr::decode_state` meets `(decodeStateSpecX H_inner img.base A lim).inImage img` on
-`tripleRatchetProgAtExt img.base ext`. -/
-def DecodeStateOkX (H_inner : V1InnerHeapPred) (img : Obj.Image) {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  DecodeStateOkXOfEnv H_inner img A lim DecodeStateEnv DecodeStateEnv ext
 
 end LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget

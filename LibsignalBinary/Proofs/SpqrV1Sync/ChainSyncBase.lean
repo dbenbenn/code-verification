@@ -23,7 +23,7 @@ Ghost key-schedule functions (`stepGen`, `nextAt`, `keyAt`, `genAt`, `seedOf`, `
 used by `ChainSync`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.ChainSync
 
@@ -38,25 +38,25 @@ abbrev dparams : ChainParamsPB := ChainParams.default.intoPb
 abbrev zeros32 : Bytes := List.replicate 32 0#8
 
 /-- 64-byte HKDF output derived when stepping the chain counter from `i` to `i + 1`. -/
-def stepGen (F : ShaCompress) (next : Bytes) (i : ℕ) : Bytes :=
+@[expose] def stepGen (F : ShaCompress) (next : Bytes) (i : ℕ) : Bytes :=
   spqrHkdfWith F zeros32 next (toBEBytes 4 (BitVec.ofNat 32 (i + 1)) ++ chainNextInfo) 64
 
 /-- Chain value `next` of a direction started at `seed` after `n` derived keys. -/
-def nextAt (F : ShaCompress) (seed : Bytes) : ℕ → Bytes
+@[expose] def nextAt (F : ShaCompress) (seed : Bytes) : ℕ → Bytes
   | 0 => seed
   | n + 1 => (stepGen F (nextAt F seed n) n).take 32
 
 /-- Message key at 1-based index `n + 1` of a direction started at `seed`. -/
-def keyAt (F : ShaCompress) (seed : Bytes) (n : ℕ) : Bytes :=
+@[expose] def keyAt (F : ShaCompress) (seed : Bytes) (n : ℕ) : Bytes :=
   ((stepGen F (nextAt F seed n) n).drop 32).take 32
 
 /-- 96-byte epoch generator for chain epoch `e`, incorporating `secret (e + 1)` at each step. -/
-def genAt (F : ShaCompress) (authKey : Bytes) (secret : ℕ → Bytes) : ℕ → Bytes
+@[expose] def genAt (F : ShaCompress) (authKey : Bytes) (secret : ℕ → Bytes) : ℕ → Bytes
   | 0 => spqrHkdfWith F zeros32 authKey chainStartInfo 96
   | e + 1 => spqrHkdfWith F ((genAt F authKey secret e).take 32) (secret (e + 1)) chainAddEpochInfo 96
 
 /-- Directional 32-byte slice of a 96-byte epoch generator (`a2b` at `[32..64]`, `b2a` at `[64..96]`). -/
-def seedOf (dir : Direction) (g : Bytes) : Bytes :=
+@[expose] def seedOf (dir : Direction) (g : Bytes) : Bytes :=
   match dir with
   | .a2b => (g.drop 32).take 32
   | .b2a => (g.drop 64).take 32
@@ -72,12 +72,12 @@ structure SendDirOk (F : ShaCompress) (seed : Bytes) (n : ℕ) (d : ChainEpochDi
   hnext : d.next = nextAt F seed n
 
 /-- 36-byte `KeyHistory` entry encoding 4-byte big-endian index `j` followed by 32-byte key `k`. -/
-def histEntry (j : ℕ) (k : Bytes) : Bytes :=
+@[expose] def histEntry (j : ℕ) (k : Bytes) : Bytes :=
   toBEBytes 4 (BitVec.ofNat 32 j) ++ k
 
 /-- `KeyHistory` representation invariant: `h` stores `keyAt F seed (j - 1)` for each `j ∈ S`
 with no duplicate indices. -/
-def HistRepr (F : ShaCompress) (seed : Bytes) (S : Finset ℕ) (h : KeyHistory) : Prop :=
+@[expose] def HistRepr (F : ShaCompress) (seed : Bytes) (S : Finset ℕ) (h : KeyHistory) : Prop :=
   ∃ L : List ℕ, L.Nodup ∧ L.toFinset = S ∧
     h.data = (L.map fun j => histEntry j (keyAt F seed (j - 1))).flatten
 
@@ -438,36 +438,6 @@ private theorem getLoop_found (F : ShaCompress) (seed : Bytes) (L : List ℕ)
         simp only [KeyHistory.KEY_SIZE]; omega
       rw [hstep]
       exact getLoop_found F seed L hL hlt j hj32 rem (k + 1) (by omega) hj_next
-
-theorem getLoop_not_mem (F : ShaCompress) (seed : Bytes) (L : List ℕ)
-    (hlt : ∀ x ∈ L, x < 2 ^ 32) (j : ℕ) (hj32 : j < 2 ^ 32) (hnot : ∀ x ∈ L, x ≠ j) :
-    ∀ (rem k : ℕ), L.length - k = rem →
-      KeyHistory.getLoop { data := encList F seed L } (BitVec.ofNat 32 j)
-        (toBEBytes 4 (BitVec.ofNat 32 j)) dparams (36 * k) =
-      .error (.err (.keyAlreadyRequested (BitVec.ofNat 32 j)))
-  | 0, k, hrem => by
-    have hnlt : ¬ (36 * k < (encList F seed L).length) := by rw [length_encList]; omega
-    rw [KeyHistory.getLoop]
-    simp only [hnlt, ↓reduceDIte]
-  | rem + 1, k, hrem => by
-    have hk : k < L.length := by omega
-    have hk_bytes : 36 * k < (encList F seed L).length := by rw [length_encList]; omega
-    have hLk_mem : L[k] ∈ L := List.getElem_mem hk
-    have hLk32 : L[k] < 2 ^ 32 := hlt L[k] hLk_mem
-    have hne : L[k] ≠ j := hnot L[k] hLk_mem
-    have hbeq : (toBEBytes 4 (BitVec.ofNat 32 L[k]) == toBEBytes 4 (BitVec.ofNat 32 j)) = false := by
-      rw [beq_eq_false_iff_ne]
-      intro hbytes
-      have hbv := toBEBytes4_injective hbytes
-      have hnat : (BitVec.ofNat 32 L[k]).toNat = (BitVec.ofNat 32 j).toNat := congrArg BitVec.toNat hbv
-      simp only [BitVec.toNat_ofNat] at hnat
-      omega
-    rw [KeyHistory.getLoop]
-    simp only [hk_bytes, ↓reduceDIte, encList_entry_tag F seed L k hk, hbeq, Bool.false_eq_true, ↓reduceIte]
-    have hstep : 36 * k + KeyHistory.KEY_SIZE = 36 * (k + 1) := by
-      simp only [KeyHistory.KEY_SIZE]; omega
-    rw [hstep]
-    exact getLoop_not_mem F seed L hlt j hj32 hnot rem (k + 1) (by omega)
 
 /-- `KeyHistory.get` retrieves and removes `keyAt F seed (j - 1)` for `j ∈ S` inside the
 2000-key window when `j + 2000 < 2 ^ 32`. -/

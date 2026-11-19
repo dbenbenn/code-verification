@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBob
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.ResponderCoreCodeSym
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBob -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.ResponderCoreCodeSym -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPFrozen
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable `initialize_bob_session` (Block `75`): Specifications and Session-Build Tail
@@ -22,7 +23,7 @@ post-`spqr::initial_state` session-build proofs (`+252 → +564 → RET`) for un
 under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -227,7 +228,7 @@ attribute [local irreducible] withLsClBob
 /-- Relocatable inner contract for `Pqxdh::accept` (Block `79`), stated using only
 `[LibsignalPlacement]` (`lsLogFilterAddr`) so callers in unmutated Block `75` can take a
 `subroutine_ok` hypothesis at `lsmpl.base 79` without requiring `[LibsignalFullPlacement]`. -/
-def pqxdhAcceptOptFieldsInnerPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
+@[expose] def pqxdhAcceptOptFieldsInnerPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
     Spec AcceptFieldsCallGhost where
   pre := fun (g : AcceptFieldsCallGhost) s =>
     ⌜s.readReg64 .x0 = g.argPtr ∧ s.readReg64 .x8 = g.outPtr ∧ g.inp.trustedPeer = true ∧
@@ -248,12 +249,12 @@ def pqxdhAcceptOptFieldsInnerPlacedSpec [LibsignalPlacement] (P : Primitives) (A
       stackAt s0.sp pqxdhEntryStack ∗ A.pool
   onPanic := rustPanicOnOomPlaced
 
-def pqxdhAcceptOptFieldsPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
+@[expose] def pqxdhAcceptOptFieldsPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
     Spec AcceptFieldsCallGhost :=
   withLsCodeRoLoaded lsmpl (pqxdhAcceptOptFieldsInnerPlacedSpec P A)
 
 /-- Relocatable inner contract for `initialize_bob_session` (Block `75`). -/
-def initializeBobSessionInnerPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
+@[expose] def initializeBobSessionInnerPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
     Spec InitBobCallGhost where
   pre := fun (g : InitBobCallGhost) s =>
     ⌜s.readReg64 .x0 = g.argPtr ∧
@@ -310,14 +311,14 @@ def initializeBobSessionInnerPlacedSpec [LibsignalPlacement] (P : Primitives) (A
     A.pool
   onPanic := rustPanicOnOomPlaced
 
-def initializeBobSessionPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
+@[expose] def initializeBobSessionPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
     Spec InitBobCallGhost :=
   withLsCodeRoLoaded lsmpl (initializeBobSessionInnerPlacedSpec P A)
 
 /-! ## SPQR-V1 Session Layout and Frame Predicates -/
 
 /-- `bobHead144Bv8` with general SPQR `Vec<u8>` length `spqrLen` at `+0x88`. -/
-def bobHead144Bv8V1 (localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr baseKeyBoxPtr
+@[expose] def bobHead144Bv8V1 (localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr baseKeyBoxPtr
     spqrCap spqrBufPtr spqrLen : BitVec 64) : List (BitVec 8) :=
   unpack64 33#64 ++ unpack64 localIkBoxPtr ++ unpack64 33#64 ++
   unpack64 33#64 ++ unpack64 remoteIkBoxPtr ++ unpack64 33#64 ++
@@ -360,7 +361,7 @@ theorem bobHead144V1_eq_pointsToBytes (ptr p1 p2 p3 p4 c5 p5 l5 : BitVec 64) :
 
 /-- 344-byte `SessionState` built by `initialize_bob_session` with SPQR `Vec<u8>` header
 `(spqrCap, spqrBufPtr, spqrLen)` at `+0x78`. -/
-def bobSession344Bv8V1 (localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr baseKeyBoxPtr
+@[expose] def bobSession344Bv8V1 (localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr baseKeyBoxPtr
     spqrCap spqrBufPtr spqrLen ratchetPubBoxPtr ratchetPrivBoxPtr chainKeyBoxPtr : BitVec 64)
     (pad_f4 : BitVec 32) (c0 c1 c2 c3 c4 d0 d1 d2 : BitVec 64) : List (BitVec 8) :=
   bobHead144Bv8V1 localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr baseKeyBoxPtr spqrCap spqrBufPtr
@@ -396,7 +397,7 @@ theorem bobSession344V1_pack (ptr localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr bas
     senderChainBytes100_length, BitVec.add_assoc, BitVec.reduceAdd]
 
 /-- Twelve callee-saved words stored by `initialize_bob_session`'s prologue at `sp0 - 96`. -/
-def initBobSavedRegs (sp0 : BitVec 64) (s0 : State) : SepProp :=
+@[expose] def initBobSavedRegs (sp0 : BitVec 64) (s0 : State) : SepProp :=
   ((sp0 - 96#64) ↦₆₄ s0.readReg64 (.gpr 29#5)) ∗ ((sp0 - 88#64) ↦₆₄ s0.readReg64 (.gpr 30#5)) ∗
   ((sp0 - 80#64) ↦₆₄ s0.readReg64 (.gpr 28#5)) ∗ ((sp0 - 72#64) ↦₆₄ s0.readReg64 (.gpr 27#5)) ∗
   ((sp0 - 64#64) ↦₆₄ s0.readReg64 (.gpr 26#5)) ∗ ((sp0 - 56#64) ↦₆₄ s0.readReg64 (.gpr 25#5)) ∗
@@ -412,7 +413,7 @@ theorem initBobSavedRegs_entails_memRegion96 (sp0 : BitVec 64) (s0 : State) :
 
 /-- Cells of `initialize_bob_session`'s frame at `spqr::initial_state`'s entry outside
 `bobSpqrCutCells`, `initBobSavedRegs`, and `stackAt (sp0 - 768) pqxdhEntryStack`. -/
-def bobFrameAtSpqr (sp0 : BitVec 64) (rk pq ck : Bytes) : SepProp :=
+@[expose] def bobFrameAtSpqr (sp0 : BitVec 64) (rk pq ck : Bytes) : SepProp :=
   ((sp0 - 768#64) ↦ₛ bytesToBv8 rk) ∗ ((sp0 - 736#64) ↦ₛ bytesToBv8 pq) ∗
   ((sp0 - 704#64) ↦ₛ bytesToBv8 ck) ∗ ((sp0 - 672#64) ↦₃₂ 0#32) ∗
   memRegion (sp0 - 668#64) 12 ∗ ((sp0 - 592#64) ↦₃₂ 0#32) ∗ memRegion (sp0 - 588#64) 12 ∗
@@ -471,7 +472,7 @@ theorem initBob_epilogue_placed [LibsignalPlacement] {H : LibsignalHooks}
      by wp_norm_goal, by wp_norm_goal, by wp_norm_goal, by simp only [arm64_norm, *]⟩,
     by wp_norm_goal⟩
 
-def BobPlacedPanicOom (s0 sf : State) (Pf : SepProp) : Prop :=
+@[expose] def BobPlacedPanicOom (s0 sf : State) (Pf : SepProp) : Prop :=
   ∀ R : SepProp, (sf.mem ⊨ Pf ∗ R) →
     (sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R)
 

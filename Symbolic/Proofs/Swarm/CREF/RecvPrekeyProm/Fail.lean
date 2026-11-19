@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import ProofLib.Lemmas
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import VCVio.Prelude.Core
 import Symbolic.Proofs.Swarm.Leaves.IC12_Stage1MatchedPrefixPure -- shake: keep
@@ -23,7 +22,7 @@ Proves `prom_callCount_of_forall₂`, showing that `callCount` on visible entrie
 `(callStarts acc).length` under `List.Forall₂ EventMatchesEntry`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

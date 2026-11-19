@@ -9,18 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemP2ArmsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2V1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V1PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Msg
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemP2ArmsPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2V1PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V1PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Msg
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ArmsPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ArmsPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksB5PlacedBudget
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsBudget
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced
@@ -36,12 +36,21 @@ import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5Def
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5V1PlacedBudget
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2TransPlaced
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ArmsAPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ArmsAPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrBPlacedBudget
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrCPlacedBudget
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid3PlacedBudget
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1Common
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Fetch
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemP2KitsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemP2KitsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedPre -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.Open
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.OpenDeserId
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Budget-Threaded Stage P2 Bad-KEM Message Unpack and Early Arms
@@ -50,7 +59,7 @@ Header extraction, `preKeyMsgAt` unpack/reassembly for `v4` `PreKeySignalMessage
 payloads, and budget-threaded early-rejection arm lemmas for Stage P2.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -145,7 +154,7 @@ private theorem eq_of_sep_emp {P Q : SepProp} (h : P = Q ∗ emp) : P = Q :=
 /-- Canonical `HandshakeHdr` extracted from a general `v4` `PreKeySignalMessage` with
 `pm.kyberPayload = some kp` (pairing real curve/pre-key header fields with a dummy 1568-byte
 `kemCt` placeholder for `WellSizedAcceptKeysInput`). -/
-def mkBadKemHdr (pm : PreKeySignalMessage) (kp : KyberPayload) : HandshakeHdr where
+@[expose] def mkBadKemHdr (pm : PreKeySignalMessage) (kp : KyberPayload) : HandshakeHdr where
   ikAPk := CryptoVerification.E2E.vecU8 pm.identityKey.publicKey.bytes
   ekAPk := CryptoVerification.E2E.vecU8 pm.baseKey.bytes
   spkId := u32 pm.signedPreKeyId
@@ -189,7 +198,7 @@ theorem boxU8_payload_split_d3 (A : RustAlloc) (ptr : BitVec 64) (bs : List (Bit
 
 /-- Remainder of `preKeyMsgAt` outside `p2BadKemMsgFieldsAt` + `signalMessageRestVerAt` for any
 `v4` `PreKeySignalMessage` with `pm.kyberPayload = some kp` (empty or non-empty `kp.ciphertext`). -/
-def badKemMsgRemInnerAt (A : RustAlloc) (g : PreKeyMsgGhost) (msgA : BitVec 64)
+@[expose] def badKemMsgRemInnerAt (A : RustAlloc) (g : PreKeyMsgGhost) (msgA : BitVec 64)
     (pm : PreKeySignalMessage) (kp : KyberPayload) : SepProp :=
   ⌜g.kyberPtr ≠ 0 ∧ kp.ciphertext.length < 2 ^ 63⌝ ∗
   (if kp.ciphertext = [] then emp else A.live g.kyberPtr kp.ciphertext.length 1) ∗

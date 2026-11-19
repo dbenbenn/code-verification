@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2024"
 publish = false
 
-# Host CLI tool that compiles each configured Rust crate to one relocatable AArch64
-# object (`.o`), links the objects, and exports the result to Lean as an
-# `Arm64.Obj.LinkedImage`; see `translation.toml` files and `src/main.rs`.
+# Host CLI tool that compiles configured Rust crates and C translation units to relocatable
+# AArch64 objects (`.o`) and exports them to Lean as `Obj.PlacedLib` / `Obj.MultiPlacedLib`
+# (`[placed]`) and pre-link `Obj.ExtractedObj` modules; see `translation.toml` files and `src/main.rs`.
 
 [dependencies]
 anyhow = "1"

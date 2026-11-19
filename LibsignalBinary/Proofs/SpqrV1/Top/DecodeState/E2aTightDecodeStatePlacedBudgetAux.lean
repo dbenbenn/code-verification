@@ -9,23 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.E2aTightBytesZeroAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.E2aTightDecodeStateChPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.E2aTightDecodeStateVnPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.OuterLoopClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.V1StateStepClPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.E2aTightBytesZeroAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.E2aTightDecodeStateChPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.E2aTightDecodeStateVnPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.OuterLoopClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.V1StateStepClPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbState
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.OuterLoopClPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.OuterLoopPlacedBudgetAux
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.OuterLoopPlacedBudget
 
 /-!
 # Canonical Guarded-Tight Entry Execution for `spqr::decode_state` (`Block 325`)
@@ -35,7 +39,7 @@ Composes empty-input handling, prologue `+0 -> +116`, optional Fields 1 (`versio
 canonical `encodeState pb` wire inputs under `SpqrTightEvs (23 + v1Ops) 1307216 79236`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -91,7 +95,7 @@ open LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlacedBudget
 open LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.V1StateStepClPlacedBudget
   (decodeState_v1_entry_535d4_cl_placed_ofEnv pqRatchetStateV1MsgPtr pqRatchetStateV1OrDefault)
 
-def e2a_ValidVersionNegotiationPB (m : VersionNegotiationPB) : Prop :=
+@[expose] def e2a_ValidVersionNegotiationPB (m : VersionNegotiationPB) : Prop :=
   m.authKey.length ≤ 32
 
 /-! ## 1. Pure Canonical Codec & Wire Decomposition Helpers -/

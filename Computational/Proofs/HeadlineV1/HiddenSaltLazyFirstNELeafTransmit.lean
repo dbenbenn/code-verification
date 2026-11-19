@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple7
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple7 -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Sync
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEWinSplit4
 import Computational.Specifications.Pqxdh.Game
@@ -20,19 +20,16 @@ import VCVio.EvalDist.Monad.Basic
 # `transmit` Query Step for Coupled Invariant
 
 Proves `firstNECoupledInvD_transmit_query_step_aux`, preserving `FirstNECoupledInvD` across a
-`transmit` query on `firstNESimImpl'` and `cellSimRun`.
--/
+`transmit` query on `firstNESimImpl'` and `cellSimRun`.-/
 
-@[expose] public section
+namespace CryptoVerification.LibsignalSession.HeadlineV1
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec ENNReal MeasureTheory
 
-namespace CryptoVerification.LibsignalSession.HeadlineV1
 
 open CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1SessionUniformCoins)
 open CryptoVerification.SpqrV1Sync.SendTotal (Encaps1Total TopState)
@@ -380,6 +377,133 @@ theorem syncInv_transmit_step
     rw [hst_g₁]
   · exact honestSentSync_cons Pt hhon_sent c
 
+/-- Exchanges `𝒟[p >>= lhs] {true} ≤ (∑ S₁) + (∑ S₂) + (∑ S₃, ∑ S₄)` across any `p : ProbComp β`
+when the pointwise bound holds for every `b : β`. -/
+theorem evalDist_bind_le_stage2_sum {β ι₁ ι₂ ι₃ ι₄ : Type}
+    (S₁ : Finset ι₁) (S₂ : Finset ι₂) (S₃ : Finset ι₃) (S₄ : Finset ι₄)
+    (p : ProbComp β) (lhs : β → ProbComp Bool)
+    (rhs₁ : ι₁ → β → ProbComp Bool) (rhs₂ : ι₂ → β → ProbComp Bool)
+    (rhs₃ : ι₃ → ι₄ → β → ProbComp Bool)
+    (h : ∀ b, 𝒟[lhs b] {true} ≤
+      (∑ t ∈ S₁, 𝒟[rhs₁ t b] {true}) + (∑ t ∈ S₂, 𝒟[rhs₂ t b] {true}) +
+        (∑ tL ∈ S₃, ∑ par ∈ S₄, 𝒟[rhs₃ tL par b] {true})) :
+    𝒟[p >>= lhs] {true} ≤
+      (∑ t ∈ S₁, 𝒟[p >>= rhs₁ t] {true}) + (∑ t ∈ S₂, 𝒟[p >>= rhs₂ t] {true}) +
+        (∑ tL ∈ S₃, ∑ par ∈ S₄, 𝒟[p >>= rhs₃ tL par] {true}) := by
+  induction p using OracleComp.inductionOn with
+  | pure b =>
+    simp only [pure_bind]
+    exact h b
+  | query_bind n k ih =>
+    simp only [bind_assoc]
+    rw [evalDist_bind_of_discrete,
+      Measure.bind_apply MeasurableSet.of_discrete Measurable.of_discrete.aemeasurable]
+    have hrhs :
+        ((∑ t ∈ S₁, 𝒟[(liftM (OracleSpec.query (spec := unifSpec) n) : ProbComp _) >>=
+            fun u => k u >>= rhs₁ t] {true}) +
+          (∑ t ∈ S₂, 𝒟[(liftM (OracleSpec.query (spec := unifSpec) n) : ProbComp _) >>=
+            fun u => k u >>= rhs₂ t] {true}) +
+          (∑ tL ∈ S₃, ∑ par ∈ S₄,
+            𝒟[(liftM (OracleSpec.query (spec := unifSpec) n) : ProbComp _) >>=
+              fun u => k u >>= rhs₃ tL par] {true})) =
+        ∫⁻ u, ((∑ t ∈ S₁, 𝒟[k u >>= rhs₁ t] {true}) +
+          (∑ t ∈ S₂, 𝒟[k u >>= rhs₂ t] {true}) +
+          (∑ tL ∈ S₃, ∑ par ∈ S₄, 𝒟[k u >>= rhs₃ tL par] {true}))
+          ∂(𝒟[(liftM (OracleSpec.query (spec := unifSpec) n) : ProbComp _)]) := by
+      have hm1 : Measurable fun u => ∑ t ∈ S₁, 𝒟[k u >>= rhs₁ t] {true} :=
+        Finset.measurable_sum _ (fun _ _ => Measurable.of_discrete)
+      have hm2 : Measurable fun u => ∑ t ∈ S₂, 𝒟[k u >>= rhs₂ t] {true} :=
+        Finset.measurable_sum _ (fun _ _ => Measurable.of_discrete)
+      have hm3 : Measurable fun u => ∑ tL ∈ S₃, ∑ par ∈ S₄, 𝒟[k u >>= rhs₃ tL par] {true} :=
+        Finset.measurable_sum _ (fun _ _ =>
+          Finset.measurable_sum _ (fun _ _ => Measurable.of_discrete))
+      have hm12 : Measurable fun u =>
+          (∑ t ∈ S₁, 𝒟[k u >>= rhs₁ t] {true}) + (∑ t ∈ S₂, 𝒟[k u >>= rhs₂ t] {true}) :=
+        hm1.add hm2
+      rw [MeasureTheory.lintegral_add_left hm12, MeasureTheory.lintegral_add_left hm1,
+        MeasureTheory.lintegral_finsetSum _ (fun _ _ => Measurable.of_discrete),
+        MeasureTheory.lintegral_finsetSum _ (fun _ _ => Measurable.of_discrete),
+        MeasureTheory.lintegral_finsetSum _ (fun _ _ =>
+          Finset.measurable_sum _ (fun _ _ => Measurable.of_discrete))]
+      congr 1
+      · congr 1
+        · refine Finset.sum_congr rfl fun t _ => ?_
+          rw [evalDist_bind_of_discrete,
+            Measure.bind_apply MeasurableSet.of_discrete Measurable.of_discrete.aemeasurable]
+        · refine Finset.sum_congr rfl fun t _ => ?_
+          rw [evalDist_bind_of_discrete,
+            Measure.bind_apply MeasurableSet.of_discrete Measurable.of_discrete.aemeasurable]
+      · refine Finset.sum_congr rfl fun tL _ => ?_
+        rw [MeasureTheory.lintegral_finsetSum _ (fun _ _ => Measurable.of_discrete)]
+        refine Finset.sum_congr rfl fun par _ => ?_
+        rw [evalDist_bind_of_discrete,
+          Measure.bind_apply MeasurableSet.of_discrete Measurable.of_discrete.aemeasurable]
+    rw [hrhs]
+    exact MeasureTheory.lintegral_mono ih
+
+private theorem cellSimRun_transmit_query_win_eq_false
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    (P : Params (List (BitVec 8)) (BitVec 512)) (ℓ : ℕ)
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
+    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt) (qep t : ℕ)
+    (Q : Party) (m₀ : Plain ℓ) (r : Option (BitVec 512))
+    (s₁ : SM.GameState Unit (Plain ℓ) (List (BitVec 8)))
+    (sC : LibsignalToModularSchemeSimState (List (BitVec 8)) Pt ℓ) (sent : List (Fig8C Pt))
+    (m' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (s₀ : SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (hwin0 : s₀.win = false)
+    (hg1_f : (sC.base.stopped || sC.base.mir.win || !SM.noBobSendInEpoch0 sC.base.mir Q) = false)
+    (hep : sC.base.mir.epMgmt 3 qep Q r.isSome = some s₁)
+    {z : (((Option (List (BitVec 8)) × LibsignalToModularSchemeSimState (List (BitVec 8)) Pt ℓ) ×
+      List (Fig8C Pt)) × Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)) ×
+      SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)}
+    (hz : z ∈ support (cellSimRun P ℓ Dh encPt encT decT idOf lam qep t none
+      (liftM (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+        (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inl (.inl (Q, m₀, r))))))))
+      sC sent m' s₀)) :
+    z.2.win = false := by
+  let fig := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
+  let q_tr : OracleComp (unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+      (BitVec 512) (List (BitVec 8))) (Option (List (BitVec 8))) :=
+    liftM (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+      (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inl (.inl (Q, m₀, r)))))))
+  have hg3_f : ((none : Option (Plain ℓ)).isSome && !s₁.safeCh 3 Q) = false := rfl
+  change z ∈ support (cellSimRun P ℓ Dh encPt encT decT idOf lam qep t none q_tr sC sent m' s₀) at hz
+  rw [← bind_pure q_tr, cellSimRun_transmit_query_bind,
+    runCellStep_simSendC_of_guards_pass P qep fig t none Q m₀ none r s₁ sC sent m' s₀
+      hg1_f hep hg3_f] at hz
+  simp only [bind_assoc, MonadAttach.mem_support_bind] at hz
+  rcases hz with ⟨rq, _, _rc, _, w, hw, hz⟩
+  have hzw : z = w := by
+    simpa [cellSimRun, simulateQ_pure, StateT.run_pure] using hz
+  subst hzw
+  split at hw
+  · simp at hw
+    rw [hw]; exact hwin0
+  · rename_i pq' pub _
+    simp only [simSendQFig, runCellStep_liftC_transmit, transmitImpl_run_eq, hwin0,
+      Bool.false_eq_true, ↓reduceIte, bind_assoc, pure_bind,
+      MonadAttach.mem_support_bind] at hw
+    rcases hw with ⟨cb, _, hw⟩
+    cases htp : transmitPure fig (cellDelta none t) (qep + 1) Q (pub, m₀) cb.1 cb.2 s₀ with
+    | mk res s_out =>
+      rw [htp] at hw
+      have hw_out : s_out.win = false := by
+        dsimp only [transmitPure] at htp
+        cases hep_c : s₀.epMgmt (cellDelta none t) (qep + 1) Q cb.2 with
+        | none => rw [hep_c] at htp; injection htp with _ hs; rw [← hs]; exact hwin0
+        | some s₂ =>
+          rw [hep_c] at htp
+          dsimp only at htp
+          injection htp with _ hs; rw [← hs]
+          unfold SM.GameState.epMgmt SM.GameState.leak at hep_c
+          split_ifs at hep_c <;>
+            { injection hep_c with h; subst h
+              simpa [SM.GameState.record] using hwin0 }
+      cases res <;>
+        { simp at hw; rw [hw]; exact hw_out }
+
+/-- Auxiliary proof of `firstNECoupledInvD_transmit_query_step`. -/
 theorem firstNECoupledInvD_transmit_query_step_aux {α : Type}
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (P : Params (List (BitVec 8)) (BitVec 512)) (K : MlKem)
@@ -410,35 +534,41 @@ theorem firstNECoupledInvD_transmit_query_step_aux {α : Type}
       𝒟[(simulateQ (firstNESimImpl' P K InvPQ ℓ Dh encPt encT decT idOf lam qep q) (u u₁)).run
           (sC₁, (g₁, fl₁, dead₁), tr₁) >>=
         fun z => pure (z.2.2.1.2.1 && !z.2.2.2.cand.isSome)] {true} ≤
-      ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ SM.admissibleLastLeakGuesses 2 t,
-        𝒟[cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL (u u₁) sC₁ sent₁ m₁'
-            (s_cell₁ t tL) >>=
-          fun z => pure (cellWinPred tL t z.2)] {true}) :
+      stage2CellBucketSumRun P ℓ Dh encPt encT decT idOf lam qep (u u₁) sC₁ sent₁ m₁' s_cell₁) :
     𝒟[(simulateQ (firstNESimImpl' P K InvPQ ℓ Dh encPt encT decT idOf lam qep q)
         (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
           (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inl (.inl (Q, m₀, r)))))) >>= u)).run
         (sC, (g, false, false), tr) >>=
       fun z => pure (z.2.2.1.2.1 && !z.2.2.2.cand.isSome)] {true} ≤
-    ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ SM.admissibleLastLeakGuesses 2 t,
-      𝒟[cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL
-          (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
-            (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inl (.inl (Q, m₀, r)))))) >>= u)
-          sC sent m' (s_cell t tL) >>=
-        fun z => pure (cellWinPred tL t z.2)] {true} := by
+    stage2CellBucketSumRun P ℓ Dh encPt encT decT idOf lam qep
+      (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+        (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inl (.inl (Q, m₀, r)))))) >>= u)
+      sC sent m' s_cell := by
   rcases hbody with ⟨hcol, hrel_all⟩
+  have ht0 : 0 ∈ Finset.range ((qep + 1) + 2) := Finset.mem_range.mpr (by omega)
+  have hwin0 : (s_cell 0 none).win = false := (hrel_all 0 ht0).1.win_df_false
   have hinv₀ : FirstNECoupledInvD P Dh encPt encT idOf lam qep false false sC sent m' g s_cell :=
     Or.inr (Or.inr ⟨rfl, rfl, ⟨hcol, hrel_all⟩, horig, hsync⟩)
   let fig := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
+  let q_tr : OracleComp (unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+      (BitVec 512) (List (BitVec 8))) (Option (List (BitVec 8))) :=
+    liftM (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+      (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inl (.inl (Q, m₀, r)))))))
   by_cases hg1 : (sC.base.stopped || sC.base.mir.win || !SM.noBobSendInEpoch0 sC.base.mir Q) = true
   · rw [simulateQ_firstNESimImpl'_transmit_query_bind,
       kemFailSendStep_run_of_guard_fail P K ℓ Dh encPt encT decT idOf lam qep Q m₀ none r
         sC (g, false) tr (Or.inl hg1), pure_bind]
     refine le_trans (hih none sC g false false tr sent m' s_cell hinv₀) ?_
-    refine sum_cellSimRun_le_of_doomed_or_eq P ℓ Dh encPt encT decT idOf lam qep
-      _ (u none) sC sC g sent sent m' m' s_cell s_cell fun t _ tL _ => Or.inr ?_
-    rw [cellSimRun_transmit_query_bind,
-      runCellStep_simSendC_of_guard_fail P qep fig t tL Q m₀ none r sC sent m' (s_cell t tL)
-        (Or.inl hg1), pure_bind]
+    refine sum_stage2_le_of_cell0_pure_step P ℓ Dh encPt encT decT idOf lam qep
+      q_tr u none sC sC sent sent m' m' g s_cell s_cell hwin0 hwin0
+      (fun t _ => ?_) (fun t _ tL _ => Or.inr ?_)
+    · rw [← bind_pure q_tr, cellSimRun_transmit_query_bind,
+        runCellStep_simSendC_of_guard_fail P qep fig t none Q m₀ none r sC sent m' (s_cell 0 none)
+          (Or.inl hg1), pure_bind]
+      simp [cellSimRun, simulateQ_pure, StateT.run_pure]
+    · rw [cellSimRun_transmit_query_bind,
+        runCellStep_simSendC_of_guard_fail P qep fig t tL Q m₀ none r sC sent m' (s_cell t tL)
+          (Or.inl hg1), pure_bind]
   · have hg1_f : (sC.base.stopped || sC.base.mir.win || !SM.noBobSendInEpoch0 sC.base.mir Q) = false :=
       Bool.eq_false_iff.mpr hg1
     have hstop : sC.base.stopped = false := by
@@ -451,31 +581,68 @@ theorem firstNECoupledInvD_transmit_query_step_aux {α : Type}
         kemFailSendStep_run_of_guard_fail P K ℓ Dh encPt encT decT idOf lam qep Q m₀ none r
           sC (g, false) tr (Or.inr (Or.inl hep)), pure_bind]
       refine le_trans (hih none sC g false false tr sent m' s_cell hinv₀) ?_
-      refine sum_cellSimRun_le_of_doomed_or_eq P ℓ Dh encPt encT decT idOf lam qep
-        _ (u none) sC sC g sent sent m' m' s_cell s_cell fun t _ tL _ => Or.inr ?_
-      rw [cellSimRun_transmit_query_bind,
-        runCellStep_simSendC_of_guard_fail P qep fig t tL Q m₀ none r sC sent m' (s_cell t tL)
-          (Or.inr (Or.inl hep)), pure_bind]
+      refine sum_stage2_le_of_cell0_pure_step P ℓ Dh encPt encT decT idOf lam qep
+        q_tr u none sC sC sent sent m' m' g s_cell s_cell hwin0 hwin0
+        (fun t _ => ?_) (fun t _ tL _ => Or.inr ?_)
+      · rw [← bind_pure q_tr, cellSimRun_transmit_query_bind,
+          runCellStep_simSendC_of_guard_fail P qep fig t none Q m₀ none r sC sent m' (s_cell 0 none)
+            (Or.inr (Or.inl hep)), pure_bind]
+        simp [cellSimRun, simulateQ_pure, StateT.run_pure]
+      · rw [cellSimRun_transmit_query_bind,
+          runCellStep_simSendC_of_guard_fail P qep fig t tL Q m₀ none r sC sent m' (s_cell t tL)
+            (Or.inr (Or.inl hep)), pure_bind]
     | some s₁ =>
       have hg3_f : ((none : Option (Plain ℓ)).isSome && !s₁.safeCh 3 Q) = false := rfl
-      have ht0 : 0 ∈ Finset.range ((qep + 1) + 2) := Finset.mem_range.mpr (by omega)
       have hwin_g : g.win = false := (hrel_all 0 ht0).1.win_mir_false
       rcases hsync.1 hstop with ⟨s_R, hmeta⟩
       rcases hmeta.epMgmt_some Q qep r.isSome hep with
         ⟨_, g₁, _, hep_g, _, _, _⟩
+      have hno_win0 : ∀ t ∈ Finset.range ((qep + 1) + 2),
+          ∀ z ∈ support (cellSimRun P ℓ Dh encPt encT decT idOf lam qep t none
+            q_tr sC sent m' (s_cell 0 none)), z.2.win = false :=
+        fun t _ _ hz => cellSimRun_transmit_query_win_eq_false P ℓ Dh encPt encT decT idOf lam
+          qep t Q m₀ r s₁ sC sent m' (s_cell 0 none) hwin0 hg1_f hep hz
+      unfold stage2CellBucketSumRun
       rw [simulateQ_firstNESimImpl'_transmit_query_bind,
         kemFailSendStep_run_of_guards_pass P K Dh encPt encT decT idOf lam qep Q m₀ none r s₁
           sC g false tr hg1_f hep hg3_f, bind_assoc, bind_assoc]
+      have hbuck_rw : ∀ tL par,
+          bucketSimRun P ℓ Dh encPt encT decT idOf lam qep tL par (q_tr >>= u) sC sent m'
+            (s_cell 0 none, none) =
+          (cellSimRun P ℓ Dh encPt encT decT idOf lam qep 0 none q_tr sC sent m' (s_cell 0 none) >>=
+            fun z => bucketSimRun P ℓ Dh encPt encT decT idOf lam qep tL par
+              (u z.1.1.1.1) z.1.1.1.2 z.1.1.2 z.1.2 (z.2, none)) :=
+        fun tL par => bucketSimRun_bind_eq_of_cell0_no_win P ℓ Dh encPt encT decT idOf lam qep
+          tL par q_tr u sC sent m' (s_cell 0 none) hwin0 hno_win0
+      have hcell0_rw :
+          cellSimRun P ℓ Dh encPt encT decT idOf lam qep 0 none q_tr sC sent m' (s_cell 0 none) =
+          runCellStep (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) qep 0 none
+            (LibsignalSimC.guardC (LibsignalSimC.simSendC P qep
+              (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) (deliverForgeHook Pt ℓ) Q m₀ none r))
+            sC sent m' (s_cell 0 none) >>=
+            fun z => cellSimRun P ℓ Dh encPt encT decT idOf lam qep 0 none (pure z.1.1.1.1)
+              z.1.1.1.2 z.1.1.2 z.1.2 z.2 := by
+        rw [← bind_pure q_tr]
+        exact cellSimRun_transmit_query_bind P ℓ Dh encPt encT decT idOf lam qep 0 none Q m₀ r pure
+          sC sent m' (s_cell 0 none)
+      dsimp only [q_tr] at hbuck_rw hcell0_rw
+      simp only [hbuck_rw, hcell0_rw]
       simp only [cellSimRun_transmit_query_bind,
         runCellStep_simSendC_of_guards_pass P qep
           (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) _ _ Q m₀ none r s₁ sC sent m' _
           hg1_f hep hg3_f, bind_assoc]
-      refine evalDist_bind_le_double_sum _ _ _ _ _ fun rq => ?_
+      refine evalDist_bind_le_stage2_sum _ _ _ _ _ _ _ _ _ fun rq => ?_
       cases hmk : LibsignalSim.mkPub (P := P) sC.base Q rq
           (if s₁.epoch Q ≠ sC.base.mir.epoch Q then BitVec.ofNat 32 (sC.base.mir.idx Q - 1)
            else sC.base.pn Q) with
       | none =>
         simp only [evalDist_drawRc_bind_const, pure_bind]
+        have hnone_pure :
+            cellSimRun P ℓ Dh encPt encT decT idOf lam qep 0 none
+              (pure (none : Option (List (BitVec 8)))) sC sent m' (s_cell 0 none) =
+              pure ((((none, sC), sent), m'), s_cell 0 none) := by
+          simp [cellSimRun, simulateQ_pure, StateT.run_pure]
+        simp only [hnone_pure, pure_bind]
         exact hih none sC g false false { tr with cand := (stepKemFailSend P.C.F K tr Q rq).cand }
           sent m' s_cell hinv₀
       | some p_pub =>
@@ -485,10 +652,17 @@ theorem firstNECoupledInvD_transmit_query_step_aux {α : Type}
           else sC.base.pn Q
         rw [kemFailSendStep_transmit_mkPub_some P qep fig Q m₀ r s₁ pq' pub pn sC g tr
           (stepKemFailSend P.C.F K tr Q rq) hwin_g]
+        have hcell_pure : ∀ ans_out sC_out sent_out m_out s_out,
+            cellSimRun P ℓ Dh encPt encT decT idOf lam qep 0 none
+              (pure (ans_out : Option (List (BitVec 8)))) sC_out sent_out m_out s_out =
+              pure ((((ans_out, sC_out), sent_out), m_out), s_out) := by
+          intro ans_out sC_out sent_out m_out s_out
+          simp [cellSimRun, simulateQ_pure, StateT.run_pure]
+        simp only [hcell_pure, pure_bind]
         simp only [evalDist_cell_transmit_mkPub_some P qep _ _
           (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) Q m₀ r s₁ pq' pub _
           sC sent m']
-        refine evalDist_bind_le_double_sum _ _ _ _ _ fun coins => ?_
+        refine evalDist_bind_le_stage2_sum _ _ _ _ _ _ _ _ _ fun coins => ?_
         let c := (fig.send (g₁.st Q) (pub, m₀) coins).2
         let st' := (fig.send (g₁.st Q) (pub, m₀) coins).1
         let rec_r : SM.Record (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt) :=
@@ -531,36 +705,83 @@ theorem firstNECoupledInvD_transmit_query_step_aux {α : Type}
         have hinv₁ : FirstNECoupledInvD P Dh encPt encT idOf lam qep false false
             (updSimStateCSend fig Q m₀ false s₁ pq' pn c sC) (c :: sent) m₁'
             (g₁.record (2 + 1) Q st' rec_r false) s_cell₁ := by
-          rcases hcell_next with hwin | ⟨_, hcol', hrel_all'⟩
-          · exact Or.inl hwin
+          rcases hcell_next with ⟨t, ht, tL, htL, hwin_c⟩ | ⟨_, hcol', hrel_all'⟩
+          · exfalso
+            rcases (hrel_all t ht).2.2 tL htL with hdoomed | ⟨hrel_sh, _, _, _⟩
+            · simp only [s_cell₁, hdoomed.2.2.2, ↓reduceIte, hdoomed.cellWinPred_eq_false] at hwin_c
+              exact Bool.false_ne_true hwin_c
+            · have hw_f : (s_cell₁ t tL).win = false := by
+                simp only [s_cell₁, hrel_sh.win_df_false, Bool.false_eq_true, ↓reduceIte]
+                cases hep_c : (s_cell t tL).epMgmt (cellDelta tL t) (qep + 1) Q false with
+                | none => exact hrel_sh.win_df_false
+                | some s₂ =>
+                  unfold SM.GameState.epMgmt SM.GameState.leak at hep_c
+                  split_ifs at hep_c <;>
+                    { injection hep_c with h; subst h
+                      simpa [SM.GameState.record] using hrel_sh.win_df_false }
+              exact Bool.false_ne_true (hw_f.symm.trans (s_win_of_cellWinPred hwin_c))
           · exact Or.inr (Or.inr ⟨rfl, rfl, ⟨hcol', hrel_all'⟩, horig_next, hsync_next⟩)
         refine le_trans
           (hih (some (LibsignalSim.toWire c))
             (updSimStateCSend fig Q m₀ false s₁ pq' pn c sC)
             (g₁.record (2 + 1) Q st' rec_r false) false false
             (stepKemFailSend P.C.F K tr Q rq) (c :: sent) m₁' s_cell₁ hinv₁) ?_
-        refine Finset.sum_le_sum fun t ht => Finset.sum_le_sum fun tL htL => ?_
-        rcases (hrel_all t ht).2.2 tL htL with hdoomed | ⟨hrel_sh, _, _, _⟩
-        · simp only [s_cell₁, hdoomed.2.2.2, ↓reduceIte]
-          have hcorrs_sub : ∀ x ∈ g.corrs, x ∈ (g₁.record (2 + 1) Q st' rec_r false).corrs := by
-            unfold SM.GameState.epMgmt SM.GameState.leak at hep_g
-            split_ifs at hep_g <;>
-              { injection hep_g with h; subst h; intro x hx; exact hx }
-          rw [evalDist_cellSimRun_cellWinPred_eq_zero_of_doomed P ℓ Dh encPt encT decT idOf lam
-            qep t tL (u (some (LibsignalSim.toWire c)))
-            (updSimStateCSend fig Q m₀ false s₁ pq' pn c sC) (c :: sent) m₁'
-            (hdoomed.of_corrs_sub hcorrs_sub)]
-          exact zero_le
-        · have htr_df := (transmitPure_eq_of_pprimePaperRelShifted fig (cellDelta tL t) qep Q
-            (pub, m₀) coins r.isSome hrel_sh hep_g).2
-          simp only [s_cell₁, hrel_sh.win_df_false, Bool.false_eq_true, ↓reduceIte]
-          rw [htr_df]
-          simp only [hrel_sh.win_df_false, Bool.false_eq_true, ↓reduceIte]
+        unfold stage2CellBucketSumRun
+        have hcell_le : ∀ t ∈ Finset.range ((qep + 1) + 2), ∀ tL ∈ SM.admissibleLastLeakGuesses 2 t,
+            𝒟[cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL
+                (u (some (LibsignalSim.toWire c)))
+                (updSimStateCSend fig Q m₀ false s₁ pq' pn c sC) (c :: sent) m₁'
+                (s_cell₁ t tL) >>=
+              fun z => pure (cellWinPred tL t z.2)] {true} ≤
+            𝒟[cellTransmitPost fig qep Q m₀ s₁ pq' pub pn sC sent m'
+                (fun z => cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL (u z.1.1.1.1)
+                  z.1.1.1.2 z.1.1.2 z.1.2 z.2 >>= fun w => pure (cellWinPred tL t w.2))
+                (if (s_cell t tL).win = true then (none, s_cell t tL)
+                 else transmitPure fig (cellDelta tL t) (qep + 1) Q (pub, m₀) coins false
+                   (s_cell t tL))] {true} := by
+          intro t ht tL htL
+          rcases (hrel_all t ht).2.2 tL htL with hdoomed | ⟨hrel_sh, _, _, _⟩
+          · simp only [s_cell₁, hdoomed.2.2.2, ↓reduceIte]
+            have hcorrs_sub : ∀ x ∈ g.corrs, x ∈ (g₁.record (2 + 1) Q st' rec_r false).corrs := by
+              unfold SM.GameState.epMgmt SM.GameState.leak at hep_g
+              split_ifs at hep_g <;>
+                { injection hep_g with h; subst h; intro x hx; exact hx }
+            rw [evalDist_cellSimRun_cellWinPred_eq_zero_of_doomed P ℓ Dh encPt encT decT idOf lam
+              qep t tL (u (some (LibsignalSim.toWire c)))
+              (updSimStateCSend fig Q m₀ false s₁ pq' pn c sC) (c :: sent) m₁'
+              (hdoomed.of_corrs_sub hcorrs_sub)]
+            exact zero_le
+          · have htr_df := (transmitPure_eq_of_pprimePaperRelShifted fig (cellDelta tL t) qep Q
+              (pub, m₀) coins r.isSome hrel_sh hep_g).2
+            simp only [s_cell₁, hrel_sh.win_df_false, Bool.false_eq_true, ↓reduceIte]
+            rw [htr_df]
+            simp only [hrel_sh.win_df_false, Bool.false_eq_true, ↓reduceIte]
+            dsimp only [cellTransmitPost, m₁', rec_r, c, st', pn, fig]
+            cases m'.epMgmt (2 + 1) (qep + 1) Q false <;>
+              cases (s_cell t tL).epMgmt (cellDelta tL t) (qep + 1) Q false <;>
+              { dsimp only; exact le_rfl }
+        refine add_le_add
+          (add_le_add (Finset.sum_le_sum fun t ht => ?_) (Finset.sum_le_sum fun t ht => ?_))
+          (Finset.sum_le_sum fun tL _ => Finset.sum_le_sum fun par _ => ?_)
+        · refine hcell_le t (Finset.mem_range.mpr (Finset.mem_Ico.mp ht).2) (some (t - 2)) ?_
+          simp only [SM.admissibleLastLeakGuesses, Finset.mem_insert, Finset.mem_image,
+            Finset.mem_range]
+          exact Or.inr ⟨t - 2, by have := (Finset.mem_Ico.mp ht).1; omega, rfl⟩
+        · refine hcell_le t (Finset.mem_range.mpr (Finset.mem_Ico.mp ht).2) (some (t - 3)) ?_
+          simp only [SM.admissibleLastLeakGuesses, Finset.mem_insert, Finset.mem_image,
+            Finset.mem_range]
+          exact Or.inr ⟨t - 3, by have := (Finset.mem_Ico.mp ht).1; omega, rfl⟩
+        · have htr_0 := (transmitPure_eq_of_pprimePaperRelShifted fig (cellDelta none 0) qep Q
+            (pub, m₀) coins r.isSome (hrel_all 0 ht0).1.toShifted hep_g).2
+          simp only [s_cell₁, hwin0, Bool.false_eq_true, ↓reduceIte]
+          rw [htr_0]
+          simp only [hwin0, Bool.false_eq_true, ↓reduceIte]
           dsimp only [cellTransmitPost, m₁', rec_r, c, st', pn, fig]
           cases m'.epMgmt (2 + 1) (qep + 1) Q false <;>
-            cases (s_cell t tL).epMgmt (cellDelta tL t) (qep + 1) Q false <;>
+            cases (s_cell 0 none).epMgmt (cellDelta none 0) (qep + 1) Q false <;>
             { dsimp only; exact le_rfl }
 
-end CryptoVerification.LibsignalSession.HeadlineV1
 
 end
+
+end CryptoVerification.LibsignalSession.HeadlineV1

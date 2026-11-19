@@ -9,13 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Adapters
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Adapters -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Defs
 import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.DeserD0X
 import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.DeserDExitX
 import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.DeserDIterX
 import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.ProstSSGXRepr
 import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.B3DeserQ
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # PQXDH-Scope `SessionRecord::deserialize` Composition
@@ -27,7 +29,7 @@ and representation (`ProstSSGXRepr`) leaves to establish both `deserializeXExact
 relocatable `[LibsignalPlacement]` corollaries.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.L1GX
 
@@ -35,106 +37,8 @@ open Arm64 ProofLib CryptoGames CryptoGames.LibsignalSession CryptoGames.Libsign
 open CryptoVerification.E2E.Record CryptoVerification.RustHeap
 open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalTripleRatchetRepr
 open CryptoVerification.E2E.Record.DeserializeSeed CryptoVerification.E2E.Record.DeserializeGeneral
-open CryptoVerification.E2E.Record.Serialization (OkAt CanonRecord)
+open CryptoVerification.E2E.Record.Serialization (CanonRecord)
 open CryptoVerification.E2E.RecordX (DeserializeScopeP)
-open CryptoVerification.E2E.Record.L1GX.Leaf.DeserD0X (deserD0X_ok)
-open CryptoVerification.E2E.Record.L1GX.Leaf.DeserDIterX (deserDIterX_ok)
-open CryptoVerification.E2E.Record.L1GX.Leaf.DeserDExitX (deserDExitX_ok)
-open CryptoVerification.E2E.Record.L1GX.Leaf.ProstSSGXRepr (deserReprX_ok)
-
-/-- Exact PQXDH-scope contract for `SessionRecord::deserialize` with raw `deserOutRawX` postcondition. -/
-noncomputable def deserializeXExactSpec : Spec DeserializeGenGhost where
-  pre := deserializeXSpec.pre
-  post := fun x s0 sf => deserOutRawX x s0 sf
-  onPanic := deserializeXSpec.onPanic
-
-theorem deserStepX_exact {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {x : DeserializeGenGhost} {R : SepProp}
-    {s0 s : State} {Q : State → Prop} (h : DeserStepX C ctl x R s0 s Q abs) :
-    SegStepG (recordProg C ctl abs) deserializeXExactSpec x R s0 s Q := h
-
-/-- Raw output `deserOutRawX` entails `deserializeXSpec.post`. -/
-theorem deserOutX_post {x : DeserializeGenGhost} {R : SepProp} {s0 sf : State}
-    (hr : DeserializeScopeP x.r) (h : sf.mem ⊨ deserOutRawX x s0 sf ∗ R) :
-    sf.mem ⊨ deserializeXSpec.post x s0 sf ∗ R := by
-  have hrepr := deserReprX_ok x.r hr x.out
-  refine Satisfies.mono (sepConj_mono_left ?_) h
-  exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_left hrepr))
-
-/-- Field-loop induction from `DeserLoopX` after `k` fields to `deserializeXExactSpec.post`. -/
-theorem deserLoopX_run {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hMF : MergeFieldXOk C ctl (fun _ => True) abs) {x : DeserializeGenGhost} {R : SepProp}
-    {s0 : State} (hr : DeserializeScopeP x.r) :
-    ∀ (m k : Nat) (s : State), k + m = (recFieldsX x.r).length →
-      DeserLoopX C ctl x R s0 k s →
-      reaches_outcome (recordProg C ctl abs) deserializeXExactSpec x R s0 s := by
-  intro m
-  induction m with
-  | zero =>
-    intro k s hk hs
-    simp only [Nat.add_zero] at hk
-    subst hk
-    refine segStepG_then (deserStepX_exact
-      (deserDExitX_ok C ctl (abs := abs) x R s0 s hr hs)) ?_
-    intro sf ⟨hret, hcc, hmem⟩
-    exact reaches_outcome.of_outcome (Or.inl ⟨hret, hcc, hmem⟩)
-  | succ m ih =>
-    intro k s hk hs
-    have hlt : k < (recFieldsX x.r).length := by omega
-    exact segStepG_then (deserStepX_exact (deserDIterX_ok C ctl hMF x R s0 k s hr hlt hs))
-      (fun s' hs' => ih (k + 1) s' (by omega) hs')
-
-/-- Field-loop induction from `DeserLoopX` after `k` fields to `deserializeXSpec.post`. -/
-theorem deserLoopX_run_gen {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hMF : MergeFieldXOk C ctl (fun _ => True) abs) {x : DeserializeGenGhost} {R : SepProp}
-    {s0 : State} (hr : DeserializeScopeP x.r) :
-    ∀ (m k : Nat) (s : State), k + m = (recFieldsX x.r).length →
-      DeserLoopX C ctl x R s0 k s →
-      reaches_outcome (recordProg C ctl abs) deserializeXSpec x R s0 s := by
-  intro m
-  induction m with
-  | zero =>
-    intro k s hk hs
-    simp only [Nat.add_zero] at hk
-    subst hk
-    refine segStepG_then (deserDExitX_ok C ctl (abs := abs) x R s0 s hr hs) ?_
-    intro sf ⟨hret, hcc, hmem⟩
-    exact reaches_outcome.of_outcome (Or.inl ⟨hret, hcc, deserOutX_post hr hmem⟩)
-  | succ m ih =>
-    intro k s hk hs
-    have hlt : k < (recFieldsX x.r).length := by omega
-    exact segStepG_then (deserDIterX_ok C ctl hMF x R s0 k s hr hlt hs)
-      (fun s' hs' => ih (k + 1) s' (by omega) hs')
-
-theorem deserializeScopeP_of_pre {x : DeserializeGenGhost} {R : SepProp} {s0 : State}
-    (hpre : s0.mem ⊨ deserializeXSpec.pre x s0 ∗ R) : DeserializeScopeP x.r := by
-  have h := hpre
-  simp only [deserializeXSpec, sepConj_assoc, satisfies_pure_sepConj] at h
-  exact h.1.2.2.2.1
-
-/-- `SessionRecord::deserialize` (`0x16ed4`) satisfies `deserializeXExactSpec` on `tripleRatchetProgAt`. -/
-theorem deserializeBodyXExact_ok (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (hC : DeserializeCallees C ctl abs) (hMF : MergeFieldXOk C ctl (fun _ => True) abs) :
-    OkAt sessionImg0.base C ctl abs recDeserializeName deserializeXExactSpec := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hal => ?_
-  have hr : DeserializeScopeP x.r := deserializeScopeP_of_pre hpre
-  exact segStepG_then (deserStepX_exact (deserD0X_ok C ctl hC x R s0 hpc hrun hpre hal))
-    (fun s hs => deserLoopX_run hMF hr _ 0 s (Nat.zero_add _) hs)
-
-/-- `SessionRecord::deserialize` (`0x16ed4`) satisfies `deserializeXSpec` on `tripleRatchetProgAt`. -/
-theorem deserializeBodyX_ok (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (hC : DeserializeCallees C ctl abs) (hMF : MergeFieldXOk C ctl (fun _ => True) abs) :
-    OkAt sessionImg0.base C ctl abs recDeserializeName deserializeXSpec := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hal => ?_
-  have hr : DeserializeScopeP x.r := deserializeScopeP_of_pre hpre
-  exact segStepG_then (deserD0X_ok C ctl hC x R s0 hpc hrun hpre hal)
-    (fun s hs => deserLoopX_run_gen hMF hr _ 0 s (Nat.zero_add _) hs)
-
-/-! ## Relocatable `[LibsignalPlacement]` Corollaries -/
 
 section Placed
 

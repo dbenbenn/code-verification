@@ -12,8 +12,8 @@ module
 public import Computational.Specifications.LibsignalCli.StatementPqElf
 public import Computational.Specifications.Session.StatementSession
 public import Computational.Specifications.Game.ModelIface
-public import Computational.Proofs.LibsignalCli.MainOfLemmas
-public import Computational.Proofs.LibsignalCli.MainHaltedDefs
+public import Computational.Proofs.LibsignalCli.MainOfLemmas -- proof-setup: allow-public-import
+import Computational.Proofs.LibsignalCli.MainHaltedDefs
 import Computational.Proofs.LibsignalCli.MainHaltedAdapterBound
 import Computational.Proofs.LibsignalCli.MainHaltedSessBound
 import Computational.Proofs.LibsignalCli.MainHaltedCompBound
@@ -28,7 +28,7 @@ bound (`MainHaltedSessBound`), and halted multi-session composition bound (`Main
 to establish `CliHaltedBoundProp`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

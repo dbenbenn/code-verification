@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirection
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.DefsClPlaced
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirection -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.DefsClPlaced
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
@@ -28,7 +27,7 @@ Proves `EpochDirection::merge` on Block `299` with `withLsCodeRoLoaded` / `withL
 preconditions on all cross-block callees (`261`, `257`, `291`, `263`, `290`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageMerge
 

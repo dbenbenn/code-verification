@@ -14,9 +14,9 @@ import DY.ALaCarte.Basic
 import DY.EquationalTheory.DiffieHellman
 import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
 import Symbolic.Specifications.Model.EquationalTheory.X25519
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.CaseSplit
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSendBranch
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSkelLocal
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.CaseSplit -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSendBranch -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSkelLocal -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.SymEnc
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SpinePeelPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SpinePeelPureA
@@ -34,6 +34,8 @@ import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieAPure -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA -- shake: keep
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.ALaCarte.Basic
+import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials
+import Symbolic.Proofs.Swarm.CREF.TR.RecvCol
 
 /-!
 # Skipped-Key MAC Authenticity and Variant Seed Exposure
@@ -43,7 +45,7 @@ authentic decrypt representation or seed exposure, and variant-ratchet-key seed
 exposure for logged `TREvent.SkippedKeyStored` seeds.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

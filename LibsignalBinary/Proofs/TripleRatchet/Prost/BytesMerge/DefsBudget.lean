@@ -10,19 +10,21 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.TripleRatchet.Bytes.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.TripleRatchet.Bytes.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
 public import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
 
 /-!
 # Budget-Threaded `prost::encoding::bytes::merge::<Vec<u8>>` Helpers and Epilogues
@@ -32,7 +34,7 @@ predicates (`bmNextCap`, `bytesMergeExactRawSpecGen`), and `[LibsignalPlacement]
 lemmas for `prost::encoding::bytes::merge::<Vec<u8>, &mut &[u8]>`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -105,7 +107,7 @@ abbrev MergePanicGen {M : AllocCostModel} (errStack : Nat) (reqCap : Bool)
 /-- Deterministic `Vec<u8>` post-capacity after `prost::encoding::bytes::merge::<Vec<u8>, _>`
 succeeds with slice `v` (`v.length ≤ cap` overwrites in place; `cap < v.length` reserves
 `reserveCap cap 0 v.length`). -/
-def bmNextCap (cap vLen : Nat) : Nat :=
+@[expose] def bmNextCap (cap vLen : Nat) : Nat :=
   if vLen ≤ cap then cap else reserveCap cap 0 vLen
 
 /-- Exact-capacity postcondition predicate for `bytesMergeExactRawSpecGen` (`reqCap = true`
@@ -117,7 +119,7 @@ abbrev bmExactCapCond (reqCap : Bool) (valCap cap' : BitVec 64)
   | false => cap'.toNat = bmNextCap valCap.toNat vLen
 
 /-- Exact-capacity output `Vec<u8>` spatial postcondition of `bytesMergeExactRawSpecGen`. -/
-def bmExactPostVecGen (reqCap : Bool) (A : RustAlloc) (valPtr valCap : BitVec 64)
+@[expose] def bmExactPostVecGen (reqCap : Bool) (A : RustAlloc) (valPtr valCap : BitVec 64)
     (v rest : List (BitVec 8)) : SepProp :=
   ∃∗ cap' : BitVec 64, ∃∗ ptr' : BitVec 64,
     ⌜bmExactCapCond reqCap valCap cap' v.length rest.length⌝ ∗
@@ -149,7 +151,7 @@ theorem bmExactPostVecGen_entails_bmPostVec (reqCap : Bool) (A : RustAlloc)
 
 /-- Parameterized budget-threaded raw contract of `bytes::merge` strengthening `bmPostVec` with
 the deterministic capacity equation `cap'.toNat = bmNextCap x.valCap.toNat v.length`. -/
-def bytesMergeExactRawSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def bytesMergeExactRawSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (errStack : Nat) (reqCap : Bool) :
     Spec (BytesMergeGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -188,13 +190,13 @@ theorem bytesMergeExactRawSpecGen_post_entails {M : AllocCostModel} (A : RustCli
 
 /-- Budget-threaded raw contract of `bytes::merge` at `bytesMergeStackX` exposing
 `cap'.toNat = bmNextCap x.valCap.toNat v.length`. -/
-def bytesMergeExactRawSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def bytesMergeExactRawSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BytesMergeGhost × M.σ) :=
   bytesMergeExactRawSpecGen A lim decodeErrorHookStackX true
 
 /-- Relocatable budget-threaded exact-capacity contract of `bytes::merge` at
 `bytesMergeStackX`. -/
-def bytesMergeExactPlacedSpecX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def bytesMergeExactPlacedSpecX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (BytesMergeGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl (bytesMergeExactRawSpecX A lim)
 
@@ -219,12 +221,12 @@ abbrev MergeExactPanicGen {M : AllocCostModel} (errStack : Nat) (reqCap : Bool)
   (sf.mem ⊨ P_f ∗ R) →
     (sf.mem ⊨ (bytesMergeExactRawSpecGen A lim errStack reqCap).onPanic (x, st) s0 sf ∗ R)
 
-def bmShimSpecGen (errStack : Nat) : Spec Unit where
+@[expose] def bmShimSpecGen (errStack : Nat) : Spec Unit where
   pre := fun _ s => ⌜True⌝ ∗ stackAt s.sp (bmSliceStack errStack)
   post := fun _ s0 sf =>
     ⌜sf.trace = s0.trace ∧ VmPreserved s0 sf⌝ ∗ stackAt s0.sp (bmSliceStack errStack)
 
-def bmMemcpySpecGen (errStack : Nat) : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def bmMemcpySpecGen (errStack : Nat) : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ (s0.readReg64 .x2).toNat = bs.length⌝ ∗
       (memRegion dst bs.length ∗ (src ↦ₛ bs) ∗ stackAt s0.sp (bmSliceStack errStack))
@@ -242,7 +244,7 @@ abbrev decodeVarintSliceSpecBMGen {M : AllocCostModel} (A : RustCliAllocBudget M
     Spec (CryptoVerification.LibsignalTripleRatchet.Prost.DecodeVarintSliceGhost × M.σ) :=
   decodeVarintSliceSpecGen A lim errStack
 
-def bytesVtableDropSpecBMGenBase {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def bytesVtableDropSpecBMGenBase {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hStack : Nat) (ptr : BitVec 64)
     (bs : List (BitVec 8)) (off : Nat) : Spec M.σ where
   pre := fun st s =>
@@ -259,7 +261,7 @@ def bytesVtableDropSpecBMGenBase {M : AllocCostModel} (A : RustCliAllocBudget M)
     A.pool lim st' sf ∗
     stackAt s0.sp (hStack + 48)
 
-def bytesVtableDropSpecBMGen [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def bytesVtableDropSpecBMGen [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hStack : Nat) (ptr : BitVec 64)
     (bs : List (BitVec 8)) (off : Nat) : Spec M.σ where
   pre := fun st s =>

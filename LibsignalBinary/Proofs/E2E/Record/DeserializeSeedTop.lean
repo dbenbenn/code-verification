@@ -9,13 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Support.SeedModel
-public import LibsignalBinary.Proofs.E2E.Record.Support.Hooks
+public import LibsignalBinary.Proofs.E2E.Record.Support.SeedModel -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Support.Hooks -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
-public import LibsignalBinary.Proofs.E2E.Record.Support.Image
+public import Aesop.BuiltinRules
+public import Mathlib.Tactic.ToAdditive
+public import Mathlib.Tactic.ToDual
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSym -- shake: keep
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Top-Level Specification of `SessionRecord::deserialize` on Seed Bytes
@@ -32,7 +35,7 @@ counterpart `deserializeSeedPlacedSpec` (block `46`, `lsProg_46 H`) for
   and trace unchanged.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record
 
@@ -42,7 +45,7 @@ open CryptoVerification.E2E.Record
 open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalTripleRatchetRepr
 open CryptoVerification.E2E.Record
 open CryptoVerification.E2E.Record
-open CryptoVerification.E2E.Record.Serialization (OkAt CanonRecord allocPanic)
+open CryptoVerification.E2E.Record.Serialization (CanonRecord allocPanic)
 
 /-- Symbol name of `<SessionRecord>::deserialize` (`0x16ed4`). -/
 abbrev recDeserializeName : String :=
@@ -59,30 +62,13 @@ structure DeserializeSeedGhost where
   bs : List (BitVec 8)
   f : List (BitVec 8)
 
-/-- Specification of `SessionRecord::deserialize` (`0x16ed4`) on `seedRecord f`: writes canonical
-`Ok(record)` (`sessionRecordAt A0 out g r` with `encodeRecord r = seedRecord f`) at `out`. -/
-noncomputable def deserializeSeedSpec : Spec DeserializeSeedGhost where
-  pre := fun x s =>
-    ⌜s.readReg64 .x0 = x.p ∧ s.readReg64 .x1 = BitVec.ofNat 64 x.bs.length ∧
-      s.readReg64 .x8 = x.out ∧ SeedOk x.f ∧ x.bs = seedRecord x.f ∧
-      sessionImg0.FrozenLoaded s ∧ s.symtab = sessionImg0.symtab⌝ ∗
-      (x.p ↦ₛ x.bs) ∗ memRegion x.out 368 ∗ stackAt s.sp recDeserializeStack
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗ (x.p ↦ₛ x.bs) ∗
-      (∃∗ g : RecordGhost, ∃∗ r : SessionRecord (List (BitVec 8)),
-        ⌜CanonRecord g r ∧ encodeRecord r = x.bs⌝ ∗ sessionRecordAt A0 x.out g r) ∗
-      stackAt s0.sp recDeserializeStack
-  onPanic := allocPanic
-
-/-! ## Relocatable `[LibsignalPlacement]` Specification -/
-
 section Placed
 
 open Arm64.Obj CryptoVerification CryptoVerification.E2E.Record.Placed
 
 /-- Image-free base contract of `SessionRecord::deserialize` on seed's bytes `seedRecord f`:
 `Ok(record)` at `out` (niche form), canonical and re-encoding to the input. -/
-noncomputable def deserializeSeedRawSpec : Spec DeserializeSeedGhost where
+@[expose] def deserializeSeedRawSpec : Spec DeserializeSeedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.p ∧ s.readReg64 .x1 = BitVec.ofNat 64 x.bs.length ∧
       s.readReg64 .x8 = x.out ∧ SeedOk x.f ∧ x.bs = seedRecord x.f⌝ ∗
@@ -94,10 +80,10 @@ noncomputable def deserializeSeedRawSpec : Spec DeserializeSeedGhost where
       stackAt s0.sp recDeserializeStack
   onPanic := allocPanic
 
-noncomputable abbrev deserializeSeedPlacedSpec [LibsignalPlacement] : Spec DeserializeSeedGhost :=
+abbrev deserializeSeedPlacedSpec [LibsignalPlacement] : Spec DeserializeSeedGhost :=
   LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl deserializeSeedRawSpec
 
-def DeserializeSeedPlacedOk [LibsignalPlacement]
+@[expose] def DeserializeSeedPlacedOk [LibsignalPlacement]
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_46 H) (blkPl_46).base deserializeSeedPlacedSpec
 

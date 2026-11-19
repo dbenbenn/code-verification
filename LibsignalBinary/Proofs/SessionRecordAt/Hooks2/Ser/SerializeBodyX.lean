@@ -9,10 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodySomeX
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyNoneX
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodySomeX
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyNoneX
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Defs
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.Common -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,7 +45,7 @@ set_option maxHeartbeats 400000
 theorem L1_SerializeBodyX : True := trivial
 
 /-- Empty previous-sessions `Vec` layout without its `ptr` and `len` header words. -/
-def prevVecFrameX (A : RustAlloc) (r : BitVec 64) (g : RecordGhost) : SepProp :=
+@[expose] def prevVecFrameX (A : RustAlloc) (r : BitVec 64) (g : RecordGhost) : SepProp :=
   (r ↦₆₄ g.prevCap) ∗ vecBuf A 24 8 (fun (_ : Unit) _ => emp) g.prevCap g.prevPtr []
 
 theorem vecAt_empty_splitX (A : RustAlloc) (r : BitVec 64) (g : RecordGhost) :
@@ -49,81 +54,6 @@ theorem vecAt_empty_splitX (A : RustAlloc) (r : BitVec 64) (g : RecordGhost) :
   unfold vecAt vecHeader prevVecFrameX
   simp only [List.length_nil]
   ac_rfl
-
-/-- `SessionRecord::serialize` (`0x1857c`) satisfies `(serializeSpecX A).inImage img` on
-`SP2Ext img.base ext` given its callee and stub contracts. -/
-theorem serialize_ok_of_leaves_ext {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : SerContractsX img A ext)
-    (hClone : SessionCloneOkX img A ext)
-    (hEV : EncodeVarintOkX img A ext)
-    (hRaw : EncodeRawOkX img A ext)
-    (hDrop : DropSessionStructureLocal1OkX img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr serializeName)
-      ((serializeSpecX A).inImage img) := by
-  have hnone := serialize_none_okX (img := img) (A := A) (ext := ext) hC
-  have hsome := serialize_some_okX hC hClone hEV hRaw hDrop
-  apply subroutine_ok_outcome_intro
-  intro x R s0 hpc hrun hpre hsp
-  rcases hcur_g : x.g.cur with _ | G <;> rcases hcur_r : x.r.currentSession with _ | sess
-  ·
-    have henc : encRecordMem x.g x.r = [] := by
-      simp [encRecordMem, encCurMem, hcur_g, hcur_r]
-    let F := prevVecFrameX A x.self x.g ∗ memRegion (x.self + 32#64) 336 ∗ A.pool
-    have hpre' : s0.mem ⊨ ((serializeNoneSpecX A).inImage img).pre (x.self, x.out, x.g.prevPtr) s0 ∗
-        (F ∗ R) := by
-      simp only [Spec.inImage, serializeSpecX, serializeNoneSpecX, sessionRecordAt, hcur_g,
-        hcur_r, vecAt_empty_splitX, F, sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-      refine ⟨hpre.1, ⟨hpre.2.1.1, hpre.2.1.2.1⟩, ?_⟩
-      exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpre.2.2
-    refine hnone.mono_outcome (x.self, x.out, x.g.prevPtr) (F ∗ R) s0 hpc hrun hpre' hsp ?_
-    rintro sf (⟨h1, h2, hpost⟩ | ⟨_, hpan⟩ | ⟨_, _, hex⟩ | ⟨_hoom_st, _hoom_post⟩)
-    rotate_right; · exact (not_satisfies_false_sepConj _hoom_post).elim
-    · refine Or.inl ⟨h1, h2, ?_⟩
-      simp only [Spec.inImage, serializeSpecX, serializeNoneSpecX, sessionRecordAt, hcur_g,
-        hcur_r, henc, vecAt_empty_splitX, F, sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-      refine ⟨hpost.1, ?_⟩
-      exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpost.2
-    · exact False.elim (not_satisfies_false_sepConj hpan)
-    · exact False.elim (not_satisfies_false_sepConj hex)
-  ·
-    simp only [Spec.inImage, serializeSpecX, sessionRecordAt, hcur_g, hcur_r,
-      sepConj_assoc, satisfies_pure_sepConj] at hpre
-    rw [sepConj_comm (vecAt A 24 8 (fun _ _ => emp) x.self x.g.prevCap x.g.prevPtr []),
-      sepConj_assoc, satisfies_pure_sepConj] at hpre
-    exact False.elim hpre.2.2.1
-  ·
-    simp only [Spec.inImage, serializeSpecX, sessionRecordAt, hcur_g, hcur_r,
-      sepConj_assoc, satisfies_pure_sepConj] at hpre
-    rw [sepConj_comm (vecAt A 24 8 (fun _ _ => emp) x.self x.g.prevCap x.g.prevPtr []),
-      sepConj_assoc, satisfies_pure_sepConj] at hpre
-    exact False.elim hpre.2.2.1
-  ·
-    have henc : encRecordMem x.g x.r = lenField 1 (encSessionMem G sess) := by
-      simp [encRecordMem, encCurMem, hcur_g, hcur_r]
-    let F := prevVecFrameX A x.self x.g
-    have hpre' : s0.mem ⊨ ((serializeSomeSpecX A).inImage img).pre
-        ⟨x.self, x.out, x.g.prevPtr, G, sess⟩ s0 ∗ (F ∗ R) := by
-      simp only [Spec.inImage, serializeSpecX, serializeSomeSpecX, sessionRecordAt, hcur_g,
-        hcur_r, henc, vecAt_empty_splitX, F, sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-      refine ⟨hpre.1, hpre.2.1, ?_⟩
-      exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpre.2.2
-    refine hsome.mono_outcome ⟨x.self, x.out, x.g.prevPtr, G, sess⟩ (F ∗ R) s0 hpc hrun hpre' hsp ?_
-    rintro sf (⟨h1, h2, hpost⟩ | ⟨hpan_st, hpan⟩ | ⟨_, _, hex⟩ | ⟨_hoom_st, _hoom_post⟩)
-    rotate_right; · exact (not_satisfies_false_sepConj _hoom_post).elim
-    · refine Or.inl ⟨h1, h2, ?_⟩
-      simp only [Spec.inImage, serializeSpecX, serializeSomeSpecX, sessionRecordAt, hcur_g,
-        hcur_r, henc, vecAt_empty_splitX, F, sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-      refine ⟨hpost.1, ?_⟩
-      exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpost.2
-    · refine Or.inr (Or.inl ⟨hpan_st, ?_⟩)
-      simp only [Spec.inImage, serializeSpecX, serializeSomeSpecX] at hpan ⊢
-      rw [← sepConj_assoc] at hpan
-      exact allowPanic_frame id hpan
-    · exact False.elim (not_satisfies_false_sepConj hex)
-
-/-! ## Relocatable `[LibsignalPlacement]` proofs (Block `52`) -/
 
 section Placed
 

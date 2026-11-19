@@ -10,31 +10,31 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part8PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part9Placed
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part8PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part9Placed
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
-import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.Proof
+public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.Proof -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.Proof
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3Placed
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part6
-import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part7
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part7 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part8
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part8Placed
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part9
@@ -46,6 +46,8 @@ import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
 
 /-!
 # Budget-Threaded Relocatable `Ordering::Greater` Substeps for `spqr::recv`
@@ -54,7 +56,7 @@ Envelope-parametric and default `SpqrRecvEnv` proofs of `step_v0_after_chainFrom
 (`+604..+740`) and `step_v0_chain_none_2108_placed` (`+2108..+2948`) for `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -69,7 +71,7 @@ open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification (LibsignalPlacement lsmpl sepWP_seq_lscl withMemEq)
 open CryptoVerification.LibsignalSpqrV1
   (Bytes Chain ChainPB ChainParamsPB Direction Error MlKem MsgPreamble PqRatchetState V1State
-   VersionNegotiationPB chainFrom chainFromVersionNegotiation msgPreamble recvResultExactKeyAt
+   VersionNegotiationPB chainFrom chainFromVersionNegotiation msgPreamble
    spqrDecodeState spqrHkdfWith spqrV1Recv)
 open CryptoVerification.LibsignalTripleRatchet (VecArg)
 open CryptoVerification.SpqrV1.ChainProofs
@@ -94,7 +96,7 @@ open CryptoVerification.SpqrV1.Top.Recv
    hsp_add_544_eq' hsp_add_560_eq' memRegion_872_sub2968_split_ok_680
    memRegion_88_sub2096_split_byte8 memRegion_88_sub3056_split_32_56
    memRegion_88_sub_entails_words11 recvKeyErrAt_entails_code_memRegion23 recvPrevFits_of_chainFrom
-   recv_err_words_foldX ret_48_split sp_setPState sp_sub_4992_aligned sp_writeVReg128
+   ret_48_split sp_setPState sp_sub_4992_aligned sp_writeVReg128
    spqrErrorTag_eq_zero_iff spqrRecvCalleeStackX spqrRecvPlacedEntry spqrRecvPlacedProg
    spqrRecvRoPlacedAt spqrRecvSavedRegs spqrV1Recv_gt_chainFrom_err spqrV1Recv_gt_recvKey_err
    spqrV1Recv_gt_recvKey_ok spqrV1Recv_gt_recvKey_panic stackAt_spqrRecvCallee_split
@@ -109,6 +111,9 @@ open LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget (ChainIntoPbAllocEn
 open LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget
   (ChainRecvKeyEnv chainRecvKeyEvents chainRecvKeySpecX)
 open LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget (dropSpqrChainSpec)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag
+  (recvResultExactKeyDispAt spqrErrorTagCanonical spqrErrorTagCanonical_valid_of_ne_invalidParams
+   spqrErrorValidTag_zero)
 open LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget (PqRatchetStateEncodeToVecEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget
   (ChainFromAllocEnv ChainFromEnv ChainFromVersionNegotiationEnv
@@ -116,7 +121,8 @@ open LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
   (SpqrRecvPlacedContracts SpqrRecvPlacedContractsOfEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
-  (SpqrRecvEnv sepWP_spqrRecvPlacedPostOfEnv_of_post0 spqrRecvBudgetPanicPost spqrRecvPlacedPost
+  (SpqrRecvEnv chainRecvKey_ne_invalidParams recv_err_words_disp_foldX
+   sepWP_spqrRecvPlacedPostOfEnv_of_post0 spqrRecvBudgetPanicPost spqrRecvPlacedPost
    spqrRecvPlacedPostOfEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
   (SpqrRecvEnv.append_freeOnly freeOnlyWitness)
@@ -446,11 +452,14 @@ theorem step_v0_after_chainFrom_604_placed_ofEnv {MC : AllocCostModel}
             ((ret + 16#64) ↦₆₄ w2_err) ∗
             ((ret + 24#64) ↦₆₄ w1_err) ∗
             memRegion (ret + 32#64) 16) ⊢
-          recvResultExactKeyAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) := by
+          recvResultExactKeyDispAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) := by
         rw [herr_recv]
-        exact recv_err_words_foldX A.repAlloc ret w3_err w2_err w1_err
+        exact recv_err_words_disp_foldX A.repAlloc ret w3_err w2_err w1_err
           (spqrErrorTag e) (e == .stateDecode)
-          (spqrErrorTag_eq_zero_iff e).to_iff hret8_err
+          (spqrErrorTag_eq_zero_iff e).to_iff
+          ((show spqrErrorTag e = spqrErrorTagCanonical e by cases e <;> rfl) ▸
+            spqrErrorTagCanonical_valid_of_ne_invalidParams (chainRecvKey_ne_invalidParams hrk))
+          hret8_err
       apply sepWP_seq_lscl hcl1 (mid := (blkPl_329).base + 2540#64)
       refine SepWP.focus_weaken hret_fold (by sep_focus) ?_
       refine SepWP.focus_weaken
@@ -840,7 +849,7 @@ theorem step_v0_chain_none_2108_placed_ofEnv {MC : AllocCostModel}
       apply ProofLib.SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
       exact step_v0_err_2388_placed_ofEnv A lim st_cost Env evs0 hevs_free F K ext
         (SpqrRecvPlacedContractsOfEnv.toDropContracts hC)
-        st msg ret vn pb .chainNotAvailable w0 w1 d2896 herr_recv hnp s0 _ _ R hs0_align
+        st msg ret vn pb .chainNotAvailable w0 w1 d2896 herr_recv hnp (by decide) s0 _ _ R hs0_align
         (by simp only [spqrRecvPlacedEntry, arm64_norm, *])
         (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
         ⟨by simp only [wp_norm, arm64_norm, htr.1, *],
@@ -1018,7 +1027,7 @@ theorem step_v0_chain_none_2108_placed_ofEnv {MC : AllocCostModel}
     apply ProofLib.SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
     exact step_v0_err_2388_placed_ofEnv A lim st_cost Env evs0 hevs_free F K ext
       (SpqrRecvPlacedContractsOfEnv.toDropContracts hC)
-      st msg ret vn pb .stateDecode w0 w1 d2896 herr_recv hnp s0 _ _ R hs0_align
+      st msg ret vn pb .stateDecode w0 w1 d2896 herr_recv hnp spqrErrorValidTag_zero s0 _ _ R hs0_align
       (by simp only [spqrRecvPlacedEntry, arm64_norm, *])
       (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
       ⟨by simp only [wp_norm, arm64_norm, htr.1, *],

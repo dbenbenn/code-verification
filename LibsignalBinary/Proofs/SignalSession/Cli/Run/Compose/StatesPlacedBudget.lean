@@ -11,12 +11,17 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwnedPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwnedPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W0Spec
 
 /-!
 # Budget-Threaded Placed Machine-Level Hop States for `signal_session::run`
@@ -27,7 +32,7 @@ Extends `StatesPlaced` to `RustCliAllocBudget M` on Block `579` (`lsProg_579`), 
 (`runPostAnyPlaced`) normal-return bridge lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -125,7 +130,7 @@ abbrev init2MemPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Envelope-constrained normal-return postcondition at `s0.readReg64 .lr`, matching
 `SpecsPlacedBudget.runSpecPlaced`. -/
-def runPostPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def runPostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (RunEnv : RunCall → List AllocEvent → Prop)
     (g : RunCall) (st : M.σ) (resStack : Nat) (s0 sf : State) (Pf : SepProp) : Prop :=
@@ -140,7 +145,7 @@ def runPostPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Envelope-erased normal-return postcondition at `s0.readReg64 .lr`, matching
 `SpecsPlacedBudget.runSpecAnyPlaced`. -/
-def runPostAnyPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def runPostAnyPlaced [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (g : RunCall) (resStack : Nat) (s0 sf : State) (Pf : SepProp) : Prop :=
   CodeOk sf.mem ∧ sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧

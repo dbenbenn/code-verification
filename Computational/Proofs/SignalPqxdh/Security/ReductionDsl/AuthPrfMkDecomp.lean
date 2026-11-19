@@ -9,9 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkShallow
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkShallow -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.GameHop.Swap
+import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
 
 /-!
 # Shallow Decomposition of `authMkStepReduction`
@@ -20,7 +28,7 @@ Proves that `authMkStepReduction` equals the combined shallow step `prfMkStepC` 
 challenger-query count dropped.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -98,17 +106,6 @@ private theorem mkUnmatchedSlotsPre_eq (idx : Nat) (msg : PreKeyMsg) (prep : Pre
   unfold mkUnmatchedSlotsPre finishAuthRecvUnmatchedSlotsReduction
   split_ifs with h1 h2 <;> simp [embedUnifMk, MkCont.post, MkCont.isSend]
 
-theorem mkUnmatchedPre_eq (idx : Nat) (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S)
-    (drKey : DRKey) (rk1 : Bytes) (spqrSalt? : Option Bytes) (rSlot recvCount' : Nat)
-    (cache : AuthMkSaltCache S) (sc : Bool) :
-    (fun x => (x.1, x.2.2)) <$>
-        prfMkRunPre (mkUnmatchedPre S idx msg prep drKey rk1 spqrSalt? rSlot recvCount' cache sc)
-          sc =
-      (fun r => (r, sc)) <$>
-        finishAuthRecvUnmatchedReduction S idx msg prep drKey rk1 spqrSalt? rSlot recvCount'
-          cache sc :=
-  mkUnmatchedSlotsPre_eq idx msg prep drKey rk1 spqrSalt? rSlot recvCount' cache {} sc
-
 private theorem mkMatchedSameEphSlotsPre_eq (idx : Nat) (msg : PreKeyMsg)
     (prep : PreparedAuthRecvPrim S)
     (s : IdealAuthSession S) (sIdx : Nat) (spqrSalt? : Option Bytes) (recvCount : Nat)
@@ -132,18 +129,6 @@ private theorem mkMatchedSameEphSlotsPre_eq (idx : Nat) (msg : PreKeyMsg)
       · simp [ha, hb, hc]
         split <;> rename_i heq <;> simp [heq]
     · simp [ha, hb]
-
-theorem mkMatchedSameEphPre_eq (idx : Nat) (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S)
-    (s : IdealAuthSession S) (spqrSalt? : Option Bytes) (recvCount : Nat)
-    (cache : AuthMkSaltCache S) (sc : Bool) :
-    (fun x => (x.1, x.2.2)) <$>
-        prfMkRunPre (mkMatchedSameEphPre S idx msg prep s spqrSalt? recvCount cache) sc =
-      (fun r => (r, sc)) <$>
-        (do let p ← matchedSameEphMkReduction S idx s spqrSalt? recvCount cache
-            embedPrimMk (finishAuthRecvMkPrim S msg prep s.drKey s.rk1 s.ck1_1 (recvCount + 1)
-              p.2 p.1)) :=
-  mkMatchedSameEphSlotsPre_eq idx msg prep s (sessionSlotIndex s.sid) spqrSalt? recvCount cache {}
-    sc
 
 theorem mkRecvPre_eq (idx : Nat) (msg : PreKeyMsg) (prep? : Option (PreparedAuthRecvPrim S))
     (hst : AuthHybridStateFixed S) (sc : Bool) :

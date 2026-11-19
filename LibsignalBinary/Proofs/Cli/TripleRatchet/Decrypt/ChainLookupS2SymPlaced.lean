@@ -9,12 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupS1ErrPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainSym
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainStack
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupS1ErrPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainSym
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainStack
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.RegChain
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.ChainKeyCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.FindReceiverChainKey -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailSym
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.ProtoExt
 
 /-!
 # Relocatable Segment `S2` Symbolic Execution on Block `433`
@@ -23,7 +29,7 @@ Relocatable `[LibsignalPlacement]` `SepWP` step lemmas and `find_receiver_chain_
 reachability for segment `S2` of `try_decrypt_with_state::<Coins>` (block `433`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

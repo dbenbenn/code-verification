@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompSchedule
-public import Symbolic.Proofs.Swarm.COMPOSED.CompPcsGlue
+public import Symbolic.Proofs.Swarm.COMPOSED.CompSchedule -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.COMPOSED.CompPcsGlue -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.Bytes.AttackerKnowledge
 import DY.Misc.Fixpoint
@@ -36,19 +36,19 @@ import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
 import Symbolic.Specifications.Model.EquationalTheory.X25519
 import Symbolic.Specifications.Model.EquationalTheory.Kem
 import Symbolic.Specifications.Model.EquationalTheory.Spqr
-public import Symbolic.Proofs.Swarm.COMPOSED.CompPresBob
+public import Symbolic.Proofs.Swarm.COMPOSED.CompPresBob -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompHsClass
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.COMPOSED.CompLineage
 import Symbolic.Proofs.Swarm.COMPOSED.CompPresPQXDH
-import Symbolic.Proofs.Swarm.COMPOSED.CompPresTRExp
+public import Symbolic.Proofs.Swarm.COMPOSED.CompPresTRExp -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompPubInv
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.Bytes.AttackerKnowledge
 import Symbolic.DYBridge.DY.Misc.Fixpoint
 import Symbolic.DYBridge.DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Trace.Basic
-import Symbolic.DYBridge.DY.Trace.Monad
+public import Symbolic.DYBridge.DY.Trace.Monad
 import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.Trace.BaseAttackerKnowledge
 import Symbolic.DYBridge.DY.Actions.Network
@@ -66,7 +66,7 @@ witness-based closure invariant `CompClosedInvW` across reachable composed trace
 handshake-excuse bridge under `CompPcsWitnessExposure`, and instantiating `ReachableCompPCSBundle`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

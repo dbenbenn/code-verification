@@ -11,7 +11,9 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.PollCommon
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.PollCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Read-Only `Dir::get` Cell Specification
@@ -20,7 +22,7 @@ Defines `dirGetRoCellsSpec` parameterized by a caller-supplied allocation envelo
 under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -33,7 +35,7 @@ open CryptoVerification.SignalSession.Cli (ReadRule DirGetGhost pathOf dirAt get
 open CryptoVerification.SignalSession.Cli.RunProofs.Initiate.PollCommon (DirGetRoCellsGhost)
 
 /-- Read-only `Dir::get` cell wrapper specification under `FitsEnv M lim st`. -/
-def dirGetRoCellsSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def dirGetRoCellsSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DirGetEnv : DirGetGhost → List AllocEvent → Prop)
     (rd : ReadRule) (pathOk : List (BitVec 8) → Prop) (calleeStk : Nat) :
     Spec (DirGetRoCellsGhost × M.σ) where

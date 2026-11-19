@@ -51,12 +51,13 @@ inductive ReadOutcome where
   deriving Inhabited
 
 /-- Pure outcome model for `std::fs::read` on path bytes `bs` in `fs`. Checks for interior NUL
-    bytes first, returns `ENAMETOOLONG` when `PATH_MAX <= bs.length`, and otherwise dispatches on
+    bytes first, returns `EMFILE` (when `fs.allocFd.isNone`) or `ENAMETOOLONG` when
+    `PATH_MAX <= bs.length`, and otherwise dispatches on
     `Arm64.openatPure fs AT_FDCWD_W32 (cPathOf bs) stdReadOpenFlags` and the resolved entry at
     `normalizePath (cPathOf bs)`. -/
 def fsReadOutcome (fs : FsState) (bs : List (BitVec 8)) : ReadOutcome :=
   if 0#8 ∈ bs then .nul
-  else if PATH_MAX ≤ bs.length then .err ENAMETOOLONG
+  else if PATH_MAX ≤ bs.length then .err (if fs.allocFd.isNone then EMFILE else ENAMETOOLONG)
   else
     match Arm64.openatPure fs AT_FDCWD_W32 (cPathOf bs) stdReadOpenFlags with
     | .trap _ => .trap

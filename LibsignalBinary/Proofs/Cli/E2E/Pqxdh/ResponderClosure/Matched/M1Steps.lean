@@ -9,10 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1Fetch
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1Fetch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
 public import ProofLib.SepLogic.WP
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
@@ -21,7 +20,7 @@ import ProofLib.SepLogic.WPp
 # Prologue and Epilogue Symbolic Steps for `promote_matching_session`
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -103,7 +102,7 @@ private theorem csel_ver_extractLsb32 (sessVer : BitVec 32) :
   · simp only [beq_iff_eq, h, ↓reduceIte]
     bv_slice
 
-def promoteSavedRegs (s0 : State) : SepProp :=
+@[expose] def promoteSavedRegs (s0 : State) : SepProp :=
   ((s0.sp - 96#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((s0.sp - 88#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((s0.sp - 80#64) ↦₆₄ s0.readReg64 .x28) ∗
@@ -138,140 +137,5 @@ private theorem cells_96_12_eq (sp : BitVec 64) :
       hstep 72#64 64#64 rfl, hstep 64#64 56#64 rfl, hstep 56#64 48#64 rfl,
       hstep 48#64 40#64 rfl, hstep 40#64 32#64 rfl, hstep 32#64 24#64 rfl,
       hstep 24#64 16#64 rfl, hstep 16#64 8#64 rfl]
-
-set_option linter.unusedSimpArgs false in
-set_option maxRecDepth 200000 in
-set_option maxHeartbeats 600000 in
-theorem promote_prologue_wp {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (s0 : State) (recPtr locCap alicePtr serPtr outPtr : BitVec 64)
-    (sessVer : BitVec 32) (msgVer : BitVec 8)
-    (hpc : s0.pc = (tripleRatchetProgAtExt b ext).fnAddr promoteMatchingSessionName)
-    (hrun : s0.status = .Running)
-    (hsp_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hx0 : s0.readReg64 .x0 = recPtr)
-    (hx1 : s0.readReg64 .x1 = msgVer.zeroExtend 64)
-    (hx2 : s0.readReg64 .x2 = serPtr)
-    (hx3 : s0.readReg64 .x3 = 33#64)
-    (hx8 : s0.readReg64 .x8 = outPtr)
-    (hcap : locCap.toNat < 2 ^ 63)
-    (hver : (if sessVer = 0#32 then 2#32 else sessVer) = msgVer.zeroExtend 32) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr promoteMatchingSessionName + 0x80#64) s0
-      (((recPtr + 0x18#64) ↦₆₄ locCap) ∗
-       ((recPtr + 0x80#64) ↦₆₄ alicePtr) ∗
-       ((recPtr + 0x88#64) ↦₆₄ 33#64) ∗
-       ((recPtr + 0x160#64) ↦₃₂ sessVer) ∗
-       (∃∗ w4a0 : BitVec 64, (s0.sp - 1184#64) ↦₆₄ w4a0) ∗
-       (∃∗ w470 : BitVec 64, (s0.sp - 1136#64) ↦₆₄ w470) ∗
-       cells (s0.sp - 96#64) 12)
-      (fun s1 P1 =>
-        (P1 ⊢
-          ((recPtr + 0x18#64) ↦₆₄ locCap) ∗
-          ((recPtr + 0x80#64) ↦₆₄ alicePtr) ∗
-          ((recPtr + 0x88#64) ↦₆₄ 33#64) ∗
-          ((recPtr + 0x160#64) ↦₃₂ sessVer) ∗
-          ((s0.sp - 1184#64) ↦₆₄ 0#64) ∗
-          ((s0.sp - 1136#64) ↦₆₄ serPtr) ∗
-          promoteSavedRegs s0) ∧
-        s1.trace = s0.trace ∧
-        s1.sp = s0.sp - 1184#64 ∧
-        s1.readReg64 .x19 = alicePtr ∧
-        s1.readReg64 .x21 = 33#64 ∧
-        s1.readReg64 .x22 = serPtr ∧
-        s1.readReg64 .x23 = outPtr ∧
-        s1.readReg64 .x25 = 1#64 ∧
-        s1.vregs = s0.vregs) := by
-  rw [cells_96_12_eq s0.sp]
-  have hfn : libsignalSessionCode.fnOff promoteMatchingSessionName =
-      (ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_matching_session") :=
-    (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::promote_matching_session")
-  dsimp only [tripleRatchetProgAtExt] at hpc ⊢
-  code_fetches_range CryptoVerification.libsignalSessionCode promoteBinCli b
-    (Rust.withPanics ext) hfn
-    (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_matching_session")) 0 128
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    promoteMatchingSessionName = entry
-  examples_hide_fetches
-  have hcmn := cond_eq_adds_1_false hcap
-  have hx0' : s0.readReg64 (Reg.gpr 0#5) = recPtr := hx0
-  have hx1' : s0.readReg64 (Reg.gpr 1#5) = msgVer.zeroExtend 64 := hx1
-  have hx2' : s0.readReg64 (Reg.gpr 2#5) = serPtr := hx2
-  have hx3' : s0.readReg64 (Reg.gpr 3#5) = 33#64 := hx3
-  have hx8' : s0.readReg64 (Reg.gpr 8#5) = outPtr := hx8
-  have hveq : ConditionHolds CondCode.NE
-      (subsPState32 (if sessVer = 0#32 then 2#32 else sessVer) (msgVer.zeroExtend 32)) = false := by
-    rw [hver, cond_ne_subs32_self]
-  have hveq' : ConditionHolds CondCode.NE
-      (subsPState32 (msgVer.zeroExtend 32) (if sessVer = 0#32 then 2#32 else sessVer)) = false := by
-    rw [hver, cond_ne_subs32_self]
-  wp_pull_exists
-  wp_steps
-  refine SepWP.done (by simp only [hpc, hcmn, hveq, hveq', wp_norm, arm64_norm])
-    (by simp only [hrun, wp_norm, arm64_norm])
-    ⟨?_, by simp only [wp_norm, arm64_norm], by simp only [wp_norm, arm64_norm],
-     by simp only [hx0', wp_norm, arm64_norm], by simp only [hx3', wp_norm, arm64_norm],
-     by simp only [hx2', wp_norm, arm64_norm], by simp only [hx8', wp_norm, arm64_norm],
-     by simp only [wp_norm, arm64_norm], rfl⟩
-  unfold promoteSavedRegs
-  sep_frame
-
-set_option linter.unusedSimpArgs false in
-set_option maxRecDepth 200000 in
-set_option maxHeartbeats 600000 in
-theorem promote_epilogue_wp {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (s0 s2 : State) (outPtr : BitVec 64)
-    (hpc : s2.pc = (tripleRatchetProgAtExt b ext).fnAddr promoteMatchingSessionName + 0xb4#64)
-    (hrun : s2.status = .Running)
-    (hsp_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (htr : s2.trace = s0.trace)
-    (hsp : s2.sp = s0.sp - 1184#64)
-    (hx0 : s2.readReg64 .x0 = 1#64)
-    (hx23 : s2.readReg64 .x23 = outPtr)
-    (hvregs : s2.vregs = s0.vregs) :
-    SepWP (tripleRatchetProgAtExt b ext) (s0.readReg64 .x30) s2
-      ((∃∗ w0 : BitVec 64, outPtr ↦₆₄ w0) ∗
-       (∃∗ b8 : BitVec 8, (outPtr + 8#64) ↦₈ b8) ∗
-       promoteSavedRegs s0)
-      (fun sf Pf =>
-        (Pf ⊢
-          (outPtr ↦₆₄ 0#64) ∗
-          ((outPtr + 8#64) ↦₈ 1#8) ∗
-          cells (s0.sp - 96#64) 12) ∧
-        sf.trace = s0.trace ∧
-        sf.sp = s0.sp ∧
-        CalleeSavedPreserved s0 sf) := by
-  unfold promoteSavedRegs
-  have hfn : libsignalSessionCode.fnOff promoteMatchingSessionName =
-      (ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_matching_session") :=
-    (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::promote_matching_session")
-  dsimp only [tripleRatchetProgAtExt] at hpc ⊢
-  code_fetches_range CryptoVerification.libsignalSessionCode promoteBinCli b
-    (Rust.withPanics ext) hfn
-    (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_matching_session")) 0xb4 28
-  code_fetches_range CryptoVerification.libsignalSessionCode promoteBinCli b
-    (Rust.withPanics ext) hfn
-    (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_matching_session")) 0x2e4 32
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    promoteMatchingSessionName = entry
-  examples_hide_fetches
-  have hx0' : s2.readReg64 (Reg.gpr 0#5) = 1#64 := hx0
-  have hx23' : s2.readReg64 (Reg.gpr 23#5) = outPtr := hx23
-  wp_pull_exists
-  wp_steps
-  refine SepWP.done (by simp only [hpc, hsp, wp_norm, arm64_norm])
-    (by simp only [hrun, wp_norm, arm64_norm])
-    ⟨?_, by simp only [htr, wp_norm, arm64_norm],
-     by simp only [hsp, wp_norm, arm64_norm],
-     ⟨by simp only [hsp, wp_norm, arm64_norm], by simp only [hsp, wp_norm, arm64_norm],
-      by simp only [hsp, wp_norm, arm64_norm], by simp only [hsp, wp_norm, arm64_norm],
-      by simp only [hsp, wp_norm, arm64_norm], by simp only [hsp, wp_norm, arm64_norm],
-      by simp only [hsp, wp_norm, arm64_norm], by simp only [hsp, wp_norm, arm64_norm],
-      by simp only [hsp, wp_norm, arm64_norm], by simp only [hsp, wp_norm, arm64_norm],
-      by simp only [hsp, wp_norm, arm64_norm],
-      by simp only [CalleeSavedVRegsPreserved, calleeSavedVRegs, hvregs, wp_norm, arm64_norm]⟩⟩
-  rw [cells_96_12_eq s0.sp]
-  sep_frame
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched

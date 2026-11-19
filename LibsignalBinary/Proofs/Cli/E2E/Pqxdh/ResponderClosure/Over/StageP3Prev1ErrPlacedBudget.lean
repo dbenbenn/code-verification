@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrTopPlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1ErrAPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1ErrPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopErrPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrTopPlacedBudgetAux
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1ErrAPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1ErrPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopErrPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3GenSub5Budget
@@ -32,6 +32,13 @@ import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.Common
 import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologue
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsAPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrAPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsBPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3GenSub5
 
 /-!
 # Budget-Threaded Placed Stage P3 Unified Substage P3.5 Error Path on 1-Element `previous_sessions`
@@ -40,7 +47,7 @@ Proves budget-threaded `[LibsignalPlacement]` and `[LibsignalFullPlacement]` Sub
 theorems (`+0x1cd8 → s0.readReg64 .x30`) over a 1-element `prevVecAt [enc]` under `FromVPostTdEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -129,7 +136,7 @@ private theorem bind_sepWPp_frame_false {prog : Program} {mid ret : BitVec 64} {
 
 /-- Budget-threaded placed Substage P3.5 error-path precondition at `+0x1cd8` over a 1-element
 `prevVecAt [enc]`. -/
-def stageP3ErrPrePrev1Placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP3ErrPrePrev1Placed [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ) (s0 s s_pool : State)
     (coroPtr outPtr initErrsPtr prevCap prevPtr : BitVec 64) (enc : List (BitVec 8))
     (e : SignalProtocolError) (b_2c0 : BitVec 8)
@@ -152,7 +159,7 @@ theorem stageP3ErrPrePrev1Placed_eq_atState [LibsignalPlacement] {M : AllocCostM
 
 /-- Budget-threaded placed Substage P3.5 error-path statement (`+0x1cd8 → s0.readReg64 .x30`) over a
 1-element `prevVecAt [enc]`. -/
-def StageP3Sub5ErrPrev1PlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP3Sub5ErrPrev1PlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (ext : String → Option (State → State)),
     subroutine_ok (lsProg_518 ext) (lsρ CryptoVerification.lsRustNoAllocShimSym) sessionShimBudgetSpec →
@@ -593,223 +600,13 @@ theorem stageP3_sub5_err_prev1_placed_ok [LibsignalPlacement]
       s0 s coroPtr outPtr initErrsPtr prevCap prevPtr hfits hinit_ne e he_npan htag23
       b_2c0 enc G₂ recG st₂ recSt hcro hpc hrun hsp_align htr hx19 hx24
 
-theorem stageP3_sub5_err_prev1_stmt_placed_ok [LibsignalPlacement] :
-    StageP3Sub5ErrPrev1PlacedStmt :=
-  fun ext hshim halloc hdealloc _hmemcpy hGrow hDropSS3 hLogClosure _hpanic
-      st_b s0 s coroPtr outPtr initErrsPtr prevCap prevPtr hfits hinit_ne e he_npan
-      b_2c0 enc G₂ recG st₂ recSt hcro hpc hrun hsp_align htr hx19 hx24 =>
-    stageP3_sub5_err_prev1_placed_ok ext hshim halloc hdealloc hGrow hDropSS3 hLogClosure
-      st_b s0 s coroPtr outPtr initErrsPtr prevCap prevPtr hfits hinit_ne e he_npan
-      b_2c0 enc G₂ recG st₂ recSt hcro hpc hrun hsp_align htr hx19 hx24
-
 /-! ## Arbitrary-`Qp` and `Rust.withPanics` Corollaries -/
-
-theorem stageP3_sub5_err_nondup_prev1_anyQp_placed_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Qp : State → SepProp → Prop}
-    (ext : String → Option (State → State))
-    (hshim : subroutine_ok (lsProg_518 ext)
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2") sessionShimBudgetSpec)
-    (halloc : subroutine_ok (lsProg_518 ext)
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc12___rust_alloc") (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : subroutine_ok (lsProg_518 ext)
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim))
-    (hGrow : subroutine_ok (lsProg_518 ext) (lsmpl.base 42) (withLsCodeLoaded lsmpl (growOneSpeSpec M A lim)))
-    (hDropSS3 : subroutine_ok (lsProg_518 ext)
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)))
-    (hLogClosure : subroutine_ok (lsProg_518 ext)
-      (lsmpl.base 519) (withLsCodeLoaded lsmpl pqxdhLogClosurePlacedSpec))
-    (st_b : M.σ) (s0 s : State) (coroPtr outPtr initErrsPtr prevCap prevPtr : BitVec 64)
-    (hfits : FitsEnv M lim st_b FromVPostTdEnv)
-    (hinit_ne : initErrsPtr ≠ 0#64)
-    (e : SignalProtocolError) (he_npan : e ≠ .panic) (htag_ne23 : speTag e ≠ speWord 23)
-    (b_2c0 : BitVec 8) (enc : List (BitVec 8))
-    (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8)))
-    (hcro : StoreKit.LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryP34Placed + 0x1cd8#64) (hrun : s.status = .Running)
-    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = coroPtr) (hx24 : s.readReg64 .x24 = s.sp + 0x370#64) :
-    SepWPp (lsProg_518 ext) (s0.readReg64 .x30) s
-      (stageP3ErrPrePrev1Placed A lim st_b s0 s s coroPtr outPtr initErrsPtr prevCap prevPtr enc e
-        b_2c0 G₂ recG st₂ recSt)
-      (fun sf P_f =>
-        ∃ evs_err : List AllocEvent,
-          FromVPostTdEnv evs_err ∧
-          (P_f ⊢ stageP3ErrPostPrevEmptyM3Placed A lim (M.stepEvents evs_err st_b) s0 s sf coroPtr outPtr e) ∧
-          sf.sp = s.sp + 0xcd0#64 ∧ sf.trace = s0.trace ∧ ClosureCalleeSaved s0 sf ∧
-          StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem ∧ calleeSavedVRegs sf = calleeSavedVRegs s)
-      Qp :=
-  sepWPp_lift_false_qp (stageP3_sub5_err_nondup_prev1_placed_ok ext hshim halloc hdealloc
-    hGrow hDropSS3 hLogClosure st_b s0 s coroPtr outPtr initErrsPtr prevCap prevPtr
-    hfits hinit_ne e he_npan htag_ne23 b_2c0 enc G₂ recG st₂ recSt
-    hcro hpc hrun hsp_align htr hx19 hx24)
-
-theorem stageP3_sub5_err_prev1_anyQp_placed_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Qp : State → SepProp → Prop}
-    (ext : String → Option (State → State))
-    (hshim : subroutine_ok (lsProg_518 ext)
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2") sessionShimBudgetSpec)
-    (halloc : subroutine_ok (lsProg_518 ext)
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc12___rust_alloc") (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : subroutine_ok (lsProg_518 ext)
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim))
-    (hGrow : subroutine_ok (lsProg_518 ext) (lsmpl.base 42) (withLsCodeLoaded lsmpl (growOneSpeSpec M A lim)))
-    (hDropSS3 : subroutine_ok (lsProg_518 ext)
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)))
-    (hLogClosure : subroutine_ok (lsProg_518 ext)
-      (lsmpl.base 519) (withLsCodeLoaded lsmpl pqxdhLogClosurePlacedSpec))
-    (st_b : M.σ) (s0 s : State) (coroPtr outPtr initErrsPtr prevCap prevPtr : BitVec 64)
-    (hfits : FitsEnv M lim st_b FromVPostTdEnv)
-    (hinit_ne : initErrsPtr ≠ 0#64)
-    (e : SignalProtocolError) (he_npan : e ≠ .panic)
-    (b_2c0 : BitVec 8) (enc : List (BitVec 8))
-    (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8)))
-    (hcro : StoreKit.LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryP34Placed + 0x1cd8#64) (hrun : s.status = .Running)
-    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = coroPtr) (hx24 : s.readReg64 .x24 = s.sp + 0x370#64) :
-    SepWPp (lsProg_518 ext) (s0.readReg64 .x30) s
-      (stageP3ErrPrePrev1Placed A lim st_b s0 s s coroPtr outPtr initErrsPtr prevCap prevPtr enc e
-        b_2c0 G₂ recG st₂ recSt)
-      (fun sf P_f =>
-        ∃ evs_err : List AllocEvent,
-          FromVPostTdEnv evs_err ∧
-          (P_f ⊢ stageP3ErrPostPrevEmptyM3Placed A lim (M.stepEvents evs_err st_b) s0 s sf coroPtr outPtr e) ∧
-          sf.sp = s.sp + 0xcd0#64 ∧ sf.trace = s0.trace ∧ ClosureCalleeSaved s0 sf ∧
-          StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem ∧ calleeSavedVRegs sf = calleeSavedVRegs s)
-      Qp :=
-  sepWPp_lift_false_qp (stageP3_sub5_err_prev1_placed_ok ext hshim halloc hdealloc
-    hGrow hDropSS3 hLogClosure st_b s0 s coroPtr outPtr initErrsPtr prevCap prevPtr
-    hfits hinit_ne e he_npan b_2c0 enc G₂ recG st₂ recSt
-    hcro hpc hrun hsp_align htr hx19 hx24)
-
-theorem stageP3_sub5_err_nondup_prev1_withPanics_placed_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (ext : String → Option (State → State))
-    (hshim : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2") sessionShimBudgetSpec)
-    (halloc : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc12___rust_alloc") (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim))
-    (hGrow : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 42) (withLsCodeLoaded lsmpl (growOneSpeSpec M A lim)))
-    (hDropSS3 : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)))
-    (hLogClosure : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 519) (withLsCodeLoaded lsmpl pqxdhLogClosurePlacedSpec))
-    (st_b : M.σ) (s0 s : State) (coroPtr outPtr initErrsPtr prevCap prevPtr : BitVec 64)
-    (hfits : FitsEnv M lim st_b FromVPostTdEnv)
-    (hinit_ne : initErrsPtr ≠ 0#64)
-    (e : SignalProtocolError) (he_npan : e ≠ .panic) (htag_ne23 : speTag e ≠ speWord 23)
-    (b_2c0 : BitVec 8) (enc : List (BitVec 8))
-    (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8)))
-    (hcro : StoreKit.LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryP34Placed + 0x1cd8#64) (hrun : s.status = .Running)
-    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = coroPtr) (hx24 : s.readReg64 .x24 = s.sp + 0x370#64) :
-    SepWPp (lsProg_518 (Rust.withPanics ext)) (s0.readReg64 .x30) s
-      (stageP3ErrPrePrev1Placed A lim st_b s0 s s coroPtr outPtr initErrsPtr prevCap prevPtr enc e
-        b_2c0 G₂ recG st₂ recSt)
-      (fun sf P_f =>
-        ∃ evs_err : List AllocEvent,
-          FromVPostTdEnv evs_err ∧
-          (P_f ⊢ stageP3ErrPostPrevEmptyM3Placed A lim (M.stepEvents evs_err st_b) s0 s sf coroPtr outPtr e) ∧
-          sf.sp = s.sp + 0xcd0#64 ∧ sf.trace = s0.trace ∧ ClosureCalleeSaved s0 sf ∧
-          StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem ∧ calleeSavedVRegs sf = calleeSavedVRegs s)
-      (fun _ _ => False) :=
-  stageP3_sub5_err_nondup_prev1_placed_ok (Rust.withPanics ext) hshim halloc hdealloc
-    hGrow hDropSS3 hLogClosure st_b s0 s coroPtr outPtr initErrsPtr prevCap prevPtr
-    hfits hinit_ne e he_npan htag_ne23 b_2c0 enc G₂ recG st₂ recSt
-    hcro hpc hrun hsp_align htr hx19 hx24
-
-theorem stageP3_sub5_err_prev1_withPanics_placed_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (ext : String → Option (State → State))
-    (hshim : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2") sessionShimBudgetSpec)
-    (halloc : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc12___rust_alloc") (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim))
-    (hGrow : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 42) (withLsCodeLoaded lsmpl (growOneSpeSpec M A lim)))
-    (hDropSS3 : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)))
-    (hLogClosure : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 519) (withLsCodeLoaded lsmpl pqxdhLogClosurePlacedSpec))
-    (st_b : M.σ) (s0 s : State) (coroPtr outPtr initErrsPtr prevCap prevPtr : BitVec 64)
-    (hfits : FitsEnv M lim st_b FromVPostTdEnv)
-    (hinit_ne : initErrsPtr ≠ 0#64)
-    (e : SignalProtocolError) (he_npan : e ≠ .panic)
-    (b_2c0 : BitVec 8) (enc : List (BitVec 8))
-    (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8)))
-    (hcro : StoreKit.LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryP34Placed + 0x1cd8#64) (hrun : s.status = .Running)
-    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = coroPtr) (hx24 : s.readReg64 .x24 = s.sp + 0x370#64) :
-    SepWPp (lsProg_518 (Rust.withPanics ext)) (s0.readReg64 .x30) s
-      (stageP3ErrPrePrev1Placed A lim st_b s0 s s coroPtr outPtr initErrsPtr prevCap prevPtr enc e
-        b_2c0 G₂ recG st₂ recSt)
-      (fun sf P_f =>
-        ∃ evs_err : List AllocEvent,
-          FromVPostTdEnv evs_err ∧
-          (P_f ⊢ stageP3ErrPostPrevEmptyM3Placed A lim (M.stepEvents evs_err st_b) s0 s sf coroPtr outPtr e) ∧
-          sf.sp = s.sp + 0xcd0#64 ∧ sf.trace = s0.trace ∧ ClosureCalleeSaved s0 sf ∧
-          StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem ∧ calleeSavedVRegs sf = calleeSavedVRegs s)
-      (fun _ _ => False) :=
-  stageP3_sub5_err_prev1_placed_ok (Rust.withPanics ext) hshim halloc hdealloc
-    hGrow hDropSS3 hLogClosure st_b s0 s coroPtr outPtr initErrsPtr prevCap prevPtr
-    hfits hinit_ne e he_npan b_2c0 enc G₂ recG st₂ recSt
-    hcro hpc hrun hsp_align htr hx19 hx24
-
-theorem stageP3_sub5_err_prev1_withPanics_anyQp_placed_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Qp : State → SepProp → Prop}
-    (ext : String → Option (State → State))
-    (hshim : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2") sessionShimBudgetSpec)
-    (halloc : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc12___rust_alloc") (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim))
-    (hGrow : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 42) (withLsCodeLoaded lsmpl (growOneSpeSpec M A lim)))
-    (hDropSS3 : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)))
-    (hLogClosure : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 519) (withLsCodeLoaded lsmpl pqxdhLogClosurePlacedSpec))
-    (st_b : M.σ) (s0 s : State) (coroPtr outPtr initErrsPtr prevCap prevPtr : BitVec 64)
-    (hfits : FitsEnv M lim st_b FromVPostTdEnv)
-    (hinit_ne : initErrsPtr ≠ 0#64)
-    (e : SignalProtocolError) (he_npan : e ≠ .panic)
-    (b_2c0 : BitVec 8) (enc : List (BitVec 8))
-    (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8)))
-    (hcro : StoreKit.LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryP34Placed + 0x1cd8#64) (hrun : s.status = .Running)
-    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = coroPtr) (hx24 : s.readReg64 .x24 = s.sp + 0x370#64) :
-    SepWPp (lsProg_518 (Rust.withPanics ext)) (s0.readReg64 .x30) s
-      (stageP3ErrPrePrev1Placed A lim st_b s0 s s coroPtr outPtr initErrsPtr prevCap prevPtr enc e
-        b_2c0 G₂ recG st₂ recSt)
-      (fun sf P_f =>
-        ∃ evs_err : List AllocEvent,
-          FromVPostTdEnv evs_err ∧
-          (P_f ⊢ stageP3ErrPostPrevEmptyM3Placed A lim (M.stepEvents evs_err st_b) s0 s sf coroPtr outPtr e) ∧
-          sf.sp = s.sp + 0xcd0#64 ∧ sf.trace = s0.trace ∧ ClosureCalleeSaved s0 sf ∧
-          StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem ∧ calleeSavedVRegs sf = calleeSavedVRegs s)
-      Qp :=
-  sepWPp_lift_false_qp (stageP3_sub5_err_prev1_withPanics_placed_ok ext hshim halloc hdealloc
-    hGrow hDropSS3 hLogClosure st_b s0 s coroPtr outPtr initErrsPtr prevCap prevPtr
-    hfits hinit_ne e he_npan b_2c0 enc G₂ recG st₂ recSt
-    hcro hpc hrun hsp_align htr hx19 hx24)
 
 /-! ## `LibsignalFrozen` / `[LibsignalFullPlacement]` Variants -/
 
 /-- Budget-threaded `[LibsignalFullPlacement]` Substage P3.5 error-path statement
 (`+0x1cd8 → s0.readReg64 .x30`) over a 1-element `prevVecAt [enc]`. -/
-def StageP3Sub5ErrPrev1FullPlacedStmt [CryptoVerification.LibsignalFullPlacement] : Prop :=
+@[expose] def StageP3Sub5ErrPrev1FullPlacedStmt [CryptoVerification.LibsignalFullPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (ext : String → Option (State → State)),
     subroutine_ok (lsProg_518 ext) (lsρ CryptoVerification.lsRustNoAllocShimSym) sessionShimBudgetSpec →
@@ -1243,206 +1040,6 @@ theorem stageP3_sub5_err_prev1_full_placed_ok [CryptoVerification.LibsignalFullP
       s0 s coroPtr outPtr initErrsPtr prevCap prevPtr hfits hinit_ne e he_npan htag23
       b_2c0 enc G₂ recG st₂ recSt hfr hpc hrun hsp_align htr hx19 hx24
 
-theorem stageP3_sub5_err_prev1_stmt_full_placed_ok [CryptoVerification.LibsignalFullPlacement] :
-    StageP3Sub5ErrPrev1FullPlacedStmt :=
-  fun ext hshim halloc hdealloc _hmemcpy hGrow hDropSS3 _hpanic
-      st_b s0 s coroPtr outPtr initErrsPtr prevCap prevPtr hfits hinit_ne e he_npan
-      b_2c0 enc G₂ recG st₂ recSt hfr hpc hrun hsp_align htr hx19 hx24 =>
-    stageP3_sub5_err_prev1_full_placed_ok ext hshim halloc hdealloc hGrow hDropSS3
-      st_b s0 s coroPtr outPtr initErrsPtr prevCap prevPtr hfits hinit_ne e he_npan
-      b_2c0 enc G₂ recG st₂ recSt hfr hpc hrun hsp_align htr hx19 hx24
-
 /-! ## `[LibsignalFullPlacement]` Arbitrary-`Qp` and `Rust.withPanics` Corollaries -/
-
-theorem stageP3_sub5_err_nondup_prev1_anyQp_full_placed_ok [CryptoVerification.LibsignalFullPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Qp : State → SepProp → Prop}
-    (ext : String → Option (State → State))
-    (hshim : subroutine_ok (lsProg_518 ext)
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2") sessionShimBudgetSpec)
-    (halloc : subroutine_ok (lsProg_518 ext)
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc12___rust_alloc") (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : subroutine_ok (lsProg_518 ext)
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim))
-    (hGrow : subroutine_ok (lsProg_518 ext) (lsmpl.base 42) (withLsCodeLoaded lsmpl (growOneSpeSpec M A lim)))
-    (hDropSS3 : subroutine_ok (lsProg_518 ext)
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)))
-    (st_b : M.σ) (s0 s : State) (coroPtr outPtr initErrsPtr prevCap prevPtr : BitVec 64)
-    (hfits : FitsEnv M lim st_b FromVPostTdEnv)
-    (hinit_ne : initErrsPtr ≠ 0#64)
-    (e : SignalProtocolError) (he_npan : e ≠ .panic) (htag_ne23 : speTag e ≠ speWord 23)
-    (b_2c0 : BitVec 8) (enc : List (BitVec 8))
-    (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8)))
-    (hfr : CryptoVerification.LibsignalFrozen lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryP34Placed + 0x1cd8#64) (hrun : s.status = .Running)
-    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = coroPtr) (hx24 : s.readReg64 .x24 = s.sp + 0x370#64) :
-    SepWPp (lsProg_518 ext) (s0.readReg64 .x30) s
-      (stageP3ErrPrePrev1Placed A lim st_b s0 s s coroPtr outPtr initErrsPtr prevCap prevPtr enc e
-        b_2c0 G₂ recG st₂ recSt)
-      (fun sf P_f =>
-        ∃ evs_err : List AllocEvent,
-          FromVPostTdEnv evs_err ∧
-          (P_f ⊢ stageP3ErrPostPrevEmptyM3Placed A lim (M.stepEvents evs_err st_b) s0 s sf coroPtr outPtr e) ∧
-          sf.sp = s.sp + 0xcd0#64 ∧ sf.trace = s0.trace ∧ ClosureCalleeSaved s0 sf ∧
-          StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem ∧ calleeSavedVRegs sf = calleeSavedVRegs s)
-      Qp :=
-  sepWPp_lift_false_qp (stageP3_sub5_err_nondup_prev1_full_placed_ok ext hshim halloc hdealloc
-    hGrow hDropSS3 st_b s0 s coroPtr outPtr initErrsPtr prevCap prevPtr
-    hfits hinit_ne e he_npan htag_ne23 b_2c0 enc G₂ recG st₂ recSt
-    hfr hpc hrun hsp_align htr hx19 hx24)
-
-theorem stageP3_sub5_err_prev1_anyQp_full_placed_ok [CryptoVerification.LibsignalFullPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Qp : State → SepProp → Prop}
-    (ext : String → Option (State → State))
-    (hshim : subroutine_ok (lsProg_518 ext)
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2") sessionShimBudgetSpec)
-    (halloc : subroutine_ok (lsProg_518 ext)
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc12___rust_alloc") (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : subroutine_ok (lsProg_518 ext)
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim))
-    (hGrow : subroutine_ok (lsProg_518 ext) (lsmpl.base 42) (withLsCodeLoaded lsmpl (growOneSpeSpec M A lim)))
-    (hDropSS3 : subroutine_ok (lsProg_518 ext)
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)))
-    (st_b : M.σ) (s0 s : State) (coroPtr outPtr initErrsPtr prevCap prevPtr : BitVec 64)
-    (hfits : FitsEnv M lim st_b FromVPostTdEnv)
-    (hinit_ne : initErrsPtr ≠ 0#64)
-    (e : SignalProtocolError) (he_npan : e ≠ .panic)
-    (b_2c0 : BitVec 8) (enc : List (BitVec 8))
-    (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8)))
-    (hfr : CryptoVerification.LibsignalFrozen lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryP34Placed + 0x1cd8#64) (hrun : s.status = .Running)
-    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = coroPtr) (hx24 : s.readReg64 .x24 = s.sp + 0x370#64) :
-    SepWPp (lsProg_518 ext) (s0.readReg64 .x30) s
-      (stageP3ErrPrePrev1Placed A lim st_b s0 s s coroPtr outPtr initErrsPtr prevCap prevPtr enc e
-        b_2c0 G₂ recG st₂ recSt)
-      (fun sf P_f =>
-        ∃ evs_err : List AllocEvent,
-          FromVPostTdEnv evs_err ∧
-          (P_f ⊢ stageP3ErrPostPrevEmptyM3Placed A lim (M.stepEvents evs_err st_b) s0 s sf coroPtr outPtr e) ∧
-          sf.sp = s.sp + 0xcd0#64 ∧ sf.trace = s0.trace ∧ ClosureCalleeSaved s0 sf ∧
-          StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem ∧ calleeSavedVRegs sf = calleeSavedVRegs s)
-      Qp :=
-  sepWPp_lift_false_qp (stageP3_sub5_err_prev1_full_placed_ok ext hshim halloc hdealloc
-    hGrow hDropSS3 st_b s0 s coroPtr outPtr initErrsPtr prevCap prevPtr
-    hfits hinit_ne e he_npan b_2c0 enc G₂ recG st₂ recSt
-    hfr hpc hrun hsp_align htr hx19 hx24)
-
-theorem stageP3_sub5_err_nondup_prev1_withPanics_full_placed_ok [CryptoVerification.LibsignalFullPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (ext : String → Option (State → State))
-    (hshim : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2") sessionShimBudgetSpec)
-    (halloc : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc12___rust_alloc") (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim))
-    (hGrow : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 42) (withLsCodeLoaded lsmpl (growOneSpeSpec M A lim)))
-    (hDropSS3 : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)))
-    (st_b : M.σ) (s0 s : State) (coroPtr outPtr initErrsPtr prevCap prevPtr : BitVec 64)
-    (hfits : FitsEnv M lim st_b FromVPostTdEnv)
-    (hinit_ne : initErrsPtr ≠ 0#64)
-    (e : SignalProtocolError) (he_npan : e ≠ .panic) (htag_ne23 : speTag e ≠ speWord 23)
-    (b_2c0 : BitVec 8) (enc : List (BitVec 8))
-    (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8)))
-    (hfr : CryptoVerification.LibsignalFrozen lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryP34Placed + 0x1cd8#64) (hrun : s.status = .Running)
-    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = coroPtr) (hx24 : s.readReg64 .x24 = s.sp + 0x370#64) :
-    SepWPp (lsProg_518 (Rust.withPanics ext)) (s0.readReg64 .x30) s
-      (stageP3ErrPrePrev1Placed A lim st_b s0 s s coroPtr outPtr initErrsPtr prevCap prevPtr enc e
-        b_2c0 G₂ recG st₂ recSt)
-      (fun sf P_f =>
-        ∃ evs_err : List AllocEvent,
-          FromVPostTdEnv evs_err ∧
-          (P_f ⊢ stageP3ErrPostPrevEmptyM3Placed A lim (M.stepEvents evs_err st_b) s0 s sf coroPtr outPtr e) ∧
-          sf.sp = s.sp + 0xcd0#64 ∧ sf.trace = s0.trace ∧ ClosureCalleeSaved s0 sf ∧
-          StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem ∧ calleeSavedVRegs sf = calleeSavedVRegs s)
-      (fun _ _ => False) :=
-  stageP3_sub5_err_nondup_prev1_full_placed_ok (Rust.withPanics ext) hshim halloc hdealloc
-    hGrow hDropSS3 st_b s0 s coroPtr outPtr initErrsPtr prevCap prevPtr
-    hfits hinit_ne e he_npan htag_ne23 b_2c0 enc G₂ recG st₂ recSt
-    hfr hpc hrun hsp_align htr hx19 hx24
-
-theorem stageP3_sub5_err_prev1_withPanics_full_placed_ok [CryptoVerification.LibsignalFullPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (ext : String → Option (State → State))
-    (hshim : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2") sessionShimBudgetSpec)
-    (halloc : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc12___rust_alloc") (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim))
-    (hGrow : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 42) (withLsCodeLoaded lsmpl (growOneSpeSpec M A lim)))
-    (hDropSS3 : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)))
-    (st_b : M.σ) (s0 s : State) (coroPtr outPtr initErrsPtr prevCap prevPtr : BitVec 64)
-    (hfits : FitsEnv M lim st_b FromVPostTdEnv)
-    (hinit_ne : initErrsPtr ≠ 0#64)
-    (e : SignalProtocolError) (he_npan : e ≠ .panic)
-    (b_2c0 : BitVec 8) (enc : List (BitVec 8))
-    (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8)))
-    (hfr : CryptoVerification.LibsignalFrozen lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryP34Placed + 0x1cd8#64) (hrun : s.status = .Running)
-    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = coroPtr) (hx24 : s.readReg64 .x24 = s.sp + 0x370#64) :
-    SepWPp (lsProg_518 (Rust.withPanics ext)) (s0.readReg64 .x30) s
-      (stageP3ErrPrePrev1Placed A lim st_b s0 s s coroPtr outPtr initErrsPtr prevCap prevPtr enc e
-        b_2c0 G₂ recG st₂ recSt)
-      (fun sf P_f =>
-        ∃ evs_err : List AllocEvent,
-          FromVPostTdEnv evs_err ∧
-          (P_f ⊢ stageP3ErrPostPrevEmptyM3Placed A lim (M.stepEvents evs_err st_b) s0 s sf coroPtr outPtr e) ∧
-          sf.sp = s.sp + 0xcd0#64 ∧ sf.trace = s0.trace ∧ ClosureCalleeSaved s0 sf ∧
-          StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem ∧ calleeSavedVRegs sf = calleeSavedVRegs s)
-      (fun _ _ => False) :=
-  stageP3_sub5_err_prev1_full_placed_ok (Rust.withPanics ext) hshim halloc hdealloc
-    hGrow hDropSS3 st_b s0 s coroPtr outPtr initErrsPtr prevCap prevPtr
-    hfits hinit_ne e he_npan b_2c0 enc G₂ recG st₂ recSt
-    hfr hpc hrun hsp_align htr hx19 hx24
-
-theorem stageP3_sub5_err_prev1_withPanics_anyQp_full_placed_ok [CryptoVerification.LibsignalFullPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Qp : State → SepProp → Prop}
-    (ext : String → Option (State → State))
-    (hshim : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2") sessionShimBudgetSpec)
-    (halloc : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc12___rust_alloc") (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim))
-    (hGrow : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 42) (withLsCodeLoaded lsmpl (growOneSpeSpec M A lim)))
-    (hDropSS3 : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)))
-    (st_b : M.σ) (s0 s : State) (coroPtr outPtr initErrsPtr prevCap prevPtr : BitVec 64)
-    (hfits : FitsEnv M lim st_b FromVPostTdEnv)
-    (hinit_ne : initErrsPtr ≠ 0#64)
-    (e : SignalProtocolError) (he_npan : e ≠ .panic)
-    (b_2c0 : BitVec 8) (enc : List (BitVec 8))
-    (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8)))
-    (hfr : CryptoVerification.LibsignalFrozen lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryP34Placed + 0x1cd8#64) (hrun : s.status = .Running)
-    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = coroPtr) (hx24 : s.readReg64 .x24 = s.sp + 0x370#64) :
-    SepWPp (lsProg_518 (Rust.withPanics ext)) (s0.readReg64 .x30) s
-      (stageP3ErrPrePrev1Placed A lim st_b s0 s s coroPtr outPtr initErrsPtr prevCap prevPtr enc e
-        b_2c0 G₂ recG st₂ recSt)
-      (fun sf P_f =>
-        ∃ evs_err : List AllocEvent,
-          FromVPostTdEnv evs_err ∧
-          (P_f ⊢ stageP3ErrPostPrevEmptyM3Placed A lim (M.stepEvents evs_err st_b) s0 s sf coroPtr outPtr e) ∧
-          sf.sp = s.sp + 0xcd0#64 ∧ sf.trace = s0.trace ∧ ClosureCalleeSaved s0 sf ∧
-          StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem ∧ calleeSavedVRegs sf = calleeSavedVRegs s)
-      Qp :=
-  sepWPp_lift_false_qp (stageP3_sub5_err_prev1_withPanics_full_placed_ok ext hshim halloc hdealloc
-    hGrow hDropSS3 st_b s0 s coroPtr outPtr initErrsPtr prevCap prevPtr
-    hfits hinit_ne e he_npan b_2c0 enc G₂ recG st₂ recSt
-    hfr hpc hrun hsp_align htr hx19 hx24)
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1ErrPlacedBudget

@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonStage2PathAPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3ParseRejectPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.Agree
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrusted
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureVtablesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonStage2PathAPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3ParseRejectPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.Agree
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrusted -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureVtablesPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDerive
@@ -33,6 +33,13 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.Cl
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSat
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.TrapBridge
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonStage2AuxPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathACore -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.PreKeyGeneralAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathB
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Pure Agreement & Store-Kit Helpers for Non-Canonical `PreKeySignalMessage`
@@ -42,14 +49,14 @@ lemmas, and relocatable store-kit mark/remove obligations from canonical `DecPkO
 `DecPkOkD3` (`pkToE? pm = some m` with arbitrary `pm.serialized`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.D3
 
-open Arm64 Arm64.Process ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection ProofLib.Variant
+open Arm64 Arm64.Process ProofLib ProofLib.ProgramReflection ProofLib.Variant
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSession CryptoVerification.LibsignalSessionRepr
@@ -213,16 +220,6 @@ theorem decPkDef_pathB_ok_d3 (X : UnreachedPqxdhPrimitives) (W : PEParams)
   exact hres
 
 /-! ## 2. Pure Path A `decPkDef` & Placed Store Kit Agreement under `DecPkOkD3` -/
-
-theorem decPkDef_pathA_eq_pmOfE_d3 (X : UnreachedPqxdhPrimitives) (W : PEParams)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop)
-    (F : FsFiles) (peer me : AddrVal) (pm : PreKeySignalMessage) (coins : List (BitVec 8))
-    {m : PreKeyMessageFields} {i : SignalMessage}
-    (hpk : pkToE? pm = some m) (hmsg_i : pm.message = i) :
-    decPkDef X W Scope F peer me pm coins =
-      decPkDef X W Scope F peer me (pmOfE m i) coins := by
-  subst i
-  exact decPkDef_eq_pmOfE_of_pkToE?_some hpk X W Scope F peer me coins
 
 theorem cliPollKpk_markOk_d3_placed [LibsignalPlacement] {A : RustAlloc}
     (F0 : FsFiles) (m : PreKeyMessageFields) {pm : PreKeySignalMessage} (σ : DpKitStk) :

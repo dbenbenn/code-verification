@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Refinement.Cli.Cheval26.Session
-public import Symbolic.Proofs.Tests.Refinement.Cli.Cheval26.Payloads
+public import Symbolic.Proofs.Tests.Refinement.Cli.Cheval26.Session -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.Refinement.Cli.Cheval26.Payloads -- proof-setup: allow-public-import
 import all Init.Data.Repr
 import all Init.Data.String.Defs
 import Symbolic.Proofs.Tests.Refinement.Cli.StdinGuard
@@ -24,7 +24,7 @@ and `CallsMatchSchedules`) admits the 7-call recorded trace
 and `ProtocolSetupWF chevalRecords`, with `PreKeyNoMatch` established on the 7th call `c6`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -44,22 +44,22 @@ open Symbolic.Proofs.Tests.Refinement.Cli.StdinGuard
 
 /-! ## Party Directories, `scrub` / `clearSession` Lemmas, and `chevalRun` -/
 
-def aliceBaseList : List (String × HwBytes) := commonFiles chevalInterp chevalRecords "alice"
-def bobBaseList : List (String × HwBytes) :=
+@[expose] def aliceBaseList : List (String × HwBytes) := commonFiles chevalInterp chevalRecords "alice"
+@[expose] def bobBaseList : List (String × HwBytes) :=
   commonFiles chevalInterp chevalRecords "bob" ++ bobPreKeyFiles chevalInterp chevalRecords
 
-def aliceSessPath : String := sessionPathOf chevalRecords "alice"
-def bobSessPath : String := sessionPathOf chevalRecords "bob"
+@[expose] def aliceSessPath : String := sessionPathOf chevalRecords "alice"
+@[expose] def bobSessPath : String := sessionPathOf chevalRecords "bob"
 
-def aliceSessList : List (String × HwBytes) :=
+@[expose] def aliceSessList : List (String × HwBytes) :=
   aliceBaseList ++ [(aliceSessPath, chevalSessionBytes)]
-def bobSessList : List (String × HwBytes) :=
+@[expose] def bobSessList : List (String × HwBytes) :=
   bobBaseList ++ [(bobSessPath, chevalSessionBytes)]
 
-def aliceInitDir : DirectorySnapshot := filesOf aliceBaseList
-def bobInitDir : DirectorySnapshot := filesOf bobBaseList
-def aliceSessDir : DirectorySnapshot := filesOf aliceSessList
-def bobSessDir : DirectorySnapshot := filesOf bobSessList
+@[expose] def aliceInitDir : DirectorySnapshot := filesOf aliceBaseList
+@[expose] def bobInitDir : DirectorySnapshot := filesOf bobBaseList
+@[expose] def aliceSessDir : DirectorySnapshot := filesOf aliceSessList
+@[expose] def bobSessDir : DirectorySnapshot := filesOf bobSessList
 
 private theorem aliceBaseList_fp : ∀ x ∈ aliceBaseList, CliFilePath x.1 :=
   commonFiles_alice_cliFilePath chevalInterp chevalRecords
@@ -149,29 +149,29 @@ private theorem bobInitDir_bounded : FilesBounded bobInitDir := by
   · exact commonFiles_bob_bounded chevalInterp_cryptoEquationsHold chevalRecords_wf x h1
   · exact bobPreKeyFiles_bounded chevalInterp_cryptoEquationsHold chevalRecords_wf rfl x h2
 
-set_option maxRecDepth 8192 in
+set_option maxRecDepth 32768 in
 private theorem aliceSessList_bounded : ∀ x ∈ aliceSessList, x.2.length < 2 ^ 31 := by
   intro x hx
   rcases List.mem_append.mp hx with h1 | h2
   · exact commonFiles_alice_bounded chevalInterp_cryptoEquationsHold chevalRecords_wf x h1
-  · simp only [List.mem_singleton] at h2; subst h2; exact chevalSessionBytes_lt
+  · rw [List.mem_singleton.mp h2]; exact chevalSessionBytes_lt
 
 private theorem aliceSessDir_bounded : FilesBounded aliceSessDir :=
   filesBounded_of_cliFilePaths aliceSessList_fp aliceSessList_bounded
 
-set_option maxRecDepth 8192 in
+set_option maxRecDepth 32768 in
 private theorem bobSessList_bounded : ∀ x ∈ bobSessList, x.2.length < 2 ^ 31 := by
   intro x hx
   rcases List.mem_append.mp hx with h1 | h2
   · rcases List.mem_append.mp h1 with h1a | h1b
     · exact commonFiles_bob_bounded chevalInterp_cryptoEquationsHold chevalRecords_wf x h1a
     · exact bobPreKeyFiles_bounded chevalInterp_cryptoEquationsHold chevalRecords_wf rfl x h1b
-  · simp only [List.mem_singleton] at h2; subst h2; exact chevalSessionBytes_lt
+  · rw [List.mem_singleton.mp h2]; exact chevalSessionBytes_lt
 
 private theorem bobSessDir_bounded : FilesBounded bobSessDir :=
   filesBounded_of_cliFilePaths bobSessList_fp bobSessList_bounded
 
-def mkTurn (aDir bDir : DirectorySnapshot) (sent : List HwBytes) (bobOff : Bool) : CliTurn where
+@[expose] def mkTurn (aDir bDir : DirectorySnapshot) (sent : List HwBytes) (bobOff : Bool) : CliTurn where
   dirs := fun q => if q = "alice" then aDir else if q = "bob" then bDir else fun _ => none
   sent := sent
   bobOff := bobOff
@@ -293,7 +293,7 @@ private theorem after_alice_mkTurn {aDir bDir : DirectorySnapshot} {sent : List 
   by_cases hqa : q = "alice" <;> simp [hqa]
 
 /-- Deterministic `CliRun` witnessing the 7 CLI runs of `cheval26-weak-state`. -/
-def chevalRun : CliRun := fun i =>
+@[expose] def chevalRun : CliRun := fun i =>
   if i.argv = (Cmd.init ⟨bobUuid, 1⟩ bundleDir).argv then
     some (.exited 0 [] aliceSessDir)
   else if i.argv = (Cmd.send ⟨bobUuid, 1⟩).argv then
@@ -334,38 +334,38 @@ theorem cwBundle_honestBundleDir : HonestBundleDir chevalInterp chevalRecords cw
   rw [← honestPublicBundle_eq_cwBundle]
   exact honestBundleDir_honestPublicBundle chevalInterp_cryptoEquationsHold chevalRecords_wf
 
-def call0 : CliCall :=
+@[expose] def call0 : CliCall :=
   { party := "alice", cmd := .init ⟨bobUuid, 1⟩ bundleDir, bundle := cwBundle.files bundleDir,
     stdin := [], coins := coins0 }
-def call1 : CliCall :=
+@[expose] def call1 : CliCall :=
   { party := "alice", cmd := .send ⟨bobUuid, 1⟩, bundle := [], stdin := pt1, coins := coins1 }
-def call2 : CliCall :=
+@[expose] def call2 : CliCall :=
   { party := "bob", cmd := .recv ⟨aliceUuid, 1⟩, bundle := [], stdin := c1Out, coins := coins2 }
-def call3 : CliCall :=
+@[expose] def call3 : CliCall :=
   { party := "alice", cmd := .send ⟨bobUuid, 1⟩, bundle := [], stdin := pt3, coins := coins3 }
-def call4 : CliCall :=
+@[expose] def call4 : CliCall :=
   { party := "alice", cmd := .init ⟨bobUuid, 1⟩ bundleDir, bundle := cwBundle.files bundleDir,
     stdin := [], coins := coins4 }
-def call5 : CliCall :=
+@[expose] def call5 : CliCall :=
   { party := "alice", cmd := .send ⟨bobUuid, 1⟩, bundle := [], stdin := pt5, coins := coins5 }
-def call6 : CliCall :=
+@[expose] def call6 : CliCall :=
   { party := "bob", cmd := .recv ⟨aliceUuid, 1⟩, bundle := [], stdin := c6In, coins := coins6 }
 
-def mkInp (c : CliCall) (base : List (String × HwBytes)) : Inputs where
+@[expose] def mkInp (c : CliCall) (base : List (String × HwBytes)) : Inputs where
   argv := c.cmd.argv
   dirs := partyDirs ++ (match c.cmd with | .init _ dir => [dir] | _ => [])
   files := base ++ c.extra
   stdin := c.stdin
 
-def turn0 : CliTurn := mkTurn aliceInitDir bobInitDir [] false
-def turn1 : CliTurn := mkTurn aliceSessDir bobInitDir [] false
-def turn2 : CliTurn := mkTurn aliceSessDir bobInitDir [s1] false
-def turn3 : CliTurn := mkTurn aliceSessDir bobSessDir [s1] false
-def turn4Pre : CliTurn := mkTurn aliceSessDir bobSessDir [s1, s3] false
-def turn4 : CliTurn := mkTurn aliceInitDir bobSessDir [s1, s3] false
-def turn5 : CliTurn := mkTurn aliceSessDir bobSessDir [s1, s3] false
-def turn6 : CliTurn := mkTurn aliceSessDir bobSessDir [s1, s3, s5] false
-def turn7 : CliTurn := mkTurn aliceSessDir bobSessDir [s1, s3, s5] true
+@[expose] def turn0 : CliTurn := mkTurn aliceInitDir bobInitDir [] false
+@[expose] def turn1 : CliTurn := mkTurn aliceSessDir bobInitDir [] false
+@[expose] def turn2 : CliTurn := mkTurn aliceSessDir bobInitDir [s1] false
+@[expose] def turn3 : CliTurn := mkTurn aliceSessDir bobSessDir [s1] false
+@[expose] def turn4Pre : CliTurn := mkTurn aliceSessDir bobSessDir [s1, s3] false
+@[expose] def turn4 : CliTurn := mkTurn aliceInitDir bobSessDir [s1, s3] false
+@[expose] def turn5 : CliTurn := mkTurn aliceSessDir bobSessDir [s1, s3] false
+@[expose] def turn6 : CliTurn := mkTurn aliceSessDir bobSessDir [s1, s3, s5] false
+@[expose] def turn7 : CliTurn := mkTurn aliceSessDir bobSessDir [s1, s3, s5] true
 
 private theorem next_call0 : ValidCall chevalInterp chevalRecords turn0 call0 := by
   dsimp only [ValidCall, StdinBounded, BobCallAllowed, call0, turn0]

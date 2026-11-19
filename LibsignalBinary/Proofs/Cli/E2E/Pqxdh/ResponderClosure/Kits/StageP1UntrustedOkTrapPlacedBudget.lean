@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1LoadExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1LoadTrustTailsXExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedOkTrapPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1LoadExtPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedExtPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1LoadTrustTailsXExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedOkTrapPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
@@ -21,6 +21,13 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Bin.Hooks
 import LibsignalBinary.Proofs.PublicApi.StoreKit.RecordMove
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1StepsXExtPlacedBudgetAux
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Untrusted
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1StepsXExtPlacedBudget
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Stage P1 Untrusted-Identity Composition
@@ -30,7 +37,7 @@ proves budget-threaded placed entry-to-`s0.readReg64 .x30` untrusted-identity co
 Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000
@@ -101,7 +108,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.add_assoc BitVec.toNat_zero
 
 /-- Combined Stage P1 (`load_session` + `is_trusted_identity == false` + untrusted-identity
     error return) allocation envelope. -/
-def StageP1UntrustedOkEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
+@[expose] def StageP1UntrustedOkEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (kitEnv : SessionStoreBudgetEnv kit) (ikit : IdentityStoreSpec A 0#64)
     (ikitEnv : IdentityStoreBudgetEnv ikit) (st : kit.StoreState) (ist : ikit.IdState)
     (rem : AddrVal) (remoteIdKey : IdentityKey) (peerName : VecGhost) :

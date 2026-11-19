@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternal
+public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternal -- proof-setup: allow-public-import
 
 /-!
 # Relocatable Contract Definition for `<Message>::deserialize`
@@ -20,7 +20,7 @@ Defines `MessageDeserializePlacedOkX` for `<spqr::v1::chunked::states::Message>:
 (Block `351`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,12 +36,12 @@ open CryptoVerification.SpqrV1.ChainProofs.NextKeyInternalFacts
 open CryptoVerification.SpqrV1.Poly
 open CryptoVerification.SpqrV1.Top.Placed
 
-def spqrFormatInnerSym : String := "_RNvNvNtCs69KKACWg7bl_5alloc3fmt6format12format_inner"
-def spqrDeallocSym : String := "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc"
+@[expose] def spqrFormatInnerSym : String := "_RNvNvNtCs69KKACWg7bl_5alloc3fmt6format12format_inner"
+@[expose] def spqrDeallocSym : String := "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc"
 
 /-- Relocatable `subroutine_ok` contract for `<spqr::v1::chunked::states::Message>::deserialize`
     (`Block 351`). -/
-def MessageDeserializePlacedOkX [LibsignalPlacement] (P_poly : PolyApi) (A : RustAlloc)
+@[expose] def MessageDeserializePlacedOkX [LibsignalPlacement] (P_poly : PolyApi) (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_351).rebase (blkPl_351).base (Rust.withPanics ext))
     (blkPl_351).base

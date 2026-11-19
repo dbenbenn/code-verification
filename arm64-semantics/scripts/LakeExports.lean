@@ -40,7 +40,6 @@ def exportToolInputs : Array String := #[
   "tools/rust-obj2lean/src/trusted_extractor/mod.rs",
   "tools/rust-obj2lean/src/trusted_extractor/extracted_obj.rs",
   "tools/rust-obj2lean/src/untrusted_lemmas/mod.rs",
-  "tools/rust-obj2lean/src/untrusted_lemmas/code.rs",
   "tools/rust-obj2lean/src/untrusted_lemmas/index.rs",
   "tools/rust-obj2lean/src/untrusted_lemmas/index_schema.rs",
   "tools/rust-obj2lean/src/untrusted_placed/mod.rs",
@@ -187,6 +186,19 @@ def generatedImportsOfFile (path : FilePath) (genRelDir : String := "Examples/Ge
 Regenerate `specs` outputs unless they are already up to date, returning the Lake `BuildTrace` of
 all consumed inputs (`exportToolInputs`, per-target `spec.inputs`, and `rustc --version` when
 available) together with the generated output `FilePath`s.
+
+Warm-path behavior:
+- Checks `outputsExist` and `inputsExist` (`exportToolInputs` and `spec.inputs`) before calling
+  `fetchUpstreamSources`, so warm cached builds never spawn `scripts/fetch-upstream-sources.sh` or
+  `cargo` and skip the script's lockfile and auxiliary re-checks on non-tracked upstream trees
+  (e.g. `hashbrown` `cmp` when `fetchTargets = #[]`, whose files are not export inputs).
+- When `LAKE_TRUST_CACHED_RUST_EXPORTS` is unset, `rustcVersion?` still probes `rustc --version`
+  in `IO` for the `rustc` fingerprint; in sandboxes where executing `rustc` is denied (`landrun`),
+  the `IO` error is caught before lifting to `JobM` (`rustcOpt = none`), falling back to the
+  `.inputs.stamp` fast path.
+- All optional `.trace` backfills and empty-`dirtySpecs` top-level trace/stamp self-healing run
+  inside `IO`-typed `try ... catch` helpers so read-only subpackage `.lake/build` mounts never lift
+  an `IO.Error` into `JobM`.
 -/
 def ensureRustExports (dir : FilePath) (specs : Array ExportTargetSpec)
     (stampName : String := "rustExports") (fetchTargets : Array String := #[])
@@ -194,8 +206,11 @@ def ensureRustExports (dir : FilePath) (specs : Array ExportTargetSpec)
     (genModPrefix : String := "Examples.Generated")
     (buildDir : FilePath := dir / ".lake" / "build") :
     JobM (BuildTrace × Array FilePath) := do
-  -- Upstream sources must be on disk before their hashes are taken below.
-  let upstreamEnv ← fetchUpstreamSources repoRoot fetchTargets
+  let allFilesExist (base : FilePath) (files : Array String) : IO Bool := do
+    for rel in files do
+      unless ← (base / rel).pathExists do
+        return false
+    return true
   let allExist (files : Array String) : IO Bool := do
     for output in files do
       let p := dir / output
@@ -207,16 +222,30 @@ def ensureRustExports (dir : FilePath) (specs : Array ExportTargetSpec)
     return true
   let stampMatches (p : FilePath) (expected : String) : IO Bool := do
     if ← p.pathExists then
-      return (← IO.FS.readFile p).trimAscii.toString == expected
+      let text ← try IO.FS.readFile p catch _ => return false
+      return text.trimAscii.toString == expected
     else
       return false
   let traceMatches (p : FilePath) (expected : Hash) : JobM Bool := do
     match (← readTraceFile p) with
     | .ok data => return data.depHash == expected
     | _ => return false
+  let allInputsExist : IO Bool := do
+    unless ← allFilesExist repoRoot exportToolInputs do
+      return false
+    for spec in specs do
+      unless ← allFilesExist dir spec.inputs do
+        return false
+    return true
   let allRelOutputs : Array String := specs.foldl (fun acc s => acc ++ s.outputs) #[]
   let allOutputPaths := allRelOutputs.map fun rel => dir / FilePath.mk rel
   let outputsExist ← allExist allRelOutputs
+  let inputsExist ← allInputsExist
+  -- Fetch and SHA-256-verify upstream sources upfront only when an output or tracked input is
+  -- missing on disk, so warm builds with matching stamps do not run `fetch-upstream-sources.sh`.
+  let mut upstreamEnv? : Option (Array (String × Option String)) := none
+  if !outputsExist || !inputsExist then
+    upstreamEnv? := some (← fetchUpstreamSources repoRoot fetchTargets)
   let perturbBytes ← perturbBytesEnv
   let perturbTargets ← perturbTargetsEnv
   let specPerturbBytes (spec : ExportTargetSpec) : String :=
@@ -224,28 +253,34 @@ def ensureRustExports (dir : FilePath) (specs : Array ExportTargetSpec)
       perturbBytes
     else
       "0"
-  let baseToolTrace ← computeRelativeFilesTrace repoRoot "rust-obj2lean" exportToolInputs
-  let specTraces ← specs.mapM fun spec => do
-    let specFilesTrace ← computeRelativeFilesTrace dir s!"inputs:{spec.name}" spec.inputs
-    let sp := specPerturbBytes spec
-    let specToolTrace := if sp == "0" then
-      baseToolTrace
-    else
-      baseToolTrace.mix (perturbBuildTrace sp)
-    let tInputsTrace := (BuildTrace.nil s!"target:{spec.name}").mix specToolTrace |>.mix specFilesTrace
-    return (spec, specFilesTrace, tInputsTrace, sp)
-  let topToolTrace := if perturbBytes != "0" && perturbTargets.isEmpty then
-    baseToolTrace.mix (perturbBuildTrace perturbBytes)
-  else
-    baseToolTrace
-  let inputsTrace := specTraces.foldl (init := (BuildTrace.nil stampName).mix topToolTrace)
-    fun acc (spec, specFilesTrace, _, sp) =>
-      let acc' := acc.mix specFilesTrace
-      if sp != "0" && !perturbTargets.isEmpty then
-        acc'.mix (perturbBuildTrace s!"{spec.name}:{sp}")
+  let computeTraces :
+      IO (Array (ExportTargetSpec × BuildTrace × BuildTrace × String) × BuildTrace × String) := do
+    let baseToolTrace ← computeRelativeFilesTrace repoRoot "rust-obj2lean" exportToolInputs
+    let specTraces ← specs.mapM fun spec => do
+      let specFilesTrace ← computeRelativeFilesTrace dir s!"inputs:{spec.name}" spec.inputs
+      let sp := specPerturbBytes spec
+      let specToolTrace := if sp == "0" then
+        baseToolTrace
       else
-        acc'
-  let inputsFp := inputsTrace.hash.hex
+        baseToolTrace.mix (perturbBuildTrace sp)
+      let tInputsTrace := (BuildTrace.nil s!"target:{spec.name}").mix specToolTrace |>.mix specFilesTrace
+      return (spec, specFilesTrace, tInputsTrace, sp)
+    let topToolTrace := if perturbBytes != "0" && perturbTargets.isEmpty then
+      baseToolTrace.mix (perturbBuildTrace perturbBytes)
+    else
+      baseToolTrace
+    let inputsTrace := specTraces.foldl (init := (BuildTrace.nil stampName).mix topToolTrace)
+      fun acc (spec, specFilesTrace, _, sp) =>
+        let acc' := acc.mix specFilesTrace
+        if sp != "0" && !perturbTargets.isEmpty then
+          acc'.mix (perturbBuildTrace s!"{spec.name}:{sp}")
+        else
+          acc'
+    return (specTraces, inputsTrace, inputsTrace.hash.hex)
+  let (specTraces0, inputsTrace0, inputsFp0) ← computeTraces
+  let mut specTraces := specTraces0
+  let mut inputsTrace := inputsTrace0
+  let mut inputsFp := inputsFp0
   let genDir := dir / FilePath.mk genRelDir
   let genInputsStamp := genDir / s!".{stampName}.inputs.stamp"
   let genStamp := genDir / s!".{stampName}.stamp"
@@ -253,10 +288,22 @@ def ensureRustExports (dir : FilePath) (specs : Array ExportTargetSpec)
   let buildTraceFile := buildDir / s!"{stampName}.trace"
   let trustCached := (← IO.getEnv "LAKE_TRUST_CACHED_RUST_EXPORTS") == some "true"
   let rustcOpt ← if trustCached && outputsExist then pure none else rustcVersion?
-  let ensureTraceWritten (trace : BuildTrace) : IO Unit := do
-    unless ← buildTraceFile.pathExists do
-      IO.FS.createDirAll buildDir
-      writeBuildTrace buildTraceFile trace allRelOutputs {}
+  -- Catch filesystem errors inside `IO` before `MonadLift IO JobM` can log an error to the job.
+  let writeTraceBestEffort (traceFile : FilePath) (trace : BuildTrace) (outputs : Array String)
+      (overwrite : Bool := false) : IO Unit := do
+    if overwrite || !(← traceFile.pathExists) then
+      try
+        IO.FS.createDirAll buildDir
+        writeBuildTrace traceFile trace outputs {}
+      catch _ =>
+        pure ()
+  let writeStampBestEffort (stampFile : FilePath) (content : String) : IO Unit := do
+    try
+      writeFileAtomic stampFile content
+    catch _ =>
+      pure ()
+  let ensureTraceWritten (trace : BuildTrace) : IO Unit :=
+    writeTraceBestEffort buildTraceFile trace allRelOutputs
   if outputsExist && (trustCached || rustcOpt.isNone) && (← stampMatches genInputsStamp inputsFp) then
     let trace := match rustcOpt with | some r => inputsTrace.mix (rustcBuildTrace r) | none => inputsTrace
     ensureTraceWritten trace
@@ -273,7 +320,10 @@ def ensureRustExports (dir : FilePath) (specs : Array ExportTargetSpec)
       let trace := match rustcOpt with | some r => inputsTrace.mix (rustcBuildTrace r) | none => inputsTrace
       ensureTraceWritten trace
       return (trace, allOutputPaths)
-  let some rustc ← (match rustcOpt with | some r => pure (some r) | none => rustcVersion?)
+  let some rustc ←
+      (match rustcOpt with
+      | some r => pure (some r)
+      | none => if trustCached && outputsExist then rustcVersion? else pure none)
     | error <|
         "`rustc` is not on PATH.\n" ++
         "This repository compiles its Rust sources to AArch64 machine code and exports the\n" ++
@@ -281,36 +331,57 @@ def ensureRustExports (dir : FilePath) (specs : Array ExportTargetSpec)
         "aarch64-unknown-linux-gnu target and the LLVM binutils) is required. See the\n" ++
         "'Prerequisites' section of README.md."
   let rustcTrace := rustcBuildTrace rustc
-  let fullTrace := inputsTrace.mix rustcTrace
-  let fingerprint := fullTrace.hash.hex
+  let mut fullTrace := inputsTrace.mix rustcTrace
+  let mut fingerprint := fullTrace.hash.hex
   if outputsExist && ((← traceMatches buildTraceFile fullTrace.hash) ||
       (← stampMatches buildStamp fingerprint) || (← stampMatches genStamp fingerprint)) then
     ensureTraceWritten fullTrace
     return (fullTrace, allOutputPaths)
   -- Determine which individual targets are dirty
-  let mut dirtySpecs : Array (ExportTargetSpec × BuildTrace × String × String × String) := #[]
-  for (spec, _, tInputsTrace, sp) in specTraces do
-    let tOutExist ← allExist spec.outputs
-    let tTrace := tInputsTrace.mix rustcTrace
-    let tInputsFp := tInputsTrace.hash.hex
-    let tFp := tTrace.hash.hex
-    let tTraceFile := buildDir / s!"{stampName}.{spec.name}.trace"
-    let tBuildStamp := buildDir / s!"{stampName}.{spec.name}.stamp"
-    let tGenStamp := genDir / s!".{stampName}.{spec.name}.stamp"
-    let tGenInputsStamp := genDir / s!".{stampName}.{spec.name}.inputs.stamp"
-    let tUpToDate ← if tOutExist then
-      pure ((← traceMatches tTraceFile tTrace.hash) ||
-            (← stampMatches tBuildStamp tFp) ||
-            (← stampMatches tGenStamp tFp) ||
-            ((trustCached || rustcOpt.isNone) && (← stampMatches tGenInputsStamp tInputsFp)))
-    else
-      pure false
-    if tUpToDate then
-      unless ← tTraceFile.pathExists do
-        IO.FS.createDirAll buildDir
-        writeBuildTrace tTraceFile tTrace spec.outputs {}
-    else
-      dirtySpecs := dirtySpecs.push (spec, tTrace, tFp, tInputsFp, sp)
+  let collectDirtySpecs (curSpecTraces : Array (ExportTargetSpec × BuildTrace × BuildTrace × String)) :
+      JobM (Array (ExportTargetSpec × BuildTrace × String × String × String)) := do
+    let mut dirty : Array (ExportTargetSpec × BuildTrace × String × String × String) := #[]
+    for (spec, _, tInputsTrace, sp) in curSpecTraces do
+      let tOutExist ← allExist spec.outputs
+      let tTrace := tInputsTrace.mix rustcTrace
+      let tInputsFp := tInputsTrace.hash.hex
+      let tFp := tTrace.hash.hex
+      let tTraceFile := buildDir / s!"{stampName}.{spec.name}.trace"
+      let tBuildStamp := buildDir / s!"{stampName}.{spec.name}.stamp"
+      let tGenStamp := genDir / s!".{stampName}.{spec.name}.stamp"
+      let tGenInputsStamp := genDir / s!".{stampName}.{spec.name}.inputs.stamp"
+      let tUpToDate ← if tOutExist then
+        pure ((← traceMatches tTraceFile tTrace.hash) ||
+              (← stampMatches tBuildStamp tFp) ||
+              (← stampMatches tGenStamp tFp) ||
+              ((trustCached || rustcOpt.isNone) && (← stampMatches tGenInputsStamp tInputsFp)))
+      else
+        pure false
+      if tUpToDate then
+        writeTraceBestEffort tTraceFile tTrace spec.outputs
+      else
+        dirty := dirty.push (spec, tTrace, tFp, tInputsFp, sp)
+    return dirty
+  let mut dirtySpecs ← collectDirtySpecs specTraces
+  if dirtySpecs.isEmpty then
+    writeTraceBestEffort buildTraceFile fullTrace allRelOutputs (overwrite := true)
+    writeStampBestEffort buildStamp fingerprint
+    writeStampBestEffort genStamp fingerprint
+    writeStampBestEffort genInputsStamp inputsFp
+    return (fullTrace, allOutputPaths)
+  let upstreamEnv ← match upstreamEnv? with
+    | some env => pure env
+    | none =>
+      let env ← fetchUpstreamSources repoRoot fetchTargets
+      if fetchTargets != #["none"] then
+        let (st, it, ifp) ← computeTraces
+        specTraces := st
+        inputsTrace := it
+        inputsFp := ifp
+        fullTrace := inputsTrace.mix rustcTrace
+        fingerprint := fullTrace.hash.hex
+        dirtySpecs ← collectDirtySpecs specTraces
+      pure env
   let iniPos ← getLogPos
   if !dirtySpecs.isEmpty then
     updateAction .build
@@ -407,15 +478,32 @@ partial def sanitizePackageBuildDir (pkgBuildDir : FilePath) : IO Unit := do
         let baseStem := (FilePath.mk entry.fileName).withExtension ""
         let relStem := if relDir.toString.isEmpty then baseStem else relDir / baseStem
         let oleanFile := p.withExtension "olean"
+        let oleanServerFile := p.withExtension "olean.server"
+        let oleanPrivateFile := p.withExtension "olean.private"
         let oleanHashFile := p.withExtension "olean.hash"
         let ileanFile := p.withExtension "ilean"
         let ileanHashFile := p.withExtension "ilean.hash"
         let traceFile := p.withExtension "trace"
         let cFile := (irDir / relStem).withExtension "c"
-        let allExist :=
-          (← oleanFile.pathExists) && (← oleanHashFile.pathExists) &&
-          (← ileanFile.pathExists) && (← ileanHashFile.pathExists) &&
-          (← traceFile.pathExists) && (← cFile.pathExists)
+        let irFile := p.withExtension "ir"
+        let irSigFile := p.withExtension "ir.sig"
+        let nonEmptyIfExists (fp : FilePath) : IO Bool := do
+          if !(← fp.pathExists) then return true
+          return (← try (fun m => m.byteSize != 0) <$> fp.metadata catch _ => pure false)
+        let nonEmptyRequired (fp : FilePath) : IO Bool := do
+          if !(← fp.pathExists) then return false
+          return (← try (fun m => m.byteSize != 0) <$> fp.metadata catch _ => pure false)
+        -- Note: `scripts/ci/package-artifacts.sh` (`restore_ilean_stubs`) intentionally materializes
+        -- 0-byte stubs for `*.ilean`, `*/Testing/*.olean.private`, and `ir/*.c` when unpacking shard
+        -- archives in `verify-all-examples`, so those three check `.pathExists` (or allow 0-byte
+        -- `.olean.private`) while `.olean`, `.olean.server`, `.ir`, `.ir.sig`, `.hash`, and `.trace`
+        -- must never be 0-byte truncated files.
+        let allExist ← do
+          pure ((← nonEmptyRequired oleanFile) && (← nonEmptyRequired oleanHashFile) &&
+                (← ileanFile.pathExists) && (← nonEmptyRequired ileanHashFile) &&
+                (← nonEmptyRequired traceFile) && (← cFile.pathExists) &&
+                (← nonEmptyIfExists oleanServerFile) &&
+                (← nonEmptyIfExists irFile) && (← nonEmptyIfExists irSigFile))
         let valid ← if allExist then do
           let oleanHash := (← try IO.FS.readFile oleanHashFile catch _ => pure "").trimAscii.toString
           let traceText ← try IO.FS.readFile traceFile catch _ => pure ""
@@ -426,10 +514,14 @@ partial def sanitizePackageBuildDir (pkgBuildDir : FilePath) : IO Unit := do
           pure false
         unless valid do
           removeFileIfExists oleanFile
+          removeFileIfExists oleanServerFile
+          removeFileIfExists oleanPrivateFile
           removeFileIfExists oleanHashFile
           removeFileIfExists ileanFile
           removeFileIfExists ileanHashFile
           removeFileIfExists traceFile
+          removeFileIfExists irFile
+          removeFileIfExists irSigFile
           removeFileIfExists cFile
   walk libLeanDir (FilePath.mk "")
 

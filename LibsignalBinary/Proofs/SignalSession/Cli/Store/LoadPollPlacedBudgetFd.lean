@@ -9,10 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.SymPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.SymPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Defs
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.LayoutPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # `FdsGe3Closed`-Threaded Relocatable `<SessionFiles as SessionStore>::load_session::{closure#0}`
@@ -21,7 +34,7 @@ Proves `withFdsGe3Closed (sessLoadPollSpecPlaced …)` on Block `569` (`lsProg_5
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -95,43 +108,6 @@ theorem sessLoadPoll_placed_ok_of_deps_fd [LibsignalPlacement] {M : AllocCostMod
     ls_transfer_withFdsGe3Closed_lscro
       (callerProg := lsProg_569 H) hDeser (by decide) hDeserBlk hDeserUnmut
   exact sessLoadPoll_placed_ok_fd hC hAddr' hGet' hDeser' hFs hstk
-
-theorem sessLoadPoll_placed_caller_ok_of_deps_fd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {AddrEnv : AddrGhost → List AllocEvent → Prop}
-    {GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop}
-    {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
-    {callerProg addrProg getProg deserProg : Program}
-    {callerBlk addrBlk getBlk deserBlk : Nat}
-    [IsLsBlockProg callerProg callerBlk H]
-    [IsLsBlockProg addrProg addrBlk H]
-    [IsLsBlockProg getProg getBlk H]
-    [IsLsBlockProg deserProg deserBlk H]
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop} {addrStk getStk stk : Nat}
-    (hC : AllocContractsFsPlaced A lim H)
-    (hAddr : subroutine_ok addrProg (lsmpl.base 594)
-      (withFdsGe3Closed (addrTextSpecPlaced A lim AddrEnv addrStk)))
-    (hGet : subroutine_ok getProg (lsmpl.base 589)
-      (withFdsGe3Closed (dirGetSpecPlaced rd pathOk A lim GetEnv getStk)))
-    (hDeser : subroutine_ok deserProg (lsmpl.base 46)
-      (withFdsGe3Closed (sessDeserializeSpecPlaced Scope A lim DeserEnv)))
-    (hFs : TraceFsSound (lsProg_569 H))
-    (hstk : 0x350 + max (max addrStk getStk) (max recDeserializeStack extHookStack) ≤ stk)
-    (hCallerBlk : callerBlk < 619 := by decide)
-    (hAddrBlk : addrBlk < 619 := by decide)
-    (hAddrUnmut : (addrBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hGetBlk : getBlk < 619 := by decide)
-    (hGetUnmut : (getBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hDeserBlk : deserBlk < 619 := by decide)
-    (hDeserUnmut : (deserBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsmpl.base 569)
-      (withFdsGe3Closed
-        (sessLoadPollSpecPlaced rd pathOk Scope A lim
-          (CliLoadPollEnv rd Scope AddrEnv GetEnv DeserEnv) stk)) :=
-  ls_transfer_withFdsGe3Closed_lscro (callerProg := callerProg) (j := 569)
-    (sessLoadPoll_placed_ok_of_deps_fd hC hAddr hGet hDeser hFs hstk
-      hAddrBlk hAddrUnmut hGetBlk hGetUnmut hDeserBlk hDeserUnmut) hCallerBlk
 
 end Placed
 

@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInProg -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInDefs -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs
 public import Computational.Proofs.Game.PromotedCostedReds.KemFailTrackDslBase -- proof-setup: allow-public-import
 import Computational.Proofs.Game.PromotedCostedReds.DrSessionSimSize
+public import Computational.Proofs.E2E.Dsl.SpqrSim -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon
+import Computational.Proofs.ReductionDsl.SM.GameCosted
 
 /-!
 # Tracker-Halted `spkLeakRed` Combinators and Cost/Size Bounds
@@ -64,7 +67,7 @@ open Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge
    coinE2EIface coinE2ESamplers liftCompCoins liftCompCoins_queries_zero liftCompCoins_cost)
 open Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon
   (letE_eval liftExpr_size_le liftCompCoins_size_le wk1Expr_size wk1Comp_size)
-open Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInProg
+open Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInDefs
   (spkInitGsE2EE cost_spkInitGsE2EE size_spkInitGsE2EE
    sPureOp cost_sPureOp sGroupOp cost_sGroupOp size_sGroupOp
    cost_senderKeyPtAtomicE cost_prepRecvB0StateAtomicE receiveSpkAtomicC
@@ -77,7 +80,7 @@ open Computational.Proofs.Game.PromotedCostedReds.KemFailTrackDslBase
    initKemFailTrackE initKemFailTrackE_cost_le initKemFailTrackE_size_le
    stepKemFailSendC stepKemFailSendC_queries_zero stepKemFailSendC_cost_le stepKemFailSendC_size_le
    kemOnDeliverPostE kemOnDeliverPostE_cost_le kemOnDeliverPostE_size_le)
-open Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg
+open Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs
   (liftExpr_cost_exact liftCompCoins_cost_exact drReceiveAtomicC_cost_exact)
 
 /-! ## State encodings and wire lookup -/
@@ -786,7 +789,7 @@ theorem spkSendOrChallHaltedC_queries_zero (q qep : ℕ) :
     stepKemFailSendC_queries_zero, Comp.queries]
 
 private theorem noKemKeyGenComp_drSendC_v0 :
-    SpkHop2RInProg.NoKemKeyGenComp
+    SpkHop2RInDefs.NoKemKeyGenComp
       (drSendC (spqrDslHooks ℓ zeroPqxdhPrims C K decT encT) (coinE2EIface (ℓ := ℓ) PrfI)
         (Γ := [.prod Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.GhostStT
           (.prod Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.PlainT

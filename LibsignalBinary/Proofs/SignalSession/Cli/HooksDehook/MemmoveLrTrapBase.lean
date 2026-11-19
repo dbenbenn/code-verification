@@ -10,18 +10,22 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.TrapSafeWords -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.Block617TransferG -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyCode -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.Block617TransferG
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyCode
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhost -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhostReplaysOn -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetCode -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhost -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhostK -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetCode
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhost
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhostK
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveCode -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveGhost -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveGhostK -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveGhostReplays -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveGhostReplays
 import ProofLib.BV.Bits
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # 956 B `.text.b_pre` Hull `RegionWordsSafe`, Pad Non-Fetch, & `C4` Universal-`L` `TrapHook`s (`HooksDehook.MemmoveLrTrapBase`)
@@ -170,9 +174,6 @@ theorem bPreHullByteLen_eq : bPreHullByteLen = 956 := rfl
   BitVec.ofNat 64 (4 * memcpySymWords.length)
 
 theorem bPrePadByteOff_eq : bPrePadByteOff = BitVec.ofNat 64 396 := by decide
-
-theorem keepBPreHull_eq_keepBlock (m : BitVec 64) :
-    keepBPreHull m = keepBlock m bPreHullByteLen := rfl
 
 theorem keepBPreHull_iff (m pc : BitVec 64) :
     keepBPreHull m pc = true ↔ (pc - m).toNat < 956 :=
@@ -334,25 +335,6 @@ theorem bPreCodeRegion_codeLoaded_iff {P_sub : Program} {mem : Memory} :
   ⟨fun h => h P_sub (List.mem_singleton.mpr rfl),
    fun h P hP => by rw [List.mem_singleton] at hP; subst hP; exact h⟩
 
-/-- `CodeLoaded` under `stripExecOutside keepR mem` when `P_sub = pureWordsProg m (bPreHullWords ...)`
-    and `KeepCoversBPreHull keepR m`. -/
-theorem bPreHull_codeLoaded_stripExecOutside {keepR : BitVec 64 → Bool} {m : BitVec 64}
-    {resolve : String → BitVec 64} {padWord : BitVec 32} {mem : Memory}
-    (hcov : KeepCoversBPreHull keepR m)
-    (hL : (pureWordsProg m (bPreHullWords m resolve padWord)).CodeLoaded mem) :
-    (pureWordsProg m (bPreHullWords m resolve padWord)).CodeLoaded
-      (ProofLib.stripExecOutside keepR mem) := by
-  have hclen : (pureWordsProg m (bPreHullWords m resolve padWord)).code.length = 956 := by
-    have hwlen := bPreHullWords_length m resolve padWord
-    change ((bPreHullWords m resolve padWord).flatMap Program.wordToBytesLE).length = 956
-    have hflat : ∀ ws : List (BitVec 32), (ws.flatMap Program.wordToBytesLE).length = 4 * ws.length := by
-      intro ws; induction ws with
-      | nil => rfl
-      | cons _ tl ih => simp [Program.wordToBytesLE, ih]; omega
-    rw [hflat, hwlen]
-  exact codeLoaded_stripExecOutside_of_keep
-    (fun off hoff => hcov _ (keepBPreHull_of_offset m (hclen ▸ hoff))) hL
-
 /-- Inverse of `codeLoaded_stripExecOutside_of_keep`: because `stripExecOutside` only strips execute
     permission (`Perm.stripExec`) and never adds `Perm.rx`, `P_sub.CodeLoaded (stripExecOutside keep mem)`
     unconditionally implies `P_sub.CodeLoaded mem`. -/
@@ -481,54 +463,11 @@ theorem memmoveEntryGuard_iff (m stubPc : BitVec 64) (s0 : State) :
 
 /-! ## 2. `TrapHook` Suite (Idealized, `memmove` Ghost, & Universal-`L` Cross-Block `C4` Ghosts) -/
 
-/-- `TrapHook L hookMemmove` holds unconditionally for all `L : BitVec 64` (`TrapRetHook` and
-    `TrapHook` are definitionally equal). -/
-theorem trapHook_hookMemmove (L : BitVec 64) : TrapHook L hookMemmove :=
-  trapRetHook_hookMemmove L
-
-theorem trapHook_keepFsTrace_hookMemmove (L : BitVec 64) :
-    TrapHook L (keepFsTrace hookMemmove) :=
-  trapRetHook_keepFsTrace (trapRetHook_hookMemmove L)
-
 theorem trapHook_hookMemcpy (L : BitVec 64) : TrapHook L hookMemcpy :=
   trapRetHook_hookMemcpy L
 
-theorem trapHook_keepFsTrace_hookMemcpy (L : BitVec 64) :
-    TrapHook L (keepFsTrace hookMemcpy) :=
-  trapRetHook_keepFsTrace (trapRetHook_hookMemcpy L)
-
 theorem trapHook_hookMemset (L : BitVec 64) : TrapHook L hookMemset :=
   trapRetHook_hookMemset L
-
-theorem trapHook_keepFsTrace_hookMemset (L : BitVec 64) :
-    TrapHook L (keepFsTrace hookMemset) :=
-  trapRetHook_keepFsTrace (trapRetHook_hookMemset L)
-
-/-- Plain `memmoveGhostFn` satisfies `TrapHook L` whenever `keepR L = true`. -/
-theorem trapHook_memmoveGhostFn {keepR : BitVec 64 → Bool}
-    (P_real P_sub : Program) (entryTarget : BitVec 64) {L : BitVec 64}
-    (hkeepL : keepR L = true) :
-    TrapHook L (memmoveGhostFn keepR P_real P_sub entryTarget) :=
-  trapRetHook_memmoveGhostFn hkeepL
-
-theorem trapHook_memmoveGhostFn_of_cover {keepR : BitVec 64 → Bool} {m : BitVec 64}
-    (P_real P_sub : Program) (entryTarget : BitVec 64)
-    (hcov : KeepCoversBPreHull keepR m) {L : BitVec 64} (hL : keepBPreHull m L = true) :
-    TrapHook L (memmoveGhostFn keepR P_real P_sub entryTarget) :=
-  trapHook_memmoveGhostFn P_real P_sub entryTarget (hcov L hL)
-
-/-- `K`-narrowed `memmoveGhostFnK` satisfies `TrapHook L` whenever `keepR L = true`. -/
-theorem trapHook_memmoveGhostFnK {keepR : BitVec 64 → Bool}
-    (P_real P_sub : Program) (entryTarget : BitVec 64) {L : BitVec 64}
-    (hkeepL : keepR L = true) :
-    TrapHook L (memmoveGhostFnK keepR P_real P_sub entryTarget) :=
-  trapRetHook_memmoveGhostFnK hkeepL
-
-theorem trapHook_memmoveGhostFnK_of_cover {keepR : BitVec 64 → Bool} {m : BitVec 64}
-    (P_real P_sub : Program) (entryTarget : BitVec 64)
-    (hcov : KeepCoversBPreHull keepR m) {L : BitVec 64} (hL : keepBPreHull m L = true) :
-    TrapHook L (memmoveGhostFnK keepR P_real P_sub entryTarget) :=
-  trapHook_memmoveGhostFnK P_real P_sub entryTarget (hcov L hL)
 
 /-- `W`-independent `f3EmptyMemmoveGhostHook` satisfies `TrapHook L` whenever `keepR L = true`. -/
 theorem trapHook_f3EmptyMemmoveGhostHook {keepR : BitVec 64 → Bool}
@@ -734,28 +673,6 @@ theorem trapHook_memcpyGhostHook
     (fun blk hm => by rw [List.mem_singleton] at hm; subst hm; exact ⟨P_sub, List.mem_singleton.mpr rfl, hwords⟩)
     hEntry trapHook_hookMemcpy L
 
-/-- **C4 universal-`L` `TrapHook L` for Stage A's `K`-narrowed `memcpyGhostHookK`** (all `keep`, all `L`). -/
-theorem trapHook_memcpyGhostHookK
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entryTarget : BitVec 64}
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entryTarget memcpySymWords)
-    (L : BitVec 64) :
-    TrapHook L (memcpyGhostHookK keep P_real P_sub entryTarget) := by
-  have hEntry : keepOf [(entryTarget, memcpySymWords)] entryTarget = true := by
-    have h0 : keepOf [(entryTarget, memcpySymWords)] (entryTarget + BitVec.ofNat 64 0) = true :=
-      keepOf_mem_offset (List.mem_singleton.mpr rfl) (show 0 < 4 * memcpySymWords.length by decide)
-    rwa [show BitVec.ofNat 64 0 = 0#64 from rfl, BitVec.add_zero] at h0
-  exact trapHook_linkedCallHook_of_regionWordsSafe hsvc_real hsvc_sub hreal_no hsub_no
-    (subroutine_ok_masterMemcpyK_of_hasWords keep hsub_no hwords)
-    (specStripSInvariant_masterMemcpyK keep)
-    (fun x s => masterMemcpyK_pre_setPC keep x s entryTarget)
-    (regionWordsSafe_single entryTarget memcpy_all_safe)
-    (fun blk hm => by rw [List.mem_singleton] at hm; subst hm; exact ⟨P_sub, List.mem_singleton.mpr rfl, hwords⟩)
-    hEntry trapHook_hookMemcpy L
-
 /-- **C4 universal-`L` `TrapHook L` for `W`-independent `f3EmptyMemcpyGhostHook`** (`0` `P_real` premises). -/
 theorem trapHook_f3EmptyMemcpyGhostHook
     {keep : BitVec 64 → Bool} {P_sub : Program} {entryTarget : BitVec 64}
@@ -766,17 +683,6 @@ theorem trapHook_f3EmptyMemcpyGhostHook
     TrapHook L (f3EmptyMemcpyGhostHook keep P_sub entryTarget) := by
   rw [f3EmptyMemcpyGhostHook_eq]
   exact trapHook_memcpyGhostHook rfl hsvc_sub (fun _ _ => rfl) hsub_no hwords L
-
-/-- **C4 universal-`L` `TrapHook L` for `W`-independent `f3EmptyMemcpyGhostHookK`** (`0` `P_real` premises). -/
-theorem trapHook_f3EmptyMemcpyGhostHookK
-    {keep : BitVec 64 → Bool} {P_sub : Program} {entryTarget : BitVec 64}
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entryTarget memcpySymWords)
-    (L : BitVec 64) :
-    TrapHook L (f3EmptyMemcpyGhostHookK keep P_sub entryTarget) := by
-  rw [f3EmptyMemcpyGhostHookK_eq]
-  exact trapHook_memcpyGhostHookK rfl hsvc_sub (fun _ _ => rfl) hsub_no hwords L
 
 /-- **C4 universal-`L` `TrapHook L` for Stage A's plain `memsetGhostHook`** (all `keep`, all `L`). -/
 theorem trapHook_memsetGhostHook
@@ -800,28 +706,6 @@ theorem trapHook_memsetGhostHook
     (fun blk hm => by rw [List.mem_singleton] at hm; subst hm; exact ⟨P_sub, List.mem_singleton.mpr rfl, hwords⟩)
     hEntry trapHook_hookMemset L
 
-/-- **C4 universal-`L` `TrapHook L` for Stage A's `K`-narrowed `memsetGhostHookK`** (all `keep`, all `L`). -/
-theorem trapHook_memsetGhostHookK
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entryTarget : BitVec 64}
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entryTarget memsetWordsSym)
-    (L : BitVec 64) :
-    TrapHook L (memsetGhostHookK keep P_real P_sub entryTarget) := by
-  have hEntry : keepOf [(entryTarget, memsetWordsSym)] entryTarget = true := by
-    have h0 : keepOf [(entryTarget, memsetWordsSym)] (entryTarget + BitVec.ofNat 64 0) = true :=
-      keepOf_mem_offset (List.mem_singleton.mpr rfl) (show 0 < 4 * memsetWordsSym.length by decide)
-    rwa [show BitVec.ofNat 64 0 = 0#64 from rfl, BitVec.add_zero] at h0
-  exact trapHook_linkedCallHook_of_regionWordsSafe hsvc_real hsvc_sub hreal_no hsub_no
-    (subroutine_ok_masterMemsetK_of_hasWords keep hsub_no hwords)
-    (specStripSInvariant_masterMemsetK keep)
-    (fun x s => masterMemsetK_pre_setPC keep x s entryTarget)
-    (regionWordsSafe_single entryTarget memsetWords_all_safe)
-    (fun blk hm => by rw [List.mem_singleton] at hm; subst hm; exact ⟨P_sub, List.mem_singleton.mpr rfl, hwords⟩)
-    hEntry trapHook_hookMemset L
-
 /-- **C4 universal-`L` `TrapHook L` for `W`-independent `f3EmptyMemsetGhostHook`** (`0` `P_real` premises). -/
 theorem trapHook_f3EmptyMemsetGhostHook
     {keep : BitVec 64 → Bool} {P_sub : Program} {entryTarget : BitVec 64}
@@ -832,16 +716,5 @@ theorem trapHook_f3EmptyMemsetGhostHook
     TrapHook L (f3EmptyMemsetGhostHook keep P_sub entryTarget) := by
   rw [f3EmptyMemsetGhostHook_eq]
   exact trapHook_memsetGhostHook rfl hsvc_sub (fun _ _ => rfl) hsub_no hwords L
-
-/-- **C4 universal-`L` `TrapHook L` for `W`-independent `f3EmptyMemsetGhostHookK`** (`0` `P_real` premises). -/
-theorem trapHook_f3EmptyMemsetGhostHookK
-    {keep : BitVec 64 → Bool} {P_sub : Program} {entryTarget : BitVec 64}
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entryTarget memsetWordsSym)
-    (L : BitVec 64) :
-    TrapHook L (f3EmptyMemsetGhostHookK keep P_sub entryTarget) := by
-  rw [f3EmptyMemsetGhostHookK_eq]
-  exact trapHook_memsetGhostHookK rfl hsvc_sub (fun _ _ => rfl) hsub_no hwords L
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveLrTrapBase

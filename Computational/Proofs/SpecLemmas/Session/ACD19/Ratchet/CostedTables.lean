@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSMInstance
-public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
+public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Init
 public import Computational.Specifications.Reductions.ReductionDsl.Samplers
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.MlKemCorrect
@@ -27,7 +27,7 @@ mirror-bookkeeping expressions and the costed reduction programs `simDeliverForg
 `kemFailRedProg`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames.Ratchet.LibsignalSim
 
@@ -49,7 +49,7 @@ abbrev SimKemSeed : Type := List.Vector (BitVec 8) 64
 
 abbrev SimKemEncRand : Type := List.Vector (BitVec 8) 32
 
-def simEncRandOf (r : BitVec 512) : SimKemEncRand :=
+@[expose] def simEncRandOf (r : BitVec 512) : SimKemEncRand :=
   ⟨(CryptoVerification.LibsignalSpqrV1.coinBytes r).take 32, by
     simp [CryptoVerification.LibsignalSpqrV1.coinBytes_length]⟩
 
@@ -59,10 +59,10 @@ inductive SimKemCoins where
   | seed (s : SimKemSeed)
   | both (s : SimKemSeed) (r : SimKemEncRand)
 
-def simEkSideIsA (e : BitVec 64) : Bool :=
+@[expose] def simEkSideIsA (e : BitVec 64) : Bool :=
   decide (e.toNat % 2 = 1)
 
-def simNextKemCoins (F : ShaCompress) (c : SimKemCoins) (st : SimBraidSt F)
+@[expose] def simNextKemCoins (F : ShaCompress) (c : SimKemCoins) (st : SimBraidSt F)
     (tape : List (BitVec 8)) : SimKemCoins :=
   match c, st with
   | .init, .keysUnsampled _ =>
@@ -71,11 +71,11 @@ def simNextKemCoins (F : ShaCompress) (c : SimKemCoins) (st : SimBraidSt F)
     if h : (tape.take 32).length = 32 then .both s ⟨tape.take 32, h⟩ else .seed s
   | c, _ => c
 
-def simBe64 (v : BitVec 64) : List (BitVec 8) :=
+@[expose] def simBe64 (v : BitVec 64) : List (BitVec 8) :=
   [ v.extractLsb' 56 8, v.extractLsb' 48 8, v.extractLsb' 40 8, v.extractLsb' 32 8,
     v.extractLsb' 24 8, v.extractLsb' 16 8, v.extractLsb'  8 8, v.extractLsb'  0 8 ]
 
-def simAuthNext (F : ShaCompress) (K : CryptoVerification.LibsignalSpqrV1.MlKem) (e : BitVec 64)
+@[expose] def simAuthNext (F : ShaCompress) (K : CryptoVerification.LibsignalSpqrV1.MlKem) (e : BitVec 64)
     (auth : CryptoVerification.LibsignalSpqrV1.Authenticator) (s : SimKemSeed)
     (r : SimKemEncRand) : CryptoVerification.LibsignalSpqrV1.Authenticator :=
   let hdr := (K.fromSeed s).1.toList
@@ -95,13 +95,13 @@ structure SimKemFailTrack (F : ShaCompress) where
   sendCtr : Party → ℕ → ℕ
   cand : Option (SimKemSeed × SimKemEncRand)
 
-def simDefaultKemCand : SimKemSeed × SimKemEncRand :=
+@[expose] def simDefaultKemCand : SimKemSeed × SimKemEncRand :=
   (List.Vector.replicate 64 0#8, List.Vector.replicate 32 0#8)
 
-def simKemFailCand {F : ShaCompress} (tr : SimKemFailTrack F) : SimKemSeed × SimKemEncRand :=
+@[expose] def simKemFailCand {F : ShaCompress} (tr : SimKemFailTrack F) : SimKemSeed × SimKemEncRand :=
   tr.cand.getD simDefaultKemCand
 
-def simInitKemFailTrack (F : ShaCompress) (k : BitVec 256) : SimKemFailTrack F :=
+@[expose] def simInitKemFailTrack (F : ShaCompress) (k : BitVec 256) : SimKemFailTrack F :=
   let auth₀ := CryptoVerification.LibsignalSpqrV1.Authenticator.new F (keyToBytes32 k) 1#64
   let dec96 : CryptoVerification.LibsignalSpqrV1.PolyDecoder :=
     { ptsNeeded := 48
@@ -119,7 +119,7 @@ def simInitKemFailTrack (F : ShaCompress) (k : BitVec 256) : SimKemFailTrack F :
     cand := none }
 
 /-- Advance `SimKemFailTrack` on a send by `Q` with coins `r`, recording the first exchange failure. -/
-def simStepKemFailSend (F : ShaCompress) (K : CryptoVerification.LibsignalSpqrV1.MlKem)
+@[expose] def simStepKemFailSend (F : ShaCompress) (K : CryptoVerification.LibsignalSpqrV1.MlKem)
     (tr : SimKemFailTrack F) (Q : Party) (r : BitVec 512) : SimKemFailTrack F :=
   let cand' :=
     match tr.cand with
@@ -144,7 +144,7 @@ def simStepKemFailSend (F : ShaCompress) (K : CryptoVerification.LibsignalSpqrV1
       cand := cand' }
   | .error _ => { tr with cand := cand' }
 
-def simStepKemFailDeliver (F : ShaCompress) (K : CryptoVerification.LibsignalSpqrV1.MlKem)
+@[expose] def simStepKemFailDeliver (F : ShaCompress) (K : CryptoVerification.LibsignalSpqrV1.MlKem)
     (tr : SimKemFailTrack F) (Q : Party) (j : ℕ) : SimKemFailTrack F :=
   match tr.sentB[j]? with
   | none => tr
@@ -195,7 +195,7 @@ abbrev SimFig8St (Pt : Type) : Type :=
 
 abbrev SimFig8C (Pt : Type) : Type := Header Pt × (ℕ × LibsignalCiphertextWithSalt32)
 
-@[reducible] def SimSort.den (PQ PQC Pt : Type) (ℓ : ℕ) : SimSort → Type
+@[expose, reducible] def SimSort.den (PQ PQC Pt : Type) (ℓ : ℕ) : SimSort → Type
   | .ghostSt => GhostState PQ
   | .plain => Plain ℓ
   | .pqc => PQC
@@ -220,55 +220,55 @@ abbrev SimFig8C (Pt : Type) : Type := Header Pt × (ℕ × LibsignalCiphertextWi
   | .kemCand => SimKemSeed × SimKemEncRand
 
 /-- Unit-base-size `ReductionDsl` signature over `SimSort` for the session reductions. -/
-@[reducible] def simSig (PQ PQC Pt : Type) (ℓ : ℕ) : Sig where
+@[expose, reducible] def simSig (PQ PQC Pt : Type) (ℓ : ℕ) : Sig where
   Base := SimSort
   den := SimSort.den PQ PQC Pt ℓ
   sz := fun _ _ => 1
 
-@[reducible] def ghostChainTy (PQ PQC Pt : Type) (ℓ : ℕ) : Ty (simSig PQ PQC Pt ℓ) :=
+@[expose, reducible] def ghostChainTy (PQ PQC Pt : Type) (ℓ : ℕ) : Ty (simSig PQ PQC Pt ℓ) :=
   .prod (.opt (.base .pk)) (.prod .nat (.base .chainSt))
 
-@[reducible] def fig8CTy (PQ PQC Pt : Type) (ℓ : ℕ) : Ty (simSig PQ PQC Pt ℓ) :=
+@[expose, reducible] def fig8CTy (PQ PQC Pt : Type) (ℓ : ℕ) : Ty (simSig PQ PQC Pt ℓ) :=
   .prod (.prod .nat (.opt (.base .pt))) (.base .lct)
 
-@[reducible] def lpubPlainTy (PQ PQC Pt : Type) (ℓ : ℕ) : Ty (simSig PQ PQC Pt ℓ) :=
+@[expose, reducible] def lpubPlainTy (PQ PQC Pt : Type) (ℓ : ℕ) : Ty (simSig PQ PQC Pt ℓ) :=
   .prod (.base .lpub) (.base .plain)
 
-@[reducible] def simRrTy (PQ PQC Pt : Type) (ℓ : ℕ) : Ty (simSig PQ PQC Pt ℓ) :=
+@[expose, reducible] def simRrTy (PQ PQC Pt : Type) (ℓ : ℕ) : Ty (simSig PQ PQC Pt ℓ) :=
   .sum .unit (.prod .nat (.prod .nat (.opt (.base .plain))))
 
-@[reducible] def fig8RrTy (PQ PQC Pt : Type) (ℓ : ℕ) : Ty (simSig PQ PQC Pt ℓ) :=
+@[expose, reducible] def fig8RrTy (PQ PQC Pt : Type) (ℓ : ℕ) : Ty (simSig PQ PQC Pt ℓ) :=
   .sum .unit (.prod .nat (.prod .nat (.opt (lpubPlainTy PQ PQC Pt ℓ))))
 
-def simTagBytes (t : BitVec 64) : List (BitVec 8) :=
+@[expose] def simTagBytes (t : BitVec 64) : List (BitVec 8) :=
   (List.range 8).map fun j => (t >>> (8 * j)).truncate 8
 
-def simToWire {Pt : Type} (c : SimFig8C Pt) : List (BitVec 8) :=
+@[expose] def simToWire {Pt : Type} (c : SimFig8C Pt) : List (BitVec 8) :=
   c.2.2.1.1 ++ simTagBytes c.2.2.1.2
 
-def simSplitWireTag (w : List (BitVec 8)) : Option (List (BitVec 8) × BitVec 64) :=
+@[expose] def simSplitWireTag (w : List (BitVec 8)) : Option (List (BitVec 8) × BitVec 64) :=
   if w.length < 9 then none
   else some (w.take (w.length - 8), bytesToWord64LE (w.drop (w.length - 8)))
 
-def simParseWire (codec : SignalMessageProtoCodec) (ser : List (BitVec 8)) :
+@[expose] def simParseWire (codec : SignalMessageProtoCodec) (ser : List (BitVec 8)) :
     Option (PublicKey × (BitVec 32 × (List (BitVec 8) × Option (List (BitVec 8))))) :=
   ((signalWireCodec codec).parse ser).map fun (h, _) =>
     (h.senderRatchetKey, (h.counter, (h.pqRatchet, h.addresses)))
 
-def simChainAccept (ls : ℕ × List ℕ) (i : ℕ) : ℕ × List ℕ :=
+@[expose] def simChainAccept (ls : ℕ × List ℕ) (i : ℕ) : ℕ × List ℕ :=
   if ls.1 < i then
     (i, ((List.range (i - 1 - ls.1)).map (fun d => i - 1 - d) ++ ls.2).take 2000)
   else
     (ls.1, ls.2.erase i)
 
-def simChainRejects (ls : ℕ × List ℕ) (i : ℕ) : Bool :=
+@[expose] def simChainRejects (ls : ℕ × List ℕ) (i : ℕ) : Bool :=
   if i ≤ ls.1 then !(ls.2.contains i)
   else decide (25000 < i - 1 - ls.1) || decide (2 ^ 32 ≤ i)
 
-def simMkSenderChain (kp : KeyPair) (v : FSAEAD.RatchetSenderState (BitVec 256)) : SenderChain :=
+@[expose] def simMkSenderChain (kp : KeyPair) (v : FSAEAD.RatchetSenderState (BitVec 256)) : SenderChain :=
   ⟨kp, ⟨v.chainKey, BitVec.ofNat 32 v.lastIndex⟩⟩
 
-def simMkRecvChain (k? : Option PublicKey) (ls : ℕ × List ℕ)
+@[expose] def simMkRecvChain (k? : Option PublicKey) (ls : ℕ × List ℕ)
     (v? : Option (FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))) : ReceiverChain :=
   let k := match k? with | some k => k | none => dummyKey
   match v? with
@@ -277,7 +277,7 @@ def simMkRecvChain (k? : Option PublicKey) (ls : ℕ × List ℕ)
       (v.skippedKeys.lookup j).map fun mk => ⟨keyToBytes32 mk, BitVec.ofNat 32 (j - 1)⟩⟩
   | none => ⟨k, none, []⟩
 
-def simMkGhostState {PQ PQC : Type} (P : Params PQ PQC) (qB : Bool) (rk : BitVec 256)
+@[expose] def simMkGhostState {PQ PQC : Type} (P : Params PQ PQC) (qB : Bool) (rk : BitVec 256)
     (pn : BitVec 32) (sc : Option SenderChain) (rcs : List ReceiverChain) (ppk : Bool)
     (pq : PQ) (ep : ℕ) (eps : List ℕ) : GhostState PQ :=
   let Q := partyDec qB
@@ -287,18 +287,18 @@ def simMkGhostState {PQ PQC : Type} (P : Params PQ PQC) (qB : Bool) (rk : BitVec
         senderChain := sc, receiverChains := rcs, pendingPreKey := ppk, pqRatchetState := pq },
     ep, eps⟩
 
-def simChainKeyAfter (F : ShaCompress) : ℕ → BitVec 256 → BitVec 256
+@[expose] def simChainKeyAfter (F : ShaCompress) : ℕ → BitVec 256 → BitVec 256
   | 0, k => k
   | n + 1, k => simChainKeyAfter F n (bytesToKey32 (Ratchet.chainHmac F k Ratchet.chainKeySeed))
 
-def simChainSeedAt (F : ShaCompress) (ck : LibsignalSession.ChainKey) (counter : BitVec 32) :
+@[expose] def simChainSeedAt (F : ShaCompress) (ck : LibsignalSession.ChainKey) (counter : BitVec 32) :
     Option (List (BitVec 8)) :=
   if counter.toNat < ck.index.toNat then none
   else some (Ratchet.chainHmac F (simChainKeyAfter F (counter.toNat - ck.index.toNat) ck.key)
     Ratchet.messageKeySeed)
 
 /-- Evaluate one corruption-snapshot seed-derivation step of `LibsignalSimC.snapshotMessageKeySeed` (`DEV-LS37`). -/
-def simSnapSeed {PQ PQC : Type} (P : Params PQ PQC) (branch : ℕ) (qB : Bool)
+@[expose] def simSnapSeed {PQ PQC : Type} (P : Params PQ PQC) (branch : ℕ) (qB : Bool)
     (w : List (BitVec 8)) (t : ℕ) (e : Bool × (ℕ × GhostState PQ))
     (ePrev? : Option (Bool × (ℕ × GhostState PQ))) : Option (List (BitVec 8)) :=
   let Q := partyDec qB
@@ -355,7 +355,7 @@ def simSnapSeed {PQ PQC : Type} (P : Params PQ PQC) (branch : ℕ) (qB : Bool)
           else none
       else none
 
-def simKDecryptFig8 {PQ PQC Pt : Type} (P : Params PQ PQC) (ℓ B : ℕ) (qB : Bool)
+@[expose] def simKDecryptFig8 {PQ PQC Pt : Type} (P : Params PQ PQC) (ℓ B : ℕ) (qB : Bool)
     (w : List (BitVec 8)) (c' : SimFig8C Pt) (seed : List (BitVec 8)) :
     Option (ℕ × (ℕ × (LibsignalMsgPublicPart × Plain ℓ))) :=
   let Q := partyDec qB
@@ -429,7 +429,7 @@ inductive SimOp
   | stepKemFailDeliver
   deriving DecidableEq
 
-def simOpCost (cSpqrInit cSpqrSend cSpqrRecv cSpqrRecvPanics cSplitWireTag cParseWire cU32ToNat
+@[expose] def simOpCost (cSpqrInit cSpqrSend cSpqrRecv cSpqrRecvPanics cSplitWireTag cParseWire cU32ToNat
     cToWire cEqWire cEqFig8C cInjOK cDh cEncT cDecT cIsZeroPt cKeyPairGen
     cFig8Init cFig8Send cFig8Recv cFsRecv cSentEval cSameWireFig8 cSnapSeed cKDecrypt
     cKemInit cKemSend cKemDeliver : ℕ) : SimOp → ℕ
@@ -486,7 +486,7 @@ def simOpCost (cSpqrInit cSpqrSend cSpqrRecv cSpqrRecvPanics cSplitWireTag cPars
   | .stepKemFailDeliver => cKemDeliver
 
 /-- Parametric `ReductionDsl` operation table for the session reductions. -/
-@[reducible] def simParamOps {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] {ℓ : ℕ}
+@[expose, reducible] def simParamOps {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] {ℓ : ℕ}
     (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
     (decT : PublicKey → Option Pt) (lam : Pt)
@@ -698,7 +698,7 @@ def simOpCost (cSpqrInit cSpqrSend cSpqrRecv cSpqrRecvPanics cSplitWireTag cPars
     cKemInit cKemSend cKemDeliver
 
 /-- Unit-cost instantiation of `simParamOps` for `simDeliverForgeProg` and `kemFailRedProg`. -/
-@[reducible] def simOpsUnitCost {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] {ℓ : ℕ}
+@[expose, reducible] def simOpsUnitCost {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] {ℓ : ℕ}
     (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
     (decT : PublicKey → Option Pt) (lam : Pt)
@@ -715,7 +715,7 @@ inductive SimBaseSamp
   | pqc
   deriving DecidableEq
 
-def simBaseSampSort : SimBaseSamp → SimSort
+@[expose] def simBaseSampSort : SimBaseSamp → SimSort
   | .bv256 => .bv256
   | .pqc => .pqc
 
@@ -724,18 +724,18 @@ instance instSampleableSimBaseSamp (PQ PQC Pt : Type) [SampleableType PQC] (ℓ 
   | .bv256 => inferInstanceAs (SampleableType (BitVec 256))
   | .pqc => inferInstanceAs (SampleableType PQC)
 
-def simBaseSampCost (cSampBv256 cSampPqc : ℕ) : SimBaseSamp → ℕ
+@[expose] def simBaseSampCost (cSampBv256 cSampPqc : ℕ) : SimBaseSamp → ℕ
   | .bv256 => cSampBv256
   | .pqc => cSampPqc
 
 /-- Parametric sampler table over `SimBaseSamp` for the session reductions. -/
-@[reducible] def simParamSamplers (PQ PQC Pt : Type) [SampleableType PQC] (ℓ : ℕ)
+@[expose, reducible] def simParamSamplers (PQ PQC Pt : Type) [SampleableType PQC] (ℓ : ℕ)
     (cSampBv256 cSampPqc : ℕ) :
     Samplers (simSig PQ PQC Pt ℓ) :=
   unifSamplers (S := simSig PQ PQC Pt ℓ) simBaseSampSort (simBaseSampCost cSampBv256 cSampPqc)
 
 /-- Parametric target Fig. 8 `DeliverForge` oracle interface for `simDeliverForgeProg`. -/
-@[reducible] def simParamIfaceDF (PQ PQC Pt : Type) [SampleableType PQC] (ℓ : ℕ)
+@[expose, reducible] def simParamIfaceDF (PQ PQC Pt : Type) [SampleableType PQC] (ℓ : ℕ)
     (cQ cU cSampBv256 cSampPqc : ℕ) :
     Iface (simSig PQ PQC Pt ℓ)
       (unifSpec + SM.specDF (SimFig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (SimFig8C Pt)) where
@@ -780,13 +780,13 @@ def simBaseSampCost (cSampBv256 cSampPqc : ℕ) : SimBaseSamp → ℕ
   smp := simParamSamplers PQ PQC Pt ℓ cSampBv256 cSampPqc
 
 /-- Unit-cost target Fig. 8 `DeliverForge` oracle interface for `simDeliverForgeProg`. -/
-@[reducible] def simIfaceDF (PQ PQC Pt : Type) [SampleableType PQC] (ℓ : ℕ) :
+@[expose, reducible] def simIfaceDF (PQ PQC Pt : Type) [SampleableType PQC] (ℓ : ℕ) :
     Iface (simSig PQ PQC Pt ℓ)
       (unifSpec + SM.specDF (SimFig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (SimFig8C Pt)) :=
   simParamIfaceDF PQ PQC Pt ℓ 1 1 1 1
 
 /-- Parametric coin-only target interface (`unifSpec`) for `kemFailRedProg`. -/
-@[reducible] def kemFailParamIface (PQ PQC Pt : Type) [SampleableType PQC] (ℓ : ℕ)
+@[expose, reducible] def kemFailParamIface (PQ PQC Pt : Type) [SampleableType PQC] (ℓ : ℕ)
     (cU cSampBv256 cSampPqc : ℕ) :
     Iface (simSig PQ PQC Pt ℓ) unifSpec where
   fwdU n := query (spec := unifSpec) n
@@ -800,11 +800,11 @@ def simBaseSampCost (cSampBv256 cSampPqc : ℕ) : SimBaseSamp → ℕ
   smp := simParamSamplers PQ PQC Pt ℓ cSampBv256 cSampPqc
 
 /-- Unit-cost coin-only target interface (`unifSpec`) for `kemFailRedProg`. -/
-@[reducible] def kemFailIface (PQ PQC Pt : Type) [SampleableType PQC] (ℓ : ℕ) :
+@[expose, reducible] def kemFailIface (PQ PQC Pt : Type) [SampleableType PQC] (ℓ : ℕ) :
     Iface (simSig PQ PQC Pt ℓ) unifSpec :=
   kemFailParamIface PQ PQC Pt ℓ 1 1 1
 
-@[reducible] def simQ (PQ PQC Pt : Type) (ℓ : ℕ) : Ty (simSig PQ PQC Pt ℓ) :=
+@[expose, reducible] def simQ (PQ PQC Pt : Type) (ℓ : ℕ) : Ty (simSig PQ PQC Pt ℓ) :=
   .sum
     (.sum
       (.sum
@@ -815,7 +815,7 @@ def simBaseSampCost (cSampBv256 cSampPqc : ℕ) : SimBaseSamp → ℕ
       (.prod .bool (.base .wire)))
     .bool
 
-@[reducible] def simR (PQ PQC Pt : Type) (ℓ : ℕ) : Ty (simSig PQ PQC Pt ℓ) :=
+@[expose, reducible] def simR (PQ PQC Pt : Type) (ℓ : ℕ) : Ty (simSig PQ PQC Pt ℓ) :=
   .sum
     (.sum
       (.sum
@@ -827,7 +827,7 @@ def simBaseSampCost (cSampBv256 cSampPqc : ℕ) : SimBaseSamp → ℕ
     (.opt (.base .ghostSt))
 
 /-- Source SM game codec for `SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))`. -/
-@[reducible] def simCodec (PQ PQC Pt : Type) (ℓ : ℕ) :
+@[expose, reducible] def simCodec (PQ PQC Pt : Type) (ℓ : ℕ) :
     GameCodec (simSig PQ PQC Pt ℓ)
       (SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))) where
   Q := simQ PQ PQC Pt ℓ
@@ -864,15 +864,15 @@ variable {PQ PQC Pt : Type} {ℓ : ℕ}
 
 local notation "S" => simSig PQ PQC Pt ℓ
 
-@[reducible] def simRecTy : Ty S := .prod posTy (.prod (.base .plain) (.base .wire))
+@[expose, reducible] def simRecTy : Ty S := .prod posTy (.prod (.base .plain) (.base .wire))
 
-def srecPos
+@[expose] def srecPos
     {O' : Ops S} {Γ} (r : Expr O' Γ simRecTy) : Expr O' Γ posTy := .fst r
-def srecCt
+@[expose] def srecCt
     {O' : Ops S} {Γ} (r : Expr O' Γ simRecTy) : Expr O' Γ (.base .wire) := .snd (.snd r)
 
 /-- Parametric mirror `GameState` type in `simSig` over record type `recT`. -/
-@[reducible] def mirTy (recT : Ty S) : Ty S :=
+@[expose, reducible] def mirTy (recT : Ty S) : Ty S :=
   .prod .bool
     (.prod .bool
       (.prod (.prod .nat .nat)
@@ -885,51 +885,51 @@ def srecCt
                     (.prod (.list .nat)
                       (.list (.prod .bool .nat)))))))))))
 
-@[reducible] def simMirTy : Ty S := mirTy simRecTy
+@[expose, reducible] def simMirTy : Ty S := mirTy simRecTy
 
-def mB
+@[expose] def mB
     {recT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy recT)) : Expr O' Γ .bool := .fst s
-def mWin
+@[expose] def mWin
     {recT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy recT)) : Expr O' Γ .bool :=
   .fst (.snd s)
-def mEpoch
+@[expose] def mEpoch
     {recT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy recT)) :
     Expr O' Γ (.prod .nat .nat) :=
   .fst (.snd (.snd s))
-def mIdx
+@[expose] def mIdx
     {recT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy recT)) :
     Expr O' Γ (.prod .nat .nat) :=
   .fst (.snd (.snd (.snd s)))
-def mTL
+@[expose] def mTL
     {recT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy recT)) :
     Expr O' Γ (.opt .nat) :=
   .fst (.snd (.snd (.snd (.snd s))))
-def mTrans
+@[expose] def mTrans
     {recT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy recT)) :
     Expr O' Γ (.list recT) :=
   .fst (.snd (.snd (.snd (.snd (.snd s)))))
-def mChall
+@[expose] def mChall
     {recT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy recT)) :
     Expr O' Γ (.list posTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd s))))))
-def mComp
+@[expose] def mComp
     {recT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy recT)) :
     Expr O' Γ (.list posTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))
-def mMaxAcc
+@[expose] def mMaxAcc
     {recT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy recT)) :
     Expr O' Γ (.prod (.tbl .nat) (.tbl .nat)) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))
-def mLeaks
+@[expose] def mLeaks
     {recT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy recT)) :
     Expr O' Γ (.list .nat) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))))
-def mCorrs
+@[expose] def mCorrs
     {recT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy recT)) :
     Expr O' Γ (.list (.prod .bool .nat)) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))))
 
-def mMk
+@[expose] def mMk
     {recT : Ty S} {O' : Ops S} {Γ}
     (b win : Expr O' Γ .bool)
     (epoch idx : Expr O' Γ (.prod .nat .nat))
@@ -950,7 +950,7 @@ def mMk
                   (.pair maxAcc
                     (.pair leaks corrs)))))))))
 
-def mSetWin
+@[expose] def mSetWin
     {recT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy recT)) (w : Expr O' Γ .bool) :
     Expr O' Γ (mirTy recT) :=
   .letE (.pair s w)
@@ -960,7 +960,7 @@ def mSetWin
        (mTrans s0) (mChall s0) (mComp s0) (mMaxAcc s0) (mLeaks s0) (mCorrs s0))
 
 /-- `SimState PQ Pt ℓ` represented as a `ReductionDsl` type in `simSig`. -/
-@[reducible] def simStateTy : Ty S :=
+@[expose, reducible] def simStateTy : Ty S :=
   .prod simMirTy
     (.prod (.prod (.base .pq) (.base .pq))
       (.prod (.prod (.base .u32) (.base .u32))
@@ -969,33 +969,33 @@ def mSetWin
             (.prod (.prod (.list (ghostChainTy PQ PQC Pt ℓ)) (.list (ghostChainTy PQ PQC Pt ℓ)))
               (.prod .nat .bool))))))
 
-def ssMir
+@[expose] def ssMir
     {O' : Ops S} {Γ} (s : Expr O' Γ simStateTy) : Expr O' Γ simMirTy := .fst s
-def ssPq
+@[expose] def ssPq
     {O' : Ops S} {Γ} (s : Expr O' Γ simStateTy) :
     Expr O' Γ (.prod (.base .pq) (.base .pq)) := .fst (.snd s)
-def ssPn
+@[expose] def ssPn
     {O' : Ops S} {Γ} (s : Expr O' Γ simStateTy) :
     Expr O' Γ (.prod (.base .u32) (.base .u32)) := .fst (.snd (.snd s))
-def ssUnackA
+@[expose] def ssUnackA
     {O' : Ops S} {Γ} (s : Expr O' Γ simStateTy) : Expr O' Γ .bool :=
   .fst (.snd (.snd (.snd s)))
-def ssHonest
+@[expose] def ssHonest
     {O' : Ops S} {Γ} (s : Expr O' Γ simStateTy) :
     Expr O' Γ (.list (.prod (.base .wire) (fig8CTy PQ PQC Pt ℓ))) :=
   .fst (.snd (.snd (.snd (.snd s))))
-def ssChains
+@[expose] def ssChains
     {O' : Ops S} {Γ} (s : Expr O' Γ simStateTy) :
     Expr O' Γ (.prod (.list (ghostChainTy PQ PQC Pt ℓ)) (.list (ghostChainTy PQ PQC Pt ℓ))) :=
   .fst (.snd (.snd (.snd (.snd (.snd s)))))
-def ssAmb
+@[expose] def ssAmb
     {O' : Ops S} {Γ} (s : Expr O' Γ simStateTy) : Expr O' Γ .nat :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd s))))))
-def ssStopped
+@[expose] def ssStopped
     {O' : Ops S} {Γ} (s : Expr O' Γ simStateTy) : Expr O' Γ .bool :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))
 
-def ssMk
+@[expose] def ssMk
     {O' : Ops S} {Γ}
     (mir : Expr O' Γ simMirTy)
     (pq : Expr O' Γ (.prod (.base .pq) (.base .pq)))
@@ -1008,7 +1008,7 @@ def ssMk
     (stopped : Expr O' Γ .bool) : Expr O' Γ simStateTy :=
   .pair mir (.pair pq (.pair pn (.pair unackA (.pair honest (.pair chains (.pair amb stopped))))))
 
-def ssSetAmb
+@[expose] def ssSetAmb
     {O' : Ops S} {Γ} (s : Expr O' Γ simStateTy) (a : Expr O' Γ .nat) :
     Expr O' Γ simStateTy :=
   .letE (.pair s a)
@@ -1016,14 +1016,14 @@ def ssSetAmb
      ssMk (ssMir s0) (ssPq s0) (ssPn s0) (ssUnackA s0) (ssHonest s0) (ssChains s0)
        (.snd .v0) (ssStopped s0))
 
-def ssSetMirWin
+@[expose] def ssSetMirWin
     {O' : Ops S} {Γ} (s : Expr O' Γ simStateTy) : Expr O' Γ simStateTy :=
   .letE s
     (let s0 : Expr O' _ simStateTy := .v0
      ssMk (mSetWin (ssMir s0) (.bool true)) (ssPq s0) (ssPn s0) (ssUnackA s0)
        (ssHonest s0) (ssChains s0) (ssAmb s0) (ssStopped s0))
 
-def ssSetMir
+@[expose] def ssSetMir
     {O' : Ops S} {Γ} (s : Expr O' Γ simStateTy) (m : Expr O' Γ simMirTy) :
     Expr O' Γ simStateTy :=
   .letE (.pair s m)
@@ -1031,18 +1031,18 @@ def ssSetMir
      ssMk (.snd .v0) (ssPq s0) (ssPn s0) (ssUnackA s0) (ssHonest s0) (ssChains s0)
        (ssAmb s0) (ssStopped s0))
 
-def mSafeChE
+@[expose] def mSafeChE
     {recT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy recT)) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   .letE (.pair s p)
     (healedByE (mTL (.fst .v0)) 3 (pGet (mEpoch (.fst .v0)) (.snd .v0)))
 
-def mSafeInjE
+@[expose] def mSafeInjE
     {recT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy recT)) : Expr O' Γ .bool :=
   .letE s
     (healedByE (mTL .v0) 3 (minN (.fst (mEpoch .v0)) (.snd (mEpoch .v0))))
 
-def mLeakE
+@[expose] def mLeakE
     {recT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy recT)) (l : Expr O' Γ .nat) :
     Expr O' Γ (mirTy recT) :=
   .letE (.pair s l)
@@ -1052,7 +1052,7 @@ def mLeakE
        (mTrans s0) (mChall s0) (mComp s0) (mMaxAcc s0)
        (.cons m (mLeaks s0)) (mCorrs s0))
 
-def mEpMgmtE
+@[expose] def mEpMgmtE
     {recT : Ty S} {O' : Ops S} {Γ} (qep : ℕ) (s : Expr O' Γ (mirTy recT)) (p : Expr O' Γ .bool)
     (bad : Expr O' Γ .bool) : Expr O' Γ (.opt (mirTy recT)) :=
   .letE (.pair s (.pair p bad))
@@ -1077,7 +1077,7 @@ def mEpMgmtE
          .none
          (.some s0)))
 
-def mRecordE
+@[expose] def mRecordE
     {restT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy (.prod posTy restT)))
     (p : Expr O' Γ .bool) (r : Expr O' Γ (.prod posTy restT)) (isChall : Expr O' Γ .bool) :
     Expr O' Γ (mirTy (.prod posTy restT)) :=
@@ -1095,7 +1095,7 @@ def mRecordE
        (.ite (mSafeChE s0 p0) (mComp s0) (.cons pos (mComp s0)))
        (mMaxAcc s0) (mLeaks s0) (mCorrs s0))
 
-def mDeleteE
+@[expose] def mDeleteE
     {restT : Ty S} {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ (mirTy (.prod posTy restT)))
     (pos : Expr O' Γ posTy) : Expr O' Γ (mirTy (.prod posTy restT)) :=
   .letE (.pair s pos)
@@ -1112,7 +1112,7 @@ def mDeleteE
      mMk (mB s0) (mWin s0) (mEpoch s0) (mIdx s0) (mTL s0)
        trans' chall' comp' (mMaxAcc s0) (mLeaks s0) (mCorrs s0))
 
-def mAcceptE
+@[expose] def mAcceptE
     {restT : Ty S} {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ (mirTy (.prod posTy restT)))
     (p : Expr O' Γ .bool) (pos : Expr O' Γ posTy) : Expr O' Γ (mirTy (.prod posTy restT)) :=
   .letE (.pair (mDeleteE K s pos) (.pair p pos))
@@ -1128,19 +1128,19 @@ def mAcceptE
          (maxN (maxAccGet (mMaxAcc s1) p0 pEpoch) pIdx))
        (mLeaks s1) (mCorrs s1))
 
-def mCompContainsE
+@[expose] def mCompContainsE
     {recT : Ty S} {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ (mirTy recT))
     (pos : Expr O' Γ posTy) : Expr O' Γ .bool :=
   .letE (.pair s pos)
     (.anyB K (mComp (.fst .v0)) (posEq .v0 (.snd .v1)))
 
-def mChallContainsE
+@[expose] def mChallContainsE
     {recT : Ty S} {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ (mirTy recT))
     (pos : Expr O' Γ posTy) : Expr O' Γ .bool :=
   .letE (.pair s pos)
     (.anyB K (mChall (.fst .v0)) (posEq .v0 (.snd .v1)))
 
-def mTrivialE
+@[expose] def mTrivialE
     {restT : Ty S} {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ (mirTy (.prod posTy restT)))
     (pos : Expr O' Γ posTy) : Expr O' Γ .bool :=
   .letE (.pair s pos)
@@ -1151,7 +1151,7 @@ def mTrivialE
          (.not (.anyB K (mTrans s0) (posEq (.fst .v0) (.snd .v1))))
          (.not (healedByE (mTL s0) 3 (posEpoch pos0)))))
 
-def mCorrAllowedE
+@[expose] def mCorrAllowedE
     {restT : Ty S} {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ (mirTy (.prod posTy restT)))
     (p : Expr O' Γ .bool) : Expr O' Γ .bool :=
   .letE (.pair s p)
@@ -1162,7 +1162,7 @@ def mCorrAllowedE
          (.and (boolEq (posSender (.fst .v0)) (otherE (.snd .v1)))
            (.not (mCompContainsE K (.fst .v1) (.fst .v0)))))))
 
-def mAfterCorrE
+@[expose] def mAfterCorrE
     {restT : Ty S} {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ (mirTy (.prod posTy restT)))
     (p : Expr O' Γ .bool) : Expr O' Γ (mirTy (.prod posTy restT)) :=
   .letE (.pair s p)
@@ -1183,25 +1183,25 @@ def mAfterCorrE
        (mTrans s2) (mChall s2) (mComp s2) (mMaxAcc s2) (mLeaks s2)
        (.cons (.pair p0 (pGet (mEpoch s0) p0)) (mCorrs s2)))
 
-def mInWinE
+@[expose] def mInWinE
     {recT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy recT)) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   .letE (.pair s p)
     (.not (sendsInE (.snd .v0) (pGet (mEpoch (.fst .v0)) (.snd .v0))))
 
-def mNoBobEpoch0E
+@[expose] def mNoBobEpoch0E
     {recT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy recT)) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   .letE (.pair s p)
     (.not (.and (.snd .v0) (.eqN (.snd (mEpoch (.fst .v0))) (.nat 0))))
 
-def mNoSpkCorrE
+@[expose] def mNoSpkCorrE
     {recT : Ty S} {O' : Ops S} {Γ} (s : Expr O' Γ (mirTy recT)) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   .letE (.pair s p)
     (.not (.and (.not (.snd .v0)) (.lt (.fst (mEpoch (.fst .v0))) (.nat 10))))
 
-def initSimMirE
+@[expose] def initSimMirE
     {recT : Ty S} {O' : Ops S} {Γ} : Expr O' Γ (mirTy recT) :=
   mMk (.bool false) (.bool false) (.pair (.nat 0) (.nat 0)) (.pair (.nat 0) (.nat 0))
     .none .nil .nil .nil (.pair (.tconst (.nat 0)) (.tconst (.nat 0))) .nil .nil
@@ -1221,48 +1221,48 @@ local notation "S" => simSig PQ PQC Pt ℓ
 local notation "OFig" => simOpsUnitCost (ℓ := ℓ) P Dh encPt encT decT lam K toKemCoins
 
 /-- `ReductionDsl` representation of `LibsignalSimC.Kept Pt`. -/
-@[reducible] def keptTy : Ty S :=
+@[expose, reducible] def keptTy : Ty S :=
   .prod (.opt (.base .fig8st))
     (.prod (.opt (.base .fig8st)) (.tbl (.opt (.opt (.base .vrSt)))))
 
-@[reducible] def snapEntryTy : Ty S :=
+@[expose, reducible] def snapEntryTy : Ty S :=
   .prod .bool (.prod .nat (.base .ghostSt))
 
 /-- `LibsignalToModularSchemeSimState PQ Pt ℓ` represented as a `ReductionDsl` type in `simSig`. -/
-@[reducible] def simStateCTy : Ty S :=
+@[expose, reducible] def simStateCTy : Ty S :=
   .prod simStateTy
     (.prod (.prod keptTy keptTy)
       (.prod (.list (.prod (fig8CTy PQ PQC Pt ℓ) (.base .vsSt)))
         (.list snapEntryTy)))
 
-def scBase {O' : Ops S} {Γ} (sC : Expr O' Γ simStateCTy) : Expr O' Γ simStateTy := .fst sC
-def scKept {O' : Ops S} {Γ} (sC : Expr O' Γ simStateCTy) :
+@[expose] def scBase {O' : Ops S} {Γ} (sC : Expr O' Γ simStateCTy) : Expr O' Γ simStateTy := .fst sC
+@[expose] def scKept {O' : Ops S} {Γ} (sC : Expr O' Γ simStateCTy) :
     Expr O' Γ (.prod keptTy keptTy) := .fst (.snd sC)
-def scSent {O' : Ops S} {Γ} (sC : Expr O' Γ simStateCTy) :
+@[expose] def scSent {O' : Ops S} {Γ} (sC : Expr O' Γ simStateCTy) :
     Expr O' Γ (.list (.prod (fig8CTy PQ PQC Pt ℓ) (.base .vsSt))) := .fst (.snd (.snd sC))
-def scSnaps {O' : Ops S} {Γ} (sC : Expr O' Γ simStateCTy) :
+@[expose] def scSnaps {O' : Ops S} {Γ} (sC : Expr O' Γ simStateCTy) :
     Expr O' Γ (.list snapEntryTy) := .snd (.snd (.snd sC))
 
-def scMk {O' : Ops S} {Γ}
+@[expose] def scMk {O' : Ops S} {Γ}
     (base : Expr O' Γ simStateTy)
     (kept : Expr O' Γ (.prod keptTy keptTy))
     (sent : Expr O' Γ (.list (.prod (fig8CTy PQ PQC Pt ℓ) (.base .vsSt))))
     (snaps : Expr O' Γ (.list snapEntryTy)) : Expr O' Γ simStateCTy :=
   .pair base (.pair kept (.pair sent snaps))
 
-def scSetBase {O' : Ops S} {Γ} (sC : Expr O' Γ simStateCTy) (b : Expr O' Γ simStateTy) :
+@[expose] def scSetBase {O' : Ops S} {Γ} (sC : Expr O' Γ simStateCTy) (b : Expr O' Γ simStateTy) :
     Expr O' Γ simStateCTy :=
   .letE (.pair sC b)
     (let s0 : Expr O' _ simStateCTy := .fst .v0
      scMk (.snd .v0) (scKept s0) (scSent s0) (scSnaps s0))
 
-def keptUnknownE {O' : Ops S} {Γ} : Expr O' Γ keptTy :=
+@[expose] def keptUnknownE {O' : Ops S} {Γ} : Expr O' Γ keptTy :=
   .pair .none (.pair .none (.tconst .none))
 
-def keptOfStE {O' : Ops S} {Γ} (st : Expr O' Γ (.base .fig8st)) : Expr O' Γ keptTy :=
+@[expose] def keptOfStE {O' : Ops S} {Γ} (st : Expr O' Γ (.base .fig8st)) : Expr O' Γ keptTy :=
   .letE st (.pair (.some .v0) (.pair (.some .v0) (.tconst .none)))
 
-def keptRsAtE {Γ} (k : Expr OFig Γ keptTy) (t : Expr OFig Γ .nat) :
+@[expose] def keptRsAtE {Γ} (k : Expr OFig Γ keptTy) (t : Expr OFig Γ .nat) :
     Expr OFig Γ (.opt (.base .vrSt)) :=
   .letE (.pair k t)
     (let k0 : Expr OFig _ keptTy := .fst .v0
@@ -1273,7 +1273,7 @@ def keptRsAtE {Γ} (k : Expr OFig Γ keptTy) (t : Expr OFig Γ .nat) :
          (Expr.op (O := OFig) SimOp.fig8VR (.pair .v0 (.snd .v1))))
        .v0)
 
-def keptSendE (B : ℕ) {Γ} (k : Expr OFig Γ keptTy) : Expr OFig Γ keptTy :=
+@[expose] def keptSendE (B : ℕ) {Γ} (k : Expr OFig Γ keptTy) : Expr OFig Γ keptTy :=
   .letE k
     (let k0 : Expr OFig _ keptTy := .v0
      .caseOpt (.fst k0)
@@ -1285,7 +1285,7 @@ def keptSendE (B : ℕ) {Γ} (k : Expr OFig Γ keptTy) : Expr OFig Γ keptTy :=
           (.pair .none (.pair (.some st0) (.tconst .none)))
           (.pair (.some (.fst (.snd step))) (.snd .v1))))
 
-def keptRecvE (B : ℕ) {Γ} (c : Expr OFig Γ (fig8CTy PQ PQC Pt ℓ)) (k : Expr OFig Γ keptTy) :
+@[expose] def keptRecvE (B : ℕ) {Γ} (c : Expr OFig Γ (fig8CTy PQ PQC Pt ℓ)) (k : Expr OFig Γ keptTy) :
     Expr OFig Γ keptTy :=
   .letE (.pair c k)
     (let c0 : Expr OFig _ (fig8CTy PQ PQC Pt ℓ) := .fst .v0
@@ -1305,7 +1305,7 @@ def keptRecvE (B : ℕ) {Γ} (c : Expr OFig Γ (fig8CTy PQ PQC Pt ℓ)) (k : Exp
          (.pair .none (.pair (.some .v0) (.tconst .none)))
          (.pair (.some (.fst .v0)) (.snd (.snd .v2)))))
 
-def keptEvalE (B : ℕ) {Γ} (c : Expr OFig Γ (fig8CTy PQ PQC Pt ℓ)) (k : Expr OFig Γ keptTy) :
+@[expose] def keptEvalE (B : ℕ) {Γ} (c : Expr OFig Γ (fig8CTy PQ PQC Pt ℓ)) (k : Expr OFig Γ keptTy) :
     Expr OFig Γ (.opt (.opt (.prod .nat (.prod .nat (lpubPlainTy PQ PQC Pt ℓ))))) :=
   .letE (.pair c k)
     (let c0 : Expr OFig _ (fig8CTy PQ PQC Pt ℓ) := .fst .v0
@@ -1323,7 +1323,7 @@ def keptEvalE (B : ℕ) {Γ} (c : Expr OFig Γ (fig8CTy PQ PQC Pt ℓ)) (k : Exp
            .none
            (.some (.snd .v0)))))
 
-def sentEvalE (L B : ℕ) {Γ}
+@[expose] def sentEvalE (L B : ℕ) {Γ}
     (sent : Expr OFig Γ (.list (.prod (fig8CTy PQ PQC Pt ℓ) (.base .vsSt))))
     (c c' : Expr OFig Γ (fig8CTy PQ PQC Pt ℓ)) :
     Expr OFig Γ (.opt (.opt (.prod .nat (.prod .nat (lpubPlainTy PQ PQC Pt ℓ))))) :=
@@ -1340,10 +1340,10 @@ def sentEvalE (L B : ℕ) {Γ}
            .none
            (.some (.pair (.fst (.fst (.snd (.snd .v2)))) (.snd .v0))))))
 
-def orElseOptE {O' : Ops S} {Γ α} (x y : Expr O' Γ (.opt α)) : Expr O' Γ (.opt α) :=
+@[expose] def orElseOptE {O' : Ops S} {Γ α} (x y : Expr O' Γ (.opt α)) : Expr O' Γ (.opt α) :=
   .caseOpt x y (.some .v0)
 
-def knownSeedRE (L : ℕ) {Γ} (snaps : Expr OFig Γ (.list snapEntryTy))
+@[expose] def knownSeedRE (L : ℕ) {Γ} (snaps : Expr OFig Γ (.list snapEntryTy))
     (qB : Expr OFig Γ .bool) (t : Expr OFig Γ .nat) (w : Expr OFig Γ (.base .wire)) :
     Expr OFig Γ (.opt (.base .wire)) :=
   .letE (.pair snaps (.pair qB (.pair t w)))
@@ -1384,7 +1384,7 @@ def knownSeedRE (L : ℕ) {Γ} (snaps : Expr OFig Γ (.list snapEntryTy))
        (orElseOptE (branchScan 1)
          (orElseOptE (branchScan 2) k4Scan)))
 
-def evalCKE (L B : ℕ) {Γ} (sC : Expr OFig Γ simStateCTy) (qB : Expr OFig Γ .bool)
+@[expose] def evalCKE (L B : ℕ) {Γ} (sC : Expr OFig Γ simStateCTy) (qB : Expr OFig Γ .bool)
     (w : Expr OFig Γ (.base .wire)) (c c' : Expr OFig Γ (fig8CTy PQ PQC Pt ℓ)) :
     Expr OFig Γ (.opt (.opt (.prod .nat (.prod .nat (lpubPlainTy PQ PQC Pt ℓ))))) :=
   .letE (.pair sC (.pair qB (.pair w (.pair c c'))))
@@ -1409,7 +1409,7 @@ def evalCKE (L B : ℕ) {Γ} (sC : Expr OFig Γ simStateCTy) (qB : Expr OFig Γ 
                  (.pair (.snd (.snd (.snd (.snd .v1)))) .v0)))))
      orElseOptE kEval (orElseOptE sEval ksEval))
 
-def mInTransitFigE (L : ℕ) {Γ} (s : Expr OFig Γ simMirTy)
+@[expose] def mInTransitFigE (L : ℕ) {Γ} (s : Expr OFig Γ simMirTy)
     (qParty : Expr OFig Γ .bool) (w : Expr OFig Γ (.base .wire)) :
     Expr OFig Γ (.opt simRecTy) :=
   .letE (.pair s (.pair qParty w))
@@ -1417,14 +1417,14 @@ def mInTransitFigE (L : ℕ) {Γ} (s : Expr OFig Γ simMirTy)
       (.and (boolEq (posSender (srecPos .v0)) (.fst (.snd .v1)))
         (Expr.op (O := OFig) SimOp.eqWire (.pair (srecCt .v0) (.snd (.snd .v1))))))
 
-def initChainAFigE {Γ} : Expr OFig Γ (ghostChainTy PQ PQC Pt ℓ) :=
+@[expose] def initChainAFigE {Γ} : Expr OFig Γ (ghostChainTy PQ PQC Pt ℓ) :=
   .pair .none (.pair (.nat 0) (Expr.op (O := OFig) SimOp.emptyChainSt .unit))
 
-def hasUnknownKeyFigE {Γ}
+@[expose] def hasUnknownKeyFigE {Γ}
     (cs : Expr OFig Γ (.list (ghostChainTy PQ PQC Pt ℓ))) : Expr OFig Γ .bool :=
   .anyB 5 cs (.caseOpt (.fst .v0) (.bool true) (.bool false))
 
-def findChainFigE {Γ}
+@[expose] def findChainFigE {Γ}
     (arg : Expr OFig Γ (.prod (.list (ghostChainTy PQ PQC Pt ℓ)) (.base .pk))) :
     Expr OFig Γ (.opt (.prod .nat (ghostChainTy PQ PQC Pt ℓ))) :=
   .letE arg
@@ -1436,7 +1436,7 @@ def findChainFigE {Γ}
         (.caseOpt .v1 .none
           (.some (.pair (.add (.fst .v0) (.nat 1)) (.snd .v0))))))
 
-def modifyChainAcceptFigE {Γ}
+@[expose] def modifyChainAcceptFigE {Γ}
     (arg : Expr OFig Γ (.prod (.list (ghostChainTy PQ PQC Pt ℓ)) (.prod .nat .nat))) :
     Expr OFig Γ (.list (ghostChainTy PQ PQC Pt ℓ)) :=
   .letE arg
@@ -1449,7 +1449,7 @@ def modifyChainAcceptFigE {Γ}
           .v0)
         .v1))
 
-def pushChainFigE {Γ}
+@[expose] def pushChainFigE {Γ}
     (arg : Expr OFig Γ
       (.prod (.list (ghostChainTy PQ PQC Pt ℓ)) (.prod (.base .pk) (.prod .nat .nat)))) :
     Expr OFig Γ (.list (ghostChainTy PQ PQC Pt ℓ)) :=
@@ -1466,7 +1466,7 @@ def pushChainFigE {Γ}
      .foldrB 5 cs0 (.cons g .nil)
        (.ite (.lt (.len .v1) (.nat 5)) (.cons .v0 .v1) .v1))
 
-def revealSpkChainsFigE {Γ}
+@[expose] def revealSpkChainsFigE {Γ}
     (arg : Expr OFig Γ (.prod (.list (ghostChainTy PQ PQC Pt ℓ)) (.base .fig8st))) :
     Expr OFig Γ (.list (ghostChainTy PQ PQC Pt ℓ)) :=
   .letE arg
@@ -1482,7 +1482,7 @@ def revealSpkChainsFigE {Γ}
             (.snd .v0))
           .v1)))
 
-def spqrSendPubFigE {Γ}
+@[expose] def spqrSendPubFigE {Γ}
     (arg : Expr OFig Γ
       (.prod .bool (.prod .bool (.prod (.base .pq) (.prod (.base .pqc) (.base .u32)))))) :
     Expr OFig Γ (.opt (.prod (.base .pq) (.base .lpub))) :=
@@ -1506,7 +1506,7 @@ def spqrSendPubFigE {Γ}
                 (.pair pqm
                   (.pair (Expr.op (O := OFig) SimOp.effectiveHkdfSalt32 salt?) addr)))))))
 
-def parseRecvFigCE (B : ℕ) {Γ}
+@[expose] def parseRecvFigCE (B : ℕ) {Γ}
     (arg : Expr OFig Γ (.prod .bool (.prod (.base .pq) (.base .wire)))) :
     Expr OFig Γ
       (.opt (.prod (.base .pq)
@@ -1544,7 +1544,7 @@ def parseRecvFigCE (B : ℕ) {Γ}
                               (Expr.op (O := OFig) SimOp.effectiveHkdfSalt32 salt?))))))))))
            .none)))
 
-def toGhostFigE {Γ}
+@[expose] def toGhostFigE {Γ}
     (arg : Expr OFig Γ
       (.prod .bool
         (.prod (.base .fig8st)
@@ -1586,7 +1586,7 @@ def toGhostFigE {Γ}
                  (.pair (.and (.not qB) unackA)
                    (.pair pq (.pair ep eps)))))))))
 
-def inTFigE (L : ℕ) {Γ} (s : Expr OFig Γ simStateTy) (qParty : Expr OFig Γ .bool)
+@[expose] def inTFigE (L : ℕ) {Γ} (s : Expr OFig Γ simStateTy) (qParty : Expr OFig Γ .bool)
     (c : Expr OFig Γ (fig8CTy PQ PQC Pt ℓ)) : Expr OFig Γ .bool :=
   .letE (.pair s (.pair qParty c))
     (.anyB L (ssHonest (.fst .v0))
@@ -1595,7 +1595,7 @@ def inTFigE (L : ℕ) {Γ} (s : Expr OFig Γ simStateTy) (qParty : Expr OFig Γ 
         (isSomeE (mInTransitFigE P Dh encPt encT decT lam K toKemCoins
           L (ssMir (.fst .v1)) (otherE (.fst (.snd .v1))) (.fst .v0)))))
 
-def onAcceptPreFigE {Γ}
+@[expose] def onAcceptPreFigE {Γ}
     (s : Expr OFig Γ simStateTy) (qParty : Expr OFig Γ .bool)
     (t i : Expr OFig Γ .nat) (ciOpt : Expr OFig Γ (.opt .nat))
     (T : Expr OFig Γ (.base .pk)) (pq' : Expr OFig Γ (.base .pq)) :
@@ -1618,7 +1618,7 @@ def onAcceptPreFigE {Γ}
      ssMk (ssMir s0) (pSet (ssPq s0) q0 pq0) (ssPn s0) (.and (ssUnackA s0) q0)
        (ssHonest s0) (pSet (ssChains s0) q0 cs) (ssAmb s0) (ssStopped s0))
 
-def onAcceptFigE (L qep : ℕ) {Γ}
+@[expose] def onAcceptFigE (L qep : ℕ) {Γ}
     (s : Expr OFig Γ simStateTy) (qParty : Expr OFig Γ .bool)
     (w : Expr OFig Γ (.base .wire)) (isDel : Expr OFig Γ .bool)
     (t i : Expr OFig Γ .nat) (m : Expr OFig Γ (.base .plain))
@@ -1660,7 +1660,7 @@ def onAcceptFigE (L qep : ℕ) {Γ}
               (ssSetMir s'0 (mAcceptE L (ssMir s0) q0 pos)))
             (.pair (.some (.inl .unit)) (ssSetMirWin s0)))))
 
-def onAnswerFigE (L qep : ℕ) {Γ}
+@[expose] def onAnswerFigE (L qep : ℕ) {Γ}
     (s : Expr OFig Γ simStateTy) (qParty : Expr OFig Γ .bool)
     (w : Expr OFig Γ (.base .wire)) (isDel : Expr OFig Γ .bool)
     (ciOpt : Expr OFig Γ (.opt .nat)) (T : Expr OFig Γ (.base .pk))
@@ -1690,7 +1690,7 @@ def onAnswerFigE (L qep : ℕ) {Γ}
           onAcceptFigE P Dh encPt encT decT lam K toKemCoins L qep
             s2 q2 w2 del2 t i m ci2 T2 pq2)))
 
-def honestCFigE (L : ℕ) {Γ} (s : Expr OFig Γ simStateTy) (qParty : Expr OFig Γ .bool)
+@[expose] def honestCFigE (L : ℕ) {Γ} (s : Expr OFig Γ simStateTy) (qParty : Expr OFig Γ .bool)
     (w : Expr OFig Γ (.base .wire)) : Expr OFig Γ (.opt (fig8CTy PQ PQC Pt ℓ)) :=
   .letE (.pair s (.pair qParty w))
     (.caseOpt
@@ -1701,7 +1701,7 @@ def honestCFigE (L : ℕ) {Γ} (s : Expr OFig Γ simStateTy) (qParty : Expr OFig
       .none
       (.some (.snd .v0)))
 
-def mkCFigE {Γ} (honestC : Expr OFig Γ (.opt (fig8CTy PQ PQC Pt ℓ)))
+@[expose] def mkCFigE {Γ} (honestC : Expr OFig Γ (.opt (fig8CTy PQ PQC Pt ℓ)))
     (lct : Expr OFig Γ (.base .lct)) (t : Expr OFig Γ .nat) (T? : Expr OFig Γ (.opt (.base .pt))) :
     Expr OFig Γ (fig8CTy PQ PQC Pt ℓ) :=
   .letE (.pair honestC (.pair lct (.pair t T?)))
@@ -1715,19 +1715,19 @@ def mkCFigE {Γ} (honestC : Expr OFig Γ (.opt (fig8CTy PQ PQC Pt ℓ)))
        (.ite (Expr.op (O := OFig) SimOp.lctSaltEq (.pair (.snd .v0) (.fst (.snd .v1)))) .v0
          (.pair (.pair (.fst (.snd (.snd .v1))) (.snd (.snd (.snd .v1)))) (.fst (.snd .v1)))))
 
-def ambCondFigE {Γ} (s : Expr OFig Γ simStateTy) (qParty : Expr OFig Γ .bool) :
+@[expose] def ambCondFigE {Γ} (s : Expr OFig Γ simStateTy) (qParty : Expr OFig Γ .bool) :
     Expr OFig Γ .bool :=
   orE (mInWinE (ssMir s) qParty)
     (.and (.not qParty)
       (hasUnknownKeyFigE P Dh encPt encT decT lam K toKemCoins (pGet (ssChains s) qParty)))
 
-def sAmbFigE {Γ} (s : Expr OFig Γ simStateTy) (qParty : Expr OFig Γ .bool) :
+@[expose] def sAmbFigE {Γ} (s : Expr OFig Γ simStateTy) (qParty : Expr OFig Γ .bool) :
     Expr OFig Γ simStateTy :=
   .ite (ambCondFigE P Dh encPt encT decT lam K toKemCoins s qParty)
     (ssSetAmb s (.add (ssAmb s) (.nat 1)))
     s
 
-def evictedHonestFigE {Γ} (s : Expr OFig Γ simStateTy) (qParty : Expr OFig Γ .bool)
+@[expose] def evictedHonestFigE {Γ} (s : Expr OFig Γ simStateTy) (qParty : Expr OFig Γ .bool)
     (honestC : Expr OFig Γ (.opt (fig8CTy PQ PQC Pt ℓ))) : Expr OFig Γ .bool :=
   .letE (.pair s (.pair qParty honestC))
     (.caseOpt (.snd (.snd .v0))
@@ -1735,14 +1735,14 @@ def evictedHonestFigE {Γ} (s : Expr OFig Γ simStateTy) (qParty : Expr OFig Γ 
       (.not (.eqN (.fst (.fst .v0))
         (.add (pGet (mEpoch (ssMir (.fst .v1))) (.fst (.snd .v1))) (.nat 1)))))
 
-def honestSaltEqFigE {Γ} (honestC : Expr OFig Γ (.opt (fig8CTy PQ PQC Pt ℓ)))
+@[expose] def honestSaltEqFigE {Γ} (honestC : Expr OFig Γ (.opt (fig8CTy PQ PQC Pt ℓ)))
     (lct : Expr OFig Γ (.base .lct)) : Expr OFig Γ .bool :=
   .letE (.pair honestC lct)
     (.caseOpt (.fst .v0)
       (.bool false)
       (Expr.op (O := OFig) SimOp.lctSaltEq (.pair (.snd .v0) (.snd .v1))))
 
-def scPostSendE (B : ℕ) {Γ}
+@[expose] def scPostSendE (B : ℕ) {Γ}
     (sC : Expr OFig Γ simStateCTy) (s1 : Expr OFig Γ simMirTy)
     (q0 : Expr OFig Γ .bool) (m0 : Expr OFig Γ (.base .plain))
     (isChall : Expr OFig Γ .bool) (pq' : Expr OFig Γ (.base .pq))
@@ -1784,7 +1784,7 @@ def scPostSendE (B : ℕ) {Γ}
        pSet (scKept sC0) q (keptSendE P Dh encPt encT decT lam K toKemCoins B kQ)
      .pair w (scMk base' kept' sent' (scSnaps sC0)))
 
-def scPostFwdKeptE (B : ℕ) {Γ}
+@[expose] def scPostFwdKeptE (B : ℕ) {Γ}
     (sC : Expr OFig Γ simStateCTy) (q : Expr OFig Γ .bool)
     (c : Expr OFig Γ (fig8CTy PQ PQC Pt ℓ))
     (res : Expr OFig Γ (.opt (fig8RrTy PQ PQC Pt ℓ))) :
@@ -1836,7 +1836,7 @@ structure SimHookC {ι : Type} {T : OracleSpec ι} (I : Iface S T) (σExtra : Ty
     Expr OFig Γ .bool → Expr OFig Γ (.opt .nat) → Expr OFig Γ (.opt (simRrTy PQ PQC Pt ℓ)) →
       Expr OFig Γ σExtra → Comp OFig I Γ σExtra
 
-def simDrawSendCoinsHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
+@[expose] def simDrawSendCoinsHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
     (hk : SimHookC P Dh encPt encT decT lam K toKemCoins I σExtra) {Γ}
     (r : Expr OFig Γ (.opt (.base .pqc))) :
     Comp OFig I Γ (.prod (.base .pqc) (.opt (.base .bv256))) :=
@@ -1844,7 +1844,7 @@ def simDrawSendCoinsHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExt
     (.bind hk.samplePqc (.ret (.pair .v0 .none)))
     (.bind hk.sampleBv256 (.ret (.pair .v1 (.some .v0))))
 
-def simSendHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
+@[expose] def simSendHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
     (hk : SimHookC P Dh encPt encT decT lam K toKemCoins I σExtra) (qep B : ℕ) {Γ}
     (st : Expr OFig Γ (.prod simStateCTy σExtra))
     (qParty : Expr OFig Γ .bool) (m₀ : Expr OFig Γ (.base .plain))
@@ -1934,7 +1934,7 @@ def simSendHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S
                                sC6 s1_6 q6 m0_6 (isSomeE chal6) pq'6 pn6 c6
                            .ret (.pair (.some (.fst wsC')) (.pair (.snd wsC') ex6)))))))))))
 
-def fwdAnswerHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
+@[expose] def fwdAnswerHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
     (hk : SimHookC P Dh encPt encT decT lam K toKemCoins I σExtra) (L qep B : ℕ) {Γ}
     (sC : Expr OFig Γ simStateCTy) (ex : Expr OFig Γ σExtra)
     (qParty : Expr OFig Γ .bool) (w : Expr OFig Γ (.base .wire))
@@ -1972,7 +1972,7 @@ def fwdAnswerHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty
             (scBase sC2) q1 w1 del1 ci1 T1 pq1 res1
         .ret (.pair (.fst ans) (.pair (scSetBase sC2 (.snd ans)) ex1))))
 
-def resyncHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
+@[expose] def resyncHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
     (hk : SimHookC P Dh encPt encT decT lam K toKemCoins I σExtra) (L qep B : ℕ) {Γ}
     (sC : Expr OFig Γ simStateCTy) (ex : Expr OFig Γ σExtra)
     (qParty : Expr OFig Γ .bool) (w : Expr OFig Γ (.base .wire))
@@ -2024,7 +2024,7 @@ def resyncHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
                     (scBase sC5) q4 w4 (.bool true) t4 i4 m'4 ci4 T4 pq4
                 .ret (.pair (.fst acc) (.pair (scSetBase sC5 (.snd acc)) ex4)))))))
 
-def fwdHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
+@[expose] def fwdHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
     (hk : SimHookC P Dh encPt encT decT lam K toKemCoins I σExtra) (L qep B : ℕ) {Γ}
     (sC : Expr OFig Γ simStateCTy) (ex : Expr OFig Γ σExtra)
     (qParty : Expr OFig Γ .bool) (w : Expr OFig Γ (.base .wire))
@@ -2087,7 +2087,7 @@ def fwdHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
           (fwdAnswerHookC P Dh encPt encT decT lam K toKemCoins hk L qep B
             sC1 ex1 q1 w1 del1 ci1 T1 pq1 c'1)))
 
-def fwdEvictHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
+@[expose] def fwdEvictHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
     (hk : SimHookC P Dh encPt encT decT lam K toKemCoins I σExtra) (L qep B : ℕ) {Γ}
     (sC : Expr OFig Γ simStateCTy) (ex : Expr OFig Γ σExtra)
     (qParty : Expr OFig Γ .bool) (w : Expr OFig Γ (.base .wire))
@@ -2111,7 +2111,7 @@ def fwdEvictHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty 
        (fwdAnswerHookC P Dh encPt encT decT lam K toKemCoins hk L qep B
          sC0 ex0 q0 w0 del0 .none T0 pq0 c'0))
 
-def simRecvHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
+@[expose] def simRecvHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
     (hk : SimHookC P Dh encPt encT decT lam K toKemCoins I σExtra) (L qep B : ℕ) {Γ}
     (st : Expr OFig Γ (.prod simStateCTy σExtra))
     (qParty : Expr OFig Γ .bool) (w : Expr OFig Γ (.base .wire))
@@ -2213,7 +2213,7 @@ def simRecvHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S
                  (mkCFigE P Dh encPt encT decT lam K toKemCoins
                    hc2 lct2 (.fst (.snd g2)) T?2))))))
 
-def simCorrHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
+@[expose] def simCorrHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
     (hk : SimHookC P Dh encPt encT decT lam K toKemCoins I σExtra) (L : ℕ) {Γ}
     (st : Expr OFig Γ (.prod simStateCTy σExtra)) (qParty : Expr OFig Γ .bool) :
     Comp OFig I Γ (.prod (.opt (.base .ghostSt)) (.prod simStateCTy σExtra)) :=
@@ -2268,7 +2268,7 @@ def simCorrHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S
                  (.cons (.pair q2 (.pair epQ ghostOut)) (scSnaps sC2))
              .ret (.pair (.some ghostOut) (.pair sC' ex2))))))
 
-def findRevHonestIdxE (L : ℕ) {Γ} (s : Expr OFig Γ simStateTy)
+@[expose] def findRevHonestIdxE (L : ℕ) {Γ} (s : Expr OFig Γ simStateTy)
     (qParty : Expr OFig Γ .bool) (w : Expr OFig Γ (.base .wire)) :
     Expr OFig Γ (.opt .nat) :=
   .letE (.pair s (.pair qParty w))
@@ -2285,7 +2285,7 @@ def findRevHonestIdxE (L : ℕ) {Γ} (s : Expr OFig Γ simStateTy)
              (.ite matchHere (.some idxPrev) .none)
              (.some .v0)))))
 
-def simHandleHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
+@[expose] def simHandleHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty S}
     (hk : SimHookC P Dh encPt encT decT lam K toKemCoins I σExtra) (L qep B : ℕ) :
     Comp OFig I
       [.prod simStateCTy σExtra, (simCodec PQ PQC Pt ℓ).Q]
@@ -2325,7 +2325,7 @@ def simHandleHookC {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : Ty
       (simCorrHookC P Dh encPt encT decT lam K toKemCoins hk L .v1 .v0)
       (.ret (.pair (.inr (.fst .v0)) (.snd .v0))))
 
-def initSimCE {Γ} (pqrKey : Expr OFig Γ (.base .bv256)) : Expr OFig Γ simStateCTy :=
+@[expose] def initSimCE {Γ} (pqrKey : Expr OFig Γ (.base .bv256)) : Expr OFig Γ simStateCTy :=
   .letE pqrKey
     (let pqA : Expr OFig _ (.base .pq) := Expr.op (O := OFig) SimOp.spqrInitA .v0
      let pqB : Expr OFig _ (.base .pq) := Expr.op (O := OFig) SimOp.spqrInitB .v0
@@ -2342,7 +2342,7 @@ def initSimCE {Γ} (pqrKey : Expr OFig Γ (.base .bv256)) : Expr OFig Γ simStat
 
 local notation "SIfaceDF" => simIfaceDF PQ PQC Pt ℓ
 
-def deliverForgeHookC (L : ℕ) :
+@[expose] def deliverForgeHookC (L : ℕ) :
     SimHookC P Dh encPt encT decT lam K toKemCoins SIfaceDF (.list (fig8CTy PQ PQC Pt ℓ)) where
   sampleBv256 := Comp.sample (I := SIfaceDF) (UniformSamplerTag.base SimBaseSamp.bv256) .unit
   samplePqc := Comp.sample (I := SIfaceDF) (UniformSamplerTag.base SimBaseSamp.pqc) .unit
@@ -2386,7 +2386,7 @@ def deliverForgeHookC (L : ℕ) :
   onDeliverPost _ _ _ ex := .ret ex
 
 /-- Costed reduction program for `simDeliverForge`. -/
-@[reducible] def simDeliverForgeProg (L qep B : ℕ) :
+@[expose, reducible] def simDeliverForgeProg (L qep B : ℕ) :
     CostedReduction OFig SIfaceDF
       (SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)))
       (simCodec PQ PQC Pt ℓ) .unit .unit .bool .bool where
@@ -2403,17 +2403,17 @@ def deliverForgeHookC (L : ℕ) :
 
 local notation "KIface" => kemFailIface PQ PQC Pt ℓ
 
-@[reducible] def fig8RecTy : Ty S :=
+@[expose, reducible] def fig8RecTy : Ty S :=
   .prod posTy (.prod (lpubPlainTy PQ PQC Pt ℓ) (fig8CTy PQ PQC Pt ℓ))
 
-@[reducible] def fig8GsTy : Ty S :=
+@[expose, reducible] def fig8GsTy : Ty S :=
   .prod (.prod (.base .fig8st) (.base .fig8st)) (mirTy fig8RecTy)
 
-def fgSt {O' : Ops S} {Γ} (g : Expr O' Γ fig8GsTy) :
+@[expose] def fgSt {O' : Ops S} {Γ} (g : Expr O' Γ fig8GsTy) :
     Expr O' Γ (.prod (.base .fig8st) (.base .fig8st)) := .fst g
-def fgMir {O' : Ops S} {Γ} (g : Expr O' Γ fig8GsTy) : Expr O' Γ (mirTy fig8RecTy) := .snd g
+@[expose] def fgMir {O' : Ops S} {Γ} (g : Expr O' Γ fig8GsTy) : Expr O' Γ (mirTy fig8RecTy) := .snd g
 
-def fgInTransitE (L : ℕ) {Γ} (m : Expr OFig Γ (mirTy fig8RecTy))
+@[expose] def fgInTransitE (L : ℕ) {Γ} (m : Expr OFig Γ (mirTy fig8RecTy))
     (qParty : Expr OFig Γ .bool) (c : Expr OFig Γ (fig8CTy PQ PQC Pt ℓ)) :
     Expr OFig Γ (.opt fig8RecTy) :=
   .letE (.pair m (.pair qParty c))
@@ -2421,17 +2421,17 @@ def fgInTransitE (L : ℕ) {Γ} (m : Expr OFig Γ (mirTy fig8RecTy))
       (.and (boolEq (posSender (.fst .v0)) (.fst (.snd .v1)))
         (Expr.op (O := OFig) SimOp.eqFig8C (.pair (.snd (.snd .v0)) (.snd (.snd .v1))))))
 
-@[reducible] def kemExtraTy : Ty S :=
+@[expose, reducible] def kemExtraTy : Ty S :=
   .prod fig8GsTy (.prod (.base .kemTrack) (.base .kemCand))
 
-def samIfNecFig8C {Γ} (r : Expr OFig Γ (.opt (.base .bv256))) :
+@[expose] def samIfNecFig8C {Γ} (r : Expr OFig Γ (.opt (.base .bv256))) :
     Comp OFig KIface Γ (.prod (.base .bv256) .bool) :=
   .caseOpt r
     (.bind (Comp.sample (I := KIface) (UniformSamplerTag.base SimBaseSamp.bv256) .unit)
       (.ret (.pair .v0 (.bool false))))
     (.ret (.pair .v0 (.bool true)))
 
-def kemFailHookC (L qep B : ℕ) :
+@[expose] def kemFailHookC (L qep B : ℕ) :
     SimHookC P Dh encPt encT decT lam K toKemCoins KIface kemExtraTy where
   sampleBv256 := Comp.sample (I := KIface) (UniformSamplerTag.base SimBaseSamp.bv256) .unit
   samplePqc := Comp.sample (I := KIface) (UniformSamplerTag.base SimBaseSamp.pqc) .unit
@@ -2619,7 +2619,7 @@ def kemFailHookC (L qep B : ℕ) :
                      (.snd (.snd ex3))))))))
 
 /-- Costed reduction program for `redKemFailHiddenSalt`. -/
-@[reducible] def kemFailRedProg (L qep B : ℕ) :
+@[expose, reducible] def kemFailRedProg (L qep B : ℕ) :
     CostedReduction OFig KIface
       (SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)))
       (simCodec PQ PQC Pt ℓ) .unit .unit .bool (.base .kemCand) where
@@ -2662,7 +2662,7 @@ open ReductionDsl OracleSpec OracleComp
 open HMAC HKDF CBC LibsignalAead WireAEAD FSAEAD SM SM.Construction CKA LibsignalSession
   LibsignalInst
 
-def simDummyMlKem : CryptoVerification.LibsignalSpqrV1.MlKem where
+@[expose] def simDummyMlKem : CryptoVerification.LibsignalSpqrV1.MlKem where
   keyPair _ := List.Vector.replicate 2400 0#8
   encaps1 _ _ := none
   encaps2 _ _ := List.Vector.replicate 128 0#8
@@ -2670,19 +2670,19 @@ def simDummyMlKem : CryptoVerification.LibsignalSpqrV1.MlKem where
   validPk _ _ := false
 
 /-- Unit-cost operation table for `Refine.SimProg` and `LibsignalSim.simRunProg`. -/
-@[reducible] def simOps {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] {ℓ : ℕ}
+@[expose, reducible] def simOps {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] {ℓ : ℕ}
     (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
     (decT : PublicKey → Option Pt) :
     Ops (simSig PQ PQC Pt ℓ) :=
   simOpsUnitCost P Dh (fun T => (encT T).1.toList) encT decT (0 : Pt) simDummyMlKem (fun _ => 0)
 
 /-- Unit-cost sampler table for `LibsignalSim.simRun`. -/
-@[reducible] def simSamplers (PQ PQC Pt : Type) [SampleableType PQC] (ℓ : ℕ) :
+@[expose, reducible] def simSamplers (PQ PQC Pt : Type) [SampleableType PQC] (ℓ : ℕ) :
     Samplers (simSig PQ PQC Pt ℓ) :=
   simParamSamplers PQ PQC Pt ℓ 1 1
 
 /-- Parametric target Fig. 8 SM oracle interface for `LibsignalSim.simRun`. -/
-@[reducible] def simParamIface (PQ PQC Pt : Type) [SampleableType PQC] (ℓ : ℕ)
+@[expose, reducible] def simParamIface (PQ PQC Pt : Type) [SampleableType PQC] (ℓ : ℕ)
     (cQ cU cSampBv256 cSampPqc : ℕ) :
     Iface (simSig PQ PQC Pt ℓ)
       (unifSpec + SM.spec (SimFig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (SimFig8C Pt)) where
@@ -2722,7 +2722,7 @@ def simDummyMlKem : CryptoVerification.LibsignalSpqrV1.MlKem where
   smp := simParamSamplers PQ PQC Pt ℓ cSampBv256 cSampPqc
 
 /-- Unit-cost target Fig. 8 SM oracle interface for `Refine.SimProg` and `LibsignalSim.simRun`. -/
-@[reducible] def simIface (PQ PQC Pt : Type) [SampleableType PQC] (ℓ : ℕ) :
+@[expose, reducible] def simIface (PQ PQC Pt : Type) [SampleableType PQC] (ℓ : ℕ) :
     Iface (simSig PQ PQC Pt ℓ)
       (unifSpec + SM.spec (SimFig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (SimFig8C Pt)) :=
   simParamIface PQ PQC Pt ℓ 1 1 1 1
@@ -2733,7 +2733,7 @@ variable {PQ PQC Pt : Type} {ℓ : ℕ}
 
 local notation "S" => simSig PQ PQC Pt ℓ
 
-def ssSetStopped
+@[expose] def ssSetStopped
     {O' : Ops S} {Γ} (s : Expr O' Γ simStateTy) (stp : Expr O' Γ .bool) :
     Expr O' Γ simStateTy :=
   .letE (.pair s stp)

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2StepsPlacedBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2StepsPlacedBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib -- shake: keep
 public meta import Lean -- shake: keep
 import Arm64.Trusted.Spec.Hoare
@@ -21,12 +21,18 @@ import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Common
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSites
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonCalleesExt
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.Disproof.Basic
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.EncResBridge
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SpeOwnedBridges
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded `signal_session::run` Arm `R2`: Error Arm, Copy Steps, and Slice Frees
@@ -36,7 +42,7 @@ Proves the post-`encrypt` error arm (`r2pb_err_arm`), 31-word tag-check/copy ste
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,14 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced
-public import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CoinsBridge
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced
+import LibsignalBinary.Proofs.SignalSession.Coins.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Layout
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Hooks
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable Coins Tape and `signal_session_coins_fill` Bridges
@@ -26,7 +30,7 @@ together with `subroutine_ok` contracts and cross-block (`i < 619`) caller trans
 (`signal_session_coins_fill`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

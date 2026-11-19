@@ -109,5 +109,4 @@ theorem ptAvoidFull_prefixTerms_of_pre78PrefixInv {r : Records} {S : Sem} {who�
     · exact ptAvoidFull_iniAliceStartState_of_aliceVis hcompat hwf hb32 hid hm₀_vis (hrs_both_ek hrs_cases) (hrs_both_dhs hrs_cases)
     · exact ptAvoidFull_encSt_of_aliceVis hcompat hwf hb32 hid hm₀_vis (hrs_both_ek hrs_cases) (hrs_both_dhs hrs_cases) (ptAvoidFull_randTerm_of_mem_rng36_inits (.inr rfl) hcpin₁)
     · exact ptAvoidFull_encSt2_of_aliceVis hcompat hwf hb32 hid hm₀_vis (hrs_both_ek hrs_cases) (hrs_both_dhs hrs_cases) (ptAvoidFull_randTerm_of_mem_rng36_inits (.inr rfl) hcpin₁) (hcoin2_of hc₂)
-theorem ptDeadAt78_of (hinv : ∀ (r : Records) (S : Sem) (g : Ghost) (ms : List Move), compFitsPinned setup compI0 r → ExplainsMoves compI0 r S who ok g ms (trace.take 78) → Common443.CompSetupSecrecy.NoBrk r ms → Pre78PrefixInv r S g ms) : PtDeadAt 78 := by intro r S g ms hfits hnb hexp hem hcol; exact not_pt_collision_of_ne_bytes_full hem (ptAvoidFull_prefixTerms_of_pre78PrefixInv hfits.1.1 hexp.1 (hinv r S g ms hfits hexp hnb)) (hcol g ⟨rfl, hexp.1⟩)
 end Symbolic.BugInjection.Proofs.Cheval26WeakStateIdx1.PtDead78

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2
+public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2 -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
@@ -21,7 +21,7 @@ Proves `withLsCodeLoaded` contracts for `prost::encoding::varint::decode_varint:
 on `(blkPC_291).rebase (blkPl_291).base H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

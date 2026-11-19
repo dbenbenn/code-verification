@@ -10,12 +10,25 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFinishStepPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFinish
-public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFinishStepPlaced
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFinish
+public import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.TailWriteResultPlaced
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFinishStep
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailDropRecordSteps
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailFreePrevSessions
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.TailDropRecordStepsPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.TailFreePrevSessionsPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.TailWriteErrPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailWriteErr
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Relocatable CLI `SegFinish` Proof (`segFinish_placed_okV`)
@@ -24,7 +37,7 @@ Verifies `SegFinishSpecVPlaced` (`StoredStateVPlaced` at `+0xe88` → outcome) o
 (`blkPl_464`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -11,25 +11,26 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DropEpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.LoopPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.MainLoopPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.ProofPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.ProofPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.ProofPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMessageBridgePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl2PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl2PlacedBudgetAux2
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DropEpiloguePlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.LoopPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.MainLoopPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.ProofPlaced
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.ProofPlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.ProofPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMessageBridgePlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl2PlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl2PlacedBudgetAux2
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DropEpilogue
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DropEpilogue -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.Interpolate
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.MainLoop
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
@@ -40,6 +41,9 @@ import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.ProofBudget
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
 import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolateFull -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # `<PolyDecoder as Decoder>::decoded_message` (Block `418`, Part 2): Top-Level `RustCliAllocBudget` Proof
@@ -50,7 +54,7 @@ cross-block calls to `computeAt` (Block `371`), `lagrangePrepare` (Block `372`),
 `lagrangeComplete` (Block `373`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -70,7 +74,7 @@ open CryptoVerification.RustHeap (allocHookStack)
 open CryptoVerification.SpqrV1.Alloc (
   spqrHandleErrorSym spqrMemcpySym spqrRustAllocSym spqrRustNoAllocShimSym spqrRustReallocSym
 )
-open CryptoVerification.SpqrV1.GF.Mul2U16 (tokenInitPlacedAt)
+open CryptoVerification.SpqrV1.GF.Mul2U16 (OnceCallHookOk tokenInitPlacedAt)
 open CryptoVerification.SpqrV1.GF.UnacceleratedMul (reduceTablePlacedAt)
 open CryptoVerification.SpqrV1.Poly (
   boolByte polyDecoderAt polyDecoderIsCompleteOff polyDecoderPadOff polyDecoderPadSize
@@ -987,18 +991,18 @@ theorem polyDecoderDecodedMessage_cl_placed_ok [LibsignalPlacement]
     (hmemcpy_sat : HookSat (Rust.withPanics ext) spqrMemcpySym
       (withVmPreserved sessionMemcpyRegionSpec))
     (hmemset_sat : HookSat (Rust.withPanics ext) memsetName
-      (withVmPreserved sessionMemsetRegionSpec)) :
+      (withVmPreserved sessionMemsetRegionSpec))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     subroutine_ok ((blkPC_418).rebase (blkPl_418).base (Rust.withPanics ext))
       (blkPl_418).base (withLsCodeLoaded lsmpl (decodedMessagePlacedSpec M A lim)) :=
   polyDecoderDecodedMessage_cl_placed_ok_of_contracts
     hshim_sat halloc_sat hdealloc_sat hmemcpy_sat
     (ls_subroutine_ok_of_block (i := 418) (j := 372)
-      (subroutine_ok_withLsCodeLoaded_of_plain
-        (lagrangePrepare_placed_ok_of_hookSat M A lim ext hshim_sat halloc_sat hmemset_sat)))
+      (lagrangePrepare_placed_ok_of_hookSat M A lim ext hshim_sat halloc_sat hmemset_sat hOnce))
     (ls_subroutine_ok_of_block (i := 418) (j := 373)
-      (lagrangeComplete_placed_vmPreserved_ok ext))
+      (lagrangeComplete_placed_vmPreserved_ok ext hOnce))
     (ls_subroutine_ok_of_block (i := 418) (j := 371)
-      (computeAt_placed_ok M A lim ext h_panic
+      (computeAt_placed_ok M A lim ext hOnce h_panic
         (hookSat_noAllocShim_of_sessionShim hshim_sat)
         halloc_sat hrealloc_sat hdealloc_sat))
 
@@ -1017,12 +1021,13 @@ theorem polyDecoderDecodedMessage_cro_placed_ok [LibsignalPlacement]
     (hmemcpy_sat : HookSat (Rust.withPanics ext) spqrMemcpySym
       (withVmPreserved sessionMemcpyRegionSpec))
     (hmemset_sat : HookSat (Rust.withPanics ext) memsetName
-      (withVmPreserved sessionMemsetRegionSpec)) :
+      (withVmPreserved sessionMemsetRegionSpec))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     subroutine_ok ((blkPC_418).rebase (blkPl_418).base (Rust.withPanics ext))
       (blkPl_418).base (withLsCodeRoLoaded lsmpl (decodedMessagePlacedSpec M A lim)) :=
   subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
     (polyDecoderDecodedMessage_cl_placed_ok h_panic hshim_sat halloc_sat hrealloc_sat
-      hdealloc_sat hmemcpy_sat hmemset_sat)
+      hdealloc_sat hmemcpy_sat hmemset_sat hOnce)
 
 theorem polyDecoderDecodedMessage_cro_placed_ok_x_ofPrePostEnv [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -1044,14 +1049,15 @@ theorem polyDecoderDecodedMessage_cro_placed_ok_x_ofPrePostEnv [LibsignalPlaceme
     (hmemcpy_sat : HookSat (Rust.withPanics ext) spqrMemcpySym
       (withVmPreserved sessionMemcpyRegionSpec))
     (hmemset_sat : HookSat (Rust.withPanics ext) memsetName
-      (withVmPreserved sessionMemsetRegionSpec)) :
+      (withVmPreserved sessionMemsetRegionSpec))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     subroutine_ok ((blkPC_418).rebase (blkPl_418).base (Rust.withPanics ext))
       (blkPl_418).base
       (withLsCodeRoLoaded lsmpl
         (polyDecoderDecodedMessagePlacedSpecOfPrePostEnv M A lim PreEnv PostEnv)) :=
   polyDecoderDecodedMessage_placed_cro_of_decodedMessage_ofPrePostEnv hPre hPost
     (polyDecoderDecodedMessage_cro_placed_ok h_panic hshim_sat halloc_sat hrealloc_sat
-      hdealloc_sat hmemcpy_sat hmemset_sat)
+      hdealloc_sat hmemcpy_sat hmemset_sat hOnce)
 
 theorem polyDecoderDecodedMessage_cro_placed_ok_x_ofEnv [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -1073,13 +1079,14 @@ theorem polyDecoderDecodedMessage_cro_placed_ok_x_ofEnv [LibsignalPlacement]
     (hmemcpy_sat : HookSat (Rust.withPanics ext) spqrMemcpySym
       (withVmPreserved sessionMemcpyRegionSpec))
     (hmemset_sat : HookSat (Rust.withPanics ext) memsetName
-      (withVmPreserved sessionMemsetRegionSpec)) :
+      (withVmPreserved sessionMemsetRegionSpec))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     subroutine_ok ((blkPC_418).rebase (blkPl_418).base (Rust.withPanics ext))
       (blkPl_418).base
       (withLsCodeRoLoaded lsmpl (polyDecoderDecodedMessagePlacedSpecOfEnv M A lim Env)) :=
   polyDecoderDecodedMessage_placed_cro_of_decodedMessage_ofEnv hPre hPost
     (polyDecoderDecodedMessage_cro_placed_ok h_panic hshim_sat halloc_sat hrealloc_sat
-      hdealloc_sat hmemcpy_sat hmemset_sat)
+      hdealloc_sat hmemcpy_sat hmemset_sat hOnce)
 
 theorem polyDecoderDecodedMessage_cro_placed_ok_x [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -1096,12 +1103,13 @@ theorem polyDecoderDecodedMessage_cro_placed_ok_x [LibsignalPlacement]
     (hmemcpy_sat : HookSat (Rust.withPanics ext) spqrMemcpySym
       (withVmPreserved sessionMemcpyRegionSpec))
     (hmemset_sat : HookSat (Rust.withPanics ext) memsetName
-      (withVmPreserved sessionMemsetRegionSpec)) :
+      (withVmPreserved sessionMemsetRegionSpec))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     subroutine_ok ((blkPC_418).rebase (blkPl_418).base (Rust.withPanics ext))
       (blkPl_418).base (withLsCodeRoLoaded lsmpl (polyDecoderDecodedMessagePlacedSpec M A lim)) :=
   polyDecoderDecodedMessage_placed_cro_of_decodedMessage
     (polyDecoderDecodedMessage_cro_placed_ok h_panic hshim_sat halloc_sat hrealloc_sat
-      hdealloc_sat hmemcpy_sat hmemset_sat)
+      hdealloc_sat hmemcpy_sat hmemset_sat hOnce)
 
 theorem polyDecodedMessagePlacedOkX_of_hooks [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -1118,10 +1126,11 @@ theorem polyDecodedMessagePlacedOkX_of_hooks [LibsignalPlacement]
     (hmemcpy_sat : HookSat (Rust.withPanics ext) spqrMemcpySym
       (withVmPreserved sessionMemcpyRegionSpec))
     (hmemset_sat : HookSat (Rust.withPanics ext) memsetName
-      (withVmPreserved sessionMemsetRegionSpec)) :
+      (withVmPreserved sessionMemsetRegionSpec))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     PolyDecodedMessagePlacedOkX M A lim ext :=
   polyDecodedMessagePlacedOkX_of_decodedMessage
     (polyDecoderDecodedMessage_cro_placed_ok h_panic hshim_sat halloc_sat hrealloc_sat
-      hdealloc_sat hmemcpy_sat hmemset_sat)
+      hdealloc_sat hmemcpy_sat hmemset_sat hOnce)
 
 end LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl2PlacedBudget

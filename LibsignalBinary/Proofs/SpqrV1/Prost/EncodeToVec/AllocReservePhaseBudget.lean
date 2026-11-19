@@ -11,8 +11,8 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.IfaceDecide
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.SepLogic.WPp
 
@@ -25,7 +25,7 @@ Allocator-budget (`RustCliAllocBudget M`) and `VmPreserved`-strengthened callee 
 `authEncodeExactSpecOf`) and program-polymorphic call wrappers at `s.sp = sp - 144#64`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -87,7 +87,7 @@ private theorem sepWPp_call_cs_noPanic {α : Type} {prog : Program} {entry ret r
 /-! ## 1. Initial Buffer Allocation Callee Contracts (`shimStackSpecOf`, `rustAllocStackSpecOf`) -/
 
 /-- `VmPreserved`-strengthened stack-equipped no-op shim contract at `s.sp = sp - 144#64`. -/
-def shimStackSpecOf (resStack : Nat) : Spec Unit where
+@[expose] def shimStackSpecOf (resStack : Nat) : Spec Unit where
   pre := fun _ s => stackAt s.sp (encodeToVecCalleeStackOf resStack)
   post := fun _ s0 sf =>
     ⌜VmPreserved s0 sf ∧ sf.trace = s0.trace⌝ ∗ stackAt s0.sp (encodeToVecCalleeStackOf resStack)
@@ -119,7 +119,7 @@ theorem subroutine_ok_shimStackSpecOf_of_rustAllocShimVm {P : Program} {entry : 
 /-- Budget-threaded stack-equipped `__rust_alloc(sz, 1)` total-correctness contract at
 `s.sp = sp - 144#64` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝` under
 `FitsEvents M lim st (rustAllocEvents sz 1)`). -/
-def rustAllocStackSpecOf [LibsignalPlacement] (resStack : Nat) {M : AllocCostModel}
+@[expose] def rustAllocStackSpecOf [LibsignalPlacement] (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (Nat × M.σ) where
   pre := fun (sz, st) s =>
     ⌜(s.readReg64 .x0).toNat = sz ∧ s.readReg64 .x1 = 1#64 ∧ 0 < sz ∧ sz < 2 ^ 63 ∧
@@ -189,7 +189,7 @@ theorem subroutine_ok_rustAllocStackSpecOf_of_budget [LibsignalPlacement] {M : A
 /-- Budget-threaded exact-capacity `encode_varint` contract at `s.sp = sp - 144#64`:
 requires `bs.length + (Proto.encodeVarint val).length ≤ cap.toNat`, performs 0 allocations
 (`st` unchanged), and has `onPanic = ⌜False⌝`, `onOom = ⌜False⌝`. -/
-def encodeVarintExactSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodeVarintExactSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EtvEncodeVarintGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -328,7 +328,7 @@ theorem step_etv_memcpy_call_prog {M : AllocCostModel}
       (hnext sm hpcm hrunm hspm (htrm.trans htr) hvm hcsm (hinv0.trans hinv_call))
 
 /-- Budget-threaded exact-capacity `encode<ChainParams>` contract at `s.sp = sp - 144#64`. -/
-def encodeChainParamsExactSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodeChainParamsExactSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EtvEncodeChainParamsGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -409,7 +409,7 @@ theorem step_etv_encode_chainParams_call_prog {resStack : Nat} {M : AllocCostMod
 /-- `VmPreserved`-strengthened `Epoch::encoded_len` contract at `s.sp = sp - 144#64`
 (1-state `A : RustAlloc` representation predicate; callers instantiate `A := B.repAlloc` and
 transport `B.pool lim st` via `VmPreserved s sm`). -/
-def epochEncLenStackSpecOf (resStack : Nat) (A : RustAlloc) :
+@[expose] def epochEncLenStackSpecOf (resStack : Nat) (A : RustAlloc) :
     Spec (BitVec 64 × ChainEpochPBGhost × ChainEpochPB) where
   pre := fun ⟨a, g, ep⟩ s =>
     ⌜s.readReg64 .x0 = a ∧ chainEpochPBEncodedLen ep < 2 ^ 64⌝ ∗
@@ -481,7 +481,7 @@ theorem step_etv_epoch_encLen_call_prog {resStack : Nat} {M : AllocCostModel}
       (hnext sm hpcm hrunm hspm (htrm.trans htr) hx0m hvm hcsm (hinv0.trans hinv_call))
 
 /-- Budget-threaded exact-capacity `encode<EpochDirection>` contract at `s.sp = sp - 144#64`. -/
-def encodeEpochDirectionExactSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodeEpochDirectionExactSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EtvEncodeEpochDirectionGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -558,7 +558,7 @@ theorem step_etv_encode_epochDirection_call_prog {resStack : Nat} {M : AllocCost
       (hnext sm hpcm hrunm hspm (htrm.trans htr) hcsm (hinv0.trans hinv_call))
 
 /-- Budget-threaded exact-capacity `encode<Authenticator>` contract at `s.sp = sp - 144#64`. -/
-def authEncodeExactSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def authEncodeExactSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EtvEncodeAuthGhost × M.σ) where
   pre := fun (x, st) s =>

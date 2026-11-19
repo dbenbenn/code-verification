@@ -164,24 +164,24 @@ private theorem packedWord_byte0_and31 (g : GroupDesc) (hLast : g.lastIdx ≤ 31
   rw [show BitVec.ofNat 32 g.lastIdx = (BitVec.ofNat 64 g.lastIdx).truncate 32 by bv_omega]
   dsimp only [GroupDesc.packedWord]; revert hL; bv_robdd
 
-@[irreducible] private def AllzeropRest (γ : GhostName) (A : MallocngAddrs)
+@[irreducible] private def AllzeropRest (ro : Bool) (γ : GhostName) (A : MallocngAddrs)
     (st : MallocngSt) (p : BitVec 64) (bs : List (BitVec 8)) (T : SepProp) : SepProp :=
   MallocngLiveAuth γ st.liveMap ∗
   (A.lock ↦₃₂ 0#32) ∗
   (A.replaced ↦₃₂ 0#32) ∗
   (A.aaReplaced ↦₃₂ 0#32) ∗
-  ((A.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-  MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+  MallocngAuxvPtrCell ro A.libc st.auxvPtr ∗
+  MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
   ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
   MappedSet st.masterDom (OwnedMappedByte st) ∗
   (p ↦ₛ bs) ∗
   T
 
-private def allzeropPre (γ : GhostName) (A : MallocngAddrs) (st : MallocngSt)
+private def allzeropPre (ro : Bool) (γ : GhostName) (A : MallocngAddrs) (st : MallocngSt)
     (p : BitVec 64) (bs : List (BitVec 8)) (T : SepProp) : SepProp :=
   MallocngRoTablesAt A ∗ (A.ctx ↦ₛ st.ctx.toBytes) ∗
   ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-  AllzeropRest γ A st p bs T
+  AllzeropRest ro γ A st p bs T
 
 private def AllzeropFramePres (s0 s : State) : Prop :=
   s.mem = s0.mem ∧ s.brk = s0.brk ∧ MallocngProcPreserved s0 s ∧
@@ -197,14 +197,14 @@ private theorem allzeropFramePres_trans {s0 s1 s2 : State}
   · unfold MallocngProcPreserved at hp1 hp2 ⊢; simp only [hp2, hp1, and_self]
   · unfold CalleeSavedPreserved at hcs1 hcs2 ⊢; simp only [hcs2, hcs1, and_self]
 
-private theorem allzerop_hdr_ok [MallocngMultiPlacement] {b : BitVec 64} (_hb : BlkBase 10 b)
+private theorem allzerop_hdr_ok [MallocngMultiPlacement] {ro : Bool} {b : BitVec 64} (_hb : BlkBase 10 b)
     {γ : GhostName} {st : MallocngSt} {g : GroupDesc} {idx : Nat}
     {p : BitVec 64} {bs : List (BitVec 8)} {req effCost : Nat} {T : SepProp}
     (hF : LiveUserBlockFacts st g idx p req effCost)
     {s0 : State} (hpc : s0.pc = b) (hrun : s0.status = .Running)
     (hx0 : s0.readReg64 .x0 = p) :
     let tot := (p.toNat - g.storage.toNat) / 16
-    let P := allzeropPre γ maddrs st p bs T
+    let P := allzeropPre ro γ maddrs st p bs T
     SepWP (blkPC_b10.rebase b (fun _ => none)) (b + 0x38#64) s0 P
       (sepPost (fun s1 => AllzeropFramePres s0 s1 ∧ s1.readReg64 .x0 = p ∧
         s1.readReg64 .x1 = (BitVec.ofNat 32 idx).zeroExtend 64 ∧
@@ -240,7 +240,7 @@ private theorem allzerop_hdr_ok [MallocngMultiPlacement] {b : BitVec 64} (_hb : 
       exact hdrB_mask64 hdrB hHdrIdx
     · simp only [State.readReg64_setPC, State.readReg64_setPState, State.readReg64_writeReg64, Reg.gpr.injEq, BitVec.reduceEq, reduceIte]; rfl
 
-private theorem allzerop_meta_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkBase 10 b)
+private theorem allzerop_meta_ok [MallocngMultiPlacement] {ro : Bool} {b : BitVec 64} (hb : BlkBase 10 b)
     {γ : GhostName} {st : MallocngSt} {g : GroupDesc} {idx : Nat}
     {p : BitVec 64} {bs : List (BitVec 8)} {req effCost : Nat} {T : SepProp}
     (hF : LiveUserBlockFacts st g idx p req effCost)
@@ -248,7 +248,7 @@ private theorem allzerop_meta_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : 
     (hx0 : s1.readReg64 .x0 = p)
     (hx1 : s1.readReg64 .x1 = (BitVec.ofNat 32 idx).zeroExtend 64)
     (hx2 : s1.readReg64 .x2 = (BitVec.ofNat 32 ((p.toNat - g.storage.toNat) / 16)).zeroExtend 64) :
-    let P := allzeropPre γ maddrs st p bs T
+    let P := allzeropPre ro γ maddrs st p bs T
     SepWP (blkPC_b10.rebase b (fun _ => none)) (b + 0xa4#64) s1 P
       (sepPost (fun s2 => AllzeropFramePres s1 s2 ∧ s2.readReg64 .x0 = g.metaPtr ∧
         s2.readReg64 .x1 = (BitVec.ofNat 32 idx).zeroExtend 64 ∧
@@ -286,7 +286,7 @@ private theorem allzerop_meta_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : 
         by simp, by simp [hx1], by simp [hx2], by simp⟩, Entails.refl _⟩
 
 set_option maxHeartbeats 400000 in
-private theorem allzerop_tail_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkBase 10 b)
+private theorem allzerop_tail_ok [MallocngMultiPlacement] {ro : Bool} {b : BitVec 64} (hb : BlkBase 10 b)
     {γ : GhostName} {st : MallocngSt} {g : GroupDesc} {idx : Nat}
     {p : BitVec 64} {bs : List (BitVec 8)} {req effCost : Nat} {T : SepProp}
     (hF : LiveUserBlockFacts st g idx p req effCost)
@@ -295,7 +295,7 @@ private theorem allzerop_tail_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : 
     (hx1 : s2.readReg64 .x1 = (BitVec.ofNat 32 idx).zeroExtend 64)
     (hx2 : s2.readReg64 .x2 = (BitVec.ofNat 32 ((p.toNat - g.storage.toNat) / 16)).zeroExtend 64)
     (hx5 : s2.readReg64 .x5 = (g.packedWord.extractLsb' 0 8).zeroExtend 64) :
-    let P := allzeropPre γ maddrs st p bs T
+    let P := allzeropPre ro γ maddrs st p bs T
     SepWP (blkPC_b10.rebase b (fun _ => none)) (s2.readReg64 .x30) s2 P
       (sepPost (fun sf => AllzeropFramePres s2 sf ∧
         sf.readReg32 .x0 = (if g.isMmapped then 1#32 else 0#32)) P) (fun _ => ⌜False⌝) := by
@@ -324,7 +324,7 @@ private theorem allzerop_tail_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : 
       change 47 < g.sc % 4294967296 at hhi; omega
     · obtain ⟨roRest, hRoSplit⟩ := split_sizeClass_roTablesAt maddrs hsc48
         ((maddrs.ctx ↦ₛ st.ctx.toBytes) ∗ ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-          AllzeropRest γ maddrs st p bs T)
+          AllzeropRest ro γ maddrs st p bs T)
       have hOffSc := sxtw_lsl1_sc hsc48
       have hSbfmSc := sxtw_sbfm_sc hsc48
       have hSxtwSc : ((BitVec.ofNat 64 g.sc).truncate 32).signExtend 64 = BitVec.ofNat 64 g.sc := by
@@ -449,20 +449,20 @@ private theorem allzerop_tail_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : 
     · exfalso; rw [hsc63] at hhi; exact hhi rfl
 
 set_option maxRecDepth 20000 in
-private theorem coreStA_eq_allzeropPre (γ : GhostName) (A : MallocngAddrs)
+private theorem coreStA_eq_allzeropPre (ro : Bool) (γ : GhostName) (A : MallocngAddrs)
     (brkStart brk : BitVec 64) (liveCost peakCost : Nat) (st : MallocngSt)
     (p : BitVec 64) (bs : List (BitVec 8)) (T : SepProp) :
     (MallocngRoTablesA A ∗
-      MallocngCoreStA γ A brkStart brk liveCost peakCost st ∗
+      MallocngCoreStModeA ro γ A brkStart brk liveCost peakCost st ∗
       (p ↦ₛ bs) ∗
       T) =
     (⌜MallocngWFInflight 0 A.base brkStart brk liveCost peakCost st⌝ ∗
-      allzeropPre γ A st p bs T) := by
-  dsimp only [MallocngRoTablesA, MallocngCoreStA, MallocngCoreStInflightA, allzeropPre]
+      allzeropPre ro γ A st p bs T) := by
+  dsimp only [MallocngRoTablesA, MallocngCoreStModeA, MallocngCoreStInflightModeA, allzeropPre]
   unfold AllzeropRest
   ac_rfl
 
-private theorem blk10_mallocAllzerop [MallocngMultiPlacement]
+private theorem blk10_mallocAllzerop [MallocngMultiPlacement] {ro : Bool}
     (γ : GhostName) (brkStart p : BitVec 64) (bs : List (BitVec 8))
     (req effCost liveCost peakCost idx : Nat) (st : MallocngSt) (g' : GroupDesc) (T : SepProp)
     (hg' : g' ∈ st.groups) (hIdx : idx < g'.slots.length)
@@ -471,14 +471,14 @@ private theorem blk10_mallocAllzerop [MallocngMultiPlacement]
       pre := fun (_ : Unit) s0 =>
         ⌜s0.readReg64 .x0 = p⌝ ∗
         MallocngRoTablesA maddrs ∗
-        MallocngCoreStA γ maddrs brkStart s0.brk liveCost peakCost st ∗
+        MallocngCoreStModeA ro γ maddrs brkStart s0.brk liveCost peakCost st ∗
         (p ↦ₛ bs) ∗
         T
       post := fun _ s0 sf =>
         ⌜MallocngProcPreserved s0 sf ∧ sf.brk = s0.brk ∧ sf.mem = s0.mem ∧
          sf.readReg32 .x0 = (if g'.isMmapped then 1#32 else 0#32)⌝ ∗
         MallocngRoTablesA maddrs ∗
-        MallocngCoreStA γ maddrs brkStart sf.brk liveCost peakCost st ∗
+        MallocngCoreStModeA ro γ maddrs brkStart sf.brk liveCost peakCost st ∗
         (p ↦ₛ bs) ∗
         T
     }) := by
@@ -500,7 +500,7 @@ private theorem blk10_mallocAllzerop [MallocngMultiPlacement]
   obtain ⟨hwf, hpreP⟩ := hpre
   have hF : LiveUserBlockFacts st g' idx p req effCost :=
     liveUserBlockFacts_of hwf hg' hIdx hSlot
-  refine ⟨allzeropPre γ maddrs st p bs T, hpreP, ?_⟩
+  refine ⟨allzeropPre ro γ maddrs st p bs T, hpreP, ?_⟩
   refine SepWP.seq (allzerop_hdr_ok hb hF hpc hrun hx0) ?_
   rintro s1 P1 hpc1 hrun1 ⟨⟨hP01, hx0_1, hx1_1, hx2_1⟩, hE1⟩
   refine SepWP.weaken_pre hE1 ?_
@@ -521,7 +521,7 @@ private theorem blk10_mallocAllzerop [MallocngMultiPlacement]
     (Entails.pure_right (hbrk_eq ▸ hwf) (Entails.refl _))
 
 /-- Polymorphic cross-block `__malloc_allzerop(p)` (`blk10`, `0` B stack, `sf.mem = s0.mem`). -/
-theorem placed_mallocAllzerop_ok [MallocngMultiPlacement] {P : Program}
+theorem placed_mallocAllzerop_ok [MallocngMultiPlacement] {P : Program} {ro : Bool}
     (γ : GhostName) (brkStart p : BitVec 64) (bs : List (BitVec 8))
     (req effCost liveCost peakCost idx : Nat) (st : MallocngSt) (g' : GroupDesc) (T : SepProp)
     (hg' : g' ∈ st.groups) (hIdx : idx < g'.slots.length)
@@ -533,19 +533,19 @@ theorem placed_mallocAllzerop_ok [MallocngMultiPlacement] {P : Program}
       pre := fun (_ : Unit) s0 =>
         ⌜s0.readReg64 .x0 = p⌝ ∗
         MallocngRoTablesA maddrs ∗
-        MallocngCoreStA γ maddrs brkStart s0.brk liveCost peakCost st ∗
+        MallocngCoreStModeA ro γ maddrs brkStart s0.brk liveCost peakCost st ∗
         (p ↦ₛ bs) ∗
         T
       post := fun _ s0 sf =>
         ⌜MallocngProcPreserved s0 sf ∧ sf.brk = s0.brk ∧ sf.mem = s0.mem ∧
          sf.readReg32 .x0 = (if g'.isMmapped then 1#32 else 0#32)⌝ ∗
         MallocngRoTablesA maddrs ∗
-        MallocngCoreStA γ maddrs brkStart sf.brk liveCost peakCost st ∗
+        MallocngCoreStModeA ro γ maddrs brkStart sf.brk liveCost peakCost st ∗
         (p ↦ₛ bs) ∗
         T
     }) :=
   subroutine_ok_block_to_block (j := 10) (by decide)
-    (blk10_mallocAllzerop γ brkStart p bs req effCost liveCost peakCost idx st g' T hg' hIdx hSlot)
+    (blk10_mallocAllzerop (ro := ro) γ brkStart p bs req effCost liveCost peakCost idx st g' T hg' hIdx hSlot)
     hext hsvc
 
 end VerifiedLibraries.Mallocng.Proofs

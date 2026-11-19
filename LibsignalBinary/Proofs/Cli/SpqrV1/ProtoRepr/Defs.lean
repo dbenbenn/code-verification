@@ -19,7 +19,7 @@ Defines CLI symbol-name abbreviations for `Epoch::encoded_len [local#3]` and
 `Chain::encoded_len [local#3]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ProtoRepr
 

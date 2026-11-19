@@ -20,7 +20,7 @@ closure stack scratch predicates (`overDecScratchPre`, `overDecScratchPost`), an
 (`+0x1ee8 → +0x2620`) in the CLI PQXDH responder closure.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,7 +42,7 @@ abbrev overDecStackX : Nat := 65536
 /-- Buffer half of `prevVecAt A (coroPtr + 0xe0#64) prevCap prevPtr [enc]`:
 for `prevCap ≠ 0#64`, `prevVecAt A r prevCap prevPtr [enc]` equals
 `HdrP r prevCap prevPtr 1#64 ∗ overPrevElemAt A prevCap prevPtr enc`. -/
-def overPrevElemAt (A : RustAlloc) (prevCap prevPtr : BitVec 64) (enc : List (BitVec 8)) : SepProp :=
+@[expose] def overPrevElemAt (A : RustAlloc) (prevCap prevPtr : BitVec 64) (enc : List (BitVec 8)) : SepProp :=
   ⌜1 ≤ prevCap.toNat ∧ prevCap.toNat * 24 < 2 ^ 63 ∧ prevPtr ≠ 0#64⌝ ∗
     (A.live prevPtr (prevCap.toNat * 24) 8 ∗ vecU8 A prevPtr enc ∗
       memRegion (prevPtr + 24#64) ((prevCap.toNat - 1) * 24))
@@ -59,7 +59,7 @@ theorem prevVecAt_one_eq_elemAt (A : RustAlloc) (r prevCap prevPtr : BitVec 64)
 - `sp + 0xa88` (8B): `merge_varint` cursor pointer scratch;
 - `sp + 0xa90` (344B): nested field `merge` scratch (`x28`);
 - `sp + 0xbe8` (136B): `DecodeError` return / `be8` cursor pointer scratch. -/
-def overDecScratchPre (sp : BitVec 64) : SepProp :=
+@[expose] def overDecScratchPre (sp : BitVec 64) : SepProp :=
   memRegion (sp + 0x920#64) 16 ∗
   memRegion (sp + 0x930#64) 344 ∗
   memRegion (sp + 0xa88#64) 8 ∗
@@ -68,90 +68,10 @@ def overDecScratchPre (sp : BitVec 64) : SepProp :=
 
 /-- Stack scratch region returned intact after `+0x1ee8 → +0x2620` (all slots except `sp + 0x930`,
 which now holds `prostSSGQAt A0 (sp + 0x930#64) (ssgqOf sess)`). -/
-def overDecScratchPost (sp : BitVec 64) : SepProp :=
+@[expose] def overDecScratchPost (sp : BitVec 64) : SepProp :=
   memRegion (sp + 0x920#64) 16 ∗
   memRegion (sp + 0xa88#64) 8 ∗
   memRegion (sp + 0xa90#64) 344 ∗
   memRegion (sp + 0xbe8#64) 136
-
-/-- Inlined `SessionStructure::decode` seam (`+0x1ee8 → +0x2620`) for arbitrary `A : RustAlloc`:
-given `AllocContractsX img A ext` and a canonical v4 archived session `sess` with no pending
-pre-keys, decodes `enc = Record.encSession sess` into `prostSSGQAt A (s.sp + 0x930#64) (ssgqOf sess)`
-while preserving `overPrevElemAt` and `overDecScratchPost` (up to `anyHeap`, or OOM `PanicOomProp s0`). -/
-def OverPrevDecodeCliStmtGenExt (A : RustAlloc) (trackVRegs : Bool) : Prop :=
-  ∀ (img : Obj.Image) (ext : String → Option (State → State)),
-    Obj.Loads libsignalSessionImage img →
-    CryptoVerification.LibsignalTripleRatchet.AllocContractsX img A ext →
-    ∀ (s0 s : State) (prevCap prevPtr : BitVec 64) (enc : List (BitVec 8))
-      (sess : Session (List (BitVec 8))),
-      enc = CryptoVerification.E2E.Record.encSession sess →
-      DeserializeScopeP_Q NonEmptyV1Q ⟨some sess⟩ →
-      sess.state.sessionVersion = 4#32 →
-      sess.pendingPreKey = none →
-      sess.pendingKyberPreKey = none →
-      img.FrozenLoaded s →
-      s.symtab = img.symtab →
-      s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr decryptPrekeyClosureName + 0x1ee8#64 →
-      s.status = .Running →
-      (s.sp &&& 15#64 == 0#64) = true →
-      overDecStackX ≤ s.sp.toNat →
-      s.trace = s0.trace →
-      s.readReg64 .x21 = s.sp + 0x930#64 →
-      s.readReg64 .x24 = 1#64 →
-      s.readReg64 .x25 = 0xffffffffffffffff#64 →
-      s.readReg64 .x27 = prevPtr →
-      s.readReg64 .x29 = s.sp + 0xc70#64 →
-      SepWPp (tripleRatchetProgAtExt img.base ext)
-        ((tripleRatchetProgAtExt img.base ext).fnAddr decryptPrekeyClosureName + 0x2620#64) s
-        (overPrevElemAt A prevCap prevPtr enc ∗
-         overDecScratchPre s.sp ∗
-         A.pool ∗
-         stackAt s.sp overDecStackX)
-        (fun sf P_f =>
-          (P_f ⊢
-            prostSSGQAt A (s.sp + 0x930#64) (ssgqOf sess) ∗
-            overPrevElemAt A prevCap prevPtr enc ∗
-            overDecScratchPost s.sp ∗
-            A.pool ∗
-            stackAt s.sp overDecStackX ∗
-            anyHeap) ∧
-          sf.sp = s.sp ∧
-          sf.trace = s0.trace ∧
-          sf.readReg64 .x19 = s.readReg64 .x19 ∧
-          sf.readReg64 .x20 = s.readReg64 .x20 ∧
-          sf.readReg64 .x21 = s.sp + 0x930#64 ∧
-          sf.readReg64 .x24 = 1#64 ∧
-          sf.readReg64 .x25 = 0xffffffffffffffff#64 ∧
-          sf.readReg64 .x27 = prevPtr ∧
-          sf.readReg64 .x29 = s.readReg64 .x29 ∧
-          optVRegsEq trackVRegs sf s ∧
-          img.FrozenLoaded sf ∧
-          sf.symtab = img.symtab)
-        (PanicOomProp s0)
-
-abbrev OverPrevDecodeCliStmtExt (A : RustAlloc) : Prop := OverPrevDecodeCliStmtGenExt A true
-abbrev OverPrevDecodeCliGPRStmtExt (A : RustAlloc) : Prop := OverPrevDecodeCliStmtGenExt A false
-
-abbrev OverPrevDecodeCliStmtGen (trackVRegs : Bool) : Prop := OverPrevDecodeCliStmtGenExt A0 trackVRegs
-
-abbrev OverPrevDecodeCliStmt : Prop := OverPrevDecodeCliStmtGen true
-
-abbrev OverPrevDecodeCliGPRStmt : Prop := OverPrevDecodeCliStmtGen false
-
-theorem overPrevDecodeCliGPR_of_vregs_ext {A : RustAlloc}
-    (h : OverPrevDecodeCliStmtExt A) : OverPrevDecodeCliGPRStmtExt A := by
-  intro img ext himg hAX s0 s prevCap prevPtr enc sess henc hQ hver4 hpp hkpk
-    hF hsym hpc hrun hsp_align hsp_le htr hx21 hx24 hx25 hx27 hx29
-  have hwp := h img ext himg hAX s0 s prevCap prevPtr enc sess henc hQ hver4 hpp hkpk
-    hF hsym hpc hrun hsp_align hsp_le htr hx21 hx24 hx25 hx27 hx29
-  intro R hm hL
-  obtain ⟨sf, hsteps, ⟨hpc', hrun', P_f, hmf, hP, hsp', htr', hx19', hx20', hx21', hx24', hx25',
-    hx27', hx29', _, hFf, hsymf⟩ | hpan⟩ := hwp R hm hL
-  · exact ⟨sf, hsteps, Or.inl ⟨hpc', hrun', P_f, hmf, hP, hsp', htr', hx19', hx20', hx21', hx24',
-      hx25', hx27', hx29', trivial, hFf, hsymf⟩⟩
-  · exact ⟨sf, hsteps, Or.inr hpan⟩
-
-theorem overPrevDecodeCliGPR_of_vregs (h : OverPrevDecodeCliStmt) : OverPrevDecodeCliGPRStmt :=
-  overPrevDecodeCliGPR_of_vregs_ext h
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.VerNe

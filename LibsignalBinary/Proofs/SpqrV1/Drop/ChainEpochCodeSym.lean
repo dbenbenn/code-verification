@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard11
+meta import GeneratedLean.LibsignalSessionPlacedObjShard7
 
 /-!
 # Relocatable Per-Block Fetches for `ChainEpoch` and `Chain` Drop Glue
@@ -21,7 +23,7 @@ Per-block instruction fetch definitions for:
 - Block `269`: `core::ptr::drop_glue::<spqr::chain::Chain>` (48 instructions)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

@@ -9,10 +9,18 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.Ct1ReceivedPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.RecvCt1AckPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.Ct1ReceivedPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.RecvCt1AckPlaced
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false

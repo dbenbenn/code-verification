@@ -13,9 +13,11 @@ import all Init.Data.String.Defs
 import all Init.Data.String.Basic
 import all Init.Data.Repr
 import all Init.Data.ToString.Basic
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreePaths
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreePaths -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Spec
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeStore
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Commit Writes and Pathwise `filesOf` Overwrite Lemmas
@@ -25,7 +27,7 @@ Reduces `namedWrites g'.writes` to canonical `(path, bytes)` entries and rewrite
 bucket by bucket.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

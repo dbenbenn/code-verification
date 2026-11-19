@@ -13,12 +13,13 @@ public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.RecClone
 import LibsignalBinary.Proofs.E2E.InMem.SipHashBin.RoundLemmas
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.Decodes -- shake: keep
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Shared Helpers for the `InMemSessionStore` Future-Closure Leaves
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.InMem.HashbrownBin.SessionStoreFutures
 
@@ -90,17 +91,7 @@ theorem pointsToBytes_ctrl12_split_at (ctrl : BitVec 64) (cbs : List (BitVec 8))
       BitVec.add_assoc, ← BitVec.ofNat_add]
   ac_rfl
 
-/-- 400-byte (`0x190`) bucket address arithmetic in `load_session::{closure#0}` and
-`store_session::{closure#0}`, equating `ctrl - 400 * (k + 1)` to `bucketAddr ctrl 400 k`. -/
-theorem sub_mul400_eq_bucketAddr (ctrl : BitVec 64) (k : Nat) (hk : k < 4) :
-    let idx := BitVec.ofNat 64 k
-    let x9 := (idx <<< 4) + ((idx <<< 4) <<< 3)
-    let x8 := x9 + (idx <<< 8) + 0x190#64
-    ctrl - x8 = bucketAddr ctrl 400 k := by
-  unfold bucketAddr
-  rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3) with rfl | rfl | rfl | rfl <;> bv_omega
-
-def singleBucketRestAt (stride : Nat) (ctrl : BitVec 64) (k : Nat) : SepProp :=
+@[expose] def singleBucketRestAt (stride : Nat) (ctrl : BitVec 64) (k : Nat) : SepProp :=
   arrayAt
     (fun i a => if i = k then emp else memRegion a stride) stride
     (ctrl - BitVec.ofNat 64 (4 * stride)) [3, 2, 1, 0]
@@ -129,18 +120,6 @@ theorem arrayAt_single_split_400 (ctrl : BitVec 64) (k : Nat) (hk : k < 4)
       Nat.reduceAdd, Nat.reduceMul,
       sub1600_add400, sub1200_add400, sub800_add400, ite_true]
     ac_rfl
-
-theorem arrayAt_empty_split_400 (ctrl : BitVec 64) (k : Nat) (hk : k < 4) :
-    arrayAt
-      (fun i a => if i ∈ ([] : List Nat) then ⌜False⌝ else memRegion a 400) 400
-      (ctrl - BitVec.ofNat 64 (4 * 400)) (List.range 4).reverse =
-    memRegion (bucketAddr ctrl 400 k) 400 ∗ singleBucketRestAt 400 ctrl k := by
-  have hfun :
-      (fun (i : Nat) (a : BitVec 64) => if i ∈ ([] : List Nat) then ⌜False⌝ else memRegion a 400) =
-      (fun i a => if i ∈ [k] then memRegion a 400 else memRegion a 400) := by
-    funext i a; simp
-  rw [hfun]
-  exact arrayAt_single_split_400 ctrl k hk (fun a => memRegion a 400)
 
 /-! ## 64-Bit SIMD (`D64`) Load/Store Step Rules -/
 
@@ -302,27 +281,6 @@ theorem step_stpSimd64_sp_pre {prog : Program} {target_pc : BitVec 64}
     (by simp [evalAddrMode, Arm64.State.readReg64, hea])
     hea2 rfl rfl hstore1 hstore2 rfl hnext
 
-theorem step_ldpSimd64_sp_post {prog : Program} {target_pc : BitVec 64}
-    {s : Arm64.State} {P : SepProp} {post : Arm64.State → SepProp → Prop}
-    {pc : BitVec 64} {vt1 vt2 : BitVec 5} {off ea ea2 sp' v1 v2 : BitVec 64}
-    (hpc : s.pc = pc)
-    (hrun : s.status = .Running)
-    (hfetch : prog.fetch pc = some (.ldpSimd .D64 vt1 vt2 (.PostIndex .sp off)))
-    (hsp : checkRegSPAligned s .sp = true)
-    (hea : s.sp = ea)
-    (hea2 : ea + 8#64 = ea2)
-    (hsp' : ea + off = sp')
-    (hload1 : SepLoad64 ea P v1)
-    (hload2 : SepLoad64 ea2 P v2)
-    (hnext : SepWP prog target_pc
-      ((((s.writeReg64 .sp sp').writeVReg128 vt1 (v1.zeroExtend 128)).writeVReg128 vt2 (v2.zeroExtend 128)).setPC (pc + 4#64))
-      P post) :
-    SepWP prog target_pc s P post :=
-  step_ldpSimd64 (wb := some (.sp, sp')) hpc hrun hfetch
-    (by simp [checkAddrSPAligned, AddrMode.baseReg, hsp])
-    (by simp [evalAddrMode, Arm64.State.readReg64, hea, hsp'])
-    hea2 hload1 hload2 rfl hnext
-
 theorem step_ldrSimd64_reg {prog : Program} {target_pc : BitVec 64}
     {s : Arm64.State} {P : SepProp} {post : Arm64.State → SepProp → Prop}
     {pc : BitVec 64} {vt rn rm : BitVec 5} {ea v : BitVec 64}
@@ -368,7 +326,7 @@ theorem table4SingleAt_eq (A : RustAlloc) (stride : Nat) (mp k0 k1 : BitVec 64)
   simp only [hadd]
   rfl
 
-def addrRestAt (A : RustAlloc) (g : AddrGhost) (addr : BitVec 64) : SepProp :=
+@[expose] def addrRestAt (A : RustAlloc) (g : AddrGhost) (addr : BitVec 64) : SepProp :=
   ⌜g.name.bytes.length ≤ g.name.cap.toNat ∧ g.name.cap.toNat < 2 ^ 63 ∧ g.name.ptr ≠ 0⌝ ∗
   (addr ↦₆₄ g.name.cap) ∗
   A.live g.name.ptr g.name.cap.toNat 1 ∗

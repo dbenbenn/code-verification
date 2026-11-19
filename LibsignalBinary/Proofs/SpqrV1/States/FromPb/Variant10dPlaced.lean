@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10a
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch0Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10aPlaced
@@ -21,6 +21,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10cPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10d
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1Placed
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 10 (`Ct2Sampled`, `+1632`)
@@ -29,7 +30,7 @@ Relocatable Block-`333` composition from `+1632` to return and top-level `subrou
 contract for `InnerState.ct2Sampled`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

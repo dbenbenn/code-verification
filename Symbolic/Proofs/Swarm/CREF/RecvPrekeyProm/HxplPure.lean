@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.CBad
+public import Symbolic.Proofs.Swarm.CREF.CBad -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 
 /-!
@@ -19,7 +19,7 @@ Proves `.rng`-filtering and `parsePreKeyWire` tag/body lemmas used when explaini
 promote calls.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

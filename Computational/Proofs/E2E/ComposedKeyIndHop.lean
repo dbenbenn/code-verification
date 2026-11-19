@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Session.StatementComposed
-public import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
+public import Computational.Proofs.SpecLemmas.Session.StatementComposed -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.SignalPqxdh.Game -- proof-setup: allow-public-import
 import Computational.Proofs.SpecLemmas.Session.ACD19.SM.Theorem8And12Statements
 import LibsignalBinary.Proofs.E2E.PqxdhSpecTestsPure
 import VCVio.EvalDist.Monad.Basic
@@ -25,7 +25,7 @@ Establishes the bijection between 32-byte little-endian words (`word256ToBytes`,
 `SampledSessionKey` distribution.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -36,11 +36,6 @@ open CryptoGames CryptoGames.LibsignalSM Ratchet LibsignalInst LibsignalSession
   CryptoVerification.LibsignalProtoCodec CryptoVerification.LibsignalSession
   CryptoVerification.E2E.PqxdhSpecTests
 
-private theorem uint8_ofNat_shift_toBitVec_eq_extractLsb' (w : BitVec 256) (j : ℕ) :
-    (UInt8.ofNat ((w.toNat >>> (8 * j)) % 256)).toBitVec = w.extractLsb' (8 * j) 8 := by
-  apply BitVec.eq_of_toNat_eq
-  simp [UInt8.ofNat, BitVec.extractLsb'_toNat]
-
 @[simp]
 theorem ofU8_word256ToBytes (w : BitVec 256) :
     ofU8 (SignalPqxdh.word256ToBytes w) = HMAC.keyToBytes32 w := by
@@ -48,7 +43,8 @@ theorem ofU8_word256ToBytes (w : BitVec 256) :
     fun j h1 h2 => ?_
   simp only [ofU8, SignalPqxdh.word256ToBytes, HMAC.keyToBytes32, List.getElem_map,
     List.getElem_ofFn]
-  exact uint8_ofNat_shift_toBitVec_eq_extractLsb' w j
+  apply BitVec.eq_of_toNat_eq
+  simp [UInt8.ofNat, BitVec.extractLsb'_toNat]
 
 theorem word256ToBytes_eq_toU8_keyToBytes32 (w : BitVec 256) :
     SignalPqxdh.word256ToBytes w = toU8 (HMAC.keyToBytes32 w) := by

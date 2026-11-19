@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Stage1Trials -- shake: keep
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj
+import Symbolic.Proofs.Swarm.CREF.Stage1Trials -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Bytes.Basic
@@ -19,6 +19,7 @@ import Symbolic.Proofs.Swarm.CREF.TR.G1.G1RepMacTR
 import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR
 import Symbolic.Proofs.Swarm.CREF.TR.G1.NotOpaqueMac
 import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepMac
+import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials
 
 /-!
 # Case Split on Received Triple Ratchet MACs
@@ -29,7 +30,7 @@ either an honest send's `hmac` (`G1bHonestSendCaseB3`) or attacker-known (`G1cOw
 each case matching the receiver's `hmac` shape under an honest salt.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +51,7 @@ open Symbolic.Swarm.CREF.TR.RecvDecStep
 
 /-- Valid preimages of an attacker-known `Trunc.trunc8 inp` on a reachable trace `T`: either `inp`
 is attacker-known or `inp` is an honest send's `hmac`. -/
-def TruncInputValidC (T : ExecTrace) (inp : DY.Bytes) : Prop :=
+@[expose] def TruncInputValidC (T : ExecTrace) (inp : DY.Bytes) : Prop :=
   inp.AttackerKnows T ∨
   ∃ (pqSalt seed myIk peerIk a : DY.Bytes) (ns pn : UInt32) (m pqMsg : DY.Bytes),
     inp = hmac (trMsgKeys pqSalt seed).macKey
@@ -68,7 +69,7 @@ theorem macKdfSafe_c_trunc8_inv (r₀ : ProtocolSetup) (ms : List Move) (inp₀ 
 
 /-- Existence of an honest salt `salt₁ ∈ honestSalts r₀ ms` whose `(cipherKey, macKey, iv)` triple
 on `mkSeed` agrees with `k_own` under `gamma` and at which `AuthenticDecryptRep` holds. -/
-def AuthenticDecryptRepB3_g1
+@[expose] def AuthenticDecryptRepB3_g1
     (interpretation : ExternInterpretation)
     (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost) (ms : List Move)
     (b ptext : HwBytes) (msg₀ : TRSignalMsg) (st₀ : TRState) (mkSeed k_own : DY.Bytes) : Prop :=
@@ -84,7 +85,7 @@ def AuthenticDecryptRepB3_g1
 /-- Honest-send MAC branch: `msg₀.mac = Trunc.trunc8 inp₀` where `inp₀` is an honest `hmac` over
 `trHonestWireMsg` whose shape matches the receiver's `hmac` under an honest salt matching `k_own`
 on `mkSeed`. -/
-def G1bHonestSendCaseB3
+@[expose] def G1bHonestSendCaseB3
     (interpretation : ExternInterpretation)
     (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost) (ms : List Move)
     (msg₀ : TRSignalMsg) (st₀ : TRState) (mkSeed k_own : DY.Bytes) : Prop :=
@@ -110,7 +111,7 @@ def G1bHonestSendCaseB3
 
 /-- Attacker-known MAC-input branch: `msg₀.mac = Trunc.trunc8 inp₀` with `inp₀` attacker-known and
 shape-matching the receiver's `hmac` under an honest salt matching `k_own` on `mkSeed`. -/
-def G1cOwnKeyCaseB3
+@[expose] def G1cOwnKeyCaseB3
     (interpretation : ExternInterpretation)
     (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost) (ms : List Move)
     (msg₀ : TRSignalMsg) (st₀ : TRState) (mkSeed k_own : DY.Bytes) : Prop :=

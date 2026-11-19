@@ -9,22 +9,37 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3bPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4bPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4cPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5ePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopPlaced
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part2PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3bPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4bPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4cPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5ePlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part2Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3bBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4aBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4bBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4cBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4dBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dPlacedBudget
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`): Top-Level Relocatable `RustCliAllocBudget` Proof
@@ -36,7 +51,7 @@ Defines `StatesIntoPbExactVariantEnv` / `StatesIntoPbExactEnv` and `StatesIntoPb
 `withLsCodeRoLoaded`, and `libsignalSessionLib.blockProgram lsmpl 334` contracts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -111,7 +126,7 @@ open VerifiedLibraries.Mallocng (MallocngMaxAllocSize)
 
 /-- Exact binary allocator event envelope of `<spqr::v1::chunked::states::States>::into_pb`
     (Block `334`) dispatched by `States` constructor. -/
-def StatesIntoPbExactVariantEnv {F : ShaCompress}
+@[expose] def StatesIntoPbExactVariantEnv {F : ShaCompress}
     (st : States spqrPolyApi (spqrAuthApi F)) (evs : List AllocEvent) : Prop :=
   match st with
   | .keysUnsampled _ => KeysUnsampledEnv evs
@@ -128,14 +143,14 @@ def StatesIntoPbExactVariantEnv {F : ShaCompress}
 
 /-- Exact binary allocator event envelope of `<spqr::v1::chunked::states::States>::into_pb`
     (Block `334`) on `StatesIntoPbGhost F`. -/
-def StatesIntoPbExactEnv {F : ShaCompress}
+@[expose] def StatesIntoPbExactEnv {F : ShaCompress}
     (x : StatesIntoPbGhost F) (evs : List AllocEvent) : Prop :=
   StatesIntoPbExactVariantEnv x.st evs
 
 /-- `<States>::into_pb` (`Block 334`) meets
     `withLsCodeLoaded lsmpl (statesIntoPbPlacedSpecOfEnv M A lim F StatesIntoPbExactEnv)`
     on `(blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext)`. -/
-def StatesIntoPbExactPlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def StatesIntoPbExactPlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
@@ -145,7 +160,7 @@ def StatesIntoPbExactPlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
 /-- `<States>::into_pb` (`Block 334`) meets
     `withLsCodeLoaded lsmpl (statesIntoPbPlacedSpecXOfEnv M A lim F StatesIntoPbExactEnv)`
     on `libsignalSessionLib.blockProgram lsmpl 334 (Rust.withPanics ext)` at `lsmpl.base 334`. -/
-def StatesIntoPbExactPlacedOkX [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def StatesIntoPbExactPlacedOkX [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 334 (Rust.withPanics ext))
@@ -155,7 +170,7 @@ def StatesIntoPbExactPlacedOkX [LibsignalPlacement] (M : AllocCostModel)
 /-- `<States>::into_pb` (`Block 334`) meets
     `withLsCodeRoLoaded lsmpl (statesIntoPbPlacedRoFreeSpecXOfEnv M A lim F StatesIntoPbExactEnv)`
     on `(blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext)`. -/
-def StatesIntoPbExactPlacedRoFreeOkX [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def StatesIntoPbExactPlacedRoFreeOkX [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
@@ -217,7 +232,7 @@ theorem headerSentEnv_imp_spqrBoundedEvs {F : ShaCompress}
 
 /-- Sufficient allocation-count and per-slot byte-length bounds on `st` ensuring
     `StatesIntoPbExactVariantEnv st evs → SpqrBoundedEvs maxAllocs maxReq evs`. -/
-def StatesIntoPbBounded {F : ShaCompress}
+@[expose] def StatesIntoPbBounded {F : ShaCompress}
     (st : States spqrPolyApi (spqrAuthApi F)) (maxAllocs maxReq : Nat) : Prop :=
   match st with
   | .keysUnsampled _ => True
@@ -284,7 +299,7 @@ def StatesIntoPbBounded {F : ShaCompress}
 
 /-- Specialization of `StatesIntoPbBounded` to the `StatesIntoPbEnv` (`64`-alloc, linear-in-`encodeRaw`)
     parameters. -/
-def StatesIntoPbWellSized {F : ShaCompress}
+@[expose] def StatesIntoPbWellSized {F : ShaCompress}
     (st : States spqrPolyApi (spqrAuthApi F)) : Prop :=
   StatesIntoPbBounded st 64 (2 * (V1State.encodeRaw st.into_pb).length + 1024)
 
@@ -394,41 +409,6 @@ theorem states_into_pb_variant_of_env_placed [LibsignalPlacement]
   | ct2Sampled s =>
     exact states_into_pb_ct2Sampled_of_env_placed henc_raw s hEnv
 
-/-- Exact-envelope per-variant correctness of `<spqr::v1::chunked::states::States>::into_pb`
-    (Block `334`) across all 11 `States` constructors under `[LibsignalPlacement]`. -/
-theorem states_into_pb_variant_env_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (encoderIntoPbSpec M A lim))
-    (hdec_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (decoderIntoPbSpec M A lim))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec)
-    (st : States spqrPolyApi (spqrAuthApi F)) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (blkPl_334).base
-      (statesIntoPbVariantPlacedSpecOfEnv M A lim F st
-        (StatesIntoPbExactVariantEnv st)) :=
-  states_into_pb_variant_of_env_placed hA henc_raw hdec_raw hmemcpy_raw st (fun _ h => h)
-
-/-- Exact-envelope per-variant correctness deriving `hmemcpy_raw` from `hA`. -/
-theorem states_into_pb_variant_env_of_alloc_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (encoderIntoPbSpec M A lim))
-    (hdec_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (decoderIntoPbSpec M A lim))
-    (st : States spqrPolyApi (spqrAuthApi F)) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (blkPl_334).base
-      (statesIntoPbVariantPlacedSpecOfEnv M A lim F st
-        (StatesIntoPbExactVariantEnv st)) :=
-  states_into_pb_variant_env_placed hA henc_raw hdec_raw (sessionMemcpyRegion_ok_placed hA) st
-
 theorem states_into_pb_variant_of_env_cl_placed [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
     {ext : String → Option (State → State)}
@@ -448,25 +428,6 @@ theorem states_into_pb_variant_of_env_cl_placed [LibsignalPlacement]
         (statesIntoPbVariantPlacedSpecOfEnv M A lim F st Env)) :=
   subroutine_ok_withLsCodeLoaded_of_plain
     (states_into_pb_variant_of_env_placed hA henc_raw hdec_raw hmemcpy_raw st hEnv)
-
-theorem states_into_pb_variant_env_cl_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (encoderIntoPbSpec M A lim))
-    (hdec_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (decoderIntoPbSpec M A lim))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec)
-    (st : States spqrPolyApi (spqrAuthApi F)) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (blkPl_334).base
-      (withLsCodeLoaded lsmpl
-        (statesIntoPbVariantPlacedSpecOfEnv M A lim F st
-          (StatesIntoPbExactVariantEnv st))) :=
-  subroutine_ok_withLsCodeLoaded_of_plain
-    (states_into_pb_variant_env_placed hA henc_raw hdec_raw hmemcpy_raw st)
 
 /-- Per-variant `statesIntoPbVariantPlacedSpec` (`SpqrBoundedEvs 64 ...`) under
     `StatesIntoPbWellSized st`. -/
@@ -567,37 +528,6 @@ theorem states_into_pb_placed_of_env_raw [LibsignalPlacement]
     (fun _ hout => hout)
 
 /-- `<spqr::v1::chunked::states::States>::into_pb` (Block `334`, 615 instructions)
-    satisfies `statesIntoPbPlacedSpecOfEnv M A lim F StatesIntoPbExactEnv` on
-    `(blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext)`. -/
-theorem states_into_pb_placed_env_raw [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (encoderIntoPbSpec M A lim))
-    (hdec_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (decoderIntoPbSpec M A lim))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (blkPl_334).base
-      (statesIntoPbPlacedSpecOfEnv M A lim F StatesIntoPbExactEnv) :=
-  states_into_pb_placed_of_env_raw hA henc_raw hdec_raw hmemcpy_raw (fun _ _ h => h)
-
-theorem states_into_pb_placed_env_of_alloc_raw [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (encoderIntoPbSpec M A lim))
-    (hdec_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (decoderIntoPbSpec M A lim)) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (blkPl_334).base
-      (statesIntoPbPlacedSpecOfEnv M A lim F StatesIntoPbExactEnv) :=
-  states_into_pb_placed_env_raw hA henc_raw hdec_raw (sessionMemcpyRegion_ok_placed hA)
-
-/-- `<spqr::v1::chunked::states::States>::into_pb` (Block `334`, 615 instructions)
     satisfies `withLsCodeLoaded lsmpl (statesIntoPbPlacedSpecOfEnv M A lim F Env)`. -/
 theorem states_into_pb_placed_of_env_ok_ext [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
@@ -618,68 +548,6 @@ theorem states_into_pb_placed_of_env_ok_ext [LibsignalPlacement]
     (states_into_pb_placed_of_env_raw hA henc_raw hdec_raw hmemcpy_raw hEnv)
 
 /-- `<spqr::v1::chunked::states::States>::into_pb` (Block `334`, 615 instructions)
-    satisfies `StatesIntoPbExactPlacedOkExt M A lim F ext`. -/
-theorem states_into_pb_placed_env_ok_ext [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (encoderIntoPbSpec M A lim))
-    (hdec_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (decoderIntoPbSpec M A lim))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec) :
-    StatesIntoPbExactPlacedOkExt M A lim F ext :=
-  states_into_pb_placed_of_env_ok_ext hA henc_raw hdec_raw hmemcpy_raw (fun _ _ h => h)
-
-theorem states_into_pb_placed_env_of_alloc_ok_ext [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (encoderIntoPbSpec M A lim))
-    (hdec_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (decoderIntoPbSpec M A lim)) :
-    StatesIntoPbExactPlacedOkExt M A lim F ext :=
-  states_into_pb_placed_env_ok_ext hA henc_raw hdec_raw (sessionMemcpyRegion_ok_placed hA)
-
-/-- `<spqr::v1::chunked::states::States>::into_pb` (Block `334`, 615 instructions)
-    satisfies `statesIntoPbPlacedRoSpecXOfEnv M A lim F Env` (`statesIntoPbStackX`, explicit
-    `statesIntoPbJumpTablePlacedAt`) on `(blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext)`. -/
-theorem states_into_pb_placed_of_env_ro_ok_x [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    {Env : StatesIntoPbGhost F → List AllocEvent → Prop}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (encoderIntoPbSpec M A lim))
-    (hdec_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (decoderIntoPbSpec M A lim))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec)
-    (hEnv : ∀ x evs, StatesIntoPbExactEnv x evs → Env x evs) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (blkPl_334).base
-      (statesIntoPbPlacedRoSpecXOfEnv M A lim F Env) :=
-  statesIntoPbPlacedSpecXOfEnv_of_statesIntoPbPlacedSpecOfEnv
-    (states_into_pb_placed_of_env_raw hA henc_raw hdec_raw hmemcpy_raw hEnv)
-
-theorem states_into_pb_placed_env_ro_ok_x [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (encoderIntoPbSpec M A lim))
-    (hdec_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (decoderIntoPbSpec M A lim))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (blkPl_334).base
-      (statesIntoPbPlacedRoSpecXOfEnv M A lim F StatesIntoPbExactEnv) :=
-  states_into_pb_placed_of_env_ro_ok_x hA henc_raw hdec_raw hmemcpy_raw (fun _ _ h => h)
-
-/-- `<spqr::v1::chunked::states::States>::into_pb` (Block `334`, 615 instructions)
     satisfies `withLsCodeLoaded lsmpl (statesIntoPbPlacedSpecXOfEnv M A lim F Env)`. -/
 theorem states_into_pb_placed_of_env_cl_ok_x [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
@@ -698,21 +566,6 @@ theorem states_into_pb_placed_of_env_cl_ok_x [LibsignalPlacement]
       (withLsCodeLoaded lsmpl (statesIntoPbPlacedSpecXOfEnv M A lim F Env)) :=
   withLsCodeLoaded_statesIntoPbPlacedSpecXOfEnv_of_statesIntoPbPlacedSpecOfEnv
     (states_into_pb_placed_of_env_ok_ext hA henc_raw hdec_raw hmemcpy_raw hEnv)
-
-theorem states_into_pb_placed_env_cl_ok_x [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (encoderIntoPbSpec M A lim))
-    (hdec_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (decoderIntoPbSpec M A lim))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (blkPl_334).base
-      (withLsCodeLoaded lsmpl (statesIntoPbPlacedSpecXOfEnv M A lim F StatesIntoPbExactEnv)) :=
-  states_into_pb_placed_of_env_cl_ok_x hA henc_raw hdec_raw hmemcpy_raw (fun _ _ h => h)
 
 /-- `<spqr::v1::chunked::states::States>::into_pb` (Block `334`, 615 instructions)
     satisfies `withLsCodeLoaded lsmpl (statesIntoPbPlacedSpecXOfEnv M A lim F Env)` on
@@ -767,52 +620,5 @@ theorem states_into_pb_placed_env_of_alloc_ok_x_blockProgram [LibsignalPlacement
       (lsmpl.base 377) (decoderIntoPbSpec M A lim)) :
     StatesIntoPbExactPlacedOkX M A lim F ext :=
   states_into_pb_placed_env_ok_x_blockProgram hA henc_raw hdec_raw (sessionMemcpyRegion_ok_placed hA)
-
-/-- `<spqr::v1::chunked::states::States>::into_pb` (Block `334`, 615 instructions)
-    satisfies `withLsCodeRoLoaded lsmpl (statesIntoPbPlacedRoFreeSpecXOfEnv M A lim F Env)`
-    (mirroring `TopPlaced.states_into_pb_placed_ok_x` with `.rodata` jump table discharged). -/
-theorem states_into_pb_placed_of_env_ro_free_ok_x [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    {Env : StatesIntoPbGhost F → List AllocEvent → Prop}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (encoderIntoPbSpec M A lim))
-    (hdec_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (decoderIntoPbSpec M A lim))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec)
-    (hEnv : ∀ x evs, StatesIntoPbExactEnv x evs → Env x evs) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (blkPl_334).base
-      (withLsCodeRoLoaded lsmpl (statesIntoPbPlacedRoFreeSpecXOfEnv M A lim F Env)) :=
-  statesIntoPbPlacedRoFreeSpecXOfEnv_of_placedSpecXOfEnv
-    (states_into_pb_placed_of_env_cl_ok_x hA henc_raw hdec_raw hmemcpy_raw hEnv)
-
-/-- `<spqr::v1::chunked::states::States>::into_pb` (Block `334`, 615 instructions)
-    satisfies `StatesIntoPbExactPlacedRoFreeOkX M A lim F ext`. -/
-theorem states_into_pb_placed_env_ro_free_ok_x [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (encoderIntoPbSpec M A lim))
-    (hdec_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (decoderIntoPbSpec M A lim))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec) :
-    StatesIntoPbExactPlacedRoFreeOkX M A lim F ext :=
-  states_into_pb_placed_of_env_ro_free_ok_x hA henc_raw hdec_raw hmemcpy_raw (fun _ _ h => h)
-
-theorem states_into_pb_placed_env_of_alloc_ro_free_ok_x [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (encoderIntoPbSpec M A lim))
-    (hdec_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (decoderIntoPbSpec M A lim)) :
-    StatesIntoPbExactPlacedRoFreeOkX M A lim F ext :=
-  states_into_pb_placed_env_ro_free_ok_x hA henc_raw hdec_raw (sessionMemcpyRegion_ok_placed hA)
 
 end LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopPlacedBudget

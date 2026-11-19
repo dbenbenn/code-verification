@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FramePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Iface
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FramePlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Iface -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # Relocatable Loop Invariant and Error-Exit Interface for `main` Hop M5 (Block `617`)
@@ -22,7 +25,7 @@ Relocatable `[LibsignalPlacement]` counterparts of `AtM5LoopPlaced`, `m5LoopCell
 re-exporting pure `DirGhost` and `commitFiles` lemmas from `M5Iface.lean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -46,7 +49,7 @@ open CryptoVerification.LibsignalPublicApi.StoreKit
 /-- Owned pieces inside `locals fsp` at `AtM5LoopPlaced` after `k` `Dir`s (`k ≤ 8`):
 `m6CellsPlaced` (`0x00 .. 0x20`, `0x50 .. 0x58`) plus the remaining `8 - k` `Dir`s at
 `0x1c8 + 0x28 * k .. 0x308`. -/
-def m5LoopCellsPlaced (A : RustAlloc) (fsp outCap outPtr outLen inCap inPtr : BitVec 64)
+@[expose] def m5LoopCellsPlaced (A : RustAlloc) (fsp outCap outPtr outLen inCap inPtr : BitVec 64)
     (g : StoresGhost) (k : Nat) : List (Nat × Nat × SepProp) :=
   m6CellsPlaced fsp outCap outPtr outLen inCap inPtr ++
     [(0x1c8 + 0x28 * k, 0x28 * (8 - k),
@@ -105,7 +108,7 @@ theorem locals_m5LoopCellsPlaced_step (A : RustAlloc)
   ac_rfl
 
 /-- Full separation-logic memory at `AtM5LoopPlaced` after `k` `Dir`s (`k ≤ 8`). -/
-def m5LoopMemPlaced (A : RustAlloc) (s0 : State) (stk n : Nat)
+@[expose] def m5LoopMemPlaced (A : RustAlloc) (s0 : State) (stk n : Nat)
     (outCap outPtr inCap inPtr buf : BitVec 64)
     (out inp : List (BitVec 8))
     (ps : List (BitVec 64 × List (BitVec 8)))
@@ -175,20 +178,20 @@ inductive M5ErrEntryPlaced where
   | bf4
 
 /-- `main`-relative byte offset of an `M5ErrEntryPlaced`. -/
-def M5ErrEntryPlaced.pcOff : M5ErrEntryPlaced → Nat
+@[expose] def M5ErrEntryPlaced.pcOff : M5ErrEntryPlaced → Nat
   | .bcc .. => 0xbcc
   | .bdc .. => 0xbdc
   | .bf4 => 0xbf4
 
 /-- Entry register facts for `M5ErrEntryPlaced` (`x22 = ptr`, `x23 = cap` at `0xbcc`;
 `x22 = ptr`, `x23 = cap`, `cap ≠ 0` at `0xbdc`). -/
-def M5ErrEntryPlaced.regs : M5ErrEntryPlaced → State → Prop
+@[expose] def M5ErrEntryPlaced.regs : M5ErrEntryPlaced → State → Prop
   | .bcc cap ptr _, s => s.readReg64 (.gpr 22#5) = ptr ∧ s.readReg64 (.gpr 23#5) = cap
   | .bdc cap ptr _, s => s.readReg64 (.gpr 22#5) = ptr ∧ s.readReg64 (.gpr 23#5) = cap ∧ cap ≠ 0#64
   | .bf4, _ => True
 
 /-- Heap ownership of the temporary path `String` (if any) at `M5ErrEntryPlaced`. -/
-def M5ErrEntryPlaced.heap (A : RustAlloc) : M5ErrEntryPlaced → SepProp
+@[expose] def M5ErrEntryPlaced.heap (A : RustAlloc) : M5ErrEntryPlaced → SepProp
   | .bcc cap ptr bs => ownedBytes A cap ptr (BitVec.ofNat 64 bs.length) bs
   | .bdc cap ptr bs => ownedBytes A cap ptr (BitVec.ofNat 64 bs.length) bs
   | .bf4 => emp
@@ -196,7 +199,7 @@ def M5ErrEntryPlaced.heap (A : RustAlloc) : M5ErrEntryPlaced → SepProp
 /-- Owned pieces inside `locals fsp` at `M5LoopErrPlaced` (`k < 8`):
 `m6CellsPlaced` plus loop spills `0x20` (`curCap`), `0x28` (`curPtr`), `0x30` (`fsp + 0x1c8`),
 `0x38` (`k + 1`), and remaining `Dir`s `k + 1 .. 7` at `0x1c8 + 0x28 * (k + 1) .. 0x308`. -/
-def m5ErrCellsPlaced (A : RustAlloc) (fsp outCap outPtr outLen inCap inPtr curCap curPtr : BitVec 64)
+@[expose] def m5ErrCellsPlaced (A : RustAlloc) (fsp outCap outPtr outLen inCap inPtr curCap curPtr : BitVec 64)
     (g : StoresGhost) (k : Nat) : List (Nat × Nat × SepProp) :=
   [cell fsp 0x0 outLen,
    cell fsp 0x8 outCap,
@@ -265,7 +268,7 @@ theorem locals_m5ErrCellsPlaced_forget_to_m6CellsPlaced
   exact Entails.trans h1 (Entails.trans h2 (Entails.trans h3 (Entails.trans h4 (Entails.of_eq h5))))
 
 /-- Full separation-logic memory at `M5LoopErrPlaced` (`M+0xbcc` / `M+0xbdc` / `M+0xbf4`). -/
-def m5ErrMemPlaced (A : RustAlloc) (s0 : State) (stk n : Nat)
+@[expose] def m5ErrMemPlaced (A : RustAlloc) (s0 : State) (stk n : Nat)
     (outCap outPtr inCap inPtr buf curCap curPtr : BitVec 64)
     (out inp : List (BitVec 8))
     (ps : List (BitVec 64 × List (BitVec 8)))

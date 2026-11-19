@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Specifications.LibsignalTripleRatchetProst
+public import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst
 public import LibsignalBinary.Specifications.LibsignalSignalMessage
 public import Mathlib.Tactic.ToAdditive
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
@@ -23,7 +23,7 @@ Proves `decodeVarint_eq_varintSlow`, showing that the hook-level LEB128 decoder 
 `decodeVarint` (returning `(val, remainingBytes)`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.VarintBridge
 

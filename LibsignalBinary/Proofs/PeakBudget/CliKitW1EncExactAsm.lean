@@ -9,11 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliKitW1EncExactSplit
+import LibsignalBinary.Proofs.PeakBudget.CliKitW1EncExactSplit
 import LibsignalBinary.Proofs.PeakBudget.CliKitW1EncExactC
 import LibsignalBinary.Proofs.PeakBudget.CliKitW1EncExactG
 import LibsignalBinary.Proofs.PeakBudget.CliKitW1EncExactGr
 import LibsignalBinary.Proofs.PeakBudget.CliKitW1EncExactL
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.PeakBudget.CliKitW1W2ExactSlotSpecR2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
 
 /-!
 # Guarded-Tight `W1` (`encrypt` `@109`) Exact Slot Assembly
@@ -25,7 +37,7 @@ Assembles `ckx2_w1EncExact_phaseCredit`, `ckx2_w1EncExact_groupSpec`, and
 `w1x_guard`, `w1xl_lift`, `w1x_creditCore`, and `w1x_gr_groupCore`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -66,20 +78,5 @@ theorem ckx2_w1EncExact_groupSpec [LibsignalPlacement] (W : CliHooks) :
     (CliKitW1EncExactG.w1x_guard W)
     w1xl_lift
     (w1x_gr_groupCore W)
-
-/-- Bundled `SingleSlotFineSpec` for `ckx2_cliEncryptBinaryKitSlotEnvExact`. -/
-def ckx2_w1EncExact_singleSlotFineSpec [LibsignalPlacement] (W : CliHooks)
-    (g : RunCall) (peerV : AddrV) (M : AllocCostModel)
-    (A : RustCliAllocBudget M) (w1R : W1BinarySendParams)
-    (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)
-    (hp : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some (.send peerV))
-    (hc : g.c = .send peerV)
-    (hrep : w1R.repAlloc = A.repAlloc)
-    (hdom : W1BinarySendDom (.send peerV) g.i w1R) :
-    SingleSlotFineSpec (ckx2_cliEncryptBinaryKitSlotEnvExact W A w1R.B w1R.x) :=
-  ckx2_w1EncExact_singleSlotFineSpec_of_stmts W
-    (ckx2_w1EncExact_phaseCredit W)
-    (ckx2_w1EncExact_groupSpec W)
-    g peerV M A w1R hi hp hc hrep hdom
 
 end LibsignalBinary.Proofs.PeakBudget.CliKitW1EncExactAsm

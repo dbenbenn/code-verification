@@ -11,7 +11,7 @@ module
 
 public import LibsignalBinary.Proofs.SpqrV1Sync.ErasureDefs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -64,7 +64,7 @@ theorem polyOf_map_mul (cs : List GF16) (s : GF16) :
     ring
 
 /-- Pure functional model of one `multXdiffAssignTrailingLoop` pass over `a :: cs`. -/
-def xdiffStep (d : GF16) : GF16 → List GF16 → List GF16
+@[expose] def xdiffStep (d : GF16) : GF16 → List GF16 → List GF16
   | a, [] => [a]
   | a, c :: cs => GF16.sub a (GF16.mul c d) :: xdiffStep d c cs
 

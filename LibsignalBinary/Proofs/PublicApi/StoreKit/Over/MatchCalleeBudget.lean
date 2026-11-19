@@ -11,9 +11,9 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.SessionRecordCallees
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.MatchCallee
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.MatchDefsBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.SessionRecordCallees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.MatchCallee
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.MatchDefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1Steps
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -21,6 +21,7 @@ import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `VmPreserved`-Augmented `promote_matching_session` Miss Proofs
@@ -29,7 +30,7 @@ Relocatable `[LibsignalPlacement]` proofs of `SessionRecord::promote_matching_se
 non-matching path (`0` allocations) threading `VmPreserved s0 sf` on Block `50`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

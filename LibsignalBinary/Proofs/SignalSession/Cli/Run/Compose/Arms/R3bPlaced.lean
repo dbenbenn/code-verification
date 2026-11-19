@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Hops -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # `signal_session::run` Arm `R3b`: `Recv` PreKey and Malformed-Prefix Contracts
@@ -21,7 +24,7 @@ Relocatable (`[LibsignalPlacement]`) hop contracts `RunHopRecvBadPlaced`, `RunHo
 `RunHopRecvPPlacedOf` for Arm `R3b` on Block `579`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +42,7 @@ open CryptoVerification.SignalSession.Cli.RunSkeleton
 /-- Relocatable (`[LibsignalPlacement]`) Arm R3b malformed-wire hop contract (`run_hop_recvBad_ok`):
 from `AtDispatchPlaced` (`R+0x214`) on `g.c = .recv peerV` with empty `stdin` or leading byte
 `t ∉ {2, 3}`, branches to `RejectKPlaced`. -/
-def RunHopRecvBadPlaced [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
+@[expose] def RunHopRecvBadPlaced [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (needs : RunNeeds) (resStack : Nat) : Prop :=
   ∀ {g : RunCall} {s0 s : State} {me : MeAtDispatch} {peerV : AddrV}
     {Q Qp : State → SepProp → Prop},
@@ -58,7 +61,7 @@ def RunHopRecvBadPlaced [LibsignalPlacement] (CodeOk : Memory → Prop) (A : Rus
 from `AtDispatchPlaced` (`R+0x214`) on `g.c = .recv peerV` and `g.i.stdin = 3#8 :: rest`, calls
 `PreKeySignalMessage::try_from`, `wrap_decrypt_prekey` via `slots.decryptPrekey`, and
 `PreKeySignalMessage::drop_in_place` to reach `JoinKPlaced` or `RejectKPlaced`. -/
-def RunHopRecvPPlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
+@[expose] def RunHopRecvPPlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (slots : RunSlots) (resStack : Nat) : Prop :=
   ∀ {g : RunCall} {s0 s : State} {me : MeAtDispatch} {peerV : AddrV} {rest : List (BitVec 8)}
     {Q Qp : State → SepProp → Prop},
@@ -83,7 +86,7 @@ def RunHopRecvPPlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : Rus
 from `AtDispatchPlaced` (`R+0x214`) on `g.c = .recv peerV` and `g.i.stdin = 3#8 :: rest`, calls
 `PreKeySignalMessage::try_from`, `wrap_decrypt_prekey`, and `PreKeySignalMessage::drop_in_place` to
 reach `JoinKPlaced` or `RejectKPlaced`. -/
-def RunHopRecvPPlaced [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
+@[expose] def RunHopRecvPPlaced [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (needs : RunNeeds) (resStack : Nat) : Prop :=
   RunHopRecvPPlacedOf CodeOk A H B S (slotsOfPlaced A S needs) resStack
 

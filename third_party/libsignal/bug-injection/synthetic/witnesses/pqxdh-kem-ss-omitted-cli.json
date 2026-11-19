@@ -1,0 +1,19 @@
+{
+  "comment": "Mutant pqxdh-kem-ss-omitted: pqxdh_initiate and pqxdh_accept invoke ML-KEM encapsulate/decapsulate but omit appending the 32-byte KEM shared secret ss to the PQXDH KDF input. Alice initiates and sends a PreKeySignalMessage; an active adversary modifies a byte of kyber_ciphertext on the wire, and Bob still accepts and decrypts the message.",
+  "setup_seed": 23209,
+  "rng_seed": 41,
+  "calls": [
+    {"entry": "init", "who": 0, "b": {"honest_bundle": true}},
+    {"entry": "send", "who": 0, "b": {"utf8": "pqxdh-kem-downgrade"}},
+    {
+      "entry": "recv",
+      "who": 1,
+      "b": {
+        "or_at": {"message_of": 1},
+        "after": {"hex": "42a10c08"},
+        "offset": 4,
+        "mask": "80"
+      }
+    }
+  ]
+}

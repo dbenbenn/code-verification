@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Drop.Decodes
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Instruction Decodes for CLI SPQR V1 Leaf Drop Glue
@@ -19,7 +19,7 @@ Defines symbol names, `fnOff` lemmas, and `spqrDropChainEpochBinCli` instruction
 the seven leaf SPQR V1 `drop_glue` functions in `libsignalSessionCode_tree`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Drop
 
@@ -57,41 +57,6 @@ abbrev _root_.CryptoVerification.Cli.SpqrV1.Drop.dropUnchunkedCt1SentLocal1Name 
 abbrev _root_.CryptoVerification.Cli.SpqrV1.Drop.dropOptProtoUnchunkedCt1SentName : String :=
   "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent>> [local#2]"
 
-@[simp, arm64_norm] theorem _root_.CryptoVerification.Cli.SpqrV1.Drop.dropChainEpochSliceLocal1_fnOff :
-    libsignalSessionCode.fnOff CryptoVerification.Cli.SpqrV1.Drop.dropChainEpochSliceLocal1Name =
-      num% (ls_off% "core::ptr::drop_glue::<[spqr::chain::ChainEpoch]> [local#3]") :=
-  ls_lemma% fnOff "core::ptr::drop_glue::<[spqr::chain::ChainEpoch]> [local#3]"
-
-@[simp, arm64_norm] theorem _root_.CryptoVerification.Cli.SpqrV1.Drop.dropProtoSpqrChain_fnOff :
-    libsignalSessionCode.fnOff CryptoVerification.Cli.SpqrV1.Drop.dropProtoSpqrChainName =
-      num% (ls_off% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::Chain> [local#2]") :=
-  ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::Chain> [local#2]"
-
-@[simp, arm64_norm] theorem _root_.CryptoVerification.Cli.SpqrV1.Drop.dropPolyEncoderLocal1_fnOff :
-    libsignalSessionCode.fnOff CryptoVerification.Cli.SpqrV1.Drop.dropPolyEncoderLocal1Name =
-      num% (ls_off% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#3]") :=
-  ls_lemma% fnOff "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#3]"
-
-@[simp, arm64_norm] theorem _root_.CryptoVerification.Cli.SpqrV1.Drop.dropPolyDecoder_fnOff :
-    libsignalSessionCode.fnOff CryptoVerification.Cli.SpqrV1.Drop.dropPolyDecoderName =
-      num% (ls_off% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyDecoder> [local#2]") :=
-  ls_lemma% fnOff "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyDecoder> [local#2]"
-
-@[simp, arm64_norm] theorem _root_.CryptoVerification.Cli.SpqrV1.Drop.dropOptProtoPolyEncoder_fnOff :
-    libsignalSessionCode.fnOff CryptoVerification.Cli.SpqrV1.Drop.dropOptProtoPolyEncoderName =
-      num% (ls_off% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#2]") :=
-  ls_lemma% fnOff "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#2]"
-
-@[simp, arm64_norm] theorem _root_.CryptoVerification.Cli.SpqrV1.Drop.dropUnchunkedCt1SentLocal1_fnOff :
-    libsignalSessionCode.fnOff CryptoVerification.Cli.SpqrV1.Drop.dropUnchunkedCt1SentLocal1Name =
-      num% (ls_off% "core::ptr::drop_glue::<spqr::v1::unchunked::send_ct::Ct1Sent> [local#3]") :=
-  ls_lemma% fnOff "core::ptr::drop_glue::<spqr::v1::unchunked::send_ct::Ct1Sent> [local#3]"
-
-@[simp, arm64_norm] theorem _root_.CryptoVerification.Cli.SpqrV1.Drop.dropOptProtoUnchunkedCt1Sent_fnOff :
-    libsignalSessionCode.fnOff CryptoVerification.Cli.SpqrV1.Drop.dropOptProtoUnchunkedCt1SentName =
-      num% (ls_off% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent>> [local#2]") :=
-  ls_lemma% fnOff "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent>> [local#2]"
-
 end CryptoVerification.SpqrV1.Drop
 
 namespace CryptoVerification.SpqrV1.Layout.L1
@@ -103,7 +68,5 @@ end CryptoVerification.SpqrV1.Layout.L1
 namespace CryptoVerification.SpqrV1.Drop
 
 open CryptoVerification.SpqrV1.Layout.L1
-
-gen_fn_decodes libsignalSessionCode_tree spqrDropChainEpochBinCli ["core::ptr::drop_glue::<[spqr::chain::ChainEpoch]> [local#3]", "core::ptr::drop_glue::<spqr::proto::pq_ratchet::Chain> [local#2]", "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#3]", "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyDecoder> [local#2]", "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#2]", "core::ptr::drop_glue::<spqr::v1::unchunked::send_ct::Ct1Sent> [local#3]", "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent>> [local#2]"]
 
 end CryptoVerification.SpqrV1.Drop

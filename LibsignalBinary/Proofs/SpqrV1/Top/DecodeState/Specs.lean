@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Repr
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOne
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Fetch
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Repr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOne -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Fetch -- proof-setup: allow-public-import
 
 /-!
 # Binary Verification of `spqr::decode_state` (`0x5349c`) — Relocation & Specifications
@@ -23,7 +23,7 @@ Defines `Relocatable` spatial combinators across `memcpy` and `grow_one`, capaci
 `decodeStateSpecX`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.DecodeState
 
@@ -211,7 +211,7 @@ theorem reloc_append {F1 F2 : BitVec 64 → SepProp} {n1 n2 : Nat}
 
 /-! ### `Relocatable` Instances for `Quads7`, `Quads14`, `Quads28`, and Protobuf Types -/
 
-def relocQuads7 (q : Quads7) :
+@[expose] def relocQuads7 (q : Quads7) :
     Σ' H, Relocatable (fun a => quads7At a q) 56 H :=
   let (w0, w1, w2, w3, w4, w5, w6) := q
   let h1 := reloc_append 16 8#64 (reloc_pointsTo64 w0) (reloc_pointsTo64 w1) rfl rfl
@@ -222,15 +222,15 @@ def relocQuads7 (q : Quads7) :
   let h6 := reloc_append 56 48#64 h5 (reloc_pointsTo64 w6) rfl rfl
   ⟨_, reloc_congr h6 (fun a => by unfold quads7At; dsimp only; ac_rfl)⟩
 
-def relocQuads14 (q : Quads14) :
+@[expose] def relocQuads14 (q : Quads14) :
     Σ' H, Relocatable (fun a => quads14At a q) 112 H :=
   ⟨_, reloc_append 112 56#64 (relocQuads7 q.1).2 (relocQuads7 q.2).2 rfl rfl⟩
 
-def relocQuads28 (q : Quads28) :
+@[expose] def relocQuads28 (q : Quads28) :
     Σ' H, Relocatable (fun a => quads28At a q) 224 H :=
   ⟨_, reloc_append 224 112#64 (relocQuads14 q.1).2 (relocQuads14 q.2).2 rfl rfl⟩
 
-def relocChainEpochPBAt (A : RustAlloc) (ep : ChainEpochPB) :
+@[expose] def relocChainEpochPBAt (A : RustAlloc) (ep : ChainEpochPB) :
     Σ' H, Relocatable (fun a => chainEpochPBAt A a ep) 112 H :=
   let hq : ∀ q : Quads14,
       Relocatable (fun a => quads14At a q ∗ chainEpochPBHeap A q ep) 112
@@ -242,7 +242,7 @@ def relocChainEpochPBAt (A : RustAlloc) (ep : ChainEpochPB) :
       apply Entails.sepExists_elim; intro q
       exact quads14_entails_chainEpochPBAt A a q ep)⟩
 
-def relocArrayAtChainEpochPB (A : RustAlloc) :
+@[expose] def relocArrayAtChainEpochPB (A : RustAlloc) :
     ∀ (xs : List ChainEpochPB),
       Σ' H, Relocatable
         (fun a => arrayAt (fun ep addr => chainEpochPBAt A addr ep) 112 a xs)
@@ -255,7 +255,7 @@ def relocArrayAtChainEpochPB (A : RustAlloc) :
       (reloc_append ((x :: xs).length * 112) 112#64 hx hxs rfl (by simp [Nat.succ_mul, Nat.add_comm]))
       (fun _ => rfl)⟩
 
-def relocOptProtoInnerStateAt (H_inner : V1InnerHeapPred) (A : RustAlloc)
+@[expose] def relocOptProtoInnerStateAt (H_inner : V1InnerHeapPred) (A : RustAlloc)
     (opt : Option V1State.InnerState) :
     Σ' H, Relocatable (fun a => optProtoInnerStateAt H_inner A a opt) 224 H :=
   let hq : ∀ q : Quads28,
@@ -268,32 +268,32 @@ def relocOptProtoInnerStateAt (H_inner : V1InnerHeapPred) (A : RustAlloc)
       apply Entails.sepExists_elim; intro q
       exact quads28_entails_optProtoInnerStateAt H_inner A a q opt)⟩
 
-def relocOptProtoPqRatchetInnerAt (H_inner : V1InnerHeapPred) (A : RustAlloc) :
+@[expose] def relocOptProtoPqRatchetInnerAt (H_inner : V1InnerHeapPred) (A : RustAlloc) :
     ∀ (opt : Option PqRatchetState.Inner),
       Σ' H, Relocatable (fun a => optProtoPqRatchetInnerAt H_inner A a opt) 224 H
   | none =>
     ⟨_, reloc_append 224 8#64 (reloc_pointsTo64 none3Cap) (reloc_memRegion 216 (by decide)) rfl rfl⟩
   | some (.v1 v1) => relocOptProtoInnerStateAt H_inner A v1.innerState
 
-def relocVecHeader (cap ptr len : BitVec 64) :
+@[expose] def relocVecHeader (cap ptr len : BitVec 64) :
     Σ' H, Relocatable (fun a => vecHeader a cap ptr len) 24 H :=
   let h1 := reloc_append 16 8#64 (reloc_pointsTo64 cap) (reloc_pointsTo64 ptr) rfl rfl
   let h2 := reloc_append 24 16#64 h1 (reloc_pointsTo64 len) rfl rfl
   ⟨_, reloc_congr h2 (fun a => by unfold vecHeader; ac_rfl)⟩
 
-def relocVecU8At (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) :
+@[expose] def relocVecU8At (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) :
     Σ' H, Relocatable (fun a => vecU8At A a cap ptr bs) 24 H :=
   let h := reloc_sepConj_const (relocVecHeader cap ptr (BitVec.ofNat 64 bs.length)).2 (vecU8Heap A cap ptr bs)
   ⟨_, reloc_congr h (fun a => (vecU8At_eq_header_heap A a cap ptr bs).symm)⟩
 
-def relocRustBytesVecAt (A : RustAlloc) (bs : List (BitVec 8)) :
+@[expose] def relocRustBytesVecAt (A : RustAlloc) (bs : List (BitVec 8)) :
     Σ' H, Relocatable (fun a => rustBytesVecAt A a bs) 24 H :=
   let h1 : ∀ cap : BitVec 64,
       Σ' H, Relocatable (fun a => ∃∗ ptr : BitVec 64, vecU8At A a cap ptr bs) 24 H :=
     fun cap => ⟨_, reloc_sepExists (fun ptr => (relocVecU8At A cap ptr bs).2)⟩
   ⟨_, reloc_sepExists (fun cap => (h1 cap).2)⟩
 
-def relocVecOf {α : Type} (A : RustAlloc) (stride align : Nat)
+@[expose] def relocVecOf {α : Type} (A : RustAlloc) (stride align : Nat)
     (elemAt : α → BitVec 64 → SepProp) (xs : List α) :
     Σ' H, Relocatable (fun a => vecOf A stride align elemAt a xs) 24 H :=
   let h0 : ∀ cap ptr : BitVec 64,
@@ -306,7 +306,7 @@ def relocVecOf {α : Type} (A : RustAlloc) (stride align : Nat)
     fun cap => ⟨_, reloc_sepExists (fun ptr => (h0 cap ptr).2)⟩
   ⟨_, reloc_sepExists (fun cap => (h1 cap).2)⟩
 
-def relocOptChainParamsPBAt :
+@[expose] def relocOptChainParamsPBAt :
     ∀ (opt : Option ChainParamsPB), Σ' H, Relocatable (fun a => optChainParamsPBAt a opt) 12 H
   | none =>
     ⟨_, reloc_append 12 4#64 (reloc_pointsTo32 0#32) (reloc_memRegion 8 (by decide)) rfl rfl⟩
@@ -318,7 +318,7 @@ def relocOptChainParamsPBAt :
       have ha4 : (a + 4#64) + 4#64 = a + 8#64 := by bv_omega
       rw [ha4]; ac_rfl)⟩
 
-def relocVersionNegotiationPBAt (A : RustAlloc) (v : VersionNegotiationPB) :
+@[expose] def relocVersionNegotiationPBAt (A : RustAlloc) (v : VersionNegotiationPB) :
     Σ' H, Relocatable (fun a => versionNegotiationPBAt A a v) 48 H :=
   let h1 := reloc_append 36 24#64 (relocRustBytesVecAt A v.authKey).2 (relocOptChainParamsPBAt v.chainParams).2 rfl rfl
   let h2 := reloc_append 40 36#64 h1 (reloc_pointsTo32 v.direction) rfl rfl
@@ -326,14 +326,14 @@ def relocVersionNegotiationPBAt (A : RustAlloc) (v : VersionNegotiationPB) :
   let h4 := reloc_append 48 44#64 h3 (reloc_memRegion 4 (by decide)) rfl rfl
   ⟨_, reloc_congr h4 (fun a => by unfold versionNegotiationPBAt; ac_rfl)⟩
 
-def relocOptVersionNegotiationPBAt (A : RustAlloc) :
+@[expose] def relocOptVersionNegotiationPBAt (A : RustAlloc) :
     ∀ (opt : Option VersionNegotiationPB),
       Σ' H, Relocatable (fun a => optVersionNegotiationPBAt A a opt) 48 H
   | none =>
     ⟨_, reloc_append 48 8#64 (reloc_pointsTo64 noneCap) (reloc_memRegion 40 (by decide)) rfl rfl⟩
   | some v => relocVersionNegotiationPBAt A v
 
-def relocChainPBAt (A : RustAlloc) (c : ChainPB) :
+@[expose] def relocChainPBAt (A : RustAlloc) (c : ChainPB) :
     Σ' H, Relocatable (fun a => chainPBAt A a c) 80 H :=
   let h1 := reloc_append 48 24#64
               (relocVecOf A chainEpochPBSize 8 (fun ep addr => chainEpochPBAt A addr ep) c.links).2
@@ -344,13 +344,13 @@ def relocChainPBAt (A : RustAlloc) (c : ChainPB) :
   let h5 := reloc_append 80 76#64 h4 (reloc_pointsTo32 c.direction) rfl rfl
   ⟨_, reloc_congr h5 (fun a => by unfold chainPBAt chainLinksVecAt; ac_rfl)⟩
 
-def relocOptChainPBAt (A : RustAlloc) :
+@[expose] def relocOptChainPBAt (A : RustAlloc) :
     ∀ (opt : Option ChainPB), Σ' H, Relocatable (fun a => optChainPBAt A a opt) 80 H
   | none =>
     ⟨_, reloc_append 80 8#64 (reloc_pointsTo64 noneCap) (reloc_memRegion 72 (by decide)) rfl rfl⟩
   | some c => relocChainPBAt A c
 
-def relocProtoPqRatchetStateAt (H_inner : V1InnerHeapPred) (A : RustAlloc) (st : PqRatchetState) :
+@[expose] def relocProtoPqRatchetStateAt (H_inner : V1InnerHeapPred) (A : RustAlloc) (st : PqRatchetState) :
     Σ' H, Relocatable (fun a => protoPqRatchetStateAt H_inner A a st) 352 H :=
   let h1 := reloc_append 128 48#64 (relocOptVersionNegotiationPBAt A st.versionNegotiation).2
               (relocOptChainPBAt A st.chain).2 rfl rfl
@@ -360,14 +360,14 @@ def relocProtoPqRatchetStateAt (H_inner : V1InnerHeapPred) (A : RustAlloc) (st :
 /-! ### `16 + 336`B Split of `protoPqRatchetStateAt` (`0x53b28..0x53b54`) -/
 
 /-- The 32-byte tail (`+16..+48`) of `VersionNegotiationPB`. -/
-def versionNegotiationPBTailAt (a16 : BitVec 64) (v : VersionNegotiationPB) : SepProp :=
+@[expose] def versionNegotiationPBTailAt (a16 : BitVec 64) (v : VersionNegotiationPB) : SepProp :=
   (a16 ↦₆₄ BitVec.ofNat 64 v.authKey.length) ∗
     optChainParamsPBAt (a16 + 8#64) v.chainParams ∗
     ((a16 + 20#64) ↦₃₂ v.direction) ∗
     ((a16 + 24#64) ↦₃₂ v.minVersion) ∗
     memRegion (a16 + 28#64) 4
 
-def relocVersionNegotiationPBTailAt (v : VersionNegotiationPB) :
+@[expose] def relocVersionNegotiationPBTailAt (v : VersionNegotiationPB) :
     Σ' H, Relocatable (fun a16 => versionNegotiationPBTailAt a16 v) 32 H :=
   let h1 := reloc_append 20 8#64 (reloc_pointsTo64 (BitVec.ofNat 64 v.authKey.length))
               (relocOptChainParamsPBAt v.chainParams).2 rfl rfl
@@ -377,12 +377,12 @@ def relocVersionNegotiationPBTailAt (v : VersionNegotiationPB) :
   ⟨_, reloc_congr h4 (fun a16 => by unfold versionNegotiationPBTailAt; ac_rfl)⟩
 
 /-- The 32-byte tail (`+16..+48`) of `Option<VersionNegotiationPB>` given its first two words `w0, w1`. -/
-def optVersionNegotiationPBTailAt (A : RustAlloc) (w0 w1 : BitVec 64) (a16 : BitVec 64) :
+@[expose] def optVersionNegotiationPBTailAt (A : RustAlloc) (w0 w1 : BitVec 64) (a16 : BitVec 64) :
     Option VersionNegotiationPB → SepProp
   | none => ⌜w0 = noneCap⌝ ∗ memRegion a16 32
   | some v => versionNegotiationPBTailAt a16 v ∗ vecU8Heap A w0 w1 v.authKey
 
-def relocOptVersionNegotiationPBTailAt (A : RustAlloc) (w0 w1 : BitVec 64) :
+@[expose] def relocOptVersionNegotiationPBTailAt (A : RustAlloc) (w0 w1 : BitVec 64) :
     ∀ (opt : Option VersionNegotiationPB),
       Σ' H, Relocatable (fun a16 => optVersionNegotiationPBTailAt A w0 w1 a16 opt) 32 H
   | none =>
@@ -391,13 +391,13 @@ def relocOptVersionNegotiationPBTailAt (A : RustAlloc) (w0 w1 : BitVec 64) :
     ⟨_, reloc_sepConj_const (relocVersionNegotiationPBTailAt v).2 (vecU8Heap A w0 w1 v.authKey)⟩
 
 /-- The 336-byte tail (`+16..+352`) of `PqRatchetState` given its first two words `w0, w1`. -/
-def protoPqRatchetStateTailAt (H_inner : V1InnerHeapPred) (A : RustAlloc)
+@[expose] def protoPqRatchetStateTailAt (H_inner : V1InnerHeapPred) (A : RustAlloc)
     (w0 w1 : BitVec 64) (a16 : BitVec 64) (st : PqRatchetState) : SepProp :=
   optVersionNegotiationPBTailAt A w0 w1 a16 st.versionNegotiation ∗
     optChainPBAt A (a16 + 32#64) st.chain ∗
     optProtoPqRatchetInnerAt H_inner A (a16 + 112#64) st.inner
 
-def relocProtoPqRatchetStateTailAt (H_inner : V1InnerHeapPred) (A : RustAlloc)
+@[expose] def relocProtoPqRatchetStateTailAt (H_inner : V1InnerHeapPred) (A : RustAlloc)
     (w0 w1 : BitVec 64) (st : PqRatchetState) :
     Σ' H, Relocatable (fun a16 => protoPqRatchetStateTailAt H_inner A w0 w1 a16 st) 336 H :=
   let h1 := reloc_append 112 32#64
@@ -574,7 +574,7 @@ theorem head16_tail336_entails_protoPqRatchetStateAt (H_inner : V1InnerHeapPred)
 /-! ## 2. `CapOk` Variants for `prost::encoding::bytes::merge` and `grow_one` -/
 
 /-- `Vec<u8>` at `v` whose capacity satisfies `BytesMergeCapOk cap remLen`. -/
-def vecU8CapOkAt (A : RustAlloc) (v : BitVec 64) (remLen : Nat) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8CapOkAt (A : RustAlloc) (v : BitVec 64) (remLen : Nat) (bs : List (BitVec 8)) : SepProp :=
   ∃∗ cap : BitVec 64, ∃∗ ptr : BitVec 64, ⌜BytesMergeCapOk cap remLen⌝ ∗ vecU8At A v cap ptr bs
 
 theorem vecU8CapOkAt_mono {A : RustAlloc} {v : BitVec 64} {rem1 rem2 : Nat} {bs : List (BitVec 8)}
@@ -609,7 +609,7 @@ theorem vecU8CapOkAt_default_init (A : RustAlloc) (a : BitVec 64) (remLen : Nat)
 
 /-- `EpochDirectionPB` at `a` (`56` bytes) whose `next` and `prev` `Vec<u8>` capacities satisfy
     `BytesMergeCapOk _ remLen`. -/
-def epochDirectionPBCapOkAt (A : RustAlloc) (a : BitVec 64) (remLen : Nat)
+@[expose] def epochDirectionPBCapOkAt (A : RustAlloc) (a : BitVec 64) (remLen : Nat)
     (d : EpochDirectionPB) : SepProp :=
   vecU8CapOkAt A a remLen d.next ∗
     vecU8CapOkAt A (a + 0x18#64) remLen d.prev ∗
@@ -646,7 +646,7 @@ theorem epochDirectionPBCapOkAt_default_init (A : RustAlloc) (a : BitVec 64) (re
   exact sepConj_mono h1 (sepConj_mono_left h2)
 
 /-- `Option EpochDirectionPB` at `a` (`56` bytes) with `CapOk` on `some d`. -/
-def optEpochDirectionPBCapOkAt (A : RustAlloc) (a : BitVec 64) (remLen : Nat) :
+@[expose] def optEpochDirectionPBCapOkAt (A : RustAlloc) (a : BitVec 64) (remLen : Nat) :
     Option EpochDirectionPB → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 48
   | some d => epochDirectionPBCapOkAt A a remLen d
@@ -666,7 +666,7 @@ theorem optEpochDirectionPBCapOkAt_entails_optEpochDirectionPBAt (A : RustAlloc)
   | some d => exact epochDirectionPBCapOkAt_entails_epochDirectionPBAt A a remLen d
 
 /-- `ChainEpochPB` at `a` (`112` bytes) with `CapOk` on `send` and `recv`. -/
-def chainEpochPBCapOkAt (A : RustAlloc) (a : BitVec 64) (remLen : Nat) (ep : ChainEpochPB) : SepProp :=
+@[expose] def chainEpochPBCapOkAt (A : RustAlloc) (a : BitVec 64) (remLen : Nat) (ep : ChainEpochPB) : SepProp :=
   optEpochDirectionPBCapOkAt A a remLen ep.send ∗
     optEpochDirectionPBCapOkAt A (a + 0x38#64) remLen ep.recv
 
@@ -683,7 +683,7 @@ theorem chainEpochPBCapOkAt_entails_chainEpochPBAt (A : RustAlloc) (a : BitVec 6
     (optEpochDirectionPBCapOkAt_entails_optEpochDirectionPBAt A (a + 0x38#64) remLen ep.recv)
 
 /-- `VersionNegotiationPB` at `a` (`48` bytes) with `CapOk` on `authKey`. -/
-def versionNegotiationPBCapOkAt (A : RustAlloc) (a : BitVec 64) (remLen : Nat)
+@[expose] def versionNegotiationPBCapOkAt (A : RustAlloc) (a : BitVec 64) (remLen : Nat)
     (v : VersionNegotiationPB) : SepProp :=
   vecU8CapOkAt A a remLen v.authKey ∗
     optChainParamsPBAt (a + 0x18#64) v.chainParams ∗
@@ -720,7 +720,7 @@ theorem versionNegotiationPBCapOkAt_default_init (A : RustAlloc) (a : BitVec 64)
   exact Entails.of_eq (by ac_rfl)
 
 /-- `Option VersionNegotiationPB` at `a` (`48` bytes) with `CapOk` on `some v`. -/
-def optVersionNegotiationPBCapOkAt (A : RustAlloc) (a : BitVec 64) (remLen : Nat) :
+@[expose] def optVersionNegotiationPBCapOkAt (A : RustAlloc) (a : BitVec 64) (remLen : Nat) :
     Option VersionNegotiationPB → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 40
   | some v => versionNegotiationPBCapOkAt A a remLen v
@@ -741,7 +741,7 @@ theorem optVersionNegotiationPBCapOkAt_entails_optVersionNegotiationPBAt (A : Ru
 
 /-- `ChainPB` at `a` (`80` bytes) with `ch.links.length + remLen ≤ 2 ^ 54` (for `grow_one` on
     `ch.links`) and `CapOk` on `ch.nextRoot` (for `bytes::merge` on `ch.nextRoot`). -/
-def chainPBCapOkAt (A : RustAlloc) (a : BitVec 64) (remLen : Nat) (ch : ChainPB) : SepProp :=
+@[expose] def chainPBCapOkAt (A : RustAlloc) (a : BitVec 64) (remLen : Nat) (ch : ChainPB) : SepProp :=
   ⌜ch.links.length + remLen ≤ 2 ^ 54⌝ ∗
     chainLinksVecAt A a ch.links ∗
     vecU8CapOkAt A (a + 0x18#64) remLen ch.nextRoot ∗
@@ -789,7 +789,7 @@ theorem chainPBCapOkAt_default_init (A : RustAlloc) (a : BitVec 64) (remLen : Na
   exact Entails.of_eq (by ac_rfl)
 
 /-- `Option ChainPB` at `a` (`80` bytes) with `CapOk` on `some ch`. -/
-def optChainPBCapOkAt (A : RustAlloc) (a : BitVec 64) (remLen : Nat) :
+@[expose] def optChainPBCapOkAt (A : RustAlloc) (a : BitVec 64) (remLen : Nat) :
     Option ChainPB → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 72
   | some ch => chainPBCapOkAt A a remLen ch
@@ -809,7 +809,7 @@ theorem optChainPBCapOkAt_entails_optChainPBAt (A : RustAlloc) (a : BitVec 64)
   | some ch => exact chainPBCapOkAt_entails_chainPBAt A a remLen ch
 
 /-- `PqRatchetState` at `a` (`352` bytes) with `CapOk` on `versionNegotiation`, `chain`, and `inner`. -/
-def protoPqRatchetStateCapOkAt (H_inner : V1InnerHeapPred) (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoPqRatchetStateCapOkAt (H_inner : V1InnerHeapPred) (A : RustAlloc) (a : BitVec 64)
     (remLen : Nat) (st : PqRatchetState) : SepProp :=
   optVersionNegotiationPBCapOkAt A a remLen st.versionNegotiation ∗
     optChainPBCapOkAt A (a + 48#64) remLen st.chain ∗
@@ -849,7 +849,7 @@ structure ChainParamsMergeGhost where
 /-- Contract of `prost::encoding::message::merge::<spqr::proto::pq_ratchet::ChainParams, &mut &[u8]>`
 (`0x4dcf8`, 144 instructions). Bound `x.bs.length < 2 ^ 63` is discharged by caller `decode_state`
 from the input slice length invariant (`st.bytes.length < 2 ^ 32` via `DEV-SPQR3`). -/
-def chainParamsMergeSpec (A : RustAlloc) : Spec ChainParamsMergeGhost where
+@[expose] def chainParamsMergeSpec (A : RustAlloc) : Spec ChainParamsMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.msgPtr ∧
@@ -889,7 +889,7 @@ structure EpochDirectionMergeGhost where
 (`0x4f544`, 145 instructions). Bound `x.bs.length < 2 ^ 63` and `epochDirectionPBCapOkAt` are
 discharged by caller `decode_state` from the input slice invariant and `epochDirectionPBCapOkAt_default_init` /
 `epochDirectionPBCapOkAt_mono`. -/
-def epochDirectionMergeSpec (A : RustAlloc) : Spec EpochDirectionMergeGhost where
+@[expose] def epochDirectionMergeSpec (A : RustAlloc) : Spec EpochDirectionMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧ s.readReg64 .x1 = x.msgPtr ∧
       s.readReg64 .x2 = x.bufRef ∧ x.bs.length < 2 ^ 63⌝ ∗
@@ -922,7 +922,7 @@ structure DropOptProtoInnerStateGhost where
   st : Option V1State.InnerState
 
 /-- Contract for `core::ptr::drop_glue::<Option<spqr::proto::pq_ratchet::v1_state::InnerState>>` (`0x4c0d4`). -/
-def dropOptProtoInnerStateSpec (H_inner : V1InnerHeapPred) (A : RustAlloc) (b : BitVec 64) :
+@[expose] def dropOptProtoInnerStateSpec (H_inner : V1InnerHeapPred) (A : RustAlloc) (b : BitVec 64) :
     Spec DropOptProtoInnerStateGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -942,7 +942,7 @@ structure DropProtoPqRatchetStateGhost where
   st : PqRatchetState
 
 /-- Contract for `core::ptr::drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>` (`0x4c460`). -/
-def dropProtoPqRatchetStateSpec (H_inner : V1InnerHeapPred) (A : RustAlloc) (b : BitVec 64) :
+@[expose] def dropProtoPqRatchetStateSpec (H_inner : V1InnerHeapPred) (A : RustAlloc) (b : BitVec 64) :
     Spec DropProtoPqRatchetStateGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -955,139 +955,6 @@ def dropProtoPqRatchetStateSpec (H_inner : V1InnerHeapPred) (A : RustAlloc) (b :
       v1StateJumpTablesAt b ∗
       A.pool ∗ stackAt s0.sp dropOptProtoInnerStateStack
   onPanic := fun _ _ _ => ⌜False⌝
-
-/-- Bundle of callee contracts used by `spqr::decode_state` (`0x5349c`). -/
-structure DecodeStateCalleeContracts (H_inner : V1InnerHeapPred) (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop where
-  b_page_aligned : b &&& 0xfff#64 = 0#64
-  of_drop_inner : ∀ a opt,
-    CryptoVerification.SpqrV1.Drop.optProtoInnerStateAt A a opt ⊢
-      optProtoInnerStateAt H_inner A a opt
-  of_cap_inner : ∀ a remLen opt,
-    OptInnerStatePolyBound remLen opt →
-    Prost.MessageMerge.optProtoInnerStateCapAt A a remLen opt ⊢
-      optProtoInnerStateCapOkAt H_inner A a remLen opt
-  alloc : AllocContracts b A ext
-  decodeErrorFrom : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr decodeErrorFromName) (decodeErrorFromSpec A)
-  decodeErrorPush : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr decodeErrorPushName) (decodeErrorPushSpec A)
-  decodeVarint2 : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr Varint.decodeVarint2Name) (Varint.decodeVarint2Spec A)
-  skipField3 : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr skipField3Name) (skipField3Spec A)
-  chainParamsMerge : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr chainParamsMergeName) (chainParamsMergeSpec A)
-  growOneChainEpoch : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr growOneChainEpochName) (growOneStrideFullSpec A 112 8)
-  dropOptProtoInnerState : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr dropOptProtoInnerStateName)
-    (dropOptProtoInnerStateSpec H_inner A b)
-  dropProtoPqRatchetState : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr dropProtoPqRatchetStateName)
-    (dropProtoPqRatchetStateSpec H_inner A b)
-
-/-- Full callee contracts for `spqr::decode_state` (`0x5349c`), extending
-    `DecodeStateCalleeContracts` with `.inImage img` contracts for callees that invoke
-    `bytes::merge [local#3]` (`bytesMerge3`, `epochDirectionMerge`, `v1StateMerge`). -/
-structure DecodeStateCalleeContractsX (H_inner : V1InnerHeapPred) (img : Obj.Image)
-    (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) : Prop extends
-    DecodeStateCalleeContracts H_inner b A ext where
-  bytesMerge3 : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr bytesMerge3Name) ((bytesMerge3RawSpec A).inImage img)
-  epochDirectionMerge : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr epochDirectionMergeName)
-    ((epochDirectionMergeSpec A).inImage img)
-  v1StateMerge : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr v1StateMergeName)
-    ((Prost.MessageMerge.v1StateMergeSpec A b).inImage img)
-
-/-- Minimal 4K-stack allocator/memcpy projection required by `spqr::decode_state`. -/
-structure DecodeStateAllocContracts (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop where
-  dealloc : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr LibsignalTripleRatchet.deallocName) (rustDeallocSpec A)
-  memcpy : ∀ (hookStack : Nat), allocHookStack ≤ hookStack → hookStack ≤ 2 ^ 64 →
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr LibsignalTripleRatchet.memcpyName)
-      (libcMemcpySpec hookStack)
-  session_memcpy : ∀ (hookStack : Nat), allocHookStack ≤ hookStack → hookStack ≤ 2 ^ 64 →
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr LibsignalTripleRatchet.memcpyName)
-      (sessionMemcpySpec hookStack)
-
-/-- 4K-stack bundle of callee contracts used by `spqr::decode_state`. -/
-structure DecodeStateCalleeContracts4K (H_inner : V1InnerHeapPred) (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop where
-  b_page_aligned : b &&& 0xfff#64 = 0#64
-  of_drop_inner : ∀ a opt,
-    CryptoVerification.SpqrV1.Drop.optProtoInnerStateAt A a opt ⊢
-      optProtoInnerStateAt H_inner A a opt
-  of_cap_inner : ∀ a remLen opt,
-    OptInnerStatePolyBound remLen opt →
-    Prost.MessageMerge.optProtoInnerStateCapAt A a remLen opt ⊢
-      optProtoInnerStateCapOkAt H_inner A a remLen opt
-  alloc : DecodeStateAllocContracts b A ext
-  decodeErrorFrom : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr decodeErrorFromName) (decodeErrorFromSpec A)
-  decodeErrorPush : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr decodeErrorPushName) (decodeErrorPushSpec A)
-  decodeVarint2 : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr Varint.decodeVarint2Name) (Varint.decodeVarint2Spec A)
-  skipField3 : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr skipField3Name) (skipField3Spec A)
-  chainParamsMerge : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr chainParamsMergeName) (chainParamsMergeSpec A)
-  growOneChainEpoch : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr growOneChainEpochName) (growOneStrideFullSpec A 112 8)
-  dropOptProtoInnerState : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr dropOptProtoInnerStateName)
-    (dropOptProtoInnerStateSpec H_inner A b)
-  dropProtoPqRatchetState : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr dropProtoPqRatchetStateName)
-    (dropProtoPqRatchetStateSpec H_inner A b)
-
-/-- Full 4K-stack callee contracts for `spqr::decode_state`, extending
-    `DecodeStateCalleeContracts4K` with `.inImage img` contracts for `bytesMerge3`,
-    `epochDirectionMerge`, and `v1StateMerge`. -/
-structure DecodeStateCalleeContractsX4K (H_inner : V1InnerHeapPred) (img : Obj.Image)
-    (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) : Prop extends
-    DecodeStateCalleeContracts4K H_inner b A ext where
-  bytesMerge3 : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr bytesMerge3Name) ((bytesMerge3RawSpec A).inImage img)
-  epochDirectionMerge : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr epochDirectionMergeName)
-    ((epochDirectionMergeSpec A).inImage img)
-  v1StateMerge : subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr v1StateMergeName)
-    ((Prost.MessageMerge.v1StateMergeSpec A b).inImage img)
-
-theorem DecodeStateCalleeContracts.to4K {H_inner : V1InnerHeapPred} {b : BitVec 64}
-    {A : RustAlloc} {ext : String → Option (State → State)}
-    (hc : DecodeStateCalleeContracts H_inner b A ext) :
-    DecodeStateCalleeContracts4K H_inner b A ext :=
-  { b_page_aligned := hc.b_page_aligned
-    of_drop_inner := hc.of_drop_inner
-    of_cap_inner := hc.of_cap_inner
-    alloc := ⟨hc.alloc.dealloc, fun stk _ _ => hc.alloc.memcpy stk,
-      fun stk _ _ => hc.alloc.session_memcpy stk⟩
-    decodeErrorFrom := hc.decodeErrorFrom
-    decodeErrorPush := hc.decodeErrorPush
-    decodeVarint2 := hc.decodeVarint2
-    skipField3 := hc.skipField3
-    chainParamsMerge := hc.chainParamsMerge
-    growOneChainEpoch := hc.growOneChainEpoch
-    dropOptProtoInnerState := hc.dropOptProtoInnerState
-    dropProtoPqRatchetState := hc.dropProtoPqRatchetState }
-
-theorem DecodeStateCalleeContractsX.to4K {H_inner : V1InnerHeapPred} {img : Obj.Image}
-    {b : BitVec 64} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hc : DecodeStateCalleeContractsX H_inner img b A ext) :
-    DecodeStateCalleeContractsX4K H_inner img b A ext :=
-  { hc.toDecodeStateCalleeContracts.to4K with
-    bytesMerge3 := hc.bytesMerge3
-    epochDirectionMerge := hc.epochDirectionMerge
-    v1StateMerge := hc.v1StateMerge }
 
 /-- Stack budget for `spqr::decode_state` (`0x5349c`):
     own frame `0x570` (`1,392` bytes) plus `v1StateMergeStack` (`14,640` bytes) = `16,032` bytes. -/
@@ -1105,7 +972,7 @@ structure DecodeStateGhost where
       `x0 = x.st.v` (`s: &SerializedState`, i.e. `&Vec<u8>`).
     * Input bound `x.st.bytes.length < 2 ^ 32` is discharged by callers `spqr::send` and `spqr::recv`
       from `st.bytes.length < 2 ^ 32` (`DEV-SPQR3` in `spqrSendSpecT` / `spqrRecvSpecExactKeyBounded`). -/
-def decodeStateSpecX (H_inner : V1InnerHeapPred) (b : BitVec 64) (A : RustAlloc) :
+@[expose] def decodeStateSpecX (H_inner : V1InnerHeapPred) (b : BitVec 64) (A : RustAlloc) :
     Spec DecodeStateGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.outPtr ∧
@@ -1122,14 +989,6 @@ def decodeStateSpecX (H_inner : V1InnerHeapPred) (b : BitVec 64) (A : RustAlloc)
       decodeStateResultAt H_inner A x.outPtr (spqrDecodeState x.st.bytes) ∗
       A.pool ∗ stackAt s0.sp decodeStateStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- `spqr::decode_state` (`0x5349c`) meets `(decodeStateSpecX H_inner img.base A).inImage img` on
-    `tripleRatchetProgAtExt img.base ext`. -/
-def DecodeStateOkX (H_inner : V1InnerHeapPred) (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr decodeStateName)
-    ((decodeStateSpecX H_inner img.base A).inImage img)
 
 end CryptoVerification.SpqrV1.Top.DecodeState
 

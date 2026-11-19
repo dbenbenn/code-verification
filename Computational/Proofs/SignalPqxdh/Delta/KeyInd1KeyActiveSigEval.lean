@@ -11,10 +11,18 @@ module
 
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveShallow -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigEval -- proof-setup: allow-public-import
-public import Computational.Proofs.SpecLemmas.Pqxdh.Security.BoundProofDefs -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigEval
+import Computational.Proofs.SpecLemmas.Pqxdh.Security.BoundProofDefs
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKemBounds
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhGrow -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhStep -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshake
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEval
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEvalEq
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigProg
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCore
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigEval
 
 /-!
 # Evaluation Equivalence for `sigKeyInd1KeyActiveAtomicProg`

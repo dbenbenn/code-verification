@@ -9,13 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrInitialStatePlacedInstBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.IntoPbClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrInitialStatePlacedInstBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.IntoPbClPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopClPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.ContractsPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.TrapBridgePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlaced
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget
 
 /-!
 # Budget-Threaded Placed `PolyEncoder::into_pb`, `PolyDecoder::into_pb`, and `States::into_pb`
@@ -26,7 +38,7 @@ Code-loaded placed budget contracts under `CliGhostAllocHooks M A lim gh` for
 `spqrSendPlacedProg` (Block 427) and `spqrRecvPlacedProg` (Block 329).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -317,24 +329,6 @@ theorem cliSessionMemcpyRegion_at_334 [LibsignalPlacement]
       (cliExternsPlaced_sessionMemcpyRegion_budget_sat mmpl gh W hA))
     (by decide) (by decide) (by decide)
 
-/-- Envelope-parametric `StatesIntoPbPlacedOkExtOfEnv` on `(blkPC_334).rebase`. -/
-theorem cliStatesIntoPb_334_placed_ok_ext_of_env [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {ext : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym)
-    {Env : StatesIntoPbGhost W.C.F → List AllocEvent → Prop}
-    (hEnv : ∀ x evs, StatesIntoPbExactEnv x evs → Env x evs) :
-    StatesIntoPbPlacedOkExtOfEnv M A lim W.C.F Env ext :=
-  states_into_pb_cl_placed_ok_ext_of_env
-    (cliStatesIntoPbAllocPlaced mmpl gh W hA hExt)
-    (lift_375_to_334 mmpl gh W hA hExt)
-    (lift_377_to_334 mmpl gh W hA hExt)
-    (cliSessionMemcpyRegion_at_334 mmpl gh W hA hExt)
-    hEnv
-
 /-- Exact-envelope `StatesIntoPbPlacedOkExtOfEnv` (`StatesIntoPbExactEnv`) on `(blkPC_334).rebase`. -/
 theorem cliStatesIntoPb_334_placed_ok_ext [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
@@ -393,24 +387,6 @@ theorem cliStatesIntoPb_334_ro_cl_x [LibsignalPlacement]
   cliStatesIntoPb_334_ro_cl_x_of_env mmpl gh W hA hExt (fun _ _ h => h)
 
 /-! ### 3. Cross-Block Lifts for `spqr::send::<Coins>` (`427`) and `spqr::recv` (`329`) -/
-
-/-- `.rodata`-free extended-stack contract (`StatesIntoPbPlacedRoFreeOkXOfEnv`) on `(blkPC_334).rebase`. -/
-theorem cliStatesIntoPb_334_placed_ok_x_of_env [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {ext : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym)
-    {Env : StatesIntoPbGhost W.C.F → List AllocEvent → Prop}
-    (hEnv : ∀ x evs, StatesIntoPbExactEnv x evs → Env x evs) :
-    StatesIntoPbPlacedRoFreeOkXOfEnv M A lim W.C.F Env ext :=
-  states_into_pb_cl_placed_ok_x_of_env
-    (cliStatesIntoPbAllocPlaced mmpl gh W hA hExt)
-    (lift_375_to_334 mmpl gh W hA hExt)
-    (lift_377_to_334 mmpl gh W hA hExt)
-    (cliSessionMemcpyRegion_at_334 mmpl gh W hA hExt)
-    hEnv
 
 /-- Tight `StatesIntoPbExactEnv` `.rodata`-free extended-stack contract on `(blkPC_334).rebase`. -/
 theorem cliStatesIntoPb_334_placed_ok_x [LibsignalPlacement]
@@ -490,34 +466,6 @@ theorem cliStatesIntoPb_sendCoins_exact_ok [LibsignalPlacement]
         (statesIntoPbPlacedSpecXOfEnv M A lim W.C.F StatesIntoPbExactEnv)) :=
   cliStatesIntoPb_sendCoins_ok_of_env mmpl gh W hA
     (ext := cliGhostExterns gh (cliExternsPlaced mmpl W)) (fun _ _ => rfl) (fun _ _ h => h)
-
-/-- Envelope-parametric `SpqrV1.Top.Recv.ContractsPlacedBudget.StatesIntoPbPlacedOkXOfEnv` for Block `329`. -/
-theorem cliStatesIntoPb_recv_okX_of_env [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {ext : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym)
-    {Env : StatesIntoPbGhost W.C.F → List AllocEvent → Prop}
-    (hEnv : ∀ x evs, StatesIntoPbExactEnv x evs → Env x evs) :
-    LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlacedBudget.StatesIntoPbPlacedOkXOfEnv
-      M A lim W.C.F Env ext :=
-  statesIntoPbPlacedOkXOfEnv_of_blockProgram
-    (cliStatesIntoPb_334_ro_cl_x_of_env mmpl gh W hA hExt hEnv)
-
-/-- Tight `StatesIntoPbExactEnv` `StatesIntoPbPlacedOkXOfEnv` for `spqr::recv` (`Block 329`),
-    generic in `hExt`. -/
-theorem cliStatesIntoPb_recv_exact_okX [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {ext : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym) :
-    LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlacedBudget.StatesIntoPbPlacedOkXOfEnv
-      M A lim W.C.F StatesIntoPbExactEnv ext :=
-  cliStatesIntoPb_recv_okX_of_env mmpl gh W hA hExt (fun _ _ h => h)
 
 /-- Tight `StatesIntoPbExactEnv` `statesIntoPb_ok` contract on `spqrRecvPlacedProg ext` (`Block 329`). -/
 theorem cliStatesIntoPb_recv_exact_ok [LibsignalPlacement]

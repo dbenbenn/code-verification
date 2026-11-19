@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.CREF.Grow.Defs
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecv.HelpersA
-public import Symbolic.Proofs.SpecLemmas.ProofHubsPure
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.GrowthRecv.HelpersA -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SpecLemmas.ProofHubsPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.SHARED.StateSizePure
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -87,7 +87,7 @@ theorem chain_recvKey_weight_le {hkdf : HkdfFn} {c1 c2 : Chain} {ep : Epoch} {id
         c1.nextRoot.length + 72156
       rw [List.map_set]; omega
 
-def StatePbOooBounded {V1StatePB : Type} (statePb : PqRatchetStatePB V1StatePB) : Prop :=
+@[expose] def StatePbOooBounded {V1StatePB : Type} (statePb : PqRatchetStatePB V1StatePB) : Prop :=
   (∀ c ∈ statePb.chain, ∀ p ∈ c.params, p.maxOooKeysOrDefault.toNat ≤ 2000) ∧
   (∀ v ∈ statePb.versionNegotiation, ∀ p ∈ v.chainParams, p.maxOooKeysOrDefault.toNat ≤ 2000)
 
@@ -171,9 +171,9 @@ theorem mergeRepeatedBytes_encodeRepeatedBytes_length_le (tag : BitVec 32) {wt :
   have h1 := mergeBytes_encodeBytesUncond_length_le tag htag hm
   rw [encodeRepeatedBytes_append, List.length_append]; omega
 
-def encFullW (m : PolynomialEncoder) : Nat :=
+@[expose] def encFullW (m : PolynomialEncoder) : Nat :=
   (Proto.encodeRepeatedBytes 2#32 m.pts).length + (Proto.encodeRepeatedBytes 3#32 m.polys).length
-def decFullW (m : PolynomialDecoder) : Nat :=
+@[expose] def decFullW (m : PolynomialDecoder) : Nat :=
   (Proto.encodeRepeatedBytes 3#32 m.pts).length
 
 theorem polyEnc_mergeField_full_le (d : Nat) (m : PolynomialEncoder) (tag : BitVec 32) (wt : Proto.WireType)
@@ -389,26 +389,26 @@ theorem ucCt2Sent_mergeField_raw_le (d : Nat) (m : V1State.Unchunked.Ct2Sent) (t
     · rcases except_bind_eq_ok h with ⟨bs', hs, h⟩; rcases Prod.mk.inj (Except.ok.inj h) with ⟨rfl, rfl⟩
       have := skipField_length_le hs; omega
 
-def ckKeysUnsampledFullW (m : V1State.Chunked.KeysUnsampled) : Nat := optWeight rawUcKeysUnsampled m.uc
-def ckKeysSampledFullW (m : V1State.Chunked.KeysSampled) : Nat :=
+@[expose] def ckKeysUnsampledFullW (m : V1State.Chunked.KeysUnsampled) : Nat := optWeight rawUcKeysUnsampled m.uc
+@[expose] def ckKeysSampledFullW (m : V1State.Chunked.KeysSampled) : Nat :=
   optWeight rawUcHeaderSent m.uc + optWeight encFullW m.sendingHdr
-def ckHeaderSentFullW (m : V1State.Chunked.HeaderSent) : Nat :=
+@[expose] def ckHeaderSentFullW (m : V1State.Chunked.HeaderSent) : Nat :=
   optWeight rawUcEkSent m.uc + optWeight encFullW m.sendingEk + optWeight decFullW m.receivingCt1
-def ckCt1ReceivedFullW (m : V1State.Chunked.Ct1Received) : Nat :=
+@[expose] def ckCt1ReceivedFullW (m : V1State.Chunked.Ct1Received) : Nat :=
   optWeight rawUcEkSentCt1Received m.uc + optWeight encFullW m.sendingEk
-def ckEkSentCt1ReceivedFullW (m : V1State.Chunked.EkSentCt1Received) : Nat :=
+@[expose] def ckEkSentCt1ReceivedFullW (m : V1State.Chunked.EkSentCt1Received) : Nat :=
   optWeight rawUcEkSentCt1Received m.uc + optWeight decFullW m.receivingCt2
-def ckNoHeaderReceivedFullW (m : V1State.Chunked.NoHeaderReceived) : Nat :=
+@[expose] def ckNoHeaderReceivedFullW (m : V1State.Chunked.NoHeaderReceived) : Nat :=
   optWeight rawUcNoHeaderReceived m.uc + optWeight decFullW m.receivingHdr
-def ckHeaderReceivedFullW (m : V1State.Chunked.HeaderReceived) : Nat :=
+@[expose] def ckHeaderReceivedFullW (m : V1State.Chunked.HeaderReceived) : Nat :=
   optWeight rawUcHeaderReceived m.uc + optWeight decFullW m.receivingEk
-def ckCt1SampledFullW (m : V1State.Chunked.Ct1Sampled) : Nat :=
+@[expose] def ckCt1SampledFullW (m : V1State.Chunked.Ct1Sampled) : Nat :=
   optWeight rawUcCt1Sent m.uc + optWeight encFullW m.sendingCt1 + optWeight decFullW m.receivingEk
-def ckEkReceivedCt1SampledFullW (m : V1State.Chunked.EkReceivedCt1Sampled) : Nat :=
+@[expose] def ckEkReceivedCt1SampledFullW (m : V1State.Chunked.EkReceivedCt1Sampled) : Nat :=
   optWeight rawUcCt1SentEkReceived m.uc + optWeight encFullW m.sendingCt1
-def ckCt1AcknowledgedFullW (m : V1State.Chunked.Ct1Acknowledged) : Nat :=
+@[expose] def ckCt1AcknowledgedFullW (m : V1State.Chunked.Ct1Acknowledged) : Nat :=
   optWeight rawUcCt1Sent m.uc + optWeight decFullW m.receivingEk
-def ckCt2SampledFullW (m : V1State.Chunked.Ct2Sampled) : Nat :=
+@[expose] def ckCt2SampledFullW (m : V1State.Chunked.Ct2Sampled) : Nat :=
   optWeight rawUcCt2Sent m.uc + optWeight encFullW m.sendingCt2
 
 theorem ckKeysUnsampled_mergeField_full_le (d : Nat) (m : V1State.Chunked.KeysUnsampled) (tag : BitVec 32)
@@ -580,7 +580,7 @@ theorem ckCt2Sampled_mergeField_full_le (d : Nat) (m : V1State.Chunked.Ct2Sample
     · rcases except_bind_eq_ok h with ⟨bs', hs, h⟩; rcases Prod.mk.inj (Except.ok.inj h) with ⟨rfl, rfl⟩
       have := skipField_length_le hs; omega
 
-def innerStateFullW : Option V1State.InnerState → Nat
+@[expose] def innerStateFullW : Option V1State.InnerState → Nat
   | none => 0
   | some (.keysUnsampled v) => ckKeysUnsampledFullW v
   | some (.keysSampled v) => ckKeysSampledFullW v
@@ -594,7 +594,7 @@ def innerStateFullW : Option V1State.InnerState → Nat
   | some (.ct1Acknowledged v) => ckCt1AcknowledgedFullW v
   | some (.ct2Sampled v) => ckCt2SampledFullW v
 
-def v1FullWeight (m : V1State) : Nat := innerStateFullW m.innerState
+@[expose] def v1FullWeight (m : V1State) : Nat := innerStateFullW m.innerState
 
 private theorem ite_ok_cases {ε α : Type} {c : Prop} [Decidable c] {t e : Except ε α} {x : α}
     (h : (if c then t else e) = .ok x) : t = .ok x ∨ e = .ok x := by
@@ -692,11 +692,11 @@ theorem v1State_mergeField_full_le (d : Nat) (m : V1State) (tag : BitVec 32)
     rcases Prod.mk.inj (Except.ok.inj h) with ⟨rfl, rfl⟩
     have := skipField_length_le hs; dsimp only [v1FullWeight]; omega
 
-def pqInnerFullW : Option PqRatchetState.Inner → Nat
+@[expose] def pqInnerFullW : Option PqRatchetState.Inner → Nat
   | none => 0
   | some (.v1 v) => v1FullWeight v
 
-def stateFullWeight (m : PqRatchetState) : Nat :=
+@[expose] def stateFullWeight (m : PqRatchetState) : Nat :=
   optVnWeight m.versionNegotiation + optChainWeight m.chain + pqInnerFullW m.inner
 
 theorem pqRatchetState_mergeField_full_le (d : Nat) (m : PqRatchetState) (tag : BitVec 32)

@@ -9,16 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVecBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlacedBudget
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlacedBudget -- proof-setup: allow-public-import
 public meta import Lean -- shake: keep
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux -- shake: keep
+public meta import Lean.Elab.Tactic
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux -- shake: keep -- proof-setup: allow-public-import
+public meta import ProofLib
+public meta import ProofLib.GenPlacedFetches
+public meta import ProofLib.SepLogic.WP
 public meta import ProofLib.SepLogic.WP.ControlTactics -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOk
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOkBudget
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVecBudget
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlaced
 
@@ -29,7 +36,7 @@ Intermediate allocation-event envelopes (`RecvCt2PostDecapsEnv`, `RecvCt2PostHma
 `RecvCt2PostMacCompareEnv`) and relocatable budget framing helpers for Block `350`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -43,11 +50,11 @@ open CryptoGames.HMAC (ShaState)
 open CryptoGames.LibsignalSession (Crypto ShaCompress)
 open CryptoVerification (
   IsLsBlockProg LibsignalPlacement blkPC_264 blkPC_341 blkPC_379 blkPC_419
-  blkPl_264 blkPl_341 blkPl_379 blkPl_419 libsignalMutatedBlocks lsProg_350
+  blkPl_264 blkPl_341 blkPl_350 blkPl_379 blkPl_419 libsignalMutatedBlocks lsProg_350
   ls_subroutine_ok_of_block lsmpl lsρ subroutine_ok_withLsCodeLoaded_of_plain
 )
 open CryptoVerification.RustHeap (allocHookStack)
-open CryptoVerification.LibsignalSpqrV1 (MlKem mlkemDecapsSpec spqrHkdfWith)
+open CryptoVerification.LibsignalSpqrV1 (MlKem MlkemDecapsCall mlkemDecapsSpec spqrHkdfWith)
 open CryptoVerification.LibsignalTripleRatchet (
   HkdfPlacedHooks LibsignalCodeRoLoaded extHookStack keys_ls_subroutine_ok_of_block_cro
   sessionMemcpyRegionSpec sessionShimSpec
@@ -74,10 +81,10 @@ open CryptoVerification.SpqrV1.States.Leaves (
 open CryptoVerification.SpqrV1.States.RecvCt2Chunk (
   PolyDecodedMessageCall RecvCt2ChunkGhost SplitBytes recvCt2RoPlacedAt
   spqrAssertFailedU64Sym spqrLibcruxHmacSym' spqrMlkemDecapsSym spqrPanicBoundsCheckSym
-  spqrRustDeallocSym' spqrSliceIndexFailSym spqrUnwrapFailedSym stackAt_recvCt2ChunkExt_eq_X
+  spqrRustDeallocSym' spqrSliceIndexFailSym spqrUnwrapFailedSym
 )
 open LibsignalBinary.Heap (
-  AllocCostModel AllocEvent BudgetLimits RustCliAllocBudget allocMemcpyVmSpec
+  AllocCostModel AllocEvent BudgetLimits FitsEnv RustCliAllocBudget allocMemcpyVmSpec
   rustCliAllocBudgetSpec rustCliAllocNoOomSpec rustCliDeallocBudgetSpec
   rustCliReallocBudgetSpec subroutine_ok_allocNoOom_of_budget
 )
@@ -90,7 +97,11 @@ open LibsignalBinary.Heap.IfaceBudgetLemmas (
   subroutine_ok_rustCliDeallocBudget_externWithStack subroutine_ok_rustCliDeallocBudget_withStack
 )
 open LibsignalBinary.Heap.RustStdAllocBudgetBridge (rustAllocShimVmSpec)
-open LibsignalBinary.Heap.SpecBudget (libcruxHmacBudgetSpec withVmPreserved)
+open LibsignalBinary.Heap.SpecBudget (LibcruxHmacEnv libcruxHmacBudgetSpec withVmPreserved)
+open LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase (mlkemDecapsAtSpec)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (
+  extract_withLsRet intro_withLsRet satisfies_withLsRet_of_blockPlacement_base_add withLsRet
+)
 open LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget (
   sliceConcat3Spec sliceConcat3SpecXA slice_concat_3_placed_ok slice_concat_3_placed_ok_xa
 )
@@ -171,6 +182,13 @@ alias recvCt2ChunkPlacedSpec := DefsPlacedBudget.recvCt2ChunkPlacedSpec
 alias RecvCt2ChunkPlacedOkXOfPrePostEnv := DefsPlacedBudget.RecvCt2ChunkPlacedOkXOfPrePostEnv
 alias RecvCt2ChunkPlacedOkXOfEnv := DefsPlacedBudget.RecvCt2ChunkPlacedOkXOfEnv
 alias RecvCt2ChunkPlacedOkX := DefsPlacedBudget.RecvCt2ChunkPlacedOkX
+alias recvCt2ChunkPlacedStack := DefsPlacedBudget.recvCt2ChunkPlacedStack
+alias stackAt_recvCt2ChunkPlaced_eq_X := DefsPlacedBudget.stackAt_recvCt2ChunkPlaced_eq_X
+alias stackAt_decaps36864_eq_extHook := DefsPlacedBudget.stackAt_decaps36864_eq_extHook
+alias stackAt_decaps36864_eq_19808_672_extHook :=
+  DefsPlacedBudget.stackAt_decaps36864_eq_19808_672_extHook
+alias stackAt_decaps36864_eq_19808_672_extHook' :=
+  DefsPlacedBudget.stackAt_decaps36864_eq_19808_672_extHook'
 alias recvCt2ChunkPlacedSpecExtOfPrePostEnv :=
   DefsPlacedBudget.recvCt2ChunkPlacedSpecExtOfPrePostEnv
 alias recvCt2ChunkPlacedSpecExtOfEnv := DefsPlacedBudget.recvCt2ChunkPlacedSpecExtOfEnv
@@ -189,6 +207,8 @@ alias polyDecodedMessagePlacedOfEnv_on := DefsPlacedBudget.polyDecodedMessagePla
 alias polyDecodedMessagePlaced_on := DefsPlacedBudget.polyDecodedMessagePlaced_on
 alias recvCt2ChunkPlacedOfPrePostEnv_on := DefsPlacedBudget.recvCt2ChunkPlacedOfPrePostEnv_on
 alias recvCt2ChunkPlaced_on := DefsPlacedBudget.recvCt2ChunkPlaced_on
+alias recvCt2ChunkPlacedExtOfPrePostEnv_on := DefsPlacedBudget.recvCt2ChunkPlacedExtOfPrePostEnv_on
+alias recvCt2ChunkPlacedExtOfEnv_on := DefsPlacedBudget.recvCt2ChunkPlacedExtOfEnv_on
 alias recvCt2ChunkPlacedExt_on := DefsPlacedBudget.recvCt2ChunkPlacedExt_on
 
 abbrev onPanic_false_entails_recvCt2 := @CommonBudgetAux.onPanic_false_entails_recvCt2
@@ -304,9 +324,9 @@ abbrev recvCt2PlacedPostQp {F : ShaCompress} (K : MlKem)
   fun sf P_f =>
     (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ DefsPlacedBudget.recvCt2ChunkBudgetOnPanic K x s0 sf ∗ R)
 
-/-- Frame the bottom `720` stack bytes `memRegion (s0.sp - 20272#64) 720` out of a terminal
+/-- Frame the bottom `19808` stack bytes `memRegion (s0.sp - 39360#64) 19808` out of a terminal
 relocatable `SepWPp` segment proved against `recvCt2PlacedPostQOfPrePostEnv` (`19552`B) to obtain
-`recvCt2PlacedPostQExtOfPrePostEnv` (`20272`B). -/
+`recvCt2PlacedPostQExtOfPrePostEnv` (`39360`B). -/
 theorem sepWPp_frame_recvCt2_placed_budget_ext [LibsignalPlacement] {prog : Program}
     {K : MlKem} {F : ShaCompress}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -314,22 +334,22 @@ theorem sepWPp_frame_recvCt2_placed_budget_ext [LibsignalPlacement] {prog : Prog
     {x : RecvCt2ChunkGhost F} {st : M.σ} {s0 s : State} {P R : SepProp}
     (h : SepWPp prog (s0.readReg64 .x30) s P
       (recvCt2PlacedPostQOfPrePostEnv K F M A lim PreEnv PostEnv x st s0
-        (memRegion (s0.sp - 20272#64) 720 ∗ R))
+        (memRegion (s0.sp - 39360#64) 19808 ∗ R))
       (recvCt2PlacedPostQp K x s0
-        (memRegion (s0.sp - 20272#64) 720 ∗ R))) :
-    SepWPp prog (s0.readReg64 .x30) s (P ∗ memRegion (s0.sp - 20272#64) 720)
+        (memRegion (s0.sp - 39360#64) 19808 ∗ R))) :
+    SepWPp prog (s0.readReg64 .x30) s (P ∗ memRegion (s0.sp - 39360#64) 19808)
       (recvCt2PlacedPostQExtOfPrePostEnv K F M A lim PreEnv PostEnv x st s0 R)
       (recvCt2PlacedPostQp K x s0 R) := by
   intro R_in hmem hcode
-  have hmem' : s.mem ⊨ P ∗ (memRegion (s0.sp - 20272#64) 720 ∗ R_in) := by
+  have hmem' : s.mem ⊨ P ∗ (memRegion (s0.sp - 39360#64) 19808 ∗ R_in) := by
     simpa only [sepConj_assoc] using hmem
-  obtain ⟨sf, hsteps, hout⟩ := h (memRegion (s0.sp - 20272#64) 720 ∗ R_in) hmem' hcode
+  obtain ⟨sf, hsteps, hout⟩ := h (memRegion (s0.sp - 39360#64) 19808 ∗ R_in) hmem' hcode
   refine ⟨sf, hsteps, ?_⟩
   rcases hout with ⟨hpc, hrun, P_f, hPf_in, ⟨hQ, hsp, hcs⟩⟩ | ⟨hpan, P_f, hPf_in, hQp⟩ | ⟨_, hfalse⟩
-  · refine Or.inl ⟨hpc, hrun, P_f ∗ memRegion (s0.sp - 20272#64) 720, ?_, ?_⟩
+  · refine Or.inl ⟨hpc, hrun, P_f ∗ memRegion (s0.sp - 39360#64) 19808, ?_, ?_⟩
     · simpa only [sepConj_assoc] using hPf_in
     · refine ⟨fun hPf_R => ?_, hsp, hcs⟩
-      have hPf_R' : sf.mem ⊨ P_f ∗ (memRegion (s0.sp - 20272#64) 720 ∗ R) := by
+      have hPf_R' : sf.mem ⊨ P_f ∗ (memRegion (s0.sp - 39360#64) 19808 ∗ R) := by
         simpa only [sepConj_assoc] using hPf_R
       have hpost := hQ hPf_R'
       dsimp only [recvCt2PlacedPostQOfPrePostEnv, DefsPlacedBudget.recvCt2ChunkPlacedSpecOfPrePostEnv,
@@ -339,21 +359,21 @@ theorem sepWPp_frame_recvCt2_placed_budget_ext [LibsignalPlacement] {prog : Prog
       simp only [sepExists_sepConj_right, sepExists_sepConj_left, satisfies_sepExists] at hpost ⊢
       rcases hpost with ⟨evs, hpost⟩
       refine ⟨evs, ?_⟩
-      rw [stackAt_recvCt2ChunkExt_eq_X s0.sp]
+      rw [stackAt_recvCt2ChunkPlaced_eq_X s0.sp]
       exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpost
-  · refine Or.inr (Or.inl ⟨hpan, P_f ∗ memRegion (s0.sp - 20272#64) 720, ?_, ?_⟩)
+  · refine Or.inr (Or.inl ⟨hpan, P_f ∗ memRegion (s0.sp - 39360#64) 19808, ?_, ?_⟩)
     · simpa only [sepConj_assoc] using hPf_in
     · intro hPf_R
-      have hPf_R' : sf.mem ⊨ P_f ∗ (memRegion (s0.sp - 20272#64) 720 ∗ R) := by
+      have hPf_R' : sf.mem ⊨ P_f ∗ (memRegion (s0.sp - 39360#64) 19808 ∗ R) := by
         simpa only [sepConj_assoc] using hPf_R
       have hpan_post := hQp hPf_R'
       dsimp only [recvCt2PlacedPostQp, DefsPlacedBudget.recvCt2ChunkBudgetOnPanic,
         DefsBudget.recvCt2ChunkBudgetOnPanic] at hpan_post ⊢
       have harrange :
           (⌜(x.self.recv_ct2_chunk K x.epoch x.chunk).isPanic = true ∧ s0.trace <+: sf.trace⌝ ∗
-            anyHeap) ∗ (memRegion (s0.sp - 20272#64) 720 ∗ R) =
+            anyHeap) ∗ (memRegion (s0.sp - 39360#64) 19808 ∗ R) =
           (⌜(x.self.recv_ct2_chunk K x.epoch x.chunk).isPanic = true ∧ s0.trace <+: sf.trace⌝ ∗
-            (anyHeap ∗ memRegion (s0.sp - 20272#64) 720)) ∗ R := by sep_ac_rfl
+            (anyHeap ∗ memRegion (s0.sp - 39360#64) 19808)) ∗ R := by sep_ac_rfl
       rw [harrange] at hpan_post
       exact Satisfies.mono
         (sepConj_mono_left (sepConj_mono_right (entails_anyHeap _))) hpan_post
@@ -466,7 +486,7 @@ elab "wpp_call_lscro_recvCt2_budget " hcall:term:max a:term:max hinv:term:max : 
   evalTactic (← `(tactic| intro _R' _hmR'))
   let ghostMVars ← etaExpandGoalProdMVarsWithNames
   evalTactic (← `(tactic| (
-    try dsimp only [withVmPreserved, withStack]
+    try dsimp only [withLsRet, withVmPreserved, withStack]
     wp_unfold_specs
     try dsimp only
     try simp (config := { decide := true }) only [
@@ -485,7 +505,7 @@ elab "wpp_call_lscro_recvCt2_budget " hcall:term:max a:term:max hinv:term:max : 
   setGoals (gPanic :: gErr :: gCont :: rest)
   evalTactic (← `(tactic| (
     wp_focus_close (
-      try dsimp only [withVmPreserved, withStack,
+      try dsimp only [withLsRet, withVmPreserved, withStack,
         DefsPlacedBudget.recvCt2ChunkBudgetOnPanic, DefsBudget.recvCt2ChunkBudgetOnPanic]
       wp_unfold_specs; intro _; first
       | exact CommonBudgetAux.onPanic_budget_entails_recvCt2 (by wp_norm_lhs)
@@ -494,7 +514,7 @@ elab "wpp_call_lscro_recvCt2_budget " hcall:term:max a:term:max hinv:term:max : 
       | exact Entails.pure_left False.elim
       | (repeat rw [sepConj_assoc]; exact Entails.pure_left False.elim)
       | (repeat rw [← sepConj_assoc]; exact Entails.pure_left False.elim))
-    wp_focus_close (try dsimp only [withVmPreserved, withStack]; wp_unfold_specs; exact ⟨fun _ _ => rfl, fun _ => rfl⟩)
+    wp_focus_close (try dsimp only [withLsRet, withVmPreserved, withStack]; wp_unfold_specs; exact ⟨fun _ _ => rfl, fun _ => rfl⟩)
     try clear $hcallCopyId
     intro $sfId:ident $hpcId:ident $hrunId:ident $hspId:ident $hcsId:ident $hFId:ident
   )))
@@ -507,7 +527,7 @@ elab "wpp_call_lscro_recvCt2_budget " hcall:term:max a:term:max hinv:term:max : 
       ty.forEach fun sub => do
         if sub.isConst then
           let nm := sub.constName!
-          if nm != ``Arm64.Spec.mk && nm != ``Arm64.Spec.inImage &&
+          if nm != ``Arm64.Spec.mk &&
               nm != ``withLsCodeRoLoaded &&
               nm != ``CryptoVerification.withLsCodeLoaded then
             let subTy ← inferType sub
@@ -921,32 +941,98 @@ theorem RecvCt2PlacedAlloc.dealloc_lscro [LibsignalPlacement]
         (rustCliDeallocBudgetExternSpecWithStack M A lim extHookStack)) :=
   subroutine_ok_withLsCodeRoLoaded_of_plain hA.dealloc_at_block
 
+/-- Call-site specialization of `mlkemDecapsAtSpec 36864 K` at `(blkPl_350).base + 480#64`
+    with a single leading pure conjunct for `wpp_call_lscro_recvCt2_budget`. -/
+@[expose] def mlkemDecaps36864At350_480Spec [LibsignalPlacement] (K : MlKem) :
+    Spec MlkemDecapsCall where
+  pre := fun x s =>
+    ⌜s.readReg64 .lr = (blkPl_350).base + 480#64 ∧
+      s.readReg64 .x8 = x.ret ∧ s.readReg64 .x0 = x.dkA ∧
+      s.readReg64 .x1 = x.ct1A ∧ s.readReg64 .x2 = x.ct2A⌝ ∗
+      (x.dkA ↦ₛ x.dk.toList) ∗ (x.ct1A ↦ₛ x.ct1.toList) ∗ (x.ct2A ↦ₛ x.ct2.toList) ∗
+      memRegion x.ret 32 ∗ stackAt s.sp 36864
+  post := fun x s0 sf =>
+    ⌜sf.trace = s0.trace⌝ ∗
+      (x.dkA ↦ₛ x.dk.toList) ∗ (x.ct1A ↦ₛ x.ct1.toList) ∗ (x.ct2A ↦ₛ x.ct2.toList) ∗
+      (x.ret ↦ₛ (K.decaps x.dk x.ct1 x.ct2).toList) ∗
+      stackAt s0.sp 36864
+
 theorem mlkem_decaps_placed_lscro [LibsignalPlacement] {K : MlKem}
     {ext : String → Option (State → State)}
     (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K))) :
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K)))) :
     subroutine_ok (lsProg_350 (Rust.withPanics ext)) (lsρ spqrMlkemDecapsSym)
-      (withLsCodeRoLoaded lsmpl (withVmPreserved (mlkemDecapsSpec K))) :=
-  subroutine_ok_withLsCodeRoLoaded_of_plain (spqr_hook_ok_of_mem hdecaps)
+      (withLsCodeRoLoaded lsmpl (withVmPreserved (mlkemDecaps36864At350_480Spec K))) := by
+  have hhook : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
+      (withVmPreserved (mlkemDecaps36864At350_480Spec K)) := by
+    rcases hdecaps with ⟨fn, hfn, hok⟩
+    refine ⟨fn, hfn, fun x R s0 hrun hpre hsp => ?_⟩
+    dsimp only [withVmPreserved, mlkemDecaps36864At350_480Spec] at hpre
+    rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
+    rcases hpre with ⟨⟨hlr, hregs⟩, hmem⟩
+    have hpre0 : s0.mem ⊨ (withVmPreserved (mlkemDecapsAtSpec 36864 K)).pre x s0 ∗ R := by
+      dsimp only [withVmPreserved, mlkemDecapsAtSpec]
+      rw [sepConj_assoc, satisfies_pure_sepConj]
+      exact ⟨hregs, hmem⟩
+    exact hok x R s0 hrun
+      (satisfies_withLsRet_of_blockPlacement_base_add 350 480#64 hlr hpre0) hsp
+  exact subroutine_ok_withLsCodeRoLoaded_of_plain (spqr_hook_ok_of_mem hhook)
+
+private theorem subroutine_ok_withLsRet_libcruxHmacSafeBudget_of_budget [LibsignalPlacement]
+    {prog : Program} {entry : BitVec 64}
+    {F : ShaState → List (BitVec 8) → ShaState}
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    (hhmac : subroutine_ok prog entry (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
+    subroutine_ok prog entry (withLsRet (CommonBudget.libcruxHmacSafeBudgetSpec F M A lim)) := by
+  refine subroutine_ok_outcome_intro fun (x, st) R s0 hpc hrun hpre hsp => ?_
+  obtain ⟨hlr, hpre⟩ := extract_withLsRet hpre
+  dsimp only [CommonBudget.libcruxHmacSafeBudgetSpec] at hpre
+  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
+  rcases hpre with ⟨⟨hx8, hx0, hx1, hx2, hx3, hx4, hx5, hx6, hk_lt, hd_lt, hfit⟩, hmem⟩
+  have hfit_env : FitsEnv M lim st (LibcruxHmacEnv x) :=
+    CommonBudget.fitsEnv_libcruxHmacEnv_of_fitsEvents x hk_lt hd_lt hfit
+  have hpre' : s0.mem ⊨ (withLsRet (libcruxHmacBudgetSpec F M A lim)).pre (x, st) s0 ∗ R := by
+    refine intro_withLsRet hlr ?_
+    dsimp only [libcruxHmacBudgetSpec]
+    rw [sepConj_assoc, satisfies_pure_sepConj]
+    exact ⟨⟨hx8, hx0, hx1, hx2, hx3, hx4, hx5, hx6, hfit_env⟩, hmem⟩
+  refine (hhmac.to_outcome (x, st) R s0 hpc hrun hpre' hsp).mono_outcome fun sf hout => ?_
+  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, hex, hpost⟩ | ⟨hoom, hpost⟩
+  · refine Or.inl ⟨hret, hcc, ?_⟩
+    dsimp only [withLsRet, libcruxHmacBudgetSpec, CommonBudget.libcruxHmacSafeBudgetSpec] at hpost ⊢
+    rw [sepExists_sepConj_left, satisfies_sepExists] at hpost
+    rcases hpost with ⟨evs, hpost⟩
+    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
+    rcases hpost with ⟨⟨_, _, htr, hevs⟩, hmem'⟩
+    unfold LibcruxHmacEnv at hevs
+    simp only [hk_lt, hd_lt, and_self, ↓reduceIte] at hevs
+    rw [hevs] at hmem'
+    exact ⟨htr, hmem'⟩
+  · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
+    dsimp only [withLsRet, libcruxHmacBudgetSpec] at hpost
+    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
+    rcases hpost with ⟨⟨hk_ge | hd_ge, _⟩, _⟩ <;> omega
+  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hpost⟩))
+  · exact Or.inr (Or.inr (Or.inr ⟨hoom, hpost⟩))
 
 theorem libcrux_hmac_placed_lscro [LibsignalPlacement] {F : ShaCompress}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ext : String → Option (State → State)}
     (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym'
-      (libcruxHmacBudgetSpec F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     subroutine_ok (lsProg_350 (Rust.withPanics ext)) (lsρ spqrLibcruxHmacSym')
-      (withLsCodeRoLoaded lsmpl (libcruxHmacBudgetSpec F M A lim)) :=
+      (withLsCodeRoLoaded lsmpl (withLsRet (libcruxHmacBudgetSpec F M A lim))) :=
   subroutine_ok_withLsCodeRoLoaded_of_plain (spqr_hook_ok_of_mem hhmac)
 
 theorem libcrux_hmac_safe_placed_lscro [LibsignalPlacement] {F : ShaCompress}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ext : String → Option (State → State)}
     (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym'
-      (libcruxHmacBudgetSpec F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     subroutine_ok (lsProg_350 (Rust.withPanics ext)) (lsρ spqrLibcruxHmacSym')
-      (withLsCodeRoLoaded lsmpl (CommonBudget.libcruxHmacSafeBudgetSpec F M A lim)) :=
+      (withLsCodeRoLoaded lsmpl (withLsRet (CommonBudget.libcruxHmacSafeBudgetSpec F M A lim))) :=
   subroutine_ok_withLsCodeRoLoaded_of_plain
-    (CommonBudget.subroutine_ok_libcruxHmacSafeBudget_of_budget (spqr_hook_ok_of_mem hhmac))
+    (subroutine_ok_withLsRet_libcruxHmacSafeBudget_of_budget (spqr_hook_ok_of_mem hhmac))
 
 theorem addChunk_placed_lscro [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}

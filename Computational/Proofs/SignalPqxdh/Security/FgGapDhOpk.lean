@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 
 /-!
@@ -19,7 +19,7 @@ Embeds the `GapDH` challenge `(U, V)` as the ephemeral key of initiator slot `sI
 public key of one-time prekey slot `oIdx`, and characterizes the simulator under `gapDhFullImpl`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,7 +57,7 @@ theorem spkBundleFlatIdx_ne_noSpkIdx (S : Setup) (u : Fin S.N_id) (j : Fin S.N_r
   simp only [beq_eq_false_iff_ne, ne_eq]
   omega
 
-noncomputable def fgGenOPKPureOpk (P : Primitives) (targetOpkIdx : ℕ) (S : Setup) (V : Bytes)
+@[expose] def fgGenOPKPureOpk (P : Primitives) (targetOpkIdx : ℕ) (S : Setup) (V : Bytes)
     (u : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk)
     (st : FgKeyIndSimState S) : ProbComp (KeyIndResponse × FgKeyIndSimState S) := do
   if st.base.opkEntries.any (fun (k, _) => k == (u.val, j.val, o.val)) then
@@ -81,7 +81,7 @@ theorem simulateQ_gapDhFullImpl_fgGenOPKGdhOpk (P : Primitives)
   unfold fgGenOPKGdhOpk fgGenOPKPureOpk
   split_ifs <;> simp
 
-noncomputable def fgRunAcceptOPKPureOpk (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def fgRunAcceptOPKPureOpk (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
     (S : Setup) (maxLen : ℕ) (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk)
     (hdr : HandshakeHdr) (st : FgKeyIndSimState S) :
     ProbComp (KeyIndResponse × FgKeyIndSimState S) := do
@@ -214,7 +214,7 @@ theorem simulateQ_gapDhFullImpl_fgRunAcceptOPKGdhOpk (P : Primitives)
                   congr 1; ext drKeyRand
                   cases findHonestPrincipal P (st.base.principals.take S.N_dh) hdr.ikAPk <;> simp
 
-noncomputable def fgKeyIndStepPureOpk (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def fgKeyIndStepPureOpk (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
     (targetIdx targetOpkIdx : ℕ) (S : Setup) (maxLen : ℕ)
     (U V : Bytes) (q : KeyIndQuery S) (st : FgKeyIndSimState S) :
     ProbComp (KeyIndResponse × FgKeyIndSimState S) :=
@@ -239,7 +239,7 @@ theorem simulateQ_gapDhFullImpl_fgKeyIndStepOpk (P : Primitives)
     exact simulateQ_gapDhFullImpl_fgKeyIndStep P ddh false targetIdx (noSpkIdx S) S maxLen U V _ st
 
 /-- Pure `QueryImpl` induced by simulating `fgKeyIndStepOpk` under `gapDhFullImpl P ddh`. -/
-noncomputable def fgKeyIndSimImplOpk (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def fgKeyIndSimImplOpk (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
     (targetIdx targetOpkIdx : ℕ) (S : Setup) (maxLen : ℕ) (U V : Bytes) :
     QueryImpl (keyIndSpec S) (StateT (FgKeyIndSimState S) ProbComp) :=
   fun gq => StateT.mk (fun st =>
@@ -254,7 +254,7 @@ theorem fgKeyIndSimImplOpk_run (P : Primitives) (ddh : Bytes → Bytes → Bytes
   unfold fgKeyIndSimImplOpk
   simp
 
-def pureExtractCdh4FromAdvRoLog (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def pureExtractCdh4FromAdvRoLog (ddh : Bytes → Bytes → Bytes → Bool)
     (maxLen : ℕ) (U V : Bytes) (advRoLog : List Bytes) : Bytes :=
   let cands := (advRoLog.take maxLen).map extractDh4
   match cands.find? (fun z => ddh U V z) with

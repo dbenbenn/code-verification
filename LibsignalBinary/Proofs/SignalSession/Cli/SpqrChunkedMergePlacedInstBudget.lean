@@ -9,19 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrDecodeStatePlacedInstBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrMessageMergeLeavesPlacedInstBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1SampledClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt2SampledClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedEkReceivedCt1SampledClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedEkSentCt1ReceivedClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderReceivedClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderSentClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysUnsampledClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedNoHeaderReceivedClPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrDecodeStatePlacedInstBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrMessageMergeLeavesPlacedInstBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1SampledClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt2SampledClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedEkReceivedCt1SampledClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedEkSentCt1ReceivedClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderReceivedClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderSentClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysUnsampledClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedNoHeaderReceivedClPlacedBudget
 import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB
 import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.BytesMergeCodeSym
@@ -31,6 +31,34 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderClPlaced
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Varint.VarintCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym
+public import GeneratedLean.LibsignalSessionPlacedObj -- proof-setup: allow-public-import
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.TrapBridgePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrDecodeStatePlacedInstBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedEkReceivedCt1SampledBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderReceivedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderSentBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysUnsampledBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedNoHeaderReceivedBudget
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
 
 /-!
 # Budget-Threaded Placed Chunked `MessageMerge` & Closed `decode_state`
@@ -40,7 +68,7 @@ blocks (Blocks 300..310), `V1State::merge` (Block 298), and `spqr::decode_state`
 `CliGhostAllocHooks M A lim gh`, lifted to `spqrSendPlacedProg` and `spqrRecvPlacedProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -455,31 +483,6 @@ theorem cliV1StateMerge_closed_cl [LibsignalPlacement]
     (cliChunkedEkSentCt1ReceivedMerge_309_cl mmpl gh W hA hExt)
     (cliChunkedEkReceivedCt1SampledMerge_310_cl mmpl gh W hA hExt)
 
-/-- Closed own-block `spqr::decode_state` (`Block 325`) contract under explicit 2-placement `hExt`. -/
-theorem cliSpqrDecodeState_closed_cl [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {ext : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym) :
-    subroutine_ok (libsignalSessionLib.blockProgram lsmpl 325 (Rust.withPanics ext))
-      (lsmpl.base 325)
-      (withLsCodeRoLoaded lsmpl (decodeStatePlacedSpecX canonicalV1InnerHeap A lim)) :=
-  cliSpqrDecodeState_of_chunked_cl mmpl gh W hA hExt
-    (cliBytesExact_290_cro mmpl gh W hA hExt)
-    (cliChunkedCt1SampledMerge_300_cl mmpl gh W hA hExt)
-    (cliChunkedCt2SampledMerge_301_cl mmpl gh W hA hExt)
-    (cliChunkedHeaderSentMerge_302_cl mmpl gh W hA hExt)
-    (cliChunkedCt1ReceivedMerge_303_cl mmpl gh W hA hExt)
-    (cliChunkedKeysSampledMerge_304_cl mmpl gh W hA hExt)
-    (cliChunkedKeysUnsampledMerge_305_cl mmpl gh W hA hExt)
-    (cliChunkedHeaderReceivedMerge_306_cl mmpl gh W hA hExt)
-    (cliChunkedCt1AcknowledgedMerge_307_cl mmpl gh W hA hExt)
-    (cliChunkedNoHeaderReceivedMerge_308_cl mmpl gh W hA hExt)
-    (cliChunkedEkSentCt1ReceivedMerge_309_cl mmpl gh W hA hExt)
-    (cliChunkedEkReceivedCt1SampledMerge_310_cl mmpl gh W hA hExt)
-
 /-- Closed `spqrSendPlacedProg ext` `decodeState_ok` contract under explicit 2-placement `hExt`. -/
 theorem cliSpqrSend_decodeState_closed_ok [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
@@ -492,33 +495,6 @@ theorem cliSpqrSend_decodeState_closed_ok [LibsignalPlacement]
       (lsmpl.base 325)
       (withLsCodeRoLoaded lsmpl (spqrDecodeStatePlacedSpec canonicalV1InnerHeap A lim)) :=
   cliSpqrSend_decodeState_of_chunked_ok mmpl gh W hA hExt
-    (cliBytesExact_290_cro mmpl gh W hA hExt)
-    (cliChunkedCt1SampledMerge_300_cl mmpl gh W hA hExt)
-    (cliChunkedCt2SampledMerge_301_cl mmpl gh W hA hExt)
-    (cliChunkedHeaderSentMerge_302_cl mmpl gh W hA hExt)
-    (cliChunkedCt1ReceivedMerge_303_cl mmpl gh W hA hExt)
-    (cliChunkedKeysSampledMerge_304_cl mmpl gh W hA hExt)
-    (cliChunkedKeysUnsampledMerge_305_cl mmpl gh W hA hExt)
-    (cliChunkedHeaderReceivedMerge_306_cl mmpl gh W hA hExt)
-    (cliChunkedCt1AcknowledgedMerge_307_cl mmpl gh W hA hExt)
-    (cliChunkedNoHeaderReceivedMerge_308_cl mmpl gh W hA hExt)
-    (cliChunkedEkSentCt1ReceivedMerge_309_cl mmpl gh W hA hExt)
-    (cliChunkedEkReceivedCt1SampledMerge_310_cl mmpl gh W hA hExt)
-
-/-- Closed `spqrRecvPlacedProg ext` `decodeState_ok` contract under explicit 2-placement `hExt`. -/
-theorem cliSpqrDecodeState_recv_closed_ok [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {ext : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym) :
-    subroutine_ok (spqrRecvPlacedProg ext)
-      (lsmpl.base 325)
-      (withLsCodeRoLoaded lsmpl
-        (LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget.decodeStatePlacedSpecX
-          canonicalV1InnerHeap A lim)) :=
-  cliSpqrDecodeState_recv_of_chunked_ok mmpl gh W hA hExt
     (cliBytesExact_290_cro mmpl gh W hA hExt)
     (cliChunkedCt1SampledMerge_300_cl mmpl gh W hA hExt)
     (cliChunkedCt2SampledMerge_301_cl mmpl gh W hA hExt)

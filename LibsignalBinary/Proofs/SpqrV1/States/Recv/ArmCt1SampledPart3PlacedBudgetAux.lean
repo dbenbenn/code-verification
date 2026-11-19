@@ -11,19 +11,19 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart3Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart3Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1
-import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart3
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch2Placed
@@ -32,6 +32,22 @@ import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch5Placed
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WP.FrameAuto
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledDefs
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.SyscallsMmap
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
 
 /-!
 # `<States>::recv` (Block `332`) — `.ct1Sampled` Arm, Part 3 Aux (`VmPreserved` Steppers)
@@ -40,7 +56,7 @@ import ProofLib.SepLogic.WPp
 `+12144`), message-kind dispatch (`+7052`), and budget-pool-threaded unchanged return paths.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +66,7 @@ open Arm64 ProofLib ProofLib.ProgramReflection
 open scoped CryptoVerification.RustHeap CryptoVerification.LibsignalTripleRatchet
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification (
-  LibsignalPlacement blkPl_332 libsignalSessionCode lsProg_332 lsmpl lsρ
+  LibsignalPlacement blkPl_332 lsProg_332 lsmpl lsρ
 )
 open CryptoVerification.RustHeap (RustAlloc allocHookStack)
 open CryptoVerification.LibsignalTripleRatchet (sessionMemcpySpec)
@@ -91,7 +107,7 @@ set_option linter.unusedSimpArgs false
 
 set_option allowUnsafeReducibility true in
 attribute [local reducible] spqrPolyApi spqrAuthApi
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
   CryptoVerification.blkPC_332
 attribute [local arm64_norm, local wp_norm]
   bv_sub_add_lit BitVec.toNat_zero

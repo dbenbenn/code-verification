@@ -9,12 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochLoopPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochLoopPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochClPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.VersionNegotiationLoop
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochErrClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochPlaced
 
 /-!
 # `spqr::decode_state` (Block `325`): Code-Loaded `ChainEpochPB` Merge Loop
@@ -23,7 +33,7 @@ Code-loaded `[LibsignalPlacement]` proofs of `ChainEpochPB` tag dispatch (`+1036
 merge loop (`+984`), and length-delimited entry (`+600`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

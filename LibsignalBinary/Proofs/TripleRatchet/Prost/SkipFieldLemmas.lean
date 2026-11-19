@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32Merge
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32Merge -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.VarintBridge
+import ProofLib.Sep
 import ProofLib.SepLogic.WPp
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Prost
 
@@ -29,7 +30,6 @@ set_option maxHeartbeats 400000
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
-
 private theorem bv_sub_add_96 (sp v : BitVec 64) :
     sp - 96#64 = sp - (v + 96#64) + v := by bv_lin
 
@@ -42,52 +42,32 @@ private theorem bv_sub_96_add_cancel (sp u w : BitVec 64) :
 theorem memRegion_48_skipSlice (sp : BitVec 64) :
     memRegion (sp - 96#64) 48 =
       memRegion (sp - 96#64) 24 ∗ memRegion (sp - 72#64) 24 := by
-  have s1 := memRegion_split (sp - 96#64) 24 24 (by decide)
-  rw [bv_sub_add_lit sp 96 24] at s1
-  exact s1
+  sep_interval_eq
 
 theorem skipSliceErr_entails_memRegion48 (sp v0 v1 : BitVec 64) :
     ((sp - 96#64) ↦₆₄ v0) ∗ ((sp - 88#64) ↦₆₄ v1) ∗
       memRegion (sp - 80#64) 8 ∗ memRegion (sp - 72#64) 24 ⊢
       memRegion (sp - 96#64) 48 := by
-  have s1 := memRegion_split (sp - 96#64) 8 40 (by decide)
-  rw [bv_sub_add_lit sp 96 8] at s1
-  have s2 := memRegion_split (sp - 88#64) 8 32 (by decide)
-  rw [bv_sub_add_lit sp 88 8] at s2
-  have s3 := memRegion_split (sp - 80#64) 8 24 (by decide)
-  rw [bv_sub_add_lit sp 80 8] at s3
-  rw [s1, s2, s3]
-  exact sepConj_mono (pointsTo64_entails_memRegion8 _ v0)
-    (sepConj_mono (pointsTo64_entails_memRegion8 _ v1) (Entails.refl _))
+  sep_interval
 
 theorem skipSliceOk_entails_memRegion48 (sp v0 v1 v2 : BitVec 64) :
     ((sp - 96#64) ↦₆₄ v0) ∗ ((sp - 88#64) ↦₆₄ v1) ∗
       ((sp - 80#64) ↦₆₄ v2) ∗ memRegion (sp - 72#64) 24 ⊢
       memRegion (sp - 96#64) 48 := by
-  refine Entails.trans ?_ (skipSliceErr_entails_memRegion48 sp v0 v1)
-  exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_left (pointsTo64_entails_memRegion8 _ v2)))
-
+  sep_interval
 
 theorem memRegion_48_split2 (sp : BitVec 64) :
     memRegion (sp - 96#64) 48 =
       (∃∗ v0 : BitVec 64, ∃∗ v1 : BitVec 64,
         ((sp - 96#64) ↦₆₄ v1) ∗ ((sp - 88#64) ↦₆₄ v0)) ∗
         memRegion (sp - 80#64) 32 := by
-  have s1 := memRegion_split (sp - 96#64) 8 40 (by decide)
-  rw [bv_sub_add_lit sp 96 8] at s1
-  have s2 := memRegion_split (sp - 88#64) 8 32 (by decide)
-  rw [bv_sub_add_lit sp 88 8] at s2
-  rw [s1, s2, memRegion_eight (sp - 96#64), memRegion_eight (sp - 88#64)]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  ac_rfl
+  simp only [← sepExists_sepConj_left, ← sepExists_sepConj_right]
+  sep_interval_eq
 
 theorem pointsTo64_memRegion32_entails_40 (sp v1 : BitVec 64) :
     ((sp - 88#64) ↦₆₄ v1) ∗ memRegion (sp - 80#64) 32 ⊢
       memRegion (sp - 88#64) 40 := by
-  have s2 := memRegion_split (sp - 88#64) 8 32 (by decide)
-  rw [bv_sub_add_lit sp 88 8] at s2
-  rw [s2]
-  exact sepConj_mono_left (pointsTo64_entails_memRegion8 _ v1)
+  sep_interval
 
 /-! ## Branch and arithmetic helpers for `skip_field` -/
 
@@ -205,18 +185,10 @@ theorem allowPanic_frame' {s0 s sf : State} {F R : SepProp}
   have h := allowPanic_frame (allocFailedIn_trans htr) hpan
   rwa [sepConj_assoc, satisfies_pure_sepConj] at h
 
-
 theorem skipSliceTail_entails_memRegion40 (sp v1 v2 : BitVec 64) :
     ((sp - 88#64) ↦₆₄ v1) ∗ ((sp - 80#64) ↦₆₄ v2) ∗ memRegion (sp - 72#64) 24 ⊢
       memRegion (sp - 88#64) 40 := by
-  have s2 := memRegion_split (sp - 88#64) 8 32 (by decide)
-  rw [bv_sub_add_lit sp 88 8] at s2
-  have s3 := memRegion_split (sp - 80#64) 8 24 (by decide)
-  rw [bv_sub_add_lit sp 80 8] at s3
-  rw [s2, s3]
-  exact sepConj_mono (pointsTo64_entails_memRegion8 _ v1)
-    (sepConj_mono (pointsTo64_entails_memRegion8 _ v2) (Entails.refl _))
-
+  sep_interval
 
 /-! ## Suffix and cursor-splitting helpers for `StartGroup` -/
 
@@ -334,14 +306,10 @@ theorem sliceCursorAfter_eq_split {slot ptr : BitVec 64} {bs rest : List (BitVec
     sliceCursorAfter slot ptr bs rest =
       (ptr ↦ₛ bs.take (bs.length - rest.length)) ∗
         sliceCursorAt slot (ptr + BitVec.ofNat 64 (bs.length - rest.length)) rest := by
+  have := List.take_append_drop (bs.length - rest.length) bs
   simp only [sliceCursorAfter, sliceCursorAt]
-  have hbs : bs = bs.take (bs.length - rest.length) ++ rest := by
-    conv => rhs; arg 2; rw [hsuf]
-    exact (List.take_append_drop _ _).symm
-  have hlen : (bs.take (bs.length - rest.length)).length = bs.length - rest.length := by
-    rw [List.length_take]; omega
-  conv => lhs; arg 2; arg 2; rw [hbs, pointsToBytes_append, hlen]
-  ac_rfl
+  rw [congrArg ((ptr + BitVec.ofNat 64 (bs.length - rest.length)) ↦ₛ ·) hsuf]
+  apply Entails.antisymm <;> bi_entail
 
 theorem sliceCursorAfter_join {slot ptr : BitVec 64} {bs rest finalRest : List (BitVec 8)}
     (hle1 : rest.length ≤ bs.length)
@@ -350,24 +318,10 @@ theorem sliceCursorAfter_join {slot ptr : BitVec 64} {bs rest finalRest : List (
     (ptr ↦ₛ bs.take (bs.length - rest.length)) ∗
       sliceCursorAfter slot (ptr + BitVec.ofNat 64 (bs.length - rest.length)) rest finalRest ⊢
       sliceCursorAfter slot ptr bs finalRest := by
+  have := List.take_append_drop (bs.length - rest.length) bs
   simp only [sliceCursorAfter]
-  have hbs : bs = bs.take (bs.length - rest.length) ++ rest := by
-    conv => rhs; arg 2; rw [hsuf1]
-    exact (List.take_append_drop _ _).symm
-  have hlen : (bs.take (bs.length - rest.length)).length = bs.length - rest.length := by
-    rw [List.length_take]; omega
-  have hptr :
-      ptr + BitVec.ofNat 64 (bs.length - rest.length) + BitVec.ofNat 64 (rest.length - finalRest.length) =
-        ptr + BitVec.ofNat 64 (bs.length - finalRest.length) := by
-    rw [BitVec.add_assoc, ← BitVec.ofNat_add]
-    congr 2
-    omega
-  have hpts : (ptr ↦ₛ bs) =
-      (ptr ↦ₛ bs.take (bs.length - rest.length)) ∗
-        ((ptr + BitVec.ofNat 64 (bs.length - rest.length)) ↦ₛ rest) := by
-    conv => lhs; rw [hbs, pointsToBytes_append, hlen]
-  rw [hptr, hpts]
-  exact Entails.of_eq (by ac_rfl)
+  rw [congrArg ((ptr + BitVec.ofNat 64 (bs.length - rest.length)) ↦ₛ ·) hsuf1]
+  bi_entail
 
 theorem pointsToBytes_prefix_join {ptr : BitVec 64} {bs rest : List (BitVec 8)}
     (hle : rest.length ≤ bs.length)
@@ -375,13 +329,9 @@ theorem pointsToBytes_prefix_join {ptr : BitVec 64} {bs rest : List (BitVec 8)}
     (ptr ↦ₛ bs.take (bs.length - rest.length)) ∗
       ((ptr + BitVec.ofNat 64 (bs.length - rest.length)) ↦ₛ rest) ⊢
       (ptr ↦ₛ bs) := by
-  have hbs : bs = bs.take (bs.length - rest.length) ++ rest := by
-    conv => rhs; arg 2; rw [hsuf]
-    exact (List.take_append_drop _ _).symm
-  have hlen : (bs.take (bs.length - rest.length)).length = bs.length - rest.length := by
-    rw [List.length_take]; omega
-  conv => rhs; rw [hbs, pointsToBytes_append, hlen]
-  exact Entails.refl _
+  have := List.take_append_drop (bs.length - rest.length) bs
+  rw [congrArg ((ptr + BitVec.ofNat 64 (bs.length - rest.length)) ↦ₛ ·) hsuf]
+  bi_entail
 
 theorem skip_fuel_eq (f1 : Nat) :
     (∀ f2 d t wt (bs : List (BitVec 8)),
@@ -680,7 +630,7 @@ theorem iwt_w0_setWidth8 (iwt : WireType) :
 
 /-- Wrapper for `cur = bs.drop (bs.length - cur.length)` that is opaque to `isLightweightSimpHyp`
     so `wp_steps` does not add it as a self-referential `simp` rewrite rule. -/
-def IsDropSuffix (bs cur : List (BitVec 8)) : Prop :=
+@[expose] def IsDropSuffix (bs cur : List (BitVec 8)) : Prop :=
   cur = bs.drop (bs.length - cur.length)
 
 abbrev HighCalleeSaved (s0 s : State) : Prop :=
@@ -726,23 +676,9 @@ theorem stackAt_skipFieldX (sp : BitVec 64) (depth : Nat) (hdepth : depth < 2 ^ 
       sp - 96#64 - BitVec.ofNat 64 (depth * 0x60 + decodeVarintSliceStackX) =
         sp - BitVec.ofNat 64 (skipFieldStackX depth) := by
     rw [hbit]; exact bv_sub_96_sub sp _
-  have h2 := memRegion_split' (b := sp - 96#64) (b' := sp - 48#64)
-    (n := 48) (k := 48) (N := 96) rfl (by bv_lin) (by decide)
-  have h3 := memRegion_split' (b := sp - 48#64) (b' := sp - 40#64)
-    (n := 8) (k := 40) (N := 48) rfl (by bv_lin) (by decide)
-  have h4 := memRegion_split' (b := sp - 40#64) (b' := sp - 32#64)
-    (n := 8) (k := 32) (N := 40) rfl (by bv_lin) (by decide)
-  have h5 := memRegion_split' (b := sp - 32#64) (b' := sp - 24#64)
-    (n := 8) (k := 24) (N := 32) rfl (by bv_lin) (by decide)
-  have h6 := memRegion_split' (b := sp - 24#64) (b' := sp - 16#64)
-    (n := 8) (k := 16) (N := 24) rfl (by bv_lin) (by decide)
-  have h7 := memRegion_split' (b := sp - 16#64) (b' := sp - 8#64)
-    (n := 8) (k := 8) (N := 16) rfl (by bv_lin) (by decide)
-  rw [hsp_sub, h1, h2, h3, h4, h5, h6, h7,
-    memRegion_eight (sp - 48#64), memRegion_eight (sp - 40#64),
-    memRegion_eight (sp - 32#64), memRegion_eight (sp - 24#64),
-    memRegion_eight (sp - 16#64), memRegion_eight (sp - 8#64)]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
+  rw [hsp_sub, h1]
+  simp only [← sepExists_sepConj_left, ← sepExists_sepConj_right]
+  sep_interval_eq
 
 abbrev skipLeafRestX (sp : BitVec 64) (depth : Nat) : SepProp :=
   memRegion (sp - 96#64 - BitVec.ofNat 64 (depth * 0x60 + decodeVarintSliceStackX)) (depth * 0x60)
@@ -827,7 +763,7 @@ theorem skipBelowX_err_entails (sp : BitVec 64) (depth : Nat) (hdepth : depth < 
       skipBelowX sp depth :=
   Entails.of_eq (skipBelowX_err sp depth hdepth).symm
 
-def skipFieldSpecAtX (A : RustAlloc) (depth : Nat) (P : SkipFieldGhost → Prop) :
+@[expose] def skipFieldSpecAtX (A : RustAlloc) (depth : Nat) (P : SkipFieldGhost → Prop) :
     Spec SkipFieldGhost where
   pre := fun x s =>
     ⌜P x ∧ x.depth = depth ∧
@@ -848,32 +784,6 @@ def skipFieldSpecAtX (A : RustAlloc) (depth : Nat) (P : SkipFieldGhost → Prop)
         ⌜sf.readReg64 .x0 ≠ 0#64⌝ ∗ decodeErrorAtStackLen A (sf.readReg64 .x0) 0 ∗
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-theorem subroutine_ok_skipFieldX_or {A : RustAlloc} {img : Obj.Image} {prog : Program} {entry : BitVec 64}
-    {depth : Nat} {P Q : SkipFieldGhost → Prop}
-    (h1 : subroutine_ok prog entry ((skipFieldSpecAtX A depth P).inImage img))
-    (h2 : subroutine_ok prog entry ((skipFieldSpecAtX A depth Q).inImage img)) :
-    subroutine_ok prog entry ((skipFieldSpecAtX A depth (fun x => P x ∨ Q x)).inImage img) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  simp only [Spec.inImage, skipFieldSpecAtX, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre.2.1.1 with hP | hQ
-  · refine h1.mono_outcome x R s0 hpc hrun ?_ hsp (fun _ ho => ho)
-    simp only [Spec.inImage, skipFieldSpecAtX, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hpre.1, ⟨hP, hpre.2.1.2⟩, hpre.2.2⟩
-  · refine h2.mono_outcome x R s0 hpc hrun ?_ hsp (fun _ ho => ho)
-    simp only [Spec.inImage, skipFieldSpecAtX, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hpre.1, ⟨hQ, hpre.2.1.2⟩, hpre.2.2⟩
-
-theorem subroutine_ok_skipFieldX_imp {A : RustAlloc} {img : Obj.Image} {prog : Program} {entry : BitVec 64}
-    {depth : Nat} {P Q : SkipFieldGhost → Prop}
-    (himp : ∀ x, P x → Q x)
-    (h : subroutine_ok prog entry ((skipFieldSpecAtX A depth Q).inImage img)) :
-    subroutine_ok prog entry ((skipFieldSpecAtX A depth P).inImage img) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  simp only [Spec.inImage, skipFieldSpecAtX, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  refine h.mono_outcome x R s0 hpc hrun ?_ hsp (fun _ ho => ho)
-  simp only [Spec.inImage, skipFieldSpecAtX, sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨hpre.1, ⟨himp x hpre.2.1.1, hpre.2.1.2⟩, hpre.2.2⟩
 
 theorem subroutine_ok_skipFieldX_or_lscl {A : RustAlloc} {pl : Obj.MultiPlacement}
     {prog : Program} {entry : BitVec 64}

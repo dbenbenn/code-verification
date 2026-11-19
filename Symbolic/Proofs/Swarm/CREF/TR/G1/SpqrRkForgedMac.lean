@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Bytes.Basic
 import DY.Bytes.AttackerKnowledge
@@ -40,7 +40,6 @@ import Symbolic.Specifications.Model.TripleRatchet
 import Symbolic.Specifications.Model.PQXDH
 import Symbolic.Specifications.Model.Composed
 import Init.Data.String.Defs
-import ProofLib.Lemmas
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Spqr
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.SymEnc
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Trunc
@@ -52,7 +51,7 @@ import Symbolic.Proofs.Swarm.COMPOSED.CompTermAlgebra
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.RkInvCons
 import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeIdInv
-public import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.X25519 -- shake: keep
+import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.X25519 -- shake: keep
 import Symbolic.DYBridge.DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.Bytes.AttackerKnowledge
@@ -79,7 +78,7 @@ Defines the root-key tree `RkTree` and the KDF safety predicate `KdfRkSafe` over
 all reachable traces.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 cref_hide_foreign_instances
@@ -495,7 +494,7 @@ inductive RkTree (T : ExecTrace) : DY.Bytes → Prop
   | rand (t : Nat) : RkTree T (randTerm t 32)
   | pqxdh (dh1 dh2 dh3 : DY.Bytes) (dh4 : Option DY.Bytes) (ss : DY.Bytes) : RkTree T (DY.Libsignal.PQXDH.pqxdhKdf (DY.Libsignal.PQXDH.pqxdhIkm dh1 dh2 dh3 dh4 ss)).rk
   | create {rk pk : DY.Bytes} (t_dhs : Nat) : RkTree T rk → ValidRkPk T pk → RkTree T (createChain rk pk (randTerm t_dhs 32)).1
-def StRkDhsInv (T : ExecTrace) (bound : Nat) (st : TRState) : Prop :=
+@[expose] def StRkDhsInv (T : ExecTrace) (bound : Nat) (st : TRState) : Prop :=
   RkTree T st.rk ∧ ∃ t < bound, st.dhs = randTerm t 32 ∧ ((∃ t_rk, st.rk = randTerm t_rk 32) ∨ ∃ rk_p pk_p, st.rk = (createChain rk_p pk_p (randTerm t 32)).1)
 theorem stRkDhsInv_mono {T : ExecTrace} {bound bound' : Nat} {st : TRState} (hle : bound ≤ bound') (h : StRkDhsInv T bound st) : StRkDhsInv T bound' st := by
   rcases h with ⟨hrk, t, ht, hdhs, hform⟩; exact ⟨hrk, t, Nat.lt_of_lt_of_le ht hle, hdhs, hform⟩
@@ -505,9 +504,9 @@ theorem kdfRkSafe_rk_of_stRkDhsInv {T : ExecTrace} {bound : Nat} {p : Participan
   rcases h with ⟨_, t, _, _, ⟨t_rk, hrk⟩ | ⟨rk_p, pk_p, hrk⟩⟩; · rw [hrk]; exact kdfRkSafe_random T { timestamp := t_rk, size := 32 }
   have hcc : (createChain rk_p pk_p (randTerm t 32)).1 = KdfExtract.kdfExtract (hmac rk_p (DiffieHellman.dh (X25519.normalizeX25519Key pk_p) (randTerm t 32))) (Concat.concat (lit "WhisperRatchet") (litByte 1)) := rfl
   rw [hrk, hcc]; exact KdfRkSafe.kdfExtract_rk rfl ⟨p, st, idx, hstored, (hrk.trans hcc).symm⟩
-def StSafeRk (T : ExecTrace) (bound : Nat) (st : TRState) : Prop := StRkDhsInv T bound st ∧ KdfRkSafe T st.cks ∧ KdfRkSafe T st.spqr ∧ ∀ c ∈ st.recv, KdfRkSafe T c.chainKey
+@[expose] def StSafeRk (T : ExecTrace) (bound : Nat) (st : TRState) : Prop := StRkDhsInv T bound st ∧ KdfRkSafe T st.cks ∧ KdfRkSafe T st.spqr ∧ ∀ c ∈ st.recv, KdfRkSafe T c.chainKey
 theorem stSafeRk_mono {T : ExecTrace} {bound bound' : Nat} {st : TRState} (hle : bound ≤ bound') (h : StSafeRk T bound st) : StSafeRk T bound' st := ⟨stRkDhsInv_mono hle h.1, h.2⟩
-def JRk (T tr : ExecTrace) : Prop :=
+@[expose] def JRk (T tr : ExecTrace) : Prop :=
   (∀ b, Trace.BaseAttackerKnows tr b → KdfRkSafe T b) ∧ (∀ p st i, TRStateStoredAt p st i tr → StSafeRk T tr.length st) ∧
   (∀ i s pk n seed rIdx src, tr.EventLoggedAt (TREvent.SkippedKeyStored s pk n seed rIdx src) i → KdfRkSafe T seed)
 theorem parseTrSignalMsg_fields_rk {T tr : ExecTrace} {t : DY.Bytes} {msg : TRSignalMsg} (ht_ak : t.AttackerKnows tr) (ht : KdfRkSafe T t) (hparse : parseTrSignalMsg t = some msg) :

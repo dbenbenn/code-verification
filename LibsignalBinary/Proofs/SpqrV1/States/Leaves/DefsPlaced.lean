@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1
-public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternal
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesCodeSymA
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternal -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesCodeSymA -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPFrozen
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesCodeSym -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # SPQR V1 Send-Leaf Transitions: Relocatable `[LibsignalPlacement]` Specifications & Bridges
@@ -25,7 +26,7 @@ abbreviations, `withLsCodeRoLoaded` ↔ `withLsCallInv` bridges, and `call_polyN
 (Block `416`) for `SpqrV1/States/Leaves`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -128,7 +129,7 @@ theorem subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded {α : Type} {prog :
 /-! ## 2. Relocatable `[LibsignalPlacement]` Specifications for Send Leaf Transitions -/
 
 /-- Relocatable specification of `<spqr::v1::chunked::send_ct::EkReceivedCt1Sampled>::send_ct1_chunk` (Block `344`). -/
-def ekReceivedCt1SampledSendCt1ChunkPlacedSpec [LibsignalPlacement]
+@[expose] def ekReceivedCt1SampledSendCt1ChunkPlacedSpec [LibsignalPlacement]
     (A : RustAlloc) (F : ShaCompress) :
     Spec (EkReceivedCt1SampledSendCt1ChunkGhost F) where
   pre := fun x s =>
@@ -150,7 +151,7 @@ def ekReceivedCt1SampledSendCt1ChunkPlacedSpec [LibsignalPlacement]
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Relocatable specification of `<spqr::v1::chunked::send_ct::Ct2Sampled>::send_ct2_chunk` (Block `354`). -/
-def ct2SampledSendCt2ChunkPlacedSpec [LibsignalPlacement]
+@[expose] def ct2SampledSendCt2ChunkPlacedSpec [LibsignalPlacement]
     (A : RustAlloc) (F : ShaCompress) :
     Spec (Ct2SampledSendCt2ChunkGhost F) where
   pre := fun x s =>
@@ -172,7 +173,7 @@ def ct2SampledSendCt2ChunkPlacedSpec [LibsignalPlacement]
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Relocatable specification of `<spqr::v1::chunked::send_ek::HeaderSent>::send_ek_chunk` (Block `336`). -/
-def headerSentSendEkChunkPlacedSpec [LibsignalPlacement]
+@[expose] def headerSentSendEkChunkPlacedSpec [LibsignalPlacement]
     (A : RustAlloc) (F : ShaCompress) :
     Spec (HeaderSentSendEkChunkGhost F) where
   pre := fun x s =>
@@ -194,7 +195,7 @@ def headerSentSendEkChunkPlacedSpec [LibsignalPlacement]
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Relocatable specification of `<spqr::v1::chunked::send_ek::Ct1Received>::send_ek_chunk` (Block `345`). -/
-def ct1ReceivedSendEkChunkPlacedSpec [LibsignalPlacement]
+@[expose] def ct1ReceivedSendEkChunkPlacedSpec [LibsignalPlacement]
     (A : RustAlloc) (F : ShaCompress) :
     Spec (Ct1ReceivedSendEkChunkGhost F) where
   pre := fun x s =>
@@ -216,7 +217,7 @@ def ct1ReceivedSendEkChunkPlacedSpec [LibsignalPlacement]
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Relocatable specification of `<spqr::v1::chunked::send_ct::Ct1Sampled>::send_ct1_chunk` (Block `335`). -/
-def ct1SampledSendCt1ChunkPlacedSpec [LibsignalPlacement]
+@[expose] def ct1SampledSendCt1ChunkPlacedSpec [LibsignalPlacement]
     (A : RustAlloc) (F : ShaCompress) :
     Spec (Ct1SampledSendCt1ChunkGhost F) where
   pre := fun x s =>
@@ -247,32 +248,32 @@ theorem ls_subroutine_ok_to_blockProgram [LibsignalPlacement] {α : Type}
     subroutine_ok (libsignalSessionLib.blockProgram lsmpl j H) entry spec :=
   hcallee.eq_blockProgram ▸ h
 
-def Ct2SampledRecvNextEpochPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def Ct2SampledRecvNextEpochPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_355 (Rust.withPanics ext)) (blkPl_355).base
     (withLsCodeLoaded lsmpl (ct2SampledRecvNextEpochSpec A F))
 
-def HeaderSentSendEkChunkPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def HeaderSentSendEkChunkPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 336 (Rust.withPanics ext)) (lsmpl.base 336)
     (withLsCodeRoLoaded lsmpl (headerSentSendEkChunkPlacedSpec A F))
 
-def Ct1ReceivedSendEkChunkPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def Ct1ReceivedSendEkChunkPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 345 (Rust.withPanics ext)) (lsmpl.base 345)
     (withLsCodeRoLoaded lsmpl (ct1ReceivedSendEkChunkPlacedSpec A F))
 
-def Ct1SampledSendCt1ChunkPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def Ct1SampledSendCt1ChunkPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 335 (Rust.withPanics ext)) (lsmpl.base 335)
     (withLsCodeRoLoaded lsmpl (ct1SampledSendCt1ChunkPlacedSpec A F))
 
-def EkReceivedCt1SampledSendCt1ChunkPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def EkReceivedCt1SampledSendCt1ChunkPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 344 (Rust.withPanics ext)) (lsmpl.base 344)
     (withLsCodeRoLoaded lsmpl (ekReceivedCt1SampledSendCt1ChunkPlacedSpec A F))
 
-def Ct2SampledSendCt2ChunkPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def Ct2SampledSendCt2ChunkPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 354 (Rust.withPanics ext)) (lsmpl.base 354)
     (withLsCodeRoLoaded lsmpl (ct2SampledSendCt2ChunkPlacedSpec A F))

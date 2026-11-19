@@ -11,6 +11,8 @@ module
 
 public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyTailDefs
 public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PlacedDefs
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Relocatable Seam Definitions for the `segPreKey` Tail
@@ -19,7 +21,7 @@ Relocatable `[LibsignalPlacement]` counterparts `PreKeyEncryptState'Placed` (`+0
 `PreKeyEncryptRetStatePlaced` (`+0x8c8`) on block `198`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +38,7 @@ open CryptoVerification.LibsignalPublicApi.MessageEncrypt
 open CryptoVerification.LibsignalPublicApi.MessageEncrypt.Tails
 
 /-- Relocatable seam state at `+0x8b4`, immediately after `kyberMap` returns. -/
-def PreKeyEncryptState'Placed [LibsignalPlacement] {A : RustAlloc}
+@[expose] def PreKeyEncryptState'Placed [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState) (ctl : BitVec 64)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
@@ -78,7 +80,7 @@ def PreKeyEncryptState'Placed [LibsignalPlacement] {A : RustAlloc}
       encCommonPlaced A ctl x 0 s0 ∗ (encStoreExtraPlaced kit st0 ikit ist0 x s0 ∗ R0))
 
 /-- Relocatable seam state at `+0x8c8`, immediately after `OTR::encrypt` returns. -/
-def PreKeyEncryptRetStatePlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def PreKeyEncryptRetStatePlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (C : Crypto) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel)

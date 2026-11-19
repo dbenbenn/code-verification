@@ -10,14 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkSentCt1Received1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkSentCt1Received2Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkSentCt1Received2PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkSentCt1Received1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkSentCt1Received2Placed
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkSentCt1Received2PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkSentCt1Received1
@@ -26,6 +28,8 @@ import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkSentCt1Received2
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSendEk1
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
 
 /-!
 # `<States>::recv` (Block `332`) — `.ekSentCt1Received` Arm, Part 2 (Budget-Threaded)
@@ -35,7 +39,7 @@ and top-level `[LibsignalPlacement]` contracts `states_recv_ekSentCt1Received_pl
 (`tag = 6#64`, Block `332`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -77,24 +81,27 @@ open LibsignalBinary.Heap (
 )
 open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
 open LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkSentCt1Received1PlacedBudget (
-  call_ekSentCt1ReceivedRecvCt2Chunk_ofPrePostEnv_placed
+  call_ekSentCt1ReceivedRecvCt2Chunk_ext_ofPrePostEnv_placed
   ekSentCt1Received_arm_eq_other_pool_placed
   ekSentCt1Received_arm_lt_pool_placed
   ekSentCt1Received_post_call_err_56574_pool_placed
 )
 open LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget (
   StatesRecvCalleeEnvs StatesRecvPlacedContractsOfEnv
-  sepWPp_of_statesRecv_exit_evs_placed_ofPrePostEnv
-  sepWPp_of_statesRecv_exit_placed_ofPrePostEnv
-  statesRecvCalleeEnvs
-  statesRecvVariantPlacedSpecOfEnv statesRecvVariantPlacedSpecOfPrePostEnv
+  sepWPp_of_statesRecv_exit_evs_placed_ext_ofPrePostEnv
+  sepWPp_of_statesRecv_exit_placed_ext_ofPrePostEnv
+  stackAt_statesRecvCalleePlaced_eq_X stackAt_statesRecvPlaced_eq_X
+  statesRecvCalleeEnvs statesRecvPlacedStack
+  statesRecvVariantPlacedSpecExtOfEnv statesRecvVariantPlacedSpecExtOfPrePostEnv
 )
 open LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget (
   states_recv_dispatch_pool_placed states_recv_prologue_pool_placed
 )
 open LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsBudget (
-  RecvCt2ChunkEnv recvCt2ChunkEnv_nonempty recvCt2ChunkPlacedSpec
-  recvCt2ChunkPlacedSpecOfPrePostEnv
+  RecvCt2ChunkEnv recvCt2ChunkEnv_nonempty
+)
+open LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlacedBudget (
+  recvCt2ChunkPlacedSpecExt recvCt2ChunkPlacedSpecExtOfPrePostEnv recvCt2ChunkPlacedStack
 )
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
@@ -130,7 +137,7 @@ private theorem sepWPp_seq_ex_lscro [LibsignalPlacement] {α : Type} {prog : Pro
     - `x.msg.epoch == st.uc.epoch`, non-`.ct2`: `[]`;
     - `x.msg.epoch > st.uc.epoch`: `FreeOnlyEvs`;
     - `x.msg.epoch < st.uc.epoch`: `[]`. -/
-def StatesRecvEkSentCt1ReceivedEnv {F : ShaCompress}
+@[expose] def StatesRecvEkSentCt1ReceivedEnv {F : ShaCompress}
     (x : StatesRecvGhost F) (evs : List AllocEvent) : Prop :=
   match x.self with
   | .ekSentCt1Received st =>
@@ -236,7 +243,7 @@ theorem ekSentCt1Received_arm_eq_ct2_placed [LibsignalPlacement]
     {ext : String → Option (State → State)}
     (hcall : subroutine_ok (lsProg_332 (Rust.withPanics ext)) (lsmpl.base 350)
       (withLsCodeRoLoaded lsmpl
-        (recvCt2ChunkPlacedSpecOfPrePostEnv K F M A lim CalleePre CalleePost)))
+        (recvCt2ChunkPlacedSpecExtOfPrePostEnv K F M A lim CalleePre CalleePost)))
     (hmemcpy_sat : HookSat (Rust.withPanics ext) spqrMemcpySym (withVmPreserved sessionMemcpySpec))
     (st_cost : M.σ)
     (s0 s : State) (outA selfA msgA : BitVec 64)
@@ -261,7 +268,7 @@ theorem ekSentCt1Received_arm_eq_ct2_placed [LibsignalPlacement]
           resultV1RecvAt A.repAlloc (F := F) outA (States.recv K (.ekSentCt1Received st) msg) ∗
           memRegion selfA chunkedStatesSize ∗ messageAt spqrPolyApi msgA msg ∗
           (lsLogFilterAddr ↦₆₄ 0#64) ∗ tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-          A.pool lim (M.stepEvents evs st_cost) sf ∗ stackAt s0.sp statesRecvStackX) ∧
+          A.pool lim (M.stepEvents evs st_cost) sf ∗ stackAt s0.sp statesRecvPlacedStack) ∧
         sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace → Q_post sf Pf)
     (hpanic : ∀ sf P_f,
       ((sf.mem ⊨ P_f ∗ R) →
@@ -271,22 +278,56 @@ theorem ekSentCt1Received_arm_eq_ct2_placed [LibsignalPlacement]
       (P_rest ∗ memRegion outA v1RecvSize ∗ chunkedStatesAt A.repAlloc selfA (.ekSentCt1Received st) ∗
         messageAt spqrPolyApi msgA msg ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
         tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ A.pool lim st_cost s ∗
-        stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗
+        stackAt (s0.sp - 4240#64) recvCt2ChunkPlacedStack ∗
         memRegion (s0.sp - 4240#64) 4144 ∗ statesRecvSavedCells s0)
       Q_post Q_panic := by
   rcases hinv with ⟨hsort, hroot⟩
   have hfsp_align : ((s0.sp - 4240#64) &&& 15#64 == 0#64) = true :=
     spAligned_sub s0.sp 4240#64 hsp_align (by decide)
+  have hcallee_split :
+      stackAt (s0.sp - 4240#64) recvCt2ChunkPlacedStack =
+        memRegion (s0.sp - 43600#64) 19808 ∗ stackAt (s0.sp - 4240#64) statesRecvCalleeStackX :=
+    stackAt_statesRecvCalleePlaced_eq_X s0.sp
+  have hplaced_split :
+      stackAt s0.sp statesRecvPlacedStack =
+        memRegion (s0.sp - 43600#64) 19808 ∗ stackAt s0.sp statesRecvStackX :=
+    stackAt_statesRecvPlaced_eq_X s0.sp
+  have hpre_split :
+      P_rest ∗ memRegion outA v1RecvSize ∗ chunkedStatesAt A.repAlloc selfA (.ekSentCt1Received st) ∗
+        messageAt spqrPolyApi msgA msg ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
+        tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ A.pool lim st_cost s ∗
+        stackAt (s0.sp - 4240#64) recvCt2ChunkPlacedStack ∗
+        memRegion (s0.sp - 4240#64) 4144 ∗ statesRecvSavedCells s0 ⊢
+      (P_rest ∗ memRegion (s0.sp - 43600#64) 19808) ∗
+        memRegion outA v1RecvSize ∗ chunkedStatesAt A.repAlloc selfA (.ekSentCt1Received st) ∗
+        messageAt spqrPolyApi msgA msg ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
+        tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ A.pool lim st_cost s ∗
+        stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗
+        memRegion (s0.sp - 4240#64) 4144 ∗ statesRecvSavedCells s0 := by
+    rw [hcallee_split]; exact Entails.of_eq (by sep_ac_rfl)
+  refine SepWPp.weaken_pre hpre_split ?_
   refine sepWPp_seq_ex_lscro hcro
     (ekSentCt1Received_pre_call_228_350_placed hmemcpy_sat st_cost s0 s outA selfA msgA
-      st msg chunk P_rest heq hpay hpc hrun hsp hsp_align hx1 hx19 hx24 htr) ?_
+      st msg chunk (P_rest ∗ memRegion (s0.sp - 43600#64) 19808)
+      heq hpay hpc hrun hsp hsp_align hx1 hx19 hx24 htr) ?_
   intro sm sp1 hpcm hrunm _ ⟨hsp_m, hlr_m, hx0_m, hx1_m, hx2_m, hx3_m, hx19_m, htr_m⟩ hcro_m
   refine SepWPp.of_sepWP
-    (call_ekSentCt1ReceivedRecvCt2Chunk_ofPrePostEnv_placed hcall
+    (call_ekSentCt1ReceivedRecvCt2Chunk_ext_ofPrePostEnv_placed hcall
       ((s0.sp - 4240#64) + 976#64) ((s0.sp - 4240#64) + 1856#64) (msgA + 10#64)
       st chunk st_cost hsort hroot hfit_callee
-      (s0 := s0) (sp_call := s0.sp - 4240#64) (ret_pc := lsmpl.base 332 + 4384#64) (R := R)
-      hcro_m hpcm hrunm hsp_m hfsp_align hlr_m htr_m hx0_m hx1_m hx2_m hx3_m rfl hpanic ?_)
+      (s0 := s0) (sp_call := s0.sp - 4240#64) (ret_pc := lsmpl.base 332 + 4384#64)
+      (Frame := P_rest ∗ memRegion selfA chunkedStatesSize ∗
+        ((msgA ↦₆₄ msg.epoch) ∗ ((msgA + 8#64) ↦₈ 6#8) ∗ memRegion (msgA + 9#64) 1 ∗
+          memRegion (msgA + 44#64) 4) ∗
+        (lsLogFilterAddr ↦₆₄ 0#64) ∗ memRegion outA v1RecvSize ∗
+        memRegion ((s0.sp - 4240#64) + 576#64) 376 ∗
+        memRegion ((s0.sp - 4240#64) + 1480#64) 376 ∗
+        memRegion ((s0.sp - 4240#64) + 2360#64) 376 ∗
+        sendEkUnusedAt (s0.sp - 4240#64) ∗ sendEkSpillsAt (s0.sp - 4240#64) sp1 ∗
+        statesRecvSavedCells s0)
+      (R := R)
+      hcro_m hpcm hrunm hsp_m hfsp_align hlr_m htr_m hx0_m hx1_m hx2_m hx3_m
+      (by rw [stackAt_statesRecvCalleePlaced_eq_X s0.sp]; sep_ac_rfl) hpanic ?_)
   intro evs hevs sf2 hpc2 hrun2 hsp2 hcs2 htr2
   have hmsg_eq :
       ((msgA ↦₆₄ msg.epoch) ∗ ((msgA + 8#64) ↦₈ 6#8) ∗ memRegion (msgA + 9#64) 1 ∗
@@ -310,15 +351,15 @@ theorem ekSentCt1Received_arm_eq_ct2_placed [LibsignalPlacement]
           (ekSentCt1Received_post_call_err_56574_pool_placed (A := A) (lim := lim) (F := F)
             (M.stepEvents evs st_cost)
             s0 sf2 outA sp1
-            (P_rest ∗ memRegion selfA chunkedStatesSize ∗
+            (P_rest ∗ memRegion (s0.sp - 43600#64) 19808 ∗ memRegion selfA chunkedStatesSize ∗
              messageAt spqrPolyApi msgA msg ∗
              (lsLogFilterAddr ↦₆₄ 0#64) ∗ tokenInitPlacedAt ∗ reduceTablePlacedAt)
             hpc2 hrun2 hsp2 hsp_align hx19_2 htr2)
           (fun sf Pf hpc_f hrun_f ⟨_, hPf, hsp_sf, _, hcs_sf, htr_sf⟩ =>
             hdone evs hevs sf Pf hpc_f hrun_f
-              ⟨by rw [hmodel]; exact Entails.trans hPf (Entails.of_eq (by sep_ac_rfl)),
+              ⟨by rw [hmodel, hplaced_split]; exact Entails.trans hPf (Entails.of_eq (by sep_ac_rfl)),
                hsp_sf, hcs_sf, htr_sf⟩))
-      rw [← hmsg_eq]
+      rw [← hmsg_eq, hcallee_split]
       dsimp only [chunkedEkSentCt1ReceivedSize, statesRecvCalleeStackX]
       sep_ac_rfl
   | ok outRes =>
@@ -329,15 +370,15 @@ theorem ekSentCt1Received_arm_eq_ct2_placed [LibsignalPlacement]
         (SepWP.mono
           (ekSentCt1Received_post_call_still_56574_pool_placed (A := A) (lim := lim) hmemcpy_sat
             (M.stepEvents evs st_cost) s0 sf2 outA outSt sp1
-            (P_rest ∗ memRegion selfA chunkedStatesSize ∗
+            (P_rest ∗ memRegion (s0.sp - 43600#64) 19808 ∗ memRegion selfA chunkedStatesSize ∗
              messageAt spqrPolyApi msgA msg ∗
              (lsLogFilterAddr ↦₆₄ 0#64) ∗ tokenInitPlacedAt ∗ reduceTablePlacedAt)
             hpc2 hrun2 hsp2 hsp_align hx19_2 htr2)
           (fun sf Pf hpc_f hrun_f ⟨_, hPf, hsp_sf, hcs_sf, htr_sf⟩ =>
             hdone evs hevs sf Pf hpc_f hrun_f
-              ⟨by rw [hmodel]; exact Entails.trans hPf (Entails.of_eq (by sep_ac_rfl)),
+              ⟨by rw [hmodel, hplaced_split]; exact Entails.trans hPf (Entails.of_eq (by sep_ac_rfl)),
                hsp_sf, hcs_sf, htr_sf⟩))
-      rw [← hmsg_eq]
+      rw [← hmsg_eq, hcallee_split]
       dsimp only [chunkedEkSentCt1ReceivedSize, statesRecvCalleeStackX]
       sep_ac_rfl
     | done pair =>
@@ -347,15 +388,15 @@ theorem ekSentCt1Received_arm_eq_ct2_placed [LibsignalPlacement]
         (SepWP.mono
           (ekSentCt1Received_post_call_done_56574_pool_placed (A := A) (lim := lim) hmemcpy_sat
             (M.stepEvents evs st_cost) s0 sf2 outA nhr sec sp1
-            (P_rest ∗ memRegion selfA chunkedStatesSize ∗
+            (P_rest ∗ memRegion (s0.sp - 43600#64) 19808 ∗ memRegion selfA chunkedStatesSize ∗
              messageAt spqrPolyApi msgA msg ∗
              tokenInitPlacedAt ∗ reduceTablePlacedAt)
             hpc2 hrun2 hsp2 hsp_align hx19_2 htr2)
           (fun sf Pf hpc_f hrun_f ⟨_, hPf, hsp_sf, hcs_sf, htr_sf⟩ =>
             hdone evs hevs sf Pf hpc_f hrun_f
-              ⟨by rw [hmodel]; exact Entails.trans hPf (Entails.of_eq (by sep_ac_rfl)),
+              ⟨by rw [hmodel, hplaced_split]; exact Entails.trans hPf (Entails.of_eq (by sep_ac_rfl)),
                hsp_sf, hcs_sf, htr_sf⟩))
-      rw [← hmsg_eq]
+      rw [← hmsg_eq, hcallee_split]
       dsimp only [chunkedEkSentCt1ReceivedSize, statesRecvCalleeStackX]
       sep_ac_rfl
 
@@ -370,7 +411,7 @@ theorem states_recv_arm_ekSentCt1Received_placed_ofPrePostEnv [LibsignalPlacemen
     (hdealloc : HookSat (Rust.withPanics ext) spqrDeallocSym (rustCliDeallocBudgetSpec M A lim))
     (hcall : subroutine_ok (lsProg_332 (Rust.withPanics ext)) (lsmpl.base 350)
       (withLsCodeRoLoaded lsmpl
-        (recvCt2ChunkPlacedSpecOfPrePostEnv K F M A lim CalleePre CalleePost)))
+        (recvCt2ChunkPlacedSpecExtOfPrePostEnv K F M A lim CalleePre CalleePost)))
     (hmemcpy_sat : HookSat (Rust.withPanics ext) spqrMemcpySym (withVmPreserved sessionMemcpySpec))
     (st_cost : M.σ)
     (s0 s : State) (outA selfA msgA : BitVec 64)
@@ -410,51 +451,63 @@ theorem states_recv_arm_ekSentCt1Received_placed_ofPrePostEnv [LibsignalPlacemen
     SepWPp (lsProg_332 (Rust.withPanics ext)) (s0.readReg64 Reg.lr) s
       (memRegion outA v1RecvSize ∗ chunkedStatesAt A.repAlloc selfA (.ekSentCt1Received st) ∗
         messageAt spqrPolyApi msgA msg ∗ statesRecvRoPlacedAt ∗ A.pool lim st_cost s ∗
-        stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗
+        stackAt (s0.sp - 4240#64) recvCt2ChunkPlacedStack ∗
         memRegion (s0.sp - 4240#64) 4144 ∗ statesRecvSavedCells s0)
       (fun sf P_f =>
         (sf.mem ⊨ P_f ∗ R →
           sf.mem ⊨
-            (statesRecvVariantPlacedSpecOfPrePostEnv M A lim F K (.ekSentCt1Received st) msg
+            (statesRecvVariantPlacedSpecExtOfPrePostEnv M A lim F K (.ekSentCt1Received st) msg
               PreEnv PostEnv).post ((outA, selfA, msgA), st_cost) s0 sf ∗ R) ∧
         sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
       (fun sf P_f =>
         (sf.mem ⊨ P_f ∗ R) →
           (sf.mem ⊨
-            (statesRecvVariantPlacedSpecOfPrePostEnv M A lim F K (.ekSentCt1Received st) msg
+            (statesRecvVariantPlacedSpecExtOfPrePostEnv M A lim F K (.ekSentCt1Received st) msg
               PreEnv PostEnv).onPanic ((outA, selfA, msgA), st_cost) s0 sf ∗ R)) := by
+  have hcallee_split :
+      stackAt (s0.sp - 4240#64) recvCt2ChunkPlacedStack =
+        memRegion (s0.sp - 43600#64) 19808 ∗ stackAt (s0.sp - 4240#64) statesRecvCalleeStackX :=
+    stackAt_statesRecvCalleePlaced_eq_X s0.sp
+  have hplaced_split :
+      stackAt s0.sp statesRecvPlacedStack =
+        memRegion (s0.sp - 43600#64) 19808 ∗ stackAt s0.sp statesRecvStackX :=
+    stackAt_statesRecvPlaced_eq_X s0.sp
   have hpre_comm :
       memRegion outA v1RecvSize ∗ chunkedStatesAt A.repAlloc selfA (.ekSentCt1Received st) ∗
         messageAt spqrPolyApi msgA msg ∗ statesRecvRoPlacedAt ∗ A.pool lim st_cost s ∗
-        stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗
+        stackAt (s0.sp - 4240#64) recvCt2ChunkPlacedStack ∗
         memRegion (s0.sp - 4240#64) 4144 ∗ statesRecvSavedCells s0 =
-      statesRecvRoPlacedAt ∗ memRegion outA v1RecvSize ∗
+      (statesRecvRoPlacedAt ∗ memRegion (s0.sp - 43600#64) 19808) ∗ memRegion outA v1RecvSize ∗
         chunkedStatesAt A.repAlloc selfA (.ekSentCt1Received st) ∗
         messageAt spqrPolyApi msgA msg ∗ A.pool lim st_cost s ∗
         stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗
-        memRegion (s0.sp - 4240#64) 4144 ∗ statesRecvSavedCells s0 := by sep_ac_rfl
+        memRegion (s0.sp - 4240#64) 4144 ∗ statesRecvSavedCells s0 := by
+    rw [hcallee_split]; sep_ac_rfl
   by_cases hgt : msg.epoch > st.uc.epoch
-  · refine sepWPp_of_statesRecv_exit_placed_ofPrePostEnv
+  · refine sepWPp_of_statesRecv_exit_placed_ext_ofPrePostEnv
       (PreEnv := PreEnv) (PostEnv := PostEnv)
       s0 s outA selfA msgA (.ekSentCt1Received st) msg st_cost _ R ?_
     rw [states_recv_ekSentCt1Received_gt K st msg hgt, hpre_comm]
     refine SepWP.mono
       (ArmEkSentCt1Received1PlacedBudget.ekSentCt1Received_arm_gt_placed hdealloc st_cost
         s0 s outA selfA msgA st msg
-        statesRecvRoPlacedAt hgt hcro.1 hpc hrun hsp hsp_align hx1 hx19 hx24 htr)
+        (statesRecvRoPlacedAt ∗ memRegion (s0.sp - 43600#64) 19808)
+        hgt hcro.1 hpc hrun hsp hsp_align hx1 hx19 hx24 htr)
       (fun sf Pf _ _ ⟨evs, hevs, hPf, hsp_sf, _, hcs_sf, htr_sf⟩ =>
-        ⟨⟨evs, hPost_gt hgt evs hevs, Entails.trans hPf (Entails.of_eq (by sep_ac_rfl))⟩,
+        ⟨⟨evs, hPost_gt hgt evs hevs,
+          Entails.trans hPf (Entails.of_eq (by rw [hplaced_split]; sep_ac_rfl))⟩,
          hsp_sf, hcs_sf, htr_sf⟩)
   · by_cases hlt : msg.epoch < st.uc.epoch
-    · refine sepWPp_of_statesRecv_exit_evs_placed_ofPrePostEnv
+    · refine sepWPp_of_statesRecv_exit_evs_placed_ext_ofPrePostEnv
         (PreEnv := PreEnv) (PostEnv := PostEnv)
         s0 s outA selfA msgA (.ekSentCt1Received st) msg st_cost [] (hPost_lt hlt) _ R ?_
       rw [states_recv_ekSentCt1Received_lt K st msg hlt, hpre_comm, AllocCostModel.stepEvents_nil]
       refine SepWP.mono
         (ekSentCt1Received_arm_lt_pool_placed hmemcpy_sat st_cost s0 s outA selfA msgA st msg
-          statesRecvRoPlacedAt hlt hpc hrun hsp hsp_align hx1 hx19 hx24 htr)
+          (statesRecvRoPlacedAt ∗ memRegion (s0.sp - 43600#64) 19808)
+          hlt hpc hrun hsp hsp_align hx1 hx19 hx24 htr)
         (fun sf Pf _ _ ⟨_, hPf, hsp_sf, hcs_sf, htr_sf⟩ =>
-          ⟨Entails.trans hPf (Entails.of_eq (by sep_ac_rfl)), hsp_sf, hcs_sf, htr_sf⟩)
+          ⟨Entails.trans hPf (Entails.of_eq (by rw [hplaced_split]; sep_ac_rfl)), hsp_sf, hcs_sf, htr_sf⟩)
     · have heq : msg.epoch = st.uc.epoch :=
         BitVec.le_antisymm (BitVec.not_lt.mp hgt) (BitVec.not_lt.mp hlt)
       cases hpay : msg.payload with
@@ -467,7 +520,7 @@ theorem states_recv_arm_ekSentCt1Received_placed_ofPrePostEnv [LibsignalPlacemen
                 ((lsLogFilterAddr ↦₆₄ 0#64) ∗
                   ((lsρ "spqr:.rodata..Lanon.137") ↦ᵣ Authenticator.ctLabel)) ∗
                 tokenInitPlacedAt ∗ reduceTablePlacedAt) ∗
-              A.pool lim st_cost s ∗ stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗
+              A.pool lim st_cost s ∗ stackAt (s0.sp - 4240#64) recvCt2ChunkPlacedStack ∗
               memRegion (s0.sp - 4240#64) 4144 ∗ statesRecvSavedCells s0 =
             (statesRecvJumpTablePlacedAt ∗
               ((lsρ "spqr:.rodata..Lanon.137") ↦ᵣ Authenticator.ctLabel)) ∗
@@ -475,7 +528,7 @@ theorem states_recv_arm_ekSentCt1Received_placed_ofPrePostEnv [LibsignalPlacemen
               chunkedStatesAt A.repAlloc selfA (.ekSentCt1Received st) ∗
               messageAt spqrPolyApi msgA msg ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
               tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ A.pool lim st_cost s ∗
-              stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗
+              stackAt (s0.sp - 4240#64) recvCt2ChunkPlacedStack ∗
               memRegion (s0.sp - 4240#64) 4144 ∗ statesRecvSavedCells s0 by sep_ac_rfl]
         refine ekSentCt1Received_arm_eq_ct2_placed (K := K) hcall hmemcpy_sat st_cost
           s0 s outA selfA msgA st msg chunk
@@ -484,7 +537,7 @@ theorem states_recv_arm_ekSentCt1Received_placed_ofPrePostEnv [LibsignalPlacemen
           (fun evs hevs sf Pf _ _ ⟨hPf, hspf, hcs, htrf⟩ => ?_)
           (fun sf Pf hpan hmem_f => ?_)
         · refine ⟨fun hmem_f => ?_, hspf, hcs⟩
-          dsimp only [statesRecvVariantPlacedSpecOfPrePostEnv]
+          dsimp only [statesRecvVariantPlacedSpecExtOfPrePostEnv]
           rw [sepExists_sepConj_left, satisfies_sepExists]
           refine ⟨evs, ?_⟩
           rw [sepConj_assoc, satisfies_pure_sepConj]
@@ -494,7 +547,7 @@ theorem states_recv_arm_ekSentCt1Received_placed_ofPrePostEnv [LibsignalPlacemen
           dsimp only [statesRecvRoPlacedAt, unchunkedSendCt2PlacedRoAt]
           sep_ac_rfl
         · have hpan' := hpan hmem_f
-          dsimp only [statesRecvVariantPlacedSpecOfPrePostEnv]
+          dsimp only [statesRecvVariantPlacedSpecExtOfPrePostEnv]
           unfold DefsPlacedBudget.statesRecvBudgetOnPanic
             LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget.statesRecvBudgetOnPanic
           rw [sepConj_assoc, satisfies_pure_sepConj] at hpan' ⊢
@@ -502,7 +555,7 @@ theorem states_recv_arm_ekSentCt1Received_placed_ofPrePostEnv [LibsignalPlacemen
             hpan'.1.2⟩, hpan'.2⟩
       | none | hdr _ | ek _ | ekCt1Ack _ | ct1 _ | ct1Ack _ =>
         have hct2 : ∀ c, msg.payload ≠ .ct2 c := by intro c hc; rw [hpay] at hc; cases hc
-        refine sepWPp_of_statesRecv_exit_evs_placed_ofPrePostEnv
+        refine sepWPp_of_statesRecv_exit_evs_placed_ext_ofPrePostEnv
           (PreEnv := PreEnv) (PostEnv := PostEnv)
           s0 s outA selfA msgA (.ekSentCt1Received st) msg st_cost []
           (hPost_other heq hct2) _ R ?_
@@ -510,9 +563,10 @@ theorem states_recv_arm_ekSentCt1Received_placed_ofPrePostEnv [LibsignalPlacemen
             AllocCostModel.stepEvents_nil]
         refine SepWP.mono
           (ekSentCt1Received_arm_eq_other_pool_placed hmemcpy_sat st_cost s0 s outA selfA msgA st msg
-            statesRecvRoPlacedAt heq hct2 hpc hrun hsp hsp_align hx1 hx19 hx24 htr)
+            (statesRecvRoPlacedAt ∗ memRegion (s0.sp - 43600#64) 19808)
+            heq hct2 hpc hrun hsp hsp_align hx1 hx19 hx24 htr)
           (fun sf Pf _ _ ⟨_, hPf, hsp_sf, hcs_sf, htr_sf⟩ =>
-            ⟨Entails.trans hPf (Entails.of_eq (by sep_ac_rfl)), hsp_sf, hcs_sf, htr_sf⟩)
+            ⟨Entails.trans hPf (Entails.of_eq (by rw [hplaced_split]; sep_ac_rfl)), hsp_sf, hcs_sf, htr_sf⟩)
 
 theorem states_recv_arm_ekSentCt1Received_placed_ofEnv [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -523,7 +577,7 @@ theorem states_recv_arm_ekSentCt1Received_placed_ofEnv [LibsignalPlacement]
     (hdealloc : HookSat (Rust.withPanics ext) spqrDeallocSym (rustCliDeallocBudgetSpec M A lim))
     (hcall : subroutine_ok (lsProg_332 (Rust.withPanics ext)) (lsmpl.base 350)
       (withLsCodeRoLoaded lsmpl
-        (recvCt2ChunkPlacedSpecOfPrePostEnv K F M A lim CalleePre CalleePost)))
+        (recvCt2ChunkPlacedSpecExtOfPrePostEnv K F M A lim CalleePre CalleePost)))
     (hmemcpy_sat : HookSat (Rust.withPanics ext) spqrMemcpySym (withVmPreserved sessionMemcpySpec))
     (st_cost : M.σ)
     (s0 s : State) (outA selfA msgA : BitVec 64)
@@ -563,18 +617,18 @@ theorem states_recv_arm_ekSentCt1Received_placed_ofEnv [LibsignalPlacement]
     SepWPp (lsProg_332 (Rust.withPanics ext)) (s0.readReg64 Reg.lr) s
       (memRegion outA v1RecvSize ∗ chunkedStatesAt A.repAlloc selfA (.ekSentCt1Received st) ∗
         messageAt spqrPolyApi msgA msg ∗ statesRecvRoPlacedAt ∗ A.pool lim st_cost s ∗
-        stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗
+        stackAt (s0.sp - 4240#64) recvCt2ChunkPlacedStack ∗
         memRegion (s0.sp - 4240#64) 4144 ∗ statesRecvSavedCells s0)
       (fun sf P_f =>
         (sf.mem ⊨ P_f ∗ R →
           sf.mem ⊨
-            (statesRecvVariantPlacedSpecOfEnv M A lim F K (.ekSentCt1Received st) msg Env).post
+            (statesRecvVariantPlacedSpecExtOfEnv M A lim F K (.ekSentCt1Received st) msg Env).post
               ((outA, selfA, msgA), st_cost) s0 sf ∗ R) ∧
         sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
       (fun sf P_f =>
         (sf.mem ⊨ P_f ∗ R) →
           (sf.mem ⊨
-            (statesRecvVariantPlacedSpecOfEnv M A lim F K (.ekSentCt1Received st) msg Env).onPanic
+            (statesRecvVariantPlacedSpecExtOfEnv M A lim F K (.ekSentCt1Received st) msg Env).onPanic
               ((outA, selfA, msgA), st_cost) s0 sf ∗ R)) :=
   states_recv_arm_ekSentCt1Received_placed_ofPrePostEnv
     hdealloc hcall hmemcpy_sat st_cost s0 s outA selfA msgA st msg R hFit
@@ -589,7 +643,7 @@ theorem states_recv_arm_ekSentCt1Received_placed [LibsignalPlacement]
     {ext : String → Option (State → State)}
     (hdealloc : HookSat (Rust.withPanics ext) spqrDeallocSym (rustCliDeallocBudgetSpec M A lim))
     (hcall : subroutine_ok (lsProg_332 (Rust.withPanics ext)) (lsmpl.base 350)
-      (withLsCodeRoLoaded lsmpl (recvCt2ChunkPlacedSpec K F M A lim)))
+      (withLsCodeRoLoaded lsmpl (recvCt2ChunkPlacedSpecExt K F M A lim)))
     (hmemcpy_sat : HookSat (Rust.withPanics ext) spqrMemcpySym (withVmPreserved sessionMemcpySpec))
     (st_cost : M.σ)
     (s0 s : State) (outA selfA msgA : BitVec 64)
@@ -610,20 +664,22 @@ theorem states_recv_arm_ekSentCt1Received_placed [LibsignalPlacement]
     SepWPp (lsProg_332 (Rust.withPanics ext)) (s0.readReg64 Reg.lr) s
       (memRegion outA v1RecvSize ∗ chunkedStatesAt A.repAlloc selfA (.ekSentCt1Received st) ∗
         messageAt spqrPolyApi msgA msg ∗ statesRecvRoPlacedAt ∗ A.pool lim st_cost s ∗
-        stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗
+        stackAt (s0.sp - 4240#64) recvCt2ChunkPlacedStack ∗
         memRegion (s0.sp - 4240#64) 4144 ∗ statesRecvSavedCells s0)
       (fun sf P_f =>
         (sf.mem ⊨ P_f ∗ R →
           sf.mem ⊨
-            (statesRecvVariantPlacedSpecOfEnv M A lim F K (.ekSentCt1Received st) msg
+            (statesRecvVariantPlacedSpecExtOfEnv M A lim F K (.ekSentCt1Received st) msg
               StatesRecvEkSentCt1ReceivedEnv).post ((outA, selfA, msgA), st_cost) s0 sf ∗ R) ∧
         sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
       (fun sf P_f =>
         (sf.mem ⊨ P_f ∗ R) →
           (sf.mem ⊨
-            (statesRecvVariantPlacedSpecOfEnv M A lim F K (.ekSentCt1Received st) msg
+            (statesRecvVariantPlacedSpecExtOfEnv M A lim F K (.ekSentCt1Received st) msg
               StatesRecvEkSentCt1ReceivedEnv).onPanic ((outA, selfA, msgA), st_cost) s0 sf ∗ R)) := by
-  refine states_recv_arm_ekSentCt1Received_placed_ofEnv hdealloc hcall hmemcpy_sat st_cost
+  refine states_recv_arm_ekSentCt1Received_placed_ofEnv
+    (CalleePre := RecvCt2ChunkEnv) (CalleePost := RecvCt2ChunkEnv)
+    hdealloc hcall hmemcpy_sat st_cost
     s0 s outA selfA msgA st msg R hFit
     (fun chunk heq hp hfits => ?_)
     (fun hgt evs hevs => ?_)
@@ -652,10 +708,14 @@ theorem states_recv_arm_ekSentCt1Received_placed [LibsignalPlacement]
     dsimp only [StatesRecvEkSentCt1ReceivedEnv]
     simp only [hne, Bool.false_eq_true, ↓reduceIte, hnot_gt]
   · have heq_b : (msg.epoch == st.uc.epoch) = true := beq_iff_eq.mpr heq
-    dsimp only [RecvCt2ChunkEnv] at hevs
-    dsimp only [StatesRecvEkSentCt1ReceivedEnv, RecvCt2ChunkEnv]
-    simp only [heq_b, ↓reduceIte, hp]
-    exact hevs
+    have henv_eq :
+        StatesRecvEkSentCt1ReceivedEnv ⟨outA, selfA, msgA, .ekSentCt1Received st, msg⟩ =
+          RecvCt2ChunkEnv ⟨(s0.sp - 4240#64) + 976#64, (s0.sp - 4240#64) + 1856#64,
+            st, st.uc.epoch, msgA + 10#64, chunk⟩ := by
+      funext evs
+      dsimp only [StatesRecvEkSentCt1ReceivedEnv, RecvCt2ChunkEnv]
+      simp only [heq_b, ↓reduceIte, hp]
+    exact henv_eq.symm ▸ hevs
   · cases hp : msg.payload with
     | ct2 c => exact False.elim (hno c hp)
     | none | hdr _ | ek _ | ct1 _ | ct1Ack _ | ekCt1Ack _ =>
@@ -693,20 +753,30 @@ theorem states_recv_ekSentCt1Received_placed_ok_ext_ofPrePostEnv [LibsignalPlace
     subroutine_ok (lsProg_332 (Rust.withPanics ext))
       (lsmpl.base 332)
       (withLsCodeRoLoaded lsmpl
-        (statesRecvVariantPlacedSpecOfPrePostEnv M A lim F K (.ekSentCt1Received st) msg
+        (statesRecvVariantPlacedSpecExtOfPrePostEnv M A lim F K (.ekSentCt1Received st) msg
           PreEnv PostEnv)) := by
   apply subroutine_ok_of_sepWPp
   rintro ⟨⟨outA, selfA, msgA⟩, st_cost⟩ R s0 hpc0 hrun0 hpre hsp0_align
   obtain ⟨hcro0, hpre⟩ := extract_withLsCodeRoLoaded hpre
-  simp only [statesRecvVariantPlacedSpecOfPrePostEnv, sepConj_assoc, satisfies_pure_sepConj] at hpre
+  simp only [statesRecvVariantPlacedSpecExtOfPrePostEnv, sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨⟨hx0, hx1, hx2, hinv, hfit, hlr_ls⟩, hmem⟩
   have _hlr_x30 : LsRetAddr624 (s0.readReg64 .x30) := hlr_ls
+  have hplaced_split :
+      stackAt s0.sp statesRecvPlacedStack =
+        memRegion (s0.sp - 43600#64) 19808 ∗ stackAt s0.sp statesRecvStackX :=
+    stackAt_statesRecvPlaced_eq_X s0.sp
+  have hcallee_split :
+      stackAt (s0.sp - 4240#64) recvCt2ChunkPlacedStack =
+        memRegion (s0.sp - 43600#64) 19808 ∗ stackAt (s0.sp - 4240#64) statesRecvCalleeStackX :=
+    stackAt_statesRecvCalleePlaced_eq_X s0.sp
   refine ⟨stackAt s0.sp statesRecvStackX ∗ A.pool lim st_cost s0 ∗
-      (memRegion outA v1RecvSize ∗ chunkedStatesAt A.repAlloc selfA (.ekSentCt1Received st) ∗
+      (memRegion (s0.sp - 43600#64) 19808 ∗ memRegion outA v1RecvSize ∗
+       chunkedStatesAt A.repAlloc selfA (.ekSentCt1Received st) ∗
        messageAt spqrPolyApi msgA msg ∗ statesRecvRoPlacedAt),
-    R, Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmem, ?_⟩
+    R, Satisfies.mono (Entails.of_eq (by rw [hplaced_split]; sep_ac_rfl)) hmem, ?_⟩
   have hpro := states_recv_prologue_pool_placed (A := A) (lim := lim) (ext := ext) st_cost s0
-    (memRegion outA v1RecvSize ∗ chunkedStatesAt A.repAlloc selfA (.ekSentCt1Received st) ∗
+    (memRegion (s0.sp - 43600#64) 19808 ∗ memRegion outA v1RecvSize ∗
+     chunkedStatesAt A.repAlloc selfA (.ekSentCt1Received st) ∗
      messageAt spqrPolyApi msgA msg ∗ statesRecvRoPlacedAt) hsp0_align hpc0 hrun0
   refine sepWPp_seq_vm_lscro hcro0 hpro ?_
   intro s1 hpc1 hrun1 _ ⟨_, hsp1, hx0_1, hx1_1, hx2_1, _, hx29_1, htr1⟩ hcro1
@@ -714,7 +784,8 @@ theorem states_recv_ekSentCt1Received_placed_ok_ext_ofPrePostEnv [LibsignalPlace
   dsimp only [chunkedStatesAt]
   have hdisp := states_recv_dispatch_pool_placed (A := A) (lim := lim) (ext := ext) st_cost s1
     (s0.sp - 4240#64) selfA 6#64
-    (chunkedEkSentCt1ReceivedAt A.repAlloc (selfA + 8#64) st ∗ memRegion (selfA + 512#64) 416 ∗
+    (memRegion (s0.sp - 43600#64) 19808 ∗
+     chunkedEkSentCt1ReceivedAt A.repAlloc (selfA + 8#64) st ∗ memRegion (selfA + 512#64) 416 ∗
      memRegion outA v1RecvSize ∗ messageAt spqrPolyApi msgA msg ∗
      stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗ memRegion (s0.sp - 4240#64) 4144 ∗
      statesRecvSavedCells s0)
@@ -724,15 +795,16 @@ theorem states_recv_ekSentCt1Received_placed_ok_ext_ofPrePostEnv [LibsignalPlace
   rw [hx0_1] at hx19_2; rw [hx2_1] at hx24_2
   have hpre2 :
       (selfA ↦₆₄ 6#64) ∗ statesRecvRoPlacedAt ∗ A.pool lim st_cost s2 ∗
-      (chunkedEkSentCt1ReceivedAt A.repAlloc (selfA + 8#64) st ∗ memRegion (selfA + 512#64) 416 ∗
+      (memRegion (s0.sp - 43600#64) 19808 ∗
+       chunkedEkSentCt1ReceivedAt A.repAlloc (selfA + 8#64) st ∗ memRegion (selfA + 512#64) 416 ∗
        memRegion outA v1RecvSize ∗ messageAt spqrPolyApi msgA msg ∗
        stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗ memRegion (s0.sp - 4240#64) 4144 ∗
        statesRecvSavedCells s0) ⊢
       memRegion outA v1RecvSize ∗ chunkedStatesAt A.repAlloc selfA (.ekSentCt1Received st) ∗
       messageAt spqrPolyApi msgA msg ∗ statesRecvRoPlacedAt ∗ A.pool lim st_cost s2 ∗
-      stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗ memRegion (s0.sp - 4240#64) 4144 ∗
+      stackAt (s0.sp - 4240#64) recvCt2ChunkPlacedStack ∗ memRegion (s0.sp - 4240#64) 4144 ∗
       statesRecvSavedCells s0 := by
-    dsimp only [chunkedStatesAt]; exact Entails.of_eq (by sep_ac_rfl)
+    dsimp only [chunkedStatesAt]; rw [hcallee_split]; exact Entails.of_eq (by sep_ac_rfl)
   refine SepWPp.weaken_pre hpre2 ?_
   exact states_recv_arm_ekSentCt1Received_placed_ofPrePostEnv
     (PreEnv := PreEnv) (PostEnv := PostEnv)
@@ -772,7 +844,7 @@ theorem states_recv_ekSentCt1Received_placed_ok_ext_ofEnv [LibsignalPlacement]
     subroutine_ok (lsProg_332 (Rust.withPanics ext))
       (lsmpl.base 332)
       (withLsCodeRoLoaded lsmpl
-        (statesRecvVariantPlacedSpecOfEnv M A lim F K (.ekSentCt1Received st) msg Env)) :=
+        (statesRecvVariantPlacedSpecExtOfEnv M A lim F K (.ekSentCt1Received st) msg Env)) :=
   states_recv_ekSentCt1Received_placed_ok_ext_ofPrePostEnv
     hC st msg hPost_gt hPost_lt hPost_other hCt2_pre hCt2_post
 
@@ -789,7 +861,7 @@ theorem states_recv_ekSentCt1Received_placed_ok_ext [LibsignalPlacement]
     subroutine_ok (lsProg_332 (Rust.withPanics ext))
       (lsmpl.base 332)
       (withLsCodeRoLoaded lsmpl
-        (statesRecvVariantPlacedSpecOfEnv M A lim F K (.ekSentCt1Received st) msg
+        (statesRecvVariantPlacedSpecExtOfEnv M A lim F K (.ekSentCt1Received st) msg
           StatesRecvEkSentCt1ReceivedEnv)) := by
   refine states_recv_ekSentCt1Received_placed_ok_ext_ofEnv hC st msg
     (fun hgt outA selfA msgA evs hevs => ?_)

@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`): Relocatable `ct1.reserve`, Append & HMAC
@@ -24,7 +25,7 @@ Relocatable `[LibsignalPlacement]` proof of `ct1.reserve(128)` (`+664 .. +684` +
 and `ct2` append, `sliceConcat3` (Block `386`), `libcrux_hmac`, and `mac_data` deallocation (`+684 .. +860`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

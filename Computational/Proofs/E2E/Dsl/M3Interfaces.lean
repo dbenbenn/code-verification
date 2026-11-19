@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.M2Interfaces
+public import Computational.Proofs.E2E.Dsl.M2Interfaces -- proof-setup: allow-public-import
 public import Computational.Specifications.Reductions.Pqxdh.StatementPqReds
-public import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers
+import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers
 
 /-!
 # Sub-Program Interface Contracts for Driver State, Session Step, and Promotion
@@ -21,7 +21,7 @@ and session-reachability invariants, and the sub-program interface contracts (`M
 and `M3SubprogramsSizeIface`) consumed by the E2E `KeyInd` and single-session `SM.spec` reductions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -61,24 +61,24 @@ open Computational.Proofs.E2E.Dsl.M2Interfaces (smQdec smQdec_smQenc smQenc_smQd
 
 /-! ## Driver-State Representation, Codecs, and Projections -/
 
-@[reducible] def e2eMirrorPrinEntryTy {ℓ : ℕ} (S : SignalPqxdh.Setup) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eMirrorPrinEntryTy {ℓ : ℕ} (S : SignalPqxdh.Setup) : Ty (e2eSig ℓ) :=
   .prod (FinT S.N_id) (PB 32)
 
-@[reducible] def e2eMirrorBundleEntryTy {ℓ : ℕ} (S : SignalPqxdh.Setup) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eMirrorBundleEntryTy {ℓ : ℕ} (S : SignalPqxdh.Setup) : Ty (e2eSig ℓ) :=
   .prod (.prod (FinT S.N_id) (FinT S.N_recv)) (.prod (PB 32) (PB 1568))
 
-@[reducible] def e2eMirrorOpkEntryTy {ℓ : ℕ} (S : SignalPqxdh.Setup) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eMirrorOpkEntryTy {ℓ : ℕ} (S : SignalPqxdh.Setup) : Ty (e2eSig ℓ) :=
   .prod (.prod (FinT S.N_id) (.prod (FinT S.N_recv) (FinT S.N_opk))) (PB 32)
 
-@[reducible] def e2eMirrorSendEntryTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eMirrorSendEntryTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod (sidT S) (.prod bundleT hdrT)
 
-def e2eMirrorSendEnc {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def e2eMirrorSendEnc {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (x : SignalPqxdh.SessionId S × SignalPqxdh.PreKeyBundleInput × SignalPqxdh.HandshakeHdr) :
     (e2eMirrorSendEntryTy S ℓ).denote :=
   (sidV x.1, (bundleV x.2.1, hdrV x.2.2))
 
-def e2eMirrorSendDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def e2eMirrorSendDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (v : (e2eMirrorSendEntryTy S ℓ).denote) :
     SignalPqxdh.SessionId S × SignalPqxdh.PreKeyBundleInput × SignalPqxdh.HandshakeHdr :=
   (sidOfV v.1, (bundleOfV v.2.1, hdrOfV v.2.2))
@@ -94,17 +94,17 @@ def e2eMirrorSendDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
   rcases v with ⟨sv, bv, hv⟩; simp [e2eMirrorSendEnc, e2eMirrorSendDec]
 
 /-- Bounded-list representation of `ModelDriverBase S`: `(prins, (bundles, (opks, sends)))`. -/
-@[reducible] def e2eMirrorBaseTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eMirrorBaseTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod (.list (e2eMirrorPrinEntryTy S))
     (.prod (.list (e2eMirrorBundleEntryTy S))
       (.prod (.list (e2eMirrorOpkEntryTy S))
         (.list (e2eMirrorSendEntryTy S ℓ))))
 
-def e2eMirrorBaseEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} (ds : ModelDriverBase S) :
+@[expose] def e2eMirrorBaseEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} (ds : ModelDriverBase S) :
     (e2eMirrorBaseTy S ℓ).denote :=
   (ds.prins, (ds.bundles, (ds.opks, ds.sends.map e2eMirrorSendEnc)))
 
-def e2eMirrorBaseDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def e2eMirrorBaseDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (v : (e2eMirrorBaseTy S ℓ).denote) : ModelDriverBase S :=
   { prins := v.1, bundles := v.2.1, opks := v.2.2.1, sends := v.2.2.2.map e2eMirrorSendDec }
 
@@ -120,14 +120,14 @@ def e2eMirrorBaseDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
 
 /-- Representation of `ModelDriverInstanceMeta S`:
 `(bobAccepted, (ikACorrAtAccept, (respPrin, (respSpkIdx, instOpkId?))))`. -/
-@[reducible] def e2eInstMetaTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eInstMetaTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod .bool (.prod .bool (.prod (.opt (FinT S.N_id)) (.prod (.opt (FinT S.N_recv)) (.opt PU32))))
 
-def e2eInstMetaEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} (im : ModelDriverInstanceMeta S) :
+@[expose] def e2eInstMetaEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} (im : ModelDriverInstanceMeta S) :
     (e2eInstMetaTy S ℓ).denote :=
   (im.bobAccepted, (im.ikACorrAtAccept, (im.respPrin, (im.respSpkIdx, im.instOpkId?))))
 
-def e2eInstMetaDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def e2eInstMetaDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (v : (e2eInstMetaTy S ℓ).denote) : ModelDriverInstanceMeta S :=
   { bobAccepted := v.1, ikACorrAtAccept := v.2.1, respPrin := v.2.2.1,
     respSpkIdx := v.2.2.2.1, instOpkId? := v.2.2.2.2 }
@@ -143,14 +143,14 @@ def e2eInstMetaDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
   rcases v with ⟨_, _, _, _, _⟩; rfl
 
 /-- Representation of `BHModelInst S ℓ`: `(sid, (hdr, (idA, (idB, (spkCoins, gs)))))`. -/
-@[reducible] def e2eModelInstTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eModelInstTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod (sidT S) (.prod hdrT (.prod IdKey (.prod IdKey (.prod BV256 (.opt (e2eGsTy ℓ))))))
 
-def e2eModelInstEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} (d : BHModelInst S ℓ) :
+@[expose] def e2eModelInstEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} (d : BHModelInst S ℓ) :
     (e2eModelInstTy S ℓ).denote :=
   (sidV d.sid, (hdrV d.hdr, (d.idA, (d.idB, (d.spkCoins, d.gs.map e2eGsEnc)))))
 
-def e2eModelInstDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def e2eModelInstDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (v : (e2eModelInstTy S ℓ).denote) : BHModelInst S ℓ :=
   { sid := sidOfV v.1, hdr := hdrOfV v.2.1, idA := v.2.2.1, idB := v.2.2.2.1,
     spkCoins := v.2.2.2.2.1, gs := v.2.2.2.2.2.map e2eGsDec }
@@ -191,7 +191,7 @@ theorem e2eModelInstDec_e2eModelInstEnc_of_gs {S : SignalPqxdh.Setup} {ℓ : ℕ
 
 /-- Bounded-list `ReductionDsl` representation of `BHE2EDrvState S ℓ`:
 `(base, (corrPrins, (revealedSpks, (insts, (instMeta, (st, (b, paused)))))))`. -/
-@[reducible] def e2eDrvStateTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eDrvStateTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod (e2eMirrorBaseTy S ℓ)
     (.prod (.list (FinT S.N_id))
       (.prod (.list (.prod (FinT S.N_id) (FinT S.N_recv)))
@@ -200,7 +200,7 @@ theorem e2eModelInstDec_e2eModelInstEnc_of_gs {S : SignalPqxdh.Setup} {ℓ : ℕ
             (.prod (e2eKeyIndStateTy ℓ S)
               (.prod .bool .bool))))))
 
-def e2eDrvStateEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} (σ : BHE2EDrvState S ℓ) :
+@[expose] def e2eDrvStateEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} (σ : BHE2EDrvState S ℓ) :
     (e2eDrvStateTy S ℓ).denote :=
   (e2eMirrorBaseEnc σ.toModelDriverBase,
    (σ.corrPrins,
@@ -210,7 +210,7 @@ def e2eDrvStateEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} (σ : BHE2EDrvState S ℓ
        (e2eKeyIndStateToVal σ.st,
         (σ.b, σ.paused)))))))
 
-def e2eDrvStateDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def e2eDrvStateDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (v : (e2eDrvStateTy S ℓ).denote) : BHE2EDrvState S ℓ :=
   { toModelDriverBase := e2eMirrorBaseDec v.1
     corrPrins := v.2.1
@@ -308,16 +308,16 @@ section StateProjections
 variable {ℓ : ℕ} {S : SignalPqxdh.Setup} {O : ReductionDsl.Ops (e2eSig ℓ)}
   {Γ : List (Ty (e2eSig ℓ))}
 
-def drvStE (σE : Expr O Γ (e2eDrvStateTy S ℓ)) : Expr O Γ (e2eKeyIndStateTy ℓ S) :=
+@[expose] def drvStE (σE : Expr O Γ (e2eDrvStateTy S ℓ)) : Expr O Γ (e2eKeyIndStateTy ℓ S) :=
   .fst (.snd (.snd (.snd (.snd (.snd σE)))))
 
-def drvBitE (σE : Expr O Γ (e2eDrvStateTy S ℓ)) : Expr O Γ .bool :=
+@[expose] def drvBitE (σE : Expr O Γ (e2eDrvStateTy S ℓ)) : Expr O Γ .bool :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd σE))))))
 
-def drvPausedE (σE : Expr O Γ (e2eDrvStateTy S ℓ)) : Expr O Γ .bool :=
+@[expose] def drvPausedE (σE : Expr O Γ (e2eDrvStateTy S ℓ)) : Expr O Γ .bool :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd σE))))))
 
-def drvSetStE (σE : Expr O Γ (e2eDrvStateTy S ℓ))
+@[expose] def drvSetStE (σE : Expr O Γ (e2eDrvStateTy S ℓ))
     (stE : Expr O Γ (e2eKeyIndStateTy ℓ S)) : Expr O Γ (e2eDrvStateTy S ℓ) :=
   .letE (.pair σE stE)
     (let s : Expr O _ (e2eDrvStateTy S ℓ) := .fst (.var .zero)
@@ -334,7 +334,7 @@ def drvSetStE (σE : Expr O Γ (e2eDrvStateTy S ℓ))
              (.pair (.fst r4)
                (.pair st (.snd r5)))))))
 
-def drvSetBitE (σE : Expr O Γ (e2eDrvStateTy S ℓ))
+@[expose] def drvSetBitE (σE : Expr O Γ (e2eDrvStateTy S ℓ))
     (bE : Expr O Γ .bool) : Expr O Γ (e2eDrvStateTy S ℓ) :=
   .letE (.pair σE bE)
     (let s : Expr O _ (e2eDrvStateTy S ℓ) := .fst (.var .zero)
@@ -388,10 +388,6 @@ theorem cost_drvBitE (σE : Expr O Γ (e2eDrvStateTy S ℓ)) :
     (drvBitE σE).cost = σE.cost + 7 := by
   simp [drvBitE, Expr.cost]
 
-theorem cost_drvPausedE (σE : Expr O Γ (e2eDrvStateTy S ℓ)) :
-    (drvPausedE σE).cost = σE.cost + 7 := by
-  simp [drvPausedE, Expr.cost]
-
 theorem cost_drvSetStE (σE : Expr O Γ (e2eDrvStateTy S ℓ))
     (stE : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
     (drvSetStE σE stE).cost ≤ σE.cost + stE.cost + 60 := by
@@ -409,10 +405,6 @@ theorem size_drvStE (σE : Expr O Γ (e2eDrvStateTy S ℓ)) :
 theorem size_drvBitE (σE : Expr O Γ (e2eDrvStateTy S ℓ)) :
     (drvBitE σE).size = σE.size + 7 := by
   simp [drvBitE, Expr.size]
-
-theorem size_drvPausedE (σE : Expr O Γ (e2eDrvStateTy S ℓ)) :
-    (drvPausedE σE).size = σE.size + 7 := by
-  simp [drvPausedE, Expr.size]
 
 theorem size_drvSetStE (σE : Expr O Γ (e2eDrvStateTy S ℓ))
     (stE : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
@@ -436,13 +428,13 @@ variable {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
 
 /-- Per-instance reveal check (`DEV-C17`): `(respPrin, respSpkIdx)` is known and not in
 `revealedSpks`. -/
-def respNotRevealed {S : SignalPqxdh.Setup} (im : ModelDriverInstanceMeta S)
+@[expose] def respNotRevealed {S : SignalPqxdh.Setup} (im : ModelDriverInstanceMeta S)
     (revSpks : List (Fin S.N_id × Fin S.N_recv)) : Bool :=
   match im.respPrin, im.respSpkIdx with
   | some u, some j => !revSpks.contains (u, j)
   | _, _ => false
 
-def respNotRevealedE (nCorr : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def respNotRevealedE (nCorr : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (imE : Expr (e2eOps ℓ P C K decT encT) Γ (e2eInstMetaTy S ℓ))
     (revE : Expr (e2eOps ℓ P C K decT encT) Γ (.list (.prod (FinT S.N_id) (FinT S.N_recv)))) :
     Expr (e2eOps ℓ P C K decT encT) Γ .bool :=
@@ -491,10 +483,10 @@ theorem cost_respNotRevealedE (nCorr : ℕ) {Γ : List (Ty (e2eSig ℓ))}
 
 end RespNotRevealed
 
-def prefixCtxEnc {ℓ : ℕ} (c : BHPrefixCtx) : (prefixCtxT (ℓ := ℓ)).denote :=
+@[expose] def prefixCtxEnc {ℓ : ℕ} (c : BHPrefixCtx) : (prefixCtxT (ℓ := ℓ)).denote :=
   (c.idA, (c.idB, c.spkCoins))
 
-def prefixCtxDec {ℓ : ℕ} (v : (prefixCtxT (ℓ := ℓ)).denote) : BHPrefixCtx :=
+@[expose] def prefixCtxDec {ℓ : ℕ} (v : (prefixCtxT (ℓ := ℓ)).denote) : BHPrefixCtx :=
   { idA := v.1, idB := v.2.1, spkCoins := v.2.2 }
 
 @[simp] theorem prefixCtxDec_prefixCtxEnc {ℓ : ℕ} (c : BHPrefixCtx) :
@@ -505,10 +497,10 @@ def prefixCtxDec {ℓ : ℕ} (v : (prefixCtxT (ℓ := ℓ)).denote) : BHPrefixCt
     prefixCtxEnc (prefixCtxDec v) = v := by
   rcases v with ⟨_, _, _⟩; rfl
 
-def packSmRespEnc {ℓ : ℕ} (br : BHE2ESmResp ℓ) : (smRT (ℓ := ℓ) GhostStT).denote :=
+@[expose] def packSmRespEnc {ℓ : ℕ} (br : BHE2ESmResp ℓ) : (smRT (ℓ := ℓ) GhostStT).denote :=
   (br.1, (br.2.1.map recvResultEnc, br.2.2))
 
-def unpackSmRespDec {ℓ : ℕ} (v : (smRT (ℓ := ℓ) GhostStT).denote) : BHE2ESmResp ℓ :=
+@[expose] def unpackSmRespDec {ℓ : ℕ} (v : (smRT (ℓ := ℓ) GhostStT).denote) : BHE2ESmResp ℓ :=
   (v.1, v.2.1.map recvResultDec, v.2.2)
 
 @[simp] theorem unpackSmRespDec_packSmRespEnc {ℓ : ℕ} (br : BHE2ESmResp ℓ) :
@@ -539,10 +531,10 @@ def unpackSmRespDec {ℓ : ℕ} (v : (smRT (ℓ := ℓ) GhostStT).denote) : BHE2
   · cases rr <;> simp [packSmRespEnc, smRdec, bhUnpackSmResp, recvResultDec_recvResultEnc]
   · cases st <;> rfl
 
-@[reducible] def e2eGameQT (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eGameQT (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .sum (.sum (keyIndQT S) (sidT S)) (.prod .nat smQT)
 
-@[reducible] def e2eGameRT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eGameRT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .sum (.sum keyIndRT (.opt .nat)) (smRT GhostStT)
 
 def e2eGameDefaultRespE {ℓ : ℕ} {S : SignalPqxdh.Setup} {O : ReductionDsl.Ops (e2eSig ℓ)}
@@ -553,16 +545,16 @@ def e2eGameDefaultRespE {ℓ : ℕ} {S : SignalPqxdh.Setup} {O : ReductionDsl.Op
       (.inl (.inr .none)))
     (.inr (.pair .none (.pair .none .none)))
 
-def mkTestSessionE {ℓ : ℕ} {S : SignalPqxdh.Setup} {O : ReductionDsl.Ops (e2eSig ℓ)}
+@[expose] def mkTestSessionE {ℓ : ℕ} {S : SignalPqxdh.Setup} {O : ReductionDsl.Ops (e2eSig ℓ)}
     {Γ : List (Ty (e2eSig ℓ))} (sidE : Expr O Γ (sidT S)) : Expr O Γ (keyIndQT S) :=
   .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inl sidE))))))))
 
-def mkRevealSpkSkE {ℓ : ℕ} {S : SignalPqxdh.Setup} {O : ReductionDsl.Ops (e2eSig ℓ)}
+@[expose] def mkRevealSpkSkE {ℓ : ℕ} {S : SignalPqxdh.Setup} {O : ReductionDsl.Ops (e2eSig ℓ)}
     {Γ : List (Ty (e2eSig ℓ))}
     (ujE : Expr O Γ (.prod (FinT S.N_id) (FinT S.N_recv))) : Expr O Γ (keyIndQT S) :=
   .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr ujE))))))))))))
 
-def defaultPrefixCtxE {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives}
+@[expose] def defaultPrefixCtxE {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives}
     {C : Crypto} {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {Γ : List (Ty (e2eSig ℓ))} :
     Expr (e2eOps ℓ P C K decT encT) Γ prefixCtxT :=
@@ -643,11 +635,11 @@ abbrev DrvQueryBounded {S : SignalPqxdh.Setup} {ℓ : ℕ} (qMir qStart : ℕ)
     (σ : BHE2EDrvState S ℓ) : Prop :=
   DrvMirrorBounded qMir qMir qMir qMir qMir qStart σ
 
-def DrvMetaAligned {S : SignalPqxdh.Setup} {ℓ : ℕ} (σ : BHE2EDrvState S ℓ) : Prop :=
+@[expose] def DrvMetaAligned {S : SignalPqxdh.Setup} {ℓ : ℕ} (σ : BHE2EDrvState S ℓ) : Prop :=
   σ.instMeta.length = σ.insts.length
 
 /-- Asserts `SmReachBounded C K qBound` for every active local instance in `σ`. -/
-def DrvSessionsBounded {S : SignalPqxdh.Setup} {ℓ : ℕ} (C : Crypto) (K : MlKem)
+@[expose] def DrvSessionsBounded {S : SignalPqxdh.Setup} {ℓ : ℕ} (C : Crypto) (K : MlKem)
     (qBound : ℕ) (σ : BHE2EDrvState S ℓ) : Prop :=
   ∀ d ∈ σ.insts, ∀ gs ∈ d.gs, SmReachBounded C K qBound gs
 
@@ -795,7 +787,7 @@ theorem DrvSessionsBounded.finishStartSpk {S : SignalPqxdh.Setup} {ℓ : ℕ}
   · exact h
 
 /-- Post-`startDR` slot-`k` check and promotion matching `bhShallowStepPreCtl`. -/
-def bhPromoteSlotK {S : SignalPqxdh.Setup} {ℓ : ℕ} (k : ℕ) (idx? : Option ℕ)
+@[expose] def bhPromoteSlotK {S : SignalPqxdh.Setup} {ℓ : ℕ} (k : ℕ) (idx? : Option ℕ)
     (σ' : BHE2EDrvState S ℓ) :
     (Option ℕ × BHE2EDrvState S ℓ) ⊕ (BHPrefixCtx × Option ℕ × BHE2EDrvState S ℓ) :=
   if k < σ'.insts.length then
@@ -806,7 +798,7 @@ def bhPromoteSlotK {S : SignalPqxdh.Setup} {ℓ : ℕ} (k : ℕ) (idx? : Option 
     .inr (ctx, (idx?, { σ' with insts := insts', paused := true }))
   else .inl (idx?, σ')
 
-def promoteSlotKEnc {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def promoteSlotKEnc {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (res : (Option ℕ × BHE2EDrvState S ℓ) ⊕ (BHPrefixCtx × Option ℕ × BHE2EDrvState S ℓ)) :
     (Ty.sum (.prod (.opt .nat) (e2eDrvStateTy S ℓ))
       (.prod prefixCtxT (.prod (.opt .nat) (e2eDrvStateTy S ℓ)))).denote :=
@@ -815,7 +807,7 @@ def promoteSlotKEnc {S : SignalPqxdh.Setup} {ℓ : ℕ}
   | .inr (ctx, (idx?, σ1)) => .inr (prefixCtxEnc ctx, (idx?, e2eDrvStateEnc σ1))
 
 /-- Pre-query wire filter on a single session instance `(d, im)`. -/
-def bhFilterSmQuery {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhFilterSmQuery {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (d : BHModelInst S ℓ) (im : ModelDriverInstanceMeta S)
     (sq : (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Domain) :
     Option ((CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Domain) :=
@@ -852,7 +844,7 @@ def bhFilterSmQuery {S : SignalPqxdh.Setup} {ℓ : ℕ}
   | _ => some sq
 
 /-- Semantic specification of the Stage-2 external promoted-session `SM.spec` step on slot `k`. -/
-def bhExtSmStep {S : SignalPqxdh.Setup} {ℓ : ℕ} (k : ℕ) (σ : BHE2EDrvState S ℓ)
+@[expose] def bhExtSmStep {S : SignalPqxdh.Setup} {ℓ : ℕ} (k : ℕ) (σ : BHE2EDrvState S ℓ)
     (sq : (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Domain) :
     OracleComp (unifSpec + CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
       (BHE2ESmResp ℓ × BHE2EDrvState S ℓ) :=
@@ -1234,32 +1226,6 @@ structure LocalSessionStepIface (ℓ : ℕ) (S : SignalPqxdh.Setup) {Pt : Type}
         ((fun out => (packSmRespEnc out.1, e2eDrvStateEnc out.2)) <$>
           bhE2EStepLocalSm C K qep decT encT σ i sq)
 
-theorem LocalSessionStepIface.stepLocalSmC_eval_qdec {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
-    {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    (sim : LocalSessionStepIface ℓ S P C K decT encT)
-    {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
-    (qStart nCorr nPrins qBound qep : ℕ) {Γ : List (Ty (e2eSig ℓ))}
-    (σE : Expr (e2eOps ℓ P C K decT encT) Γ (e2eDrvStateTy S ℓ))
-    (idxE : Expr (e2eOps ℓ P C K decT encT) Γ .nat)
-    (qE : Expr (e2eOps ℓ P C K decT encT) Γ smQT)
-    (ρ : Env Γ) (σ : BHE2EDrvState S ℓ)
-    (hσE : σE.eval ρ = e2eDrvStateEnc σ)
-    (hInsts : σ.insts.length ≤ qStart)
-    (hMeta : DrvMetaAligned σ)
-    (hCorr : σ.corrPrins.length ≤ nCorr)
-    (hRev : σ.revealedSpks.length ≤ nCorr)
-    (hPrins : σ.prins.length ≤ nPrins)
-    (hSess : DrvSessionsBounded C K qBound σ) :
-    let sq := smQdec (ℓ := ℓ) (St := GhostState Bytes) (qE.eval ρ)
-    (sim.stepLocalSmC I₀ qStart nCorr nPrins qBound qep σE idxE qE).eval ρ =
-      (stepAIface ℓ I₀).liftP
-        ((fun out => (packSmRespEnc out.1, e2eDrvStateEnc out.2)) <$>
-          bhE2EStepLocalSm C K qep decT encT σ (idxE.eval ρ) sq) :=
-  sim.stepLocalSmC_eval I₀ qStart nCorr nPrins qBound qep σE idxE qE ρ σ (idxE.eval ρ)
-    (smQdec (ℓ := ℓ) (St := GhostState Bytes) (qE.eval ρ))
-    hσE rfl (smQenc_smQdec (qE.eval ρ)).symm hInsts hMeta hCorr hRev hPrins hSess
-
 /-! ## `StartAndExtSmIface`: Session Promotion and External `SM.spec` Routing Contract -/
 
 /-- Interface contract for `bhE2EFinishStartSpk` session initialization, slot-`k` promotion
@@ -1399,29 +1365,6 @@ theorem StartAndExtSmIface.extSmStepC_queries_one {ℓ : ℕ} {S : SignalPqxdh.S
     (sqE : Expr (e2eOps ℓ P C K decT encT) Γ smQT) :
     (sim.extSmStepC qStart nCorr nPrins kE σE sqE).queries (fun _ => 1) (fun _ => 0) ≤ 1 :=
   sim.extSmStepC_queries qStart nCorr nPrins kE σE sqE (fun _ => 1) 1 (fun _ => le_refl 1)
-
-theorem StartAndExtSmIface.extSmStepC_eval_qdec {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
-    {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    (sim : StartAndExtSmIface ℓ S P C K decT encT)
-    (qStart nCorr nPrins : ℕ) {Γ : List (Ty (e2eSig ℓ))}
-    (kE : Expr (e2eOps ℓ P C K decT encT) Γ .nat)
-    (σE : Expr (e2eOps ℓ P C K decT encT) Γ (e2eDrvStateTy S ℓ))
-    (sqE : Expr (e2eOps ℓ P C K decT encT) Γ smQT)
-    (ρ : Env Γ) (σ : BHE2EDrvState S ℓ)
-    (hσE : σE.eval ρ = e2eDrvStateEnc σ)
-    (hInsts : σ.insts.length ≤ qStart)
-    (hMeta : DrvMetaAligned σ)
-    (hCorr : σ.corrPrins.length ≤ nCorr)
-    (hRev : σ.revealedSpks.length ≤ nCorr)
-    (hPrins : σ.prins.length ≤ nPrins) :
-    let sq := smQdec (ℓ := ℓ) (St := GhostState Bytes) (sqE.eval ρ)
-    (sim.extSmStepC qStart nCorr nPrins kE σE sqE).eval ρ =
-      ((fun out => (packSmRespEnc out.1, e2eDrvStateEnc out.2)) <$>
-        bhExtSmStep (kE.eval ρ) σ sq) :=
-  sim.extSmStepC_eval qStart nCorr nPrins kE σE sqE ρ (kE.eval ρ) σ
-    (smQdec (ℓ := ℓ) (St := GhostState Bytes) (sqE.eval ρ))
-    rfl hσE (smQenc_smQdec (sqE.eval ρ)).symm hInsts hMeta hCorr hRev hPrins
 
 /-! ## Combined Sub-Program Interface Bundle -/
 

@@ -9,12 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.KpkMark
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeyVtables
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.KpkMark -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityVtables -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.PreKey -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionSpec
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Pure
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # CLI `KyberPreKeyFiles` Mark-Side Store Specification
@@ -24,7 +27,7 @@ the 48-byte `SignalProtocolError` layout `cliKpkMarkErrSpec` for mark errors, th
 `KyberPreKeyStoreSpec` instance `cliKpkStoreSpec`, and the poll bridge `cliKpkStoreSpec_markPoll`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,24 +38,6 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalT
 open CryptoVerification.LibsignalPublicApi.StoreKit CryptoVerification.RecordCodecs
 open CryptoVerification.SignalSession.Cli
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced (FdsGe3Closed)
-
-/-! ## Offsets -/
-
-/-- The `get_kyber_pre_key` shim. -/
-abbrev cliKpkGetShimOff : BitVec 64 :=
-  bv% (ls_off% "<libsignal_cli::stores::KyberPreKeyFiles as libsignal_protocol::storage::traits::KyberPreKeyStore>::get_kyber_pre_key")
-
-/-- The `get_kyber_pre_key` future's poll. -/
-abbrev cliKpkGetPollOff : BitVec 64 :=
-  bv% (ls_off% "<libsignal_cli::stores::KyberPreKeyFiles as libsignal_protocol::storage::traits::KyberPreKeyStore>::get_kyber_pre_key::{closure#0}")
-
-/-- The `mark_kyber_pre_key_used` shim. -/
-abbrev cliKpkMarkShimOff : BitVec 64 :=
-  bv% (ls_off% "<libsignal_cli::stores::KyberPreKeyFiles as libsignal_protocol::storage::traits::KyberPreKeyStore>::mark_kyber_pre_key_used")
-
-/-- The `mark_kyber_pre_key_used` future's poll. -/
-abbrev cliKpkMarkPollOff : BitVec 64 :=
-  bv% (ls_off% "<libsignal_cli::stores::KyberPreKeyFiles as libsignal_protocol::storage::traits::KyberPreKeyStore>::mark_kyber_pre_key_used::{closure#0}")
 
 /-! ## Store invariant -/
 
@@ -123,7 +108,7 @@ theorem CliKpkInv.mark {rd : ReadRule} {F0 : FsFiles} {pathOk : List (BitVec 8) 
 
 /-- `KyberPreKeyFiles` layout at `self`: `one_time` at `+0x00`, `last_resort` at `+0x28`, and
 `CliKpkInv`. -/
-def cliKpkStoreAt (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliKpkStoreAt (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (kid ksid : BitVec 32) (kbk : PublicKey)
     (self : BitVec 64) (g : KyberGhost) : SepProp :=
   ⌜CliKpkInv rd F0 pathOk kid ksid kbk g⌝ ∗ dirAt A self g.oneTime ∗
@@ -145,7 +130,7 @@ structure CliKpkMarkErr where
 /-- 48-byte `SignalProtocolError` layout for `CliKpkMarkErr`: tag word (`speWord 24` on `.reused`,
 `speWord 1` otherwise), `String` header words `1..3` with owned heap buffer, and `"read"` slice
 words `4..5` on `.readErr`. -/
-def cliKpkMarkErrSpec (A : RustAlloc) : SpeErrSpec CliKpkMarkErr where
+@[expose] def cliKpkMarkErrSpec (A : RustAlloc) : SpeErrSpec CliKpkMarkErr where
   w0 := fun e => match e.ans with
     | .reused => speWord 24
     | _ => speWord 1
@@ -288,14 +273,14 @@ structure CliKpkGetSide where
 
 /-- Concrete `KyberPreKeyStoreSpec` for CLI `KyberPreKeyFiles` at mark call `(kid, ksid, kbk)`,
 parameterized by `G : CliKpkGetSide`. -/
-def cliKpkStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliKpkStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (kid ksid : BitVec 32) (kbk : PublicKey)
     (G : CliKpkGetSide) (getShimStk getPollStk markShimStk markPollStk : Nat)
     (hGetBox : ∀ box self id st, pkBoxAt box self id st ⊢ memRegion box 16)
     (hMarkBox : ∀ box self baseKeyA id signedId st,
       kpkMarkBoxAt box self baseKeyA id signedId st ⊢ memRegion box 32) :
     KyberPreKeyStoreSpec A b where
-  kpk_vt := b + cliKpkVtOff
+  kpk_vt := b
   KpkState := KyberGhost
   storeAt := cliKpkStoreAt A rd F0 pathOk kid ksid kbk
   RecOk := G.RecOk
@@ -313,14 +298,14 @@ def cliKpkStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : FsFile
     match ans with
     | .ok () => (kpkMarkOf rd F0 g id sid bk).1 = .ok
     | .error e => (kpkMarkOf rd F0 g id sid bk).1 = e.ans
-  getShimOff := cliKpkGetShimOff
-  getFutVtOff := cliKpkGetFutVtOff
-  getPollOff := cliKpkGetPollOff
+  getShimOff := 0#64
+  getFutVtOff := 0#64
+  getPollOff := 0#64
   getFutDropOff := cliIdFutDropOff
   getBoxSize := 16
-  markShimOff := cliKpkMarkShimOff
-  markFutVtOff := cliKpkMarkFutVtOff
-  markPollOff := cliKpkMarkPollOff
+  markShimOff := 0#64
+  markFutVtOff := 0#64
+  markPollOff := 0#64
   markFutDropOff := cliIdFutDropOff
   markBoxSize := 32
   getShimStack := getShimStk
@@ -341,134 +326,5 @@ def cliKpkStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : FsFile
   markFutDrop_ne_zero := fun hb h => by
     rw [show b = 0#64 - cliIdFutDropOff by rw [← h, BitVec.add_sub_cancel]] at hb
     exact absurd hb (by decide)
-
-/-! ## Poll contract bridge -/
-
-theorem cliKpkMarkPoll_fnAddr {b : BitVec 64} {ext : String → Option (State → State)} :
-    (tripleRatchetProgAtExt b ext).fnAddr kpkMarkPollName = b + cliKpkMarkPollOff := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, kpkMarkPoll_fnOff, cliKpkMarkPollOff]
-
-/-- Lift `kpkMarkPollSpec` at `fnAddr kpkMarkPollName` to `KyberPreKeyStoreKitOkImg.markPoll`. -/
-theorem cliKpkStoreSpec_markPoll {A : RustAlloc} {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {rd : ReadRule} {F0 : FsFiles}
-    {pathOk : List (BitVec 8) → Prop} {kid ksid : BitVec 32} {kbk : PublicKey}
-    (G : CliKpkGetSide) {s1 s2 s3 s4 : Nat}
-    (hGetBox : ∀ box self id st, pkBoxAt box self id st ⊢ memRegion box 16)
-    (hMarkBox : ∀ box self baseKeyA id signedId st,
-      kpkMarkBoxAt box self baseKeyA id signedId st ⊢ memRegion box 32)
-    (hhop : subroutine_ok (tripleRatchetProgAtExt img.base (tripleRatchetExterns C ctl abs))
-      ((tripleRatchetProgAtExt img.base (tripleRatchetExterns C ctl abs)).fnAddr kpkMarkPollName)
-      (kpkMarkPollSpec rd pathOk A img s4)) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      (img.base + (cliKpkStoreSpec A img.base rd F0 pathOk kid ksid kbk G s1 s2 s3 s4
-        hGetBox hMarkBox).markPollOff)
-      ((kitKpkMarkPollSpecE (cliKpkStoreSpec A img.base rd F0 pathOk kid ksid kbk G s1 s2 s3 s4
-        hGetBox hMarkBox)).inImage img) := by
-  let kit := cliKpkStoreSpec A img.base rd F0 pathOk kid ksid kbk G s1 s2 s3 s4 hGetBox hMarkBox
-  have hhop' :
-      subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + kit.markPollOff)
-        (kpkMarkPollSpec rd pathOk A img s4) :=
-    cliSess_kitProg (@cliKpkMarkPoll_fnAddr img.base) hhop
-  refine subroutine_ok.of_codeLoaded
-    fun ⟨⟨fut, out, self, baseKeyA, kid', ksid', kbk'⟩, st0⟩ R s0 hpc hrun hpre hsp _ => ?_
-  have hpre1 :
-      s0.mem ⊨ ⌜img.FrozenLoaded s0 ∧ s0.symtab = img.symtab⌝ ∗
-        (⌜s0.fs.files = F0⌝ ∗ ((kitKpkMarkPollSpec kit).pre
-          (⟨fut, out, self, baseKeyA, kid', ksid', kbk'⟩, st0) s0 ∗ R)) := by
-    change s0.mem ⊨ (⌜img.FrozenLoaded s0 ∧ s0.symtab = img.symtab⌝ ∗
-      (⌜s0.fs.files = F0⌝ ∗ (kitKpkMarkPollSpec kit).pre
-        (⟨fut, out, self, baseKeyA, kid', ksid', kbk'⟩, st0) s0)) ∗ R at hpre
-    simpa only [sepConj_assoc] using hpre
-  rw [satisfies_pure_sepConj] at hpre1
-  obtain ⟨himgInv, hpre2⟩ := hpre1
-  rw [satisfies_pure_sepConj] at hpre2
-  obtain ⟨hfiles, hpre3⟩ := hpre2
-  change s0.mem ⊨
-    (⌜(img.base &&& 0xfff#64) = 0#64 ∧ s0.readReg64 .x0 = fut ∧ s0.readReg64 .x8 = out ∧
-        (kid' = kid ∧ ksid' = ksid ∧ kbk' = kbk)⌝ ∗
-      kpkMarkBoxAt fut self baseKeyA kid' ksid' 0#8 ∗
-      (⌜CliKpkInv rd F0 pathOk kid ksid kbk st0⌝ ∗ dirAt A self st0.oneTime ∗
-        dirAt A (self + 0x28#64) st0.lastResort) ∗
-      memRegion out 48 ∗
-      (baseKeyA ↦ₛ kbk'.bytes.toList) ∗
-      A.pool ∗ stackAt s0.sp s4) ∗ R at hpre3
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre3
-  obtain ⟨⟨_, hx0, hx8, hxid, hxsid, hxbk⟩, hpre4⟩ := hpre3
-  rw [hxid, hxsid, hxbk] at hpre4 ⊢
-  have hpre5 :
-      s0.mem ⊨ ⌜CliKpkInv rd F0 pathOk kid ksid kbk st0⌝ ∗
-        (kpkMarkBoxAt fut self baseKeyA kid ksid 0#8 ∗
-          dirAt A self st0.oneTime ∗ dirAt A (self + 0x28#64) st0.lastResort ∗
-          (baseKeyA ↦ₛ kbk.bytes.toList) ∗ memRegion out 48 ∗
-          A.pool ∗ stackAt s0.sp s4 ∗ R) :=
-    Satisfies.mono (Entails.of_eq (by ac_rfl)) hpre4
-  rw [satisfies_pure_sepConj] at hpre5
-  obtain ⟨hinv, hspatial⟩ := hpre5
-  let xg : KpkMarkPollGhost := ⟨fut, out, self, baseKeyA, kid, ksid, kbk, st0⟩
-  have hpre_hop : s0.mem ⊨ (kpkMarkPollSpec rd pathOk A img s4).pre xg s0 ∗ R := by
-    show s0.mem ⊨ (⌜img.FrozenLoaded s0 ∧ s0.symtab = img.symtab⌝ ∗
-      (⌜s0.readReg64 .x0 = fut ∧ s0.readReg64 .x8 = out ∧
-          PkNameOk pathOk st0.oneTime kid ∧ KpkBaseKeysOk pathOk st0.lastResort kid ∧
-          KpkSeenOk rd s0.fs.files st0.lastResort kid ksid kbk ∧
-          st0.oneTime.changed.length < 2 ^ 32 ∧ st0.lastResort.changed.length < 2 ^ 32⌝ ∗
-        kpkMarkBoxAt fut self baseKeyA kid ksid 0#8 ∗
-        dirAt A self st0.oneTime ∗ dirAt A (self + 0x28#64) st0.lastResort ∗
-        (baseKeyA ↦ₛ kbk.bytes.toList) ∗ memRegion out 48 ∗
-        A.pool ∗ stackAt s0.sp s4)) ∗ R
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨himgInv, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx8, hinv.nameOk, hinv.baseOk, hfiles ▸ hinv.seenOk,
-      hinv.oneLt.1, hinv.lastLt.1⟩, ?_⟩
-    simpa only [sepConj_assoc] using hspatial
-  refine subroutine_ok.mono_outcome hhop' xg R s0 hpc hrun hpre_hop hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | hpan | hex | hoom
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    refine Satisfies.mono (sepConj_mono_left ?_) hpost
-    show (kpkMarkPollSpec rd pathOk A img s4).post xg s0 sf ⊢
-      (kitKpkMarkPollSpec kit).post (⟨fut, out, self, baseKeyA, kid, ksid, kbk⟩, st0) s0 sf
-    dsimp only [kpkMarkPollSpec, Spec.inImage, kitKpkMarkPollSpec, kit, cliKpkStoreSpec,
-      cliKpkStoreAt, kpkMarkPollOutAt, xg]
-    rw [sepExists_sepConj_left]
-    refine Entails.sepExists_elim fun res => ?_
-    rw [sepConj_assoc]
-    refine Entails.pure_left fun ⟨hres, htr⟩ => ?_
-    rw [hfiles] at hres
-    subst hres
-    set m := kpkMarkOf rd F0 st0 kid ksid kbk
-    refine Entails.trans
-      (Entails.of_eq (show _ =
-        kpkMarkOutAt A out m.1 ∗
-          (dirAt A self m.2.oneTime ∗ dirAt A (self + 0x28#64) m.2.lastResort ∗
-            kpkMarkBoxAt fut self baseKeyA kid ksid 1#8 ∗
-            (baseKeyA ↦ₛ kbk.bytes.toList) ∗ A.pool ∗ stackAt s0.sp s4) by ac_rfl)) ?_
-    refine Entails.trans (sepConj_mono_left (cliKpkMarkOut_entails A out m.1)) ?_
-    rw [sepExists_sepConj_left]
-    refine Entails.sepExists_elim fun ans => ?_
-    rw [sepConj_assoc]
-    refine Entails.pure_left fun hrel => ?_
-    refine Entails.sepExists_right ans ?_
-    refine Entails.pure_right ⟨hrel, by rw [List.append_nil]; exact htr⟩ ?_
-    exact Entails.trans (Entails.pure_right hinv.mark (Entails.refl _)) (Entails.of_eq (by ac_rfl))
-  · exact Or.inr (Or.inl hpan)
-  · exact Or.inr (Or.inr (Or.inl hex))
-  · exact Or.inr (Or.inr (Or.inr hoom))
-
-example {A : RustAlloc} {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {rd : ReadRule} {F0 : FsFiles}
-    {pathOk : List (BitVec 8) → Prop} {kid ksid : BitVec 32} {kbk : PublicKey}
-    (G : CliKpkGetSide) {s1 s2 s3 s4 : Nat}
-    (hGetBox : ∀ box self id st, pkBoxAt box self id st ⊢ memRegion box 16)
-    (hMarkBox : ∀ box self baseKeyA id signedId st,
-      kpkMarkBoxAt box self baseKeyA id signedId st ⊢ memRegion box 32)
-    (hhop : subroutine_ok (tripleRatchetProgAtExt img.base (tripleRatchetExterns C ctl abs))
-      ((tripleRatchetProgAtExt img.base (tripleRatchetExterns C ctl abs)).fnAddr kpkMarkPollName)
-      (kpkMarkPollSpec rd pathOk A img s4)) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      (img.base + (cliKpkStoreSpec A img.base rd F0 pathOk kid ksid kbk G s1 s2 s3 s4
-        hGetBox hMarkBox).markPollOff)
-      ((kitKpkMarkPollSpecE (cliKpkStoreSpec A img.base rd F0 pathOk kid ksid kbk G s1 s2 s3 s4
-        hGetBox hMarkBox)).inImage img) :=
-  cliKpkStoreSpec_markPoll G hGetBox hMarkBox hhop
 
 end CryptoVerification.SignalSession.Cli.KitInst

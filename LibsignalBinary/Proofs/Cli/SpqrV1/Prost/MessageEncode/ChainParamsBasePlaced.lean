@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBase
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
 import ProofLib.SepLogic.WPp
@@ -22,7 +22,7 @@ import ProofLib.SepLogic.WPp
 Proves `[LibsignalPlacement]` basic-block step lemmas for CLI Block `453`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -67,21 +67,21 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 @[local arm64_norm] private theorem zext64_orr_1_32 (w : BitVec 32) :
     BitVec.zeroExtend 64 (w ||| 1#32) = BitVec.zeroExtend 64 w ||| 1#64 := by bv_bits
 
-def EncodeChainParams1PlacedOk [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncodeChainParams1PlacedOk [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_453 H) (blkPl_453).base
     (withLsCodeLoaded lsmpl (encodeChainParamsSpec A))
 
-def EncodeChainParams1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncodeChainParams1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_453 H) (blkPl_453).base
     (withLsCodeLoaded lsmpl (encodeChainParamsSpecX A))
 
-def EncodeChainParams1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncodeChainParams1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   EncodeChainParams1PlacedOk A (Rust.withPanics ext)
 
-def EncodeChainParams1PlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncodeChainParams1PlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   EncodeChainParams1PlacedOkX A (Rust.withPanics ext)
 

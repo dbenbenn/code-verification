@@ -11,7 +11,6 @@ module
 
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDecDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
 
 /-!
 # Wire-encoding and identity-key types for libsignal's per-message AEAD

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.TripleRatchet.InImage.SpqrRecvEmpty.Varint
@@ -23,7 +23,7 @@ Relocatable postconditions, shared epilogue (`+1040..+1072`), `Err(MsgDecode)` e
 preamble varint decoding (`+96..+312`) for `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -60,7 +60,7 @@ open CryptoVerification.LibsignalTripleRatchet.InImage.SpqrRecvEmpty
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## 1. Relocatable Postconditions and `SepWPpLS` Lifting Helpers -/

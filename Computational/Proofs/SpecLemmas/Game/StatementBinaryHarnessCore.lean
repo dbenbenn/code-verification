@@ -19,7 +19,7 @@ public import Computational.Specifications.Assumptions.KemCorrect
 and state-projection helpers for the binary-harness adapter proofs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 open OracleComp OracleSpec MeasureTheory ENNReal
@@ -36,8 +36,15 @@ namespace BH
 end BH
 open BH
 
+/-- `K.encaps1` succeeds on all 64-byte SPQR headers (`Encaps1Total K`) and on all `K.fromSeed`
+PQXDH public keys (`DEV-KFF1`). -/
+@[expose] def MlKemEncaps1SucceedsOn64ByteHeaderAndSeeds (K : LibsignalSpqrV1.MlKem) : Prop :=
+  Encaps1Total K ∧
+  ∀ (s : List.Vector (BitVec 8) 64) (r : List.Vector (BitVec 8) 32),
+    (K.encaps1 (K.fromSeed s).1.toList r).isSome = true
+
 /-- Bob's record extras for a session with header `hdr`. -/
-def bhRecvExtrasOfHdr (meA meB : LocalIdentity) (hdr : SignalPqxdh.HandshakeHdr) : RecordExtras :=
+@[expose] def bhRecvExtrasOfHdr (meA meB : LocalIdentity) (hdr : SignalPqxdh.HandshakeHdr) : RecordExtras :=
   { pending := { preKeyId := none, signedPreKeyId := 0#32, baseKey := ⟨u8Vec 32 hdr.ekAPk⟩,
                  timestamp := 0#64 }
     kyber := none
@@ -91,7 +98,7 @@ structure ModelPrimsCryptoAssumptions (X : UnreachedPqxdhPrimitives) (W : PEPara
       {true}).toReal ≤ 1 / (2 : ℝ) ^ 255
 
 /-- Local `startDR` promotion step on `BHE2EDrvState S ℓ` over `pqxdhKeyIndImpl`. -/
-def bhE2ELocalStart {S : SignalPqxdh.Setup} {ℓ : ℕ} (P : SignalPqxdh.Primitives)
+@[expose] def bhE2ELocalStart {S : SignalPqxdh.Setup} {ℓ : ℕ} (P : SignalPqxdh.Primitives)
     (C : Crypto) (K : LibsignalSpqrV1.MlKem) (bMode? : Option Bool)
     (σ : BHE2EDrvState S ℓ) (sid : SignalPqxdh.SessionId S) :
     ProbComp (Option ℕ × BHE2EDrvState S ℓ) := do
@@ -115,12 +122,12 @@ structure BHAdapterInstMeta (S : SignalPqxdh.Setup) where
   deriving DecidableEq, Repr
 
 /-- Alice's `PreKeyMessageFields` wrapper for an unacknowledged send. -/
-def bhAlicePreKeyMsgE {S : SignalPqxdh.Setup} (inst : BHAdapterInstMeta S) (inner : Bytes) :
+@[expose] def bhAlicePreKeyMsgE {S : SignalPqxdh.Setup} (inst : BHAdapterInstMeta S) (inner : Bytes) :
     PreKeyMessageFields :=
   bhExpectedPreKeyMsg (bhInitRegId inst.sid) inst.hdr inner
 
 /-- Alice's reconstructed `RecordExtras` on promoted instance `inst` (`DEV-M2`). -/
-def bhInstExtrasA {S : SignalPqxdh.Setup} (inst : BHAdapterInstMeta S) : RecordExtras :=
+@[expose] def bhInstExtrasA {S : SignalPqxdh.Setup} (inst : BHAdapterInstMeta S) : RecordExtras :=
   let regIdA : BitVec 32 := bhInitRegId inst.sid
   let base : PublicKey := ⟨u8Vec 32 inst.hdr.ekAPk⟩
   { pending := { preKeyId := inst.hdr.opkId?.map (fun id => BitVec.ofNat 32 id.toNat),
@@ -132,14 +139,14 @@ def bhInstExtrasA {S : SignalPqxdh.Setup} (inst : BHAdapterInstMeta S) : RecordE
     localRegistrationId := regIdA, aliceBaseKey := base.serialize }
 
 /-- Bob's reconstructed `RecordExtras` on promoted instance `inst` (`DEV-M2`). -/
-def bhInstExtrasB {S : SignalPqxdh.Setup} (inst : BHAdapterInstMeta S) : RecordExtras :=
+@[expose] def bhInstExtrasB {S : SignalPqxdh.Setup} (inst : BHAdapterInstMeta S) : RecordExtras :=
   let base : PublicKey := ⟨u8Vec 32 inst.hdr.ekAPk⟩
   { pending := { preKeyId := none, signedPreKeyId := 0#32, baseKey := base, timestamp := 0#64 },
     kyber := none, remoteRegistrationId := inst.bobRemoteRegId,
     localRegistrationId := BitVec.ofNat 32 inst.u_resp.val, aliceBaseKey := base.serialize }
 
 /-- Wrap a model send ciphertext into the binary-harness wire format. -/
-def bhWrapSendOut {S : SignalPqxdh.Setup} (inst : BHAdapterInstMeta S) (p : Party) (ct : Bytes) :
+@[expose] def bhWrapSendOut {S : SignalPqxdh.Setup} (inst : BHAdapterInstMeta S) (p : Party) (ct : Bytes) :
     Bytes :=
   if ct.isEmpty then []
   else match p with
@@ -148,7 +155,7 @@ def bhWrapSendOut {S : SignalPqxdh.Setup} (inst : BHAdapterInstMeta S) (p : Part
     | .B => wireWhisper :: ct
 
 /-- Map a model `GhostState Bytes` to the binary-harness `BinState` (`DEV-M2`). -/
-def bhBinStateOfParty {S : SignalPqxdh.Setup} (inst : BHAdapterInstMeta S)
+@[expose] def bhBinStateOfParty {S : SignalPqxdh.Setup} (inst : BHAdapterInstMeta S)
     (g : GhostState Bytes) : BinState :=
   let x := match g.party with | .A => bhInstExtrasA inst | .B => bhInstExtrasB inst
   binStateOfUnderExtras (fun _ => x) g

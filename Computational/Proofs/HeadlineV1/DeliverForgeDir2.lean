@@ -9,12 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgeCKA
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG
-public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgeCKA
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
 public import ProofLib.Lemmas
 import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma9
 import ProofLib.SepLogic.WP.StateNorm
+public import Computational.Proofs.CryptoGames.CKA.CKAProofDefs
+public import Computational.Proofs.CryptoGames.SM.Engine -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForge -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma9Aux -- proof-setup: allow-public-import
 
 /-!
 # Healing-Epoch Boundary Authenticity (`Dir2`)
@@ -24,7 +29,7 @@ invariant `Sync9Dir2` at `(some l, l + 2)` (`Δ_CKA = 1`, `Δ_eng = 2`), and the
 adversary predicate.
 -/
 
-@[expose] public section
+public section
 
 open OracleSpec OracleComp MeasureTheory
 open scoped ENNReal BigOperators
@@ -36,7 +41,7 @@ open CryptoGames.SM.Construction
 
 /-- Authenticity predicate at `Δ = 2` requiring `SM.authLosingConditionsAvoided 2 tL tStar s` and
 no sender corruption at `tStar`. -/
-def authOKDir2 {St Msg C : Type} (tL : Option ℕ) (tStar : ℕ) (s : SM.GameState St Msg C) : Bool :=
+@[expose] def authOKDir2 {St Msg C : Type} (tL : Option ℕ) (tStar : ℕ) (s : SM.GameState St Msg C) : Bool :=
   SM.authLosingConditionsAvoided 2 tL tStar s && !s.corrs.contains (Party.senderOf tStar, tStar)
 
 end CryptoGames.LibsignalSM.Proofs.Refinement

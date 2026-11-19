@@ -9,15 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.PollCommonBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.PollCommonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.CalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.PollCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.PollCommonPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.CalleesBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Store Poll Helpers (`[LibsignalPlacement]`)
@@ -26,7 +29,7 @@ Budget-threaded cell-oriented wrappers for `Dir::get` (Block `589`), `__rust_dea
 `<IdentityKeyPair as TryFrom<&[u8]>>::try_from` (Block `84`) under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -71,7 +74,7 @@ section Placed
 /-! ## Read-Only `Dir::get` Cell Wrappers (Block `589`) -/
 
 /-- Image-free inner `Dir::get` specification parameterized by `DirGetEnv : DirGetGhost → ...`. -/
-def dirGetRawSpec {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def dirGetRawSpec {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DirGetEnv : DirGetGhost → List AllocEvent → Prop) (stk : Nat) :
     Spec (DirGetGhost × M.σ) where
@@ -137,21 +140,9 @@ theorem dirGetRo_cells_placed_ok [LibsignalPlacement] {prog : Program} {M : Allo
   · dsimp only [withLsCodeRoLoaded, dirGetRawSpec] at hq
     exact (not_satisfies_false_sepConj hq).elim
 
-theorem dirGetRo_cells_rocl_placed_ok [LibsignalPlacement] {prog : Program} {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DirGetEnv : DirGetGhost → List AllocEvent → Prop}
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop} {getStk calleeStk : Nat}
-    (hGet : subroutine_ok prog (lsmpl.base 589)
-      (withLsCodeRoLoaded lsmpl (dirGetRawSpec rd pathOk A lim DirGetEnv getStk)))
-    (hle : getStk ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok prog (lsmpl.base 589)
-      (withLsRoCl lsmpl
-        (dirGetRoCellsSpec M A lim DirGetEnv rd pathOk calleeStk)) :=
-  subroutine_ok_rocl_of_withLsCodeRoLoaded (dirGetRo_cells_placed_ok hGet hle hhi)
-
 /-- Read-only `Dir::get` cell wrapper specification directly matching
 `SpecsPlacedBudget.dirGetSpecPlaced`'s `FsFiles`-indexed `GetEnv`. -/
-def dirGetRoFsCellsSpec {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def dirGetRoFsCellsSpec {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (calleeStk : Nat) : Spec (DirGetRoCellsGhost × M.σ) where
@@ -215,30 +206,6 @@ theorem dirGetRoFs_cells_placed_ok [LibsignalPlacement] {prog : Program} {M : Al
     exact (not_satisfies_false_sepConj hq).elim
   · dsimp only [dirGetSpecPlaced, withLsCodeRoLoaded] at hq
     exact (not_satisfies_false_sepConj hq).elim
-
-theorem dirGetRoFs_cells_rocl_placed_ok [LibsignalPlacement] {prog : Program} {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop}
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop} {getStk calleeStk : Nat}
-    (hGet : subroutine_ok prog (lsmpl.base 589)
-      (dirGetSpecPlaced rd pathOk A lim GetEnv getStk))
-    (hle : getStk ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok prog (lsmpl.base 589)
-      (withLsRoCl lsmpl
-        (dirGetRoFsCellsSpec rd pathOk A lim GetEnv calleeStk)) :=
-  subroutine_ok_rocl_of_withLsCodeRoLoaded (dirGetRoFs_cells_placed_ok hGet hle hhi)
-
-theorem dirGetRo_cells_placed_of_dirGetSpecPlaced [LibsignalPlacement] {prog : Program}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DirGetEnv : DirGhost → List (BitVec 8) → List AllocEvent → Prop}
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop} {getStk calleeStk : Nat}
-    (hGet : subroutine_ok prog (lsmpl.base 589)
-      (dirGetSpecPlaced rd pathOk A lim (fun _ => DirGetEnv) getStk))
-    (hle : getStk ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok prog (lsmpl.base 589)
-      (withLsCodeRoLoaded lsmpl
-        (dirGetRoCellsSpec M A lim (fun g => DirGetEnv g.dir g.name) rd pathOk calleeStk)) :=
-  dirGetRoFs_cells_placed_ok hGet hle hhi
 
 /-! ## `Vec<u8>` Buffer Deallocation Cell Wrapper -/
 
@@ -319,19 +286,9 @@ theorem deallocAt_cells_placed_ok [LibsignalPlacement] {prog : Program} {i : Nat
       withLsCodeRoLoaded] at hq
     exact (not_satisfies_false_sepConj hq).elim
 
-theorem deallocAt_cells_rocl_placed_ok [LibsignalPlacement] {prog : Program} {i : Nat}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} [IsLsBlockProg prog i H] {calleeStk : Nat}
-    (hC : AllocContractsXCliPlaced A lim H)
-    (hi : i < 619 := by decide)
-    (hle : extHookStack ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok prog (lsρ lsRustDeallocSymCli)
-      (withLsRoCl lsmpl (deallocVecBufSpec A lim calleeStk)) :=
-  subroutine_ok_rocl_of_withLsCodeRoLoaded (deallocAt_cells_placed_ok hC hi hle hhi)
-
 /-! ## `<IdentityKeyPair as TryFrom<&[u8]>>::try_from` Cell Wrapper (Block `84`) -/
 
-def ikpTryFromCellsPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ikpTryFromCellsPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (calleeStk : Nat) :
     Spec (IkpTryFromCellsGhost × M.σ) where
   pre := fun ((bytesA, bytes, ret, fsp), st) s =>
@@ -397,26 +354,6 @@ theorem ikpTryFrom_cells_placed_ok [LibsignalPlacement] {prog : Program} {M : Al
   · dsimp only [identityKeyPairTryFromPlacedSpec, withLsCodeRoLoaded,
       identityKeyPairTryFromRawSpec] at hq
     exact (not_satisfies_false_sepConj hq).elim
-
-theorem ikpTryFrom_cells_rocl_placed_ok [LibsignalPlacement] {prog : Program} {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {calleeStk : Nat}
-    (hDec : subroutine_ok prog (lsmpl.base 84) (identityKeyPairTryFromPlacedSpec A lim))
-    (hle : smallRootStack ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok prog (lsmpl.base 84)
-      (withLsRoCl lsmpl (ikpTryFromCellsPlacedSpec A lim calleeStk)) :=
-  subroutine_ok_rocl_of_withLsCodeRoLoaded (ikpTryFrom_cells_placed_ok hDec hle hhi)
-
-theorem ikpTryFrom_cells_cli_placed_ok [LibsignalPlacement] {prog : Program} {i : Nat}
-    {W : CliHooks} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} [IsLsBlockProg prog i H] {calleeStk : Nat}
-    (hh : RunHooksPlaced W A lim H)
-    (hi : i < 619 := by decide)
-    (hle : smallRootStack ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok prog (lsmpl.base 84)
-      (withLsCodeRoLoaded lsmpl (ikpTryFromCellsPlacedSpec A lim calleeStk)) :=
-  ikpTryFrom_cells_placed_ok
-    (ls_transfer_lscro (callerProg := prog) (j := 84) hh.identityKeyPair_tryFrom_placed_ok hi)
-    hle hhi
 
 end Placed
 

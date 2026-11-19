@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalE2E.StateXModel
-public import LibsignalBinary.Proofs.E2E.Record.Support.Phi
+public import LibsignalBinary.Proofs.E2E.Record.Support.Phi -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalE2E.SchemeModel
 import LibsignalBinary.Proofs.E2E.Reach.BundleCommon
 public import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.StateXModelProofDefs
@@ -23,7 +23,7 @@ encoder `Record.encodeRecord ∘ Record.toRecord` for arbitrary `E : Party → R
 `encodeRecord` at `E = seedRecordExtras`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.RecordX
 
@@ -36,7 +36,7 @@ abbrev _root_.CryptoGames.LibsignalSession.Crypto.params (Z : Crypto) :
     Params Bytes Unit := spqrOffSessionParams Z
 
 /-- Converts `RecordExtras` to `Record.SessionExtras`. -/
-def toSessionExtras (x : RecordExtras) : Record.SessionExtras :=
+@[expose] def toSessionExtras (x : RecordExtras) : Record.SessionExtras :=
   { pending := x.pending
     kyber := x.kyber
     localRegistrationId := x.localRegistrationId
@@ -44,7 +44,7 @@ def toSessionExtras (x : RecordExtras) : Record.SessionExtras :=
     aliceBaseKey := x.aliceBaseKey }
 
 /-- Pointwise lift of `toSessionExtras` to `Party → RecordExtras`. -/
-def extrasOf (E : Party → RecordExtras) : Party → Record.SessionExtras :=
+@[expose] def extrasOf (E : Party → RecordExtras) : Party → Record.SessionExtras :=
   fun P => toSessionExtras (E P)
 
 /-- `encodeRecordUnderExtras E` agrees with `Record.encodeRecord` on `Record.toRecord (extrasOf E)`. -/
@@ -60,8 +60,5 @@ theorem extrasOf_extrasSeed : extrasOf seedRecordExtras = Record.extrasM := rfl
 theorem encodeRecordX_extrasSeed (g : GhostState Bytes) :
     encodeRecordUnderExtras seedRecordExtras g = encodeRecord g := by
   rw [encodeRecordX_eq_toRecord, extrasOf_extrasSeed, Reach.encodeRecord_eq_toRecord]
-
-theorem encodeRecordX_extrasSeed_fun : encodeRecordUnderExtras seedRecordExtras = encodeRecord :=
-  funext encodeRecordX_extrasSeed
 
 end CryptoVerification.E2E.RecordX

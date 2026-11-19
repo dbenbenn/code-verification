@@ -9,9 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.SegmentProofsPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.SegmentProofsPlaced
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import GeneratedLean.LibsignalSessionPlacedObj -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
+public import ProofLib.RegChain
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Relocatable CLI `MessageEncrypt` Assembly
@@ -20,7 +29,7 @@ Composes the nine `[LibsignalPlacement]` segment contracts on `lsProg_464 H` (`b
 `withStores_placed_okV` and `withStores_placed_okV_fs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -156,98 +165,5 @@ theorem withStores_placed_okV_fs {kit : SessionStoreSpec A 0#64} {st0 : kit.Stor
       (withEnvPre (withStoresEncPlacedSpecV kit st0 ikit ist0 C ctl uuidTryParse S encRecord)
         fun s => kit.envOk s.fs.files ∧ ikit.envOk s.fs.files) :=
   withStores_placed_ok_of_segsV_fs hEnv encSegsV_placed_ok hKitFs
-
-/-- Build `EncEnvPlaced` from `otrEnc` by discharging the other eight in-library callees. -/
-theorem encEnvPlaced_of_otrEnc {kit : SessionStoreSpec A 0#64} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A 0#64} {ist0 : ikit.IdState}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {Q : List (BitVec 8) → Prop}
-    (hhooks : PublicApiEncHooksPlaced A H)
-    (hkitOk : SessionOnlyKitPlacedOkSE kit Scope encRecord H)
-    (hikitOk : IdentityStoreKitPlacedOkI ikit H)
-    (hotrEnc : subroutine_ok (lsProg_464 H) (libsignalSessionLib.fnAddr lsmpl CryptoVerification.Cli.LibsignalTripleRatchet.otrEncryptName)
-      (StoreKit.withLsRoCl lsmpl (otrEncryptPlacedSpecQ Q C A ctl uuidTryParse S)))
-    (hvtables : SessionOnlyVtablesPlacedOk kit)
-    (hidVtables : IdentityVtablesPlacedOk ikit)
-    (hscopeIn : ∀ {rem : AddrVal} (r : SessionRecord (List (BitVec 8))),
-      kit.ScopeAt Scope st0 rem r → RecordInScopeEnc r)
-    (hscopeQ : ∀ {rem : AddrVal} (r : SessionRecord (List (BitVec 8))) (s : Session (List (BitVec 8))),
-      kit.ScopeAt Scope st0 rem r → r.currentSession = some s → Q s.state.pqRatchetState)
-    (hrecOk : ∀ {x : WithStoresEncGhost} {r : SessionRecord (List (BitVec 8))}
-      {sess : Session (List (BitVec 8))} {otr : OutgoingTripleRatchet (List (BitVec 8))}
-      {taken : SessionState (List (BitVec 8))} {k : IdentityKey} {m : CiphertextMessage}
-      {otr' : OutgoingTripleRatchet (List (BitVec 8))},
-      StepsThroughEncrypt (kit.ScopeAt Scope st0 x.rem.val) C S uuidTryParse x r sess otr taken k m otr' →
-      kit.RecOk (storedRecord sess otr' taken)) :
-    EncEnvPlaced kit st0 ikit ist0 Scope Q C ctl uuidTryParse S encRecord H where
-  hooks := hhooks
-  kitOk := hkitOk
-  ikitOk := hikitOk
-  callees := EncCalleesPlaced.of_otrEnc hhooks hotrEnc
-  vtables := hvtables
-  idVtables := hidVtables
-  scopeIn := hscopeIn
-  scopeQ := hscopeQ
-  recOk := hrecOk
-
-/-- `withStores_placed_okV` taking `hotrEnc` directly in place of `EncCalleesPlaced`. -/
-theorem withStores_placed_okV_of_otrEnc {kit : SessionStoreSpec A 0#64} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A 0#64} {ist0 : ikit.IdState}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {Q : List (BitVec 8) → Prop}
-    (hhooks : PublicApiEncHooksPlaced A H)
-    (hkitOk : SessionOnlyKitPlacedOkSE kit Scope encRecord H)
-    (hikitOk : IdentityStoreKitPlacedOkI ikit H)
-    (hotrEnc : subroutine_ok (lsProg_464 H) (libsignalSessionLib.fnAddr lsmpl CryptoVerification.Cli.LibsignalTripleRatchet.otrEncryptName)
-      (StoreKit.withLsRoCl lsmpl (otrEncryptPlacedSpecQ Q C A ctl uuidTryParse S)))
-    (hvtables : SessionOnlyVtablesPlacedOk kit)
-    (hidVtables : IdentityVtablesPlacedOk ikit)
-    (hscopeIn : ∀ {rem : AddrVal} (r : SessionRecord (List (BitVec 8))),
-      kit.ScopeAt Scope st0 rem r → RecordInScopeEnc r)
-    (hscopeQ : ∀ {rem : AddrVal} (r : SessionRecord (List (BitVec 8))) (s : Session (List (BitVec 8))),
-      kit.ScopeAt Scope st0 rem r → r.currentSession = some s → Q s.state.pqRatchetState)
-    (hrecOk : ∀ {x : WithStoresEncGhost} {r : SessionRecord (List (BitVec 8))}
-      {sess : Session (List (BitVec 8))} {otr : OutgoingTripleRatchet (List (BitVec 8))}
-      {taken : SessionState (List (BitVec 8))} {k : IdentityKey} {m : CiphertextMessage}
-      {otr' : OutgoingTripleRatchet (List (BitVec 8))},
-      StepsThroughEncrypt (kit.ScopeAt Scope st0 x.rem.val) C S uuidTryParse x r sess otr taken k m otr' →
-      kit.RecOk (storedRecord sess otr' taken))
-    (htriv : ∀ f, kit.envOk f ∧ ikit.envOk f := by exact fun _ => ⟨trivial, trivial⟩) :
-    subroutine_ok (lsProg_464 H) encEntryPlaced
-      (withStoresEncPlacedSpecV kit st0 ikit ist0 C ctl uuidTryParse S encRecord) :=
-  withStores_placed_okV (ist0 := ist0)
-    (encEnvPlaced_of_otrEnc hhooks hkitOk hikitOk hotrEnc hvtables hidVtables hscopeIn hscopeQ hrecOk)
-    htriv
-
-/-- `withStores_placed_okV_fs` taking `hotrEnc` directly in place of `EncCalleesPlaced`. -/
-theorem withStores_placed_okV_fs_of_otrEnc {kit : SessionStoreSpec A 0#64} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A 0#64} {ist0 : ikit.IdState}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {Q : List (BitVec 8) → Prop}
-    (hhooks : PublicApiEncHooksPlaced A H)
-    (hkitOk : SessionOnlyKitPlacedOkSE kit Scope encRecord H)
-    (hikitOk : IdentityStoreKitPlacedOkI ikit H)
-    (hotrEnc : subroutine_ok (lsProg_464 H) (libsignalSessionLib.fnAddr lsmpl CryptoVerification.Cli.LibsignalTripleRatchet.otrEncryptName)
-      (StoreKit.withLsRoCl lsmpl (otrEncryptPlacedSpecQ Q C A ctl uuidTryParse S)))
-    (hvtables : SessionOnlyVtablesPlacedOk kit)
-    (hidVtables : IdentityVtablesPlacedOk ikit)
-    (hscopeIn : ∀ {rem : AddrVal} (r : SessionRecord (List (BitVec 8))),
-      kit.ScopeAt Scope st0 rem r → RecordInScopeEnc r)
-    (hscopeQ : ∀ {rem : AddrVal} (r : SessionRecord (List (BitVec 8))) (s : Session (List (BitVec 8))),
-      kit.ScopeAt Scope st0 rem r → r.currentSession = some s → Q s.state.pqRatchetState)
-    (hrecOk : ∀ {x : WithStoresEncGhost} {r : SessionRecord (List (BitVec 8))}
-      {sess : Session (List (BitVec 8))} {otr : OutgoingTripleRatchet (List (BitVec 8))}
-      {taken : SessionState (List (BitVec 8))} {k : IdentityKey} {m : CiphertextMessage}
-      {otr' : OutgoingTripleRatchet (List (BitVec 8))},
-      StepsThroughEncrypt (kit.ScopeAt Scope st0 x.rem.val) C S uuidTryParse x r sess otr taken k m otr' →
-      kit.RecOk (storedRecord sess otr' taken))
-    (hKitFs : KitFsOk (fun f => kit.envOk f ∧ ikit.envOk f) (kit.Quiet ∧ ikit.Quiet)
-      (lsProg_464 H)) :
-    subroutine_ok (lsProg_464 H) encEntryPlaced
-      (withEnvPre (withStoresEncPlacedSpecV kit st0 ikit ist0 C ctl uuidTryParse S encRecord)
-        fun s => kit.envOk s.fs.files ∧ ikit.envOk s.fs.files) :=
-  withStores_placed_okV_fs (ist0 := ist0)
-    (encEnvPlaced_of_otrEnc hhooks hkitOk hikitOk hotrEnc hvtables hidVtables hscopeIn hscopeQ hrecOk)
-    hKitFs
 
 end CryptoVerification.Cli.LibsignalPublicApi.MessageEncrypt

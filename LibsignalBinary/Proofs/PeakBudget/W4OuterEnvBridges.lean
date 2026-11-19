@@ -11,21 +11,25 @@ module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.PeakBudget.CallSiteFacts
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterHelpers
+public import LibsignalBinary.Proofs.PeakBudget.CallSiteFacts -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W4OuterHelpers
 public import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterStageHelpers
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromPeakSpec
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PeakBudget.W4OuterStageHelpers
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromPeakSpec
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Envelope and `FitsEnv` Bridges for W4 `decrypt_prekey`
@@ -37,7 +41,7 @@ Connects the concrete budget-threaded store, stage, and call-site envelopes acro
 `FitsEnv fineCostModel`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -98,26 +102,26 @@ open LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
 open LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
   (SignedPreKeyStoreBudgetEnv)
 open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit (HasFineReallocCredit)
-open LibsignalBinary.Proofs.PeakBudget.CallSiteFacts (DecPkCallSite decPkCallSite_bounds)
+
 
 /-! ## 1. `StoreKit` PreKey-Store Step Envelopes -/
 
 /-- Boxed `get_signed_pre_key` step (`BoxAllocEnv → getPollEnv → BoxDeallocEnv`). -/
-def SpkGetStepEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def SpkGetStepEnv {A : RustAlloc} {b : BitVec 64}
     (kit : SignedPreKeyStoreSpec A b) (kitEnv : SignedPreKeyStoreBudgetEnv kit)
     (st0 : kit.SpkState) (id : BitVec 32) : List AllocEvent → Prop :=
   SeqEnv (BoxAllocEnv kit.getBoxSize)
     (SeqEnv (kitEnv.getPollEnv st0 id) (BoxDeallocEnv kit.getBoxSize))
 
 /-- Boxed `get_kyber_pre_key` step (`BoxAllocEnv → getPollEnv → BoxDeallocEnv`). -/
-def KpkGetStepEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def KpkGetStepEnv {A : RustAlloc} {b : BitVec 64}
     (kit : KyberPreKeyStoreSpec A b) (kitEnv : KyberPreKeyStoreBudgetEnv kit)
     (st0 : kit.KpkState) (id : BitVec 32) : List AllocEvent → Prop :=
   SeqEnv (BoxAllocEnv kit.getBoxSize)
     (SeqEnv (kitEnv.getPollEnv st0 id) (BoxDeallocEnv kit.getBoxSize))
 
 /-- Boxed `mark_kyber_pre_key_used` step (`BoxAllocEnv → markPollEnv → BoxDeallocEnv`). -/
-def KpkMarkStepEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def KpkMarkStepEnv {A : RustAlloc} {b : BitVec 64}
     (kit : KyberPreKeyStoreSpec A b) (kitEnv : KyberPreKeyStoreBudgetEnv kit)
     (st0 : kit.KpkState) (id signedId : BitVec 32) (baseKey : PublicKey) :
     List AllocEvent → Prop :=
@@ -125,14 +129,14 @@ def KpkMarkStepEnv {A : RustAlloc} {b : BitVec 64}
     (SeqEnv (kitEnv.markPollEnv st0 id signedId baseKey) (BoxDeallocEnv kit.markBoxSize))
 
 /-- Boxed `get_pre_key` step (`BoxAllocEnv → getPollEnv → BoxDeallocEnv`). -/
-def PkGetStepEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def PkGetStepEnv {A : RustAlloc} {b : BitVec 64}
     (kit : PreKeyStoreSpec A b) (kitEnv : PreKeyStoreBudgetEnv kit)
     (st0 : kit.PkState) (id : BitVec 32) : List AllocEvent → Prop :=
   SeqEnv (BoxAllocEnv kit.getBoxSize)
     (SeqEnv (kitEnv.getPollEnv st0 id) (BoxDeallocEnv kit.getBoxSize))
 
 /-- Boxed `remove_pre_key` step (`BoxAllocEnv → removePollEnv → BoxDeallocEnv`). -/
-def PkRemoveStepEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def PkRemoveStepEnv {A : RustAlloc} {b : BitVec 64}
     (kit : PreKeyStoreSpec A b) (kitEnv : PreKeyStoreBudgetEnv kit)
     (st0 : kit.PkState) (id : BitVec 32) : List AllocEvent → Prop :=
   SeqEnv (BoxAllocEnv kit.removeBoxSize)
@@ -374,76 +378,6 @@ theorem serializePrev1OutLarge_le_peak (M : AllocCostModel) [HasFineReallocCredi
 
 /-! ## 4. `DecPkCallSite` Unpackers and `FitsEnv fineCostModel` Discharges -/
 
-theorem decPkCallSite_peer_name_le_40 {img : Obj.Image} {S : RunSem} {g : RunCall}
-    {x : DecPkGhost} (h : DecPkCallSite img S g x) (hpksm : S.pksmParse = pksmParse) :
-    x.peer.name.bytes.length ≤ 40 :=
-  (decPkCallSite_bounds h hpksm).1
-
-theorem decPkCallSite_me_name_le_40 {img : Obj.Image} {S : RunSem} {g : RunCall}
-    {x : DecPkGhost} (h : DecPkCallSite img S g x) (hpksm : S.pksmParse = pksmParse) :
-    x.me.name.bytes.length ≤ 40 :=
-  (decPkCallSite_bounds h hpksm).2.1
-
-theorem decPkCallSite_wire_lengths_lt_2pow32 {img : Obj.Image} {S : RunSem} {g : RunCall}
-    {x : DecPkGhost} (h : DecPkCallSite img S g x) (hpksm : S.pksmParse = pksmParse) :
-    x.msg.serialized.length < 2 ^ 32 ∧
-    x.msg.message.serialized.length < 2 ^ 32 ∧
-    x.msg.message.ciphertext.length < 2 ^ 32 ∧
-    x.msg.message.pqRatchet.length < 2 ^ 32 ∧
-    ∀ ky, x.msg.kyberPayload = some ky → ky.ciphertext.length < 2 ^ 32 :=
-  (decPkCallSite_bounds h hpksm).2.2
-
-/-- Discharges `P.peer.name.bytes.length ≤ 40` in `w4DecryptPrekeySlot_small_phaseCredit` from `DecPkCallSite`.
--/
-theorem w4DecryptPrekeySlot_at_decPkCallSite_phaseCredit {α : Type}
-    {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (P : W4DecryptPrekeySlotParams α)
-    {img : Obj.Image} {S : RunSem} {g : RunCall} {x : DecPkGhost}
-    (hSite : DecPkCallSite img S g x) (hpksm : S.pksmParse = pksmParse)
-    (hPeerEq : P.peer = x.peer)
-    {maxDir maxEntries maxVal fileCap deserCum deserLive deserPeak deserMaxReq
-     c_cur p_cur r_cur c_dec p_dec r_dec c_tr p_tr r_tr c_push r_push
-     c_td l_td p_td r_td ikmCap : Nat}
-    {l_dec : α → Nat}
-    (hdcOwn : DirDomainCaps maxDir maxEntries maxVal P.ownDir)
-    (hdcPeers : DirDomainCaps maxDir maxEntries maxVal P.peersDir)
-    (hdcSpk : DirDomainCaps maxDir maxEntries maxVal P.spkDir)
-    (hdcKpk : DirDomainCaps maxDir maxEntries maxVal P.kpkDir)
-    (hdcOpk : DirDomainCaps maxDir maxEntries maxVal P.opkDir)
-    (hdcSess : DirDomainCaps maxDir maxEntries maxVal P.sessDir)
-    (hdir : maxDir ≤ 64)
-    (hkeyName : P.ownKeyName.length ≤ 64)
-    (hregName : P.ownRegName.length ≤ 64)
-    (hkpkMark : P.kpkMarkName.length ≤ 64)
-    (hold : P.x_res.cap.toNat ≤ ikmCap)
-    (hnew : reserveCap P.x_res.cap.toNat P.x_res.bs.length P.x_res.additional ≤ ikmCap)
-    (hSmall : max ikmCap 1569 ≤ HasFineReallocCredit.smallMaxReq M)
-    (hspqrKey : P.x_spqr.p.authKey.length ≤ 32)
-    (hfileCap : ∀ p bs, P.rd P.files p = .ok bs → bs.length ≤ fileCap)
-    (hdeser : ∀ bs, bs.length ≤ 2097152 →
-      PhaseCreditSpec M (P.DeserEnv bs) deserCum deserLive deserPeak deserMaxReq)
-    (hCurTrial : PhaseCreditSpec M P.CurTrialFailEnv c_cur 0 p_cur r_cur)
-    (hlen4 : P.archivedTrials.length ≤ 4)
-    (hl_le_p : ∀ y ∈ P.archivedTrials, l_dec y ≤ p_dec)
-    (hDec : ∀ y ∈ P.archivedTrials, PhaseCreditSpec M (P.DecEnv y) c_dec (l_dec y) p_dec r_dec)
-    (hTrial : ∀ y ∈ P.archivedTrials, PhaseCreditSpec M (P.TrialEnv y) c_tr 0 p_tr r_tr)
-    (hDrop : ∀ y ∈ P.archivedTrials, DeallocCreditSpec M (P.DropEnv y) (l_dec y))
-    (hPush : PhaseCreditSpec M P.VecPushEnv c_push 0 0 r_push)
-    (hTd : PhaseCreditSpec M P.TryDecEnv c_td l_td p_td r_td) :
-    let cap := max maxVal fileCap
-    PhaseCreditSpec M (W4DecryptPrekeySlotEnv P)
-      (w4DecryptPrekeySlotDeltaCum P cap maxEntries deserCum c_cur c_dec c_tr c_push c_td ikmCap)
-      (w4DecryptPrekeySlotDeltaLive M P cap maxEntries deserLive l_td)
-      (w4DecryptPrekeySlotDeltaPeak M P cap maxEntries deserLive deserPeak
-        p_cur p_dec p_tr l_td p_td)
-      (w4DecryptPrekeySlotMaxReq P cap maxEntries deserMaxReq r_cur r_dec r_tr r_push r_td ikmCap) := by
-  have hpeer : P.peer.name.bytes.length ≤ 40 := by
-    rw [hPeerEq]
-    exact decPkCallSite_peer_name_le_40 hSite hpksm
-  exact w4DecryptPrekeySlot_small_phaseCredit hM P
-    hdcOwn hdcPeers hdcSpk hdcKpk hdcOpk hdcSess hdir
-    hpeer hkeyName hregName hkpkMark hold hnew hSmall hspqrKey
-    hfileCap hdeser hCurTrial hlen4 hl_le_p hDec hTrial hDrop hPush hTd
 
 /-- `FitsEnv fineCostModel` discharge for `W4DecryptPrekeySlotEnv P` from `fineCostModel.init`. -/
 theorem w4DecryptPrekeySlot_fitsEnv_fineCostModel {α : Type}

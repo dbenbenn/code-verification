@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.ChainClone4PlacedMidBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.LeavesBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep12Budget
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.ChainClone4PlacedMidBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.LeavesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep12Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # W4 Inner Handshake Primitive and Cancellation Helpers
@@ -24,7 +25,7 @@ W4 inner handshake family: optional single-buffer alloc/dealloc cancellation (`O
 loops, `init_bob` KEM/reserve primitives, and `Chain::clone` `MessageKey` loop cancellation.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -69,11 +70,11 @@ theorem phaseCredit_concat_freeOnly {M : AllocCostModel} [HasFineReallocCredit M
   exact hE'.concat_dealloc_cancel (DeallocCreditSpec.freeOnly_of_hyps hM)
 
 /-- Exact-order envelope for Rust `Vec` clone buffer allocation that skips allocation on `n = 0`. -/
-def OptRustAllocEnv (n al : Nat) : List AllocEvent → Prop :=
+@[expose] def OptRustAllocEnv (n al : Nat) : List AllocEvent → Prop :=
   if n = 0 then (· = []) else (· = rustAllocEvents n al)
 
 /-- Exact-order envelope for Rust `Vec` buffer drop that skips deallocation on `n = 0`. -/
-def OptRustDeallocEnv (n al : Nat) : List AllocEvent → Prop :=
+@[expose] def OptRustDeallocEnv (n al : Nat) : List AllocEvent → Prop :=
   if n = 0 then (· = []) else (· = rustDeallocEvents n al)
 
 /-- Regime-uniform `PhaseCreditSpec` for `OptRustAllocEnv n al` (`al ≤ 16`, `n ≤ cap`). -/

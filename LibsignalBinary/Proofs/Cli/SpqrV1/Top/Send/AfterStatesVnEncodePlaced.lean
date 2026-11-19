@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.VersionNegPhase
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.VersionNegPhase -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhasePlaced
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ChainEncodedLenBase
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesVnEncode
@@ -23,7 +23,7 @@ Proves the inlined `Option<VersionNegotiation>` encoding phase (`+4996..+5604`) 
 Block `427` (`spqr::send::<signal_session_ratchet::Coins>`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -48,7 +48,7 @@ open CryptoVerification.Cli.SpqrV1.Top.Send.CodePlaced
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   EncodedLen.zeroExtend64_beq_zero32
   EncodedLen.ofNat_countLeadingZeros_64 EncodedLen.ofNat_countLeadingZeros_32

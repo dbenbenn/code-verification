@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPtBudget
-public import LibsignalBinary.Proofs.SpqrV1.GF.IsNonZero
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPtBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.IsNonZero -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefsPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
@@ -29,6 +29,10 @@ import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart1
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefsPlaced -- proof-setup: allow-public-import
+public meta import ProofLib.GenPlacedFetches
+public meta import ProofLib.SepLogic.WP
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<NoHeaderReceived>::recv_hdr_chunk` (Block `369`) — Budget-Threaded Part 1
@@ -38,7 +42,7 @@ Block `369` callee/panic wrappers, the `None` (`StillReceiving`) branch, and `So
 `mac`/`hdr` heap allocations with OOM eliminated under `FitsEvents`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -356,7 +360,7 @@ elab "wpp_call_lscro_recvHdr_budget " hcall:term:max a:term:max hF:term:max : ta
       ty.forEach fun sub => do
         if sub.isConst then
           let nm := sub.constName!
-          if nm != ``Arm64.Spec.mk && nm != ``Arm64.Spec.inImage &&
+          if nm != ``Arm64.Spec.mk &&
               nm != ``withLsCodeRoLoaded &&
               nm != ``withLsCodeLoaded then
             let subTy ← inferType sub

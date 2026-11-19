@@ -9,19 +9,19 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C2b
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C2b -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M3a
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5C1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M3a -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5C1
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
 
 /-!
 # One-key non-send/recv step simulation for AEAD integrity
@@ -30,7 +30,7 @@ One-key (`pqxdhAuthImpl1KeyG`) counterparts of the non-send/recv step projection
 invariants in `AuthSubHops4to5M3a`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

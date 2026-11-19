@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Xpl.InvRecv
-public import Symbolic.Proofs.Swarm.CREF.Xpl.InvSend
-public import Symbolic.Proofs.Swarm.CREF.TR.MessageKeyCurrentInv
+public import Symbolic.Proofs.Swarm.CREF.Xpl.InvRecv -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Xpl.InvSend -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.MessageKeyCurrentInv -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -21,15 +21,15 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyMono
-public import Symbolic.Proofs.Swarm.CREF.Xpl.StepsMix
+public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyMono -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Xpl.StepsMix -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix
 import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyFrame
 import Symbolic.Proofs.Swarm.CREF.Prelude
-import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR2
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR2 -- proof-setup: allow-public-import
 import VCVio.Prelude.Core
-public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- shake: keep -- proof-setup: allow-public-import
 import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Trace.Monad
 import Symbolic.DYBridge.DY.Trace.Manipulation
@@ -48,7 +48,7 @@ Proves `NewBobSinfo` and `BobRecordBaseKeyInSession` preservation (`bks_movesFro
 start a Bob session, using `TR.MessageKeyCurrentInv` to show that parent snapshots remain current.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -70,7 +70,7 @@ private theorem bksTR_at?_none_of_ge {EntryT : Type} [DY.TraceEntryHas EntryT Ex
 
 /-- Every Bob snapshot stored at index `≥ tr₀.length` in `t` shares `sessionInfo` with some Bob
 snapshot `k₀` in `tr₀` referenced as parent by a `MessageKey` event logged at index `≥ tr₀.length`. -/
-def BkNew (bob : Participant) (tr₀ t : ExecTrace) : Prop :=
+@[expose] def BkNew (bob : Participant) (tr₀ t : ExecTrace) : Prop :=
   ∀ (j : Nat) (st : TRState), tr₀.length ≤ j →
     (t.at? j : Option TRStEntry) = some ⟨⟨bob, st⟩⟩ →
     ∃ (k₀ : Nat) (st₀ : TRState), (tr₀.at? k₀ : Option TRStEntry) = some ⟨⟨bob, st₀⟩⟩ ∧
@@ -109,7 +109,7 @@ theorem BkNew.ext {bob : Participant} {tr₀ t t' : ExecTrace} (h : BkNew bob tr
 /-! ## `BkTraceful` Combinators -/
 
 /-- `Traceful` Hoare predicate preserving `BkNew bob tr₀` and establishing postcondition `Q`. -/
-def BkTraceful (bob : Participant) (tr₀ : ExecTrace) {α : Type} (Q : α → Prop)
+@[expose] def BkTraceful (bob : Participant) (tr₀ : ExecTrace) {α : Type} (Q : α → Prop)
     (x : Traceful α) : Prop :=
   ∀ t : ExecTrace, tr₀ ≤ t → BkNew bob tr₀ t →
     BkNew bob tr₀ (x.run t).2.val ∧ ∀ a, (x.run t).1 = some a → Q a
@@ -451,7 +451,7 @@ theorem BkTraceful.aliceStart {bob : Participant} {tr₀ : ExecTrace} {a : Parti
 
 /-- Moves that cannot create a fresh Bob session: all moves except `setup`, `bobStart`, and
 `aliceStart` initiated by `bob`. -/
-def BkMoveKind (bob : Participant) : Move → Prop
+@[expose] def BkMoveKind (bob : Participant) : Move → Prop
   | .setup .. | .bobStart .. => False
   | .aliceStart a .. => a ≠ bob
   | _ => True

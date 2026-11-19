@@ -9,18 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrB
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrPlaced
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrB
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrPlaced
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2 -- proof-setup: allow-public-import
+public import ProofLib.GenPlacedFetches
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
 
 /-!
 # Relocatable Stage P3 Error Spatial Bundles over `prevSessionsEmptyAt`
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -54,7 +58,7 @@ open CryptoVerification.SignalSession
 
 /-- Relocatable `[LibsignalPlacement]` counterpart of `stageP3ErrPrePrevEmpty` using
 `lsLogFilterAddr ↦₆₄ 0#64`. -/
-def stageP3ErrPrePrevEmptyPlaced [LibsignalPlacement] (A : RustAlloc) (s0 s : State)
+@[expose] def stageP3ErrPrePrevEmptyPlaced [LibsignalPlacement] (A : RustAlloc) (s0 s : State)
     (coroPtr outPtr initErrsPtr : BitVec 64) (g : RecordGhost)
     (e : SignalProtocolError) (b_2c0 : BitVec 8)
     (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8))) : SepProp :=
@@ -71,7 +75,7 @@ def stageP3ErrPrePrevEmptyPlaced [LibsignalPlacement] (A : RustAlloc) (s0 s : St
 
 /-- Relocatable `[LibsignalPlacement]` counterpart of `stageP3ErrPostPrevEmpty` at
 `s0.readReg64 .x30`, using `lsLogFilterAddr ↦₆₄ 0#64`. -/
-def stageP3ErrPostPrevEmptyPlaced [LibsignalPlacement] (A : RustAlloc) (s0 s : State)
+@[expose] def stageP3ErrPostPrevEmptyPlaced [LibsignalPlacement] (A : RustAlloc) (s0 s : State)
     (coroPtr outPtr : BitVec 64)
     (e : SignalProtocolError) : SepProp :=
   (∃∗ errsCap : BitVec 64, ∃∗ errsPtr : BitVec 64, ∃∗ errsLen : BitVec 64,

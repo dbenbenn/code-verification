@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Repr
-public import LibsignalBinary.Proofs.SpqrV1.Auth.Repr
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Repr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.Repr -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Assemble
 import ProofLib.SepLogic.WPp
 
@@ -24,7 +24,7 @@ Representation predicates and deallocation entailments for `Authenticator`,
 `spqr::proto::pq_ratchet::v1_state::unchunked::*` (with `Option<...>` niche encodings).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Drop
 
@@ -45,7 +45,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Second niche value `-2` (`0xFFFFFFFFFFFFFFFE#64`) used for the outer `Option` in
     `Option<V1State.Unchunked.NoHeaderReceived>` (`cmn x1, #2; b.eq`). -/
-def none2Cap : BitVec 64 := 0xFFFFFFFFFFFFFFFE#64
+@[expose] def none2Cap : BitVec 64 := 0xFFFFFFFFFFFFFFFE#64
 
 @[simp, arm64_norm]
 theorem none2Cap_add_two_beq_zero : (none2Cap + 2#64 == 0#64) = true := rfl
@@ -65,7 +65,7 @@ theorem cap_add_two_beq_zero_false {cap : BitVec 64} (h : cap.toNat < 2 ^ 63) :
 /-! ## Stack Frame Helpers for 32-Byte Frames -/
 
 /-- Callee-saved registers not saved in `[sp..sp+32]` when `x19, x29, x30` ARE saved in `[sp..sp+32]`. -/
-@[reducible]
+@[expose, reducible]
 def Saved32x19Preserved (s0 s : State) (fsp : BitVec 64) : Prop :=
   s.readReg64 .x20 = s0.readReg64 .x20 ∧
   s.readReg64 .x21 = s0.readReg64 .x21 ∧
@@ -106,14 +106,14 @@ theorem tail_dealloc_unchunked_post (a : BitVec 64) (sz : Nat) (pool : SepProp) 
 /-- `spqr::proto::pq_ratchet::Authenticator` at `a` (`48` bytes = `0x30`, align `8`):
     * `a + 0x00..0x18`: `root_key: Vec<u8>` (tag 1, 24B)
     * `a + 0x18..0x30`: `mac_key: Vec<u8>` (tag 2, 24B) -/
-def protoAuthenticatorAt (A : RustAlloc) (a : BitVec 64) (auth : ProtoAuthenticator) : SepProp :=
+@[expose] def protoAuthenticatorAt (A : RustAlloc) (a : BitVec 64) (auth : ProtoAuthenticator) : SepProp :=
   vecU8 A a auth.rootKey ∗
     vecU8 A (a + 24#64) auth.macKey
 
 /-- `Option<spqr::proto::pq_ratchet::Authenticator>` at `a` (`48` bytes = `0x30`, align `8`):
     * `none`: `(a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 40` (`root_key.cap = -1` niche)
     * `some auth`: `protoAuthenticatorAt A a auth` -/
-def optProtoAuthenticatorAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optProtoAuthenticatorAt (A : RustAlloc) (a : BitVec 64) :
     Option ProtoAuthenticator → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 40
   | some auth => protoAuthenticatorAt A a auth
@@ -137,7 +137,7 @@ structure TwoVecGhost where
   v1 : VecPin
   v2 : VecPin
 
-def twoVecHeadersAt (a : BitVec 64) (g : TwoVecGhost) : SepProp :=
+@[expose] def twoVecHeadersAt (a : BitVec 64) (g : TwoVecGhost) : SepProp :=
   (a ↦₆₄ g.v1.cap) ∗ ((a + 8#64) ↦₆₄ g.v1.ptr) ∗ memRegion (a + 16#64) 8 ∗
   ((a + 24#64) ↦₆₄ g.v2.cap) ∗ ((a + 32#64) ↦₆₄ g.v2.ptr) ∗ memRegion (a + 40#64) 8
 
@@ -191,7 +191,7 @@ theorem protoAuthenticatorAt_entails_dealloc (A : RustAlloc) (a : BitVec 64)
 
 /-! ## Representation Predicates for `spqr::v1::unchunked::*` States -/
 
-def unchunkedCt1SentSize : Nat := 128
+@[expose] def unchunkedCt1SentSize : Nat := 128
 
 /-- `spqr::v1::unchunked::send_ct::Ct1Sent` at `a` (`128` bytes = `0x80`, align `8`):
     * `+0`: `auth: Authenticator` (48B: `root_key` at `+0`, `mac_key` at `+24`)
@@ -199,7 +199,7 @@ def unchunkedCt1SentSize : Nat := 128
     * `+72`: `es: Vec<u8>` (24B)
     * `+96`: `ct1: Vec<u8>` (24B)
     * `+120`: `epoch: u64` (8B) -/
-def unchunkedCt1SentAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def unchunkedCt1SentAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Unchunked.SendCt.Ct1Sent (spqrAuthApi F)) : SepProp :=
   authenticatorAt A a st.auth ∗
     vecU8 A (a + 48#64) st.hdr ∗
@@ -207,13 +207,13 @@ def unchunkedCt1SentAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     vecU8 A (a + 96#64) st.ct1 ∗
     ((a + 120#64) ↦₆₄ st.epoch)
 
-def unchunkedEkSentSize : Nat := 80
+@[expose] def unchunkedEkSentSize : Nat := 80
 
 /-- `spqr::v1::unchunked::send_ek::EkSent` at `a` (`80` bytes = `0x50`, align `8`):
     * `+0`: `auth: Authenticator` (48B: `root_key` at `+0`, `mac_key` at `+24`)
     * `+48`: `dk: Vec<u8>` (24B)
     * `+72`: `epoch: u64` (8B) -/
-def unchunkedEkSentAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def unchunkedEkSentAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Unchunked.SendEk.EkSent (spqrAuthApi F)) : SepProp :=
   authenticatorAt A a st.auth ∗
     vecU8 A (a + 48#64) st.dk ∗
@@ -227,7 +227,7 @@ def unchunkedCt1SentEkReceivedSize : Nat := 128
     * `+72`: `ek: Vec<u8>` (24B)
     * `+96`: `ct1: Vec<u8>` (24B)
     * `+120`: `epoch: u64` (8B) -/
-def unchunkedCt1SentEkReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def unchunkedCt1SentEkReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Unchunked.SendCt.Ct1SentEkReceived (spqrAuthApi F)) : SepProp :=
   authenticatorAt A a st.auth ∗
     vecU8 A (a + 48#64) st.es ∗
@@ -240,7 +240,7 @@ def unchunkedCt2SentSize : Nat := 56
 /-- `spqr::v1::unchunked::send_ct::Ct2Sent` at `a` (`56` bytes = `0x38`, align `8`):
     * `+0`: `auth: Authenticator` (48B: `root_key` at `+0`, `mac_key` at `+24`)
     * `+48`: `epoch: u64` (8B) -/
-def unchunkedCt2SentAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def unchunkedCt2SentAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Unchunked.SendCt.Ct2Sent (spqrAuthApi F)) : SepProp :=
   authenticatorAt A a st.auth ∗
     ((a + 48#64) ↦₆₄ st.epoch)
@@ -252,7 +252,7 @@ def unchunkedEkSentCt1ReceivedSize : Nat := 104
     * `+48`: `dk: Vec<u8>` (24B)
     * `+72`: `ct1: Vec<u8>` (24B)
     * `+96`: `epoch: u64` (8B) -/
-def unchunkedEkSentCt1ReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def unchunkedEkSentCt1ReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Unchunked.SendEk.EkSentCt1Received (spqrAuthApi F)) : SepProp :=
   authenticatorAt A a st.auth ∗
     vecU8 A (a + 48#64) st.dk ∗
@@ -261,7 +261,7 @@ def unchunkedEkSentCt1ReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 6
 
 /-! ## Representation Predicates for `spqr::proto::pq_ratchet::v1_state::unchunked::*` -/
 
-def protoUnchunkedCt1SentSize : Nat := 128
+@[expose] def protoUnchunkedCt1SentSize : Nat := 128
 
 /-- `spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent` at `a` (`128` bytes = `0x80`, align `8`):
     * `+0`: `hdr: Vec<u8>` (24B)
@@ -269,7 +269,7 @@ def protoUnchunkedCt1SentSize : Nat := 128
     * `+48`: `ct1: Vec<u8>` (24B)
     * `+72`: `auth: Option<ProtoAuthenticator>` (48B)
     * `+120`: `epoch: u64` (8B) -/
-def protoUnchunkedCt1SentAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoUnchunkedCt1SentAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Unchunked.Ct1Sent) : SepProp :=
   vecU8 A a st.hdr ∗
     vecU8 A (a + 24#64) st.es ∗
@@ -280,7 +280,7 @@ def protoUnchunkedCt1SentAt (A : RustAlloc) (a : BitVec 64)
 /-- `Option<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent>` at `a` (`128` bytes = `0x80`):
     * `none`: `(a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 120` (`hdr.cap = -1` niche)
     * `some st`: `protoUnchunkedCt1SentAt A a st` -/
-def optProtoUnchunkedCt1SentAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optProtoUnchunkedCt1SentAt (A : RustAlloc) (a : BitVec 64) :
     Option V1State.Unchunked.Ct1Sent → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 120
   | some st => protoUnchunkedCt1SentAt A a st
@@ -294,7 +294,7 @@ theorem optProtoUnchunkedCt1SentAt_some (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Unchunked.Ct1Sent) :
     optProtoUnchunkedCt1SentAt A a (some st) = protoUnchunkedCt1SentAt A a st := rfl
 
-def protoUnchunkedCt1SentEkReceivedSize : Nat := 128
+@[expose] def protoUnchunkedCt1SentEkReceivedSize : Nat := 128
 
 /-- `spqr::proto::pq_ratchet::v1_state::unchunked::Ct1SentEkReceived` at `a` (`128` bytes = `0x80`):
     * `+0`: `es: Vec<u8>` (24B)
@@ -302,7 +302,7 @@ def protoUnchunkedCt1SentEkReceivedSize : Nat := 128
     * `+48`: `ct1: Vec<u8>` (24B)
     * `+72`: `auth: Option<ProtoAuthenticator>` (48B)
     * `+120`: `epoch: u64` (8B) -/
-def protoUnchunkedCt1SentEkReceivedAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoUnchunkedCt1SentEkReceivedAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Unchunked.Ct1SentEkReceived) : SepProp :=
   vecU8 A a st.es ∗
     vecU8 A (a + 24#64) st.ek ∗
@@ -313,7 +313,7 @@ def protoUnchunkedCt1SentEkReceivedAt (A : RustAlloc) (a : BitVec 64)
 /-- `Option<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1SentEkReceived>` at `a` (`128` bytes):
     * `none`: `(a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 120` (`es.cap = -1` niche)
     * `some st`: `protoUnchunkedCt1SentEkReceivedAt A a st` -/
-def optProtoUnchunkedCt1SentEkReceivedAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optProtoUnchunkedCt1SentEkReceivedAt (A : RustAlloc) (a : BitVec 64) :
     Option V1State.Unchunked.Ct1SentEkReceived → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 120
   | some st => protoUnchunkedCt1SentEkReceivedAt A a st
@@ -327,13 +327,11 @@ theorem optProtoUnchunkedCt1SentEkReceivedAt_some (A : RustAlloc) (a : BitVec 64
     (st : V1State.Unchunked.Ct1SentEkReceived) :
     optProtoUnchunkedCt1SentEkReceivedAt A a (some st) = protoUnchunkedCt1SentEkReceivedAt A a st := rfl
 
-def protoUnchunkedEkSentSize : Nat := 80
-
 /-- `spqr::proto::pq_ratchet::v1_state::unchunked::EkSent` at `a` (`80` bytes = `0x50`):
     * `+0`: `dk: Vec<u8>` (24B)
     * `+24`: `auth: Option<ProtoAuthenticator>` (48B)
     * `+72`: `epoch: u64` (8B) -/
-def protoUnchunkedEkSentAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoUnchunkedEkSentAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Unchunked.EkSent) : SepProp :=
   vecU8 A a st.dk ∗
     optProtoAuthenticatorAt A (a + 24#64) st.auth ∗
@@ -342,7 +340,7 @@ def protoUnchunkedEkSentAt (A : RustAlloc) (a : BitVec 64)
 /-- `Option<spqr::proto::pq_ratchet::v1_state::unchunked::EkSent>` at `a` (`80` bytes = `0x50`):
     * `none`: `(a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 72` (`dk.cap = -1` niche)
     * `some st`: `protoUnchunkedEkSentAt A a st` -/
-def optProtoUnchunkedEkSentAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optProtoUnchunkedEkSentAt (A : RustAlloc) (a : BitVec 64) :
     Option V1State.Unchunked.EkSent → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 72
   | some st => protoUnchunkedEkSentAt A a st
@@ -356,14 +354,12 @@ theorem optProtoUnchunkedEkSentAt_some (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Unchunked.EkSent) :
     optProtoUnchunkedEkSentAt A a (some st) = protoUnchunkedEkSentAt A a st := rfl
 
-def protoUnchunkedEkSentCt1ReceivedSize : Nat := 104
-
 /-- `spqr::proto::pq_ratchet::v1_state::unchunked::EkSentCt1Received` at `a` (`104` bytes = `0x68`):
     * `+0`: `dk: Vec<u8>` (24B)
     * `+24`: `ct1: Vec<u8>` (24B)
     * `+48`: `auth: Option<ProtoAuthenticator>` (48B)
     * `+96`: `epoch: u64` (8B) -/
-def protoUnchunkedEkSentCt1ReceivedAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoUnchunkedEkSentCt1ReceivedAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Unchunked.EkSentCt1Received) : SepProp :=
   vecU8 A a st.dk ∗
     vecU8 A (a + 24#64) st.ct1 ∗
@@ -373,7 +369,7 @@ def protoUnchunkedEkSentCt1ReceivedAt (A : RustAlloc) (a : BitVec 64)
 /-- `Option<spqr::proto::pq_ratchet::v1_state::unchunked::EkSentCt1Received>` at `a` (`104` bytes):
     * `none`: `(a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 96` (`dk.cap = -1` niche)
     * `some st`: `protoUnchunkedEkSentCt1ReceivedAt A a st` -/
-def optProtoUnchunkedEkSentCt1ReceivedAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optProtoUnchunkedEkSentCt1ReceivedAt (A : RustAlloc) (a : BitVec 64) :
     Option V1State.Unchunked.EkSentCt1Received → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 96
   | some st => protoUnchunkedEkSentCt1ReceivedAt A a st
@@ -387,13 +383,11 @@ theorem optProtoUnchunkedEkSentCt1ReceivedAt_some (A : RustAlloc) (a : BitVec 64
     (st : V1State.Unchunked.EkSentCt1Received) :
     optProtoUnchunkedEkSentCt1ReceivedAt A a (some st) = protoUnchunkedEkSentCt1ReceivedAt A a st := rfl
 
-def protoUnchunkedHeaderReceivedSize : Nat := 80
-
 /-- `spqr::proto::pq_ratchet::v1_state::unchunked::HeaderReceived` at `a` (`80` bytes = `0x50`):
     * `+0`: `hdr: Vec<u8>` (24B)
     * `+24`: `auth: Option<ProtoAuthenticator>` (48B)
     * `+72`: `epoch: u64` (8B) -/
-def protoUnchunkedHeaderReceivedAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoUnchunkedHeaderReceivedAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Unchunked.HeaderReceived) : SepProp :=
   vecU8 A a st.hdr ∗
     optProtoAuthenticatorAt A (a + 24#64) st.auth ∗
@@ -402,7 +396,7 @@ def protoUnchunkedHeaderReceivedAt (A : RustAlloc) (a : BitVec 64)
 /-- `Option<spqr::proto::pq_ratchet::v1_state::unchunked::HeaderReceived>` at `a` (`80` bytes):
     * `none`: `(a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 72` (`hdr.cap = -1` niche)
     * `some st`: `protoUnchunkedHeaderReceivedAt A a st` -/
-def optProtoUnchunkedHeaderReceivedAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optProtoUnchunkedHeaderReceivedAt (A : RustAlloc) (a : BitVec 64) :
     Option V1State.Unchunked.HeaderReceived → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 72
   | some st => protoUnchunkedHeaderReceivedAt A a st
@@ -416,12 +410,10 @@ theorem optProtoUnchunkedHeaderReceivedAt_some (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Unchunked.HeaderReceived) :
     optProtoUnchunkedHeaderReceivedAt A a (some st) = protoUnchunkedHeaderReceivedAt A a st := rfl
 
-def protoUnchunkedNoHeaderReceivedSize : Nat := 56
-
 /-- `spqr::proto::pq_ratchet::v1_state::unchunked::NoHeaderReceived` at `a` (`56` bytes = `0x38`):
     * `+0`: `auth: Option<ProtoAuthenticator>` (48B)
     * `+48`: `epoch: u64` (8B) -/
-def protoUnchunkedNoHeaderReceivedAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoUnchunkedNoHeaderReceivedAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Unchunked.NoHeaderReceived) : SepProp :=
   optProtoAuthenticatorAt A a st.auth ∗
     ((a + 48#64) ↦₆₄ st.epoch)
@@ -430,7 +422,7 @@ def protoUnchunkedNoHeaderReceivedAt (A : RustAlloc) (a : BitVec 64)
     * `none`: `(a ↦₆₄ none2Cap) ∗ memRegion (a + 8#64) 48` (`auth.root_key.cap = -2` niche;
       `-1` is taken by `some { auth := none, .. }`)
     * `some st`: `protoUnchunkedNoHeaderReceivedAt A a st` -/
-def optProtoUnchunkedNoHeaderReceivedAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optProtoUnchunkedNoHeaderReceivedAt (A : RustAlloc) (a : BitVec 64) :
     Option V1State.Unchunked.NoHeaderReceived → SepProp
   | none => (a ↦₆₄ none2Cap) ∗ memRegion (a + 8#64) 48
   | some st => protoUnchunkedNoHeaderReceivedAt A a st
@@ -464,7 +456,7 @@ structure FiveVecGhost where
   v4 : VecPin
   v5 : VecPin
 
-def twoVec56HeadersAt (a : BitVec 64) (g : TwoVecGhost) : SepProp :=
+@[expose] def twoVec56HeadersAt (a : BitVec 64) (g : TwoVecGhost) : SepProp :=
   (a ↦₆₄ g.v1.cap) ∗ ((a + 8#64) ↦₆₄ g.v1.ptr) ∗ memRegion (a + 16#64) 8 ∗
   ((a + 24#64) ↦₆₄ g.v2.cap) ∗ ((a + 32#64) ↦₆₄ g.v2.ptr) ∗ memRegion (a + 40#64) 16
 
@@ -485,7 +477,7 @@ theorem twoVec56HeadersAt_entails_memRegion_56 (a : BitVec 64) (g : TwoVecGhost)
       ProofLib.memRegion_split' (b := a) (n := 24) (k := 32) (b' := a + 24#64) rfl rfl (by decide)]
   exact sepConj_mono h1 h2
 
-def threeVec80HeadersAt (a : BitVec 64) (g : ThreeVecGhost) : SepProp :=
+@[expose] def threeVec80HeadersAt (a : BitVec 64) (g : ThreeVecGhost) : SepProp :=
   (a ↦₆₄ g.v1.cap) ∗ ((a + 8#64) ↦₆₄ g.v1.ptr) ∗ memRegion (a + 16#64) 8 ∗
   ((a + 24#64) ↦₆₄ g.v2.cap) ∗ ((a + 32#64) ↦₆₄ g.v2.ptr) ∗ memRegion (a + 40#64) 8 ∗
   ((a + 48#64) ↦₆₄ g.v3.cap) ∗ ((a + 56#64) ↦₆₄ g.v3.ptr) ∗ memRegion (a + 64#64) 16
@@ -514,7 +506,7 @@ theorem threeVec80HeadersAt_entails_memRegion_80 (a : BitVec 64) (g : ThreeVecGh
       ProofLib.memRegion_split' (b := a + 24#64) (n := 24) (k := 32) (b' := a + 48#64) rfl (by bv_omega) (by decide)]
   exact sepConj_mono h1 (sepConj_mono h2 h3)
 
-def fourVec104HeadersAt (a : BitVec 64) (g : FourVecGhost) : SepProp :=
+@[expose] def fourVec104HeadersAt (a : BitVec 64) (g : FourVecGhost) : SepProp :=
   (a ↦₆₄ g.v1.cap) ∗ ((a + 8#64) ↦₆₄ g.v1.ptr) ∗ memRegion (a + 16#64) 8 ∗
   ((a + 24#64) ↦₆₄ g.v2.cap) ∗ ((a + 32#64) ↦₆₄ g.v2.ptr) ∗ memRegion (a + 40#64) 8 ∗
   ((a + 48#64) ↦₆₄ g.v3.cap) ∗ ((a + 56#64) ↦₆₄ g.v3.ptr) ∗ memRegion (a + 64#64) 8 ∗
@@ -551,7 +543,7 @@ theorem fourVec104HeadersAt_entails_memRegion_104 (a : BitVec 64) (g : FourVecGh
       ProofLib.memRegion_split' (b := a + 48#64) (n := 24) (k := 32) (b' := a + 72#64) rfl (by bv_omega) (by decide)]
   exact sepConj_mono h1 (sepConj_mono h2 (sepConj_mono h3 h4))
 
-def fiveVec128HeadersAt (a : BitVec 64) (g : FiveVecGhost) : SepProp :=
+@[expose] def fiveVec128HeadersAt (a : BitVec 64) (g : FiveVecGhost) : SepProp :=
   (a ↦₆₄ g.v1.cap) ∗ ((a + 8#64) ↦₆₄ g.v1.ptr) ∗ memRegion (a + 16#64) 8 ∗
   ((a + 24#64) ↦₆₄ g.v2.cap) ∗ ((a + 32#64) ↦₆₄ g.v2.ptr) ∗ memRegion (a + 40#64) 8 ∗
   ((a + 48#64) ↦₆₄ g.v3.cap) ∗ ((a + 56#64) ↦₆₄ g.v3.ptr) ∗ memRegion (a + 64#64) 8 ∗
@@ -813,7 +805,7 @@ theorem unchunkedCt1SentEkReceivedAt_entails_dealloc (A : RustAlloc) {F : ShaCom
 /-! ## Deallocation Entailments for `proto::pq_ratchet::v1_state::unchunked::*` -/
 
 /-- Headers for 1 `Vec<u8>` field at `+0` (`24`B). -/
-def protoUnchunked1VecHeadersAt (a : BitVec 64) (v1 : VecPin) : SepProp :=
+@[expose] def protoUnchunked1VecHeadersAt (a : BitVec 64) (v1 : VecPin) : SepProp :=
   (a ↦₆₄ v1.cap) ∗ ((a + 8#64) ↦₆₄ v1.ptr) ∗ memRegion (a + 16#64) 8
 
 theorem protoUnchunked1VecHeadersAt_entails_memRegion_80 (a : BitVec 64) (v1 : VecPin) :
@@ -863,7 +855,7 @@ theorem protoUnchunkedHeaderReceivedAt_entails_dealloc (A : RustAlloc) (a : BitV
     { epoch := st.epoch, auth := st.auth, dk := st.hdr }
 
 /-- Headers for 2 `Vec<u8>` fields at `+0, +24` (`48`B). -/
-def protoUnchunked2VecHeadersAt (a : BitVec 64) (g : TwoVecGhost) : SepProp :=
+@[expose] def protoUnchunked2VecHeadersAt (a : BitVec 64) (g : TwoVecGhost) : SepProp :=
   twoVecHeadersAt a g
 
 theorem protoUnchunked2VecHeadersAt_entails_memRegion_104 (a : BitVec 64) (g : TwoVecGhost) :
@@ -910,7 +902,7 @@ theorem protoUnchunkedEkSentCt1ReceivedAt_entails_dealloc (A : RustAlloc) (a : B
   exact Entails.of_eq (by ac_rfl)
 
 /-- Headers for 3 `Vec<u8>` fields at `+0, +24, +48` (`72`B). -/
-def protoUnchunked3VecHeadersAt (a : BitVec 64) (g : ThreeVecGhost) : SepProp :=
+@[expose] def protoUnchunked3VecHeadersAt (a : BitVec 64) (g : ThreeVecGhost) : SepProp :=
   (a ↦₆₄ g.v1.cap) ∗ ((a + 8#64) ↦₆₄ g.v1.ptr) ∗ memRegion (a + 16#64) 8 ∗
   ((a + 24#64) ↦₆₄ g.v2.cap) ∗ ((a + 32#64) ↦₆₄ g.v2.ptr) ∗ memRegion (a + 40#64) 8 ∗
   ((a + 48#64) ↦₆₄ g.v3.cap) ∗ ((a + 56#64) ↦₆₄ g.v3.ptr) ∗ memRegion (a + 64#64) 8
@@ -1011,22 +1003,6 @@ theorem optProtoUnchunkedCt1SentAt_none_entails_memRegion_128 (A : RustAlloc) (a
 theorem optProtoUnchunkedCt1SentEkReceivedAt_none_entails_memRegion_128 (A : RustAlloc) (a : BitVec 64) :
     optProtoUnchunkedCt1SentEkReceivedAt A a none ⊢ memRegion a 128 :=
   optProtoUnchunkedCt1SentAt_none_entails_memRegion_128 A a
-
-theorem optProtoUnchunkedEkSentAt_none_entails_memRegion_80 (A : RustAlloc) (a : BitVec 64) :
-    optProtoUnchunkedEkSentAt A a none ⊢ memRegion a 80 := by
-  unfold optProtoUnchunkedEkSentAt
-  rw [ProofLib.memRegion_split' (b := a) (n := 8) (k := 72) (b' := a + 8#64) rfl rfl (by decide)]
-  exact sepConj_mono_left (pointsTo64_entails_memRegion a noneCap)
-
-theorem optProtoUnchunkedHeaderReceivedAt_none_entails_memRegion_80 (A : RustAlloc) (a : BitVec 64) :
-    optProtoUnchunkedHeaderReceivedAt A a none ⊢ memRegion a 80 :=
-  optProtoUnchunkedEkSentAt_none_entails_memRegion_80 A a
-
-theorem optProtoUnchunkedEkSentCt1ReceivedAt_none_entails_memRegion_104 (A : RustAlloc) (a : BitVec 64) :
-    optProtoUnchunkedEkSentCt1ReceivedAt A a none ⊢ memRegion a 104 := by
-  unfold optProtoUnchunkedEkSentCt1ReceivedAt
-  rw [ProofLib.memRegion_split' (b := a) (n := 8) (k := 96) (b' := a + 8#64) rfl rfl (by decide)]
-  exact sepConj_mono_left (pointsTo64_entails_memRegion a noneCap)
 
 theorem optProtoUnchunkedNoHeaderReceivedAt_none_entails_memRegion_56 (A : RustAlloc) (a : BitVec 64) :
     optProtoUnchunkedNoHeaderReceivedAt A a none ⊢ memRegion a 56 := by

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
@@ -22,7 +22,7 @@ Proves the code-loaded shared epilogue (`+2500..+2528`), `DecodeError` drop/unwi
 (`+2392..+2528`), and top-level `DecodeError::push` error-exit blocks under `LibsignalPlacement`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -18,9 +18,9 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.CBadG2.Stamps
-import Symbolic.Proofs.Swarm.CREF.CBadReadableBridge
+public import Symbolic.Proofs.Swarm.CREF.CBadReadableBridge -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CBadG2Pure
 import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
 import Symbolic.Proofs.Swarm.UA.BI.G.PendingPreKey
@@ -35,6 +35,14 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Xpl.StepsMix -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.UA.Defs
+import Symbolic.Proofs.Swarm.CREF.RelPure
+import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
+import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials
+import Symbolic.Proofs.Swarm.CREF.Stage1Trials
 
 /-!
 # Session-Promotion Pre-Key Receive Auxiliary Lemmas
@@ -44,7 +52,7 @@ on rejected and accepting `recv` runs, `MatchesEvents` non-invisible cut uniquen
 environment steps, single-step `ValidLoadStep` bridges, and quiet-failure helpers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -626,7 +634,7 @@ theorem not_readCollisionCli_of_acceptsViaCli {interp : ExternInterpretation}
 
 /-! ## Step-to-Move and Quiet-Failure Bridges -/
 
-def ValidLoadStep : Step → Prop
+@[expose] def ValidLoadStep : Step → Prop
   | .network .. | .aliceStart .. | .bobStart ..
   | .messageEncrypt .. | .messageEncryptAbort ..
   | .messageDecrypt .. | .messageDecryptSkipped ..
@@ -634,7 +642,7 @@ def ValidLoadStep : Step → Prop
   | .compromiseIK .. | .compromiseSPK .. | .compromisePQSPK .. | .compromiseOPK .. => True
   | _ => False
 
-def stepToLoadMove : Step → _root_.DY.Libsignal.Composed.Refinement.Move
+@[expose] def stepToLoadMove : Step → _root_.DY.Libsignal.Composed.Refinement.Move
   | .network msg => .attackerSend msg
   | .aliceStart a b i j h => .aliceStart a b i j h 0
   | .bobStart b a kh j mh p s => .bobStart b a kh j mh p s 0
@@ -770,7 +778,7 @@ theorem randTerm_inj_of_ne_zero {interp : ExternInterpretation} {S : OpaqueSymbo
     exact ⟨heq₂.1.symm, heq₂.2.symm⟩
   · simp at h1
 
-def NoTREvFrom (n : Nat) (t : ExecTrace) : Prop :=
+@[expose] def NoTREvFrom (n : Nat) (t : ExecTrace) : Prop :=
   ∀ i, n ≤ i →
     ((t.at? i : Option (_root_.DY.ProtocolEvent.ExecEntryT
       _root_.DY.Libsignal.TripleRatchet.TREvent)) = none)
@@ -784,7 +792,7 @@ private theorem noTREvFrom_trans {n : Nat} {t₁ t₂ : ExecTrace}
     exact h₁ i hi
   · exact h₂ i (Nat.le_of_not_lt hlt)
 
-def QuietOnNone {α : Type} (x : Traceful α) : Prop :=
+@[expose] def QuietOnNone {α : Type} (x : Traceful α) : Prop :=
   ∀ tr, (x.run tr).1 = none → NoTREvFrom tr.length (x.run tr).2.val
 
 private theorem quietOnNone_failure {α : Type} : QuietOnNone (failure : Traceful α) := by

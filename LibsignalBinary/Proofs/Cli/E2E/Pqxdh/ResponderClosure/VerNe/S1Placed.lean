@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.S1
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopErrPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.S1
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DefsPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopErrPlaced -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3GenVerNe
@@ -24,6 +24,8 @@ import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3GenSub
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3GenVerNeBlocks
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.GrowSpe
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevVerNePlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 
 /-!
 # Relocatable Version-Mismatch Entry Segment (`+0x1e04 → +0x1e78`)
@@ -32,7 +34,7 @@ Relocatable (`[LibsignalPlacement]` / `[LibsignalFullPlacement]`) proofs of the 
 version-mismatch segment (`(blkPl_518).base + 0x1e04 → (blkPl_518).base + 0x1e78`) on `lsProg_518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -70,7 +72,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Relocatable `[LibsignalFullPlacement]` Stage P3 `VerNe` entry segment
 (`(blkPl_518).base + 0x1e04 → (blkPl_518).base + 0x1e78`) on `lsProg_518 ext`. -/
-def OverVerNe1e04To1e78CliPlacedStmt [LibsignalFullPlacement] : Prop :=
+@[expose] def OverVerNe1e04To1e78CliPlacedStmt [LibsignalFullPlacement] : Prop :=
   ∀ {A : RustAlloc} (ext : String → Option (State → State))
     (s0 s s1 : State) (coroPtr ctxPtr initErrsPtr : BitVec 64),
     initErrsPtr ≠ 0#64 →
@@ -193,101 +195,6 @@ private theorem errs48_fold_ver_s1 (errsPtr e2 e3 e4 e5 : BitVec 64) (msgVer u3e
   exact sepConj_mono (Entails.refl _) (sepConj_mono (Entails.refl _) (sepConj_mono (pointsTo32_entails_memRegion _ _)
     (sepConj_mono (pointsTo64_entails_memRegion _ _) (sepConj_mono (pointsTo64_entails_memRegion _ _)
       (sepConj_mono (pointsTo64_entails_memRegion _ _) (pointsTo64_entails_memRegion _ _))))))
-
-private theorem bind_sepWP_cl_frame_s1 {prog : Program} {mid ret : BitVec 64} {s : State}
-    {P P_step P_step_post F : SepProp} {Q_regs : State → Prop}
-    {Q Qp : State → SepProp → Prop}
-    (hL : prog.CodeLoaded s.mem)
-    (hstep : SepWP prog mid s P_step
-      (fun sm P_step' => (P_step' ⊢ P_step_post) ∧ Q_regs sm))
-    (hP : P = P_step ∗ F)
-    (hnext : ∀ sm : State, sm.pc = mid → sm.status = .Running →
-      prog.CodeLoaded sm.mem → Q_regs sm →
-      SepWPp prog ret sm (P_step_post ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm _
-  rw [hP, sepConj_assoc] at hm
-  obtain ⟨sm, hsteps, ⟨hpc, hrun, P_step', hmm, hent, hregs⟩ | ⟨_, _hoom⟩⟩ := hstep.elim hm hL
-  rotate_left; · first | exact False.elim _hoom | exact (not_satisfies_false_sepConj _hoom).elim
-  have hmm' : sm.mem ⊨ (P_step_post ∗ F) ∗ R := by
-    rw [sepConj_assoc]
-    exact Satisfies.mono (sepConj_mono_left hent) hmm
-  have hLm : prog.CodeLoaded sm.mem := hsteps.codeLoaded hL
-  obtain ⟨sf, hsteps', hout'⟩ := hnext sm hpc hrun hLm hregs R hmm' hLm
-  exact ⟨sf, hsteps.trans hsteps', hout'⟩
-
-private theorem call_raw_nopanic_cl_s1 {α : Type} {prog : Program}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s : State} {φ : Prop}
-    {P T F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hL : prog.CodeLoaded s.mem)
-    (hcall : subroutine_ok prog entry spec)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hpan_false : ∀ sf, spec.onPanic x s sf = ⌜False⌝ := by intro _; rfl)
-    (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by intro _ _; rfl)
-    (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intro _; rfl)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
-      prog.CodeLoaded sf.mem →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm _
-  have hm' : s.mem ⊨ spec.pre x s ∗ (F ∗ R) := by
-    rw [hspec, sepConj_assoc, satisfies_pure_sepConj, ← sepConj_assoc, ← hP]
-    exact ⟨hφ, hm⟩
-  obtain ⟨sm, hsteps, hout⟩ :=
-    subroutine_ok_apply_outcome hcall x (F ∗ R) hpc hrun hm' hsp hL
-  rcases hout with ⟨⟨hpcm, _, hrunm⟩, ⟨hspm, hcsm⟩, hpost⟩ | ⟨_, hpost⟩ | ⟨code, _, hpost⟩ | ⟨_hoom_st, _hoom_post⟩
-  rotate_right; · rw [hoom_false] at _hoom_post; exact (not_satisfies_false_sepConj _hoom_post).elim
-  · rw [← sepConj_assoc] at hpost
-    rw [hlr] at hpcm
-    have hsp_alm : sm.spAligned = true := by simpa [State.spAligned, hspm] using hsp
-    have hLm : prog.CodeLoaded sm.mem := hsteps.codeLoaded hL
-    obtain ⟨sf, hsteps', hout'⟩ :=
-      hnext sm hpcm hrunm hspm hsp_alm hcsm hLm R hpost hLm
-    exact ⟨sf, hsteps.trans hsteps', hout'⟩
-  · rw [hpan_false] at hpost
-    exact (allowPanic_not_exited hpost).elim
-  · rw [hexit_false] at hpost
-    exact (allowPanic_not_exited hpost).elim
-
-private theorem call_raw_oom_cl_s1 {α : Type} {prog : Program}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s0 s : State} {φ : Prop}
-    {P T F : SepProp} {Q : State → SepProp → Prop}
-    (hL : prog.CodeLoaded s.mem) (htr : s.trace = s0.trace)
-    (hcall : subroutine_ok prog entry spec)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hpan_eq : ∀ sf, spec.onPanic x s sf =
-      (⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap) := by intro _; rfl)
-    (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by intro _ _; rfl)
-    (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intro _; rfl)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
-      prog.CodeLoaded sf.mem →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q (P3P4.PanicOomProp s0)) :
-    SepWPp prog ret s P Q (P3P4.PanicOomProp s0) := by
-  intro R hm _
-  have hm' : s.mem ⊨ spec.pre x s ∗ (F ∗ R) := by
-    rw [hspec, sepConj_assoc, satisfies_pure_sepConj, ← sepConj_assoc, ← hP]
-    exact ⟨hφ, hm⟩
-  obtain ⟨sm, hsteps, hout⟩ :=
-    subroutine_ok_apply_outcome hcall x (F ∗ R) hpc hrun hm' hsp hL
-  rcases hout with ⟨⟨hpcm, _, hrunm⟩, ⟨hspm, hcsm⟩, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, _, hpost⟩ | ⟨_hoom_st, _hoom_post⟩
-  rotate_right; · rw [hoom_false] at _hoom_post; exact (not_satisfies_false_sepConj _hoom_post).elim
-  · rw [← sepConj_assoc] at hpost
-    rw [hlr] at hpcm
-    have hsp_alm : sm.spAligned = true := by simpa [State.spAligned, hspm] using hsp
-    have hLm : prog.CodeLoaded sm.mem := hsteps.codeLoaded hL
-    obtain ⟨sf, hsteps', hout'⟩ :=
-      hnext sm hpcm hrunm hspm hsp_alm hcsm hLm R hpost hLm
-    exact ⟨sf, hsteps.trans hsteps', hout'⟩
-  · rw [hpan_eq, ← sepConj_assoc] at hpost
-    exact ⟨sm, hsteps, Or.inr (Or.inl ⟨hpan, _, hpost, P3P4.allowPanic_oom_of_trace_eq htr⟩)⟩
-  · rw [hexit_false] at hpost
-    exact (allowPanic_not_exited hpost).elim
 
 /-! ## Basic-block segments (`+0x1e04 → +0x1e78`) -/
 

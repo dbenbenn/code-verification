@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieRec
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieRec -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -20,7 +20,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvFreshLinkPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -44,7 +44,7 @@ receiver-key freshness properties across `bobStartTr`, and reduces `PureTRRecord
 `bobStart` move to `RpkRecRel` and `TRKeyShape`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

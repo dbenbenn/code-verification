@@ -11,8 +11,9 @@ module
 
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.HybridWith
 import VCVio.OracleComp.QueryTracking.SubSpec
-public import Computational.Proofs.CryptoGames.FSAEAD.HybridWithProofDefs
+import Computational.Proofs.CryptoGames.FSAEAD.HybridWithProofDefs
 import Computational.Proofs.GameHop.StateSim
+public import Computational.Proofs.CryptoGames.FSAEAD.HybridProofDefs
 
 /-!
 # Query Bounds for the OT-CCA Reduction
@@ -24,7 +25,7 @@ that coin sampling, key generation, key reveal, and corruption operations make z
 OT-CCA queries.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec
 
@@ -54,7 +55,7 @@ abbrev RM (CK MK AD M C : Type) := StateT (HSt CK MK AD M C) (OracleComp (RSpec 
 section QB
 
 /-- `x` makes at most `n` `Q`-queries from every hybrid state. -/
-def QB (Q : (RSpec AD M C).Domain → Prop) [DecidablePred Q] {α : Type} (x : RM CK MK AD M C α)
+@[expose] def QB (Q : (RSpec AD M C).Domain → Prop) [DecidablePred Q] {α : Type} (x : RM CK MK AD M C α)
     (n : ℕ) : Prop :=
   ∀ s : HSt CK MK AD M C, IsQueryBoundP (StateT.run x s) Q n
 

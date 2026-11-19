@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvFreshStepPQ
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvFreshStepPQ -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -41,7 +41,7 @@ Establishes the store-extension lemma `rfs_RF_append_store` and proves
 session descriptor built from a fresh random draw has prior receiver events.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -119,13 +119,13 @@ theorem rfs_RF_append_store {r₀ : ProtocolSetup} {tr : ExecTrace} (p : Partici
     exact ⟨hcf_up hcf, hsk_up hsk⟩
 
 /-- No receiver `MessageKey` or `SkippedKeyStored` event of descriptor `s` is logged on `tr`. -/
-def rfs_NoRecvEv (tr : ExecTrace) (s : SessionInfo) : Prop :=
+@[expose] def rfs_NoRecvEv (tr : ExecTrace) (s : SessionInfo) : Prop :=
   (∀ seed pqSalt n r pIdx i,
     ¬ tr.EventLoggedAt (TREvent.MessageKey s .receiver seed pqSalt n r pIdx) i) ∧
   (∀ pk n seed r srcIdx i, ¬ tr.EventLoggedAt (TREvent.SkippedKeyStored s pk n seed r srcIdx) i)
 
 /-- No stored `TRState` on `tr` has session descriptor `s`. -/
-def rfs_NoStored (tr : ExecTrace) (s : SessionInfo) : Prop :=
+@[expose] def rfs_NoStored (tr : ExecTrace) (s : SessionInfo) : Prop :=
   ∀ q j st, ((PersistentLocalState.getLocalState q j : Traceful TRState).run tr).1 = some st →
     st.sessionInfo q ≠ s
 

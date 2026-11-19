@@ -9,9 +9,40 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySig
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeProofs
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigBounds
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySig -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeProofs
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigBounds
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeSig -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhProofsBase
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC1
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3b
+import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhD
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKemProofs
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
+import Computational.Proofs.SignalPqxdh.Security.SigHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHopC
 
 /-!
 # Syntactic Bounds for the One-Key `Auth` Sig Dispatch Layer
@@ -20,7 +51,7 @@ public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyS
 pre-dispatch blocks (`extractC`, `a1sSendCheckC`, and `a1sPreC`) of `sigAuth1KeyProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,29 +70,6 @@ section Pre
 
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
 
-theorem extractC_costUB_le_tight {Γa Γb Γc Γd : List (Ty pqSig)}
-    [Ext Γa Δ] [Ext Γb Δ] [Ext Γc Δ] [Ext Γd Δ]
-    (tp : Var Γa .nat) (tpk : Var Γb (B 32)) (st : Var Γc authStateTy) (bu : Var Γd preKeyBundleTy) :
-    (extractC S K (Δ := Δ) tp tpk st bu).costUB ≤ 9000 + 206 * min K S.N_dh + 4000 * K := by
-  simp only [extractC, honestPeerC_costUB,
-    bindV, eAny, eCaseOpt,
-    natEq,
-    stSpks, sbSpkPk, sbPqspkPk,
-    buIkB, buSpkB, buSpkSig, buPqspkB, buPqspkSig,
-    costUB_encEC, costUB_encKEM, costUB_bytesWiden_33_1536, costUB_bytesBeq,
-    costUB_queryPrim,
-    Ty.wd, v, Comp.costUB, Expr.costUB,
-    PNat.val_ofNat]
-  omega
-
-theorem extractC_costUB_le {Γa Γb Γc Γd : List (Ty pqSig)}
-    [Ext Γa Δ] [Ext Γb Δ] [Ext Γc Δ] [Ext Γd Δ]
-    (tp : Var Γa .nat) (tpk : Var Γb (B 32)) (st : Var Γc authStateTy) (bu : Var Γd preKeyBundleTy) :
-    (extractC S K (Δ := Δ) tp tpk st bu).costUB ≤ 9000 + 206 * S.N_dh + 4000 * K := by
-  have h := extractC_costUB_le_tight S K (Δ := Δ) tp tpk st bu
-  have := Nat.min_le_right K S.N_dh
-  omega
-
 theorem extractC_queries_prim {Γa Γb Γc Γd : List (Ty pqSig)}
     [Ext Γa Δ] [Ext Γb Δ] [Ext Γc Δ] [Ext Γd Δ]
     (tp : Var Γa .nat) (tpk : Var Γb (B 32)) (st : Var Γc authStateTy) (bu : Var Γd preKeyBundleTy) :
@@ -70,27 +78,6 @@ theorem extractC_queries_prim {Γa Γb Γc Γd : List (Ty pqSig)}
   show (extractC S K (Δ := Δ) tp tpk st bu).queries primW primWS = _
   simp only [extractC, honestPeerC_queries, bindV, Comp.queryPrim,
     primW, Comp.queries]
-  omega
-
-theorem a1sSendCheckC_costUB_le_tight [Ext Γ₁ Δ] [Ext Γ₂ Δ] (s : Var Γ₁ a1sStTy) (x : Var Γ₂ sendQTy) :
-    (a1sSendCheckC S K (Δ := Δ) s x).costUB ≤ 12000 + 206 * min K S.N_dh + 4000 * K := by
-  simp only [a1sSendCheckC, a1sTp, a1sTpk, a1sBase, a1sG, a1sMk, fsBase,
-    KeyIndGapDh.liftBase_costUB, extractC, honestPeerC_costUB,
-    bindV, letV, eAny, eCaseOpt,
-    natEq, isSomeE, aNone,
-    stSpks, sbSpkPk, sbPqspkPk,
-    buIkB, buSpkB, buSpkSig, buPqspkB, buPqspkSig,
-    Comp.letC,
-    costUB_encEC, costUB_encKEM, costUB_bytesWiden_33_1536, costUB_bytesBeq,
-    costUB_queryPrim,
-    Ty.wd, v, Comp.costUB, Expr.costUB,
-    PNat.val_ofNat]
-  omega
-
-theorem a1sSendCheckC_costUB_le [Ext Γ₁ Δ] [Ext Γ₂ Δ] (s : Var Γ₁ a1sStTy) (x : Var Γ₂ sendQTy) :
-    (a1sSendCheckC S K (Δ := Δ) s x).costUB ≤ 12000 + 206 * S.N_dh + 4000 * K := by
-  have h := a1sSendCheckC_costUB_le_tight S K (Δ := Δ) s x
-  have := Nat.min_le_right K S.N_dh
   omega
 
 theorem a1sSendCheckC_sigQueries [Ext Γ₁ Δ] [Ext Γ₂ Δ] (s : Var Γ₁ a1sStTy) (x : Var Γ₂ sendQTy) :

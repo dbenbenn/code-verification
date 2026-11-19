@@ -9,8 +9,15 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEWinSplit2
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEWinSplit2 -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.StateNorm
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatementsShort
+import Computational.Proofs.CryptoGames.SM.Theorem1.Lemma17Aux
+import LibsignalBinary.Proofs.SpqrV1Sync.InSyncEpoch
+import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDefs
+import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
+import LibsignalBinary.Specifications.CryptoGames.Party
+import LibsignalBinary.Specifications.CryptoGames.SM.Game
 
 /-!
 # Coupled Origin Invariant and Send/Corruption Preservation
@@ -19,11 +26,9 @@ Defines `CorrsSnapIdxInv`, `CorrsKeptRecvInv`, `Fig8SenderSync`, and `FirstNECou
 proves send- and corruption-step preservation of the coupled origin invariant.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec ENNReal MeasureTheory
@@ -45,7 +50,7 @@ open HMAC HKDF CBC LibsignalAead AEADScheme MACScheme WireAEAD FSAEAD
 /-- Every sender corruption `(P, e) ∈ g.corrs` with `P.sendsIn e = true` has a snapshot
 `(P, e, g₀) ∈ snaps` whose sender chain has `sc.chainKey.index.toNat ≤ g.idx P` when
 `g.epoch P = e`. -/
-def CorrsSnapIdxInv {PQ St Msg C : Type}
+@[expose] def CorrsSnapIdxInv {PQ St Msg C : Type}
     (snaps : List (Party × ℕ × GhostState PQ))
     (g : SM.GameState St Msg C) : Prop :=
   ∀ P e, (P, e) ∈ g.corrs → P.sendsIn e = true →
@@ -55,7 +60,7 @@ def CorrsSnapIdxInv {PQ St Msg C : Type}
 /-- Receiver-corruption kept-state invariant: whenever `(Q, e) ∈ g.corrs`,
 every receiving epoch `t ≤ e` of `Q` (`Q.sendsIn t = false`) is covered by `sC.kept Q`
 (either `(sC.kept Q).full` is `some _` or `(sC.kept Q).rs t` is `some _`). -/
-def CorrsKeptRecvInv {Pt PQ : Type} {ℓ : ℕ}
+@[expose] def CorrsKeptRecvInv {Pt PQ : Type} {ℓ : ℕ}
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ)
     (g : SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)) : Prop :=
   ∀ Q e, (Q, e) ∈ g.corrs → ∀ t ≤ e, Q.sendsIn t = false →
@@ -208,7 +213,7 @@ theorem firstNEInTransOriginInv_send_step_of_cellFamily
 
 /-- Disjunction of the post-divergence winning branch and the pre-divergence
 `FirstNECellFamilyInvT` and `FirstNEInTransOriginInv` invariants. -/
-def FirstNECoupledOriginInvT {PQ St Msg C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def FirstNECoupledOriginInvT {PQ St Msg C : Type} [DecidableEq Msg] [DecidableEq C]
     (qep : ℕ) (snaps : List (Party × ℕ × GhostState PQ))
     (fl : Bool) (g : SM.GameState St Msg C) (m' : Mirror Msg C)
     (s_cell : ℕ → Option ℕ → SM.GameState St Msg C) : Prop :=
@@ -260,4 +265,3 @@ theorem firstNECoupledOriginInvT_corr_step
       (firstNEInTransOriginInv_corr_step qep P horigin hsnaps hrel_all)
 
 end CryptoVerification.LibsignalSession.HeadlineV1
-end

@@ -25,7 +25,7 @@ Arguments: `x0` is the 24-byte result slot `r`, and `(x1, x2)` is the input byte
   copies `key`, and writes `[r] = -2` (`Ok`), `[r + 8] = buf`, `[r + 16] = 1568`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -54,7 +54,7 @@ inductive KemDeserResult where
   | badLength (n : Nat)
 
 /-- Pure specification of `kem::PublicKey::deserialize`. -/
-def kemPkDeserialize : List (BitVec 8) → KemDeserResult
+@[expose] def kemPkDeserialize : List (BitVec 8) → KemDeserResult
   | [] => .noKeyType
   | t :: rest =>
     if t ≠ 0x08#8 then .badType t
@@ -63,7 +63,7 @@ def kemPkDeserialize : List (BitVec 8) → KemDeserResult
 
 /-- The result slot `r` after the call (only `r .. r+24` is written). `Ok` (word `-2`) holds an
 owned `Box<[u8]>` (`ptr`, `len`) at `r + 8`. -/
-def kemDeserResAt (A : RustAlloc) (r : BitVec 64) : KemDeserResult → SepProp
+@[expose] def kemDeserResAt (A : RustAlloc) (r : BitVec 64) : KemDeserResult → SepProp
   | .ok key =>
     (r ↦₆₄ 0xfffffffffffffffe#64) ∗ (∃∗ buf : BitVec 64, boxU8At A (r + 8#64) buf key)
   | .noKeyType =>
@@ -81,7 +81,7 @@ structure KemDeserializeGhost where
   p : BitVec 64
   bs : List (BitVec 8)
 
-def cliKemDeserializeSpec (A : RustAlloc) (stk : Nat) : Spec KemDeserializeGhost where
+@[expose] def cliKemDeserializeSpec (A : RustAlloc) (stk : Nat) : Spec KemDeserializeGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.r ∧ s.readReg64 .x1 = x.p ∧
       s.readReg64 .x2 = BitVec.ofNat 64 x.bs.length ∧ x.bs.length < 2 ^ 63⌝ ∗

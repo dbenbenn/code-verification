@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Refinement.Cli.RecvWhisperNonVacuitySteps12
+public import Symbolic.Proofs.Tests.Refinement.Cli.RecvWhisperNonVacuitySteps12 -- proof-setup: allow-public-import
 
 /-!
 # Concrete SPQR-ON Non-Vacuity Steps 3-4
@@ -18,7 +18,7 @@ Step 3 (`pqRecvPrekeyModel` on Bob with SPQR V1 header chunk reception) and Step
 (`pqSendModel` whisper reply on Bob) for the SPQR-ON roundtrip witness.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +39,8 @@ theorem nv_acceptKeys :
   have hikAlen : (vecU8 nvIdA.publicKey.bytes).length = 32 := vecU8_length _
   have hekAlen : (vecU8 nvBaseA.publicKey.bytes).length = 32 := vecU8_length _
   have hctlen : (vecU8 nvVec1568).length = SignalPqxdh.kyberCtLen := vecU8_length _
-  have hcanon : (modelPrims nvX nvW).isCanonical (vecU8 nvBaseA.publicKey.bytes) = true := rfl
+  have hcanon : (modelPrims nvX nvW).isCanonical (vecU8 nvBaseA.publicKey.bytes) = true :=
+    isCanonical_nv_pubKey _
   have hkem : (modelPrims nvX nvW).kemDecaps (vecU8 nvVec3168) (vecU8 nvVec1568) =
       some (vecU8 (List.Vector.replicate 32 1#8)) := by
     have hctb : ((vecU8 nvVec1568).length == SignalPqxdh.kyberCtLen) = true := by
@@ -67,12 +68,12 @@ theorem nv_acceptKeys :
     nvHdr, hikAlen, hekAlen, hctlen, beq_self_eq_true, hcanon, hkem, hxBne,
     SignalPqxdh.dhOptNonZero, hkdfDerive96_nv]
 
-def nvDec0 : CryptoVerification.LibsignalSpqrV1.PolyDecoder :=
+@[expose] def nvDec0 : CryptoVerification.LibsignalSpqrV1.PolyDecoder :=
   { ptsNeeded := 48
     pts := List.replicate 16 CryptoVerification.LibsignalSpqrV1.SortedSetPt.new
     isComplete := false }
 
-def nvDec1 : CryptoVerification.LibsignalSpqrV1.PolyDecoder :=
+@[expose] def nvDec1 : CryptoVerification.LibsignalSpqrV1.PolyDecoder :=
   { ptsNeeded := 48
     pts := List.replicate 16
       ((CryptoVerification.LibsignalSpqrV1.SortedSetPt.new.push
@@ -92,7 +93,7 @@ theorem nv_addChunk0 :
   simp only [nvChunk0_get]
   rfl
 
-def stepCedNext (hkdf : CryptoVerification.LibsignalSpqrV1.HkdfFn)
+@[expose] def stepCedNext (hkdf : CryptoVerification.LibsignalSpqrV1.HkdfFn)
     (ced : CryptoVerification.LibsignalSpqrV1.ChainEpochDirection) :
     CryptoVerification.LibsignalSpqrV1.ChainEpochDirection × HwBytes :=
   match ced.nextKey hkdf with
@@ -135,7 +136,7 @@ theorem ced_key_zero_one (hkdf : CryptoVerification.LibsignalSpqrV1.HkdfFn)
   simp only [hnext, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte,
     show ((0#32 : BitVec 32) == 0xffffffff#32) = false from rfl]
 
-def stepChainRecv0 (hkdf : CryptoVerification.LibsignalSpqrV1.HkdfFn)
+@[expose] def stepChainRecv0 (hkdf : CryptoVerification.LibsignalSpqrV1.HkdfFn)
     (c : CryptoVerification.LibsignalSpqrV1.Chain) :
     CryptoVerification.LibsignalSpqrV1.Chain × HwBytes :=
   match c.links with
@@ -144,22 +145,22 @@ def stepChainRecv0 (hkdf : CryptoVerification.LibsignalSpqrV1.HkdfFn)
     ({ c with links := [{ link with recv := recv' }] }, out)
   | _ => (default, [])
 
-def nvVnB : CryptoVerification.LibsignalSpqrV1.VersionNegotiationPB :=
+@[expose] def nvVnB : CryptoVerification.LibsignalSpqrV1.VersionNegotiationPB :=
   { authKey := HMAC.keyToBytes32 nvKey0
     direction := 1#32
     minVersion := 1#32
     chainParams := some CryptoVerification.LibsignalSpqrV1.ChainParams.default.intoPb }
 
-def nvChB0 : CryptoVerification.LibsignalSpqrV1.Chain :=
+@[expose] def nvChB0 : CryptoVerification.LibsignalSpqrV1.Chain :=
   match CryptoVerification.LibsignalSpqrV1.chainFrom
       (CryptoVerification.LibsignalSpqrV1.spqrHkdfWith nvCrypto.F) none (some nvVnB) with
   | .ok c => c
   | .error _ => default
 
-def nvChB1Key : CryptoVerification.LibsignalSpqrV1.Chain × HwBytes :=
+@[expose] def nvChB1Key : CryptoVerification.LibsignalSpqrV1.Chain × HwBytes :=
   stepChainRecv0 (CryptoVerification.LibsignalSpqrV1.spqrHkdfWith nvCrypto.F) nvChB0
 
-def nvPbB1 : CryptoVerification.LibsignalSpqrV1.PqRatchetStatePB
+@[expose] def nvPbB1 : CryptoVerification.LibsignalSpqrV1.PqRatchetStatePB
     CryptoVerification.LibsignalSpqrV1.V1State :=
   { inner := some { innerState := some (.noHeaderReceived
       { uc := some { epoch := 1#64, auth := some nvAuth0.intoPb }
@@ -168,7 +169,7 @@ def nvPbB1 : CryptoVerification.LibsignalSpqrV1.PqRatchetStatePB
     versionNegotiation := none
     chain := some nvChB1Key.1.intoPb }
 
-def nvPqB1 : HwBytes :=
+@[expose] def nvPqB1 : HwBytes :=
   (CryptoVerification.LibsignalSpqrV1.spqrDeps nvCrypto.F nvMlKem).encodeState nvPbB1
 
 theorem spqr_recv_v1_none_key
@@ -303,22 +304,22 @@ theorem nv_spqrRecv1_B :
       CryptoVerification.LibsignalSpqrV1.recvPanicsSaltB]
     rw [htop]
 
-def nvEphB : KeyPair := KeyPair.generate nvW.C 8#256
-def nvPB : BitVec 256 × BitVec 256 :=
+@[expose] def nvEphB : KeyPair := KeyPair.generate nvW.C 8#256
+@[expose] def nvPB : BitVec 256 × BitVec 256 :=
   Ratchet.rootKdf nvCrypto.F nvPA.1 (List.replicate 32 1#8)
 
-def nvSB0 : SessionState HwBytes :=
+@[expose] def nvSB0 : SessionState HwBytes :=
   initializeRecipientSession (pqxdhSpqrSession nvW) ⟨nvIdB.publicKey⟩ ⟨nvIdA.publicKey⟩
     nvSpkB nvKey0 nvKey0 nvKey0
 
-def nvRatchetB0 : RatchetState :=
+@[expose] def nvRatchetB0 : RatchetState :=
   { rootKey := nvKey0
     senderChain := some ⟨nvSpkB, ⟨nvKey0, 0#32⟩⟩
     receiverChains := []
     previousCounter := 0#32
     maxForwardJumps := maxForwardJumps }
 
-def nvRatchetB1 : RatchetState :=
+@[expose] def nvRatchetB1 : RatchetState :=
   { rootKey := nvPB.1
     senderChain := some ⟨nvEphB, ⟨nvPB.2, 0#32⟩⟩
     receiverChains :=
@@ -328,7 +329,7 @@ def nvRatchetB1 : RatchetState :=
     previousCounter := 0#32
     maxForwardJumps := maxForwardJumps }
 
-def nvSB1 : SessionState HwBytes :=
+@[expose] def nvSB1 : SessionState HwBytes :=
   { nvSB0 with rootKey := nvRatchetB1.rootKey
                previousCounter := nvRatchetB1.previousCounter
                senderChain := nvRatchetB1.senderChain
@@ -336,9 +337,9 @@ def nvSB1 : SessionState HwBytes :=
                pqRatchetState := nvPqB1
                pendingPreKey := false }
 
-def nvXB : RecordExtras := responderRecordExtras nvStB0.me nvM1
+@[expose] def nvXB : RecordExtras := responderRecordExtras nvStB0.me nvM1
 
-def nvStB1 : PqParty :=
+@[expose] def nvStB1 : PqParty :=
   { party := .B
     me := nvStB0.me
     peerId := some ⟨nvIdA.publicKey⟩
@@ -479,34 +480,34 @@ theorem nv_step3_recvB :
 
 /-! ## Step 4: `pqSendModel` Whisper on Bob -/
 
-def nvSpqrSend2Res : HwBytes × Option (List.Vector (BitVec 8) 32) × HwBytes :=
+@[expose] def nvSpqrSend2Res : HwBytes × Option (List.Vector (BitVec 8) 32) × HwBytes :=
   match (pqxdhSpqrSession nvW).send nvPqB1 nvCoins64B with
   | some r => r
   | none => ([], none, [])
 
-def nvPqB2 : HwBytes := nvSpqrSend2Res.1
-def nvSalt2 : Option (List.Vector (BitVec 8) 32) := nvSpqrSend2Res.2.1
-def nvPqMsg2 : HwBytes := nvSpqrSend2Res.2.2
+@[expose] def nvPqB2 : HwBytes := nvSpqrSend2Res.1
+@[expose] def nvSalt2 : Option (List.Vector (BitVec 8) 32) := nvSpqrSend2Res.2.1
+@[expose] def nvPqMsg2 : HwBytes := nvSpqrSend2Res.2.2
 
-def nvMk2 : MessageKeys :=
+@[expose] def nvMk2 : MessageKeys :=
   ((⟨nvPB.2, 0#32⟩ : ChainKey).messageKeys nvCrypto.F).generateKeys nvCrypto.F nvSalt2
 
-def nvInnerMsg2 : SignalMessage :=
+@[expose] def nvInnerMsg2 : SignalMessage :=
   SignalMessage.new nvCrypto.F protoSignalCodec currentVersion nvMk2.macKey
     none nvEphB.publicKey 0#32 0#32
     (aesCbcEncrypt nvCrypto.E nvMk2.cipherKey nvMk2.iv nvPt2)
     ⟨nvIdB.publicKey⟩ ⟨nvIdA.publicKey⟩ nvPqMsg2
 
-def nvBody2 : HwBytes := nvInnerMsg2.serialized
-def nvWire2 : HwBytes := wireWhisper :: nvBody2
+@[expose] def nvBody2 : HwBytes := nvInnerMsg2.serialized
+@[expose] def nvWire2 : HwBytes := wireWhisper :: nvBody2
 
-def nvSB2 : SessionState HwBytes :=
+@[expose] def nvSB2 : SessionState HwBytes :=
   match SessionState.messageEncrypt nvW.C protoSignalCodec (pqxdhSpqrSession nvW)
       ((pqxdhSessionParams nvW).sendAddrs .B) nvPt2 nvCoins64B nvSB1 with
   | (.ok _, s) => s
   | (.error _, s) => s
 
-def nvStB2 : PqParty :=
+@[expose] def nvStB2 : PqParty :=
   { nvStB1 with peerId := some ⟨nvIdA.publicKey⟩, session := some (nvXB, ⟨.B, nvSB2, 1, [1]⟩) }
 
 theorem nv_step4_sendB :

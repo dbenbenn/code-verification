@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodedLenPhase
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.EncodedLenCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChainStep
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodedLenPhase -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.EncodedLenCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChainStep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesBridge2
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesEncodePlaced
@@ -29,7 +29,7 @@ Relocatable composition of `<Message>::serialize`, `States` relocation, `<States
 `spqr::send::<HookRng>` (Block `124`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -302,7 +302,7 @@ theorem sepWPp_of_sepWP_lscro_b2 {prog : Program} {ret mid : BitVec 64}
   intro R hm hL
   obtain ⟨sm, hsteps, ⟨_, _, Pm, hmm, hv, hnext⟩ | hoom⟩ := h.elim hm hL
   · have hinv' : LibsignalCodeRoLoaded lsmpl sm.mem := hinv.of_keepsFrozen hsteps.keepsFrozen
-    have hstep : StepInv s sm := ⟨fun _ hF => hsteps.frozenLoaded hF, hsteps.symtab_eq, hv.eq⟩
+    have hstep : StepInv s sm := ⟨hsteps.keepsFrozen, hsteps.symtab_eq, hv.eq⟩
     obtain ⟨sf, hsteps', hout⟩ := hnext hinv' hstep R hmm (hsteps.codeLoaded hL)
     exact ⟨sf, hsteps.trans hsteps', hout⟩
   · exact ⟨sm, hsteps, Or.inr (Or.inr hoom)⟩
@@ -383,7 +383,7 @@ theorem sepWPp_call_lscro_calleeStack_b2 {α : Type} {prog : Program}
     rw [hsp] at hspm
     rcases hcsm with ⟨hx19, hx20, hx21, hx22, hx23, hx24, hx25, hx26, hx27, hx28, _, hvregs⟩
     have hinv' : LibsignalCodeRoLoaded lsmpl sm.mem := hinv.of_keepsFrozen hsteps.keepsFrozen
-    have hstep : StepInv s sm := ⟨fun _ hF => hsteps.frozenLoaded hF, hsteps.symtab_eq, hvregs⟩
+    have hstep : StepInv s sm := ⟨hsteps.keepsFrozen, hsteps.symtab_eq, hvregs⟩
     obtain ⟨sf, hsteps', hout'⟩ := hnext sm hpcm hrunm hspm hφ_post hinv' hstep
       hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx26 hx27 hx28 hvregs R' hpost_mem (hsteps.codeLoaded hL)
     exact ⟨sf, hsteps.trans hsteps', hout'⟩

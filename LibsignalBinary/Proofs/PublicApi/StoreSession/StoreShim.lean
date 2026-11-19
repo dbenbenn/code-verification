@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.CodeLayout
 public import Aesop.BuiltinRules
 public import LibsignalBinary.Specifications.RustHeap.Alloc
 public import Mathlib.Tactic.Attr.Core
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import ProofLib.SepLogic.WPp
 import VCVio.Prelude.Core
-public import LibsignalBinary.Proofs.PublicApi.StoreSession.Decodes -- shake: keep
+public import ProofLib.GenDecodes
+public import ProofLib.VCGen
 
 /-!
 # `HookSessionStore::store_session` Shim (`0x42e5c`)
@@ -26,7 +27,7 @@ Verifies `<HookSessionStore as SessionStore>::store_session(self = x0, address =
 returns `(x0 = box, x1 = b + 0x4db00)`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.StoreSession
 
@@ -51,24 +52,6 @@ structure StoreShimCall where
   self : BitVec 64
   addrA : BitVec 64
   recA : BitVec 64
-
-/-- The `store_session` shim (`0x42e5c`) on `tripleRatchetProgAt b`: returns a fresh live 32-byte box
-(`x0`, 8-aligned) holding `[self, address, record, state byte 0]` (the last 7 bytes
-uninitialized) and the future's vtable `b + 0x4db00` in `x1`; trace unchanged. Panics only on a
-failed allocation. -/
-def storeSessionShimSpec (A : RustAlloc) (b : BitVec 64) : Spec StoreShimCall where
-  pre := fun x s =>
-    ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x1 = x.addrA ∧ s.readReg64 .x2 = x.recA⌝ ∗
-      A.pool ∗ stackAt s.sp storeSessionShimStack
-  post := fun x s0 sf =>
-    ⌜sf.readReg64 .x1 = b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}") - 16) ∧ sf.readReg64 .x0 ≠ 0#64 ∧
-      (sf.readReg64 .x0).toNat % 8 = 0 ∧ sf.trace = s0.trace⌝ ∗
-      A.live (sf.readReg64 .x0) 32 8 ∗
-      (sf.readReg64 .x0 ↦₆₄ x.self) ∗ ((sf.readReg64 .x0 + 8#64) ↦₆₄ x.addrA) ∗
-      ((sf.readReg64 .x0 + 16#64) ↦₆₄ x.recA) ∗ ((sf.readReg64 .x0 + 24#64) ↦₈ 0#8) ∗
-      memRegion (sf.readReg64 .x0 + 25#64) 7 ∗
-      A.pool ∗ stackAt s0.sp storeSessionShimStack
-  onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 private theorem stackAt_storeSessionShim (sp : BitVec 64) :
     stackAt sp storeSessionShimStack =

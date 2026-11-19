@@ -27,7 +27,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject
 Proves `closeByStateC_inject_evictedMismatch_forward`, handling an injected wire with an evicted salt mismatch outside the receive-only window when the counter is in range.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

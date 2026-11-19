@@ -23,7 +23,7 @@ Defines `hkdfExtractRaw` on arbitrary-length optional salts and proves `hmacWith
 `hkdfExtractRaw_eq_saltKey` (`effectiveHkdfSalt` reduction for salts of at most `32` bytes).
 -/
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SpecLemmas.HKDFProofDefs
 

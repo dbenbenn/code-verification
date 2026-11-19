@@ -9,34 +9,49 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3MatchingPathBPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonStage2AuxPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3MatchingPathBF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3NonCanonF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3UntypedElfF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ValidMatchElfF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.M24L4BEquiv
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInst
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainOkCliExtB2NeedLocksInst
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Parity.F3.BundleInitElfF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.AllPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromInstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.TopPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptSignalPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInnerPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KemDeserializeSlotPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3MatchingPathBPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonStage2AuxPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3MatchingPathBF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3NonCanonF3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3UntypedElfF3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ValidMatchElfF3
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.M24L4BEquiv
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInst -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainOkCliExtB2NeedLocksInst
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Parity.F3.BundleInitElfF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.AllPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromInstPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.TopPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptSignalPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInnerPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KemDeserializeSlotPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInstSat
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.CommitOk
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssemblyPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bounds
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Two-Placement `579 → 617` & Real-Externs `MainOk*F3` Lift Glue
@@ -47,7 +62,7 @@ Lifts Block-`579` `runSpecTightPlaced` contracts across `MainIoOfPlaced`,
 `MainOkValidMatchD3F3`, `MainOkUntypedD3F3`, and `MainOkParseNoneD3F3`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.style.haveILetI false
@@ -58,9 +73,8 @@ namespace LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3MainLiftGlueF3
 open Arm64 Arm64.Obj Arm64.Process ProofLib
 open CryptoGames.LibsignalSessionApi (PreKeySignalMessage)
 open CryptoVerification (
-  LibsignalHooks LibsignalPlacement blkPl_111 libsignalMutatedBlocks
-  libsignalSessionExterns libsignalSessionLib lsmpl lsρ
-)
+  ExternsDistinctOnHooked LibsignalHooks LibsignalPlacement blkPl_111 libsignalMutatedBlocks
+  libsignalSessionLib lsmpl lsρ)
 open CryptoVerification.E2E (
   PEParams PreKeyMessageFields UnreachedPqxdhPrimitives wirePrekey
 )
@@ -210,7 +224,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (TryDecryptEnvArgs)
 /-! ## 1. Upstream Seam Predicates (`CliInitSlotOkPlacedAt` & `Block617TransferFixedHyp`) -/
 
 /-- Block-`521` `initiate` slot contract predicate. -/
-def CliInitSlotOkPlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliInitSlotOkPlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (H : LibsignalHooks) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (InitEnv : InitGhost → List AllocEvent → Prop)
     (X : UnreachedPqxdhPrimitives) (W : CliHooks) : Prop :=
@@ -224,7 +238,7 @@ def CliInitSlotOkPlacedAt [LibsignalPlacement] {M : AllocCostModel}
       (lsProg_579 H) (lsmpl.base 521)
 
 /-- Block-`617` ghost-to-real extern transfer predicate on `f3CliGhostHooksFixed`. -/
-def Block617TransferFixedHyp
+@[expose] def Block617TransferFixedHyp
     (mpl mmpl : Obj.MultiPlacement) (ghFixed : CliGhostHooks)
     (CodeOk_ghost CodeOk_real : Memory → Prop)
     (libcAddr brkStart : BitVec 64) (stk : Nat) : Prop :=
@@ -247,7 +261,7 @@ def Block617TransferFixedHyp
 /-! ## 2. Two-Arg `(mmpl) (gh) (W)` Block-`579` `runSpecTightPlaced` Composition -/
 
 /-- Packages `CliSlotEnvs`, `InitEnv`, and `DecPkEnv` into `SemPlacedBudget.RunSlotEnvs`. -/
-noncomputable def runSlotEnvsF3 [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def runSlotEnvsF3 [LibsignalPlacement] {M : AllocCostModel}
     (W : CliHooks) (A : RustCliAllocBudget M)
     (slotEnvs : CliSlotEnvs)
     (InitEnv : InitGhost → List AllocEvent → Prop)
@@ -419,7 +433,7 @@ theorem mainSubroutineD3F3_of_domScopedRunTight
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (ghFixed : CliGhostHooks)
     {CodeOk_ghost CodeOk_real : Memory → Prop}
     (hCI : @CryptoVerification.SignalSession.Cli.MainHops.LsCodeInv
@@ -495,7 +509,7 @@ theorem mainSubroutineD3F3_of_slots
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (ghFixed : CliGhostHooks)
     {CodeOk_real : Memory → Prop}
     (Dom : Inputs → Prop)
@@ -583,7 +597,7 @@ private theorem toClosureRunHooksPlaced [LibsignalPlacement] {M : AllocCostModel
   { alloc := hh.alloc, allocFs := hh.allocFs, panics := hh.panics, memcpyRO := hh.memcpyRO,
     bcmp := hh.bcmp, fs := hh.fs, utf8 := hh.utf8, memrchr := hh.memrchr,
     codecHooks := hh.codecHooks, allocZeroed := hh.allocZeroed, stringClone := hh.stringClone,
-    formatInner := hh.formatInner, blackBox := hh.blackBox }
+    fmtWrite := hh.fmtWrite, formatInner := hh.formatInner, blackBox := hh.blackBox }
 
 /-- Establishes `MainOkPathBD3F3`, discharging slot `520` via
 `decPkPathBSlotOk_full_of_readEnv_placedBudget`. -/
@@ -591,7 +605,7 @@ theorem mainOkPathBD3F3_of_seams
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (ghFixed : CliGhostHooks)
     {CodeOk_real : Memory → Prop}
     {libcAddr brkStart : BitVec 64} {hookStack : Nat}
@@ -700,7 +714,7 @@ theorem mainInitSemF3_of_slot
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (ghFixed : CliGhostHooks)
     {CodeOk_real : Memory → Prop}
     {libcAddr brkStart : BitVec 64} {hookStack : Nat}
@@ -786,7 +800,7 @@ theorem mainInitSemF3_of_seams
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (ghFixed : CliGhostHooks)
     {CodeOk_real : Memory → Prop}
     {libcAddr brkStart : BitVec 64} {hookStack : Nat}
@@ -890,7 +904,7 @@ theorem mainInitSemF3_of_seams
     hfitCap
 
 /-- `RunSem` for non-canonical valid pre-key `recv` (`DecPkOkD3 ⟨W.C, W.Q⟩ scopeIn`). -/
-noncomputable def cliRunSemD3ValidMatch (X : UnreachedPqxdhPrimitives) (W : CliHooks) : RunSem :=
+@[expose] noncomputable def cliRunSemD3ValidMatch (X : UnreachedPqxdhPrimitives) (W : CliHooks) : RunSem :=
   cliRunSemF3 X W (decPkDef X ⟨W.C, W.Q⟩ scopeIn) (DecPkOkD3 ⟨W.C, W.Q⟩ scopeIn) pksmParse
 
 /-- Pure `pqD3ScopedRun` + `observe` + `CommitOk` witness for `cliRunSemD3ValidMatch X W` on
@@ -973,7 +987,7 @@ theorem mainOkValidMatchD3F3_of_seams
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (ghFixed : CliGhostHooks)
     {CodeOk_real : Memory → Prop}
     {libcAddr brkStart : BitVec 64} {hookStack : Nat}
@@ -1051,7 +1065,7 @@ theorem mainOkUntypedD3F3_of_seams
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (ghFixed : CliGhostHooks)
     {CodeOk_real : Memory → Prop}
     {libcAddr brkStart : BitVec 64} {hookStack : Nat}
@@ -1125,7 +1139,7 @@ theorem mainOkParseNoneD3F3_of_seams
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (ghFixed : CliGhostHooks)
     {CodeOk_real : Memory → Prop}
     {libcAddr brkStart : BitVec 64} {hookStack : Nat}

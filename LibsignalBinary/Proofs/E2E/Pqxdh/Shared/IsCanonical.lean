@@ -9,25 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhModelLink
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.CodeLayout
-import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.IsCanonicalDecode
-import LibsignalBinary.Proofs.FnOffEq
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhModelLink
 import ProofLib.SepLogic.WPp
 public import LibsignalBinary.Proofs.SpecLemmas.SignalPqxdh.ModelProofDefs
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy -- proof-setup: allow-public-import
 
 /-!
-# `<PublicKey>::is_canonical` (`0x3dc60`) and Shared Curve/XEdDSA Hook Bundles
+# `<PublicKey>::is_canonical` Specs and Shared Curve/XEdDSA Helpers
 
-Proves `ecPubKeyIsCanonical_call_ok` (and its contract-backed `tripleRatchetProgAtExt` counterpart)
-for `<libsignal_core::curve::PublicKey>::is_canonical` (`0x3dc60`), and defines `StructuralPrims`,
-`PqxdhHookContracts`, and `PqxdhHookContractsExt` shared with `VerifySignature`.
+Defines `ecPubKeyIsCanonicalCallSpec`, `StructuralPrims`, Curve25519/SHA-512 stub specs, and shared
+bitvector/layout lemmas for `<libsignal_core::curve::PublicKey>::is_canonical` and `VerifySignature`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 4000000
@@ -42,8 +39,56 @@ open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr CryptoVerification.LibsignalTripleRatchetRepr
 open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalSession
 open SignalPqxdh
+open LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy
+  (packEdBytes unpackEdBytes packEdBytes_length unpackEdBytes_packEdBytes
+   packEdBytes_unpackEdBytes unpackEdBytes_coords_lt montLiftEd_coords_lt
+   edNeg_coords_lt edAdd_coords_lt legacyMontToEd legacyIsTorsionFree legacyDsmb
+   legacyCompress legacyEdNeg legacyScalarMod legacyScalarWide
+   toEdwardsName torsionFreeName packEd160 unpackEd160 packEdBv8 unpackEdBv8)
 
 abbrev Bytes := SignalPqxdh.Bytes
+
+/-- `P.montToEd` packed into 160 `UInt8` bytes (`80 + 80` little-endian coordinates). -/
+@[expose] def _root_.SignalPqxdh.Primitives.montToEdBytes (P : Primitives) (u : Bytes) (s : UInt8) :
+    Option Bytes :=
+  (P.montToEd u s).map packEdBytes
+
+/-- `P.isTorsionFree` over a 160-byte packed `EdPoint`. -/
+@[expose] def _root_.SignalPqxdh.Primitives.isTorsionFreeBytes (P : Primitives) (pt : Bytes) : Bool :=
+  P.isTorsionFree (unpackEdBytes pt)
+
+/-- `P.edNeg` over a 160-byte packed `EdPoint`. -/
+@[expose] def _root_.SignalPqxdh.Primitives.edNegBytes (P : Primitives) (pt : Bytes) : Bytes :=
+  packEdBytes (P.edNeg (unpackEdBytes pt))
+
+/-- `P.doubleScalarMulBasepoint` over a 160-byte packed `EdPoint`. -/
+@[expose] def _root_.SignalPqxdh.Primitives.doubleScalarMulBasepointBytes (P : Primitives)
+    (h a s : Bytes) : Bytes :=
+  packEdBytes (P.doubleScalarMulBasepoint h (unpackEdBytes a) s)
+
+/-- `P.compress` over a 160-byte packed `EdPoint`. -/
+@[expose] def _root_.SignalPqxdh.Primitives.compressBytes (P : Primitives) (pt : Bytes) : Bytes :=
+  P.compress (unpackEdBytes pt)
+
+theorem _root_.SignalPqxdh.Primitives.montToEdBytes_len (P : Primitives)
+    (u : Bytes) (s : UInt8) (pt : Bytes)
+    (h : P.montToEdBytes u s = some pt) : pt.length = 160 := by
+  rcases Option.map_eq_some_iff.mp h with ⟨_, _, rfl⟩
+  exact packEdBytes_length _
+
+@[simp] theorem _root_.SignalPqxdh.Primitives.edNegBytes_len (P : Primitives) (pt : Bytes) :
+    (P.edNegBytes pt).length = 160 :=
+  packEdBytes_length _
+
+@[simp] theorem _root_.SignalPqxdh.Primitives.doubleScalarMulBasepointBytes_len
+    (P : Primitives) (h a s : Bytes) :
+    (P.doubleScalarMulBasepointBytes h a s).length = 160 :=
+  packEdBytes_length _
+
+@[simp] theorem _root_.SignalPqxdh.Primitives.compressBytes_len {P : Primitives}
+    (hcomp : ∀ p, (P.compress p).length = 32) (pt : Bytes) :
+    (P.compressBytes pt).length = 32 :=
+  hcomp _
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
@@ -98,10 +143,10 @@ theorem fitBytes_of_length_eq {n : Nat} {bs : Bytes} (h : bs.length = n) : fitBy
   subst h
   simp [fitBytes]
 
-def bytesToBv8 (bs : Bytes) : List (BitVec 8) :=
+@[expose] def bytesToBv8 (bs : Bytes) : List (BitVec 8) :=
   bs.map (fun b => BitVec.ofNat 8 b.toNat)
 
-def fitBv8 (n : Nat) (bs : Bytes) : List (BitVec 8) :=
+@[expose] def fitBv8 (n : Nat) (bs : Bytes) : List (BitVec 8) :=
   (bytesToBv8 bs).take n ++ List.replicate (n - (bytesToBv8 bs).length) 0#8
 
 @[simp]
@@ -114,7 +159,7 @@ theorem fitBv8_eq_bytesToBv8 {n : Nat} {bs : Bytes} (h : bs.length = n) :
   have hb : (bytesToBv8 bs).length = n := by simp [bytesToBv8, h]
   simp [fitBv8, hb]
 
-def u64le (w : BitVec 64) : List (BitVec 8) :=
+@[expose] def u64le (w : BitVec 64) : List (BitVec 8) :=
   unpack64 w
 
 abbrev pqxdhHookStack : Nat := 4096
@@ -158,7 +203,7 @@ structure CryptoUnaryGhost where
   inPtr   : BitVec 64
   inBytes : Bytes
 
-def cryptoBoolRegStubSpec (pred : Bytes → Bool) (inLen : Nat) (_img : Obj.Image := default) :
+@[expose] def cryptoBoolRegStubSpec (pred : Bytes → Bool) (inLen : Nat) (_img : Unit := ()) :
     Spec CryptoUnaryGhost where
   pre := fun g s =>
     ⌜s.readReg64 .x0 = g.inPtr ∧
@@ -176,7 +221,7 @@ structure CryptoLeafCall where
   inBytes : Bytes
   outPtr  : BitVec 64
 
-def cryptoLeafStubSpec (fn : Bytes → Bytes) (inLen outLen : Nat) : Spec CryptoLeafCall where
+@[expose] def cryptoLeafStubSpec (fn : Bytes → Bytes) (inLen outLen : Nat) : Spec CryptoLeafCall where
   pre := fun g s =>
     ⌜s.readReg64 .x0 = g.inPtr ∧
       s.readReg64 .x8 = g.outPtr ∧
@@ -190,7 +235,7 @@ def cryptoLeafStubSpec (fn : Bytes → Bytes) (inLen outLen : Nat) : Spec Crypto
       (g.outPtr ↦ₛ fitBv8 outLen (fn g.inBytes)) ∗
       stackAt s0.sp pqxdhHookStack
 
-def revWords64 (bs : Bytes) : Bytes :=
+@[expose] def revWords64 (bs : Bytes) : Bytes :=
   ((bs.take 8).reverse ++
    ((bs.drop 8).take 8).reverse ++
    ((bs.drop 16).take 8).reverse ++
@@ -200,7 +245,7 @@ def revWords64 (bs : Bytes) : Bytes :=
    ((bs.drop 48).take 8).reverse ++
    ((bs.drop 56).take 8).reverse)
 
-def sha512CompressOutBytes (P : Primitives) (stateBytes blockBytes : Bytes) : Bytes :=
+@[expose] def sha512CompressOutBytes (P : Primitives) (stateBytes blockBytes : Bytes) : Bytes :=
   revWords64 (fitBytes 64
     ((chunkBlocks 128 blockBytes).foldl (sha512Step P) (revWords64 stateBytes)))
 
@@ -211,8 +256,8 @@ structure CryptoCompressGhost where
   blockBytes : Bytes
   nBlocks    : Nat
 
-def compressInPlaceStubSpec (fn : Bytes → Bytes → Bytes) (stateLen blockLen : Nat)
-    (_img : Obj.Image := default) : Spec CryptoCompressGhost where
+@[expose] def compressInPlaceStubSpec (fn : Bytes → Bytes → Bytes) (stateLen blockLen : Nat)
+    (_img : Unit := ()) : Spec CryptoCompressGhost where
   pre := fun g s =>
     ⌜s.readReg64 .x0 = g.statePtr ∧
       s.readReg64 .x1 = g.blocksPtr ∧
@@ -229,9 +274,9 @@ def compressInPlaceStubSpec (fn : Bytes → Bytes → Bytes) (stateLen blockLen 
       (g.blocksPtr ↦ₛ bytesToBv8 g.blockBytes) ∗
       stackAt s0.sp pqxdhHookStack
 
-def dalekMontToEdOutAt (P : Primitives) (outPtr : BitVec 64) (inBytes : Bytes)
+@[expose] def dalekMontToEdOutAt (P : Primitives) (outPtr : BitVec 64) (inBytes : Bytes)
     (signBit : UInt8) : SepProp :=
-  match P.montToEd inBytes signBit with
+  match P.montToEdBytes inBytes signBit with
   | some edPt => outPtr ↦ₛ (u64le 1#64 ++ fitBv8 160 edPt)
   | none      => (outPtr ↦₆₄ 0#64) ∗ memRegion (outPtr + 8#64) 160
 
@@ -241,7 +286,7 @@ structure DalekMontToEdGhost where
   inPtr   : BitVec 64
   outPtr  : BitVec 64
 
-def dalekMontToEdStubSpec (P : Primitives) (_img : Obj.Image := default) :
+@[expose] def dalekMontToEdStubSpec (P : Primitives) (_img : Unit := ()) :
     Spec DalekMontToEdGhost where
   pre := fun g s =>
     ⌜s.readReg64 .x0 = g.inPtr ∧
@@ -274,7 +319,7 @@ structure DalekDoubleMulGhost where
   sPtr      : BitVec 64
   outPtr    : BitVec 64
 
-def dalekDoubleMulStubSpec (P : Primitives) (_img : Obj.Image := default) :
+@[expose] def dalekDoubleMulStubSpec (P : Primitives) (_img : Unit := ()) :
     Spec DalekDoubleMulGhost where
   pre := fun g s =>
     ⌜s.readReg64 .x0 = g.hPtr ∧
@@ -294,7 +339,7 @@ def dalekDoubleMulStubSpec (P : Primitives) (_img : Obj.Image := default) :
       (g.hPtr ↦ₛ bytesToBv8 g.hBytes) ∗
       (g.negAPtr ↦ₛ bytesToBv8 g.negABytes) ∗
       (g.sPtr ↦ₛ bytesToBv8 g.sBytes) ∗
-      (g.outPtr ↦ₛ fitBv8 160 (P.doubleScalarMulBasepoint g.hBytes g.negABytes g.sBytes)) ∗
+      (g.outPtr ↦ₛ fitBv8 160 (P.doubleScalarMulBasepointBytes g.hBytes g.negABytes g.sBytes)) ∗
       stackAt s0.sp pqxdhHookStack
 
 theorem zext64_bv32_setWidth_8 (b0 b1 b2 b3 : BitVec 8) :
@@ -329,9 +374,9 @@ theorem zext64_bv8_setWidth_8 (b0 : BitVec 8) :
     (b0.zeroExtend 64).setWidth 8 = b0 := by
   rw [BitVec.zeroExtend, BitVec.setWidth_setWidth_of_le _ (by decide), BitVec.setWidth_eq]
 
-/-- Structural length, totality, and reference-equivalence laws on `SignalPqxdh.Primitives`
-used by machine-code refinement proofs. Unlike `SignalPqxdh.WellFormedPrimitives`, these properties
-hold unconditionally for `modelPrims X W` (`structuralPrims_modelPrims`). -/
+/-- Structural length, coordinate-bound, totality, and reference-equivalence laws on
+`SignalPqxdh.Primitives` used by machine-code refinement proofs, satisfied unconditionally by
+`modelPrims X W` (`structuralPrims_modelPrims`). -/
 structure StructuralPrims (P : Primitives) : Prop where
   sha256Compress_len           : ∀ st blk, (P.sha256Compress st blk).length = 32
   sha512Compress_len           : ∀ st blk, (P.sha512Compress st blk).length = 64
@@ -353,9 +398,12 @@ structure StructuralPrims (P : Primitives) : Prop where
   sha512_len                   : ∀ m, (P.sha512 m).length = 64
   scalarFromBytesModOrder_len  : ∀ b, (P.scalarFromBytesModOrder b).length = 32
   scalarFromWide_len           : ∀ b, (P.scalarFromWide b).length = 32
-  montToEd_len                 : ∀ u s pt, P.montToEd u s = some pt → pt.length = 160
-  edNeg_len                    : ∀ pt, (P.edNeg pt).length = 160
-  doubleScalarMulBasepoint_len : ∀ h a s, (P.doubleScalarMulBasepoint h a s).length = 160
+  montToEd_lt                  : ∀ u s pt, P.montToEd u s = some pt →
+                                   pt.x < 256 ^ 80 ∧ pt.y < 256 ^ 80
+  edNeg_lt                     : ∀ pt, (P.edNeg pt).x < 256 ^ 80 ∧ (P.edNeg pt).y < 256 ^ 80
+  doubleScalarMulBasepoint_lt  : ∀ h a s,
+                                   (P.doubleScalarMulBasepoint h a s).x < 256 ^ 80 ∧
+                                     (P.doubleScalarMulBasepoint h a s).y < 256 ^ 80
   compress_len                 : ∀ pt, (P.compress pt).length = 32
   kemEncaps_isSome             : ∀ pk r, pk.length = 1568 → r.length = 32 →
                                    (P.kemEncaps pk r).isSome = true
@@ -369,155 +417,78 @@ structure StructuralPrims (P : Primitives) : Prop where
                                    ss.length = 32
   spqrInitSend_some            : ∀ k r, (P.spqrInitSend k r).isSome = true
 
-theorem structuralPrims_of_wellFormedPrimitives {P : Primitives}
-    (hWF : SignalPqxdh.WellFormedPrimitives P) : StructuralPrims P where
-  sha256Compress_len           := hWF.sha256Compress_len
-  sha512Compress_len           := hWF.sha512Compress_len
-  aesEncBlock_len              := hWF.aesEncBlock_len
-  aesDecBlock_len              := hWF.aesDecBlock_len
-  sha512_eq_ref                := hWF.sha512_eq_ref
-  hkdfDerive96_eq_ref          := hWF.hkdfDerive96_eq_ref
-  rootCreateChain_eq_ref       := hWF.rootCreateChain_eq_ref
-  chainKdfSeed_eq_ref          := hWF.chainKdfSeed_eq_ref
-  chainKdfNext_eq_ref          := hWF.chainKdfNext_eq_ref
-  deriveMsgKeys_eq_ref         := hWF.deriveMsgKeys_eq_ref
-  aeadEnc_eq_ref               := hWF.aeadEnc_eq_ref
-  aeadDec_eq_ref               := hWF.aeadDec_eq_ref
-  sigVerify_eq_xeddsaVerifyRef := hWF.sigVerify_eq_xeddsaVerifyRef
-  isCanonical_eq_isCanonicalRef := hWF.isCanonical_eq_isCanonicalRef
-  x25519_len                   := hWF.x25519_len
-  x25519Base_len               := hWF.x25519Base_len
-  sha512_len                   := hWF.sha512_len
-  scalarFromBytesModOrder_len  := hWF.scalarFromBytesModOrder_len
-  scalarFromWide_len           := hWF.scalarFromWide_len
-  montToEd_len                 := hWF.montToEd_len
-  edNeg_len                    := hWF.edNeg_len
-  doubleScalarMulBasepoint_len := hWF.doubleScalarMulBasepoint_len
-  compress_len                 := hWF.compress_len
-  kemEncaps_isSome             := hWF.kemEncaps_isSome
-  kemEncaps_len                := hWF.kemEncaps_len
-  kemDecaps_isSome             := hWF.kemDecaps_isSome
-  kemDecaps_len                := hWF.kemDecaps_len
-  spqrInitSend_some            := hWF.spqrInitSend_some
+private theorem flatMap_toBEBytes_length_shared {w : Nat} (n : Nat) :
+    ∀ l : List (BitVec w), (l.flatMap (HMAC.toBEBytes n)).length = n * l.length
+  | [] => by simp
+  | x :: xs => by
+    have hx : (HMAC.toBEBytes n x).length = n := by simp [HMAC.toBEBytes]
+    simp only [List.flatMap_cons, List.length_append, hx, flatMap_toBEBytes_length_shared n xs,
+      List.length_cons, Nat.mul_succ]; omega
+
+theorem structuralPrims_modelPrims (X : E2E.UnreachedPqxdhPrimitives) (W : E2E.PEParams) :
+    StructuralPrims (E2E.modelPrims X W) where
+  sha256Compress_len _ _ := by
+    change (E2E.toU8 _).length = 32
+    rw [E2E.toU8, List.length_map, flatMap_toBEBytes_length_shared 4, List.Vector.toList_length]
+  sha512Compress_len _ _ := by
+    change (E2E.toU8 _).length = 64
+    rw [E2E.toU8, List.length_map, flatMap_toBEBytes_length_shared 8, List.Vector.toList_length]
+  aesEncBlock_len _ _ := by
+    simp [E2E.modelPrims, E2E.blockLevelPrims, E2E.toU8,
+      LibsignalAesCbc.blockToBytes, LibsignalAesCbc.toLEBytes]
+  aesDecBlock_len _ _ := by
+    simp [E2E.modelPrims, E2E.blockLevelPrims, E2E.toU8,
+      LibsignalAesCbc.blockToBytes, LibsignalAesCbc.toLEBytes]
+  sha512_eq_ref := E2E.modelPrims_sha512_eq_ref X W
+  hkdfDerive96_eq_ref := E2E.modelPrims_hkdfDerive96_eq_ref X W
+  rootCreateChain_eq_ref := E2E.modelPrims_rootCreateChain_eq_ref X W
+  chainKdfSeed_eq_ref := E2E.modelPrims_chainKdfSeed_eq_ref X W
+  chainKdfNext_eq_ref := E2E.modelPrims_chainKdfNext_eq_ref X W
+  deriveMsgKeys_eq_ref := E2E.modelPrims_deriveMsgKeys_eq_ref X W
+  aeadEnc_eq_ref := E2E.modelPrims_aeadEnc_eq_ref X W
+  aeadDec_eq_ref := E2E.modelPrims_aeadDec_eq_ref X W
+  sigVerify_eq_xeddsaVerifyRef := E2E.modelPrims_sigVerify_eq_ref X W
+  isCanonical_eq_isCanonicalRef := E2E.modelPrims_isCanonical_eq_ref X W
+  x25519_len _ _ := by simp [E2E.modelPrims, E2E.blockLevelPrims, E2E.vecU8, E2E.toU8]
+  x25519Base_len _ := by simp [E2E.modelPrims, E2E.blockLevelPrims, E2E.vecU8, E2E.toU8]
+  sha512_len m := by
+    rw [E2E.modelPrims_sha512_eq_ref X W m, sha512Ref]
+    exact fitBytesRef_length 64 _
+  scalarFromBytesModOrder_len _ := by
+    simp [E2E.modelPrims, E2E.blockLevelPrims, E2E.toU8, VerifiedLibraries.Common.natToLeBytes]
+  scalarFromWide_len _ := by
+    simp [E2E.modelPrims, E2E.blockLevelPrims, E2E.toU8, VerifiedLibraries.Common.natToLeBytes]
+  montToEd_lt _ _ _ h := montLiftEd_coords_lt h
+  edNeg_lt pt := edNeg_coords_lt pt
+  doubleScalarMulBasepoint_lt _ _ _ := edAdd_coords_lt _ _
+  compress_len _ := by
+    simp [E2E.modelPrims, E2E.blockLevelPrims, E2E.toU8,
+      VerifiedLibraries.Common.encodeEd, VerifiedLibraries.Common.natToLeBytes]
+  kemEncaps_isSome _ _ hpk _ := by
+    simp [E2E.modelPrims, E2E.blockLevelPrims, SignalPqxdh.kyberPkLen, hpk]
+  kemEncaps_len _ _ _ _ h := by
+    dsimp only [E2E.modelPrims, E2E.blockLevelPrims] at h
+    split at h <;> [skip; simp at h]
+    injection h with hpair; injection hpair with hss hct; subst hss hct
+    simp [E2E.vecU8, E2E.toU8]
+  kemDecaps_isSome _ _ _ hct := by
+    simp [E2E.modelPrims, E2E.blockLevelPrims, SignalPqxdh.kyberCtLen, hct]
+  kemDecaps_len _ _ _ h := by
+    dsimp only [E2E.modelPrims, E2E.blockLevelPrims] at h
+    split at h <;> [skip; simp at h]
+    injection h with hss; subst hss
+    simp [E2E.vecU8, E2E.toU8]
+  spqrInitSend_some _ _ := rfl
 
 structure KeyCanonicalGhost where
   keyPtr   : BitVec 64
   keyBytes : Bytes
 
-/-- External hook contracts required by shared curve/signature functions (`is_canonical`,
-    `verify_signature_for_multipart_message`, and `verify_signature`). -/
-structure PqxdhHookContracts (P : Primitives) (_A : RustAlloc) (img : Obj.Image)
-    (absHooks : String → Option (State → State)) : Prop where
-  dalekMontToEd    : HookSat absHooks dalekMontToEdStub (dalekMontToEdStubSpec P img)
-  dalekTorsionFree : HookSat absHooks dalekTorsionFreeStub
-                       (cryptoBoolRegStubSpec P.isTorsionFree 160 img)
-  sha512Compress   : HookSat absHooks sha512CompressStub
-                       (compressInPlaceStubSpec (sha512CompressOutBytes P) 64 128 img)
-  dalekScalarWide  : HookSat absHooks dalekScalarWideStub
-                       (cryptoLeafStubSpec P.scalarFromWide 64 32)
-  dalekScalarMod   : HookSat absHooks dalekScalarModStub
-                       (cryptoLeafStubSpec P.scalarFromBytesModOrder 32 32)
-  dalekCompress    : HookSat absHooks dalekCompressStub
-                       (cryptoLeafStubSpec P.compress 160 32)
-  dalekEdNeg       : HookSat absHooks dalekEdNegStub
-                       (cryptoLeafStubSpec P.edNeg 160 160)
-  dalekDoubleMul   : HookSat absHooks dalekDoubleMulStub
-                       (dalekDoubleMulStubSpec P img)
-
-theorem hookSat_tripleRatchetExterns'_trap {α : Type} (C : Crypto)
-    (absHooks : String → Option (State → State)) {sym : String} {spec : Spec α}
-    (heq : trTrapExterns C absHooks sym = absHooks sym)
-    (h : HookSat absHooks sym spec) :
-    HookSat (trTrapExterns C absHooks) sym spec := by
-  unfold HookSat at *; rwa [heq]
-
-theorem hookSat_tripleRatchetExterns' {α : Type} (C : Crypto) (ctl : BitVec 64)
-    (absHooks : String → Option (State → State)) {sym : String} {spec : Spec α}
-    (heq : tripleRatchetExterns C ctl absHooks sym = absHooks sym)
-    (h : HookSat absHooks sym spec) :
-    HookSat (tripleRatchetExterns C ctl absHooks) sym spec := by
-  unfold HookSat at *; rwa [heq]
-
-ls_attribute [local simp, local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
-  libsignalSessionCode_fnOff_0x3dd44
-  libsignalSessionCode_fnOff_0x3de30
-  libsignalSessionCode_fnOff_0x3de58
-  (ls_stub% "memset")
-  (ls_stub% "memcpy")
-  (ls_stub% "sha2::sha512::compress512")
-  (ls_stub% "<curve25519_dalek::scalar::Scalar>::from_bytes_mod_order_wide")
-  (ls_stub% "<curve25519_dalek::scalar::Scalar>::from_bytes_mod_order")
-  (ls_stub% "<curve25519_dalek::edwards::EdwardsPoint>::compress")
-  (ls_stub% "<curve25519_dalek::montgomery::MontgomeryPoint>::to_edwards")
-  (ls_stub% "<curve25519_dalek::edwards::EdwardsPoint>::is_torsion_free")
-  (ls_stub% "<curve25519_dalek::edwards::EdwardsPoint as core::ops::arith::Neg>::neg")
-  (ls_stub% "<curve25519_dalek::edwards::EdwardsPoint>::vartime_double_scalar_mul_basepoint")
-  (ls_hook% "memset")
-  (ls_hook% "memcpy")
-  (ls_hook% "sha2::sha512::compress512")
-  (ls_hook% "<curve25519_dalek::scalar::Scalar>::from_bytes_mod_order_wide")
-  (ls_hook% "<curve25519_dalek::scalar::Scalar>::from_bytes_mod_order")
-  (ls_hook% "<curve25519_dalek::edwards::EdwardsPoint>::compress")
-  (ls_hook% "<curve25519_dalek::montgomery::MontgomeryPoint>::to_edwards")
-  (ls_hook% "<curve25519_dalek::edwards::EdwardsPoint>::is_torsion_free")
-  (ls_hook% "<curve25519_dalek::edwards::EdwardsPoint as core::ops::arith::Neg>::neg")
-  (ls_hook% "<curve25519_dalek::edwards::EdwardsPoint>::vartime_double_scalar_mul_basepoint")
-
-theorem dalekMontToEd_ok_at_trap {P : Primitives} {A : RustAlloc} {img : Obj.Image}
-    {C : Crypto}
-    {absHooks : String → Option (State → State)}
-    (hH : PqxdhHookContracts P A img absHooks) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff dalekMontToEdStub := by fnoff_eq) :
-    subroutine_ok (trTrapProgAt img.base C absHooks)
-      ((trTrapProgAt img.base C absHooks).fnAddr name + BitVec.ofNat 64 k)
-      (dalekMontToEdStubSpec P img) :=
-  hook_ok_at (hname := dalekMontToEdStub) rfl hk
-    (by fnoff_eq)
-    (by fnoff_eq) (by simp [Rust.isPanicSymbol, dalekMontToEdStub])
-    (hookSat_tripleRatchetExterns'_trap C absHooks rfl hH.dalekMontToEd)
-
-theorem dalekMontToEd_ok_at {P : Primitives} {A : RustAlloc} {img : Obj.Image}
-    {C : Crypto} {ctl : BitVec 64}
-    {absHooks : String → Option (State → State)}
-    (hH : PqxdhHookContracts P A img absHooks) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff dalekMontToEdStub := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl absHooks)
-      ((tripleRatchetProgAt img.base C ctl absHooks).fnAddr name + BitVec.ofNat 64 k)
-      (dalekMontToEdStubSpec P img) := by
-  rw [← trTrapProgAt_fnAddr_eq img.base C ctl absHooks name]
-  exact subroutine_ok_kit_of_trTrap (dalekMontToEd_ok_at_trap hH hk)
-
-theorem dalekTorsionFree_ok_at_trap {P : Primitives} {A : RustAlloc} {img : Obj.Image}
-    {C : Crypto}
-    {absHooks : String → Option (State → State)}
-    (hH : PqxdhHookContracts P A img absHooks) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff dalekTorsionFreeStub := by fnoff_eq) :
-    subroutine_ok (trTrapProgAt img.base C absHooks)
-      ((trTrapProgAt img.base C absHooks).fnAddr name + BitVec.ofNat 64 k)
-      (cryptoBoolRegStubSpec P.isTorsionFree 160 img) :=
-  hook_ok_at (hname := dalekTorsionFreeStub) rfl hk
-    (by fnoff_eq)
-    (by fnoff_eq) (by simp [Rust.isPanicSymbol, dalekTorsionFreeStub])
-    (hookSat_tripleRatchetExterns'_trap C absHooks rfl hH.dalekTorsionFree)
-
-theorem dalekTorsionFree_ok_at {P : Primitives} {A : RustAlloc} {img : Obj.Image}
-    {C : Crypto} {ctl : BitVec 64}
-    {absHooks : String → Option (State → State)}
-    (hH : PqxdhHookContracts P A img absHooks) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff dalekTorsionFreeStub := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl absHooks)
-      ((tripleRatchetProgAt img.base C ctl absHooks).fnAddr name + BitVec.ofNat 64 k)
-      (cryptoBoolRegStubSpec P.isTorsionFree 160 img) := by
-  rw [← trTrapProgAt_fnAddr_eq img.base C ctl absHooks name]
-  exact subroutine_ok_kit_of_trTrap (dalekTorsionFree_ok_at_trap hH hk)
+abbrev PqxdhHookContracts : Type := Unit
 
 /-! ## `<libsignal_core::curve::PublicKey>::is_canonical` (`0x3dc60`) -/
 
-def ecPubKeyIsCanonicalCallSpec (P : Primitives) : Spec KeyCanonicalGhost where
+@[expose] def ecPubKeyIsCanonicalCallSpec (P : Primitives) : Spec KeyCanonicalGhost where
   pre := fun g s =>
     ⌜s.readReg64 .x0 = g.keyPtr ∧ g.keyBytes.length = 32⌝ ∗
     (g.keyPtr ↦ₛ bytesToBv8 g.keyBytes) ∗
@@ -553,13 +524,13 @@ theorem stackAt_ecPubKeyIsCanonical_call (sp : BitVec 64) :
   rw [h4, h3, h2, h1]
 
 theorem dalekMontToEdOutAt_none (P : Primitives) (keyBytes : Bytes) (signBit : UInt8)
-    (hmont : P.montToEd keyBytes signBit = none) (a : BitVec 64) :
+    (hmont : P.montToEdBytes keyBytes signBit = none) (a : BitVec 64) :
     dalekMontToEdOutAt P a keyBytes signBit =
       (a ↦₆₄ 0#64) ∗ memRegion (a + 8#64) 160 := by
   simp only [dalekMontToEdOutAt, hmont]
 
 theorem dalekMontToEdOutAt_some (P : Primitives) (keyBytes edPt : Bytes) (signBit : UInt8)
-    (hmont : P.montToEd keyBytes signBit = some edPt) (hlen : edPt.length = 160) (a : BitVec 64) :
+    (hmont : P.montToEdBytes keyBytes signBit = some edPt) (hlen : edPt.length = 160) (a : BitVec 64) :
     dalekMontToEdOutAt P a keyBytes signBit =
       (a ↦₆₄ 1#64) ∗ ((a + 8#64) ↦ₛ bytesToBv8 edPt) := by
   simp only [dalekMontToEdOutAt, hmont, fitBv8_eq_bytesToBv8 hlen]
@@ -809,7 +780,8 @@ private theorem pack64_4_allOnes_eq_drop1_take30 (keyBytes : Bytes) (h : keyByte
     exact ⟨⟨⟨h1, h2, h3, h4, h5, h6, h7, h8⟩, ⟨h9, h10, h11, h12, h13, h14, h15, h16⟩⟩,
            ⟨h17, h18, h19, h20, h21, h22, h23, h24⟩, ⟨h23, h24, h25, h26, h27, h28, h29, h30⟩⟩
 
-private theorem ecPubKeyIsCanonical_tail_eq (P : Primitives) (keyBytes edPt : Bytes)
+private theorem ecPubKeyIsCanonical_tail_eq (P : Primitives) (keyBytes : Bytes)
+    (edPt : VerifiedLibraries.Common.EdPoint)
     (h : keyBytes.length = 32)
     (hmont : P.montToEd keyBytes 0 = some edPt)
     (htors : P.isTorsionFree edPt = true)
@@ -871,253 +843,6 @@ private theorem ConditionHolds_ite (cond : CondCode) (c : Prop) [inst : Decidabl
       @_root_.ite Bool c inst (ConditionHolds cond ps1) (ConditionHolds cond ps2) := by
   by_cases hc : c <;> simp [hc]
 
-set_option maxHeartbeats 1200000 in
-theorem ecPubKeyIsCanonical_call_ok'_trap {P : Primitives} {img : Obj.Image}
-    {C : Crypto}
-    {absHooks : String → Option (State → State)}
-    (hisCanon : ∀ k, P.isCanonicalEC k = isCanonicalRef P k)
-    (hmontLen : ∀ u s ed, P.montToEd u s = some ed → ed.length = 160)
-    (hmontHook : HookSat absHooks dalekMontToEdStub (dalekMontToEdStubSpec P img))
-    (htorsHook : HookSat absHooks dalekTorsionFreeStub
-      (cryptoBoolRegStubSpec P.isTorsionFree 160 img)) :
-    subroutine_ok (trTrapProgAt img.base C absHooks)
-      ((trTrapProgAt img.base C absHooks).fnAddr ecPubKeyIsCanonicalSym)
-      (ecPubKeyIsCanonicalCallSpec P) := by
-  unfold ecPubKeyIsCanonicalCallSpec
-  simp only [stackAt_ecPubKeyIsCanonical_call]
-  cells_unfold
-  have hmont_call : subroutine_ok (trTrapProgAt img.base C absHooks)
-      ((trTrapProgAt img.base C absHooks).fnAddr ecPubKeyIsCanonicalSym +
-        BitVec.ofNat 64 (num% (ls_off% "<curve25519_dalek::montgomery::MontgomeryPoint>::to_edwards" -
-          (ls_off% "<libsignal_core::curve::PublicKey>::is_canonical"))))
-      (dalekMontToEdStubSpec P img) :=
-    hook_ok_at (hname := dalekMontToEdStub) rfl
-      (by fnoff_eq)
-      (by fnoff_eq)
-    (by fnoff_eq) (by simp [Rust.isPanicSymbol, dalekMontToEdStub])
-      (hookSat_tripleRatchetExterns'_trap C absHooks rfl hmontHook)
-  have htors_call : subroutine_ok (trTrapProgAt img.base C absHooks)
-      ((trTrapProgAt img.base C absHooks).fnAddr ecPubKeyIsCanonicalSym +
-        BitVec.ofNat 64 (num% (ls_off% "<curve25519_dalek::edwards::EdwardsPoint>::is_torsion_free" -
-          (ls_off% "<libsignal_core::curve::PublicKey>::is_canonical"))))
-      (cryptoBoolRegStubSpec P.isTorsionFree 160 img) :=
-    hook_ok_at (hname := dalekTorsionFreeStub) rfl
-      (by fnoff_eq)
-      (by fnoff_eq)
-    (by fnoff_eq) (by simp [Rust.isPanicSymbol, dalekTorsionFreeStub])
-      (hookSat_tripleRatchetExterns'_trap C absHooks rfl htorsHook)
-  clear hmontHook htorsHook
-  have hfn : libsignalSessionCode.fnOff ecPubKeyIsCanonicalSym =
-      (ls_off% "<libsignal_core::curve::PublicKey>::is_canonical") :=
-    (ls_lemma% fnOff "<libsignal_core::curve::PublicKey>::is_canonical")
-  code_fetches CryptoVerification.libsignalSessionCode
-    ecPubKeyIsCanonical img.base
-    (Rust.withPanics (trTrapExterns C absHooks)) hfn
-    (ls_off% "<libsignal_core::curve::PublicKey>::is_canonical") 236
-  wp_init g s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨keyPtr, keyBytes⟩ := g
-  dsimp only at *
-  subst h_1
-  have hcanon_eq : P.isCanonicalEC keyBytes = isCanonicalRef P keyBytes :=
-    hisCanon keyBytes
-  rw [hcanon_eq]
-  have hlen_bv : (bytesToBv8 keyBytes).length = 32 := by simp [bytesToBv8, h]
-  obtain ⟨w0, w1, w2, w3, _, hpk_cells⟩ :=
-    exists_unpack64_of_length_32 hlen_bv
-  have hpk_sp_tail (R_tail : SepProp) :
-      (s0.sp - 400#64) ↦₆₄ w0 ∗ ((s0.sp - 392#64) ↦₆₄ w1 ∗
-      ((s0.sp - 384#64) ↦₆₄ w2 ∗ ((s0.sp - 376#64) ↦₆₄ w3 ∗ R_tail))) =
-      (s0.sp - 400#64) ↦ₛ bytesToBv8 keyBytes ∗ R_tail := by
-    have hpk_sp := hpk_cells (s0.sp - 400#64)
-    have ha1 : s0.sp - 400#64 + 8#64 = s0.sp - 392#64 := by bv_arith
-    have ha2 : s0.sp - 400#64 + 16#64 = s0.sp - 384#64 := by bv_arith
-    have ha3 : s0.sp - 400#64 + 24#64 = s0.sp - 376#64 := by bv_arith
-    rw [ha1, ha2, ha3] at hpk_sp
-    rw [hpk_sp, sepConj_assoc, sepConj_assoc, sepConj_assoc]
-  have hpk_reg0_tail (R_tail : SepProp) :
-      s0.readReg64 (Reg.gpr 0#5) ↦₆₄ w0 ∗ ((s0.readReg64 (Reg.gpr 0#5) + 8#64) ↦₆₄ w1 ∗
-      ((s0.readReg64 (Reg.gpr 0#5) + 16#64) ↦₆₄ w2 ∗
-      ((s0.readReg64 (Reg.gpr 0#5) + 24#64) ↦₆₄ w3 ∗ R_tail))) =
-      s0.readReg64 (Reg.gpr 0#5) ↦ₛ bytesToBv8 keyBytes ∗ R_tail := by
-    rw [hpk_cells (s0.readReg64 (Reg.gpr 0#5)), sepConj_assoc, sepConj_assoc, sepConj_assoc]
-  wp_conv_pre => rw [← hpk_reg0_tail]
-  wp_steps
-  wp_conv_pre => rw [hpk_reg0_tail, hpk_sp_tail]
-  wp_call hmont_call ⟨keyBytes, 0, s0.sp - 400#64, s0.sp - 360#64⟩
-  wp_conv_pre => rw [show (0 : UInt8) &&& 1 = 0 from rfl, ← hpk_sp_tail]
-  cases hmont : P.montToEd keyBytes 0 with
-  | none =>
-    have hcanon_none : isCanonicalRef P keyBytes = false := by
-      simp [isCanonicalRef, hmont]
-    rw [hcanon_none]
-    wp_conv_pre =>
-      rw [dalekMontToEdOutAt_none P keyBytes 0 hmont (s0.sp - 360#64), sepConj_assoc]
-    wp_steps
-    refine SepWP.weaken_pre
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-        (memRegion168_of_cell_and_memRegion160 (s0.sp - 360#64) 0#64 _))))) ?_
-    wp_done
-  | some edPt =>
-    have hed_len : edPt.length = 160 := hmontLen keyBytes 0 edPt hmont
-    have hed_bv_len : (bytesToBv8 edPt).length = 160 := by simp [bytesToBv8, hed_len]
-    obtain ⟨e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15,
-      e16, e17, e18, e19, hed_cells⟩ :=
-      exists_unpack64_of_length_160 hed_bv_len
-    refine sepWP_memRegion160_head (s0.sp - 192#64)
-      (F_rest := (s0.sp - 400#64) ↦₆₄ w0 ∗
-        ((s0.sp - 392#64) ↦₆₄ w1 ∗
-          ((s0.sp - 384#64) ↦₆₄ w2 ∗
-            ((s0.sp - 376#64) ↦₆₄ w3 ∗
-              (dalekMontToEdOutAt P (s0.sp - 360#64) keyBytes 0 ∗
-                (stackAt (s0.sp - 400#64) pqxdhHookStack ∗
-                  (s0.readReg64 (Reg.gpr 0#5) ↦ₛ bytesToBv8 keyBytes ∗
-                    (memRegion (s0.sp - 368#64) 8 ∗
-                        ((s0.sp - 32#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5) ∗
-                          ((s0.sp - 24#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5) ∗
-                            ((s0.sp - 16#64) ↦₆₄ s0.readReg64 (Reg.gpr 28#5) ∗
-                              (s0.sp - 8#64) ↦₆₄ s0.readReg64 (Reg.gpr 19#5))))))))))))
-      (by ac_rfl)
-      fun u0 u1 u2 u3 u4 u5 u6 u7 u8 u9 u10 u11 u12 u13 u14 u15 u16 u17 u18 u19 => ?_
-    wp_conv_pre =>
-      rw [dalekMontToEdOutAt_some P keyBytes edPt 0 hmont hed_len (s0.sp - 360#64),
-        sepConj_assoc ((s0.sp - 360#64) ↦₆₄ 1#64),
-        ← hed_cells (s0.sp - 360#64 + 8#64)]
-    wp_steps
-    wp_conv_pre =>
-      rw [hed_cells (s0.sp - 192#64), hed_cells (s0.sp - 360#64 + 8#64)]
-    refine SepWP.weaken_pre
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-        (sepConj_mono_right (memRegion168_of_cell_and_bytes160
-          (s0.sp - 360#64) 1#64 hed_bv_len _)))))) ?_
-    wp_call htors_call ⟨s0.sp - 192#64, edPt⟩
-    refine SepWP.weaken_pre (memRegion160_of_bytes160 (s0.sp - 192#64) hed_bv_len _) ?_
-    cases htors : P.isTorsionFree edPt with
-    | false =>
-      have hcanon_false : isCanonicalRef P keyBytes = false := by
-        simp [isCanonicalRef, hmont, htors]
-      rw [hcanon_false]
-      simp only [htors, Bool.false_eq_true, ite_false] at hpost_1
-      have hx0_8 : BitVec.setWidth 8 (sf_1.readReg64 (Reg.gpr 0#5)) = 0#8 := by
-        revert hpost_1; bv_bits
-      wp_steps
-      wp_done
-    | true =>
-      simp only [htors, ite_true] at hpost_1
-      have hfocus8 (off : Nat) (hoff : off < 32) (R_tail : SepProp) :
-          s0.readReg64 (Reg.gpr 0#5) ↦ₛ bytesToBv8 keyBytes ∗ R_tail =
-            ((s0.readReg64 (Reg.gpr 0#5) + BitVec.ofNat 64 off) ↦₈
-              (bytesToBv8 keyBytes).getD off 0#8) ∗
-            ((s0.readReg64 (Reg.gpr 0#5) ↦ₛ (bytesToBv8 keyBytes).take off) ∗
-             ((s0.readReg64 (Reg.gpr 0#5) + BitVec.ofNat 64 (off + 1)) ↦ₛ
-              (bytesToBv8 keyBytes).drop (off + 1) ∗ R_tail)) := by
-        rw [pointsToBytes_focus8 (s0.readReg64 (Reg.gpr 0#5)) (bytesToBv8 keyBytes) off
-            (by rw [hlen_bv]; exact hoff),
-          sepConj_assoc, sepConj_assoc]
-      have hfocus64 (off : Nat) (hoff : off + 8 ≤ 32) (R_tail : SepProp) :
-          s0.readReg64 (Reg.gpr 0#5) ↦ₛ bytesToBv8 keyBytes ∗ R_tail =
-            ((s0.readReg64 (Reg.gpr 0#5) + BitVec.ofNat 64 off) ↦₆₄
-              pack64 ((bytesToBv8 keyBytes).getD off 0#8) ((bytesToBv8 keyBytes).getD (off + 1) 0#8)
-                ((bytesToBv8 keyBytes).getD (off + 2) 0#8)
-                ((bytesToBv8 keyBytes).getD (off + 3) 0#8)
-                ((bytesToBv8 keyBytes).getD (off + 4) 0#8)
-                ((bytesToBv8 keyBytes).getD (off + 5) 0#8)
-                ((bytesToBv8 keyBytes).getD (off + 6) 0#8)
-                ((bytesToBv8 keyBytes).getD (off + 7) 0#8)) ∗
-            ((s0.readReg64 (Reg.gpr 0#5) ↦ₛ (bytesToBv8 keyBytes).take off) ∗
-             ((s0.readReg64 (Reg.gpr 0#5) + BitVec.ofNat 64 (off + 8)) ↦ₛ
-              (bytesToBv8 keyBytes).drop (off + 8) ∗ R_tail)) := by
-        rw [pointsToBytes_focus64 (s0.readReg64 (Reg.gpr 0#5)) (bytesToBv8 keyBytes) off
-            (by rw [hlen_bv]; exact hoff),
-          sepConj_assoc, sepConj_assoc]
-      wp_conv_pre => rw [hfocus8 31 (by decide)]
-      wp_steps
-      wp_conv_pre => rw [← hfocus8 31 (by decide)]
-      cases hb31 : ((bytesToBv8 keyBytes).getD 31 0#8).getLsbD 7 with
-      | true =>
-        have hb31_u8 : ((keyBytes.getD 31 0 &&& 0x80) == 0) = false := by
-          rw [bytesToBv8_getD] at hb31
-          exact (uint8_getLsbD7_eq_true_iff _).mp hb31
-        have hcanon_b31 : isCanonicalRef P keyBytes = false := by
-          unfold isCanonicalRef; rw [hb31_u8]; simp
-        rw [hcanon_b31]
-        simp only [beq_self_eq_true, ite_true]
-        wp_steps
-        wp_done
-      | false =>
-        have hb31_u8 : ((keyBytes.getD 31 0 &&& 0x80) == 0) = true := by
-          rw [bytesToBv8_getD] at hb31
-          exact (uint8_getLsbD7_eq_false_iff _).mp hb31
-        simp only [beq_iff_eq, Bool.false_eq_true, ite_false]
-        wp_conv_pre => rw [hfocus8 0 (by decide)]
-        wp_steps
-        wp_conv_pre => rw [← hfocus8 0 (by decide)]
-        cases hb0 : (BitVec.zeroExtend 64 ((bytesToBv8 keyBytes).getD 0 0#8)).ult 237#64 with
-        | true =>
-          have hb0_u8 : decide (keyBytes.getD 0 0 ≥ 0xED) = false := by
-            rw [bytesToBv8_getD] at hb0
-            exact (uint8_ult237_eq_true_iff _).mp hb0
-          have hlen_beq : (keyBytes.length == 32) = true := beq_iff_eq.mpr h
-          have hcanon_b0 : isCanonicalRef P keyBytes = true := by
-            simp only [isCanonicalRef, scalarIsInRange, hlen_beq, hb31_u8, hb0_u8, hmont, htors]
-            rfl
-          rw [hcanon_b0]
-          simp only [ite_true]
-          wp_steps
-          wp_done
-        | false =>
-          have hb0_u8 : decide (keyBytes.getD 0 0 ≥ 0xED) = true := by
-            rw [bytesToBv8_getD] at hb0
-            exact (uint8_ult237_eq_false_iff _).mp hb0
-          simp only [Bool.false_eq_true, ite_false]
-          wp_conv_pre => rw [hfocus64 1 (by decide)]
-          wp_step
-          wp_conv_pre => rw [← hfocus64 1 (by decide), hfocus64 9 (by decide)]
-          wp_steps
-          wp_conv_pre => rw [← hfocus64 9 (by decide), hfocus64 17 (by decide)]
-          wp_step
-          wp_conv_pre => rw [← hfocus64 17 (by decide), hfocus64 23 (by decide)]
-          wp_steps
-          wp_conv_pre => rw [← hfocus64 23 (by decide)]
-          rw [ecPubKeyIsCanonical_tail_eq P keyBytes edPt h hmont htors hb31_u8 hb0_u8]
-          wp_done
-
-theorem ecPubKeyIsCanonical_call_ok' {P : Primitives} {img : Obj.Image}
-    {C : Crypto} {ctl : BitVec 64}
-    {absHooks : String → Option (State → State)}
-    (hisCanon : ∀ k, P.isCanonicalEC k = isCanonicalRef P k)
-    (hmontLen : ∀ u s ed, P.montToEd u s = some ed → ed.length = 160)
-    (hmontHook : HookSat absHooks dalekMontToEdStub (dalekMontToEdStubSpec P img))
-    (htorsHook : HookSat absHooks dalekTorsionFreeStub
-      (cryptoBoolRegStubSpec P.isTorsionFree 160 img)) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl absHooks)
-      ((tripleRatchetProgAt img.base C ctl absHooks).fnAddr ecPubKeyIsCanonicalSym)
-      (ecPubKeyIsCanonicalCallSpec P) := by
-  rw [← trTrapProgAt_fnAddr_eq img.base C ctl absHooks ecPubKeyIsCanonicalSym]
-  exact subroutine_ok_kit_of_trTrap
-    (ecPubKeyIsCanonical_call_ok'_trap hisCanon hmontLen hmontHook htorsHook)
-
-theorem ecPubKeyIsCanonical_call_ok_trap {P : Primitives} {A : RustAlloc} {img : Obj.Image}
-    {C : Crypto}
-    {absHooks : String → Option (State → State)}
-    (hWF : StructuralPrims P) (hH : PqxdhHookContracts P A img absHooks) :
-    subroutine_ok (trTrapProgAt img.base C absHooks)
-      ((trTrapProgAt img.base C absHooks).fnAddr ecPubKeyIsCanonicalSym)
-      (ecPubKeyIsCanonicalCallSpec P) :=
-  ecPubKeyIsCanonical_call_ok'_trap hWF.isCanonical_eq_isCanonicalRef hWF.montToEd_len
-    hH.dalekMontToEd hH.dalekTorsionFree
-
-theorem ecPubKeyIsCanonical_call_ok {P : Primitives} {A : RustAlloc} {img : Obj.Image}
-    {C : Crypto} {ctl : BitVec 64}
-    {absHooks : String → Option (State → State)}
-    (hWF : StructuralPrims P) (hH : PqxdhHookContracts P A img absHooks) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl absHooks)
-      ((tripleRatchetProgAt img.base C ctl absHooks).fnAddr ecPubKeyIsCanonicalSym)
-      (ecPubKeyIsCanonicalCallSpec P) :=
-  ecPubKeyIsCanonical_call_ok' hWF.isCanonical_eq_isCanonicalRef hWF.montToEd_len
-    hH.dalekMontToEd hH.dalekTorsionFree
-
 /-! ## Contract-Backed `extHookStack` Variants -/
 
 abbrev pqxdhHookStackExt : Nat := extHookStack
@@ -1125,692 +850,7 @@ abbrev pqxdhEntryStackExt : Nat := 32768
 abbrev verifySigHookStackExt : Nat := extHookStack + 48
 abbrev verifySigStackExt : Nat := extHookStack + 1328
 
-def cryptoBoolRegStubSpecExt (pred : Bytes → Bool) (inLen : Nat) (_img : Obj.Image := default) :
-    Spec CryptoUnaryGhost where
-  pre := fun g s =>
-    ⌜s.readReg64 .x0 = g.inPtr ∧
-      g.inBytes.length = inLen⌝ ∗
-      (g.inPtr ↦ₛ bytesToBv8 g.inBytes) ∗
-      stackAt s.sp pqxdhHookStackExt
-  post := fun g s0 sf =>
-    ⌜sf.trace = s0.trace ∧
-      (sf.readReg64 .x0).setWidth 32 = (if pred g.inBytes then 1#32 else 0#32)⌝ ∗
-      (g.inPtr ↦ₛ bytesToBv8 g.inBytes) ∗
-      stackAt s0.sp pqxdhHookStackExt
-
-def cryptoLeafRefStubSpecExt (fn : Bytes → Bytes) (inLen outLen : Nat) : Spec CryptoLeafCall where
-  pre := fun g s =>
-    ⌜s.readReg64 .x0 = g.inPtr ∧
-      s.readReg64 .x8 = g.outPtr ∧
-      g.inBytes.length = inLen⌝ ∗
-      (g.inPtr ↦ₛ bytesToBv8 g.inBytes) ∗
-      memRegion g.outPtr outLen ∗
-      stackAt s.sp pqxdhHookStackExt
-  post := fun g s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      (g.inPtr ↦ₛ bytesToBv8 g.inBytes) ∗
-      (g.outPtr ↦ₛ fitBv8 outLen (fn g.inBytes)) ∗
-      stackAt s0.sp pqxdhHookStackExt
-
-def cryptoLeafByValStubSpecExt (fn : Bytes → Bytes) (inLen outLen : Nat) : Spec CryptoLeafCall where
-  pre := fun g s =>
-    ⌜s.readReg64 .x0 = g.inPtr ∧
-      s.readReg64 .x8 = g.outPtr ∧
-      g.inBytes.length = inLen⌝ ∗
-      (g.inPtr ↦ₛ bytesToBv8 g.inBytes) ∗
-      memRegion g.outPtr outLen ∗
-      stackAt s.sp pqxdhHookStackExt
-  post := fun g s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      memRegion g.inPtr inLen ∗
-      (g.outPtr ↦ₛ fitBv8 outLen (fn g.inBytes)) ∗
-      stackAt s0.sp pqxdhHookStackExt
-
-def compressInPlaceStubSpecExt (fn : Bytes → Bytes → Bytes) (stateLen blockLen : Nat)
-    (_img : Obj.Image := default) : Spec CryptoCompressGhost where
-  pre := fun g s =>
-    ⌜s.readReg64 .x0 = g.statePtr ∧
-      s.readReg64 .x1 = g.blocksPtr ∧
-      s.readReg64 .x2 = BitVec.ofNat 64 g.nBlocks ∧
-      g.nBlocks < 2 ^ 64 ∧
-      g.stateBytes.length = stateLen ∧
-      g.blockBytes.length = blockLen * g.nBlocks⌝ ∗
-      (g.statePtr ↦ₛ bytesToBv8 g.stateBytes) ∗
-      (g.blocksPtr ↦ₛ bytesToBv8 g.blockBytes) ∗
-      stackAt s.sp pqxdhHookStackExt
-  post := fun g s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      (g.statePtr ↦ₛ fitBv8 stateLen (fn g.stateBytes g.blockBytes)) ∗
-      (g.blocksPtr ↦ₛ bytesToBv8 g.blockBytes) ∗
-      stackAt s0.sp pqxdhHookStackExt
-
-def dalekMontToEdStubSpecExt (P : Primitives) (_img : Obj.Image := default) :
-    Spec DalekMontToEdGhost where
-  pre := fun g s =>
-    ⌜s.readReg64 .x0 = g.inPtr ∧
-      (s.readReg64 .x1).setWidth 8 = BitVec.ofNat 8 g.signBit.toNat ∧
-      s.readReg64 .x8 = g.outPtr ∧
-      g.inBytes.length = 32⌝ ∗
-      (g.inPtr ↦ₛ bytesToBv8 g.inBytes) ∗
-      memRegion g.outPtr 168 ∗
-      stackAt s.sp pqxdhHookStackExt
-  post := fun g s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      (g.inPtr ↦ₛ bytesToBv8 g.inBytes) ∗
-      dalekMontToEdOutAt P g.outPtr g.inBytes (g.signBit &&& 1) ∗
-      stackAt s0.sp pqxdhHookStackExt
-
-def dalekDoubleMulStubSpecExt (P : Primitives) (_img : Obj.Image := default) :
-    Spec DalekDoubleMulGhost where
-  pre := fun g s =>
-    ⌜s.readReg64 .x0 = g.hPtr ∧
-      s.readReg64 .x1 = g.negAPtr ∧
-      s.readReg64 .x2 = g.sPtr ∧
-      s.readReg64 .x8 = g.outPtr ∧
-      g.hBytes.length = 32 ∧
-      g.negABytes.length = 160 ∧
-      g.sBytes.length = 32⌝ ∗
-      (g.hPtr ↦ₛ bytesToBv8 g.hBytes) ∗
-      (g.negAPtr ↦ₛ bytesToBv8 g.negABytes) ∗
-      (g.sPtr ↦ₛ bytesToBv8 g.sBytes) ∗
-      memRegion g.outPtr 160 ∗
-      stackAt s.sp pqxdhHookStackExt
-  post := fun g s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      (g.hPtr ↦ₛ bytesToBv8 g.hBytes) ∗
-      (g.negAPtr ↦ₛ bytesToBv8 g.negABytes) ∗
-      (g.sPtr ↦ₛ bytesToBv8 g.sBytes) ∗
-      (g.outPtr ↦ₛ fitBv8 160 (P.doubleScalarMulBasepoint g.hBytes g.negABytes g.sBytes)) ∗
-      stackAt s0.sp pqxdhHookStackExt
-
-/-- Contract-backed external hook bundle for shared curve/signature functions (`is_canonical`,
-    `verify_signature_for_multipart_message`, and `verify_signature`) on `tripleRatchetProgAtExt`
-    at `pqxdhHookStackExt = extHookStack = 16384`, with `byVal` `memRegion` postconditions on
-    `edNeg` (`160` B) and `scalarMod` (`32` B), 32-bit `w0` return on `torsionFree` and
-    `subtle::black_box::<u8>`, and stacked `memcpy`/`memset` (`memHookStack = 4096`). -/
-structure PqxdhHookContractsExt (P : Primitives) (_A : RustAlloc) (img : Obj.Image)
-    (absHooks : String → Option (State → State)) : Prop where
-  dalekMontToEd    : HookSat absHooks dalekMontToEdStub (dalekMontToEdStubSpecExt P img)
-  dalekTorsionFree : HookSat absHooks dalekTorsionFreeStub
-                       (cryptoBoolRegStubSpecExt P.isTorsionFree 160 img)
-  sha512Compress   : HookSat absHooks sha512CompressStub
-                       (compressInPlaceStubSpecExt (sha512CompressOutBytes P) 64 128 img)
-  dalekScalarWide  : HookSat absHooks dalekScalarWideStub
-                       (cryptoLeafRefStubSpecExt P.scalarFromWide 64 32)
-  dalekScalarMod   : HookSat absHooks dalekScalarModStub
-                       (cryptoLeafByValStubSpecExt P.scalarFromBytesModOrder 32 32)
-  dalekCompress    : HookSat absHooks dalekCompressStub
-                       (cryptoLeafRefStubSpecExt P.compress 160 32)
-  dalekEdNeg       : HookSat absHooks dalekEdNegStub
-                       (cryptoLeafByValStubSpecExt P.edNeg 160 160)
-  dalekDoubleMul   : HookSat absHooks dalekDoubleMulStub
-                       (dalekDoubleMulStubSpecExt P img)
-  memcpy           : HookSat absHooks memcpyName SignalSession.CliExt.memcpySpec
-  memset           : HookSat absHooks memsetName SignalSession.CliExt.memsetSpec
-  blackBox         : HookSat absHooks "subtle::black_box::<u8>" SignalSession.CliExt.blackBoxSpec
-
-theorem PqxdhHookContractsExt.of_hooks_eq {P : Primitives} {A : RustAlloc} {img : Obj.Image}
-    {ext hooks : String → Option (State → State)}
-    (h : PqxdhHookContractsExt P A img ext)
-    (hmont : hooks dalekMontToEdStub = ext dalekMontToEdStub)
-    (htors : hooks dalekTorsionFreeStub = ext dalekTorsionFreeStub)
-    (hsha : hooks sha512CompressStub = ext sha512CompressStub)
-    (hwide : hooks dalekScalarWideStub = ext dalekScalarWideStub)
-    (hmod : hooks dalekScalarModStub = ext dalekScalarModStub)
-    (hcomp : hooks dalekCompressStub = ext dalekCompressStub)
-    (hneg : hooks dalekEdNegStub = ext dalekEdNegStub)
-    (hdmul : hooks dalekDoubleMulStub = ext dalekDoubleMulStub)
-    (hmemcpy : hooks memcpyName = ext memcpyName)
-    (hmemset : hooks memsetName = ext memsetName)
-    (hbb : hooks "subtle::black_box::<u8>" = ext "subtle::black_box::<u8>") :
-    PqxdhHookContractsExt P A img hooks where
-  dalekMontToEd    := by unfold HookSat; rw [hmont]; exact h.dalekMontToEd
-  dalekTorsionFree := by unfold HookSat; rw [htors]; exact h.dalekTorsionFree
-  sha512Compress   := by unfold HookSat; rw [hsha]; exact h.sha512Compress
-  dalekScalarWide  := by unfold HookSat; rw [hwide]; exact h.dalekScalarWide
-  dalekScalarMod   := by unfold HookSat; rw [hmod]; exact h.dalekScalarMod
-  dalekCompress    := by unfold HookSat; rw [hcomp]; exact h.dalekCompress
-  dalekEdNeg       := by unfold HookSat; rw [hneg]; exact h.dalekEdNeg
-  dalekDoubleMul   := by unfold HookSat; rw [hdmul]; exact h.dalekDoubleMul
-  memcpy           := by unfold HookSat; rw [hmemcpy]; exact h.memcpy
-  memset           := by unfold HookSat; rw [hmemset]; exact h.memset
-  blackBox         := by unfold HookSat; rw [hbb]; exact h.blackBox
-
-private theorem shared_bytesToBv8_eq_ofU8_ext :
-    ∀ bs : List UInt8, bytesToBv8 bs = E2E.ofU8 bs
-  | [] => rfl
-  | b :: rest => congrArg₂ List.cons
-      ((BitVec.ofNat_toNat 8 b.toBitVec).trans b.toBitVec.setWidth_eq)
-      (shared_bytesToBv8_eq_ofU8_ext rest)
-
-private theorem u8Vec_toList_eq_bytesToBv8_ext {n : Nat} {bs : Bytes} (hlen : bs.length = n) :
-    (E2E.u8Vec n bs).toList = bytesToBv8 bs := by
-  have hof : (E2E.ofU8 bs).length = n := by simp [E2E.ofU8, hlen]
-  dsimp only [E2E.u8Vec, E2E.fitVec, List.Vector.toList]
-  rw [shared_bytesToBv8_eq_ofU8_ext,
-    List.take_append_of_le_length (Nat.le_of_eq hof.symm),
-    List.take_of_length_le (Nat.le_of_eq hof)]
-
-private theorem ofU8_toU8_ext : ∀ bs : List (BitVec 8), E2E.ofU8 (E2E.toU8 bs) = bs
-  | [] => rfl
-  | _ :: rest => congrArg₂ List.cons rfl (ofU8_toU8_ext rest)
-
-private theorem toU8_ofU8_ext : ∀ bs : Bytes, E2E.toU8 (E2E.ofU8 bs) = bs
-  | [] => rfl
-  | b :: rest => congrArg₂ List.cons
-      (by rcases b with ⟨v⟩; simp [E2E.toU8, E2E.ofU8, UInt8.ofBitVec])
-      (toU8_ofU8_ext rest)
-
-private theorem fitBv8_vecU8_eq_ext {n : Nat} (v : List.Vector (BitVec 8) n) :
-    fitBv8 n (E2E.vecU8 v) = v.toList := by
-  have hlen : (E2E.vecU8 v).length = n := by
-    simp [E2E.vecU8, E2E.toU8, v.toList_length]
-  rw [fitBv8_eq_bytesToBv8 hlen, shared_bytesToBv8_eq_ofU8_ext, E2E.vecU8, ofU8_toU8_ext]
-
-private theorem pointsToBytes_u64le_append_ext (p : BitVec 64) (v : BitVec 64) (bs : List (BitVec 8)) :
-    (p ↦ₛ (u64le v ++ bs)) = ((p ↦₆₄ v) ∗ ((p + 8#64) ↦ₛ bs)) := by
-  have hu : u64le v = unpack64 v := rfl
-  rw [hu, pointsToBytes_append, unpack64_length, ← pointsTo64_eq_pointsToBytes]
-
-theorem dalekMontToEd_ext_of_externsOk (X : E2E.UnreachedPqxdhPrimitives) {P0 : E2E.PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} (img : Obj.Image)
-    (hOk : SignalSession.CliExternsOk P0 A ext) :
-    HookSat ext dalekMontToEdStub (dalekMontToEdStubSpecExt (E2E.modelPrims X P0) img) := by
-  obtain ⟨fn, hfn, hok⟩ := hOk.toEdwards
-  have hname : dalekMontToEdStub = E2E.toEdwardsName := rfl
-  refine ⟨fn, hname ▸ hfn, fun g R s0 hrun hpre hsp => ?_⟩
-  dsimp only [dalekMontToEdStubSpecExt, pqxdhHookStackExt] at hpre
-  rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx8, hlen⟩, hmem⟩
-  let v : List.Vector (BitVec 8) 32 := E2E.u8Vec 32 g.inBytes
-  have hv : v.toList = bytesToBv8 g.inBytes := u8Vec_toList_eq_bytesToBv8_ext hlen
-  let sb : BitVec 8 := BitVec.ofNat 8 g.signBit.toNat
-  have hpre0 : s0.mem ⊨
-      (SignalSession.CliExt.toEdwardsSpec P0.Q).pre (g.inPtr, v, sb, g.outPtr) s0 ∗ R := by
-    dsimp only [SignalSession.CliExt.toEdwardsSpec, SignalSession.CliExt.withStack]
-    rw [hv]
-    have h1 : s0.mem ⊨
-        ⌜s0.readReg64 .x0 = g.inPtr ∧ (s0.readReg64 .x1).setWidth 8 = sb ∧ s0.readReg64 .x8 = g.outPtr⌝ ∗
-        ((g.inPtr ↦ₛ bytesToBv8 g.inBytes) ∗ memRegion g.outPtr 168 ∗ stackAt s0.sp extHookStack ∗ R) := by
-      rw [satisfies_pure_sepConj]
-      exact ⟨⟨hx0, hx1, hx8⟩, by convert hmem using 1⟩
-    convert h1 using 1; ac_rfl
-  rcases hok (g.inPtr, v, sb, g.outPtr) R s0 hrun hpre0 hsp with
-    ⟨hkf, hsym, ⟨hret, hcc, hpost⟩ | ⟨_, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩⟩
-  · refine ⟨hkf, hsym, Or.inl ⟨hret, hcc, ?_⟩⟩
-    dsimp only [SignalSession.CliExt.toEdwardsSpec, SignalSession.CliExt.withStack] at hpost
-    have hpost' : (fn s0).mem ⊨
-        ⌜(fn s0).trace = s0.trace⌝ ∗
-        ((g.inPtr ↦ₛ v.toList) ∗
-          SignalSession.CliExt.optionEdwardsPointAt g.outPtr (P0.Q.montToEd v (sb &&& 1#8)) ∗
-          stackAt s0.sp extHookStack ∗ R) := by
-      convert hpost using 1; ac_rfl
-    rw [satisfies_pure_sepConj] at hpost'
-    rcases hpost' with ⟨htr, hmemf⟩
-    dsimp only [dalekMontToEdStubSpecExt, pqxdhHookStackExt]
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨htr, ?_⟩
-    have hsb : sb &&& 1#8 = (g.signBit &&& 1).toBitVec := by
-      dsimp only [sb]
-      rcases g.signBit with ⟨bv⟩
-      simp only [UInt8.toNat, BitVec.ofNat_toNat, BitVec.setWidth_eq, UInt8.toBitVec_and]
-      rfl
-    have hmte : (E2E.modelPrims X P0).montToEd g.inBytes (g.signBit &&& 1) =
-        (P0.Q.montToEd v (sb &&& 1#8)).map E2E.vecU8 := by
-      dsimp only [E2E.modelPrims, E2E.blockLevelPrims, v]
-      rw [hsb]
-    have hout : dalekMontToEdOutAt (E2E.modelPrims X P0) g.outPtr g.inBytes (g.signBit &&& 1) =
-        SignalSession.CliExt.optionEdwardsPointAt g.outPtr (P0.Q.montToEd v (sb &&& 1#8)) := by
-      unfold dalekMontToEdOutAt
-      rw [hmte]
-      cases P0.Q.montToEd v (sb &&& 1#8) with
-      | none => rfl
-      | some ed =>
-        dsimp only [SignalSession.CliExt.optionEdwardsPointAt, Option.map]
-        rw [fitBv8_vecU8_eq_ext ed, pointsToBytes_u64le_append_ext]
-    rw [hv] at hmemf
-    rw [hout]
-    convert hmemf using 1
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-
-theorem dalekTorsionFree_ext_of_externsOk (X : E2E.UnreachedPqxdhPrimitives) {P0 : E2E.PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} (img : Obj.Image)
-    (hOk : SignalSession.CliExternsOk P0 A ext) :
-    HookSat ext dalekTorsionFreeStub
-      (cryptoBoolRegStubSpecExt (E2E.modelPrims X P0).isTorsionFree 160 img) := by
-  obtain ⟨fn, hfn, hok⟩ := hOk.torsionFree
-  refine ⟨fn, hfn, fun g R s0 hrun hpre hsp => ?_⟩
-  dsimp only [cryptoBoolRegStubSpecExt, pqxdhHookStackExt] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hlen⟩, hmem⟩
-  let v : List.Vector (BitVec 8) 160 := E2E.u8Vec 160 g.inBytes
-  have hv : v.toList = bytesToBv8 g.inBytes := u8Vec_toList_eq_bytesToBv8_ext hlen
-  have hpre0 : s0.mem ⊨ (SignalSession.CliExt.torsionFreeSpec P0.Q).pre (g.inPtr, v) s0 ∗ R := by
-    dsimp only [SignalSession.CliExt.torsionFreeSpec, SignalSession.CliExt.withStack]
-    rw [hv]
-    have h1 : s0.mem ⊨ ⌜s0.readReg64 .x0 = g.inPtr⌝ ∗
-        ((g.inPtr ↦ₛ bytesToBv8 g.inBytes) ∗ stackAt s0.sp extHookStack ∗ R) := by
-      rw [satisfies_pure_sepConj]
-      exact ⟨hx0, by convert hmem using 1; ac_rfl⟩
-    convert h1 using 1; ac_rfl
-  rcases hok (g.inPtr, v) R s0 hrun hpre0 hsp with
-    ⟨hkf, hsym, ⟨hret, hcc, hpost⟩ | ⟨_, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩⟩
-  · refine ⟨hkf, hsym, Or.inl ⟨hret, hcc, ?_⟩⟩
-    dsimp only [SignalSession.CliExt.torsionFreeSpec, SignalSession.CliExt.withStack] at hpost
-    have hpost' : (fn s0).mem ⊨
-        ⌜(fn s0).trace = s0.trace ∧
-          ((fn s0).readReg64 .x0).setWidth 32 = (if P0.Q.isTorsionFree v then 1#32 else 0#32)⌝ ∗
-        ((g.inPtr ↦ₛ v.toList) ∗ stackAt s0.sp extHookStack ∗ R) := by
-      convert hpost using 1; ac_rfl
-    rw [satisfies_pure_sepConj] at hpost'
-    rcases hpost' with ⟨⟨htr, hx0f⟩, hmemf⟩
-    dsimp only [cryptoBoolRegStubSpecExt, pqxdhHookStackExt]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    have hpred : (E2E.modelPrims X P0).isTorsionFree g.inBytes = P0.Q.isTorsionFree v := rfl
-    refine ⟨⟨htr, hpred ▸ hx0f⟩, ?_⟩
-    rw [hv] at hmemf
-    convert hmemf using 1; ac_rfl
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-
-private theorem cryptoLeafRef_ext_of_hookSat {m n : Nat}
-    {f : List.Vector (BitVec 8) m → List.Vector (BitVec 8) n}
-    {ext : String → Option (State → State)} {sym : String}
-    (hLeaf : HookSat ext sym (SignalSession.CliExt.pureByteFunctionSpec f false)) :
-    HookSat ext sym (cryptoLeafRefStubSpecExt (fun bs => E2E.vecU8 (f (E2E.u8Vec m bs))) m n) := by
-  obtain ⟨fn, hfn, hok⟩ := hLeaf
-  refine ⟨fn, hfn, fun g R s0 hrun hpre hsp => ?_⟩
-  dsimp only [cryptoLeafRefStubSpecExt, pqxdhHookStackExt] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx8, hlen⟩, hmem⟩
-  let v : List.Vector (BitVec 8) m := E2E.u8Vec m g.inBytes
-  have hv : v.toList = bytesToBv8 g.inBytes := u8Vec_toList_eq_bytesToBv8_ext hlen
-  have hpre0 : s0.mem ⊨ (SignalSession.CliExt.pureByteFunctionSpec f false).pre (g.inPtr, v, g.outPtr) s0 ∗ R := by
-    dsimp only [SignalSession.CliExt.pureByteFunctionSpec, SignalSession.CliExt.withStack]
-    rw [hv]
-    have h1 : s0.mem ⊨ ⌜s0.readReg64 .x0 = g.inPtr ∧ s0.readReg64 .x8 = g.outPtr⌝ ∗
-        ((g.inPtr ↦ₛ bytesToBv8 g.inBytes) ∗ memRegion g.outPtr n ∗
-          stackAt s0.sp extHookStack ∗ R) := by
-      rw [satisfies_pure_sepConj]
-      exact ⟨⟨hx0, hx8⟩, by convert hmem using 1; ac_rfl⟩
-    convert h1 using 1; ac_rfl
-  rcases hok (g.inPtr, v, g.outPtr) R s0 hrun hpre0 hsp with
-    ⟨hkf, hsym, ⟨hret, hcc, hpost⟩ | ⟨_, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩⟩
-  · refine ⟨hkf, hsym, Or.inl ⟨hret, hcc, ?_⟩⟩
-    simp only [SignalSession.CliExt.pureByteFunctionSpec, SignalSession.CliExt.withStack,
-      SignalSession.CliExt.inputAfter, Bool.false_eq_true, ↓reduceIte] at hpost
-    have hpost' : (fn s0).mem ⊨
-        ⌜(fn s0).trace = s0.trace⌝ ∗
-        ((g.inPtr ↦ₛ v.toList) ∗ (g.outPtr ↦ₛ (f v).toList) ∗
-          stackAt s0.sp extHookStack ∗ R) := by
-      convert hpost using 1; ac_rfl
-    rw [satisfies_pure_sepConj] at hpost'
-    rcases hpost' with ⟨htr, hmemf⟩
-    dsimp only [cryptoLeafRefStubSpecExt, pqxdhHookStackExt]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨htr, ?_⟩
-    rw [fitBv8_vecU8_eq_ext (f v), ← hv]
-    convert hmemf using 1; ac_rfl
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-
-private theorem cryptoLeafByVal_ext_of_hookSat {m n : Nat}
-    {f : List.Vector (BitVec 8) m → List.Vector (BitVec 8) n}
-    {ext : String → Option (State → State)} {sym : String}
-    (hLeaf : HookSat ext sym (SignalSession.CliExt.pureByteFunctionSpec f true)) :
-    HookSat ext sym (cryptoLeafByValStubSpecExt (fun bs => E2E.vecU8 (f (E2E.u8Vec m bs))) m n) := by
-  obtain ⟨fn, hfn, hok⟩ := hLeaf
-  refine ⟨fn, hfn, fun g R s0 hrun hpre hsp => ?_⟩
-  dsimp only [cryptoLeafByValStubSpecExt, pqxdhHookStackExt] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx8, hlen⟩, hmem⟩
-  let v : List.Vector (BitVec 8) m := E2E.u8Vec m g.inBytes
-  have hv : v.toList = bytesToBv8 g.inBytes := u8Vec_toList_eq_bytesToBv8_ext hlen
-  have hpre0 : s0.mem ⊨ (SignalSession.CliExt.pureByteFunctionSpec f true).pre (g.inPtr, v, g.outPtr) s0 ∗ R := by
-    dsimp only [SignalSession.CliExt.pureByteFunctionSpec, SignalSession.CliExt.withStack]
-    rw [hv]
-    have h1 : s0.mem ⊨ ⌜s0.readReg64 .x0 = g.inPtr ∧ s0.readReg64 .x8 = g.outPtr⌝ ∗
-        ((g.inPtr ↦ₛ bytesToBv8 g.inBytes) ∗ memRegion g.outPtr n ∗
-          stackAt s0.sp extHookStack ∗ R) := by
-      rw [satisfies_pure_sepConj]
-      exact ⟨⟨hx0, hx8⟩, by convert hmem using 1; ac_rfl⟩
-    convert h1 using 1; ac_rfl
-  rcases hok (g.inPtr, v, g.outPtr) R s0 hrun hpre0 hsp with
-    ⟨hkf, hsym, ⟨hret, hcc, hpost⟩ | ⟨_, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩⟩
-  · refine ⟨hkf, hsym, Or.inl ⟨hret, hcc, ?_⟩⟩
-    simp only [SignalSession.CliExt.pureByteFunctionSpec, SignalSession.CliExt.withStack,
-      SignalSession.CliExt.inputAfter, ↓reduceIte] at hpost
-    have hpost' : (fn s0).mem ⊨
-        ⌜(fn s0).trace = s0.trace⌝ ∗
-        (memRegion g.inPtr m ∗ (g.outPtr ↦ₛ (f v).toList) ∗
-          stackAt s0.sp extHookStack ∗ R) := by
-      convert hpost using 1; ac_rfl
-    rw [satisfies_pure_sepConj] at hpost'
-    rcases hpost' with ⟨htr, hmemf⟩
-    dsimp only [cryptoLeafByValStubSpecExt, pqxdhHookStackExt]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨htr, ?_⟩
-    rw [fitBv8_vecU8_eq_ext (f v)]
-    convert hmemf using 1; ac_rfl
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-
-theorem dalekDoubleMul_ext_of_externsOk (X : E2E.UnreachedPqxdhPrimitives) {P0 : E2E.PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} (img : Obj.Image)
-    (hOk : SignalSession.CliExternsOk P0 A ext) :
-    HookSat ext dalekDoubleMulStub (dalekDoubleMulStubSpecExt (E2E.modelPrims X P0) img) := by
-  obtain ⟨fn, hfn, hok⟩ := hOk.dsmb
-  refine ⟨fn, hfn, fun g R s0 hrun hpre hsp => ?_⟩
-  dsimp only [dalekDoubleMulStubSpecExt, pqxdhHookStackExt] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx2, hx8, hh_len, ha_len, hs_len⟩, hmem⟩
-  let vh : List.Vector (BitVec 8) 32 := E2E.u8Vec 32 g.hBytes
-  let va : List.Vector (BitVec 8) 160 := E2E.u8Vec 160 g.negABytes
-  let vs : List.Vector (BitVec 8) 32 := E2E.u8Vec 32 g.sBytes
-  have hvh : vh.toList = bytesToBv8 g.hBytes := u8Vec_toList_eq_bytesToBv8_ext hh_len
-  have hva : va.toList = bytesToBv8 g.negABytes := u8Vec_toList_eq_bytesToBv8_ext ha_len
-  have hvs : vs.toList = bytesToBv8 g.sBytes := u8Vec_toList_eq_bytesToBv8_ext hs_len
-  have hpre0 : s0.mem ⊨ (SignalSession.CliExt.dsmbSpec P0.Q).pre
-      (g.hPtr, vh, g.negAPtr, va, g.sPtr, vs, g.outPtr) s0 ∗ R := by
-    dsimp only [SignalSession.CliExt.dsmbSpec, SignalSession.CliExt.withStack]
-    rw [hvh, hva, hvs]
-    have h1 : s0.mem ⊨
-        ⌜s0.readReg64 .x0 = g.hPtr ∧ s0.readReg64 .x1 = g.negAPtr ∧
-          s0.readReg64 .x2 = g.sPtr ∧ s0.readReg64 .x8 = g.outPtr⌝ ∗
-        ((g.hPtr ↦ₛ bytesToBv8 g.hBytes) ∗ (g.negAPtr ↦ₛ bytesToBv8 g.negABytes) ∗
-          (g.sPtr ↦ₛ bytesToBv8 g.sBytes) ∗ memRegion g.outPtr 160 ∗
-          stackAt s0.sp extHookStack ∗ R) := by
-      rw [satisfies_pure_sepConj]
-      exact ⟨⟨hx0, hx1, hx2, hx8⟩, by convert hmem using 1; ac_rfl⟩
-    convert h1 using 1; ac_rfl
-  rcases hok (g.hPtr, vh, g.negAPtr, va, g.sPtr, vs, g.outPtr) R s0 hrun hpre0 hsp with
-    ⟨hkf, hsym, ⟨hret, hcc, hpost⟩ | ⟨_, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩⟩
-  · refine ⟨hkf, hsym, Or.inl ⟨hret, hcc, ?_⟩⟩
-    dsimp only [SignalSession.CliExt.dsmbSpec, SignalSession.CliExt.withStack] at hpost
-    have hpost' : (fn s0).mem ⊨
-        ⌜(fn s0).trace = s0.trace⌝ ∗
-        ((g.hPtr ↦ₛ vh.toList) ∗ (g.negAPtr ↦ₛ va.toList) ∗ (g.sPtr ↦ₛ vs.toList) ∗
-          (g.outPtr ↦ₛ (P0.Q.dsmb vh va vs).toList) ∗
-          stackAt s0.sp extHookStack ∗ R) := by
-      convert hpost using 1; ac_rfl
-    rw [satisfies_pure_sepConj] at hpost'
-    rcases hpost' with ⟨htr, hmemf⟩
-    dsimp only [dalekDoubleMulStubSpecExt, pqxdhHookStackExt]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨htr, ?_⟩
-    have hdsmb : (E2E.modelPrims X P0).doubleScalarMulBasepoint g.hBytes g.negABytes g.sBytes =
-        E2E.vecU8 (P0.Q.dsmb vh va vs) := rfl
-    rw [hdsmb, fitBv8_vecU8_eq_ext, ← hvh, ← hva, ← hvs]
-    convert hmemf using 1; ac_rfl
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-
-private theorem sha512State_toList_ext (h : E2E.Sha512State) :
-    h.toList = [h.get 0, h.get 1, h.get 2, h.get 3, h.get 4, h.get 5, h.get 6, h.get 7] := by
-  rcases h with
-    ⟨_ | ⟨w0, _ | ⟨w1, _ | ⟨w2, _ | ⟨w3, _ | ⟨w4, _ | ⟨w5, _ | ⟨w6, _ | ⟨w7, _ | _⟩⟩⟩⟩⟩⟩⟩⟩, hl⟩
-  all_goals (first | rfl | (simp at hl))
-
-private theorem sha512StateBytesLE_len_ext (h : E2E.Sha512State) :
-    (E2E.sha512StateBytesLE h).length = 64 := by
-  rw [E2E.sha512StateBytesLE, sha512State_toList_ext]; rfl
-
-private theorem sha512StateBytesBE_len_ext (h : E2E.Sha512State) :
-    (E2E.sha512StateBytesBE h).length = 64 := by
-  simp only [E2E.sha512StateBytesBE, E2E.toU8, List.length_map, sha512State_toList_ext]
-  rfl
-
-private theorem toLEBytes8_read64_ext (m : Memory) (a : BitVec 64) :
-    LibsignalAesCbc.toLEBytes 8 (m.read64 a) = m.readBytes a 8 := by
-  have h1 : LibsignalAesCbc.toLEBytes 8 (m.read64 a) = unpack64 (m.read64 a) := rfl
-  have hrd : m.readBytes a 8 =
-      [m.read8 a, m.read8 (a + 1#64), m.read8 (a + 2#64), m.read8 (a + 3#64),
-       m.read8 (a + 4#64), m.read8 (a + 5#64), m.read8 (a + 6#64), m.read8 (a + 7#64)] := by
-    simp only [Memory.readBytes, BitVec.add_assoc]; rfl
-  rw [h1, hrd]
-  dsimp only [Memory.read64]
-  simp only [BitVec.add_zero]
-  exact unpack64_pack64 (m.read8 a) (m.read8 (a + 1#64)) (m.read8 (a + 2#64)) (m.read8 (a + 3#64))
-    (m.read8 (a + 4#64)) (m.read8 (a + 5#64)) (m.read8 (a + 6#64)) (m.read8 (a + 7#64))
-
-private theorem sha512StateBytesLE_readSha512State_ext (m : Memory) (a : BitVec 64) :
-    E2E.sha512StateBytesLE (E2E.readSha512State m a) = m.readBytes a 64 := by
-  have hget (i : Fin 8) :
-      LibsignalAesCbc.toLEBytes 8 ((E2E.readSha512State m a).get i) =
-        m.readBytes (a + BitVec.ofNat 64 (8 * i.val)) 8 := by
-    simp only [E2E.readSha512State, List.Vector.get_ofFn, toLEBytes8_read64_ext]
-  rw [E2E.sha512StateBytesLE, sha512State_toList_ext (E2E.readSha512State m a)]
-  simp only [List.flatMap_cons, List.flatMap_nil, List.append_nil, hget]
-  change
-    m.readBytes (a + 0#64) 8 ++
-    (m.readBytes (a + 8#64) 8 ++
-    (m.readBytes (a + 16#64) 8 ++
-    (m.readBytes (a + 24#64) 8 ++
-    (m.readBytes (a + 32#64) 8 ++
-    (m.readBytes (a + 40#64) 8 ++
-    (m.readBytes (a + 48#64) 8 ++
-     m.readBytes (a + 56#64) 8)))))) = m.readBytes a 64
-  simp only [Memory.readBytes, BitVec.add_zero, BitVec.add_assoc, BitVec.reduceAdd,
-    List.cons_append, List.nil_append]
-
-private theorem ofU8_revWords64_toU8_sha512StateBytesLE_ext (h : E2E.Sha512State) :
-    revWords64 (E2E.toU8 (E2E.sha512StateBytesLE h)) = E2E.sha512StateBytesBE h := by
-  rw [← toU8_ofU8_ext (revWords64 (E2E.toU8 (E2E.sha512StateBytesLE h)))]
-  congr 1
-  simp only [revWords64, E2E.ofU8, List.map_append, List.map_reverse, List.map_take, List.map_drop]
-  change
-    (((E2E.ofU8 (E2E.toU8 (E2E.sha512StateBytesLE h))).take 8).reverse ++
-     (((E2E.ofU8 (E2E.toU8 (E2E.sha512StateBytesLE h))).drop 8).take 8).reverse ++
-     (((E2E.ofU8 (E2E.toU8 (E2E.sha512StateBytesLE h))).drop 16).take 8).reverse ++
-     (((E2E.ofU8 (E2E.toU8 (E2E.sha512StateBytesLE h))).drop 24).take 8).reverse ++
-     (((E2E.ofU8 (E2E.toU8 (E2E.sha512StateBytesLE h))).drop 32).take 8).reverse ++
-     (((E2E.ofU8 (E2E.toU8 (E2E.sha512StateBytesLE h))).drop 40).take 8).reverse ++
-     (((E2E.ofU8 (E2E.toU8 (E2E.sha512StateBytesLE h))).drop 48).take 8).reverse ++
-     (((E2E.ofU8 (E2E.toU8 (E2E.sha512StateBytesLE h))).drop 56).take 8).reverse) =
-    (h.toList.flatMap (HMAC.toBEBytes 8))
-  rw [ofU8_toU8_ext, E2E.sha512StateBytesLE, sha512State_toList_ext h]
-  rfl
-
-private theorem ofU8_revWords64_sha512StateBytesBE_ext (h : E2E.Sha512State) :
-    E2E.ofU8 (revWords64 (E2E.sha512StateBytesBE h)) = E2E.sha512StateBytesLE h := by
-  simp only [revWords64, E2E.ofU8, List.map_append, List.map_reverse, List.map_take, List.map_drop]
-  change
-    (((E2E.ofU8 (E2E.sha512StateBytesBE h)).take 8).reverse ++
-     (((E2E.ofU8 (E2E.sha512StateBytesBE h)).drop 8).take 8).reverse ++
-     (((E2E.ofU8 (E2E.sha512StateBytesBE h)).drop 16).take 8).reverse ++
-     (((E2E.ofU8 (E2E.sha512StateBytesBE h)).drop 24).take 8).reverse ++
-     (((E2E.ofU8 (E2E.sha512StateBytesBE h)).drop 32).take 8).reverse ++
-     (((E2E.ofU8 (E2E.sha512StateBytesBE h)).drop 40).take 8).reverse ++
-     (((E2E.ofU8 (E2E.sha512StateBytesBE h)).drop 48).take 8).reverse ++
-     (((E2E.ofU8 (E2E.sha512StateBytesBE h)).drop 56).take 8).reverse) = E2E.sha512StateBytesLE h
-  rw [E2E.sha512StateBytesBE, ofU8_toU8_ext, E2E.sha512StateBytesLE, sha512State_toList_ext h]
-  rfl
-
-private theorem beWord64_toBEBytes8_ext (w : BitVec 64) :
-    E2E.beWord 64 (HMAC.toBEBytes 8 w) 0 = w := by
-  change
-    ((((((((0#64 <<< 8 ||| (w.extractLsb' 56 8).zeroExtend 64) <<< 8 |||
-      (w.extractLsb' 48 8).zeroExtend 64) <<< 8 |||
-      (w.extractLsb' 40 8).zeroExtend 64) <<< 8 |||
-      (w.extractLsb' 32 8).zeroExtend 64) <<< 8 |||
-      (w.extractLsb' 24 8).zeroExtend 64) <<< 8 |||
-      (w.extractLsb' 16 8).zeroExtend 64) <<< 8 |||
-      (w.extractLsb' 8 8).zeroExtend 64) <<< 8 |||
-      (w.extractLsb' 0 8).zeroExtend 64) = w
-  bv_bits
-
-private theorem sha512StateOf_sha512StateBytesBE_ext (h : E2E.Sha512State) :
-    E2E.sha512StateOf (E2E.sha512StateBytesBE h) = h := by
-  apply List.Vector.ext
-  intro i
-  simp only [E2E.sha512StateOf, List.Vector.get_ofFn]
-  have hslice :
-      E2E.beWord 64 (E2E.ofU8 (E2E.sha512StateBytesBE h)) i.val =
-        E2E.beWord 64 (HMAC.toBEBytes 8 (h.get i)) 0 := by
-    rw [E2E.sha512StateBytesBE, ofU8_toU8_ext, sha512State_toList_ext h]
-    fin_cases i <;> rfl
-  rw [hslice, beWord64_toBEBytes8_ext]
-
-private theorem list_ofFn_eq_range_map_ext {α : Type} (n : Nat) (f : Nat → α) :
-    List.ofFn (fun i : Fin n => f i.val) = (List.range n).map f := by
-  induction n generalizing f with
-  | zero => rfl
-  | succ n ih =>
-    rw [List.ofFn_succ]
-    simp only [Fin.val_zero, Fin.val_succ]
-    rw [ih (fun i => f (i + 1)), List.range_succ_eq_map, List.map_cons, List.map_map]
-    rfl
-
-private theorem chunks128_ofU8_ext (bs : Bytes) :
-    E2E.chunks128 (E2E.ofU8 bs) = (chunkBlocks 128 bs).map E2E.ofU8 := by
-  have hlen : (E2E.ofU8 bs).length = bs.length := by simp [E2E.ofU8]
-  unfold E2E.chunks128 chunkBlocks
-  rw [list_ofFn_eq_range_map_ext ((E2E.ofU8 bs).length / 128)
-      (fun i => ((E2E.ofU8 bs).drop (128 * i)).take 128),
-    hlen, List.map_map]
-  congr 1; funext i
-  simp only [Function.comp_def, E2E.ofU8, ← List.map_drop, ← List.map_take, Nat.mul_comm 128 i]
-
-private theorem foldl_sha512Step_modelPrims_ext (X : E2E.UnreachedPqxdhPrimitives) (P0 : E2E.PEParams)
-    (blks : List Bytes) (st : E2E.Sha512State) :
-    blks.foldl (sha512Step (E2E.modelPrims X P0)) (E2E.sha512StateBytesBE st) =
-      E2E.sha512StateBytesBE ((blks.map E2E.ofU8).foldl P0.Q.F512 st) := by
-  induction blks generalizing st with
-  | nil => rfl
-  | cons blk rest ih =>
-    simp only [List.foldl_cons, List.map_cons]
-    have hstep :
-        sha512Step (E2E.modelPrims X P0) (E2E.sha512StateBytesBE st) blk =
-          E2E.sha512StateBytesBE (P0.Q.F512 st (E2E.ofU8 blk)) := by
-      unfold sha512Step
-      change fitBytes 64
-        (E2E.sha512StateBytesBE
-          (P0.Q.F512 (E2E.sha512StateOf (fitBytes 64 (E2E.sha512StateBytesBE st))) (E2E.ofU8 blk))) =
-        E2E.sha512StateBytesBE (P0.Q.F512 st (E2E.ofU8 blk))
-      rw [fitBytes_of_length_eq (sha512StateBytesBE_len_ext st),
-        sha512StateOf_sha512StateBytesBE_ext,
-        fitBytes_of_length_eq (sha512StateBytesBE_len_ext _)]
-    rw [hstep, ih]
-
-theorem sha512Compress_ext_of_externsOk (X : E2E.UnreachedPqxdhPrimitives) {P0 : E2E.PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} (img : Obj.Image)
-    (hOk : SignalSession.CliExternsOk P0 A ext) :
-    HookSat ext sha512CompressStub
-      (compressInPlaceStubSpecExt (sha512CompressOutBytes (E2E.modelPrims X P0)) 64 128 img) := by
-  obtain ⟨fn, hfn, hok⟩ := hOk.compress512
-  refine ⟨fn, hfn, fun g R s0 hrun hpre hsp => ?_⟩
-  dsimp only [compressInPlaceStubSpecExt, pqxdhHookStackExt] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx2, hn_lt, hst_len, hblk_len⟩, hmem⟩
-  have hx2_nat : (s0.readReg64 .x2).toNat = g.nBlocks := by
-    rw [hx2, BitVec.toNat_ofNat, Nat.mod_eq_of_lt hn_lt]
-  have hst_read : s0.mem.readBytes g.statePtr 64 = E2E.ofU8 g.stateBytes := by
-    have hlen' : (bytesToBv8 g.stateBytes).length = 64 := by simp [bytesToBv8, hst_len]
-    have hmem_assoc : s0.mem ⊨
-        (g.statePtr ↦ₛ bytesToBv8 g.stateBytes) ∗
-          ((g.blocksPtr ↦ₛ bytesToBv8 g.blockBytes) ∗ stackAt s0.sp extHookStack ∗ R) := by
-      simpa only [sepConj_assoc] using hmem
-    have hrd := ((IsBlock.pointsToBytes g.statePtr (bytesToBv8 g.stateBytes)).read hmem_assoc).2
-    rw [hlen', shared_bytesToBv8_eq_ofU8_ext] at hrd
-    exact hrd
-  let st0 : E2E.Sha512State := E2E.readSha512State s0.mem g.statePtr
-  have hle_st0 : E2E.sha512StateBytesLE st0 = bytesToBv8 g.stateBytes := by
-    rw [sha512StateBytesLE_readSha512State_ext, hst_read, ← shared_bytesToBv8_eq_ofU8_ext]
-  have hblk_bv_len : (bytesToBv8 g.blockBytes).length = 128 * g.nBlocks := by
-    simp [bytesToBv8, hblk_len]
-  have hpre0 : s0.mem ⊨ (SignalSession.CliExt.compress512Spec P0.Q).pre
-      (g.statePtr, st0, g.blocksPtr, bytesToBv8 g.blockBytes, g.nBlocks) s0 ∗ R := by
-    dsimp only [SignalSession.CliExt.compress512Spec, SignalSession.CliExt.withStack]
-    rw [hle_st0]
-    have h1 : s0.mem ⊨
-        ⌜s0.readReg64 .x0 = g.statePtr ∧ s0.readReg64 .x1 = g.blocksPtr ∧
-          (s0.readReg64 .x2).toNat = g.nBlocks ∧ (bytesToBv8 g.blockBytes).length = 128 * g.nBlocks⌝ ∗
-        ((g.statePtr ↦ₛ bytesToBv8 g.stateBytes) ∗ (g.blocksPtr ↦ₛ bytesToBv8 g.blockBytes) ∗
-          stackAt s0.sp extHookStack ∗ R) := by
-      rw [satisfies_pure_sepConj]
-      exact ⟨⟨hx0, hx1, hx2_nat, hblk_bv_len⟩, by convert hmem using 1; ac_rfl⟩
-    convert h1 using 1; ac_rfl
-  rcases hok (g.statePtr, st0, g.blocksPtr, bytesToBv8 g.blockBytes, g.nBlocks) R s0 hrun hpre0 hsp with
-    ⟨hkf, hsym, ⟨hret, hcc, hpost⟩ | ⟨_, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩⟩
-  · refine ⟨hkf, hsym, Or.inl ⟨hret, hcc, ?_⟩⟩
-    dsimp only [SignalSession.CliExt.compress512Spec, SignalSession.CliExt.withStack] at hpost
-    have hpost' : (fn s0).mem ⊨
-        ⌜(fn s0).trace = s0.trace⌝ ∗
-        ((g.statePtr ↦ₛ E2E.sha512StateBytesLE
-            ((E2E.chunks128 (bytesToBv8 g.blockBytes)).foldl P0.Q.F512 st0)) ∗
-          (g.blocksPtr ↦ₛ bytesToBv8 g.blockBytes) ∗
-          stackAt s0.sp extHookStack ∗ R) := by
-      convert hpost using 1; ac_rfl
-    rw [satisfies_pure_sepConj] at hpost'
-    rcases hpost' with ⟨htr, hmemf⟩
-    dsimp only [compressInPlaceStubSpecExt, pqxdhHookStackExt]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨htr, ?_⟩
-    have hrev_st : revWords64 g.stateBytes = E2E.sha512StateBytesBE st0 := by
-      have hst_eq : g.stateBytes = E2E.toU8 (E2E.sha512StateBytesLE st0) := by
-        rw [hle_st0, shared_bytesToBv8_eq_ofU8_ext, toU8_ofU8_ext]
-      rw [hst_eq, ofU8_revWords64_toU8_sha512StateBytesLE_ext]
-    let stFinal := (E2E.chunks128 (E2E.ofU8 g.blockBytes)).foldl P0.Q.F512 st0
-    have hout_eq :
-        fitBv8 64 (sha512CompressOutBytes (E2E.modelPrims X P0) g.stateBytes g.blockBytes) =
-          E2E.sha512StateBytesLE stFinal := by
-      unfold sha512CompressOutBytes
-      rw [hrev_st, foldl_sha512Step_modelPrims_ext, ← chunks128_ofU8_ext,
-        fitBytes_of_length_eq (sha512StateBytesBE_len_ext stFinal)]
-      have hrev_len : (revWords64 (E2E.sha512StateBytesBE stFinal)).length = 64 := by
-        have hlen_ofU8 : (E2E.ofU8 (revWords64 (E2E.sha512StateBytesBE stFinal))).length =
-            (revWords64 (E2E.sha512StateBytesBE stFinal)).length := by simp [E2E.ofU8]
-        rw [← hlen_ofU8, ofU8_revWords64_sha512StateBytesBE_ext, sha512StateBytesLE_len_ext]
-      rw [fitBv8_eq_bytesToBv8 hrev_len, shared_bytesToBv8_eq_ofU8_ext,
-        ofU8_revWords64_sha512StateBytesBE_ext]
-    rw [hout_eq]
-    dsimp only [stFinal]
-    rw [← shared_bytesToBv8_eq_ofU8_ext]
-    convert hmemf using 1; ac_rfl
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-
-theorem PqxdhHookContractsExt.of_externsOk (X : E2E.UnreachedPqxdhPrimitives) {P0 : E2E.PEParams}
-    {A : RustAlloc} {ext : String → Option (State → State)} (img : Obj.Image)
-    (hOk : SignalSession.CliExternsOk P0 A ext) :
-    PqxdhHookContractsExt (E2E.modelPrims X P0) A img ext where
-  dalekMontToEd    := dalekMontToEd_ext_of_externsOk X img hOk
-  dalekTorsionFree := dalekTorsionFree_ext_of_externsOk X img hOk
-  sha512Compress   := sha512Compress_ext_of_externsOk X img hOk
-  dalekScalarWide  := cryptoLeafRef_ext_of_hookSat hOk.scalarWide
-  dalekScalarMod   := cryptoLeafByVal_ext_of_hookSat hOk.scalarMod
-  dalekCompress    := cryptoLeafRef_ext_of_hookSat hOk.compress
-  dalekEdNeg       := cryptoLeafByVal_ext_of_hookSat hOk.edNeg
-  dalekDoubleMul   := dalekDoubleMul_ext_of_externsOk X img hOk
-  memcpy           := hOk.memcpy
-  memset           := hOk.memset
-  blackBox         := hOk.blackBox
-
-theorem PqxdhHookContractsExt.of_cliExternsOk (X : E2E.UnreachedPqxdhPrimitives) {P0 : E2E.PEParams}
-    {A : RustAlloc} {ext : String → Option (State → State)} (img : Obj.Image)
-    (hOk : SignalSession.CliExternsOk P0 A ext) :
-    PqxdhHookContractsExt (E2E.modelPrims X P0) A img (SignalSession.cliExternsWith ext) :=
-  (PqxdhHookContractsExt.of_externsOk X img hOk).of_hooks_eq
-    (by simp [SignalSession.cliExternsWith, E2E.withImagePanics, E2E.isImagePanicSymbol, E2E.extraImagePanicNames, Rust.isPanicSymbol, dalekMontToEdStub])
-    (by simp [SignalSession.cliExternsWith, E2E.withImagePanics, E2E.isImagePanicSymbol, E2E.extraImagePanicNames, Rust.isPanicSymbol, dalekTorsionFreeStub])
-    (by simp [SignalSession.cliExternsWith, E2E.withImagePanics, E2E.isImagePanicSymbol, E2E.extraImagePanicNames, Rust.isPanicSymbol, sha512CompressStub])
-    (by simp [SignalSession.cliExternsWith, E2E.withImagePanics, E2E.isImagePanicSymbol, E2E.extraImagePanicNames, Rust.isPanicSymbol, dalekScalarWideStub])
-    (by simp [SignalSession.cliExternsWith, E2E.withImagePanics, E2E.isImagePanicSymbol, E2E.extraImagePanicNames, Rust.isPanicSymbol, dalekScalarModStub])
-    (by simp [SignalSession.cliExternsWith, E2E.withImagePanics, E2E.isImagePanicSymbol, E2E.extraImagePanicNames, Rust.isPanicSymbol, dalekCompressStub])
-    (by simp [SignalSession.cliExternsWith, E2E.withImagePanics, E2E.isImagePanicSymbol, E2E.extraImagePanicNames, Rust.isPanicSymbol, dalekEdNegStub])
-    (by simp [SignalSession.cliExternsWith, E2E.withImagePanics, E2E.isImagePanicSymbol, E2E.extraImagePanicNames, Rust.isPanicSymbol, dalekDoubleMulStub])
-    (by simp [SignalSession.cliExternsWith, E2E.withImagePanics, E2E.isImagePanicSymbol, E2E.extraImagePanicNames, Rust.isPanicSymbol, memcpyName])
-    (by simp [SignalSession.cliExternsWith, E2E.withImagePanics, E2E.isImagePanicSymbol, E2E.extraImagePanicNames, Rust.isPanicSymbol, memsetName])
-    (by simp [SignalSession.cliExternsWith, E2E.withImagePanics, E2E.isImagePanicSymbol, E2E.extraImagePanicNames, Rust.isPanicSymbol])
-
-def ecPubKeyIsCanonicalCallSpecExt (P : Primitives) : Spec KeyCanonicalGhost where
+@[expose] def ecPubKeyIsCanonicalCallSpecExt (P : Primitives) : Spec KeyCanonicalGhost where
   pre := fun g s =>
     ⌜s.readReg64 .x0 = g.keyPtr ∧ g.keyBytes.length = 32⌝ ∗
     (g.keyPtr ↦ₛ bytesToBv8 g.keyBytes) ∗
@@ -1844,247 +884,5 @@ theorem stackAt_ecPubKeyIsCanonical_call_ext (sp : BitVec 64) :
   have h3 : sp - 400#64 + 32#64 + 8#64 + 168#64 = sp - 192#64 := by bv_arith
   have h4 : sp - 400#64 + 32#64 + 8#64 + 168#64 + 160#64 = sp - 32#64 := by bv_arith
   rw [h4, h3, h2, h1]
-
-theorem dalekMontToEd_ok_at_ext {P : Primitives} {img : Obj.Image}
-    {absHooks : String → Option (State → State)}
-    (hmont : HookSat absHooks dalekMontToEdStub (dalekMontToEdStubSpecExt P img))
-    {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff dalekMontToEdStub := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt img.base absHooks)
-      ((tripleRatchetProgAtExt img.base absHooks).fnAddr name + BitVec.ofNat 64 k)
-      (dalekMontToEdStubSpecExt P img) :=
-  hook_ok_at (hname := dalekMontToEdStub) rfl hk
-    (by fnoff_eq)
-    (by fnoff_eq) (by simp [Rust.isPanicSymbol, dalekMontToEdStub])
-    hmont
-
-theorem dalekTorsionFree_ok_at_ext {P : Primitives} {img : Obj.Image}
-    {absHooks : String → Option (State → State)}
-    (htors : HookSat absHooks dalekTorsionFreeStub (cryptoBoolRegStubSpecExt P.isTorsionFree 160 img))
-    {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff dalekTorsionFreeStub := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt img.base absHooks)
-      ((tripleRatchetProgAtExt img.base absHooks).fnAddr name + BitVec.ofNat 64 k)
-      (cryptoBoolRegStubSpecExt P.isTorsionFree 160 img) :=
-  hook_ok_at (hname := dalekTorsionFreeStub) rfl hk
-    (by fnoff_eq)
-    (by fnoff_eq) (by simp [Rust.isPanicSymbol, dalekTorsionFreeStub])
-    htors
-
-set_option maxHeartbeats 1200000 in
-theorem ecPubKeyIsCanonical_call_ok'_ext {P : Primitives} {img : Obj.Image}
-    {absHooks : String → Option (State → State)}
-    (hisCanon : ∀ k, P.isCanonicalEC k = isCanonicalRef P k)
-    (hmontLen : ∀ u s ed, P.montToEd u s = some ed → ed.length = 160)
-    (hmontHook : HookSat absHooks dalekMontToEdStub (dalekMontToEdStubSpecExt P img))
-    (htorsHook : HookSat absHooks dalekTorsionFreeStub
-      (cryptoBoolRegStubSpecExt P.isTorsionFree 160 img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base absHooks)
-      ((tripleRatchetProgAtExt img.base absHooks).fnAddr ecPubKeyIsCanonicalSym)
-      (ecPubKeyIsCanonicalCallSpecExt P) := by
-  unfold ecPubKeyIsCanonicalCallSpecExt
-  simp only [stackAt_ecPubKeyIsCanonical_call_ext]
-  cells_unfold
-  have hmont_call : subroutine_ok (tripleRatchetProgAtExt img.base absHooks)
-      ((tripleRatchetProgAtExt img.base absHooks).fnAddr ecPubKeyIsCanonicalSym +
-        BitVec.ofNat 64 (num% (ls_off% "<curve25519_dalek::montgomery::MontgomeryPoint>::to_edwards" -
-          (ls_off% "<libsignal_core::curve::PublicKey>::is_canonical"))))
-      (dalekMontToEdStubSpecExt P img) :=
-    dalekMontToEd_ok_at_ext hmontHook
-  have htors_call : subroutine_ok (tripleRatchetProgAtExt img.base absHooks)
-      ((tripleRatchetProgAtExt img.base absHooks).fnAddr ecPubKeyIsCanonicalSym +
-        BitVec.ofNat 64 (num% (ls_off% "<curve25519_dalek::edwards::EdwardsPoint>::is_torsion_free" -
-          (ls_off% "<libsignal_core::curve::PublicKey>::is_canonical"))))
-      (cryptoBoolRegStubSpecExt P.isTorsionFree 160 img) :=
-    dalekTorsionFree_ok_at_ext htorsHook
-  clear hmontHook htorsHook
-  have hfn : libsignalSessionCode.fnOff ecPubKeyIsCanonicalSym =
-      (ls_off% "<libsignal_core::curve::PublicKey>::is_canonical") :=
-    (ls_lemma% fnOff "<libsignal_core::curve::PublicKey>::is_canonical")
-  code_fetches CryptoVerification.libsignalSessionCode
-    ecPubKeyIsCanonical img.base
-    (Rust.withPanics absHooks) hfn
-    (ls_off% "<libsignal_core::curve::PublicKey>::is_canonical") 236
-  wp_init g s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨keyPtr, keyBytes⟩ := g
-  dsimp only at *
-  subst h_1
-  have hcanon_eq : P.isCanonicalEC keyBytes = isCanonicalRef P keyBytes :=
-    hisCanon keyBytes
-  rw [hcanon_eq]
-  have hlen_bv : (bytesToBv8 keyBytes).length = 32 := by simp [bytesToBv8, h]
-  obtain ⟨w0, w1, w2, w3, _, hpk_cells⟩ :=
-    exists_unpack64_of_length_32 hlen_bv
-  have hpk_sp_tail (R_tail : SepProp) :
-      (s0.sp - 400#64) ↦₆₄ w0 ∗ ((s0.sp - 392#64) ↦₆₄ w1 ∗
-      ((s0.sp - 384#64) ↦₆₄ w2 ∗ ((s0.sp - 376#64) ↦₆₄ w3 ∗ R_tail))) =
-      (s0.sp - 400#64) ↦ₛ bytesToBv8 keyBytes ∗ R_tail := by
-    have hpk_sp := hpk_cells (s0.sp - 400#64)
-    have ha1 : s0.sp - 400#64 + 8#64 = s0.sp - 392#64 := by bv_arith
-    have ha2 : s0.sp - 400#64 + 16#64 = s0.sp - 384#64 := by bv_arith
-    have ha3 : s0.sp - 400#64 + 24#64 = s0.sp - 376#64 := by bv_arith
-    rw [ha1, ha2, ha3] at hpk_sp
-    rw [hpk_sp, sepConj_assoc, sepConj_assoc, sepConj_assoc]
-  have hpk_reg0_tail (R_tail : SepProp) :
-      s0.readReg64 (Reg.gpr 0#5) ↦₆₄ w0 ∗ ((s0.readReg64 (Reg.gpr 0#5) + 8#64) ↦₆₄ w1 ∗
-      ((s0.readReg64 (Reg.gpr 0#5) + 16#64) ↦₆₄ w2 ∗
-      ((s0.readReg64 (Reg.gpr 0#5) + 24#64) ↦₆₄ w3 ∗ R_tail))) =
-      s0.readReg64 (Reg.gpr 0#5) ↦ₛ bytesToBv8 keyBytes ∗ R_tail := by
-    rw [hpk_cells (s0.readReg64 (Reg.gpr 0#5)), sepConj_assoc, sepConj_assoc, sepConj_assoc]
-  wp_conv_pre => rw [← hpk_reg0_tail]
-  wp_steps
-  wp_conv_pre => rw [hpk_reg0_tail, hpk_sp_tail]
-  wp_call hmont_call ⟨keyBytes, 0, s0.sp - 400#64, s0.sp - 360#64⟩
-  wp_conv_pre => rw [show (0 : UInt8) &&& 1 = 0 from rfl, ← hpk_sp_tail]
-  cases hmont : P.montToEd keyBytes 0 with
-  | none =>
-    have hcanon_none : isCanonicalRef P keyBytes = false := by
-      simp [isCanonicalRef, hmont]
-    rw [hcanon_none]
-    wp_conv_pre =>
-      rw [dalekMontToEdOutAt_none P keyBytes 0 hmont (s0.sp - 360#64), sepConj_assoc]
-    wp_steps
-    refine SepWP.weaken_pre
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-        (memRegion168_of_cell_and_memRegion160 (s0.sp - 360#64) 0#64 _))))) ?_
-    wp_done
-  | some edPt =>
-    have hed_len : edPt.length = 160 := hmontLen keyBytes 0 edPt hmont
-    have hed_bv_len : (bytesToBv8 edPt).length = 160 := by simp [bytesToBv8, hed_len]
-    obtain ⟨e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15,
-      e16, e17, e18, e19, hed_cells⟩ :=
-      exists_unpack64_of_length_160 hed_bv_len
-    refine sepWP_memRegion160_head (s0.sp - 192#64)
-      (F_rest := (s0.sp - 400#64) ↦₆₄ w0 ∗
-        ((s0.sp - 392#64) ↦₆₄ w1 ∗
-          ((s0.sp - 384#64) ↦₆₄ w2 ∗
-            ((s0.sp - 376#64) ↦₆₄ w3 ∗
-              (dalekMontToEdOutAt P (s0.sp - 360#64) keyBytes 0 ∗
-                (stackAt (s0.sp - 400#64) pqxdhHookStackExt ∗
-                  (s0.readReg64 (Reg.gpr 0#5) ↦ₛ bytesToBv8 keyBytes ∗
-                    (memRegion (s0.sp - 368#64) 8 ∗
-                        ((s0.sp - 32#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5) ∗
-                          ((s0.sp - 24#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5) ∗
-                            ((s0.sp - 16#64) ↦₆₄ s0.readReg64 (Reg.gpr 28#5) ∗
-                              (s0.sp - 8#64) ↦₆₄ s0.readReg64 (Reg.gpr 19#5))))))))))))
-      (by ac_rfl)
-      fun u0 u1 u2 u3 u4 u5 u6 u7 u8 u9 u10 u11 u12 u13 u14 u15 u16 u17 u18 u19 => ?_
-    wp_conv_pre =>
-      rw [dalekMontToEdOutAt_some P keyBytes edPt 0 hmont hed_len (s0.sp - 360#64),
-        sepConj_assoc ((s0.sp - 360#64) ↦₆₄ 1#64),
-        ← hed_cells (s0.sp - 360#64 + 8#64)]
-    wp_steps
-    wp_conv_pre =>
-      rw [hed_cells (s0.sp - 192#64), hed_cells (s0.sp - 360#64 + 8#64)]
-    refine SepWP.weaken_pre
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-        (sepConj_mono_right (memRegion168_of_cell_and_bytes160
-          (s0.sp - 360#64) 1#64 hed_bv_len _)))))) ?_
-    wp_call htors_call ⟨s0.sp - 192#64, edPt⟩
-    clear u0 u1 u2 u3 u4 u5 u6 u7 u8 u9 u10 u11 u12 u13 u14 u15 u16 u17 u18 u19
-      e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17 e18 e19 hed_cells
-    refine SepWP.weaken_pre (memRegion160_of_bytes160 (s0.sp - 192#64) hed_bv_len _) ?_
-    cases htors : P.isTorsionFree edPt with
-    | false =>
-      have hcanon_false : isCanonicalRef P keyBytes = false := by
-        simp [isCanonicalRef, hmont, htors]
-      rw [hcanon_false]
-      simp only [htors, Bool.false_eq_true, ite_false] at hpost_1
-      have hx0_8 : BitVec.setWidth 8 (sf_1.readReg64 (Reg.gpr 0#5)) = 0#8 := by
-        revert hpost_1; bv_bits
-      wp_steps
-      wp_done
-    | true =>
-      simp only [htors, ite_true] at hpost_1
-      have hfocus8 (off : Nat) (hoff : off < 32) (R_tail : SepProp) :
-          s0.readReg64 (Reg.gpr 0#5) ↦ₛ bytesToBv8 keyBytes ∗ R_tail =
-            ((s0.readReg64 (Reg.gpr 0#5) + BitVec.ofNat 64 off) ↦₈
-              (bytesToBv8 keyBytes).getD off 0#8) ∗
-            ((s0.readReg64 (Reg.gpr 0#5) ↦ₛ (bytesToBv8 keyBytes).take off) ∗
-             ((s0.readReg64 (Reg.gpr 0#5) + BitVec.ofNat 64 (off + 1)) ↦ₛ
-              (bytesToBv8 keyBytes).drop (off + 1) ∗ R_tail)) := by
-        rw [pointsToBytes_focus8 (s0.readReg64 (Reg.gpr 0#5)) (bytesToBv8 keyBytes) off
-            (by rw [hlen_bv]; exact hoff),
-          sepConj_assoc, sepConj_assoc]
-      have hfocus64 (off : Nat) (hoff : off + 8 ≤ 32) (R_tail : SepProp) :
-          s0.readReg64 (Reg.gpr 0#5) ↦ₛ bytesToBv8 keyBytes ∗ R_tail =
-            ((s0.readReg64 (Reg.gpr 0#5) + BitVec.ofNat 64 off) ↦₆₄
-              pack64 ((bytesToBv8 keyBytes).getD off 0#8) ((bytesToBv8 keyBytes).getD (off + 1) 0#8)
-                ((bytesToBv8 keyBytes).getD (off + 2) 0#8)
-                ((bytesToBv8 keyBytes).getD (off + 3) 0#8)
-                ((bytesToBv8 keyBytes).getD (off + 4) 0#8)
-                ((bytesToBv8 keyBytes).getD (off + 5) 0#8)
-                ((bytesToBv8 keyBytes).getD (off + 6) 0#8)
-                ((bytesToBv8 keyBytes).getD (off + 7) 0#8)) ∗
-            ((s0.readReg64 (Reg.gpr 0#5) ↦ₛ (bytesToBv8 keyBytes).take off) ∗
-             ((s0.readReg64 (Reg.gpr 0#5) + BitVec.ofNat 64 (off + 8)) ↦ₛ
-              (bytesToBv8 keyBytes).drop (off + 8) ∗ R_tail)) := by
-        rw [pointsToBytes_focus64 (s0.readReg64 (Reg.gpr 0#5)) (bytesToBv8 keyBytes) off
-            (by rw [hlen_bv]; exact hoff),
-          sepConj_assoc, sepConj_assoc]
-      wp_conv_pre => rw [hfocus8 31 (by decide)]
-      wp_steps
-      wp_conv_pre => rw [← hfocus8 31 (by decide)]
-      cases hb31 : ((bytesToBv8 keyBytes).getD 31 0#8).getLsbD 7 with
-      | true =>
-        have hb31_u8 : ((keyBytes.getD 31 0 &&& 0x80) == 0) = false := by
-          rw [bytesToBv8_getD] at hb31
-          exact (uint8_getLsbD7_eq_true_iff _).mp hb31
-        have hcanon_b31 : isCanonicalRef P keyBytes = false := by
-          unfold isCanonicalRef; rw [hb31_u8]; simp
-        rw [hcanon_b31]
-        simp only [beq_self_eq_true, ite_true]
-        wp_steps
-        wp_done
-      | false =>
-        have hb31_u8 : ((keyBytes.getD 31 0 &&& 0x80) == 0) = true := by
-          rw [bytesToBv8_getD] at hb31
-          exact (uint8_getLsbD7_eq_false_iff _).mp hb31
-        simp only [beq_iff_eq, Bool.false_eq_true, ite_false]
-        wp_conv_pre => rw [hfocus8 0 (by decide)]
-        wp_steps
-        wp_conv_pre => rw [← hfocus8 0 (by decide)]
-        cases hb0 : (BitVec.zeroExtend 64 ((bytesToBv8 keyBytes).getD 0 0#8)).ult 237#64 with
-        | true =>
-          have hb0_u8 : decide (keyBytes.getD 0 0 ≥ 0xED) = false := by
-            rw [bytesToBv8_getD] at hb0
-            exact (uint8_ult237_eq_true_iff _).mp hb0
-          have hlen_beq : (keyBytes.length == 32) = true := beq_iff_eq.mpr h
-          have hcanon_b0 : isCanonicalRef P keyBytes = true := by
-            simp only [isCanonicalRef, scalarIsInRange, hlen_beq, hb31_u8, hb0_u8, hmont, htors]
-            rfl
-          rw [hcanon_b0]
-          simp only [ite_true]
-          wp_steps
-          wp_done
-        | false =>
-          have hb0_u8 : decide (keyBytes.getD 0 0 ≥ 0xED) = true := by
-            rw [bytesToBv8_getD] at hb0
-            exact (uint8_ult237_eq_false_iff _).mp hb0
-          simp only [Bool.false_eq_true, ite_false]
-          wp_conv_pre => rw [hfocus64 1 (by decide)]
-          wp_step
-          wp_conv_pre => rw [← hfocus64 1 (by decide), hfocus64 9 (by decide)]
-          wp_steps
-          wp_conv_pre => rw [← hfocus64 9 (by decide), hfocus64 17 (by decide)]
-          wp_step
-          wp_conv_pre => rw [← hfocus64 17 (by decide), hfocus64 23 (by decide)]
-          wp_steps
-          wp_conv_pre => rw [← hfocus64 23 (by decide)]
-          rw [ecPubKeyIsCanonical_tail_eq P keyBytes edPt h hmont htors hb31_u8 hb0_u8]
-          wp_done
-
-theorem ecPubKeyIsCanonical_call_ok_ext {P : Primitives} {A : RustAlloc} {img : Obj.Image}
-    {absHooks : String → Option (State → State)}
-    (hWF : StructuralPrims P) (hH : PqxdhHookContractsExt P A img absHooks) :
-    subroutine_ok (tripleRatchetProgAtExt img.base absHooks)
-      ((tripleRatchetProgAtExt img.base absHooks).fnAddr ecPubKeyIsCanonicalSym)
-      (ecPubKeyIsCanonicalCallSpecExt P) :=
-  ecPubKeyIsCanonical_call_ok'_ext hWF.isCanonical_eq_isCanonicalRef hWF.montToEd_len
-    hH.dalekMontToEd hH.dalekTorsionFree
 
 end CryptoVerification.E2E.Pqxdh.Shared

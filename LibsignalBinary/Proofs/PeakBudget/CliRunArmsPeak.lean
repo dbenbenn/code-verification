@@ -11,17 +11,20 @@ module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
 public import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromHelpers
+public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromHelpers -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.WireSignalHelpers
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Concat2Budget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserialize.SpecBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.PeakBudget.WireSignalHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Concat2Budget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserialize.SpecBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Exact-Order `signal_session::run` Helper and Arm Peak Envelopes
@@ -31,7 +34,7 @@ Sequential `AllocEvent` envelopes and symbolic `PhaseCreditSpec M` bounds for `s
 (`R3a | R3b | RecvBad`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -127,20 +130,6 @@ theorem pathDeltaLive_le_peak (maxDir maxName : Nat) :
     pathDeltaLive maxDir maxName ≤ pathDeltaPeak maxDir maxName := by
   unfold pathDeltaLive pathDeltaPeak; generalize max (4 * maxDir + maxName + 16) 16 = m; omega
 
-theorem dirGetRuleDeltaLive_le_peak (maxDir maxName maxVal fileCap : Nat) :
-    dirGetRuleDeltaLive maxDir maxName maxVal fileCap ≤
-      dirGetRuleDeltaPeak maxDir maxName maxVal fileCap := by
-  have hp := pathDeltaLive_le_peak maxDir maxName
-  have hrf : DirPeakSpec.readFileRuleDeltaLive fileCap ≤
-      DirPeakSpec.readFileRuleDeltaPeak fileCap := by
-    unfold DirPeakSpec.readFileRuleDeltaLive DirPeakSpec.readFileRuleDeltaPeak
-      DirPeakSpec.allocBytes1DeltaLive DirPeakSpec.allocBytes1DeltaPeak
-      DirPeakSpec.readFileCliIoDeltaLive DirPeakSpec.readFileCliIoDeltaPeak
-    exact max_le_max (Nat.le_refl _) (by decide)
-  unfold dirGetRuleDeltaLive dirGetRuleDeltaPeak
-    DirPeakSpec.allocBytes1DeltaLive DirPeakSpec.allocBytes1DeltaPeak
-  exact max_le_max (Nat.le_refl _) (Nat.add_le_add hp hrf)
-
 private def kutf8 (s : String) : List (BitVec 8) :=
   (s.toList.flatMap String.utf8EncodeChar).map fun b => BitVec.ofNat 8 b.toNat
 
@@ -176,12 +165,12 @@ theorem utf8_bundleNames_length_le_16 :
 
 /-! ## `SplitIdEnv`, `SplitSignedEnv`, `addressTryParse`, and `DeserCloneStepEnv` -/
 
-def SplitIdEnv (_file : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def SplitIdEnv (_file : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   SeqEnv (· = rustAllocEvents 14 1) FreeOnlyEvs evs
-def splitIdDeltaCum : Nat := 2 * 14 + 9539
-def splitIdDeltaLive : Nat := 14 + 8195
-def splitIdDeltaPeak : Nat := 14 + 8195
-def splitIdMaxReq : Nat := 14
+@[expose] def splitIdDeltaCum : Nat := 2 * 14 + 9539
+@[expose] def splitIdDeltaLive : Nat := 14 + 8195
+@[expose] def splitIdDeltaPeak : Nat := 14 + 8195
+@[expose] def splitIdMaxReq : Nat := 14
 
 theorem splitId_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) (file : List (BitVec 8)) :
@@ -198,13 +187,13 @@ theorem splitId_small_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
       (hM.smallAlloc_le hsmall) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 14))
     (fun _ h => h) (Nat.le_refl 0)
 
-def SplitSignedEnv (file : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def SplitSignedEnv (file : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   SeqEnv (SplitIdEnv file)
     (fun evs2 => FreeOnlyEvs evs2 ∨ SeqEnv (· = rustAllocEvents 14 1) FreeOnlyEvs evs2) evs
-def splitSignedDeltaCum : Nat := 2 * splitIdDeltaCum
-def splitSignedDeltaLive : Nat := 2 * splitIdDeltaLive
-def splitSignedDeltaPeak : Nat := 2 * splitIdDeltaPeak
-def splitSignedMaxReq : Nat := 14
+@[expose] def splitSignedDeltaCum : Nat := 2 * splitIdDeltaCum
+@[expose] def splitSignedDeltaLive : Nat := 2 * splitIdDeltaLive
+@[expose] def splitSignedDeltaPeak : Nat := 2 * splitIdDeltaPeak
+@[expose] def splitSignedMaxReq : Nat := 14
 
 theorem splitSigned_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) (file : List (BitVec 8)) :
@@ -224,10 +213,10 @@ theorem splitSigned_small_phaseCredit {M : AllocCostModel} [HasFineReallocCredit
     (by unfold splitSignedDeltaCum; omega) (Nat.le_refl 0) (Nat.le_refl 0)
     (by unfold splitSignedMaxReq splitIdMaxReq; omega)
 
-def addressTryParseDeltaCum : Nat := 2 * 40 + 9539
-def addressTryParseDeltaLive : Nat := 40 + 8195
-def addressTryParseDeltaPeak : Nat := 40 + 8195
-def addressTryParseMaxReq : Nat := 40
+@[expose] def addressTryParseDeltaCum : Nat := 2 * 40 + 9539
+@[expose] def addressTryParseDeltaLive : Nat := 40 + 8195
+@[expose] def addressTryParseDeltaPeak : Nat := 40 + 8195
+@[expose] def addressTryParseMaxReq : Nat := 40
 
 theorem addressTryParse_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) (bs : List (BitVec 8)) :
@@ -253,46 +242,7 @@ private theorem span_loop_snd_length_le {α : Type} (p : α → Bool) :
     · exact Nat.le_trans (span_loop_snd_length_le p xs (x :: acc)) (Nat.le_succ _)
     · exact Nat.le_refl _
 
-theorem addrParse_name_lt_length (uuidParse : UuidParser) {bs : List (BitVec 8)} {a : AddrV}
-    (h : addrParse uuidParse bs = some a) : a.name.length < bs.length := by
-  unfold addrParse at h
-  rcases hrs : rsplitDot bs with _ | ⟨name, dev⟩ <;> rw [hrs] at h
-  · cases h
-  · have hlt : name.length < bs.length := by
-      unfold rsplitDot List.span at hrs
-      cases hsp : List.span.loop (fun b => b != 46#8) bs.reverse [] with
-      | mk devR rest =>
-        rw [hsp] at hrs
-        cases rest with
-        | nil => cases hrs
-        | cons _ nameR =>
-          simp only [Option.some.injEq, Prod.mk.injEq] at hrs
-          rcases hrs with ⟨rfl, _⟩
-          have h0 := span_loop_snd_length_le (fun b => b != 46#8) bs.reverse []
-          rw [hsp] at h0
-          simp only [List.length_cons, List.length_reverse] at h0 ⊢
-          omega
-    dsimp only at h
-    rcases hsid : serviceIdParse uuidParse name with _ | sid <;> rw [hsid] at h
-    · cases h
-    · rcases hp : parseUnsigned 255 dev with _ | d <;> rw [hp] at h
-      · cases h
-      · dsimp only at h; split_ifs at h; injection h with ha; rw [← ha]; exact hlt
-
-theorem addressEvents_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (uuidParse : UuidParser) (bs : List (BitVec 8)) :
-    PhaseCreditSpec M (· = addressEvents uuidParse bs)
-      (2 * bs.length + 9539) (bs.length + 8195) (bs.length + 8195) bs.length := by
-  unfold addressEvents
-  cases ha : addrParse uuidParse bs with
-  | none =>
-    exact (PhaseCreditSpec.nil M).mono (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-  | some a =>
-    have hlt := addrParse_name_lt_length uuidParse ha
-    exact (PhaseCreditSpec.rustAlloc_aff hM (req := a.name.length) (al := 1) (by decide)).mono
-      (by omega) (by omega) (by omega) (Nat.le_of_lt hlt)
-
-def KemDeserStepEnv (evs : List AllocEvent) : Prop := evs = rustAllocEvents kemPkLen 1 ∨ evs = []
+@[expose] def KemDeserStepEnv (evs : List AllocEvent) : Prop := evs = rustAllocEvents kemPkLen 1 ∨ evs = []
 
 theorem kemDeserStepEnv_of_kemDeserializeEvents (bs : List (BitVec 8)) :
     KemDeserStepEnv (kemDeserializeEvents bs) := by
@@ -305,13 +255,13 @@ theorem kemDeserStep_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M] (
     (Nat.max_le.mpr ⟨Nat.le_refl _, Nat.zero_le _⟩) (Nat.max_le.mpr ⟨Nat.le_refl _, Nat.zero_le _⟩)
     (Nat.max_le.mpr ⟨Nat.le_refl _, Nat.zero_le _⟩) (Nat.max_le.mpr ⟨Nat.le_refl _, Nat.zero_le _⟩)
 
-def DeserCloneStepEnv (evs : List AllocEvent) : Prop :=
+@[expose] def DeserCloneStepEnv (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ SeqEnv (· = rustAllocEvents 64 1) (SeqEnv KemDeserStepEnv
     (fun evs3 => FreeOnlyEvs evs3 ∨ SeqEnv (· = rustAllocEvents 64 1) FreeOnlyEvs evs3)) evs
-def deserCloneDeltaCum : Nat := 2 * (2 * 64 + 9539) + (2 * kemPkLen + 9539)
-def deserCloneDeltaLive : Nat := 2 * (64 + 8195) + (kemPkLen + 8195)
-def deserCloneDeltaPeak : Nat := 2 * (64 + 8195) + (kemPkLen + 8195)
-def deserCloneMaxReq : Nat := max 64 kemPkLen
+@[expose] def deserCloneDeltaCum : Nat := 2 * (2 * 64 + 9539) + (2 * kemPkLen + 9539)
+@[expose] def deserCloneDeltaLive : Nat := 2 * (64 + 8195) + (kemPkLen + 8195)
+@[expose] def deserCloneDeltaPeak : Nat := 2 * (64 + 8195) + (kemPkLen + 8195)
+@[expose] def deserCloneMaxReq : Nat := max 64 kemPkLen
 
 theorem deserCloneStep_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) :
@@ -331,24 +281,24 @@ theorem deserCloneStep_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
 
 /-! ## `BundleReadEnv` and LIFO Temporary-File Cancellation (`TempFileBracketEnv`) -/
 
-def errStr22DeltaCum : Nat := 2 * 22 + 9539
-def errStr22DeltaLive : Nat := 22 + 8195
-def errStr22DeltaPeak : Nat := 22 + 8195
+@[expose] def errStr22DeltaCum : Nat := 2 * 22 + 9539
+@[expose] def errStr22DeltaLive : Nat := 22 + 8195
+@[expose] def errStr22DeltaPeak : Nat := 22 + 8195
 
-def BundleReadPostPathEnv (rd : ReadRule) (files : FsFiles) (fullPath : List (BitVec 8))
+@[expose] def BundleReadPostPathEnv (rd : ReadRule) (files : FsFiles) (fullPath : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   match rd files fullPath with
   | .ok bs => ConcatEnv (· = allocBytes1Events bs) FreeOnlyEvs evs
   | .error () => SeqEnv FreeOnlyEvs (· = rustAllocEvents 22 1) evs
 
-def BundleReadEnv (rd : ReadRule) (files : FsFiles) (dir name : List (BitVec 8))
+@[expose] def BundleReadEnv (rd : ReadRule) (files : FsFiles) (dir name : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   SeqEnv (CliPathEnv dir name) (BundleReadPostPathEnv rd files (pathOf dir name)) evs
 
-def bundleReadPostDeltaCum (fileCap : Nat) : Nat := 2 * max 22 fileCap + 9539
-def bundleReadPostDeltaLive (fileCap : Nat) : Nat := max 22 fileCap + 8195
-def bundleReadPostDeltaPeak (fileCap : Nat) : Nat := max 22 fileCap + 8195
-def bundleReadPostMaxReq (fileCap : Nat) : Nat := max 22 fileCap
+@[expose] def bundleReadPostDeltaCum (fileCap : Nat) : Nat := 2 * max 22 fileCap + 9539
+@[expose] def bundleReadPostDeltaLive (fileCap : Nat) : Nat := max 22 fileCap + 8195
+@[expose] def bundleReadPostDeltaPeak (fileCap : Nat) : Nat := max 22 fileCap + 8195
+@[expose] def bundleReadPostMaxReq (fileCap : Nat) : Nat := max 22 fileCap
 
 theorem bundleReadPost_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) (rd : ReadRule) (files : FsFiles) (fullPath : List (BitVec 8))
@@ -370,29 +320,8 @@ theorem bundleReadPost_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
         (by unfold bundleReadPostDeltaPeak; omega) (Nat.le_max_left 22 fileCap)
     exact phaseCredit_seq_freeOnly_left hM (fun _ h => h) h22
 
-theorem bundleRead_phaseCredit_of_path {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) {rd : ReadRule} {files : FsFiles} {dir name : List (BitVec 8)}
-    {c_p l_p p_p r_p fileCap : Nat} (hpath : PhaseCreditSpec M (CliPathEnv dir name) c_p l_p p_p r_p)
-    (hcap : ∀ bs, rd files (pathOf dir name) = .ok bs → bs.length ≤ fileCap) :
-    PhaseCreditSpec M (BundleReadEnv rd files dir name)
-      (c_p + bundleReadPostDeltaCum fileCap) (l_p + bundleReadPostDeltaLive fileCap)
-      (max p_p (l_p + bundleReadPostDeltaPeak fileCap)) (max r_p (bundleReadPostMaxReq fileCap)) :=
-  hpath.seq (bundleReadPost_phaseCredit hM rd files (pathOf dir name) hcap)
-
-theorem bundleRead_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) {rd : ReadRule} {files : FsFiles} {dir name : List (BitVec 8)}
-    {maxDir maxName fileCap : Nat} (hdir : dir.length ≤ maxDir) (hname : name.length ≤ maxName)
-    (hcap : ∀ bs, rd files (pathOf dir name) = .ok bs → bs.length ≤ fileCap) :
-    PhaseCreditSpec M (BundleReadEnv rd files dir name)
-      (pathDeltaCum maxDir maxName + bundleReadPostDeltaCum fileCap)
-      (pathDeltaLive maxDir maxName + bundleReadPostDeltaLive fileCap)
-      (max (pathDeltaPeak maxDir maxName)
-        (pathDeltaLive maxDir maxName + bundleReadPostDeltaPeak fileCap))
-      (max (pathMaxReq maxDir maxName) (bundleReadPostMaxReq fileCap)) :=
-  bundleRead_phaseCredit_of_path hM (path_phaseCredit hM hdir hname) hcap
-
 /-- Exact-order LIFO temporary-file bracket cancelling `bs` out of post-bracket `Δlive`. -/
-def TempFileBracketEnv (rd : ReadRule) (files : FsFiles) (dir name : List (BitVec 8))
+@[expose] def TempFileBracketEnv (rd : ReadRule) (files : FsFiles) (dir name : List (BitVec 8))
     (Body : List (BitVec 8) → List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   SeqEnv (CliPathEnv dir name)
     (match rd files (pathOf dir name) with
@@ -432,10 +361,10 @@ theorem tempFileBracketEnv_of_bundleRead {rd : ReadRule} {files : FsFiles}
     exact ⟨allocBytes1Events bs ++ (evs_pf ++ evs_b), deallocBytes1OfLen bs.length, rfl,
       ⟨allocBytes1Events bs, evs_pf ++ evs_b, rfl, rfl, Or.inr ⟨evs_pf, evs_b, rfl, hpf, hb⟩⟩, rfl⟩
 
-def tempFilePostCum (fileCap c_b : Nat) : Nat := max errStr22DeltaCum (2 * fileCap + 9539 + c_b)
-def tempFilePostLive (l_b : Nat) : Nat := max errStr22DeltaLive l_b
-def tempFilePostPeak (fileCap p_b : Nat) : Nat := max errStr22DeltaPeak (fileCap + 8195 + p_b)
-def tempFilePostMaxReq (fileCap r_b : Nat) : Nat := max 22 (max fileCap r_b)
+@[expose] def tempFilePostCum (fileCap c_b : Nat) : Nat := max errStr22DeltaCum (2 * fileCap + 9539 + c_b)
+@[expose] def tempFilePostLive (l_b : Nat) : Nat := max errStr22DeltaLive l_b
+@[expose] def tempFilePostPeak (fileCap p_b : Nat) : Nat := max errStr22DeltaPeak (fileCap + 8195 + p_b)
+@[expose] def tempFilePostMaxReq (fileCap r_b : Nat) : Nat := max 22 (max fileCap r_b)
 
 theorem tempFilePostLive_le_peak {fileCap l_b p_b : Nat} (hlp : l_b ≤ p_b) :
     tempFilePostLive l_b ≤ tempFilePostPeak fileCap p_b := max_le_max (Nat.le_refl _) (by omega)
@@ -469,36 +398,20 @@ theorem tempFileBracket_phaseCredit_of_path {M : AllocCostModel} [HasFineRealloc
     exact (phaseCredit_seq_freeOnly_right hM hcancel (fun _ h => h) (by omega)).mono
       (Nat.le_max_right _ _) (Nat.le_max_right _ _) (Nat.le_max_right _ _) (Nat.le_max_right _ _)
 
-theorem tempFileBracket_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) {rd : ReadRule} {files : FsFiles} {dir name : List (BitVec 8)}
-    {Body : List (BitVec 8) → List AllocEvent → Prop}
-    {maxDir maxName fileCap c_b l_b p_b r_b : Nat}
-    (hdir : dir.length ≤ maxDir) (hname : name.length ≤ maxName)
-    (hcap : ∀ bs, rd files (pathOf dir name) = .ok bs → bs.length ≤ fileCap)
-    (hbody : ∀ bs, bs.length ≤ fileCap → PhaseCreditSpec M (Body bs) c_b l_b p_b r_b)
-    (hlp_b : l_b ≤ p_b) :
-    PhaseCreditSpec M (TempFileBracketEnv rd files dir name Body)
-      (pathDeltaCum maxDir maxName + tempFilePostCum fileCap c_b)
-      (pathDeltaLive maxDir maxName + tempFilePostLive l_b)
-      (max (pathDeltaPeak maxDir maxName)
-        (pathDeltaLive maxDir maxName + tempFilePostPeak fileCap p_b))
-      (max (pathMaxReq maxDir maxName) (tempFilePostMaxReq fileCap r_b)) :=
-  tempFileBracket_phaseCredit_of_path hM (path_phaseCredit hM hdir hname) hcap hbody hlp_b
-
 /-! ## Prologue `R0` and `.init` Arm (`R1a → R1b → R1c`) -/
 
-def R0PostGetEnv (uuidParse : UuidParser) (ownB : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def R0PostGetEnv (uuidParse : UuidParser) (ownB : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ SeqEnv (· = addressEvents uuidParse ownB)
     (SeqEnv (fun e => e = deallocBytes1OfLen ownB.length) FreeOnlyEvs) evs
 
-def R0Env (uuidParse : UuidParser) (rd : ReadRule) (files : FsFiles) (ownDir : DirGhost)
+@[expose] def R0Env (uuidParse : UuidParser) (rd : ReadRule) (files : FsFiles) (ownDir : DirGhost)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ SeqEnv (CliDirGetEnv (ReadFileRuleEnv rd) files ownDir (utf8 "address"))
     (match ownDir.get rd files (utf8 "address") with
      | .error () => FreeOnlyEvs
      | .ok ownB => R0PostGetEnv uuidParse ownB) evs
 
-def R0OpenedEnv (rd : ReadRule) (files : FsFiles) (evs : List AllocEvent) : Prop :=
+@[expose] def R0OpenedEnv (rd : ReadRule) (files : FsFiles) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ TempFileBracketEnv rd files StoresGhost.opened.identity.own.path (utf8 "address")
     (fun ownB evs_b => FreeOnlyEvs evs_b ∨ evs_b = addressEvents uuidTryParse ownB) evs
 
@@ -547,12 +460,12 @@ theorem r0Opened_phaseCredit_of_path {M : AllocCostModel} [HasFineReallocCredit 
       (fun ownB _ => phaseCredit_or_freeOnly_left hM (fun _ h => h)
         (addressTryParse_phaseCredit hM ownB)) (Nat.le_refl _))
 
-def R1aEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def R1aEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ TempFileBracketEnv rd files dir (utf8 "identity-key") (fun _ => FreeOnlyEvs) evs
-def r1aDeltaCum (c_p fileCap : Nat) : Nat := c_p + tempFilePostCum fileCap 0
-def r1aDeltaLive (l_p : Nat) : Nat := l_p + tempFilePostLive 0
-def r1aDeltaPeak (l_p p_p fileCap : Nat) : Nat := max p_p (l_p + tempFilePostPeak fileCap 0)
-def r1aMaxReq (r_p fileCap : Nat) : Nat := max r_p (tempFilePostMaxReq fileCap 0)
+@[expose] def r1aDeltaCum (c_p fileCap : Nat) : Nat := c_p + tempFilePostCum fileCap 0
+@[expose] def r1aDeltaLive (l_p : Nat) : Nat := l_p + tempFilePostLive 0
+@[expose] def r1aDeltaPeak (l_p p_p fileCap : Nat) : Nat := max p_p (l_p + tempFilePostPeak fileCap 0)
+@[expose] def r1aMaxReq (r_p fileCap : Nat) : Nat := max r_p (tempFilePostMaxReq fileCap 0)
 
 theorem r1a_phaseCredit_of_path {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) {rd : ReadRule} {files : FsFiles} {dir : List (BitVec 8)}
@@ -566,65 +479,65 @@ theorem r1a_phaseCredit_of_path {M : AllocCostModel} [HasFineReallocCredit M]
     (tempFileBracket_phaseCredit_of_path hM hpath hcap
       (fun _ _ => PhaseCreditSpec.freeOnly_of_hyps hM) (Nat.le_refl 0))
 
-def R1bOpkDeserStageEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8))
+@[expose] def R1bOpkDeserStageEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   SeqEnv (TempFileBracketEnv rd files dir (utf8 "one-time-pre-key")
     (fun opkBs evs_o => FreeOnlyEvs evs_o ∨ SplitIdEnv opkBs evs_o)) DeserCloneStepEnv evs
 
-def R1bKpkStageEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8))
+@[expose] def R1bKpkStageEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   TempFileBracketEnv rd files dir (utf8 "kyber-pre-key") (fun kpkBs evs_k =>
     SeqEnv (SplitSignedEnv kpkBs)
       (fun evs_k2 => FreeOnlyEvs evs_k2 ∨ R1bOpkDeserStageEnv rd files dir evs_k2) evs_k) evs
 
-def R1bSpkStageEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8))
+@[expose] def R1bSpkStageEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   TempFileBracketEnv rd files dir (utf8 "signed-pre-key") (fun spkBs evs_s =>
     SeqEnv (SplitSignedEnv spkBs)
       (fun evs_s2 => FreeOnlyEvs evs_s2 ∨ R1bKpkStageEnv rd files dir evs_s2) evs_s) evs
 
 /-- Full exact-order `R1b` bundle-read & key-deserialize envelope cancelling all 4 bundle buffers. -/
-def R1bEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def R1bEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   TempFileBracketEnv rd files dir (utf8 "registration-id") (fun regBs evs_r =>
     FreeOnlyEvs evs_r ∨ (SplitIdEnv regBs evs_r ∨ R1bSpkStageEnv rd files dir evs_r)) evs
 
-def r1bOpkDeserCum (c_p fileCap : Nat) : Nat :=
+@[expose] def r1bOpkDeserCum (c_p fileCap : Nat) : Nat :=
   (c_p + tempFilePostCum fileCap splitIdDeltaCum) + deserCloneDeltaCum
-def r1bOpkDeserLive (l_p : Nat) : Nat :=
+@[expose] def r1bOpkDeserLive (l_p : Nat) : Nat :=
   (l_p + tempFilePostLive splitIdDeltaLive) + deserCloneDeltaLive
-def r1bOpkDeserPeak (l_p p_p fileCap : Nat) : Nat :=
+@[expose] def r1bOpkDeserPeak (l_p p_p fileCap : Nat) : Nat :=
   max (max p_p (l_p + tempFilePostPeak fileCap splitIdDeltaPeak))
     ((l_p + tempFilePostLive splitIdDeltaLive) + deserCloneDeltaPeak)
-def r1bOpkDeserMaxReq (r_p fileCap : Nat) : Nat :=
+@[expose] def r1bOpkDeserMaxReq (r_p fileCap : Nat) : Nat :=
   max (max r_p (tempFilePostMaxReq fileCap splitIdMaxReq)) deserCloneMaxReq
 
-def r1bKpkCum (c_p fileCap : Nat) : Nat :=
+@[expose] def r1bKpkCum (c_p fileCap : Nat) : Nat :=
   c_p + tempFilePostCum fileCap (splitSignedDeltaCum + r1bOpkDeserCum c_p fileCap)
-def r1bKpkLive (l_p : Nat) : Nat :=
+@[expose] def r1bKpkLive (l_p : Nat) : Nat :=
   l_p + tempFilePostLive (splitSignedDeltaLive + r1bOpkDeserLive l_p)
-def r1bKpkPeak (l_p p_p fileCap : Nat) : Nat :=
+@[expose] def r1bKpkPeak (l_p p_p fileCap : Nat) : Nat :=
   max p_p (l_p + tempFilePostPeak fileCap
     (max splitSignedDeltaPeak (splitSignedDeltaLive + r1bOpkDeserPeak l_p p_p fileCap)))
-def r1bKpkMaxReq (r_p fileCap : Nat) : Nat :=
+@[expose] def r1bKpkMaxReq (r_p fileCap : Nat) : Nat :=
   max r_p (tempFilePostMaxReq fileCap (max splitSignedMaxReq (r1bOpkDeserMaxReq r_p fileCap)))
 
-def r1bSpkCum (c_p fileCap : Nat) : Nat :=
+@[expose] def r1bSpkCum (c_p fileCap : Nat) : Nat :=
   c_p + tempFilePostCum fileCap (splitSignedDeltaCum + r1bKpkCum c_p fileCap)
-def r1bSpkLive (l_p : Nat) : Nat :=
+@[expose] def r1bSpkLive (l_p : Nat) : Nat :=
   l_p + tempFilePostLive (splitSignedDeltaLive + r1bKpkLive l_p)
-def r1bSpkPeak (l_p p_p fileCap : Nat) : Nat :=
+@[expose] def r1bSpkPeak (l_p p_p fileCap : Nat) : Nat :=
   max p_p (l_p + tempFilePostPeak fileCap
     (max splitSignedDeltaPeak (splitSignedDeltaLive + r1bKpkPeak l_p p_p fileCap)))
-def r1bSpkMaxReq (r_p fileCap : Nat) : Nat :=
+@[expose] def r1bSpkMaxReq (r_p fileCap : Nat) : Nat :=
   max r_p (tempFilePostMaxReq fileCap (max splitSignedMaxReq (r1bKpkMaxReq r_p fileCap)))
 
-def r1bDeltaCum (c_p fileCap : Nat) : Nat :=
+@[expose] def r1bDeltaCum (c_p fileCap : Nat) : Nat :=
   c_p + tempFilePostCum fileCap (max splitIdDeltaCum (r1bSpkCum c_p fileCap))
-def r1bDeltaLive (l_p : Nat) : Nat :=
+@[expose] def r1bDeltaLive (l_p : Nat) : Nat :=
   l_p + tempFilePostLive (max splitIdDeltaLive (r1bSpkLive l_p))
-def r1bDeltaPeak (l_p p_p fileCap : Nat) : Nat :=
+@[expose] def r1bDeltaPeak (l_p p_p fileCap : Nat) : Nat :=
   max p_p (l_p + tempFilePostPeak fileCap (max splitIdDeltaPeak (r1bSpkPeak l_p p_p fileCap)))
-def r1bMaxReq (r_p fileCap : Nat) : Nat :=
+@[expose] def r1bMaxReq (r_p fileCap : Nat) : Nat :=
   max r_p (tempFilePostMaxReq fileCap (max splitIdMaxReq (r1bSpkMaxReq r_p fileCap)))
 
 theorem r1bDeltaLive_le_peak (l_p p_p fileCap : Nat) :
@@ -678,7 +591,7 @@ theorem r1b_phaseCredit_of_paths {M : AllocCostModel} [HasFineReallocCredit M]
       ((splitId_phaseCredit hM regBs).or hspkStage))
     (max_le_max (Nat.le_refl _) hspkLp)
 
-def R1cEnv (InitEnv : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
+@[expose] def R1cEnv (InitEnv : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   SeqEnv InitEnv FreeOnlyEvs evs
 
 theorem r1c_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
@@ -687,17 +600,17 @@ theorem r1c_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
     PhaseCreditSpec M (R1cEnv InitEnv) c_i l_i p_i r_i :=
   phaseCredit_seq_freeOnly_right hM hinit (fun _ h => h) hlp_i
 
-def InitArmEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8))
+@[expose] def InitArmEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8))
     (InitEnv : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   SeqEnv (R1aEnv rd files dir) (fun evs1 => FreeOnlyEvs evs1 ∨
     SeqEnv (R1bEnv rd files dir) (fun evs2 => FreeOnlyEvs evs2 ∨ R1cEnv InitEnv evs2) evs1) evs
-def initArmDeltaCum (c_p fileCap c_i : Nat) : Nat :=
+@[expose] def initArmDeltaCum (c_p fileCap c_i : Nat) : Nat :=
   r1aDeltaCum c_p fileCap + (r1bDeltaCum c_p fileCap + c_i)
-def initArmDeltaLive (l_p l_i : Nat) : Nat := r1aDeltaLive l_p + (r1bDeltaLive l_p + l_i)
-def initArmDeltaPeak (l_p p_p fileCap p_i : Nat) : Nat :=
+@[expose] def initArmDeltaLive (l_p l_i : Nat) : Nat := r1aDeltaLive l_p + (r1bDeltaLive l_p + l_i)
+@[expose] def initArmDeltaPeak (l_p p_p fileCap p_i : Nat) : Nat :=
   max (r1aDeltaPeak l_p p_p fileCap)
     (r1aDeltaLive l_p + max (r1bDeltaPeak l_p p_p fileCap) (r1bDeltaLive l_p + p_i))
-def initArmMaxReq (r_p fileCap r_i : Nat) : Nat :=
+@[expose] def initArmMaxReq (r_p fileCap r_i : Nat) : Nat :=
   max (r1aMaxReq r_p fileCap) (max (r1bMaxReq r_p fileCap) r_i)
 
 theorem initArm_phaseCredit_of_paths {M : AllocCostModel} [HasFineReallocCredit M]
@@ -722,7 +635,7 @@ theorem initArm_phaseCredit_of_paths {M : AllocCostModel} [HasFineReallocCredit 
 
 /-- Maximum `cumSmall` charge of a single `al ≤ 16` allocation across all request sizes on
 `fineCostModel` (`135,167 + 8,195 + 122 = 143,484` B). -/
-def maxTryCloneSmallBytes : Nat := 143484
+@[expose] def maxTryCloneSmallBytes : Nat := 143484
 
 /-- Tight single-allocation `cumSmall` cap hypothesis (`smallAllocCost M r ≤ 143,484` for all
 `r ≤ smallMaxReq M`), discharged on `fineCostModel` by `fineCostModel_cliRunTightHyps`. -/
@@ -816,36 +729,33 @@ theorem tryCloneSmallDelta_le_tightCap {M : AllocCostModel} [HasFineReallocCredi
         exact hT.hSmallAllocCap n hsm
       · exact Nat.le_trans hM.meta_le (by unfold maxTryCloneSmallBytes; decide)
 
-def R2ConcatTailEnv (wireOutCap : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def R2ConcatTailEnv (wireOutCap : Nat) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ ∃ (bs0 : List (BitVec 8)), bs0.length ≤ 1 ∧
     ∃ (bs1 : List (BitVec 8)), bs1.length ≤ wireOutCap ∧
       SeqEnv (· = cliConcat2Events bs0 bs1) FreeOnlyEvs evs
 
-def R2Env (EncEnv : List AllocEvent → Prop) (wireOutCap : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def R2Env (EncEnv : List AllocEvent → Prop) (wireOutCap : Nat) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ SeqEnv EncEnv (R2ConcatTailEnv wireOutCap) evs
 def r2TailCum (M : AllocCostModel) [HasFineReallocCredit M] (wireOutCap : Nat) : Nat :=
   2 * min (1 + wireOutCap) (HasFineReallocCredit.smallMaxReq M) + 9539
-def r2TailTightCum (wireOutCap : Nat) : Nat :=
+@[expose] def r2TailTightCum (wireOutCap : Nat) : Nat :=
   min (2 * (1 + wireOutCap) + 9539) maxTryCloneSmallBytes
-def r2TailLive (M : AllocCostModel) [HasFineReallocCredit M] (wireOutCap : Nat) : Nat :=
+@[expose] def r2TailLive (M : AllocCostModel) [HasFineReallocCredit M] (wireOutCap : Nat) : Nat :=
   if 1 + wireOutCap ≤ HasFineReallocCredit.smallMaxReq M then 0 else (1 + wireOutCap) + 8195
-def r2TailPeak (M : AllocCostModel) [HasFineReallocCredit M] (wireOutCap : Nat) : Nat :=
+@[expose] def r2TailPeak (M : AllocCostModel) [HasFineReallocCredit M] (wireOutCap : Nat) : Nat :=
   r2TailLive M wireOutCap
-def r2TailMaxReq (wireOutCap : Nat) : Nat := 1 + wireOutCap
+@[expose] def r2TailMaxReq (wireOutCap : Nat) : Nat := 1 + wireOutCap
 def r2DeltaCum (M : AllocCostModel) [HasFineReallocCredit M] (c_e wireOutCap : Nat) : Nat :=
   c_e + r2TailCum M wireOutCap
-def r2TightDeltaCum (c_e wireOutCap : Nat) : Nat := c_e + r2TailTightCum wireOutCap
-def r2DeltaLive (M : AllocCostModel) [HasFineReallocCredit M] (l_e wireOutCap : Nat) : Nat :=
+@[expose] def r2TightDeltaCum (c_e wireOutCap : Nat) : Nat := c_e + r2TailTightCum wireOutCap
+@[expose] def r2DeltaLive (M : AllocCostModel) [HasFineReallocCredit M] (l_e wireOutCap : Nat) : Nat :=
   l_e + r2TailLive M wireOutCap
-def r2DeltaPeak (M : AllocCostModel) [HasFineReallocCredit M] (l_e p_e wireOutCap : Nat) : Nat :=
+@[expose] def r2DeltaPeak (M : AllocCostModel) [HasFineReallocCredit M] (l_e p_e wireOutCap : Nat) : Nat :=
   max p_e (l_e + r2TailPeak M wireOutCap)
-def r2MaxReq (r_e wireOutCap : Nat) : Nat := max r_e (r2TailMaxReq wireOutCap)
+@[expose] def r2MaxReq (r_e wireOutCap : Nat) : Nat := max r_e (r2TailMaxReq wireOutCap)
 
 theorem r2TailCum_fine_1MiB : r2TailCum fineCostModel 1048576 = 279873 := by
   unfold r2TailCum; rw [fineCostModel_smallMaxReq_eq]; decide
-
-theorem r2TailTightCum_1MiB : r2TailTightCum 1048576 = 143484 := by
-  unfold r2TailTightCum maxTryCloneSmallBytes; decide
 
 theorem bytesLargeLive_le_r2TailLive {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) {n wireOutCap : Nat} (hle : n ≤ 1 + wireOutCap) :
@@ -910,13 +820,13 @@ theorem r2_tight_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
   phaseCredit_or_freeOnly_left hM (fun _ h => h)
     (henc.seq (r2ConcatTail_tight_phaseCredit hM hT wireOutCap))
 
-def SigTryFromSliceEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def SigTryFromSliceEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   evs = [] ∨ SeqEnv (SigTryFromLoopBoundedEnv bs.length SigTryFromCaps.zero) (SigTryFromPostEnv bs) evs
 
 theorem sigTryFromBoundedEnv_eq_sliceEnv (x : TryFromGhost) :
     SigTryFromBoundedEnv x = SigTryFromSliceEnv x.bytes := rfl
 
-def R3aEnv (rest : List (BitVec 8)) (DecSigEnv : List AllocEvent → Prop)
+@[expose] def R3aEnv (rest : List (BitVec 8)) (DecSigEnv : List AllocEvent → Prop)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ SeqEnv (SigTryFromSliceEnv rest)
     (fun evs2 => FreeOnlyEvs evs2 ∨ SeqEnv DecSigEnv FreeOnlyEvs evs2) evs
@@ -932,13 +842,13 @@ theorem r3a_phaseCredit_of_sig {M : AllocCostModel} [HasFineReallocCredit M]
     (hsig.seq (phaseCredit_or_freeOnly_left hM (fun _ h => h)
       (phaseCredit_seq_freeOnly_right hM hdec (fun _ h => h) hlp_d)))
 
-def PksmTryFromSliceEnv (rest : List (BitVec 8)) : List AllocEvent → Prop :=
+@[expose] def PksmTryFromSliceEnv (rest : List (BitVec 8)) : List AllocEvent → Prop :=
   PksmTryFromBoundedEnv ⟨0#64, rest, 0#64⟩
 
 theorem pksmTryFromBoundedEnv_eq_sliceEnv (x : PksmGhost) :
     PksmTryFromBoundedEnv x = PksmTryFromSliceEnv x.bytes := rfl
 
-def R3bEnv (PksmEnv DecPkEnv : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
+@[expose] def R3bEnv (PksmEnv DecPkEnv : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ SeqEnv PksmEnv (fun evs2 => FreeOnlyEvs evs2 ∨ SeqEnv DecPkEnv FreeOnlyEvs evs2) evs
 
 theorem r3b_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
@@ -952,12 +862,12 @@ theorem r3b_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
     (hpksm.seq (phaseCredit_or_freeOnly_left hM (fun _ h => h)
       (phaseCredit_seq_freeOnly_right hM hdec (fun _ h => h) hlp_d)))
 
-def RecvBadEnv (evs : List AllocEvent) : Prop := FreeOnlyEvs evs
+@[expose] def RecvBadEnv (evs : List AllocEvent) : Prop := FreeOnlyEvs evs
 
 theorem recvBad_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M] (hM : ModelHyps M) :
     PhaseCreditSpec M RecvBadEnv 0 0 0 0 := PhaseCreditSpec.freeOnly_of_hyps hM
 
-def RecvArmEnv (stdin : List (BitVec 8)) (DecSigEnv : List AllocEvent → Prop)
+@[expose] def RecvArmEnv (stdin : List (BitVec 8)) (DecSigEnv : List AllocEvent → Prop)
     (PksmEnv : List (BitVec 8) → List AllocEvent → Prop)
     (DecPkEnv : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   match stdin with
@@ -967,7 +877,7 @@ def RecvArmEnv (stdin : List (BitVec 8)) (DecSigEnv : List AllocEvent → Prop)
     else RecvBadEnv evs
   | [] => RecvBadEnv evs
 
-def JoinEnv (evs : List AllocEvent) : Prop := FreeOnlyEvs evs
+@[expose] def JoinEnv (evs : List AllocEvent) : Prop := FreeOnlyEvs evs
 
 theorem join_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M] (hM : ModelHyps M) :
     PhaseCreditSpec M JoinEnv 0 0 0 0 := PhaseCreditSpec.freeOnly_of_hyps hM
@@ -1010,7 +920,7 @@ abbrev InitBundlePathsSpec (M : AllocCostModel) [HasFineReallocCredit M]
     PhaseCreditSpec M (CliPathEnv dir (utf8 "one-time-pre-key")) c_p l_p p_p r_p ∧
     (∀ name bs, rd files (pathOf dir name) = .ok bs → bs.length ≤ bundleCap)
 
-def RunArmEnv (rd : ReadRule) (files : FsFiles) (E : CliRunCalleeEnvs)
+@[expose] def RunArmEnv (rd : ReadRule) (files : FsFiles) (E : CliRunCalleeEnvs)
     (wireOutCap : Nat) (stdin : List (BitVec 8)) (c : CallV) (evs : List AllocEvent) : Prop :=
   match c with
   | .keygen _ _ => FreeOnlyEvs evs
@@ -1018,7 +928,7 @@ def RunArmEnv (rd : ReadRule) (files : FsFiles) (E : CliRunCalleeEnvs)
   | .send _ => R2Env E.encEnv wireOutCap evs
   | .recv _ => RecvArmEnv stdin E.decSigEnv E.pksmEnv E.decPkEnv evs
 
-def CliRunOfR0Env (R0StageEnv : List AllocEvent → Prop) (rd : ReadRule)
+@[expose] def CliRunOfR0Env (R0StageEnv : List AllocEvent → Prop) (rd : ReadRule)
     (E : CliRunCalleeEnvs) (wireOutCap : Nat) (g : RunCall) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
   SeqEnv R0StageEnv (SeqEnv (RunArmEnv rd (runFiles g.i) E wireOutCap g.i.stdin g.c) JoinEnv) evs
@@ -1030,25 +940,6 @@ abbrev CliRunEnv (uuidParse : UuidParser) (rd : ReadRule) (ownDir : DirGhost)
 abbrev CliRunOpenedEnv (rd : ReadRule) (E : CliRunCalleeEnvs) (wireOutCap : Nat) (g : RunCall)
     (evs : List AllocEvent) : Prop :=
   CliRunOfR0Env (R0OpenedEnv rd (runFiles g.i)) rd E wireOutCap g evs
-
-theorem initArmEnv_of_r1a {rd : ReadRule} {files : FsFiles} {dir : List (BitVec 8)}
-    {InitEnv : List AllocEvent → Prop} {evs : List AllocEvent}
-    (h1a : R1aEnv rd files dir evs) : InitArmEnv rd files dir InitEnv evs :=
-  Or.inl h1a
-
-theorem initArmEnv_of_r1a_r1b {rd : ReadRule} {files : FsFiles} {dir : List (BitVec 8)}
-    {InitEnv : List AllocEvent → Prop} {evs₁ evs₂ : List AllocEvent}
-    (h1a : R1aEnv rd files dir evs₁) (h1b : R1bEnv rd files dir evs₂) :
-    InitArmEnv rd files dir InitEnv (evs₁ ++ evs₂) :=
-  Or.inr ⟨evs₁, evs₂, rfl, h1a, Or.inr (Or.inl h1b)⟩
-
-theorem initArmEnv_of_r1a_r1b_r1c {rd : ReadRule} {files : FsFiles} {dir : List (BitVec 8)}
-    {InitEnv : List AllocEvent → Prop} {evs₁ evs₂ evs₃ : List AllocEvent}
-    (h1a : R1aEnv rd files dir evs₁) (h1b : R1bEnv rd files dir evs₂)
-    (h1c : R1cEnv InitEnv evs₃) :
-    InitArmEnv rd files dir InitEnv (evs₁ ++ evs₂ ++ evs₃) :=
-  Or.inr ⟨evs₁, evs₂ ++ evs₃, List.append_assoc evs₁ evs₂ evs₃, h1a,
-    Or.inr (Or.inr ⟨evs₂, evs₃, rfl, h1b, Or.inr h1c⟩)⟩
 
 theorem runArmEnv_nil (rd : ReadRule) (files : FsFiles) (E : CliRunCalleeEnvs)
     (wireOutCap : Nat) (stdin : List (BitVec 8)) (c : CallV) :
@@ -1068,11 +959,6 @@ theorem runArmEnv_nil (rd : ReadRule) (files : FsFiles) (E : CliRunCalleeEnvs)
         by_cases hb3 : b = 3#8
         · simp only [hb3, ↓reduceIte]; exact Or.inl hnil
         · simp only [hb3, ↓reduceIte]; exact hnil
-
-theorem cliRunOfR0Env_of_r0 {R0StageEnv : List AllocEvent → Prop} {rd : ReadRule}
-    {E : CliRunCalleeEnvs} {wireOutCap : Nat} {g : RunCall} {evs : List AllocEvent}
-    (h₀ : R0StageEnv evs) : CliRunOfR0Env R0StageEnv rd E wireOutCap g evs :=
-  Or.inr (Or.inl h₀)
 
 theorem cliRunOfR0Env_of_r0_arm {R0StageEnv : List AllocEvent → Prop} {rd : ReadRule}
     {E : CliRunCalleeEnvs} {wireOutCap : Nat} {g : RunCall} {evs₀ evs₁ : List AllocEvent}
@@ -1097,15 +983,15 @@ theorem cliRunOfR0Env_append_freeOnly {R0StageEnv : List AllocEvent → Prop} {r
     · exact Or.inr ⟨e_a, e_j ++ evs₂, List.append_assoc e_a e_j evs₂, harm,
         freeOnlyEvs_append hj h₂⟩
 
-def sigSliceCum (stdinCap : Nat) : Nat := sigTryFromCapDeltaCum stdinCap
-def sigSliceLive (stdinCap : Nat) : Nat := sigTryFromCapDeltaLive stdinCap
-def sigSlicePeak (stdinCap : Nat) : Nat := sigTryFromCapDeltaPeak stdinCap
-def sigSliceMaxReq (stdinCap : Nat) : Nat := sigTryFromCapMaxReq stdinCap
+@[expose] def sigSliceCum (stdinCap : Nat) : Nat := sigTryFromCapDeltaCum stdinCap
+@[expose] def sigSliceLive (stdinCap : Nat) : Nat := sigTryFromCapDeltaLive stdinCap
+@[expose] def sigSlicePeak (stdinCap : Nat) : Nat := sigTryFromCapDeltaPeak stdinCap
+@[expose] def sigSliceMaxReq (stdinCap : Nat) : Nat := sigTryFromCapMaxReq stdinCap
 
-def pksmSliceCum (stdinCap : Nat) : Nat := pksmTryFromCapDeltaCum stdinCap
-def pksmSliceLive (stdinCap : Nat) : Nat := pksmTryFromCapDeltaLive stdinCap
-def pksmSlicePeak (stdinCap : Nat) : Nat := pksmTryFromCapDeltaPeak stdinCap
-def pksmSliceMaxReq (stdinCap : Nat) : Nat := pksmTryFromCapMaxReq stdinCap
+@[expose] def pksmSliceCum (stdinCap : Nat) : Nat := pksmTryFromCapDeltaCum stdinCap
+@[expose] def pksmSliceLive (stdinCap : Nat) : Nat := pksmTryFromCapDeltaLive stdinCap
+@[expose] def pksmSlicePeak (stdinCap : Nat) : Nat := pksmTryFromCapDeltaPeak stdinCap
+@[expose] def pksmSliceMaxReq (stdinCap : Nat) : Nat := pksmTryFromCapMaxReq stdinCap
 
 theorem pksmSliceLive_le_peak (stdinCap : Nat) : pksmSliceLive stdinCap ≤ pksmSlicePeak stdinCap := by
   unfold pksmSliceLive pksmSlicePeak pksmTryFromCapDeltaLive pksmTryFromCapDeltaPeak
@@ -1113,39 +999,39 @@ theorem pksmSliceLive_le_peak (stdinCap : Nat) : pksmSliceLive stdinCap ≤ pksm
     LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromCredit.pksmTryFromCapDeltaPeak
   exact Nat.le_add_right _ _
 
-def recvArmDeltaCum {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def recvArmDeltaCum {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap) (c_sig : Nat) : Nat :=
   max (c_sig + S.decSigCum) (S.pksmCum + S.decPkCum)
-def recvArmDeltaLive {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def recvArmDeltaLive {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap) (l_sig : Nat) : Nat :=
   max (l_sig + S.decSigLive) (S.pksmLive + S.decPkLive)
-def recvArmDeltaPeak {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def recvArmDeltaPeak {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap) (l_sig p_sig : Nat) : Nat :=
   max (max p_sig (l_sig + S.decSigPeak)) (max S.pksmPeak (S.pksmLive + S.decPkPeak))
-def recvArmMaxReq {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def recvArmMaxReq {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap) (r_sig : Nat) : Nat :=
   max (max r_sig S.decSigMaxReq) (max S.pksmMaxReq S.decPkMaxReq)
 
-def runArmDeltaCum {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def runArmDeltaCum {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap)
     (c_p bundleCap wireOutCap c_sig : Nat) : Nat :=
   max (initArmDeltaCum c_p bundleCap S.initCum)
     (max (r2DeltaCum M S.encCum wireOutCap) (recvArmDeltaCum S c_sig))
-def runArmTightDeltaCum {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def runArmTightDeltaCum {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap)
     (c_p bundleCap wireOutCap c_sig : Nat) : Nat :=
   max (initArmDeltaCum c_p bundleCap S.initCum)
     (max (r2TightDeltaCum S.encCum wireOutCap) (recvArmDeltaCum S c_sig))
-def runArmDeltaLive {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def runArmDeltaLive {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap) (l_p wireOutCap l_sig : Nat) : Nat :=
   max (initArmDeltaLive l_p S.initLive)
     (max (r2DeltaLive M S.encLive wireOutCap) (recvArmDeltaLive S l_sig))
-def runArmDeltaPeak {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def runArmDeltaPeak {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap)
     (l_p p_p bundleCap wireOutCap l_sig p_sig : Nat) : Nat :=
   max (initArmDeltaPeak l_p p_p bundleCap S.initPeak)
     (max (r2DeltaPeak M S.encLive S.encPeak wireOutCap) (recvArmDeltaPeak S l_sig p_sig))
-def runArmMaxReq {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def runArmMaxReq {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap)
     (r_p bundleCap wireOutCap r_sig : Nat) : Nat :=
   max (initArmMaxReq r_p bundleCap S.initMaxReq)
@@ -1390,49 +1276,6 @@ theorem r3b_slice_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
       (max (pksmSliceMaxReq stdinCap) r_d) :=
   r3b_phaseCredit hM (pksmTryFromSlice_phaseCredit hM hLow hrest) hdec hlp_d
 
-theorem r0_general_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (uuidParse : UuidParser) (rd : ReadRule) (files : FsFiles)
-    (ownDir : DirGhost) {maxDir maxEntries maxVal fileCap : Nat}
-    (hdc : DirDomainCaps maxDir maxEntries maxVal ownDir)
-    (hcap : ∀ bs, rd files (pathOf ownDir.path (utf8 "address")) = .ok bs → bs.length ≤ fileCap) :
-    let ownCap := max maxVal fileCap
-    let c_g := dirGetRuleDeltaCum maxDir 7 maxVal fileCap
-    let l_g := dirGetRuleDeltaLive maxDir 7 maxVal fileCap
-    let p_g := dirGetRuleDeltaPeak maxDir 7 maxVal fileCap
-    let r_g := dirGetRuleMaxReq maxDir 7 maxVal fileCap
-    PhaseCreditSpec M (R0Env uuidParse rd files ownDir)
-      (c_g + (2 * ownCap + 9539)) (l_g + (ownCap + 8195))
-      (max p_g (l_g + (ownCap + 8195))) (max r_g ownCap) := by
-  intro ownCap c_g l_g p_g r_g
-  have hget := dirGet_rule_phaseCredit hM rd files ownDir (utf8 "address")
-    hdc utf8_address_length_le hcap
-  have hown_le : ∀ ownB, ownDir.get rd files (utf8 "address") = .ok ownB → ownB.length ≤ ownCap := by
-    intro ownB hok; unfold DirGhost.get at hok
-    cases hfind : ownDir.changed.find? (fun kv => kv.1 == utf8 "address") with
-    | some kv =>
-      rw [hfind] at hok; injection hok with hv; subst hv
-      exact Nat.le_trans (hdc.changed_val_le kv.1 kv.2 (List.mem_of_find?_eq_some hfind))
-        (Nat.le_max_left _ _)
-    | none => rw [hfind] at hok; exact Nat.le_trans (hcap ownB hok) (Nat.le_max_right _ _)
-  have hpost : PhaseCreditSpec M
-      (match ownDir.get rd files (utf8 "address") with
-       | .error () => FreeOnlyEvs | .ok ownB => R0PostGetEnv uuidParse ownB)
-      (2 * ownCap + 9539) (ownCap + 8195) (ownCap + 8195) ownCap := by
-    cases hgo : ownDir.get rd files (utf8 "address") with
-    | error _ =>
-      exact (PhaseCreditSpec.freeOnly_of_hyps hM).mono
-        (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-    | ok ownB =>
-      have hlen := hown_le ownB hgo
-      have ha : PhaseCreditSpec M (· = addressEvents uuidParse ownB)
-          (2 * ownCap + 9539) (ownCap + 8195) (ownCap + 8195) ownCap :=
-        (addressEvents_phaseCredit hM uuidParse ownB).mono
-          (by omega) (by omega) (by omega) hlen
-      exact phaseCredit_or_freeOnly_left hM (fun _ h => h)
-        (phaseCredit_seq_freeOnly_right hM ha
-          (freeOnlyEvs_seq_deallocBytes1OfLen ownB.length) (Nat.le_refl _))
-  exact phaseCredit_or_freeOnly_left hM (fun _ h => h) (hget.seq hpost)
-
 theorem initBundlePaths_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) {rd : ReadRule} {files : FsFiles} {c : CallV} {maxInitDir bundleCap : Nat}
     (hinitDir : ∀ peer dir, c = .init peer dir → dir.length ≤ maxInitDir ∧
@@ -1446,17 +1289,17 @@ theorem initBundlePaths_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M
     path_phaseCredit hM hd hnSpk, path_phaseCredit hM hd hnKpk,
     path_phaseCredit hM hd hnOpk, hbc⟩
 
-def cliRunDeltaCum {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def cliRunDeltaCum {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap)
     (maxInitDir fileCap bundleCap wireOutCap : Nat) : Nat :=
   (dirGetRuleDeltaCum 26 7 0 fileCap + addressTryParseDeltaCum) +
     runArmDeltaCum S (pathDeltaCum maxInitDir 16) bundleCap wireOutCap (sigSliceCum stdinCap)
-def cliRunDeltaLive {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def cliRunDeltaLive {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap)
     (maxInitDir fileCap wireOutCap : Nat) : Nat :=
   (dirGetRuleDeltaLive 26 7 0 fileCap + addressTryParseDeltaLive) +
     runArmDeltaLive S (pathDeltaLive maxInitDir 16) wireOutCap (sigSliceLive stdinCap)
-def cliRunDeltaPeak {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def cliRunDeltaPeak {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap)
     (maxInitDir fileCap bundleCap wireOutCap : Nat) : Nat :=
   let l_g := dirGetRuleDeltaLive 26 7 0 fileCap
@@ -1464,7 +1307,7 @@ def cliRunDeltaPeak {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCal
     ((l_g + addressTryParseDeltaLive) +
       runArmDeltaPeak S (pathDeltaLive maxInitDir 16) (pathDeltaPeak maxInitDir 16)
         bundleCap wireOutCap (sigSliceLive stdinCap) (sigSlicePeak stdinCap))
-def cliRunMaxReq {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def cliRunMaxReq {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap)
     (maxInitDir fileCap bundleCap wireOutCap : Nat) : Nat :=
   max (max (dirGetRuleMaxReq 26 7 0 fileCap) addressTryParseMaxReq)
@@ -1492,16 +1335,16 @@ theorem cliRun_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
     hstdin (initBundlePaths_phaseCredit hM hinitDir)
     (fun _ hrest => sigTryFromSlice_phaseCredit hM hLow hrest)
 
-def cliRunOpenedDeltaCum {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def cliRunOpenedDeltaCum {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap)
     (maxInitDir fileCap bundleCap wireOutCap : Nat) : Nat :=
   (pathDeltaCum 26 7 + tempFilePostCum fileCap addressTryParseDeltaCum) +
     runArmDeltaCum S (pathDeltaCum maxInitDir 16) bundleCap wireOutCap (sigSliceCum stdinCap)
-def cliRunOpenedDeltaLive {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def cliRunOpenedDeltaLive {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap) (maxInitDir wireOutCap : Nat) : Nat :=
   (pathDeltaLive 26 7 + tempFilePostLive addressTryParseDeltaLive) +
     runArmDeltaLive S (pathDeltaLive maxInitDir 16) wireOutCap (sigSliceLive stdinCap)
-def cliRunOpenedDeltaPeak {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def cliRunOpenedDeltaPeak {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap)
     (maxInitDir fileCap bundleCap wireOutCap : Nat) : Nat :=
   max (max (pathDeltaPeak 26 7)
@@ -1509,7 +1352,7 @@ def cliRunOpenedDeltaPeak {M : AllocCostModel} [HasFineReallocCredit M] {E : Cli
     ((pathDeltaLive 26 7 + tempFilePostLive addressTryParseDeltaLive) +
       runArmDeltaPeak S (pathDeltaLive maxInitDir 16) (pathDeltaPeak maxInitDir 16)
         bundleCap wireOutCap (sigSliceLive stdinCap) (sigSlicePeak stdinCap))
-def cliRunOpenedMaxReq {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def cliRunOpenedMaxReq {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap)
     (maxInitDir fileCap bundleCap wireOutCap : Nat) : Nat :=
   max (max (pathMaxReq 26 7) (tempFilePostMaxReq fileCap addressTryParseMaxReq))
@@ -1544,7 +1387,7 @@ structure CliRunWrapperEnvs where
   decSigEnv : List AllocEvent → Prop
   decPkEnv : List AllocEvent → Prop
 
-def CliRunWrapperEnvs.toCalleeEnvs (W : CliRunWrapperEnvs) : CliRunCalleeEnvs where
+@[expose] def CliRunWrapperEnvs.toCalleeEnvs (W : CliRunWrapperEnvs) : CliRunCalleeEnvs where
   initEnv := W.initEnv
   encEnv := W.encEnv
   decSigEnv := W.decSigEnv
@@ -1566,7 +1409,7 @@ structure CliRunWrapperSlotSpecs (M : AllocCostModel) [HasFineReallocCredit M]
   decPk_spec : PhaseCreditSpec M W.decPkEnv decPkCum decPkLive decPkPeak decPkMaxReq
   decPk_lp : decPkLive ≤ decPkPeak
 
-def CliRunWrapperSlotSpecs.toCalleeSpecs {M : AllocCostModel} [HasFineReallocCredit M]
+@[expose] def CliRunWrapperSlotSpecs.toCalleeSpecs {M : AllocCostModel} [HasFineReallocCredit M]
     {W : CliRunWrapperEnvs} (SW : CliRunWrapperSlotSpecs M W)
     (hM : ModelHyps M) (hLow : WireLowInterceptHyps M) (stdinCap : Nat) :
     CliRunSlotCalleeSpecs M W.toCalleeEnvs stdinCap where
@@ -1640,7 +1483,7 @@ theorem cliRunOpened_slots_phaseCredit {M : AllocCostModel} [HasFineReallocCredi
       (cliRunOpenedMaxReq S maxInitDir fileCap bundleCap wireOutCap) :=
   cliRunOpened_phaseCredit hM hLow (SW.toCalleeSpecs hM hLow stdinCap) wireOutCap hstdin hownCap hinitDir
 
-def cliRunTightDeltaCum {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def cliRunTightDeltaCum {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap)
     (maxInitDir fileCap bundleCap wireOutCap : Nat) : Nat :=
   (dirGetRuleDeltaCum 26 7 0 fileCap + addressTryParseDeltaCum) +
@@ -1669,7 +1512,7 @@ theorem cliRun_tight_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
     hstdin (initBundlePaths_phaseCredit hM hinitDir)
     (fun _ hrest => sigTryFromSlice_phaseCredit hM hLow hrest)
 
-def cliRunOpenedTightDeltaCum {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
+@[expose] def cliRunOpenedTightDeltaCum {M : AllocCostModel} [HasFineReallocCredit M] {E : CliRunCalleeEnvs}
     {stdinCap : Nat} (S : CliRunSlotCalleeSpecs M E stdinCap)
     (maxInitDir fileCap bundleCap wireOutCap : Nat) : Nat :=
   (pathDeltaCum 26 7 + tempFilePostCum fileCap addressTryParseDeltaCum) +

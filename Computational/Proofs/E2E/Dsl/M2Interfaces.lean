@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 public import Computational.Proofs.E2E.Dsl.PqxdhSimTypes
-public import Computational.Proofs.E2E.Dsl.SmReachInvParty
-public import Computational.Proofs.E2E.Dsl.SmReachInv
-public import Computational.Proofs.E2E.Dsl.DrSessionSimHooks
+public import Computational.Proofs.E2E.Dsl.SmReachInvParty -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.SmReachInv -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.DrSessionSimHooks -- proof-setup: allow-public-import
 
 /-!
 # Simulator Interface Contracts for E2E `ReductionDsl` Sub-Programs
@@ -22,7 +22,7 @@ deduplicated `GameState` codecs, and re-exported reachability invariants consume
 multi-session composition reductions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -67,7 +67,7 @@ abbrev SmReachInv := Computational.Proofs.E2E.Dsl.SmReachInv.SmReachBounded
 @[simp] theorem partyToBool_boolToParty (b : Bool) : partyToBool (boolToParty b) = b := by
   cases b <;> rfl
 
-def smQdec {ℓ : ℕ} {St : Type} :
+@[expose] def smQdec {ℓ : ℕ} {St : Type} :
     (smQT (ℓ := ℓ)).denote → (CryptoGames.SM.spec St (Plain ℓ) (BitVec 512) Bytes).Domain
   | .inl (p, (m, r)) => .inl (.inl (.inl (.inl (boolToParty p, m, r))))
   | .inr (.inl (p, (m0, (m1, r)))) => .inl (.inl (.inl (.inr (boolToParty p, m0, m1, r))))
@@ -86,7 +86,7 @@ def smQdec {ℓ : ℕ} {St : Type} :
   rcases v with ⟨p, m, r⟩ | ⟨p, m0, m1, r⟩ | ⟨p, c⟩ | ⟨p, c⟩ | p <;>
     simp [smQenc, smQdec]
 
-def smRenc {ℓ : ℕ} {St : Type} {stT : Ty (e2eSig ℓ)} (toSt : St → stT.denote) :
+@[expose] def smRenc {ℓ : ℕ} {St : Type} {stT : Ty (e2eSig ℓ)} (toSt : St → stT.denote) :
     (sq : (CryptoGames.SM.spec St (Plain ℓ) (BitVec 512) Bytes).Domain) →
     (CryptoGames.SM.spec St (Plain ℓ) (BitVec 512) Bytes).Range sq →
     (smRT (ℓ := ℓ) stT).denote
@@ -126,14 +126,14 @@ theorem smRenc_id_eq_bhPackSmResp {ℓ : ℕ}
   rcases sq with (((_ | _) | _) | _) | _ <;> simp [smRenc, bhPackSmResp]
 
 /-- `SM.Record (Plain ℓ) Bytes` paired with its cached `comp.contains pos` flag. -/
-@[reducible] def e2eRecTy (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eRecTy (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod posTy (.prod PlainT (.prod (B 32) .bool))
 
-def e2eRecEncWith {ℓ : ℕ} (comp : List Pos) (r : Record (Plain ℓ) Bytes) :
+@[expose] def e2eRecEncWith {ℓ : ℕ} (comp : List Pos) (r : Record (Plain ℓ) Bytes) :
     (e2eRecTy ℓ).denote :=
   (posEnc r.pos, (r.msg, (r.ct, comp.contains r.pos)))
 
-def e2eRecDec {ℓ : ℕ} (v : (e2eRecTy ℓ).denote) : Record (Plain ℓ) Bytes :=
+@[expose] def e2eRecDec {ℓ : ℕ} (v : (e2eRecTy ℓ).denote) : Record (Plain ℓ) Bytes :=
   ⟨posDec v.1, v.2.1, v.2.2.1⟩
 
 @[simp] theorem e2eRecDec_e2eRecEncWith {ℓ : ℕ} (comp : List Pos) (r : Record (Plain ℓ) Bytes) :
@@ -142,7 +142,7 @@ def e2eRecDec {ℓ : ℕ} (v : (e2eRecTy ℓ).denote) : Record (Plain ℓ) Bytes
 
 /-- `SM.GameState (GhostState Bytes) (Plain ℓ) Bytes` with deduplicated `comp` and per-record
 cached compromise flags. -/
-@[reducible] def e2eGsTy (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eGsTy (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod (.prod GhostStT GhostStT)
     (.prod .bool
       (.prod .bool
@@ -156,7 +156,7 @@ cached compromise flags. -/
                       (.prod (.list .nat)
                         (.list (.prod .bool .nat))))))))))))
 
-def e2eGsEnc {ℓ : ℕ} (s : GameState (GhostState Bytes) (Plain ℓ) Bytes) :
+@[expose] def e2eGsEnc {ℓ : ℕ} (s : GameState (GhostState Bytes) (Plain ℓ) Bytes) :
     (e2eGsTy ℓ).denote :=
   ((s.st .A, s.st .B),
    (s.b,
@@ -171,7 +171,7 @@ def e2eGsEnc {ℓ : ℕ} (s : GameState (GhostState Bytes) (Plain ℓ) Bytes) :
             (s.leaks,
              s.corrs.map (fun pe => (partyEnc pe.1, pe.2)))))))))))))
 
-def e2eGsDec {ℓ : ℕ} (v : (e2eGsTy ℓ).denote) :
+@[expose] def e2eGsDec {ℓ : ℕ} (v : (e2eGsTy ℓ).denote) :
     GameState (GhostState Bytes) (Plain ℓ) Bytes :=
   let (stAB, (b, (win, (epAB, (idxAB, (tL, (trs, (chall, (comp, (maAB, (leaks, corrs))))))))))) := v
   { st := fun | .A => stAB.1 | .B => stAB.2
@@ -227,26 +227,6 @@ structure PqxdhSimIface (ℓ : ℕ) (S : SignalPqxdh.Setup) {Pt : Type}
         ((fun out => (keyIndRenc out.1, e2eKeyIndStateToVal out.2)) <$>
           ((SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P kq).run st))
 
-theorem PqxdhSimIface.stepC_eval_qdec {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
-    {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    (sim : PqxdhSimIface ℓ S P C K decT encT)
-    {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T) (nAdv : ℕ)
-    {Γ : List (Ty (e2eSig ℓ))}
-    (stE : Expr (e2eOps ℓ P C K decT encT) Γ (e2eKeyIndStateTy ℓ S))
-    (qE : Expr (e2eOps ℓ P C K decT encT) Γ (keyIndQT S))
-    (ρ : Env Γ) (st : SignalPqxdh.KeyIndState S)
-    (hP : SignalPqxdh.WellFormedPrimitivesδ P)
-    (hstE : stE.eval ρ = e2eKeyIndStateToVal st)
-    (hBnd : KeyIndSetupBounded S st)
-    (hAdv : st.advKeys.length ≤ nAdv) :
-    (sim.stepC I₀ nAdv stE qE).eval ρ =
-      (stepAIface ℓ I₀).liftP
-        ((fun out => (keyIndRenc out.1, e2eKeyIndStateToVal out.2)) <$>
-          ((SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P (keyIndQdec (qE.eval ρ))).run st)) :=
-  sim.stepC_eval I₀ nAdv stE qE ρ st (keyIndQdec (qE.eval ρ)) hP hstE
-    (keyIndQenc_keyIndQdec (qE.eval ρ)).symm hBnd hAdv
-
 theorem pqxdhStep_preserves_bounded {S : SignalPqxdh.Setup} {P : SignalPqxdh.Primitives}
     (kq : SignalPqxdh.KeyIndQuery S) {st : SignalPqxdh.KeyIndState S}
     (hst : KeyIndSetupBounded S st)
@@ -301,30 +281,5 @@ structure DrSessionSimIface (ℓ : ℕ) {Pt : Type} (P : SignalPqxdh.Primitives)
             (sessionSchemeFixedSpk
               (paramsIdsWithSpqr C (spqrV1SessionUniformCoins C.F K) idA idB) ℓ spkCoins)
             (2 + 1) qep (configRefuseEarlyBobCorr decT encT) sq).run gs))
-
-theorem DrSessionSimIface.oracleStepC_eval_qdec {ℓ : ℕ} {Pt : Type}
-    {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    (sim : DrSessionSimIface ℓ P C K decT encT)
-    {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
-    (qBound qep : ℕ) {Γ : List (Ty (e2eSig ℓ))}
-    (gsE : Expr (e2eOps ℓ P C K decT encT) Γ (e2eGsTy ℓ))
-    (qE : Expr (e2eOps ℓ P C K decT encT) Γ smQT)
-    (ρ : Env Γ)
-    (idA idB : IdentityKey) (spkCoins : BitVec 256)
-    (gs : GameState (GhostState Bytes) (Plain ℓ) Bytes)
-    (hReach : SmReachBounded C K qBound gs)
-    (hgsE : gsE.eval ρ = e2eGsEnc gs) :
-    let sq := smQdec (ℓ := ℓ) (St := GhostState Bytes) (qE.eval ρ)
-    (sim.oracleStepC I₀ qBound qep gsE qE).eval ρ =
-      (stepAIface ℓ I₀).liftP
-        ((fun out => (smRenc (stT := GhostStT) id sq out.1, e2eGsEnc out.2)) <$>
-          ((CryptoGames.SM.oracleImplR
-            (sessionSchemeFixedSpk
-              (paramsIdsWithSpqr C (spqrV1SessionUniformCoins C.F K) idA idB) ℓ spkCoins)
-            (2 + 1) qep (configRefuseEarlyBobCorr decT encT) sq).run gs)) :=
-  sim.oracleStepC_eval I₀ qBound qep gsE qE ρ idA idB spkCoins gs
-    (smQdec (ℓ := ℓ) (St := GhostState Bytes) (qE.eval ρ))
-    hReach hgsE (smQenc_smQdec (qE.eval ρ)).symm
 
 end Computational.Proofs.E2E.Dsl.M2Interfaces

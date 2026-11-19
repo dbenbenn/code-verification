@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.SignalSession.PqDir
-public import LibsignalBinary.Proofs.SpecLemmas.FsFold
+public import LibsignalBinary.Proofs.SpecLemmas.FsFold -- proof-setup: allow-public-import
 import all Init.Data.Repr
 public import LibsignalBinary.Specifications.AsmConstants
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDecDefs
@@ -20,7 +20,7 @@ public import LibsignalBinary.Specifications.CryptoGames.AEAD.EtMDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HKDFDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.WireAeadDefs
 public import LibsignalBinary.Specifications.CryptoGames.CKA.DDHDefs
 public import LibsignalBinary.Specifications.CryptoGames.CKA.Defs
@@ -56,7 +56,7 @@ public import LibsignalBinary.Specifications.LibsignalE2E.SchemeModel
 public import LibsignalBinary.Specifications.LibsignalE2E.State
 public import LibsignalBinary.Specifications.LibsignalE2E.StateXModel
 public import LibsignalBinary.Specifications.LibsignalHmac
-public import LibsignalBinary.Specifications.LibsignalProtoCodec
+public import LibsignalBinary.Proofs.ProtoCodecKat
 public import LibsignalBinary.Specifications.LibsignalSession
 public import LibsignalBinary.Specifications.LibsignalSessionRepr
 public import LibsignalBinary.Specifications.LibsignalSignalMessage
@@ -78,7 +78,7 @@ public import LibsignalBinary.Specifications.LibsignalSpqrV1.States
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Top
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
-public import LibsignalBinary.Specifications.LibsignalTripleRatchetProst
+public import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst
 public import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
 public import LibsignalBinary.Specifications.RecordCodecs.Proto
 public import LibsignalBinary.Specifications.RustHeap.Alloc
@@ -88,7 +88,7 @@ public import LibsignalBinary.Specifications.SignalSession.Run
 public import LibsignalBinary.Specifications.SignalSession.SmDir
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.RunProofDefs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

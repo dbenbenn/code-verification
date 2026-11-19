@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.LayoutBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.LayoutBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `FdsGe3Closed`-Threaded Cell & Inner Specifications for `KpkGetPoll`
@@ -19,7 +21,7 @@ Wraps the five `KpkGetPoll.LayoutBudget` cell and inner `Spec` definitions with 
 (`withFsInv (withFdsGe3Closed spec) F0 T0` at `FsInv` call sites).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,32 +41,32 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.LayoutBudget
   (cliKpkGetPollInnerSpec deallocVecBufCellsSpec decimalFsCellsSpec decodeFsCellsSpec
    dirGetFsCellsSpec)
 
-def deallocVecBufCellsSpec_fd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def deallocVecBufCellsSpec_fd [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F0 : FsFiles) (T0 : List TraceEvent) (calleeStk : Nat) :
     Spec (DeallocBufGhost × M.σ) :=
   withFdsGe3Closed (deallocVecBufCellsSpec A lim F0 T0 calleeStk)
 
-def decimalFsCellsSpec_fd {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def decimalFsCellsSpec_fd {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecEnv : BitVec 32 → List AllocEvent → Prop)
     (F0 : FsFiles) (T0 : List TraceEvent) (calleeStk : Nat) :
     Spec (DecimalCellsGhost × M.σ) :=
   withFdsGe3Closed (decimalFsCellsSpec A lim DecEnv F0 T0 calleeStk)
 
-def dirGetFsCellsSpec_fd {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def dirGetFsCellsSpec_fd {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (GetEnv : DirGhost → BitVec 32 → List AllocEvent → Prop)
     (F0 : FsFiles) (T0 : List TraceEvent) (calleeStk : Nat) :
     Spec (DirGetCellsGhost × M.σ) :=
   withFdsGe3Closed (dirGetFsCellsSpec rd pathOk A lim GetEnv F0 T0 calleeStk)
 
-def decodeFsCellsSpec_fd {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def decodeFsCellsSpec_fd {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecodeEnv : List (BitVec 8) → List AllocEvent → Prop)
     (F0 : FsFiles) (T0 : List TraceEvent) (calleeStk : Nat) :
     Spec (DecodeCellsGhost × M.σ) :=
   withFdsGe3Closed (decodeFsCellsSpec A lim DecodeEnv F0 T0 calleeStk)
 
-def cliKpkGetPollInnerSpec_fd {M : AllocCostModel} (rd : ReadRule)
+@[expose] def cliKpkGetPollInnerSpec_fd {M : AllocCostModel} (rd : ReadRule)
     (pathOk : List (BitVec 8) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecEnv : BitVec 32 → List AllocEvent → Prop)

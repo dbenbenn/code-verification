@@ -10,15 +10,23 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.CliC.SpqrV1.Alloc.FinishGrow
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrowBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.CliC.SpqrV1.Alloc.FinishGrow
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrowBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+public import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable `RawVecInner::finish_grow` Proofs for `CliC`
@@ -27,7 +35,7 @@ Threads `RustCliAllocBudget M`, `BudgetLimits`, `FitsEnv`, and `VmPreserved` acr
 `RawVecInner::finish_grow [local#10]` (Block `587`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

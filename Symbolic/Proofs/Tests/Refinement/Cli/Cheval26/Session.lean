@@ -10,9 +10,16 @@ limitations under the License.
 module
 
 public import Symbolic.Specifications.Refinement.TraceExplanation
-public import LibsignalBinary.Proofs.SignalSession.NonVacuityPq
+public import LibsignalBinary.Proofs.SignalSession.NonVacuity -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.EncodeWithCovered
 import Symbolic.Proofs.Refinement.LemmasPure
+import LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4SymbolicBridge
+import LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Math.Edwards
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionSM
+public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhCorrectModel
+public import LibsignalBinary.Specifications.LibsignalE2E.State
+public import LibsignalBinary.Specifications.LibsignalE2E.StateXModel
+public import LibsignalBinary.Specifications.SignalSession.PqDir
 
 /-!
 # SPQR-V1 Model-Initiated Session Record
@@ -23,81 +30,342 @@ proves its non-emptiness and `< 2^31` length bound, and shows via top-level prot
 `[0x05#8, 0x01#8]` without kernel-reducing `spqrV1Init`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace Symbolic.Proofs.Tests.Refinement.Cli.Cheval26
 
-open CryptoGames CryptoGames.LibsignalSession
+open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification.E2E CryptoVerification.SignalSession
-open CryptoVerification.SignalSession.NonVacuityPq
-  (W0 b0 t0 X0 initiateState_W0_isSome pqInitModel_W0_creates_wfSession)
 open DY.Libsignal (HwBytes)
 open DY.Libsignal.Refinement
   (PbValue encodeField paddedVarint readVarint readVarint_paddedVarint)
 open DY.Libsignal.TripleRatchet.Refinement (pbFields PbOk)
 
-/-! ## `chevalSessionBytes` and Length Bounds -/
+/-! ## Local `W0` Witness and `chevalSessionBytes` Length Bounds -/
+
+@[expose] def nzVec32 : List.Vector (BitVec 8) 32 := ⟨1#8 :: List.replicate 31 0#8, rfl⟩
+@[expose] def u9Vec32 : List.Vector (BitVec 8) 32 := ⟨9#8 :: List.replicate 31 0#8, rfl⟩
+@[expose] def sigZero64 : List.Vector (BitVec 8) 64 := ⟨1#8 :: List.replicate 63 0#8, rfl⟩
+@[expose] def sigZeroEd64 : List UInt8 := (1 : UInt8) :: List.replicate 63 0
+
+@[expose] def C0 : Crypto where
+  F st _ := st
+  E _ b := b
+  D _ b := b
+  X _ _ := nzVec32
+  pubKey _ := nzVec32
+
+@[expose] def K0 : CryptoVerification.LibsignalSpqrV1.MlKem where
+  keyPair _ := List.Vector.replicate 2400 0#8
+  encaps1 _ _ :=
+    some (List.Vector.replicate 960 0#8,
+          List.Vector.replicate 2080 0#8,
+          List.Vector.replicate 32 0#8)
+  encaps2 _ _ := List.Vector.replicate 128 0#8
+  decaps _ _ _ := List.Vector.replicate 32 0#8
+  validPk _ _ := true
+
+@[expose] def Q0 : PqxdhPrims where
+  F512 _ _ := List.Vector.replicate 8 0#64
+  encaps _ _ := (List.Vector.replicate 1568 0#8, List.Vector.replicate 32 0#8)
+  decaps _ _ := List.Vector.replicate 32 0#8
+  K := K0
+
+@[expose] def W0 : PEParams := ⟨C0, Q0⟩
+
+@[expose] def b0 : PreKeyBundleFields where
+  regId := 0
+  opk := none
+  spkId := 0
+  spkPub := List.Vector.replicate 32 0#8
+  spkSig := sigZero64
+  kpkId := 0
+  kpkPub := List.Vector.replicate 1568 0#8
+  kpkSig := sigZero64
+  idPub := u9Vec32
+
+@[expose] def t0 : List.Vector (BitVec 8) initiateTapeLen :=
+  List.Vector.replicate initiateTapeLen 0#8
+
+@[expose] def X0 : UnreachedPqxdhPrimitives where
+  sigPkGen _ := []
+  sigSign _ _ _ := []
+  scalarMul _ _ := []
+  scalarAdd _ _ := []
+  kemKeyGen _ := ([], [])
+  pow8 _ := []
+  isValidDhTriple _ _ _ := false
+
+section W0Init
+
+open VerifiedLibraries.Common (
+  edOrderL fpInv recoverXEven leBytesToNat
+  EdPoint edZero edBasepoint edOnCurve edAdd edNeg edSub edSmul encodeEd
+)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.CurveSpecs (montToEdwards)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4RefBridge (
+  montLiftEd signalMontLiftEd_eq montLiftEd_some_onCurve xeddsaVerifyRef_blockLevelPrims_eq
+)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4SymbolicBridge (
+  signalMontLiftEd_u9_torsionFree
+)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Math.Edwards (
+  edOnCurve_edZero edOnCurve_edBasepoint edAdd_edZero edNeg_edZero edSmul_eq_edNatSmul
+)
+
+attribute [local irreducible] fpInv recoverXEven montLiftEd montToEdwards edSmul
+
+private theorem ofU8_toU8 : ∀ (bs : List (BitVec 8)), ofU8 (toU8 bs) = bs
+  | [] => rfl
+  | _ :: xs => congrArg (_ :: ·) (ofU8_toU8 xs)
+
+private theorem u8Vec_vecU8 {n : Nat} (v : List.Vector (BitVec 8) n) : u8Vec n (vecU8 v) = v := by
+  apply List.Vector.eq
+  rcases v with ⟨l, hl⟩
+  dsimp only [u8Vec, vecU8]
+  rw [ofU8_toU8]
+  simp [fitVec, List.Vector.toList, hl]
+
+private theorem vecU8_length {n : Nat} (v : List.Vector (BitVec 8) n) : (vecU8 v).length = n := by
+  rcases v with ⟨l, hl⟩
+  simpa [vecU8, toU8] using hl
+
+private theorem w0_ite_true {α : Sort _} {p : Prop} [Decidable p] (h : p) (a b : α) :
+    (if p then a else b) = a := by simp [h]
+
+private theorem w0_sha512Pad_len_ge_128 (msg : List UInt8) :
+    128 ≤ (SignalPqxdh.sha512Pad msg).length := by
+  unfold SignalPqxdh.sha512Pad SignalPqxdh.encodeBitLen128BE SignalPqxdh.encodeBitLen64BE
+  simp only [List.length_append, List.length_cons, List.length_nil, List.length_replicate]
+  set rem := (msg.length + 17) % 128
+  have hrem_lt : rem < 128 := Nat.mod_lt _ (by decide)
+  by_cases h0 : rem == 0
+  · have hr0 : rem = 0 := beq_iff_eq.mp h0
+    simp only [h0, ↓reduceIte]; omega
+  · simp only [h0, Bool.false_eq_true, ↓reduceIte]; omega
+
+private theorem w0_foldl_const_aux {α β : Type} (f : α → β → α) (z : α)
+    (hf : ∀ s x, f s x = z) :
+    ∀ (l : List β), l.foldl f z = z
+  | [] => rfl
+  | _ :: rest => by simp only [List.foldl_cons, hf]; exact w0_foldl_const_aux f z hf rest
+
+private theorem w0_foldl_const {α β : Type} (f : α → β → α) (z : α)
+    (hf : ∀ s x, f s x = z) :
+    ∀ (l : List β) (init : α), l ≠ [] → l.foldl f init = z
+  | [], _, hne => absurd rfl hne
+  | _ :: rest, _, _ => by
+    simp only [List.foldl_cons, hf]
+    exact w0_foldl_const_aux f z hf rest
+
+private theorem w0_sha512_zero (msg : List UInt8) :
+    SignalPqxdh.sha512Ref (blockLevelPrims X0 W0) msg = List.replicate 64 0 := by
+  unfold SignalPqxdh.sha512Ref SignalPqxdh.chunkBlocks
+  dsimp only []
+  have hdiv : 1 ≤ (SignalPqxdh.sha512Pad msg).length / 128 :=
+    Nat.div_pos (w0_sha512Pad_len_ge_128 msg) (by decide)
+  have hne : ((List.range ((SignalPqxdh.sha512Pad msg).length / 128)).map
+      (fun i => ((SignalPqxdh.sha512Pad msg).drop (i * 128)).take 128)) ≠ [] := by
+    intro heq
+    have hl := congrArg List.length heq
+    simp at hl
+    omega
+  have hstep : ∀ s b, SignalPqxdh.sha512Step (blockLevelPrims X0 W0) s b = List.replicate 64 0 := by
+    intro s b
+    unfold SignalPqxdh.sha512Step
+    dsimp only [blockLevelPrims, W0, Q0]
+    decide
+  rw [w0_foldl_const _ (List.replicate 64 0) hstep _ _ hne]
+  decide
+
+private theorem w0_sigVerify_u9 (m : List UInt8) :
+    (modelPrims X0 W0).sigVerify (vecU8 u9Vec32) m sigZeroEd64 = true := by
+  rcases signalMontLiftEd_u9_torsionFree (b := u9Vec32.toList) u9Vec32.toList_length (by decide)
+    with ⟨P, hmont, _⟩
+  rw [signalMontLiftEd_eq] at hmont
+  have hP_on : edOnCurve P = true := montLiftEd_some_onCurve hmont
+  change SignalPqxdh.xeddsaVerifyRef
+    ({ blockLevelPrims X0 W0 with sha512 := SignalPqxdh.sha512Ref (blockLevelPrims X0 W0) })
+    (vecU8 u9Vec32) m sigZeroEd64 = true
+  rw [xeddsaVerifyRef_blockLevelPrims_eq]
+  have hcond : ((vecU8 u9Vec32).length == 32 &&
+      sigZeroEd64.length == 64 &&
+      ((sigZeroEd64.getD 63 0 &&& 0x60) == 0)) = true := by
+    rw [vecU8_length]; decide
+  rw [w0_ite_true hcond]
+  dsimp only
+  have hs0 : ((sigZeroEd64.getD 63 0 &&& 0x80) >>> 7).toBitVec = 0#8 := by decide
+  rw [hs0, u8Vec_vecU8, hmont]
+  dsimp only
+  rw [w0_sha512_zero]
+  have hh0 : leBytesToNat (u8Vec 64 (List.replicate 64 (0 : UInt8))).toList % edOrderL = 0 := by
+    decide
+  have hsNat0 : leBytesToNat (u8Vec 32
+      ((sigZeroEd64.drop 32).take 31 ++ [(sigZeroEd64.drop 32).getD 31 0 &&& 0x7F])).toList %
+      edOrderL = 0 := by decide
+  rw [hh0, hsNat0,
+    edSmul_eq_edNatSmul (by decide) edOnCurve_edBasepoint,
+    edSmul_eq_edNatSmul (by decide) hP_on]
+  change (toU8 (encodeEd (edSub edZero edZero)) == sigZeroEd64.take 32) = true
+  have hsub0 : edSub edZero edZero = edZero := by
+    change edAdd edZero (edNeg edZero) = edZero
+    rw [edNeg_edZero, edAdd_edZero edOnCurve_edZero]
+  rw [hsub0]
+  decide
+
+private abbrev w0B1 : SignalPqxdh.Primitives :=
+  { blockLevelPrims X0 W0 with sha512 := SignalPqxdh.sha512Ref (blockLevelPrims X0 W0) }
+
+private theorem sha256Step_w0B1 (blk : List UInt8) :
+    SignalPqxdh.sha256Step w0B1 SignalPqxdh.sha256InitState blk =
+      SignalPqxdh.sha256InitState := by
+  dsimp only [SignalPqxdh.sha256Step, w0B1, blockLevelPrims, W0, C0]; rfl
+
+private theorem foldl_sha256Step_w0B1 (blocks : List (List UInt8)) :
+    blocks.foldl (SignalPqxdh.sha256Step w0B1) SignalPqxdh.sha256InitState =
+      SignalPqxdh.sha256InitState := by
+  induction blocks with
+  | nil => rfl
+  | cons _ tl ih => simp only [List.foldl_cons, sha256Step_w0B1]; exact ih
+
+private theorem sha256Ref_w0B1 (msg : List UInt8) :
+    SignalPqxdh.sha256Ref w0B1 msg = SignalPqxdh.sha256InitState := by
+  dsimp only [SignalPqxdh.sha256Ref]; rw [foldl_sha256Step_w0B1]; rfl
+
+private theorem hmacSha256Ref_w0B1 (k msg : List UInt8) :
+    SignalPqxdh.hmacSha256Ref w0B1 k msg = SignalPqxdh.sha256InitState := by
+  dsimp only [SignalPqxdh.hmacSha256Ref]; simp only [sha256Ref_w0B1]
+
+private def w0Dk : SignalPqxdh.DRKey :=
+  { rootKey := SignalPqxdh.sha256InitState
+    chainKey := SignalPqxdh.sha256InitState
+    pqrKey := SignalPqxdh.sha256InitState }
+
+private theorem hkdfDerive96_w0 (secrets : List UInt8) :
+    (modelPrims X0 W0).hkdfDerive96 secrets = w0Dk := by
+  dsimp only [modelPrims, SignalPqxdh.hkdfDerive96Ref, SignalPqxdh.hkdfExtractRef,
+    SignalPqxdh.hkdfExpand96Ref]
+  simp only [hmacSha256Ref_w0B1]; rfl
+
+private def w0Vec1568 : List.Vector (BitVec 8) 1568 := List.Vector.replicate 1568 0#8
+private theorem w0Vec1568_eq : List.Vector.replicate 1568 0#8 = w0Vec1568 := rfl
+attribute [local irreducible] w0Vec1568
+
+private def w0IdA : KeyPair := keyPairOf C0 emptyParty.me.idPriv
+private def w0BaseA : KeyPair := keyPairOf C0 (List.Vector.replicate 32 0#8)
+private def w0EphA : KeyPair := KeyPair.generate C0 (HKDF.bytesToKey32 (List.replicate 32 0#8))
+private def w0Key0 : BitVec 256 := HKDF.bytesToKey32 (ofU8 SignalPqxdh.sha256InitState)
+private def w0PqA0 : List (BitVec 8) := (pqxdhSpqrSession W0).init .a2b w0Key0
+
+private def w0SA0 : SessionState (List (BitVec 8)) :=
+  (((SessionState.new currentVersion ⟨w0IdA.publicKey⟩ ⟨⟨b0.idPub⟩⟩
+      (Ratchet.rootKdf C0.F w0Key0 nzVec32.toList).1 w0PqA0).addReceiverChain
+      ⟨b0.spkPub⟩ ⟨w0Key0, 0#32⟩).setSenderChain
+    w0EphA ⟨(Ratchet.rootKdf C0.F w0Key0 nzVec32.toList).2, 0#32⟩).setUnacknowledgedPreKeyMessage
+
+private def w0XA : RecordExtras :=
+  initiatorRecordExtras emptyParty.me b0 w0BaseA.publicKey w0Vec1568
+
+set_option maxRecDepth 8192 in
+private theorem w0_initiateState_eq :
+    initiateState X0 W0 .A emptyParty.me b0 t0 =
+      some (w0XA, ⟨.A, w0SA0, 0, [0]⟩) := by
+  have hsig_eq : vecU8 sigZero64 = sigZeroEd64 := by decide
+  have hsig1 : (modelPrims X0 W0).sigVerify (vecU8 u9Vec32)
+      (SignalPqxdh.encodeEC (vecU8 b0.spkPub)) (vecU8 sigZero64) = true := by
+    rw [hsig_eq]; exact w0_sigVerify_u9 _
+  have hsig2 : (modelPrims X0 W0).sigVerify (vecU8 u9Vec32)
+      (SignalPqxdh.encodeKEM (vecU8 w0Vec1568)) (vecU8 sigZero64) = true := by
+    rw [hsig_eq]; exact w0_sigVerify_u9 _
+  have hkem : (modelPrims X0 W0).kemEncaps (vecU8 w0Vec1568) (vecU8 (initiateKemCoins t0)) =
+      some (vecU8 (List.Vector.replicate 32 0#8), vecU8 w0Vec1568) := by
+    dsimp only [modelPrims, blockLevelPrims, SignalPqxdh.kyberPkLen, W0, Q0]
+    have hpkLen : ((vecU8 w0Vec1568).length == 1568) = true := by rw [vecU8_length]; rfl
+    simp only [hpkLen, ↓reduceIte]
+    rw [w0Vec1568_eq]
+  have hxBne : ∀ a b, ((modelPrims X0 W0).x25519 a b != List.replicate 32 0) = true :=
+    fun _ _ => rfl
+  have hbase : (modelPrims X0 W0).x25519Base (toU8 (t0.toList.take 32)) =
+      vecU8 w0BaseA.publicKey.bytes := rfl
+  have hinp : initiateInput W0 emptyParty.me b0 t0 =
+      { ikASk := vecU8 w0IdA.privateKey.bytes
+        ikAPk := vecU8 w0IdA.publicKey.bytes
+        ekASk := toU8 (t0.toList.take 32)
+        kemCoins := vecU8 (initiateKemCoins t0)
+        trustedPeer := true
+        bundle :=
+          { ikB := vecU8 u9Vec32
+            spkId := u32 0#32
+            spkB := vecU8 b0.spkPub
+            spkSig := vecU8 sigZero64
+            opkB? := none
+            pqspkId := u32 0#32
+            pqspkB := vecU8 w0Vec1568
+            pqspkSig := vecU8 sigZero64 } } := by
+    dsimp only [initiateInput, b0, w0IdA]
+    rw [w0Vec1568_eq]
+    rfl
+  unfold initiateState
+  rw [hinp]
+  unfold SignalPqxdh.Model.initiateKeys
+  simp only [«guard», bind, Bind.bind, Option.bind, Pure.pure, Option.map, ↓reduceIte,
+    hsig1, hsig2, hkem, hxBne, SignalPqxdh.dhOptNonZero, hkdfDerive96_w0, hbase]
+  have hcoinsA : (t0.toList.drop 160).take 32 = List.replicate 32 0#8 := rfl
+  rw [hcoinsA]
+  have hinitSess :
+      initializeInitiatorSession C0 (pqxdhSpqrSession W0)
+        ⟨(keyPairOf C0 emptyParty.me.idPriv).publicKey⟩ ⟨⟨b0.idPub⟩⟩ ⟨b0.spkPub⟩
+        w0Key0 w0Key0 w0Key0 (HKDF.bytesToKey32 (List.replicate 32 0#8)) =
+      .ok (((SessionState.new currentVersion ⟨w0IdA.publicKey⟩ ⟨⟨b0.idPub⟩⟩
+          (Ratchet.rootKdf C0.F w0Key0 nzVec32.toList).1 w0PqA0).addReceiverChain
+          ⟨b0.spkPub⟩ ⟨w0Key0, 0#32⟩).setSenderChain
+        w0EphA ⟨(Ratchet.rootKdf C0.F w0Key0 nzVec32.toList).2, 0#32⟩) := rfl
+  change (match initializeInitiatorSession C0 (pqxdhSpqrSession W0)
+      ⟨(keyPairOf C0 emptyParty.me.idPriv).publicKey⟩ ⟨⟨b0.idPub⟩⟩ ⟨b0.spkPub⟩
+      w0Key0 w0Key0 w0Key0 (HKDF.bytesToKey32 (List.replicate 32 0#8)) with
+    | .error _ => none
+    | .ok st => _) = _
+  rw [hinitSess]
+  dsimp only
+  rw [u8Vec_vecU8, u8Vec_vecU8]
+  rfl
+
+end W0Init
+
+theorem initiateState_W0_isSome :
+    (initiateState X0 W0 .A emptyParty.me b0 t0).isSome = true := by
+  rw [w0_initiateState_eq]; rfl
 
 /-- Session file bytes produced by running `initiateState` (SPQR V1 active) and `encodeRecordUnderExtras`. -/
-def chevalSessionBytes : List (BitVec 8) :=
+@[expose] def chevalSessionBytes : List (BitVec 8) :=
   match initiateState X0 W0 .A emptyParty.me b0 t0 with
   | some (x, g) => encodeRecordUnderExtras (fun _ => x) g
   | none => []
 
 theorem chevalSessionBytes_ne_nil : chevalSessionBytes ≠ [] := by
-  have hSome := initiateState_W0_isSome
   unfold chevalSessionBytes
-  cases hInit : initiateState X0 W0 .A emptyParty.me b0 t0 with
-  | none => simp [hInit] at hSome
-  | some xg =>
-    rcases xg with ⟨x, g⟩
-    have htag : CryptoVerification.LibsignalProtoCodec.encodeKey 1 .lengthDelimited = [0x0a#8] := by
-      decide
-    dsimp only [encodeRecordUnderExtras, msgField, lenField]
-    rw [htag]
-    simp
+  rw [w0_initiateState_eq]
+  have htag : CryptoVerification.LibsignalProtoCodec.encodeKey 1 .lengthDelimited = [0x0a#8] := by
+    decide
+  dsimp only [encodeRecordUnderExtras, msgField, lenField]
+  rw [htag]
+  simp
 
 theorem chevalSessionBytes_lt : chevalSessionBytes.length < 2 ^ 31 := by
-  obtain ⟨st1, x, g, hpm, hs, hwf⟩ := pqInitModel_W0_creates_wfSession X0
-  have hparty : emptyParty.party = .A := rfl
-  have htrusts : emptyParty.trusts ⟨⟨b0.idPub⟩⟩ = true := rfl
-  simp only [pqInitModel, htrusts, Bool.not_true, Bool.false_eq_true, ↓reduceIte, hparty] at hpm
   unfold chevalSessionBytes
-  cases hInit : initiateState X0 W0 .A emptyParty.me b0 t0 with
-  | none => simp [hInit] at hpm
-  | some xg =>
-    rcases xg with ⟨x', g'⟩
-    simp only [hInit, Option.some.injEq, Prod.mk.injEq] at hpm
-    obtain ⟨hst1, _⟩ := hpm
-    rw [← hst1] at hs
-    simp only [Option.some.injEq, Prod.mk.injEq] at hs
-    rcases hs with ⟨rfl, rfl⟩
-    exact (hwf.1 x' g' (by rw [← hst1])).2.2
+  rw [w0_initiateState_eq]
+  dsimp only
+  decide +kernel
 
 private theorem initiateState_aliceBaseKey {x : RecordExtras} {g : GhostState Bytes}
     (h : initiateState X0 W0 .A emptyParty.me b0 t0 = some (x, g)) :
     x.aliceBaseKey.take 2 = [0x05#8, 0x01#8] := by
-  unfold initiateState at h
-  have hkeys : (match SignalPqxdh.Model.initiateKeys (modelPrims X0 W0)
-      (initiateInput W0 emptyParty.me b0 t0) with
-    | none => false
-    | some (_, hdr) =>
-      ((initiatorRecordExtras emptyParty.me b0 ⟨u8Vec 32 hdr.ekAPk⟩
-          (u8Vec 1568 hdr.kemCt)).aliceBaseKey.take 2 == [0x05#8, 0x01#8])) = true := by
-    decide +kernel
-  cases hk : SignalPqxdh.Model.initiateKeys (modelPrims X0 W0)
-      (initiateInput W0 emptyParty.me b0 t0) with
-  | none => simp [hk] at h
-  | some p =>
-    rcases p with ⟨dk, hdr⟩
-    simp only [hk] at h hkeys
-    split at h
-    · simp at h
-    · simp only [Option.some.injEq, Prod.mk.injEq] at h
-      rw [← h.1]
-      exact eq_of_beq hkeys
+  rw [w0_initiateState_eq] at h
+  injection h with h
+  obtain ⟨rfl, _⟩ := Prod.mk.inj h
+  rfl
 
 /-! ## Top-Level Protobuf Field Injectivity -/
 

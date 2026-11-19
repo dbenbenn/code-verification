@@ -12,12 +12,14 @@ module
 public import Computational.Specifications.Pqxdh.Security.HeadlineDelta
 public import Computational.Specifications.Session.StatementSession
 public import Computational.Specifications.Composition.StatementModel
+public import Computational.Specifications.LibsignalCli.Kyber1024Delta
+import Computational.Proofs.Kyber1024Delta.HeadlineProof
 import Computational.Proofs.LibsignalCli.HeadlineModel
 import Computational.Proofs.LibsignalCli.HeadlineSession
 import Computational.Proofs.SignalPqxdh.Delta.Statements
 
 /-!
-# Lemmas 1–3: PQXDH, Single Session, and Multi-Session Composition
+# Lemmas 1–3 and Kyber-1024 `δ_kem`: PQXDH, Single Session, Composition, and KEM Correctness
 
 **Trusted: the statement.** Each theorem below states a proposition from
 `Computational/Specifications/` and is proved by a corresponding `*_proof` theorem in
@@ -30,6 +32,7 @@ and the Main Theorem on the compiled `signal-session` binary.
 | 1 (PQXDH) | `SignalPqxdh.Security.headlineδ` | `PqxdhCorrectAndSecureδ` (`Computational/Specifications/Pqxdh/Security/HeadlineDelta.lean`) | `Computational/Proofs/SignalPqxdh/Delta/Statements.lean` |
 | 2 (single session) | `CryptoVerification.E2E.session_secure` | `SessionSecure` (`Computational/Specifications/Session/StatementSession.lean`) | `Computational/Proofs/LibsignalCli/HeadlineSession.lean` |
 | 3 (composition) | `CryptoVerification.E2E.model_secure_costed` | `ModelSecure` (`Computational/Specifications/Composition/StatementModel.lean`) | `Computational/Proofs/LibsignalCli/HeadlineModel.lean` |
+| Kyber-1024 `δ_kem` | `CryptoVerification.E2E.kyber1024_kem_delta_correct` | `Kyber1024KemDeltaCorrect` (`Computational/Specifications/LibsignalCli/Kyber1024Delta.lean`) | `Computational/Proofs/Kyber1024Delta/HeadlineProof.lean` |
 -/
 
 @[expose] public section
@@ -55,6 +58,8 @@ end SignalPqxdh.Security
 
 namespace CryptoVerification.E2E
 
+open Computational.Proofs.Kyber1024Delta.HeadlineProof (kyber1024_kem_delta_correct_proof)
+
 /-- **Lemma 2 (single session)** (`SessionSecure`,
 `Computational/Specifications/Session/StatementSession.lean`). There exists a family `D` of
 cost-bounded session reductions such that, for all primitives satisfying the session hypotheses
@@ -75,5 +80,14 @@ of the single-session `SM.gameR` bias mixed over stage 1 of the prefix reduction
 theorem model_secure_costed {Pt : Type}
     (S : SignalPqxdh.Setup) (ℓ : ℕ) : ModelSecure (Pt := Pt) S ℓ :=
   model_secure_costed_proof S ℓ
+
+/-- **Kyber-1024 `δ_kem` correctness** (`Kyber1024KemDeltaCorrect`,
+`Computational/Specifications/LibsignalCli/Kyber1024Delta.lean`). At `realPEParams` and
+`kyber1024KemKeyGen`, the PQXDH model primitives
+`modelPrims (realUnreachedPrims kyber1024KemKeyGen) realPEParams` produce `(1568B, 3168B)` key
+pairs on every seed and, for any `ε` satisfying the CBD-noise idealization hypothesis
+`SignalPqxdh.KyberNoiseGap ε`, satisfy `SignalPqxdh.KemDeltaCorrect P (ε + 1 / 2 ^ 112)`. -/
+theorem kyber1024_kem_delta_correct : Kyber1024KemDeltaCorrect :=
+  kyber1024_kem_delta_correct_proof
 
 end CryptoVerification.E2E

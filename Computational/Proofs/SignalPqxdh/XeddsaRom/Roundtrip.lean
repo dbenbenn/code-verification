@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.XeddsaRom.Statements
+public import Computational.Proofs.SignalPqxdh.XeddsaRom.Statements -- proof-setup: allow-public-import
 import VCVio.OracleComp.EvalDist.Measure
 
 /-!
@@ -21,7 +21,7 @@ roundtrip correctness of `xeddsaSignRo` and `xeddsaVerifyRo` in the shared SHA-5
 cache.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 4096
@@ -130,7 +130,7 @@ theorem compress_edBaseMul {P : Primitives} (C : XeddsaCurveWitness P) (x : ZMod
 
 /-- Pure signature assembly from 64-byte nonce and challenge digests, shared by `xeddsaSignRef` and
 `xeddsaSignRo`. -/
-def xeddsaSignFromDigests (P : Primitives) (sk h1Digest hDigest : Bytes) : Bytes :=
+@[expose] def xeddsaSignFromDigests (P : Primitives) (sk h1Digest hDigest : Bytes) : Bytes :=
   let keyData := clampScalar25519 sk
   let a := P.scalarFromBytesModOrder keyData
   let edPk := edBaseMul P a
@@ -151,7 +151,7 @@ private theorem xeddsaSignFromDigests_verify_parts {P : Primitives} (C : XeddsaC
     let sig := xeddsaSignFromDigests P sk h1Digest hDigest
     let pk := P.x25519Base sk
     (pk.length == 32 && sig.length == 64 && ((sig.getD 63 0 &&& 0x60) == 0)) = true ∧
-      ∃ edPk : Bytes,
+      ∃ edPk : VerifiedLibraries.Common.EdPoint,
         P.montToEd pk ((sig.getD 63 0 &&& 0x80) >>> 7) = some edPk ∧
         P.compress edPk = capA ∧
         sig.take 32 = capR ∧
@@ -335,9 +335,6 @@ theorem wellFormedPrimitivesδ_with_xeddsaSignRef {P : Primitives}
   scalarAdd_len := hwf.scalarAdd_len
   scalarFromBytesModOrder_len := hwf.scalarFromBytesModOrder_len
   scalarFromWide_len := hwf.scalarFromWide_len
-  montToEd_len := hwf.montToEd_len
-  edNeg_len := hwf.edNeg_len
-  doubleScalarMulBasepoint_len := hwf.doubleScalarMulBasepoint_len
   compress_len := hwf.compress_len
   sigVerify_eq_xeddsaVerifyRef := hwf.sigVerify_eq_xeddsaVerifyRef
   isCanonical_eq_isCanonicalRef := hwf.isCanonical_eq_isCanonicalRef

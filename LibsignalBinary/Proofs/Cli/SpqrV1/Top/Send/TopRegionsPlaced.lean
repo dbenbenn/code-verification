@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinish1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1Placed
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendDispatch
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinish1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendDispatch -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinishPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves1Placed
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
@@ -29,7 +29,7 @@ Proves alignment-free `step_send_finish_320a4'_placed` (`+6216 -> +4600`) and th
 `encaps1 = none` panic arm (`+1312 -> unwrap_failed`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -87,7 +87,7 @@ private theorem send_noneCap2_add_two_beq_zero :
 private theorem send_noneCap2_add_two_bne_zero :
     (0xfffffffffffffffe#64 + 2#64 != 0#64) = false := rfl
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff Program.fnAddr
   v1StatePBPinnedAt
 attribute [-arm64_norm]
   Kdf.HkdfToSliceProof.sp_sub_688_eq_hsp

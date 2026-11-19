@@ -9,9 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.Defs
+import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.Defs
 import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegMidBase
-import ProofLib.SepLogic.WPp
+public import ProofLib.SepLogic.WPp
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `consume_message_key` Segment Helpers (`S4Spec`)
@@ -20,7 +27,7 @@ Framing and postcondition-staging helpers around `RatchetState::consume_message_
 `clear_unacknowledged_pre_key_message` (`+0x3e4 → +0x5b8 / +0x30c`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegC
 
@@ -537,34 +544,6 @@ private theorem empty_vecU8_intro (A : RustAlloc) (v : BitVec 64) :
         ((v ↦₆₄ 0#64) ∗ ((v + 8#64) ↦₆₄ 1#64) ∗ ((v + 16#64) ↦₆₄ 0#64)) := by ac_rfl
   rw [heq]
   exact Entails.pure_right hp (Entails.refl _)
-
-private theorem steps_call_out {α : Type} {prog : Program} {img : Obj.Image}
-    {entry ret_pc : BitVec 64} {spec : Spec α} (x : α)
-    {sm : State} {F R : SepProp} {Out : State → Prop}
-    (hcall : subroutine_ok prog entry spec)
-    (hpc : sm.pc = entry) (hrun : sm.status = .Running) (hsp : sm.spAligned = true)
-    (hlr : sm.readReg64 .lr = ret_pc)
-    (hfrozen : img.FrozenLoaded sm) (hsym : sm.symtab = img.symtab)
-    (hL : prog.CodeLoaded sm.mem)
-    (hpre : sm.mem ⊨ spec.pre x sm ∗ (F ∗ R))
-    (hpanic : ∀ sf, sf.status = .Panicked → (sf.mem ⊨ (spec.onPanic x sm sf ∗ F) ∗ R) → Out sf)
-    (hnext : ∀ sf, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = sm.sp → sf.spAligned = true → CalleeSavedPreserved sm sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab → prog.CodeLoaded sf.mem →
-      (sf.mem ⊨ (spec.post x sm sf ∗ F) ∗ R) →
-      ∃ s', Steps prog sf s' ∧ Out s')
-    (hexit : ∀ sf code R', (sf.mem ⊨ spec.onExit x code sm sf ∗ R') → False := by
-      intro _ _ _ h; exact not_satisfies_false_sepConj h)
-    (hoom : ∀ sf R', (sf.mem ⊨ spec.onOom x sm sf ∗ R') → False := by
-      intro _ _ h; first | exact not_satisfies_false_sepConj h | (dsimp only [Spec.inImage] at h; exact not_satisfies_false_sepConj h)) :
-    ∃ s', Steps prog sm s' ∧ Out s' := by
-  obtain ⟨s', hsteps, hout | hout⟩ :=
-    steps_call x hcall hpc hrun hsp hlr hfrozen hsym hL hpre hpanic
-      (fun sf h1 h2 h3 h4 h5 h6 h7 h8 h9 =>
-        let ⟨s', hs, ho⟩ := hnext sf h1 h2 h3 h4 h5 h6 h7 h8 h9
-        ⟨s', hs, Or.inl ho⟩) hexit hoom
-  · exact ⟨s', hsteps, hout⟩
-  · exact ⟨s', hsteps, hout⟩
 
 private def trNonRatchetAt (A : RustAlloc) (sp : BitVec 64) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) : SepProp :=

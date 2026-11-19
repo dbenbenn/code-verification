@@ -9,9 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Hops -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # Relocatable Arm `R1b` Specification for `signal_session::run`
@@ -20,7 +23,7 @@ Defines `RunHopInit2PlacedOf` and `RunHopInit2Placed` (`R+0x074c → R+0x28f0`) 
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +39,7 @@ open CryptoVerification.SignalSession.Cli.MainHops
 open CryptoVerification.SignalSession.Cli.RunSkeleton
 
 /-- Slot-parametric relocatable Arm `R1b` contract (`R+0x074c → R+0x28f0` or `RejectKPlaced` / `PanicK`) reading and deserializing the pre-key bundle from `d1.dir` into `cliBundleAt`. -/
-def RunHopInit2PlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
+@[expose] def RunHopInit2PlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (slots : RunSlots) (resStack : Nat) : Prop :=
   ∀ {g : RunCall} {d1 : Init1Data} {s0 s1 : State} {Q Qp : State → SepProp → Prop},
     RunHooksPlaced A H →
@@ -55,7 +58,7 @@ def RunHopInit2PlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : Rus
     SepWPp (runProgPlaced H) (s0.readReg64 .lr) s1 (init1MemPlaced A g d1 s0 resStack) Q Qp
       (runOom s0)
 
-def RunHopInit2Placed [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
+@[expose] def RunHopInit2Placed [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (needs : RunNeeds) (resStack : Nat) : Prop :=
   RunHopInit2PlacedOf CodeOk A H B S (slotsOfPlaced A S needs) resStack
 

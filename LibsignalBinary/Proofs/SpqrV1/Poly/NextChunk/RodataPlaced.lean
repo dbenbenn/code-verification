@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Rodata
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Rodata -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysDefs
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataRows30
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataRows34
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataRows36
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk`: Placed `.rodata` Lagrange Basis Tables
@@ -24,7 +25,7 @@ lemmas (`rodata_completePointsPolys_placed`), and row-slicing bridges for
 `COMPLETE_POINTS_POLYS_{5,30,34,36}`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -55,7 +56,7 @@ abbrev completePointsPolys36Sym : String := "spqr:.rodata..Lanon.194"
 
 set_option maxRecDepth 200000
 
-def completePointsPolys5PlacedAt [LibsignalPlacement] : SepProp :=
+@[expose] def completePointsPolys5PlacedAt [LibsignalPlacement] : SepProp :=
   (lsρ completePointsPolys5Sym) ↦ᵣ completePointsPolys5Bytes
 
 private theorem lsroCheck_completePointsPolys5 :
@@ -68,7 +69,7 @@ theorem rodata_completePointsPolys5_placed [LibsignalPlacement] {m : Memory}
     m ⊨ completePointsPolys5PlacedAt ∗ P :=
   lsro_intro_chk hro lsroCheck_completePointsPolys5 hP
 
-def completePointsPolys30PlacedAt [LibsignalPlacement] : SepProp :=
+@[expose] def completePointsPolys30PlacedAt [LibsignalPlacement] : SepProp :=
   (lsρ completePointsPolys30Sym) ↦ᵣ completePointsPolys30Bytes
 
 private theorem lsroCheck_completePointsPolys30 :
@@ -82,7 +83,7 @@ theorem rodata_completePointsPolys30_placed [LibsignalPlacement] {m : Memory}
     m ⊨ completePointsPolys30PlacedAt ∗ P :=
   lsro_intro_chk hro lsroCheck_completePointsPolys30 hP
 
-def completePointsPolys34PlacedAt [LibsignalPlacement] : SepProp :=
+@[expose] def completePointsPolys34PlacedAt [LibsignalPlacement] : SepProp :=
   (lsρ completePointsPolys34Sym) ↦ᵣ completePointsPolys34Bytes
 
 private theorem lsroCheck_completePointsPolys34 :
@@ -96,7 +97,7 @@ theorem rodata_completePointsPolys34_placed [LibsignalPlacement] {m : Memory}
     m ⊨ completePointsPolys34PlacedAt ∗ P :=
   lsro_intro_chk hro lsroCheck_completePointsPolys34 hP
 
-def completePointsPolys36PlacedAt [LibsignalPlacement] : SepProp :=
+@[expose] def completePointsPolys36PlacedAt [LibsignalPlacement] : SepProp :=
   (lsρ completePointsPolys36Sym) ↦ᵣ completePointsPolys36Bytes
 
 private theorem lsroCheck_completePointsPolys36 :
@@ -111,7 +112,7 @@ theorem rodata_completePointsPolys36_placed [LibsignalPlacement] {m : Memory}
   lsro_intro_chk hro lsroCheck_completePointsPolys36 hP
 
 /-- Bundled relocatable read-only separation-logic assertion for `COMPLETE_POINTS_POLYS_{5,30,34,36}`. -/
-def completePointsPolysPlacedAt [LibsignalPlacement] : SepProp :=
+@[expose] def completePointsPolysPlacedAt [LibsignalPlacement] : SepProp :=
   completePointsPolys5PlacedAt ∗
   completePointsPolys30PlacedAt ∗
   completePointsPolys34PlacedAt ∗
@@ -139,7 +140,7 @@ theorem sepWPp_intro_rodata_placed [LibsignalPlacement]
 
 /-- Unread bytes of `COMPLETE_POINTS_POLYS_5` at `lsρ completePointsPolys5Sym`
     (offsets `8..10`, `18..20`, `28..30`, `38..50`). -/
-def completePointsPolys5RestPlacedAt [LibsignalPlacement] : SepProp :=
+@[expose] def completePointsPolys5RestPlacedAt [LibsignalPlacement] : SepProp :=
   ((lsρ completePointsPolys5Sym + 8#64) ↦ᵣ (completePointsPolys5Bytes.drop 8).take 2) ∗
   ((lsρ completePointsPolys5Sym + 18#64) ↦ᵣ (completePointsPolys5Bytes.drop 18).take 2) ∗
   ((lsρ completePointsPolys5Sym + 28#64) ↦ᵣ (completePointsPolys5Bytes.drop 28).take 2) ∗
@@ -202,7 +203,7 @@ theorem completePointsPolys5PlacedAt_split [LibsignalPlacement] :
   ac_rfl
 
 /-- `polyNextChunkPlacedSpec A` extended with `completePointsPolysPlacedAt` explicit in `pre`. -/
-def polyNextChunkRodataPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec PolyNextChunkGhost where
+@[expose] def polyNextChunkRodataPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec PolyNextChunkGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.outA ∧ s.readReg64 .x0 = x.encA ∧
       x.enc.nextChunk = .ok (x.enc', x.chunk)⌝ ∗
@@ -217,7 +218,7 @@ def polyNextChunkRodataPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec Po
 
 /-- Relocatable `[LibsignalPlacement]` contract for `<PolyEncoder as Encoder>::next_chunk`
     (Block `416`) with explicit `completePointsPolysPlacedAt` wrapped with `withLsCodeLoaded lsmpl`. -/
-def PolyNextChunkRodataPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PolyNextChunkRodataPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
     (blkPl_416).base

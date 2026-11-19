@@ -19,15 +19,15 @@ public import LibsignalBinary.Specifications.CryptoGames.Party
 Ghost-epoch alignment predicate and tuple equivalence for `InitKeys`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames
 namespace LibsignalSession
 
-def GhostState.Aligned {PQ : Type} (g : GhostState PQ) : Prop :=
+@[expose] def GhostState.Aligned {PQ : Type} (g : GhostState PQ) : Prop :=
   g.chainEpochs.length = g.session.receiverChains.length
 
-def InitKeys.equiv : (BitVec 256 × BitVec 256 × BitVec 256 × BitVec 256 × BitVec 256) ≃ InitKeys where
+@[expose] def InitKeys.equiv : (BitVec 256 × BitVec 256 × BitVec 256 × BitVec 256 × BitVec 256) ≃ InitKeys where
   toFun x := ⟨x.1, x.2.1, x.2.2.1, x.2.2.2.1, x.2.2.2.2⟩
   invFun k := (k.rootKey, k.chainKey, k.bobSpkCoins, k.aliceRatchetCoins, k.pqrKey)
   left_inv _ := rfl

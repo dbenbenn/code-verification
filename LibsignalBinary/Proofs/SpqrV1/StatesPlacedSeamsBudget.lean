@@ -9,9 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeams
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeams
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` Seams for `SpqrV1/States`
@@ -20,7 +24,7 @@ public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
 and `StatesPlacedSeams` bundle for `SpqrV1/States/{FromPb,Recv,Leaves}`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -85,7 +89,7 @@ export LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget
 
 /-- Envelope-parametric Block `333` contract: `<States>::from_pb` meets
     `withLsCodeRoLoaded lsmpl (statesFromPbPlacedSpecXOfEnv M A lim F Env)`. -/
-def StatesFromPbPlacedOkXOfEnv [LibsignalPlacement]
+@[expose] def StatesFromPbPlacedOkXOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State))
     (Env : V1State → List AllocEvent → Prop) : Prop :=
@@ -101,7 +105,7 @@ abbrev StatesFromPbPlacedOkX [LibsignalPlacement]
 
 /-- Envelope-parametric Block `332` contract: `<States>::recv` meets
     `withLsCodeRoLoaded lsmpl (statesRecvPlacedSpecOfEnv M A lim F K Env)`. -/
-def StatesRecvPlacedOkXOfEnv [LibsignalPlacement]
+@[expose] def StatesRecvPlacedOkXOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (K : MlKem)
     (ext : String → Option (State → State))

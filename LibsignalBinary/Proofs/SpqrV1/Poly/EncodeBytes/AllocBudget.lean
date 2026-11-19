@@ -9,18 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.CodeLayout
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.Alloc
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.LoopBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.Alloc
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.LoopBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
 
 /-!
 # Budget-Threaded Heap Allocations and Header Init for `<PolyEncoder as Encoder>::encode_bytes`
@@ -29,7 +34,7 @@ Threads `RustCliAllocBudget M`, `encodeBytesAllocChunkEvents`, and `VmPreserved`
 4-allocation chunks (`+96..+476`) and stack-header initialization on Block `417`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -75,7 +80,7 @@ private noncomputable abbrev keep417 [LibsignalPlacement] : BitVec 64 → Bool :
 /-! ## 4-Allocation Chunk Event Schedule and `encodeBytesAllocEvents` Decomposition -/
 
 /-- Exact allocator event list of one 4-allocation chunk (`4 × __rust_alloc(msgLen, 2)`). -/
-def encodeBytesAllocChunkEvents (msgLen : Nat) : List AllocEvent :=
+@[expose] def encodeBytesAllocChunkEvents (msgLen : Nat) : List AllocEvent :=
   rustAllocEvents msgLen 2 ++
     (rustAllocEvents msgLen 2 ++
       (rustAllocEvents msgLen 2 ++ rustAllocEvents msgLen 2))

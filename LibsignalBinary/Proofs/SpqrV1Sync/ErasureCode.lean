@@ -26,7 +26,7 @@ Specifications for the `spqrPolyApi` operations (`PolyEncoder.encodeBytes`, `nex
 `msg.length ≤ 2 ^ 20`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.Erasure
 

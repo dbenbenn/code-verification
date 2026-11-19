@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStep
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetWp
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStep
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetWp -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBlocks
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepRecvChain
@@ -26,7 +26,7 @@ Threads `VmPreserved` across basic blocks and external hooks (`rng_fill`, `deriv
 `StaticSecret::drop`) from `+0x70c` to the second `RootKey::create_chain` call at `+0x7d4`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.CliPqAdapterRemoteIdInv
+public import Computational.Proofs.LibsignalCli.CliPqAdapterRemoteIdInv -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import all Init.Data.Repr
-public import Computational.Proofs.LibsignalCli.CliPqBadKemBound
+public import Computational.Proofs.LibsignalCli.CliPqBadKemBound -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Simulation
 import Computational.Proofs.E2E.BhAdapterIjHelpersV1Core
 import Computational.Proofs.E2E.ComposedBinaryLinkV1
@@ -31,7 +31,7 @@ import VCVio.EvalDist.Monad.Basic
 `cliDrvSM_bob_ij_coupled`) outside `cliClause2BadKemBool`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.constructorNameAsVariable false
@@ -2383,21 +2383,6 @@ private theorem cliAdapterDrvRel_decrement_i {S : SignalPqxdh.Setup} {ℓ : ℕ}
     CliAdapterDrvRel S ℓ X W b qStart (fun k => if k = i then qs_rem k - 1 else qs_rem k)
       st_cli ds_cli σ_ad σ_e2e :=
   cliAdapterDrvRel_mono_qs_rem (fun k => by split_ifs <;> omega) hRel
-
-private theorem instMeta_eq_of_cliRel {S : SignalPqxdh.Setup} {ℓ : ℕ}
-    {X : UnreachedPqxdhPrimitives} {W : PEParams}
-    {b : Bool} {qStart : ℕ} {qs_rem : ℕ → ℕ}
-    {st_cli : SignalPqxdh.KeyIndState S} {ds_cli : ModelDriverState S ℓ}
-    {σ_ad : CliAdapterState S} {σ_e2e : BHE2EDrvState S ℓ}
-    (hRel : CliAdapterDrvRel S ℓ X W b qStart qs_rem st_cli ds_cli σ_ad σ_e2e) :
-    ds_cli.instMeta = σ_e2e.instMeta := by
-  apply List.ext_getElem
-  · rw [hRel.meta_cli_len_eq, hRel.insts_len_eq, hRel.meta_e2e_len_eq]
-  · intro i hi_mb hi_me
-    have hi_cli : i < ds_cli.bhInsts.length := hRel.meta_cli_len_eq ▸ hi_mb
-    have hi_e2e : i < σ_e2e.insts.length := hRel.insts_len_eq ▸ hi_cli
-    obtain ⟨_, _, hInstRel⟩ := hRel.insts_rel i hi_cli hi_e2e hi_mb hi_me
-    exact hInstRel.im_eq
 
 private theorem bhDrvInstClean_eq_bhE2EDrvInstClean_of_cliRel {S : SignalPqxdh.Setup} {ℓ : ℕ}
     {X : UnreachedPqxdhPrimitives} {W : PEParams}

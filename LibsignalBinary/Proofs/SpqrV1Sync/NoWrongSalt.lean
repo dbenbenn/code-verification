@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync
-public import LibsignalBinary.Proofs.SpqrV1Sync.TopSize
-public import LibsignalBinary.Proofs.SpqrV1Sync.CoinBridge
-public import LibsignalBinary.Proofs.SpqrV1.KemFailFindFacts
+import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync
+import LibsignalBinary.Proofs.SpqrV1Sync.TopSize
+import LibsignalBinary.Proofs.SpqrV1Sync.CoinBridge
+import LibsignalBinary.Proofs.SpqrV1.KemFailFindFacts
 public import LibsignalBinary.Specifications.CryptoGames.Party
-public import LibsignalBinary.Proofs.SpqrV1Sync.ChainSync
-public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncCalib
-public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncEpoch
+import LibsignalBinary.Proofs.SpqrV1Sync.ChainSync
+import LibsignalBinary.Proofs.SpqrV1Sync.InSyncCalib
+import LibsignalBinary.Proofs.SpqrV1Sync.InSyncEpoch
 public import LibsignalBinary.Specifications.AsmConstants
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDecDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDefs
@@ -25,7 +25,7 @@ public import LibsignalBinary.Specifications.CryptoGames.AEAD.EtMDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HKDFDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.WireAeadDefs
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Construction
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Defs
@@ -39,7 +39,7 @@ public import LibsignalBinary.Specifications.CryptoGames.Ratchet.RootKdfDefs
 public import LibsignalBinary.Specifications.HkdfSalt
 public import LibsignalBinary.Specifications.LibsignalAesCbc
 public import LibsignalBinary.Specifications.LibsignalHmac
-public import LibsignalBinary.Specifications.LibsignalProtoCodec
+public import LibsignalBinary.Proofs.ProtoCodecKat
 public import LibsignalBinary.Specifications.LibsignalSession
 public import LibsignalBinary.Specifications.LibsignalSessionRepr
 public import LibsignalBinary.Specifications.LibsignalSignalMessage
@@ -65,7 +65,7 @@ public import LibsignalBinary.Specifications.LibsignalSpqrV1.States
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Top
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
-public import LibsignalBinary.Specifications.LibsignalTripleRatchetProst
+public import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst
 public import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
 public import LibsignalBinary.Specifications.RustHeap.Alloc
 public import LibsignalBinary.Specifications.RustHeap.Vec
@@ -92,7 +92,7 @@ no-wrong-salt trace theorem:
   overflow threshold.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.NoWrongSalt
 

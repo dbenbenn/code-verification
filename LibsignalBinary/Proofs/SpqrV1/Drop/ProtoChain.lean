@@ -9,14 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Repr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Decodes
-public import LibsignalBinary.Proofs.SpqrV1.Drop.DropCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Repr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Decodes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.DropCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public meta import ProofLib.GenDecodes
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Drop Glue for `proto::pq_ratchet::chain::Epoch`, `Chain`, and `Option<Chain>`
@@ -27,7 +30,7 @@ Proves subroutine contracts for:
 - `core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::Chain>>` (`0x4c060`, Block `266`)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Layout.L13
 open Lean Elab Tactic ProofLib ProofLib.CodeLookup in
@@ -76,7 +79,7 @@ private theorem optChainPBAt_some (A : RustAlloc) (a : BitVec 64) (ch : ChainPB)
 
 /-! ## Representation Deallocation Entailments for `ProtoRepr` -/
 
-def epochDirPBHeadersAt (a : BitVec 64) (g : EpochDirectionPBGhost) : SepProp :=
+@[expose] def epochDirPBHeadersAt (a : BitVec 64) (g : EpochDirectionPBGhost) : SepProp :=
   (a ↦₆₄ g.next.cap) ∗ ((a + 8#64) ↦₆₄ g.next.ptr) ∗ memRegion (a + 16#64) 8 ∗
   ((a + 24#64) ↦₆₄ g.prev.cap) ∗ ((a + 32#64) ↦₆₄ g.prev.ptr) ∗ memRegion (a + 40#64) 16
 
@@ -270,7 +273,7 @@ structure DropProtoEpochSliceGhost where
   /-- Elements of the slice (`x1 = eps.length`). -/
   eps : List ChainEpochPB
 
-def dropProtoEpochSliceSpec (A : RustAlloc) : Spec DropProtoEpochSliceGhost where
+@[expose] def dropProtoEpochSliceSpec (A : RustAlloc) : Spec DropProtoEpochSliceGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ptr ∧ s.readReg64 .x1 = BitVec.ofNat 64 x.eps.length ∧
       x.eps.length * chainEpochPBSize < 2 ^ 63⌝ ∗
@@ -288,7 +291,7 @@ structure DropProtoSpqrChainGhost where
   /-- Abstract `ChainPB` model value. -/
   ch : ChainPB
 
-def dropProtoSpqrChainSpec (A : RustAlloc) : Spec DropProtoSpqrChainGhost where
+@[expose] def dropProtoSpqrChainSpec (A : RustAlloc) : Spec DropProtoSpqrChainGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
       chainPBAt A x.a x.ch ∗
@@ -305,7 +308,7 @@ structure DropOptProtoSpqrChainGhost where
   /-- Abstract `Option ChainPB` model value. -/
   optCh : Option ChainPB
 
-def dropOptProtoSpqrChainSpec (A : RustAlloc) : Spec DropOptProtoSpqrChainGhost where
+@[expose] def dropOptProtoSpqrChainSpec (A : RustAlloc) : Spec DropOptProtoSpqrChainGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
       optChainPBAt A x.a x.optCh ∗
@@ -491,75 +494,6 @@ local macro "proto_epoch_slice_main_steps " entry:term:max : tactic => `(tactic|
       refine SepWP.weaken_pre
         (sepConj_mono_right (sepConj_mono_right (stack_restore_32_allocHook s0.sp _ _ _ _))) ?_
       wp_done))
-
-private theorem drop_proto_epoch_slice_body {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoEpochSliceName +
-        bv% (ls_rel% "core::ptr::drop_glue::<[spqr::proto::pq_ratchet::chain::Epoch]>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (s0 : State) (fsp : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (cur cnt : BitVec 64) (ep : ChainEpochPB) (s : State) (Frame : SepProp),
-      s.pc = (dropProgAtExt b ext).fnAddr dropProtoEpochSliceName + 40#64 → s.status = .Running →
-      Saved32x20Preserved s0 s fsp → s.readReg64 .x19 = cnt → s.readReg64 .x20 = cur + 56#64 →
-      SepWP (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropProtoEpochSliceName + 28#64) s
-        (chainEpochPBAt A cur ep ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm => (Pm ⊢ memRegion cur 112 ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved32x20Preserved s0 sm fsp ∧ sm.readReg64 .x19 = cnt ∧ sm.readReg64 .x20 = cur + 56#64) := by
-  simp only [rustDeallocSpec] at hdealloc
-  dsimp only [dropProgAtExt, dropProtoEpochSliceName, BitVec.ofNat_eq_ofNat] at *
-  code_fetches_len libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<[spqr::proto::pq_ratchet::chain::Epoch]>" 152
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<[spqr::proto::pq_ratchet::chain::Epoch]>" = entry
-  examples_hide_fetches; proto_epoch_slice_body_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry
-
-private theorem drop_proto_epoch_slice_loop {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoEpochSliceName +
-        bv% (ls_rel% "core::ptr::drop_glue::<[spqr::proto::pq_ratchet::chain::Epoch]>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (s0 : State) (fsp : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (rest : List ChainEpochPB) (cur : BitVec 64) (s : State) (Frame : SepProp),
-      rest ≠ [] → rest.length * 112 < 2 ^ 63 →
-      s.pc = (dropProgAtExt b ext).fnAddr dropProtoEpochSliceName + 40#64 → s.status = .Running →
-      Saved32x20Preserved s0 s fsp → s.readReg64 .x19 = BitVec.ofNat 64 rest.length → s.readReg64 .x20 = cur + 56#64 →
-      SepWP (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropProtoEpochSliceName + 140#64) s
-        (arrayAt (fun ep addr => chainEpochPBAt A addr ep) 112 cur rest ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm => (Pm ⊢ memRegion cur (rest.length * 112) ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved32x20Preserved s0 sm fsp) := by
-  have hbody := drop_proto_epoch_slice_body (b := b) (ext := ext) hdealloc s0 fsp hfsp_align
-  dsimp only [dropProgAtExt, dropProtoEpochSliceName, BitVec.ofNat_eq_ofNat] at *
-  code_fetches_len libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<[spqr::proto::pq_ratchet::chain::Epoch]>" 152
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<[spqr::proto::pq_ratchet::chain::Epoch]>" = entry
-  examples_hide_fetches; proto_epoch_slice_loop_steps entry
-
-theorem drop_proto_epoch_slice_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoEpochSliceName)
-      (dropProtoEpochSliceSpec A) := by
-  simp only [dropProtoEpochSliceSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoEpochSliceName +
-        bv% (ls_rel% "core::ptr::drop_glue::<[spqr::proto::pq_ratchet::chain::Epoch]>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel
-      (k := ls_rel% "core::ptr::drop_glue::<[spqr::proto::pq_ratchet::chain::Epoch]>" "__rustc::__rust_dealloc")
-      (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<[spqr::proto::pq_ratchet::chain::Epoch]>")
-      (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  have hloop := drop_proto_epoch_slice_loop (b := b) (ext := ext) hdealloc_raw
-  code_fetches_len libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<[spqr::proto::pq_ratchet::chain::Epoch]>" 152
-  dsimp only [dropProgAtExt, dropProtoEpochSliceName, chainEpochPBSize, BitVec.ofNat_eq_ofNat] at hloop ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<[spqr::proto::pq_ratchet::chain::Epoch]>" = entry
-  examples_hide_fetches; proto_epoch_slice_main_steps entry
 
 section PlacedProtoEpochSlice
 variable [LibsignalPlacement]
@@ -863,107 +797,6 @@ local macro "proto_spqr_chain_main_steps " entry:term:max : tactic => `(tactic| 
         wp_call hdealloc_raw (g.nextRoot.ptr, g.nextRoot.cap.toNat, 1)
         rw [← stackAt_dropStack48_split_bottom s0.sp]; wp_done))
 
-private theorem drop_proto_spqr_chain_body {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoSpqrChainName +
-        bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::Chain> [local#1]" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (s0 : State) (fsp a lPtr : BitVec 64)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (cur cnt : BitVec 64) (ep : ChainEpochPB)
-      (s : State) (Frame : SepProp),
-      s.pc = (dropProgAtExt b ext).fnAddr dropProtoSpqrChainName + 48#64 →
-      s.status = .Running →
-      Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = a →
-      s.readReg64 .x20 = lPtr →
-      s.readReg64 .x21 = cnt →
-      s.readReg64 .x22 = cur + 56#64 →
-      SepWP (dropProgAtExt b ext)
-        ((dropProgAtExt b ext).fnAddr dropProtoSpqrChainName + 36#64)
-        s
-        (chainEpochPBAt A cur ep ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm =>
-          (Pm ⊢ memRegion cur 112 ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧
-          sm.readReg64 .x19 = a ∧
-          sm.readReg64 .x20 = lPtr ∧
-          sm.readReg64 .x21 = cnt ∧
-          sm.readReg64 .x22 = cur + 56#64) := by
-  simp only [rustDeallocSpec] at hdealloc
-  dsimp only [dropProgAtExt, dropProtoSpqrChainName, BitVec.ofNat_eq_ofNat] at *
-  code_fetches_len libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::Chain> [local#1]" 224
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::proto::pq_ratchet::Chain> [local#1]" = entry
-  examples_hide_fetches
-  proto_spqr_chain_body_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry
-
-private theorem drop_proto_spqr_chain_loop {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoSpqrChainName +
-        bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::Chain> [local#1]" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (s0 : State) (fsp a lPtr : BitVec 64)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (rest : List ChainEpochPB) (cur : BitVec 64)
-      (s : State) (Frame : SepProp),
-      rest ≠ [] →
-      rest.length * 112 < 2 ^ 63 →
-      s.pc = (dropProgAtExt b ext).fnAddr dropProtoSpqrChainName + 48#64 →
-      s.status = .Running →
-      Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = a →
-      s.readReg64 .x20 = lPtr →
-      s.readReg64 .x21 = BitVec.ofNat 64 rest.length →
-      s.readReg64 .x22 = cur + 56#64 →
-      SepWP (dropProgAtExt b ext)
-        ((dropProgAtExt b ext).fnAddr dropProtoSpqrChainName + 148#64)
-        s
-        (arrayAt (fun ep addr => chainEpochPBAt A addr ep) 112 cur rest ∗
-          A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm =>
-          (Pm ⊢ memRegion cur (rest.length * 112) ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧
-          sm.readReg64 .x19 = a ∧
-          sm.readReg64 .x20 = lPtr) := by
-  have hbody := drop_proto_spqr_chain_body (b := b) (ext := ext)
-    hdealloc s0 fsp a lPtr hfsp_align
-  dsimp only [dropProgAtExt, dropProtoSpqrChainName, BitVec.ofNat_eq_ofNat] at *
-  code_fetches_len libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::Chain> [local#1]" 224
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::proto::pq_ratchet::Chain> [local#1]" = entry
-  examples_hide_fetches
-  proto_spqr_chain_loop_steps entry
-
-theorem drop_proto_spqr_chain_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoSpqrChainName)
-      (dropProtoSpqrChainSpec A) := by
-  simp only [dropProtoSpqrChainSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoSpqrChainName +
-        bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::Chain> [local#1]" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel
-      (k := ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::Chain> [local#1]" "__rustc::__rust_dealloc")
-      (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::Chain> [local#1]")
-      (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  have hloop := drop_proto_spqr_chain_loop (b := b) (ext := ext) hdealloc_raw
-  code_fetches_len libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::Chain> [local#1]" 224
-  dsimp only [dropProgAtExt, dropProtoSpqrChainName, chainPBSize, BitVec.ofNat_eq_ofNat] at hloop hdealloc_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::proto::pq_ratchet::Chain> [local#1]" = entry
-  examples_hide_fetches
-  proto_spqr_chain_main_steps entry
-
 section PlacedProtoSpqrChain
 variable [LibsignalPlacement]
 
@@ -1108,45 +941,6 @@ local macro "opt_proto_spqr_chain_main_steps " entry:term:max : tactic => `(tact
         rw [stackAt_dropStack80_split_bottom s0.sp]
         wp_call hdealloc_raw (g.nextRoot.ptr, g.nextRoot.cap.toNat, 1)
         rw [← stackAt_dropStack80_split_bottom s0.sp]; wp_done))
-
-theorem drop_opt_proto_spqr_chain_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoSpqrChainName)
-      (dropOptProtoSpqrChainSpec A) := by
-  simp only [dropOptProtoSpqrChainSpec]
-  have hslice_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoSpqrChainName +
-        bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::Chain>>"
-          "core::ptr::drop_glue::<[spqr::proto::pq_ratchet::chain::Epoch]>"))
-      (dropProtoEpochSliceSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel
-      (k := ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::Chain>>"
-        "core::ptr::drop_glue::<[spqr::proto::pq_ratchet::chain::Epoch]>")
-      (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::Chain>>")
-      (ls_lemma% fnOff "core::ptr::drop_glue::<[spqr::proto::pq_ratchet::chain::Epoch]>") (by decide))
-    (drop_proto_epoch_slice_ok_ext hdealloc)
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoSpqrChainName +
-        bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::Chain>>"
-          "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel
-      (k := ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::Chain>>"
-        "__rustc::__rust_dealloc")
-      (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::Chain>>")
-      (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  code_fetches_len libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::Chain>>" 116
-  dsimp only [dropProgAtExt, dropOptProtoSpqrChainName, dropProtoEpochSliceSpec,
-    chainPBSize, chainEpochPBSize, BitVec.ofNat_eq_ofNat] at hslice_raw hdealloc_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::Chain>>" = entry
-  examples_hide_fetches
-  opt_proto_spqr_chain_main_steps entry
 
 section PlacedOptProtoSpqrChain
 variable [LibsignalPlacement]

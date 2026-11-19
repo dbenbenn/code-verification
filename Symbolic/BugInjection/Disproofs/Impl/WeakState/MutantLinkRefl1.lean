@@ -13,8 +13,8 @@ public import Arm64
 public import ProofLib.Placed.Multi
 public import ProofLib.ProgramReflection
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.MutantLinkInterned
-import GeneratedLean.LibsignalSessionObj
 
 @[expose] public section
 

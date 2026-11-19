@@ -10,8 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookOn -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookOn
 public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `withLsRet`-Narrowed `ActiveRealPre` / `linkedCallHook` Extractors & Generic `HookOk` Lifts (`HooksDehook.LinkedCallHookLs`)
@@ -86,15 +90,6 @@ theorem lsRetAddr624_of_activeRealPre_withLsRet [LibsignalPlacement] {α : Type}
     LsRetAddr624 (s0.readReg64 .lr) := by
   rcases hAct with ⟨_, _, x, R, hpre⟩
   exact (extract_withLsRet hpre).1
-
-/-- Chain `lsRetAddr624_of_activeRealPre_withLsRet` with a layout disjointness lemma
-    `∀ lr, LsRetAddr624 lr → keepR lr = false` (Card K3) to obtain `keepR (s0.readReg64 .lr) = false`. -/
-theorem keepLr_false_of_activeRealPre_withLsRet [LibsignalPlacement] {α : Type}
-    {keepR : BitVec 64 → Bool} {master : Spec α} {s0 : State}
-    (hKeep : ∀ lr, LsRetAddr624 lr → keepR lr = false)
-    (hAct : ActiveRealPre (withLsRet master) s0) :
-    keepR (s0.readReg64 .lr) = false :=
-  hKeep _ (lsRetAddr624_of_activeRealPre_withLsRet hAct)
 
 /-- Generic `noException ⇒ LsRetAddr624` extractor for any ghost hook `f : State → State` whose
     non-`.Exception` executions establish `ActiveRealPre (withLsRet master) s0` (covering both
@@ -331,135 +326,6 @@ theorem hookOk_withLsRet_map_frame_pureAbort [LibsignalPlacement] {α β : Type}
   · rw [hex (g y) code s0 sf]; exact Entails.pure_left False.elim
   · rw [hoom (g y) s0 sf]; exact Entails.pure_left False.elim
 
-/-- Same-ghost (`F = emp`) consequence lift across `withLsRet` when `consumer.pre` implies
-    `master.pre` and `master` outcomes entail `consumer` outcomes. -/
-theorem hookOk_withLsRet_of_pre_post [LibsignalPlacement] {α : Type} {f : State → State}
-    {master consumer : Spec α}
-    (hh : HookOk f (withLsRet master))
-    (hpre : ∀ x s0, consumer.pre x s0 ⊢ master.pre x s0)
-    (hpost : ∀ x s0 sf, sf = f s0 → s0.mem.KeepsFrozen sf.mem → sf.symtab = s0.symtab →
-      master.post x s0 sf ⊢ consumer.post x s0 sf)
-    (hpan : ∀ x s0 sf, master.onPanic x s0 sf ⊢ consumer.onPanic x s0 sf :=
-      by intros; exact Entails.refl _)
-    (hex : ∀ x code s0 sf, master.onExit x code s0 sf ⊢ consumer.onExit x code s0 sf :=
-      by intros; exact Entails.refl _)
-    (hoom : ∀ x s0 sf, master.onOom x s0 sf ⊢ consumer.onOom x s0 sf :=
-      by intros; exact Entails.refl _) :
-    HookOk f (withLsRet consumer) := by
-  refine hookOk_withLsRet_map_frame id (fun _ _ => emp) hh
-    (fun x s0 => by rw [sepConj_emp]; exact hpre x s0)
-    (fun x s0 sf hsf hkf hsym => by rw [sepConj_emp]; exact hpost x s0 sf hsf hkf hsym)
-    (fun x s0 sf _ _ _ => by rw [sepConj_emp]; exact hpan x s0 sf)
-    (fun x code s0 sf _ _ _ => by rw [sepConj_emp]; exact hex x code s0 sf)
-    (fun x s0 sf _ _ _ => by rw [sepConj_emp]; exact hoom x s0 sf)
-
 /-! ## 4. Named `linkedCallHook` Specializations (K2 Item 2) -/
-
-/-- Lift `HookOk (linkedCallHook … (withLsRet master) …) (withLsRet master)` to `withLsRet consumer`
-    via `SpecSimulates master consumer`. -/
-theorem linkedCallHook_withLsRet_consumer_ok_of_simulates [LibsignalPlacement] {α β : Type}
-    {keepR : BitVec 64 → Bool} {P_real P_sub : Program}
-    {entryTarget : BitVec 64} {master : Spec α} {consumer : Spec β}
-    {fallback : State → State}
-    (hh : HookOk (linkedCallHook keepR P_real P_sub entryTarget (withLsRet master) fallback)
-      (withLsRet master))
-    (hsim : SpecSimulates master consumer) :
-    HookOk (linkedCallHook keepR P_real P_sub entryTarget (withLsRet master) fallback)
-      (withLsRet consumer) :=
-  hookOk_withLsRet_of_simulates hsim hh
-
-/-- Lift `HookOk (linkedCallHook … (withLsRet master) …) (withLsRet master)` to `withLsRet consumer`
-    via general `Satisfies`-level consequence `hookOk_withLsRet_conseq`. -/
-theorem linkedCallHook_withLsRet_consumer_ok_conseq [LibsignalPlacement] {α β : Type}
-    {keepR : BitVec 64 → Bool} {P_real P_sub : Program}
-    {entryTarget : BitVec 64} {master : Spec α} {consumer : Spec β}
-    {fallback : State → State}
-    (hh : HookOk (linkedCallHook keepR P_real P_sub entryTarget (withLsRet master) fallback)
-      (withLsRet master))
-    (himp : ∀ (y : β) (R : SepProp) (s0 : State),
-      s0.status = .Running → s0.spAligned = true →
-      LsRetAddr624 (s0.readReg64 .lr) →
-      (s0.mem ⊨ consumer.pre y s0 ∗ R) →
-      ∃ (x : α) (R' : SepProp),
-        (s0.mem ⊨ master.pre x s0 ∗ R') ∧
-        (∀ sf, sf = linkedCallHook keepR P_real P_sub entryTarget (withLsRet master) fallback s0 →
-          s0.mem.KeepsFrozen sf.mem → sf.symtab = s0.symtab →
-          SubroutineOutcome master x R' s0 sf → SubroutineOutcome consumer y R s0 sf)) :
-    HookOk (linkedCallHook keepR P_real P_sub entryTarget (withLsRet master) fallback)
-      (withLsRet consumer) :=
-  hookOk_withLsRet_conseq hh himp
-
-/-- Lift `HookOk (linkedCallHook … (withLsRet master) …) (withLsRet master)` to `withLsRet consumer`
-    via ghost-reindexing + frame with general abort entailments. -/
-theorem linkedCallHook_withLsRet_consumer_ok_map_frame [LibsignalPlacement] {α β : Type}
-    {keepR : BitVec 64 → Bool} {P_real P_sub : Program}
-    {entryTarget : BitVec 64} {master : Spec α} {consumer : Spec β}
-    {fallback : State → State}
-    (g : β → α) (F : β → State → SepProp)
-    (hh : HookOk (linkedCallHook keepR P_real P_sub entryTarget (withLsRet master) fallback)
-      (withLsRet master))
-    (hpre : ∀ y s0, consumer.pre y s0 ⊢ master.pre (g y) s0 ∗ F y s0)
-    (hpost : ∀ y s0 sf,
-      sf = linkedCallHook keepR P_real P_sub entryTarget (withLsRet master) fallback s0 →
-      s0.mem.KeepsFrozen sf.mem → sf.symtab = s0.symtab →
-      master.post (g y) s0 sf ∗ F y s0 ⊢ consumer.post y s0 sf)
-    (hpan : ∀ y s0 sf,
-      sf = linkedCallHook keepR P_real P_sub entryTarget (withLsRet master) fallback s0 →
-      s0.mem.KeepsFrozen sf.mem → sf.symtab = s0.symtab →
-      master.onPanic (g y) s0 sf ∗ F y s0 ⊢ consumer.onPanic y s0 sf)
-    (hex : ∀ y code s0 sf,
-      sf = linkedCallHook keepR P_real P_sub entryTarget (withLsRet master) fallback s0 →
-      s0.mem.KeepsFrozen sf.mem → sf.symtab = s0.symtab →
-      master.onExit (g y) code s0 sf ∗ F y s0 ⊢ consumer.onExit y code s0 sf)
-    (hoom : ∀ y s0 sf,
-      sf = linkedCallHook keepR P_real P_sub entryTarget (withLsRet master) fallback s0 →
-      s0.mem.KeepsFrozen sf.mem → sf.symtab = s0.symtab →
-      master.onOom (g y) s0 sf ∗ F y s0 ⊢ consumer.onOom y s0 sf) :
-    HookOk (linkedCallHook keepR P_real P_sub entryTarget (withLsRet master) fallback)
-      (withLsRet consumer) :=
-  hookOk_withLsRet_map_frame g F hh hpre hpost hpan hex hoom
-
-/-- Non-aborting (`⌜False⌝`) `linkedCallHook` consumer `HookOk` lift across `withLsRet`. -/
-theorem linkedCallHook_withLsRet_consumer_ok_pureAbort [LibsignalPlacement] {α β : Type}
-    {keepR : BitVec 64 → Bool} {P_real P_sub : Program}
-    {entryTarget : BitVec 64} {master : Spec α} {consumer : Spec β}
-    {fallback : State → State}
-    (g : β → α) (F : β → State → SepProp)
-    (hh : HookOk (linkedCallHook keepR P_real P_sub entryTarget (withLsRet master) fallback)
-      (withLsRet master))
-    (hpre : ∀ y s0, consumer.pre y s0 ⊢ master.pre (g y) s0 ∗ F y s0)
-    (hpost : ∀ y s0 sf,
-      sf = linkedCallHook keepR P_real P_sub entryTarget (withLsRet master) fallback s0 →
-      s0.mem.KeepsFrozen sf.mem → sf.symtab = s0.symtab →
-      master.post (g y) s0 sf ∗ F y s0 ⊢ consumer.post y s0 sf)
-    (hpan : ∀ x s0 sf, master.onPanic x s0 sf = ⌜False⌝ := by intros; rfl)
-    (hex : ∀ x code s0 sf, master.onExit x code s0 sf = ⌜False⌝ := by intros; rfl)
-    (hoom : ∀ x s0 sf, master.onOom x s0 sf = ⌜False⌝ := by intros; rfl) :
-    HookOk (linkedCallHook keepR P_real P_sub entryTarget (withLsRet master) fallback)
-      (withLsRet consumer) :=
-  hookOk_withLsRet_map_frame_pureAbort g F hh hpre hpost hpan hex hoom
-
-/-- Same-ghost (`consumer.pre ⊢ master.pre`, `master.post ⊢ consumer.post`) `linkedCallHook`
-    consumer `HookOk` lift across `withLsRet`. -/
-theorem linkedCallHook_withLsRet_consumer_ok_of_pre_post [LibsignalPlacement] {α : Type}
-    {keepR : BitVec 64 → Bool} {P_real P_sub : Program}
-    {entryTarget : BitVec 64} {master consumer : Spec α}
-    {fallback : State → State}
-    (hh : HookOk (linkedCallHook keepR P_real P_sub entryTarget (withLsRet master) fallback)
-      (withLsRet master))
-    (hpre : ∀ x s0, consumer.pre x s0 ⊢ master.pre x s0)
-    (hpost : ∀ x s0 sf,
-      sf = linkedCallHook keepR P_real P_sub entryTarget (withLsRet master) fallback s0 →
-      s0.mem.KeepsFrozen sf.mem → sf.symtab = s0.symtab →
-      master.post x s0 sf ⊢ consumer.post x s0 sf)
-    (hpan : ∀ x s0 sf, master.onPanic x s0 sf ⊢ consumer.onPanic x s0 sf :=
-      by intros; exact Entails.refl _)
-    (hex : ∀ x code s0 sf, master.onExit x code s0 sf ⊢ consumer.onExit x code s0 sf :=
-      by intros; exact Entails.refl _)
-    (hoom : ∀ x s0 sf, master.onOom x s0 sf ⊢ consumer.onOom x s0 sf :=
-      by intros; exact Entails.refl _) :
-    HookOk (linkedCallHook keepR P_real P_sub entryTarget (withLsRet master) fallback)
-      (withLsRet consumer) :=
-  hookOk_withLsRet_of_pre_post hh hpre hpost hpan hex hoom
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookLs

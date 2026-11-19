@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.Fine.ClientIntegration
 
 /-!
@@ -25,7 +25,7 @@ Companion lemmas to `SeqCreditKit` on `fineCostModel`:
    followed by a `1,024` B small allocation) proved inhabited and `FitsEnv` under `1 GiB`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -106,11 +106,6 @@ theorem fineCostModel_freeNonInc : FreeNonInc fineCostModel :=
 theorem freeOnly_fineCostModel :
     PhaseCreditSpec fineCostModel FreeOnlyEvs 0 0 0 0 :=
   PhaseCreditSpec.freeOnly fineCostModel_freeNonInc
-
-/-- Concrete `DeallocCreditSpec` for bare `Heap.FreeOnlyEvs` on `fineCostModel`. -/
-theorem deallocFreeOnly_fineCostModel :
-    DeallocCreditSpec fineCostModel FreeOnlyEvs 0 :=
-  DeallocCreditSpec.freeOnly fineCostModel_freeNonInc
 
 /-! ## 2. `fineCostModel` Affine Rate Lemmas and `ModelHyps` -/
 
@@ -200,19 +195,19 @@ theorem fitsEnv_fineCostModel_of_phaseCredit
 
 /-- Phase 1 of the non-vacuity witness: `sc = 63` `200,000` B temporary allocation (`> 135,167`)
 followed in exact order by its matching deallocation. -/
-def NonVacPhase1Env : List AllocEvent → Prop :=
+@[expose] def NonVacPhase1Env : List AllocEvent → Prop :=
   ConcatEnv (· = rustAllocEvents 200000 8) (· = rustDeallocEvents 200000 8)
 
 /-- Phase 2 of the non-vacuity witness: `1,024` B small `LineWriter` allocation (`≤ 135,167`). -/
-def NonVacPhase2Env : List AllocEvent → Prop :=
+@[expose] def NonVacPhase2Env : List AllocEvent → Prop :=
   (· = rustAllocEvents 1024 8)
 
 /-- Concrete 2-phase `SeqEnv` witness (`Phase 1 ++ Phase 2` in exact call order). -/
-def NonVacTwoPhaseEnv : List AllocEvent → Prop :=
+@[expose] def NonVacTwoPhaseEnv : List AllocEvent → Prop :=
   SeqEnv NonVacPhase1Env NonVacPhase2Env
 
 /-- Concrete `1 GiB` (`physCap = 2 ^ 30`) `BudgetLimits` for the non-vacuity check. -/
-def nonVacLimits : BudgetLimits where
+@[expose] def nonVacLimits : BudgetLimits where
   staticCount := 16
   staticBytes := 16 * 1024 * 1024
   physCap := 2 ^ 30
@@ -248,26 +243,5 @@ theorem nonVacTwoPhase_phaseCreditSpec :
       (smallAllocCost_le_3506_of_kyber_range (by decide) (by decide))
       (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 1024)
   exact (hp1.seq hp2).mono (by decide) (by decide) (by decide) (by decide)
-
-/-- End-to-end `FitsEnv fineCostModel` discharge for `NonVacTwoPhaseEnv` under `nonVacLimits`
-(`1 GiB` RAM cap). -/
-theorem nonVacTwoPhase_fitsEnv :
-    FitsEnv fineCostModel nonVacLimits fineCostModel.init NonVacTwoPhaseEnv := by
-  have hstep : fineStepReserveOfCum 200000 16 3628 = 21704704 := by
-    unfold fineStepReserveOfCum FineStepBound fineMaxMetaAreasOfCum pageAlignUp PAGE_SIZE
-    omega
-  have hdyn : fineDynIvsOfCum 3628 = 316 := by
-    unfold fineDynIvsOfCum fineMaxMetaAreasOfCum fineMaxGroupsOfCum
-    omega
-  have hsc : nonVacLimits.staticCount = 16 := rfl
-  have hsb : nonVacLimits.staticBytes = 16 * 1024 * 1024 := rfl
-  have hcap : nonVacLimits.physCap = 2 ^ 30 := rfl
-  refine fitsEnv_fineCostModel_of_phaseCredit nonVacTwoPhase_phaseCreditSpec
-    (by omega) rfl ?_ ?_
-  · rw [hsb, hcap, hstep]
-    omega
-  · rw [hsc, hsb, hdyn, hstep]
-    unfold MMAP_MIN_ADDR PAGE_SIZE
-    omega
 
 end LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas

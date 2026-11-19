@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVec
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.SharedCodeSym
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVec -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.SharedCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -23,7 +23,7 @@ Proves relocatable contracts for unmutated Block `588`
 Block `55` (`<alloc::vec::Vec<u8>>::append_elements`, `[LibsignalFullPlacement]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -11,7 +11,7 @@ module
 
 public import ProofLib.Placed.Check
 public import ProofLib.Process
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 public import ProofLib.SepLogic
 import ProofLib.SepLogic.Model
 import ProofLib.Hoare.Model

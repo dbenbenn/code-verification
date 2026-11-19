@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfCost
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkShallow
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfCost -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkShallow -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H2
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkDecomp
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkLeaves
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkRecv
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkSend
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # Evaluation Equivalence and Wiring for `prfMsgKeysRedProg`
@@ -26,7 +27,7 @@ Proves that `prfMsgKeysRedProg S b.q_total` evaluates to the shallow reduction
 establishes advantage equality and query-budget bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,7 +43,7 @@ open FgGapDh
 open OracleSpec OracleComp
 
 /-- Encodes the `prfMsgKeysRedProg` state `(budget, core)` into `prfMkStTy.denote`. -/
-def mkStToVal {S : Setup} (bud : Nat) (secb : Bool) (idx : Nat) (sc : Bool)
+@[expose] def mkStToVal {S : Setup} (bud : Nat) (secb : Bool) (idx : Nat) (sc : Bool)
     (hst : AuthHybridStateFixed S) : prfMkStTy.denote :=
   (bud, mkCoreToVal secb idx sc hst)
 
@@ -56,7 +57,7 @@ def mkStToVal {S : Setup} (bud : Nat) (secb : Bool) (idx : Nat) (sc : Bool)
 
 /-- Identity wrapper aligning `OracleComp PrfMkSimSpec` with the syntactic `pqPrfMkIface` monad
     `OracleComp (PrimBaseSpec + msgKeyPrfOracle.spec)` at `implicit` transparency. -/
-def toDslMk {α : Type} (m : OracleComp PrfMkSimSpec α) :
+@[expose] def toDslMk {α : Type} (m : OracleComp PrfMkSimSpec α) :
     OracleComp (PrimBaseSpec + msgKeyPrfOracle.spec) α :=
   m
 
@@ -405,18 +406,6 @@ theorem prfMk_runBridge (S : Setup) (K : Nat) (secb : Bool) (idx : Nat) {α β :
       exact prfMk_budget_step r _ bud x.2.1 sc x.2.2
         (isAuthRecvQuery (.inr gq : Nat ⊕ AuthQuery S)) rfl hRpos hbud hleaf
 
-theorem prfMsgKeysInitDsl_eval (S : Setup) (u : Ty.denote .unit) :
-    (prfMsgKeysInitDsl S).eval (.cons u .nil) =
-      toDslMk (embedUnifMk (RoKem.sampleIndexRange S.N_sess_tot) >>= fun idx =>
-        embedUnifMk ($ᵗ Bool) >>= fun secb =>
-          pure ((), mkStToVal (S.N_recv_tot + 1) secb idx false
-            (AuthHybridStateFixed.empty S secb))) := by
-  simp only [prfMsgKeysInitDsl, bindV, v, Comp.eval, Expr.eval, Ext.step_wk, Ext.refl_wk,
-    Env.get_succ, Env.get_zero, sampleChal_index_eval, sampleChal_bool_eval,
-    toDslMk_bind, toDslMk_pure]
-  refine bind_congr fun idx => bind_congr fun secb => ?_
-  rfl
-
 theorem prfMsgKeysFinishDsl_eval (S : Setup) (K : Nat) (secb : Bool) (idx : Nat) (sc : Bool)
     (hst : AuthHybridStateFixed S) (bud : Nat) (b' : Bool) (hB : AuthListsBounded K hst) :
     (prfMsgKeysFinishDsl S K).eval
@@ -522,7 +511,7 @@ theorem prfMsgKeysRedProg_eval_eq (S : Setup) (b : QueryBudget)
 
 /-- The `ReductionDsl` `PrfMsgKeys` adversary with the same query budgets as
     `prfMsgKeysReductionAuthFixed`. -/
-def prfMsgKeysDslAdv (S : Setup) (b : QueryBudget)
+@[expose] def prfMsgKeysDslAdv (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : PrfMsgKeysAdv where
   run := (prfMsgKeysRedProg S b.q_total).eval (fun _ => A.1.run) ()
   q_prf := (prfMsgKeysReductionAuthFixed S b A).q_prf
@@ -532,11 +521,6 @@ theorem prfMsgKeysDslAdv_eq (S : Setup) (b : QueryBudget) (A : BoundedAdv (AuthA
     prfMsgKeysDslAdv S b A = prfMsgKeysReductionAuthFixed S b A := by
   have h := prfMsgKeysRedProg_eval_eq S b A
   simp only [prfMsgKeysDslAdv, h]
-
-theorem prfMsgKeysRedProg_prfMsgKeys_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    PrfMsgKeys P (prfMsgKeysDslAdv S b A) = PrfMsgKeys P (prfMsgKeysReductionAuthFixed S b A) := by
-  rw [prfMsgKeysDslAdv_eq]
 
 /-- Syntactic primitive-query bound for `prfMsgKeysRedProg` against `primQueryBudget`. -/
 theorem prfMsgKeysRedProg_totalPrimQueries_le_budget (S : Setup) (b : QueryBudget) :

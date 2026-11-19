@@ -542,8 +542,6 @@ theorem ElfPartialRunsTo.mono {elfBytes : List (BitVec 8)}
   obtain ⟨s0, h_load, h_run⟩ := h inputs (h_pre inputs hi)
   exact ⟨s0, h_load, h_run.mono (fun out => h_post inputs out hi) (fun s => h_oom inputs s hi)⟩
 
-/-! ## Segment and `Obj.Image` Memory Bridge for `ElfImage.loadState` -/
-
 end Arm64.Process
 
 namespace Arm64.Snapshot

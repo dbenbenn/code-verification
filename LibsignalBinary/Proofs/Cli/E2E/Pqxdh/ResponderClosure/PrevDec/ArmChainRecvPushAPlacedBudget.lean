@@ -11,10 +11,14 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushAPlaced
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushAPlaced
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Defs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Placed Tag 7 (`receiver_chains`) `grow_one` Pre/Post Bridges
@@ -24,7 +28,7 @@ bridges splitting the grown 104-byte `receiver_chains` buffer and advancing `A.p
 `growOne104Events cap`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

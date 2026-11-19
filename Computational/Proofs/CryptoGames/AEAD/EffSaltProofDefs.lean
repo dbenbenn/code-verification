@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpecLemmas.HKDFProofDefs
+import LibsignalBinary.Proofs.SpecLemmas.HKDFProofDefs
 
 /-!
 # Effective HKDF Salt Proof Re-export

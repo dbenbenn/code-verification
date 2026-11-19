@@ -11,18 +11,27 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub4PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub5PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub4PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub5PlacedBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Placed Stage P2 Over-Path Call-Stack Bounds
@@ -32,7 +41,7 @@ stack-floor, 4K-equivalence, and `< 2 ^ 32` bounds for `stageP2OverCallStack` an
 `stageP2OverV1CallStack` over `A : RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -71,220 +80,6 @@ export CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over (
 
 /-! ## Store-Retagging and `A.atState` Stack Equalities -/
 
-theorem stageP2OverCallStack_retag_eq [LibsignalPlacement] {A A' : RustAlloc} {b : BitVec 64}
-    {ikit : IdentityStoreSpec A b}
-    (spkKit : SignedPreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
-    (pkKit : PreKeyStoreSpec A b) (skit : IdentitySelfStoreSpec ikit) :
-    stageP2OverCallStack
-        (retagSignedPreKeyStore (A' := A') spkKit)
-        (retagKyberPreKeyStore (A' := A') kpkKit)
-        (retagPreKeyStore (A' := A') pkKit)
-        (retagIdentitySelfStore (A' := A') skit) =
-      stageP2OverCallStack spkKit kpkKit pkKit skit :=
-  rfl
-
-theorem stageP2OverCallStack4K_retag_eq [LibsignalPlacement] {A A' : RustAlloc} {b : BitVec 64}
-    {ikit : IdentityStoreSpec A b}
-    (spkKit : SignedPreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
-    (pkKit : PreKeyStoreSpec A b) (skit : IdentitySelfStoreSpec ikit) :
-    stageP2OverCallStack4K
-        (retagSignedPreKeyStore (A' := A') spkKit)
-        (retagKyberPreKeyStore (A' := A') kpkKit)
-        (retagPreKeyStore (A' := A') pkKit)
-        (retagIdentitySelfStore (A' := A') skit) =
-      stageP2OverCallStack4K spkKit kpkKit pkKit skit :=
-  rfl
-
-theorem stageP2OverV1CallStack_retag_eq [LibsignalPlacement] {A A' : RustAlloc} {b : BitVec 64}
-    {ikit : IdentityStoreSpec A b}
-    (spkKit : SignedPreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
-    (pkKit : PreKeyStoreSpec A b) (skit : IdentitySelfStoreSpec ikit) :
-    stageP2OverV1CallStack
-        (retagSignedPreKeyStore (A' := A') spkKit)
-        (retagKyberPreKeyStore (A' := A') kpkKit)
-        (retagPreKeyStore (A' := A') pkKit)
-        (retagIdentitySelfStore (A' := A') skit) =
-      stageP2OverV1CallStack spkKit kpkKit pkKit skit :=
-  rfl
-
-theorem stageP2OverV1CallStack4K_retag_eq [LibsignalPlacement] {A A' : RustAlloc} {b : BitVec 64}
-    {ikit : IdentityStoreSpec A b}
-    (spkKit : SignedPreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
-    (pkKit : PreKeyStoreSpec A b) (skit : IdentitySelfStoreSpec ikit) :
-    stageP2OverV1CallStack4K
-        (retagSignedPreKeyStore (A' := A') spkKit)
-        (retagKyberPreKeyStore (A' := A') kpkKit)
-        (retagPreKeyStore (A' := A') pkKit)
-        (retagIdentitySelfStore (A' := A') skit) =
-      stageP2OverV1CallStack4K spkKit kpkKit pkKit skit :=
-  rfl
-
-theorem stageP2OverCallStack_atState_eq [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (s : State)
-    {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
-    (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
-    (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
-    (pkKit : PreKeyStoreSpec A.repAlloc b)
-    (skit : IdentitySelfStoreSpec ikit) :
-    stageP2OverCallStack
-        (retagSignedPreKeyStore (A' := A.atState lim st s) spkKit)
-        (retagKyberPreKeyStore (A' := A.atState lim st s) kpkKit)
-        (retagPreKeyStore (A' := A.atState lim st s) pkKit)
-        (retagIdentitySelfStore (A' := A.atState lim st s) skit) =
-      stageP2OverCallStack spkKit kpkKit pkKit skit :=
-  rfl
-
-theorem stageP2OverV1CallStack_atState_eq [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (s : State)
-    {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
-    (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
-    (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
-    (pkKit : PreKeyStoreSpec A.repAlloc b)
-    (skit : IdentitySelfStoreSpec ikit) :
-    stageP2OverV1CallStack
-        (retagSignedPreKeyStore (A' := A.atState lim st s) spkKit)
-        (retagKyberPreKeyStore (A' := A.atState lim st s) kpkKit)
-        (retagPreKeyStore (A' := A.atState lim st s) pkKit)
-        (retagIdentitySelfStore (A' := A.atState lim st s) skit) =
-      stageP2OverV1CallStack spkKit kpkKit pkKit skit :=
-  rfl
-
-theorem stageP2OverV1CallStack4K_atState_eq [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (s : State)
-    {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
-    (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
-    (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
-    (pkKit : PreKeyStoreSpec A.repAlloc b)
-    (skit : IdentitySelfStoreSpec ikit) :
-    stageP2OverV1CallStack4K
-        (retagSignedPreKeyStore (A' := A.atState lim st s) spkKit)
-        (retagKyberPreKeyStore (A' := A.atState lim st s) kpkKit)
-        (retagPreKeyStore (A' := A.atState lim st s) pkKit)
-        (retagIdentitySelfStore (A' := A.atState lim st s) skit) =
-      stageP2OverV1CallStack4K spkKit kpkKit pkKit skit :=
-  rfl
-
 /-! ## Placed Stack-Floor and 4K-Equivalence Lemmas -/
-
-theorem stageP2OverCallStack4K_budget_placed_eq [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
-    (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
-    (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
-    (pkKit : PreKeyStoreSpec A.repAlloc b)
-    (skit : IdentitySelfStoreSpec ikit) :
-    stageP2OverCallStack4K spkKit kpkKit pkKit skit =
-      stageP2OverCallStack spkKit kpkKit pkKit skit :=
-  stageP2OverCallStack4K_eq spkKit kpkKit pkKit skit
-
-theorem stageP2OverV1CallStack4K_budget_placed_eq [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
-    (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
-    (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
-    (pkKit : PreKeyStoreSpec A.repAlloc b)
-    (skit : IdentitySelfStoreSpec ikit) :
-    stageP2OverV1CallStack4K spkKit kpkKit pkKit skit =
-      stageP2OverV1CallStack spkKit kpkKit pkKit skit :=
-  stageP2OverV1CallStack4K_eq spkKit kpkKit pkKit skit
-
-theorem p2_over_pure_le_callStack_budget_placed [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
-    (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
-    (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
-    (pkKit : PreKeyStoreSpec A.repAlloc b)
-    (skit : IdentitySelfStoreSpec ikit) :
-    stageP2OverPureAndErrStack ≤ stageP2OverCallStack spkKit kpkKit pkKit skit :=
-  p2_over_pure_le_callStack spkKit kpkKit pkKit skit
-
-theorem p2_over_pure_le_callStack4K_budget_placed [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
-    (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
-    (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
-    (pkKit : PreKeyStoreSpec A.repAlloc b)
-    (skit : IdentitySelfStoreSpec ikit) :
-    stageP2OverPureAndErrStack ≤ stageP2OverCallStack4K spkKit kpkKit pkKit skit := by
-  rw [stageP2OverCallStack4K_eq]
-  exact p2_over_pure_le_callStack spkKit kpkKit pkKit skit
-
-theorem p2_over_pure_le_v1CallStack_budget_placed [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
-    (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
-    (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
-    (pkKit : PreKeyStoreSpec A.repAlloc b)
-    (skit : IdentitySelfStoreSpec ikit) :
-    stageP2OverPureAndErrStack ≤ stageP2OverV1CallStack spkKit kpkKit pkKit skit :=
-  p2_over_pure_le_v1CallStack spkKit kpkKit pkKit skit
-
-theorem p2_over_pure_le_v1CallStack4K_budget_placed [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
-    (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
-    (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
-    (pkKit : PreKeyStoreSpec A.repAlloc b)
-    (skit : IdentitySelfStoreSpec ikit) :
-    stageP2OverPureAndErrStack ≤ stageP2OverV1CallStack4K spkKit kpkKit pkKit skit := by
-  rw [stageP2OverV1CallStack4K_eq]
-  exact p2_over_pure_le_v1CallStack spkKit kpkKit pkKit skit
-
-theorem p2_over_callStack_le_v1CallStack_budget_placed [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
-    (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
-    (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
-    (pkKit : PreKeyStoreSpec A.repAlloc b)
-    (skit : IdentitySelfStoreSpec ikit) :
-    stageP2OverCallStack spkKit kpkKit pkKit skit ≤
-      stageP2OverV1CallStack spkKit kpkKit pkKit skit :=
-  p2_over_callStack_le_v1CallStack spkKit kpkKit pkKit skit
-
-theorem p2_over_callStack4K_le_v1CallStack4K_budget_placed [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
-    (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
-    (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
-    (pkKit : PreKeyStoreSpec A.repAlloc b)
-    (skit : IdentitySelfStoreSpec ikit) :
-    stageP2OverCallStack4K spkKit kpkKit pkKit skit ≤
-      stageP2OverV1CallStack4K spkKit kpkKit pkKit skit := by
-  rw [stageP2OverCallStack4K_eq, stageP2OverV1CallStack4K_eq]
-  exact p2_over_callStack_le_v1CallStack spkKit kpkKit pkKit skit
-
-theorem p2_over_callStack_lt_32_budget_placed [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
-    (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
-    (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
-    (pkKit : PreKeyStoreSpec A.repAlloc b)
-    (skit : IdentitySelfStoreSpec ikit)
-    (hcall_lt : stageP2CallStack spkKit kpkKit pkKit skit < 2 ^ 32) :
-    stageP2OverCallStack spkKit kpkKit pkKit skit < 2 ^ 32 :=
-  p2_over_callStack_lt_32 spkKit kpkKit pkKit skit hcall_lt
-
-theorem p2_over_v1CallStack_lt_32_budget_placed [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
-    (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
-    (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
-    (pkKit : PreKeyStoreSpec A.repAlloc b)
-    (skit : IdentitySelfStoreSpec ikit)
-    (hcall_lt : stageP2V1CallStack spkKit kpkKit pkKit skit < 2 ^ 32) :
-    stageP2OverV1CallStack spkKit kpkKit pkKit skit < 2 ^ 32 :=
-  p2_over_v1CallStack_lt_32 spkKit kpkKit pkKit skit hcall_lt
-
-theorem p2_over_callStack4K_lt_32_budget_placed [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
-    (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
-    (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
-    (pkKit : PreKeyStoreSpec A.repAlloc b)
-    (skit : IdentitySelfStoreSpec ikit)
-    (hcall_lt : stageP2CallStack spkKit kpkKit pkKit skit < 2 ^ 32) :
-    stageP2OverCallStack4K spkKit kpkKit pkKit skit < 2 ^ 32 := by
-  rw [stageP2OverCallStack4K_eq]
-  exact p2_over_callStack_lt_32 spkKit kpkKit pkKit skit hcall_lt
-
-theorem p2_over_v1CallStack4K_lt_32_budget_placed [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
-    (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
-    (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
-    (pkKit : PreKeyStoreSpec A.repAlloc b)
-    (skit : IdentitySelfStoreSpec ikit)
-    (hcall_lt : stageP2V1CallStack spkKit kpkKit pkKit skit < 2 ^ 32) :
-    stageP2OverV1CallStack4K spkKit kpkKit pkKit skit < 2 ^ 32 := by
-  rw [stageP2OverV1CallStack4K_eq]
-  exact p2_over_v1CallStack_lt_32 spkKit kpkKit pkKit skit hcall_lt
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2PlacedBudget

@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepNoRatchetWAtHelpersPure
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepNoRatchetWAtHelpersPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.PureRecvStepBridge
 import Symbolic.Proofs.Swarm.CREF.TROpen
 import Symbolic.Proofs.Swarm.CREF.TR.Leaks -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 
 /-!
 # Existing-Chain Receive Decrypt Witnesses
@@ -23,7 +24,7 @@ Proves decrypt-witness lemmas at a fixed explanation `(g, ms₁)` for the existi
 whisper receive branch.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoder
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonClPlaced
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoder
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonClPlaced
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
@@ -21,6 +20,14 @@ import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+public import LibsignalBinary.Heap.GrowOneSpecs
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Proof -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParams -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.DefsClPlaced
 
 /-!
 # Code-Loaded Placed Verification of `PolynomialDecoder::merge` (Block `296`)
@@ -29,7 +36,7 @@ Proves `PolynomialDecoder::merge` on Block `296` with `withLsCodeRoLoaded` / `wi
 preconditions on all cross-block callees (`261`, `257`, `291`, `263`, `290`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageMerge
 

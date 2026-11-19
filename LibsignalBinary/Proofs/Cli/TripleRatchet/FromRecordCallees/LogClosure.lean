@@ -10,11 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordCallees.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordCallees.Fetch
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # `try_decrypt_from_record::{closure#0}` Verification
@@ -23,7 +24,7 @@ Proves that `try_decrypt_from_record::<Coins>::{closure#0}` meets `logClosureSpe
 path in the CLI image.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.FromRecordCallees
 
@@ -69,65 +70,5 @@ private theorem stackAt_closure (sp : BitVec 64) :
         ((sp - 16#64) ↦₆₄ w6) ∗ ((sp - 8#64) ↦₆₄ w7)) := by
     cells_unfold
   rw [h1, h2, hc3, hc8, sepConj_assoc]
-
-private theorem _root_.CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees.logClosure_adrp_addr_eq1 {base entry : BitVec 64}
-    (hb : base &&& 0xfff#64 = 0#64) (he : entry = base + bv% (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_ratchet::Coins>::{closure#0}")) :
-    (((entry + bv% (28)) &&& bv% (2 ^ 64 - 4096)) + bv% (page% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) - page% (ls_off% "<&[u8] as hex::ToHex>::encode_hex::<alloc::string::String> [local#2]" + 12))) + bv% ((ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) % 4096) = base + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) := by
-  subst he; bv_arith
-
-private theorem _root_.CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees.logClosure_adrp_addr_eq2 {base entry : BitVec 64}
-    (hb : base &&& 0xfff#64 = 0#64) (he : entry = base + bv% (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_ratchet::Coins>::{closure#0}")) :
-    ((entry + bv% (28)) &&& bv% (2 ^ 64 - 4096)) + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256 - page% (ls_off% "<&[u8] as hex::ToHex>::encode_hex::<alloc::string::String> [local#2]" + 12)) = base + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) := by
-  subst he; bv_arith
-
-/-- `try_decrypt_from_record::<Coins>::{closure#0}` meets `(logClosureSpec img).inImage img` on
-`tripleRatchetProgAtExt img.base ext`. -/
-theorem _root_.CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees.log_closure_ok_ext {img : Obj.Image} {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees.LogClosureOkExt img ext := by
-  unfold CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees.LogClosureOkExt
-  simp only [Spec.inImage, logClosureSpec, logOff, logFilterAddr, stackAt_closure,
-    sepExists_sepConj_left, sepExists_sepConj_right]
-  unfold tripleRatchetProgAtExt CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees.logClosureName
-  have hfn := (ls_lemma% fnOff "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_ratchet::Coins>::{closure#0}")
-  have hb : img.base &&& 0xfff#64 = 0#64 := ProofLib.ObjectLoad.base_aligned_of_loads himg
-  have hentry : (libsignalSessionCode.rebase img.base
-      (Rust.withPanics ext)).fnAddr
-      "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_ratchet::Coins>::{closure#0}" =
-      img.base + bv% (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_ratchet::Coins>::{closure#0}") := by
-    rw [Program.fnAddr_rebase, (ls_lemma% fnOff "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_ratchet::Coins>::{closure#0}")]
-  have hadrp2 : (((libsignalSessionCode.rebase img.base
-      (Rust.withPanics ext)).fnAddr
-      "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_ratchet::Coins>::{closure#0}" + 28#64) &&&
-      bv% (2 ^ 64 - 4096)) + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256 - page% (ls_off% "<&[u8] as hex::ToHex>::encode_hex::<alloc::string::String> [local#2]" + 12)) = img.base + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) :=
-    CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees.logClosure_adrp_addr_eq2 hb hentry
-  clear hentry
-  code_fetches_range CryptoVerification.libsignalSessionCode fromRecordCalleesBinCli img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_ratchet::Coins>::{closure#0}")) 0 48
-  code_fetches_range CryptoVerification.libsignalSessionCode fromRecordCalleesBinCli img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_ratchet::Coins>::{closure#0}")) 0x19c 24
-  clear hfn himg
-  generalize_entry (libsignalSessionCode.rebase img.base
-      (Rust.withPanics ext)).fnAddr
-      "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_ratchet::Coins>::{closure#0}" = entry
-  wp_init x s0
-  examples_hide_fetches
-  wp_steps
-  wp_done
-
-theorem _root_.CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees.log_closure_ok_trap {img : Obj.Image} {C : Crypto}
-    {abs : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees.LogClosureOk_trap img C abs :=
-  CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees.log_closure_ok_ext himg
-
-theorem _root_.CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees.log_closure_ok {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees.LogClosureOk img C ctl abs := by
-  unfold CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees.LogClosureOk
-  rw [← (trapsOnly_trTrap_kit img.base C ctl abs).fnAddr CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees.logClosureName]
-  exact subroutine_ok_kit_of_trTrap
-    (CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees.log_closure_ok_trap himg)
 
 end CryptoVerification.LibsignalTripleRatchet.FromRecordCallees

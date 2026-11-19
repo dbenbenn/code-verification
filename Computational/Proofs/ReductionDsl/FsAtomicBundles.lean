@@ -9,21 +9,25 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.FsAtomicOps
-public import Computational.Proofs.ReductionDsl.PubRed
-public import Computational.Proofs.ReductionDsl.FSAEAD.HybridCosted
-public import Computational.Proofs.ReductionDsl.FSAEAD.SaltWire
-public import Computational.Proofs.SessionCostedBase
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound
+public import Computational.Proofs.ReductionDsl.FsAtomicOps -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.PubRed
+public import Computational.Proofs.ReductionDsl.FSAEAD.HybridCosted -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.FSAEAD.SaltWire
+import Computational.Proofs.SessionCostedBase
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound
+public import Computational.Proofs.ReductionDsl.FSAEAD.PubCosted -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.FSAEAD.SaltWireCosted -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.AEAD.CostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.FSAEAD.CostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRG.CostedTables -- proof-setup: allow-public-import
 
 /-!
 # Compiled atomic `FsCostedReds` bundles
 
 Pure macro bundles, compiled atomic `CostedReduction` and `TwoStageCostedReduction` programs over
-`ReductionDsl.atomicFsOps`, and the guarded `fsCostedRedsInst` instance.
--/
+`ReductionDsl.atomicFsOps`, and the guarded `fsCostedRedsInst` instance.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,19 +46,19 @@ open ReductionDsl (Sig Ty Var Env Expr Comp Samplers Ops Iface GameCodec CostedR
 namespace Computational.Proofs.ReductionDsl.FsAtomicBundles
 
 open OracleSpec OracleComp
-open CryptoGames (Party AEADScheme MACScheme WireAEAD)
-open CryptoGames.HKDF (DerivedMessageKeys)
-open CryptoGames.CBC (Plain)
-open CryptoGames.LibsignalAead (SerializedIdentityKeys)
-open CryptoGames.Ratchet (padOrTruncatePlain)
-open CryptoGames.Ratchet.LibsignalInst (Salt32 LibsignalCiphertextWithSalt32 LibsignalMsgPublicPart
+open _root_.CryptoGames (Party AEADScheme MACScheme WireAEAD)
+open _root_.CryptoGames.HKDF (DerivedMessageKeys)
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.LibsignalAead (SerializedIdentityKeys)
+open _root_.CryptoGames.Ratchet (padOrTruncatePlain)
+open _root_.CryptoGames.Ratchet.LibsignalInst (Salt32 LibsignalCiphertextWithSalt32 LibsignalMsgPublicPart
   lIds lHeader lWire lAeadK lPubOf lChainPRG lAeadR lIdeal lSaltRed lWireRed slotSaltRed slotWireRed)
-open CryptoGames.SM.Construction (Header)
-open CryptoGames.LibsignalSession (Crypto PublicKey IdentityKey SignalHeader
+open _root_.CryptoGames.SM.Construction (Header)
+open _root_.CryptoGames.LibsignalSession (Crypto PublicKey IdentityKey SignalHeader
   SignalMessageProtoCodec maxForwardJumps)
-open CryptoGames.FSAEAD (RatchetSenderState RatchetReceiverState ReceiveResult)
-open CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
-open CryptoVerification.LibsignalSession (LCt FsAdv fsSlotCount ratchetCostBudget
+open _root_.CryptoGames.FSAEAD (RatchetSenderState RatchetReceiverState ReceiveResult)
+open _root_.CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
+open _root_.CryptoVerification.LibsignalSession (LCt FsAdv fsSlotCount ratchetCostBudget
   fsRatchetCostBudget GRedBounded GTwoStageBounded FsCostedReds fsCostedBounds)
 open Computational.Proofs.ReductionDsl.MacroLift (mapTy toVal dummyTwoStageRed guardTwoStageRed)
 open Computational.Proofs.ReductionDsl.FsAtomicMacros (PureMacroBundle compilePureRed
@@ -68,7 +72,7 @@ section BaseTypes
 
 variable {Pt : Type} {ℓ : ℕ}
 
-@[reducible] def pubBaseTy : CryptoGames.FSAEAD.Costed.FSort → Ty (atomicSig ℓ Pt)
+@[expose, reducible] def pubBaseTy : CryptoGames.FSAEAD.Costed.FSort → Ty (atomicSig ℓ Pt)
   | .ss => fsSendStT
   | .rs => fsRecvStT
   | .ad => fig8HdrT
@@ -76,7 +80,7 @@ variable {Pt : Type} {ℓ : ℕ}
   | .msg => PlainT
   | .ct => lctT
 
-def pubToDen : (b : CryptoGames.FSAEAD.Costed.FSort) →
+@[expose] def pubToDen : (b : CryptoGames.FSAEAD.Costed.FSort) →
     (CryptoGames.FSAEAD.Costed.fsSig (RatchetSenderState (BitVec 256))
       (RatchetReceiverState (BitVec 256) (BitVec 256))
       (Header Pt) LibsignalMsgPublicPart (Plain ℓ) (ℕ × LCt)).den b →
@@ -88,7 +92,7 @@ def pubToDen : (b : CryptoGames.FSAEAD.Costed.FSort) →
   | .msg => id
   | .ct => lctV
 
-@[reducible] def hybBaseTy : CryptoGames.FSAEAD.Costed.FSort → Ty (atomicSig ℓ Pt)
+@[expose, reducible] def hybBaseTy : CryptoGames.FSAEAD.Costed.FSort → Ty (atomicSig ℓ Pt)
   | .ss => BV256
   | .rs => BV256
   | .ad => fig8PubAdT
@@ -96,7 +100,7 @@ def pubToDen : (b : CryptoGames.FSAEAD.Costed.FSort) →
   | .msg => PlainT
   | .ct => wireSaltCtT
 
-def hybToDen : (b : CryptoGames.FSAEAD.Costed.FSort) →
+@[expose] def hybToDen : (b : CryptoGames.FSAEAD.Costed.FSort) →
     (CryptoGames.FSAEAD.Costed.fsSig (BitVec 256) (BitVec 256)
       (Header Pt × LibsignalMsgPublicPart) Unit (Plain ℓ) LCt).den b →
     (hybBaseTy (Pt := Pt) (ℓ := ℓ) b).denote
@@ -107,7 +111,7 @@ def hybToDen : (b : CryptoGames.FSAEAD.Costed.FSort) →
   | .msg => id
   | .ct => wireSaltCtV
 
-@[reducible] def swBaseTy : CryptoGames.AEAD.Costed.SaltWireSort → Ty (atomicSig ℓ Pt)
+@[expose, reducible] def swBaseTy : CryptoGames.AEAD.Costed.SaltWireSort → Ty (atomicSig ℓ Pt)
   | .seed => BV256
   | .msgKey => derivedMsgKeysT
   | .salt => BV256
@@ -118,7 +122,7 @@ def hybToDen : (b : CryptoGames.FSAEAD.Costed.FSort) →
   | .rawBytes => B 32
   | .macTag => U64
 
-def swToDen : (b : CryptoGames.AEAD.Costed.SaltWireSort) →
+@[expose] def swToDen : (b : CryptoGames.AEAD.Costed.SaltWireSort) →
     (CryptoGames.AEAD.Costed.saltWireSig Pt ℓ).den b →
     (swBaseTy (Pt := Pt) (ℓ := ℓ) b).denote
   | .seed => id
@@ -142,7 +146,7 @@ local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicFsOps ℓ Pt C encT
 
 omit [DecidableEq Pt] in
-def pubMacroBundle :
+@[expose] def pubMacroBundle :
     PureMacroBundle
       (CryptoGames.FSAEAD.Costed.fsOps (RatchetSenderState (BitVec 256))
         (RatchetReceiverState (BitVec 256) (BitVec 256))
@@ -167,7 +171,7 @@ def pubMacroBundle :
     | .dl => Comp.query (I := fsaeadPubTargetIface ℓ Pt) FSAEADTag.dl (.var .zero)
     | .ij => Comp.query (I := fsaeadPubTargetIface ℓ Pt) FSAEADTag.ij (.var .zero)
 
-def hybOpMacro :
+@[expose] def hybOpMacro :
     (o : (Ops.sum
       (CryptoGames.PRG.Costed.prgOps
         (S := CryptoGames.FSAEAD.Costed.fsSig (BitVec 256) (BitVec 256)
@@ -213,7 +217,7 @@ def hybOpMacro :
   | .inr .eqC => eqWireSaltCtExpr ℓ Pt C encT (.fst (.var .zero)) (.snd (.var .zero))
   | .inr .eqSalt => .bool true
 
-def prgZeroMacroBundle :
+@[expose] def prgZeroMacroBundle :
     PureMacroBundle
       (Ops.sum
         (CryptoGames.PRG.Costed.prgOps
@@ -252,7 +256,7 @@ def prgZeroMacroBundle :
       Comp.sample (I := coinOnlyBaseIface ℓ Pt) (UniformSamplerTag.base .bv256) .unit
   queryMacro := fun g => nomatch g
 
-def multiMacroBundle :
+@[expose] def multiMacroBundle :
     PureMacroBundle
       (Ops.sum
         (CryptoGames.PRG.Costed.prgOps
@@ -304,7 +308,7 @@ local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicFsOps ℓ Pt C encT
 local notation "SWOps" => CryptoGames.AEAD.Costed.saltWireOps C clampedProtoSignalCodec ℓ encT idOf 1
 
-def swOpMacro :
+@[expose] def swOpMacro :
     (o : (SWOps).Op) →
     Expr AOps
       [mapTy (swBaseTy (Pt := Pt) (ℓ := ℓ)) ((SWOps).dom o)]
@@ -328,7 +332,7 @@ def swOpMacro :
   | .inr (.inr .eqHdr) => eqWireSignalHdrExpr ℓ Pt C encT (.fst (.var .zero)) (.snd (.var .zero))
   | .inr (.inr .fitPlainOp) => fitPlainExpr ℓ Pt C encT (.var .zero)
 
-def slotSwMacroBundle :
+@[expose] def slotSwMacroBundle :
     PureMacroBundle SWOps AOps
       (CryptoGames.AEAD.Costed.slotOtccaIface C clampedProtoSignalCodec ℓ encT 1)
       (slotOtccaTargetIface ℓ Pt) where
@@ -351,7 +355,7 @@ def slotSwMacroBundle :
     | .enc => Comp.query (I := slotOtccaTargetIface ℓ Pt) OTCCATag.enc (.var .zero)
     | .dec => Comp.query (I := slotOtccaTargetIface ℓ Pt) OTCCATag.dec (.var .zero)
 
-def lSaltMacroBundle :
+@[expose] def lSaltMacroBundle :
     PureMacroBundle SWOps AOps
       (CryptoGames.AEAD.Costed.saltRedIface C clampedProtoSignalCodec ℓ encT 1)
       (saltPrfTargetIface ℓ Pt) where
@@ -369,7 +373,7 @@ def lSaltMacroBundle :
     | .inr (.base e) => nomatch e
   queryMacro := fun _ => Comp.query (I := saltPrfTargetIface ℓ Pt) () (.var .zero)
 
-def lWireMacroBundle :
+@[expose] def lWireMacroBundle :
     PureMacroBundle SWOps AOps
       (CryptoGames.AEAD.Costed.wireRedIface Pt ℓ)
       (wireOtccaTargetIface ℓ Pt) where
@@ -387,7 +391,7 @@ def lWireMacroBundle :
     | .dec => Comp.query (I := wireOtccaTargetIface ℓ Pt) OTCCATag.dec (.var .zero)
 
 omit [DecidableEq Pt] in
-def fsPubRedAtomic :=
+@[expose] def fsPubRedAtomic :=
   compilePureRed (fsaeadPubCodec ℓ Pt) (pubMacroBundle (Pt := Pt) C ℓ encT)
     (CryptoGames.FSAEAD.Costed.pubRedProg
       (SS := RatchetSenderState (BitVec 256))
@@ -395,56 +399,56 @@ def fsPubRedAtomic :=
       (AD := Header Pt) (M := Plain ℓ)
       (fun c : ℕ × LCt => lPubOf protoSignalCodec c.2) 1)
 
-def fsPrgRedZeroAtomic (qR j : ℕ) :=
+@[expose] def fsPrgRedZeroAtomic (qR j : ℕ) :=
   compilePureTwoStageRed (fsaeadRatchetCodec ℓ Pt) (prgZeroMacroBundle (Pt := Pt) C ℓ encT idOf)
     (CryptoGames.FSAEAD.Thm5.Costed.prgRedZeroProg
       (lAeadR C clampedProtoSignalCodec ℓ encT idOf) (lChainPRG C.F) 1 1
       (lIdeal C clampedProtoSignalCodec ℓ encT) 1 qR maxForwardJumps j)
 
-def fsMultiRedAtomic (qR : ℕ) (la : Bool) :=
+@[expose] def fsMultiRedAtomic (qR : ℕ) (la : Bool) :=
   compilePureTwoStageRed (fsaeadRatchetCodec ℓ Pt) (multiMacroBundle (Pt := Pt) C ℓ encT idOf)
     (CryptoGames.FSAEAD.Thm5.Costed.multiRedProg
       (lAeadR C clampedProtoSignalCodec ℓ encT idOf) (lChainPRG C.F) 1 1
       (lIdeal C clampedProtoSignalCodec ℓ encT) 1
       qR maxForwardJumps (if la then qR + (maxForwardJumps + 1) else qR) la)
 
-def fsPrgRedAuthAtomic (qR j : ℕ) :=
+@[expose] def fsPrgRedAuthAtomic (qR j : ℕ) :=
   compilePureTwoStageRed (fsaeadRatchetCodec ℓ Pt) (prgZeroMacroBundle (Pt := Pt) C ℓ encT idOf)
     (CryptoGames.FSAEAD.Thm5.Costed.prgRedAuthProg
       (lAeadR C clampedProtoSignalCodec ℓ encT idOf) (lChainPRG C.F) 1 1
       (lIdeal C clampedProtoSignalCodec ℓ encT) 1 qR maxForwardJumps j)
 
-def fsMultiRedAuthAtomic (qR : ℕ) (la : Bool) :=
+@[expose] def fsMultiRedAuthAtomic (qR : ℕ) (la : Bool) :=
   compilePureTwoStageRed (fsaeadRatchetCodec ℓ Pt) (multiMacroBundle (Pt := Pt) C ℓ encT idOf)
     (CryptoGames.FSAEAD.Thm5.Costed.multiRedAuthProg
       (lAeadR C clampedProtoSignalCodec ℓ encT idOf) (lChainPRG C.F) 1 1
       (lIdeal C clampedProtoSignalCodec ℓ encT) 1
       qR maxForwardJumps (if la then qR + (maxForwardJumps + 1) else qR) la)
 
-def fsSlotSaltRedAtomic (qR j : ℕ) :=
+@[expose] def fsSlotSaltRedAtomic (qR j : ℕ) :=
   compilePureRed (ReductionDsl.slotOtccaCodec ℓ Pt) (slotSwMacroBundle (Pt := Pt) C ℓ encT idOf)
     (CryptoGames.Ratchet.LibsignalInst.Costed.slotSaltRedProg
       C clampedProtoSignalCodec ℓ encT idOf 1 1
       (if CryptoGames.FSAEAD.Thm5.isLookaheadHop j then qR + (maxForwardJumps + 1) else qR)
       (j / 2) qR)
 
-def fsLSaltRedAtomic :=
+@[expose] def fsLSaltRedAtomic :=
   compilePureRed (ReductionDsl.slotOtccaCodec ℓ Pt) (lSaltMacroBundle (Pt := Pt) C ℓ encT idOf)
     (CryptoGames.Ratchet.LibsignalInst.Costed.lSaltRedProg
       C clampedProtoSignalCodec ℓ encT idOf 1 1)
 
-def fsSlotWireRedAtomic (qR j : ℕ) :=
+@[expose] def fsSlotWireRedAtomic (qR j : ℕ) :=
   compilePureRed (ReductionDsl.slotOtccaCodec ℓ Pt) (slotSwMacroBundle (Pt := Pt) C ℓ encT idOf)
     (CryptoGames.Ratchet.LibsignalInst.Costed.slotWireRedProg
       C clampedProtoSignalCodec ℓ encT idOf 1 1 (j / 2) qR)
 
-def fsLWireRedAtomic (qR : ℕ) :=
+@[expose] def fsLWireRedAtomic (qR : ℕ) :=
   compilePureRed (ReductionDsl.slotOtccaCodec ℓ Pt) (lWireMacroBundle (Pt := Pt) C ℓ encT idOf)
     (CryptoGames.Ratchet.LibsignalInst.Costed.lWireRedProg
       C clampedProtoSignalCodec ℓ encT idOf 1 0 qR)
 
 omit [DecidableEq Pt] in
-def fsCostedRedsBoundedWitness : FsCostedReds C codec ℓ encT idOf where
+@[expose] def fsCostedRedsBoundedWitness : FsCostedReds C codec ℓ encT idOf where
   pubRed := ⟨.unit, .ret (.pair .unit .unit), .ret (.pair (.inl .none) .unit), .ret (.bool false)⟩
   prgRedZero _ := dummyTwoStageRed .unit (.inl .none) .unit (.bool false)
   multiRed _ := dummyTwoStageRed .unit (.inl .none) .unit (.bool false)
@@ -452,9 +456,11 @@ def fsCostedRedsBoundedWitness : FsCostedReds C codec ℓ encT idOf where
   lSaltRed := ⟨.unit, .ret (.pair .unit .unit), .ret (.pair (.inl .none) .unit), .ret (.bool false)⟩
   slotWireRed _ := ⟨.unit, .ret (.pair .unit .unit), .ret (.pair (.inl .none) .unit), .ret (.bool false)⟩
   lWireRed := ⟨.unit, .ret (.pair .unit .unit), .ret (.pair (.inl .none) .unit), .ret (.bool false)⟩
+  prgRedAuth _ := dummyTwoStageRed .unit (.inl .none) .unit (.bool false)
+  multiRedAuth _ := dummyTwoStageRed .unit (.inl .none) .unit (.bool false)
 
 /-- Compiled atomic `FsCostedReds` bundle guarded by `ℓ < 10 ^ 6` and hop bounds for unconditional `fsCostedBounds`. -/
-def fsCostedRedsInst (qR : ℕ) : FsCostedReds C codec ℓ encT idOf :=
+@[expose] def fsCostedRedsInst (qR : ℕ) : FsCostedReds C codec ℓ encT idOf :=
   let fb := fsCostedRedsBoundedWitness C codec ℓ encT idOf
   { pubRed := if ℓ < 10 ^ 6 then fsPubRedAtomic C ℓ encT else fb.pubRed
     prgRedZero := fun j =>
@@ -472,7 +478,13 @@ def fsCostedRedsInst (qR : ℕ) : FsCostedReds C codec ℓ encT idOf :=
       if ℓ < 10 ^ 6 ∧ j ≤ 2 * (qR + maxForwardJumps + 1) then
         fsSlotWireRedAtomic C ℓ encT idOf qR j
       else fb.slotWireRed j
-    lWireRed := if ℓ < 10 ^ 6 then fsLWireRedAtomic C ℓ encT idOf qR else fb.lWireRed }
+    lWireRed := if ℓ < 10 ^ 6 then fsLWireRedAtomic C ℓ encT idOf qR else fb.lWireRed
+    prgRedAuth := fun j =>
+      guardTwoStageRed (ℓ < 10 ^ 6 ∧ j ≤ 2 * (qR + maxForwardJumps + 1))
+        (fsPrgRedAuthAtomic C ℓ encT idOf qR j) .unit (.inl .none) .unit (.bool false)
+    multiRedAuth := fun la =>
+      guardTwoStageRed (ℓ < 10 ^ 6)
+        (fsMultiRedAuthAtomic C ℓ encT idOf qR la) .unit (.inl .none) .unit (.bool false) }
 
 end BundlesPart2
 

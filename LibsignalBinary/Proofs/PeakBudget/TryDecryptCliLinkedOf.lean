@@ -9,9 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinked
-public import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpecRepaired
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
+public import LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinked -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpecRepaired -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedWitnessAux
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedWitness
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Parametric `TryDecryptCliLinkedEnvOf` Interface
@@ -21,7 +26,7 @@ Defines `(LoopAdvEnv, maxOps, RecvProtoEnv)`-parametric companions to `SpqrRecvC
 `StatesRecvProtoEnv' K`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +44,6 @@ open CryptoVerification.SpqrV1.ChainProofs
 open CryptoVerification.SpqrV1.States.IntoPb (StatesIntoPbGhost)
 open CryptoVerification.SpqrV1.Top.InitInner (InitInnerGhost)
 open LibsignalBinary.Heap (AllocEvent FreeOnlyEvs SeqEnv rustAllocEvents)
-open LibsignalBinary.Heap.SpecBudget (FmtWriteEnv FormatInnerEnv)
 open LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget (CmkLoopAdvanceEvs)
 open LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinked
   (SpqrRecvC07C09aBytesEnv TryDecryptCliEnvOfPure TryDecryptCliLinkedEnv tryDecryptCmkSeg4Env
@@ -52,6 +56,8 @@ open LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedWitness (spqrRecvTightLinke
 open LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpec (StatesRecvProtoEnv)
 open LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpecRepaired (StatesRecvProtoEnv')
 open LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges (tlb_DecodeStateTightEnvOf)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs
+  (CliFmtWriteEnv CliFormatInnerEnv)
 open LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudget (s8Env)
 open LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchetBudget (s9Env)
 open LibsignalBinary.Proofs.TripleRatchet.Decrypt.DeriveKeysBudget (s6FreeOnlyEnv)
@@ -64,7 +70,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (TryDecryptEnvArgs)
 
 /-- `(maxOps, RecvProtoEnv)`-parametric linked `spqr::recv` envelope instantiating `SpqrRecvTightLinkedEnv` at `tlb_DecodeStateTightEnvOf maxOps`, `StatesFromPbTightEnv`, `StatesIntoPbTightEnv`, and `RecvProtoEnv`.
 -/
-def SpqrRecvC07C09aTightLinkedEnvRecvOf (maxOps : Nat) (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrRecvC07C09aTightLinkedEnvRecvOf (maxOps : Nat) (F : ShaCompress) (K : MlKem)
     (RecvProtoEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
       List AllocEvent → Prop)
     (stBytes : Bytes)
@@ -84,7 +90,7 @@ def SpqrRecvC07C09aTightLinkedEnvRecvOf (maxOps : Nat) (F : ShaCompress) (K : Ml
 
 /-- Existentially lifted 12-ghost `(maxOps, RecvProtoEnv)`-parametric linked `spqr::recv` byte-slice envelope.
 -/
-def SpqrRecvC07C09aBytesEnvRecvOf (maxOps : Nat) (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrRecvC07C09aBytesEnvRecvOf (maxOps : Nat) (F : ShaCompress) (K : MlKem)
     (RecvProtoEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
       List AllocEvent → Prop)
     (stBs _msgBs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
@@ -105,7 +111,7 @@ theorem spqrRecvC07C09aBytesEnvRecvOf_nonempty (maxOps : Nat) (F : ShaCompress) 
     RecvProtoEnv stBs⟩
 
 /-- `maxOps`-parametric linked `spqr::recv` envelope specialized at `StatesRecvProtoEnv' K`. -/
-def SpqrRecvC07C09aTightLinkedEnvOf (maxOps : Nat) (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrRecvC07C09aTightLinkedEnvOf (maxOps : Nat) (F : ShaCompress) (K : MlKem)
     (stBytes : Bytes)
     (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
     (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
@@ -119,7 +125,7 @@ def SpqrRecvC07C09aTightLinkedEnvOf (maxOps : Nat) (F : ShaCompress) (K : MlKem)
 
 /-- Existentially lifted `maxOps`-parametric linked `spqr::recv` byte-slice envelope at `StatesRecvProtoEnv' K`.
 -/
-def SpqrRecvC07C09aBytesEnvOf (maxOps : Nat) (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrRecvC07C09aBytesEnvOf (maxOps : Nat) (F : ShaCompress) (K : MlKem)
     (stBs _msgBs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   ∃ pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto,
     SpqrRecvC07C09aTightLinkedEnvOf maxOps F K
@@ -131,7 +137,7 @@ theorem spqrRecvC07C09aBytesEnvOf_nonempty (maxOps : Nat) (F : ShaCompress) (K :
   spqrRecvC07C09aBytesEnvRecvOf_nonempty maxOps F K (StatesRecvProtoEnv' K) stBs msgBs
 
 /-- Loop-envelope-parametric Segment-4 `consume_message_key` step envelope. -/
-def tryDecryptCmkStepEnvOf
+@[expose] def tryDecryptCmkStepEnvOf
     (LoopAdvEnv : Nat → BitVec 64 → Nat → Bool → List AllocEvent → Prop)
     (msgCounter : BitVec 32) (senderRatchetKey : PublicKey)
     (trG : TrGhost) (r : RatchetState) (ck : ChainKey) (evs : List AllocEvent) : Prop :=
@@ -152,7 +158,7 @@ def tryDecryptCmkStepEnvOf
   else
     evs = rustAllocEvents 36 1
 
-def tryDecryptCmkSeg4EnvOf
+@[expose] def tryDecryptCmkSeg4EnvOf
     (LoopAdvEnv : Nat → BitVec 64 → Nat → Bool → List AllocEvent → Prop)
     (fmtWriteEnv : List AllocEvent → Prop)
     (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
@@ -175,8 +181,8 @@ abbrev TryDecryptCliLinkedLoopEnvRecvOf
   | (.ok tr0, st1) =>
     SeqEnv FreeOnlyEvs
       (FromS2GenEnv C uuidTryParse S (stdAesOpt C)
-        (s3DefaultEnv C) (tryDecryptCmkSeg4EnvOf LoopAdvEnv FmtWriteEnv)
-        (PqRecvEnv S (SpqrRecvC07C09aBytesEnvRecvOf maxOps C.F K RecvProtoEnv) FormatInnerEnv)
+        (s3DefaultEnv C) (tryDecryptCmkSeg4EnvOf LoopAdvEnv CliFmtWriteEnv)
+        (PqRecvEnv S (SpqrRecvC07C09aBytesEnvRecvOf maxOps C.F K RecvProtoEnv) CliFormatInnerEnv)
         s6FreeOnlyEnv (s7Env C.F uuidTryParse) s8Env s9Env
         (tryDecryptEnvArgsToGhost a) (s1InitTrGhost a.G) tr0 st1)
 
@@ -188,7 +194,7 @@ abbrev TryDecryptCliLinkedEnvRecvOf (maxOps : Nat) (C : Crypto) (K : MlKem)
 
 /-- `try_decrypt_with_state` CLI allocation envelope parameterized by `LoopAdvEnv` and `maxOps` at `StatesRecvProtoEnv' K`.
 -/
-def TryDecryptCliLinkedLoopEnvOf
+@[expose] def TryDecryptCliLinkedLoopEnvOf
     (LoopAdvEnv : Nat → BitVec 64 → Nat → Bool → List AllocEvent → Prop)
     (maxOps : Nat) (C : Crypto) (K : MlKem)
     (a : TryDecryptEnvArgs) : List AllocEvent → Prop :=
@@ -198,8 +204,8 @@ def TryDecryptCliLinkedLoopEnvOf
   | (.ok tr0, st1) =>
     SeqEnv FreeOnlyEvs
       (FromS2GenEnv C uuidTryParse S (stdAesOpt C)
-        (s3DefaultEnv C) (tryDecryptCmkSeg4EnvOf LoopAdvEnv FmtWriteEnv)
-        (PqRecvEnv S (SpqrRecvC07C09aBytesEnvOf maxOps C.F K) FormatInnerEnv)
+        (s3DefaultEnv C) (tryDecryptCmkSeg4EnvOf LoopAdvEnv CliFmtWriteEnv)
+        (PqRecvEnv S (SpqrRecvC07C09aBytesEnvOf maxOps C.F K) CliFormatInnerEnv)
         s6FreeOnlyEnv (s7Env C.F uuidTryParse) s8Env s9Env
         (tryDecryptEnvArgsToGhost a) (s1InitTrGhost a.G) tr0 st1)
 
@@ -219,14 +225,14 @@ theorem tryDecryptCliLinkedEnvRecvOf_eq_pure (maxOps : Nat) (C : Crypto) (K : Ml
     (RecvProtoEnv : States spqrPolyApi (spqrAuthApi C.F) → Message spqrPolyApi →
       List AllocEvent → Prop) :
     TryDecryptCliLinkedEnvRecvOf maxOps C K RecvProtoEnv =
-      TryDecryptCliEnvOfPure C (spqrV1 C.F K) FmtWriteEnv
-        (SpqrRecvC07C09aBytesEnvRecvOf maxOps C.F K RecvProtoEnv) FormatInnerEnv :=
+      TryDecryptCliEnvOfPure C (spqrV1 C.F K) CliFmtWriteEnv
+        (SpqrRecvC07C09aBytesEnvRecvOf maxOps C.F K RecvProtoEnv) CliFormatInnerEnv :=
   rfl
 
 theorem tryDecryptCliLinkedEnvOf_eq_pure (maxOps : Nat) (C : Crypto) (K : MlKem) :
     TryDecryptCliLinkedEnvOf maxOps C K =
-      TryDecryptCliEnvOfPure C (spqrV1 C.F K) FmtWriteEnv
-        (SpqrRecvC07C09aBytesEnvOf maxOps C.F K) FormatInnerEnv :=
+      TryDecryptCliEnvOfPure C (spqrV1 C.F K) CliFmtWriteEnv
+        (SpqrRecvC07C09aBytesEnvOf maxOps C.F K) CliFormatInnerEnv :=
   rfl
 
 theorem spqrRecvC07C09aTightLinkedEnvOf_eq_recvOf (maxOps : Nat) (F : ShaCompress) (K : MlKem) :

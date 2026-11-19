@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinish2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinishPlacedBudgetLoops
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinish2PlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinishPlacedBudgetLoops
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
@@ -24,6 +24,16 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesFinish2
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.WP.Apply
+public import LibsignalBinary.Heap.Iface
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinish1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.DecodesPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinish2PlacedBudgetAux
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
 
 /-!
 # Budget-Threaded Looping `InnerState` Drop Arms (`ct1Acknowledged`, `ct1Sampled`, `noHeaderReceived`)
@@ -32,7 +42,7 @@ Threads `RustCliAllocBudget` through the looping `InnerState` drop arms `idx = 9
 inside Block `427` (`spqr::send::<signal_session_ratchet::Coins>`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -47,7 +57,7 @@ namespace LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinishPlacedBudg
 open Arm64 Arm64.Obj ProofLib ProofLib.ProgramReflection
 open scoped CryptoVerification.RustHeap CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification
-  (LibsignalCodeLoaded LibsignalPlacement extract_withMemEq libsignalSessionCode
+  (LibsignalCodeLoaded LibsignalPlacement extract_withMemEq
    lsmpl lsρ sepWP_seq_lscl withLsCodeLoaded withMemEq)
 open CryptoVerification.Cli.SpqrV1.Top.Send
   (spqrSendDropJumpTablePlacedAt spqrSendDropJumpTablePlacedAt_eq_expanded
@@ -122,7 +132,7 @@ private theorem send3_noneCap2_add_two_beq_zero :
 private theorem send3_noneCap2_add_two_bne_zero :
     (0xfffffffffffffffe#64 + 2#64 != 0#64) = false := rfl
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff Program.fnAddr
   v1StatePBPinnedAt spqrSendDropJumpTablePlacedAt optProtoPolynomialEncoderAt optProtoUnchunkedCt1SentAt
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero spqrSendPlacedEntry
 attribute [local simp, local arm64_norm, local wp_norm]

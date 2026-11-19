@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkHole
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkHole -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import VCVio.Prelude.Core
@@ -22,7 +22,7 @@ key at every PQXDH base DH hole (`IkmHolesK K`) and every `kdfRk` step (`DhHoleK
 the forgetful projection `SpineRkK.toSpineRk`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,11 +36,11 @@ open DY.Libsignal.TripleRatchet (kdfCk kdfRk chainKeyAt)
 open DY.Libsignal.PQXDH (pqxdhIkm pqxdhKdf)
 
 /-- A DH hole `d = dh pk' (randTerm t 32)` whose peer public key `pk'` satisfies `K`. -/
-def DhHoleK (K : DY.Bytes → Prop) (d : DY.Bytes) : Prop :=
+@[expose] def DhHoleK (K : DY.Bytes → Prop) (d : DY.Bytes) : Prop :=
   ∃ pk' t, d = dh pk' (randTerm t 32) ∧ K pk'
 
 /-- A PQXDH input `ikm = pqxdhIkm a b e d ss` all of whose DH parts are `DhHoleK K`. -/
-def IkmHolesK (K : DY.Bytes → Prop) (ikm : DY.Bytes) : Prop :=
+@[expose] def IkmHolesK (K : DY.Bytes → Prop) (ikm : DY.Bytes) : Prop :=
   ∃ (a b e : DY.Bytes) (d : Option DY.Bytes) (ss : DY.Bytes),
     ikm = pqxdhIkm a b e d ss ∧ DhHoleK K a ∧ DhHoleK K b ∧ DhHoleK K e ∧
     ∀ v, d = some v → DhHoleK K v

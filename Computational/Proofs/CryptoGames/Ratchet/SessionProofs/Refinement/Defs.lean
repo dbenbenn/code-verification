@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimShallow
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimShallow -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.CryptoGames.Ratchet.CreateChainProofDefs
 public import Computational.Proofs.CryptoGames.SM.GameProofDefs
 
@@ -23,7 +23,7 @@ Pure X25519 clamping lemmas, honest `createChain` evaluation, and the `simNoneWi
 used in `libsignal_refines`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -134,7 +134,7 @@ theorem createChain_honest_clamped {D : CKA.DHFun (BitVec 256) Pt}
 
 /-- Experiment running `LibsignalSim.simRun` with `k = none` inside `lFig8` (`Config.h1`) and
 returning `s.win`. -/
-def simNoneWinEvent (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def simNoneWinEvent (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ)
     (A : LibAdv PQ PQC ℓ) : ProbComp Bool := do

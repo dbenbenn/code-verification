@@ -11,19 +11,19 @@ module
 
 public import Arm64
 public import Arm64.Trusted.Spec.Hoare
+public import LibsignalBinary.Heap.IfaceBudgetBaseBridges
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3AllocStdinGhostHooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.SignalSession.CliElf
 public import ProofLib
 public import ProofLib.FsTrace
 public import ProofLib.ProgramReflection
-public import LibsignalBinary.Heap.IfaceBudgetBaseBridges
-public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3AllocStdinGhostHooks
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
-public import LibsignalBinary.Specifications.SignalSession.CliElf
+import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced
 
 /-!
 # Real-Run First-Stop Instance for `realloc`
@@ -31,7 +31,7 @@ public import LibsignalBinary.Specifications.SignalSession.CliElf
 **Checked by Lean.**
 
 Follows the SR3 `(R)` pure-composition recipe (`08:28Z` / `P4-lead 08:31Z`) over
-`hole2_keepSub` (`[0x469000, 0x46f000)` = `seg[2]` = `f3TrialRxProg`) for `__rust_realloc`
+`hole2_keepSub` (`[0x474000, 0x4ca000)` = `seg[2]` = `f3TrialRxProg`) for `__rust_realloc`
 (target `f3RdlAddrs.realloc`):
 1. **`h2fsrealloc_activeRealRun`:** from `ActiveF3CallPre (h2fsrealloc_spec mmpl) s0`,
    `ExecFrozen s0.mem`, `hole2_keepSub (s0.readReg64 .lr) = false`, and
@@ -48,7 +48,7 @@ Follows the SR3 `(R)` pure-composition recipe (`08:28Z` / `P4-lead 08:31Z`) over
    hooks inside `hole2_keepSub` (`0` `sorry`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -86,7 +86,7 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
 
 /-- `(γ, tp)`-indexed fine-budget `rustCliReallocBudgetSpec` family guarding
     `f3ReallocGhostHookFine` in `hole2_ghFixed`. -/
-noncomputable def h2fsrealloc_spec [LibsignalPlacement] (mmpl : MultiPlacement)
+@[expose] noncomputable def h2fsrealloc_spec [LibsignalPlacement] (mmpl : MultiPlacement)
     (γ : GhostName) (tp : BitVec 64) :
     Spec (BitVec 64 × Nat × Nat × Nat × List (BitVec 8) × fineCostModel.σ) :=
   rustCliReallocBudgetSpec fineCostModel
@@ -306,7 +306,7 @@ private theorem h2fsrealloc_toNat_add_ofNat_of_lt {b : BitVec 64} {k : Nat}
   have hlt' : b.toNat + k < 2 ^ 64 := by omega
   rw [BitVec.toNat_add, BitVec.toNat_ofNat, Nat.mod_eq_of_lt hk, Nat.mod_eq_of_lt hlt']
 
-/-- Every `mallocngLib` code byte in `cliElfBytes` lies inside `hole2_keepSub` (`[0x469000, 0x46f000)`). -/
+/-- Every `mallocngLib` code byte in `cliElfBytes` lies inside `hole2_keepSub` (`[0x474000, 0x4ca000)`). -/
 theorem h2fsrealloc_keepSub_mallocng (mmpl : MultiPlacement)
     (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) :
     ∀ a : BitVec 64, (mallocngLib.findCodeBlock mmpl a).isSome = true → hole2_keepSub a = true := by
@@ -329,8 +329,8 @@ theorem h2fsrealloc_keepSub_mallocng (mmpl : MultiPlacement)
     have hk_off : (a - mmpl.base k).toNat < mallocngLib.blocks[k].code.length := hin
     have heq_a : mmpl.base k + BitVec.ofNat 64 (a - mmpl.base k).toNat = a := by
       rw [BitVec.ofNat_toNat, BitVec.setWidth_eq]; bv_omega
-    have hlo : 0x469000 ≤ f3MngCodeLo := by decide
-    have hhi : f3MngCodeHi ≤ 0x46f000 := by decide
+    have hlo : Wp4LayoutGen.hole2_keepSubLo ≤ f3MngCodeLo := by decide
+    have hhi : f3MngCodeHi ≤ Wp4LayoutGen.hole2_keepSubHi := by decide
     have ht : (mmpl.base k + BitVec.ofNat 64 (a - mmpl.base k).toNat).toNat =
         (mmpl.base k).toNat + (a - mmpl.base k).toNat :=
       h2fsrealloc_toNat_add_ofNat_of_lt (by omega)
@@ -338,13 +338,12 @@ theorem h2fsrealloc_keepSub_mallocng (mmpl : MultiPlacement)
     unfold hole2_keepSub
     exact decide_eq_true ⟨by omega, by omega⟩
 
-/-- `hole2_keepSub` (`[0x469000, 0x46f000)`) is a subset of `hole2_keep`. -/
+/-- `hole2_keepSub` is a subset of `hole2_keep`. -/
 theorem h2fsrealloc_keep_of_keepSub {a : BitVec 64} (h : hole2_keepSub a = true) :
     hole2_keep a = true := by
   unfold hole2_keepSub at h
   unfold hole2_keep
-  have h' : 0x469000 ≤ a.toNat ∧ a.toNat < 0x46f000 := of_decide_eq_true h
-  exact decide_eq_true (Or.inr h')
+  exact decide_eq_true (Or.inr (of_decide_eq_true h))
 
 /-- Contrapositive: `hole2_keep a = false → hole2_keepSub a = false`. -/
 theorem h2fsrealloc_keepSub_false_of_keep_false {a : BitVec 64} (h : hole2_keep a = false) :
@@ -362,17 +361,17 @@ theorem h2fsrealloc_keep_mallocng (mmpl : MultiPlacement)
     ∀ a : BitVec 64, (mallocngLib.findCodeBlock mmpl a).isSome = true → hole2_keep a = true :=
   fun a hsome => h2fsrealloc_keep_of_keepSub (h2fsrealloc_keepSub_mallocng mmpl hMm a hsome)
 
-/-- `f3TrialRxProg` (`seg[2]`, `[0x469000, 0x46f000)`) has identical `CodeLoaded` under
+/-- `f3TrialRxProg` (`seg[2]`) has identical `CodeLoaded` under
     `stripExecOutside hole2_keepSub` and `stripExecOutside hole2_keep`. -/
 theorem h2fsrealloc_rxProg_codeLoaded_keepSub_iff_keep (m : Memory) :
     f3TrialRxProg.CodeLoaded (stripExecOutside hole2_keepSub m) ↔
       f3TrialRxProg.CodeLoaded (stripExecOutside hole2_keep m) := by
   have hbase : f3TrialRxProg.base = f3RxSegBase := f3TrialRxProg_base
-  have hbase_nat : f3RxSegBase.toNat = 0x469000 := by decide
+  have hbase_nat : f3RxSegBase.toNat = 0x474000 := by decide
   have hlen : f3TrialRxProg.code.length = 4 * f3RxWordCount := by
     rw [f3TrialRxWordTree_eq]
     exact WordTree.length_toBytes_of_checkSize? f3TrialRxWordTree_size
-  have hwc : f3RxWordCount = 6144 := rfl
+  have hwc : f3RxWordCount = 90112 := rfl
   have hinSub : ∀ i, i < f3TrialRxProg.code.length →
       hole2_keepSub (f3TrialRxProg.base + BitVec.ofNat 64 i) = true := by
     intro i hi
@@ -382,7 +381,8 @@ theorem h2fsrealloc_rxProg_codeLoaded_keepSub_iff_keep (m : Memory) :
       rw [hbase, hbase_nat]
       rw [hlen, hwc] at hi
       omega
-    unfold hole2_keepSub
+    unfold hole2_keepSub LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen.hole2_keepSubLo
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen.hole2_keepSubHi
     refine decide_eq_true ⟨?_, ?_⟩ <;> (rw [ht, hbase, hbase_nat]; rw [hlen, hwc] at hi; omega)
   constructor <;> intro hL
   · refine Program.CodeLoaded.intro hL.aligned hL.no_wrap fun i hi => ?_
@@ -536,7 +536,7 @@ theorem h2fsrealloc_firstStop_of_keep [LibsignalPlacement]
       hRun hSp hSat hFr hLr hCode
   exact ⟨sf, huntil, hstop, hfs, hfst, hfr_sf⟩
 
-/-- `ActiveRealRun` for `realloc` (`f3RdlAddrs.realloc`) under `hole2_keepSub` (`[0x469000, 0x46f000)`) premises
+/-- `ActiveRealRun` for `realloc` (`f3RdlAddrs.realloc`) under `hole2_keepSub` (`[0x474000, 0x4ca000)`) premises
 (making `f3ReallocFallback mmpl` unreachable). -/
 theorem h2fsrealloc_activeRealRun [LibsignalPlacement]
     (mmpl : MultiPlacement)

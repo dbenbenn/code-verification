@@ -9,24 +9,23 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.SM.Theorem1
-public import Computational.Proofs.ReductionDsl.SM.RedCKA
-public import Computational.Proofs.ReductionDsl.SM.RedPRNG
-public import Computational.Proofs.ReductionDsl.SM.RedFS
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForge
+public import Computational.Proofs.ReductionDsl.SM.Theorem1 -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.RedCKA -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.RedPRNG -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.RedFS -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForge -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Bridge
 import Computational.Proofs.ReductionDsl.Notation
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG -- shake: keep
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG -- shake: keep -- proof-setup: allow-public-import
 
 /-!
 # Costed Reductions for `DeliverForge`
 
 Defines the deep-embedded `CostedReduction` simulator `challSimDFProg`, the six-oracle engine
 dispatcher `implECDF`, and the reductions `redCKAAuthDFProg`, `redPRNGAuthDFProg`, and
-`redFSAuthDFProg` over `SM.specDF`.
--/
+`redFSAuthDFProg` over `SM.specDF`.-/
 
-@[expose] public section
+public section
 
 open ReductionDsl OracleSpec OracleComp
 open scoped Computational.Proofs.ReductionDsl.Notation
@@ -72,7 +71,7 @@ local notation "SR" => smR Key St St₂ Msg Coins RCoins C stSort
 local notation "SQDF" => smQDF Key St St₂ Msg Coins RCoins C
 local notation "SRDF" => smRDF Key St St₂ Msg Coins RCoins C stSort
 
-def simTransmitCDF (Δ qep : ℕ) {Γ}
+@[expose] def simTransmitCDF (Δ qep : ℕ) {Γ}
     (s : Expr OO Γ mirrorTy)
     (arg : Expr OO Γ (.prod .bool (.prod (.base .msg) (.opt (.base .coins))))) :
     Comp OO SIfaceDF Γ (.prod (.opt (.base .ct)) mirrorTy) :=
@@ -89,7 +88,7 @@ def simTransmitCDF (Δ qep : ℕ) {Γ}
         let rec_ := (pos, m, ct)
         return (some ct, mRecordE Δ s₁ p rec_ false)
 
-def simChallCDF (Δ qep : ℕ) {Γ}
+@[expose] def simChallCDF (Δ qep : ℕ) {Γ}
     (s : Expr OO Γ mirrorTy)
     (arg : Expr OO Γ
       (.prod .bool (.prod (.base .msg) (.prod (.base .msg) (.opt (.base .coins)))))) :
@@ -111,7 +110,7 @@ def simChallCDF (Δ qep : ℕ) {Γ}
           let rec_ := (pos, mb, ct)
           return (some ct, mRecordE Δ s1 p rec_ true)
 
-def simDeliverCDF (K : ℕ) {Γ}
+@[expose] def simDeliverCDF (K : ℕ) {Γ}
     (s : Expr OO Γ mirrorTy)
     (arg : Expr OO Γ (.prod .bool (.base .ct))) :
     Comp OO SIfaceDF Γ (.prod (.opt (smRrTy Key St St₂ Msg Coins RCoins C)) mirrorTy) :=
@@ -131,7 +130,7 @@ def simDeliverCDF (K : ℕ) {Γ}
           let mOut := if mChallContainsE K s0 rPos then none else m
           return (some (.inr (t', i', mOut)), mAcceptE K s0 p0 rPos)
 
-def simInjectCDF (K : ℕ) {Γ}
+@[expose] def simInjectCDF (K : ℕ) {Γ}
     (s : Expr OO Γ mirrorTy)
     (arg : Expr OO Γ (.prod .bool (.base .ct))) :
     Comp OO SIfaceDF Γ (.prod (.opt (smRrTy Key St St₂ Msg Coins RCoins C)) mirrorTy) :=
@@ -147,7 +146,7 @@ def simInjectCDF (K : ℕ) {Γ}
         let pos := (otherE p0, t', i')
         return (some (.inr tim), mAcceptE K s0 p0 pos)
 
-def simCorrCDF (K : ℕ) {Γ}
+@[expose] def simCorrCDF (K : ℕ) {Γ}
     (s : Expr OO Γ mirrorTy)
     (p : Expr OO Γ .bool) :
     Comp OO SIfaceDF Γ (.prod (.opt (.base stSort)) mirrorTy) :=
@@ -159,7 +158,7 @@ def simCorrCDF (K : ℕ) {Γ}
     else
       return (res, s0)
 
-def simDeliverForgeCDF (K : ℕ) {Γ}
+@[expose] def simDeliverForgeCDF (K : ℕ) {Γ}
     (s : Expr OO Γ mirrorTy)
     (arg : Expr OO Γ (.prod .bool (.prod (.base .ct) (.base .ct)))) :
     Comp OO SIfaceDF Γ (.prod (.opt (smRrTy Key St St₂ Msg Coins RCoins C)) mirrorTy) :=
@@ -175,7 +174,7 @@ def simDeliverForgeCDF (K : ℕ) {Γ}
         let pos := (otherE p0, t', i')
         return (some (.inr tim), mAcceptE K s0 p0 pos)
 
-def simHandleCDF (K Δ qep : ℕ) :
+@[expose] def simHandleCDF (K Δ qep : ℕ) :
     Comp OO SIfaceDF [mirrorTy, SQDF] (.prod SRDF mirrorTy) :=
   rdsl [s, q] do
     match q with
@@ -198,13 +197,13 @@ def simHandleCDF (K Δ qep : ℕ) :
       (r, s') ← simDeliverForgeCDF K s arg
       return (.inr r, s')
 
-def simInitCDF : Comp OO SIfaceDF [.unit] (.prod .unit mirrorTy) :=
+@[expose] def simInitCDF : Comp OO SIfaceDF [.unit] (.prod .unit mirrorTy) :=
   rdsl [_] do
     b ← sample (I := SIfaceDF) SMSamp.bit ()
     return ((), mMk ((), ()) b false (0, 0) (0, 0) none [] [] [] (tconst 0, tconst 0) [] [])
 
 /-- Costed `DeliverForge.challSimDF` challenge simulator over `SM.specDF`. -/
-@[reducible] def challSimDFProg (K Δ qep : ℕ) :
+@[expose, reducible] def challSimDFProg (K Δ qep : ℕ) :
     CostedReduction OO SIfaceDF
       (SM.specDF (SMSort.den Key St St₂ Msg Coins RCoins C stSort) Msg Coins C)
       SCodecDF .unit .unit .bool .bool where
@@ -1144,7 +1143,7 @@ local notation "hdrCtTy" => ckaHdrCtTy KC Γ CCoins T I KR RSt K SS RS M E
 local notation "psTy" => ckaPsTy KC Γ CCoins T I KR RSt K SS RS M E
 local notation "rrTy" => ckaRrTy KC Γ CCoins T I KR RSt K SS RS M E
 
-def hdrEqE {Γ'} (c₁ c₂ : Expr OO Γ' hdrCtTy) : Expr OO Γ' .bool :=
+@[expose] def hdrEqE {Γ'} (c₁ c₂ : Expr OO Γ' hdrCtTy) : Expr OO Γ' .bool :=
   rdslExpr =>
     letE (c₁, c₂) fun (a, b) =>
       (a.1.1 == b.1.1) && optTEqE a.1.2 b.1.2
@@ -1161,7 +1160,7 @@ theorem hdrEqE_eval [DecidableEq T] {Γ'}
   by_cases ht : t₁ = t₂ <;> cases o₁ <;> cases o₂ <;> simp [ht, BEq.beq]
 
 /-- Costed `DeliverForge.deliverForgeE` handler with list-scan bound `L`. -/
-def deliverForgeEC
+@[expose] def deliverForgeEC
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -1211,7 +1210,7 @@ def deliverForgeEC
                   return (some (.inl ()), esSetG es4' g4)
 
 /-- Six-oracle costed engine dispatcher for `DeliverForge.implEDF`. -/
-def implECDF
+@[expose] def implECDF
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -1713,7 +1712,7 @@ local notation "II" =>
   ckaIface KC Γ CCoins T I KR RSt K SS RS M E sampKR sampKC sampCCoins sampI sampK
 
 /-- Costed `DeliverForge.redCKAAuthDF` reduction over `SM.specDF`. -/
-def redCKAAuthDFProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
+@[expose] def redCKAAuthDFProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction OO II
       (SM.specDF (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (ckaSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E)
@@ -1815,7 +1814,7 @@ local notation "II" =>
   prngIface KC Γ CCoins T I KR RSt K SS RS M E sampKR sampKC sampCCoins sampI sampK
 
 /-- Costed `DeliverForge.redPRNGAuthDF` reduction over `SM.specDF`. -/
-def redPRNGAuthDFProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
+@[expose] def redPRNGAuthDFProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction OO II
       (SM.specDF (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (prngSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E)
@@ -2055,7 +2054,7 @@ theorem deliverForgeE_fs_inv [DecidableEq T] [DecidableEq I] [DecidableEq E]
                   hInvQ.tcur_le, hInvQ.vR_none_of_gt⟩
 
 /-- Costed `DeliverForge.redFSAuthDF` reduction over `SM.specDF`. -/
-def redFSAuthDFProg (L B Δcka qep maxSkip : ℕ) (j : ℕ) (tL : Option ℕ) (t : ℕ) :
+@[expose] def redFSAuthDFProg (L B Δcka qep maxSkip : ℕ) (j : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction OO II
       (SM.specDF (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (prngSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E)
@@ -2323,5 +2322,1621 @@ theorem qb_deliverForgeE_one
                 · exact ReductionsQueries.qb_pure (some RecvResult.rejected) 0
 
 end FromAEADPRGDF
+
+
+/-! ### 3.4 Stage-2 `(tL, par)`-Bucket `redCKAAuthDFBucketProg` (`[B8]`) -/
+
+section HooksCKABucketParDF
+
+variable
+  {ckaInitA : KC → Γ}
+  {ckaInitB : KC → Γ}
+  {ckaSend : Γ → CCoins → Γ × T × I}
+  {ckaReceive : Γ → T → Γ × I}
+  {prngInit : KR → RSt}
+  {prngUp : RSt → I → RSt × K}
+  {fsInitSender : K → SS}
+  {fsInitReceiver : K → RS}
+  {fsSend : SS → Header T → M → SS × E}
+  {fsReceive : RS → Header T → E → Option (RS × ℕ × M)}
+  {eqT : T → T → Bool}
+  {eqI : I → I → Bool}
+  {eqM : M → M → Bool}
+  {eqE : E → E → Bool}
+  {lam : I}
+  {defaultE : E}
+  {sampKR : ProbComp KR}
+  {sampKC : ProbComp KC}
+  {sampCCoins : ProbComp CCoins}
+  {sampI : ProbComp I}
+  {sampK : ProbComp K}
+
+local notation "OO" =>
+  ckaOps ckaInitA ckaInitB ckaSend ckaReceive prngInit prngUp
+    fsInitSender fsInitReceiver fsSend fsReceive eqT eqI eqM eqE lam defaultE
+local notation "II" =>
+  ckaIface KC Γ CCoins T I KR RSt K SS RS M E sampKR sampKC sampCCoins sampI sampK
+
+/-- Epoch admissibility predicate for `(tL, par)`-bucket authenticity (`Δbucket = 4` after `B1` + `B2`):
+`validGuessE Δbucket tL t0` and sender parity `partyEnc (Party.senderOf t0) == par`. -/
+@[expose] def validGuessBucketParE {S' : Sig} {O' : Ops S'} (Δbucket : ℕ) (tL : Option ℕ) (par : Bool) {Γ'}
+    (tE : Expr O' Γ' .nat) : Expr O' Γ' .bool :=
+  rdslExpr =>
+    validGuessE (raw Δbucket) (optNatLit (raw tL)) tE &&
+      (if bool par then senderOfE tE else !(senderOfE tE))
+
+/-- Pure answer expression for `(tL, par)`-bucket `redCKAAuthDF`: accepts forged CKA headers
+(`honest = none`) in any epoch `t0` admissible for `(Δbucket, tL, par)` when `γ` is local,
+aborting (`none`) if `γ` is still external. -/
+@[expose] def ckaStartRecvBucketParAnsE (Δbucket : ℕ) (tL : Option ℕ) (par : Bool) {Γ'}
+    (hE : Expr OO Γ' ckaHsTy)
+    (tE : Expr OO Γ' .nat)
+    (γvE : Expr OO Γ' (.opt (.base .γ)))
+    (σE : Expr OO Γ' (.base .sig))
+    (tnE : Expr OO Γ' (.base .t)) :
+    Expr OO Γ'
+      (.opt (.opt (.prod (.opt (.base .γ)) (.prod (.base .sig) (.base .rs))))) :=
+  rdslExpr =>
+    letE (hE, tE, γvE, σE, tnE) fun (h0, t0, γv0, σ0, tn0) =>
+      let honest :=
+        match tget h0 t0 with
+        | none => none
+        | some (tCached, ikCached) =>
+          if Expr.op (O := OO) CKAOp.eqT (tCached, tn0) then some ikCached else none
+      match honest with
+      | none =>
+        if validGuessBucketParE (raw Δbucket) (raw tL) (raw par) t0 then
+          match γv0 with
+          | none => none
+          | some γ =>
+            let kOut := Expr.op (O := OO) CKAOp.ckaReceive (γ, tn0)
+            let pOut := Expr.op (O := OO) CKAOp.prngUp (σ0, kOut.2)
+            let rs := Expr.op (O := OO) CKAOp.fsInitReceiver pOut.2
+            some (some (some kOut.1, pOut.1, rs))
+        else
+          some none
+      | some ik =>
+        let pOut := Expr.op (O := OO) CKAOp.prngUp (σ0, ik)
+        let rs := Expr.op (O := OO) CKAOp.fsInitReceiver pOut.2
+        let γv' :=
+          match γv0 with
+          | none => none
+          | some γ => some (Expr.op (O := OO) CKAOp.ckaReceive (γ, tn0)).1
+        some (some (γv', pOut.1, rs))
+
+/-- Costed `HooksC` bundle for `(tL, par)`-bucket `redCKAAuthDF`. -/
+@[expose] def hooksCKABucketParC (B Δcka Δbucket : ℕ) (tL : Option ℕ) (par : Bool) :
+    HooksC OO II (.opt (.base .γ)) (.base .sig) (.base .ss) (.base .rs) ckaHsTy where
+  startSend := ckaStartSendC Δcka ⟨true, tL, 0⟩
+  startRecv hE _ctxE _pE tE γvE σE tnE := rdsl do
+    return (ckaStartRecvBucketParAnsE Δbucket tL par hE tE γvE σE tnE, hE)
+  fsSend := ckaFsSendC
+  fsRecv := ckaFsRecvC B
+  commit := ckaCommitC Δcka ⟨true, tL, 0⟩
+  reveal := ckaRevealC
+
+/-- Authenticity `ConfigEC` for `(tL, par)`-bucket `redCKAAuthDF`. -/
+@[expose] def bucketParAuthCfgEC (Δbucket : ℕ) (tL : Option ℕ) (par : Bool) :
+    ConfigEC OO where
+  deliverWin := false
+  injectFullE {_} t' := validGuessBucketParE Δbucket tL par t'
+  challOKE {_} _ := .bool false
+  challMsgE {_} _ b m0 m1 := .ite b m1 m0
+
+/-- Stage-2 `(tL, par)`-bucket `redCKAAuthDF` program over `SM.specDF` (`[B8]`),
+parameterized by `Δbucket : ℕ` (`3 + Δcka` = `4` at `Δcka = 1`). -/
+@[expose] def redCKAAuthDFBucketProgGen (L B Δcka Δbucket qep maxSkip : ℕ) (tL : Option ℕ) (par : Bool) :
+    CostedReduction OO II
+      (SM.specDF (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
+      (ckaSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E)
+      .unit .unit .bool .bool where
+  σ := ckaBucketEsTy
+  init := rdsl [_] do
+    es ← initCKAEStateC (raw ⟨true, tL, 0⟩) false
+    return ((), (es, none))
+  handle := rdsl [st, q] do
+    (es0, winEp0, q0) ← return (st.1, st.2, q)
+    match q0 with
+    | .inl qBase =>
+      match qBase with
+      | .inl (.inl (.inl (.inl x))) =>
+        (p0, m0, r0) ← return x
+        if orE (esAbort es0) (cGsWin (esG es0)) then
+          return (.inl (inl (inl (inl (inl none)))), (es0, winEp0))
+        else
+          match cEpMgmtE (raw (2 + Δcka)) (raw qep) (esG es0) p0 (isSomeE r0) with
+          | none => return (.inl (inl (inl (inl (inl none)))), (es0, winEp0))
+          | some s1 =>
+            (res, h') ← vSendC (raw (hooksCKABucketParC B Δcka Δbucket tL par)) (esH es0) s1 p0 (pGet (cGsSt s1) p0) m0 none r0
+            match res with
+            | none => return (.inl (inl (inl (inl (inl none)))), (esMk (esG es0) h' true, winEp0))
+            | some (st', ct) =>
+              let recE := ((p0, pGet (cGsEpoch s1) p0, pGet (cGsIdx s1) p0 + 1), m0, ct)
+              let g' := cRecordE (raw L) (raw (2 + Δcka)) s1 p0 st' recE false
+              return (.inl (inl (inl (inl (inl (some ct))))), (esMk g' h' (esAbort es0), winEp0))
+      | .inl (.inl (.inl (.inr _))) =>
+        return (.inl (inl (inl (inl (inr none)))), (es0, winEp0))
+      | .inl (.inl (.inr x)) =>
+        (out, es') ← deliverEC (raw (hooksCKABucketParC B Δcka Δbucket tL par)) L maxSkip
+          (raw (bucketParAuthCfgEC Δbucket tL par)) es0 x
+        return (.inl (inl (inl (inr out))), (es', winEp0))
+      | .inl (.inr x) =>
+        let wasWin := cGsWin (esG es0)
+        (out, es') ← injectEC (raw (hooksCKABucketParC B Δcka Δbucket tL par)) L (raw (2 + Δcka)) qep
+          (raw (bucketParAuthCfgEC Δbucket tL par)) es0 x
+        let winEp' := if !wasWin && cGsWin (esG es') then some x.2.1.1 else winEp0
+        return (.inl (inl (inr out)), (es', winEp'))
+      | .inr p0 =>
+        let s0 := esG es0
+        if orE (esAbort es0) (orE (cGsWin s0) (!(cCorrAllowedE (raw L) s0 p0))) then
+          return (.inl (inr none), (es0, winEp0))
+        else
+          let s1 := cAfterCorrE (raw L) s0 p0
+          (res, h') ← ckaRevealC (esH es0) s0 p0 (pGet (cGsSt s0) p0)
+          match res with
+          | none => return (.inl (inr none), (esMk s0 h' true, winEp0))
+          | some stOut =>
+            return (.inl (inr (some stOut)), (esMk s1 h' (esAbort es0), winEp0))
+    | .inr x =>
+      let wasWin := cGsWin (esG es0)
+      (out, es') ← deliverForgeEC (raw (hooksCKABucketParC B Δcka Δbucket tL par)) L (raw (2 + Δcka)) qep
+        (raw (bucketParAuthCfgEC Δbucket tL par)) es0 x
+      let winEp' := if !wasWin && cGsWin (esG es') then some x.2.2.1.1 else winEp0
+      return (.inr out, (es', winEp'))
+  finish := rdsl [st, _] do
+    (es0, winEp0) ← return (st.1, st.2)
+    match winEp0 with
+    | none => return false
+    | some tWin =>
+      return ((!(esAbort es0) && cGsWin (esG es0)) &&
+        cAuthOKE (raw L) (raw (2 + Δcka)) (optNatLit (raw tL)) tWin (esG es0))
+
+/-- Costed Stage-2 `(tL, par)`-bucket `redCKAAuthDF` program (`B_cka_u` over `SM.specDF`)
+at `Δbucket := 3 + Δcka` (`4` when `Δcka = 1`). -/
+abbrev redCKAAuthDFBucketProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (par : Bool) :=
+  redCKAAuthDFBucketProgGen (ckaInitA := ckaInitA) (ckaInitB := ckaInitB) (ckaSend := ckaSend)
+    (ckaReceive := ckaReceive) (prngInit := prngInit) (prngUp := prngUp)
+    (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
+    (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
+    (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
+    (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+    (sampI := sampI) (sampK := sampK) L B Δcka (3 + Δcka) qep maxSkip tL par
+
+@[simp] theorem deliverForgeEC_hooksCKABucketParC_queries (L B Δcka Δbucket qep : ℕ)
+    (tL : Option ℕ) (par : Bool) {Γ'}
+    (es : Expr OO Γ' ckaEsTy)
+    (arg : Expr OO Γ' (.prod .bool (.prod hdrCtTy hdrCtTy))) :
+    (deliverForgeEC (hooksCKABucketParC (sampKR := sampKR) (sampKC := sampKC)
+        (sampCCoins := sampCCoins) (sampI := sampI) (sampK := sampK) B Δcka Δbucket tL par)
+      L (2 + Δcka) qep (bucketParAuthCfgEC Δbucket tL par) es arg).queries
+      (fun _ => 1) (fun _ => 0) = 2 := by
+  simp [deliverForgeEC, vRecvC, vRecvStep1C, commitEC, hooksCKABucketParC, Comp.queries]
+
+@[simp] theorem redCKAAuthDFBucketProgGen_totalQueries (L B Δcka Δbucket qep maxSkip : ℕ)
+    (tL : Option ℕ) (par : Bool) (q : ℕ) :
+    (redCKAAuthDFBucketProgGen (ckaInitA := ckaInitA) (ckaInitB := ckaInitB) (ckaSend := ckaSend)
+      (ckaReceive := ckaReceive) (prngInit := prngInit) (prngUp := prngUp)
+      (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
+      (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
+      (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
+      (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK)
+      L B Δcka Δbucket qep maxSkip tL par).totalQueries (fun _ => 1) (fun _ => 0) q = q * 2 := by
+  simp [CostedReduction.totalQueries, redCKAAuthDFBucketProgGen, deliverEC, injectEC,
+    deliverForgeEC, vSendC, vSendStep1C, vRecvC, vRecvStep1C, commitEC,
+    hooksCKABucketParC, Comp.queries]
+
+@[simp] theorem redCKAAuthDFBucketProg_totalQueries (L B Δcka qep maxSkip : ℕ)
+    (tL : Option ℕ) (par : Bool) (q : ℕ) :
+    (redCKAAuthDFBucketProg (ckaInitA := ckaInitA) (ckaInitB := ckaInitB) (ckaSend := ckaSend)
+      (ckaReceive := ckaReceive) (prngInit := prngInit) (prngUp := prngUp)
+      (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
+      (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
+      (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
+      (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK)
+      L B Δcka qep maxSkip tL par).totalQueries (fun _ => 1) (fun _ => 0) q = q * 2 :=
+  redCKAAuthDFBucketProgGen_totalQueries L B Δcka (3 + Δcka) qep maxSkip tL par q
+
+theorem redCKAAuthDFBucketProgGen_totalCost (L B Δcka Δbucket qep maxSkip : ℕ)
+    (tL : Option ℕ) (par : Bool) (q : ℕ) :
+    let P := redCKAAuthDFBucketProgGen (ckaInitA := ckaInitA) (ckaInitB := ckaInitB)
+      (ckaSend := ckaSend) (ckaReceive := ckaReceive) (prngInit := prngInit) (prngUp := prngUp)
+      (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
+      (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
+      (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
+      (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L B Δcka Δbucket qep maxSkip tL par
+    P.totalCost q = P.init.cost + q * (P.handle.cost + 13) + P.finish.cost := by
+  intro P
+  have hCodec : (ckaSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E).codecCost = 13 := rfl
+  dsimp only [CostedReduction.totalCost]
+  change P.init.cost + q * max 1
+      (P.handle.cost + (ckaSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E).codecCost) +
+      P.finish.cost = _
+  rw [hCodec, max_eq_right (by omega)]
+
+theorem redCKAAuthDFBucketProg_totalCost (L B Δcka qep maxSkip : ℕ)
+    (tL : Option ℕ) (par : Bool) (q : ℕ) :
+    let P := redCKAAuthDFBucketProg (ckaInitA := ckaInitA) (ckaInitB := ckaInitB)
+      (ckaSend := ckaSend) (ckaReceive := ckaReceive) (prngInit := prngInit) (prngUp := prngUp)
+      (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
+      (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
+      (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
+      (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L B Δcka qep maxSkip tL par
+    P.totalCost q = P.init.cost + q * (P.handle.cost + 13) + P.finish.cost :=
+  redCKAAuthDFBucketProgGen_totalCost L B Δcka (3 + Δcka) qep maxSkip tL par q
+
+end HooksCKABucketParDF
+
+/-! ### 3.5 Stage-2 Multi-Session `redFSAuthDFMultiProg` & `redFSAuthDFMultiBucketProg` (`[B7]`×`[B8]`) -/
+
+section HooksFSMultiDF
+
+/-- Multi-session target interface into
+`unifSpec + OracleSpec.sigma (fun _ : ℕ => FSAEAD.spec SS RS (Header T) M E)` over `prngSig`:
+each `FSHdrTag` oracle carries `(sIdx : ℕ, payload)` at `qCost = 1`, `uCost = 1`.
+Judgmentally equal (`rfl`) to `RedFS.fsaeadMultiHeaderAdIface`. -/
+@[expose, reducible] def fsaeadMultiHeaderAdDFIface (KC Γ CCoins T I KR RSt K SS RS M E : Type)
+    (sampKR : ProbComp KR)
+    (sampKC : ProbComp KC)
+    (sampCCoins : ProbComp CCoins)
+    (sampI : ProbComp I)
+    (sampK : ProbComp K) :
+    Iface (prngSig KC Γ CCoins T I KR RSt K SS RS M E)
+      (unifSpec + OracleSpec.sigma (fun _ : ℕ => FSAEAD.spec SS RS (Header T) M E)) where
+  fwdU n :=
+    query (spec := unifSpec + OracleSpec.sigma (fun _ : ℕ => FSAEAD.spec SS RS (Header T) M E))
+      (.inl n)
+  uCost := 1
+  Tag := FSHdrTag
+  dom := fun g =>
+    .prod .nat ((fsaeadHeaderAdIface KC Γ CCoins T I KR RSt K SS RS M E
+      sampKR sampKC sampCCoins sampI sampK).dom g)
+  cod := fun g =>
+    (fsaeadHeaderAdIface KC Γ CCoins T I KR RSt K SS RS M E
+      sampKR sampKC sampCCoins sampI sampK).cod g
+  enc := fun
+    | .tr, (sIdx, x) => .inr ⟨sIdx, .inl (.inl (.inl (.inl (.inl x))))⟩
+    | .ch, (sIdx, x) => .inr ⟨sIdx, .inl (.inl (.inl (.inl (.inr x))))⟩
+    | .cs, (sIdx, x) => .inr ⟨sIdx, .inl (.inl (.inl (.inr x)))⟩
+    | .cr, (sIdx, x) => .inr ⟨sIdx, .inl (.inl (.inr x))⟩
+    | .dl, (sIdx, x) => .inr ⟨sIdx, .inl (.inr x)⟩
+    | .ij, (sIdx, x) => .inr ⟨sIdx, .inr x⟩
+  dec := fun
+    | .tr, _, u => u
+    | .ch, _, u => u
+    | .cs, _, u => u
+    | .cr, _, u => u
+    | .dl, _, u => Option.map fsHdrRrEnc u
+    | .ij, _, u => Option.map fsHdrRrEnc u
+  qCost := fun _ => 1
+  smp := prngSamplers sampKR sampKC sampCCoins sampI sampK
+
+@[expose, reducible] def fsMultiDFCacheEntryTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+    Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
+  .prod (.base .t) (.prod (.base .sig) (.prod (.base .k) (.opt .nat)))
+
+@[expose, reducible] def fsMultiDFSessBookTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+    Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
+  .prod .bool (.prod .nat (.list (fsTransEntryTy KC Γ CCoins T I KR RSt K SS RS M E)))
+
+@[expose, reducible] def fsMultiDFHsTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+    Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
+  .prod (.tbl (.opt (fsMultiDFCacheEntryTy KC Γ CCoins T I KR RSt K SS RS M E)))
+    (.prod (.list (fsTableEntryTy KC Γ CCoins T I KR RSt K SS RS M E))
+      (.prod (.list (.base .i))
+        (.prod (.tbl (.opt (fsMultiDFSessBookTy KC Γ CCoins T I KR RSt K SS RS M E))) .bool)))
+
+@[expose, reducible] def fsMultiDFVpTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+    Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
+  @vpTblTy KC Γ CCoins T I KR RSt K SS RS M E
+    (.base .γ) (.base .sig) (.sum (.base .ss) .nat) (.sum (.base .rs) .nat)
+
+@[expose, reducible] def fsMultiDFEsTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+    Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
+  esTy (fsMultiDFVpTy KC Γ CCoins T I KR RSt K SS RS M E)
+    (fsMultiDFHsTy KC Γ CCoins T I KR RSt K SS RS M E)
+
+/-- Hook state type for `(tL, par)`-bucket `hooksFSMultiDFBucketC`:
+`cache × tableTbl × sessionsTbl × book × lfWin` (per-epoch `sessionsTbl : .tbl (.list (.base .i))`
+mapping `(t0, localIdx)` to `sIdx := (L - 1) * (t0 - healEpoch tL) + localIdx`, matching
+`∑ t ∈ Ico (healEpoch tL) ((qep + 1) + 2), ∑ j ∈ range q` at `L = q + 1`). -/
+@[expose, reducible] def fsMultiDFBucketHsTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+    Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
+  .prod (.tbl (.opt (fsMultiDFCacheEntryTy KC Γ CCoins T I KR RSt K SS RS M E)))
+    (.prod (.tbl (.list (fsTableEntryTy KC Γ CCoins T I KR RSt K SS RS M E)))
+      (.prod (.tbl (.list (.base .i)))
+        (.prod (.tbl (.opt (fsMultiDFSessBookTy KC Γ CCoins T I KR RSt K SS RS M E))) .bool)))
+
+@[expose, reducible] def fsMultiDFBucketEsTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+    Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
+  esTy (fsMultiDFVpTy KC Γ CCoins T I KR RSt K SS RS M E)
+    (fsMultiDFBucketHsTy KC Γ CCoins T I KR RSt K SS RS M E)
+
+@[expose, reducible] def fsMultiDFBucketRedEsTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+    Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
+  .prod (fsMultiDFBucketEsTy KC Γ CCoins T I KR RSt K SS RS M E) (.opt .nat)
+
+variable
+  {ckaInitA : KC → Γ}
+  {ckaInitB : KC → Γ}
+  {ckaSend : Γ → CCoins → Γ × T × I}
+  {ckaReceive : Γ → T → Γ × I}
+  {prngInit : KR → RSt}
+  {prngUp : RSt → I → RSt × K}
+  {fsInitSender : K → SS}
+  {fsInitReceiver : K → RS}
+  {fsSend : SS → Header T → M → SS × E}
+  {fsReceive : RS → Header T → E → Option (RS × ℕ × M)}
+  {eqT : T → T → Bool}
+  {eqI : I → I → Bool}
+  {eqM : M → M → Bool}
+  {eqE : E → E → Bool}
+  {lam : I}
+  {defaultE : E}
+  {sampKR : ProbComp KR}
+  {sampKC : ProbComp KC}
+  {sampCCoins : ProbComp CCoins}
+  {sampI : ProbComp I}
+  {sampK : ProbComp K}
+
+local notation "SP" => prngSig KC Γ CCoins T I KR RSt K SS RS M E
+local notation "OO" =>
+  prngOps ckaInitA ckaInitB ckaSend ckaReceive prngInit prngUp
+    fsInitSender fsInitReceiver fsSend fsReceive eqT eqI eqM eqE lam defaultE
+local notation "IIM" =>
+  fsaeadMultiHeaderAdDFIface KC Γ CCoins T I KR RSt K SS RS M E
+    sampKR sampKC sampCCoins sampI sampK
+local notation "mHsTy" => fsMultiDFHsTy KC Γ CCoins T I KR RSt K SS RS M E
+local notation "mVpTy" => fsMultiDFVpTy KC Γ CCoins T I KR RSt K SS RS M E
+local notation "mEsTy" => fsMultiDFEsTy KC Γ CCoins T I KR RSt K SS RS M E
+local notation "mBookTy" => fsMultiDFSessBookTy KC Γ CCoins T I KR RSt K SS RS M E
+local notation "mbHsTy" => fsMultiDFBucketHsTy KC Γ CCoins T I KR RSt K SS RS M E
+local notation "mbEsTy" => fsMultiDFBucketEsTy KC Γ CCoins T I KR RSt K SS RS M E
+
+@[expose] def fsMultiDFHsCache {O : Ops SP} {Γ'} (h : Expr O Γ' mHsTy) :
+    Expr O Γ' (.tbl (.opt (fsMultiDFCacheEntryTy KC Γ CCoins T I KR RSt K SS RS M E))) := .fst h
+@[expose] def fsMultiDFHsTable {O : Ops SP} {Γ'} (h : Expr O Γ' mHsTy) :
+    Expr O Γ' (.list (fsTableEntryTy KC Γ CCoins T I KR RSt K SS RS M E)) := .fst (.snd h)
+@[expose] def fsMultiDFHsSessions {O : Ops SP} {Γ'} (h : Expr O Γ' mHsTy) :
+    Expr O Γ' (.list (.base .i)) := .fst (.snd (.snd h))
+@[expose] def fsMultiDFHsBook {O : Ops SP} {Γ'} (h : Expr O Γ' mHsTy) :
+    Expr O Γ' (.tbl (.opt mBookTy)) := .fst (.snd (.snd (.snd h)))
+@[expose] def fsMultiDFHsLfWin {O : Ops SP} {Γ'} (h : Expr O Γ' mHsTy) :
+    Expr O Γ' .bool := .snd (.snd (.snd (.snd h)))
+
+@[expose] def fsMultiDFHsMk {O : Ops SP} {Γ'}
+    (ca : Expr O Γ' (.tbl (.opt (fsMultiDFCacheEntryTy KC Γ CCoins T I KR RSt K SS RS M E))))
+    (tb : Expr O Γ' (.list (fsTableEntryTy KC Γ CCoins T I KR RSt K SS RS M E)))
+    (se : Expr O Γ' (.list (.base .i)))
+    (bk : Expr O Γ' (.tbl (.opt mBookTy)))
+    (lw : Expr O Γ' .bool) : Expr O Γ' mHsTy :=
+  .pair ca (.pair tb (.pair se (.pair bk lw)))
+
+@[expose] def fsMultiDFHsSetCache {O : Ops SP} {Γ'} (h : Expr O Γ' mHsTy)
+    (ca : Expr O Γ' (.tbl (.opt (fsMultiDFCacheEntryTy KC Γ CCoins T I KR RSt K SS RS M E)))) :
+    Expr O Γ' mHsTy :=
+  fsMultiDFHsMk ca (fsMultiDFHsTable h) (fsMultiDFHsSessions h)
+    (fsMultiDFHsBook h) (fsMultiDFHsLfWin h)
+
+@[expose] def fsMultiDFHsSetTable {O : Ops SP} {Γ'} (h : Expr O Γ' mHsTy)
+    (tb : Expr O Γ' (.list (fsTableEntryTy KC Γ CCoins T I KR RSt K SS RS M E))) :
+    Expr O Γ' mHsTy :=
+  fsMultiDFHsMk (fsMultiDFHsCache h) tb (fsMultiDFHsSessions h)
+    (fsMultiDFHsBook h) (fsMultiDFHsLfWin h)
+
+@[expose] def fsMultiDFHsSetSessions {O : Ops SP} {Γ'} (h : Expr O Γ' mHsTy)
+    (se : Expr O Γ' (.list (.base .i))) : Expr O Γ' mHsTy :=
+  fsMultiDFHsMk (fsMultiDFHsCache h) (fsMultiDFHsTable h) se
+    (fsMultiDFHsBook h) (fsMultiDFHsLfWin h)
+
+@[expose] def fsMultiDFHsSetBookAt {O : Ops SP} {Γ'} (h : Expr O Γ' mHsTy)
+    (sIdx : Expr O Γ' .nat) (entry : Expr O Γ' mBookTy) : Expr O Γ' mHsTy :=
+  fsMultiDFHsMk (fsMultiDFHsCache h) (fsMultiDFHsTable h) (fsMultiDFHsSessions h)
+    (.tset (fsMultiDFHsBook h) sIdx (.some entry)) (fsMultiDFHsLfWin h)
+
+@[expose] def fsMultiDFHsGetBookAt {O : Ops SP} {Γ'} (h : Expr O Γ' mHsTy)
+    (sIdx : Expr O Γ' .nat) : Expr O Γ' mBookTy :=
+  rdslExpr =>
+    match tget (fsMultiDFHsBook h) sIdx with
+    | none => (false, (0, []))
+    | some b => b
+
+@[expose] def fsMultiDFHsSetLfWin {O : Ops SP} {Γ'} (h : Expr O Γ' mHsTy) (lw : Expr O Γ' .bool) :
+    Expr O Γ' mHsTy :=
+  fsMultiDFHsMk (fsMultiDFHsCache h) (fsMultiDFHsTable h) (fsMultiDFHsSessions h)
+    (fsMultiDFHsBook h) lw
+
+@[expose] def fsMultiDFHsEmptyE {O : Ops SP} {Γ'} : Expr O Γ' mHsTy :=
+  fsMultiDFHsMk (.tconst .none) .nil .nil (.tconst .none) (.bool false)
+
+@[expose] def lookupMultiDFFC (L : ℕ) {Γ'}
+    (hE : Expr OO Γ' mHsTy)
+    (ikE : Expr OO Γ' (.base .i)) :
+    Comp OO IIM Γ' (.prod (.base .k) mHsTy) :=
+  rdsl do
+    (h0, ik0) ← return (hE, ikE)
+    match tableLookupE L (fsMultiDFHsTable h0) ik0 with
+    | none =>
+      kNew ← sample (O := OO) (I := IIM) CKASamp.k ()
+      return (kNew, fsMultiDFHsSetTable h0 ((ik0, kNew) :: fsMultiDFHsTable h0))
+    | some kFound =>
+      return (kFound, h0)
+
+@[expose] def regSessMultiDFE (L : ℕ) {Γ'}
+    (hE : Expr OO Γ' mHsTy)
+    (ikE : Expr OO Γ' (.base .i)) :
+    Expr OO Γ' (.prod .nat mHsTy) :=
+  rdslExpr =>
+    letE (hE, ikE) fun (h0, ik0) =>
+      let ses0 := fsMultiDFHsSessions h0
+      if sessionsMemE L ses0 ik0 then
+        (sessionsIdxOfE L ses0 ik0, h0)
+      else
+        (sessionsLenE L ses0, fsMultiDFHsSetSessions h0 (sessionsAppendOneE L ses0 ik0))
+
+@[expose] def regSessOptMultiDFE (L : ℕ) {Γ'}
+    (hE : Expr OO Γ' mHsTy)
+    (sidE : Expr OO Γ' (.opt (.base .i))) :
+    Expr OO Γ' (.prod (.opt .nat) mHsTy) :=
+  rdslExpr =>
+    letE (hE, sidE) fun (h0, sid0) =>
+      match sid0 with
+      | none => (none, h0)
+      | some ik =>
+        let p := regSessMultiDFE L h0 ik
+        (some p.1, p.2)
+
+@[expose] def rootFSMultiDFC (L : ℕ) (mo : Mode) {Γ'}
+    (hE : Expr OO Γ' mHsTy)
+    (tE : Expr OO Γ' .nat)
+    (ikE : Expr OO Γ' (.base .i))
+    (σE : Expr OO Γ' (.base .sig)) :
+    Comp OO IIM Γ'
+      (.prod (.prod (.base .sig) (.prod (.base .k) (.opt (.base .i)))) mHsTy) :=
+  rdsl do
+    (h0, t0, ik0, σ0) ← return (hE, tE, ikE, σE)
+    let pIk := Expr.op (O := OO) CKAOp.prngUp (σ0, ik0)
+    if nat mo.tStar < t0 then
+      return ((pIk.1, pIk.2, none), h0)
+    else if t0 == nat mo.tStar then
+      if bool mo.tL.isSome && (t0 == nat mo.tH) then
+        ir ← sample (O := OO) (I := IIM) CKASamp.i ()
+        kSample ← sample (O := OO) (I := IIM) CKASamp.k ()
+        let pIr := Expr.op (O := OO) CKAOp.prngUp (σ0, ir)
+        return ((pIr.1, kSample, some ir), h0)
+      else
+        (kLookup, h1) ← lookupMultiDFFC L h0 ik0
+        return ((pIk.1, kLookup, some ik0), h1)
+    else if bool mo.tL.isSome && (t0 == nat mo.tH) then
+      ir ← sample (O := OO) (I := IIM) CKASamp.i ()
+      let pIr := Expr.op (O := OO) CKAOp.prngUp (σ0, ir)
+      return ((pIr.1, pIr.2, none), h0)
+    else
+      return ((pIk.1, pIk.2, none), h0)
+
+@[expose] def fsMultiDFStartSendC (L : ℕ) (mo : Mode) {Γ'}
+    (hE : Expr OO Γ' mHsTy)
+    (_ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (_pE : Expr OO Γ' .bool)
+    (tE : Expr OO Γ' .nat)
+    (γE : Expr OO Γ' (.base .γ))
+    (σE : Expr OO Γ' (.base .sig))
+    (rE : Expr OO Γ' (.opt (.base .ccoins))) :
+    Comp OO IIM Γ'
+      (.prod (.opt (.prod (.base .γ)
+        (.prod (.base .t) (.prod (.base .sig) (.sum (.base .ss) .nat)))))
+        mHsTy) :=
+  rdsl do
+    (h0, t0, γ0, σ0, r0) ← return (hE, tE, γE, σE, rE)
+    coins ←
+      match r0 with
+      | none => sample (O := OO) (I := IIM) CKASamp.ccoins ()
+      | some c => return c
+    let cOut := Expr.op (O := OO) CKAOp.ckaSend (γ0, coins)
+    ((σ', kVal, sid), h1) ← rootFSMultiDFC L mo h0 t0 cOut.2.2 σ0
+    let regP := regSessOptMultiDFE L h1 sid
+    let optIdx := regP.1
+    let h2 := regP.2
+    let tMsg := cOut.2.1
+    let cache' := tset (fsMultiDFHsCache h2) t0 (some (tMsg, σ', kVal, optIdx))
+    let h3 := fsMultiDFHsSetCache h2 cache'
+    let ssv : Expr OO _ (.sum (.base .ss) .nat) :=
+      match optIdx with
+      | none => .inl (Expr.op (O := OO) CKAOp.fsInitSender kVal)
+      | some sIdx => .inr sIdx
+    return (some (cOut.1, tMsg, σ', ssv), h3)
+
+@[expose] def fsMultiDFStartRecvC (L : ℕ) (mo : Mode) {Γ'}
+    (hE : Expr OO Γ' mHsTy)
+    (_ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (_pE : Expr OO Γ' .bool)
+    (tE : Expr OO Γ' .nat)
+    (γE : Expr OO Γ' (.base .γ))
+    (σE : Expr OO Γ' (.base .sig))
+    (tnE : Expr OO Γ' (.base .t)) :
+    Comp OO IIM Γ'
+      (.prod (.opt (.opt (.prod (.base .γ) (.prod (.base .sig) (.sum (.base .rs) .nat)))))
+        mHsTy) :=
+  rdsl do
+    (h0, t0, γ0, σ0, tn0) ← return (hE, tE, γE, σE, tnE)
+    let honest :=
+      match tget (fsMultiDFHsCache h0) t0 with
+      | none => none
+      | some (tCached, entry) =>
+        if Expr.op (O := OO) CKAOp.eqT (tCached, tn0) then some entry else none
+    match honest with
+    | none =>
+      if bool mo.auth && (t0 == nat mo.tStar) then
+        if bool (mo.tL.isSome && decide (mo.tStar = mo.tH)) then
+          return (none, h0)
+        else
+          let kk := Expr.op (O := OO) CKAOp.ckaReceive (γ0, tn0)
+          (k', h1) ← lookupMultiDFFC L h0 kk.2
+          let regP := regSessMultiDFE L h1 kk.2
+          let sIdx := regP.1
+          let h2 := regP.2
+          let σ' := (Expr.op (O := OO) CKAOp.prngUp (σ0, kk.2)).1
+          return (some (some (kk.1, σ', .inr sIdx)), h2)
+      else
+        return (some none, h0)
+    | some (σc, kVal, optIdx) =>
+      let γ' := (Expr.op (O := OO) CKAOp.ckaReceive (γ0, tn0)).1
+      let rsv : Expr OO _ (.sum (.base .rs) .nat) :=
+        match optIdx with
+        | none => .inl (Expr.op (O := OO) CKAOp.fsInitReceiver kVal)
+        | some sIdx => .inr sIdx
+      return (some (some (γ', σc, rsv)), h0)
+
+@[expose] def fsMultiDFFsSendC (Δcka : ℕ) (la : Bool) {Γ'}
+    (hE : Expr OO Γ' mHsTy)
+    (ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (pE : Expr OO Γ' .bool)
+    (_tE : Expr OO Γ' .nat)
+    (ssvE : Expr OO Γ' (.sum (.base .ss) .nat))
+    (hdrE : Expr OO Γ' hdrTy)
+    (mE : Expr OO Γ' (.base .msg))
+    (pairE : Expr OO Γ' (.opt (.prod (.base .msg) (.base .msg)))) :
+    Comp OO IIM Γ' (.prod (.opt (.prod (.sum (.base .ss) .nat) (.base .ct))) mHsTy) :=
+  rdsl do
+    (h0, ctx0, p0, ssv0, hdr0, m0, pair0) ← return (hE, ctxE, pE, ssvE, hdrE, mE, pairE)
+    match ssv0 with
+    | .inl ss =>
+      let o := Expr.op (O := OO) CKAOp.fsSend (ss, hdr0, m0)
+      return (some (.inl o.1, o.2), h0)
+    | .inr sIdx =>
+      let bk := fsMultiDFHsGetBookAt h0 sIdx
+      let sCorr := bk.1
+      let cnt := bk.2.1
+      let trs := bk.2.2
+      (ok, h1) ←
+        if !(cSafeChE (raw (2 + Δcka)) ctx0 p0) && !sCorr then
+          if bool la then
+            return (false, h0)
+          else
+            csOpt ← query (O := OO) (I := IIM) FSHdrTag.cs (sIdx, ())
+            match csOpt with
+            | none => return (false, h0)
+            | some _ => return (true, fsMultiDFHsSetBookAt h0 sIdx (true, (cnt, trs)))
+        else
+          return (true, h0)
+      if !ok then
+        return (none, h1)
+      else
+        ctOpt ←
+          match pair0 with
+          | none => query (O := OO) (I := IIM) FSHdrTag.tr (sIdx, (hdr0, m0))
+          | some mPair => query (O := OO) (I := IIM) FSHdrTag.ch (sIdx, (hdr0, mPair))
+        match ctOpt with
+        | none => return (none, h1)
+        | some ct =>
+          let bk1 := fsMultiDFHsGetBookAt h1 sIdx
+          let cnt' := bk1.2.1 + 1
+          let tr' := (cnt', hdr0, ct) :: bk1.2.2
+          return (some (.inr sIdx, ct), fsMultiDFHsSetBookAt h1 sIdx (bk1.1, (cnt', tr')))
+
+@[expose] def fsMultiDFFsRecvC (L B : ℕ) (la : Bool) {Γ'}
+    (hE : Expr OO Γ' mHsTy)
+    (_ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (_pE : Expr OO Γ' .bool)
+    (_tE : Expr OO Γ' .nat)
+    (rsvE : Expr OO Γ' (.sum (.base .rs) .nat))
+    (hdrE : Expr OO Γ' hdrTy)
+    (eE : Expr OO Γ' (.base .ct))
+    (recE : Expr OO Γ' (.opt cRecTy)) :
+    Comp OO IIM Γ'
+      (.prod (.opt (.opt (.prod (.sum (.base .rs) .nat) (.prod .nat (.base .msg))))) mHsTy) :=
+  rdsl do
+    (h0, rsv0, hdr0, e0, rec0) ← return (hE, rsvE, hdrE, eE, recE)
+    match rsv0 with
+    | .inl rs =>
+      match Expr.op (O := OO) (CKAOp.fsReceive B) (rs, hdr0, e0) with
+      | none => return (some none, h0)
+      | some (rs', idxMsg) =>
+        return (some (some (.inl rs', idxMsg)), h0)
+    | .inr sIdx =>
+      let bk0 := fsMultiDFHsGetBookAt h0 sIdx
+      let sCorr0 := bk0.1
+      let cnt0 := bk0.2.1
+      let trs0 := bk0.2.2
+      let matched := fsTransFindE L trs0 (hdr0, e0)
+      resOpt ←
+        match matched with
+        | none => query (O := OO) (I := IIM) FSHdrTag.ij (sIdx, (hdr0, e0))
+        | some _ => query (O := OO) (I := IIM) FSHdrTag.dl (sIdx, (hdr0, e0))
+      match resOpt with
+      | none => return (none, h0)
+      | some resSum =>
+        match resSum with
+        | .inl _ => return (some none, h0)
+        | .inr (msgIdx, mo') =>
+          let isLookaheadInj :=
+            match matched with
+            | none => (!sCorr0) && (cnt0 < msgIdx)
+            | some _ => false
+          if bool la && isLookaheadInj then
+            return (none, fsMultiDFHsSetLfWin h0 true)
+          else
+            let drop :=
+              match matched with
+              | none => msgIdx
+              | some entry => entry.1
+            let trs' := fsTransFilterE L trs0 drop
+            let h4 := fsMultiDFHsSetBookAt h0 sIdx (sCorr0, (cnt0, trs'))
+            let outE :=
+              match mo' with
+              | none =>
+                match rec0 with
+                | none => none
+                | some r => some (some (.inr sIdx, msgIdx, cRecMsg r))
+              | some msg => some (some (.inr sIdx, msgIdx, msg))
+            return (outE, h4)
+
+@[expose] def fsMultiDFCommitC {Γ'}
+    (hE : Expr OO Γ' mHsTy)
+    (_ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (_pE : Expr OO Γ' .bool)
+    (_oldE newE : Expr OO Γ' mVpTy) :
+    Comp OO IIM Γ' (.prod (.opt mVpTy) mHsTy) :=
+  rdsl do
+    return (some newE, hE)
+
+@[expose] def unliftMultiDFEntryE {Γ'}
+    (entryE : Expr OO Γ' (.opt (.sum (.base .rs) .nat))) :
+    Expr OO Γ' (.opt (.base .rs)) :=
+  rdslExpr =>
+    match entryE with
+    | none => none
+    | some sumV =>
+      match sumV with
+      | .inl rs => some rs
+      | .inr _ => none
+
+@[expose] def unliftMultiDFVRE (L : ℕ) {Γ'}
+    (vRE : Expr OO Γ' (.tbl (.opt (.sum (.base .rs) .nat))))
+    (rngE : Expr OO Γ' (.list .nat)) :
+    Expr OO Γ' (.tbl (.opt (.base .rs))) :=
+  rdslExpr =>
+    letE (vRE, rngE) fun (vR0, rng0) =>
+      foldrB L rng0 (tconst none) fun t acc =>
+        tset acc t (unliftMultiDFEntryE (tget vR0 t))
+
+@[expose] def fsMultiDFRevealC (L : ℕ) (mo : Mode) (la : Bool) {Γ'}
+    (hE : Expr OO Γ' mHsTy)
+    (_ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (_pE : Expr OO Γ' .bool)
+    (vpE : Expr OO Γ' mVpTy) :
+    Comp OO IIM Γ' (.prod (.opt psTy) mHsTy) :=
+  rdsl do
+    (h0, vp0) ← return (hE, vpE)
+    (ssOptOpt, h1) ←
+      match vpVS vp0 with
+      | none => return (some none, h0)
+      | some ssv =>
+        match ssv with
+        | .inl ss => return (some (some ss), h0)
+        | .inr sIdx =>
+          if bool la then
+            return (none, h0)
+          else
+            csOpt ← query (O := OO) (I := IIM) FSHdrTag.cs (sIdx, ())
+            match csOpt with
+            | none => return (none, h0)
+            | some ss =>
+              let bk0 := fsMultiDFHsGetBookAt h0 sIdx
+              return (some (some ss), fsMultiDFHsSetBookAt h0 sIdx (true, bk0.2))
+    match ssOptOpt with
+    | none => return (none, h1)
+    | some ssReal =>
+      let rStarAbort :=
+        match tget (vpVR vp0) (nat mo.tStar) with
+        | none => false
+        | some rsv =>
+          match rsv with
+          | .inl _ => false
+          | .inr _ => true
+      if rStarAbort then
+        return (none, h1)
+      else
+        rng ← rangeListC (O' := OO) (I' := IIM) L
+        let vR' := unliftMultiDFVRE L (vpVR vp0) rng
+        return (some (realPartyE vp0 (vpΓ vp0) (vpRoot vp0) ssReal vR'), h1)
+
+/-- Costed multi-session `HooksC` bundle for Stage-2 `redFSAuthDF*`. -/
+@[expose] def hooksFSMultiDFC (L B Δcka : ℕ) (mo : Mode) (la : Bool) :
+    HooksC OO IIM (.base .γ) (.base .sig) (.sum (.base .ss) .nat) (.sum (.base .rs) .nat) mHsTy where
+  startSend := fsMultiDFStartSendC L mo
+  startRecv := fsMultiDFStartRecvC L mo
+  fsSend := fsMultiDFFsSendC Δcka la
+  fsRecv := fsMultiDFFsRecvC L B la
+  commit := fsMultiDFCommitC
+  reveal := fsMultiDFRevealC L mo la
+
+/-- Costed initialization of `mEsTy` for multi-session `redFSAuthDF*`. -/
+@[expose] def initFSMultiDFEStateC (L : ℕ) (mo : Mode) {Γ'} (bE : Expr OO Γ' .bool) :
+    Comp OO IIM Γ' mEsTy :=
+  rdsl do
+    b0 ← return bE
+    kr ← sample (O := OO) (I := IIM) CKASamp.kr ()
+    kc ← sample (O := OO) (I := IIM) CKASamp.kc ()
+    ((σ, kVal, sid), h1) ←
+      rootFSMultiDFC L mo fsMultiDFHsEmptyE 0
+        (Expr.op (O := OO) CKAOp.lamI ())
+        (Expr.op (O := OO) CKAOp.prngInit kr)
+    let regP := regSessOptMultiDFE L h1 sid
+    let optIdx := regP.1
+    let h2 := regP.2
+    let ssv0 : Expr OO _ (.sum (.base .ss) .nat) :=
+      match optIdx with
+      | none => .inl (Expr.op (O := OO) CKAOp.fsInitSender kVal)
+      | some sIdx => .inr sIdx
+    let rsv0 : Expr OO _ (.sum (.base .rs) .nat) :=
+      match optIdx with
+      | none => .inl (Expr.op (O := OO) CKAOp.fsInitReceiver kVal)
+      | some sIdx => .inr sIdx
+    let pAB := mkPartiesE
+      (Expr.op (O := OO) CKAOp.ckaInitA kc)
+      (Expr.op (O := OO) CKAOp.ckaInitB kc)
+      σ ssv0 rsv0
+    return (esMk (cGsInitE (vpT := mVpTy) pAB.1 pAB.2 b0) h2 false)
+
+/-- Stage-2 direct boolean output expression for `redFSAuthDF*`:
+returns `lfWin` when `la = true`, and `authOutE L Δ pol es` when `la = false`. -/
+@[expose] def finishFSMultiDFE (L Δ : ℕ) (pol : Policy) (la : Bool) {Γ'}
+    (es : Expr OO Γ' mEsTy) : Expr OO Γ' .bool :=
+  if la then fsMultiDFHsLfWin (esH es)
+  else authOutE L Δ pol es
+
+/-- Stage-2 multi-session `redFSAuthDF` program (`[B7]`, single target epoch `t`) over `SM.specDF`,
+`prngOps`, `fsaeadMultiHeaderAdDFIface`, and `prngSMCodecDF`. -/
+@[expose] def redFSAuthDFMultiProg (L B Δcka qep maxSkip : ℕ) (la : Bool) (tL : Option ℕ) (t : ℕ) :
+    CostedReduction OO IIM
+      (SM.specDF (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
+      (prngSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E)
+      .unit .unit .bool .bool where
+  σ := mEsTy
+  init := rdsl [_] do
+    es ← initFSMultiDFEStateC L (raw ⟨true, tL, t⟩) false
+    return ((), es)
+  handle := rdsl [st, q] do
+    implECDF (raw (hooksFSMultiDFC L B Δcka ⟨true, tL, t⟩ la)) L (raw (2 + Δcka)) qep maxSkip
+      (raw (modeCfgEC OO ⟨true, tL, t⟩)) (raw (⟨true, tL, t⟩ : Mode).policy) st q
+  finish := rdsl [st, _] do
+    return (finishFSMultiDFE L (raw (2 + Δcka)) (raw (⟨true, tL, t⟩ : Mode).policy) la st)
+
+/-! ### `(tL, par)`-bucket multi-session `hooksFSMultiDFBucketC` and `redFSAuthDFMultiBucketProg` -/
+
+@[expose] def fsMultiDFBucketHsCache {O : Ops SP} {Γ'} (h : Expr O Γ' mbHsTy) :
+    Expr O Γ' (.tbl (.opt (fsMultiDFCacheEntryTy KC Γ CCoins T I KR RSt K SS RS M E))) := .fst h
+@[expose] def fsMultiDFBucketHsTableTbl {O : Ops SP} {Γ'} (h : Expr O Γ' mbHsTy) :
+    Expr O Γ' (.tbl (.list (fsTableEntryTy KC Γ CCoins T I KR RSt K SS RS M E))) := .fst (.snd h)
+@[expose] def fsMultiDFBucketHsSessionsTbl {O : Ops SP} {Γ'} (h : Expr O Γ' mbHsTy) :
+    Expr O Γ' (.tbl (.list (.base .i))) := .fst (.snd (.snd h))
+@[expose] def fsMultiDFBucketHsBook {O : Ops SP} {Γ'} (h : Expr O Γ' mbHsTy) :
+    Expr O Γ' (.tbl (.opt mBookTy)) := .fst (.snd (.snd (.snd h)))
+@[expose] def fsMultiDFBucketHsLfWin {O : Ops SP} {Γ'} (h : Expr O Γ' mbHsTy) :
+    Expr O Γ' .bool := .snd (.snd (.snd (.snd h)))
+
+@[expose] def fsMultiDFBucketHsMk {O : Ops SP} {Γ'}
+    (ca : Expr O Γ' (.tbl (.opt (fsMultiDFCacheEntryTy KC Γ CCoins T I KR RSt K SS RS M E))))
+    (tb : Expr O Γ' (.tbl (.list (fsTableEntryTy KC Γ CCoins T I KR RSt K SS RS M E))))
+    (se : Expr O Γ' (.tbl (.list (.base .i))))
+    (bk : Expr O Γ' (.tbl (.opt mBookTy)))
+    (lw : Expr O Γ' .bool) : Expr O Γ' mbHsTy :=
+  .pair ca (.pair tb (.pair se (.pair bk lw)))
+
+@[expose] def fsMultiDFBucketHsSetCache {O : Ops SP} {Γ'} (h : Expr O Γ' mbHsTy)
+    (ca : Expr O Γ' (.tbl (.opt (fsMultiDFCacheEntryTy KC Γ CCoins T I KR RSt K SS RS M E)))) :
+    Expr O Γ' mbHsTy :=
+  fsMultiDFBucketHsMk ca (fsMultiDFBucketHsTableTbl h) (fsMultiDFBucketHsSessionsTbl h)
+    (fsMultiDFBucketHsBook h) (fsMultiDFBucketHsLfWin h)
+
+@[expose] def fsMultiDFBucketHsSetTableAt {O : Ops SP} {Γ'} (h : Expr O Γ' mbHsTy)
+    (t0 : Expr O Γ' .nat)
+    (tb : Expr O Γ' (.list (fsTableEntryTy KC Γ CCoins T I KR RSt K SS RS M E))) :
+    Expr O Γ' mbHsTy :=
+  fsMultiDFBucketHsMk (fsMultiDFBucketHsCache h)
+    (.tset (fsMultiDFBucketHsTableTbl h) t0 tb)
+    (fsMultiDFBucketHsSessionsTbl h) (fsMultiDFBucketHsBook h) (fsMultiDFBucketHsLfWin h)
+
+@[expose] def fsMultiDFBucketHsSetSessionsAt {O : Ops SP} {Γ'} (h : Expr O Γ' mbHsTy)
+    (t0 : Expr O Γ' .nat)
+    (se : Expr O Γ' (.list (.base .i))) : Expr O Γ' mbHsTy :=
+  fsMultiDFBucketHsMk (fsMultiDFBucketHsCache h) (fsMultiDFBucketHsTableTbl h)
+    (.tset (fsMultiDFBucketHsSessionsTbl h) t0 se) (fsMultiDFBucketHsBook h) (fsMultiDFBucketHsLfWin h)
+
+@[expose] def fsMultiDFBucketHsSetBookAt {O : Ops SP} {Γ'} (h : Expr O Γ' mbHsTy)
+    (sIdx : Expr O Γ' .nat) (entry : Expr O Γ' mBookTy) : Expr O Γ' mbHsTy :=
+  fsMultiDFBucketHsMk (fsMultiDFBucketHsCache h) (fsMultiDFBucketHsTableTbl h)
+    (fsMultiDFBucketHsSessionsTbl h)
+    (.tset (fsMultiDFBucketHsBook h) sIdx (.some entry)) (fsMultiDFBucketHsLfWin h)
+
+@[expose] def fsMultiDFBucketHsGetBookAt {O : Ops SP} {Γ'} (h : Expr O Γ' mbHsTy)
+    (sIdx : Expr O Γ' .nat) : Expr O Γ' mBookTy :=
+  rdslExpr =>
+    match tget (fsMultiDFBucketHsBook h) sIdx with
+    | none => (false, (0, []))
+    | some b => b
+
+@[expose] def fsMultiDFBucketHsSetLfWin {O : Ops SP} {Γ'} (h : Expr O Γ' mbHsTy) (lw : Expr O Γ' .bool) :
+    Expr O Γ' mbHsTy :=
+  fsMultiDFBucketHsMk (fsMultiDFBucketHsCache h) (fsMultiDFBucketHsTableTbl h)
+    (fsMultiDFBucketHsSessionsTbl h) (fsMultiDFBucketHsBook h) lw
+
+@[expose] def fsMultiDFBucketHsEmptyE {O : Ops SP} {Γ'} : Expr O Γ' mbHsTy :=
+  fsMultiDFBucketHsMk (.tconst .none) (.tconst .nil) (.tconst .nil) (.tconst .none) (.bool false)
+
+@[expose] def lookupMultiDFBucketFC (L : ℕ) {Γ'}
+    (hE : Expr OO Γ' mbHsTy)
+    (tE : Expr OO Γ' .nat)
+    (ikE : Expr OO Γ' (.base .i)) :
+    Comp OO IIM Γ' (.prod (.base .k) mbHsTy) :=
+  rdsl do
+    (h0, t0, ik0) ← return (hE, tE, ikE)
+    let tb0 := tget (fsMultiDFBucketHsTableTbl h0) t0
+    match tableLookupE L tb0 ik0 with
+    | none =>
+      kNew ← sample (O := OO) (I := IIM) CKASamp.k ()
+      return (kNew, fsMultiDFBucketHsSetTableAt h0 t0 ((ik0, kNew) :: tb0))
+    | some kFound =>
+      return (kFound, h0)
+
+@[expose] def regSessMultiDFBucketE (L : ℕ) (tL : Option ℕ) {Γ'}
+    (hE : Expr OO Γ' mbHsTy)
+    (tE : Expr OO Γ' .nat)
+    (ikE : Expr OO Γ' (.base .i)) :
+    Expr OO Γ' (.prod .nat mbHsTy) :=
+  let tH : ℕ := healEpoch tL
+  let qSess : ℕ := L - 1
+  rdslExpr =>
+    letE (hE, tE, ikE) fun (h0, t0, ik0) =>
+      let ses0 := tget (fsMultiDFBucketHsSessionsTbl h0) t0
+      if sessionsMemE L ses0 ik0 then
+        (qSess * (t0 - nat tH) + sessionsIdxOfE L ses0 ik0, h0)
+      else
+        (qSess * (t0 - nat tH) + sessionsLenE L ses0,
+          fsMultiDFBucketHsSetSessionsAt h0 t0 (sessionsAppendOneE L ses0 ik0))
+
+@[expose] def regSessOptMultiDFBucketE (L : ℕ) (tL : Option ℕ) {Γ'}
+    (hE : Expr OO Γ' mbHsTy)
+    (tE : Expr OO Γ' .nat)
+    (sidE : Expr OO Γ' (.opt (.base .i))) :
+    Expr OO Γ' (.prod (.opt .nat) mbHsTy) :=
+  rdslExpr =>
+    letE (hE, tE, sidE) fun (h0, t0, sid0) =>
+      match sid0 with
+      | none => (none, h0)
+      | some ik =>
+        let p := regSessMultiDFBucketE L tL h0 t0 ik
+        (some p.1, p.2)
+
+@[expose] def rootFSMultiDFBucketC (L Δbucket qep : ℕ) (tL : Option ℕ) (par : Bool) {Γ'}
+    (hE : Expr OO Γ' mbHsTy)
+    (tE : Expr OO Γ' .nat)
+    (ikE : Expr OO Γ' (.base .i))
+    (σE : Expr OO Γ' (.base .sig)) :
+    Comp OO IIM Γ'
+      (.prod (.prod (.base .sig) (.prod (.base .k) (.opt (.base .i)))) mbHsTy) :=
+  let tH : ℕ := healEpoch tL
+  rdsl do
+    (h0, t0, ik0, σ0) ← return (hE, tE, ikE, σE)
+    let pIk := Expr.op (O := OO) CKAOp.prngUp (σ0, ik0)
+    if nat (qep + 1) < t0 then
+      return ((pIk.1, pIk.2, none), h0)
+    else if validGuessBucketParE (raw Δbucket) (raw tL) (raw par) t0 then
+      if bool tL.isSome && (t0 == nat tH) then
+        ir ← sample (O := OO) (I := IIM) CKASamp.i ()
+        kSample ← sample (O := OO) (I := IIM) CKASamp.k ()
+        let pIr := Expr.op (O := OO) CKAOp.prngUp (σ0, ir)
+        return ((pIr.1, kSample, some ir), h0)
+      else
+        (kLookup, h1) ← lookupMultiDFBucketFC L h0 t0 ik0
+        return ((pIk.1, kLookup, some ik0), h1)
+    else if bool tL.isSome && (t0 == nat tH) then
+      ir ← sample (O := OO) (I := IIM) CKASamp.i ()
+      kSample ← sample (O := OO) (I := IIM) CKASamp.k ()
+      let pIr := Expr.op (O := OO) CKAOp.prngUp (σ0, ir)
+      return ((pIr.1, kSample, none), h0)
+    else if !(t0 < nat tH) then
+      (kLookup, h1) ← lookupMultiDFBucketFC L h0 t0 ik0
+      return ((pIk.1, kLookup, none), h1)
+    else
+      return ((pIk.1, pIk.2, none), h0)
+
+@[expose] def fsMultiDFBucketStartSendC (L Δbucket qep : ℕ) (tL : Option ℕ) (par : Bool) {Γ'}
+    (hE : Expr OO Γ' mbHsTy)
+    (_ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (_pE : Expr OO Γ' .bool)
+    (tE : Expr OO Γ' .nat)
+    (γE : Expr OO Γ' (.base .γ))
+    (σE : Expr OO Γ' (.base .sig))
+    (rE : Expr OO Γ' (.opt (.base .ccoins))) :
+    Comp OO IIM Γ'
+      (.prod (.opt (.prod (.base .γ)
+        (.prod (.base .t) (.prod (.base .sig) (.sum (.base .ss) .nat)))))
+        mbHsTy) :=
+  rdsl do
+    (h0, t0, γ0, σ0, r0) ← return (hE, tE, γE, σE, rE)
+    coins ←
+      match r0 with
+      | none => sample (O := OO) (I := IIM) CKASamp.ccoins ()
+      | some c => return c
+    let cOut := Expr.op (O := OO) CKAOp.ckaSend (γ0, coins)
+    ((σ', kVal, sid), h1) ← rootFSMultiDFBucketC L Δbucket qep tL par h0 t0 cOut.2.2 σ0
+    let regP := regSessOptMultiDFBucketE L (raw tL) h1 t0 sid
+    let optIdx := regP.1
+    let h2 := regP.2
+    let tMsg := cOut.2.1
+    let cache' := tset (fsMultiDFBucketHsCache h2) t0 (some (tMsg, σ', kVal, optIdx))
+    let h3 := fsMultiDFBucketHsSetCache h2 cache'
+    let ssv : Expr OO _ (.sum (.base .ss) .nat) :=
+      match optIdx with
+      | none => .inl (Expr.op (O := OO) CKAOp.fsInitSender kVal)
+      | some sIdx => .inr sIdx
+    return (some (cOut.1, tMsg, σ', ssv), h3)
+
+@[expose] def fsMultiDFBucketStartRecvC (L Δbucket qep : ℕ) (tL : Option ℕ) (par : Bool) {Γ'}
+    (hE : Expr OO Γ' mbHsTy)
+    (_ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (_pE : Expr OO Γ' .bool)
+    (tE : Expr OO Γ' .nat)
+    (γE : Expr OO Γ' (.base .γ))
+    (σE : Expr OO Γ' (.base .sig))
+    (tnE : Expr OO Γ' (.base .t)) :
+    Comp OO IIM Γ'
+      (.prod (.opt (.opt (.prod (.base .γ) (.prod (.base .sig) (.sum (.base .rs) .nat)))))
+        mbHsTy) :=
+  rdsl do
+    (h0, t0, γ0, σ0, tn0) ← return (hE, tE, γE, σE, tnE)
+    let honest :=
+      match tget (fsMultiDFBucketHsCache h0) t0 with
+      | none => none
+      | some (tCached, entry) =>
+        if Expr.op (O := OO) CKAOp.eqT (tCached, tn0) then some entry else none
+    match honest with
+    | none =>
+      if !(nat (qep + 1) < t0) && validGuessBucketParE (raw Δbucket) (raw tL) (raw par) t0 then
+        if bool tL.isSome && (t0 == nat (healEpoch tL)) then
+          return (none, h0)
+        else
+          let kk := Expr.op (O := OO) CKAOp.ckaReceive (γ0, tn0)
+          (k', h1) ← lookupMultiDFBucketFC L h0 t0 kk.2
+          let regP := regSessMultiDFBucketE L (raw tL) h1 t0 kk.2
+          let sIdx := regP.1
+          let h2 := regP.2
+          let σ' := (Expr.op (O := OO) CKAOp.prngUp (σ0, kk.2)).1
+          return (some (some (kk.1, σ', .inr sIdx)), h2)
+      else
+        return (some none, h0)
+    | some (σc, kVal, optIdx) =>
+      let γ' := (Expr.op (O := OO) CKAOp.ckaReceive (γ0, tn0)).1
+      let rsv : Expr OO _ (.sum (.base .rs) .nat) :=
+        match optIdx with
+        | none => .inl (Expr.op (O := OO) CKAOp.fsInitReceiver kVal)
+        | some sIdx => .inr sIdx
+      return (some (some (γ', σc, rsv)), h0)
+
+@[expose] def fsMultiDFBucketFsSendC (Δcka : ℕ) (_la : Bool) {Γ'}
+    (hE : Expr OO Γ' mbHsTy)
+    (ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (pE : Expr OO Γ' .bool)
+    (_tE : Expr OO Γ' .nat)
+    (ssvE : Expr OO Γ' (.sum (.base .ss) .nat))
+    (hdrE : Expr OO Γ' hdrTy)
+    (mE : Expr OO Γ' (.base .msg))
+    (pairE : Expr OO Γ' (.opt (.prod (.base .msg) (.base .msg)))) :
+    Comp OO IIM Γ' (.prod (.opt (.prod (.sum (.base .ss) .nat) (.base .ct))) mbHsTy) :=
+  rdsl do
+    (h0, ctx0, p0, ssv0, hdr0, m0, pair0) ← return (hE, ctxE, pE, ssvE, hdrE, mE, pairE)
+    match ssv0 with
+    | .inl ss =>
+      let o := Expr.op (O := OO) CKAOp.fsSend (ss, hdr0, m0)
+      return (some (.inl o.1, o.2), h0)
+    | .inr sIdx =>
+      let bk := fsMultiDFBucketHsGetBookAt h0 sIdx
+      let sCorr := bk.1
+      let cnt := bk.2.1
+      let trs := bk.2.2
+      (ok, h1) ←
+        if !(cSafeChE (raw (2 + Δcka)) ctx0 p0) && !sCorr then
+          csOpt ← query (O := OO) (I := IIM) FSHdrTag.cs (sIdx, ())
+          match csOpt with
+          | none => return (false, h0)
+          | some _ => return (true, fsMultiDFBucketHsSetBookAt h0 sIdx (true, (cnt, trs)))
+        else
+          return (true, h0)
+      if !ok then
+        return (none, h1)
+      else
+        ctOpt ←
+          match pair0 with
+          | none => query (O := OO) (I := IIM) FSHdrTag.tr (sIdx, (hdr0, m0))
+          | some mPair => query (O := OO) (I := IIM) FSHdrTag.ch (sIdx, (hdr0, mPair))
+        match ctOpt with
+        | none => return (none, h1)
+        | some ct =>
+          let bk1 := fsMultiDFBucketHsGetBookAt h1 sIdx
+          let cnt' := bk1.2.1 + 1
+          let tr' := (cnt', hdr0, ct) :: bk1.2.2
+          return (some (.inr sIdx, ct), fsMultiDFBucketHsSetBookAt h1 sIdx (bk1.1, (cnt', tr')))
+
+@[expose] def fsMultiDFBucketFsRecvC (L B : ℕ) (la : Bool) {Γ'}
+    (hE : Expr OO Γ' mbHsTy)
+    (_ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (_pE : Expr OO Γ' .bool)
+    (_tE : Expr OO Γ' .nat)
+    (rsvE : Expr OO Γ' (.sum (.base .rs) .nat))
+    (hdrE : Expr OO Γ' hdrTy)
+    (eE : Expr OO Γ' (.base .ct))
+    (recE : Expr OO Γ' (.opt cRecTy)) :
+    Comp OO IIM Γ'
+      (.prod (.opt (.opt (.prod (.sum (.base .rs) .nat) (.prod .nat (.base .msg))))) mbHsTy) :=
+  rdsl do
+    (h0, rsv0, hdr0, e0, rec0) ← return (hE, rsvE, hdrE, eE, recE)
+    match rsv0 with
+    | .inl rs =>
+      match Expr.op (O := OO) (CKAOp.fsReceive B) (rs, hdr0, e0) with
+      | none => return (some none, h0)
+      | some (rs', idxMsg) =>
+        return (some (some (.inl rs', idxMsg)), h0)
+    | .inr sIdx =>
+      let bk0 := fsMultiDFBucketHsGetBookAt h0 sIdx
+      let sCorr0 := bk0.1
+      let cnt0 := bk0.2.1
+      let trs0 := bk0.2.2
+      let matched := fsTransFindE L trs0 (hdr0, e0)
+      resOpt ←
+        match matched with
+        | none => query (O := OO) (I := IIM) FSHdrTag.ij (sIdx, (hdr0, e0))
+        | some _ => query (O := OO) (I := IIM) FSHdrTag.dl (sIdx, (hdr0, e0))
+      match resOpt with
+      | none => return (none, h0)
+      | some resSum =>
+        match resSum with
+        | .inl _ => return (some none, h0)
+        | .inr (msgIdx, mo') =>
+          let isLookaheadInj :=
+            match matched with
+            | none => (!sCorr0) && (cnt0 < msgIdx)
+            | some _ => false
+          if bool la && isLookaheadInj then
+            return (none, fsMultiDFBucketHsSetLfWin h0 true)
+          else
+            let drop :=
+              match matched with
+              | none => msgIdx
+              | some entry => entry.1
+            let trs' := fsTransFilterE L trs0 drop
+            let h4 := fsMultiDFBucketHsSetBookAt h0 sIdx (sCorr0, (cnt0, trs'))
+            let outE :=
+              match mo' with
+              | none =>
+                match rec0 with
+                | none => none
+                | some r => some (some (.inr sIdx, msgIdx, cRecMsg r))
+              | some msg => some (some (.inr sIdx, msgIdx, msg))
+            return (outE, h4)
+
+@[expose] def fsMultiDFBucketCommitC {Γ'}
+    (hE : Expr OO Γ' mbHsTy)
+    (_ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (_pE : Expr OO Γ' .bool)
+    (_oldE newE : Expr OO Γ' mVpTy) :
+    Comp OO IIM Γ' (.prod (.opt mVpTy) mbHsTy) :=
+  rdsl do
+    return (some newE, hE)
+
+@[expose] def isExtMultiDFEntryE {Γ'}
+    (entryE : Expr OO Γ' (.opt (.sum (.base .rs) .nat))) :
+    Expr OO Γ' .bool :=
+  rdslExpr =>
+    match entryE with
+    | none => false
+    | some sumV =>
+      match sumV with
+      | .inl _ => false
+      | .inr _ => true
+
+@[expose] def anyExtMultiDFVRE (L : ℕ) {Γ'}
+    (vRE : Expr OO Γ' (.tbl (.opt (.sum (.base .rs) .nat))))
+    (rngE : Expr OO Γ' (.list .nat)) :
+    Expr OO Γ' .bool :=
+  rdslExpr =>
+    letE (vRE, rngE) fun (vR0, rng0) =>
+      foldrB L rng0 false fun t acc =>
+        if isExtMultiDFEntryE (tget vR0 t) then true else acc
+
+@[expose] def fsMultiDFBucketRevealC (L : ℕ) (_la : Bool) {Γ'}
+    (hE : Expr OO Γ' mbHsTy)
+    (_ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (_pE : Expr OO Γ' .bool)
+    (vpE : Expr OO Γ' mVpTy) :
+    Comp OO IIM Γ' (.prod (.opt psTy) mbHsTy) :=
+  rdsl do
+    (h0, vp0) ← return (hE, vpE)
+    (ssOptOpt, h1) ←
+      match vpVS vp0 with
+      | none => return (some none, h0)
+      | some ssv =>
+        match ssv with
+        | .inl ss => return (some (some ss), h0)
+        | .inr sIdx =>
+          csOpt ← query (O := OO) (I := IIM) FSHdrTag.cs (sIdx, ())
+          match csOpt with
+          | none => return (none, h0)
+          | some ss =>
+            let bk0 := fsMultiDFBucketHsGetBookAt h0 sIdx
+            return (some (some ss), fsMultiDFBucketHsSetBookAt h0 sIdx (true, bk0.2))
+    match ssOptOpt with
+    | none => return (none, h1)
+    | some ssReal =>
+      rng ← rangeListC (O' := OO) (I' := IIM) L
+      if anyExtMultiDFVRE L (vpVR vp0) rng then
+        return (none, h1)
+      else
+        let vR' := unliftMultiDFVRE L (vpVR vp0) rng
+        return (some (realPartyE vp0 (vpΓ vp0) (vpRoot vp0) ssReal vR'), h1)
+
+/-- Costed multi-session `(tL, par)`-bucket `HooksC` bundle for `redFSAuthDFMultiBucketProg`. -/
+@[expose] def hooksFSMultiDFBucketC (L B Δcka Δbucket qep : ℕ) (tL : Option ℕ) (par la : Bool) :
+    HooksC OO IIM (.base .γ) (.base .sig) (.sum (.base .ss) .nat) (.sum (.base .rs) .nat) mbHsTy where
+  startSend := fsMultiDFBucketStartSendC L Δbucket qep tL par
+  startRecv := fsMultiDFBucketStartRecvC L Δbucket qep tL par
+  fsSend := fsMultiDFBucketFsSendC Δcka la
+  fsRecv := fsMultiDFBucketFsRecvC L B la
+  commit := fsMultiDFBucketCommitC
+  reveal := fsMultiDFBucketRevealC L la
+
+/-- Costed initialization of `mbEsTy` for `(tL, par)`-bucket `redFSAuthDFMultiBucketProg`. -/
+@[expose] def initFSMultiDFBucketEStateC (L Δbucket qep : ℕ) (tL : Option ℕ) (par : Bool)
+    {Γ'} (bE : Expr OO Γ' .bool) :
+    Comp OO IIM Γ' mbEsTy :=
+  rdsl do
+    b0 ← return bE
+    kr ← sample (O := OO) (I := IIM) CKASamp.kr ()
+    kc ← sample (O := OO) (I := IIM) CKASamp.kc ()
+    ((σ, kVal, sid), h1) ←
+      rootFSMultiDFBucketC L Δbucket qep tL par fsMultiDFBucketHsEmptyE 0
+        (Expr.op (O := OO) CKAOp.lamI ())
+        (Expr.op (O := OO) CKAOp.prngInit kr)
+    let regP := regSessOptMultiDFBucketE L (raw tL) h1 0 sid
+    let optIdx := regP.1
+    let h2 := regP.2
+    let ssv0 : Expr OO _ (.sum (.base .ss) .nat) :=
+      match optIdx with
+      | none => .inl (Expr.op (O := OO) CKAOp.fsInitSender kVal)
+      | some sIdx => .inr sIdx
+    let rsv0 : Expr OO _ (.sum (.base .rs) .nat) :=
+      match optIdx with
+      | none => .inl (Expr.op (O := OO) CKAOp.fsInitReceiver kVal)
+      | some sIdx => .inr sIdx
+    let pAB := mkPartiesE
+      (Expr.op (O := OO) CKAOp.ckaInitA kc)
+      (Expr.op (O := OO) CKAOp.ckaInitB kc)
+      σ ssv0 rsv0
+    return (esMk (cGsInitE (vpT := mVpTy) pAB.1 pAB.2 b0) h2 false)
+
+/-- Stage-2 `(tL, par)`-bucket multi-session `redFSAuthDF` program (`[B7]`, `B_fs_u`) over
+`SM.specDF`, `prngOps`, `fsaeadMultiHeaderAdDFIface`, and `prngSMCodecDF`. -/
+@[expose] def redFSAuthDFMultiBucketProg (L B Δcka Δbucket qep maxSkip : ℕ) (la : Bool)
+    (tL : Option ℕ) (par : Bool) :
+    CostedReduction OO IIM
+      (SM.specDF (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
+      (prngSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E)
+      .unit .unit .bool .bool where
+  σ := fsMultiDFBucketRedEsTy KC Γ CCoins T I KR RSt K SS RS M E
+  init := rdsl [_] do
+    es ← initFSMultiDFBucketEStateC L Δbucket qep tL par false
+    return ((), (es, none))
+  handle := rdsl [st, qArg] do
+    (es0, winEp0, q0) ← return (st.1, st.2, qArg)
+    match q0 with
+    | .inl qBase =>
+      match qBase with
+      | .inl (.inl (.inl (.inl x))) =>
+        (p0, m0, r0) ← return x
+        if orE (esAbort es0) (cGsWin (esG es0)) then
+          return (.inl (inl (inl (inl (inl none)))), (es0, winEp0))
+        else
+          match cEpMgmtE (raw (2 + Δcka)) (raw qep) (esG es0) p0 (isSomeE r0) with
+          | none => return (.inl (inl (inl (inl (inl none)))), (es0, winEp0))
+          | some s1 =>
+            (res, h') ← vSendC (raw (hooksFSMultiDFBucketC L B Δcka Δbucket qep tL par la))
+              (esH es0) s1 p0 (pGet (cGsSt s1) p0) m0 none r0
+            match res with
+            | none => return (.inl (inl (inl (inl (inl none)))), (esMk (esG es0) h' true, winEp0))
+            | some (st', ct) =>
+              let recE := ((p0, pGet (cGsEpoch s1) p0, pGet (cGsIdx s1) p0 + 1), m0, ct)
+              let g' := cRecordE (raw L) (raw (2 + Δcka)) s1 p0 st' recE false
+              return (.inl (inl (inl (inl (inl (some ct))))), (esMk g' h' (esAbort es0), winEp0))
+      | .inl (.inl (.inl (.inr _))) =>
+        return (.inl (inl (inl (inl (inr none)))), (es0, winEp0))
+      | .inl (.inl (.inr x)) =>
+        (out, es') ← deliverEC (raw (hooksFSMultiDFBucketC L B Δcka Δbucket qep tL par la))
+          L maxSkip (raw (bucketParAuthCfgEC Δbucket tL par)) es0 x
+        return (.inl (inl (inl (inr out))), (es', winEp0))
+      | .inl (.inr x) =>
+        let wasWin := cGsWin (esG es0)
+        (out, es') ← injectEC (raw (hooksFSMultiDFBucketC L B Δcka Δbucket qep tL par la))
+          L (raw (2 + Δcka)) qep (raw (bucketParAuthCfgEC Δbucket tL par)) es0 x
+        let winEp' := if !wasWin && cGsWin (esG es') then some x.2.1.1 else winEp0
+        return (.inl (inl (inr out)), (es', winEp'))
+      | .inr p0 =>
+        let s0 := esG es0
+        if orE (esAbort es0) (orE (cGsWin s0) (!(cCorrAllowedE (raw L) s0 p0))) then
+          return (.inl (inr none), (es0, winEp0))
+        else
+          let s1 := cAfterCorrE (raw L) s0 p0
+          (res, h') ← fsMultiDFBucketRevealC L la (esH es0) s0 p0 (pGet (cGsSt s0) p0)
+          match res with
+          | none => return (.inl (inr none), (esMk s0 h' true, winEp0))
+          | some stOut =>
+            return (.inl (inr (some stOut)), (esMk s1 h' (esAbort es0), winEp0))
+    | .inr x =>
+      let wasWin := cGsWin (esG es0)
+      (out, es') ← deliverForgeEC (raw (hooksFSMultiDFBucketC L B Δcka Δbucket qep tL par la))
+        L (raw (2 + Δcka)) qep (raw (bucketParAuthCfgEC Δbucket tL par)) es0 x
+      let winEp' := if !wasWin && cGsWin (esG es') then some x.2.2.1.1 else winEp0
+      return (.inr out, (es', winEp'))
+  finish := rdsl [st, _] do
+    (es0, winEp0) ← return (st.1, st.2)
+    if bool la then
+      return (fsMultiDFBucketHsLfWin (esH es0))
+    else
+      match winEp0 with
+      | none => return false
+      | some tWin =>
+        return ((!(esAbort es0) && cGsWin (esG es0)) &&
+          cAuthOKE (raw L) (raw (2 + Δcka)) (optNatLit (raw tL)) tWin (esG es0))
+
+/-! ### Query Bounds for `redFSAuthDFMultiProg` and `redFSAuthDFMultiBucketProg` -/
+
+@[simp] theorem lookupMultiDFFC_queries (L : ℕ) (w : FSHdrTag → ℕ) {Γ'}
+    (hE : Expr OO Γ' mHsTy) (ikE : Expr OO Γ' (.base .i)) :
+    (lookupMultiDFFC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L hE ikE).queries w (fun _ => 0) = 0 := by
+  simp [lookupMultiDFFC, Comp.queries]
+
+@[simp] theorem rootFSMultiDFC_queries (L : ℕ) (mo : Mode) (w : FSHdrTag → ℕ) {Γ'}
+    (hE : Expr OO Γ' mHsTy) (tE : Expr OO Γ' .nat)
+    (ikE : Expr OO Γ' (.base .i)) (σE : Expr OO Γ' (.base .sig)) :
+    (rootFSMultiDFC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L mo hE tE ikE σE).queries w (fun _ => 0) = 0 := by
+  simp [rootFSMultiDFC, Comp.queries]
+
+@[simp] theorem fsMultiDFStartSendC_queries (L : ℕ) (mo : Mode) (w : FSHdrTag → ℕ) {Γ'}
+    (hE : Expr OO Γ' mHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (pE : Expr OO Γ' .bool) (tE : Expr OO Γ' .nat)
+    (γE : Expr OO Γ' (.base .γ)) (σE : Expr OO Γ' (.base .sig))
+    (rE : Expr OO Γ' (.opt (.base .ccoins))) :
+    (fsMultiDFStartSendC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L mo hE ctxE pE tE γE σE rE).queries w (fun _ => 0) = 0 := by
+  simp [fsMultiDFStartSendC, Comp.queries]
+
+@[simp] theorem fsMultiDFStartRecvC_queries (L : ℕ) (mo : Mode) (w : FSHdrTag → ℕ) {Γ'}
+    (hE : Expr OO Γ' mHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (pE : Expr OO Γ' .bool) (tE : Expr OO Γ' .nat)
+    (γE : Expr OO Γ' (.base .γ)) (σE : Expr OO Γ' (.base .sig))
+    (tnE : Expr OO Γ' (.base .t)) :
+    (fsMultiDFStartRecvC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L mo hE ctxE pE tE γE σE tnE).queries
+      w (fun _ => 0) = 0 := by
+  simp [fsMultiDFStartRecvC, Comp.queries]
+
+theorem fsMultiDFFsSendC_queries (Δcka : ℕ) (la : Bool) {Γ'}
+    (hE : Expr OO Γ' mHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (pE : Expr OO Γ' .bool) (tE : Expr OO Γ' .nat)
+    (ssvE : Expr OO Γ' (.sum (.base .ss) .nat)) (hdrE : Expr OO Γ' hdrTy)
+    (mE : Expr OO Γ' (.base .msg))
+    (pairE : Expr OO Γ' (.opt (.prod (.base .msg) (.base .msg)))) :
+    (fsMultiDFFsSendC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) Δcka la hE ctxE pE tE ssvE hdrE mE pairE).queries
+      (fun _ => 1) (fun _ => 0) ≤ 2 := by
+  cases la <;> simp [fsMultiDFFsSendC, Comp.queries]
+
+@[simp] theorem fsMultiDFFsSendC_decQueries (Δcka : ℕ) (la : Bool) {Γ'}
+    (hE : Expr OO Γ' mHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (pE : Expr OO Γ' .bool) (tE : Expr OO Γ' .nat)
+    (ssvE : Expr OO Γ' (.sum (.base .ss) .nat)) (hdrE : Expr OO Γ' hdrTy)
+    (mE : Expr OO Γ' (.base .msg))
+    (pairE : Expr OO Γ' (.opt (.prod (.base .msg) (.base .msg)))) :
+    (fsMultiDFFsSendC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) Δcka la hE ctxE pE tE ssvE hdrE mE pairE).queries
+      fsHdrDecWt (fun _ => 0) = 0 := by
+  cases la <;> simp [fsMultiDFFsSendC, fsHdrDecWt, Comp.queries]
+
+@[simp] theorem fsMultiDFFsRecvC_queries (L B : ℕ) (la : Bool) {Γ'}
+    (hE : Expr OO Γ' mHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (pE : Expr OO Γ' .bool) (tE : Expr OO Γ' .nat)
+    (rsvE : Expr OO Γ' (.sum (.base .rs) .nat)) (hdrE : Expr OO Γ' hdrTy)
+    (eE : Expr OO Γ' (.base .ct)) (recE : Expr OO Γ' (.opt cRecTy)) :
+    (fsMultiDFFsRecvC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L B la hE ctxE pE tE rsvE hdrE eE recE).queries
+      (fun _ => 1) (fun _ => 0) = 1 := by
+  cases la <;> simp [fsMultiDFFsRecvC, Comp.queries]
+
+@[simp] theorem fsMultiDFFsRecvC_decQueries (L B : ℕ) (la : Bool) {Γ'}
+    (hE : Expr OO Γ' mHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (pE : Expr OO Γ' .bool) (tE : Expr OO Γ' .nat)
+    (rsvE : Expr OO Γ' (.sum (.base .rs) .nat)) (hdrE : Expr OO Γ' hdrTy)
+    (eE : Expr OO Γ' (.base .ct)) (recE : Expr OO Γ' (.opt cRecTy)) :
+    (fsMultiDFFsRecvC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L B la hE ctxE pE tE rsvE hdrE eE recE).queries
+      fsHdrDecWt (fun _ => 0) = 1 := by
+  cases la <;> simp [fsMultiDFFsRecvC, fsHdrDecWt, Comp.queries]
+
+@[simp] theorem fsMultiDFCommitC_queries (w : FSHdrTag → ℕ) {Γ'}
+    (hE : Expr OO Γ' mHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (pE : Expr OO Γ' .bool) (oldE newE : Expr OO Γ' mVpTy) :
+    (fsMultiDFCommitC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) hE ctxE pE oldE newE).queries w (fun _ => 0) = 0 := by
+  simp [fsMultiDFCommitC, Comp.queries]
+
+@[simp] theorem rangeListC_multiDF_queries (L : ℕ) (w : FSHdrTag → ℕ) {Γ'} :
+    (rangeListC (O' := OO) (I' := IIM) (Γ' := Γ') L).queries w (fun _ => 0) = 0 := by
+  induction L <;> simp [rangeListC, Comp.queries, *]
+
+theorem fsMultiDFRevealC_queries (L : ℕ) (mo : Mode) (la : Bool) {Γ'}
+    (hE : Expr OO Γ' mHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (pE : Expr OO Γ' .bool) (vpE : Expr OO Γ' mVpTy) :
+    (fsMultiDFRevealC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L mo la hE ctxE pE vpE).queries
+      (fun _ => 1) (fun _ => 0) ≤ 1 := by
+  cases la <;> simp [fsMultiDFRevealC, Comp.queries]
+
+@[simp] theorem fsMultiDFRevealC_decQueries (L : ℕ) (mo : Mode) (la : Bool) {Γ'}
+    (hE : Expr OO Γ' mHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (pE : Expr OO Γ' .bool) (vpE : Expr OO Γ' mVpTy) :
+    (fsMultiDFRevealC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L mo la hE ctxE pE vpE).queries
+      fsHdrDecWt (fun _ => 0) = 0 := by
+  cases la <;> simp [fsMultiDFRevealC, fsHdrDecWt, Comp.queries]
+
+@[simp] theorem deliverForgeEC_hooksFSMultiDFC_queries (L B Δcka qep : ℕ) (mo : Mode)
+    (la : Bool) {Γ'}
+    (es : Expr OO Γ' mEsTy)
+    (arg : Expr OO Γ' (.prod .bool (.prod hdrCtTy hdrCtTy))) :
+    (deliverForgeEC (hooksFSMultiDFC (sampKR := sampKR) (sampKC := sampKC)
+        (sampCCoins := sampCCoins) (sampI := sampI) (sampK := sampK) L B Δcka mo la)
+      L (2 + Δcka) qep (modeCfgEC OO mo) es arg).queries
+      (fun _ => 1) (fun _ => 0) = 1 := by
+  simp [deliverForgeEC, vRecvC, vRecvStep1C, commitEC, hooksFSMultiDFC, Comp.queries]
+
+@[simp] theorem deliverForgeEC_hooksFSMultiDFC_decQueries (L B Δcka qep : ℕ) (mo : Mode)
+    (la : Bool) {Γ'}
+    (es : Expr OO Γ' mEsTy)
+    (arg : Expr OO Γ' (.prod .bool (.prod hdrCtTy hdrCtTy))) :
+    (deliverForgeEC (hooksFSMultiDFC (sampKR := sampKR) (sampKC := sampKC)
+        (sampCCoins := sampCCoins) (sampI := sampI) (sampK := sampK) L B Δcka mo la)
+      L (2 + Δcka) qep (modeCfgEC OO mo) es arg).queries
+      fsHdrDecWt (fun _ => 0) = 1 := by
+  simp [deliverForgeEC, vRecvC, vRecvStep1C, commitEC, hooksFSMultiDFC, Comp.queries]
+
+theorem implECDF_hooksFSMultiDFC_queries (L B Δcka qep maxSkip : ℕ) (mo : Mode)
+    (la : Bool) {Γ'}
+    (es : Expr OO Γ' mEsTy)
+    (q : Expr OO Γ' (ckaSMQDF KC Γ CCoins T I KR RSt K SS RS M E)) :
+    (implECDF (hooksFSMultiDFC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+        (sampI := sampI) (sampK := sampK) L B Δcka mo la)
+      L (2 + Δcka) qep maxSkip (modeCfgEC OO mo) mo.policy es q).queries
+      (fun _ => 1) (fun _ => 0) ≤ 2 := by
+  cases la <;>
+    simp [implECDF, implEC, transmitEC, challEC, deliverEC, injectEC, corrEC,
+      deliverForgeEC, vSendC, vSendStep1C, vRecvC, vRecvStep1C, commitEC,
+      hooksFSMultiDFC, fsMultiDFFsSendC, fsMultiDFRevealC, Comp.queries]
+
+@[simp] theorem implECDF_hooksFSMultiDFC_decQueries (L B Δcka qep maxSkip : ℕ) (mo : Mode)
+    (la : Bool) {Γ'}
+    (es : Expr OO Γ' mEsTy)
+    (q : Expr OO Γ' (ckaSMQDF KC Γ CCoins T I KR RSt K SS RS M E)) :
+    (implECDF (hooksFSMultiDFC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+        (sampI := sampI) (sampK := sampK) L B Δcka mo la)
+      L (2 + Δcka) qep maxSkip (modeCfgEC OO mo) mo.policy es q).queries
+      fsHdrDecWt (fun _ => 0) = 1 := by
+  simp [implECDF, implEC, transmitEC, challEC, deliverEC, injectEC, corrEC, deliverForgeEC,
+    vSendC, vSendStep1C, vRecvC, vRecvStep1C, commitEC, hooksFSMultiDFC, Comp.queries]
+
+@[simp] theorem initFSMultiDFEStateC_queries (L : ℕ) (mo : Mode) (w : FSHdrTag → ℕ)
+    {Γ'} (bE : Expr OO Γ' .bool) :
+    (initFSMultiDFEStateC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L mo bE).queries w (fun _ => 0) = 0 := by
+  simp [initFSMultiDFEStateC, Comp.queries]
+
+theorem redFSAuthDFMultiProg_totalQueries (L B Δcka qep maxSkip : ℕ) (la : Bool)
+    (tL : Option ℕ) (t q : ℕ) :
+    (redFSAuthDFMultiProg (ckaInitA := ckaInitA) (ckaInitB := ckaInitB) (ckaSend := ckaSend)
+      (ckaReceive := ckaReceive) (prngInit := prngInit) (prngUp := prngUp)
+      (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
+      (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
+      (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
+      (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK)
+      L B Δcka qep maxSkip la tL t).totalQueries (fun _ => 1) (fun _ => 0) q ≤ q * 2 := by
+  simp only [CostedReduction.totalQueries, redFSAuthDFMultiProg,
+    initFSMultiDFEStateC_queries, Comp.queries, zero_add, add_zero]
+  exact Nat.mul_le_mul_left q (implECDF_hooksFSMultiDFC_queries L B Δcka qep maxSkip _ la _ _)
+
+@[simp] theorem redFSAuthDFMultiProg_totalDecQueries (L B Δcka qep maxSkip : ℕ) (la : Bool)
+    (tL : Option ℕ) (t q : ℕ) :
+    (redFSAuthDFMultiProg (ckaInitA := ckaInitA) (ckaInitB := ckaInitB) (ckaSend := ckaSend)
+      (ckaReceive := ckaReceive) (prngInit := prngInit) (prngUp := prngUp)
+      (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
+      (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
+      (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
+      (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK)
+      L B Δcka qep maxSkip la tL t).totalQueries fsHdrDecWt (fun _ => 0) q = q := by
+  cases la <;> simp [CostedReduction.totalQueries, redFSAuthDFMultiProg, finishFSMultiDFE, Comp.queries]
+
+@[simp] theorem lookupMultiDFBucketFC_queries (L : ℕ) (w : FSHdrTag → ℕ) {Γ'}
+    (hE : Expr OO Γ' mbHsTy) (tE : Expr OO Γ' .nat) (ikE : Expr OO Γ' (.base .i)) :
+    (lookupMultiDFBucketFC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L hE tE ikE).queries w (fun _ => 0) = 0 := by
+  simp [lookupMultiDFBucketFC, Comp.queries]
+
+@[simp] theorem rootFSMultiDFBucketC_queries (L Δbucket qep : ℕ) (tL : Option ℕ) (par : Bool)
+    (w : FSHdrTag → ℕ) {Γ'}
+    (hE : Expr OO Γ' mbHsTy) (tE : Expr OO Γ' .nat)
+    (ikE : Expr OO Γ' (.base .i)) (σE : Expr OO Γ' (.base .sig)) :
+    (rootFSMultiDFBucketC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L Δbucket qep tL par hE tE ikE σE).queries
+      w (fun _ => 0) = 0 := by
+  simp [rootFSMultiDFBucketC, Comp.queries]
+
+@[simp] theorem fsMultiDFBucketStartSendC_queries (L Δbucket qep : ℕ) (tL : Option ℕ) (par : Bool)
+    (w : FSHdrTag → ℕ) {Γ'}
+    (hE : Expr OO Γ' mbHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (pE : Expr OO Γ' .bool) (tE : Expr OO Γ' .nat)
+    (γE : Expr OO Γ' (.base .γ)) (σE : Expr OO Γ' (.base .sig))
+    (rE : Expr OO Γ' (.opt (.base .ccoins))) :
+    (fsMultiDFBucketStartSendC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L Δbucket qep tL par hE ctxE pE tE γE σE rE).queries
+      w (fun _ => 0) = 0 := by
+  simp [fsMultiDFBucketStartSendC, Comp.queries]
+
+@[simp] theorem fsMultiDFBucketStartRecvC_queries (L Δbucket qep : ℕ) (tL : Option ℕ) (par : Bool)
+    (w : FSHdrTag → ℕ) {Γ'}
+    (hE : Expr OO Γ' mbHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (pE : Expr OO Γ' .bool) (tE : Expr OO Γ' .nat)
+    (γE : Expr OO Γ' (.base .γ)) (σE : Expr OO Γ' (.base .sig))
+    (tnE : Expr OO Γ' (.base .t)) :
+    (fsMultiDFBucketStartRecvC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L Δbucket qep tL par hE ctxE pE tE γE σE tnE).queries
+      w (fun _ => 0) = 0 := by
+  simp [fsMultiDFBucketStartRecvC, Comp.queries]
+
+@[simp] theorem fsMultiDFBucketFsRecvC_queries (L B : ℕ) (la : Bool) {Γ'}
+    (hE : Expr OO Γ' mbHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (pE : Expr OO Γ' .bool) (tE : Expr OO Γ' .nat)
+    (rsvE : Expr OO Γ' (.sum (.base .rs) .nat)) (hdrE : Expr OO Γ' hdrTy)
+    (eE : Expr OO Γ' (.base .ct)) (recE : Expr OO Γ' (.opt cRecTy)) :
+    (fsMultiDFBucketFsRecvC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L B la hE ctxE pE tE rsvE hdrE eE recE).queries
+      (fun _ => 1) (fun _ => 0) = 1 := by
+  cases la <;> simp [fsMultiDFBucketFsRecvC, Comp.queries]
+
+@[simp] theorem fsMultiDFBucketFsRecvC_decQueries (L B : ℕ) (la : Bool) {Γ'}
+    (hE : Expr OO Γ' mbHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (pE : Expr OO Γ' .bool) (tE : Expr OO Γ' .nat)
+    (rsvE : Expr OO Γ' (.sum (.base .rs) .nat)) (hdrE : Expr OO Γ' hdrTy)
+    (eE : Expr OO Γ' (.base .ct)) (recE : Expr OO Γ' (.opt cRecTy)) :
+    (fsMultiDFBucketFsRecvC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L B la hE ctxE pE tE rsvE hdrE eE recE).queries
+      fsHdrDecWt (fun _ => 0) = 1 := by
+  cases la <;> simp [fsMultiDFBucketFsRecvC, fsHdrDecWt, Comp.queries]
+
+@[simp] theorem fsMultiDFBucketCommitC_queries (w : FSHdrTag → ℕ) {Γ'}
+    (hE : Expr OO Γ' mbHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (pE : Expr OO Γ' .bool) (oldE newE : Expr OO Γ' mVpTy) :
+    (fsMultiDFBucketCommitC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) hE ctxE pE oldE newE).queries w (fun _ => 0) = 0 := by
+  simp [fsMultiDFBucketCommitC, Comp.queries]
+
+@[simp] theorem initFSMultiDFBucketEStateC_queries (L Δbucket qep : ℕ) (tL : Option ℕ) (par : Bool)
+    (w : FSHdrTag → ℕ) {Γ'} (bE : Expr OO Γ' .bool) :
+    (initFSMultiDFBucketEStateC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L Δbucket qep tL par bE).queries w (fun _ => 0) = 0 := by
+  simp [initFSMultiDFBucketEStateC, Comp.queries]
+
+theorem redFSAuthDFMultiBucketProg_totalQueries (L B Δcka Δbucket qep maxSkip : ℕ) (la : Bool)
+    (tL : Option ℕ) (par : Bool) (qAdv : ℕ) :
+    (redFSAuthDFMultiBucketProg (ckaInitA := ckaInitA) (ckaInitB := ckaInitB) (ckaSend := ckaSend)
+      (ckaReceive := ckaReceive) (prngInit := prngInit) (prngUp := prngUp)
+      (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
+      (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
+      (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
+      (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK)
+      L B Δcka Δbucket qep maxSkip la tL par).totalQueries (fun _ => 1) (fun _ => 0) qAdv ≤
+      qAdv * 2 := by
+  simp only [CostedReduction.totalQueries, redFSAuthDFMultiBucketProg,
+    initFSMultiDFBucketEStateC_queries, Comp.queries, zero_add, add_zero]
+  apply Nat.mul_le_mul_left qAdv
+  cases la <;>
+    simp [deliverEC, injectEC, deliverForgeEC, vSendC, vSendStep1C, vRecvC, vRecvStep1C,
+      commitEC, hooksFSMultiDFBucketC, fsMultiDFBucketFsSendC, fsMultiDFBucketRevealC,
+      Comp.queries]
+
+@[simp] theorem redFSAuthDFMultiBucketProg_totalDecQueries (L B Δcka Δbucket qep maxSkip : ℕ)
+    (la : Bool) (tL : Option ℕ) (par : Bool) (qAdv : ℕ) :
+    (redFSAuthDFMultiBucketProg (ckaInitA := ckaInitA) (ckaInitB := ckaInitB) (ckaSend := ckaSend)
+      (ckaReceive := ckaReceive) (prngInit := prngInit) (prngUp := prngUp)
+      (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
+      (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
+      (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
+      (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK)
+      L B Δcka Δbucket qep maxSkip la tL par).totalQueries fsHdrDecWt (fun _ => 0) qAdv = qAdv := by
+  cases la <;>
+    simp [CostedReduction.totalQueries, redFSAuthDFMultiBucketProg, deliverEC, injectEC,
+      deliverForgeEC, vSendC, vSendStep1C, vRecvC, vRecvStep1C, commitEC,
+      hooksFSMultiDFBucketC, fsMultiDFBucketFsSendC, fsMultiDFBucketRevealC,
+      fsHdrDecWt, Comp.queries]
+
+theorem redFSAuthDFMultiProg_totalCost (L B Δcka qep maxSkip : ℕ) (la : Bool)
+    (tL : Option ℕ) (t q : ℕ) :
+    let P := redFSAuthDFMultiProg (ckaInitA := ckaInitA) (ckaInitB := ckaInitB)
+      (ckaSend := ckaSend) (ckaReceive := ckaReceive) (prngInit := prngInit) (prngUp := prngUp)
+      (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
+      (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
+      (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
+      (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L B Δcka qep maxSkip la tL t
+    P.totalCost q = P.init.cost + q * (P.handle.cost + 13) + P.finish.cost := by
+  intro P
+  have hCodec : (prngSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E).codecCost = 13 := rfl
+  have hUCost : (fsaeadMultiHeaderAdDFIface KC Γ CCoins T I KR RSt K SS RS M E
+      sampKR sampKC sampCCoins sampI sampK).uCost = 1 := rfl
+  dsimp only [CostedReduction.totalCost]
+  change P.init.cost + q * max (fsaeadMultiHeaderAdDFIface KC Γ CCoins T I KR RSt K SS RS M E
+      sampKR sampKC sampCCoins sampI sampK).uCost
+      (P.handle.cost + (prngSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E).codecCost) +
+      P.finish.cost = _
+  rw [hCodec, hUCost, max_eq_right (by omega)]
+
+theorem redFSAuthDFMultiBucketProg_totalCost (L B Δcka Δbucket qep maxSkip : ℕ)
+    (la : Bool) (tL : Option ℕ) (par : Bool) (qAdv : ℕ) :
+    let P := redFSAuthDFMultiBucketProg (ckaInitA := ckaInitA) (ckaInitB := ckaInitB)
+      (ckaSend := ckaSend) (ckaReceive := ckaReceive) (prngInit := prngInit) (prngUp := prngUp)
+      (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
+      (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
+      (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
+      (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK) L B Δcka Δbucket qep maxSkip la tL par
+    P.totalCost qAdv = P.init.cost + qAdv * (P.handle.cost + 13) + P.finish.cost := by
+  intro P
+  have hCodec : (prngSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E).codecCost = 13 := rfl
+  have hUCost : (fsaeadMultiHeaderAdDFIface KC Γ CCoins T I KR RSt K SS RS M E
+      sampKR sampKC sampCCoins sampI sampK).uCost = 1 := rfl
+  dsimp only [CostedReduction.totalCost]
+  change P.init.cost + qAdv * max (fsaeadMultiHeaderAdDFIface KC Γ CCoins T I KR RSt K SS RS M E
+      sampKR sampKC sampCCoins sampI sampK).uCost
+      (P.handle.cost + (prngSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E).codecCost) +
+      P.finish.cost = _
+  rw [hCodec, hUCost, max_eq_right (by omega)]
+
+end HooksFSMultiDF
 
 end CryptoGames.SM.Construction

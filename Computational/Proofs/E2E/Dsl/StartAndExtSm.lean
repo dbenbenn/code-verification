@@ -9,8 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.StartAndExtSmAux
+public import Computational.Proofs.E2E.Dsl.StartAndExtSmAux -- proof-setup: allow-public-import
 import Computational.Proofs.E2E.Dsl.ClampsLossless
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.ReductionDsl.Soundness
+import Mathlib.Data.List.Dedup
+import VCVio.EvalDist.EvalDistEq
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Session start and external promoted routing in `ReductionDsl`
@@ -20,7 +28,7 @@ Implements the session-start handlers, slot-promotion step, and promoted-session
 driver-state invariant preservation theorems.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -191,11 +199,11 @@ variable {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
 
 local notation "E2EExpr" => Expr (e2eOps ℓ P C K decT encT)
 
-def finishStartSpkCost (qStart nPrins nBundles nOpks nSends : ℕ) : ℕ :=
+@[expose] def finishStartSpkCost (qStart nPrins nBundles nOpks nSends : ℕ) : ℕ :=
   180 * qStart + 96 * nSends + 3300 * nBundles + 100 * nPrins + 144 * nOpks + 94890
 
 /-- Pure `Comp` wrapper around `finishStartSpkGenE` matching `bhE2EFinishStartSpk`. -/
-def finishStartSpkC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
+@[expose] def finishStartSpkC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
     (qStart nPrins nBundles nOpks nSends : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (bModeE : E2EExpr Γ (.opt .bool))
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ))
@@ -269,7 +277,7 @@ theorem finishStartSpkC_eval {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eS
 
 attribute [local irreducible] finishStartSpkC
 
-def sampleBv256C {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
+@[expose] def sampleBv256C {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
     {Γ : List (Ty (e2eSig ℓ))} :
     Comp (e2eOps ℓ P C K decT encT) (stepAIface ℓ I₀) Γ BV256 :=
   .sample (I := stepAIface ℓ I₀) (UniformSamplerTag.base E2EUnifBase.bv256) .unit
@@ -290,7 +298,7 @@ def sampleBv256C {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
       (decT := decT) (encT := encT) I₀).eval ρ =
       (stepAIface ℓ I₀).liftP ($ᵗ BitVec 256 : ProbComp (BitVec 256)) := rfl
 
-def localStartGenC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
+@[expose] def localStartGenC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
     (qStart nPrins nBundles nOpks nSends : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (bModeE : E2EExpr Γ (.opt .bool))
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ))
@@ -382,7 +390,7 @@ theorem localStartGenC_eval {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSi
 attribute [local irreducible] localStartGenC
 
 /-- Coin-sampling `bhE2EFinishStartSpk` specialized to `bMode? = some σ.b` (`kindRed` start path). -/
-def localStartC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
+@[expose] def localStartC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
     (qStart nPrins nBundles nOpks nSends : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ))
     (sidE : E2EExpr Γ (sidT S))
@@ -525,7 +533,7 @@ theorem localStartC_support_reach {ι : Type} {T : OracleSpec ι} (I₀ : Iface 
 
 /-- Simulate `compositionLocalStart (SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P) C K bMode? σ sid`
 inside `ReductionDsl` using `sim : PqxdhSimIface ℓ S P C K decT encT`. -/
-def localStartSimC (sim : PqxdhSimIface ℓ S P C K decT encT)
+@[expose] def localStartSimC (sim : PqxdhSimIface ℓ S P C K decT encT)
     {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
     (qStart nPrins nBundles nOpks nSends nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (bModeE : E2EExpr Γ (.opt .bool))
@@ -727,7 +735,7 @@ theorem compositionLocalStart_preserves (bMode? : Option Bool)
       hpair hd hgs).2
 
 /-- Pure expression implementing `bhPromoteSlotK k idx? σ'` when `σ'.insts.length ≤ nInsts`. -/
-def promoteSlotKE (nInsts : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def promoteSlotKE (nInsts : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (kE : E2EExpr Γ .nat)
     (idxOptE : E2EExpr Γ (.opt .nat))
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ)) :
@@ -783,10 +791,10 @@ theorem eval_promoteSlotKE (nInsts : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     simp only [Expr.eval, Env.get, List.map_set]
   · simp only [hlt, decide_false, Bool.false_eq_true, ↓reduceIte, promoteSlotKEnc, e2eDrvStateEnc]
 
-def promoteSlotKCost (nInsts : ℕ) : ℕ :=
+@[expose] def promoteSlotKCost (nInsts : ℕ) : ℕ :=
   68 * nInsts + 700
 
-def promoteSlotKC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
+@[expose] def promoteSlotKC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
     (nInsts : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (kE : E2EExpr Γ .nat)
     (idxOptE : E2EExpr Γ (.opt .nat))
@@ -888,7 +896,7 @@ variable {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
 local notation "E2EExpr" => Expr (e2eOps ℓ P C K decT encT)
 
 /-- Pure expression computing the per-instance cleanliness `bhE2EDrvInstClean σ k` (`DEV-C17`). -/
-def bhE2EDrvInstCleanE (qStart nCorr : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def bhE2EDrvInstCleanE (qStart nCorr : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ)) (kE : E2EExpr Γ .nat) : E2EExpr Γ .bool :=
   eLet (.pair σE kE) fun p =>
     eCaseOpt (listGetOptE qStart (drvInsts (.fst (v p))) (.snd (v p))) (.bool true) fun d =>
@@ -951,7 +959,7 @@ theorem cost_bhE2EDrvInstCleanE (qStart nCorr : ℕ) {Γ : List (Ty (e2eSig ℓ)
 
 attribute [local irreducible] bhE2EDrvInstCleanE
 
-def corrTblE (nCorr : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def corrTblE (nCorr : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (corrPrinsE : E2EExpr Γ (.list (FinT S.N_id))) : E2EExpr Γ (.tbl .bool) :=
   .foldrB nCorr corrPrinsE (.tconst (.bool false))
     (.tset .v1 (e2ePureOp (.finVal S.N_id) .v0) (.bool true))
@@ -971,7 +979,7 @@ theorem cost_corrTblE (nCorr : ℕ) {Γ : List (Ty (e2eSig ℓ))}
   omega
 
 /-- Linear `O(nCorr + nPrins)` expression computing `bhE2EInstIkACorr σ d`. -/
-def bhE2EInstIkACorrE (nCorr nPrins : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def bhE2EInstIkACorrE (nCorr nPrins : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ))
     (dE : E2EExpr Γ (e2eModelInstTy S ℓ)) : E2EExpr Γ .bool :=
   eLet (.pair σE dE) fun p =>
@@ -1026,7 +1034,7 @@ theorem cost_bhE2EInstIkACorrE (nCorr nPrins : ℕ) {Γ : List (Ty (e2eSig ℓ))
 
 attribute [local irreducible] corrTblE bhE2EInstIkACorrE
 
-def isBobRecvSmQE {Γ : List (Ty (e2eSig ℓ))} (sqE : E2EExpr Γ smQT) : E2EExpr Γ .bool :=
+@[expose] def isBobRecvSmQE {Γ : List (Ty (e2eSig ℓ))} (sqE : E2EExpr Γ smQT) : E2EExpr Γ .bool :=
   eCaseSum sqE
     (fun _ => .bool false)
     (fun r1 => eCaseSum (v r1)
@@ -1052,7 +1060,7 @@ def isBobRecvSmQE {Γ : List (Ty (e2eSig ℓ))} (sqE : E2EExpr Γ smQT) : E2EExp
         v, Ext.wk, Expr.eval, h]
   · simp [isBobRecvSmQE, smQdec, bhIsBobRecvSMQuery, eCaseSum, v, Ext.wk, Expr.eval, h]
 
-def isBobAcceptSmRE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def isBobAcceptSmRE {Γ : List (Ty (e2eSig ℓ))}
     (sqE : E2EExpr Γ smQT) (srE : E2EExpr Γ (smRT GhostStT)) : E2EExpr Γ .bool :=
   .and (isBobRecvSmQE sqE)
     (eCaseOpt (.fst (.snd srE))
@@ -1079,15 +1087,15 @@ def isBobAcceptSmRE {Γ : List (Ty (e2eSig ℓ))}
     | some r => cases r <;> rfl
   · rfl
 
-def mkDeliverSmQE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def mkDeliverSmQE {Γ : List (Ty (e2eSig ℓ))}
     (pE : E2EExpr Γ .bool) (cE : E2EExpr Γ (B 32)) : E2EExpr Γ smQT :=
   .inr (.inr (.inl (.pair pE cE)))
 
-def mkInjectSmQE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def mkInjectSmQE {Γ : List (Ty (e2eSig ℓ))}
     (pE : E2EExpr Γ .bool) (cE : E2EExpr Γ (B 32)) : E2EExpr Γ smQT :=
   .inr (.inr (.inr (.inl (.pair pE cE))))
 
-def filterDeliverE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def filterDeliverE {Γ : List (Ty (e2eSig ℓ))}
     (dE : E2EExpr Γ (e2eModelInstTy S ℓ))
     (imE : E2EExpr Γ (e2eInstMetaTy S ℓ))
     (pcE : E2EExpr Γ (.prod .bool (B 32))) : E2EExpr Γ (.opt smQT) :=
@@ -1110,7 +1118,7 @@ def filterDeliverE {Γ : List (Ty (e2eSig ℓ))}
         .none
         (.some (mkDeliverSmQE (.bool false) (.snd (.snd (.snd (v p)))))))
 
-def filterInjectE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def filterInjectE {Γ : List (Ty (e2eSig ℓ))}
     (dE : E2EExpr Γ (e2eModelInstTy S ℓ))
     (imE : E2EExpr Γ (e2eInstMetaTy S ℓ))
     (pcE : E2EExpr Γ (.prod .bool (B 32))) : E2EExpr Γ (.opt smQT) :=
@@ -1133,7 +1141,7 @@ def filterInjectE {Γ : List (Ty (e2eSig ℓ))}
         (.some (mkInjectSmQE (.bool false) (.snd (.snd (.snd (v p)))))))
 
 /-- Pre-query wire filter expression implementing `bhFilterSmQuery d im sq`. -/
-def filterSmQueryE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def filterSmQueryE {Γ : List (Ty (e2eSig ℓ))}
     (dE : E2EExpr Γ (e2eModelInstTy S ℓ))
     (imE : E2EExpr Γ (e2eInstMetaTy S ℓ))
     (sqE : E2EExpr Γ smQT) : E2EExpr Γ (.opt smQT) :=
@@ -1367,7 +1375,7 @@ theorem cost_checkExtSmE (qStart nCorr nPrins : ℕ) {Γ : List (Ty (e2eSig ℓ)
 
 attribute [local irreducible] checkExtSmE
 
-def commitExtSmE (qStart nCorr nPrins : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def commitExtSmE (qStart nCorr nPrins : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (kE : E2EExpr Γ .nat)
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ))
     (sqE : E2EExpr Γ smQT)
@@ -1531,7 +1539,7 @@ theorem cost_commitExtSmE (qStart nCorr nPrins : ℕ) {Γ : List (Ty (e2eSig ℓ
 
 attribute [local irreducible] commitExtSmE
 
-def forwardExtSmC {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def forwardExtSmC {Γ : List (Ty (e2eSig ℓ))}
     (sqE : E2EExpr Γ smQT) :
     Comp (e2eOps ℓ P C K decT encT) (e2eSessionTargetIface ℓ) Γ (smRT GhostStT) :=
   caseSumV sqE
@@ -1596,11 +1604,11 @@ theorem forwardExtSmC_eval {Γ : List (Ty (e2eSig ℓ))}
 
 attribute [local irreducible] forwardExtSmC
 
-def extSmStepCost (ℓ qStart nCorr nPrins : ℕ) : ℕ :=
+@[expose] def extSmStepCost (ℓ qStart nCorr nPrins : ℕ) : ℕ :=
   220 * qStart + 300 * nCorr + 310 * nPrins + 2 * (ℓ / 32) + 37100
 
 /-- External promoted-session `SM.spec` query handler on slot `k` (`bhExtSmStep k σ sq`). -/
-def extSmStepC (qStart nCorr nPrins : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def extSmStepC (qStart nCorr nPrins : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (kE : E2EExpr Γ .nat)
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ))
     (sqE : E2EExpr Γ smQT) :
@@ -1853,7 +1861,7 @@ end ExtSmRouting
 section Bundle
 
 /-- Concrete implementation of `StartAndExtSmIface ℓ S P C K decT encT`. -/
-def startAndExtSmIface (ℓ : ℕ) (S : SignalPqxdh.Setup) {Pt : Type}
+@[expose] def startAndExtSmIface (ℓ : ℕ) (S : SignalPqxdh.Setup) {Pt : Type}
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
     StartAndExtSmIface ℓ S P C K decT encT where

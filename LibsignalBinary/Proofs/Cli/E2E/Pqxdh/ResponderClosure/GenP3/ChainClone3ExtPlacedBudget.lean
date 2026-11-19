@@ -9,10 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.ChainClone4PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.ChainClone4PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.MallocngBridgeBudget
+public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` `ChainClone3OkPlaced` Wrappers (Block `524`)
@@ -21,7 +31,7 @@ Budget-threaded (`RustCliAllocBudget M`) `ChainClone3OkPlaced` and `SenderChainC
 predicates and hook/VM-hook constructors on Block `524` (`lsmpl.base 524`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +60,7 @@ open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.ChainClone4PlacedBudget (
 
 /-- Budget-threaded `[LibsignalPlacement]` counterpart of `ChainClone3OkPlaced` at Block `524`
 (`<SessionStructure_Chain as Clone>::clone [local#5]`). -/
-def ChainClone3OkPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ChainClone3OkPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_524).rebase (blkPl_524).base H) (lsmpl.base 524)
@@ -58,7 +68,7 @@ def ChainClone3OkPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded `[LibsignalPlacement]` counterpart of `SenderChainClone3OkPlaced` at Block `524`
 (`<SessionStructure_Chain as Clone>::clone [local#5]`). -/
-def SenderChainClone3OkPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SenderChainClone3OkPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_524).rebase (blkPl_524).base H) (lsmpl.base 524)
@@ -73,27 +83,6 @@ theorem chainClone3_placed_ok_of_hooks [LibsignalPlacement] {M : AllocCostModel}
     ChainClone3OkPlaced A lim H :=
   chain_clone_placed_ok hshim halloc hmemcpy
 
-theorem chainClone3_placed_ok_of_vmHooks [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hshim : HookSat H lsRustNoAllocShimSym rustAllocShimVmSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hmemcpy : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    ChainClone3OkPlaced A lim H :=
-  chain_clone_placed_ok_of_vmHooks hshim halloc hmemcpy
-
-theorem chainClone3_placed_ok_of_subroutine_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hshim : subroutine_ok ((blkPC_524).rebase (blkPl_524).base H)
-      (LibsignalBinary.Proofs.Placed.Bridge.lsρ lsRustNoAllocShimSym) sessionShimBudgetSpec)
-    (halloc : subroutine_ok ((blkPC_524).rebase (blkPl_524).base H)
-      (LibsignalBinary.Proofs.Placed.Bridge.lsρ lsRustAllocSym) (rustCliAllocBudgetSpec M A lim false))
-    (hmemcpy : subroutine_ok ((blkPC_524).rebase (blkPl_524).base H)
-      (LibsignalBinary.Proofs.Placed.Bridge.lsρ lsMemcpySym) sessionMemcpyRegionBudgetSpec) :
-    ChainClone3OkPlaced A lim H :=
-  chain_clone_placed_ok_of_hooks hshim halloc hmemcpy
-
 theorem senderChainClone3_placed_ok_of_hooks [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {H : String → Option (State → State)}
@@ -102,26 +91,5 @@ theorem senderChainClone3_placed_ok_of_hooks [LibsignalPlacement] {M : AllocCost
     (hmemcpy : HookSat H lsMemcpySym sessionMemcpyRegionBudgetSpec) :
     SenderChainClone3OkPlaced A lim H :=
   senderChain_clone_placed_ok hshim halloc hmemcpy
-
-theorem senderChainClone3_placed_ok_of_vmHooks [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hshim : HookSat H lsRustNoAllocShimSym rustAllocShimVmSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hmemcpy : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    SenderChainClone3OkPlaced A lim H :=
-  senderChain_clone_placed_ok_of_vmHooks hshim halloc hmemcpy
-
-theorem senderChainClone3_placed_ok_of_subroutine_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hshim : subroutine_ok ((blkPC_524).rebase (blkPl_524).base H)
-      (LibsignalBinary.Proofs.Placed.Bridge.lsρ lsRustNoAllocShimSym) sessionShimBudgetSpec)
-    (halloc : subroutine_ok ((blkPC_524).rebase (blkPl_524).base H)
-      (LibsignalBinary.Proofs.Placed.Bridge.lsρ lsRustAllocSym) (rustCliAllocBudgetSpec M A lim false))
-    (hmemcpy : subroutine_ok ((blkPC_524).rebase (blkPl_524).base H)
-      (LibsignalBinary.Proofs.Placed.Bridge.lsρ lsMemcpySym) sessionMemcpyRegionBudgetSpec) :
-    SenderChainClone3OkPlaced A lim H :=
-  senderChain_clone_placed_ok_of_hooks hshim halloc hmemcpy
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget

@@ -9,18 +9,32 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.EntryAndRegIdPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.RegIdBranchPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.EntryAndRegIdPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.RegIdBranchPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.HelpersPlaced
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.SessionBridge
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Helpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.CallKitPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.Epilogue
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.EpiloguePlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.AcceptTailPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.AcceptTailStorePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.EpiloguePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.RegIdBranchPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.RegIdDropPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.ScratchAndStoreCallsPlaced
 
 /-!
 # Budget-Threaded Stage 5 Entry and Unacknowledged PreKey Metadata (`[LibsignalPlacement]`)
@@ -30,7 +44,7 @@ Transfers Blocks `33` (`set_unacknowledged_pre_key_message`) and `34`
 (`+0x1484 → lr`) under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -38,8 +52,6 @@ set_option linter.dupNamespace false
 set_option linter.unusedSimpArgs false
 set_option maxRecDepth 2000000
 set_option maxHeartbeats 400000
-
-noncomputable section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.EntryAndRegIdPlacedBudget
 
@@ -166,17 +178,6 @@ theorem s5_setUnackMsg_ok_at_placed [LibsignalPlacement] {M : AllocCostModel}
     (callerProg := initProgPlaced mmpl gh W) (i := 521)
     hh.sessionShim hh.rawAlloc hh.rawDealloc hh.sessionMemcpyRegion
     (hookSat_withLsRet_drop_keepsFs hh.durationSince) (by decide)
-
-theorem s5_setUnackMsg_ok_of_cliAllocHooks [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    (hA : LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget.CliGhostAllocHooks M A lim gh) :
-    subroutine_ok (initProgPlaced mmpl gh W) (lsmpl.base 33)
-      (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
-        (setUnackPreKeyMsgEpochInnerSpec A lim)) :=
-  setUnackPreKeyMsg_exact_stack_epoch_placed_ok_cli
-    (callerProg := initProgPlaced mmpl gh W) (i := 521)
-    mmpl gh W hA (by decide)
 
 theorem s5_setUnackKyb_ok_at_placed [LibsignalPlacement]
     (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) :
@@ -724,4 +725,3 @@ theorem initiate_stage5_placed_ok_of_hooks [LibsignalPlacement] {M : AllocCostMo
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.EntryAndRegIdPlacedBudget
 
-end

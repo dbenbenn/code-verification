@@ -9,23 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FetchPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.ChainParams1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.ChainParamsBasePlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2BasePlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint4BasePlaced
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.FinalPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParams1Budget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCSBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeated1Budget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommonBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FetchPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.ChainParams1Placed
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.ChainParamsBasePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2BasePlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2PlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint4BasePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.FinalPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParams1Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCSBudget
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeated1Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommonBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
@@ -39,7 +38,7 @@ Proves deterministic-capacity `encode_varint [local#4]` contracts (Block `451`) 
 `[LibsignalPlacement]` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

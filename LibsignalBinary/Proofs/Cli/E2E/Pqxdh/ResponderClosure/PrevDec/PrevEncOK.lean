@@ -10,6 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Well-Formedness Predicates for Archived `previous_sessions` Encodings
@@ -18,7 +19,7 @@ Defines `OverPrevEncOKAt` and `OverPrevEncOK`, characterizing archived `previous
 slices `enc = encSession sess` for canonical version-4 sessions without pending pre-keys.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -29,7 +30,7 @@ open CryptoGames.LibsignalSessionApi (Session)
 /-- The archived bytes `enc` are the encoding of the session `sess`: `sess` is in
 `DeserializeScopeP_Q NonEmptyV1Q`, has `session_version = 4`, and has neither a pending pre-key nor
 a pending Kyber pre-key. -/
-def OverPrevEncOKAt (enc : List (BitVec 8)) (sess : Session (List (BitVec 8))) : Prop :=
+@[expose] def OverPrevEncOKAt (enc : List (BitVec 8)) (sess : Session (List (BitVec 8))) : Prop :=
   enc = CryptoVerification.E2E.Record.encSession sess ∧
     Symbolic.Swarm.TRREF.B3Defs.DeserializeScopeP_Q Symbolic.Swarm.TRREF.B3Defs.NonEmptyV1Q
       ⟨some sess⟩ ∧
@@ -37,7 +38,7 @@ def OverPrevEncOKAt (enc : List (BitVec 8)) (sess : Session (List (BitVec 8))) :
     sess.pendingPreKey = none ∧ sess.pendingKyberPreKey = none
 
 /-- Existential form of `OverPrevEncOKAt`: `enc` encodes a canonical version-4 session with no pending pre-keys. -/
-def OverPrevEncOK (enc : List (BitVec 8)) : Prop :=
+@[expose] def OverPrevEncOK (enc : List (BitVec 8)) : Prop :=
   ∃ sess : Session (List (BitVec 8)),
     enc = CryptoVerification.E2E.Record.encSession sess ∧
     Symbolic.Swarm.TRREF.B3Defs.DeserializeScopeP_Q Symbolic.Swarm.TRREF.B3Defs.NonEmptyV1Q

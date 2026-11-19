@@ -9,10 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.ConsumeMsgKeyHelpersPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.ConsumeMsgKeyHelpersPlaced
 public import ProofLib.RegChain
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.KeyDeriveBase
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
 # Relocatable Segment 4 (`ConsumeMsgKey`) Sub-Lemmas on CLI Block `433`
@@ -21,7 +26,7 @@ Proves `consumeMsgKey_cmk_ok_433_placed` and `consumeMsgKey_cmk_err_433_placed` 
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

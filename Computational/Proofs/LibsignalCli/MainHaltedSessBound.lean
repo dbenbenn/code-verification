@@ -20,8 +20,7 @@ import Computational.Proofs.LibsignalCli.HeadlineSession
 
 Witnesses the costed single-session reduction family `v1SessionRedsHaltedClamped` and bounds the
 `kemFailCoreTracker`-halted single-session mixture bias by `bhPrefixFullBoundMixV1With`
-(`exists_haltedSessionBound`).
--/
+(`exists_haltedSessionBound`).-/
 
 public section
 

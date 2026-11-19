@@ -10,10 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SeamSpecsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SeamSpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Relocatable Seam Specifications for `spqr::send::<signal_session_ratchet::Coins>` (Block `427`)
@@ -22,7 +23,7 @@ Defines `RustCliAllocBudget`-threaded top-level specifications for Block `427` a
 budget-threaded peer `blockProgram` callee contracts consumed by `spqr::send`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -50,7 +51,9 @@ open CryptoVerification.SpqrV1.GF.Mul2U16
 open CryptoVerification.SpqrV1.GF.UnacceleratedMul
   (reduceTablePlacedAt)
 open CryptoVerification.SpqrV1.Poly
-  (chunkAt chunkSize polyNextChunkStack)
+  (chunkAt chunkSize)
+open CryptoVerification.SpqrV1.Poly.NextChunk
+  (polyNextChunkStack)
 open CryptoVerification.SpqrV1.States.FromPb
   (StatesFromPbGhost resultChunkedStatesAt statesFromPbStackX v1StatePtsBound)
 open CryptoVerification.SpqrV1.States.Leaves
@@ -77,17 +80,19 @@ open LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsBudget
   (spqrEncodeVarintSpecX)
 open LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
   (SpqrBoundedEvs statesIntoPbPlacedSpecX)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag
+  (spqrSendResultDispAt spqrSendResultDispAt_entails_spqrSendResultAt)
 
 /-! ## 1. `VmPreserved`-Strengthened `signal_session_coins_fill` (`Block 618`) Specifications -/
 
 /-- Relocatable `VmPreserved`-strengthened specification of `signal_session_coins_fill` (`Block 618`),
     so `A.pool lim st` frames across `signal_session_coins_fill` calls with zero allocator events. -/
-def spqrCoinsFillSpecPlaced [LibsignalPlacement] (stk : Nat) :
+@[expose] def spqrCoinsFillSpecPlaced [LibsignalPlacement] (stk : Nat) :
     Spec (BitVec 64 × Nat × BitVec 64 × List (BitVec 8)) :=
   withVmPreserved (CryptoVerification.Cli.SpqrV1.Top.Send.spqrCoinsFillSpecPlaced stk)
 
 /-- `spqrCoinsFillSpecPlaced` with fixed tape ghost `(cur, rest)`. -/
-def spqrCoinsFillAtSpecPlaced [LibsignalPlacement] (stk : Nat) (cur : BitVec 64)
+@[expose] def spqrCoinsFillAtSpecPlaced [LibsignalPlacement] (stk : Nat) (cur : BitVec 64)
     (rest : List (BitVec 8)) : Spec (BitVec 64 × Nat) :=
   withVmPreserved (CryptoVerification.Cli.SpqrV1.Top.Send.spqrCoinsFillAtSpecPlaced stk cur rest)
 
@@ -116,7 +121,7 @@ theorem spqrCoinsFillAtPlaced_of_after0_cro [LibsignalPlacement] {P : Program} {
 
 /-- Default bounded allocation-event envelope of `spqr::send::<signal_session_ratchet::Coins>`
     (`Block 427`), linear in the serialized state length (`4 * x.st.bytes.length + 16384`). -/
-def SpqrSendCoinsEnv (x : SendCall) (evs : List AllocEvent) : Prop :=
+@[expose] def SpqrSendCoinsEnv (x : SendCall) (evs : List AllocEvent) : Prop :=
   SpqrBoundedEvs 512 (4 * x.st.bytes.length + 16384) evs
 
 theorem spqrSendCoinsEnv_nonempty (x : SendCall) :
@@ -127,7 +132,7 @@ theorem spqrSendCoinsEnv_nonempty (x : SendCall) :
     `spqr::send::<signal_session_ratchet::Coins>` (`Block 427`).
     Retains the genuine protocol panic `S.sendPanics x.st.bytes x.rest` while dropping
     `allocFailedIn s0 sf` (`onOom = ⌜False⌝` under `FitsEnv`). -/
-def spqrSendCoinsPlacedSpecOfEnv [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def spqrSendCoinsPlacedSpecOfEnv [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ctl : BitVec 64) (S : SpqrModel)
     (Env : SendCall → List AllocEvent → Prop) :
@@ -161,7 +166,7 @@ abbrev spqrSendCoinsPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
 
 /-- Envelope-parametric `[LibsignalPlacement]` inner `Spec` of `spqrSendSpecT` for `<Coins>` (`Block 427`)
     with `tokenInitPlacedAt` framed and `st.bytes.length < 2 ^ 32`, `64 ≤ rest.length`. -/
-def spqrSendCoinsPlacedSpecTOfEnv [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def spqrSendCoinsPlacedSpecTOfEnv [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ctl : BitVec 64) (S : SpqrModel)
     (Env : SendCall → List AllocEvent → Prop) :
@@ -182,10 +187,121 @@ abbrev spqrSendCoinsPlacedSpecT [LibsignalPlacement] (M : AllocCostModel)
     Spec (SendCall × M.σ) :=
   spqrSendCoinsPlacedSpecTOfEnv M A lim ctl S SpqrSendCoinsEnv
 
+/-- Display-tag-strengthened envelope-parametric relocatable `[LibsignalPlacement]` budget contract
+    for `spqr::send::<signal_session_ratchet::Coins>` (`Block 427`), exposing
+    `spqrSendResultDispAt` (`SpqrErrorValidTag d` on `none`) in `post`. -/
+@[expose] def spqrSendCoinsDispPlacedSpecOfEnv [LibsignalPlacement] (M : AllocCostModel)
+    (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (ctl : BitVec 64) (S : SpqrModel)
+    (Env : SendCall → List AllocEvent → Prop) :
+    Spec (SendCall × M.σ) where
+  pre := fun (x, st) s =>
+    ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.st.v ∧
+      FitsEnv M lim st (Env x)⌝ ∗
+      x.st.at A.repAlloc ∗ memRegion x.ret 72 ∗
+      spqrCoinsAtPlaced ctl x.cur x.rest ∗
+      (lsLogFilterAddr ↦₆₄ 0#64) ∗
+      A.pool lim st s ∗ stackAt s.sp spqrSendStack
+  post := fun (x, st) s0 sf =>
+    ∃∗ evs : List AllocEvent,
+      ⌜S.draws x.st.bytes x.rest ≤ x.rest.length ∧ sf.trace = s0.trace ∧
+        ¬ S.sendPanics x.st.bytes x.rest ∧ Env x evs⌝ ∗
+      x.st.at A.repAlloc ∗
+      spqrSendResultDispAt A.repAlloc x.ret (S.send x.st.bytes x.rest) ∗
+      spqrCoinsAfterPlaced ctl x.cur x.rest (S.draws x.st.bytes x.rest) ∗
+      (lsLogFilterAddr ↦₆₄ 0#64) ∗
+      A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp spqrSendStack
+  onPanic := fun (x, _) s0 sf =>
+    ⌜S.sendPanics x.st.bytes x.rest ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
+
+/-- Default display-tag-strengthened relocatable `[LibsignalPlacement]` budget contract for
+    `spqr::send::<signal_session_ratchet::Coins>` (`Block 427`). -/
+abbrev spqrSendCoinsDispPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
+    (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (ctl : BitVec 64) (S : SpqrModel) :
+    Spec (SendCall × M.σ) :=
+  spqrSendCoinsDispPlacedSpecOfEnv M A lim ctl S SpqrSendCoinsEnv
+
+/-- Display-tag-strengthened envelope-parametric `[LibsignalPlacement]` inner `Spec` of
+    `spqrSendSpecT` for `<Coins>` (`Block 427`) with `tokenInitPlacedAt` framed and
+    `st.bytes.length < 2 ^ 32`, `64 ≤ rest.length`. -/
+@[expose] def spqrSendCoinsDispPlacedSpecTOfEnv [LibsignalPlacement] (M : AllocCostModel)
+    (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (ctl : BitVec 64) (S : SpqrModel)
+    (Env : SendCall → List AllocEvent → Prop) :
+    Spec (SendCall × M.σ) :=
+  { spqrSendCoinsDispPlacedSpecOfEnv M A lim ctl S Env with
+    pre := fun (x, st) s =>
+      ⌜x.st.bytes.length < 2 ^ 32 ∧ 64 ≤ x.rest.length⌝ ∗
+        tokenInitPlacedAt ∗
+        (spqrSendCoinsDispPlacedSpecOfEnv M A lim ctl S Env).pre (x, st) s
+    post := fun (x, st) s0 sf =>
+      tokenInitPlacedAt ∗
+        (spqrSendCoinsDispPlacedSpecOfEnv M A lim ctl S Env).post (x, st) s0 sf }
+
+/-- Default display-tag-strengthened `[LibsignalPlacement]` budget `spqrSendCoinsDispPlacedSpecT`
+    (`Block 427`). -/
+abbrev spqrSendCoinsDispPlacedSpecT [LibsignalPlacement] (M : AllocCostModel)
+    (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (ctl : BitVec 64) (S : SpqrModel) :
+    Spec (SendCall × M.σ) :=
+  spqrSendCoinsDispPlacedSpecTOfEnv M A lim ctl S SpqrSendCoinsEnv
+
+theorem spqrSendCoinsDispPlacedSpecOfEnv_post_entails [LibsignalPlacement] (M : AllocCostModel)
+    (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
+    (Env : SendCall → List AllocEvent → Prop) (x : SendCall) (st : M.σ) (s0 sf : State) :
+    (spqrSendCoinsDispPlacedSpecOfEnv M A lim ctl S Env).post (x, st) s0 sf ⊢
+      (spqrSendCoinsPlacedSpecOfEnv M A lim ctl S Env).post (x, st) s0 sf := by
+  dsimp only [spqrSendCoinsDispPlacedSpecOfEnv, spqrSendCoinsPlacedSpecOfEnv]
+  refine Entails.sepExists_elim fun evs => ?_
+  refine Entails.trans ?_ (Entails.sepExists_intro evs)
+  exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_left
+    (spqrSendResultDispAt_entails_spqrSendResultAt A.repAlloc x.ret (S.send x.st.bytes x.rest))))
+
+theorem spqrSendCoinsPlacedSpecOfEnv_of_disp [LibsignalPlacement] {M : AllocCostModel}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits} {ctl : BitVec 64} {S : SpqrModel}
+    {Env : SendCall → List AllocEvent → Prop} {P : Program} {addr : BitVec 64}
+    (h : subroutine_ok P addr (spqrSendCoinsDispPlacedSpecOfEnv M A lim ctl S Env)) :
+    subroutine_ok P addr (spqrSendCoinsPlacedSpecOfEnv M A lim ctl S Env) :=
+  subroutine_ok_mono h (fun _ _ _ hp => hp) (fun ⟨x, st⟩ _ s0 sf hq =>
+    Satisfies.mono (sepConj_mono_left
+      (spqrSendCoinsDispPlacedSpecOfEnv_post_entails M A lim ctl S Env x st s0 sf)) hq)
+
+theorem spqrSendCoinsPlacedSpecOfEnv_cro_of_disp [LibsignalPlacement] {M : AllocCostModel}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits} {ctl : BitVec 64} {S : SpqrModel}
+    {Env : SendCall → List AllocEvent → Prop} {P : Program} {addr : BitVec 64}
+    (h : subroutine_ok P addr
+      (withLsCodeRoLoaded lsmpl (spqrSendCoinsDispPlacedSpecOfEnv M A lim ctl S Env))) :
+    subroutine_ok P addr
+      (withLsCodeRoLoaded lsmpl (spqrSendCoinsPlacedSpecOfEnv M A lim ctl S Env)) :=
+  subroutine_ok_mono h (fun _ _ _ hp => hp) (fun ⟨x, st⟩ _ s0 sf hq =>
+    Satisfies.mono (sepConj_mono_left
+      (spqrSendCoinsDispPlacedSpecOfEnv_post_entails M A lim ctl S Env x st s0 sf)) hq)
+
+theorem spqrSendCoinsPlacedSpecTOfEnv_of_disp [LibsignalPlacement] {M : AllocCostModel}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits} {ctl : BitVec 64} {S : SpqrModel}
+    {Env : SendCall → List AllocEvent → Prop} {P : Program} {addr : BitVec 64}
+    (h : subroutine_ok P addr (spqrSendCoinsDispPlacedSpecTOfEnv M A lim ctl S Env)) :
+    subroutine_ok P addr (spqrSendCoinsPlacedSpecTOfEnv M A lim ctl S Env) :=
+  subroutine_ok_mono h (fun _ _ _ hp => hp) (fun ⟨x, st⟩ _ s0 sf hq =>
+    Satisfies.mono (sepConj_mono_left (sepConj_mono_right
+      (spqrSendCoinsDispPlacedSpecOfEnv_post_entails M A lim ctl S Env x st s0 sf))) hq)
+
+theorem spqrSendCoinsPlacedSpecTOfEnv_cro_of_disp [LibsignalPlacement] {M : AllocCostModel}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits} {ctl : BitVec 64} {S : SpqrModel}
+    {Env : SendCall → List AllocEvent → Prop} {P : Program} {addr : BitVec 64}
+    (h : subroutine_ok P addr
+      (withLsCodeRoLoaded lsmpl (spqrSendCoinsDispPlacedSpecTOfEnv M A lim ctl S Env))) :
+    subroutine_ok P addr
+      (withLsCodeRoLoaded lsmpl (spqrSendCoinsPlacedSpecTOfEnv M A lim ctl S Env)) :=
+  subroutine_ok_mono h (fun _ _ _ hp => hp) (fun ⟨x, st⟩ _ s0 sf hq =>
+    Satisfies.mono (sepConj_mono_left (sepConj_mono_right
+      (spqrSendCoinsDispPlacedSpecOfEnv_post_entails M A lim ctl S Env x st s0 sf))) hq)
+
 /-! ## 3. Peer Callee Envelopes, Specifications & `CliSpqrSendPeerSeams` -/
 
 /-- Bounded allocation envelope of `spqr::decode_state` (`Block 325`). -/
-def DecodeStatePlacedEnv (x : DecodeStateGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def DecodeStatePlacedEnv (x : DecodeStateGhost) (evs : List AllocEvent) : Prop :=
   SpqrBoundedEvs 96 (4 * x.st.bytes.length + 4096) evs
 
 theorem decodeStatePlacedEnv_nonempty (x : DecodeStateGhost) :
@@ -193,7 +309,7 @@ theorem decodeStatePlacedEnv_nonempty (x : DecodeStateGhost) :
   ⟨[], SpqrBoundedEvs.nil 96 (4 * x.st.bytes.length + 4096)⟩
 
 /-- Envelope-parametric relocatable specification for `spqr::decode_state` (`Block 325`). -/
-def decodeStatePlacedSpecXOfEnv [LibsignalPlacement] (H_inner : V1InnerHeapPred)
+@[expose] def decodeStatePlacedSpecXOfEnv [LibsignalPlacement] (H_inner : V1InnerHeapPred)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Env : DecodeStateGhost → List AllocEvent → Prop) :
     Spec (DecodeStateGhost × M.σ) where
@@ -221,7 +337,7 @@ abbrev decodeStatePlacedSpecX [LibsignalPlacement] (H_inner : V1InnerHeapPred)
   decodeStatePlacedSpecXOfEnv H_inner M A lim DecodeStatePlacedEnv
 
 /-- Bounded allocation envelope of `<States>::from_pb` (`Block 333`). -/
-def StatesFromPbEnv (x : StatesFromPbGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def StatesFromPbEnv (x : StatesFromPbGhost) (evs : List AllocEvent) : Prop :=
   SpqrBoundedEvs 96 (4 * (V1State.encodeRaw x.pb).length + 4096) evs
 
 theorem statesFromPbEnv_nonempty (x : StatesFromPbGhost) :
@@ -229,7 +345,7 @@ theorem statesFromPbEnv_nonempty (x : StatesFromPbGhost) :
   ⟨[], SpqrBoundedEvs.nil 96 (4 * (V1State.encodeRaw x.pb).length + 4096)⟩
 
 /-- Envelope-parametric relocatable specification for `<States>::from_pb` (`Block 333`). -/
-def statesFromPbPlacedSpecXOfEnv [LibsignalPlacement]
+@[expose] def statesFromPbPlacedSpecXOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : StatesFromPbGhost → List AllocEvent → Prop) :
     Spec (StatesFromPbGhost × M.σ) where
@@ -256,7 +372,7 @@ abbrev statesFromPbPlacedSpecX [LibsignalPlacement]
 
 /-- Bounded allocation envelope of `<Message>::serialize` (`Block 352`: serialized SPQR message
     is at most `≤ 64` bytes). -/
-def MessageSerializeEnv {P : CryptoVerification.LibsignalSpqrV1.PolyApi}
+@[expose] def MessageSerializeEnv {P : CryptoVerification.LibsignalSpqrV1.PolyApi}
     (_x : MessageSerializeGhost P) (evs : List AllocEvent) : Prop :=
   SpqrBoundedEvs 8 256 evs
 
@@ -266,7 +382,7 @@ theorem messageSerializeEnv_nonempty {P : CryptoVerification.LibsignalSpqrV1.Pol
   ⟨[], SpqrBoundedEvs.nil 8 256⟩
 
 /-- Envelope-parametric budget specification of `<Message>::serialize` (`Block 352`). -/
-def messageSerializeSpecXOfEnv (P : CryptoVerification.LibsignalSpqrV1.PolyApi)
+@[expose] def messageSerializeSpecXOfEnv (P : CryptoVerification.LibsignalSpqrV1.PolyApi)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Env : MessageSerializeGhost P → List AllocEvent → Prop) :
     Spec (MessageSerializeGhost P × M.σ) where
@@ -291,14 +407,14 @@ abbrev messageSerializeSpecX (P : CryptoVerification.LibsignalSpqrV1.PolyApi)
 
 /-- Bounded allocation envelope shared by the five `States/Leaves` `send_*_chunk` transitions
     (`Blocks 335, 336, 344, 345, 354`), each delegating to `PolyEncoder::next_chunk` (`Block 416`). -/
-def SpqrSendChunkEnv (evs : List AllocEvent) : Prop :=
+@[expose] def SpqrSendChunkEnv (evs : List AllocEvent) : Prop :=
   SpqrBoundedEvs 64 16384 evs
 
 theorem spqrSendChunkEnv_nonempty : ∃ evs, SpqrSendChunkEnv evs :=
   ⟨[], SpqrBoundedEvs.nil 64 16384⟩
 
 /-- Envelope-parametric relocatable specification of `<EkReceivedCt1Sampled>::send_ct1_chunk` (`Block 344`). -/
-def ekReceivedCt1SampledSendCt1ChunkPlacedSpecOfEnv [LibsignalPlacement]
+@[expose] def ekReceivedCt1SampledSendCt1ChunkPlacedSpecOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : EkReceivedCt1SampledSendCt1ChunkGhost F → List AllocEvent → Prop) :
     Spec (EkReceivedCt1SampledSendCt1ChunkGhost F × M.σ) where
@@ -325,7 +441,7 @@ abbrev ekReceivedCt1SampledSendCt1ChunkPlacedSpec [LibsignalPlacement]
   ekReceivedCt1SampledSendCt1ChunkPlacedSpecOfEnv M A lim F (fun _ => SpqrSendChunkEnv)
 
 /-- Envelope-parametric relocatable specification of `<Ct2Sampled>::send_ct2_chunk` (`Block 354`). -/
-def ct2SampledSendCt2ChunkPlacedSpecOfEnv [LibsignalPlacement]
+@[expose] def ct2SampledSendCt2ChunkPlacedSpecOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : Ct2SampledSendCt2ChunkGhost F → List AllocEvent → Prop) :
     Spec (Ct2SampledSendCt2ChunkGhost F × M.σ) where
@@ -352,7 +468,7 @@ abbrev ct2SampledSendCt2ChunkPlacedSpec [LibsignalPlacement]
   ct2SampledSendCt2ChunkPlacedSpecOfEnv M A lim F (fun _ => SpqrSendChunkEnv)
 
 /-- Envelope-parametric relocatable specification of `<HeaderSent>::send_ek_chunk` (`Block 336`). -/
-def headerSentSendEkChunkPlacedSpecOfEnv [LibsignalPlacement]
+@[expose] def headerSentSendEkChunkPlacedSpecOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : HeaderSentSendEkChunkGhost F → List AllocEvent → Prop) :
     Spec (HeaderSentSendEkChunkGhost F × M.σ) where
@@ -379,7 +495,7 @@ abbrev headerSentSendEkChunkPlacedSpec [LibsignalPlacement]
   headerSentSendEkChunkPlacedSpecOfEnv M A lim F (fun _ => SpqrSendChunkEnv)
 
 /-- Envelope-parametric relocatable specification of `<Ct1Received>::send_ek_chunk` (`Block 345`). -/
-def ct1ReceivedSendEkChunkPlacedSpecOfEnv [LibsignalPlacement]
+@[expose] def ct1ReceivedSendEkChunkPlacedSpecOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : Ct1ReceivedSendEkChunkGhost F → List AllocEvent → Prop) :
     Spec (Ct1ReceivedSendEkChunkGhost F × M.σ) where
@@ -406,7 +522,7 @@ abbrev ct1ReceivedSendEkChunkPlacedSpec [LibsignalPlacement]
   ct1ReceivedSendEkChunkPlacedSpecOfEnv M A lim F (fun _ => SpqrSendChunkEnv)
 
 /-- Envelope-parametric relocatable specification of `<Ct1Sampled>::send_ct1_chunk` (`Block 335`). -/
-def ct1SampledSendCt1ChunkPlacedSpecOfEnv [LibsignalPlacement]
+@[expose] def ct1SampledSendCt1ChunkPlacedSpecOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : Ct1SampledSendCt1ChunkGhost F → List AllocEvent → Prop) :
     Spec (Ct1SampledSendCt1ChunkGhost F × M.σ) where

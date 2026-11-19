@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrComp
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrComp -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimRecv
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimSend
 import VCVio.EvalDist.Monad.Basic
@@ -21,7 +21,7 @@ Proves that the `KemShCr` handler, pause, resume, and extraction branches of
 `shcrReductionAuthProg` evaluate to their shallow counterparts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 1600000

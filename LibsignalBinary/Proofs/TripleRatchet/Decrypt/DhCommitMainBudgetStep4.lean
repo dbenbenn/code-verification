@@ -10,18 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym130
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym433
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitEvictBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep3Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep5
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym130 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym433 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitEvictBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep3Budget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep5
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
@@ -29,6 +27,8 @@ import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitWp
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded DH Step Commit Sub-Segment 4 (`+0xaf0 → +0xb98`) & Step 4/5 Block WPs
@@ -38,7 +38,7 @@ Provides `VmPreserved`-carrying basic-block `SepWP` bundles (`DhCommitStep45Bloc
 total-correctness receiver-chain eviction loop (`dhCommit_evict_loop_of_wp`, `dhCommit_step4_of_wp`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -370,7 +370,7 @@ end BlockWpInstances
 /-- Stack-parametric budget-threaded specification of `drop_glue<session_structure::Chain>`,
 definitionally equal to `dropChainSpec` at `dropChainStack` and `dropChainSpecX` at
 `dropChainStackX`. -/
-def dropChainSpecWithStack [LibsignalPlacement] (stk : Nat) (M : AllocCostModel)
+@[expose] def dropChainSpecWithStack [LibsignalPlacement] (stk : Nat) (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (DropChainGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a ∧ LsRetAddr624 (s.readReg64 .x30)⌝ ∗
@@ -395,7 +395,7 @@ theorem dropChainSpecWithStack_eq_dropChainSpecX [LibsignalPlacement] (M : Alloc
 
 /-- Stack-parametric budget-threaded receiver-chain eviction loop invariant, definitionally equal
 to `DhCommitEvictBudget.evictActive` at `dropChainStack` and `evictActiveX` at `dropChainStackX`. -/
-def evictActiveWithStack {M : AllocCostModel} (stk : Nat) (A : RustCliAllocBudget M)
+@[expose] def evictActiveWithStack {M : AllocCostModel} (stk : Nat) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s : State) (sp chainsCap chainsPtr : BitVec 64)
     (gcs : List (ChainGhost × ReceiverChain)) : SepProp :=
   ((sp + 0x40#64) ↦₆₄ chainsPtr) ∗

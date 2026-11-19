@@ -10,10 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PlacedDefs
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommon
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommon -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import LibsignalBinary.Proofs.Common.StringClonePlaced
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFromPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Relocatable Shared Helpers for Post-Encryption Store Segments
@@ -23,7 +24,7 @@ vtable lemmas, and call wrappers on `lsProg_198 Hk` for `segTrust_placed_okV`, `
 and `segApplyStore_placed_okV`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

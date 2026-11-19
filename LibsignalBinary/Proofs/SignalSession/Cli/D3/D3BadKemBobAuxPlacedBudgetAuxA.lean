@@ -12,17 +12,18 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.SharedCodeSym
 import ProofLib.SepLogic.WPFrozen
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Bad-KEM Error Ownership (`Pqxdh::accept` Block `79`, `opk = none`)
@@ -32,7 +33,7 @@ Block-`79` Bad-KEM specifications, and the `opk = none` branch proof for `Pqxdh:
 when `pkVecTag? 8#8 1568 ctBytes = none`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -57,7 +58,8 @@ open CryptoVerification.E2E.Pqxdh.Initiator (
   readReg64_setPC_pre sp_setMem_setPC_pre sp_setPC_pre
 )
 open CryptoVerification.E2E.Pqxdh.ResponderCore (
-  AcceptCanonTrue LsFullFrozenInv acceptRustDeallocSym alloc_to_alloc_stack_of_eq
+  AcceptCanonTrue LsFullFrozenInv accept_canon_stack_to_dalek acceptRustDeallocSym
+  alloc_to_alloc_stack_of_eq
   alloc_to_calc_stack alloc_to_calc_stack_of_eq and_ff_hi56_3 and_ff32_hi56_3
   calc_to_alloc_stack calc_to_vecAppend_stack cells_sub4944_4_merge cells_sub80_10_merge
   cells10_sub80_eq cells3_sub4912_to_memRegion24 cells4_sub4944_eq emp_entails_anyHeap
@@ -87,6 +89,9 @@ open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget (
   SepWPp_call_hag_placed acceptCalculateAgreementPlacedBaseSpec calculateAgreementEvents
   ecPubKeyIsCanonicalCallSpec
 )
+open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget (
+  ecPubKeyIsCanonicalDalekCallSpec subroutine_ok_ecPubKeyIsCanonical_dalek_of_4k_vm
+)
 open LibsignalBinary.Proofs.Placed.BudgetPoolSync (hooksException sepWP_seg_ls_vm)
 open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (framelessMemcpySpec noAllocShimSpec)
 
@@ -105,7 +110,7 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Pro
 
 /-- Exact deterministic `AllocEvent` list emitted by `Pqxdh::accept` (Block `79`) when
 `pkVecTag? 8#8 1568 ctBytes = none` (exiting before ML-KEM decapsulation). -/
-def acceptBadKemEvents (P : Primitives) (inp : AcceptKeysInput) : List AllocEvent :=
+@[expose] def acceptBadKemEvents (P : Primitives) (inp : AcceptKeysInput) : List AllocEvent :=
   if !P.isCanonical inp.hdr.ekAPk then
     rustAllocEvents 28 1
   else
@@ -128,7 +133,7 @@ def acceptBadKemEvents (P : Primitives) (inp : AcceptKeysInput) : List AllocEven
             rustDeallocEvents 192 1
 
 /-- Allocator event envelope for `Pqxdh::accept` (Block `79`) on Bad-KEM inputs. -/
-def AcceptBadKemEnv (P : Primitives) (inp : AcceptKeysInput) (evs : List AllocEvent) : Prop :=
+@[expose] def AcceptBadKemEnv (P : Primitives) (inp : AcceptKeysInput) (evs : List AllocEvent) : Prop :=
   evs = acceptBadKemEvents P inp
 
 @[simp]
@@ -187,7 +192,7 @@ attribute [local irreducible] FitsEvents
 /-- Budget-threaded relocatable inner specification of `Pqxdh::accept` (Block `79`) when
 `pkVecTag? 8#8 1568 g.ctBytes = none` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝` under
 `FitsEnv M lim st (AcceptErrEnv g.inp)`). -/
-def pqxdhAcceptBadKemErrOwnedInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def pqxdhAcceptBadKemErrOwnedInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (AcceptBadKemGhost × M.σ) where
@@ -215,19 +220,19 @@ def pqxdhAcceptBadKemErrOwnedInnerPlacedSpec [LibsignalPlacement] {M : AllocCost
       stackAt s0.sp pqxdhEntryStack ∗
       A.pool lim (M.stepEvents evs st) sf
 
-def pqxdhAcceptBadKemErrOwnedPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def pqxdhAcceptBadKemErrOwnedPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (AcceptBadKemGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl (pqxdhAcceptBadKemErrOwnedInnerPlacedSpec A lim AcceptErrEnv)
 
-def pqxdhAcceptBadKemErrOwnedFrozenPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def pqxdhAcceptBadKemErrOwnedFrozenPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (AcceptBadKemGhost × M.σ) :=
   withLsFrozen lsmpl (pqxdhAcceptBadKemErrOwnedInnerPlacedSpec A lim AcceptErrEnv)
 
-def pqxdhAcceptBadKemErrOwnedOpkNoneInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def pqxdhAcceptBadKemErrOwnedOpkNoneInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (AcceptBadKemGhost × M.σ) :=
@@ -416,7 +421,7 @@ private theorem incomingBaseKeyInvalidBytes_eq_list :
   unfold incomingBaseKeyInvalidBytes; rw [toUTF8_data_toList]
 
 theorem lsroCheck_incomingBaseKeyInvalid :
-    lsroCheck "libsignal_protocol:.rodata..Lanon.393" incomingBaseKeyInvalidBytes = true := by
+    lsroCheck "libsignal_protocol:.rodata..Lanon.400" incomingBaseKeyInvalidBytes = true := by
   rw [incomingBaseKeyInvalidBytes_eq_list]; exact eagerReduce (Eq.refl true)
 
 theorem sepWP_instantiate_ro1_post_exists {α : Type _} {prog : Program}
@@ -508,13 +513,13 @@ local macro "badkem_ct_exit_placed" s0:ident A:ident ctBufPtr:ident
 
 set_option maxHeartbeats 10000000 in
 /-- Budget-threaded owned-error rejecting contract for `Pqxdh::accept` (Block `79`) on the
-`g.inp.opkBSk? = none` branch when `pkVecTag? 8#8 1568 g.ctBytes = none`. -/
-theorem pqxdhAccept_badKem_err_owned_opk_none_placed_ok [LibsignalFullPlacement]
+`g.inp.opkBSk? = none` branch when `pkVecTag? 8#8 1568 g.ctBytes = none` (`5120`-B Dalek stack). -/
+theorem pqxdhAccept_badKem_err_owned_opk_none_dalek_placed_ok [LibsignalFullPlacement]
     {M : AllocCostModel} {P : Primitives} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {H : LibsignalHooks}
     (hWF : StructuralPrims P)
     (h_canon : subroutine_ok (lsProg_79 H) (lsmpl.base 202)
-      (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalCallSpec P)))
+      (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalDalekCallSpec P)))
     (h_agree : subroutine_ok (lsProg_79 H) (lsmpl.base 207)
       (withLsCodeRoLoaded lsmpl (acceptCalculateAgreementPlacedBaseSpec M P A lim)))
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimSpec)
@@ -525,7 +530,7 @@ theorem pqxdhAccept_badKem_err_owned_opk_none_placed_ok [LibsignalFullPlacement]
       (withLsFrozen lsmpl
         (pqxdhAcceptBadKemErrOwnedOpkNoneInnerPlacedSpec A lim (AcceptBadKemEnv P))) := by
   refine subroutine_ok_withLsFrozen_of_withRoSlice
-    (roSym := "libsignal_protocol:.rodata..Lanon.393")
+    (roSym := "libsignal_protocol:.rodata..Lanon.400")
     (roBytes := incomingBaseKeyInvalidBytes) lsroCheck_incomingBaseKeyInvalid ?_
   have hshim := hook_ok_79_of_mem h_shim (by decide)
   have halloc := subroutine_ok_allocNoOom_of_budget (hook_ok_79_of_mem h_alloc (by decide))
@@ -559,12 +564,14 @@ theorem pqxdhAccept_badKem_err_owned_opk_none_placed_ok [LibsignalFullPlacement]
   wp_steps_sync_pool (lsmpl.base 202); apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
   intro hF0_1; try simp only [arm64_norm] at hF0_1
   refine of_sepWP_lsfull hF0_1 (mid := (blkPl_79).base + 52#64) ?_
+  refine SepWP.fold (Entails.of_eq (accept_canon_stack_to_dalek s0.sp)) (by sep_focus) ?_
   have hcanon0 := subroutine_ok_withMemEq_of_withCodeLoaded
-    (spec := ecPubKeyIsCanonicalCallSpec P) h_canon hF0_1.code
-  simp only [ecPubKeyIsCanonicalCallSpec, withVmPreserved,
-    CryptoVerification.E2E.Pqxdh.ResponderCore.ecPubKeyIsCanonicalCallSpec] at hcanon0
+    (spec := ecPubKeyIsCanonicalDalekCallSpec P) h_canon hF0_1.code
+  simp only [ecPubKeyIsCanonicalDalekCallSpec, withVmPreserved,
+    CryptoVerification.E2E.Pqxdh.ResponderCore.ecPubKeyIsCanonicalDalekCallSpec] at hcanon0
   wp_call hcanon0 ⟨s0.readReg64 (.gpr 0#5) + 160#64, inp.hdr.ekAPk⟩
   refine SepWP.transport_budgetPool ‹_› (hnext := ?_)
+  refine SepWP.fold (Entails.of_eq (accept_canon_stack_to_dalek s0.sp).symm) (by sep_focus) ?_
   apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
   intro hF1; try simp only [arm64_norm] at hF1
   cases hcanon_b : P.isCanonical inp.hdr.ekAPk
@@ -587,17 +594,17 @@ theorem pqxdhAccept_badKem_err_owned_opk_none_placed_ok [LibsignalFullPlacement]
       (by sep_focus) ?_; sep_elim_exists'
     refine SepWPp.fold (Entails.of_eq (incoming_alloc_split _)) (by sep_focus) ?_; sep_elim_exists'
     refine SepWPp.fold
-      (Entails.of_eq (rodata_incoming_split1 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.393")))
+      (Entails.of_eq (rodata_incoming_split1 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.400")))
       (by sep_focus) ?_; apply SepWPp.of_sepWP_ret
     wp_simp_pre_fast [bv_sub_add_lit', BitVec.reduceSub, sepConj_assoc]
     apply sepWP_seg_ls_vm (Q := (blkPC_79).rebase (blkPl_79).base (hooksException H))
       blkLib_eq_79 (mid := s0.readReg64 Reg.lr)
     intro _m_strip; wp_steps
     refine SepWP.fold
-      (Entails.of_eq (rodata_incoming_1_to_2 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.393")))
+      (Entails.of_eq (rodata_incoming_1_to_2 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.400")))
       (by sep_focus) ?_; wp_steps
     refine SepWP.fold
-      (Entails.of_eq (rodata_incoming_split2 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.393")).symm)
+      (Entails.of_eq (rodata_incoming_split2 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.400")).symm)
       (by sep_focus) ?_
     refine SepWP.fold (incoming_overlap_prep _ _ _) (by sep_focus) ?_; sep_elim_exists'; wp_steps
     refine SepWP.done (by wp_norm_lhs) (by wp_norm_lhs) fun _m_real _hnsp => ?_
@@ -983,5 +990,25 @@ theorem pqxdhAccept_badKem_err_owned_opk_none_placed_ok [LibsignalFullPlacement]
               h_canon h_agree hshim halloc hdealloc hmemcpy st_dh3
               evs_out3 hst_fin3 henv_out3
           | some _ => simp [hopk_eq] at hopk_none_in
+
+/-- Compatibility `4096`-byte stack wrapper around `pqxdhAccept_badKem_err_owned_opk_none_dalek_placed_ok`. -/
+theorem pqxdhAccept_badKem_err_owned_opk_none_placed_ok [LibsignalFullPlacement]
+    {M : AllocCostModel} {P : Primitives} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {H : LibsignalHooks}
+    (hWF : StructuralPrims P)
+    (h_canon : subroutine_ok (lsProg_79 H) (lsmpl.base 202)
+      (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalCallSpec P)))
+    (h_agree : subroutine_ok (lsProg_79 H) (lsmpl.base 207)
+      (withLsCodeRoLoaded lsmpl (acceptCalculateAgreementPlacedBaseSpec M P A lim)))
+    (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimSpec)
+    (h_alloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
+    (h_dealloc : HookSat H acceptRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
+    (h_memcpy : HookSat H lsMemcpySym framelessMemcpySpec) :
+    subroutine_ok (lsProg_79 H) (blkPl_79).base
+      (withLsFrozen lsmpl
+        (pqxdhAcceptBadKemErrOwnedOpkNoneInnerPlacedSpec A lim (AcceptBadKemEnv P))) :=
+  pqxdhAccept_badKem_err_owned_opk_none_dalek_placed_ok hWF
+    (subroutine_ok_ecPubKeyIsCanonical_dalek_of_4k_vm h_canon) h_agree
+    h_shim h_alloc h_dealloc h_memcpy
 
 end LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlacedBudgetAuxA

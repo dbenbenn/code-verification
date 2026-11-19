@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.SHARED.HookAuthPure
+public import Symbolic.Proofs.Swarm.SHARED.HookAuthPure -- proof-setup: allow-public-import
 
 /-!
 # External HMAC Tag-Length Projection
@@ -18,7 +18,7 @@ Projects `ExternCryptoLawsHold.hmac_tag_length` to `hmacFnOf i` (`hmacLen_of_ceh
 `PQXDH.Refinement.libcruxHmacSymbol`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyC0
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c5
+public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyC0 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c5 -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
 
@@ -22,7 +22,7 @@ import VCVio.OracleComp.EvalDist.Measure
 identity scalar preserves the distribution of the frozen one-key `Exact` game.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -137,40 +137,6 @@ theorem map_clearAuthWon_authSigPre1Key_eq_fgPre_opt (S : Setup) (P : Primitives
     · rw [hFr, h, map_clearAuthWon_frozenExact_eq_kosk S P hP q hst.base hWon,
         map_base_pqxdhAuthFgLatchedImpl_eq_kosk]
     · exact absurd h hq
-
-theorem map_clearAuthWon_authSigPre1Key_eq_fgPre (S : Setup) (P : Primitives)
-    (hP : CryptoWellFormedPrimitivesδ P) (k : ℕ) (sk : Bytes) (q : AuthQuery S)
-    (hst : AuthFgCutoffState S) (hWon : hst.base.hasWonAuth = false) :
-    Prod.map id clearAuthWon <$> (pqxdhAuthSigPreImpl1Key k (some sk) S P q).run hst.base =
-    Prod.map id AuthFgCutoffState.base <$>
-      (pqxdhAuthFgLatchedPreImpl1Key true k S.N_spk_tot (some sk) none S P q).run hst :=
-  map_clearAuthWon_authSigPre1Key_eq_fgPre_opt S P hP k (some sk) q hst hWon
-
-theorem hasWonAuth_false_of_mem_support_fgPre1Key_opt (S : Setup) (P : Primitives)
-    (hP : CryptoWellFormedPrimitivesδ P) (k : ℕ) (optSk : Option Bytes) (q : AuthQuery S)
-    (hst : AuthFgCutoffState S) (hWon : hst.base.hasWonAuth = false) :
-    ∀ x ∈ support
-      ((pqxdhAuthFgLatchedPreImpl1Key true k S.N_spk_tot optSk none S P q).run hst),
-      x.2.base.hasWonAuth = false := by
-  intro x hx
-  have hmem : Prod.map id AuthFgCutoffState.base x ∈ support
-      (Prod.map id AuthFgCutoffState.base <$>
-        (pqxdhAuthFgLatchedPreImpl1Key true k S.N_spk_tot optSk none S P q).run hst) :=
-    (by rw [support_map]; exact Set.mem_image_of_mem _ hx)
-  rw [← map_clearAuthWon_authSigPre1Key_eq_fgPre_opt S P hP k optSk q hst hWon,
-    support_map] at hmem
-  obtain ⟨y, _, hy⟩ := hmem
-  have h2 := congrArg Prod.snd hy
-  simp only [Prod.map] at h2
-  rw [← h2]; rfl
-
-theorem hasWonAuth_false_of_mem_support_fgPre1Key (S : Setup) (P : Primitives)
-    (hP : CryptoWellFormedPrimitivesδ P) (k : ℕ) (sk : Bytes) (q : AuthQuery S)
-    (hst : AuthFgCutoffState S) (hWon : hst.base.hasWonAuth = false) :
-    ∀ x ∈ support
-      ((pqxdhAuthFgLatchedPreImpl1Key true k S.N_spk_tot (some sk) none S P q).run hst),
-      x.2.base.hasWonAuth = false :=
-  hasWonAuth_false_of_mem_support_fgPre1Key_opt S P hP k (some sk) q hst hWon
 
 /-! ## Pre-sampling the target identity scalar -/
 

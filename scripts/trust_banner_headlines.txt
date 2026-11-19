@@ -1,0 +1,23 @@
+# Copyright 2026 Google LLC
+#
+# All code is licensed under the Apache License, Version 2.0 (the "Apache 2.0"); you may not use this file except in compliance with the Apache 2.0 license. You may obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Headline theorems whose union defines the module trust banners (`trusted_banners.csv`,
+# `Computational/docs/TRUSTED_BASE.md` §3): the headline theorems of `Computational/Theorems/`
+# (`Lemmas` + `Main`, excluding the non-headline intermediate lemma
+# `libsignal_cli_pq_secure_elf_binary_any_kem`) plus the `CliElfLib` headlines of
+# `Symbolic/Theorems/` (`Refinement` + `Security`). Pass via
+# `./scripts/trusted-closure.sh --headlines-file scripts/trust_banner_headlines.txt --out-dir DIR`
+# after `lake build && lake build CliElfLib`.
+
+L1 SignalPqxdh.Security.headlineδ Computational.Theorems.Lemmas
+L2 CryptoVerification.E2E.session_secure Computational.Theorems.Lemmas
+L3 CryptoVerification.E2E.model_secure_costed Computational.Theorems.Lemmas
+KyberDelta CryptoVerification.E2E.kyber1024_kem_delta_correct Computational.Theorems.Lemmas
+Main CryptoVerification.LibsignalCli.libsignal_cli_pq_secure_elf_binary Computational.Theorems.Main
+L4 CryptoVerification.SignalSession.libsignal_cli_pq_binary_correct Computational.Theorems.Main
+SymRefines Proven.Refinement.comp_refines_cli Symbolic.Theorems.Refinement
+SymSecure Proven.Security.signal_session_secure Symbolic.Theorems.Security

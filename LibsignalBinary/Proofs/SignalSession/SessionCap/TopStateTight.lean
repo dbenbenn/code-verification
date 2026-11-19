@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Defs
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TightSize
+public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TightSize -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopBytesSize
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopSend
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopRecv
@@ -36,7 +36,7 @@ Proves that every serialized SPQR V1 state reachable from `spqrV1Init` via `(spq
 `238,532` B chain + `752` B framing).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -76,7 +76,7 @@ structure TopStateTightW (F : ShaCompress) (K : MlKem) (bytes : Bytes) (w : TopW
 
 set_option linter.dupNamespace false in
 /-- Existential form of `TopStateTightW`. -/
-def TopStateTight (F : ShaCompress) (K : MlKem) (bytes : Bytes) : Prop :=
+@[expose] def TopStateTight (F : ShaCompress) (K : MlKem) (bytes : Bytes) : Prop :=
   ∃ w : TopWitness F, TopStateTightW F K bytes w
 
 theorem topStateTightW_length_le (F : ShaCompress) (K : MlKem) {bytes : Bytes} {w : TopWitness F}

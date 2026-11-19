@@ -9,17 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.AgreeBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Keys.AgreeBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Heap.IfaceBudgetLemmas
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable `<RootKey>::create_chain`
@@ -28,7 +29,7 @@ Proves `[LibsignalPlacement]` `RustCliAllocBudget` contracts (`createChainSpec` 
 `createChainSpecX`) for `<RootKey>::create_chain`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -51,7 +52,8 @@ open CryptoVerification.LibsignalTripleRatchet
    createChainResultAt createChainStack createChainStackX diffieHellmanSpec
    expandMultiInfoSpec expandMultiInfoStack extHookStack extractSpec hmacCoreAt
    keys_ls_hook_ok_of_mem keys_ls_subroutine_ok_of_block_cro optSaltAt
-   subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded withLsCodeRoLoaded zeroizeSecretSpec)
+   subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded withLsCodeRoLoaded withStack
+   zeroizeSecretSpec)
 open CryptoVerification.LibsignalTripleRatchet.Keys
   (LsFrozenInv SepWP.done_frozen SepWP.of_sepWP_lscro
    and_ff32_hi56_3 and_ff_hi56_3 boxU8At_32_split bv_add_neg64 bv_sub_sub_lit
@@ -64,7 +66,7 @@ open CryptoVerification.LibsignalTripleRatchet.Keys
    pointsToBytes_entails_memRegion_of_eq pointsTo_keyVec_toList
    rootCreateChain_of_calculateAgreement_none rootCreateChain_of_calculateAgreement_some
    stackAt_alloc_expand stackAt_alloc_extract stackAt_calc_alloc_split stackAt_calc_ext
-   stackAt_ext_alloc subroutine_ok_withLsCodeRoLoaded_rodata'' whisperRatchet_length
+   stackAt_ext_alloc subroutine_ok_withLsCodeRoLoaded_rodata'' whisperRatchet_length withLsRet624
    zext64_trunc32_hi56_3_and_ff)
 open CryptoVerification.LibsignalTripleRatchet.Keys.CreateChainFacts
   (SepWP.exists_left_elim SepWP.pure_left_elim cells14_sub_176 cells14_sub_352_eq cells2_add_eq cells3_sub_240 cells4_sub_384_eq cells8_sub_240 cells8_sub_384 cells8_sub_384_eq cells8_sub_448 cells8_sub_448_eq cells8_sub_512 cells8_sub_512_eq cells8_sub_64 cells8_sub_64_eq memRegion_out_createChain_ok_flat pointsTo64_memRegion48_entails)
@@ -125,7 +127,7 @@ private theorem fitsEvents_dealloc_of_createChain_some
   rw [hdh] at hcc
   exact ((fitsEvents_append M lim _ _ st).mp hcc).2
 
-def calculateAgreementBudgetCallSpecAt (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def calculateAgreementBudgetCallSpecAt (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (pl : Obj.MultiPlacement) (X : X25519Fn) (callStack : Nat) :
     Spec (BitVec 64 × PrivateKey × BitVec 64 × PublicKey × BitVec 64 × BitVec 64 × M.σ) where
   pre := fun (ourA, our, theirA, their, ret, sp, st) s =>
@@ -170,7 +172,7 @@ theorem calculateAgreementBudgetCallAt_ok {prog : Program} {pl : Obj.MultiPlacem
     subst hevs
     exact ⟨htr, hpost⟩
 
-def extractSomeBudgetPlacedAllocStackSpec (F : ShaCompress) (pl : Obj.MultiPlacement) :
+@[expose] def extractSomeBudgetPlacedAllocStackSpec (F : ShaCompress) (pl : Obj.MultiPlacement) :
     Spec (BitVec 64 × BitVec 64 × List.Vector (BitVec 8) 32 × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (ret, saltA, sv, ikmA, ikm, sp) s =>
     ⌜LsFrozenInv pl s ∧ s.readReg64 .x0 = ret ∧ s.readReg64 .x1 = saltA ∧
@@ -215,7 +217,7 @@ theorem extractSomeBudgetPlacedAllocStack_ok {prog : Program} {pl : Obj.MultiPla
     rcases hpost with ⟨hvm, htr, hpost⟩
     exact ⟨⟨htr, hvm⟩, by arm64_sep_close⟩
 
-def extractKey32BudgetPlacedStackSpecAt (F : ShaCompress) (pl : Obj.MultiPlacement)
+@[expose] def extractKey32BudgetPlacedStackSpecAt (F : ShaCompress) (pl : Obj.MultiPlacement)
     (callStack : Nat) :
     Spec (BitVec 64 × BitVec 64 × BitVec 256 × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (ret, saltA, rk, ikmA, ikm, sp) s =>
@@ -246,7 +248,7 @@ theorem extractKey32BudgetPlacedAllocStack_ok {prog : Program} {pl : Obj.MultiPl
     rw [← pointsTo_keyVec_toList]
     exact hpost
 
-def expandCellsBudgetPlacedStackSpecAt (F : ShaCompress) (pl : Obj.MultiPlacement)
+@[expose] def expandCellsBudgetPlacedStackSpecAt (F : ShaCompress) (pl : Obj.MultiPlacement)
     (k : Nat) (callStack : Nat) :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × BitVec 64 × List (BitVec 8) × BitVec 64 × BitVec 64) where
   pre := fun (hkdfA, prk, infoHdrA, infoA, info, okmA, sp) s =>
@@ -301,7 +303,7 @@ theorem expandCellsBudgetPlacedAllocStack_ok {prog : Program} {pl : Obj.MultiPla
 
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 
-def deallocBudgetPlacedStackSpecAt [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def deallocBudgetPlacedStackSpecAt [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (pl : Obj.MultiPlacement) (callStack : Nat) :
     Spec (BitVec 64 × Nat × Nat × BitVec 64 × M.σ) where
   pre := fun (p, size, align, sp, st) s =>
@@ -410,7 +412,7 @@ private theorem createChain_placed_concrete_ok [LibsignalPlacement]
     subroutine_ok ((blkPC_40).rebase (blkPl_40).base H) (blkPl_40).base
       (withLsCodeRoLoaded lsmpl (createChainConcreteSpecAt M A lim C callStack)) := by
   refine subroutine_ok_withLsCodeRoLoaded_rodata''
-    (roSym := "libsignal_protocol:.rodata..Lanon.173")
+    (roSym := "libsignal_protocol:.rodata..Lanon.180")
     (roBytes := whisperRatchetInfo) (by decide) ?_
   wpp_init xst s0
   rcases xst with ⟨x, st⟩
@@ -557,7 +559,7 @@ private theorem createChain_placed_concrete_ok [LibsignalPlacement]
     intro hF_exp
     apply SepWP.of_sepWP_lscro hF_exp
     wp_call hexp' (s0.sp - 384#64, hkdfExtract C.F (some (keyToBytesVec32 rk)) ss.toList,
-      s0.sp - 240#64, lsmpl.ρ "libsignal_protocol:.rodata..Lanon.173", whisperRatchetInfo,
+      s0.sp - 240#64, lsmpl.ρ "libsignal_protocol:.rodata..Lanon.180", whisperRatchetInfo,
       s0.sp - 512#64, s0.sp - 576#64)
     refine SepWP.transport_budgetPool ‹VmPreserved _ _› (hnext := ?_)
     rw [hokm_sp]
@@ -703,7 +705,7 @@ callee contracts and `HookSat` hypotheses. -/
 theorem createChain_placed_ok [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {C : Crypto} {H : LibsignalHooks}
-    (h_dh : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec C.X)))
+    (h_dh : HookSat H lsDhSym (withLsRet624 (withVmPreserved (withStack (diffieHellmanSpec C.X) 1808))))
     (h_shdrop : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec))
     (hct : subroutine_ok ((blkPC_207).rebase (blkPl_207).base H) (lsmpl.base 213)
       (withLsCodeLoaded lsmpl ctEqSliceROSpec))
@@ -881,7 +883,7 @@ theorem subroutine_ok_createChainSpecX_of_createChainSpec {prog : Program}
 theorem createChain_placed_ok_x [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {C : Crypto} {H : LibsignalHooks}
-    (h_dh : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec C.X)))
+    (h_dh : HookSat H lsDhSym (withLsRet624 (withVmPreserved (withStack (diffieHellmanSpec C.X) 1808))))
     (h_shdrop : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec))
     (hct : subroutine_ok ((blkPC_207).rebase (blkPl_207).base H) (lsmpl.base 213)
       (withLsCodeLoaded lsmpl ctEqSliceROSpec))

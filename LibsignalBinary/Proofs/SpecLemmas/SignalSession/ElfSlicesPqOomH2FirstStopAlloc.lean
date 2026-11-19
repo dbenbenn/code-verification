@@ -11,19 +11,19 @@ module
 
 public import Arm64
 public import Arm64.Trusted.Spec.Hoare
+public import LibsignalBinary.Heap.IfaceBudgetBaseBridges
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3AllocStdinGhostHooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.SignalSession.CliElf
 public import ProofLib
 public import ProofLib.FsTrace
 public import ProofLib.ProgramReflection
-public import LibsignalBinary.Heap.IfaceBudgetBaseBridges
-public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3AllocStdinGhostHooks
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
-public import LibsignalBinary.Specifications.SignalSession.CliElf
+import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
 
 /-!
 # Real-Run First-Stop Instances for `alloc` and `allocZeroed`
@@ -36,7 +36,7 @@ visited-PC bounds on `f3TrialRxProg` (`seg[5]`, `[0x49c000, 0x4a2000)`) for `__r
 theorems and `AllocGhostLinkTransfer.real_subroutine_run_of_stripS`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -75,7 +75,7 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
 /-- `(γ, tp)`-indexed fine-budget `rustCliAllocBudgetSpec` family guarding
     `f3AllocGhostHookFine` (`zeroed = false`) and `f3AllocZeroedGhostHookFine` (`zeroed = true`)
     in `hole2_ghFixed`. -/
-noncomputable def h2fsalloc_spec [LibsignalPlacement] (mmpl : MultiPlacement) (zeroed : Bool)
+@[expose] noncomputable def h2fsalloc_spec [LibsignalPlacement] (mmpl : MultiPlacement) (zeroed : Bool)
     (γ : GhostName) (tp : BitVec 64) : Spec (Nat × Nat × fineCostModel.σ) :=
   rustCliAllocBudgetSpec fineCostModel
     (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)
@@ -106,7 +106,7 @@ private theorem h2fsalloc_toNat_add_ofNat_of_lt {b : BitVec 64} {k : Nat}
   have hlt' : b.toNat + k < 2 ^ 64 := by omega
   rw [BitVec.toNat_add, BitVec.toNat_ofNat, Nat.mod_eq_of_lt hk, Nat.mod_eq_of_lt hlt']
 
-/-- Every `mallocngLib` code byte in `cliElfBytes` lies inside `hole2_keepSub` (`[0x469000, 0x46f000)`). -/
+/-- Every `mallocngLib` code byte in `cliElfBytes` lies inside `hole2_keepSub` (`[0x474000, 0x4ca000)`). -/
 theorem h2fsalloc_keepSub_mallocng (mmpl : MultiPlacement)
     (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) :
     ∀ a : BitVec 64, (mallocngLib.findCodeBlock mmpl a).isSome = true → hole2_keepSub a = true := by
@@ -129,8 +129,8 @@ theorem h2fsalloc_keepSub_mallocng (mmpl : MultiPlacement)
     have hk_off : (a - mmpl.base k).toNat < mallocngLib.blocks[k].code.length := hin
     have heq_a : mmpl.base k + BitVec.ofNat 64 (a - mmpl.base k).toNat = a := by
       rw [BitVec.ofNat_toNat, BitVec.setWidth_eq]; bv_omega
-    have hlo : 0x469000 ≤ f3MngCodeLo := by decide
-    have hhi : f3MngCodeHi ≤ 0x46f000 := by decide
+    have hlo : Wp4LayoutGen.hole2_keepSubLo ≤ f3MngCodeLo := by decide
+    have hhi : f3MngCodeHi ≤ Wp4LayoutGen.hole2_keepSubHi := by decide
     have ht : (mmpl.base k + BitVec.ofNat 64 (a - mmpl.base k).toNat).toNat =
         (mmpl.base k).toNat + (a - mmpl.base k).toNat :=
       h2fsalloc_toNat_add_ofNat_of_lt (by omega)
@@ -138,13 +138,12 @@ theorem h2fsalloc_keepSub_mallocng (mmpl : MultiPlacement)
     unfold hole2_keepSub
     exact decide_eq_true ⟨by omega, by omega⟩
 
-/-- `hole2_keepSub` (`[0x469000, 0x46f000)`) is a subset of `hole2_keep`. -/
+/-- `hole2_keepSub` is a subset of `hole2_keep`. -/
 theorem h2fsalloc_keep_of_keepSub {a : BitVec 64} (h : hole2_keepSub a = true) :
     hole2_keep a = true := by
   unfold hole2_keepSub at h
   unfold hole2_keep
-  have h' : 0x469000 ≤ a.toNat ∧ a.toNat < 0x46f000 := of_decide_eq_true h
-  exact decide_eq_true (Or.inr h')
+  exact decide_eq_true (Or.inr (of_decide_eq_true h))
 
 /-- Contrapositive: `hole2_keep a = false → hole2_keepSub a = false`. -/
 theorem h2fsalloc_keepSub_false_of_keep_false {a : BitVec 64} (h : hole2_keep a = false) :
@@ -162,17 +161,17 @@ theorem h2fsalloc_keep_mallocng (mmpl : MultiPlacement)
     ∀ a : BitVec 64, (mallocngLib.findCodeBlock mmpl a).isSome = true → hole2_keep a = true :=
   fun a hsome => h2fsalloc_keep_of_keepSub (h2fsalloc_keepSub_mallocng mmpl hMm a hsome)
 
-/-- `f3TrialRxProg` (`seg[2]`, `[0x469000, 0x46f000)`) has identical `CodeLoaded` under
+/-- `f3TrialRxProg` (`seg[2]`) has identical `CodeLoaded` under
     `stripExecOutside hole2_keepSub` and `stripExecOutside hole2_keep`. -/
 theorem h2fsalloc_rxProg_codeLoaded_keepSub_iff_keep (m : Memory) :
     f3TrialRxProg.CodeLoaded (stripExecOutside hole2_keepSub m) ↔
       f3TrialRxProg.CodeLoaded (stripExecOutside hole2_keep m) := by
   have hbase : f3TrialRxProg.base = f3RxSegBase := f3TrialRxProg_base
-  have hbase_nat : f3RxSegBase.toNat = 0x469000 := by decide
+  have hbase_nat : f3RxSegBase.toNat = 0x474000 := by decide
   have hlen : f3TrialRxProg.code.length = 4 * f3RxWordCount := by
     rw [f3TrialRxWordTree_eq]
     exact WordTree.length_toBytes_of_checkSize? f3TrialRxWordTree_size
-  have hwc : f3RxWordCount = 6144 := rfl
+  have hwc : f3RxWordCount = 90112 := rfl
   have hinSub : ∀ i, i < f3TrialRxProg.code.length →
       hole2_keepSub (f3TrialRxProg.base + BitVec.ofNat 64 i) = true := by
     intro i hi
@@ -182,7 +181,8 @@ theorem h2fsalloc_rxProg_codeLoaded_keepSub_iff_keep (m : Memory) :
       rw [hbase, hbase_nat]
       rw [hlen, hwc] at hi
       omega
-    unfold hole2_keepSub
+    unfold hole2_keepSub LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen.hole2_keepSubLo
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen.hole2_keepSubHi
     refine decide_eq_true ⟨?_, ?_⟩ <;> (rw [ht, hbase, hbase_nat]; rw [hlen, hwc] at hi; omega)
   constructor <;> intro hL
   · refine Program.CodeLoaded.intro hL.aligned hL.no_wrap fun i hi => ?_

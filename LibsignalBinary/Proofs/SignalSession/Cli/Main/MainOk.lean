@@ -9,18 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
-# End-to-End Composition Statement `main_ok` for `signal-session` `main`
+# File-System Model Facts `MainIoFacts` for `signal-session` `main`
 
-States the composed `mainSpec` refinement obligation (`MainIoFacts` and `main_ok` inputs, proved in
-`Cli/Main/Proofs/MainOkProof.lean`) over `Obj.Loads libsignalSessionImage img`, `MainCallees`,
-`MainIo`, `MainIoFacts`, `runSpec` (`uuidTryParse`), domain `argv` parsing, and the 8 MiB initial
-stack budget (`DEV-CLI7`).
+Defines `MainIoFacts` connecting an abstract `IoModel` (`stdin`, `"coins"` path and read rule, and
+sequential `commitFiles`) to `initFsState (cliInputs i)` and `MainPost.writeAll`.
 -/
 
-@[expose] public section
+public section
 
 set_option warningAsError false
 

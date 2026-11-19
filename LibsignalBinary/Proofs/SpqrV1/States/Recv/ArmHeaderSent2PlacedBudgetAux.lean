@@ -10,15 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmHeaderSent1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommon
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmHeaderSent1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommon -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
@@ -40,6 +40,15 @@ import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.SyscallsMmap
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
 
 /-!
 # `<States>::recv` (Block `332`) — `.headerSent` Arm, Part 2 Aux (Budget-Threaded)
@@ -49,7 +58,7 @@ Allocator-event envelopes (`HeaderSentArmPreEnv` / `HeaderSentArmPostEnv`), `VmP
 (Block `337`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -107,7 +116,7 @@ open LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget (
   states_recv_writeback_59e88_sat_placed
 )
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
   CryptoVerification.blkPC_332
 attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_sub_688_eq_hsp
@@ -157,7 +166,7 @@ local elab "by_vm_steps_nest " tac:Lean.Parser.Tactic.tacticSeq : tactic => do
     - `msg.epoch ≠ st.uc.epoch` or `msg.payload ≠ .ct1 _`: `[]`
     - `msg.epoch = st.uc.epoch` and `msg.payload = .ct1 chunk`:
       `SeqEnv (AddChunkSlotsEnv st.receiving_ct1.pts) (DecodedMessageEnv (addChunkTotal st.receiving_ct1 chunk))` -/
-def HeaderSentArmPreEnv {F : ShaCompress}
+@[expose] def HeaderSentArmPreEnv {F : ShaCompress}
     (st : Chunked.SendEk.HeaderSent spqrPolyApi (spqrAuthApi F))
     (msg : Message spqrPolyApi) (evs : List AllocEvent) : Prop :=
   if msg.epoch > st.uc.epoch then
@@ -176,7 +185,7 @@ def HeaderSentArmPreEnv {F : ShaCompress}
     - `msg.epoch < st.uc.epoch` or `msg.payload ≠ .ct1 _`: `[]`
     - `msg.epoch = st.uc.epoch` and `msg.payload = .ct1 chunk`:
       `SeqEnv (SeqEnv (AddChunkSlotsEnv st.receiving_ct1.pts) (DecodedMessageEnv (addChunkTotal st.receiving_ct1 chunk))) FreeOnlyEvs` -/
-def HeaderSentArmPostEnv {F : ShaCompress}
+@[expose] def HeaderSentArmPostEnv {F : ShaCompress}
     (st : Chunked.SendEk.HeaderSent spqrPolyApi (spqrAuthApi F))
     (msg : Message spqrPolyApi) (evs : List AllocEvent) : Prop :=
   if msg.epoch > st.uc.epoch then

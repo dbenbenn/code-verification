@@ -12,6 +12,7 @@ module
 public import Symbolic.Proofs.Swarm.UA.BI.RAB.Defs
 import Symbolic.Proofs.Swarm.UA.BI.G.SlotRpkNOHelpers
 import Symbolic.Proofs.Swarm.UA.Base
+import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
 
 /-!
 # Pre-Key Start Collision Translation
@@ -21,7 +22,7 @@ Proves `xlate_exc_p_b_of : XlateInvSpecB -> XlateExcPSpecB`: absence of
 unknown base key refutes `PreKeyStartCollidesOrRejectsMoves` at the call's cut.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSize
+public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.StateSize
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.Defs
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -52,18 +53,18 @@ open LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
 /-! ## Parametric `PolyEncoder` Point-Slice Caps (`ValidEncoderPtsAt K`) -/
 
 /-- Tight `GF16` point-count ceiling per SPQR polynomial (`640` points = `1,280` bytes). -/
-def spqrEncTightPtsCap : Nat := 640
+@[expose] def spqrEncTightPtsCap : Nat := 640
 
 /-- Point-slice byte bound (`bs.length ≤ 2 * K`) on a protobuf `PolynomialEncoder`. -/
-def ValidEncPbPtsAt (K : Nat) (pb : PolynomialEncoder) : Prop :=
+@[expose] def ValidEncPbPtsAt (K : Nat) (pb : PolynomialEncoder) : Prop :=
   ∀ bs ∈ pb.pts, bs.length ≤ 2 * K
 
-def ValidOptEncPbPtsAt (K : Nat) : Option PolynomialEncoder → Prop
+@[expose] def ValidOptEncPbPtsAt (K : Nat) : Option PolynomialEncoder → Prop
   | none => True
   | some pb => ValidEncPbPtsAt K pb
 
 /-- Point-slice byte bound across all encoder-carrying variants of `V1State`. -/
-def ValidV1PtsAt (K : Nat) (v1 : V1State) : Prop :=
+@[expose] def ValidV1PtsAt (K : Nat) (v1 : V1State) : Prop :=
   match v1.innerState with
   | none => True
   | some (.keysUnsampled _) => True
@@ -79,13 +80,13 @@ def ValidV1PtsAt (K : Nat) (v1 : V1State) : Prop :=
   | some (.ct2Sampled s) => ValidOptEncPbPtsAt K s.sendingCt2
 
 /-- Point-slice byte bound on a decoded `PqRatchetState`. -/
-def ValidPqPtsAt (K : Nat) (pq : PqRatchetState) : Prop :=
+@[expose] def ValidPqPtsAt (K : Nat) (pq : PqRatchetState) : Prop :=
   match pq.inner with
   | none => True
   | some (.v1 v1) => ValidV1PtsAt K v1
 
 /-- Point-slice byte bound on serialized SPQR state bytes. -/
-def ValidEncoderPtsAt (K : Nat) (stBytes : Bytes) : Prop :=
+@[expose] def ValidEncoderPtsAt (K : Nat) (stBytes : Bytes) : Prop :=
   match spqrDecodeState stBytes with
   | .error _ => True
   | .ok pq => ValidPqPtsAt K pq
@@ -158,12 +159,12 @@ theorem validEncoderPts_of_validEncoderPts640 {s : Bytes}
 /-! ## `EncPtsBoundedAt K` and `StatesPtsBoundedAt K` Preservation (`576 ≤ K`) -/
 
 /-- Point-count bound (`≤ K` `GF16` elements per polynomial) on a runtime `PolyEncoder`. -/
-def EncPtsBoundedAt (K : Nat) (enc : PolyEncoder) : Prop :=
+@[expose] def EncPtsBoundedAt (K : Nat) (enc : PolyEncoder) : Prop :=
   ∀ pts, enc.s = .points pts → ∀ pt ∈ pts, pt.value.length ≤ K
 
 /-- Point-count bound across runtime `States` variants, paired with `ek.length = 1152` on `.keysSampled`.
 -/
-def StatesPtsBoundedAt {F : ShaCompress} (K : Nat) : States spqrPolyApi (spqrAuthApi F) → Prop
+@[expose] def StatesPtsBoundedAt {F : ShaCompress} (K : Nat) : States spqrPolyApi (spqrAuthApi F) → Prop
   | .keysUnsampled _ => True
   | .keysSampled s => EncPtsBoundedAt K s.sending_hdr ∧ s.uc.ek.length = 1152
   | .headerSent s => EncPtsBoundedAt K s.sending_ek
@@ -969,7 +970,7 @@ theorem statesPtsBoundedAt_of_recv {F : ShaCompress} {mlk : MlKem} {K : Nat} (hK
 /-! ## `ChainParamsPB` Domain Bounds (`ValidChainParamsPB`, `ValidChainParams`) -/
 
 /-- SPQR `ChainParamsPB` domain bound (`maxJump ≤ 25,000` and `maxOooKeys ≤ 2,000`). -/
-def ValidChainParamsPB (p : ChainParamsPB) : Prop :=
+@[expose] def ValidChainParamsPB (p : ChainParamsPB) : Prop :=
   p.maxJumpOrDefault.toNat ≤ 25000 ∧ p.maxOooKeysOrDefault.toNat ≤ 2000
 
 theorem validChainParamsPB_trimSize_le {p : ChainParamsPB} (h : ValidChainParamsPB p) :
@@ -983,19 +984,19 @@ theorem validChainParamsPB_default : ValidChainParamsPB ChainParams.default.into
   unfold ValidChainParamsPB
   decide
 
-def ValidChainPBParams (pb : ChainPB) : Prop :=
+@[expose] def ValidChainPBParams (pb : ChainPB) : Prop :=
   ∀ p, pb.params = some p → ValidChainParamsPB p
 
-def ValidVNParams (vn : VersionNegotiationPB) : Prop :=
+@[expose] def ValidVNParams (vn : VersionNegotiationPB) : Prop :=
   ∀ p, vn.chainParams = some p → ValidChainParamsPB p
 
 /-- `ValidChainParamsPB` lifted across both `pq.chain` and `pq.versionNegotiation`. -/
-def ValidPqChainParams (pq : PqRatchetState) : Prop :=
+@[expose] def ValidPqChainParams (pq : PqRatchetState) : Prop :=
   (∀ c, pq.chain = some c → ValidChainPBParams c) ∧
     (∀ vn, pq.versionNegotiation = some vn → ValidVNParams vn)
 
 /-- `ChainParamsPB` bound on serialized SPQR state bytes. -/
-def ValidChainParams (stBytes : Bytes) : Prop :=
+@[expose] def ValidChainParams (stBytes : Bytes) : Prop :=
   match spqrDecodeState stBytes with
   | .error _ => True
   | .ok pq => ValidPqChainParams pq

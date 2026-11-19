@@ -9,27 +9,39 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1Inst
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCalleesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.KyberMarkFitPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkShimsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPollPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.BranchesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.EpiloguePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmt
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCalleesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.KyberMarkFitPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkShimsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPollPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.BranchesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.EpiloguePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberProofPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyProofPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Pure
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.LayoutPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
 /-!
 # Relocatable `[LibsignalPlacement]` Poll Stage P4 Instantiations
@@ -38,7 +50,7 @@ Proves `stageP4Matched_placed_inst : Poll.StageP4MatchedPlacedStmt` and
 `stageP4PathA_placed_inst : Poll.StageP4PathAPlacedStmt` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

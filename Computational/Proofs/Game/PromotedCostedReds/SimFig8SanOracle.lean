@@ -9,20 +9,20 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost
+public import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost -- proof-setup: allow-public-import
 
 /-!
 # Sanitized `simFig8` Oracle and Game-Loop `.eval` Theorem
 
 Defines the read-time-sanitized query implementation `simFig8OracleSan` and adversary wrapper
 `simFig8ClampSan`, and proves that `simFig8ProgOfStep` evaluates to `simFig8ClampSan` under any
-preserved simulator invariant.
--/
+preserved simulator invariant.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
 open Computational.Proofs.Game.PromotedCostedReds.SanOracleCore (semHandleHookDedupS semHandleHookDedupS_preserves_sC_inv)
 
@@ -46,7 +46,7 @@ open Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost
    simFig8InitC_eval simFig8InitImpl simCStateInv_initSimC fig8IdSemHook)
 
 /-- Sanitized semantic query implementation for `simFig8`. -/
-def simFig8OracleSan {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType PQC] {ℓ : ℕ}
+@[expose] def simFig8OracleSan {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType PQC] {ℓ : ℕ}
     (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (lam : Pt) (qep B T Kc Bsk : ℕ) :
@@ -61,7 +61,7 @@ def simFig8OracleSan {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableTy
         qep B t sC ()
 
 /-- Sanitized counterpart of `simFig8ClampTG`. -/
-def simFig8ClampSan {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType PQC]
+@[expose] def simFig8ClampSan {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType PQC]
     (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (lam : Pt) (qep B T Kc Bsk : ℕ)
@@ -74,7 +74,7 @@ def simFig8ClampSan {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableTyp
     (simulateQ (simFig8OracleSan P Dh encPt encT decT lam qep B T Kc Bsk) A).run' sC₀
 
 /-- Sim-only invariant used by atomic `simFig8` steps: tight SPQR states. -/
-def SanExtra {ℓ : ℕ} {Pt : Type} (C : Crypto) (K : MlKem)
+@[expose] def SanExtra {ℓ : ℕ} {Pt : Type} (C : Crypto) (K : MlKem)
     (sC : LibsignalToModularSchemeSimState Bytes Pt ℓ) : Prop :=
   ∀ Q, CryptoVerification.SpqrV1Sync.SendTotal.TopStateTight C.F K (sC.base.pq Q)
 

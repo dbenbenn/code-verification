@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderSentUc
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderSentUc -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirection
@@ -26,7 +26,7 @@ Proves the cross-block error exits and inlined `Unchunked.EkSent` field-merge lo
 `Chunked.HeaderSent::merge` on Block `302` with `withLsCodeRoLoaded lsmpl` callee contracts.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageMerge
 

@@ -9,15 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.HSerX
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionCloneX
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.HSerX
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionCloneX
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DropSsLocal1Ext
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.RecordSerializeExt
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyX
 import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarint
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsX -- proof-setup: allow-public-import
+public import ProofLib.FsTrace
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.SepLogic.WP.Apply
+public import VerifiedLibraries.Mallocng.Spec
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # Relocatable `SessionRecord::serialize` Glue
@@ -26,7 +35,7 @@ Proves `serializeCanonSpecX` on Block `52` from `SerContractsXPlaced` under `[Li
 together with its `StoreKit.withLsCodeRoLoaded` transfer.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

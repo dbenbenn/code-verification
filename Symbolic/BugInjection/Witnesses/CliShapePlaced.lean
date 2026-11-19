@@ -11,14 +11,16 @@ module
 
 public import Symbolic.BugInjection.Witnesses.CliShape
 public import Symbolic.Specifications.Security.Binary
+public import Symbolic.Proofs.SpecLemmas.SecurityBinaryPlaced
+public import VerifiedLibraries.Mallocng.Spec
 
 /-!
 # Placed CLI Refinement Shape and Disproof Lemmas
 
-Defines `cliCompShapePlaced`, replacing `elfRel` in `cliCompShape.traces` with
-`elfRelPlaced mpl mmpl elf` while reusing `cliCompShape.SpecHalf`. Proves
-`not_signalSessionSecureFor_placed_of_witness` and `not_signalSessionSecurePlaced_of_witness` to
-refute `SignalSessionSecurePlaced bytes` directly on the security relation at linked placements.
+Defines `cliCompShapePlaced`, equipping `cliCompShape` with `elfRelPlaced mpl mmpl elf` traces while
+reusing `cliCompShape.SpecHalf`. Proves `not_signalSessionSecureFor_placed_of_witness` and
+`not_signalSessionSecurePlaced_of_witness` to refute `SignalSessionSecurePlaced bytes` directly on
+the security relation at linked placements.
 -/
 
 @[expose] public section
@@ -29,17 +31,19 @@ namespace Symbolic.BugInjection
 
 open DY.Libsignal.HwEvents (CliEvent)
 open DY.Libsignal.Composed.Refinement.Cli
-  (CliTraces CliTurn CoinsFresh HooksMatchInterpretation InvertsGuarded elfRelPlaced initDirs)
+  (CliTraces CliTurn CoinsFresh ExternContractsHoldCli HooksMatchPlaced InvertsGuarded elfRelPlaced
+   initDirs)
 
-/-- Variant of `cliCompShape` whose `traces` relation uses `elfRelPlaced mpl mmpl elf` in place of
-`elfRel elf`. -/
-def cliCompShapePlaced (mpl mmpl : Arm64.Obj.MultiPlacement) : RefinementShape :=
+/-- Variant of `cliCompShape` whose `contracts` require `HooksMatchPlaced` and whose `traces`
+relation uses `elfRelPlaced mpl elf`. -/
+def cliCompShapePlaced (mpl _mmpl : Arm64.Obj.MultiPlacement) : RefinementShape :=
   { cliCompShape with
+    contracts := fun iw _ => ExternContractsHoldCli iw.1 ∧ HooksMatchPlaced iw.1 iw.2
     traces := fun elf iw r evs =>
-      CliTraces (elfRelPlaced mpl mmpl elf iw.1 iw.2) iw.1 r (CliTurn.init (initDirs iw.1 r)) evs ∧
+      CliTraces (elfRelPlaced mpl elf iw.1 iw.2) iw.1 r (CliTurn.init (initDirs iw.1 r)) evs ∧
         InvertsGuarded iw.1 r evs }
 
-/-- Refutes `SignalSessionSecureFor` at `elfRelPlaced mpl mmpl elf` for any ELF parsed from `bytes`
+/-- Refutes `SignalSessionSecureFor` at `elfRelPlaced mpl elf` for any ELF parsed from `bytes`
 given `SpecHalf`, placed `ImplHalf`, and `CoinsFresh`. -/
 theorem not_signalSessionSecureFor_placed_of_witness
     {fits : cliCompShape.Interp → cliCompShape.Rec → Prop} {τ : List CliEvent}
@@ -50,7 +54,7 @@ theorem not_signalSessionSecureFor_placed_of_witness
     (hcf : ∀ iw r, fits iw r → CoinsFresh r τ) :
     ∀ elf : Arm64.Process.ElfImage, Arm64.Process.ElfImage.parse bytes = .ok elf →
       ¬ DY.Libsignal.Composed.Security.SignalSessionSecureFor
-          HooksMatchInterpretation (elfRelPlaced mpl mmpl elf) := by
+          HooksMatchPlaced (elfRelPlaced mpl elf) := by
   intro elf hparse hsec
   obtain ⟨⟨interp, W⟩, r, hfit, ⟨hc, hW⟩, htr, hg⟩ := hi elf hparse
   obtain ⟨hwf, hne⟩ := hs (interp, W) r hfit
@@ -61,20 +65,21 @@ theorem not_signalSessionSecureFor_placed_of_witness
   · exact Or.inl hex
   · exact Or.inr ⟨evs₁, ev, evs₂, g, ss, vis, heq, hE, hN⟩
 
-/-- Refutes `SignalSessionSecurePlaced bytes` from a placed witness at linked `libsignalSessionLib`
-and `mallocngLib` placements `(mpl, mmpl)`. -/
+/-- Refutes `SignalSessionSecurePlaced bytes` from a placed witness at a linked
+`libsignalSessionLib` placement `mpl` (the `_hmg` argument is retained for existing disproof
+callers). -/
 theorem not_signalSessionSecurePlaced_of_witness
     {fits : cliCompShape.Interp → cliCompShape.Rec → Prop} {τ : List CliEvent}
     {bytes : List (BitVec 8)} {mpl mmpl : Arm64.Obj.MultiPlacement}
     (hls : CryptoVerification.SignalSession.libsignalSessionLib.LinkedAt bytes mpl)
-    (hmg : VerifiedLibraries.mallocngLib.LinkedAt bytes mmpl)
+    (_hmg : VerifiedLibraries.mallocngLib.LinkedAt bytes mmpl)
     (hs : cliCompShape.SpecHalf fits τ)
     (hi : ∀ elf : Arm64.Process.ElfImage, Arm64.Process.ElfImage.parse bytes = .ok elf →
       (cliCompShapePlaced mpl mmpl).ImplHalf fits elf τ)
     (hcf : ∀ iw r, fits iw r → CoinsFresh r τ) :
     ¬ DY.Libsignal.Composed.Security.SignalSessionSecurePlaced bytes := by
   rintro h
-  obtain ⟨elf, hparse, _hcode, _hprog, hsec⟩ := h mpl mmpl hls hmg
+  obtain ⟨elf, hparse, _hcode, _hprog, hsec⟩ := h mpl hls
   exact not_signalSessionSecureFor_placed_of_witness hs hi hcf elf hparse hsec
 
 end Symbolic.BugInjection

@@ -10,19 +10,22 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve -- proof-setup: allow-public-import
 import all Init.Data.String.Pattern.Basic
 import all Init.Data.String.Pattern.String
 import all Init.Data.String.Slice
 import all Init.Data.String.TakeDrop
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.Concat
-public import LibsignalBinary.Proofs.SpqrV1.Auth.New
-public import LibsignalBinary.Proofs.SpqrV1.GF.IsNonZero
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.Concat -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.New -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.IsNonZero -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Kdf.Defs
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOk
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVec
 
 /-!
 # `<EkSentCt1Received>::recv_ct2_chunk`: Shared Layout, Byte-Shift, and Framing Helpers
@@ -31,7 +34,7 @@ Panic entailments, `EkSentCt1Received` struct unpack/pack lemmas, `libcruxHmacSa
 byte-shift combinators (`b0`, `b7`, `mid7At`, `low7At`), and stack framing helpers for `0x5ec2c`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.RecvCt2Chunk
 
@@ -116,218 +119,16 @@ theorem allowPanic_oom_recvCt2 {P : Prop} {s0 sf : State} {Q R : SepProp}
   rw [sepConj_assoc, satisfies_pure_sepConj]
   exact ⟨⟨Or.inr haf.1, haf.2⟩, Satisfies.mono (sepConj_mono_left (entails_anyHeap Q)) hm⟩
 
-theorem subroutine_ok_inImage_rodata3_keep {α : Type} {prog : Program} {entry : BitVec 64}
-    {img : Obj.Image} {roAddr1 roAddr2 roAddr3 : BitVec 64}
-    {roBytes1 roBytes2 roBytes3 : List (BitVec 8)}
-    {spec : Spec α}
-    (hro1 : ∀ {s : State} (_ : img.FrozenLoaded s) {P : SepProp},
-      (s.mem ⊨ P) → (s.mem ⊨ (roAddr1 ↦ᵣ roBytes1) ∗ P))
-    (hro2 : ∀ {s : State} (_ : img.FrozenLoaded s) {P : SepProp},
-      (s.mem ⊨ P) → (s.mem ⊨ (roAddr2 ↦ᵣ roBytes2) ∗ P))
-    (hro3 : ∀ {s : State} (_ : img.FrozenLoaded s) {P : SepProp},
-      (s.mem ⊨ P) → (s.mem ⊨ (roAddr3 ↦ᵣ roBytes3) ∗ P))
-    (h : subroutine_ok prog entry
-      { spec with
-        pre := fun x s => ⌜img.FrozenLoaded s ∧ s.symtab = img.symtab⌝ ∗
-          (roAddr1 ↦ᵣ roBytes1) ∗ (roAddr2 ↦ᵣ roBytes2) ∗ (roAddr3 ↦ᵣ roBytes3) ∗ spec.pre x s
-        post := fun x s0 sf =>
-          (roAddr1 ↦ᵣ roBytes1) ∗ (roAddr2 ↦ᵣ roBytes2) ∗ (roAddr3 ↦ᵣ roBytes3) ∗ spec.post x s0 sf }) :
-    subroutine_ok prog entry (spec.inImage img) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  simp only [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hL, hpre⟩
-  have hpre' : s0.mem ⊨
-      (⌜img.FrozenLoaded s0 ∧ s0.symtab = img.symtab⌝ ∗
-        (roAddr1 ↦ᵣ roBytes1) ∗ (roAddr2 ↦ᵣ roBytes2) ∗ (roAddr3 ↦ᵣ roBytes3) ∗ spec.pre x s0) ∗ R := by
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hL, hro1 hL.1 (hro2 hL.1 (hro3 hL.1 hpre))⟩
-  refine (h.to_outcome x R s0 hpc hrun hpre' hsp).mono_outcome fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only at hq
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc] at hq
-    exact Satisfies.of_sep_right (Satisfies.of_sep_right (Satisfies.of_sep_right hq))
-  · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hq⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨hoom, hq⟩))
-
 abbrev assertFailedU64Name : String := "core::panicking::assert_failed::<u64, u64>"
 abbrev sliceIndexFailName : String := "core::slice::index::slice_index_fail"
 abbrev unwrapFailedName : String := "core::result::unwrap_failed"
 abbrev panicBoundsCheckName : String := "core::panicking::panic_bounds_check"
 abbrev panicConstAddOverflowName : String := "core::panicking::panic_const::panic_const_add_overflow"
 
-@[simp, arm64_norm] theorem assertFailedU64_fnOff :
-    libsignalSessionCode.fnOff assertFailedU64Name =
-      ls_off% "core::panicking::assert_failed::<u64, u64>" :=
-  ls_stub% "core::panicking::assert_failed::<u64, u64>"
-
-@[simp, arm64_norm] theorem sliceIndexFail_fnOff :
-    libsignalSessionCode.fnOff sliceIndexFailName =
-      ls_off% "core::slice::index::slice_index_fail" :=
-  ls_stub% "core::slice::index::slice_index_fail"
-
-@[simp, arm64_norm] theorem unwrapFailed_fnOff :
-    libsignalSessionCode.fnOff unwrapFailedName =
-      ls_off% "core::result::unwrap_failed" :=
-  ls_stub% "core::result::unwrap_failed"
-
-@[simp, arm64_norm] theorem panicBoundsCheck_fnOff :
-    libsignalSessionCode.fnOff panicBoundsCheckName =
-      ls_off% "core::panicking::panic_bounds_check" :=
-  ls_stub% "core::panicking::panic_bounds_check"
-
-@[simp, arm64_norm] theorem panicConstAddOverflow_fnOff :
-    libsignalSessionCode.fnOff panicConstAddOverflowName =
-      ls_off% "core::panicking::panic_const::panic_const_add_overflow" :=
-  ls_stub% "core::panicking::panic_const::panic_const_add_overflow"
-
-@[simp, arm64_norm] theorem memcpy_fnOff :
-    libsignalSessionCode.fnOff memcpyName = ls_off% "memcpy" :=
-  ls_stub% "memcpy"
-
-@[simp, arm64_norm] theorem gf16IsNonZero_fnOff :
-    libsignalSessionCode.fnOff isNonZeroName = 0x5e5f0 :=
-  libsignalSessionCode_fnOff_0x5e5f0
-
 open CryptoVerification
 open CryptoVerification.LibsignalSpqrV1.PolyDecoder
 open CryptoVerification.SpqrV1.ChainProofs
 open UpdateFacts NextKeyInternalFacts SplitBytes
-
-ls_attribute [local simp, local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
-  recvCt2Chunk_fnOff addChunk_fnOff polyDecodedMessage_fnOff mlkemDecaps_fnOff
-  authUpdate_fnOff sliceConcat_fnOff hkdfToSlice_fnOff
-  shim_fnOff alloc_fnOff allocZeroed_fnOff dealloc_fnOff handleError_fnOff
-  memcpy_fnOff gf16IsNonZero_fnOff
-  assertFailedU64_fnOff sliceIndexFail_fnOff unwrapFailed_fnOff
-  panicBoundsCheck_fnOff panicConstAddOverflow_fnOff
-  libsignalSessionCode_fnOff_0x59834
-  libsignalSessionCode_fnOff_0x67028
-  libsignalSessionCode_fnOff_0x66788
-  libsignalSessionCode_fnOff_0x58ac4
-  libsignalSessionCode_fnOff_0x5eab8
-  libsignalSessionCode_fnOff_0x5de8c
-  libsignalSessionCode_fnOff_0x46920
-  libsignalSessionCode_fnOff_0x4dca8
-  libsignalSessionCode_fnOff_0x5e5f0
-  (ls_stub% "memcpy") (ls_hook% "memcpy")
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_hook% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc") (ls_hook% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_alloc_zeroed") (ls_hook% "__rustc::__rust_alloc_zeroed")
-  (ls_stub% "__rustc::__rust_dealloc") (ls_hook% "__rustc::__rust_dealloc")
-  (ls_stub% "alloc::raw_vec::handle_error") (ls_hook% "alloc::raw_vec::handle_error")
-  (ls_stub% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-  (ls_hook% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-  (ls_stub% "libcrux_hmac::hmac") (ls_hook% "libcrux_hmac::hmac")
-  (ls_stub% "core::panicking::assert_failed::<u64, u64>")
-  (ls_hook% "core::panicking::assert_failed::<u64, u64>")
-  (ls_stub% "core::slice::index::slice_index_fail")
-  (ls_hook% "core::slice::index::slice_index_fail")
-  (ls_stub% "core::result::unwrap_failed") (ls_hook% "core::result::unwrap_failed")
-  (ls_stub% "core::panicking::panic_bounds_check")
-  (ls_hook% "core::panicking::panic_bounds_check")
-  (ls_stub% "core::panicking::panic_const::panic_const_add_overflow")
-  (ls_hook% "core::panicking::panic_const::panic_const_add_overflow")
-
-open Lean Elab Tactic Meta in
-elab "wpp_call_inImage_recvCt2 " hcall:term:max a:term:max hF:term:max : tactic => do
-  let hcallCopyId ← freshIdent `hcall_copy
-  let sfId ← freshIdent `sf
-  let hpcId ← freshIdent `hpc_sf
-  let hrunId ← freshIdent `hrun_sf
-  let hspId ← freshIdent `hsp_sf
-  let hcsId ← freshIdent `hcs_sf
-  let hFId ← freshIdent `hF_sf
-  evalTactic (← `(tactic| (
-    have $hcallCopyId := $hcall
-    apply (MacHdrFacts.SepWPp.call_allowPanic_inImage_mid $hcallCopyId (x := $a) $hF)
-    wp_focus_close (first | wp_norm_goal | wp_norm_lhs)
-    wp_focus_close wp_norm_lhs
-    wp_focus_close (first | wp_norm_lhs | wp_norm_goal)
-    wp_focus_close (first | wp_norm_lhs | wp_norm_goal)
-  )))
-  let gsAfterSetup ← getGoals
-  let gPre :: gPanic :: gErr :: gCont :: rest := gsAfterSetup
-    | throwError "wpp_call_inImage_recvCt2: unexpected subgoals"
-  setGoals [gPre]
-  evalTactic (← `(tactic| intro _R' _hmR'))
-  let ghostMVars ← etaExpandGoalProdMVarsWithNames
-  evalTactic (← `(tactic| (
-    wp_unfold_specs
-    try dsimp only
-    try simp (config := { decide := true }) only [
-      bytesAt_true, bytesAt_false,
-      sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists,
-      satisfies_pure_sepConj, sepConj_assoc,
-      wp_norm, arm64_norm] at _hmR'
-    try simp (config := { decide := true }) only [
-      bytesAt_true, bytesAt_false,
-      sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists,
-      satisfies_pure_sepConj, sepConj_assoc,
-      wp_norm, arm64_norm, *]
-  )))
-  evalTactic (← `(tactic| repeat' (first | apply And.intro | arm64_instantiate_sep_exists)))
-  wpDischargeCallSubgoalsCore ghostMVars (some hcallCopyId)
-  setGoals (gPanic :: gErr :: gCont :: rest)
-  evalTactic (← `(tactic| (
-    wp_focus_close (wp_unfold_specs; intro _; first
-      | exact onPanic_alloc_entails_recvCt2 (by wp_norm_lhs)
-      | exact NextKeyInternalFacts.onPanic_entails_of_trace_eq (by wp_norm_lhs)
-      | exact Entails.pure_left False.elim)
-    wp_focus_close (wp_unfold_specs; exact ⟨fun _ _ => rfl, fun _ => rfl⟩)
-    try clear $hcallCopyId
-    intro $sfId:ident $hpcId:ident $hrunId:ident $hspId:ident $hcsId:ident $hFId:ident
-  )))
-  foldStructEtaTarget
-  for _ in [:2] do
-    let mvarId ← getMainGoal
-    let ref ← IO.mkRef #[]
-    mvarId.withContext do
-      let ty ← instantiateMVars (← mvarId.getType)
-      ty.forEach fun sub => do
-        if sub.isConst then
-          let nm := sub.constName!
-          if nm != ``Arm64.Spec.mk && nm != ``Arm64.Spec.inImage then
-            let subTy ← inferType sub
-            if subTy.getForallBody.isAppOf ``Arm64.Spec then
-              let arr ← ref.get
-              if !arr.any (fun i => i.getId == nm) then
-                ref.set (arr.push (mkIdent nm))
-    let ids ← ref.get
-    for id in ids do
-      let _ ← tryTactic (evalTactic (← `(tactic| dsimp only [$id:ident])))
-  let _ ← tryTactic (evalTactic (← `(tactic| dsimp only)))
-  for hId in [hspId, hcsId] do
-    let _ ← tryTactic (evalTactic (← `(tactic| dsimp only at $hId:ident)))
-    let _ ← tryTactic (evalTactic (← `(tactic|
-      simp (config := { decide := true }) only [
-        ← disjointRegions_iff_disjoint64,
-        ← disjointRegions_iff_disjoint128,
-        Arm64.CalleeSavedPreserved,
-        wp_norm, arm64_norm] at $hId:ident)))
-  let mut worklist : List Ident := [hspId, hcsId]
-  while !worklist.isEmpty do
-    let currId :: rest := worklist | break
-    worklist := rest
-    let mvarId ← getMainGoal
-    let lctx ← mvarId.withContext getLCtx
-    if let some decl := lctx.findFromUserName? currId.getId then
-      let ty ← mvarId.withContext (instantiateMVars decl.type)
-      if ty.isAppOfArity ``And 2 then
-        let h1 ← freshIdent `h
-        if ← tryTactic (evalTactic (← `(tactic| rcases $currId:ident with ⟨$h1:ident, $currId:ident⟩))) then
-          worklist := h1 :: currId :: worklist
-  let _ ← tryTacticCatchRuntimeBool (evalTactic (← `(tactic| (
-    conv =>
-      arg 4
-      simp (config := { decide := true }) only [
-        stackFrame16, stackFrame32, stackFrame16At_def, stackFrame32At_def,
-        sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc,
-        wp_norm, arm64_norm, $hspId:ident]))))
-
-/-! ## Structural Expose and Fold Helpers for `EkSentCt1Received` -/
 
 open NewFacts
 
@@ -338,7 +139,7 @@ theorem polyDecoderAt_pts_length (A : RustAlloc) (a : BitVec 64) (dec : PolyDeco
   exact Entails.pure_right hlen (Entails.pure_right ⟨hlen, hneed⟩ (Entails.refl _))
 
 /-- Heap portion of `vecU8At A v cap ptr bs` (independent of header address `v`). -/
-def vecU8HeapAt (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8HeapAt (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
@@ -667,86 +468,6 @@ theorem exists_unpack64_of_length_128 {bs : List (BitVec 8)} (h : bs.length = 12
 
 /-! ## Fetch Macro, Postcondition Abbreviations, and `None` (`StillReceiving`) Branch -/
 
-/-- Add instruction-fetch hypotheses for a byte range `[k0, k0 + len)` inside `0x59750`. -/
-macro "recv_ct2_chunk_fetches_range " b:term:max H:term:max k0:num len:num : tactic =>
-  `(tactic| code_fetches_range CryptoVerification.libsignalSessionCode recvCt2ChunkBin $b $H recvCt2Chunk_fnOff 0x59834 $k0 $len)
-
-abbrev recvCt2ChunkRoAt (img : Obj.Image) : SepProp :=
-  ((img.base + bv% (ls_xref% 0x59a38 0x59a3c)) ↦ᵣ sckaKeyInfoPrefix) ∗
-    ((img.base + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964")) ↦ᵣ List.replicate 32 0#8) ∗
-    ((img.base + bv% (ls_str% "Signal_PQCKA_V1_MLKEM768:ciphertext")) ↦ᵣ Authenticator.ctLabel)
-
-abbrev recvCt2ChunkPostQ (img : Obj.Image) (K : MlKem) (F : ShaCompress) (A : RustAlloc)
-    (x : RecvCt2ChunkGhost F) (s0 : State) (R : SepProp) : State → SepProp → Prop :=
-  fun sf P_f =>
-    ((sf.mem ⊨ P_f ∗ R) →
-      (sf.mem ⊨
-        (((img.base + bv% (ls_xref% 0x59a38 0x59a3c)) ↦ᵣ sckaKeyInfoPrefix) ∗
-          ((img.base + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964")) ↦ᵣ List.replicate 32 0#8) ∗
-          ((img.base + bv% (ls_str% "Signal_PQCKA_V1_MLKEM768:ciphertext")) ↦ᵣ Authenticator.ctLabel) ∗
-          (recvCt2ChunkSpec K F A img.base).post x s0 sf) ∗ R)) ∧
-      sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf
-
-abbrev recvCt2ChunkPostQp (K : MlKem) (F : ShaCompress) (A : RustAlloc) (b : BitVec 64)
-    (x : RecvCt2ChunkGhost F) (s0 : State) (R : SepProp) : State → SepProp → Prop :=
-  fun sf P_f =>
-    (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (recvCt2ChunkSpec K F A b).onPanic x s0 sf ∗ R)
-
-theorem SplitBytes.memcpy_withStack_inImage_ok {img : Obj.Image} {prog : Program} {entry : BitVec 64}
-    {n : Nat} {P : BitVec 64 → SepProp} (S : SplitBytes n P) (hn : n < 2 ^ 64) (hookStack : Nat)
-    (hmc : subroutine_ok prog entry ((withStack sessionMemcpyRegionSpec hookStack).inImage img)) :
-    subroutine_ok prog entry ((withStack S.memcpySpec hookStack).inImage img) := by
-  refine subroutine_ok_outcome_intro fun ⟨dst, src⟩ R0 s_c hpc_c hrun_c hpre_c hsp_c => ?_
-  dsimp only [Spec.inImage, withStack, SplitBytes.memcpySpec] at hpre_c
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre_c
-  rcases hpre_c with ⟨hinv_c, hpre_c⟩
-  rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpre_c
-  rcases hpre_c with ⟨⟨hx0, hx1, hx2⟩, hmem⟩
-  have h2 := Satisfies.mono (sepConj_mono_left (sepConj_mono_right (S.to_bytes src))) hmem
-  rw [sepExists_sepConj_right, sepExists_sepConj_left, satisfies_sepExists] at h2
-  rcases h2 with ⟨bs, h3⟩
-  rw [sepConj_pure_left_comm, sepConj_assoc, satisfies_pure_sepConj] at h3
-  rcases h3 with ⟨hlen, h4⟩
-  have hpre_mc : s_c.mem ⊨ ((withStack sessionMemcpyRegionSpec hookStack).inImage img).pre (dst, src, bs) s_c ∗
-      (S.heap bs ∗ R0) := by
-    dsimp only [Spec.inImage, withStack, sessionMemcpyRegionSpec, memcpyRegionSpec]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hinv_c, ?_⟩
-    rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, by rw [hx2, hlen, BitVec.toNat_ofNat, Nat.mod_eq_of_lt hn]⟩, ?_⟩
-    rw [hlen]
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) h4
-  refine (hmc.to_outcome (dst, src, bs) (S.heap bs ∗ R0) s_c hpc_c hrun_c hpre_mc hsp_c).mono_outcome
-    fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, hex, hpost⟩ | ⟨hoom, hpost⟩
-  · left
-    refine ⟨hret, hcc, ?_⟩
-    dsimp only [Spec.inImage, withStack, sessionMemcpyRegionSpec, memcpyRegionSpec] at hpost
-    rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpost
-    rcases hpost with ⟨⟨hx0_sf, htr_sf⟩, hpost_mem⟩
-    dsimp only [Spec.inImage, withStack, SplitBytes.memcpySpec]
-    rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨htr_sf, hx0_sf⟩, ?_⟩
-    have harrange :
-        ((dst ↦ₛ bs) ∗ (src ↦ₛ bs)) ∗ stackAt s_c.sp hookStack ∗ (S.heap bs ∗ R0) =
-        (((dst ↦ₛ bs) ∗ S.heap bs) ∗ (src ↦ₛ bs)) ∗ stackAt s_c.sp hookStack ∗ R0 := by ac_rfl
-    rw [harrange] at hpost_mem
-    have hsrc_mr : (src ↦ₛ bs) ⊢ memRegion src n := hlen ▸ pointsToBytes_entails_memRegion src bs
-    exact Satisfies.mono (sepConj_mono_left (sepConj_mono (S.of_bytes dst bs hlen) hsrc_mr)) hpost_mem
-  · right; left
-    dsimp only [Spec.inImage, withStack, sessionMemcpyRegionSpec, memcpyRegionSpec] at hpost
-    rw [satisfies_pure_sepConj] at hpost
-    exact False.elim hpost.1
-  · right; right; left
-    refine ⟨code, hex, ?_⟩
-    dsimp only [Spec.inImage, withStack, sessionMemcpyRegionSpec, memcpyRegionSpec] at hpost
-    rw [satisfies_pure_sepConj] at hpost
-    exact False.elim hpost.1
-  · right; right; right
-    refine ⟨hoom, ?_⟩
-    dsimp only [Spec.inImage, withStack, sessionMemcpyRegionSpec, memcpyRegionSpec] at hpost
-    rw [satisfies_pure_sepConj] at hpost
-    exact False.elim hpost.1
 theorem cap_add_one_beq_zero_false {cap : BitVec 64} (h : cap.toNat < 2 ^ 63) :
     (cap + 1#64 == 0#64) = false := by
   apply beq_false_of_ne
@@ -860,7 +581,7 @@ theorem vecBufAt_of_bytes_live (A : RustAlloc) (ptr : BitVec 64) (bs : List (Bit
   simp only [hcap_ne, ↓reduceIte, htoNat, Nat.sub_self, memRegion_zero, sepConj_emp]
   exact Entails.refl _
 
-def ct2DeallocAt (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
+@[expose] def ct2DeallocAt (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
   ⌜cap ≠ 0#64 ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0#64⌝ ∗
     memRegion ptr cap.toNat ∗ A.live ptr cap.toNat 1
 
@@ -950,10 +671,6 @@ theorem ofNat_sub_128_eq_zero_iff {n : Nat} (hge : 128 ≤ n) (hlt : n < 2 ^ 63)
 
 @[simp] theorem ofNat_128_eq : BitVec.ofNat 64 128 = 128#64 := rfl
 
-@[simp, arm64_norm] theorem doReserve7_fnOff_eq :
-    libsignalSessionCode.fnOff doReserve7Name = 0x4dca8 :=
-  libsignalSessionCode_fnOff_0x4dca8
-
 @[simp] theorem ofNat_32_eq : BitVec.ofNat 64 32 = 32#64 := rfl
 
 @[simp] theorem ofNat_128_toNat : (128#64 : BitVec 64).toNat = 128 := rfl
@@ -962,91 +679,6 @@ theorem ofNat_sub_128_eq_zero_iff {n : Nat} (hge : 128 ≤ n) (hlt : n < 2 ^ 63)
 @[simp] theorem ofNat_2400_eq : BitVec.ofNat 64 2400 = 2400#64 := rfl
 @[simp] theorem ofNat_400_eq : BitVec.ofNat 64 400 = 400#64 := rfl
 @[simp] theorem ofNat_504_eq : BitVec.ofNat 64 504 = 504#64 := rfl
-
-theorem shim_ok_at_recvCt2 {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName +
-        bv% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "__rustc::__rust_no_alloc_shim_is_unstable_v2"))
-      (session2ShimSpecX.inImage img) :=
-  shim_ok_at2_ext_x hA
-
-theorem memcpy_ok_at_recvCt2 {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName +
-        bv% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "memcpy"))
-      (session2MemcpySpecX.inImage img) :=
-  memcpy_ok_at2_ext_x hA
-
-theorem alloc_ok_at_recvCt2 {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName +
-        bv% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "__rustc::__rust_alloc"))
-      ((rustAllocSpecWithStack A extHookStack).inImage img) :=
-  alloc_ok_at_norm_ext_x hA
-
-theorem dealloc_ok_at_recvCt2 {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName +
-        bv% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "__rustc::__rust_dealloc"))
-      ((rustDeallocExternSpecWithStack A extHookStack).inImage img) :=
-  dealloc_ok_at_norm_ext_x hA
-
-theorem panic_at_handle_error_recvCt2 (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).externAt?
-      ((tripleRatchetProgAtExt b ext).fnAddr recvCt2ChunkName +
-        bv% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "alloc::raw_vec::handle_error")) =
-      some Rust.panicked :=
-  panic_at_handle_error_ext b ext recvCt2ChunkName
-    (num% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "alloc::raw_vec::handle_error"))
-
-theorem panic_at_assert_failed_u64_recvCt2 (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).externAt?
-      ((tripleRatchetProgAtExt b ext).fnAddr recvCt2ChunkName +
-        bv% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "core::panicking::assert_failed::<u64, u64>")) =
-      some Rust.panicked :=
-  panic_at_sym_ext b ext recvCt2ChunkName assertFailedU64Name
-    (num% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "core::panicking::assert_failed::<u64, u64>"))
-    (by simp only [arm64_norm]) (hp := by decide +kernel)
-
-theorem panic_at_slice_index_fail_recvCt2 (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).externAt?
-      ((tripleRatchetProgAtExt b ext).fnAddr recvCt2ChunkName +
-        bv% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "core::slice::index::slice_index_fail")) =
-      some Rust.panicked :=
-  panic_at_sym_ext b ext recvCt2ChunkName sliceIndexFailName
-    (num% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "core::slice::index::slice_index_fail"))
-    (by simp only [arm64_norm]) (hp := by decide +kernel)
-
-theorem panic_at_unwrap_failed_recvCt2 (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).externAt?
-      ((tripleRatchetProgAtExt b ext).fnAddr recvCt2ChunkName +
-        bv% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "core::result::unwrap_failed")) =
-      some Rust.panicked :=
-  panic_at_sym_ext b ext recvCt2ChunkName unwrapFailedName
-    (num% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "core::result::unwrap_failed"))
-    (by simp only [arm64_norm]) (hp := by decide +kernel)
-
-theorem panic_at_bounds_check_recvCt2 (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).externAt?
-      ((tripleRatchetProgAtExt b ext).fnAddr recvCt2ChunkName +
-        bv% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "core::panicking::panic_bounds_check")) =
-      some Rust.panicked :=
-  panic_at_sym_ext b ext recvCt2ChunkName panicBoundsCheckName
-    (num% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "core::panicking::panic_bounds_check"))
-    (by simp only [arm64_norm]) (hp := by decide +kernel)
-
-theorem panic_at_add_overflow_recvCt2 (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).externAt?
-      ((tripleRatchetProgAtExt b ext).fnAddr recvCt2ChunkName +
-        bv% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "core::panicking::panic_const::panic_const_add_overflow")) =
-      some Rust.panicked :=
-  panic_at_sym_ext b ext recvCt2ChunkName panicConstAddOverflowName
-    (num% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "core::panicking::panic_const::panic_const_add_overflow"))
-    (by simp only [arm64_norm]) (hp := by decide +kernel)
 
 end Part1Helpers
 
@@ -1064,44 +696,6 @@ attribute [-arm64_norm]
   HkdfToSliceProof.sp_add_neg688_eq_hsp
   HkdfToSliceProof.sp_sub_96_eq_hsp_592
   HkdfToSliceProof.sp_add_neg96_eq_hsp_592
-
-ls_attribute [local simp, local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
-  recvCt2Chunk_fnOff addChunk_fnOff polyDecodedMessage_fnOff mlkemDecaps_fnOff
-  authUpdate_fnOff sliceConcat_fnOff hkdfToSlice_fnOff
-  shim_fnOff alloc_fnOff allocZeroed_fnOff dealloc_fnOff handleError_fnOff
-  memcpy_fnOff gf16IsNonZero_fnOff doReserve7_fnOff_eq
-  assertFailedU64_fnOff sliceIndexFail_fnOff unwrapFailed_fnOff
-  panicBoundsCheck_fnOff panicConstAddOverflow_fnOff
-  libsignalSessionCode_fnOff_0x59834
-  libsignalSessionCode_fnOff_0x67028
-  libsignalSessionCode_fnOff_0x66788
-  libsignalSessionCode_fnOff_0x58ac4
-  libsignalSessionCode_fnOff_0x5eab8
-  libsignalSessionCode_fnOff_0x5de8c
-  libsignalSessionCode_fnOff_0x46920
-  libsignalSessionCode_fnOff_0x4dca8
-  libsignalSessionCode_fnOff_0x5e5f0
-  (ls_stub% "memcpy") (ls_hook% "memcpy")
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_hook% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc") (ls_hook% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_alloc_zeroed") (ls_hook% "__rustc::__rust_alloc_zeroed")
-  (ls_stub% "__rustc::__rust_dealloc") (ls_hook% "__rustc::__rust_dealloc")
-  (ls_stub% "alloc::raw_vec::handle_error") (ls_hook% "alloc::raw_vec::handle_error")
-  (ls_stub% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-  (ls_hook% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-  (ls_stub% "libcrux_hmac::hmac") (ls_hook% "libcrux_hmac::hmac")
-  (ls_stub% "core::panicking::assert_failed::<u64, u64>")
-  (ls_hook% "core::panicking::assert_failed::<u64, u64>")
-  (ls_stub% "core::slice::index::slice_index_fail")
-  (ls_hook% "core::slice::index::slice_index_fail")
-  (ls_stub% "core::result::unwrap_failed") (ls_hook% "core::result::unwrap_failed")
-  (ls_stub% "core::panicking::panic_bounds_check")
-  (ls_hook% "core::panicking::panic_bounds_check")
-  (ls_stub% "core::panicking::panic_const::panic_const_add_overflow")
-  (ls_hook% "core::panicking::panic_const::panic_const_add_overflow")
-
-/-! ## Stack Frame & Heap Splitting Helpers for `Some(ct2Full)` -/
 
 theorem ofNat_beq_960_iff {n : Nat} (hlt : n < 2 ^ 63) :
     (BitVec.ofNat 64 n == 960#64) = decide (n = 960) := by
@@ -1152,7 +746,7 @@ theorem vecU8HeapAt_pure_bounds (A : RustAlloc) (cap ptr : BitVec 64) (bs : List
   apply Entails.pure_left; intro hp
   exact Entails.pure_right hp (Entails.pure_right hp (Entails.refl _))
 
-def heapDeallocAt (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
+@[expose] def heapDeallocAt (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
   if cap = 0#64 then emp
   else ⌜cap.toNat < 2 ^ 63 ∧ ptr ≠ 0#64⌝ ∗ memRegion ptr cap.toNat ∗ A.live ptr cap.toNat 1
 
@@ -1213,62 +807,6 @@ theorem memRegion_24_cells (a : BitVec 64) :
   dsimp only [cells]
   simp only [sepExists_sepConj_left, sepExists_sepConj_right, BitVec.add_assoc, BitVec.reduceAdd,
     emp_sepConj, sepConj_emp]
-
-theorem mlkem_decaps_ok_at_recvCt2 {img : Obj.Image} {K : MlKem}
-    {ext : String → Option (State → State)}
-    (hdecaps : HookSat ext mlkemDecapsName (mlkemDecapsSpec K)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName +
-        bv% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key"))
-      ((mlkemDecapsSpec K).inImage img) := by
-  apply Alloc.subroutine_ok_inImage img
-  exact hook_ok_at (hname := "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-    recvCt2Chunk_fnOff (by fnoff_eq) (by decide)
-    (ls_hook% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-    (by decide +kernel) hdecaps
-
-theorem libcrux_hmac_ok_at_recvCt2 {img : Obj.Image} {F : ShaCompress} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hhmac : HookSat ext libcruxHmacName (libcruxHmacSpec F A)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName +
-        bv% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "libcrux_hmac::hmac"))
-      ((libcruxHmacSpec F A).inImage img) :=
-  Alloc.subroutine_ok_inImage img <|
-    libcrux_hmac_ok_at_ext img.base F A ext hhmac recvCt2ChunkName
-      (num% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "libcrux_hmac::hmac"))
-      (by simp only [arm64_norm])
-
-theorem sub_ok_at_recvCt2 {α : Type} {img : Obj.Image}
-    {ext : String → Option (State → State)} {callee : String} {off : BitVec 64} {spec : Spec α}
-    (hoff : BitVec.ofNat 64 (libsignalSessionCode.fnOff recvCt2ChunkName) + off =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff callee))
-    (h : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr callee) spec) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName + off) spec := by
-  have haddr :
-      (tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName + off =
-        (tripleRatchetProgAtExt img.base ext).fnAddr callee := by
-    unfold tripleRatchetProgAtExt
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase, BitVec.add_assoc, hoff]
-  rwa [haddr]
-
-theorem addChunk_ok_at_recvCt2 {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : AddChunkOkX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName + bv% (0x67028 - 0x59834))
-      ((addChunkSpecX A).inImage img) := by
-  unfold AddChunkOkX at h
-  exact sub_ok_at_recvCt2 (callee := addChunkName) (by rw [recvCt2Chunk_fnOff, addChunk_fnOff]; rfl) h
-
-theorem polyDecodedMessage_ok_at_recvCt2 {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : PolyDecodedMessageOkX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName + bv% (0x66788 - 0x59834))
-      ((polyDecodedMessageSpec A img.base).inImage img) :=
-  sub_ok_at_recvCt2 (callee := polyDecodedMessageName)
-    (by rw [recvCt2Chunk_fnOff, polyDecodedMessage_fnOff]; rfl) h
 
 theorem bytes_rem_entails_ct2DeallocAt (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8))
     (hle : bs.length ≤ cap.toNat) (hmax : cap.toNat < 2 ^ 63)
@@ -1428,42 +966,6 @@ attribute [-arm64_norm]
   HkdfToSliceProof.sp_sub_96_eq_hsp_592
   HkdfToSliceProof.sp_add_neg96_eq_hsp_592
 
-ls_attribute [local simp, local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
-  recvCt2Chunk_fnOff addChunk_fnOff polyDecodedMessage_fnOff mlkemDecaps_fnOff
-  authUpdate_fnOff sliceConcat_fnOff hkdfToSlice_fnOff
-  shim_fnOff alloc_fnOff allocZeroed_fnOff dealloc_fnOff handleError_fnOff
-  memcpy_fnOff gf16IsNonZero_fnOff doReserve7_fnOff_eq
-  assertFailedU64_fnOff sliceIndexFail_fnOff unwrapFailed_fnOff
-  panicBoundsCheck_fnOff panicConstAddOverflow_fnOff
-  libsignalSessionCode_fnOff_0x59834
-  libsignalSessionCode_fnOff_0x67028
-  libsignalSessionCode_fnOff_0x66788
-  libsignalSessionCode_fnOff_0x58ac4
-  libsignalSessionCode_fnOff_0x5eab8
-  libsignalSessionCode_fnOff_0x5de8c
-  libsignalSessionCode_fnOff_0x46920
-  libsignalSessionCode_fnOff_0x4dca8
-  libsignalSessionCode_fnOff_0x5e5f0
-  (ls_stub% "memcpy") (ls_hook% "memcpy")
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_hook% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc") (ls_hook% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_alloc_zeroed") (ls_hook% "__rustc::__rust_alloc_zeroed")
-  (ls_stub% "__rustc::__rust_dealloc") (ls_hook% "__rustc::__rust_dealloc")
-  (ls_stub% "alloc::raw_vec::handle_error") (ls_hook% "alloc::raw_vec::handle_error")
-  (ls_stub% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-  (ls_hook% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-  (ls_stub% "libcrux_hmac::hmac") (ls_hook% "libcrux_hmac::hmac")
-  (ls_stub% "core::panicking::assert_failed::<u64, u64>")
-  (ls_hook% "core::panicking::assert_failed::<u64, u64>")
-  (ls_stub% "core::slice::index::slice_index_fail")
-  (ls_hook% "core::slice::index::slice_index_fail")
-  (ls_stub% "core::result::unwrap_failed") (ls_hook% "core::result::unwrap_failed")
-  (ls_stub% "core::panicking::panic_bounds_check")
-  (ls_hook% "core::panicking::panic_bounds_check")
-  (ls_stub% "core::panicking::panic_const::panic_const_add_overflow")
-  (ls_hook% "core::panicking::panic_const::panic_const_add_overflow")
-
 theorem savedRegsAt_of_cells12 (s0 : State) :
     ((s0.sp - 96#64) ↦₆₄ s0.readReg64 .x29) ∗
       ((s0.sp - 88#64) ↦₆₄ s0.readReg64 .x30) ∗
@@ -1604,93 +1106,6 @@ attribute [-arm64_norm]
   HkdfToSliceProof.sp_sub_96_eq_hsp_592
   HkdfToSliceProof.sp_add_neg96_eq_hsp_592
 
-ls_attribute [local simp, local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
-  recvCt2Chunk_fnOff addChunk_fnOff polyDecodedMessage_fnOff mlkemDecaps_fnOff
-  authUpdate_fnOff sliceConcat_fnOff hkdfToSlice_fnOff
-  shim_fnOff alloc_fnOff allocZeroed_fnOff dealloc_fnOff handleError_fnOff
-  memcpy_fnOff gf16IsNonZero_fnOff doReserve7_fnOff_eq
-  assertFailedU64_fnOff sliceIndexFail_fnOff unwrapFailed_fnOff
-  panicBoundsCheck_fnOff panicConstAddOverflow_fnOff
-  libsignalSessionCode_fnOff_0x59834
-  libsignalSessionCode_fnOff_0x67028
-  libsignalSessionCode_fnOff_0x66788
-  libsignalSessionCode_fnOff_0x58ac4
-  libsignalSessionCode_fnOff_0x5eab8
-  libsignalSessionCode_fnOff_0x5de8c
-  libsignalSessionCode_fnOff_0x46920
-  libsignalSessionCode_fnOff_0x4dca8
-  libsignalSessionCode_fnOff_0x5e5f0
-  (ls_stub% "memcpy") (ls_hook% "memcpy")
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_hook% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc") (ls_hook% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_alloc_zeroed") (ls_hook% "__rustc::__rust_alloc_zeroed")
-  (ls_stub% "__rustc::__rust_dealloc") (ls_hook% "__rustc::__rust_dealloc")
-  (ls_stub% "alloc::raw_vec::handle_error") (ls_hook% "alloc::raw_vec::handle_error")
-  (ls_stub% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-  (ls_hook% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-  (ls_stub% "libcrux_hmac::hmac") (ls_hook% "libcrux_hmac::hmac")
-  (ls_stub% "core::panicking::assert_failed::<u64, u64>")
-  (ls_hook% "core::panicking::assert_failed::<u64, u64>")
-  (ls_stub% "core::slice::index::slice_index_fail")
-  (ls_hook% "core::slice::index::slice_index_fail")
-  (ls_stub% "core::result::unwrap_failed") (ls_hook% "core::result::unwrap_failed")
-  (ls_stub% "core::panicking::panic_bounds_check")
-  (ls_hook% "core::panicking::panic_bounds_check")
-  (ls_stub% "core::panicking::panic_const::panic_const_add_overflow")
-  (ls_hook% "core::panicking::panic_const::panic_const_add_overflow")
-
-theorem allocZeroed_ok_at_recvCt2 {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : AllocZeroedWithStackOkX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName +
-        bv% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "__rustc::__rust_alloc_zeroed"))
-      ((rustAllocZeroedSpecWithStack A extHookStack).inImage img) :=
-  sub_ok_at_recvCt2 (callee := allocZeroedName)
-    (by rw [recvCt2Chunk_fnOff, allocZeroed_fnOff]; rfl) h
-
-theorem sliceConcat2_ok_at_recvCt2 {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : SliceConcat2OkX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName + bv% (0x5eab8 - 0x59834))
-      ((sliceConcat2Spec A).inImage img) :=
-  sub_ok_at_recvCt2 (callee := sliceConcatName)
-    (by rw [recvCt2Chunk_fnOff, sliceConcat_fnOff]; rfl) h
-
-theorem sliceConcat3_ok_at_recvCt2 {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : SliceConcat3OkX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName + bv% (0x5eab8 - 0x59834))
-      ((sliceConcat3Spec A).inImage img) :=
-  sub_ok_at_recvCt2 (callee := sliceConcatName)
-    (by rw [recvCt2Chunk_fnOff, sliceConcat_fnOff]; rfl) h
-
-theorem hkdfToSlice_ok_at_recvCt2 {img : Obj.Image} {F : ShaCompress}
-    {ext : String → Option (State → State)} (h : HkdfToSliceSpqrOkX img (spqrHkdfWith F) ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName + bv% (0x5de8c - 0x59834))
-      ((hkdfToSliceSpqrSpec (spqrHkdfWith F)).inImage img) :=
-  sub_ok_at_recvCt2 (callee := Kdf.hkdfToSliceName)
-    (by rw [recvCt2Chunk_fnOff, hkdfToSlice_fnOff]; rfl) h
-
-theorem authUpdate_ok_at_recvCt2 {img : Obj.Image} {F : ShaCompress} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : AuthUpdateOkX img F A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName + (0x58ac4#64 - 0x59834#64))
-      ((authUpdateSpec F A).inImage img) :=
-  sub_ok_at_recvCt2 (callee := authUpdateName)
-    (by rw [recvCt2Chunk_fnOff, authUpdate_fnOff]; rfl) h
-
-theorem isNonZero_ok_at_recvCt2 (img : Obj.Image) (ext : String → Option (State → State)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName + bv% (0x5e5f0 - 0x59834))
-      (isNonZeroSpec.inImage img) :=
-  sub_ok_at_recvCt2 (callee := isNonZeroName)
-    (by rw [recvCt2Chunk_fnOff, gf16IsNonZero_fnOff]; rfl)
-    (Alloc.subroutine_ok_inImage img (isNonZero_ok img.base ext))
-
-/-! ## Callee Contract Wrappers & Segment 2a (`0x5ee0c .. 0x5eec4`) -/
-
 theorem pointsToBytes_replicate_32_entails_memRegion (p : BitVec 64) :
     (p ↦ₛ List.replicate 32 (0#8 : BitVec 8)) ⊢ memRegion p 32 := by
   have hlen : (List.replicate 32 (0#8 : BitVec 8)).length = 32 := by decide
@@ -1770,24 +1185,9 @@ theorem page_align_mask {b : BitVec 64} (halign : b &&& 4095#64 = 0#64) :
   rw [halign, BitVec.add_zero] at hb
   exact hb
 
-theorem adrp_sckaKeyInfoPrefix {b : BitVec 64} (halign : b &&& 4095#64 = 0#64) :
-    ((b + 0x59834#64) + 516#64 &&& 18446744073709547520#64) + bv% (ls_xref% 0x59a38 0x59a3c - 0x59000) =
-      b + bv% (ls_xref% 0x59a38 0x59a3c) := by
-  rw [← page_align_mask halign]; bv_kernel
-
 theorem sckaKeyInfo_length (ep : Epoch) :
     (sckaKeyInfoPrefix ++ toBEBytes 8 ep).length = 41 := by
   simp [sckaKeyInfoPrefix, asciiBytes]
-
-theorem adrp_zero32 {b : BitVec 64} (halign : b &&& 4095#64 = 0#64) :
-    ((b + 0x59834#64) + 600#64 &&& 18446744073709547520#64) + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" - 0x59000) =
-      b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964") := by
-  rw [← page_align_mask halign]; bv_kernel
-
-theorem adrp_ctLabel {b : BitVec 64} (halign : b &&& 4095#64 = 0#64) :
-    ((b + 0x59834#64) + 756#64 &&& 18446744073709547520#64) + bv% (ls_str% "Signal_PQCKA_V1_MLKEM768:ciphertext" - 0x59000) =
-      b + bv% (ls_str% "Signal_PQCKA_V1_MLKEM768:ciphertext") := by
-  rw [← page_align_mask halign]; bv_kernel
 
 @[simp, arm64_norm, wp_norm, arm64_norm ↓, wp_norm ↓]
 theorem sckaKeyInfoPrefix_length : sckaKeyInfoPrefix.length = 33 := rfl
@@ -1890,61 +1290,9 @@ attribute [-arm64_norm]
   HkdfToSliceProof.sp_sub_96_eq_hsp_592
   HkdfToSliceProof.sp_add_neg96_eq_hsp_592
 
-ls_attribute [local simp, local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
-  recvCt2Chunk_fnOff addChunk_fnOff polyDecodedMessage_fnOff mlkemDecaps_fnOff
-  authUpdate_fnOff sliceConcat_fnOff hkdfToSlice_fnOff
-  shim_fnOff alloc_fnOff allocZeroed_fnOff dealloc_fnOff handleError_fnOff
-  memcpy_fnOff gf16IsNonZero_fnOff doReserve7_fnOff_eq
-  assertFailedU64_fnOff sliceIndexFail_fnOff unwrapFailed_fnOff
-  panicBoundsCheck_fnOff panicConstAddOverflow_fnOff
-  libsignalSessionCode_fnOff_0x59834
-  libsignalSessionCode_fnOff_0x67028
-  libsignalSessionCode_fnOff_0x66788
-  libsignalSessionCode_fnOff_0x58ac4
-  libsignalSessionCode_fnOff_0x5eab8
-  libsignalSessionCode_fnOff_0x5de8c
-  libsignalSessionCode_fnOff_0x46920
-  libsignalSessionCode_fnOff_0x4dca8
-  libsignalSessionCode_fnOff_0x5e5f0
-  (ls_stub% "memcpy") (ls_hook% "memcpy")
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_hook% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc") (ls_hook% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_alloc_zeroed") (ls_hook% "__rustc::__rust_alloc_zeroed")
-  (ls_stub% "__rustc::__rust_dealloc") (ls_hook% "__rustc::__rust_dealloc")
-  (ls_stub% "alloc::raw_vec::handle_error") (ls_hook% "alloc::raw_vec::handle_error")
-  (ls_stub% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-  (ls_hook% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-  (ls_stub% "libcrux_hmac::hmac") (ls_hook% "libcrux_hmac::hmac")
-  (ls_stub% "core::panicking::assert_failed::<u64, u64>")
-  (ls_hook% "core::panicking::assert_failed::<u64, u64>")
-  (ls_stub% "core::slice::index::slice_index_fail")
-  (ls_hook% "core::slice::index::slice_index_fail")
-  (ls_stub% "core::result::unwrap_failed") (ls_hook% "core::result::unwrap_failed")
-  (ls_stub% "core::panicking::panic_bounds_check")
-  (ls_hook% "core::panicking::panic_bounds_check")
-  (ls_stub% "core::panicking::panic_const::panic_const_add_overflow")
-  (ls_hook% "core::panicking::panic_const::panic_const_add_overflow")
-
-/-! ## Callee Wrappers and Stack/Memory Helpers for Segment 2b (`0x5eec4..0x5ef88`) -/
-
-def DoReserve7OkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr doReserve7Name)
-    ((doReserveSpecX A).inImage img)
-
-theorem doReserve7_ok_at_recvCt2 {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : DoReserve7OkX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName + (0x4dca8#64 - 0x59834#64))
-      ((doReserveSpecX A).inImage img) :=
-  sub_ok_at_recvCt2 (callee := doReserve7Name)
-    (by rw [recvCt2Chunk_fnOff, doReserve7_fnOff_eq]; rfl) h
-
 /-- Specialized `libcrux_hmac::hmac` contract when `key.length < 2^32` and `data.length < 2^32`
 are already known at the call site, reducing `onPanic` to `allocFailedIn`. -/
-def libcruxHmacSafeSpec (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc) :
+@[expose] def libcruxHmacSafeSpec (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc) :
     Spec LibcruxHmacCall where
   pre x s :=
     ⌜s.readReg64 .x8 = x.ret ∧ (s.readReg64 .x0).setWidth 32 = 0#32 ∧
@@ -1960,41 +1308,6 @@ def libcruxHmacSafeSpec (F : ShaState → List (BitVec 8) → ShaState) (A : Rus
       vecU8 A x.ret (hmacWith F x.key x.data) ∗ A.pool ∗ stackAt s0.sp extHookStack
   onPanic _ s0 sf :=
     ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-theorem libcrux_hmac_safe_ok_at_recvCt2 {img : Obj.Image} {F : ShaCompress} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hhmac : HookSat ext libcruxHmacName (libcruxHmacSpec F A)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName + bv% (ls_rel% "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk" "libcrux_hmac::hmac"))
-      ((libcruxHmacSafeSpec F A).inImage img) := by
-  have hraw := libcrux_hmac_ok_at_recvCt2 (img := img) hhmac
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  dsimp only [Spec.inImage, libcruxHmacSafeSpec] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, hpre⟩
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx8, hx0, hx1, hx2, hx3, hx4, hx5, hx6, hk_lt, hd_lt⟩, hmem⟩
-  have hpre' : s0.mem ⊨ ((libcruxHmacSpec F A).inImage img).pre x s0 ∗ R := by
-    dsimp only [Spec.inImage, libcruxHmacSpec]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hinv, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx8, hx0, hx1, hx2, hx3, hx4, hx5, hx6⟩, hmem⟩
-  refine (hraw.to_outcome x R s0 hpc hrun hpre' hsp).mono_outcome fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, hex, hpost⟩ | ⟨hoom, hpost⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [Spec.inImage, libcruxHmacSpec, libcruxHmacSafeSpec] at hpost ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    exact ⟨hpost.1.2.2, hpost.2⟩
-  · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
-    dsimp only [Spec.inImage, libcruxHmacSpec, libcruxHmacSafeSpec] at hpost ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨⟨haf | hk_ge | hd_ge, hpref⟩, hmem'⟩
-    · exact ⟨⟨haf, hpref⟩, hmem'⟩
-    · omega
-    · omega
-  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hpost⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨hoom, hpost⟩))
 
 theorem stackAt_extHook_eq_doReserveX (sp : BitVec 64) :
     memRegion (sp - 19552#64) 672 ∗ stackAt (sp - 2496#64) extHookStack =
@@ -2249,44 +1562,6 @@ attribute [-arm64_norm]
   HkdfToSliceProof.sp_add_neg688_eq_hsp
   HkdfToSliceProof.sp_sub_96_eq_hsp_592
   HkdfToSliceProof.sp_add_neg96_eq_hsp_592
-
-ls_attribute [local simp, local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
-  recvCt2Chunk_fnOff addChunk_fnOff polyDecodedMessage_fnOff mlkemDecaps_fnOff
-  authUpdate_fnOff sliceConcat_fnOff hkdfToSlice_fnOff
-  shim_fnOff alloc_fnOff allocZeroed_fnOff dealloc_fnOff handleError_fnOff
-  memcpy_fnOff gf16IsNonZero_fnOff doReserve7_fnOff_eq
-  assertFailedU64_fnOff sliceIndexFail_fnOff unwrapFailed_fnOff
-  panicBoundsCheck_fnOff panicConstAddOverflow_fnOff
-  libsignalSessionCode_fnOff_0x59834
-  libsignalSessionCode_fnOff_0x67028
-  libsignalSessionCode_fnOff_0x66788
-  libsignalSessionCode_fnOff_0x58ac4
-  libsignalSessionCode_fnOff_0x5eab8
-  libsignalSessionCode_fnOff_0x5de8c
-  libsignalSessionCode_fnOff_0x46920
-  libsignalSessionCode_fnOff_0x4dca8
-  libsignalSessionCode_fnOff_0x5e5f0
-  (ls_stub% "memcpy") (ls_hook% "memcpy")
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_hook% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc") (ls_hook% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_alloc_zeroed") (ls_hook% "__rustc::__rust_alloc_zeroed")
-  (ls_stub% "__rustc::__rust_dealloc") (ls_hook% "__rustc::__rust_dealloc")
-  (ls_stub% "alloc::raw_vec::handle_error") (ls_hook% "alloc::raw_vec::handle_error")
-  (ls_stub% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-  (ls_hook% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-  (ls_stub% "libcrux_hmac::hmac") (ls_hook% "libcrux_hmac::hmac")
-  (ls_stub% "core::panicking::assert_failed::<u64, u64>")
-  (ls_hook% "core::panicking::assert_failed::<u64, u64>")
-  (ls_stub% "core::slice::index::slice_index_fail")
-  (ls_hook% "core::slice::index::slice_index_fail")
-  (ls_stub% "core::result::unwrap_failed") (ls_hook% "core::result::unwrap_failed")
-  (ls_stub% "core::panicking::panic_bounds_check")
-  (ls_hook% "core::panicking::panic_bounds_check")
-  (ls_stub% "core::panicking::panic_const::panic_const_add_overflow")
-  (ls_hook% "core::panicking::panic_const::panic_const_add_overflow")
-
-/-! ## Pure & Stack Helpers for MAC Comparison -/
 
 theorem vecU8_expose_nonempty_1248 (A : RustAlloc) (sp : BitVec 64) (bs : List (BitVec 8))
     (hpos : 0 < bs.length) :
@@ -2642,47 +1917,11 @@ theorem recv_ct2_chunk_eq_done {K : MlKem} {F : ShaCompress}
   rw [hver, ite_eq_right_iff.mpr (fun h => False.elim (hcmp' h)), hall]
   rfl
 
-ls_attribute [local simp, local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
-  recvCt2Chunk_fnOff addChunk_fnOff polyDecodedMessage_fnOff mlkemDecaps_fnOff
-  authUpdate_fnOff sliceConcat_fnOff hkdfToSlice_fnOff
-  shim_fnOff alloc_fnOff allocZeroed_fnOff dealloc_fnOff handleError_fnOff
-  memcpy_fnOff gf16IsNonZero_fnOff doReserve7_fnOff_eq
-  assertFailedU64_fnOff sliceIndexFail_fnOff unwrapFailed_fnOff
-  panicBoundsCheck_fnOff panicConstAddOverflow_fnOff
-  libsignalSessionCode_fnOff_0x59834
-  libsignalSessionCode_fnOff_0x67028
-  libsignalSessionCode_fnOff_0x66788
-  libsignalSessionCode_fnOff_0x58ac4
-  libsignalSessionCode_fnOff_0x5eab8
-  libsignalSessionCode_fnOff_0x5de8c
-  libsignalSessionCode_fnOff_0x46920
-  libsignalSessionCode_fnOff_0x4dca8
-  libsignalSessionCode_fnOff_0x5e5f0
-  (ls_stub% "memcpy") (ls_hook% "memcpy")
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_hook% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc") (ls_hook% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_alloc_zeroed") (ls_hook% "__rustc::__rust_alloc_zeroed")
-  (ls_stub% "__rustc::__rust_dealloc") (ls_hook% "__rustc::__rust_dealloc")
-  (ls_stub% "alloc::raw_vec::handle_error") (ls_hook% "alloc::raw_vec::handle_error")
-  (ls_stub% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-  (ls_hook% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-  (ls_stub% "libcrux_hmac::hmac") (ls_hook% "libcrux_hmac::hmac")
-  (ls_stub% "core::panicking::assert_failed::<u64, u64>")
-  (ls_hook% "core::panicking::assert_failed::<u64, u64>")
-  (ls_stub% "core::slice::index::slice_index_fail")
-  (ls_hook% "core::slice::index::slice_index_fail")
-  (ls_stub% "core::result::unwrap_failed") (ls_hook% "core::result::unwrap_failed")
-  (ls_stub% "core::panicking::panic_bounds_check")
-  (ls_hook% "core::panicking::panic_bounds_check")
-  (ls_stub% "core::panicking::panic_const::panic_const_add_overflow")
-  (ls_hook% "core::panicking::panic_const::panic_const_add_overflow")
-
-def b0 (w : BitVec 64) : BitVec 8 :=
+@[expose] def b0 (w : BitVec 64) : BitVec 8 :=
   w.extractLsb' 0 8
 
 /-- Bytes 1..8 (the high 7 bytes) of a 64-bit word `w`, placed at `a .. a + 7`. -/
-def mid7At (a : BitVec 64) (w : BitVec 64) : SepProp :=
+@[expose] def mid7At (a : BitVec 64) (w : BitVec 64) : SepProp :=
   ((a + 0#64) ↦₈ (w.extractLsb' 8 8)) ∗
   ((a + 1#64) ↦₈ (w.extractLsb' 16 8)) ∗
   ((a + 2#64) ↦₈ (w.extractLsb' 24 8)) ∗
@@ -2692,7 +1931,7 @@ def mid7At (a : BitVec 64) (w : BitVec 64) : SepProp :=
   ((a + 6#64) ↦₈ (w.extractLsb' 56 8))
 
 /-- 64-bit word formed by taking the high 7 bytes of `w1` (low 56 bits) followed by byte 0 of `w2` (high 8 bits). -/
-def shiftWord8 (w1 w2 : BitVec 64) : BitVec 64 :=
+@[expose] def shiftWord8 (w1 w2 : BitVec 64) : BitVec 64 :=
   (w2.extractLsb' 0 8).zeroExtend 64 <<< 56 ||| (w1 >>> 8)
 
 theorem pointsTo64_eq_b0_mid7 (a w : BitVec 64) :
@@ -2738,11 +1977,11 @@ theorem window15_left_eq_right (a8 a15 a16 w2 w3 : BitVec 64)
   rw [← h16', ← mid7_b0_eq_pointsTo64_shiftWord8 a8 w2 w3, ← h15,
       sepConj_assoc, ← pointsTo64_eq_b0_mid7 a15 w3]
 
-def b7 (w : BitVec 64) : BitVec 8 :=
+@[expose] def b7 (w : BitVec 64) : BitVec 8 :=
   w.extractLsb' 56 8
 
 /-- Bytes 0..7 (the low 7 bytes) of a 64-bit word `w`, placed at `a .. a + 7`. -/
-def low7At (a : BitVec 64) (w : BitVec 64) : SepProp :=
+@[expose] def low7At (a : BitVec 64) (w : BitVec 64) : SepProp :=
   ((a + 0#64) ↦₈ (w.extractLsb' 0 8)) ∗
   ((a + 1#64) ↦₈ (w.extractLsb' 8 8)) ∗
   ((a + 2#64) ↦₈ (w.extractLsb' 16 8)) ∗
@@ -2752,11 +1991,11 @@ def low7At (a : BitVec 64) (w : BitVec 64) : SepProp :=
   ((a + 6#64) ↦₈ (w.extractLsb' 48 8))
 
 /-- 64-bit word formed by byte 7 of `w1` (low 8 bits) followed by the low 7 bytes of `w2` (high 56 bits). -/
-def unshiftWord8 (w1 w2 : BitVec 64) : BitVec 64 :=
+@[expose] def unshiftWord8 (w1 w2 : BitVec 64) : BitVec 64 :=
   (w2 <<< 8) ||| (w1.extractLsb' 56 8).zeroExtend 64
 
 /-- Replace byte 7 (highest 8 bits) of `w1` with byte 0 of `w2`. -/
-def setByte7 (w1 w2 : BitVec 64) : BitVec 64 :=
+@[expose] def setByte7 (w1 w2 : BitVec 64) : BitVec 64 :=
   ((w2.extractLsb' 0 8).zeroExtend 64 <<< 56) ||| (w1 &&& 0x00ff_ffff_ffff_ffff#64)
 
 theorem pointsTo64_eq_low7_b7 (a w : BitVec 64) :
@@ -2938,22 +2177,6 @@ theorem rejoin_outA_err (A : RustAlloc) {F : ShaCompress} (outA : BitVec 64)
   rw [← ProofLib.memRegion_split' (b := outA + 9#64) (n := 23) (k := 472) (b' := outA + 32#64)
       rfl (by bv_omega) (by decide)]
   exact Entails.refl _
-
-theorem dropSortedSetPt16_ok_at_recvCt2 {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt img.base A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName + (0x46920#64 - 0x59834#64))
-      ((dropGlueSortedSetPt16Spec A).inImage img) := by
-  have hok : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dropSortedSetPt16Name)
-      ((dropGlueSortedSetPt16Spec A).inImage img) :=
-    Alloc.subroutine_ok_inImage img (drop_glue_sorted_set_pt16_ok_ext hdealloc)
-  have hrel : (tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName =
-      (tripleRatchetProgAtExt img.base ext).fnAddr dropSortedSetPt16Name + BitVec.ofNat 64 77588 :=
-    Program.fnAddr_rel (k := 77588) (b := img.base) (X := Rust.withPanics ext)
-      libsignalSessionCode_fnOff_0x46920 recvCt2Chunk_fnOff (by decide)
-  refine sub_ok_of_addr_eq ?_ hok
-  rw [hrel, BitVec.add_assoc]; simp
 
 theorem rejoin_stack_polyDecodedMessage_from_extHook (sp : BitVec 64) :
     memRegion (sp - 19552#64) 672 ∗ stackAt (sp - 2496#64) extHookStack ⊢
@@ -3167,44 +2390,6 @@ attribute [-arm64_norm]
   HkdfToSliceProof.sp_add_neg688_eq_hsp
   HkdfToSliceProof.sp_sub_96_eq_hsp_592
   HkdfToSliceProof.sp_add_neg96_eq_hsp_592
-
-ls_attribute [local simp, local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
-  recvCt2Chunk_fnOff addChunk_fnOff polyDecodedMessage_fnOff mlkemDecaps_fnOff
-  authUpdate_fnOff sliceConcat_fnOff hkdfToSlice_fnOff
-  shim_fnOff alloc_fnOff allocZeroed_fnOff dealloc_fnOff handleError_fnOff
-  memcpy_fnOff gf16IsNonZero_fnOff doReserve7_fnOff_eq
-  assertFailedU64_fnOff sliceIndexFail_fnOff unwrapFailed_fnOff
-  panicBoundsCheck_fnOff panicConstAddOverflow_fnOff
-  libsignalSessionCode_fnOff_0x59834
-  libsignalSessionCode_fnOff_0x67028
-  libsignalSessionCode_fnOff_0x66788
-  libsignalSessionCode_fnOff_0x58ac4
-  libsignalSessionCode_fnOff_0x5eab8
-  libsignalSessionCode_fnOff_0x5de8c
-  libsignalSessionCode_fnOff_0x46920
-  libsignalSessionCode_fnOff_0x4dca8
-  libsignalSessionCode_fnOff_0x5e5f0
-  (ls_stub% "memcpy") (ls_hook% "memcpy")
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_hook% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc") (ls_hook% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_alloc_zeroed") (ls_hook% "__rustc::__rust_alloc_zeroed")
-  (ls_stub% "__rustc::__rust_dealloc") (ls_hook% "__rustc::__rust_dealloc")
-  (ls_stub% "alloc::raw_vec::handle_error") (ls_hook% "alloc::raw_vec::handle_error")
-  (ls_stub% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-  (ls_hook% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-  (ls_stub% "libcrux_hmac::hmac") (ls_hook% "libcrux_hmac::hmac")
-  (ls_stub% "core::panicking::assert_failed::<u64, u64>")
-  (ls_hook% "core::panicking::assert_failed::<u64, u64>")
-  (ls_stub% "core::slice::index::slice_index_fail")
-  (ls_hook% "core::slice::index::slice_index_fail")
-  (ls_stub% "core::result::unwrap_failed") (ls_hook% "core::result::unwrap_failed")
-  (ls_stub% "core::panicking::panic_bounds_check")
-  (ls_hook% "core::panicking::panic_bounds_check")
-  (ls_stub% "core::panicking::panic_const::panic_const_add_overflow")
-  (ls_hook% "core::panicking::panic_const::panic_const_add_overflow")
-
-/-! ## Byte-Shift & `polyDecoderNew96` Construction Helpers -/
 
 theorem unshift_shift_eq (a b c : BitVec 64) :
     unshiftWord8 (shiftWord8 a b) (shiftWord8 b c) = b := by
@@ -3743,44 +2928,6 @@ attribute [-arm64_norm]
   HkdfToSliceProof.sp_add_neg688_eq_hsp
   HkdfToSliceProof.sp_sub_96_eq_hsp_592
   HkdfToSliceProof.sp_add_neg96_eq_hsp_592
-
-ls_attribute [local simp, local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
-  recvCt2Chunk_fnOff addChunk_fnOff polyDecodedMessage_fnOff mlkemDecaps_fnOff
-  authUpdate_fnOff sliceConcat_fnOff hkdfToSlice_fnOff
-  shim_fnOff alloc_fnOff allocZeroed_fnOff dealloc_fnOff handleError_fnOff
-  memcpy_fnOff gf16IsNonZero_fnOff doReserve7_fnOff_eq
-  assertFailedU64_fnOff sliceIndexFail_fnOff unwrapFailed_fnOff
-  panicBoundsCheck_fnOff panicConstAddOverflow_fnOff
-  libsignalSessionCode_fnOff_0x59834
-  libsignalSessionCode_fnOff_0x67028
-  libsignalSessionCode_fnOff_0x66788
-  libsignalSessionCode_fnOff_0x58ac4
-  libsignalSessionCode_fnOff_0x5eab8
-  libsignalSessionCode_fnOff_0x5de8c
-  libsignalSessionCode_fnOff_0x46920
-  libsignalSessionCode_fnOff_0x4dca8
-  libsignalSessionCode_fnOff_0x5e5f0
-  (ls_stub% "memcpy") (ls_hook% "memcpy")
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_hook% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc") (ls_hook% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_alloc_zeroed") (ls_hook% "__rustc::__rust_alloc_zeroed")
-  (ls_stub% "__rustc::__rust_dealloc") (ls_hook% "__rustc::__rust_dealloc")
-  (ls_stub% "alloc::raw_vec::handle_error") (ls_hook% "alloc::raw_vec::handle_error")
-  (ls_stub% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-  (ls_hook% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key")
-  (ls_stub% "libcrux_hmac::hmac") (ls_hook% "libcrux_hmac::hmac")
-  (ls_stub% "core::panicking::assert_failed::<u64, u64>")
-  (ls_hook% "core::panicking::assert_failed::<u64, u64>")
-  (ls_stub% "core::slice::index::slice_index_fail")
-  (ls_hook% "core::slice::index::slice_index_fail")
-  (ls_stub% "core::result::unwrap_failed") (ls_hook% "core::result::unwrap_failed")
-  (ls_stub% "core::panicking::panic_bounds_check")
-  (ls_hook% "core::panicking::panic_bounds_check")
-  (ls_stub% "core::panicking::panic_const::panic_const_add_overflow")
-  (ls_hook% "core::panicking::panic_const::panic_const_add_overflow")
-
-/-! ## Helper Lemmas for `Ok(Done)` Header Staging and Deallocations -/
 
 theorem add_one_ult_self_eq_beq_allOnes (ep : BitVec 64) :
     (ep + 1#64).ult ep = (ep == BitVec.allOnes 64) := by

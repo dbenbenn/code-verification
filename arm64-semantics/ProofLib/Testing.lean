@@ -47,6 +47,10 @@ public import ProofLib.Testing.SepCells
 public import ProofLib.Testing.SepOwnsCell
 public import ProofLib.Testing.SepFreshRO
 public import ProofLib.Testing.SepProtNone
+public import ProofLib.Testing.SepInterval
+public import ProofLib.Testing.SepBiAbd
+public import ProofLib.Testing.SepLens
+public import ProofLib.Testing.SepConsolidate
 public import ProofLib.Testing.ProofTerm
 public import ProofLib.Testing.ProofTerm.Bench
 public import ProofLib.Testing.ProofTerm.BenchTactics
@@ -77,11 +81,7 @@ public import ProofLib.Testing.GenPlacedFetches
 public import ProofLib.Testing.GenPlacedOddSites
 public import ProofLib.Testing.PairStepHook
 public import ProofLib.Testing.ParamCodeFetch
-public import ProofLib.Testing.RelocFnGen
-public import ProofLib.Testing.ImageData
-public import ProofLib.Testing.ImageDataAny
 public import ProofLib.Testing.SimpSetUnfoldLint
-public import ProofLib.Testing.SlicedCode
 public import ProofLib.Testing.TrustedClosure
 public import ProofLib.Testing.PlacedCheck
 public import ProofLib.Testing.PlacedExternSymtab
@@ -111,6 +111,11 @@ public import ProofLib.Testing.DsimpMemo
 public import ProofLib.Testing.FetchLocalHyp
 public import ProofLib.Testing.TableOffsetsMemo
 public import ProofLib.Testing.OutlineAtomicsCas1
+public import ProofLib.Testing.NoLegacyClosure
+public import ProofLib.Testing.DecompNorm
+public import ProofLib.Testing.DecompNormSets
+public import ProofLib.Testing.SepStackAutomation
+public import ProofLib.Testing.Compat
 
 /-!
 # ProofLib Test Suite

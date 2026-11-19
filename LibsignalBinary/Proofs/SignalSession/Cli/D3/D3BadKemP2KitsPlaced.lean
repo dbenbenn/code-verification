@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2b
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCallees
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3PollRejectAuxPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlaced
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2b -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCallees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3PollRejectAuxPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
@@ -28,7 +28,7 @@ import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5Def
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2bAux
-import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptDecode
+import ProofLib.ProgramReflection.SortedFresh
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
@@ -41,6 +41,119 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1Common
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Fetch
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlaced
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.Disproof.Basic
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.Apply
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.MuslStage1Init
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Musl.Spec
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.HeapDefs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ArmsA
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ArmsAPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ArmsB
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ArmsBPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Bridges
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2BridgesPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Defs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrA
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrAPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrB
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrBPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrC
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrCPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid2Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid3
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid3Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub1
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub1Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub1V4
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub1V4Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub2Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub2bPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub3Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub4Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub5Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6Aux
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6AuxPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V1
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V1Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34Defs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrA
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrAPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsA
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsAPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Fetch
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsBPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1ErrAPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1ErrPlaced
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveAux
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveDefs
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePend
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePendPlaced
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePromote
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.MatchCallee
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.MatchDefs
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Stage P2 Bad-KEM Callee & Store-Kit Bridges
@@ -51,7 +164,7 @@ Cross-block `initialize_bob_session` Bad-KEM contracts, Stage-P2 Bad-KEM spatial
 (`+0x1168 → +0x125c`) on Bad-KEM.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -92,7 +205,7 @@ open CryptoVerification.SignalSession.Cli.RunProofs (pkVecTag?)
 /-! ## 1. Stage P2 Bad-KEM Spatial Bundles & Helpers -/
 
 /-- Coroutine Stage-P2 scratch regions at `+0x4f8..+0x7d8` preserved identically across all exits. -/
-def p2CoroScratchTailAt (coroPtr : BitVec 64) : SepProp :=
+@[expose] def p2CoroScratchTailAt (coroPtr : BitVec 64) : SepProp :=
   memRegion (coroPtr + 0x4f8#64) 344 ∗
   memRegion (coroPtr + 0x650#64) 8 ∗
   memRegion (coroPtr + 0x658#64) 298 ∗
@@ -147,13 +260,13 @@ theorem p2_memRegion_a90_288_split_65_223 (sp : BitVec 64) :
 
 /-- Optional OPK secret-key bytes for `AcceptKeysInput` (`some (toU8 opkSkBytes)` when `opkId?`
 is `some _`, `none` when `none`). -/
-def opkOkSkBytes? : Option (BitVec 32) → List (BitVec 8) → Option SignalPqxdh.Bytes
+@[expose] def opkOkSkBytes? : Option (BitVec 32) → List (BitVec 8) → Option SignalPqxdh.Bytes
   | some _, skB => some (toU8 skB)
   | none, _ => none
 
 /-- Construct `AcceptKeysInput` from wire `HandshakeHdr`, Bob's 32-byte identity keypair bytes
 `(ikBSk, ikBPk)`, and the store-resolved SPK, Kyber1024, and optional OPK key bytes. -/
-def mkP2AcceptKeysInput (hdr : HandshakeHdr) (ikBSk ikBPk : SignalPqxdh.Bytes)
+@[expose] def mkP2AcceptKeysInput (hdr : HandshakeHdr) (ikBSk ikBPk : SignalPqxdh.Bytes)
     (spkPubBytes spkPrivBytes kyberPubBytes kyberPrivBytes opkSkBytes : List (BitVec 8)) :
     AcceptKeysInput where
   ikBSk := ikBSk
@@ -169,7 +282,7 @@ def mkP2AcceptKeysInput (hdr : HandshakeHdr) (ikBSk ikBPk : SignalPqxdh.Bytes)
 
 /-- Read-only `PreKeySignalMessage` fields accessed during Stage P2 with arbitrary Kyber ciphertext
 slice `(ctBufPtr, ctBytes)`. -/
-def p2BadKemMsgFieldsAt (msgPtr ctBufPtr : BitVec 64) (hdr : HandshakeHdr)
+@[expose] def p2BadKemMsgFieldsAt (msgPtr ctBufPtr : BitVec 64) (hdr : HandshakeHdr)
     (ctBytes : List (BitVec 8)) (msgVerByte : BitVec 8)
     (opkIdWord kyberPreKeyId remoteRegId signedPreKeyId : BitVec 32) : SepProp :=
   ((msgPtr + 112#64) ↦₈ msgVerByte) ∗
@@ -187,7 +300,7 @@ def p2BadKemMsgFieldsAt (msgPtr ctBufPtr : BitVec 64) (hdr : HandshakeHdr)
 
 /-- Frame held constant across `stageP2_sub1_to_4_kits` and `Over.stageP2_over_sub1_to_4_kits`
 when the Kyber ciphertext slice is `(ctBufPtr, ctBytes)`. -/
-def p2BadKemSub1To4Frame (A : RustAlloc) {b : BitVec 64} (ikit : IdentityStoreSpec A b)
+@[expose] def p2BadKemSub1To4Frame (A : RustAlloc) {b : BitVec 64} (ikit : IdentityStoreSpec A b)
     (sp fp coroPtr msgPtr ctBufPtr remoteAddrPtr localAddrPtr idStorePtr
      v_330 v_388 u_80 u_88 : BitVec 64)
     (stId : ikit.IdState) (hdr : HandshakeHdr) (ctBytes : List (BitVec 8))
@@ -226,7 +339,7 @@ def p2BadKemSub1To4Frame (A : RustAlloc) {b : BitVec 64} (ikit : IdentityStoreSp
 
 /-- Common coroutine, stack, message, address, and allocator spatial frame delivered uniformly at
 `s0.readReg64 .x30` on all 5 Stage-P2 Bad-KEM error exits (Arms 1–5) under `[LibsignalPlacement]`. -/
-def p2BadKemErrFrameAtPlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
+@[expose] def p2BadKemErrFrameAtPlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
     (sp fp coroPtr msgPtr ctBufPtr remoteAddrPtr localAddrPtr
      idStorePtr idVt preKeyStorePtr pkVt kyberStorePtr kpkVt v_330 v_388 : BitVec 64)
     (hdr : HandshakeHdr) (ctBytes : List (BitVec 8)) (msgVerByte : BitVec 8)
@@ -274,7 +387,7 @@ def p2BadKemErrFrameAtPlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
   Frame
 
 /-- Spatial precondition at `+2152` for `stageP2_pathA_badKem_kits_placed` (Path A). -/
-def stageP2BadKemPreAtPlaced [LibsignalPlacement] (A : RustAlloc) {b : BitVec 64}
+@[expose] def stageP2BadKemPreAtPlaced [LibsignalPlacement] (A : RustAlloc) {b : BitVec 64}
     (spkKit : SignedPreKeyStoreSpec A b)
     (kpkKit : KyberPreKeyStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b)
@@ -332,7 +445,7 @@ def stageP2BadKemPreAtPlaced [LibsignalPlacement] (A : RustAlloc) {b : BitVec 64
   A.pool ∗ stackAt sp stk ∗ Frame
 
 /-- Spatial precondition at `+2152` for `stageP2_over_badKem_kits_placed` (Over-Path C). -/
-def stageP2OverBadKemPreAtPlaced [LibsignalPlacement] (A : RustAlloc) {b : BitVec 64}
+@[expose] def stageP2OverBadKemPreAtPlaced [LibsignalPlacement] (A : RustAlloc) {b : BitVec 64}
     (spkKit : SignedPreKeyStoreSpec A b)
     (kpkKit : KyberPreKeyStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b)

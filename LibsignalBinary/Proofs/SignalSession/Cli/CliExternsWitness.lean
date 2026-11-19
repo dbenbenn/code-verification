@@ -9,8 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliBinaryExtProofDefs
-public import LibsignalBinary.Proofs.E2E.HooksE.Common
+public import LibsignalBinary.Proofs.E2E.HooksE.Common -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.SpqrHooksPCommon
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
@@ -20,75 +19,40 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTraced
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.ReadFileHook
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSat
 import LibsignalBinary.Proofs.TripleRatchet.Hooks
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliBinaryPqProofDefs
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
+public meta import Lean
+public meta import ProofLib.GenDecodes
+public meta import ProofLib.ProgramReflection
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 /-!
-# Extern Contract Satisfaction for `cliHookTable` (`cliExterns_ok`)
+# Extern Contract Witness Helpers (`ExternsWitness`)
 
-Proves `cliExterns_ok W : CliExternsOk ⟨W.C, W.Q⟩ E2E.HooksE.A0 (cliHookExterns W)`, establishing
-that `cliHookTable W` satisfies the abstract extern contract bundle `CliExternsOk` (including PQXDH
-rows over `W.Q`, `black_box`, `read_file`, and the `StepFr` frame invariants), and derives the
-fixed-table whole-binary correctness statements from their `CliExternsOk`-parameterized counterparts.
+Proves individual extern hook contracts (`HookOk` transport helpers, PQXDH hook rows, `black_box`,
+`StepFr` / `HookFr` frame invariants, and `mem_of_lookup`).
 -/
 
 namespace CryptoVerification.SignalSession
 
 open Arm64 Arm64.Process ProofLib CryptoGames CryptoGames.LibsignalSession
 open CryptoVerification.RustHeap
-open CryptoVerification.LibsignalTripleRatchet
-  (extHookStack pubFromSecretName dhName staticDropName sharedDropName)
-
-/-- Each row of `cliHookTable W` resolves to its hook in `cliHookExterns W`. -/
-theorem cliHookExterns_row (W : CliHooks) {n : String} {h : State → State}
-    (hm : (n, h) ∈ cliHookTable W) : cliHookExterns W n = some h :=
-  lookup_of_mem_nodup _ n h (by rw [cliHookNames_eq W]; exact cliHookNames_nodup) hm
+open CryptoVerification.LibsignalTripleRatchet (extHookStack)
+open LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy
+  (toEdwardsHook compressHook edNegHook torsionFreeHook dsmbHook scalarModHook scalarWideHook
+   mlkemPk1Hook mlkemPk2Hook
+   legacyMontToEd legacyCompress legacyEdNeg legacyIsTorsionFree legacyDsmb
+   legacyScalarMod legacyScalarWide)
 
 namespace ExternsWitness
 
-/-! ## Rows and transport -/
-
-theorem hookSat_row {α : Type} {W : CliHooks} {n : String} {h : State → State} {spec : Spec α}
-    (hm : (n, h) ∈ cliHookTable W) (hh : HookOk h spec) : HookSat (cliHookExterns W) n spec :=
-  ⟨h, cliHookExterns_row W hm, hh⟩
-
-/-- A `HookSat` fact at `cliExterns W` holds at `cliHookExterns W` for a row of the table. -/
-theorem hookSat_of_cliExterns {α : Type} {W : CliHooks} {n : String} {h : State → State}
-    {spec : Spec α} (hm : (n, h) ∈ cliHookTable W) (hs : HookSat (cliExterns W) n spec) :
-    HookSat (cliHookExterns W) n spec := by
-  obtain ⟨f, hf, hok⟩ := hs
-  rw [cliExterns_row W hm] at hf
-  cases hf
-  exact hookSat_row hm hok
-
-theorem strlen_row (W : CliHooks) : ("strlen", strlenHook) ∈ cliHookTable W :=
-  List.mem_append_right _ (List.mem_of_getElem? (i := 9) rfl)
-
-theorem fromUtf8_row (W : CliHooks) :
-    ("core::str::converts::from_utf8", fromUtf8Hook CryptoVerification.SignalSession.cliDefaultUtf8Err) ∈ cliHookTable W :=
-  List.mem_append_right _ (List.mem_of_getElem? (i := 15) rfl)
-
-theorem blackBox_row (W : CliHooks) :
-    ("subtle::black_box::<u8>", LibsignalSession.blackBoxHook) ∈ cliHookTable W :=
-  List.mem_append_right _ (List.mem_of_getElem? (i := 20) rfl)
-
-theorem pubFromSecret_row (W : CliHooks) :
-    (pubFromSecretName, LibsignalTripleRatchet.pubFromSecretHook W.C.pubKey) ∈ cliHookTable W :=
-  List.mem_append_right _ (List.mem_of_getElem? (i := 24) rfl)
-
-theorem dh_row (W : CliHooks) :
-    (dhName, LibsignalTripleRatchet.diffieHellmanHook W.C.X) ∈ cliHookTable W :=
-  List.mem_append_right _ (List.mem_of_getElem? (i := 25) rfl)
-
-theorem staticDrop_row (W : CliHooks) :
-    (staticDropName, LibsignalTripleRatchet.zeroizeSecretHook) ∈ cliHookTable W :=
-  List.mem_append_right _ (List.mem_of_getElem? (i := 26) rfl)
-
-theorem sharedDrop_row (W : CliHooks) :
-    (sharedDropName, LibsignalTripleRatchet.zeroizeSecretHook) ∈ cliHookTable W :=
-  List.mem_append_right _ (List.mem_of_getElem? (i := 27) rfl)
+/-! ## Transport -/
 
 /-- Transport `HookOk f s₁` to `HookOk f s₂` along a ghost map `g : β → α` when every `s₂`-entry
 maps to an `s₁`-entry at `g y` and every `s₁`-outcome yields an `s₂`-outcome. -/
@@ -157,14 +121,26 @@ theorem leafHook_ok {m n : Nat} (hn : n ≤ 2 ^ 64)
         (List.Vector.toList_length v ▸ pointsToBytes_entails_memRegion inA v.toList))) hw
       ac_nf at hw' ⊢
 
-theorem dsmbHook_ok (Q : E2E.PqxdhPrims) : HookOk (E2E.dsmbHook Q.dsmb) (CliExt.dsmbSpec Q) := by
+private theorem dsmbHook_ok_gen
+    (f : List.Vector (BitVec 8) 32 → List.Vector (BitVec 8) 160 → List.Vector (BitVec 8) 32 →
+      List.Vector (BitVec 8) 160) :
+    HookOk (dsmbHook f)
+      (CliExt.withStack (α := BitVec 64 × List.Vector (BitVec 8) 32 × BitVec 64 ×
+          List.Vector (BitVec 8) 160 × BitVec 64 × List.Vector (BitVec 8) 32 × BitVec 64)
+        { pre := fun (aA, a, pA, p, bA, b, ret) s =>
+            ⌜s.readReg64 .x0 = aA ∧ s.readReg64 .x1 = pA ∧ s.readReg64 .x2 = bA ∧
+              s.readReg64 .x8 = ret⌝ ∗
+              (aA ↦ₛ a.toList) ∗ (pA ↦ₛ p.toList) ∗ (bA ↦ₛ b.toList) ∗ memRegion ret 160
+          post := fun (aA, a, pA, p, bA, b, ret) s0 sf =>
+            ⌜sf.trace = s0.trace⌝ ∗ (aA ↦ₛ a.toList) ∗ (pA ↦ₛ p.toList) ∗ (bA ↦ₛ b.toList) ∗
+              (ret ↦ₛ (f a p b).toList) }) := by
   change HookOk
     (retHook (fun s => s.setMem (s.mem.writeBytes (s.readReg64 .x8)
-      (Q.dsmb (E2E.readVecN s.mem (s.readReg64 .x0) 32) (E2E.readVecN s.mem (s.readReg64 .x1) 160)
+      (f (E2E.readVecN s.mem (s.readReg64 .x0) 32) (E2E.readVecN s.mem (s.readReg64 .x1) 160)
         (E2E.readVecN s.mem (s.readReg64 .x2) 32)).toList)))
-    (CliExt.dsmbSpec Q)
+    _
   refine retHook_ok fun ⟨aA, a, pA, p, bA, b, ret⟩ R s0 hrun hpre _ => ?_
-  simp only [CliExt.dsmbSpec, CliExt.withStack, sepConj_assoc, satisfies_pure_sepConj] at hpre
+  simp only [CliExt.withStack, sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨⟨hx0, hx1, hx2, hx8⟩, hmem⟩
   have ha : E2E.readVecN s0.mem aA 32 = a := E2E.Pqxdh.readVecN_eq_of_pointsToBytes hmem
   have hmemp : s0.mem ⊨ (pA ↦ₛ p.toList) ∗ ((aA ↦ₛ a.toList) ∗ (bA ↦ₛ b.toList) ∗
@@ -175,9 +151,9 @@ theorem dsmbHook_ok (Q : E2E.PqxdhPrims) : HookOk (E2E.dsmbHook Q.dsmb) (CliExt.
       memRegion ret 160 ∗ stackAt s0.sp extHookStack ∗ R) := by
     ac_nf at hmem ⊢
   have hb : E2E.readVecN s0.mem bA 32 = b := E2E.Pqxdh.readVecN_eq_of_pointsToBytes hmemb
-  have hlen : (Q.dsmb a p b).toList.length ≤ 2 ^ 64 := by
+  have hlen : (f a p b).toList.length ≤ 2 ^ 64 := by
     rw [List.Vector.toList_length]; decide
-  have hmem_out : s0.mem ⊨ memRegion ret (Q.dsmb a p b).toList.length ∗
+  have hmem_out : s0.mem ⊨ memRegion ret (f a p b).toList.length ∗
       ((aA ↦ₛ a.toList) ∗ (pA ↦ₛ p.toList) ∗ (bA ↦ₛ b.toList) ∗ stackAt s0.sp extHookStack ∗ R) := by
     rw [List.Vector.toList_length]
     ac_nf at hmem ⊢
@@ -185,10 +161,13 @@ theorem dsmbHook_ok (Q : E2E.PqxdhPrims) : HookOk (E2E.dsmbHook Q.dsmb) (CliExt.
   · simp only [State.setMem, hx0, hx1, hx2, hx8, ha, hp, hb]
     exact keepsFrozen_writeBytes_of_memRegion _ hlen hmem_out
   · have hw := satisfies_writeBytes _ hlen hmem_out
-    simp only [CliExt.dsmbSpec, CliExt.withStack, retHook, State.trace_setPC, State.setMem, hx0,
+    simp only [CliExt.withStack, retHook, State.trace_setPC, State.setMem, hx0,
       hx1, hx2, hx8, ha, hp, hb, sepConj_assoc, satisfies_pure_sepConj]
     refine ⟨trivial, ?_⟩
     ac_nf at hw ⊢
+
+theorem dsmbHook_ok (Q : E2E.PqxdhPrims) : HookOk (dsmbHook legacyDsmb) (CliExt.dsmbSpec Q) := by
+  unfold CliExt.dsmbSpec; exact dsmbHook_ok_gen legacyDsmb
 
 theorem kemDecapsHook_ok (Q : E2E.PqxdhPrims) :
     HookOk (E2E.kemDecapsHook Q.decaps) (CliExt.kemDecapsSpec Q) := by
@@ -262,20 +241,28 @@ theorem kemEncapsHook_ok (Q : E2E.PqxdhPrims) :
     refine ⟨trivial, ?_⟩
     ac_nf at hw3 ⊢
 
-theorem toEdwardsHook_ok (Q : E2E.PqxdhPrims) :
-    HookOk (E2E.toEdwardsHook Q.montToEd) (CliExt.toEdwardsSpec Q) := by
+private theorem toEdwardsHook_ok_gen
+    (f : List.Vector (BitVec 8) 32 → BitVec 8 → Option (List.Vector (BitVec 8) 160)) :
+    HookOk (toEdwardsHook f)
+      (CliExt.withStack (α := BitVec 64 × List.Vector (BitVec 8) 32 × BitVec 8 × BitVec 64)
+        { pre := fun (uA, u, sign, ret) s =>
+            ⌜s.readReg64 .x0 = uA ∧ (s.readReg64 .x1).setWidth 8 = sign ∧ s.readReg64 .x8 = ret⌝ ∗
+              (uA ↦ₛ u.toList) ∗ memRegion ret 168
+          post := fun (uA, u, sign, ret) s0 sf =>
+            ⌜sf.trace = s0.trace⌝ ∗ (uA ↦ₛ u.toList) ∗
+              CliExt.optionEdwardsPointAt ret (f u (sign &&& 1#8)) }) := by
   change HookOk
     (retHook (fun s =>
       let r := s.readReg64 .x8
       let m :=
-        match Q.montToEd (E2E.readVecN s.mem (s.readReg64 .x0) 32) ((s.readReg64 .x1).setWidth 8 &&& 1#8)
+        match f (E2E.readVecN s.mem (s.readReg64 .x0) 32) ((s.readReg64 .x1).setWidth 8 &&& 1#8)
         with
         | some p => (s.mem.write64 r 1#64).writeBytes (r + 8#64) p.toList
         | none => s.mem.write64 r 0#64
       s.setMem m))
-    (CliExt.toEdwardsSpec Q)
+    _
   refine retHook_ok fun ⟨uA, u, sign, ret⟩ R s0 hrun hpre _ => ?_
-  simp only [CliExt.toEdwardsSpec, CliExt.withStack, sepConj_assoc, satisfies_pure_sepConj] at hpre
+  simp only [CliExt.withStack, sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨⟨hx0, hx1, hx8⟩, hmem⟩
   have hu : E2E.readVecN s0.mem uA 32 = u := E2E.Pqxdh.readVecN_eq_of_pointsToBytes hmem
   rw [memRegion_split ret 8 160 (by decide), ProofLib.memRegion_eight ret] at hmem
@@ -285,14 +272,14 @@ theorem toEdwardsHook_ok (Q : E2E.PqxdhPrims) :
   have hmem0 : s0.mem ⊨ (ret ↦₆₄ w0) ∗
       (memRegion (ret + 8#64) 160 ∗ (uA ↦ₛ u.toList) ∗ stackAt s0.sp extHookStack ∗ R) := by
     ac_nf at hmem ⊢
-  rcases hres : Q.montToEd u (sign &&& 1#8) with _ | p
+  rcases hres : f u (sign &&& 1#8) with _ | p
   · have hkf1 := E2E.HooksE.HooksOkAux.keepsFrozen_write64_of_pointsTo64 0#64 hmem0
     have hw1 := E2E.HooksE.HooksOkAux.satisfies_write64_of_pointsTo64 0#64 hmem0
     refine ⟨?_, rfl, hrun, ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, ?_⟩
     · dsimp only
       rw [hx0, hx1, hx8, hu, hres]
       exact hkf1
-    · dsimp only [CliExt.toEdwardsSpec, CliExt.withStack, retHook, State.setMem]
+    · dsimp only [CliExt.withStack, retHook, State.setMem]
       rw [hx0, hx1, hx8, hu, hres]
       simp only [CliExt.optionEdwardsPointAt, State.trace_setPC, sepConj_assoc, satisfies_pure_sepConj]
       refine ⟨trivial, ?_⟩
@@ -310,31 +297,44 @@ theorem toEdwardsHook_ok (Q : E2E.PqxdhPrims) :
     · dsimp only
       rw [hx0, hx1, hx8, hu, hres]
       exact hkf2
-    · dsimp only [CliExt.toEdwardsSpec, CliExt.withStack, retHook, State.setMem]
+    · dsimp only [CliExt.withStack, retHook, State.setMem]
       rw [hx0, hx1, hx8, hu, hres]
       simp only [CliExt.optionEdwardsPointAt, State.trace_setPC, sepConj_assoc, satisfies_pure_sepConj]
       refine ⟨trivial, ?_⟩
       ac_nf at hw2 ⊢
 
-theorem torsionFreeHook_ok (Q : E2E.PqxdhPrims) :
-    HookOk (E2E.torsionFreeHook Q.isTorsionFree) (CliExt.torsionFreeSpec Q) := by
+theorem toEdwardsHook_ok (Q : E2E.PqxdhPrims) :
+    HookOk (toEdwardsHook legacyMontToEd) (CliExt.toEdwardsSpec Q) := by
+  unfold CliExt.toEdwardsSpec; exact toEdwardsHook_ok_gen legacyMontToEd
+
+private theorem torsionFreeHook_ok_gen (f : List.Vector (BitVec 8) 160 → Bool) :
+    HookOk (torsionFreeHook f)
+      (CliExt.withStack (α := BitVec 64 × List.Vector (BitVec 8) 160)
+        { pre := fun (pA, p) s => ⌜s.readReg64 .x0 = pA⌝ ∗ (pA ↦ₛ p.toList)
+          post := fun (pA, p) s0 sf =>
+            ⌜sf.trace = s0.trace ∧
+              (sf.readReg64 .x0).setWidth 32 = (if f p then 1#32 else 0#32)⌝ ∗
+              (pA ↦ₛ p.toList) }) := by
   change HookOk
     (retHook (fun s => s.writeReg64 .x0
-      (if Q.isTorsionFree (E2E.readVecN s.mem (s.readReg64 .x0) 160) then 1#64 else 0#64)))
-    (CliExt.torsionFreeSpec Q)
+      (if f (E2E.readVecN s.mem (s.readReg64 .x0) 160) then 1#64 else 0#64)))
+    _
   refine retHook_ok fun ⟨pA, p⟩ R s0 hrun hpre _ => ?_
-  simp only [CliExt.torsionFreeSpec, CliExt.withStack, sepConj_assoc,
-    satisfies_pure_sepConj] at hpre
+  simp only [CliExt.withStack, sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨hx0, hmem⟩
   have hp : E2E.readVecN s0.mem pA 160 = p := E2E.Pqxdh.readVecN_eq_of_pointsToBytes hmem
   refine ⟨Memory.KeepsFrozen.refl s0.mem, rfl, hrun,
     ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, ?_⟩
-  simp only [CliExt.torsionFreeSpec, CliExt.withStack, sepConj_assoc, satisfies_pure_sepConj]
+  simp only [CliExt.withStack, sepConj_assoc, satisfies_pure_sepConj]
   refine ⟨⟨rfl, ?_⟩, hmem⟩
   show BitVec.setWidth 32
-      (if Q.isTorsionFree (E2E.readVecN s0.mem (s0.readReg64 .x0) 160) then 1#64 else 0#64) = _
+      (if f (E2E.readVecN s0.mem (s0.readReg64 .x0) 160) then 1#64 else 0#64) = _
   rw [hx0, hp]
-  cases Q.isTorsionFree p <;> rfl
+  cases f p <;> rfl
+
+theorem torsionFreeHook_ok (Q : E2E.PqxdhPrims) :
+    HookOk (torsionFreeHook legacyIsTorsionFree) (CliExt.torsionFreeSpec Q) := by
+  unfold CliExt.torsionFreeSpec; exact torsionFreeHook_ok_gen legacyIsTorsionFree
 
 /-! ### `compress512`: the state words from their LE bytes -/
 
@@ -456,7 +456,7 @@ theorem blackBoxHook_ok : HookOk LibsignalSession.blackBoxHook CliExt.blackBoxSp
 
 /-- The frame of one hook step: `tpidr_el0` kept, no new execute permission, and (when `b`) the
 file system kept. -/
-def StepFr (b : Bool) (s s' : State) : Prop :=
+@[expose] def StepFr (b : Bool) (s s' : State) : Prop :=
   s'.tpidrEl0 = s.tpidrEl0 ∧ (∀ a, (s'.mem.perm a).x → (s.mem.perm a).x) ∧
     (b = true → s'.fs = s.fs)
 
@@ -493,7 +493,7 @@ theorem StepFr.bumpThen {b : Bool} {size align : Nat} {ok : State → BitVec 64 
   · exact hfail
 
 /-- A hook's steps keep the frame (`b`: also the file system). -/
-def HookFr (b : Bool) (f : State → State) : Prop := ∀ s, StepFr b s (f s)
+@[expose] def HookFr (b : Bool) (f : State → State) : Prop := ∀ s, StepFr b s (f s)
 
 theorem HookFr.weak {f : State → State} (h : HookFr true f) : HookFr false f :=
   fun s => ⟨(h s).1, (h s).2.1, fun hb => absurd hb Bool.false_ne_true⟩
@@ -535,30 +535,30 @@ variable (W : CliHooks)
 
 theorem compress512Hook_fr : HookFr true (E2E.compress512Hook W.Q.F512) := by
   intro s; unfold E2E.compress512Hook; fr_close
-theorem toEdwardsHook_fr : HookFr true (E2E.toEdwardsHook W.Q.montToEd) := by
-  intro s; unfold E2E.toEdwardsHook; fr_close
-theorem compressHook_fr : HookFr true (E2E.compressHook W.Q.compress) := by
-  intro s; unfold E2E.compressHook; fr_close
-theorem edNegHook_fr : HookFr true (E2E.edNegHook W.Q.edNeg) := by
-  intro s; unfold E2E.edNegHook; fr_close
-theorem torsionFreeHook_fr : HookFr true (E2E.torsionFreeHook W.Q.isTorsionFree) := by
-  intro s; unfold E2E.torsionFreeHook; fr_close
-theorem dsmbHook_fr : HookFr true (E2E.dsmbHook W.Q.dsmb) := by
-  intro s; unfold E2E.dsmbHook; fr_close
-theorem scalarModHook_fr : HookFr true (E2E.scalarModHook W.Q.scalarMod) := by
-  intro s; unfold E2E.scalarModHook; fr_close
-theorem scalarWideHook_fr : HookFr true (E2E.scalarWideHook W.Q.scalarWide) := by
-  intro s; unfold E2E.scalarWideHook; fr_close
+theorem toEdwardsHook_fr : HookFr true (toEdwardsHook legacyMontToEd) := by
+  generalize legacyMontToEd = f; intro s; unfold toEdwardsHook; fr_close
+theorem compressHook_fr : HookFr true (compressHook legacyCompress) := by
+  generalize legacyCompress = f; intro s; unfold compressHook; fr_close
+theorem edNegHook_fr : HookFr true (edNegHook legacyEdNeg) := by
+  generalize legacyEdNeg = f; intro s; unfold edNegHook; fr_close
+theorem torsionFreeHook_fr : HookFr true (torsionFreeHook legacyIsTorsionFree) := by
+  generalize legacyIsTorsionFree = f; intro s; unfold torsionFreeHook; fr_close
+theorem dsmbHook_fr : HookFr true (dsmbHook legacyDsmb) := by
+  generalize legacyDsmb = f; intro s; unfold dsmbHook; fr_close
+theorem scalarModHook_fr : HookFr true (scalarModHook legacyScalarMod) := by
+  generalize legacyScalarMod = f; intro s; unfold scalarModHook; fr_close
+theorem scalarWideHook_fr : HookFr true (scalarWideHook legacyScalarWide) := by
+  generalize legacyScalarWide = f; intro s; unfold scalarWideHook; fr_close
 theorem kemEncapsHook_fr : HookFr true (E2E.kemEncapsHook W.Q.encaps) := by
   intro s; unfold E2E.kemEncapsHook; fr_close
 theorem kemDecapsHook_fr : HookFr true (E2E.kemDecapsHook W.Q.decaps) := by
   intro s; unfold E2E.kemDecapsHook; fr_close
 theorem mlkemFromSeedHook_fr : HookFr true (E2E.mlkemFromSeedHook W.Q.K) := by
   intro s; unfold E2E.mlkemFromSeedHook; fr_close
-theorem mlkemPk1Hook_fr : HookFr true E2E.mlkemPk1Hook := by
-  intro s; unfold E2E.mlkemPk1Hook; fr_close
-theorem mlkemPk2Hook_fr : HookFr true E2E.mlkemPk2Hook := by
-  intro s; unfold E2E.mlkemPk2Hook; fr_close
+theorem mlkemPk1Hook_fr : HookFr true mlkemPk1Hook := by
+  intro s; unfold mlkemPk1Hook; fr_close
+theorem mlkemPk2Hook_fr : HookFr true mlkemPk2Hook := by
+  intro s; unfold mlkemPk2Hook; fr_close
 theorem mlkemEncaps1Hook_fr : HookFr true (E2E.mlkemEncaps1Hook W.Q.K) := by
   intro s; unfold E2E.mlkemEncaps1Hook retHook; fr_close
 theorem mlkemEncaps2Hook_fr : HookFr true (E2E.mlkemEncaps2Hook W.Q.K) := by
@@ -634,78 +634,10 @@ end HookFr
 theorem readFileHook_files (s : State) : (readFileHook s).fs.files = s.fs.files :=
   congrArg FsState.files ((readFileHook_fr s).2.2 rfl)
 
-/-- `read_file` contract across both path representations. -/
-theorem readFileHook_ok (img : Obj.Image) :
-    HookOk readFileHook (CliExt.readFileSpec E2E.HooksE.A0 img) := by
-  intro x R s0 hrun hpre hsp
-  rcases x with ⟨pathA, ro, path, ret⟩
-  cases ro
-  · have hpre' : s0.mem ⊨ (Cli.readFileSpec Cli.MainHops.cliIo.rd Cli.MainHops.cliWrOk
-        E2E.HooksE.A0 img extHookStack).pre ⟨pathA, path, ret⟩ s0 ∗ R := by
-      simp only [CliExt.readFileSpec, Cli.readFileSpec, Spec.inImage, CliExt.bytesAt,
-        Bool.false_eq_true, ↓reduceIte, sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-      obtain ⟨hi, ⟨hx0, hx1, hx8, hlen, hok⟩, hmem⟩ := hpre
-      exact ⟨hi, ⟨hx0, hx1, hx8, hlen, ⟨hok, hlen⟩⟩, hmem⟩
-    obtain ⟨hkf, hsym, hout⟩ :=
-      Cli.RunSkeleton.cliReadFileHook_ok img extHookStack ⟨pathA, path, ret⟩ R s0 hrun hpre' hsp
-    refine ⟨hkf, hsym, ?_⟩
-    rcases hout with ⟨hr, hc, hq⟩ | hq | hq | hq
-    · refine Or.inl ⟨hr, hc, ?_⟩
-      simp only [CliExt.readFileSpec, Cli.readFileSpec, Spec.inImage, CliExt.bytesAt,
-        Bool.false_eq_true, ↓reduceIte, sepConj_assoc, sepExists_sepConj_left,
-        satisfies_sepExists, satisfies_pure_sepConj] at hq ⊢
-      obtain ⟨r, ⟨hr1, hr2⟩, hm⟩ := hq
-      exact ⟨r, ⟨readFileHook_files s0, hr1, hr2⟩, hm⟩
-    · exact Or.inr (Or.inl hq)
-    · exact Or.inr (Or.inr (Or.inl hq))
-    · exact Or.inr (Or.inr (Or.inr hq))
-  · exact Cli.MainHops.readFileHook_ok img extHookStack ⟨pathA, path, ret⟩ R s0 hrun hpre hsp
-
 theorem readFileName_io : readFileName ∈ CliExt.ioNames := by simp [CliExt.ioNames]
 theorem writeFileName_io : writeFileName ∈ CliExt.ioNames := by simp [CliExt.ioNames]
 theorem readStdinName_io : readStdinName ∈ CliExt.ioNames := by simp [CliExt.ioNames]
 theorem writeStdoutName_io : writeStdoutName ∈ CliExt.ioNames := by simp [CliExt.ioNames]
-
-set_option linter.unusedSimpArgs false in
-/-- Every row of `cliHookTable W` preserves `StepFr`, and preserves the file system except on
-the four I/O hooks. -/
-theorem cliHookTable_fr (W : CliHooks) :
-    ∀ p ∈ cliHookTable W, HookFr false p.2 ∧ (p.1 ∈ CliExt.ioNames ∨ HookFr true p.2) := by
-  simp only [cliHookTable, E2E.pqxdhHookTable, E2E.spqrHookTable, List.cons_append,
-    List.nil_append, List.forall_mem_cons, List.not_mem_nil, false_implies, implies_true,
-    and_true, or_true, true_or, and_self,
-    readFileName_io, writeFileName_io, readStdinName_io, writeStdoutName_io,
-    compress512Hook_fr, toEdwardsHook_fr, compressHook_fr, edNegHook_fr, torsionFreeHook_fr,
-    dsmbHook_fr, scalarModHook_fr, scalarWideHook_fr, kemEncapsHook_fr, kemDecapsHook_fr,
-    mlkemFromSeedHook_fr, mlkemPk1Hook_fr, mlkemPk2Hook_fr, mlkemEncaps1Hook_fr,
-    mlkemEncaps2Hook_fr, mlkemDecapsHook_fr, mlkemValidatePkHook_fr, libcruxHmacHook_fr,
-    hookNoop_fr, allocHook0_fr, deallocHook_fr,
-    reallocHook0_fr, allocZeroedHook0_fr, hookMemset_fr, hookMemmove_fr, hookMemcpy_fr,
-    cliBcmpHook_fr, strlenHook_fr, readFileHook_fr, writeFileHook_fr, readStdinHook_fr,
-    writeStdoutHook_fr, memrchrHook_fr, fromUtf8Hook_fr, stringCloneHook0_fr, fmtWriteHook0_fr,
-    formatInnerHook0_fr, durationSinceExactHook_fr, timeAddHook_fr, blackBoxHook_fr,
-    compress256Hook_fr, aesEncHook0_fr, aesDecHook0_fr, pubFromSecretHook_fr,
-    diffieHellmanHook_fr, zeroizeSecretHook_fr,
-    HookFr.weak (compress512Hook_fr W), HookFr.weak (toEdwardsHook_fr W),
-    HookFr.weak (compressHook_fr W), HookFr.weak (edNegHook_fr W),
-    HookFr.weak (torsionFreeHook_fr W), HookFr.weak (dsmbHook_fr W),
-    HookFr.weak (scalarModHook_fr W), HookFr.weak (scalarWideHook_fr W),
-    HookFr.weak (kemEncapsHook_fr W), HookFr.weak (kemDecapsHook_fr W),
-    HookFr.weak (mlkemFromSeedHook_fr W), HookFr.weak mlkemPk1Hook_fr,
-    HookFr.weak mlkemPk2Hook_fr, HookFr.weak (mlkemEncaps1Hook_fr W),
-    HookFr.weak (mlkemEncaps2Hook_fr W), HookFr.weak (mlkemDecapsHook_fr W),
-    HookFr.weak (mlkemValidatePkHook_fr W), HookFr.weak (libcruxHmacHook_fr W),
-    HookFr.weak hookNoop_fr,
-    HookFr.weak allocHook0_fr, HookFr.weak deallocHook_fr, HookFr.weak reallocHook0_fr,
-    HookFr.weak allocZeroedHook0_fr, HookFr.weak hookMemset_fr, HookFr.weak hookMemmove_fr,
-    HookFr.weak hookMemcpy_fr, HookFr.weak cliBcmpHook_fr, HookFr.weak strlenHook_fr,
-    HookFr.weak readFileHook_fr, HookFr.weak memrchrHook_fr, HookFr.weak fromUtf8Hook_fr,
-    HookFr.weak stringCloneHook0_fr, HookFr.weak fmtWriteHook0_fr,
-    HookFr.weak formatInnerHook0_fr, HookFr.weak durationSinceExactHook_fr,
-    HookFr.weak timeAddHook_fr, HookFr.weak blackBoxHook_fr, HookFr.weak (compress256Hook_fr W),
-    HookFr.weak (aesEncHook0_fr W), HookFr.weak (aesDecHook0_fr W),
-    HookFr.weak (pubFromSecretHook_fr W), HookFr.weak (diffieHellmanHook_fr W),
-    HookFr.weak zeroizeSecretHook_fr]
 
 theorem mem_of_lookup {L : List (String × (State → State))} {n : String} {f : State → State}
     (h : L.lookup n = some f) : (n, f) ∈ L := by
@@ -722,132 +654,6 @@ theorem mem_of_lookup {L : List (String × (State → State))} {n : String} {f :
       exact List.mem_cons_self
     · exact List.mem_cons_of_mem _ (ih h)
 
-theorem cliHookExterns_fr (W : CliHooks) {n : String} {f : State → State}
-    (h : cliHookExterns W n = some f) : HookFr false f ∧ (n ∉ CliExt.ioNames → HookFr true f) := by
-  obtain ⟨hw, hs⟩ := cliHookTable_fr W _ (mem_of_lookup h)
-  exact ⟨hw, fun hn => hs.resolve_left hn⟩
-
 end ExternsWitness
-
-open ExternsWitness in
-/-- `cliHookExterns W` satisfies `CliExternsOk ⟨W.C, W.Q⟩ E2E.HooksE.A0`. -/
-theorem cliExterns_ok (W : CliHooks) :
-    CliExternsOk ⟨W.C, W.Q⟩ E2E.HooksE.A0 (cliHookExterns W) where
-  tpidr n f h s := ((cliHookExterns_fr W h).1 s).1
-  noExec n f h s a := ((cliHookExterns_fr W h).1 s).2.1 a
-  fsTraced := Cli.RunGlue.fsTHooks_lookup (Cli.RunGlue.cliHookTable_fsT W)
-  fsKept n f h hn s := ((cliHookExterns_fr W h).2 hn s).2.2 rfl
-  poolEmp := Entails.refl _
-  shim := hookSat_row (Cli.MainHops.shim_row W) LibsignalTripleRatchet.sessionShim_hookOk
-  alloc :=
-    ⟨hookSat_of_cliExterns (Cli.MainHops.alloc_row W) (Cli.Slots.cliExterns_allocHooks W).alloc,
-     hookSat_of_cliExterns (Cli.MainHops.dealloc_row W)
-       (Cli.Slots.cliExterns_allocHooks W).dealloc,
-     hookSat_of_cliExterns (Cli.MainHops.realloc_row W)
-       (Cli.Slots.cliExterns_allocHooks W).realloc⟩
-  allocZeroed :=
-    hookSat_of_cliExterns (Cli.Slots.allocZeroed_row W) (Cli.Slots.cliExterns_allocZeroed W)
-  memset := hookSat_row (Cli.MainHops.memset_row W) LibsignalTripleRatchet.hookMemset_trace_ok
-  memmove := hookSat_row (Cli.MainHops.memmove_row W) LibsignalTripleRatchet.hookMemmove_trace_ok
-  memcpy := hookSat_row (Cli.MainHops.memcpy_row W) LibsignalTripleRatchet.hookMemcpy_trace_ok
-  memcpyRO := hookSat_row (Cli.MainHops.memcpy_row W)
-    (hookOk_cliWithStack SpqrV1.Alloc.hookMemcpy_region_ro_trace_ok CliExt.memHookStack
-      (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) (fun _ _ _ => rfl))
-  bcmp := hookSat_row (Cli.RunGlue.bcmp_row W)
-    (hookOk_map (s₁ := Cli.cliBcmpSpec) (fun x => ⟨x.a, x.aRo, x.bsA, x.b, x.bRo, x.bsB⟩)
-      (fun _ _ => True) (fun _ => trivial) (Cli.RunGlue.cliBcmpHook_ok W)
-      (fun _ _ _ hp => hp) (fun _ _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq)
-      (fun _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq))
-  strlen := hookSat_row (strlen_row W) (Cli.MainHops.strlenHook_ok extHookStack)
-  readFile img := hookSat_row (Cli.MainHops.readFile_row W) (readFileHook_ok img)
-  writeFile img := hookSat_row (Cli.MainHops.writeFile_row W)
-    (hookOk_map (s₁ := Cli.MainHops.writeFileSpec Cli.MainHops.cliIo img extHookStack)
-      (fun x => ⟨x.pathA, x.path, x.buf, x.bs⟩)
-      (fun _ _ => True) (fun _ => trivial) (Cli.MainHops.writeFileHook_ok img extHookStack)
-      (fun _ _ _ hp => hp) (fun _ _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq)
-      (fun _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq))
-  readStdin img := hookSat_row (Cli.MainHops.readStdin_row W)
-    (hookOk_map (s₁ := Cli.MainHops.readStdinSpec Cli.MainHops.cliIo E2E.HooksE.A0 img extHookStack)
-      (fun x => ⟨x.ret, x.bs⟩)
-      (fun _ _ => True) (fun _ => trivial) (Cli.MainHops.readStdinHook_ok img extHookStack)
-      (fun _ _ _ hp => hp) (fun _ _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq)
-      (fun _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq))
-  writeStdout img := hookSat_row (Cli.MainHops.writeStdout_row W)
-    (hookOk_map (s₁ := Cli.MainHops.writeStdoutSpec img extHookStack)
-      (fun x => ⟨x.buf, x.bs⟩)
-      (fun _ _ => True) (fun _ => trivial) (Cli.MainHops.writeStdoutHook_ok img extHookStack)
-      (fun _ _ _ hp => hp) (fun _ _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq)
-      (fun _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq))
-  memrchr := hookSat_row (Cli.MainHops.memrchr_row W)
-    (hookOk_map (s₁ := Cli.MainHops.memrchrSpec extHookStack) (fun x => ⟨x.c, x.p, x.bs⟩)
-      (fun _ _ => True) (fun _ => trivial) (Cli.MainHops.memrchrHook_ok extHookStack)
-      (fun _ _ _ hp => hp) (fun _ _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq)
-      (fun _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq))
-  fromUtf8 := hookSat_row (fromUtf8_row W) (Cli.MainHops.fromUtf8Hook_ok extHookStack CryptoVerification.SignalSession.cliDefaultUtf8Err)
-  fmtWrite := hookSat_of_cliExterns (Cli.Slots.fmtWrite_row W) (Cli.Slots.cliExterns_fmtWrite W)
-  formatInner :=
-    hookSat_of_cliExterns (Cli.Slots.formatInner_row W) (Cli.Slots.cliExterns_formatInner W)
-  durationSince :=
-    hookSat_row (Cli.Slots.durationSince_row W) Cli.Slots.durationSinceExactHook_epoch_ok
-  timeAdd := hookSat_of_cliExterns (Cli.Slots.timeAdd_row W) (Cli.Slots.cliExterns_timeAdd W)
-  blackBox := hookSat_row (blackBox_row W) blackBoxHook_ok
-  compress256 := hookSat_row (Cli.Slots.compress256_row W)
-    (hookOk_cliWithStack (LibsignalTripleRatchet.compress256Hook_ok W.C.F) extHookStack
-      (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) (fun _ _ _ => rfl))
-  aesEnc := hookSat_of_cliExterns (Cli.Slots.aesEnc_row W) (Cli.Slots.cliExterns_aesEnc W)
-  aesDec := hookSat_of_cliExterns (Cli.Slots.aesDec_row W) (Cli.Slots.cliExterns_aesDec W)
-  pubFromSecret := hookSat_row (pubFromSecret_row W)
-    (hookOk_cliWithStack (LibsignalTripleRatchet.pubFromSecretHook_ok W.C.pubKey) extHookStack
-      (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) (fun _ _ _ => rfl))
-  dh := hookSat_row (dh_row W)
-    (hookOk_cliWithStack (LibsignalTripleRatchet.diffieHellmanHook_ok W.C.X) extHookStack
-      (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) (fun _ _ _ => rfl))
-  staticDrop := hookSat_row (staticDrop_row W)
-    (hookOk_cliWithStack LibsignalTripleRatchet.zeroizeSecretHook_ok extHookStack
-      (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) (fun _ _ _ => rfl))
-  sharedDrop := hookSat_row (sharedDrop_row W)
-    (hookOk_cliWithStack LibsignalTripleRatchet.zeroizeSecretHook_ok extHookStack
-      (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) (fun _ _ _ => rfl))
-  compress512 := hookSat_row (Cli.Slots.compress512_row W) (compress512Hook_ok W.Q)
-  toEdwards := hookSat_row (Cli.Slots.toEdwards_row W) (toEdwardsHook_ok W.Q)
-  compress := hookSat_row (Cli.Slots.compress_row W) (leafHook_ok (by decide) W.Q.compress false)
-  edNeg := hookSat_row (Cli.Slots.edNeg_row W) (leafHook_ok (by decide) W.Q.edNeg true)
-  torsionFree := hookSat_row (Cli.Slots.torsionFree_row W) (torsionFreeHook_ok W.Q)
-  dsmb := hookSat_row (Cli.Slots.dsmb_row W) (dsmbHook_ok W.Q)
-  scalarMod := hookSat_row (Cli.Slots.scalarMod_row W) (leafHook_ok (by decide) W.Q.scalarMod true)
-  scalarWide :=
-    hookSat_row (Cli.Slots.scalarWide_row W) (leafHook_ok (by decide) W.Q.scalarWide false)
-  kemEncaps := hookSat_row (Cli.Slots.kemEncaps_row W) (kemEncapsHook_ok W.Q)
-  kemDecaps := hookSat_row (Cli.Slots.kemDecaps_row W) (kemDecapsHook_ok W.Q)
-  spqr :=
-    have hS := Cli.Slots.cliExterns_spqrHooks W
-    ⟨hookSat_of_cliExterns (Cli.Slots.mlkemFromSeed_row W) hS.fromSeed,
-     hookSat_of_cliExterns (Cli.Slots.mlkemPk1_row W) hS.pk1,
-     hookSat_of_cliExterns (Cli.Slots.mlkemPk2_row W) hS.pk2,
-     hookSat_of_cliExterns (Cli.Slots.mlkemEncaps1_row W) hS.encaps1,
-     hookSat_of_cliExterns (Cli.Slots.mlkemEncaps2_row W) hS.encaps2,
-     hookSat_of_cliExterns (Cli.Slots.mlkemDecaps_row W) hS.decaps,
-     hookSat_of_cliExterns (Cli.Slots.mlkemValidatePk_row W) hS.validatePk,
-     hookSat_of_cliExterns (Cli.Slots.libcruxHmac_row W) hS.hmac⟩
-
-/-! ## The old statements from the new ones -/
-
-theorem cliBinaryCorrect_of_ext {elf : ElfImage} (h : CliBinaryCorrectExt elf) :
-    CliBinaryCorrect elf :=
-  ⟨h.1, fun W hW => h.2 ⟨W.C, W.Q⟩ E2E.HooksE.A0 (cliHookExterns W) (cliExterns_ok W) hW⟩
-
-theorem cliPqBinaryCorrect_of_ext {elf : ElfImage} (h : CliPqBinaryCorrectExt elf) :
-    CliPqxdhElfCorrectUnderAllocOk elf :=
-  ⟨h.1, fun W hW => h.2 ⟨W.C, W.Q⟩ E2E.HooksE.A0 (cliHookExterns W) (cliExterns_ok W) hW⟩
-
-theorem libsignalCliBinaryCorrect_of_ext {bytes : List (BitVec 8)}
-    (h : LibsignalCliBinaryCorrectExt bytes) : LibsignalCliBinaryCorrect bytes :=
-  let ⟨elf, hp, he⟩ := h
-  ⟨elf, hp, cliBinaryCorrect_of_ext he⟩
-
-theorem libsignalCliPqBinaryCorrect_of_ext {bytes : List (BitVec 8)}
-    (h : LibsignalCliPqBinaryCorrectExt bytes) : CliPqxdhBinaryCorrectUnderAllocOk bytes :=
-  let ⟨elf, hp, he⟩ := h
-  ⟨elf, hp, cliPqBinaryCorrect_of_ext he⟩
 
 end CryptoVerification.SignalSession

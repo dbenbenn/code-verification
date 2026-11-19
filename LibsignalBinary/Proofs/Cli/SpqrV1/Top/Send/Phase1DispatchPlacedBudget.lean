@@ -11,11 +11,11 @@ module
 
 meta import Lean -- shake: keep
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1DispatchPlaced
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1DispatchPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Decodes -- shake: keep
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1FromPbPlacedBudget
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1PlacedBudget
@@ -29,9 +29,21 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1Dispatch
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1FromPb
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1Steps
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1StepsPlacedBudget
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable Phase 1c: `<States>::from_pb`, Error Path, & Dispatch (Block `427`)
@@ -40,7 +52,7 @@ Threads `RustCliAllocBudget` and `VmPreserved` through `<States>::from_pb` pre-c
 error-path deallocation (`+248 -> +904`), and `Ok(st0)` 11-arm jump-table dispatch.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -64,7 +76,7 @@ open CryptoVerification.SpqrV1.Drop (chunkedStatesAt)
 open CryptoVerification.SpqrV1.Poly (polyEncoderPointsTag polyEncoderPolysTag)
 open CryptoVerification.SpqrV1.Poly.EncoderFromPb (align_pre)
 open CryptoVerification.SpqrV1.ProtoRepr (optChainPBAt)
-open CryptoVerification.SpqrV1.States.FromPb (resultChunkedStatesAt)
+open CryptoVerification.SpqrV1.States.FromPb (resultChunkedStatesAt spqrErrorByte)
 open CryptoVerification.SpqrV1.States.Leaves (relocatedHeap)
 open CryptoVerification.SpqrV1.Top.DecodeState (optVersionNegotiationPBTailAt)
 open CryptoVerification.SpqrV1.Top.Send
@@ -97,6 +109,10 @@ open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1StepsPlacedBudget
   (spqrSend_session_memcpy_region_ok_placed)
 open LibsignalBinary.Proofs.Placed.BudgetVmSteps (sepWP_rebase_vmPreserved trapHooks)
 open LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget (dropProtoSpqrChainSpec)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag
+  (SpqrErrorValidTag spqrSendResultDispAt spqrSendResultDispAt_entails_spqrSendResultAt)
+open LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1StepsPlacedBudget
+  (err_ret_entails_sendResultDispAt_none pointsTo8_memRegion7_entails_pointsTo64_tag)
 open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget (sessionMemcpyRegionBudgetSpec)
 
 variable [LibsignalPlacement]
@@ -288,11 +304,366 @@ theorem spqr_send_pre_states_from_pb_224_placed_pool
 
 /-! ## 2. Budget-Threaded `States.from_pb = .error (.err err)` Path (`+248 -> +872 -> +4608/+904 -> s0.lr`) -/
 
+omit [LibsignalPlacement] in
+theorem spqrErrorByte_valid (err : Error) :
+    SpqrErrorValidTag (spqrErrorByte err) := by
+  cases err <;> (dsimp only [spqrErrorByte]; decide)
+
+omit [LibsignalPlacement] in
+theorem resultChunkedStatesAt_err_entails_head32_896_tag {F : ShaCompress} (A : RustAlloc)
+    (a : BitVec 64) (err : Error) :
+    resultChunkedStatesAt A (F := F) a (.error (.err err)) ⊢
+      ∃∗ w1 : BitVec 64, ∃∗ w2 : BitVec 64, ∃∗ w3 : BitVec 64,
+        ⌜w1.truncate 8 = spqrErrorByte err⌝ ∗
+        (a ↦₆₄ noneCap) ∗
+        ((a + 8#64) ↦₆₄ w1) ∗
+        ((a + 16#64) ↦₆₄ w2) ∗
+        ((a + 24#64) ↦₆₄ w3) ∗
+        memRegion (a + 32#64) 896 := by
+  unfold resultChunkedStatesAt
+  rw [ProofLib.memRegion_split' (b := a + 9#64) (n := 7) (k := 912)
+        (b' := a + 16#64) rfl (by bv_omega) (by decide)]
+  have hw1 :
+      ((a + 8#64) ↦₈ spqrErrorByte err) ∗ memRegion (a + 9#64) 7 ⊢
+        ∃∗ w1 : BitVec 64, ⌜w1.truncate 8 = spqrErrorByte err⌝ ∗ ((a + 8#64) ↦₆₄ w1) := by
+    have ha9 : (a + 8#64) + 1#64 = a + 9#64 := by bv_omega
+    simpa [ha9] using pointsTo8_memRegion7_entails_pointsTo64_tag (a + 8#64) (spqrErrorByte err)
+  refine Entails.trans
+    (Entails.of_eq (show _ =
+      (((a + 8#64) ↦₈ spqrErrorByte err) ∗ memRegion (a + 9#64) 7) ∗
+      (a ↦₆₄ noneCap) ∗
+      memRegion (a + 16#64) 912 by sep_ac_rfl)) ?_
+  refine Entails.trans (sepConj_mono_left hw1) ?_
+  simp only [sepExists_sepConj_left]
+  apply Entails.sepExists_elim; intro w1
+  have hpull1 :
+      ((⌜w1.truncate 8 = spqrErrorByte err⌝ ∗ ((a + 8#64) ↦₆₄ w1)) ∗
+       (a ↦₆₄ noneCap) ∗ memRegion (a + 16#64) 912) =
+      ⌜w1.truncate 8 = spqrErrorByte err⌝ ∗
+        ((a ↦₆₄ noneCap) ∗ ((a + 8#64) ↦₆₄ w1) ∗ memRegion (a + 16#64) 912) := by sep_ac_rfl
+  rw [hpull1]
+  apply Entails.pure_left; intro hw1_eq
+  rw [ProofLib.memRegion_split' (b := a + 16#64) (n := 8) (k := 904)
+        (b' := a + 24#64) rfl (by bv_omega) (by decide),
+      ProofLib.memRegion_eight (a + 16#64)]
+  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
+  apply Entails.sepExists_elim; intro w2
+  rw [ProofLib.memRegion_split' (b := a + 24#64) (n := 8) (k := 896)
+        (b' := a + 32#64) rfl (by bv_omega) (by decide),
+      ProofLib.memRegion_eight (a + 24#64)]
+  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
+  apply Entails.sepExists_elim; intro w3
+  refine Entails.sepExists_right w1 (Entails.sepExists_right w2 (Entails.sepExists_right w3 ?_))
+  exact Entails.pure_right hw1_eq (Entails.of_eq (by sep_ac_rfl))
+
+/-- Display-tag-strengthened budget-threaded relocatable `States.from_pb = .error (.err err)` path
+    (`+248 -> +872 -> +4608/+904 -> s0.lr`), writing `spqrSendResultDispAt A.repAlloc ret none`
+    unconditionally (`spqrErrorByte_valid err`). -/
+theorem spqr_send_states_from_pb_err_step_disp_placed
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {F : ShaCompress} {ext : String → Option (State → State)}
+    (hA : AllocContractsPlaced M A lim ext)
+    (hdropChain : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 439)
+      (withLsCodeRoLoaded lsmpl (dropProtoSpqrChainSpec M A lim)))
+    (s0 s : State) (st : M.σ) (ret w0 w1 : BitVec 64)
+    (vn : Option VersionNegotiationPB) (chain : Option ChainPB)
+    (err : Error) (Rest : SepProp)
+    (hcrl : LibsignalCodeRoLoaded lsmpl s.mem)
+    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
+    (hpc : s.pc = spqrSendPlacedEntry + 248#64)
+    (hrun : s.status = .Running)
+    (hsp : s.sp = s0.sp - 0x1f80#64)
+    (hx19 : s.readReg64 .x19 = ret)
+    (hx23 : s.readReg64 .x23 = w0)
+    (hx26 : s.readReg64 .x26 = (s0.sp - 0x1f80#64) + 0x1260#64)
+    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0 := by simp only [wp_norm, arm64_norm, *]) :
+    SepWP (spqrSendPlacedProg ext) (s0.readReg64 .x30) s
+      (stackAt (s0.sp - 0x1f80#64) spqrSendCalleeStack ∗
+        memRegion (s0.sp - 0x1f80#64) 0x30 ∗
+        (((s0.sp - 0x1f80#64) + 0x30#64) ↦₆₄ w0) ∗
+        (((s0.sp - 0x1f80#64) + 0x38#64) ↦₆₄ w1) ∗
+        optVersionNegotiationPBTailAt A.repAlloc w0 w1 ((s0.sp - 0x1f80#64) + 0x40#64) vn ∗
+        optChainPBAt A.repAlloc ((s0.sp - 0x1f80#64) + 0x60#64) chain ∗
+        memRegion ((s0.sp - 0x1f80#64) + 0xb0#64) (0x1260 - 0xb0) ∗
+        resultChunkedStatesAt A.repAlloc (F := F)
+          ((s0.sp - 0x1f80#64) + 0x1260#64) (.error (.err err)) ∗
+        memRegion ((s0.sp - 0x1f80#64) + 0x1600#64) (0x1f20 - 0x1600) ∗
+        memRegion ret 72 ∗
+        A.pool lim st s ∗
+        spqrSendSavedRegs (s0.sp - 0x1f80#64) s0 ∗
+        Rest)
+      (fun sf Pf =>
+        ∃ evs : List AllocEvent,
+          FreeOnlyEvs evs ∧
+          AllocCallPreserved s sf ∧
+          (Pf ⊢
+            spqrSendResultDispAt A.repAlloc ret none ∗
+            A.pool lim (M.stepEvents evs st) sf ∗
+            stackAt s0.sp spqrSendStack ∗
+            Rest) ∧
+          sf.sp = s0.sp ∧
+          CalleeSavedPreserved s0 sf ∧
+          sf.trace = s.trace) := by
+  have hfsp_align : ((s0.sp - 0x1f80#64) &&& 15#64 == 0#64) = true :=
+    ProofLib.spAligned_sub s0.sp 0x1f80#64 hsp0_align (by decide)
+  by_cases hslt : BitVec.slt w0 1#64 = true
+  · have hge_false := slt_one_true_iff hslt
+    refine seq_vm_lscro hcrl
+      (mid := spqrSendPlacedEntry + 4608#64)
+      (P_mid :=
+        stackAt (s0.sp - 0x1f80#64) spqrSendCalleeStack ∗
+        memRegion (s0.sp - 0x1f80#64) 0x60 ∗
+        optChainPBAt A.repAlloc ((s0.sp - 0x1f80#64) + 0x60#64) chain ∗
+        memRegion ((s0.sp - 0x1f80#64) + 0xb0#64) (0x1f20 - 0xb0) ∗
+        spqrSendSavedRegs (s0.sp - 0x1f80#64) s0 ∗
+        A.pool lim st s ∗
+        (spqrSendResultDispAt A.repAlloc ret none ∗ Rest))
+      (Q := fun sm =>
+        AllocCallPreserved s sm ∧
+        sm.sp = s0.sp - 0x1f80#64 ∧
+        sm.trace = s.trace ∧
+        calleeSavedVRegs sm = calleeSavedVRegs s0)
+      ?_ ?_
+    · dsimp only [spqrSendPlacedProg, spqrSendPlacedEntry, spqrSendName,
+        BitVec.ofNat_eq_ofNat] at hpc ⊢
+      generalize hfsp_eq : s0.sp - 8064#64 = fsp at hsp hfsp_align hx26 ⊢
+      have herr_split :=
+        resultChunkedStatesAt_err_entails_head32_896_tag A.repAlloc (F := F) (fsp + 4704#64) err
+      have ha1268 : (fsp + 4704#64) + 8#64 = fsp + 4712#64 := by bv_omega
+      have ha1270 : (fsp + 4704#64) + 16#64 = fsp + 4720#64 := by bv_omega
+      have ha1278 : (fsp + 4704#64) + 24#64 = fsp + 4728#64 := by bv_omega
+      have ha1280 : (fsp + 4704#64) + 32#64 = fsp + 4736#64 := by bv_omega
+      rw [ha1268, ha1270, ha1278, ha1280] at herr_split
+      by_vm_steps (
+        refine SepWP.weaken_pre
+          (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
+            (sepConj_mono_right (sepConj_mono_right
+              (sepConj_mono (memRegion_b0_to_1260_split_930 fsp)
+                (sepConj_mono herr_split
+                  (sepConj_mono_right (sepConj_mono_left (memRegion_ret_72_split_err ret))))))))))) ?_
+        wp_simp_pre [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
+        apply ProofLib.SepWP.exists_left; intro r0
+        apply ProofLib.SepWP.exists_left; intro rw8
+        apply ProofLib.SepWP.exists_left; intro rw16
+        apply ProofLib.SepWP.exists_left; intro rw24
+        apply ProofLib.SepWP.exists_left; intro ew1
+        apply ProofLib.SepWP.exists_left; intro ew2
+        apply ProofLib.SepWP.exists_left; intro ew3
+        apply ProofLib.SepWP.exists_left; intro s0_930
+        apply ProofLib.SepWP.exists_left; intro s1_938
+        apply ProofLib.SepWP.exists_left; intro s2_940
+        wp_focus_pure; intro hew1_eq
+        have htag_ew1 : SpqrErrorValidTag (ew1.truncate 8) := by
+          change SpqrErrorValidTag (BitVec.setWidth 8 ew1)
+          rw [hew1_eq]; exact spqrErrorByte_valid err
+        wp_steps
+        refine ProofLib.SepWP.done
+          (by simp only [wp_norm, arm64_norm, *])
+          (by simp only [wp_norm, arm64_norm, *])
+          ⟨by simp only [wp_norm, arm64_norm, *], ?_,
+            by simp only [wp_norm, arm64_norm, *],
+            by simp only [wp_norm, arm64_norm, *],
+            by simp only [wp_norm, arm64_norm, *],
+            by simp only [wp_norm, arm64_norm, *]⟩
+        have hvn_drop := optVersionNegotiationPBTail_cleanup_entails A.repAlloc (fsp + 48#64) w0 w1 vn
+        have ha56 : (fsp + 48#64) + 8#64 = fsp + 56#64 := by bv_omega
+        have ha64 : (fsp + 48#64) + 16#64 = fsp + 64#64 := by bv_omega
+        rw [ha56, ha64, hslt] at hvn_drop
+        simp only [↓reduceIte] at hvn_drop
+        have h60 : memRegion fsp 48 ∗ memRegion (fsp + 48#64) 48 ⊢ memRegion fsp 96 := by
+          rw [memRegion_rejoin_30_48 fsp]
+          exact Entails.refl _
+        have hb0 := rejoin_b0_to_1f20_after_states_err fsp noneCap ew1 ew2 ew3
+        have hret := err_ret_entails_sendResultDispAt_none A.repAlloc ret ew1 ew2 ew3 htag_ew1
+        refine Entails.trans
+          (Entails.of_eq (show _ =
+            (memRegion fsp 48 ∗
+             (((fsp + 48#64) ↦₆₄ w0) ∗ ((fsp + 56#64) ↦₆₄ w1) ∗
+              optVersionNegotiationPBTailAt A.repAlloc w0 w1 (fsp + 64#64) vn)) ∗
+            (memRegion (fsp + 176#64) (0x930 - 0xb0) ∗
+             ((fsp + 2352#64) ↦₆₄ ew1) ∗
+             ((fsp + 2360#64) ↦₆₄ ew2) ∗
+             ((fsp + 2368#64) ↦₆₄ ew3) ∗
+             memRegion (fsp + 2376#64) (0x1260 - 0x948) ∗
+             ((fsp + 4704#64) ↦₆₄ noneCap) ∗
+             ((fsp + 4712#64) ↦₆₄ ew1) ∗
+             ((fsp + 4720#64) ↦₆₄ ew2) ∗
+             ((fsp + 4728#64) ↦₆₄ ew3) ∗
+             memRegion (fsp + 4736#64) 896 ∗
+             memRegion (fsp + 5632#64) (0x1f20 - 0x1600)) ∗
+            ((ret ↦₆₄ 18446744073709551615#64) ∗
+             ((ret + 8#64) ↦₆₄ ew1) ∗
+             ((ret + 16#64) ↦₆₄ ew2) ∗
+             ((ret + 24#64) ↦₆₄ ew3) ∗
+             memRegion (ret + 32#64) 40) ∗
+            (stackAt fsp spqrSendCalleeStack ∗
+             optChainPBAt A.repAlloc (fsp + 96#64) chain ∗
+             spqrSendSavedRegs fsp s0 ∗
+             A.pool lim st s ∗ Rest) by sep_ac_rfl)) ?_
+        refine Entails.trans
+          (sepConj_mono (Entails.trans (sepConj_mono_right hvn_drop) h60)
+            (sepConj_mono hb0 (sepConj_mono_left hret))) ?_
+        exact Entails.of_eq (by sep_ac_rfl))
+    · intro s2 hpc2 hrun2 hcrl2 hvm2 ⟨hacp2, hsp2, htr2, hvregs2⟩
+      rw [← A.pool_transport lim st s s2 hvm2]
+      have hep := spqr_send_chain_drop_epilogue_4608_placed hdropChain s0 s2 st chain
+        (spqrSendResultDispAt A.repAlloc ret none ∗ Rest)
+        hcrl2 hsp0_align hpc2 hrun2 hsp2 hvregs2
+      refine SepWP.mono hep ?_
+      intro sf Pf _ _ ⟨evs, hevs, hacp_f, hPf, hsp_f, hcc_f, htr_f⟩
+      exact ⟨evs, hevs, hacp2.trans hacp_f,
+        Entails.trans hPf (Entails.of_eq (by sep_ac_rfl)), hsp_f, hcc_f, htr_f.trans htr2⟩
+  · have hslt_f : BitVec.slt w0 1#64 = false := Bool.eq_false_iff.mpr hslt
+    have hge_true := slt_one_false_iff hslt_f
+    refine seq_lscro hcrl
+      (mid := spqrSendPlacedEntry + 904#64)
+      (Mid := fun s1 P1 =>
+        VmPreserved s s1 ∧
+        AllocCallPreserved s s1 ∧
+        0 < w0.toNat ∧ w0.toNat < 2 ^ 63 ∧ w1 ≠ 0 ∧
+        (P1 ⊢
+          stackAt (s0.sp - 0x1f80#64) spqrSendCalleeStack ∗
+          memRegion (s0.sp - 0x1f80#64) 0x30 ∗
+          memRegion ((s0.sp - 0x1f80#64) + 0x30#64) 8 ∗
+          (((s0.sp - 0x1f80#64) + 0x38#64) ↦₆₄ w1) ∗
+          memRegion ((s0.sp - 0x1f80#64) + 0x40#64) 32 ∗
+          A.live w1 w0.toNat 1 ∗
+          memRegion w1 w0.toNat ∗
+          optChainPBAt A.repAlloc ((s0.sp - 0x1f80#64) + 0x60#64) chain ∗
+          memRegion ((s0.sp - 0x1f80#64) + 0xb0#64) (0x1f20 - 0xb0) ∗
+          spqrSendSavedRegs (s0.sp - 0x1f80#64) s0 ∗
+          A.pool lim st s ∗
+          (spqrSendResultDispAt A.repAlloc ret none ∗ Rest)) ∧
+        s1.sp = s0.sp - 0x1f80#64 ∧
+        s1.readReg64 .x23 = w0 ∧
+        s1.trace = s.trace ∧
+        calleeSavedVRegs s1 = calleeSavedVRegs s0)
+      ?_ ?_
+    · dsimp only [spqrSendPlacedProg, spqrSendPlacedEntry, spqrSendName,
+        BitVec.ofNat_eq_ofNat] at hpc ⊢
+      generalize hfsp_eq : s0.sp - 8064#64 = fsp at hsp hfsp_align hx26 ⊢
+      have herr_split :=
+        resultChunkedStatesAt_err_entails_head32_896_tag A.repAlloc (F := F) (fsp + 4704#64) err
+      have ha1268 : (fsp + 4704#64) + 8#64 = fsp + 4712#64 := by bv_omega
+      have ha1270 : (fsp + 4704#64) + 16#64 = fsp + 4720#64 := by bv_omega
+      have ha1278 : (fsp + 4704#64) + 24#64 = fsp + 4728#64 := by bv_omega
+      have ha1280 : (fsp + 4704#64) + 32#64 = fsp + 4736#64 := by bv_omega
+      rw [ha1268, ha1270, ha1278, ha1280] at herr_split
+      have hvn_drop := optVersionNegotiationPBTail_cleanup_entails A.repAlloc (fsp + 48#64) w0 w1 vn
+      have ha56 : (fsp + 48#64) + 8#64 = fsp + 56#64 := by bv_omega
+      have ha64 : (fsp + 48#64) + 16#64 = fsp + 64#64 := by bv_omega
+      rw [ha56, ha64, hslt_f] at hvn_drop
+      simp only [Bool.false_eq_true, ↓reduceIte] at hvn_drop
+      dsimp only [RustCliAllocBudget.repAlloc] at hvn_drop
+      by_vm_steps (
+        refine SepWP.weaken_pre
+          (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
+            (sepConj_mono_right (sepConj_mono_right
+              (sepConj_mono (memRegion_b0_to_1260_split_930 fsp)
+                (sepConj_mono herr_split
+                  (sepConj_mono_right (sepConj_mono_left (memRegion_ret_72_split_err ret))))))))))) ?_
+        wp_simp_pre [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
+        apply ProofLib.SepWP.exists_left; intro r0
+        apply ProofLib.SepWP.exists_left; intro rw8
+        apply ProofLib.SepWP.exists_left; intro rw16
+        apply ProofLib.SepWP.exists_left; intro rw24
+        apply ProofLib.SepWP.exists_left; intro ew1
+        apply ProofLib.SepWP.exists_left; intro ew2
+        apply ProofLib.SepWP.exists_left; intro ew3
+        apply ProofLib.SepWP.exists_left; intro s0_930
+        apply ProofLib.SepWP.exists_left; intro s1_938
+        apply ProofLib.SepWP.exists_left; intro s2_940
+        wp_focus_pure; intro hew1_eq
+        have htag_ew1 : SpqrErrorValidTag (ew1.truncate 8) := by
+          change SpqrErrorValidTag (BitVec.setWidth 8 ew1)
+          rw [hew1_eq]; exact spqrErrorByte_valid err
+        wp_steps
+        refine SepWP.weaken_pre
+          (Entails.trans
+            (Entails.of_eq (show _ =
+              (((fsp + 48#64) ↦₆₄ w0) ∗ ((fsp + 56#64) ↦₆₄ w1) ∗
+               optVersionNegotiationPBTailAt A.repAlloc w0 w1 (fsp + 64#64) vn) ∗
+              (stackAt fsp spqrSendCalleeStack ∗
+               memRegion fsp 48 ∗
+               optChainPBAt A.repAlloc (fsp + 96#64) chain ∗
+               memRegion (fsp + 176#64) (0x930 - 0xb0) ∗
+               ((fsp + 2352#64) ↦₆₄ ew1) ∗
+               ((fsp + 2360#64) ↦₆₄ ew2) ∗
+               ((fsp + 2368#64) ↦₆₄ ew3) ∗
+               memRegion (fsp + 2376#64) (0x1260 - 0x948) ∗
+               ((fsp + 4704#64) ↦₆₄ noneCap) ∗
+               ((fsp + 4712#64) ↦₆₄ ew1) ∗
+               ((fsp + 4720#64) ↦₆₄ ew2) ∗
+               ((fsp + 4728#64) ↦₆₄ ew3) ∗
+               memRegion (fsp + 4736#64) 896 ∗
+               memRegion (fsp + 5632#64) (0x1f20 - 0x1600) ∗
+               (ret ↦₆₄ 18446744073709551615#64) ∗
+               ((ret + 8#64) ↦₆₄ ew1) ∗
+               ((ret + 16#64) ↦₆₄ ew2) ∗
+               ((ret + 24#64) ↦₆₄ ew3) ∗
+               memRegion (ret + 32#64) 40 ∗
+               A.pool lim st s ∗
+               spqrSendSavedRegs fsp s0 ∗
+               Rest) by sep_ac_rfl))
+            (sepConj_mono_left hvn_drop)) ?_
+        wp_focus_pure; rintro ⟨hw0_pos, hw0_lt, hw1_ne⟩
+        refine ProofLib.SepWP.done
+          (by simp only [wp_norm, arm64_norm, *])
+          (by simp only [wp_norm, arm64_norm, *]) ?_
+        refine ⟨by simp only [wp_norm, arm64_norm, *],
+          by simp only [wp_norm, arm64_norm, *],
+          hw0_pos, hw0_lt, hw1_ne, ?_,
+          by simp only [wp_norm, arm64_norm, *],
+          by simp only [wp_norm, arm64_norm, *],
+          by simp only [wp_norm, arm64_norm, *],
+          by simp only [wp_norm, arm64_norm, *]⟩
+        have hb0 := rejoin_b0_to_1f20_after_states_err fsp noneCap ew1 ew2 ew3
+        have hret := err_ret_entails_sendResultDispAt_none A.repAlloc ret ew1 ew2 ew3 htag_ew1
+        refine Entails.trans
+          (Entails.of_eq (show _ =
+            (memRegion (fsp + 176#64) (0x930 - 0xb0) ∗
+             ((fsp + 2352#64) ↦₆₄ ew1) ∗
+             ((fsp + 2360#64) ↦₆₄ ew2) ∗
+             ((fsp + 2368#64) ↦₆₄ ew3) ∗
+             memRegion (fsp + 2376#64) (0x1260 - 0x948) ∗
+             ((fsp + 4704#64) ↦₆₄ noneCap) ∗
+             ((fsp + 4712#64) ↦₆₄ ew1) ∗
+             ((fsp + 4720#64) ↦₆₄ ew2) ∗
+             ((fsp + 4728#64) ↦₆₄ ew3) ∗
+             memRegion (fsp + 4736#64) 896 ∗
+             memRegion (fsp + 5632#64) (0x1f20 - 0x1600)) ∗
+            ((ret ↦₆₄ 18446744073709551615#64) ∗
+             ((ret + 8#64) ↦₆₄ ew1) ∗
+             ((ret + 16#64) ↦₆₄ ew2) ∗
+             ((ret + 24#64) ↦₆₄ ew3) ∗
+             memRegion (ret + 32#64) 40) ∗
+            (stackAt fsp spqrSendCalleeStack ∗
+             memRegion fsp 48 ∗
+             memRegion (fsp + 48#64) 8 ∗
+             ((fsp + 56#64) ↦₆₄ w1) ∗
+             memRegion (fsp + 64#64) 32 ∗
+             A.live w1 w0.toNat 1 ∗
+             memRegion w1 w0.toNat ∗
+             optChainPBAt A.repAlloc (fsp + 96#64) chain ∗
+             spqrSendSavedRegs fsp s0 ∗
+             A.pool lim st s ∗ Rest) by sep_ac_rfl)) ?_
+        refine Entails.trans (sepConj_mono hb0 (sepConj_mono_left hret)) ?_
+        exact Entails.of_eq (by sep_ac_rfl))
+    · intro s1 P1 hpc1 hrun1 hcrl1
+        ⟨hvm1, hacp1, hw0_pos, hw0_lt, hw1_ne, hP1, hsp1, hx23_1, htr1, hvregs1⟩
+      rw [← A.pool_transport lim st s s1 hvm1] at hP1
+      refine SepWP.weaken_pre hP1 ?_
+      have hep := spqr_send_vn_chain_drop_epilogue_904_placed hA hdropChain s0 s1 st w0 w1 chain
+        (spqrSendResultDispAt A.repAlloc ret none ∗ Rest)
+        hcrl1 hsp0_align hpc1 hrun1 hsp1 hx23_1 hw0_pos hw0_lt hw1_ne hvregs1
+      refine SepWP.mono hep ?_
+      intro sf Pf _ _ ⟨evs, hevs, hacp_f, hPf, hsp_f, hcc_f, htr_f⟩
+      exact ⟨evs, hevs, hacp1.trans hacp_f,
+        Entails.trans hPf (Entails.of_eq (by sep_ac_rfl)), hsp_f, hcc_f, htr_f.trans htr1⟩
+
 /-- Budget-threaded relocatable `States.from_pb = .error (.err err)` path
-    (`+248 -> +872 -> +4608/+904 -> s0.lr`):
-    copies the `Err` header from `sp + 0x1260..0x1280` via `sp + 0x930..0x948` to `ret` (`x19`),
-    drops `pq.versionNegotiation` (if `some`) and `pq.chain` with `FreeOnlyEvs evs`, and returns
-    to `s0.lr` preserving `AllocCallPreserved s sf`. -/
+    (`+248 -> +872 -> +4608/+904 -> s0.lr`), derived by monotonicity from
+    `spqr_send_states_from_pb_err_step_disp_placed`. -/
 theorem spqr_send_states_from_pb_err_step_placed
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {F : ShaCompress} {ext : String → Option (State → State)}
@@ -338,254 +709,13 @@ theorem spqr_send_states_from_pb_err_step_placed
           sf.sp = s0.sp ∧
           CalleeSavedPreserved s0 sf ∧
           sf.trace = s.trace) := by
-  have hfsp_align : ((s0.sp - 0x1f80#64) &&& 15#64 == 0#64) = true :=
-    ProofLib.spAligned_sub s0.sp 0x1f80#64 hsp0_align (by decide)
-  by_cases hslt : BitVec.slt w0 1#64 = true
-  · have hge_false := slt_one_true_iff hslt
-    refine seq_vm_lscro hcrl
-      (mid := spqrSendPlacedEntry + 4608#64)
-      (P_mid :=
-        stackAt (s0.sp - 0x1f80#64) spqrSendCalleeStack ∗
-        memRegion (s0.sp - 0x1f80#64) 0x60 ∗
-        optChainPBAt A.repAlloc ((s0.sp - 0x1f80#64) + 0x60#64) chain ∗
-        memRegion ((s0.sp - 0x1f80#64) + 0xb0#64) (0x1f20 - 0xb0) ∗
-        spqrSendSavedRegs (s0.sp - 0x1f80#64) s0 ∗
-        A.pool lim st s ∗
-        (spqrSendResultAt A.repAlloc ret none ∗ Rest))
-      (Q := fun sm =>
-        AllocCallPreserved s sm ∧
-        sm.sp = s0.sp - 0x1f80#64 ∧
-        sm.trace = s.trace ∧
-        calleeSavedVRegs sm = calleeSavedVRegs s0)
-      ?_ ?_
-    · dsimp only [spqrSendPlacedProg, spqrSendPlacedEntry, spqrSendName,
-        BitVec.ofNat_eq_ofNat] at hpc ⊢
-      generalize hfsp_eq : s0.sp - 8064#64 = fsp at hsp hfsp_align hx26 ⊢
-      have herr_split :=
-        resultChunkedStatesAt_err_entails_head32_896 A.repAlloc (F := F) (fsp + 4704#64) err
-      have ha1268 : (fsp + 4704#64) + 8#64 = fsp + 4712#64 := by bv_omega
-      have ha1270 : (fsp + 4704#64) + 16#64 = fsp + 4720#64 := by bv_omega
-      have ha1278 : (fsp + 4704#64) + 24#64 = fsp + 4728#64 := by bv_omega
-      have ha1280 : (fsp + 4704#64) + 32#64 = fsp + 4736#64 := by bv_omega
-      rw [ha1268, ha1270, ha1278, ha1280] at herr_split
-      by_vm_steps (
-        refine SepWP.weaken_pre
-          (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-            (sepConj_mono_right (sepConj_mono_right
-              (sepConj_mono (memRegion_b0_to_1260_split_930 fsp)
-                (sepConj_mono herr_split
-                  (sepConj_mono_right (sepConj_mono_left (memRegion_ret_72_split_err ret))))))))))) ?_
-        wp_simp_pre [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-        apply ProofLib.SepWP.exists_left; intro r0
-        apply ProofLib.SepWP.exists_left; intro rw8
-        apply ProofLib.SepWP.exists_left; intro rw16
-        apply ProofLib.SepWP.exists_left; intro rw24
-        apply ProofLib.SepWP.exists_left; intro ew1
-        apply ProofLib.SepWP.exists_left; intro ew2
-        apply ProofLib.SepWP.exists_left; intro ew3
-        apply ProofLib.SepWP.exists_left; intro s0_930
-        apply ProofLib.SepWP.exists_left; intro s1_938
-        apply ProofLib.SepWP.exists_left; intro s2_940
-        wp_steps
-        refine ProofLib.SepWP.done
-          (by simp only [wp_norm, arm64_norm, *])
-          (by simp only [wp_norm, arm64_norm, *])
-          ⟨by simp only [wp_norm, arm64_norm, *], ?_,
-            by simp only [wp_norm, arm64_norm, *],
-            by simp only [wp_norm, arm64_norm, *],
-            by simp only [wp_norm, arm64_norm, *],
-            by simp only [wp_norm, arm64_norm, *]⟩
-        have hvn_drop := optVersionNegotiationPBTail_cleanup_entails A.repAlloc (fsp + 48#64) w0 w1 vn
-        have ha56 : (fsp + 48#64) + 8#64 = fsp + 56#64 := by bv_omega
-        have ha64 : (fsp + 48#64) + 16#64 = fsp + 64#64 := by bv_omega
-        rw [ha56, ha64, hslt] at hvn_drop
-        simp only [↓reduceIte] at hvn_drop
-        have h60 : memRegion fsp 48 ∗ memRegion (fsp + 48#64) 48 ⊢ memRegion fsp 96 := by
-          rw [memRegion_rejoin_30_48 fsp]
-          exact Entails.refl _
-        have hb0 := rejoin_b0_to_1f20_after_states_err fsp noneCap ew1 ew2 ew3
-        have hret := err_ret_entails_sendResultAt_none A.repAlloc ret ew1 ew2 ew3
-        refine Entails.trans
-          (Entails.of_eq (show _ =
-            (memRegion fsp 48 ∗
-             (((fsp + 48#64) ↦₆₄ w0) ∗ ((fsp + 56#64) ↦₆₄ w1) ∗
-              optVersionNegotiationPBTailAt A.repAlloc w0 w1 (fsp + 64#64) vn)) ∗
-            (memRegion (fsp + 176#64) (0x930 - 0xb0) ∗
-             ((fsp + 2352#64) ↦₆₄ ew1) ∗
-             ((fsp + 2360#64) ↦₆₄ ew2) ∗
-             ((fsp + 2368#64) ↦₆₄ ew3) ∗
-             memRegion (fsp + 2376#64) (0x1260 - 0x948) ∗
-             ((fsp + 4704#64) ↦₆₄ noneCap) ∗
-             ((fsp + 4712#64) ↦₆₄ ew1) ∗
-             ((fsp + 4720#64) ↦₆₄ ew2) ∗
-             ((fsp + 4728#64) ↦₆₄ ew3) ∗
-             memRegion (fsp + 4736#64) 896 ∗
-             memRegion (fsp + 5632#64) (0x1f20 - 0x1600)) ∗
-            ((ret ↦₆₄ 18446744073709551615#64) ∗
-             ((ret + 8#64) ↦₆₄ ew1) ∗
-             ((ret + 16#64) ↦₆₄ ew2) ∗
-             ((ret + 24#64) ↦₆₄ ew3) ∗
-             memRegion (ret + 32#64) 40) ∗
-            (stackAt fsp spqrSendCalleeStack ∗
-             optChainPBAt A.repAlloc (fsp + 96#64) chain ∗
-             spqrSendSavedRegs fsp s0 ∗
-             A.pool lim st s ∗ Rest) by sep_ac_rfl)) ?_
-        refine Entails.trans
-          (sepConj_mono (Entails.trans (sepConj_mono_right hvn_drop) h60)
-            (sepConj_mono hb0 (sepConj_mono_left hret))) ?_
-        exact Entails.of_eq (by sep_ac_rfl))
-    · intro s2 hpc2 hrun2 hcrl2 hvm2 ⟨hacp2, hsp2, htr2, hvregs2⟩
-      rw [← A.pool_transport lim st s s2 hvm2]
-      have hep := spqr_send_chain_drop_epilogue_4608_placed hdropChain s0 s2 st chain
-        (spqrSendResultAt A.repAlloc ret none ∗ Rest)
-        hcrl2 hsp0_align hpc2 hrun2 hsp2 hvregs2
-      refine SepWP.mono hep ?_
-      intro sf Pf _ _ ⟨evs, hevs, hacp_f, hPf, hsp_f, hcc_f, htr_f⟩
-      exact ⟨evs, hevs, hacp2.trans hacp_f,
-        Entails.trans hPf (Entails.of_eq (by sep_ac_rfl)), hsp_f, hcc_f, htr_f.trans htr2⟩
-  · have hslt_f : BitVec.slt w0 1#64 = false := Bool.eq_false_iff.mpr hslt
-    have hge_true := slt_one_false_iff hslt_f
-    refine seq_lscro hcrl
-      (mid := spqrSendPlacedEntry + 904#64)
-      (Mid := fun s1 P1 =>
-        VmPreserved s s1 ∧
-        AllocCallPreserved s s1 ∧
-        0 < w0.toNat ∧ w0.toNat < 2 ^ 63 ∧ w1 ≠ 0 ∧
-        (P1 ⊢
-          stackAt (s0.sp - 0x1f80#64) spqrSendCalleeStack ∗
-          memRegion (s0.sp - 0x1f80#64) 0x30 ∗
-          memRegion ((s0.sp - 0x1f80#64) + 0x30#64) 8 ∗
-          (((s0.sp - 0x1f80#64) + 0x38#64) ↦₆₄ w1) ∗
-          memRegion ((s0.sp - 0x1f80#64) + 0x40#64) 32 ∗
-          A.live w1 w0.toNat 1 ∗
-          memRegion w1 w0.toNat ∗
-          optChainPBAt A.repAlloc ((s0.sp - 0x1f80#64) + 0x60#64) chain ∗
-          memRegion ((s0.sp - 0x1f80#64) + 0xb0#64) (0x1f20 - 0xb0) ∗
-          spqrSendSavedRegs (s0.sp - 0x1f80#64) s0 ∗
-          A.pool lim st s ∗
-          (spqrSendResultAt A.repAlloc ret none ∗ Rest)) ∧
-        s1.sp = s0.sp - 0x1f80#64 ∧
-        s1.readReg64 .x23 = w0 ∧
-        s1.trace = s.trace ∧
-        calleeSavedVRegs s1 = calleeSavedVRegs s0)
-      ?_ ?_
-    · dsimp only [spqrSendPlacedProg, spqrSendPlacedEntry, spqrSendName,
-        BitVec.ofNat_eq_ofNat] at hpc ⊢
-      generalize hfsp_eq : s0.sp - 8064#64 = fsp at hsp hfsp_align hx26 ⊢
-      have herr_split :=
-        resultChunkedStatesAt_err_entails_head32_896 A.repAlloc (F := F) (fsp + 4704#64) err
-      have ha1268 : (fsp + 4704#64) + 8#64 = fsp + 4712#64 := by bv_omega
-      have ha1270 : (fsp + 4704#64) + 16#64 = fsp + 4720#64 := by bv_omega
-      have ha1278 : (fsp + 4704#64) + 24#64 = fsp + 4728#64 := by bv_omega
-      have ha1280 : (fsp + 4704#64) + 32#64 = fsp + 4736#64 := by bv_omega
-      rw [ha1268, ha1270, ha1278, ha1280] at herr_split
-      have hvn_drop := optVersionNegotiationPBTail_cleanup_entails A.repAlloc (fsp + 48#64) w0 w1 vn
-      have ha56 : (fsp + 48#64) + 8#64 = fsp + 56#64 := by bv_omega
-      have ha64 : (fsp + 48#64) + 16#64 = fsp + 64#64 := by bv_omega
-      rw [ha56, ha64, hslt_f] at hvn_drop
-      simp only [Bool.false_eq_true, ↓reduceIte] at hvn_drop
-      dsimp only [RustCliAllocBudget.repAlloc] at hvn_drop
-      by_vm_steps (
-        refine SepWP.weaken_pre
-          (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-            (sepConj_mono_right (sepConj_mono_right
-              (sepConj_mono (memRegion_b0_to_1260_split_930 fsp)
-                (sepConj_mono herr_split
-                  (sepConj_mono_right (sepConj_mono_left (memRegion_ret_72_split_err ret))))))))))) ?_
-        wp_simp_pre [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-        apply ProofLib.SepWP.exists_left; intro r0
-        apply ProofLib.SepWP.exists_left; intro rw8
-        apply ProofLib.SepWP.exists_left; intro rw16
-        apply ProofLib.SepWP.exists_left; intro rw24
-        apply ProofLib.SepWP.exists_left; intro ew1
-        apply ProofLib.SepWP.exists_left; intro ew2
-        apply ProofLib.SepWP.exists_left; intro ew3
-        apply ProofLib.SepWP.exists_left; intro s0_930
-        apply ProofLib.SepWP.exists_left; intro s1_938
-        apply ProofLib.SepWP.exists_left; intro s2_940
-        wp_steps
-        refine SepWP.weaken_pre
-          (Entails.trans
-            (Entails.of_eq (show _ =
-              (((fsp + 48#64) ↦₆₄ w0) ∗ ((fsp + 56#64) ↦₆₄ w1) ∗
-               optVersionNegotiationPBTailAt A.repAlloc w0 w1 (fsp + 64#64) vn) ∗
-              (stackAt fsp spqrSendCalleeStack ∗
-               memRegion fsp 48 ∗
-               optChainPBAt A.repAlloc (fsp + 96#64) chain ∗
-               memRegion (fsp + 176#64) (0x930 - 0xb0) ∗
-               ((fsp + 2352#64) ↦₆₄ ew1) ∗
-               ((fsp + 2360#64) ↦₆₄ ew2) ∗
-               ((fsp + 2368#64) ↦₆₄ ew3) ∗
-               memRegion (fsp + 2376#64) (0x1260 - 0x948) ∗
-               ((fsp + 4704#64) ↦₆₄ noneCap) ∗
-               ((fsp + 4712#64) ↦₆₄ ew1) ∗
-               ((fsp + 4720#64) ↦₆₄ ew2) ∗
-               ((fsp + 4728#64) ↦₆₄ ew3) ∗
-               memRegion (fsp + 4736#64) 896 ∗
-               memRegion (fsp + 5632#64) (0x1f20 - 0x1600) ∗
-               (ret ↦₆₄ 18446744073709551615#64) ∗
-               ((ret + 8#64) ↦₆₄ ew1) ∗
-               ((ret + 16#64) ↦₆₄ ew2) ∗
-               ((ret + 24#64) ↦₆₄ ew3) ∗
-               memRegion (ret + 32#64) 40 ∗
-               A.pool lim st s ∗
-               spqrSendSavedRegs fsp s0 ∗
-               Rest) by sep_ac_rfl))
-            (sepConj_mono_left hvn_drop)) ?_
-        wp_focus_pure; rintro ⟨hw0_pos, hw0_lt, hw1_ne⟩
-        refine ProofLib.SepWP.done
-          (by simp only [wp_norm, arm64_norm, *])
-          (by simp only [wp_norm, arm64_norm, *]) ?_
-        refine ⟨by simp only [wp_norm, arm64_norm, *],
-          by simp only [wp_norm, arm64_norm, *],
-          hw0_pos, hw0_lt, hw1_ne, ?_,
-          by simp only [wp_norm, arm64_norm, *],
-          by simp only [wp_norm, arm64_norm, *],
-          by simp only [wp_norm, arm64_norm, *],
-          by simp only [wp_norm, arm64_norm, *]⟩
-        have hb0 := rejoin_b0_to_1f20_after_states_err fsp noneCap ew1 ew2 ew3
-        have hret := err_ret_entails_sendResultAt_none A.repAlloc ret ew1 ew2 ew3
-        refine Entails.trans
-          (Entails.of_eq (show _ =
-            (memRegion (fsp + 176#64) (0x930 - 0xb0) ∗
-             ((fsp + 2352#64) ↦₆₄ ew1) ∗
-             ((fsp + 2360#64) ↦₆₄ ew2) ∗
-             ((fsp + 2368#64) ↦₆₄ ew3) ∗
-             memRegion (fsp + 2376#64) (0x1260 - 0x948) ∗
-             ((fsp + 4704#64) ↦₆₄ noneCap) ∗
-             ((fsp + 4712#64) ↦₆₄ ew1) ∗
-             ((fsp + 4720#64) ↦₆₄ ew2) ∗
-             ((fsp + 4728#64) ↦₆₄ ew3) ∗
-             memRegion (fsp + 4736#64) 896 ∗
-             memRegion (fsp + 5632#64) (0x1f20 - 0x1600)) ∗
-            ((ret ↦₆₄ 18446744073709551615#64) ∗
-             ((ret + 8#64) ↦₆₄ ew1) ∗
-             ((ret + 16#64) ↦₆₄ ew2) ∗
-             ((ret + 24#64) ↦₆₄ ew3) ∗
-             memRegion (ret + 32#64) 40) ∗
-            (stackAt fsp spqrSendCalleeStack ∗
-             memRegion fsp 48 ∗
-             memRegion (fsp + 48#64) 8 ∗
-             ((fsp + 56#64) ↦₆₄ w1) ∗
-             memRegion (fsp + 64#64) 32 ∗
-             A.live w1 w0.toNat 1 ∗
-             memRegion w1 w0.toNat ∗
-             optChainPBAt A.repAlloc (fsp + 96#64) chain ∗
-             spqrSendSavedRegs fsp s0 ∗
-             A.pool lim st s ∗ Rest) by sep_ac_rfl)) ?_
-        refine Entails.trans (sepConj_mono hb0 (sepConj_mono_left hret)) ?_
-        exact Entails.of_eq (by sep_ac_rfl))
-    · intro s1 P1 hpc1 hrun1 hcrl1
-        ⟨hvm1, hacp1, hw0_pos, hw0_lt, hw1_ne, hP1, hsp1, hx23_1, htr1, hvregs1⟩
-      rw [← A.pool_transport lim st s s1 hvm1] at hP1
-      refine SepWP.weaken_pre hP1 ?_
-      have hep := spqr_send_vn_chain_drop_epilogue_904_placed hA hdropChain s0 s1 st w0 w1 chain
-        (spqrSendResultAt A.repAlloc ret none ∗ Rest)
-        hcrl1 hsp0_align hpc1 hrun1 hsp1 hx23_1 hw0_pos hw0_lt hw1_ne hvregs1
-      refine SepWP.mono hep ?_
-      intro sf Pf _ _ ⟨evs, hevs, hacp_f, hPf, hsp_f, hcc_f, htr_f⟩
-      exact ⟨evs, hevs, hacp1.trans hacp_f,
-        Entails.trans hPf (Entails.of_eq (by sep_ac_rfl)), hsp_f, hcc_f, htr_f.trans htr1⟩
+  refine SepWP.mono
+    (spqr_send_states_from_pb_err_step_disp_placed hA hdropChain s0 s st ret w0 w1 vn chain err Rest
+      hcrl hsp0_align hpc hrun hsp hx19 hx23 hx26 hvregs) ?_
+  rintro sf Pf _ _ ⟨evs, hevs, hacp, hPf, hspf, hccf, htrf⟩
+  exact ⟨evs, hevs, hacp,
+    Entails.trans hPf (sepConj_mono_left (spqrSendResultDispAt_entails_spqrSendResultAt A.repAlloc ret none)),
+    hspf, hccf, htrf⟩
 
 /-! ## 3. VM-Preserving `States.from_pb = .ok st0` Relocation & Jump-Table 1 Dispatch (`+248 -> +336 -> arm`) -/
 

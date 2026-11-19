@@ -9,16 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.SpuriousBounds
-public import Computational.Proofs.E2E.SignedAdv
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.SpuriousBounds
+import Computational.Proofs.E2E.SignedAdv
 public import Computational.Specifications.Session.StatementIdsModel
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
-public import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
+import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement
-import Computational.Proofs.E2E.HeadlineSpkSession
-import Computational.Proofs.E2E.SignedSession
 import Computational.Proofs.SignalWireRoundTrip
 
 /-!
@@ -28,7 +26,7 @@ Defines the prefix-independent session-refinement slack `refineConst` and relate
 Boolean probabilities to `Measure.boolDist`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec MeasureTheory ENNReal
 
@@ -58,7 +56,7 @@ section Refine
 variable {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
 
 /-- Prefix-independent spurious-step and collision slack of the session refinement. -/
-noncomputable def refineConst (Z : Crypto) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
+@[expose] noncomputable def refineConst (Z : Crypto) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
     (q qep : ℕ) (δ : ℝ≥0∞) : ℝ≥0∞ :=
   forgedEpochStartSpuriousStepTerm Z.F encPt Dh q + spuriousStepTerm Z.F encPt Dh q qep +
     (qep + 2) * (q + qep + 2) * δ

@@ -9,23 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainOkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.LitsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FreeArgsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M6Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.ParseFailPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.ParseArgsShape
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.Concat
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainOkComposePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainOkPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.LitsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FreeArgsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M6Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.ParseFailPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.ParseArgsShape
+import LibsignalBinary.Proofs.SpqrV1.Alloc.Concat
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainOkComposePlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainOk -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable M1–M6 Composition for `main` (`[LibsignalPlacement]`, Block `617`)
@@ -34,7 +40,7 @@ Plugs the placed proofs of hops M1–M6 into `main_ok_tight_compose_m1_m6_placed
 `mainSpecTightPlaced` and `mainSpecPlaced` on Block `617` (`mProgPlaced H`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

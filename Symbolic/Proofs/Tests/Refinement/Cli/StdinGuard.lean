@@ -19,7 +19,7 @@ implies `StdinBoundedR6`, that the two agree when `stdin.length + 2048 < 2 ^ 32`
 canonical pre-key with `2 ^ 32 <= msg.length + 2048` fails `StdinBounded`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

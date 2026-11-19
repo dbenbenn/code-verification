@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropChain2Placed
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSessionStructure3Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropChain2Placed
+import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSessionStructure3Placed
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
@@ -19,6 +19,10 @@ import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops.Local2
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Defs
 
 /-!
 # Relocatable `[LibsignalPlacement]` Contract for `drop_glue::<SessionStructure> [local#4]` (Block `512`)
@@ -27,7 +31,7 @@ Proves `drop_session_structure4_placed_ok` (`dropSessionStructureLocal2Spec A`) 
 calling Block `513` (`drop_glue::<Chain>`) and `__rust_dealloc`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -11,6 +11,7 @@ module
 
 public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.Defs
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Init
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `spqr::initial_state`: Equivalence with `spqrV1Init` on Libsignal Parameters
@@ -19,7 +20,7 @@ Shows that `initialStateValue F (libsignalSpqrParams false dir k)` equals `spqrV
 (the `Spqr.init` state of `spqrV1Session F K`) for every `K`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.InitialState
 

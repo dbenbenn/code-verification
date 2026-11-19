@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncParty
-public import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.DecoderCodec
-public import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.EncoderCodec
+public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncParty -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.DecoderCodec
+import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.EncoderCodec
 public import LibsignalBinary.Proofs.SpqrV1Sync.ErasureDefs
-public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncCalib
-public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncEpoch
+public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncCalib -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncEpoch -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.AsmConstants
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDecDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDefs
@@ -23,7 +23,7 @@ public import LibsignalBinary.Specifications.CryptoGames.AEAD.EtMDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HKDFDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.WireAeadDefs
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Construction
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Defs
@@ -37,7 +37,7 @@ public import LibsignalBinary.Specifications.CryptoGames.Ratchet.RootKdfDefs
 public import LibsignalBinary.Specifications.HkdfSalt
 public import LibsignalBinary.Specifications.LibsignalAesCbc
 public import LibsignalBinary.Specifications.LibsignalHmac
-public import LibsignalBinary.Specifications.LibsignalProtoCodec
+public import LibsignalBinary.Proofs.ProtoCodecKat
 public import LibsignalBinary.Specifications.LibsignalSession
 public import LibsignalBinary.Specifications.LibsignalSessionRepr
 public import LibsignalBinary.Specifications.LibsignalSignalMessage
@@ -58,7 +58,7 @@ public import LibsignalBinary.Specifications.LibsignalSpqrV1.States
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Top
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
-public import LibsignalBinary.Specifications.LibsignalTripleRatchetProst
+public import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst
 public import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
 public import LibsignalBinary.Specifications.RustHeap.Alloc
 public import LibsignalBinary.Specifications.RustHeap.Vec
@@ -77,7 +77,7 @@ inflate a naive union bound to `q² · δ`. Restricting `KemOk` to `DrawsEnc` en
 `(s, r)` at most once (transitioning immediately to `.both s r`), giving an `O(q · δ)` union bound.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.Braid
 
@@ -119,7 +119,7 @@ theorem nextCoins_seed_of_not_hr (F : ShaCompress) (s : Seed) (st : St F)
 
 /-- Predicate characterizing the unique send step that draws encapsulation coins: `c = .seed s`
 and `st` is `.headerReceived`. -/
-def DrawsEnc (F : ShaCompress) (c : Coins) (st : St F) (s : Seed) : Prop :=
+@[expose] def DrawsEnc (F : ShaCompress) (c : Coins) (st : St F) (s : Seed) : Prop :=
   c = .seed s ∧ ∃ hr, st = .headerReceived hr
 
 /-- Party `A` send step requiring `KemOk` only when `DrawsEnc F c stA s` holds. -/
@@ -289,20 +289,5 @@ theorem runT_inSync (F : ShaCompress) (K : MlKem) (authKey : Bytes) {e : Epoch}
     have hstEq : stB' = stB0 := congrArg (fun o => o.state) ho
     rw [← hsEq, ← hrEq, ← hstEq] at hIn
     exact hIn
-
-/-- Every `Run` trace is a `RunT` trace. -/
-theorem runT_of_run (F : ShaCompress) (K : MlKem) (authKey : Bytes) {e : Epoch}
-    {auth : Authenticator} {c : Coins} {stA stB : St F} {toA toB : List Msg}
-    (hr : Run F K authKey e auth c stA stB toA toB) : RunT F K authKey e auth c stA stB toA toB := by
-  induction hr with
-  | init stA stB hA hB => exact .init stA stB hA hB
-  | sendA _ tape htape hkem m key stA' tape' hsend ih =>
-    exact .sendA ih tape htape (fun hb s r hd hrList => hkem hb s r hd.1 hrList) m key stA' tape' hsend
-  | sendB _ tape htape hkem m key stB' tape' hsend ih =>
-    exact .sendB ih tape htape (fun ha s r hd hrList => hkem ha s r hd.1 hrList) m key stB' tape' hsend
-  | recvA _ m hm hne key stA' hrecv ih => exact .recvA ih m hm hne key stA' hrecv
-  | recvB _ m hm hne key stB' hrecv ih => exact .recvB ih m hm hne key stB' hrecv
-  | advanceA _ hm hnext stA' hrecv ih => exact .advanceA ih hm hnext stA' hrecv
-  | advanceB _ hm hnext stB' hrecv ih => exact .advanceB ih hm hnext stB' hrecv
 
 end CryptoVerification.SpqrV1Sync.Braid

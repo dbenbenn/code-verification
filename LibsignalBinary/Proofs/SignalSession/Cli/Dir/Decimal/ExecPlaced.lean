@@ -9,17 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Specs
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # Relocatable `[LibsignalPlacement]` `signal_session::stores::decimal` (Block `597`)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -41,7 +47,7 @@ open CryptoVerification.SignalSession.Cli.Store.PlacedCommon
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
-def decimalBoundedRawSpecP (A : RustAlloc) (k resStack : Nat) : Spec DecimalGhost where
+@[expose] def decimalBoundedRawSpecP (A : RustAlloc) (k resStack : Nat) : Spec DecimalGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg32 .x1 = x.n ∧ x.n.toNat < 10 ^ k⌝ ∗
       memRegion x.ret 24 ∗ stackAt s.sp (k * 0x50 + resStack) ∗ A.pool
@@ -50,7 +56,7 @@ def decimalBoundedRawSpecP (A : RustAlloc) (k resStack : Nat) : Spec DecimalGhos
       stackAt s0.sp (k * 0x50 + resStack) ∗ A.pool
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def decimalBoundedSpecPlaced [LibsignalPlacement] (A : RustAlloc) (k resStack : Nat) : Spec DecimalGhost :=
+@[expose] def decimalBoundedSpecPlaced [LibsignalPlacement] (A : RustAlloc) (k resStack : Nat) : Spec DecimalGhost :=
   StoreKit.withLsCodeRoLoaded lsmpl (decimalBoundedRawSpecP A k resStack)
 
 private def DecimalCalleeSavedP (s0 s : State) : Prop :=

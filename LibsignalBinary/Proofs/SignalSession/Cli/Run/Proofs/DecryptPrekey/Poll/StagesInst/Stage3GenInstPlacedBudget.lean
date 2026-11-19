@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3StageP3Prev1PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage3GenInstPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3StageP3Prev1PlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP2DefsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage3GenInstPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 meta import Lean -- shake: keep
@@ -32,6 +32,23 @@ import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Fetch
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrTopPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrTopPlacedBudgetAux
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroCPlacedBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2PlacedBudget
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+public import ProofLib.RegChain
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Trap.SameAccount
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TopPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` Poll Stage P3 Instantiations
@@ -42,7 +59,7 @@ Proves zero-capacity version-mismatch and clone-prefix lemmas (`stageP3_ver_ne_z
 variants) under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -442,7 +459,7 @@ theorem stageP3_ver_ne_zero_placed_ok [LibsignalPlacement]
     exact entails_replace_sub hexists_errs (by sep_focus) (eq_of_sep_emp (by sep_focus))
   exact hwp R hm hL1
 
-def stageP3DispatchPreZeroPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP3DispatchPreZeroPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ) (s0 s s_pool : State)
     (coroPtr outPtr initErrsPtr prevStatesPtr : BitVec 64)
     (res : Except SignalProtocolError (List (BitVec 8))) (b_2c0 : BitVec 8)
@@ -620,7 +637,7 @@ theorem stageP3PrevEmptyVRegs_placed_ok [LibsignalPlacement]
     StageP3PrevEmptyVRegsPlacedStmt := by
   intro M A lim tdEnv st_b ext C ctl K hA hcc hscc hroot hDropSS3 s0 s coroPtr ctxPtr outPtr
     initErrsPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer b_2c0 rest g recG st rem loc msgG
-    msg F_frame Q hfits hinit_ne hnot_self hseeds hrc_lt hpq_lt hcro hpc hrun hsp_align hsp_root
+    msg F_frame Q hfits hinit_ne hnot_self hseeds hrc_lt hpq_lt hrem_le hcro hpc hrun hsp_align hsp_root
     htr hvregs hOk hErr hVerNe
   have hC := hCallees ext hA hDropSS3
   have hfits_clone := fitsEnv_segClone_of_stageP3Env hfits
@@ -680,7 +697,7 @@ theorem stageP3PrevEmptyVRegs_placed_ok [LibsignalPlacement]
       (Entails.of_eq (eq_of_sep_emp (by dsimp only [F_dec]; sep_focus))) ?_
     refine stageP3_call_tryDecrypt_prev1_placed_steps ext C ctl K tdEnv hroot st_clone s0 s s1
       coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest G₁ st rem loc msgG msg
-      (F_dec ∗ F_frame) Q hver hfits_td hnot_self hseeds hrc_lt hpq_lt hsp_align hsp_root
+      (F_dec ∗ F_frame) Q hver hfits_td hnot_self hseeds hrc_lt hpq_lt hrem_le hsp_align hsp_root
       hcro1 hpc1 hrun1 hs1_sp htr1 hx0_1 hx1_1 hx2_1 hx3_1 hx4_1 hx5_1 hx19_1 hx24_1 hx27_1
       fun s2 G' evs_td hsteps12 htd_evs hnpan hdec_rel hpc2 hrun2 hs2_sp htr2 hcro2
           hx19_2 hx24_2 hx27_2 hvregs2_1 => ?_
@@ -889,7 +906,7 @@ theorem stageP3GenStepsVRegs_placed_ok [LibsignalPlacement]
     StageP3GenStepsVRegsPlacedStmt := by
   intro M A lim tdEnv st_b ext C ctl K hA hcc hscc hroot s0 s coroPtr ctxPtr outPtr initErrsPtr
     prevStatesPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer b_2c0 rest recG st rem loc msgG
-    msg F_frame Q hfits hinit_ne hnot_self hseeds hrc_lt hpq_lt hcro hpc hrun hsp_align hsp_root
+    msg F_frame Q hfits hinit_ne hnot_self hseeds hrc_lt hpq_lt hrem_le hcro hpc hrun hsp_align hsp_root
     htr hvregs hOk hErr hVerNe
   have hC := hCallees ext hA
   have hfits_clone := fitsEnv_segClone_of_stageP3Env hfits
@@ -949,7 +966,7 @@ theorem stageP3GenStepsVRegs_placed_ok [LibsignalPlacement]
       (Entails.of_eq (eq_of_sep_emp (by dsimp only [F_dec]; sep_focus))) ?_
     refine stageP3_call_tryDecrypt_prev1_placed_steps ext C ctl K tdEnv hroot st_clone s0 s s1
       coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest G₁ st rem loc msgG msg
-      (F_dec ∗ F_frame) Q hver hfits_td hnot_self hseeds hrc_lt hpq_lt hsp_align hsp_root
+      (F_dec ∗ F_frame) Q hver hfits_td hnot_self hseeds hrc_lt hpq_lt hrem_le hsp_align hsp_root
       hcro1 hpc1 hrun1 hs1_sp htr1 hx0_1 hx1_1 hx2_1 hx3_1 hx4_1 hx5_1 hx19_1 hx24_1 hx27_1
       fun s2 G' evs_td hsteps12 htd_evs hnpan hdec_rel hpc2 hrun2 hs2_sp htr2 hcro2
           hx19_2 hx24_2 hx27_2 hvregs2_1 => ?_
@@ -1575,6 +1592,7 @@ theorem stageP3PrevEmptyVRegs_of_base_full_placed_ok [LibsignalFullPlacement]
       (st.remoteIdentity ≠ some st.localIdentity ∨
         DistinctSid uuidTryParse loc.name.bytes rem.name.bytes) →
       SeedsLen32 st → st.receiverChains.length < 2 ^ 32 → st.pqRatchetState.length < 2 ^ 32 →
+      rem.name.bytes.length ≤ 40 →
       LibsignalFrozen lsmpl s.mem →
       s.pc = dpPollEntryPlaced + 0x1778#64 → s.status = .Running →
       (s.sp &&& 15#64 == 0#64) = true → rootStack ≤ s.sp.toNat →
@@ -1638,7 +1656,7 @@ theorem stageP3PrevEmptyVRegs_of_base_full_placed_ok [LibsignalFullPlacement]
         (genP3S5ModelPanicProp C K rem loc st msg msgVer rest s0) := by
   intro s0 s coroPtr ctxPtr outPtr initErrsPtr remAddrPtr locAddrPtr whisperMsgPtr cur
     msgVer b_2c0 rest g recG st rem loc msgG msg F_frame Q hfits
-    hinit_ne hnot_self hseeds hrc_lt hpq_lt hfr hpc hrun hsp_align hsp_root htr hvregs hOk hErr hVerNe
+    hinit_ne hnot_self hseeds hrc_lt hpq_lt hrem_le hfr hpc hrun hsp_align hsp_root htr hvregs hOk hErr hVerNe
   have hcro : LibsignalCodeRoLoaded lsmpl s.mem := lscro_of_frozen_aux hfr
   have hfits_clone := fitsEnv_segClone_of_stageP3Env hfits
   refine stageP3_clone_vregs_prefix_base_placed_steps C K ext hC hcc hscc st_b
@@ -1698,7 +1716,7 @@ theorem stageP3PrevEmptyVRegs_of_base_full_placed_ok [LibsignalFullPlacement]
       (Entails.of_eq (eq_of_sep_emp (by dsimp only [F_dec]; sep_focus))) ?_
     refine stageP3_call_tryDecrypt_prev1_placed_steps ext C ctl K tdEnv hroot st_clone s0 s s1
       coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest G₁ st rem loc msgG msg
-      (F_dec ∗ F_frame) Q hver hfits_td hnot_self hseeds hrc_lt hpq_lt hsp_align hsp_root
+      (F_dec ∗ F_frame) Q hver hfits_td hnot_self hseeds hrc_lt hpq_lt hrem_le hsp_align hsp_root
       hcro1 hpc1 hrun1 hs1_sp htr1 hx0_1 hx1_1 hx2_1 hx3_1 hx4_1 hx5_1 hx19_1 hx24_1 hx27_1
       fun s2 G' evs_td hsteps12 htd_evs hnpan hdec_rel hpc2 hrun2 hs2_sp htr2 hcro2
           hx19_2 hx24_2 hx27_2 hvregs2_1 => ?_
@@ -1936,6 +1954,7 @@ theorem stageP3GenStepsVRegs_of_base_full_placed_ok [LibsignalFullPlacement]
       (st.remoteIdentity ≠ some st.localIdentity ∨
         DistinctSid uuidTryParse loc.name.bytes rem.name.bytes) →
       SeedsLen32 st → st.receiverChains.length < 2 ^ 32 → st.pqRatchetState.length < 2 ^ 32 →
+      rem.name.bytes.length ≤ 40 →
       LibsignalFrozen lsmpl s.mem →
       s.pc = dpPollEntryPlaced + 0x1778#64 → s.status = .Running →
       (s.sp &&& 15#64 == 0#64) = true → rootStack ≤ s.sp.toNat →
@@ -1999,7 +2018,7 @@ theorem stageP3GenStepsVRegs_of_base_full_placed_ok [LibsignalFullPlacement]
         (genP3S5ModelPanicProp C K rem loc st msg msgVer rest s0) := by
   intro s0 s coroPtr ctxPtr outPtr initErrsPtr prevStatesPtr
     remAddrPtr locAddrPtr whisperMsgPtr cur msgVer b_2c0 rest recG st rem loc msgG msg F_frame Q
-    hfits hinit_ne hnot_self hseeds hrc_lt hpq_lt hfr hpc hrun hsp_align hsp_root htr hvregs
+    hfits hinit_ne hnot_self hseeds hrc_lt hpq_lt hrem_le hfr hpc hrun hsp_align hsp_root htr hvregs
     hOk hErr hVerNe
   have hcro : LibsignalCodeRoLoaded lsmpl s.mem := lscro_of_frozen_aux hfr
   have hfits_clone := fitsEnv_segClone_of_stageP3Env hfits
@@ -2060,7 +2079,7 @@ theorem stageP3GenStepsVRegs_of_base_full_placed_ok [LibsignalFullPlacement]
       (Entails.of_eq (eq_of_sep_emp (by dsimp only [F_dec]; sep_focus))) ?_
     refine stageP3_call_tryDecrypt_prev1_placed_steps ext C ctl K tdEnv hroot st_clone s0 s s1
       coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest G₁ st rem loc msgG msg
-      (F_dec ∗ F_frame) Q hver hfits_td hnot_self hseeds hrc_lt hpq_lt hsp_align hsp_root
+      (F_dec ∗ F_frame) Q hver hfits_td hnot_self hseeds hrc_lt hpq_lt hrem_le hsp_align hsp_root
       hcro1 hpc1 hrun1 hs1_sp htr1 hx0_1 hx1_1 hx2_1 hx3_1 hx4_1 hx5_1 hx19_1 hx24_1 hx27_1
       fun s2 G' evs_td hsteps12 htd_evs hnpan hdec_rel hpc2 hrun2 hs2_sp htr2 hcro2
           hx19_2 hx24_2 hx27_2 hvregs2_1 => ?_
@@ -2302,7 +2321,7 @@ theorem stageP3Prev1VRegs_full_placed_of_verNeAt [LibsignalFullPlacement]
     StageP3Prev1VRegsAtFrozenPlacedStmt A lim tdEnv PrevEncOK := by
   intro mmpl gh W st_b hG hAllocX hcc hscc hroot hDropSS3 s0 s coroPtr ctxPtr outPtr initErrsPtr
     prevCap prevPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer b_2c0 enc rest recG st rem loc
-    msgG msg F_frame Q hfits hinit hcap hprev hv4 hns hsd hrc hpq hfr hpc hrun hsp hroot_sp hfp
+    msgG msg F_frame Q hfits hinit hcap hprev hv4 hns hsd hrc hpq hrem_le hfr hpc hrun hsp hroot_sp hfp
     htr hvregs hOk hErr hVerNe
   let ext := cliGhostExterns gh (cliExternsPlaced mmpl W)
   have hshim : subroutine_ok (lsProg_518 ext) (lsρ lsRustNoAllocShimSym)
@@ -2343,7 +2362,7 @@ theorem stageP3Prev1VRegs_full_placed_of_verNeAt [LibsignalFullPlacement]
     (hVerNeAt mmpl gh W hG hAllocX hDropSS3)
     st_b s0 s coroPtr ctxPtr outPtr initErrsPtr prevCap prevPtr remAddrPtr locAddrPtr whisperMsgPtr
     cur msgVer b_2c0 enc rest recG st rem loc msgG msg F_frame Q
-    hfits hinit hcap hprev hv4 hns hsd hrc hpq hfr hpc hrun hsp hroot_sp hfp htr hvregs
+    hfits hinit hcap hprev hv4 hns hsd hrc hpq hrem_le hfr hpc hrun hsp hroot_sp hfp htr hvregs
     (fun G₁ G' pt ptCap ptPtr evs_ok s' P_s' => hOk G₁ G' evs_ok pt ptCap ptPtr s' P_s')
     (fun G₁ G' e evs_err sf P_f => hErr G₁ G' evs_err e sf P_f)
     (fun evs_vn sf P_f hver hevs hPf => hVerNe evs_vn sf P_f hver hevs

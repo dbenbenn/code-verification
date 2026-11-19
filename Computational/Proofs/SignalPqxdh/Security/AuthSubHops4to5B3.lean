@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B2
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B2 -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
 import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
 import VCVio.EvalDist.Monad.Basic
@@ -24,7 +24,7 @@ Shows that the `checkAuth` flag does not change `authSplitFixedExp` at receive s
 the oracle is equivariant under `setSecbFixed`, and that `G5` has zero `boolBias`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +39,7 @@ open _root_.Proofs.SignalPqxdh.Security.FgGapDh (initSessionSlotIdx initSessionS
     simulateQ_relProbUpToBad evalDist_simulateQ_eq_of_step_or_bad)
 
 
-def badSigOrKemAuth {S : Setup} (hst : AuthHybridState S) : Bool :=
+@[expose] def badSigOrKemAuth {S : Setup} (hst : AuthHybridState S) : Bool :=
   hasBadSigAuth hst || hasKemPkCollisionAuth hst
 
 theorem badSigOrKemAuth_of_sub {S : Setup} {hst hst' : AuthHybridState S}
@@ -788,10 +788,10 @@ theorem authSplitFixedExp_g5_checkAuth_eq (sendStage : AuthHybridStage)
   rw [resetWonAuthFixed_empty] at hsim
   exact hsim
 
-def setSecb (b : Bool) {S : Setup} (hst : AuthHybridState S) : AuthHybridState S :=
+@[expose] def setSecb (b : Bool) {S : Setup} (hst : AuthHybridState S) : AuthHybridState S :=
   { hst with base := { hst.base with secb := b } }
 
-def setSecbFixed (b : Bool) {S : Setup} (hst : AuthHybridStateFixed S) : AuthHybridStateFixed S :=
+@[expose] def setSecbFixed (b : Bool) {S : Setup} (hst : AuthHybridStateFixed S) : AuthHybridStateFixed S :=
   { hst with toAuthHybridState := setSecb b hst.toAuthHybridState }
 
 @[simp]

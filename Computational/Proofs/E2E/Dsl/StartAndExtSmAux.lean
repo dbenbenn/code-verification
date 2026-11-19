@@ -9,10 +9,18 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.M3Interfaces
-public import Computational.Proofs.E2E.Dsl.PqxdhSimTypes
-public import Computational.Proofs.E2E.Dsl.SmReachInv
+public import Computational.Proofs.E2E.Dsl.M3Interfaces -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.PqxdhSimTypes
+import Computational.Proofs.E2E.Dsl.SmReachInv
 import Computational.Proofs.E2E.Dsl.ClampsLossless
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.ReductionDsl.Soundness
+import Mathlib.Data.List.Dedup
+import VCVio.EvalDist.EvalDistEq
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Auxiliary pure expressions for session start and promoted routing
@@ -22,7 +30,7 @@ driver-state types, initial `sessionSchemeFixedSpk` party and game state constru
 pure promotion guard and instance-creation expressions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -174,57 +182,57 @@ variable {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
 
 local notation "E2EExpr" => Expr (e2eOps ℓ P C K decT encT)
 
-def mbPrins {O : Ops (e2eSig ℓ)} {Γ} (ds : Expr O Γ (e2eMirrorBaseTy S ℓ)) :
+@[expose] def mbPrins {O : Ops (e2eSig ℓ)} {Γ} (ds : Expr O Γ (e2eMirrorBaseTy S ℓ)) :
     Expr O Γ (.list (e2eMirrorPrinEntryTy S)) := .fst ds
-def mbBundles {O : Ops (e2eSig ℓ)} {Γ} (ds : Expr O Γ (e2eMirrorBaseTy S ℓ)) :
+@[expose] def mbBundles {O : Ops (e2eSig ℓ)} {Γ} (ds : Expr O Γ (e2eMirrorBaseTy S ℓ)) :
     Expr O Γ (.list (e2eMirrorBundleEntryTy S)) := .fst (.snd ds)
-def mbOpks {O : Ops (e2eSig ℓ)} {Γ} (ds : Expr O Γ (e2eMirrorBaseTy S ℓ)) :
+@[expose] def mbOpks {O : Ops (e2eSig ℓ)} {Γ} (ds : Expr O Γ (e2eMirrorBaseTy S ℓ)) :
     Expr O Γ (.list (e2eMirrorOpkEntryTy S)) := .fst (.snd (.snd ds))
-def mbSends {O : Ops (e2eSig ℓ)} {Γ} (ds : Expr O Γ (e2eMirrorBaseTy S ℓ)) :
+@[expose] def mbSends {O : Ops (e2eSig ℓ)} {Γ} (ds : Expr O Γ (e2eMirrorBaseTy S ℓ)) :
     Expr O Γ (.list (e2eMirrorSendEntryTy S ℓ)) := .snd (.snd (.snd ds))
 
-def imBobAccepted {O : Ops (e2eSig ℓ)} {Γ} (im : Expr O Γ (e2eInstMetaTy S ℓ)) :
+@[expose] def imBobAccepted {O : Ops (e2eSig ℓ)} {Γ} (im : Expr O Γ (e2eInstMetaTy S ℓ)) :
     Expr O Γ .bool := .fst im
-def imIkACorr {O : Ops (e2eSig ℓ)} {Γ} (im : Expr O Γ (e2eInstMetaTy S ℓ)) :
+@[expose] def imIkACorr {O : Ops (e2eSig ℓ)} {Γ} (im : Expr O Γ (e2eInstMetaTy S ℓ)) :
     Expr O Γ .bool := .fst (.snd im)
 
-def miSid {O : Ops (e2eSig ℓ)} {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) :
+@[expose] def miSid {O : Ops (e2eSig ℓ)} {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) :
     Expr O Γ (sidT S) := .fst d
-def miHdr {O : Ops (e2eSig ℓ)} {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) :
+@[expose] def miHdr {O : Ops (e2eSig ℓ)} {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) :
     Expr O Γ hdrT := .fst (.snd d)
-def miIdA {O : Ops (e2eSig ℓ)} {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) :
+@[expose] def miIdA {O : Ops (e2eSig ℓ)} {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) :
     Expr O Γ IdKey := .fst (.snd (.snd d))
-def miIdB {O : Ops (e2eSig ℓ)} {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) :
+@[expose] def miIdB {O : Ops (e2eSig ℓ)} {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) :
     Expr O Γ IdKey := .fst (.snd (.snd (.snd d)))
-def miSpkCoins {O : Ops (e2eSig ℓ)} {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) :
+@[expose] def miSpkCoins {O : Ops (e2eSig ℓ)} {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) :
     Expr O Γ BV256 := .fst (.snd (.snd (.snd (.snd d))))
 def miGs {O : Ops (e2eSig ℓ)} {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) :
     Expr O Γ (.opt (e2eGsTy ℓ)) := .snd (.snd (.snd (.snd (.snd d))))
 
-def miSetGsE {O : Ops (e2eSig ℓ)} {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ))
+@[expose] def miSetGsE {O : Ops (e2eSig ℓ)} {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ))
     (gs? : Expr O Γ (.opt (e2eGsTy ℓ))) : Expr O Γ (e2eModelInstTy S ℓ) :=
   eLet (.pair d gs?) fun p =>
     .pair (miSid (.fst (v p))) (.pair (miHdr (.fst (v p))) (.pair (miIdA (.fst (v p)))
       (.pair (miIdB (.fst (v p))) (.pair (miSpkCoins (.fst (v p))) (.snd (v p))))))
 
-def drvBase {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
+@[expose] def drvBase {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
     Expr O Γ (e2eMirrorBaseTy S ℓ) := .fst σ
-def drvCorrPrins {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
+@[expose] def drvCorrPrins {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
     Expr O Γ (.list (FinT S.N_id)) := .fst (.snd σ)
-def drvRevSpks {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
+@[expose] def drvRevSpks {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
     Expr O Γ (.list (.prod (FinT S.N_id) (FinT S.N_recv))) := .fst (.snd (.snd σ))
-def drvInsts {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
+@[expose] def drvInsts {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
     Expr O Γ (.list (e2eModelInstTy S ℓ)) := .fst (.snd (.snd (.snd σ)))
-def drvInstMeta {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
+@[expose] def drvInstMeta {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
     Expr O Γ (.list (e2eInstMetaTy S ℓ)) := .fst (.snd (.snd (.snd (.snd σ))))
-def drvSt {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
+@[expose] def drvSt {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
     Expr O Γ (e2eKeyIndStateTy ℓ S) := .fst (.snd (.snd (.snd (.snd (.snd σ)))))
-def drvB {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
+@[expose] def drvB {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
     Expr O Γ .bool := .fst (.snd (.snd (.snd (.snd (.snd (.snd σ))))))
 def drvPaused {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
     Expr O Γ .bool := .snd (.snd (.snd (.snd (.snd (.snd (.snd σ))))))
 
-def drvSetInstsAndMetaE {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ))
+@[expose] def drvSetInstsAndMetaE {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ))
     (insts : Expr O Γ (.list (e2eModelInstTy S ℓ)))
     (metaL : Expr O Γ (.list (e2eInstMetaTy S ℓ))) : Expr O Γ (e2eDrvStateTy S ℓ) :=
   eLet (.pair σ (.pair insts metaL)) fun p =>
@@ -234,7 +242,7 @@ def drvSetInstsAndMetaE {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvState
           (.pair (.snd (.snd (v p)))
             (.snd (.snd (.snd (.snd (.snd (.fst (v p)))))))))))
 
-def drvSetInstMetaE {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ))
+@[expose] def drvSetInstMetaE {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ))
     (metaL : Expr O Γ (.list (e2eInstMetaTy S ℓ))) : Expr O Γ (e2eDrvStateTy S ℓ) :=
   eLet (.pair σ metaL) fun p =>
     .pair (drvBase (.fst (v p))) (.pair (drvCorrPrins (.fst (v p)))
@@ -243,7 +251,7 @@ def drvSetInstMetaE {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S
           (.pair (.snd (v p))
             (.snd (.snd (.snd (.snd (.snd (.fst (v p)))))))))))
 
-def drvSetInstsAndPausedE {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ))
+@[expose] def drvSetInstsAndPausedE {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ))
     (insts : Expr O Γ (.list (e2eModelInstTy S ℓ)))
     (pausedE : Expr O Γ .bool) : Expr O Γ (e2eDrvStateTy S ℓ) :=
   eLet (.pair σ (.pair insts pausedE)) fun p =>
@@ -282,7 +290,7 @@ def drvSetInstsAndPausedE {O : Ops (e2eSig ℓ)} {Γ} (σ : Expr O Γ (e2eDrvSta
   simp only [drvSetInstsAndPausedE, drvBase, drvCorrPrins, drvRevSpks,
     drvInstMeta, drvSt, drvB, eLet, v, Ext.wk, Expr.eval, Env.get, hσ, hds, e2eDrvStateEnc]
 
-def listSnocE (K : ℕ) {O : Ops (e2eSig ℓ)} {Γ} {τ : Ty (e2eSig ℓ)}
+@[expose] def listSnocE (K : ℕ) {O : Ops (e2eSig ℓ)} {Γ} {τ : Ty (e2eSig ℓ)}
     (xs : Expr O Γ (.list τ)) (x : Expr O Γ τ) : Expr O Γ (.list τ) :=
   .appendL (K + 1) xs (.cons x .nil)
 
@@ -317,7 +325,7 @@ private theorem foldr_foldGetStep_snd {α : Type} :
         show xs.length + 1 + off = xs.length + (off + 1) by omega]
     exact foldr_foldGetStep_snd xs idx (off + 1)
 
-def listGetOptE (K : ℕ) {O : Ops (e2eSig ℓ)} {Γ} {τ : Ty (e2eSig ℓ)}
+@[expose] def listGetOptE (K : ℕ) {O : Ops (e2eSig ℓ)} {Γ} {τ : Ty (e2eSig ℓ)}
     (l : Expr O Γ (.list τ)) (idx : Expr O Γ .nat) : Expr O Γ (.opt τ) :=
   eLet (.pair l (.pair idx (.len l))) fun p =>
     .snd (.foldrB K (.fst (v p)) (.pair (.nat 0) .none)
@@ -395,7 +403,7 @@ private theorem foldr_foldSetStep_snd {α : Type} (val : α) :
         show xs.length + 1 + off = xs.length + (off + 1) by omega]
     exact foldr_foldSetStep_snd val xs idx (off + 1)
 
-def listSetE (K : ℕ) {O : Ops (e2eSig ℓ)} {Γ} {τ : Ty (e2eSig ℓ)}
+@[expose] def listSetE (K : ℕ) {O : Ops (e2eSig ℓ)} {Γ} {τ : Ty (e2eSig ℓ)}
     (l : Expr O Γ (.list τ)) (idx : Expr O Γ .nat) (val : Expr O Γ τ) : Expr O Γ (.list τ) :=
   eLet (.pair l (.pair idx (.pair val (.len l)))) fun p =>
     .snd (.foldrB K (.fst (v p)) (.pair (.nat 0) .nil)
@@ -434,7 +442,7 @@ theorem cost_listSetE (K : ℕ) {O : Ops (e2eSig ℓ)} {Γ} {τ : Ty (e2eSig ℓ
 
 attribute [local irreducible] listSetE
 
-def e2eSidEqE {Γ} (a b : E2EExpr Γ (sidT S)) : E2EExpr Γ .bool :=
+@[expose] def e2eSidEqE {Γ} (a b : E2EExpr Γ (sidT S)) : E2EExpr Γ .bool :=
   eLet (.pair a b) fun p =>
     eCaseSum (.fst (v p))
       (fun a1 => eCaseSum (.snd (v p))
@@ -499,7 +507,7 @@ theorem cost_e2eSidEqE {Γ} (a b : E2EExpr Γ (sidT S)) :
 
 attribute [local irreducible] e2eSidEqE
 
-def optPu32EqE {Γ} (a b : E2EExpr Γ (.opt PU32)) : E2EExpr Γ .bool :=
+@[expose] def optPu32EqE {Γ} (a b : E2EExpr Γ (.opt PU32)) : E2EExpr Γ .bool :=
   eLet (.pair a b) fun p =>
     eCaseOpt (.fst (v p))
       (eCaseOpt (.snd (v p)) (.bool true) (fun _ => .bool false))
@@ -516,7 +524,7 @@ def optPu32EqE {Γ} (a b : E2EExpr Γ (.opt PU32)) : E2EExpr Γ .bool :=
   · rfl
   · rw [Bool.eq_iff_iff]; simp [beq_iff_eq]
 
-def hdrEqE {Γ} (a b : E2EExpr Γ hdrT) : E2EExpr Γ .bool :=
+@[expose] def hdrEqE {Γ} (a b : E2EExpr Γ hdrT) : E2EExpr Γ .bool :=
   eLet (.pair a b) fun p =>
     .and
       (.and
@@ -548,7 +556,7 @@ theorem cost_hdrEqE {Γ} (a b : E2EExpr Γ hdrT) :
 
 attribute [local irreducible] hdrEqE
 
-def bhDrvSessionInitPrinE {Γ} (sidE : E2EExpr Γ (sidT S)) : E2EExpr Γ (.opt (FinT S.N_id)) :=
+@[expose] def bhDrvSessionInitPrinE {Γ} (sidE : E2EExpr Γ (sidT S)) : E2EExpr Γ (.opt (FinT S.N_id)) :=
   eCaseSum sidE
     (fun ui => .some (.fst (v ui)))
     (fun r => eCaseSum (v r) (fun ui => .some (.fst (v ui))) (fun _ => .none))
@@ -559,7 +567,7 @@ def bhDrvSessionInitPrinE {Γ} (sidE : E2EExpr Γ (sidT S)) : E2EExpr Γ (.opt (
     simp only [bhDrvSessionInitPrinE, bhDrvSessionInitPrin?, sidOfV, eCaseSum,
       v, Ext.wk, Expr.eval, Env.get, h]
 
-def bhInitRegIdE {Γ} (sidE : E2EExpr Γ (sidT S)) : E2EExpr Γ U32 :=
+@[expose] def bhInitRegIdE {Γ} (sidE : E2EExpr Γ (sidT S)) : E2EExpr Γ U32 :=
   eCaseOpt (bhDrvSessionInitPrinE sidE)
     (e2ePureOp (.u32Lit 0#32) .unit)
     (fun u => e2ePureOp .u32OfNat (e2ePureOp (.finVal S.N_id) (v u)))
@@ -593,7 +601,7 @@ private theorem spqrV1InitOp_eval_eq (isAlice : Bool) (pqrKey : BitVec 256) :
 
 /-- Construct Bob's initial `GhostState Bytes` for `sessionSchemeFixedSpk` from
 `((idA, idB), (spkCoins, ((rk, ck), pqrKey)))`. -/
-def initFixedSpkBobE {Γ}
+@[expose] def initFixedSpkBobE {Γ}
     (idsE : E2EExpr Γ (.prod IdKey IdKey))
     (keysE : E2EExpr Γ (.prod BV256 (.prod (.prod BV256 BV256) BV256))) :
     E2EExpr Γ GhostStT :=
@@ -659,7 +667,7 @@ attribute [local irreducible] initFixedSpkBobE
 
 /-- Construct Alice's initial `GhostState Bytes` for `sessionSchemeFixedSpk` from
 `((idA, idB), (spkCoins, (((rk, ck), (ac, pqrKey)))))`. -/
-def initFixedSpkAliceE {Γ}
+@[expose] def initFixedSpkAliceE {Γ}
     (idsE : E2EExpr Γ (.prod IdKey IdKey))
     (keysE : E2EExpr Γ (.prod BV256 (.prod (.prod BV256 BV256) (.prod BV256 BV256)))) :
     E2EExpr Γ GhostStT :=
@@ -773,7 +781,7 @@ attribute [local irreducible] initFixedSpkAliceE
 
 /-- Construct the initial encoded `SM.GameState` (`e2eGsTy ℓ`) for `sessionSchemeFixedSpk` from
 `((idA, idB), (spkCoins, (kS, b)))`. -/
-def initFixedSpkGsE {Γ}
+@[expose] def initFixedSpkGsE {Γ}
     (idsE : E2EExpr Γ (.prod IdKey IdKey))
     (argE : E2EExpr Γ (.prod BV256
       (.prod (.prod (.prod BV256 BV256) (.prod BV256 BV256)) .bool))) :
@@ -890,7 +898,7 @@ variable {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
 
 local notation "E2EExpr" => Expr (e2eOps ℓ P C K decT encT)
 
-def bhBaseOpkOkE (nOpks : ℕ) {Γ}
+@[expose] def bhBaseOpkOkE (nOpks : ℕ) {Γ}
     (dsE : E2EExpr Γ (e2eMirrorBaseTy S ℓ))
     (uE : E2EExpr Γ (FinT S.N_id)) (jE : E2EExpr Γ (FinT S.N_recv))
     (bndE : E2EExpr Γ bundleT) : E2EExpr Γ .bool :=
@@ -950,7 +958,7 @@ theorem cost_bhBaseOpkOkE (nOpks : ℕ) {Γ}
 
 attribute [local irreducible] bhBaseOpkOkE
 
-def guardFindBundleE (nBundles : ℕ) {Γ}
+@[expose] def guardFindBundleE (nBundles : ℕ) {Γ}
     (bundlesE : E2EExpr Γ (.list (e2eMirrorBundleEntryTy S)))
     (bndE : E2EExpr Γ bundleT) (hdrE : E2EExpr Γ hdrT) :
     E2EExpr Γ (.opt (.prod (FinT S.N_id) (FinT S.N_recv))) :=
@@ -974,7 +982,7 @@ def guardFindBundleE (nBundles : ℕ) {Γ}
                        (e2ePureOp (.finVal S.N_recv) (.snd (.fst (v e)))))))))
       (fun e => .fst (v e))
 
-def guardCheckPrinOpkE (nPrins nOpks : ℕ) {Γ}
+@[expose] def guardCheckPrinOpkE (nPrins nOpks : ℕ) {Γ}
     (baseE : E2EExpr Γ (e2eMirrorBaseTy S ℓ))
     (ujE : E2EExpr Γ (.prod (FinT S.N_id) (FinT S.N_recv)))
     (bndE : E2EExpr Γ bundleT) : E2EExpr Γ .bool :=
@@ -1017,7 +1025,7 @@ theorem cost_guardCheckPrinOpkE (nPrins nOpks : ℕ) {Γ}
     E2EPureOp.cost, PNat.val_ofNat] at hopk ⊢
   omega
 
-def guardCorrOkE (nCorr : ℕ) {Γ}
+@[expose] def guardCorrOkE (nCorr : ℕ) {Γ}
     (corrE : E2EExpr Γ (.list (FinT S.N_id))) (uE : E2EExpr Γ (FinT S.N_id))
     (bndE : E2EExpr Γ bundleT) : E2EExpr Γ .bool :=
   eLet (.pair corrE (.pair uE (bndOpkB bndE))) fun p =>
@@ -1057,7 +1065,7 @@ private theorem any_congr_all {α : Type} (l : List α) {p : α → Bool} (q : �
   congr 1; funext x; exact h x
 
 /-- Promotion guard `bhE2EGuard` over `e2eDrvStateTy S ℓ`. -/
-def bhE2EGuardE (qStart nPrins nBundles nOpks nSends : ℕ) {Γ}
+@[expose] def bhE2EGuardE (qStart nPrins nBundles nOpks nSends : ℕ) {Γ}
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ)) (sidE : E2EExpr Γ (sidT S)) :
     E2EExpr Γ (.opt (.prod hdrT (.prod bundleT (.prod (FinT S.N_id) (FinT S.N_recv))))) :=
   eLet (.pair σE sidE) fun ps =>
@@ -1224,7 +1232,7 @@ theorem cost_bhE2EGuardE (qStart nPrins nBundles nOpks nSends : ℕ) {Γ}
 
 attribute [local irreducible] bhE2EGuardE
 
-def prepStartSpkE (qStart nPrins nBundles nOpks nSends : ℕ) {Γ}
+@[expose] def prepStartSpkE (qStart nPrins nBundles nOpks nSends : ℕ) {Γ}
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ)) (sidE : E2EExpr Γ (sidT S)) :
     E2EExpr Γ (.opt (.prod (FinT S.N_id) (FinT S.N_recv))) :=
   optMapE (bhE2EGuardE qStart nPrins nBundles nOpks nSends σE sidE)
@@ -1256,7 +1264,7 @@ theorem cost_prepStartSpkE (qStart nPrins nBundles nOpks nSends : ℕ) {Γ}
 
 attribute [local irreducible] prepStartSpkE
 
-def extractDrKey32E {Γ} (krE : E2EExpr Γ keyIndRT) :
+@[expose] def extractDrKey32E {Γ} (krE : E2EExpr Γ keyIndRT) :
     E2EExpr Γ (.opt (.prod (.prod BV256 BV256) BV256)) :=
   eCaseSum krE (fun _ => .none) fun r1 =>
   eCaseSum (v r1) (fun _ => .none) fun r2 =>
@@ -1304,7 +1312,7 @@ theorem cost_extractDrKey32E {Γ} (krE : E2EExpr Γ keyIndRT) :
 
 attribute [local irreducible] extractDrKey32E
 
-def extractSpkSk32E {Γ} (krE : E2EExpr Γ keyIndRT) : E2EExpr Γ (.opt BV256) :=
+@[expose] def extractSpkSk32E {Γ} (krE : E2EExpr Γ keyIndRT) : E2EExpr Γ (.opt BV256) :=
   eCaseSum krE (fun _ => .none) fun r1 =>
   eCaseSum (v r1) (fun _ => .none) fun r2 =>
   eCaseSum (v r2) (fun _ => .none) fun r3 =>
@@ -1340,7 +1348,7 @@ attribute [local irreducible] extractSpkSk32E
 
 /-- Standalone slot-level builder: given `(sid, (hdr, (bnd, (u, j))))` and `(kr1, (kr2, (ac, bMode?)))`,
 constructs `Option (e2eModelInstTy S ℓ × e2eInstMetaTy S ℓ)`. -/
-def finishStartSlotE {Γ}
+@[expose] def finishStartSlotE {Γ}
     (guardHitE : E2EExpr Γ (.prod (sidT S)
       (.prod hdrT (.prod bundleT (.prod (FinT S.N_id) (FinT S.N_recv))))))
     (argsE : E2EExpr Γ (.prod keyIndRT
@@ -1491,7 +1499,7 @@ theorem cost_finishStartSlotE {Γ}
 attribute [local irreducible] finishStartSlotE
 
 /-- General `bhE2EFinishStartSpk C K bMode? σ sid kr1 kr2 ac` over `e2eDrvStateTy S ℓ`. -/
-def finishStartSpkGenE (qStart nPrins nBundles nOpks nSends : ℕ) {Γ}
+@[expose] def finishStartSpkGenE (qStart nPrins nBundles nOpks nSends : ℕ) {Γ}
     (bModeE : E2EExpr Γ (.opt .bool))
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ))
     (argsE : E2EExpr Γ (.prod (sidT S) (.prod keyIndRT (.prod keyIndRT BV256)))) :

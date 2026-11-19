@@ -10,11 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Kdf.GenDefs
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExtractCommon
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExtractCommon -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import ProofLib.SepLogic.HeapIntro
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Contract-Backed SPQR KDF Hooks and Read-Only Frame Combinators
@@ -23,7 +23,7 @@ Defines `SpqrKdfHooksExt` at `extHookStack` (`16384` B) from `CliExternsOk`, the
 frame relation `S2FrameRO`, and the input-slice invariant `KdfSliceInv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -67,7 +67,7 @@ abbrev spqrMemcpyROExtSpec (hookStack : Nat := extHookStack) :
       (dst ↦ₛ bs) ∗ (src ↦ᵣ bs) ∗ stackAt s0.sp hookStack
 
 /-- `ShaState`-indexed `compress256` contract with stack slack `hookStack`. -/
-def spqrCompress256ExternSpec (F : ShaCompress) (hookStack : Nat := extHookStack) :
+@[expose] def spqrCompress256ExternSpec (F : ShaCompress) (hookStack : Nat := extHookStack) :
     Spec (BitVec 64 × BitVec 64 × ShaState × List (BitVec 8)) where
   pre := fun (stA, blkA, st, bs) s =>
     ⌜s.readReg64 .x0 = stA ∧ s.readReg64 .x1 = blkA ∧
@@ -80,7 +80,7 @@ def spqrCompress256ExternSpec (F : ShaCompress) (hookStack : Nat := extHookStack
       stackAt s0.sp hookStack
 
 /-- `memset` contract with 64-bit `.x1` low-byte truncation and stack slack `hookStack`. -/
-def spqrMemsetExternSpec (hookStack : Nat := extHookStack) :
+@[expose] def spqrMemsetExternSpec (hookStack : Nat := extHookStack) :
     Spec (BitVec 64 × BitVec 8 × Nat) where
   pre := fun (dst, val, n) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧ (s0.readReg64 .x1).truncate 8 = val ∧
@@ -89,28 +89,6 @@ def spqrMemsetExternSpec (hookStack : Nat := extHookStack) :
   post := fun (dst, val, n) s0 sf =>
     ⌜sf.readReg64 .x0 = dst ∧ sf.trace = s0.trace⌝ ∗
       (dst ↦ₛ List.replicate n val) ∗ stackAt s0.sp hookStack
-
-/-- Extern contract bundle required by SPQR KDF (`finalize_fixed [local#3]`,
-`new_from_slice [local#3]`, and `spqr::kdf::hkdf_to_slice`) on `tripleRatchetProgAtExt img.base ext`
-at `extHookStack` (`16384` B). -/
-structure SpqrKdfHooksExt (img : Obj.Image) (F : ShaCompress)
-    (ext : String → Option (State → State)) : Prop where
-  compress256 :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      (img.base + bv% (ls_off% "sha2::sha256::compress256"))
-      ((spqrCompress256ExternSpec F extHookStack).inImage img)
-  memcpy :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      (img.base + bv% (ls_off% "memcpy"))
-      ((sessionMemcpySpec extHookStack).inImage img)
-  memcpyRO :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      (img.base + bv% (ls_off% "memcpy"))
-      ((spqrMemcpyROExtSpec extHookStack).inImage img)
-  memset :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      (img.base + bv% (ls_off% "memset"))
-      ((spqrMemsetExternSpec extHookStack).inImage img)
 
 namespace SpqrKdfHooksExt
 
@@ -169,180 +147,10 @@ private theorem hookOk_stack_mono {α : Type} {f : State → State} {base : Spec
   · dsimp only [SignalSession.CliExt.withStack] at ho
     rw [hoom x s0 (f s0), satisfies_pure_sepConj] at ho; exact False.elim ho.1
 
-private theorem stub_inImage_of_hookSat {α : Type} (img : Obj.Image)
-    {ext : String → Option (State → State)} {hname : String} {off : Nat} {spec : Spec α}
-    (hlt : off < 2 ^ 64)
-    (hhook : ∀ H, (libsignalSessionCode.rebase 0 H).hookAtOff? off = H hname)
-    (hnp : Rust.isPanicSymbol hname = false)
-    (hsat : HookSat ext hname spec) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      (img.base + BitVec.ofNat 64 off) (spec.inImage img) := by
-  refine subroutine_ok_inImage_of_subroutine_ok img ?_
-  obtain ⟨f, hf, hok⟩ := hsat
-  exact hook_ok_stub (code := libsignalSessionCode) hlt hhook
-    ⟨f, by simp [Rust.withPanics, hnp, hf], hok⟩
-
 private theorem readReg32_truncate8_eq (s : State) (r : Reg) :
     (s.readReg32 r).truncate 8 = (s.readReg64 r).truncate 8 := by
   change ((s.readReg64 r).setWidth 32).setWidth 8 = (s.readReg64 r).setWidth 8
   exact BitVec.setWidth_setWidth_of_le (s.readReg64 r) (by decide : 8 ≤ 32)
-
-private theorem isPanic_compress256 :
-    Rust.isPanicSymbol "sha2::sha256::compress256" = false := by simp [Rust.isPanicSymbol]
-
-private theorem isPanic_memcpy : Rust.isPanicSymbol "memcpy" = false := by simp [Rust.isPanicSymbol]
-
-private theorem isPanic_memset : Rust.isPanicSymbol "memset" = false := by simp [Rust.isPanicSymbol]
-
-/-- Build `SpqrKdfHooksExt img C.F ext` from `HookSat` contracts on `ext`. -/
-theorem of_hookSat (img : Obj.Image) (C : Crypto) (ext : String → Option (State → State))
-    (hComp : HookSat ext "sha2::sha256::compress256" (SignalSession.CliExt.compress256Spec C))
-    (hMemcpy : HookSat ext "memcpy" SignalSession.CliExt.memcpySpec)
-    (hMemcpyRO : HookSat ext "memcpy" SignalSession.CliExt.memcpyROSpec)
-    (hMemset : HookSat ext "memset" SignalSession.CliExt.memsetSpec) :
-    SpqrKdfHooksExt img C.F ext where
-  compress256 := by
-    have hsat : HookSat ext "sha2::sha256::compress256"
-        (spqrCompress256ExternSpec C.F extHookStack) := by
-      refine hookSat_map hComp fun f hf => ?_
-      refine hookOk_map_pure (fun (stA, blkA, st, bs) => (stA, st, blkA, bs, (bs.length / 64))) hf
-        (fun ⟨stA, blkA, st, bs⟩ R s0 hp => ?_)
-        (fun ⟨stA, blkA, st, bs⟩ R s0 hq => ?_)
-      · dsimp only [spqrCompress256ExternSpec, SignalSession.CliExt.compress256Spec,
-          SignalSession.CliExt.withStack] at hp ⊢
-        simp only [sepConj_assoc, satisfies_pure_sepConj] at hp ⊢
-        rcases hp with ⟨⟨hx0, hx1, hx2⟩, hmem⟩
-        have hn : (s0.readReg64 .x2).toNat = bs.length / 64 := by omega
-        have hlen : bs.length = 64 * (bs.length / 64) := by omega
-        refine ⟨⟨hx0, hx1, hn, hlen⟩, ?_⟩
-        ac_nf at hmem ⊢
-      · dsimp only [spqrCompress256ExternSpec, SignalSession.CliExt.compress256Spec,
-          SignalSession.CliExt.withStack] at hq ⊢
-        ac_nf at hq ⊢
-    exact stub_inImage_of_hookSat img (by decide)
-      (ls_hook% "sha2::sha256::compress256") isPanic_compress256 hsat
-  memcpy := by
-    let base : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
-      { pre := fun (dst, src, bs) s0 =>
-          ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ (s0.readReg64 .x2).toNat = bs.length⌝ ∗
-            memRegion dst bs.length ∗ (src ↦ₛ bs)
-        post := fun (dst, src, bs) s0 sf =>
-          ⌜sf.readReg64 .x0 = dst ∧ sf.trace = s0.trace⌝ ∗ (dst ↦ₛ bs) ∗ (src ↦ₛ bs) }
-    have hsat : HookSat ext "memcpy" (sessionMemcpySpec extHookStack) := by
-      refine hookSat_map hMemcpy fun f hf => ?_
-      have h1 : HookOk f (SignalSession.CliExt.withStack base SignalSession.CliExt.memHookStack) :=
-        hookOk_map_pure (fun x => x) hf
-          (fun ⟨dst, src, bs⟩ R s0 hp => by
-            dsimp only [SignalSession.CliExt.memcpySpec, libcMemcpySpec,
-              SignalSession.CliExt.withStack, base] at hp ⊢
-            ac_nf at hp ⊢)
-          (fun ⟨dst, src, bs⟩ R s0 hq => by
-            dsimp only [SignalSession.CliExt.memcpySpec,
-              SignalSession.CliExt.withStack, base] at hq ⊢
-            ac_nf at hq ⊢)
-      have h2 := hookOk_stack_mono h1 (by decide : SignalSession.CliExt.memHookStack ≤ extHookStack)
-        (by decide)
-      exact hookOk_map_pure (fun x => x) h2
-        (fun ⟨dst, src, bs⟩ R s0 hp => by
-          dsimp only [sessionMemcpySpec, libcMemcpySpec,
-            SignalSession.CliExt.withStack, base] at hp ⊢
-          ac_nf at hp ⊢)
-        (fun ⟨dst, src, bs⟩ R s0 hq => by
-          dsimp only [sessionMemcpySpec,
-            SignalSession.CliExt.withStack, base] at hq ⊢
-          ac_nf at hq ⊢)
-    exact stub_inImage_of_hookSat img (by decide)
-      (ls_hook% "memcpy") isPanic_memcpy hsat
-  memcpyRO := by
-    let base : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
-      { pre := fun (dst, src, bs) s0 =>
-          ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ (s0.readReg64 .x2).toNat = bs.length ∧
-            bs.length ≤ 2 ^ 64⌝ ∗ memRegion dst bs.length ∗ (src ↦ᵣ bs)
-        post := fun (dst, src, bs) s0 sf =>
-          ⌜sf.readReg64 .x0 = dst ∧ sf.trace = s0.trace⌝ ∗ (dst ↦ₛ bs) ∗ (src ↦ᵣ bs) }
-    have hsat : HookSat ext "memcpy" (spqrMemcpyROExtSpec extHookStack) := by
-      refine hookSat_map hMemcpyRO fun f hf => ?_
-      have h2 := hookOk_stack_mono (base := base) hf
-        (by decide : SignalSession.CliExt.memHookStack ≤ extHookStack) (by decide)
-      exact hookOk_map_pure (fun x => x) h2
-        (fun ⟨dst, src, bs⟩ R s0 hp => by
-          dsimp only [spqrMemcpyROExtSpec, SignalSession.CliExt.withStack, base] at hp ⊢
-          ac_nf at hp ⊢)
-        (fun ⟨dst, src, bs⟩ R s0 hq => by
-          dsimp only [spqrMemcpyROExtSpec, SignalSession.CliExt.withStack, base] at hq ⊢
-          ac_nf at hq ⊢)
-    exact stub_inImage_of_hookSat img (by decide)
-      (ls_hook% "memcpy") isPanic_memcpy hsat
-  memset := by
-    let base : Spec (BitVec 64 × BitVec 8 × Nat) :=
-      { pre := fun (ptr, c, len) s0 =>
-          ⌜s0.readReg64 .x0 = ptr ∧ (s0.readReg64 .x1).truncate 8 = c ∧
-            (s0.readReg64 .x2).toNat = len⌝ ∗ memRegion ptr len
-        post := fun (ptr, c, len) s0 sf =>
-          ⌜sf.readReg64 .x0 = ptr ∧ sf.trace = s0.trace⌝ ∗ (ptr ↦ₛ List.replicate len c) }
-    have hsat : HookSat ext "memset" (spqrMemsetExternSpec extHookStack) := by
-      refine hookSat_map hMemset fun f hf => ?_
-      have h1 : HookOk f (SignalSession.CliExt.withStack base SignalSession.CliExt.memHookStack) :=
-        hookOk_map_pure (fun x => x) hf
-          (fun ⟨ptr, c, len⟩ R s0 hp => by
-            dsimp only [SignalSession.CliExt.memsetSpec, libcMemsetSpec,
-              SignalSession.CliExt.withStack, base] at hp ⊢
-            simp only [sepConj_assoc, satisfies_pure_sepConj] at hp ⊢
-            rcases hp with ⟨⟨hx0, hx1, hx2⟩, hmem⟩
-            refine ⟨⟨hx0, (readReg32_truncate8_eq s0 .x1).trans hx1, hx2⟩, ?_⟩
-            ac_nf at hmem ⊢)
-          (fun ⟨ptr, c, len⟩ R s0 hq => by
-            dsimp only [SignalSession.CliExt.memsetSpec,
-              SignalSession.CliExt.withStack, base] at hq ⊢
-            ac_nf at hq ⊢)
-      have h2 := hookOk_stack_mono h1 (by decide : SignalSession.CliExt.memHookStack ≤ extHookStack)
-        (by decide)
-      exact hookOk_map_pure (fun x => x) h2
-        (fun ⟨ptr, c, len⟩ R s0 hp => by
-          dsimp only [spqrMemsetExternSpec, SignalSession.CliExt.withStack, base] at hp ⊢
-          ac_nf at hp ⊢)
-        (fun ⟨ptr, c, len⟩ R s0 hq => by
-          dsimp only [spqrMemsetExternSpec, SignalSession.CliExt.withStack, base] at hq ⊢
-          ac_nf at hq ⊢)
-    exact stub_inImage_of_hookSat img (by decide)
-      (ls_hook% "memset") isPanic_memset hsat
-
-private theorem hookSat_cliExternsWith_of_not_panic {α : Type}
-    {ext : String → Option (State → State)} {n : String} {spec : Spec α}
-    (hn : E2E.isImagePanicSymbol n = false) (h : HookSat ext n spec) :
-    HookSat (SignalSession.cliExternsWith ext) n spec := by
-  obtain ⟨f, hf, hok⟩ := h
-  have heq : SignalSession.cliExternsWith ext n = ext n := by
-    simp [SignalSession.cliExternsWith, E2E.withImagePanics, hn]
-  exact ⟨f, heq.trans hf, hok⟩
-
-private theorem isPanicE_compress256 :
-    E2E.isImagePanicSymbol "sha2::sha256::compress256" = false := by
-  simp [E2E.isImagePanicSymbol, isPanic_compress256, E2E.extraImagePanicNames]
-
-private theorem isPanicE_memcpy :
-    E2E.isImagePanicSymbol "memcpy" = false := by
-  simp [E2E.isImagePanicSymbol, isPanic_memcpy, E2E.extraImagePanicNames]
-
-private theorem isPanicE_memset :
-    E2E.isImagePanicSymbol "memset" = false := by
-  simp [E2E.isImagePanicSymbol, isPanic_memset, E2E.extraImagePanicNames]
-
-/-- Build `SpqrKdfHooksExt img P.C.F ext` directly from `CliExternsOk P A ext`. -/
-theorem of_externsOk_raw (img : Obj.Image) {P : E2E.PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hOk : SignalSession.CliExternsOk P A ext) :
-    SpqrKdfHooksExt img P.C.F ext :=
-  of_hookSat img P.C ext hOk.compress256 hOk.memcpy hOk.memcpyRO hOk.memset
-
-/-- Build `SpqrKdfHooksExt img P.C.F (cliExternsWith ext)` from `CliExternsOk P A ext`. -/
-theorem of_externsOk (img : Obj.Image) {P : E2E.PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hOk : SignalSession.CliExternsOk P A ext) :
-    SpqrKdfHooksExt img P.C.F (SignalSession.cliExternsWith ext) :=
-  of_hookSat img P.C (SignalSession.cliExternsWith ext)
-    (hookSat_cliExternsWith_of_not_panic isPanicE_compress256 hOk.compress256)
-    (hookSat_cliExternsWith_of_not_panic isPanicE_memcpy hOk.memcpy)
-    (hookSat_cliExternsWith_of_not_panic isPanicE_memcpy hOk.memcpyRO)
-    (hookSat_cliExternsWith_of_not_panic isPanicE_memset hOk.memset)
 
 end SpqrKdfHooksExt
 
@@ -362,21 +170,6 @@ theorem runsTo_toE {prog : Program} {s₀ : State} {P : State → Prop} (h : Run
   fun hL => by
     obtain ⟨sf, hst, htr, hP, hLf⟩ := h hL
     exact ⟨sf, hst, htr, hP, hLf⟩
-
-/-- Sequence two `RunsToE` transitions while automatically propagating `img.FrozenLoaded`
-and `symtab = img.symtab` across the first transition via `Steps.frozenLoaded` and `Steps.symtab_eq`. -/
-theorem RunsToE.trans_frozen {prog : Program} {img : Obj.Image} {s₀ : State}
-    {P Q : State → Prop}
-    (hfrz : img.FrozenLoaded s₀) (hsym : s₀.symtab = img.symtab)
-    (h1 : RunsToE prog s₀ P)
-    (h2 : ∀ s₁, img.FrozenLoaded s₁ → s₁.symtab = img.symtab → P s₁ → RunsToE prog s₁ Q) :
-    RunsToE prog s₀ Q := by
-  intro hL0
-  obtain ⟨s₁, hst1, ⟨htr1, hev1⟩, hP1, hL1⟩ := h1 hL0
-  have hfrz1 : img.FrozenLoaded s₁ := hst1.frozenLoaded hfrz
-  have hsym1 : s₁.symtab = img.symtab := hst1.symtab_eq.trans hsym
-  obtain ⟨s₂, hst2, ⟨htr2, hev2⟩, hQ2, hL2⟩ := h2 s₁ hfrz1 hsym1 hP1 hL1
-  exact ⟨s₂, hst1.trans hst2, ⟨htr2.trans htr1, hev2.trans hev1⟩, hQ2, hL2⟩
 
 theorem mem_setMem (s : State) (m : Memory) : (s.setMem m).mem = m := rfl
 
@@ -404,7 +197,7 @@ theorem S2Frame.readable_of_readable {m₁ m₂ : Memory} {regs : List (BitVec 6
 extern read-only contract re-materializes `(src ↦ᵣ bs)`, while all RW addresses outside `roRegs`
 preserve `Perm.rw`, all readable addresses preserve `(perm a).r = true`, and all readable addresses
 outside `regs` preserve `read8`. -/
-def S2FrameRO (roRegs : List (BitVec 64 × ℕ)) (m₁ m₂ : Memory)
+@[expose] def S2FrameRO (roRegs : List (BitVec 64 × ℕ)) (m₁ m₂ : Memory)
     (regs : List (BitVec 64 × ℕ)) : Prop :=
   (∀ a, (m₁.perm a).r = true → m₁.isLazyFree a = false →
     (∀ r ∈ regs, OutsideRegion r.1 r.2 a) → m₂.read8 a = m₁.read8 a) ∧
@@ -551,7 +344,7 @@ theorem read64_eq_of_readable {roRegs : List (BitVec 64 × ℕ)} {m₁ m₂ : Me
 end S2FrameRO
 
 /-- Every heap satisfying `P` owns read-only cells across `ro = (base, len)`. -/
-def HasROAt (ro : BitVec 64 × ℕ) (P : SepProp) : Prop :=
+@[expose] def HasROAt (ro : BitVec 64 × ℕ) (P : SepProp) : Prop :=
   ∀ h, P h → ∀ a, InRegion ro.1 ro.2 a → ∃ v, h a = some (.ro v)
 
 namespace HasROAt
@@ -726,7 +519,7 @@ theorem S2FrameRO.update_two_blocks_ro {roRegs : List (BitVec 64 × ℕ)}
     (Heap.Matches.union hm1' (Heap.Matches.union hm2' hmR'))
 
 /-- Pointwise byte agreement on `P : BitVec 64 → Prop`. -/
-def AgreesOn (P : BitVec 64 → Prop) (m₁ m₂ : Memory) : Prop :=
+@[expose] def AgreesOn (P : BitVec 64 → Prop) (m₁ m₂ : Memory) : Prop :=
   ∀ a, P a → m₁.read8 a = m₂.read8 a
 
 namespace AgreesOn
@@ -898,78 +691,6 @@ theorem of_s2FrameRO {ro : Bool} {roRegs : List (BitVec 64 × ℕ)} {m₁ m₂ :
   out_okm := hs.out_okm
 
 end KdfSliceInv
-
-/-- Bundled entry preconditions of `finalize_fixed [local#2]` at `16528` B stack. -/
-structure FinPre3GenExt (img : Obj.Image) (F : ShaState → List (BitVec 8) → ShaState)
-    (key pfx tail : List (BitVec 8)) (s₀ : State) : Prop where
-  frz          : img.FrozenLoaded s₀
-  sym          : s₀.symtab = img.symtab
-  pc_eq        : s₀.pc = img.base + bv% (ls_off% finalizeFixed3Name)
-  status       : s₀.status = .Running
-  pfx_lt       : pfx.length < 2 ^ 63
-  tail_lt      : tail.length < 64
-  hmac_st      : HmacStN s₀.mem (s₀.readReg64 .x1) F (effectiveHmacKey F key) pfx tail
-  rw_out       : RW s₀.mem (s₀.readReg64 .x0) 32
-  rw_hm        : RW s₀.mem (s₀.readReg64 .x1) 0x90
-  rw_fsp       : RW s₀.mem (s₀.sp - 16528#64) 16528
-  disj_out_hm  : DisjointRegions (s₀.readReg64 .x0) 32 (s₀.readReg64 .x1) 0x90
-  disj_out_fsp : DisjointRegions (s₀.readReg64 .x0) 32 (s₀.sp - 16528#64) 16528
-  disj_hm_fsp  : DisjointRegions (s₀.readReg64 .x1) 0x90 (s₀.sp - 16528#64) 16528
-  sp_aligned   : (s₀.sp &&& 15#64) = 0#64
-
-/-- Generalized `RunsToE` contract of `finalize_fixed [local#2]` at `16528` B stack. -/
-def Fin3GenRunsToEExt (img : Obj.Image) (F : ShaState → List (BitVec 8) → ShaState)
-    (ext : String → Option (State → State)) : Prop :=
-  ∀ {key pfx tail : List (BitVec 8)} {s₀ : State},
-    FinPre3GenExt img F key pfx tail s₀ →
-    RunsToE (tripleRatchetProgAtExt img.base ext) s₀ (fun s' =>
-      s'.pc = s₀.readReg64 .lr ∧
-      s'.status = .Running ∧
-      CalleeSaved s₀ s' ∧
-      s'.mem.readBytes (s₀.readReg64 .x0) 32 = hmacWith F key (pfx ++ tail) ∧
-      S2Frame s₀.mem s'.mem
-        [(s₀.readReg64 .x0, 32), (s₀.readReg64 .x1, 0x90), (s₀.sp - 16528#64, 16528)])
-
-/-- Bundled entry preconditions of `new_from_slice [local#2]` at `16928` B stack. -/
-structure Nfs3GenPreExt (img : Obj.Image) (keyRO : Bool) (roRegs : List (BitVec 64 × ℕ))
-    (s₀ : State) : Prop where
-  frz          : img.FrozenLoaded s₀
-  sym          : s₀.symtab = img.symtab
-  pc_eq        : s₀.pc = img.base + bv% (ls_off% newFromSlice3Name)
-  status       : s₀.status = .Running
-  key_lt       : (s₀.readReg64 .x2).toNat < 2 ^ 63
-  ro_iv_bytes  : s₀.mem.readBytes (img.base + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 = shaStateBytes sha256IV
-  base_al      : (img.base &&& 0xfff#64) = 0#64
-  ro_iv_read   : s₀.mem.Readable (img.base + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32
-  disj_iv_stk  : DisjointRegions (img.base + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 (s₀.sp - 16928#64) 16928
-  rw_out       : RW s₀.mem (s₀.readReg64 .x0) 0x98
-  rw_stk       : RW s₀.mem (s₀.sp - 16928#64) 16928
-  disj_out_stk : DisjointRegions (s₀.readReg64 .x0) 0x98 (s₀.sp - 16928#64) 16928
-  key_read     : s₀.mem.Readable (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat
-  key_perm     : if keyRO then (s₀.readReg64 .x2).toNat ≤ 64 ∧
-                   (∀ a, InRegion (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat a →
-                     ∃ r ∈ roRegs, InRegion r.1 r.2 a)
-                 else RW s₀.mem (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat
-  out_key_stk  : ∀ a, InRegion (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat a →
-                   OutsideRegion (s₀.sp - 16928#64) 16928 a
-  out_key_out  : ∀ a, InRegion (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat a →
-                   OutsideRegion (s₀.readReg64 .x0) 0x98 a
-  sp_aligned   : (s₀.sp &&& 15#64) = 0#64
-
-/-- Generalized `RunsToE` contract of `new_from_slice [local#2]` at `16928` B stack. -/
-def Nfs3GenRunsToEExt (img : Obj.Image) (F : ShaState → List (BitVec 8) → ShaState)
-    (ext : String → Option (State → State)) : Prop :=
-  ∀ {keyRO : Bool} {roRegs : List (BitVec 64 × ℕ)} {s₀ : State},
-    Nfs3GenPreExt img keyRO roRegs s₀ →
-    RunsToE (tripleRatchetProgAtExt img.base ext) s₀ (fun s' =>
-      s'.pc = s₀.readReg64 .lr ∧
-      s'.status = .Running ∧
-      CalleeSaved s₀ s' ∧
-      s'.mem.read64 (s₀.readReg64 .x0) = 0#64 ∧
-      HmacSt s'.mem (s₀.readReg64 .x0 + 8#64) F
-        (effectiveHmacKey F (s₀.mem.readBytes (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat)) [] ∧
-      S2FrameRO roRegs s₀.mem s'.mem
-        [(s₀.readReg64 .x0, 0x98), (s₀.sp - 16928#64, 16928)])
 
 end SpqrKdfExt
 

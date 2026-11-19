@@ -10,17 +10,20 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.DecodesBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1Budget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Heap.IfaceBudget
+import LibsignalBinary.Heap.IfaceBudgetBase
+import LibsignalBinary.Proofs.SpqrV1.Drop.Decodes
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Drop Glue for `chunked::HeaderReceived` (Block `283`)
@@ -30,7 +33,7 @@ for `core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::HeaderRe
 (Block `283`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -107,7 +110,7 @@ attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero noneCap_add_t
 
 /-! ## Helpers and Share-Vector Loop Macros -/
 
-def deallocFreeOnlySpec [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def deallocFreeOnlySpec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (BitVec 64 × Nat × Nat × M.σ) where
   pre := (rustCliDeallocBudgetSpec M A lim).pre

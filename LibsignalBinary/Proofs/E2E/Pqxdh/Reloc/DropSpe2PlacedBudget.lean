@@ -9,14 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2Placed
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2Placed
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.Common
 import ProofLib.SepLogic.WP.Apply
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.RelocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.ClearUnacknowledgedPreKeyMessage -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.Ext -- proof-setup: allow-public-import
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.StdStartup.MemOps
+public import VerifiedLibraries.RustStd.Proofs.ExecSegSym
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Contracts for `drop_glue::<SignalProtocolError> [local#2]` (Block `511`)
@@ -25,7 +38,7 @@ Proves `RustCliAllocBudget M` contracts `withLsRoLoaded lsmpl (dropSpeSpec M A l
 `withLsRoLoaded lsmpl (dropSpe2VerSpec M A lim)` on Block `511` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -385,7 +398,7 @@ theorem drop_spe2_placed_cl_ok_at [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded spec for dropping `SignalProtocolError::UnrecognizedMessageVersion`
 (`0x8000000000000006#64`), matching `DropSpe2Placed.dropSpe2VerSpec` (zero deallocations). -/
-def dropSpe2VerSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def dropSpe2VerSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (BitVec 64 × BitVec 32 × M.σ) where
   pre := fun (a, msgVer, st) s =>
     ⌜s.readReg64 .x0 = a⌝ ∗

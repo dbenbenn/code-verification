@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part4Placed
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part4Placed
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part4
@@ -22,6 +22,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.Pure
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2 -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Relocatable Prologue Bridge & `decode_state` Dispatch for `spqr::recv`
@@ -30,7 +31,7 @@ Budget-threaded `SepWPpLS` prologue lift (`+0..+312`) and post-`spqr::decode_sta
 dispatch (`+328..+408`) for `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -44,7 +45,7 @@ open Arm64 ProofLib ProofLib.ProgramReflection
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification (LibsignalPlacement lsρ)
 open CryptoVerification.LibsignalSpqrV1
-  (MlKem MsgPreamble PqRatchetState msgPreamble recvResultExactKeyAt
+  (MlKem MsgPreamble PqRatchetState msgPreamble
    spqrDecodeState spqrDeps spqrHkdfWith spqrV1Recv)
 open CryptoVerification.LibsignalTripleRatchet (VecArg spqrRecvStack)
 open CryptoVerification.SpqrV1.Drop (optProtoPqRatchetInnerAt)
@@ -55,7 +56,7 @@ open CryptoVerification.SpqrV1.Top.Recv
   (MsgRemValid SepWPpLS bs320_entails_bs96_inner err_payload_expose
    optProtoPqRatchetInnerAt_eq_drop ownFrame_join_4544_after_decode
    ownFrame_join_4896_err_decode protoPqRatchetStateAt_entails_head32_bs96_bs224
-   recv_err_words_foldX recv_of_decodeState_error recv_of_msgPreamble_error
+   recv_of_decodeState_error recv_of_msgPreamble_error
    relocVnTailAndChainAt ret_48_split sp_sub_4992_aligned
    spqrRecvCalleeStackX spqrRecvPlacedEntry spqrRecvPlacedProg spqrRecvRoPlacedAt
    spqrRecvSavedRegs spqrV1Recv_noPanic_of_err spqrV1Recv_noPanic_of_recv_err_true
@@ -64,9 +65,11 @@ open CryptoVerification.SpqrV1.Top.Recv.Placed (blkPC_329 blkPl_329)
 open CryptoVerification.SpqrV1.Top.Send (decodeState_spqrDeps_of_spqrDecodeState_error)
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits RustCliAllocBudget VmPreserved)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag (recvResultExactKeyDispAt spqrErrorValidTag_zero)
 open LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget (SpqrBoundedEvs)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
-  (SpqrRecvEnv sepWP_spqrRecvPlacedPostOfEnv_of_post0 sepWP_spqrRecvPlacedPost_of_post0
+  (SpqrRecvEnv recv_err_words_disp_foldX sepWP_spqrRecvPlacedPostOfEnv_of_post0
+   sepWP_spqrRecvPlacedPost_of_post0
    spqrRecvBudgetPanicPost spqrRecvPlacedPost spqrRecvPlacedPost0 spqrRecvPlacedPost0OfEnv
    spqrRecvPlacedPostOfEnv spqrRecvPlacedPreambleFrame step_epilogue_placed_ofEnv
    step_err_msgDecode_placed step_err_msgDecode_placed_ofEnv)
@@ -285,7 +288,7 @@ theorem step_decode_err_328_placed_ofEnv {MC : AllocCostModel}
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      CryptoVerification.LibsignalSpqrV1.recvResultExactKeyAt A.repAlloc ret
+      recvResultExactKeyDispAt A.repAlloc ret
         ((spqrV1Recv F K).recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
@@ -302,7 +305,8 @@ theorem step_decode_err_328_placed_ofEnv {MC : AllocCostModel}
       rw [ret_48_split ret]
       wp_pull_exists; rename_i r3 r2 r1 r0
       wp_steps 14
-      have hfold := recv_err_words_foldX A.repAlloc ret w1 w2 w3 0#8 true (by decide) hw1_ent
+      have hfold := recv_err_words_disp_foldX A.repAlloc ret w1 w2 w3 0#8 true (by decide)
+        spqrErrorValidTag_zero hw1_ent
       rw [← hrecv] at hfold
       refine SepWP.fold hfold (by sep_focus) ?_
       refine SepWP.focus_weaken

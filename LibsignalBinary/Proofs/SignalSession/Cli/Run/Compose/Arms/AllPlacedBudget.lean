@@ -9,27 +9,34 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.WritePaths
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.ProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitId.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.JProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2ProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bBadPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.WritePaths
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.ProofPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitId.PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.JProofPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2ProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aProofPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bBadPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
 
 /-!
 # Budget-Threaded Relocatable `RunArmsPlaced` and `CliPubCalleesPlaced` Aggregator
@@ -39,7 +46,7 @@ contracts on Block `579` (`signal_session::run`) into `RunArmsPlaced`, `CliPubCa
 `CliPubCalleesPlaced`, along with their `LibsignalFrozen` counterparts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -107,7 +114,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
 open LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget (dropSpeSpecX)
 
 /-- Non-slot callee allocation-event envelopes on Block `579`, parameterized by `ReadEnv`. -/
-def cliRunCalleesEnvs
+@[expose] def cliRunCalleesEnvs
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop :=
       ReadFileRuleEnv cliIo.rd) : RunCalleesEnvs where
   readFile := ReadEnv
@@ -117,7 +124,7 @@ def cliRunCalleesEnvs
   splitSigned := SplitSignedEnv SplitIdEnv
 
 /-- Arm allocation-event envelopes on Block `579` over `cEnvs`, `sEnvs`, `PksmTryFromEnv`, and `S`. -/
-def cliRunArmEnvs (cEnvs : RunCalleesEnvs) (sEnvs : RunSlotEnvs)
+@[expose] def cliRunArmEnvs (cEnvs : RunCalleesEnvs) (sEnvs : RunSlotEnvs)
     (PksmTryFromEnv : PksmGhost → List AllocEvent → Prop) (S : RunSem) : RunArmEnvs where
   pre := PreEnv cEnvs
   init1 := Init1Env cEnvs
@@ -167,13 +174,6 @@ abbrev CliPubCalleesPlaced [LibsignalPlacement] {M : AllocCostModel}
     (sEnvs : RunSlotEnvs) (PksmTryFromEnv : PksmGhost → List AllocEvent → Prop) : Prop :=
   CliPubCalleesPlacedAt (cliGhostExterns g (cliExternsPlaced mmpl W)) A lim ReadEnv sEnvs
     PksmTryFromEnv
-
-abbrev CliPubCalleesPlacedLinked [LibsignalPlacement] {M : AllocCostModel}
-    (mmpl : Obj.MultiPlacement) (W : CliHooks)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
-    (sEnvs : RunSlotEnvs) (PksmTryFromEnv : PksmGhost → List AllocEvent → Prop) : Prop :=
-  CliPubCalleesPlacedAt (cliExternsPlaced mmpl W) A lim ReadEnv sEnvs PksmTryFromEnv
 
 /-- Discharges all non-arm fields of `CliPubCalleesPlacedAt` from `RunHooksPlaced` and `hRead`. -/
 theorem cliPubCalleesAt_of_arms_placed [LibsignalPlacement] {M : AllocCostModel}
@@ -496,13 +496,6 @@ abbrev CliPubCalleesFrozenPlaced [LibsignalPlacement] {M : AllocCostModel}
     (sEnvs : RunSlotEnvs) (PksmTryFromEnv : PksmGhost → List AllocEvent → Prop) : Prop :=
   CliPubCalleesFrozenPlacedAt (cliGhostExterns g (cliExternsPlaced mmpl W)) A lim ReadEnv sEnvs
     PksmTryFromEnv
-
-abbrev CliPubCalleesFrozenPlacedLinked [LibsignalPlacement] {M : AllocCostModel}
-    (mmpl : Obj.MultiPlacement) (W : CliHooks)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
-    (sEnvs : RunSlotEnvs) (PksmTryFromEnv : PksmGhost → List AllocEvent → Prop) : Prop :=
-  CliPubCalleesFrozenPlacedAt (cliExternsPlaced mmpl W) A lim ReadEnv sEnvs PksmTryFromEnv
 
 /-- Discharges all non-arm fields of `CliPubCalleesFrozenPlacedAt` from `RunHooksPlaced` and `hRead`. -/
 theorem cliPubCalleesAt_of_arms_frozen_placed [LibsignalPlacement] {M : AllocCostModel}

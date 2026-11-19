@@ -9,17 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.Compute
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.Compute -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+public meta import ProofLib
+public meta import ProofLib.SepLogic.WP
 
 /-!
 # Callee and Pool-Sync Helpers for Budget `SignalMessage::compute_mac`
@@ -28,7 +30,7 @@ Stack-parameterized `VmPreserved` and `RustCliAllocBudget` callee contracts, `Ls
 transport lemmas, and `sync_call_pool` tactic for `ComputeBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -203,7 +205,7 @@ abbrev compress256BudgetSpec (F : ShaCompress) :
     Spec (BitVec 64 × ShaState × BitVec 64 × List (BitVec 8) × Nat) :=
   withVmPreserved (compress256Spec F)
 
-def newFromSlicePkStackBudgetSpecAt (F : ShaCompress) (pkStack : Nat) :
+@[expose] def newFromSlicePkStackBudgetSpecAt (F : ShaCompress) (pkStack : Nat) :
     Spec NewFromSliceGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.keyA ∧
@@ -317,7 +319,7 @@ theorem newFromSlice_placed_cro_budget_ok [LibsignalPlacement] (C : Crypto)
   · exact (not_satisfies_false_sepConj (by simpa only [Spec.withLsClState, newFromSliceBudgetSpec,
       withVmPreserved, newFromSliceSpec, sepConj_assoc] using hoom)).elim
 
-def session2MemcpyPkStackBudgetSpecAt (pkStack : Nat) (sp_cur : BitVec 64) :
+@[expose] def session2MemcpyPkStackBudgetSpecAt (pkStack : Nat) (sp_cur : BitVec 64) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ (s0.readReg64 .x2).toNat = bs.length ∧
@@ -327,7 +329,7 @@ def session2MemcpyPkStackBudgetSpecAt (pkStack : Nat) (sp_cur : BitVec 64) :
     ⌜sf.readReg64 .x0 = dst ∧ sf.trace = s0.trace ∧ VmPreserved s0 sf⌝ ∗
       (dst ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ stackAt sp_cur pkStack
 
-def session2Compress256BudgetSpec (F : ShaCompress) :
+@[expose] def session2Compress256BudgetSpec (F : ShaCompress) :
     Spec (BitVec 64 × ShaState × BitVec 64 × List (BitVec 8) × Nat) where
   pre := (session2Compress256Spec F).pre
   post := fun (stA, st, blkA, blk, _n) s0 sf =>
@@ -356,7 +358,7 @@ theorem session2Compress256Budget_of_compress256Budget {F : ShaCompress}
   · exact Or.inr (Or.inr (Or.inr (by simpa only [compress256BudgetSpec, withVmPreserved,
       compress256Spec, session2Compress256BudgetSpec] using hoom)))
 
-def session2Compress256PkStackBudgetSpecAt (F : ShaCompress) (pkStack : Nat) (sp_cur : BitVec 64) :
+@[expose] def session2Compress256PkStackBudgetSpecAt (F : ShaCompress) (pkStack : Nat) (sp_cur : BitVec 64) :
     Spec (BitVec 64 × ShaState × BitVec 64 × List (BitVec 8) × Nat) where
   pre := fun (stA, st, blkA, blk, n) s0 =>
     ⌜s0.readReg64 .x0 = stA ∧ s0.readReg64 .x1 = blkA ∧
@@ -367,7 +369,7 @@ def session2Compress256PkStackBudgetSpecAt (F : ShaCompress) (pkStack : Nat) (sp
       (stA ↦ₛ shaStateBytes ((chunks64 blk).foldl F st)) ∗ (blkA ↦ₛ blk) ∗
       stackAt sp_cur pkStack
 
-def session2MemsetBudgetSpec : Spec (BitVec 64 × BitVec 8 × Nat) where
+@[expose] def session2MemsetBudgetSpec : Spec (BitVec 64 × BitVec 8 × Nat) where
   pre := session2MemsetSpec.pre
   post := fun (dst, val, n) s0 sf =>
     ⌜sf.readReg64 .x0 = dst ∧ sf.trace = s0.trace ∧ VmPreserved s0 sf⌝ ∗
@@ -398,7 +400,7 @@ theorem session2MemsetBudget_of_sessionMemsetRegionBudget {prog : Program} {addr
   · exact Or.inr (Or.inr (Or.inr (by simpa only [sessionMemsetRegionBudgetSpec, withVmPreserved,
       sessionMemsetRegionSpec, ProofLib.memsetRegionSpec, session2MemsetBudgetSpec] using hoom)))
 
-def session2MemsetPkStackBudgetSpecAt (pkStack : Nat) (sp_cur : BitVec 64) :
+@[expose] def session2MemsetPkStackBudgetSpecAt (pkStack : Nat) (sp_cur : BitVec 64) :
     Spec (BitVec 64 × BitVec 8 × Nat) where
   pre := fun (dst, val, n) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧ (s0.readReg64 .x1).truncate 8 = val ∧
@@ -410,7 +412,7 @@ def session2MemsetPkStackBudgetSpecAt (pkStack : Nat) (sp_cur : BitVec 64) :
 
 /-! ## Budget `PublicKey::serialize` and `__rust_dealloc` helpers -/
 
-def publicKeySerializeBudgetSpecAt (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def publicKeySerializeBudgetSpecAt (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (pkStack : Nat) : Spec (PublicKeySerializeCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.self ∧ FitsEnv M lim st PublicKeySerializeEnv⌝ ∗
@@ -420,7 +422,7 @@ def publicKeySerializeBudgetSpecAt (M : AllocCostModel) (A : RustCliAllocBudget 
       (x.self ↦ₛ x.pk.bytes.toList) ∗ boxU8Buf A.repAlloc (sf.readReg64 .x0) x.pk.serialize ∗
       A.pool lim (M.stepEvents publicKeySerializeEvents st) sf ∗ stackAt s0.sp pkStack
 
-def publicKeySerializeSpecKeepPlacedBudgetAt {LsClState : State → Prop}
+@[expose] def publicKeySerializeSpecKeepPlacedBudgetAt {LsClState : State → Prop}
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (pkStack : Nat) :
     Spec (PublicKeySerializeCall × M.σ) where
   pre := fun (x, st) s =>
@@ -526,7 +528,7 @@ theorem call_pk_serialize_placed_budget_at {LsClState : State → Prop} [LsClInv
 open CryptoVerification (LibsignalPlacement)
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 
-def rustDeallocPkStackBudgetSpecAt [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def rustDeallocPkStackBudgetSpecAt [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (pkStack : Nat) :
     Spec ((BitVec 64 × List (BitVec 8)) × M.σ) where
   pre := fun ((p, bs), st) s =>

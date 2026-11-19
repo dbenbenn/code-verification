@@ -10,6 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # Strict Placed Correctness Recovery from Up-to-OOM Specifications
@@ -20,27 +21,58 @@ strict (`0`-excused-abort) counterparts (`CliSpecPqxdh`, `CliPqxdhElfCorrectStri
 `CliPqxdhBinaryCorrectStrictPlaced`) once `CliReachesOOMPlaced` is refuted across `CliPqxdhInputs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.M24.PlacedOomRecovery
 
 open Arm64 Arm64.Obj Arm64.Process
+open CryptoGames.HMAC (ShaState)
 open CryptoVerification.E2E (PEParams UnreachedPqxdhPrimitives)
+open CryptoVerification.LibsignalSpqrV1 (sha256Compress)
 open CryptoVerification.RustHeap (allocFailedEvent)
 open CryptoVerification.SignalSession
-  (CliHooks CliPqxdhBinaryCorrectPlaced
-   CliPqxdhBinaryCorrectPlacedAt CliPqxdhElfCorrectPlaced CliPqxdhInputs CliReachesOOMPlaced CliRun
-   CliSpecPqxdh CliSpecPqxdhNoMatch CliSpecPqxdhNoMatchOrExcusedAbort
-   CliSpecPqxdhOrExcusedAbort Inputs Outcome OutcomeOrExcusedAbort cliProcessInputs
-   libsignalSessionLib)
-open CryptoVerification.SignalSession.Placed
-  (CliElfCodeMatchesPlaced cliProgPlacedSig cliRunPlacedSig cliTokenPatchPlaced)
+  (CliHooks
+   CliPqxdhInputs CliRun CliSpecPqxdh CliSpecPqxdhNoMatch
+   CliSpecPqxdhNoMatchOrExcusedAbort CliSpecPqxdhOrExcusedAbort Inputs Outcome
+   OutcomeOrExcusedAbort cliProcessInputs libsignalSessionLib
+   realCrypto realPqxdhPrims realPEParams)
+open CryptoVerification.SignalSession.Placed (cliTokenPatchPlaced)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced
+  (CliElfCodeMatchesPlaced CliPqxdhBinaryCorrectPlaced CliPqxdhBinaryCorrectPlacedAt
+   CliPqxdhElfCorrectPlaced CliReachesOOMPlaced CliReachesSampleNttStuckPlaced
+   cliProgPlacedSig cliRunPlacedSig)
+
+/-- Untrusted `F`-parameterized Shape-H ELF correctness abbreviation (`rfl`-equal to
+`CliPqxdhElfCorrectPlaced` at `F = sha256Compress`). -/
+abbrev CliPqxdhElfCorrectPlacedWith
+    (F : ShaState → List (BitVec 8) → ShaState)
+    (mpl mmpl : Obj.MultiPlacement) (elf : ElfImage) : Prop :=
+  CliElfCodeMatchesPlaced mpl mmpl elf ∧
+  ∀ W : CliHooks,
+    W.C.F = F →
+    W.C.E = CryptoGames.AES256.aes256Enc →
+    W.C.D = CryptoGames.AES256.aes256Dec →
+    W.C.X = CryptoGames.RFC7748.x25519Ref →
+    W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+    W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+    W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+    W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+    W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+    ∀ X : UnreachedPqxdhPrimitives,
+      CliSpecPqxdhOrExcusedAbort
+        (fun i => CliReachesOOMPlaced mpl mmpl elf W i ∨
+          CliReachesSampleNttStuckPlaced mpl mmpl elf W i)
+        (cliRunPlacedSig mpl mmpl elf W) X ⟨W.C, W.Q⟩ ∧
+      CliSpecPqxdhNoMatchOrExcusedAbort
+        (fun i => CliReachesOOMPlaced mpl mmpl elf W i ∨
+          CliReachesSampleNttStuckPlaced mpl mmpl elf W i)
+        (cliRunPlacedSig mpl mmpl elf W) X ⟨W.C, W.Q⟩
 
 /-- Predicate asserting that `cliProgPlacedSig mpl mmpl W` logs `allocFailedEvent` on input `i`
 from `cliTokenPatchPlaced mpl s0`. -/
-def CliRunAllocFailsPlaced (mpl mmpl : Obj.MultiPlacement) (elf : ElfImage) (W : CliHooks)
+@[expose] def CliRunAllocFailsPlaced (mpl mmpl : Obj.MultiPlacement) (elf : ElfImage) (W : CliHooks)
     (i : Inputs) : Prop :=
   ∃ s0 s : State,
     elf.loadState (cliProcessInputs i) = .ok s0 ∧
@@ -49,7 +81,7 @@ def CliRunAllocFailsPlaced (mpl mmpl : Obj.MultiPlacement) (elf : ElfImage) (W :
 
 /-- Invariant asserting that `cliProgPlacedSig mpl mmpl W` never logs `allocFailedEvent` across
 `CliPqxdhInputs ⟨W.C, W.Q⟩`. -/
-def CliPqxdhAllocNeverFailsPlaced (mpl mmpl : Obj.MultiPlacement) (elf : ElfImage)
+@[expose] def CliPqxdhAllocNeverFailsPlaced (mpl mmpl : Obj.MultiPlacement) (elf : ElfImage)
     (W : CliHooks) : Prop :=
   ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i →
     ∀ s0 s : State,
@@ -59,28 +91,99 @@ def CliPqxdhAllocNeverFailsPlaced (mpl mmpl : Obj.MultiPlacement) (elf : ElfImag
 
 /-! ## Strict placed ELF and binary correctness predicates -/
 
+/-- Strict relocatable `CliPqxdhElfCorrect` at a fixed SHA-256 compression function `F` and real
+AES-256 under multi-block placements `(mpl, mmpl)` with no `OrExcusedAbort` relaxation. -/
+def CliPqxdhElfCorrectStrictPlacedWith
+    (F : ShaState → List (BitVec 8) → ShaState)
+    (mpl mmpl : Obj.MultiPlacement) (elf : ElfImage) : Prop :=
+  CliElfCodeMatchesPlaced mpl mmpl elf ∧
+  ∀ W : CliHooks,
+    W.C.F = F →
+    W.C.E = CryptoGames.AES256.aes256Enc →
+    W.C.D = CryptoGames.AES256.aes256Dec →
+    W.C.X = CryptoGames.RFC7748.x25519Ref →
+    W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+    W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+    W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+    W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+    W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+    ∀ X : UnreachedPqxdhPrimitives,
+      CliSpecPqxdh (cliRunPlacedSig mpl mmpl elf W) X ⟨W.C, W.Q⟩ ∧
+      CliSpecPqxdhNoMatch (cliRunPlacedSig mpl mmpl elf W) X ⟨W.C, W.Q⟩
+
+/-- Closed-primitive strict relocatable `CliPqxdhElfCorrect` matching
+`CliPqxdhElfCorrectPlaced`. -/
+def CliPqxdhElfCorrectStrictPlacedExists (mpl mmpl : Obj.MultiPlacement) (elf : ElfImage) : Prop :=
+  CliElfCodeMatchesPlaced mpl mmpl elf ∧
+  ∀ X : UnreachedPqxdhPrimitives,
+    CliSpecPqxdh (cliRunPlacedSig mpl mmpl elf ⟨realCrypto, realPqxdhPrims⟩) X realPEParams ∧
+    CliSpecPqxdhNoMatch (cliRunPlacedSig mpl mmpl elf ⟨realCrypto, realPqxdhPrims⟩) X realPEParams
+
+/-- Existentially-bound-`F` strict relocatable `CliPqxdhBinaryCorrect` at fixed `(mpl, mmpl)`. -/
+def CliPqxdhBinaryCorrectStrictPlacedAtExists (mpl mmpl : Obj.MultiPlacement)
+    (bytes : List (BitVec 8)) : Prop :=
+  ∃ elf, ElfImage.parse bytes = .ok elf ∧ CliPqxdhElfCorrectStrictPlacedExists mpl mmpl elf
+
+/-- Existentially-bound-`F` strict relocatable `CliPqxdhBinaryCorrect` across all `LinkedAt`
+placements `(mpl, mmpl)`. -/
+def CliPqxdhBinaryCorrectStrictPlacedExists (bytes : List (BitVec 8)) : Prop :=
+  ∀ mpl mmpl : Obj.MultiPlacement,
+    libsignalSessionLib.LinkedAt bytes mpl →
+    VerifiedLibraries.mallocngLib.LinkedAt bytes mmpl →
+    CliPqxdhBinaryCorrectStrictPlacedAtExists mpl mmpl bytes
+
 /-- Strict relocatable `CliPqxdhElfCorrect` under multi-block placements `(mpl, mmpl)` with no
 `OrExcusedAbort` relaxation: `elf` matches `libsignalSessionLib` + `mallocngLib` under `(mpl, mmpl)`
 and for every `W` and `X`, `cliRunPlacedSig mpl mmpl elf W` satisfies `CliSpecPqxdh` and
 `CliSpecPqxdhNoMatch` directly. -/
-def CliPqxdhElfCorrectStrictPlaced (mpl mmpl : Obj.MultiPlacement) (elf : ElfImage) : Prop :=
+@[expose] def CliPqxdhElfCorrectStrictPlaced (mpl mmpl : Obj.MultiPlacement) (elf : ElfImage) : Prop :=
   CliElfCodeMatchesPlaced mpl mmpl elf ∧
   ∀ W : CliHooks, ∀ X : UnreachedPqxdhPrimitives,
     CliSpecPqxdh (cliRunPlacedSig mpl mmpl elf W) X ⟨W.C, W.Q⟩ ∧
     CliSpecPqxdhNoMatch (cliRunPlacedSig mpl mmpl elf W) X ⟨W.C, W.Q⟩
 
 /-- Strict relocatable `CliPqxdhBinaryCorrect` at fixed placements `(mpl, mmpl)`. -/
-def CliPqxdhBinaryCorrectStrictPlacedAt (mpl mmpl : Obj.MultiPlacement)
+@[expose] def CliPqxdhBinaryCorrectStrictPlacedAt (mpl mmpl : Obj.MultiPlacement)
     (bytes : List (BitVec 8)) : Prop :=
   ∃ elf, ElfImage.parse bytes = .ok elf ∧ CliPqxdhElfCorrectStrictPlaced mpl mmpl elf
 
 /-- Strict relocatable `CliPqxdhBinaryCorrect` universally quantified over every placement pair
 `(mpl, mmpl)` linked at `bytes`. -/
-def CliPqxdhBinaryCorrectStrictPlaced (bytes : List (BitVec 8)) : Prop :=
+@[expose] def CliPqxdhBinaryCorrectStrictPlaced (bytes : List (BitVec 8)) : Prop :=
   ∀ mpl mmpl : Obj.MultiPlacement,
     libsignalSessionLib.LinkedAt bytes mpl →
     VerifiedLibraries.mallocngLib.LinkedAt bytes mmpl →
     CliPqxdhBinaryCorrectStrictPlacedAt mpl mmpl bytes
+
+/-- Real-AES-guarded strict relocatable `CliPqxdhElfCorrect` matching `CliPqxdhElfCorrectPlaced`
+(`W.C.E = CryptoGames.AES256.aes256Enc` and `W.C.D = CryptoGames.AES256.aes256Dec`). -/
+def CliPqxdhElfCorrectStrictPlacedAes (mpl mmpl : Obj.MultiPlacement) (elf : ElfImage) : Prop :=
+  CliElfCodeMatchesPlaced mpl mmpl elf ∧
+  ∀ W : CliHooks,
+    W.C.E = CryptoGames.AES256.aes256Enc →
+    W.C.D = CryptoGames.AES256.aes256Dec →
+    W.C.X = CryptoGames.RFC7748.x25519Ref →
+    W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+    W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+    W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+    W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+    W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+    ∀ X : UnreachedPqxdhPrimitives,
+      CliSpecPqxdh (cliRunPlacedSig mpl mmpl elf W) X ⟨W.C, W.Q⟩ ∧
+      CliSpecPqxdhNoMatch (cliRunPlacedSig mpl mmpl elf W) X ⟨W.C, W.Q⟩
+
+/-- Real-AES-guarded strict relocatable `CliPqxdhBinaryCorrect` at fixed placements `(mpl, mmpl)`. -/
+def CliPqxdhBinaryCorrectStrictPlacedAtAes (mpl mmpl : Obj.MultiPlacement)
+    (bytes : List (BitVec 8)) : Prop :=
+  ∃ elf, ElfImage.parse bytes = .ok elf ∧ CliPqxdhElfCorrectStrictPlacedAes mpl mmpl elf
+
+/-- Real-AES-guarded strict relocatable `CliPqxdhBinaryCorrect` across all `LinkedAt` placements
+`(mpl, mmpl)`. -/
+def CliPqxdhBinaryCorrectStrictPlacedAes (bytes : List (BitVec 8)) : Prop :=
+  ∀ mpl mmpl : Obj.MultiPlacement,
+    libsignalSessionLib.LinkedAt bytes mpl →
+    VerifiedLibraries.mallocngLib.LinkedAt bytes mmpl →
+    CliPqxdhBinaryCorrectStrictPlacedAtAes mpl mmpl bytes
 
 /-! ## Eliminating `CliRunAllocFailsPlaced` and `OutcomeOrExcusedAbort` -/
 
@@ -186,26 +289,100 @@ theorem cliSpecPqxdhNoMatch_of_orExcusedAbort
 
 /-! ## Whole-ELF and binary recovery -/
 
-theorem cliSpecPqxdh_and_noMatch_of_elfCorrectPlaced
+theorem cliSpecPqxdh_and_noMatch_of_elfCorrectPlacedWith
+    {F : ShaState → List (BitVec 8) → ShaState}
     {mpl mmpl : Obj.MultiPlacement} {elf : ElfImage} {W : CliHooks}
-    (hElf : CliPqxdhElfCorrectPlaced mpl mmpl elf)
+    (hElf : CliPqxdhElfCorrectPlacedWith F mpl mmpl elf)
+    (hF : W.C.F = F)
+    (hE : W.C.E = CryptoGames.AES256.aes256Enc)
+    (hD : W.C.D = CryptoGames.AES256.aes256Dec)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hF512 : W.Q.F512 = CryptoGames.SHA512.sha512CompressState)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec)
+    (hDec : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
     (hNoOom : ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i → ¬ CliReachesOOMPlaced mpl mmpl elf W i)
+    (hNoStuck : ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i →
+      ¬ CliReachesSampleNttStuckPlaced mpl mmpl elf W i)
     (X : UnreachedPqxdhPrimitives) :
     CliSpecPqxdh (cliRunPlacedSig mpl mmpl elf W) X ⟨W.C, W.Q⟩ ∧
     CliSpecPqxdhNoMatch (cliRunPlacedSig mpl mmpl elf W) X ⟨W.C, W.Q⟩ := by
-  obtain ⟨hOr5, hOrNm⟩ := hElf.2 W X
-  exact ⟨cliSpecPqxdh_of_orExcusedAbort hOr5 hNoOom,
-    cliSpecPqxdhNoMatch_of_orExcusedAbort hOrNm hNoOom⟩
+  obtain ⟨hOr5, hOrNm⟩ := hElf.2 W hF hE hD hX hPub hF512 hEnc hDec hK X
+  have hNoExc : ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i →
+      ¬ (CliReachesOOMPlaced mpl mmpl elf W i ∨ CliReachesSampleNttStuckPlaced mpl mmpl elf W i) :=
+    fun i hi h => h.elim (hNoOom i hi) (hNoStuck i hi)
+  exact ⟨cliSpecPqxdh_of_orExcusedAbort hOr5 hNoExc,
+    cliSpecPqxdhNoMatch_of_orExcusedAbort hOrNm hNoExc⟩
 
-/-- Derive `CliPqxdhElfCorrectStrictPlaced` from `CliPqxdhElfCorrectPlaced` and
-`¬ CliReachesOOMPlaced`. -/
+theorem cliPqxdhElfCorrectStrictPlacedWith_of_upToAllocFailure
+    {F : ShaState → List (BitVec 8) → ShaState}
+    {mpl mmpl : Obj.MultiPlacement} {elf : ElfImage}
+    (hElf : CliPqxdhElfCorrectPlacedWith F mpl mmpl elf)
+    (hNoOom : ∀ (W : CliHooks),
+      W.C.F = F →
+      W.C.E = CryptoGames.AES256.aes256Enc →
+      W.C.D = CryptoGames.AES256.aes256Dec →
+      W.C.X = CryptoGames.RFC7748.x25519Ref →
+      W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+      W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+      W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+      W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+      W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+      ∀ (i : Inputs), CliPqxdhInputs ⟨W.C, W.Q⟩ i → ¬ CliReachesOOMPlaced mpl mmpl elf W i)
+    (hNoStuck : ∀ (W : CliHooks),
+      W.C.F = F →
+      W.C.E = CryptoGames.AES256.aes256Enc →
+      W.C.D = CryptoGames.AES256.aes256Dec →
+      W.C.X = CryptoGames.RFC7748.x25519Ref →
+      W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+      W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+      W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+      W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+      W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+      ∀ (i : Inputs), CliPqxdhInputs ⟨W.C, W.Q⟩ i →
+        ¬ CliReachesSampleNttStuckPlaced mpl mmpl elf W i) :
+    CliPqxdhElfCorrectStrictPlacedWith F mpl mmpl elf :=
+  ⟨hElf.1, fun W hF hE hD hX hPub hF512 hEnc hDec hK X =>
+    cliSpecPqxdh_and_noMatch_of_elfCorrectPlacedWith
+      hElf hF hE hD hX hPub hF512 hEnc hDec hK
+      (hNoOom W hF hE hD hX hPub hF512 hEnc hDec hK)
+      (hNoStuck W hF hE hD hX hPub hF512 hEnc hDec hK) X⟩
+
+/-- Derive `CliPqxdhElfCorrectStrictPlacedExists` from `CliPqxdhElfCorrectPlaced`,
+`¬ CliReachesOOMPlaced`, and `¬ CliReachesSampleNttStuckPlaced`. -/
 theorem cliPqxdhElfCorrectStrictPlaced_of_upToAllocFailure
     {mpl mmpl : Obj.MultiPlacement} {elf : ElfImage}
     (hElf : CliPqxdhElfCorrectPlaced mpl mmpl elf)
-    (hNoOom : ∀ (W : CliHooks) (i : Inputs),
-      CliPqxdhInputs ⟨W.C, W.Q⟩ i → ¬ CliReachesOOMPlaced mpl mmpl elf W i) :
-    CliPqxdhElfCorrectStrictPlaced mpl mmpl elf :=
-  ⟨hElf.1, fun W X => cliSpecPqxdh_and_noMatch_of_elfCorrectPlaced hElf (hNoOom W) X⟩
+    (hNoOom : ∀ (W : CliHooks),
+      W.C.E = CryptoGames.AES256.aes256Enc →
+      W.C.D = CryptoGames.AES256.aes256Dec →
+      W.C.X = CryptoGames.RFC7748.x25519Ref →
+      W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+      W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+      W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+      W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+      W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+      ∀ (i : Inputs), CliPqxdhInputs ⟨W.C, W.Q⟩ i → ¬ CliReachesOOMPlaced mpl mmpl elf W i)
+    (hNoStuck : ∀ (W : CliHooks),
+      W.C.E = CryptoGames.AES256.aes256Enc →
+      W.C.D = CryptoGames.AES256.aes256Dec →
+      W.C.X = CryptoGames.RFC7748.x25519Ref →
+      W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+      W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+      W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+      W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+      W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+      ∀ (i : Inputs), CliPqxdhInputs ⟨W.C, W.Q⟩ i →
+        ¬ CliReachesSampleNttStuckPlaced mpl mmpl elf W i) :
+    CliPqxdhElfCorrectStrictPlacedExists mpl mmpl elf :=
+  ⟨hElf.1, fun X =>
+    ⟨cliSpecPqxdh_of_orExcusedAbort (hElf.2 X).1 (fun i hi h =>
+        h.elim (hNoOom ⟨realCrypto, realPqxdhPrims⟩ rfl rfl rfl rfl rfl rfl rfl rfl i hi)
+          (hNoStuck ⟨realCrypto, realPqxdhPrims⟩ rfl rfl rfl rfl rfl rfl rfl rfl i hi)),
+     cliSpecPqxdhNoMatch_of_orExcusedAbort (hElf.2 X).2 (fun i hi h =>
+        h.elim (hNoOom ⟨realCrypto, realPqxdhPrims⟩ rfl rfl rfl rfl rfl rfl rfl rfl i hi)
+          (hNoStuck ⟨realCrypto, realPqxdhPrims⟩ rfl rfl rfl rfl rfl rfl rfl rfl i hi))⟩⟩
 
 theorem cliPqxdhBinaryCorrectStrictPlacedAt_of_upToAllocFailure
     {mpl mmpl : Obj.MultiPlacement} {bytes : List (BitVec 8)}
@@ -213,15 +390,39 @@ theorem cliPqxdhBinaryCorrectStrictPlacedAt_of_upToAllocFailure
     (hNoOom : ∀ (elf : ElfImage) (W : CliHooks),
       ElfImage.parse bytes = .ok elf →
       CliElfCodeMatchesPlaced mpl mmpl elf →
-      ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i → ¬ CliReachesOOMPlaced mpl mmpl elf W i) :
-    CliPqxdhBinaryCorrectStrictPlacedAt mpl mmpl bytes := by
+      W.C.E = CryptoGames.AES256.aes256Enc →
+      W.C.D = CryptoGames.AES256.aes256Dec →
+      W.C.X = CryptoGames.RFC7748.x25519Ref →
+      W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+      W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+      W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+      W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+      W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+      ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i → ¬ CliReachesOOMPlaced mpl mmpl elf W i)
+    (hNoStuck : ∀ (elf : ElfImage) (W : CliHooks),
+      ElfImage.parse bytes = .ok elf →
+      CliElfCodeMatchesPlaced mpl mmpl elf →
+      W.C.E = CryptoGames.AES256.aes256Enc →
+      W.C.D = CryptoGames.AES256.aes256Dec →
+      W.C.X = CryptoGames.RFC7748.x25519Ref →
+      W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+      W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+      W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+      W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+      W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+      ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i →
+        ¬ CliReachesSampleNttStuckPlaced mpl mmpl elf W i) :
+    CliPqxdhBinaryCorrectStrictPlacedAtExists mpl mmpl bytes := by
   obtain ⟨elf, hparse, hElf⟩ := hBin
   exact ⟨elf, hparse,
     cliPqxdhElfCorrectStrictPlaced_of_upToAllocFailure hElf
-      (fun W => hNoOom elf W hparse hElf.1)⟩
+      (fun W hE hD hX hPub hF512 hEnc hDec hK =>
+        hNoOom elf W hparse hElf.1 hE hD hX hPub hF512 hEnc hDec hK)
+      (fun W hE hD hX hPub hF512 hEnc hDec hK =>
+        hNoStuck elf W hparse hElf.1 hE hD hX hPub hF512 hEnc hDec hK)⟩
 
-/-- Derive `CliPqxdhBinaryCorrectStrictPlaced` from `CliPqxdhBinaryCorrectPlaced` and
-`¬ CliReachesOOMPlaced` across all linked placements. -/
+/-- Derive `CliPqxdhBinaryCorrectStrictPlacedExists` from `CliPqxdhBinaryCorrectPlaced`,
+`¬ CliReachesOOMPlaced`, and `¬ CliReachesSampleNttStuckPlaced` across all linked placements. -/
 theorem cliPqxdhBinaryCorrectStrictPlaced_of_upToAllocFailure
     {bytes : List (BitVec 8)}
     (hBin : CliPqxdhBinaryCorrectPlaced bytes)
@@ -230,11 +431,37 @@ theorem cliPqxdhBinaryCorrectStrictPlaced_of_upToAllocFailure
       VerifiedLibraries.mallocngLib.LinkedAt bytes mmpl →
       ElfImage.parse bytes = .ok elf →
       CliElfCodeMatchesPlaced mpl mmpl elf →
-      ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i → ¬ CliReachesOOMPlaced mpl mmpl elf W i) :
-    CliPqxdhBinaryCorrectStrictPlaced bytes :=
+      W.C.E = CryptoGames.AES256.aes256Enc →
+      W.C.D = CryptoGames.AES256.aes256Dec →
+      W.C.X = CryptoGames.RFC7748.x25519Ref →
+      W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+      W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+      W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+      W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+      W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+      ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i → ¬ CliReachesOOMPlaced mpl mmpl elf W i)
+    (hNoStuck : ∀ (mpl mmpl : Obj.MultiPlacement) (elf : ElfImage) (W : CliHooks),
+      libsignalSessionLib.LinkedAt bytes mpl →
+      VerifiedLibraries.mallocngLib.LinkedAt bytes mmpl →
+      ElfImage.parse bytes = .ok elf →
+      CliElfCodeMatchesPlaced mpl mmpl elf →
+      W.C.E = CryptoGames.AES256.aes256Enc →
+      W.C.D = CryptoGames.AES256.aes256Dec →
+      W.C.X = CryptoGames.RFC7748.x25519Ref →
+      W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+      W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+      W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+      W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+      W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+      ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i →
+        ¬ CliReachesSampleNttStuckPlaced mpl mmpl elf W i) :
+    CliPqxdhBinaryCorrectStrictPlacedExists bytes :=
   fun mpl mmpl hLink hMLink =>
     cliPqxdhBinaryCorrectStrictPlacedAt_of_upToAllocFailure (hBin mpl mmpl hLink hMLink)
-      (fun elf W hparse hCode => hNoOom mpl mmpl elf W hLink hMLink hparse hCode)
+      (fun elf W hparse hCode hE hD hX hPub hF512 hEnc hDec hK =>
+        hNoOom mpl mmpl elf W hLink hMLink hparse hCode hE hD hX hPub hF512 hEnc hDec hK)
+      (fun elf W hparse hCode hE hD hX hPub hF512 hEnc hDec hK =>
+        hNoStuck mpl mmpl elf W hLink hMLink hparse hCode hE hD hX hPub hF512 hEnc hDec hK)
 
 /-! ## Converse weakening -/
 
@@ -259,13 +486,45 @@ theorem cliSpecPqxdhNoMatchOrExcusedAbort_of_strict
   fun st hst x g hsess m rc hm hnm =>
     Or.inl (exists_some_ite_eq_inv (h st hst x g hsess m rc hm hnm))
 
+theorem cliPqxdhElfCorrectPlacedWith_of_strictWith
+    {F : ShaState → List (BitVec 8) → ShaState}
+    {mpl mmpl : Obj.MultiPlacement} {elf : ElfImage}
+    (h : CliPqxdhElfCorrectStrictPlacedWith F mpl mmpl elf) :
+    CliPqxdhElfCorrectPlacedWith F mpl mmpl elf :=
+  ⟨h.1, fun W hF hE hD hX hPub hF512 hEnc hDec hK X =>
+    ⟨cliSpecPqxdhOrExcusedAbort_of_strict (h.2 W hF hE hD hX hPub hF512 hEnc hDec hK X).1,
+     cliSpecPqxdhNoMatchOrExcusedAbort_of_strict (h.2 W hF hE hD hX hPub hF512 hEnc hDec hK X).2⟩⟩
+
+theorem cliPqxdhElfCorrectPlaced_of_strictAes
+    {mpl mmpl : Obj.MultiPlacement} {elf : ElfImage}
+    (h : CliPqxdhElfCorrectStrictPlacedAes mpl mmpl elf) :
+    CliPqxdhElfCorrectPlaced mpl mmpl elf :=
+  ⟨h.1, fun X =>
+    ⟨cliSpecPqxdhOrExcusedAbort_of_strict
+      (h.2 ⟨realCrypto, realPqxdhPrims⟩ rfl rfl rfl rfl rfl rfl rfl rfl X).1,
+     cliSpecPqxdhNoMatchOrExcusedAbort_of_strict
+      (h.2 ⟨realCrypto, realPqxdhPrims⟩ rfl rfl rfl rfl rfl rfl rfl rfl X).2⟩⟩
+
+theorem cliPqxdhBinaryCorrectPlacedAt_of_strictAes
+    {mpl mmpl : Obj.MultiPlacement} {bytes : List (BitVec 8)}
+    (h : CliPqxdhBinaryCorrectStrictPlacedAtAes mpl mmpl bytes) :
+    CliPqxdhBinaryCorrectPlacedAt mpl mmpl bytes := by
+  obtain ⟨elf, hparse, hStrict⟩ := h
+  exact ⟨elf, hparse, cliPqxdhElfCorrectPlaced_of_strictAes hStrict⟩
+
+theorem cliPqxdhBinaryCorrectPlaced_of_strictAes
+    {bytes : List (BitVec 8)}
+    (h : CliPqxdhBinaryCorrectStrictPlacedAes bytes) :
+    CliPqxdhBinaryCorrectPlaced bytes :=
+  fun mpl mmpl hLink hMLink => cliPqxdhBinaryCorrectPlacedAt_of_strictAes (h mpl mmpl hLink hMLink)
+
 theorem cliPqxdhElfCorrectPlaced_of_strict
     {mpl mmpl : Obj.MultiPlacement} {elf : ElfImage}
     (h : CliPqxdhElfCorrectStrictPlaced mpl mmpl elf) :
     CliPqxdhElfCorrectPlaced mpl mmpl elf :=
-  ⟨h.1, fun W X =>
-    ⟨cliSpecPqxdhOrExcusedAbort_of_strict (h.2 W X).1,
-     cliSpecPqxdhNoMatchOrExcusedAbort_of_strict (h.2 W X).2⟩⟩
+  ⟨h.1, fun X =>
+    ⟨cliSpecPqxdhOrExcusedAbort_of_strict (h.2 ⟨realCrypto, realPqxdhPrims⟩ X).1,
+     cliSpecPqxdhNoMatchOrExcusedAbort_of_strict (h.2 ⟨realCrypto, realPqxdhPrims⟩ X).2⟩⟩
 
 theorem cliPqxdhBinaryCorrectPlacedAt_of_strict
     {mpl mmpl : Obj.MultiPlacement} {bytes : List (BitVec 8)}

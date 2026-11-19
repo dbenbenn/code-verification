@@ -10,17 +10,18 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldLemmasBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldLemmasBudget -- proof-setup: allow-public-import
 public meta import Lean -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.VarintBridge
 import ProofLib.SepLogic.WP.Apply
+public meta import ProofLib.SepLogic.WP
 
 /-!
 # Budget-Threaded `skip_field` Call Combinators and Fixed-Width / Varint Branches
@@ -120,7 +121,7 @@ elab "wp_pull_pures" : tactic => do
 
 end
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

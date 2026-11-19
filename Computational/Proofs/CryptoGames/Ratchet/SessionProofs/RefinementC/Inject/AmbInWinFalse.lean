@@ -22,7 +22,7 @@ import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11Aux
 Proves `closeByStateC_inject_newChain_amb_inWin_false_find_none` for `closeByStateC_inject_step` when an ambiguous new-chain injection occurs outside `inReceiveOnlyEpoch` and is not found after resolving.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

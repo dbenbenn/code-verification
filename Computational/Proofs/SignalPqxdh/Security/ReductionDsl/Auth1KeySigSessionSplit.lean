@@ -9,9 +9,28 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhSessionSplit
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigStepBounds
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhSessionSplit -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigStepBounds
 import Computational.Proofs.SignalPqxdh.Security.Auth1KeySigSigBound
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySig -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuth1KeySig -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyPre
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhBounds
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigTotals
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhSessionSplit
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKemProofs
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
 
 /-!
 # Session-Split Primitive and Bilinear DDH Query Bounds for `sigAuth1KeyProg`
@@ -22,7 +41,7 @@ non-session queries incur at most `32` primitive queries, yielding `gdhPrimQuery
 `sigReductionAuth1Key`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +56,7 @@ section Branches
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
 
 /-- `a1sPreC` with the two `send*` forgery-check arms replaced by `.inr ()` (delegate). -/
-def a1sPreNSC (_s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def a1sPreNSC (_s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     CS Δ (.sum a1sRS .unit) :=
   caseSumV (v q) (fun _ => .ret (.inr .litUnit)) fun q =>
   caseSumV (v q) (fun _ => .ret (.inr .litUnit)) fun q =>
@@ -47,13 +66,13 @@ def a1sPreNSC (_s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ
   caseSumV (v q) (fun _ => .ret (.inr .litUnit)) fun _ =>
   .ret (.inr .litUnit)
 
-def a1sDelegateNSC (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def a1sDelegateNSC (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     CS Δ a1sRS :=
   letV (a1sG (v s)) fun g =>
   bindV (a1gStepNSC S K g q) fun r =>
   .ret (.pair (.fst (v r)) (a1sMk (.snd (v r)) (a1sTp (v s)) (a1sTpk (v s)) (a1sFg (v s))))
 
-def a1sStepNSC (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def a1sStepNSC (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     CS Δ a1sRS :=
   .iteC (isSomeE (a1sFg (v s))) (.ret (.pair aNone (v s))) <|
   bindV (a1sPreNSC s q) fun pre =>
@@ -63,7 +82,7 @@ def a1sStepNSC (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ
 end Branches
 
 /-- `a1sHandleDsl` with the session arms replaced by no-ops. -/
-def a1sHandleNS (S : Setup) (K : Nat) : CS [a1sStTy, authQueryTy] a1sRS :=
+@[expose] def a1sHandleNS (S : Setup) (K : Nat) : CS [a1sStTy, authQueryTy] a1sRS :=
   a1sStepNSC S K (.vz : Var [a1sStTy, authQueryTy] a1sStTy)
     (.vs .vz : Var [a1sStTy, authQueryTy] authQueryTy)
 

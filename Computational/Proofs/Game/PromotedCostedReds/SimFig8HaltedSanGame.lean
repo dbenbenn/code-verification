@@ -18,8 +18,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.GhostSt
 # Sanitized-to-Deduplicated Coupling for Tracker-Halted Figure 8
 
 Defines the generic tracker-halted oracle wrapper `wrapHaltedOracle` and proves `SM.run`
-equivalence between `simFig8ClampSanHalted` and `simFig8OracleTGDedupHalted`.
--/
+equivalence between `simFig8ClampSanHalted` and `simFig8OracleTGDedupHalted`.-/
 
 public section
 
@@ -27,27 +26,25 @@ set_option autoImplicit false
 
 namespace Computational.Proofs.Game.PromotedCostedReds.SimFig8HaltedSanGame
 
-noncomputable section
-
 open OracleSpec OracleComp
 open _root_.ReductionDsl (isGameQuery)
-open CryptoGames (Party)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.CBC (Plain)
-open CryptoGames.Ratchet.LibsignalInst
+open _root_.CryptoGames (Party)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.Ratchet.LibsignalInst
   (LibsignalMsgPublicPart lFS lFig8 ratchetKeyAdmissible)
-open CryptoGames.Ratchet.LibsignalSim
+open _root_.CryptoGames.Ratchet.LibsignalSim
   (Fig8St Fig8C SimFig8C Fig8Comp GhostChain SimState pushChain inReceiveOnlyEpoch
    mkPub toWire simParseRecvC onAcceptPure onAnswerPure evalCKClamp
    semFwdAnswerHook semResyncHook semFwdEvictHook semFwdHook semRecvHook
    semHandleHookDedup makesAtMostQueries_iff_isGameQuery)
-open CryptoGames.Ratchet.LibsignalSimC (Kept LibsignalToModularSchemeSimState idHook initSimC)
-open CryptoGames.SM
+open _root_.CryptoGames.Ratchet.LibsignalSimC (Kept LibsignalToModularSchemeSimState idHook initSimC)
+open _root_.CryptoGames.SM
   (GameState RecvResult Record partyEnc noBobSendInEpoch0 noAliceCorrWhileAliceBelowEpoch10)
-open CryptoGames.LibsignalSession (Params PublicKey IdentityKey GhostState)
+open _root_.CryptoGames.LibsignalSession (Params PublicKey IdentityKey GhostState)
 open CryptoVerification.LibsignalSpqrV1 (MlKem)
 open CryptoVerification.E2E (Bytes)
-open CryptoGames.LibsignalSM.Proofs.Refinement
+open _root_.CryptoGames.LibsignalSM.Proofs.Refinement
   (KemFailTrackState initKemFailTrack stepKemFailSend stepKemFailDeliver)
 open Computational.Proofs.Game.PromotedCostedReds.SimFig8Halted
   (simSendCTrackHalted semSendHookHalted simFig8OracleSanHalted simFig8ClampSanHalted)
@@ -1176,7 +1173,5 @@ theorem sm_run_simFig8ClampSanHalted_eq_tgDedup {PQ Pt : Type} [DecidableEq Pt] 
       lam (some Bsk) cfg t sC tr gs hInv
 
 end Hop1SanToTGDedup
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimFig8HaltedSanGame

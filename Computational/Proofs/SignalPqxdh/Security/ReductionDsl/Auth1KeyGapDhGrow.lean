@@ -9,10 +9,24 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhGrow
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhEvalEq
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhEvalEq
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhGrow -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhEvalEq -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhEvalEq
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEvalEq
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
 
 /-!
 # One-Step Growth of the One-Key `Auth` Gap-DH Simulator
@@ -21,7 +35,7 @@ public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
 most one entry, preserving the length and signing-budget invariants `AgInv` and `AgInv2`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -170,7 +184,7 @@ private theorem fgAuth1KeyStepHalt_sigBudget_step {S : Setup} (useDh1 : Bool) (t
       all_goals omega
 
 /-- Length and signing-budget invariant for the tuple-keyed `a1g2` simulator. -/
-def AgInv2 {S : Setup} (K k : Nat) (st : FgAuth1KeySimState S) : Prop :=
+@[expose] def AgInv2 {S : Setup} (K k : Nat) (st : FgAuth1KeySimState S) : Prop :=
   AgInv K k st.sim ∧
   k + st.sim.respRecs.length ≤ K ∧
   st.sigBudget ≤ min S.N_spk_tot S.N_recv ∧

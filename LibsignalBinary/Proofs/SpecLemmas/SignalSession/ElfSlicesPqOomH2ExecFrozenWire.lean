@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.Block617TransferG
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.Block617TransferG
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMemsetEntryGuard
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KHooks
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMemsetEntryGuard
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KHooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst -- proof-setup: allow-public-import
 import LibsignalBinary.Specifications.LibsignalE2E.HooksMallocng
 import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
 import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.NarrowF3R1Witness
@@ -21,6 +21,8 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.PureExtraGhosts
 import ProofLib.Hoare.MultiCodeROHook
 import ProofLib.MallocngBridge
 meta import ProofLib.ProgramReflection
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedExtPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl3
 
 /-!
 # Post-Hoc `ExecFrozen` Upgrade and `Block617TransferFixedHyp` Wiring
@@ -39,7 +41,7 @@ over `hole2_ghFixed` and `h2k_ghFixedK`:
    reductions for `Block617TransferFixedHyp`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -89,8 +91,10 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay
    GhostSymActiveWithExtra_iff_named_or_extra GhostSymActive_iff_named_or_extra
    cliGhostExternsWithExtra_eq_some_of_active cliGhostExternsWithExtra_some_cases)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs (ExtraGhostTable)
+open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraRowSpecs.SpqrOnceCallRowSpec
+  (spqrOnceCallFallback spqrOnceCallFallback_perm)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.PureExtraGhosts
-  (pureExtraGhosts pureExtraGhosts_preserves_execFrozen)
+  (pureExtraGhostsWithOnce pureExtraGhostsWithOnce_preserves_execFrozen)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhost (keepMemcpyBlk20)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyLrTrapRet
   (Blk20TrapHook blk20_lr_trap_after_hook_ret)
@@ -155,19 +159,19 @@ theorem h2ef_stepsAll_mono {Q1 Q2 : Program → State → Prop} {P : Program} {s
   | step hq h1 _ ih => exact h2ef_StepsAll.step (himp _ hq) h1 ih
 
 /-- Per-PC / per-hook return-address predicate (`keepAt s.pc (s.readReg64 .lr) = false`). -/
-def h2ef_HookEntryLrAt (keepAt : BitVec 64 → BitVec 64 → Bool) (P : Program) (s : State) : Prop :=
+@[expose] def h2ef_HookEntryLrAt (keepAt : BitVec 64 → BitVec 64 → Bool) (P : Program) (s : State) : Prop :=
   P.externAt? s.pc ≠ none → keepAt s.pc (s.readReg64 .lr) = false
 
 /-- Per-PC / per-hook CFI + `ExecFrozen` predicate on intermediate states. -/
-def h2ef_HookEntryCfiAt (keepAt : BitVec 64 → BitVec 64 → Bool) (P : Program) (s : State) : Prop :=
+@[expose] def h2ef_HookEntryCfiAt (keepAt : BitVec 64 → BitVec 64 → Bool) (P : Program) (s : State) : Prop :=
   P.externAt? s.pc ≠ none → keepAt s.pc (s.readReg64 .lr) = false ∧ ExecFrozen s.mem
 
 /-- Uniform-`keep` hook-entry return-address predicate (`lr` outside `keep`). -/
-def h2ef_HookEntryLr (keep : BitVec 64 → Bool) (P : Program) (s : State) : Prop :=
+@[expose] def h2ef_HookEntryLr (keep : BitVec 64 → Bool) (P : Program) (s : State) : Prop :=
   P.externAt? s.pc ≠ none → keep (s.readReg64 .lr) = false
 
 /-- Uniform-`keep` hook-entry CFI + `ExecFrozen` predicate on intermediate states. -/
-def h2ef_HookEntryCfi (keep : BitVec 64 → Bool) (P : Program) (s : State) : Prop :=
+@[expose] def h2ef_HookEntryCfi (keep : BitVec 64 → Bool) (P : Program) (s : State) : Prop :=
   P.externAt? s.pc ≠ none → keep (s.readReg64 .lr) = false ∧ ExecFrozen s.mem
 
 private theorem evalInst_eq_execInst_of_not_isSvc0 (P : Program) {inst : Instr}
@@ -361,7 +365,7 @@ theorem h2ef_steps_running_on_stepsAll_of_not_running
 /-! ## Per-Hook `keepSet` and Block-`617` `stringClone` Exclusion -/
 
 /-- Per-symbol `keepSet`: `hole2_keep` on `lsStringCloneSym` (Block `623`) and `hole2_keepSub`
-(`[0x469000, 0x46f000)`) on the six allocator / I/O hooks. -/
+(`[0x474000, 0x4ca000)`) on the six allocator / I/O hooks. -/
 def h2ef_keepForSym (sym : String) : BitVec 64 → Bool :=
   if sym == lsStringCloneSym then hole2_keep else hole2_keepSub
 
@@ -372,13 +376,14 @@ def h2ef_keepForPc (mpl : MultiPlacement) (pc lr : BitVec 64) : Bool :=
 
 theorem h2ef_keepSub_false_of_keep_false {a : BitVec 64}
     (h : hole2_keep a = false) : hole2_keepSub a = false := by
-  unfold hole2_keep hole2_keepSub at *
-  cases hk : decide (0x469000 ≤ a.toNat ∧ a.toNat < 0x46f000)
-  · rfl
-  · have htrue : decide ((0x4686a0 ≤ a.toNat ∧ a.toNat < 0x468724) ∨
-        (0x469000 ≤ a.toNat ∧ a.toNat < 0x46f000)) = true :=
-      decide_eq_true (Or.inr (of_decide_eq_true hk))
-    rw [htrue] at h
+  cases hks : hole2_keepSub a with
+  | false => rfl
+  | true =>
+    unfold hole2_keepSub at hks
+    have hk : hole2_keep a = true := by
+      unfold hole2_keep
+      exact decide_eq_true (Or.inr (of_decide_eq_true hks))
+    rw [hk] at h
     cases h
 
 theorem h2ef_keepForPc_false_of_keep_false (mpl : MultiPlacement) (pc lr : BitVec 64)
@@ -622,11 +627,7 @@ private theorem execFrozen_keepFsTrace {fb : State → State} {s0 : State}
     (h : ExecFrozen (fb s0).mem) : ExecFrozen (keepFsTrace fb s0).mem := h
 
 private theorem execFrozen_keepFilesTrace {fb : State → State} {s0 : State}
-    (h : ExecFrozen (fb s0).mem) : ExecFrozen (keepFilesTrace fb s0).mem := by
-  classical
-  unfold keepFilesTrace
-  dsimp only
-  split <;> exact h
+    (h : ExecFrozen (fb s0).mem) : ExecFrozen (keepFilesTrace fb s0).mem := h
 
 private theorem execFrozen_f3AllocFallback (mmpl : Obj.MultiPlacement) (zeroed : Bool)
     (s0 : State) (hfr0 : ExecFrozen s0.mem) :
@@ -804,8 +805,9 @@ theorem h2ef_hole2_ghFixed_preserves_execFrozen [LibsignalPlacement]
     · dsimp only [hole2_ghFixed, f3CliGhostHooksFixed] at hmc
       injection hmc with hfeq; subst hfeq
       exact f3EmptyMemcpyGhostHookNarrow_execFrozen mmpl u hfr
-  · change pureExtraGhosts.lookup sym = some f at hLook
-    exact pureExtraGhosts_preserves_execFrozen hLook u hfr
+  · change (pureExtraGhostsWithOnce spqrOnceCallFallback).lookup sym = some f at hLook
+    exact pureExtraGhostsWithOnce_preserves_execFrozen
+      (fun u' hfr' => ExecFrozen.of_perm_eq hfr' (spqrOnceCallFallback_perm u')) hLook u hfr
 
 private theorem findSome?_table_exists (tbl : List (String × Nat))
     {ext : String → Option (State → State)} (off : Nat) {f : State → State}
@@ -1756,7 +1758,7 @@ theorem h2ef_block617TransferFixed_of_lrCalls_keepSub [LibsignalPlacement]
 /-! ## Code-Only `InvS` Wiring at `h2k_ghFixedK` -/
 
 /-- Per-call `lr` + `readFile`-`FdsGe3Closed` predicate on intermediate states. -/
-def h2ef_HookEntryLrReadFds (keep : BitVec 64 → Bool) (readPc : BitVec 64)
+@[expose] def h2ef_HookEntryLrReadFds (keep : BitVec 64 → Bool) (readPc : BitVec 64)
     (P : Program) (s : State) : Prop :=
   (P.externAt? s.pc ≠ none → keep (s.readReg64 .lr) = false) ∧
   (P.externAt? s.pc ≠ none → s.pc = readPc → FdsGe3Closed s.fs)

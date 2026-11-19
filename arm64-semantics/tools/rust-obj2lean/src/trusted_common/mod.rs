@@ -811,9 +811,8 @@ pub struct Extraction {
     pub provenance: Vec<(String, String)>,
 }
 
-/// Naming and path metadata for generated Lean object modules (`<ObjName>PlacedObj.lean` and the
-/// `[OUTSIDE TCB]` legacy `<ObjName>Obj.lean` proof-cache module with its `.code.bin`/`.data.bin`
-/// sidecars).
+/// Naming and path metadata for generated Lean object modules (`<ObjName>PlacedObj.lean` and
+/// `<ObjName>ExtractedObj.lean`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ObjModuleMeta {
     pub obj_name: String,
@@ -833,7 +832,7 @@ impl ObjModuleMeta {
         }
     }
 
-    /// `<obj_name>Image : Obj.LinkedImage`, the linked image of all objects.
+    /// `<obj_name>Image` identifier derived from `obj_name`.
     pub fn image_def_name(&self) -> String {
         format!("{}Image", self.obj_name)
     }

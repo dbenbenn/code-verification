@@ -12,8 +12,8 @@ module
 import all Init.Data.String.Defs
 import all Init.Data.String.Basic
 import all Init.Data.List.SplitOn.Basic
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel
-public import LibsignalBinary.Proofs.SpecLemmas.FsFold
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.FsFold
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Process
 
 /-!
@@ -25,7 +25,7 @@ serialized files in `bundle/` (`IdentityKey::decode`, `PublicKey::deserialize`,
 one-time pre-key) to `bundleVE b`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,7 +40,7 @@ open CryptoVerification.SignalSession.Cli.MainHops
 open CryptoVerification.SignalSession.Cli.RunCompose
 
 /-- Decoded `BundleV` representation of a typed `PreKeyBundleFields` value for peer device `1`. -/
-def bundleVE (b : PreKeyBundleFields) : BundleV :=
+@[expose] def bundleVE (b : PreKeyBundleFields) : BundleV :=
   { idKey := ⟨⟨b.idPub⟩⟩, regId := b.regId, device := 1#8, spkId := b.spkId, spk := ⟨b.spkPub⟩,
     spkSig := b.spkSig.toList, kpkId := b.kpkId, kpk := b.kpkPub.toList,
     kpkSig := b.kpkSig.toList, opk := b.opk.map fun (i, k) => (i, ⟨k⟩) }
@@ -138,16 +138,6 @@ private theorem kemPkDeserialize_kyberKey (k : List.Vector (BitVec 8) 1568) :
   · exact absurd rfl h1
   · exact absurd k.toList_length h2
   · rfl
-
-private theorem append_head_ne_b {p : String} (s : String)
-    (hp : p.toList ≠ [] ∧ p.toList.head? ≠ some 'b') :
-    (p ++ s).toList.head? ≠ some 'b' := by
-  rw [String.toList_append]
-  cases h : p.toList with
-  | nil => exact absurd h hp.1
-  | cons _ _ =>
-    rw [h] at hp
-    exact hp.2
 
 private theorem ofList_bundle :
     String.ofList ['b', 'u', 'n', 'd', 'l', 'e'] = "bundle" := by

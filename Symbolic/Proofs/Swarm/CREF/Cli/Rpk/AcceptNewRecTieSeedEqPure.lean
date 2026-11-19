@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 import DY.Actions.ProtocolEvent
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TROpen
 import Symbolic.Proofs.Swarm.CREF.TRView
@@ -28,7 +28,7 @@ a cached skipped seed and a receive-chain seed with distinct concretized bytes, 
 hypothesis `A2bCrossSeedExcl` reducing `A2bCrossSeedMacGuess` to `RecvCollision`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -58,7 +58,7 @@ open Symbolic.Swarm.CREF Symbolic.Swarm.CREF.CliPure Symbolic.Swarm.CREF.CliPure
 open Symbolic.Swarm.CREF.TR.Pure
 
 /-- Cached `SkippedKeyStored` seeds on `tr` matching `msg.ratchetKey` and `msg.counter`. -/
-def skippedSeedsFor (tr : ExecTrace) (msg : TRSignalMsg) : List DY.Bytes :=
+@[expose] def skippedSeedsFor (tr : ExecTrace) (msg : TRSignalMsg) : List DY.Bytes :=
   (List.range tr.length).filterMap fun i =>
     match tr.getEventAt TREvent i with
     | some (.SkippedKeyStored _ pk n seed _ _) =>
@@ -67,7 +67,7 @@ def skippedSeedsFor (tr : ExecTrace) (msg : TRSignalMsg) : List DY.Bytes :=
 
 /-- Predicate asserting that `t` carries a valid MAC under a cached skipped seed `seed` whose
 concretized bytes also match a MAC computed from a distinct receive-chain seed `seed'`. -/
-def A2bCrossSeedMacGuess (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def A2bCrossSeedMacGuess (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (ms : List Move) (t : DY.Bytes) : Prop :=
   let tr := runTraceMoves r ms
   ∃ msg, parseTrSignalMsg t = some msg ∧ msg.version = messageVersion ∧
@@ -84,7 +84,7 @@ def A2bCrossSeedMacGuess (interpretation : ExternInterpretation) (r : ProtocolSe
         gamma interpretation S g msg.mac
 
 /-- Hypothesis stating that every `A2bCrossSeedMacGuess` instance triggers `RecvCollision`. -/
-def A2bCrossSeedExcl (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def A2bCrossSeedExcl (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ms : List Move) (acc : List MachineEvent) : Prop :=
   ∀ t, A2bCrossSeedMacGuess interpretation r₀ S g ms t → RecvCollision interpretation r₀ S g ms t
 

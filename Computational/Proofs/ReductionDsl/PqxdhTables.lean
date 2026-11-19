@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.CostedTablesCompat
-public import Computational.Proofs.ReductionDsl.Size
+public import Computational.Proofs.SignalPqxdh.CostedTablesCompat -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.Size -- proof-setup: allow-public-import
 import Mathlib.Algebra.Order.Ring.Star
 
 /-!
@@ -21,7 +21,7 @@ and generic `GRedBlockBounded` / `GRed2BlockBounded` output bounds for the proof
 in `CostedTablesCompat.lean`.
 -/
 
-@[expose] public section
+public section
 
 namespace SignalPqxdh.LegacyCosted
 
@@ -256,7 +256,7 @@ theorem pqSamplers_sizeHonest : SampSizeHonest pqSamplers := by
 @[simp] theorem bundleOfV_bundleV (b : PreKeyBundleInput) : bundleOfV (bundleV b) = b := rfl
 
 /-- Inverse of `keyIndRdec`. -/
-def keyIndRenc : KeyIndResponse → keyIndRT.denote
+@[expose] def keyIndRenc : KeyIndResponse → keyIndRT.denote
   | .noneResp => .inl ()
   | .initPrinResp ik s => .inr (.inl (ik, s))
   | .pkResp pk => .inr (.inr (.inl pk))
@@ -279,7 +279,7 @@ def keyIndRenc : KeyIndResponse → keyIndRT.denote
   cases r <;> rfl
 
 /-- Inverse of `authRdec`. -/
-def authRenc : AuthResponse → authRT.denote
+@[expose] def authRenc : AuthResponse → authRT.denote
   | .noneResp => .inl ()
   | .initPrinResp ik s => .inr (.inl (ik, s))
   | .pkResp pk => .inr (.inr (.inl pk))

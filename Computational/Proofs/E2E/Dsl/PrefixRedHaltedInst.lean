@@ -12,15 +12,63 @@ module
 public import Computational.Proofs.E2E.Dsl.PrefixRedHalted -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.PrefixRedHaltedEval -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.CompositionHaltedWitness -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidCodec -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidCodec
 public import Computational.Proofs.SpecLemmas.Session.KemFailTrackEpochClamp -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.M3Interfaces -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.PqxdhSimTypes -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.M3Interfaces
+import Computational.Proofs.E2E.Dsl.PqxdhSimTypes
 import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Msg
 import Computational.Proofs.E2E.Dsl.ClampsLossless
 import Computational.Proofs.E2E.Dsl.KindRedHaltedEval
 import Computational.Proofs.ReductionDsl.Soundness
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.E2E.ComposedKeyIndHop
+import Computational.Proofs.E2E.ComposedPrefixHelpers
+import Computational.Proofs.E2E.Dsl.DrSessionSimBookkeeping
+import Computational.Proofs.E2E.Dsl.E2EStateRepr
+import Computational.Proofs.E2E.Dsl.FreshnessSim
+import Computational.Proofs.E2E.Dsl.LocalSessionStep
+import Computational.Proofs.E2E.Dsl.LocalSessionStepAux
+import Computational.Proofs.E2E.Dsl.M3Subprograms
+import Computational.Proofs.E2E.Dsl.PqxdhSim
+import Computational.Proofs.E2E.Dsl.PqxdhSimBranches
+import Computational.Proofs.E2E.Dsl.SpqrSimChain
+import Computational.Proofs.E2E.Dsl.SpqrSimHist
+import Computational.Proofs.E2E.Dsl.StartAndExtSm
+import Computational.Proofs.E2E.Dsl.StartAndExtSmAux
+import Computational.Proofs.E2E.TagSync1KeyReal
+import Computational.Proofs.GameHop.Advantage
+import Computational.Proofs.GameHop.GlobalHybrid
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingC
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingD
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhD
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
+import Computational.Proofs.SignalPqxdh.Security.SigHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHopC
+import Mathlib.Data.List.Dedup
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Bool
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Halted Multi-Session Two-Stage Prefix Reduction Instantiation
@@ -98,22 +146,6 @@ structure KemBridgeTrackInvLocal (F : ShaCompress) (_K : MlKem) (qBound : ℕ)
     CryptoVerification.LibsignalSpqrV1.Message.deserialize
       CryptoVerification.LibsignalSpqrV1.spqrPolyApi mc.1.epoch
       (_root_.ReductionDsl.spqrMsgPayloadSuffix mc.1) = .ok mc.1
-
-theorem ValidSimTrackInv.of_iff {τ : Type} {ℓ : ℕ}
-    {T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ}
-    {Inv₁ Inv₂ : ℕ → τ → Prop}
-    (h1 : ValidSimTrackInv T Inv₁)
-    (hiff : ∀ q st, Inv₁ q st ↔ Inv₂ q st) :
-    ValidSimTrackInv T Inv₂ where
-  init q kS := (hiff q _).mp (h1.init q kS)
-  mono hle h := (hiff _ _).mp (h1.mono hle ((hiff _ _).mpr h))
-  onSend := by
-    intro q gs P coins st h
-    have hp := h1.onSend gs P coins ((hiff q st).mpr h)
-    exact ⟨(hiff (q + 1) _).mp hp.1, fun ct => (hiff (q + 1) _).mp (hp.2 ct)⟩
-  onDeliver := by
-    intro q gs Q w res st h
-    exact (hiff q _).mp (h1.onDeliver gs Q w res ((hiff q st).mpr h))
 
 theorem kemBridgeTrackInvLocal_mono {F : ShaCompress} {K : MlKem} {q₁ q₂ : ℕ}
     {st : KemFailSessionTrack F Bytes} (hq : q₁ ≤ q₂)
@@ -573,20 +605,6 @@ theorem prefixRedHalted_gRed2Bounded_of_bounds
       (bhE2ECostBudget S b qStart qDR qInst qep ℓ) C₀ C₁ hk hC₀ hC₁ hSz)
     (prefixRedHalted_stage1Queries subs b qStart qInst qep k)
     (prefixRedHalted_totalQueries_le subs b qStart qInst qep k (b.q_total + qStart + qDR))
-
-theorem prefixRedHalted_gRed2Bounded_of_valid
-    {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ} {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey} {SessH : Type}
-    {subs : HaltedPrefixSubprograms S (Pt := Pt) ℓ P C K decT encT SessH}
-    {T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey SessH}
-    {TrackInv : ℕ → SessH → Prop} {b : SignalPqxdh.QueryBudget} {qStart qDR qInst qep k : ℕ}
-    (hValid : ValidHaltedPrefixSubprograms subs T TrackInv b qStart qInst qep)
-    (hk : k < qStart) (hk_inst : k ≤ min qStart (min b.q_total S.N_send_tot)) :
-    let qTot := b.q_total + qStart + qDR
-    GRed2Bounded (prefixRedHalted subs b qStart qInst qep k)
-      (fun _ => 1) (fun _ => 0) qTot qTot (bhE2ECostBudget S b qStart qDR qInst qep ℓ) false :=
-  prefixRedHalted_gRed2Bounded_of_bounds subs
-    hValid.endpointCost_le hValid.stepCost_le hValid.sizeBound_le hk hk_inst
 
 /-- Per-instance clamped evaluation and budget bounds for a `HaltedPrefixSubprograms` bundle. -/
 structure ValidHaltedPrefixSubprogramsInst

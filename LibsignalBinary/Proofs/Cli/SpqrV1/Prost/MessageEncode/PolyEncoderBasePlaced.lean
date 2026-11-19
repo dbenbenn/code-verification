@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBase
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
 import ProofLib.SepLogic.WPp
@@ -22,7 +22,7 @@ Defines placed contract propositions and proves basic-block step lemmas on CLI B
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -58,39 +58,39 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Placed Contract Propositions for Block `456` -/
 
-def EncodePolyEncoder1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncodePolyEncoder1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_456 (Rust.withPanics ext)) (blkPl_456).base
     (withLsCodeLoaded lsmpl (encodePolyEncoderPinnedSpec A))
 
-def EncodePolyEncoder1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncodePolyEncoder1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_456 (Rust.withPanics ext)) (blkPl_456).base
     (withLsCodeLoaded lsmpl (encodePolyEncoderSpec A))
 
-def EncodePolyEncoder1PinnedPlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncodePolyEncoder1PinnedPlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_456 H) (blkPl_456).base
     (withLsCodeLoaded lsmpl (encodePolyEncoderPinnedSpecX A))
 
-def EncodePolyEncoder1PlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncodePolyEncoder1PlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_456 H) (blkPl_456).base
     (withLsCodeLoaded lsmpl (encodePolyEncoderSpecX A))
 
-def EncodePolyEncoder1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def EncodePolyEncoder1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   EncodePolyEncoder1PinnedPlacedOkExt A (tripleRatchetExterns C ctl abs)
 
-def EncodePolyEncoder1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def EncodePolyEncoder1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   EncodePolyEncoder1PlacedOkExt A (tripleRatchetExterns C ctl abs)
 
-def EncodePolyEncoder1PinnedPlacedOkX [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def EncodePolyEncoder1PinnedPlacedOkX [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   EncodePolyEncoder1PinnedPlacedOkExtX A (Rust.withPanics (tripleRatchetExterns C ctl abs))
 
-def EncodePolyEncoder1PlacedPlacedOkX [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def EncodePolyEncoder1PlacedPlacedOkX [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   EncodePolyEncoder1PlacedOkExtX A (Rust.withPanics (tripleRatchetExterns C ctl abs))
 

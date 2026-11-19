@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewWire
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptBinPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SessionPrimsPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewParams
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieAuxPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewWire -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptBinPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SessionPrimsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewParams -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieAuxPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.RngG.R3ModelInv
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.DecCryptoAPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewDecrypt
@@ -21,7 +21,9 @@ import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewModel
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewSpqrSalt
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewTieCrypto
 import Symbolic.Proofs.Swarm.CREF.Prelude
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieNormPure -- shake: keep
+import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieNormPure -- shake: keep
+import Symbolic.Proofs.Refinement.LemmasPure
+import Symbolic.Proofs.Refinement.X25519Covered
 
 /-!
 # Fresh Pre-Key Receive Acceptance Tie Helpers
@@ -30,7 +32,7 @@ Connects Bob's accepting `pqRecvPrekeyModel` execution to `AcceptRecTie`, `RpkAc
 `AcceptSt0ModelInvs`, and the MAC/AES-CBC cryptographic postconditions of a fresh pre-key decrypt.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 cref_hide_foreign_instances
@@ -148,7 +150,7 @@ theorem bobSaltSeed_keys_of_st0Invs
     (((pf.baseKey.take 33).drop 1).length = 32 ∧
       DY.X25519.leValue (((pf.baseKey.take 33).drop 1).map BitVec.toNat) < DY.X25519.p25519 ∧
       DY.X25519.isLowOrderKey (((pf.baseKey.take 33).drop 1).map BitVec.toNat) = false ∧
-      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree interp ((pf.baseKey.take 33).drop 1)) ∧
+      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree ((pf.baseKey.take 33).drop 1)) ∧
     DY.X25519.isLowOrderKey (pf.inner.senderRatchetKey.bytes.toList.map BitVec.toNat) = false ∧
     (pf.inner.serialized = pf.message ∧ pf.message.length ≥ 8) ∧
     ∃ ct_wire : HwBytes, pf.kyberCiphertext = some (kyberKey ct_wire) ∧ ct_wire.length = 1568 ∧
@@ -398,7 +400,7 @@ theorem acceptSt0ModelInvs_of_initializeRecipientSession
     (hbase : ((p.baseKey.take 33).drop 1).length = 32 ∧
       DY.X25519.leValue (((p.baseKey.take 33).drop 1).map BitVec.toNat) < DY.X25519.p25519 ∧
       DY.X25519.isLowOrderKey (((p.baseKey.take 33).drop 1).map BitVec.toNat) = false ∧
-      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree interp ((p.baseKey.take 33).drop 1))
+      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree ((p.baseKey.take 33).drop 1))
     (hmsg : p.inner.serialized = p.message ∧ p.message.length ≥ 8)
     (htheir : theirId =
       ⟨⟨List.Vector.ofFn (fun i => (pubBytes interp (secretBytes r 0)).getD i.val 0#8)⟩⟩)

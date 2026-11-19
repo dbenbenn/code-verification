@@ -9,26 +9,36 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB1
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
-public import Computational.Proofs.SignalPqxdh.Security.Collisions
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB1 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.Collisions
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 public import VCVio.EvalDist.Monad.Basic
 public import VCVio.OracleComp.EvalDist.Measure
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHop
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopA
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopB1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopB2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_ReductionsAuthHandshake
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
-public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHop
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopA -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopB1 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopB2
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_ReductionsAuthHandshake
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyA
+public import VCVio.EvalDist.EvalDistEq
+public import VCVio.EvalDist.MeasureTVDist.Event
+public import VCVio.EvalDist.Monad.Bool
+public import VCVio.EvalDist.ProbabilityBounds
+public import VCVio.OracleComp.Constructions.SampleableType.Measure
+public import VCVio.OracleComp.EvalDist.AnswerMeasure
+public import VCVio.OracleComp.OracleSpec
+public import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+public import VCVio.ProgramLogic.Relational.SimulateQ.UntilBad
+public import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # One-Key `Auth` KEM Collision and `G2.1 → G3` Hops
@@ -37,7 +47,7 @@ Proves the KEM public-key collision hop and the `G2.1 → G3` transition to `aut
 over `pqxdhAuthImpl1KeyG`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 open scoped ENNReal
 open MeasureTheory
@@ -189,7 +199,7 @@ theorem map_base_fullAuthHybridKoskImpl_g3_1Key (S : Setup) (P : Primitives)
   cases q with
   | inl uq => simp [QueryImpl.liftTarget, StateT.run_monadLift, Prod.map]
   | inr kq => exact map_base_pqxdhAuthHybridKoskImpl_g3_1Key S P hP kq hst
-noncomputable def runAuthKoskG3_1Key (S : Setup) (P : Primitives)
+@[expose] def runAuthKoskG3_1Key (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp (Bool × Bool × AuthHybridState S) := do
   let secb ← $ᵗ Bool; let initSt := AuthHybridState.empty S secb
   let impl :=
@@ -238,7 +248,7 @@ theorem auth_hop_G2_1_exact_G3_le_prob1Key (S : Setup) (P : Primitives)
     (fun (_, _, finalSt) => hasBadKemShCrAuth P finalSt)
     (fun (secb, b', finalSt) => contAuth S P (secb, b', finalSt.base))
 
-def pqxdhAuthHybridKoskUnfrozenImpl1Key (S : Setup) (P : Primitives) :
+@[expose] def pqxdhAuthHybridKoskUnfrozenImpl1Key (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthHybridState S) ProbComp)
   | .sendOPK u i bundle m0 m1 => do
     if bundle.opkB?.isNone then return .noneResp
@@ -274,14 +284,14 @@ theorem pqxdhAuthHybridKoskImpl_g3_eq_freeze1Key (S : Setup) (P : Primitives)
   · simp only [Bool.false_eq_true, ↓reduceIte]
     exact pqxdhAuthHybridKoskImpl_g3_of_hasWonAuth_false1Key S P q h hWon
   · unfold pqxdhAuthHybridKoskImpl1Key; simp [StateT.run_bind, StateT.run_get, pure_bind, hWon]
-noncomputable def runAuthKoskG3Unfrozen1Key (S : Setup) (P : Primitives)
+@[expose] def runAuthKoskG3Unfrozen1Key (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp (Bool × Bool × AuthHybridState S) := do
   let secb ← $ᵗ Bool; let initSt := AuthHybridState.empty S secb
   let impl :=
     (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (AuthHybridState S) ProbComp) +
     pqxdhAuthHybridKoskUnfrozenImpl1Key S P
   let (b', finalSt) ← (simulateQ impl A.run).run initSt; return (secb, b', finalSt)
-def pqxdhAuthHybridShCrImpl1Key (S : Setup) (P : Primitives) :
+@[expose] def pqxdhAuthHybridShCrImpl1Key (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthHybridShCrState S) ProbComp)
   | .genSPK u j => liftShCrBase (pqxdhAuthHybridKoskUnfrozenImpl1Key S P (.genSPK u j))
   | .sendOPK u i bundle m0 m1 =>
@@ -441,7 +451,7 @@ theorem mapShCrBase_fullAuthHybridShCrImpl1Key (S : Setup) (P : Primitives)
   cases q with
   | inl uq => simp [QueryImpl.liftTarget, StateT.run_monadLift, Prod.map]
   | inr kq => exact mapShCrBase_pqxdhAuthHybridShCrImpl1Key S P hP kq hst
-noncomputable def runAuthHybridShCr1Key (S : Setup) (P : Primitives)
+@[expose] def runAuthHybridShCr1Key (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp (Bool × Bool × AuthHybridShCrState S) := do
   let secb ← $ᵗ Bool; let initSt : AuthHybridShCrState S := { base := AuthHybridState.empty S secb }
   let impl :=
@@ -666,31 +676,6 @@ theorem badKemShCrProbAuth_g3_unfrozen_le1Key (S : Setup) (P : Primitives)
   rcases simulateQ_pqxdhAuthHybridShCrImpl_invariant1Key P A.val.run S.N_send_tot A.property.2.1
     { base := AuthHybridState.empty S secb0 } hV0 (b0, finalHst) hsim with ⟨hV, hSend⟩
   exact hasBadKemShCrAuth_imp_hasBadKemShCrRecords P finalHst hV (by simpa using hSend)
-
-theorem pqxdhAuthImpl_recvOPK_pres_hasWonAuth1Key (S : Setup) (P : Primitives)
-    (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) (msg : PreKeyMsg)
-    (st : AuthState S) (hWon : st.hasWonAuth = true) :
-    PreservesAt AuthState.hasWonAuth st (pqxdhAuthImpl1KeyG true true S P (.recvOPK k j o msg)) := by
-  unfold pqxdhAuthImpl1KeyG; dsimp only
-  repeat (first
-    | with_reducible apply PreservesAt.pure
-    | (rw [pure_bind])
-    | with_reducible apply PreservesAt.get_bind
-    | (with_reducible apply PreservesAt.liftM_bind; intro _)
-    | ((with_reducible apply PreservesAt.set_bind); simp [hWon])
-    | (split; try dsimp only))
-theorem pqxdhAuthImpl_recvNoOPK_pres_hasWonAuth1Key (S : Setup) (P : Primitives)
-    (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk) (msg : PreKeyMsg)
-    (st : AuthState S) (hWon : st.hasWonAuth = true) :
-    PreservesAt AuthState.hasWonAuth st (pqxdhAuthImpl1KeyG true true S P (.recvNoOPK k j l msg)) := by
-  unfold pqxdhAuthImpl1KeyG; dsimp only
-  repeat (first
-    | with_reducible apply PreservesAt.pure
-    | (rw [pure_bind])
-    | with_reducible apply PreservesAt.get_bind
-    | (with_reducible apply PreservesAt.liftM_bind; intro _)
-    | ((with_reducible apply PreservesAt.set_bind); simp [hWon])
-    | (split; try dsimp only))
 
 theorem ecCollProbAuth_frozen_le_bound1Key (S : Setup) (P : Primitives)
     (hCWF : CryptoWellFormedPrimitivesδ P) (A : AuthAdversary S) :

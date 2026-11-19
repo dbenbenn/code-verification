@@ -51,9 +51,9 @@ use crate::discovery::{standalone_package_of, walk_lean_files};
 pub use crate::lex::strip_comments_and_strings;
 use crate::lex::{Attribute, ImportEdge, declaration_attributes, extract_imports_from_str};
 use crate::policy::{
-    ENGINE_INTERNAL_IMPORTS, FORBIDDEN_ATTRIBUTES, LEGACY_LINKED_IMAGE_IMPORTERS, LINE_RULES, Lib,
-    ModuleClass, PRIVATE_ONLY_IMPORTS, Role, SPEC_FORBIDDEN_ATTRIBUTES, STDLIB_ROOTS, classify,
-    fixture_owner, is_generated, is_spec_macro_syntax_allowed,
+    ENGINE_INTERNAL_IMPORTS, FORBIDDEN_ATTRIBUTES, LINE_RULES, Lib, ModuleClass,
+    PRIVATE_ONLY_IMPORTS, Role, SPEC_FORBIDDEN_ATTRIBUTES, STDLIB_ROOTS, classify, fixture_owner,
+    is_generated, is_spec_macro_syntax_allowed,
 };
 use anyhow::{Result, anyhow};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -674,16 +674,6 @@ impl Workspace {
                         edge.imported
                     ));
                 }
-                if (edge.imported == "Arm64.Legacy" || edge.imported.starts_with("Arm64.Legacy."))
-                    && name != "Arm64.Legacy"
-                    && !name.starts_with("Arm64.Legacy.")
-                    && !LEGACY_LINKED_IMAGE_IMPORTERS.contains(&name.as_str())
-                {
-                    report(format!(
-                        "legacy-linked-image-import: `{}` is deprecated `[OUTSIDE TCB]` compatibility infrastructure and may only be imported by `Arm64.Legacy.*` or `LEGACY_LINKED_IMAGE_IMPORTERS`, not `{name}` (use `Obj.PlacedLib` / `Obj.MultiPlacedLib`)",
-                        edge.imported
-                    ));
-                }
                 if let Some(own_pkg) = standalone_package_of(name)
                     && let Some(target_pkg) = standalone_package_of(&edge.imported)
                     && target_pkg != own_pkg
@@ -754,33 +744,6 @@ impl Workspace {
                             ));
                         }
                     }
-                }
-            }
-        }
-        if self.root.is_some() && self.modules.contains_key("Arm64.Legacy") {
-            for &allowed in LEGACY_LINKED_IMAGE_IMPORTERS {
-                let Some(m) = self.modules.get(allowed) else {
-                    violations.push(Violation {
-                        path: "tools/tcb-map/src/policy.rs".to_string(),
-                        line: 1,
-                        rule: format!(
-                            "stale-legacy-allowlist: `{allowed}` in `LEGACY_LINKED_IMAGE_IMPORTERS` no longer exists; remove it so the allowlist shrinks monotonically"
-                        ),
-                        text: allowed.to_string(),
-                    });
-                    continue;
-                };
-                if !m.imports.iter().any(|e| {
-                    e.imported == "Arm64.Legacy" || e.imported.starts_with("Arm64.Legacy.")
-                }) {
-                    violations.push(Violation {
-                        path: m.path.clone(),
-                        line: 1,
-                        rule: format!(
-                            "stale-legacy-allowlist: `{allowed}` no longer directly imports `Arm64.Legacy*`; remove it from `LEGACY_LINKED_IMAGE_IMPORTERS`"
-                        ),
-                        text: allowed.to_string(),
-                    });
                 }
             }
         }

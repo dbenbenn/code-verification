@@ -9,13 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
+public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
 public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightHelpers
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightRecvKey
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TightSize
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightHelpers
+public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightRecvKey -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
+public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TightSize -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionSpec
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Tight Envelopes, Domain Bundles, and Branch Specs for `spqr::recv`
@@ -27,7 +34,7 @@ envelopes, and `PhaseCreditSpec` bounds for `Ordering::Less`, `Ordering::Greater
 `V1ChainAndEncodeTightEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -84,6 +91,7 @@ open LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
   (ValidChainParams ValidChainParamsPB ValidEncoderPts640 peerSpqrTightValid640_of_cliPqInputs_recv
    peerSpqrTightValidAt_of_cliSessionStoreSpec)
 open LibsignalBinary.Proofs.PeakBudget.SpqrTightCapsAux (StatesPtsBoundedAt ValidV1PtsAt)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (MsgDeserErrEnv)
 open LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget (ChainIntoPbEnv)
 open LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget (ChainRecvKeyEnv)
 open LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget (PqRatchetStateEncodeToVecEnv)
@@ -93,40 +101,40 @@ open LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget (StatesIntoPbE
 /-! ## Tight Budget Constants -/
 
 /-- Cumulative small-allocation ceiling for tight `spqr::recv` (`23,313,687` bytes). -/
-def spqrRecvTightCumCap : Nat := 23313687
+@[expose] def spqrRecvTightCumCap : Nat := 23313687
 
 /-- Live/peak large-allocation ceiling under `KeyHistorySmallOrReserved` (`294,391` bytes). -/
-def spqrRecvTightLiveCap : Nat := 294391
+@[expose] def spqrRecvTightLiveCap : Nat := 294391
 
 /-- Unconditional-`xRk.G` live large-allocation ceiling (`605,066` bytes). -/
-def spqrRecvTightUncondLiveCap : Nat := 605066
+@[expose] def spqrRecvTightUncondLiveCap : Nat := 605066
 
 /-- Unconditional-`xRk.G` peak large-allocation ceiling (`621,350` bytes). -/
-def spqrRecvTightUncondPeakCap : Nat := 621350
+@[expose] def spqrRecvTightUncondPeakCap : Nat := 621350
 
-def c07TightDecodeCum : Nat := 939633
+@[expose] def c07TightDecodeCum : Nat := 939633
 
-def c07TightFromPbCum : Nat := 155757
+@[expose] def c07TightFromPbCum : Nat := 155757
 
-def c07TightIntoPbCum : Nat := 164351
+@[expose] def c07TightIntoPbCum : Nat := 164351
 
 /-- Cumulative small-allocation budget for `DecodeStateTightEnv` (`1,307,216` bytes). -/
-def c07ActualDecodeCum : Nat := 1307216
+@[expose] def c07ActualDecodeCum : Nat := 1307216
 
 /-- Cumulative small-allocation budget for `StatesFromPbTightEnv` (`359,623` bytes). -/
-def c07ActualFromPbCum : Nat := 359623
+@[expose] def c07ActualFromPbCum : Nat := 359623
 
 /-- Cumulative small-allocation budget for `StatesIntoPbTightEnv` (`376,193` bytes). -/
-def c07ActualIntoPbCum : Nat := 376193
+@[expose] def c07ActualIntoPbCum : Nat := 376193
 
-def c07ActualCodecSum : Nat := 2043032
+@[expose] def c07ActualCodecSum : Nat := 2043032
 
 /-- Cumulative small-allocation budget for `<States>::recv` when `k ≥ 2` (`1,647,247` bytes). -/
-def c09aTightStatesRecvCum : Nat := 1647247
+@[expose] def c09aTightStatesRecvCum : Nat := 1647247
 
 /-- Cumulative small-allocation budget for `<States>::recv` across arbitrary `k` (`5,335,951` bytes).
 -/
-def c09aTightStatesRecvAnyKCum : Nat := 5335951
+@[expose] def c09aTightStatesRecvAnyKCum : Nat := 5335951
 
 theorem phaseCreditSpec_of_false_fine {Env : List AllocEvent → Prop} (c l p r : Nat)
     (hf : ∀ evs, ¬ Env evs) :
@@ -425,7 +433,7 @@ theorem SpqrRecvTightDomain.ofRawOutCaps {F : ShaCompress} {K : MlKem}
 /-! ## Parametric Tight Envelopes -/
 
 /-- `V1ChainAndEncodeEnv` parameterized by `StatesIntoPbEnv'`. -/
-def V1ChainAndEncodeTightEnv (F : ShaCompress)
+@[expose] def V1ChainAndEncodeTightEnv (F : ShaCompress)
     (StatesIntoPbEnv' : StatesIntoPbGhost F → List AllocEvent → Prop)
     (pre_pb : PqRatchetState) (esOpt : Option EpochSecret)
     (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
@@ -454,7 +462,7 @@ def V1ChainAndEncodeTightEnv (F : ShaCompress)
                               FreeOnlyEvs)) evs3)) evs2) evs1)) evs
 
 /-- `SpqrRecvEqualCallEnv` parameterized by `StatesFromPbEnv` and `StatesIntoPbEnv'`. -/
-def SpqrRecvEqualTightEnv (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrRecvEqualTightEnv (F : ShaCompress) (K : MlKem)
     (StatesFromPbEnv : V1State → List AllocEvent → Prop)
     (StatesIntoPbEnv' : StatesIntoPbGhost F → List AllocEvent → Prop)
     (StatesRecvEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
@@ -465,24 +473,25 @@ def SpqrRecvEqualTightEnv (F : ShaCompress) (K : MlKem)
     (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
     (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
     (evs : List AllocEvent) : Prop :=
-  SeqEnv FreeOnlyEvs
-    (fun evsAfterMd =>
-      FreeOnlyEvs evsAfterMd ∨
-        SeqEnv (StatesFromPbEnv pb)
-          (fun evsAfterFrom =>
-            FreeOnlyEvs evsAfterFrom ∨
-              (States.from_pb spqrPolyApi (spqrAuthApi F) pb = .ok st0 ∧
-                SeqEnv (StatesRecvEnv st0 sckaMsg)
-                  (fun evsAfterRecv =>
-                    FreeOnlyEvs evsAfterRecv ∨
-                      (States.recv K st0 sckaMsg = .ok v ∧
-                        xSInto.st = v.state ∧
-                        V1ChainAndEncodeTightEnv F StatesIntoPbEnv' pre_pb v.key
-                          xAdd xRk xSInto xCInto evsAfterRecv)) evsAfterFrom)) evsAfterMd) evs
+  SeqEnv MsgDeserErrEnv FreeOnlyEvs evs ∨
+    SeqEnv FreeOnlyEvs
+      (fun evsAfterMd =>
+        FreeOnlyEvs evsAfterMd ∨
+          SeqEnv (StatesFromPbEnv pb)
+            (fun evsAfterFrom =>
+              FreeOnlyEvs evsAfterFrom ∨
+                (States.from_pb spqrPolyApi (spqrAuthApi F) pb = .ok st0 ∧
+                  SeqEnv (StatesRecvEnv st0 sckaMsg)
+                    (fun evsAfterRecv =>
+                      FreeOnlyEvs evsAfterRecv ∨
+                        (States.recv K st0 sckaMsg = .ok v ∧
+                          xSInto.st = v.state ∧
+                          V1ChainAndEncodeTightEnv F StatesIntoPbEnv' pre_pb v.key
+                            xAdd xRk xSInto xCInto evsAfterRecv)) evsAfterFrom)) evsAfterMd) evs
 
 /-- `spqr::recv` envelope parameterized by `DecodeStateEnv`, `StatesFromPbEnv`, `StatesIntoPbEnv'`, and `StatesRecvEnv`.
 -/
-def SpqrRecvTightEnv (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrRecvTightEnv (F : ShaCompress) (K : MlKem)
     (DecodeStateEnv : Bytes → List AllocEvent → Prop)
     (StatesFromPbEnv : V1State → List AllocEvent → Prop)
     (StatesIntoPbEnv' : StatesIntoPbGhost F → List AllocEvent → Prop)
@@ -546,7 +555,7 @@ theorem spqrRecvTightEnv_nil (F : ShaCompress) (K : MlKem)
   Or.inl fun _ h => nomatch h
 
 /-- `V1ChainAndEncodeTightEnv` specialized to `StatesIntoPbTightEnv`. -/
-def V1ChainAndEncodeC07TightEnv (F : ShaCompress)
+@[expose] def V1ChainAndEncodeC07TightEnv (F : ShaCompress)
     (pre_pb : PqRatchetState) (esOpt : Option EpochSecret)
     (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
     (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
@@ -555,7 +564,7 @@ def V1ChainAndEncodeC07TightEnv (F : ShaCompress)
     pre_pb esOpt xAdd xRk xSInto xCInto evs
 
 /-- `SpqrRecvEqualTightEnv` specialized to `StatesFromPbTightEnv` and `StatesIntoPbTightEnv`. -/
-def SpqrRecvEqualC07TightEnv (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrRecvEqualC07TightEnv (F : ShaCompress) (K : MlKem)
     (StatesRecvEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
       List AllocEvent → Prop)
     (pre_pb : PqRatchetState) (pb : V1State)
@@ -569,7 +578,7 @@ def SpqrRecvEqualC07TightEnv (F : ShaCompress) (K : MlKem)
 
 /-- `SpqrRecvTightEnv` specialized to `DecodeStateTightEnv`, `StatesFromPbTightEnv`, and `StatesIntoPbTightEnv`.
 -/
-def SpqrRecvC07TightEnv (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrRecvC07TightEnv (F : ShaCompress) (K : MlKem)
     (StatesRecvEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
       List AllocEvent → Prop)
     (stBytes : Bytes)

@@ -9,9 +9,50 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedPRNG
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedPRNG -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma9
 import ProofLib.SepLogic.WP.StateNorm
+import Computational.Proofs.CryptoGames.FSAEAD.HybridLazy
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5On
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Start
+import Computational.Proofs.E2E.RefuseCorrB0Core
+import Computational.Proofs.E2E.Relabel.GameEq
+import Computational.Proofs.E2E.SpkHop1A
+import Computational.Proofs.HeadlineV1.CouplingV1
+import Computational.Proofs.HeadlineV1.SignedRefineC
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.Fig8Atomic
+import Computational.Proofs.ReductionDsl.Fig8ExcessCosts
+import Computational.Proofs.ReductionDsl.Fig8SourceCosts
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.MacroLift
+import Computational.Proofs.ReductionDsl.PureAuxMacroLift
+import Computational.Proofs.ReductionDsl.SM.DeliverForge
+import Computational.Proofs.ReductionDsl.SM.Engine
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.ReductionDsl.SM.RedCKA
+import Computational.Proofs.ReductionDsl.SM.RedFS
+import Computational.Proofs.ReductionDsl.SM.RedPRNG
+import Computational.Proofs.ReductionDsl.SM.Theorem1
+import Computational.Proofs.ReductionDsl.Soundness
+import Computational.Proofs.SessionCostedFig8.Bundles
+import Computational.Proofs.SessionCostedFig8.ProgSizeBounds
+import Computational.Proofs.SpecLemmas.Reductions.Primitives.CKA.CostedTables
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
+import Mathlib.Data.FinEnum
+import Mathlib.Data.Fintype.BigOperators
+import Mathlib.Data.List.Dedup
+import ToMathlib.Control.StateT
+import VCVio.CryptoFoundations.SecExp
+import VCVio.EvalDist.EvalDistEq
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Shifted-Paper Hop 2, Part 2
@@ -19,7 +60,7 @@ import ProofLib.SepLogic.WP.StateNorm
 Step lemmas of the shifted-paper Hop 2 for `deliverE`, `deliverForgeE`, and same-epoch `transmitE`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -900,7 +941,7 @@ theorem step_deliverForgeE_DFShiftedPaper_le (cka : CKAScheme KC Γ CCoins T I)
                         StateT.run_bind, StateT.run_pure, simulateQ_pure, hesP_eq]
                     rw [hC, hP, pure_bind, pure_bind]
                     exact ih (some .rejected) esS sc esP sp hS
-def postSendCShiftedPaper (fs : FSAEADScheme K SS RS (Header T) M E) (Δ_off : ℕ) (P : Party)
+@[expose] def postSendCShiftedPaper (fs : FSAEADScheme K SS RS (Header T) M E) (Δ_off : ℕ) (P : Party)
     (m_msg : M) (bad : Bool)
     (esS : EState (PartyState (Option Γ) T Sig SS RS) M (Header T × E) (CKAStateShifted Γ T I))
     (res : Option (Option Γ × T × Sig × SS) × CKAStateShifted Γ T I) :

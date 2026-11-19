@@ -11,8 +11,8 @@ module
 
 public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.Apply
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.Apply -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
@@ -27,7 +27,7 @@ Proves `[LibsignalPlacement]` `RustCliAllocBudget` contracts (`DefsBudget.otrApp
 `otrApplyPlacedSpec`) for `<OutgoingTripleRatchet>::apply_to_session_state`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -93,7 +93,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Budget-threaded relocatable root-level specification of `OTR::apply_to_session_state`
     (`onOom = ⌜False⌝`, `onPanic = ⌜False⌝`). -/
-def otrApplyPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def otrApplyPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (OtrApplyGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -445,15 +445,5 @@ theorem hookSat_noAllocShim_of_rustAllocShimVm {H : String → Option (State →
   · exact Or.inr (Or.inl ⟨hoom, hpost⟩)
   · exact Or.inr (Or.inr (Or.inl ⟨hflt, hpc, hpost⟩))
   · exact Or.inr (Or.inr (Or.inr ⟨htrp, hpost⟩))
-
-theorem otrApply_placed_ok_vm [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (h_shim : HookSat H lsRustNoAllocShimSym rustAllocShimVmSpec)
-    (h_alloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (h_dealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim)) :
-    subroutine_ok ((blkPC_20).rebase (blkPl_20).base H) (blkPl_20).base
-      (otrApplyPlacedSpec M A lim) :=
-  otrApply_placed_ok (hookSat_noAllocShim_of_rustAllocShimVm h_shim) h_alloc h_dealloc
 
 end LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.ApplyBudget

@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
-public import Symbolic.Proofs.RngG.R3ModelInv
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec -- proof-setup: allow-public-import
+public import Symbolic.Proofs.RngG.R3ModelInv -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
 import DY.ALaCarte.Basic
 import DY.Actions.Network
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA -- proof-setup: allow-public-import
 import Symbolic.Proofs.RngG.R3SetRecv
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPure
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
@@ -36,7 +36,7 @@ Bridges existing-chain `advanceChain` and `setReceiverChainKey` execution to sym
 ratchet step.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

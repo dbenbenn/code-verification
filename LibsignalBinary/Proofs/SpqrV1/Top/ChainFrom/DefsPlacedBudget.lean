@@ -9,8 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternal -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Specifications for `spqr::chain_from` (Block `323`)
@@ -18,7 +21,7 @@ public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsPlaced
 Relocatable `RustCliAllocBudget` contracts `ChainFromPbPlacedOkX` (Block `364`) and `ChainFromPlacedOkX` (Block `323`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +38,7 @@ open CryptoVerification.SpqrV1.Top.Placed (blkPC_323 blkPl_323)
 
 /-- Relocatable `<spqr::chain::Chain>::from_pb` (Block `364`) meets
 `withLsCallInv lsmpl (chainFromPbSpecX M A lim)` on `Rust.withPanics ext`. -/
-def ChainFromPbPlacedOkX [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def ChainFromPbPlacedOkX [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_323).rebase (blkPl_323).base (Rust.withPanics ext))
@@ -44,7 +47,7 @@ def ChainFromPbPlacedOkX [LibsignalPlacement] (M : AllocCostModel)
 
 /-- Relocatable `spqr::chain_from` (Block `323`) meets
 `withLsCallInv lsmpl (chainFromSpecX hkdf M A lim)` on `Rust.withPanics ext`. -/
-def ChainFromPlacedOkX [LibsignalPlacement] (hkdf : HkdfFn) (M : AllocCostModel)
+@[expose] def ChainFromPlacedOkX [LibsignalPlacement] (hkdf : HkdfFn) (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_323).rebase (blkPl_323).base (Rust.withPanics ext))

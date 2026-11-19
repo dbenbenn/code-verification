@@ -10,6 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.Spec
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Store Determinism and Panic Equivalence for `decrypt_signal`
@@ -19,7 +21,7 @@ Establishes initial session and identity store invariants from `FilesOkPeer`, sc
 full determinism of `DecryptGhost.model` (`decModel_det`) under the CLI store kits.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -60,6 +62,7 @@ theorem filesOkPeer_mono {S1 S2 : SessionRecord (List (BitVec 8)) → Prop}
   idPathLt := h.idPathLt
   sessGet := let ⟨bs, hget, hwf⟩ := h.sessGet; ⟨bs, hget, sessFileWf_mono hsub hwf⟩
   idGet := h.idGet
+  nameLe40 := h.nameLe40
 
 theorem cliSessInv_opened_wrOk {Scope S2 : SessionRecord (List (BitVec 8)) → Prop}
     (hsub : ∀ r, Scope r → S2 r) {F : FsFiles} {peer : AddrGhost}
@@ -97,7 +100,7 @@ theorem loadRec_eq_of_sub {Scope S2 : SessionRecord (List (BitVec 8)) → Prop}
   exact (Slots.loadRec_unique hinj2 hans2).symm
 
 /-- `decSessKit.loadRel` at `StoresGhost.opened.sessions` uniquely determines `ans = Slots.loadRec Scope F peer`. -/
-theorem decSessKit_loadRel_eq {img : Obj.Image} {F : FsFiles} {peer : AddrGhost} {B : RunBudgets}
+theorem decSessKit_loadRel_eq {img : Unit} {F : FsFiles} {peer : AddrGhost} {B : RunBudgets}
     {Scope : SessionRecord (List (BitVec 8)) → Prop}
     (hinjK : Slots.EncodeInjOn Slots.scopeKit)
     (hsub : ∀ r, Scope r → Slots.scopeIn r)
@@ -127,7 +130,7 @@ theorem loadRec_ne_error {Scope : SessionRecord (List (BitVec 8)) → Prop} {F :
     rw [hr]; intro h; cases h
 
 /-- Trace events emitted by `decSessKit` and `decIdKit` are empty. -/
-theorem decIdKit_traceOfWith_nil (img : Obj.Image) (F : FsFiles) (peer : AddrGhost) (B : RunBudgets)
+theorem decIdKit_traceOfWith_nil (img : Unit) (F : FsFiles) (peer : AddrGhost) (B : RunBudgets)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
     (ans : StoreAnswers (List (BitVec 8)) Unit) :
     ∀ calls, (decIdKit img F peer B).traceOfWith (decSessKit img F peer B) encRecord ans calls = []
@@ -141,7 +144,7 @@ theorem decIdKit_traceOfWith_nil (img : Obj.Image) (F : FsFiles) (peer : AddrGho
 
 /-- `List.foldl (cliStep F)` agrees with `decSessKit.storeFinal` and `decIdKit.idFinal` while
 preserving the five remaining `Dir` fields. -/
-theorem cliStep_foldl_eq (img : Obj.Image) (F : FsFiles) (peer : AddrGhost) (B : RunBudgets)
+theorem cliStep_foldl_eq (img : Unit) (F : FsFiles) (peer : AddrGhost) (B : RunBudgets)
     (ans : StoreAnswers (List (BitVec 8)) Unit) :
     ∀ (calls : List (StoreCall AddrVal (List (BitVec 8)))) (g : StoresGhost),
       let g' := calls.foldl (cliStep F) g
@@ -299,7 +302,7 @@ theorem messageDecryptSignal_panic_iff_of_load_eq {PqCoins : Type} (C : Crypto)
             exact ⟨fun h => absurd h decAfterKey_ne_panic,
                    fun h => absurd h decAfterKey_ne_panic⟩
 
-private theorem sessCallsRel_head {img : Obj.Image} {F : FsFiles} {peer : AddrGhost} {B : RunBudgets}
+private theorem sessCallsRel_head {img : Unit} {F : FsFiles} {peer : AddrGhost} {B : RunBudgets}
     {ans : StoreAnswers (List (BitVec 8)) Unit}
     {calls cs : List (StoreCall AddrVal (List (BitVec 8)))}
     (hc : calls = .loadSession peer.val :: cs)
@@ -308,7 +311,7 @@ private theorem sessCallsRel_head {img : Obj.Image} {F : FsFiles} {peer : AddrGh
   subst hc
   exact h.1
 
-private theorem sessCallsRel_store_ok {img : Obj.Image} {F : FsFiles} {peer : AddrGhost}
+private theorem sessCallsRel_store_ok {img : Unit} {F : FsFiles} {peer : AddrGhost}
     {B : RunBudgets} {ans : StoreAnswers (List (BitVec 8)) Unit}
     {ik : IdentityKey} {rec' : SessionRecord (List (BitVec 8))}
     {calls : List (StoreCall AddrVal (List (BitVec 8)))}
@@ -319,7 +322,7 @@ private theorem sessCallsRel_store_ok {img : Obj.Image} {F : FsFiles} {peer : Ad
   subst hc
   exact h.2.1
 
-private theorem idCallsRel_trust {img : Obj.Image} {F : FsFiles} {peer : AddrGhost} {B : RunBudgets}
+private theorem idCallsRel_trust {img : Unit} {F : FsFiles} {peer : AddrGhost} {B : RunBudgets}
     {ans : StoreAnswers (List (BitVec 8)) Unit} {ik : IdentityKey}
     {calls cs : List (StoreCall AddrVal (List (BitVec 8)))}
     (hc : calls = .loadSession peer.val :: .isTrustedIdentity peer.val ik .receiving :: cs)
@@ -329,7 +332,7 @@ private theorem idCallsRel_trust {img : Obj.Image} {F : FsFiles} {peer : AddrGho
   subst hc
   exact h.1
 
-private theorem idCallsRel_save {img : Obj.Image} {F : FsFiles} {peer : AddrGhost} {B : RunBudgets}
+private theorem idCallsRel_save {img : Unit} {F : FsFiles} {peer : AddrGhost} {B : RunBudgets}
     {ans : StoreAnswers (List (BitVec 8)) Unit} {ik : IdentityKey}
     {calls cs : List (StoreCall AddrVal (List (BitVec 8)))}
     (hc : calls = .loadSession peer.val :: .isTrustedIdentity peer.val ik .receiving ::
@@ -381,7 +384,7 @@ private theorem messageDecryptSignal_calls_cons {PqCoins : Type} (C : Crypto)
                   | ok u => cases u; exact ⟨_, rfl⟩
 
 set_option linter.unusedSimpArgs false in
-private theorem decModel_det_aux {PqCoins : Type} {img : Obj.Image} (C : Crypto)
+private theorem decModel_det_aux {PqCoins : Type} {img : Unit} (C : Crypto)
     (spqr : Spqr (List (BitVec 8)) PqCoins) (B : RunBudgets)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (F : FsFiles)
     (x : DecryptGhost) (coins : BitVec 256) (answers : StoreAnswers (List (BitVec 8)) Unit)
@@ -547,7 +550,7 @@ private theorem decModel_det_aux {PqCoins : Type} {img : Obj.Image} (C : Crypto)
 
 /-- Determinism of `DecryptGhost.model` under `decSessKit.callsRel` and `decIdKit.idCallsRel`,
 matching `cliAnswers Scope F x.rem.val (decKeyAux ...)` and establishing `cliWrOk` on committed writes. -/
-theorem decModel_det {img : Obj.Image} (W : CliHooks) (B : RunBudgets)
+theorem decModel_det {img : Unit} (W : CliHooks) (B : RunBudgets)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (F : FsFiles)
     (x : DecryptGhost) (answers : StoreAnswers (List (BitVec 8)) Unit)
     (_hrem : x.rem.val = x.rem.val)

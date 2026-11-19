@@ -17,13 +17,14 @@ public import ProofLib.StdStartup.StartupCompose
 public import ProofLib.StdStartup.CleanupAndExit
 public import VerifiedLibraries.Musl.Proofs.MemOps
 public import VerifiedLibraries.RustStd.Proofs.MallocngInst
-public import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Common.SharedHelpers
 public import LibsignalBinary.Heap.Fine.ElfInitFine
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Top
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StackBudget
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.InitStack
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Top
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StackBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.InitStack
 public import LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.HarnessSpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.TlsZero
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.TlsZero -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Re-Linked `musl` Startup, Exit, and `fineCostModel` Heap Initialization
@@ -37,7 +38,7 @@ Layout-parametric whole-process `musl` v1.2.5 startup (`_start` → `__libc_star
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.Startup
 
@@ -46,6 +47,7 @@ open VerifiedLibraries.Mallocng (
   MallocngAuxvAt MallocngBrkStartWf MallocngRoTablesAt MallocngRuntime
   MallocngStartupResources mallocngAddrsOfPlacement
 )
+open VerifiedLibraries.Mallocng.Proofs (MallocngAuxvRoAt)
 open VerifiedLibraries.Musl (memcpySymWords memsetWordsSym stdMemOps_of_muslWords)
 open VerifiedLibraries.RustStd (
   StdErrnoCell mallocngRustCliAlloc mallocngRustCliPool_of_init_resources
@@ -79,7 +81,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.TlsZero (
 
 /-- The 17 `seg[5]` startup, static-TLS, and `RUST_LSE_INIT` instruction/word chunks for F3
     (excluding unused `std::rt` outline atomics and `lang_start_internal` / `cleanup`). -/
-def f3StartupExtraChunks (L : StdBinaryLayout) : List CodeChunk :=
+@[expose] def f3StartupExtraChunks (L : StdBinaryLayout) : List CodeChunk :=
   [ .instrs0 L.startAddr (startInstrs L),
     .instrs0 L.startCAddr (startCInstrs L),
     .instrs0 L.libcStartMainAddr (libcStartMainInstrs L),
@@ -111,7 +113,7 @@ structure F3StartupCode (P : Program) (L : StdBinaryLayout) : Prop where
   memOpsSetTid : StdMemOps (P.withSvc f3SetTidOnlySvc) L.memcpyAddr L.memsetAddr
 
 /-- $O(k \log N)$ boolean validator discharging all chunks and `StdMemOps` of `F3StartupCode`. -/
-def checkF3StartupCode (L : StdBinaryLayout) (base : BitVec 64) (t : WordTree) : Bool :=
+@[expose] def checkF3StartupCode (L : StdBinaryLayout) (base : BitVec 64) (t : WordTree) : Bool :=
   (L.initLibcAddr + 40#64 != L.memsetAddr) &&
   (L.initLibcAddr + 264#64 != L.staticInitTlsAddr) &&
   (L.libcStartMainAddr + 80#64 != L.libcStartMainStage2Addr) &&
@@ -251,6 +253,8 @@ private theorem initialStackInfo_strip (keep : BitVec 64 → Bool)
   s0_exclFails := by dsimp [stripS]; exact h.s0_exclFails
   s0_sigActions := by dsimp [stripS]; exact h.s0_sigActions
   s0_sigAltStack := by dsimp [stripS]; exact h.s0_sigAltStack
+  s0_sigMask := by dsimp [stripS]; exact h.s0_sigMask
+  s0_sigPending := by dsimp [stripS]; exact h.s0_sigPending
   s0_physMemAvail := by dsimp [stripS]; exact h.s0_physMemAvail
   sp0_align16 := h.sp0_align16
   random_align16 := h.random_align16
@@ -298,8 +302,9 @@ private theorem evalInst_not_isSvc0 {prog : Program} {inst : Instr}
 
 /-- Lift `Steps (P_rx.withSvc f3SetTidOnlySvc)` reaching a `.Running` state from
     `stripS (progKeep P_rx) (s1.setFs fs0)` to any `Syscall.standard` `Program` `P` that has no
-    hooks inside `progKeep P_rx`, preserving `fs`, `physMemAvail`, and `mem.perm` on `P`. -/
-theorem steps_lift_setTidOnly {P_rx P : Program}
+    hooks inside `progKeep P_rx`, preserving `fs`, `physMemAvail`, `mem.perm`, and signal state
+    (`sigMask`, `sigPending`, `sigActions`). -/
+theorem steps_lift_setTidOnly_sig {P_rx P : Program}
     (hNoExtRx : ∀ pc, P_rx.externAt? pc = none)
     (hsvc : P.svc = Syscall.standard)
     (hHookFree : ∀ pc, progKeep P_rx pc = true → (P.externAt? pc).isNone = true)
@@ -312,11 +317,14 @@ theorem steps_lift_setTidOnly {P_rx P : Program}
         sf' = stripS (progKeep P_rx) (sf.setFs fs0) ∧
         sf.fs = s1.fs ∧
         sf.physMemAvail = s1.physMemAvail ∧
-        (∀ a, sf.mem.perm a = s1.mem.perm a) := by
+        (∀ a, sf.mem.perm a = s1.mem.perm a) ∧
+        sf.sigMask = s1.sigMask ∧
+        sf.sigPending = s1.sigPending ∧
+        sf.sigActions = s1.sigActions := by
   induction hsteps with
   | refl _ =>
     intro s1 fs0 hs1
-    exact ⟨s1, Steps.refl s1, hs1, rfl, rfl, fun _ => rfl⟩
+    exact ⟨s1, Steps.refl s1, hs1, rfl, rfl, fun _ => rfl, rfl, rfl, rfl⟩
   | @step s1' s2' _ h1 hrest ih =>
     intro s1 fs0 hsa
     have hrun2' : s2'.status = .Running := by
@@ -407,9 +415,14 @@ theorem steps_lift_setTidOnly {P_rx P : Program}
           have hphys12 : s2.physMemAvail = s1.physMemAvail := by rw [hs2_eq]; rfl
           have hperm12 : ∀ a, s2.mem.perm a = s1.mem.perm a := by
             intro a; rw [hs2_eq]; rfl
-          obtain ⟨sf, hstepsP, hsf_eq, hfs2f, hphys2f, hperm2f⟩ := ih hrun_f s2 fs0 hs2'_rel
+          have hsm12 : s2.sigMask = s1.sigMask := by rw [hs2_eq]; rfl
+          have hsp12 : s2.sigPending = s1.sigPending := by rw [hs2_eq]; rfl
+          have hsa12 : s2.sigActions = s1.sigActions := by rw [hs2_eq]; rfl
+          obtain ⟨sf, hstepsP, hsf_eq, hfs2f, hphys2f, hperm2f, hsm2f, hsp2f, hsa2f⟩ :=
+            ih hrun_f s2 fs0 hs2'_rel
           exact ⟨sf, Steps.step hstepP hstepsP, hsf_eq, hfs2f.trans hfs12,
-            hphys2f.trans hphys12, fun a => (hperm2f a).trans (hperm12 a)⟩
+            hphys2f.trans hphys12, fun a => (hperm2f a).trans (hperm12 a),
+            hsm2f.trans hsm12, hsp2f.trans hsp12, hsa2f.trans hsa12⟩
         · have h96' : (s1'.readReg64 .x8 == 96#64) = false := by
             rw [hx8_eq]; exact Bool.eq_false_iff.mpr h96
           have hf3_bad : f3SetTidOnlySvc s1' =
@@ -434,24 +447,54 @@ theorem steps_lift_setTidOnly {P_rx P : Program}
         have hphys12 : s2.physMemAvail = s1.physMemAvail := by rw [hs2_eq]; exact hnsp.2.2.2.2.1
         have hperm12 : ∀ a, s2.mem.perm a = s1.mem.perm a := by
           intro a; rw [hs2_eq, hnsp.2.1]
-        obtain ⟨sf, hstepsP, hsf_eq, hfs2f, hphys2f, hperm2f⟩ := ih hrun_f s2 fs0 hs2'_eq
+        have hsm12 : s2.sigMask = s1.sigMask := by
+          rw [hs2_eq]; exact execInst_sigMask_of_not_isSvc0 hnot0 s1
+        have hsp12 : s2.sigPending = s1.sigPending := by
+          rw [hs2_eq]; exact execInst_sigPending_of_not_isSvc0 hnot0 s1
+        have hsa12 : s2.sigActions = s1.sigActions := by
+          rw [hs2_eq]; exact (execInst_brk_oracle_of_not_isSvc0 hnot0 s1).1
+        obtain ⟨sf, hstepsP, hsf_eq, hfs2f, hphys2f, hperm2f, hsm2f, hsp2f, hsa2f⟩ :=
+          ih hrun_f s2 fs0 hs2'_eq
         exact ⟨sf, Steps.step hstepP hstepsP, hsf_eq, hfs2f.trans hfs12,
-          hphys2f.trans hphys12, fun a => (hperm2f a).trans (hperm12 a)⟩
+          hphys2f.trans hphys12, fun a => (hperm2f a).trans (hperm12 a),
+          hsm2f.trans hsm12, hsp2f.trans hsp12, hsa2f.trans hsa12⟩
+
+/-- Lift `Steps (P_rx.withSvc f3SetTidOnlySvc)` reaching a `.Running` state from
+    `stripS (progKeep P_rx) (s1.setFs fs0)` to any `Syscall.standard` `Program` `P` that has no
+    hooks inside `progKeep P_rx`, preserving `fs`, `physMemAvail`, and `mem.perm` on `P`. -/
+theorem steps_lift_setTidOnly {P_rx P : Program}
+    (hNoExtRx : ∀ pc, P_rx.externAt? pc = none)
+    (hsvc : P.svc = Syscall.standard)
+    (hHookFree : ∀ pc, progKeep P_rx pc = true → (P.externAt? pc).isNone = true)
+    {sa' sf' : State}
+    (hsteps : Steps (P_rx.withSvc f3SetTidOnlySvc) sa' sf')
+    (hrun_f : sf'.status = .Running) :
+    ∀ (s1 : State) (fs0 : FsState),
+      sa' = stripS (progKeep P_rx) (s1.setFs fs0) →
+      ∃ sf, Steps P s1 sf ∧
+        sf' = stripS (progKeep P_rx) (sf.setFs fs0) ∧
+        sf.fs = s1.fs ∧
+        sf.physMemAvail = s1.physMemAvail ∧
+        (∀ a, sf.mem.perm a = s1.mem.perm a) := by
+  intro s1 fs0 hsa
+  obtain ⟨sf, h1, h2, h3, h4, h5, _, _, _⟩ :=
+    steps_lift_setTidOnly_sig hNoExtRx hsvc hHookFree hsteps hrun_f s1 fs0 hsa
+  exact ⟨sf, h1, h2, h3, h4, h5⟩
 
 /-! ## Read-Only `argvAtRO` and `MuslHarnessN` -/
 
 /-- Read-only NUL-terminated bytes of `s` at `p`. -/
-def cStrAtRO (p : BitVec 64) (s : List (BitVec 8)) : SepProp :=
+@[expose] def cStrAtRO (p : BitVec 64) (s : List (BitVec 8)) : SepProp :=
   p ↦ᵣ (s ++ [0#8])
 
 /-- Read-only C `argv` pointer table at `a` (as frozen by `ProofLib.StdStartup` on initial stack). -/
-def argvAtRO : BitVec 64 → List (List (BitVec 8)) → SepProp
+@[expose] def argvAtRO : BitVec 64 → List (List (BitVec 8)) → SepProp
   | a, [] => a ↦₆₄ᵣ 0#64
   | a, s :: ss => ∃∗ p, (a ↦₆₄ᵣ p) ∗ cStrAtRO p s ∗ argvAtRO (a + 8#64) ss
 
 /-- Generalized `MuslHarness` requiring `n` bytes of stack below `sm.sp` on `main` return
     (`n = 80` for real `musl` v1.2.5 `exit` → `__libc_exit_fini` → `__stdio_exit_needed`). -/
-def MuslHarnessN (n : Nat) (elf : ElfImage) (P : Program) (mainPc : BitVec 64) (Fr : SepProp)
+@[expose] def MuslHarnessN (n : Nat) (elf : ElfImage) (P : Program) (mainPc : BitVec 64) (Fr : SepProp)
     (Ok : Inputs → Prop) (MainPre : Inputs → State → SepProp) : Prop :=
   ElfStaticOk elf → ∀ i, Ok i → ∃ s0 sm,
     elf.loadState (cliInputs i) = .ok s0 ∧ Steps P s0 sm ∧
@@ -530,7 +573,7 @@ private theorem f3EmptyFsInputs_valid {i : Inputs} (hi : CliInputsOk i) :
     (f3EmptyFsInputs i).Valid := by
   obtain ⟨hprint, hfit⟩ := hi
   have hinit : (f3EmptyFsInputs i).init.Valid :=
-    show ({ stackSize := 8388608 } : ProcessInit).Valid from
+    show ({ stackSize := 8388608, auxv := { hwcap := 0x1b#64 } } : ProcessInit).Valid from
       (ProcessInit.check_iff_valid _).mp (by decide)
   have hfs : FsValid (f3EmptyFsInputs i) :=
     (FsValid.check_iff (f3EmptyFsInputs i)).mp rfl
@@ -884,17 +927,143 @@ private theorem auxv_entails_mallocngAuxvAt {img : ElfImage} {inputs : ProcessIn
             (Entails.sepExists_right (inputs.init.auxv.randomBytes.drop 8)
               (by dsimp only [ws]; rw [pure_sepConj_of_true hpure]; sep_entail))))))
 
+private theorem pointsToBytesRO_flatMap_u64 {a : BitVec 64} (ws : List (BitVec 64))
+    (hal : a.toNat % 8 = 0) (hbnd : a.toNat + 8 * ws.length ≤ 2 ^ 48) :
+    (a ↦ᵣ (ws.flatMap fun w => List.ofFn (fun i : Fin 8 => w.extractLsb' (8 * i.val) 8))) ⊢
+      (a ↦₆₄ᵣ* ws) := by
+  induction ws generalizing a with
+  | nil =>
+    simp only [List.flatMap_nil, pointsToBytesRO_nil, pointsToWords64RO_nil]
+    exact Entails.refl _
+  | cons w ws ih =>
+    simp only [List.flatMap_cons, List.length_cons] at hbnd ⊢
+    have hlen8 : (List.ofFn (fun i : Fin 8 => w.extractLsb' (8 * i.val) 8)).length = 8 := by simp
+    rw [pointsToBytesRO_append a (List.ofFn (fun i : Fin 8 => w.extractLsb' (8 * i.val) 8)) _, hlen8]
+    have ha8_nat : (a + 8#64).toNat = a.toNat + 8 := by
+      rw [BitVec.toNat_add, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega),
+        Nat.mod_eq_of_lt (by omega)]
+    have hw : (a ↦ᵣ List.ofFn (fun i : Fin 8 => w.extractLsb' (8 * i.val) 8)) ⊢ (a ↦₆₄ᵣ w) := by
+      rw [pointsTo64RO_eq_pointsToBytesRO]
+      exact Entails.refl _
+    rw [pointsToWords64RO_cons]
+    exact sepConj_mono hw (ih (by omega) (by omega))
+
+/-- Freeze the initial-stack auxiliary vector and random-bytes high half to duplicable `.ro`,
+    yielding both `MallocngAuxvRoAt sl.auxvTableAddr` (for `fineHeap_init_ro`) and a second copy
+    of `(sl.auxvTableAddr ↦ᵣ encodeAuxvBytes sl.auxvEntries)` (for `CpuProbe.getauxval_found_ro_ok`). -/
+theorem auxv_bupd_mallocngAuxvRoAt_and_bytesRO {img : ElfImage} {inputs : ProcessInputs} {s0 : State}
+    (hinfo : InitialStackInfo img inputs s0) (hvalid : inputs.Valid) :
+    let sl := StackLayout.of img inputs
+    ((sl.auxvTableAddr ↦ₛ encodeAuxvBytes sl.auxvEntries) ∗
+      (sl.randomAddr ↦ₛ inputs.init.auxv.randomBytes)) ⊢ |==>
+      (MallocngAuxvRoAt sl.auxvTableAddr ∗
+        (sl.auxvTableAddr ↦ᵣ encodeAuxvBytes sl.auxvEntries) ∗
+        (sl.randomAddr ↦ₛ inputs.init.auxv.randomBytes.take 8)) := by
+  dsimp only
+  have hrand16 := hvalid.auxv.random16
+  have han := hinfo.addrs_nat; dsimp only at han
+  obtain ⟨_, _, haux_nat, haux_le, hplat_nat, hargvB_nat, _, _, hupper_top⟩ := han
+  have htop48 : inputs.init.stackTop.toNat ≤ 2 ^ 48 := hinfo.stackTop_align.2.2
+  have hsp16 := hinfo.sp0_align16
+  obtain ⟨prePairs, sufPairs, hsplit_eq, _, hps_le, hpre_no, hsuf_no⟩ :=
+    mkAuxvEntries_split_random img hvalid.auxv
+      (StackLayout.of img inputs).platformAddr
+      (StackLayout.of img inputs).randomAddr
+      (StackLayout.of img inputs).execfnAddr
+  have hauxE_split : (StackLayout.of img inputs).auxvEntries =
+      prePairs ++ [(AuxvTag.random, (StackLayout.of img inputs).randomAddr)] ++ sufPairs :=
+    hinfo.auxvEntries_eq.trans hsplit_eq
+  have hauxE_len : (StackLayout.of img inputs).auxvEntries.length =
+      prePairs.length + sufPairs.length + 1 := by
+    rw [hauxE_split]; simp; omega
+  rw [hauxE_len] at haux_le
+  let ws := ((prePairs ++ [(25#64, (StackLayout.of img inputs).randomAddr)] ++
+    sufPairs ++ [(0#64, 0#64)]).flatMap fun (t, v) => [t, v])
+  have hws_len : ws.length = 2 * (prePairs.length + sufPairs.length + 2) := by
+    have hfl : ∀ xs : List (BitVec 64 × BitVec 64),
+        (xs.flatMap fun (t, v) => [t, v]).length = 2 * xs.length := by
+      intro xs; induction xs with
+      | nil => simp
+      | cons _ tl ih => simp [ih]; omega
+    rw [hfl]; simp; omega
+  have henc_eq : encodeAuxvBytes (StackLayout.of img inputs).auxvEntries =
+      ws.flatMap (fun w => List.ofFn (fun i : Fin 8 => w.extractLsb' (8 * i.val) 8)) := by
+    rw [hauxE_split]; rfl
+  rw [split_random_hi8 (StackLayout.of img inputs).randomAddr hrand16]
+  have hpure :
+      (∀ e ∈ prePairs, e.1 ≠ 0#64 ∧ e.1 ≠ 25#64) ∧
+      (∀ e ∈ sufPairs, e.1 ≠ 0#64 ∧ e.1 ≠ 25#64) ∧
+      prePairs.length + sufPairs.length ≤ 64 ∧
+      (StackLayout.of img inputs).auxvTableAddr.toNat + 16 * (prePairs.length + sufPairs.length + 2) ≤ 2 ^ 48 ∧
+      (StackLayout.of img inputs).randomAddr.toNat + 16 ≤ 2 ^ 48 ∧
+      (inputs.init.auxv.randomBytes.drop 8).length = 8 :=
+    ⟨hpre_no, hsuf_no, hps_le, by omega, by omega, by simp [hrand16]⟩
+  have hwords : ((StackLayout.of img inputs).auxvTableAddr ↦ᵣ
+      encodeAuxvBytes (StackLayout.of img inputs).auxvEntries) ⊢
+      ((StackLayout.of img inputs).auxvTableAddr ↦₆₄ᵣ* ws) := by
+    rw [henc_eq]
+    exact pointsToBytesRO_flatMap_u64 ws (by omega) (by rw [hws_len]; omega)
+  have hfrz1 := pointsToBytes_freeze_ro (StackLayout.of img inputs).auxvTableAddr
+    (encodeAuxvBytes (StackLayout.of img inputs).auxvEntries)
+  have hfrz2 := pointsToBytes_freeze_ro ((StackLayout.of img inputs).randomAddr + 8#64)
+    (inputs.init.auxv.randomBytes.drop 8)
+  refine Entails.trans (Q := ((StackLayout.of img inputs).auxvTableAddr ↦ₛ
+      encodeAuxvBytes (StackLayout.of img inputs).auxvEntries) ∗
+      (((StackLayout.of img inputs).randomAddr + 8#64) ↦ₛ inputs.init.auxv.randomBytes.drop 8) ∗
+      ((StackLayout.of img inputs).randomAddr ↦ₛ inputs.init.auxv.randomBytes.take 8))
+    (by sep_entail) ?_
+  refine Entails.trans (bupd_sep hfrz1 (bupd_sep hfrz2 (bupd_intro _))) ?_
+  refine bupd_mono ?_
+  refine Entails.trans
+    (sepConj_mono_left (Entails.of_eq (pointsToBytesRO_dup _ _).symm)) ?_
+  refine Entails.trans
+    (Q := (((StackLayout.of img inputs).auxvTableAddr ↦ᵣ
+        encodeAuxvBytes (StackLayout.of img inputs).auxvEntries) ∗
+      (((StackLayout.of img inputs).randomAddr + 8#64) ↦ᵣ inputs.init.auxv.randomBytes.drop 8)) ∗
+      ((StackLayout.of img inputs).auxvTableAddr ↦ᵣ
+        encodeAuxvBytes (StackLayout.of img inputs).auxvEntries) ∗
+      ((StackLayout.of img inputs).randomAddr ↦ₛ inputs.init.auxv.randomBytes.take 8))
+    (by sep_entail) ?_
+  refine sepConj_mono_left ?_
+  refine Entails.trans (sepConj_mono_left hwords) ?_
+  unfold MallocngAuxvRoAt
+  exact Entails.sepExists_right prePairs
+    (Entails.sepExists_right sufPairs
+      (Entails.sepExists_right (StackLayout.of img inputs).randomAddr
+        (Entails.sepExists_right 0#64
+          (Entails.sepExists_right (inputs.init.auxv.randomBytes.drop 8)
+            (by dsimp only [ws]; rw [pure_sepConj_of_true hpure]; sep_entail)))))
+
+/-- Read-only startup probe resources carried past `cMainAddr` entry for `CpuProbe`:
+    `__aarch64_have_lse_atomics = 0`, `__libc.auxv = auxvTableAddr`, and `auxvTableAddr ↦ᵣ auxv`. -/
+@[expose] def F3ProbeAuxvRo (L : StdBinaryLayout) (elf : ElfImage) (i : Inputs) : SepProp :=
+  let sl := StackLayout.of elf (cliInputs i)
+  (L.haveLseAtomicsAddr ↦₈ᵣ 0#8) ∗
+    ((L.libcAddr + 8#64) ↦₆₄ᵣ sl.auxvTableAddr) ∗
+    (sl.auxvTableAddr ↦ᵣ encodeAuxvBytes sl.auxvEntries)
+
+/-- Main-thread `tid = 1` cell in `builtin_tls` at `tp - 0xa8 = builtinTlsAddr + 0x20`,
+    framed across `main` for musl `raise(SIGABRT)` (`tkill(*(tp - 0xa8), 6)`). -/
+@[expose] def F3TlsTid (L : StdBinaryLayout) : SepProp :=
+  (L.builtinTlsAddr + 0x20#64) ↦₃₂ 1#32
+
+theorem f3TlsState_entails_tid (L : StdBinaryLayout) (sysinfoVal : BitVec 64) :
+    F3TlsState L sysinfoVal ⊢ F3TlsTid L ∗ anyHeap := by
+  unfold F3TlsState StdTdInit F3TlsTid
+  refine Entails.trans (Q := ((L.builtinTlsAddr + 0x20#64) ↦₃₂ 1#32) ∗ _) (by sep_frame) ?_
+  exact sepConj_mono_right (entails_anyHeap _)
+
 /-- Residual startup resources held alongside the core `cMainAddr` entry frame in
     `f3StartupMainPre` (framing the stage-2 saved frame at `[sp0 - 48, sp0)`, TLS state,
     `libc` globals, and read-only stack tables without requiring `|==>` drops). -/
-def f3StartupResidual (_L : StdBinaryLayout) (_elf : ElfImage) (_i : Inputs) : SepProp :=
+@[expose] def f3StartupResidual (_L : StdBinaryLayout) (_elf : ElfImage) (_i : Inputs) : SepProp :=
   ∃∗ R_unused : SepProp, R_unused
 
 /-- Separation-logic precondition handed to `main` (`L.cMainAddr`) by `f3MuslHarness80_of_layout`
     (with `libc.need_locks` frozen inside `StdMuslExitGlobals L 0#8`). Includes
     `∃ sLoad, elf.loadState (cliProcessInputs i) = .ok sLoad ∧ StartupVmPreserved sLoad sm` so
     `ElfInitFine.cliElf_fineBudgetPool_of_init` discharges directly. -/
-def f3StartupMainPre (L : StdBinaryLayout) (elf : ElfImage) (i : Inputs) (sm : State) : SepProp :=
+@[expose] def f3StartupMainPre (L : StdBinaryLayout) (elf : ElfImage) (i : Inputs) (sm : State) : SepProp :=
   let sl := StackLayout.of elf (cliInputs i)
   ⌜(L.rxProgram elf).CodeLoaded sm.mem ∧
     (∃ sLoad, elf.loadState (cliProcessInputs i) = .ok sLoad ∧ StartupVmPreserved sLoad sm) ∧
@@ -920,7 +1089,7 @@ def f3StartupMainPre (L : StdBinaryLayout) (elf : ElfImage) (i : Inputs) (sm : S
 /-- Separation-logic precondition handed to `main` (`L.cMainAddr`) by
     `f3MuslHarnessNeedLocks80_of_layout`: extends `f3StartupMainPre` with writable
     `((L.libcAddr + 3#64) ↦₈ 0#8)` (`__libc.need_locks = 0`) for single-threaded `mallocng`. -/
-def f3StartupMainPreNeedLocks (L : StdBinaryLayout) (elf : ElfImage) (i : Inputs) (sm : State) :
+@[expose] def f3StartupMainPreNeedLocks (L : StdBinaryLayout) (elf : ElfImage) (i : Inputs) (sm : State) :
     SepProp :=
   ((L.libcAddr + 3#64) ↦₈ 0#8) ∗ f3StartupMainPre L elf i sm
 

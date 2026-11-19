@@ -13,6 +13,8 @@ public import Computational.Proofs.E2E.HaltedSpkDefs
 import Computational.Proofs.E2E.HaltedSpkHop2Core
 import Computational.Proofs.E2E.HaltedSpkHop2InitAux
 import Computational.Proofs.E2E.SpkHop1InitBridge
+import Computational.Proofs.SignalWireRoundTrip
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
 
 /-!
 # Tracker-Halted Hop-2 Initial Bridge
@@ -22,7 +24,7 @@ Proves `evalDist_spkLeakRedTrackHalted_apply_le_hop2PrgRedKTrackHalted_zero`, co
 `k = 0` while threading the per-session `KemFailSessionTrack` state.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,17 +9,25 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionPlacedObj
+import GeneratedLean.LibsignalSessionPlacedObj
 public import LibsignalBinary.Heap.Fine.F3LayoutData
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMallocngPlaced
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMallocngPlaced
 public import LibsignalBinary.Specifications.SignalSession.CliElf
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliElfProof
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSymChars
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliElfProof -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSymChars -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import ProofLib.Placed.Multi
 public import VerifiedLibraries.Mallocng.Proofs.PlacedInterned
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataGen -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl4 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl3
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl1
 
 /-!
 # Two-Placement `CliElfCodeMatchesPlaced` and `LinkedAt` Uniqueness
@@ -29,7 +37,7 @@ cross-library code and data disjointness, and `CliElfCodeMatchesPlaced` witnesse
 `libsignalSessionLib` and `VerifiedLibraries.mallocngLib` in `f3TrialElf` / `f3TrialElfBytes`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -37,15 +45,18 @@ set_option maxRecDepth 200000
 namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced
 
 open Arm64 Arm64.Obj Arm64.Obj.Interned Arm64.Process
-open ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection
+open ProofLib ProofLib.ProgramReflection
 open CryptoVerification.LibsignalSpqrV1 (tokenName tokenStorageName)
 open CryptoVerification.SignalSession
-  (CliHooks CliReachesOOMPlaced OutcomeMatchesProcess abortOnPanic cliDehookedSymsPlaced
-   cliExternsPlaced cliExternsPlacedSig cliHookTablePlaced cliPanicSymbolsPlaced cliProcessInputs
+  (CliHooks OutcomeMatchesProcess abortOnPanic cliCratePanicSyms cliDehookedSymsPlaced
+   cliExternsPlaced cliNonPanicDehookedSyms cliPanicSymbolsPlaced cliProcessInputs
    isCliPanicSymbolPlaced libsignalSessionLib lsRustNoAllocShimSymCli)
 open CryptoVerification.SignalSession.Placed
-  (CliElfCodeMatchesPlaced CliRunsToPlaced DirectOrBranchStub cliProgPlacedSig cliRunPlacedSig
-   cliTokenPatchPlaced)
+  (DirectOrBranchStub cliTokenPatchPlaced)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced
+  (CliReachesOOMPlaced cliExternsPlacedSig cliHookTablePlaced cliProgPlacedSig_eq)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed
+  (CliElfCodeMatchesPlaced CliRunsToPlaced cliProgPlacedSig cliRunPlacedSig)
 open LibsignalBinary.Heap.Fine
   (f3MallocngMly f3MallocngMpl f3StdLayout f3StubNoShimAddr)
 open CryptoVerification.SignalSession (cliElfBytes cliElfImage cliElf_parse)
@@ -59,7 +70,7 @@ open VerifiedLibraries.Mallocng.Proofs
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData
   (checkLsDataBoundsB checkLsDataBounds_ok checkMallocngCodeBoundsB checkMallocngCodeBounds_ok
    checkMallocngDataBoundsB checkMallocngDataBounds_ok checkMallocngLibcPin_ok
-   cliDehookedSymsPlaced_eq_entries f3CoinsLeftIdx f3CoinsNextIdx f3DehookedEntries
+   cliNonPanicDehookedSyms_eq_entries f3CoinsLeftIdx f3CoinsNextIdx f3DehookedEntries
    f3HandleErrorIdx f3HandleError_pin_ok f3LogFilterIdx f3LsBlockBases f3LsBlockBases_len
    f3LsBlockBases_lt_codeHi f3LsBlockBases_pos f3LsBlocksLen f3LsBlocksLen_ge_600 f3LsCodeHi
    f3LsCodeHi_lt_2pow64 f3LsDataHi f3LsMpl_relax_false f3LsNamesLen f3LsRoHi f3LsRw1Hi
@@ -68,7 +79,7 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData
    f3MngDataHi f3MngDataLo f3MngRoHi f3MngRoLo f3MngRwHi f3MngRwLo f3NoShimIdx f3NoShim_pin_ok
    f3StaticsPins_ok f3TokenIdx f3TokenPins_ok f3TokenStorageIdx libsignalBlocks_len
    lsDataInStockBandsB lsHookNamesPlaced
-   lsInternedMultiLib lsNameChars lsNames lsPlacedCompactLit lsPlacedCompactLit_lt_mngCodeLo
+   lsInternedMultiLib lsNameChars lsNames lsPlacedCompactLit lsPlacedCompactLit_ge_mngCodeHi
    lsPlacedStubPairs lsPlacedStubPairs_eq lsPlacedTagTableLit lsRelocInvSteps lsSharedExterns
    ls_block617_externs_eq ls_blockSymsMatch_ok ls_ext_ok ls_fast_eq ls_idsOk ls_ids_ok
    ls_namesNodup_ok ls_names_eq ls_names_len ls_names_nodup ls_relocInv_ok ls_sharedExterns_lt
@@ -94,7 +105,7 @@ abbrev f3LsLayout : Obj.Interned.MultiLayout :=
   LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData.f3LsLayout
 
 /-- Concrete `MultiPlacement` witness for `libsignalSessionLib` in `f3TrialElf`. -/
-noncomputable abbrev f3LsMpl : Obj.MultiPlacement :=
+abbrev f3LsMpl : Obj.MultiPlacement :=
   LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData.f3LsMpl
 
 /-- Mangled `alloc::raw_vec::handle_error` symbol name. -/
@@ -1206,6 +1217,7 @@ theorem cliRunsToPlaced_eq_of_linkedAt {mpl : Obj.MultiPlacement}
       CliRunsToPlaced f3LsMpl mmpl f3TrialElf W := by
   funext i o
   unfold CliRunsToPlaced
+  dsimp only [LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed.cliTokenPatchPlaced]
   rw [cliTokenPatchPlaced_eq_of_linkedAt hlink]
   have hp := fun s0 => processRunsTo_iff_of_externAt_eq
     (cliProgPlacedSig_externAt_eq_of_linkedAt hlink mmpl W) rfl
@@ -1229,6 +1241,7 @@ theorem cliReachesOOMPlaced_iff_of_linkedAt {mpl : Obj.MultiPlacement}
     CliReachesOOMPlaced mpl mmpl f3TrialElf W i ↔
       CliReachesOOMPlaced f3LsMpl mmpl f3TrialElf W i := by
   unfold CliReachesOOMPlaced
+  dsimp only [LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed.cliTokenPatchPlaced]
   rw [cliTokenPatchPlaced_eq_of_linkedAt hlink]
   have hsteps := fun s0 s => steps_iff_of_externAt_eq
     (cliProgPlacedSig_externAt_eq_of_linkedAt hlink mmpl W) rfl
@@ -1257,7 +1270,7 @@ private theorem lookup_zip_eq_map {α : Type} (d : α) :
       cases lookupKeyIdx ks s <;> rfl
     · rfl
 
-private noncomputable def cliHookVals (mmpl : Obj.MultiPlacement) (W : CliHooks) :
+private def cliHookVals (mmpl : Obj.MultiPlacement) (W : CliHooks) :
     List (State → State) :=
   (cliHookTablePlaced mmpl W).map Prod.snd
 
@@ -1277,7 +1290,7 @@ private def placedExternTag (s : String) : Option Nat :=
   if isCliPanicSymbolPlaced s then some 0
   else (lookupKeyIdx lsHookNamesPlaced s).map Nat.succ
 
-private noncomputable def evalCliTag (mmpl : Obj.MultiPlacement) (W : CliHooks) :
+private def evalCliTag (mmpl : Obj.MultiPlacement) (W : CliHooks) :
     Nat → State → State
   | 0 => abortOnPanic Rust.panicked
   | k + 1 => abortOnPanic ((cliHookVals mmpl W).getD k Rust.panicked)
@@ -1373,7 +1386,7 @@ private theorem isPanicSymbol_eq_fast (name : String) :
   rw [string_startsWith_eq_isPrefixOf, core_panicking_toList_eq]
 
 private def placedExternTagFast (s : String) : Option Nat :=
-  if cliPanicSymbolsPlaced.contains s || isPanicSymbolFast s then some 0
+  if cliCratePanicSyms.contains s || isPanicSymbolFast s then some 0
   else (lookupKeyIdx lsHookNamesPlaced s).map Nat.succ
 
 private theorem placedExternTag_eq_fast (s : String) :
@@ -1452,9 +1465,9 @@ private theorem externAt?_none_of_lookupCompact_none {mpl mmpl : Obj.MultiPlacem
     cliProgPlacedSig_f3Ls_externAt_tag, placedTagAt_eq_compact, hnone]
   rfl
 
-private theorem lookupAddrTagNat_none_of_all_lt :
+private theorem lookupAddrTagNat_none_of_all_gt :
     ∀ (xs : List (Nat × Nat)) (pc : Nat),
-      (xs.all fun p => Nat.blt p.1 pc) = true →
+      (xs.all fun p => Nat.blt pc p.1) = true →
       lookupAddrTagNat xs pc = none
   | [], _, _ => rfl
   | (a, t) :: xs, pc, hall => by
@@ -1463,24 +1476,26 @@ private theorem lookupAddrTagNat_none_of_all_lt :
       rw [Bool.eq_false_iff, Ne, Nat.beq_eq]
       omega
     simp only [lookupAddrTagNat, hne, Bool.false_eq_true, ↓reduceIte]
-    exact lookupAddrTagNat_none_of_all_lt xs pc hall.2
+    exact lookupAddrTagNat_none_of_all_gt xs pc hall.2
 
-/-- Every `pc` with `f3MngCodeLo ≤ pc.toNat` satisfies `(cliProgPlacedSig mpl mmpl W).externAt? pc = none`
+/-- Every `pc` with `pc.toNat < 0x479798` satisfies `(cliProgPlacedSig mpl mmpl W).externAt? pc = none`
 for any `InElf` placement `mpl`. -/
-theorem f3CliElf_externAt_none_of_ge_mngCodeLo {mpl : Obj.MultiPlacement}
+theorem f3CliElf_externAt_none_of_lt_lib2TextLo {mpl : Obj.MultiPlacement}
     (hpl : libsignalSessionLib.Placeable mpl)
     (hin : libsignalSessionLib.InElf f3TrialElf mpl)
     (mmpl : Obj.MultiPlacement) (W : CliHooks) {pc : BitVec 64}
-    (hge : f3MngCodeLo ≤ pc.toNat) :
+    (hlt : pc.toNat < 0x479798) :
     (cliProgPlacedSig mpl mmpl W).externAt? pc = none := by
-  have hall : (lsPlacedCompactLit.all fun p => Nat.blt p.1 pc.toNat) = true := by
+  have hall : (lsPlacedCompactLit.all fun p => Nat.blt pc.toNat p.1) = true := by
+    have hge0 := lsPlacedCompactLit_ge_mngCodeHi
+    simp only [Bool.and_eq_true] at hge0
     rw [List.all_eq_true]
     intro p hp
-    have hlt := Nat.blt_eq.mp (List.all_eq_true.mp lsPlacedCompactLit_lt_mngCodeLo p hp)
+    have hge := Nat.ble_eq.mp (List.all_eq_true.mp hge0.2 p hp)
     rw [Nat.blt_eq]
     omega
   exact externAt?_none_of_lookupCompact_none hpl hin
-    (lookupAddrTagNat_none_of_all_lt lsPlacedCompactLit pc.toNat hall) W
+    (lookupAddrTagNat_none_of_all_gt lsPlacedCompactLit pc.toNat hall) W
 
 /-- `(cliProgPlacedSig mpl mmpl W).externAt? = none` across all `mallocngLib` code bytes. -/
 theorem f3CliElf_mallocng_code_externAt_none_of_inElf {mpl mmpl : Obj.MultiPlacement}
@@ -1493,12 +1508,16 @@ theorem f3CliElf_mallocng_code_externAt_none_of_inElf {mpl mmpl : Obj.MultiPlace
     (ha : InRegion (mmpl.base j) VerifiedLibraries.mallocngLib.blocks[j].code.length a) :
     (cliProgPlacedSig mpl mmpl W).externAt? a = none := by
   obtain ⟨_, hhi64, hm_lo, hm_hi⟩ := f3CliElf_mallocng_code_bounds_of_inElf hpl₂ hin₂ j hj
+  have hmng_le : f3MngCodeHi ≤ 0x479798 := by
+    have hge0 := lsPlacedCompactLit_ge_mngCodeHi
+    simp only [Bool.and_eq_true, Nat.ble_eq] at hge0
+    exact hge0.1
   obtain ⟨hk, heq⟩ := inRegion_offset ha
   have htonat : (mmpl.base j + BitVec.ofNat 64 (a - mmpl.base j).toNat).toNat =
       (mmpl.base j).toNat + (a - mmpl.base j).toNat :=
     toNat_add_ofNat_of_lt (by omega)
   rw [heq] at htonat
-  exact f3CliElf_externAt_none_of_ge_mngCodeLo hpl₁ hin₁ mmpl W (by omega)
+  exact f3CliElf_externAt_none_of_lt_lib2TextLo hpl₁ hin₁ mmpl W (by omega)
 
 private def checkElfMaps4RxFastAux (rws : List (Snapshot.Region × Nat)) (addr : BitVec 64)
     (bs : List (BitVec 8)) : Bool :=
@@ -1571,19 +1590,19 @@ private def checkF3DehookedAllB : Bool :=
 private theorem checkF3DehookedAll_ok : checkF3DehookedAllB = true := by
   rfl_kernel
 
-/-- For every `sym ∈ cliDehookedSymsPlaced`, `externAt? (mpl.ρ sym) = none`, `.symtab` uniquely
+/-- For every `sym ∈ cliNonPanicDehookedSyms`, `externAt? (mpl.ρ sym) = none`, `.symtab` uniquely
 resolves `sym` to `targetVa`, `DirectOrBranchStub f3TrialElf (mpl.ρ sym) targetVa` holds, and
 `externAt? targetVa = none`. -/
 theorem f3CliElf_dehooked_witness_of_inElf {mpl mmpl : Obj.MultiPlacement}
     (hpl : libsignalSessionLib.Placeable mpl)
     (hin : libsignalSessionLib.InElf f3TrialElf mpl)
-    {sym : String} (hsym : sym ∈ cliDehookedSymsPlaced) :
+    {sym : String} (hsym : sym ∈ cliNonPanicDehookedSyms) :
     (∀ W : CliHooks, (cliProgPlacedSig mpl mmpl W).externAt? (mpl.ρ sym) = none) ∧
     ∃ targetVa : BitVec 64,
       Obj.lookupUnique sym f3TrialElf.symbols = some targetVa ∧
       DirectOrBranchStub f3TrialElf (mpl.ρ sym) targetVa ∧
       ∀ W : CliHooks, (cliProgPlacedSig mpl mmpl W).externAt? targetVa = none := by
-  rw [cliDehookedSymsPlaced_eq_entries, List.mem_map] at hsym
+  rw [cliNonPanicDehookedSyms_eq_entries, List.mem_map] at hsym
   obtain ⟨⟨idx, cs, stubVa, targetVa⟩, hmem_e, rfl⟩ := hsym
   have hchk := checkF3DehookedAll_ok
   unfold checkF3DehookedAllB at hchk
@@ -1628,8 +1647,18 @@ theorem f3TrialElf_codeMatchesPlaced_of_inElf {mpl mmpl : Obj.MultiPlacement}
    f3CliElf_libsignal_mallocng_code_disjoint_of_inElf hpl₁ hin₁ hpl₂ hin₂,
    fun _ hd₁ _ hd₂ =>
      Or.inr (f3CliElf_libsignal_mallocng_data_disjoint_of_inElf hpl₁ hin₁ hpl₂ hin₂ hd₁ hd₂),
-   f3CliElf_mallocng_code_externAt_none_of_inElf hpl₁ hin₁ hpl₂ hin₂,
-   fun _ hsym => f3CliElf_dehooked_witness_of_inElf hpl₁ hin₁ hsym⟩
+   fun j hj a ha =>
+     f3CliElf_mallocng_code_externAt_none_of_inElf hpl₁ hin₁ hpl₂ hin₂ j hj
+       ⟨CryptoVerification.SignalSession.realCrypto, CryptoVerification.SignalSession.realPqxdhPrims⟩
+       a ha,
+   fun _ hsym =>
+     let hw := f3CliElf_dehooked_witness_of_inElf (mmpl := mmpl) hpl₁ hin₁ hsym
+     let ⟨targetVa, hlu, hdir, htgt⟩ := hw.2
+     ⟨hw.1 ⟨CryptoVerification.SignalSession.realCrypto,
+        CryptoVerification.SignalSession.realPqxdhPrims⟩,
+      targetVa, hlu, hdir,
+      htgt ⟨CryptoVerification.SignalSession.realCrypto,
+        CryptoVerification.SignalSession.realPqxdhPrims⟩⟩⟩
 
 /-- Concrete witness `CliElfCodeMatchesPlaced f3LsMpl f3MallocngMpl f3TrialElf`. -/
 theorem f3TrialElf_codeMatchesPlaced :
@@ -1648,6 +1677,82 @@ theorem f3TrialElf_codeMatchesPlaced_of_linkedAt {mpl mmpl : Obj.MultiPlacement}
   cases f3TrialElf_parse.symm.trans hp₁
   cases f3TrialElf_parse.symm.trans hp₂
   exact f3TrialElf_codeMatchesPlaced_of_inElf hpl₁ hin₁ hpl₂ hin₂
+
+/-! ## Trusted Single-Placement `CliElfCodeMatchesPlaced` Witnesses -/
+
+private theorem mem_of_lookupAddrTagNat_ne_none :
+    ∀ {xs : List (Nat × Nat)} {pc : Nat},
+      lookupAddrTagNat xs pc ≠ none → ∃ t, (pc, t) ∈ xs
+  | [], _, h => absurd rfl h
+  | (a, t) :: xs, pc, h => by
+    unfold lookupAddrTagNat at h
+    cases hbeq : Nat.beq a pc
+    · rw [hbeq] at h
+      simp only [Bool.false_eq_true, ↓reduceIte] at h
+      obtain ⟨t', hmem⟩ := mem_of_lookupAddrTagNat_ne_none h
+      exact ⟨t', List.mem_cons_of_mem _ hmem⟩
+    · have ha : a = pc := Nat.beq_eq.mp hbeq
+      subst ha
+      exact ⟨t, List.mem_cons_self⟩
+
+private def checkF3PanicAddrsB : Bool :=
+  Obj.Interned.buildEncSymTable f3TrialElfSymChars fun enc =>
+    lsPlacedCompactLit.all fun (addrNat, _) =>
+      cliCratePanicSyms.any fun sym =>
+        Obj.Interned.withEncodeCharKey sym.toList fun key =>
+          lookupUniqueEnc key enc == some (BitVec.ofNat 64 addrNat)
+
+private theorem checkF3PanicAddrs_ok : checkF3PanicAddrsB = true := by
+  rfl_kernel
+
+/-- Universal `InElf` witness for the trusted single-placement
+`CryptoVerification.SignalSession.Placed.CliElfCodeMatchesPlaced mpl f3TrialElf`. -/
+theorem f3TrialElf_trustedCodeMatchesPlaced_of_inElf {mpl : Obj.MultiPlacement}
+    (hpl : libsignalSessionLib.Placeable mpl)
+    (hin : libsignalSessionLib.InElf f3TrialElf mpl) :
+    CryptoVerification.SignalSession.Placed.CliElfCodeMatchesPlaced mpl f3TrialElf := by
+  refine ⟨(f3CliElf_libsignal_inElf_unique hpl hin).2.2.2, fun a hne => ?_⟩
+  have hprog :
+      (CryptoVerification.SignalSession.Placed.cliProgPlacedSig mpl).externAt? a =
+        (lookupAddrTagNat lsPlacedCompactLit a.toNat).map
+          (evalCliTag f3MallocngMpl
+            ⟨CryptoVerification.SignalSession.realCrypto,
+              CryptoVerification.SignalSession.realPqxdhPrims⟩) := by
+    rw [← cliProgPlacedSig_eq mpl f3MallocngMpl
+          ⟨CryptoVerification.SignalSession.realCrypto,
+            CryptoVerification.SignalSession.realPqxdhPrims⟩,
+        cliProgPlacedSig_externAt_eq_of_inElf hpl hin,
+        cliProgPlacedSig_f3Ls_externAt_tag,
+        placedTagAt_eq_compact]
+  rw [hprog] at hne
+  have htag_ne : lookupAddrTagNat lsPlacedCompactLit a.toNat ≠ none := by
+    intro hnone
+    rw [hnone] at hne
+    exact hne rfl
+  obtain ⟨t, hmem⟩ := mem_of_lookupAddrTagNat_ne_none htag_ne
+  have hchk := checkF3PanicAddrs_ok
+  unfold checkF3PanicAddrsB at hchk
+  rw [Obj.Interned.buildEncSymTable_eq] at hchk
+  have hany := List.all_eq_true.mp hchk (a.toNat, t) hmem
+  obtain ⟨sym, hsym_mem, hlu_enc⟩ := List.any_eq_true.mp hany
+  simp only [Obj.Interned.withEncodeCharKey_eq, beq_iff_eq] at hlu_enc
+  have hisPanic : isCliPanicSymbolPlaced sym = true := by
+    unfold isCliPanicSymbolPlaced
+    rw [Bool.or_eq_true]
+    exact Or.inl (List.contains_iff_mem.mpr hsym_mem)
+  have hlu : Obj.lookupUnique sym f3TrialElf.symbols = some a := by
+    rw [lookupUnique_eq_lookupUniqueEnc f3TrialElfSyms_eq rfl (String.ofList_toList (s := sym)).symm,
+      hlu_enc, BitVec.ofNat_toNat, BitVec.setWidth_eq]
+  exact ⟨sym, a, hisPanic, hlu, Or.inl rfl⟩
+
+/-- Universal `LinkedAt` witness for the trusted single-placement
+`CryptoVerification.SignalSession.Placed.CliElfCodeMatchesPlaced mpl f3TrialElf`. -/
+theorem f3TrialElf_trustedCodeMatchesPlaced_of_linkedAt {mpl : Obj.MultiPlacement}
+    (hls : libsignalSessionLib.LinkedAt f3TrialElfBytes mpl) :
+    CryptoVerification.SignalSession.Placed.CliElfCodeMatchesPlaced mpl f3TrialElf := by
+  obtain ⟨_, hp, hpl, hin⟩ := hls
+  cases f3TrialElf_parse.symm.trans hp
+  exact f3TrialElf_trustedCodeMatchesPlaced_of_inElf hpl hin
 
 end
 

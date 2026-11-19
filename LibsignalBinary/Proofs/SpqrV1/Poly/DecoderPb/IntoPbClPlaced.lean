@@ -9,10 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbProof
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbProof
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Poly -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefs
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbLoop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbOuter -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyDecoder>::into_pb`: `withLsCodeLoaded` Proof
@@ -21,7 +31,7 @@ Proves `decoder_into_pb_cl_placed_ok_ext` and `decoder_into_pb_cl_placed_ok_x` o
 `[LibsignalPlacement]` with `withLsCodeLoaded lsmpl`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,7 +56,7 @@ set_option maxHeartbeats 400000
 set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 attribute [local arm64_norm, local wp_norm]
   bv384_toNat bv8_toNat

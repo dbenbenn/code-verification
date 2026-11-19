@@ -10,6 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Decoded `SessionStructure` Inline Peel Definitions
@@ -19,7 +20,7 @@ Defines the 344-byte inline `SessionStructure` decomposition `overPrevMovesSS` (
 reassembly predicate `overPrevDropFromMovesExt`, and `OverPrevPeelStmtExt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,13 +41,13 @@ open Symbolic.Swarm.TRREF.B3DeserQ (prostSSGQAt ssgqOf)
 - `p + 0x18 .. +0x148`: 304 bytes `r1`;
 - `p + 0x148`: `session_version = 4#32`;
 - `p + 0x14c .. +0x158`: 12 bytes `r2`. -/
-def overPrevMovesSS (p w0 w1 w2 : BitVec 64) (r1 r2 : List (BitVec 8)) : SepProp :=
+@[expose] def overPrevMovesSS (p w0 w1 w2 : BitVec 64) (r1 r2 : List (BitVec 8)) : SepProp :=
   (p ↦₆₄ w0) ∗ ((p + 8#64) ↦₆₄ w1) ∗ ((p + 0x10#64) ↦₆₄ w2) ∗
   ((p + 0x18#64) ↦ₛ r1) ∗ ((p + 0x148#64) ↦₃₂ 4#32) ∗ ((p + 0x14c#64) ↦ₛ r2)
 
 /-- Reassemble `overPrevMovesSS p w0 w1 w2 r1 r2 ∗ H` back into a `sessionStateAt A p G st`
 (`st.sessionVersion = 4#32`) ready for `drop_session_structure3`. -/
-def overPrevDropFromMovesExt (A : RustAlloc) (p w0 w1 w2 : BitVec 64)
+@[expose] def overPrevDropFromMovesExt (A : RustAlloc) (p w0 w1 w2 : BitVec 64)
     (r1 r2 : List (BitVec 8)) (H : SepProp) : Prop :=
   overPrevMovesSS p w0 w1 w2 r1 r2 ∗ H ⊢
     ∃∗ G : SessionGhost, ∃∗ st : SessionState (List (BitVec 8)),
@@ -58,7 +59,7 @@ abbrev overPrevDropFromMoves (p w0 w1 w2 : BitVec 64) (r1 r2 : List (BitVec 8)) 
 /-- For any `A : RustAlloc` and canonical v4 session `sess` with no pending pre-keys,
 `prostSSGQAt A p (ssgqOf sess)` decomposes into `overPrevMovesSS p w0 w1 w2 r1 r2 ∗ H` together
 with `overPrevDropFromMovesExt A p w0 w1 w2 r1 r2 H`. -/
-def OverPrevPeelStmtExt (A : RustAlloc) : Prop :=
+@[expose] def OverPrevPeelStmtExt (A : RustAlloc) : Prop :=
   ∀ (sess : Session (List (BitVec 8))),
     DeserializeScopeP_Q NonEmptyV1Q ⟨some sess⟩ →
     sess.state.sessionVersion = 4#32 →

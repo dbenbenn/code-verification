@@ -9,12 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Hops -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `signal_session::run` Arm `R3a`: `Recv` Whisper Contract
@@ -23,7 +28,7 @@ Budget-threaded (`RustCliAllocBudget M`) hop contracts `RunHopRecvWPlaced` and `
 for Arm `R3a` (`R+0x214` → Join/Reject) on Block `579` (`signal_session::run`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -52,7 +57,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
 from `AtDispatchPlaced` (`R+0x214`) on `g.c = .recv peerV` and `g.i.stdin = 2#8 :: rest` at
 cost-model state `st` under `FitsEnv M lim st (RecvWEnv g me peerV rest)`, calls
 `wrap_decrypt_signal` to reach `JoinKPlacedEnv` or `RejectKPlacedEnv` with `Qo = ⌜False⌝`. -/
-def RunHopRecvWPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopRecvWPlaced [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs) (sEnvs : RunSlotEnvs)
     (RecvWEnv : RunCall → MeAtDispatch → AddrV → List (BitVec 8) → List AllocEvent → Prop)
@@ -82,7 +87,7 @@ def RunHopRecvWPlaced [LibsignalPlacement] {M : AllocCostModel}
       (fun _ => ⌜False⌝)
 
 
-def RunHopRecvWPlacedOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopRecvWPlacedOf [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs)
     (RecvWEnv : RunCall → MeAtDispatch → AddrV → List (BitVec 8) → List AllocEvent → Prop)

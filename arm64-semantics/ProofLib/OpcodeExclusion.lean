@@ -14,7 +14,7 @@ public import ProofLib.BV.Bits
 public import ProofLib.Exec
 public import ProofLib.Invariant
 public import ProofLib.ProgramReflection
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 public meta import Lean
 public meta import ProofLib.ProgramReflection
 import Arm64.Trusted.ISA.Eval
@@ -622,6 +622,15 @@ private theorem tpidr_setSigAction (s : State) (sig : BitVec 32) (act : SigActio
 private theorem tpidr_setSigAltStack (s : State) (sas : SigAltStack) :
     (s.setSigAltStack sas).tpidrEl0 = s.tpidrEl0 := by
   cases s; rfl
+private theorem tpidr_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).tpidrEl0 = s.tpidrEl0 := by
+  cases s; rfl
+private theorem tpidr_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).tpidrEl0 = s.tpidrEl0 := by
+  cases s; rfl
+private theorem tpidr_ite {c : Bool} {a b : State} {x : BitVec 64}
+    (ha : a.tpidrEl0 = x) (hb : b.tpidrEl0 = x) : (if c = true then a else b).tpidrEl0 = x := by
+  cases c <;> assumption
 private theorem tpidr_setPhysMemAvail (s : State) (n : Nat) :
     (s.setPhysMemAvail n).tpidrEl0 = s.tpidrEl0 := by
   cases s; rfl
@@ -676,6 +685,9 @@ private theorem tpidr_execPpoll (s : State) : (execPpoll s).tpidrEl0 = s.tpidrEl
       tpidr_setMem, ite_self]
 private theorem tpidr_execSetTidAddress (s : State) :
     (execSetTidAddress s).tpidrEl0 = s.tpidrEl0 := by cases s; rfl
+private theorem tpidr_execFutex (s : State) :
+    (execFutex s).tpidrEl0 = s.tpidrEl0 := by
+  cases s; dsimp (config := { zetaHave := true }) only [execFutex]; (repeat' split) <;> rfl
 private theorem tpidr_execSchedGetaffinity (s : State) :
     (execSchedGetaffinity s).tpidrEl0 = s.tpidrEl0 := by
   cases s; dsimp (config := { zetaHave := true }) only [execSchedGetaffinity]; (repeat' split) <;> rfl
@@ -692,8 +704,12 @@ private theorem tpidr_execMunmap (s : State) : (execMunmap s).tpidrEl0 = s.tpidr
   cases s; dsimp (config := { zetaHave := true }) only [execMunmap]; (repeat' split) <;> rfl
 private theorem tpidr_execMremap (s : State) : (execMremap s).tpidrEl0 = s.tpidrEl0 := by
   dsimp (config := { zetaHave := true }) only [execMremap]
-  (repeat' split) <;>
-    simp only [tpidr_advancePC, tpidr_writeReg64, tpidr_setStatus, tpidr_setMem, tpidr_nextOracle, tpidr_setPhysMemAvail]
+  cases sanitizeMmapAddr
+      (s.mem.unmapNonFrozen (untaggedAddr (s.readReg64 Reg.x0)) (pageAlignUp (s.readReg64 Reg.x1).toNat))
+      (s.oracle.mmap s.oracleIdx) (pageAlignUp (s.readReg64 Reg.x2).toNat) <;>
+    simp (config := { decide := false }) only [apply_ite State.tpidrEl0,
+      tpidr_advancePC, tpidr_writeReg64, tpidr_setStatus, tpidr_setMem, tpidr_nextOracle,
+      tpidr_setPhysMemAvail, ite_self]
 private theorem tpidr_execMprotect (s : State) : (execMprotect s).tpidrEl0 = s.tpidrEl0 := by
   cases s; dsimp (config := { zetaHave := true }) only [execMprotect]; (repeat' split) <;> rfl
 private theorem tpidr_execMadvise (s : State) : (execMadvise s).tpidrEl0 = s.tpidrEl0 := by
@@ -701,21 +717,82 @@ private theorem tpidr_execMadvise (s : State) : (execMadvise s).tpidrEl0 = s.tpi
 private theorem tpidr_execTkill (s : State) : (execTkill s).tpidrEl0 = s.tpidrEl0 := by
   dsimp (config := { zetaHave := true }) only [execTkill]
   (repeat' split) <;>
-    simp only [tpidr_advancePC, tpidr_writeReg64, tpidr_setStatus]
+    simp only [tpidr_advancePC, tpidr_writeReg64, tpidr_setStatus, tpidr_setSigPending]
 private theorem tpidr_execTgkill (s : State) : (execTgkill s).tpidrEl0 = s.tpidrEl0 := by
   dsimp (config := { zetaHave := true }) only [execTgkill]
   (repeat' split) <;>
-    simp only [tpidr_advancePC, tpidr_writeReg64, tpidr_setStatus]
+    simp only [tpidr_advancePC, tpidr_writeReg64, tpidr_setStatus, tpidr_setSigPending]
 private theorem tpidr_execSigaltstack (s : State) : (execSigaltstack s).tpidrEl0 = s.tpidrEl0 := by
   dsimp (config := { zetaHave := true }) only [execSigaltstack]
   (repeat' split) <;>
     simp only [tpidr_advancePC, tpidr_writeReg64, tpidr_setStatus, tpidr_setMem, tpidr_setSigAltStack]
 private theorem tpidr_execRtSigaction (s : State) : (execRtSigaction s).tpidrEl0 = s.tpidrEl0 := by
-  dsimp (config := { zetaHave := true }) only [execRtSigaction]
-  (repeat' split) <;>
-    simp only [tpidr_advancePC, tpidr_writeReg64, tpidr_setStatus, tpidr_setMem, tpidr_setSigAction]
+  unfold execRtSigaction
+  dsimp only
+  refine tpidr_ite (by simp only [tpidr_advancePC, tpidr_writeReg64]) <|
+    tpidr_ite (by simp only [tpidr_advancePC, tpidr_writeReg64]) <|
+    tpidr_ite (tpidr_setStatus _ _) <|
+    tpidr_ite (by simp only [tpidr_advancePC, tpidr_writeReg64]) <|
+    tpidr_ite (by simp only [tpidr_advancePC, tpidr_writeReg64]) <|
+    tpidr_ite (tpidr_setStatus _ _) ?_
+  have hs1 : ∀ s1 : State, s1.tpidrEl0 = s.tpidrEl0 →
+      (if (s.readReg64 Reg.x2 == 0#64) = true then (s1.writeReg64 Reg.x0 0#64).advancePC
+       else if (!decide ((s.readReg64 Reg.x2).toNat + 32 ≤ 2 ^ 64) || !s1.mem.canWrite (s.readReg64 Reg.x2) 32) = true then
+         (s1.writeReg64 Reg.x0 EFAULT_RET).advancePC
+       else
+         ((s1.setMem (s1.mem.writeBytes (s.readReg64 Reg.x2) (SigAction.toBytes (s.getSigAction (s.readReg32 Reg.x0))))).writeReg64 Reg.x0 0#64).advancePC).tpidrEl0 = s.tpidrEl0 := by
+    intro s1 h1
+    refine tpidr_ite (by rw [tpidr_advancePC, tpidr_writeReg64, h1])
+      (tpidr_ite (by rw [tpidr_advancePC, tpidr_writeReg64, h1])
+        (by rw [tpidr_advancePC, tpidr_writeReg64, tpidr_setMem, h1]))
+  apply hs1
+  exact tpidr_ite rfl (tpidr_ite (by rw [tpidr_setSigPending, tpidr_setSigAction]) (tpidr_setSigAction _ _ _))
 private theorem tpidr_execRtSigprocmask (s : State) : (execRtSigprocmask s).tpidrEl0 = s.tpidrEl0 := by
-  cases s; dsimp (config := { zetaHave := true }) only [execRtSigprocmask]; (repeat' split) <;> rfl
+  unfold execRtSigprocmask
+  dsimp only
+  refine tpidr_ite (by simp only [tpidr_advancePC, tpidr_writeReg64]) <|
+    tpidr_ite (by simp only [tpidr_advancePC, tpidr_writeReg64]) <|
+    tpidr_ite (by simp only [tpidr_advancePC, tpidr_writeReg64]) <|
+    tpidr_ite (tpidr_setStatus _ _) <|
+    tpidr_ite (by simp only [tpidr_advancePC, tpidr_writeReg64]) ?_
+  have hs1 : ∀ s1 : State, s1.tpidrEl0 = s.tpidrEl0 →
+      let s2 :=
+        if (s.readReg64 Reg.x2 == 0#64) = true then (s1.writeReg64 Reg.x0 0#64).advancePC
+        else if (!decide ((s.readReg64 Reg.x2).toNat + 8 ≤ 2 ^ 64) || !s1.mem.canWrite (s.readReg64 Reg.x2) 8) = true then
+          (s1.writeReg64 Reg.x0 EFAULT_RET).advancePC
+        else
+          ((s1.setMem (s1.mem.writeBytes (s.readReg64 Reg.x2) (leBytes64 s.sigMask))).writeReg64 Reg.x0 0#64).advancePC
+      (let deliverable := s2.sigPending &&& ~~~s2.sigMask
+       if (deliverable == 0#64) = true then s2
+       else if (deliverable == SIGABRT_MASK) = true then
+         let s3 := s2.setSigPending (s2.sigPending &&& ~~~SIGABRT_MASK)
+         let disp := (s3.getSigAction LINUX_SIGABRT).handler
+         if (disp == SIG_DFL) = true then s3.setStatus (.Signaled 6#7)
+         else if (disp == SIG_IGN) = true then s3
+         else s3.setStatus (.Exception "unmodeled signal handler delivery")
+       else s2.setStatus (.Exception "unmodeled pending signal delivery")).tpidrEl0 = s.tpidrEl0 := by
+    intro s1 h1
+    have hs2 : ∀ s2 : State, s2.tpidrEl0 = s.tpidrEl0 →
+        (let deliverable := s2.sigPending &&& ~~~s2.sigMask
+         if (deliverable == 0#64) = true then s2
+         else if (deliverable == SIGABRT_MASK) = true then
+           let s3 := s2.setSigPending (s2.sigPending &&& ~~~SIGABRT_MASK)
+           let disp := (s3.getSigAction LINUX_SIGABRT).handler
+           if (disp == SIG_DFL) = true then s3.setStatus (.Signaled 6#7)
+           else if (disp == SIG_IGN) = true then s3
+           else s3.setStatus (.Exception "unmodeled signal handler delivery")
+         else s2.setStatus (.Exception "unmodeled pending signal delivery")).tpidrEl0 = s.tpidrEl0 := by
+      intro s2 h2
+      dsimp only
+      refine tpidr_ite h2 (tpidr_ite ?_ (by rw [tpidr_setStatus, h2]))
+      refine tpidr_ite (by rw [tpidr_setStatus, tpidr_setSigPending, h2])
+        (tpidr_ite (by rw [tpidr_setSigPending, h2]) (by rw [tpidr_setStatus, tpidr_setSigPending, h2]))
+    apply hs2
+    refine tpidr_ite (by rw [tpidr_advancePC, tpidr_writeReg64, h1])
+      (tpidr_ite (by rw [tpidr_advancePC, tpidr_writeReg64, h1])
+        (by rw [tpidr_advancePC, tpidr_writeReg64, tpidr_setMem, h1]))
+  apply hs1
+  exact tpidr_ite rfl (tpidr_setSigMask _ _)
 private theorem tpidr_execGetpid (s : State) : (execGetpid s).tpidrEl0 = s.tpidrEl0 := by
   cases s; rfl
 private theorem tpidr_execGetrandom (s : State) : (execGetrandom s).tpidrEl0 = s.tpidrEl0 := by
@@ -743,7 +820,8 @@ private theorem execSyscall_tpidrEl0 (s : State) : (execSyscall s).tpidrEl0 = s.
       ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ |
       ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ |
       ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ |
-      ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+      ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ |
+      ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
     · exact tpidr_execReadCommon s false
     · exact tpidr_execWrite s
     · exact tpidr_execReadv s
@@ -772,6 +850,7 @@ private theorem execSyscall_tpidrEl0 (s : State) : (execSyscall s).tpidrEl0 = s.
     · exact tpidr_execClockGettime s
     · exact tpidr_execGetrandom s
     · exact tpidr_execSetTidAddress s
+    · exact tpidr_execFutex s
     · exact tpidr_execSchedGetaffinity s
     · exact tpidr_execGetpid s
     · exact tpidr_execGetpid s
@@ -1304,23 +1383,6 @@ theorem rebase_fetch_of_allInstrs {p : Instr → Bool} {prog : Program}
     (O : String → Option (State → State) := fun _ => none) :
     ∀ (addr : BitVec 64) (i : Instr), (prog.rebase b X O).fetch addr = some i → p i = true :=
   fetch_of_allInstrs (by simpa using hall)
-
-/-- Lift whole-code checking from a canonical code program `prog0` (`prog0.code = li.code`) to
-    any linked image `img` with `Obj.Loads li img`. -/
-theorem ofImage_allInstrs_of_loads {p : Instr → Bool} {li : Obj.LinkedImage} {img : Obj.Image}
-    {prog0 : Program}
-    (hL : Obj.Loads li img) (hc : prog0.code = li.code)
-    (hall : prog0.allInstrs p = true)
-    (X : String → Option (State → State) := fun _ => none)
-    (O : String → Option (State → State) := fun _ => none) :
-    (Program.ofImage img X O).allInstrs p = true := by
-  have himg : (Program.ofImage img X O).code = prog0.code := by
-    change img.code = prog0.code
-    rw [(ProofLib.ObjectLoad.Loads.canonical hL).1, hc]
-  exact allInstrs_of_code_eq himg hall
-
-/-- Alias for `ofImage_allInstrs_of_loads`. -/
-abbrev ofImage_allInstrs := @ofImage_allInstrs_of_loads
 
 /-- Every executable byte in `m` (`(m.perm a).x = true`) lies within
     `[prog.base, prog.base + prog.code.length)`. -/

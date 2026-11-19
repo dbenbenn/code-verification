@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.ReductionsQueries
-public import Computational.Proofs.ReductionDsl.SM.Engine
-public import Computational.Proofs.ReductionDsl.Size
+public import Computational.Proofs.CryptoGames.SM.ReductionsQueries -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.Engine -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.Size -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.SM.RedPRNG
 import Computational.Proofs.ReductionDsl.Notation
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
 
 /-!
 # Costed FS-AEAD reductions for SM authenticity and privacy
@@ -22,10 +23,11 @@ Implements the single-session and multi-session `ReductionDsl.CostedReduction` F
 for SM authenticity and privacy (`redFSAuthProg`, `redFSPrivProg`, `redFSPrivCoinProg`,
 `redFSPrivUniProg`, `redFSPrivUniCoinProg`, `redFSAuthMultiStage2Prog`), and proves simulation
 evaluation agreement, `FSAEAD.fromAEADPRG` bridges, static query bounds, and static cost
-characterizations.
--/
+characterizations.-/
 
-@[expose] public section
+set_option linter.unusedSectionVars false
+
+public section
 
 open ReductionDsl OracleSpec OracleComp
 
@@ -40,24 +42,24 @@ local notation "S" => prngSig KC Γ CCoins T I KR RSt K SS RS M E
 
 /-! ## `FSState` and `VP` representations -/
 
-@[reducible] def fsCacheEntryTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def fsCacheEntryTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .prod (.base .t) (.prod (.base .sig) (.prod (.base .k) .bool))
 
-@[reducible] def fsTableEntryTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def fsTableEntryTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .prod (.base .i) (.base .k)
 
-@[reducible] def fsTransEntryTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def fsTransEntryTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .prod .nat (ckaHdrCtTy KC Γ CCoins T I KR RSt K SS RS M E)
 
-@[reducible] def fsExtTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def fsExtTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .opt (.prod (.base .ss) (.base .rs))
 
 /-- Encoding of `FSState` in `prngSig`: `(cache, table, sessions, fsTrans, fsCount, fsSCorr, ext)`. -/
-@[reducible] def fsHsTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def fsHsTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .prod (.tbl (.opt (fsCacheEntryTy KC Γ CCoins T I KR RSt K SS RS M E)))
     (.prod (.list (fsTableEntryTy KC Γ CCoins T I KR RSt K SS RS M E))
@@ -72,7 +74,7 @@ local notation "transEntryTy" => fsTransEntryTy KC Γ CCoins T I KR RSt K SS RS 
 local notation "extTy" => fsExtTy KC Γ CCoins T I KR RSt K SS RS M E
 local notation "hsTy" => fsHsTy KC Γ CCoins T I KR RSt K SS RS M E
 
-def fsHsEnc (h : FSState T RSt K I SS RS E) : (hsTy).denote :=
+@[expose] def fsHsEnc (h : FSState T RSt K I SS RS E) : (hsTy).denote :=
   (h.cache, h.table, h.sessions, h.fsTrans, h.fsCount, h.fsSCorr, h.ext)
 
 def fsHsDec (v : (hsTy).denote) :
@@ -95,29 +97,29 @@ def fsHsDec (v : (hsTy).denote) :
 
 section FSStateExpr
 
-def fsHsCache
+@[expose] def fsHsCache
     {O' : Ops S} {Γ'} (h : Expr O' Γ' hsTy) :
     Expr O' Γ' (.tbl (.opt cacheEntryTy)) := .fst h
-def fsHsTable
+@[expose] def fsHsTable
     {O' : Ops S} {Γ'} (h : Expr O' Γ' hsTy) :
     Expr O' Γ' (.list tableEntryTy) := .fst (.snd h)
-def fsHsSessions
+@[expose] def fsHsSessions
     {O' : Ops S} {Γ'} (h : Expr O' Γ' hsTy) :
     Expr O' Γ' (.list (.base .i)) := .fst (.snd (.snd h))
-def fsHsTrans
+@[expose] def fsHsTrans
     {O' : Ops S} {Γ'} (h : Expr O' Γ' hsTy) :
     Expr O' Γ' (.list transEntryTy) := .fst (.snd (.snd (.snd h)))
-def fsHsCount
+@[expose] def fsHsCount
     {O' : Ops S} {Γ'} (h : Expr O' Γ' hsTy) :
     Expr O' Γ' .nat := .fst (.snd (.snd (.snd (.snd h))))
-def fsHsSCorr
+@[expose] def fsHsSCorr
     {O' : Ops S} {Γ'} (h : Expr O' Γ' hsTy) :
     Expr O' Γ' .bool := .fst (.snd (.snd (.snd (.snd (.snd h)))))
-def fsHsExt
+@[expose] def fsHsExt
     {O' : Ops S} {Γ'} (h : Expr O' Γ' hsTy) :
     Expr O' Γ' extTy := .snd (.snd (.snd (.snd (.snd (.snd h)))))
 
-def fsHsMk
+@[expose] def fsHsMk
     {O' : Ops S} {Γ'}
     (cache : Expr O' Γ' (.tbl (.opt cacheEntryTy)))
     (table : Expr O' Γ' (.list tableEntryTy))
@@ -128,42 +130,42 @@ def fsHsMk
     (ext : Expr O' Γ' extTy) : Expr O' Γ' hsTy :=
   .pair cache (.pair table (.pair sessions (.pair trans (.pair count (.pair scorr ext)))))
 
-def fsHsSetCache
+@[expose] def fsHsSetCache
     {O' : Ops S} {Γ'} (h : Expr O' Γ' hsTy)
     (c : Expr O' Γ' (.tbl (.opt cacheEntryTy))) : Expr O' Γ' hsTy :=
   fsHsMk c (fsHsTable h) (fsHsSessions h) (fsHsTrans h) (fsHsCount h) (fsHsSCorr h) (fsHsExt h)
 
-def fsHsSetTable
+@[expose] def fsHsSetTable
     {O' : Ops S} {Γ'} (h : Expr O' Γ' hsTy)
     (tbl : Expr O' Γ' (.list tableEntryTy)) : Expr O' Γ' hsTy :=
   fsHsMk (fsHsCache h) tbl (fsHsSessions h) (fsHsTrans h) (fsHsCount h) (fsHsSCorr h) (fsHsExt h)
 
-def fsHsSetSessions
+@[expose] def fsHsSetSessions
     {O' : Ops S} {Γ'} (h : Expr O' Γ' hsTy)
     (ses : Expr O' Γ' (.list (.base .i))) : Expr O' Γ' hsTy :=
   fsHsMk (fsHsCache h) (fsHsTable h) ses (fsHsTrans h) (fsHsCount h) (fsHsSCorr h) (fsHsExt h)
 
-def fsHsSetTrans
+@[expose] def fsHsSetTrans
     {O' : Ops S} {Γ'} (h : Expr O' Γ' hsTy)
     (tr : Expr O' Γ' (.list transEntryTy)) : Expr O' Γ' hsTy :=
   fsHsMk (fsHsCache h) (fsHsTable h) (fsHsSessions h) tr (fsHsCount h) (fsHsSCorr h) (fsHsExt h)
 
-def fsHsSetCountTrans
+@[expose] def fsHsSetCountTrans
     {O' : Ops S} {Γ'} (h : Expr O' Γ' hsTy) (cnt : Expr O' Γ' .nat)
     (tr : Expr O' Γ' (.list transEntryTy)) : Expr O' Γ' hsTy :=
   fsHsMk (fsHsCache h) (fsHsTable h) (fsHsSessions h) tr cnt (fsHsSCorr h) (fsHsExt h)
 
-def fsHsSetSCorr
+@[expose] def fsHsSetSCorr
     {O' : Ops S} {Γ'} (h : Expr O' Γ' hsTy)
     (sc : Expr O' Γ' .bool) : Expr O' Γ' hsTy :=
   fsHsMk (fsHsCache h) (fsHsTable h) (fsHsSessions h) (fsHsTrans h) (fsHsCount h) sc (fsHsExt h)
 
-def fsHsSetExt
+@[expose] def fsHsSetExt
     {O' : Ops S} {Γ'} (h : Expr O' Γ' hsTy)
     (ex : Expr O' Γ' extTy) : Expr O' Γ' hsTy :=
   fsHsMk (fsHsCache h) (fsHsTable h) (fsHsSessions h) (fsHsTrans h) (fsHsCount h) (fsHsSCorr h) ex
 
-def fsHsEmptyE
+@[expose] def fsHsEmptyE
     {O' : Ops S} {Γ'} : Expr O' Γ' hsTy :=
   fsHsMk (.tconst .none) .nil .nil .nil (.nat 0) (.bool false) .none
 
@@ -174,28 +176,28 @@ def fsHsEmptyE
 
 end FSStateExpr
 
-@[reducible] def fsVpTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def fsVpTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   @vpTblTy KC Γ CCoins T I KR RSt K SS RS M E
     (.base .γ) (.base .sig) (.opt (.base .ss)) (.opt (.base .rs))
 
 local notation "vpTyFS" => fsVpTy KC Γ CCoins T I KR RSt K SS RS M E
 
-@[reducible] def fsVpEnc (vp : VP Γ T RSt (Option SS) (Option RS)) : (vpTyFS).denote :=
+@[expose, reducible] def fsVpEnc (vp : VP Γ T RSt (Option SS) (Option RS)) : (vpTyFS).denote :=
   vpTblEnc (KC := KC) (Γ := Γ) (CCoins := CCoins) (I := I) (KR := KR) (RSt := RSt)
     (K := K) (SS := SS) (RS := RS) (M := M) (E := E)
     (γvT := .base .γ) (svT := .base .sig) (ssvT := .opt (.base .ss)) (rsvT := .opt (.base .rs)) vp
 
-@[reducible] def fsEsTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def fsEsTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   esTy (fsVpTy KC Γ CCoins T I KR RSt K SS RS M E) (fsHsTy KC Γ CCoins T I KR RSt K SS RS M E)
 
 local notation "esTyFS" => fsEsTy KC Γ CCoins T I KR RSt K SS RS M E
 
-def FSHBounded (L : ℕ) (h : FSState T RSt K I SS RS E) : Prop :=
+@[expose] def FSHBounded (L : ℕ) (h : FSState T RSt K I SS RS E) : Prop :=
   h.table.length ≤ L ∧ h.sessions.length ≤ L ∧ h.fsTrans.length ≤ L
 
-def FSHBoundedPost (L : ℕ) (h : FSState T RSt K I SS RS E) : Prop :=
+@[expose] def FSHBoundedPost (L : ℕ) (h : FSState T RSt K I SS RS E) : Prop :=
   h.fsTrans.length ≤ L
 
 /-! ## Costed helpers and `hooksFSC` -/
@@ -236,7 +238,7 @@ local notation "hdrTy" => ckaHdrTy KC Γ CCoins T I KR RSt K SS RS M E
 local notation "hdrCtTy" => ckaHdrCtTy KC Γ CCoins T I KR RSt K SS RS M E
 local notation "psTy" => ckaPsTy KC Γ CCoins T I KR RSt K SS RS M E
 
-def tableLookupE (L : ℕ) {Γ'}
+@[expose] def tableLookupE (L : ℕ) {Γ'}
     (tblE : Expr OO Γ' (.list tableEntryTy))
     (ikE : Expr OO Γ' (.base .i)) :
     Expr OO Γ' (.opt (.base .k)) :=
@@ -245,7 +247,7 @@ def tableLookupE (L : ℕ) {Γ'}
       foldrB L tbl0 none fun (ikEntry, kEntry) acc =>
         if Expr.op (O := OO) CKAOp.eqI (ik0, ikEntry) then some kEntry else acc
 
-def lookupFC (L : ℕ) {Γ'}
+@[expose] def lookupFC (L : ℕ) {Γ'}
     (hE : Expr OO Γ' hsTy)
     (ikE : Expr OO Γ' (.base .i)) :
     Comp OO II Γ' (.prod (.base .k) hsTy) :=
@@ -258,7 +260,7 @@ def lookupFC (L : ℕ) {Γ'}
     | some kFound =>
       return (kFound, h0)
 
-def sessionsMemE (L : ℕ) {Γ'}
+@[expose] def sessionsMemE (L : ℕ) {Γ'}
     (sesE : Expr OO Γ' (.list (.base .i)))
     (ikE : Expr OO Γ' (.base .i)) :
     Expr OO Γ' .bool :=
@@ -267,7 +269,7 @@ def sessionsMemE (L : ℕ) {Γ'}
       foldrB L ses0 false fun x acc =>
         orE (Expr.op (O := OO) CKAOp.eqI (x, ik0)) acc
 
-def sessionsIdxOfE (L : ℕ) {Γ'}
+@[expose] def sessionsIdxOfE (L : ℕ) {Γ'}
     (sesE : Expr OO Γ' (.list (.base .i)))
     (ikE : Expr OO Γ' (.base .i)) :
     Expr OO Γ' .nat :=
@@ -276,20 +278,20 @@ def sessionsIdxOfE (L : ℕ) {Γ'}
       foldrB L ses0 0 fun x acc =>
         if Expr.op (O := OO) CKAOp.eqI (x, ik0) then 0 else acc + 1
 
-def sessionsLenE (L : ℕ) {Γ'}
+@[expose] def sessionsLenE (L : ℕ) {Γ'}
     (sesE : Expr OO Γ' (.list (.base .i))) :
     Expr OO Γ' .nat :=
   rdslExpr =>
     foldrB L sesE 0 fun _ acc => acc + 1
 
-def sessionsAppendOneE (L : ℕ) {Γ'}
+@[expose] def sessionsAppendOneE (L : ℕ) {Γ'}
     (sesE : Expr OO Γ' (.list (.base .i)))
     (ikE : Expr OO Γ' (.base .i)) :
     Expr OO Γ' (.list (.base .i)) :=
   rdslExpr =>
     foldrB L sesE [ikE] fun x acc => x :: acc
 
-def isExtE (L j : ℕ) {Γ'}
+@[expose] def isExtE (L j : ℕ) {Γ'}
     (hE : Expr OO Γ' hsTy)
     (ikE : Expr OO Γ' (.base .i)) :
     Expr OO Γ' (.prod .bool hsTy) :=
@@ -301,7 +303,7 @@ def isExtE (L j : ℕ) {Γ'}
       else
         (sessionsLenE L ses0 == nat j, fsHsSetSessions h0 (sessionsAppendOneE L ses0 ik0))
 
-def extOfE (L j : ℕ) {Γ'}
+@[expose] def extOfE (L j : ℕ) {Γ'}
     (hE : Expr OO Γ' hsTy)
     (sidE : Expr OO Γ' (.opt (.base .i))) :
     Expr OO Γ' (.prod .bool hsTy) :=
@@ -311,7 +313,7 @@ def extOfE (L j : ℕ) {Γ'}
       | none => (false, h0)
       | some ik => isExtE L j h0 ik
 
-def rootFSC (L : ℕ) (mo : Mode) {Γ'}
+@[expose] def rootFSC (L : ℕ) (mo : Mode) {Γ'}
     (hE : Expr OO Γ' hsTy)
     (tE : Expr OO Γ' .nat)
     (ikE : Expr OO Γ' (.base .i))
@@ -339,7 +341,7 @@ def rootFSC (L : ℕ) (mo : Mode) {Γ'}
     else
       return ((pIk.1, pIk.2, none), h0)
 
-def fsStartSendC (L : ℕ) (mo : Mode) (j : ℕ) {Γ'}
+@[expose] def fsStartSendC (L : ℕ) (mo : Mode) (j : ℕ) {Γ'}
     (hE : Expr OO Γ' hsTy)
     (_ctxE : Expr OO Γ' (cGsTy vpTyFS))
     (_pE : Expr OO Γ' .bool)
@@ -368,7 +370,7 @@ def fsStartSendC (L : ℕ) (mo : Mode) (j : ℕ) {Γ'}
     let ssv := if ext then none else some (Expr.op (O := OO) CKAOp.fsInitSender kVal)
     return (some (cOut.1, tMsg, σ', ssv), h3)
 
-def fsStartRecvC (L : ℕ) (mo : Mode) (j : ℕ) {Γ'}
+@[expose] def fsStartRecvC (L : ℕ) (mo : Mode) (j : ℕ) {Γ'}
     (hE : Expr OO Γ' hsTy)
     (_ctxE : Expr OO Γ' (cGsTy vpTyFS))
     (_pE : Expr OO Γ' .bool)
@@ -407,7 +409,7 @@ def fsStartRecvC (L : ℕ) (mo : Mode) (j : ℕ) {Γ'}
       let rsv := if ext then none else some (Expr.op (O := OO) CKAOp.fsInitReceiver kVal)
       return (some (some (γ', σc, rsv)), h0)
 
-def fsFsSendC (Δcka : ℕ) {Γ'}
+@[expose] def fsFsSendC (Δcka : ℕ) {Γ'}
     (hE : Expr OO Γ' hsTy)
     (ctxE : Expr OO Γ' (cGsTy vpTyFS))
     (pE : Expr OO Γ' .bool)
@@ -452,7 +454,7 @@ def fsFsSendC (Δcka : ℕ) {Γ'}
       let o := Expr.op (O := OO) CKAOp.fsSend (ss, hdr0, m0)
       return (some (some o.1, o.2), h0)
 
-def fsTransFindE (L : ℕ) {Γ'}
+@[expose] def fsTransFindE (L : ℕ) {Γ'}
     (trE : Expr OO Γ' (.list transEntryTy))
     (hcE : Expr OO Γ' hdrCtTy) :
     Expr OO Γ' (.opt transEntryTy) :=
@@ -460,7 +462,7 @@ def fsTransFindE (L : ℕ) {Γ'}
     letE (trE, hcE) fun (tr0, hc0) =>
       findB L tr0 fun x => hdrCtEqE x.2 hc0
 
-def fsTransFilterE (L : ℕ) {Γ'}
+@[expose] def fsTransFilterE (L : ℕ) {Γ'}
     (trE : Expr OO Γ' (.list transEntryTy))
     (dropE : Expr OO Γ' .nat) :
     Expr OO Γ' (.list transEntryTy) :=
@@ -469,7 +471,7 @@ def fsTransFilterE (L : ℕ) {Γ'}
       foldrB L tr0 [] fun x acc =>
         if !(x.1 == drop0) then x :: acc else acc
 
-def fsFsRecvC (L B : ℕ) {Γ'}
+@[expose] def fsFsRecvC (L B : ℕ) {Γ'}
     (hE : Expr OO Γ' hsTy)
     (_ctxE : Expr OO Γ' (cGsTy vpTyFS))
     (_pE : Expr OO Γ' .bool)
@@ -521,7 +523,7 @@ def fsFsRecvC (L B : ℕ) {Γ'}
       | some (rs', idxMsg) =>
         return (some (some (some rs', idxMsg)), h0)
 
-def fsCommitC {Γ'}
+@[expose] def fsCommitC {Γ'}
     (hE : Expr OO Γ' hsTy)
     (_ctxE : Expr OO Γ' (cGsTy vpTyFS))
     (_pE : Expr OO Γ' .bool)
@@ -531,14 +533,14 @@ def fsCommitC {Γ'}
     return (some newE, hE)
 
 /-- Builds `[L - 1, ..., 0]` via `Comp.iter` so AST size scales with `bits L`. -/
-def rangeListC {S' : Sig} {O' : Ops S'} {ι : Type} {spec : OracleSpec ι}
+@[expose] def rangeListC {S' : Sig} {O' : Ops S'} {ι : Type} {spec : OracleSpec ι}
     {I' : Iface S' spec} (L : ℕ) {Γ' : List (Ty S')} : Comp O' I' Γ' (.list .nat) :=
   .bind
     (.iter L (.pair (.nat 0) .nil)
       (.ret (.pair (.add (.fst .v0) (.nat 1)) (.cons (.fst .v0) (.snd .v0)))))
     (.ret (.snd .v0))
 
-def unliftEntryE {Γ'}
+@[expose] def unliftEntryE {Γ'}
     (entryE : Expr OO Γ' (.opt (.opt (.base .rs))))
     (rsExtE : Expr OO Γ' (.opt (.base .rs))) :
     Expr OO Γ' (.opt (.base .rs)) :=
@@ -551,7 +553,7 @@ def unliftEntryE {Γ'}
         | none => rsExt0
         | some rs => some rs
 
-def unliftVRE (L : ℕ) {Γ'}
+@[expose] def unliftVRE (L : ℕ) {Γ'}
     (vRE : Expr OO Γ' (.tbl (.opt (.opt (.base .rs)))))
     (rsExtE : Expr OO Γ' (.opt (.base .rs)))
     (rngE : Expr OO Γ' (.list .nat)) :
@@ -561,7 +563,7 @@ def unliftVRE (L : ℕ) {Γ'}
       foldrB L rng0 (tconst none) fun idx acc =>
         tset acc idx (unliftEntryE (tget vR0 idx) rsExt0)
 
-def fsRevealC (L : ℕ) (mo : Mode) {Γ'}
+@[expose] def fsRevealC (L : ℕ) (mo : Mode) {Γ'}
     (hE : Expr OO Γ' hsTy)
     (_ctxE : Expr OO Γ' (cGsTy vpTyFS))
     (_pE : Expr OO Γ' .bool)
@@ -616,7 +618,7 @@ def fsRevealC (L : ℕ) (mo : Mode) {Γ'}
         return (some (realPartyE vp0 (vpΓ vp0) (vpRoot vp0) ssReal vR'), h2)
 
 /-- Costed `HooksC` bundle for single-session `redFS`. -/
-def hooksFSC (L B Δcka : ℕ) (mo : Mode) (j : ℕ) :
+@[expose] def hooksFSC (L B Δcka : ℕ) (mo : Mode) (j : ℕ) :
     HooksC OO II (.base .γ) (.base .sig) (.opt (.base .ss)) (.opt (.base .rs)) hsTy where
   startSend := fsStartSendC L mo j
   startRecv := fsStartRecvC L mo j
@@ -1946,7 +1948,7 @@ theorem fsFsRecvC_eval [DecidableEq T] [DecidableEq I] [DecidableEq E]
       simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
       subst hmem; exact hHB
 
-def unliftEntry (entry : Option (Option RS)) (rsExt : Option RS) : Option RS :=
+@[expose] def unliftEntry (entry : Option (Option RS)) (rsExt : Option RS) : Option RS :=
   match entry with
   | some (some rs) => some rs
   | some none => rsExt
@@ -2045,7 +2047,7 @@ theorem unliftVRE_eval (L : ℕ) {Γ'}
   rw [foldr_update_apply]
   simp [List.mem_reverse, List.mem_range]
 
-def hooksFSL [DecidableEq T] [DecidableEq I] [DecidableEq E]
+@[expose] def hooksFSL [DecidableEq T] [DecidableEq I] [DecidableEq E]
     [SampleableType CCoins] [SampleableType I] [SampleableType K]
     (cka : CKAScheme KC Γ CCoins T I)
     (prng : PRFPRNG KR RSt I K)
@@ -3718,7 +3720,7 @@ theorem simulateQ_implEC_fs_eq
 
 /-! ## Costed single-session FS-AEAD reductions -/
 
-def initFSRaw [DecidableEq I]
+@[expose] def initFSRaw [DecidableEq I]
     [SampleableType KR] [SampleableType KC] [SampleableType I] [SampleableType K]
     (cka : CKAScheme KC Γ CCoins T I)
     (prng : PRFPRNG KR RSt I K)
@@ -3741,7 +3743,7 @@ def initFSRaw [DecidableEq I]
     g := { st := fun | .A => pAB.1 | .B => pAB.2, b := b }
     h := h₂ }
 
-def initFSEStateC (L : ℕ) (mo : Mode) (j : ℕ) {Γ'} (bE : Expr OO Γ' .bool) :
+@[expose] def initFSEStateC (L : ℕ) (mo : Mode) (j : ℕ) {Γ'} (bE : Expr OO Γ' .bool) :
     Comp OO II Γ' esTyFS :=
   rdsl do
     b0 ← return bE
@@ -3948,7 +3950,7 @@ theorem runFS_eq_bind_initFSRaw
     bind_congr fun ⟨⟨_, _, _⟩, _⟩ => bind_congr fun ⟨_, _⟩ => rfl
 
 /-- Costed `redFSAuth` reduction (ACD19 Lemma 11) over `prngOps`, `fsaeadHeaderAdIface`, and `prngSMCodec`. -/
-def redFSAuthProg (L B Δcka qep maxSkip : ℕ) (j : ℕ) (tL : Option ℕ) (t : ℕ) :
+@[expose] def redFSAuthProg (L B Δcka qep maxSkip : ℕ) (j : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction OO II
       (SM.spec (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (prngSMCodec KC Γ CCoins T I KR RSt K SS RS M E)
@@ -3964,7 +3966,7 @@ def redFSAuthProg (L B Δcka qep maxSkip : ℕ) (j : ℕ) (tL : Option ℕ) (t :
     sample (O := OO) (I := II) CKASamp.bit ()
 
 /-- Costed `redFSPriv` reduction (ACD19 Lemma 15) over `prngOps`, `fsaeadHeaderAdIface`, and `prngSMCodec`. -/
-def redFSPrivProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
+@[expose] def redFSPrivProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction OO II
       (SM.spec (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (prngSMCodec KC Γ CCoins T I KR RSt K SS RS M E)
@@ -3983,7 +3985,7 @@ def redFSPrivProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
       sample (O := OO) (I := II) CKASamp.bit ()
 
 /-- Coin-guessing variant of `redFSPrivProg`. -/
-def redFSPrivCoinProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
+@[expose] def redFSPrivCoinProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction OO II
       (SM.spec (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (prngSMCodec KC Γ CCoins T I KR RSt K SS RS M E)
@@ -3998,7 +4000,7 @@ def redFSPrivCoinProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) 
   finish := rdsl [_, _] do
     sample (O := OO) (I := II) CKASamp.bit ()
 
-def leakDoomUniE (L Δcka t : ℕ) {Γ'}
+@[expose] def leakDoomUniE (L Δcka t : ℕ) {Γ'}
     (g0 g1 : Expr OO Γ' (cGsTy vpTyFS)) : Expr OO Γ' .bool :=
   rdslExpr =>
     letE (raw g0, raw g1) fun (s0, s1) =>
@@ -4009,7 +4011,7 @@ def leakDoomUniE (L Δcka t : ℕ) {Γ'}
         anyB L (cGsLeaks s1) (fun lk => (lk < nat t) && (nat t < lk + nat (2 + Δcka)))
       orE ev2 badPre
 
-def corrUniEC (L Δcka t : ℕ) {Γ'}
+@[expose] def corrUniEC (L Δcka t : ℕ) {Γ'}
     (es : Expr OO Γ' esTyFS) (p : Expr OO Γ' .bool) :
     Comp OO II Γ' (.prod (.opt psTy) esTyFS) :=
   rdsl do
@@ -4031,23 +4033,23 @@ def corrUniEC (L Δcka t : ℕ) {Γ'}
         | some st => return (some st, esMk s1 h' (esAbort es0))
 
 /-- Unified `tL`-free privacy policy at challenge epoch `t`. -/
-def redFsPolUni (Δcka t : ℕ) : Policy :=
+@[expose] def redFsPolUni (Δcka t : ℕ) : Policy :=
   ⟨false, if 2 + Δcka ≤ t then some (t - (2 + Δcka)) else none, t⟩
 
-def implUniEC (L B Δcka qep maxSkip t : ℕ) {Γ'}
+@[expose] def implUniEC (L B Δcka qep maxSkip t : ℕ) {Γ'}
     (es : Expr OO Γ' esTyFS)
     (q : Expr OO Γ' (ckaSMQ KC Γ CCoins T I KR RSt K SS RS M E)) :
     Comp OO II Γ' (.prod (ckaSMR KC Γ CCoins T I KR RSt K SS RS M E) esTyFS) :=
   implEC (hooksFSC L B Δcka ⟨false, none, t⟩ 0) L (2 + Δcka) qep maxSkip
     (modeCfgEC OO ⟨false, none, t⟩) (redFsPolUni Δcka t) es q
 
-def privValidUniE (L Δ t : ℕ) {Γ'} (esE : Expr OO Γ' esTyFS) : Expr OO Γ' .bool :=
+@[expose] def privValidUniE (L Δ t : ℕ) {Γ'} (esE : Expr OO Γ' esTyFS) : Expr OO Γ' .bool :=
   rdslExpr =>
     letE (raw esE) fun es0 =>
       !(esAbort es0) && validGuessE (raw Δ) (cCanonE (raw L) (nat t) (esG es0)) (nat t)
 
 /-- Stage-2 `tL`-free `redFSPriv` reduction at challenge epoch `t`. -/
-def redFSPrivUniProg (L B Δcka qep maxSkip : ℕ) (t : ℕ) :
+@[expose] def redFSPrivUniProg (L B Δcka qep maxSkip : ℕ) (t : ℕ) :
     CostedReduction OO II
       (SM.spec (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (prngSMCodec KC Γ CCoins T I KR RSt K SS RS M E)
@@ -4065,7 +4067,7 @@ def redFSPrivUniProg (L B Δcka qep maxSkip : ℕ) (t : ℕ) :
       sample (O := OO) (I := II) CKASamp.bit ()
 
 /-- Coin-guessing variant of `redFSPrivUniProg`. -/
-def redFSPrivUniCoinProg (L B Δcka qep maxSkip : ℕ) (t : ℕ) :
+@[expose] def redFSPrivUniCoinProg (L B Δcka qep maxSkip : ℕ) (t : ℕ) :
     CostedReduction OO II
       (SM.spec (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (prngSMCodec KC Γ CCoins T I KR RSt K SS RS M E)
@@ -4080,7 +4082,7 @@ def redFSPrivUniCoinProg (L B Δcka qep maxSkip : ℕ) (t : ℕ) :
     sample (O := OO) (I := II) CKASamp.bit ()
 
 /-- Wraps an `FSAEADScheme` by clamping `receive`'s output message index to `B`. -/
-def fsClamp (B : ℕ) (fs : FSAEADScheme K SS RS (Header T) M E) :
+@[expose] def fsClamp (B : ℕ) (fs : FSAEADScheme K SS RS (Header T) M E) :
     FSAEADScheme K SS RS (Header T) M E :=
   { fs with
     receive := fun rs hdr e =>
@@ -4344,7 +4346,7 @@ theorem redFSPrivCoinProg_eval_clamp
 /-! ## Static query bounds -/
 
 /-- Decryption query weight on `FSHdrTag`: `1` on `.dl` and `.ij`, `0` on all other tags. -/
-def fsHdrDecWt : FSHdrTag → ℕ
+@[expose] def fsHdrDecWt : FSHdrTag → ℕ
   | .dl | .ij => 1
   | .tr | .ch | .cs | .cr => 0
 
@@ -4619,7 +4621,7 @@ section FromAEADPRG
 
 variable {MK C : Type}
 
-def FSVROkStep (maxSkip k : ℕ) :
+@[expose] def FSVROkStep (maxSkip k : ℕ) :
     Option (FSAEAD.RatchetReceiverState K MK) → Prop
   | none => True
   | some rs => RSReach maxSkip k rs
@@ -6046,7 +6048,7 @@ end FromAEADPRG
 /-! ## Multi-session `redFSAuthMultiStage2` -/
 
 /-- Multi-session target interface into `unifSpec + FSMultiSpec` over `prngSig`. -/
-@[reducible] def fsaeadMultiHeaderAdIface (KC Γ CCoins T I KR RSt K SS RS M E : Type)
+@[expose, reducible] def fsaeadMultiHeaderAdIface (KC Γ CCoins T I KR RSt K SS RS M E : Type)
     (sampKR : ProbComp KR)
     (sampKC : ProbComp KC)
     (sampCCoins : ProbComp CCoins)
@@ -6082,28 +6084,28 @@ end FromAEADPRG
   qCost := fun _ => 1
   smp := prngSamplers sampKR sampKC sampCCoins sampI sampK
 
-@[reducible] def fsMultiCacheEntryTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def fsMultiCacheEntryTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .prod (.base .t) (.prod (.base .sig) (.prod (.base .k) (.opt .nat)))
 
-@[reducible] def fsMultiSessBookTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def fsMultiSessBookTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .prod .bool (.prod .nat (.list (fsTransEntryTy KC Γ CCoins T I KR RSt K SS RS M E)))
 
 /-- Hook-state type `(cache, table, sessions, book, lfWin)` for `hooksFSMultiC`. -/
-@[reducible] def fsMultiHsTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def fsMultiHsTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .prod (.tbl (.opt (fsMultiCacheEntryTy KC Γ CCoins T I KR RSt K SS RS M E)))
     (.prod (.list (fsTableEntryTy KC Γ CCoins T I KR RSt K SS RS M E))
       (.prod (.list (.base .i))
         (.prod (.tbl (.opt (fsMultiSessBookTy KC Γ CCoins T I KR RSt K SS RS M E))) .bool)))
 
-@[reducible] def fsMultiVpTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def fsMultiVpTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   @vpTblTy KC Γ CCoins T I KR RSt K SS RS M E
     (.base .γ) (.base .sig) (.sum (.base .ss) .nat) (.sum (.base .rs) .nat)
 
-@[reducible] def fsMultiEsTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def fsMultiEsTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   esTy (fsMultiVpTy KC Γ CCoins T I KR RSt K SS RS M E)
     (fsMultiHsTy KC Γ CCoins T I KR RSt K SS RS M E)
@@ -6149,18 +6151,18 @@ local notation "mEsTy" => fsMultiEsTy KC Γ CCoins T I KR RSt K SS RS M E
 local notation "mBookTy" => fsMultiSessBookTy KC Γ CCoins T I KR RSt K SS RS M E
 local notation "transEntryTy" => fsTransEntryTy KC Γ CCoins T I KR RSt K SS RS M E
 
-def fsMultiHsCache {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy) :
+@[expose] def fsMultiHsCache {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy) :
     Expr O Γ' (.tbl (.opt (fsMultiCacheEntryTy KC Γ CCoins T I KR RSt K SS RS M E))) := .fst h
-def fsMultiHsTable {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy) :
+@[expose] def fsMultiHsTable {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy) :
     Expr O Γ' (.list (fsTableEntryTy KC Γ CCoins T I KR RSt K SS RS M E)) := .fst (.snd h)
-def fsMultiHsSessions {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy) :
+@[expose] def fsMultiHsSessions {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy) :
     Expr O Γ' (.list (.base .i)) := .fst (.snd (.snd h))
-def fsMultiHsBook {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy) :
+@[expose] def fsMultiHsBook {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy) :
     Expr O Γ' (.tbl (.opt mBookTy)) := .fst (.snd (.snd (.snd h)))
-def fsMultiHsLfWin {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy) :
+@[expose] def fsMultiHsLfWin {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy) :
     Expr O Γ' .bool := .snd (.snd (.snd (.snd h)))
 
-def fsMultiHsMk {O : Ops S} {Γ'}
+@[expose] def fsMultiHsMk {O : Ops S} {Γ'}
     (ca : Expr O Γ' (.tbl (.opt (fsMultiCacheEntryTy KC Γ CCoins T I KR RSt K SS RS M E))))
     (tb : Expr O Γ' (.list (fsTableEntryTy KC Γ CCoins T I KR RSt K SS RS M E)))
     (se : Expr O Γ' (.list (.base .i)))
@@ -6168,40 +6170,40 @@ def fsMultiHsMk {O : Ops S} {Γ'}
     (lw : Expr O Γ' .bool) : Expr O Γ' mHsTy :=
   .pair ca (.pair tb (.pair se (.pair bk lw)))
 
-def fsMultiHsSetCache {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy)
+@[expose] def fsMultiHsSetCache {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy)
     (ca : Expr O Γ' (.tbl (.opt (fsMultiCacheEntryTy KC Γ CCoins T I KR RSt K SS RS M E)))) :
     Expr O Γ' mHsTy :=
   fsMultiHsMk ca (fsMultiHsTable h) (fsMultiHsSessions h) (fsMultiHsBook h) (fsMultiHsLfWin h)
 
-def fsMultiHsSetTable {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy)
+@[expose] def fsMultiHsSetTable {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy)
     (tb : Expr O Γ' (.list (fsTableEntryTy KC Γ CCoins T I KR RSt K SS RS M E))) :
     Expr O Γ' mHsTy :=
   fsMultiHsMk (fsMultiHsCache h) tb (fsMultiHsSessions h) (fsMultiHsBook h) (fsMultiHsLfWin h)
 
-def fsMultiHsSetSessions {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy)
+@[expose] def fsMultiHsSetSessions {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy)
     (se : Expr O Γ' (.list (.base .i))) : Expr O Γ' mHsTy :=
   fsMultiHsMk (fsMultiHsCache h) (fsMultiHsTable h) se (fsMultiHsBook h) (fsMultiHsLfWin h)
 
-def fsMultiHsSetBookAt {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy)
+@[expose] def fsMultiHsSetBookAt {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy)
     (sIdx : Expr O Γ' .nat) (entry : Expr O Γ' mBookTy) : Expr O Γ' mHsTy :=
   fsMultiHsMk (fsMultiHsCache h) (fsMultiHsTable h) (fsMultiHsSessions h)
     (.tset (fsMultiHsBook h) sIdx (.some entry)) (fsMultiHsLfWin h)
 
-def fsMultiHsGetBookAt {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy)
+@[expose] def fsMultiHsGetBookAt {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy)
     (sIdx : Expr O Γ' .nat) : Expr O Γ' mBookTy :=
   rdslExpr =>
     match tget (fsMultiHsBook h) sIdx with
     | none => (false, (0, []))
     | some b => b
 
-def fsMultiHsSetLfWin {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy) (lw : Expr O Γ' .bool) :
+@[expose] def fsMultiHsSetLfWin {O : Ops S} {Γ'} (h : Expr O Γ' mHsTy) (lw : Expr O Γ' .bool) :
     Expr O Γ' mHsTy :=
   fsMultiHsMk (fsMultiHsCache h) (fsMultiHsTable h) (fsMultiHsSessions h) (fsMultiHsBook h) lw
 
-def fsMultiHsEmptyE {O : Ops S} {Γ'} : Expr O Γ' mHsTy :=
+@[expose] def fsMultiHsEmptyE {O : Ops S} {Γ'} : Expr O Γ' mHsTy :=
   fsMultiHsMk (.tconst .none) .nil .nil (.tconst .none) (.bool false)
 
-def lookupMultiFC (L : ℕ) {Γ'}
+@[expose] def lookupMultiFC (L : ℕ) {Γ'}
     (hE : Expr OO Γ' mHsTy)
     (ikE : Expr OO Γ' (.base .i)) :
     Comp OO IIM Γ' (.prod (.base .k) mHsTy) :=
@@ -6214,7 +6216,7 @@ def lookupMultiFC (L : ℕ) {Γ'}
     | some kFound =>
       return (kFound, h0)
 
-def regSessMultiE (L : ℕ) {Γ'}
+@[expose] def regSessMultiE (L : ℕ) {Γ'}
     (hE : Expr OO Γ' mHsTy)
     (ikE : Expr OO Γ' (.base .i)) :
     Expr OO Γ' (.prod .nat mHsTy) :=
@@ -6226,7 +6228,7 @@ def regSessMultiE (L : ℕ) {Γ'}
       else
         (sessionsLenE L ses0, fsMultiHsSetSessions h0 (sessionsAppendOneE L ses0 ik0))
 
-def regSessOptMultiE (L : ℕ) {Γ'}
+@[expose] def regSessOptMultiE (L : ℕ) {Γ'}
     (hE : Expr OO Γ' mHsTy)
     (sidE : Expr OO Γ' (.opt (.base .i))) :
     Expr OO Γ' (.prod (.opt .nat) mHsTy) :=
@@ -6238,7 +6240,7 @@ def regSessOptMultiE (L : ℕ) {Γ'}
         let p := regSessMultiE L h0 ik
         (some p.1, p.2)
 
-def rootFSMultiC (L : ℕ) (mo : Mode) {Γ'}
+@[expose] def rootFSMultiC (L : ℕ) (mo : Mode) {Γ'}
     (hE : Expr OO Γ' mHsTy)
     (tE : Expr OO Γ' .nat)
     (ikE : Expr OO Γ' (.base .i))
@@ -6266,7 +6268,7 @@ def rootFSMultiC (L : ℕ) (mo : Mode) {Γ'}
     else
       return ((pIk.1, pIk.2, none), h0)
 
-def fsMultiStartSendC (L : ℕ) (mo : Mode) {Γ'}
+@[expose] def fsMultiStartSendC (L : ℕ) (mo : Mode) {Γ'}
     (hE : Expr OO Γ' mHsTy)
     (_ctxE : Expr OO Γ' (cGsTy mVpTy))
     (_pE : Expr OO Γ' .bool)
@@ -6298,7 +6300,7 @@ def fsMultiStartSendC (L : ℕ) (mo : Mode) {Γ'}
       | some sIdx => .inr sIdx
     return (some (cOut.1, tMsg, σ', ssv), h3)
 
-def fsMultiStartRecvC (L : ℕ) (mo : Mode) (gMain : Bool) {Γ'}
+@[expose] def fsMultiStartRecvC (L : ℕ) (mo : Mode) (gMain : Bool) {Γ'}
     (hE : Expr OO Γ' mHsTy)
     (_ctxE : Expr OO Γ' (cGsTy mVpTy))
     (_pE : Expr OO Γ' .bool)
@@ -6341,7 +6343,7 @@ def fsMultiStartRecvC (L : ℕ) (mo : Mode) (gMain : Bool) {Γ'}
         | some sIdx => .inr sIdx
       return (some (some (γ', σc, rsv)), h0)
 
-def fsMultiFsSendC (Δcka : ℕ) (la : Bool) {Γ'}
+@[expose] def fsMultiFsSendC (Δcka : ℕ) (la : Bool) {Γ'}
     (hE : Expr OO Γ' mHsTy)
     (ctxE : Expr OO Γ' (cGsTy mVpTy))
     (pE : Expr OO Γ' .bool)
@@ -6409,64 +6411,133 @@ def fsMultiFsSendC (Δcka : ℕ) (la : Bool) {Γ'}
             let tr' := (cnt', hdr0, ct) :: bk1.2.2
             return (some (.inr sIdx, ct), fsMultiHsSetBookAt h1 sIdx (bk1.1, (cnt', tr')))
 
-def fsMultiFsRecvC (L B : ℕ) (la : Bool) {Γ'}
+/-- Costed `fsRecv` hook for multi-session `hooksFSMulti` (`[ISSUE-13b]`, gated on `la` with lazy `.cs` when `la = false`). -/
+@[expose] def fsMultiFsRecvC (L B : ℕ) (la : Bool) (Δcka : ℕ := 1) {Γ'}
     (hE : Expr OO Γ' mHsTy)
-    (_ctxE : Expr OO Γ' (cGsTy mVpTy))
+    (ctxE : Expr OO Γ' (cGsTy mVpTy))
     (_pE : Expr OO Γ' .bool)
-    (_tE : Expr OO Γ' .nat)
+    (tE : Expr OO Γ' .nat)
     (rsvE : Expr OO Γ' (.sum (.base .rs) .nat))
     (hdrE : Expr OO Γ' hdrTy)
     (eE : Expr OO Γ' (.base .ct))
     (recE : Expr OO Γ' (.opt cRecTy)) :
     Comp OO IIM Γ'
       (.prod (.opt (.opt (.prod (.sum (.base .rs) .nat) (.prod .nat (.base .msg))))) mHsTy) :=
-  rdsl do
-    (h0, rsv0, hdr0, e0, rec0) ← return (hE, rsvE, hdrE, eE, recE)
-    match rsv0 with
-    | .inl rs =>
-      match Expr.op (O := OO) (CKAOp.fsReceive B) (rs, hdr0, e0) with
-      | none => return (some none, h0)
-      | some (rs', idxMsg) =>
-        return (some (some (.inl rs', idxMsg)), h0)
-    | .inr sIdx =>
-      let bk0 := fsMultiHsGetBookAt h0 sIdx
-      let sCorr0 := bk0.1
-      let cnt0 := bk0.2.1
-      let trs0 := bk0.2.2
-      let matched := fsTransFindE L trs0 (hdr0, e0)
-      resOpt ←
-        match matched with
-        | none => query (O := OO) (I := IIM) FSHdrTag.ij (sIdx, (hdr0, e0))
-        | some _ => query (O := OO) (I := IIM) FSHdrTag.dl (sIdx, (hdr0, e0))
-      match resOpt with
-      | none => return (none, h0)
-      | some resSum =>
-        match resSum with
-        | .inl _ => return (some none, h0)
-        | .inr (msgIdx, mo') =>
-          let isLookaheadInj :=
+  if la then
+    rdsl do
+      (h0, ctx0, t0, rsv0, hdr0, e0, rec0) ← return (hE, ctxE, tE, rsvE, hdrE, eE, recE)
+      match rsv0 with
+      | .inl rs =>
+        match Expr.op (O := OO) (CKAOp.fsReceive B) (rs, hdr0, e0) with
+        | none => return (some none, h0)
+        | some (rs', idxMsg) =>
+          return (some (some (.inl rs', idxMsg)), h0)
+      | .inr sIdx =>
+        let bk0 := fsMultiHsGetBookAt h0 sIdx
+        let sCorr0 := bk0.1
+        let cnt0 := bk0.2.1
+        let trs0 := bk0.2.2
+        let matched := fsTransFindE L trs0 (hdr0, e0)
+        let blocked :=
+          match matched with
+          | some _ => false
+          | none => !(_root_.CryptoGames.SM.healedByE (cGsTL ctx0) (raw (2 + Δcka)) t0) && !sCorr0
+        if blocked then
+          return (none, h0)
+        else
+          resOpt ←
             match matched with
-            | none => cnt0 < msgIdx
-            | some _ => false
-          if bool la && isLookaheadInj then
-            return (none, fsMultiHsSetLfWin h0 true)
-          else
-            let drop :=
-              match matched with
-              | none => msgIdx
-              | some entry => entry.1
-            let trs' := fsTransFilterE L trs0 drop
-            let h4 := fsMultiHsSetBookAt h0 sIdx (sCorr0, (cnt0, trs'))
-            let outE :=
-              match mo' with
-              | none =>
-                match rec0 with
-                | none => none
-                | some r => some (some (.inr sIdx, msgIdx, cRecMsg r))
-              | some msg => some (some (.inr sIdx, msgIdx, msg))
-            return (outE, h4)
+            | none => query (O := OO) (I := IIM) FSHdrTag.ij (sIdx, (hdr0, e0))
+            | some _ => query (O := OO) (I := IIM) FSHdrTag.dl (sIdx, (hdr0, e0))
+          match resOpt with
+          | none => return (none, h0)
+          | some resSum =>
+            match resSum with
+            | .inl _ => return (some none, h0)
+            | .inr (msgIdx, mo') =>
+              let isLookaheadInj :=
+                match matched with
+                | none => (!sCorr0) && (cnt0 < msgIdx)
+                | some _ => false
+              if isLookaheadInj then
+                return (none, fsMultiHsSetLfWin h0 true)
+              else
+                let drop :=
+                  match matched with
+                  | none => msgIdx
+                  | some entry => entry.1
+                let trs' := fsTransFilterE L trs0 drop
+                let h4 := fsMultiHsSetBookAt h0 sIdx (sCorr0, (cnt0, trs'))
+                let outE :=
+                  match mo' with
+                  | none =>
+                    match rec0 with
+                    | none => none
+                    | some r => some (some (.inr sIdx, msgIdx, cRecMsg r))
+                  | some m => some (some (.inr sIdx, msgIdx, m))
+                match outE with
+                | none => return (none, h4)
+                | some v => return (some v, h4)
+  else
+    rdsl do
+      (h0, ctx0, t0, rsv0, hdr0, e0, rec0) ← return (hE, ctxE, tE, rsvE, hdrE, eE, recE)
+      match rsv0 with
+      | .inl rs =>
+        match Expr.op (O := OO) (CKAOp.fsReceive B) (rs, hdr0, e0) with
+        | none => return (some none, h0)
+        | some (rs', idxMsg) =>
+          return (some (some (.inl rs', idxMsg)), h0)
+      | .inr sIdx =>
+        let bk0 := fsMultiHsGetBookAt h0 sIdx
+        let sCorr0 := bk0.1
+        let trs0 := bk0.2.2
+        let matched := fsTransFindE L trs0 (hdr0, e0)
+        (ok, h1) ←
+          match matched with
+          | some _ => return (true, h0)
+          | none =>
+            if !(_root_.CryptoGames.SM.healedByE (cGsTL ctx0) (raw (2 + Δcka)) t0) && !sCorr0 then
+              csOpt ← query (O := OO) (I := IIM) FSHdrTag.cs (sIdx, ())
+              match csOpt with
+              | none => return (false, h0)
+              | some _ => return (true, fsMultiHsSetBookAt h0 sIdx (true, bk0.2))
+            else
+              return (true, h0)
+        if !ok then
+          return (none, h1)
+        else
+          resOpt ←
+            match matched with
+            | none => query (O := OO) (I := IIM) FSHdrTag.ij (sIdx, (hdr0, e0))
+            | some _ => query (O := OO) (I := IIM) FSHdrTag.dl (sIdx, (hdr0, e0))
+          match resOpt with
+          | none => return (none, h1)
+          | some resSum =>
+            match resSum with
+            | .inl _ => return (some none, h1)
+            | .inr (msgIdx, mo') =>
+              let bk1 := fsMultiHsGetBookAt h1 sIdx
+              let sCorr1 := bk1.1
+              let cnt1 := bk1.2.1
+              let trs1 := bk1.2.2
+              let drop :=
+                match matched with
+                | none => msgIdx
+                | some entry => entry.1
+              let trs' := fsTransFilterE L trs1 drop
+              let h4 := fsMultiHsSetBookAt h1 sIdx (sCorr1, (cnt1, trs'))
+              let outE :=
+                match mo' with
+                | none =>
+                  match rec0 with
+                  | none => none
+                  | some r => some (some (.inr sIdx, msgIdx, cRecMsg r))
+                | some m => some (some (.inr sIdx, msgIdx, m))
+              match outE with
+              | none => return (none, h4)
+              | some v => return (some v, h4)
 
-def fsMultiCommitC {Γ'}
+@[expose] def fsMultiCommitC {Γ'}
     (hE : Expr OO Γ' mHsTy)
     (_ctxE : Expr OO Γ' (cGsTy mVpTy))
     (_pE : Expr OO Γ' .bool)
@@ -6475,7 +6546,7 @@ def fsMultiCommitC {Γ'}
   rdsl do
     return (some newE, hE)
 
-def unliftMultiEntryE {Γ'}
+@[expose] def unliftMultiEntryE {Γ'}
     (entryE : Expr OO Γ' (.opt (.sum (.base .rs) .nat))) :
     Expr OO Γ' (.opt (.base .rs)) :=
   rdslExpr =>
@@ -6486,7 +6557,7 @@ def unliftMultiEntryE {Γ'}
       | .inl rs => some rs
       | .inr _ => none
 
-def unliftMultiVRE (L : ℕ) {Γ'}
+@[expose] def unliftMultiVRE (L : ℕ) {Γ'}
     (vRE : Expr OO Γ' (.tbl (.opt (.sum (.base .rs) .nat))))
     (rngE : Expr OO Γ' (.list .nat)) :
     Expr OO Γ' (.tbl (.opt (.base .rs))) :=
@@ -6495,7 +6566,7 @@ def unliftMultiVRE (L : ℕ) {Γ'}
       foldrB L rng0 (tconst none) fun t acc =>
         tset acc t (unliftMultiEntryE (tget vR0 t))
 
-def fsMultiRevealC (L : ℕ) (mo : Mode) (la : Bool) {Γ'}
+@[expose] def fsMultiRevealC (L : ℕ) (mo : Mode) (la : Bool) {Γ'}
     (hE : Expr OO Γ' mHsTy)
     (_ctxE : Expr OO Γ' (cGsTy mVpTy))
     (_pE : Expr OO Γ' .bool)
@@ -6561,16 +6632,16 @@ def fsMultiRevealC (L : ℕ) (mo : Mode) (la : Bool) {Γ'}
           return (some (realPartyE vp0 (vpΓ vp0) (vpRoot vp0) ssReal vR'), h1)
 
 /-- Costed multi-session `HooksC` bundle for `redFSAuthMultiStage2Prog`. -/
-def hooksFSMultiC (L B Δcka : ℕ) (mo : Mode) (gMain la : Bool) :
+@[expose] def hooksFSMultiC (L B Δcka : ℕ) (mo : Mode) (gMain la : Bool) :
     HooksC OO IIM (.base .γ) (.base .sig) (.sum (.base .ss) .nat) (.sum (.base .rs) .nat) mHsTy where
   startSend := fsMultiStartSendC L mo
   startRecv := fsMultiStartRecvC L mo gMain
   fsSend := fsMultiFsSendC Δcka la
-  fsRecv := fsMultiFsRecvC L B la
+  fsRecv := fsMultiFsRecvC L B la Δcka
   commit := fsMultiCommitC
   reveal := fsMultiRevealC L mo la
 
-def initFSMultiEStateC (L : ℕ) (mo : Mode) {Γ'} (bE : Expr OO Γ' .bool) :
+@[expose] def initFSMultiEStateC (L : ℕ) (mo : Mode) {Γ'} (bE : Expr OO Γ' .bool) :
     Comp OO IIM Γ' mEsTy :=
   rdsl do
     b0 ← return bE
@@ -6608,7 +6679,7 @@ def isHonestHdrFSMultiE {Γ'} (hE : Expr OO Γ' mHsTy) (hdrE : Expr OO Γ' hdrTy
         | none => false
         | some tn0 => Expr.op (O := OO) CKAOp.eqT (tCached, tn0)
 
-def finishFSMultiE (L Δ : ℕ) (pol : Policy) (la : Bool) {Γ'}
+@[expose] def finishFSMultiE (L Δ : ℕ) (pol : Policy) (la : Bool) {Γ'}
     (es : Expr OO Γ' mEsTy) : Expr OO Γ' .bool :=
   if la then fsMultiHsLfWin (esH es)
   else authOutE L Δ pol es
@@ -6703,94 +6774,16 @@ def redFSAuthMultiStage2Prog (L B Δcka qep maxSkip : ℕ) (gMain la : Bool)
       fsHdrDecWt (fun _ => 0) = 0 := by
   cases la <;> simp [fsMultiFsSendC, fsHdrDecWt, Comp.queries]
 
-@[simp] theorem fsMultiFsRecvC_queries (L B : ℕ) (la : Bool) {Γ'}
+@[simp]
+theorem fsMultiFsRecvC_queries (L B : ℕ) (la : Bool) (Δcka : ℕ) {Γ'}
     (hE : Expr OO Γ' mHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
     (pE : Expr OO Γ' .bool) (tE : Expr OO Γ' .nat)
     (rsvE : Expr OO Γ' (.sum (.base .rs) .nat)) (hdrE : Expr OO Γ' hdrTy)
     (eE : Expr OO Γ' (.base .ct)) (recE : Expr OO Γ' (.opt cRecTy)) :
     (fsMultiFsRecvC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
-      (sampI := sampI) (sampK := sampK) L B la hE ctxE pE tE rsvE hdrE eE recE).queries
-      (fun _ => 1) (fun _ => 0) = 1 := by
+      (sampI := sampI) (sampK := sampK) L B la Δcka hE ctxE pE tE rsvE hdrE eE recE).queries
+      (fun _ => 1) (fun _ => 0) = (if la then 1 else 2) := by
   cases la <;> simp [fsMultiFsRecvC, Comp.queries]
-
-@[simp] theorem fsMultiFsRecvC_decQueries (L B : ℕ) (la : Bool) {Γ'}
-    (hE : Expr OO Γ' mHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
-    (pE : Expr OO Γ' .bool) (tE : Expr OO Γ' .nat)
-    (rsvE : Expr OO Γ' (.sum (.base .rs) .nat)) (hdrE : Expr OO Γ' hdrTy)
-    (eE : Expr OO Γ' (.base .ct)) (recE : Expr OO Γ' (.opt cRecTy)) :
-    (fsMultiFsRecvC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
-      (sampI := sampI) (sampK := sampK) L B la hE ctxE pE tE rsvE hdrE eE recE).queries
-      fsHdrDecWt (fun _ => 0) = 1 := by
-  cases la <;> simp [fsMultiFsRecvC, fsHdrDecWt, Comp.queries]
-
-@[simp] theorem fsMultiCommitC_queries (w : FSHdrTag → ℕ) {Γ'}
-    (hE : Expr OO Γ' mHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
-    (pE : Expr OO Γ' .bool) (oldE newE : Expr OO Γ' mVpTy) :
-    (fsMultiCommitC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
-      (sampI := sampI) (sampK := sampK) hE ctxE pE oldE newE).queries w (fun _ => 0) = 0 := by
-  simp [fsMultiCommitC, Comp.queries]
-
-@[simp] theorem rangeListC_multi_queries (L : ℕ) (w : FSHdrTag → ℕ) {Γ'} :
-    (rangeListC (O' := OO) (I' := IIM) (Γ' := Γ') L).queries w (fun _ => 0) = 0 := by
-  induction L <;> simp [rangeListC, Comp.queries, *]
-
-@[simp] theorem fsMultiRevealC_queries (L : ℕ) (mo : Mode) (la : Bool) {Γ'}
-    (hE : Expr OO Γ' mHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
-    (pE : Expr OO Γ' .bool) (vpE : Expr OO Γ' mVpTy) :
-    (fsMultiRevealC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
-      (sampI := sampI) (sampK := sampK) L mo la hE ctxE pE vpE).queries
-      (fun _ => 1) (fun _ => 0) = if la then 0 else 1 := by
-  cases la <;> simp [fsMultiRevealC, Comp.queries]
-
-@[simp] theorem fsMultiRevealC_decQueries (L : ℕ) (mo : Mode) (la : Bool) {Γ'}
-    (hE : Expr OO Γ' mHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
-    (pE : Expr OO Γ' .bool) (vpE : Expr OO Γ' mVpTy) :
-    (fsMultiRevealC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
-      (sampI := sampI) (sampK := sampK) L mo la hE ctxE pE vpE).queries
-      fsHdrDecWt (fun _ => 0) = 0 := by
-  cases la <;> simp [fsMultiRevealC, fsHdrDecWt, Comp.queries]
-
-@[simp] theorem implEC_hooksFSMultiC_queries (L B Δcka qep maxSkip : ℕ) (mo : Mode)
-    (gMain la : Bool) {Γ'}
-    (es : Expr OO Γ' mEsTy)
-    (q : Expr OO Γ' (ckaSMQ KC Γ CCoins T I KR RSt K SS RS M E)) :
-    (implEC (hooksFSMultiC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
-        (sampI := sampI) (sampK := sampK) L B Δcka mo gMain la)
-      L (2 + Δcka) qep maxSkip (modeCfgEC OO mo) mo.policy es q).queries
-      (fun _ => 1) (fun _ => 0) = if la then 1 else 2 := by
-  cases la <;> simp [implEC, transmitEC, challEC, deliverEC, injectEC, corrEC,
-    vSendC, vSendStep1C, vRecvC, vRecvStep1C, commitEC, hooksFSMultiC, Comp.queries]
-
-@[simp] theorem implEC_hooksFSMultiC_decQueries (L B Δcka qep maxSkip : ℕ) (mo : Mode)
-    (gMain la : Bool) {Γ'}
-    (es : Expr OO Γ' mEsTy)
-    (q : Expr OO Γ' (ckaSMQ KC Γ CCoins T I KR RSt K SS RS M E)) :
-    (implEC (hooksFSMultiC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
-        (sampI := sampI) (sampK := sampK) L B Δcka mo gMain la)
-      L (2 + Δcka) qep maxSkip (modeCfgEC OO mo) mo.policy es q).queries
-      fsHdrDecWt (fun _ => 0) = 1 := by
-  simp [implEC, transmitEC, challEC, deliverEC, injectEC, corrEC,
-    vSendC, vSendStep1C, vRecvC, vRecvStep1C, commitEC, hooksFSMultiC, Comp.queries]
-
-@[simp] theorem initFSMultiEStateC_queries (L : ℕ) (mo : Mode) (w : FSHdrTag → ℕ)
-    {Γ'} (bE : Expr OO Γ' .bool) :
-    (initFSMultiEStateC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
-      (sampI := sampI) (sampK := sampK) L mo bE).queries w (fun _ => 0) = 0 := by
-  simp [initFSMultiEStateC, Comp.queries]
-
-@[simp] theorem redFSAuthMultiStage2Prog_totalQueries_eq (L B Δcka qep maxSkip : ℕ)
-    (gMain la : Bool) (tL : Option ℕ) (t q : ℕ) :
-    (redFSAuthMultiStage2Prog (ckaInitA := ckaInitA) (ckaInitB := ckaInitB) (ckaSend := ckaSend)
-      (ckaReceive := ckaReceive) (prngInit := prngInit) (prngUp := prngUp)
-      (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
-      (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
-      (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
-      (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
-      (sampI := sampI) (sampK := sampK)
-      L B Δcka qep maxSkip gMain la tL t).totalQueries (fun _ => 1) (fun _ => 0) q =
-      q * (if la then 1 else 2) := by
-  cases gMain <;>
-    simp [CostedReduction.totalQueries, redFSAuthMultiStage2Prog, Comp.queries]
 
 theorem redFSAuthMultiStage2Prog_totalQueries (L B Δcka qep maxSkip : ℕ)
     (gMain la : Bool) (tL : Option ℕ) (t q : ℕ) :
@@ -6802,21 +6795,37 @@ theorem redFSAuthMultiStage2Prog_totalQueries (L B Δcka qep maxSkip : ℕ)
       (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
       (sampI := sampI) (sampK := sampK)
       L B Δcka qep maxSkip gMain la tL t).totalQueries (fun _ => 1) (fun _ => 0) q ≤ q * 2 := by
-  rw [redFSAuthMultiStage2Prog_totalQueries_eq]
-  (cases la <;> simp); omega
-
-@[simp] theorem redFSAuthMultiStage2Prog_totalDecQueries (L B Δcka qep maxSkip : ℕ)
-    (gMain la : Bool) (tL : Option ℕ) (t q : ℕ) :
-    (redFSAuthMultiStage2Prog (ckaInitA := ckaInitA) (ckaInitB := ckaInitB) (ckaSend := ckaSend)
-      (ckaReceive := ckaReceive) (prngInit := prngInit) (prngUp := prngUp)
-      (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
-      (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
-      (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
-      (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
-      (sampI := sampI) (sampK := sampK)
-      L B Δcka qep maxSkip gMain la tL t).totalQueries fsHdrDecWt (fun _ => 0) q = q := by
-  cases gMain <;>
-    simp [CostedReduction.totalQueries, redFSAuthMultiStage2Prog, Comp.queries]
+  have hCommit : ∀ (w : FSHdrTag → ℕ) {Γ'} (hE : Expr OO Γ' mHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
+      (pE : Expr OO Γ' .bool) (oldE newE : Expr OO Γ' mVpTy),
+      (fsMultiCommitC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+        (sampI := sampI) (sampK := sampK) hE ctxE pE oldE newE).queries w (fun _ => 0) = 0 := by
+    intro w Γ' hE ctxE pE oldE newE; simp [fsMultiCommitC, Comp.queries]
+  have hRange : ∀ (w : FSHdrTag → ℕ) {Γ'},
+      (rangeListC (O' := OO) (I' := IIM) (Γ' := Γ') L).queries w (fun _ => 0) = 0 := by
+    intro w Γ'; induction L <;> simp [rangeListC, Comp.queries, *]
+  have hReveal : ∀ {Γ'} (hE : Expr OO Γ' mHsTy) (ctxE : Expr OO Γ' (cGsTy mVpTy))
+      (pE : Expr OO Γ' .bool) (vpE : Expr OO Γ' mVpTy),
+      (fsMultiRevealC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+        (sampI := sampI) (sampK := sampK) L ⟨true, tL, t⟩ la hE ctxE pE vpE).queries
+        (fun _ => 1) (fun _ => 0) = if la then 0 else 1 := by
+    intro Γ' hE ctxE pE vpE; cases la <;> simp [fsMultiRevealC, hRange, Comp.queries]
+  have hImpl : ∀ (gM : Bool) {Γ'} (es : Expr OO Γ' mEsTy)
+      (qE : Expr OO Γ' (ckaSMQ KC Γ CCoins T I KR RSt K SS RS M E)),
+      (implEC (hooksFSMultiC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+          (sampI := sampI) (sampK := sampK) L B Δcka ⟨true, tL, t⟩ gM la)
+        L (2 + Δcka) qep maxSkip (modeCfgEC OO ⟨true, tL, t⟩) (⟨true, tL, t⟩ : Mode).policy es qE).queries
+        (fun _ => 1) (fun _ => 0) = if la then 1 else 2 := by
+    intro gM Γ' es qE
+    cases la <;> simp [implEC, transmitEC, challEC, deliverEC, injectEC, corrEC,
+      vSendC, vSendStep1C, vRecvC, vRecvStep1C, commitEC, hooksFSMultiC,
+      hCommit, hReveal, Comp.queries]
+  have hInit : ∀ {Γ'} (bE : Expr OO Γ' .bool),
+      (initFSMultiEStateC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+        (sampI := sampI) (sampK := sampK) L ⟨true, tL, t⟩ bE).queries (fun _ => 1) (fun _ => 0) = 0 := by
+    intro Γ' bE; simp [initFSMultiEStateC, Comp.queries]
+  cases gMain <;> cases la <;>
+    simp [CostedReduction.totalQueries, redFSAuthMultiStage2Prog, hInit, hImpl, Comp.queries] <;>
+    omega
 
 theorem redFSAuthMultiStage2Prog_totalCost (L B Δcka qep maxSkip : ℕ)
     (gMain la : Bool) (tL : Option ℕ) (t q : ℕ) :
@@ -6854,7 +6863,7 @@ theorem redFSAuthMultiStage2Prog_totalCost (L B Δcka qep maxSkip : ℕ)
 
 end HooksFSMultiC
 
-@[reducible] def FSMultiSpec (SS RS T M E : Type) :=
+@[expose, reducible] def FSMultiSpec (SS RS T M E : Type) :=
   OracleSpec.sigma (fun _ : ℕ => FSAEAD.spec SS RS (Header T) M E)
 
 structure FSMultiBook (T E : Type) where
@@ -6869,13 +6878,13 @@ structure FSMultiState (T Sig K I E : Type) where
   book : ℕ → Option (FSMultiBook T E) := fun _ => none
   lfWin : Bool := false
 
-def fsMultiHsEnc (h : FSMultiState T RSt K I E) :
+@[expose] def fsMultiHsEnc (h : FSMultiState T RSt K I E) :
     (fsMultiHsTy KC Γ CCoins T I KR RSt K SS RS M E).denote :=
   (h.cache, h.table, h.sessions,
    (fun sIdx => (h.book sIdx).map fun b => (b.sCorr, b.fsCount, b.fsTrans)),
    h.lfWin)
 
-def fsMultiHsDec (v : (fsMultiHsTy KC Γ CCoins T I KR RSt K SS RS M E).denote) :
+@[expose] def fsMultiHsDec (v : (fsMultiHsTy KC Γ CCoins T I KR RSt K SS RS M E).denote) :
     FSMultiState T RSt K I E :=
   { cache := v.1
     table := v.2.1
@@ -6901,7 +6910,7 @@ def fsMultiHsDec (v : (fsMultiHsTy KC Γ CCoins T I KR RSt K SS RS M E).denote) 
   funext sIdx
   rcases bk sIdx with _ | ⟨sc, cnt, tr⟩ <;> rfl
 
-def liftFSMulti {Sig K I : Type} (sIdx : ℕ) {α : Type}
+@[expose] def liftFSMulti {Sig K I : Type} (sIdx : ℕ) {α : Type}
     (x : FSAEAD.AdversaryComp SS RS (Header T) M E α) :
     HM (FSMultiSpec SS RS T M E) (FSMultiState T Sig K I E) α :=
   let liftImpl : QueryImpl (unifSpec + FSAEAD.spec SS RS (Header T) M E)
@@ -6910,7 +6919,7 @@ def liftFSMulti {Sig K I : Type} (sIdx : ℕ) {α : Type}
     | .inr q => query (spec := unifSpec + FSMultiSpec SS RS T M E) (.inr ⟨sIdx, q⟩)
   StateT.lift (simulateQ liftImpl x)
 
-def lookupMultiF [DecidableEq I] [SampleableType K] {Sig : Type} (Ik : I) :
+@[expose] def lookupMultiF [DecidableEq I] [SampleableType K] {Sig : Type} (Ik : I) :
     HM (FSMultiSpec SS RS T M E) (FSMultiState T Sig K I E) K := do
   match (← get).table.lookup Ik with
   | some k => return k
@@ -6919,7 +6928,7 @@ def lookupMultiF [DecidableEq I] [SampleableType K] {Sig : Type} (Ik : I) :
     modify fun s => { s with table := (Ik, k) :: s.table }
     return k
 
-def regSessMulti [DecidableEq I] {Sig : Type} (Ik : I) :
+@[expose] def regSessMulti [DecidableEq I] {Sig : Type} (Ik : I) :
     HM (FSMultiSpec SS RS T M E) (FSMultiState T Sig K I E) ℕ := do
   let s ← get
   if Ik ∈ s.sessions then return s.sessions.idxOf Ik
@@ -6927,13 +6936,13 @@ def regSessMulti [DecidableEq I] {Sig : Type} (Ik : I) :
     set { s with sessions := s.sessions ++ [Ik] }
     return s.sessions.length
 
-def regSessOptMulti [DecidableEq I] {Sig : Type} (sid : Option I) :
+@[expose] def regSessOptMulti [DecidableEq I] {Sig : Type} (sid : Option I) :
     HM (FSMultiSpec SS RS T M E) (FSMultiState T Sig K I E) (Option ℕ) :=
   match sid with
   | none => pure none
   | some Ik => some <$> regSessMulti Ik
 
-def rootFSMulti [DecidableEq I] [SampleableType I] [SampleableType K]
+@[expose] def rootFSMulti [DecidableEq I] [SampleableType I] [SampleableType K]
     (prng : PRFPRNG KR RSt I K) (mo : Mode) (t : ℕ) (Ik : I) (σ : RSt) :
     HM (FSMultiSpec SS RS T M E) (FSMultiState T RSt K I E) (RSt × K × Option I) := do
   if mo.tStar < t then
@@ -6955,7 +6964,7 @@ def rootFSMulti [DecidableEq I] [SampleableType I] [SampleableType K]
     let p := prng.up σ Ik
     return (p.1, p.2, none)
 
-def hooksFSMulti [DecidableEq T] [DecidableEq I] [DecidableEq E]
+@[expose] def hooksFSMulti [DecidableEq T] [DecidableEq I] [DecidableEq E]
     [SampleableType CCoins] [SampleableType I] [SampleableType K]
     (cka : CKAScheme KC Γ CCoins T I)
     (prng : PRFPRNG KR RSt I K)
@@ -7030,13 +7039,26 @@ def hooksFSMulti [DecidableEq T] [DecidableEq I] [DecidableEq E]
           let b' : FSMultiBook T E := { b with fsCount := cnt', fsTrans := (cnt', h, e) :: b.fsTrans }
           { s with book := Function.update s.book sIdx (some b') }
         return some (.inr sIdx, e)
-  fsRecv _ _ _ rsv h e rec := do
+  fsRecv ctx _ t0 rsv h e rec := do
     match rsv with
     | .inl rs => return some ((fs.receive rs h e).map fun o => (.inl o.1, o.2.1, o.2.2))
     | .inr sIdx =>
       let s ← get
       let bk := (s.book sIdx).getD {}
       let matched := bk.fsTrans.find? (fun x => x.2 == (h, e))
+      let ok ← if matched.isNone && !(SM.healedBy ctx.tL (2 + Δcka) t0) && !bk.sCorr then
+          if la then pure false
+          else do
+            match ← liftFSMulti sIdx (FSAEAD.corruptSenderQuery (ReceiverState := RS)
+                (AssocData := Header T) (Message := M) (Ciphertext := E)) with
+            | none => pure false
+            | some _ =>
+              modify fun s =>
+                let b := (s.book sIdx).getD {}
+                { s with book := Function.update s.book sIdx (some { b with sCorr := true }) }
+              pure true
+        else pure true
+      if !ok then return none
       let res ← if matched.isSome then
           liftFSMulti sIdx (FSAEAD.deliverQuery (SenderState := SS) (ReceiverState := RS) h e)
         else
@@ -7045,7 +7067,9 @@ def hooksFSMulti [DecidableEq T] [DecidableEq I] [DecidableEq E]
       | none => return none
       | some .rejected => return some none
       | some (.accepted i mo') =>
-        if la && matched.isNone && bk.fsCount < i then
+        let s1 ← get
+        let bk1 := (s1.book sIdx).getD {}
+        if la && matched.isNone && (!bk1.sCorr) && bk1.fsCount < i then
           modify fun s => { s with lfWin := true }
           return none
         else
@@ -7088,7 +7112,7 @@ def hooksFSMulti [DecidableEq T] [DecidableEq I] [DecidableEq E]
           | _ => none
         return some (realParty vp vp.γ vp.root vS vR)
 
-def initFSMultiRaw [DecidableEq I]
+@[expose] def initFSMultiRaw [DecidableEq I]
     [SampleableType KR] [SampleableType KC] [SampleableType I] [SampleableType K]
     (cka : CKAScheme KC Γ CCoins T I)
     (prng : PRFPRNG KR RSt I K)
@@ -7163,14 +7187,14 @@ def redFSAuthMultiStage2 [DecidableEq T] [DecidableEq I] [DecidableEq M] [Decida
     (simulateQ (implEMultiStage2 cka prng fs Δcka qep gMain la tL t) A).run es₀
   return (if la then es.h.lfWin else authOut (2 + Δcka) (⟨true, tL, t⟩ : Mode).policy es)
 
-def FSMultiHBounded (L : ℕ) (h : FSMultiState T RSt K I E) : Prop :=
+@[expose] def FSMultiHBounded (L : ℕ) (h : FSMultiState T RSt K I E) : Prop :=
   h.table.length ≤ L ∧ h.sessions.length ≤ L ∧
     ∀ sIdx bk, h.book sIdx = some bk → bk.fsTrans.length ≤ L
 
 def FSMultiHBoundedPost (L : ℕ) (h : FSMultiState T RSt K I E) : Prop :=
   ∀ sIdx bk, h.book sIdx = some bk → bk.fsTrans.length ≤ L
 
-@[reducible] def fsMultiVpEnc (vp : VP Γ T RSt (SS ⊕ ℕ) (RS ⊕ ℕ)) :
+@[expose, reducible] def fsMultiVpEnc (vp : VP Γ T RSt (SS ⊕ ℕ) (RS ⊕ ℕ)) :
     (fsMultiVpTy KC Γ CCoins T I KR RSt K SS RS M E).denote :=
   vpTblEnc (KC := KC) (Γ := Γ) (CCoins := CCoins) (I := I) (KR := KR) (RSt := RSt)
     (K := K) (SS := SS) (RS := RS) (M := M) (E := E)
@@ -7915,7 +7939,7 @@ theorem finishFSMultiE_eval
       L Δ pol esE ρ es hInv.toBoundedEngine.leaks_le hInv.toBoundedEngine.corrs_le hes
   · simp only [↓reduceIte, fsMultiHsLfWin, esH, Expr.eval, hes, esEnc, fsMultiHsEnc]
 
-def hooksFSMultiL [DecidableEq T] [DecidableEq I] [DecidableEq E]
+@[expose] def hooksFSMultiL [DecidableEq T] [DecidableEq I] [DecidableEq E]
     [SampleableType CCoins] [SampleableType I] [SampleableType K]
     (cka : CKAScheme KC Γ CCoins T I)
     (prng : PRFPRNG KR RSt I K)
@@ -8839,6 +8863,152 @@ private theorem fsMultiFsSendC_eval [DecidableEq T] [DecidableEq I] [DecidableEq
             erw [hSet]
             simp [ρ₃, ρ₂, bk, StateT.run_modify, Prod.map, Expr.eval, Expr.v2]
 
+private theorem fsMultiFsRecv_inr_state_post
+    [DecidableEq T] [DecidableEq I] [DecidableEq E]
+    [SampleableType CCoins] [SampleableType I] [SampleableType K]
+    (cka : CKAScheme KC Γ CCoins T I)
+    (prng : PRFPRNG KR RSt I K)
+    (fs : FSAEADScheme K SS RS (Header T) M E)
+    (Δcka : ℕ) (mo : Mode) (gMain la : Bool)
+    (ctx : Ctx Γ T RSt (SS ⊕ ℕ) (RS ⊕ ℕ) M E) (P : Party) (t0 : ℕ)
+    (sIdx : ℕ) (hdr : Header T) (e : E) (rec_ : Option (Record M (Header T × E)))
+    (h : FSMultiState T RSt K I E)
+    {res : Option (Option ((RS ⊕ ℕ) × ℕ × M)) × FSMultiState T RSt K I E}
+    (hmem : res ∈ support
+      (((hooksFSMulti cka prng fs Δcka mo gMain la).fsRecv ctx P t0 (.inr sIdx) hdr e rec_).run h)) :
+    res.2.table = h.table ∧
+    res.2.sessions = h.sessions ∧
+    ∀ j, ((res.2.book j).getD {}).fsTrans.length ≤ ((h.book j).getD {}).fsTrans.length := by
+  rcases res with ⟨out, h'⟩
+  have hTail : ∀ (la' : Bool) (matched : Option (ℕ × Header T × E)) (h1 : FSMultiState T RSt K I E),
+      (h1.table = h.table ∧ h1.sessions = h.sessions ∧
+        ∀ j, ((h1.book j).getD {}).fsTrans.length ≤ ((h.book j).getD {}).fsTrans.length) →
+      (out, h') ∈ support ((do
+        let qres ← if matched.isSome then
+            liftFSMulti sIdx (FSAEAD.deliverQuery (SenderState := SS) (ReceiverState := RS) hdr e)
+          else
+            liftFSMulti sIdx (FSAEAD.injectQuery (SenderState := SS) (ReceiverState := RS) hdr e)
+        match qres with
+        | none => return none
+        | some .rejected => return some none
+        | some (.accepted i mo') =>
+          let s1 ← get
+          let bk1 := (s1.book sIdx).getD {}
+          if la' && matched.isNone && (!bk1.sCorr) && bk1.fsCount < i then
+            modify fun (s : FSMultiState T RSt K I E) => { s with lfWin := true }
+            return none
+          else
+            let drop := (matched.map (·.1)).getD i
+            modify fun (s : FSMultiState T RSt K I E) =>
+              let b := (s.book sIdx).getD {}
+              let b' : FSMultiBook T E := { b with fsTrans := b.fsTrans.filter (·.1 != drop) }
+              { s with book := Function.update s.book sIdx (some b') }
+            match mo', rec_ with
+            | some m, _ => return some (some ((Sum.inr sIdx : RS ⊕ ℕ), i, m))
+            | none, some r => return some (some ((Sum.inr sIdx : RS ⊕ ℕ), i, r.msg))
+            | none, none => return none :
+          HM (FSMultiSpec SS RS T M E) (FSMultiState T RSt K I E) _).run h1) →
+      h'.table = h.table ∧ h'.sessions = h.sessions ∧
+        ∀ j, ((h'.book j).getD {}).fsTrans.length ≤ ((h.book j).getD {}).fsTrans.length := by
+    intro la' matched h1 hStep1 hm
+    have hAfterRes : ∀ (qres : Option (FSAEAD.ReceiveResult M)),
+        (out, h') ∈ support ((match qres with
+          | none => pure none
+          | some .rejected => pure (some none)
+          | some (.accepted i mo') => do
+            let s1 ← get
+            let bk1 := (s1.book sIdx).getD {}
+            if (la' && matched.isNone && (!bk1.sCorr) && decide (bk1.fsCount < i)) = true then
+              modify fun (s : FSMultiState T RSt K I E) => { s with lfWin := true }
+              pure none
+            else
+              let drop := (matched.map (·.1)).getD i
+              modify fun (s : FSMultiState T RSt K I E) =>
+                let b := (s.book sIdx).getD {}
+                let b' : FSMultiBook T E := { b with fsTrans := b.fsTrans.filter (·.1 != drop) }
+                { s with book := Function.update s.book sIdx (some b') }
+              match mo', rec_ with
+              | some m, _ => pure (some (some ((Sum.inr sIdx : RS ⊕ ℕ), i, m)))
+              | none, some r => pure (some (some ((Sum.inr sIdx : RS ⊕ ℕ), i, r.msg)))
+              | none, none => pure none :
+          HM (FSMultiSpec SS RS T M E) (FSMultiState T RSt K I E) _).run h1) →
+        h'.table = h.table ∧ h'.sessions = h.sessions ∧
+          ∀ j, ((h'.book j).getD {}).fsTrans.length ≤ ((h.book j).getD {}).fsTrans.length := by
+      intro qres hm2
+      rcases qres with _ | _ | ⟨i, mo'⟩
+      · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hm2
+        cases hm2; exact hStep1
+      · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hm2
+        cases hm2; exact hStep1
+      · simp only [StateT.run_bind, StateT.run_get, pure_bind] at hm2
+        split_ifs at hm2
+        · simp only [StateT.run_bind, StateT.run_modify, StateT.run_pure, pure_bind,
+            support_pure, Set.mem_singleton_iff] at hm2
+          cases hm2; exact hStep1
+        · simp only [StateT.run_bind, StateT.run_modify, pure_bind] at hm2
+          have hBk : ∀ j,
+              (((Function.update h1.book sIdx (some
+                { (h1.book sIdx).getD {} with
+                  fsTrans := ((h1.book sIdx).getD {}).fsTrans.filter
+                    (·.1 != (matched.map (·.1)).getD i) })) j).getD {}).fsTrans.length ≤
+                ((h.book j).getD {}).fsTrans.length := by
+            intro j
+            by_cases hj : j = sIdx
+            · subst hj
+              simp only [Function.update_self, Option.getD_some]
+              exact (List.length_filter_le _ _).trans (hStep1.2.2 j)
+            · simp only [Function.update_of_ne hj]
+              exact hStep1.2.2 j
+          rcases mo' with _ | m <;> rcases rec_ with _ | r <;>
+            simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hm2 <;>
+            (cases hm2; exact ⟨hStep1.1, hStep1.2.1, hBk⟩)
+    split_ifs at hm <;>
+      (rw [StateT.run_bind, mem_support_bind_iff] at hm;
+       obtain ⟨⟨qres, h2⟩, hq, hm⟩ := hm;
+       simp only [liftFSMulti, StateT.run_lift, mem_support_bind_iff, support_pure,
+         Set.mem_singleton_iff] at hq;
+       obtain ⟨_, _, hEq⟩ := hq; cases hEq;
+       exact hAfterRes qres hm)
+  unfold hooksFSMulti at hmem
+  dsimp only at hmem
+  simp only [StateT.run_bind, StateT.run_get, pure_bind] at hmem
+  set matched : Option (ℕ × Header T × E) :=
+    ((h.book sIdx).getD {}).fsTrans.find? (fun x => x.2 == (hdr, e))
+  cases la
+  · by_cases hCond : (matched.isNone && !(SM.healedBy ctx.tL (2 + Δcka) t0) && !((h.book sIdx).getD {}).sCorr) = true
+    · simp only [hCond, Bool.false_eq_true, ↓reduceIte] at hmem
+      rw [StateT.run_bind, mem_support_bind_iff] at hmem
+      obtain ⟨⟨ans, h0⟩, hans, hmem⟩ := hmem
+      simp only [liftFSMulti, StateT.run_lift, mem_support_bind_iff, support_pure,
+        Set.mem_singleton_iff] at hans
+      obtain ⟨_, _, hEq⟩ := hans; cases hEq
+      rcases ans with _ | _
+      · simp only [Bool.not_false, ↓reduceIte, StateT.run_pure, support_pure,
+          Set.mem_singleton_iff] at hmem
+        cases hmem; exact ⟨rfl, rfl, fun _ => le_rfl⟩
+      · simp only [StateT.run_bind, StateT.run_modify, pure_bind,
+          Bool.not_true, Bool.false_eq_true, ↓reduceIte] at hmem
+        refine hTail false matched
+          { h with
+            book := Function.update h.book sIdx
+              (some { (h.book sIdx).getD {} with sCorr := true }) }
+          ⟨rfl, rfl, ?_⟩ hmem
+        intro j
+        by_cases hj : j = sIdx
+        · subst hj
+          simp only [Function.update_self, Option.getD_some]
+          exact le_rfl
+        · simp only [Function.update_of_ne hj]
+          exact le_rfl
+    · simp only [hCond, Bool.false_eq_true, ↓reduceIte, Bool.not_true] at hmem
+      exact hTail false matched h ⟨rfl, rfl, fun _ => le_rfl⟩ hmem
+  · by_cases hCond : (matched.isNone && !(SM.healedBy ctx.tL (2 + Δcka) t0) && !((h.book sIdx).getD {}).sCorr) = true
+    · simp only [hCond, ↓reduceIte, Bool.not_false, StateT.run_pure, support_pure,
+        Set.mem_singleton_iff] at hmem
+      cases hmem; exact ⟨rfl, rfl, fun _ => le_rfl⟩
+    · simp only [hCond, Bool.false_eq_true, ↓reduceIte, Bool.not_true] at hmem
+      exact hTail true matched h ⟨rfl, rfl, fun _ => le_rfl⟩ hmem
+
 private theorem fsMultiFsRecvC_eval [DecidableEq T] [DecidableEq I] [DecidableEq E]
     [SampleableType CCoins] [SampleableType I] [SampleableType K]
     (cka : CKAScheme KC Γ CCoins T I)
@@ -8857,36 +9027,82 @@ private theorem fsMultiFsRecvC_eval [DecidableEq T] [DecidableEq I] [DecidableEq
     (h : FSMultiState T RSt K I E) (ctx : Ctx Γ T RSt (SS ⊕ ℕ) (RS ⊕ ℕ) M E) (P : Party)
     (rec_ : Option (Record M (Header T × E)))
     (hHB : FSMultiHBoundedPost L h)
-    (hh : hE.eval ρ = hsMEnc h) (hrec : recE.eval ρ = rec_.map cRecEnc) :
+    (hh : hE.eval ρ = hsMEnc h)
+    (hctx : ctxE.eval ρ = cGsEnc vpMEnc ctx)
+    (hrec : recE.eval ρ = rec_.map cRecEnc) :
     (fsMultiFsRecvC (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
-        (sampI := sampI) (sampK := sampK) L B la hE ctxE pE tE rsvE hdrE eE recE).eval ρ =
+        (sampI := sampI) (sampK := sampK) L B la Δcka hE ctxE pE tE rsvE hdrE eE recE).eval ρ =
       Prod.map id hsMEnc <$>
         ((hooksFSMulti cka prng fs Δcka mo gMain la).fsRecv ctx P (tE.eval ρ)
           (rsvE.eval ρ) (hdrE.eval ρ) (eE.eval ρ) rec_).run h ∧
     ∀ res ∈ support (((hooksFSMulti cka prng fs Δcka mo gMain la).fsRecv ctx P (tE.eval ρ)
         (rsvE.eval ρ) (hdrE.eval ρ) (eE.eval ρ) rec_).run h),
       FSMultiHBoundedPost L res.2 := by
-  unfold fsMultiFsRecvC hooksFSMulti
-  dsimp only
-  rw [eval_bind_ret]
+  set t0 : ℕ := tE.eval ρ
   set rsv : RS ⊕ ℕ := rsvE.eval ρ
   set hdr : Header T := hdrE.eval ρ
   set e : E := eE.eval ρ
-  have h0 : (Expr.pair hE (.pair rsvE (.pair hdrE (.pair eE recE)))).eval ρ =
-      (hsMEnc h, rsv, hdr, e, rec_.map cRecEnc) := by
-    simp [Expr.eval, hh, hrec, rsv, hdr, e]
-  rw [h0]; clear h0
+  have hPost : ∀ res ∈ support
+      (((hooksFSMulti cka prng fs Δcka mo gMain la).fsRecv ctx P t0 rsv hdr e rec_).run h),
+      FSMultiHBoundedPost L res.2 := by
+    intro res hmem
+    rcases rsv with rs | sIdx
+    · dsimp only [hooksFSMulti] at hmem
+      simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
+      subst hmem; exact hHB
+    · have ⟨_, _, hLen⟩ := fsMultiFsRecv_inr_state_post cka prng fs Δcka mo gMain la
+        ctx P t0 sIdx hdr e rec_ h hmem
+      intro idx b' hb'
+      have hj := hLen idx
+      rw [hb', Option.getD_some] at hj
+      rcases hbk : h.book idx with _ | b0
+      · rw [hbk] at hj
+        change b'.fsTrans.length ≤ 0 at hj
+        omega
+      · rw [hbk, Option.getD_some] at hj
+        exact hj.trans (hHB idx b0 hbk)
+  refine ⟨?_, hPost⟩
+  have hCaseOpt : ∀ {Γ0 a b} (e0 : Expr OO Γ0 (.opt a))
+      (n0 : Expr OO Γ0 b) (s0 : Expr OO (a :: Γ0) b) (ρ0 : Env Γ0),
+      (Expr.caseOpt e0 n0 s0).eval ρ0 =
+        match e0.eval ρ0 with
+        | none => n0.eval ρ0
+        | some x => s0.eval (Env.cons x ρ0) := by
+    intro _ _ _ e0 _ _ ρ0
+    conv_lhs => unfold Expr.eval
+    cases e0.eval ρ0 <;> rfl
+  have hRunIfLift : ∀ {α β : Type} (sIdx : ℕ) (c : Bool)
+      (q1 q2 : FSAEAD.AdversaryComp SS RS (Header T) M E α)
+      (k : α → HM (FSMultiSpec SS RS T M E) (FSMultiState T RSt K I E) β)
+      (s0 : FSMultiState T RSt K I E),
+      Prod.map id hsMEnc <$>
+        (if c then do let res ← liftFSMulti sIdx q1; k res
+         else do let res ← liftFSMulti sIdx q2; k res).run s0 =
+      ((if c then liftFSMultiRaw sIdx q1 else liftFSMultiRaw sIdx q2) >>=
+        fun res => Prod.map id hsMEnc <$> (k res).run s0) := by
+    intro α β sIdx c q1 q2 k s0
+    cases c <;>
+      simp [liftFSMulti_eq, StateT.run_bind, StateT.run_lift, map_bind]
+  unfold fsMultiFsRecvC hooksFSMulti
+  dsimp only
+  have h0 : (Expr.pair hE (.pair ctxE (.pair tE (.pair rsvE (.pair hdrE (.pair eE recE)))))).eval ρ =
+      (hsMEnc h, cGsEnc vpMEnc ctx, t0, rsv, hdr, e, rec_.map cRecEnc) := by
+    simp [Expr.eval, hh, hctx, hrec, t0, rsv, hdr, e]
   set ρ₁ := Env.cons
-    (t := .prod mHsTy (.prod (.sum (.base CKASort.rs) .nat)
-      (.prod hdrTy (.prod (.base CKASort.ct) (.opt cRecTy)))))
-    (hsMEnc h, rsv, hdr, e, rec_.map cRecEnc) ρ
-  rcases rsv with rs | sIdx
-  · rw [eval_caseSum_inl rfl]
-    dsimp only
-    refine ⟨?_, ?_⟩
-    · have hOp : (Expr.op (O := OO) (CKAOp.fsReceive B)
+    (t := .prod mHsTy (.prod (cGsTy mVpTy) (.prod .nat (.prod (.sum (.base CKASort.rs) .nat)
+      (.prod hdrTy (.prod (.base CKASort.ct) (.opt cRecTy)))))))
+    (hsMEnc h, cGsEnc vpMEnc ctx, t0, rsv, hdr, e, rec_.map cRecEnc) ρ
+  cases la
+  · -- `la = false`
+    simp only [Bool.false_eq_true, Bool.false_and, ↓reduceIte]
+    rw [eval_bind_ret, h0]
+    rcases rsv with rs | sIdx
+    · rw [eval_caseSum_inl rfl]
+      dsimp only
+      have hOp : (Expr.op (O := OO) (CKAOp.fsReceive B)
           (.pair .v0
-            (.pair (.fst (.snd (.snd .v1))) (.fst (.snd (.snd (.snd .v1))))))).eval
+            (.pair (.fst (.snd (.snd (.snd (.snd .v1)))))
+              (.fst (.snd (.snd (.snd (.snd (.snd .v1))))))))).eval
           (Env.cons (t := .base CKASort.rs) rs ρ₁) =
           fs.receive rs hdr e := by
         simp only [ρ₁, prngOps, ckaOps, Expr.eval, Expr.v0, Expr.v1,
@@ -8897,258 +9113,522 @@ private theorem fsMultiFsRecvC_eval [DecidableEq T] [DecidableEq I] [DecidableEq
         simp [ρ₁, StateT.run_pure, Prod.map, Expr.eval, Expr.v1]
       · rw [eval_caseOpt_some (hOp.trans hrc), eval_ret]
         simp [ρ₁, StateT.run_pure, Prod.map, Expr.eval, Expr.v0, Expr.v2]
-    · intro res' hmem
-      simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
-      subst hmem; exact hHB
-  · rw [eval_caseSum_inr rfl]
-    simp only [StateT.run_bind, StateT.run_get, pure_bind]
-    set ρ₂ := Env.cons (t := .nat) sIdx ρ₁
-    set bk := (h.book sIdx).getD {}
-    have hBkL : bk.fsTrans.length ≤ L := by
-      dsimp only [bk]
-      rcases hbk : h.book sIdx with _ | b
-      · simp
-      · exact hHB sIdx b hbk
-    have hBk2 : (fsMultiHsGetBookAt (O := OO) (.fst .v1) .v0).eval ρ₂ =
-        (bk.sCorr, bk.fsCount, bk.fsTrans) :=
-      fsMultiHsGetBookAt_eval (.fst .v1) .v0 ρ₂ h rfl
-    set matched := bk.fsTrans.find? (fun x => x.2 == (hdr, e))
-    have hFind1 : (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (O := OO) (.fst .v1) .v0)))
-        (.pair (.fst (.snd (.snd .v1))) (.fst (.snd (.snd (.snd .v1)))))).eval ρ₂ =
-        matched := by
-      rw [fsTransFindE_eval heqT heqE L (.snd (.snd (fsMultiHsGetBookAt (.fst .v1) .v0)))
-        (.pair (.fst (.snd (.snd .v1))) (.fst (.snd (.snd (.snd .v1))))) ρ₂
-        (by simp [snd_eval, hBk2, hBkL])]
-      rw [snd_eval, snd_eval, hBk2]
-      simp [ρ₂, ρ₁, matched, Expr.eval, Expr.v1]
-    have hContEval : ∀ (m? : Option (ℕ × Header T × E))
-        (_hM : matched = m?)
-        (res : Option (FSAEAD.ReceiveResult M)),
-        (Comp.caseOpt (O := OO) (I := IIM) .v0
-          (.ret (.pair .none (.fst .v2)))
-          (.caseSum .v0
-            (.ret (.pair (.some .none) (.fst .v4)))
-            (.ite
-              (.and (.bool la)
-                (.caseOpt
-                  (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (.fst .v4) .v3)))
-                    (.pair (.fst (.snd (.snd .v4))) (.fst (.snd (.snd (.snd .v4))))))
-                  (.lt (.fst (.snd (fsMultiHsGetBookAt (.fst .v4) .v3))) (.fst .v0))
-                  (.bool false)))
-              (.ret (.pair .none (fsMultiHsSetLfWin (.fst .v4) (.bool true))))
-              (.ret (.pair
-                (.caseOpt (.snd .v0)
-                  (.caseOpt (.snd (.snd (.snd (.snd .v4))))
-                    .none
-                    (.some (.some (.pair (Expr.inr (O := OO) (t := .base CKASort.rs) .v4)
-                      (.pair (.fst .v1) (cRecMsg .v0))))))
-                  (.some (.some (.pair (Expr.inr (O := OO) (t := .base CKASort.rs) .v4)
-                    (.pair (.fst .v1) .v0)))))
-                (fsMultiHsSetBookAt (.fst .v4) .v3
-                  (.pair (.fst (fsMultiHsGetBookAt (.fst .v4) .v3))
-                    (.pair (.fst (.snd (fsMultiHsGetBookAt (.fst .v4) .v3)))
-                      (fsTransFilterE L (.snd (.snd (fsMultiHsGetBookAt (.fst .v4) .v3)))
-                        (.caseOpt
-                          (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (.fst .v4) .v3)))
-                            (.pair (.fst (.snd (.snd .v4))) (.fst (.snd (.snd (.snd .v4))))))
-                          (.fst .v0) (.fst .v0))))))))))).eval
-          (Env.cons (t := .opt (fsHdrRrTy KC Γ CCoins T I KR RSt K SS RS M E))
-            (Option.map fsHdrRrEnc res) ρ₂) =
-        Prod.map id hsMEnc <$>
-          ((match res with
-            | none => pure none
-            | some .rejected => pure (some none)
-            | some (.accepted i mo') => do
-              if (la && m?.isNone && decide (bk.fsCount < i)) = true then
-                modify fun (s : FSMultiState T RSt K I E) => { s with lfWin := true }
-                pure none
-              else
-                let drop := (m?.map (·.1)).getD i
+    · rw [eval_caseSum_inr rfl]
+      simp only [StateT.run_bind, StateT.run_get, pure_bind]
+      set ρ₂ := Env.cons (t := .nat) sIdx ρ₁
+      set bk := (h.book sIdx).getD {}
+      have hBkL : bk.fsTrans.length ≤ L := by
+        dsimp only [bk]
+        rcases hbk : h.book sIdx with _ | b
+        · simp
+        · exact hHB sIdx b hbk
+      have hBk0 : (fsMultiHsGetBookAt (O := OO) (.fst .v1) .v0).eval ρ₂ =
+          (bk.sCorr, bk.fsCount, bk.fsTrans) :=
+        fsMultiHsGetBookAt_eval (.fst .v1) .v0 ρ₂ h rfl
+      set matched := bk.fsTrans.find? (fun x => x.2 == (hdr, e))
+      have hFind0 : (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (O := OO) (.fst .v1) .v0)))
+          (.pair (.fst (.snd (.snd (.snd (.snd .v1)))))
+            (.fst (.snd (.snd (.snd (.snd (.snd .v1)))))))).eval ρ₂ = matched := by
+        rw [fsTransFindE_eval heqT heqE L _ _ ρ₂ (by simp [snd_eval, hBk0, hBkL])]
+        rw [snd_eval, snd_eval, hBk0]
+        simp [ρ₂, ρ₁, matched, Expr.eval, Expr.v1]
+      have hTL0 : (cGsTL (O' := OO) (.fst (.snd .v1))).eval ρ₂ = ctx.tL := rfl
+      have hT0 : (Expr.fst (.snd (.snd (Expr.v1 (O := OO))))).eval ρ₂ = t0 := rfl
+      have hCond : (Expr.and (O := OO)
+          (.not (_root_.CryptoGames.SM.healedByE (cGsTL (.fst (.snd .v1))) (2 + Δcka)
+            (.fst (.snd (.snd .v1)))))
+          (.not (.fst (fsMultiHsGetBookAt (.fst .v1) .v0)))).eval ρ₂ =
+          (!SM.healedBy ctx.tL (2 + Δcka) t0 && !bk.sCorr) := by
+        rw [and_eval, not_eval, not_eval, _root_.CryptoGames.SM.healedByE_eval, hTL0, hT0,
+          fst_eval, hBk0]
+      have hRecvTrue : ∀ (h₁ : FSMultiState T RSt K I E),
+          ((h₁.book sIdx).getD {}).fsTrans = bk.fsTrans →
+          (Comp.ite (O := OO) (I := IIM) (.not (.fst .v0))
+            (.ret (.pair .none (.snd .v0)))
+            (.bind
+              (.caseOpt
+                (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (.fst .v2) .v1)))
+                  (.pair (.fst (.snd (.snd (.snd (.snd .v2)))))
+                    (.fst (.snd (.snd (.snd (.snd (.snd .v2))))))))
+                (@Comp.query _ _ _ OO IIM _ FSHdrTag.ij
+                  (.pair .v1
+                    (.pair (.fst (.snd (.snd (.snd (.snd .v2)))))
+                      (.fst (.snd (.snd (.snd (.snd (.snd .v2)))))))))
+                (@Comp.query _ _ _ OO IIM _ FSHdrTag.dl
+                  (.pair .v2
+                    (.pair (.fst (.snd (.snd (.snd (.snd .v3)))))
+                      (.fst (.snd (.snd (.snd (.snd (.snd .v3))))))))))
+              (.caseOpt .v0
+                (.ret (.pair .none (.snd .v1)))
+                (.caseSum .v0
+                  (.ret (.pair (.some .none) (.snd .v3)))
+                  (.caseOpt
+                    (.caseOpt (.snd .v0)
+                      (.caseOpt (.snd (.snd (.snd (.snd (.snd (.snd .v5))))))
+                        .none
+                        (.some (.some (.pair (Expr.inr (O := OO) (t := .base CKASort.rs) .v5)
+                          (.pair (.fst .v1) (cRecMsg .v0))))))
+                      (.some (.some (.pair (Expr.inr (O := OO) (t := .base CKASort.rs) .v5)
+                        (.pair (.fst .v1) .v0)))))
+                    (.ret (.pair .none
+                      (fsMultiHsSetBookAt (.snd .v3) .v4
+                        (.pair (.fst (fsMultiHsGetBookAt (.snd .v3) .v4))
+                          (.pair (.fst (.snd (fsMultiHsGetBookAt (.snd .v3) .v4)))
+                            (fsTransFilterE L (.snd (.snd (fsMultiHsGetBookAt (.snd .v3) .v4)))
+                              (.caseOpt (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (.fst .v5) .v4)))
+                                  (.pair (.fst (.snd (.snd (.snd (.snd .v5)))))
+                                    (.fst (.snd (.snd (.snd (.snd (.snd .v5))))))))
+                                (.fst .v0) (.fst .v0))))))))
+                    (.ret (.pair (.some .v0)
+                      (fsMultiHsSetBookAt (.snd .v4) .v5
+                        (.pair (.fst (fsMultiHsGetBookAt (.snd .v4) .v5))
+                          (.pair (.fst (.snd (fsMultiHsGetBookAt (.snd .v4) .v5)))
+                            (fsTransFilterE L (.snd (.snd (fsMultiHsGetBookAt (.snd .v4) .v5)))
+                              (.caseOpt (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (.fst .v6) .v5)))
+                                  (.pair (.fst (.snd (.snd (.snd (.snd .v6)))))
+                                    (.fst (.snd (.snd (.snd (.snd (.snd .v6))))))))
+                                (.fst .v1) (.fst .v0))))))))))))).eval
+            (Env.cons (t := .prod .bool mHsTy) (true, hsMEnc h₁) ρ₂) =
+          Prod.map id hsMEnc <$>
+            ((do
+              let res ← if matched.isSome then
+                  liftFSMulti sIdx (FSAEAD.deliverQuery (SenderState := SS) (ReceiverState := RS) hdr e)
+                else
+                  liftFSMulti sIdx (FSAEAD.injectQuery (SenderState := SS) (ReceiverState := RS) hdr e)
+              match res with
+              | none => return none
+              | some .rejected => return some none
+              | some (.accepted i mo') =>
+                let _s1 ← get
+                let drop := (matched.map (·.1)).getD i
                 modify fun (s : FSMultiState T RSt K I E) =>
                   let b := (s.book sIdx).getD {}
                   let b' : FSMultiBook T E := { b with fsTrans := b.fsTrans.filter (·.1 != drop) }
                   { s with book := Function.update s.book sIdx (some b') }
                 match mo', rec_ with
-                | some m, _ => pure (some (some ((.inr sIdx : RS ⊕ ℕ), i, m)))
-                | none, some r => pure (some (some ((.inr sIdx : RS ⊕ ℕ), i, r.msg)))
-                | none, none => pure none :
-            HM (FSMultiSpec SS RS T M E) (FSMultiState T RSt K I E)
-              (Option (Option ((RS ⊕ ℕ) × ℕ × M)))).run h) := by
-      intro m? hM res
-      rcases res with _ | (_ | ⟨msgIdx, mo'⟩)
-      · dsimp only [Option.map]
-        rw [eval_caseOpt_none rfl, eval_ret]
-        simp [ρ₂, ρ₁, StateT.run_pure, Prod.map, Expr.eval, Expr.v2]
-      · dsimp only [Option.map, fsHdrRrEnc]
-        rw [eval_caseOpt_some rfl, eval_caseSum_inl rfl, eval_ret]
-        simp [ρ₂, ρ₁, StateT.run_pure, Prod.map, Expr.eval, Expr.v4]
-      · dsimp only [Option.map, fsHdrRrEnc]
-        rw [eval_caseOpt_some rfl, eval_caseSum_inr rfl, eval_ite]
-        set ρ₃ := Env.cons (t := .prod .nat (.opt (.base CKASort.msg))) (msgIdx, mo')
-          (Env.cons (t := fsHdrRrTy KC Γ CCoins T I KR RSt K SS RS M E) (.inr (msgIdx, mo'))
-            (Env.cons (t := .opt (fsHdrRrTy KC Γ CCoins T I KR RSt K SS RS M E))
-              (some (.inr (msgIdx, mo'))) ρ₂))
-        have hBk3 : (fsMultiHsGetBookAt (O := OO) (.fst .v4) .v3).eval ρ₃ =
+                | some m, _ => return some (some ((.inr sIdx : RS ⊕ ℕ), i, m))
+                | none, some r => return some (some ((.inr sIdx : RS ⊕ ℕ), i, r.msg))
+                | none, none => return none :
+              HM (FSMultiSpec SS RS T M E) (FSMultiState T RSt K I E) _).run h₁) := by
+        intro h₁ hTr₁
+        set ρ₃ := Env.cons (t := .prod .bool mHsTy) (true, hsMEnc h₁) ρ₂
+        rw [eval_ite]
+        have hNotOk : (Expr.not (.fst (Expr.v0 (O := OO)))).eval ρ₃ = false := rfl
+        rw [hNotOk]
+        simp only [Bool.false_eq_true, ↓reduceIte, eval_bind]
+        have hBk0_3 : (fsMultiHsGetBookAt (O := OO) (.fst .v2) .v1).eval ρ₃ =
             (bk.sCorr, bk.fsCount, bk.fsTrans) :=
-          fsMultiHsGetBookAt_eval (.fst .v4) .v3 ρ₃ h rfl
-        have hFind3 : (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (O := OO) (.fst .v4) .v3)))
-            (.pair (.fst (.snd (.snd .v4))) (.fst (.snd (.snd (.snd .v4)))))).eval ρ₃ = m? := by
-          rw [fsTransFindE_eval heqT heqE L (.snd (.snd (fsMultiHsGetBookAt (.fst .v4) .v3)))
-            (.pair (.fst (.snd (.snd .v4))) (.fst (.snd (.snd (.snd .v4))))) ρ₃
-            (by simp [snd_eval, hBk3, hBkL])]
-          rw [snd_eval, snd_eval, hBk3]
-          refine Eq.trans ?_ hM
-          simp [ρ₃, ρ₂, ρ₁, matched, Expr.eval, Expr.v4]
-        have hLfCond :
-            (Expr.and (.bool la)
-              (.caseOpt
-                (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (O := OO) (.fst .v4) .v3)))
-                  (.pair (.fst (.snd (.snd .v4))) (.fst (.snd (.snd (.snd .v4))))))
-                (.lt (.fst (.snd (fsMultiHsGetBookAt (.fst .v4) .v3))) (.fst .v0))
-                (.bool false))).eval ρ₃ =
-            (la && m?.isNone && decide (bk.fsCount < msgIdx)) := by
-          rw [and_eval]
-          simp only [Expr.eval, hFind3, hBk3]
-          rcases m? with _ | mrec
-          · simp only [Option.isNone_none, Bool.and_true]; rfl
-          · simp
-        rw [hLfCond]
-        by_cases hLf : (la && m?.isNone && decide (bk.fsCount < msgIdx)) = true
-        · simp only [hLf, ↓reduceIte, eval_ret, pair_eval, StateT.run_bind, StateT.run_modify,
-            StateT.run_pure, pure_bind, map_pure, Prod.map]
-          rw [fsMultiHsSetLfWin_eval (.fst .v4) (.bool true) ρ₃ h rfl]
+          fsMultiHsGetBookAt_eval (.fst .v2) .v1 ρ₃ h rfl
+        have hFind3 : (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (O := OO) (.fst .v2) .v1)))
+            (.pair (.fst (.snd (.snd (.snd (.snd .v2)))))
+              (.fst (.snd (.snd (.snd (.snd (.snd .v2)))))))).eval ρ₃ = matched := by
+          rw [fsTransFindE_eval heqT heqE L _ _ ρ₃ (by rw [snd_eval, snd_eval, hBk0_3]; exact hBkL),
+            snd_eval, snd_eval, hBk0_3]
           rfl
-        · simp only [hLf, Bool.false_eq_true, ↓reduceIte, eval_ret, pair_eval,
-            StateT.run_bind, StateT.run_modify, pure_bind]
-          have hDrop : (Expr.caseOpt (O := OO)
-              (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (.fst .v4) .v3)))
-                (.pair (.fst (.snd (.snd .v4))) (.fst (.snd (.snd (.snd .v4))))))
-              (.fst .v0) (.fst .v0)).eval ρ₃ =
-              (m?.map (·.1)).getD msgIdx := by
-            simp only [Expr.eval, hFind3]
-            rcases m? with _ | mrec <;> rfl
-          have hFlt := fsTransFilterE_eval (ckaInitA := ckaInitA) (ckaInitB := ckaInitB)
-            (ckaSend := ckaSend) (ckaReceive := ckaReceive) (prngInit := prngInit)
-            (prngUp := prngUp) (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
-            (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
-            (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
-            L (.snd (.snd (fsMultiHsGetBookAt (.fst .v4) .v3)))
-            (.caseOpt (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (.fst .v4) .v3)))
-                (.pair (.fst (.snd (.snd .v4))) (.fst (.snd (.snd (.snd .v4))))))
-              (.fst .v0) (.fst .v0)) ρ₃ (by simp [snd_eval, hBk3, hBkL])
-          rw [hDrop] at hFlt
-          have hTrEq : (Expr.snd (.snd (fsMultiHsGetBookAt (O := OO) (.fst .v4) .v3))).eval ρ₃ =
-              bk.fsTrans := by simp [snd_eval, hBk3]
-          rw [hTrEq] at hFlt
-          have hH4 := fsMultiHsSetBookAt_eval (.fst (Expr.v4 (O := OO))) .v3
-            (.pair (.fst (fsMultiHsGetBookAt (.fst .v4) .v3))
-              (.pair (.fst (.snd (fsMultiHsGetBookAt (.fst .v4) .v3)))
-                (fsTransFilterE L (.snd (.snd (fsMultiHsGetBookAt (.fst .v4) .v3)))
-                  (.caseOpt (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (.fst .v4) .v3)))
-                      (.pair (.fst (.snd (.snd .v4))) (.fst (.snd (.snd (.snd .v4))))))
-                    (.fst .v0) (.fst .v0))))) ρ₃ h rfl
-            (sc := bk.sCorr) (cnt := bk.fsCount)
-            (tr := bk.fsTrans.filter (·.1 != (m?.map (·.1)).getD msgIdx))
-            (by simp [pair_eval, fst_eval, snd_eval, hBk3, hFlt])
-          have hIdx3 : (Expr.v3 (O := OO)).eval ρ₃ = sIdx := rfl
-          rw [hIdx3] at hH4
-          have hOut :
+        have hQ3 :
+            (Comp.caseOpt (O := OO) (I := IIM)
+              (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (.fst .v2) .v1)))
+                (.pair (.fst (.snd (.snd (.snd (.snd .v2)))))
+                  (.fst (.snd (.snd (.snd (.snd (.snd .v2))))))))
+              (@Comp.query _ _ _ OO IIM _ FSHdrTag.ij
+                (.pair .v1
+                  (.pair (.fst (.snd (.snd (.snd (.snd .v2)))))
+                    (.fst (.snd (.snd (.snd (.snd (.snd .v2)))))))))
+              (@Comp.query _ _ _ OO IIM _ FSHdrTag.dl
+                (.pair .v2
+                  (.pair (.fst (.snd (.snd (.snd (.snd .v3)))))
+                    (.fst (.snd (.snd (.snd (.snd (.snd .v3)))))))))).eval ρ₃ =
+            Option.map fsHdrRrEnc <$>
+              (if matched.isSome = true then
+                liftFSMultiRaw sIdx
+                  (FSAEAD.deliverQuery (SenderState := SS) (ReceiverState := RS) hdr e)
+               else
+                liftFSMultiRaw sIdx
+                  (FSAEAD.injectQuery (SenderState := SS) (ReceiverState := RS) hdr e)) := by
+          rcases hM : matched with _ | mrec
+          · rw [eval_caseOpt_none (hFind3.trans hM), query_fsMulti_ij_eval]; rfl
+          · rw [eval_caseOpt_some (hFind3.trans hM), query_fsMulti_dl_eval]; rfl
+        rw [hQ3, bind_map_left, hRunIfLift]
+        refine bind_congr fun res => ?_
+        rcases res with _ | (_ | ⟨msgIdx, mo'⟩)
+        · dsimp only [Option.map]
+          rw [eval_caseOpt_none rfl, eval_ret, StateT.run_pure, map_pure]
+          rfl
+        · dsimp only [Option.map, fsHdrRrEnc]
+          rw [eval_caseOpt_some rfl, eval_caseSum_inl rfl, eval_ret, StateT.run_pure, map_pure]
+          rfl
+        · dsimp only [Option.map, fsHdrRrEnc]
+          rw [eval_caseOpt_some rfl, eval_caseSum_inr rfl]
+          simp only [StateT.run_bind, StateT.run_get, StateT.run_modify, pure_bind]
+          set bk1 := (h₁.book sIdx).getD {}
+          have hBk1L : bk1.fsTrans.length ≤ L := by
+            dsimp only [bk1]; rw [hTr₁]; exact hBkL
+          set ρ₄ := Env.cons (t := .prod .nat (.opt (.base CKASort.msg))) (msgIdx, mo')
+            (Env.cons (t := fsHdrRrTy KC Γ CCoins T I KR RSt K SS RS M E) (.inr (msgIdx, mo'))
+              (Env.cons (t := .opt (fsHdrRrTy KC Γ CCoins T I KR RSt K SS RS M E))
+                (some (.inr (msgIdx, mo'))) ρ₃))
+          have hOut4 :
               (Expr.caseOpt (O := OO) (.snd .v0)
-                (Expr.caseOpt (.snd (.snd (.snd (.snd .v4))))
+                (Expr.caseOpt (.snd (.snd (.snd (.snd (.snd (.snd .v5))))))
                   .none
-                  (.some (.some (.pair (Expr.inr (O := OO) (t := .base CKASort.rs) .v4) (.pair (.fst .v1) (cRecMsg .v0))))))
-                (.some (.some (.pair (Expr.inr (O := OO) (t := .base CKASort.rs) .v4) (.pair (.fst .v1) .v0))))).eval ρ₃ =
+                  (.some (.some (.pair (Expr.inr (O := OO) (t := .base CKASort.rs) .v5)
+                    (.pair (.fst .v1) (cRecMsg .v0))))))
+                (.some (.some (.pair (Expr.inr (O := OO) (t := .base CKASort.rs) .v5)
+                  (.pair (.fst .v1) .v0))))).eval ρ₄ =
               (match mo', rec_ with
                 | some m, _ => some (some ((.inr sIdx : RS ⊕ ℕ), msgIdx, m))
                 | none, some r => some (some ((.inr sIdx : RS ⊕ ℕ), msgIdx, r.msg))
                 | none, none => none) := by
             rcases mo' with _ | m
-            · rcases rec_ with _ | r <;>
-                simp [ρ₃, ρ₂, ρ₁, cRecMsg, cRecEnc, Expr.eval, Expr.v0, Expr.v1, Expr.v4]
-            · simp [ρ₃, ρ₂, Expr.eval, Expr.v0, Expr.v1, Expr.v4]
-          rw [hOut, hH4]
+            · rcases rec_ with _ | r <;> rfl
+            · rfl
+          have hSetH4 : ∀ {Γ''} (ρ' : Env Γ'')
+              (h1E : Expr OO Γ'' mHsTy) (sIdxE : Expr OO Γ'' .nat)
+              (h0E : Expr OO Γ'' mHsTy) (hcE : Expr OO Γ'' hdrCtTy)
+              (msgIdxE : Expr OO Γ'' .nat)
+              (hh1 : h1E.eval ρ' = hsMEnc h₁) (hsIdx : sIdxE.eval ρ' = sIdx)
+              (hh0 : h0E.eval ρ' = hsMEnc h) (hhc : hcE.eval ρ' = (hdr, e))
+              (hmi : msgIdxE.eval ρ' = msgIdx),
+              (fsMultiHsSetBookAt h1E sIdxE
+                (.pair (.fst (fsMultiHsGetBookAt h1E sIdxE))
+                  (.pair (.fst (.snd (fsMultiHsGetBookAt h1E sIdxE)))
+                    (fsTransFilterE L (.snd (.snd (fsMultiHsGetBookAt h1E sIdxE)))
+                      (.caseOpt (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt h0E sIdxE))) hcE)
+                        msgIdxE (.fst .v0)))))).eval ρ' =
+              hsMEnc
+                { h₁ with
+                  book := Function.update h₁.book sIdx <| some
+                    { bk1 with
+                      fsTrans := bk1.fsTrans.filter
+                        (·.1 != (matched.map (·.1)).getD msgIdx) } } := by
+            intro Γ'' ρ' h1E sIdxE h0E hcE msgIdxE hh1 hsIdx hh0 hhc hmi
+            have hBk1' := fsMultiHsGetBookAt_eval h1E sIdxE ρ' h₁ hh1
+            rw [hsIdx] at hBk1'
+            have hBk0' := fsMultiHsGetBookAt_eval h0E sIdxE ρ' h hh0
+            rw [hsIdx] at hBk0'
+            have hFind' : (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt h0E sIdxE))) hcE).eval ρ' =
+                matched := by
+              rw [fsTransFindE_eval heqT heqE L _ _ ρ' (by rw [snd_eval, snd_eval, hBk0']; exact hBkL),
+                snd_eval, snd_eval, hBk0', hhc]
+            have hDrop' : (Expr.caseOpt (O := OO)
+                (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt h0E sIdxE))) hcE)
+                msgIdxE (.fst .v0)).eval ρ' = (matched.map (·.1)).getD msgIdx := by
+              rw [hCaseOpt, hFind']
+              rcases matched with _ | _
+              · exact hmi
+              · rfl
+            have hFlt' := fsTransFilterE_eval (ckaInitA := ckaInitA) (ckaInitB := ckaInitB)
+              (ckaSend := ckaSend) (ckaReceive := ckaReceive) (prngInit := prngInit)
+              (prngUp := prngUp) (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
+              (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
+              (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
+              L (.snd (.snd (fsMultiHsGetBookAt h1E sIdxE)))
+              (.caseOpt (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt h0E sIdxE))) hcE)
+                msgIdxE (.fst .v0)) ρ' (by rw [snd_eval, snd_eval, hBk1']; exact hBk1L)
+            rw [hDrop'] at hFlt'
+            have hSet' := fsMultiHsSetBookAt_eval h1E sIdxE
+              (.pair (.fst (fsMultiHsGetBookAt h1E sIdxE))
+                (.pair (.fst (.snd (fsMultiHsGetBookAt h1E sIdxE)))
+                  (fsTransFilterE L (.snd (.snd (fsMultiHsGetBookAt h1E sIdxE)))
+                    (.caseOpt (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt h0E sIdxE))) hcE)
+                      msgIdxE (.fst .v0))))) ρ' h₁ hh1
+              (sc := bk1.sCorr) (cnt := bk1.fsCount)
+              (tr := bk1.fsTrans.filter (·.1 != (matched.map (·.1)).getD msgIdx))
+              (by rw [pair_eval, fst_eval, pair_eval, fst_eval, snd_eval, hFlt', snd_eval, snd_eval, hBk1'])
+            rw [hsIdx] at hSet'
+            exact hSet'
           rcases mo' with _ | m
-          · rcases rec_ with _ | r <;> rfl
-          · rfl
-    have hContHB : ∀ (m? : Option (ℕ × Header T × E))
-        (res : Option (FSAEAD.ReceiveResult M)) (res' : _),
-        res' ∈ support
-          ((match res with
-            | none => pure none
-            | some .rejected => pure (some none)
-            | some (.accepted i mo') => do
-              if (la && m?.isNone && decide (bk.fsCount < i)) = true then
-                modify fun (s : FSMultiState T RSt K I E) => { s with lfWin := true }
-                pure none
-              else
-                let drop := (m?.map (·.1)).getD i
-                modify fun (s : FSMultiState T RSt K I E) =>
-                  let b := (s.book sIdx).getD {}
-                  let b' : FSMultiBook T E := { b with fsTrans := b.fsTrans.filter (·.1 != drop) }
-                  { s with book := Function.update s.book sIdx (some b') }
-                match mo', rec_ with
-                | some m, _ => pure (some (some ((.inr sIdx : RS ⊕ ℕ), i, m)))
-                | none, some r => pure (some (some ((.inr sIdx : RS ⊕ ℕ), i, r.msg)))
-                | none, none => pure none :
-            HM (FSMultiSpec SS RS T M E) (FSMultiState T RSt K I E)
-              (Option (Option ((RS ⊕ ℕ) × ℕ × M)))).run h) →
-        FSMultiHBoundedPost L res'.2 := by
-      intro m? res res' hmem
-      rcases res with _ | (_ | ⟨msgIdx, mo'⟩)
-      · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
-        subst hmem; exact hHB
-      · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
-        subst hmem; exact hHB
-      · by_cases hLf : (la && m?.isNone && decide (bk.fsCount < msgIdx)) = true
-        · simp only [hLf, ↓reduceIte, StateT.run_bind, StateT.run_modify, StateT.run_pure,
-            pure_bind, support_pure, Set.mem_singleton_iff] at hmem
-          subst hmem; exact hHB
-        · simp only [hLf, Bool.false_eq_true, ↓reduceIte, StateT.run_bind, StateT.run_modify,
-            pure_bind] at hmem
-          let bk' : FSMultiBook T E :=
-            { bk with fsTrans := bk.fsTrans.filter (·.1 != (m?.map (·.1)).getD msgIdx) }
-          let h' : FSMultiState T RSt K I E :=
-            { h with book := Function.update h.book sIdx (some bk') }
-          have hHB' : FSMultiHBoundedPost L h' := by
-            intro idx b' hb'
-            by_cases hidx : idx = sIdx
-            · subst hidx
-              simp only [h', bk', Function.update_self, Option.some.injEq] at hb'
-              subst hb'
-              exact (List.length_filter_le _ _).trans hBkL
-            · simp only [h', Function.update_of_ne hidx] at hb'
-              exact hHB idx b' hb'
-          rcases mo' with _ | m
-          · rcases rec_ with _ | r <;>
-              (simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem;
-               subst hmem; exact hHB')
-          · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
-            subst hmem; exact hHB'
-    rcases hM : matched with _ | mrec
-    · refine ⟨?_, ?_⟩
-      · rw [eval_bind, eval_caseOpt_none (hFind1.trans hM), query_fsMulti_ij_eval]
-        simp only [ρ₂, ρ₁, Option.isSome_none, Bool.false_eq_true, ↓reduceIte,
-          liftFSMulti_eq, StateT.run_bind, StateT.run_lift, bind_assoc, pure_bind,
-          bind_map_left, map_bind, Expr.eval, Expr.v0, Expr.v1]
-        exact bind_congr fun res => hContEval none hM res
-      · intro res' hmem
-        simp only [Option.isSome_none, Bool.false_eq_true, ↓reduceIte,
-          liftFSMulti_eq, StateT.run_bind, StateT.run_lift, bind_assoc, pure_bind,
-          mem_support_bind_iff] at hmem
-        obtain ⟨res, _, hmem⟩ := hmem
-        exact hContHB none res res' hmem
-    · refine ⟨?_, ?_⟩
-      · rw [eval_bind, eval_caseOpt_some (hFind1.trans hM), query_fsMulti_dl_eval]
-        simp only [ρ₂, ρ₁, Option.isSome_some, ↓reduceIte,
-          liftFSMulti_eq, StateT.run_bind, StateT.run_lift, bind_assoc, pure_bind,
-          bind_map_left, map_bind, Expr.eval, Expr.v1, Expr.v2]
-        exact bind_congr fun res => hContEval (some mrec) hM res
-      · intro res' hmem
-        simp only [Option.isSome_some, ↓reduceIte,
-          liftFSMulti_eq, StateT.run_bind, StateT.run_lift, bind_assoc, pure_bind,
-          mem_support_bind_iff] at hmem
-        obtain ⟨res, _, hmem⟩ := hmem
-        exact hContHB (some mrec) res res' hmem
+          · rcases rec_ with _ | r
+            · rw [eval_caseOpt_none hOut4, eval_ret, pair_eval,
+                hSetH4 ρ₄ (.snd .v3) .v4 (.fst .v5) _ (.fst .v0) rfl rfl rfl rfl rfl,
+                StateT.run_pure, map_pure]
+              rfl
+            · rw [eval_caseOpt_some hOut4, eval_ret, pair_eval,
+                hSetH4 _ (.snd .v4) .v5 (.fst .v6) _ (.fst .v1) rfl rfl rfl rfl rfl,
+                StateT.run_pure, map_pure]
+              rfl
+          · rw [eval_caseOpt_some hOut4, eval_ret, pair_eval,
+              hSetH4 _ (.snd .v4) .v5 (.fst .v6) _ (.fst .v1) rfl rfl rfl rfl rfl,
+              StateT.run_pure, map_pure]
+            rfl
+      rw [eval_bind]
+      obtain hM | ⟨mrec, hM⟩ : matched = none ∨ ∃ mrec, matched = some mrec := by
+        cases matched <;> simp
+      · have hIsNone : matched.isNone = true := by rw [hM]; rfl
+        rw [eval_caseOpt_none (hFind0.trans hM), eval_ite, hCond]
+        simp only [hIsNone, Bool.true_and]
+        by_cases hc : (!SM.healedBy ctx.tL (2 + Δcka) t0 && !bk.sCorr) = true
+        · simp only [hc, ↓reduceIte, eval_bind, query_fsMulti_cs_eval, liftFSMulti_eq,
+            StateT.run_bind, StateT.run_lift, bind_assoc, pure_bind, map_bind,
+            Expr.eval, Expr.v0]
+          refine bind_congr fun cs? => ?_
+          rcases cs? with _ | ss'
+          · rw [eval_caseOpt_none rfl, eval_ret, pure_bind]
+            simp [ρ₂, ρ₁, Comp.eval, StateT.run_pure, Prod.map, Expr.eval, Expr.v2]
+          · rw [eval_caseOpt_some rfl, eval_ret, pure_bind]
+            simp only [StateT.run_bind, StateT.run_modify, pure_bind,
+              Bool.not_true, Bool.false_eq_true, ↓reduceIte]
+            set ρ_cs := Env.cons (t := .base CKASort.ss) ss'
+              (Env.cons (t := .opt (.base CKASort.ss)) (some ss') ρ₂)
+            have hBkCs := fsMultiHsGetBookAt_eval (.fst (Expr.v3 (O := OO))) .v2 ρ_cs h rfl
+            have hIdxCs : (Expr.v2 (O := OO)).eval ρ_cs = sIdx := rfl
+            rw [hIdxCs] at hBkCs
+            have hSetCs := fsMultiHsSetBookAt_eval (.fst (Expr.v3 (O := OO))) .v2
+              (.pair (.bool true) (.snd (fsMultiHsGetBookAt (.fst .v3) .v2))) ρ_cs h rfl
+              (sc := true) (cnt := bk.fsCount) (tr := bk.fsTrans)
+              (by rw [pair_eval, snd_eval, hBkCs]; rfl)
+            let bk' : FSMultiBook T E := { bk with sCorr := true }
+            let h' : FSMultiState T RSt K I E :=
+              { h with book := Function.update h.book sIdx (some bk') }
+            have hPairCs : (Expr.pair (O := OO) (.bool true)
+                (fsMultiHsSetBookAt (.fst .v3) .v2
+                  (.pair (.bool true) (.snd (fsMultiHsGetBookAt (.fst .v3) .v2))))).eval ρ_cs =
+                (true, hsMEnc h') := by
+              rw [pair_eval, hSetCs]; rfl
+            rw [hPairCs]
+            exact hRecvTrue h' (by simp only [h', bk', bk, Function.update_self, Option.getD_some])
+        · simp only [hc, Bool.false_eq_true, ↓reduceIte, eval_ret, pure_bind,
+            Bool.not_true]
+          have hPair0 : (Expr.pair (O := OO) (.bool true) (.fst .v1)).eval ρ₂ =
+              (true, hsMEnc h) := rfl
+          rw [hPair0]
+          exact hRecvTrue h rfl
+      · have hIsNone : matched.isNone = false := by rw [hM]; rfl
+        rw [eval_caseOpt_some (hFind0.trans hM), eval_ret, pure_bind]
+        simp only [hIsNone, Bool.false_and, Bool.false_eq_true, ↓reduceIte,
+          Bool.not_true]
+        have hPair0 : (Expr.pair (O := OO) (.bool true) (.fst .v2)).eval
+            (Env.cons (t := .prod .nat hdrCtTy) mrec ρ₂) = (true, hsMEnc h) := rfl
+        rw [hPair0]
+        exact hRecvTrue h rfl
+  · -- `la = true`
+    simp only [Bool.true_and, ↓reduceIte]
+    rw [eval_bind_ret, h0]
+    rcases rsv with rs | sIdx
+    · rw [eval_caseSum_inl rfl]
+      dsimp only
+      have hOp : (Expr.op (O := OO) (CKAOp.fsReceive B)
+          (.pair .v0
+            (.pair (.fst (.snd (.snd (.snd (.snd .v1)))))
+              (.fst (.snd (.snd (.snd (.snd (.snd .v1))))))))).eval
+          (Env.cons (t := .base CKASort.rs) rs ρ₁) =
+          fs.receive rs hdr e := by
+        simp only [ρ₁, prngOps, ckaOps, Expr.eval, Expr.v0, Expr.v1,
+          Env.get_cons_zero, Env.get_cons_succ]
+        exact hFsRecvB rs hdr e
+      rcases hrc : fs.receive rs hdr e with _ | ⟨rs', i, m⟩
+      · rw [eval_caseOpt_none (hOp.trans hrc), eval_ret]
+        simp [ρ₁, StateT.run_pure, Prod.map, Expr.eval, Expr.v1]
+      · rw [eval_caseOpt_some (hOp.trans hrc), eval_ret]
+        simp [ρ₁, StateT.run_pure, Prod.map, Expr.eval, Expr.v0, Expr.v2]
+    · rw [eval_caseSum_inr rfl, eval_ite]
+      simp only [StateT.run_bind, StateT.run_get, pure_bind]
+      set ρ₂ := Env.cons (t := .nat) sIdx ρ₁
+      set bk := (h.book sIdx).getD {}
+      have hBkL : bk.fsTrans.length ≤ L := by
+        dsimp only [bk]
+        rcases hbk : h.book sIdx with _ | b
+        · simp
+        · exact hHB sIdx b hbk
+      have hBk0 : (fsMultiHsGetBookAt (O := OO) (.fst .v1) .v0).eval ρ₂ =
+          (bk.sCorr, bk.fsCount, bk.fsTrans) :=
+        fsMultiHsGetBookAt_eval (.fst .v1) .v0 ρ₂ h rfl
+      set matched := bk.fsTrans.find? (fun x => x.2 == (hdr, e))
+      have hFind0 : (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (O := OO) (.fst .v1) .v0)))
+          (.pair (.fst (.snd (.snd (.snd (.snd .v1)))))
+            (.fst (.snd (.snd (.snd (.snd (.snd .v1)))))))).eval ρ₂ = matched := by
+        rw [fsTransFindE_eval heqT heqE L _ _ ρ₂ (by simp [snd_eval, hBk0, hBkL])]
+        rw [snd_eval, snd_eval, hBk0]
+        simp [ρ₂, ρ₁, matched, Expr.eval, Expr.v1]
+      have hTL0 : (cGsTL (O' := OO) (.fst (.snd .v1))).eval ρ₂ = ctx.tL := rfl
+      have hT0 : (Expr.fst (.snd (.snd (Expr.v1 (O := OO))))).eval ρ₂ = t0 := rfl
+      have hCond : (Expr.and (O := OO)
+          (.not (_root_.CryptoGames.SM.healedByE (cGsTL (.fst (.snd .v1))) (2 + Δcka)
+            (.fst (.snd (.snd .v1)))))
+          (.not (.fst (fsMultiHsGetBookAt (.fst .v1) .v0)))).eval ρ₂ =
+          (!SM.healedBy ctx.tL (2 + Δcka) t0 && !bk.sCorr) := by
+        rw [and_eval, not_eval, not_eval, _root_.CryptoGames.SM.healedByE_eval, hTL0, hT0,
+          fst_eval, hBk0]
+      have hBlocked :
+          (Expr.caseOpt (O := OO)
+            (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (.fst .v1) .v0)))
+              (.pair (.fst (.snd (.snd (.snd (.snd .v1)))))
+                (.fst (.snd (.snd (.snd (.snd (.snd .v1))))))))
+            (.and (.not (_root_.CryptoGames.SM.healedByE (cGsTL (.fst (.snd .v1))) (2 + Δcka)
+                (.fst (.snd (.snd .v1)))))
+              (.not (.fst (fsMultiHsGetBookAt (.fst .v1) .v0))))
+            (.bool false)).eval ρ₂ =
+          (matched.isNone && !SM.healedBy ctx.tL (2 + Δcka) t0 && !bk.sCorr) := by
+        rw [hCaseOpt, hFind0]
+        rcases matched with _ | _
+        · simpa [Option.isNone_none, Bool.true_and] using hCond
+        · rfl
+      rw [hBlocked]
+      by_cases hb : (matched.isNone && !SM.healedBy ctx.tL (2 + Δcka) t0 && !bk.sCorr) = true
+      · simp only [hb, ↓reduceIte, eval_ret, StateT.run_pure,
+          Bool.not_false, map_pure, Prod.map]
+        rfl
+      · simp only [hb, Bool.false_eq_true, ↓reduceIte, eval_bind,
+          Bool.not_true]
+        have hQ2 :
+            (Comp.caseOpt (O := OO) (I := IIM)
+              (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (.fst .v1) .v0)))
+                (.pair (.fst (.snd (.snd (.snd (.snd .v1)))))
+                  (.fst (.snd (.snd (.snd (.snd (.snd .v1))))))))
+              (@Comp.query _ _ _ OO IIM _ FSHdrTag.ij
+                (.pair .v0
+                  (.pair (.fst (.snd (.snd (.snd (.snd .v1)))))
+                    (.fst (.snd (.snd (.snd (.snd (.snd .v1)))))))))
+              (@Comp.query _ _ _ OO IIM _ FSHdrTag.dl
+                (.pair .v1
+                  (.pair (.fst (.snd (.snd (.snd (.snd .v2)))))
+                    (.fst (.snd (.snd (.snd (.snd (.snd .v2)))))))))).eval ρ₂ =
+            Option.map fsHdrRrEnc <$>
+              (if matched.isSome = true then
+                liftFSMultiRaw sIdx
+                  (FSAEAD.deliverQuery (SenderState := SS) (ReceiverState := RS) hdr e)
+               else
+                liftFSMultiRaw sIdx
+                  (FSAEAD.injectQuery (SenderState := SS) (ReceiverState := RS) hdr e)) := by
+          rcases hM : matched with _ | mrec
+          · rw [eval_caseOpt_none (hFind0.trans hM), query_fsMulti_ij_eval]; rfl
+          · rw [eval_caseOpt_some (hFind0.trans hM), query_fsMulti_dl_eval]; rfl
+        rw [hQ2, bind_map_left, hRunIfLift]
+        refine bind_congr fun res => ?_
+        rcases res with _ | (_ | ⟨msgIdx, mo'⟩)
+        · dsimp only [Option.map]
+          rw [eval_caseOpt_none rfl, eval_ret, StateT.run_pure, map_pure]
+          rfl
+        · dsimp only [Option.map, fsHdrRrEnc]
+          rw [eval_caseOpt_some rfl, eval_caseSum_inl rfl, eval_ret, StateT.run_pure, map_pure]
+          rfl
+        · dsimp only [Option.map, fsHdrRrEnc]
+          rw [eval_caseOpt_some rfl, eval_caseSum_inr rfl, eval_ite]
+          simp only [StateT.run_bind, StateT.run_get, pure_bind]
+          set ρ₃ := Env.cons (t := .prod .nat (.opt (.base CKASort.msg))) (msgIdx, mo')
+            (Env.cons (t := fsHdrRrTy KC Γ CCoins T I KR RSt K SS RS M E) (.inr (msgIdx, mo'))
+              (Env.cons (t := .opt (fsHdrRrTy KC Γ CCoins T I KR RSt K SS RS M E))
+                (some (.inr (msgIdx, mo'))) ρ₂))
+          have hBk3 : (fsMultiHsGetBookAt (O := OO) (.fst .v4) .v3).eval ρ₃ =
+              (bk.sCorr, bk.fsCount, bk.fsTrans) :=
+            fsMultiHsGetBookAt_eval (.fst .v4) .v3 ρ₃ h rfl
+          have hFind3 : (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (O := OO) (.fst .v4) .v3)))
+              (.pair (.fst (.snd (.snd (.snd (.snd .v4)))))
+                (.fst (.snd (.snd (.snd (.snd (.snd .v4)))))))).eval ρ₃ = matched := by
+            rw [fsTransFindE_eval heqT heqE L _ _ ρ₃ (by rw [snd_eval, snd_eval, hBk3]; exact hBkL),
+              snd_eval, snd_eval, hBk3]
+            rfl
+          have hLfCond :
+              (Expr.caseOpt (O := OO)
+                (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt (.fst .v4) .v3)))
+                  (.pair (.fst (.snd (.snd (.snd (.snd .v4)))))
+                    (.fst (.snd (.snd (.snd (.snd (.snd .v4))))))))
+                (.and (.not (.fst (fsMultiHsGetBookAt (.fst .v4) .v3)))
+                  (.lt (.fst (.snd (fsMultiHsGetBookAt (.fst .v4) .v3))) (.fst .v0)))
+                (.bool false)).eval ρ₃ =
+              (matched.isNone && !bk.sCorr && decide (bk.fsCount < msgIdx)) := by
+            rw [hCaseOpt, hFind3]
+            rcases matched with _ | _
+            · have hMsg0 : (Expr.fst (Expr.v0 (O := OO))).eval ρ₃ = msgIdx := rfl
+              have hLt3 : (Expr.lt (O := OO) (.fst (.snd (fsMultiHsGetBookAt (.fst .v4) .v3)))
+                  (.fst .v0)).eval ρ₃ = decide (bk.fsCount < msgIdx) := by
+                change decide (((fsMultiHsGetBookAt (O := OO) (.fst .v4) .v3).eval ρ₃).2.1 <
+                  (Expr.fst (Expr.v0 (O := OO))).eval ρ₃) = _
+                rw [hBk3, hMsg0]
+              rw [and_eval, not_eval, fst_eval, hBk3, hLt3]
+              simp only [Option.isNone_none, Bool.true_and]
+            · rfl
+          rw [hLfCond]
+          dsimp only [bk]
+          by_cases hLf : (matched.isNone && !((h.book sIdx).getD {}).sCorr &&
+              decide (((h.book sIdx).getD {}).fsCount < msgIdx)) = true
+          · simp only [hLf, ↓reduceIte, eval_ret, pair_eval, StateT.run_bind, StateT.run_modify,
+              StateT.run_pure, pure_bind, map_pure, Prod.map]
+            rw [fsMultiHsSetLfWin_eval (.fst .v4) (.bool true) ρ₃ h rfl]
+            rfl
+          · simp only [hLf, Bool.false_eq_true, ↓reduceIte, StateT.run_bind, StateT.run_modify,
+              pure_bind]
+            have hOut3 :
+                (Expr.caseOpt (O := OO) (.snd .v0)
+                  (Expr.caseOpt (.snd (.snd (.snd (.snd (.snd (.snd .v4))))))
+                    .none
+                    (.some (.some (.pair (Expr.inr (O := OO) (t := .base CKASort.rs) .v4)
+                      (.pair (.fst .v1) (cRecMsg .v0))))))
+                  (.some (.some (.pair (Expr.inr (O := OO) (t := .base CKASort.rs) .v4)
+                    (.pair (.fst .v1) .v0))))).eval ρ₃ =
+                (match mo', rec_ with
+                  | some m, _ => some (some ((.inr sIdx : RS ⊕ ℕ), msgIdx, m))
+                  | none, some r => some (some ((.inr sIdx : RS ⊕ ℕ), msgIdx, r.msg))
+                  | none, none => none) := by
+              rcases mo' with _ | m
+              · rcases rec_ with _ | r <;> rfl
+              · rfl
+            have hSetH4 : ∀ {Γ''} (ρ' : Env Γ'')
+                (h0E : Expr OO Γ'' mHsTy) (sIdxE : Expr OO Γ'' .nat)
+                (hcE : Expr OO Γ'' hdrCtTy) (msgIdxE : Expr OO Γ'' .nat)
+                (hh0 : h0E.eval ρ' = hsMEnc h) (hsIdx : sIdxE.eval ρ' = sIdx)
+                (hhc : hcE.eval ρ' = (hdr, e)) (hmi : msgIdxE.eval ρ' = msgIdx),
+                (fsMultiHsSetBookAt h0E sIdxE
+                  (.pair (.fst (fsMultiHsGetBookAt h0E sIdxE))
+                    (.pair (.fst (.snd (fsMultiHsGetBookAt h0E sIdxE)))
+                      (fsTransFilterE L (.snd (.snd (fsMultiHsGetBookAt h0E sIdxE)))
+                        (.caseOpt (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt h0E sIdxE))) hcE)
+                          msgIdxE (.fst .v0)))))).eval ρ' =
+                hsMEnc
+                  { h with
+                    book := Function.update h.book sIdx <| some
+                      { bk with
+                        fsTrans := bk.fsTrans.filter
+                          (·.1 != (matched.map (·.1)).getD msgIdx) } } := by
+              intro Γ'' ρ' h0E sIdxE hcE msgIdxE hh0 hsIdx hhc hmi
+              have hBk0' := fsMultiHsGetBookAt_eval h0E sIdxE ρ' h hh0
+              rw [hsIdx] at hBk0'
+              have hFind' : (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt h0E sIdxE))) hcE).eval ρ' =
+                  matched := by
+                rw [fsTransFindE_eval heqT heqE L _ _ ρ' (by rw [snd_eval, snd_eval, hBk0']; exact hBkL),
+                  snd_eval, snd_eval, hBk0', hhc]
+              have hDrop' : (Expr.caseOpt (O := OO)
+                  (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt h0E sIdxE))) hcE)
+                  msgIdxE (.fst .v0)).eval ρ' = (matched.map (·.1)).getD msgIdx := by
+                rw [hCaseOpt, hFind']
+                rcases matched with _ | _
+                · exact hmi
+                · rfl
+              have hFlt' := fsTransFilterE_eval (ckaInitA := ckaInitA) (ckaInitB := ckaInitB)
+                (ckaSend := ckaSend) (ckaReceive := ckaReceive) (prngInit := prngInit)
+                (prngUp := prngUp) (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
+                (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
+                (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
+                L (.snd (.snd (fsMultiHsGetBookAt h0E sIdxE)))
+                (.caseOpt (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt h0E sIdxE))) hcE)
+                  msgIdxE (.fst .v0)) ρ' (by rw [snd_eval, snd_eval, hBk0']; exact hBkL)
+              rw [hDrop'] at hFlt'
+              have hSet' := fsMultiHsSetBookAt_eval h0E sIdxE
+                (.pair (.fst (fsMultiHsGetBookAt h0E sIdxE))
+                  (.pair (.fst (.snd (fsMultiHsGetBookAt h0E sIdxE)))
+                    (fsTransFilterE L (.snd (.snd (fsMultiHsGetBookAt h0E sIdxE)))
+                      (.caseOpt (fsTransFindE L (.snd (.snd (fsMultiHsGetBookAt h0E sIdxE))) hcE)
+                        msgIdxE (.fst .v0))))) ρ' h hh0
+                (sc := bk.sCorr) (cnt := bk.fsCount)
+                (tr := bk.fsTrans.filter (·.1 != (matched.map (·.1)).getD msgIdx))
+                (by rw [pair_eval, fst_eval, pair_eval, fst_eval, snd_eval, hFlt', snd_eval, snd_eval, hBk0'])
+              rw [hsIdx] at hSet'
+              exact hSet'
+            rcases mo' with _ | m
+            · rcases rec_ with _ | r
+              · rw [eval_caseOpt_none hOut3, eval_ret, pair_eval,
+                  hSetH4 ρ₃ (.fst .v4) .v3 _ (.fst .v0) rfl rfl rfl rfl,
+                  StateT.run_pure, map_pure]
+                rfl
+              · rw [eval_caseOpt_some hOut3, eval_ret, pair_eval,
+                  hSetH4 _ (.fst .v5) .v4 _ (.fst .v1) rfl rfl rfl rfl,
+                  StateT.run_pure, map_pure]
+                rfl
+            · rw [eval_caseOpt_some hOut3, eval_ret, pair_eval,
+                hSetH4 _ (.fst .v5) .v4 _ (.fst .v1) rfl rfl rfl rfl,
+                StateT.run_pure, map_pure]
+              rfl
+
 
 private theorem unliftMultiEntryE_eval {Γ'}
     (entryE : Expr OO Γ' (.opt (.sum (.base .rs) .nat))) (ρ : Env Γ') :
@@ -9559,9 +10039,9 @@ theorem hooksFSMultiC_agrees
   fsSend_eval hE ctxE pE tE ssE hdrE mE pairE ρ h ctx P _ hh hctx hp :=
     fsMultiFsSendC_eval cka prng fs hFsSend Δcka mo gMain la hE ctxE pE tE ssE hdrE mE pairE ρ
       h ctx P hh hctx hp
-  fsRecv_eval hE ctxE pE tE rsE hdrE eE recE ρ h ctx P rec_ hHB _ hh _ _ hrec :=
+  fsRecv_eval hE ctxE pE tE rsE hdrE eE recE ρ h ctx P rec_ hHB _ hh hctx _ hrec :=
     (fsMultiFsRecvC_eval cka prng fs heqT heqE L B Δcka mo gMain la hFsRecvB
-      hE ctxE pE tE rsE hdrE eE recE ρ h ctx P rec_ hHB hh hrec).1
+      hE ctxE pE tE rsE hdrE eE recE ρ h ctx P rec_ hHB hh hctx hrec).1
   fsRecv_bounded ctx P t rsv hdr e rec_ h hHB res hmem := by
     let S₀ := ckaSig KC Γ CCoins T I KR RSt K SS RS M E
     let vpE := fsMultiVpEnc (KC := KC) (Γ := Γ) (CCoins := CCoins) (T := T) (I := I)
@@ -9586,7 +10066,7 @@ theorem hooksFSMultiC_agrees
       (lam := lam) (defaultE := defaultE) (sampKR := sampKR) (sampKC := sampKC)
       (sampCCoins := sampCCoins) (sampI := sampI) (sampK := sampK)
       cka prng fs heqT heqE L B Δcka mo gMain la hFsRecvB
-      .v5 .v7 .v6 .v0 .v1 .v2 .v3 .v4 ρ₀ h ctx P rec_ hHB rfl rfl).2 res hmem
+      .v5 .v7 .v6 .v0 .v1 .v2 .v3 .v4 ρ₀ h ctx P rec_ hHB rfl rfl rfl).2 res hmem
   commit_eval hE _ _ _ newE ρ h _ _ _ new _ hh _ _ _ hnew := by
     simp [hooksFSMultiC, fsMultiCommitC, hooksFSMultiL, hooksFSMulti, hh, hnew,
       StateT.run_pure, Prod.map, Expr.eval]
@@ -10045,76 +10525,15 @@ private theorem fsMultiFsRecv_preserve [DecidableEq T] [DecidableEq I] [Decidabl
       res.2.sessions = h.sessions ∧
       ∀ j, bookTrLen res.2.book j ≤ bookTrLen h.book j := by
   intro res hmem
-  dsimp only [hooksFSMulti] at hmem
   rcases rsv with rs | sIdx
-  · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
+  · dsimp only [hooksFSMulti] at hmem
+    simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
     subst hmem
     exact ⟨rfl, rfl, fun _ => le_rfl⟩
-  · simp only [StateT.run_bind, StateT.run_get, pure_bind] at hmem
-    set bk : FSMultiBook T E := (h.book sIdx).getD {}
-    set matched : Option (ℕ × Header T × E) := bk.fsTrans.find? (fun x => x.2 == (hdr, e))
-    have hAfterQ : ∀ qres : Option (FSAEAD.ReceiveResult M),
-        res ∈ support (((match qres with
-          | none => pure none
-          | some .rejected => pure (some none)
-          | some (.accepted i mo') =>
-            if la && matched.isNone && decide (bk.fsCount < i) then do
-              modify fun s : FSMultiState T RSt K I E => { s with lfWin := true }
-              return none
-            else do
-              let drop := (matched.map (·.1)).getD i
-              modify fun s : FSMultiState T RSt K I E =>
-                let b := (s.book sIdx).getD {}
-                let b' : FSMultiBook T E := { b with fsTrans := b.fsTrans.filter (·.1 != drop) }
-                { s with book := Function.update s.book sIdx (some b') }
-              match mo', rec_ with
-              | some m, _ => return some (some ((.inr sIdx : RS ⊕ ℕ), i, m))
-              | none, some r => return some (some ((.inr sIdx : RS ⊕ ℕ), i, r.msg))
-              | none, none => return none :
-          HM (FSMultiSpec SS RS T M E) (FSMultiState T RSt K I E)
-            (Option (Option ((RS ⊕ ℕ) × ℕ × M)))).run h)) →
-        res.2.table = h.table ∧ res.2.sessions = h.sessions ∧
-        ∀ j, bookTrLen res.2.book j ≤ bookTrLen h.book j := by
-      intro qres hmemQ
-      rcases qres with _ | (_ | ⟨i, mo'⟩)
-      · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmemQ
-        subst hmemQ; exact ⟨rfl, rfl, fun _ => le_rfl⟩
-      · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmemQ
-        subst hmemQ; exact ⟨rfl, rfl, fun _ => le_rfl⟩
-      · dsimp only at hmemQ
-        split_ifs at hmemQ
-        · simp only [StateT.run_bind, StateT.run_modify, StateT.run_pure, pure_bind,
-            support_pure, Set.mem_singleton_iff] at hmemQ
-          subst hmemQ; exact ⟨rfl, rfl, fun _ => le_rfl⟩
-        · simp only [StateT.run_bind, StateT.run_modify, pure_bind] at hmemQ
-          have hFlt : ∀ j,
-              bookTrLen (Function.update h.book sIdx
-                (some { (h.book sIdx).getD {} with
-                  fsTrans := ((h.book sIdx).getD {}).fsTrans.filter
-                    (·.1 != (matched.map (·.1)).getD i) })) j ≤
-              bookTrLen h.book j := by
-            intro j
-            dsimp only [bookTrLen]
-            by_cases hj : j = sIdx
-            · subst hj
-              simp only [Function.update_self]
-              exact (List.length_filter_le _ _).trans (by rw [bookTrLen_getD_eq]; rfl)
-            · simp [Function.update_of_ne hj]
-          rcases mo' with _ | m
-          · rcases rec_ with _ | r <;>
-              (simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmemQ;
-               subst hmemQ; exact ⟨rfl, rfl, hFlt⟩)
-          · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmemQ
-            subst hmemQ; exact ⟨rfl, rfl, hFlt⟩
-    by_cases hm : matched.isSome = true
-    · simp only [hm, ↓reduceIte, liftFSMulti, StateT.run_bind, StateT.run_lift,
-        bind_assoc, pure_bind, mem_support_bind_iff] at hmem
-      obtain ⟨qres, _, hmem⟩ := hmem
-      exact hAfterQ qres hmem
-    · simp only [hm, Bool.false_eq_true, ↓reduceIte, liftFSMulti, StateT.run_bind,
-        StateT.run_lift, bind_assoc, pure_bind, mem_support_bind_iff] at hmem
-      obtain ⟨qres, _, hmem⟩ := hmem
-      exact hAfterQ qres hmem
+  · have ⟨hTbl, hSess, hLen⟩ := fsMultiFsRecv_inr_state_post cka prng fs Δcka mo gMain la
+      ctx P t sIdx hdr e rec_ h hmem
+    refine ⟨hTbl, hSess, fun j => ?_⟩
+    simpa only [← bookTrLen_getD_eq] using hLen j
 
 private theorem fsMultiReveal_preserve [DecidableEq T] [DecidableEq I] [DecidableEq E]
     [SampleableType CCoins] [SampleableType I] [SampleableType K]
@@ -11589,7 +12008,7 @@ theorem redFSAuthMultiStage2Prog_eval_clamp
   exact congrArg pure hFin
 
 
-def FSVROkMultiStep {K MK : Type} (maxSkip k : ℕ) :
+@[expose] def FSVROkMultiStep {K MK : Type} (maxSkip k : ℕ) :
     (FSAEAD.RatchetReceiverState K MK ⊕ ℕ) → Prop
   | .inl rs => RSReach maxSkip k rs
   | .inr _ => True
@@ -11784,6 +12203,82 @@ theorem vRecv_fsClamp_multi_eq {MK C : Type}
         rw [hooksFSMulti_fsRecv_fsClamp_eq cka prng ae G maxSkip B k Δcka mo gMain la hB
           ctx P c.1.1 v c.1 c.2 rec_ h₁ (hVR₁ s₁ rfl c.1.1 v hvRc)]
 
+private theorem hooksFSMulti_fsRecv_inr_vr_eq
+    [DecidableEq T] [DecidableEq I] [DecidableEq E]
+    [SampleableType CCoins] [SampleableType I] [SampleableType K]
+    (cka : CKAScheme KC Γ CCoins T I)
+    (prng : PRFPRNG KR RSt I K)
+    (fs : FSAEADScheme K SS RS (Header T) M E)
+    (Δcka : ℕ) (mo : Mode) (gMain la : Bool)
+    (ctx : Ctx Γ T RSt (SS ⊕ ℕ) (RS ⊕ ℕ) M E) (P : Party) (t : ℕ)
+    (sIdx : ℕ) (hdr : Header T) (e : E) (rec_ : Option (Record M (Header T × E)))
+    (h h' : FSMultiState T RSt K I E) (v' : RS ⊕ ℕ) (i' : ℕ) (m' : M)
+    (hmem : (some (some (v', i', m')), h') ∈ support
+      (((hooksFSMulti cka prng fs Δcka mo gMain la).fsRecv ctx P t (.inr sIdx) hdr e rec_).run h)) :
+    v' = .inr sIdx := by
+  dsimp only [hooksFSMulti] at hmem
+  rw [StateT.run_bind, StateT.run_get, pure_bind] at hmem
+  dsimp only at hmem
+  split at hmem
+  · cases la
+    · simp only [Bool.false_eq_true, ↓reduceIte] at hmem
+      rw [StateT.run_bind, mem_support_bind_iff] at hmem
+      obtain ⟨⟨cs?, _⟩, _, hmem⟩ := hmem
+      rcases cs? with _ | _
+      · simp at hmem
+      · dsimp only at hmem
+        rw [StateT.run_bind, StateT.run_modify, pure_bind] at hmem
+        dsimp only at hmem
+        rw [pure_bind] at hmem
+        simp only [Bool.not_true, Bool.false_eq_true, ↓reduceIte] at hmem
+        split at hmem <;>
+          (rw [StateT.run_bind, mem_support_bind_iff] at hmem
+           obtain ⟨⟨qres, _⟩, _, hmem⟩ := hmem
+           rcases qres with _ | (_ | ⟨i, mo'⟩)
+           · simp at hmem
+           · simp at hmem
+           · dsimp only at hmem
+             rw [StateT.run_bind, StateT.run_get, pure_bind] at hmem
+             dsimp only at hmem
+             split at hmem
+             · simp [StateT.run_map, StateT.run_modify] at hmem
+             · rw [StateT.run_bind, StateT.run_modify, pure_bind] at hmem
+               dsimp only at hmem
+               rcases mo' with _ | m
+               · rcases rec_ with _ | r
+                 · simp at hmem
+                 · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff,
+                     Prod.mk.injEq, Option.some.injEq] at hmem
+                   exact hmem.1.1
+               · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff,
+                   Prod.mk.injEq, Option.some.injEq] at hmem
+                 exact hmem.1.1)
+    · simp at hmem
+  · rw [pure_bind] at hmem
+    simp only [Bool.not_true, Bool.false_eq_true, ↓reduceIte] at hmem
+    split at hmem <;>
+      (rw [StateT.run_bind, mem_support_bind_iff] at hmem
+       obtain ⟨⟨qres, _⟩, _, hmem⟩ := hmem
+       rcases qres with _ | (_ | ⟨i, mo'⟩)
+       · simp at hmem
+       · simp at hmem
+       · dsimp only at hmem
+         rw [StateT.run_bind, StateT.run_get, pure_bind] at hmem
+         dsimp only at hmem
+         split at hmem
+         · simp [StateT.run_map, StateT.run_modify] at hmem
+         · rw [StateT.run_bind, StateT.run_modify, pure_bind] at hmem
+           dsimp only at hmem
+           rcases mo' with _ | m
+           · rcases rec_ with _ | r
+             · simp at hmem
+             · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff,
+                 Prod.mk.injEq, Option.some.injEq] at hmem
+               exact hmem.1.1
+           · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff,
+               Prod.mk.injEq, Option.some.injEq] at hmem
+             exact hmem.1.1)
+
 theorem hooksFSMulti_vrInv_fromAEADPRG {MK C : Type}
     [DecidableEq T] [DecidableEq I] [DecidableEq M] [DecidableEq C] [Inhabited C]
     [SampleableType CCoins] [SampleableType I] [SampleableType K]
@@ -11795,13 +12290,13 @@ theorem hooksFSMulti_vrInv_fromAEADPRG {MK C : Type}
       (hooksFSMulti cka prng (FSAEAD.fromAEADPRG ae G maxSkip) Δcka mo gMain la) where
   mono hle hv := hv.mono hle
   startRecv_step := hooksFSMulti_startRecv_step cka prng ae G maxSkip Δcka mo gMain la
-  fsRecv_step _ _ _ rsv hdr e rec_ h res hVR hmem v' i' m' hEq := by
+  fsRecv_step ctx P t rsv hdr e rec_ h res hVR hmem v' i' m' hEq := by
     rcases res with ⟨ans, h'⟩
     dsimp only at hEq
     subst hEq
-    unfold hooksFSMulti at hmem; dsimp only at hmem
     rcases rsv with rs | sIdx
-    · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff,
+    · dsimp only [hooksFSMulti] at hmem
+      simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff,
         Prod.mk.injEq, Option.some.injEq] at hmem
       rcases hmem with ⟨hmap, _⟩
       rcases hrc : (FSAEAD.fromAEADPRG ae G maxSkip).receive rs hdr e with _ | ⟨rs', i, m⟩
@@ -11809,26 +12304,9 @@ theorem hooksFSMulti_vrInv_fromAEADPRG {MK C : Type}
       · simp only [hrc, Option.map_some, Option.some.injEq, Prod.mk.injEq] at hmap
         rcases hmap with ⟨rfl, rfl, rfl⟩
         exact (RSReach.receive ae G maxSkip _ hVR hrc).2
-    · simp only [StateT.run_bind, StateT.run_get, pure_bind] at hmem
-      split_ifs at hmem <;>
-        (simp only [StateT.run_bind, mem_support_bind_iff] at hmem;
-         obtain ⟨⟨qres, h₁⟩, _, hmem⟩ := hmem;
-         rcases qres with _ | (_ | ⟨i, mo'⟩);
-         · simp at hmem;
-         · simp at hmem;
-         · dsimp only at hmem;
-           split_ifs at hmem;
-           · simp [StateT.run_modify] at hmem;
-           · simp only [StateT.run_bind, StateT.run_modify, pure_bind] at hmem;
-             rcases mo' with _ | m;
-             · rcases rec_ with _ | r;
-               · simp at hmem;
-               · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff,
-                   Prod.mk.injEq, Option.some.injEq] at hmem;
-                 rcases hmem with ⟨⟨rfl, _, _⟩, _⟩; trivial;
-             · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff,
-                 Prod.mk.injEq, Option.some.injEq] at hmem;
-               rcases hmem with ⟨⟨rfl, _, _⟩, _⟩; trivial)
+    · rw [hooksFSMulti_fsRecv_inr_vr_eq cka prng (FSAEAD.fromAEADPRG ae G maxSkip) Δcka mo gMain la
+        ctx P t sIdx hdr e rec_ h h' v' i' m' hmem]
+      trivial
   commit_vR _ _ _ _ _ _ hmem _ hEq := by
     simp only [hooksFSMulti, StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
     subst hmem; cases hEq; rfl
@@ -12118,7 +12596,7 @@ theorem redFSAuthMultiStage2Prog_eval_fromAEADPRG {MK C : Type}
       redFSAuthMultiStage2 cka prng (FSAEAD.fromAEADPRG ae G maxSkip)
         lam Δcka qep gMain la tL t A := by
   have heqE' : eqE = fun x1 x2 : ℕ × C => @BEq.beq (ℕ × C) instBEqOfDecidableEq x1 x2 := by
-    rw [heqE]
+    cases heqE
     funext ⟨a1, c1⟩ ⟨a2, c2⟩
     by_cases ha : a1 = a2 <;> by_cases hc : c1 = c2 <;> simp [BEq.beq, ha, hc]
   have h1 := redFSAuthMultiStage2Prog_eval_clamp (lam := lam) cka prng

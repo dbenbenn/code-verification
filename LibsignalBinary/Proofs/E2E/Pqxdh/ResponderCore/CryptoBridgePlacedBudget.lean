@@ -9,16 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDeriveBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.AgreeBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChainBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDeriveBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.Keys.AgreeBudget
+import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChainBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.ProgramReflection
 import ProofLib.SepLogic.WP.Apply
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.FindIndexCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Cryptographic Primitive Bridge
@@ -28,7 +34,7 @@ for constant-time slice comparison (`ct_eq` on Block `213`), `<PrivateKey>::calc
 (Block `207`), and `expand_multi_info` (`64` B and `80` B on Block `53`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -50,11 +56,12 @@ open CryptoVerification.LibsignalTripleRatchet
    blkPC_53 blkPl_53 calculateAgreement calculateAgreementResultAt calculateAgreementStack
    diffieHellmanSpec expandMultiInfoSpec expandMultiInfoStack extract_withLsCodeRoLoaded
    keys_ls_subroutine_ok_of_block_cro
-   subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded withLsCodeRoLoaded zeroizeSecretSpec)
+   subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded withLsCodeRoLoaded withStack
+   zeroizeSecretSpec)
 open CryptoVerification.LibsignalTripleRatchet.Keys
   (LsFrozenInv calculateAgreement_eq_none calculateAgreement_eq_some
    hmacCore_entails_cells lsDhSym lsRustAllocSym lsRustNoAllocShimSym
-   lsSharedDropSym lsStaticDropSym stackAt_alloc_expand)
+   lsSharedDropSym lsStaticDropSym stackAt_alloc_expand withLsRet624)
 open CryptoVerification.E2E (u8Vec vecU8)
 open CryptoVerification.E2E.Pqxdh.Initiator
   (Bytes INFO_MSG_KEYS INFO_RATCHET Primitives bytesToBv8)
@@ -106,7 +113,7 @@ internally from `h_bb : H lsBlackBoxU8Sym = some blackBoxHook`. -/
 theorem calculateAgreement_placed_ok_unconditional [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {X : CryptoGames.Ratchet.X25519Fn} {H : LibsignalHooks}
-    (h_dh : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec X)))
+    (h_dh : HookSat H lsDhSym (withLsRet624 (withVmPreserved (withStack (diffieHellmanSpec X) 1808))))
     (h_shdrop : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec))
     (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
@@ -121,7 +128,7 @@ theorem calculateAgreement_placed_ok_unconditional [LibsignalPlacement]
 theorem calculateAgreement_placed_ok_x_unconditional [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {X : CryptoGames.Ratchet.X25519Fn} {H : LibsignalHooks}
-    (h_dh : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec X)))
+    (h_dh : HookSat H lsDhSym (withLsRet624 (withVmPreserved (withStack (diffieHellmanSpec X) 1808))))
     (h_shdrop : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec))
     (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
@@ -173,7 +180,7 @@ theorem calculateAgreementEvents_eq {P : Primitives} {C : Crypto}
 /-- Budget-threaded relocatable base `Spec` for `<PrivateKey>::calculate_agreement` (Block `207`)
 at the `Initiator.Primitives` abstraction level (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝` under
 `FitsEvents`). -/
-def pqxdhCalculateAgreementPlacedBaseSpec (M : AllocCostModel) (P : Primitives)
+@[expose] def pqxdhCalculateAgreementPlacedBaseSpec (M : AllocCostModel) (P : Primitives)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec ((BitVec 64 × Bytes × BitVec 64 × Bytes × BitVec 64 × BitVec 64) × M.σ) where
   pre := fun ((ourA, ourSk32, theirA, theirPk32, ret, sp), st) s =>
@@ -191,7 +198,7 @@ def pqxdhCalculateAgreementPlacedBaseSpec (M : AllocCostModel) (P : Primitives)
 
 /-- Frozen-invariant variant of `pqxdhCalculateAgreementPlacedBaseSpec` carrying
 `Keys.LsFrozenInv pl s` in `pre`. -/
-def pqxdhCalculateAgreementPlacedFrozenSpec (M : AllocCostModel) (P : Primitives)
+@[expose] def pqxdhCalculateAgreementPlacedFrozenSpec (M : AllocCostModel) (P : Primitives)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (pl : Obj.MultiPlacement) :
     Spec ((BitVec 64 × Bytes × BitVec 64 × Bytes × BitVec 64 × BitVec 64) × M.σ) where
   pre := fun ((ourA, ourSk32, theirA, theirPk32, ret, sp), st) s =>
@@ -205,14 +212,14 @@ def pqxdhCalculateAgreementPlacedFrozenSpec (M : AllocCostModel) (P : Primitives
 
 /-- Target predicate for budget-threaded `<PrivateKey>::calculate_agreement` (Block `207`)
 wrapped in `withLsCodeRoLoaded lsmpl`. -/
-def PqxdhCalculateAgreementPlacedOk [LibsignalPlacement] (M : AllocCostModel) (P : Primitives)
+@[expose] def PqxdhCalculateAgreementPlacedOk [LibsignalPlacement] (M : AllocCostModel) (P : Primitives)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (prog : Program) : Prop :=
   subroutine_ok prog (lsmpl.base 207)
     (withLsCodeRoLoaded lsmpl (pqxdhCalculateAgreementPlacedBaseSpec M P A lim))
 
 /-- Target predicate for budget-threaded `<PrivateKey>::calculate_agreement` (Block `207`)
 carrying `Keys.LsFrozenInv lsmpl` in `pre`. -/
-def PqxdhCalculateAgreementPlacedFrozenOk [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def PqxdhCalculateAgreementPlacedFrozenOk [LibsignalPlacement] (M : AllocCostModel)
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits) (prog : Program) : Prop :=
   subroutine_ok prog (lsmpl.base 207)
     (pqxdhCalculateAgreementPlacedFrozenSpec M P A lim lsmpl)
@@ -223,7 +230,7 @@ theorem pqxdhCalculateAgreement_placed_ok [LibsignalPlacement]
     {M : AllocCostModel} {P : Primitives} {C : Crypto} {A : RustCliAllocBudget M}
     {lim : BudgetLimits} {H : LibsignalHooks}
     (hP : PrimitivesMatchCrypto P C)
-    (h_dh : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec C.X)))
+    (h_dh : HookSat H lsDhSym (withLsRet624 (withVmPreserved (withStack (diffieHellmanSpec C.X) 1808))))
     (h_shdrop : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec))
     (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
@@ -298,7 +305,7 @@ theorem pqxdhCalculateAgreement_placed_ok_of_block [LibsignalPlacement]
     {M : AllocCostModel} {P : Primitives} {C : Crypto} {A : RustCliAllocBudget M}
     {lim : BudgetLimits} {H : LibsignalHooks} [IsLsBlockProg callerProg i H]
     (hP : PrimitivesMatchCrypto P C)
-    (h_dh : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec C.X)))
+    (h_dh : HookSat H lsDhSym (withLsRet624 (withVmPreserved (withStack (diffieHellmanSpec C.X) 1808))))
     (h_shdrop : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec))
     (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
@@ -347,7 +354,7 @@ theorem pqxdhCalculateAgreement_placed_frozen_ok_of_block [LibsignalPlacement]
     {M : AllocCostModel} {P : Primitives} {C : Crypto} {A : RustCliAllocBudget M}
     {lim : BudgetLimits} {H : LibsignalHooks} [IsLsBlockProg callerProg i H]
     (hP : PrimitivesMatchCrypto P C)
-    (h_dh : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec C.X)))
+    (h_dh : HookSat H lsDhSym (withLsRet624 (withVmPreserved (withStack (diffieHellmanSpec C.X) 1808))))
     (h_shdrop : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec))
     (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)

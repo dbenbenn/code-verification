@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKit
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKit -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `SignedPreKeyStore` Contract
@@ -20,7 +20,7 @@ public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKit
 non-panicking/non-OOM shim and poll specifications for `get_signed_pre_key`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,7 +47,7 @@ structure SignedPreKeyStoreBudgetEnv {A : RustAlloc} {b : BitVec 64}
 
 /-- Budget-threaded `get_signed_pre_key` shim contract parameterized by
     `kit : SignedPreKeyStoreSpec A.repAlloc b`. -/
-def kitSpkGetShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitSpkGetShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (kit : SignedPreKeyStoreSpec A.repAlloc b) (fds : Bool := false) :
     Spec (PreKeyShimCall × M.σ) where
   pre := fun (x, st) s =>
@@ -76,7 +76,7 @@ def kitSpkGetShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Bud
 
 /-- Budget-threaded `get_signed_pre_key` poll contract parameterized by
     `kit : SignedPreKeyStoreSpec A.repAlloc b` and `kitEnv : SignedPreKeyStoreBudgetEnv kit`. -/
-def kitSpkGetPollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitSpkGetPollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (kit : SignedPreKeyStoreSpec A.repAlloc b)
     (kitEnv : SignedPreKeyStoreBudgetEnv kit) (fds : Bool := false) :
     Spec (PreKeyPollCall × kit.SpkState × M.σ) where

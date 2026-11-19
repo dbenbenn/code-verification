@@ -9,21 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.AddressText.Steps
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.AddressText.StepsPrefixBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.AddressText.Steps
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.AddressText.StepsPrefixBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 public meta import ProofLib.SepLogic.WP -- shake: keep
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostCleanup
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.AddressText.Layout -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.AddressText.StepsPrefix -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` `address_text` Segments 1–3
@@ -33,7 +40,7 @@ Defines the `AddrTextEnv` allocator event envelope for `signal_session::stores::
 the decimal string) under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -95,15 +102,15 @@ attribute [local simp, local arm64_norm]
 /-! ## 1. `AddrTextEnv` & Event-Step Helpers -/
 
 /-- Exact allocator events emitted by `g.name.to_owned()` in Segment 1. -/
-def addrToOwnedEvents (bs : List (BitVec 8)) : List AllocEvent :=
+@[expose] def addrToOwnedEvents (bs : List (BitVec 8)) : List AllocEvent :=
   if bs.length = 0 then [] else rustAllocEvents bs.length 1
 
 /-- Exact allocator events emitted by `do_reserve_and_handle` for `"."` in Segment 2. -/
-def addrDotReserveEvents (bs : List (BitVec 8)) : List AllocEvent :=
+@[expose] def addrDotReserveEvents (bs : List (BitVec 8)) : List AllocEvent :=
   doReserveEvents (DoReserveCall.mk 0#64 (BitVec.ofNat 64 bs.length) 0#64 bs 1)
 
 /-- Exact allocator events emitted by the optional `do_reserve_and_handle` for `dec` in Segment 3. -/
-def addrDecReserveEvents (bs : List (BitVec 8)) (device : BitVec 8) : List AllocEvent :=
+@[expose] def addrDecReserveEvents (bs : List (BitVec 8)) (device : BitVec 8) : List AllocEvent :=
   let cap1 := BitVec.ofNat 64 (reserveCap bs.length bs.length 1)
   let pfx := bs ++ [0x2e#8]
   let dec := decimalText (device.zeroExtend 32).toNat
@@ -113,7 +120,7 @@ def addrDecReserveEvents (bs : List (BitVec 8)) (device : BitVec 8) : List Alloc
 
 /-- Allocator event envelope of `signal_session::stores::address_text`, parameterized by
 `decimal`'s event envelope `DecEnv`. -/
-def AddrTextEnv (DecEnv : BitVec 32 → List AllocEvent → Prop)
+@[expose] def AddrTextEnv (DecEnv : BitVec 32 → List AllocEvent → Prop)
     (g : AddrGhost) : List AllocEvent → Prop :=
   SeqEnv (· = addrToOwnedEvents g.name.bytes)
     (SeqEnv (· = addrDotReserveEvents g.name.bytes)

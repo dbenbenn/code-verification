@@ -13,9 +13,15 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StrlenCode --
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StrlenGhost -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StrlenGhostK -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StrlenLrTrap -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Card CC-LIBC (`strlen`) — `"strlen"` `CliGhostHooks.extra` SWAR-Padded Specs & `GhostRowReplayOn` (`HooksDehook.StrlenGhostReplays`)
@@ -206,11 +212,6 @@ theorem strlenSubProg_codeLoaded_of_stripExecOutside {mpl : Obj.MultiPlacement} 
   rw [ProofLib.strip_isLazyFree] at hlf
   exact ⟨hbyte, hperm, hlf⟩
 
-theorem strlenSubProg_codeLoaded_stripExecOutside_iff {mpl : Obj.MultiPlacement} {mem : Memory} :
-    (strlenSubProg mpl).CodeLoaded (stripExecOutside (keepR_strlen mpl) mem) ↔
-      (strlenSubProg mpl).CodeLoaded mem :=
-  ⟨strlenSubProg_codeLoaded_of_stripExecOutside, strlenSubProg_codeLoaded_stripExecOutside⟩
-
 /-- `W`-independent ghost hook for `"strlen"` (`CliGhostHooks.extra` entry
     `("strlen", strlenGhost mpl mmpl)`). Uses `StrlenGhostK.f3EmptyStrlenGhostHook`
     (`P_real := emptyStdProg`, `fallback := strlenHook`), never capturing `W : CliHooks`. -/
@@ -246,14 +247,6 @@ theorem strlenGhost_fs (mpl mmpl : Obj.MultiPlacement) (s : State) :
 theorem strlenGhost_fsT (mpl mmpl : Obj.MultiPlacement) :
     HookFsTraced IsFsC (strlenGhost mpl mmpl) :=
   f3EmptyStrlenGhostHook_fsT (keepR_strlen mpl) (strlenSubProg mpl) (strlenEntry mpl)
-
-theorem strlenGhostK_fs (mpl mmpl : Obj.MultiPlacement) (s : State) :
-    (strlenGhostK mpl mmpl s).fs = s.fs :=
-  f3EmptyStrlenGhostHookK_fs (keepR_strlen mpl) (strlenSubProg mpl) (strlenEntry mpl) s
-
-theorem strlenGhostK_fsT (mpl mmpl : Obj.MultiPlacement) :
-    HookFsTraced IsFsC (strlenGhostK mpl mmpl) :=
-  f3EmptyStrlenGhostHookK_fsT (keepR_strlen mpl) (strlenSubProg mpl) (strlenEntry mpl)
 
 /-- Unconditional pointwise `VmPreserved` for `strlenGhost mpl mmpl` (`0` address-wrap premises:
     if `(strlenEntry mpl).toNat + 88 > 2 ^ 64`, `ActiveRealRun` is impossible by `CodeLoaded.no_wrap`
@@ -297,38 +290,9 @@ theorem strlenGhost_mainStrlen_padRO_ok (mpl mmpl : Obj.MultiPlacement) (stk : N
     HookOk (strlenGhost mpl mmpl) (withStrlenPadRO (strlenSpec stk)) :=
   hookOk_mainStrlen_padRO_of_master (strlenGhost_master_ok mpl mmpl) stk
 
-theorem strlenGhost_mainStrlen_padRO_budget_ok (mpl mmpl : Obj.MultiPlacement) (stk : Nat := 4096) :
-    HookOk (strlenGhost mpl mmpl) (withVmPreserved (withStrlenPadRO (strlenSpec stk))) :=
-  hookOk_withVmPreserved (strlenGhost_mainStrlen_padRO_ok mpl mmpl stk)
-    (strlenGhost_vmPreserved mpl mmpl)
-
-theorem strlenGhost_mainStrlen_padRO_withAlloc_ok (mpl mmpl : Obj.MultiPlacement)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat := 4096) :
-    HookOk (strlenGhost mpl mmpl) (withAlloc A lim (withStrlenPadRO (strlenSpec stk))) :=
-  hookOk_withAlloc_of_withVmPreserved A lim (strlenGhost_mainStrlen_padRO_budget_ok mpl mmpl stk)
-
 theorem strlenGhost_strlenSpecRO_padRO_ok (mpl mmpl : Obj.MultiPlacement) (stk : Nat := 4096) :
     HookOk (strlenGhost mpl mmpl) (withStrlenPadRO (strlenSpecRO stk)) :=
   hookOk_strlenSpecRO_padRO_of_master (strlenGhost_master_ok mpl mmpl) stk
-
-/-- `withVmPreserved (withStrlenPadRO (strlenSpecRO stk))` is definitionally (`rfl`) identical to
-    `ArgvPad.strlenSpecROSat stk`. -/
-theorem strlenGhost_strlenSpecRO_padRO_budget_ok (mpl mmpl : Obj.MultiPlacement)
-    (stk : Nat := 4096) :
-    HookOk (strlenGhost mpl mmpl) (withVmPreserved (withStrlenPadRO (strlenSpecRO stk))) :=
-  hookOk_withVmPreserved (strlenGhost_strlenSpecRO_padRO_ok mpl mmpl stk)
-    (strlenGhost_vmPreserved mpl mmpl)
-
-theorem strlenGhost_strlenSpecRO_padRO_withAlloc_ok (mpl mmpl : Obj.MultiPlacement)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat := 4096) :
-    HookOk (strlenGhost mpl mmpl) (withAlloc A lim (withStrlenPadRO (strlenSpecRO stk))) :=
-  hookOk_withAlloc_of_withVmPreserved A lim (strlenGhost_strlenSpecRO_padRO_budget_ok mpl mmpl stk)
-
-theorem strlenGhost_strlenSpecROSat_withAlloc_ok (mpl mmpl : Obj.MultiPlacement)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat := 4096) :
-    HookOk (strlenGhost mpl mmpl)
-      (withAlloc A lim (withVmPreserved (withStrlenPadRO (strlenSpecRO stk)))) :=
-  hookOk_withAlloc_withVmPreserved A lim (strlenGhost_strlenSpecRO_padRO_budget_ok mpl mmpl stk)
 
 theorem strlenGhost_strlenRowSpec (mpl mmpl : Obj.MultiPlacement) :
     StrlenRowSpec (strlenGhost mpl mmpl) :=
@@ -461,106 +425,6 @@ theorem strlenGhost_rowReplayOn
     rw [hSetPC] at hStepsSetPC
     exact ⟨hStepsSetPC, hfr_fu, hInvKeep u (strlenGhost mpl mmpl u) hInvU hkf hfs_fu⟩
 
-/-- `C4` interior-stub signature wrapper for `strlenGhost_rowReplayOn` (accepting split `hRealNone`
-    at `stubPc` + `hInteriorGhost` with the `Or.inr` `TrapHook` interior-stub disjunct on
-    `pc ≠ resolve mpl "strlen"`). -/
-theorem strlenGhost_rowReplayOn_of_interior
-    (mpl mmpl : Obj.MultiPlacement)
-    (InvS : State → Prop)
-    (EG : CliHooks → String → Option (State → State))
-    (hCL : ∀ u : State, InvS u → (strlenSubProg mpl).CodeLoaded u.mem)
-    (hInvKeep : ∀ u v : State, InvS u → u.mem.KeepsFrozen v.mem → v.fs = u.fs → InvS v)
-    (hGhostAt : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl EG 617 W).externAt? (libsignalSessionLib.resolve mpl "strlen") =
-        some (strlenGhost mpl mmpl))
-    (hRealNone : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt?
-        (libsignalSessionLib.resolve mpl "strlen") = none)
-    (hInteriorGhost : ∀ (W : CliHooks) (pc : BitVec 64),
-      keepR_strlen mpl pc = true → pc ≠ libsignalSessionLib.resolve mpl "strlen" →
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none ∧
-      ((cliProgExtPlacedAt mpl EG 617 W).externAt? pc = none ∨
-        ∃ gStub, (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = some gStub ∧
-          ∀ L : BitVec 64, keepR_strlen mpl L = true → TrapHook L gStub)) :
-    GhostRowReplayOn mpl mmpl InvS EG "strlen" (strlenEntryGuard mpl) (strlenGhost mpl mmpl) where
-  preserves_execFrozen := fun _ _ _ hfr => strlenGhost_preserves_execFrozen mpl mmpl hfr
-  replay_at_stub := by
-    intro W s0 sf _ _ _ hEntry hRetPc hNoExSf hNotHaltSf
-    have hRealHullNoExt : ∀ {pc : BitVec 64},
-        keepR_strlen mpl pc = true →
-        (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none := by
-      intro pc hk
-      by_cases hEq : pc = libsignalSessionLib.resolve mpl "strlen"
-      · rw [hEq]; exact hRealNone W
-      · exact (hInteriorGhost W pc hk hEq).1
-    have hRegExt : ∀ pc : BitVec 64, keepStrlenRange (strlenEntry mpl) pc = true →
-        (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = none ∨
-          ∃ f, (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = some f ∧
-            ∀ L, keepStrlenRange (strlenEntry mpl) L = true → TrapHook L f := by
-      intro pc hk
-      by_cases hEq : pc = libsignalSessionLib.resolve mpl "strlen"
-      · rw [hEq]
-        exact Or.inr ⟨strlenGhost mpl mmpl, hGhostAt W, fun _ hL =>
-          trapHook_f3EmptyStrlenGhostHook_of_cover (strlenSubProg mpl)
-            (keepCoversStrlen_keepR_strlen mpl) hL⟩
-      · rcases (hInteriorGhost W pc hk hEq).2 with hNone | ⟨gStub, hSome, hTrap⟩
-        · exact Or.inl hNone
-        · exact Or.inr ⟨gStub, hSome, hTrap⟩
-    right
-    refine ⟨hRealNone W, ?_⟩
-    intro u _ hStepsAfter hpc hrun hnoex hkf hfr hInvU
-    have hCodeU : (strlenSubProg mpl).CodeLoaded u.mem := hCL u hInvU
-    have hLrOut : keepR_strlen mpl (u.readReg64 .lr) = false :=
-      strlen_keepLr_false_after_hook_of_codeLoaded_u
-        (P_ghost := cliProgExtPlacedAt mpl EG 617 W)
-        (P_sub := strlenSubProg mpl)
-        (entryTarget := strlenEntry mpl)
-        (f_stub := strlenGhost mpl mmpl)
-        (strlenSubProg_hasWords mpl)
-        hRegExt
-        (fun _ hL => trapHook_f3EmptyStrlenGhostHook_of_cover (strlenSubProg mpl)
-          (keepCoversStrlen_keepR_strlen mpl) hL)
-        hEntry.1
-        hRetPc
-        hNoExSf
-        hNotHaltSf
-        u
-        hCodeU
-        hStepsAfter
-        hrun
-        hkf
-    have hCodeStrip :
-        (strlenSubProg mpl).CodeLoaded (stripExecOutside (keepR_strlen mpl) u.mem) :=
-      strlenSubProg_codeLoaded_stripExecOutside hCodeU
-    obtain ⟨hvis, _, hfr_fu, hfs_fu⟩ :=
-      f3EmptyStrlenGhostHook_visitedIn
-        (keep := keepR_strlen mpl)
-        (P_sub := strlenSubProg mpl)
-        (entryTarget := strlenEntry mpl)
-        (strlenSubProg_svc mpl)
-        (strlenSubProg_externAt_none mpl)
-        (strlenSubProg_hasWords mpl)
-        (strlenEntry_no_wrap_of_codeLoaded hCodeU)
-        hrun
-        hnoex
-        hfr
-        hLrOut
-        hCodeStrip
-    have hStepsSetPC :
-        Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-          (u.setPC (strlenEntry mpl))
-          (strlenGhost mpl mmpl u) :=
-      h2fsgen_steps_lift_of_visitedIn_noExtern
-        (P1 := emptyStdProg)
-        (P2 := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-        (emptyStdProg_svc.trans (realProg617_svc mpl mmpl W).symm)
-        (fun pc _ => emptyStdProg_externAt pc)
-        (fun _ hk => hRealHullNoExt hk)
-        hvis
-    have hSetPC : u.setPC (strlenEntry mpl) = u := setPC_eq_self_of_pc_eq hpc
-    rw [hSetPC] at hStepsSetPC
-    exact ⟨hStepsSetPC, hfr_fu, hInvKeep u (strlenGhost mpl mmpl u) hInvU hkf hfs_fu⟩
-
 /-- `K`-narrowed `strlenGhostK` companion `GhostRowReplayOn` (requires **zero** entry `lr` guard:
     `entryGuard := fun _ => True`, since `strlenGhostK` transitions to `.Exception` if
     `lr ∈ keepR_strlen mpl`). -/
@@ -632,30 +496,6 @@ theorem strlenGhost_rowOk [LibsignalPlacement]
     GhostRowOk mpl mmpl InvS EG "strlen" (strlenEntryGuard mpl) (strlenGhost mpl mmpl) :=
   ⟨strlenGhost_rowSpecOk mpl mmpl,
    strlenGhost_rowReplayOn mpl mmpl InvS EG hCL hInvKeep hGhostAt hRealHullNoExt hGhostNoExtNe⟩
-
-/-- Combined `GhostRowOk` (`C4` interior-stub variant) for `"strlen"`. -/
-theorem strlenGhost_rowOk_of_interior [LibsignalPlacement]
-    (mpl mmpl : Obj.MultiPlacement)
-    (InvS : State → Prop)
-    (EG : CliHooks → String → Option (State → State))
-    (hCL : ∀ u : State, InvS u → (strlenSubProg mpl).CodeLoaded u.mem)
-    (hInvKeep : ∀ u v : State, InvS u → u.mem.KeepsFrozen v.mem → v.fs = u.fs → InvS v)
-    (hGhostAt : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl EG 617 W).externAt? (libsignalSessionLib.resolve mpl "strlen") =
-        some (strlenGhost mpl mmpl))
-    (hRealNone : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt?
-        (libsignalSessionLib.resolve mpl "strlen") = none)
-    (hInteriorGhost : ∀ (W : CliHooks) (pc : BitVec 64),
-      keepR_strlen mpl pc = true → pc ≠ libsignalSessionLib.resolve mpl "strlen" →
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none ∧
-      ((cliProgExtPlacedAt mpl EG 617 W).externAt? pc = none ∨
-        ∃ gStub, (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = some gStub ∧
-          ∀ L : BitVec 64, keepR_strlen mpl L = true → TrapHook L gStub)) :
-    GhostRowOk mpl mmpl InvS EG "strlen" (strlenEntryGuard mpl) (strlenGhost mpl mmpl) :=
-  ⟨strlenGhost_rowSpecOk mpl mmpl,
-   strlenGhost_rowReplayOn_of_interior mpl mmpl InvS EG hCL hInvKeep hGhostAt hRealNone
-     hInteriorGhost⟩
 
 /-- Guard-strengthening adapter on `GhostRowReplayOn` (for `ExtraListReplaysOn` when `guardOf sym`
     implies `entryGuard`). -/

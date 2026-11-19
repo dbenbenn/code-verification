@@ -10,17 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
-import LibsignalBinary.Proofs.TripleRatchet.InImage.Prost
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
+import LibsignalBinary.Proofs.TripleRatchet.TrapRng
+import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldLemmas
 
 /-!
 # Budget-Threaded `prost::encoding::skip_field::<&mut &[u8]> [local#3]`
@@ -29,7 +31,7 @@ Defines `SkipField3Env` and `skipField3Spec`, and proves `[LibsignalPlacement]`
 `RustCliAllocBudget`-threaded correctness across all `WireType` cases by induction on `depth`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -167,7 +169,7 @@ private theorem skipField3Env_of_rec_none {iwt : WireType} {itag tag d : Nat}
     ((skipField3Env_of_none (x := ⟨iwt, itag, d, bufRef, slot, rptr, rest⟩) hs).mp hevs)
 
 /-- Budget-threaded contract of `prost::encoding::skip_field::<&mut &[u8]> [local#3]` (Block `263`). -/
-def skipField3Spec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def skipField3Spec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SkipFieldGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
@@ -190,7 +192,7 @@ def skipField3Spec {M : AllocCostModel} (A : RustCliAllocBudget M)
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
 /-- Case-restricted budget-threaded contract for `skip_field [local#3]` at fixed `depth`. -/
-def skipField3SpecAt {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def skipField3SpecAt {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (depth : Nat) (P : SkipFieldGhost → Prop) :
     Spec (SkipFieldGhost × M.σ) where
   pre := fun (x, st) s =>

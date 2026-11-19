@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderClPlacedBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderClPlacedBudget
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
@@ -24,8 +24,13 @@ import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderBudget
 import ProofLib.Hoare.SubroutineOk
 import ProofLib.SepLogic.WPp
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoderBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Defs
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Guarded-Tight Placed Budget Proof for `PolynomialEncoder::merge` (Block `297`)
@@ -36,7 +41,7 @@ up to `384` B plus `16 × 2` `bytes::merge` allocations up to `2,560` B) under z
 `pts.cap = 0#64` and `polys.cap = 0#64` on canonical `tlb_PolyEncoderDom` inputs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -129,7 +134,7 @@ abbrev e2p297_derivedMaxReq : Nat := 2560
 
 /-- Per-field length-bounded `PolynomialEncoder` predicate parameterized by `(maxSlices, maxSliceBytes)`
 (definitionally `tlb_ValidPolyEncoderPB` at `(16, 2560)`). -/
-def e2p297_ValidPolyEncoderPBOf (maxSlices maxSliceBytes : Nat) (m : PolynomialEncoder) : Prop :=
+@[expose] def e2p297_ValidPolyEncoderPBOf (maxSlices maxSliceBytes : Nat) (m : PolynomialEncoder) : Prop :=
   (m.pts = [] ∨ m.polys = []) ∧
   m.pts.length + m.polys.length ≤ maxSlices ∧
   (∀ s ∈ m.pts, s.length ≤ maxSliceBytes) ∧
@@ -137,14 +142,14 @@ def e2p297_ValidPolyEncoderPBOf (maxSlices maxSliceBytes : Nat) (m : PolynomialE
 
 /-- Canonical wire-domain guard parameterized by `(maxSlices, maxSliceBytes)`. At `(16, 2560)` this
 is definitionally equal to `tlb_PolyEncoderDom`. -/
-def e2p297_PolyEncoderDomOf (maxSlices maxSliceBytes : Nat) (x : PolyEncoderMergeGhost) : Prop :=
+@[expose] def e2p297_PolyEncoderDomOf (maxSlices maxSliceBytes : Nat) (x : PolyEncoderMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, e2p297_ValidPolyEncoderPBOf maxSlices maxSliceBytes pb ∧
       x.bs = tlb_lenPrefixed (PolynomialEncoder.encodeRaw pb) rest
 
 /-- Guarded tight allocation envelope for Block `297` parameterized by `(maxOps, cumCap, maxReq)`.
 At `(maxOps, 342615, 2560)` this is definitionally equal to `tlb_PolyEncoderGuardedEnvOf maxOps`. -/
-def e2p297_PolyEncoderGuardedEnvOf (maxOps cumCap maxReq : Nat) :
+@[expose] def e2p297_PolyEncoderGuardedEnvOf (maxOps cumCap maxReq : Nat) :
     PolyEncoderMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_PolyEncoderDom (SpqrTightEvs maxOps cumCap maxReq) PolyEncoderMergeEnv
 
@@ -153,7 +158,7 @@ def e2p297_PolyEncoderGuardedEnvOf (maxOps cumCap maxReq : Nat) :
 `protoPolynomialEncoderAt` on `¬ Dom x`. Every `Chunked*` caller initializing
 `Option<ProtoPolynomialEncoder>::None → Some(default)` has literal `0#64` capacities and satisfies
 this predicate unconditionally without splitting on `Dom x`. -/
-def e2p297_protoPolynomialEncoderDomAt (Dom : PolyEncoderMergeGhost → Prop) (A : RustAlloc)
+@[expose] def e2p297_protoPolynomialEncoderDomAt (Dom : PolyEncoderMergeGhost → Prop) (A : RustAlloc)
     (x : PolyEncoderMergeGhost) : SepProp :=
   ∃∗ g : ProtoPolynomialEncoderGhost,
     ⌜Dom x → g.pts.cap = 0#64 ∧ g.polys.cap = 0#64⌝ ∗
@@ -162,7 +167,7 @@ def e2p297_protoPolynomialEncoderDomAt (Dom : PolyEncoderMergeGhost → Prop) (A
 /-- Envelope-parameterized budget contract of `PolynomialEncoder::merge` (Block `297`) with
 zero-initial-capacity guard on `Dom` in `pre` and standard unpinned `post` matching
 `polyEncoderMergeSpecOfEnv`. -/
-def e2p297_polyEncoderMergeZeroCapSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def e2p297_polyEncoderMergeZeroCapSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (Dom : PolyEncoderMergeGhost → Prop)
     (PreEnv PostEnv : PolyEncoderMergeGhost → List AllocEvent → Prop) :
     Spec (PolyEncoderMergeGhost × M.σ) where
@@ -180,7 +185,7 @@ def e2p297_polyEncoderMergeZeroCapSpecOfEnv {M : AllocCostModel} (A : RustCliAll
 
 /-- Sharded `libsignalSessionLib.blockProgram` proposition for Block `297` with zero-initial-cap
 guard on `tlb_PolyEncoderDom`, parameterized by `(maxOps, cumCap, maxReq)`. -/
-def e2p297_PolyEncoderMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def e2p297_PolyEncoderMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps cumCap maxReq : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 297 (Rust.withPanics ext))

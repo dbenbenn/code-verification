@@ -12,7 +12,7 @@ module
 public import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
 import ProofLib.SepLogic.WP.StateNorm
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

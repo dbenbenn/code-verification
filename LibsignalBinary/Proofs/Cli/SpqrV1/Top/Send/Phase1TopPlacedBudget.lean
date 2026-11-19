@@ -11,12 +11,13 @@ module
 
 meta import Lean -- shake: keep
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1TopPlaced
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1TopPlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1TopPlacedBudgetAux2
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1TopPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1TopPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1TopPlacedBudgetAux2
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Decodes -- shake: keep
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1DispatchPlacedBudget
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1FromPbPlacedBudget
@@ -32,6 +33,9 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1Top
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.Pure
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
 
 
 /-!
@@ -42,7 +46,7 @@ or 11-arm `<States>::send` dispatch) for `spqr::send::<signal_session_ratchet::C
 -/
 
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -117,10 +121,13 @@ open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1TopPlacedBudgetAux
    spqr_send_prologue_to_decode_state_placed_pool
    statesFromPbPlacedSpecX_tight_eq
    statesFromPbPlacedSpecXOfEnv_tight_eq)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag
+  (spqrSendResultDispAt spqrSendResultDispAt_entails_spqrSendResultAt)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1TopPlacedBudgetAux2
   (spqr_send_from_156_placed
    spqr_send_from_156_placed_ofEnv
    spqr_send_from_156_placed_tight
+   spqr_send_from_80_disp_placed_ofEnv
    spqr_send_from_80_placed
    spqr_send_from_80_placed_ofEnv
    spqr_send_from_80_placed_tight)
@@ -173,14 +180,10 @@ attribute [local simp, local arm64_norm, local wp_norm]
 
 /-! ## 1. Full Phase 1 Step (`+0 -> s0.lr` or `spqrSendPlacedEntry + statesSendArmOffset st0`) -/
 
-/-- Two-envelope (`PreEnvDecode` / `PostEnvDecode`) and panic-parametric (`{Pan : Prop}`)
-    relocatable full Phase 1 execution of `spqr::send::<signal_session_ratchet::Coins>` (Block `427`):
-    executes the prologue, calls `spqr::decode_state` with `FitsEnv M lim st0 (PreEnvDecode ...)`,
-    handles all Phase 1 early-return/error paths (`decode_state = .error e`, `pq.inner = none`,
-    `States.from_pb = .error (.err err)`, and vacuous `.error (.panic _)`), and on
-    `States.from_pb = .ok st_states` relocates `st_states` to `fsp + 0x950#64` and dispatches
-    through jump table 1 to `spqrSendPlacedEntry + statesSendArmOffset st_states`. -/
-theorem spqr_send_phase1_step_placed_ofPrePostEnv {M : AllocCostModel}
+/-- Display-tag-strengthened two-envelope (`PreEnvDecode` / `PostEnvDecode`) and panic-parametric
+    (`{Pan : Prop}`) relocatable full Phase 1 execution of
+    `spqr::send::<signal_session_ratchet::Coins>` (Block `427`). -/
+theorem spqr_send_phase1_step_disp_placed_ofPrePostEnv {M : AllocCostModel}
     {H_inner : V1InnerHeapPred} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {F : ShaCompress} {K : MlKem} {Pan : Prop}
     (ext : String → Option (State → State))
@@ -220,7 +223,7 @@ theorem spqr_send_phase1_step_placed_ofPrePostEnv {M : AllocCostModel}
       spqrDecodeState st.bytes = .error e →
       PostEnvDecode { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
       ∀ sf Pf, sf.pc = s0.readReg64 .x30 → sf.status = .Running →
-        (Pf ⊢ spqrSendResultAt A.repAlloc ret none ∗
+        (Pf ⊢ spqrSendResultDispAt A.repAlloc ret none ∗
           A.pool lim (M.stepEvents evs_dec st0) sf ∗
           stackAt s0.sp spqrSendStack ∗
           statesFromPbJumpTablePlacedAt ∗ spqrSendStatesJumpTablePlacedAt ∗
@@ -251,7 +254,7 @@ theorem spqr_send_phase1_step_placed_ofPrePostEnv {M : AllocCostModel}
                   pb := v1 } evs_fpb →
       FreeOnlyEvs evs_drop →
       ∀ sf Pf, sf.pc = s0.readReg64 .x30 → sf.status = .Running →
-        (Pf ⊢ spqrSendResultAt A.repAlloc ret none ∗
+        (Pf ⊢ spqrSendResultDispAt A.repAlloc ret none ∗
           A.pool lim (M.stepEvents evs_drop (M.stepEvents evs_fpb (M.stepEvents evs_dec st0))) sf ∗
           stackAt s0.sp spqrSendStack ∗
           statesFromPbJumpTablePlacedAt ∗ spqrSendStatesJumpTablePlacedAt ∗
@@ -397,7 +400,7 @@ theorem spqr_send_phase1_step_placed_ofPrePostEnv {M : AllocCostModel}
     spqrSendStatesJumpTablePlacedAt ∗
     spqrSendSavedRegs (s0.sp - 0x1f80#64) s0 ∗
     (st.at A.repAlloc ∗ v1StateJumpTablesPlacedAt ∗ Rest) by sep_ac_rfl)) ?_
-  exact spqr_send_from_80_placed_ofEnv (F := F) (K := K) ext h_inner_eq hA hfrom_pb hdropChain
+  exact spqr_send_from_80_disp_placed_ofEnv (F := F) (K := K) ext h_inner_eq hA hfrom_pb hdropChain
     (M.stepEvents evs_dec st0) ret st.bytes hlen
     (fun pq v1 hdec hinner => hfits_from_pb pq v1 evs_dec hdec hinner hevs_dec)
     hcrl2 hsp0_align hpc2 hrun2 hsp2 (htr2.trans htr1)
@@ -410,6 +413,163 @@ theorem spqr_send_phase1_step_placed_ofPrePostEnv {M : AllocCostModel}
     (fun pq v1 st_states evs_fpb hdec hinner hres hevs_fpb =>
       hok_next pq v1 st_states evs_dec evs_fpb hdec hinner hres hevs_dec hevs_fpb)
     (hvregs2.trans hvregs1)
+
+/-- Two-envelope (`PreEnvDecode` / `PostEnvDecode`) and panic-parametric (`{Pan : Prop}`)
+    relocatable full Phase 1 execution of `spqr::send::<signal_session_ratchet::Coins>` (Block `427`):
+    executes the prologue, calls `spqr::decode_state` with `FitsEnv M lim st0 (PreEnvDecode ...)`,
+    handles all Phase 1 early-return/error paths (`decode_state = .error e`, `pq.inner = none`,
+    `States.from_pb = .error (.err err)`, and vacuous `.error (.panic _)`), and on
+    `States.from_pb = .ok st_states` relocates `st_states` to `fsp + 0x950#64` and dispatches
+    through jump table 1 to `spqrSendPlacedEntry + statesSendArmOffset st_states`. -/
+theorem spqr_send_phase1_step_placed_ofPrePostEnv {M : AllocCostModel}
+    {H_inner : V1InnerHeapPred} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {F : ShaCompress} {K : MlKem} {Pan : Prop}
+    (ext : String → Option (State → State))
+    {PreEnvDecode PostEnvDecode : DecodeStateGhost → List AllocEvent → Prop}
+    {EnvFromPb : StatesFromPbGhost → List AllocEvent → Prop}
+    (h_inner_eq : ∀ a st,
+      CryptoVerification.SpqrV1.Top.DecodeState.optProtoInnerStateAt H_inner A.repAlloc a st =
+        optProtoInnerStateAt A.repAlloc a st)
+    (hA : AllocContractsPlaced M A lim ext)
+    (hdecode : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 325)
+      (withLsCodeRoLoaded lsmpl
+        (decodeStatePlacedSpecXOfPrePostEnv H_inner M A lim PreEnvDecode PostEnvDecode)))
+    (hfrom_pb : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 333)
+      (withLsCodeRoLoaded lsmpl (statesFromPbPlacedSpecXOfEnv M A lim F EnvFromPb)))
+    (hdropChain : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 439)
+      (withLsCodeRoLoaded lsmpl (dropProtoSpqrChainSpec M A lim)))
+    (s0 : State) (st0 : M.σ) (ret : BitVec 64) (st : VecArg)
+    (hlen : st.bytes.length < 2 ^ 32)
+    (hfits_decode : FitsEnv M lim st0
+      (PreEnvDecode { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 }))
+    (hfits_from_pb : ∀ (pq : PqRatchetState) (v1 : V1State) (evs_dec : List AllocEvent),
+      spqrDecodeState st.bytes = .ok pq →
+      pq.inner = some (.v1 v1) →
+      PostEnvDecode { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      FitsEnv M lim (M.stepEvents evs_dec st0)
+        (EnvFromPb { out := (s0.sp - 0x1f80#64) + 0x1260#64,
+                     pbA := (s0.sp - 0x1f80#64) + 0xb0#64,
+                     pb := v1 }))
+    {Rest Fr : SepProp} {post : State → SepProp → Prop}
+    (hcrl : LibsignalCodeRoLoaded lsmpl s0.mem)
+    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
+    (hpc : s0.pc = spqrSendPlacedEntry)
+    (hrun : s0.status = .Running)
+    (hx0 : s0.readReg64 .x0 = ret)
+    (hx1 : s0.readReg64 .x1 = st.v)
+    (hdec_err_post : ∀ (e : Error) (evs_dec : List AllocEvent),
+      spqrDecodeState st.bytes = .error e →
+      PostEnvDecode { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      ∀ sf Pf, sf.pc = s0.readReg64 .x30 → sf.status = .Running →
+        (Pf ⊢ spqrSendResultAt A.repAlloc ret none ∗
+          A.pool lim (M.stepEvents evs_dec st0) sf ∗
+          stackAt s0.sp spqrSendStack ∗
+          statesFromPbJumpTablePlacedAt ∗ spqrSendStatesJumpTablePlacedAt ∗
+          (st.at A.repAlloc ∗ v1StateJumpTablesPlacedAt ∗ Rest)) →
+        sf.sp = s0.sp → CalleeSavedPreserved s0 sf → sf.trace = s0.trace →
+        post sf Pf)
+    (hnone_post : ∀ (pq : PqRatchetState) (evs_dec evs_drop : List AllocEvent),
+      spqrDecodeState st.bytes = .ok pq →
+      pq.inner = none →
+      PostEnvDecode { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      FreeOnlyEvs evs_drop →
+      ∀ sf Pf, sf.pc = s0.readReg64 .x30 → sf.status = .Running →
+        (Pf ⊢ spqrSendResultAt A.repAlloc ret (some ([], none, [])) ∗
+          A.pool lim (M.stepEvents evs_drop (M.stepEvents evs_dec st0)) sf ∗
+          stackAt s0.sp spqrSendStack ∗
+          statesFromPbJumpTablePlacedAt ∗ spqrSendStatesJumpTablePlacedAt ∗
+          (st.at A.repAlloc ∗ v1StateJumpTablesPlacedAt ∗ Rest)) →
+        sf.sp = s0.sp → CalleeSavedPreserved s0 sf → sf.trace = s0.trace →
+        post sf Pf)
+    (herr_post : ∀ (pq : PqRatchetState) (v1 : V1State) (err : Error)
+        (evs_dec evs_fpb evs_drop : List AllocEvent),
+      spqrDecodeState st.bytes = .ok pq →
+      pq.inner = some (.v1 v1) →
+      States.from_pb spqrPolyApi (spqrAuthApi F) v1 = .error (.err err) →
+      PostEnvDecode { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      EnvFromPb { out := (s0.sp - 0x1f80#64) + 0x1260#64,
+                  pbA := (s0.sp - 0x1f80#64) + 0xb0#64,
+                  pb := v1 } evs_fpb →
+      FreeOnlyEvs evs_drop →
+      ∀ sf Pf, sf.pc = s0.readReg64 .x30 → sf.status = .Running →
+        (Pf ⊢ spqrSendResultAt A.repAlloc ret none ∗
+          A.pool lim (M.stepEvents evs_drop (M.stepEvents evs_fpb (M.stepEvents evs_dec st0))) sf ∗
+          stackAt s0.sp spqrSendStack ∗
+          statesFromPbJumpTablePlacedAt ∗ spqrSendStatesJumpTablePlacedAt ∗
+          (st.at A.repAlloc ∗ v1StateJumpTablesPlacedAt ∗ Rest)) →
+        sf.sp = s0.sp → CalleeSavedPreserved s0 sf → sf.trace = s0.trace →
+        post sf Pf)
+    (hok_next : ∀ (pq : PqRatchetState) (v1 : V1State)
+        (st_states : States spqrPolyApi (spqrAuthApi F))
+        (evs_dec evs_fpb : List AllocEvent),
+      spqrDecodeState st.bytes = .ok pq →
+      pq.inner = some (.v1 v1) →
+      States.from_pb spqrPolyApi (spqrAuthApi F) v1 = .ok st_states →
+      PostEnvDecode { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      EnvFromPb { out := (s0.sp - 0x1f80#64) + 0x1260#64,
+                  pbA := (s0.sp - 0x1f80#64) + 0xb0#64,
+                  pb := v1 } evs_fpb →
+      ∀ w0 w1 : BitVec 64, w0 ≠ none2Cap →
+      ∀ sf : State, LibsignalCodeRoLoaded lsmpl sf.mem →
+        sf.pc = spqrSendPlacedEntry + statesSendArmOffset st_states →
+        sf.status = .Running →
+        sf.sp = s0.sp - 0x1f80#64 →
+        sf.trace = s0.trace →
+        sf.readReg64 .x19 = ret →
+        sf.readReg64 .x20 = chunkedStatesWord0 st_states →
+        sf.readReg64 .x21 = (s0.sp - 0x1f80#64) + 0x1260#64 →
+        sf.readReg64 .x23 = w0 →
+        sf.readReg64 .x24 = (s0.sp - 0x1f80#64) + 0x950#64 →
+        sf.readReg64 .x25 = (s0.sp - 0x1f80#64) + 0x550#64 →
+        sf.readReg64 .x26 = (s0.sp - 0x1f80#64) + 0x1260#64 →
+        sf.readReg64 .x28 = (s0.sp - 0x1f80#64) + 0x1060#64 →
+        calleeSavedVRegs sf = calleeSavedVRegs s0 →
+        SepWPp (spqrSendPlacedProg ext) (s0.readReg64 .x30) sf
+          ((stackAt (s0.sp - 0x1f80#64) spqrSendCalleeStack ∗
+            memRegion (s0.sp - 0x1f80#64) 0x30 ∗
+            (((s0.sp - 0x1f80#64) + 0x30#64) ↦₆₄ w0) ∗
+            (((s0.sp - 0x1f80#64) + 0x38#64) ↦₆₄ w1) ∗
+            optVersionNegotiationPBTailAt A.repAlloc w0 w1 ((s0.sp - 0x1f80#64) + 0x40#64) pq.versionNegotiation ∗
+            optChainPBAt A.repAlloc ((s0.sp - 0x1f80#64) + 0x60#64) pq.chain ∗
+            memRegion ((s0.sp - 0x1f80#64) + 0xb0#64) (0x950 - 0xb0) ∗
+            chunkedStatesAt A.repAlloc ((s0.sp - 0x1f80#64) + 0x950#64) st_states ∗
+            memRegion ((s0.sp - 0x1f80#64) + 0xcf0#64) (0x1f20 - 0xcf0) ∗
+            memRegion ret 72 ∗
+            A.pool lim (M.stepEvents evs_fpb (M.stepEvents evs_dec st0)) sf ∗
+            statesFromPbJumpTablePlacedAt ∗
+            spqrSendStatesJumpTablePlacedAt ∗
+            spqrSendSavedRegs (s0.sp - 0x1f80#64) s0) ∗
+           (st.at A.repAlloc ∗ v1StateJumpTablesPlacedAt ∗ Rest))
+          post
+          (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) →
+            (sf.mem ⊨ (⌜Pan ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr))) :
+    SepWPp (spqrSendPlacedProg ext) (s0.readReg64 .x30) s0
+      (stackAt s0.sp spqrSendStack ∗
+        st.at A.repAlloc ∗
+        memRegion ret 72 ∗
+        A.pool lim st0 s0 ∗
+        v1StateJumpTablesPlacedAt ∗
+        statesFromPbJumpTablePlacedAt ∗
+        spqrSendStatesJumpTablePlacedAt ∗
+        Rest)
+      post
+      (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) →
+        (sf.mem ⊨ (⌜Pan ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr)) :=
+  spqr_send_phase1_step_disp_placed_ofPrePostEnv
+    (PreEnvDecode := PreEnvDecode) (PostEnvDecode := PostEnvDecode) (EnvFromPb := EnvFromPb)
+    (F := F) (K := K) ext h_inner_eq hA hdecode hfrom_pb hdropChain
+    s0 st0 ret st hlen hfits_decode hfits_from_pb
+    hcrl hsp0_align hpc hrun hx0 hx1
+    (fun e evs_dec hdec hevs sf Pf hpc_f hrun_f hPf =>
+      hdec_err_post e evs_dec hdec hevs sf Pf hpc_f hrun_f
+        (Entails.trans hPf
+          (sepConj_mono_left (spqrSendResultDispAt_entails_spqrSendResultAt A.repAlloc ret none))))
+    hnone_post
+    (fun pq v1 err evs_dec evs_fpb evs_drop hdec hinner hres hevs_dec hevs_fpb hevs_drop sf Pf hpc_f hrun_f hPf =>
+      herr_post pq v1 err evs_dec evs_fpb evs_drop hdec hinner hres hevs_dec hevs_fpb hevs_drop sf Pf hpc_f hrun_f
+        (Entails.trans hPf
+          (sepConj_mono_left (spqrSendResultDispAt_entails_spqrSendResultAt A.repAlloc ret none))))
+    hok_next
 
 /-- Single-envelope (`EnvDecode` / `EnvFromPb`, matching `SpqrSendPlacedContractsOfEnv`)
     panic-parametric relocatable full Phase 1 execution of `spqr::send::<Coins>`. -/
@@ -822,6 +982,425 @@ theorem spqr_send_phase1_step_placed_tight {M : AllocCostModel}
       (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) →
         (sf.mem ⊨ (⌜Pan ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr)) :=
   spqr_send_phase1_step_placed_ofEnv
+    (EnvDecode := DecodeStateEnv)
+    (EnvFromPb := fun x =>
+      LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget.StatesFromPbEnv x.pb)
+    (F := F) (K := K) ext h_inner_eq hA
+    (decodeStatePlacedSpecXOfEnv_of_spqrDecodeStatePlacedSpec hdecode)
+    hfrom_pb hdropChain s0 st0 ret st hlen hfits_decode hfits_from_pb
+    hcrl hsp0_align hpc hrun hx0 hx1
+    hdec_err_post hnone_post herr_post hok_next
+
+/-- Display-tag-strengthened single-envelope (`EnvDecode` / `EnvFromPb`) panic-parametric
+    relocatable full Phase 1 execution of `spqr::send::<Coins>`. -/
+theorem spqr_send_phase1_step_disp_placed_ofEnv {M : AllocCostModel}
+    {H_inner : V1InnerHeapPred} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {F : ShaCompress} {K : MlKem} {Pan : Prop}
+    (ext : String → Option (State → State))
+    {EnvDecode : DecodeStateGhost → List AllocEvent → Prop}
+    {EnvFromPb : StatesFromPbGhost → List AllocEvent → Prop}
+    (h_inner_eq : ∀ a st,
+      CryptoVerification.SpqrV1.Top.DecodeState.optProtoInnerStateAt H_inner A.repAlloc a st =
+        optProtoInnerStateAt A.repAlloc a st)
+    (hA : AllocContractsPlaced M A lim ext)
+    (hdecode : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 325)
+      (withLsCodeRoLoaded lsmpl (decodeStatePlacedSpecXOfEnv H_inner M A lim EnvDecode)))
+    (hfrom_pb : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 333)
+      (withLsCodeRoLoaded lsmpl (statesFromPbPlacedSpecXOfEnv M A lim F EnvFromPb)))
+    (hdropChain : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 439)
+      (withLsCodeRoLoaded lsmpl (dropProtoSpqrChainSpec M A lim)))
+    (s0 : State) (st0 : M.σ) (ret : BitVec 64) (st : VecArg)
+    (hlen : st.bytes.length < 2 ^ 32)
+    (hfits_decode : FitsEnv M lim st0
+      (EnvDecode { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 }))
+    (hfits_from_pb : ∀ (pq : PqRatchetState) (v1 : V1State) (evs_dec : List AllocEvent),
+      spqrDecodeState st.bytes = .ok pq →
+      pq.inner = some (.v1 v1) →
+      EnvDecode { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      FitsEnv M lim (M.stepEvents evs_dec st0)
+        (EnvFromPb { out := (s0.sp - 0x1f80#64) + 0x1260#64,
+                     pbA := (s0.sp - 0x1f80#64) + 0xb0#64,
+                     pb := v1 }))
+    {Rest Fr : SepProp} {post : State → SepProp → Prop}
+    (hcrl : LibsignalCodeRoLoaded lsmpl s0.mem)
+    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
+    (hpc : s0.pc = spqrSendPlacedEntry)
+    (hrun : s0.status = .Running)
+    (hx0 : s0.readReg64 .x0 = ret)
+    (hx1 : s0.readReg64 .x1 = st.v)
+    (hdec_err_post : ∀ (e : Error) (evs_dec : List AllocEvent),
+      spqrDecodeState st.bytes = .error e →
+      EnvDecode { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      ∀ sf Pf, sf.pc = s0.readReg64 .x30 → sf.status = .Running →
+        (Pf ⊢ spqrSendResultDispAt A.repAlloc ret none ∗
+          A.pool lim (M.stepEvents evs_dec st0) sf ∗
+          stackAt s0.sp spqrSendStack ∗
+          statesFromPbJumpTablePlacedAt ∗ spqrSendStatesJumpTablePlacedAt ∗
+          (st.at A.repAlloc ∗ v1StateJumpTablesPlacedAt ∗ Rest)) →
+        sf.sp = s0.sp → CalleeSavedPreserved s0 sf → sf.trace = s0.trace →
+        post sf Pf)
+    (hnone_post : ∀ (pq : PqRatchetState) (evs_dec evs_drop : List AllocEvent),
+      spqrDecodeState st.bytes = .ok pq →
+      pq.inner = none →
+      EnvDecode { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      FreeOnlyEvs evs_drop →
+      ∀ sf Pf, sf.pc = s0.readReg64 .x30 → sf.status = .Running →
+        (Pf ⊢ spqrSendResultAt A.repAlloc ret (some ([], none, [])) ∗
+          A.pool lim (M.stepEvents evs_drop (M.stepEvents evs_dec st0)) sf ∗
+          stackAt s0.sp spqrSendStack ∗
+          statesFromPbJumpTablePlacedAt ∗ spqrSendStatesJumpTablePlacedAt ∗
+          (st.at A.repAlloc ∗ v1StateJumpTablesPlacedAt ∗ Rest)) →
+        sf.sp = s0.sp → CalleeSavedPreserved s0 sf → sf.trace = s0.trace →
+        post sf Pf)
+    (herr_post : ∀ (pq : PqRatchetState) (v1 : V1State) (err : Error)
+        (evs_dec evs_fpb evs_drop : List AllocEvent),
+      spqrDecodeState st.bytes = .ok pq →
+      pq.inner = some (.v1 v1) →
+      States.from_pb spqrPolyApi (spqrAuthApi F) v1 = .error (.err err) →
+      EnvDecode { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      EnvFromPb { out := (s0.sp - 0x1f80#64) + 0x1260#64,
+                  pbA := (s0.sp - 0x1f80#64) + 0xb0#64,
+                  pb := v1 } evs_fpb →
+      FreeOnlyEvs evs_drop →
+      ∀ sf Pf, sf.pc = s0.readReg64 .x30 → sf.status = .Running →
+        (Pf ⊢ spqrSendResultDispAt A.repAlloc ret none ∗
+          A.pool lim (M.stepEvents evs_drop (M.stepEvents evs_fpb (M.stepEvents evs_dec st0))) sf ∗
+          stackAt s0.sp spqrSendStack ∗
+          statesFromPbJumpTablePlacedAt ∗ spqrSendStatesJumpTablePlacedAt ∗
+          (st.at A.repAlloc ∗ v1StateJumpTablesPlacedAt ∗ Rest)) →
+        sf.sp = s0.sp → CalleeSavedPreserved s0 sf → sf.trace = s0.trace →
+        post sf Pf)
+    (hok_next : ∀ (pq : PqRatchetState) (v1 : V1State)
+        (st_states : States spqrPolyApi (spqrAuthApi F))
+        (evs_dec evs_fpb : List AllocEvent),
+      spqrDecodeState st.bytes = .ok pq →
+      pq.inner = some (.v1 v1) →
+      States.from_pb spqrPolyApi (spqrAuthApi F) v1 = .ok st_states →
+      EnvDecode { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      EnvFromPb { out := (s0.sp - 0x1f80#64) + 0x1260#64,
+                  pbA := (s0.sp - 0x1f80#64) + 0xb0#64,
+                  pb := v1 } evs_fpb →
+      ∀ w0 w1 : BitVec 64, w0 ≠ none2Cap →
+      ∀ sf : State, LibsignalCodeRoLoaded lsmpl sf.mem →
+        sf.pc = spqrSendPlacedEntry + statesSendArmOffset st_states →
+        sf.status = .Running →
+        sf.sp = s0.sp - 0x1f80#64 →
+        sf.trace = s0.trace →
+        sf.readReg64 .x19 = ret →
+        sf.readReg64 .x20 = chunkedStatesWord0 st_states →
+        sf.readReg64 .x21 = (s0.sp - 0x1f80#64) + 0x1260#64 →
+        sf.readReg64 .x23 = w0 →
+        sf.readReg64 .x24 = (s0.sp - 0x1f80#64) + 0x950#64 →
+        sf.readReg64 .x25 = (s0.sp - 0x1f80#64) + 0x550#64 →
+        sf.readReg64 .x26 = (s0.sp - 0x1f80#64) + 0x1260#64 →
+        sf.readReg64 .x28 = (s0.sp - 0x1f80#64) + 0x1060#64 →
+        calleeSavedVRegs sf = calleeSavedVRegs s0 →
+        SepWPp (spqrSendPlacedProg ext) (s0.readReg64 .x30) sf
+          ((stackAt (s0.sp - 0x1f80#64) spqrSendCalleeStack ∗
+            memRegion (s0.sp - 0x1f80#64) 0x30 ∗
+            (((s0.sp - 0x1f80#64) + 0x30#64) ↦₆₄ w0) ∗
+            (((s0.sp - 0x1f80#64) + 0x38#64) ↦₆₄ w1) ∗
+            optVersionNegotiationPBTailAt A.repAlloc w0 w1 ((s0.sp - 0x1f80#64) + 0x40#64) pq.versionNegotiation ∗
+            optChainPBAt A.repAlloc ((s0.sp - 0x1f80#64) + 0x60#64) pq.chain ∗
+            memRegion ((s0.sp - 0x1f80#64) + 0xb0#64) (0x950 - 0xb0) ∗
+            chunkedStatesAt A.repAlloc ((s0.sp - 0x1f80#64) + 0x950#64) st_states ∗
+            memRegion ((s0.sp - 0x1f80#64) + 0xcf0#64) (0x1f20 - 0xcf0) ∗
+            memRegion ret 72 ∗
+            A.pool lim (M.stepEvents evs_fpb (M.stepEvents evs_dec st0)) sf ∗
+            statesFromPbJumpTablePlacedAt ∗
+            spqrSendStatesJumpTablePlacedAt ∗
+            spqrSendSavedRegs (s0.sp - 0x1f80#64) s0) ∗
+           (st.at A.repAlloc ∗ v1StateJumpTablesPlacedAt ∗ Rest))
+          post
+          (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) →
+            (sf.mem ⊨ (⌜Pan ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr))) :
+    SepWPp (spqrSendPlacedProg ext) (s0.readReg64 .x30) s0
+      (stackAt s0.sp spqrSendStack ∗
+        st.at A.repAlloc ∗
+        memRegion ret 72 ∗
+        A.pool lim st0 s0 ∗
+        v1StateJumpTablesPlacedAt ∗
+        statesFromPbJumpTablePlacedAt ∗
+        spqrSendStatesJumpTablePlacedAt ∗
+        Rest)
+      post
+      (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) →
+        (sf.mem ⊨ (⌜Pan ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr)) :=
+  spqr_send_phase1_step_disp_placed_ofPrePostEnv
+    (PreEnvDecode := EnvDecode) (PostEnvDecode := EnvDecode) (EnvFromPb := EnvFromPb)
+    (F := F) (K := K) ext h_inner_eq hA hdecode hfrom_pb hdropChain
+    s0 st0 ret st hlen hfits_decode hfits_from_pb
+    hcrl hsp0_align hpc hrun hx0 hx1
+    hdec_err_post hnone_post herr_post hok_next
+
+/-- Display-tag-strengthened peer-seam default (`DecodeStatePlacedEnv` + `StatesFromPbEnv`)
+    panic-parametric relocatable full Phase 1 execution of `spqr::send::<Coins>`. -/
+theorem spqr_send_phase1_step_disp_placed {M : AllocCostModel}
+    {H_inner : V1InnerHeapPred} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {F : ShaCompress} {K : MlKem} {Pan : Prop}
+    (ext : String → Option (State → State))
+    (h_inner_eq : ∀ a st,
+      CryptoVerification.SpqrV1.Top.DecodeState.optProtoInnerStateAt H_inner A.repAlloc a st =
+        optProtoInnerStateAt A.repAlloc a st)
+    (hA : AllocContractsPlaced M A lim ext)
+    (hdecode : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 325)
+      (withLsCodeRoLoaded lsmpl (decodeStatePlacedSpecX H_inner M A lim)))
+    (hfrom_pb : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 333)
+      (withLsCodeRoLoaded lsmpl (statesFromPbPlacedSpecX M A lim F)))
+    (hdropChain : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 439)
+      (withLsCodeRoLoaded lsmpl (dropProtoSpqrChainSpec M A lim)))
+    (s0 : State) (st0 : M.σ) (ret : BitVec 64) (st : VecArg)
+    (hlen : st.bytes.length < 2 ^ 32)
+    (hfits_decode : FitsEnv M lim st0
+      (DecodeStatePlacedEnv { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 }))
+    (hfits_from_pb : ∀ (pq : PqRatchetState) (v1 : V1State) (evs_dec : List AllocEvent),
+      spqrDecodeState st.bytes = .ok pq →
+      pq.inner = some (.v1 v1) →
+      DecodeStatePlacedEnv { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      FitsEnv M lim (M.stepEvents evs_dec st0)
+        (StatesFromPbEnv { out := (s0.sp - 0x1f80#64) + 0x1260#64,
+                           pbA := (s0.sp - 0x1f80#64) + 0xb0#64,
+                           pb := v1 }))
+    {Rest Fr : SepProp} {post : State → SepProp → Prop}
+    (hcrl : LibsignalCodeRoLoaded lsmpl s0.mem)
+    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
+    (hpc : s0.pc = spqrSendPlacedEntry)
+    (hrun : s0.status = .Running)
+    (hx0 : s0.readReg64 .x0 = ret)
+    (hx1 : s0.readReg64 .x1 = st.v)
+    (hdec_err_post : ∀ (e : Error) (evs_dec : List AllocEvent),
+      spqrDecodeState st.bytes = .error e →
+      DecodeStatePlacedEnv { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      ∀ sf Pf, sf.pc = s0.readReg64 .x30 → sf.status = .Running →
+        (Pf ⊢ spqrSendResultDispAt A.repAlloc ret none ∗
+          A.pool lim (M.stepEvents evs_dec st0) sf ∗
+          stackAt s0.sp spqrSendStack ∗
+          statesFromPbJumpTablePlacedAt ∗ spqrSendStatesJumpTablePlacedAt ∗
+          (st.at A.repAlloc ∗ v1StateJumpTablesPlacedAt ∗ Rest)) →
+        sf.sp = s0.sp → CalleeSavedPreserved s0 sf → sf.trace = s0.trace →
+        post sf Pf)
+    (hnone_post : ∀ (pq : PqRatchetState) (evs_dec evs_drop : List AllocEvent),
+      spqrDecodeState st.bytes = .ok pq →
+      pq.inner = none →
+      DecodeStatePlacedEnv { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      FreeOnlyEvs evs_drop →
+      ∀ sf Pf, sf.pc = s0.readReg64 .x30 → sf.status = .Running →
+        (Pf ⊢ spqrSendResultAt A.repAlloc ret (some ([], none, [])) ∗
+          A.pool lim (M.stepEvents evs_drop (M.stepEvents evs_dec st0)) sf ∗
+          stackAt s0.sp spqrSendStack ∗
+          statesFromPbJumpTablePlacedAt ∗ spqrSendStatesJumpTablePlacedAt ∗
+          (st.at A.repAlloc ∗ v1StateJumpTablesPlacedAt ∗ Rest)) →
+        sf.sp = s0.sp → CalleeSavedPreserved s0 sf → sf.trace = s0.trace →
+        post sf Pf)
+    (herr_post : ∀ (pq : PqRatchetState) (v1 : V1State) (err : Error)
+        (evs_dec evs_fpb evs_drop : List AllocEvent),
+      spqrDecodeState st.bytes = .ok pq →
+      pq.inner = some (.v1 v1) →
+      States.from_pb spqrPolyApi (spqrAuthApi F) v1 = .error (.err err) →
+      DecodeStatePlacedEnv { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      StatesFromPbEnv { out := (s0.sp - 0x1f80#64) + 0x1260#64,
+                        pbA := (s0.sp - 0x1f80#64) + 0xb0#64,
+                        pb := v1 } evs_fpb →
+      FreeOnlyEvs evs_drop →
+      ∀ sf Pf, sf.pc = s0.readReg64 .x30 → sf.status = .Running →
+        (Pf ⊢ spqrSendResultDispAt A.repAlloc ret none ∗
+          A.pool lim (M.stepEvents evs_drop (M.stepEvents evs_fpb (M.stepEvents evs_dec st0))) sf ∗
+          stackAt s0.sp spqrSendStack ∗
+          statesFromPbJumpTablePlacedAt ∗ spqrSendStatesJumpTablePlacedAt ∗
+          (st.at A.repAlloc ∗ v1StateJumpTablesPlacedAt ∗ Rest)) →
+        sf.sp = s0.sp → CalleeSavedPreserved s0 sf → sf.trace = s0.trace →
+        post sf Pf)
+    (hok_next : ∀ (pq : PqRatchetState) (v1 : V1State)
+        (st_states : States spqrPolyApi (spqrAuthApi F))
+        (evs_dec evs_fpb : List AllocEvent),
+      spqrDecodeState st.bytes = .ok pq →
+      pq.inner = some (.v1 v1) →
+      States.from_pb spqrPolyApi (spqrAuthApi F) v1 = .ok st_states →
+      DecodeStatePlacedEnv { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      StatesFromPbEnv { out := (s0.sp - 0x1f80#64) + 0x1260#64,
+                        pbA := (s0.sp - 0x1f80#64) + 0xb0#64,
+                        pb := v1 } evs_fpb →
+      ∀ w0 w1 : BitVec 64, w0 ≠ none2Cap →
+      ∀ sf : State, LibsignalCodeRoLoaded lsmpl sf.mem →
+        sf.pc = spqrSendPlacedEntry + statesSendArmOffset st_states →
+        sf.status = .Running →
+        sf.sp = s0.sp - 0x1f80#64 →
+        sf.trace = s0.trace →
+        sf.readReg64 .x19 = ret →
+        sf.readReg64 .x20 = chunkedStatesWord0 st_states →
+        sf.readReg64 .x21 = (s0.sp - 0x1f80#64) + 0x1260#64 →
+        sf.readReg64 .x23 = w0 →
+        sf.readReg64 .x24 = (s0.sp - 0x1f80#64) + 0x950#64 →
+        sf.readReg64 .x25 = (s0.sp - 0x1f80#64) + 0x550#64 →
+        sf.readReg64 .x26 = (s0.sp - 0x1f80#64) + 0x1260#64 →
+        sf.readReg64 .x28 = (s0.sp - 0x1f80#64) + 0x1060#64 →
+        calleeSavedVRegs sf = calleeSavedVRegs s0 →
+        SepWPp (spqrSendPlacedProg ext) (s0.readReg64 .x30) sf
+          ((stackAt (s0.sp - 0x1f80#64) spqrSendCalleeStack ∗
+            memRegion (s0.sp - 0x1f80#64) 0x30 ∗
+            (((s0.sp - 0x1f80#64) + 0x30#64) ↦₆₄ w0) ∗
+            (((s0.sp - 0x1f80#64) + 0x38#64) ↦₆₄ w1) ∗
+            optVersionNegotiationPBTailAt A.repAlloc w0 w1 ((s0.sp - 0x1f80#64) + 0x40#64) pq.versionNegotiation ∗
+            optChainPBAt A.repAlloc ((s0.sp - 0x1f80#64) + 0x60#64) pq.chain ∗
+            memRegion ((s0.sp - 0x1f80#64) + 0xb0#64) (0x950 - 0xb0) ∗
+            chunkedStatesAt A.repAlloc ((s0.sp - 0x1f80#64) + 0x950#64) st_states ∗
+            memRegion ((s0.sp - 0x1f80#64) + 0xcf0#64) (0x1f20 - 0xcf0) ∗
+            memRegion ret 72 ∗
+            A.pool lim (M.stepEvents evs_fpb (M.stepEvents evs_dec st0)) sf ∗
+            statesFromPbJumpTablePlacedAt ∗
+            spqrSendStatesJumpTablePlacedAt ∗
+            spqrSendSavedRegs (s0.sp - 0x1f80#64) s0) ∗
+           (st.at A.repAlloc ∗ v1StateJumpTablesPlacedAt ∗ Rest))
+          post
+          (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) →
+            (sf.mem ⊨ (⌜Pan ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr))) :
+    SepWPp (spqrSendPlacedProg ext) (s0.readReg64 .x30) s0
+      (stackAt s0.sp spqrSendStack ∗
+        st.at A.repAlloc ∗
+        memRegion ret 72 ∗
+        A.pool lim st0 s0 ∗
+        v1StateJumpTablesPlacedAt ∗
+        statesFromPbJumpTablePlacedAt ∗
+        spqrSendStatesJumpTablePlacedAt ∗
+        Rest)
+      post
+      (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) →
+        (sf.mem ⊨ (⌜Pan ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr)) :=
+  spqr_send_phase1_step_disp_placed_ofEnv (F := F) (K := K) ext h_inner_eq hA hdecode hfrom_pb hdropChain
+    s0 st0 ret st hlen hfits_decode hfits_from_pb
+    hcrl hsp0_align hpc hrun hx0 hx1
+    hdec_err_post hnone_post herr_post hok_next
+
+/-- Display-tag-strengthened tight (`spqrDecodeStatePlacedSpec` + `States.FromPb.DefsBudget.statesFromPbPlacedSpecX`)
+    panic-parametric relocatable full Phase 1 execution of `spqr::send::<Coins>`. -/
+theorem spqr_send_phase1_step_disp_placed_tight {M : AllocCostModel}
+    {H_inner : V1InnerHeapPred} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {F : ShaCompress} {K : MlKem} {Pan : Prop}
+    (ext : String → Option (State → State))
+    (h_inner_eq : ∀ a st,
+      CryptoVerification.SpqrV1.Top.DecodeState.optProtoInnerStateAt H_inner A.repAlloc a st =
+        optProtoInnerStateAt A.repAlloc a st)
+    (hA : AllocContractsPlaced M A lim ext)
+    (hdecode : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 325)
+      (withLsCodeRoLoaded lsmpl (spqrDecodeStatePlacedSpec H_inner A lim)))
+    (hfrom_pb : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 333)
+      (withLsCodeRoLoaded lsmpl
+        (LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget.statesFromPbPlacedSpecX
+          M A lim F)))
+    (hdropChain : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 439)
+      (withLsCodeRoLoaded lsmpl (dropProtoSpqrChainSpec M A lim)))
+    (s0 : State) (st0 : M.σ) (ret : BitVec 64) (st : VecArg)
+    (hlen : st.bytes.length < 2 ^ 32)
+    (hfits_decode : FitsEnv M lim st0
+      (DecodeStateEnv { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 }))
+    (hfits_from_pb : ∀ (pq : PqRatchetState) (v1 : V1State) (evs_dec : List AllocEvent),
+      spqrDecodeState st.bytes = .ok pq →
+      pq.inner = some (.v1 v1) →
+      DecodeStateEnv { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      FitsEnv M lim (M.stepEvents evs_dec st0)
+        (LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget.StatesFromPbEnv v1))
+    {Rest Fr : SepProp} {post : State → SepProp → Prop}
+    (hcrl : LibsignalCodeRoLoaded lsmpl s0.mem)
+    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
+    (hpc : s0.pc = spqrSendPlacedEntry)
+    (hrun : s0.status = .Running)
+    (hx0 : s0.readReg64 .x0 = ret)
+    (hx1 : s0.readReg64 .x1 = st.v)
+    (hdec_err_post : ∀ (e : Error) (evs_dec : List AllocEvent),
+      spqrDecodeState st.bytes = .error e →
+      DecodeStateEnv { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      ∀ sf Pf, sf.pc = s0.readReg64 .x30 → sf.status = .Running →
+        (Pf ⊢ spqrSendResultDispAt A.repAlloc ret none ∗
+          A.pool lim (M.stepEvents evs_dec st0) sf ∗
+          stackAt s0.sp spqrSendStack ∗
+          statesFromPbJumpTablePlacedAt ∗ spqrSendStatesJumpTablePlacedAt ∗
+          (st.at A.repAlloc ∗ v1StateJumpTablesPlacedAt ∗ Rest)) →
+        sf.sp = s0.sp → CalleeSavedPreserved s0 sf → sf.trace = s0.trace →
+        post sf Pf)
+    (hnone_post : ∀ (pq : PqRatchetState) (evs_dec evs_drop : List AllocEvent),
+      spqrDecodeState st.bytes = .ok pq →
+      pq.inner = none →
+      DecodeStateEnv { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      FreeOnlyEvs evs_drop →
+      ∀ sf Pf, sf.pc = s0.readReg64 .x30 → sf.status = .Running →
+        (Pf ⊢ spqrSendResultAt A.repAlloc ret (some ([], none, [])) ∗
+          A.pool lim (M.stepEvents evs_drop (M.stepEvents evs_dec st0)) sf ∗
+          stackAt s0.sp spqrSendStack ∗
+          statesFromPbJumpTablePlacedAt ∗ spqrSendStatesJumpTablePlacedAt ∗
+          (st.at A.repAlloc ∗ v1StateJumpTablesPlacedAt ∗ Rest)) →
+        sf.sp = s0.sp → CalleeSavedPreserved s0 sf → sf.trace = s0.trace →
+        post sf Pf)
+    (herr_post : ∀ (pq : PqRatchetState) (v1 : V1State) (err : Error)
+        (evs_dec evs_fpb evs_drop : List AllocEvent),
+      spqrDecodeState st.bytes = .ok pq →
+      pq.inner = some (.v1 v1) →
+      States.from_pb spqrPolyApi (spqrAuthApi F) v1 = .error (.err err) →
+      DecodeStateEnv { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget.StatesFromPbEnv v1 evs_fpb →
+      FreeOnlyEvs evs_drop →
+      ∀ sf Pf, sf.pc = s0.readReg64 .x30 → sf.status = .Running →
+        (Pf ⊢ spqrSendResultDispAt A.repAlloc ret none ∗
+          A.pool lim (M.stepEvents evs_drop (M.stepEvents evs_fpb (M.stepEvents evs_dec st0))) sf ∗
+          stackAt s0.sp spqrSendStack ∗
+          statesFromPbJumpTablePlacedAt ∗ spqrSendStatesJumpTablePlacedAt ∗
+          (st.at A.repAlloc ∗ v1StateJumpTablesPlacedAt ∗ Rest)) →
+        sf.sp = s0.sp → CalleeSavedPreserved s0 sf → sf.trace = s0.trace →
+        post sf Pf)
+    (hok_next : ∀ (pq : PqRatchetState) (v1 : V1State)
+        (st_states : States spqrPolyApi (spqrAuthApi F))
+        (evs_dec evs_fpb : List AllocEvent),
+      spqrDecodeState st.bytes = .ok pq →
+      pq.inner = some (.v1 v1) →
+      States.from_pb spqrPolyApi (spqrAuthApi F) v1 = .ok st_states →
+      DecodeStateEnv { st := st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget.StatesFromPbEnv v1 evs_fpb →
+      ∀ w0 w1 : BitVec 64, w0 ≠ none2Cap →
+      ∀ sf : State, LibsignalCodeRoLoaded lsmpl sf.mem →
+        sf.pc = spqrSendPlacedEntry + statesSendArmOffset st_states →
+        sf.status = .Running →
+        sf.sp = s0.sp - 0x1f80#64 →
+        sf.trace = s0.trace →
+        sf.readReg64 .x19 = ret →
+        sf.readReg64 .x20 = chunkedStatesWord0 st_states →
+        sf.readReg64 .x21 = (s0.sp - 0x1f80#64) + 0x1260#64 →
+        sf.readReg64 .x23 = w0 →
+        sf.readReg64 .x24 = (s0.sp - 0x1f80#64) + 0x950#64 →
+        sf.readReg64 .x25 = (s0.sp - 0x1f80#64) + 0x550#64 →
+        sf.readReg64 .x26 = (s0.sp - 0x1f80#64) + 0x1260#64 →
+        sf.readReg64 .x28 = (s0.sp - 0x1f80#64) + 0x1060#64 →
+        calleeSavedVRegs sf = calleeSavedVRegs s0 →
+        SepWPp (spqrSendPlacedProg ext) (s0.readReg64 .x30) sf
+          ((stackAt (s0.sp - 0x1f80#64) spqrSendCalleeStack ∗
+            memRegion (s0.sp - 0x1f80#64) 0x30 ∗
+            (((s0.sp - 0x1f80#64) + 0x30#64) ↦₆₄ w0) ∗
+            (((s0.sp - 0x1f80#64) + 0x38#64) ↦₆₄ w1) ∗
+            optVersionNegotiationPBTailAt A.repAlloc w0 w1 ((s0.sp - 0x1f80#64) + 0x40#64) pq.versionNegotiation ∗
+            optChainPBAt A.repAlloc ((s0.sp - 0x1f80#64) + 0x60#64) pq.chain ∗
+            memRegion ((s0.sp - 0x1f80#64) + 0xb0#64) (0x950 - 0xb0) ∗
+            chunkedStatesAt A.repAlloc ((s0.sp - 0x1f80#64) + 0x950#64) st_states ∗
+            memRegion ((s0.sp - 0x1f80#64) + 0xcf0#64) (0x1f20 - 0xcf0) ∗
+            memRegion ret 72 ∗
+            A.pool lim (M.stepEvents evs_fpb (M.stepEvents evs_dec st0)) sf ∗
+            statesFromPbJumpTablePlacedAt ∗
+            spqrSendStatesJumpTablePlacedAt ∗
+            spqrSendSavedRegs (s0.sp - 0x1f80#64) s0) ∗
+           (st.at A.repAlloc ∗ v1StateJumpTablesPlacedAt ∗ Rest))
+          post
+          (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) →
+            (sf.mem ⊨ (⌜Pan ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr))) :
+    SepWPp (spqrSendPlacedProg ext) (s0.readReg64 .x30) s0
+      (stackAt s0.sp spqrSendStack ∗
+        st.at A.repAlloc ∗
+        memRegion ret 72 ∗
+        A.pool lim st0 s0 ∗
+        v1StateJumpTablesPlacedAt ∗
+        statesFromPbJumpTablePlacedAt ∗
+        spqrSendStatesJumpTablePlacedAt ∗
+        Rest)
+      post
+      (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) →
+        (sf.mem ⊨ (⌜Pan ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr)) :=
+  spqr_send_phase1_step_disp_placed_ofEnv
     (EnvDecode := DecodeStateEnv)
     (EnvFromPb := fun x =>
       LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget.StatesFromPbEnv x.pb)

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Bin.Record
-public import LibsignalBinary.Proofs.E2E.RecordX.ScopeP
+public import LibsignalBinary.Proofs.E2E.Bin.Record -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.RecordX.ScopeP -- proof-setup: allow-public-import
 
 /-!
 # `Q`-Generalized Session Record Scopes and `recordDeserializeOpenSpec_Q`
@@ -20,13 +20,13 @@ Generalizes `RecordPqEmpty`, `InScopeP`, `DeserializeScopeP`, `RecordCanonical`,
 together with `NonEmptyV1Q` (`st.length < 2 ^ 32`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace Symbolic.Swarm.TRREF.B3Defs
 
-open Arm64 ProofLib ProofLib.ObjectLoad SepProp
+open Arm64 ProofLib SepProp
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr
@@ -51,18 +51,18 @@ abbrev RecordScopeP (Q : List (BitVec 8) → Prop)
   ∀ s, r.currentSession = some s → Q s.state.pqRatchetState
 
 /-- `RecordX.InScopeP` generalized from `RecordPqEmpty` to `RecordScopeP Q`. -/
-def InScopeP_Q (Q : List (BitVec 8) → Prop)
+@[expose] def InScopeP_Q (Q : List (BitVec 8) → Prop)
     (r : SessionRecord (List (BitVec 8))) : Prop :=
   RecordInScopeP r ∧ RecordScopeP Q r ∧ RecordRepr r
 
 /-- `RecordX.DeserializeScopeP` generalized from `RecordPqEmpty` to `RecordScopeP Q`. -/
-def DeserializeScopeP_Q (Q : List (BitVec 8) → Prop)
+@[expose] def DeserializeScopeP_Q (Q : List (BitVec 8) → Prop)
     (r : SessionRecord (List (BitVec 8))) : Prop :=
   InScopeP_Q Q r ∧ ∃ s, r.currentSession = some s ∧ SessionScopeP s
 
 /-- `WireEntries.RecordCanonical` generalized from `DeserializeScopeP` (`RecordPqEmpty`)
 to `DeserializeScopeP_Q Q` (`RecordScopeP Q`). -/
-def RecordCanonical_Q (Q : List (BitVec 8) → Prop)
+@[expose] def RecordCanonical_Q (Q : List (BitVec 8) → Prop)
     (stateBytes : List (BitVec 8)) (s : Session (List (BitVec 8))) : Prop :=
   stateBytes = Record.encodeRecord ⟨some s⟩ ∧
   DeserializeScopeP_Q Q ⟨some s⟩ ∧
@@ -70,7 +70,7 @@ def RecordCanonical_Q (Q : List (BitVec 8) → Prop)
 
 /-- `WireEntries.recordDeserializeOpenSpec` generalized from `RecordCanonical`
 to `RecordCanonical_Q Q`. -/
-def recordDeserializeOpenSpec_Q (Q : List (BitVec 8) → Prop) (A : RustAlloc) :
+@[expose] def recordDeserializeOpenSpec_Q (Q : List (BitVec 8) → Prop) (A : RustAlloc) :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × Session (List (BitVec 8))) where
   pre := fun (ptr, bs, out, sess) st =>
     ⌜st.readReg64 .x0 = ptr ∧ (st.readReg64 .x1).toNat = bs.length ∧

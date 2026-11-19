@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.KemFailFind
-public import LibsignalBinary.Proofs.SpqrV1.MlKemCorrectFacts
+import LibsignalBinary.Proofs.SpqrV1.MlKemCorrectFacts
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.EffSalt
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.EtMDefs
@@ -42,4 +42,4 @@ Establishes that `KemFailFind` has advantage `0` against `MlKem.ideal` and advan
 `MlKem.honestExchangeFails` vanish, reducing failure to decapsulation mismatch.
 -/
 
-@[expose] public section
+public section

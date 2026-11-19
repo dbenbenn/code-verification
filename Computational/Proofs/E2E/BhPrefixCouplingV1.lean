@@ -9,15 +9,19 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.BhKindCouplingV1
-public import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers
-public import Computational.Proofs.SpecLemmas.Composition.ModelLazyCond
-public import Computational.Proofs.E2E.ComposedPrefixHelpers
-public import Computational.Proofs.ReductionDsl.Soundness
+import Computational.Proofs.E2E.BhKindCouplingV1
+public import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Composition.ModelLazyCond -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.ComposedPrefixHelpers -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
 import Computational.Proofs.GameHop.GlobalHybrid
 import Computational.Proofs.E2E.ComposedPrefixTagSync
 import Computational.Proofs.ReductionDsl.Bridge
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhD
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhF
 
 /-!
 # Prefix-hybrid driver and `bhPrefixRed` factorization for the binary harness
@@ -29,7 +33,7 @@ driver (`bhKioImplGen`, `bhKioImplPrefix`) for lazy `DRKey` replacement, and the
 Stage-1/Stage-2 coupling invariants (`BHPrefixPlugInv`, `BHMidEval1Props`) for `bhPrefixRed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -96,12 +100,12 @@ theorem bhFinishStartSpkGen_drKey_eq_KB {S : SignalPqxdh.Setup} {ℓ : ℕ}
   unfold bhFinishStartSpkGen bhFinishStartSpkKB
   simp [hG, hrk, hck, hpqr]
 
-def bhMkKeyBitConst (b : Bool) : ModelDriverKeyBitGen := fun kr1 _ => do
+@[expose] def bhMkKeyBitConst (b : Bool) : ModelDriverKeyBitGen := fun kr1 _ => do
   let ac ← ($ᵗ BitVec 256 : ProbComp (BitVec 256))
   let dk := match kr1 with | .drKeyResp dk => dk | _ => default
   return (bhKeySOf dk ac, b)
 
-def bhMkPrefixHyb (k : ℕ) : BHDrvPrefixKeyBitGen :=
+@[expose] def bhMkPrefixHyb (k : ℕ) : BHDrvPrefixKeyBitGen :=
   fun len kr1 _ => do
     let ac ← ($ᵗ BitVec 256 : ProbComp (BitVec 256))
     let dk := match kr1 with | .drKeyResp dk => dk | _ => default
@@ -144,7 +148,7 @@ end PrefixDriver
 
 section PrefixEndpoints
 
-def BHAllInstsBit {S : SignalPqxdh.Setup} {ℓ : ℕ} (b : Bool) (σ : BHE2EDrvState S ℓ) : Prop :=
+@[expose] def BHAllInstsBit {S : SignalPqxdh.Setup} {ℓ : ℕ} (b : Bool) (σ : BHE2EDrvState S ℓ) : Prop :=
   ∀ d ∈ σ.insts, ∀ gs, d.gs = some gs → gs.b = b
 
 theorem bhAllInstsBit_empty {S : SignalPqxdh.Setup} {ℓ : ℕ} (b : Bool) :
@@ -395,10 +399,10 @@ end PrefixEndpoints
 
 section PrefixLazy
 
-def bhToDrvInst (d : BHModelInst S ℓ) : DrvInst S ℓ :=
+@[expose] def bhToDrvInst (d : BHModelInst S ℓ) : DrvInst S ℓ :=
   { sid := d.sid, hdr := d.hdr, idA := d.idA, idB := d.idB, spkCoins := d.spkCoins, gs := d.gs }
 
-def bhToDrvState (σ : BHE2EDrvState S ℓ) : DrvState S ℓ :=
+@[expose] def bhToDrvState (σ : BHE2EDrvState S ℓ) : DrvState S ℓ :=
   { insts := σ.insts.map bhToDrvInst
     prins := σ.prins
     bundles := σ.bundles.map (fun (idx, (spkB, _)) => (idx, spkB))
@@ -432,7 +436,7 @@ private theorem bhKioDrvM_run_liftM {M : Type → Type} [Monad M] [MonadLiftT Pr
     {α : Type} (mx : ProbComp α) (σ : BHE2EDrvState S ℓ) :
     (liftM mx : BHKioDrvM S ℓ M α).run σ = ((liftM mx : M α) >>= fun x => pure (x, σ)) := rfl
 
-def bhKioKeyInd {M : Type → Type} [Monad M]
+@[expose] def bhKioKeyInd {M : Type → Type} [Monad M]
     (P : SignalPqxdh.Primitives)
     (kio : (q : SignalPqxdh.KeyIndQuery S) → M SignalPqxdh.KeyIndResponse)
     (kq : SignalPqxdh.KeyIndQuery S) :
@@ -447,7 +451,7 @@ def bhKioKeyInd {M : Type → Type} [Monad M]
     modify fun σ => bhE2EMirror σ kq kr
     return kr
 
-def bhKioStartGen {M : Type → Type} [Monad M] [MonadLiftT ProbComp M]
+@[expose] def bhKioStartGen {M : Type → Type} [Monad M] [MonadLiftT ProbComp M]
     (C : Crypto) (K : LibsignalSpqrV1.MlKem)
     (kio : (q : SignalPqxdh.KeyIndQuery S) → M SignalPqxdh.KeyIndResponse)
     (mkKB : ModelDriverKeyBitGen)
@@ -464,7 +468,7 @@ def bhKioStartGen {M : Type → Type} [Monad M] [MonadLiftT ProbComp M]
     set σ'
     return idx?
 
-def bhKioSm {M : Type → Type} [Monad M] [MonadLiftT ProbComp M]
+@[expose] def bhKioSm {M : Type → Type} [Monad M] [MonadLiftT ProbComp M]
     (C : Crypto) (K : LibsignalSpqrV1.MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (i : ℕ) (sq : (SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Domain) :
@@ -474,7 +478,7 @@ def bhKioSm {M : Type → Type} [Monad M] [MonadLiftT ProbComp M]
   set σ'
   return bhUnpackSmResp sq sr
 
-def bhKioImplGen {M : Type → Type} [Monad M] [MonadLiftT ProbComp M]
+@[expose] def bhKioImplGen {M : Type → Type} [Monad M] [MonadLiftT ProbComp M]
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : LibsignalSpqrV1.MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (kio : (q : SignalPqxdh.KeyIndQuery S) → M SignalPqxdh.KeyIndResponse)
@@ -486,7 +490,7 @@ def bhKioImplGen {M : Type → Type} [Monad M] [MonadLiftT ProbComp M]
   | .inr (.inl (.inr (.startDR sid))) => bhKioStartGen C K kio mkKB sid
   | .inr (.inr ⟨i, sq⟩) => bhKioSm C K qep decT encT i sq
 
-def bhKioImplPrefix {M : Type → Type} [Monad M] [MonadLiftT ProbComp M]
+@[expose] def bhKioImplPrefix {M : Type → Type} [Monad M] [MonadLiftT ProbComp M]
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : LibsignalSpqrV1.MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (kio : (q : SignalPqxdh.KeyIndQuery S) → M SignalPqxdh.KeyIndResponse)
@@ -568,7 +572,7 @@ theorem simulateQ_bhKioImplPrefix_kioKind_run {α St : Type}
       simulateQ_bhKioImplGen_kioKind_step]
     exact bind_congr fun p => ih p.1.1 p.1.2 p.2
 
-def bhFinishStartSpkSucc {S : SignalPqxdh.Setup} {ℓ : ℕ} (C : Crypto) (K : LibsignalSpqrV1.MlKem)
+@[expose] def bhFinishStartSpkSucc {S : SignalPqxdh.Setup} {ℓ : ℕ} (C : Crypto) (K : LibsignalSpqrV1.MlKem)
     (σ : BHE2EDrvState S ℓ) (sid : SignalPqxdh.SessionId S)
     (hdr : SignalPqxdh.HandshakeHdr) (bnd : SignalPqxdh.PreKeyBundleInput)
     (uj : Fin S.N_id × Fin S.N_recv)
@@ -612,11 +616,11 @@ theorem bhUnpackSmResp_bhPackSmResp {ℓ : ℕ} {PQC : Type}
     bhUnpackSmResp q (bhPackSmResp q r) = r := by
   rcases q with (((_ | _) | _) | _) | _ <;> rfl
 
-def bhPlugExtInst {S : SignalPqxdh.Setup} {ℓ : ℕ} (gs_ext : ExtState ℓ)
+@[expose] def bhPlugExtInst {S : SignalPqxdh.Setup} {ℓ : ℕ} (gs_ext : ExtState ℓ)
     (d : BHModelInst S ℓ) : BHModelInst S ℓ :=
   match d.gs with | some _ => d | none => { d with gs := some gs_ext }
 
-def bhPlugExt {S : SignalPqxdh.Setup} {ℓ : ℕ} (gs_ext : ExtState ℓ)
+@[expose] def bhPlugExt {S : SignalPqxdh.Setup} {ℓ : ℕ} (gs_ext : ExtState ℓ)
     (σ : BHE2EDrvState S ℓ) : BHE2EDrvState S ℓ :=
   { σ with insts := σ.insts.map (bhPlugExtInst gs_ext) }
 
@@ -692,14 +696,14 @@ theorem bhE2EDrvWon_bhPlugExt {S : SignalPqxdh.Setup} {ℓ : ℕ}
     funext d; cases hgs : d.gs <;> simp [bhPlugExtInst, hgs]
   exact (congr_arg σ.insts.any hpoint).trans (list_any_or_and_const' σ.insts _ _ _)
 
-def BHAllInstsSome {S : SignalPqxdh.Setup} {ℓ : ℕ} (σ : BHE2EDrvState S ℓ) : Prop :=
+@[expose] def BHAllInstsSome {S : SignalPqxdh.Setup} {ℓ : ℕ} (σ : BHE2EDrvState S ℓ) : Prop :=
   ∀ d ∈ σ.insts, d.gs ≠ none
 
 theorem bhAllInstsSome_empty {S : SignalPqxdh.Setup} {ℓ : ℕ} :
     BHAllInstsSome ({} : BHE2EDrvState S ℓ) := by
   rintro _ ⟨⟩
 
-def BHOnlyInstKNone {S : SignalPqxdh.Setup} {ℓ : ℕ} (k : ℕ) (σ : BHE2EDrvState S ℓ) : Prop :=
+@[expose] def BHOnlyInstKNone {S : SignalPqxdh.Setup} {ℓ : ℕ} (k : ℕ) (σ : BHE2EDrvState S ℓ) : Prop :=
   ∀ i d, σ.insts[i]? = some d → d.gs = none → i = k
 
 theorem bhOnlyInstKNone_of_allInstsSome_mapIdx {S : SignalPqxdh.Setup} {ℓ : ℕ}
@@ -1079,7 +1083,7 @@ abbrev bhDefaultPrefixCtx : BHPrefixCtx :=
 
 /-! ## Wire-filtering factorization and `BHPrefixPlugInv` -/
 
-def bhFilterSmQuery {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhFilterSmQuery {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (d : BHModelInst S ℓ) (im : ModelDriverInstanceMeta S)
     (q : (SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Domain) :
     Option (SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Domain :=
@@ -1461,14 +1465,14 @@ theorem bhPrefixPlugInv_init {S : SignalPqxdh.Setup} {ℓ : ℕ}
 
 /-- Stage-1 output invariant for `bhPrefixRed`: either `.done _ σ'` has `σ'.paused = false`, or
 `.paused _ c _ σ_p cont` satisfies `BHPrefixPlugInv` and the query bound on `cont`. -/
-def BHMidStage1Props {S : SignalPqxdh.Setup} {ℓ : ℕ} (k q : ℕ) :
+@[expose] def BHMidStage1Props {S : SignalPqxdh.Setup} {ℓ : ℕ} (k q : ℕ) :
     Mid (bhTargetGameSpec S ℓ (BitVec 512)) Bool (Option ℕ) (BHE2EDrvState S ℓ) BHPrefixCtx → Prop
   | .done _ σ' => σ'.paused = false
   | .paused _ c _ σ_p cont =>
     BHPrefixPlugInv k c.idA c.idB c.spkCoins σ_p ∧
     (∀ v, (cont v).IsQueryBoundP (isGameQuery (G := bhTargetGameSpec S ℓ (BitVec 512))) q)
 
-def BHMidEval1Props {S : SignalPqxdh.Setup} {ℓ : ℕ} (k qTot : ℕ)
+@[expose] def BHMidEval1Props {S : SignalPqxdh.Setup} {ℓ : ℕ} (k qTot : ℕ)
     (o : BHPrefixCtx × Mid (bhTargetGameSpec S ℓ (BitVec 512)) Bool (Option ℕ)
       (BHE2EDrvState S ℓ) BHPrefixCtx) : Prop :=
   match o.2 with
@@ -1516,7 +1520,7 @@ theorem simulateQ_implExt_query_inr_run
       (2 + 1) qep (configRefuseEarlyBobCorr decT encT) sq').run gs_ext := by
   simp [implExt]
 
-def bhComposedPostObsPlug {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhComposedPostObsPlug {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (P : SignalPqxdh.Primitives) (b_k : Bool) :
     (Bool × BHE2EDrvState S ℓ) × ExtState ℓ → ProbComp Bool :=
   fun ⟨⟨b', σ⟩, gs_ext⟩ =>
@@ -1539,7 +1543,7 @@ theorem bhComposedPostObs_bhPlugExt_eq {S : SignalPqxdh.Setup} {ℓ : ℕ}
   have hSt : (bhPlugExt gs_ext σ').st = σ'.st := rfl
   simp [bhE2EDrvWon_bhPlugExt, hAny, hb, hSt]
 
-def bhPrefixRedPost {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhPrefixRedPost {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (P : SignalPqxdh.Primitives) (flip b' : Bool)
     (σ : BHE2EDrvState S ℓ) : ProbComp Bool :=
   if !allTestedSessionsFresh P σ.st then do

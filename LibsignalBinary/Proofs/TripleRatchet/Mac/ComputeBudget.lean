@@ -9,15 +9,72 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Hmac.MD
 import LibsignalBinary.Proofs.Hmac.OuterAux
 import LibsignalBinary.Proofs.AesCbc.Bytes -- shake: keep
-import ProofLib.SepLogic.WPp
+public import ProofLib.SepLogic.WPp
+public import Arm64.Trusted.Object.Labels
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hmac.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.Compute -- proof-setup: allow-public-import
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.Multi
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.StepsProcess
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Mallocng.Spec.Top
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
 
 /-!
 # Budget-Threaded Relocatable `<SignalMessage>::compute_mac`
@@ -26,7 +83,7 @@ Proves `[LibsignalPlacement]` `RustCliAllocBudget` contracts (`computeMacSpecAt`
 `computeMacSpec`, and `computeMacSpecX`) for `<SignalMessage>::compute_mac`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -53,7 +110,7 @@ open CryptoVerification.LibsignalTripleRatchet (
   fold_pre_compress7 fold_pre_compress8 fold_pre_memcpy_31
   fold_rejoin_31 fold_rejoin_msg_long fold_short_post fold_short_pre fold_stk_192_64
   hmacInnerInit hmacOuterInit hmacStateAt hmacWords64At
-  innerHash_len keyToBytes32_length_le_64
+  keyToBytes32_length_le_64
   lsMacCompress256Sym lsMacMemcpySym lsMacMemsetSym lsMacRustDeallocSym
   mac_ls_hook_ok_of_mem memRegion_352_152_eq memRegion_352_64_pre_outer_eq
   mkMacEnv mkMacEnv_hState_full mkMacEnv_hState_three mkMacEnv_hState_two
@@ -100,6 +157,57 @@ open LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux (
   subroutine_ok_withLsClState_of_lscl subroutine_ok_withLsClState_of_lscro
   subroutine_ok_withLsClState_of_plain toBEBytes_len_aux
 )
+open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624 lsLen lsRetAddr624_base_add)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
+
+@[local wp_norm]
+private theorem lsRetAddr624_blkPl_60 [LibsignalPlacement] (off : BitVec 64)
+    (ho : off.toNat < lsLen 60 := by decide) :
+    LsRetAddr624 ((blkPl_60).base + off) :=
+  lsRetAddr624_base_add 60 off (by decide) ho
+
+private theorem subroutine_ok_withLsRet_lscl [LibsignalPlacement] {LsClState : State → Prop}
+    {α : Type} {prog : Program} {addr : BitVec 64} {spec : Spec α}
+    (h : subroutine_ok prog addr (spec.withLsClState (LsClState := LsClState))) :
+    subroutine_ok prog addr ((withLsRet spec).withLsClState (LsClState := LsClState)) := by
+  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
+  dsimp only [Spec.withLsClState, withLsRet] at hpre
+  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
+  rcases hpre with ⟨hLs, hrest⟩
+  rw [sepConj_assoc, satisfies_pure_sepConj] at hrest
+  refine subroutine_ok.mono_outcome h x R s0 hpc hrun ?_ hsp fun _ hout => hout
+  dsimp only [Spec.withLsClState]
+  rw [sepConj_assoc, satisfies_pure_sepConj]
+  exact ⟨hLs, hrest.2⟩
+
+private theorem rewrap_compress256_lsret_lscl [LibsignalPlacement] {LsClState : State → Prop}
+    {prog : Program} {addr : BitVec 64} {F : CryptoGames.LibsignalSession.ShaCompress}
+    {pkStack : Nat} {sp_cur : BitVec 64}
+    (h : subroutine_ok prog addr
+      ({ pre := fun (x : BitVec 64 × CryptoGames.HMAC.ShaState × BitVec 64 × List (BitVec 8) × Nat) s =>
+          ⌜(LsClState s ∧ LsSymState) ∧ LsRetAddr624 (s.readReg64 (Reg.gpr 30#5)) ∧
+            s.readReg64 (Reg.gpr 0#5) = x.1 ∧
+            s.readReg64 (Reg.gpr 1#5) = x.2.2.1 ∧
+            (s.readReg64 (Reg.gpr 2#5)).toNat = x.2.2.2.2 ∧
+            x.2.2.2.1.length = 64 * x.2.2.2.2 ∧ s.sp = sp_cur⌝ ∗
+            x.1 ↦ₛ shaStateBytes x.2.1 ∗ x.2.2.1 ↦ₛ x.2.2.2.1 ∗ stackAt sp_cur pkStack
+         post := fun x s0 sf =>
+          ⌜sf.trace = s0.trace ∧ LibsignalBinary.Heap.VmPreserved s0 sf⌝ ∗
+            x.1 ↦ₛ shaStateBytes (List.foldl F x.2.1 (chunks64 x.2.2.2.1)) ∗
+            x.2.2.1 ↦ₛ x.2.2.2.1 ∗ stackAt sp_cur pkStack } :
+        Spec (BitVec 64 × CryptoGames.HMAC.ShaState × BitVec 64 × List (BitVec 8) × Nat))) :
+    subroutine_ok prog addr
+      ((withLsRet (session2Compress256PkStackBudgetSpecAt F pkStack sp_cur)).withLsClState
+        (LsClState := LsClState)) := by
+  refine subroutine_ok_outcome_intro fun ⟨stA, st, blkA, blk, n⟩ R s0 hpc hrun hpre hsp => ?_
+  simp only [Spec.withLsClState, withLsRet, session2Compress256PkStackBudgetSpecAt,
+    sepConj_assoc, satisfies_pure_sepConj] at hpre
+  rcases hpre with ⟨hLs, hlr, hregs, hmem⟩
+  refine subroutine_ok.mono_outcome h (stA, st, blkA, blk, n) R s0 hpc hrun
+    (by simpa only [sepConj_assoc, satisfies_pure_sepConj] using ⟨⟨hLs, hlr, hregs⟩, hmem⟩) hsp
+    fun _ hout => ?_
+  unfold SubroutineOutcome at hout ⊢
+  simpa only [Spec.withLsClState, withLsRet, session2Compress256PkStackBudgetSpecAt] using hout
 
 local macro "wp_sync_pool " mid:term : tactic =>
   `(tactic| (
@@ -124,7 +232,7 @@ private theorem computeMac_join952_placed_budget [LibsignalPlacement]
     (s0 : State) (hsp_align : (s0.sp &&& 15#64 == 0#64) = true)
     (hcompress : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H)
       (lsρ lsMacCompress256Sym)
-      ((session2Compress256PkStackBudgetSpecAt C.F pkStack (s0.sp - 496#64)).withLsClState
+      ((withLsRet (session2Compress256PkStackBudgetSpecAt C.F pkStack (s0.sp - 496#64))).withLsClState
         (LsClState := LsClState)))
     (ret senderA : BitVec 64) (sender : IdentityKey) (receiverA : BitVec 64) (receiver : IdentityKey)
     (keyA : BitVec 64) (macKey : BitVec 256) (msgA : BitVec 64) (message : List (BitVec 8)) (st : M.σ)
@@ -204,7 +312,7 @@ private theorem computeMac_join952_placed_budget [LibsignalPlacement]
       ((sha256Pad ((mkMacEnv sender receiver macKey message).outerMsg C.F)).drop 64).length = 64 := by
     rw [CryptoVerification.LibsignalHmac.MD.outer_block
       (mkMacEnv sender receiver macKey message) C.F hk_len]
-    simp [innerHash_len, toBEBytes_len_aux]
+    simp [toBEBytes_len_aux]
   have houter_blk_len :
       ((sha256Pad ((mkMacEnv sender receiver macKey message).outerMsg C.F)).drop 64).length = 64 * 1 :=
     houter_blk_len64
@@ -336,7 +444,7 @@ private theorem computeMac_join808_placed_budget [LibsignalPlacement]
     (s0 : State) (hsp_align : (s0.sp &&& 15#64 == 0#64) = true)
     (hcompress : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H)
       (lsρ lsMacCompress256Sym)
-      ((session2Compress256PkStackBudgetSpecAt C.F pkStack (s0.sp - 496#64)).withLsClState
+      ((withLsRet (session2Compress256PkStackBudgetSpecAt C.F pkStack (s0.sp - 496#64))).withLsClState
         (LsClState := LsClState)))
     (hmemset : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H)
       (lsρ lsMacMemsetSym)
@@ -668,7 +776,7 @@ theorem computeMac_placed_ok_of_hooks_gen [LibsignalPlacement]
       ((session2MemcpyPkStackBudgetSpecAt pkStack sp_cur).withLsClState (LsClState := LsClState)))
     (hcompress_all : ∀ sp_cur, subroutine_ok ((blkPC_60).rebase (blkPl_60).base H)
       (lsρ lsMacCompress256Sym)
-      ((session2Compress256PkStackBudgetSpecAt C.F pkStack sp_cur).withLsClState
+      ((withLsRet (session2Compress256PkStackBudgetSpecAt C.F pkStack sp_cur)).withLsClState
         (LsClState := LsClState)))
     (hdealloc : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H)
       (lsρ lsMacRustDeallocSym)
@@ -890,7 +998,7 @@ theorem computeMac_placed_ok_of_hooks_gen [LibsignalPlacement]
       sm.readReg64 (Reg.gpr 29#5) = s0.sp - 96#64 ∧
       calleeSavedVRegs sm = calleeSavedVRegs s0)
     (computeMac_join808_placed_budget pkStack C M A lim H s0 hsp_align
-      (rewrap_compress256_lscl hcompress_join808) (rewrap_memset_lscl hmemset_join808)
+      (rewrap_compress256_lsret_lscl hcompress_join808) (rewrap_memset_lscl hmemset_join808)
       ret senderA sender receiverA receiver keyA macKey msgA message st
       (fun sf hpcf hrunf hspf htrf hcsf => by
         apply SepWPp.of_sepWP_ret
@@ -1108,7 +1216,7 @@ theorem computeMac_placed_ok_of_contracts [LibsignalPlacement]
     (computeMac_placed_ok_of_hooks_gen pkStack hbound C M A lim H hnew
       (subroutine_ok_withLsClState_of_lscl hpk)
       (fun sp_cur => memcpy_pkStack_placed_budget_ok sp_cur hmemcpy)
-      (fun sp_cur => compress256_pkStack_placed_budget_ok sp_cur hcompress)
+      (fun sp_cur => subroutine_ok_withLsRet_lscl (compress256_pkStack_placed_budget_ok sp_cur hcompress))
       (subroutine_ok_withLsClState_of_plain (dealloc_pkStack_placed_budget_ok hdealloc))
       (fun sp_cur => memset_pkStack_placed_budget_ok sp_cur hmemset'))
 
@@ -1136,7 +1244,7 @@ theorem computeMac_placed_cro_ok_of_contracts [LibsignalPlacement]
     (computeMac_placed_ok_of_hooks_gen pkStack hbound C M A lim H hnew
       (subroutine_ok_withLsClState_of_lscro hpk)
       (fun sp_cur => memcpy_pkStack_placed_budget_ok sp_cur hmemcpy)
-      (fun sp_cur => compress256_pkStack_placed_budget_ok sp_cur hcompress)
+      (fun sp_cur => subroutine_ok_withLsRet_lscl (compress256_pkStack_placed_budget_ok sp_cur hcompress))
       (subroutine_ok_withLsClState_of_plain (dealloc_pkStack_placed_budget_ok hdealloc))
       (fun sp_cur => memset_pkStack_placed_budget_ok sp_cur hmemset'))
 

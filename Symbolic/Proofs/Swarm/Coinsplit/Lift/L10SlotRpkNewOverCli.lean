@@ -42,6 +42,9 @@ import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.ExplainOKPure
 import Symbolic.Proofs.Swarm.CREF.TR.G1.G1RepPtAtomsTR
 import Symbolic.Proofs.Swarm.CREF.Xpl.PrefixReach
 import Symbolic.DYBridge.DY.Trace.Basic
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
 
 /-!
 # Cut-Polymorphic Non-Promote Pre-Key `recv` Slot Refinement
@@ -51,7 +54,7 @@ Bob's non-promote `recv` branches: fresh pre-key session creation, `PreKeyNoMatc
 and nonzero-exit rejections.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -172,7 +175,7 @@ private theorem CliSlotPostCore.mono {NC₁ NC₂ : List Participant → (Nat �
 
 /-- Cut-local non-collision hypothesis: on exit `0`, `PreKeyStartCollidesOrRejectsMoves` fails
 at the call's own cut for every clean explanation of `σ_pre` on a fresh unknown base key. -/
-def RpkNewOverNC (interp' : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def RpkNewOverNC (interp' : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (accepted : List HwBytes) (c : CliCall) (code : Nat) (σ_pre : List MachineEvent)
     (who : List Participant) (ok : Nat → Bool) : Prop :=
   code = 0 → ∀ pf, parsePreKeyWire c.stdin = some pf → pf.baseKey.take 33 ∉ accepted →

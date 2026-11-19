@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedBase
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.Base
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.Base
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedRecvBase
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedStepDeliverKnown
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedStepDeliverEvicted
@@ -25,12 +25,12 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementWeak.Hon
 # Tracker-halted `deliver` step dispatcher
 
 Proves `closeByStateCTrack_deliver_step` by dispatching over the branches of `simRecvStepCGen` to
-the leaf `deliver` case lemmas.
--/
+the leaf `deliver` case lemmas.-/
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
-@[expose] public section
+public section
 
 namespace CryptoGames.LibsignalSM.Proofs.Refinement
 

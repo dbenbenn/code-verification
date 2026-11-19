@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C1
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C1 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C2
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
 import VCVio.EvalDist.Monad.Basic
@@ -23,7 +23,7 @@ Defines the all-sessions forgery indicator `authIntForgedAll` and proves that `G
 (`auth_hop_G3_8_split_g5_le_forgeAll`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +35,7 @@ open SignalPqxdh
 open _root_.Proofs.SignalPqxdh.Security
 open _root_.Proofs.SignalPqxdh.Security.FgGapDh
 
-def authRecvPtAtStage {S : Setup} (stage : AuthHybridStage) (P : Primitives)
+@[expose] def authRecvPtAtStage {S : Setup} (stage : AuthHybridStage) (P : Primitives)
     (useIdealBranch sameMsgKeys isUncorruptedHonestSender : Bool)
     (matchedSess? : Option (IdealAuthSession S))
     (deriveMessageKeys : MessageKeys) (ad aeadCt : Bytes) : Option Bytes :=
@@ -52,7 +52,7 @@ def authRecvPtAtStage {S : Setup} (stage : AuthHybridStage) (P : Primitives)
     P.aeadDec deriveMessageKeys ad aeadCt
 
 /-- All-sessions forgery indicator for the `G3.8 → split(.g3_8, .g5)` receive coupling. -/
-def authIntForgedAll {S : Setup} (P : Primitives)
+@[expose] def authIntForgedAll {S : Setup} (P : Primitives)
     (useIdealBranch sameMsgKeys isUncorruptedHonestSender : Bool)
     (matchedSess? : Option (IdealAuthSession S))
     (deriveMessageKeys : MessageKeys) (ad aeadCt : Bytes) : Bool :=
@@ -114,7 +114,7 @@ theorem authRecvPtAtStage_g3_8_eq_g5_of_forgedAll_false {S : Setup}
           Option.isSome_eq_false_iff, Option.isNone_iff_eq_none] at hNoForge ⊢
         exact hNoForge
 
-def evalAuthRecvScheduleForgeAll {S : Setup} (withForge : Bool) (stage : AuthHybridStage)
+@[expose] def evalAuthRecvScheduleForgeAll {S : Setup} (withForge : Bool) (stage : AuthHybridStage)
     (P : Primitives)
     (hst : AuthHybridState S) (recvCount : Nat) (mkSaltCache : AuthMkSaltCache S)
     (kEntry : PrincipalEntry) (bEntry : SpkBundleEntry)
@@ -224,7 +224,7 @@ theorem evalAuthRecvScheduleForgeAll_fst {S : Setup} (withForge : Bool)
       simp only [pure_bind]
       exact optRes_bind_aux _ _ _ _
 
-def pqxdhAuthForgeAllImpl (withForge : Bool) (stage : AuthHybridStage)
+@[expose] def pqxdhAuthForgeAllImpl (withForge : Bool) (stage : AuthHybridStage)
     (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthHybridStateFixed S × Bool) ProbComp) := fun q =>
   StateT.mk fun ⟨hst, forged⟩ =>
@@ -259,7 +259,7 @@ def pqxdhAuthForgeAllImpl (withForge : Bool) (stage : AuthHybridStage)
 
 /-- Experiment running `A` against `split(.g3_8, .g5, true)` and returning whether
     `authIntForgedAll` ever held. -/
-noncomputable def authIntForgeAllExp (S : Setup) (P : Primitives)
+@[expose] def authIntForgeAllExp (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := (AuthHybridStateFixed.empty S secb, false)

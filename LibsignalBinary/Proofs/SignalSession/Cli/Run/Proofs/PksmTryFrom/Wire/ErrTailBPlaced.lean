@@ -9,12 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailB
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailB
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromLoop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedA -- proof-setup: allow-public-import
+public import ProofLib.FsTrace
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W0Spec
 
 /-!
 # Relocatable `[LibsignalPlacement]` Missing-Field Entry Blocks (`+0x66c`, `+0x678`)
@@ -23,7 +27,7 @@ Re-exports `speWordsOf` packing lemmas and placed cleanup tails, and proves the 
 and `+0x66c → +0x7d0` error entry blocks on `preKeyPlacedProg H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -83,31 +87,5 @@ abbrev cleanup_558_placed_wp :=
 
 abbrev cleanup_554_placed_wp :=
   @CryptoVerification.E2E.Pqxdh.ResponderWire.cleanup_554_placed_wp
-
-/-- `+0x678 .. +0x680` (`1656` → `+0x7b8` / `1976`) on `preKeyPlacedProg H`:
-`mov x8, #-1; str x27, [x19, #8]; b +0x7b8`. -/
-theorem entry_678_to_7b8_placed_wpX [LibsignalPlacement] {H : LibsignalHooks}
-    {s0 s : State} {sp' sret w1 x27v : BitVec 64}
-    (hst : PostEpilogueStatePlaced s0 sp' s)
-    (hpc : s.pc = (blkPl_111).base + 1656#64)
-    (hrun : s.status = .Running)
-    (hx19 : s.readReg64 .x19 = sret)
-    (hx27 : s.readReg64 .x27 = x27v) :
-    SepWPp (preKeyPlacedProg H) ((blkPl_111).base + 1976#64) s
-      ((sret + 8#64) ↦₆₄ w1)
-      (fun sf Pf =>
-        PostEpilogueStatePlaced s0 sp' sf ∧
-        sf.readReg64 .x8 = errTag ∧
-        sf.readReg64 .x19 = sret ∧
-        (Pf ⊢ (sret + 8#64) ↦₆₄ x27v))
-      (tryFromQp s0) := by
-  rcases hst with ⟨hsp_eq, hsp, hcl, htr⟩
-  refine CryptoVerification.E2E.Pqxdh.ResponderWire.SepWPp.of_sepWP_end_pk
-    keepsFrozenInv_codeRoLoaded hcl ?_
-  wp_steps
-  refine SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) fun hcl1 => ?_
-  exact ⟨⟨by simp [hsp_eq, arm64_norm], by simpa [State.spAligned, arm64_norm] using hsp,
-    hcl1, by simp [htr, arm64_norm]⟩,
-    by simp [errTag, arm64_norm], by simp [hx19, arm64_norm], Entails.refl _⟩
 
 end CryptoVerification.SignalSession.Cli.RunProofs.PksmWire

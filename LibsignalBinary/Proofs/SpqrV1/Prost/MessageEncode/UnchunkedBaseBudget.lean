@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedBase
 import LibsignalBinary.Proofs.Common.SharedHelpers
 
@@ -21,7 +21,7 @@ Defines deterministic field and message allocator event transitions (`ekSentCt1R
 exact-capacity (`0`-allocation) specializations for `EkSentCt1Received::encode` and `Ct1Sent::encode`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -55,7 +55,7 @@ open LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget
 /-! ## 1. Deterministic Field & Message Allocator Event Transitions -/
 
 /-- Capacity-and-events transition of an optional `u64` varint field with a 1-byte tag (`1#32`). -/
-def u64Field1Step (cap len : Nat) (val : BitVec 64) : Nat × List AllocEvent :=
+@[expose] def u64Field1Step (cap len : Nat) (val : BitVec 64) : Nat × List AllocEvent :=
   if val == 0#64 then
     (cap, [])
   else
@@ -74,7 +74,7 @@ theorem u64Field1Step_of_spare {cap len : Nat} {val : BitVec 64}
     exact pushBytesStep_of_spare _ _ _ (by omega)
 
 /-- Capacity-and-events transition of an optional `bytes` field with a 1-byte tag (`1#32..5#32`). -/
-def optBytesField1ByteTagStep (cap len : Nat) (bs : List (BitVec 8)) : Nat × List AllocEvent :=
+@[expose] def optBytesField1ByteTagStep (cap len : Nat) (bs : List (BitVec 8)) : Nat × List AllocEvent :=
   if bs.isEmpty then
     (cap, [])
   else
@@ -105,7 +105,7 @@ theorem optBytesField1ByteTagStep_of_spare {cap len : Nat} {bs : List (BitVec 8)
   · rfl
 
 /-- Capacity-and-events transition of `Authenticator::encode` (`tag = 2#32`). -/
-def authEncodeStep (cap len : Nat) (auth : AuthenticatorPB) : Nat × List AllocEvent :=
+@[expose] def authEncodeStep (cap len : Nat) (auth : AuthenticatorPB) : Nat × List AllocEvent :=
   let hdrVlen := (encodeVarint (BitVec.ofNat 64 (authenticatorPBEncodedLen auth))).length
   let s1 := pushBytesStep (hdrVlen + 1) cap len
   let rkLen := (encodeBytesField 1#32 auth.rootKey).length
@@ -143,7 +143,7 @@ theorem authEncodeStep_of_spare {cap len : Nat} {auth : AuthenticatorPB}
   rfl
 
 /-- Capacity-and-events transition of `auth: Option<Authenticator>` (field 2). -/
-def optAuthField2Step (cap len : Nat) : Option AuthenticatorPB → Nat × List AllocEvent
+@[expose] def optAuthField2Step (cap len : Nat) : Option AuthenticatorPB → Nat × List AllocEvent
   | none => (cap, [])
   | some auth => authEncodeStep cap len auth
 
@@ -157,15 +157,15 @@ theorem optAuthField2Step_of_spare {cap len : Nat} {optAuth : Option Authenticat
     rw [hsome] at h
     exact authEncodeStep_of_spare h
 
-def ekSentCt1ReceivedPinnedToUnpinned (x : EkSentCt1ReceivedEncodePinnedGhost) :
+@[expose] def ekSentCt1ReceivedPinnedToUnpinned (x : EkSentCt1ReceivedEncodePinnedGhost) :
     EkSentCt1ReceivedEncodeGhost :=
   ⟨x.msgA, x.m, x.v, x.cap, x.ptr, x.bs⟩
 
-def ct1SentPinnedToUnpinned (x : Ct1SentEncodePinnedGhost) : Ct1SentEncodeGhost :=
+@[expose] def ct1SentPinnedToUnpinned (x : Ct1SentEncodePinnedGhost) : Ct1SentEncodeGhost :=
   ⟨x.msgA, x.m, x.v, x.cap, x.ptr, x.bs⟩
 
 /-- Deterministic `AllocEvent` list emitted by `EkSentCt1Received::encode` on `x`. -/
-def ekSentCt1ReceivedEncodeEvents (x : EkSentCt1ReceivedEncodeGhost) : List AllocEvent :=
+@[expose] def ekSentCt1ReceivedEncodeEvents (x : EkSentCt1ReceivedEncodeGhost) : List AllocEvent :=
   let innerLen := ekSentCt1ReceivedPBEncodedLen x.m
   let hdrVlen := (encodeVarint (BitVec.ofNat 64 innerLen)).length
   let s1 := pushBytesStep (hdrVlen + 1) x.cap.toNat x.bs.length
@@ -180,11 +180,11 @@ def ekSentCt1ReceivedEncodeEvents (x : EkSentCt1ReceivedEncodeGhost) : List Allo
   s1.2 ++ s2.2 ++ s3.2 ++ s4.2 ++ s5.2
 
 /-- Callee-fixed allocator event envelope of `EkSentCt1Received::encode`. -/
-def EkSentCt1ReceivedEncodeEnv (x : EkSentCt1ReceivedEncodeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def EkSentCt1ReceivedEncodeEnv (x : EkSentCt1ReceivedEncodeGhost) (evs : List AllocEvent) : Prop :=
   evs = ekSentCt1ReceivedEncodeEvents x
 
 /-- Deterministic `AllocEvent` list emitted by `Ct1Sent::encode` on `x`. -/
-def ct1SentEncodeEvents (x : Ct1SentEncodeGhost) : List AllocEvent :=
+@[expose] def ct1SentEncodeEvents (x : Ct1SentEncodeGhost) : List AllocEvent :=
   let innerLen := ct1SentPBEncodedLen x.m
   let hdrVlen := (encodeVarint (BitVec.ofNat 64 innerLen)).length
   let s1 := pushBytesStep (hdrVlen + 1) x.cap.toNat x.bs.length
@@ -201,7 +201,7 @@ def ct1SentEncodeEvents (x : Ct1SentEncodeGhost) : List AllocEvent :=
   s1.2 ++ s2.2 ++ s3.2 ++ s4.2 ++ s5.2 ++ s6.2
 
 /-- Callee-fixed allocator event envelope of `Ct1Sent::encode`. -/
-def Ct1SentEncodeEnv (x : Ct1SentEncodeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def Ct1SentEncodeEnv (x : Ct1SentEncodeGhost) (evs : List AllocEvent) : Prop :=
   evs = ct1SentEncodeEvents x
 
 theorem ekSentCt1ReceivedEncodeEvents_of_spare {x : EkSentCt1ReceivedEncodeGhost}
@@ -303,7 +303,7 @@ theorem ct1SentEncodeEvents_of_spare {x : Ct1SentEncodeGhost}
 /-! ## 2. Budget-Threaded Specifications of `encode<EkSentCt1Received>` & `encode<Ct1Sent>` -/
 
 /-- Envelope-parameterized pinned budget specification of `EkSentCt1Received::encode`. -/
-def ekSentCt1ReceivedEncodePinnedSpecOfEnv (resStack : Nat)
+@[expose] def ekSentCt1ReceivedEncodePinnedSpecOfEnv (resStack : Nat)
     (Env : EkSentCt1ReceivedEncodeGhost → List AllocEvent → Prop)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EkSentCt1ReceivedEncodePinnedGhost × M.σ) where
@@ -329,7 +329,7 @@ def ekSentCt1ReceivedEncodePinnedSpecOfEnv (resStack : Nat)
       stackAt s0.sp (unchunkedMsgEncodeStackOf resStack)
 
 /-- Envelope-parameterized unpinned budget specification of `EkSentCt1Received::encode`. -/
-def ekSentCt1ReceivedEncodeSpecOfEnv (resStack : Nat)
+@[expose] def ekSentCt1ReceivedEncodeSpecOfEnv (resStack : Nat)
     (Env : EkSentCt1ReceivedEncodeGhost → List AllocEvent → Prop)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EkSentCt1ReceivedEncodeGhost × M.σ) where
@@ -385,7 +385,7 @@ abbrev ekSentCt1ReceivedEncodeSpecX {M : AllocCostModel}
   ekSentCt1ReceivedEncodeSpecOf doReserveStackX A lim
 
 /-- Exact-capacity (`0`-allocation) pinned budget specification of `EkSentCt1Received::encode`. -/
-def ekSentCt1ReceivedEncodeExactSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def ekSentCt1ReceivedEncodeExactSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EkSentCt1ReceivedEncodePinnedGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -469,7 +469,7 @@ theorem subroutine_ok_ekSentCt1ReceivedExact_of_pinned {resStack : Nat} {prog : 
   · exact Or.inr (Or.inr hrest)
 
 /-- Envelope-parameterized pinned budget specification of `Ct1Sent::encode`. -/
-def ct1SentEncodePinnedSpecOfEnv (resStack : Nat)
+@[expose] def ct1SentEncodePinnedSpecOfEnv (resStack : Nat)
     (Env : Ct1SentEncodeGhost → List AllocEvent → Prop)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (Ct1SentEncodePinnedGhost × M.σ) where
@@ -495,7 +495,7 @@ def ct1SentEncodePinnedSpecOfEnv (resStack : Nat)
       stackAt s0.sp (unchunkedMsgEncodeStackOf resStack)
 
 /-- Envelope-parameterized unpinned budget specification of `Ct1Sent::encode`. -/
-def ct1SentEncodeSpecOfEnv (resStack : Nat)
+@[expose] def ct1SentEncodeSpecOfEnv (resStack : Nat)
     (Env : Ct1SentEncodeGhost → List AllocEvent → Prop)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (Ct1SentEncodeGhost × M.σ) where
@@ -551,7 +551,7 @@ abbrev ct1SentEncodeSpecX {M : AllocCostModel}
   ct1SentEncodeSpecOf doReserveStackX A lim
 
 /-- Exact-capacity (`0`-allocation) pinned budget specification of `Ct1Sent::encode`. -/
-def ct1SentEncodeExactSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def ct1SentEncodeExactSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (Ct1SentEncodePinnedGhost × M.σ) where
   pre := fun (x, st) s =>

@@ -9,12 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlBridge
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CoinsBridgePlaced
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlBridge -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CoinsBridgePlaced
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import VerifiedLibraries.Musl.Spec
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable Separation-Logic and Store-Kit Bridges for `encrypt`
@@ -23,7 +29,7 @@ import Arm64.Trusted.Spec.SepLogic
 bounds, and `storesAt` entry/exit framing for `signal_session_ratchet::encrypt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -49,7 +55,7 @@ open CryptoVerification
 /-! ## Relocatable CLI store kits -/
 
 /-- Relocatable `[LibsignalPlacement]` counterpart of `cliSessionStoreSpec` with placed vtable, shim, poll, and drop offsets. -/
-def cliSessionStoreSpecPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliSessionStoreSpecPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (peer : AddrGhost) (loadShimStk loadPollStk storeShimStk storePollStk : Nat) :
     SessionStoreSpec A 0#64 :=
@@ -69,7 +75,7 @@ def cliSessionStoreSpecPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRul
     storeFutDrop_ne_zero := fun _ => lsDropOffPlaced_ne_zero }
 
 /-- Relocatable `[LibsignalPlacement]` counterpart of `cliIdentityStoreSpec` with placed vtable, shim, poll, and drop offsets. -/
-def cliIdentityStoreSpecPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliIdentityStoreSpecPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (peer : AddrGhost)
     (trustShimStk trustPollStk saveShimStk savePollStk : Nat) :
     IdentityStoreSpec A 0#64 :=
@@ -87,13 +93,13 @@ def cliIdentityStoreSpecPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRu
     trustFutDrop_ne_zero := fun _ => lsDropOffPlaced_ne_zero
     saveFutDrop_ne_zero := fun _ => lsDropOffPlaced_ne_zero }
 
-noncomputable abbrev w1SessKitPlaced [LibsignalPlacement] (B : RunBudgets) (F : FsFiles)
+abbrev w1SessKitPlaced [LibsignalPlacement] (B : RunBudgets) (F : FsFiles)
     (peer : AddrGhost) : SessionStoreSpec E2E.HooksE.A0 0#64 :=
   cliSessionStoreSpecPlaced E2E.HooksE.A0 cliIo.rd F cliWrOk Slots.scopeKit peer
     SessKit.loadShimNeed (SessKit.loadPollNeed B.readFile)
     SessKit.storeShimNeed SessKit.storePollNeedX
 
-noncomputable abbrev w1IdKitPlaced [LibsignalPlacement] (B : RunBudgets) (F : FsFiles)
+abbrev w1IdKitPlaced [LibsignalPlacement] (B : RunBudgets) (F : FsFiles)
     (peer : AddrGhost) : IdentityStoreSpec E2E.HooksE.A0 0#64 :=
   cliIdentityStoreSpecPlaced E2E.HooksE.A0 cliIo.rd F cliWrOk peer
     IdKit.trustShimNeed (IdKit.trustPollNeed B.readFile)

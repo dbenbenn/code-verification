@@ -18,7 +18,7 @@ Proves that `initiateState`, `recvPrekeyState`, `pqInitModel`, and `pqRecvPrekey
 independent of the `UnreachedPqxdhPrimitives` parameter.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

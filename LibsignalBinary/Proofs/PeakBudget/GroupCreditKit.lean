@@ -9,7 +9,52 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+public import LibsignalBinary.Heap.Fine.ClientBounds
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.SepLogic.WPp
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
 
 /-!
 # Small-Allocation Group Credit Kit and Decoupled `FitsTrace`/`FitsEnv` Bridges
@@ -24,7 +69,7 @@ from cumulative small-allocation byte volume (`fineCumSmall`):
    `FitsTrace`, and `FitsEnv` bridges on `fineCostModel`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -59,26 +104,26 @@ open LibsignalBinary.Proofs.PeakBudget.SeqCreditKit (
 /-! ## 1. Scaled Group Counter and Decoupled `*OfGroups` Bounds -/
 
 /-- Scaled cumulative small-group + peak large-group counter (`FineScale = 65,536` units per group). -/
-def fineGroupsScaled (b : FineBudget) : Nat :=
+@[expose] def fineGroupsScaled (b : FineBudget) : Nat :=
   b.cumSmallGroupsS + FineScale * finePeak63Count b
 
 theorem fineGroupsScaled_init : fineGroupsScaled FineBudget.init = 0 := rfl
 
 /-- Closed-form upper bound on `fineMaxGroups b` when `(fineGroupsScaled b + FineScale - 1) / FineScale ≤ grpB`
 (`gBaseConst = 272`). -/
-def fineMaxGroupsOfGroups (grpB : Nat) : Nat :=
+@[expose] def fineMaxGroupsOfGroups (grpB : Nat) : Nat :=
   272 + grpB
 
 /-- Closed-form upper bound on `fineMaxMetaAreas b` (`1 + (7 + fineMaxGroups) / 101`) from `grpB`. -/
-def fineMaxMetaAreasOfGroups (grpB : Nat) : Nat :=
+@[expose] def fineMaxMetaAreasOfGroups (grpB : Nat) : Nat :=
   1 + (279 + grpB) / 101
 
 /-- Closed-form upper bound on `fineCostModel.maxDynIvs b` from `grpB`. -/
-def fineDynIvsOfGroups (grpB : Nat) : Nat :=
+@[expose] def fineDynIvsOfGroups (grpB : Nat) : Nat :=
   3 * fineMaxMetaAreasOfGroups grpB + 2 + fineMaxGroupsOfGroups grpB
 
 /-- Closed-form upper bound on `fineCostModel.stepReserve ev b` from `(maxReq, maxAlign, grpB)`. -/
-def fineStepReserveOfGroups (maxReq maxAlign grpB : Nat) : Nat :=
+@[expose] def fineStepReserveOfGroups (maxReq maxAlign grpB : Nat) : Nat :=
   FineStepBound maxReq maxAlign (fineMaxMetaAreasOfGroups grpB)
 
 theorem fineMaxGroupsOfGroups_mono {g₁ g₂ : Nat} (h : g₁ ≤ g₂) :
@@ -163,12 +208,12 @@ theorem withinMaxAlloc_of_fineStepBound_le_2pow48
 
 /-- Per-request `FineScale`-scaled group weight for `.alloc req` and `al ≤ 16` `.aligned al req`
 with `req ≤ MmapThresholdReq` (`131,051`). -/
-def fineSmallAllocGroupS (req : Nat) : Nat :=
+@[expose] def fineSmallAllocGroupS (req : Nat) : Nat :=
   coarseGrpWtS (sizeToClassUnits ((req + 3) / 16))
 
 /-- Per-request `FineScale`-scaled group weight for `al ≤ 16` `.realloc` into
 `newSz ≤ MmapThresholdReq` (`131,051`). -/
-def fineSmallReallocGroupS (newSz : Nat) : Nat :=
+@[expose] def fineSmallReallocGroupS (newSz : Nat) : Nat :=
   max (coarseGrpWtS (sizeToClassUnits ((newSz + 3) / 16))) FineScale
 
 /-- Companion cost-model extension tracking `FineScale`-scaled group creation independently of
@@ -306,9 +351,6 @@ instance : HasFineGroupCredit fineCostModel where
         simp only [hBig, hNotSm, ↓reduceIte]
         omega
 
-theorem groupsScaled_fineCostModel_eq (b : fineCostModel.σ) :
-    HasFineGroupCredit.groupsScaled (M := fineCostModel) b = fineGroupsScaled b := rfl
-
 theorem smallAllocGroupS_fineCostModel_eq (req : Nat) :
     HasFineGroupCredit.smallAllocGroupS fineCostModel req = fineSmallAllocGroupS req := rfl
 
@@ -375,21 +417,10 @@ theorem smallAllocGroupS_le_43464_of_le_108 {req : Nat} (h : req ≤ 108) :
   · rw [h5]; decide
   · rw [h6]; decide
 
-theorem smallAllocGroupS_le_three_scale (req : Nat) :
-    fineSmallAllocGroupS req ≤ 3 * FineScale :=
-  (coarseWt_le_cap (sizeToClassUnits ((req + 3) / 16))).2
-
-theorem smallReallocGroupS_le_three_scale (newSz : Nat) :
-    fineSmallReallocGroupS newSz ≤ 3 * FineScale := by
-  unfold fineSmallReallocGroupS FineScale
-  have hCap := (coarseWt_le_cap (sizeToClassUnits ((newSz + 3) / 16))).2
-  unfold FineScale at hCap
-  omega
-
 /-! ## 4. `NonFreeBound` and `PhaseGroupSpec` Combinators -/
 
 /-- Count of non-`.free` allocator operations in `evs`. -/
-def nonFreeCount : List AllocEvent → Nat
+@[expose] def nonFreeCount : List AllocEvent → Nat
   | [] => 0
   | .free _ _ :: tl => nonFreeCount tl
   | _ :: tl => nonFreeCount tl + 1
@@ -417,7 +448,7 @@ theorem nonFreeCount_rustReallocEvents (oldSz newSz align : Nat) :
   split <;> rfl
 
 /-- Envelope-level bound on the number of non-`.free` allocator events. -/
-def NonFreeBound (Env : List AllocEvent → Prop) (maxOps : Nat) : Prop :=
+@[expose] def NonFreeBound (Env : List AllocEvent → Prop) (maxOps : Nat) : Prop :=
   ∀ evs, Env evs → nonFreeCount evs ≤ maxOps
 
 theorem NonFreeBound.nil : NonFreeBound (· = []) 0 := by
@@ -575,13 +606,6 @@ theorem PhaseGroupSpec.iterConcat {α : Type} {M : AllocCostModel} [HasFineGroup
     have hx := hstep x List.mem_cons_self
     have htl := ih (fun y hy => hstep y (List.mem_cons_of_mem _ hy))
     simpa [IterConcatEnv] using hx.concat htl
-
-theorem PhaseGroupSpec.iterConcat_const {α : Type} {M : AllocCostModel} [HasFineGroupCredit M]
-    {Step : α → List AllocEvent → Prop} (g : Nat) (xs : List α)
-    (hstep : ∀ x ∈ xs, PhaseGroupSpec M (Step x) g) :
-    PhaseGroupSpec M (IterConcatEnv Step xs) (xs.length * g) := by
-  have h := PhaseGroupSpec.iterConcat (fun _ => g) xs hstep
-  simpa [List.sum_replicate] using h
 
 theorem stepEvents_groupsScaled_le_nonFreeCount (M : AllocCostModel) [HasFineGroupCredit M] :
     ∀ (evs : List AllocEvent) (st0 : M.σ),

@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersX
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersX -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Fetch
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyNoneX
 import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Fetch
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -59,7 +59,7 @@ structure SerializeSomeGhostX where
   sess : LibsignalSessionApi.Session (List (BitVec 8))
 
 /-- `serialize` on a record with a current session (`serializeSomeSpec` at `serializeStackX`). -/
-def serializeSomeSpecX (A : RustAlloc) : Spec SerializeSomeGhostX where
+@[expose] def serializeSomeSpecX (A : RustAlloc) : Spec SerializeSomeGhostX where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.out ∧
       (lenField 1 (encSessionMem x.G x.sess)).length < 2 ^ 32⌝ ∗
@@ -244,20 +244,6 @@ theorem lenField_one_cons_eqX {bs bs' : List (BitVec 8)} (h : bs = bs') :
   subst h
   exact (lenField_one_eq bs).symm
 
-theorem serialize_panic_at_handle_errorX {b : BitVec 64} {ext : String → Option (State → State)} :
-    (SP2Ext b ext).externAt?
-      ((SP2Ext b ext).fnAddr serializeName + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) =
-      some Rust.panicked := by
-  exact panic_at_panicSymbol_ext (b := b) (ext := ext)
-    (name := serializeName) (hname := "alloc::raw_vec::handle_error")
-    (k := num% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize"))
-    (stub := num% (ls_off% "alloc::raw_vec::handle_error"))
-    libsignalSessionCode_fnOff_serialize (by simp only [arm64_norm]) (by decide)
-    (ls_hook% "alloc::raw_vec::handle_error")
-    (by simp [Rust.isPanicSymbol])
-
-/-! ## Stack-pointer normalization tactics -/
-
 open Lean Meta Elab Tactic in
 /-- `wppin_sp_norm`: rewrite the `SepWPpIn` precondition (arg 5) with every local `_.sp = _`
 hypothesis (chains `sf_k.sp = sf_j.sp = … = s0.sp - c` left by successive calls). -/
@@ -276,208 +262,8 @@ elab "wppin_sp_norm" : tactic => do
     for i in ids do
       let _ ← tryTacticCatchRuntimeBool (evalTactic (← `(tactic| conv => arg 5; rw [$i:ident])))
 
-/-- `wppin_callc h S ghost`: refold `h : subroutine_ok _ _ <unfolded S.inImage img>` (the stepping
-tactics unfold specs in hypotheses) to `S` and call it with `wppin_call`, then normalize `sp`. -/
-macro "wppin_callc " h:ident S:term:max g:term:max : tactic =>
-  `(tactic| (change subroutine_ok _ _ $S at $h:ident; wppin_call $h $g; try wppin_sp_norm))
 
 /-! ## `Some`-branch verification on `SP2Ext` -/
-
-set_option maxHeartbeats 800000 in
-theorem serialize_some_okX {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hC : SerContractsX img A ext)
-    (hClone : SessionCloneOkX img A ext)
-    (hEV : EncodeVarintOkX img A ext)
-    (hRaw : EncodeRawOkX img A ext)
-    (hDrop : DropSessionStructureLocal1OkX img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr serializeName)
-      ((serializeSomeSpecX A).inImage img) := by
-  have hfn : libsignalSessionCode.fnOff serializeName = num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize") :=
-    libsignalSessionCode_fnOff_serialize
-  have hmemcpy := memcpy_sub_okX (img := img) (A := A) (ext := ext) hC
-  have hshim := shim_sub_okX (img := img) (A := A) (ext := ext) hC
-  have halloc := alloc_sub_okX (img := img) (A := A) (ext := ext) hC
-  have hpanic := serialize_panic_at_handle_errorX (b := img.base) (ext := ext)
-  have hclone := sessionClone_sub_okX hClone
-  have hvv := vecVecClone_sub_okX img.base ext
-  have hlen := sessionLen_sub_okX A img.base ext
-  have hev := encodeVarint_sub_okX hEV
-  have hraw := encodeRaw_sub_okX hRaw
-  have hdrop := dropLocal1_sub_okX hDrop
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) 0 196
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) 0x10c 160
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) 0x1bc 4
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) 0x2b4 48
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) 0x310 8
-  code_fetches_from CryptoVerification.libsignalSessionCode serializeBin img.base
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) 0x32c 32
-  unfold serializeSomeSpecX
-  simp only [okTagVec, memRegion_out32_stack_someX,
-    sepExists_sepConj_left, sepExists_sepConj_right]
-  wppin_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨self, out, prevPtr, G, sess⟩ := x
-  dsimp only at *
-  apply SepWPpIn.of_sepWP (mid := entry + bv% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize"))
-  refine SepWP.fold (sessionAt_unpack_head_tail A (self + 24#64) G sess) (by sep_frame) ?_
-  apply sepWP_exists_left_sepX; intro bs336_self
-  apply sepWP_pure_left_sepX; rintro ⟨hbs336_self, hcap_self, hinl_self⟩
-  have hcmn_self : (G.localIk.cap + 1#64 == 0#64) = false := cap_lt_not_noneCapX hcap_self
-  wp_steps
-  refine SepWP.fold (sessionAt_pack_head_tail A (self + 24#64) G sess hinl_self) (by sep_frame) ?_
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  wppin_callc hclone ((sessionCloneSubSpecX A).inImage img) ⟨s0.sp - 800#64, self + 24#64, G, sess⟩
-  clear hclone hpre hinl_self
-  generalize sessionStateReprAt A (self + 24#64) G sess = ssSelf
-  have heq_enc : encSessionMem w sess = encSessionMem G sess := hpost
-  apply SepWPpIn.of_sepWP (mid := entry + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize"))
-  refine SepWP.fold (sessionAt_unpack_800X A s0.sp w sess) (by sep_frame) ?_
-  apply sepWP_exists_left_sepX; intro bs336_clone
-  apply sepWP_pure_left_sepX; rintro ⟨hbs336_clone, hcap_clone, hinl_clone⟩
-  have hcmn_clone : (w.localIk.cap + 1#64 == 0#64) = false := cap_lt_not_noneCapX hcap_clone
-  wp_steps
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  rw [← hbs336_clone]
-  wppin_callc hmemcpy (memcpySubSpecX.inImage img) (s0.sp - 432#64, s0.sp - 792#64, bs336_clone)
-  apply SepWPpIn.of_sepWP (mid := entry + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize"))
-  refine SepWP.fold (repack_frame_368 s0.sp w.localIk.cap hbs336_clone) (by sep_frame) ?_
-  conv => arg 4; simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  apply SepWP.exists_left; intro w_none
-  wp_steps
-  wp_call hvv ⟨s0.sp - 800#64, prevPtr⟩
-  clear hvv
-  generalize ((self + 8#64) ↦₆₄ prevPtr) = pSelf8
-  generalize ((self + 16#64) ↦₆₄ 0#64) = pSelf16
-  wp_simp_pre [vecHeader, arm64_norm]
-  wp_steps
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  rw [← hbs336_clone]
-  wppin_callc hmemcpy (memcpySubSpecX.inImage img) (s0.sp - 768#64, s0.sp - 432#64, bs336_clone)
-  apply SepWPpIn.of_sepWP
-    (mid := entry + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize"))
-  refine SepWP.fold (sessionAt_pack_776X A s0.sp w sess hinl_clone) (by sep_frame) ?_
-  refine SepWP.fold (bytes336_to_w012 s0.sp hbs336_clone) (by sep_frame) ?_
-  apply sepWP_exists_left_sepX; intro w0
-  apply sepWP_exists_left_sepX; intro w1
-  apply sepWP_exists_left_sepX; intro w2
-  wp_steps
-  have hlen_bounds_G : (lenField 1 (encSessionMem G sess)).length < 2 ^ 32 := by
-    assumption
-  obtain ⟨hbs_lt_G, hlf_pos_G, hlf_lt63_G, hlayout_G, hv_lt62_G, hv_le_lf_G, hraw_lt_G⟩ :=
-    lenField_one_bounds hlen_bounds_G
-  obtain ⟨hbr_ls_G, hbr_tbz_G, hbr_cbz_G⟩ := lenField_one_branch_condsX hlen_bounds_G
-  have hcap_toNat_G := lenField_one_bv_toNatX hlen_bounds_G
-  have hex_pow : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  have hbs_lt_w : (encSessionMem w sess).length < 2 ^ 32 := by rw [heq_enc]; exact hbs_lt_G
-  have hlen_w : subroutine_ok (SP2Ext img.base ext)
-      (entry + bv% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encoded_len" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize"))
-      { pre := fun (_ : Unit) s =>
-          ⌜s.readReg64 Reg.x0 = s0.sp - 776#64⌝ ∗
-            sessionStateReprAt A (s0.sp - 776#64) w sess ∗ stackAt s.sp serializeSubStackX
-        post := fun _ s0' sf =>
-          ⌜sf.readReg64 Reg.x0 = BitVec.ofNat 64 (encSessionMem G sess).length ∧ sf.trace = s0'.trace⌝ ∗
-            sessionStateReprAt A (s0.sp - 776#64) w sess ∗ stackAt s0'.sp serializeSubStackX } := by
-    refine subroutine_ok_outcome_intro fun _ R' s_in hpc_in hrun_in hm_in hal_in => ?_
-    have hm_in' : s_in.mem ⊨
-        (⌜s_in.readReg64 Reg.x0 = s0.sp - 776#64 ∧ (encSessionMem w sess).length < 2 ^ 32⌝ ∗
-          sessionStateReprAt A (s0.sp - 776#64) w sess ∗ stackAt s_in.sp serializeSubStackX) ∗ R' := by
-      rw [sepConj_assoc] at hm_in ⊢
-      obtain ⟨hx0, hrest⟩ := (satisfies_pure_sepConj _ _ _).1 hm_in
-      exact (satisfies_pure_sepConj _ _ _).2 ⟨⟨hx0, hbs_lt_w⟩, hrest⟩
-    exact (hlen.to_outcome ⟨s0.sp - 776#64, w, sess⟩ R' s_in hpc_in hrun_in hm_in' hal_in).mono_outcome
-      fun sf hout => by unfold SubroutineOutcome at hout ⊢; dsimp only at hout ⊢; rwa [heq_enc] at hout
-  clear hlen
-  wp_call hlen_w ()
-  wp_steps
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  wppin_callc hshim (shimSubSpecX.inImage img) ()
-  apply SepWPpIn.of_sepWP (mid := entry + bv% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize"))
-  wp_steps
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  have hsz_pos : 0 < (lenField 1 (encSessionMem G sess)).length := by omega
-  have hsz_le : (lenField 1 (encSessionMem G sess)).length + 1 ≤ 2 ^ 63 := by omega
-  wppin_callc halloc ((rustAllocSubSpecX A).inImage img) ((lenField 1 (encSessionMem G sess)).length, 1)
-  by_cases hp0 : sf_6.readReg64 .x0 = 0#64
-  · -- allocation failure: `handle_error` panics
-    conv => arg 5; simp only [hp0, sepConj_assoc]
-    refine SepWPpIn.pure_elim fun htr_fail => ?_
-    apply SepWPpIn.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize"))
-    wp_steps
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    refine SepWPpIn.panic (by wp_norm_lhs)
-      (by simp only [wp_norm, arm64_norm, *]) fun hm => ?_
-    simpa only [sepConj_assoc] using
-      allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-  · have hp0' : sf_6.readReg64 .x0 ≠ 0 := hp0
-    have hp0_beq : (sf_6.readReg64 .x0 == 0#64) = false := beq_false_of_ne hp0
-    conv => arg 5; simp only [hp0', ↓reduceIte, sepConj_assoc]
-    refine SepWPpIn.pure_elim fun ⟨halign, htr_alloc⟩ => ?_
-    apply SepWPpIn.of_sepWP (mid := entry + bv% (2 ^ 64 + (ls_off% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]") - (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")))
-    rw [memRegion_split_init_byteX (sf_6.readReg64 .x0) hlf_pos_G hlf_lt63_G]
-    conv => arg 4; simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    apply SepWP.exists_left; intro b0
-    wp_steps
-    wp_call hlen_w ()
-    clear hlen_w
-    wp_steps
-    refine SepWP.fold (vecU8At_init_byte_432X A s0.sp (sf_6.readReg64 .x0)
-      (lenField 1 (encSessionMem G sess)).length 0x0a#8 hlf_pos_G hlen_bounds_G hp0')
-      (by dsimp only [Reg.x0]; sep_frame) ?_
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    wppin_callc hev ((encodeVarintSubSpecX A).inImage img)
-      ⟨BitVec.ofNat 64 (encSessionMem G sess).length, s0.sp - 432#64,
-        BitVec.ofNat 64 (lenField 1 (encSessionMem G sess)).length,
-        sf_6.readReg64 .x0, [0x0a#8]⟩
-    clear hev
-    apply SepWPpIn.of_sepWP (mid := entry + bv% (2 ^ 64 + (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>") - (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")))
-    wp_steps
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    have hraw_lt_w : ([0x0a#8] ++ encodeVarint (BitVec.ofNat 64 (encSessionMem G sess).length)).length +
-        (encSessionMem w sess).length < 2 ^ 32 := by rw [heq_enc]; exact hraw_lt_G
-    wppin_callc hraw ((encodeRawSubSpecX A).inImage img) ⟨s0.sp - 776#64, w, sess, s0.sp - 432#64, _, _,
-      [0x0a#8] ++ encodeVarint (BitVec.ofNat 64 (encSessionMem G sess).length)⟩
-    clear hraw
-    apply SepWPpIn.of_sepWP (mid := entry + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#1]") - (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")))
-    rw [lenField_one_cons_eqX heq_enc, vecU8At_unpack_cells_432X]
-    wp_steps
-    refine SepWP.fold (sessionAt_entails_sessionStateAt A (s0.sp - 776#64) w sess) (by sep_frame) ?_
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    wppin_callc hdrop ((dropLocal1SubSpecX A).inImage img) ⟨s0.sp - 776#64, w, sess.state⟩
-    clear hmemcpy hshim halloc hpanic hdrop heq_enc hinl_clone
-    have htr10 : sf_10.trace = s0.trace := by
-      rw [hpost_9, hpost_8, h_98, hpost_6, htr_alloc, hpost_5, hpost_4, hpost_3, hpost_2, hpost_1, h_13]
-    have hv10 : calleeSavedVRegs sf_10 = calleeSavedVRegs s0 := by
-      rw [hvregs_10, hvregs_9, hvregs_8, hvregs_7, hvregs_6, hvregs_5, hvregs_4, hvregs_3, hvregs_2, hvregs_1, hvregs]
-    apply SepWPpIn.of_sepWP_ret
-    wp_steps
-    generalize lenField 1 (encSessionMem G sess) = lfBytes
-    refine SepWP.fold (vecU8_from_out_cellsX A out _ _ lfBytes)
-      (by sep_frame) ?_
-    refine SepWP.fold (cells_12_pack s0.sp _ _ _ _ _ _ _ _ _ _ _ _) (by sep_frame) ?_
-    refine SepWP.fold (repack_stack_some_cellsX s0.sp _ _ _) (by sep_frame) ?_
-    generalize stackAt s0.sp serializeStackX = stkFinal
-    generalize vecU8 A (out + 8#64) lfBytes = vecFinal
-    generalize A.pool = poolFinal
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    refine ⟨fun hm => ?_, by simp only [wp_norm, arm64_norm], ?_⟩
-    · simp only [wp_norm, arm64_norm, htr10, pure_true, emp_sepConj]
-      have hP_eq :
-          ((stkFinal ∗ vecFinal ∗ poolFinal ∗ ssSelf ∗ pSelf8 ∗ pSelf16 ∗ (out ↦₆₄ okTagVec)) ∗ R) =
-          (pSelf8 ∗ pSelf16 ∗ ssSelf ∗ (out ↦₆₄ okTagVec) ∗ vecFinal ∗ poolFinal ∗ stkFinal ∗ R) := by
-        ac_rfl
-      dsimp only [okTagVec] at hP_eq
-      rwa [← hP_eq]
-    · rw [CalleeSavedPreserved.iff_regs]
-      simp only [wp_norm, arm64_norm, hv10, and_self]
-
-/-! ## Relocatable `[LibsignalPlacement]` `Some`-branch proof (Block `52`) -/
 
 section Placed
 

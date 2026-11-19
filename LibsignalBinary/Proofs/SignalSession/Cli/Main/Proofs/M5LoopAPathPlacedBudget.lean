@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5CallsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopAPathPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopATailPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5WorkPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5CallsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopAPathPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopATailPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5WorkPlacedBudget
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5WorkPlaced
 meta import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5WorkPlacedBudget
@@ -20,6 +20,12 @@ import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Common
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Mem
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded M5 Inner Loop A Path Builder (`M+0x8fc .. M+0x980`, Block `617`)
@@ -28,7 +34,7 @@ Budget-threaded verification of `m5_loop_a_build_path_placed` on Block `617` und
 tracking exact capacity `m5LoopAPathCap dir name` and advancing `A.pool` by `M5LoopABuildPathEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -80,18 +86,18 @@ attribute [local arm64_norm]
 
 /-- Final `String` capacity produced by `m5_loop_a_build_path_placed` (`M+0x8fc .. M+0x980`) for
 non-empty `dir`. -/
-def m5LoopAPathCap (dir name : List (BitVec 8)) : Nat :=
+@[expose] def m5LoopAPathCap (dir name : List (BitVec 8)) : Nat :=
   m5LoopATailCap (reserveCap dir.length dir.length 1) dir name
 
 /-- Deterministic allocator event list of `m5_loop_a_build_path_placed` (`M+0x8fc .. M+0x980`):
 `__rust_alloc(dir.length, 1)`, `reserve1(1)` realloc, and optional `reserve1(name.length)` realloc. -/
-def m5LoopABuildPathEvents (dir name : List (BitVec 8)) : List AllocEvent :=
+@[expose] def m5LoopABuildPathEvents (dir name : List (BitVec 8)) : List AllocEvent :=
   rustAllocEvents dir.length 1 ++
     rustReallocEvents dir.length (reserveCap dir.length dir.length 1) 1 ++
     m5LoopATailEvents (reserveCap dir.length dir.length 1) dir name
 
 /-- Allocator event envelope of `m5_loop_a_build_path_placed`. -/
-def M5LoopABuildPathEnv (dir name : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def M5LoopABuildPathEnv (dir name : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   evs = m5LoopABuildPathEvents dir name
 
 example : ∃ evs, M5LoopABuildPathEnv [0x61#8] [0x62#8] evs :=

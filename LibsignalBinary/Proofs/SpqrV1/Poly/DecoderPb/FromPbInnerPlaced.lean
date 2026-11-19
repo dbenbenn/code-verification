@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbInner
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbInner -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyDecoder>::from_pb`: Relocatable Inner `bsearchPush` Steps
@@ -20,7 +21,7 @@ Relocatable `[LibsignalPlacement]` proofs of the inner binary-search loop (`+456
 `memmove` insertion, `bsearchReplace`, and `bsearchPush` (`+320..+296`) on Block `376`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.DecoderPb
 

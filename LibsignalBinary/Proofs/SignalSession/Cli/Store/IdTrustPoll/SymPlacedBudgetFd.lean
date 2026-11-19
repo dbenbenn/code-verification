@@ -9,16 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlacedBudget
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlacedBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.RecordCodecs.RoundTrip
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.Sym
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
 
 /-!
 # `FdsGe3Closed`-Threaded Relocatable Symbolic Execution of `is_trusted_identity::{closure#0}`
@@ -28,7 +37,7 @@ Proves `withFdsGe3Closed`-threaded `cliIdTrustPollInnerSpecPlaced_fd` on Block `
 `withFdsGe3Closed` outside `withLsCodeRoLoaded` on top-level contracts).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -121,7 +130,7 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 
 /-- `FdsGe3Closed`-threaded `Dir::get` cell wrapper at `calleeStk` matching
 `withFdsGe3Closed (SpecsPlacedBudget.dirGetSpecPlaced …)`. -/
-def dirGetCellsPlacedSpec_fd {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def dirGetCellsPlacedSpec_fd {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (calleeStk : Nat) : Spec (DirGetCellsGhost × M.σ) where
@@ -199,7 +208,7 @@ theorem dirGet_cells_placed_ok_fd [LibsignalPlacement] {prog : Program} {M : All
   · dsimp only [withFdsGe3Closed, dirGetSpecPlaced, withLsCodeRoLoaded] at hq
     exact (not_satisfies_false_sepConj hq).elim
 
-def ikDecodeCellsSpecPlaced_fd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ikDecodeCellsSpecPlaced_fd [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (calleeStk : Nat) :
     Spec (IkDecodeCellsGhost × M.σ) where
   pre := fun ((bytesA, bytes, ret, ik, fsp), st) s =>
@@ -267,7 +276,7 @@ theorem ikDecode_cells_placed_ok_fd [LibsignalPlacement] {prog : Program} {M : A
   · dsimp only [withFdsGe3Closed, withVmPreserved, identityKeyDecodeRawSpec, withLsCodeRoLoaded] at hq
     exact (not_satisfies_false_sepConj hq).elim
 
-def deallocVecBufSpec_fd [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def deallocVecBufSpec_fd [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (calleeStk : Nat) : Spec (DeallocVecBufGhost × M.σ) where
   pre := fun g s =>
     ⌜FdsGe3Closed s.fs⌝ ∗ (deallocVecBufSpec A lim calleeStk).pre g s
@@ -356,7 +365,7 @@ theorem deallocVecBuf_placed_ok_fd [LibsignalPlacement] {prog : Program} {i : Na
       withLsCodeRoLoaded] at hq
     exact (not_satisfies_false_sepConj hq).elim
 
-def pkEqCellsSpecPlaced_fd {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def pkEqCellsSpecPlaced_fd {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (calleeStk : Nat) : Spec (PkEqCellsGhost × M.σ) where
   pre := fun ((p1, ik1, p2, ik2, fsp), st) s =>
     ⌜FdsGe3Closed s.fs ∧ s.readReg64 .x0 = p1 ∧ s.readReg64 .x1 = p2 ∧ s.sp = fsp⌝ ∗

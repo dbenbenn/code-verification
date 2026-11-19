@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G2
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G2 -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
 import Computational.Proofs.SignalPqxdh.Security.SigHopA
 import VCVio.EvalDist.Monad.Basic
@@ -22,7 +22,7 @@ Proves `hop_G3_5_G3_6` by coupling adjacent `authRkCutoffExp` hybrids via `authR
 bounding bad `rootRoCache` collisions across all `S.N_sess_tot` sessions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000

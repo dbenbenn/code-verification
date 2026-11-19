@@ -15,49 +15,15 @@ public import ProofLib.SepLogic.WP
 /-!
 # Function-Pointer Hoare Logic Tests
 
-Unit and regression tests for `FnPtrSpec`, `SafeFnPtrSpec`, `wp_blr_of_fnPtrSpec`,
-`wp_br_of_fnPtrSpec`, and `rodataPtr_eq_fnAddr_of_loads`.
+Unit and regression tests for `FnPtrSpec`, `SafeFnPtrSpec`, `wp_blr_of_fnPtrSpec`, and
+`wp_br_of_fnPtrSpec`.
 -/
 
 @[expose] public section
 
 namespace ProofLib.Tests.FnPtr
 
-open Arm64 ProofLib ProofLib.ProgramReflection
-
-def syntheticLinkedImage : Obj.LinkedImage :=
-  { code := List.replicate 8 0#8
-    dataOff := 0x1000
-    data := List.replicate 16 0#8
-    bss := 0
-    roData := [(0x1000, 16)]
-    gotOff := 0x1010
-    relocs := [{ off := 8, width := 8, target := 4 }]
-    symbols := [("alpha", 0), ("widget", 4), ("table", 0x1000)]
-    stubs := [] }
-
-theorem synthetic_rodata_ptr_ok {img : Obj.Image}
-    (himg : Obj.Loads syntheticLinkedImage img) :
-    rodataPtr img (0x1000 + 8) = img.fnAddr "widget" :=
-  rodataPtr_eq_fnAddr_of_loads himg (by rfl_kernel)
-
-/-- info: 'ProofLib.Tests.FnPtr.synthetic_rodata_ptr_ok' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms synthetic_rodata_ptr_ok
-
-/--
-error: (kernel) application type mismatch
-  rodataPtr_eq_fnAddr_of_loads himg (Eq.refl (checkRodataReloc syntheticLinkedImage (4096 + 8) "alpha"))
-argument has type
-  checkRodataReloc syntheticLinkedImage (4096 + 8) "alpha" = checkRodataReloc syntheticLinkedImage (4096 + 8) "alpha"
-but function has type
-  checkRodataReloc syntheticLinkedImage (4096 + 8) "alpha" = true → rodataPtr img (4096 + 8) = img.fnAddr "alpha"
--/
-#guard_msgs in
-theorem synthetic_rodata_ptr_wrong_target {img : Obj.Image}
-    (himg : Obj.Loads syntheticLinkedImage img) :
-    rodataPtr img (0x1000 + 8) = img.fnAddr "alpha" :=
-  rodataPtr_eq_fnAddr_of_loads himg (by rfl_kernel)
+open Arm64 ProofLib
 
 theorem wp_blr_and_br_smoke {prog : Program} {s : State} {spec : Spec Unit} {P : SepProp}
     {post : State → SepProp → Prop}

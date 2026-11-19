@@ -11,9 +11,9 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.PrologueBPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ProloguePlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.PrologueBPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ProloguePlacedBudget
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
@@ -21,6 +21,20 @@ import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.Fi
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPost
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrAt -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.Prologue
+import LibsignalBinary.Proofs.TripleRatchet.Prost.DropDecodeError
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.StdStartup.MemOps
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
+public import VerifiedLibraries.RustStd.Proofs.ExecSegSym
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` Empty-Body Prologue Segments
@@ -29,7 +43,7 @@ Proves `VmPreserved` and `RustCliAllocBudget M` pool-threading forms of the `+0x
 1-byte empty-body error path on `preKeyPlacedProg H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false

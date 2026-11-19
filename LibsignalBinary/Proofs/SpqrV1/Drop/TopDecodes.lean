@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Drop.Decodes
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Instruction Decode Trees and Layout Offsets for Top-Level SPQR V1 Drop Glue
@@ -22,7 +22,7 @@ Isolates `gen_fn_decodes` and `fnOff` lemmas for:
 - `core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#2]` (109 instructions)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Drop
 
@@ -41,32 +41,6 @@ abbrev dropChunkedStatesLocal1Name : String :=
 
 abbrev dropChunkedStatesLocal2Name : String :=
   "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#2]"
-
-@[simp, arm64_norm] theorem dropProtoPqRatchetState_fnOff :
-    libsignalSessionCode.fnOff dropProtoPqRatchetStateName =
-      num% (ls_off% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>") :=
-  ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>"
-
-@[simp, arm64_norm] theorem dropOptProtoInnerState_fnOff :
-    libsignalSessionCode.fnOff dropOptProtoInnerStateName =
-      num% (ls_off% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>") :=
-  ls_lemma% fnOff "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>"
-
-@[simp, arm64_norm] theorem dropChunkedStatesLocal1_fnOff :
-    libsignalSessionCode.fnOff dropChunkedStatesLocal1Name =
-      num% (ls_off% "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]") :=
-  ls_lemma% fnOff "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]"
-
-@[simp, arm64_norm] theorem dropChunkedStatesLocal2_fnOff :
-    libsignalSessionCode.fnOff dropChunkedStatesLocal2Name =
-      num% (ls_off% "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#2]") :=
-  ls_lemma% fnOff "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#2]"
-
-gen_fn_decodes libsignalSessionCode_tree spqrDropTopBin
-  ["core::ptr::drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>",
-   "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>",
-   "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]",
-   "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#2]"]
 
 /-- Niche value `-3` (`0xfffffffffffffffd`) used for `None` in `Option<pq_ratchet_state::Inner>`. -/
 abbrev none3Cap : BitVec 64 := 0xfffffffffffffffd#64

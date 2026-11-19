@@ -9,7 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemSlots
+public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemSlots -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
 
 /-!
 # Whole-`run` Binary-Kit Trace Envelope Membership
@@ -20,14 +32,13 @@ widened `W4` `recv-prekey`), bridging `RunOkPlacedBudget.RunEnv` at the binary s
 `realCliRunBinaryKitEnvOf img S X W g`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMem
 
-open Arm64.Obj (Image)
 open Arm64.Process (bytesOfString)
 open CryptoGames.LibsignalSessionApi (PreKeySignalMessage)
 open CryptoVerification (LibsignalPlacement)
@@ -72,7 +83,7 @@ open LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemSlots
 /-- Binary-kit `RunSlotEnvs` bundle at `w1BinarySessKitPlacedBudget`, `w1BinaryIdKitPlacedBudget`,
 `decBinarySessKitPlacedBudget`, `decBinaryIdKitPlacedBudget`, `SpqrSendTightCapEnv`,
 `W2RealTdEnv W.C.F W.Q.K`, and caller-supplied `InitEnv` / `DecPkEnv`. -/
-noncomputable def binaryKitRunSlotEnvs [LibsignalPlacement] {M : AllocCostModel}
+def binaryKitRunSlotEnvs [LibsignalPlacement] {M : AllocCostModel}
     (W : CliHooks) (A : RustCliAllocBudget M) (B : RunBudgets := cliRunBudgets)
     (InitEnv : InitGhost → List AllocEvent → Prop)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) : RunSlotEnvs where
@@ -91,7 +102,7 @@ noncomputable def binaryKitRunSlotEnvs [LibsignalPlacement] {M : AllocCostModel}
 discharging `W1` (`send` + wire output caps) and `W2` (`recv` whisper) automatically and taking
 `hinit3`, `hrecvP_pksm`, and `hrecvP_slot` for `W3`, `PKSM`, and `W4`. -/
 theorem runEnv_sub_realCliRunBinaryKitEnvOf_of_slots [LibsignalPlacement] {M : AllocCostModel}
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     {InitEnv : InitGhost → List AllocEvent → Prop}
     {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
@@ -137,7 +148,7 @@ reduces to `PksmCanonSliceEnv x.bytes` on canonical outer `PreKeyMessageFields`
 (e.g. `CanonicalOrW8bPksmEnv` / `CanonicalOrFallbackPksmEnv`). -/
 theorem runEnv_sub_realCliRunBinaryKitEnvOf [LibsignalPlacement] {M : AllocCostModel}
     {PksmTryFromEnv : PksmGhost → List AllocEvent → Prop}
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     {g : RunCall}
     (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)
@@ -172,7 +183,7 @@ theorem runEnv_sub_realCliRunBinaryKitEnvOf [LibsignalPlacement] {M : AllocCostM
 `CliPqxdhInputs ⟨W.C, W.Q⟩ g.i`. -/
 theorem runEnv_sub_realCliRunBinaryKitEnvOf_canonOrFallback [LibsignalPlacement] {M : AllocCostModel}
     {FallbackEnv : PksmGhost → List AllocEvent → Prop}
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     {g : RunCall}
     (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)
@@ -202,7 +213,7 @@ theorem runEnv_sub_realCliRunBinaryKitEnvOf_canonOrFallback [LibsignalPlacement]
 /-- Companion concrete whole-`run` bridge at `PksmTryFromEnv := fun x => PksmCanonSliceEnv x.bytes`
 (for callers that already lifted Block `111` via `WirePksmTightCredit.preKeyTryFrom_placed_ok_canonSlice`). -/
 theorem runEnv_sub_realCliRunBinaryKitEnvOf_canonSlice [LibsignalPlacement] {M : AllocCostModel}
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     {g : RunCall}
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c)

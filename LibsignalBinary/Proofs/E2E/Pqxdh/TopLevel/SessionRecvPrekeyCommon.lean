@@ -11,7 +11,7 @@ module
 
 public import ProofLib.SepLogic.Stack
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false

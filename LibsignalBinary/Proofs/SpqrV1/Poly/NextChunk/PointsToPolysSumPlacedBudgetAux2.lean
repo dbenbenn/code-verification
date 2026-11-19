@@ -9,16 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
-public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSumPlaced
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSumPlaced -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackLoop
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Budget-Threaded `Vec<Poly>` Deallocation
@@ -28,7 +31,7 @@ Relocatable `[LibsignalPlacement]` verification of `basisElemDeallocLoop_placed_
 `RustCliAllocBudget M`, `BudgetLimits`, and `FreeOnlyEvs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

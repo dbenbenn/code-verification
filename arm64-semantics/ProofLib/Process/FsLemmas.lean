@@ -929,11 +929,11 @@ theorem execOpenat_rdonly_cloexec {s : State} {path : String} {fd : BitVec 64}
   rw [hdfd, hflags, hf_bad, hf_m0, hf_cr, hf_ex, hf_tr, hf_ap, hf_dr, hf_cl, hcs]
   simp only [Bool.false_eq_true, Bool.false_and, ↓reduceIte]
   by_cases hemp : path.isEmpty = true
-  · simp [resolveCwdPath, hemp]
+  · simp [resolveCwdPath, hemp, halloc]
   · simp only [Bool.not_eq_true] at hemp
     have hres : resolveCwdPath AT_FDCWD_W32 path = .ok (normalizePath path) := by
       simp [resolveCwdPath, hemp, hlead, hdot]
-    rw [hres]; simp only [hemp, Bool.false_or]
+    rw [hres, halloc]; simp only [hemp, Bool.false_or]
     cases hanc : ancestorWalkErrno? s.fs path with
     | some err =>
       simp only [Option.isSome_some, Bool.or_true, ↓reduceIte]
@@ -965,7 +965,7 @@ theorem execOpenat_rdonly_cloexec {s : State} {path : String} {fd : BitVec 64}
           · simp only [Bool.not_eq_true] at htd
             have hne_segs : normalizePath path ≠ [] := by
               intro hnil; rw [hnil] at hent; cases hent
-            simp [htd, halloc, FsState.setEntry_self_of_nonEmpty hne_segs hent]
+            simp [htd, FsState.setEntry_self_of_nonEmpty hne_segs hent]
       | none =>
         cases trailingDir path <;> simp
 
@@ -1025,11 +1025,11 @@ theorem execOpenat_wronly_creat_trunc_cloexec {s : State} {path : String} {fd : 
   rw [hdfd, hflags, hf_bad, hf_m0, hf_m1, hf_cr, hf_ex, hf_tr, hf_ap, hf_dr, hf_cl, hcs]
   simp only [Bool.false_eq_true, Bool.and_false, ↓reduceIte]
   by_cases hemp : path.isEmpty = true
-  · simp [resolveCwdPath, hemp]
+  · simp [resolveCwdPath, hemp, halloc]
   · simp only [Bool.not_eq_true] at hemp
     have hres : resolveCwdPath AT_FDCWD_W32 path = .ok (normalizePath path) := by
       simp [resolveCwdPath, hemp, hlead, hdot]
-    rw [hres]; simp only [hemp, Bool.not_false, Bool.true_and]
+    rw [hres, halloc]; simp only [hemp, Bool.not_false, Bool.true_and]
     cases hsanc : strictAncestorWalkErrno? s.fs path with
     | some err =>
       have hanc : ancestorWalkErrno? s.fs path = some err := by
@@ -1070,13 +1070,13 @@ theorem execOpenat_wronly_creat_trunc_cloexec {s : State} {path : String} {fd : 
             have hne_dir : ((some .dir : Option FsEntry) != some .dir) = false := by decide
             cases hent : s.fs.getEntry (normalizePath path) with
             | none =>
-              simp [hne_none, halloc, hmode_ne, FsState.setFile]
+              simp [hne_none, hmode_ne, FsState.setFile]
             | some e =>
               cases e with
               | dir => simp [hne_dir]
               | file oldBytes =>
                 have hne_file : ((some (.file oldBytes) : Option FsEntry) != some .dir) = true := rfl
-                simp [hne_file, halloc, FsState.setFile]
+                simp [hne_file, FsState.setFile]
 
 /-! ## Syscall State Preservation -/
 

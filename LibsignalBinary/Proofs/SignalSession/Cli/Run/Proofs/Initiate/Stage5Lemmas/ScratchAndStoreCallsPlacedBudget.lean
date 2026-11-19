@@ -9,16 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.ScratchAndStoreCallsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.CallKitPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.SetUnackEpochPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SmallCalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.ScratchAndStoreCallsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.CallKitPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.SetUnackEpochPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SmallCalleesBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.HelpersPlaced
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.SessionRecordCallees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Helpers
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Seed.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.CallKitPlaced
 
 /-!
 # Budget-Threaded Stage 5 Callee Call Combinators (`[LibsignalPlacement]`)
@@ -27,7 +37,7 @@ Budget-threaded `SepWPp` call combinators for Stage 5 session and store callees 
 `initProgPlaced W` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -35,8 +45,6 @@ set_option linter.dupNamespace false
 set_option linter.unusedSimpArgs false
 set_option maxRecDepth 2000000
 set_option maxHeartbeats 400000
-
-noncomputable section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.ScratchAndStoreCallsPlacedBudget
 
@@ -106,7 +114,7 @@ attribute [-arm64_norm]
 
 /-- `VmPreserved`-strengthened contract for allocator-free `<SessionRecord>::promote_state` on empty
 archived session map (`Pqxdh.ResponderStore.promoteStateEmptySpec`). -/
-def promoteStateEmptyBudgetSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
+@[expose] def promoteStateEmptyBudgetSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
   withVmPreserved Pqxdh.ResponderStore.promoteStateEmptySpec
 
 /-! ## Typed `SepWPp` Call Combinators -/
@@ -744,4 +752,3 @@ theorem s5_call_sessStorePoll_placed [LibsignalPlacement] {M : AllocCostModel}
       (htrm.trans htr) (hfs htrm))
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.ScratchAndStoreCallsPlacedBudget
-end

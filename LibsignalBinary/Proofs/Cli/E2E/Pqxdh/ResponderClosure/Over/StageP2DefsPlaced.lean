@@ -10,11 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Defs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsPlaced
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Record.Defs
+import LibsignalBinary.Proofs.TripleRatchet.Record.RecordCodeSym
 
 /-!
 # Placed Stage P2 Over-Path Program Aliases and Callee Contracts
@@ -24,11 +27,9 @@ relocatable callee contracts for `promote_matching_session` (block 50) and `prom
 (block 47).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.OverP2
 
@@ -40,7 +41,7 @@ open CryptoVerification.LibsignalPublicApi.StoreKit
 open CryptoVerification.CliHandshake.RespClosurePlaced
 
 /-- Block 518 (`message_decrypt_prekey` handshake closure) program under `[LibsignalPlacement]`. -/
-abbrev stageP2OverProgPlaced [LibsignalPlacement] (ext : String → Option (State → State)) : Program :=
+noncomputable abbrev stageP2OverProgPlaced [LibsignalPlacement] (ext : String → Option (State → State)) : Program :=
   lsProg_518 ext
 
 /-- Block 518 entry address `(blkPl_518).base` under `[LibsignalPlacement]`. -/
@@ -80,14 +81,14 @@ open CryptoVerification.CliHandshake.RespClosurePlaced
 
 /-- Relocatable `subroutine_ok` contract for a `promote_matching_session` miss at block 50
 (`lsmpl.base 50`). -/
-def PromoteMatchingMissAtPlacedProp [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PromoteMatchingMissAtPlacedProp [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State))
     (coroPtr : BitVec 64) (g : RecordGhost) (recG : SessionGhost)
     (sess : Session (List (BitVec 8))) (msgVer : BitVec 8) (serBytes : List (BitVec 8)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 50)
     (withLsCl lsmpl (p2PromoteMatchingMissAtSpec A coroPtr g recG sess msgVer serBytes))
 
-def PromoteMatchingMissGenPlacedProp [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PromoteMatchingMissGenPlacedProp [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 50)
     (withLsCl lsmpl (p2PromoteMatchingMissGenSpec A))
@@ -129,14 +130,14 @@ theorem promoteMatchingMissAt_placed_of_gen [LibsignalPlacement] {A : RustAlloc}
 
 /-- Relocatable `withLsCl` contract for `SessionRecord::promote_state` at block 47
 (`lsmpl.base 47`). -/
-def PromoteOverAtPlacedProp [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PromoteOverAtPlacedProp [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State))
     (coroPtr : BitVec 64) (g : RecordGhost) (recG : SessionGhost)
     (sess : Session (List (BitVec 8))) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 47)
     (withLsCl lsmpl (p2PromoteOverAtSpec A coroPtr g recG sess))
 
-def PromoteOverGenPlacedProp [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PromoteOverGenPlacedProp [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 47)
     (withLsCl lsmpl (p2PromoteOverGenSpec A))
@@ -180,5 +181,4 @@ theorem promoteOverAt_placed_of_gen [LibsignalPlacement] {A : RustAlloc}
   · exact ⟨sf, hsteps, Or.inr (Or.inr (Or.inr hoom))⟩
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
-end
 

@@ -9,17 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderReceivedClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysUnsampledClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB304PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB305PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB306RPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB307PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderReceivedClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysUnsampledClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB304PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB305PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB306RPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB307PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
+import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
 import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB
 import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.BytesMergeCodeSym
@@ -28,6 +28,13 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergePart2CodeSym
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Varint.VarintCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderReceivedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysUnsampledBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
 
 /-!
 # Guarded-Tight Placed Budget Contracts for Blocks `304`–`307`
@@ -39,7 +46,7 @@ for `Chunked.KeysSampled::merge` (Block `304`: `384,723` B, `maxReq = 2,560` B, 
 and `Chunked.Ct1Acknowledged::merge` (Block `307`: `388,717` B, `maxReq = 2,560` B, `ucOps + decOps ≤ maxOps`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

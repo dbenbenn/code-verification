@@ -9,19 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CallsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CallsPlaced
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
 import ProofLib.Hoare.Safety
+public import LibsignalBinary.Proofs.SignalSession.Cli.Fs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPure
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable Call Wrappers for `KpkMarkPoll`
@@ -31,7 +38,7 @@ Provides `kpk_call_total_raw_placed` and budget-threaded `SepWPp` call wrappers 
 under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -261,53 +268,6 @@ theorem kpk_call_dirGet_fs_placed [LibsignalPlacement] {prog : Program} {M : All
       SepWPp.pure_elim fun hfsm => SepWPp.pure_elim fun hgr => ?_
     exact sepWPp_conseq (Entails.of_eq (by sep_ac_rfl))
       (hnext sm evs gr hpcm hrunm hspm hcsm hcrlm hfsm hgr)
-
-theorem kpk_call_dirGet_placed [LibsignalPlacement] {prog : Program} {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop}
-    {GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop} {getStk : Nat}
-    {callee ret_pc ret : BitVec 64}
-    (hcall : subroutine_ok prog callee (dirGetSpecPlaced rd pathOk A lim GetEnv getStk))
-    (xg : DirGetGhost) (st : M.σ) (F : SepProp)
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = callee) (hrun : s.status = .Running) (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hcrl : LibsignalCodeRoLoaded lsmpl s.mem)
-    (hx0 : s.readReg64 .x0 = xg.ret) (hx1 : s.readReg64 .x1 = xg.self)
-    (hx2 : s.readReg64 .x2 = xg.nameA) (hx3 : (s.readReg64 .x3).toNat = xg.name.length)
-    (hnlen : xg.name.length < 2 ^ 32) (hdlen : xg.dir.path.length < 2 ^ 32)
-    (hpOk : pathOk (pathOf xg.dir.path xg.name))
-    (hfit : FitsEnv M lim st (GetEnv s.fs.files xg.dir xg.name))
-    (hpre : P ⊢ (dirAt A.repAlloc xg.self xg.dir ∗ bytesAt xg.nameRo xg.nameA xg.name ∗
-      memRegion xg.ret 48 ∗ stackAt s.sp getStk ∗ A.pool lim st s) ∗ F)
-    (hnext : ∀ (sm : State) (evs : List AllocEvent) (gr : Except Unit (List (BitVec 8))),
-      sm.pc = ret_pc → sm.status = .Running →
-      sm.sp = s.sp → CalleeSavedPreserved s sm → LibsignalCodeRoLoaded lsmpl sm.mem →
-      (gr = xg.dir.get rd s.fs.files xg.name ∧ sm.trace = s.trace ∧
-        GetEnv s.fs.files xg.dir xg.name evs) →
-      SepWPp prog ret sm
-        ((getResultAt A.repAlloc xg.ret gr ∗ dirAt A.repAlloc xg.self xg.dir ∗
-          bytesAt xg.nameRo xg.nameA xg.name ∗
-          stackAt s.sp getStk ∗ A.pool lim (M.stepEvents evs st) sm) ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  refine kpk_call_total_raw_placed hcall (xg, st) F hpc hrun hsp_align hlr hcrl ?_ ?_ ?_ ?_ ?_
-  · dsimp only [dirGetSpecPlaced]
-    refine entails_withLsCodeRoLoaded_pre hcrl ?_
-    refine Entails.trans hpre ?_
-    simp only [sepConj_assoc]
-    exact Entails.pure_right ⟨hx0, hx1, hx2, hx3, hnlen, hdlen, hpOk, hfit⟩ (Entails.refl _)
-  · intro sm R' hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro code sm R' hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm R' hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm hpcm hrunm hspm hcsm hcrlm
-    simp only [dirGetSpecPlaced, withLsCodeRoLoaded, sepExists_sepConj_left, sepConj_assoc]
-    refine SepWPp.exists_elim fun evs => SepWPp.exists_elim fun gr =>
-      SepWPp.pure_elim fun hgr => ?_
-    exact sepWPp_conseq (Entails.of_eq (by sep_ac_rfl))
-      (hnext sm evs gr hpcm hrunm hspm hcsm hcrlm hgr)
 
 theorem kpk_call_dirPut_placed [LibsignalPlacement] {prog : Program} {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}

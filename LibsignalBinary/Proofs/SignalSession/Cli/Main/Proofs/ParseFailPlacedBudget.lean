@@ -10,13 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.ParseFailPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.TopBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.ParseFailPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.TopBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable Parse-Failure Composition for `main` (Block `617`)
@@ -26,7 +29,7 @@ Composes budget-threaded `main_m1`, `main_m2`, and `main_ret` placed hop contrac
 `ExitKPlaced` and `NeedLocks` corollaries).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -68,7 +71,7 @@ private theorem sepWPp_mono_post_placed {prog : Program} {ret : BitVec 64} {s : 
 
 /-- Exact `AllocEvent` envelope along `main` on inputs where `parseArgs` returns `none`
 (prior to the zero-cost `vptr` deallocation), parameterized by `M2PreDeallocEnv`. -/
-def ParseFailEnvOf (M2PreDeallocEnv : List (List (BitVec 8)) → List AllocEvent → Prop)
+@[expose] def ParseFailEnvOf (M2PreDeallocEnv : List (List (BitVec 8)) → List AllocEvent → Prop)
     (i : Inputs) (evs : List AllocEvent) : Prop :=
   if i.argv = [] then evs = []
   else SeqEnv (· = rustAllocEvents (16 * i.argv.length) 8)
@@ -184,84 +187,6 @@ theorem main_parseFail_pool_placed_of_hops [LibsignalPlacement] {CodeOk : Memory
       exact hm2 (p0 := p0) hstk hstk64 hok hne hps (hseq.seq_right rfl) hs1
         (fun s' st_r code hs' ⟨hcode, _, htr, hfs⟩ => hexit s' st_r code hs' ⟨hcode, htr, hfs⟩)
         (fun _ _ _ _ hparse _ => (nomatch hfail.symm.trans hparse)))
-
-/-- `b2MainFrameFine` (`argvAtROP`) parse-failure composition on Block `617`, projecting
-`((libcAddr + 3#64) ↦₈ 0#8) ∗ stackAt s0.sp stk ∗ anyHeap` via
-`RetPlacedBudget.main_ret_placed_needLocks_proof`. -/
-theorem main_parseFail_b2NeedLocks_of_hops [LibsignalPlacement] {CodeOk : Memory → Prop}
-    {M : AllocCostModel} {H : LibsignalHooks}
-    {M2PreDeallocEnv : List (List (BitVec 8)) → List AllocEvent → Prop}
-    {A : RustCliAllocBudget M} {libcAddr : BitVec 64} {lim : BudgetLimits} {st : M.σ}
-    {uuidParse : UuidParser} {i : Inputs} {s0 : State}
-    {stk hookStack resStack : Nat} {Statics : SepProp} {Qp : State → SepProp → Prop}
-    (hneed : ∀ (st' : M.σ) (sf : State),
-      A.pool lim st' sf ⊢ ((libcAddr + 3#64) ↦₈ 0#8) ∗ anyHeap)
-    (hm1 : ∀ {st : M.σ} {Q : State → SepProp → Prop},
-      mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk →
-      stk ≤ 2 ^ 63 →
-      AtEntryPlaced CodeOk i s0 →
-      CliInputsOk i →
-      (i.argv ≠ [] → FitsEvents M lim st (rustAllocEvents (16 * i.argv.length) 8)) →
-      ExitKPoolPlaced CodeOk H A lim s0 stk
-        (fun code s => code = 2 ∧ i.argv = [] ∧ s.trace = s0.trace ∧ s.fs = s0.fs) Q Qp →
-      (∀ (s : State) (buf : BitVec 64) (ps : List (BitVec 64 × List (BitVec 8))) (p0 : BitVec 64),
-        i.argv ≠ [] → ps.map (·.2) = i.argv.map bytesOfString →
-        AtM1EndPlaced CodeOk s0 s i.argv.length buf →
-        ProofLib.SepWPp (mProgPlaced H) (s0.readReg64 .lr) s
-          (argsBuf A.repAlloc (BitVec.ofNat 64 i.argv.length) buf ps ∗
-            argvAtROP (s0.readReg64 .x1) ((p0, bytesOfString "libsignal-cli") :: ps) ∗
-            mainSaved s0 ∗ locals (s0.sp - BitVec.ofNat 64 mainFrameSize) [] ∗
-            stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
-            A.pool lim (M.stepEvents (rustAllocEvents (16 * i.argv.length) 8) st) s ∗ Statics)
-          Q Qp (mainOom s0)) →
-      ProofLib.SepWPp (mProgPlaced H) (s0.readReg64 .lr) s0 (b2MainFrameFine A lim st stk Statics i s0)
-        Q Qp (mainOom s0))
-    (hm2 : ∀ {st1 : M.σ} {s : State} {buf p0 : BitVec 64}
-      {ps : List (BitVec 64 × List (BitVec 8))} {Q : State → SepProp → Prop},
-      mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk →
-      stk ≤ 2 ^ 63 →
-      CliInputsOk i → i.argv ≠ [] →
-      ps.map (·.2) = i.argv.map bytesOfString →
-      FitsEnv M lim st1 (M2PreDeallocEnv (i.argv.map bytesOfString)) →
-      AtM1EndPlaced CodeOk s0 s i.argv.length buf →
-      ExitKPoolPlaced CodeOk H A lim s0 stk
-        (fun code s' => code = 2 ∧ parseArgs uuidParse (i.argv.map bytesOfString) = none ∧
-          s'.trace = s0.trace ∧ s'.fs = s0.fs) Q Qp →
-      (∀ (s' : State) (st2 : M.σ) (w : CallW) (c : CallV),
-        parseArgs uuidParse (i.argv.map bytesOfString) = some c →
-        AtCallPlaced CodeOk s0 s' w i.argv.length buf →
-        ProofLib.SepWPp (mProgPlaced H) (s0.readReg64 .lr) s'
-          (callHeap A.repAlloc w c ∗ argsBuf A.repAlloc (BitVec.ofNat 64 i.argv.length) buf ps ∗
-            argvAtROP (s0.readReg64 .x1) ((p0, bytesOfString "libsignal-cli") :: ps) ∗
-            mainSaved s0 ∗ locals (s0.sp - BitVec.ofNat 64 mainFrameSize)
-              (callCellsPlaced (s0.sp - BitVec.ofNat 64 mainFrameSize) w) ∗
-            stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
-            A.pool lim st2 s' ∗ Statics)
-          Q Qp (mainOom s0)) →
-      ProofLib.SepWPp (mProgPlaced H) (s0.readReg64 .lr) s
-        (argsBuf A.repAlloc (BitVec.ofNat 64 i.argv.length) buf ps ∗
-          argvAtROP (s0.readReg64 .x1) ((p0, bytesOfString "libsignal-cli") :: ps) ∗
-          mainSaved s0 ∗ locals (s0.sp - BitVec.ofNat 64 mainFrameSize) [] ∗
-          stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
-          A.pool lim st1 s ∗ Statics)
-        Q Qp (mainOom s0))
-    (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
-    (hstk64 : stk ≤ 2 ^ 63)
-    (hs0 : AtEntryPlaced CodeOk i s0) (hok : CliInputsOk i)
-    (hfail : parseArgs uuidParse (i.argv.map bytesOfString) = none)
-    (hfit : FitsEnv M lim st (ParseFailEnvOf M2PreDeallocEnv i)) :
-    ProofLib.SepWPp (mProgPlaced H) (s0.readReg64 .lr) s0 (b2MainFrameFine A lim st stk Statics i s0)
-      (fun sf Pf => sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧
-        (sf.readReg64 .x0).setWidth 32 = BitVec.ofNat 32 2 ∧ sf.trace = s0.trace ∧
-        sf.fs = s0.fs ∧ (Pf ⊢ ((libcAddr + 3#64) ↦₈ 0#8) ∗ stackAt s0.sp stk ∗ anyHeap))
-      Qp (mainOom s0) :=
-  main_parseFail_pool_placed_of_hops (EntryFrame := b2MainFrameFine) (ArgvP := argvAtROP)
-    hm1 hm2
-    (fun {_s} {st_r} {_code} hstk_ret hs =>
-      sepWPp_mono_post_placed
-        (fun _ _ ⟨hsp, hcs, hx0, htr, hfs, _, hPf⟩ => ⟨hsp, hcs, hx0, htr, hfs, hPf⟩)
-        (main_ret_placed_needLocks_proof (st := st_r) hneed hstk_ret hs))
-    hstk hstk64 hs0 hok hfail hfit
 
 /-- `TopBudget.mainFrame` (`argvAtP`, `ExitKPlaced`) parse-failure composition on Block `617` using
 `callCellsPlaced`. -/

@@ -330,7 +330,7 @@ private theorem standardTable_find_of_nonVm_some {nr : BitVec 64} {p : BitVec 64
     simp only [suf, Syscall.signalsTable, Syscall.timeTable, Syscall.randomTable, Syscall.miscTable,
       List.mem_append, List.mem_cons, List.not_mem_nil, or_false] at hmem
     have halloc : Syscall.allocTable.find? (·.1 == p.1) = none := by
-      rcases hmem with (((h0 | h0 | h0 | h0 | h0) | h0) | h0) | (h0 | h0 | h0 | h0) <;>
+      rcases hmem with (((h0 | h0 | h0 | h0 | h0) | h0) | h0) | (h0 | h0 | h0 | h0 | h0) <;>
         (rw [congrArg Prod.fst h0]; rfl)
     rw [halloc, Option.none_or]; exact h
 
@@ -373,6 +373,13 @@ private theorem projVm_sig (s : State) (sig : BitVec 32) (sa : SigAction) :
     projVm (s.setSigAction sig sa) = projVm s := by cases s; rfl
 private theorem projVm_sas (s : State) (sas : SigAltStack) :
     projVm (s.setSigAltStack sas) = projVm s := by cases s; rfl
+private theorem projVm_sm (s : State) (m : BitVec 64) :
+    projVm (s.setSigMask m) = projVm s := by cases s; rfl
+private theorem projVm_sp (s : State) (p : BitVec 64) :
+    projVm (s.setSigPending p) = projVm s := by cases s; rfl
+private theorem projVm_ite {c : Bool} {a b : State} {x}
+    (ha : projVm a = x) (hb : projVm b = x) : projVm (if c = true then a else b) = x := by
+  cases c <;> assumption
 private theorem projVm_wb (s : State) (addr : BitVec 64) (bs : List (BitVec 8)) :
     projVm (s.setMem (s.mem.writeBytes addr bs)) = projVm s := by
   cases s; simp [projVm, State.setMem, Memory.perm_writeBytes]
@@ -419,11 +426,77 @@ private theorem projVm_sigaltstack (s : State) :
 
 private theorem projVm_rtSigaction (s : State) :
     projVm (execRtSigaction s) = projVm s := by
-  dsimp (config := { zetaHave := true }) only [execRtSigaction]
-  by_cases hact : (s.readReg64 Reg.x1 == 0#64) = true
-  · simp only [hact, ↓reduceIte, apply_ite projVm, projVm_adv, projVm_w64, projVm_st, projVm_wb, ite_self]
-  · simp only [Bool.eq_false_iff.mpr hact, Bool.false_eq_true, ↓reduceIte,
-      apply_ite projVm, projVm_adv, projVm_w64, projVm_st, projVm_wb, projVm_sig, ite_self]
+  unfold execRtSigaction
+  dsimp only
+  refine projVm_ite (by simp only [projVm_adv, projVm_w64]) <|
+    projVm_ite (by simp only [projVm_adv, projVm_w64]) <|
+    projVm_ite (projVm_st _ _) <|
+    projVm_ite (by simp only [projVm_adv, projVm_w64]) <|
+    projVm_ite (by simp only [projVm_adv, projVm_w64]) <|
+    projVm_ite (projVm_st _ _) ?_
+  have hs1 : ∀ s1 : State, projVm s1 = projVm s →
+      projVm (
+        if (s.readReg64 Reg.x2 == 0#64) = true then (s1.writeReg64 Reg.x0 0#64).advancePC
+        else if (!decide ((s.readReg64 Reg.x2).toNat + 32 ≤ 2 ^ 64) || !s1.mem.canWrite (s.readReg64 Reg.x2) 32) = true then
+          (s1.writeReg64 Reg.x0 EFAULT_RET).advancePC
+        else
+          ((s1.setMem (s1.mem.writeBytes (s.readReg64 Reg.x2) (SigAction.toBytes (s.getSigAction (s.readReg32 Reg.x0))))).writeReg64 Reg.x0 0#64).advancePC) = projVm s := by
+    intro s1 h1
+    refine projVm_ite (by rw [projVm_adv, projVm_w64, h1])
+      (projVm_ite (by rw [projVm_adv, projVm_w64, h1])
+        (by rw [projVm_adv, projVm_w64, projVm_wb, h1]))
+  apply hs1
+  exact projVm_ite rfl (projVm_ite (by rw [projVm_sp, projVm_sig]) (projVm_sig _ _ _))
+
+private theorem projVm_rtSigprocmask (s : State) :
+    projVm (execRtSigprocmask s) = projVm s := by
+  unfold execRtSigprocmask
+  dsimp only
+  refine projVm_ite (by simp only [projVm_adv, projVm_w64]) <|
+    projVm_ite (by simp only [projVm_adv, projVm_w64]) <|
+    projVm_ite (by simp only [projVm_adv, projVm_w64]) <|
+    projVm_ite (projVm_st _ _) <|
+    projVm_ite (by simp only [projVm_adv, projVm_w64]) ?_
+  have hs1 : ∀ s1 : State, projVm s1 = projVm s →
+      let s2 :=
+        if (s.readReg64 Reg.x2 == 0#64) = true then (s1.writeReg64 Reg.x0 0#64).advancePC
+        else if (!decide ((s.readReg64 Reg.x2).toNat + 8 ≤ 2 ^ 64) || !s1.mem.canWrite (s.readReg64 Reg.x2) 8) = true then
+          (s1.writeReg64 Reg.x0 EFAULT_RET).advancePC
+        else
+          ((s1.setMem (s1.mem.writeBytes (s.readReg64 Reg.x2) (leBytes64 s.sigMask))).writeReg64 Reg.x0 0#64).advancePC
+      projVm (
+        let deliverable := s2.sigPending &&& ~~~s2.sigMask
+        if (deliverable == 0#64) = true then s2
+        else if (deliverable == SIGABRT_MASK) = true then
+          let s3 := s2.setSigPending (s2.sigPending &&& ~~~SIGABRT_MASK)
+          let disp := (s3.getSigAction LINUX_SIGABRT).handler
+          if (disp == SIG_DFL) = true then s3.setStatus (.Signaled 6#7)
+          else if (disp == SIG_IGN) = true then s3
+          else s3.setStatus (.Exception "unmodeled signal handler delivery")
+        else s2.setStatus (.Exception "unmodeled pending signal delivery")) = projVm s := by
+    intro s1 h1
+    have hs2 : ∀ s2 : State, projVm s2 = projVm s →
+        projVm (
+          let deliverable := s2.sigPending &&& ~~~s2.sigMask
+          if (deliverable == 0#64) = true then s2
+          else if (deliverable == SIGABRT_MASK) = true then
+            let s3 := s2.setSigPending (s2.sigPending &&& ~~~SIGABRT_MASK)
+            let disp := (s3.getSigAction LINUX_SIGABRT).handler
+            if (disp == SIG_DFL) = true then s3.setStatus (.Signaled 6#7)
+            else if (disp == SIG_IGN) = true then s3
+            else s3.setStatus (.Exception "unmodeled signal handler delivery")
+          else s2.setStatus (.Exception "unmodeled pending signal delivery")) = projVm s := by
+      intro s2 h2
+      dsimp only
+      refine projVm_ite h2 (projVm_ite ?_ (by rw [projVm_st, h2]))
+      refine projVm_ite (by rw [projVm_st, projVm_sp, h2])
+        (projVm_ite (by rw [projVm_sp, h2]) (by rw [projVm_st, projVm_sp, h2]))
+    apply hs2
+    refine projVm_ite (by rw [projVm_adv, projVm_w64, h1])
+      (projVm_ite (by rw [projVm_adv, projVm_w64, h1])
+        (by rw [projVm_adv, projVm_w64, projVm_wb, h1]))
+  apply hs1
+  exact projVm_ite rfl (projVm_sm _ _)
 
 set_option linter.unusedSimpArgs false in
 private theorem nonVmHandler_preserves {nr : BitVec 64} {fn : State → State}
@@ -433,7 +506,7 @@ private theorem nonVmHandler_preserves {nr : BitVec 64} {fn : State → State}
   simp only [nonVmSyscallTable, Syscall.stdioTable, Syscall.fileIoOnlyTable, Syscall.pollTable,
     Syscall.signalsTable, Syscall.timeTable, Syscall.randomTable, Syscall.miscTable,
     List.mem_append, List.mem_cons, List.not_mem_nil, or_false] at hmem
-  rcases hmem with ((((((h | h | h | h | h | h) | (h | h | h | h | h | h | h)) | h) | (h | h | h | h | h)) | h) | h) | (h | h | h | h) <;>
+  rcases hmem with ((((((h | h | h | h | h | h) | (h | h | h | h | h | h | h)) | h) | (h | h | h | h | h)) | h) | h) | (h | h | h | h | h) <;>
     injection h with _ hfn <;> subst hfn
   · exact projVm_readCommon s false
   · exact projVm_write s
@@ -460,7 +533,7 @@ private theorem nonVmHandler_preserves {nr : BitVec 64} {fn : State → State}
     | none =>
       cases readCString s.mem (s.readReg64 Reg.x1) with
       | trap _ => exact projVm_st s _
-      | errno _ => simp only [projVm_adv, projVm_w64]
+      | errno _ => cases s.fs.allocFd <;> simp only [projVm_adv, projVm_w64]
       | ok _ => exact h_verdict _
   · dsimp (config := { zetaHave := true }) only [execClose]
     cases s.fs.fds (BitVec.zeroExtend 64 (s.readReg32 Reg.x0)) with
@@ -506,20 +579,22 @@ private theorem nonVmHandler_preserves {nr : BitVec 64} {fn : State → State}
         simp only [apply_ite projVm, projVm_adv, projVm_w64, projVm_st, projVm_wb, ite_self]
   · exact projVm_ppoll s
   · dsimp (config := { zetaHave := true }) only [execTkill]
-    simp only [apply_ite projVm, projVm_adv, projVm_w64, projVm_st, ite_self]
+    simp only [apply_ite projVm, projVm_adv, projVm_w64, projVm_st, projVm_sp, ite_self]
   · dsimp (config := { zetaHave := true }) only [execTgkill]
-    simp only [apply_ite projVm, projVm_adv, projVm_w64, projVm_st, ite_self]
+    simp only [apply_ite projVm, projVm_adv, projVm_w64, projVm_st, projVm_sp, ite_self]
   · exact projVm_sigaltstack s
   · exact projVm_rtSigaction s
-  · dsimp (config := { zetaHave := true }) only [execRtSigprocmask]
-    simp only [apply_ite projVm, projVm_adv, projVm_w64, projVm_st, projVm_wb, ite_self]
+  · exact projVm_rtSigprocmask s
   · dsimp (config := { zetaHave := true }) only [execClockGettime]
     simp only [apply_ite projVm, projVm_adv, projVm_w64, projVm_or, projVm_st, projVm_wb, ite_self]
   · dsimp (config := { zetaHave := true }) only [execGetrandom]
-    simp only [apply_ite projVm, projVm_adv, projVm_w64, projVm_or, projVm_wb, ite_self]
+    simp only [apply_ite projVm, projVm_adv, projVm_w64, projVm_or, projVm_st, projVm_wb, ite_self]
   · dsimp only [execSetTidAddress]; simp only [projVm_adv, projVm_w64]
+  · dsimp (config := { zetaHave := true }) only [execFutex]
+    simp only [apply_ite projVm, projVm_adv, projVm_w64, projVm_st, ite_self]
   · dsimp (config := { zetaHave := true }) only [execSchedGetaffinity]
-    simp only [apply_ite projVm, projVm_adv, projVm_w64, projVm_st, projVm_wb, ite_self]
+    cases s.oracle.schedGetaffinity s.oracleIdx <;>
+      simp only [apply_ite projVm, projVm_adv, projVm_w64, projVm_or, projVm_st, projVm_wb, ite_self]
   · dsimp only [execGetpid]; simp only [projVm_adv, projVm_w64]
   · dsimp only [execGetpid]; simp only [projVm_adv, projVm_w64]
 

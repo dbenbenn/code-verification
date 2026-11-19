@@ -10,14 +10,25 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Auth.FromPbBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
+public import LibsignalBinary.Proofs.SpqrV1.Auth.FromPbBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1b
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1 -- proof-setup: allow-public-import
+public import VerifiedLibraries.Musl.Spec
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Variant 0 (`KeysUnsampled`) Envelopes and Dispatch Combiner
@@ -26,7 +37,7 @@ Allocator event envelopes for `InnerState.keysUnsampled`, `StatesFromPbEnv` subs
 and the generic tagged-variant dispatch combiner in Block `333`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -82,7 +93,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-- Allocation-only event envelope for Variant 0 (`KeysUnsampled`) of `<States>::from_pb`:
     `[]` on the `uc = none` and `auth = none` error paths, and `AuthFromPbEnv auth` on
     `uc = some { auth := some auth, .. }`. -/
-def KeysUnsampledFromPbAllocEnv (s : CryptoVerification.LibsignalSpqrV1.V1State.Chunked.KeysUnsampled)
+@[expose] def KeysUnsampledFromPbAllocEnv (s : CryptoVerification.LibsignalSpqrV1.V1State.Chunked.KeysUnsampled)
     (evs : List AllocEvent) : Prop :=
   match s.uc with
   | none => evs = []
@@ -93,7 +104,7 @@ def KeysUnsampledFromPbAllocEnv (s : CryptoVerification.LibsignalSpqrV1.V1State.
 
 /-- Complete allocator event envelope for Variant 0 (`KeysUnsampled`) of `<States>::from_pb`,
     including trailing `FreeOnlyEvs` drops of the input `ProtoAuthenticator` buffers. -/
-def KeysUnsampledFromPbEnv (s : CryptoVerification.LibsignalSpqrV1.V1State.Chunked.KeysUnsampled)
+@[expose] def KeysUnsampledFromPbEnv (s : CryptoVerification.LibsignalSpqrV1.V1State.Chunked.KeysUnsampled)
     (evs : List AllocEvent) : Prop :=
   match s.uc with
   | none => evs = []
@@ -215,7 +226,7 @@ theorem fitsEnv_alloc_of_statesFromPbEnv
 
 /-! ## Local Deallocation & Sequencing Helpers -/
 
-def deallocFreeOnlySpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def deallocFreeOnlySpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BitVec 64 × Nat × Nat × M.σ) where
   pre := (rustCliDeallocBudgetSpec M A lim).pre
   post := fun (_, size, align, st) s0 sf =>
@@ -281,7 +292,7 @@ theorem sepWP_evs_dealloc {prog : Program} {target : BitVec 64}
 
 /-- Canonical budget-threaded post-dispatch `SepWPp` obligation at offset `off` in Block `333`
     for a `V1State.InnerState` variant `inner` under envelope `Env`. -/
-def StatesFromPbVariantStepPlaced [LibsignalPlacement]
+@[expose] def StatesFromPbVariantStepPlaced [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (ext : String → Option (State → State))
     (inner : CryptoVerification.LibsignalSpqrV1.V1State.InnerState) (off : BitVec 64)

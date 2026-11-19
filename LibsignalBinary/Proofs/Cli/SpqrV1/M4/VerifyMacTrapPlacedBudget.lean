@@ -11,19 +11,20 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlaced
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMac
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMacBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMacBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlaced
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMac
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMacBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMacBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym433
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefs
+import LibsignalBinary.Proofs.Common.SharedHelpers
 
 /-!
 # Budget-Threaded Segment 7 (`VerifyMac`) on CLI Block `433`
@@ -32,7 +33,7 @@ Proves budget-threaded (`RustCliAllocBudget M`) `S7SeamPlaced` (`VerifyMacStateP
 `AesDecryptStatePlaced` / `ErrTailStatePlaced`) on CLI Block `433` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

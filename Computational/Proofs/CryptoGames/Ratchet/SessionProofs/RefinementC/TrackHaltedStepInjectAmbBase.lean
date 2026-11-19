@@ -27,7 +27,7 @@ together with the unambiguous new-chain case `closeByStateCTrack_inject_newChain
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace CryptoGames.LibsignalSM.Proofs.Refinement
 

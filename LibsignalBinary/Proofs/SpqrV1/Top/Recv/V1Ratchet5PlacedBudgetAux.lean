@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part6
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet5
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet5Placed
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part6 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet5
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet5Placed
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
@@ -31,6 +31,9 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet1
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
 
 /-!
 # Budget-Threaded Relocatable V1 `Ok` Result & Drop Epilogue (`+2820 -> ret`)
@@ -39,7 +42,7 @@ Stack relocation, `recvResultExactKeyAt` folding, and budget-threaded drop/retur
 (`+2820..+2916 -> +876 -> +1040`) for `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -91,6 +94,7 @@ open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FreeOnlyEvs RustCliAllocBudget VmPreserved
    rustCliDeallocBudgetSpec rustDeallocEvents)
 open LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget (dropProtoPqRatchetStatePlacedSpec)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag (recvResultExactKeyDispAt)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
   (SpqrRecvPlacedContracts SpqrRecvPlacedContractsOfEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
@@ -317,8 +321,8 @@ private theorem recv_ok_some_foldX_v1 (A : RustAlloc) (ret : BitVec 64)
       ((ret + 40#64) ↦₆₄ BitVec.ofNat 64 rawKey.length) ∗
       vecU8Buf A cap_st ptr_st stBytes ∗
       vecU8Buf A cap_rk ptr_rk rawKey ⊢
-    recvResultExactKeyAt A ret (.ok (stBytes, some rawKey)) := by
-  dsimp only [recvResultExactKeyAt, optKeyBytesAt]
+    recvResultExactKeyDispAt A ret (.ok (stBytes, some rawKey)) := by
+  dsimp only [recvResultExactKeyDispAt, recvResultExactKeyAt, optKeyBytesAt]
   have hst := vecU8_of_header_buf_v1 A ret cap_st ptr_st stBytes
   have hrk := vecU8_of_header_buf_v1 A (ret + 24#64) cap_rk ptr_rk rawKey
   simp only [BitVec.add_assoc, BitVec.reduceAdd] at hrk
@@ -346,8 +350,8 @@ private theorem recv_ok_none_foldX_v1 (A : RustAlloc) (ret : BitVec 64)
       ((ret + 24#64) ↦₆₄ 0xFFFFFFFFFFFFFFFF#64) ∗
       ((ret + 32#64) ↦₆₄ r4) ∗ ((ret + 40#64) ↦₆₄ r5) ∗
       vecU8Buf A cap_st ptr_st stBytes ⊢
-    recvResultExactKeyAt A ret (.ok (stBytes, none)) := by
-  dsimp only [recvResultExactKeyAt, optKeyBytesAt, noneCap]
+    recvResultExactKeyDispAt A ret (.ok (stBytes, none)) := by
+  dsimp only [recvResultExactKeyDispAt, recvResultExactKeyAt, optKeyBytesAt, noneCap]
   simp only [BitVec.add_assoc, BitVec.reduceAdd]
   have hst := vecU8_of_header_buf_v1 A ret cap_st ptr_st stBytes
   have h16 : ((ret + 32#64) ↦₆₄ r4) ∗ ((ret + 40#64) ↦₆₄ r5) ⊢ memRegion (ret + 32#64) 16 := by
@@ -612,7 +616,7 @@ theorem step_v1_drop_newPb_and_vn_2884_placed_ofEnv {MC : AllocCostModel} {F : S
     (hx26 : s.readReg64 .x26 = 0#64)
     (hP : P =
       spqrRecvRoPlacedAt ∗ st.at A.repAlloc ∗ msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs0 st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       memRegion (s0.sp - 4992#64) 352 ∗
@@ -742,7 +746,7 @@ theorem step_v1_drop_newPb_and_vn_2884_placed {MC : AllocCostModel} {F : ShaComp
     (hx26 : s.readReg64 .x26 = 0#64)
     (hP : P =
       spqrRecvRoPlacedAt ∗ st.at A.repAlloc ∗ msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs0 st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       memRegion (s0.sp - 4992#64) 352 ∗
@@ -853,7 +857,7 @@ theorem step_v1_ok_epilogue_2820_to_ret_placed_ofEnv {MC : AllocCostModel}
       refine seq_vm_lscl hcl (mid := (blkPl_329).base + 2884#64)
         (P_mid :=
           spqrRecvRoPlacedAt ∗ st.at A.repAlloc ∗ msg.at A.repAlloc ∗
-          recvResultExactKeyAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) ∗
+          recvResultExactKeyDispAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) ∗
           A.pool lim (MC.stepEvents evs0 st_cost) s ∗
           stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
           memRegion (s0.sp - 4992#64) 352 ∗
@@ -897,7 +901,7 @@ theorem step_v1_ok_epilogue_2820_to_ret_placed_ofEnv {MC : AllocCostModel}
           A.live ptr_rk cap_rk.toNat 1 ∗ memRegion ptr_rk cap_rk.toNat ∗
           stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
           spqrRecvRoPlacedAt ∗ st.at A.repAlloc ∗ msg.at A.repAlloc ∗
-          recvResultExactKeyAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) ∗
+          recvResultExactKeyDispAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) ∗
           A.pool lim (MC.stepEvents evs0 st_cost) s ∗
           memRegion (s0.sp - 4992#64) 352 ∗
           ((s0.sp - 4640#64) ↦₆₄ w0) ∗ ((s0.sp - 4632#64) ↦₆₄ w1) ∗
@@ -973,7 +977,7 @@ theorem step_v1_ok_epilogue_2820_to_ret_placed_ofEnv {MC : AllocCostModel}
     refine seq_vm_lscl hcl (mid := (blkPl_329).base + 2884#64)
       (P_mid :=
         spqrRecvRoPlacedAt ∗ st.at A.repAlloc ∗ msg.at A.repAlloc ∗
-        recvResultExactKeyAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) ∗
+        recvResultExactKeyDispAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) ∗
         A.pool lim (MC.stepEvents evs0 st_cost) s ∗
         stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
         memRegion (s0.sp - 4992#64) 352 ∗

@@ -9,16 +9,18 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.QuietTransferPure
-public import Symbolic.Proofs.RngG.R3ModelInv
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BinPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BobKyberNonePure
-public import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.QuietTransferPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.RngG.R3ModelInv -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BinPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BobKyberNonePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.OooRpkPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.Tie.BlockReadPure
 import Symbolic.Proofs.Swarm.CREF.TROpen
 import Symbolic.Proofs.Swarm.TRREF.EncodeRecordPqInj
+public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- proof-setup: allow-public-import
+import Symbolic.Proofs.SpecLemmas.Model.PQXDH.StateMachine
 
 /-!
 # Post-Move Record State, Receiver-Chain Inclusion, and Record Encoding on Session Promotion
@@ -28,7 +30,7 @@ Establishes post-move `PureTRRecordStateInv` and `RoleSnapshots` helpers, receiv
 identities (`recordBytes_of_promAcceptOut` and `prom_sm_recordBytes`) for session promotion.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

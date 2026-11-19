@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.CanonRep
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.CanonRep -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.Bytes.AttackerKnowledge
 import DY.ALaCarte.Basic
@@ -25,7 +25,7 @@ import Symbolic.Specifications.Model.EquationalTheory.SymEnc
 import Symbolic.Specifications.Model.EquationalTheory.Trunc
 import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
 import Symbolic.Specifications.Model.EquationalTheory.X25519
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.CaseSplit
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.CaseSplit -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.TripleRatchet.WireCovered
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.TrWireMsg
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Trunc
@@ -47,7 +47,7 @@ message seed is attacker-known, and `skippedVar_of_fresh_dhPk` ruling out a non-
 `dhPk` representation with the same normalized X25519 base as an installed variant ratchet key.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

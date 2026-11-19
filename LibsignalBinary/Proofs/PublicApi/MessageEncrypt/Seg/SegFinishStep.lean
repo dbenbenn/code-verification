@@ -9,16 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.Common
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.Common -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
-import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFinishFetch
+import LibsignalBinary.Specifications.LibsignalPublicApi
+import ProofLib.ProgramReflection.SortedFresh
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailDropRecordSteps
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailFreePrevSessions
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailWriteResult
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Hooks
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Stepping and Result-Relocation Helpers for `segFinish_ok`
@@ -27,7 +29,7 @@ Basic-block `SepWP` stepping lemmas for `+0xe88..+0xf9c` and separation-logic re
 `apiEncResultAt A (sp + 0x370#64) (.ok m)` into `ResStaged`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.SegFinish
 
@@ -49,257 +51,11 @@ set_option maxHeartbeats 400000
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
-macro "messageEncryptFinish_fetches " b:term:max H:term:max hfn:ident k0:num len:num : tactic =>
-  `(tactic| messageEncrypt_code_fetches_from CryptoVerification.libsignalSessionCode segFinishBin $b $H
-    $hfn 0x3cbd8 $k0 $len)
-
-/-! ## Stepping Lemmas (`+0xe88..+0xf9c`) -/
-
-set_option maxHeartbeats 800000 in
-theorem finish_stage_sepWP
-    {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    {s : State} {sp cap w0 w1 w2 w3 : BitVec 64} {b469 : BitVec 8}
-    {bws dws : List (BitVec 64)}
-    (hbws : bws.length = 27) (hdws : dws.length = 27)
-    (hcap : cap.toNat < 2 ^ 63)
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encryptWithStoresName + 0xe88#64)
-    (hrun : s.status = .Running)
-    (hsp_al : s.spAligned = true)
-    (hsp : s.sp = sp)
-    (hx26 : s.readReg64 .x26 = sp + 0x9d0#64) :
-    SepWP (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr encryptWithStoresName + 0xef0#64) s
-      (((sp + 0x128#64) ↦₆₄ cap) ∗
-        words64At (sp + 0x370#64) [w0, w1, w2, w3] ∗
-        words64At (sp + 0x390#64) bws ∗
-        ((sp + 0x469#64) ↦₈ b469) ∗
-        words64At (sp + 0x9d0#64) dws)
-      (fun sf P_f =>
-        sf.sp = sp ∧ sf.spAligned = true ∧ sf.trace = s.trace ∧ sf.symtab = s.symtab ∧
-        sf.readReg64 .x19 = s.readReg64 .x19 ∧
-        sf.readReg64 .x21 = w2 ∧
-        sf.readReg64 .x22 = w0 ∧
-        sf.readReg64 .x23 = w3 ∧
-        sf.readReg64 .x26 = sp + 0x9d0#64 ∧
-        sf.readReg64 .x27 = w1 ∧
-        sf.readReg64 .x28 = s.readReg64 .x28 ∧
-        sf.readReg64 .x29 = s.readReg64 .x29 ∧
-        sf.readReg64 .x30 = s.readReg64 .x30 ∧
-        calleeSavedVRegs sf = calleeSavedVRegs s ∧
-        P_f = (((sp + 0x128#64) ↦₆₄ cap) ∗
-          words64At (sp + 0x370#64) [w0, w1, w2, w3] ∗
-          words64At (sp + 0x390#64) bws ∗
-          ((sp + 0x469#64) ↦₈ 0#8) ∗
-          words64At (sp + 0x9d0#64) bws)) := by
-  subst hsp
-  have hfn := libsignalSessionCode_fnOff_0x3cbd8
-  have hne : (cap + 1#64 == 0#64) = false := cap_add_one_beq_zero_eq_false hcap
-  have hne' : cap + 1#64 ≠ 0#64 := cap_add_one_ne_zero hcap
-  messageEncryptFinish_fetches b (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 3720 104
-  generalize_entry (tripleRatchetProgAt b C ctl abs).fnAddr encryptWithStoresName = entry
-  examples_hide_fetches
-  rw [words64At_27 (s.sp + 0x390#64) hbws,
-      words64At_27 (s.sp + 0x9d0#64) hdws]
-  simp only [words64At, sepConj_emp, BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-  wp_steps
-  apply SepWP.done (by rfl) (by exact hrun)
-  refine ⟨rfl, hsp_al, rfl, rfl, rfl, rfl, rfl, rfl, hx26, rfl, rfl, rfl, rfl, rfl, ?_⟩
-  rw [words64At_27 (s.sp + 0x9d0#64) hbws]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd]
-
-theorem finish_dropSs_sepWP
-    {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    {s : State} {sp : BitVec 64} {G : SessionGhost} {st : SessionState (List (BitVec 8))}
-    (hdrop : FromRecordCallees.DropSessionStructureLocal2Ok b C A ctl abs)
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encryptWithStoresName + 0xef0#64)
-    (hrun : s.status = .Running)
-    (hsp_al : s.spAligned = true)
-    (hsp : s.sp = sp) :
-    SepWP (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr encryptWithStoresName + 0xef8#64) s
-      (((sp + 0x50#64) ↦₆₄ (sp + 0x128#64)) ∗ sessionStateAt A (sp + 0x128#64) G st ∗
-        A.pool ∗ stackAt sp FromRecordCallees.dropSessionStructureLocal2Stack)
-      (fun sf P_f =>
-        sf.sp = sp ∧ sf.spAligned = true ∧ sf.trace = s.trace ∧
-        sf.readReg64 .x19 = s.readReg64 .x19 ∧
-        sf.readReg64 .x21 = s.readReg64 .x21 ∧
-        sf.readReg64 .x22 = s.readReg64 .x22 ∧
-        sf.readReg64 .x23 = s.readReg64 .x23 ∧
-        sf.readReg64 .x26 = s.readReg64 .x26 ∧
-        sf.readReg64 .x27 = s.readReg64 .x27 ∧
-        sf.readReg64 .x28 = s.readReg64 .x28 ∧
-        sf.readReg64 .x29 = s.readReg64 .x29 ∧
-        calleeSavedVRegs sf = calleeSavedVRegs s ∧
-        P_f = (((sp + 0x50#64) ↦₆₄ (sp + 0x128#64)) ∗ memRegion (sp + 0x128#64) 0x158 ∗
-          A.pool ∗ stackAt sp FromRecordCallees.dropSessionStructureLocal2Stack)) := by
-  subst hsp
-  have hfn := libsignalSessionCode_fnOff_0x3cbd8
-  have hdrop' := dropSs_ok_at b C A ctl abs hdrop
-  messageEncryptFinish_fetches b (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 3824 8
-  generalize_entry (tripleRatchetProgAt b C ctl abs).fnAddr encryptWithStoresName = entry
-  examples_hide_fetches
-  wp_steps
-  refine sepWP_call_dropSs (sp := s.sp) (entry + 3832#64) hdrop' rfl
-    (F := (s.sp + 80#64) ↦₆₄ (s.sp + 296#64))
-    (by ac_rfl)
-    rfl (by dsimp only [State.setPC, State.writeReg64, State.pc]; bv_omega)
-    hrun hsp_al rfl ?_
-  intro sf hpc_sf hrun_sf hsp_sf hcs_sf htr_sf
-  obtain ⟨hx19_sf, _, hx21_sf, hx22_sf, hx23_sf, _, _, hx26_sf, hx27_sf, hx28_sf, hx29_sf, hvregs_sf⟩ := hcs_sf
-  dsimp only [State.setPC, State.writeReg64, State.sp, State.trace] at hsp_sf htr_sf
-  simp only [State.readReg64_setPC, State.readReg64_writeReg64, Reg.fp, Reg.gpr.injEq,
-    reduceCtorEq, BitVec.reduceEq, or_self, ite_false] at hx19_sf hx21_sf hx22_sf hx23_sf hx26_sf hx27_sf hx28_sf hx29_sf
-  have hsp_al_sf : sf.spAligned = true := by
-    unfold State.spAligned at hsp_al ⊢
-    rw [hsp_sf]; exact hsp_al
-  apply SepWP.done hpc_sf hrun_sf
-  refine ⟨hsp_sf, hsp_al_sf, htr_sf, hx19_sf, hx21_sf, hx22_sf, hx23_sf, hx26_sf,
-    hx27_sf, hx28_sf, hx29_sf, hvregs_sf, ?_⟩
-  ac_rfl
-
-theorem finish_prev_zero_sepWP
-    {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    {s : State} {sp prevPtr : BitVec 64}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encryptWithStoresName + 0xef8#64)
-    (hrun : s.status = .Running)
-    (hsp_al : s.spAligned = true)
-    (hsp : s.sp = sp) :
-    SepWP (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr encryptWithStoresName + 0xf58#64) s
-      (((sp + 0x110#64) ↦₆₄ 0#64) ∗ ((sp + 0x118#64) ↦₆₄ prevPtr) ∗ ((sp + 0x120#64) ↦₆₄ 0#64))
-      (fun sf P_f =>
-        sf.sp = sp ∧ sf.spAligned = true ∧ sf.trace = s.trace ∧ sf.symtab = s.symtab ∧
-        sf.readReg64 .x19 = s.readReg64 .x19 ∧
-        sf.readReg64 .x21 = s.readReg64 .x21 ∧
-        sf.readReg64 .x22 = s.readReg64 .x22 ∧
-        sf.readReg64 .x23 = s.readReg64 .x23 ∧
-        sf.readReg64 .x26 = s.readReg64 .x26 ∧
-        sf.readReg64 .x27 = s.readReg64 .x27 ∧
-        sf.readReg64 .x28 = s.readReg64 .x28 ∧
-        sf.readReg64 .x29 = s.readReg64 .x29 ∧
-        calleeSavedVRegs sf = calleeSavedVRegs s ∧
-        P_f = (((sp + 0x110#64) ↦₆₄ 0#64) ∗ ((sp + 0x118#64) ↦₆₄ prevPtr) ∗ ((sp + 0x120#64) ↦₆₄ 0#64))) := by
-  subst hsp
-  have hfn := libsignalSessionCode_fnOff_0x3cbd8
-  messageEncryptFinish_fetches b (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 3832 8
-  messageEncryptFinish_fetches b (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 3900 28
-  generalize_entry (tripleRatchetProgAt b C ctl abs).fnAddr encryptWithStoresName = entry
-  examples_hide_fetches
-  wp_steps
-  apply SepWP.done (by rfl) (by exact hrun)
-  exact ⟨rfl, hsp_al, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
-
-theorem finish_prev_nz_sepWP
-    {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    {s : State} {sp prevCap prevPtr : BitVec 64}
-    (hA : AllocHooks A abs)
-    (hcap_nz : prevCap ≠ 0#64)
-    (hcap_lt : prevCap.toNat * 24 < 2 ^ 63)
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encryptWithStoresName + 0xef8#64)
-    (hrun : s.status = .Running)
-    (hsp_al : s.spAligned = true)
-    (hsp : s.sp = sp) :
-    SepWP (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr encryptWithStoresName + 0xf58#64) s
-      (((sp + 0x110#64) ↦₆₄ prevCap) ∗ ((sp + 0x118#64) ↦₆₄ prevPtr) ∗ ((sp + 0x120#64) ↦₆₄ 0#64) ∗
-       A.pool ∗ A.live prevPtr (prevCap.toNat * 24) 8 ∗ memRegion prevPtr (prevCap.toNat * 24) ∗
-       stackAt sp allocHookStack)
-      (fun sf P_f =>
-        sf.sp = sp ∧ sf.spAligned = true ∧ sf.trace = s.trace ∧
-        sf.readReg64 .x19 = s.readReg64 .x19 ∧
-        sf.readReg64 .x21 = s.readReg64 .x21 ∧
-        sf.readReg64 .x22 = s.readReg64 .x22 ∧
-        sf.readReg64 .x23 = s.readReg64 .x23 ∧
-        sf.readReg64 .x26 = s.readReg64 .x26 ∧
-        sf.readReg64 .x27 = s.readReg64 .x27 ∧
-        sf.readReg64 .x28 = s.readReg64 .x28 ∧
-        sf.readReg64 .x29 = s.readReg64 .x29 ∧
-        calleeSavedVRegs sf = calleeSavedVRegs s ∧
-        P_f = (((sp + 0x110#64) ↦₆₄ prevCap) ∗ ((sp + 0x118#64) ↦₆₄ prevPtr) ∗
-          ((sp + 0x120#64) ↦₆₄ 0#64) ∗ A.pool ∗ stackAt sp allocHookStack)) := by
-  subst hsp
-  have hfn := libsignalSessionCode_fnOff_0x3cbd8
-  have hdealloc := dealloc_ok_at b C A ctl abs hA encryptWithStoresName (num% (ls_off% "__rustc::__rust_dealloc" - 0x3cbd8)) rfl
-  have hmul24 := mul24_shift_toNat hcap_lt
-  messageEncryptFinish_fetches b (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 3832 8
-  messageEncryptFinish_fetches b (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 3900 28
-  generalize_entry (tripleRatchetProgAt b C ctl abs).fnAddr encryptWithStoresName = entry
-  examples_hide_fetches
-  wp_steps
-  refine sepWP_call_dealloc (sp := s.sp) (entry + 3928#64) hdealloc rfl
-    (F := ((s.sp + 272#64) ↦₆₄ prevCap) ∗ ((s.sp + 280#64) ↦₆₄ prevPtr) ∗ ((s.sp + 288#64) ↦₆₄ 0#64))
-    (by ac_rfl)
-    rfl hmul24 rfl rfl hrun hsp_al rfl ?_
-  intro sf hpc_sf hrun_sf hsp_sf hcs_sf htr_sf
-  obtain ⟨hx19_sf, _, hx21_sf, hx22_sf, hx23_sf, _, _, hx26_sf, hx27_sf, hx28_sf, hx29_sf, hvregs_sf⟩ := hcs_sf
-  dsimp only [State.setPC, State.writeReg64, State.sp, State.trace] at hsp_sf htr_sf
-  simp only [State.readReg64_setPC, State.readReg64_writeReg64, Reg.fp, Reg.gpr.injEq,
-    reduceCtorEq, BitVec.reduceEq, or_self, ite_false] at hx19_sf hx21_sf hx22_sf hx23_sf hx26_sf hx27_sf hx28_sf hx29_sf
-  have hsp_al_sf : sf.spAligned = true := by
-    unfold State.spAligned at hsp_al ⊢
-    rw [hsp_sf]; exact hsp_al
-  apply SepWP.done hpc_sf hrun_sf
-  refine ⟨hsp_sf, hsp_al_sf, htr_sf, hx19_sf, hx21_sf, hx22_sf, hx23_sf, hx26_sf,
-    hx27_sf, hx28_sf, hx29_sf, hvregs_sf, ?_⟩
-  ac_rfl
-
-set_option maxHeartbeats 800000 in
-theorem finish_copyAtF58_sepWP
-    {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {sp w0 : BitVec 64}
-    {bws dws : List (BitVec 64)} {s : State}
-    (hbws : bws.length = 27) (hdws : dws.length = 27)
-    (hw0_ne : (w0 + 2#64 == 0#64) = false)
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encryptWithStoresName + 0xf58#64)
-    (hrun : s.status = .Running)
-    (hsp_al : s.spAligned = true)
-    (hsp : s.sp = sp)
-    (hx22 : s.readReg64 .x22 = w0)
-    (hx26 : s.readReg64 .x26 = sp + 0x9d0#64)
-    (hx28 : s.readReg64 .x28 = sp + 0x4a0#64) :
-    SepWP (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr encryptWithStoresName + 0x5f8#64) s
-      (words64At (sp + 0x9d0#64) bws ∗ words64At (sp + 0x4a0#64) dws)
-      (fun sf P_f =>
-        sf.sp = sp ∧
-        sf.spAligned = true ∧
-        sf.trace = s.trace ∧
-        sf.symtab = s.symtab ∧
-        sf.readReg64 .x29 = s.readReg64 .x29 ∧
-        sf.readReg64 .x19 = s.readReg64 .x19 ∧
-        sf.readReg64 .x28 = sp + 0x4a0#64 ∧
-        sf.readReg64 .x22 = w0 ∧
-        sf.readReg64 .x27 = s.readReg64 .x27 ∧
-        sf.readReg64 .x21 = s.readReg64 .x21 ∧
-        sf.readReg64 .x23 = s.readReg64 .x23 ∧
-        calleeSavedVRegs sf = calleeSavedVRegs s ∧
-        P_f = (words64At (sp + 0x9d0#64) bws ∗ words64At (sp + 0x4a0#64) bws)) := by
-  subst hsp
-  have hfn := libsignalSessionCode_fnOff_0x3cbd8
-  have hw0_ne' : w0 + 2#64 ≠ 0#64 := beq_eq_false_iff_ne.mp hw0_ne
-  messageEncryptFinish_fetches b (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 3928 72
-  generalize_entry (tripleRatchetProgAt b C ctl abs).fnAddr encryptWithStoresName = entry
-  examples_hide_fetches
-  rw [words64At_27 (s.sp + 0x9d0#64) hbws,
-      words64At_27 (s.sp + 0x4a0#64) hdws]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-  wp_steps
-  apply SepWP.done (by rfl) (by exact hrun)
-  refine ⟨rfl, hsp_al, rfl, rfl, rfl, rfl, hx28, hx22, rfl, rfl, rfl, rfl, ?_⟩
-  rw [words64At_27 (s.sp + 0x4a0#64) hbws]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd]
-
-/-! ## Relocation of `apiEncResultAt` to `ResStaged` -/
-
-def RelocBytes (f : BitVec 64 → BitVec 64) (n : Nat) (F : List (BitVec 8) → SepProp)
+@[expose] def RelocBytes (f : BitVec 64 → BitVec 64) (n : Nat) (F : List (BitVec 8) → SepProp)
     (b : BitVec 64) : SepProp :=
   ∃∗ bs : List (BitVec 8), ⌜bs.length = n⌝ ∗ (f b ↦ₛ bs) ∗ F bs
 
-def Reloc (f : BitVec 64 → BitVec 64) (n : Nat) (P : BitVec 64 → SepProp) : Prop :=
+@[expose] def Reloc (f : BitVec 64 → BitVec 64) (n : Nat) (P : BitVec 64 → SepProp) : Prop :=
   ∃ F : List (BitVec 8) → SepProp, ∀ b, (P b ⊢ RelocBytes f n F b) ∧ (RelocBytes f n F b ⊢ P b)
 
 namespace Reloc
@@ -408,7 +164,7 @@ theorem sep {f g : BitVec 64 → BitVec 64} {n m : Nat} {P Q : BitVec 64 → Sep
       (Entails.sepExists_right (bs.drop n)
         (Entails.pure_right (by rw [List.length_drop]; omega) (Entails.refl _)))
 
-def vecU8Tail (A : RustAlloc) (a cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Tail (A : RustAlloc) (a cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ((a + 8#64) ↦₆₄ ptr) ∗ ((a + 16#64) ↦₆₄ BitVec.ofNat 64 bs.length) ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
@@ -453,7 +209,7 @@ theorem vec32R (f : BitVec 64 → BitVec 64) (v : List.Vector (BitVec 8) 32) :
   have h := bytes f v.toList
   rwa [List.Vector.toList_length] at h
 
-def signalMessageTailAt (A : RustAlloc) (g : SignalMessageGhost) (a : BitVec 64)
+@[expose] def signalMessageTailAt (A : RustAlloc) (g : SignalMessageGhost) (a : BitVec 64)
     (m : SignalMessage) : SepProp :=
   ⌜macLength + 1 ≤ m.serialized.length ∧ m.serialized.length < 2 ^ 40 ∧
     m.ciphertext.length < 2 ^ 40 ∧ m.pqRatchet.length < 2 ^ 40 ∧
@@ -511,7 +267,7 @@ theorem optKyberAtR (A : RustAlloc) (f : BitVec 64 → BitVec 64) (ptr : BitVec 
     exact sep (boxU8AtR A f ptr k.ciphertext)
       (sep (pt32 (fun b => f b + 0x10#64) k.preKeyId) (region (fun b => f b + 0x14#64) 4))
 
-def preKeyMsgTailAt (A : RustAlloc) (g : PreKeyMsgGhost) (a : BitVec 64)
+@[expose] def preKeyMsgTailAt (A : RustAlloc) (g : PreKeyMsgGhost) (a : BitVec 64)
     (m : PreKeySignalMessage) : SepProp :=
   signalMessageTailAt A g.msg a m.message ∗ optU32At (a + 0x78#64) m.preKeyId ∗
     boxU8At A (a + 0x80#64) g.serPtr m.serialized ∗ optKyberAt A (a + 0x90#64) g.kyberPtr m.kyberPayload ∗

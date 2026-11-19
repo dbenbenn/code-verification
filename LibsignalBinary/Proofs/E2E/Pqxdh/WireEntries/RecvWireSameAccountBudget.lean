@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccount
+public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccount -- proof-setup: allow-public-import
 
 /-!
 # `VmPreserved`-Augmented `<IdentityKey>::is_same_account` Specifications
@@ -20,7 +20,7 @@ Augments `isSameAccountDistinctRawSpec` and `isSameAccountDistinctSpec` (Block `
 zero-allocation `<IdentityKey>::is_same_account` call.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,12 +33,12 @@ open CryptoVerification.LibsignalTripleRatchetRepr (UuidParser)
 open CryptoVerification.E2E.Pqxdh.WireEntries
   (IsSameAccountDistinctRawGhost IsSameAccountDistinctGhost)
 
-def isSameAccountDistinctRawSpec (parse : UuidParser) : Spec IsSameAccountDistinctRawGhost :=
+@[expose] def isSameAccountDistinctRawSpec (parse : UuidParser) : Spec IsSameAccountDistinctRawGhost :=
   withVmPreserved (CryptoVerification.E2E.Pqxdh.WireEntries.isSameAccountDistinctRawSpec parse)
 
 /-- `VmPreserved`-augmented `isSameAccountDistinctSpec` (callers with `A : RustCliAllocBudget M`
     instantiate `A` at `A.repAlloc`). -/
-def isSameAccountDistinctSpec (A : RustAlloc) (parse : UuidParser) :
+@[expose] def isSameAccountDistinctSpec (A : RustAlloc) (parse : UuidParser) :
     Spec IsSameAccountDistinctGhost :=
   withVmPreserved (CryptoVerification.E2E.Pqxdh.WireEntries.isSameAccountDistinctSpec A parse)
 

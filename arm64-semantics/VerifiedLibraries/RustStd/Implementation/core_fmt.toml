@@ -1,0 +1,36 @@
+# Translation configuration for unmodified Rust 1.98.1 `core::fmt` formatting and `Display`
+# routines (`Formatter::{write_str, pad, pad_integral}`, `<str as Display>::fmt`,
+# `<&str as Display>::fmt`, `<{u8, u32, u64, usize} as Display>::fmt`, and 200-byte
+# `DEC_DIGITS_LUT` `.rodata`) from the pinned `aarch64-unknown-linux-musl` sysroot
+# (`libcore-89491010f55f6617.rlib`,
+# SHA-256 3397f27434f891334ee2e29352a2fbab8de590e93b496379ee8bc1ab4b17cca9).
+
+obj_name = "coreFmt"
+namespace_prefix = "VerifiedLibraries.RustStd"
+obj_file = "RustStd/Generated/CoreFmtObj.lean"
+title = "Rust 1.98.1 `core::fmt` `Formatter` & `Display` (`aarch64-unknown-linux-musl` prebuilt `libcore.rlib`)"
+hashed_inputs = [
+    "build.sh",
+]
+license_header = [
+    "Copyright (c) The Rust Project Contributors.",
+    "Licensed under the Apache License, Version 2.0 or the MIT license (Rust 1.98.1 aarch64-unknown-linux-musl sysroot).",
+]
+
+build_script = "build.sh"
+c_objects = ["build/rust_core_fmt.o"]
+
+[placed]
+placed_only = true
+multi = true
+exports = [
+    "<core::fmt::Formatter>::write_str",
+    "<core::fmt::Formatter>::pad",
+    "<core::fmt::Formatter>::pad_integral",
+    "<str as core::fmt::Display>::fmt",
+    "<&str as core::fmt::Display>::fmt",
+    "<u8 as core::fmt::Display>::fmt",
+    "<u32 as core::fmt::Display>::fmt",
+    "<u64 as core::fmt::Display>::fmt",
+    "<usize as core::fmt::Display>::fmt",
+]

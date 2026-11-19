@@ -9,23 +9,28 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionObj -- shake: keep
-public import LibsignalBinary.Specifications.LibsignalTripleRatchetProst
-public meta import LibsignalBinary.Specifications.LibsignalProtoCodec -- shake: keep
-public meta import LibsignalBinary.Specifications.LibsignalTripleRatchetProst -- shake: keep
+public import Std.Data.HashMap
+public meta import Std.Data.HashMap -- shake: keep
+public meta import Arm64.Trusted.Object.Placed -- shake: keep
+public meta import ProofLib.Exec -- shake: keep
+public import GeneratedLean.LibsignalSessionPlacedObj -- shake: keep
+public meta import GeneratedLean.LibsignalSessionPlacedObj -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst
+public meta import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst -- shake: keep
+public meta import LibsignalBinary.Proofs.ProtoCodecKat -- shake: keep
 public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSession
-import LibsignalBinary.Proofs.CodeLayout
+public meta import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSession -- shake: keep
 
 /-!
 # Binary Known-Answer Tests for `SignalMessage::try_from`
 
 Executes the compiled `<SignalMessage as TryFrom<&[u8]>>::try_from` in
-`CryptoVerification.libsignalSessionImage` at `0x400000` and checks that its `sret` output matches
-`SignalMessage.tryFrom protoSignalCodec` across canonical messages, duplicate and unknown fields,
-nested groups, fast/slow-path and malformed varints, version/length errors, and `PublicKey` errors.
-Verifies multiset heap balance on every call (`allocs = deallocs + result-owned buffers`) and
-cross-checks the `DecodeError` and slow-varint hooks against `drop_glue::<DecodeError>` and the
-in-image `decode_varint_slow::<&[u8]>`.
+`CryptoVerification.libsignalSessionMultiLib` placed at `0x400000` and checks that its `sret` output
+matches `SignalMessage.tryFrom protoSignalCodec` across canonical messages, duplicate and unknown
+fields, nested groups, fast/slow-path and malformed varints, version/length errors, and `PublicKey`
+errors. Verifies multiset heap balance on every call (`allocs = deallocs + result-owned buffers`)
+and cross-checks the `DecodeError` and slow-varint hooks against `drop_glue::<DecodeError>` and the
+compiled `decode_varint_slow::<&mut &[u8]>`.
 -/
 
 @[expose] public section
@@ -34,84 +39,242 @@ namespace CryptoVerification.ProtoCodecKat
 
 open Arm64 ProofLib CryptoGames CryptoGames.LibsignalSession
 
-open Lean Meta in
-/-- Extracts raw bytes from a `List (BitVec 8)` literal expression. -/
-meta partial def byteLits (e : Expr) (acc : Array UInt8 := #[]) : MetaM (Array UInt8) := do
-  match e.consumeMData.getAppFnArgs with
-  | (``List.nil, _) => return acc
-  | (``List.cons, #[_, hd, tl]) =>
-    match hd.consumeMData.getAppFnArgs with
-    | (``BitVec.ofNat, #[_, n]) =>
-      match n.consumeMData.rawNatLit? <|> n.consumeMData.nat? with
-      | some v => byteLits tl (acc.push v.toUInt8)
-      | none => throwError "byteLits: not a literal {n}"
-    | _ => throwError "byteLits: unexpected element {hd}"
-  | _ => throwError "byteLits: unexpected {e}"
-
-open Lean in
-private meta partial def inlineNoncomputable (env : Environment) (e : Expr) : Expr :=
-  e.replace fun
-    | .const c [] =>
-      if isNoncomputable env c then
-        match env.find? c with
-        | some (.defnInfo d) => some (inlineNoncomputable env d.value)
-        | _ => none
-      else none
-    | _ => none
-
-private meta partial def lakeRootOf (f : System.FilePath) : IO System.FilePath := do
-  match f.parent with
-  | none => return "."
-  | some d => if (← (d / "lakefile.lean").pathExists) then return d else lakeRootOf d
-
-open Lean Elab Term in
-elab "pckat_gen_dir%" : term => do
-  let f ← IO.FS.realPath (← getFileName)
-  let root ← lakeRootOf f
-  return Lean.mkStrLit (root / ".GeneratedLean" / "GeneratedLean").toString
-
-open Lean Meta Elab Term in
-/-- Reconstructs the `noncomputable` linked image `id` as a computable function of `code` and `data`,
-verifying at elaboration time that both fields match the on-disk `.bin` files. -/
-elab "pckat_image_with_bins% " id:ident codeF:str dataF:str : term => do
-  let n ← realizeGlobalConstNoOverloadWithInfo id
-  let some (.defnInfo d) := (← getEnv).find? n | throwError "`{n}` is not a definition"
-  let v := d.value.consumeMData
-  let args := v.getAppArgs
-  unless v.getAppFn.isConstOf ``Obj.LinkedImage.mk && args.size == 13 do
-    throwError "unexpected shape of {n}"
-  let f ← IO.FS.realPath (← getFileName)
-  let root ← lakeRootOf f
-  let dir := root / ".GeneratedLean" / "GeneratedLean"
-  for (i, file) in [(0, codeF.getString), (2, dataF.getString)] do
-    let lit ← byteLits args[i]!
-    let bytes ← IO.FS.readBinFile (dir / file)
-    unless lit == bytes.data do
-      throwError "pckat_image_with_bins%: field {i} of {n} differs from {file}"
-  let env ← getEnv
-  let ty := mkApp (mkConst ``List [Level.zero]) (mkApp (mkConst ``BitVec) (mkNatLit 8))
-  withLocalDeclD `code ty fun c => withLocalDeclD `data ty fun dt => do
-    let args' := args.mapIdx fun i a =>
-      if i == 0 then c else if i == 2 then dt else inlineNoncomputable env a
-    mkLambdaFVars #[c, dt] (mkAppN v.getAppFn args')
-
-set_option maxRecDepth 100000 in
-def mkImage : List (BitVec 8) → List (BitVec 8) → Obj.LinkedImage :=
-  pckat_image_with_bins% CryptoVerification.libsignalSessionImage
-    "LibsignalSessionObj.code.bin" "LibsignalSessionObj.data.bin"
-
 def testBase : BitVec 64 := 0x400000#64
+def dataBase : BitVec 64 := testBase + BitVec.ofNat 64 (2 * 1024 * 1024)
+def logFilterSym : String := "_RNvCs4Dv7yoBiUx4_3log20MAX_LOG_LEVEL_FILTER"
+def ed25519TableSym : String :=
+  "_RNvNtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u649constants23ED25519_BASEPOINT_TABLE"
 
-def readBin (f : String) : IO (List (BitVec 8)) := do
-  let b ← IO.FS.readBinFile (System.FilePath.mk pckat_gen_dir% / f)
-  return b.data.toList.map fun x => BitVec.ofNat 8 x.toNat
+/-- Maps mangled Rust v0 extern symbols in `libsignalSessionMultiLib` to the demangled names used
+by the specification hook tables and `Rust.withPanics`. -/
+def demangleExtern (sym : String) : String :=
+  match sym with
+  | "_RINvCsdqpLrhraQXi_6subtle9black_boxhECs2wR8L9wiBdT_16curve25519_dalek" =>
+    "subtle::black_box::<u8>"
+  | "_RINvNtCskxtBwYRO61I_4core9panicking13assert_failedjjEB4_" =>
+    "core::panicking::assert_failed::<usize, usize>"
+  | "_RINvNtCskxtBwYRO61I_4core9panicking13assert_failedyyEB4_" =>
+    "core::panicking::assert_failed::<u64, u64>"
+  | "_RNvCs1njKG4L9aB3_7___rustc12___rust_alloc" => "__rustc::__rust_alloc"
+  | "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc" => "__rustc::__rust_dealloc"
+  | "_RNvCs1njKG4L9aB3_7___rustc14___rust_realloc" => "__rustc::__rust_realloc"
+  | "_RNvCs1njKG4L9aB3_7___rustc19___rust_alloc_zeroed" => "__rustc::__rust_alloc_zeroed"
+  | "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2" =>
+    "__rustc::__rust_no_alloc_shim_is_unstable_v2"
+  | "_RNvMs6_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecret14diffie_hellman" =>
+    "<x25519_dalek::x25519::StaticSecret>::diffie_hellman"
+  | "_RNvNtCs69KKACWg7bl_5alloc5alloc18handle_alloc_error" => "alloc::alloc::handle_alloc_error"
+  | "_RNvNtCs69KKACWg7bl_5alloc7raw_vec12handle_error" => "alloc::raw_vec::handle_error"
+  | "_RNvNtCsbKnPy0UR4Ui_13signal_crypto7aes_cbc19aes_256_cbc_decrypt" =>
+    "signal_crypto::aes_cbc::aes_256_cbc_decrypt"
+  | "_RNvNtCsbKnPy0UR4Ui_13signal_crypto7aes_cbc19aes_256_cbc_encrypt" =>
+    "signal_crypto::aes_cbc::aes_256_cbc_encrypt"
+  | "_RNvNtCsbvWyylYiyxg_4sha26sha25611compress256" => "sha2::sha256::compress256"
+  | "_RNvNtCskxtBwYRO61I_4core3fmt5write" => "core::fmt::write"
+  | "_RNvNtCskxtBwYRO61I_4core6option13expect_failed" => "core::option::expect_failed"
+  | "_RNvNtCskxtBwYRO61I_4core6option13unwrap_failed" => "core::option::unwrap_failed"
+  | "_RNvNtCskxtBwYRO61I_4core6result13unwrap_failed" => "core::result::unwrap_failed"
+  | "_RNvNtCskxtBwYRO61I_4core9panicking18panic_bounds_check" => "core::panicking::panic_bounds_check"
+  | "_RNvNtCskxtBwYRO61I_4core9panicking19assert_failed_inner" => "core::panicking::assert_failed_inner"
+  | "_RNvNtCskxtBwYRO61I_4core9panicking5panic" => "core::panicking::panic"
+  | "_RNvNtCskxtBwYRO61I_4core9panicking9panic_fmt" => "core::panicking::panic_fmt"
+  | "_RNvNtNtCsfr5T3GFabw_3std4sync9lazy_lock14panic_poisoned" => "std::sync::lazy_lock::panic_poisoned"
+  | "_RNvNtNtCskxtBwYRO61I_4core5slice5index16slice_index_fail" => "core::slice::index::slice_index_fail"
+  | "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_add_overflow" =>
+    "core::panicking::panic_const::panic_const_add_overflow"
+  | "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_mul_overflow" =>
+    "core::panicking::panic_const::panic_const_mul_overflow"
+  | "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_shl_overflow" =>
+    "core::panicking::panic_const::panic_const_shl_overflow"
+  | "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_sub_overflow" =>
+    "core::panicking::panic_const::panic_const_sub_overflow"
+  | "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const28panic_const_async_fn_resumed" =>
+    "core::panicking::panic_const::panic_const_async_fn_resumed"
+  | "_RNvNvMs_NtCs69KKACWg7bl_5alloc3vecINtB6_3VecppE6remove13assert_failed" =>
+    "<alloc::vec::Vec<_, _>>::remove::assert_failed"
+  | "_RNvNvNtCs69KKACWg7bl_5alloc3fmt6format12format_inner" => "alloc::fmt::format::format_inner"
+  | "_RNvXs0_NtCs4Dv7yoBiUx4_3log13___private_apiNtB5_12GlobalLoggerNtB7_3Log3log" =>
+    "<log::__private_api::GlobalLogger as log::Log>::log"
+  | "_RNvXs8_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_9PublicKeyINtNtCskxtBwYRO61I_4core7convert4FromRNtB5_12StaticSecretE4from" =>
+    "<x25519_dalek::x25519::PublicKey as core::convert::From<&x25519_dalek::x25519::StaticSecret>>::from"
+  | "_RNvXsa_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecretNtNtNtCskxtBwYRO61I_4core3ops4drop4Drop4drop" =>
+    "<x25519_dalek::x25519::StaticSecret as core::ops::drop::Drop>::drop"
+  | "_RNvXse_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12SharedSecretNtNtNtCskxtBwYRO61I_4core3ops4drop4Drop4drop" =>
+    "<x25519_dalek::x25519::SharedSecret as core::ops::drop::Drop>::drop"
+  | _ => sym
 
-def loadImg : IO Obj.Image := do
-  let li := mkImage (← readBin "LibsignalSessionObj.code.bin")
-    (← readBin "LibsignalSessionObj.data.bin")
-  match li.load testBase with
-  | .ok img => return img
-  | .error e => throw (IO.userError s!"load failed: {e}")
+def checkCodeRelocRange (kind : Obj.RelocKind) (place target : BitVec 64) : Bool :=
+  let sInRange (lo hi : Int) (d : BitVec 64) : Bool :=
+    decide (lo ≤ d.toInt) && decide (d.toInt < hi)
+  match kind with
+  | .call26 | .jump26 =>
+    decide ((target - place).toNat % 4 = 0) && sInRange (-134217728) 134217728 (target - place)
+  | .adrpHi21 => sInRange (-4294967296) 4294967296 (Obj.pageOf target - Obj.pageOf place)
+  | .adrpHi21Nc | .addLo12 | .ldst8Lo12 => true
+  | .ldst16Lo12 => (target &&& 1#64) == 0#64
+  | .ldst32Lo12 => (target &&& 3#64) == 0#64
+  | .ldst64Lo12 => (target &&& 7#64) == 0#64
+  | .ldst128Lo12 => (target &&& 15#64) == 0#64
+  | _ => false
+
+/-- Synthetic concrete placement of an `Obj.MultiPlacedLib` at `testBase` (`r-x` blocks + extern
+stubs) and `dataBase` (`r--` / `rw-` data objects). -/
+structure PlacedImg where
+  base : BitVec 64
+  code : Array (BitVec 8)
+  dataAddr : BitVec 64
+  data : Array (BitVec 8)
+  dataPerm : Array (Option Perm)
+  symbols : List (String × Nat)
+  stubs : List (String × Nat)
+  mpl : Obj.MultiPlacement
+  logFilterAddr : BitVec 64
+  symtab : String → String → Option (BitVec 64)
+
+def loadPlaced (lib : Obj.MultiPlacedLib := CryptoVerification.libsignalSessionMultiLib) :
+    IO PlacedImg := do
+  let blks := lib.blocks.toArray
+  let mut curAddr : Nat := testBase.toNat
+  let mut baseArr : Array (BitVec 64) := Array.mkEmpty blks.size
+  let mut symMap : Std.HashMap String (BitVec 64) := {}
+  let mut symbols : List (String × Nat) := []
+  let mut rawExts : List String := []
+  let mut seenExt : Std.HashMap String Unit := {}
+  for i in [0:blks.size] do
+    let blk := blks[i]!
+    let a := Nat.max 4 blk.align
+    let addr := (curAddr + a - 1) / a * a
+    let off := addr - testBase.toNat
+    let bAddr := BitVec.ofNat 64 addr
+    baseArr := baseArr.push bAddr
+    for (sname, soff) in blk.symbols do
+      if symMap.contains sname then
+        throw (IO.userError s!"duplicate block symbol: {sname}")
+      symMap := symMap.insert sname (bAddr + BitVec.ofNat 64 soff)
+      symbols := (sname, off + soff) :: symbols
+    for ext in blk.externs do
+      if !seenExt.contains ext then
+        seenExt := seenExt.insert ext ()
+        rawExts := ext :: rawExts
+    curAddr := addr + blk.code.length
+  symbols := symbols.reverse
+  rawExts := rawExts.reverse
+  let stubStartOff := ((curAddr - testBase.toNat) + 3) / 4 * 4
+  let mut rhoMap : Std.HashMap String (BitVec 64) := {}
+  let mut stubs : List (String × Nat) := []
+  let mut extIdx : Nat := 0
+  for rawExt in rawExts do
+    let off := stubStartOff + 4 * extIdx
+    let sAddr := testBase + BitVec.ofNat 64 off
+    let dem := demangleExtern rawExt
+    rhoMap := rhoMap.insert rawExt sAddr
+    symMap := (symMap.insert rawExt sAddr).insert dem sAddr
+    stubs := (dem, off) :: stubs
+    extIdx := extIdx + 1
+  stubs := stubs.reverse
+  let totalCodeBytes := stubStartOff + 4 * rawExts.length
+  if testBase.toNat + totalCodeBytes > dataBase.toNat then
+    throw (IO.userError "placed code overlaps dataBase")
+  let dataItems := lib.data.toArray
+  let mut dataAddrs : Array Nat := Array.mkEmpty dataItems.size
+  let mut dataCur : Nat := dataBase.toNat
+  for i in [0:dataItems.size] do
+    let d := dataItems[i]!
+    let a := Nat.max 1 d.align
+    let addr := (dataCur + a - 1) / a * a
+    dataAddrs := dataAddrs.push addr
+    let bvAddr := BitVec.ofNat 64 addr
+    rhoMap := rhoMap.insert d.sym bvAddr
+    symMap := symMap.insert d.sym bvAddr
+    dataCur := addr + d.bytes.length + d.zeroTail
+  let logFilterAddr : BitVec 64 := BitVec.ofNat 64 (((dataCur + 4095) / 4096 + 1) * 4096)
+  let ed25519TableAddr : BitVec 64 := logFilterAddr + 0x1000#64
+  rhoMap := (rhoMap.insert logFilterSym logFilterAddr).insert ed25519TableSym ed25519TableAddr
+  symMap := ((symMap.insert logFilterSym logFilterAddr).insert
+    "log::MAX_LOG_LEVEL_FILTER" logFilterAddr).insert ed25519TableSym ed25519TableAddr
+  let mut codeArr : Array (BitVec 8) := Array.replicate totalCodeBytes 0#8
+  for i in [0:blks.size] do
+    let blk := blks[i]!
+    let bAddr := baseArr[i]!
+    let bOff := (bAddr - testBase).toNat
+    let raw := blk.code.toArray
+    let nw := raw.size / 4
+    let mut words : Array (BitVec 32) := Array.mkEmpty nw
+    for j in [0:nw] do
+      words := words.push (raw[4 * j + 3]! ++ raw[4 * j + 2]! ++ raw[4 * j + 1]! ++ raw[4 * j]!)
+    for r in blk.relocs do
+      let place := bAddr + BitVec.ofNat 64 r.off
+      let some symAddr := symMap[r.sym]?
+        | throw (IO.userError s!"unresolved code reloc symbol: {r.sym}")
+      let target := Obj.addSignedAddr symAddr r.addend
+      unless r.off % 4 == 0 && r.off + 4 ≤ raw.size && checkCodeRelocRange r.kind place target do
+        throw (IO.userError s!"code reloc out of range in block {i}: {r.sym}")
+      let wIdx := r.off / 4
+      words := words.set! wIdx (Obj.patchRelocWord r.kind words[wIdx]! place target)
+    for j in [0:nw] do
+      let w := words[j]!
+      let o := bOff + 4 * j
+      codeArr := (((codeArr.set! o (w.extractLsb' 0 8)).set! (o + 1) (w.extractLsb' 8 8)).set!
+        (o + 2) (w.extractLsb' 16 8)).set! (o + 3) (w.extractLsb' 24 8)
+  let totalDataBytes := dataCur - dataBase.toNat
+  let mut dataArr : Array (BitVec 8) := Array.replicate totalDataBytes 0#8
+  let mut dataPerm : Array (Option Perm) := Array.replicate totalDataBytes none
+  for i in [0:dataItems.size] do
+    let d := dataItems[i]!
+    let addr := dataAddrs[i]!
+    let dOff := addr - dataBase.toNat
+    let raw := d.bytes.toArray
+    let sz := raw.size + d.zeroTail
+    let p : Option Perm := some (if d.readOnly then .ro else .rw)
+    for k in [0:raw.size] do
+      dataArr := dataArr.set! (dOff + k) raw[k]!
+    for k in [0:sz] do
+      dataPerm := dataPerm.set! (dOff + k) p
+    for r in d.relocs do
+      let some symAddr := symMap[r.sym]?
+        | throw (IO.userError s!"unresolved data reloc symbol: {r.sym}")
+      let t := Obj.addSignedAddr symAddr r.addend
+      match r.kind with
+      | .abs64 =>
+        unless r.off + 8 ≤ raw.size do throw (IO.userError s!"data reloc OOB in {d.sym}")
+        for k in [0:8] do
+          dataArr := dataArr.set! (dOff + r.off + k) (t.extractLsb' (8 * k) 8)
+      | .abs32 =>
+        unless r.off + 4 ≤ raw.size do throw (IO.userError s!"data reloc OOB in {d.sym}")
+        for k in [0:4] do
+          dataArr := dataArr.set! (dOff + r.off + k) (t.extractLsb' (8 * k) 8)
+      | .prel32 =>
+        unless r.off + 4 ≤ raw.size do throw (IO.userError s!"data reloc OOB in {d.sym}")
+        let rel := t - BitVec.ofNat 64 (addr + r.off)
+        for k in [0:4] do
+          dataArr := dataArr.set! (dOff + r.off + k) (rel.extractLsb' (8 * k) 8)
+      | _ => throw (IO.userError s!"unsupported data reloc in {d.sym}")
+  let mpl : Obj.MultiPlacement :=
+    { base := fun i => baseArr[i]?.getD 0#64
+      ρ := fun s => rhoMap.getD s 0#64 }
+  return {
+    base := testBase
+    code := codeArr
+    dataAddr := dataBase
+    data := dataArr
+    dataPerm
+    symbols
+    stubs
+    mpl
+    logFilterAddr
+    symtab := fun _ name => symMap[name]?
+  }
+
+def PlacedImg.toProgram (img : PlacedImg)
+    (externs : String → Option (State → State) := fun _ => none)
+    (overrides : String → Option (State → State) := fun _ => none) : Program :=
+  { base := img.base
+    code := img.code.toList
+    symbols := img.symbols
+    stubs := img.stubs
+    externs
+    overrides
+    svc := Syscall.standard }
 
 def progress (msg : String) : IO Unit := do
   let h ← IO.FS.Handle.mk "/tmp/pckat.progress" .append
@@ -224,46 +387,47 @@ def externs : String → Option (State → State) := fun sym =>
   else if sym == "bytes::panic_advance" then some Rust.panicked
   else none
 
-def prog (img : Obj.Image) : Program :=
-  Program.ofImage img (Rust.withPanics externs) externs
+def prog (img : PlacedImg) (ovr : String → Option (State → State) := externs) : Program :=
+  img.toProgram (Rust.withPanics externs) ovr
 
-/-- Initial image memory: `r-x` code, image data permissions, `r--` GOT, and zeroed `rw` elsewhere
-(`log::MAX_LOG_LEVEL_FILTER = 0`). -/
-def imgMem (img : Obj.Image) : Memory :=
-  let code := img.code.toArray
-  let data := img.data.toArray
-  let got := img.gotBytes.toArray
+/-- Initial placed memory: `r-x` relocated code and stubs, `r--` / `rw-` placed data objects, and
+zeroed `rw` elsewhere (`log::MAX_LOG_LEVEL_FILTER = 0`). -/
+def imgMem (img : PlacedImg) : Memory :=
+  let code := img.code
+  let data := img.data
+  let dPerm := img.dataPerm
   Memory.ofFn
     (fun a =>
       let i := (a - img.base).toNat
       let j := (a - img.dataAddr).toNat
-      let k := (a - img.gotAddr).toNat
-      if i < code.size then code[i]! else if j < data.size then data[j]!
-      else if k < got.size then got[k]! else 0)
+      if i < code.size then code[i]! else if j < data.size then data[j]! else 0)
     (fun a =>
-      if (a - img.base).toNat < code.size then some .rx
-      else if (a - img.dataAddr).toNat < data.size then img.dataPerm a
-      else if (a - img.gotAddr).toNat < got.size then some .ro else some .rw)
+      let i := (a - img.base).toNat
+      let j := (a - img.dataAddr).toNat
+      if i < code.size then some .rx
+      else if j < dPerm.size then dPerm[j]!
+      else some .rw)
 
 def retAddr : BitVec 64 := 0x00dead00#64
 def stackTop : BitVec 64 := 0x70000000#64
 
-def callState (img : Obj.Image) (entry : BitVec 64) (m : Memory) (regs : List (Reg × BitVec 64)) :
+def callState (img : PlacedImg) (entry : BitVec 64) (m : Memory) (regs : List (Reg × BitVec 64)) :
     State :=
   let s : State := { sp := stackTop, pc := entry, mem := m, symtab := img.symtab }
   (regs.foldl (fun s (r, v) => s.writeReg64 r v) s).writeReg64 .lr retAddr
 
 def returned (sf : State) : Bool := sf.pc == retAddr && sf.status == .Running
 
-/-- Instruction words and hooks of `prog img`, indexed by 32-bit word offset. -/
+/-- Instruction words and hooks of `prog img ovr`, indexed by 32-bit word offset. -/
 structure Runner where
   prog : Program
   words : Array (BitVec 32)
   hooks : Array (Option (State → State))
 
-def Runner.ofImage (img : Obj.Image) : Runner :=
-  let P := ProtoCodecKat.prog img
-  let code := img.code.toArray
+def Runner.ofPlaced (img : PlacedImg)
+    (ovr : String → Option (State → State) := externs) : Runner :=
+  let P := ProtoCodecKat.prog img ovr
+  let code := img.code
   let nw := code.size / 4
   let words := Id.run do
     let mut w : Array (BitVec 32) := Array.mkEmpty nw
@@ -570,12 +734,12 @@ def cases : List (String × String × List (BitVec 8)) :=
 /-!
 Checks `decodeErrorFromHook` and `decodeErrorPushHook` against the `decodeErrorAtStackLen` memory
 shape and `drop_glue::<DecodeError>`, and differentially tests `decodeVarintSlowHook` against
-`decode_varint_slow::<&[u8]>` and `varintSlow`.
+the compiled `decode_varint_slow::<&mut &[u8]>` block and `varintSlow`.
 -/
 
 def calleeSaved : List Reg := [.x19, .x20, .x21, .x22, .x23, .x24, .x25, .x26, .x27, .x28, .fp]
 
-def hookState (img : Obj.Image) (m : Memory) (regs : List (Reg × BitVec 64)) : State :=
+def hookState (img : PlacedImg) (m : Memory) (regs : List (Reg × BitVec 64)) : State :=
   let marks := (calleeSaved.zip (List.range 11)).map fun (r, i) =>
     (r, 0x5a5a000000000000#64 + BitVec.ofNat 64 i)
   callState img 0 m (marks ++ regs)
@@ -615,20 +779,26 @@ def runFuel : ℕ := 400000
 #eval show IO Unit from do
   IO.FS.writeFile "/tmp/pckat.progress" ""
   let t0 ← IO.monoMsNow
-  let img ← loadImg
+  let lib := CryptoVerification.libsignalSessionMultiLib
+  let img ← loadPlaced lib
   let failures ← IO.mkRef ([] : List String)
   let check (name : String) (b : Bool) : IO Unit := do
     let line := s!"{if b then "ok  " else "FAIL"} {name}"
     IO.println line
     progress line
     unless b do failures.modify (· ++ [name])
-  check "image loads at 0x400000 (code and data + bss lengths)"
-    (img.code.length == num% (ls_field% codeLen) &&
-      img.data.length == num% (ls_field% dataLen) + (mkImage [] []).bss)
+  let blk0 := lib.blocks[0]!
+  let bpl0 : Obj.Placement :=
+    { base := img.mpl.base 0, ρ := fun s => (img.symtab "" s).getD (img.mpl.ρ s) }
+  check "MultiPlacedLib loads at 0x400000 (624 blocks, non-empty data, block 0 patched, log filter resolved)"
+    (lib.blocks.length == 624 && !lib.data.isEmpty &&
+      (img.code.extract 0 blk0.code.length).toList == blk0.patched bpl0 &&
+      img.mpl.ρ logFilterSym == img.logFilterAddr)
   let entryName := "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from"
-  let entry := (Program.ofImage img).fnAddr entryName
-  check s!"try_from at image offset 0x2591c" (entry == testBase + 0x2591c)
-  let R := Runner.ofImage img
+  let entry := (img.toProgram).fnAddr entryName
+  check "try_from resolves in MultiPlacedLib"
+    ((Obj.lookupBlockSym entryName lib.blocks).isSome && entry == lib.fnAddr img.mpl entryName)
+  let R := Runner.ofPlaced img
   let m0 := imgMem img
   progress s!"setup {(← IO.monoMsNow) - t0} ms"
   let setup (input : List (BitVec 8)) : Memory × State :=
@@ -696,9 +866,10 @@ def runFuel : ℕ := 400000
       let b := execUntilPC runFuel R.prog retAddr s0
       check s!"[cross-check {name}] fastRun = execUntilPC ({(← IO.monoMsNow) - t1} ms)"
         (obs a == obs b)
-  let dropE := (Program.ofImage img).fnAddr
-    "core::ptr::drop_glue::<prost::error::DecodeError> [local#1]"
-  check "drop_glue::<DecodeError> at image offset 0x230c" (dropE == testBase + 0x230c)
+  let dropName := "core::ptr::drop_glue::<prost::error::DecodeError> [local#1]"
+  let dropE := (img.toProgram).fnAddr dropName
+  check "drop_glue::<DecodeError> resolves in MultiPlacedLib"
+    ((Obj.lookupBlockSym dropName lib.blocks).isSome && dropE == lib.fnAddr img.mpl dropName)
   let msg := strBytes "SignalMessage"
   let fld := strBytes "counter"
   let mStr := (m0.writeBytes strA msg).writeBytes (strA + 0x100) fld
@@ -737,8 +908,11 @@ def runFuel : ℕ := 400000
       check s!"[from {w.toHex}, {n} pushes] in-image drop_glue frees exactly the {blocks.length} outstanding blocks"
         (framed d0 d1 && sameBufs (d1.trace.filterMap (decEv "dealloc")) blocks &&
           (d1.trace.filterMap (decEv "alloc")).isEmpty)
-  let vsE := (Program.ofImage img).fnAddr "prost::encoding::varint::decode_varint_slow::<&[u8]>"
-  check "decode_varint_slow::<&[u8]> at image offset 0x34c8" (vsE == testBase + 0x34c8)
+  let vsName := "prost::encoding::varint::decode_varint_slow::<&mut &[u8]>"
+  let vsE := (img.toProgram).fnAddr vsName
+  check "decode_varint_slow::<&mut &[u8]> resolves in MultiPlacedLib"
+    ((Obj.lookupBlockSym vsName lib.blocks).isSome && vsE == lib.fnAddr img.mpl vsName)
+  let R_vs := Runner.ofPlaced img (fun sym => if sym == vsName then none else externs sym)
   let heapEvs (sf : State) : List String :=
     sf.trace.filterMap fun
       | .userDefined t pl =>
@@ -756,9 +930,9 @@ def runFuel : ℕ := 400000
     let input := bs l
     let m := (((mStr.writeBytes inputA input).write64 sliceA inputA).write64 (sliceA + 8)
       (BitVec.ofNat 64 input.length)).write64 slotA sliceA
-    let a0 := hookState img m [(.x0, sliceA)]
+    let a0 := hookState img m [(.x0, slotA)]
     let a0 := { a0 with pc := vsE }
-    let (a1, _) := fastRun R m 0 0 10000 a0
+    let (a1, _) := fastRun R_vs m 0 0 10000 a0
     let b0 := hookState img m [(.x0, slotA)]
     let b1 := LibsignalTripleRatchet.decodeVarintSlowHook decodeErrorFromHook b0
     let advanced (k : ℕ) : Bool :=
@@ -775,7 +949,7 @@ def runFuel : ℕ := 400000
     unless framed a0 a1 && framed b0 b1 && view a1 == view b1 && modelOk do
       nDiff := nDiff + 1
       IO.println s!"     [varint {hexStr input}] image: {view a1}; hook: {view b1}; model: {modelOk}"
-  check s!"varint hook = in-image decode_varint_slow::<&[u8]> = varintSlow on {varintInputs.length} inputs ({nOk} Ok, {varintInputs.length - nOk} Err)"
+  check s!"varint hook = compiled decode_varint_slow::<&mut &[u8]> = varintSlow on {varintInputs.length} inputs ({nOk} Ok, {varintInputs.length - nOk} Err)"
     (nDiff == 0)
   IO.println s!"{cases.length} cases, max {maxSteps} steps, all checks done in {(← IO.monoMsNow) - t0} ms"
   progress s!"done in {(← IO.monoMsNow) - t0} ms"

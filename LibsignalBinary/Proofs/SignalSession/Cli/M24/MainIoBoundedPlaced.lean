@@ -9,10 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.IoSitesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainIoExtPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.IoSitesPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Bounded-Stdin Relocatable `MainIo` Contracts
@@ -23,7 +36,7 @@ retaining the compiled 9-step `4 KiB .. 1 MiB` doubling schedule), `StdinEnv`-pa
 `MainIoBoundedPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -32,7 +45,7 @@ set_option maxRecDepth 200000
 namespace LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced
 
 open scoped CryptoVerification.RustHeap
-open Arm64 Arm64.Obj Arm64.Process ProofLib
+open Arm64 Arm64.Process ProofLib
 open CryptoVerification
   (LibsignalHooks LibsignalPlacement ls_hook_ok_ultra_of_mem lsmpl lsρ)
 open CryptoVerification.E2E (PEParams)
@@ -40,23 +53,18 @@ open CryptoVerification.LibsignalPublicApi.StoreKit
   (FsFiles subroutine_ok_rocl_of_plain withLsRoCl)
 open CryptoVerification.LibsignalTripleRatchet (extHookStack)
 open CryptoVerification.SignalSession
-  (lsReadFileSym lsReadStdinSym lsWriteFileSym lsWriteStdoutSym
-   readFileName readStdinName writeFileName writeStdoutName)
+  (lsReadFileSym lsReadStdinSym lsWriteFileSym lsWriteStdoutSym)
 open CryptoVerification.SignalSession.CliExt
   (ReadStdinCall bytesAt cliPathOk readFileResult stdinBytes writeFileResult)
 open CryptoVerification.SignalSession.Cli (ioVecAt)
 open CryptoVerification.SignalSession.Cli.Main.Placed (blkPC_617 blkPl_617 lsProg_617)
 open CryptoVerification.SignalSession.Cli.MainHops
-  (ExtIoLookup IoModel ReadFileLitGhost ReadStdinGhost SpecSymtabFree
-   WriteFileGhost WriteStdoutGhost cliIo hookOk_wrapIoHook_of_inImage
-   symtabOnlyImage wrapIoHook)
+  (IoModel ReadFileLitGhost ReadStdinGhost WriteFileGhost WriteStdoutGhost cliIo)
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FitsEnv RustCliAllocBudget rustDeallocEvents)
 open LibsignalBinary.Heap.SpecBudget
-  (CliExternsBudgetOk ReadFileEnv ReadStdinEnv WriteFileEnv WriteStdoutEnv
-   allocBytes1Events cliIoCap cliIoCapIdx cliIoCapsEvents cliIoReadScheduleCaps
-   readFileBudgetCoreSpec readFileBudgetSpec readStdinBudgetCoreSpec readStdinBudgetSpec
-   writeFileBudgetCoreSpec writeFileBudgetSpec writeStdoutBudgetCoreSpec writeStdoutBudgetSpec)
+  (ReadStdinEnv allocBytes1Events cliIoCap cliIoCapIdx cliIoCapsEvents cliIoReadScheduleCaps
+   readStdinBudgetCoreSpec)
 open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
   (MainIoPlaced ReadFileRuleEnv readFileLitSpecPlaced readStdinSpecPlaced
    writeFileSpecPlaced writeStdoutSpecPlaced)
@@ -66,7 +74,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
 /-- Bounded-stdin allocator event envelope for `signal_session_io::read_stdin`: either the hook
 branch (`allocBytes1Events bs` for `bs.length ≤ 1 MiB`, `[]` above `1 MiB`) or the compiled 9-cap
 doubling schedule `4 KiB .. 1 MiB` (with `rustDeallocEvents 1048576 1` above `1 MiB`). -/
-def ReadStdinBoundedEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def ReadStdinBoundedEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   (if bs.length ≤ 1048576 then evs = allocBytes1Events bs else evs = []) ∨
   (bs.length ≤ 1048576 ∧ evs = cliIoCapsEvents 0 (cliIoReadScheduleCaps 8 bs.length)) ∨
   (1048576 < bs.length ∧
@@ -112,7 +120,7 @@ open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 
 /-- `StdinEnv`-parameterized `read_stdin` specification (agrees with `readStdinSpecPlaced` at
 `StdinEnv := ReadStdinEnv`). -/
-def readStdinSpecOfPlaced [LibsignalPlacement] {M : AllocCostModel} (io : IoModel)
+@[expose] def readStdinSpecOfPlaced [LibsignalPlacement] {M : AllocCostModel} (io : IoModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat)
     (StdinEnv : List (BitVec 8) → List AllocEvent → Prop := ReadStdinBoundedEnv) :
     Spec (ReadStdinGhost × M.σ) where
@@ -147,7 +155,7 @@ theorem readStdinSpecOfPlaced_congr_env [LibsignalPlacement]
   subst heq
   rfl
 
-def readStdinBudgetCoreOfSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def readStdinBudgetCoreOfSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (StdinEnv : List (BitVec 8) → List AllocEvent → Prop := ReadStdinBoundedEnv) :
     Spec (ReadStdinCall × M.σ) where
@@ -168,27 +176,6 @@ def readStdinBudgetCoreOfSpec [LibsignalPlacement] (M : AllocCostModel) (A : Rus
 theorem readStdinBudgetCoreOfSpec_eq_readStdinBudgetCoreSpec [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     readStdinBudgetCoreOfSpec M A lim ReadStdinEnv = readStdinBudgetCoreSpec M A lim :=
-  rfl
-
-def readStdinBudgetOfSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (img : Obj.Image)
-    (StdinEnv : List (BitVec 8) → List AllocEvent → Prop := ReadStdinBoundedEnv) :
-    Spec (ReadStdinCall × M.σ) :=
-  Spec.inImage (readStdinBudgetCoreOfSpec M A lim StdinEnv) img
-
-theorem readStdinBudgetOfSpec_eq_readStdinBudgetSpec [LibsignalPlacement] (M : AllocCostModel)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (img : Obj.Image) :
-    readStdinBudgetOfSpec M A lim img ReadStdinEnv = readStdinBudgetSpec M A lim img :=
-  rfl
-
-theorem readStdinBudgetOfSpec_congr_env [LibsignalPlacement] (M : AllocCostModel)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (img : Obj.Image)
-    {StdinEnv₁ StdinEnv₂ : List (BitVec 8) → List AllocEvent → Prop}
-    (henv : ∀ bs evs, StdinEnv₁ bs evs ↔ StdinEnv₂ bs evs) :
-    readStdinBudgetOfSpec M A lim img StdinEnv₁ =
-      readStdinBudgetOfSpec M A lim img StdinEnv₂ := by
-  have heq : StdinEnv₁ = StdinEnv₂ := funext fun bs => funext fun evs => propext (henv bs evs)
-  subst heq
   rfl
 
 /-! ## `MainIoOfPlaced` and `MainIoBoundedPlaced` -/
@@ -326,59 +313,6 @@ theorem main_writeStdout_of_placed_ok [LibsignalPlacement]
 
 /-! ## Constructors from `read_stdin` contracts -/
 
-private theorem pool_withSymtab {M : AllocCostModel} (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (st : M.σ) (s : State)
-    (t : String → String → Option (BitVec 64)) :
-    A.pool lim st (s.withSymtab t) = A.pool lim st s :=
-  A.pool_transport lim st s _
-    ⟨⟨rfl, rfl, rfl⟩, rfl, fun _ => rfl, LibsignalBinary.Heap.FdsHiFrame.refl _⟩
-
-private theorem stackAt_split_ext_io {sp : BitVec 64} {stk : Nat}
-    (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    stackAt sp stk =
-      memRegion (sp - BitVec.ofNat 64 stk) (stk - extHookStack) ∗ stackAt sp extHookStack := by
-  have h1 := stackAt_split_bottom sp extHookStack (stk - extHookStack) (by omega)
-  rwa [Nat.add_sub_of_le hle] at h1
-
-private theorem specSymtabFree_readStdinSpecOfPlaced [LibsignalPlacement]
-    {M : AllocCostModel} (io : IoModel)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat)
-    (StdinEnv : List (BitVec 8) → List AllocEvent → Prop) :
-    SpecSymtabFree (readStdinSpecOfPlaced io A lim stk StdinEnv) where
-  pre_eq := fun (_, _) _ _ => by dsimp only [readStdinSpecOfPlaced]; rw [pool_withSymtab]; rfl
-  post_eq := fun (_, _) _ _ _ _ => by simp only [readStdinSpecOfPlaced, pool_withSymtab]; rfl
-  onPanic_eq := fun _ _ _ _ _ => rfl
-  onExit_eq := fun _ _ _ _ _ _ => rfl
-  onOom_eq := fun _ _ _ _ _ => rfl
-
-private theorem specSymtabFree_readFileLitSpecPlaced {M : AllocCostModel} (io : IoModel)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat)
-    (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop) :
-    SpecSymtabFree (readFileLitSpecPlaced io A lim stk ReadEnv) where
-  pre_eq := fun (_, _) _ _ => by dsimp only [readFileLitSpecPlaced]; rw [pool_withSymtab]; rfl
-  post_eq := fun (_, _) _ _ _ _ => by simp only [readFileLitSpecPlaced, pool_withSymtab]; rfl
-  onPanic_eq := fun _ _ _ _ _ => rfl
-  onExit_eq := fun _ _ _ _ _ _ => rfl
-  onOom_eq := fun _ _ _ _ _ => rfl
-
-private theorem specSymtabFree_writeFileSpecPlaced {M : AllocCostModel} (io : IoModel)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat) :
-    SpecSymtabFree (writeFileSpecPlaced io A lim stk) where
-  pre_eq := fun (_, _) _ _ => by dsimp only [writeFileSpecPlaced]; rw [pool_withSymtab]; rfl
-  post_eq := fun (_, _) _ _ _ _ => by simp only [writeFileSpecPlaced, pool_withSymtab]; rfl
-  onPanic_eq := fun _ _ _ _ _ => rfl
-  onExit_eq := fun _ _ _ _ _ _ => rfl
-  onOom_eq := fun _ _ _ _ _ => rfl
-
-private theorem specSymtabFree_writeStdoutSpecPlaced {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat) :
-    SpecSymtabFree (writeStdoutSpecPlaced A lim stk) where
-  pre_eq := fun (_, _) _ _ => by dsimp only [writeStdoutSpecPlaced]; rw [pool_withSymtab]; rfl
-  post_eq := fun (_, _) _ _ _ _ => by simp only [writeStdoutSpecPlaced, pool_withSymtab]; rfl
-  onPanic_eq := fun _ _ _ _ _ => rfl
-  onExit_eq := fun _ _ _ _ _ _ => rfl
-  onOom_eq := fun _ _ _ _ _ => rfl
-
 theorem mainIoBoundedPlaced_of_mainIoPlaced_and_readStdin [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {H : LibsignalHooks} {io : IoModel} {hookStack : Nat}
@@ -404,207 +338,5 @@ theorem mainIoBoundedPlaced_of_mainIoPlaced_and_hook [LibsignalPlacement]
   mainIoBoundedPlaced_of_mainIoPlaced_and_readStdin hio <|
     subroutine_ok_rocl_of_plain <|
       ls_hook_ok_ultra_of_mem (prog := lsProg_617 H) (i := 617) ⟨f, hrow, hhook⟩ (by decide)
-
-theorem subroutine_ok_readStdinSpecOfPlaced_of_wrapIoHook [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {img : Obj.Image} {ext : String → Option (State → State)} {H : LibsignalHooks}
-    {StdinEnv : List (BitVec 8) → List AllocEvent → Prop}
-    (hal : img.base.toNat % 4 = 0)
-    (hrow : H lsReadStdinSym = (ext readStdinName).map (wrapIoHook img))
-    (hSat : HookSat ext readStdinName (readStdinBudgetOfSpec M A lim (symtabOnlyImage img) StdinEnv))
-    (stk : Nat := extHookStack)
-    (hle : extHookStack ≤ stk := by decide)
-    (hmax : stk ≤ 2 ^ 64 := by decide) :
-    subroutine_ok (lsProg_617 H) (lsρ lsReadStdinSym)
-      (withLsRoCl lsmpl (readStdinSpecOfPlaced cliIo A lim stk StdinEnv)) := by
-  let img0 := symtabOnlyImage img
-  rcases hSat with ⟨f, hf, hh⟩
-  have hh_in : HookOk f ((readStdinSpecOfPlaced cliIo A lim stk StdinEnv).inImage img0) :=
-      fun ⟨x, st⟩ R s0 hrun hpre hsp => by
-    have hsplit := stackAt_split_ext_io (sp := s0.sp) hle hmax
-    have h_stdin : cliIo.stdin = stdinBytes := rfl
-    have h_iov : CryptoVerification.SignalSession.CliExt.ioVecAt = ioVecAt := rfl
-    let R' : SepProp := memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - extHookStack) ∗ R
-    obtain ⟨hkf, hsym, hout⟩ := hh (⟨x.ret, x.bs⟩, st) R' s0 hrun
-      (by
-        dsimp only [readStdinSpecOfPlaced, readStdinBudgetOfSpec, readStdinBudgetCoreOfSpec,
-          Spec.inImage, R'] at hpre ⊢
-        rw [hsplit, h_stdin] at hpre; ac_nf at hpre ⊢) hsp
-    refine ⟨hkf, hsym, ?_⟩
-    rcases hout with ⟨hret, hcc, hpost⟩ | ⟨_, hex⟩ | ⟨_, _, hex⟩ | ⟨_, hex⟩
-    · refine Or.inl ⟨hret, hcc, ?_⟩
-      dsimp only [readStdinSpecOfPlaced, readStdinBudgetOfSpec, readStdinBudgetCoreOfSpec,
-        Spec.inImage, R'] at hpost ⊢
-      simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hpost ⊢
-      obtain ⟨evs, r, hpost⟩ := hpost
-      refine ⟨evs, r, ?_⟩
-      rw [h_iov] at hpost; rw [hsplit]; ac_nf at hpost ⊢
-    · dsimp only [readStdinBudgetOfSpec, readStdinBudgetCoreOfSpec, Spec.inImage] at hex
-      rw [satisfies_pure_sepConj] at hex; exact hex.1.elim
-    · dsimp only [readStdinBudgetOfSpec, readStdinBudgetCoreOfSpec, Spec.inImage] at hex
-      rw [satisfies_pure_sepConj] at hex; exact hex.1.elim
-    · dsimp only [readStdinBudgetOfSpec, readStdinBudgetCoreOfSpec, Spec.inImage] at hex
-      rw [satisfies_pure_sepConj] at hex; exact hex.1.elim
-  exact subroutine_ok_rocl_of_plain <|
-    ls_hook_ok_ultra_of_mem (prog := lsProg_617 H) (i := 617)
-      ⟨wrapIoHook img f, by rw [hrow, hf]; rfl,
-        hookOk_wrapIoHook_of_inImage hal
-          (specSymtabFree_readStdinSpecOfPlaced cliIo A lim stk StdinEnv) hh_in⟩
-      (by decide)
-
-theorem mainIoBoundedPlaced_of_budgetLookup_and_subroutine [LibsignalPlacement]
-    {P : PEParams} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {img : Obj.Image} {ext : String → Option (State → State)} {H : LibsignalHooks}
-    {StdinEnv : List (BitVec 8) → List AllocEvent → Prop}
-    (hal : img.base.toNat % 4 = 0)
-    (hReadFile : H lsReadFileSym = (ext readFileName).map (wrapIoHook img))
-    (hWriteFile : H lsWriteFileSym = (ext writeFileName).map (wrapIoHook img))
-    (hWriteStdout : H lsWriteStdoutSym = (ext writeStdoutName).map (wrapIoHook img))
-    (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat := extHookStack)
-    (hle : extHookStack ≤ stk := by decide)
-    (hmax : stk ≤ 2 ^ 64 := by decide)
-    (hstdin : subroutine_ok (lsProg_617 H) (lsρ lsReadStdinSym)
-      (withLsRoCl lsmpl (readStdinSpecOfPlaced cliIo A lim stk StdinEnv))) :
-    MainIoBoundedPlaced A lim H cliIo stk StdinEnv where
-  readStdin := hstdin
-  readFile := by
-    let img0 := symtabOnlyImage img
-    rcases hOk.readFile img0 with ⟨f, hf, hh⟩
-    have hh_in : HookOk f ((readFileLitSpecPlaced cliIo A lim stk).inImage img0) :=
-        fun ⟨x, st⟩ R s0 hrun hpre hsp => by
-      have hsplit := stackAt_split_ext_io (sp := s0.sp) hle hmax
-      have h_bytesAt : bytesAt true x.pathA x.path = (x.pathA ↦ᵣ x.path) := rfl
-      have h_pathOk : cliIo.pathOk = cliPathOk := rfl
-      have h_rd : cliIo.rd = readFileResult := rfl
-      have h_env : ReadFileRuleEnv cliIo.rd = ReadFileEnv := rfl
-      have h_iov : CryptoVerification.SignalSession.CliExt.ioVecAt = ioVecAt := rfl
-      let R' : SepProp := memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - extHookStack) ∗ R
-      obtain ⟨hkf, hsym, hout⟩ := hh (⟨x.pathA, true, x.path, x.ret⟩, st) R' s0 hrun
-        (by
-          dsimp only [readFileLitSpecPlaced, readFileBudgetSpec, readFileBudgetCoreSpec,
-            Spec.inImage, R'] at hpre ⊢
-          rw [hsplit, h_pathOk, h_env] at hpre; rw [h_bytesAt]; ac_nf at hpre ⊢) hsp
-      refine ⟨hkf, hsym, ?_⟩
-      rcases hout with ⟨hret, hcc, hpost⟩ | ⟨_, hex⟩ | ⟨_, _, hex⟩ | ⟨_, hex⟩
-      · refine Or.inl ⟨hret, hcc, ?_⟩
-        dsimp only [readFileLitSpecPlaced, readFileBudgetSpec, readFileBudgetCoreSpec,
-          Spec.inImage, R'] at hpost ⊢
-        simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hpost ⊢
-        obtain ⟨evs, r, hpost⟩ := hpost
-        refine ⟨evs, r, ?_⟩
-        rw [h_bytesAt, ← h_rd, ← h_env, h_iov] at hpost; rw [hsplit]; ac_nf at hpost ⊢
-      · dsimp only [readFileBudgetSpec, readFileBudgetCoreSpec, Spec.inImage] at hex
-        rw [satisfies_pure_sepConj] at hex; exact hex.1.elim
-      · dsimp only [readFileBudgetSpec, readFileBudgetCoreSpec, Spec.inImage] at hex
-        rw [satisfies_pure_sepConj] at hex; exact hex.1.elim
-      · dsimp only [readFileBudgetSpec, readFileBudgetCoreSpec, Spec.inImage] at hex
-        rw [satisfies_pure_sepConj] at hex; exact hex.1.elim
-    exact subroutine_ok_rocl_of_plain <|
-      ls_hook_ok_ultra_of_mem (prog := lsProg_617 H) (i := 617)
-        ⟨wrapIoHook img f, by rw [hReadFile, hf]; rfl,
-          hookOk_wrapIoHook_of_inImage hal
-            (specSymtabFree_readFileLitSpecPlaced cliIo A lim stk (ReadFileRuleEnv cliIo.rd))
-            hh_in⟩
-        (by decide)
-  writeFile := by
-    let img0 := symtabOnlyImage img
-    rcases hOk.writeFile img0 with ⟨f, hf, hh⟩
-    have hh_in : HookOk f ((writeFileSpecPlaced cliIo A lim stk).inImage img0) :=
-        fun ⟨x, st⟩ R s0 hrun hpre hsp => by
-      have hsplit := stackAt_split_ext_io (sp := s0.sp) hle hmax
-      have h_pathOk : cliIo.pathOk = cliPathOk := rfl
-      have h_wr : cliIo.wr = writeFileResult := rfl
-      let R' : SepProp := memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - extHookStack) ∗ R
-      obtain ⟨hkf, hsym, hout⟩ := hh (⟨x.pathA, x.path, x.buf, x.bs⟩, st) R' s0 hrun
-        (by
-          dsimp only [writeFileSpecPlaced, writeFileBudgetSpec, writeFileBudgetCoreSpec,
-            Spec.inImage, R'] at hpre ⊢
-          rw [hsplit, h_pathOk] at hpre; ac_nf at hpre ⊢) hsp
-      refine ⟨hkf, hsym, ?_⟩
-      rcases hout with ⟨hret, hcc, hpost⟩ | ⟨_, hex⟩ | ⟨_, _, hex⟩ | ⟨_, hex⟩
-      · refine Or.inl ⟨hret, hcc, ?_⟩
-        dsimp only [writeFileSpecPlaced, writeFileBudgetSpec, writeFileBudgetCoreSpec,
-          Spec.inImage, R'] at hpost ⊢
-        simp only [sepExists_sepConj_left, satisfies_sepExists] at hpost ⊢
-        obtain ⟨evs, hpost⟩ := hpost
-        refine ⟨evs, ?_⟩
-        rw [← h_wr] at hpost; rw [hsplit]; ac_nf at hpost ⊢
-      · dsimp only [writeFileBudgetSpec, writeFileBudgetCoreSpec, Spec.inImage] at hex
-        rw [satisfies_pure_sepConj] at hex; exact hex.1.elim
-      · dsimp only [writeFileBudgetSpec, writeFileBudgetCoreSpec, Spec.inImage] at hex
-        rw [satisfies_pure_sepConj] at hex; exact hex.1.elim
-      · dsimp only [writeFileBudgetSpec, writeFileBudgetCoreSpec, Spec.inImage] at hex
-        rw [satisfies_pure_sepConj] at hex; exact hex.1.elim
-    exact subroutine_ok_rocl_of_plain <|
-      ls_hook_ok_ultra_of_mem (prog := lsProg_617 H) (i := 617)
-        ⟨wrapIoHook img f, by rw [hWriteFile, hf]; rfl,
-          hookOk_wrapIoHook_of_inImage hal
-            (specSymtabFree_writeFileSpecPlaced cliIo A lim stk) hh_in⟩
-        (by decide)
-  writeStdout := by
-    let img0 := symtabOnlyImage img
-    rcases hOk.writeStdout img0 with ⟨f, hf, hh⟩
-    have hh_in : HookOk f ((writeStdoutSpecPlaced A lim stk).inImage img0) :=
-        fun ⟨x, st⟩ R s0 hrun hpre hsp => by
-      have hsplit := stackAt_split_ext_io (sp := s0.sp) hle hmax
-      let R' : SepProp := memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - extHookStack) ∗ R
-      obtain ⟨hkf, hsym, hout⟩ := hh (⟨x.buf, x.bs⟩, st) R' s0 hrun
-        (by
-          dsimp only [writeStdoutSpecPlaced, writeStdoutBudgetSpec, writeStdoutBudgetCoreSpec,
-            Spec.inImage, R'] at hpre ⊢
-          rw [hsplit] at hpre; ac_nf at hpre ⊢) hsp
-      refine ⟨hkf, hsym, ?_⟩
-      rcases hout with ⟨hret, hcc, hpost⟩ | ⟨_, hex⟩ | ⟨_, _, hex⟩ | ⟨_, hex⟩
-      · refine Or.inl ⟨hret, hcc, ?_⟩
-        dsimp only [writeStdoutSpecPlaced, writeStdoutBudgetSpec, writeStdoutBudgetCoreSpec,
-          Spec.inImage, R'] at hpost ⊢
-        simp only [sepExists_sepConj_left, satisfies_sepExists] at hpost ⊢
-        obtain ⟨evs, hpost⟩ := hpost
-        refine ⟨evs, ?_⟩
-        rw [hsplit]; ac_nf at hpost ⊢
-      · dsimp only [writeStdoutBudgetSpec, writeStdoutBudgetCoreSpec, Spec.inImage] at hex
-        rw [satisfies_pure_sepConj] at hex; exact hex.1.elim
-      · dsimp only [writeStdoutBudgetSpec, writeStdoutBudgetCoreSpec, Spec.inImage] at hex
-        rw [satisfies_pure_sepConj] at hex; exact hex.1.elim
-      · dsimp only [writeStdoutBudgetSpec, writeStdoutBudgetCoreSpec, Spec.inImage] at hex
-        rw [satisfies_pure_sepConj] at hex; exact hex.1.elim
-    exact subroutine_ok_rocl_of_plain <|
-      ls_hook_ok_ultra_of_mem (prog := lsProg_617 H) (i := 617)
-        ⟨wrapIoHook img f, by rw [hWriteStdout, hf]; rfl,
-          hookOk_wrapIoHook_of_inImage hal
-            (specSymtabFree_writeStdoutSpecPlaced A lim stk) hh_in⟩
-        (by decide)
-
-theorem mainIoBoundedPlaced_of_budgetLookup_and_readStdin [LibsignalPlacement]
-    {P : PEParams} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {img : Obj.Image} {ext : String → Option (State → State)} {H : LibsignalHooks}
-    {StdinEnv : List (BitVec 8) → List AllocEvent → Prop}
-    (hal : img.base.toNat % 4 = 0)
-    (hL : ExtIoLookup img ext H)
-    (hOk : CliExternsBudgetOk P M A lim ext)
-    (hStdin : HookSat ext readStdinName
-      (readStdinBudgetOfSpec M A lim (symtabOnlyImage img) StdinEnv))
-    (stk : Nat := extHookStack)
-    (hle : extHookStack ≤ stk := by decide)
-    (hmax : stk ≤ 2 ^ 64 := by decide) :
-    MainIoBoundedPlaced A lim H cliIo stk StdinEnv :=
-  mainIoBoundedPlaced_of_budgetLookup_and_subroutine hal
-    hL.readFile hL.writeFile hL.writeStdout hOk stk hle hmax
-    (subroutine_ok_readStdinSpecOfPlaced_of_wrapIoHook hal hL.readStdin hStdin stk hle hmax)
-
-theorem mainIoPlaced_of_budgetLookup [LibsignalPlacement]
-    {P : PEParams} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {img : Obj.Image} {ext : String → Option (State → State)} {H : LibsignalHooks}
-    (hal : img.base.toNat % 4 = 0)
-    (hL : ExtIoLookup img ext H)
-    (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat := extHookStack)
-    (hle : extHookStack ≤ stk := by decide)
-    (hmax : stk ≤ 2 ^ 64 := by decide) :
-    MainIoPlaced A lim H cliIo stk :=
-  (mainIoBoundedPlaced_iff_mainIoPlaced A lim H cliIo stk).mp <|
-    mainIoBoundedPlaced_of_budgetLookup_and_readStdin hal hL hOk
-      (hOk.readStdin (symtabOnlyImage img)) stk hle hmax
 
 end LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced

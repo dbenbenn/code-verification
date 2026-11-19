@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SpecState
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SpecState -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # State-Coupled `decrypt_prekey` Slot Adapter
@@ -24,7 +26,7 @@ and `decResAt` (`dpErrHeap`, `dpResHeap`) with bidirectional separation-logic en
 instantiates `RunProofs.DpPollKState` over `(fs, trace)` (`dpSlotPollKState`, `K₀_state`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -237,22 +239,22 @@ end CellHelpers
 
 /-! ## 3. Address-independent 6-word sret decomposition of `speOwnedAt` and `decResAt` -/
 /-- Off-stack heap ownership of a `Vec<u8>` whose 3 header words are `(cap, ptr, len)`. -/
-def vecU8Heap (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Heap (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗ (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
        memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length))
 /-- Off-stack rodata ownership of a `&'static str` fat pointer `(ptr, len)`. -/
-def strRefHeap (ptr len : BitVec 64) (lit : List (BitVec 8)) : SepProp :=
+@[expose] def strRefHeap (ptr len : BitVec 64) (lit : List (BitVec 8)) : SepProp :=
   ⌜len = BitVec.ofNat 64 lit.length⌝ ∗ (ptr ↦ᵣ lit)
 /-- Off-stack ownership of `invalidMessageStrAt` whose 3 `Vec<u8>` header words are `(w₁, w₂, w₃)`. -/
-def invalidMsgStrHeap (A : RustAlloc) (w₁ w₂ w₃ : BitVec 64) : InvalidMessageReason → SepProp
+@[expose] def invalidMsgStrHeap (A : RustAlloc) (w₁ w₂ w₃ : BitVec 64) : InvalidMessageReason → SepProp
   | .tooFarInFuture => ⌜w₃ = BitVec.ofNat 64 tooFarInFutureStr.length⌝ ∗ vecU8Heap A w₁ w₂ tooFarInFutureStr
   | .macFailed => ⌜w₃ = BitVec.ofNat 64 macFailedStr.length⌝ ∗ vecU8Heap A w₁ w₂ macFailedStr
   | .pqRatchet => ∃∗ bs : List (BitVec 8), ⌜w₃ = BitVec.ofNat 64 bs.length⌝ ∗ vecU8Heap A w₁ w₂ bs
   | .badCiphertext => ∃∗ bs : List (BitVec 8), ⌜w₃ = BitVec.ofNat 64 bs.length⌝ ∗ vecU8Heap A w₁ w₂ bs
   | .decryptionFailed => ⌜False⌝
 /-- Off-stack ownership of `speAt A fnName a e` given the 6 stack words `[w₀..w₅]`. -/
-def dpProtoHeap (A : RustAlloc) (fnName : List (BitVec 8))
+@[expose] def dpProtoHeap (A : RustAlloc) (fnName : List (BitVec 8))
     (w₀ w₁ w₂ w₃ w₄ w₅ : BitVec 64) : SignalProtocolError → SepProp
   | .invalidState => ⌜w₀ = speWord 1⌝ ∗
       (∃∗ bs : List (BitVec 8), ⌜w₃ = BitVec.ofNat 64 bs.length⌝ ∗ vecU8Heap A w₁ w₂ bs) ∗
@@ -271,7 +273,7 @@ def dpProtoHeap (A : RustAlloc) (fnName : List (BitVec 8))
     ⌜w₀ = speWord 24 ∧ w₄.extractLsb' 0 8 = msgTypeByte t⌝ ∗ invalidMsgStrHeap A w₁ w₂ w₃ r
   | .panic => ⌜False⌝
 /-- Off-stack heap / rodata ownership of any `RunDrop.SpeOwned` given its 6 stack words `ws`. -/
-def dpErrHeap (A : RustAlloc) (ws : List (BitVec 64)) (k : RunDrop.SpeOwned) : SepProp :=
+@[expose] def dpErrHeap (A : RustAlloc) (ws : List (BitVec 64)) (k : RunDrop.SpeOwned) : SepProp :=
   match ws with
   | [w₀, w₁, w₂, w₃, w₄, w₅] =>
     match k with
@@ -289,7 +291,7 @@ def dpErrHeap (A : RustAlloc) (ws : List (BitVec 64)) (k : RunDrop.SpeOwned) : S
         (∃∗ bs : List (BitVec 8), ⌜w₃ = BitVec.ofNat 64 bs.length⌝ ∗ vecU8Heap A w₁ w₂ bs)
   | _ => ⌜False⌝
 /-- Off-stack heap / rodata ownership of `decResAt A a e` given its 6 stack words `ws`. -/
-def dpResHeap (A : RustAlloc) (ws : List (BitVec 64))
+@[expose] def dpResHeap (A : RustAlloc) (ws : List (BitVec 64))
     (e : Except (ApiError AddrVal Unit) Bytes) : SepProp :=
   match e with
   | .ok pt =>
@@ -836,39 +838,15 @@ end SpeBijectionProofs
 
 /-! ## 4. `(fs, trace)` coupling diagnostics, `dpSlotPollKState`, and slot theorems -/
 
-/-- The 13 ABI argument words passed to `decrypt_prekey` (`x0..x7` + 5 stack words `[sp..sp+32]`). -/
-def dpSlotArgs (img : Obj.Image) (x : DecPkGhost) : List (BitVec 64) :=
-  [ x.msgA, x.peerA, x.meA, x.stores + 240#64, sessVt img, x.stores, idVt img, x.stores + 200#64,
-    oneTimeVt img, x.stores + 80#64, signedVt img, x.stores + 120#64, kyberVt img ]
-
-/-- `(dpPollSpec K stk).pre` is independent of `s0.fs`, motivating `RunProofs.DpPollKState` whose
-invariant observes `(fs, trace)`. -/
-theorem dpPollSpec_fs_unconstrained (K : DpPollK) (stk : Nat) (x : DpPollGhost K)
-    (s0 : State) (fs' : FsState) :
-    (dpPollSpec K stk).pre x { s0 with fs := fs' } = (dpPollSpec K stk).pre x s0 :=
-  rfl
-
-/-- `(cliDecryptPrekeySpec K stk).post` factors as a Cartesian product of `(fs, trace)` and memory
-unless `res` couples `(fs0, tr0, fs1, tr1, ws)` as in `RunProofs.DpPollKState`. -/
-theorem cliDecryptPrekeySpec_io_res_cartesian (K : DpPollK) (stk : Nat)
-    (x : DecryptPrekeyGhost K) (R : SepProp) (s0 sf₁ sf₂ : State)
-    (h₁ : sf₁.mem ⊨ (cliDecryptPrekeySpec K stk).post x s0 sf₁ ∗ R)
-    (h₂ : sf₂.mem ⊨ (cliDecryptPrekeySpec K stk).post x s0 sf₂ ∗ R) :
-    let sfCross : State := { sf₂ with fs := sf₁.fs, trace := sf₁.trace }
-    sfCross.mem ⊨ (cliDecryptPrekeySpec K stk).post x s0 sfCross ∗ R := by
-  intro sfCross
-  unfold cliDecryptPrekeySpec at h₁ h₂ ⊢; rw [sepConj_assoc, satisfies_pure_sepConj] at h₁ h₂ ⊢
-  exact ⟨h₁.1, h₂.2⟩
-
 /-- `(fs, trace)`-only form of `slotTrace` (`Sem.lean`). -/
-def slotTraceFT (fs0 : FsState) (tr0 : List TraceEvent)
+@[expose] def slotTraceFT (fs0 : FsState) (tr0 : List TraceEvent)
     (fs1 : FsState) (tr1 : List TraceEvent) : Prop :=
   tr0 <+: tr1 ∧ fs1.files = fs0.files ∧
     ProcessOutcome.traceStreamBytes .stdout tr1 =
       ProcessOutcome.traceStreamBytes .stdout tr0
 
 /-- Trace-only form of `slotOut` (`Sem.lean`). -/
-def slotOutTr {α : Type} (ans : SlotAns α) (g' : StoresGhost)
+@[expose] def slotOutTr {α : Type} (ans : SlotAns α) (g' : StoresGhost)
     (e : Except (ApiError AddrVal Unit) α) (_tr0 _tr1 : List TraceEvent) : Prop :=
   e ≠ .error .panic ∧ e ≠ .error (.store ()) ∧
     match e with
@@ -884,28 +862,6 @@ theorem slotOut_iff_Tr {α : Type} (a : SlotAns α) (g' : StoresGhost)
     slotOut a g' e s0 sf ↔ slotOutTr a g' e s0.trace sf.trace :=
   Iff.rfl
 
-/-- Polymorphic state-coupled `RunProofs.DpPollKState` over `(fs, trace)` supporting full `slotOut`. -/
-def dpSlotPollKState (A : RustAlloc) (img : Obj.Image) (B : RunBudgets) (S : RunSem) :
-    RunProofs.DpPollKState where
-  Ghost := DecPkGhost
-  args := dpSlotArgs img
-  inv := fun x fs _ => ⌜fs.files = x.F ∧ S.filesOk x.F x.peer.val x.me.val ∧
-      S.decPkOk x.F x.peer.val x.me.val x.msg⌝ ∗
-      slotFrame A img x.toSlotCtx ∗ preKeyMsgAt A x.msgG x.msgA x.msg
-  res := fun x fs0 tr0 fs1 tr1 ws =>
-    ∃∗ g' : StoresGhost, ∃∗ e : Except (ApiError AddrVal Unit) Bytes,
-      ⌜slotTraceFT fs0 tr0 fs1 tr1 ∧
-        slotOutTr (S.decryptPrekey x.F x.peer.val x.me.val x.msg x.coins) g' e tr0 tr1⌝ ∗
-        storesAt A x.stores g' ∗ dpResHeap A ws e ∗
-        protocolAddressAt A x.peer x.peerA ∗ protocolAddressAt A x.me x.meA ∗
-        preKeyMsgAt A x.msgG x.msgA x.msg ∗ logOff img ∗ A.pool ∗ anyHeap
-  panics := fun x => S.decryptPrekey x.F x.peer.val x.me.val x.msg x.coins = none
-  need := dpPollNeed B
-
-/-- Concrete state-coupled poll contract `K₀_state` at `E2E.HooksE.A0`. -/
-abbrev K₀_state (img : Obj.Image) (B : RunBudgets) (S : RunSem) : RunProofs.DpPollKState :=
-  dpSlotPollKState E2E.HooksE.A0 img B S
-
 section ConsequenceHelpers
 
 private theorem subroutine_ok_of_outcome_map {α β : Type} {prog : Program} {entry : BitVec 64}
@@ -917,147 +873,6 @@ private theorem subroutine_ok_of_outcome_map {α β : Type} {prog : Program} {en
   subroutine_ok.of_codeLoaded fun y R s0 hpc hrun hpre hsp _ => let ⟨hpre₁, hm⟩ := hconseq y R s0 hpre
     h.mono_outcome (f y) R s0 hpc hrun hpre₁ hsp hm
 
-private theorem dpSlotStack5_eq (sp : BitVec 64) (img : Obj.Image) (x : DecPkGhost) :
-    dpWordsAt sp ((dpSlotArgs img x).drop 8) =
-      (sp ↦₆₄ oneTimeVt img) ∗ ((sp + 8#64) ↦₆₄ (x.stores + 80#64)) ∗
-        ((sp + 16#64) ↦₆₄ signedVt img) ∗ ((sp + 24#64) ↦₆₄ (x.stores + 120#64)) ∗
-        ((sp + 32#64) ↦₆₄ kyberVt img) :=
-  dpWords5_eq sp (oneTimeVt img) (x.stores + 80#64) (signedVt img) (x.stores + 120#64) (kyberVt img)
-
-private theorem dpSlotState_post_entails (A : RustAlloc) (img : Obj.Image) (B : RunBudgets)
-    (S : RunSem) (stk : Nat) (x : DecPkGhost) (s0 sf : State) :
-    (RunProofs.cliDecryptPrekeySpecState (dpSlotPollKState A img B S) stk).post ⟨x.ret, x⟩ s0 sf ⊢
-      (decPkSlotSpec A img S stk).post x s0 sf := by
-  unfold RunProofs.cliDecryptPrekeySpecState; refine ent_bind (Entails.refl _) fun ws => ?_
-  rw [sepConj_assoc]; refine ent_pure_left fun _ => ?_
-  have r1 : (dpWordsAt x.ret ws ∗
-          (dpSlotPollKState A img B S).res x s0.fs s0.trace sf.fs sf.trace ws) ∗
-        (dpWordsAt s0.sp (((dpSlotPollKState A img B S).args x).drop 8) ∗ stackAt s0.sp stk) =
-      (dpSlotPollKState A img B S).res x s0.fs s0.trace sf.fs sf.trace ws ∗ (dpWordsAt x.ret ws ∗
-          dpWordsAt s0.sp ((dpSlotArgs img x).drop 8) ∗ stackAt s0.sp stk) := by ac_rfl
-  rw [r1]; unfold dpSlotPollKState; refine ent_bind (Entails.refl _) fun g' => ?_
-  refine ent_bind (Entails.refl _) fun e => ?_
-  rw [sepConj_assoc]; refine ent_pure_left fun ⟨htrace, hout⟩ => ?_
-  rw [dpSlotStack5_eq]
-  have r2 : (storesAt A x.stores g' ∗ dpResHeap A ws e ∗
-        protocolAddressAt A x.peer x.peerA ∗ protocolAddressAt A x.me x.meA ∗
-        preKeyMsgAt A x.msgG x.msgA x.msg ∗ logOff img ∗ A.pool ∗ anyHeap) ∗ (dpWordsAt x.ret ws ∗
-          ((s0.sp ↦₆₄ oneTimeVt img) ∗ ((s0.sp + 8#64) ↦₆₄ (x.stores + 80#64)) ∗
-            ((s0.sp + 16#64) ↦₆₄ signedVt img) ∗ ((s0.sp + 24#64) ↦₆₄ (x.stores + 120#64)) ∗
-            ((s0.sp + 32#64) ↦₆₄ kyberVt img)) ∗ stackAt s0.sp stk) =
-      (dpWordsAt x.ret ws ∗ dpResHeap A ws e) ∗ (storesAt A x.stores g' ∗
-          protocolAddressAt A x.peer x.peerA ∗ protocolAddressAt A x.me x.meA ∗
-          preKeyMsgAt A x.msgG x.msgA x.msg ∗
-          (s0.sp ↦₆₄ oneTimeVt img) ∗ ((s0.sp + 8#64) ↦₆₄ (x.stores + 80#64)) ∗
-          ((s0.sp + 16#64) ↦₆₄ signedVt img) ∗ ((s0.sp + 24#64) ↦₆₄ (x.stores + 120#64)) ∗
-          ((s0.sp + 32#64) ↦₆₄ kyberVt img) ∗ logOff img ∗ A.pool ∗
-          stackAt s0.sp stk ∗ anyHeap) := by ac_rfl
-  rw [r2]; refine Entails.trans (sepConj_mono_left (dpWords_resHeap_entails_decResAt A x.ret ws e)) ?_
-  unfold decPkSlotSpec Spec.inImage; refine Entails.sepExists_right g' (Entails.sepExists_right e ?_)
-  exact ent_pure_right ⟨htrace, hout⟩ (Entails.of_eq (by ac_rfl))
-
 end ConsequenceHelpers
-
-/-- Polymorphic state-coupled wrapper-to-slot adapter for `decrypt_prekey`. -/
-theorem dpSlot_ok_state_inImage {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (B : RunBudgets) (S : RunSem) (stk : Nat)
-    (_hstk : decPkNeed B ≤ stk) (_hstk64 : stk ≤ 2 ^ 63)
-    (hw : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr cliDecryptPrekeyName)
-      ((RunProofs.cliDecryptPrekeySpecState (dpSlotPollKState A img B S) stk).inImage img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr wrapDecryptPrekeyName)
-      (decPkSlotSpec A img S stk) := by
-  refine subroutine_ok_of_outcome_map (fun x => ⟨x.ret, x⟩) hw fun x R s0 hpre => ?_
-  have hpre1 : s0.mem ⊨ ⌜img.FrozenLoaded s0 ∧ s0.symtab = img.symtab⌝ ∗
-      (⌜s0.readReg64 .x0 = x.msgA ∧ s0.readReg64 .x1 = x.peerA ∧ s0.readReg64 .x2 = x.meA ∧
-        s0.readReg64 .x3 = x.stores + 240#64 ∧ s0.readReg64 .x4 = sessVt img ∧
-        s0.readReg64 .x5 = x.stores ∧ s0.readReg64 .x6 = idVt img ∧
-        s0.readReg64 .x7 = x.stores + 200#64 ∧
-        s0.readReg64 .x8 = x.ret ∧ s0.fs.files = x.F ∧ S.filesOk x.F x.peer.val x.me.val ∧
-        S.decPkOk x.F x.peer.val x.me.val x.msg ∧ stk ≤ s0.sp.toNat⌝ ∗
-      (slotFrame A img x.toSlotCtx ∗ preKeyMsgAt A x.msgG x.msgA x.msg ∗
-        (s0.sp ↦₆₄ oneTimeVt img) ∗ ((s0.sp + 8#64) ↦₆₄ (x.stores + 80#64)) ∗
-        ((s0.sp + 16#64) ↦₆₄ signedVt img) ∗ ((s0.sp + 24#64) ↦₆₄ (x.stores + 120#64)) ∗
-        ((s0.sp + 32#64) ↦₆₄ kyberVt img) ∗ memRegion x.ret 48 ∗ stackAt s0.sp stk ∗ R)) := by
-    simpa only [decPkSlotSpec, Spec.inImage, sepConj_assoc] using hpre
-  rw [satisfies_pure_sepConj] at hpre1; obtain ⟨hinv, hpre2⟩ := hpre1
-  rw [satisfies_pure_sepConj] at hpre2
-  obtain ⟨⟨hx0, hx1, hx2, hx3, hx4, hx5, hx6, hx7, hx8, hF0, hfOk, hdOk, hsp_le⟩, hspatial⟩ := hpre2
-  refine ⟨?_, ?_⟩
-  · have htake : ((dpSlotPollKState A img B S).args x).take 8 =
-        [s0.readReg64 .x0, s0.readReg64 .x1, s0.readReg64 .x2, s0.readReg64 .x3,
-         s0.readReg64 .x4, s0.readReg64 .x5, s0.readReg64 .x6, s0.readReg64 .x7] := by
-      simp only [dpSlotPollKState, dpSlotArgs, List.take, hx0, hx1, hx2, hx3, hx4, hx5, hx6, hx7]
-    have hinv_sp : s0.mem ⊨ (dpSlotPollKState A img B S).inv x s0.fs s0.trace ∗
-          dpWordsAt s0.sp (((dpSlotPollKState A img B S).args x).drop 8) ∗
-          memRegion x.ret 48 ∗ stackAt s0.sp stk ∗ R := by
-      unfold dpSlotPollKState
-      rw [dpSlotStack5_eq, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-      exact ⟨⟨hF0, hfOk, hdOk⟩,
-        by simpa only [sepConj_comm, sepConj_left_comm, sepConj_assoc] using hspatial⟩
-    unfold Spec.inImage; rw [sepConj_assoc, satisfies_pure_sepConj]; refine ⟨hinv, ?_⟩
-    unfold RunProofs.cliDecryptPrekeySpecState; rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx8, rfl, htake, hsp_le⟩,
-      by simpa only [sepConj_comm, sepConj_left_comm, sepConj_assoc] using hinv_sp⟩
-  · intro sf hout
-    rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hp_st, hp⟩ | ⟨code, hex_st, hex⟩ | ⟨ho_st, ho⟩
-    · exact Or.inl ⟨hret, hcc,
-        Satisfies.mono (sepConj_mono_left (dpSlotState_post_entails A img B S stk x s0 sf)) hpost⟩
-    · refine Or.inr (Or.inl ⟨hp_st, ?_⟩)
-      have hp' : sf.mem ⊨ ⌜s0.trace <+: sf.trace ∧ (allocFailedIn s0 sf ∨
-              S.decryptPrekey x.F x.peer.val x.me.val x.msg x.coins = none)⌝ ∗
-          (anyHeap ∗ R) := by
-        simpa only [Spec.inImage, RunProofs.cliDecryptPrekeySpecState, dpSlotPollKState,
-          sepConj_assoc] using hp
-      rw [satisfies_pure_sepConj] at hp'; obtain ⟨⟨_, hp_or⟩, hany⟩ := hp'
-      have hp_goal : sf.mem ⊨ ⌜S.decryptPrekey x.F x.peer.val x.me.val x.msg x.coins = none ∨
-            allocFailedIn s0 sf⌝ ∗ (anyHeap ∗ R) := by
-        rw [satisfies_pure_sepConj]; exact ⟨hp_or.symm, hany⟩
-      simpa only [decPkSlotSpec, Spec.inImage, sepConj_assoc] using hp_goal
-    · exact Or.inr (Or.inr (Or.inl ⟨code, hex_st, hex⟩))
-    · exact Or.inr (Or.inr (Or.inr ⟨ho_st, ho⟩))
-
-theorem decPk_slot_ok_state_ext (A : RustAlloc) (ext : String → Option (State → State))
-    (img : Obj.Image) (B : RunBudgets) (S : RunSem) (stk : Nat)
-    (hstk : decPkNeed B ≤ stk) (hstk64 : stk ≤ 2 ^ 63)
-    (hw : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr cliDecryptPrekeyName)
-      ((RunProofs.cliDecryptPrekeySpecState (dpSlotPollKState A img B S) stk).inImage img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr wrapDecryptPrekeyName)
-      (decPkSlotSpec A img S stk) :=
-  dpSlot_ok_state_inImage B S stk hstk hstk64 hw
-
-theorem decPk_slotOk_state_ext (A : RustAlloc) (ext : String → Option (State → State))
-    (img : Obj.Image) (B : RunBudgets) (S : RunSem) (needs : RunNeeds)
-    (hneed : needs.decryptPrekey = decPkNeed B)
-    (hw : ∀ stk, decPkNeed B ≤ stk → stk ≤ 2 ^ 63 →
-      subroutine_ok (tripleRatchetProgAtExt img.base ext)
-        ((tripleRatchetProgAtExt img.base ext).fnAddr cliDecryptPrekeyName)
-        ((RunProofs.cliDecryptPrekeySpecState (dpSlotPollKState A img B S) stk).inImage img)) :
-    (slotsOf A img S needs).decryptPrekey.Ok img ext wrapDecryptPrekeyName :=
-  fun stk h1 h2 => decPk_slot_ok_state_ext A ext img B S stk (hneed ▸ h1) h2 (hw stk (hneed ▸ h1) h2)
-
-/-- Adapts `RunProofs.cliDecryptPrekeySpecState (K₀_state img B S)` on `cliDecryptPrekeyName` to
-`decPkSlotSpec E2E.HooksE.A0 img S stk` on `wrapDecryptPrekeyName`. -/
-theorem decPk_slot_ok_state (W : CliHooks) (img : Obj.Image) (B : RunBudgets) (S : RunSem) (stk : Nat)
-    (hstk : decPkNeed B ≤ stk) (hstk64 : stk ≤ 2 ^ 63)
-    (hw : subroutine_ok (tripleRatchetProgAtExt img.base (cliExterns W))
-      ((tripleRatchetProgAtExt img.base (cliExterns W)).fnAddr cliDecryptPrekeyName)
-      ((RunProofs.cliDecryptPrekeySpecState (K₀_state img B S) stk).inImage img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base (cliExterns W))
-      ((tripleRatchetProgAtExt img.base (cliExterns W)).fnAddr wrapDecryptPrekeyName)
-      (decPkSlotSpec E2E.HooksE.A0 img S stk) :=
-  decPk_slot_ok_state_ext E2E.HooksE.A0 (cliExterns W) img B S stk hstk hstk64 hw
-
-theorem decPk_slotOk_state (W : CliHooks) (img : Obj.Image)
-    (B : RunBudgets) (S : RunSem) (needs : RunNeeds) (hneed : needs.decryptPrekey = decPkNeed B)
-    (hw : ∀ stk, decPkNeed B ≤ stk → stk ≤ 2 ^ 63 →
-      subroutine_ok (tripleRatchetProgAtExt img.base (cliExterns W))
-        ((tripleRatchetProgAtExt img.base (cliExterns W)).fnAddr cliDecryptPrekeyName)
-        ((RunProofs.cliDecryptPrekeySpecState (K₀_state img B S) stk).inImage img)) :
-    (slotsOf E2E.HooksE.A0 img S needs).decryptPrekey.Ok img (cliExterns W) wrapDecryptPrekeyName :=
-  decPk_slotOk_state_ext E2E.HooksE.A0 (cliExterns W) img B S needs hneed hw
 
 end CryptoVerification.SignalSession.Cli.RunCompose

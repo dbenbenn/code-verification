@@ -19,7 +19,7 @@ decomposition lemmas (`stackAt_chainMerge3StackX_split`, `chain3SavedRegs_restor
 `chain3_stack_restore`) for the `0xf0`-byte frame of `message::merge<Chain> [local#5]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,24 +34,12 @@ section Fetch
 
 open Lean Meta Elab Command Tactic Arm64 ProofLib ProofLib.ProgramReflection
 
-/-- Fetch facts for byte offsets `kStart, kStart + 4, …, kEnd` (inclusive) of
-`message::merge<Chain> [local#5]` in `libsignalSessionCode.rebase b H`. -/
-elab "chain3_fetches_range " b:term:max H:term:max kStart:num kEnd:num : tactic => do
-  let off := Lean.Syntax.mkNumLit (toString (num% (ls_off% "prost::encoding::message::merge::<libsignal_protocol::proto::storage::session_structure::Chain, &mut &[u8]> [local#4]")))
-  let len := Lean.Syntax.mkNumLit (toString (kEnd.getNat - kStart.getNat + 4))
-  evalTactic (← `(tactic|
-    code_fetches_range CryptoVerification.libsignalSessionCode
-      CryptoVerification.Cli.ShardFill.ChainMerge5Decode.chainMerge5Bin
-      $b $H
-      (ls_lemma% fnOff "prost::encoding::message::merge::<libsignal_protocol::proto::storage::session_structure::Chain, &mut &[u8]> [local#4]")
-      $off $kStart $len))
-
 end Fetch
 
 /-! ## 2. Frame split -/
 
 /-- The 10 words `[sp0 - 0x50, sp0)` of the `0xf0` frame, contents existential. -/
-def chain3Cells (sp0 : BitVec 64) : SepProp :=
+@[expose] def chain3Cells (sp0 : BitVec 64) : SepProp :=
   ∃∗ w80 : BitVec 64, ∃∗ w72 : BitVec 64, ∃∗ w64 : BitVec 64, ∃∗ w56 : BitVec 64,
   ∃∗ w48 : BitVec 64, ∃∗ w40 : BitVec 64, ∃∗ w32 : BitVec 64, ∃∗ w24 : BitVec 64,
   ∃∗ w16 : BitVec 64, ∃∗ w8 : BitVec 64,

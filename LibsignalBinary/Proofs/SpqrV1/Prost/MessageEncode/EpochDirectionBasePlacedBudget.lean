@@ -10,19 +10,21 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
 import ProofLib.SepLogic.WPp
+public meta import ProofLib.GenPlacedFetches
+public meta import ProofLib.SepLogic.WP
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` Helpers for `EpochDirection::encode` (`Blocks 154 & 317`)
@@ -32,7 +34,7 @@ proves `VmPreserved`-threaded shared basic-block steppers, and provides polymorp
 budget call steppers (`memcpy`, `encode_varint`, and `do_reserve_and_handle`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -213,12 +215,12 @@ theorem epochDirection_unpinned_of_pinned_placed_x [LibsignalPlacement] {resStac
   · exact Or.inr (Or.inr hrest_out)
 
 /-- Relocatable base program for `EpochDirection::encode [local#1, 2]` (Blocks `154` & `317`). -/
-def IsEpochDirectionEncodePlacedBase (P_blk : Program) (pl : Placement) : Prop :=
+@[expose] def IsEpochDirectionEncodePlacedBase (P_blk : Program) (pl : Placement) : Prop :=
   (∃ (inst : LibsignalPlacement), P_blk = @blkPC_154 inst ∧ pl = @blkPl_154 inst) ∨
   (∃ (inst : LibsignalPlacement), P_blk = @blkPC_317 inst ∧ pl = @blkPl_317 inst)
 
 /-- Relocatable rebased program for `EpochDirection::encode [local#1, 2]` (`lsProg_154 H` or `lsProg_317 H`). -/
-def IsEpochDirectionEncodePlacedProg (prog : Program) (pl : Placement) : Prop :=
+@[expose] def IsEpochDirectionEncodePlacedProg (prog : Program) (pl : Placement) : Prop :=
   ∃ P_blk H, prog = P_blk.rebase pl.base H ∧ IsEpochDirectionEncodePlacedBase P_blk pl
 
 theorem isEpochDirectionEncodePlacedProg_154 [LibsignalPlacement]
@@ -231,84 +233,84 @@ theorem isEpochDirectionEncodePlacedProg_317 [LibsignalPlacement]
     IsEpochDirectionEncodePlacedProg (lsProg_317 H) blkPl_317 :=
   ⟨blkPC_317, H, rfl, Or.inr ⟨‹_›, rfl, rfl⟩⟩
 
-def EncodeEpochDirection154PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection154PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_154 H) (blkPl_154).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionPinnedSpec A lim))
 
-def EncodeEpochDirection154PlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection154PlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_154 H) (blkPl_154).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionSpec A lim))
 
-def EncodeEpochDirection154PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection154PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_154 H) (blkPl_154).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionPinnedSpecX A lim))
 
-def EncodeEpochDirection154PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection154PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_154 H) (blkPl_154).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionSpecX A lim))
 
-def EncodeEpochDirection154PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection154PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   EncodeEpochDirection154PinnedPlacedOk A lim (Rust.withPanics ext)
 
-def EncodeEpochDirection154PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection154PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   EncodeEpochDirection154PlacedOk A lim (Rust.withPanics ext)
 
-def EncodeEpochDirection154PinnedPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection154PinnedPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   EncodeEpochDirection154PinnedPlacedOkX A lim (Rust.withPanics ext)
 
-def EncodeEpochDirection154PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection154PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   EncodeEpochDirection154PlacedOkX A lim (Rust.withPanics ext)
 
-def EncodeEpochDirection154PinnedExactPlacedOk [LibsignalPlacement] (resStack : Nat) (A : RustAlloc)
+@[expose] def EncodeEpochDirection154PinnedExactPlacedOk [LibsignalPlacement] (resStack : Nat) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_154 H) (blkPl_154).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionPinnedExactVmSpecOf resStack A))
 
-def EncodeEpochDirection317PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection317PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_317 H) (blkPl_317).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionPinnedSpec A lim))
 
-def EncodeEpochDirection317PlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection317PlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_317 H) (blkPl_317).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionSpec A lim))
 
-def EncodeEpochDirection317PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection317PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_317 H) (blkPl_317).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionPinnedSpecX A lim))
 
-def EncodeEpochDirection317PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection317PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_317 H) (blkPl_317).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionSpecX A lim))
 
-def EncodeEpochDirection317PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection317PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   EncodeEpochDirection317PinnedPlacedOk A lim (Rust.withPanics ext)
 
-def EncodeEpochDirection317PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection317PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   EncodeEpochDirection317PlacedOk A lim (Rust.withPanics ext)
 
-def EncodeEpochDirection317PinnedPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection317PinnedPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   EncodeEpochDirection317PinnedPlacedOkX A lim (Rust.withPanics ext)
 
-def EncodeEpochDirection317PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection317PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   EncodeEpochDirection317PlacedOkX A lim (Rust.withPanics ext)
 
-def EncodeEpochDirection317PinnedExactPlacedOk [LibsignalPlacement] (resStack : Nat) (A : RustAlloc)
+@[expose] def EncodeEpochDirection317PinnedExactPlacedOk [LibsignalPlacement] (resStack : Nat) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_317 H) (blkPl_317).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionPinnedExactVmSpecOf resStack A))

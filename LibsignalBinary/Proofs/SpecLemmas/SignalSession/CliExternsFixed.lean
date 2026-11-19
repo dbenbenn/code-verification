@@ -9,29 +9,21 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionObj
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliProcessFixed
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRun
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRunFixed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRun -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalPublicApi
 public import ProofLib.FsTrace
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 /-!
-# CLI Process Semantics Under Contract-Satisfying Extern Tables
+# CLI Separation-Logic Extern Contracts (`CliExt`)
 
-**Checked by Lean.** Generalizes fixed-image CLI execution (`cliRunAbortOnPanic elf W`) to an
-arbitrary extern table `ext` (`cliRunAbortOnPanicUnderExterns elf ext`) satisfying separation-logic
-contracts `CliExternsOk P A ext`.
-
-Whereas the fixed hooks in `cliHookTable W` preserve caller-saved registers (DEV-E1) and treat
-`__rust_dealloc` as a no-op (DEV-E6), `CliExternsOk` requires only `HookSat` against each row's
-`Spec` (clobbering caller-saved registers, flags, and bounded stack frames `memHookStack` = 4 KiB
-or `extHookStack` = 16 KiB, and consuming `live` tokens on deallocation via `RustAlloc`), while
-preserving `tpidr_el0`, execute permissions, and file-system state outside the four I/O hooks.
-The fixed hook table is the special case `ext := cliHookExterns W` (`cliRunSig_eq`).
+**Checked by Lean.** Defines separation-logic `Spec` contracts (`CliExt.*`) for the CLI extern
+routines (allocator shim, libc memory ops, file/stdio I/O, `core`/`std` helpers, and cryptographic
+primitives), together with `cliHookExterns`.
 -/
 
 namespace CryptoVerification.SignalSession
@@ -40,54 +32,9 @@ open Arm64 Arm64.Process ProofLib CryptoGames CryptoGames.LibsignalSession
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchet
 
-/-! ## Execution Under an Arbitrary Extern Table -/
-
-/-- Extern lookup mapping CLI image panic symbols to `Rust.panicked` (`withCliPanics`) and all
-other symbols via `ext`. -/
-noncomputable def cliExternsWith (ext : String → Option (State → State)) :
-    String → Option (State → State) :=
-  withCliPanics ext
-
-/-- `cliExternsWith ext` with every hook wrapped in `abortOnPanic` (`SIGABRT` on panic). -/
-noncomputable def cliExternsSigWith (ext : String → Option (State → State)) :
-    String → Option (State → State) :=
-  fun name => (cliExternsWith ext name).map abortOnPanic
-
-/-- Fixed-image CLI `Program` at `cliBase` using `cliExternsSigWith ext`. -/
-noncomputable def cliProgAbortOnPanicUnderExterns (ext : String → Option (State → State)) : Program :=
-  libsignalSessionImage.toProgram.rebase cliBase (cliExternsSigWith ext)
-
-/-- Whole-process run predicate for `elf` on `i` under extern table `ext` starting at
-`cliTokenPatch s0`. -/
-def CliRunsToUnderExterns (elf : ElfImage) (ext : String → Option (State → State)) (i : Inputs)
-    (o : Outcome) : Prop :=
-  ∃ s0, elf.loadState (cliProcessInputs i) = .ok s0 ∧
-    _root_.Arm64.Process.ProcessRunsTo (cliProgAbortOnPanicUnderExterns ext) (cliTokenPatch s0) (OutcomeMatchesProcess o)
-
-open Classical in
-/-- Partial run function returning the outcome satisfying `CliRunsToUnderExterns elf ext i`, if any. -/
-noncomputable def cliRunAbortOnPanicUnderExterns (elf : ElfImage) (ext : String → Option (State → State)) :
-    CliRun := fun i =>
-  if h : ∃ o, CliRunsToUnderExterns elf ext i o then some (Classical.choose h) else none
-
 /-- Lookup in the fixed hook table `cliHookTable W` as an extern map. -/
-noncomputable def cliHookExterns (W : CliHooks) : String → Option (State → State) :=
+@[expose] def cliHookExterns (W : CliHooks) : String → Option (State → State) :=
   fun name => (cliHookTable W).lookup name
-
-/-! ### Specialization to `cliHookExterns W` -/
-
-theorem cliExterns_eq (W : CliHooks) : cliExterns W = cliExternsWith (cliHookExterns W) := rfl
-
-theorem cliExternsSig_eq (W : CliHooks) :
-    cliExternsAbortOnPanic W = cliExternsSigWith (cliHookExterns W) := rfl
-
-theorem cliProgSig_eq (W : CliHooks) : cliProgAbortOnPanic W = cliProgAbortOnPanicUnderExterns (cliHookExterns W) := rfl
-
-theorem cliRunsTo_eq (elf : ElfImage) (W : CliHooks) :
-    CliRunsTo elf W = CliRunsToUnderExterns elf (cliHookExterns W) := rfl
-
-theorem cliRunSig_eq (elf : ElfImage) (W : CliHooks) :
-    cliRunAbortOnPanic elf W = cliRunAbortOnPanicUnderExterns elf (cliHookExterns W) := rfl
 
 /-! ## Separation-Logic Extern Contracts -/
 
@@ -97,31 +44,31 @@ namespace CliExt
 abbrev memHookStack : Nat := 4096
 
 /-- Adjoins `stackAt s.sp stk` to the pre- and postcondition of `spec`. -/
-def withStack {α : Type} (spec : Spec α) (stk : Nat := extHookStack) : Spec α :=
+@[expose] def withStack {α : Type} (spec : Spec α) (stk : Nat := extHookStack) : Spec α :=
   { spec with
     pre := fun x s => spec.pre x s ∗ stackAt s.sp stk
     post := fun x s0 sf => spec.post x s0 sf ∗ stackAt s0.sp stk }
 
 /-- Read-only (`↦ᵣ`) or owned (`↦ₛ`) byte slice at `p`, selected by `ro`. -/
-def bytesAt (ro : Bool) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def bytesAt (ro : Bool) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   if ro then p ↦ᵣ bs else p ↦ₛ bs
 
 /-! ### Allocator Shim and libc Memory Routines -/
 
 /-- No-op contract for `__rust_no_alloc_shim_is_unstable_v2()`. -/
-def shimSpec : Spec Unit where
+@[expose] def shimSpec : Spec Unit where
   pre := fun _ _ => emp
   post := fun _ s0 sf => ⌜sf.trace = s0.trace⌝
 
 /-- `memcpy(dst, src, n)` from owned memory with `memHookStack` stack budget and unchanged trace. -/
-def memcpySpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def memcpySpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := (libcMemcpySpec memHookStack).pre
   post := fun (dst, src, bs) s0 sf =>
     ⌜sf.readReg64 .x0 = dst ∧ sf.trace = s0.trace⌝ ∗
       (dst ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ stackAt s0.sp memHookStack
 
 /-- `memcpy(dst, src, n)` from read-only memory with `memHookStack` stack budget. -/
-def memcpyROSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
+@[expose] def memcpyROSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
   withStack
     { pre := fun (dst, src, bs) s0 =>
         ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ (s0.readReg64 .x2).toNat = bs.length ∧
@@ -131,14 +78,14 @@ def memcpyROSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
     memHookStack
 
 /-- `memmove(base + dst, base + src, len)` within a single owned buffer, preserving the trace. -/
-def memmoveSpec : Spec (BitVec 64 × List (BitVec 8) × Nat × Nat × Nat) where
+@[expose] def memmoveSpec : Spec (BitVec 64 × List (BitVec 8) × Nat × Nat × Nat) where
   pre := (libcMemmoveSpec memHookStack).pre
   post := fun (base, buf, dst, src, len) s0 sf =>
     ⌜sf.readReg64 .x0 = base + BitVec.ofNat 64 dst ∧ sf.trace = s0.trace⌝ ∗
       (base ↦ₛ listMove buf dst src len) ∗ stackAt s0.sp memHookStack
 
 /-- `memset(ptr, c, len)` with `memHookStack` stack budget, preserving the trace. -/
-def memsetSpec : Spec (BitVec 64 × BitVec 8 × Nat) where
+@[expose] def memsetSpec : Spec (BitVec 64 × BitVec 8 × Nat) where
   pre := (libcMemsetSpec memHookStack).pre
   post := fun (ptr, c, len) s0 sf =>
     ⌜sf.readReg64 .x0 = ptr ∧ sf.trace = s0.trace⌝ ∗
@@ -155,7 +102,7 @@ structure BcmpCall where
 
 /-- C `bcmp` contract: sets the low 32 bits of `x0` to `0` iff the two `n`-byte slices are equal,
 returning both slices with trace unchanged. -/
-def bcmpSpec : Spec BcmpCall where
+@[expose] def bcmpSpec : Spec BcmpCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ s.readReg64 .x1 = x.b ∧
       (s.readReg64 .x2).toNat = x.bsA.length ∧ x.bsB.length = x.bsA.length⌝ ∗
@@ -165,11 +112,11 @@ def bcmpSpec : Spec BcmpCall where
       bytesAt x.aRo x.a x.bsA ∗ bytesAt x.bRo x.b x.bsB ∗ stackAt s0.sp extHookStack
 
 /-- Owned NUL-terminated byte string `s` at `p`. -/
-def cStrAt (p : BitVec 64) (s : List (BitVec 8)) : SepProp := p ↦ₛ (s ++ [0#8])
+@[expose] def cStrAt (p : BitVec 64) (s : List (BitVec 8)) : SepProp := p ↦ₛ (s ++ [0#8])
 
 /-- `strlen(p)` on an interior-NUL-free C string `s`: returns `x0 = s.length` with trace and file
 system unchanged. -/
-def strlenSpec : Spec (BitVec 64 × List (BitVec 8)) where
+@[expose] def strlenSpec : Spec (BitVec 64 × List (BitVec 8)) where
   pre := fun (p, s) s0 =>
     ⌜s0.readReg64 .x0 = p ∧ ∀ b ∈ s, b ≠ 0#8⌝ ∗ cStrAt p s ∗ stackAt s0.sp extHookStack
   post := fun (p, s) s0 sf =>
@@ -178,7 +125,7 @@ def strlenSpec : Spec (BitVec 64 × List (BitVec 8)) where
 
 /-- `core::str::from_utf8` on ASCII bytes `bs`: writes `Ok(&bs)` (`tag = 0`, pointer, length) to
 sret `x8` with trace and file system unchanged. -/
-def fromUtf8Spec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def fromUtf8Spec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (r, p, bs) s0 =>
     ⌜s0.readReg64 .x0 = p ∧ s0.readReg64 .x1 = BitVec.ofNat 64 bs.length ∧
       s0.readReg64 (.gpr 8#5) = r ∧ ∀ b ∈ bs, b.toNat < 128⌝ ∗
@@ -194,12 +141,12 @@ structure MemrchrCall where
   bs : List (BitVec 8)
 
 /-- Last index of byte `c` in `bs`, if present. -/
-def memrchrIdx (c : BitVec 8) (bs : List (BitVec 8)) : Option Nat :=
+@[expose] def memrchrIdx (c : BitVec 8) (bs : List (BitVec 8)) : Option Nat :=
   ((List.range bs.length).filter fun i => bs[i]? == some c).getLast?
 
 /-- `core::slice::memchr::memrchr(c, p, len) -> Option<usize>`: returns `(1, i)` at the last index
 `i` of `c` or `x0 = 0` when absent, preserving trace and file system. -/
-def memrchrSpec : Spec MemrchrCall where
+@[expose] def memrchrSpec : Spec MemrchrCall where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = x.c ∧ s.readReg64 .x1 = x.p ∧
       s.readReg64 .x2 = BitVec.ofNat 64 x.bs.length ∧ x.bs.length < 2 ^ 64⌝ ∗
@@ -212,22 +159,22 @@ def memrchrSpec : Spec MemrchrCall where
 /-! ### File-System and Standard-I/O Contracts -/
 
 /-- Converts raw path bytes one-to-one into an `FsState.files` key string. -/
-def pathStr (p : List (BitVec 8)) : String := String.ofList (p.map fun b => Char.ofNat b.toNat)
+@[expose] def pathStr (p : List (BitVec 8)) : String := String.ofList (p.map fun b => Char.ofNat b.toNat)
 
 /-- Valid CLI path bytes: `PathOk`, ASCII, components `≤ 255` bytes, and total length
 `< cliPathMaxBytes` (`4096`). -/
-def cliPathOk (path : List (BitVec 8)) : Prop :=
+@[expose] def cliPathOk (path : List (BitVec 8)) : Prop :=
   PathOk (pathStr path) = true ∧
     ((∀ b ∈ path, b.toNat < 128) ∧
       ((pathComps (pathStr path)).all fun c => decide (c.length ≤ NAME_MAX)) = true) ∧
     path.length < cliPathMaxBytes
 
-def blockingAncestorF (F : String → Option FsEntry) (p : String) : Option (Option FsEntry) :=
+@[expose] def blockingAncestorF (F : String → Option FsEntry) (p : String) : Option (Option FsEntry) :=
   ((ancestors p).find? fun q => match F q with | some .dir => false | _ => true).map F
 
 /-- File-map read view at `p`: `none` on a regular-file proper ancestor, directory target, or size
 above `fileCapBytes`; `some []` if missing; `some bs` otherwise. -/
-def readViewF (F : String → Option FsEntry) (p : String) : Option (List (BitVec 8)) :=
+@[expose] def readViewF (F : String → Option FsEntry) (p : String) : Option (List (BitVec 8)) :=
   match blockingAncestorF F p with
   | some (some _) => none
   | some none => some []
@@ -238,7 +185,7 @@ def readViewF (F : String → Option FsEntry) (p : String) : Option (List (BitVe
     | none => some []
 
 /-- Result of `read_file` on file map `F` and `path`. -/
-def readFileResult (F : String → Option FsEntry) (path : List (BitVec 8)) :
+@[expose] def readFileResult (F : String → Option FsEntry) (path : List (BitVec 8)) :
     Except Unit (List (BitVec 8)) :=
   match readViewF F (pathStr path) with
   | none => .error ()
@@ -246,7 +193,7 @@ def readFileResult (F : String → Option FsEntry) (path : List (BitVec 8)) :
 
 /-- File-map update of `write_file`: `none` if blocked by a regular-file ancestor or existing
 directory at `path`, otherwise sets `path`'s canonical entry to `bs`. -/
-def writeFileResult (F : String → Option FsEntry) (path bs : List (BitVec 8)) :
+@[expose] def writeFileResult (F : String → Option FsEntry) (path bs : List (BitVec 8)) :
     Option (String → Option FsEntry) :=
   match blockingAncestorF F (pathStr path), F (pathStr path) with
   | some _, _ => none
@@ -256,7 +203,7 @@ def writeFileResult (F : String → Option FsEntry) (path bs : List (BitVec 8)) 
       else if normalizePath q = normalizePath (pathStr path) then some (.file bs) else F q
 
 /-- Remaining `stdin` bytes when fd 0 is a readable `.stdio` descriptor. -/
-def stdinBytes (fs : FsState) : Option (List (BitVec 8)) :=
+@[expose] def stdinBytes (fs : FsState) : Option (List (BitVec 8)) :=
   match fs.fds 0#64 with
   | some e =>
     if e.kind == .stdio && e.accMode.canRead then
@@ -266,7 +213,7 @@ def stdinBytes (fs : FsState) : Option (List (BitVec 8)) :=
 
 /-- Memory layout of `Result<Vec<u8>, IoError>` at `r` (24 bytes): owned `Vec<u8>` on `.ok`, tag
 `-1` on `.error`. -/
-def ioVecAt (A : RustAlloc) (r : BitVec 64) : Except Unit (List (BitVec 8)) → SepProp
+@[expose] def ioVecAt (A : RustAlloc) (r : BitVec 64) : Except Unit (List (BitVec 8)) → SepProp
   | .ok bs => vecU8 A r bs
   | .error _ => (r ↦₆₄ 0xFFFFFFFFFFFFFFFF#64) ∗ memRegion (r + 8#64) 16
 
@@ -279,19 +226,17 @@ structure ReadFileCall where
 
 /-- `read_file(path)` (sret `x8`): writes `readFileResult s0.fs.files path`, preserving files;
 panics after logging `allocFailedEvent` on allocation failure. -/
-def readFileSpec (A : RustAlloc) (img : Obj.Image) : Spec ReadFileCall :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.pathA ∧ (s.readReg64 .x1).toNat = x.path.length ∧
-          s.readReg64 .x8 = x.ret ∧ x.path.length < 2 ^ 32 ∧ cliPathOk x.path⌝ ∗
-          bytesAt x.ro x.pathA x.path ∗ memRegion x.ret 24 ∗ stackAt s.sp extHookStack ∗ A.pool
-      post := fun x s0 sf =>
-        (∃∗ r : Except Unit (List (BitVec 8)),
-          ⌜sf.fs.files = s0.fs.files ∧ r = readFileResult s0.fs.files x.path ∧ sf.trace = s0.trace⌝ ∗
-            ioVecAt A x.ret r) ∗
-          bytesAt x.ro x.pathA x.path ∗ stackAt s0.sp extHookStack ∗ A.pool
-      onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
-    img
+@[expose] def readFileSpec (A : RustAlloc) : Spec ReadFileCall where
+  pre := fun x s =>
+    ⌜s.readReg64 .x0 = x.pathA ∧ (s.readReg64 .x1).toNat = x.path.length ∧
+      s.readReg64 .x8 = x.ret ∧ x.path.length < 2 ^ 32 ∧ cliPathOk x.path⌝ ∗
+      bytesAt x.ro x.pathA x.path ∗ memRegion x.ret 24 ∗ stackAt s.sp extHookStack ∗ A.pool
+  post := fun x s0 sf =>
+    (∃∗ r : Except Unit (List (BitVec 8)),
+      ⌜sf.fs.files = s0.fs.files ∧ r = readFileResult s0.fs.files x.path ∧ sf.trace = s0.trace⌝ ∗
+        ioVecAt A x.ret r) ∗
+      bytesAt x.ro x.pathA x.path ∗ stackAt s0.sp extHookStack ∗ A.pool
+  onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Call parameters for `read_stdin`. -/
 structure ReadStdinCall where
@@ -300,17 +245,15 @@ structure ReadStdinCall where
 
 /-- `read_stdin()` (sret `x8`): writes `readStdinResult` on `stdinBytes s0.fs`, preserving files;
 panics after logging `allocFailedEvent` on allocation failure. -/
-def readStdinSpec (A : RustAlloc) (img : Obj.Image) : Spec ReadStdinCall :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x8 = x.ret ∧ stdinBytes s.fs = some x.bs⌝ ∗
-          memRegion x.ret 24 ∗ stackAt s.sp extHookStack ∗ A.pool
-      post := fun x s0 sf =>
-        (∃∗ r : Except Unit (List (BitVec 8)),
-          ⌜sf.fs.files = s0.fs.files ∧ r = readStdinResult x.bs ∧ sf.trace = s0.trace⌝ ∗ ioVecAt A x.ret r) ∗
-          stackAt s0.sp extHookStack ∗ A.pool
-      onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
-    img
+@[expose] def readStdinSpec (A : RustAlloc) : Spec ReadStdinCall where
+  pre := fun x s =>
+    ⌜s.readReg64 .x8 = x.ret ∧ stdinBytes s.fs = some x.bs⌝ ∗
+      memRegion x.ret 24 ∗ stackAt s.sp extHookStack ∗ A.pool
+  post := fun x s0 sf =>
+    (∃∗ r : Except Unit (List (BitVec 8)),
+      ⌜sf.fs.files = s0.fs.files ∧ r = readStdinResult x.bs ∧ sf.trace = s0.trace⌝ ∗ ioVecAt A x.ret r) ∗
+      stackAt s0.sp extHookStack ∗ A.pool
+  onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Call parameters for `write_file`. -/
 structure WriteFileCall where
@@ -321,22 +264,20 @@ structure WriteFileCall where
 
 /-- `write_file(path, bytes)` (`x0 = 0` on `Ok`, `1` on `Err`): updates files by `writeFileResult`,
 preserving stdout and extending the trace monotonically. -/
-def writeFileSpec (img : Obj.Image) : Spec WriteFileCall :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.pathA ∧ (s.readReg64 .x1).toNat = x.path.length ∧
-          s.readReg64 .x2 = x.buf ∧ (s.readReg64 .x3).toNat = x.bs.length ∧
-          x.path.length < 2 ^ 32 ∧ cliPathOk x.path⌝ ∗
-          (x.pathA ↦ₛ x.path) ∗ (x.buf ↦ₛ x.bs) ∗ stackAt s.sp extHookStack
-      post := fun x s0 sf =>
-        ⌜(match writeFileResult s0.fs.files x.path x.bs with
-          | some F' => sf.readReg64 .x0 = 0#64 ∧ sf.fs.files = F'
-          | none => sf.readReg64 .x0 = 1#64 ∧ sf.fs.files = s0.fs.files) ∧
-          s0.trace <+: sf.trace ∧
-          ProcessOutcome.traceStreamBytes .stdout sf.trace =
-            ProcessOutcome.traceStreamBytes .stdout s0.trace⌝ ∗
-          (x.pathA ↦ₛ x.path) ∗ (x.buf ↦ₛ x.bs) ∗ stackAt s0.sp extHookStack }
-    img
+@[expose] def writeFileSpec : Spec WriteFileCall where
+  pre := fun x s =>
+    ⌜s.readReg64 .x0 = x.pathA ∧ (s.readReg64 .x1).toNat = x.path.length ∧
+      s.readReg64 .x2 = x.buf ∧ (s.readReg64 .x3).toNat = x.bs.length ∧
+      x.path.length < 2 ^ 32 ∧ cliPathOk x.path⌝ ∗
+      (x.pathA ↦ₛ x.path) ∗ (x.buf ↦ₛ x.bs) ∗ stackAt s.sp extHookStack
+  post := fun x s0 sf =>
+    ⌜(match writeFileResult s0.fs.files x.path x.bs with
+      | some F' => sf.readReg64 .x0 = 0#64 ∧ sf.fs.files = F'
+      | none => sf.readReg64 .x0 = 1#64 ∧ sf.fs.files = s0.fs.files) ∧
+      s0.trace <+: sf.trace ∧
+      ProcessOutcome.traceStreamBytes .stdout sf.trace =
+        ProcessOutcome.traceStreamBytes .stdout s0.trace⌝ ∗
+      (x.pathA ↦ₛ x.path) ∗ (x.buf ↦ₛ x.bs) ∗ stackAt s0.sp extHookStack
 
 /-- Call parameters for `write_stdout`. -/
 structure WriteStdoutCall where
@@ -344,23 +285,21 @@ structure WriteStdoutCall where
   bs : List (BitVec 8)
 
 /-- `write_stdout(bytes)` (`x0 = 0`): appends `bytes` to stdout and leaves files unchanged. -/
-def writeStdoutSpec (img : Obj.Image) : Spec WriteStdoutCall :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.buf ∧ (s.readReg64 .x1).toNat = x.bs.length⌝ ∗
-          (x.buf ↦ₛ x.bs) ∗ stackAt s.sp extHookStack
-      post := fun x s0 sf =>
-        ⌜sf.readReg64 .x0 = 0#64 ∧ sf.fs.files = s0.fs.files ∧ s0.trace <+: sf.trace ∧
-          ProcessOutcome.traceStreamBytes .stdout sf.trace =
-            ProcessOutcome.traceStreamBytes .stdout s0.trace ++ x.bs⌝ ∗
-          (x.buf ↦ₛ x.bs) ∗ stackAt s0.sp extHookStack }
-    img
+@[expose] def writeStdoutSpec : Spec WriteStdoutCall where
+  pre := fun x s =>
+    ⌜s.readReg64 .x0 = x.buf ∧ (s.readReg64 .x1).toNat = x.bs.length⌝ ∗
+      (x.buf ↦ₛ x.bs) ∗ stackAt s.sp extHookStack
+  post := fun x s0 sf =>
+    ⌜sf.readReg64 .x0 = 0#64 ∧ sf.fs.files = s0.fs.files ∧ s0.trace <+: sf.trace ∧
+      ProcessOutcome.traceStreamBytes .stdout sf.trace =
+        ProcessOutcome.traceStreamBytes .stdout s0.trace ++ x.bs⌝ ∗
+      (x.buf ↦ₛ x.bs) ∗ stackAt s0.sp extHookStack
 
 /-! ### Time, Constant-Time Barrier, and Session Crypto (`C : Crypto`) -/
 
 /-- `SystemTime::duration_since(&UNIX_EPOCH, UNIX_EPOCH)` (sret `x8`): returns `Ok` with 0 seconds,
 leaving tag and nanosecond words unconstrained. -/
-def durationSinceEpochSpec : Spec (BitVec 64 × BitVec 64) where
+@[expose] def durationSinceEpochSpec : Spec (BitVec 64 × BitVec 64) where
   pre := fun (p, ret) s =>
     ⌜s.readReg64 .x0 = p ∧ s.readReg64 .x8 = ret ∧
       s.readReg64 .x1 = 0#64 ∧ (s.readReg64 .x2).setWidth 32 = 0#32⌝ ∗
@@ -374,14 +313,14 @@ def durationSinceEpochSpec : Spec (BitVec 64 × BitVec 64) where
       stackAt s0.sp extHookStack
 
 /-- `subtle::black_box::<u8>(v)`: zero-extends the low byte of `v` into `w0` with trace unchanged. -/
-def blackBoxSpec : Spec (BitVec 64) :=
+@[expose] def blackBoxSpec : Spec (BitVec 64) :=
   withStack
     { pre := fun v s => ⌜s.readReg64 .x0 = v⌝
       post := fun v s0 sf =>
         ⌜(sf.readReg64 .x0).setWidth 32 = (v.setWidth 8).zeroExtend 32 ∧ sf.trace = s0.trace⌝ }
 
 /-- `sha2::sha256::compress256(state, blocks, n)`: folds `n` 64-byte blocks into `state` via `C.F`. -/
-def compress256Spec (C : Crypto) :
+@[expose] def compress256Spec (C : Crypto) :
     Spec (BitVec 64 × HMAC.ShaState × BitVec 64 × List (BitVec 8) × Nat) :=
   withStack
     { pre := fun (stA, st, blkA, bs, n) s =>
@@ -393,7 +332,7 @@ def compress256Spec (C : Crypto) :
           (stA ↦ₛ LibsignalHmac.shaStateBytes ((HMAC.chunks64 bs).foldl C.F st)) ∗ (blkA ↦ₛ bs) }
 
 /-- `StaticSecret::diffie_hellman(&self, &their_public)` (sret `x8`, 32 bytes): writes `C.X sec pub`. -/
-def dhSpec (C : Crypto) :
+@[expose] def dhSpec (C : Crypto) :
     Spec (BitVec 64 × List.Vector (BitVec 8) 32 × BitVec 64 × List.Vector (BitVec 8) 32 ×
       BitVec 64) :=
   withStack
@@ -405,7 +344,7 @@ def dhSpec (C : Crypto) :
           (secA ↦ₛ sec.toList) ∗ (pubA ↦ₛ pub.toList) ∗ (ret ↦ₛ (C.X sec pub).toList) }
 
 /-- `<PublicKey as From<&StaticSecret>>::from(&secret)` (sret `x8`, 32 bytes): writes `C.pubKey sec`. -/
-def pubFromSecretSpec (C : Crypto) :
+@[expose] def pubFromSecretSpec (C : Crypto) :
     Spec (BitVec 64 × List.Vector (BitVec 8) 32 × BitVec 64) :=
   withStack
     { pre := fun (secA, sec, ret) s =>
@@ -415,7 +354,7 @@ def pubFromSecretSpec (C : Crypto) :
         ⌜sf.trace = s0.trace⌝ ∗ (secA ↦ₛ sec.toList) ∗ (ret ↦ₛ (C.pubKey sec).toList) }
 
 /-- `Drop::drop` on `StaticSecret` / `SharedSecret`: zeroes the 32-byte buffer at `x0`. -/
-def zeroizeSpec : Spec (BitVec 64) :=
+@[expose] def zeroizeSpec : Spec (BitVec 64) :=
   withStack
     { pre := fun a s => ⌜s.readReg64 .x0 = a⌝ ∗ memRegion a 32
       post := fun a s0 sf => ⌜sf.trace = s0.trace⌝ ∗ (a ↦ₛ List.replicate 32 0#8) }
@@ -424,12 +363,12 @@ def zeroizeSpec : Spec (BitVec 64) :=
 
 /-- Post-call ownership of an `n`-byte input at `p`: preserved (`↦ₛ v`) if borrowed, or an
 arbitrary `memRegion` if passed by value (`byVal`). -/
-def inputAfter {n : Nat} (byVal : Bool) (p : BitVec 64) (v : List.Vector (BitVec 8) n) : SepProp :=
+@[expose] def inputAfter {n : Nat} (byVal : Bool) (p : BitVec 64) (v : List.Vector (BitVec 8) n) : SepProp :=
   if byVal then memRegion p n else p ↦ₛ v.toList
 
 /-- Generic pure leaf contract reading `m` input bytes at `x0` and writing `n` output bytes to sret
 `x8`. -/
-def pureByteFunctionSpec {m n : Nat} (f : List.Vector (BitVec 8) m → List.Vector (BitVec 8) n)
+@[expose] def pureByteFunctionSpec {m n : Nat} (f : List.Vector (BitVec 8) m → List.Vector (BitVec 8) n)
     (byVal : Bool) : Spec (BitVec 64 × List.Vector (BitVec 8) m × BitVec 64) :=
   withStack
     { pre := fun (inA, v, ret) s =>
@@ -439,7 +378,7 @@ def pureByteFunctionSpec {m n : Nat} (f : List.Vector (BitVec 8) m → List.Vect
 
 /-- `sha2::sha512::compress512(state, blocks, n)`: folds `n` 128-byte blocks into the 8 LE words at
 `x0` via `Q.F512`. -/
-def compress512Spec (Q : E2E.PqxdhPrims) :
+@[expose] def compress512Spec (Q : E2E.PqxdhPrims) :
     Spec (BitVec 64 × E2E.Sha512State × BitVec 64 × List (BitVec 8) × Nat) :=
   withStack
     { pre := fun (stA, st, blkA, bs, n) s =>
@@ -451,13 +390,13 @@ def compress512Spec (Q : E2E.PqxdhPrims) :
 
 /-- Memory layout of `Option<EdwardsPoint>` at `r` (168 bytes): `u64` tag (`1` for `some`, `0` for
 `none`) followed by 160 point bytes. -/
-def optionEdwardsPointAt (r : BitVec 64) : Option (List.Vector (BitVec 8) 160) → SepProp
+@[expose] def optionEdwardsPointAt (r : BitVec 64) : Option (List.Vector (BitVec 8) 160) → SepProp
   | some p => (r ↦₆₄ 1#64) ∗ ((r + 8#64) ↦ₛ p.toList)
   | none => (r ↦₆₄ 0#64) ∗ memRegion (r + 8#64) 160
 
-/-- `MontgomeryPoint::to_edwards(&u, sign)` (sret `x8`): writes `Q.montToEd u (sign &&& 1#8)`,
+/-- `MontgomeryPoint::to_edwards(&u, sign)` (sret `x8`): writes `legacyMontToEd u (sign &&& 1#8)`,
 extracting bit 0 of `w1`. -/
-def toEdwardsSpec (Q : E2E.PqxdhPrims) :
+@[expose] def toEdwardsSpec (_Q : E2E.PqxdhPrims) :
     Spec (BitVec 64 × List.Vector (BitVec 8) 32 × BitVec 8 × BitVec 64) :=
   withStack
     { pre := fun (uA, u, sign, ret) s =>
@@ -465,22 +404,26 @@ def toEdwardsSpec (Q : E2E.PqxdhPrims) :
           (uA ↦ₛ u.toList) ∗ memRegion ret 168
       post := fun (uA, u, sign, ret) s0 sf =>
         ⌜sf.trace = s0.trace⌝ ∗ (uA ↦ₛ u.toList) ∗
-          optionEdwardsPointAt ret (Q.montToEd u (sign &&& 1#8)) }
+          optionEdwardsPointAt ret
+            (LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.legacyMontToEd
+              u (sign &&& 1#8)) }
 
 /-- `EdwardsPoint::is_torsion_free(&p) -> bool`: sets the low 32 bits of `x0` to `1` or `0`
-according to `Q.isTorsionFree p`. -/
-def torsionFreeSpec (Q : E2E.PqxdhPrims) :
+according to `legacyIsTorsionFree p`. -/
+@[expose] def torsionFreeSpec (_Q : E2E.PqxdhPrims) :
     Spec (BitVec 64 × List.Vector (BitVec 8) 160) :=
   withStack
     { pre := fun (pA, p) s => ⌜s.readReg64 .x0 = pA⌝ ∗ (pA ↦ₛ p.toList)
       post := fun (pA, p) s0 sf =>
         ⌜sf.trace = s0.trace ∧
-          (sf.readReg64 .x0).setWidth 32 = (if Q.isTorsionFree p then 1#32 else 0#32)⌝ ∗
+          (sf.readReg64 .x0).setWidth 32 =
+            (if LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.legacyIsTorsionFree p
+             then 1#32 else 0#32)⌝ ∗
           (pA ↦ₛ p.toList) }
 
 /-- `EdwardsPoint::vartime_double_scalar_mul_basepoint(&a, &A, &b)` (sret `x8`): writes
-`Q.dsmb a A b`. -/
-def dsmbSpec (Q : E2E.PqxdhPrims) :
+`legacyDsmb a A b`. -/
+@[expose] def dsmbSpec (_Q : E2E.PqxdhPrims) :
     Spec (BitVec 64 × List.Vector (BitVec 8) 32 × BitVec 64 × List.Vector (BitVec 8) 160 ×
       BitVec 64 × List.Vector (BitVec 8) 32 × BitVec 64) :=
   withStack
@@ -490,11 +433,13 @@ def dsmbSpec (Q : E2E.PqxdhPrims) :
           (aA ↦ₛ a.toList) ∗ (pA ↦ₛ p.toList) ∗ (bA ↦ₛ b.toList) ∗ memRegion ret 160
       post := fun (aA, a, pA, p, bA, b, ret) s0 sf =>
         ⌜sf.trace = s0.trace⌝ ∗ (aA ↦ₛ a.toList) ∗ (pA ↦ₛ p.toList) ∗ (bA ↦ₛ b.toList) ∗
-          (ret ↦ₛ (Q.dsmb a p b).toList) }
+          (ret ↦ₛ
+            (LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.legacyDsmb
+              a p b).toList) }
 
 /-- `kyber::encapsulate(&pk, randomness)` (sret `x8`): writes ciphertext at `+0` and shared secret
 at `+0x620` from `Q.encaps pk rnd`, consuming by-value `randomness`. -/
-def kemEncapsSpec (Q : E2E.PqxdhPrims) :
+@[expose] def kemEncapsSpec (Q : E2E.PqxdhPrims) :
     Spec (BitVec 64 × List.Vector (BitVec 8) 1568 × BitVec 64 × List.Vector (BitVec 8) 32 ×
       BitVec 64) :=
   withStack
@@ -506,7 +451,7 @@ def kemEncapsSpec (Q : E2E.PqxdhPrims) :
           (ret ↦ₛ (Q.encaps pk rnd).1.toList) ∗ ((ret + 0x620#64) ↦ₛ (Q.encaps pk rnd).2.toList) }
 
 /-- `kyber::decapsulate(&sk, &ct)` (sret `x8`): writes `Q.decaps sk ct`. -/
-def kemDecapsSpec (Q : E2E.PqxdhPrims) :
+@[expose] def kemDecapsSpec (Q : E2E.PqxdhPrims) :
     Spec (BitVec 64 × List.Vector (BitVec 8) 3168 × BitVec 64 × List.Vector (BitVec 8) 1568 ×
       BitVec 64) :=
   withStack
@@ -518,7 +463,7 @@ def kemDecapsSpec (Q : E2E.PqxdhPrims) :
           (ret ↦ₛ (Q.decaps sk ct).toList) }
 
 /-- Extern stub names of the four file-system/stdio I/O routines. -/
-def ioNames : List String := [readFileName, writeFileName, readStdinName, writeStdoutName]
+@[expose] def ioNames : List String := [readFileName, writeFileName, readStdinName, writeStdoutName]
 
 end CliExt
 
@@ -546,10 +491,10 @@ structure CliExternsOk (P : E2E.PEParams) (A : RustAlloc) (ext : String → Opti
   bcmp : HookSat ext "bcmp" bcmpSpec
   strlen : HookSat ext "strlen" strlenSpec
   -- The I/O crate.
-  readFile : ∀ img, HookSat ext readFileName (readFileSpec A img)
-  writeFile : ∀ img, HookSat ext writeFileName (writeFileSpec img)
-  readStdin : ∀ img, HookSat ext readStdinName (readStdinSpec A img)
-  writeStdout : ∀ img, HookSat ext writeStdoutName (writeStdoutSpec img)
+  readFile : HookSat ext readFileName (readFileSpec A)
+  writeFile : HookSat ext writeFileName writeFileSpec
+  readStdin : HookSat ext readStdinName (readStdinSpec A)
+  writeStdout : HookSat ext writeStdoutName writeStdoutSpec
   -- `core` / `std`.
   memrchr : HookSat ext "core::slice::memchr::memrchr" memrchrSpec
   fromUtf8 : HookSat ext "core::str::converts::from_utf8" fromUtf8Spec
@@ -567,16 +512,40 @@ structure CliExternsOk (P : E2E.PEParams) (A : RustAlloc) (ext : String → Opti
   staticDrop : HookSat ext staticDropName zeroizeSpec
   sharedDrop : HookSat ext sharedDropName zeroizeSpec
   -- The PQXDH primitives `P.Q`.
-  compress512 : HookSat ext E2E.compress512Name (compress512Spec P.Q)
-  toEdwards : HookSat ext E2E.toEdwardsName (toEdwardsSpec P.Q)
-  compress : HookSat ext E2E.compressName (pureByteFunctionSpec P.Q.compress false)
-  edNeg : HookSat ext E2E.edNegName (pureByteFunctionSpec P.Q.edNeg true)
-  torsionFree : HookSat ext E2E.torsionFreeName (torsionFreeSpec P.Q)
-  dsmb : HookSat ext E2E.dsmbName (dsmbSpec P.Q)
-  scalarMod : HookSat ext E2E.scalarModName (pureByteFunctionSpec P.Q.scalarMod true)
-  scalarWide : HookSat ext E2E.scalarWideName (pureByteFunctionSpec P.Q.scalarWide false)
-  kemEncaps : HookSat ext E2E.kemEncapsName (kemEncapsSpec P.Q)
-  kemDecaps : HookSat ext E2E.kemDecapsName (kemDecapsSpec P.Q)
+  compress512 : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.compress512Name
+    (compress512Spec P.Q)
+  toEdwards : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.toEdwardsName
+    (toEdwardsSpec P.Q)
+  compress : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.compressName
+    (pureByteFunctionSpec
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.legacyCompress false)
+  edNeg : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.edNegName
+    (pureByteFunctionSpec
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.legacyEdNeg true)
+  torsionFree : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.torsionFreeName
+    (torsionFreeSpec P.Q)
+  dsmb : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.dsmbName
+    (dsmbSpec P.Q)
+  scalarMod : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.scalarModName
+    (pureByteFunctionSpec
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.legacyScalarMod true)
+  scalarWide : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.scalarWideName
+    (pureByteFunctionSpec
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.legacyScalarWide false)
+  kemEncaps : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.kemEncapsName
+    (kemEncapsSpec P.Q)
+  kemDecaps : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.kemDecapsName
+    (kemDecapsSpec P.Q)
   -- SPQR V1's ML-KEM-768 and helpers (`P.Q.K`, HMAC over `P.C.F`).
   spqr : LibsignalSpqrV1.SpqrHooks P.C A P.Q.K ext
 

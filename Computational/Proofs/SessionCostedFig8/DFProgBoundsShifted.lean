@@ -9,25 +9,26 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.Fig8WeightedParts
-public import Computational.Proofs.SessionCostedFig8.Bundles
-public import Computational.Proofs.SessionCostedFig8.ProgBounds
-public import Computational.Proofs.SessionCostedFig8.DFProgSizeBounds
-public import Computational.Proofs.HeadlineV1.DeliverForgePaperShiftedReds2
+public import Computational.Proofs.ReductionDsl.Fig8WeightedParts -- proof-setup: allow-public-import
+public import Computational.Proofs.SessionCostedFig8.Bundles -- proof-setup: allow-public-import
+import Computational.Proofs.SessionCostedFig8.ProgBoundsDefs
+import Computational.Proofs.SessionCostedFig8.DFProgSizeBounds
+public import Computational.Proofs.HeadlineV1.DeliverForgePaperShiftedReds2 -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.DeliverForgePaperShiftedReds -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
 
 /-!
 # Cost Bounds for Shifted Atomic `DeliverForge` Reductions
 
 Compiles the `ShiftedPaper` and `ShiftedDir2Paper` atomic `DeliverForge` reductions and proves
-their `GRedBounded` obligations.
--/
+their `GRedBounded` obligations.-/
 open Computational.Proofs.ReductionDsl.Fig8ExcessCosts (HooksExcessBounded cInTransitE_excessUB commitEC_excessUB_le compCostW_le_cost_add_excessUB compExcessUB compExcessUB_bind compExcessUB_caseOpt compExcessUB_caseSum compExcessUB_ite compExcessUB_query compExcessUB_ret compExcessUB_sample exprExcessUB exprExcessUB_add exprExcessUB_and exprExcessUB_anyB exprExcessUB_bool exprExcessUB_caseOpt exprExcessUB_cons exprExcessUB_eqN exprExcessUB_foldrB exprExcessUB_fst exprExcessUB_inl exprExcessUB_inr exprExcessUB_ite exprExcessUB_letE exprExcessUB_lt exprExcessUB_nat exprExcessUB_nil exprExcessUB_none exprExcessUB_not exprExcessUB_op exprExcessUB_pair exprExcessUB_snd exprExcessUB_some exprExcessUB_tconst exprExcessUB_tget exprExcessUB_tset exprExcessUB_unit exprExcessUB_v0 exprExcessUB_v1 exprExcessUB_v2 exprExcessUB_v3 exprExcessUB_v4 hooksFSC_excessBounded hooksPRNGC_excessBounded implEC_excessUB_le initFSEStateC_excessUB_le initPRNGEStateC_excessUB_le modeCfgEC_injectFullE_excessUB optNatLit_excessUB pureEngineExprs_excessUB vRecvC_excessUB_le)
 open Computational.Proofs.ReductionDsl.Fig8SourceCosts (HooksCostBounded authOutE_cost_le bits_succ_le cCompContainsE_cost_le cGsSetWin_cost cGsSt_cost cInTransitE_cost_le cRecPos_cost cTrivialE_cost_le commitEC_cost_le esAbort_cost esG_cost esH_cost esSetG_cost esSetH_cost hooksFSC_costBounded_linear hooksPRNGC_costBounded implEC_cost_le initFSEStateC_cost_le initPRNGEStateC_cost_le modeCfgEC_injectFullE_cost_le otherE_cost pGet_cost v0_cost v1_cost v2_cost v3_cost v4_cost vRecvC_cost_le)
 open Computational.Proofs.ReductionDsl.Fig8WeightedParts (bits_le_add_one compCostW_le_of_parts)
 open Computational.Proofs.ReductionDsl.PureAuxMacroLift (exprCostW)
 open ReductionDsl (CostedReduction Expr atomicFig8Ops atomicFig8Ops_sizeHonest atomicSamplers_sizeHonest ckaTargetIface fig8SmCodecDF fsaeadHeaderIface prngTargetIface)
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.SessionCostedFig8.DFProgBoundsShifted
 
@@ -39,19 +40,19 @@ open _root_.ReductionDsl (Expr Comp CostedReduction AtomicUnifBase atomicFig8Ops
   atomicFig8Ops_sizeHonest atomicSamplers_sizeHonest fig8SmCodecDF
   ckaTargetIface prngTargetIface fsaeadHeaderIface bits reductionSizeBudget)
 open _root_.CryptoGames (Party)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.CBC (Plain)
-open CryptoGames.LibsignalSession (Crypto PublicKey IdentityKey maxForwardJumps)
-open CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart)
-open CryptoGames.Ratchet.LibsignalSim (Fig8St Fig8C)
-open CryptoVerification.LibsignalSession (ratchetCostBudget GRedBounded)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.LibsignalSession (Crypto PublicKey IdentityKey maxForwardJumps)
+open _root_.CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart)
+open _root_.CryptoGames.Ratchet.LibsignalSim (Fig8St Fig8C)
+open _root_.CryptoVerification.LibsignalSession (ratchetCostBudget GRedBounded)
 open Computational.Proofs.ReductionDsl.Fig8ExcessCosts (ckaOpC ckaSampC
   ckaQueryC prngQueryC fsQueryC)
 open Computational.Proofs.ReductionDsl.Fig8WeightedParts (fig8AtomicStepBound)
 open Computational.Proofs.ReductionDsl.PureAuxMacroLift (compCostW
   compilePureAuxRed_totalCost_le compilePureAuxRed_totalQueries_le)
 open Computational.Proofs.ReductionDsl.MacroLift (guardRed_gRedBounded)
-open Computational.Proofs.SessionCostedFig8.ProgBounds (ckaOpMacro_cost_le
+open Computational.Proofs.SessionCostedFig8.ProgBoundsDefs (ckaOpMacro_cost_le
   compiled_le_ratchetCostBudget dummy_le_ratchetCostBudget)
 open Computational.Proofs.SessionCostedFig8.DFProgSizeBounds
   (redCKAAuthDFShiftedPaperGenProg_size_le redPRNGAuthDFShiftedPaperGenProg_size_le
@@ -1060,7 +1061,7 @@ variable {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
 
 local instance : Inhabited Pt := ⟨0⟩
 
-def redCKAAuthDFShiftedPaperAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+@[expose] def redCKAAuthDFShiftedPaperAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt) (qep q l t : ℕ) :
     CostedReduction (atomicFig8Ops ℓ Pt C Dh encPt encT lam) (ckaTargetIface ℓ Pt)
       (CryptoGames.SM.specDF (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
@@ -1069,7 +1070,7 @@ def redCKAAuthDFShiftedPaperAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt 
   Bundles.compileCkaDFAtomic ℓ Pt C Dh encPt encT idOf lam B0
     (CryptoGames.SM.Construction.redCKAAuthDFShiftedPaperProg (q + 1) B0 1 qep maxForwardJumps l t)
 
-def redCKAAuthDFShiftedDir2PaperAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+@[expose] def redCKAAuthDFShiftedDir2PaperAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt) (qep q l t : ℕ) :
     CostedReduction (atomicFig8Ops ℓ Pt C Dh encPt encT lam) (ckaTargetIface ℓ Pt)
       (CryptoGames.SM.specDF (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
@@ -1078,7 +1079,7 @@ def redCKAAuthDFShiftedDir2PaperAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt :
   Bundles.compileCkaDFAtomic ℓ Pt C Dh encPt encT idOf lam B0
     (CryptoGames.SM.Construction.redCKAAuthDFShiftedDir2PaperProg (q + 1) B0 qep maxForwardJumps l t)
 
-def redPRNGAuthDFShiftedPaperAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+@[expose] def redPRNGAuthDFShiftedPaperAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt) (qep q l t : ℕ) :
     CostedReduction (atomicFig8Ops ℓ Pt C Dh encPt encT lam) (prngTargetIface ℓ Pt)
       (CryptoGames.SM.specDF (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
@@ -1087,7 +1088,7 @@ def redPRNGAuthDFShiftedPaperAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt
   Bundles.compilePrngDFAtomic ℓ Pt C Dh encPt encT idOf lam B0
     (CryptoGames.SM.Construction.redPRNGAuthDFShiftedPaperProg (q + 1) B0 1 qep maxForwardJumps l t)
 
-def redPRNGAuthDFShiftedDir2PaperAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+@[expose] def redPRNGAuthDFShiftedDir2PaperAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt) (qep q l t : ℕ) :
     CostedReduction (atomicFig8Ops ℓ Pt C Dh encPt encT lam) (prngTargetIface ℓ Pt)
       (CryptoGames.SM.specDF (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
@@ -1096,7 +1097,7 @@ def redPRNGAuthDFShiftedDir2PaperAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt 
   Bundles.compilePrngDFAtomic ℓ Pt C Dh encPt encT idOf lam B0
     (CryptoGames.SM.Construction.redPRNGAuthDFShiftedDir2PaperProg (q + 1) B0 qep maxForwardJumps l t)
 
-def redFSAuthDFShiftedPaperAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+@[expose] def redFSAuthDFShiftedPaperAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt) (qep q j l t : ℕ) :
     CostedReduction (atomicFig8Ops ℓ Pt C Dh encPt encT lam) (fsaeadHeaderIface ℓ Pt)
       (CryptoGames.SM.specDF (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
@@ -1105,7 +1106,7 @@ def redFSAuthDFShiftedPaperAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt �
   Bundles.compileFsDFAtomic ℓ Pt C Dh encPt encT idOf lam B0
     (CryptoGames.SM.Construction.redFSAuthDFShiftedPaperProg (q + 1) B0 1 qep maxForwardJumps j l t)
 
-def redFSAuthDFShiftedDir2PaperAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+@[expose] def redFSAuthDFShiftedDir2PaperAtomicProg (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt) (qep q j l t : ℕ) :
     CostedReduction (atomicFig8Ops ℓ Pt C Dh encPt encT lam) (fsaeadHeaderIface ℓ Pt)
       (CryptoGames.SM.specDF (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))

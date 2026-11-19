@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4ErrUnwind
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4ErrUnwind
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Bin.Hooks
@@ -21,6 +21,14 @@ import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCo
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+public import ProofLib.FsTrace
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Defs
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.SessionOnlyKitE
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Stage P4 Error-Unwind Tail with `calleeSavedVRegs`
@@ -29,7 +37,7 @@ Relocatable `[LibsignalPlacement]` counterpart of `StageP4VRegsErrUnwind` on Blo
 (`lsProg_518 ext`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StepsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StepsPlaced
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveId
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveId -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveIdProof
 import LibsignalBinary.Proofs.E2E.Bin.Hooks
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP4
@@ -22,6 +22,15 @@ import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveId
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4Unwind
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlaced
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Defs
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.SessionOnlyKitE
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Matched-Session Substage P4.1 (`save_identity` and Skip `P4.2`/`P4.3`)
@@ -30,7 +39,7 @@ Relocatable `[LibsignalPlacement]` counterpart of `Matched.M4SaveId` on Block `5
 (`lsProg_518 (Rust.withPanics ext)`, `(blkPl_518).base = lsmpl.base 518`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -438,7 +447,7 @@ theorem call_futDrop_lscro [LibsignalPlacement] {prog : Program}
 
 /-! ## Spatial bundles and matched-session Substage P4.1 -/
 
-def stageP4MatchedSaveIdSharedPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def stageP4MatchedSaveIdSharedPlaced [LibsignalPlacement] {A : RustAlloc}
     (ikit : IdentityStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr remoteAddrPtr remoteIkPtr idStorePtr ptCap ptPtr v_3d0 : BitVec 64)
@@ -466,7 +475,7 @@ def stageP4MatchedSaveIdSharedPlaced [LibsignalPlacement] {A : RustAlloc}
   A.pool ∗
   stackAt s.sp (saveIdCallStack ikit)
 
-def stageP4MatchedSaveIdPrePlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def stageP4MatchedSaveIdPrePlaced [LibsignalPlacement] {A : RustAlloc}
     (ikit : IdentityStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr outPtr remoteAddrPtr remoteIkPtr idStorePtr ptCap ptPtr v_3d0 : BitVec 64)
@@ -486,7 +495,7 @@ def stageP4MatchedSaveIdPrePlaced [LibsignalPlacement] {A : RustAlloc}
   memRegion outPtr 48 ∗
   ikit.identityAt idStorePtr ist0
 
-def stageP4MatchedSaveIdOkPostPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def stageP4MatchedSaveIdOkPostPlaced [LibsignalPlacement] {A : RustAlloc}
     (ikit : IdentityStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr outPtr remoteAddrPtr remoteIkPtr idStorePtr ptCap ptPtr v_3d0 : BitVec 64)
@@ -509,7 +518,7 @@ def stageP4MatchedSaveIdOkPostPlaced [LibsignalPlacement] {A : RustAlloc}
   memRegion outPtr 48 ∗
   ikit.identityAt idStorePtr (ikit.saveUpdate ist0 peer.val remoteIk (.ok c))
 
-def stageP4MatchedSaveIdErrPostPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def stageP4MatchedSaveIdErrPostPlaced [LibsignalPlacement] {A : RustAlloc}
     (ikit : IdentityStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr outPtr remoteAddrPtr remoteIkPtr idStorePtr ptCap ptPtr v_3d0 : BitVec 64)

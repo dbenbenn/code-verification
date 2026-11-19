@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DoReserve10
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DoReserve10 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
 import ProofLib.SepLogic.WPp
@@ -27,7 +27,7 @@ Verifies `[LibsignalPlacement]` `<RawVecInner>::finish_grow [local#9]` (Block `5
 to `lsProg_518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -50,21 +50,21 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Relocatable `[LibsignalPlacement]` contract for `<alloc::raw_vec::RawVecInner>::finish_grow [local#9]`
 (Block `522`, `(blkPl_522).base = lsmpl.base 522`) on `lsProg_518 ext`. -/
-def FinishGrow11PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def FinishGrow11PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 522)
     (withLsCl lsmpl (finishGrow1Spec A))
 
 /-- Relocatable `[LibsignalPlacement]` raw 1-byte `do_reserve_and_handle [local#8]` contract
 (Block `517`, `(blkPl_517).base = lsmpl.base 517`) on `lsProg_518 ext`. -/
-def DoReserve10PlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def DoReserve10PlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 517)
     (withLsCl lsmpl (doReserveSpecX A))
 
 /-- Relocatable `[LibsignalPlacement]` `Vec<u8>` `do_reserve_and_handle [local#8]` contract
 (Block `517`, `(blkPl_517).base = lsmpl.base 517`) on `lsProg_518 ext`. -/
-def DoReserve10VecPlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def DoReserve10VecPlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 517)
     (withLsCl lsmpl (doReserve1VecSpecX A))
@@ -92,7 +92,7 @@ private theorem stackAt_finishGrow32 (sp : BitVec 64) :
       stackAt (sp - 32#64) extHookStack ∗ cells (sp - 32#64) 4 :=
   ProofLib.stackAt_split_cells sp 16384 4 (by decide)
 
-def finishGrow1AllocSpec (A : RustAlloc) : Spec FinishGrow1Call :=
+@[expose] def finishGrow1AllocSpec (A : RustAlloc) : Spec FinishGrow1Call :=
   { finishGrow1Spec A with
     pre := fun x s =>
       ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.cap ∧ s.readReg64 .x2 = x.ptr ∧
@@ -100,7 +100,7 @@ def finishGrow1AllocSpec (A : RustAlloc) : Spec FinishGrow1Call :=
         x.cap.toNat ≤ x.new.toNat ∧ 0 < x.new.toNat ∧ x.new.toNat + 1 ≤ 2 ^ 63⌝ ∗
       memRegion x.out 24 ∗ A.pool ∗ stackAt s.sp finishGrow32Stack }
 
-def finishGrow1ReallocSpec (A : RustAlloc) : Spec FinishGrow1Call :=
+@[expose] def finishGrow1ReallocSpec (A : RustAlloc) : Spec FinishGrow1Call :=
   { finishGrow1Spec A with
     pre := fun x s =>
       ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.cap ∧ s.readReg64 .x2 = x.ptr ∧

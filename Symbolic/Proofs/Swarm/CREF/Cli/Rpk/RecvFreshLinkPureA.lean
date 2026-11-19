@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Actions.ProtocolEvent
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.R3StepExistingPure
@@ -25,7 +25,7 @@ Eliminates `TRRecvCountersFresh` to show that receiver message keys at counters
 at or above a chain's current index are unused and distinct from stored skipped keys.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

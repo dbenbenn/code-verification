@@ -9,14 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Defs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LscroKitPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Defs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LscroKitPlaced
 import all Arm64.Trusted.Spec.Hoare
 import all Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.HookDischarge.RustStd.Common
 
 /-!
 # Relocatable Stage 3 Call Combinators, Relative Targets, and Stack Split Helpers
@@ -26,13 +36,11 @@ Provides `[LibsignalPlacement]` relative symbol targets and `SepWPp` call combin
 `initProgPlaced`, while re-exporting pure stack-split helpers from `Stage3Lemmas/Defs`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option warningAsError false
 set_option linter.unusedSimpArgs false
 set_option maxRecDepth 200000
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage3Lemmas
 
@@ -57,6 +65,10 @@ open CryptoVerification.CliHandshake.InitiatePlaced
 open Arm64.Obj (MultiPlacement)
 open LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
   (CliGhostHooks cliGhostExterns)
+open LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase (kemEncapsPreservedAtSpec)
+open LibsignalBinary.Proofs.HookDischarge.RustStd.Common (SpecSimulates)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (specSimulates_withLsRet withLsRet)
+open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraRowSpecs.CryptoMlKemRowSpecs (kemEncapsTightStack)
 
 /-! ## Relative call and hook targets on `initProgPlaced` -/
 
@@ -108,19 +120,90 @@ theorem memcpy_ok_at_init_placed [LibsignalPlacement] {A : RustAlloc} {mmpl : Mu
       sessionMemcpyRegionSpec, memcpyRegionSpec, session2MemcpySpecX] at hpost ⊢
     simpa only [sepConj_assoc] using hpost
 
+/-- Stack-parameterized `kyberEncapsStubSpec` (`InitializeAliceStage1Common`). -/
+@[expose] def kyberEncapsStubAtSpec (stk : Nat) (P : Pqxdh.Initiator.Primitives) :
+    Spec Pqxdh.Initiator.KyberEncapsCall where
+  pre := fun g s =>
+    ⌜s.readReg64 .x0 = g.pkPtr ∧ s.readReg64 .x1 = g.coinsPtr ∧ s.readReg64 .x8 = g.outPtr ∧
+      g.pk1568.length = 1568 ∧ g.coins32.length = 32 ∧
+      (P.kemEncaps g.pk1568 g.coins32).isSome⌝ ∗
+      (g.pkPtr ↦ₛ Pqxdh.Initiator.bytesToBv8 g.pk1568) ∗
+      (g.coinsPtr ↦ₛ Pqxdh.Initiator.bytesToBv8 g.coins32) ∗
+      memRegion g.outPtr 1600 ∗ stackAt s.sp stk
+  post := fun g s0 sf =>
+    ⌜sf.trace = s0.trace⌝ ∗
+      (g.pkPtr ↦ₛ Pqxdh.Initiator.bytesToBv8 g.pk1568) ∗
+      (g.coinsPtr ↦ₛ Pqxdh.Initiator.bytesToBv8 g.coins32) ∗
+      (g.outPtr ↦ₛ Pqxdh.Initiator.fitBv8 1600
+        (Pqxdh.Initiator.kyberEncapsOutBytes P g.pk1568 g.coins32)) ∗
+      stackAt s0.sp stk
+
+private theorem kemEncapsPreservedAt_simulates_kyberEncapsStubAt
+    (stk : Nat) (W : CliHooks) (X : UnreachedPqxdhPrimitives) :
+    SpecSimulates (kemEncapsPreservedAtSpec stk W.Q)
+      (kyberEncapsStubAtSpec stk (Pqxdh.Initiator.initiatorModelPrims X ⟨W.C, W.Q⟩)) := by
+  refine SpecSimulates.of_map ?_
+  intro g R s0 hpre
+  dsimp only [kyberEncapsStubAtSpec] at hpre
+  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
+  rcases hpre with ⟨⟨hx0, hx1, hx8, hpk, hcoins, _⟩, hmem⟩
+  let x := (g.pkPtr, u8Vec 1568 g.pk1568, g.coinsPtr, u8Vec 32 g.coins32, g.outPtr)
+  refine ⟨x, R, ?_, fun sf _ _ hpost => ?_⟩
+  · dsimp only [kemEncapsPreservedAtSpec, LibsignalBinary.Proofs.HookDischarge.Libc.Common.withStack, x]
+    simp only [sepConj_assoc, satisfies_pure_sepConj]
+    rw [Pqxdh.ResponderCore.u8Vec_toList_of_length hpk,
+      Pqxdh.ResponderCore.u8Vec_toList_of_length hcoins]
+    exact ⟨⟨hx0, hx1, hx8⟩, Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmem⟩
+  · dsimp only [kemEncapsPreservedAtSpec, LibsignalBinary.Proofs.HookDischarge.Libc.Common.withStack, x] at hpost
+    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost
+    rcases hpost with ⟨htr, hmem_f⟩
+    rw [Pqxdh.ResponderCore.u8Vec_toList_of_length hpk,
+      Pqxdh.ResponderCore.u8Vec_toList_of_length hcoins] at hmem_f
+    let o := W.Q.encaps (u8Vec 1568 g.pk1568) (u8Vec 32 g.coins32)
+    have hout : Pqxdh.Initiator.fitBv8 1600
+        (Pqxdh.Initiator.kyberEncapsOutBytes
+          (Pqxdh.Initiator.initiatorModelPrims X ⟨W.C, W.Q⟩) g.pk1568 g.coins32) =
+        o.1.toList ++ o.2.toList := by
+      unfold Pqxdh.Initiator.kyberEncapsOutBytes
+      simp only [Pqxdh.Initiator.initiatorModelPrims, Pqxdh.ResponderCore.ofSignalPqxdhPrimitives,
+        CryptoVerification.E2E.modelPrims, CryptoVerification.E2E.blockLevelPrims,
+        SignalPqxdh.kyberPkLen, hpk, beq_self_eq_true, ↓reduceIte]
+      unfold Pqxdh.Initiator.fitBv8
+      rw [Pqxdh.Initiator.bytesToBv8_append, Pqxdh.Initiator.e2e_bytesToBv8_vecU8,
+        Pqxdh.Initiator.e2e_bytesToBv8_vecU8]
+      have hlen : (o.1.toList ++ o.2.toList).length = 1600 := by
+        rw [List.length_append, o.1.toList_length, o.2.toList_length]
+      rw [hlen, List.take_of_length_le (by rw [hlen]), Nat.sub_self, List.replicate_zero,
+        List.append_nil]
+    have hmerge : (g.outPtr ↦ₛ (o.1.toList ++ o.2.toList)) =
+        (g.outPtr ↦ₛ o.1.toList) ∗ ((g.outPtr + 1568#64) ↦ₛ o.2.toList) := by
+      rw [pointsToBytes_append, o.1.toList_length]
+    dsimp only [kyberEncapsStubAtSpec]
+    rw [hout, hmerge]
+    simp only [sepConj_assoc, satisfies_pure_sepConj]
+    exact ⟨htr, Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmem_f⟩
+
 theorem kyberEncaps_ok_at_init_placed [LibsignalPlacement] {A : RustAlloc} (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     (X : UnreachedPqxdhPrimitives) (hh : RunHooksPlaced W A (cliGhostExterns gh (cliExternsPlaced mmpl W))) :
     subroutine_ok (initProgPlaced mmpl gh W) (lsρ lsKemEncapsSym)
       (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
-        (Pqxdh.Initiator.kyberEncapsStubSpec
-          (Pqxdh.Initiator.initiatorModelPrims X ⟨W.C, W.Q⟩))) := by
+        (withLsRet (kyberEncapsStubAtSpec kemEncapsTightStack
+          (Pqxdh.Initiator.initiatorModelPrims X ⟨W.C, W.Q⟩)))) := by
+  have hsim := specSimulates_withLsRet
+    (kemEncapsPreservedAt_simulates_kyberEncapsStubAt kemEncapsTightStack W X)
+  have hsat : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsKemEncapsSym
+      (withLsRet (kyberEncapsStubAtSpec kemEncapsTightStack
+        (Pqxdh.Initiator.initiatorModelPrims X ⟨W.C, W.Q⟩))) := by
+    rcases hh.kemEncaps with ⟨fn, hfn, hok⟩
+    refine ⟨fn, hfn, fun y R s0 hrun hpre hsp => ?_⟩
+    obtain ⟨x, R₁, hpre₁, hm⟩ := hsim y R s0 hpre
+    obtain ⟨hkf, hsym, hout⟩ := hok x R₁ s0 hrun hpre₁ hsp
+    exact ⟨hkf, hsym, hm (fn s0) hout⟩
   have hraw : subroutine_ok (initProgPlaced mmpl gh W) (lsρ lsKemEncapsSym)
-      (Pqxdh.Initiator.kyberEncapsStubSpec
-        (Pqxdh.Initiator.initiatorModelPrims X ⟨W.C, W.Q⟩)) := by
+      (withLsRet (kyberEncapsStubAtSpec kemEncapsTightStack
+        (Pqxdh.Initiator.initiatorModelPrims X ⟨W.C, W.Q⟩))) := by
     dsimp only [initProgPlaced, initProgExtPlaced, lsProg_521]
-    exact ls_hook_ok_ultra_of_mem
-      ⟨CryptoVerification.E2E.kemEncapsHook W.Q.encaps, hh.kemEncaps,
-        Pqxdh.Initiator.kemEncapsHook_ok_initiatorModelPrims X ⟨W.C, W.Q⟩⟩
+    exact ls_hook_ok_ultra_of_mem hsat
   exact LibsignalPublicApi.StoreKit.subroutine_ok_withLsCodeRoLoaded_of_plain hraw
 
 abbrev lsRawVecHandleErrorSymS3 : String :=

@@ -23,7 +23,7 @@ unchanged at every path (`filesOf_filter_visible`), and hence turns any input me
 four conjuncts of `InputsFor` into one meeting `InputsFor` (`inputsFor_filter_visible`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

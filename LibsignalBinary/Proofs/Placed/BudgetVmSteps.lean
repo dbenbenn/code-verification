@@ -26,7 +26,7 @@ attributes so callers invoking `wp_steps_vm` (`wp_done` via `simp only [wp_norm,
 attributes.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -176,7 +176,7 @@ theorem tpidrEl0_applyWriteback (s : State) (wb : Option (Reg × BitVec 64)) :
 /-- Trap-all hook table used with `noSyscalls` in `sepWP_rebase_vmPreserved` so `wp_steps` can
     discharge `VmPreserved s sm` across basic blocks containing `STR`/`STP` (`SepWP.step_str*`
     quantifies over an abstract `m' : Memory` without `m'.perm = s.mem.perm`). -/
-def trapHooks : String → Option (State → State) :=
+@[expose] def trapHooks : String → Option (State → State) :=
   fun _ => some (fun s => s.setStatus (.Exception "extern"))
 
 private theorem findSome?_override_none :

@@ -15,7 +15,7 @@ import Computational.Proofs.ReductionDsl.KindedDispatch
 import Computational.Proofs.ReductionDsl.Soundness
 import Computational.Proofs.SignalPqxdh.AtomicLift
 public import Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindProgs -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKArms -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKArms
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKCost
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKCostBase
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKCostCpa

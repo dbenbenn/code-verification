@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Received2
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Received2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Received1
 import ProofLib.SepLogic.WPp
@@ -21,7 +21,7 @@ Payload tag lemmas, `resultV1RecvAt` writeback entailments, and pure `States.rec
 for `.keysSampled`, `.headerSent`, and `.ekSentCt1Received`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.Recv
 
@@ -52,7 +52,7 @@ set_option maxHeartbeats 400000
 set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit bv_sub_sub_recv BitVec.sub_add_cancel BitVec.toNat_zero
   Leaves.extractLsb'_0_64_append Leaves.extractLsb'_64_64_append
   sp_sub_96_add_16 sp_sub_96_add_32 sp_sub_96_add_48 sp_sub_96_add_64 sp_sub_96_add_80

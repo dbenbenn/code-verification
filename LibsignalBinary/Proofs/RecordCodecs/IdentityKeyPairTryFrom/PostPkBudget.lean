@@ -10,21 +10,21 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.DefsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.PostPk
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.PostPrivAndOkBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.Decode
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.DefsBudget
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.PostPk
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.PostPrivAndOkBudget
 import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.PostPrivAndOk
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostRkSome
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.Defs
 
 /-!
 # Budget-Threaded `IdentityKeyPair::try_from` Post-Loop Public-Key Validation
@@ -33,7 +33,7 @@ import LibsignalBinary.Proofs.Common.SharedHelpers
 error dispatch (`+344 .. +392`, `+688 .. +756`) on Block `84`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -21,7 +21,8 @@ public import Arm64.Trusted.Syscalls.Include.Errno
     writes return value to `X0`)
   - `include/uapi/asm-generic/unistd.h` (AArch64 generic syscall numbering)
 - **Purpose & Key Exports**: Single-thread process/thread ID (`SIM_TID`), 48-bit user virtual
-  address space ceiling (`USER_VA_LIMIT`), per-call transfer cap (`MAX_RW_COUNT`), little-endian byte encoders (`leBytes32`, `leBytes64`),
+  address space ceiling (`USER_VA_LIMIT`), AArch64 top-byte-ignore pointer untagging (`untaggedAddr`),
+  per-call transfer cap (`MAX_RW_COUNT`), little-endian byte encoders (`leBytes32`, `leBytes64`),
   and explicit `(nr, handler)` table dispatch (`Syscall.dispatch`).
 -/
 
@@ -39,6 +40,14 @@ def SIM_TID : BitVec 64 := 1#64
     `__access_ok`; `[INTENTIONAL_SCOPE]`: assumes a `VA_BITS=48` kernel rather than 39/42/47-bit VA
     configurations where `access_ok` rejects addresses in `[2 ^ VA_BITS, 2 ^ 48)` with `-EFAULT`). -/
 def USER_VA_LIMIT : Nat := 2 ^ 48
+
+/-- Strip an AArch64 Top-Byte-Ignore (`TBI`) user-pointer tag per Linux `untagged_addr(addr)`
+    (`arch/arm64/include/asm/memory.h:287-294`, `__addr &= sign_extend64(__addr, 55)`): clears
+    bits `[63:56]` when bit `55` is `0` (user-half tagged pointers) and leaves `addr` unchanged
+    when bit `55` is `1`. Applied unconditionally by Linux `munmap`, `mremap` (`old_address`),
+    `mprotect`, and `madvise` regardless of `PR_TAGGED_ADDR_ENABLE`. -/
+def untaggedAddr (addr : BitVec 64) : BitVec 64 :=
+  if addr.getLsbD 55 then addr else addr &&& 0x00ffffffffffffff#64
 
 /-- Largest byte count a single read or write transfers (`MAX_RW_COUNT = INT_MAX & PAGE_MASK =
     0x7ffff000`, `include/linux/fs.h:2447`). -/

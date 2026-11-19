@@ -10,8 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Rodata
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Rodata -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
 
 /-!
 # Budget-Threaded Relocatable Callee Helpers for `OTR::encrypt`
@@ -20,7 +22,7 @@ Provides `[LibsignalPlacement]` hook-to-`subroutine_ok` bridges over `RustCliAll
 `aes_256_cbc_encrypt`, `format_inner`, and `__rust_dealloc`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,32 +38,34 @@ open CryptoVerification.LibsignalTripleRatchet.Encrypt (lsAesEncSym lsFormatInne
 open LibsignalBinary.Heap (
   AllocCostModel AllocEvent BudgetLimits RustCliAllocBudget rustCliDeallocBudgetSpec
 )
-open LibsignalBinary.Heap.SpecBudget (
-  aesEncBudgetSpec formatInnerBudgetEnvSpec formatInnerBudgetSpec
+open LibsignalBinary.Heap.SpecBudget (aesEncBudgetSpec)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs (
+  formatInnerCallCliLsSpec formatInnerCallLsEnvSpec
 )
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 
 theorem aesEnc_placed_ok [LibsignalPlacement] {prog : Program} {i : Nat}
     {C : Crypto} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {H : LibsignalHooks} [IsLsBlockProg prog i H]
-    (h_aes : HookSat H lsAesEncSym (aesEncBudgetSpec C.E M A lim))
+    (h_aes : HookSat H lsAesEncSym (withLsRet (aesEncBudgetSpec C.E M A lim)))
     (hi : i < 619 := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok prog (lsρ lsAesEncSym) (aesEncBudgetSpec C.E M A lim) :=
+    subroutine_ok prog (lsρ lsAesEncSym) (withLsRet (aesEncBudgetSpec C.E M A lim)) :=
   keys_ls_hook_ok_of_mem h_aes (by decide) hi hunmut
 
-theorem formatInnerEnv_placed_ok [LibsignalPlacement] {prog : Program} {i : Nat}
+theorem formatInnerCallLsEnv_placed_ok [LibsignalPlacement] {prog : Program} {i : Nat}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {Env : List AllocEvent → Prop} {H : LibsignalHooks} [IsLsBlockProg prog i H]
-    (h_fmt : HookSat H lsFormatInnerSym (formatInnerBudgetEnvSpec M A lim Env))
+    (h_fmt : HookSat H lsFormatInnerSym (formatInnerCallLsEnvSpec M A lim Env))
     (hi : i < 619 := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok prog (lsρ lsFormatInnerSym) (formatInnerBudgetEnvSpec M A lim Env) :=
+    subroutine_ok prog (lsρ lsFormatInnerSym) (formatInnerCallLsEnvSpec M A lim Env) :=
   keys_ls_hook_ok_of_mem h_fmt (by decide) hi hunmut
 
-theorem formatInner_placed_ok [LibsignalPlacement] {prog : Program} {i : Nat}
+theorem formatInnerCallCliLs_placed_ok [LibsignalPlacement] {prog : Program} {i : Nat}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {H : LibsignalHooks} [IsLsBlockProg prog i H]
-    (h_fmt : HookSat H lsFormatInnerSym (formatInnerBudgetSpec M A lim))
+    (h_fmt : HookSat H lsFormatInnerSym (formatInnerCallCliLsSpec M A lim))
     (hi : i < 619 := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok prog (lsρ lsFormatInnerSym) (formatInnerBudgetSpec M A lim) :=
+    subroutine_ok prog (lsρ lsFormatInnerSym) (formatInnerCallCliLsSpec M A lim) :=
   keys_ls_hook_ok_of_mem h_fmt (by decide) hi hunmut
 
 theorem dealloc_placed_ok [LibsignalPlacement] {prog : Program} {i : Nat}

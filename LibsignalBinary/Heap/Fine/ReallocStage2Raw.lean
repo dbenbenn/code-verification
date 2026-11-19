@@ -24,7 +24,7 @@ preserve `MallocngFineInv`.
 set_option autoImplicit false
 set_option maxRecDepth 20000
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 
@@ -32,39 +32,6 @@ open Arm64 Arm64.Obj ProofLib ProofLib.SepLogic
 open VerifiedLibraries VerifiedLibraries.Mallocng VerifiedLibraries.Mallocng.Proofs
 
 /-! ## Coarse Budget Synthesis and Raw Environment Split -/
-
-/-- `synthCoarseBudgetRaw` satisfies `MallocngCountIvsWF` given `Cost.GroupsGrpBound 128 st.groups`. -/
-theorem synthCoarseBudgetRaw_countIvsWF (liveCost peakCost : Nat) (st : MallocngSt)
-    (hGrp : Cost.GroupsGrpBound 128 st.groups) :
-    MallocngCountIvsWF (synthCoarseBudgetRaw liveCost peakCost st) (dynamicRootRegions st) st := by
-  dsimp only [MallocngCountIvsWF, synthCoarseBudgetRaw]
-  exact ⟨by omega, Nat.le_refl _, rfl, by omega, by omega, hGrp.mono (by omega)⟩
-
-/-- Exact `SepProp` equality splitting raw `(MallocngRoTablesA ∗ MallocngCoreStA ∗ MallocngRuntime)`
-    into the `reallocReadPre` components used by `PlacedReallocStage1` and `PlacedReallocSizeToClass`. -/
-theorem mallocngRawEnv_eq_readRest (γ : GhostName) (A : MallocngAddrs)
-    (tp brkStart brk : BitVec 64) (liveCost peakCost : Nat) (st : MallocngSt)
-    (hGrp : Cost.GroupsGrpBound 128 st.groups) :
-    (MallocngRoTablesA A ∗ MallocngCoreStA γ A brkStart brk liveCost peakCost st ∗
-      MallocngRuntime A tp) =
-    (MallocngRoTablesAt A ∗ (A.ctx ↦ₛ st.ctx.toBytes) ∗
-      ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-      MallocngReadRest γ A tp brkStart brk
-        (synthCoarseBudgetRaw liveCost peakCost st) (dynamicRootRegions st) st) := by
-  have hCount := synthCoarseBudgetRaw_countIvsWF liveCost peakCost st hGrp
-  have hPureEq :
-      (MallocngCountIvsWF (synthCoarseBudgetRaw liveCost peakCost st) (dynamicRootRegions st) st ∧
-        MallocngWF A.base brkStart brk
-          (synthCoarseBudgetRaw liveCost peakCost st).liveCost
-          (synthCoarseBudgetRaw liveCost peakCost st).peakCost st) =
-      MallocngWFInflight 0 A.base brkStart brk liveCost peakCost st :=
-    propext ⟨fun h => h.2, fun h => ⟨hCount, h⟩⟩
-  unfold MallocngRoTablesA MallocngCoreStA MallocngCoreStInflightA MallocngReadRest
-  rw [hPureEq]
-  generalize (MallocngRoTablesAt A) = PRo
-  generalize (MallocngRuntime A tp) = PRt
-  generalize (MallocngAuxvState γ st.auxvPtr st.auxvSnap) = PAu
-  ac_rfl
 
 /-! ## In-Place `set_size` Separation-Logic Absorption -/
 
@@ -109,18 +76,18 @@ theorem reallocInPlace_absorb_raw (γ : GhostName) (A : MallocngAddrs)
     ByteMap st.masterDom
       (fun a => OwnedRwByte st a ∧ ¬ InRegion (g.slotStart idx - 4#64) g.stride a) st.byteVal ∗
     ((g.slotStart idx - 4#64) ↦ₛ slotBsFinal) ∗
-    MallocngReadRest γ A tp brkStart brk b ivs0 st ∗
+    MallocngReadRestMode true γ A tp brkStart brk b ivs0 st ∗
     MallocngBlockToken γ p oldSz ⊢
       |==> (MallocngRoTablesA A ∗
-            MallocngCoreStA γ A brkStart brk bf.liveCost bf.peakCost st' ∗
+            MallocngCoreStModeA true γ A brkStart brk bf.liveCost bf.peakCost st' ∗
             MallocngRuntime A tp ∗
             ⌜(MallocngInitBlock mallocngIface γ).pureWf p (newSz, keptBs)⌝ ∗
             (MallocngInitBlock mallocngIface γ).interp p (newSz, keptBs)) := by
   intro bf keptBs newEff g' val' liveMap' st'
-  unfold MallocngReadRest
+  unfold MallocngReadRestMode
   refine Entails.trans (Entails.of_eq (by
     generalize (MallocngRoTablesAt A) = PRo
-    generalize (MallocngAuxvState γ st.auxvPtr st.auxvSnap) = PAu
+    generalize (MallocngAuxvStateRo true γ st.auxvPtr st.auxvSnap) = PAu
     ac_rfl : _ =
       ⌜MallocngCountIvsWF b ivs0 st ∧ MallocngWF A.base brkStart brk b.liveCost b.peakCost st⌝ ∗
       ((MallocngLiveAuth γ st.liveMap ∗ MallocngBlockToken γ p oldSz) ∗
@@ -132,8 +99,8 @@ theorem reallocInPlace_absorb_raw (γ : GhostName) (A : MallocngAddrs)
         (A.lock ↦₃₂ 0#32) ∗
         (A.replaced ↦₃₂ 0#32) ∗
         (A.aaReplaced ↦₃₂ 0#32) ∗
-        ((A.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-        MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+        MallocngAuxvPtrCell true A.libc st.auxvPtr ∗
+        MallocngAuxvStateRo true γ st.auxvPtr st.auxvSnap ∗
         ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
         MappedSet st.masterDom (OwnedMappedByte st) ∗
         MallocngRuntime A tp)))) ?_
@@ -274,15 +241,15 @@ theorem reallocInPlace_absorb_raw (γ : GhostName) (A : MallocngAddrs)
     rwa [hDropLen] at hEnt
   have hPureInit : (MallocngInitBlock mallocngIface γ).pureWf p (newSz, keptBs) :=
     ⟨hNewBWf.1, hNewBWf.2.1, Nat.lt_of_le_of_lt hNewBWf.2.2.1 (by decide), by omega⟩
-  have hCoreEq : MallocngCoreStA γ A brkStart brk bf.liveCost bf.peakCost st' =
+  have hCoreEq : MallocngCoreStModeA true γ A brkStart brk bf.liveCost bf.peakCost st' =
       (MallocngLiveAuth γ st'.liveMap ∗ (A.ctx ↦ₛ st'.ctx.toBytes) ∗ (A.lock ↦₃₂ 0#32) ∗
-       (A.replaced ↦₃₂ 0#32) ∗ (A.aaReplaced ↦₃₂ 0#32) ∗ ((A.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗
-       MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+       (A.replaced ↦₃₂ 0#32) ∗ (A.aaReplaced ↦₃₂ 0#32) ∗ MallocngAuxvPtrCell true A.libc st'.auxvPtr ∗
+       MallocngAuxvStateRo true γ st'.auxvPtr st'.auxvSnap ∗
        ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗
        ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
        MappedSet st'.masterDom (OwnedMappedByte st')) := by
     have hwfInf : MallocngWFInflight 0 A.base brkStart brk bf.liveCost bf.peakCost st' := hwf'
-    dsimp only [MallocngCoreStA, MallocngCoreStInflightA]
+    dsimp only [MallocngCoreStModeA, MallocngCoreStInflightModeA]
     rw [propext ⟨fun _ => trivial, fun _ => hwfInf⟩, pure_true, emp_sepConj]
   refine Entails.trans (sepConj_mono_left
       (mallocngBlock_replaceOv_bupd γ st.liveMap p oldSz p newSz hNewBWf (Or.inl rfl)))
@@ -296,12 +263,12 @@ theorem reallocInPlace_absorb_raw (γ : GhostName) (A : MallocngAddrs)
         show st.auxvSnap = st'.auxvSnap from rfl, hLiveEq]
     generalize (MallocngRoTablesAt A) = PRo
     generalize (MallocngRuntime A tp) = PRt
-    generalize (MallocngAuxvState γ st'.auxvPtr st'.auxvSnap) = PAu
+    generalize (MallocngAuxvStateRo true γ st'.auxvPtr st'.auxvSnap) = PAu
     ac_rfl : _ =
       (MallocngRoTablesAt A ∗
        (MallocngLiveAuth γ st'.liveMap ∗ (A.ctx ↦ₛ st'.ctx.toBytes) ∗ (A.lock ↦₃₂ 0#32) ∗
-        (A.replaced ↦₃₂ 0#32) ∗ (A.aaReplaced ↦₃₂ 0#32) ∗ ((A.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗
-        MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+        (A.replaced ↦₃₂ 0#32) ∗ (A.aaReplaced ↦₃₂ 0#32) ∗ MallocngAuxvPtrCell true A.libc st'.auxvPtr ∗
+        MallocngAuxvStateRo true γ st'.auxvPtr st'.auxvSnap ∗
         ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗
         ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
         MappedSet st'.masterDom (OwnedMappedByte st')) ∗
@@ -310,16 +277,16 @@ theorem reallocInPlace_absorb_raw (γ : GhostName) (A : MallocngAddrs)
   rw [← hCoreEq, show MallocngRoTablesAt A = MallocngRoTablesA A from rfl]
   refine Entails.trans (sepConj_mono_right (sepConj_mono_right hUserInit)) ?_
   rw [pure_sepConj_of_true hPureInit]
-  show (MallocngRoTablesA A ∗ MallocngCoreStA γ A brkStart brk bf.liveCost bf.peakCost st' ∗
+  show (MallocngRoTablesA A ∗ MallocngCoreStModeA true γ A brkStart brk bf.liveCost bf.peakCost st' ∗
       MallocngRuntime A tp) ∗
     (MallocngBlockToken γ p newSz ∗
      ((p ↦ₛ keptBs) ∗ memRegion (p + BitVec.ofNat 64 keptBs.length) (newSz - keptBs.length))) ⊢
-    MallocngRoTablesA A ∗ MallocngCoreStA γ A brkStart brk bf.liveCost bf.peakCost st' ∗
+    MallocngRoTablesA A ∗ MallocngCoreStModeA true γ A brkStart brk bf.liveCost bf.peakCost st' ∗
     MallocngRuntime A tp ∗
     (MallocngBlockToken γ p newSz ∗ (p ↦ₛ keptBs) ∗
      memRegion (p + BitVec.ofNat 64 keptBs.length) (newSz - keptBs.length))
   generalize (MallocngRoTablesA A) = PRo
-  generalize (MallocngCoreStA γ A brkStart brk bf.liveCost bf.peakCost st') = PCore
+  generalize (MallocngCoreStModeA true γ A brkStart brk bf.liveCost bf.peakCost st') = PCore
   generalize (MallocngRuntime A tp) = PRt
   exact Entails.of_eq (by ac_rfl)
 
@@ -364,14 +331,14 @@ theorem realloc_s2_finish_raw_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : 
        (ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ stackFrameAt sp1 720 ∗
         MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
         ByteMap st.masterDom (fun a => OwnedRwByte st a ∧ ¬ InRegion base g.stride a) st.byteVal ∗
-        MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
+        MallocngReadRestMode true γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
         MallocngBlockToken γ p oldSz ∗ Frame))
       (fun sf Pf =>
         sf.mem.perm = s0.mem.perm ∧ sf.brk = s0.brk ∧ MallocngProcPreserved s0 sf ∧
         sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.readReg64 .x0 = p ∧
         ∃ (st' : MallocngSt) (g' : GroupDesc) (newEff live' peak' : Nat),
           (Pf ⊢ stackFrame s0 800 ∗ MallocngRoTablesA maddrs ∗
-            MallocngCoreStA γ maddrs brkStart sf.brk live' peak' st' ∗
+            MallocngCoreStModeA true γ maddrs brkStart sf.brk live' peak' st' ∗
             MallocngRuntime maddrs tp ∗
             ⌜(MallocngInitBlock mallocngIface γ).pureWf p (newSz, keptBs)⌝ ∗
             (MallocngInitBlock mallocngIface γ).interp p (newSz, keptBs) ∗ Frame) ∧
@@ -423,14 +390,14 @@ theorem realloc_s2_finish_raw_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : 
           stackFrameAt (s0.sp - 80#64) 720 ∗
           (MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
            ByteMap st.masterDom (fun a => OwnedRwByte st a ∧ ¬ InRegion base g.stride a) st.byteVal ∗
-           MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
+           MallocngReadRestMode true γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
            MallocngBlockToken γ p oldSz ∗ Frame)))
         (fun sf Pf =>
           sf.mem.perm = s0.mem.perm ∧ sf.brk = s0.brk ∧ MallocngProcPreserved s0 sf ∧
           sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.readReg64 .x0 = p ∧
           ∃ (st' : MallocngSt) (g' : GroupDesc) (newEff live' peak' : Nat),
             (Pf ⊢ stackFrame s0 800 ∗ MallocngRoTablesA maddrs ∗
-              MallocngCoreStA γ maddrs brkStart sf.brk live' peak' st' ∗
+              MallocngCoreStModeA true γ maddrs brkStart sf.brk live' peak' st' ∗
               MallocngRuntime maddrs tp ∗
               ⌜(MallocngInitBlock mallocngIface γ).pureWf p (newSz, keptBs)⌝ ∗
               (MallocngInitBlock mallocngIface γ).interp p (newSz, keptBs) ∗ Frame) ∧
@@ -450,12 +417,12 @@ theorem realloc_s2_finish_raw_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : 
         stackFrameAt (s0.sp - 80#64) 720 ∗
         (MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
          ByteMap st.masterDom (fun a => OwnedRwByte st a ∧ ¬ InRegion base g.stride a) st.byteVal ∗
-         (base ↦ₛ bsFinal) ∗ MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
+         (base ↦ₛ bsFinal) ∗ MallocngReadRestMode true γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
          MallocngBlockToken γ p oldSz) ∗ Frame)
       (Entails.of_eq (by
         dsimp only [base]
         generalize (MallocngRoTablesAt maddrs) = PRo
-        generalize (MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st) = PRest
+        generalize (MallocngReadRestMode true γ maddrs tp brkStart s0.brk bgt ivs0 st) = PRest
         ac_rfl)) ?_
     apply sepWP_bupd_pre (Q :=
         ReallocSavedLo s0 (s0.sp - 80#64) ∗
@@ -463,7 +430,7 @@ theorem realloc_s2_finish_raw_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : 
          memRegion (s0.sp - 80#64 + 64#64) 8 ∗ memRegion (s0.sp - 80#64 + 72#64) 8) ∗
         stackFrameAt (s0.sp - 80#64) 720 ∗
         (MallocngRoTablesA maddrs ∗
-         MallocngCoreStA γ maddrs brkStart s0.brk bf.liveCost bf.peakCost st' ∗
+         MallocngCoreStModeA true γ maddrs brkStart s0.brk bf.liveCost bf.peakCost st' ∗
          MallocngRuntime maddrs tp ∗
          ⌜(MallocngInitBlock mallocngIface γ).pureWf p (newSz, keptBs)⌝ ∗
          (MallocngInitBlock mallocngIface γ).interp p (newSz, keptBs) ∗ Frame))
@@ -489,7 +456,7 @@ theorem realloc_s2_finish_raw_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : 
         (sepConj_mono_right (sepConj_mono_left hAbs)))) ?_
       refine Entails.trans bupd_frame_mid (bupd_mono ?_)
       generalize (MallocngRoTablesA maddrs) = PRo
-      generalize (MallocngCoreStA γ maddrs brkStart s0.brk bf.liveCost bf.peakCost st') = PCore
+      generalize (MallocngCoreStModeA true γ maddrs brkStart s0.brk bf.liveCost bf.peakCost st') = PCore
       generalize (MallocngRuntime maddrs tp) = PRt
       generalize ((MallocngInitBlock mallocngIface γ).interp p (newSz, keptBs)) = PInit
       exact Entails.of_eq (by ac_rfl)
@@ -511,14 +478,14 @@ theorem realloc_s2_finish_raw_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : 
         hSc48, ⟨rfl, rfl, rfl, rfl, rfl⟩, rfl, rfl, rfl, rfl, hLiveSimp, hNoOrph⟩
       rw [hBrk0]
       generalize (MallocngRoTablesA maddrs) = PRo
-      generalize (MallocngCoreStA γ maddrs brkStart s0.brk bf.liveCost bf.peakCost st') = PCore
+      generalize (MallocngCoreStModeA true γ maddrs brkStart s0.brk bf.liveCost bf.peakCost st') = PCore
       generalize (MallocngRuntime maddrs tp) = PRt
       generalize ((MallocngInitBlock mallocngIface γ).interp p (newSz, keptBs)) = PInit
       exact Entails.of_eq (by ac_rfl)
   conv => arg 4; dsimp only [sp1]
   generalize hRestEnv : (MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
     ByteMap st.masterDom (fun a => OwnedRwByte st a ∧ ¬ InRegion base g.stride a) st.byteVal ∗
-    MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
+    MallocngReadRestMode true γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
     MallocngBlockToken γ p oldSz ∗ Frame) = RestEnv
   refine (fun {P post} (h : ∀ post', post' = post →
       SepWP (blkPC_b14.rebase b (fun _ => none)) (s0.readReg64 .x30) s P post' oom) => h post rfl) ?_
@@ -544,7 +511,7 @@ theorem realloc_s2_finish_raw_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : 
     ⟨by simp [hcs.1], by simp [hcs.2.1], by simpa [calleeSavedVRegs] using hcs.2.2⟩
 
 set_option maxHeartbeats 400000 in
-/-- Stage 2 (`+0x2cc` → `ret`) over the split `MallocngReadRest` precondition produced by
+/-- Stage 2 (`+0x2cc` → `ret`) over the split `MallocngReadRestMode true` precondition produced by
     `PlacedReallocStage1.realloc_stage1_read_ok` + `PlacedReallocSizeToClass.realloc_sizeToClass_ok`. -/
 theorem realloc_stage2_inplace_readRest_raw_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkBase 14 b)
     (γ : GhostName) (tp brkStart : BitVec 64) (bgt : MallocngBudget) (ivs0 : List (BitVec 64 × Nat))
@@ -571,14 +538,14 @@ theorem realloc_stage2_inplace_readRest_raw_ok [MallocngMultiPlacement] {b : Bit
       (ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ stackFrameAt sp1 720 ∗
        MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-       MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
+       MallocngReadRestMode true γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
        MallocngBlockToken γ p oldSz ∗ (p ↦ₛ (origBs ++ tailBs)) ∗ Frame)
       (fun sf Pf =>
         sf.mem.perm = s0.mem.perm ∧ sf.brk = s0.brk ∧ MallocngProcPreserved s0 sf ∧
         sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.readReg64 .x0 = p ∧
         ∃ (st' : MallocngSt) (g' : GroupDesc) (newEff live' peak' : Nat),
           (Pf ⊢ stackFrame s0 800 ∗ MallocngRoTablesA maddrs ∗
-            MallocngCoreStA γ maddrs brkStart sf.brk live' peak' st' ∗
+            MallocngCoreStModeA true γ maddrs brkStart sf.brk live' peak' st' ∗
             MallocngRuntime maddrs tp ∗
             ⌜(MallocngInitBlock mallocngIface γ).pureWf p (newSz, keptBs)⌝ ∗
             (MallocngInitBlock mallocngIface γ).interp p (newSz, keptBs) ∗ Frame) ∧
@@ -600,7 +567,7 @@ theorem realloc_stage2_inplace_readRest_raw_ok [MallocngMultiPlacement] {b : Bit
       MallocngBlockToken γ p oldSz ∗ (p ↦ₛ (origBs ++ tailBs)) ∗ Frame ∗ R)
       (Satisfies.mono (Entails.of_eq (by
         generalize (MallocngRoTablesAt maddrs) = PRo
-        generalize (MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st) = PRest
+        generalize (MallocngReadRestMode true γ maddrs tp brkStart s0.brk bgt ivs0 st) = PRest
         ac_rfl)) hm))
   rintro ⟨_, hwf⟩
   have hSc48 : g.sc < 48 :=
@@ -625,21 +592,21 @@ theorem realloc_stage2_inplace_readRest_raw_ok [MallocngMultiPlacement] {b : Bit
       (ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ stackFrameAt sp1 720 ∗
        MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
        ByteMap st.masterDom (fun a => OwnedRwByte st a ∧ ¬ InRegion base g.stride a) st.byteVal ∗
-       MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
+       MallocngReadRestMode true γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
        MallocngBlockToken γ p oldSz ∗ Frame))
     (Entails.of_eq (by
       have hAssoc : (ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-          (MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
+          (MallocngReadRestMode true γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
            MallocngBlockToken γ p oldSz ∗ (p ↦ₛ (origBs ++ tailBs)) ∗ Frame)) =
         ((ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗ (p ↦ₛ (origBs ++ tailBs))) ∗
-          MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
+          MallocngReadRestMode true γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
           MallocngBlockToken γ p oldSz ∗ Frame) := by
-        generalize (MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st) = PRest
+        generalize (MallocngReadRestMode true γ maddrs tp brkStart s0.brk bgt ivs0 st) = PRest
         ac_rfl
       rw [hAssoc, hSliceEq]
       dsimp only [base]
       generalize (MallocngRoTablesAt maddrs) = PRo
-      generalize (MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st) = PRest
+      generalize (MallocngReadRestMode true γ maddrs tp brkStart s0.brk bgt ivs0 st) = PRest
       ac_rfl)) ?_
   have hCapFold : (g.slotStart idx).toNat - 4 + g.stride - p.toNat = oldCap := by
     dsimp only [oldCap]; omega
@@ -823,80 +790,5 @@ theorem realloc_stage2_inplace_readRest_raw_ok [MallocngMultiPlacement] {b : Bit
         hOrigLen hTailLen hSlot hNewMax hFit hScLe hSc48 hNodupMeta (bsCur := bs3)
         hpcF hrunF hPermF hbrkF hprocF hspF halF hsp0 hx19F hw4F hcsF
         hBs0Len hBs3Len hLo hSt4 hEn h48 hPost5
-
-/-- Complete raw-state Stage 2 (`+0x2cc` → `ret`) directly over
-    `(MallocngRoTablesA maddrs ∗ MallocngCoreStA γ maddrs brkStart s0.brk liveCost peakCost st ∗ MallocngRuntime maddrs tp)`,
-    without any `MallocngBudget` or `MallocngCountIvsWF` input. -/
-theorem realloc_stage2_inplace_raw_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkBase 14 b)
-    (γ : GhostName) (tp brkStart : BitVec 64) (liveCost peakCost : Nat)
-    (s0 s : State) (st : MallocngSt) (hGrp : Cost.GroupsGrpBound 128 st.groups)
-    {g : GroupDesc} (hg : g ∈ st.groups) {idx : Nat} (hIdx : idx < g.slots.length)
-    {p : BitVec 64} {oldSz oldEff newSz : Nat} (origBs tailBs : List (BitVec 8))
-    (hOrigLen : origBs.length ≤ oldSz) (hTailLen : tailBs.length = oldSz - origBs.length)
-    (hSlot : g.slots[idx]'hIdx = .liveUser p oldSz oldEff)
-    (hNewMax : newSz ≤ 131051) (hFit : p.toNat + newSz ≤ (g.slotEnd idx).toNat)
-    (hScLe : g.sc ≤ sizeToClassUnits ((newSz + 3) / 16) + 1)
-    {Frame : SepProp} {oom : State → SepProp}
-    (hpc : s.pc = b + 0x2cc#64) (hrun : s.status = .Running)
-    (hPerm : s.mem.perm = s0.mem.perm) (hbrk : s.brk = s0.brk) (hproc : MallocngProcPreserved s0 s)
-    (hsp : s.sp = s0.sp - 80#64) (hal : s.spAligned = true) (hsp0 : s0.sp &&& 15#64 = 0#64)
-    (hx3 : s.readReg64 .x3 = BitVec.ofNat 64 ((g.slotEnd idx).toNat - p.toNat))
-    (hx4 : s.readReg64 .x4 = (BitVec.ofNat 32 idx).zeroExtend 64)
-    (hx5 : s.readReg64 .x5 = g.slotEnd idx)
-    (hx19 : s.readReg64 .x19 = p)
-    (hx21 : s.readReg64 .x21 = BitVec.ofNat 64 newSz)
-    (hcs : ReallocUntouchedCS s0 s) :
-    let sp1 := s0.sp - 80#64
-    let keptBs := origBs.take newSz
-    SepWP (blkPC_b14.rebase b (fun _ => none)) (s0.readReg64 .x30) s
-      (ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ stackFrameAt sp1 720 ∗
-       MallocngRoTablesA maddrs ∗ MallocngCoreStA γ maddrs brkStart s0.brk liveCost peakCost st ∗
-       MallocngRuntime maddrs tp ∗
-       MallocngBlockToken γ p oldSz ∗ (p ↦ₛ (origBs ++ tailBs)) ∗ Frame)
-      (fun sf Pf =>
-        sf.mem.perm = s0.mem.perm ∧ sf.brk = s0.brk ∧ MallocngProcPreserved s0 sf ∧
-        sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.readReg64 .x0 = p ∧
-        ∃ (st' : MallocngSt) (g' : GroupDesc) (newEff live' peak' : Nat),
-          (Pf ⊢ stackFrame s0 800 ∗ MallocngRoTablesA maddrs ∗
-            MallocngCoreStA γ maddrs brkStart sf.brk live' peak' st' ∗
-            MallocngRuntime maddrs tp ∗
-            ⌜(MallocngInitBlock mallocngIface γ).pureWf p (newSz, keptBs)⌝ ∗
-            (MallocngInitBlock mallocngIface γ).interp p (newSz, keptBs) ∗ Frame) ∧
-          g.sc < 48 ∧
-          FineGroupSameGeom g' g ∧
-          g'.slots = g.slots.set idx (.liveUser p newSz newEff) ∧
-          newEff = (oldEff - max oldSz MallocngMinBlockCost) + max newSz MallocngMinBlockCost ∧
-          st'.groups = st.groups.map (fun x => if x.metaPtr == g.metaPtr then g' else x) ∧
-          st'.metaAreas = st.metaAreas ∧
-          (∀ k, st'.liveMap k = if k = p then some newSz else st.liveMap k) ∧
-          MallocngNoOrphanMappings (dynamicRootRegions st) (dynamicRootRegions st') s0.mem sf.mem)
-      oom := by
-  intro sp1 keptBs
-  let bgt := synthCoarseBudgetRaw liveCost peakCost st
-  let ivs0 := dynamicRootRegions st
-  refine SepWP.weaken_pre (Entails.of_eq ?_)
-    (realloc_stage2_inplace_readRest_raw_ok hb γ tp brkStart bgt ivs0 s0 s st hg hIdx origBs tailBs
-      hOrigLen hTailLen hSlot hNewMax hFit hScLe hpc hrun hPerm hbrk hproc hsp hal hsp0
-      hx3 hx4 hx5 hx19 hx21 hcs)
-  have hSplit := mallocngRawEnv_eq_readRest γ maddrs tp brkStart s0.brk liveCost peakCost st hGrp
-  dsimp only [bgt, ivs0]
-  have hLhsAssoc :
-      (ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ stackFrameAt sp1 720 ∗
-       MallocngRoTablesA maddrs ∗ MallocngCoreStA γ maddrs brkStart s0.brk liveCost peakCost st ∗
-       MallocngRuntime maddrs tp ∗
-       MallocngBlockToken γ p oldSz ∗ (p ↦ₛ (origBs ++ tailBs)) ∗ Frame) =
-      (ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ stackFrameAt sp1 720 ∗
-       (MallocngRoTablesA maddrs ∗ MallocngCoreStA γ maddrs brkStart s0.brk liveCost peakCost st ∗
-        MallocngRuntime maddrs tp) ∗
-       MallocngBlockToken γ p oldSz ∗ (p ↦ₛ (origBs ++ tailBs)) ∗ Frame) := by
-    generalize (MallocngRoTablesA maddrs) = PRo
-    generalize (MallocngCoreStA γ maddrs brkStart s0.brk liveCost peakCost st) = PCore
-    generalize (MallocngRuntime maddrs tp) = PRt
-    ac_rfl
-  rw [hLhsAssoc, hSplit]
-  generalize (MallocngRoTablesAt maddrs) = PRo
-  generalize (MallocngReadRest γ maddrs tp brkStart s0.brk
-    (synthCoarseBudgetRaw liveCost peakCost st) (dynamicRootRegions st) st) = PRest
-  ac_rfl
 
 end LibsignalBinary.Heap.Fine

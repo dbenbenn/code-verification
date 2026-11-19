@@ -21,7 +21,7 @@ composed DSL operation tables (`atomicAdapterOps`, `atomicFsOps`, `atomicFig8Ops
 `atomicSessionOps`, `atomicE2EOps`) together with response-codec roundtrips for `pqKeyIndCodec`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -258,7 +258,9 @@ theorem atomicBaseSamplers_sizeHonest (ℓ : ℕ) (Pt : Type) :
 theorem atomicSamplers_sizeHonest (ℓ : ℕ) (Pt : Type) [SampleableType Pt] :
     SampSizeHonest (atomicSamplers ℓ Pt) :=
   sampSizeHonest_unifSamplers (S := atomicSig ℓ Pt) AtomicUnifBase.sort AtomicUnifBase.cost
-    (fun b _ => by cases b <;> rfl)
+    (fun b _ => by
+      cases b <;> dsimp [atomicSig, AtomicSort.blocks, AtomicUnifBase.sort, AtomicUnifBase.cost] <;>
+        omega)
 
 /-! ## Wire, SPQR, and session-state helper bounds -/
 
@@ -1314,7 +1316,7 @@ theorem pqAtomicSamplers_sizeHonest : SampSizeHonest pqAtomicSamplers :=
   atomicBaseSamplers_sizeHonest 0 Empty
 
 /-- Encoding of `SignalPqxdh.KeyIndResponse` into `keyIndRT` (inverse of `keyIndRdec`). -/
-def pqKeyIndRenc {ℓ : ℕ} {Pt : Type} :
+@[expose] def pqKeyIndRenc {ℓ : ℕ} {Pt : Type} :
     SignalPqxdh.KeyIndResponse → (keyIndRT (ℓ := ℓ) (Pt := Pt)).denote
   | .noneResp => .inl ()
   | .initPrinResp ik s => .inr (.inl (ik, s))

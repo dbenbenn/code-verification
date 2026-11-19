@@ -10,19 +10,24 @@ limitations under the License.
 module
 
 meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled2Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlacedBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1PlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled2Placed
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlacedBudget
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
-import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled2
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable `.keysUnsampled` Sub-Step (`+684..+2588`, Block `427`)
@@ -31,7 +36,7 @@ Threads `RustCliAllocBudget` through `<Authenticator>::mac_hdr`, `do_reserve_and
 and 32-byte MAC append (`+684..+2588`) in Block `427`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -106,11 +111,11 @@ attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.sub_add_cancel
     `<Authenticator>::mac_hdr` (`authMacHdrEvents auth hdr`) followed by
     `do_reserve_and_handle` growing the 64-byte `hdr` buffer by 32 bytes to capacity 128
     (`rustReallocEvents 64 128 1`). -/
-def keysUnsampledMacReserveEvents (auth : Authenticator) (hdr : Bytes) : List AllocEvent :=
+@[expose] def keysUnsampledMacReserveEvents (auth : Authenticator) (hdr : Bytes) : List AllocEvent :=
   authMacHdrEvents auth hdr ++ rustReallocEvents 64 128 1
 
 /-- Exact deterministic allocator event envelope of `.keysUnsampled` sub-step `+684 -> +2588`. -/
-def KeysUnsampledMacReserveEnv (auth : Authenticator) (hdr : Bytes) (evs : List AllocEvent) : Prop :=
+@[expose] def KeysUnsampledMacReserveEnv (auth : Authenticator) (hdr : Bytes) (evs : List AllocEvent) : Prop :=
   evs = keysUnsampledMacReserveEvents auth hdr
 
 theorem keysUnsampledMacReserveEnv_nonempty (auth : Authenticator) (hdr : Bytes) :

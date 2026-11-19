@@ -25,17 +25,17 @@ namespace VerifiedLibraries.Mallocng.Proofs
 
 open Arm64 Arm64.Obj Arm64.CType ProofLib ProofLib.SepLogic VerifiedLibraries.Mallocng
 
-private theorem freeableBlock_comm (γ : GhostName) (p : BitVec 64) (n : Nat) :
-    (if p = 0#64 then emp else mallocngIface.Block γ p n ∗ memRegion p n) =
-      if p = 0#64 then emp else memRegion p n ∗ mallocngIface.Block γ p n := by
+private theorem freeableBlock_comm (ro : Bool) (γ : GhostName) (p : BitVec 64) (n : Nat) :
+    (if p = 0#64 then emp else (mallocngModeIface ro).Block γ p n ∗ memRegion p n) =
+      if p = 0#64 then emp else memRegion p n ∗ (mallocngModeIface ro).Block γ p n := by
   split
   · rfl
   · exact sepConj_comm _ _
 
-private theorem blk03_free_ok (hNt : NontrivialFreeTopPlacedStmt)
+private theorem blk03_free_ok {ro : Bool} (hNt : NontrivialFreeTopPlacedStmt ro)
     [MallocngMultiPlacement] (γ : GhostName) :
     subroutine_ok (mallocngBlockProg mmpl 3 msvc) (mbase 3)
-      (withCL mmpl (ToBaseSpec.toSpec (mallocngFreeSpec mallocngIface γ maddrs) (mbase 3))) := by
+      (withCL mmpl (ToBaseSpec.toSpec (mallocngFreeSpec (mallocngModeIface ro) γ maddrs) (mbase 3))) := by
   refine subroutine_ok_withCL_of_cl fun m0 hcl0 => ?_
   have hfn : ∀ c, (blkPC_b03.rebase c (fun _ => none)).fnAddr "free" = c := fun c => by
     dsimp only [Program.fnAddr, Program.rebase, Program.fnOff, Program.findSymbol?, blkPC_b03, PlacedLib.program]
@@ -48,11 +48,11 @@ private theorem blk03_free_ok (hNt : NontrivialFreeTopPlacedStmt)
   apply subroutine_ok_of_sepWP_init
   intro x R s0 hpc hrun hpre hspAl0; rw [hfn b] at hpc
   rcases x with ⟨p, sp0, n, tp, brkStart, bud, ivs0⟩
-  let P0 := (MallocngFreeableBlock mallocngIface γ).interp p n ∗
-    MallocngEnv mallocngIface γ maddrs tp brkStart bud ivs0 s0 ∗
+  let P0 := (MallocngFreeableBlock (mallocngModeIface ro) γ).interp p n ∗
+    MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bud ivs0 s0 ∗
     stackFrameAt sp0 1024
   have hpre' : s0.mem ⊨ ⌜s0.mem = m0⌝ ∗
-      ⌜s0.readReg64 .x0 = p ∧ s0.sp = sp0 ∧ (MallocngFreeableBlock mallocngIface γ).pureWf p n⌝ ∗
+      ⌜s0.readReg64 .x0 = p ∧ s0.sp = sp0 ∧ (MallocngFreeableBlock (mallocngModeIface ro) γ).pureWf p n⌝ ∗
       P0 ∗ R := by
     simpa [ToBaseSpec.toSpec, mallocngFreeSpec, mallocngStackBytes, P0, sepConj_assoc] using hpre
   rw [satisfies_pure_sepConj] at hpre'; obtain ⟨hm0, hpre'⟩ := hpre'
@@ -71,8 +71,8 @@ private theorem blk03_free_ok (hNt : NontrivialFreeTopPlacedStmt)
     (fun R' hm => by
       have hSF272 : ∀ s' : State, s'.sp = sp0 → stackFrame s' 272 = stackFrameAt sp0 272 := by
         intro s' hs; rw [stackFrameAt_eq_memRegion sp0 272]; simp [stackFrame, hs]
-      have hEnvEq : ∀ pc', MallocngEnv mallocngIface γ maddrs tp brkStart bud ivs0 (s0.setPC pc') =
-          MallocngEnv mallocngIface γ maddrs tp brkStart bud ivs0 s0 := fun _ => rfl
+      have hEnvEq : ∀ pc', MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bud ivs0 (s0.setPC pc') =
+          MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bud ivs0 s0 := fun _ => rfl
       rw [← sepConj_assoc]; refine Satisfies.mono (sepConj_mono_left ?_) hm
       dsimp only [P0, FrameF, libcFreePlaced272Spec, withCL]
       rw [freeableBlock_comm, stackFrameAt_1024_split_272 sp0,
@@ -115,8 +115,8 @@ private theorem blk03_free_ok (hNt : NontrivialFreeTopPlacedStmt)
     simp only [sepConj_assoc]
     exact Entails.pure_left fun _ => Entails.refl _
   have hPostEnvEq : ∀ bud' pc',
-      MallocngPostEnv mallocngIface γ maddrs tp brkStart bud' ivs0 (s0.setPC pc') sf =
-      MallocngPostEnv mallocngIface γ maddrs tp brkStart bud' ivs0 s0 sf := fun _ _ => rfl
+      MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bud' ivs0 (s0.setPC pc') sf =
+      MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bud' ivs0 s0 sf := fun _ _ => rfl
   have hsat' := Satisfies.mono (hStripCL _ _ _ _ _) hsat
   rw [hSF272 _ (by simp [arm64_norm, hsp0]), hPostEnvEq] at hsat'
   refine Satisfies.mono (sepConj_mono_left ?_) hsat'
@@ -128,12 +128,12 @@ private theorem blk03_free_ok (hNt : NontrivialFreeTopPlacedStmt)
   sep_frame
 
 /-- Multi-block placed `free(p)` (`b03`) satisfies `mallocngFreeSpec`. -/
-theorem freePlaced_entry_ok (hNt : NontrivialFreeTopPlacedStmt)
+theorem freePlaced_entry_ok {ro : Bool} (hNt : NontrivialFreeTopPlacedStmt ro)
     (mpl : Obj.MultiPlacement) (svc : State → State)
     (hPlace : VerifiedLibraries.mallocngLib.Placeable mpl) (hSvc : MallocngSvcValid svc)
     (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "free"
-      (mallocngFreeSpec mallocngIface γ (mallocngAddrsOfPlacement mpl)) := by
+      (mallocngFreeSpec (mallocngModeIface ro) γ (mallocngAddrsOfPlacement mpl)) := by
   letI : MallocngMultiPlacement := { mpl := mpl, svc := svc, placeable := hPlace, svcValid := hSvc }
   refine ⟨by decide, 3, 0, by decide +kernel, ?_⟩
   rw [fnAddr_free]

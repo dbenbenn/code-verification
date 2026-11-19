@@ -12,9 +12,12 @@ module
 public import VerifiedLibraries.Musl.Proofs.MemmoveProof
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Common -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyCode -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.Common.SharedHelpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.BV.Bits
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Byte-Exact `memmove` Hook Discharge (`LibsignalBinary.Proofs.HookDischarge.Libc.Memmove`)

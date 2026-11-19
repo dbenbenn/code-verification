@@ -9,13 +9,33 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.WrapperState
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.ProloguePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LscroKitPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.WrapperState
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.ProloguePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LscroKitPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve
 import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosureFrozenPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Spec
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SpecState -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+public import ProofLib.FsTrace
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.SepLogic.WP.Apply
+public import VerifiedLibraries.Mallocng.Spec
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Domains
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Model
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Pure
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.WritePaths
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # Relocatable State-Coupled Wrapper Reduction for `decrypt_prekey`
@@ -25,13 +45,11 @@ on block `520` (`lsProg_520`) from the poll contract on block `518`, and transfe
 blocks `i < 619`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
 set_option maxRecDepth 200000
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.DecryptPrekeyHelpers
 
@@ -444,4 +462,3 @@ theorem cliDecryptPrekey_ok_state_frozen_placed_at_block [LibsignalFullPlacement
     (cliDecryptPrekey_ok_state_frozen_placed K hK stk hstk hstk64)
 
 end CryptoVerification.SignalSession.Cli.RunProofs
-end

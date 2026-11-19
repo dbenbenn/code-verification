@@ -11,13 +11,12 @@ module
 
 public meta import Lean -- shake: keep
 public meta import ProofLib -- shake: keep
-public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.ProstVarintVm
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DoReserveExt
-public import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.Prost.DefsW
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.ProstVarintVm
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DoReserveExt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.Prost.DefsW -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.Bytes.From
 import LibsignalBinary.Proofs.TripleRatchet.Bytes.Drops
@@ -25,6 +24,58 @@ import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import LibsignalBinary.Proofs.VarintBridge
+public import LibsignalBinary.Proofs.TripleRatchet.Bytes.Defs
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.StepsProcess
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Mallocng.Spec.Top
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.Alloc
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.IoCommon
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.RustStd.Spec.Top
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded `do_reserve_and_handle`, `bytesVtableDrop`, and `bytes::merge`
@@ -38,7 +89,7 @@ Proves relocatable `[LibsignalPlacement]` total-correctness (`onPanic := ⌜Fals
    temporary `Bytes` buffer deallocation while requiring `FitsEvents` only on `bytesMergeAllocEvents`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -181,13 +232,13 @@ private theorem mergeBytes_length_sum {wt : WireType} {bs v rest : List (BitVec 
 
 /-- Events emitted by `do_reserve_and_handle` (`Block 13`, `align = 1, stride = 1`) from `cap` to
 `reserveCap cap len additional`. -/
-def doReserveEvents (cap len additional : Nat) : List AllocEvent :=
+@[expose] def doReserveEvents (cap len additional : Nat) : List AllocEvent :=
   let newCap := reserveCap cap len additional
   if cap = 0 then rustAllocEvents newCap 1
   else rustReallocEvents cap newCap 1
 
 /-- Events emitted by `bytesVtableDrop` (`Blocks 224, 236, 237`, `align = 1`). -/
-def bytesDropEvents (len : Nat) : List AllocEvent :=
+@[expose] def bytesDropEvents (len : Nat) : List AllocEvent :=
   if len = 0 then [] else rustDeallocEvents len 1
 
 /-- Allocating events emitted during `prost::encoding::bytes::merge` (Block `7`):
@@ -195,18 +246,18 @@ temporary `BytesMut` buffer allocation (`vlen` B, if `vlen ≠ 0`) followed by
 `do_reserve_and_handle` on the destination `Vec<u8>` (if `valCap < vlen`).
 Used in `FitsEvents` preconditions (since trailing `.free` has unconstrained `stepReserve`
 and never OOMs). -/
-def bytesMergeAllocEvents (valCap vlen : Nat) : List AllocEvent :=
+@[expose] def bytesMergeAllocEvents (valCap vlen : Nat) : List AllocEvent :=
   (if vlen = 0 then [] else rustAllocEvents vlen 1) ++
   (if valCap < vlen then doReserveEvents valCap 0 vlen else [])
 
 /-- Full event trace of `prost::encoding::bytes::merge` (Block `7`), including the epilogue
 `bytesVtableDrop` of the temporary `vlen`-byte buffer (which credits `largeCost M vlen` back
 from `liveLarge` when `smallMaxReq M < vlen`). -/
-def bytesMergeEvents (valCap vlen : Nat) : List AllocEvent :=
+@[expose] def bytesMergeEvents (valCap vlen : Nat) : List AllocEvent :=
   bytesMergeAllocEvents valCap vlen ++ bytesDropEvents vlen
 
 /-- Deterministic output capacity of `prost::encoding::bytes::merge` on `mergeBytes wt bs = some (v, rest)`. -/
-def bytesMergeOutCap (valCap : BitVec 64) (vlen : Nat) : BitVec 64 :=
+@[expose] def bytesMergeOutCap (valCap : BitVec 64) (vlen : Nat) : BitVec 64 :=
   if valCap.toNat < vlen then BitVec.ofNat 64 (reserveCap valCap.toNat 0 vlen) else valCap
 
 @[simp]
@@ -579,7 +630,7 @@ private theorem finish_grow_1_ne_budget_placed_ok [LibsignalPlacement]
     exact ⟨⟨hp', htr⟩, Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmemf⟩
 
 /-- Raw budget-threaded total-correctness spec for `do_reserve_and_handle` (Block `13`, `doReserveStackX`). -/
-def doReserveRawBudgetSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def doReserveRawBudgetSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DoReserveCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.v ∧ (s.readReg64 .x1).toNat = x.bs.length ∧
@@ -690,7 +741,7 @@ theorem do_reserve_raw_budget_placed_ok [LibsignalPlacement]
 
 /-- Budget-threaded total-correctness (`onOom := ⌜False⌝`, `onPanic := ⌜False⌝`) spec for
 `RawVecInner::reserve::do_reserve_and_handle` (Block `13`, `doReserveStackX`) in `vecU8At` form. -/
-def doReserveBudgetSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def doReserveBudgetSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DoReserveCall × M.σ) where
   pre := fun (x, st) s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional
@@ -805,7 +856,6 @@ theorem do_reserve_budget_placed_ok_cl [LibsignalPlacement]
     subroutine_ok callerProg (lsmpl.base 13)
       (withLsCl lsmpl (doReserveBudgetSpecX M A lim)) :=
   ls_subroutine_ok_cl_of_callee (j := 13) (do_reserve_budget_placed_ok hA)
-
 
 /-! ## 3. `bytesVtableDrop` (Blocks `224, 237, 236`, `extHookStack + 48`) -/
 
@@ -1071,7 +1121,7 @@ private theorem promotableOddDrop_budget_placed_ok [LibsignalPlacement]
 
 /-- Budget-threaded total-correctness (`onPanic := ⌜False⌝`, `onOom := ⌜False⌝`) contract for
 unified `bytes::Bytes` `.rodata` vtable `drop` dispatch (`Blocks 224, 237, 236`). -/
-def bytesVtableDropBudgetSpec [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def bytesVtableDropBudgetSpec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ptr : BitVec 64) (bs : List (BitVec 8))
     (off : Nat) : Spec M.σ where
   pre := fun st s =>
@@ -1157,7 +1207,7 @@ on `mergeBytes x.wt x.bs = some (v, rest)` for general destination capacity `x.v
 (`2 * x.valCap.toNat + 1 ≤ 2 ^ 63`). Requires `FitsEvents` only on the allocating prefix
 `bytesMergeAllocEvents x.valCap.toNat v.length` while stepping `M` through the full trace
 `bytesMergeEvents x.valCap.toNat v.length` (including the epilogue `bytesVtableDrop` credit). -/
-def bytesMergeSomeBudgetSpecW (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def bytesMergeSomeBudgetSpecW (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec (BytesMergeGhost × List (BitVec 8) × List (BitVec 8) × M.σ) where
   pre := fun (x, v, rest, st) s =>
@@ -1839,7 +1889,6 @@ private theorem phase2_from_0x23c_budget [LibsignalPlacement]
       (by simp (config := { decide := true }) only [wp_norm, arm64_norm])
       (by simp (config := { decide := true }) only [wp_norm, arm64_norm]))
 
-
 private theorem phase2_from_0x168_nonempty_budget [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
     (hA : AllocContractsBudgetPlaced M A lim H)
@@ -2326,7 +2375,6 @@ private theorem phase2_from_0x0e0_budget [LibsignalPlacement]
         (by simp (config := { decide := true }) only [wp_norm, arm64_norm])
         (by simp (config := { decide := true }) only [wp_norm, arm64_norm, h24_al])
         (by simp (config := { decide := true }) only [wp_norm, arm64_norm, h29_al]))
-
 
 private theorem phase1_from_0x08c_budget [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
@@ -2908,7 +2956,7 @@ theorem bytes_merge_some_budget_placed_okW_cl [LibsignalPlacement]
 
 /-- Fresh-destination (`x.valCap = 0#64`, `x.valBs = []`) specialization of
 `bytesMergeSomeBudgetSpecW` (Block `7`, `bytesMergeStackW`). -/
-def bytesMergeFreshBudgetSpecW (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def bytesMergeFreshBudgetSpecW (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec (BytesMergeGhost × List (BitVec 8) × List (BitVec 8) × M.σ) where
   pre := fun (x, v, rest, st) s =>

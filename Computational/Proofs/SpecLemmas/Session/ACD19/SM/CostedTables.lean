@@ -25,17 +25,17 @@ and expression helpers for the two-party secure-messaging game (`SM.spec` and `S
 unit abstract sort sizes matching ACD19's black-box cost model.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames.SM
 
 open ReductionDsl OracleSpec OracleComp
 
-def partyEnc : Party → Bool
+@[expose] def partyEnc : Party → Bool
   | .A => false
   | .B => true
 
-def partyDec : Bool → Party
+@[expose] def partyDec : Bool → Party
   | false => .A
   | true => .B
 
@@ -44,7 +44,7 @@ inductive SMSort
   | key | st | st2 | msg | coins | rcoins | ct
   deriving DecidableEq
 
-@[reducible] def SMSort.den (Key St St₂ Msg Coins RCoins C : Type) : SMSort → Type
+@[expose, reducible] def SMSort.den (Key St St₂ Msg Coins RCoins C : Type) : SMSort → Type
   | .key => Key
   | .st => St
   | .st2 => St₂
@@ -54,7 +54,7 @@ inductive SMSort
   | .ct => C
 
 /-- `ReductionDsl` signature for SM schemes, assigning size 1 to each abstract sort. -/
-@[reducible] def smSig (Key St St₂ Msg Coins RCoins C : Type) : Sig where
+@[expose, reducible] def smSig (Key St St₂ Msg Coins RCoins C : Type) : Sig where
   Base := SMSort
   den := SMSort.den Key St St₂ Msg Coins RCoins C
   sz := fun _ _ => 1
@@ -73,7 +73,7 @@ inductive SMOp
   deriving DecidableEq
 
 /-- Operation table for `SMOp`, with unit cost except `bits B` for `receive B`. -/
-@[reducible] def smOps {Key St St₂ Msg Coins RCoins C : Type}
+@[expose, reducible] def smOps {Key St St₂ Msg Coins RCoins C : Type}
     (init : Party → Key → Option St := fun _ _ => none)
     (send : St → Msg → Coins → Option (St × C) := fun _ _ _ => none)
     (receive : St → C → RCoins → Option (St × ℕ × ℕ × Msg) := fun _ _ _ => none)
@@ -125,7 +125,7 @@ inductive SMSamp
   deriving DecidableEq
 
 /-- Coin sampler table for SM reductions and games at unit cost. -/
-@[reducible] def smSamplers {Key St St₂ Msg Coins RCoins C : Type}
+@[expose, reducible] def smSamplers {Key St St₂ Msg Coins RCoins C : Type}
     (sampKey : ProbComp (Option Key) := pure none)
     (sampCoins : ProbComp (Option Coins) := pure none)
     (sampRCoins : ProbComp (Option RCoins) := pure none) :
@@ -145,15 +145,15 @@ inductive SMSamp
   sCost := fun _ => 1
 
 /-- `ReductionDsl` representation of `SM.RecvResult Msg`. -/
-@[reducible] def smRrTy (Key St St₂ Msg Coins RCoins C : Type) :
+@[expose, reducible] def smRrTy (Key St St₂ Msg Coins RCoins C : Type) :
     Ty (smSig Key St St₂ Msg Coins RCoins C) :=
   .sum .unit (.prod .nat (.prod .nat (.opt (.base .msg))))
 
-def smRrEnc {Msg : Type} : RecvResult Msg → Unit ⊕ (ℕ × ℕ × Option Msg)
+@[expose] def smRrEnc {Msg : Type} : RecvResult Msg → Unit ⊕ (ℕ × ℕ × Option Msg)
   | .rejected => .inl ()
   | .accepted t i m => .inr (t, i, m)
 
-def smRrDec {Msg : Type} : Unit ⊕ (ℕ × ℕ × Option Msg) → RecvResult Msg
+@[expose] def smRrDec {Msg : Type} : Unit ⊕ (ℕ × ℕ × Option Msg) → RecvResult Msg
   | .inl () => .rejected
   | .inr (t, i, m) => .accepted t i m
 
@@ -162,7 +162,7 @@ inductive SMTag
   deriving DecidableEq
 
 /-- Target interface into `unifSpec + SM.spec` with unit query and coin-forwarding costs. -/
-@[reducible] def smIface (Key St St₂ Msg Coins RCoins C : Type)
+@[expose, reducible] def smIface (Key St St₂ Msg Coins RCoins C : Type)
     (stSort : SMSort := .st)
     (sampKey : ProbComp (Option Key) := pure none)
     (sampCoins : ProbComp (Option Coins) := pure none)
@@ -201,7 +201,7 @@ inductive SMTag
   qCost := fun _ => 1
   smp := smSamplers sampKey sampCoins sampRCoins
 
-@[reducible] def smQ (Key St St₂ Msg Coins RCoins C : Type) :
+@[expose, reducible] def smQ (Key St St₂ Msg Coins RCoins C : Type) :
     Ty (smSig Key St St₂ Msg Coins RCoins C) :=
   .sum
     (.sum
@@ -213,7 +213,7 @@ inductive SMTag
       (.prod .bool (.base .ct)))
     .bool
 
-@[reducible] def smR (Key St St₂ Msg Coins RCoins C : Type)
+@[expose, reducible] def smR (Key St St₂ Msg Coins RCoins C : Type)
     (stSort : SMSort := .st) :
     Ty (smSig Key St St₂ Msg Coins RCoins C) :=
   .sum
@@ -227,7 +227,7 @@ inductive SMTag
     (.opt (.base stSort))
 
 /-- Source game codec for `SM.spec` at `codecCost = 6`. -/
-@[reducible] def smCodec (Key St St₂ Msg Coins RCoins C : Type)
+@[expose, reducible] def smCodec (Key St St₂ Msg Coins RCoins C : Type)
     (stSort : SMSort := .st) :
     GameCodec (smSig Key St St₂ Msg Coins RCoins C)
       (SM.spec (SMSort.den Key St St₂ Msg Coins RCoins C stSort) Msg Coins C) where
@@ -262,7 +262,7 @@ inductive SMTagDF where
   deriving DecidableEq, Repr
 
 /-- Target interface into `unifSpec + SM.specDF` extending `smIface` with `deliverForge`. -/
-@[reducible] def smIfaceDF (Key St St₂ Msg Coins RCoins C : Type)
+@[expose, reducible] def smIfaceDF (Key St St₂ Msg Coins RCoins C : Type)
     (stSort : SMSort := .st)
     (sampKey : ProbComp (Option Key) := pure none)
     (sampCoins : ProbComp (Option Coins) := pure none)
@@ -306,17 +306,17 @@ inductive SMTagDF where
   qCost := fun _ => 1
   smp := smSamplers sampKey sampCoins sampRCoins
 
-@[reducible] def smQDF (Key St St₂ Msg Coins RCoins C : Type) :
+@[expose, reducible] def smQDF (Key St St₂ Msg Coins RCoins C : Type) :
     Ty (smSig Key St St₂ Msg Coins RCoins C) :=
   .sum (smQ Key St St₂ Msg Coins RCoins C) (.prod .bool (.prod (.base .ct) (.base .ct)))
 
-@[reducible] def smRDF (Key St St₂ Msg Coins RCoins C : Type)
+@[expose, reducible] def smRDF (Key St St₂ Msg Coins RCoins C : Type)
     (stSort : SMSort := .st) :
     Ty (smSig Key St St₂ Msg Coins RCoins C) :=
   .sum (smR Key St St₂ Msg Coins RCoins C stSort) (.opt (smRrTy Key St St₂ Msg Coins RCoins C))
 
 /-- Source game codec for `SM.specDF` at `codecCost = 7`. -/
-@[reducible] def smCodecDF (Key St St₂ Msg Coins RCoins C : Type)
+@[expose, reducible] def smCodecDF (Key St St₂ Msg Coins RCoins C : Type)
     (stSort : SMSort := .st) :
     GameCodec (smSig Key St St₂ Msg Coins RCoins C)
       (SM.specDF (SMSort.den Key St St₂ Msg Coins RCoins C stSort) Msg Coins C) where
@@ -339,39 +339,39 @@ inductive SMTagDF where
 /-! ## `Pos` representation and `Expr` helpers -/
 
 /-- `SM.Pos` encoded as `(sender, (epoch, idx))`. -/
-@[reducible] def posTy {S' : Sig} : Ty S' := .prod .bool (.prod .nat .nat)
+@[expose, reducible] def posTy {S' : Sig} : Ty S' := .prod .bool (.prod .nat .nat)
 
-def orE
+@[expose] def orE
     {S' : Sig} {O' : Ops S'} {Γ} (a b : Expr O' Γ .bool) : Expr O' Γ .bool :=
   .ite a (.bool true) b
 
-def boolEq
+@[expose] def boolEq
     {S' : Sig} {O' : Ops S'} {Γ} (a b : Expr O' Γ .bool) : Expr O' Γ .bool :=
   .ite a b (.not b)
 
-def leN
+@[expose] def leN
     {S' : Sig} {O' : Ops S'} {Γ} (a b : Expr O' Γ .nat) : Expr O' Γ .bool :=
   .not (.lt b a)
 
-def maxN
+@[expose] def maxN
     {S' : Sig} {O' : Ops S'} {Γ} (a b : Expr O' Γ .nat) : Expr O' Γ .nat :=
   .letE (.pair a b)
     (.ite (leN (.fst .v0) (.snd .v0)) (.snd .v0) (.fst .v0))
 
-def minN
+@[expose] def minN
     {S' : Sig} {O' : Ops S'} {Γ} (a b : Expr O' Γ .nat) : Expr O' Γ .nat :=
   .letE (.pair a b)
     (.ite (leN (.fst .v0) (.snd .v0)) (.fst .v0) (.snd .v0))
 
-def isSomeE
+@[expose] def isSomeE
     {S' : Sig} {O' : Ops S'} {Γ t} (e : Expr O' Γ (.opt t)) : Expr O' Γ .bool :=
   .caseOpt e (.bool false) (.bool true)
 
-def otherE
+@[expose] def otherE
     {S' : Sig} {O' : Ops S'} {Γ} (p : Expr O' Γ .bool) : Expr O' Γ .bool :=
   .not p
 
-def sendsInE
+@[expose] def sendsInE
     {S' : Sig} {O' : Ops S'} {Γ} (p : Expr O' Γ .bool) (t : Expr O' Γ .nat) :
     Expr O' Γ .bool :=
   .letE (.pair p t)
@@ -379,16 +379,16 @@ def sendsInE
       (.eqN (.modK 2 (.snd .v0)) (.nat 0))
       (.eqN (.modK 2 (.snd .v0)) (.nat 1)))
 
-def senderOfE
+@[expose] def senderOfE
     {S' : Sig} {O' : Ops S'} {Γ} (t : Expr O' Γ .nat) : Expr O' Γ .bool :=
   .not (.eqN (.modK 2 t) (.nat 1))
 
-def pGet
+@[expose] def pGet
     {S' : Sig} {O' : Ops S'} {Γ t} (m : Expr O' Γ (.prod t t)) (p : Expr O' Γ .bool) :
     Expr O' Γ t :=
   .letE (.pair m p) (.ite (.snd .v0) (.snd (.fst .v0)) (.fst (.fst .v0)))
 
-def pSet
+@[expose] def pSet
     {S' : Sig} {O' : Ops S'} {Γ t} (m : Expr O' Γ (.prod t t)) (p : Expr O' Γ .bool)
     (v : Expr O' Γ t) : Expr O' Γ (.prod t t) :=
   .letE (.pair m (.pair p v))
@@ -396,12 +396,12 @@ def pSet
       (.pair (.fst (.fst .v0)) (.snd (.snd .v0)))
       (.pair (.snd (.snd .v0)) (.snd (.fst .v0))))
 
-def maxAccGet
+@[expose] def maxAccGet
     {S' : Sig} {O' : Ops S'} {Γ} (ma : Expr O' Γ (.prod (.tbl .nat) (.tbl .nat)))
     (p : Expr O' Γ .bool) (ep : Expr O' Γ .nat) : Expr O' Γ .nat :=
   .tget (pGet ma p) ep
 
-def maxAccSet
+@[expose] def maxAccSet
     {S' : Sig} {O' : Ops S'} {Γ} (ma : Expr O' Γ (.prod (.tbl .nat) (.tbl .nat)))
     (p : Expr O' Γ .bool) (ep : Expr O' Γ .nat) (val : Expr O' Γ .nat) :
     Expr O' Γ (.prod (.tbl .nat) (.tbl .nat)) :=
@@ -412,14 +412,14 @@ def maxAccSet
      let val0 : Expr O' _ .nat := .snd (.snd (.snd .v0))
      pSet ma0 p0 (.tset (pGet ma0 p0) ep0 val0))
 
-def posSender
+@[expose] def posSender
     {S' : Sig} {O' : Ops S'} {Γ} (p : Expr O' Γ posTy) : Expr O' Γ .bool := .fst p
-def posEpoch
+@[expose] def posEpoch
     {S' : Sig} {O' : Ops S'} {Γ} (p : Expr O' Γ posTy) : Expr O' Γ .nat := .fst (.snd p)
-def posIdx
+@[expose] def posIdx
     {S' : Sig} {O' : Ops S'} {Γ} (p : Expr O' Γ posTy) : Expr O' Γ .nat := .snd (.snd p)
 
-def posEq
+@[expose] def posEq
     {S' : Sig} {O' : Ops S'} {Γ} (p₁ p₂ : Expr O' Γ posTy) : Expr O' Γ .bool :=
   .letE (.pair p₁ p₂)
     (let a : Expr O' _ posTy := .fst .v0
@@ -427,7 +427,7 @@ def posEq
      .and (boolEq (posSender a) (posSender b))
        (.and (.eqN (posEpoch a) (posEpoch b)) (.eqN (posIdx a) (posIdx b))))
 
-def healedByE
+@[expose] def healedByE
     {S' : Sig} {O' : Ops S'} {Γ} (tL : Expr O' Γ (.opt .nat)) (Δ : ℕ)
     (t : Expr O' Γ .nat) : Expr O' Γ .bool :=
   .letE (.pair tL t)
@@ -435,7 +435,7 @@ def healedByE
       (.bool true)
       (leN (.add .v0 (.nat Δ)) (.snd .v1)))
 
-def maxOptE
+@[expose] def maxOptE
     {S' : Sig} {O' : Ops S'} {Γ} (tL : Expr O' Γ (.opt .nat)) (t : Expr O' Γ .nat) :
     Expr O' Γ .nat :=
   .letE (.pair tL t)
@@ -464,9 +464,9 @@ open ReductionDsl OracleSpec OracleComp
     smRrDec (smRrEnc r) = r := by
   cases r <;> rfl
 
-def posEnc (p : Pos) : Bool × ℕ × ℕ := (partyEnc p.sender, p.epoch, p.idx)
+@[expose] def posEnc (p : Pos) : Bool × ℕ × ℕ := (partyEnc p.sender, p.epoch, p.idx)
 
-def posDec (v : Bool × ℕ × ℕ) : Pos := ⟨partyDec v.1, v.2.1, v.2.2⟩
+@[expose] def posDec (v : Bool × ℕ × ℕ) : Pos := ⟨partyDec v.1, v.2.1, v.2.2⟩
 
 @[simp] theorem posDec_posEnc (p : Pos) : posDec (posEnc p) = p := by
   cases p; simp [posEnc, posDec]
@@ -474,11 +474,11 @@ def posDec (v : Bool × ℕ × ℕ) : Pos := ⟨partyDec v.1, v.2.1, v.2.2⟩
 @[simp] theorem posEnc_posDec (v : Bool × ℕ × ℕ) : posEnc (posDec v) = v := by
   rcases v with ⟨b, t, i⟩; simp [posEnc, posDec]
 
-def receiverOfE
+@[expose] def receiverOfE
     {S' : Sig} {O' : Ops S'} {Γ} (t : Expr O' Γ .nat) : Expr O' Γ .bool :=
   .eqN (.modK 2 t) (.nat 1)
 
-def ltOptE
+@[expose] def ltOptE
     {S' : Sig} {O' : Ops S'} {Γ} (tL : Expr O' Γ (.opt .nat)) (t : Expr O' Γ .nat) :
     Expr O' Γ .bool :=
   .letE (.pair tL t)

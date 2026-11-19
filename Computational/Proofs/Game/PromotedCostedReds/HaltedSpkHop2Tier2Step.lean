@@ -11,7 +11,7 @@ module
 
 public import Computational.Proofs.Game.PromotedCostedReds.SpkHop2Tier2Prog -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.KemFailTrackTier2 -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
 import Computational.Proofs.Game.PromotedCostedReds.SpkTier2Lift
 import Computational.Proofs.Game.PromotedCostedReds.SpkTier2Keys
@@ -72,7 +72,7 @@ open Computational.Proofs.Game.PromotedCostedReds.SpkTier2Bookkeeping (
   hop2TblTy hop2TblInitE hop2TblSetE
   cost_recordCiphertextTier2E cost_hop2TblInitE cost_hop2TblSetE
   spk_totalCost_le_spkTier2Budget)
-open Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg (
+open Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs (
   compCoinToPrf cost_compCoinToPrf size_compCoinToPrf compCoinToPrf_wk1Comp redCoinToPrf
   Hop2Mode prgCoinMode prgLiftedMode prfOracleMode
   queries_compCoinToPrf_zero queries_coinOnly_zero

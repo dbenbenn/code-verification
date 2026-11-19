@@ -471,29 +471,11 @@ private theorem prepareUnmapFastMem_spec (fm : FastMem) (base : BitVec 64) (clen
       dsimp only at hst
       split at hst <;> simp at hst
 
-/-- Unmap writable bytes in `[base, base + len)` (`Memory.unmapWritable`). -/
+/-- Unmap writable bytes in `[base, base + len)` (`FastMem` helper). -/
 def unmapWritable (fm : FastMem) (base : BitVec 64) (len : Nat) : FastMem :=
   let clen := min len (2 ^ 64)
   let fm0 := prepareUnmapFastMem fm base clen
   unmapLoop true fm0 base clen
-
-theorem unmapWritable_agrees {fm : FastMem} {m : Memory} (h : fm.Agrees m)
-    (base : BitVec 64) (len : Nat) :
-    (fm.unmapWritable base len).Agrees (m.unmapWritable base len) := by
-  intro a
-  dsimp only [unmapWritable, Memory.unmapWritable]
-  set clen := min len (2 ^ 64)
-  obtain ⟨hcell0, hdisj0⟩ := prepareUnmapFastMem_spec fm base clen
-  rw [unmapLoop_cellAt true clen _ base a (Nat.min_le_right _ _) hdisj0]
-  have hp0 : (prepareUnmapFastMem fm base clen).perm a = m.perm a := by
-    rw [ ← fm.perm_eq h a]; simp only [perm, hcell0 a]
-  rw [hp0, hcell0 a, h a]
-  have hclen_iff : (a - base).toNat < clen ↔ (a - base).toNat < len := by
-    have := (a - base).isLt; omega
-  by_cases hl : (a - base).toNat < clen
-  · simp only [hl, hclen_iff.mp hl, decide_true, Bool.true_and, ↓reduceIte]
-  · have hl2 : ¬ ((a - base).toNat < len) := fun h' => hl (hclen_iff.mpr h')
-    simp only [hl, hl2, decide_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
 
 /-- Unmap non-frozen bytes in `[base, base + len)` (`Memory.unmapNonFrozen`). -/
 def unmapNonFrozen (fm : FastMem) (base : BitVec 64) (len : Nat) : FastMem :=
@@ -964,59 +946,5 @@ theorem readCStringFast_eq {fm : FastMem} {m : Memory} (h : fm.Agrees m) (ptr : 
 `tokOnceAddr + 8`, as in `CliBinaryPq.Placed.cliTokenPatchPlaced`. -/
 def patchTokenFastMemPlaced (tokStorageAddr tokOnceAddr : BitVec 64) (fm0 : FastMem) : FastMem :=
   (fm0.writeBytes tokStorageAddr [0#8]).writeBytes (tokOnceAddr + 8#64) [0#8, 0#8, 0#8, 0#8]
-
-def patchTokenLinesPlaced (tokStorageAddr tokOnceAddr : BitVec 64) (lines : BinTree Line64) :
-    BinTree Line64 :=
-  (patchTokenFastMemPlaced tokStorageAddr tokOnceAddr
-    { lines := lines, stackBase := 0, stackTop := 0 }).lines
-
-/-- Initial `(sp, FastMem)` for `elf` and `pinputs` with `patchTokenFastMemPlaced` applied, or `none` on address wrap. -/
-def initFastMemAndSpPlaced (tokStorageAddr tokOnceAddr : BitVec 64)
-    (elf : ElfImage) (pinputs : ProcessInputs) : Option (BitVec 64 × FastMem) :=
-  match buildInitialStack elf pinputs with
-  | .error _ => none
-  | .ok (sp, stackRegion) =>
-    let regions := elf.segments ++ [stackRegion]
-    let top := pinputs.init.stackTop.toNat
-    let sz := pinputs.init.stackSize
-    if sz ≤ top && top ≤ 2 ^ 64 &&
-        regions.all (fun r => decide (r.start.toNat + r.bytes.length ≤ 2 ^ 64)) then
-      let fm0 : FastMem := { lines := loadRegionsLines regions, stackBase := top - sz, stackTop := top }
-      let fm1 := patchTokenFastMemPlaced tokStorageAddr tokOnceAddr fm0
-      some (sp, fm1)
-    else
-      none
-
-theorem initFastMemAndSpPlaced_agrees {tokStorageAddr tokOnceAddr : BitVec 64}
-    {elf : ElfImage} {pinputs : ProcessInputs} {sp : BitVec 64} {fm : FastMem}
-    (hinit : initFastMemAndSpPlaced tokStorageAddr tokOnceAddr elf pinputs = some (sp, fm)) :
-    (elf.rawState pinputs).sp = sp ∧
-      fm.Agrees (((elf.rawState pinputs).mem.writeBytes tokStorageAddr [0#8]).writeBytes
-        (tokOnceAddr + 8#64) [0#8, 0#8, 0#8, 0#8]) := by
-  unfold initFastMemAndSpPlaced at hinit
-  generalize hstk : buildInitialStack elf pinputs = stkRes at hinit
-  cases stkRes with
-  | error _ => nomatch hinit
-  | ok pair =>
-    rcases pair with ⟨sp0, stackRegion⟩; dsimp only at hinit
-    split at hinit
-    · rename_i hcond; injection hinit with hinit; rcases Prod.mk.inj hinit with ⟨rfl, rfl⟩
-      simp only [Bool.and_eq_true, decide_eq_true_eq] at hcond
-      rcases hcond with ⟨⟨hsz_le, htop_le⟩, hreg_wrap⟩
-      have hsp : (elf.rawState pinputs).sp = sp0 := by simp [ElfImage.rawState, hstk]
-      have hmem : (elf.rawState pinputs).mem =
-          Memory.mapZero ⟨Snapshot.loadCellAt (elf.segments ++ [stackRegion])⟩
-            (BitVec.ofNat 64 (pinputs.init.stackTop.toNat - pinputs.init.stackSize))
-            pinputs.init.stackSize := by
-        simp [ElfImage.rawState, hstk]
-      refine ⟨hsp, ?_⟩
-      rw [hmem]
-      unfold patchTokenFastMemPlaced
-      apply FastMem.writeBytes_agrees; apply FastMem.writeBytes_agrees
-      intro a; dsimp only [FastMem.cellAt]
-      exact baseRegions_mapZero_cells_eq (elf.segments ++ [stackRegion])
-        pinputs.init.stackTop.toNat pinputs.init.stackSize hsz_le htop_le
-        hreg_wrap a
-    · nomatch hinit
 
 end Symbolic.BugInjection.Proofs.CliExec.RadixMemPlaced

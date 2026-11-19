@@ -9,8 +9,51 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple4
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple4 -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.StateNorm
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatementsShort
+import LibsignalBinary.Proofs.SpqrV1Sync.InSyncEpoch
+import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDefs
+import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
+import LibsignalBinary.Specifications.CryptoGames.Party
+import LibsignalBinary.Specifications.CryptoGames.SM.Game
+import LibsignalBinary.Specifications.CryptoGames.SM.LibsignalGame
+import Mathlib.Algebra.BigOperators.Group.Finset.Defs
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Data.Finset.Defs
+import Mathlib.Data.List.Dedup
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.Integral.Lebesgue.Add
+import Mathlib.Order.Disjoint
+import Mathlib.Order.SetNotation
+import Mathlib.Tactic.Attr.Register
+import PolyFun.Control.Monad.Support
+import Std.Tactic.BVDecide.Normalize.BitVec
+import Std.Tactic.BVDecide.Normalize.Bool
+import Std.Tactic.BVDecide.Normalize.Prop
+import ToMathlib.Control.StateT
+import VCVio.CryptoFoundations.SecExp
+import VCVio.CryptoFoundations.SecExp.Measure
+import VCVio.EvalDist.Defs.Measure.Core
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Basic
+import VCVio.EvalDist.Monad.Bool
+import VCVio.EvalDist.ProbabilityBounds
+import VCVio.EvalDist.ProbabilityNotation
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.EvalDist.Measure
+import VCVio.OracleComp.OracleSpec
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.QueryTracking.QueryBound.Simulation
+import VCVio.OracleComp.QueryTracking.SubSpec
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.Basic
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Relational.SimulateQ.UntilBad
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Per-Query Cell Coupling for `transmit`, `chall`, and `MirrorSync`
@@ -19,11 +62,9 @@ import ProofLib.SepLogic.WP.StateNorm
 the mirror synchronization invariant `MirrorSync` with its preservation lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec ENNReal MeasureTheory
@@ -146,17 +187,17 @@ theorem runCellStep_simSendC_of_guard_fail {PQ PQC Pt : Type} {ℓ : ℕ} [Inhab
       runCellStep_liftC_pure]
     simp only [pure_bind, runCellStep_pure]
 
-def drawRq (r : Option (BitVec 512)) : ProbComp (BitVec 512) :=
+@[expose] def drawRq (r : Option (BitVec 512)) : ProbComp (BitVec 512) :=
   match r with
   | some rq => pure rq
   | none => ($ᵗ BitVec 512 : ProbComp (BitVec 512))
 
-def drawRc (r : Option (BitVec 512)) : ProbComp (Option (BitVec 256)) :=
+@[expose] def drawRc (r : Option (BitVec 512)) : ProbComp (Option (BitVec 256)) :=
   match r with
   | some _ => some <$> ($ᵗ BitVec 256 : ProbComp (BitVec 256))
   | none => pure none
 
-def updSimStateCSend {PQ Pt : Type} {ℓ : ℕ}
+@[expose] def updSimStateCSend {PQ Pt : Type} {ℓ : ℕ}
     (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
     (Q : Party) (m₀ : Plain ℓ) (isChall : Bool)
     (s₁ : SM.GameState Unit (Plain ℓ) (List (BitVec 8)))
@@ -184,7 +225,7 @@ def updSimStateCSend {PQ Pt : Type} {ℓ : ℕ}
     kept := Function.update sC.kept Q (Kept.send (fig := fig) (sC.kept Q))
     sent := sent' }
 
-def simSendQFig {Pt : Type} {ℓ : ℕ} (Q : Party) (pub : LibsignalMsgPublicPart) (m₀ : Plain ℓ)
+@[expose] def simSendQFig {Pt : Type} {ℓ : ℕ} (Q : Party) (pub : LibsignalMsgPublicPart) (m₀ : Plain ℓ)
     (chal : Option (Plain ℓ)) (rc : Option (BitVec 256)) :
     Fig8Comp Pt ℓ (Option (Fig8C Pt)) :=
   match chal with
@@ -263,7 +304,7 @@ theorem kemFailSendStep_run_of_guards_pass {PQ Pt : Type} {ℓ : ℕ} [Inhabited
           updSimStateCSend, fig]
         cases (sC.kept Q).full <;> rfl
 
-def simSendBodyFig8 {PQ PQC Pt : Type} {ℓ : ℕ} [Inhabited PQ]
+@[expose] def simSendBodyFig8 {PQ PQC Pt : Type} {ℓ : ℕ} [Inhabited PQ]
     [DecidableEq Pt] [Zero Pt]
     (P : Params PQ PQC) (Q : Party) (m₀ : Plain ℓ) (chal : Option (Plain ℓ))
     (s₁ : SM.GameState Unit (Plain ℓ) (List (BitVec 8)))
@@ -591,7 +632,7 @@ theorem challPure_eq_of_pprimePaperRelShifted {Key St Msg Coins C : Type}
   unfold challPure
   simp [hep_g, hsafe_g, SM.Config.h1, hb, m_ch, c, st', rec_r]
 
-def cellTransmitPost {PQ Pt β : Type} {ℓ : ℕ}
+@[expose] def cellTransmitPost {PQ Pt β : Type} {ℓ : ℕ}
     (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
     (qep : ℕ) (Q : Party) (m₀ : Plain ℓ)
     (s₁ : SM.GameState Unit (Plain ℓ) (List (BitVec 8)))
@@ -723,7 +764,7 @@ theorem kemFailSendStep_transmit_mkPub_some {Pt β : Type} {ℓ : ℕ}
     cases (transmitPure fig (2 + 1) (qep + 1) Q (pub, m₀) cb.1 cb.2 g).1 <;> rfl
   rw [h1, drawRc_bind_samIfNec]
 
-def cellChallPost {PQ Pt β : Type} {ℓ : ℕ}
+@[expose] def cellChallPost {PQ Pt β : Type} {ℓ : ℕ}
     (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
     (Q : Party) (m₀ : Plain ℓ) (m_ch : LibsignalMsgPublicPart × Plain ℓ)
     (s₁ : SM.GameState Unit (Plain ℓ) (List (BitVec 8)))
@@ -1028,4 +1069,3 @@ theorem MirrorSync.record_step {St Msg C : Type}
 
 end CryptoVerification.LibsignalSession.HeadlineV1
 
-end

@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Epilogue
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Epilogue -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch0Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch2Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.FromPbBase
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb` (Block `333`): Relocatable Shared `Ok` and `Err` Epilogues
@@ -25,7 +26,7 @@ Proves relocatable `[LibsignalPlacement]` shared `Ok` (`+8180 -> +8284 -> +8468 
 (`+60`, `+2044`, `+2048`) epilogue steps for Block `333`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCr
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeProofs
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCr -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeProofs -- proof-setup: allow-public-import
 
 /-!
 # Cost and Query Bounds for `shcrReductionAuthProg`
@@ -19,7 +19,7 @@ Syntactic step-cost and primitive-query bounds for the two-stage `KemShCr` reduc
 `shcrReductionAuthProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -111,11 +111,6 @@ theorem shcrGenSpkB_costUB_le_tight (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List
     Ty.wd, PNat.val_ofNat, costUB_v, Comp.costUB, Expr.costUB]
   omega
 
-theorem shcrGenSpkB_costUB_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
-    (s : Var Γ₁ shcrStTy) (x : Var Γ₂ (.prod .nat .nat)) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (shcrGenSpkB (Δ := Δ) S K s x).costUB ≤ 25000 + 100 * K + bits (nRecvEff S) :=
-  Nat.le_trans (shcrGenSpkB_costUB_le_tight S K s x) (Nat.le_add_right _ _)
-
 @[simp] theorem shcrSendC_costUB (S : Setup) (K : Nat) (opk : Bool) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
     (s : Var Γ₁ shcrStTy) (x : Var Γ₂ sendQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     (shcrSendC (Δ := Δ) S K opk s x).costUB = 12238 + 4093 * K + 1030 * min K S.N_dh := by
@@ -140,14 +135,6 @@ theorem shcrAcceptB_true_costUB_le_tight (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ :
     costUB_queryPrim, Ty.wd, PNat.val_ofNat, costUB_v, Comp.costUB, Expr.costUB]
   omega
 
-theorem shcrAcceptB_true_costUB_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
-    (s : Var Γ₁ shcrStTy) (x : Var Γ₂ recvQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (shcrAcceptB (Δ := Δ) S K true s x).costUB ≤
-      16000 + 900 * K + 412 * S.N_dh + bits (nRecvEff S) := by
-  have h1 := shcrAcceptB_true_costUB_le_tight S K (Δ := Δ) s x
-  have h2 := Nat.min_le_right K S.N_dh
-  omega
-
 theorem shcrAcceptB_false_costUB_le_tight (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
     (s : Var Γ₁ shcrStTy) (x : Var Γ₂ recvQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     (shcrAcceptB (Δ := Δ) S K false s x).costUB ≤
@@ -157,14 +144,6 @@ theorem shcrAcceptB_false_costUB_le_tight (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ 
     stSpks, pmHdr, sbPqspkSk, sbPqspkPk, hdKemCt,
     scBase, scTB, scTPk, scTSk, scCnt, scIR, scRR, scSIdx, scChosen, scMk, scUpd,
     costUB_queryPrim, Ty.wd, PNat.val_ofNat, costUB_v, Comp.costUB, Expr.costUB]
-  omega
-
-theorem shcrAcceptB_false_costUB_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
-    (s : Var Γ₁ shcrStTy) (x : Var Γ₂ recvQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (shcrAcceptB (Δ := Δ) S K false s x).costUB ≤
-      16000 + 900 * K + 412 * S.N_dh + bits (nRecvEff S) := by
-  have h1 := shcrAcceptB_false_costUB_le_tight S K (Δ := Δ) s x
-  have h2 := Nat.min_le_right K S.N_dh
   omega
 
 @[simp] theorem tryPauseC_costUB (S : Setup) (K : Nat) (opk : Bool) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
@@ -206,25 +185,10 @@ theorem shcrPostC_costUB_le_tight (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List (
      by simp only [onBase_costUB, registerB_costUB]; exact le_rfl)
     (by omega)
 
-theorem shcrPostC_costUB_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
-    (s : Var Γ₁ shcrStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (shcrPostC (Δ := Δ) S K s q).costUB ≤
-      95000 + 18000 * K + 3000 * S.N_dh + 3 * bits (nRecvEff S) := by
-  have h1 := shcrPostC_costUB_le_tight S K (Δ := Δ) s q
-  have h2 := Nat.min_le_right K S.N_dh
-  omega
-
 theorem pauseCheckC_costUB_le_tight (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
     (s : Var Γ₁ shcrStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     (pauseCheckC (Δ := Δ) S K s q).costUB ≤ 9000 + 700 * K + 2100 * min K S.N_dh := by
   simp only [pauseCheckC, tryPauseC_costUB, caseSumV, costUB_v, Comp.costUB, Expr.costUB]
-  omega
-
-theorem pauseCheckC_costUB_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
-    (s : Var Γ₁ shcrStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (pauseCheckC (Δ := Δ) S K s q).costUB ≤ 9000 + 700 * K + 2100 * S.N_dh := by
-  have h1 := pauseCheckC_costUB_le_tight S K (Δ := Δ) s q
-  have h2 := Nat.min_le_right K S.N_dh
   omega
 
 theorem shcr_handlePre_cost_le_tight (S : Setup) (Q K : Nat) :
@@ -241,13 +205,6 @@ theorem shcr_handlePre_cost_le_tight (S : Setup) (Q K : Nat) :
   simp only [shcrPreC, bindV, caseOptV, buPqspkB, pdBu, costUB_v, Comp.costUB, Expr.costUB]
   omega
 
-theorem shcr_handlePre_cost_le (S : Setup) (Q K : Nat) :
-    (shcrReductionAuthProg S Q K).handlePre.cost ≤
-      120000 + 22000 * K + 6000 * S.N_dh + 3 * bits (nRecvEff S) := by
-  have h1 := shcr_handlePre_cost_le_tight S Q K
-  have h2 := Nat.min_le_right K S.N_dh
-  omega
-
 theorem shcr_handlePost_cost_le_tight (S : Setup) (Q K : Nat) :
     (shcrReductionAuthProg S Q K).handlePost.cost ≤
       100000 + 20000 * K + 4500 * min K S.N_dh := by
@@ -258,13 +215,6 @@ theorem shcr_handlePost_cost_le_tight (S : Setup) (Q K : Nat) :
         (.vz : Var [shcrStTy, authQueryTy] shcrStTy)
         (.vz : Var [authQueryTy] authQueryTy))
       (by omega))
-
-theorem shcr_handlePost_cost_le (S : Setup) (Q K : Nat) :
-    (shcrReductionAuthProg S Q K).handlePost.cost ≤
-      100000 + 20000 * K + 4500 * S.N_dh + 3 * bits (nRecvEff S) := by
-  have h1 := shcr_handlePost_cost_le_tight S Q K
-  have h2 := Nat.min_le_right K S.N_dh
-  omega
 
 theorem shcr_resume_cost_le (S : Setup) (Q K : Nat) :
     (shcrReductionAuthProg S Q K).resume.cost ≤ 10000 + 4500 * K := by
@@ -289,12 +239,6 @@ theorem shcr_finish_cost_le (S : Setup) (Q K : Nat) :
     costUB_bytesBeq, costUB_queryPrim,
     Ty.wd, costUB_v, Comp.costUB, Expr.costUB, PNat.val_ofNat]
   omega
-
-private theorem log2_mul_ge {a b : Nat} (ha : 1 ≤ a) (hb : 1 ≤ b) :
-    Nat.log 2 a + Nat.log 2 b ≤ Nat.log 2 (a * b) := by
-  apply Nat.le_log_of_pow_le (by decide)
-  rw [Nat.pow_add]
-  exact Nat.mul_le_mul (Nat.pow_log_le_self 2 (by omega)) (Nat.pow_log_le_self 2 (by omega))
 
 theorem shcr_init_cost_le_tight (S : Setup) (Q K : Nat) :
     (shcrReductionAuthProg S Q K).init.cost ≤
@@ -335,44 +279,6 @@ theorem shcr_init_cost_le_tight (S : Setup) (Q K : Nat) :
     have hl1 : Nat.log 2 S.N_id ≤ Nat.log 2 S.N_dh := Nat.log_mono_right hid_le
     have hl2 : Nat.log 2 S.N_recv ≤ Nat.log 2 S.N_dh := Nat.log_mono_right hrecv_le
     have hl3 : Nat.log 2 S.N_send_tot ≤ Nat.log 2 S.N_sess_tot := Nat.log_mono_right hsend_le
-    have hl0 : Nat.log 2 0 = 0 := rfl
-    simp only [emptyAuthStE, stMk, scMk, bindV,
-      costUB_sampleIndex, costUB_sampleBool,
-      costUB_v, Comp.costUB, Expr.costUB, bits]
-    omega
-
-theorem shcr_init_cost_le (S : Setup) (Q K : Nat) :
-    (shcrReductionAuthProg S Q K).init.cost ≤
-      100 + bits (S.N_spk_tot * S.N_send_tot) + 2 * bits S.N_send_tot := by
-  dsimp only [shcrReductionAuthProg, authCodec]
-  split_ifs with h0
-  · refine Nat.le_trans (Comp.cost_le_costUB _) ?_
-    simp only [emptyAuthStE, stMk, scMk, bindV, costUB_sampleBool,
-      costUB_v, Comp.costUB, Expr.costUB, bits_0]
-    omega
-  · refine Nat.le_trans (Comp.cost_le_costUB _) ?_
-    have hspk : 1 ≤ S.N_spk_tot := by
-      rcases Nat.eq_zero_or_pos S.N_spk_tot with h | h
-      · exact absurd (by simp [h]) h0
-      · omega
-    have hsend : 1 ≤ S.N_send_tot := by
-      rcases Nat.eq_zero_or_pos S.N_send_tot with h | h
-      · exact absurd (by simp [h]) h0
-      · omega
-    have hid : 1 ≤ S.N_id := by
-      unfold Setup.N_spk_tot at hspk
-      rcases Nat.eq_zero_or_pos S.N_id with h | h
-      · simp [h] at hspk
-      · omega
-    have hrecv : 1 ≤ S.N_recv := by
-      unfold Setup.N_spk_tot at hspk
-      rcases Nat.eq_zero_or_pos S.N_recv with h | h
-      · simp [h] at hspk
-      · omega
-    have h1 : Nat.log 2 S.N_id + Nat.log 2 S.N_recv ≤ Nat.log 2 S.N_spk_tot := by
-      simpa [Setup.N_spk_tot] using log2_mul_ge hid hrecv
-    have h2 : Nat.log 2 S.N_spk_tot + Nat.log 2 S.N_send_tot ≤
-        Nat.log 2 (S.N_spk_tot * S.N_send_tot) := log2_mul_ge hspk hsend
     have hl0 : Nat.log 2 0 = 0 := rfl
     simp only [emptyAuthStE, stMk, scMk, bindV,
       costUB_sampleIndex, costUB_sampleBool,
@@ -502,65 +408,6 @@ theorem shcr_init_queries (S : Setup) (Q K : Nat) :
 theorem shcr_chDone_queries (S : Setup) (Q K : Nat) :
     (shcrReductionAuthProg S Q K).chDone.queries primW primWS = 0 := by
   simp [shcrReductionAuthProg, authCodec, Comp.queries]
-
-theorem shcrReductionAuthProg_totalCost_le_sec (S : Setup) (b : QueryBudget) :
-    (shcrReductionAuthProg S b.q_total b.q_total).totalCost b.q_total ≤
-      SignalPqxdh.Security.stepCostBudget S b := by
-  have hPre := shcr_handlePre_cost_le_tight S b.q_total b.q_total
-  have hPost := shcr_handlePost_cost_le_tight S b.q_total b.q_total
-  have hRes := shcr_resume_cost_le S b.q_total b.q_total
-  have hFin := shcr_finish_cost_le S b.q_total b.q_total
-  have hIni := shcr_init_cost_le_tight S b.q_total b.q_total
-  have hDef := shcr_chDone_cost_le S b.q_total b.q_total
-  change (shcrReductionAuthProg S b.q_total b.q_total).init.cost +
-      b.q_total * max 1 (max (shcrReductionAuthProg S b.q_total b.q_total).handlePre.cost
-        (shcrReductionAuthProg S b.q_total b.q_total).handlePost.cost + 32) +
-      max (shcrReductionAuthProg S b.q_total b.q_total).chDone.cost
-        (shcrReductionAuthProg S b.q_total b.q_total).resume.cost +
-      (shcrReductionAuthProg S b.q_total b.q_total).finish.cost ≤
-        SignalPqxdh.Security.stepCostBudget S b
-  generalize (shcrReductionAuthProg S b.q_total b.q_total).init.cost = cInit at hIni ⊢
-  generalize (shcrReductionAuthProg S b.q_total b.q_total).handlePre.cost = cPre at hPre ⊢
-  generalize (shcrReductionAuthProg S b.q_total b.q_total).handlePost.cost = cPost at hPost ⊢
-  generalize (shcrReductionAuthProg S b.q_total b.q_total).chDone.cost = cDone at hDef ⊢
-  generalize (shcrReductionAuthProg S b.q_total b.q_total).resume.cost = cRes at hRes ⊢
-  generalize (shcrReductionAuthProg S b.q_total b.q_total).finish.cost = cFin at hFin ⊢
-  unfold SignalPqxdh.Security.stepCostBudget
-  dsimp only
-  set M_dh := min b.q_total S.N_dh
-  set M_sess := min b.q_total S.N_sess_tot
-  set L_dh := Nat.log 2 S.N_dh
-  set L_sess := Nat.log 2 S.N_sess_tot
-  generalize b.q_total = q at *
-  have hcH : max 1 (max cPre cPost + 32) ≤ 120035 + 22000 * q + 6000 * M_dh := by omega
-  have hqH : q * max 1 (max cPre cPost + 32) ≤ q * (120035 + 22000 * q + 6000 * M_dh) :=
-    Nat.mul_le_mul_left q hcH
-  have hMid : max cDone cRes ≤ 10000 + 4500 * q := by omega
-  rcases Nat.eq_zero_or_pos q with rfl | hq
-  · nlinarith [Nat.zero_le (M_dh ^ 2), Nat.zero_le (M_dh * M_sess)]
-  · have hqq : q ≤ q * q := Nat.le_mul_of_pos_left q hq
-    nlinarith [Nat.zero_le (q * M_dh), Nat.zero_le (q * M_sess),
-      Nat.zero_le (q * L_dh), Nat.zero_le (q * L_sess),
-      Nat.zero_le (M_dh ^ 2), Nat.zero_le (M_dh * M_sess)]
-
-theorem shcrReductionAuthProg_totalCost_le (S : Setup) (b : QueryBudget) :
-    (shcrReductionAuthProg S b.q_total b.q_total).totalCost b.q_total ≤ stepCostBudget S b := by
-  refine Nat.le_trans (shcrReductionAuthProg_totalCost_le_sec S b) ?_
-  unfold SignalPqxdh.Security.stepCostBudget stepCostBudget
-  dsimp only
-  have hMdh : min b.q_total S.N_dh ≤ S.N_dh := Nat.min_le_right _ _
-  have hMsess : min b.q_total S.N_sess_tot ≤ S.N_sess_tot := Nat.min_le_right _ _
-  have hLdh : Nat.log 2 S.N_dh ≤ S.N_dh := Nat.log_le_self 2 S.N_dh
-  have hLsess : Nat.log 2 S.N_sess_tot ≤ S.N_sess_tot := Nat.log_le_self 2 S.N_sess_tot
-  set M_dh := min b.q_total S.N_dh
-  set M_sess := min b.q_total S.N_sess_tot
-  set L_dh := Nat.log 2 S.N_dh
-  set L_sess := Nat.log 2 S.N_sess_tot
-  generalize b.q_total = q at *
-  have hSq : M_dh ^ 2 ≤ S.N_dh ^ 2 := Nat.pow_le_pow_left hMdh 2
-  have hMul : M_dh * M_sess ≤ S.N_dh * S.N_sess_tot := Nat.mul_le_mul hMdh hMsess
-  nlinarith [Nat.mul_le_mul_left (q + 1) (Nat.add_le_add hMdh hMsess),
-    Nat.mul_le_mul_left (q + 1) (Nat.add_le_add hLdh hLsess)]
 
 theorem shcrReductionAuthProg_totalQueries_le (S : Setup) (b : QueryBudget) :
     (shcrReductionAuthProg S b.q_total b.q_total).totalQueries primW primWS b.q_total ≤

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.LitKeyKnown
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.LitKeyKnown -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.Bytes.AttackerKnowledge
 import DY.ALaCarte.Basic
@@ -68,7 +68,7 @@ chain-key KDF clause restricted to `StoredCkTR`, and proves monotonicity and clo
 `AttackerKnowledge`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -199,7 +199,7 @@ def TruncOKCkTR (T : ExecTrace) (inp : DY.Bytes) : Prop :=
 /-- Every `KdfExtract.kdfExtract s i` reachable by destructors from `AttackerKnows T` either has
 both `s` and `i` attacker-known on `T`, or was produced by `kdfCk` (`0x01` with `SkippedKeyStored`,
 or `0x02` with the result stored as a chain key), `createChain` (`"WhisperRatchet"` block 1 or 2), or `pqxdhKdf` (`pqxdhLabel` block 2 or 3). -/
-def KdfOKTR (T : ExecTrace) (s i : DY.Bytes) : Prop :=
+@[expose] def KdfOKTR (T : ExecTrace) (s i : DY.Bytes) : Prop :=
   (s.AttackerKnows T ∧ i.AttackerKnows T) ∨
   (i = litByte 0x01 ∧ ∃ j ses pk n rIdx src,
       T.EventLoggedAt (TREvent.SkippedKeyStored ses pk n (KdfExtract.kdfExtract s i) rIdx src) j) ∨

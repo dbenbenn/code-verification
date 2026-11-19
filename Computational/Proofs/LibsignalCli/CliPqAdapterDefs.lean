@@ -9,15 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.BinaryHarnessCostedRedsV1
-public import Computational.Proofs.SpecLemmas.Game.StatementPq
+import Computational.Proofs.E2E.BinaryHarnessCostedRedsV1
+public import Computational.Proofs.SpecLemmas.Game.StatementPq -- proof-setup: allow-public-import
 public import Computational.Specifications.Reductions.Pqxdh.StatementPqReds
-public import LibsignalBinary.Proofs.SignalSession.PqStep
-public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Lazy
+public import LibsignalBinary.Proofs.SignalSession.PqStep -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.FSAEAD.Lazy -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionSMProofDefs
 import Computational.Proofs.ReductionDsl.SM.GameCosted
 import ProofLib.SepLogic.WP.StateNorm
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers -- proof-setup: allow-public-import
 
 /-!
 # Adapter coupling definitions and invariants for `cliPqExp`
@@ -27,7 +28,7 @@ state-coupling invariants (`CliKeyIndStateRel`, `CliAdapterKeyIndInv`, `CliAdapt
 `CliAdapterDrvRel`, `cliAdapterStepCoupled`) for `cliPqExp`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.constructorNameAsVariable false
@@ -47,7 +48,7 @@ open CryptoGames CryptoGames.LibsignalSM Ratchet LibsignalInst LibsignalSession
 
 /-- Polymorphic model-state E2E driver oracle implementation over `BHE2EDrvState S ℓ`
 parameterized over a `KeyInd` handler `ki`. -/
-def cliE2EDrvImplWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def cliE2EDrvImplWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : LibsignalSpqrV1.MlKem) (qep : ℕ)
@@ -78,7 +79,7 @@ def cliE2EDrvImplWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     return bhUnpackSmResp sq sr
 
 /-- Polymorphic model-state E2E experiment parameterized over `ki` and `secb : Bool`. -/
-def cliE2EExpWithKi (secb : Bool) (S : SignalPqxdh.Setup)
+@[expose] def cliE2EExpWithKi (secb : Bool) (S : SignalPqxdh.Setup)
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : LibsignalSpqrV1.MlKem) (ℓ qep : ℕ) {Pt : Type}
@@ -103,7 +104,7 @@ theorem cliPqExp_eq_runCliDriver (S : SignalPqxdh.Setup) (run : CliRun) (X : Unr
       else return (b' == b || driverSomeInstanceWon ds b)) := rfl
 
 /-- Single-step query implementation running `L_bh`'s shallow handler followed by `cliE2EDrvImplWith`. -/
-def cliAdapterStepImplWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def cliAdapterStepImplWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : LibsignalSpqrV1.MlKem) (qep : ℕ)
@@ -134,7 +135,7 @@ theorem simulateQ_cliE2EDrvImplWith_adapter_run {S : SignalPqxdh.Setup} {ℓ : �
     exact ih r σ_ad' σ_e2e'
 
 /-- Combined query implementation over `cliGameSpec` running `cliAdapterStepImplWith` on each query. -/
-def cliComposedAdapterImplWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def cliComposedAdapterImplWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : LibsignalSpqrV1.MlKem) (qep : ℕ)
@@ -197,7 +198,7 @@ theorem simulateQ_cliE2EDrvImplWith_L_bh_run {S : SignalPqxdh.Setup} {ℓ : ℕ}
 /-! ## Coupling invariants -/
 
 /-- Entry-by-entry relation on `spkBundles` ignoring the `revealed : Bool` flag. -/
-def CliSpkBundleRel (p₁ p₂ : (ℕ × ℕ) × SignalPqxdh.SpkBundleEntry) : Prop :=
+@[expose] def CliSpkBundleRel (p₁ p₂ : (ℕ × ℕ) × SignalPqxdh.SpkBundleEntry) : Prop :=
   p₁.1 = p₂.1 ∧
   p₁.2.spkSk = p₂.2.spkSk ∧
   p₁.2.spkPk = p₂.2.spkPk ∧
@@ -426,7 +427,7 @@ theorem cliAdapterKeyIndInv_empty (S : SignalPqxdh.Setup) {ℓ : ℕ}
   sends_wf := fun _ _ _ h => False.elim (List.not_mem_nil h)
 
 /-- Transcript entry coupling relation between CLI `Record` `r_cli` and model `Record` `r_m`. -/
-def CliAdapterTransEntryRel {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def CliAdapterTransEntryRel {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (bobAccepted : Bool) (sid : SignalPqxdh.SessionId S) (hdr : SignalPqxdh.HandshakeHdr)
     (r_cli : SM.Record (Plain ℓ) Bytes) (r_m : SM.Record (Plain ℓ) Bytes) : Prop :=
   r_cli.pos = r_m.pos ∧
@@ -453,7 +454,7 @@ theorem cliAdapterTransEntryRel_of_bobAccepted_true {S : SignalPqxdh.Setup} {ℓ
   cases hnot
 
 /-- Domain and `pqRatchetState` size invariant for an active CLI party state `(x, g)`. -/
-def CliPartyActiveInv (W : PEParams) (d0 : PqParty) (x : RecordExtras) (g : GhostState Bytes)
+@[expose] def CliPartyActiveInv (W : PEParams) (d0 : PqParty) (x : RecordExtras) (g : GhostState Bytes)
     (_q_rem : ℕ) : Prop :=
   PqxdhPartyInSpecDomain W { d0 with session := some (x, g) } ∧
   lastResortUses { d0 with session := some (x, g) } < 2 ^ 25 ∧
@@ -652,7 +653,7 @@ theorem bhDrvWon_eq_bhE2EDrvWon_of_cliRel {S : SignalPqxdh.Setup} {ℓ : ℕ}
 
 /-- Step-level exact coupling between a CLI driver computation `c_cli` and an adapter+E2E
 computation `c_ad`. -/
-def cliAdapterStepCoupled {S : SignalPqxdh.Setup} {ℓ : ℕ} {α : Type}
+@[expose] def cliAdapterStepCoupled {S : SignalPqxdh.Setup} {ℓ : ℕ} {α : Type}
     (X : UnreachedPqxdhPrimitives) (W : PEParams)
     (b : Bool) (qStart' : ℕ) (qs_rem' : ℕ → ℕ)
     (c_cli : ProbComp ((α × ModelDriverState S ℓ) × SignalPqxdh.KeyIndState S))

@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.Defs
-public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Common
-public import LibsignalBinary.Proofs.ConsumeMessageKey.TooFarPathProofs.Fetch
+public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.TooFarPathProofs.Fetch -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogue
 import LibsignalBinary.Proofs.ConsumeMessageKey.Model
 import LibsignalBinary.Proofs.ConsumeMessageKey.PanicPaths
@@ -33,25 +33,13 @@ Composes the six segment theorems (`PrologueSplit`, `TakePath`, `TooFarPath`, `S
 `GrowOneOk`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalSession
 
 open Arm64 ProofLib CryptoGames CryptoGames.HMAC CryptoGames.LibsignalSession
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.SessionModel
-
-/-- `RatchetState::consume_message_key` satisfies `ConsumeMessageKeyMeetsSpec` given `FindIndexOk`, `HmacOk`, and `GrowOneOk`. -/
-theorem consume_message_key_run_of (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
-    (alloc : String → Option (State → State)) (img : Obj.Image)
-    (hfind : FindIndexOk img F alloc A) (hhmac : HmacOk img F alloc)
-    (hgrow : GrowOneOk img F alloc A) :
-    ConsumeMessageKeyMeetsSpec F A alloc img :=
-  cmk_of_seams hfind hhmac hgrow
-    (prologueSplit_past_ok F A alloc img) (prologueSplit_tooFar_ok F A alloc img) (prologueSplit_advance_ok F A alloc img)
-    (takePath_ok F A alloc img) (tooFarPath_ok F A alloc img) (storeLoop_iter_ok F A alloc img)
-    (advanceEpilogue_ok F A alloc img)
-    (loopNoChainPanic_ok F A alloc img) (epiloguePanic_ok F A alloc img)
 
 private theorem set_set_same {α : Type} (xs : List α) (i : Nat) (a b : α) :
     (xs.set i a).set i b = xs.set i b := by
@@ -67,13 +55,13 @@ private theorem getElem?_set_self {α : Type} {xs : List α} {i : Nat} (hi : i <
   rw [List.getElem?_eq_getElem (by simpa using hi), List.getElem_set_self]
 
 /-- Relocatable `cmkPlacedSpec` backed by `LibsignalRoLoaded`. -/
-def cmkPlacedRoSpec [LibsignalPlacement]
+@[expose] def cmkPlacedRoSpec [LibsignalPlacement]
     (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc) : Spec ConsumeMessageKeyGhost :=
   { cmkPlacedSpec F A with
     pre := fun x s => (cmkPlacedSpec F A).pre x s ∗ ⌜LibsignalRoLoaded lsmpl s.mem⌝ }
 
 /-- Relocatable correctness statement for `RatchetState::consume_message_key` (Block 24). -/
-def CmkPlacedRunStmt [LibsignalPlacement]
+@[expose] def CmkPlacedRunStmt [LibsignalPlacement]
     (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   CmkAllocHooks A H →

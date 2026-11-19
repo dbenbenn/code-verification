@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveDefs
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.MatchCallee
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonStage2Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidMatchPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreSessionPrev1Placed
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.MatchCallee
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonStage2Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidMatchPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreSessionPrev1Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSize
@@ -23,8 +23,16 @@ import LibsignalBinary.Proofs.E2E.V1.ReachSteps
 import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePromote
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSat
-import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXCli
-import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Session
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsX
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathACore -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathB
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Non-Canonical Pre-Key Overwrite Model & Branch Agreement Helpers
@@ -35,7 +43,7 @@ directory invariants (`cliOverSessInv`, `cliOverSessStoreAt`), bounds `spqrV1Ini
 arbitrary `pm.serialized`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -103,12 +111,12 @@ theorem spqrV1Init_length_le_2048 (F : ShaCompress) (K : CryptoVerification.Libs
 /-! ## 2. CLI `Prev1` Session-Store Directory Predicate -/
 
 /-- Pure directory invariant required across `SessionFiles::store_session` on a `Prev1` record. -/
-def cliOverSessInv (peer : AddrGhost) (d : DirGhost) : Prop :=
+@[expose] def cliOverSessInv (peer : AddrGhost) (d : DirGhost) : Prop :=
   peer.name.bytes.length < 2 ^ 32 ∧
   d.changed.length < 2 ^ 32 ∧
   (d.changed.length + 1 < 2 ^ 32 ∨ addressText peer.val ∈ d.changed.map Prod.fst)
 
-def cliOverSessStoreAt (A : RustAlloc) (peer : AddrGhost) (self : BitVec 64)
+@[expose] def cliOverSessStoreAt (A : RustAlloc) (peer : AddrGhost) (self : BitVec 64)
     (d : DirGhost) : SepProp :=
   ⌜cliOverSessInv peer d⌝ ∗ dirAt A self d
 
@@ -150,7 +158,7 @@ theorem recvPrekeyState_of_accept_none (X : UnreachedPqxdhPrimitives) (W : PEPar
 
 /-- Pure `RunSem.decryptPrekey` model covering empty, matching, and non-matching (`Prev1` archive)
 sessions on `PreKeySignalMessage` inputs with arbitrary `pm.serialized`. -/
-noncomputable def decPkOverDef (X : UnreachedPqxdhPrimitives) (W : PEParams)
+@[expose] noncomputable def decPkOverDef (X : UnreachedPqxdhPrimitives) (W : PEParams)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (F : FsFiles) (peer me : AddrVal)
     (pm : PreKeySignalMessage) (coins : List (BitVec 8)) : SlotAns (List (BitVec 8)) :=
   let g := StoresGhost.opened

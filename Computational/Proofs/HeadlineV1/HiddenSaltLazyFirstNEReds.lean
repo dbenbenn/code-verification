@@ -9,27 +9,68 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.DeliverForgePaperShiftedReds2
-public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperSim
-public import Computational.Proofs.SessionCostedDF
-public import Computational.Proofs.HeadlineV1.DeliverForgePaperChallSim
-public import Computational.Proofs.SessionCostedFig8.DFProgBoundsPaper
+import Computational.Proofs.HeadlineV1.DeliverForgePaperShiftedReds2
+import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECell
+import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperSim
+public import Computational.Proofs.SessionCostedDF -- proof-setup: allow-public-import
+import Computational.Proofs.HeadlineV1.DeliverForgePaperChallSim
+public import Computational.Proofs.SessionCostedFig8.DFProgBoundsPaper -- proof-setup: allow-public-import
+import Computational.Proofs.SessionCostedFig8.DFProgFsStage2Defs
+import Computational.Proofs.SessionCostedFig8.DFProgFsStage2Bounds
+import Computational.Proofs.SessionCostedFig8.DFProgBucketBounds
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperCKA
 import Computational.Proofs.SessionCostedFig8.DFFsAtomicBSwapPaper
 import Computational.Proofs.SignalWireRoundTrip
 import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.CryptoGames.CKA.DHProof
 import Computational.Proofs.HeadlineV1.DeliverForgePaperUnshiftedPotOK
+import Computational.Proofs.HeadlineV1.DeliverForgePaperMultiBucketPotOK
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperFSMulti
+import Computational.Proofs.HeadlineV1.Stage2RouterHelpers
+import Computational.Proofs.HeadlineV1.Stage2BucketPRNGSwap
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperBucketPRNG
+import Computational.Proofs.SessionCostedFig8.BundlesMultiFs
+import Computational.Proofs.HeadlineV1.DeliverForgePaperShiftedStage2
+import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperBucketFS
+import Computational.Proofs.HeadlineV1.Stage2BucketCKASwap
+import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNERedsHop3B1
+import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNERedsHop3B2
+import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNERedsHop3Bucket
+import Computational.Proofs.ReductionDsl.SM.DeliverForgeBucketSimEval
+import Computational.Proofs.E2E.SpkCostedEval
+import Computational.Proofs.E2E.SpkHop2
+import Computational.Proofs.E2E.SpkHop2A
+import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepRecvFwdSkip
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SpqrDesc
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepSend
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8WireSnap
+import Computational.Proofs.HeadlineV1.CouplingV1
+import Computational.Proofs.HeadlineV1.SignedRefineC
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.FSAEAD.SaltWire
+import Computational.Proofs.ReductionDsl.FsAtomicBoundsBase
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.PubRed
+import Computational.Proofs.ReductionDsl.SpkHop2Red
+import Computational.Proofs.ReductionDsl.SpkLeakRed
+import Computational.Proofs.ReductionDsl.SpkLeakRedU
+import Computational.Proofs.SessionCostedFig8.ProgSizeBounds
+import Computational.Proofs.Fig8SchemeBridge
+import Computational.Proofs.SessionCostedFig8.BundlesEval
+import Computational.Proofs.SessionCostedFig8.FsAtomicBSwap
 
 /-!
 # Paper-Semantics Session Reductions and Cell-Sum Bridge
 
 Defines the paper-semantics `DeliverForge` session reduction package `v1SessionRedsPaper` from
 3-way case-split CKA, PRF-PRNG, and FS-AEAD reductions, proves `sessionCostedReductionsBounded`,
-and bounds the per-cell and summed advantage terms by `hiddenSaltBoundV1`.
--/
+and bounds the per-cell and summed advantage terms by `hiddenSaltBoundV1`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
 open scoped BigOperators ENNReal
 open ReductionDsl ReductionDsl.Comp OracleSpec OracleComp ENNReal
@@ -44,7 +85,7 @@ open CryptoGames.Ratchet.LibsignalInst CryptoGames.Ratchet.LibsignalSim
 open CryptoGames.Ratchet.LibsignalSimC HMAC HKDF CBC LibsignalAead WireAEAD FSAEAD
 
 /-- Paper-engine CKA reduction for cell `(tL, t)` on `challSimDF'Paper (2 + 1) (qep + 1) dfAdv`. -/
-def redCKAHiddenSaltPaperDF {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt]
+@[expose] def redCKAHiddenSaltPaperDF {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt]
     [SampleableType Pt] [SampleableType PQC]
     (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
@@ -65,7 +106,7 @@ def redCKAHiddenSaltPaperDF {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt]
 
 /-- Paper-engine PRF-PRNG reduction for cell `(tL, t)` on
 `challSimDF'Paper (2 + 1) (qep + 1) dfAdv`. -/
-def redPRNGHiddenSaltPaperDF {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt]
+@[expose] def redPRNGHiddenSaltPaperDF {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt]
     [SampleableType Pt] [SampleableType PQC]
     (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
@@ -86,7 +127,7 @@ def redPRNGHiddenSaltPaperDF {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt]
 
 /-- Paper-engine FS-AEAD reduction for cell `(tL, t)` and session `j` on
 `challSimDF'Paper (2 + 1) (qep + 1) dfAdv`. -/
-def redFSHiddenSaltPaperDF {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt]
+@[expose] def redFSHiddenSaltPaperDF {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt]
     [SampleableType Pt] [SampleableType PQC]
     (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
@@ -106,7 +147,7 @@ def redFSHiddenSaltPaperDF {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt]
       (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv)
 
 /-- Concrete per-cell advantage term for cell `(tL, t)` under the paper engine on `dfAdv`. -/
-noncomputable def hiddenSaltCellTermPaperDF {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt]
+@[expose] noncomputable def hiddenSaltCellTermPaperDF {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt]
     [SampleableType Pt] [SampleableType PQC]
     (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
@@ -125,8 +166,9 @@ end CryptoGames.LibsignalSM.Proofs.Refinement
 
 namespace CryptoVerification.LibsignalSession
 
-open ReductionDsl OracleSpec OracleComp CryptoGames CryptoGames.SM CryptoGames.SM.Construction
-  CryptoGames.Ratchet CryptoGames.LibsignalSM CryptoGames.LibsignalSession
+open _root_.ReductionDsl OracleSpec OracleComp _root_.CryptoGames _root_.CryptoGames.SM
+  _root_.CryptoGames.SM.Construction _root_.CryptoGames.Ratchet _root_.CryptoGames.LibsignalSM
+  _root_.CryptoGames.LibsignalSession _root_.CryptoVerification.LibsignalSession
 open Computational.Proofs.ReductionDsl.Fig8SourceCosts (HooksCostBounded bits_succ_le
   bits_le_bits_qep_add cInTransitE_cost_le cCompContainsE_cost_le vRecvC_cost_le
   cTrivialE_cost_le commitEC_cost_le modeCfgEC_injectFullE_cost_le esG_cost esH_cost esSetH_cost
@@ -431,41 +473,42 @@ private lemma implECDFShifted_cost_le_implECDF {ι : Type} {TSpec : OracleSpec.{
 
 private lemma hooksCKAShiftedC_costBounded (B l tStar : ℕ) :
     HooksCostBounded (hkCKAShiftedC B l tStar)
-      (5 * ReductionDsl.bits l + ReductionDsl.bits tStar + (B + 1) + 530) where
-  startSend_le h ctx p t γv σ r := by
-    have hl1 := bits_succ_le l
-    have hl2 : ReductionDsl.bits (l + 2) ≤ ReductionDsl.bits (l + 1) + 1 := bits_succ_le (l + 1)
-    have hb1 : ReductionDsl.bits 1 = 1 := rfl
-    simp only [SM.Construction.hooksCKAShiftedC, SM.Construction.ckaShiftedStartSendC,
-      SM.Construction.ckaShiftedSetCache, SM.Construction.ckaShiftedSetΓPre, SM.pSet, SM.leN,
-      CKA.ckaIface, CKA.ckaSamplers, CKA.ckaOps, Comp.cost, Expr.cost,
-      v0_cost, v1_cost, v2_cost, v3_cost, v4_cost, hb1, Nat.reduceAdd]; omega
-  startRecv_le h ctx p t γv σ tn := by
-    simp only [SM.Construction.hooksCKAShiftedC, SM.Construction.ckaShiftedStartRecvC,
-      SM.Construction.ckaStartRecvAnsE, CKA.ckaOps, Comp.cost, Expr.cost,
-      v0_cost, v1_cost, v2_cost, Nat.reduceAdd]; omega
-  fsSend_le h ctx p t ss hdr m pair := by
-    simp only [SM.Construction.hooksCKAShiftedC, SM.Construction.ckaShiftedFsSendC, CKA.ckaOps,
-      Comp.cost, Expr.cost]; omega
-  fsRecv_le h ctx p t rs hdr e rec_ := by
-    have hB := ReductionDsl.bits_le_succ B
-    simp only [SM.Construction.hooksCKAShiftedC, SM.Construction.ckaShiftedFsRecvC, CKA.ckaOps,
-      Comp.cost, Expr.cost]; omega
-  commit_le h ctx p old new := by
-    have hl1 := bits_succ_le l
-    have hl2 : ReductionDsl.bits (l + 2) ≤ ReductionDsl.bits (l + 1) + 1 := bits_succ_le (l + 1)
-    have hb1 : ReductionDsl.bits 1 = 1 := rfl
-    simp only [SM.Construction.hooksCKAShiftedC, SM.Construction.ckaShiftedCommitC,
-      SM.Construction.ckaShiftedSetΓPre, SM.pSet, SM.isSomeE, SM.leN, SM.Engine.vpTcurNat,
-      SM.Engine.vpΓ, SM.Engine.vpSetΓ, SM.Engine.vpMk, SM.Engine.vpId, SM.Engine.vpRoot,
-      SM.Engine.vpVS, SM.Engine.vpVR, SM.Engine.vpTcur, CKA.ckaIface, Comp.cost, Expr.cost,
-      v0_cost, v1_cost, v2_cost, v3_cost, v4_cost, hb1, Nat.reduceAdd]; omega
-  reveal_le h ctx p vp := by
-    have hb1 : ReductionDsl.bits 1 = 1 := rfl
-    simp only [SM.Construction.hooksCKAShiftedC, SM.Construction.ckaShiftedRevealC,
-      SM.Engine.realPartyE, SM.Engine.vpMk, SM.Engine.vpId, SM.Engine.vpRoot, SM.Engine.vpVS,
-      SM.Engine.vpVR, SM.Engine.vpΓ, SM.Engine.vpTcur, SM.Engine.vpTcurNat, SM.leN, SM.pGet,
-      CKA.ckaIface, Comp.cost, Expr.cost, v0_cost, v1_cost, v2_cost, hb1, Nat.reduceAdd]; omega
+      (5 * ReductionDsl.bits l + ReductionDsl.bits tStar + (B + 1) + 530) := by
+  refine
+    { startSend_le := fun h ctx p t γv σ r => by
+        have hl1 := bits_succ_le l
+        have hl2 : ReductionDsl.bits (l + 2) ≤ ReductionDsl.bits (l + 1) + 1 := bits_succ_le (l + 1)
+        have hb1 : ReductionDsl.bits 1 = 1 := rfl
+        simp only [SM.Construction.hooksCKAShiftedC, SM.Construction.ckaShiftedStartSendC,
+          SM.Construction.ckaShiftedSetCache, SM.Construction.ckaShiftedSetΓPre, SM.pSet, SM.leN,
+          CKA.ckaIface, CKA.ckaSamplers, CKA.ckaOps, Comp.cost, Expr.cost,
+          v0_cost, v1_cost, v2_cost, v3_cost, v4_cost, hb1, Nat.reduceAdd]; omega
+      startRecv_le := fun h ctx p t γv σ tn => by
+        simp only [SM.Construction.hooksCKAShiftedC, SM.Construction.ckaShiftedStartRecvC,
+          SM.Construction.ckaStartRecvAnsE, CKA.ckaOps, Comp.cost, Expr.cost,
+          v0_cost, v1_cost, v2_cost, Nat.reduceAdd]; omega
+      fsSend_le := fun h ctx p t ss hdr m pair => by
+        simp only [SM.Construction.hooksCKAShiftedC, SM.Construction.ckaShiftedFsSendC, CKA.ckaOps,
+          Comp.cost, Expr.cost]; omega
+      fsRecv_le := fun h ctx p t rs hdr e rec_ => by
+        have hB := ReductionDsl.bits_le_succ B
+        simp only [SM.Construction.hooksCKAShiftedC, SM.Construction.ckaShiftedFsRecvC, CKA.ckaOps,
+          Comp.cost, Expr.cost]; omega
+      commit_le := fun h ctx p old new => by
+        have hl1 := bits_succ_le l
+        have hl2 : ReductionDsl.bits (l + 2) ≤ ReductionDsl.bits (l + 1) + 1 := bits_succ_le (l + 1)
+        have hb1 : ReductionDsl.bits 1 = 1 := rfl
+        simp only [SM.Construction.hooksCKAShiftedC, SM.Construction.ckaShiftedCommitC,
+          SM.Construction.ckaShiftedSetΓPre, SM.pSet, SM.isSomeE, SM.leN, SM.Engine.vpTcurNat,
+          SM.Engine.vpΓ, SM.Engine.vpSetΓ, SM.Engine.vpMk, SM.Engine.vpId, SM.Engine.vpRoot,
+          SM.Engine.vpVS, SM.Engine.vpVR, SM.Engine.vpTcur, CKA.ckaIface, Comp.cost, Expr.cost,
+          v0_cost, v1_cost, v2_cost, v3_cost, v4_cost, hb1, Nat.reduceAdd]; omega
+      reveal_le := fun h ctx p vp => by
+        have hb1 : ReductionDsl.bits 1 = 1 := rfl
+        simp only [SM.Construction.hooksCKAShiftedC, SM.Construction.ckaShiftedRevealC,
+          SM.Engine.realPartyE, SM.Engine.vpMk, SM.Engine.vpId, SM.Engine.vpRoot, SM.Engine.vpVS,
+          SM.Engine.vpVR, SM.Engine.vpΓ, SM.Engine.vpTcur, SM.Engine.vpTcurNat, SM.leN, SM.pGet,
+          CKA.ckaIface, Comp.cost, Expr.cost, v0_cost, v1_cost, v2_cost, hb1, Nat.reduceAdd]; omega }
 
 private lemma initCKAShiftedEStateC_cost_le (l : ℕ) {Γ'} (bE : Expr OO_cka Γ' .bool) :
     (SM.Construction.initCKAShiftedEStateC (ckaInitA := ckaInitA) (ckaInitB := ckaInitB)
@@ -795,7 +838,7 @@ theorem redCKAAuthDFCasePaperProg_gredBounded
     GRedBounded (redCKACaseP (q + 1) ((q + 1) * (maxForwardJumps + 1))
         qep maxForwardJumps tL t)
       (fun _ => 1) (fun _ => 0) q (2 + 2 * q) (ratchetCostBudget q qep) :=
-  CryptoVerification.E2E.Costed.gRedBounded_of_bounds_const _ _ _ q (2 + 2 * q) (ratchetCostBudget q qep)
+  _root_.CryptoVerification.E2E.Costed.gRedBounded_of_bounds_const _ _ _ q (2 + 2 * q) (ratchetCostBudget q qep)
     (redCKAAuthDFCasePaperProg_totalCost_le q qep t tL ht htL)
     hsize
     (redCKAAuthDFCasePaperProg_totalQueries_le _ _ _ _ _ _ _)
@@ -808,7 +851,7 @@ theorem redPRNGAuthDFCasePaperProg_gredBounded
     GRedBounded (redPRNGCaseP (q + 1) ((q + 1) * (maxForwardJumps + 1))
         qep maxForwardJumps tL t)
       (fun _ => 1) (fun _ => 0) q (2 + 2 * q) (ratchetCostBudget q qep) :=
-  CryptoVerification.E2E.Costed.gRedBounded_of_bounds_const _ _ _ q (2 + 2 * q) (ratchetCostBudget q qep)
+  _root_.CryptoVerification.E2E.Costed.gRedBounded_of_bounds_const _ _ _ q (2 + 2 * q) (ratchetCostBudget q qep)
     (redPRNGAuthDFCasePaperProg_totalCost_le q qep t tL ht htL)
     hsize
     (by rw [redPRNGAuthDFCasePaperProg_totalQueries]; omega)
@@ -822,7 +865,7 @@ theorem redFSAuthDFCasePaperProg_gredBounded
     GRedBounded (redFSCaseP (q + 1) ((q + 1) * (maxForwardJumps + 1))
         qep maxForwardJumps j tL t)
       (fun _ => 1) (fun _ => 0) q (2 * q) (ratchetCostBudget q qep) :=
-  CryptoVerification.E2E.Costed.gRedBounded_of_bounds_const _ _ _ q (2 * q) (ratchetCostBudget q qep)
+  _root_.CryptoVerification.E2E.Costed.gRedBounded_of_bounds_const _ _ _ q (2 * q) (ratchetCostBudget q qep)
     (redFSAuthDFCasePaperProg_totalCost_le q qep j t tL ht htL hj)
     hsize
     (by rw [redFSAuthDFCasePaperProg_totalQueries]; omega)
@@ -834,23 +877,23 @@ end CryptoVerification.LibsignalSession
 
 namespace CryptoVerification.E2E
 
-open ReductionDsl OracleSpec OracleComp ENNReal MeasureTheory
-open CryptoGames CryptoGames.LibsignalSM CryptoGames.LibsignalSM.Inst
-open CryptoGames.Ratchet CryptoGames.CKA CryptoGames.SM CryptoGames.SM.Construction
-open CryptoGames.SM.Engine CryptoGames.SM.Thm1 CryptoGames.SM.ThmB
-open CryptoGames.LibsignalSession CryptoGames.Ratchet.LibsignalInst
-open CryptoGames.Ratchet.LibsignalSim CryptoGames.LibsignalSM.Proofs
-open CryptoVerification.LibsignalSession CryptoVerification.LibsignalProtoCodec
-open CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1SessionUniformCoins)
-open CryptoVerification.SpqrV1Sync.SendTotal (Encaps1Total)
-open CryptoVerification.LibsignalSession.HeadlineV1
-open CryptoVerification.E2E.Signed
-open CryptoGames.SM.Construction.AuthL11
+open _root_.ReductionDsl OracleSpec OracleComp ENNReal MeasureTheory
+open _root_.CryptoGames _root_.CryptoGames.LibsignalSM _root_.CryptoGames.LibsignalSM.Inst
+open _root_.CryptoGames.Ratchet _root_.CryptoGames.CKA _root_.CryptoGames.SM _root_.CryptoGames.SM.Construction
+open _root_.CryptoGames.SM.Engine _root_.CryptoGames.SM.Thm1 _root_.CryptoGames.SM.ThmB
+open _root_.CryptoGames.LibsignalSession _root_.CryptoGames.Ratchet.LibsignalInst
+open _root_.CryptoGames.Ratchet.LibsignalSim _root_.CryptoGames.LibsignalSM.Proofs
+open _root_.CryptoVerification.LibsignalSession _root_.CryptoVerification.LibsignalProtoCodec
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1SessionUniformCoins)
+open _root_.CryptoVerification.SpqrV1Sync.SendTotal (Encaps1Total)
+open _root_.CryptoVerification.LibsignalSession.HeadlineV1
+open _root_.CryptoVerification.E2E _root_.CryptoVerification.E2E.Signed
+open _root_.CryptoGames.SM.Construction.AuthL11
 open HMAC HKDF CBC LibsignalAead AEADScheme MACScheme WireAEAD FSAEAD
 
 /-- Paper-engine `SessionCostedReductions` instance sharing the first 7 projections with
 `v1SessionReds` and replacing the 4 `DeliverForge` reductions with compiled atomic paper programs. -/
-noncomputable def v1SessionRedsPaper {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def v1SessionRedsPaper {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (ℓ : ℕ) (C : Crypto) (K : LibsignalSpqrV1.MlKem) (idA idB : IdentityKey)
     (Dh : CKA.DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt) (qep q : ℕ) :
@@ -865,14 +908,29 @@ noncomputable def v1SessionRedsPaper {Pt : Type} [DecidableEq Pt] [Zero Pt] [Sam
     B_prng := fun tL t =>
       Computational.Proofs.SessionCostedFig8.DFProgBoundsPaper.redPRNGAuthDFCasePaperAtomicProg
         Dh encPt C ℓ encT (idsOf idA idB) lam (qep + 1) q tL t
-    B_fs := fun j tL t =>
-      Computational.Proofs.SessionCostedFig8.DFProgBoundsPaper.redFSAuthDFCasePaperAtomicProg
-        Dh encPt C ℓ encT (idsOf idA idB) lam (qep + 1) q j tL t }
+    B_fs := fun stage la j tL t =>
+      Computational.Proofs.SessionCostedFig8.DFProgFsStage2Defs.redFSAuthDFCasePaperMultiAtomicProg
+        ℓ Pt C Dh encPt encT (idsOf idA idB) lam stage la j (min (2 * q) (q + 2)) q (qep + 1) tL t
+    B_cka_u := fun tL par =>
+      Computational.Proofs.SessionCostedFig8.DFProgBucketBounds.redCKAAuthDFPaperBucketAtomicProg
+        Dh encPt C ℓ encT (idsOf idA idB) lam (qep + 1) q tL par
+    B_prng_u := fun tL par t =>
+      Computational.Proofs.SessionCostedFig8.DFProgBucketBounds.redPRNGAuthDFPaperBucketHybridAtomicProg
+        Dh encPt C ℓ encT (idsOf idA idB) lam (qep + 1) q tL par t
+    B_fs_u := fun stage la j tL par t =>
+      if healEpoch tL ≤ t ∧ t ≤ min (qep + 1) (q + 11) + 3 ∧ j < q then
+        Computational.Proofs.SessionCostedFig8.DFProgFsStage2Defs.redFSAuthDFPaperMultiBucketAtomicProg
+          ℓ Pt C Dh encPt encT (idsOf idA idB) lam stage la (q * (t - healEpoch tL) + j) (min (2 * q) (q + 2)) q (qep + 1) tL par
+      else
+        Computational.Proofs.SessionCostedFig8.DFProgBucketBounds.dummyFsStage2AtomicProg
+          Dh encPt C ℓ encT (idsOf idA idB) lam }
 
 private lemma targetsL_getD_le {Δ t : ℕ} {tL : Option ℕ} (htL : tL ∈ admissibleLastLeakGuesses Δ t) :
     tL.getD 0 ≤ t := by
   simp only [admissibleLastLeakGuesses, Finset.mem_insert, Finset.mem_image, Finset.mem_range] at htL
-  rcases htL with rfl | ⟨l, hl, rfl⟩ <;> (simp; try omega)
+  rcases htL with rfl | ⟨l, hl, rfl⟩
+  · simp
+  · simp; omega
 
 /-- `v1SessionRedsPaper` satisfies `sessionCostedReductionsBounded` when `qep ≤ q + 10`. -/
 theorem v1SessionRedsPaper_bounded {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
@@ -887,27 +945,75 @@ theorem v1SessionRedsPaper_bounded {Pt : Type} [DecidableEq Pt] [Zero Pt] [Sampl
     hb.2.2.2.2.2.2.1,
     Computational.Proofs.SessionCostedFig8.DFProgBoundsPaper.challSimDF'PaperAtomicProg_gRedBounded
       Dh encPt C ℓ encT (idsOf idA idB) lam (qep + 1) q,
-    fun t ht tL htL =>
-      Computational.Proofs.SessionCostedFig8.DFProgBoundsPaper.redCKAAuthDFCasePaperAtomicProg_gRedBounded
-        Dh encPt C ℓ encT (idsOf idA idB) lam (qep + 1) q t tL ht (targetsL_getD_le htL),
-    fun t ht tL htL =>
-      Computational.Proofs.SessionCostedFig8.DFProgBoundsPaper.redPRNGAuthDFCasePaperAtomicProg_gRedBounded
-        Dh encPt C ℓ encT (idsOf idA idB) lam (qep + 1) q t tL ht (targetsL_getD_le htL),
-    fun t ht tL htL j hj =>
-      Computational.Proofs.SessionCostedFig8.DFProgBoundsPaper.redFSAuthDFCasePaperAtomicProg_gRedBounded
-        Dh encPt C ℓ encT (idsOf idA idB) lam (qep + 1) q j t tL ht (targetsL_getD_le htL) hj,
-    fun t _ht tL _htL A hA =>
-      Computational.Proofs.HeadlineV1.DeliverForgePaperUnshiftedPotOK.redPRNGAuthDFCasePaperAtomicProg_makesAtMostQueries
-        ℓ C Dh encPt encT (idsOf idA idB) lam (qep + 1) q tL t A hA,
-    fun t _ht tL _htL j _hj A hA =>
-      Computational.Proofs.HeadlineV1.DeliverForgePaperUnshiftedPotOK.redFSAuthDFCasePaperAtomicProg_makesAtMostQueries
-        ℓ C Dh encPt encT (idsOf idA idB) lam (qep + 1) q j tL t A hA⟩
+    fun t ht => by
+      rw [Finset.mem_Ico] at ht
+      exact ⟨
+        Computational.Proofs.SessionCostedFig8.DFProgBoundsPaper.redCKAAuthDFCasePaperAtomicProg_gRedBounded
+          Dh encPt C ℓ encT (idsOf idA idB) lam (qep + 1) q t (some (t - 2)) ht.2 (by simp),
+        Computational.Proofs.SessionCostedFig8.DFProgBoundsPaper.redPRNGAuthDFCasePaperAtomicProg_gRedBounded
+          Dh encPt C ℓ encT (idsOf idA idB) lam (qep + 1) q t (some (t - 2)) ht.2 (by simp),
+        fun j _hj stage la =>
+          Computational.Proofs.SessionCostedFig8.DFProgFsStage2Bounds.redFSAuthDFCasePaperMultiAtomicProg_gRedBounded
+            ℓ Pt C Dh encPt encT (idsOf idA idB) lam stage la j (min (2 * q) (q + 2)) q (qep + 1) (some (t - 2)) t⟩,
+    fun t ht => by
+      rw [Finset.mem_Ico] at ht
+      exact ⟨
+        Computational.Proofs.SessionCostedFig8.DFProgBoundsPaper.redCKAAuthDFCasePaperAtomicProg_gRedBounded
+          Dh encPt C ℓ encT (idsOf idA idB) lam (qep + 1) q t (some (t - 3)) ht.2 (by simp),
+        Computational.Proofs.SessionCostedFig8.DFProgBoundsPaper.redPRNGAuthDFCasePaperAtomicProg_gRedBounded
+          Dh encPt C ℓ encT (idsOf idA idB) lam (qep + 1) q t (some (t - 3)) ht.2 (by simp),
+        fun j _hj stage la =>
+          Computational.Proofs.SessionCostedFig8.DFProgFsStage2Bounds.redFSAuthDFCasePaperMultiAtomicProg_gRedBounded
+            ℓ Pt C Dh encPt encT (idsOf idA idB) lam stage la j (min (2 * q) (q + 2)) q (qep + 1) (some (t - 3)) t⟩,
+    fun tL htL par => by
+      have htL_le : tL.getD 0 ≤ (qep + 1) + 2 := by
+        simp only [admissibleLastLeakGuesses, Finset.mem_insert, Finset.mem_image, Finset.mem_range] at htL
+        rcases htL with rfl | ⟨l, hl, rfl⟩
+        · simp
+        · simp; omega
+      exact ⟨
+        Computational.Proofs.SessionCostedFig8.DFProgBucketBounds.redCKAAuthDFPaperBucketAtomicProg_gRedBounded
+          Dh encPt C ℓ encT (idsOf idA idB) lam (qep + 1) q tL par htL_le (by omega),
+        fun t ht => by
+          rw [Finset.mem_Ico] at ht
+          exact ⟨
+            Computational.Proofs.SessionCostedFig8.DFProgBucketBounds.redPRNGAuthDFPaperBucketHybridAtomicProg_gRedBounded
+              Dh encPt C ℓ encT (idsOf idA idB) lam (qep + 1) q tL par t ht.2 htL_le (by omega),
+            fun j _hj stage la => by
+              dsimp only [v1SessionRedsPaper]
+              split_ifs
+              · exact Computational.Proofs.SessionCostedFig8.DFProgFsStage2Bounds.redFSAuthDFPaperMultiBucketAtomicProg_gRedBounded
+                  ℓ Pt C Dh encPt encT (idsOf idA idB) lam stage la (q * (t - healEpoch tL) + j) (min (2 * q) (q + 2)) q (qep + 1) tL par
+              · exact Computational.Proofs.SessionCostedFig8.DFProgBucketBounds.dummyFsStage2AtomicProg_gRedBounded
+                  Dh encPt C ℓ encT (idsOf idA idB) lam (qep + 1) q (2 * q)⟩⟩,
+    fun t _ht A hA =>
+      ⟨Computational.Proofs.HeadlineV1.DeliverForgePaperUnshiftedPotOK.redPRNGAuthDFCasePaperAtomicProg_makesAtMostQueries
+        ℓ C Dh encPt encT (idsOf idA idB) lam (qep + 1) q (some (t - 2)) t A hA,
+       fun j _hj stage la =>
+         Computational.Proofs.HeadlineV1.DeliverForgePaperMultiBucketPotOK.redFSAuthDFCasePaperMultiAtomicProg_makesAtMostQueries_min
+           ℓ C Dh encPt encT (idsOf idA idB) lam stage la j (min (2 * q) (q + 2)) q (qep + 1) (some (t - 2)) t A hA⟩,
+    fun t _ht A hA =>
+      ⟨Computational.Proofs.HeadlineV1.DeliverForgePaperUnshiftedPotOK.redPRNGAuthDFCasePaperAtomicProg_makesAtMostQueries
+        ℓ C Dh encPt encT (idsOf idA idB) lam (qep + 1) q (some (t - 3)) t A hA,
+       fun j _hj stage la =>
+         Computational.Proofs.HeadlineV1.DeliverForgePaperMultiBucketPotOK.redFSAuthDFCasePaperMultiAtomicProg_makesAtMostQueries_min
+           ℓ C Dh encPt encT (idsOf idA idB) lam stage la j (min (2 * q) (q + 2)) q (qep + 1) (some (t - 3)) t A hA⟩,
+    fun tL _htL par t _ht A hA =>
+      ⟨Computational.Proofs.HeadlineV1.DeliverForgePaperMultiBucketPotOK.redPRNGAuthDFPaperBucketHybridAtomicProg_makesAtMostQueries
+        Dh encPt C ℓ encT (idsOf idA idB) lam (qep + 1) q tL par t A hA,
+       fun j _hj stage la => by
+         dsimp only [v1SessionRedsPaper]
+         split_ifs
+         · exact Computational.Proofs.HeadlineV1.DeliverForgePaperMultiBucketPotOK.redFSAuthDFPaperMultiBucketAtomicProg_makesAtMostQueries_min
+             ℓ C Dh encPt encT (idsOf idA idB) lam stage la (q * (t - healEpoch tL) + j) (min (2 * q) (q + 2)) q (qep + 1) tL par A hA
+         · exact Computational.Proofs.HeadlineV1.DeliverForgePaperMultiBucketPotOK.dummyFsStage2AtomicProg_makesAtMostQueries
+             Dh encPt C ℓ encT (idsOf idA idB) lam q (min (2 * q) (q + 2)) A hA⟩⟩
 
 section PaperEvalBridges
 
-open CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1SessionUniformCoins)
-open CryptoVerification.LibsignalSession.HeadlineV1 CryptoVerification.E2E.Signed
-open CryptoGames.SM.Construction.AuthL11
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1SessionUniformCoins)
+open _root_.CryptoVerification.LibsignalSession.HeadlineV1 _root_.CryptoVerification.E2E.Signed
+open _root_.CryptoGames.SM.Construction.AuthL11
 open Computational.Proofs.ReductionDsl.Fig8Atomic (atomicShortPubB)
 
 variable {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
@@ -1010,125 +1116,12 @@ theorem v1SessionRedsPaper_B_prng_advantage_df (ℓ : ℕ) (hℓ : ℓ < 10 ^ 6)
     (challSimDF'Paper_queries (2 + 1) (qep + 1) dfAdv hq_df)
     (challSimDF'Paper_sendOk (2 + 1) (qep + 1) _ dfAdv hsh_df)
 
-theorem v1SessionRedsPaper_B_fs_advantage_df (ℓ : ℕ) (hℓ : ℓ < 10 ^ 6) (Z : Crypto) (K : MlKem)
-    (idA idB : IdentityKey) (Dh : CKA.DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
-    (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt) (qep q j : ℕ)
-    (tL : Option ℕ) (t : ℕ)
-    (dfAdv : DeliverForge.AdversaryDF (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
-      (BitVec 256) (LibsignalSim.Fig8C Pt))
-    (hq_df : DeliverForge.MakesAtMostQueriesDF dfAdv q)
-    (hsh_df : SendMsgsOkDF (fun m : LibsignalMsgPublicPart × Plain ℓ => atomicShortPubB m.1) dfAdv) :
-    let P := paramsV1 Z K idA idB
-    let challAdvDF := DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv
-    FSAEAD.advantage (lFS Z protoSignalCodec ℓ encT (idsOf idA idB) maxForwardJumps)
-      (((v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT
-        lam qep q).B_fs j tL t).eval (fun _ => challAdvDF) ()) =
-    FSAEAD.advantage (lFS Z protoSignalCodec ℓ encT (idsOf idA idB) maxForwardJumps)
-      (Proofs.Refinement.redFSHiddenSaltPaperDF P ℓ Dh encPt encT (idsOf idA idB) lam qep
-        j tL t dfAdv) :=
-  Computational.Proofs.SessionCostedFig8.DFFsAtomicBSwapPaper.compileFsDFAtomic_casePaper_advantage
-    Dh encPt Z ℓ hℓ encT (idsOf idA idB) lam (qep + 1) q j tL t
-    (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv)
-    (challSimDF'Paper_queries (2 + 1) (qep + 1) dfAdv hq_df)
-    (challSimDF'Paper_sendOk (2 + 1) (qep + 1) _ dfAdv hsh_df)
-
-theorem v1SessionRedsPaper_B_fs_fsOk_df (ℓ : ℕ) (hℓ : ℓ < 10 ^ 6)
-    (Z : Crypto) (K : MlKem) (idA idB : IdentityKey) (Dh : CKA.DHFun (BitVec 256) Pt)
-    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
-    (lam : Pt) (qep q j : ℕ) (tL : Option ℕ) (t : ℕ)
-    (dfAdv : DeliverForge.AdversaryDF (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
-      (BitVec 256) (LibsignalSim.Fig8C Pt))
-    (hq_df : DeliverForge.MakesAtMostQueriesDF dfAdv q)
-    (hsh_df : SendMsgsOkDF (fun m : LibsignalMsgPublicPart × Plain ℓ => atomicShortPubB m.1) dfAdv)
-    (hg_df : GuardedSMDFShort dfAdv) :
-    let challAdvDF := DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv
-    FsOk ℓ (min (2 * q) (q + 2)) q
-      (((v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT
-        lam qep q).B_fs j tL t).eval (fun _ => challAdvDF) ()) := by
-  intro challAdvDF
-  have hq_ch : challAdvDF.IsQueryBoundP (· matches .inr _) q :=
-    (challSimDF'Paper_queries (2 + 1) (qep + 1) dfAdv hq_df).of_imp (by rintro (_ | _) <;> simp)
-  exact
-    ⟨Computational.Proofs.HeadlineV1.DeliverForgePaperUnshiftedPotOK.redFSAuthDFCasePaperAtomicProg_makesAtMostQueries
-        ℓ Z Dh encPt encT (idsOf idA idB) lam (qep + 1) q j tL t challAdvDF hq_ch,
-     (Computational.Proofs.SessionCostedFig8.DFFsAtomicBSwapPaper.compileFsDFAtomic_casePaper_challSimDF'Paper_fsOk_and_encAtomicShort
-        Dh encPt Z ℓ hℓ encT (idsOf idA idB) lam (qep + 1) q j tL t dfAdv hq_df hsh_df hg_df).1.2⟩
-
-/-- Bounds `hiddenSaltCellTermPaperDF` at `(tL, t)` by the corresponding cell of
-`hiddenSaltBoundV1` evaluated on `v1SessionRedsPaper`. -/
-theorem hiddenSaltCellTermPaperDF_le_v1SessionRedsPaper
-    (Z : Crypto) (K : MlKem) (hD : ∀ k x, Z.D k (Z.E k x) = x)
-    {ℓ : ℕ} (hℓ : ℓ < 10 ^ 6) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
-    (hinj : Function.Injective encT) (hdum : ∀ T, encT T ≠ dummyKey)
-    (idA idB : IdentityKey) (lam : Pt) (qep q : ℕ) (_hq32 : 2 * (q + 1) + 25002 < 2 ^ 32)
-    (tL : Option ℕ) (t : ℕ)
-    (dfAdv : DeliverForge.AdversaryDF (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
-      (BitVec 256) (LibsignalSim.Fig8C Pt))
-    (hq_df : DeliverForge.MakesAtMostQueriesDF dfAdv q)
-    (hsh_df : SendMsgsOkDF (fun m : LibsignalMsgPublicPart × Plain ℓ => atomicShortPubB m.1) dfAdv)
-    (hg_df : GuardedSMDFShort dfAdv) :
-    let P := paramsV1 Z K idA idB
-    let R := v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT lam qep q
-    let challAdvDF := DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv
-    Proofs.Refinement.hiddenSaltCellTermPaperDF P ℓ Dh encPt encT (idsOf idA idB) lam qep q
-        tL t dfAdv ≤
-      CKA.advantage (dhScheme Dh) 1 (healEpoch tL) ((R.B_cka tL t).eval (fun _ => challAdvDF) ()) +
-        PRFPRNG.advantage (rootPRNG Z.F encPt) (((R.B_prng tL t).eval (fun _ => challAdvDF) ())) +
-        (∑ j ∈ Finset.range q, CryptoVerification.E2E.fsAeadSlotSumBound Z (min (2 * q) (q + 2)) R.fs
-          (((R.B_fs j tL t).eval (fun _ => challAdvDF) ()))) +
-        4 * (q : ℝ≥0∞) * CryptoVerification.LibsignalSession.macForgeryTerm Z q := by
-  intro P R challAdvDF
-  have hL : LengthsOk P ℓ := lengthsOk_paramsIdsWithSpqr_v1 Z K idA idB ℓ hℓ
-  have hcka := v1SessionRedsPaper_B_cka_advantage_df ℓ hℓ Z K idA idB Dh encPt encT decT
-    lam qep q (healEpoch tL) tL t dfAdv hq_df hsh_df
-  have hprng := v1SessionRedsPaper_B_prng_advantage_df ℓ hℓ Z K idA idB Dh encPt encT
-    decT lam qep q tL t dfAdv hq_df hsh_df
-  unfold Proofs.Refinement.hiddenSaltCellTermPaperDF
-  change CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
-        (Proofs.Refinement.redCKAHiddenSaltPaperDF P ℓ Dh encPt encT (idsOf idA idB) lam qep
-          tL t dfAdv) +
-      PRFPRNG.advantage (rootPRNG Z.F encPt)
-        (Proofs.Refinement.redPRNGHiddenSaltPaperDF P ℓ Dh encPt encT (idsOf idA idB) lam qep
-          tL t dfAdv) +
-      (∑ j ∈ Finset.range q, FSAEAD.advantage (lFS Z protoSignalCodec ℓ encT (idsOf idA idB) 25000)
-        (Proofs.Refinement.redFSHiddenSaltPaperDF P ℓ Dh encPt encT (idsOf idA idB) lam qep
-          j tL t dfAdv)) ≤ _
-  rw [← hcka, ← hprng, add_assoc (_ + _)]; refine add_le_add le_rfl ?_
-  calc ∑ j ∈ Finset.range q, FSAEAD.advantage (lFS Z protoSignalCodec ℓ encT (idsOf idA idB) 25000)
-        (Proofs.Refinement.redFSHiddenSaltPaperDF P ℓ Dh encPt encT (idsOf idA idB) lam qep
-          j tL t dfAdv)
-      ≤ ∑ j ∈ Finset.range q,
-          (CryptoVerification.E2E.fsAeadSlotSumBound Z (min (2 * q) (q + 2)) R.fs
-            (((R.B_fs j tL t).eval (fun _ => challAdvDF) ())) +
-            4 * CryptoVerification.LibsignalSession.macForgeryTerm Z q) := by
-        refine Finset.sum_le_sum fun j _ => ?_
-        have hfs_adv := v1SessionRedsPaper_B_fs_advantage_df ℓ hℓ Z K idA idB Dh encPt
-          encT decT lam qep q j tL t dfAdv hq_df hsh_df
-        have hfsOk := v1SessionRedsPaper_B_fs_fsOk_df ℓ hℓ Z K idA idB Dh encPt
-          encT decT lam qep q j tL t dfAdv hq_df hsh_df hg_df
-        have hshort :=
-          (Computational.Proofs.SessionCostedFig8.DFFsAtomicBSwapPaper.compileFsDFAtomic_casePaper_challSimDF'Paper_fsOk_and_encAtomicShort
-            Dh encPt Z ℓ hℓ encT (idsOf idA idB) lam (qep + 1) q j tL t dfAdv hq_df hsh_df hg_df).2
-        change FSAEAD.advantage (lFS Z protoSignalCodec ℓ encT (idsOf idA idB) maxForwardJumps)
-            (Proofs.Refinement.redFSHiddenSaltPaperDF P ℓ Dh encPt encT (idsOf idA idB) lam qep
-              j tL t dfAdv) ≤ _
-        rw [← hfs_adv, v1SessionRedsPaper_fs,
-          deliverForgeFSCompBoundWith_inst_eq Z ℓ encT (idsOf idA idB) (min (2 * q) (q + 2)) hℓ hinj
-            _ hfsOk.1 hshort, ← fsShortBound_eq_deliverForgeFSCompBound_add]
-        exact fs_le_fsShortBound Z hD protoSignalCodec rfl ℓ hL.1 encT hinj hdum (idsOf idA idB)
-          (min (2 * q) (q + 2)) q (by omega) _ hfsOk
-    _ = (∑ j ∈ Finset.range q, CryptoVerification.E2E.fsAeadSlotSumBound Z (min (2 * q) (q + 2)) R.fs
-          (((R.B_fs j tL t).eval (fun _ => challAdvDF) ()))) +
-          4 * (q : ℝ≥0∞) * CryptoVerification.LibsignalSession.macForgeryTerm Z q := by
-        rw [Finset.sum_add_distrib, Finset.sum_const, Finset.card_range, nsmul_eq_mul]; ring
-
 section SimDeliverForgeGuarded
 
 set_option linter.unusedSectionVars false
 
-open GuardedSafe
-open CryptoGames.LibsignalSM.Proofs.SessionShort.SimAndSM
+open _root_.CryptoGames.GuardedSafe
+open _root_.CryptoGames.LibsignalSM.Proofs.SessionShort.SimAndSM
   (SimShortInv simShortInv_initSim smRespShort smRecvLong SimSafeS guardedSafeS_simSend
    inTransit_mem_and_ct mem_accept_trans)
 
@@ -1790,26 +1783,1537 @@ theorem simDeliverForgeClamp_guardedSMDFShort {PQ PQC : Type} [Inhabited PQ]
 
 end SimDeliverForgeGuarded
 
-/-- Bounds the `admissibleLastLeakGuesses 2` cell sum of `hiddenSaltCellTermPaperDF` plus the
-spurious and ratchet-key collision terms by `hiddenSaltBoundV1` on `v1SessionRedsPaper`. -/
+/-- Single-win 3-family Stage-2 `DeliverForge` advantage sum (`B1` + `B2` + `(tL, par)` buckets),
+which replaces the pre-`[B7]` per-cell `forgeGuessedAdvantageCellPaper` cut point between
+`firstNESimImpl'` / `firstNEHalted'` and `HiddenSaltLazyFirstNEReds`. -/
+@[expose] noncomputable def forgeStage2CellBucketSumPaper
+    {Key St Msg Coins : Type} {T E : Type}
+    [DecidableEq Msg] [DecidableEq T] [DecidableEq E]
+    [SampleableType Key] [SampleableType Coins]
+    (sm : SMScheme Key St Msg Coins (Header T × E)) (qep : ℕ)
+    (sameHdr : (Header T × E) → (Header T × E) → Bool)
+    (B : DeliverForge.AdversaryDF St Msg Coins (Header T × E)) : ℝ≥0∞ :=
+  (∑ t ∈ Finset.Ico 2 ((qep + 1) + 2),
+    DeliverForge.forgeGuessedAdvantageShiftedDir2Paper sm (qep + 1) sameHdr (t - 1) t B) +
+  (∑ t ∈ Finset.Ico 3 ((qep + 1) + 2),
+    DeliverForge.forgeGuessedAdvantageShiftedPaper sm (2 + 1) (qep + 1) sameHdr (t - 2) t B) +
+  (∑ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∑ par ∈ ({false, true} : Finset Bool),
+    DeliverForge.forgeBucketAdvantagePaper sm 1 (qep + 1) sameHdr tL par B)
+
+/-- Stage-2 reduction bridge from `forgeStage2CellBucketSumPaper` to any `SessionCostedReductions`
+bundle `R` (instantiating `DeliverForge.forgeBucketAdvantagePaper_le_cka_add_branch_true` on each
+`(tL, par)` bucket). -/
+theorem forgeStage2CellBucketSumPaper_le_of_stage2_bounds
+    {ℓ : ℕ}
+    (Z : Crypto) (K : MlKem)
+    (Dh : DHFun (BitVec 256) Pt) (hDh : Dh.Commutes)
+    (encPt : Pt → Bytes) (encT : Pt → PublicKey)
+    (decT : PublicKey → Option Pt) (idA idB : IdentityKey) (lam : Pt) (qep q : ℕ)
+    (R : SessionCostedReductions Pt ℓ Z K idA idB Dh encPt encT decT lam)
+    (challAdvDF : DeliverForge.AdversaryDF (LibsignalSim.Fig8St Pt)
+      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (LibsignalSim.Fig8C Pt))
+    (hB1 : ∀ t ∈ Finset.Ico 2 ((qep + 1) + 2),
+      let tL : Option ℕ := some (t - 2)
+      DeliverForge.forgeGuessedAdvantageShiftedDir2Paper
+        (lFig8 Dh encPt Z protoSignalCodec ℓ encT (idsOf idA idB) 25000 lam)
+        (qep + 1) DeliverForge.sameHdrScheme (t - 1) t challAdvDF ≤
+      CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+        ((R.B_cka tL t).eval (fun _ => challAdvDF) ()) +
+      PRFPRNG.advantage (rootPRNG Z.F encPt)
+        ((R.B_prng tL t).eval (fun _ => challAdvDF) ()) +
+      (∑ j ∈ Finset.range q,
+        CryptoVerification.E2E.fsAeadAuthSlotSumBound Z (min (2 * q) (q + 2)) R.fs
+          (fun stage la => (R.B_fs stage la j tL t).eval (fun _ => challAdvDF) ())) +
+      4 * CryptoVerification.LibsignalSession.macForgeryTerm Z q)
+    (hB2 : ∀ t ∈ Finset.Ico 3 ((qep + 1) + 2),
+      let tL : Option ℕ := some (t - 3)
+      DeliverForge.forgeGuessedAdvantageShiftedPaper
+        (lFig8 Dh encPt Z protoSignalCodec ℓ encT (idsOf idA idB) 25000 lam)
+        (2 + 1) (qep + 1) DeliverForge.sameHdrScheme (t - 2) t challAdvDF ≤
+      CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+        ((R.B_cka tL t).eval (fun _ => challAdvDF) ()) +
+      PRFPRNG.advantage (rootPRNG Z.F encPt)
+        ((R.B_prng tL t).eval (fun _ => challAdvDF) ()) +
+      (∑ j ∈ Finset.range q,
+        CryptoVerification.E2E.fsAeadAuthSlotSumBound Z (min (2 * q) (q + 2)) R.fs
+          (fun stage la => (R.B_fs stage la j tL t).eval (fun _ => challAdvDF) ())) +
+      4 * CryptoVerification.LibsignalSession.macForgeryTerm Z q)
+    (hU_cka : ∀ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∀ par : Bool,
+      CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+        (DeliverForge.redCKAAuthDFPaperBucket (dhScheme Dh) (rootPRNG Z.F encPt)
+          (lFS Z protoSignalCodec ℓ encT (idsOf idA idB) 25000) lam 1 (qep + 1) tL par challAdvDF) ≤
+      CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+        ((R.B_cka_u tL par).eval (fun _ => challAdvDF) ()))
+    (hU_ideal : ∀ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1),
+      ∀ par ∈ ({false, true} : Finset Bool),
+      𝒟[CKA.branch (dhScheme Dh) 1 (healEpoch tL) true
+          (DeliverForge.redCKAAuthDFPaperBucket (dhScheme Dh) (rootPRNG Z.F encPt)
+            (lFS Z protoSignalCodec ℓ encT (idsOf idA idB) 25000) lam 1 (qep + 1) tL par
+            challAdvDF)] {true} ≤
+      (∑ t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2),
+        (PRFPRNG.advantage (rootPRNG Z.F encPt)
+            ((R.B_prng_u tL par t).eval (fun _ => challAdvDF) ()) +
+          (∑ j ∈ Finset.range q,
+            CryptoVerification.E2E.fsAeadAuthSlotSumBound Z (min (2 * q) (q + 2)) R.fs
+              (fun stage la => (R.B_fs_u stage la j tL par t).eval (fun _ => challAdvDF) ())))) +
+      4 * CryptoVerification.LibsignalSession.macForgeryTerm Z q) :
+    let qR := min (2 * q) (q + 2)
+    forgeStage2CellBucketSumPaper
+      (lFig8 Dh encPt Z protoSignalCodec ℓ encT (idsOf idA idB) 25000 lam)
+      qep DeliverForge.sameHdrScheme challAdvDF ≤
+    (∑ t ∈ Finset.Ico 2 ((qep + 1) + 2),
+      let tL : Option ℕ := some (t - 2)
+      (CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+          ((R.B_cka tL t).eval (fun _ => challAdvDF) ()) +
+        PRFPRNG.advantage (rootPRNG Z.F encPt)
+          ((R.B_prng tL t).eval (fun _ => challAdvDF) ()) +
+        (∑ j ∈ Finset.range q,
+          CryptoVerification.E2E.fsAeadAuthSlotSumBound Z qR R.fs
+            (fun stage la => (R.B_fs stage la j tL t).eval (fun _ => challAdvDF) ())) +
+        4 * CryptoVerification.LibsignalSession.macForgeryTerm Z q)) +
+      (∑ t ∈ Finset.Ico 3 ((qep + 1) + 2),
+        let tL : Option ℕ := some (t - 3)
+        (CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+            ((R.B_cka tL t).eval (fun _ => challAdvDF) ()) +
+          PRFPRNG.advantage (rootPRNG Z.F encPt)
+            ((R.B_prng tL t).eval (fun _ => challAdvDF) ()) +
+          (∑ j ∈ Finset.range q,
+            CryptoVerification.E2E.fsAeadAuthSlotSumBound Z qR R.fs
+              (fun stage la => (R.B_fs stage la j tL t).eval (fun _ => challAdvDF) ())) +
+          4 * CryptoVerification.LibsignalSession.macForgeryTerm Z q)) +
+      (∑ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∑ par ∈ ({false, true} : Finset Bool),
+        (CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+            ((R.B_cka_u tL par).eval (fun _ => challAdvDF) ()) +
+          (∑ t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2),
+            (PRFPRNG.advantage (rootPRNG Z.F encPt)
+                ((R.B_prng_u tL par t).eval (fun _ => challAdvDF) ()) +
+              (∑ j ∈ Finset.range q,
+                CryptoVerification.E2E.fsAeadAuthSlotSumBound Z qR R.fs
+                  (fun stage la => (R.B_fs_u stage la j tL par t).eval (fun _ => challAdvDF) ())))) +
+          4 * CryptoVerification.LibsignalSession.macForgeryTerm Z q)) := by
+  intro qR
+  unfold forgeStage2CellBucketSumPaper
+  refine add_le_add (add_le_add (Finset.sum_le_sum hB1) (Finset.sum_le_sum hB2)) ?_
+  refine Finset.sum_le_sum fun tL htL => Finset.sum_le_sum fun par hpar => ?_
+  have hcka := DeliverForge.forgeBucketAdvantagePaper_le_cka_add_branch_true
+    (dhScheme Dh) (rootPRNG Z.F encPt)
+    (lFS Z protoSignalCodec ℓ encT (idsOf idA idB) 25000) lam 1 (qep + 1)
+    (dhScheme_correct Dh hDh) Nat.one_pos tL par challAdvDF
+  change DeliverForge.forgeBucketAdvantagePaper
+      (scheme (dhScheme Dh) (rootPRNG Z.F encPt)
+        (lFS Z protoSignalCodec ℓ encT (idsOf idA idB) 25000) lam)
+      1 (qep + 1) DeliverForge.sameHdrScheme tL par challAdvDF ≤ _
+  refine hcka.trans ?_
+  rw [add_assoc]
+  exact add_le_add (hU_cka tL htL par) (hU_ideal tL htL par hpar)
+
+end PaperEvalBridges
+end CryptoVerification.E2E
+
+namespace CryptoVerification.E2E.Stage2BucketPRNGPackedBridge
+
+open scoped BigOperators ENNReal MeasureTheory
+open OracleSpec OracleComp
+open ReductionDsl (CostedReduction)
+open Computational.Proofs.ReductionDsl.Fig8Atomic (dhSchemeFb aeadAtomic atomicShortPubB
+  fsAtomicB fsAtomicB_send_eq fsAtomicB_receive_eq RSReachB)
+open Computational.Proofs.ReductionDsl.PureAuxMacroLift (prngAdvantage_congr)
+open Computational.Proofs.SessionCostedFig8.Bundles (fig8CkaOpsShallow compilePrngDFAtomic)
+open Computational.Proofs.SessionCostedFig8.BundlesEval (compilePrngDFAtomic_coinSimEquiv fsAtomicB_receive_rsReach)
+open Computational.Proofs.SessionCostedFig8.FsAtomicBSwap (HooksLocalFsAgree vRecv_localFs_eq vSend_localFs_eq)
+open CryptoGames (CKAScheme FSAEADScheme PRFPRNG Party)
+open CryptoGames.CBC (Plain)
+open CryptoGames.CKA (DHFun dhScheme)
+open CryptoGames.FSAEAD (RatchetReceiverState RatchetSenderState)
+open CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey maxForwardJumps)
+open CryptoGames.PRFPRNG (prngIface)
+open CryptoGames.Ratchet (rootPRNG)
+open CryptoGames.Ratchet.LibsignalInst (LibsignalCiphertextWithSalt32 LibsignalMsgPublicPart lAead lChainPRG lFS lPubOf)
+open CryptoGames.Ratchet.LibsignalSim (Fig8C Fig8St)
+open CryptoGames.SM (Config lastLeakGuessAdmissible)
+open CryptoGames.SM.Construction (Header PartyState healEpoch mkParties redPRNGAuthDFPaperBucketSplitProg)
+open CryptoGames.SM.Engine (Ctx EState Hooks HooksVRInv RSReach SMEngineInv SMVRInv VP abortE coinsE commitE deliverE implEDFPaperBucketRaw_inv implEDFPaperBucketRaw_vrInv injectE noDoomPolicy run_liftH_bind transmitEBucket_eq_transmitE)
+open CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
+open CryptoVerification.LibsignalSession.Fig8SchemeBridge (DdhRoleOk badSendMsg_transmit_false commitE_localCKA_eq dhSchemeFb_receive_of_roleOk dhSchemeFb_send_of_roleOk implE_localCKA_eq localPartyInv_mkParties vRecv_localCKA_eq)
+open CryptoVerification.LibsignalSession.HeadlineV1 (SendMsgsOkDF badSendMsgDF)
+
+private lemma hooksPRNGBucketMain_fs_fields_congr {KC Γ CCoins T I KR RSt K SS RS M E : Type}
+    [DecidableEq T] [DecidableEq I] [SampleableType CCoins] [SampleableType K]
+    (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR RSt I K)
+    (fs₁ fs₂ : FSAEADScheme K SS RS (Header T) M E)
+    (hS : fs₁.initSender = fs₂.initSender) (hR : fs₁.initReceiver = fs₂.initReceiver)
+    (Δcka qep : ℕ) (tL : Option ℕ) (par : Bool) (t : ℕ) :
+    (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain cka prng fs₁ Δcka qep tL par t).startSend =
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain cka prng fs₂ Δcka qep tL par t).startSend ∧
+    (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain cka prng fs₁ Δcka qep tL par t).startRecv =
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain cka prng fs₂ Δcka qep tL par t).startRecv ∧
+    (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain cka prng fs₁ Δcka qep tL par t).commit =
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain cka prng fs₂ Δcka qep tL par t).commit ∧
+    (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain cka prng fs₁ Δcka qep tL par t).reveal =
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain cka prng fs₂ Δcka qep tL par t).reveal := by
+  cases fs₁; cases fs₂; cases hS; cases hR; exact ⟨rfl, rfl, rfl, rfl⟩
+
+private lemma hooksPRNGBucketForgedHdr_fs_fields_congr {KC Γ CCoins T I KR RSt K SS RS M E : Type}
+    [DecidableEq T] [DecidableEq I] [SampleableType CCoins] [SampleableType K]
+    (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR RSt I K)
+    (fs₁ fs₂ : FSAEADScheme K SS RS (Header T) M E)
+    (hS : fs₁.initSender = fs₂.initSender) (hR : fs₁.initReceiver = fs₂.initReceiver)
+    (Δcka qep : ℕ) (tL : Option ℕ) (par : Bool) (t : ℕ) :
+    (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdr cka prng fs₁ Δcka qep tL par t).startSend =
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdr cka prng fs₂ Δcka qep tL par t).startSend ∧
+    (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdr cka prng fs₁ Δcka qep tL par t).startRecv =
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdr cka prng fs₂ Δcka qep tL par t).startRecv ∧
+    (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdr cka prng fs₁ Δcka qep tL par t).commit =
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdr cka prng fs₂ Δcka qep tL par t).commit ∧
+    (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdr cka prng fs₁ Δcka qep tL par t).reveal =
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdr cka prng fs₂ Δcka qep tL par t).reveal := by
+  cases fs₁; cases fs₂; cases hS; cases hR; exact ⟨rfl, rfl, rfl, rfl⟩
+
+
+local instance {Pt : Type} [Zero Pt] : Inhabited Pt := ⟨0⟩
+
+private lemma hooksPRNGBucketHybridGen_startRecv_rs_nereds {KC Γ CCoins T I KR Sig K SS RS M E : Type}
+    [DecidableEq T] [DecidableEq I] [SampleableType CCoins] [SampleableType K]
+    {VROk : RS → Prop}
+    (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+    (fs : FSAEADScheme K SS RS (Header T) M E)
+    (Δbucket qep : ℕ) (tL : Option ℕ) (par : Bool) (t : ℕ)
+    (hInitR : ∀ k, VROk (fs.initReceiver k))
+    (ctx : Ctx Γ T (Option Sig) SS RS M E) (P : Party) (t0 : ℕ)
+    (γ0 : Γ) (σv0 : Option Sig) (tn0 : T)
+    (h : CryptoGames.SM.Construction.DeliverForge.PRNGBucketState T Sig K I) (res : _)
+    (hmem : res ∈ support (((CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybridGen cka prng fs Δbucket qep tL par t).startRecv
+      ctx P t0 γ0 σv0 tn0).run h))
+    (γ' : Γ) (σ' : Option Sig) (rs : RS) (hEq : res.1 = some (some (γ', σ', rs))) :
+    VROk rs := by
+  dsimp only [CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybridGen] at hmem
+  rw [StateT.run_bind, StateT.run_get, pure_bind] at hmem
+  have hTail :
+      res ∈ support ((do
+        if !(qep + 1 < t0) && (lastLeakGuessAdmissible Δbucket tL t0 &&
+            (CryptoGames.SM.Construction.DeliverForge.partyPar (CryptoGames.Party.senderOf t0) == par)) then
+          if tL.isSome && t0 = healEpoch tL then
+            return none
+          else if CryptoGames.SM.Construction.DeliverForge.postLeak tL ctx || h.corrRoot.isSome || t < t0 then
+            match CryptoGames.SM.Construction.DeliverForge.resolveCorrRoot h (t0 - 1) σv0 with
+            | none => return none
+            | some σ =>
+              let kk := cka.receive γ0 tn0
+              let p := prng.up σ kk.2
+              return some (some (kk.1, some p.1, fs.initReceiver p.2))
+          else if t0 = t then
+            let kk := cka.receive γ0 tn0
+            match ← CryptoGames.SM.Construction.DeliverForge.liftPBucket (CryptoGames.PRFPRNG.challPrfQuery (State := Sig) (Input := I) (Output := K) kk.2) with
+            | none => return none
+            | some (σOut, kOut) =>
+              return some (some (kk.1, some σOut, fs.initReceiver kOut))
+          else if !(t0 < healEpoch tL) then
+            let kk := cka.receive γ0 tn0
+            let kOut ← CryptoGames.SM.Construction.DeliverForge.lookupPRNGBucketF t0 kk.2
+            return some (some (kk.1, none, fs.initReceiver kOut))
+          else
+            return some none
+        else
+          return some none).run h) → VROk rs := by
+    intro hmem'
+    split_ifs at hmem'
+    · rw [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem'
+      subst hmem'; simp at hEq
+    · rcases hres : CryptoGames.SM.Construction.DeliverForge.resolveCorrRoot h (t0 - 1) σv0 with _ | σ
+      · rw [hres, StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem'
+        subst hmem'; simp at hEq
+      · rw [hres, StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem'
+        subst hmem'; rcases Option.some.inj (Option.some.inj hEq) with ⟨_, _, rfl⟩
+        exact hInitR _
+    · rw [StateT.run_bind, mem_support_bind_iff] at hmem'
+      obtain ⟨⟨o, _⟩, _, hmem'⟩ := hmem'
+      rcases o with _ | ⟨σOut, kOut⟩
+      · rw [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem'
+        subst hmem'; simp at hEq
+      · rw [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem'
+        subst hmem'; rcases Option.some.inj (Option.some.inj hEq) with ⟨_, _, rfl⟩
+        exact hInitR _
+    · rw [StateT.run_bind, mem_support_bind_iff] at hmem'
+      obtain ⟨⟨kOut, _⟩, _, hmem'⟩ := hmem'
+      rw [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem'
+      subst hmem'; rcases Option.some.inj (Option.some.inj hEq) with ⟨_, _, rfl⟩
+      exact hInitR _
+    · rw [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem'
+      subst hmem'; simp at hEq
+    · rw [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem'
+      subst hmem'; simp at hEq
+  rcases hc : h.cache t0 with _ | ⟨tCached, σc, kVal⟩
+  · simp only [hc] at hmem; exact hTail hmem
+  · by_cases hEqT : tCached = tn0
+    · simp only [hc, hEqT, ↓reduceIte, StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
+      subst hmem; rcases Option.some.inj (Option.some.inj hEq) with ⟨_, _, rfl⟩
+      exact hInitR _
+    · simp only [hc, hEqT, ↓reduceIte] at hmem; exact hTail hmem
+
+private lemma hooksPRNGBucketMainGen_startRecv_rs_nereds {KC Γ CCoins T I KR Sig K SS RS M E : Type}
+    [DecidableEq T] [DecidableEq I] [SampleableType CCoins] [SampleableType K]
+    {VROk : RS → Prop}
+    (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+    (fs : FSAEADScheme K SS RS (Header T) M E)
+    (Δbucket qep : ℕ) (tL : Option ℕ) (par : Bool) (t : ℕ)
+    (hInitR : ∀ k, VROk (fs.initReceiver k))
+    (ctx : Ctx Γ T (Option Sig) SS RS M E) (P : Party) (t0 : ℕ)
+    (γ0 : Γ) (σv0 : Option Sig) (tn0 : T)
+    (h : CryptoGames.SM.Construction.DeliverForge.PRNGBucketState T Sig K I) (res : _)
+    (hmem : res ∈ support (((CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMainGen cka prng fs Δbucket qep tL par t).startRecv
+      ctx P t0 γ0 σv0 tn0).run h))
+    (γ' : Γ) (σ' : Option Sig) (rs : RS) (hEq : res.1 = some (some (γ', σ', rs))) :
+    VROk rs := by
+  dsimp only [CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMainGen] at hmem
+  rw [StateT.run_bind, StateT.run_get, pure_bind] at hmem
+  rcases hc : h.cache t0 with _ | ⟨tCached, σc, kVal⟩
+  · simp only [hc] at hmem
+    split_ifs at hmem <;>
+      (rw [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem; subst hmem; simp at hEq)
+  · by_cases hEqT : tCached = tn0
+    · simp only [hc, hEqT, ↓reduceIte, StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
+      subst hmem; rcases Option.some.inj (Option.some.inj hEq) with ⟨_, _, rfl⟩
+      exact hInitR _
+    · simp only [hc, hEqT, ↓reduceIte] at hmem
+      split_ifs at hmem <;>
+        (rw [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem; subst hmem; simp at hEq)
+
+private theorem hooksPRNGBucketHybrid_df_vrInv_fsAtomicB_nereds {Pt : Type} [DecidableEq Pt] [Zero Pt]
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
+    (B0 Δcka qep : ℕ) (tL : Option ℕ) (par : Bool) (t : ℕ) :
+    HooksVRInv (RSReach maxForwardJumps)
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybrid (dhSchemeFb Dh) (rootPRNG C.F encPt)
+        (fsAtomicB C ℓ encT idOf B0) Δcka qep tL par t) where
+  mono hle hv := hv.mono hle
+  startRecv_step ctx P t0 γ0 σ0 tn0 h res hmem γ' σ' rs hEq :=
+    hooksPRNGBucketHybridGen_startRecv_rs_nereds (dhSchemeFb Dh) (rootPRNG C.F encPt)
+      (fsAtomicB C ℓ encT idOf B0) (3 + Δcka) qep tL par t
+      (fun k => (CryptoGames.SM.Engine.RSReach.init ((aeadAtomic C ℓ encT idOf).movePubPartToAD
+        (lPubOf protoSignalCodec)) (lChainPRG C.F) maxForwardJumps k).mono (Nat.zero_le _))
+      ctx P t0 γ0 σ0 tn0 h res hmem γ' σ' rs hEq
+  fsRecv_step _ _ _ rs hdr e _ _ res hVR hmem v' i' m' hEq := by
+    dsimp only [CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybrid,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybridGen] at hmem
+    rw [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
+    subst hmem; exact (fsAtomicB_receive_rsReach C ℓ encT idOf B0 _ hVR (Option.some.inj hEq)).2
+  commit_vR _ _ _ new _ res hmem new' hEq := by
+    dsimp only [CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybrid,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybridGen] at hmem
+    rw [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
+    subst hmem; cases Option.some.inj hEq; rfl
+
+private theorem hooksPRNGBucketMain_df_vrInv_lFS_nereds {Pt KC Γ CCoins I KR RSt : Type}
+    [DecidableEq Pt] [DecidableEq I] [SampleableType CCoins]
+    (cka : CKAScheme KC Γ CCoins Pt I) (prng : PRFPRNG KR RSt I (BitVec 256))
+    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
+    (Δcka qep : ℕ) (tL : Option ℕ) (par : Bool) (t : ℕ) :
+    HooksVRInv (RSReachB maxForwardJumps)
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain cka prng
+        (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) Δcka qep tL par t) where
+  mono hle hv := hv.mono hle
+  startRecv_step ctx P t0 γ0 σ0 tn0 h res hmem γ' σ' rs hEq :=
+    hooksPRNGBucketMainGen_startRecv_rs_nereds cka prng
+      (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) (3 + Δcka) qep tL par t
+      (fun k => (Computational.Proofs.ReductionDsl.Fig8Atomic.RSReachB.init
+        ((lAead C protoSignalCodec ℓ encT idOf).movePubPartToAD (lPubOf protoSignalCodec))
+        (lChainPRG C.F) maxForwardJumps k).mono (Nat.zero_le _))
+      ctx P t0 γ0 σ0 tn0 h res hmem γ' σ' rs hEq
+  fsRecv_step _ _ _ rs hdr e _ _ res hVR hmem v' i' m' hEq := by
+    dsimp only [CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMainGen,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybridGen] at hmem
+    rw [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
+    subst hmem
+    exact (Computational.Proofs.ReductionDsl.Fig8Atomic.RSReachB.receive_fromAEADPRG
+      ((lAead C protoSignalCodec ℓ encT idOf).movePubPartToAD (lPubOf protoSignalCodec))
+      (lChainPRG C.F) maxForwardJumps _ hVR (Option.some.inj hEq)).2
+  commit_vR _ _ _ new _ res hmem new' hEq := by
+    dsimp only [CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMainGen,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybridGen] at hmem
+    rw [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
+    subst hmem; cases Option.some.inj hEq; rfl
+
+private theorem hooksPRNGBucketForgedHdr_df_vrInv_lFS_nereds {Pt KC Γ CCoins I KR RSt : Type}
+    [DecidableEq Pt] [DecidableEq I] [SampleableType CCoins]
+    (cka : CKAScheme KC Γ CCoins Pt I) (prng : PRFPRNG KR RSt I (BitVec 256))
+    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
+    (Δcka qep : ℕ) (tL : Option ℕ) (par : Bool) (t : ℕ) :
+    HooksVRInv (RSReachB maxForwardJumps)
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdr cka prng
+        (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) Δcka qep tL par t) where
+  mono hle hv := hv.mono hle
+  startRecv_step ctx P t0 γ0 σ0 tn0 h res hmem γ' σ' rs hEq :=
+    hooksPRNGBucketHybridGen_startRecv_rs_nereds cka prng
+      (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) (3 + Δcka) qep tL par t
+      (fun k => (Computational.Proofs.ReductionDsl.Fig8Atomic.RSReachB.init
+        ((lAead C protoSignalCodec ℓ encT idOf).movePubPartToAD (lPubOf protoSignalCodec))
+        (lChainPRG C.F) maxForwardJumps k).mono (Nat.zero_le _))
+      ctx P t0 γ0 σ0 tn0 h res hmem γ' σ' rs hEq
+  fsRecv_step _ _ _ rs hdr e _ _ res hVR hmem v' i' m' hEq := by
+    dsimp only [CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdr,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdrGen,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybridGen] at hmem
+    rw [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
+    subst hmem
+    exact (Computational.Proofs.ReductionDsl.Fig8Atomic.RSReachB.receive_fromAEADPRG
+      ((lAead C protoSignalCodec ℓ encT idOf).movePubPartToAD (lPubOf protoSignalCodec))
+      (lChainPRG C.F) maxForwardJumps _ hVR (Option.some.inj hEq)).2
+  commit_vR _ _ _ new _ res hmem new' hEq := by
+    dsimp only [CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdr,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdrGen,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybridGen] at hmem
+    rw [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
+    subst hmem; cases Option.some.inj hEq; rfl
+
+private theorem hooksPRNGBucketMain_df_localFsAgree_nereds {Pt KC Γ CCoins I KR RSt : Type}
+    [DecidableEq Pt] [DecidableEq I] [SampleableType CCoins]
+    (cka : CKAScheme KC Γ CCoins Pt I) (prng : PRFPRNG KR RSt I (BitVec 256))
+    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
+    (B0 Δcka qep : ℕ) (tL : Option ℕ) (par : Bool) (t : ℕ) :
+    HooksLocalFsAgree ℓ B0
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain cka prng (fsAtomicB C ℓ encT idOf B0) Δcka qep tL par t)
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain cka prng
+        (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) Δcka qep tL par t) where
+  startSend_eq :=
+    (hooksPRNGBucketMain_fs_fields_congr cka prng (fsAtomicB C ℓ encT idOf B0)
+      (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) rfl rfl Δcka qep tL par t).1
+  startRecv_eq :=
+    (hooksPRNGBucketMain_fs_fields_congr cka prng (fsAtomicB C ℓ encT idOf B0)
+      (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) rfl rfl Δcka qep tL par t).2.1
+  fsSend_eq _ _ _ ss hdr m _ hm := by
+    dsimp only [CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMainGen,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybridGen]
+    rw [fsAtomicB_send_eq C ℓ encT idOf B0 ss hdr m hm]
+  fsRecv_eq _ _ _ rs hdr e _ hlen := by
+    dsimp only [CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMainGen,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybridGen]
+    rw [fsAtomicB_receive_eq C ℓ encT idOf B0 rs hdr e hlen]
+  commit_eq :=
+    (hooksPRNGBucketMain_fs_fields_congr cka prng (fsAtomicB C ℓ encT idOf B0)
+      (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) rfl rfl Δcka qep tL par t).2.2.1
+  reveal_eq :=
+    (hooksPRNGBucketMain_fs_fields_congr cka prng (fsAtomicB C ℓ encT idOf B0)
+      (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) rfl rfl Δcka qep tL par t).2.2.2
+
+private theorem hooksPRNGBucketForgedHdr_df_localFsAgree_nereds {Pt KC Γ CCoins I KR RSt : Type}
+    [DecidableEq Pt] [DecidableEq I] [SampleableType CCoins]
+    (cka : CKAScheme KC Γ CCoins Pt I) (prng : PRFPRNG KR RSt I (BitVec 256))
+    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
+    (B0 Δcka qep : ℕ) (tL : Option ℕ) (par : Bool) (t : ℕ) :
+    HooksLocalFsAgree ℓ B0
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdr cka prng (fsAtomicB C ℓ encT idOf B0) Δcka qep tL par t)
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdr cka prng
+        (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) Δcka qep tL par t) where
+  startSend_eq :=
+    (hooksPRNGBucketForgedHdr_fs_fields_congr cka prng (fsAtomicB C ℓ encT idOf B0)
+      (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) rfl rfl Δcka qep tL par t).1
+  startRecv_eq :=
+    (hooksPRNGBucketForgedHdr_fs_fields_congr cka prng (fsAtomicB C ℓ encT idOf B0)
+      (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) rfl rfl Δcka qep tL par t).2.1
+  fsSend_eq _ _ _ ss hdr m _ hm := by
+    dsimp only [CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdr,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdrGen,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybridGen]
+    rw [fsAtomicB_send_eq C ℓ encT idOf B0 ss hdr m hm]
+  fsRecv_eq _ _ _ rs hdr e _ hlen := by
+    dsimp only [CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdr,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdrGen,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybridGen]
+    rw [fsAtomicB_receive_eq C ℓ encT idOf B0 rs hdr e hlen]
+  commit_eq :=
+    (hooksPRNGBucketForgedHdr_fs_fields_congr cka prng (fsAtomicB C ℓ encT idOf B0)
+      (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) rfl rfl Δcka qep tL par t).2.2.1
+  reveal_eq :=
+    (hooksPRNGBucketForgedHdr_fs_fields_congr cka prng (fsAtomicB C ℓ encT idOf B0)
+      (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) rfl rfl Δcka qep tL par t).2.2.2
+
+private theorem hooksPRNGBucketHybrid_df_localCKAAgree_nereds {Pt KR RSt K SS RS M E : Type}
+    [DecidableEq Pt] [Zero Pt] [SampleableType K]
+    (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt K)
+    (fs : FSAEADScheme K SS RS (Header Pt) M E)
+    (Δcka qep : ℕ) (tL : Option ℕ) (par : Bool) (t : ℕ) :
+    CryptoVerification.LibsignalSession.Fig8SchemeBridge.HooksLocalCKAAgree
+      (fun P γ t0 => DdhRoleOk P t0 γ)
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybrid (dhSchemeFb Dh) prng fs Δcka qep tL par t)
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybrid (dhScheme Dh) prng fs Δcka qep tL par t) where
+  startSend_eq ctx P t0 γ σ r h ht hSend hOk := by
+    have ht1 : (t0 - 1) + 1 = t0 := Nat.sub_add_cancel ht
+    have hSend' : P.sendsIn ((t0 - 1) + 1) = true := ht1.symm ▸ hSend
+    dsimp only [CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybrid,
+      CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybridGen]
+    have hCoin : ∀ (coins : BitVec 256) (h₁ : CryptoGames.SM.Construction.DeliverForge.PRNGBucketState Pt RSt K Pt) (res : _),
+        res ∈ support ((do
+          let c := (dhScheme Dh).send γ coins
+          match ← CryptoGames.SM.Construction.DeliverForge.rootPRNGBucketHybrid prng (3 + Δcka) tL par t t0
+              (CryptoGames.SM.Construction.DeliverForge.postLeak tL ctx) c.2.2 σ with
+          | none => return none
+          | some (σ', kVal) =>
+            modify fun (s : CryptoGames.SM.Construction.DeliverForge.PRNGBucketState Pt RSt K Pt) =>
+              { s with cache := Function.update s.cache t0 (some (c.2.1, σ', kVal)) }
+            return some (c.1, c.2.1, σ', fs.initSender kVal)).run h₁) →
+        ∀ γ' T σ' ss, res.1 = some (γ', T, σ', ss) → DdhRoleOk P t0 γ' := by
+      intro coins h₁ res hmem γ' T σ' ss hSome
+      have hsnd := dhSchemeFb_send_of_roleOk Dh hOk hSend' coins
+      simp only [StateT.run_bind, mem_support_bind_iff] at hmem
+      obtain ⟨⟨rtRes, _⟩, _, hmem⟩ := hmem
+      rcases rtRes with _ | ⟨σ₁, kVal⟩
+      · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
+        subst hmem; cases hSome
+      · simp only [StateT.run_bind, StateT.run_modify, StateT.run_pure, pure_bind,
+          support_pure, Set.mem_singleton_iff] at hmem
+        subst hmem; cases hSome
+        exact ht1 ▸ hsnd.2
+    simp only [StateT.run_bind, StateT.run_get, pure_bind]
+    refine ⟨?_, fun res hmem γ' T σ' ss hSome => ?_⟩
+    · split_ifs
+      · simp only [StateT.run_bind, StateT.run_modify, pure_bind]
+        cases r with
+        | none =>
+          simp only [StateT.run_bind, StateT.run_lift, bind_assoc, pure_bind]
+          refine bind_congr fun coins => ?_
+          rw [(dhSchemeFb_send_of_roleOk Dh hOk hSend' coins).1]
+        | some coins =>
+          dsimp only
+          rw [(dhSchemeFb_send_of_roleOk Dh hOk hSend' coins).1]
+      · cases r with
+        | none =>
+          simp only [StateT.run_bind, StateT.run_lift, bind_assoc, pure_bind]
+          refine bind_congr fun coins => ?_
+          rw [(dhSchemeFb_send_of_roleOk Dh hOk hSend' coins).1]
+        | some coins =>
+          dsimp only
+          rw [(dhSchemeFb_send_of_roleOk Dh hOk hSend' coins).1]
+    · split_ifs at hmem
+      · rw [StateT.run_bind, StateT.run_modify, pure_bind] at hmem
+        cases r with
+        | none =>
+          rw [StateT.run_bind, StateT.run_lift, bind_assoc, mem_support_bind_iff] at hmem
+          obtain ⟨coins, _, hmem⟩ := hmem
+          rw [pure_bind] at hmem
+          exact hCoin coins _ res hmem γ' T σ' ss hSome
+        | some coins =>
+          exact hCoin coins _ res hmem γ' T σ' ss hSome
+      · cases r with
+        | none =>
+          rw [StateT.run_bind, StateT.run_lift, bind_assoc, mem_support_bind_iff] at hmem
+          obtain ⟨coins, _, hmem⟩ := hmem
+          rw [pure_bind] at hmem
+          exact hCoin coins _ res hmem γ' T σ' ss hSome
+        | some coins =>
+          exact hCoin coins _ res hmem γ' T σ' ss hSome
+  startRecv_eq ctx P t0 γ σ Tn h ht hRecv hOk := by
+    have ht1 : (t0 - 1) + 1 = t0 := Nat.sub_add_cancel ht
+    have hRecv' : P.sendsIn ((t0 - 1) + 1) = false := ht1.symm ▸ hRecv
+    have hrcv := dhSchemeFb_receive_of_roleOk Dh hOk hRecv' Tn
+    have hRecvEq := hrcv.1
+    have hRecvOk : DdhRoleOk P t0 ((dhScheme Dh).receive γ Tn).1 := ht1 ▸ hrcv.2
+    refine ⟨?_, fun res hmem γ' σ' rs hSome => ?_⟩
+    · dsimp only [CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybrid,
+        CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybridGen]
+      simp only [hRecvEq]
+    · dsimp only [CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybrid,
+        CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketHybridGen] at hmem
+      simp only [StateT.run_bind, StateT.run_get, pure_bind] at hmem
+      have hTail :
+          res ∈ support ((do
+            if !(qep + 1 < t0) && (lastLeakGuessAdmissible (3 + Δcka) tL t0 &&
+                (CryptoGames.SM.Construction.DeliverForge.partyPar (CryptoGames.Party.senderOf t0) == par)) then
+              if tL.isSome && t0 = healEpoch tL then
+                return none
+              else if CryptoGames.SM.Construction.DeliverForge.postLeak tL ctx || h.corrRoot.isSome || t < t0 then
+                match CryptoGames.SM.Construction.DeliverForge.resolveCorrRoot h (t0 - 1) σ with
+                | none => return none
+                | some σ1 =>
+                  let kk := (dhScheme Dh).receive γ Tn
+                  let p := prng.up σ1 kk.2
+                  return some (some (kk.1, some p.1, fs.initReceiver p.2))
+              else if t0 = t then
+                let kk := (dhScheme Dh).receive γ Tn
+                match ← CryptoGames.SM.Construction.DeliverForge.liftPBucket (CryptoGames.PRFPRNG.challPrfQuery (State := RSt) (Input := Pt) (Output := K) kk.2) with
+                | none => return none
+                | some (σOut, kOut) =>
+                  return some (some (kk.1, some σOut, fs.initReceiver kOut))
+              else if !(t0 < healEpoch tL) then
+                let kk := (dhScheme Dh).receive γ Tn
+                let kOut ← CryptoGames.SM.Construction.DeliverForge.lookupPRNGBucketF t0 kk.2
+                return some (some (kk.1, none, fs.initReceiver kOut))
+              else
+                return some none
+            else
+              return some none).run h) → DdhRoleOk P t0 γ' := by
+        intro hmem'
+        split_ifs at hmem'
+        · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem'
+          subst hmem'; simp at hSome
+        · rcases hR : CryptoGames.SM.Construction.DeliverForge.resolveCorrRoot h (t0 - 1) σ with _ | σ1
+          · simp only [hR, StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem'
+            subst hmem'; simp at hSome
+          · simp only [hR, StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem'
+            subst hmem'; cases hSome; exact hRecvOk
+        · simp only [StateT.run_bind, CryptoGames.SM.Construction.DeliverForge.liftPBucket,
+            StateT.run_lift, bind_assoc, pure_bind, mem_support_bind_iff] at hmem'
+          obtain ⟨ans, _, hmem'⟩ := hmem'
+          rcases ans with _ | ⟨σOut, kOut⟩
+          · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem'
+            subst hmem'; simp at hSome
+          · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem'
+            subst hmem'; cases hSome; exact hRecvOk
+        · simp only [StateT.run_bind, mem_support_bind_iff] at hmem'
+          obtain ⟨⟨kOut, _⟩, _, hmem'⟩ := hmem'
+          simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem'
+          subst hmem'; cases hSome; exact hRecvOk
+        · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem'
+          subst hmem'; simp at hSome
+        · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem'
+          subst hmem'; simp at hSome
+      rcases hc : h.cache t0 with _ | ⟨tCached, σc, kVal⟩
+      · simp only [hc] at hmem; exact hTail hmem
+      · by_cases hEq : tCached = Tn
+        · simp only [hc, hEq, ↓reduceIte, StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
+          subst hmem; cases hSome; exact hRecvOk
+        · simp only [hc, hEq, ↓reduceIte] at hmem; exact hTail hmem
+  fsSend_eq := rfl
+  fsRecv_eq := rfl
+  commit_eq _ _ _ _ := ⟨rfl, rfl⟩
+  reveal_eq := rfl
+
+private theorem hooksPRNGBucketMain_df_localCKAAgree_nereds {Pt KR RSt K SS RS M E : Type}
+    [DecidableEq Pt] [Zero Pt] [SampleableType K]
+    (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt K)
+    (fs : FSAEADScheme K SS RS (Header Pt) M E)
+    (Δcka qep : ℕ) (tL : Option ℕ) (par : Bool) (t : ℕ) :
+    CryptoVerification.LibsignalSession.Fig8SchemeBridge.HooksLocalCKAAgree
+      (fun P γ t0 => DdhRoleOk P t0 γ)
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain (dhSchemeFb Dh) prng fs Δcka qep tL par t)
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain (dhScheme Dh) prng fs Δcka qep tL par t) where
+  startSend_eq := (hooksPRNGBucketHybrid_df_localCKAAgree_nereds Dh prng fs Δcka qep tL par t).startSend_eq
+  startRecv_eq ctx P t0 γ σ Tn h ht hRecv hOk := by
+    have ht1 : (t0 - 1) + 1 = t0 := Nat.sub_add_cancel ht
+    have hRecv' : P.sendsIn ((t0 - 1) + 1) = false := ht1.symm ▸ hRecv
+    have hrcv := dhSchemeFb_receive_of_roleOk Dh hOk hRecv' Tn
+    have hRecvEq := hrcv.1
+    have hRecvOk : DdhRoleOk P t0 ((dhScheme Dh).receive γ Tn).1 := ht1 ▸ hrcv.2
+    refine ⟨?_, fun res hmem γ' σ' rs hSome => ?_⟩
+    · dsimp only [CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain,
+        CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMainGen]
+      simp only [hRecvEq]
+    · dsimp only [CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMain,
+        CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketMainGen] at hmem
+      simp only [StateT.run_bind, StateT.run_get, pure_bind] at hmem
+      rcases hc : h.cache t0 with _ | ⟨tCached, σc, kVal⟩
+      · simp only [hc] at hmem
+        split_ifs at hmem <;>
+          (simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem;
+           subst hmem; simp at hSome)
+      · by_cases hEq : tCached = Tn
+        · simp only [hc, hEq, ↓reduceIte, StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
+          subst hmem; cases hSome; exact hRecvOk
+        · simp only [hc, hEq, ↓reduceIte] at hmem
+          split_ifs at hmem <;>
+            (simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem;
+             subst hmem; simp at hSome)
+  fsSend_eq := rfl
+  fsRecv_eq := rfl
+  commit_eq _ _ _ _ := ⟨rfl, rfl⟩
+  reveal_eq := rfl
+
+private theorem hooksPRNGBucketForgedHdr_df_localCKAAgree_nereds {Pt KR RSt K SS RS M E : Type}
+    [DecidableEq Pt] [Zero Pt] [SampleableType K]
+    (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt K)
+    (fs : FSAEADScheme K SS RS (Header Pt) M E)
+    (Δcka qep : ℕ) (tL : Option ℕ) (par : Bool) (t : ℕ) :
+    CryptoVerification.LibsignalSession.Fig8SchemeBridge.HooksLocalCKAAgree
+      (fun P γ t0 => DdhRoleOk P t0 γ)
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdr (dhSchemeFb Dh) prng fs Δcka qep tL par t)
+      (CryptoGames.SM.Construction.DeliverForge.hooksPRNGBucketForgedHdr (dhScheme Dh) prng fs Δcka qep tL par t) where
+  startSend_eq := (hooksPRNGBucketHybrid_df_localCKAAgree_nereds Dh prng fs Δcka qep tL par t).startSend_eq
+  startRecv_eq := (hooksPRNGBucketHybrid_df_localCKAAgree_nereds Dh prng fs Δcka qep tL par t).startRecv_eq
+  fsSend_eq := rfl
+  fsRecv_eq := rfl
+  commit_eq _ _ _ _ := ⟨rfl, rfl⟩
+  reveal_eq := rfl
+
+private lemma badSendMsgDF_query_bind_step_nereds {St Msg Coins C α : Type} (Pmsg : Msg → Bool)
+    (qy : (unifSpec + CryptoGames.SM.specDF St Msg Coins C).Domain)
+    (mx : (unifSpec + CryptoGames.SM.specDF St Msg Coins C).Range qy →
+      CryptoGames.SM.Construction.DeliverForge.AdversaryCompDF St Msg Coins C α)
+    (h : IsQueryBoundP
+      ((liftM (OracleSpec.query qy) : OracleComp (unifSpec + CryptoGames.SM.specDF St Msg Coins C) _) >>= mx)
+      (fun t => badSendMsgDF (St := St) (Coins := Coins) (C := C) Pmsg t = true) 0) :
+    badSendMsgDF (St := St) (Coins := Coins) (C := C) Pmsg qy = false ∧
+      ∀ u, IsQueryBoundP (mx u)
+        (fun t => badSendMsgDF (St := St) (Coins := Coins) (C := C) Pmsg t = true) 0 := by
+  rw [isQueryBoundP_query_bind_iff] at h
+  rcases h with ⟨hq0, hmx⟩
+  have hbf : badSendMsgDF (St := St) (Coins := Coins) (C := C) Pmsg qy = false :=
+    Bool.eq_false_iff.mpr (hq0.resolve_right (by omega))
+  refine ⟨hbf, fun u => ?_⟩
+  have hu := hmx u; simp only [hbf, Bool.false_eq_true, ↓reduceIte] at hu; exact hu
+
+private lemma badSendMsgDF_inl_to_badSendMsg_nereds {St Msg Coins C : Type} (Pmsg : Msg → Bool)
+    (t5 : (CryptoGames.SM.spec St Msg Coins C).Domain)
+    (h : badSendMsgDF (St := St) (Coins := Coins) (C := C) Pmsg (.inr (.inl t5)) = false) :
+    CryptoGames.LibsignalSM.Proofs.SessionShort.badSendMsg (St := St) (Coins := Coins) (C := C) Pmsg (.inr t5) = false := by
+  rcases t5 with (((⟨P, m, r⟩ | ⟨P, m₀, m₁, r⟩) | ⟨P, c⟩) | ⟨P, c⟩) | P <;> exact h
+
+private theorem implEDFPaperBucketRaw_localFs_eq_nereds {Pt ι : Type} [DecidableEq Pt] {TSpec : OracleSpec.{0, 0} ι}
+    {HS Γ RSt CCoins γV σV : Type} {ℓ B0 B_q q' Δ qep : ℕ} {cfg : Config (LibsignalMsgPublicPart × Plain ℓ)}
+    {hk₁ hk₂ : Hooks TSpec HS Γ Pt RSt (RatchetSenderState (BitVec 256))
+      (RatchetReceiverState (BitVec 256) (BitVec 256)) (LibsignalMsgPublicPart × Plain ℓ)
+      (ℕ × LibsignalCiphertextWithSalt32) CCoins γV σV
+      (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))}
+    (hAg : HooksLocalFsAgree ℓ B0 hk₁ hk₂) (hVRHk : HooksVRInv (RSReachB maxForwardJumps) hk₂)
+    (hB0 : (B_q + 1) * (maxForwardJumps + 1) ≤ B0)
+    (es : EState (VP γV Pt σV (RatchetSenderState (BitVec 256))
+      (RatchetReceiverState (BitVec 256) (BitVec 256)))
+      (LibsignalMsgPublicPart × Plain ℓ) (Header Pt × (ℕ × LibsignalCiphertextWithSalt32)) HS)
+    (t_sm : (CryptoGames.SM.Construction.DeliverForge.specDF (PartyState Γ Pt RSt (RatchetSenderState (BitVec 256))
+      (RatchetReceiverState (BitVec 256) (BitVec 256)))
+      (LibsignalMsgPublicPart × Plain ℓ) CCoins (Header Pt × (ℕ × LibsignalCiphertextWithSalt32))).Domain)
+    (hBad : badSendMsgDF
+      (St := PartyState Γ Pt RSt (RatchetSenderState (BitVec 256))
+        (RatchetReceiverState (BitVec 256) (BitVec 256)))
+      (Coins := CCoins) (C := Header Pt × (ℕ × LibsignalCiphertextWithSalt32))
+      (fun m => atomicShortPubB m.1) (.inr t_sm) = false)
+    (hVR : SMVRInv (RSReachB maxForwardJumps) B_q (q' + 1) es.g) :
+    (CryptoGames.SM.Construction.DeliverForge.implEDFPaperBucketRaw hk₁ Δ qep maxForwardJumps cfg (.inr t_sm)).run es =
+      (CryptoGames.SM.Construction.DeliverForge.implEDFPaperBucketRaw hk₂ Δ qep maxForwardJumps cfg (.inr t_sm)).run es := by
+  have hkB : (B_q - (q' + 1) + 1) * (maxForwardJumps + 1) ≤ B0 :=
+    (Nat.mul_le_mul_right _ (Nat.add_le_add_right (Nat.sub_le _ _) 1)).trans hB0
+  rcases t_sm with t5 | ⟨P, c, c'⟩
+  · have hBad5 := badSendMsgDF_inl_to_badSendMsg_nereds (fun m => atomicShortPubB m.1) t5 hBad
+    rcases t5 with (((⟨P, m, r⟩ | ⟨P, m₀, m₁, r⟩) | ⟨P, c⟩) | ⟨P, c⟩) | P
+    · change (CryptoGames.SM.Construction.DeliverForge.transmitEBucket hk₁ Δ qep (P, m, r)).run es =
+        (CryptoGames.SM.Construction.DeliverForge.transmitEBucket hk₂ Δ qep (P, m, r)).run es
+      unfold CryptoGames.SM.Construction.DeliverForge.transmitEBucket
+      simp only [StateT.run_bind, StateT.run_get, pure_bind]
+      by_cases hab : (es.abort || es.g.win) = true
+      · simp [hab]
+      · simp only [hab, Bool.false_eq_true, ↓reduceIte]
+        rcases es.g.epMgmt Δ qep P r.isSome with _ | s₁
+        · rfl
+        · have hm : atomicShortPubB m.1 = true :=
+            badSendMsg_transmit_false
+              (ok := fun (x : LibsignalMsgPublicPart × Plain ℓ) => atomicShortPubB x.1) hBad5
+          simp only [run_liftH_bind]
+          exact congrArg (· >>= _) (vSend_localFs_eq hAg s₁ P (s₁.st P) m none r hm es.h)
+    · rfl
+    · change (deliverE hk₁ maxForwardJumps cfg (P, c)).run es =
+        (deliverE hk₂ maxForwardJumps cfg (P, c)).run es
+      have hCommit : commitE hk₁ = commitE hk₂ := by unfold commitE; rw [hAg.commit_eq]
+      unfold deliverE
+      simp only [StateT.run_bind, StateT.run_get, pure_bind]
+      by_cases hab : (es.abort || es.g.win) = true
+      · simp [hab]
+      · simp only [hab, Bool.false_eq_true, ↓reduceIte]
+        rcases es.g.inTransit P.other c with _ | r
+        · rfl
+        · simp only [run_liftH_bind,
+            vRecv_localFs_eq hAg hVRHk hkB es.g P (es.g.st P) c (some r) es.h (hVR P), hCommit]
+    · change (injectE hk₁ Δ qep cfg (P, c)).run es =
+        (injectE hk₂ Δ qep cfg (P, c)).run es
+      have hCommit : commitE hk₁ = commitE hk₂ := by unfold commitE; rw [hAg.commit_eq]
+      unfold injectE
+      simp only [StateT.run_bind, StateT.run_get, pure_bind]
+      by_cases href :
+          (es.abort || es.g.win || (es.g.inTransit P.other c).isSome || !(es.g.safeInj Δ)) = true
+      · simp [href]
+      · simp only [href, Bool.false_eq_true, ↓reduceIte, run_liftH_bind,
+          vRecv_localFs_eq hAg hVRHk hkB es.g P (es.g.st P) c none es.h (hVR P), hCommit]
+    · change (CryptoGames.SM.Construction.DeliverForge.corrEPaperBucket hk₁ P).run es =
+        (CryptoGames.SM.Construction.DeliverForge.corrEPaperBucket hk₂ P).run es
+      unfold CryptoGames.SM.Construction.DeliverForge.corrEPaperBucket; rw [hAg.reveal_eq]
+  · change (CryptoGames.SM.Construction.DeliverForge.deliverForgeE hk₁ Δ qep cfg (P, c, c')).run es =
+      (CryptoGames.SM.Construction.DeliverForge.deliverForgeE hk₂ Δ qep cfg (P, c, c')).run es
+    have hCommit : commitE hk₁ = commitE hk₂ := by unfold commitE; rw [hAg.commit_eq]
+    unfold CryptoGames.SM.Construction.DeliverForge.deliverForgeE; simp only [StateT.run_bind, StateT.run_get, pure_bind]
+    by_cases hab : (es.abort || es.g.win) = true
+    · simp [hab]
+    · simp only [hab, Bool.false_eq_true, ↓reduceIte]
+      rcases es.g.inTransit P.other c with _ | r
+      · rfl
+      · dsimp only; split_ifs
+        · rfl
+        · simp only [run_liftH_bind,
+            vRecv_localFs_eq hAg hVRHk hkB es.g P (es.g.st P) c' none es.h (hVR P), hCommit]
+
+private theorem simulateQ_implEDFPaperBucketMode_localFs_eq_nereds {Pt ι : Type} [DecidableEq Pt] {TSpec : OracleSpec.{0, 0} ι}
+    {HS Γ RSt CCoins γV σV α : Type} {ℓ L B0 B_q q Δ qep : ℕ}
+    {cfg : Config (LibsignalMsgPublicPart × Plain ℓ)}
+    (gMain : Bool) (isHonest : HS → Header Pt → Bool)
+    {hk₁ hk₂ : Hooks TSpec HS Γ Pt RSt (RatchetSenderState (BitVec 256))
+      (RatchetReceiverState (BitVec 256) (BitVec 256)) (LibsignalMsgPublicPart × Plain ℓ)
+      (ℕ × LibsignalCiphertextWithSalt32) CCoins γV σV
+      (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))}
+    (hAg : HooksLocalFsAgree ℓ B0 hk₁ hk₂) (hVRHk : HooksVRInv (RSReachB maxForwardJumps) hk₂)
+    (hB0 : (B_q + 1) * (maxForwardJumps + 1) ≤ B0)
+    {oa : CryptoGames.SM.Construction.DeliverForge.AdversaryCompDF (PartyState Γ Pt RSt (RatchetSenderState (BitVec 256))
+      (RatchetReceiverState (BitVec 256) (BitVec 256)))
+      (LibsignalMsgPublicPart × Plain ℓ) CCoins (Header Pt × (ℕ × LibsignalCiphertextWithSalt32)) α}
+    (hoa : oa.IsQueryBoundP (ReductionDsl.isGameQuery (G := CryptoGames.SM.Construction.DeliverForge.specDF
+      (PartyState Γ Pt RSt (RatchetSenderState (BitVec 256))
+        (RatchetReceiverState (BitVec 256) (BitVec 256)))
+      (LibsignalMsgPublicPart × Plain ℓ) CCoins (Header Pt × (ℕ × LibsignalCiphertextWithSalt32)))) q)
+    (hSendOk : IsQueryBoundP oa (fun t => badSendMsgDF
+      (St := PartyState Γ Pt RSt (RatchetSenderState (BitVec 256))
+        (RatchetReceiverState (BitVec 256) (BitVec 256)))
+      (Coins := CCoins) (C := Header Pt × (ℕ × LibsignalCiphertextWithSalt32))
+      (fun m => atomicShortPubB m.1) t = true) 0)
+    (es : EState (VP γV Pt σV (RatchetSenderState (BitVec 256))
+      (RatchetReceiverState (BitVec 256) (BitVec 256)))
+      (LibsignalMsgPublicPart × Plain ℓ) (Header Pt × (ℕ × LibsignalCiphertextWithSalt32)) HS)
+    (winEp : Option ℕ)
+    (hInv : SMEngineInv L B_q q es.g) (hVR : SMVRInv (RSReachB maxForwardJumps) B_q q es.g) :
+    (simulateQ (CryptoGames.SM.Construction.DeliverForge.implEDFPaperBucketMode hk₁ Δ qep maxForwardJumps cfg gMain isHonest) oa).run (es, winEp) =
+      (simulateQ (CryptoGames.SM.Construction.DeliverForge.implEDFPaperBucketMode hk₂ Δ qep maxForwardJumps cfg gMain isHonest) oa).run (es, winEp) := by
+  have hLift : ∀ {M' : Type → Type} [Monad M'] {σ' α' : Type} (m : StateT σ' M' α') (s : σ'),
+      (liftM m : StateT σ' M' α').run s = m.run s := fun _ _ => rfl
+  induction oa using OracleComp.inductionOn generalizing q es winEp with
+  | pure _ => simp only [simulateQ_pure]
+  | query_bind qy mx ih =>
+    obtain ⟨hBadQ, hBadMx⟩ := badSendMsgDF_query_bind_step_nereds (fun m => atomicShortPubB m.1) qy mx hSendOk
+    rw [isQueryBoundP_query_bind_iff] at hoa
+    rw [simulateQ_query_bind, simulateQ_query_bind, StateT.run_bind, StateT.run_bind, hLift, hLift]
+    simp only [OracleQuery.input_query, OracleQuery.cont_query]
+    rcases qy with n | t_sm
+    · have hq0 : ¬ ReductionDsl.isGameQuery (G := CryptoGames.SM.Construction.DeliverForge.specDF
+          (PartyState Γ Pt RSt (RatchetSenderState (BitVec 256))
+            (RatchetReceiverState (BitVec 256) (BitVec 256)))
+          (LibsignalMsgPublicPart × Plain ℓ) CCoins
+          (Header Pt × (ℕ × LibsignalCiphertextWithSalt32))) (Sum.inl n) := by
+        simp [ReductionDsl.isGameQuery]
+      have hmx : ∀ u, (mx u).IsQueryBoundP _ q := fun u => by
+        have hu := hoa.2 u; simp only [hq0, ↓reduceIte] at hu; exact hu
+      have hInl₁ : (CryptoGames.SM.Construction.DeliverForge.implEDFPaperBucketRaw hk₁ Δ qep maxForwardJumps cfg (.inl n)).run es =
+          (coinsE n).run es := rfl
+      have hInl₂ : (CryptoGames.SM.Construction.DeliverForge.implEDFPaperBucketRaw hk₂ Δ qep maxForwardJumps cfg (.inl n)).run es =
+          (coinsE n).run es := rfl
+      cases gMain <;>
+        (unfold CryptoGames.SM.Construction.DeliverForge.implEDFPaperBucketMode
+           CryptoGames.SM.Construction.DeliverForge.withWinEpDFMode
+           CryptoGames.SM.Construction.DeliverForge.withWinEpDF;
+         simp only [↓reduceIte, Bool.false_eq_true, StateT.run_mk];
+         rw [hInl₁, hInl₂];
+         simp only [coinsE, StateT.run_lift, bind_assoc, pure_bind];
+         exact bind_congr fun u => ih u (hmx u) (hBadMx u) es _ hInv hVR)
+    · have hq1 : ReductionDsl.isGameQuery (G := CryptoGames.SM.Construction.DeliverForge.specDF
+          (PartyState Γ Pt RSt (RatchetSenderState (BitVec 256))
+            (RatchetReceiverState (BitVec 256) (BitVec 256)))
+          (LibsignalMsgPublicPart × Plain ℓ) CCoins
+          (Header Pt × (ℕ × LibsignalCiphertextWithSalt32))) (Sum.inr t_sm) := by
+        simp [ReductionDsl.isGameQuery]
+      rcases q with _ | q'
+      · exact absurd (hoa.1.resolve_left (not_not.mpr hq1)) (by omega)
+      have hmx : ∀ u, (mx u).IsQueryBoundP _ q' := fun u => by
+        have hu := hoa.2 u; simp only [hq1, ↓reduceIte] at hu; exact hu
+      have hRaw := implEDFPaperBucketRaw_localFs_eq_nereds (Δ := Δ) (qep := qep) (cfg := cfg) hAg hVRHk hB0 es t_sm hBadQ hVR
+      cases gMain <;>
+        (unfold CryptoGames.SM.Construction.DeliverForge.implEDFPaperBucketMode
+           CryptoGames.SM.Construction.DeliverForge.withWinEpDFMode
+           CryptoGames.SM.Construction.DeliverForge.withWinEpDF;
+         simp only [↓reduceIte, Bool.false_eq_true, StateT.run_mk];
+         simp only [bind_assoc, hRaw];
+         refine OracleComp.bind_congr_of_forall_mem_support _ fun ⟨u, es'⟩ hr => ?_;
+         simp only [pure_bind];
+         exact ih u (hmx u) (hBadMx u) es' _
+           (implEDFPaperBucketRaw_inv hk₂ cfg es t_sm hInv (u, es') hr)
+           (implEDFPaperBucketRaw_vrInv hk₂ hVRHk cfg es t_sm hInv hVR (u, es') hr))
+
+private theorem implEDFPaperBucketRaw_localCKA_eq_nereds {Pt ι : Type} [DecidableEq Pt]
+    {TSpec : OracleSpec.{0, 0} ι} {HS RSt SS RS M E σV ssV rsV : Type}
+    [DecidableEq M] [DecidableEq E] [Inhabited E]
+    {hk₁ hk₂ : Hooks TSpec HS (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt RSt SS RS M E
+      (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) σV ssV rsV}
+    (hAg : CryptoVerification.LibsignalSession.Fig8SchemeBridge.HooksLocalCKAAgree
+      (fun P γ t => DdhRoleOk P t γ) hk₁ hk₂)
+    (Δ qep maxSkip : ℕ) (cfg : Config M)
+    (es : EState (VP (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt σV ssV rsV) M (Header Pt × E) HS)
+    (t_sm : (CryptoGames.SM.Construction.DeliverForge.specDF (PartyState (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt RSt SS RS)
+      M (BitVec 256) (Header Pt × E)).Domain)
+    (hEs : CryptoVerification.LibsignalSession.Fig8SchemeBridge.AllPartiesInv es) :
+    (CryptoGames.SM.Construction.DeliverForge.implEDFPaperBucketRaw hk₁ Δ qep maxSkip cfg (.inr t_sm)).run es =
+      (CryptoGames.SM.Construction.DeliverForge.implEDFPaperBucketRaw hk₂ Δ qep maxSkip cfg (.inr t_sm)).run es ∧
+    ∀ res ∈ support ((CryptoGames.SM.Construction.DeliverForge.implEDFPaperBucketRaw hk₂ Δ qep maxSkip cfg (.inr t_sm)).run es),
+      CryptoVerification.LibsignalSession.Fig8SchemeBridge.AllPartiesInv res.2 := by
+  rcases t_sm with t5 | ⟨P, c, c'⟩
+  · rcases t5 with (((⟨P, m, r⟩ | ⟨P, m₀, m₁, r⟩) | ⟨P, c⟩) | ⟨P, c⟩) | P
+    · change (CryptoGames.SM.Construction.DeliverForge.transmitEBucket hk₁ Δ qep (P, m, r)).run es =
+          (CryptoGames.SM.Construction.DeliverForge.transmitEBucket hk₂ Δ qep (P, m, r)).run es ∧
+        ∀ res ∈ support ((CryptoGames.SM.Construction.DeliverForge.transmitEBucket hk₂ Δ qep (P, m, r)).run es),
+          CryptoVerification.LibsignalSession.Fig8SchemeBridge.AllPartiesInv res.2
+      rw [transmitEBucket_eq_transmitE, transmitEBucket_eq_transmitE]
+      exact implE_localCKA_eq hAg Δ qep maxSkip cfg noDoomPolicy es (.inl (.inl (.inl (.inl (P, m, r))))) hEs
+    · refine ⟨rfl, fun res hmem => ?_⟩
+      change res ∈ support ((CryptoGames.SM.Construction.DeliverForge.challEBucket (P, m₀, m₁, r)).run es) at hmem
+      dsimp only [CryptoGames.SM.Construction.DeliverForge.challEBucket] at hmem
+      rw [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
+      subst hmem; exact hEs
+    · exact implE_localCKA_eq hAg Δ qep maxSkip cfg noDoomPolicy es (.inl (.inl (.inr (P, c)))) hEs
+    · exact implE_localCKA_eq hAg Δ qep maxSkip cfg noDoomPolicy es (.inl (.inr (P, c))) hEs
+    · change (CryptoGames.SM.Construction.DeliverForge.corrEPaperBucket hk₁ P).run es =
+          (CryptoGames.SM.Construction.DeliverForge.corrEPaperBucket hk₂ P).run es ∧
+        ∀ res ∈ support ((CryptoGames.SM.Construction.DeliverForge.corrEPaperBucket hk₂ P).run es),
+          CryptoVerification.LibsignalSession.Fig8SchemeBridge.AllPartiesInv res.2
+      unfold CryptoGames.SM.Construction.DeliverForge.corrEPaperBucket abortE
+      simp only [StateT.run_bind, StateT.run_get, pure_bind, hAg.reveal_eq]
+      refine ⟨trivial, fun res hmem => ?_⟩
+      by_cases href : (es.abort || es.g.win || !(es.g.corrAllowedPaper P)) = true
+      · simp only [href, ↓reduceIte, StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
+        subst hmem; exact hEs
+      · simp only [href, Bool.false_eq_true, ↓reduceIte, run_liftH_bind, mem_support_bind_iff] at hmem
+        obtain ⟨⟨revRes, _⟩, _, hmem⟩ := hmem
+        rcases revRes with _ | stP <;>
+          (simp only [StateT.run_bind, StateT.run_modify, StateT.run_pure, pure_bind,
+             support_pure, Set.mem_singleton_iff] at hmem; subst hmem; intro Q; exact hEs Q)
+  · change (CryptoGames.SM.Construction.DeliverForge.deliverForgeE hk₁ Δ qep cfg (P, c, c')).run es =
+        (CryptoGames.SM.Construction.DeliverForge.deliverForgeE hk₂ Δ qep cfg (P, c, c')).run es ∧
+      ∀ res ∈ support ((CryptoGames.SM.Construction.DeliverForge.deliverForgeE hk₂ Δ qep cfg (P, c, c')).run es),
+        CryptoVerification.LibsignalSession.Fig8SchemeBridge.AllPartiesInv res.2
+    unfold CryptoGames.SM.Construction.DeliverForge.deliverForgeE abortE; simp only [StateT.run_bind, StateT.run_get, pure_bind]
+    by_cases hab : (es.abort || es.g.win) = true
+    · simp only [hab, ↓reduceIte, StateT.run_pure, support_pure, Set.mem_singleton_iff]
+      exact ⟨trivial, fun _ h => by subst h; exact hEs⟩
+    · simp only [hab, Bool.false_eq_true, ↓reduceIte]
+      rcases htr : es.g.inTransit P.other c with _ | r
+      · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff]
+        exact ⟨trivial, fun _ h => by subst h; exact hEs⟩
+      · by_cases hchk : ((es.g.inTransit P.other c').isSome || es.g.comp.contains r.pos || c.1 != c'.1) = true
+        · simp only [hchk, ↓reduceIte, StateT.run_pure, support_pure, Set.mem_singleton_iff]
+          exact ⟨trivial, fun _ h => by subst h; exact hEs⟩
+        · have hvr := vRecv_localCKA_eq hAg es.g P (es.g.st P) c' none es.h (hEs P)
+          simp only [hchk, Bool.false_eq_true, ↓reduceIte, run_liftH_bind, hvr.1]
+          refine ⟨OracleComp.bind_congr_of_forall_mem_support _ fun ⟨vrRes, h'⟩ hvrMem => ?_,
+            fun res hmem => ?_⟩
+          · rcases vrRes with _ | _ | ⟨st', t', i', m'⟩
+            · rfl
+            · rfl
+            · by_cases hqep : (decide (qep + 1 < t') || t' != r.pos.epoch) = true
+              · simp [hqep]
+              · simp only [hqep, Bool.false_eq_true, ↓reduceIte]
+                by_cases htriv : es.g.trivial Δ ⟨P.other, t', i'⟩ = true
+                · simp only [htriv, ↓reduceIte, StateT.run_bind]
+                  rw [(commitE_localCKA_eq hAg es.g P (es.g.st P) st' ⟨P.other, t', i'⟩
+                    { es with h := h' } hEs (hvr.2 _ hvrMem st' t' i' m' rfl)).1]
+                · simp [htriv]
+          · rw [mem_support_bind_iff] at hmem; obtain ⟨⟨vrRes, h'⟩, hvrMem, hmem⟩ := hmem
+            rcases vrRes with _ | _ | ⟨st', t', i', m'⟩
+            · simp only [StateT.run_bind, StateT.run_modify, StateT.run_pure, pure_bind,
+                support_pure, Set.mem_singleton_iff] at hmem; subst hmem; exact hEs
+            · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
+              subst hmem; exact hEs
+            · by_cases hqep : (decide (qep + 1 < t') || t' != r.pos.epoch) = true
+              · simp only [hqep, ↓reduceIte, StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
+                subst hmem; exact hEs
+              · simp only [hqep, Bool.false_eq_true, ↓reduceIte] at hmem
+                by_cases htriv : es.g.trivial Δ ⟨P.other, t', i'⟩ = true
+                · simp only [htriv, ↓reduceIte, StateT.run_bind, mem_support_bind_iff] at hmem
+                  obtain ⟨⟨cmRes, _⟩, hcmMem, hmem⟩ := hmem
+                  have hcm := (commitE_localCKA_eq hAg es.g P (es.g.st P) st' ⟨P.other, t', i'⟩
+                    { es with h := h' } hEs (hvr.2 _ hvrMem st' t' i' m' rfl)).2 _ hcmMem
+                  rcases cmRes with _ | s₁
+                  · simp only [StateT.run_pure, support_pure, Set.mem_singleton_iff] at hmem
+                    subst hmem; intro Q; dsimp [CryptoVerification.LibsignalSession.Fig8SchemeBridge.AllPartiesInv] at *
+                    rw [hcm.1]; exact hEs Q
+                  · simp only [StateT.run_bind, StateT.run_modify, StateT.run_pure, pure_bind,
+                      support_pure, Set.mem_singleton_iff] at hmem
+                    subst hmem; exact hcm.2 s₁ rfl
+                · simp only [htriv, Bool.false_eq_true, ↓reduceIte] at hmem
+                  split_ifs at hmem <;>
+                    (simp only [StateT.run_bind, StateT.run_modify, StateT.run_pure, pure_bind,
+                       support_pure, Set.mem_singleton_iff] at hmem; subst hmem; exact hEs)
+
+private theorem simulateQ_implEDFPaperBucketMode_localCKA_eq_nereds {Pt ι : Type} [DecidableEq Pt]
+    {TSpec : OracleSpec.{0, 0} ι} {HS RSt SS RS M E σV ssV rsV α : Type}
+    [DecidableEq M] [DecidableEq E] [Inhabited E]
+    (gMain : Bool) (isHonest : HS → Header Pt → Bool)
+    {hk₁ hk₂ : Hooks TSpec HS (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt RSt SS RS M E
+      (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) σV ssV rsV}
+    (hAg : CryptoVerification.LibsignalSession.Fig8SchemeBridge.HooksLocalCKAAgree
+      (fun P γ t => DdhRoleOk P t γ) hk₁ hk₂)
+    (Δ qep maxSkip : ℕ) (cfg : Config M)
+    (oa : CryptoGames.SM.Construction.DeliverForge.AdversaryCompDF
+      (PartyState (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt RSt SS RS)
+      M (BitVec 256) (Header Pt × E) α)
+    (es : EState (VP (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt σV ssV rsV) M (Header Pt × E) HS)
+    (winEp : Option ℕ) (hEs : CryptoVerification.LibsignalSession.Fig8SchemeBridge.AllPartiesInv es) :
+    (simulateQ (CryptoGames.SM.Construction.DeliverForge.implEDFPaperBucketMode hk₁ Δ qep maxSkip cfg gMain isHonest) oa).run (es, winEp) =
+      (simulateQ (CryptoGames.SM.Construction.DeliverForge.implEDFPaperBucketMode hk₂ Δ qep maxSkip cfg gMain isHonest) oa).run (es, winEp) := by
+  have hLift : ∀ {M' : Type → Type} [Monad M'] {σ' α' : Type} (m : StateT σ' M' α') (s : σ'),
+      (liftM m : StateT σ' M' α').run s = m.run s := fun _ _ => rfl
+  induction oa using OracleComp.inductionOn generalizing es winEp with
+  | pure _ => simp only [simulateQ_pure]
+  | query_bind qy mx ih =>
+    rw [simulateQ_query_bind, simulateQ_query_bind, StateT.run_bind, StateT.run_bind, hLift, hLift]
+    simp only [OracleQuery.input_query, OracleQuery.cont_query]
+    rcases qy with n | t_sm
+    · have hInl₁ : (CryptoGames.SM.Construction.DeliverForge.implEDFPaperBucketRaw hk₁ Δ qep maxSkip cfg (.inl n)).run es =
+          (coinsE n).run es := rfl
+      have hInl₂ : (CryptoGames.SM.Construction.DeliverForge.implEDFPaperBucketRaw hk₂ Δ qep maxSkip cfg (.inl n)).run es =
+          (coinsE n).run es := rfl
+      cases gMain <;>
+        (unfold CryptoGames.SM.Construction.DeliverForge.implEDFPaperBucketMode
+           CryptoGames.SM.Construction.DeliverForge.withWinEpDFMode
+           CryptoGames.SM.Construction.DeliverForge.withWinEpDF;
+         simp only [↓reduceIte, Bool.false_eq_true, StateT.run_mk];
+         rw [hInl₁, hInl₂];
+         simp only [coinsE, StateT.run_lift, bind_assoc, pure_bind];
+         exact bind_congr fun u => ih u es _ hEs)
+    · have hStep := implEDFPaperBucketRaw_localCKA_eq_nereds hAg Δ qep maxSkip cfg es t_sm hEs
+      cases gMain <;>
+        (unfold CryptoGames.SM.Construction.DeliverForge.implEDFPaperBucketMode
+           CryptoGames.SM.Construction.DeliverForge.withWinEpDFMode
+           CryptoGames.SM.Construction.DeliverForge.withWinEpDF;
+         simp only [↓reduceIte, Bool.false_eq_true, StateT.run_mk];
+         simp only [bind_assoc, hStep.1];
+         refine OracleComp.bind_congr_of_forall_mem_support _ fun ⟨u, es'⟩ hr => ?_;
+         simp only [pure_bind];
+         exact ih u es' _ (hStep.2 (u, es') hr))
+
+private theorem redPRNGAuthDFPaperBucketSplit_dhSchemeFb_eq_nereds {Pt KR RSt K SS RS M E : Type}
+    [DecidableEq Pt] [Zero Pt] [DecidableEq M] [DecidableEq E] [Inhabited E] [SampleableType K]
+    (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt K)
+    (fs : FSAEADScheme K SS RS (Header Pt) M E)
+    (lam : Pt) (Δcka qep : ℕ) (tL : Option ℕ) (par gMain : Bool) (t0 : ℕ)
+    (A : CryptoGames.SM.Construction.DeliverForge.SchemeAdversaryDF (CryptoGames.CKA.DDH.State (BitVec 256) Pt)
+      Pt RSt SS RS M (BitVec 256) E) :
+    CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketSplit (dhSchemeFb Dh) prng fs lam Δcka qep tL par gMain t0 A =
+      CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketSplit (dhScheme Dh) prng fs lam Δcka qep tL par gMain t0 A := by
+  have hInitA : (dhSchemeFb Dh).initA = (dhScheme Dh).initA := rfl
+  have hInitB : (dhSchemeFb Dh).initB = (dhScheme Dh).initB := rfl
+  cases gMain
+  · unfold CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketSplit
+      CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketForgedHdr
+      CryptoGames.SM.Construction.DeliverForge.engRunDFPaperBucketMode
+      CryptoGames.SM.Construction.DeliverForge.initPRNGBucketHybrid
+    simp only [Bool.false_eq_true, ↓reduceIte, hInitA, hInitB, StateT.run_bind, StateT.run_lift, bind_assoc, pure_bind]
+    refine bind_congr fun kc => ?_
+    refine OracleComp.bind_congr_of_forall_mem_support _ fun ⟨rtRes, h₀⟩ _ => ?_
+    rcases rtRes with _ | ⟨σv, kVal⟩
+    · simp [StateT.run_pure]
+    · simp only [StateT.run_pure, pure_bind, bind_assoc]
+      let st₀ : Party → VP (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt (Option RSt) SS RS :=
+        fun
+          | .A => (mkParties ((dhScheme Dh).initA kc) ((dhScheme Dh).initB kc) σv
+              (fs.initSender kVal) (fs.initReceiver kVal)).1
+          | .B => (mkParties ((dhScheme Dh).initA kc) ((dhScheme Dh).initB kc) σv
+              (fs.initSender kVal) (fs.initReceiver kVal)).2
+      have hEs₀ : CryptoVerification.LibsignalSession.Fig8SchemeBridge.AllPartiesInv
+          ({ g := { st := st₀, b := false }, h := h₀ } : EState _ M (Header Pt × E) _) :=
+        localPartyInv_mkParties Dh kc σv (fs.initSender kVal) (fs.initReceiver kVal)
+      exact congrArg (· >>= _) (simulateQ_implEDFPaperBucketMode_localCKA_eq_nereds
+        false CryptoGames.SM.Construction.DeliverForge.isHonestHdrPRNGBucket
+        (hooksPRNGBucketForgedHdr_df_localCKAAgree_nereds Dh prng fs Δcka qep tL par t0)
+        (2 + Δcka) qep fs.maxSkip (CryptoGames.SM.Construction.DeliverForge.bucketAuthCfg Δcka tL par) A _ none hEs₀)
+  · unfold CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketSplit
+      CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketMain
+      CryptoGames.SM.Construction.DeliverForge.engRunDFPaperBucket
+      CryptoGames.SM.Construction.DeliverForge.initPRNGBucketHybrid
+    simp only [↓reduceIte, hInitA, hInitB, StateT.run_bind, StateT.run_lift, bind_assoc, pure_bind]
+    refine bind_congr fun kc => ?_
+    refine OracleComp.bind_congr_of_forall_mem_support _ fun ⟨rtRes, h₀⟩ _ => ?_
+    rcases rtRes with _ | ⟨σv, kVal⟩
+    · simp [StateT.run_pure]
+    · simp only [StateT.run_pure, pure_bind, bind_assoc]
+      let st₀ : Party → VP (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt (Option RSt) SS RS :=
+        fun
+          | .A => (mkParties ((dhScheme Dh).initA kc) ((dhScheme Dh).initB kc) σv
+              (fs.initSender kVal) (fs.initReceiver kVal)).1
+          | .B => (mkParties ((dhScheme Dh).initA kc) ((dhScheme Dh).initB kc) σv
+              (fs.initSender kVal) (fs.initReceiver kVal)).2
+      have hEs₀ : CryptoVerification.LibsignalSession.Fig8SchemeBridge.AllPartiesInv
+          ({ g := { st := st₀, b := false }, h := h₀ } : EState _ M (Header Pt × E) _) :=
+        localPartyInv_mkParties Dh kc σv (fs.initSender kVal) (fs.initReceiver kVal)
+      exact congrArg (· >>= _) (simulateQ_implEDFPaperBucketMode_localCKA_eq_nereds
+        true (fun _ _ => false)
+        (hooksPRNGBucketMain_df_localCKAAgree_nereds Dh prng fs Δcka qep tL par t0)
+        (2 + Δcka) qep fs.maxSkip (CryptoGames.SM.Construction.DeliverForge.bucketAuthCfg Δcka tL par) A _ none hEs₀)
+
+private theorem redPRNGAuthDFPaperBucketSplit_fsAtomicB_eq_lFS_nereds
+    {Pt KC Γ CCoins I KR RSt : Type} [DecidableEq Pt] [DecidableEq I]
+    [SampleableType KC] [SampleableType CCoins]
+    (cka : CKAScheme KC Γ CCoins Pt I) (prng : PRFPRNG KR RSt I (BitVec 256))
+    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
+    (lam : I) (B0 B_q Δcka qep : ℕ) (tL : Option ℕ) (par gMain : Bool) (t0 : ℕ)
+    (hB0 : (B_q + 1) * (maxForwardJumps + 1) ≤ B0)
+    (A : CryptoGames.SM.Construction.DeliverForge.SchemeAdversaryDF Γ Pt RSt
+      (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
+      (LibsignalMsgPublicPart × Plain ℓ) CCoins (ℕ × LibsignalCiphertextWithSalt32))
+    (qAdv : ℕ) (hA : CryptoGames.SM.Construction.DeliverForge.MakesAtMostQueriesDF A qAdv) (hqB : qAdv ≤ B_q)
+    (hSendOk : SendMsgsOkDF (fun m : LibsignalMsgPublicPart × Plain ℓ => atomicShortPubB m.1) A) :
+    CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketSplit cka prng (fsAtomicB C ℓ encT idOf B0)
+        lam Δcka qep tL par gMain t0 A =
+      CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketSplit cka prng
+        (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) lam Δcka qep tL par gMain t0 A := by
+  have hA' : A.IsQueryBoundP (ReductionDsl.isGameQuery (G := CryptoGames.SM.Construction.DeliverForge.specDF
+      (PartyState Γ Pt RSt (RatchetSenderState (BitVec 256))
+        (RatchetReceiverState (BitVec 256) (BitVec 256)))
+      (LibsignalMsgPublicPart × Plain ℓ) CCoins (Header Pt × (ℕ × LibsignalCiphertextWithSalt32)))) qAdv := by
+    refine hA.of_imp fun x hx => ?_; rcases x with _ | _ <;> simp_all [ReductionDsl.isGameQuery]
+  have hS : (fsAtomicB C ℓ encT idOf B0).initSender =
+      (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps).initSender := rfl
+  have hR : (fsAtomicB C ℓ encT idOf B0).initReceiver =
+      (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps).initReceiver := rfl
+  have hms1 : (fsAtomicB C ℓ encT idOf B0).maxSkip = maxForwardJumps := rfl
+  have hms2 : (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps).maxSkip = maxForwardJumps := rfl
+  cases gMain
+  · unfold CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketSplit
+      CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketForgedHdr
+      CryptoGames.SM.Construction.DeliverForge.engRunDFPaperBucketMode
+      CryptoGames.SM.Construction.DeliverForge.initPRNGBucketHybrid
+    simp only [Bool.false_eq_true, ↓reduceIte, hS, hR, hms1, hms2, StateT.run_bind, StateT.run_lift, bind_assoc, pure_bind]
+    refine bind_congr fun kc => ?_
+    refine OracleComp.bind_congr_of_forall_mem_support _ fun ⟨rtRes, h₀⟩ _ => ?_
+    rcases rtRes with _ | ⟨σv, kVal⟩
+    · simp [StateT.run_pure]
+    · simp only [StateT.run_pure, pure_bind, bind_assoc]
+      let st₀ : Party → VP Γ Pt (Option RSt) (RatchetSenderState (BitVec 256))
+          (RatchetReceiverState (BitVec 256) (BitVec 256)) :=
+        fun
+          | .A => (mkParties (cka.initA kc) (cka.initB kc) σv
+              ((lFS C protoSignalCodec ℓ encT idOf maxForwardJumps).initSender kVal)
+              ((lFS C protoSignalCodec ℓ encT idOf maxForwardJumps).initReceiver kVal)).1
+          | .B => (mkParties (cka.initA kc) (cka.initB kc) σv
+              ((lFS C protoSignalCodec ℓ encT idOf maxForwardJumps).initSender kVal)
+              ((lFS C protoSignalCodec ℓ encT idOf maxForwardJumps).initReceiver kVal)).2
+      have hInv₀ : SMEngineInv (B_q + 1) B_q qAdv
+          ({ st := st₀, b := false } : Ctx Γ Pt (Option RSt)
+            (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
+            (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)) :=
+        (CryptoGames.SM.Engine.SMEngineInv.init _ false (Nat.le_refl _) (Nat.mul_le_mul (Nat.le_succ _) (Nat.le_succ _))).mono hqB
+      have hVRHk := hooksPRNGBucketForgedHdr_df_vrInv_lFS_nereds cka prng C ℓ encT idOf Δcka qep tL par t0
+      have hVR₀ : SMVRInv (RSReachB maxForwardJumps) B_q qAdv
+          ({ st := st₀, b := false } : Ctx Γ Pt (Option RSt)
+            (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
+            (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)) := by
+        intro P t₁ v hv
+        cases P <;> simp only [st₀, mkParties] at hv
+        · by_cases ht0 : t₁ = 0
+          · simp only [ht0, ↓reduceIte, Option.some.injEq] at hv; subst hv
+            exact hVRHk.mono (Nat.zero_le _) (Computational.Proofs.ReductionDsl.Fig8Atomic.RSReachB.init
+              ((lAead C protoSignalCodec ℓ encT idOf).movePubPartToAD (lPubOf protoSignalCodec))
+              (lChainPRG C.F) maxForwardJumps kVal)
+          · simp [ht0] at hv
+        · cases hv
+      exact congrArg (· >>= _) (simulateQ_implEDFPaperBucketMode_localFs_eq_nereds
+        (Δ := 2 + Δcka) (qep := qep)
+        (cfg := CryptoGames.SM.Construction.DeliverForge.bucketAuthCfg Δcka tL par)
+        false CryptoGames.SM.Construction.DeliverForge.isHonestHdrPRNGBucket
+        (hooksPRNGBucketForgedHdr_df_localFsAgree_nereds cka prng C ℓ encT idOf B0 Δcka qep tL par t0)
+        hVRHk hB0 hA' hSendOk { g := { st := st₀, b := false }, h := h₀ } none hInv₀ hVR₀)
+  · unfold CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketSplit
+      CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketMain
+      CryptoGames.SM.Construction.DeliverForge.engRunDFPaperBucket
+      CryptoGames.SM.Construction.DeliverForge.initPRNGBucketHybrid
+    simp only [↓reduceIte, hS, hR, hms1, hms2, StateT.run_bind, StateT.run_lift, bind_assoc, pure_bind]
+    refine bind_congr fun kc => ?_
+    refine OracleComp.bind_congr_of_forall_mem_support _ fun ⟨rtRes, h₀⟩ _ => ?_
+    rcases rtRes with _ | ⟨σv, kVal⟩
+    · simp [StateT.run_pure]
+    · simp only [StateT.run_pure, pure_bind, bind_assoc]
+      let st₀ : Party → VP Γ Pt (Option RSt) (RatchetSenderState (BitVec 256))
+          (RatchetReceiverState (BitVec 256) (BitVec 256)) :=
+        fun
+          | .A => (mkParties (cka.initA kc) (cka.initB kc) σv
+              ((lFS C protoSignalCodec ℓ encT idOf maxForwardJumps).initSender kVal)
+              ((lFS C protoSignalCodec ℓ encT idOf maxForwardJumps).initReceiver kVal)).1
+          | .B => (mkParties (cka.initA kc) (cka.initB kc) σv
+              ((lFS C protoSignalCodec ℓ encT idOf maxForwardJumps).initSender kVal)
+              ((lFS C protoSignalCodec ℓ encT idOf maxForwardJumps).initReceiver kVal)).2
+      have hInv₀ : SMEngineInv (B_q + 1) B_q qAdv
+          ({ st := st₀, b := false } : Ctx Γ Pt (Option RSt)
+            (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
+            (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)) :=
+        (CryptoGames.SM.Engine.SMEngineInv.init _ false (Nat.le_refl _) (Nat.mul_le_mul (Nat.le_succ _) (Nat.le_succ _))).mono hqB
+      have hVRHk := hooksPRNGBucketMain_df_vrInv_lFS_nereds cka prng C ℓ encT idOf Δcka qep tL par t0
+      have hVR₀ : SMVRInv (RSReachB maxForwardJumps) B_q qAdv
+          ({ st := st₀, b := false } : Ctx Γ Pt (Option RSt)
+            (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
+            (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)) := by
+        intro P t₁ v hv
+        cases P <;> simp only [st₀, mkParties] at hv
+        · by_cases ht0 : t₁ = 0
+          · simp only [ht0, ↓reduceIte, Option.some.injEq] at hv; subst hv
+            exact hVRHk.mono (Nat.zero_le _) (Computational.Proofs.ReductionDsl.Fig8Atomic.RSReachB.init
+              ((lAead C protoSignalCodec ℓ encT idOf).movePubPartToAD (lPubOf protoSignalCodec))
+              (lChainPRG C.F) maxForwardJumps kVal)
+          · simp [ht0] at hv
+        · cases hv
+      exact congrArg (· >>= _) (simulateQ_implEDFPaperBucketMode_localFs_eq_nereds
+        (Δ := 2 + Δcka) (qep := qep)
+        (cfg := CryptoGames.SM.Construction.DeliverForge.bucketAuthCfg Δcka tL par)
+        true (fun _ _ => false)
+        (hooksPRNGBucketMain_df_localFsAgree_nereds cka prng C ℓ encT idOf B0 Δcka qep tL par t0)
+        hVRHk hB0 hA' hSendOk { g := { st := st₀, b := false }, h := h₀ } none hInv₀ hVR₀)
+
+
+private theorem redPRNGAuthDFPaperBucketSplitProg_advantage_atomic_nereds {Pt : Type}
+    [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt)
+    (Δcka qep q : ℕ) (tL : Option ℕ) (par gMain : Bool) (t0 : ℕ)
+    (A : CryptoGames.SM.Construction.DeliverForge.SchemeAdversaryDF
+      (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt (BitVec 256)
+      (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
+      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32))
+    (hqA : CryptoGames.SM.Construction.DeliverForge.MakesAtMostQueriesDF A q) :
+    let B0 := (q + 1) * (maxForwardJumps + 1)
+    PRFPRNG.advantage (rootPRNG C.F encPt)
+      ((CryptoGames.SM.Construction.redPRNGAuthDFPaperBucketSplitProg (q + 1) B0 Δcka qep maxForwardJumps tL par gMain t0 :
+        CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
+          (prngIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
+            (BitVec 256) (BitVec 256) (BitVec 256)
+            (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
+            (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)
+            ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ Pt) ($ᵗ (BitVec 256)))
+          _ _ .unit .unit .bool .bool).eval (fun _ => A) ()) =
+    PRFPRNG.advantage (rootPRNG C.F encPt)
+      (CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketSplit (dhSchemeFb Dh) (rootPRNG C.F encPt)
+        (fsAtomicB C ℓ encT idOf B0) lam Δcka qep tL par gMain t0 A) := by
+  intro B0
+  exact CryptoGames.SM.Construction.redPRNGAuthDFPaperBucketSplitProg_advantage_vr
+    (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsAtomicB C ℓ encT idOf B0)
+    (q + 1) B0 q Δcka qep tL par gMain t0
+    rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
+    (hooksPRNGBucketHybrid_df_vrInv_fsAtomicB_nereds Dh encPt C ℓ encT idOf B0 Δcka qep tL par t0)
+    (CryptoGames.SM.Engine.RSReach.init ((aeadAtomic C ℓ encT idOf).movePubPartToAD
+      (lPubOf protoSignalCodec)) (lChainPRG C.F) maxForwardJumps)
+    (fun _ _ _ _ _ _ hVR hrec => (fsAtomicB_receive_rsReach C ℓ encT idOf B0 q hVR hrec).1)
+    (Nat.le_refl _) (Nat.mul_le_mul (Nat.le_succ q) (Nat.le_succ q))
+    A q hqA (Nat.le_refl q)
+
+private theorem compilePrngDFAtomic_paperBucketSplit_advantage_nereds {Pt : Type}
+    [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+    (C : Crypto) (ℓ : ℕ) (hℓ : ℓ < 10 ^ 6)
+    (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt)
+    (qep q : ℕ) (tL : Option ℕ) (par gMain : Bool) (t0 : ℕ)
+    (A : CryptoGames.SM.Construction.DeliverForge.AdversaryDF (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
+      (BitVec 256) (Fig8C Pt))
+    (hqA : CryptoGames.SM.Construction.DeliverForge.MakesAtMostQueriesDF A q)
+    (hshA : SendMsgsOkDF (fun m : LibsignalMsgPublicPart × Plain ℓ => atomicShortPubB m.1) A) :
+    let B0 := (q + 1) * (maxForwardJumps + 1)
+    PRFPRNG.advantage (rootPRNG C.F encPt)
+      ((compilePrngDFAtomic ℓ Pt C Dh encPt encT idOf lam B0
+          (CryptoGames.SM.Construction.redPRNGAuthDFPaperBucketSplitProg (q + 1) B0 1 qep maxForwardJumps tL par gMain t0)).eval
+        (fun _ => A) ()) =
+    PRFPRNG.advantage (rootPRNG C.F encPt)
+      (CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketSplit (dhScheme Dh) (rootPRNG C.F encPt)
+        (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) lam 1 qep tL par gMain t0 A) := by
+  intro B0
+  rw [prngAdvantage_congr (rootPRNG C.F encPt)
+      (compilePrngDFAtomic_coinSimEquiv ℓ Pt C Dh encPt encT idOf lam hℓ B0
+        (CryptoGames.SM.Construction.redPRNGAuthDFPaperBucketSplitProg (q + 1) B0 1 qep maxForwardJumps tL par gMain t0) A),
+    redPRNGAuthDFPaperBucketSplitProg_advantage_atomic_nereds Dh encPt C ℓ encT idOf lam 1 qep q tL par gMain t0 A hqA,
+    redPRNGAuthDFPaperBucketSplit_dhSchemeFb_eq_nereds Dh (rootPRNG C.F encPt) (fsAtomicB C ℓ encT idOf B0)
+      lam 1 qep tL par gMain t0 A,
+    redPRNGAuthDFPaperBucketSplit_fsAtomicB_eq_lFS_nereds (dhScheme Dh) (rootPRNG C.F encPt) C ℓ encT idOf lam
+      B0 q 1 qep tL par gMain t0 (Nat.le_refl _) A q hqA (Nat.le_refl q) hshA]
+
+private theorem compilePrngDFAtomic_paperBucketPacked_le_advantage_nereds {Pt : Type}
+    [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+    (C : Crypto) (ℓ : ℕ) (hℓ : ℓ < 10 ^ 6)
+    (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt)
+    (qep q : ℕ) (tL : Option ℕ) (par : Bool) (t : ℕ)
+    (A : CryptoGames.SM.Construction.DeliverForge.AdversaryDF (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
+      (BitVec 256) (Fig8C Pt))
+    (hqA : CryptoGames.SM.Construction.DeliverForge.MakesAtMostQueriesDF A q)
+    (hshA : SendMsgsOkDF (fun m : LibsignalMsgPublicPart × Plain ℓ => atomicShortPubB m.1) A) :
+    PRFPRNG.advantage (rootPRNG C.F encPt)
+      (CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketPacked (dhScheme Dh) (rootPRNG C.F encPt)
+        (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) lam 1 qep tL par t A) ≤
+    PRFPRNG.advantage (rootPRNG C.F encPt)
+      ((Computational.Proofs.SessionCostedFig8.DFProgBucketBounds.redPRNGAuthDFPaperBucketHybridAtomicProg
+          Dh encPt C ℓ encT idOf lam qep q tL par t).eval (fun _ => A) ()) := by
+  by_cases hAct : CryptoGames.SM.Construction.DeliverForge.isActiveBucketEpoch (3 + 1) tL par t = true
+  · have hProg :
+        Computational.Proofs.SessionCostedFig8.DFProgBucketBounds.redPRNGAuthDFPaperBucketHybridAtomicProg
+          Dh encPt C ℓ encT idOf lam qep q tL par t =
+        compilePrngDFAtomic ℓ Pt C Dh encPt encT idOf lam ((q + 1) * (maxForwardJumps + 1))
+          (CryptoGames.SM.Construction.redPRNGAuthDFPaperBucketSplitProg
+            (q + 1) ((q + 1) * (maxForwardJumps + 1)) 1 qep maxForwardJumps tL par false t) := by
+      unfold Computational.Proofs.SessionCostedFig8.DFProgBucketBounds.redPRNGAuthDFPaperBucketHybridAtomicProg
+      rw [hAct]; rfl
+    have hSlotM : CryptoGames.SM.Construction.DeliverForge.bucketSlotIsMain (3 + 1) tL par t = false := by
+      simp [CryptoGames.SM.Construction.DeliverForge.bucketSlotIsMain, hAct]
+    have hSlotE : CryptoGames.SM.Construction.DeliverForge.bucketSlotEpoch (3 + 1) tL par t = t := by
+      simp [CryptoGames.SM.Construction.DeliverForge.bucketSlotEpoch, hSlotM]
+    unfold CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketPacked
+    rw [hProg, hSlotM, hSlotE]
+    exact le_of_eq (compilePrngDFAtomic_paperBucketSplit_advantage_nereds
+      Dh encPt C ℓ hℓ encT idOf lam qep q tL par false t A hqA hshA).symm
+  · have hActF : CryptoGames.SM.Construction.DeliverForge.isActiveBucketEpoch (3 + 1) tL par t = false :=
+      Bool.eq_false_iff.mpr hAct
+    by_cases hPrev : (decide (healEpoch tL < t) &&
+        CryptoGames.SM.Construction.DeliverForge.isActiveBucketEpoch (3 + 1) tL par (t - 1)) = true
+    · have hProg :
+          Computational.Proofs.SessionCostedFig8.DFProgBucketBounds.redPRNGAuthDFPaperBucketHybridAtomicProg
+            Dh encPt C ℓ encT idOf lam qep q tL par t =
+          compilePrngDFAtomic ℓ Pt C Dh encPt encT idOf lam ((q + 1) * (maxForwardJumps + 1))
+            (CryptoGames.SM.Construction.redPRNGAuthDFPaperBucketSplitProg
+              (q + 1) ((q + 1) * (maxForwardJumps + 1)) 1 qep maxForwardJumps tL par true (t - 1)) := by
+        unfold Computational.Proofs.SessionCostedFig8.DFProgBucketBounds.redPRNGAuthDFPaperBucketHybridAtomicProg
+        change (if CryptoGames.SM.Construction.DeliverForge.isActiveBucketEpoch (3 + 1) tL par t = true then _
+          else if (decide (healEpoch tL < t) &&
+            CryptoGames.SM.Construction.DeliverForge.isActiveBucketEpoch (3 + 1) tL par (t - 1)) = true then _
+          else _) = _
+        rw [hActF, hPrev]; rfl
+      have hSlotM : CryptoGames.SM.Construction.DeliverForge.bucketSlotIsMain (3 + 1) tL par t = true := by
+        unfold CryptoGames.SM.Construction.DeliverForge.bucketSlotIsMain
+        rw [Bool.and_assoc, hActF, Bool.not_false, Bool.true_and]; exact hPrev
+      have hSlotE : CryptoGames.SM.Construction.DeliverForge.bucketSlotEpoch (3 + 1) tL par t = t - 1 := by
+        simp [CryptoGames.SM.Construction.DeliverForge.bucketSlotEpoch, hSlotM]
+      unfold CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketPacked
+      rw [hProg, hSlotM, hSlotE]
+      exact le_of_eq (compilePrngDFAtomic_paperBucketSplit_advantage_nereds
+        Dh encPt C ℓ hℓ encT idOf lam qep q tL par true (t - 1) A hqA hshA).symm
+    · have hPrevF : (decide (healEpoch tL < t) &&
+          CryptoGames.SM.Construction.DeliverForge.isActiveBucketEpoch (3 + 1) tL par (t - 1)) = false :=
+        Bool.eq_false_iff.mpr hPrev
+      have hSlotM : CryptoGames.SM.Construction.DeliverForge.bucketSlotIsMain (3 + 1) tL par t = false := by
+        unfold CryptoGames.SM.Construction.DeliverForge.bucketSlotIsMain
+        rw [Bool.and_assoc, hActF, Bool.not_false, Bool.true_and]; exact hPrevF
+      have hSlotE : CryptoGames.SM.Construction.DeliverForge.bucketSlotEpoch (3 + 1) tL par t = t := by
+        simp [CryptoGames.SM.Construction.DeliverForge.bucketSlotEpoch, hSlotM]
+      unfold CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketPacked
+      rw [hSlotM, hSlotE]
+      change PRFPRNG.advantage (rootPRNG C.F encPt)
+        (CryptoGames.SM.Construction.DeliverForge.redPRNGAuthDFPaperBucketForgedHdr
+          (dhScheme Dh) (rootPRNG C.F encPt) (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
+          lam 1 qep tL par t A) ≤ _
+      rw [CryptoGames.SM.Construction.DeliverForge.prng_advantage_redPRNGAuthDFPaperBucketForgedHdr_eq_zero_of_inactive
+        (dhScheme Dh) (rootPRNG C.F encPt) (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
+        lam 1 qep tL par t hActF A]
+      exact bot_le
+
+end CryptoVerification.E2E.Stage2BucketPRNGPackedBridge
+
+namespace CryptoVerification.E2E
+
+open _root_.ReductionDsl OracleSpec OracleComp ENNReal MeasureTheory
+open _root_.CryptoGames _root_.CryptoGames.LibsignalSM _root_.CryptoGames.LibsignalSM.Inst
+open _root_.CryptoGames.Ratchet _root_.CryptoGames.CKA _root_.CryptoGames.SM _root_.CryptoGames.SM.Construction
+open _root_.CryptoGames.SM.Engine _root_.CryptoGames.SM.Thm1 _root_.CryptoGames.SM.ThmB
+open _root_.CryptoGames.LibsignalSession _root_.CryptoGames.Ratchet.LibsignalInst
+open _root_.CryptoGames.Ratchet.LibsignalSim _root_.CryptoGames.LibsignalSM.Proofs
+open _root_.CryptoVerification.LibsignalSession _root_.CryptoVerification.LibsignalProtoCodec
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1SessionUniformCoins)
+open _root_.CryptoVerification.LibsignalSession.HeadlineV1
+open _root_.CryptoVerification.E2E _root_.CryptoVerification.E2E.Signed
+open _root_.CryptoGames.SM.Construction.AuthL11
+open HMAC HKDF CBC LibsignalAead AEADScheme MACScheme WireAEAD FSAEAD
+
+section PaperEvalBridges
+
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1SessionUniformCoins)
+open _root_.CryptoVerification.LibsignalSession.HeadlineV1 _root_.CryptoVerification.E2E.Signed
+open _root_.CryptoGames.SM.Construction.AuthL11
+open Computational.Proofs.ReductionDsl.Fig8Atomic (atomicShortPubB)
+
+variable {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+
+/-- Direct Stage-2 / hoisted-MAC bound for any `DeliverForge` adversary `dfAdv`
+making at most `q` queries with `SendMsgsOkDF` and `GuardedSMDFShort`: bounds
+`forgeStage2CellBucketSumPaper` on `challSimDF'Paper (2 + 1) (qep + 1) dfAdv` by
+`v1SessionRedsPaper`'s `B1` + `B2` + `(tL, par)` Stage-2 terms. -/
+theorem forgeStage2CellBucketSumPaper_le_v1SessionRedsPaper_dfAdv
+    (Z : Crypto) (K : MlKem) (hD : ∀ k x, Z.D k (Z.E k x) = x)
+    {ℓ : ℕ} (hℓ : ℓ < 10 ^ 6) (Dh : DHFun (BitVec 256) Pt) (hDh : Dh.Commutes)
+    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
+    (hinj : Function.Injective encT) (hdum : ∀ T, encT T ≠ dummyKey)
+    (idA idB : IdentityKey) (lam : Pt) (qep q : ℕ) (hq32 : 2 * (q + 1) + 25002 < 2 ^ 32)
+    (dfAdv : DeliverForge.AdversaryDF (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
+      (BitVec 256) (LibsignalSim.Fig8C Pt))
+    (hq_df : DeliverForge.MakesAtMostQueriesDF dfAdv q)
+    (hsh_df : SendMsgsOkDF (fun m : LibsignalMsgPublicPart × Plain ℓ => atomicShortPubB m.1) dfAdv)
+    (hg_df : GuardedSMDFShort dfAdv) :
+    let qR := min (2 * q) (q + 2)
+    let R := v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT lam qep q
+    let challAdvDF := DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv
+    forgeStage2CellBucketSumPaper
+      (lFig8 Dh encPt Z protoSignalCodec ℓ encT (idsOf idA idB) 25000 lam)
+      qep DeliverForge.sameHdrScheme challAdvDF ≤
+    (∑ t ∈ Finset.Ico 2 ((qep + 1) + 2),
+      let tL : Option ℕ := some (t - 2)
+      (CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+          ((R.B_cka tL t).eval (fun _ => challAdvDF) ()) +
+        PRFPRNG.advantage (rootPRNG Z.F encPt)
+          ((R.B_prng tL t).eval (fun _ => challAdvDF) ()) +
+        (∑ j ∈ Finset.range q,
+          CryptoVerification.E2E.fsAeadAuthSlotSumBound Z qR R.fs
+            (fun stage la => (R.B_fs stage la j tL t).eval (fun _ => challAdvDF) ())) +
+        4 * CryptoVerification.LibsignalSession.macForgeryTerm Z q)) +
+      (∑ t ∈ Finset.Ico 3 ((qep + 1) + 2),
+        let tL : Option ℕ := some (t - 3)
+        (CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+            ((R.B_cka tL t).eval (fun _ => challAdvDF) ()) +
+          PRFPRNG.advantage (rootPRNG Z.F encPt)
+            ((R.B_prng tL t).eval (fun _ => challAdvDF) ()) +
+          (∑ j ∈ Finset.range q,
+            CryptoVerification.E2E.fsAeadAuthSlotSumBound Z qR R.fs
+              (fun stage la => (R.B_fs stage la j tL t).eval (fun _ => challAdvDF) ())) +
+          4 * CryptoVerification.LibsignalSession.macForgeryTerm Z q)) +
+      (∑ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∑ par ∈ ({false, true} : Finset Bool),
+        (CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+            ((R.B_cka_u tL par).eval (fun _ => challAdvDF) ()) +
+          (∑ t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2),
+            (PRFPRNG.advantage (rootPRNG Z.F encPt)
+                ((R.B_prng_u tL par t).eval (fun _ => challAdvDF) ()) +
+              (∑ j ∈ Finset.range q,
+                CryptoVerification.E2E.fsAeadAuthSlotSumBound Z qR R.fs
+                  (fun stage la => (R.B_fs_u stage la j tL par t).eval (fun _ => challAdvDF) ())))) +
+          4 * CryptoVerification.LibsignalSession.macForgeryTerm Z q)) := by
+  intro qR R challAdvDF
+  have hq32' : 2 * q + 25002 < 2 ^ 32 := by omega
+  have hq_ch : DeliverForge.MakesAtMostQueriesDF challAdvDF q :=
+    challSimDF'Paper_queries (2 + 1) (qep + 1) dfAdv hq_df
+  have hsh_ch : SendMsgsOkDF (fun m : LibsignalMsgPublicPart × Plain ℓ => atomicShortPubB m.1) challAdvDF :=
+    challSimDF'Paper_sendOk (2 + 1) (qep + 1) _ dfAdv hsh_df
+  have hg_ch : GuardedSMDFShort challAdvDF :=
+    challSimDF'Paper_guardedSMDFShort (2 + 1) (qep + 1) dfAdv hg_df
+  have hRfs : R.fs = fsCostedRedsInst Z protoSignalCodec ℓ encT (idsOf idA idB) (min (2 * q) (q + 2)) := rfl
+  refine forgeStage2CellBucketSumPaper_le_of_stage2_bounds
+      Z K Dh hDh encPt encT decT idA idB lam qep q R challAdvDF
+      (fun t ht => ?_) (fun t ht => ?_) (fun tL htL par => ?_) (fun tL htL par _hpar => ?_)
+  · dsimp only []
+    have ht2 : 2 ≤ t := (Finset.mem_Ico.mp ht).1
+    have h12 := Computational.Proofs.HeadlineV1.Stage2BucketPRNGSwap.hB1_hops12
+      Z Dh hDh encPt encT (idsOf idA idB) lam qep t ht2 dfAdv
+    have hcka := v1SessionRedsPaper_B_cka_advantage_df ℓ hℓ Z K idA idB Dh encPt encT decT lam qep q
+      (healEpoch (some (t - 2))) (some (t - 2)) t dfAdv hq_df hsh_df
+    dsimp only [] at hcka
+    have hcka_rhs :
+        Proofs.Refinement.redCKAHiddenSaltPaperDF (paramsV1 Z K idA idB) ℓ Dh encPt encT (idsOf idA idB) lam qep
+          (some (t - 2)) t dfAdv =
+        DeliverForge.redCKAAuthDFShiftedDir2Paper (dhScheme Dh) (Ratchet.rootPRNG Z.F encPt)
+          (lFS Z protoSignalCodec ℓ encT (idsOf idA idB) 25000) lam (qep + 1) (t - 1) t challAdvDF := by
+      unfold Proofs.Refinement.redCKAHiddenSaltPaperDF
+      split_ifs with h1 h2
+      · rfl
+      · exact absurd ⟨ht2, rfl⟩ h1
+      · exact absurd ⟨ht2, rfl⟩ h1
+    rw [hcka_rhs] at hcka
+    have hprng := v1SessionRedsPaper_B_prng_advantage_df ℓ hℓ Z K idA idB Dh encPt encT decT lam qep q
+      (some (t - 2)) t dfAdv hq_df hsh_df
+    dsimp only [] at hprng
+    have hprng_rhs :
+        Proofs.Refinement.redPRNGHiddenSaltPaperDF (paramsV1 Z K idA idB) ℓ Dh encPt encT (idsOf idA idB) lam qep
+          (some (t - 2)) t dfAdv =
+        DeliverForge.redPRNGAuthDFShiftedDir2Paper (dhScheme Dh) (Ratchet.rootPRNG Z.F encPt)
+          (lFS Z protoSignalCodec ℓ encT (idsOf idA idB) 25000) lam (qep + 1) (t - 1) t challAdvDF := by
+      unfold Proofs.Refinement.redPRNGHiddenSaltPaperDF
+      split_ifs with h1 h2
+      · rfl
+      · exact absurd ⟨ht2, rfl⟩ h1
+      · exact absurd ⟨ht2, rfl⟩ h1
+    rw [hprng_rhs] at hprng
+    have hfs := Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNERedsHop3B1.localAuthDFShiftedDir2Paper_le_casePaperAtomic_sum_min
+      ℓ Z Dh hD encPt encT hinj hdum idA idB lam hℓ q qep t hq32' ht challAdvDF hq_ch hsh_ch hg_ch
+    dsimp only [] at h12
+    change _ ≤ CKA.advantage (dhScheme Dh) 1 (healEpoch (some (t - 2)))
+        (((v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT lam qep q).B_cka (some (t - 2)) t).eval
+          (fun _ => challAdvDF) ()) +
+      PRFPRNG.advantage (rootPRNG Z.F encPt)
+        (((v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT lam qep q).B_prng (some (t - 2)) t).eval
+          (fun _ => challAdvDF) ()) + _ + _
+    rw [hcka, hprng, hRfs]
+    exact h12.trans ((add_le_add le_rfl hfs).trans (le_of_eq (add_assoc _ _ _).symm))
+  · dsimp only []
+    have ht3 : 3 ≤ t := (Finset.mem_Ico.mp ht).1
+    have h12 := Computational.Proofs.HeadlineV1.Stage2BucketPRNGSwap.hB2_hops12
+      Z Dh hDh encPt encT (idsOf idA idB) lam qep t ht3 dfAdv
+    have hcka := v1SessionRedsPaper_B_cka_advantage_df ℓ hℓ Z K idA idB Dh encPt encT decT lam qep q
+      (healEpoch (some (t - 3))) (some (t - 3)) t dfAdv hq_df hsh_df
+    dsimp only [] at hcka
+    have hcka_rhs :
+        Proofs.Refinement.redCKAHiddenSaltPaperDF (paramsV1 Z K idA idB) ℓ Dh encPt encT (idsOf idA idB) lam qep
+          (some (t - 3)) t dfAdv =
+        DeliverForge.redCKAAuthDFShiftedPaper (dhScheme Dh) (Ratchet.rootPRNG Z.F encPt)
+          (lFS Z protoSignalCodec ℓ encT (idsOf idA idB) 25000) lam 1 (qep + 1) (t - 2) t challAdvDF := by
+      unfold Proofs.Refinement.redCKAHiddenSaltPaperDF
+      split_ifs with h1 h2
+      · exfalso; rcases h1 with ⟨_, hEq⟩; have := Option.some.inj hEq; omega
+      · rfl
+      · exact absurd ⟨ht3, rfl⟩ h2
+    rw [hcka_rhs] at hcka
+    have hprng := v1SessionRedsPaper_B_prng_advantage_df ℓ hℓ Z K idA idB Dh encPt encT decT lam qep q
+      (some (t - 3)) t dfAdv hq_df hsh_df
+    dsimp only [] at hprng
+    have hprng_rhs :
+        Proofs.Refinement.redPRNGHiddenSaltPaperDF (paramsV1 Z K idA idB) ℓ Dh encPt encT (idsOf idA idB) lam qep
+          (some (t - 3)) t dfAdv =
+        DeliverForge.redPRNGAuthDFShiftedPaper (dhScheme Dh) (Ratchet.rootPRNG Z.F encPt)
+          (lFS Z protoSignalCodec ℓ encT (idsOf idA idB) 25000) lam 1 (qep + 1) (t - 2) t challAdvDF := by
+      unfold Proofs.Refinement.redPRNGHiddenSaltPaperDF
+      split_ifs with h1 h2
+      · exfalso; rcases h1 with ⟨_, hEq⟩; have := Option.some.inj hEq; omega
+      · rfl
+      · exact absurd ⟨ht3, rfl⟩ h2
+    rw [hprng_rhs] at hprng
+    have hfs := Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNERedsHop3B2.localAuthDFShiftedPaper_le_casePaperAtomic_sum_min
+      ℓ Z Dh hD encPt encT hinj hdum idA idB lam hℓ q qep t hq32' ht challAdvDF hq_ch hsh_ch hg_ch
+    dsimp only [] at h12
+    change _ ≤ CKA.advantage (dhScheme Dh) 1 (healEpoch (some (t - 3)))
+        (((v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT lam qep q).B_cka (some (t - 3)) t).eval
+          (fun _ => challAdvDF) ()) +
+      PRFPRNG.advantage (rootPRNG Z.F encPt)
+        (((v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT lam qep q).B_prng (some (t - 3)) t).eval
+          (fun _ => challAdvDF) ()) + _ + _
+    rw [hcka, hprng, hRfs]
+    exact h12.trans ((add_le_add le_rfl hfs).trans (le_of_eq (add_assoc _ _ _).symm))
+  · exact le_of_eq (Computational.Proofs.HeadlineV1.Stage2BucketCKASwap.compileCkaDFAtomic_paperBucket_advantage
+      Dh encPt Z ℓ hℓ encT (idsOf idA idB) lam (healEpoch tL) (qep + 1) q tL par
+      challAdvDF hq_ch hsh_ch).symm
+  · have htH : healEpoch tL ≤ (qep + 1) + 1 :=
+      Computational.Proofs.HeadlineV1.Stage2BucketPRNGSwap.admissibleLastLeakGuesses_four_healEpoch_le htL
+    have hprng := DeliverForge.cka_branch_true_redCKAAuthDFPaperBucket_le_sum_prng_add_local
+      (dhScheme Dh) (rootPRNG Z.F encPt) (lFS Z protoSignalCodec ℓ encT (idsOf idA idB) 25000)
+      lam 1 (qep + 1) (dhScheme_correct Dh hDh) Nat.one_pos tL par htH challAdvDF
+    have hprng_sum :
+        (∑ t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2),
+          PRFPRNG.advantage (rootPRNG Z.F encPt)
+            (DeliverForge.redPRNGAuthDFPaperBucketPacked (dhScheme Dh) (rootPRNG Z.F encPt)
+              (lFS Z protoSignalCodec ℓ encT (idsOf idA idB) 25000) lam 1 (qep + 1) tL par t challAdvDF)) ≤
+        ∑ t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2),
+          PRFPRNG.advantage (rootPRNG Z.F encPt)
+            ((R.B_prng_u tL par t).eval (fun _ => challAdvDF) ()) :=
+      Finset.sum_le_sum fun t _ht =>
+        Stage2BucketPRNGPackedBridge.compilePrngDFAtomic_paperBucketPacked_le_advantage_nereds
+          Dh encPt Z ℓ hℓ encT (idsOf idA idB) lam (qep + 1) q tL par t challAdvDF hq_ch hsh_ch
+    have hfs := Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNERedsHop3Bucket.localAuthDFPaperBucket_main_add_forgedHdr_le_B_fs_u_sum_min
+      ℓ Z Dh hDh hD encPt encT hinj hdum idA idB lam hℓ q qep hq32' tL htL par challAdvDF hq_ch hsh_ch hg_ch
+    rw [hRfs]
+    refine hprng.trans ?_
+    refine (add_le_add hprng_sum hfs).trans ?_
+    rw [← add_assoc, ← Finset.sum_add_distrib]
+    exact le_rfl
+
+/-- Unconditional Stage-2 sum bound on `R.simDeliverForge.eval (fun _ => A) ()`:
+`forgeStage2CellBucketSumPaper` plus `spuriousStepTerm` and the ratchet-key collision term is
+bounded above by `hiddenSaltBoundV1` evaluated on `v1SessionRedsPaper` (C001: ML-KEM failures
+are charged as `MlKem.KemFailBad` at top level, not here). -/
 theorem sum_hiddenSaltCellTermPaperDF_le_hiddenSaltBoundV1_paper
     (Z : Crypto) (K : MlKem) (hD : ∀ k x, Z.D k (Z.E k x) = x)
-    {ℓ : ℕ} (hℓ : ℓ < 10 ^ 6) (Dh : DHFun (BitVec 256) Pt)
+    {ℓ : ℕ} (hℓ : ℓ < 10 ^ 6) (Dh : DHFun (BitVec 256) Pt) (hDh : Dh.Commutes)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (hinj : Function.Injective encT) (hdum : ∀ T, encT T ≠ dummyKey)
     (idA idB : IdentityKey) (lam : Pt) (qep q : ℕ) (hq32 : 2 * (q + 1) + 25002 < 2 ^ 32)
     (δ : ℝ≥0∞)
     (A : SM.Adversary (GhostState Bytes) (CBC.Plain ℓ) (BitVec 512) Bytes)
     (hq : SM.MakesAtMostQueries A q) :
-    let P := paramsV1 Z K idA idB
     let R := v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT lam qep q
     let dfAdv := R.simDeliverForge.eval (fun _ => A) ()
-    (∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses 2 t,
-      Proofs.Refinement.hiddenSaltCellTermPaperDF P ℓ Dh encPt encT (idsOf idA idB) lam qep q
-        tL t dfAdv) +
+    forgeStage2CellBucketSumPaper
+      (lFig8 Dh encPt Z protoSignalCodec ℓ encT (idsOf idA idB) 25000 lam)
+      qep DeliverForge.sameHdrScheme
+      (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv) +
       spuriousStepTerm Z.F encPt Dh q qep + (qep + 1) * (qep + 2) * δ ≤
     hiddenSaltBoundV1 Z K ℓ Dh encPt encT decT idA idB lam qep q δ R A := by
-  intro P R dfAdv
+  intro R dfAdv
   have hq_df : DeliverForge.MakesAtMostQueriesDF dfAdv q :=
     Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeProg.simDeliverForgeRedProg_makesAtMostQueriesDF
       ℓ Z K idA idB Dh encPt encT decT lam qep q A hq
@@ -1827,9 +3331,9 @@ theorem sum_hiddenSaltCellTermPaperDF_le_hiddenSaltBoundV1_paper
   unfold hiddenSaltBoundV1; dsimp only
   rw [show R.challSimDF.eval (fun _ => R.simDeliverForge.eval (fun _ => A) ()) () =
         DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv from hchall]
-  gcongr with t _ tL _
-  exact hiddenSaltCellTermPaperDF_le_v1SessionRedsPaper Z K hD hℓ Dh encPt encT decT hinj hdum
-    idA idB lam qep q hq32 tL t dfAdv hq_df hsh_df hg_df
+  have hmain := forgeStage2CellBucketSumPaper_le_v1SessionRedsPaper_dfAdv
+    Z K hD hℓ Dh hDh encPt encT decT hinj hdum idA idB lam qep q hq32 dfAdv hq_df hsh_df hg_df
+  exact add_le_add (add_le_add hmain le_rfl) le_rfl
 
 end PaperEvalBridges
 end CryptoVerification.E2E

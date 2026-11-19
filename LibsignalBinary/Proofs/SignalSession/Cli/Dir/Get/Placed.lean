@@ -9,13 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.Pure
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.Pure -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import all Init.Data.String.Defs
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `[LibsignalPlacement]` Proof of `<signal_session::stores::Dir>::get` (Block `589`)
@@ -24,7 +29,7 @@ Consolidates `Dir/Get/{RoData,Decode,Loop,LoopAdv,Hit,MissEmpty,MissAfterRead,Mi
 onto `[LibsignalPlacement]`, proving `dirGetSpecPlaced rd pathOk A stk` from `SpecsPlaced.lean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -63,7 +68,7 @@ abbrev dgReadOpSym : String := "libsignal_cli:.rodata.cst4+0xc"
 abbrev dgUnreadableAddr [LibsignalPlacement] : BitVec 64 := lsρ dgUnreadableSym
 abbrev dgReadOpAddr [LibsignalPlacement] : BitVec 64 := lsρ dgReadOpSym
 
-def dirGetRoBundlePlaced [LibsignalPlacement] (w0 w1 wTail : BitVec 64) : SepProp :=
+@[expose] def dirGetRoBundlePlaced [LibsignalPlacement] (w0 w1 wTail : BitVec 64) : SepProp :=
   (dgUnreadableAddr ↦₆₄ᵣ w0) ∗
   ((dgUnreadableAddr + 8#64) ↦₆₄ᵣ w1) ∗
   ((dgUnreadableAddr + 14#64) ↦₆₄ᵣ wTail) ∗
@@ -118,7 +123,7 @@ theorem dirGetRoData_of_lscro [LibsignalPlacement] {s : State} {P : SepProp}
 /-! ## 2. Frame & `SepWPp` Combinators on Block `589` -/
 
 /-- Callee-saved state not saved on `Dir::get`'s frame (`x25..x28` and `v8..v15`). -/
-def HighCalleeSaved (s0 s : State) : Prop :=
+@[expose] def HighCalleeSaved (s0 s : State) : Prop :=
   s.readReg64 (.gpr 25#5) = s0.readReg64 (.gpr 25#5) ∧
   s.readReg64 (.gpr 26#5) = s0.readReg64 (.gpr 26#5) ∧
   s.readReg64 (.gpr 27#5) = s0.readReg64 (.gpr 27#5) ∧
@@ -397,14 +402,14 @@ theorem memcpy_bytesAt_lscro_ok_at_589 [LibsignalPlacement] {A : RustAlloc}
 
 /-! ## 3. Postcondition & Panic Helpers for `dirGetSpecPlaced` -/
 
-def dirGetPostQPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def dirGetPostQPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustAlloc) (stk : Nat) (x : DirGetGhost) (s0 : State)
     (Fr R : SepProp) : State → SepProp → Prop :=
   fun sf P_f =>
     ((sf.mem ⊨ P_f ∗ Fr) → (sf.mem ⊨ (dirGetSpecPlaced rd pathOk A stk).post x s0 sf ∗ R)) ∧
     sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf
 
-def dirGetPanicQpPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def dirGetPanicQpPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustAlloc) (stk : Nat) (x : DirGetGhost) (s0 : State)
     (Fr R : SepProp) : State → SepProp → Prop :=
   fun sf P_f =>
@@ -2159,7 +2164,7 @@ theorem step_after_read [LibsignalPlacement]
 
 /-! ## 9. Miss Empty-Dir Path (`+164`..`+332` for `dir.path = []`) on Block `589` -/
 
-def PathIoContractPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks)
+@[expose] def PathIoContractPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks)
     (rd : ReadRule) (pathOk : List (BitVec 8) → Prop) (ioStk : Nat) : Prop :=
   ∀ (s0 s : State) (pathPtr : BitVec 64) (pth : List (BitVec 8)) (F : SepProp)
     (Q : State → SepProp → Prop) (Qp : State → SepProp → Prop),
@@ -2192,7 +2197,7 @@ def PathIoContractPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHook
       (((pathPtr ↦ₛ pth) ∗ memRegion s.sp 24 ∗ stackAt s.sp ioStk ∗ A.pool) ∗ F)
       Q Qp (fun _ => ⌜False⌝)
 
-def stateOfLscroMiss [LibsignalPlacement] {st : State}
+@[expose] def stateOfLscroMiss [LibsignalPlacement] {st : State}
     (_ : StoreKit.LibsignalCodeRoLoaded lsmpl st.mem) : State := st
 
 theorem false_of_fsInv_false_miss {F0 : FsFiles} {T0 : List TraceEvent} {sf : State}

@@ -89,7 +89,8 @@ structure Crypto where
   E : AesKey → Block → Block
   /-- `D`: the AES-256 block decryption (CBC decryption). -/
   D : AesKey → Block → Block
-  /-- `X`: X25519 on 32-byte strings (`StaticSecret::diffie_hellman`, an abstract hook). -/
+  /-- `X`: X25519 on 32-byte strings (`StaticSecret::diffie_hellman`; instantiated to RFC 7748
+  `x25519Ref` in the closed CLI headlines `realCrypto`). -/
   X : Ratchet.X25519Fn
   /-- `pubKey`: X25519 public-key derivation (`PubKeyFn`). -/
   pubKey : PubKeyFn

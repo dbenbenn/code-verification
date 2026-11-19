@@ -19,7 +19,7 @@ public import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr -- shake
 Defines `decryptPrekeyClosureName` and `decryptPrekeyClosureOff` (`0x720f0#64`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Pqxdh.ResponderClosure
 

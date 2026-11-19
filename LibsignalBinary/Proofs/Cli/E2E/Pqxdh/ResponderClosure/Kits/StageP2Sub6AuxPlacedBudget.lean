@@ -9,14 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP2b
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP2bAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksB6PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub6Aux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub6AuxPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2b
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Fetch
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StoreEmpty
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridge
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.OneKeyVtables
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccount
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP2a
+import LibsignalBinary.Proofs.TripleRatchet.TrapRng
+import ProofLib.SepLogic.WP
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksB6PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub6Aux
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub6AuxPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
@@ -26,6 +34,11 @@ import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2bAux
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksB6Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlaced
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Substage P2.6 Tail
@@ -34,7 +47,7 @@ Defines `p2Sub6TailFreeEvents` and proves `RustCliAllocBudget M` / `VmPreserved`
 P2.6 tail theorems (`+0x0b3c → +0x1778`) on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -131,7 +144,7 @@ local macro "sep_norm" : tactic =>
 /-- Exact deallocation event list for the Substage P2.6 tail (`+0x0b3c -> +0x1778`):
 frees `regIdFutPtr` (`regIdBoxSize`, align `8`), `kyberKpPubPtr` (`1568`, align `1`), and
 `kyberKpSecPtr` (`3168`, align `1`). -/
-def p2Sub6TailEvents (regIdBoxSize : Nat) : List AllocEvent :=
+@[expose] def p2Sub6TailEvents (regIdBoxSize : Nat) : List AllocEvent :=
   rustDeallocEvents regIdBoxSize 8 ++ (rustDeallocEvents 1568 1 ++ rustDeallocEvents 3168 1)
 
 theorem p2Sub6TailEvents_freeOnly (regIdBoxSize : Nat) :

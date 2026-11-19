@@ -14,9 +14,9 @@ public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedInit -- pro
 public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitness -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.HaltedEpoch0Step -- proof-setup: allow-public-import
 public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.DrSessionSim -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.DrSessionSim
 public import Computational.Specifications.Game.StatementPqOomFlag
-import Computational.Proofs.E2E.Dsl.StartAndExtSmAux
+public import Computational.Proofs.E2E.Dsl.StartAndExtSmAux -- proof-setup: allow-public-import
 import Computational.Proofs.Game.PromotedCostedReds.DrSessionSimSize
 import Computational.Proofs.Game.PromotedCostedReds.Epoch0DistinguisherProg
 import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
@@ -30,6 +30,53 @@ import Computational.Proofs.ReductionDsl.SizeBudgetBridge
 import Computational.Proofs.E2E.ComposedPrefixHelpers
 import VCVio.OracleComp.SimSemantics.SimulateQ
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.E2E.UniformStartHop
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto
+import Computational.Proofs.CryptoGames.SM.Theorem1.Queries
+import Computational.Proofs.ReductionDsl.Bridge
+import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.CostedTables
+import Computational.Specifications.Reductions.ReductionDsl.AtomicOps
+import Computational.Specifications.Reductions.ReductionDsl.Core
+import Computational.Specifications.Reductions.ReductionDsl.TargetCodecs
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
+import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionSM
+import LibsignalBinary.Specifications.LibsignalE2E.PqxdhInputs
+import LibsignalBinary.Specifications.LibsignalSpqrV1.Poly
+import Mathlib.Algebra.BigOperators.Group.Finset.Defs
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Data.Finset.Defs
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.Integral.Lebesgue.Add
+import Mathlib.Order.Disjoint
+import Mathlib.Order.SetNotation
+import Mathlib.Tactic.Linarith
+import Mathlib.Tactic.Ring
+import PolyFun.Control.Monad.Support
+import Std.Tactic.BVDecide.Normalize.BitVec
+import Std.Tactic.BVDecide.Normalize.Bool
+import Std.Tactic.BVDecide.Normalize.Prop
+import ToMathlib.Control.StateT
+import VCVio.CryptoFoundations.SecExp
+import VCVio.CryptoFoundations.SecExp.Measure
+import VCVio.EvalDist.Defs.Measure.Core
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Bool
+import VCVio.EvalDist.ProbabilityBounds
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.EvalDist.Measure
+import VCVio.OracleComp.OracleSpec
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.QueryTracking.QueryBound.Simulation
+import VCVio.OracleComp.QueryTracking.SubSpec
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.Basic
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Tracker-Halted Promoted `CostedReduction` Witness for `epoch0Distinguisher`
@@ -137,7 +184,7 @@ abbrev KemFailSessionTrack (F : ShaCompress) (C : Type) : Type := KemFailTrackSt
 
 abbrev libsignalSessionPqrOf (k : RootKey × BitVec 256 × BitVec 256 × BitVec 256) : BitVec 256 := k.2.2.2
 
-@[expose] noncomputable def transmitRSessionTrackHalted {Key St Msg RCoins C : Type}
+@[expose] def transmitRSessionTrackHalted {Key St Msg RCoins C : Type}
     (F : ShaCompress) (K : MlKem) (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
     QueryImpl ((Party × Msg × Option (BitVec 512)) →ₒ Option C)
       (StateT (GameState St Msg C) (StateT (KemFailSessionTrack F C) ProbComp)) := fun ⟨P, m, r⟩ => do
@@ -156,7 +203,7 @@ abbrev libsignalSessionPqrOf (k : RootKey × BitVec 256 × BitVec 256 × BitVec 
       set (s₁.record Δ P out.1 ⟨⟨P, s₁.epoch P, s₁.idx P + 1⟩, m, out.2⟩ false)
       StateT.lift (set (tr', (out.2, P) :: hw)); return some out.2
 
-@[expose] noncomputable def challRSessionTrackHalted {Key St Msg RCoins C : Type}
+@[expose] def challRSessionTrackHalted {Key St Msg RCoins C : Type}
     (F : ShaCompress) (K : MlKem) (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
     QueryImpl ((Party × Msg × Msg × Option (BitVec 512)) →ₒ Option C)
       (StateT (GameState St Msg C) (StateT (KemFailSessionTrack F C) ProbComp)) := fun ⟨P, m₀, m₁, r⟩ => do
@@ -177,7 +224,7 @@ abbrev libsignalSessionPqrOf (k : RootKey × BitVec 256 × BitVec 256 × BitVec 
       set (s₁.record Δ P out.1 ⟨⟨P, s₁.epoch P, s₁.idx P + 1⟩, m, out.2⟩ true)
       StateT.lift (set (tr', (out.2, P) :: hw)); return some out.2
 
-@[expose] noncomputable def deliverRSessionTrackHalted {Key St Msg RCoins C : Type}
+@[expose] def deliverRSessionTrackHalted {Key St Msg RCoins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType RCoins]
     (F : ShaCompress) (K : MlKem) (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C) (cfg : ConfigR St Msg C) :
     QueryImpl ((Party × C) →ₒ Option (RecvResult Msg))
@@ -191,7 +238,7 @@ abbrev libsignalSessionPqrOf (k : RootKey × BitVec 256 × BitVec 256 × BitVec 
   return res
 
 /-- Full 5-oracle `KemFailSessionTrack`-halted R-game implementation. -/
-@[expose] noncomputable def oracleImplRSessionTrackHalted {Key St Msg RCoins C : Type}
+@[expose] def oracleImplRSessionTrackHalted {Key St Msg RCoins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType RCoins]
     (F : ShaCompress) (K : MlKem) (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
     QueryImpl (spec St Msg (BitVec 512) C)
@@ -203,7 +250,7 @@ abbrev libsignalSessionPqrOf (k : RootKey × BitVec 256 × BitVec 256 × BitVec 
     ((fun P => liftStateT (corrR cfg P)) :
       QueryImpl (Party →ₒ Option St) (StateT (GameState St Msg C) (StateT (KemFailSessionTrack F C) ProbComp)))
 
-@[expose] noncomputable def runRSessionTrackHalted {Key St Msg RCoins C : Type}
+@[expose] def runRSessionTrackHalted {Key St Msg RCoins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType RCoins]
     (pqrOf : Key → BitVec 256) (F : ShaCompress) (K : MlKem)
     (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C)
@@ -216,7 +263,7 @@ abbrev libsignalSessionPqrOf (k : RootKey × BitVec 256 × BitVec 256 × BitVec 
   ((simulateQ impl A).run (initState sm.sendPart k b)).run (initKemFailSessionTrack F C (pqrOf k))
 
 /-- Online `KemFailSessionTrack`-halted `epoch0Distinguisher` on `(rk0, ck0)`. -/
-@[expose] noncomputable def epoch0DistinguisherTrackHalted
+@[expose] def epoch0DistinguisherTrackHalted
     (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ) (onImage : Bytes → Bool) (qep : ℕ)
     (A : Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) :
     PRGAdversary (RootKey × BitVec 256) := fun rc => do
@@ -269,7 +316,7 @@ theorem initEpoch0GsTrackC_queries_zero (idA idB : IdentityKey) (w : Empty → �
       (encPt := encPt) (encT := encT) (decT := decT) (lam := lam) idA idB).queries w (fun _ => 0) = 0 := by
   simp only [initEpoch0GsTrackC, Comp.queries, liftCompCoins_queries_zero, Nat.add_zero]
 
-@[expose] noncomputable def epoch0TrackInitImpl (C : Crypto) (K : MlKem) (idA idB : IdentityKey) (ℓ : ℕ) (rc : RootKey × BitVec 256) :
+@[expose] def epoch0TrackInitImpl (C : Crypto) (K : MlKem) (idA idB : IdentityKey) (ℓ : ℕ) (rc : RootKey × BitVec 256) :
     ProbComp (Unit × (GameState (GhostState Bytes) (Plain ℓ) Bytes × KemFailSessionTrack C.F Bytes)) := do
   let b ← ($ᵗ Bool : ProbComp Bool)
   let k ← ($ᵗ (RootKey × BitVec 256 × BitVec 256 × BitVec 256) : ProbComp _)

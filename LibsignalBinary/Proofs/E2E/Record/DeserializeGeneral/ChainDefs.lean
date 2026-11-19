@@ -21,7 +21,7 @@ for `prost::encoding::message::merge::<Chain>` (`0x3974`) on an in-scope `ChainG
   `x25 = sp + 8`, `w26 = 1`, `x29 = sp + 0xa0`, `sp = s0.sp - 0x100`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.DeserializeGeneral
 
@@ -32,66 +32,6 @@ open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalTripl
 open CryptoVerification.E2E.Record CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.E2E.Record
 open CryptoVerification.E2E.Record.DeserializeSeed
-
-noncomputable abbrev chainPCAt (img : Obj.Image) (C : Crypto) (ctl : BitVec 64)
-    (off : BitVec 64) (abs : String → Option (State → State) := fun _ => none) : BitVec 64 :=
-  (tripleRatchetProgAt img.base C ctl abs).fnAddr chainMergeName + off
-
-noncomputable abbrev chainPC (C : Crypto) (ctl : BitVec 64)
-    (off : BitVec 64) : BitVec 64 :=
-  chainPCAt sessionImg0 C ctl off
-
-abbrev ChainStepGAt (img : Obj.Image) (C : Crypto) (ctl : BitVec 64) (x : ChainMergeGenGhost)
-    (R : SepProp) (s0 s : State) (Q : State → Prop)
-    (abs : String → Option (State → State) := fun _ => none) : Prop :=
-  SegStepG (tripleRatchetProgAt img.base C ctl abs) (chainMergeGenSpecAt img) x R s0 s Q
-
-abbrev ChainStepG (C : Crypto) (ctl : BitVec 64) (x : ChainMergeGenGhost)
-    (R : SepProp) (s0 s : State) (Q : State → Prop)
-    (abs : String → Option (State → State) := fun _ => none) : Prop :=
-  ChainStepGAt sessionImg0 C ctl x R s0 s Q abs
-
-/-- Loop-head invariant at `+0x120` after decoding `k` fields of `x.c.fields` at `img`: `prostChainGAt`
-holds `chainGAfter x.c k` and the slice cursor points to the remaining field bytes followed by `tail`. -/
-def ChainLoopGAt (img : Obj.Image) (C : Crypto) (ctl : BitVec 64) (x : ChainMergeGenGhost)
-    (R : SepProp) (s0 : State) (k : Nat) (s : State)
-    (abs : String → Option (State → State) := fun _ => none) : Prop :=
-  s.pc = chainPCAt img C ctl 0x120#64 abs ∧ s.status = .Running ∧ s.trace = s0.trace ∧
-    calleeSavedVRegs s = calleeSavedVRegs s0 ∧
-    s.symtab = img.symtab ∧ img.FrozenLoaded s ∧
-    s.sp = s0.sp - 0x100#64 ∧ s.spAligned = true ∧ s.readReg64 .x29 = s0.sp - 0x60#64 ∧
-    s.readReg64 .x19 = x.bufRef ∧ s.readReg64 .x20 = x.a ∧
-    s.readReg64 .x24 = BitVec.ofNat 64 x.tail.length ∧
-    s.readReg64 .x21 = 98#64 ∧ s.readReg64 .x22 = 97#64 ∧
-    s.readReg64 .x25 = s0.sp - 0xf8#64 ∧ s.readReg64 .x26 = 1#64 ∧
-    x.c.Ok ∧ (x.c.payload ++ x.tail).length < 2 ^ 32 ∧
-    (s.mem ⊨ prostChainGAt A0 x.a (chainGAfter x.c k) ∗ (x.bufRef ↦₆₄ x.slot) ∗
-      Prost.sliceCursorAfter x.slot x.ptr (x.c.payload ++ x.tail)
-        (((x.c.fields.drop k).flatMap ChainField.enc) ++ x.tail) ∗
-      stackAt (s0.sp - 0x100#64) chainMergeSubStack ∗ chainMergeSavedRegs s0.sp s0 ∗ R)
-
-def ChainLoopG (C : Crypto) (ctl : BitVec 64) (x : ChainMergeGenGhost)
-    (R : SepProp) (s0 : State) (k : Nat) (s : State) : Prop :=
-  s.pc = chainPC C ctl 0x120#64 ∧ s.status = .Running ∧ s.trace = s0.trace ∧
-    calleeSavedVRegs s = calleeSavedVRegs s0 ∧
-    s.symtab = sessionImg0.symtab ∧ sessionImg0.FrozenLoaded s ∧
-    s.sp = s0.sp - 0x100#64 ∧ s.spAligned = true ∧ s.readReg64 .x29 = s0.sp - 0x60#64 ∧
-    s.readReg64 .x19 = x.bufRef ∧ s.readReg64 .x20 = x.a ∧
-    s.readReg64 .x24 = BitVec.ofNat 64 x.tail.length ∧
-    s.readReg64 .x21 = 98#64 ∧ s.readReg64 .x22 = 97#64 ∧
-    s.readReg64 .x25 = s0.sp - 0xf8#64 ∧ s.readReg64 .x26 = 1#64 ∧
-    x.c.Ok ∧ (x.c.payload ++ x.tail).length < 2 ^ 32 ∧
-    (s.mem ⊨ prostChainGAt A0 x.a (chainGAfter x.c k) ∗ (x.bufRef ↦₆₄ x.slot) ∗
-      Prost.sliceCursorAfter x.slot x.ptr (x.c.payload ++ x.tail)
-        (((x.c.fields.drop k).flatMap ChainField.enc) ++ x.tail) ∗
-      stackAt (s0.sp - 0x100#64) chainMergeSubStack ∗ chainMergeSavedRegs s0.sp s0 ∗ R)
-
-def ChainRetGAt (img : Obj.Image) (x : ChainMergeGenGhost) (R : SepProp) (s0 sf : State) : Prop :=
-  Returned s0 sf ∧ CallingConventionPreserved s0 sf ∧
-    (sf.mem ⊨ (chainMergeGenSpecAt img).post x s0 sf ∗ R)
-
-def ChainRetG (x : ChainMergeGenGhost) (R : SepProp) (s0 sf : State) : Prop :=
-  ChainRetGAt sessionImg0 x R s0 sf
 
 theorem chainField_tag_cases (fl : ChainField) :
     (fl.tag = 1 ∨ fl.tag = 2) ∨ fl.tag = 3 ∨ fl.tag = 4 := by

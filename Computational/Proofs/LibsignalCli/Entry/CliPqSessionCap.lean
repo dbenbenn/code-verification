@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.Entry.CliPqReachSize
-public import Computational.Proofs.SpqrV1Sync.TopStateTight
+public import Computational.Proofs.LibsignalCli.Entry.CliPqReachSize -- proof-setup: allow-public-import
+public import Computational.Proofs.SpqrV1Sync.TopStateTight -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.PqClosure
 
 /-!
@@ -22,7 +22,7 @@ bound every encoded session record by `1,209,331 < sessionCapBytes` (`2 ^ 21` by
 state-growth budget.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +36,7 @@ open CryptoVerification.SpqrV1Sync.SendTotal (TopStateTight topStateTight_init
   topStateTight_send topStateTight_recv topStateTight_length_le)
 
 /-- Session-record byte-size cap (`2 ^ 21` bytes), equal to `SignalSession.fileCapBytes`. -/
-def sessionCapBytes : ℕ := fileCapBytes
+@[expose] def sessionCapBytes : ℕ := fileCapBytes
 
 private theorem r3_Mut_exec_bind {σ α β : Type} (m : Mut σ α) (f : α → Mut σ β) (s : σ) :
     Mut.exec (m >>= f) s =

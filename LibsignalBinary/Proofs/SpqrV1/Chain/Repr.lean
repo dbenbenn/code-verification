@@ -19,7 +19,7 @@ Separation-logic representation predicates relating `KeyHistory`, `ChainEpochDir
 `ChainEpoch`, `VecDeque<ChainEpoch>`, `ChainParamsPB`, `Direction`, and `Chain` to ARM64 memory.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ChainProofs
 
@@ -29,16 +29,11 @@ open CryptoVerification.LibsignalSpqrV1
 
 /-! ## Constants and sizes -/
 
-abbrev chainEpochDirSize : Nat := 56
-
 abbrev chainEpochSize : Nat := 112
 
 abbrev chainEpochAlign : Nat := 8
 
 abbrev chainSize : Nat := 88
-
-/-- Initial capacity of `KeyHistory.data` allocated by `KeyHistory::new()` (`0x48 = 72`). -/
-abbrev keyHistoryInitCap : Nat := 72
 
 /-! ## Ghost pins -/
 
@@ -69,11 +64,11 @@ structure ChainGhost where
 
 /-- `KeyHistory` at `a` with pinned `(cap, ptr)`: a single `Vec<u8>` header and buffer holding
 `kh.data`. -/
-def keyHistoryAt (A : RustAlloc) (a : BitVec 64) (pin : VecPin) (kh : KeyHistory) : SepProp :=
+@[expose] def keyHistoryAt (A : RustAlloc) (a : BitVec 64) (pin : VecPin) (kh : KeyHistory) : SepProp :=
   vecU8At A a pin.cap pin.ptr kh.data
 
 /-- `KeyHistory` at `a` (existentially quantified `cap` and `ptr`). -/
-def keyHistory (A : RustAlloc) (a : BitVec 64) (kh : KeyHistory) : SepProp :=
+@[expose] def keyHistory (A : RustAlloc) (a : BitVec 64) (kh : KeyHistory) : SepProp :=
   vecU8 A a kh.data
 
 /-! ## `ChainEpochDirection` (56 bytes = `0x38`, align 8) -/
@@ -83,7 +78,7 @@ def keyHistory (A : RustAlloc) (a : BitVec 64) (kh : KeyHistory) : SepProp :=
 - `+0x18..+0x30` (24B): `prev: KeyHistory` (`Vec<u8>`)
 - `+0x30..+0x34` (4B): `ctr: u32`
 - `+0x34..+0x38` (4B): 4-byte tail padding (`memRegion`) -/
-def chainEpochDirectionAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def chainEpochDirectionAt (A : RustAlloc) (a : BitVec 64)
     (g : ChainEpochDirectionGhost) (ced : ChainEpochDirection) : SepProp :=
   vecU8At A a g.next.cap g.next.ptr ced.next ∗
     keyHistoryAt A (a + 0x18#64) g.prev ced.prev ∗
@@ -91,7 +86,7 @@ def chainEpochDirectionAt (A : RustAlloc) (a : BitVec 64)
     memRegion (a + 0x34#64) 4
 
 /-- `ChainEpochDirection` at `a` with existential `Vec` pins. -/
-def chainEpochDirection (A : RustAlloc) (a : BitVec 64) (ced : ChainEpochDirection) : SepProp :=
+@[expose] def chainEpochDirection (A : RustAlloc) (a : BitVec 64) (ced : ChainEpochDirection) : SepProp :=
   vecU8 A a ced.next ∗
     keyHistory A (a + 0x18#64) ced.prev ∗
     ((a + 0x30#64) ↦₃₂ ced.ctr) ∗
@@ -102,34 +97,34 @@ def chainEpochDirection (A : RustAlloc) (a : BitVec 64) (ced : ChainEpochDirecti
 /-- `ChainEpoch` at `a` (112 bytes):
 - `+0x00..+0x38` (56B): `send: ChainEpochDirection`
 - `+0x38..+0x70` (56B): `recv: ChainEpochDirection` -/
-def chainEpochAt (A : RustAlloc) (gce : ChainEpochGhost × ChainEpoch) (a : BitVec 64) : SepProp :=
+@[expose] def chainEpochAt (A : RustAlloc) (gce : ChainEpochGhost × ChainEpoch) (a : BitVec 64) : SepProp :=
   chainEpochDirectionAt A a gce.1.send gce.2.send ∗
     chainEpochDirectionAt A (a + 0x38#64) gce.1.recv gce.2.recv
 
 /-- `ChainEpoch` at `a` with existential `Vec` pins. -/
-def chainEpoch (A : RustAlloc) (ce : ChainEpoch) (a : BitVec 64) : SepProp :=
+@[expose] def chainEpoch (A : RustAlloc) (ce : ChainEpoch) (a : BitVec 64) : SepProp :=
   chainEpochDirection A a ce.send ∗
     chainEpochDirection A (a + 0x38#64) ce.recv
 
 /-! ## `VecDeque<ChainEpoch>` (32 bytes = `0x20`, align 8) -/
 
 /-- The 32-byte `VecDeque` header `{cap, ptr, head, len}` at `v`. -/
-def vecDequeHeader (v cap ptr head len : BitVec 64) : SepProp :=
+@[expose] def vecDequeHeader (v cap ptr head len : BitVec 64) : SepProp :=
   (v ↦₆₄ cap) ∗ ((v + 0x08#64) ↦₆₄ ptr) ∗ ((v + 0x10#64) ↦₆₄ head) ∗ ((v + 0x18#64) ↦₆₄ len)
 
 /-- Physical slot index in a `VecDeque` of capacity `cap` starting at `head` for logical index `i`:
 `(head + i) % cap` (computed as `if head + i < cap then head + i else head + i - cap`). -/
-def vecDequePhysIdx (head cap i : Nat) : Nat :=
+@[expose] def vecDequePhysIdx (head cap i : Nat) : Nat :=
   if head + i < cap then head + i else head + i - cap
 
 /-- Logical index corresponding to physical slot `s` in a `VecDeque` of capacity `cap` with `head`:
 `if head ≤ s then s - head else s + cap - head`. -/
-def vecDequeLogIdx (head cap s : Nat) : Nat :=
+@[expose] def vecDequeLogIdx (head cap s : Nat) : Nat :=
   if head ≤ s then s - head else s + cap - head
 
 /-- Physical slots `[s .. s + n)` of a `VecDeque<T>` buffer at `ptr` (capacity `cap`, head `head`),
 where logical index `i < xs.length` holds `elem xs[i]` and unoccupied slots hold `memRegion _ stride`. -/
-def vecDequeSlotsAt {α : Type} (elem : α → BitVec 64 → SepProp) (stride cap head : Nat)
+@[expose] def vecDequeSlotsAt {α : Type} (elem : α → BitVec 64 → SepProp) (stride cap head : Nat)
     (ptr : BitVec 64) (xs : List α) : Nat → Nat → SepProp
   | _, 0 => emp
   | s, n + 1 =>
@@ -139,7 +134,7 @@ def vecDequeSlotsAt {α : Type} (elem : α → BitVec 64 → SepProp) (stride ca
       vecDequeSlotsAt elem stride cap head ptr xs (s + 1) n
 
 /-- Ring-buffer heap contents of `VecDeque<T>` at `ptr` with capacity `cap` and `head`. -/
-def vecDequeRingBuf {α : Type} (A : RustAlloc) (stride align : Nat) (elem : α → BitVec 64 → SepProp)
+@[expose] def vecDequeRingBuf {α : Type} (A : RustAlloc) (stride align : Nat) (elem : α → BitVec 64 → SepProp)
     (cap ptr head : BitVec 64) (xs : List α) : SepProp :=
   ⌜xs.length ≤ cap.toNat ∧ cap.toNat * stride < 2 ^ 63 ∧ ptr ≠ 0 ∧
     (if cap = 0 then head = 0 else head.toNat < cap.toNat)⌝ ∗
@@ -149,13 +144,13 @@ def vecDequeRingBuf {α : Type} (A : RustAlloc) (stride align : Nat) (elem : α 
 
 /-- Contiguous (`head = 0`) `VecDeque<T>` at `v` with capacity `cap` and buffer `ptr` holding `xs`:
 the 32-byte header `{cap, ptr, 0, xs.length}` and the same `vecBuf` heap layout as `Vec<T>`. -/
-def vecDequeContigAt {α : Type} (A : RustAlloc) (stride align : Nat) (elem : α → BitVec 64 → SepProp)
+@[expose] def vecDequeContigAt {α : Type} (A : RustAlloc) (stride align : Nat) (elem : α → BitVec 64 → SepProp)
     (v cap ptr : BitVec 64) (xs : List α) : SepProp :=
   vecDequeHeader v cap ptr 0#64 (BitVec.ofNat 64 xs.length) ∗
     vecBuf A stride align elem cap ptr xs
 
 /-- General `VecDeque<T>` at `v` with capacity `cap`, buffer `ptr`, and `head` holding `xs`. -/
-def vecDequeAt {α : Type} (A : RustAlloc) (stride align : Nat) (elem : α → BitVec 64 → SepProp)
+@[expose] def vecDequeAt {α : Type} (A : RustAlloc) (stride align : Nat) (elem : α → BitVec 64 → SepProp)
     (v cap ptr head : BitVec 64) (xs : List α) : SepProp :=
   vecDequeHeader v cap ptr head (BitVec.ofNat 64 xs.length) ∗
     vecDequeRingBuf A stride align elem cap ptr head xs
@@ -163,11 +158,11 @@ def vecDequeAt {α : Type} (A : RustAlloc) (stride align : Nat) (elem : α → B
 /-! ## `ChainParamsPB` (8 bytes, align 4) and `Direction` (4 bytes, align 4) -/
 
 /-- `ChainParamsPB` at `a` (8 bytes): `max_jump: u32` at `+0`, `max_ooo_keys: u32` at `+4`. -/
-def chainParamsAt (a : BitVec 64) (p : ChainParamsPB) : SepProp :=
+@[expose] def chainParamsAt (a : BitVec 64) (p : ChainParamsPB) : SepProp :=
   (a ↦₃₂ p.maxJump) ∗ ((a + 0x04#64) ↦₃₂ p.maxOooKeys)
 
 /-- `Direction` at `a` (4 bytes): `0#32` for `.a2b`, `1#32` for `.b2a`. -/
-def directionAt (a : BitVec 64) (d : Direction) : SepProp :=
+@[expose] def directionAt (a : BitVec 64) (d : Direction) : SepProp :=
   a ↦₃₂ d.toI32
 
 /-! ## `Chain` (88 bytes = `0x58`, align 8) -/
@@ -180,7 +175,7 @@ def directionAt (a : BitVec 64) (d : Direction) : SepProp :=
 - `+0x48..+0x50` (8B): `params: ChainParamsPB`
 - `+0x50..+0x54` (4B): `dir: Direction`
 - `+0x54..+0x58` (4B): 4-byte tail padding (`memRegion`) -/
-def chainAt (A : RustAlloc) (a : BitVec 64) (G : ChainGhost) (c : Chain) : SepProp :=
+@[expose] def chainAt (A : RustAlloc) (a : BitVec 64) (G : ChainGhost) (c : Chain) : SepProp :=
   ⌜G.epochs.length = c.links.length⌝ ∗
     vecDequeAt A chainEpochSize chainEpochAlign (chainEpochAt A)
       a G.linksCap G.linksPtr G.linksHead (G.epochs.zip c.links) ∗
@@ -192,7 +187,7 @@ def chainAt (A : RustAlloc) (a : BitVec 64) (G : ChainGhost) (c : Chain) : SepPr
     memRegion (a + 0x54#64) 4
 
 /-- `Chain` at `a` (88 bytes) with contiguous `links` (`head = 0`, using `vecBuf`). -/
-def chainContigAt (A : RustAlloc) (a : BitVec 64) (G : ChainGhost) (c : Chain) : SepProp :=
+@[expose] def chainContigAt (A : RustAlloc) (a : BitVec 64) (G : ChainGhost) (c : Chain) : SepProp :=
   ⌜G.epochs.length = c.links.length ∧ G.linksHead = 0#64⌝ ∗
     vecDequeContigAt A chainEpochSize chainEpochAlign (chainEpochAt A)
       a G.linksCap G.linksPtr (G.epochs.zip c.links) ∗
@@ -204,12 +199,12 @@ def chainContigAt (A : RustAlloc) (a : BitVec 64) (G : ChainGhost) (c : Chain) :
     memRegion (a + 0x54#64) 4
 
 /-- `Chain` at `a` (existentially quantified `ChainGhost`). -/
-def chainRepr (A : RustAlloc) (a : BitVec 64) (c : Chain) : SepProp :=
+@[expose] def chainRepr (A : RustAlloc) (a : BitVec 64) (c : Chain) : SepProp :=
   ∃∗ G : ChainGhost, chainAt A a G c
 
 /-- `next_key_internal` 36-byte output tuple `(u32, [u8; 32])` at `out`:
 `ctr: u32` at `out + 0`, `key: [u8; 32]` (`key.length = 32`) at `out + 4`. -/
-def nextKeyOutAt (out : BitVec 64) (ctr : BitVec 32) (key : List (BitVec 8)) : SepProp :=
+@[expose] def nextKeyOutAt (out : BitVec 64) (ctr : BitVec 32) (key : List (BitVec 8)) : SepProp :=
   ⌜key.length = 32⌝ ∗ (out ↦₃₂ ctr) ∗ ((out + 0x04#64) ↦ₛ key)
 
 end CryptoVerification.SpqrV1.ChainProofs

@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.UA.BI.RAB.Defs
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.ReadableBy2Pure
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.ReadableBy2Pure -- proof-setup: allow-public-import
 import all DY.Trace.Basic
 import all DY.Trace.Monad
 import all DY.Trace.Manipulation
@@ -34,6 +34,12 @@ import Symbolic.Proofs.Swarm.CREF.CBadG2.Stamps -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.CBadReadableBridge -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CBadG2Pure -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.StateFaithfulMoves -- shake: keep
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
+public import Symbolic.Proofs.Swarm.UA.Defs
 
 /-!
 # Shared Whisper Receive Helpers
@@ -43,7 +49,7 @@ Provides schedule, flattening, and collision bridges across trace translations, 
 witnesses to `ModelAcceptsTermAfterAttackerSends`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

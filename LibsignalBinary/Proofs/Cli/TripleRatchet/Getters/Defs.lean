@@ -19,7 +19,7 @@ Defines the CLI symbol name `dropChainName` for
 `core::ptr::drop_glue::<libsignal_protocol::proto::storage::session_structure::Chain>`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Getters
 

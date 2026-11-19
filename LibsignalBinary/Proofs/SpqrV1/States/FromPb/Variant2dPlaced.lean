@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2a
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2a -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2c
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2d
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 1 (`KeysSampled`, `+1104`) — Part D
@@ -22,7 +23,7 @@ import ProofLib.SepLogic.WPp
 Relocatable Block-`333` `sendingHdr` dispatch and stack staging (`+4016 -> +5860 | +4096`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

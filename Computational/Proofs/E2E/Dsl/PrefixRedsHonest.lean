@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.M3Interfaces
-public import Computational.Proofs.E2E.Dsl.M4ReductionsIface
+public import Computational.Proofs.E2E.Dsl.M3Interfaces -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.M4ReductionsIface -- proof-setup: allow-public-import
 import Computational.Proofs.LibsignalCli.KeyInd1RealReds
 import Computational.Proofs.LibsignalCli.PrefixCouplingWith
 import Computational.Proofs.ReductionDsl.Bridge
 import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
+import Computational.Proofs.LibsignalCli.KeyInd1RealRedsCosted
 
 /-!
 # Costed Two-Stage Prefix Reductions for Multi-Session Composition
@@ -26,7 +27,7 @@ Constructs the `ℕ`-indexed two-stage reduction family `prefixRedHonest` to
 `SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -80,7 +81,7 @@ open Computational.Proofs.E2E.Dsl.M4ReductionsIface (bhCtlUnStart e2eTargetGameC
 
 /-! ## Codec compatibility and `Iface.liftP` helpers -/
 
-def e2eGameRespEnc {ℓ : ℕ} :
+@[expose] def e2eGameRespEnc {ℓ : ℕ} :
     BHTargetResp ℓ → (e2eGameRT ℓ).denote
   | .inl (.inl kr) => .inl (.inl (keyIndRenc kr))
   | .inl (.inr idx?) => .inl (.inr idx?)
@@ -225,7 +226,7 @@ variable {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
   {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
   {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
 
-def prefixKiStepC (subs : M3SubprogramsIface ℓ S P C K decT encT)
+@[expose] def prefixKiStepC (subs : M3SubprogramsIface ℓ S P C K decT encT)
     (b : SignalPqxdh.QueryBudget) (qStart : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (σE : Expr (e2eOps ℓ P C K decT encT) Γ (e2eDrvStateTy S ℓ))
     (kqE : Expr (e2eOps ℓ P C K decT encT) Γ (keyIndQT S)) :
@@ -241,7 +242,7 @@ def prefixKiStepC (subs : M3SubprogramsIface ℓ S P C K decT encT)
             (subs.drv.mirrorE (drvSetStE (.fst .v1) (.snd .v0)) (.snd .v1) (.fst .v0)))))
       (.ret (.pair (.inl (.inl (.inl .unit))) (.fst .v0))))
 
-def prefixLocalStartC (subs : M3SubprogramsIface ℓ S P C K decT encT)
+@[expose] def prefixLocalStartC (subs : M3SubprogramsIface ℓ S P C K decT encT)
     (b : SignalPqxdh.QueryBudget) (qStart : ℕ) (bm : Bool) {Γ : List (Ty (e2eSig ℓ))}
     (σE : Expr (e2eOps ℓ P C K decT encT) Γ (e2eDrvStateTy S ℓ))
     (sidE : Expr (e2eOps ℓ P C K decT encT) Γ (sidT S)) :
@@ -269,7 +270,7 @@ def prefixLocalStartC (subs : M3SubprogramsIface ℓ S P C K decT encT)
               (.fst .v1)
               .v0)))))
 
-def prefixHandlePreHonest (subs : M3SubprogramsIface ℓ S P C K decT encT)
+@[expose] def prefixHandlePreHonest (subs : M3SubprogramsIface ℓ S P C K decT encT)
     (b : SignalPqxdh.QueryBudget) (qStart qDR qep k : ℕ) :
     Comp (e2eOps ℓ P C K decT encT) (e2eSessionTargetIface ℓ)
       [e2eDrvStateTy S ℓ, e2eGameQT S ℓ]
@@ -291,7 +292,7 @@ def prefixHandlePreHonest (subs : M3SubprogramsIface ℓ S P C K decT encT)
         qStart b.q_total b.q_total qDR qep .v1 (.fst .v0) (.snd .v0))
       (.ret (.inl (.pair (.inr (.fst .v0)) (.snd .v0)))))
 
-def prefixHandlePostHonest (subs : M3SubprogramsIface ℓ S P C K decT encT)
+@[expose] def prefixHandlePostHonest (subs : M3SubprogramsIface ℓ S P C K decT encT)
     (b : SignalPqxdh.QueryBudget) (qStart qDR qep k : ℕ) :
     Comp (e2eOps ℓ P C K decT encT) (e2eSessionTargetIface ℓ)
       [e2eDrvStateTy S ℓ, e2eGameQT S ℓ]
@@ -311,7 +312,7 @@ def prefixHandlePostHonest (subs : M3SubprogramsIface ℓ S P C K decT encT)
         (.ret (.pair (.inr (.fst .v0)) (.snd .v0)))))
 
 /-- Honest two-stage per-session prefix reduction over `e2eOps` and `e2eSamplers`. -/
-@[reducible] def prefixRedHonest (subs : M3SubprogramsIface ℓ S P C K decT encT)
+@[expose, reducible] def prefixRedHonest (subs : M3SubprogramsIface ℓ S P C K decT encT)
     (b : SignalPqxdh.QueryBudget) (qStart qDR qep k : ℕ) :
     TwoStageCostedReduction (e2eOps ℓ P C K decT encT)
       (e2eSessionTargetIface ℓ)
@@ -399,11 +400,11 @@ theorem prefixRedHonest_totalQueries₂_le (subs : M3SubprogramsIface ℓ S P C 
   simp only [Nat.zero_max, Nat.zero_add, Nat.add_zero]
   exact Nat.le_trans (Nat.mul_le_mul_left qTot hpost) (by simp)
 
-def m3PrefixEndpointCost (subs : M3SubprogramsIface ℓ S P C K decT encT)
+@[expose] def m3PrefixEndpointCost (subs : M3SubprogramsIface ℓ S P C K decT encT)
     (b : SignalPqxdh.QueryBudget) (qStart : ℕ) : ℕ :=
   subs.drv.emptyDrvStateCost + subs.drv.finishPrefixCost qStart b.q_total + 180
 
-def m3PrefixStepCost (subs : M3SubprogramsIface ℓ S P C K decT encT)
+@[expose] def m3PrefixStepCost (subs : M3SubprogramsIface ℓ S P C K decT encT)
     (b : SignalPqxdh.QueryBudget) (qStart qDR qep : ℕ) : ℕ :=
   max (subs.drv.kiQueryOkCost b.q_total qStart + subs.drv.mirrorCost)
       (subs.drv.prepStartSpkCost qStart b.q_total b.q_total b.q_total b.q_total +
@@ -543,7 +544,7 @@ theorem prefixRedHonest_totalCost_le_leaf (subs : M3SubprogramsIface ℓ S P C K
     Expr.v0, Expr.v1, Expr.v2] at hempty hch hres hfin hmul ⊢
   omega
 
-def m3PrefixSizeBound {subs : M3SubprogramsIface ℓ S P C K decT encT}
+@[expose] def m3PrefixSizeBound {subs : M3SubprogramsIface ℓ S P C K decT encT}
     (sz : M3SubprogramsSizeIface subs)
     (b : SignalPqxdh.QueryBudget) (qStart qDR qep : ℕ) : ℕ :=
   sz.emptyDrvStateSize +
@@ -683,21 +684,6 @@ theorem prefixRedHonest_size_le_leaf {subs : M3SubprogramsIface ℓ S P C K decT
   dsimp only [prefixRedHonest, m3PrefixSizeBound, Comp.size, Expr.size,
     Expr.v0, Expr.v1, Expr.v2] at hempty hch hres hfin hpre hpost ⊢
   omega
-
-/-- `GRed2Bounded` certificate for `prefixRedHonest` under any budget `B` bounding cost and size. -/
-theorem prefixRedHonest_gRed2Bounded_of_cost (subs : M3SubprogramsIface ℓ S P C K decT encT)
-    (b : SignalPqxdh.QueryBudget) (qStart qDR qep k qTot B : ℕ)
-    (hCost : (prefixRedHonest subs b qStart qDR qep k).totalCost qTot ≤ B)
-    (hSize : (prefixRedHonest subs b qStart qDR qep k).size ≤
-      reductionSizeBudget + 2 ^ 12 * bits B) :
-    GRed2Bounded (prefixRedHonest subs b qStart qDR qep k)
-      (fun _ => 1) (fun _ => 0) qTot qTot B false :=
-  gRed2Bounded_of_bounds (prefixRedHonest subs b qStart qDR qep k)
-    (fun _ => 1) (fun _ => 0) qTot qTot B false hCost hSize
-    (prefixRedHonest_totalQueries₁ subs b qStart qDR qep k)
-    (prefixRedHonest_totalQueries₂_le subs b qStart qDR qep k qTot)
-    (m4_e2eOps_sizeHonest ℓ P C K decT encT)
-    (m4_e2eSamplers_sizeHonest ℓ)
 
 /-! ## Stage-2 per-instance query bound -/
 

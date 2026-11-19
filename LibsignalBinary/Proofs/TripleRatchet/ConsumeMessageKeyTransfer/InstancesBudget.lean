@@ -10,15 +10,21 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.LoopBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneBudget
-public import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.Instances
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKeyBudget
+import LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudget
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.LoopBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneBudget
+import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.Instances
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKeyBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.Fetch
 import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.Transfer
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.ConsumeCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Hmac -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.RunOfCalleesBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded and `VmPreserved` Relocatable `ConsumeMessageKeyTransfer` Contracts
@@ -30,7 +36,7 @@ transfer corollaries for `RatchetState::consume_message_key` (Block `24`),
 (Block `213`), and `<PublicKey as PartialEq>::eq` (Block `212`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -68,11 +74,7 @@ open LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget 
 )
 open LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.LoopBudget (findPlacedSpec)
 open LibsignalBinary.Proofs.ConsumeMessageKey.RunOfCalleesBudget (cmkPlacedRoSpec)
-open LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudget (
-  consume_message_key_placed_ro_run consume_message_key_placed_ro_run_of_hooks
-  consume_message_key_placed_run consume_message_key_placed_run_of_hooks
-  hmac_sha256_placed_ok hmac_sha256_placed_ro_ok
-)
+open LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudget (hmac_sha256_placed_ok hmac_sha256_placed_ro_ok)
 open LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKeyBudget (cmkRawSpecPlaced)
 
 /-! ## Relocatable `[LibsignalPlacement]` Budget & `VmPreserved` Contracts -/
@@ -104,104 +106,6 @@ private theorem subroutine_ok_cro_of_cl_ro {α : Type} {prog : Program} {entry :
 
 /-! ### 1. `RatchetState::consume_message_key` (Block `24`) -/
 
-/-- Budget-threaded relocatable `consume_message_key` contract on Block `24` (`HookSat` shim form). -/
-theorem cmk_placed_ok {M : AllocCostModel}
-    (F : ShaCompress) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    {H : String → Option (State → State)}
-    (hA : CmkAllocHooks A lim H)
-    (hmm : H "memmove" = some hookMemmove)
-    (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
-    (h_realloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hhmac : HmacPlacedOk H F) :
-    subroutine_ok ((blkPC_24).rebase (blkPl_24).base H) (blkPl_24).base
-      (cmkPlacedRoSpec F A lim) :=
-  consume_message_key_placed_run_of_hooks F A lim H h_bb h_realloc hhmac hA hmm
-
-theorem cmk_placed_ro_ok {M : AllocCostModel}
-    (F : ShaCompress) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    {H : String → Option (State → State)}
-    (hA : CmkAllocHooks A lim H)
-    (hmm : H "memmove" = some hookMemmove)
-    (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
-    (h_realloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (h_mc : H CryptoVerification.LibsignalSession.CryptoHmacSha256.lsMemcpySym = some hookMemcpy)
-    (h_ms : H CryptoVerification.LibsignalSession.CryptoHmacSha256.lsMemsetSym = some hookMemset)
-    (h_c256 : H CryptoVerification.LibsignalSession.CryptoHmacSha256.lsCompress256Sym =
-      some (CryptoVerification.LibsignalHmac.compress256Hook F)) :
-    subroutine_ok ((blkPC_24).rebase (blkPl_24).base H) (blkPl_24).base
-      (cmkPlacedRoSpec F A lim) :=
-  consume_message_key_placed_ro_run_of_hooks F A lim H h_bb h_realloc h_mc h_ms h_c256 hA hmm
-
-theorem cmk_placed_ro_ok_of_noop {M : AllocCostModel}
-    (F : ShaCompress) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    {H : String → Option (State → State)}
-    (hA : CmkAllocHooks A lim H)
-    (hmm : H "memmove" = some hookMemmove)
-    (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
-    (h_shim : H lsNoAllocShimSym = some hookNoop)
-    (h_realloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (h_mc : H CryptoVerification.LibsignalSession.CryptoHmacSha256.lsMemcpySym = some hookMemcpy)
-    (h_ms : H CryptoVerification.LibsignalSession.CryptoHmacSha256.lsMemsetSym = some hookMemset)
-    (h_c256 : H CryptoVerification.LibsignalSession.CryptoHmacSha256.lsCompress256Sym =
-      some (CryptoVerification.LibsignalHmac.compress256Hook F)) :
-    subroutine_ok ((blkPC_24).rebase (blkPl_24).base H) (blkPl_24).base
-      (cmkPlacedRoSpec F A lim) :=
-  consume_message_key_placed_ro_run F A lim H h_bb h_shim h_realloc h_mc h_ms h_c256 hA hmm
-
-theorem cmk_placed_ro_ok_at_block {callerProg : Program} {i : Nat} {M : AllocCostModel}
-    (F : ShaCompress) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    {H : String → Option (State → State)} [IsLsBlockProg callerProg i H]
-    (hA : CmkAllocHooks A lim H)
-    (hmm : H "memmove" = some hookMemmove)
-    (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
-    (h_realloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (h_mc : H CryptoVerification.LibsignalSession.CryptoHmacSha256.lsMemcpySym = some hookMemcpy)
-    (h_ms : H CryptoVerification.LibsignalSession.CryptoHmacSha256.lsMemsetSym = some hookMemset)
-    (h_c256 : H CryptoVerification.LibsignalSession.CryptoHmacSha256.lsCompress256Sym =
-      some (CryptoVerification.LibsignalHmac.compress256Hook F))
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 24) (cmkPlacedRoSpec F A lim) := by
-  have htr : subroutine_ok callerProg (lsmpl.base 24)
-      (withLsCodeLoaded lsmpl (cmkPlacedRoSpec F A lim)) :=
-    ls_subroutine_ok_transfer_of_plain
-      (cmk_placed_ro_ok F A lim hA hmm h_bb h_realloc h_mc h_ms h_c256) hi
-  refine subroutine_ok_outcome_intro fun ⟨x, st_init⟩ R s0 hpc hrun hpre hsp => ?_
-  have hcl : LibsignalCodeLoaded lsmpl s0.mem := by
-    have hp := hpre
-    dsimp only [cmkPlacedRoSpec, cmkPlacedSpec] at hp
-    rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hp
-    have hp2 := hp.2
-    unfold CryptoVerification.LibsignalSession.cmkPlacedSpec at hp2
-    exact (extract_withLsCodeLoaded hp2).1
-  refine htr.mono_outcome (x, st_init) R s0 hpc hrun ?_ hsp fun _ hout => hout
-  dsimp only [withLsCodeLoaded]
-  rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
-  exact ⟨hcl, hpre⟩
-
-theorem cmk_placed_cro_ok_at_block {callerProg : Program} {i : Nat} {M : AllocCostModel}
-    (F : ShaCompress) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    {H : String → Option (State → State)} [IsLsBlockProg callerProg i H]
-    (hA : CmkAllocHooks A lim H)
-    (hmm : H "memmove" = some hookMemmove)
-    (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
-    (h_realloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (h_mc : H CryptoVerification.LibsignalSession.CryptoHmacSha256.lsMemcpySym = some hookMemcpy)
-    (h_ms : H CryptoVerification.LibsignalSession.CryptoHmacSha256.lsMemsetSym = some hookMemset)
-    (h_c256 : H CryptoVerification.LibsignalSession.CryptoHmacSha256.lsCompress256Sym =
-      some (CryptoVerification.LibsignalHmac.compress256Hook F))
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 24)
-      (withLsCodeRoLoaded lsmpl (cmkPlacedSpec F A lim)) := by
-  have hbase :=
-    cmk_placed_ro_ok_at_block (callerProg := callerProg) F A lim hA hmm h_bb h_realloc
-      h_mc h_ms h_c256 hi
-  refine subroutine_ok_outcome_intro fun g R s0 hpc hrun hpre hsp => ?_
-  have ⟨⟨_, hro⟩, hp⟩ := extract_withLsCodeRoLoaded hpre
-  refine hbase.mono_outcome g R s0 hpc hrun ?_ hsp fun _ hout => hout
-  dsimp only [cmkPlacedRoSpec]
-  rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
-  exact ⟨hro, hp⟩
-
 private theorem cmkPlacedSpec_pre_eq_raw (F : ShaCompress)
     (A' : CryptoVerification.RustHeap.RustAlloc)
     (x : CryptoVerification.LibsignalSession.ConsumeMessageKeyGhost) (s : State) :
@@ -223,46 +127,6 @@ private theorem cmkPlacedSpec_post_eq_raw (F : ShaCompress)
     CryptoVerification.LibsignalTripleRatchet.Decrypt.KeyDerive.cmkRawSpecPlaced,
     withLsCodeLoaded]
   rw [CryptoVerification.LibsignalTripleRatchet.Decrypt.logOff_tryDecryptPlacedImg]
-
-theorem cmk_raw_placed_cro_ok_at_block {callerProg : Program} {i : Nat} {M : AllocCostModel}
-    (F : ShaCompress) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    {H : String → Option (State → State)} [IsLsBlockProg callerProg i H]
-    (hA : CmkAllocHooks A lim H)
-    (hmm : H "memmove" = some hookMemmove)
-    (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
-    (h_realloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (h_mc : H CryptoVerification.LibsignalSession.CryptoHmacSha256.lsMemcpySym = some hookMemcpy)
-    (h_ms : H CryptoVerification.LibsignalSession.CryptoHmacSha256.lsMemsetSym = some hookMemset)
-    (h_c256 : H CryptoVerification.LibsignalSession.CryptoHmacSha256.lsCompress256Sym =
-      some (CryptoVerification.LibsignalHmac.compress256Hook F))
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 24)
-      (withLsCodeRoLoaded lsmpl (cmkRawSpecPlaced F A lim CmkEnv)) := by
-  have hbase :=
-    cmk_placed_ro_ok_at_block (callerProg := callerProg) F A lim hA hmm h_bb h_realloc
-      h_mc h_ms h_c256 hi
-  refine subroutine_ok_outcome_intro fun ⟨x, st_init⟩ R s0 hpc hrun hpre hsp => ?_
-  have ⟨⟨hcl, hro⟩, hp⟩ := extract_withLsCodeRoLoaded hpre
-  refine hbase.mono_outcome (x, st_init) R s0 hpc hrun ?_ hsp fun sf hout => ?_
-  · dsimp only [cmkRawSpecPlaced] at hp
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hp
-    dsimp only [cmkPlacedRoSpec, cmkPlacedSpec]
-    rw [cmkPlacedSpec_pre_eq_raw, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hp.1, ?_⟩
-    rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
-    refine ⟨hcl, ?_⟩
-    rw [sepConj_left_comm, satisfies_pure_sepConj]
-    exact ⟨hro, hp.2⟩
-  · rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩
-    · refine Or.inl ⟨hret, hcc, ?_⟩
-      dsimp only [cmkPlacedRoSpec, cmkPlacedSpec, cmkRawSpecPlaced, withLsCodeRoLoaded] at hq ⊢
-      simp only [cmkPlacedSpec_post_eq_raw] at hq
-      exact hq
-    · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-    · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hq⟩))
-    · exact Or.inr (Or.inr (Or.inr ⟨hoom, hq⟩))
-
-/-! ### 2. `RatchetState::find_receiver_chain_index` (Block `26`) -/
 
 /-- Relocatable `VmPreserved` contract for `find_receiver_chain_index` (Block `26`). -/
 theorem findIndex_placed_ok {M : AllocCostModel}

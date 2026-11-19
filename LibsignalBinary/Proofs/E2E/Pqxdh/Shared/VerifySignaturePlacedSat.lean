@@ -16,6 +16,8 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.VerifySignaturePlacedA2Sat
 import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.VerifySignaturePlacedBSat
 import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain
+import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.VerifySignaturePlacedB
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `HookSat`-backed `black_box` Sibling of `VerifySignaturePlaced` (Blocks `203` and `204`)
@@ -126,7 +128,7 @@ public theorem verifySignatureMultipart_sepWP_placed_sat [LibsignalPlacement]
     hpk hsig hfsp_align hrun hpc hsp hx0 hx1 hx2 hx3 hx4 hx30)
     (Entails.of_eq (by sep_ac_rfl))
   intro s1 hpc1 hrun1 ⟨hcl1, hro1⟩ ⟨_, _, hsp1, hx19_1, hx20_1, hx21_1, hx22_1, hx29_1, hv1, htr1⟩
-  cases hmont : P.montToEd pk ((sig.getD 63 0 &&& 0x80) >>> 7) with
+  cases hmont : P.montToEdBytes pk ((sig.getD 63 0 &&& 0x80) >>> 7) with
   | none =>
     have hxed : xeddsaVerifyRef P pk m sig = false := verifySig_xeddsaVerifyRef_of_montToEd_none P hmont
     apply verifySig_seq_seg (verifySig_seg1a_none_placed P H s1 fsp pk ((sig.getD 63 0 &&& 0x80) >>> 7)
@@ -169,7 +171,7 @@ public theorem verifySignatureMultipart_sepWP_placed_sat [LibsignalPlacement]
       hv3.trans (hv2.trans hv1), htr3.trans (htr2.trans htr1)⟩
   | some edPt =>
     have hedPt : edPt.length = 160 := hWF.montToEd_len pk _ edPt hmont
-    have hcapA : (P.compress edPt).length = 32 := hWF.compress_len edPt
+    have hcapA : (P.compressBytes edPt).length = 32 := hWF.compressBytes_len edPt
     apply ProofLib.SepWP.replace_pre (hPQ := Entails.of_eq (verifySig_memRegion_752_seg1b_split fsp))
       (by sep_frame)
     apply verifySig_seq_seg_lscro ⟨hcl1, hro1⟩ (verifySig_seg1b_placed_sat P H hWF hH s1 fsp pk edPt
@@ -206,7 +208,7 @@ public theorem verifySignatureMultipart_sepWP_placed_sat [LibsignalPlacement]
       have hxed : xeddsaVerifyRef P pk m sig = false := verifySig_xeddsaVerifyRef_of_60_false P h60
       apply verifySig_seq_seg (verifySig_seg1c_invalid_placed H s2 sig
         (memRegion (fsp + 48#64) 160 ∗ ((fsp + 208#64) ↦ₛ bytesToBv8 edPt) ∗
-         ((fsp + 368#64) ↦ₛ bytesToBv8 (P.compress edPt)) ∗ memRegion (fsp + 800#64) 168 ∗
+         ((fsp + 368#64) ↦ₛ bytesToBv8 (P.compressBytes edPt)) ∗ memRegion (fsp + 800#64) 168 ∗
          stackAt fsp pqxdhHookStack ∗ (pkPtr ↦ₛ bytesToBv8 pk) ∗ (sigPtr ↦ₛ bytesToBv8 sig) ∗
          (fsp ↦₆₄ 0#64) ∗ memRegion (fsp + 8#64) 8 ∗ memRegion (fsp + 16#64) 32 ∗
          memRegion (fsp + 400#64) 400 ∗ memRegion (fsp + 968#64) 184 ∗
@@ -247,7 +249,7 @@ public theorem verifySignatureMultipart_sepWP_placed_sat [LibsignalPlacement]
         h19, h20, h21, h22, h23, h24, h25, h26, h27, h28, h29,
         hv4.trans (hv3.trans (hv2.trans hv1)), htr4.trans (htr3.trans (htr2.trans htr1))⟩
     | true =>
-      have hxed_eq := verifySig_xeddsaVerifyRef_of_some P m hpk hsig h60 hmont
+      have hxed_eq := verifySig_xeddsaVerifyRef_of_some P hWF m hpk hsig h60 hmont
       apply ProofLib.SepWP.replace_pre (hPQ := verifySig_seg1b_to_seg1c_split fsp) (by sep_frame)
       apply verifySig_seq_seg_lscl hcl2 (verifySig_seg1c_placed_sat P H hWF hH s2 fsp sigPtr edPt sig
         (memRegion (fsp + 16#64) 32 ∗ memRegion (fsp + 48#64) 160 ∗
@@ -274,20 +276,20 @@ public theorem verifySignatureMultipart_sepWP_placed_sat [LibsignalPlacement]
       have hx21_s3 : s3.readReg64 (.gpr 21#5) = 1#64 := hx21_3.trans hx21_s2
       have hx23_s3 : s3.readReg64 (.gpr 23#5) = fsp + 800#64 := hx23_3.trans hx23_2
       have hx29_s3 : s3.readReg64 (.gpr 29#5) = fsp + 1152#64 := hx29_3.trans hx29_s2
-      have hpre64 : (sig.take 32 ++ P.compress edPt).length = 64 := by simp [hsig, hcapA]
+      have hpre64 : (sig.take 32 ++ P.compressBytes edPt).length = 64 := by simp [hsig, hcapA]
       have hshaIV : sha512IVBytesLE = bytesToBv8 (revWords64 sha512InitState) := rfl
       have hst0 : (revWords64 sha512InitState).length = 64 := revWords64_length (by decide)
       rw [hshaIV]
       rcases hm with hm33 | hm1569
       · rw [hm33, show BitVec.ofNat 64 33 = 33#64 from rfl]
         apply verifySig_seq_seg_lscl hcl3 (verifySig_seg2_33_placed_sat P H hH s3 fsp slicesPtr msgPtr
-          (sig.take 32 ++ P.compress edPt) m (revWords64 sha512InitState)
+          (sig.take 32 ++ P.compressBytes edPt) m (revWords64 sha512InitState)
           (memRegion fsp 4 ∗
            ((fsp + 4#64) ↦₃₂ (BitVec.zeroExtend 32 ((bytesToBv8 sig).getD 63 0#8) &&& 0x7f#32)) ∗
            ((fsp + 8#64) ↦₆₄ sigPtr) ∗ memRegion (fsp + 16#64) 32 ∗
            memRegion (fsp + 48#64) 160 ∗ memRegion (fsp + 208#64) 160 ∗
-           ((fsp + 368#64) ↦ₛ bytesToBv8 (P.compress edPt)) ∗
-           ((fsp + 400#64) ↦ₛ bytesToBv8 (P.edNeg edPt)) ∗
+           ((fsp + 368#64) ↦ₛ bytesToBv8 (P.compressBytes edPt)) ∗
+           ((fsp + 400#64) ↦ₛ bytesToBv8 (P.edNegBytes edPt)) ∗
            memRegion (fsp + 768#64) 32 ∗ memRegion (fsp + 800#64) 168 ∗
            memRegion (fsp + 968#64) 184 ∗
            ((fsp + 1152#64) ↦₆₄ s.readReg64 (.gpr 29#5)) ∗ ((fsp + 1160#64) ↦₆₄ retAddr) ∗
@@ -307,19 +309,19 @@ public theorem verifySignatureMultipart_sepWP_placed_sat [LibsignalPlacement]
         intro s4 hpc4 hrun4 hcl4 ⟨_, _, hsp4, hx23_4, hx29_4, hv4, htr4⟩
         have hx23_s4 : s4.readReg64 (.gpr 23#5) = fsp + 800#64 := hx23_4.trans hx23_s3
         have hx29_s4 : s4.readReg64 (.gpr 29#5) = fsp + 1152#64 := hx29_4.trans hx29_s3
-        have htail97 : ((sig.take 32 ++ P.compress edPt) ++ m).length = 97 := by
+        have htail97 : ((sig.take 32 ++ P.compressBytes edPt) ++ m).length = 97 := by
           simp [hsig, hcapA, hm33]
         have hsha_eq : revWords64 (sha512CompressOutBytes P (revWords64 sha512InitState)
-            (((sig.take 32 ++ P.compress edPt) ++ m) ++ [0x80] ++ List.replicate 14 0 ++
+            (((sig.take 32 ++ P.compressBytes edPt) ++ m) ++ [0x80] ++ List.replicate 14 0 ++
             encodeBitLen128BE 97)) =
-            P.sha512 (sig.take 32 ++ P.compress edPt ++ m) := by
+            P.sha512 (sig.take 32 ++ P.compressBytes edPt ++ m) := by
           rw [hWF.sha512_eq_ref, sha512Ref_of_length_97 P htail97]
         apply verifySig_end_seg (verifySig_tail_from_548_placed_sat P H hWF hH s4 fsp sigPtr retAddr
           (s.readReg64 (.gpr 19#5)) (s.readReg64 (.gpr 20#5)) (s.readReg64 (.gpr 21#5))
           (s.readReg64 (.gpr 22#5)) (s.readReg64 (.gpr 23#5)) (s.readReg64 (.gpr 24#5))
           (s.readReg64 (.gpr 25#5)) (s.readReg64 (.gpr 26#5)) (s.readReg64 (.gpr 27#5))
           (s.readReg64 (.gpr 28#5)) (s.readReg64 (.gpr 29#5))
-          edPt m sig ((sig.take 32 ++ P.compress edPt) ++ m) (revWords64 sha512InitState) 0#64 97
+          edPt m sig ((sig.take 32 ++ P.compressBytes edPt) ++ m) (revWords64 sha512InitState) 0#64 97
           ((pkPtr ↦ₛ bytesToBv8 pk) ∗ (slicesPtr ↦₆₄ msgPtr) ∗
            ((slicesPtr + 8#64) ↦₆₄ 33#64) ∗ (msgPtr ↦ₛ bytesToBv8 m) ∗ Frame)
           hcl4 hedPt hsig htail97 hst0 (Or.inl ⟨rfl, rfl⟩)
@@ -333,13 +335,13 @@ public theorem verifySignatureMultipart_sepWP_placed_sat [LibsignalPlacement]
           htr5.trans (htr4.trans (htr3.trans (htr2.trans htr1)))⟩
       · rw [hm1569, show BitVec.ofNat 64 1569 = 1569#64 from rfl]
         apply verifySig_seq_seg_lscl hcl3 (verifySig_seg2_1569_placed_sat P H hH s3 fsp slicesPtr msgPtr
-          (sig.take 32 ++ P.compress edPt) m (revWords64 sha512InitState)
+          (sig.take 32 ++ P.compressBytes edPt) m (revWords64 sha512InitState)
           (memRegion fsp 4 ∗
            ((fsp + 4#64) ↦₃₂ (BitVec.zeroExtend 32 ((bytesToBv8 sig).getD 63 0#8) &&& 0x7f#32)) ∗
            ((fsp + 8#64) ↦₆₄ sigPtr) ∗ memRegion (fsp + 16#64) 32 ∗
            memRegion (fsp + 48#64) 160 ∗ memRegion (fsp + 208#64) 160 ∗
-           ((fsp + 368#64) ↦ₛ bytesToBv8 (P.compress edPt)) ∗
-           ((fsp + 400#64) ↦ₛ bytesToBv8 (P.edNeg edPt)) ∗
+           ((fsp + 368#64) ↦ₛ bytesToBv8 (P.compressBytes edPt)) ∗
+           ((fsp + 400#64) ↦ₛ bytesToBv8 (P.edNegBytes edPt)) ∗
            memRegion (fsp + 768#64) 32 ∗ memRegion (fsp + 800#64) 168 ∗
            memRegion (fsp + 968#64) 184 ∗
            ((fsp + 1152#64) ↦₆₄ s.readReg64 (.gpr 29#5)) ∗ ((fsp + 1160#64) ↦₆₄ retAddr) ∗
@@ -359,25 +361,25 @@ public theorem verifySignatureMultipart_sepWP_placed_sat [LibsignalPlacement]
         intro s4 hpc4 hrun4 hcl4 ⟨_, _, hsp4, hx23_4, hx29_4, hv4, htr4⟩
         have hx23_s4 : s4.readReg64 (.gpr 23#5) = fsp + 800#64 := hx23_4.trans hx23_s3
         have hx29_s4 : s4.readReg64 (.gpr 29#5) = fsp + 1152#64 := hx29_4.trans hx29_s3
-        have hblk0 : ((sig.take 32 ++ P.compress edPt) ++ m.take 64).length = 128 := by
+        have hblk0 : ((sig.take 32 ++ P.compressBytes edPt) ++ m.take 64).length = 128 := by
           simp [hsig, hcapA, hm1569]
         have hblks11 : ((m.drop 64).take 1408).length = 1408 := by simp [hm1569]
         have htail97 : (m.drop 1472).length = 97 := by simp [hm1569]
-        have hm_split : ((sig.take 32 ++ P.compress edPt) ++ m.take 64) ++ (m.drop 64).take 1408 ++
-            m.drop 1472 = sig.take 32 ++ P.compress edPt ++ m := by
+        have hm_split : ((sig.take 32 ++ P.compressBytes edPt) ++ m.take 64) ++ (m.drop 64).take 1408 ++
+            m.drop 1472 = sig.take 32 ++ P.compressBytes edPt ++ m := by
           have h1 : (m.drop 64).take 1408 ++ m.drop 1472 = m.drop 64 := by
             rw [show (1472 : Nat) = 64 + 1408 from rfl, ← List.drop_drop, List.take_append_drop]
-          rw [List.append_assoc, List.append_assoc ((sig.take 32 ++ P.compress edPt)), h1,
+          rw [List.append_assoc, List.append_assoc ((sig.take 32 ++ P.compressBytes edPt)), h1,
             List.take_append_drop]
         have hst12 : (sha512CompressOutBytes P (sha512CompressOutBytes P
-            (revWords64 sha512InitState) ((sig.take 32 ++ P.compress edPt) ++ m.take 64))
+            (revWords64 sha512InitState) ((sig.take 32 ++ P.compressBytes edPt) ++ m.take 64))
             ((m.drop 64).take 1408)).length = 64 :=
           sha512CompressOutBytes_length P _ _
         have hsha_eq : revWords64 (sha512CompressOutBytes P
             (sha512CompressOutBytes P (sha512CompressOutBytes P (revWords64 sha512InitState)
-              ((sig.take 32 ++ P.compress edPt) ++ m.take 64)) ((m.drop 64).take 1408))
+              ((sig.take 32 ++ P.compressBytes edPt) ++ m.take 64)) ((m.drop 64).take 1408))
             (m.drop 1472 ++ [0x80] ++ List.replicate 14 0 ++ encodeBitLen128BE 1633)) =
-            P.sha512 (sig.take 32 ++ P.compress edPt ++ m) := by
+            P.sha512 (sig.take 32 ++ P.compressBytes edPt ++ m) := by
           rw [hWF.sha512_eq_ref, ← hm_split, sha512Ref_of_length_1633 P hblk0 hblks11 htail97]
         apply verifySig_end_seg (verifySig_tail_from_548_placed_sat P H hWF hH s4 fsp sigPtr retAddr
           (s.readReg64 (.gpr 19#5)) (s.readReg64 (.gpr 20#5)) (s.readReg64 (.gpr 21#5))
@@ -386,7 +388,7 @@ public theorem verifySignatureMultipart_sepWP_placed_sat [LibsignalPlacement]
           (s.readReg64 (.gpr 28#5)) (s.readReg64 (.gpr 29#5))
           edPt m sig (m.drop 1472)
           (sha512CompressOutBytes P (sha512CompressOutBytes P (revWords64 sha512InitState)
-            ((sig.take 32 ++ P.compress edPt) ++ m.take 64)) ((m.drop 64).take 1408))
+            ((sig.take 32 ++ P.compressBytes edPt) ++ m.take 64)) ((m.drop 64).take 1408))
           12#64 1633
           ((pkPtr ↦ₛ bytesToBv8 pk) ∗ (slicesPtr ↦₆₄ msgPtr) ∗
            ((slicesPtr + 8#64) ↦₆₄ 1569#64) ∗ (msgPtr ↦ₛ bytesToBv8 m) ∗ Frame)
@@ -744,12 +746,12 @@ public theorem curveVerifyAndCanon_full_placed_ok'_placed_sat [LibsignalFullPlac
     (hisCanon : ∀ k, P.isCanonicalEC k = isCanonicalRef P k)
     (hWF : VerifySignaturePrims P)
     (hH : VerifySignaturePlacedHooks'Sat P H)
-    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFree 160))
+    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFreeBytes 160))
     (hi : i < 619 := by decide) :
     CurveVerifyAndCanonPlacedOk P callerProg
       (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalCallSpec P)) :=
   curveVerifyAndCanon_placed_ok_of_canon'_sat
-    (isCanonical_placed_ok'_cl_placed hisCanon hWF.montToEd_len hH.montToEd htorsHook)
+    (isCanonical_placed_ok'_cl_placed hisCanon hWF.montToEd_lt hH.montToEd htorsHook)
     hWF hH hi
 
 public theorem curveVerifyAndCanon_full_placed_ok_placed_sat [LibsignalFullPlacement]
@@ -757,7 +759,7 @@ public theorem curveVerifyAndCanon_full_placed_ok_placed_sat [LibsignalFullPlace
     [IsLsBlockProg callerProg i H]
     (hWF : StructuralPrims P)
     (hH : VerifySignaturePlacedHooks'Sat P H)
-    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFree 160))
+    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFreeBytes 160))
     (hi : i < 619 := by decide) :
     CurveVerifyAndCanonPlacedOk P callerProg
       (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalCallSpec P)) :=
@@ -791,7 +793,7 @@ public theorem curveVerifyAndCanon_full_placed_ok'_sat [LibsignalFullPlacement]
     (hisCanon : ∀ k, P.isCanonicalEC k = isCanonicalRef P k)
     (hWF : VerifySignaturePrims P)
     (hH : VerifySignaturePlacedHooksSat P H)
-    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFree 160))
+    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFreeBytes 160))
     (hi : i < 619 := by decide) :
     CurveVerifyAndCanonPlacedOk P callerProg
       (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalCallSpec P)) :=
@@ -802,7 +804,7 @@ public theorem curveVerifyAndCanon_full_placed_ok_sat [LibsignalFullPlacement]
     [IsLsBlockProg callerProg i H]
     (hWF : StructuralPrims P)
     (hH : VerifySignaturePlacedHooksSat P H)
-    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFree 160))
+    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFreeBytes 160))
     (hi : i < 619 := by decide) :
     CurveVerifyAndCanonPlacedOk P callerProg
       (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalCallSpec P)) :=

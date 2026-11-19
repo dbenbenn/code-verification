@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Computational.Proofs.LibsignalCli.CliKemFailCouplingDefs
-public import Computational.Proofs.SpecLemmas.Game.StatementPq
+import Computational.Proofs.SpecLemmas.Game.StatementPq
 import Computational.Proofs.LibsignalCli.Oom.Faithful
 
 /-!
@@ -21,7 +21,7 @@ projecting `cliPqxdhExpFlagged`'s input log with `sendTapesOfInputs` matches map
 `dirPqExpCoinLogged`'s coin log with `coinBytes` (`DEV-CLI18`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -59,7 +59,7 @@ open Computational.Proofs.LibsignalCli.CliKemFailCouplingDefs (CoinLogM cliDrvIm
 private abbrev LogM : Type → Type := WriterT (List Inputs) ProbComp
 private abbrev ByteLogM : Type → Type := WriterT (List (List (BitVec 8))) ProbComp
 
-def dirRunStdSMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
+@[expose] def dirRunStdSMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
     (run : CliRun) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (ds : CliDriverState S ℓ) (i : ℕ) (bi : ModelDriverInstance S ℓ)
@@ -88,7 +88,7 @@ def dirRunStdSMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
                 instGs := ds.instGs.set i (some gs') }
   return r
 
-def dirStepLocalSMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
+@[expose] def dirStepLocalSMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
     (run : CliRun) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (ds : CliDriverState S ℓ) (i : ℕ) (bi : ModelDriverInstance S ℓ)
@@ -112,7 +112,7 @@ def dirStepLocalSMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
     else dirRunStdSMCoinLogged S ℓ run qep decT encT ds i bi im gs (.inl (.inr (.B, c)))
   | q => dirRunStdSMCoinLogged S ℓ run qep decT encT ds i bi im gs q
 
-def dirDrvSMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
+@[expose] def dirDrvSMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
     (run : CliRun) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (ext : QueryImpl (cliGameSmSpec ℓ (BitVec 512)) (CliDrvMT S ℓ CoinLogM)) :
@@ -133,7 +133,7 @@ def dirDrvSMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
           set { ds with instMeta := ds.instMeta.set i (bhMetaAfterSM ds.toModelDriverState bi im q r) }; return r
     | _, _ => return bhSmDefaultWithSpqr q
 
-def dirDrvImplCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
+@[expose] def dirDrvImplCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
     (P : SignalPqxdh.Primitives) (run : CliRun) (W : PEParams) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (ext : QueryImpl (cliGameSmSpec ℓ (BitVec 512)) (CliDrvM S ℓ)) (mode : BHDrvMode S) :
@@ -144,7 +144,7 @@ def dirDrvImplCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
     dirDrvSMCoinLogged S ℓ run qep decT encT (liftQueryImplStateT2 (n := CoinLogM) ext)
 
 /-- Retained-directory counterpart of `cliPqExpProjCoinLogged` over `CoinLogM`. -/
-def dirPqExpCoinLogged (S : SignalPqxdh.Setup) (run : CliRun) (X : UnreachedPqxdhPrimitives)
+@[expose] def dirPqExpCoinLogged (S : SignalPqxdh.Setup) (run : CliRun) (X : UnreachedPqxdhPrimitives)
     (W : PEParams) (ℓ qep : ℕ) {Pt : Type}
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (A : CliGameAdversary S ℓ (BitVec 512)) : ProbComp (Bool × List (BitVec 512)) :=
@@ -247,12 +247,6 @@ private theorem mapLogS1_liftStateT {ω₁ ω₂ σ α : Type} (φ : List ω₁ 
     mapLogS1 φ (liftStateT (n := WriterT (List ω₁) ProbComp) x) =
       liftStateT (n := WriterT (List ω₂) ProbComp) x := by
   ext s; exact mapLogW_liftM φ hnil (x s)
-
-private theorem mapLogS1_ite {ω₁ ω₂ σ α : Type} (φ : List ω₁ → List ω₂)
-    (c : Prop) [Decidable c]
-    (t e : StateT σ (WriterT (List ω₁) ProbComp) α) :
-    mapLogS1 φ (if c then t else e) = if c then mapLogS1 φ t else mapLogS1 φ e := by
-  split_ifs <;> rfl
 
 private def mapLogS2 {ω₁ ω₂ σ₁ σ₂ α : Type} (φ : List ω₁ → List ω₂)
     (m : StateT σ₁ (StateT σ₂ (WriterT (List ω₁) ProbComp)) α) :

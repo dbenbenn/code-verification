@@ -12,13 +12,13 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeChainAux.BaseBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeChainAux.BaseBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.Base
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
@@ -31,7 +31,7 @@ call wrappers for block `14` (`lsProg_14 H`), threading `LibsignalCodeLoaded`, `
 `A.pool lim st`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -189,7 +189,7 @@ theorem encodeVarintEnv_sub_boundedRustEvs {x : EncodeVarintGhost} {outLen : Nat
 
 /-- Segment-level `BoundedRustEvs` envelope for non-chain `encode_raw` steps appending `addedLen`
 bytes onto a `bsLen`-byte prefix. -/
-def EncRawSegEnv (bsLen addedLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def EncRawSegEnv (bsLen addedLen : Nat) (evs : List AllocEvent) : Prop :=
   BoundedRustEvs (4 * addedLen) (2 * (bsLen + addedLen) + 16) evs
 
 theorem encRawSegEnv_nil (bsLen addedLen : Nat) :
@@ -261,8 +261,6 @@ theorem sepWPp_of_sepWP_lscl_vm_er {prog : Program} {pl : MultiPlacement} {mid r
         (LibsignalCodeLoaded pl sm.mem → VmPreserved s sm → SepWPp prog ret sm Pm Q Qp))) :
     SepWPp prog ret s P Q Qp :=
   SepWPp.of_sepWP (sepWP_mono_lscl hcl h fun _ _ _ _ hclm ⟨hvm, hnext⟩ => hnext hclm hvm)
-
-abbrev sepWPp_call_lscl_noPanic_er := @sepWPp_call_lscl_noPanic
 
 theorem encraw_call_doReserve_placed [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -468,7 +466,7 @@ theorem encraw_call_memcpy_placed [LibsignalPlacement]
     exact entails_of_sep_focus (by sep_focus)
 
 /-- Envelope-parameterized `encode::<Chain>` specification (`encodeChainSpec` when `chainEnv := EncodeChainEnv`). -/
-def encodeChainSpecWithEnv (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def encodeChainSpecWithEnv (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (chainEnv : EncodeChainGhost → List AllocEvent → Prop) :
     Spec (EncodeChainGhost × M.σ) where
   pre := fun (x, st) s =>

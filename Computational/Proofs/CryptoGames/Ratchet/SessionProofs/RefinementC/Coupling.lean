@@ -19,7 +19,7 @@ Combinators for `CloseByRefinesH` and `CloseByStateC`, structural lemmas for the
 evicted stops, and monotonicity of the probe flag.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -41,7 +41,7 @@ variable {Pt PQ PQC : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt] [Inha
 /-! ## `CloseByRefinesH` -/
 
 /-- `cWin` with `cHid` as slot `n`. -/
-def cWinH (n : ℕ) (cWin : ℕ → ProbComp Bool) (cHid : ProbComp Bool) (k : ℕ) : ProbComp Bool :=
+@[expose] def cWinH (n : ℕ) (cWin : ℕ → ProbComp Bool) (cHid : ProbComp Bool) (k : ℕ) : ProbComp Bool :=
   if k = n then cHid else cWin k
 
 theorem sum_range_cWinH (n : ℕ) (cWin : ℕ → ProbComp Bool) (cHid : ProbComp Bool) :

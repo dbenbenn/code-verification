@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SpecLemmas.CliPureBytes
+import Symbolic.Proofs.SpecLemmas.CliPureBytes
 public import LibsignalBinary.Specifications.LibsignalE2E.SchemeModel
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

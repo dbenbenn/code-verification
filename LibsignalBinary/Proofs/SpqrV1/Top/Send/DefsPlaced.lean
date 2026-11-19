@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.SendPlacedCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeams
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
-public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpers
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVec
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.Decodes
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.SendPlacedCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeams -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVec -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.Decodes -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.ProofPlaced -- shake: keep
 
 /-!
@@ -27,7 +27,7 @@ Defines `spqrSendPlacedProg`, `spqrSendRoPlacedAt`, leaf `PlacedOkX` predicates,
 `SpqrSendPlacedContracts` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -76,26 +76,26 @@ noncomputable abbrev spqrSendPlacedProg (ext : String → Option (State → Stat
   (blkPC_124).rebase (blkPl_124).base (Rust.withPanics ext)
 
 /-- Symbolic entry address of Block `124` (`spqr::send::<libsignal_session::HookRng>`). -/
-noncomputable abbrev spqrSendPlacedEntry : BitVec 64 := (blkPl_124).base
+abbrev spqrSendPlacedEntry : BitVec 64 := (blkPl_124).base
 
 /-- `.rodata` symbol name for the combined jump-table block of `spqr::send::<libsignal_session::HookRng>`. -/
 abbrev spqrSendRoSym : String :=
   "libsignal_session:.rodata.spqr::send::<libsignal_session::HookRng>"
 
 /-- Read-only separation-logic assertion for jump table 1 (`22` bytes = 11 `u16` entries at `+0`). -/
-def spqrSendStatesJumpTablePlacedAt : SepProp :=
+@[expose] def spqrSendStatesJumpTablePlacedAt : SepProp :=
   (lsρ spqrSendRoSym) ↦ᵣ spqrSendStatesJumpTableBytes
 
 /-- Read-only separation-logic assertion for jump table 2 (`22` bytes = 11 `u16` entries at `+22`). -/
-def spqrSendEncodeJumpTablePlacedAt : SepProp :=
+@[expose] def spqrSendEncodeJumpTablePlacedAt : SepProp :=
   (lsρ spqrSendRoSym + 22#64) ↦ᵣ spqrSendEncodeJumpTableBytes
 
 /-- Read-only separation-logic assertion for jump table 3 (`20` bytes = 10 `u16` entries at `+44`). -/
-def spqrSendDropJumpTablePlacedAt : SepProp :=
+@[expose] def spqrSendDropJumpTablePlacedAt : SepProp :=
   (lsρ spqrSendRoSym + 44#64) ↦ᵣ spqrSendDropJumpTableBytes
 
 /-- Bundle of all relocatable `.rodata` tables used by `spqr::send::<HookRng>` (Block `124`) and its callees. -/
-def spqrSendRoPlacedAt : SepProp :=
+@[expose] def spqrSendRoPlacedAt : SepProp :=
   spqrSendStatesJumpTablePlacedAt ∗
   spqrSendEncodeJumpTablePlacedAt ∗
   spqrSendDropJumpTablePlacedAt ∗
@@ -115,31 +115,31 @@ theorem spqrSendStatesJumpTablePlacedAt_eq_words :
 
 /-- `<PolyEncoder as Encoder>::next_chunk` (Block `416`) meets `withLsCodeRoLoaded lsmpl (polyNextChunkPlacedSpec A)`
     on `spqrSendPlacedProg ext`. -/
-def PolyNextChunkPlacedOkX (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def PolyNextChunkPlacedOkX (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 416)
     (withLsCodeRoLoaded lsmpl (polyNextChunkPlacedSpec A))
 
-def HeaderSentSendEkChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
+@[expose] def HeaderSentSendEkChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 336)
     (withLsCodeRoLoaded lsmpl (headerSentSendEkChunkPlacedSpec A F))
 
-def Ct1ReceivedSendEkChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
+@[expose] def Ct1ReceivedSendEkChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 345)
     (withLsCodeRoLoaded lsmpl (ct1ReceivedSendEkChunkPlacedSpec A F))
 
-def Ct1SampledSendCt1ChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
+@[expose] def Ct1SampledSendCt1ChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 335)
     (withLsCodeRoLoaded lsmpl (ct1SampledSendCt1ChunkPlacedSpec A F))
 
-def EkReceivedCt1SampledSendCt1ChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
+@[expose] def EkReceivedCt1SampledSendCt1ChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 344)
     (withLsCodeRoLoaded lsmpl (ekReceivedCt1SampledSendCt1ChunkPlacedSpec A F))
 
-def Ct2SampledSendCt2ChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
+@[expose] def Ct2SampledSendCt2ChunkPlacedOkX (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 354)
     (withLsCodeRoLoaded lsmpl (ct2SampledSendCt2ChunkPlacedSpec A F))

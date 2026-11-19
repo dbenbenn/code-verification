@@ -10,15 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Received2PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmKeysSampled1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommon
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Received2PlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmKeysSampled1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommon
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
@@ -39,6 +39,13 @@ import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget
 
 /-!
 # `<States>::recv` (Block `332`) — `.keysSampled` Arm, Part 2 (Budget-Threaded)
@@ -48,7 +55,7 @@ subsumption, budget-threaded `<KeysSampled>::recv_ct1_chunk` (`.ct1`) branch, an
 `[LibsignalPlacement]` `.keysSampled` contracts (`+1796`, Block `332`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -200,7 +207,7 @@ theorem keysSampledRecvCt1ChunkPostEnv_sub_statesRecvEnv {F : ShaCompress}
   exact SpqrBoundedEvs.mono (by omega) (by omega) (keysSampledRecvCt1ChunkPostEnv_bounded hek h)
 
 /-- Allocation-phase prefix envelope for the `.keysSampled` arm of `<States>::recv`. -/
-def KeysSampledArmPreEnv {F : ShaCompress}
+@[expose] def KeysSampledArmPreEnv {F : ShaCompress}
     (st : Chunked.SendEk.KeysSampled spqrPolyApi (spqrAuthApi F))
     (msg : Message spqrPolyApi) (evs : List AllocEvent) : Prop :=
   if msg.epoch > st.uc.epoch then evs = []
@@ -212,7 +219,7 @@ def KeysSampledArmPreEnv {F : ShaCompress}
     | _ => evs = []
 
 /-- Postcondition allocation envelope for the `.keysSampled` arm of `<States>::recv`. -/
-def KeysSampledArmPostEnv {F : ShaCompress}
+@[expose] def KeysSampledArmPostEnv {F : ShaCompress}
     (st : Chunked.SendEk.KeysSampled spqrPolyApi (spqrAuthApi F))
     (msg : Message spqrPolyApi) (evs : List AllocEvent) : Prop :=
   if msg.epoch > st.uc.epoch then FreeOnlyEvs evs

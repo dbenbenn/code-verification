@@ -10,9 +10,13 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Reductions.Pqxdh.StatementPqReds
-public import Computational.Proofs.E2E.BhPrefixCouplingV1
+public import Computational.Proofs.E2E.BhPrefixCouplingV1 -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Notation
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.E2E.BinaryHarnessCostedRedsV1 -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.BhKindCouplingV1
+import Computational.Proofs.GameHop.Advantage
+import Computational.Proofs.GameHop.GlobalHybrid
 
 /-!
 # Polymorphic `bhPrefixRedWith` Definitions and Endpoint Identities
@@ -22,7 +26,7 @@ over an arbitrary key-indistinguishability oracle `ki`, and proves the `k = 0` a
 endpoint identities.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -63,7 +67,7 @@ theorem bhE2ELocalStartWith_pqxdhKeyIndImpl {S : SignalPqxdh.Setup} {ℓ : ℕ}
       bhE2ELocalStart P C K bMode? σ sid := rfl
 
 /-- Model-state E2E driver oracle implementation over `BHE2EDrvState S ℓ` parameterized by `ki`. -/
-def bhE2EDrvImplWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhE2EDrvImplWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : LibsignalSpqrV1.MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
@@ -94,7 +98,7 @@ def bhE2EDrvImplWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
 
 /-- Model-state E2E experiment parameterized by `ki` and the `KeyInd` challenge bit `secb : Bool`
 (`true` = real `DRKey`s, `false` = uniform `DRKey`s). -/
-def bhE2EExpWithKi (S : SignalPqxdh.Setup)
+@[expose] def bhE2EExpWithKi (S : SignalPqxdh.Setup)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (secb : Bool)
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : LibsignalSpqrV1.MlKem) (ℓ qep : ℕ) {Pt : Type}
@@ -130,7 +134,7 @@ theorem bhE2EDrvImplPrefixWith_run_eq_gen {S : SignalPqxdh.Setup} {ℓ : ℕ} {P
     (bhE2EDrvImplPrefixWith ki P C K qep decT encT mkP q).run σ =
       (bhE2EDrvImplGenWith ki P C K qep decT encT (mkP σ.insts.length) q).run σ := rfl
 
-def bhModeExpWith (S : SignalPqxdh.Setup)
+@[expose] def bhModeExpWith (S : SignalPqxdh.Setup)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : LibsignalSpqrV1.MlKem) (ℓ qep : ℕ) {Pt : Type}
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) (b : Bool)
@@ -140,7 +144,7 @@ def bhModeExpWith (S : SignalPqxdh.Setup)
 
 /-- The `k`-th prefix-creation hybrid experiment over `ki`: instances `< k` get bit `true`, and
 instances `≥ k` get bit `false`. -/
-def bhPrefixHybExpWith (S : SignalPqxdh.Setup)
+@[expose] def bhPrefixHybExpWith (S : SignalPqxdh.Setup)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : LibsignalSpqrV1.MlKem) (ℓ qep : ℕ) {Pt : Type}
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) (k : ℕ)

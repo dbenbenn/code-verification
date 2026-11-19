@@ -1,0 +1,48 @@
+{
+  "comment": "Synthetic mutant for skipped message key replay: Alice initiates from Bob's honest bundle and sends counter 0 ('first') and counter 1 ('second'); Bob receives counter 1 first (establishing the session at counter 2 and caching skipped key 0), receives counter 0 out of order, and then receives a replay of counter 0.",
+  "setup_seed": 23209,
+  "rng_seed": 43,
+  "calls": [
+    {
+      "entry": "init",
+      "b": {
+        "honest_bundle": true
+      }
+    },
+    {
+      "entry": "send",
+      "who": 0,
+      "b": {
+        "utf8": "first"
+      }
+    },
+    {
+      "entry": "send",
+      "who": 0,
+      "b": {
+        "utf8": "second"
+      }
+    },
+    {
+      "entry": "recv",
+      "who": 1,
+      "b": {
+        "message_of": 2
+      }
+    },
+    {
+      "entry": "recv",
+      "who": 1,
+      "b": {
+        "message_of": 1
+      }
+    },
+    {
+      "entry": "recv",
+      "who": 1,
+      "b": {
+        "message_of": 1
+      }
+    }
+  ]
+}

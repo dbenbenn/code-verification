@@ -78,7 +78,7 @@ def KNOWN_QEMU_USER_DEVIATIONS : List QemuUserDeviation := [
     syscallName    := "sched_getaffinity"
     linux73Source  := "kernel/sched/syscalls.c:1278,1307 (SYSCALL_DEFINE3(sched_getaffinity) -> sched_getaffinity -> find_process_by_pid)"
     qemuBehavior   := "QEMU user-mode forwards `sched_getaffinity` to the host kernel, returning the host's `cpumask_size()` (e.g. 8, 16, or 128 bytes) and host active CPU bitmask."
-    linux73AndLean := "`Arm64.execSchedGetaffinity` models a deterministic single-core 64-CPU mask (`ret = 8`, `mask = [1, 0, 0, 0, 0, 0, 0, 0]`) while matching Linux 7.3's `-EINVAL` (-22) on `cpusetsize < 8` / `cpusetsize % 8 != 0` and `-ESRCH` (-3) on `pid < 0`."
+    linux73AndLean := "`Arm64.execSchedGetaffinity` queries `Oracle.schedGetaffinity` (default `.singleCpu0`: `ret = 8`, `mask = [1, 0, 0, 0, 0, 0, 0, 0]`, or arbitrary `.hostMask nrCpuIds words` / `.refuseEnomem` / `.refuseEperm`) while matching Linux 7.3's 32-bit `len * BITS_PER_BYTE` / alignment `-EINVAL` (-22) and `-ESRCH` (-3) on `pid < 0`."
     probeHandling  := "`syscall_probe.elf` asserts `ret > 0 && ret % 8 == 0 && (mask & 1) != 0` and tests `len = 0` (`-EINVAL`), `len = 7` (`-EINVAL`), `pid = -1` (`-ESRCH`), and unmapped `user_mask_ptr` (`-EFAULT`); exact `ret = 8` and `pid = -1 -> -ESRCH` are kernel-checked in `all_29_syscalls_boundary_conformance`." },
   { id             := "QEMU-DEV-3"
     syscallNr      := 172
@@ -211,7 +211,8 @@ private theorem execBrk_grow_ok_eq (s : State) (m : Memory) (addr : BitVec 64) (
     (h1 : (addr == 0#64 || addr.ult s.brkStart) = false)
     (hold : Arm64.pageAlignUp s.brk.toNat = oldPage)
     (hnew : Arm64.pageAlignUp addr.toNat = newPage)
-    (hlt : ¬(newPage ≤ oldPage))
+    (hne : (newPage == oldPage) = false)
+    (hlt : ¬(newPage < oldPage))
     (hlim : decide (newPage + BRK_GUARD_GAP ≤ USER_VA_LIMIT) = true)
     (hcan : m.canMap (BitVec.ofNat 64 oldPage) (newPage - oldPage + BRK_GUARD_GAP) = true)
     (hphys : decide (newPage - oldPage ≤ s.physMemAvail) = true) :
@@ -219,7 +220,7 @@ private theorem execBrk_grow_ok_eq (s : State) (m : Memory) (addr : BitVec 64) (
       ((((s.setBrk addr).setMem (m.mapZero (BitVec.ofNat 64 oldPage) (newPage - oldPage))).setPhysMemAvail
         (s.physMemAvail - (newPage - oldPage))).writeReg64 Reg.x0 addr).advancePC := by
   unfold execBrk
-  simp only [hm, hx0, h1, Bool.false_eq_true, ↓reduceIte, hold, hnew, hlt, hlim, hcan,
+  simp only [hm, hx0, h1, Bool.false_eq_true, ↓reduceIte, hold, hnew, hne, hlt, hlim, hcan,
     hphys, Bool.not_true, Bool.or_self]
 
 /-- Helper for `QEMU-DEV-1` (`brk` VMA collision, grow, and shrink) parameterized by `sBrkGrow`. -/
@@ -246,7 +247,7 @@ private theorem checkBrkBoundary_eq_true : checkBrkBoundary sScratchState = true
       (sGrowIn.physMemAvail - (0x1000_1000 - 0x1000_0000))).writeReg64 Reg.x0 0x1000_0010#64).advancePC
   have hGrow : callSyscall sScratchState SYS_BRK 0x1000_0010#64 = sGrowVal :=
     execBrk_grow_ok_eq sGrowIn sScratchState.mem 0x1000_0010#64 0x1000_0000 0x1000_1000
-      rfl rfl (by decide +kernel) (by decide +kernel) (by decide +kernel)
+      rfl rfl (by decide +kernel) (by decide +kernel) (by decide +kernel) (by decide +kernel)
       (by decide +kernel) (by decide +kernel) sScratch_canMap_brk_grow (by decide +kernel)
   exact (congrArg (checkBrkBoundaryAux sScratchState) hGrow).trans (by decide +kernel)
 
@@ -438,6 +439,127 @@ theorem all_29_syscalls_boundary_conformance :
   rw [checkBrkBoundary_eq_true, Bool.true_and]
   decide +kernel
 
+/-- Boolean suite exercising analytic `linux-7.3` error-priority, 32-bit C cast, AArch64 TBI
+    untagging, and `State.oracle` non-determinism cases across `Arm64.execSyscall`. -/
+def checkAnalyticErrorSemantics : Bool :=
+  let sScratch := sScratchState
+  -- 1. `sched_getaffinity`: `len == 0` with unmapped pointer -> `-EINVAL` (-22),
+  --    32-bit `len * BITS_PER_BYTE` overflow (`0x2000_0000`) -> `-EINVAL`,
+  --    multi-CPU `Oracle.schedGetaffinity = .hostMask 128 [3, 5]`, `.refuseEnomem`, `.refuseEperm`
+  let sAffZeroUnmap := callSyscall sScratch SYS_SCHED_GETAFFINITY 0#64 0#64 0x5000_0000#64
+  let sAffMul32Wrap := callSyscall sScratch SYS_SCHED_GETAFFINITY 0#64 0x2000_0000#64 0x2000_0000#64
+  let sMultiCpu : State := { sScratch with
+    oracle := { schedGetaffinity := fun _ => .hostMask 128 [0x3#64, 0x5#64] } }
+  let sAffHostSmall := callSyscall sMultiCpu SYS_SCHED_GETAFFINITY 0#64 8#64 0x2000_0000#64
+  let sAffHostOk    := callSyscall sMultiCpu SYS_SCHED_GETAFFINITY 0#64 16#64 0x2000_0000#64
+  let sAffEnomem    := callSyscall
+    { sScratch with oracle := { schedGetaffinity := fun _ => .refuseEnomem } }
+    SYS_SCHED_GETAFFINITY 0#64 8#64 0x2000_0000#64
+  let sAffEperm     := callSyscall
+    { sScratch with oracle := { schedGetaffinity := fun _ => .refuseEperm } }
+    SYS_SCHED_GETAFFINITY 0#64 8#64 0x2000_0000#64
+  let affAnalyticOk :=
+    sAffZeroUnmap.readReg64 .x0 == -22#64 &&
+    sAffMul32Wrap.readReg64 .x0 == -22#64 &&
+    sAffHostSmall.readReg64 .x0 == -22#64 &&
+    sAffHostOk.readReg64 .x0 == 16#64 &&
+    sAffHostOk.mem.read64 0x2000_0000#64 == 0x3#64 &&
+    sAffHostOk.mem.read64 0x2000_0008#64 == 0x5#64 &&
+    sAffEnomem.readReg64 .x0 == -12#64 &&
+    sAffEperm.readReg64 .x0 == -1#64
+
+  -- 2. `getrandom`: `count == 0` checks `access_ok(buf, 0)` (`buf == 0 -> 0`, `buf > 2^48 -> -EFAULT`)
+  let sRndNull0 := callSyscall sScratch SYS_GETRANDOM 0#64 0#64 0#64
+  let sRndHigh0 := callSyscall sScratch SYS_GETRANDOM 0x0001_0000_0000_0001#64 0#64 0#64
+  let rndAnalyticOk := sRndNull0.readReg64 .x0 == 0#64 && sRndHigh0.readReg64 .x0 == -14#64
+
+  -- 3. `tkill` & `tgkill`: `find_task_by_vpid` (`-ESRCH`) runs before `valid_signal(sig)` (`-EINVAL`),
+  --    and `sig == 0` probe on `SIM_TID = 1` returns `0`
+  let sTkillEsrch  := callSyscall sScratch SYS_TKILL 0x50_0000#64 65#64
+  let sTgkillEsrch := callSyscall sScratch SYS_TGKILL 2#64 1#64 65#64
+  let sTkillProbe0 := callSyscall sScratch SYS_TKILL 1#64 0#64
+  let sTgkillProbe0 := callSyscall sScratch SYS_TGKILL 1#64 1#64 0#64
+  let sigAnalyticOk :=
+    sTkillEsrch.readReg64 .x0 == -3#64 &&
+    sTgkillEsrch.readReg64 .x0 == -3#64 &&
+    sTkillProbe0.readReg64 .x0 == 0#64 &&
+    sTgkillProbe0.readReg64 .x0 == 0#64
+
+  -- 4. VM TBI untagging + `madvise` `check_input_range` before `untagged_addr` + 32-bit `W2`
+  let sPage : State := (sScratch.setMem (Memory.empty.mapZero 0x2000_0000#64 4096))
+  let taggedPage := 0x0500_0000_2000_0000#64
+  let sMadvTagged := callSyscall sPage SYS_MADVISE taggedPage 4096#64 0x1_0000_0004#64
+  let sMprotTagged := callSyscall sPage SYS_MPROTECT taggedPage 4096#64 0#64
+  let sMunmapTagged := callSyscall sPage SYS_MUNMAP taggedPage 4096#64
+  -- `rawStart = 0xff00_0000_2000_0000, len = 0x0100_0000_0000_0000`: `rawStart + size >= 2^64`
+  -- fails `check_input_range` (`-EINVAL` = `-22`) BEFORE `untaggedAddr` strips the `0xff` TBI tag,
+  -- whereas `0x0500_0000_5000_0000` (`len = 4096`) passes `check_input_range`, strips `0x05`, and
+  -- walks unmapped `[0x5000_0000, +4096)` returning `-ENOMEM` (`-12`).
+  let sMadvUnmapTagged := callSyscall sPage SYS_MADVISE 0x0500_0000_5000_0000#64 4096#64 0#64
+  let sMadvWrapPreTbi  := callSyscall sPage SYS_MADVISE 0xff00_0000_2000_0000#64 0x0100_0000_0000_0000#64 0#64
+  let sMremapNewGtTask := callSyscall sPage SYS_MREMAP 0x2000_0000#64 4096#64 0x0001_0000_0000_1000#64 1#64
+  let vmAnalyticOk :=
+    sMadvTagged.readReg64 .x0 == 0#64 &&
+    sMprotTagged.readReg64 .x0 == 0#64 &&
+    sMunmapTagged.readReg64 .x0 == 0#64 &&
+    sMadvUnmapTagged.readReg64 .x0 == -12#64 &&
+    sMadvWrapPreTbi.readReg64 .x0 == -22#64 &&
+    sMremapNewGtTask.readReg64 .x0 == -22#64
+
+  -- 5. `ppoll` `nfds == 0` `access_ok(ufds, 0)` & `fstat` on `.localDir` & `write` `count == 0` at `MAX_LFS_FILESIZE`
+  --    & S1 `openat` `FD_ADD` (`allocFd` `-EMFILE` before `readCString` `-EFAULT` and empty-path `-ENOENT`)
+  --    & S2/S3 `mremap` beyond-`USER_VA_LIMIT` `MREMAP_NO_RESIZE`/`MREMAP_SHRINK` + early `mremapRefusal = some .enomem`
+  let sPpollHigh0 := callSyscall sScratch SYS_PPOLL 0x0001_0000_0000_0001#64 0#64 0x2000_0000#64 0#64 8#64
+  let sDirFs : FsState :=
+    (sScratch.fs.setEntry ["d"] (some .dir)).setFd 3#64
+      (some { path := "d", kind := .localDir, accMode := .rdonly })
+  let sDirFstat := callSyscall { sScratch with fs := sDirFs } SYS_FSTAT 3#64 0x2000_0000#64
+  let sMaxLfsFs : FsState :=
+    (sScratch.fs.setFile "f" (some (.file []))).setFd 3#64
+      (some { path := "f", kind := .localFile, accMode := .wronly, offset := 0x7fff_ffff_ffff_ffff })
+  let sWriteMaxLfs0 := callSyscall { sScratch with fs := sMaxLfsFs } SYS_WRITE 3#64 0x2000_0000#64 0#64
+  let sWriteMaxLfs1 := callSyscall { sScratch with fs := sMaxLfsFs } SYS_WRITE 3#64 0x2000_0000#64 1#64
+  let sFullFdFs : FsState :=
+    { sScratch.fs with
+      fds := fun fd =>
+        if decide (fd.toNat < FsState.maxOpenFds) then
+          some { path := "", accMode := .rdonly, kind := .stdio }
+        else none }
+  let sOpenFullEfault := callSyscall { sScratch with fs := sFullFdFs }
+    SYS_OPENAT 0xffff_ffff_ffff_ff9c#64 0x5000_0000#64 0#64 0#64
+  -- `0x2000_0000` is zero-initialized in `sScratch`, so it stores `""` (`[0x00]`, empty path).
+  let sOpenFullEmpty := callSyscall { sScratch with fs := sFullFdFs }
+    SYS_OPENAT 0xffff_ffff_ffff_ff9c#64 0x2000_0000#64 0#64 0#64
+  -- `checkOpenFlags` (`O_CREAT | O_DIRECTORY -> -EINVAL`) still precedes `FD_ADD` (`-EMFILE`).
+  let sOpenFullBadFlags := callSyscall { sScratch with fs := sFullFdFs }
+    SYS_OPENAT 0xffff_ffff_ffff_ff9c#64 0x5000_0000#64
+    ((O_CREAT_W32 ||| O_DIRECTORY_W32).zeroExtend 64) 0#64
+  let sTopRw : State := sScratch.setMem (Memory.empty.mapZero 0x0000_ffff_ffff_f000#64 4096)
+  let sMremapBeyondSame := callSyscall sTopRw SYS_MREMAP 0x0000_ffff_ffff_f000#64 0x2000#64 0x2000#64 1#64
+  let sMremapBeyondShrink := callSyscall sTopRw SYS_MREMAP 0x0000_ffff_ffff_f000#64 0x2000#64 0x1000#64 1#64
+  let sMremapEarlyEnomem := callSyscall
+    { sScratch with oracle := { mremapRefusal := fun _ => some .enomem } }
+    SYS_MREMAP 0x5000_0000#64 0x1000#64 0x2000#64 1#64
+  let vfsAnalyticOk :=
+    sPpollHigh0.readReg64 .x0 == -14#64 &&
+    sDirFstat.readReg64 .x0 == 0#64 &&
+    sDirFstat.mem.read32 0x2000_0010#64 == 0o040755#32 &&
+    sWriteMaxLfs0.readReg64 .x0 == 0#64 &&
+    sWriteMaxLfs1.readReg64 .x0 == -22#64 &&
+    sOpenFullEfault.readReg64 .x0 == -24#64 &&
+    sOpenFullEmpty.readReg64 .x0 == -24#64 &&
+    sOpenFullBadFlags.readReg64 .x0 == -22#64 &&
+    sMremapBeyondSame.readReg64 .x0 == 0x0000_ffff_ffff_f000#64 &&
+    sMremapBeyondShrink.readReg64 .x0 == -22#64 &&
+    sMremapEarlyEnomem.readReg64 .x0 == -12#64
+
+  affAnalyticOk && rndAnalyticOk && sigAnalyticOk && vmAnalyticOk && vfsAnalyticOk
+
+/-- Kernel-checked conformance theorem for analytic `linux-7.3` error-priority, TBI, and oracle cases. -/
+theorem linux73_analytic_error_semantics_conformance :
+    checkAnalyticErrorSemantics = true := by
+  decide +kernel
+
 /-! ## 3. Differential Execution of `syscall_probe.elf` (`qemu-aarch64` vs. `Arm64.execSyscall`) -/
 
 /-- Path to the freestanding `#![no_std]` AArch64 syscall probe binary. -/
@@ -540,6 +662,7 @@ def buildSyscallProbeWorkItemsIO :
           cases := [{
             name  := boundaryName
             check := checkAll29SyscallsBoundary && checkMmapPageLifecycle &&
+                     checkAnalyticErrorSemantics &&
                      KNOWN_QEMU_USER_DEVIATIONS.length == 13
           }]
         } },
@@ -732,6 +855,16 @@ def syscallCaseTable : List SyscallCase := [
     desc := "getpid/gettid: positive, stable across calls, equal in a single-threaded process" },
   { elfPath := "Arm64/Testing/SyscallDiff/bin/set_tid_address.elf"
     desc := "set_tid_address: returns gettid() for valid, NULL, unmapped tidptr; never writes it" },
+  { elfPath := "Arm64/Testing/SyscallDiff/bin/futex_wake.elf"
+    desc := "futex: single-threaded FUTEX_WAKE / FUTEX_WAKE_PRIVATE returns 0, unaligned -> EINVAL, unmapped -> 0 (private) / EFAULT (shared), >= 2^48 -> EFAULT" },
+  { elfPath := "Arm64/Testing/SyscallDiff/bin/futex_wake_realtime_enosys.elf"
+    desc := "futex: FUTEX_WAKE | FUTEX_CLOCK_REALTIME returns -ENOSYS (out of scope: Lean fails closed)"
+    gap := some (.leanFailsClosed "unmodeled futex op"
+      "FUTEX_CLOCK_REALTIME on wake and non-wake futex ops are out of scope in the single-threaded model (Kernel/Sys.lean)") },
+  { elfPath := "Arm64/Testing/SyscallDiff/bin/futex_wait_eagain.elf"
+    desc := "futex: FUTEX_WAIT_PRIVATE with mismatched val returns -EAGAIN (out of scope: Lean fails closed)"
+    gap := some (.leanFailsClosed "unmodeled futex op"
+      "FUTEX_WAIT and non-wake futex ops are out of scope in the single-threaded model (Kernel/Sys.lean)") },
   { elfPath := "Arm64/Testing/SyscallDiff/bin/sched_getaffinity_einval.elf"
     desc := "sched_getaffinity: len 0, 4, 7, 9 (too small / not a multiple of 8) return -EINVAL" },
   { elfPath := "Arm64/Testing/SyscallDiff/bin/sched_getaffinity_efault.elf"
@@ -745,33 +878,43 @@ def syscallCaseTable : List SyscallCase := [
     exitCode := 255
     gap := some (.leanDiverges 511 "exit status kept as full X0, not & 0xff (Exit.lean [INTENTIONAL_SCOPE])") },
   { elfPath := "Arm64/Testing/SyscallDiff/bin/tkill_sig0.elf"
-    desc := "tkill/tgkill(self, 0): signal 0 is an existence probe and returns 0"
-    gap := some (.leanFailsClosed "unmodeled tkill" "tkill/tgkill sig 0 probe not modeled (Signal.lean)") },
+    desc := "tkill/tgkill(self, 0): signal 0 is an existence probe and returns 0" },
   { elfPath := "Arm64/Testing/SyscallDiff/bin/tkill_sigterm.elf"
     desc := "tkill(self, SIGTERM) with default disposition terminates the process by signal 15"
     exitCode := 143
     signal := some 15
     gap := some (.leanFailsClosed "unmodeled tkill" "only SIGABRT delivery is modeled (Signal.lean)") },
   { elfPath := "Arm64/Testing/SyscallDiff/bin/tgkill_esrch.elf"
-    desc := "tgkill with tgid not owning tid, and tkill of tid 0x7fffffff, return -ESRCH"
-    gap := some (.leanFailsClosed "unmodeled tgkill" "ESRCH for foreign tgid/tid not modeled (Signal.lean)") },
+    desc := "tgkill with tgid not owning tid, and tkill of tid 0x7fffffff, return -ESRCH" },
   { elfPath := "Arm64/Testing/SyscallDiff/bin/seq_signal_usr1_ignored.elf"
     desc := "rt_sigaction(SIGUSR1, SIG_IGN) then tkill(self, SIGUSR1) is dropped and returns 0"
     gap := some (.leanFailsClosed "unmodeled tkill" "SIG_IGN only modeled for SIGABRT (Signal.lean)") },
   { elfPath := "Arm64/Testing/SyscallDiff/bin/rt_sigprocmask_block_query.elf"
-    desc := "rt_sigprocmask: SIG_BLOCK then SIG_UNBLOCK SIGUSR1; oldset reports the tracked mask"
-    gap := some (.leanFailsClosed "unmodeled non-zero signal mask in rt_sigprocmask"
-      "non-zero blocked signal masks are out of scope (Signal.lean execRtSigprocmask)") },
+    desc := "rt_sigprocmask: SIG_BLOCK then SIG_UNBLOCK SIGUSR1; oldset reports the tracked mask" },
   { elfPath := "Arm64/Testing/SyscallDiff/bin/seq_signal_blocked_abrt.elf"
-    desc := "blocked SIGABRT: tkill/tgkill queue pending SIGABRT without killing; SIG_IGN flushes; exit 0 while blocked"
-    gap := some (.leanFailsClosed "unmodeled non-zero signal mask in rt_sigprocmask"
-      "non-zero blocked signal masks are out of scope (Signal.lean execRtSigprocmask)") },
+    desc := "blocked SIGABRT: tkill/tgkill queue pending SIGABRT without killing; SIG_IGN flushes; exit 0 while blocked" },
   { elfPath := "Arm64/Testing/SyscallDiff/bin/seq_signal_unblock_pending_abrt.elf"
     desc := "blocked SIGABRT queued by tkill terminates with signal 6 upon SIG_UNBLOCK"
     exitCode := 134
-    signal := some 6
-    gap := some (.leanFailsClosed "unmodeled non-zero signal mask in rt_sigprocmask"
-      "non-zero blocked signal masks are out of scope (Signal.lean execRtSigprocmask)") },
+    signal := some 6 },
+  { elfPath := "Arm64/Testing/SyscallDiff/bin/rt_sigprocmask_unblockable_mixed.elf"
+    desc := "rt_sigprocmask: SIG_SETMASK/SIG_BLOCK with SIGKILL|SIGSTOP|SIGUSR1 strips SIGKILL/SIGSTOP and reads back 0x200" },
+  { elfPath := "Arm64/Testing/SyscallDiff/bin/rt_sigprocmask_oldset_efault.elf"
+    desc := "rt_sigprocmask: unmapped oldset returns -EFAULT after applying new mask; aliased set == oldset works" },
+  { elfPath := "Arm64/Testing/SyscallDiff/bin/seq_signal_oldset_efault_deliver.elf"
+    desc := "rt_sigprocmask: unblocking pending SIGABRT with unmapped oldset still delivers SIGABRT"
+    exitCode := 134
+    signal := some 6 },
+  { elfPath := "Arm64/Testing/SyscallDiff/bin/seq_signal_ign_queued_dfl.elf"
+    desc := "blocked SIGABRT queued under SIG_IGN then reset to SIG_DFL and unblocked terminates with signal 6"
+    exitCode := 134
+    signal := some 6 },
+  { elfPath := "Arm64/Testing/SyscallDiff/bin/seq_signal_ign_queued_unblock.elf"
+    desc := "blocked SIGABRT queued under SIG_IGN and unblocked while still SIG_IGN is discarded" },
+  { elfPath := "Arm64/Testing/SyscallDiff/bin/seq_signal_musl_abort_ign.elf"
+    desc := "musl abort() sequence under SIG_IGN survives raise() then resets SIG_DFL and terminates with signal 6"
+    exitCode := 134
+    signal := some 6 },
   { elfPath := "Arm64/Testing/SyscallDiff/bin/rt_sigaction_flags_mask.elf"
     desc := "rt_sigaction: sa_flags masked to UAPI_SA_FLAGS, SIGKILL/SIGSTOP dropped from sa_mask"
     gap := some (.qemuDeviates "QEMU-DEV-10" 1) },
@@ -980,6 +1123,15 @@ def syscallCaseTable : List SyscallCase := [
     desc := "mremap: MAYMOVE shrink 3 -> 1 page keeps first page contents (address not checked)" },
   { elfPath := "Arm64/Testing/SyscallDiff/bin/mremap_err.elf"
     desc := "mremap: unaligned old_address -> EINVAL; unmapped old range -> EFAULT" },
+  { elfPath := "Arm64/Testing/SyscallDiff/bin/mremap_flags0.elf"
+    desc := "mremap: flags == 0 shrink, same-page, unaligned-len grow, blocked ENOMEM, zero/unaligned EINVAL, top-of-VA EFAULT" },
+  { elfPath := "Arm64/Testing/SyscallDiff/bin/mremap_new_len_zero.elf"
+    desc := "mremap: new_len == 0 returns -EINVAL for flags == 0 and MAYMOVE (QEMU returns -ENOMEM on MAYMOVE)"
+    gap := some (.qemuDeviates "QEMU-DEV-6" 1) },
+  { elfPath := "Arm64/Testing/SyscallDiff/bin/mremap_multi_vma.elf"
+    desc := "mremap: flags == 0 across adjacent unmerged RW VMAs returns -EFAULT on Linux (flat Memory succeeds)"
+    gap := some (.leanDiverges 1
+      "flat Memory has no VMA boundaries; Linux check_prep_vma rejects multi-VMA old_len > vma->vm_end - addr with -EFAULT (Mm/Mremap.lean [INTENTIONAL_OVERAPPROX])") },
   { elfPath := "Arm64/Testing/SyscallDiff/bin/madvise_dontneed.elf"
     desc := "madvise: MADV_DONTNEED on private anon pages returns 0; they read back zero" },
   { elfPath := "Arm64/Testing/SyscallDiff/bin/madvise_boundary.elf"

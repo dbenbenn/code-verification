@@ -14,7 +14,7 @@ public import Symbolic.Tests.Nonvacuity.HonestHandshakeWithoutOpk
 public import Symbolic.Tests.Nonvacuity.HonestHandshakeWithOpk
 public import Symbolic.Tests.Nonvacuity.HonestSession
 public import Symbolic.Tests.Nonvacuity.ExposedSession
-public import Symbolic.Proofs.Tests.Shared.Composed.HonestSession
+public import Symbolic.Proofs.Tests.Shared.Composed.HonestSession -- proof-setup: allow-public-import
 import Init.Data.String.Defs
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
@@ -60,7 +60,7 @@ Proves that each example protocol trace in `Symbolic.Tests.Nonvacuity` runs to c
 aborting and is reachable in `DY.Libsignal.Composed.reachability`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -269,18 +269,18 @@ theorem keySetupTrace_reachable : keySetupTrace.Reachable reachability :=
 /-! ## Handshake and session traces -/
 
 abbrev dhsB0 : Bytes := rnd 38 32
-def stB0NoOpk' : TRState := (ratchetState stB00 (dhPk dhsA) dhsB0).1
-def cBNoOpk : RecvChain := (ratchetState stB00 (dhPk dhsA) dhsB0).2
-def cBNoOpk' : RecvChain :=
+@[expose] def stB0NoOpk' : TRState := (ratchetState stB00 (dhPk dhsA) dhsB0).1
+@[expose] def cBNoOpk : RecvChain := (ratchetState stB00 (dhPk dhsA) dhsB0).2
+@[expose] def cBNoOpk' : RecvChain :=
   { cBNoOpk with chainKey := (kdfCk cBNoOpk.chainKey).1, index := 1 }
-def stB1NoOpk : TRState :=
+@[expose] def stB1NoOpk : TRState :=
   { stB0NoOpk' with
       recv := [cBNoOpk']
       spqr := Symbolic.Proofs.Tests.Shared.Composed.Runs.recvSt
         (DY.Spqr.spqrInit keys1.pqr spqrB2A) pqm0 }
 
 /-- Explicit 47-entry trace after `Composed.bobStart` accepts message 0 directly on `t6`. -/
-def tHandshakeNoOpk : ExecTrace :=
+@[expose] def tHandshakeNoOpk : ExecTrace :=
   let tr1 := (t6.append (RndE 32)).append (NetE key0)
   let tr5 := (((tr1.append (EvP (.BobDone "bob" "alice" (dhPk ikB) (dhPk ikA) (dhPk spkB)
       (kemPk pqskB) none o1.ek o1.ct keys1))).append

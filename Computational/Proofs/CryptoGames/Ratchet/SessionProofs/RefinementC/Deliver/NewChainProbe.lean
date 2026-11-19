@@ -17,7 +17,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Delive
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.Combinators
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.Base
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.HelpersC
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv -- shake: keep
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv -- shake: keep
 
 /-!
 # Deliver step of the C coupling: new epoch, case-3a probe
@@ -25,7 +25,7 @@ public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC
 Closes the new-epoch case-3a `deliver` step when `predictReceiveWithSnapshots` returns `none`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

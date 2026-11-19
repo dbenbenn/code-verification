@@ -19,7 +19,7 @@ import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
 public meta import Mathlib.Tactic.ToAdditive
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import VCVio.Prelude.Core
@@ -42,7 +42,7 @@ Defines `NoNewSk` for traceful computations that log no new `TREvent.SkippedKeyS
 events and proves closure under monadic combinators and protocol actions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -135,7 +135,7 @@ theorem eventLoggedAt_logSkippedKeysTr_iff (s : SessionInfo) (pk : DY.Bytes)
 
 /-- `x` logs no new `TREvent.SkippedKeyStored` event: any such event on the
 post-trace was already at the same index on the pre-trace. -/
-def NoNewSk {α : Type} (x : Traceful α) : Prop :=
+@[expose] def NoNewSk {α : Type} (x : Traceful α) : Prop :=
   ∀ (tr : ExecTrace) (s : SessionInfo) (pk : DY.Bytes) (n : UInt32)
     (seed : DY.Bytes) (rIdx src i : Nat),
     ((x.run tr).2.val).EventLoggedAt (TREvent.SkippedKeyStored s pk n seed rIdx src) i →
@@ -284,7 +284,7 @@ theorem NoNewSk.logEventC (ev : DY.Libsignal.Composed.ComposedEvent) :
     Symbolic.DYBridge.DY.Trace.EventLoggedAt_eq_1] at hev ⊢
   rwa [at?_append_non_entry tr (⟨ev⟩ : CEvEntry) rfl i] at hev
 
-@[reducible] def isSkippedKeyStored : TREvent → Bool
+@[expose, reducible] def isSkippedKeyStored : TREvent → Bool
   | .SkippedKeyStored _ _ _ _ _ _ => true
   | _ => false
 

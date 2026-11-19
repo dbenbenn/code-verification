@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Reductions
-public import Computational.Proofs.CryptoGames.SM.Theorem1Reductions
-public import Computational.Proofs.CryptoGames.SM.Theorem12
-public import Computational.Proofs.CryptoGames.SM.Theorem8
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Theorem1Reductions -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.SM.Theorem12
+import Computational.Proofs.CryptoGames.SM.Theorem8
 import Computational.Proofs.CryptoGames.SM.Theorem1
+public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.Theorem8And12Statements -- proof-setup: allow-public-import
 
 /-!
 # Theorem 6: Security of the Fig. 8 SM Scheme
@@ -23,7 +24,7 @@ import Computational.Proofs.CryptoGames.SM.Theorem1
 blanked variant on the libsignal chain (`SM/Theorem6Libsignal.lean`, DEV-LS6, DEV-LS13).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -37,7 +38,7 @@ variable {KC Γ CCoins T I : Type} {KR Sig K : Type} {SS RS M E : Type}
 /-- Concrete ACD19 Theorem 6 advantage bound for an adversary `A` making at most `q` queries
 against `scheme cka prng fs lam`, summed over epoch and last-leak guesses with parameterized
 epoch-`i` privacy reductions `privRed i` (DEV-SM2, DEV-SM19, DEV-SM20, DEV-SM25, DEV-SM27). -/
-noncomputable def theorem6Bound (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] noncomputable def theorem6Bound (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep q : ℕ)
     (privRed : ℕ → SchemeAdversary Γ T Sig SS RS M CCoins E →
       SchemeAdversary Γ T Sig SS RS M CCoins E)

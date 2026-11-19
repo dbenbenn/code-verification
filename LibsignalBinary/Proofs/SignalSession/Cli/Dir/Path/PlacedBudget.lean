@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Common
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Common -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
@@ -22,6 +22,13 @@ import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` `signal_session::stores::path` (Block 596)
@@ -30,7 +37,7 @@ Defines the deterministic allocator event list `pathEvents` and verifies `signal
 on Block 596 against `pathSpecPlaced A lim PathEnv stk` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -87,29 +94,29 @@ attribute [local irreducible] Program.fetch Program.externAt?
 /-! ## 1. Deterministic `path` Allocator Events & Envelope -/
 
 /-- Capacity of the intermediate `Vec<u8>` right after `push(b'/')` on `dir`. -/
-def pathSlashCap (dirLen : Nat) : Nat := reserveCap dirLen dirLen 1
+@[expose] def pathSlashCap (dirLen : Nat) : Nat := reserveCap dirLen dirLen 1
 
 /-- Allocator events emitted by `dir.to_owned()` in `signal_session::stores::path`. -/
-def pathToOwnedEvents (dirLen : Nat) : List AllocEvent :=
+@[expose] def pathToOwnedEvents (dirLen : Nat) : List AllocEvent :=
   if dirLen = 0 then [] else rustAllocEvents dirLen 1
 
 /-- Allocator events emitted by `v.push(b'/')` in `signal_session::stores::path`. -/
-def pathPushSlashEvents (dirLen : Nat) : List AllocEvent :=
+@[expose] def pathPushSlashEvents (dirLen : Nat) : List AllocEvent :=
   if dirLen = 0 then rustAllocEvents (pathSlashCap 0) 1
   else rustReallocEvents dirLen (pathSlashCap dirLen) 1
 
 /-- Allocator events emitted by `v.extend_from_slice(name)` in `signal_session::stores::path`. -/
-def pathAppendNameEvents (dirLen nameLen : Nat) : List AllocEvent :=
+@[expose] def pathAppendNameEvents (dirLen nameLen : Nat) : List AllocEvent :=
   let cap1 := pathSlashCap dirLen
   if cap1 < (dirLen + 1) + nameLen then rustReallocEvents cap1 (reserveCap cap1 (dirLen + 1) nameLen) 1
   else []
 
 /-- Exact deterministic allocator event list of `signal_session::stores::path(dir, name)`. -/
-def pathEvents (dir name : List (BitVec 8)) : List AllocEvent :=
+@[expose] def pathEvents (dir name : List (BitVec 8)) : List AllocEvent :=
   pathToOwnedEvents dir.length ++ (pathPushSlashEvents dir.length ++ pathAppendNameEvents dir.length name.length)
 
 /-- Exact allocator event envelope of `signal_session::stores::path`. -/
-def PathEnv (dir name : List (BitVec 8)) (evs : List AllocEvent) : Prop := evs = pathEvents dir name
+@[expose] def PathEnv (dir name : List (BitVec 8)) (evs : List AllocEvent) : Prop := evs = pathEvents dir name
 
 theorem fitsEnv_path_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
     (dir name : List (BitVec 8)) :
@@ -1190,26 +1197,5 @@ theorem path_placed_caller_ok_of_deps [LibsignalPlacement] {M : AllocCostModel}
     subroutine_ok callerProg (lsmpl.base 596) (pathSpecPlaced A lim PathEnv stk) :=
   ls_transfer_lscro (callerProg := callerProg) (i := i) (j := 596)
     (path_placed_ok_of_deps hC hRO hRes hstk hresBlk hresUnmut) hi
-
-/-- Caller-transferable `[LibsignalPlacement]` `path` contract for any block `< 619`
-discharging both `AllocContractsXCliPlaced` and read-only `memcpy` from `AllocContractsFsPlaced`. -/
-theorem path_placed_caller_ok_of_allocFs [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} {callerProg resProg : Program} {i resBlk : Nat}
-    [IsLsBlockProg callerProg i H] [IsLsBlockProg resProg resBlk H] {resStack stk : Nat}
-    (hFs : AllocContractsFsPlaced A lim H)
-    (hRes : subroutine_ok resProg (lsmpl.base 561)
-      (withLsCodeRoLoaded lsmpl (doReserveSpecOf resStack A lim)))
-    (hstk : 0x70 + max resStack extHookStack ≤ stk) (hi : i < 619 := by decide)
-    (hresBlk : resBlk < 619 := by decide)
-    (hresUnmut : (resBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsmpl.base 596) (pathSpecPlaced A lim PathEnv stk) :=
-  ls_transfer_lscro (callerProg := callerProg) (i := i) (j := 596)
-    (path_placed_ok_of_ro596 (toAllocContractsX hFs)
-      (ls_transfer_lscro (callerProg := lsProg_596 H) (i := 596) (j := 617)
-        (subroutine_ok_withLsCodeRoLoaded_of_keepsFs
-          (hFs.session_memcpy_region_ro extHookStack (by decide) (by decide)))
-        (by decide))
-      hRes hstk hresBlk hresUnmut) hi
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget

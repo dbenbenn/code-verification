@@ -11,7 +11,7 @@ module
 
 public import Computational.Specifications.Session.ACD19.Ratchet.LibsignalSim
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,7 +42,7 @@ structure GhostChain where
   skipped : List ℕ
 
 /-- Update a ghost chain on accepting 1-based index `i`, keeping at most 2000 skipped indices. -/
-def GhostChain.accept (g : GhostChain) (i : ℕ) : GhostChain :=
+@[expose] def GhostChain.accept (g : GhostChain) (i : ℕ) : GhostChain :=
   if g.last < i then
     { g with last := i,
              skipped :=
@@ -50,12 +50,12 @@ def GhostChain.accept (g : GhostChain) (i : ℕ) : GhostChain :=
   else { g with skipped := g.skipped.erase i }
 
 /-- Structural rejection check at index `i`: duplicate or evicted key, jump past 25000, or `u32` counter overflow. -/
-def GhostChain.rejects (g : GhostChain) (i : ℕ) : Bool :=
+@[expose] def GhostChain.rejects (g : GhostChain) (i : ℕ) : Bool :=
   if i ≤ g.last then !(g.skipped.contains i)
   else decide (25000 < i - 1 - g.last) || decide (2 ^ 32 ≤ i)
 
 /-- Restricted libsignal game configuration for `epoch0Distinguisher`, refusing `corr-A` while `A` retains epoch 0. -/
-def configEpoch0Distinguisher (onImage : List (BitVec 8) → Bool) :
+@[expose] def configEpoch0Distinguisher (onImage : List (BitVec 8) → Bool) :
     SM.ConfigR (GhostState PQ) (Plain ℓ) (List (BitVec 8)) :=
   { configR1OnCurve onImage with
     base := { SM.Config.h1 with injectFull := (· == 0) }
@@ -64,7 +64,7 @@ def configEpoch0Distinguisher (onImage : List (BitVec 8) → Bool) :
 
 /-- PRG distinguisher running the libsignal game from epoch-0 keys `(rc.1, rc.2)` and testing for an
 uncorrupted epoch-0 injection at `A`. -/
-def epoch0Distinguisher (P : Params PQ PQC) (ℓ : ℕ) (onImage : List (BitVec 8) → Bool) (qep : ℕ)
+@[expose] def epoch0Distinguisher (P : Params PQ PQC) (ℓ : ℕ) (onImage : List (BitVec 8) → Bool) (qep : ℕ)
     (A : SM.Adversary (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))) :
     PRGScheme.PRGAdversary (Ratchet.RootKey × BitVec 256) := fun rc => do
   let b ← ($ᵗ Bool : ProbComp Bool)
@@ -73,7 +73,7 @@ def epoch0Distinguisher (P : Params PQ PQC) (ℓ : ℕ) (onImage : List (BitVec 
 
 /-- Epoch-0 error term combining the `rootKdfAsPrg` advantage of `epoch0Distinguisher` with `q`
 uniform-key MAC forgery attempts. -/
-noncomputable def epoch0Term (P : Params PQ PQC) (ℓ : ℕ) (encPt : Pt → List (BitVec 8)) (lam : Pt)
+@[expose] noncomputable def epoch0Term (P : Params PQ PQC) (ℓ : ℕ) (encPt : Pt → List (BitVec 8)) (lam : Pt)
     (onImage : List (BitVec 8) → Bool) (qep q : ℕ)
     (A : SM.Adversary (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))) : ℝ≥0∞ :=
   (rootKdfAsPrg P.C.F (encPt lam)).prgAdvantage (epoch0Distinguisher P ℓ onImage qep A) +

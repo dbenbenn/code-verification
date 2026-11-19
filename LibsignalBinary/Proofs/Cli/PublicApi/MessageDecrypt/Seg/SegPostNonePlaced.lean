@@ -9,12 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegPostNone
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlaced
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegPostNone
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

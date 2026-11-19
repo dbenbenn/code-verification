@@ -13,27 +13,39 @@ public import Arm64.Trusted.Spec.Hoare
 public import ProofLib
 public import LibsignalBinary.Heap.IfaceBudgetBase
 public import LibsignalBinary.Heap.IfaceBudgetBaseBridges
-public import LibsignalBinary.Proofs.PeakBudget.CliKitEnvFits
-public import LibsignalBinary.Proofs.PeakBudget.CliMainIoCredit
-public import LibsignalBinary.Proofs.PeakBudget.CliNoOomOfFitsEnvGhostSat
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
-public import LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlacedPadSat
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.F3ReadFileGhostHook
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadStdinBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3AllocStdinGhostHooks
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.Ghost617Transfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.M24L4BEquiv
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.PlacedOomRecovery2
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4A.T2Strict2Bridge
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyExactCore
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs
+import LibsignalBinary.Proofs.PeakBudget.CliKitEnvFits
+import LibsignalBinary.Proofs.PeakBudget.CliMainIoCredit
+import LibsignalBinary.Proofs.PeakBudget.CliNoOomOfFitsEnvGhostSat
+public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlacedPadSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.F3ReadFileGhostHook -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadStdinBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3AllocStdinGhostHooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.Ghost617Transfer -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.M24L4BEquiv
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.PlacedOomRecovery2
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4A.T2Strict2Bridge
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyExactCore
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # Whole-program `FitsEnv` to `MainOk`, strict placed ELF correctness, and `¬ CliReachesOOMPlaced`
@@ -44,7 +56,7 @@ Chains `ReadFileRuleEnvFixed cliIo.rd ⊆ BoundedReadFileEnv`, ghost-externs `Ma
 (`cliPqxdh{Elf,Binary}Correct{StrictPlaced2,Placed}_of_f3Fixed`, `hAlloc_of_f3Fixed`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -52,12 +64,12 @@ set_option maxRecDepth 200000
 namespace LibsignalBinary.Proofs.PeakBudget.CliF3MainOkBridge
 
 open Arm64 (GhostName HookFsTraced HookOk Memory Program State Steps subroutine_ok)
-open Arm64.Obj (Image MultiPlacement)
+open Arm64.Obj (MultiPlacement)
 open Arm64.Process (ElfImage bytesOfString initFsState)
 open ProofLib
   (hookNoop libcMemcpySpec libcMemsetSpec memcpyRegionSpec memsetRegionSpec
    stripExecOutside)
-open CryptoVerification (LibsignalPlacement libsignalMutatedBlocks libsignalSessionExterns)
+open CryptoVerification (ExternsDistinctOnHooked LibsignalPlacement libsignalMutatedBlocks)
 open CryptoVerification.E2E
   (UnreachedPqxdhPrimitives aesDecHookMallocng aesEncHookMallocng libcruxHmacHookMallocng)
 open CryptoVerification.LibsignalPublicApi.StoreKit (FsFiles)
@@ -66,18 +78,19 @@ open CryptoVerification.LibsignalTripleRatchet
    sessionMemsetRegionSpec sessionMemsetSpec)
 open CryptoVerification.LibsignalTripleRatchetRepr (uuidTryParse)
 open CryptoVerification.SignalSession
-  (CliHooks CliPqxdhBinaryCorrectPlaced CliPqxdhElfCorrectPlaced
-   CliPqxdhInputs CliReachesOOMPlaced Inputs
-   cliExternsPlaced cliProcessInputs libsignalSessionLib
-   lsMemcpySym lsMemsetSym lsReadFileSym lsReadStdinSym lsRustAllocSymCli lsRustAllocZeroedSymCli
-   lsRustDeallocSymCli lsRustNoAllocShimSymCli lsRustReallocSymCli lsStringCloneSym
-   stdinCapBytes)
+  (CliHooks CliPqxdhInputs Inputs
+   cliExternsPlaced cliProcessInputs libsignalSessionLib lsMemcpySym lsMemsetSym lsReadFileSym
+   lsReadStdinSym lsRustAllocSymCli lsRustAllocZeroedSymCli lsRustDeallocSymCli
+   lsRustNoAllocShimSymCli lsRustReallocSymCli lsStringCloneSym lsWriteFileSym lsWriteStdoutSym
+   stdinCapBytes writeFileHook writeStdoutHook)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced
+  (CliPqxdhBinaryCorrectPlaced CliPqxdhElfCorrectPlaced CliReachesOOMPlaced)
 open CryptoVerification.SignalSession.Cli.MainHops
   (LsCodeInv RunCall cliIo cliMainStk cliResStack cliRunBudgets cliWrOk inputOf mProgPlaced
    mainFrameSize parseArgs)
 open CryptoVerification.SignalSession.Cli.RunCompose (PksmGhost runRel)
 open CryptoVerification.SignalSession.Cli.RunGlue
-  (CliGhostHooks ExtraGhostTable IsFsC cliExtraGhostSyms cliGhostExterns)
+  (CliGhostHooks ExtraGhostTable IsFsC cliExtraGhostSyms cliGhostExterns cliGhostExterns_extra_some)
 open VerifiedLibraries (mallocngLib)
 open VerifiedLibraries.Mallocng (mallocngAddrsOfPlacement)
 open LibsignalBinary.Heap
@@ -131,7 +144,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3AllocStdinGhostHooks
    f3ReadStdinGhostHookFine f3ReadStdinGhostHookFine_steps_of_call
    f3ReallocGhostHookFine_steps_of_call
    f3StringCloneGhostHookFine_steps_of_call
-   mainIoOfPlaced_f3CliGhostHooksFixed)
+   mainIoOfPlaced_f3CliGhostHooksFixed_legacy)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.Ghost617Transfer
   (Block617TransferFixedHyp GhostSymActive block617TransferFixed_of_replaysOn
    blockProgram_cliGhostExterns_externAt?_cases
@@ -190,7 +203,7 @@ structure F3FixedHookHyp
   hPl_ls : libsignalSessionLib.Placeable mpl
   hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
     (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i)
-  hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup
+  hext_nodup : ExternsDistinctOnHooked mpl.ρ
   hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk_ghost
   hlibc : libcAddr = (mallocngAddrsOfPlacement mmpl).libc
   hHookStack : extHookStack ≤ hookStack
@@ -245,6 +258,8 @@ structure F3FixedHookHyp
   hMemsetAcp : ∀ f, fMemset = some f →
     ∀ s : State, (f s).sigActions = s.sigActions ∧ (f s).oracle = s.oracle
   hExtraOk : @ExtraFullListSpecOk (libsignalPlacementOf mpl hblk hext_nodup) extra
+  hWriteFile : extra.lookup lsWriteFileSym = some writeFileHook
+  hWriteStdout : extra.lookup lsWriteStdoutSym = some writeStdoutHook
   hStubAlloc : StubReachesTarget P_real (libsignalSessionLib.resolve mpl lsRustAllocSymCli) T.alloc
   hStubDealloc : StubReachesTarget P_real (libsignalSessionLib.resolve mpl lsRustDeallocSymCli) T.dealloc
   hStubRealloc : StubReachesTarget P_real (libsignalSessionLib.resolve mpl lsRustReallocSymCli) T.realloc
@@ -423,7 +438,7 @@ theorem mainOkCliExtPqB2NeedLocksPlacedAt_f3Fixed
     {extra : ExtraGhostTable}
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (RunEnv : UnreachedPqxdhPrimitives → CliHooks → GhostName → BitVec 64 →
       RunCall → List AllocEvent → Prop)
     (hKitFits : mpl.base 547 ≠ 0#64 →
@@ -477,11 +492,13 @@ theorem mainOkCliExtPqB2NeedLocksPlacedAt_f3Fixed
         (subroutine_ok_rustCliDeallocBudget_of_base (HF.hDealloc γ tp))
         (subroutine_ok_rustCliReallocBudget_of_base (HF.hRealloc γ tp))
         HF.hMemset HF.hMemcpy HF.hMemcpyExact HF.hMemsetAcp HF.hExtraOk)
-    (fun W γ tp => @mainIoOfPlaced_f3CliGhostHooksFixed
+    (fun W γ tp => @mainIoOfPlaced_f3CliGhostHooksFixed_legacy
       (libsignalPlacementOf mpl HF.hblk HF.hext_nodup)
       keep P_real P_sub T mmpl W brkStart cliBudgetLimits hookStack fMemset fMemcpy extra
       HF.hsvc_real HF.hsvc_sub HF.hreal_no HF.hsub_no HF.hPl_mng HF.hKeepMallocng
-      HF.hHookStack HF.hReadFileCond HF.hReadStdinCond γ tp)
+      HF.hHookStack HF.hReadFileCond HF.hReadStdinCond
+      (cliGhostExterns_extra_some _ _ HF.hWriteFile)
+      (cliGhostExterns_extra_some _ _ HF.hWriteStdout) γ tp)
     (fun files path _ h => boundedReadFileEnv_of_readFileRuleEnvFixed_cliIo files path h)
     HF.hMainStk
     hKitFits
@@ -501,7 +518,7 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_f3Fixed
     {extra : ExtraGhostTable}
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (RunEnv : UnreachedPqxdhPrimitives → CliHooks → GhostName → BitVec 64 →
       RunCall → List AllocEvent → Prop)
     (hKitFits : mpl.base 547 ≠ 0#64 →
@@ -555,11 +572,13 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_f3Fixed
         (subroutine_ok_rustCliDeallocBudget_of_base (HF.hDealloc γ tp))
         (subroutine_ok_rustCliReallocBudget_of_base (HF.hRealloc γ tp))
         HF.hMemset HF.hMemcpy HF.hMemcpyExact HF.hMemsetAcp HF.hExtraOk)
-    (fun W γ tp => @mainIoOfPlaced_f3CliGhostHooksFixed
+    (fun W γ tp => @mainIoOfPlaced_f3CliGhostHooksFixed_legacy
       (libsignalPlacementOf mpl HF.hblk HF.hext_nodup)
       keep P_real P_sub T mmpl W brkStart cliBudgetLimits hookStack fMemset fMemcpy extra
       HF.hsvc_real HF.hsvc_sub HF.hreal_no HF.hsub_no HF.hPl_mng HF.hKeepMallocng
-      HF.hHookStack HF.hReadFileCond HF.hReadStdinCond γ tp)
+      HF.hHookStack HF.hReadFileCond HF.hReadStdinCond
+      (cliGhostExterns_extra_some _ _ HF.hWriteFile)
+      (cliGhostExterns_extra_some _ _ HF.hWriteStdout) γ tp)
     (fun files path _ h => boundedReadFileEnv_of_readFileRuleEnvFixed_cliIo files path h)
     HF.hMainStk
     hKitFits
@@ -739,7 +758,7 @@ theorem mainOkCliF3Pq_of_f3Fixed
     {extra : ExtraGhostTable}
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (RunEnv : UnreachedPqxdhPrimitives → CliHooks → GhostName → BitVec 64 →
       RunCall → List AllocEvent → Prop)
     (hKitFits : mpl.base 547 ≠ 0#64 →
@@ -795,7 +814,7 @@ theorem mainOkCliF3Over_of_f3Fixed
     {extra : ExtraGhostTable}
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (RunEnv : UnreachedPqxdhPrimitives → CliHooks → GhostName → BitVec 64 →
       RunCall → List AllocEvent → Prop)
     (hKitFits : mpl.base 547 ≠ 0#64 →
@@ -854,7 +873,7 @@ theorem cliPqxdhElfCorrectStrictPlaced2_of_f3Fixed
     (H : CliElfF3B2NeedLocksAssumptions mpl mmpl exitStk libcAddr cliMainStk CodeOk_real elf)
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr elf.brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (RunEnvPq RunEnvOver : UnreachedPqxdhPrimitives → CliHooks → GhostName → BitVec 64 →
       RunCall → List AllocEvent → Prop)
     (hKitFits : mpl.base 547 ≠ 0#64 →
@@ -931,7 +950,7 @@ theorem cliPqxdhElfCorrectPlaced_of_f3Fixed
     (H : CliElfF3B2NeedLocksAssumptions mpl mmpl exitStk libcAddr cliMainStk CodeOk_real elf)
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr elf.brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (RunEnvPq RunEnvOver : UnreachedPqxdhPrimitives → CliHooks → GhostName → BitVec 64 →
       RunCall → List AllocEvent → Prop)
     (hKitFits : mpl.base 547 ≠ 0#64 →
@@ -995,7 +1014,7 @@ theorem cliPqxdhElfCorrectPlaced_of_f3Fixed
     (mainOkCliF3Pq_of_f3Fixed HF img RunEnvPq hKitFits hRunSubPq hrunPq)
     (mainOkCliF3Over_of_f3Fixed HF img RunEnvOver hKitFits hRunSubOver hrunOver)
 
-/-- Discharges the OOM-freedom premise (`DEV-CLI12`) of `StatementPqElf.CliPqxdhElfSecurePlaced`:
+/-- Discharges the OOM-freedom obligation for `main_of_lemmas_placed`:
 `∀ i, CliPqxdhInputs ⟨W.C, W.Q⟩ i → ¬ CliReachesOOMPlaced mpl mmpl elf W i` from
 `FitsEnv fineCostModel cliBudgetLimits` and F3 ghost-to-real transfer. -/
 theorem hAlloc_of_f3Fixed
@@ -1010,7 +1029,7 @@ theorem hAlloc_of_f3Fixed
     (H : CliElfF3B2NeedLocksAssumptions mpl mmpl exitStk libcAddr cliMainStk CodeOk_real elf)
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr elf.brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (RunEnvPq RunEnvOver : UnreachedPqxdhPrimitives → CliHooks → GhostName → BitVec 64 →
       RunCall → List AllocEvent → Prop)
     (hKitFits : mpl.base 547 ≠ 0#64 →
@@ -1089,7 +1108,7 @@ theorem not_cliReachesOOMPlaced_of_f3Fixed
     (H : CliElfF3B2NeedLocksAssumptions mpl mmpl exitStk libcAddr cliMainStk CodeOk_real elf)
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr elf.brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (RunEnvPq RunEnvOver : UnreachedPqxdhPrimitives → CliHooks → GhostName → BitVec 64 →
       RunCall → List AllocEvent → Prop)
     (hKitFits : mpl.base 547 ≠ 0#64 →
@@ -1212,7 +1231,7 @@ abbrev canonSliceRunEnvFixed
     (mpl mmpl : MultiPlacement) (brkStart : BitVec 64)
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64) :
     RunCall → List AllocEvent → Prop :=
   letI : CryptoVerification.LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
@@ -1229,7 +1248,7 @@ abbrev canonOrFallbackRunEnvFixed
     (mpl mmpl : MultiPlacement) (brkStart : BitVec 64)
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64) :
     RunCall → List AllocEvent → Prop :=
   letI : CryptoVerification.LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
@@ -1252,7 +1271,7 @@ theorem mainOkCliExtPqB2NeedLocksPlacedAt_of_cliKitEnvFits
     {extra : ExtraGhostTable}
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (RunEnv : UnreachedPqxdhPrimitives → CliHooks → GhostName → BitVec 64 →
       RunCall → List AllocEvent → Prop)
     (hRunSub : mpl.base 547 ≠ 0#64 →
@@ -1304,7 +1323,7 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_of_cliKitEnvFits
     {extra : ExtraGhostTable}
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (RunEnv : UnreachedPqxdhPrimitives → CliHooks → GhostName → BitVec 64 →
       RunCall → List AllocEvent → Prop)
     (hRunSub : mpl.base 547 ≠ 0#64 →
@@ -1357,7 +1376,7 @@ theorem mainOkCliF3Pq_of_cliKitEnvFits
     {extra : ExtraGhostTable}
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (RunEnv : UnreachedPqxdhPrimitives → CliHooks → GhostName → BitVec 64 →
       RunCall → List AllocEvent → Prop)
     (hRunSub : mpl.base 547 ≠ 0#64 →
@@ -1406,7 +1425,7 @@ theorem mainOkCliF3Over_of_cliKitEnvFits
     {extra : ExtraGhostTable}
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (RunEnv : UnreachedPqxdhPrimitives → CliHooks → GhostName → BitVec 64 →
       RunCall → List AllocEvent → Prop)
     (hRunSub : mpl.base 547 ≠ 0#64 →
@@ -1454,7 +1473,7 @@ theorem mainOkCliF3Pq_of_cliKitEnvFits_canonSlice
     {extra : ExtraGhostTable}
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (hrun : mpl.base 547 ≠ 0#64 →
       ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
         @subroutine_ok _
@@ -1493,7 +1512,7 @@ theorem mainOkCliF3Over_of_cliKitEnvFits_canonSlice
     {extra : ExtraGhostTable}
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (hrun : mpl.base 547 ≠ 0#64 →
       ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
         @subroutine_ok _
@@ -1532,7 +1551,7 @@ theorem mainOkCliF3Pq_of_cliKitEnvFits_canonOrFallback
     (FallbackEnv : PksmGhost → List AllocEvent → Prop)
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (hrun : mpl.base 547 ≠ 0#64 →
       ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
         @subroutine_ok _
@@ -1572,7 +1591,7 @@ theorem mainOkCliF3Over_of_cliKitEnvFits_canonOrFallback
     (FallbackEnv : PksmGhost → List AllocEvent → Prop)
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (hrun : mpl.base 547 ≠ 0#64 →
       ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
         @subroutine_ok _
@@ -1614,7 +1633,7 @@ theorem cliPqxdhElfCorrectStrictPlaced2_of_cliKitEnvFits
     (H : CliElfF3B2NeedLocksAssumptions mpl mmpl exitStk libcAddr cliMainStk CodeOk_real elf)
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr elf.brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (RunEnvPq RunEnvOver : UnreachedPqxdhPrimitives → CliHooks → GhostName → BitVec 64 →
       RunCall → List AllocEvent → Prop)
     (hRunSubPq : mpl.base 547 ≠ 0#64 →
@@ -1686,7 +1705,7 @@ theorem cliPqxdhElfCorrectStrictPlaced2_of_cliKitEnvFits_canonSlice
     (H : CliElfF3B2NeedLocksAssumptions mpl mmpl exitStk libcAddr cliMainStk CodeOk_real elf)
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr elf.brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (hrun : mpl.base 547 ≠ 0#64 →
       ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
         @subroutine_ok _
@@ -1721,7 +1740,7 @@ theorem cliPqxdhElfCorrectPlaced_of_cliKitEnvFits
     (H : CliElfF3B2NeedLocksAssumptions mpl mmpl exitStk libcAddr cliMainStk CodeOk_real elf)
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr elf.brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (RunEnvPq RunEnvOver : UnreachedPqxdhPrimitives → CliHooks → GhostName → BitVec 64 →
       RunCall → List AllocEvent → Prop)
     (hRunSubPq : mpl.base 547 ≠ 0#64 →
@@ -1791,7 +1810,7 @@ theorem cliPqxdhElfCorrectPlaced_of_cliKitEnvFits_canonSlice
     (H : CliElfF3B2NeedLocksAssumptions mpl mmpl exitStk libcAddr cliMainStk CodeOk_real elf)
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr elf.brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (hrun : mpl.base 547 ≠ 0#64 →
       ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
         @subroutine_ok _
@@ -1813,7 +1832,7 @@ theorem cliPqxdhElfCorrectPlaced_of_cliKitEnvFits_canonSlice
     (mainOkCliF3Pq_of_cliKitEnvFits_canonSlice HF img hrun)
     (mainOkCliF3Over_of_cliKitEnvFits_canonSlice HF img hrun)
 
-/-- `CliKitEnvFits`-discharged OOM-freedom theorem (`DEV-CLI12`, `StatementPqElf.CliPqxdhElfSecurePlaced`):
+/-- `CliKitEnvFits`-discharged OOM-freedom theorem (for `main_of_lemmas_placed`):
 proves `∀ i, CliPqxdhInputs ⟨W.C, W.Q⟩ i → ¬ CliReachesOOMPlaced mpl mmpl elf W i` with `hKitFits`
 and `Block617TransferFixedHyp` discharged internally. -/
 theorem hAlloc_of_cliKitEnvFits
@@ -1828,7 +1847,7 @@ theorem hAlloc_of_cliKitEnvFits
     (H : CliElfF3B2NeedLocksAssumptions mpl mmpl exitStk libcAddr cliMainStk CodeOk_real elf)
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr elf.brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (RunEnvPq RunEnvOver : UnreachedPqxdhPrimitives → CliHooks → GhostName → BitVec 64 →
       RunCall → List AllocEvent → Prop)
     (hRunSubPq : mpl.base 547 ≠ 0#64 →
@@ -1902,7 +1921,7 @@ theorem hAlloc_of_cliKitEnvFits_canonSlice
     (H : CliElfF3B2NeedLocksAssumptions mpl mmpl exitStk libcAddr cliMainStk CodeOk_real elf)
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr elf.brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (hrun : mpl.base 547 ≠ 0#64 →
       ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
         @subroutine_ok _
@@ -1937,7 +1956,7 @@ theorem not_cliReachesOOMPlaced_of_cliKitEnvFits
     (H : CliElfF3B2NeedLocksAssumptions mpl mmpl exitStk libcAddr cliMainStk CodeOk_real elf)
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr elf.brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (RunEnvPq RunEnvOver : UnreachedPqxdhPrimitives → CliHooks → GhostName → BitVec 64 →
       RunCall → List AllocEvent → Prop)
     (hRunSubPq : mpl.base 547 ≠ 0#64 →
@@ -2009,7 +2028,7 @@ theorem not_cliReachesOOMPlaced_of_cliKitEnvFits_canonSlice
     (H : CliElfF3B2NeedLocksAssumptions mpl mmpl exitStk libcAddr cliMainStk CodeOk_real elf)
     (HF : F3FixedHookHyp mpl mmpl CodeOk_ghost CodeOk_real libcAddr elf.brkStart
       keep InvMem P_real P_sub T hookStack fMemset fMemcpy extra)
-    (img : Image)
+    (img : Unit)
     (hrun : mpl.base 547 ≠ 0#64 →
       ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
         @subroutine_ok _
@@ -2035,7 +2054,7 @@ theorem not_cliReachesOOMPlaced_of_cliKitEnvFits_canonSlice
 /-- Binary-level `CliPqxdhBinaryCorrectStrictPlaced2 bytes` composer with `hKitFits` discharged via `CliKitEnvFits`. -/
 theorem cliPqxdhBinaryCorrectStrictPlaced2_of_cliKitEnvFits_canonSlice
     {bytes : List (BitVec 8)} {elf : ElfImage}
-    (img : Image)
+    (img : Unit)
     (hparse : ElfImage.parse bytes = .ok elf)
     (hAssump : ∀ mpl mmpl : MultiPlacement,
       libsignalSessionLib.LinkedAt bytes mpl →
@@ -2077,7 +2096,7 @@ theorem cliPqxdhBinaryCorrectStrictPlaced2_of_cliKitEnvFits_canonSlice
 /-- Binary-level `CliPqxdhBinaryCorrectPlaced bytes` composer with `hKitFits` discharged via `CliKitEnvFits`. -/
 theorem cliPqxdhBinaryCorrectPlaced_of_cliKitEnvFits_canonSlice
     {bytes : List (BitVec 8)} {elf : ElfImage}
-    (img : Image)
+    (img : Unit)
     (hparse : ElfImage.parse bytes = .ok elf)
     (hAssump : ∀ mpl mmpl : MultiPlacement,
       libsignalSessionLib.LinkedAt bytes mpl →

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCS
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCS -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.Encode1
 import ProofLib.SepLogic.WPp
 
@@ -21,7 +21,7 @@ Proves relocatable `[LibsignalPlacement]` stage steppers on `lsProg_319` for Sta
 (outer header, `epoch`, `auth`, `hdr`, and `es`) of `unchunked::Ct1Sent::encode [local#2]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageEncode
 
@@ -62,99 +62,81 @@ local macro "cs_step " hcs:term:max hinv:term:max : term =>
   `(UnchunkedEncodeCalleeSavedPlaced.step $hcs (by simp only [arm64_norm]) (by simp only [arm64_norm])
     (by simp only [arm64_norm]) (by simp only [arm64_norm]) (by simp only [arm64_norm]) $hinv)
 
-def IsCt1Enc2EntryProg (prog : Program) (entry encLen_pc varint_pc auth_pc reserve_pc memcpy_pc : BitVec 64) : Prop :=
-  (∃ b ext, prog = tripleRatchetProgAtExt b ext ∧ entry = (tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode2Name ∧
-    encLen_pc = entry + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#2]" "<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent as prost::message::Message>::encoded_len [local#2]") ∧
-    varint_pc = entry + bv% (2 ^ 64 - ls_rel% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#3]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#2]") ∧
-    auth_pc = entry + bv% (2 ^ 64 - ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::Authenticator, alloc::vec::Vec<u8>> [local#2]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#2]") ∧
-    reserve_pc = entry + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#2]" "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#6]") ∧
-    memcpy_pc = entry + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#2]" "memcpy")) ∨
+@[expose] def IsCt1Enc2EntryProg (prog : Program) (entry encLen_pc varint_pc auth_pc reserve_pc memcpy_pc : BitVec 64) : Prop :=
+  False ∨
   (∃ (_ : LibsignalPlacement) (H : String → Option (State → State)),
     prog = lsProg_319 H ∧ entry = (blkPl_319).base ∧ encLen_pc = (blkPl_408).base ∧ varint_pc = (blkPl_292).base ∧
     auth_pc = lsmpl.base 314 ∧ reserve_pc = (blkPl_320).base ∧ memcpy_pc = lsρ lsMemcpySym)
 
 theorem ct1_enc2_fetch_entry_placed {prog : Program} {entry p1 p2 p3 p4 p5 : BitVec 64} {instr : Instr}
     (hfn : IsCt1Enc2EntryProg prog entry p1 p2 p3 p4 p5)
-    (hext : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode2Name) = some instr)
     (hpl : ∀ [LibsignalPlacement] (H : String → Option (State → State)), (lsProg_319 H).fetch ((blkPl_319).base + 0#64) = some instr) :
     prog.fetch entry = some instr := by
-  rcases hfn with ⟨b, ext, rfl, rfl, -, -, -, -, -⟩ | ⟨inst, H, rfl, rfl, -, -, -, -, -⟩; exact hext b ext
-  letI := inst; have h := @hpl inst H; rwa [BitVec.add_zero] at h
+  rcases hfn with h | ⟨inst, H, rfl, rfl, -, -, -, -, -⟩
+  · nomatch h
+  · letI := inst; have h := @hpl inst H; rwa [BitVec.add_zero] at h
 
 theorem ct1_enc2_fetch_add_placed {prog : Program} {entry p1 p2 p3 p4 p5 : BitVec 64} {k : Nat} {instr : Instr}
     (hfn : IsCt1Enc2EntryProg prog entry p1 p2 p3 p4 p5)
-    (hext : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode2Name + BitVec.ofNat 64 k) = some instr)
     (hpl : ∀ [LibsignalPlacement] (H : String → Option (State → State)), (lsProg_319 H).fetch ((blkPl_319).base + BitVec.ofNat 64 k) = some instr) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some instr := by
-  rcases hfn with ⟨b, ext, rfl, rfl, -, -, -, -, -⟩ | ⟨_, H, rfl, rfl, -, -, -, -, -⟩; exact hext b ext; exact hpl H
+  rcases hfn with h | ⟨_, H, rfl, rfl, -, -, -, -, -⟩
+  · nomatch h
+  · exact hpl H
 
-theorem ct1_enc2_fetch_bl_encLen_placed {prog : Program} {entry encLen_pc p2 p3 p4 p5 : BitVec 64} {k : Nat} {off : BitVec 64}
+theorem ct1_enc2_fetch_bl_encLen_placed {prog : Program} {entry encLen_pc p2 p3 p4 p5 : BitVec 64} {k : Nat}
     (hfn : IsCt1Enc2EntryProg prog entry encLen_pc p2 p3 p4 p5)
-    (hext : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode2Name + BitVec.ofNat 64 k) = some (Instr.bl off))
-    (hoff : off = bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#2]" "<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent as prost::message::Message>::encoded_len [local#2]") - BitVec.ofNat 64 k)
     (hpl : ∀ [LibsignalPlacement] (H : String → Option (State → State)), (lsProg_319 H).fetch ((blkPl_319).base + BitVec.ofNat 64 k) =
       some (Instr.bl ((blkPl_319).ρ "<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent as prost::message::Message>::encoded_len [local#2]" - (blkPl_319).base - BitVec.ofNat 64 k))) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some (Instr.bl (encLen_pc - (entry + BitVec.ofNat 64 k))) := by
-  rcases hfn with ⟨b, ext, rfl, rfl, rfl, -, -, -, -⟩ | ⟨inst, H, rfl, rfl, rfl, -, -, -, -⟩
-  · have hf := hext b ext; rw [hoff, bv_bl_off_eq] at hf; exact hf
+  rcases hfn with h | ⟨inst, H, rfl, rfl, rfl, -, -, -, -⟩
+  · nomatch h
   · letI := inst; have h := @hpl inst H; simp only [blkPl_319_ρ, ls_resolve_blk_408] at h
     rw [show lsmpl.base 408 - (blkPl_319).base - BitVec.ofNat 64 k = (blkPl_408).base - ((blkPl_319).base + BitVec.ofNat 64 k) by change (blkPl_408).base - (blkPl_319).base - BitVec.ofNat 64 k = _; bv_omega] at h; exact h
 
-theorem ct1_enc2_fetch_bl_varint_placed {prog : Program} {entry p1 varint_pc p3 p4 p5 : BitVec 64} {k : Nat} {off : BitVec 64}
+theorem ct1_enc2_fetch_bl_varint_placed {prog : Program} {entry p1 varint_pc p3 p4 p5 : BitVec 64} {k : Nat}
     (hfn : IsCt1Enc2EntryProg prog entry p1 varint_pc p3 p4 p5)
-    (hext : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode2Name + BitVec.ofNat 64 k) = some (Instr.bl off))
-    (hoff : off = bv% (2 ^ 64 - ls_rel% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#3]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#2]") - BitVec.ofNat 64 k)
     (hpl : ∀ [LibsignalPlacement] (H : String → Option (State → State)), (lsProg_319 H).fetch ((blkPl_319).base + BitVec.ofNat 64 k) =
       some (Instr.bl ((blkPl_319).ρ "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#3]" - (blkPl_319).base - BitVec.ofNat 64 k))) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some (Instr.bl (varint_pc - (entry + BitVec.ofNat 64 k))) := by
-  rcases hfn with ⟨b, ext, rfl, rfl, -, rfl, -, -, -⟩ | ⟨inst, H, rfl, rfl, -, rfl, -, -, -⟩
-  · have hf := hext b ext; rw [hoff, bv_bl_off_eq] at hf; exact hf
+  rcases hfn with h | ⟨inst, H, rfl, rfl, -, rfl, -, -, -⟩
+  · nomatch h
   · letI := inst; have h := @hpl inst H; simp only [blkPl_319_ρ, ls_resolve_blk_292] at h
     rw [show lsmpl.base 292 - (blkPl_319).base - BitVec.ofNat 64 k = (blkPl_292).base - ((blkPl_319).base + BitVec.ofNat 64 k) by change (blkPl_292).base - (blkPl_319).base - BitVec.ofNat 64 k = _; bv_omega] at h; exact h
 
-theorem ct1_enc2_fetch_bl_auth_placed {prog : Program} {entry p1 p2 auth_pc p4 p5 : BitVec 64} {k : Nat} {off : BitVec 64}
+theorem ct1_enc2_fetch_bl_auth_placed {prog : Program} {entry p1 p2 auth_pc p4 p5 : BitVec 64} {k : Nat}
     (hfn : IsCt1Enc2EntryProg prog entry p1 p2 auth_pc p4 p5)
-    (hext : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode2Name + BitVec.ofNat 64 k) = some (Instr.bl off))
-    (hoff : off = bv% (2 ^ 64 - ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::Authenticator, alloc::vec::Vec<u8>> [local#2]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#2]") - BitVec.ofNat 64 k)
     (hpl : ∀ [LibsignalPlacement] (H : String → Option (State → State)), (lsProg_319 H).fetch ((blkPl_319).base + BitVec.ofNat 64 k) =
       some (Instr.bl ((blkPl_319).ρ "prost::encoding::message::encode::<spqr::proto::pq_ratchet::Authenticator, alloc::vec::Vec<u8>> [local#2]" - (blkPl_319).base - BitVec.ofNat 64 k))) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some (Instr.bl (auth_pc - (entry + BitVec.ofNat 64 k))) := by
-  rcases hfn with ⟨b, ext, rfl, rfl, -, -, rfl, -, -⟩ | ⟨inst, H, rfl, rfl, -, -, rfl, -, -⟩
-  · have hf := hext b ext; rw [hoff, bv_bl_off_eq] at hf; exact hf
+  rcases hfn with h | ⟨inst, H, rfl, rfl, -, -, rfl, -, -⟩
+  · nomatch h
   · letI := inst; have h := @hpl inst H; simp only [blkPl_319_ρ, ls_resolve_blk_314] at h
     rw [show lsmpl.base 314 - (blkPl_319).base - BitVec.ofNat 64 k = lsmpl.base 314 - ((blkPl_319).base + BitVec.ofNat 64 k) by bv_omega] at h; exact h
 
-theorem ct1_enc2_fetch_bl_reserve_placed {prog : Program} {entry p1 p2 p3 reserve_pc p5 : BitVec 64} {k : Nat} {off : BitVec 64}
+theorem ct1_enc2_fetch_bl_reserve_placed {prog : Program} {entry p1 p2 p3 reserve_pc p5 : BitVec 64} {k : Nat}
     (hfn : IsCt1Enc2EntryProg prog entry p1 p2 p3 reserve_pc p5)
-    (hext : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode2Name + BitVec.ofNat 64 k) = some (Instr.bl off))
-    (hoff : off = bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#2]" "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#6]") - BitVec.ofNat 64 k)
     (hpl : ∀ [LibsignalPlacement] (H : String → Option (State → State)), (lsProg_319 H).fetch ((blkPl_319).base + BitVec.ofNat 64 k) =
       some (Instr.bl ((blkPl_319).ρ "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#6]" - (blkPl_319).base - BitVec.ofNat 64 k))) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some (Instr.bl (reserve_pc - (entry + BitVec.ofNat 64 k))) := by
-  rcases hfn with ⟨b, ext, rfl, rfl, -, -, -, rfl, -⟩ | ⟨inst, H, rfl, rfl, -, -, -, rfl, -⟩
-  · have hf := hext b ext; rw [hoff, bv_bl_off_eq] at hf; exact hf
+  rcases hfn with h | ⟨inst, H, rfl, rfl, -, -, -, rfl, -⟩
+  · nomatch h
   · letI := inst; have h := @hpl inst H; simp only [blkPl_319_ρ, ls_resolve_blk_320] at h
     rw [show lsmpl.base 320 - (blkPl_319).base - BitVec.ofNat 64 k = (blkPl_320).base - ((blkPl_319).base + BitVec.ofNat 64 k) by change (blkPl_320).base - (blkPl_319).base - BitVec.ofNat 64 k = _; bv_omega] at h; exact h
 
-theorem ct1_enc2_fetch_bl_memcpy_placed {prog : Program} {entry p1 p2 p3 p4 memcpy_pc : BitVec 64} {k : Nat} {off : BitVec 64}
+theorem ct1_enc2_fetch_bl_memcpy_placed {prog : Program} {entry p1 p2 p3 p4 memcpy_pc : BitVec 64} {k : Nat}
     (hfn : IsCt1Enc2EntryProg prog entry p1 p2 p3 p4 memcpy_pc)
-    (hext : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode2Name + BitVec.ofNat 64 k) = some (Instr.bl off))
-    (hoff : off = bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#2]" "memcpy") - BitVec.ofNat 64 k)
     (hpl : ∀ [LibsignalPlacement] (H : String → Option (State → State)), (lsProg_319 H).fetch ((blkPl_319).base + BitVec.ofNat 64 k) =
       some (Instr.bl ((blkPl_319).ρ "memcpy" - (blkPl_319).base - BitVec.ofNat 64 k))) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some (Instr.bl (memcpy_pc - (entry + BitVec.ofNat 64 k))) := by
-  rcases hfn with ⟨b, ext, rfl, rfl, -, -, -, -, rfl⟩ | ⟨inst, H, rfl, rfl, -, -, -, -, rfl⟩
-  · have hf := hext b ext; rw [hoff, bv_bl_off_eq] at hf; exact hf
+  rcases hfn with h | ⟨inst, H, rfl, rfl, -, -, -, -, rfl⟩
+  · nomatch h
   · letI := inst; have h := @hpl inst H
     rw [show (blkPl_319).ρ "memcpy" - (blkPl_319).base - BitVec.ofNat 64 k = lsρ lsMemcpySym - ((blkPl_319).base + BitVec.ofNat 64 k) by change lsρ lsMemcpySym - (blkPl_319).base - BitVec.ofNat 64 k = _; bv_omega] at h; exact h
 
 open Lean Meta Elab Tactic ProofLib in
 /-- Fetch instructions in `[kStart, kEnd)` for `encode<Ct1Sent> [local#2]`. -/
 elab "ct1_enc2_fetches_range_placed " hfn:term:max kStart:num kEnd:num : tactic => do
-  let off := 0x4d93c
-  let fetchEntry := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  let fnOff := mkIdent `CryptoVerification.SpqrV1.Prost.MessageEncode.ct1SentEncode2_fnOff
   let fEntry := mkIdent `CryptoVerification.SpqrV1.Prost.MessageEncode.ct1_enc2_fetch_entry_placed
   let fAdd := mkIdent `CryptoVerification.SpqrV1.Prost.MessageEncode.ct1_enc2_fetch_add_placed
   let fEncLen := mkIdent `CryptoVerification.SpqrV1.Prost.MessageEncode.ct1_enc2_fetch_bl_encLen_placed
@@ -164,25 +146,23 @@ elab "ct1_enc2_fetches_range_placed " hfn:term:max kStart:num kEnd:num : tactic 
   let fMemcpy := mkIdent `CryptoVerification.SpqrV1.Prost.MessageEncode.ct1_enc2_fetch_bl_memcpy_placed
   for i in [kStart.getNat / 4 : kEnd.getNat / 4] do
     let k := 4 * i
-    let dec := mkIdent (Name.str `CryptoVerification.SpqrV1.Prost.MessageEncode
-      ("libsignalSessionBin_decode_" ++ "0x" ++ String.ofList (Nat.toDigits 16 (off + k))))
     let kHex := String.ofList (Nat.toDigits 16 k)
     let lsFetch := mkIdent (`CryptoVerification |>.str s!"blkPC_319_rebase_fetch_0x{kHex}")
     let kq := Syntax.mkNumLit (toString k)
     if k == 0 then
-      evalTactic (← `(tactic| have := $fEntry $hfn (fun b ext => $fetchEntry (b := b) (H := Rust.withPanics ext) $fnOff (by decide) $dec) (fun [LibsignalPlacement] H => $lsFetch _ H)))
+      evalTactic (← `(tactic| have := $fEntry $hfn (fun [LibsignalPlacement] H => $lsFetch _ H)))
     else if k == 68 then
-      evalTactic (← `(tactic| have := $fEncLen (k := $kq) $hfn (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff (by decide) $dec) (by decide) (fun [LibsignalPlacement] H => $lsFetch _ H)))
+      evalTactic (← `(tactic| have := $fEncLen (k := $kq) $hfn (fun [LibsignalPlacement] H => $lsFetch _ H)))
     else if k == 76 || k == 128 || k == 212 || k == 320 || k == 428 then
-      evalTactic (← `(tactic| have := $fVarint (k := $kq) $hfn (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff (by decide) $dec) (by decide) (fun [LibsignalPlacement] H => $lsFetch _ H)))
+      evalTactic (← `(tactic| have := $fVarint (k := $kq) $hfn (fun [LibsignalPlacement] H => $lsFetch _ H)))
     else if k == 152 then
-      evalTactic (← `(tactic| have := $fAuth (k := $kq) $hfn (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff (by decide) $dec) (by decide) (fun [LibsignalPlacement] H => $lsFetch _ H)))
+      evalTactic (← `(tactic| have := $fAuth (k := $kq) $hfn (fun [LibsignalPlacement] H => $lsFetch _ H)))
     else if k == 516 || k == 548 || k == 580 || k == 612 || k == 636 || k == 684 || k == 716 || k == 740 || k == 788 || k == 820 || k == 844 then
-      evalTactic (← `(tactic| have := $fReserve (k := $kq) $hfn (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff (by decide) $dec) (by decide) (fun [LibsignalPlacement] H => $lsFetch _ H)))
+      evalTactic (← `(tactic| have := $fReserve (k := $kq) $hfn (fun [LibsignalPlacement] H => $lsFetch _ H)))
     else if k == 252 || k == 360 || k == 468 then
-      evalTactic (← `(tactic| have := $fMemcpy (k := $kq) $hfn (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff (by decide) $dec) (by decide) (fun [LibsignalPlacement] H => $lsFetch _ H)))
+      evalTactic (← `(tactic| have := $fMemcpy (k := $kq) $hfn (fun [LibsignalPlacement] H => $lsFetch _ H)))
     else
-      evalTactic (← `(tactic| have := $fAdd (k := $kq) $hfn (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff (by decide) $dec) (fun [LibsignalPlacement] H => $lsFetch _ H)))
+      evalTactic (← `(tactic| have := $fAdd (k := $kq) $hfn (fun [LibsignalPlacement] H => $lsFetch _ H)))
 
 /-! ## 1. Stage 1: Outer Header -/
 

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet4PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet4PlacedBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Contracts
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Final
@@ -22,6 +22,29 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet3PlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet5PlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1RatchetErr2500
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1RatchetErr2500PlacedBudget
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Repr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Specs
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part5PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet4 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet4PlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part5PlacedBudget
 
 /-!
 # Budget-Threaded Per-Branch Obligations & Tails for `spqr::recv`
@@ -31,7 +54,7 @@ Mid-execution `FitsEnv` extension combinators, the per-branch budget/closure bun
 (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -61,15 +84,19 @@ open CryptoVerification.SpqrV1.Top.Recv
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FitsEnv FreeOnlyEvs RustCliAllocBudget
    fitsEvents_append)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (MsgDeserErrEnv)
 open LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpersBudget (ChainAddEpochEnv)
 open LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget (ChainIntoPbAllocEnv ChainIntoPbEnv)
 open LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget (ChainRecvKeyEnv chainRecvKeyEvents)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag
+  (spqrErrorTagCanonical spqrErrorTagCanonical_valid_of_ne_invalidParams)
 open LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget (PqRatchetStateEncodeToVecEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget (ChainFromAllocEnv ChainFromEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlacedBudget (toDropContractsBudget)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget (SpqrRecvPlacedContractsOfEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
-  (sepWP_spqrRecvPlacedPostOfEnv_of_post0 spqrRecvPlacedPostOfEnv)
+  (chainFrom_ne_invalidParams chainRecvKey_ne_invalidParams sepWP_spqrRecvPlacedPostOfEnv_of_post0
+   spqrRecvPlacedPostOfEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part5PlacedBudgetAux
   (InitInnerPlacedTailGen V0ChainPlacedTailGen V1RatchetPlacedTailLSGen)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part7PlacedBudget (step_ordering_less_placed_ofEnv)
@@ -332,6 +359,30 @@ structure SpqrRecvBranchHyps {MC : AllocCostModel}
     ChainIntoPbEnv ⟨s0.sp - 4592#64, s0.sp - 4200#64, G, ch⟩ evs_into →
     FreeOnlyEvs evs_d →
     Env (evs_dec ++ evs_init ++ evs_cf ++ evs_into ++ evs_d)
+  /-- `Ordering::Equal` (`pre.version = 1#8`): `FitsEnv` for `<Message>::deserialize` error path. -/
+  v1_fit_md : ∀ (pre : MsgPreamble) (pre_pb : PqRatchetState) (pb : V1State)
+      (evs_dec : List AllocEvent) (err : Error),
+    msgPreamble msg.bytes = .ok pre →
+    spqrDecodeState st.bytes = .ok pre_pb →
+    pre_pb.inner = some (.v1 pb) →
+    pre.version = 1#8 →
+    (∀ vn, pre_pb.versionNegotiation = some vn → ¬(1#8 < vn.minVersion.truncate 8)) →
+    Message.deserialize spqrPolyApi pre.epoch pre.remaining = .error err →
+    DecodePostEnv ⟨st, s0.sp - 3056#64⟩ evs_dec →
+    FitsEnv MC lim (MC.stepEvents evs_dec st_cost) MsgDeserErrEnv
+  /-- `Ordering::Equal` (`pre.version = 1#8`): `Env` closure on `<Message>::deserialize` error. -/
+  v1_env_md_err : ∀ (pre : MsgPreamble) (pre_pb : PqRatchetState) (pb : V1State)
+      (evs_dec evs_md evs_d : List AllocEvent) (err : Error),
+    msgPreamble msg.bytes = .ok pre →
+    spqrDecodeState st.bytes = .ok pre_pb →
+    pre_pb.inner = some (.v1 pb) →
+    pre.version = 1#8 →
+    (∀ vn, pre_pb.versionNegotiation = some vn → ¬(1#8 < vn.minVersion.truncate 8)) →
+    Message.deserialize spqrPolyApi pre.epoch pre.remaining = .error err →
+    DecodePostEnv ⟨st, s0.sp - 3056#64⟩ evs_dec →
+    MsgDeserErrEnv evs_md →
+    FreeOnlyEvs evs_d →
+    Env (evs_dec ++ evs_md ++ evs_d)
   /-- `Ordering::Equal` (`pre.version = 1#8`): `FitsEnv` for `<States>::from_pb`. -/
   v1_fit_fpb : ∀ (pre : MsgPreamble) (pre_pb : PqRatchetState) (pb : V1State)
       (evs_dec evs_md : List AllocEvent),
@@ -778,6 +829,11 @@ theorem v1RatchetPlacedTailGen_ok_ofEnv {MC : AllocCostModel}
   refine step_v1_ratchet_1532_to_1856_placed_ofEnv Env evs_dec hC
     st msg ret pre remPtr pre_pb pb w0 w1 hst_len hpre hvalid hdec hinner hmv hmin s0 s P R
     (fun evs_d hd => hB.env_dec_free pre evs_dec evs_d hpre hdec_env hd)
+    (fun ⟨err, herr⟩ => hB.v1_fit_md pre pre_pb pb evs_dec err hpre hdec hinner hmv hmin herr hdec_env)
+    (fun err evs_md evs_d herr hmde hd => by
+      simpa only [List.append_assoc] using
+        hB.v1_env_md_err pre pre_pb pb evs_dec evs_md evs_d err
+          hpre hdec hinner hmv hmin herr hdec_env hmde hd)
     (fun evs_md hmd => by
       simpa only [List.append_assoc] using
         hB.v1_fit_fpb pre pre_pb pb evs_dec evs_md hpre hdec hinner hmv hmin hdec_env hmd)
@@ -838,7 +894,11 @@ theorem v1RatchetPlacedTailGen_ok_ofEnv {MC : AllocCostModel}
             hpre hdec hinner hmv hmin hmsg hfrom hrecv hcf hdec_env hmd hfpb hrcv hcf_env hd)
       F K ext (toDropContractsBudget hC)
       st msg ret pre_pb w0 w1 sckaMsg v kw0 kw1 kw2 kw3 P_key hfold_key
-      e q0_err w3_err herr htag_q0 s0 s_err _ R _ rfl hs0_align
+      e q0_err w3_err herr htag_q0
+      ((show CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.spqrErrorTag e =
+          spqrErrorTagCanonical e by cases e <;> rfl) ▸
+        spqrErrorTagCanonical_valid_of_ne_invalidParams (chainFrom_ne_invalidParams hcf))
+      s0 s_err _ R _ rfl hs0_align
       hpc_e hrun_e hsp_e htr_e hx19_e hx23_e hx24_e hx25_e hx28_e (by ac_rfl) hcl
   · intro evs_cf chain0 chain1 G0 G1 err w1_err w2_err w3_err G1' s_err P_err
       hcf_env hcf hkey hrk hw1_err
@@ -861,6 +921,9 @@ theorem v1RatchetPlacedTailGen_ok_ofEnv {MC : AllocCostModel}
             hpre hdec hinner hmv hmin hmsg hfrom hrecv hdec_env hmd hfpb hrcv hcf_env hcf hkey hrk hd)
       F K ext (toDropContractsBudget hC)
       st msg ret pre_pb w0 w1 sckaMsg v G1' chain1 err w1_err w2_err w3_err herr hw1_err
+      ((show CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.spqrErrorTag err =
+          spqrErrorTagCanonical err by cases err <;> rfl) ▸
+        spqrErrorTagCanonical_valid_of_ne_invalidParams (chainRecvKey_ne_invalidParams hrk))
       s0 s_err _ R _ rfl hs0_align
       hpc_e hrun_e hsp_e htr_e hx19_e hx21_e hx22_e hx23_e hx24_e hx26_e hx29_e (by ac_rfl) hcl
   · intro evs_cf chain0 chain1 chain2 G0 G1 G2 rawKey cap_rk ptr_rk s_ok P_ok

@@ -9,13 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetAux
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetAux -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.ProgramReflection
 import ProofLib.SepLogic.WP.Apply
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChainBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Unconditional Crypto Callees and Hook Bundle
@@ -26,7 +31,7 @@ for `expand_multi_info` (`96` B on Block `53`), `GenericHkdf::extract` (Block `5
 the budget-threaded external-hook hypotheses into `PqxdhPlacedHookContracts`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -168,7 +173,7 @@ private theorem INFO_PQXDH_length : INFO_PQXDH.length = 46 := by
 
 /-- `VmPreserved`-strengthened `Spec` for `expand_multi_info` (Block `53`) at `okmLen = 96`,
 `info.length = 46`. -/
-def expandMultiInfo96_46BudgetSpec (F : ShaState → List (BitVec 8) → ShaState) :
+@[expose] def expandMultiInfo96_46BudgetSpec (F : ShaState → List (BitVec 8) → ShaState) :
     Spec ExpandMultiInfoGhost :=
   withVmPreserved (expandMultiInfo96_46Spec F)
 
@@ -461,7 +466,9 @@ theorem createChain_placed_ok_unconditional [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {C : Crypto} {H : LibsignalHooks}
     [HkdfPlacedHooks C.F H]
-    (h_dh : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec C.X)))
+    (h_dh : HookSat H lsDhSym
+      (CryptoVerification.LibsignalTripleRatchet.Keys.withLsRet624
+        (withVmPreserved (CryptoVerification.LibsignalTripleRatchet.withStack (diffieHellmanSpec C.X) 1808))))
     (h_shdrop : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec))
     (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
@@ -483,7 +490,9 @@ theorem createChain_placed_ok_of_block [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {C : Crypto} {H : LibsignalHooks}
     [IsLsBlockProg callerProg i H] [HkdfPlacedHooks C.F H]
-    (h_dh : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec C.X)))
+    (h_dh : HookSat H lsDhSym
+      (CryptoVerification.LibsignalTripleRatchet.Keys.withLsRet624
+        (withVmPreserved (CryptoVerification.LibsignalTripleRatchet.withStack (diffieHellmanSpec C.X) 1808))))
     (h_shdrop : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec))
     (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
@@ -503,7 +512,9 @@ theorem createChain_placed_ok_x_unconditional [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {C : Crypto} {H : LibsignalHooks}
     [HkdfPlacedHooks C.F H]
-    (h_dh : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec C.X)))
+    (h_dh : HookSat H lsDhSym
+      (CryptoVerification.LibsignalTripleRatchet.Keys.withLsRet624
+        (withVmPreserved (CryptoVerification.LibsignalTripleRatchet.withStack (diffieHellmanSpec C.X) 1808))))
     (h_shdrop : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec))
     (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
@@ -521,7 +532,9 @@ theorem createChain_placed_ok_x_of_block [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {C : Crypto} {H : LibsignalHooks}
     [IsLsBlockProg callerProg i H] [HkdfPlacedHooks C.F H]
-    (h_dh : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec C.X)))
+    (h_dh : HookSat H lsDhSym
+      (CryptoVerification.LibsignalTripleRatchet.Keys.withLsRet624
+        (withVmPreserved (CryptoVerification.LibsignalTripleRatchet.withStack (diffieHellmanSpec C.X) 1808))))
     (h_shdrop : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec))
     (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
@@ -537,17 +550,18 @@ theorem createChain_placed_ok_x_of_block [LibsignalPlacement]
 
 /-! ## 4. Placed Budget External Hook Contracts for `ResponderCore` -/
 
-/-- `VmPreserved`-strengthened contract for `libcrux_ml_kem::mlkem1024::kyber::decapsulate`. -/
-def kyberDecapsStubBudgetSpec (P : Primitives) : Spec KyberDecapsCall :=
-  withVmPreserved (kyberDecapsStubSpec P)
+/-- `VmPreserved` + `withLsRet` + `36864`-byte placed contract for
+`libcrux_ml_kem::mlkem1024::kyber::decapsulate`. -/
+@[expose] def kyberDecapsStubBudgetSpec [LibsignalPlacement] (P : Primitives) : Spec KyberDecapsCall :=
+  LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget.kyberDecapsStubBudgetSpec P
 
 /-- `VmPreserved`-strengthened contract for `MontgomeryPoint::to_edwards`. -/
-def dalekMontToEdStubBudgetSpec (P : Primitives) :=
+@[expose] def dalekMontToEdStubBudgetSpec (P : Primitives) :=
   withVmPreserved (dalekMontToEdStubSpec P)
 
 /-- `VmPreserved`-strengthened contract for boolean-returning Dalek helpers
 (such as `EdwardsPoint::is_torsion_free`). -/
-def cryptoBoolRegStubBudgetSpec (f : Bytes → Bool) (stk : Nat) :=
+@[expose] def cryptoBoolRegStubBudgetSpec (f : Bytes → Bool) (stk : Nat) :=
   withVmPreserved (cryptoBoolRegStubSpec f stk)
 
 /-- `VmPreserved`-strengthened contract for `pqxdhMemcpyRegionSpec`. -/
@@ -559,7 +573,10 @@ def pqxdhMemcpyRegionBudgetSpec :=
 structure PqxdhPlacedHookContracts [LibsignalPlacement] (M : AllocCostModel) (P : Primitives) (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop where
   hkdf             : HkdfPlacedHooks C.F H
-  dh               : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec C.X))
+  dh               : HookSat H lsDhSym
+    (CryptoVerification.LibsignalTripleRatchet.Keys.withLsRet624
+      (withVmPreserved
+        (CryptoVerification.LibsignalTripleRatchet.withStack (diffieHellmanSpec C.X) 1808)))
   sharedDrop       : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec)
   staticDrop       : HookSat H lsStaticDropSym (withVmPreserved zeroizeSecretSpec)
   blackBox         : H lsBlackBoxU8Sym = some blackBoxHook

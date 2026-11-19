@@ -10,18 +10,21 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFill
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFill -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable `signal_session_coins_fill` Proof
@@ -31,7 +34,7 @@ Proves the `VmPreserved`-strengthened `coinsFillSpecPlacedW3` contract for
 `SpecsPlacedBudget.AllocContractsFsPlaced A lim H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -39,8 +42,6 @@ set_option maxRecDepth 200000
 set_option linter.dupNamespace false
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillPlacedBudget
-
-noncomputable section
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib
 open CryptoVerification (LibsignalHooks LibsignalPlacement lsmpl lsρ)
@@ -68,7 +69,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
   (CliGhostHooks cliGhostExterns)
 
 /-- Relocatable `signal_session_coins_fill` contract preserving `VmPreserved`, `trace`, and `fs`. -/
-def coinsFillSpecPlacedW3 [LibsignalPlacement] (stk : Nat) : Spec CoinsFillGhost :=
+@[expose] def coinsFillSpecPlacedW3 [LibsignalPlacement] (stk : Nat) : Spec CoinsFillGhost :=
   withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = BitVec.ofNat 64 x.len ∧
@@ -580,19 +581,6 @@ theorem signal_session_coins_fill_placed_ok_of_mc_ms [LibsignalPlacement]
       by simp only [wp_norm, arm64_norm, *],
       by simp only [wp_norm, arm64_norm, *]⟩
 
-/-- Weakens budget `coinsFillSpecPlacedW3` (with `VmPreserved`) to `Initiate.coinsFillSpecPlacedW3`. -/
-theorem coinsFill_plain_of_budget [LibsignalPlacement] {prog : Program} {entry : BitVec 64}
-    {stk : Nat}
-    (h : subroutine_ok prog entry (coinsFillSpecPlacedW3 stk)) :
-    subroutine_ok prog entry
-      (CryptoVerification.SignalSession.Cli.RunProofs.Initiate.coinsFillSpecPlacedW3 stk) := by
-  refine subroutine_ok_mono h (fun _ _ _ hpre => hpre) (fun _ _ _ _ hq => ?_)
-  dsimp only [coinsFillSpecPlacedW3,
-    CryptoVerification.SignalSession.Cli.RunProofs.Initiate.coinsFillSpecPlacedW3,
-    withLsCodeRoLoaded] at hq ⊢
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-  exact ⟨⟨hq.1.1, hq.1.2.1⟩, hq.2⟩
-
 /-- Proves `coinsFillSpecPlacedW3` on block `618` under `AllocContractsFsPlaced A lim H`. -/
 theorem signal_session_coins_fill_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -626,7 +614,5 @@ theorem signal_session_coins_fill_placed_ok_at_init [LibsignalPlacement] {M : Al
       (fun _ _ _ hp => (extract_withLsCodeRoLoaded hp).2)
       (fun _ _ _ _ hq => hq)
   exact ls_subroutine_ok_rocl_of_block (callerProg := initProgPlaced mmpl gh W) hmono
-
-end
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillPlacedBudget

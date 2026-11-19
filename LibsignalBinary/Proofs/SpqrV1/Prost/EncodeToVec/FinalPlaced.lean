@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.ProofPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.ProofPlaced -- proof-setup: allow-public-import
 import all Init.Data.Nat.Bitwise.Basic
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesPlaced
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlaced
@@ -31,7 +31,7 @@ Discharges the remaining 7 `StepInnerStateAt1880Placed` jump-table variant bridg
 the top-level `[LibsignalPlacement]` `subroutine_ok` contracts for `PqRatchetState::encode_to_vec`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.EncodeToVec
 
@@ -53,7 +53,7 @@ set_option autoImplicit false
 set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Obj.lookup
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   EncodedLen.zeroExtend64_beq_zero32
   EncodedLen.ofNat_countLeadingZeros_64 EncodedLen.ofNat_countLeadingZeros_32
@@ -415,23 +415,23 @@ theorem step_encodeToVec_inner_at_1880_all_placed [LibsignalPlacement] {resStack
     exact step_encodeToVec_v1_ct2Sampled_at_1880_placed hres A (Rust.withPanics ext)
       hct2Len hpolyEncLen hvarint hauthEnc hpolyEnc v
 
-def PqRatchetStateEncodeToVecPinnedPlacedOkExt [LibsignalPlacement]
+@[expose] def PqRatchetStateEncodeToVecPinnedPlacedOkExt [LibsignalPlacement]
     (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_426).rebase (blkPl_426).base (Rust.withPanics ext))
     (blkPl_426).base
     (withLsRoLoaded lsmpl (withLsCodeLoaded lsmpl (pqRatchetStateEncodeToVecPinnedSpecOf doReserveStackX A)))
 
-def PqRatchetStateEncodeToVecPlacedOkExt [LibsignalPlacement]
+@[expose] def PqRatchetStateEncodeToVecPlacedOkExt [LibsignalPlacement]
     (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_426).rebase (blkPl_426).base (Rust.withPanics ext))
     (blkPl_426).base
     (withLsRoLoaded lsmpl (withLsCodeLoaded lsmpl (pqRatchetStateEncodeToVecSpecOf doReserveStackX A)))
 
-def PqRatchetStateEncodeToVecPinnedPlacedOk [LibsignalPlacement]
+@[expose] def PqRatchetStateEncodeToVecPinnedPlacedOk [LibsignalPlacement]
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   PqRatchetStateEncodeToVecPinnedPlacedOkExt A (tripleRatchetExterns C ctl abs)
 
-def PqRatchetStateEncodeToVecPlacedOk [LibsignalPlacement]
+@[expose] def PqRatchetStateEncodeToVecPlacedOk [LibsignalPlacement]
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   PqRatchetStateEncodeToVecPlacedOkExt A (tripleRatchetExterns C ctl abs)
 

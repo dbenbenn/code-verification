@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5a
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5a -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch0Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch2Placed
@@ -19,6 +19,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5aPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5b
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 5 (`NoHeaderReceived`, `+1344`) — Part B
@@ -27,7 +28,7 @@ Relocatable Block-`333` header validation (`+1344`), early error paths, and `Aut
 cloning and input-buffer deallocation (`+3744 -> +6064`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

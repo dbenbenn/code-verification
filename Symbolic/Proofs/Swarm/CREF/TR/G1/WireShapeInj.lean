@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Bytes.Basic
@@ -63,7 +63,7 @@ matched honest-send MAC shape to an `AuthenticDecryptRep` witness, and proves `S
 `eq_dhPk_randTerm32_of_shape_eq`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -72,7 +72,7 @@ cref_hide_foreign_instances
 namespace DY.Libsignal.Composed.Refinement
 
 open DY.Libsignal.TripleRatchet in
-def recvSeed (st : TRState) (msg : TRSignalMsg) : Option DY.Bytes :=
+@[expose] def recvSeed (st : TRState) (msg : TRSignalMsg) : Option DY.Bytes :=
   if msg.version = messageVersion then
     match recvChainFor st.toDRState msg.ratchetKey with
     | none => none
@@ -328,7 +328,7 @@ theorem parseTrSignalMsg_eq_some_inv {t₀ : DY.Bytes} {msg₀ : TRSignalMsg}
 
 /-- Authentic decrypt representation `(t', msg', ptTerm, pqSalt)` witnessing MAC verification and
 ciphertext decryption under `trMsgKeys pqSalt mkSeed`. -/
-def AuthenticDecryptRep
+@[expose] def AuthenticDecryptRep
     (interpretation : ExternInterpretation)
     (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost) (ms : List Move)
     (b ptext : HwBytes) (msg₀ : TRSignalMsg) (st₀ : TRState)
@@ -545,7 +545,7 @@ private instance subSignWSI (i : ExternInterpretation) (S : OpaqueSymbolSemantic
   @DY.Bytes.SubFunction.mk _ _ _ _ _ _ _ ⟨fun _ _ => by simp only [concretizeAll, allFuns, sigFuns, Symbolic.DYBridge.DY.Bytes.PartialFunction.combine_eq]; rfl⟩
 
 /-- A term `u` whose `.shape` under `gamma'` is identically `u` (holds for all pure DR terms). -/
-def ShapeId (u : DY.Bytes) : Prop :=
+@[expose] def ShapeId (u : DY.Bytes) : Prop :=
   ∀ (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost), (gamma' i S g u).shape = u
 
 theorem eq_of_shape_eq_of_shapeId {i : ExternInterpretation} {S : OpaqueSymbolSemantics} {g : Ghost}

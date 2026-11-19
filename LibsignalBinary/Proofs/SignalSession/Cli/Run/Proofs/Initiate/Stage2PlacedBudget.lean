@@ -9,17 +9,37 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegAPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegAPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Common
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Helpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.HelpersPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_DropErrPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_PrepPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_Step4OkPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegB_ErrPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegC_FinishPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegC_OkPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Cells
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegAPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_DropErrPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_PrepPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegA_Step4OkPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegB_ErrPlaced
 
 /-!
 # Budget-Threaded Relocatable Stage 2 (`0x0390 → 0x0760`)
@@ -29,15 +49,13 @@ Proves `initiate_stage2_placed_ok` and `stage2Placed_ok` on block `521` (`initPr
 `stk - cliInitiateFrame` from `hh.allocFs`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option warningAsError false
 set_option linter.dupNamespace false
 set_option linter.unusedSimpArgs false
 set_option linter.unusedTactic false
 set_option maxRecDepth 200000
-
-noncomputable section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2PlacedBudget
 
@@ -75,7 +93,8 @@ open LibsignalBinary.Heap
 open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
 open LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
   (BoxAllocEnv futDropBudgetSpec)
-open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (derivePublicKeyBytesBudgetSpec)
+open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+  (derivePublicKeyBytesBudgetSpec derivePublicKeyBytesStackBudgetSpec)
 open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
   (AllocContractsFsPlaced AllocContractsXCliPlaced)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
@@ -465,7 +484,9 @@ theorem segA_placed_ok_at_frame [LibsignalPlacement] {M : AllocCostModel}
       (withLsCodeRoLoaded lsmpl
         (withVmPreserved (coinsFillSpecPlacedW3 (stk - cliInitiateFrame)))))
     (hDerivePub : subroutine_ok (initProgPlaced mmpl gh W) (lsmpl.base 200)
-      (withLsCodeRoLoaded lsmpl (derivePublicKeyBytesBudgetSpec W.C.pubKey)))
+      (withLsCodeRoLoaded lsmpl
+        (LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet.withLsRet
+          (derivePublicKeyBytesStackBudgetSpec W.C.pubKey 1904))))
     (hZeroize : subroutine_ok (initProgPlaced mmpl gh W) (lsρ lsStaticSecretDropSym)
       (withVmPreserved zeroizeSecretSpec))
     (hRoKeyPairSlot : ∀ {m : Memory} {P : SepProp},
@@ -574,7 +595,7 @@ theorem segA_placed_ok_at_frame [LibsignalPlacement] {M : AllocCostModel}
   have hsp_a1 : s_a1.sp = s2.sp := hctrl_a1.sp.trans hfsp.symm
   rw [← hsp_a1] at hx21_a1 hx23_a1 ⊢
   refine' sepWPp_weaken_pre ?_
-    (segA_step2_ek_placed (st := st) hDerivePub hZeroize hctrl_a1 htr_a1 hx21_a1 hx23_a1 hpanic
+    (segA_step2_ek_placed (st := st) hDerivePub hZeroize hstk hstk64 hctrl_a1 htr_a1 hx21_a1 hx23_a1 hpanic
       fun s_a2 ekASk ekAPk hctrl_a2 htr_a2 hekPair hx20_a2 hx21_a2 hx23_a2 => ?_)
   · try simp only [sepConj_assoc]
     sep_frame
@@ -826,7 +847,7 @@ theorem initiate_stage2_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     hs2 hpost hpanic hoom hnext
 
 /-- Proposition bundling the budget-threaded Stage 2 (`0x0390 → 0x0760`) continuation contract. -/
-def Stage2PlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Stage2PlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (eEnvs : ExistingStoreCalleesEnvs)
     (InitStateEnv : CryptoVerification.LibsignalSpqrV1.Params → List AllocEvent → Prop)
@@ -1002,4 +1023,3 @@ theorem initiate_stage2_placed_ok_of_coins [LibsignalPlacement] {M : AllocCostMo
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2PlacedBudget
 
-end

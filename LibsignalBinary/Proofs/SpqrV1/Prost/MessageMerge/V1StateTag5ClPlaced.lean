@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag5
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag5 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WP.Apply
@@ -23,7 +23,7 @@ Verifies tag arm 5 (`EkSentCt1Received`, entry `+336`, non-inplace `+796`) under
 `[LibsignalPlacement]` with `withLsCl`-wrapped cross-block drops (`285`, `267`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

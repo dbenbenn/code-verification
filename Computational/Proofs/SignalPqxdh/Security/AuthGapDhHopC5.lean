@@ -9,11 +9,25 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3b
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC4
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhF
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3b -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC4 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhF -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.FgGapDh
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SignalPqxdh.Security.Collisions
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
 /-!
 # `Auth` hop `G3 → G3.5`: `GapDH` step coupling for `DH1`
 
@@ -21,18 +35,18 @@ Maintains the latched simulation invariant `FgAuthSimInvDh1Latched` across all `
 the per-index sticky `DH1 = CDH(ik_U*, spk_V*)` bad event by `GapDH` (`prob_badAuthFgDh1LatchedAt_le_gapDh`).
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 open SignalPqxdh SignalPqxdh.Security OracleSpec OracleComp Proofs.SignalPqxdh.Security.FgGapDh
 open scoped ENNReal
 namespace Proofs.SignalPqxdh.Security
 open AuthDh3
 /-! ## Target abort flag `deadAuthDh1` -/
-def badAuthFgDh1AtCore {S : Setup} (P : Primitives) (maxLen uIdx bIdx : ℕ)
+@[expose] def badAuthFgDh1AtCore {S : Setup} (P : Primitives) (maxLen uIdx bIdx : ℕ)
     (st : AuthState S) (advRoLog : List Bytes) (respRecs : List AuthRespRecord) : Bool :=
   badAuthFgDh1At P maxLen uIdx bIdx st advRoLog respRecs
 /-- Sticky abort flag for `DH1`, set once target principal `uIdx` is corrupted. -/
-def deadAuthDh1 {S : Setup} (uIdx : ℕ) (hst : AuthFgCutoffState S) : Bool :=
+@[expose] def deadAuthDh1 {S : Setup} (uIdx : ℕ) (hst : AuthFgCutoffState S) : Bool :=
   match hst.base.principals.find? (fun (u, _) => u == uIdx) with
   | some (_, uEntry) => uEntry.corrupted
   | none             => false
@@ -275,7 +289,7 @@ theorem pureExtractCdhFromAuthSimState_dh1_wins_of_mem (S : Setup) (P : Primitiv
   unfold pureExtractCdhFromAuthSimState; simp only [↓reduceIte]
   exact find?_ddh_3way_wins_of_mem P hWF u v _ _ _ h_mem
 /-! ## Simulation invariant `FgAuthSimInvDh1` -/
-def FgAuthSimInvDh1 (S : Setup) (b : QueryBudget) (P : Primitives) (hP : CryptoWellFormedPrimitivesδ
+@[expose] def FgAuthSimInvDh1 (S : Setup) (b : QueryBudget) (P : Primitives) (hP : CryptoWellFormedPrimitivesδ
   P) (uIdx bIdx : ℕ) (uSk vSk : Bytes) (huSk : uSk.length = 32) (hvSk : vSk.length = 32)
     (rem : ℕ) (hst : AuthFgCutoffState S) (st : FgAuthSimState S) : Prop :=
   let R := FgSlotReps.ofDh1 P hP uSk vSk huSk hvSk
@@ -1589,9 +1603,9 @@ theorem evalDist_simulateQ_le_of_step_or_dead_or_halt {ι α St1 St2 : Type} {QS
             hRel' => ih r rem' (hCont r) s1' s2' hRel') (fun r s1' hDT =>
             evalDist_simulateQ_eq_zero_of_dead_preserved Dead impl1 hDeadPres obs1 hDeadObs (mx r)
             s1' hDT) (fun r s2' hHT => hHaltEq (mx r) s2' hHT)
-def deadAndUnlatchedDh1 {S : Setup} (uIdx bIdx : ℕ) (hst : AuthFgCutoffState S) : Bool :=
+@[expose] def deadAndUnlatchedDh1 {S : Setup} (uIdx bIdx : ℕ) (hst : AuthFgCutoffState S) : Bool :=
   deadAuthDh1 uIdx hst && !hst.latchedDh1.contains (uIdx, bIdx)
-def FgAuthSimInvDh1Latched (S : Setup) (b : QueryBudget) (P : Primitives) (hP :
+@[expose] def FgAuthSimInvDh1Latched (S : Setup) (b : QueryBudget) (P : Primitives) (hP :
   CryptoWellFormedPrimitivesδ P) (uIdx bIdx : ℕ) (uSk vSk : Bytes) (huSk : uSk.length = 32) (hvSk :
   vSk.length = 32) (rem : ℕ)
     (hst : AuthFgCutoffState S) (st : FgAuthSimState S) : Prop :=

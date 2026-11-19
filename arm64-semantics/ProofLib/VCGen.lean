@@ -25,7 +25,7 @@ public import ProofLib.Simulation
 public import ProofLib.Hoare.Loop
 public import ProofLib.SepLogic
 public import ProofLib.SepLogic.Solver
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 public import ProofLib.BV.Linear
 public import ProofLib.SepLogic.CondClassify
 public import ProofLib.RelocDecode
@@ -2300,9 +2300,35 @@ def proveSepSide? (φ : Expr) : TacticM (Option Expr) := do
         let ty ← instantiateMVars decl.type
         if ← withReducible (isDefEq ty φ) then
           return some decl.toExpr
+        if ty.isAppOfArity ``SepProp.Satisfies 2 then
+          let fullHyp := ty.getArg! 0
+          let mHyp := ty.getArg! 1
+          let as := SepSolver.atoms fullHyp
+          for hj : j in [:as.size] do
+            let a := as[j]
+            if a.isAppOfArity ``SepProp.pure 1 then
+              let ψ := a.getArg! 0
+              if ← withReducible (isDefEq ψ φ) then
+                if let some p ← observing? do
+                  let (rest, hFocus) ← SepSolver.focus mHyp fullHyp decl.toExpr j
+                  let hAnd ← mkAppM ``Iff.mp
+                    #[mkApp3 (mkConst ``Arm64.satisfies_pure_sepConj) ψ rest mHyp, hFocus]
+                  mkAppM ``And.left #[hAnd] then
+                  return some p
     let mvar ← mkFreshExprMVar φ
+    let mut heavyClear : Array FVarId := #[]
+    for decl in (← getLCtx) do
+      if decl.isImplementationDetail || decl.isAuxDecl then continue
+      let ty := (← instantiateMVars decl.type).consumeMData
+      if let some n := ty.getAppFn.constName? then
+        if n == ``Arm64.subroutine_ok || n == ``Arm64.Program.subroutineOk ||
+           n == ``Arm64.Program.hasCode || n == `ProofLib.FnCode.holds ||
+           n.toString.endsWith "SepWP" || n.toString.endsWith "SepWPp" ||
+           n.toString.endsWith "RelocCodeAt" || n.toString.endsWith "PlacedCodeAt" then
+          heavyClear := heavyClear.push decl.fvarId
+    let gSide ← mvar.mvarId!.tryClearMany heavyClear
     let savedGoals ← getGoals
-    setGoals [mvar.mvarId!]
+    setGoals [gSide]
     let t0 ← IO.monoMsNow
     let ok ← tryTacticQuiet do
       let _ ← tryTacticQuiet <| do
@@ -2320,22 +2346,24 @@ def proveSepSide? (φ : Expr) : TacticM (Option Expr) := do
               | done
               | with_reducible rfl
               | with_reducible assumption
+              | decide
               | (omega; done)
               | (try dsimp only [subsPState64, addsPState64, subsPState32, addsPState32, AddWithCarry64, AddWithCarry32, ConditionHolds, rev64, rev32_64, rev16_64];
-                 first | (bv_fallback; done) | (split <;> (try split) <;> first | done | with_reducible rfl | (bv_fallback; done)))
-              | (split <;> (try split) <;> first | done | with_reducible rfl | with_reducible assumption | (omega; done))))
+                 first | (bv_fallback; done) | (split <;> (try split) <;> first | done | with_reducible rfl | decide | (bv_fallback; done)))
+              | (split <;> (try split) <;> first | done | with_reducible rfl | with_reducible assumption | decide | (omega; done))))
         else
           evalTactic (← `(tactic|
             first
               | done
               | with_reducible rfl
               | with_reducible assumption
+              | decide
               | (bv_omega_fast; done)
               | (wp_bv_omega; done)
               | (omega; done)
-              | (split <;> (try split) <;> first | done | with_reducible rfl | with_reducible assumption | (bv_omega_fast; done) | (wp_bv_omega; done) | (omega; done))
+              | (split <;> (try split) <;> first | done | with_reducible rfl | with_reducible assumption | decide | (bv_omega_fast; done) | (wp_bv_omega; done) | (omega; done))
               | (try dsimp only [subsPState64, addsPState64, subsPState32, addsPState32, AddWithCarry64, AddWithCarry32, ConditionHolds, rev64, rev32_64, rev16_64];
-                 first | (bv_fallback; done) | (split <;> (try split) <;> first | done | with_reducible rfl | (bv_fallback; done)))))
+                 first | (bv_fallback; done) | (split <;> (try split) <;> first | done | with_reducible rfl | decide | (bv_fallback; done)))))
       if !(← getGoals).isEmpty then
         evalTactic (← `(tactic| (
           try dsimp only [subsPState64, addsPState64, subsPState32, addsPState32, AddWithCarry64, AddWithCarry32, ConditionHolds, rev64, rev32_64, rev16_64] at *
@@ -2344,12 +2372,13 @@ def proveSepSide? (φ : Expr) : TacticM (Option Expr) := do
             | done
             | with_reducible rfl
             | with_reducible assumption
+            | decide
             | (bv_fallback; done)
             | (bv_omega; done)
             | (omega; done)
             | assumption
             | rfl
-            | (split <;> (try split) <;> first | done | with_reducible rfl | with_reducible assumption | (bv_fallback; done) | (bv_omega; done) | (omega; done) | assumption | rfl))))
+            | (split <;> (try split) <;> first | done | with_reducible rfl | with_reducible assumption | decide | (bv_fallback; done) | (bv_omega; done) | (omega; done) | assumption | rfl))))
       if !(← getGoals).isEmpty then throwError "unsolved side condition"
     setGoals savedGoals
     CondClassify.reportTiming `sepSide ok ((← IO.monoMsNow) - t0) φ
@@ -2409,39 +2438,54 @@ elab "arm64_sep_close" : tactic => do
     evalTactic (← `(tactic| exact Arm64.satisfies_emp _))
     return
   let (writes, mInit) := SepSolver.peelWrites mGoal
-  mvarId0.withContext do
-    let mut found : Option (Expr × Expr × Expr × Nat) := none
-    for decl in (← getLCtx) do
+  let prf ← mvarId0.withContext do
+    let mut cands : Array (Expr × Expr × Expr × Nat) := #[]
+    for decl in (← getLCtx).decls.toList.reverse do
+      let some decl := decl | continue
       if !decl.isImplementationDetail && !decl.isAuxDecl then
         let ty ← instantiateMVars decl.type
         if ty.isAppOfArity ``SepProp.Satisfies 2 then
           let fullHyp := ty.getArg! 0
           let mHyp := ty.getArg! 1
           if ← withReducible (isDefEq mHyp mGoal) then
-            found := some (decl.toExpr, mGoal, fullHyp, writes.size)
-            break
+            cands := cands.push (decl.toExpr, mGoal, fullHyp, writes.size)
           else if ← withReducible (isDefEq mHyp mInit) then
-            found := some (decl.toExpr, mInit, fullHyp, 0)
-    if found.isNone then
+            cands := cands.push (decl.toExpr, mInit, fullHyp, 0)
+    if cands.isEmpty then
       if let some (h, P) ← SepSolver.findSatHyp? mInit then
-        found := some (h, mInit, P, 0)
-    let some (initPrf, initMem, initFull, start) := found
-      | throwError "arm64_sep_close: no matching `m ⊨ ...` hypothesis found in context"
-    let mut curPrf := initPrf
-    let mut curMem := initMem
-    let mut curFull := initFull
-    let mut i := start
-    while i < writes.size do
-      let some (n, mem', P', prf) ←
-          SepSolver.stepWrite? stepAgreesOutsideWrite? curMem curFull curPrf writes i
-        | throwError "arm64_sep_close: failed to step write at {writes[i]!.2.2.1} in {curFull}"
-      curPrf := prf
-      curMem := mem'
-      curFull := P'
-      i := i + n
-    let some prf ← SepSolver.entail? proveSepSide? mGoal curFull curPrf targetFull
-      | throwError "arm64_sep_close: cannot prove{diffSepConjDiag targetFull curFull}\ntarget:{indentExpr targetFull}\nfrom{indentExpr curFull}\nhint: prove unmatched value/address equalities or instantiate existentials before calling `arm64_sep_close`, or use `sep_entail`"
-    mvarId0.assign prf
+        cands := cands.push (h, mInit, P, 0)
+    if cands.isEmpty then
+      throwError "arm64_sep_close: no matching `m ⊨ ...` hypothesis found in context"
+    let savedBeforeCands ← Tactic.saveState
+    let mut lastPostFull : Option Expr := none
+    for idx in [:cands.size] do
+      if idx > 0 then savedBeforeCands.restore
+      let (initPrf, initMem, initFull, start) := cands[idx]!
+      let mut curPrf := initPrf
+      let mut curMem := initMem
+      let mut curFull := initFull
+      let mut i := start
+      let mut writeFailed : Option Expr := none
+      while i < writes.size do
+        match ← SepSolver.stepWrite? stepAgreesOutsideWrite? curMem curFull curPrf writes i with
+        | some (n, mem', P', prf) =>
+          curPrf := prf
+          curMem := mem'
+          curFull := P'
+          i := i + n
+        | none =>
+          writeFailed := some writes[i]!.2.2.1
+          break
+      if let some badAddr := writeFailed then
+        if idx + 1 == cands.size && lastPostFull.isNone then
+          throwError "arm64_sep_close: failed to step write at {badAddr} in {curFull}"
+        continue
+      lastPostFull := some curFull
+      if let some prf ← SepSolver.entail? proveSepSide? mGoal curFull curPrf targetFull then
+        return prf
+    let diagFull := lastPostFull.getD cands[0]!.2.2.1
+    throwError "arm64_sep_close: cannot prove{diffSepConjDiag targetFull diagFull}\ntarget:{indentExpr targetFull}\nfrom{indentExpr diagFull}\nhint: prove unmatched value/address equalities or instantiate existentials before calling `arm64_sep_close`, or use `sep_entail`"
+  mvarId0.assign prf
   replaceMainGoal []
 
 /-- Instantiate one existential quantifier in the goal whose body mentions `SepProp.Satisfies`,
@@ -2613,7 +2657,6 @@ def isAtomicCodeOrSpecPred (ty : Expr) : Bool :=
   ty.isAppOf ``Arm64.subroutine_ok ||
   ty.isAppOf ``Arm64.exit_ok ||
   ty.isAppOf ``Arm64.code_ok ||
-  ty.isAppOf ``Obj.Loads ||
   ty.isAppOf ``SepProp.Satisfies ||
   ty.isAppOf ``Arm64.DisjointRegions ||
   ty.isAppOf ``Arm64.InRegion ||
@@ -2744,15 +2787,12 @@ partial def evalStringLit? (e : Expr) : MetaM (Option String) := do
   if eWhnf != e then return ← evalStringLit? eWhnf
   return none
 
-/-- Symbolic PC bases: `prog.fnAddr name`, `img.fnAddr name`, `s.sym obj name`, `img.base`,
-    `prog.base`, a placement base `pl.base`, a free variable, or an application of a free variable
-    `resolve name`. -/
+/-- Symbolic PC bases: `prog.fnAddr name`, `s.sym obj name`, `prog.base`, a placement base
+    `pl.base`, a free variable, or an application of a free variable `resolve name`. -/
 def isPCBaseAtom (e : Expr) : Bool :=
   e.isAppOfArity ``Program.fnAddr 2 ||
   e.isAppOfArity `Arm64.Obj.Placement.base 1 ||
-  e.isAppOfArity `Arm64.Obj.Image.fnAddr 2 ||
   e.isAppOfArity ``State.sym 3 ||
-  e.isAppOfArity ``Obj.Image.base 1 ||
   e.isAppOfArity ``Program.base 1 ||
   e.isFVar ||
   (e.isApp && e.getAppFn.isFVar)

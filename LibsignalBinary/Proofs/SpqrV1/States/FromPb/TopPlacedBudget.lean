@@ -10,13 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove
-public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.TopPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeamsBudget
+public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.TopPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeamsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DecoderFromPbClPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.EncoderFromPbProofClPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.ProofPlacedBudget
@@ -30,6 +30,11 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5PlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6PlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7PlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
 
 /-!
 # Budget-Threaded Relocatable Top-Level Proof for `<States>::from_pb` (Block `333`)
@@ -39,7 +44,7 @@ Discharges `<PolyEncoder>::from_pb` (Block `374`), `<PolyDecoder>::from_pb` (Blo
 prove `StatesFromPbPlacedOkExt` and `StatesFromPbPlacedOkX`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false

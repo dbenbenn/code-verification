@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Prog
-public import LibsignalBinary.Specifications.LibsignalTripleRatchetProst
+public import LibsignalBinary.Proofs.TripleRatchet.Prog -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst -- proof-setup: allow-public-import
 
 /-!
 # Specifications for `prost` Decoding Leaves
@@ -23,7 +23,7 @@ protobuf decoding leaves to `Specifications/LibsignalProtoCodec.lean`:
 - `prost::encoding::skip_field::<&mut &[u8]> [local#1]` (`skipFieldSpec` ↔ `skipField`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Prost
 
@@ -66,12 +66,12 @@ abbrev skipFieldStack (depth : Nat) : Nat :=
 
 /-- 16-byte `&[u8]` slice header `(ptr, bs.length)` at `slot` together with the read-only backing
 bytes `ptr ↦ₛ bs`. -/
-def sliceCursorAt (slot ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def sliceCursorAt (slot ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   (slot ↦₆₄ ptr) ∗ ((slot + 8#64) ↦₆₄ BitVec.ofNat 64 bs.length) ∗ (ptr ↦ₛ bs)
 
 /-- Slice cursor at `slot` after advancing by `bs.length - rest.length` bytes to the suffix
 `rest`, preserving `ptr ↦ₛ bs`. -/
-def sliceCursorAfter (slot ptr : BitVec 64) (bs rest : List (BitVec 8)) : SepProp :=
+@[expose] def sliceCursorAfter (slot ptr : BitVec 64) (bs rest : List (BitVec 8)) : SepProp :=
   (slot ↦₆₄ (ptr + BitVec.ofNat 64 (bs.length - rest.length))) ∗
     ((slot + 8#64) ↦₆₄ BitVec.ofNat 64 rest.length) ∗ (ptr ↦ₛ bs)
 
@@ -79,7 +79,7 @@ def sliceCursorAfter (slot ptr : BitVec 64) (bs rest : List (BitVec 8)) : SepPro
 
 /-- Contract of `core::ptr::drop_glue::<prost::error::DecodeError>(x0 = e)`: deallocates any
 non-empty context `Vec` and the 72-byte `Box<Inner>` of `decodeErrorAt A e` without panicking. -/
-def dropDecodeErrorSpec (A : RustAlloc) : Spec (BitVec 64) where
+@[expose] def dropDecodeErrorSpec (A : RustAlloc) : Spec (BitVec 64) where
   pre := fun e s =>
     ⌜s.readReg64 .x0 = e⌝ ∗ decodeErrorAt A e ∗ A.pool ∗ stackAt s.sp dropDecodeErrorStack
   post := fun _ s0 sf =>
@@ -89,7 +89,7 @@ def dropDecodeErrorSpec (A : RustAlloc) : Spec (BitVec 64) where
 
 /-- Fast-path precondition of `decode_varint_slice`: either `11 ≤ bs.length`, or `bs` is
 non-empty and its last byte has MSB `0` (`≤ 0x7F`). -/
-def VarintSlicePre (bs : List (BitVec 8)) : Prop :=
+@[expose] def VarintSlicePre (bs : List (BitVec 8)) : Prop :=
   11 ≤ bs.length ∨ ∃ h : bs ≠ [], (bs.getLast h).toNat ≤ 0x7F
 
 /-- Ghost arguments of `decode_varint_slice`. -/
@@ -105,7 +105,7 @@ structure DecodeVarintSliceGhost where
 - `some (v, rest)`: tag `0` at `ret`, decoded `u64` `v` at `ret + 8`, and consumed byte count
   `bs.length - rest.length` at `ret + 16`;
 - `none`: tag `1` at `ret` and `e` at `ret + 8` owning `decodeErrorAtStackLen A e 0`. -/
-def varintSliceResultAt (A : RustAlloc) (ret : BitVec 64) (bs : List (BitVec 8)) :
+@[expose] def varintSliceResultAt (A : RustAlloc) (ret : BitVec 64) (bs : List (BitVec 8)) :
     Option (BitVec 64 × List (BitVec 8)) → SepProp
   | some (v, rest) =>
     (ret ↦₆₄ 0#64) ∗ ((ret + 8#64) ↦₆₄ v) ∗
@@ -118,7 +118,7 @@ def varintSliceResultAt (A : RustAlloc) (ret : BitVec 64) (bs : List (BitVec 8))
 /-- Contract of `prost::encoding::varint::decode_varint_slice(x0 = ret, x1 = ptr, x2 = bs.length)`:
 under `VarintSlicePre x.bs`, writes `varintSliceResultAt A x.ret x.bs (decodeVarint x.bs)`,
 panicking only on allocator failure inside `DecodeError::from`. -/
-def decodeVarintSliceSpec (A : RustAlloc) : Spec DecodeVarintSliceGhost where
+@[expose] def decodeVarintSliceSpec (A : RustAlloc) : Spec DecodeVarintSliceGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.ptr ∧
       (s.readReg64 .x2).toNat = x.bs.length ∧ x.bs.length < 2 ^ 63 ∧ VarintSlicePre x.bs⌝ ∗
@@ -149,7 +149,7 @@ structure Int32MergeGhost where
 matches `mergeUint32 x.wt x.bs`, storing `v` at `x.valPtr` and advancing `x.slot` to `rest` with
 `x0 = 0` on `some (v, rest)`, or returning `x0 ≠ 0` owning `decodeErrorAtStackLen A x0 0` on
 `none`. -/
-def int32MergeSpec (A : RustAlloc) : Spec Int32MergeGhost where
+@[expose] def int32MergeSpec (A : RustAlloc) : Spec Int32MergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.valPtr ∧ s.readReg64 .x2 = x.bufRef ∧ x.bs.length < 2 ^ 63⌝ ∗
@@ -189,7 +189,7 @@ structure SkipFieldGhost where
 w3 = depth)`: matches `skipField (2 * x.bs.length + 2) x.depth x.tag x.wt x.bs`, advancing
 `x.slot` to `rest` with `x0 = 0` on `some rest`, or returning `x0 ≠ 0` owning
 `decodeErrorAtStackLen A x0 0` on `none`. -/
-def skipFieldSpec (A : RustAlloc) : Spec SkipFieldGhost where
+@[expose] def skipFieldSpec (A : RustAlloc) : Spec SkipFieldGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       (s.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 x.tag ∧ x.tag < 2 ^ 32 ∧
@@ -211,28 +211,6 @@ def skipFieldSpec (A : RustAlloc) : Spec SkipFieldGhost where
 
 /-! ## Target `subroutine_ok` propositions -/
 
-def DropDecodeErrorOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr dropDecodeErrorName)
-    (dropDecodeErrorSpec A)
-
-def DecodeVarintSliceOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr decodeVarintSliceName)
-    (decodeVarintSliceSpec A)
-
-def Int32MergeOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr int32MergeName)
-    (int32MergeSpec A)
-
-def SkipFieldOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr skipFieldName)
-    (skipFieldSpec A)
-
-/-! ## `Stage2ContractsX` / `AllocContractsX` Stack Budgets and Specifications -/
-
 /-- Scaled `decodeErrorHookStack` (`2 * extHookStack = 32768`) for `Stage2ContractsX`. -/
 abbrev decodeErrorHookStackX : Nat := 2 * extHookStack
 
@@ -249,13 +227,13 @@ abbrev int32MergeStackX : Nat := 0x50 + decodeVarintSliceStackX
 abbrev skipFieldStackX (depth : Nat) : Nat :=
   (depth + 1) * 0x60 + decodeVarintSliceStackX
 
-def dropDecodeErrorSpecX (A : RustAlloc) : Spec (BitVec 64) where
+@[expose] def dropDecodeErrorSpecX (A : RustAlloc) : Spec (BitVec 64) where
   pre := fun e s =>
     ⌜s.readReg64 .x0 = e⌝ ∗ decodeErrorAt A e ∗ A.pool ∗ stackAt s.sp dropDecodeErrorStackX
   post := fun _ s0 sf =>
     ⌜sf.trace = s0.trace⌝ ∗ A.pool ∗ stackAt s0.sp dropDecodeErrorStackX
 
-def decodeVarintSliceSpecX (A : RustAlloc) : Spec DecodeVarintSliceGhost where
+@[expose] def decodeVarintSliceSpecX (A : RustAlloc) : Spec DecodeVarintSliceGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.ptr ∧
       (s.readReg64 .x2).toNat = x.bs.length ∧ x.bs.length < 2 ^ 63 ∧ VarintSlicePre x.bs⌝ ∗
@@ -265,7 +243,7 @@ def decodeVarintSliceSpecX (A : RustAlloc) : Spec DecodeVarintSliceGhost where
       (x.ptr ↦ₛ x.bs) ∗ A.pool ∗ stackAt s0.sp decodeVarintSliceStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def int32MergeSpecX (A : RustAlloc) : Spec Int32MergeGhost where
+@[expose] def int32MergeSpecX (A : RustAlloc) : Spec Int32MergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.valPtr ∧ s.readReg64 .x2 = x.bufRef ∧ x.bs.length < 2 ^ 63⌝ ∗
@@ -282,7 +260,7 @@ def int32MergeSpecX (A : RustAlloc) : Spec Int32MergeGhost where
           memRegion x.valPtr 4 ∗ memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def skipFieldSpecX (A : RustAlloc) : Spec SkipFieldGhost where
+@[expose] def skipFieldSpecX (A : RustAlloc) : Spec SkipFieldGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       (s.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 x.tag ∧ x.tag < 2 ^ 32 ∧

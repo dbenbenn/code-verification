@@ -9,11 +9,14 @@ limitations under the License.
 
 module
 
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.AesCbcGhostReplays -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpGhostReplays -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxGhostReplays -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.Compress256GhostReplays -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.DurationSinceGhostReplays -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8GhostReplays -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LibcruxHmacGhostReplays -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhost -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveExtraReplays -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemrchrExtraReplays -- proof-setup: allow-public-import
@@ -22,17 +25,18 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.SharedSecretD
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StaticSecretDropGhostReplays -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StrlenGhostReplays -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.TimeAddGhostReplays -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
-# Canonical Cutover-2 Entry Guard Leaf (`HooksDehook.C2EntryGuard`)
+# Entry Guard Definitions
 
-`CliElf`-free, `[LibsignalPlacement]`-free, `ghFixed`-free Cutover-2 entry-guard definitions
-(`api_A.md` §5R.c + H-REV4 `§5R verdict` `C1`–`C3`):
+`CliElf`-free, `[LibsignalPlacement]`-free, `ghFixed`-free entry-guard definitions:
 
-1. `c2GuardOf mpl sym s0`: canonical per-symbol entry guard over all 10 `cliExtraGhostSyms` rows.
+1. `c2GuardOf mpl sym s0`: per-symbol entry guard over all 23 `cliExtraGhostSyms` rows.
 2. `F3C2EntryGuard mpl mmpl s0`: conjoins the raw `keepMemsetBlk21` / `keepMemcpyBlk20` entry-`lr`
    conjunct (`rfl`-equal to `F3MemsetMemcpyEntryLrFalse mmpl s0`, avoiding `CliStrictPlaced2G`
-   import cycles and `CliElf` closure bloat) with `c2GuardOf mpl sym s0` across `cliExtraGhostSyms`.
+   import cycles and `CliElf` closure overhead) with `c2GuardOf mpl sym s0` across
+   `cliExtraGhostSyms`.
 3. `f3C2EntryGuard_imp_and_extraEntryGuard`: contravariant `Block617TransferFixedHypG.mono_guard`
    adapter into `ExtraEntryGuard (c2GuardOf mpl) gh s0` for arbitrary `gh : CliGhostHooks`.
 -/
@@ -45,8 +49,8 @@ namespace LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2EntryGuard
 
 open Arm64 Arm64.Obj
 open CryptoVerification.SignalSession (
-  lsBlackBoxSym lsDurationSinceSym lsFromUtf8Sym lsMemrchrSym
-  lsSharedSecretDropSym lsStaticSecretDropSym lsTimeAddSym
+  lsAesDecSym lsAesEncSym lsBlackBoxSym lsCompress256Sym lsDurationSinceSym lsFromUtf8Sym
+  lsLibcruxHmacSym lsMemrchrSym lsSharedSecretDropSym lsStaticSecretDropSym lsTimeAddSym
 )
 open CryptoVerification.SignalSession.Cli.RunGlue (CliGhostHooks)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs (cliExtraGhostSyms)
@@ -54,7 +58,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay (Extr
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhost (keepMemcpyBlk20)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhost (keepMemsetBlk21)
 
-/-- Canonical per-symbol Cutover-2 entry guard over the 10 `cliExtraGhostSyms` rows. -/
+/-- Per-symbol entry guard over the 23 `cliExtraGhostSyms` rows. -/
 @[expose] def c2GuardOf (mpl : Obj.MultiPlacement) (sym : String) (s0 : State) : Prop :=
   if sym == "memmove" then MemmoveExtraReplays.memmoveEntryGuard mpl s0
   else if sym == "bcmp" then BcmpGhostReplays.bcmpEntryGuard mpl s0
@@ -66,12 +70,16 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhost (keepMemse
   else if sym == lsBlackBoxSym then BlackBoxGhostReplays.blackBoxEntryGuard mpl s0
   else if sym == lsStaticSecretDropSym then StaticSecretDropGhostReplays.staticSecretDropEntryGuard mpl s0
   else if sym == lsSharedSecretDropSym then SharedSecretDropGhostReplays.sharedSecretDropEntryGuard mpl s0
+  else if sym == lsCompress256Sym then Compress256GhostReplays.compress256EntryGuard mpl s0
+  else if sym == lsLibcruxHmacSym then LibcruxHmacGhostReplays.libcruxHmacEntryGuard mpl s0
+  else if sym == lsAesEncSym then AesCbcGhostReplays.aesEncEntryGuard mpl s0
+  else if sym == lsAesDecSym then AesCbcGhostReplays.aesDecEntryGuard mpl s0
   else True
 
-/-- `ghFixed`-free, `[LibsignalPlacement]`-free, `CliElf`-free Cutover-2 real-side entry guard for
-    F3 / Hole-2: conjoins raw `keepMemsetBlk21 mmpl (s0.readReg64 .lr) = false ∧ keepMemcpyBlk20 mmpl
+/-- `ghFixed`-free, `[LibsignalPlacement]`-free, `CliElf`-free real-side entry guard:
+    conjoins raw `keepMemsetBlk21 mmpl (s0.readReg64 .lr) = false ∧ keepMemcpyBlk20 mmpl
     (s0.readReg64 .lr) = false` (`rfl`-equal to `F3MemsetMemcpyEntryLrFalse mmpl s0`) with
-    `c2GuardOf mpl sym s0` across all 10 `cliExtraGhostSyms`. -/
+    `c2GuardOf mpl sym s0` across all 23 `cliExtraGhostSyms`. -/
 @[expose] def F3C2EntryGuard (mpl mmpl : Obj.MultiPlacement) (s0 : State) : Prop :=
   (keepMemsetBlk21 mmpl (s0.readReg64 .lr) = false ∧
     keepMemcpyBlk20 mmpl (s0.readReg64 .lr) = false) ∧

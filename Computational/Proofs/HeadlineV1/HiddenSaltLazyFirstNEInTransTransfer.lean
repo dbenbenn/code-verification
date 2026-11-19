@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple -- proof-setup: allow-public-import
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple2
 
 /-!
@@ -19,11 +19,9 @@ import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple2
 admissible `Δ = 3` canonical guess `SM.canon t' g ≠ some (t' - 2)` with `cellDelta = 2 + 1`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec ENNReal MeasureTheory
@@ -66,4 +64,3 @@ theorem canon_ne_sub_two_of_mem_trans_uncomp {St Msg C : Type} [DecidableEq Msg]
 
 end CryptoVerification.LibsignalSession.HeadlineV1
 
-end

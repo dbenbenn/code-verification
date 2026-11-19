@@ -9,12 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegStorePlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.ExtDefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegStoreExtPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegStorePlacedBudget
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.ExtDefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegStoreExtPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegStoreAuxPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegSaveAuxPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegStoreAuxPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable `SegStore` (`+0x2388 → +0x24d4 / +0x2294`)
@@ -22,7 +28,7 @@ import LibsignalBinary.Proofs.Common.SharedHelpers
 Proves budget-threaded (`RustCliAllocBudget M`) relocatable `segStoreVX_placed_ok` on `lsProg_463 H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -360,7 +366,7 @@ theorem segStoreVX_placed_ok [LibsignalPlacement] {M : AllocCostModel}
         ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
       · rw [hx26_2, hx26_1, hx26, hsp]
       · rw [hx28_2]; decide
-      · rw [hmod.1]; decide
+      · rw [hmod.1]; nofun
       · intro p; rw [hmod.1]; exact nofun
       · intro r hr; dsimp only at hr; rw [hload] at hr; cases hr; exact hscope
       · rw [hmod.2]; exact ⟨hload ▸ hscope.2, hstoreRel, trivial⟩

@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
@@ -21,6 +21,13 @@ meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Specs
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` `signal_session::stores::decimal` (Block 597)
@@ -29,7 +36,7 @@ Defines the deterministic allocator event list `decimalEvents` and verifies `dec
 under `RustCliAllocBudget M` with `FitsEnv M lim st (DecimalEnv x.n)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -73,7 +80,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-! ## 1. Deterministic `decimal` Allocator Events, Envelope, and Final Capacity -/
 
 /-- Final `Vec<u8>` capacity after pushing `m` bytes one-by-one starting at `(cap, len)`. -/
-def pushBytesCap : Nat → Nat → Nat → Nat
+@[expose] def pushBytesCap : Nat → Nat → Nat → Nat
   | 0, cap, _ => cap
   | m + 1, cap, len => pushBytesCap m (pushByteStep cap len).1 (len + 1)
 
@@ -116,17 +123,17 @@ private theorem pushBytesCap_zero_lt_pow63 (m : Nat) (hm : m ≤ 10) :
   | _ + 11 => omega
 
 /-- Deterministic `AllocEvent` list emitted by `signal_session::stores::decimal` on `n`. -/
-def decimalEvents (n : BitVec 32) : List AllocEvent :=
+@[expose] def decimalEvents (n : BitVec 32) : List AllocEvent :=
   pushBytesEvents (decimalText n.toNat).length 0 0
 
 /-- Callee-fixed allocator event envelope of `signal_session::stores::decimal`. -/
-def DecimalEnv (n : BitVec 32) (evs : List AllocEvent) : Prop :=
+@[expose] def DecimalEnv (n : BitVec 32) (evs : List AllocEvent) : Prop :=
   evs = decimalEvents n
 
 theorem decimalEnv_events (n : BitVec 32) : DecimalEnv n (decimalEvents n) := rfl
 
 /-- Deterministic final `Vec<u8>` capacity produced by `signal_session::stores::decimal` on `n`. -/
-def decimalCap (n : BitVec 32) : BitVec 64 :=
+@[expose] def decimalCap (n : BitVec 32) : BitVec 64 :=
   BitVec.ofNat 64 (pushBytesCap (decimalText n.toNat).length 0 0)
 
 private theorem decimalCap_toNat (n : BitVec 32) :
@@ -140,7 +147,7 @@ private theorem decimalCap_toNat (n : BitVec 32) :
 
 /-! ## 2. Depth-Bounded Contract & Local Frame / Callee-Saved Helpers -/
 
-def decimalBoundedRawSpecP {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def decimalBoundedRawSpecP {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (k resStack : Nat) : Spec (DecimalGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg32 .x1 = x.n ∧ x.n.toNat < 10 ^ k ∧
@@ -153,7 +160,7 @@ def decimalBoundedRawSpecP {M : AllocCostModel} (A : RustCliAllocBudget M)
       stackAt s0.sp (k * 0x50 + resStack) ∗
       A.pool lim (M.stepEvents (decimalEvents x.n) st) sf
 
-def decimalBoundedSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def decimalBoundedSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (k resStack : Nat) :
     Spec (DecimalGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl (decimalBoundedRawSpecP A lim k resStack)

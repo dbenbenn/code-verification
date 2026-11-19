@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.MergeSessionVersion
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32Merge
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.CodeLayout -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 /-!
@@ -54,34 +54,6 @@ private theorem mergeUint32_version_sessionVersion (v : BitVec 32) (tail : List 
     mergeUint32 .varint ((GenField.version v).payload ++ tail) = some (v, tail) :=
   mergeUint32_encode v tail
 
-open ProofLib.ProgramReflection in
-private theorem rodata_0x4601c_byte0_eq_sessionVersion :
-    (libsignalSessionImage.data.drop (num% (ls_bytes% "0082775f19328d6db5d6cb6d") - num% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 44)))).take 1 = [0#8] := by
-  rfl_kernel
-
-open ProofLib.ProgramReflection in
-private theorem holdsBytes_rodata_0x4601c_sessionVersion {s : State}
-    (hF : sessionImg0.FrozenLoaded s) :
-    Arm64.Obj.HoldsBytes s.mem (sessionImg0.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d")) [0#8] (fun _ => .ro) :=
-  loads_rodata_holdsBytes E2E.Record.loads_sessionImg0 hF
-    (off := num% (ls_bytes% "0082775f19328d6db5d6cb6d")) (n := 1) (bs := [0#8])
-    (by decide)
-    (Nat.le_of_ble_eq_true (by rfl_kernel))
-    (by rfl_kernel)
-    (by rfl_kernel)
-    rfl
-    rodata_0x4601c_byte0_eq_sessionVersion
-
-private theorem sepWPp_intro_rodata_0x4601c_sessionVersion {prog : Program} {ret : BitVec 64}
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hF : sessionImg0.FrozenLoaded s)
-    (h : SepWPp prog ret s (((sessionImg0.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d")) ↦₈ᵣ 0#8) ∗ P) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm hL
-  refine h R ?_ hL
-  rw [sepConj_assoc, ← pointsToBytesRO_singleton]
-  exact Satisfies.of_holdsBytes_ro (holdsBytes_rodata_0x4601c_sessionVersion hF) (by decide) hm
-
 private theorem drop_left_sepWPp_sessionVersion {prog : Program} {ret : BitVec 64}
     {s : State} {Drop P : SepProp} {Q Qp : State → SepProp → Prop}
     (h : SepWPp prog ret s P Q Qp) :
@@ -89,19 +61,6 @@ private theorem drop_left_sepWPp_sessionVersion {prog : Program} {ret : BitVec 6
   intro R hm hL
   rw [sepConj_assoc] at hm
   exact h R (Satisfies.of_sep_right hm) hL
-
-private theorem int32Merge_ok_sub_sessionVersion {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : Prost.Int32MergeOk b C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr mergeFieldName + bv% (2 ^ 64 + (ls_off% "prost::encoding::int32::merge::<&mut &[u8]>") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")))
-      (Prost.int32MergeSpec A) := by
-  have heq : (tripleRatchetProgAt b C ctl abs).fnAddr mergeFieldName + bv% (2 ^ 64 + (ls_off% "prost::encoding::int32::merge::<&mut &[u8]>") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) =
-      (tripleRatchetProgAt b C ctl abs).fnAddr Prost.int32MergeName := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>"), (ls_lemma% fnOff "prost::encoding::int32::merge::<&mut &[u8]>")]
-    bv_omega
-  rw [heq]; exact h
 
 private def prostSSGRest_sessionVersion (A : RustAlloc) (ss : BitVec 64) (v : SSG) : SepProp :=
   vecU8 A ss v.lik ∗ vecU8 A (ss + 0x18#64) v.rik ∗ vecU8 A (ss + 0x30#64) v.root ∗
@@ -193,16 +152,6 @@ local elab "mf1_code_fetches_from " codeId:ident b:term:max H:term:max hfn:term:
       Lean.Elab.Tactic.evalTactic (← `(tactic|
         have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
 
-local macro "mf1_fetches " b:term:max H:term:max k0:num len:num : tactic =>
-  `(tactic| mf1_code_fetches_from CryptoVerification.libsignalSessionCode $b $H
-    (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>") (num% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) $k0 $len)
-
-private theorem adrp_0x4601c_eq_sessionVersion (base entry : BitVec 64)
-    (halign : base &&& 0xfff#64 = 0#64) (hentry : base + bv% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>") = entry) :
-    (entry + bv% (40) &&& bv% (2 ^ 64 - 4096)) + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" - page% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>" + 712)) = base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d") := by
-  subst hentry
-  bv_arith
-
 private theorem setWidth8_zext64_trunc32_sessionVersion (v : BitVec 64) :
     BitVec.setWidth 8 (BitVec.zeroExtend 64 (BitVec.truncate 32 v)) = BitVec.setWidth 8 v := by
   change BitVec.setWidth 8 (BitVec.setWidth 64 (BitVec.setWidth 32 v)) = BitVec.setWidth 8 v
@@ -227,38 +176,6 @@ private theorem allowPanic_call_sessionVersion {s_call s0 sf : State} {F R : Sep
   exact allowPanic_frame h1 hm
 
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero int64_raw_toBitVec_sessionVersion
-
-open ProofLib.ProgramReflection in
-private theorem holdsBytes_rodata_0x4601c_sessionVersion_ext {img : Obj.Image} {s : State}
-    (hLoads : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s) :
-    Arm64.Obj.HoldsBytes s.mem (img.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d")) [0#8] (fun _ => .ro) :=
-  loads_rodata_holdsBytes hLoads hF
-    (off := num% (ls_bytes% "0082775f19328d6db5d6cb6d")) (n := 1) (bs := [0#8])
-    (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel) (by rfl_kernel) rfl
-    rodata_0x4601c_byte0_eq_sessionVersion
-
-private theorem sepWPp_intro_rodata_0x4601c_sessionVersion_ext {img : Obj.Image} {prog : Program} {ret : BitVec 64}
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hLoads : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s)
-    (h : SepWPp prog ret s (((img.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d")) ↦₈ᵣ 0#8) ∗ P) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm hL
-  refine h R ?_ hL
-  rw [sepConj_assoc, ← pointsToBytesRO_singleton]
-  exact Satisfies.of_holdsBytes_ro (holdsBytes_rodata_0x4601c_sessionVersion_ext hLoads hF) (by decide) hm
-
-private theorem int32Merge_ok_sub_sessionVersion_extW {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (h : Prost.X.Int32MergeOkW img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr mergeFieldName + bv% (2 ^ 64 + (ls_off% "prost::encoding::int32::merge::<&mut &[u8]>") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")))
-      ((Prost.X.int32MergeSpecW A).inImage img) := by
-  have heq : (SP2Ext img.base ext).fnAddr mergeFieldName + bv% (2 ^ 64 + (ls_off% "prost::encoding::int32::merge::<&mut &[u8]>") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) =
-      (SP2Ext img.base ext).fnAddr Prost.int32MergeName := by
-    rw [SP2Ext, contractProg, Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>"), (ls_lemma% fnOff "prost::encoding::int32::merge::<&mut &[u8]>")]
-    bv_omega
-  rw [heq]; exact h
 
 private theorem stackAt_mergeField_split_sessionVersion_extW (sp : BitVec 64) :
     stackAt sp mergeFieldStackX =
@@ -310,148 +227,6 @@ private theorem stackAt_mergeField_split_sessionVersion_extW (sp : BitVec 64) :
     Prost.memRegion_eight (sp - 16#64), Prost.memRegion_eight (sp - 8#64)]
   simp only [sepExists_sepConj_left, sepExists_sepConj_right]
   ac_rfl
-
-theorem mergeFieldGenSessionVersion_ok_extWA (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hLoads : Obj.Loads libsignalSessionImage img)
-    (hC : DeserializeCalleesAtWA img A ext) :
-    MergeFieldGenOkAtWA img A ext (fun fl => fl.tag = 1) := by
-  unfold MergeFieldGenOkAtWA OkAtX mergeFieldGenSpecAtWA
-  have hInt32 := int32Merge_ok_sub_sessionVersion_extW hC.2.1
-  have halign : img.base &&& 0xfff#64 = 0#64 := base_aligned_of_loads hLoads
-  have hentry_eq : img.base + bv% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>") = (SP2Ext img.base ext).fnAddr mergeFieldName := by
-    rw [SP2Ext, contractProg, Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")]
-  mf1_fetches img.base (Rust.withPanics ext) 0 88
-  mf1_fetches img.base (Rust.withPanics ext) 1880 28
-  apply subroutine_ok_of_sepWPp
-  intro ⟨ss, v_ss, fld, bufRef, slot, ptr, tail⟩ R s0 hpc hrun hpre hsp_align
-  refine ⟨_, R, hpre, ?_⟩
-  clear hpre
-  dsimp only
-  simp only [sepConj_assoc]
-  refine SepWPp.pure_elim fun ⟨hx0, hx1, hx2, hx3, hx4, h_tag, hf_ok, h_fresh, h_len, h_loaded, h_sym⟩ => ?_
-  obtain ⟨v_fld, h_fld⟩ := eq_version_of_tag_eq_one h_tag
-  subst h_fld
-  change BitVec.setWidth 32 (s0.readReg64 Reg.x1) = 1#32 at hx1
-  change BitVec.setWidth 8 (s0.readReg64 Reg.x2) = 0#8 at hx2
-  dsimp only [SP2Ext, contractProg] at hInt32 hentry_eq hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr mergeFieldName = entry
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)) = prog
-    reverting [Program.fetch, subroutine_ok]
-  examples_hide_fetches
-  refine sepWPp_intro_rodata_0x4601c_sessionVersion_ext hLoads h_loaded ?_
-  conv =>
-    arg 4
-    rw [prostSSGAt_eq_version_sep_rest_sessionVersion A ss v_ss, stackAt_mergeField_split_sessionVersion_extW s0.sp]
-    simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  refine SepWPp.exists_elim fun w19 => ?_
-  refine SepWPp.exists_elim fun w20 => ?_
-  refine SepWPp.exists_elim fun w21 => ?_
-  refine SepWPp.exists_elim fun w22 => ?_
-  refine SepWPp.exists_elim fun w23 => ?_
-  refine SepWPp.exists_elim fun w24 => ?_
-  refine SepWPp.exists_elim fun w25 => ?_
-  refine SepWPp.exists_elim fun w30 => ?_
-  refine SepWPp.exists_elim fun w29 => ?_
-  apply SepWPp.of_sepWP_frozen_seedChain h_loaded h_sym (mid := entry + bv% (2 ^ 64 + (ls_off% "prost::encoding::int32::merge::<&mut &[u8]>") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")))
-  wp_steps
-  rw [adrp_0x4601c_eq_sessionVersion img.base entry halign hentry_eq]
-  wp_steps
-  apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-  intro hFm hsymm
-  apply drop_left_sepWPp_sessionVersion
-  refine SepWPp.call
-    (x := Prost.Int32MergeGhost.mk .varint (ss + 328#64) bufRef slot ptr ((GenField.version v_fld).payload ++ tail))
-    (ret_pc := entry + bv% (80))
-    (F := prostSSGRest_sessionVersion A ss v_ss ∗
-      memRegion (s0.sp - 32768#64) 7792 ∗
-      memRegion (s0.sp - 240#64) 160 ∗
-      memRegion (s0.sp - 56#64) 8 ∗
-      (s0.sp - 80#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5) ∗
-      (s0.sp - 72#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5) ∗
-      (s0.sp - 64#64) ↦₆₄ s0.readReg64 (Reg.gpr 25#5) ∗
-      (s0.sp - 48#64) ↦₆₄ s0.readReg64 (Reg.gpr 24#5) ∗
-      (s0.sp - 40#64) ↦₆₄ s0.readReg64 (Reg.gpr 23#5) ∗
-      (s0.sp - 32#64) ↦₆₄ s0.readReg64 (Reg.gpr 22#5) ∗
-      (s0.sp - 24#64) ↦₆₄ s0.readReg64 (Reg.gpr 21#5) ∗
-      (s0.sp - 16#64) ↦₆₄ s0.readReg64 (Reg.gpr 20#5) ∗
-      (s0.sp - 8#64) ↦₆₄ s0.readReg64 (Reg.gpr 19#5))
-    hInt32
-    (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *])
-    (by simp only [State.spAligned, arm64_norm] at hsp_align ⊢; exact hsp_align)
-    (by simp only [arm64_norm, *])
-    ?_ ?_ ?_ ?_
-  · intro R' hm
-    have h_len63 : ((GenField.version v_fld).payload ++ tail).length < 2 ^ 63 :=
-      Nat.lt_trans h_len (by decide)
-    dsimp only [Spec.inImage]
-    simp only [Prost.X.int32MergeSpecW, Prost.memRegion_four (ss + 328#64),
-      arm64_norm, setWidth8_zext64_trunc32_sessionVersion, sepExists_sepConj_left, sepExists_sepConj_right,
-      sepConj_assoc, satisfies_pure_sepConj, satisfies_sepExists]
-    refine ⟨v_ss.version, ⟨⟨hFm, h_sym⟩, ⟨hx2, h_len63⟩⟩, ?_⟩
-    convert hm using 1
-    · ac_rfl
-    · rfl
-  · intro sf code R' _ hm
-    exact allowPanic_not_exited hm
-  · intro sf _ hm
-    exact allowPanic_call_sessionVersion rfl hm
-  · intro sm hpcm hrunm hspm hcsm
-    obtain ⟨-, -, -, -, -, -, -, hx26m, hx27m, hx28m, -, hvregsm⟩ := hcsm
-    simp only [arm64_norm] at hspm hx26m hx27m hx28m hvregsm
-    have hsm_align : sm.spAligned = true := by
-      simp only [State.spAligned, hspm, arm64_norm] at hsp_align ⊢
-      exact hsp_align
-    dsimp only [Spec.inImage]
-    simp only [Prost.X.int32MergeSpecW, mergeUint32_version_sessionVersion,
-      arm64_norm, sepConj_assoc]
-    refine SepWPp.pure_elim fun ⟨htrm, hx0m⟩ => ?_
-    apply SepWPp.of_sepWP (mid := s0.readReg64 (Reg.gpr 30#5))
-    wp_steps
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    apply SepWPp.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    refine ⟨?_, by simp only [arm64_norm, *],
-      ⟨by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-       by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-       by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-       by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-       by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-       by simp only [arm64_norm, *], by simp only [arm64_norm, *]⟩⟩
-    intro hm
-    refine ⟨⟨by simp only [arm64_norm, *], by simp only [arm64_norm, *]⟩, ?_⟩
-    rw [show v_ss.apply (GenField.version v_fld) = { v_ss with version := v_fld } from rfl,
-      prostSSGAt_eq_version_sep_rest_sessionVersion A ss { v_ss with version := v_fld },
-      show prostSSGRest_sessionVersion A ss { v_ss with version := v_fld } = prostSSGRest_sessionVersion A ss v_ss from rfl,
-      stackAt_mergeField_split_sessionVersion_extW s0.sp]
-    simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc, satisfies_sepExists]
-    refine ⟨s0.readReg64 (Reg.gpr 19#5), s0.readReg64 (Reg.gpr 20#5),
-      s0.readReg64 (Reg.gpr 21#5), s0.readReg64 (Reg.gpr 22#5),
-      s0.readReg64 (Reg.gpr 23#5), s0.readReg64 (Reg.gpr 24#5),
-      s0.readReg64 (Reg.gpr 25#5), s0.readReg64 (Reg.gpr 30#5),
-      s0.readReg64 (Reg.gpr 29#5), ?_⟩
-    convert hm using 1
-    ac_rfl
-
-private theorem mergeFieldGenSpecAtWA_A0_sessionVersion (img : Obj.Image) (P : GenField → Prop) :
-    mergeFieldGenSpecAtWA A0 img P = mergeFieldGenSpecAtW img P := by
-  have hp : A0.pool = emp := rfl
-  unfold mergeFieldGenSpecAtWA mergeFieldGenSpecAtW
-  congr 1
-  · funext x s; simp only [hp, emp_sepConj]
-  · funext x s sf; simp only [hp, emp_sepConj]
-
-theorem mergeFieldGenSessionVersion_ok_extW (img : Obj.Image) (ext : String → Option (State → State))
-    (hLoads : Obj.Loads libsignalSessionImage img)
-    (hC : DeserializeCalleesAtW img ext) :
-    MergeFieldGenOkAtW img ext (fun fl => fl.tag = 1) := by
-  unfold MergeFieldGenOkAtW
-  rw [← mergeFieldGenSpecAtWA_A0_sessionVersion]
-  exact mergeFieldGenSessionVersion_ok_extWA img A0 ext hLoads hC
-
-/-! ## Relocatable `[LibsignalPlacement]` proof for tag 1 (`session_version`) -/
 
 section Placed
 

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeSigStep
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SigBudgetSim
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeSigStep -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SigBudgetSim -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimSend
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeProofs
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SigNoQuery
@@ -25,7 +25,7 @@ Defines the `ReductionDsl` `SigEufCma` adversaries `sigReductionAuthDslAdv` and
 advantage of the shallow reduction `sigReductionAuth`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 namespace SignalPqxdh.Security.ReductionDsl.AuthHs
@@ -37,11 +37,11 @@ set_option allowUnsafeReducibility true in
 attribute [implicit_reducible] eufCmaSignOracle
 
 /-- Encoding of the reduction state together with the remaining signing budget. -/
-def sigStToVal {S : Setup} (p : SigReductionState (AuthState S) × Nat) : sigStTy.denote :=
+@[expose] def sigStToVal {S : Setup} (p : SigReductionState (AuthState S) × Nat) : sigStTy.denote :=
   (p.2, sigCoreToVal p.1)
 
 /-- Encoding of a non-`signTwo` step result (the `signTwo` case is a dummy). -/
-def resDone {S : Setup} (s : SigReductionState (AuthState S)) :
+@[expose] def resDone {S : Setup} (s : SigReductionState (AuthState S)) :
     SigStepResultPrim (SigReductionState (AuthState S)) AuthResponse → sigStepTy.denote
   | .done r s' => doneVal (r, s')
   | .signTwo .. => doneVal (.noneResp, s)
@@ -74,7 +74,7 @@ theorem stepAuth_factor (S : Setup) (K : Nat) (s : SigReductionState (AuthState 
       (Env.cons s.targetParty .nil)))) s .vz .vz .vz .vz qv hf rfl rfl rfl rfl hK hb
   exact ⟨α, D, g, h2⟩
 
-def signReqC (u j : Nat) (ik : Bytes) : OracleComp PrimBaseSpec sigStepTy.denote := do
+@[expose] def signReqC (u j : Nat) (ik : Bytes) : OracleComp PrimBaseSpec sigStepTy.denote := do
   let sk ← embedUnif sampleScalar32
   let pk ← primQ (.x25519Base sk)
   pure (.inr (sk, (pk, (u, (j, ik)))))
@@ -314,7 +314,7 @@ theorem sigReductionAuthProg_eval_eq_of_pos (S : Setup) (b : QueryBudget)
 
 /-- The `SigEufCma` adversary obtained by running `sigReductionAuthProg S b.q_total` with
     `primQueryBudget S b`. -/
-def sigReductionAuthDslAdv (S : Setup) (b : QueryBudget)
+@[expose] def sigReductionAuthDslAdv (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : SigEufCmaAdv where
   run pk := (sigReductionAuthProg S b.q_total).eval (fun _ => A.1.run) pk
   q_sig := (sigReductionAuth S b A).q_sig
@@ -354,11 +354,6 @@ theorem sigReductionAuthProg_evalDist_eq (P : Primitives) (S : Setup) (b : Query
       have h2 : 2 * S.N_spk_tot = 0 := by simp [Setup.N_spk_tot, hN0]
       rw [h2] at h
       exact h
-
-theorem sigReductionAuthProg_sigEufCma_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    SigEufCma P (sigReductionAuthDslAdv S b A) = SigEufCma P (sigReductionAuth S b A) := by
-  unfold SigEufCma; rw [sigReductionAuthProg_evalDist_eq]
 
 private theorem runWithSigBudgetPrim_eq_of_clamped {ιI : Type} {GSpec : OracleSpec.{0, 0} ιI}
     {St α : Type}
@@ -507,7 +502,7 @@ theorem sigReductionAuthProg2_eval_eq_of_pos (S : Setup) (b : QueryBudget)
   exact sigReductionAuthProg2_eval_eq_of_bound S b.q_total A.1 pk hN b.q_total hA le_rfl
 
 /-- Clamped `SigEufCma` adversary running `sigReductionAuthProg2 S b.q_total`. -/
-def sigReductionAuthDslAdv2 (S : Setup) (b : QueryBudget)
+@[expose] def sigReductionAuthDslAdv2 (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : SigEufCmaAdv where
   run pk := (sigReductionAuthProg2 S b.q_total).eval (fun _ => A.1.run) pk
   q_sig := (sigReductionAuth S b A).q_sig
@@ -543,10 +538,5 @@ theorem sigReductionAuthProg2_evalDist_eq (P : Primitives) (S : Setup) (b : Quer
       have h2 : 2 * S.N_spk_tot = 0 := by simp [Setup.N_spk_tot, hN0]
       rw [h2] at h
       exact h
-
-theorem sigReductionAuthProg2_sigEufCma_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    SigEufCma P (sigReductionAuthDslAdv2 S b A) = SigEufCma P (sigReductionAuth S b A) := by
-  unfold SigEufCma; rw [sigReductionAuthProg2_evalDist_eq]
 
 end SignalPqxdh.Security.ReductionDsl.AuthHs

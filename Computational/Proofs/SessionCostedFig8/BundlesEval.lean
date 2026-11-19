@@ -9,16 +9,21 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SessionCostedFig8.Bundles
+public import Computational.Proofs.SessionCostedFig8.Bundles -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.Engine -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.RedCKA -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.RedFS -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.RedPRNG -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
 
 /-!
 # Evaluation, `CoinSimEquiv`, and `QuerySubsumes` Bridges for Atomic `Fig8CostedReds`
 
 Proves evaluation, `CoinSimEquiv`, `HooksVRInv (RSReach maxForwardJumps)`, and `QuerySubsumes`
-bridges for the guarded atomic Figure 8 compilers and `Bundles.fig8RedsInst`.
--/
+bridges for the guarded atomic Figure 8 compilers and `Bundles.fig8RedsInst`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -66,13 +71,14 @@ open CryptoGames.SM.Engine (RSReach HooksVRInv)
 open CryptoGames.SM.Construction (Header Mode SchemeAdversary fsClamp
   hooksCKA hooksCKA_startRecv_rs hooksCKA_commit_vR
   hooksPRNG hooksPRNG_startRecv_rs hooksPRNG_commit_vR
-  redCKAAuth redCKAAuthProg redCKAAuthProg_eval_vr
-  redCKAPriv redCKAPrivProg redCKAPrivProg_eval_vr
-  redPRNGAuth redPRNGAuthProg redPRNGAuthProg_branch_eval_vr redPRNGAuthProg_advantage_vr
+  redCKAAuth redCKAAuthProg redCKAAuthBucketProg redCKAAuthProg_eval_vr
+  redCKAPriv redCKAPrivProg redCKAPrivUProg redCKAPrivProg_eval_vr
+  redPRNGAuth redPRNGAuthProg redPRNGAuthStage2Prog
+  redPRNGAuthProg_branch_eval_vr redPRNGAuthProg_advantage_vr
   redPRNGPriv redPRNGPrivProg redPRNGPrivProg_branch_eval_vr redPRNGPrivProg_advantage_vr
   redFSAuth redFSAuthProg redFSAuthProg_eval_clamp
-  redFSPriv redFSPrivProg redFSPrivProg_eval_clamp
-  redFSPrivCoin redFSPrivCoinProg redFSPrivCoinProg_eval_clamp)
+  redFSPriv redFSPrivProg redFSPrivUniProg redFSPrivProg_eval_clamp
+  redFSPrivCoin redFSPrivCoinProg redFSPrivUniCoinProg redFSPrivCoinProg_eval_clamp)
 open CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
 
 namespace Computational.Proofs.SessionCostedFig8.BundlesEval
@@ -517,38 +523,6 @@ theorem hooksPRNG_vrInv_fsAtomicB (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → L
     hooksPRNG_commit_vR (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsAtomicB C ℓ encT idOf B0) mo
 
 omit [Zero Pt] in
-theorem redCKAAuthProg_eval_atomic (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt)
-    (qep q : ℕ) (tL : Option ℕ) (t : ℕ)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt (BitVec 256)
-      (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32))
-    (hqA : MakesAtMostQueries A q) :
-    let B0 := (q + 1) * (maxForwardJumps + 1)
-    ((redCKAAuthProg (q + 1) B0 1 qep maxForwardJumps tL t :
-      CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
-        (ckaIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
-          (BitVec 256) (BitVec 256) (BitVec 256)
-          (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-          (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)
-          ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ Pt) ($ᵗ (BitVec 256)))
-        _ _ .unit .unit .bool .bool).eval (fun _ => A) ()) =
-    redCKAAuth (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsAtomicB C ℓ encT idOf B0)
-      lam 1 qep tL t A := by
-  intro B0
-  exact redCKAAuthProg_eval_vr
-    (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsAtomicB C ℓ encT idOf B0)
-    (q + 1) B0 q 1 qep tL t
-    rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
-    (hooksCKA_vrInv_fsAtomicB Dh encPt C ℓ encT idOf B0 1 ⟨true, tL, t⟩)
-    (RSReach.init ((aeadAtomic C ℓ encT idOf).movePubPartToAD (lPubOf protoSignalCodec))
-      (lChainPRG C.F) maxForwardJumps)
-    (fun _ _ _ _ _ _ hVR hrec =>
-      (fsAtomicB_receive_rsReach C ℓ encT idOf B0 q hVR hrec).1)
-    (Nat.le_refl _) (Nat.mul_le_mul (Nat.le_succ q) (Nat.le_succ q))
-    A q hqA (Nat.le_refl q)
-
-omit [Zero Pt] in
 theorem redCKAPrivProg_eval_atomic (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt)
     (qep q : ℕ) (tL : Option ℕ) (i : ℕ)
@@ -573,74 +547,6 @@ theorem redCKAPrivProg_eval_atomic (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → 
     (q + 1) B0 q 1 qep tL i
     rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
     (hooksCKA_vrInv_fsAtomicB Dh encPt C ℓ encT idOf B0 1 ⟨false, tL, i⟩)
-    (RSReach.init ((aeadAtomic C ℓ encT idOf).movePubPartToAD (lPubOf protoSignalCodec))
-      (lChainPRG C.F) maxForwardJumps)
-    (fun _ _ _ _ _ _ hVR hrec =>
-      (fsAtomicB_receive_rsReach C ℓ encT idOf B0 q hVR hrec).1)
-    (Nat.le_refl _) (Nat.mul_le_mul (Nat.le_succ q) (Nat.le_succ q))
-    A q hqA (Nat.le_refl q)
-
-omit [Zero Pt] in
-theorem redPRNGAuthProg_branch_eval_atomic (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt)
-    (qep q : ℕ) (tL : Option ℕ) (t : ℕ)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt (BitVec 256)
-      (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32))
-    (hqA : MakesAtMostQueries A q) (b_prng : Bool) :
-    let B0 := (q + 1) * (maxForwardJumps + 1)
-    CryptoGames.PRFPRNG.branch (rootPRNG C.F encPt) b_prng
-      ((redPRNGAuthProg (q + 1) B0 1 qep maxForwardJumps tL t :
-        CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
-          (prngIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
-            (BitVec 256) (BitVec 256) (BitVec 256)
-            (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-            (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)
-            ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ Pt) ($ᵗ (BitVec 256)))
-          _ _ .unit .unit .bool .bool).eval (fun _ => A) ()) =
-    CryptoGames.PRFPRNG.branch (rootPRNG C.F encPt) b_prng
-      (redPRNGAuth (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsAtomicB C ℓ encT idOf B0)
-        lam 1 qep tL t A) := by
-  intro B0
-  exact redPRNGAuthProg_branch_eval_vr
-    (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsAtomicB C ℓ encT idOf B0)
-    (q + 1) B0 q 1 qep tL t
-    rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
-    (hooksPRNG_vrInv_fsAtomicB Dh encPt C ℓ encT idOf B0 ⟨true, tL, t⟩)
-    (RSReach.init ((aeadAtomic C ℓ encT idOf).movePubPartToAD (lPubOf protoSignalCodec))
-      (lChainPRG C.F) maxForwardJumps)
-    (fun _ _ _ _ _ _ hVR hrec =>
-      (fsAtomicB_receive_rsReach C ℓ encT idOf B0 q hVR hrec).1)
-    (Nat.le_refl _) (Nat.mul_le_mul (Nat.le_succ q) (Nat.le_succ q))
-    A q hqA (Nat.le_refl q) b_prng
-
-omit [Zero Pt] in
-theorem redPRNGAuthProg_advantage_atomic (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt)
-    (qep q : ℕ) (tL : Option ℕ) (t : ℕ)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt (BitVec 256)
-      (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32))
-    (hqA : MakesAtMostQueries A q) :
-    let B0 := (q + 1) * (maxForwardJumps + 1)
-    CryptoGames.PRFPRNG.advantage (rootPRNG C.F encPt)
-      ((redPRNGAuthProg (q + 1) B0 1 qep maxForwardJumps tL t :
-        CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
-          (prngIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
-            (BitVec 256) (BitVec 256) (BitVec 256)
-            (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-            (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)
-            ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ Pt) ($ᵗ (BitVec 256)))
-          _ _ .unit .unit .bool .bool).eval (fun _ => A) ()) =
-    CryptoGames.PRFPRNG.advantage (rootPRNG C.F encPt)
-      (redPRNGAuth (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsAtomicB C ℓ encT idOf B0)
-        lam 1 qep tL t A) := by
-  intro B0
-  exact redPRNGAuthProg_advantage_vr
-    (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsAtomicB C ℓ encT idOf B0)
-    (q + 1) B0 q 1 qep tL t
-    rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
-    (hooksPRNG_vrInv_fsAtomicB Dh encPt C ℓ encT idOf B0 ⟨true, tL, t⟩)
     (RSReach.init ((aeadAtomic C ℓ encT idOf).movePubPartToAD (lPubOf protoSignalCodec))
       (lChainPRG C.F) maxForwardJumps)
     (fun _ _ _ _ _ _ hVR hrec =>
@@ -682,121 +588,6 @@ theorem redPRNGPrivProg_branch_eval_atomic (Dh : DHFun (BitVec 256) Pt) (encPt :
     (Nat.le_refl _) (Nat.mul_le_mul (Nat.le_succ q) (Nat.le_succ q))
     A q hqA (Nat.le_refl q) b_prng
 
-omit [Zero Pt] in
-theorem redPRNGPrivProg_advantage_atomic (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt)
-    (qep q : ℕ) (tL : Option ℕ) (i : ℕ)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt (BitVec 256)
-      (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32))
-    (hqA : MakesAtMostQueries A q) :
-    let B0 := (q + 1) * (maxForwardJumps + 1)
-    CryptoGames.PRFPRNG.advantage (rootPRNG C.F encPt)
-      ((redPRNGPrivProg (q + 1) B0 1 qep maxForwardJumps tL i :
-        CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
-          (prngIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
-            (BitVec 256) (BitVec 256) (BitVec 256)
-            (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-            (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)
-            ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ Pt) ($ᵗ (BitVec 256)))
-          _ _ .unit .unit .bool .bool).eval (fun _ => A) ()) =
-    CryptoGames.PRFPRNG.advantage (rootPRNG C.F encPt)
-      (redPRNGPriv (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsAtomicB C ℓ encT idOf B0)
-        lam 1 qep tL i A) := by
-  intro B0
-  exact redPRNGPrivProg_advantage_vr
-    (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsAtomicB C ℓ encT idOf B0)
-    (q + 1) B0 q 1 qep tL i
-    rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
-    (hooksPRNG_vrInv_fsAtomicB Dh encPt C ℓ encT idOf B0 ⟨false, tL, i⟩)
-    (RSReach.init ((aeadAtomic C ℓ encT idOf).movePubPartToAD (lPubOf protoSignalCodec))
-      (lChainPRG C.F) maxForwardJumps)
-    (fun _ _ _ _ _ _ hVR hrec =>
-      (fsAtomicB_receive_rsReach C ℓ encT idOf B0 q hVR hrec).1)
-    (Nat.le_refl _) (Nat.mul_le_mul (Nat.le_succ q) (Nat.le_succ q))
-    A q hqA (Nat.le_refl q)
-
-omit [Zero Pt] in
-theorem redFSAuthProg_eval_atomic_clamp (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt)
-    (qep q : ℕ) (j : ℕ) (tL : Option ℕ) (t : ℕ)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt (BitVec 256)
-      (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32))
-    (hqA : MakesAtMostQueries A q) :
-    let B0 := (q + 1) * (maxForwardJumps + 1)
-    ((redFSAuthProg (q + 1) B0 1 qep maxForwardJumps j tL t :
-      CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
-        (fsaeadHeaderAdIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt)
-          (BitVec 256) Pt Pt (BitVec 256) (BitVec 256) (BitVec 256)
-          (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-          (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)
-          ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ Pt) ($ᵗ (BitVec 256)))
-        _ _ .unit .unit .bool .bool).eval (fun _ => A) ()) =
-    redFSAuth (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsClamp B0 (fsAtomicB C ℓ encT idOf B0))
-      lam 1 qep j tL t A := by
-  intro B0
-  exact redFSAuthProg_eval_clamp
-    (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsAtomicB C ℓ encT idOf B0)
-    (q + 1) B0 q 1 qep j tL t
-    rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
-    (Nat.le_refl _) (Nat.mul_le_mul (Nat.le_succ q) (Nat.le_succ q))
-    A q hqA (Nat.le_refl q)
-
-omit [Zero Pt] in
-theorem redFSPrivProg_eval_atomic_clamp (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt)
-    (qep q : ℕ) (tL : Option ℕ) (i : ℕ)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt (BitVec 256)
-      (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32))
-    (hqA : MakesAtMostQueries A q) :
-    let B0 := (q + 1) * (maxForwardJumps + 1)
-    ((redFSPrivProg (q + 1) B0 1 qep maxForwardJumps tL i :
-      CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
-        (fsaeadHeaderAdIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt)
-          (BitVec 256) Pt Pt (BitVec 256) (BitVec 256) (BitVec 256)
-          (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-          (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)
-          ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ Pt) ($ᵗ (BitVec 256)))
-        _ _ .unit .unit .bool .bool).eval (fun _ => A) ()) =
-    redFSPriv (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsClamp B0 (fsAtomicB C ℓ encT idOf B0))
-      lam 1 qep tL i A := by
-  intro B0
-  exact redFSPrivProg_eval_clamp
-    (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsAtomicB C ℓ encT idOf B0)
-    (q + 1) B0 q 1 qep tL i
-    rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
-    (Nat.le_refl _) (Nat.mul_le_mul (Nat.le_succ q) (Nat.le_succ q))
-    A q hqA (Nat.le_refl q)
-
-omit [Zero Pt] in
-theorem redFSPrivCoinProg_eval_atomic_clamp (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt)
-    (qep q : ℕ) (tL : Option ℕ) (i : ℕ)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt (BitVec 256)
-      (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32))
-    (hqA : MakesAtMostQueries A q) :
-    let B0 := (q + 1) * (maxForwardJumps + 1)
-    ((redFSPrivCoinProg (q + 1) B0 1 qep maxForwardJumps tL i :
-      CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
-        (fsaeadHeaderAdIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt)
-          (BitVec 256) Pt Pt (BitVec 256) (BitVec 256) (BitVec 256)
-          (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-          (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)
-          ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ Pt) ($ᵗ (BitVec 256)))
-        _ _ .unit .unit .bool .bool).eval (fun _ => A) ()) =
-    redFSPrivCoin (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsClamp B0 (fsAtomicB C ℓ encT idOf B0))
-      lam 1 qep tL i A := by
-  intro B0
-  exact redFSPrivCoinProg_eval_clamp
-    (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsAtomicB C ℓ encT idOf B0)
-    (q + 1) B0 q 1 qep tL i
-    rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
-    (Nat.le_refl _) (Nat.mul_le_mul (Nat.le_succ q) (Nat.le_succ q))
-    A q hqA (Nat.le_refl q)
-
 end ShallowEval
 
 /-! ## `Bundles.fig8RedsInst` bridges -/
@@ -836,19 +627,25 @@ theorem fig8RedsInst_privRedB_eval (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → 
 theorem fig8RedsInst_redCKAAuth_coinSimEquiv (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (C : Crypto) (codec : SignalMessageProtoCodec)
     (ℓ : ℕ) (hℓ : ℓ < 10 ^ 6) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (qep q : ℕ) (tL : Option ℕ) (t : ℕ)
+    (lam : Pt) (qep q : ℕ) (tL : Option ℕ)
     (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt (BitVec 256)
       (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32))
-    (hqA : MakesAtMostQueries A q) :
+      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32)) :
+    let B0 := (q + 1) * (maxForwardJumps + 1)
     CoinSimEquiv (ckaTargetIface ℓ Pt).fwdU
-      (((fig8RedsInst Dh encPt C codec ℓ encT idOf lam qep q).redCKAAuth tL t).eval
+      (((fig8RedsInst Dh encPt C codec ℓ encT idOf lam qep q).redCKAAuth tL).eval
         (fun _ => A) ())
-      (redCKAAuth (dhSchemeFb Dh) (rootPRNG C.F encPt)
-        (fsAtomicB C ℓ encT idOf ((q + 1) * (maxForwardJumps + 1))) lam 1 qep tL t A) := by
+      ((redCKAAuthBucketProg (q + 1) B0 1 qep maxForwardJumps tL :
+        CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
+          (ckaIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
+            (BitVec 256) (BitVec 256) (BitVec 256)
+            (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
+            (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)
+            ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ Pt) ($ᵗ (BitVec 256)))
+          _ _ .unit .unit .bool .bool).eval (fun _ => A) ()) := by
+  intro B0
   dsimp only [fig8RedsInst]
-  rw [← redCKAAuthProg_eval_atomic Dh encPt C ℓ encT idOf lam qep q tL t A hqA]
-  exact compileCkaAtomic_coinSimEquiv ℓ Pt C Dh encPt encT idOf lam hℓ _ _ A
+  exact compileCkaAtomic_coinSimEquiv ℓ Pt C Dh encPt encT idOf lam hℓ B0 _ A
 
 theorem fig8RedsInst_redCKAPriv_coinSimEquiv (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (C : Crypto) (codec : SignalMessageProtoCodec)
@@ -867,20 +664,20 @@ theorem fig8RedsInst_redCKAPriv_coinSimEquiv (Dh : DHFun (BitVec 256) Pt)
   rw [← redCKAPrivProg_eval_atomic Dh encPt C ℓ encT idOf lam qep q tL i A hqA]
   exact compileCkaAtomic_coinSimEquiv ℓ Pt C Dh encPt encT idOf lam hℓ _ _ A
 
-theorem fig8RedsInst_redPRNGAuth_prog_coinSimEquiv (Dh : DHFun (BitVec 256) Pt)
+theorem fig8RedsInst_redCKAPrivU_coinSimEquiv (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (C : Crypto) (codec : SignalMessageProtoCodec)
     (ℓ : ℕ) (hℓ : ℓ < 10 ^ 6) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (qep q : ℕ) (tL : Option ℕ) (t : ℕ)
+    (lam : Pt) (qep q : ℕ) (tL : Option ℕ) (i : ℕ)
     (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt (BitVec 256)
       (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
       (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32)) :
     let B0 := (q + 1) * (maxForwardJumps + 1)
-    CoinSimEquiv (prngTargetIface ℓ Pt).fwdU
-      (((fig8RedsInst Dh encPt C codec ℓ encT idOf lam qep q).redPRNGAuth tL t).eval
+    CoinSimEquiv (ckaTargetIface ℓ Pt).fwdU
+      (((fig8RedsInst Dh encPt C codec ℓ encT idOf lam qep q).redCKAPrivU tL i).eval
         (fun _ => A) ())
-      ((redPRNGAuthProg (q + 1) B0 1 qep maxForwardJumps tL t :
+      ((redCKAPrivUProg (q + 1) B0 1 qep maxForwardJumps tL i :
         CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
-          (prngIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
+          (ckaIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
             (BitVec 256) (BitVec 256) (BitVec 256)
             (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
             (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)
@@ -888,7 +685,7 @@ theorem fig8RedsInst_redPRNGAuth_prog_coinSimEquiv (Dh : DHFun (BitVec 256) Pt)
           _ _ .unit .unit .bool .bool).eval (fun _ => A) ()) := by
   intro B0
   dsimp only [fig8RedsInst]
-  exact compilePrngAtomic_coinSimEquiv ℓ Pt C Dh encPt encT idOf lam hℓ B0 _ A
+  exact compileCkaAtomic_coinSimEquiv ℓ Pt C Dh encPt encT idOf lam hℓ B0 _ A
 
 theorem fig8RedsInst_redPRNGPriv_prog_coinSimEquiv (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (C : Crypto) (codec : SignalMessageProtoCodec)
@@ -914,118 +711,96 @@ theorem fig8RedsInst_redPRNGPriv_prog_coinSimEquiv (Dh : DHFun (BitVec 256) Pt)
   exact compilePrngAtomic_coinSimEquiv ℓ Pt C Dh encPt encT idOf lam hℓ B0 _ A
 
 
-theorem fig8RedsInst_redFSAuth_coinSimEquiv (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → List (BitVec 8)) (C : Crypto) (codec : SignalMessageProtoCodec)
-    (ℓ : ℕ) (hℓ : ℓ < 10 ^ 6) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (qep q : ℕ) (j : ℕ) (tL : Option ℕ) (t : ℕ)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt (BitVec 256)
-      (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32))
-    (hqA : MakesAtMostQueries A q) :
-    let B0 := (q + 1) * (maxForwardJumps + 1)
-    CoinSimEquiv (fsaeadHeaderIface ℓ Pt).fwdU
-      (((fig8RedsInst Dh encPt C codec ℓ encT idOf lam qep q).redFSAuth j tL t).eval
-        (fun _ => A) ())
-      (redFSAuth (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsClamp B0 (fsAtomicB C ℓ encT idOf B0))
-        lam 1 qep j tL t A) := by
-  intro B0
-  dsimp only [fig8RedsInst]
-  rw [← redFSAuthProg_eval_atomic_clamp Dh encPt C ℓ encT idOf lam qep q j tL t A hqA]
-  exact compileFsAtomic_coinSimEquiv ℓ Pt C Dh encPt encT idOf lam hℓ B0 _ A
-
 theorem fig8RedsInst_redFSPriv_coinSimEquiv (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (C : Crypto) (codec : SignalMessageProtoCodec)
     (ℓ : ℕ) (hℓ : ℓ < 10 ^ 6) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (qep q : ℕ) (tL : Option ℕ) (i : ℕ)
+    (lam : Pt) (qep q : ℕ) (i : ℕ)
     (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt (BitVec 256)
       (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32))
-    (hqA : MakesAtMostQueries A q) :
+      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32)) :
     let B0 := (q + 1) * (maxForwardJumps + 1)
     CoinSimEquiv (fsaeadHeaderIface ℓ Pt).fwdU
-      (((fig8RedsInst Dh encPt C codec ℓ encT idOf lam qep q).redFSPriv tL i).eval
+      (((fig8RedsInst Dh encPt C codec ℓ encT idOf lam qep q).redFSPriv i).eval
         (fun _ => A) ())
-      (redFSPriv (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsClamp B0 (fsAtomicB C ℓ encT idOf B0))
-        lam 1 qep tL i A) := by
+      ((redFSPrivUniProg (q + 1) B0 1 qep maxForwardJumps i :
+        CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
+          (fsaeadHeaderAdIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt)
+            (BitVec 256) Pt Pt (BitVec 256) (BitVec 256) (BitVec 256)
+            (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
+            (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)
+            ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ Pt) ($ᵗ (BitVec 256)))
+          _ _ .unit .unit .bool .bool).eval (fun _ => A) ()) := by
   intro B0
   dsimp only [fig8RedsInst]
-  rw [← redFSPrivProg_eval_atomic_clamp Dh encPt C ℓ encT idOf lam qep q tL i A hqA]
   exact compileFsAtomic_coinSimEquiv ℓ Pt C Dh encPt encT idOf lam hℓ B0 _ A
 
 theorem fig8RedsInst_redFSPrivCoin_coinSimEquiv (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (C : Crypto) (codec : SignalMessageProtoCodec)
     (ℓ : ℕ) (hℓ : ℓ < 10 ^ 6) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (qep q : ℕ) (tL : Option ℕ) (i : ℕ)
+    (lam : Pt) (qep q : ℕ) (i : ℕ)
     (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt (BitVec 256)
       (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32))
-    (hqA : MakesAtMostQueries A q) :
+      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32)) :
     let B0 := (q + 1) * (maxForwardJumps + 1)
     CoinSimEquiv (fsaeadHeaderIface ℓ Pt).fwdU
-      (((fig8RedsInst Dh encPt C codec ℓ encT idOf lam qep q).redFSPrivCoin tL i).eval
+      (((fig8RedsInst Dh encPt C codec ℓ encT idOf lam qep q).redFSPrivCoin i).eval
         (fun _ => A) ())
-      (redFSPrivCoin (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsClamp B0 (fsAtomicB C ℓ encT idOf B0))
-        lam 1 qep tL i A) := by
+      ((redFSPrivUniCoinProg (q + 1) B0 1 qep maxForwardJumps i :
+        CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
+          (fsaeadHeaderAdIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt)
+            (BitVec 256) Pt Pt (BitVec 256) (BitVec 256) (BitVec 256)
+            (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
+            (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)
+            ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ Pt) ($ᵗ (BitVec 256)))
+          _ _ .unit .unit .bool .bool).eval (fun _ => A) ()) := by
   intro B0
   dsimp only [fig8RedsInst]
-  rw [← redFSPrivCoinProg_eval_atomic_clamp Dh encPt C ℓ encT idOf lam qep q tL i A hqA]
   exact compileFsAtomic_coinSimEquiv ℓ Pt C Dh encPt encT idOf lam hℓ B0 _ A
-
-theorem fig8RedsInst_redFSAuth_querySubsumes (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → List (BitVec 8)) (C : Crypto) (codec : SignalMessageProtoCodec)
-    (ℓ : ℕ) (hℓ : ℓ < 10 ^ 6) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (qep q : ℕ) (j : ℕ) (tL : Option ℕ) (t : ℕ)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt (BitVec 256)
-      (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32))
-    (hqA : MakesAtMostQueries A q) :
-    let B0 := (q + 1) * (maxForwardJumps + 1)
-    QuerySubsumes
-      (((fig8RedsInst Dh encPt C codec ℓ encT idOf lam qep q).redFSAuth j tL t).eval
-        (fun _ => A) ())
-      (redFSAuth (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsClamp B0 (fsAtomicB C ℓ encT idOf B0))
-        lam 1 qep j tL t A) := by
-  intro B0
-  dsimp only [fig8RedsInst]
-  rw [← redFSAuthProg_eval_atomic_clamp Dh encPt C ℓ encT idOf lam qep q j tL t A hqA]
-  exact compileFsAtomic_querySubsumes ℓ Pt C Dh encPt encT idOf lam hℓ B0 _ A
 
 theorem fig8RedsInst_redFSPriv_querySubsumes (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (C : Crypto) (codec : SignalMessageProtoCodec)
     (ℓ : ℕ) (hℓ : ℓ < 10 ^ 6) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (qep q : ℕ) (tL : Option ℕ) (i : ℕ)
+    (lam : Pt) (qep q : ℕ) (i : ℕ)
     (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt (BitVec 256)
       (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32))
-    (hqA : MakesAtMostQueries A q) :
+      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32)) :
     let B0 := (q + 1) * (maxForwardJumps + 1)
     QuerySubsumes
-      (((fig8RedsInst Dh encPt C codec ℓ encT idOf lam qep q).redFSPriv tL i).eval
+      (((fig8RedsInst Dh encPt C codec ℓ encT idOf lam qep q).redFSPriv i).eval
         (fun _ => A) ())
-      (redFSPriv (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsClamp B0 (fsAtomicB C ℓ encT idOf B0))
-        lam 1 qep tL i A) := by
+      ((redFSPrivUniProg (q + 1) B0 1 qep maxForwardJumps i :
+        CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
+          (fsaeadHeaderAdIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt)
+            (BitVec 256) Pt Pt (BitVec 256) (BitVec 256) (BitVec 256)
+            (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
+            (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)
+            ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ Pt) ($ᵗ (BitVec 256)))
+          _ _ .unit .unit .bool .bool).eval (fun _ => A) ()) := by
   intro B0
   dsimp only [fig8RedsInst]
-  rw [← redFSPrivProg_eval_atomic_clamp Dh encPt C ℓ encT idOf lam qep q tL i A hqA]
   exact compileFsAtomic_querySubsumes ℓ Pt C Dh encPt encT idOf lam hℓ B0 _ A
 
 theorem fig8RedsInst_redFSPrivCoin_querySubsumes (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (C : Crypto) (codec : SignalMessageProtoCodec)
     (ℓ : ℕ) (hℓ : ℓ < 10 ^ 6) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (qep q : ℕ) (tL : Option ℕ) (i : ℕ)
+    (lam : Pt) (qep q : ℕ) (i : ℕ)
     (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt (BitVec 256)
       (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32))
-    (hqA : MakesAtMostQueries A q) :
+      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (ℕ × LibsignalCiphertextWithSalt32)) :
     let B0 := (q + 1) * (maxForwardJumps + 1)
     QuerySubsumes
-      (((fig8RedsInst Dh encPt C codec ℓ encT idOf lam qep q).redFSPrivCoin tL i).eval
+      (((fig8RedsInst Dh encPt C codec ℓ encT idOf lam qep q).redFSPrivCoin i).eval
         (fun _ => A) ())
-      (redFSPrivCoin (dhSchemeFb Dh) (rootPRNG C.F encPt) (fsClamp B0 (fsAtomicB C ℓ encT idOf B0))
-        lam 1 qep tL i A) := by
+      ((redFSPrivUniCoinProg (q + 1) B0 1 qep maxForwardJumps i :
+        CostedReduction (fig8CkaOpsShallow ℓ Pt C Dh encPt encT idOf lam B0)
+          (fsaeadHeaderAdIface (BitVec 256) (CryptoGames.CKA.DDH.State (BitVec 256) Pt)
+            (BitVec 256) Pt Pt (BitVec 256) (BitVec 256) (BitVec 256)
+            (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
+            (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)
+            ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ Pt) ($ᵗ (BitVec 256)))
+          _ _ .unit .unit .bool .bool).eval (fun _ => A) ()) := by
   intro B0
   dsimp only [fig8RedsInst]
-  rw [← redFSPrivCoinProg_eval_atomic_clamp Dh encPt C ℓ encT idOf lam qep q tL i A hqA]
   exact compileFsAtomic_querySubsumes ℓ Pt C Dh encPt encT idOf lam hℓ B0 _ A
 
 end ConcreteInstEval

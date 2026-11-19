@@ -9,9 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrow
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.Fetch
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrow -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
@@ -23,7 +21,7 @@ Proves `finish_grow_2_ok_ext` (`finishGrow1Spec A`) for
 `<alloc::raw_vec::RawVecInner>::finish_grow [local#8]` on `tripleRatchetProgAtExt`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Alloc
 
@@ -87,119 +85,5 @@ private def finishGrow1ReallocSpec (A : RustAlloc) : Spec FinishGrow1Call :=
       A.live x.ptr x.cap.toNat 1 ∗ (x.ptr ↦ₛ x.bs) ∗
       memRegion (x.ptr + BitVec.ofNat 64 x.bs.length) (x.cap.toNat - x.bs.length) ∗
       A.pool ∗ stackAt s.sp finishGrow32Stack }
-
-private theorem _root_.CryptoVerification.Cli.SpqrV1.Alloc.finish_grow_2_zero_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr CryptoVerification.Cli.SpqrV1.Alloc.finishGrow2Name)
-      (finishGrow1AllocSpec A) := by
-  unfold finishGrow1AllocSpec finishGrow1Spec
-  simp only [memRegion_24, stackAt_finishGrow32, sepExists_sepConj_left, sepExists_sepConj_right]
-  cells_unfold
-  have hfn : libsignalSessionCode.fnOff CryptoVerification.Cli.SpqrV1.Alloc.finishGrow2Name = (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#8]") :=
-    (ls_lemma% fnOff "<alloc::raw_vec::RawVecInner>::finish_grow [local#8]")
-  have hshim := shim_ok_at2_ext hA (name := CryptoVerification.Cli.SpqrV1.Alloc.finishGrow2Name)
-    (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#8]")))
-  have halloc := alloc_ok_at_norm_ext hA (name := CryptoVerification.Cli.SpqrV1.Alloc.finishGrow2Name)
-    (k := num% (ls_off% "__rustc::__rust_alloc" - (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#8]")))
-  code_fetches CryptoVerification.libsignalSessionCode spqrAllocBinCli b
-    (Rust.withPanics ext) hfn (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#8]") 168
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨out, cap, ptr, new, bs⟩ := x
-  dsimp only at *
-  subst cap
-  subst bs
-  have hmsb := getLsbD_63_eq_false (new := new) (by omega)
-  have hmsb' := getElem_63_eq_false (new := new) (by omega)
-  have hcbz := beq_zero_eq_false h_8
-  have hpow : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  wp_steps
-  wp_apply
-  wp_steps
-  wp_apply
-  wp_steps
-  wp_if hoom
-  · have hoom' : sf_1.readReg64 Reg.x0 ≠ 0 := hoom
-    simp only [hoom', ite_false]
-    wp_steps
-    apply SepWP.instantiate_post_exists 0#64
-    apply SepWP.instantiate_post_exists (sf_1.readReg64 Reg.x0)
-    simp only [(by decide : (0#64 : BitVec 64) = 1#64 ↔ False), ite_false,
-      pointsToBytes_nil, List.length_nil, BitVec.add_zero, Nat.sub_zero, emp_sepConj]
-    wp_done
-  · simp only [hoom, BitVec.ofNat_eq_ofNat, ite_true]
-    wp_steps
-    apply SepWP.instantiate_post_exists 1#64
-    apply SepWP.instantiate_post_exists 1#64
-    simp only [ite_true, FinishGrow1Call.oldBuf]
-    wp_done
-
-private theorem _root_.CryptoVerification.Cli.SpqrV1.Alloc.finish_grow_2_ne_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr CryptoVerification.Cli.SpqrV1.Alloc.finishGrow2Name)
-      (finishGrow1ReallocSpec A) := by
-  unfold finishGrow1ReallocSpec finishGrow1Spec
-  simp only [memRegion_24, stackAt_finishGrow32, sepExists_sepConj_left, sepExists_sepConj_right]
-  cells_unfold
-  have hfn : libsignalSessionCode.fnOff CryptoVerification.Cli.SpqrV1.Alloc.finishGrow2Name = (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#8]") :=
-    (ls_lemma% fnOff "<alloc::raw_vec::RawVecInner>::finish_grow [local#8]")
-  have hrealloc := realloc_ok_at_norm_ext hA (name := CryptoVerification.Cli.SpqrV1.Alloc.finishGrow2Name)
-    (k := num% (ls_off% "__rustc::__rust_realloc" - (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#8]")))
-  code_fetches CryptoVerification.libsignalSessionCode spqrAllocBinCli b
-    (Rust.withPanics ext) hfn (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#8]") 168
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨out, cap, ptr, new, bs⟩ := x
-  dsimp only at *
-  have hmsb := getLsbD_63_eq_false (new := new) (by omega)
-  have hmsb' := getElem_63_eq_false (new := new) (by omega)
-  have hcap_beq : (cap == 0#64) = false := beq_eq_false_iff_ne.mpr h_5
-  have hle_new : bs.length ≤ new.toNat := by omega
-  have hpow : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  wp_steps
-  wp_apply
-  wp_steps
-  wp_if hoom
-  · have hoom' : sf.readReg64 Reg.x0 ≠ 0 := hoom
-    simp only [hoom', ite_false]
-    wp_steps
-    apply SepWP.instantiate_post_exists 0#64
-    apply SepWP.instantiate_post_exists (sf.readReg64 Reg.x0)
-    simp only [(by decide : (0#64 : BitVec 64) = 1#64 ↔ False), ite_false]
-    wp_done
-  · simp only [hoom, BitVec.ofNat_eq_ofNat, ite_true]
-    wp_steps
-    apply SepWP.instantiate_post_exists 1#64
-    apply SepWP.instantiate_post_exists 1#64
-    simp only [ite_true, FinishGrow1Call.oldBuf, h_5, ite_false]
-    wp_done
-
-/-- `<alloc::raw_vec::RawVecInner>::finish_grow [local#8]` meets `finishGrow1Spec A`
-on `tripleRatchetProgAtExt b ext`. -/
-theorem _root_.CryptoVerification.Cli.SpqrV1.Alloc.finish_grow_2_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr CryptoVerification.Cli.SpqrV1.Alloc.finishGrow2Name)
-      (finishGrow1Spec A) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  by_cases hcap0 : x.cap = 0#64
-  · refine (subroutine_ok_apply_outcome
-      (CryptoVerification.Cli.SpqrV1.Alloc.finish_grow_2_zero_ok_ext hA) x R hpc hrun ?_ hsp).mono_outcome
-      fun _ => id
-    simp only [finishGrow1Spec, finishGrow1AllocSpec, FinishGrow1Call.oldBuf, hcap0, ite_true,
-      emp_sepConj, sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-    rcases hpre with ⟨⟨hx0, hx1, hx2, hx3, hbs0, _, hle, hnew, hlay⟩, hmem⟩
-    exact ⟨⟨hx0, hx1, hx2, hx3, trivial, hbs0 trivial, hle, hnew, hlay⟩, hmem⟩
-  · refine (subroutine_ok_apply_outcome
-      (CryptoVerification.Cli.SpqrV1.Alloc.finish_grow_2_ne_ok_ext hA) x R hpc hrun ?_ hsp).mono_outcome
-      fun _ => id
-    simp only [finishGrow1Spec, finishGrow1ReallocSpec, FinishGrow1Call.oldBuf, hcap0, ite_false,
-      sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-    rcases hpre with ⟨⟨hx0, hx1, hx2, hx3, _, hbs, hle, hnew, hlay⟩, hmem⟩
-    exact ⟨⟨hx0, hx1, hx2, hx3, hcap0, hbs, hle, hnew, hlay⟩, hmem⟩
 
 end CryptoVerification.SpqrV1.Alloc

@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDerive
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDerive -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Contract for `<HandshakeKeys>::derive` (Block `59`)
@@ -26,7 +26,7 @@ Defines `VmPreserved`-strengthened placed HKDF extract/expand contracts and prov
 (`handshakeKeysDerive_placed_ok`) contracts for `<HandshakeKeys>::derive` on Block `59`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -86,25 +86,25 @@ private theorem readReg_setMem_pre (s : State) (m : Memory) (w : RegWidth) (r : 
 
 /-! ## 1. `VmPreserved`-Strengthened HKDF Extract & Expand Placed Contracts -/
 
-def pqxdhHkdfExtractNonePlacedSpec (P : Primitives) (pl : Obj.MultiPlacement) :
+@[expose] def pqxdhHkdfExtractNonePlacedSpec (P : Primitives) (pl : Obj.MultiPlacement) :
     Spec (BitVec 64 × BitVec 64 × Bytes × BitVec 64) :=
   withVmPreserved (CryptoVerification.E2E.Pqxdh.Initiator.pqxdhHkdfExtractNonePlacedSpec P pl)
 
-def pqxdhHkdfExtractSomePlacedSpec (P : Primitives) (pl : Obj.MultiPlacement) :
+@[expose] def pqxdhHkdfExtractSomePlacedSpec (P : Primitives) (pl : Obj.MultiPlacement) :
     Spec (BitVec 64 × BitVec 64 × Bytes × BitVec 64 × Bytes × BitVec 64) :=
   withVmPreserved (CryptoVerification.E2E.Pqxdh.Initiator.pqxdhHkdfExtractSomePlacedSpec P pl)
 
-def PqxdhHkdfExtractPlacedOk [LibsignalPlacement] (P : Primitives) (prog : Program) : Prop :=
+@[expose] def PqxdhHkdfExtractPlacedOk [LibsignalPlacement] (P : Primitives) (prog : Program) : Prop :=
   subroutine_ok prog (lsmpl.base 54)
     (pqxdhHkdfExtractNonePlacedSpec P lsmpl) ∧
   subroutine_ok prog (lsmpl.base 54)
     (pqxdhHkdfExtractSomePlacedSpec P lsmpl)
 
-def pqxdhHkdfExpandCellsPlacedSpec (P : Primitives) (pl : Obj.MultiPlacement) (k : Nat) :
+@[expose] def pqxdhHkdfExpandCellsPlacedSpec (P : Primitives) (pl : Obj.MultiPlacement) (k : Nat) :
     Spec (BitVec 64 × Bytes × BitVec 64 × BitVec 64 × Bytes × BitVec 64 × BitVec 64) :=
   withVmPreserved (CryptoVerification.E2E.Pqxdh.Initiator.pqxdhHkdfExpandCellsPlacedSpec P pl k)
 
-def PqxdhHkdfExpandMultiInfoPlacedOk [LibsignalPlacement] (P : Primitives) (prog : Program) :
+@[expose] def PqxdhHkdfExpandMultiInfoPlacedOk [LibsignalPlacement] (P : Primitives) (prog : Program) :
     Prop :=
   ∀ k : Nat, subroutine_ok prog (lsmpl.base 53)
     (pqxdhHkdfExpandCellsPlacedSpec P lsmpl k)
@@ -112,7 +112,7 @@ def PqxdhHkdfExpandMultiInfoPlacedOk [LibsignalPlacement] (P : Primitives) (prog
 /-! ## 2. `<HandshakeKeys>::derive` Placed Contracts & Proofs (Block `59`) -/
 
 /-- Allocator-free `VmPreserved` contract for `<HandshakeKeys>::derive` (Block `59`). -/
-def handshakeKeysDerivePlacedVmSpec (P : Primitives) :
+@[expose] def handshakeKeysDerivePlacedVmSpec (P : Primitives) :
     Spec HandshakeKeysDeriveGhost where
   pre := fun g s =>
     ⌜s.readReg64 .x8 = g.outPtr ∧ s.readReg64 .x0 = g.secretsPtr ∧
@@ -128,7 +128,7 @@ def handshakeKeysDerivePlacedVmSpec (P : Primitives) :
     stackAt s0.sp pqxdhEntryStack
 
 /-- Budget-pool-threaded contract for `<HandshakeKeys>::derive` (Block `59`) with `onPanic = ⌜False⌝`. -/
-def handshakeKeysDerivePlacedBaseSpec (M : AllocCostModel) (P : Primitives)
+@[expose] def handshakeKeysDerivePlacedBaseSpec (M : AllocCostModel) (P : Primitives)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (HandshakeKeysDeriveGhost × M.σ) where
   pre := fun (g, st) s =>
@@ -183,7 +183,7 @@ private theorem INFO_PQXDH_eq_list : INFO_PQXDH = infoPqxdhList := by
   exact toUTF8_data_toList "WhisperText_X25519_SHA-256_CRYSTALS-KYBER-1024"
 
 private theorem lsroCheck_infoPqxdh :
-    CryptoVerification.lsroCheck "libsignal_protocol:.rodata..Lanon.352"
+    CryptoVerification.lsroCheck "libsignal_protocol:.rodata..Lanon.359"
       (bytesToBv8 INFO_PQXDH) = true := by
   rw [INFO_PQXDH_eq_list]
   exact eagerReduce (Eq.refl true)
@@ -197,7 +197,7 @@ theorem handshakeKeysDerive_placed_vm_ok [LibsignalPlacement] {P : Primitives}
     subroutine_ok ((blkPC_59).rebase (blkPl_59).base H) (blkPl_59).base
       (withLsCodeRoLoaded lsmpl (handshakeKeysDerivePlacedVmSpec P)) := by
   refine subroutine_ok_withLsCodeRoLoaded_rodata''
-    (roSym := "libsignal_protocol:.rodata..Lanon.352")
+    (roSym := "libsignal_protocol:.rodata..Lanon.359")
     (roBytes := bytesToBv8 INFO_PQXDH) lsroCheck_infoPqxdh ?_
   have hext_none := hext.1
   have hexp' := hexp 12
@@ -265,7 +265,7 @@ theorem handshakeKeysDerive_placed_vm_ok [LibsignalPlacement] {P : Primitives}
     (hmacState_merge_sub368 P s0.sp (hkdfExtractRef P none secrets) hhmac)
   wp_simp_pre_fast [← hinfo_len]
   wp_call hexp' (s0.sp - 368#64, hkdfExtractRef P none secrets, s0.sp - 224#64,
-    lsmpl.ρ "libsignal_protocol:.rodata..Lanon.352", INFO_PQXDH, s0.sp - 464#64, s0.sp - 464#64)
+    lsmpl.ρ "libsignal_protocol:.rodata..Lanon.359", INFO_PQXDH, s0.sp - 464#64, s0.sp - 464#64)
   have hvm_after_exp : VmPreserved s0 sf_1 := hvm_pre_exp.trans ‹_›
   wp_extract_exists
   wp_simp_pre_fast [hokm (s0.sp - 464#64), bv_sub_add_lit', BitVec.reduceSub, sepConj_assoc]

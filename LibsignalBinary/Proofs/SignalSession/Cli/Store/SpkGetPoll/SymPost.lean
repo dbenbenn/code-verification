@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.Callees
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.Callees -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
-import LibsignalBinary.Proofs.Common.CallInv
-import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.Fetches
+import ProofLib
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Postcondition Packaging, Cut Combinators, and Epilogue for `get_signed_pre_key::{closure#0}`
@@ -37,7 +39,7 @@ framed cut combinators, and shared return epilogue.
 framed cut combinators, and shared return epilogue.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -200,14 +202,14 @@ theorem len_bv_ne_zero {b : BitVec 8} {bs : List (BitVec 8)}
 
 /-! ## 2. Stack frame decomposition (`48 = 5 + 43` cells) -/
 
-def spkPollSlack (sp : BitVec 64) : SepProp :=
+@[expose] def spkPollSlack (sp : BitVec 64) : SepProp :=
   cells (sp - 384#64) 1 ∗ cells (sp - 256#64) 1 ∗
     cells (sp - 208#64) 1 ∗ cells (sp - 112#64) 2
 
-def spkScratch15 (sp : BitVec 64) : SepProp :=
+@[expose] def spkScratch15 (sp : BitVec 64) : SepProp :=
   cells (sp - 376#64) 5 ∗ cells (sp - 336#64) 5 ∗ cells (sp - 296#64) 5
 
-def spkSavedAt (s0 : State) : SepProp :=
+@[expose] def spkSavedAt (s0 : State) : SepProp :=
   ((s0.sp - 96#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((s0.sp - 88#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((s0.sp - 80#64) ↦₆₄ s0.readReg64 .x28) ∗
@@ -434,7 +436,7 @@ theorem found88_pack_cells (A : RustAlloc) (out : BitVec 64) (r : SignedPreKeyRe
 
 /-! ## 4. Shared post/panic predicates, framed cut combinators, and shared epilogue -/
 
-def spkPostQ (rd : ReadRule) (pathOk : List (BitVec 8) → Prop) (A : RustAlloc)
+@[expose] def spkPostQ (rd : ReadRule) (pathOk : List (BitVec 8) → Prop) (A : RustAlloc)
     (calleeStk : Nat) (x : PkPollGhost) (R : SepProp) (s0 : State) :
     State → SepProp → Prop :=
   fun sf P_f =>
@@ -442,7 +444,7 @@ def spkPostQ (rd : ReadRule) (pathOk : List (BitVec 8) → Prop) (A : RustAlloc)
       (sf.mem ⊨ (spkGetPollInnerSpec rd pathOk A calleeStk).post x s0 sf ∗ R)) ∧
     sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf
 
-def spkPanicQp (rd : ReadRule) (pathOk : List (BitVec 8) → Prop) (A : RustAlloc)
+@[expose] def spkPanicQp (rd : ReadRule) (pathOk : List (BitVec 8) → Prop) (A : RustAlloc)
     (calleeStk : Nat) (x : PkPollGhost) (R : SepProp) (s0 : State) :
     State → SepProp → Prop :=
   fun sf P_f =>
@@ -481,49 +483,6 @@ theorem sp200_64 (sp : BitVec 64) : sp - 200#64 + 64#64 = sp - 136#64 := by bv_o
 theorem sp200_72 (sp : BitVec 64) : sp - 200#64 + 72#64 = sp - 128#64 := by bv_omega
 theorem sp200_80 (sp : BitVec 64) : sp - 200#64 + 80#64 = sp - 120#64 := by bv_omega
 
-theorem sepWP_frame_cut {prog : Program} {img : Obj.Image} {mid target_pc : BitVec 64}
-    {s : State} {P P_sub Q_sub F : SepProp} {post : State → SepProp → Prop}
-    {Φ : State → Prop}
-    (hinv : ImgCallInv img s)
-    (h1 : SepWP prog mid s P_sub (fun sm Pm => sm.spAligned = true ∧ Φ sm ∧ (Pm ⊢ Q_sub)))
-    (hP : P ⊢ P_sub ∗ F := by
-      try simp only [words11At, words6At, spkSavedAt,
-        sp248_8, sp248_16, sp200_8, sp200_16, sp200_24, sp200_32, sp200_40,
-        sp200_48, sp200_56, sp200_64, sp200_72, sp200_80]
-      sep_frame)
-    (h2 : ∀ sm : State, sm.pc = mid → sm.status = .Running → sm.spAligned = true →
-      ImgCallInv img sm → Φ sm → SepWP prog target_pc sm (Q_sub ∗ F) post) :
-    SepWP prog target_pc s P post := by
-  refine SepWP.weaken_pre hP ?_
-  refine SepWP.of_sepWP_inv (mid := mid) hinv.1 hinv.2 ?_
-  exact sepWP_frame_right (SepWP.mono h1 fun sm Pm hpcm hrunm ⟨hspm, hΦm, hent⟩ hfl hsym =>
-    SepWP.weaken_pre (sepConj_mono_left hent) (h2 sm hpcm hrunm hspm ⟨hfl, hsym⟩ hΦm))
-
-theorem sepWPp_frame_cut {prog : Program} {img : Obj.Image} {mid ret : BitVec 64}
-    {s : State} {P P_sub Q_sub F : SepProp} {post Qp : State → SepProp → Prop}
-    {Φ : State → Prop}
-    (hinv : ImgCallInv img s)
-    (h1 : SepWP prog mid s P_sub (fun sm Pm => sm.spAligned = true ∧ Φ sm ∧ (Pm ⊢ Q_sub)))
-    (hP : P ⊢ P_sub ∗ F := by
-      try simp only [words11At, words6At, spkSavedAt,
-        sp248_8, sp248_16, sp200_8, sp200_16, sp200_24, sp200_32, sp200_40,
-        sp200_48, sp200_56, sp200_64, sp200_72, sp200_80]
-      sep_frame)
-    (h2 : ∀ sm : State, sm.pc = mid → sm.status = .Running → sm.spAligned = true →
-      ImgCallInv img sm → Φ sm → SepWPp prog ret sm (Q_sub ∗ F) post Qp) :
-    SepWPp prog ret s P post Qp := by
-  unfold SepWP reaches_pc at h1
-  intro R hm hL
-  have hm' : s.mem ⊨ P_sub ∗ (F ∗ R) := by
-    rw [← sepConj_assoc]
-    exact Satisfies.mono (sepConj_mono_left hP) hm
-  obtain ⟨sm, hsteps, ⟨hpcm, hrunm, Pm, hpm, hspm, hΦm, hent⟩ | ⟨_, hf⟩⟩ := h1 (F ∗ R) hm' hL
-  · rw [← sepConj_assoc] at hpm
-    obtain ⟨sf, hsteps', hout'⟩ := h2 sm hpcm hrunm hspm (ImgCallInv.of_steps hinv hsteps) hΦm
-      R (Satisfies.mono (sepConj_mono_left (sepConj_mono_left hent)) hpm) (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout'⟩
-  · exact False.elim (not_satisfies_false_sepConj hf)
-
 theorem trace_ans_congr {rd : ReadRule} {x : PkPollGhost} {s0 s sf : State}
     {ans : PkAns SignedPreKeyRecord}
     (htr : sf.trace = s.trace)
@@ -533,7 +492,7 @@ theorem trace_ans_congr {rd : ReadRule} {x : PkPollGhost} {s0 s sf : State}
       sf.trace = s0.trace :=
   ⟨h.1, htr.trans h.2⟩
 
-def spkEpiPre (A : RustAlloc) (calleeStk : Nat) (x : PkPollGhost) (s0 : State)
+@[expose] def spkEpiPre (A : RustAlloc) (calleeStk : Nat) (x : PkPollGhost) (s0 : State)
     (D : SepProp)
     (u0 u1 u2 u3 u4 u5 u6 u7 u8 u9 u10 : BitVec 64)
     (a0 o7 o8 o9 o10 : BitVec 64)
@@ -696,65 +655,5 @@ private theorem spkEpiPost_pack (rd : ReadRule) (pathOk : List (BitVec 8) → Pr
   exact sepConj_mono hans'
     (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
       (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right hcells))))))
-
-theorem epilogue_ok
-    {img : Obj.Image} {ext : String → Option (State → State)}
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop}
-    {A : RustAlloc} {calleeStk : Nat} {x : PkPollGhost} {R : SepProp}
-    {s0 s : State} {ans : PkAns SignedPreKeyRecord} {D P : SepProp}
-    {o0 o1 o2 o3 o4 o5 o6 o7 o8 o9 o10 : BitVec 64}
-    {u0 u1 u2 u3 u4 u5 u6 u7 u8 u9 u10 : BitVec 64}
-    {a0 b2 b3 b4 c0 c1 c2 c3 c4 d0 d1 d2 d3 d4 e0 e1 e2 e3 e4 e5 f0 f1 f2 f3 f4 : BitVec 64}
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr spkGetPollName + bv% 344)
-    (hrun : s.status = .Running)
-    (hsp_align : s.spAligned = true)
-    (hsp : s.sp = s0.sp - 384#64)
-    (hvr : calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hx19 : s.readReg64 .x19 = x.fut)
-    (hx20 : s.readReg64 .x20 = x.out)
-    (hx26 : s.readReg64 .x26 = o0)
-    (hx25 : s.readReg64 .x25 = o1)
-    (hx23 : s.readReg64 .x23 = o2)
-    (hx24 : s.readReg64 .x24 = o3)
-    (hx21 : s.readReg64 .x21 = o4)
-    (hpack : words11At x.out o0 o1 o2 o3 o4 o5 o6 o7 o8 o9 o10 ∗ D ⊢ spkAnsAt A x.out ans)
-    (hans : ans = pkAnsOf SignedPreKeyRecord.deserialize (x.dir.get rd s0.fs.files (keyName x.id)) ∧
-          s.trace = s0.trace)
-    (hP : P ⊢ spkEpiPre A calleeStk x s0 D
-      u0 u1 u2 u3 u4 u5 u6 u7 u8 u9 u10
-      a0 o7 o8 o9 o10 o5 o6 b2 b3 b4 c0 c1 c2 c3 c4 d0 d1 d2 d3 d4
-      e0 e1 e2 e3 e4 e5 f0 f1 f2 f3 f4 := by
-        try simp only [spkEpiPre, words11At, words6At, spkSavedAt,
-          sp248_8, sp248_16, sp200_8, sp200_16, sp200_24, sp200_32, sp200_40,
-          sp200_48, sp200_56, sp200_64, sp200_72, sp200_80]
-        sep_frame) :
-    SepWP (tripleRatchetProgAtExt img.base ext) (s0.readReg64 .x30) s P
-      (spkPostQ rd pathOk A calleeStk x R s0) := by
-  refine SepWP.weaken_pre hP ?_
-  have hfn : libsignalSessionCode.fnOff spkGetPollName =
-      num% (ls_off% "<libsignal_cli::stores::SignedPreKeyFiles as libsignal_protocol::storage::traits::SignedPreKeyStore>::get_signed_pre_key::{closure#0}") :=
-    spkGetPoll_fnOff
-  code_fetches CryptoVerification.libsignalSessionCode cliSpkGetPollBin img.base
-    (Rust.withPanics ext) hfn
-    (num% (ls_off% "<libsignal_cli::stores::SignedPreKeyFiles as libsignal_protocol::storage::traits::SignedPreKeyStore>::get_signed_pre_key::{closure#0}")) 480
-  dsimp only [tripleRatchetProgAtExt, spkEpiPre, spkSavedAt, words11At, spkPostQ] at hpc ⊢
-  clear hfn hP
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr spkGetPollName = fnBase
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)) = prog
-    reverting [Program.fetch, Program.externAt?]
-  examples_hide_fetches
-  wp_steps
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  refine ⟨fun hm => Satisfies.mono (sepConj_mono_left ?_) hm, ?_, ?_⟩
-  · refine Entails.trans (Entails.of_eq (by ac_rfl))
-      (spkEpiPost_pack rd pathOk A calleeStk x s0 _ ans D
-        o0 o1 o2 o3 o4 o5 o6 o7 o8 o9 o10
-        a0 b2 b3 b4 c0 c1 c2 c3 c4 d0 d1 d2 d3 d4 e0 e1 e2 e3 e4 e5 f0 f1 f2 f3 f4
-        hpack (trace_ans_congr (s := s) rfl hans))
-  · simp only [wp_norm, arm64_norm]
-  · rw [CalleeSavedPreserved.iff_regs]
-    simp only [wp_norm, arm64_norm, hvr]
 
 end CryptoVerification.SignalSession.Cli.Store.SpkGetPoll.Helpers

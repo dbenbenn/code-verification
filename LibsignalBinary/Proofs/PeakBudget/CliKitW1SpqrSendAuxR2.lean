@@ -9,16 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliKitW1IntoPbAuxR2
-public import LibsignalBinary.Proofs.PeakBudget.CliKitW1SpqrSendStage1AuxR2
-public import LibsignalBinary.Proofs.PeakBudget.CliKitW1W2ExactSlotSpecR2
-public import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightSpec
+import LibsignalBinary.Proofs.PeakBudget.CliKitW1IntoPbAuxR2
+import LibsignalBinary.Proofs.PeakBudget.CliKitW1SpqrSendStage1AuxR2
+public import LibsignalBinary.Proofs.PeakBudget.CliKitW1W2ExactSlotSpecR2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightSpec
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbState
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidCodec
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidPhi
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidSendClosed
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopSend
 import LibsignalBinary.Proofs.SpqrV1Sync.TopSize
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesBridge1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlacedBudget
 
 /-!
 # `@109` `spqr::send::<Coins>` Tight Inclusion, Credit, and Group Specs
@@ -31,7 +43,7 @@ Proves that under `SpqrStateTight640 F K stBs`, `ckx2_SpqrSendCoinsOfDecodeFromP
 `evalLog` footprint, `NonFreeBound`, and `PhaseGroupSpec` at `maxOps = 109` (`4374` groups).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -128,22 +140,9 @@ def ckx2_SpqrSendTightCapGenEnv (Edec : List AllocEvent → Prop) : SpqrSendBudg
 def ckx2_SpqrSendTightCapEnvOf (maxOps : Nat) : SpqrSendBudgetEnv :=
   ckx2_SpqrSendTightCapGenEnv (ckx2_DecodeStateTightEnvOf maxOps)
 
-abbrev ckx2_SpqrSendTightCapEnv109 : SpqrSendBudgetEnv :=
-  ckx2_SpqrSendTightCapEnvOf 109
-
-def ckx2_SpqrSendTightLargeGenEnv (Edec : List AllocEvent → Prop) : SpqrSendBudgetEnv :=
-  fun _ _ =>
-    SpqrSendPartsTightGenEnv Edec StatesFromPbTightEnv
-      StatesSendRodataTightEnv ChainFromTightEnv ChainAddEpochTight4Env ChainSendKeyTightEnv
-      ChainIntoPbTight4Env MessageSerializeTightEnv StatesIntoPbTightEnv
-      (PqEncodeLargeTightEnv 286196)
-
-def ckx2_SpqrSendTightLargeEnvOf (maxOps : Nat) : SpqrSendBudgetEnv :=
-  ckx2_SpqrSendTightLargeGenEnv (ckx2_DecodeStateTightEnvOf maxOps)
-
 def ckx2_spqrSendTightMaxNonFreeOf (maxOps : Nat) : Nat := maxOps + 1349
 
-def ckx2_spqrSendTightGroupSOf (maxOps : Nat) : Nat := 3 * FineScale * (maxOps + 1349)
+@[expose] def ckx2_spqrSendTightGroupSOf (maxOps : Nat) : Nat := 3 * FineScale * (maxOps + 1349)
 
 private theorem ckx2_decodeStateTightEnvOf_fine_phaseCreditSpec (maxOps : Nat) :
     PhaseCreditSpec fineCostModel (ckx2_DecodeStateTightEnvOf maxOps) 1307216 0 0 79236 :=
@@ -165,110 +164,6 @@ theorem ckx2_spqrSendTightCapEnvOf_phaseCreditSpec (maxOps : Nat) (stBytes ptext
     (pqEncodeCapTight_fine_phaseCreditSpec 286196)
     (Nat.le_refl spqrSendTightDeltaLive)).mono
     (by decide) (Nat.le_refl _) (Nat.le_refl _) (by decide)
-
-theorem ckx2_spqrSendTightLargeEnvOf_phaseCreditSpec (maxOps : Nat) (stBytes ptext : Bytes) :
-    PhaseCreditSpec fineCostModel (ckx2_SpqrSendTightLargeEnvOf maxOps stBytes ptext)
-      spqrSendTightLargeDeltaCum spqrSendTightDeltaLive spqrSendTightDeltaPeak
-      spqrSendTightMaxReq :=
-  (spqrSendPartsTightGen_phaseCreditSpec
-    (ckx2_decodeStateTightEnvOf_fine_phaseCreditSpec maxOps)
-    statesFromPb_fine_phaseCreditSpec_tight
-    statesSendRodataTight_fine_phaseCreditSpec
-    chainFromTight_fine_phaseCreditSpec
-    chainAddEpochTight4_fine_phaseCreditSpec
-    chainSendKeyTight_fine_phaseCreditSpec
-    chainIntoPbTight4_fine_phaseCreditSpec
-    messageSerializeTight_fine_phaseCreditSpec
-    statesIntoPb_fine_phaseCreditSpec_tight
-    (pqEncodeLargeTight_fine_phaseCreditSpec 286196)
-    (Nat.le_refl spqrSendTightDeltaLive)).mono
-    (by decide) (Nat.le_refl _) (Nat.le_refl _) (by decide)
-
-private theorem ckx2_fineCredit_le_of_spec {E : List AllocEvent → Prop} {c p r : Nat}
-    (hSpec : PhaseCreditSpec fineCostModel E c p p r)
-    (s0 : fineCostModel.σ) {evs : List AllocEvent} (hevs : E evs) {cap : Nat}
-    (hcap : c + p ≤ cap) :
-    fineCredit fineCostModel (fineCostModel.stepEvents evs s0) ≤
-      fineCredit fineCostModel s0 + cap := by
-  unfold fineCredit
-  obtain ⟨hc, hl, hp⟩ := hSpec.credit_le s0 hevs
-  have hmax :
-      max (LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit.HasFineReallocCredit.liveLarge
-            (fineCostModel.stepEvents evs s0))
-          (LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit.HasFineReallocCredit.peakLarge
-            (fineCostModel.stepEvents evs s0)) ≤
-        max (LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit.HasFineReallocCredit.liveLarge s0)
-            (LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit.HasFineReallocCredit.peakLarge s0) + p :=
-    Nat.max_le.mpr
-      ⟨Nat.le_trans hl (Nat.add_le_add_right (Nat.le_max_left _ _) p),
-       Nat.le_trans hp (Nat.max_le.mpr
-         ⟨Nat.le_trans (Nat.le_max_right _ _) (Nat.le_add_right _ p),
-          Nat.add_le_add_right (Nat.le_max_left _ _) p⟩)⟩
-  have hadd := Nat.add_le_add hc hmax
-  have hreord :
-      (LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit.HasFineReallocCredit.cumSmall s0 + c) +
-        (max (LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit.HasFineReallocCredit.liveLarge s0)
-             (LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit.HasFineReallocCredit.peakLarge s0) + p) =
-      (LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit.HasFineReallocCredit.cumSmall s0 +
-        max (LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit.HasFineReallocCredit.liveLarge s0)
-            (LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit.HasFineReallocCredit.peakLarge s0)) + (c + p) := by
-    simp only [← Nat.add_assoc]
-    simp only [Nat.add_assoc, Nat.add_left_comm c]
-  rw [hreord] at hadd
-  exact Nat.le_trans hadd (Nat.add_le_add_left hcap _)
-
-theorem ckx2_spqrSendTightCapEnvOf_fineCredit_le (maxOps : Nat) {stBytes ptext : Bytes}
-    (s0 : fineCostModel.σ) {evs : List AllocEvent}
-    (hevs : ckx2_SpqrSendTightCapEnvOf maxOps stBytes ptext evs) :
-    fineCredit fineCostModel (fineCostModel.stepEvents evs s0) ≤
-      fineCredit fineCostModel s0 + spqrSendTightFineCreditCap := by
-  rcases spqrSendPartsTightGenEnv_or_pq hevs with hSmall | hLarge
-  · have hSmSpec := spqrSendPartsTightGen_phaseCreditSpec
-      (ckx2_decodeStateTightEnvOf_fine_phaseCreditSpec maxOps)
-      statesFromPb_fine_phaseCreditSpec_tight
-      statesSendRodataTight_fine_phaseCreditSpec
-      chainFromTight_fine_phaseCreditSpec
-      chainAddEpochTight4_fine_phaseCreditSpec
-      chainSendKeyTight_fine_phaseCreditSpec
-      chainIntoPbTight4_fine_phaseCreditSpec
-      messageSerializeTight_fine_phaseCreditSpec
-      statesIntoPb_fine_phaseCreditSpec_tight
-      (fineSmallEvs_phaseCreditSpec 1 143484 (Nat.min_le_right 286196 135167))
-      (Nat.le_refl 0)
-    exact ckx2_fineCredit_le_of_spec hSmSpec s0 hSmall (by decide)
-  · exact ckx2_fineCredit_le_of_spec
-      (ckx2_spqrSendTightLargeEnvOf_phaseCreditSpec maxOps stBytes ptext)
-      s0 hLarge (by decide)
-
-theorem ckx2_spqrSendTightCapEnvOf_evalLog_footprint_le (maxOps : Nat) {stBytes ptext : Bytes}
-    {evs : List AllocEvent}
-    (hevs : ckx2_SpqrSendTightCapEnvOf maxOps stBytes ptext evs) :
-    fineCostModel.footprint (fineCostModel.evalLog evs) ≤
-      LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit.HasFineReallocCredit.baseFine
-        (M := fineCostModel) + spqrSendTightFineCreditCap := by
-  rcases spqrSendPartsTightGenEnv_or_pq hevs with hSmall | hLarge
-  · have hSmSpec := spqrSendPartsTightGen_phaseCreditSpec
-      (ckx2_decodeStateTightEnvOf_fine_phaseCreditSpec maxOps)
-      statesFromPb_fine_phaseCreditSpec_tight
-      statesSendRodataTight_fine_phaseCreditSpec
-      chainFromTight_fine_phaseCreditSpec
-      chainAddEpochTight4_fine_phaseCreditSpec
-      chainSendKeyTight_fine_phaseCreditSpec
-      chainIntoPbTight4_fine_phaseCreditSpec
-      messageSerializeTight_fine_phaseCreditSpec
-      statesIntoPb_fine_phaseCreditSpec_tight
-      (fineSmallEvs_phaseCreditSpec 1 143484 (Nat.min_le_right 286196 135167))
-      (Nat.le_refl 0)
-    have hfp := hSmSpec.evalLog_footprint_le_of_live_le_peak (Nat.le_refl 0) hSmall
-    rw [Nat.add_zero] at hfp
-    exact Nat.le_trans hfp (Nat.add_le_add_left
-      (show _ ≤ spqrSendTightFineCreditCap by decide) _)
-  · have hLgSpec := ckx2_spqrSendTightLargeEnvOf_phaseCreditSpec maxOps stBytes ptext
-    have hfp := hLgSpec.evalLog_footprint_le_of_live_le_peak
-      (Nat.le_refl spqrSendTightDeltaLive) hLarge
-    exact Nat.le_trans hfp (Nat.add_le_add_left
-      (show spqrSendTightLargeDeltaCum + spqrSendTightDeltaPeak ≤ spqrSendTightFineCreditCap by
-        decide) _)
 
 theorem ckx2_spqrSendTightCapEnvOf_nonFreeCount_le (maxOps : Nat) {stBytes ptext : Bytes}
     {evs : List AllocEvent}
@@ -1043,27 +938,6 @@ theorem ckx2_spqrSendCoins109_phaseCredit_of_stateTight640 {F : ShaCompress} {K 
         hBase.req_align evs (ckx2_spqrSendCoinsOfDecodeFromPb_sub_tightCapEnvOf 109 hSt he)
       credit_le := fun s0 {_} he =>
         hBase.credit_le s0 (ckx2_spqrSendCoinsOfDecodeFromPb_sub_tightCapEnvOf 109 hSt he) }
-
-theorem ckx2_spqrSendCoins109_fineCredit_le_of_stateTight640 {F : ShaCompress} {K : MlKem}
-    {stBs rest : Bytes} (hSt : SpqrStateTight640 F K stBs)
-    (s0 : fineCostModel.σ) {evs : List AllocEvent}
-    (hevs : ckx2_SpqrSendCoinsOfDecodeFromPbBytesEnv F K
-      (fun _ => ckx2_DecodeStateTightEnv) (fun _ => StatesFromPbTightEnv) stBs rest evs) :
-    fineCredit fineCostModel (fineCostModel.stepEvents evs s0) ≤
-      fineCredit fineCostModel s0 + spqrSendTightFineCreditCap :=
-  ckx2_spqrSendTightCapEnvOf_fineCredit_le 109 s0
-    (ckx2_spqrSendCoinsOfDecodeFromPb_sub_tightCapEnvOf 109 hSt hevs)
-
-theorem ckx2_spqrSendCoins109_evalLog_footprint_le_of_stateTight640 {F : ShaCompress} {K : MlKem}
-    {stBs rest : Bytes} (hSt : SpqrStateTight640 F K stBs)
-    {evs : List AllocEvent}
-    (hevs : ckx2_SpqrSendCoinsOfDecodeFromPbBytesEnv F K
-      (fun _ => ckx2_DecodeStateTightEnv) (fun _ => StatesFromPbTightEnv) stBs rest evs) :
-    fineCostModel.footprint (fineCostModel.evalLog evs) ≤
-      LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit.HasFineReallocCredit.baseFine
-        (M := fineCostModel) + spqrSendTightFineCreditCap :=
-  ckx2_spqrSendTightCapEnvOf_evalLog_footprint_le 109
-    (ckx2_spqrSendCoinsOfDecodeFromPb_sub_tightCapEnvOf 109 hSt hevs)
 
 theorem ckx2_spqrSendCoins109_phaseGroupSpec_of_stateTight640 {F : ShaCompress} {K : MlKem}
     {stBs rest : Bytes} (hSt : SpqrStateTight640 F K stBs) :

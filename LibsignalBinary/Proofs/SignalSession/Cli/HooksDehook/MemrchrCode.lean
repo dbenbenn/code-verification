@@ -20,12 +20,17 @@ public import LibsignalBinary.Proofs.HookDischarge.RustStd.Memrchr -- proof-setu
 public import LibsignalBinary.Proofs.HookDischarge.RustStd.MemrchrRO -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetCode -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyCode -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Pure -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyCode
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Pure
 import VerifiedLibraries.RustStd.Proofs.Wave1.CoreMemrchrLemmas
 import LibsignalBinary.Heap.Fine.SpecBudgetHelpersFine
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Region-Local `core::slice::memchr::memrchr` Code Verification & Master Spec (`HooksDehook.MemrchrCode`)
@@ -198,16 +203,6 @@ theorem MemrchrStatePreserved.of_stdStatePreserved {s0 sf : State}
 /-- `K`-route precondition narrowing (`⌜keep (s.readReg64 .lr) = false⌝ ∗ spec.pre x s`), reusing
     `MemsetCode.memsetSpecK` (`F5`). -/
 abbrev memrchrSpecK : (BitVec 64 → Bool) → {α : Type} → Spec α → Spec α := @memsetSpecK
-
-/-- `stdMemrchrSpec.pre` is definitionally `masterMemrchrSpec.pre`. -/
-theorem stdMemrchr_pre_eq_masterMemrchr_pre :
-    stdMemrchrSpec.pre = masterMemrchrSpec.pre := rfl
-
-/-- Equivalence helper converting `masterMemrchrSpec.pre` to `stdMemrchrSpec.pre` on any frame `R`. -/
-theorem stdMemrchr_pre_of_masterMemrchr_pre
-    {x : Bool × BitVec 8 × BitVec 64 × List (BitVec 8)} {R : SepProp} {s0 : State}
-    (hp : s0.mem ⊨ masterMemrchrSpec.pre x s0 ∗ R) :
-    s0.mem ⊨ stdMemrchrSpec.pre x s0 ∗ R := hp
 
 /-- `masterMemrchrSpec` is `stripS`-invariant for arbitrary `keep` (`F4`). -/
 theorem specStripSInvariant_masterMemrchr (keep : BitVec 64 → Bool) :
@@ -755,24 +750,6 @@ theorem subroutine_ok_stdMemrchr_of_hasWords {P_sub : Program} {entry : BitVec 6
   rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
   exact ⟨⟨hq.1, hstd⟩, hq.2⟩
 
-/-- Read-write (`ro = false`) region-local `subroutine_ok` for `stdMemrchrSpecRW`. -/
-theorem subroutine_ok_stdMemrchrRW_of_hasWords {P_sub : Program} {entry : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entry coreMemrchrWords) :
-    subroutine_ok P_sub entry stdMemrchrSpecRW := by
-  refine subroutine_ok_outcome_intro fun ⟨c, p, bs⟩ R s0 hpc hrun hpre hsp => ?_
-  exact (subroutine_ok_stdMemrchr_of_hasWords hsub_no hwords).mono_outcome
-    (false, c, p, bs) R s0 hpc hrun hpre hsp (fun _ h => h)
-
-/-- Read-only (`ro = true`) region-local `subroutine_ok` for `stdMemrchrSpecRO`. -/
-theorem subroutine_ok_stdMemrchrRO_of_hasWords {P_sub : Program} {entry : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entry coreMemrchrWords) :
-    subroutine_ok P_sub entry stdMemrchrSpecRO := by
-  refine subroutine_ok_outcome_intro fun ⟨c, p, bs⟩ R s0 hpc hrun hpre hsp => ?_
-  exact (subroutine_ok_stdMemrchr_of_hasWords hsub_no hwords).mono_outcome
-    (true, c, p, bs) R s0 hpc hrun hpre hsp (fun _ h => h)
-
 /-- Region-local `subroutine_ok` for `masterMemrchrSpec` on any hook-free `P_sub` holding
     `coreMemrchrWords` at `entry`. -/
 theorem subroutine_ok_masterMemrchr_of_hasWords {P_sub : Program} {entry : BitVec 64}
@@ -786,24 +763,6 @@ theorem subroutine_ok_masterMemrchr_of_hasWords {P_sub : Program} {entry : BitVe
   rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
   exact ⟨⟨hq.1.1, MemrchrStatePreserved.of_stdStatePreserved hq.1.2⟩, hq.2⟩
 
-/-- Read-write (`ro = false`) region-local `subroutine_ok` for `masterMemrchrSpecRW`. -/
-theorem subroutine_ok_masterMemrchrRW_of_hasWords {P_sub : Program} {entry : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entry coreMemrchrWords) :
-    subroutine_ok P_sub entry masterMemrchrSpecRW := by
-  refine subroutine_ok_outcome_intro fun ⟨c, p, bs⟩ R s0 hpc hrun hpre hsp => ?_
-  exact (subroutine_ok_masterMemrchr_of_hasWords hsub_no hwords).mono_outcome
-    (false, c, p, bs) R s0 hpc hrun hpre hsp (fun _ h => h)
-
-/-- Read-only (`ro = true`) region-local `subroutine_ok` for `masterMemrchrSpecRO`. -/
-theorem subroutine_ok_masterMemrchrRO_of_hasWords {P_sub : Program} {entry : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entry coreMemrchrWords) :
-    subroutine_ok P_sub entry masterMemrchrSpecRO := by
-  refine subroutine_ok_outcome_intro fun ⟨c, p, bs⟩ R s0 hpc hrun hpre hsp => ?_
-  exact (subroutine_ok_masterMemrchr_of_hasWords hsub_no hwords).mono_outcome
-    (true, c, p, bs) R s0 hpc hrun hpre hsp (fun _ h => h)
-
 /-- Region-local `subroutine_ok` for `memrchrSpecK keep masterMemrchrSpec` on any hook-free `P_sub`
     holding `coreMemrchrWords`. -/
 theorem subroutine_ok_masterMemrchrK_of_hasWords (keep : BitVec 64 → Bool)
@@ -816,28 +775,6 @@ theorem subroutine_ok_masterMemrchrK_of_hasWords (keep : BitVec 64 → Bool)
   dsimp only [memrchrSpecK, memsetSpecK] at hp
   rw [sepConj_assoc, satisfies_pure_sepConj] at hp
   exact hp.2
-
-/-- Concrete `pureWordsProg` (`260` B hull) `subroutine_ok` for `stdMemrchrSpec` (`F1`, `F2`). -/
-theorem pureWordsProg_stdMemrchr_ok (base : BitVec 64) :
-    subroutine_ok (pureWordsProg base coreMemrchrWords) base stdMemrchrSpec :=
-  subroutine_ok_stdMemrchr_of_hasWords
-    (pureWordsProg_externAt_none base coreMemrchrWords)
-    (pureWordsProg_memrchr_hasWords base)
-
-/-- Concrete `pureWordsProg` (`260` B hull) `subroutine_ok` for `masterMemrchrSpec` (`F2`). -/
-theorem pureWordsProg_masterMemrchr_ok (base : BitVec 64) :
-    subroutine_ok (pureWordsProg base coreMemrchrWords) base masterMemrchrSpec :=
-  subroutine_ok_masterMemrchr_of_hasWords
-    (pureWordsProg_externAt_none base coreMemrchrWords)
-    (pureWordsProg_memrchr_hasWords base)
-
-/-- Concrete `pureWordsProg` (`260` B hull) `subroutine_ok` for `memrchrSpecK keep masterMemrchrSpec`. -/
-theorem pureWordsProg_masterMemrchrK_ok (keep : BitVec 64 → Bool) (base : BitVec 64) :
-    subroutine_ok (pureWordsProg base coreMemrchrWords) base
-      (memrchrSpecK keep masterMemrchrSpec) :=
-  subroutine_ok_masterMemrchrK_of_hasWords keep
-    (pureWordsProg_externAt_none base coreMemrchrWords)
-    (pureWordsProg_memrchr_hasWords base)
 
 /-! ## 3. W-Free Fallback `memrchrHook` Soundness (`F3`) -/
 
@@ -884,16 +821,6 @@ theorem hookMemrchr_masterMemrchr_ok : HookOk memrchrHook masterMemrchrSpec := b
     rw [lastIndexOf_eq_memrchrIdx, sepConj_assoc, satisfies_pure_sepConj]
     refine ⟨⟨?_, ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩⟩, hmem⟩
     simp only [hidx, Option.map_none, RustAbi.optionU64, retHook, arm64_norm]
-
-/-- Read-write (`ro = false`) corollary of `hookMemrchr_masterMemrchr_ok`. -/
-theorem hookMemrchr_masterMemrchrRW_ok : HookOk memrchrHook masterMemrchrSpecRW :=
-  fun ⟨c, p, bs⟩ R s0 hrun hpre hsp =>
-    hookMemrchr_masterMemrchr_ok (false, c, p, bs) R s0 hrun hpre hsp
-
-/-- Read-only (`ro = true`) corollary of `hookMemrchr_masterMemrchr_ok`. -/
-theorem hookMemrchr_masterMemrchrRO_ok : HookOk memrchrHook masterMemrchrSpecRO :=
-  fun ⟨c, p, bs⟩ R s0 hrun hpre hsp =>
-    hookMemrchr_masterMemrchr_ok (true, c, p, bs) R s0 hrun hpre hsp
 
 /-- `memrchrHook` satisfies `memrchrSpecK keep masterMemrchrSpec` for any `keep` (W-free, `F3`). -/
 theorem hookMemrchr_masterMemrchrK_ok (keep : BitVec 64 → Bool) :
@@ -960,19 +887,6 @@ theorem hookOk_mainHopsMemrchrK_of_master (keep : BitVec 64 → Bool) {f : State
     refine Entails.pure_left fun ⟨hret, hst⟩ => Entails.pure_right ?_ (by sep_entail)
     exact ⟨hst.2.1, hst.1, optionU64_to_memrchrMatch hret⟩
 
-/-- Specialization of `hookOk_mainHopsMemrchr_of_master` at `extHookStack` (`16384`). -/
-theorem hookOk_mainHopsMemrchr_extHookStack_of_master {f : State → State}
-    (hh : HookOk f masterMemrchrSpec) :
-    HookOk f (CryptoVerification.SignalSession.Cli.MainHops.memrchrSpec extHookStack) :=
-  hookOk_mainHopsMemrchr_of_master hh (by decide)
-
-/-- Specialization of `hookOk_mainHopsMemrchrK_of_master` at `extHookStack` (`16384`). -/
-theorem hookOk_mainHopsMemrchrK_extHookStack_of_master (keep : BitVec 64 → Bool) {f : State → State}
-    (hh : HookOk f (memrchrSpecK keep masterMemrchrSpec)) :
-    HookOk f
-      (memrchrSpecK keep (CryptoVerification.SignalSession.Cli.MainHops.memrchrSpec extHookStack)) :=
-  hookOk_mainHopsMemrchrK_of_master keep hh (by decide)
-
 /-- `withVmPreserved` lift to `MainHops.memrchrSpec stk` (`16 ≤ stk ∧ stk ≤ 2 ^ 64`). -/
 theorem hookOk_mainHopsMemrchrVm_of_master {f : State → State}
     (hh : HookOk f masterMemrchrSpec) (hvm : ∀ s : State, VmPreserved s (f s))
@@ -990,13 +904,6 @@ theorem hookOk_mainHopsMemrchrVmK_of_master (keep : BitVec 64 → Bool) {f : Sta
   dsimp only [memrchrSpecK]
   rw [← memsetSpecK_withVmPreserved]
   exact hookOk_withVmPreserved (hookOk_mainHopsMemrchrK_of_master keep hh hstk) hvm
-
-/-- Specialization of `hookOk_mainHopsMemrchrVm_of_master` at `extHookStack` (`16384`). -/
-theorem hookOk_mainHopsMemrchrVm_extHookStack_of_master {f : State → State}
-    (hh : HookOk f masterMemrchrSpec) (hvm : ∀ s : State, VmPreserved s (f s)) :
-    HookOk f
-      (withVmPreserved (CryptoVerification.SignalSession.Cli.MainHops.memrchrSpec extHookStack)) :=
-  hookOk_mainHopsMemrchrVm_of_master hh hvm (by decide)
 
 /-- Lift `HookOk f masterMemrchrSpec` (`ro = false`) to `HookOk f (Memrchr.cliMemrchrSpec stk)`
     for `16 ≤ stk ∧ stk ≤ 2 ^ 64`. -/
@@ -1133,18 +1040,6 @@ theorem hookOk_memrchrROK_of_master (keep : BitVec 64 → Bool) {f : State → S
     refine Entails.pure_left fun ⟨hret, hst⟩ => Entails.pure_right ?_ (by sep_entail)
     exact ⟨hst.2.1, hst.1, optionU64_to_memrchrMatch hret⟩
 
-/-- Specialization of `hookOk_memrchrRO_of_master` at `extHookStack` (`16384`). -/
-theorem hookOk_memrchrRO_extHookStack_of_master {f : State → State}
-    (hh : HookOk f masterMemrchrSpec) :
-    HookOk f (memrchrSpecRO extHookStack) :=
-  hookOk_memrchrRO_of_master hh (by decide)
-
-/-- Specialization of `hookOk_memrchrROK_of_master` at `extHookStack` (`16384`). -/
-theorem hookOk_memrchrROK_extHookStack_of_master (keep : BitVec 64 → Bool) {f : State → State}
-    (hh : HookOk f (memrchrSpecK keep masterMemrchrSpec)) :
-    HookOk f (memrchrSpecK keep (memrchrSpecRO extHookStack)) :=
-  hookOk_memrchrROK_of_master keep hh (by decide)
-
 /-- `withVmPreserved` lift to `CalleesRO.memrchrSpecRO stk` (`16 ≤ stk ∧ stk ≤ 2 ^ 64`), discharging
     the inner contract consumed by `AddressRoPlacedBudget.address_ro_blk580_ok` /
     `address_ro_placed_ok(_rocl)`. -/
@@ -1164,30 +1059,10 @@ theorem hookOk_memrchrROVmK_of_master (keep : BitVec 64 → Bool) {f : State →
   rw [← memsetSpecK_withVmPreserved]
   exact hookOk_withVmPreserved (hookOk_memrchrROK_of_master keep hh hstk) hvm
 
-/-- Specialization of `hookOk_memrchrROVm_of_master` at `extHookStack` (`16384`), matching
-    `AddressRoPlacedBudget`'s `withVmPreserved (memrchrSpecRO extHookStack)` token-for-token. -/
-theorem hookOk_memrchrROVm_extHookStack_of_master {f : State → State}
-    (hh : HookOk f masterMemrchrSpec) (hvm : ∀ s : State, VmPreserved s (f s)) :
-    HookOk f (withVmPreserved (memrchrSpecRO extHookStack)) :=
-  hookOk_memrchrROVm_of_master hh hvm (by decide)
-
-/-- Specialization of `hookOk_memrchrROVmK_of_master` at `extHookStack` (`16384`). -/
-theorem hookOk_memrchrROVmK_extHookStack_of_master (keep : BitVec 64 → Bool) {f : State → State}
-    (hh : HookOk f (memrchrSpecK keep masterMemrchrSpec))
-    (hvm : ∀ s : State, VmPreserved s (f s)) :
-    HookOk f (memrchrSpecK keep (withVmPreserved (memrchrSpecRO extHookStack))) :=
-  hookOk_memrchrROVmK_of_master keep hh hvm (by decide)
-
 /-- Alias re-exporting `MemsetCode.hookOk_memsetSpecK_of_plain` (`F5`). -/
 abbrev hookOk_memrchrSpecK_of_plain := @hookOk_memsetSpecK_of_plain
 
-/-- Alias re-exporting `MemsetCode.memsetSpecK_keepsFs` (`F5`). -/
-abbrev memrchrSpecK_keepsFs := @memsetSpecK_keepsFs
-
 /-- Alias re-exporting `MemsetCode.memsetSpecK_withVmPreserved` (`F5`). -/
 abbrev memrchrSpecK_withVmPreserved := @memsetSpecK_withVmPreserved
-
-/-- Alias re-exporting `MemsetCode.memsetSpecK_withOomPoolPreserved` (`F5`). -/
-abbrev memrchrSpecK_withOomPoolPreserved := @memsetSpecK_withOomPoolPreserved
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemrchrCode

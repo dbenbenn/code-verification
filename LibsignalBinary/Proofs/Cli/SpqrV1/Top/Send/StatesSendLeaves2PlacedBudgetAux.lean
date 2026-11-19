@@ -11,12 +11,12 @@ module
 
 meta import Lean -- shake: keep
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves2Placed
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves2
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves1PlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves2Placed
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves2
 public import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1StepsPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -24,6 +24,9 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpoch
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves1Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable `States::send` Leaf-Call Arms 1–3 (`Aux`, Block `427`)
@@ -32,7 +35,7 @@ Threads `RustCliAllocBudget` through leaf-call arms `headerSent`, `ct1Received`,
 `keysSampled` of `<States>::send` in Block `427`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -45,7 +48,7 @@ namespace LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves2PlacedBudg
 
 open Arm64 Arm64.Obj ProofLib ProofLib.ProgramReflection
 open CryptoGames.LibsignalSession (ShaCompress)
-open CryptoVerification (LibsignalPlacement libsignalSessionCode lsmpl)
+open CryptoVerification (LibsignalPlacement lsmpl)
 open CryptoVerification.Cli.SpqrV1.Top.Send.CodePlaced (blkPC_427 blkPl_427)
 open CryptoVerification.LibsignalSpqrV1 (Chunk States spqrAuthApi spqrPolyApi)
 open CryptoVerification.LibsignalSpqrV1.Chunked.SendCt (Ct1Sampled Ct2Sampled EkReceivedCt1Sampled)
@@ -96,7 +99,7 @@ open LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 run_cmd Lean.Elab.Command.liftCoreM do
   for nm in [
     ``CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_sub_688_eq_hsp,

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecordsBridgePure
-public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
-public import Symbolic.Proofs.Swarm.CREF.MacInv
-public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecordsBridgePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.MacInv -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix -- proof-setup: allow-public-import
 import Batteries.Data.UInt
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
@@ -24,7 +24,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
+public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
 import Symbolic.Proofs.Swarm.CREF.ModelMono
@@ -51,7 +51,7 @@ Steps `MatchedPrefix` across `Move.bobStart` for an accepting `session_recv_prek
 pre-key representation and handshake witness.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -167,7 +167,7 @@ private theorem rpk_runTrace_at?_1 (r : ProtocolSetup) (hne : r.alice ≠ r.bob)
        | (rw [TR.at?_append_of_lt _ _ ?hlt]; case hlt => simp [Symbolic.DYBridge.DY.Trace.append_eq_1, Symbolic.DYBridge.DY.Trace.length_eq_1, Symbolic.DYBridge.DY.Trace.length_eq_2])
        | (refine TR.at?_append_eq _ _ ?_; simp [Symbolic.DYBridge.DY.Trace.append_eq_1, Symbolic.DYBridge.DY.Trace.length_eq_1, Symbolic.DYBridge.DY.Trace.length_eq_2])))
 
-def bobKeyHandlesOf (opk : Option DY.Bytes) : PQXDH.BobKeyHandles :=
+@[expose] def bobKeyHandlesOf (opk : Option DY.Bytes) : PQXDH.BobKeyHandles :=
   ⟨9, 13, 19, opk.map (fun _ => 24)⟩
 
 private theorem stOpt_bobKeyHandlesOf (r : ProtocolSetup) (hne : r.alice ≠ r.bob) (ms : List Move)
@@ -545,7 +545,7 @@ theorem x25519LowOrder_false_of_gamma_notLow
   rw [hlit, hba, hNotLow] at h1; exact h1
 
 /-- Hypothesis that an 8-byte MAC parsed from a pre-key representation is not SPQR-headed. -/
-def RpkNotSpqrMacHyp (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) : Prop :=
+@[expose] def RpkNotSpqrMacHyp (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) : Prop :=
   ∀ {g : Ghost} {ms : List Move} {b : HwBytes} {p : PreKeyFields} {x' : PreKeyRep} {msg' : TRSignalMsg},
     parsePreKeyWire b = some p →
     x' ∈ preKeyRepresentations interpretation r S g ms b →
@@ -555,7 +555,7 @@ def RpkNotSpqrMacHyp (interpretation : ExternInterpretation) (r : ProtocolSetup)
 
 /-- Hypothesis constructing a canonical forged pre-key representation when the receive seed is
 attacker-known. -/
-def RpkSeedAkHyp (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) : Prop :=
+@[expose] def RpkSeedAkHyp (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) : Prop :=
   ∀ {who : List Participant} {g : Ghost} {ms : List Move} {acc : List MachineEvent}
     {b ct_wire pt : HwBytes} {p : PreKeyFields} {x' : PreKeyRep} {msg' : TRSignalMsg}
     {keys' : PQXDH.HandshakeKeys} {seed' salt' st'' : DY.Bytes} {c' : TripleRatchet.RecvChain},
@@ -576,7 +576,7 @@ def RpkSeedAkHyp (interpretation : ExternInterpretation) (r : ProtocolSetup) (S 
     (gamma interpretation S g x'.ek).length = 32 →
     DY.X25519.leValue ((gamma interpretation S g x'.ek).map BitVec.toNat) < DY.X25519.p25519 →
     (DY.X25519.isLowOrderKey ((gamma interpretation S g x'.ek).map BitVec.toNat) = false ∧
-      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree interpretation (gamma interpretation S g x'.ek)) →
+      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree (gamma interpretation S g x'.ek)) →
     TripleRatchet.x25519LowOrder msg'.ratchetKey = false →
     msg'.counter.toNat ≤ TripleRatchet.maxForwardJumps →
     gamma interpretation S g

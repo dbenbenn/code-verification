@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.InnerReloc
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.OuterLoop
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.InnerReloc -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.OuterLoop
 import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2
 import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1Acknowledged
@@ -28,6 +28,7 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirection
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoder
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoder
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateProof
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Specs
 
 /-!
 # Top-Level Verification of `spqr::decode_state` (`0x5349c`)
@@ -38,7 +39,7 @@ a `16,032`-byte stack budget (`0x570` local frame + `14,640` B in `V1State::merg
 `x.st.bytes.length < 2 ^ 32` via `DEV-SPQR3`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.DecodeState
 
@@ -336,228 +337,5 @@ theorem optProtoInnerStateAt_canonical_entails_drop (A : RustAlloc) (a : BitVec 
   protoPqRatchetStateAt_canonical_eq_drop A a msg
 
 /-! ## Callee Contract Bridges (`Drop`, `ChainParams`, `EpochDirection`, `SkipField3`, `GrowOne`) -/
-
-theorem dropOptProtoInnerState_canonical_ok {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64)
-    (hdealloc : CryptoVerification.SpqrV1.Drop.DeallocOkExt b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr dropOptProtoInnerStateName)
-      (dropOptProtoInnerStateSpec canonicalV1InnerHeap A b) := by
-  have hdrop := CryptoVerification.SpqrV1.Drop.drop_opt_proto_inner_state_ok_ext hdealloc
-  refine subroutine_ok_outcome_intro fun ⟨a, opt⟩ R s0 hpc hrun hpre halign => ?_
-  dsimp only [dropOptProtoInnerStateSpec, v1StateJumpTablesAt] at hpre
-  rw [optProtoInnerStateAt_canonical_eq_drop, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hx0, hm⟩
-  let R' := v1StateMergeJumpTableExpanded b ∗ R
-  have hpre' : s0.mem ⊨
-      (CryptoVerification.SpqrV1.Drop.dropOptProtoInnerStateSpec A b).pre ⟨a, opt⟩ s0 ∗ R' := by
-    dsimp only [CryptoVerification.SpqrV1.Drop.dropOptProtoInnerStateSpec,
-      CryptoVerification.SpqrV1.Drop.optProtoInnerStateSize,
-      CryptoVerification.SpqrV1.Drop.dropStack96, dropOptProtoInnerStateStack, R']
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hb⟩, ?_⟩
-    refine Satisfies.mono (Entails.of_eq ?_) hm
-    ac_rfl
-  refine subroutine_ok.mono_outcome hdrop ⟨a, opt⟩ R' s0 hpc hrun hpre' halign fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨_, hpost⟩ | ⟨_, _, hpost⟩ | ⟨_, hpost⟩
-  · left
-    refine ⟨hret, hcc, ?_⟩
-    dsimp only [CryptoVerification.SpqrV1.Drop.dropOptProtoInnerStateSpec,
-      CryptoVerification.SpqrV1.Drop.optProtoInnerStateSize,
-      CryptoVerification.SpqrV1.Drop.dropStack96, R'] at hpost
-    dsimp only [dropOptProtoInnerStateSpec, v1StateJumpTablesAt, dropOptProtoInnerStateStack]
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨htr, hpost⟩
-    refine ⟨htr, Satisfies.mono (Entails.of_eq ?_) hpost⟩
-    ac_rfl
-  · dsimp only [CryptoVerification.SpqrV1.Drop.dropOptProtoInnerStateSpec] at hpost
-    exact (not_satisfies_false_sepConj hpost).elim
-  · dsimp only [CryptoVerification.SpqrV1.Drop.dropOptProtoInnerStateSpec] at hpost
-    exact (not_satisfies_false_sepConj hpost).elim
-  · exact (not_satisfies_false_sepConj hpost).elim
-
-theorem dropProtoPqRatchetState_canonical_ok {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64)
-    (hdealloc : CryptoVerification.SpqrV1.Drop.DeallocOkExt b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr dropProtoPqRatchetStateName)
-      (dropProtoPqRatchetStateSpec canonicalV1InnerHeap A b) := by
-  have hdrop := CryptoVerification.SpqrV1.Drop.drop_proto_pq_ratchet_state_ok_ext hdealloc
-  refine subroutine_ok_outcome_intro fun ⟨a, st⟩ R s0 hpc hrun hpre halign => ?_
-  dsimp only [dropProtoPqRatchetStateSpec, v1StateJumpTablesAt] at hpre
-  rw [protoPqRatchetStateAt_canonical_eq_drop, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hx0, hm⟩
-  let R' := v1StateMergeJumpTableExpanded b ∗ R
-  have hpre' : s0.mem ⊨
-      (CryptoVerification.SpqrV1.Drop.dropProtoPqRatchetStateSpec A b).pre ⟨a, st⟩ s0 ∗ R' := by
-    dsimp only [CryptoVerification.SpqrV1.Drop.dropProtoPqRatchetStateSpec,
-      CryptoVerification.SpqrV1.Drop.protoPqRatchetStateSize,
-      CryptoVerification.SpqrV1.Drop.dropStack96, dropOptProtoInnerStateStack, R']
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hb⟩, ?_⟩
-    refine Satisfies.mono (Entails.of_eq ?_) hm
-    ac_rfl
-  refine subroutine_ok.mono_outcome hdrop ⟨a, st⟩ R' s0 hpc hrun hpre' halign fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨_, hpost⟩ | ⟨_, _, hpost⟩ | ⟨_, hpost⟩
-  · left
-    refine ⟨hret, hcc, ?_⟩
-    dsimp only [CryptoVerification.SpqrV1.Drop.dropProtoPqRatchetStateSpec,
-      CryptoVerification.SpqrV1.Drop.protoPqRatchetStateSize,
-      CryptoVerification.SpqrV1.Drop.dropStack96, R'] at hpost
-    dsimp only [dropProtoPqRatchetStateSpec, v1StateJumpTablesAt, dropOptProtoInnerStateStack]
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨htr, hpost⟩
-    refine ⟨htr, Satisfies.mono (Entails.of_eq ?_) hpost⟩
-    ac_rfl
-  · dsimp only [CryptoVerification.SpqrV1.Drop.dropProtoPqRatchetStateSpec] at hpost
-    exact (not_satisfies_false_sepConj hpost).elim
-  · dsimp only [CryptoVerification.SpqrV1.Drop.dropProtoPqRatchetStateSpec] at hpost
-    exact (not_satisfies_false_sepConj hpost).elim
-  · exact (not_satisfies_false_sepConj hpost).elim
-
-theorem chainParamsMerge_canonical_ok {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {ext : String → Option (State → State)}
-    (hC : Stage2Contracts b C A ctl uuidTryParse S ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr chainParamsMergeName)
-      (chainParamsMergeSpec A) := by
-  have hok := CryptoVerification.SpqrV1.Prost.MessageMerge.chainParamsMerge_ok_ext hC
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre halign => ?_
-  let x' : CryptoVerification.SpqrV1.Prost.MessageMerge.ChainParamsMergeGhost :=
-    ⟨x.wt, x.msgPtr, x.msg, x.bufRef, x.slot, x.ptr, x.bs⟩
-  exact subroutine_ok.mono_outcome hok x' R s0 hpc hrun hpre halign fun _ hout => hout
-
-theorem epochDirectionMerge_canonical_ok {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {ext : String → Option (State → State)}
-    (hC : Stage2Contracts img.base C A ctl uuidTryParse S ext)
-    (hBytes : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr bytesMerge3Name)
-      ((bytesMerge3RawSpec A).inImage img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr epochDirectionMergeName)
-      ((epochDirectionMergeSpec A).inImage img) := by
-  have hok := CryptoVerification.SpqrV1.Prost.MessageMerge.epochDirectionMerge_ok_ext hC hBytes
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre halign => ?_
-  let x' : CryptoVerification.SpqrV1.Prost.MessageMerge.EpochDirectionMergeGhost :=
-    ⟨x.wt, x.msgPtr, x.msg, x.bufRef, x.slot, x.ptr, x.bs⟩
-  exact subroutine_ok.mono_outcome hok x' R s0 hpc hrun hpre halign fun _ hout => hout
-
-/-- Canonical verification of `V1State::merge` (`0x4e7e8`) on `tripleRatchetProgAtExt img.base ext`,
-    discharging all 11 tag arms via `v1State_merge_ok_of_fnAddr`. -/
-theorem v1StateMerge_canonical_ok {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {ext : String → Option (State → State)}
-    (hC : Stage2Contracts img.base C A ctl uuidTryParse S ext)
-    (hBytes : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr bytesMerge3Name)
-      ((bytesMerge3RawSpec A).inImage img))
-    (hGrowVecU8 : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr growOneVecU8Name)
-      (growOneVecU8Spec A)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr v1StateMergeName)
-      ((Prost.MessageMerge.v1StateMergeSpec A img.base).inImage img) := by
-  have hFrom := hC.decode_error_from
-  have hPush := hC.decode_error_push
-  have hVarint := Varint.decodeVarint2_ok_ext hC
-  have hSkip := Varint.skipField3_ok_ext hC
-  have hAuth : Auth.AuthMergeOkX img A ext :=
-    Auth.auth_merge_ok_ext hFrom hPush hVarint hSkip hBytes
-  have hPolyEnc := polyEncoderMerge_ok_ext hC hBytes hGrowVecU8
-  have hPolyDec := polyDecoderMerge_ok_ext hC hBytes hGrowVecU8
-  exact v1State_merge_ok_of_fnAddr
-    hFrom hPush hVarint hSkip hC.dealloc
-    (CryptoVerification.SpqrV1.Drop.drop_opt_proto_inner_state_ok_ext hC.dealloc)
-    (CryptoVerification.SpqrV1.Drop.drop_proto_chunked_ct1_received_ok_ext hC.dealloc)
-    (CryptoVerification.SpqrV1.Drop.drop_proto_chunked_header_sent_ok_ext hC.dealloc)
-    (CryptoVerification.SpqrV1.Drop.drop_proto_chunked_ek_sent_ct1_received_ok_ext hC.dealloc)
-    (CryptoVerification.SpqrV1.Drop.drop_proto_chunked_no_header_received_ok_ext hC.dealloc)
-    (CryptoVerification.SpqrV1.Drop.drop_proto_chunked_header_received_ok_ext hC.dealloc)
-    (CryptoVerification.SpqrV1.Drop.drop_proto_unchunked_ct1_sent_ek_received_ok_ext hC.dealloc)
-    (CryptoVerification.SpqrV1.Drop.drop_glue_proto_poly_encoder_ok_ext hC.dealloc)
-    (chunked_keys_unsampled_merge_ok_ext_x hFrom hPush hVarint hSkip hAuth)
-    (chunked_keys_sampled_merge_ok_ext_x hFrom hPush hVarint hSkip hBytes hAuth hPolyEnc)
-    (chunked_header_sent_merge_ok_ext_x hFrom hPush hVarint hSkip hBytes hAuth hPolyEnc hPolyDec)
-    (chunkedCt1Received_merge_ok_ext hC hBytes hGrowVecU8)
-    (chunkedEkSentCt1Received_merge_ok_ext hC hBytes hGrowVecU8)
-    (chunked_no_header_received_merge_ok_ext_x hFrom hPush hVarint hSkip hAuth hPolyDec)
-    (chunked_header_received_merge_ok_ext_x hFrom hPush hVarint hSkip hAuth hBytes hPolyDec)
-    (chunkedCt1Sampled_merge_ok_ext hC hBytes hGrowVecU8)
-    (chunked_ek_received_ct1_sampled_merge_ok_ext_x hFrom hPush hVarint hSkip hBytes hAuth hPolyEnc)
-    (chunkedCt1Acknowledged_merge_ok_ext hC hBytes hGrowVecU8)
-    (chunked_ct2_sampled_merge_ok_ext_x hFrom hPush hVarint hSkip hAuth hPolyEnc)
-
-theorem v1StateMerge_canonical_ok_of_hook {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {ext : String → Option (State → State)}
-    (hC : Stage2Contracts img.base C A ctl uuidTryParse S ext)
-    (hBytes : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr bytesMerge3Name)
-      ((bytesMerge3RawSpec A).inImage img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr v1StateMergeName)
-      ((Prost.MessageMerge.v1StateMergeSpec A img.base).inImage img) :=
-  v1StateMerge_canonical_ok hC hBytes (growOneVecU8_ok_ext img.base A ext hC.toAllocContracts)
-
-/-! ## Assembling `DecodeStateCalleeContractsX` and Top-Level `spqr::decode_state` Proof -/
-
-theorem decodeStateCalleeContracts_of_stage2 {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {ext : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64)
-    (hC : Stage2Contracts b C A ctl uuidTryParse S ext) :
-    DecodeStateCalleeContracts canonicalV1InnerHeap b A ext :=
-  let hAlloc : AllocContracts b A ext := hC.toAllocContracts
-  { b_page_aligned := hb
-    of_drop_inner := of_drop_inner_canonical A
-    of_cap_inner := of_cap_inner_ok A
-    alloc := hAlloc
-    decodeErrorFrom := hC.decode_error_from
-    decodeErrorPush := hC.decode_error_push
-    decodeVarint2 := Varint.decodeVarint2_ok_ext hC
-    skipField3 := Varint.skipField3_ok_ext hC
-    chainParamsMerge := chainParamsMerge_canonical_ok hC
-    growOneChainEpoch := Alloc.grow_one_chain_epoch_full_ok_ext hAlloc
-    dropOptProtoInnerState := dropOptProtoInnerState_canonical_ok hb hC.dealloc
-    dropProtoPqRatchetState := dropProtoPqRatchetState_canonical_ok hb hC.dealloc }
-
-theorem decodeStateCalleeContractsX_of_stage2 {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {ext : String → Option (State → State)}
-    (hb : img.base &&& 0xfff#64 = 0#64)
-    (hC : Stage2Contracts img.base C A ctl uuidTryParse S ext)
-    (hBytes : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr bytesMerge3Name)
-      ((bytesMerge3RawSpec A).inImage img))
-    (hGrowVecU8 : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr growOneVecU8Name)
-      (growOneVecU8Spec A)) :
-    DecodeStateCalleeContractsX canonicalV1InnerHeap img img.base A ext :=
-  { decodeStateCalleeContracts_of_stage2 hb hC with
-    bytesMerge3 := hBytes
-    epochDirectionMerge := epochDirectionMerge_canonical_ok hC hBytes
-    v1StateMerge := v1StateMerge_canonical_ok hC hBytes hGrowVecU8 }
-
-/-- Top-level verification of `spqr::decode_state` (`0x5349c`) with `canonicalV1InnerHeap`,
-    discharging all verified callees (including `v1StateMerge`) from `Stage2Contracts`,
-    `bytesMerge3`, and `growOneVecU8`. -/
-theorem spqr_decode_state_ok {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {ext : String → Option (State → State)}
-    (hb : img.base &&& 0xfff#64 = 0#64)
-    (hC : Stage2Contracts img.base C A ctl uuidTryParse S ext)
-    (hBytes : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr bytesMerge3Name)
-      ((bytesMerge3RawSpec A).inImage img))
-    (hGrowVecU8 : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr growOneVecU8Name)
-      (growOneVecU8Spec A)) :
-    DecodeStateOkX canonicalV1InnerHeap img A ext :=
-  decodeState_ok (decodeStateCalleeContractsX_of_stage2 hb hC hBytes hGrowVecU8)
-
-theorem spqr_decode_state_ok_of_bytes_contracts {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {ext : String → Option (State → State)}
-    (hb : img.base &&& 0xfff#64 = 0#64)
-    (hC : Stage2Contracts img.base C A ctl uuidTryParse S ext)
-    (hBC : Prost.MessageMerge.BytesMerge3Contracts img A ext) :
-    DecodeStateOkX canonicalV1InnerHeap img A ext :=
-  spqr_decode_state_ok hb hC hBC.ok_ext (growOneVecU8_ok_ext img.base A ext hC.toAllocContracts)
 
 end CryptoVerification.SpqrV1.Top.DecodeState

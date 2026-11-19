@@ -11,16 +11,17 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsVXPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsVXPlacedBudget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.Spec
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.SpecPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlBridgePlaced
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsVXPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsVXPlacedBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.Spec
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.SpecPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlBridgePlaced
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # File-Descriptor-Threaded Inner Store-Kit Specification for `decrypt_signal` (Placed)
@@ -29,7 +30,7 @@ import Arm64.Trusted.Spec.SepLogic
 (and their `withLsFrozen`-guarded counterparts) on Block `463`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -59,7 +60,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced (wit
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.SpecPlacedBudget
   (decIdKitPlaced decSessKitPlaced withStoresDecFrozenPlacedSpecVTP withStoresDecPlacedSpecVTP)
 
-def withStoresDecPlacedSpecVTPFd [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def withStoresDecPlacedSpecVTPFd [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -73,7 +74,7 @@ def withStoresDecPlacedSpecVTPFd [LibsignalPlacement] {M : AllocCostModel} (C : 
       kit kitEnv ikit ikitEnv st0 ist0 Scope)
 
 /-- `withFdsGe3Closed`-threaded inner store-kit hypothesis on Block `463` (`lsProg_463 H`). -/
-def InnerDecryptPlacedOkFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def InnerDecryptPlacedOkFd [LibsignalPlacement] {M : AllocCostModel}
     (P : PEParams) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : LibsignalHooks) (B : RunBudgets)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -91,7 +92,7 @@ def InnerDecryptPlacedOkFd [LibsignalPlacement] {M : AllocCostModel}
           StoresGhost.opened.sessions StoresGhost.opened.identity scopeKit)
         fun s => kit.envOk s.fs.files ∧ ikit.envOk s.fs.files)
 
-def withStoresDecFrozenPlacedSpecVTPFd [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def withStoresDecFrozenPlacedSpecVTPFd [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -105,7 +106,7 @@ def withStoresDecFrozenPlacedSpecVTPFd [LibsignalPlacement] {M : AllocCostModel}
       kit kitEnv ikit ikitEnv st0 ist0 Scope)
 
 /-- `withLsFrozen`-guarded `withFdsGe3Closed` inner store-kit hypothesis on Block `463` (`lsProg_463 H`). -/
-def InnerDecryptFrozenPlacedOkFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def InnerDecryptFrozenPlacedOkFd [LibsignalPlacement] {M : AllocCostModel}
     (P : PEParams) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : LibsignalHooks) (B : RunBudgets)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)

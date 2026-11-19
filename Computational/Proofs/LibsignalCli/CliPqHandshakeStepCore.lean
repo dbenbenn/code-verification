@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Game.StatementPq
-public import Computational.Proofs.SpecLemmas.Game.StatementBinaryHarnessCore
-public import Computational.Proofs.LibsignalCli.Entry.CliPqEntryBridges
-public import Computational.Proofs.LibsignalCli.Entry.CliPqReachSize
-public import Computational.Proofs.LibsignalCli.Entry.CliPqSessionCap
+public import Computational.Proofs.SpecLemmas.Game.StatementPq -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Game.StatementBinaryHarnessCore -- proof-setup: allow-public-import
+public import Computational.Proofs.LibsignalCli.Entry.CliPqEntryBridges -- proof-setup: allow-public-import
+public import Computational.Proofs.LibsignalCli.Entry.CliPqReachSize -- proof-setup: allow-public-import
+import Computational.Proofs.LibsignalCli.Entry.CliPqSessionCap
 import all Init.Data.String.Defs
 import all Init.Data.Repr
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.Crypto
@@ -22,7 +22,7 @@ import LibsignalBinary.Proofs.SignalSession.SessionCap.PqSessionCap
 import Mathlib.Algebra.Order.Ring.Star
 import ProofLib.SepLogic.WP.StepsCore
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

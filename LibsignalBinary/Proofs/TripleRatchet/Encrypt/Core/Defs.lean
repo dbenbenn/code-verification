@@ -10,13 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
+import ProofLib.Sep
 import ProofLib.SepLogic.WPp
+meta import GeneratedLean.LibsignalSessionPlacedObjShard22
+meta import GeneratedLean.LibsignalSessionPlacedObjShard6
 
 /-!
 # Shared Definitions, Model Lemmas, and Layout Helpers for `OTR::encrypt`
@@ -26,7 +29,7 @@ for `HKDF.Salt`, `SignalMessage`, `Vec<u8>`, and `ChainKey`, and relocatable `[L
 specifications (`otrEncryptPlacedSpecF`, `otrEncryptPlacedSpec`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification
 
@@ -89,12 +92,6 @@ theorem aesCbcEncrypt_length_le_u32 (E : BitVec 256 → BitVec 128 → BitVec 12
     (k : BitVec 256) (iv : BitVec 128) (pt : List (BitVec 8)) (hpt : pt.length < 2 ^ 32) :
     (aesCbcEncrypt E k iv pt).length ≤ 2 ^ 32 := by
   rw [aesCbcEncrypt_length]
-  omega
-
-theorem aesCbcEncrypt_length_lt_2_63 (E : BitVec 256 → BitVec 128 → BitVec 128)
-    (k : BitVec 256) (iv : BitVec 128) (pt : List (BitVec 8)) (hpt : pt.length < 2 ^ 32) :
-    (aesCbcEncrypt E k iv pt).length < 2 ^ 63 := by
-  have h := aesCbcEncrypt_length_le_u32 E k iv pt hpt
   omega
 
 theorem length_flatMap_toBEBytes :
@@ -199,7 +196,7 @@ theorem stackAt_sub (sp : BitVec 64) (N K : Nat) (hK : K ≤ N := by decide)
 /-! ## Word-level unpack/pack lemmas for structs and byte slices -/
 
 /-- Heap buffer portion of `spqrSendKeyAt A a pqrKey`, parameterized by the 3 header words `k0 k1 k2`. -/
-def optKeyBuf (A : RustAlloc) (k0 k1 k2 : BitVec 64) : HKDF.Salt → SepProp
+@[expose] def optKeyBuf (A : RustAlloc) (k0 k1 k2 : BitVec 64) : HKDF.Salt → SepProp
   | none => ⌜k0 = noneCap⌝
   | some k => ⌜k2 = BitVec.ofNat 64 k.toList.length⌝ ∗ vecU8Buf A k0 k1 k.toList
 
@@ -211,71 +208,34 @@ theorem optKeyAt_unpack (A : RustAlloc) (a : BitVec 64) (pqrKey : HKDF.Salt) :
   cases pqrKey with
   | none =>
     simp only [spqrSendKeyAt, optKeyBuf]
-    rw [mr_cut_add a 8 8 8 (by decide)]
-    have h16 : a + BitVec.ofNat 64 (8 + 8) = a + 16#64 := rfl
-    rw [h16, memRegion_eight (a + 8#64), memRegion_eight (a + 16#64)]
-    simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-    refine Entails.sepExists_elim fun k2 => ?_
-    refine Entails.sepExists_elim fun k1 => ?_
-    refine Entails.sepExists_right noneCap (Entails.sepExists_right k1 (Entails.sepExists_right k2 ?_))
-    have hpull :
-        ((a ↦₆₄ noneCap) ∗ ((a + 8#64) ↦₆₄ k1) ∗ ((a + 16#64) ↦₆₄ k2) ∗ ⌜noneCap = noneCap⌝) =
-        (⌜noneCap = noneCap⌝ ∗ ((a ↦₆₄ noneCap) ∗ ((a + 8#64) ↦₆₄ k1) ∗ ((a + 16#64) ↦₆₄ k2))) := by
-      ac_rfl
-    rw [hpull]
-    exact Entails.pure_right rfl (Entails.refl _)
+    have hmr : memRegion (a + 8#64) 16 =
+        (∃∗ k1 : BitVec 64, (a + 8#64) ↦₆₄ k1) ∗ (∃∗ k2 : BitVec 64, (a + 16#64) ↦₆₄ k2) := by
+      sep_interval_eq
+    rw [hmr]; bi_entail
   | some k =>
-    simp only [spqrSendKeyAt, optKeyBuf, vecU8]
-    refine Entails.sepExists_elim fun k0 => ?_
-    refine Entails.sepExists_elim fun k1 => ?_
-    rw [vecU8At_eq_header_sep_buf]
-    unfold vecHeader
-    refine Entails.sepExists_right k0 (Entails.sepExists_right k1
-      (Entails.sepExists_right (BitVec.ofNat 64 k.toList.length) ?_))
-    have hpull :
-        ((a ↦₆₄ k0) ∗ ((a + 8#64) ↦₆₄ k1) ∗ ((a + 16#64) ↦₆₄ BitVec.ofNat 64 k.toList.length) ∗
-          (⌜BitVec.ofNat 64 k.toList.length = BitVec.ofNat 64 k.toList.length⌝ ∗
-            vecU8Buf A k0 k1 k.toList)) =
-        (⌜BitVec.ofNat 64 k.toList.length = BitVec.ofNat 64 k.toList.length⌝ ∗
-          (((a ↦₆₄ k0) ∗ ((a + 8#64) ↦₆₄ k1) ∗ ((a + 16#64) ↦₆₄ BitVec.ofNat 64 k.toList.length)) ∗
-            vecU8Buf A k0 k1 k.toList)) := by
-      ac_rfl
-    rw [hpull]
-    exact Entails.pure_right rfl (Entails.refl _)
+    dsimp only [spqrSendKeyAt, optKeyBuf, vecU8]
+    refine Entails.sepExists_elim fun cap => Entails.sepExists_elim fun ptr =>
+      Entails.sepExists_right cap (Entails.sepExists_right ptr
+        (Entails.sepExists_right (BitVec.ofNat 64 k.toList.length) ?_))
+    rw [vecU8At_eq_header_sep_buf]; dsimp only [vecHeader]
+    simp only [sepConj_assoc, sepConj_pure_left_comm]
+    exact Entails.pure_right trivial (Entails.refl _)
 
 theorem optKeyAt_pack (A : RustAlloc) (b k0 k1 k2 : BitVec 64) (pqrKey : HKDF.Salt) :
     ((b ↦₆₄ k0) ∗ ((b + 8#64) ↦₆₄ k1) ∗ ((b + 16#64) ↦₆₄ k2) ∗ optKeyBuf A k0 k1 k2 pqrKey) ⊢
       spqrSendKeyAt A b pqrKey := by
   cases pqrKey with
   | none =>
-    simp only [spqrSendKeyAt, optKeyBuf]
-    have hpull :
-        ((b ↦₆₄ k0) ∗ ((b + 8#64) ↦₆₄ k1) ∗ ((b + 16#64) ↦₆₄ k2) ∗ ⌜k0 = noneCap⌝) =
-        (⌜k0 = noneCap⌝ ∗ ((b ↦₆₄ k0) ∗ ((b + 8#64) ↦₆₄ k1) ∗ ((b + 16#64) ↦₆₄ k2))) := by
-      ac_rfl
-    rw [hpull]
-    refine Entails.pure_left fun hk0 => ?_
-    subst hk0
-    rw [mr_cut_add b 8 8 8 (by decide)]
-    have h16 : b + BitVec.ofNat 64 (8 + 8) = b + 16#64 := rfl
-    rw [h16]
-    exact sepConj_mono_right (sepConj_mono (pointsTo64_entails_memRegion _ _)
-      (pointsTo64_entails_memRegion _ _))
+    dsimp only [spqrSendKeyAt, optKeyBuf]
+    have hmr : memRegion (b + 8#64) 16 =
+        (∃∗ w1 : BitVec 64, (b + 8#64) ↦₆₄ w1) ∗ (∃∗ w2 : BitVec 64, (b + 16#64) ↦₆₄ w2) := by
+      sep_interval_eq
+    rw [hmr]; bi_entail
   | some k =>
-    simp only [spqrSendKeyAt, optKeyBuf, vecU8]
-    have hpull :
-        ((b ↦₆₄ k0) ∗ ((b + 8#64) ↦₆₄ k1) ∗ ((b + 16#64) ↦₆₄ k2) ∗
-          (⌜k2 = BitVec.ofNat 64 k.toList.length⌝ ∗ vecU8Buf A k0 k1 k.toList)) =
-        (⌜k2 = BitVec.ofNat 64 k.toList.length⌝ ∗
-          (((b ↦₆₄ k0) ∗ ((b + 8#64) ↦₆₄ k1) ∗ ((b + 16#64) ↦₆₄ k2)) ∗
-            vecU8Buf A k0 k1 k.toList)) := by
-      ac_rfl
-    rw [hpull]
-    refine Entails.pure_left fun hk2 => ?_
-    subst hk2
+    dsimp only [spqrSendKeyAt, optKeyBuf, vecU8]
     refine Entails.sepExists_right k0 (Entails.sepExists_right k1 ?_)
-    rw [vecU8At_eq_header_sep_buf]
-    exact Entails.refl _
+    rw [vecU8At_eq_header_sep_buf]; dsimp only [vecHeader]
+    bi_entail
 
 theorem optKeyAt_entails_optKeyRecvAt (A : RustAlloc) (b : BitVec 64) (pqrKey : HKDF.Salt) :
     spqrSendKeyAt A b pqrKey ⊢ spqrRecvKeyAt A b pqrKey := by
@@ -300,7 +260,7 @@ theorem chainKeyBytes_split (a : BitVec 64) (ck : ChainKey) :
   unfold chainKeyBytes
   rw [pointsToBytes_append, length_keyToBytes32, leBytes_4_toNat, ← pointsTo32_eq_pointsToBytes]
 
-def boxU8Buf (A : RustAlloc) (ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def boxU8Buf (A : RustAlloc) (ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜ptr ≠ 0 ∧ bs.length < 2 ^ 63⌝ ∗
     (if bs = [] then emp else A.live ptr bs.length 1 ∗ (ptr ↦ₛ bs))
 
@@ -310,7 +270,7 @@ theorem boxU8At_eq_header_sep_buf (A : RustAlloc) (a ptr : BitVec 64) (bs : List
   unfold boxU8At boxU8Buf
   ac_rfl
 
-def optBoxU8Buf (A : RustAlloc) (ptr w0 w1 : BitVec 64) : Option (List (BitVec 8)) → SepProp
+@[expose] def optBoxU8Buf (A : RustAlloc) (ptr w0 w1 : BitVec 64) : Option (List (BitVec 8)) → SepProp
   | none => ⌜w0 = 0#64⌝
   | some bs => ⌜w0 = ptr ∧ w1 = BitVec.ofNat 64 bs.length⌝ ∗ boxU8Buf A ptr bs
 
@@ -320,57 +280,28 @@ theorem optBoxU8At_unpack (A : RustAlloc) (a ptr : BitVec 64) (opt : Option (Lis
         (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) ∗ optBoxU8Buf A ptr w0 w1 opt := by
   cases opt with
   | none =>
-    simp only [optBoxU8At, optBoxU8Buf, memRegion_eight]
-    simp only [sepExists_sepConj_right]
-    refine Entails.sepExists_elim fun w1 => ?_
-    refine Entails.sepExists_right 0#64 (Entails.sepExists_right w1 ?_)
-    have hpull :
-        ((a ↦₆₄ 0#64) ∗ ((a + 8#64) ↦₆₄ w1) ∗ ⌜(0#64 : BitVec 64) = 0#64⌝) =
-        (⌜(0#64 : BitVec 64) = 0#64⌝ ∗ ((a ↦₆₄ 0#64) ∗ ((a + 8#64) ↦₆₄ w1))) := by
-      ac_rfl
-    rw [hpull]
-    exact Entails.pure_right rfl (Entails.refl _)
+    dsimp only [optBoxU8At, optBoxU8Buf]
+    rw [memRegion_eight (a + 8#64)]
+    bi_entail
   | some bs =>
-    simp only [optBoxU8At, optBoxU8Buf, boxU8At_eq_header_sep_buf]
-    refine Entails.sepExists_right ptr (Entails.sepExists_right (BitVec.ofNat 64 bs.length) ?_)
-    have hpull :
-        ((a ↦₆₄ ptr) ∗ ((a + 8#64) ↦₆₄ BitVec.ofNat 64 bs.length) ∗
-          (⌜ptr = ptr ∧ BitVec.ofNat 64 bs.length = BitVec.ofNat 64 bs.length⌝ ∗
-            boxU8Buf A ptr bs)) =
-        (⌜ptr = ptr ∧ BitVec.ofNat 64 bs.length = BitVec.ofNat 64 bs.length⌝ ∗
-          ((a ↦₆₄ ptr) ∗ ((a + 8#64) ↦₆₄ BitVec.ofNat 64 bs.length) ∗ boxU8Buf A ptr bs)) := by
-      ac_rfl
-    rw [hpull]
-    exact Entails.pure_right ⟨rfl, rfl⟩ (Entails.refl _)
+    dsimp only [optBoxU8At, optBoxU8Buf]
+    rw [boxU8At_eq_header_sep_buf]
+    bi_entail
 
 theorem optBoxU8At_pack (A : RustAlloc) (b ptr w0 w1 : BitVec 64) (opt : Option (List (BitVec 8))) :
     ((b ↦₆₄ w0) ∗ ((b + 8#64) ↦₆₄ w1) ∗ optBoxU8Buf A ptr w0 w1 opt) ⊢
       optBoxU8At A b ptr opt := by
   cases opt with
   | none =>
-    simp only [optBoxU8At, optBoxU8Buf]
-    have hpull :
-        ((b ↦₆₄ w0) ∗ ((b + 8#64) ↦₆₄ w1) ∗ ⌜w0 = 0#64⌝) =
-        (⌜w0 = 0#64⌝ ∗ ((b ↦₆₄ w0) ∗ ((b + 8#64) ↦₆₄ w1))) := by
-      ac_rfl
-    rw [hpull]
-    refine Entails.pure_left fun hw0 => ?_
-    subst hw0
-    exact sepConj_mono_right (pointsTo64_entails_memRegion _ _)
+    dsimp only [optBoxU8At, optBoxU8Buf]
+    rw [memRegion_eight (b + 8#64)]
+    bi_entail
   | some bs =>
-    simp only [optBoxU8At, optBoxU8Buf, boxU8At_eq_header_sep_buf]
-    have hpull :
-        ((b ↦₆₄ w0) ∗ ((b + 8#64) ↦₆₄ w1) ∗
-          (⌜w0 = ptr ∧ w1 = BitVec.ofNat 64 bs.length⌝ ∗ boxU8Buf A ptr bs)) =
-        (⌜w0 = ptr ∧ w1 = BitVec.ofNat 64 bs.length⌝ ∗
-          ((b ↦₆₄ w0) ∗ ((b + 8#64) ↦₆₄ w1) ∗ boxU8Buf A ptr bs)) := by
-      ac_rfl
-    rw [hpull]
-    refine Entails.pure_left fun ⟨hw0, hw1⟩ => ?_
-    subst hw0 hw1
-    exact Entails.refl _
+    dsimp only [optBoxU8At, optBoxU8Buf]
+    rw [boxU8At_eq_header_sep_buf]
+    bi_entail
 
-def versionPadProp (v : BitVec 8) (w : BitVec 64) : Prop :=
+@[expose] def versionPadProp (v : BitVec 8) (w : BitVec 64) : Prop :=
   ∃ pad : List (BitVec 8), pad.length = 7 ∧ (v :: pad) = unpack64 w
 
 theorem versionPad_unpack (a : BitVec 64) (v : BitVec 8) :
@@ -396,7 +327,7 @@ theorem versionPad_pack (b : BitVec 64) (v : BitVec 8) (w : BitVec 64) :
   have h := pointsToBytes_entails_memRegion (b + 1#64) pad
   rwa [hpad] at h
 
-def bytes32WordsProp (bs : List (BitVec 8)) (w0 w1 w2 w3 : BitVec 64) : Prop :=
+@[expose] def bytes32WordsProp (bs : List (BitVec 8)) (w0 w1 w2 w3 : BitVec 64) : Prop :=
   bs = unpack64 w0 ++ unpack64 w1 ++ unpack64 w2 ++ unpack64 w3
 
 theorem bytes32_unpack (a : BitVec 64) {bs : List (BitVec 8)} (h : bs.length = 32) :
@@ -420,7 +351,7 @@ theorem bytes32_pack (b : BitVec 64) (bs : List (BitVec 8)) (w0 w1 w2 w3 : BitVe
   simp only [unpack64_length, ← pointsTo64_eq_pointsToBytes, BitVec.add_assoc, BitVec.reduceAdd]
   exact Entails.refl _
 
-def signalMessageWordsAt (g : SignalMessageGhost) (m : SignalMessage) (a : BitVec 64)
+@[expose] def signalMessageWordsAt (g : SignalMessageGhost) (m : SignalMessage) (a : BitVec 64)
     (m7 m8 m9 m10 m11 m12 m14 : BitVec 64) : SepProp :=
   (a ↦₆₄ g.pqCap) ∗
     ((a + 8#64) ↦₆₄ g.pqPtr) ∗ ((a + 16#64) ↦₆₄ BitVec.ofNat 64 m.pqRatchet.length) ∗
@@ -432,7 +363,7 @@ def signalMessageWordsAt (g : SignalMessageGhost) (m : SignalMessage) (a : BitVe
     ((a + 104#64) ↦₆₄ (m.previousCounter ++ m.counter)) ∗
     ((a + 112#64) ↦₆₄ m14)
 
-def signalMessageHeap (A : RustAlloc) (g : SignalMessageGhost) (m : SignalMessage)
+@[expose] def signalMessageHeap (A : RustAlloc) (g : SignalMessageGhost) (m : SignalMessage)
     (m7 m8 m9 m10 m11 m12 m14 : BitVec 64) : SepProp :=
   ⌜macLength + 1 ≤ m.serialized.length ∧ m.serialized.length < 2 ^ 40 ∧
     m.ciphertext.length < 2 ^ 40 ∧ m.pqRatchet.length < 2 ^ 40 ∧
@@ -458,35 +389,26 @@ theorem signalMessageAt_unpack (A : RustAlloc) (g : SignalMessageGhost) (a : Bit
       ∃∗ m11 : BitVec 64, ∃∗ m12 : BitVec 64, ∃∗ m14 : BitVec 64,
         signalMessageWordsAt g m a m7 m8 m9 m10 m11 m12 m14 ∗
         signalMessageHeap A g m m7 m8 m9 m10 m11 m12 m14 := by
-  unfold signalMessageAt
+  unfold signalMessageAt signalMessageWordsAt signalMessageHeap
   rw [vecU8At_eq_header_sep_buf, boxU8At_eq_header_sep_buf, boxU8At_eq_header_sep_buf]
   unfold vecHeader
-  have h68 :
-      (((a + 0x68#64) ↦₃₂ m.counter) ∗ ((a + 0x6c#64) ↦₃₂ m.previousCounter)) =
-      ((a + 104#64) ↦₆₄ (m.previousCounter ++ m.counter)) := by
-    have := pointsTo32_pair (a + 104#64) m.counter m.previousCounter
-    simpa [BitVec.add_assoc, BitVec.reduceAdd] using this
-  have h70 :
-      (((a + 0x70#64) ↦₈ m.messageVersion) ∗ memRegion (a + 0x71#64) 7) ⊢
+  have h68 : (((a + 0x68#64) ↦₃₂ m.counter) ∗ ((a + 0x6c#64) ↦₃₂ m.previousCounter)) =
+      ((a + 104#64) ↦₆₄ (m.previousCounter ++ m.counter)) := by sep_interval_eq
+  have h70 : (((a + 0x70#64) ↦₈ m.messageVersion) ∗ memRegion (a + 0x71#64) 7) ⊢
       ∃∗ m14 : BitVec 64, ⌜versionPadProp m.messageVersion m14⌝ ∗ ((a + 112#64) ↦₆₄ m14) := by
-    have := versionPad_unpack (a + 112#64) m.messageVersion
-    simpa [BitVec.add_assoc, BitVec.reduceAdd] using this
-  have h38 :
-      ((a + 0x38#64) ↦ₛ m.senderRatchetKey.bytes.toList) ⊢
+    simpa [BitVec.add_assoc, BitVec.reduceAdd] using versionPad_unpack (a + 112#64) m.messageVersion
+  have h38 : ((a + 0x38#64) ↦ₛ m.senderRatchetKey.bytes.toList) ⊢
       ∃∗ m7 : BitVec 64, ∃∗ m8 : BitVec 64, ∃∗ m9 : BitVec 64, ∃∗ m10 : BitVec 64,
         ⌜bytes32WordsProp m.senderRatchetKey.bytes.toList m7 m8 m9 m10⌝ ∗
         ((a + 56#64) ↦₆₄ m7) ∗ ((a + 64#64) ↦₆₄ m8) ∗
         ((a + 72#64) ↦₆₄ m9) ∗ ((a + 80#64) ↦₆₄ m10) := by
-    have := bytes32_unpack (a + 56#64) (bs := m.senderRatchetKey.bytes.toList)
-      (List.Vector.toList_length _)
-    simpa [BitVec.add_assoc, BitVec.reduceAdd] using this
-  have h58 :
-      optBoxU8At A (a + 0x58#64) g.addrPtr m.addresses ⊢
+    simpa [BitVec.add_assoc, BitVec.reduceAdd] using
+      bytes32_unpack (a + 56#64) (bs := m.senderRatchetKey.bytes.toList) (List.Vector.toList_length _)
+  have h58 : optBoxU8At A (a + 0x58#64) g.addrPtr m.addresses ⊢
       ∃∗ m11 : BitVec 64, ∃∗ m12 : BitVec 64,
         ((a + 88#64) ↦₆₄ m11) ∗ ((a + 96#64) ↦₆₄ m12) ∗
         optBoxU8Buf A g.addrPtr m11 m12 m.addresses := by
-    have := optBoxU8At_unpack A (a + 88#64) g.addrPtr m.addresses
-    simpa [BitVec.add_assoc, BitVec.reduceAdd] using this
+    simpa [BitVec.add_assoc, BitVec.reduceAdd] using optBoxU8At_unpack A (a + 88#64) g.addrPtr m.addresses
   have h68_70 :
       (((a + 0x68#64) ↦₃₂ m.counter) ∗ ((a + 0x6c#64) ↦₃₂ m.previousCounter) ∗
         ((a + 0x70#64) ↦₈ m.messageVersion) ∗ memRegion (a + 0x71#64) 7) ⊢
@@ -494,75 +416,11 @@ theorem signalMessageAt_unpack (A : RustAlloc) (g : SignalMessageGhost) (a : Bit
         (∃∗ m14 : BitVec 64, ⌜versionPadProp m.messageVersion m14⌝ ∗ ((a + 112#64) ↦₆₄ m14)) := by
     rw [← sepConj_assoc ((a + 0x68#64) ↦₃₂ m.counter), h68]
     exact sepConj_mono_right h70
-  refine Entails.pure_left fun hbnds => ?_
+  refine Entails.pure_left fun ⟨hb1, hb2, hb3, hb4, hb5⟩ => ?_
   refine Entails.trans (sepConj_mono (sepConj_mono_right (vecU8Buf_pqCap_lt A g.pqCap g.pqPtr m.pqRatchet))
     (sepConj_mono (Entails.refl _) (sepConj_mono (Entails.refl _)
       (sepConj_mono h38 (sepConj_mono h58 h68_70))))) ?_
-  simp (config := { maxSteps := 200000 }) only [sepExists_sepConj_left, sepExists_sepConj_right,
-    BitVec.add_assoc, BitVec.reduceAdd]
-  refine Entails.sepExists_elim fun m14 => ?_
-  refine Entails.sepExists_elim fun m11 => ?_
-  refine Entails.sepExists_elim fun m12 => ?_
-  refine Entails.sepExists_elim fun m7 => ?_
-  refine Entails.sepExists_elim fun m8 => ?_
-  refine Entails.sepExists_elim fun m9 => ?_
-  refine Entails.sepExists_elim fun m10 => ?_
-  have hpull1 :
-      (((a ↦₆₄ g.pqCap) ∗ ((a + 8#64) ↦₆₄ g.pqPtr) ∗
-          ((a + 16#64) ↦₆₄ BitVec.ofNat 64 m.pqRatchet.length)) ∗
-        (⌜g.pqCap.toNat < 2 ^ 63⌝ ∗ vecU8Buf A g.pqCap g.pqPtr m.pqRatchet)) =
-      (⌜g.pqCap.toNat < 2 ^ 63⌝ ∗
-        ((a ↦₆₄ g.pqCap) ∗ ((a + 8#64) ↦₆₄ g.pqPtr) ∗
-          ((a + 16#64) ↦₆₄ BitVec.ofNat 64 m.pqRatchet.length) ∗
-          vecU8Buf A g.pqCap g.pqPtr m.pqRatchet)) := by
-    ac_rfl
-  rw [hpull1, sepConj_assoc]
-  refine Entails.pure_left fun hpqCap => ?_
-  refine Entails.sepExists_right m7 (Entails.sepExists_right m8
-    (Entails.sepExists_right m9 (Entails.sepExists_right m10
-      (Entails.sepExists_right m11 (Entails.sepExists_right m12
-        (Entails.sepExists_right m14 ?_))))))
-  refine Entails.pure_right hpqCap ?_
-  unfold signalMessageWordsAt signalMessageHeap
-  have hpull2 :
-      (((a ↦₆₄ g.pqCap) ∗ ((a + 8#64) ↦₆₄ g.pqPtr) ∗
-          ((a + 16#64) ↦₆₄ BitVec.ofNat 64 m.pqRatchet.length) ∗
-          vecU8Buf A g.pqCap g.pqPtr m.pqRatchet) ∗
-        (((a + 24#64) ↦₆₄ g.ctPtr) ∗
-          ((a + 32#64) ↦₆₄ BitVec.ofNat 64 m.ciphertext.length) ∗
-          boxU8Buf A g.ctPtr m.ciphertext) ∗
-        (((a + 40#64) ↦₆₄ g.serPtr) ∗
-          ((a + 48#64) ↦₆₄ BitVec.ofNat 64 m.serialized.length) ∗
-          boxU8Buf A g.serPtr m.serialized) ∗
-        (⌜bytes32WordsProp m.senderRatchetKey.bytes.toList m7 m8 m9 m10⌝ ∗
-          ((a + 56#64) ↦₆₄ m7) ∗ ((a + 64#64) ↦₆₄ m8) ∗
-          ((a + 72#64) ↦₆₄ m9) ∗ ((a + 80#64) ↦₆₄ m10)) ∗
-        (((a + 88#64) ↦₆₄ m11) ∗ ((a + 96#64) ↦₆₄ m12) ∗
-          optBoxU8Buf A g.addrPtr m11 m12 m.addresses) ∗
-        ((a + 104#64) ↦₆₄ (m.previousCounter ++ m.counter)) ∗
-        (⌜versionPadProp m.messageVersion m14⌝ ∗ ((a + 112#64) ↦₆₄ m14))) =
-      (⌜bytes32WordsProp m.senderRatchetKey.bytes.toList m7 m8 m9 m10⌝ ∗
-        ⌜versionPadProp m.messageVersion m14⌝ ∗
-        (((a ↦₆₄ g.pqCap) ∗
-          ((a + 8#64) ↦₆₄ g.pqPtr) ∗ ((a + 16#64) ↦₆₄ BitVec.ofNat 64 m.pqRatchet.length) ∗
-          ((a + 24#64) ↦₆₄ g.ctPtr) ∗ ((a + 32#64) ↦₆₄ BitVec.ofNat 64 m.ciphertext.length) ∗
-          ((a + 40#64) ↦₆₄ g.serPtr) ∗ ((a + 48#64) ↦₆₄ BitVec.ofNat 64 m.serialized.length) ∗
-          ((a + 56#64) ↦₆₄ m7) ∗ ((a + 64#64) ↦₆₄ m8) ∗
-          ((a + 72#64) ↦₆₄ m9) ∗ ((a + 80#64) ↦₆₄ m10) ∗
-          ((a + 88#64) ↦₆₄ m11) ∗ ((a + 96#64) ↦₆₄ m12) ∗
-          ((a + 104#64) ↦₆₄ (m.previousCounter ++ m.counter)) ∗
-          ((a + 112#64) ↦₆₄ m14)) ∗
-        (vecU8Buf A g.pqCap g.pqPtr m.pqRatchet ∗
-          boxU8Buf A g.ctPtr m.ciphertext ∗
-          boxU8Buf A g.serPtr m.serialized ∗
-          optBoxU8Buf A g.addrPtr m11 m12 m.addresses))) := by
-    ac_rfl
-  rw [hpull2]
-  refine Entails.pure_left fun hsrk => ?_
-  refine Entails.pure_left fun hvp => ?_
-  apply sepConj_mono_right
-  exact Entails.pure_right ⟨hbnds.1, hbnds.2.1, hbnds.2.2.1, hbnds.2.2.2.1, hbnds.2.2.2.2,
-    hsrk, hvp⟩ (Entails.refl _)
+  bi_entail
 
 theorem signalMessageAt_pack (A : RustAlloc) (g : SignalMessageGhost) (b : BitVec 64)
     (m : SignalMessage) (m7 m8 m9 m10 m11 m12 m14 : BitVec 64) :
@@ -575,68 +433,29 @@ theorem signalMessageAt_pack (A : RustAlloc) (g : SignalMessageGhost) (b : BitVe
   rw [sepConj_pure_left_comm]
   refine Entails.pure_left fun ⟨hb1, hb2, hb3, hb4, hb5, hsrk, hvp⟩ => ?_
   refine Entails.pure_right ⟨hb1, hb2, hb3, hb4, hb5⟩ ?_
-  have h68 :
-      ((b + 104#64) ↦₆₄ (m.previousCounter ++ m.counter)) =
-      (((b + 0x68#64) ↦₃₂ m.counter) ∗ ((b + 0x6c#64) ↦₃₂ m.previousCounter)) := by
-    have := (pointsTo32_pair (b + 104#64) m.counter m.previousCounter).symm
-    simpa [BitVec.add_assoc, BitVec.reduceAdd] using this
-  have h70 :
-      ((b + 112#64) ↦₆₄ m14) ⊢
+  have h68 : ((b + 104#64) ↦₆₄ (m.previousCounter ++ m.counter)) =
+      (((b + 0x68#64) ↦₃₂ m.counter) ∗ ((b + 0x6c#64) ↦₃₂ m.previousCounter)) := by sep_interval_eq
+  have h70 : ((b + 112#64) ↦₆₄ m14) ⊢
       (((b + 0x70#64) ↦₈ m.messageVersion) ∗ memRegion (b + 0x71#64) 7) := by
-    have := Entails.trans (Entails.pure_right hvp (Entails.refl _))
-      (versionPad_pack (b + 112#64) m.messageVersion m14)
-    simpa [BitVec.add_assoc, BitVec.reduceAdd] using this
-  have h38 :
-      (((b + 56#64) ↦₆₄ m7) ∗ ((b + 64#64) ↦₆₄ m8) ∗
+    simpa [BitVec.add_assoc, BitVec.reduceAdd] using
+      Entails.trans (Entails.pure_right hvp (Entails.refl _)) (versionPad_pack (b + 112#64) m.messageVersion m14)
+  have h38 : (((b + 56#64) ↦₆₄ m7) ∗ ((b + 64#64) ↦₆₄ m8) ∗
         ((b + 72#64) ↦₆₄ m9) ∗ ((b + 80#64) ↦₆₄ m10)) ⊢
       ((b + 0x38#64) ↦ₛ m.senderRatchetKey.bytes.toList) := by
-    have := Entails.trans (Entails.pure_right hsrk (Entails.refl _))
-      (bytes32_pack (b + 56#64) m.senderRatchetKey.bytes.toList m7 m8 m9 m10)
-    simpa [BitVec.add_assoc, BitVec.reduceAdd] using this
-  have h58 :
-      (((b + 88#64) ↦₆₄ m11) ∗ ((b + 96#64) ↦₆₄ m12) ∗
+    simpa [BitVec.add_assoc, BitVec.reduceAdd] using
+      Entails.trans (Entails.pure_right hsrk (Entails.refl _))
+        (bytes32_pack (b + 56#64) m.senderRatchetKey.bytes.toList m7 m8 m9 m10)
+  have h58 : (((b + 88#64) ↦₆₄ m11) ∗ ((b + 96#64) ↦₆₄ m12) ∗
         optBoxU8Buf A g.addrPtr m11 m12 m.addresses) ⊢
       optBoxU8At A (b + 0x58#64) g.addrPtr m.addresses := by
-    have := optBoxU8At_pack A (b + 88#64) g.addrPtr m11 m12 m.addresses
-    simpa [BitVec.add_assoc, BitVec.reduceAdd] using this
-  have hpull :
-      (((b ↦₆₄ g.pqCap) ∗
-        ((b + 8#64) ↦₆₄ g.pqPtr) ∗ ((b + 16#64) ↦₆₄ BitVec.ofNat 64 m.pqRatchet.length) ∗
-        ((b + 24#64) ↦₆₄ g.ctPtr) ∗ ((b + 32#64) ↦₆₄ BitVec.ofNat 64 m.ciphertext.length) ∗
-        ((b + 40#64) ↦₆₄ g.serPtr) ∗ ((b + 48#64) ↦₆₄ BitVec.ofNat 64 m.serialized.length) ∗
-        ((b + 56#64) ↦₆₄ m7) ∗ ((b + 64#64) ↦₆₄ m8) ∗
-        ((b + 72#64) ↦₆₄ m9) ∗ ((b + 80#64) ↦₆₄ m10) ∗
-        ((b + 88#64) ↦₆₄ m11) ∗ ((b + 96#64) ↦₆₄ m12) ∗
-        ((b + 104#64) ↦₆₄ (m.previousCounter ++ m.counter)) ∗
-        ((b + 112#64) ↦₆₄ m14)) ∗
-      (vecU8Buf A g.pqCap g.pqPtr m.pqRatchet ∗
-        boxU8Buf A g.ctPtr m.ciphertext ∗
-        boxU8Buf A g.serPtr m.serialized ∗
-        optBoxU8Buf A g.addrPtr m11 m12 m.addresses)) =
-      ((((b ↦₆₄ g.pqCap) ∗ ((b + 8#64) ↦₆₄ g.pqPtr) ∗
-          ((b + 16#64) ↦₆₄ BitVec.ofNat 64 m.pqRatchet.length)) ∗
-          vecU8Buf A g.pqCap g.pqPtr m.pqRatchet) ∗
-        (((b + 24#64) ↦₆₄ g.ctPtr) ∗
-          ((b + 32#64) ↦₆₄ BitVec.ofNat 64 m.ciphertext.length) ∗
-          boxU8Buf A g.ctPtr m.ciphertext) ∗
-        (((b + 40#64) ↦₆₄ g.serPtr) ∗
-          ((b + 48#64) ↦₆₄ BitVec.ofNat 64 m.serialized.length) ∗
-          boxU8Buf A g.serPtr m.serialized) ∗
-        (((b + 56#64) ↦₆₄ m7) ∗ ((b + 64#64) ↦₆₄ m8) ∗
-          ((b + 72#64) ↦₆₄ m9) ∗ ((b + 80#64) ↦₆₄ m10)) ∗
-        (((b + 88#64) ↦₆₄ m11) ∗ ((b + 96#64) ↦₆₄ m12) ∗
-          optBoxU8Buf A g.addrPtr m11 m12 m.addresses) ∗
-        ((b + 104#64) ↦₆₄ (m.previousCounter ++ m.counter)) ∗
-        ((b + 112#64) ↦₆₄ m14)) := by
-    ac_rfl
-  rw [hpull]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd]
-  exact sepConj_mono (Entails.refl _) (sepConj_mono (Entails.refl _)
-    (sepConj_mono (Entails.refl _) (sepConj_mono h38 (sepConj_mono h58
-      (by rw [h68, sepConj_assoc]; exact sepConj_mono_right (sepConj_mono_right h70))))))
+    simpa [BitVec.add_assoc, BitVec.reduceAdd] using optBoxU8At_pack A (b + 88#64) g.addrPtr m11 m12 m.addresses
+  refine Entails.trans (by bi_entail)
+    (sepConj_mono (Entails.refl _) (sepConj_mono (Entails.refl _)
+      (sepConj_mono (Entails.refl _) (sepConj_mono h38 (sepConj_mono h58
+        (by rw [h68, sepConj_assoc]; exact sepConj_mono_right (sepConj_mono_right h70)))))))
 
 /-- Detached allocation + spare capacity of a `Vec<u8>` when its `(ptr ↦ₛ bs)` slice is borrowed. -/
-def vecU8Spare (A : RustAlloc) (cap ptr : BitVec 64) (len : Nat) : SepProp :=
+@[expose] def vecU8Spare (A : RustAlloc) (cap ptr : BitVec 64) (len : Nat) : SepProp :=
   ⌜len ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗
@@ -648,25 +467,14 @@ theorem vecU8Buf_expose_slice (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (
         (ptr ↦ₛ bs) ∗ vecU8Spare A cap ptr bs.length := by
   unfold vecU8Buf vecU8Spare
   refine Entails.pure_left fun ⟨hlen, hlt, hptr⟩ => ?_
-  refine Entails.pure_right ⟨hlen, hlt, hptr⟩ ?_
   by_cases hcap : cap = 0
   · subst hcap
     have hnil : bs = [] := List.eq_nil_of_length_eq_zero (by simpa using hlen)
     subst hnil
     simp only [↓reduceIte, pointsToBytes_nil, emp_sepConj, List.length_nil]
-    exact Entails.pure_right ⟨Nat.zero_le _, hlt, hptr⟩ (Entails.refl _)
+    bi_entail
   · simp only [hcap, ↓reduceIte]
-    have hpull :
-        ((ptr ↦ₛ bs) ∗
-          (⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
-            (A.live ptr cap.toNat 1 ∗
-              memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)))) =
-        (⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
-          (A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
-            memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length))) := by
-      ac_rfl
-    rw [hpull]
-    exact Entails.pure_right ⟨hlen, hlt, hptr⟩ (Entails.refl _)
+    bi_entail
 
 theorem vecU8Spare_dealloc (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) :
     ((ptr ↦ₛ bs) ∗ vecU8Spare A cap ptr bs.length) ⊢
@@ -675,28 +483,20 @@ theorem vecU8Spare_dealloc (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (Bit
   unfold vecU8Spare
   rw [sepConj_pure_left_comm]
   refine Entails.pure_left fun ⟨hlen, hlt, hptr⟩ => ?_
-  refine Entails.pure_right ⟨hlen, hlt, hptr⟩ ?_
   by_cases hcap : cap = 0
   · subst hcap
     have hnil : bs = [] := List.eq_nil_of_length_eq_zero (by simpa using hlen)
     subst hnil
     simp only [↓reduceIte, pointsToBytes_nil, emp_sepConj]
-    exact Entails.refl _
+    bi_entail
   · simp only [hcap, ↓reduceIte]
-    have hpull :
-        ((ptr ↦ₛ bs) ∗
-          (A.live ptr cap.toNat 1 ∗
-            memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length))) =
-        (A.live ptr cap.toNat 1 ∗
-          ((ptr ↦ₛ bs) ∗
-            memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length))) := by
-      ac_rfl
-    rw [hpull]
-    apply sepConj_mono_right
-    have hsplit : cap.toNat = bs.length + (cap.toNat - bs.length) := by omega
-    conv => rhs; rw [hsplit, memRegion_split ptr bs.length (cap.toNat - bs.length) (by omega)]
-    exact sepConj_mono_left (pointsToBytes_entails_memRegion ptr bs)
-
+    have hsplit : memRegion ptr cap.toNat =
+        memRegion ptr bs.length ∗ memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length) := by
+      conv => lhs; rw [show cap.toNat = bs.length + (cap.toNat - bs.length) by omega]
+      exact memRegion_split ptr bs.length (cap.toNat - bs.length) (by omega)
+    rw [hsplit, ← sepConj_assoc, sepConj_comm (ptr ↦ₛ bs), sepConj_assoc]
+    exact Entails.pure_right ⟨hlen, hlt, hptr⟩
+      (sepConj_mono_right (sepConj_mono_left (pointsToBytes_entails_memRegion ptr bs)))
 
 theorem chainKeyBytes_unpack (a : BitVec 64) (ck : ChainKey) :
     (a ↦ₛ chainKeyBytes ck) ⊢
@@ -705,15 +505,7 @@ theorem chainKeyBytes_unpack (a : BitVec 64) (ck : ChainKey) :
           (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) ∗ ((a + 16#64) ↦₆₄ w2) ∗
           ((a + 24#64) ↦₆₄ w3) ∗ ((a + 32#64) ↦₃₂ ck.index) := by
   rw [chainKeyBytes_split]
-  have h32 := bytes32_unpack a (length_keyToBytes32 ck.key)
-  refine Entails.trans (sepConj_mono_left h32) ?_
-  simp only [sepExists_sepConj_left]
-  refine Entails.sepExists_elim fun w0 => Entails.sepExists_elim fun w1 =>
-    Entails.sepExists_elim fun w2 => Entails.sepExists_elim fun w3 => ?_
-  refine Entails.sepExists_right w0 (Entails.sepExists_right w1
-    (Entails.sepExists_right w2 (Entails.sepExists_right w3 ?_)))
-  simp only [sepConj_assoc]
-  exact Entails.refl _
+  refine Entails.trans (sepConj_mono_left (bytes32_unpack a (length_keyToBytes32 ck.key))) (by bi_entail)
 
 theorem chainKeyBytes_pack (b : BitVec 64) (ck : ChainKey) (w0 w1 w2 w3 : BitVec 64) :
     (⌜bytes32WordsProp (keyToBytes32 ck.key) w0 w1 w2 w3⌝ ∗
@@ -721,45 +513,22 @@ theorem chainKeyBytes_pack (b : BitVec 64) (ck : ChainKey) (w0 w1 w2 w3 : BitVec
       ((b + 24#64) ↦₆₄ w3) ∗ ((b + 32#64) ↦₃₂ ck.index)) ⊢
     (b ↦ₛ chainKeyBytes ck) := by
   rw [chainKeyBytes_split]
-  have hpull :
-      (⌜bytes32WordsProp (keyToBytes32 ck.key) w0 w1 w2 w3⌝ ∗
-        (b ↦₆₄ w0) ∗ ((b + 8#64) ↦₆₄ w1) ∗ ((b + 16#64) ↦₆₄ w2) ∗
-        ((b + 24#64) ↦₆₄ w3) ∗ ((b + 32#64) ↦₃₂ ck.index)) =
-      ((⌜bytes32WordsProp (keyToBytes32 ck.key) w0 w1 w2 w3⌝ ∗
-        (b ↦₆₄ w0) ∗ ((b + 8#64) ↦₆₄ w1) ∗ ((b + 16#64) ↦₆₄ w2) ∗
-        ((b + 24#64) ↦₆₄ w3)) ∗ ((b + 32#64) ↦₃₂ ck.index)) := by
-    ac_rfl
-  rw [hpull]
-  exact sepConj_mono_left (bytes32_pack b (keyToBytes32 ck.key) w0 w1 w2 w3)
+  refine Entails.trans (by bi_entail)
+    (sepConj_mono_left (bytes32_pack b (keyToBytes32 ck.key) w0 w1 w2 w3))
 
 theorem messageKeysAt_entails_memRegion (r : BitVec 64) (mk : MessageKeys) :
     messageKeysAt r mk ⊢ memRegion r 84 := by
   unfold messageKeysAt
-  have h0 : (r ↦ₛ keyToBytes32 mk.cipherKey) ⊢ memRegion r 32 := by
-    have h := pointsToBytes_entails_memRegion r (keyToBytes32 mk.cipherKey)
-    rwa [length_keyToBytes32] at h
-  have h1 : ((r + 0x20#64) ↦ₛ keyToBytes32 mk.macKey) ⊢ memRegion (r + 32#64) 32 := by
-    have h := pointsToBytes_entails_memRegion (r + 0x20#64) (keyToBytes32 mk.macKey)
-    rwa [length_keyToBytes32] at h
-  have h2 : ((r + 0x40#64) ↦ₛ CBC.blockToBytesLE mk.iv) ⊢ memRegion (r + 64#64) 16 := by
-    have h := pointsToBytes_entails_memRegion (r + 0x40#64) (CBC.blockToBytesLE mk.iv)
-    rwa [blockToBytesLE_length] at h
-  have h3 : ((r + 0x50#64) ↦₃₂ mk.counter) ⊢ memRegion (r + 80#64) 4 :=
-    pointsTo32_entails_memRegion (r + 80#64) mk.counter
-  refine Entails.trans (sepConj_mono h0 (sepConj_mono h1 (sepConj_mono h2 h3))) ?_
-  have hrhs : memRegion r 84 =
-      memRegion r 32 ∗ memRegion (r + 32#64) 32 ∗
-        memRegion (r + 64#64) 16 ∗ memRegion (r + 80#64) 4 := by
-    rw [memRegion_split r 32 52 (by decide), mr_cut_add r 32 32 20 (by decide),
-      mr_cut_add r 64 16 4 (by decide)]
-  rw [hrhs]
-  exact Entails.refl _
+  have := length_keyToBytes32 mk.cipherKey
+  have := length_keyToBytes32 mk.macKey
+  have := blockToBytesLE_length mk.iv
+  sep_interval
 
 /-! ## Relocatable `[LibsignalPlacement]` Specifications (`otrEncryptPlacedSpec`) -/
 
 /-- Relocatable `[LibsignalPlacement]` specification of `OTR::encrypt` (Blocks `125` and `544`)
 with arbitrary spatial frame `F`. -/
-def otrEncryptPlacedSpecF [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def otrEncryptPlacedSpecF [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) (F : SepProp) : Spec OtrEncryptGhost where
   pre := fun x s =>
     F ∗
@@ -785,7 +554,7 @@ def otrEncryptPlacedSpecF [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl
       anyHeap
 
 /-- Relocatable `[LibsignalPlacement]` specification of `OTR::encrypt` (Blocks `125` and `544`). -/
-def otrEncryptPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def otrEncryptPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) : Spec OtrEncryptGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.o ∧ s.readReg64 .x2 = x.ptA ∧

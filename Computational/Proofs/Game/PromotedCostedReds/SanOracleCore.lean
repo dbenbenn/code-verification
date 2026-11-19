@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.Ratchet.LibsignalSimDF
+public import Computational.Proofs.ReductionDsl.Ratchet.LibsignalSimDF -- proof-setup: allow-public-import
 
 /-!
 # Read-Time Sanitized and Clamped Semantic Hooks
@@ -20,7 +20,7 @@ sanitized semantic hooks (`semHandleHookDedupS`) generic over `SemHook`, and pro
 preservation.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,13 +45,13 @@ section Sanitizer
 
 variable {Pt : Type} {ℓ : ℕ}
 
-def sanRS (T : ℕ) (v : CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256)) :
+@[expose] def sanRS (T : ℕ) (v : CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256)) :
     CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256) :=
   { v with skippedKeys := v.skippedKeys.take T }
 
 /-- Enforces the ping-pong CKA state shape (`.pub` before a sending epoch, `.exp` before a
 receiving epoch); acts as the identity under `Fig8CkaInv`. -/
-def sanGamma (lam : Pt) (st : Fig8St Pt) : CryptoGames.CKA.DDH.State (BitVec 256) Pt :=
+@[expose] def sanGamma (lam : Pt) (st : Fig8St Pt) : CryptoGames.CKA.DDH.State (BitVec 256) Pt :=
   if st.id.sendsIn (st.tcur + 1) then
     match st.γ with
     | .pub h => .pub h
@@ -62,24 +62,24 @@ def sanGamma (lam : Pt) (st : Fig8St Pt) : CryptoGames.CKA.DDH.State (BitVec 256
     | .pub _ => .exp 0
 
 /-- Truncates the receiving session at epoch `t` to `T` skipped keys and fixes `st.γ` via `sanGamma`. -/
-def sanAt (T : ℕ) (lam : Pt) (t : ℕ) (st : Fig8St Pt) : Fig8St Pt :=
+@[expose] def sanAt (T : ℕ) (lam : Pt) (t : ℕ) (st : Fig8St Pt) : Fig8St Pt :=
   { st with
     vR := fun j => if j = t then (st.vR t).map (sanRS T) else st.vR j
     γ := sanGamma lam st }
 
-def fig8San {Key M Coins : Type} (T : ℕ) (lam : Pt)
+@[expose] def fig8San {Key M Coins : Type} (T : ℕ) (lam : Pt)
     (fig : SMScheme Key (Fig8St Pt) M Coins (Fig8C Pt)) :
     SMScheme Key (Fig8St Pt) M Coins (Fig8C Pt) :=
   { fig with receive := fun st c => fig.receive (sanAt T lam c.1.1 st) c }
 
-def fsSan {SS AD M C : Type} (T : ℕ)
+@[expose] def fsSan {SS AD M C : Type} (T : ℕ)
     (fs : FSAEADScheme (BitVec 256) SS
       (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256)) AD M C) :
     FSAEADScheme (BitVec 256) SS
       (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256)) AD M C :=
   { fs with receive := fun v h c => fs.receive (sanRS T v) h c }
 
-def fig8StTruncSkB (B_skip : ℕ) (st : Fig8St Pt) : Fig8St Pt :=
+@[expose] def fig8StTruncSkB (B_skip : ℕ) (st : Fig8St Pt) : Fig8St Pt :=
   { st with
     vR := fun t => (st.vR t).map fun v => { v with skippedKeys := v.skippedKeys.take B_skip } }
 
@@ -90,11 +90,11 @@ end Sanitizer
 section ClampedSeeds
 
 /-- `chainSeedAt` clamped to return `none` when more than `K` chain steps are needed. -/
-def chainSeedAtB (K : ℕ) (F : ShaCompress) (ck : CryptoGames.LibsignalSession.ChainKey) (counter : BitVec 32) :
+@[expose] def chainSeedAtB (K : ℕ) (F : ShaCompress) (ck : CryptoGames.LibsignalSession.ChainKey) (counter : BitVec 32) :
     Option (List (BitVec 8)) :=
   if K < counter.toNat - ck.index.toNat then none else chainSeedAt F ck counter
 
-def snapshotMessageKeySeedB {PQ PQC : Type} (K : ℕ) (P : Params PQ PQC)
+@[expose] def snapshotMessageKeySeedB {PQ PQC : Type} (K : ℕ) (P : Params PQ PQC)
     (snaps : List (Party × ℕ × GhostState PQ))
     (Q : Party) (t : ℕ) (w : List (BitVec 8)) : Option (List (BitVec 8)) :=
   match CryptoGames.LibsignalSession.SignalMessage.tryFrom P.codec w with
@@ -166,14 +166,14 @@ abbrev fsS (T : ℕ) :
       (Header Pt) (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32) :=
   fsSan T (lFS P.C P.codec ℓ encT (fun R => if R == CryptoGames.Party.A then P.idA else P.idB) 25000)
 
-def evalCKS (T K B : ℕ) (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (Q : Party)
+@[expose] def evalCKS (T K B : ℕ) (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (Q : Party)
     (w : List (BitVec 8)) (c c' : SimFig8C Pt) :
     Option (Option (ℕ × ℕ × (LibsignalMsgPublicPart × Plain ℓ))) :=
   (predictReceive (fig := fig8Clamp B (figS P Dh encPt encT lam T))
       (fs := fsClampSim B (fsS P encT T)) sC Q c c').orElse fun _ =>
     (snapshotMessageKeySeedB K P sC.snaps Q c.1.1 w).map (simKDecryptFig8 P ℓ B (partyEnc Q) w c')
 
-def semFwdAnswerHookS {ι : Type} {T' : OracleSpec ι} {Ex : Type}
+@[expose] def semFwdAnswerHookS {ι : Type} {T' : OracleSpec ι} {Ex : Type}
     (T : ℕ) (sh : SemHook PQC Pt ℓ T' Ex) (qep : ℕ)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (ex : Ex)
     (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (ci? : Option ℕ)
@@ -192,7 +192,7 @@ def semFwdAnswerHookS {ι : Type} {T' : OracleSpec ι} {Ex : Type}
     let (rr, base') := onAnswerPure qep Q w isDel ci? Tpk pq' res sC.base
     pure (rr, ({ sC₂ with base := base' }, ex₁))
 
-def semResyncHookS {ι : Type} {T' : OracleSpec ι} {Ex : Type}
+@[expose] def semResyncHookS {ι : Type} {T' : OracleSpec ι} {Ex : Type}
     (T : ℕ) (sh : SemHook PQC Pt ℓ T' Ex) (qep : ℕ)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (ex : Ex)
     (Q : Party) (w : List (BitVec 8)) (ci? : Option ℕ)
@@ -214,7 +214,7 @@ def semResyncHookS {ι : Type} {T' : OracleSpec ι} {Ex : Type}
       return (rr, ({ sC₅ with base := base' }, ex₁))
     | _ => return (some .rejected, (sC, ex₁))
 
-def semFwdEvictHookS {ι : Type} {T' : OracleSpec ι} {Ex : Type}
+@[expose] def semFwdEvictHookS {ι : Type} {T' : OracleSpec ι} {Ex : Type}
     (T : ℕ) (sh : SemHook PQC Pt ℓ T' Ex) (qep : ℕ)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (ex : Ex)
     (Q : Party) (w : List (BitVec 8)) (isDel : Bool)
@@ -226,7 +226,7 @@ def semFwdEvictHookS {ι : Type} {T' : OracleSpec ι} {Ex : Type}
   else
     semFwdAnswerHookS P Dh encPt encT lam T sh qep sC ex Q w isDel none Tpk pq' c'
 
-def semFwdHookS {ι : Type} {T' : OracleSpec ι} {Ex : Type}
+@[expose] def semFwdHookS {ι : Type} {T' : OracleSpec ι} {Ex : Type}
     (T K : ℕ) (sh : SemHook PQC Pt ℓ T' Ex) (qep B : ℕ)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (ex : Ex)
     (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (ci? : Option ℕ)
@@ -246,7 +246,7 @@ def semFwdHookS {ι : Type} {T' : OracleSpec ι} {Ex : Type}
     else
       semFwdAnswerHookS P Dh encPt encT lam T sh qep sC ex Q w isDel ci? Tpk pq' c'
 
-def semRecvHookS {ι : Type} {T' : OracleSpec ι} {Ex : Type}
+@[expose] def semRecvHookS {ι : Type} {T' : OracleSpec ι} {Ex : Type}
     (T K : ℕ) (sh : SemHook PQC Pt ℓ T' Ex) (qep B : ℕ)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (ex : Ex)
     (Q : Party) (w : List (BitVec 8)) (isDel : Bool) :
@@ -302,7 +302,7 @@ def semRecvHookS {ι : Type} {T' : OracleSpec ι} {Ex : Type}
 
 /-- Deduplicated corruption hook passing `fig8StTruncSkB B_skip fig8st` to `toGhost` while storing
 the untruncated `fig8st` in `Kept.ofSt`. -/
-def semCorrHookTGB {ι : Type} {T' : OracleSpec ι} {Ex : Type}
+@[expose] def semCorrHookTGB {ι : Type} {T' : OracleSpec ι} {Ex : Type}
     (sh : SemHook PQC Pt ℓ T' Ex) (B_skip : ℕ)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (ex : Ex) (Q : Party) :
     OracleComp T' (Option (GhostState PQ) × (LibsignalToModularSchemeSimState PQ Pt ℓ × Ex)) := do
@@ -332,7 +332,7 @@ def semCorrHookTGB {ι : Type} {T' : OracleSpec ι} {Ex : Type}
           snaps := (Q, sC.base.mir.epoch Q, ghostOut) :: sC.snaps }
       return (some ghostOut, (sC', ex₁))
 
-def semHandleHookDedupS {ι : Type} {T' : OracleSpec ι} {Ex : Type}
+@[expose] def semHandleHookDedupS {ι : Type} {T' : OracleSpec ι} {Ex : Type}
     (T K B_skip : ℕ) (sh : SemHook PQC Pt ℓ T' Ex) (qep B : ℕ)
     (t : (CryptoGames.SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))).Domain)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (ex : Ex) :

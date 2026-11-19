@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpers
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve
-public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpers
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpers -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyPop
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Frame, Unpack/Pack, and Return-Tail Helpers for `<spqr::chain::Chain>::recv_key`
@@ -25,7 +25,7 @@ and epilogue / `Ok` / `Err` return-tail lemmas (`+248`, `+708`, `+884`, `+880`, 
 for `<spqr::chain::Chain>::recv_key` (`0x608d0`, Block `366`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ChainProofs
 
@@ -38,11 +38,6 @@ open CryptoVerification.SpqrV1.Alloc
 open CryptoVerification.CodeLayout
 open ChainAddEpochFacts ChainNewFacts NextKeyInternalFacts ChainSendKeyFacts
 
-namespace RecvKeyDecodes
-gen_decodes libsignalSessionCode_tree libsignalSessionBin [0x5b4d8 → 0x5b9b8]
-end RecvKeyDecodes
-open RecvKeyDecodes
-
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
@@ -53,54 +48,6 @@ set_option linter.unusedTactic false
 abbrev sliceIndexFailSymName : String := "core::slice::index::slice_index_fail"
 abbrev panicSubOverflowSymName : String := "core::panicking::panic_const::panic_const_sub_overflow"
 abbrev expectFailedSymName : String := "core::option::expect_failed"
-
-theorem chainRecvKey_fnOff : libsignalSessionCode.fnOff chainRecvKeyName = 0x5b4d8 :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl) libsignalSessionCode_fnOff_0x5b4d8
-
-theorem doReserve7_fnOff : libsignalSessionCode.fnOff doReserve7Name = 0x4dca8 :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl) libsignalSessionCode_fnOff_0x4dca8
-
-theorem sliceIndexFail_fnOff : libsignalSessionCode.fnOff sliceIndexFailSymName =
-    num% (ls_off% "core::slice::index::slice_index_fail") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl) (ls_stub% "core::slice::index::slice_index_fail")
-
-theorem panicSubOverflow_fnOff : libsignalSessionCode.fnOff panicSubOverflowSymName =
-    num% (ls_off% "core::panicking::panic_const::panic_const_sub_overflow") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl)
-    (ls_stub% "core::panicking::panic_const::panic_const_sub_overflow")
-
-theorem expectFailed_fnOff : libsignalSessionCode.fnOff expectFailedSymName =
-    num% (ls_off% "core::option::expect_failed") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl) (ls_stub% "core::option::expect_failed")
-
-ls_attribute [local simp, local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
-  nextKeyInternal_fnOff chainRecvKey_fnOff doReserve7_fnOff
-  shim_fnOff alloc_fnOff dealloc_fnOff handleError_fnOff
-  panicAddOverflow_fnOff panicSubOverflow_fnOff
-  corePanic_fnOff assertFailedUsize_fnOff expectFailed_fnOff sliceIndexFail_fnOff
-  libsignalSessionCode_fnOff_0x5a99c
-  libsignalSessionCode_fnOff_0x4dca8
-  libsignalSessionCode_fnOff_0x5b4d8
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_hook% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_hook% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_hook% "__rustc::__rust_dealloc")
-  (ls_stub% "alloc::raw_vec::handle_error")
-  (ls_hook% "alloc::raw_vec::handle_error")
-  (ls_stub% "core::panicking::panic_const::panic_const_add_overflow")
-  (ls_hook% "core::panicking::panic_const::panic_const_add_overflow")
-  (ls_stub% "core::panicking::panic_const::panic_const_sub_overflow")
-  (ls_hook% "core::panicking::panic_const::panic_const_sub_overflow")
-  (ls_stub% "core::panicking::assert_failed::<usize, usize>")
-  (ls_hook% "core::panicking::assert_failed::<usize, usize>")
-  (ls_stub% "core::panicking::panic")
-  (ls_hook% "core::panicking::panic")
-  (ls_stub% "core::option::expect_failed")
-  (ls_hook% "core::option::expect_failed")
-  (ls_stub% "core::slice::index::slice_index_fail")
-  (ls_hook% "core::slice::index::slice_index_fail")
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
@@ -349,7 +296,7 @@ theorem memRegion_32_ok_split (out : BitVec 64) :
     ProofLib.memRegion_eight (out + 24#64)]
 
 /-- Saved callee-saved registers on the `recv_key` stack frame (`sp0 - 80` .. `sp0 - 8`). -/
-def calleeSavedRecvKeyAt (sp0 : BitVec 64) (s0 : State) (c3 : BitVec 64) : SepProp :=
+@[expose] def calleeSavedRecvKeyAt (sp0 : BitVec 64) (s0 : State) (c3 : BitVec 64) : SepProp :=
   ((sp0 - 80#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((sp0 - 72#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((sp0 - 64#64) ↦₆₄ s0.readReg64 .x25) ∗
@@ -742,30 +689,10 @@ abbrev recvKeyPanic (hkdf : HkdfFn) (A : RustAlloc) (x : ChainRecvKeyGhost) (s0 
 
 /-- Untouched portions of the 128-byte `recv_key` stack frame (`[sp, #0x0..#0x8)`,
 `[sp, #0x2c..#0x30)`, and saved registers `[sp, #0x30..#0x80)`). -/
-def recvKeyFrameRestAt (s0 : State) (c3 : BitVec 64) : SepProp :=
+@[expose] def recvKeyFrameRestAt (s0 : State) (c3 : BitVec 64) : SepProp :=
   memRegion (s0.sp - 128#64) 8 ∗
     memRegion (s0.sp - 84#64) 4 ∗
     calleeSavedRecvKeyAt s0.sp s0 c3
-
-/-- State invariant across the body of `<spqr::chain::Chain>::recv_key` after frame allocation
-(`sp = s0.sp - 128#64`). -/
-structure RecvKeyStateInv (img : Obj.Image) (s0 s : State) : Prop where
-  hF : ImgCallInv img s
-  hrun : s.status = .Running
-  hsp : s.sp = s0.sp - 128#64
-  hsp0_align : s0.spAligned = true
-  hx26 : s.readReg64 (.gpr 26#5) = s0.readReg64 (.gpr 26#5)
-  hx27 : s.readReg64 (.gpr 27#5) = s0.readReg64 (.gpr 27#5)
-  hx28 : s.readReg64 (.gpr 28#5) = s0.readReg64 (.gpr 28#5)
-  htrace : s.trace = s0.trace
-  hvregs : calleeSavedVRegs s = calleeSavedVRegs s0
-
-theorem RecvKeyStateInv.spAligned {img : Obj.Image} {s0 s : State}
-    (h : RecvKeyStateInv img s0 s) : s.spAligned = true := by
-  have h0 := h.hsp0_align
-  have hsp := h.hsp
-  simp only [State.spAligned, hsp] at h0 ⊢
-  revert h0; bv_kernel
 
 theorem allowPanic_recvKey_oom {hkdf : HkdfFn} {A : RustAlloc}
     {x : ChainRecvKeyGhost} {s0 sf : State} {P R : SepProp}
@@ -789,369 +716,6 @@ theorem SepWPp.mono_pre {prog : Program} {target_pc : BitVec 64} {s : State}
     (h : P ⊢ P') (hwp : SepWPp prog target_pc s P' post panic) :
     SepWPp prog target_pc s P post panic :=
   fun R' hm hL => hwp R' (Satisfies.mono (sepConj_mono_left h) hm) hL
-
-/-- Epilogue of `recv_key` at `+248` (`0x609c8 .. 0x609e0`): restores `x19..x25, x29, x30`,
-deallocates the 128-byte frame (`add sp, sp, #0x80`), and returns to `s0.readReg64 .x30`. -/
-theorem recvKey_epilogue {img : Obj.Image} {hkdf : HkdfFn} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (x : ChainRecvKeyGhost) (s0 : State) (c3 : BitVec 64) {R : SepProp}
-    (s : State) (hinv : RecvKeyStateInv img s0 s)
-    (hpc : s.pc = (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr chainRecvKeyName + 248#64) :
-    let prog := libsignalSessionCode.rebase img.base (Rust.withPanics ext)
-    SepWPp prog (s0.readReg64 (.gpr 30#5)) s
-      (stackAt (s0.sp - 128#64) nextKeyInternalStackX ∗
-        memRegion (s0.sp - 120#64) 36 ∗
-        recvKeyFrameRestAt s0 c3 ∗
-        recvKeyPostAt A x.selfPtr x.out x.self (Chain.recvKey hkdf x.self x.epoch x.index) ∗
-        A.pool)
-      (recvKeyPost hkdf A x s0)
-      (recvKeyPanic hkdf A x s0 R) := by
-  intro prog
-  have hfn : libsignalSessionCode.fnOff chainRecvKeyName = 0x5b4d8 := chainRecvKey_fnOff
-  code_fetches libsignalSessionCode libsignalSessionBin img.base
-    (Rust.withPanics ext) hfn 0x5b4d8 1248
-  clear hfn
-  dsimp only [prog] at *
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr
-      chainRecvKeyName = entry_addr
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)) = prog_val
-    reverting [Program.fetch, Program.externAt?, subroutine_ok, SepWPp]
-  examples_hide_fetches
-  have hsp_align := hinv.spAligned
-  rcases hinv with ⟨hF, hrun, hsp, hsp0_align, hx26, hx27, hx28, htrace, hvregs⟩
-  unfold recvKeyFrameRestAt calleeSavedRecvKeyAt
-  wp_norm_hyp hsp_align
-  wp_norm_hyp hsp
-  wp_norm_hyp hx26
-  wp_norm_hyp hx27
-  wp_norm_hyp hx28
-  wp_norm_hyp htrace
-  wp_norm_hyp hvregs
-  apply SepWPp.of_sepWP_ret
-  wp_steps
-  refine SepWP.fold (rejoin_stack_chainRecvKeyX s0.sp
-    (s0.readReg64 .x29) (s0.readReg64 .x30) (s0.readReg64 .x25) c3
-    (s0.readReg64 .x24) (s0.readReg64 .x23) (s0.readReg64 .x22) (s0.readReg64 .x21)
-    (s0.readReg64 .x20) (s0.readReg64 .x19)) (by sep_focus) ?_
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-  refine ⟨by wp_norm_goal, by unfold CalleeSavedPreserved; wp_norm_goal, ?_⟩
-  dsimp only [chainRecvKeySpecX]
-  refine Entails.pure_right (by wp_norm_goal) ?_
-  sep_frame
-
-/-- `Ok(outKey)` return tail at `+708` (`0x60b94` -> `+56` -> `+248`):
-stores `(0#64, 32#64, p_key, 32#64)` into `x.out` (`x19`) and jumps to the epilogue. -/
-theorem recvKey_ok_from_708 {img : Obj.Image} {hkdf : HkdfFn} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (x : ChainRecvKeyGhost) (s0 : State) (c3 : BitVec 64) {R : SepProp}
-    (self' : Chain) (outKey : Bytes) (p_key : BitVec 64)
-    (hp_key : p_key ≠ 0#64) (hlen_key : outKey.length = 32)
-    (hres : Chain.recvKey hkdf x.self x.epoch x.index = .ok (self', outKey))
-    (s : State) (hinv : RecvKeyStateInv img s0 s)
-    (hpc : s.pc = (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr chainRecvKeyName + 708#64)
-    (hx0 : s.readReg64 (.gpr 0#5) = p_key)
-    (hx19 : s.readReg64 (.gpr 19#5) = x.out) :
-    let prog := libsignalSessionCode.rebase img.base (Rust.withPanics ext)
-    SepWPp prog (s0.readReg64 (.gpr 30#5)) s
-      (memRegion x.out 32 ∗
-        A.live p_key 32 1 ∗ (p_key ↦ₛ outKey) ∗
-        chainRepr A x.selfPtr self' ∗
-        stackAt (s0.sp - 128#64) nextKeyInternalStackX ∗
-        memRegion (s0.sp - 120#64) 36 ∗
-        recvKeyFrameRestAt s0 c3 ∗
-        A.pool)
-      (recvKeyPost hkdf A x s0)
-      (recvKeyPanic hkdf A x s0 R) := by
-  intro prog
-  have hfn : libsignalSessionCode.fnOff chainRecvKeyName = 0x5b4d8 := chainRecvKey_fnOff
-  code_fetches libsignalSessionCode libsignalSessionBin img.base
-    (Rust.withPanics ext) hfn 0x5b4d8 1248
-  clear hfn
-  have h_epi := @recvKey_epilogue img hkdf A ext x s0 c3 R
-  dsimp only [prog] at *
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr
-      chainRecvKeyName = entry_addr
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)) = prog_val
-    reverting [Program.fetch, Program.externAt?, subroutine_ok, SepWPp]
-  examples_hide_fetches
-  have hsp_align := hinv.spAligned
-  rcases hinv with ⟨hF, hrun, hsp, hsp0_align, hx26, hx27, hx28, htrace, hvregs⟩
-  rw [memRegion_32_ok_split x.out]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  apply SepWPp.exists_elim; intro v0
-  apply SepWPp.exists_elim; intro v8
-  apply SepWPp.exists_elim; intro v16
-  apply SepWPp.exists_elim; intro v24
-  wp_norm_hyp hrun
-  wp_norm_hyp hsp_align
-  wp_norm_hyp hsp
-  wp_norm_hyp hx0
-  wp_norm_hyp hx19
-  refine SepWPp.of_sepWP_inImage (mid := entry_addr + 248#64) hF ?_
-  wp_steps
-  refine SepWP.fold (recvKeyOkAt_alloc_intro A x.out p_key outKey hp_key hlen_key) (by sep_focus) ?_
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-  intro hF'
-  have hinv' : RecvKeyStateInv img s0 _ :=
-    ⟨hF', by wp_norm_goal, by wp_norm_goal, hsp0_align,
-     by rw [← hx26]; wp_norm_goal,
-     by rw [← hx27]; wp_norm_goal,
-     by rw [← hx28]; wp_norm_goal,
-     htrace,
-     by rw [← hvregs]; wp_norm_goal⟩
-  refine SepWPp.mono_pre _ ?_ (h_epi _ hinv' (by wp_norm_goal))
-  rw [hres]; dsimp only [recvKeyPostAt]; sep_frame
-
-/-- `Err(Error::KeyTrimmed(index))` return tail at `+884` (`0x60c44` -> `+236` -> `+248`)
-when `(w8 : BitVec 8) = 10#8`. -/
-theorem recvKey_err_keyTrimmed_from_884 {img : Obj.Image} {hkdf : HkdfFn} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (x : ChainRecvKeyGhost) (s0 : State) (c3 : BitVec 64) {R : SepProp}
-    (hres : Chain.recvKey hkdf x.self x.epoch x.index = .error (.err (.keyTrimmed x.index)))
-    (s : State) (hinv : RecvKeyStateInv img s0 s)
-    (hpc : s.pc = (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr chainRecvKeyName + 884#64)
-    (hw8 : (s.readReg64 (.gpr 8#5)).setWidth 8 = 10#8)
-    (hx19 : s.readReg64 (.gpr 19#5) = x.out)
-    (hw20 : (s.readReg64 (.gpr 20#5)).setWidth 32 = x.index) :
-    let prog := libsignalSessionCode.rebase img.base (Rust.withPanics ext)
-    SepWPp prog (s0.readReg64 (.gpr 30#5)) s
-      (memRegion x.out 32 ∗
-        chainRepr A x.selfPtr x.self ∗
-        stackAt (s0.sp - 128#64) nextKeyInternalStackX ∗
-        memRegion (s0.sp - 120#64) 36 ∗
-        recvKeyFrameRestAt s0 c3 ∗
-        A.pool)
-      (recvKeyPost hkdf A x s0)
-      (recvKeyPanic hkdf A x s0 R) := by
-  intro prog
-  have hfn : libsignalSessionCode.fnOff chainRecvKeyName = 0x5b4d8 := chainRecvKey_fnOff
-  code_fetches libsignalSessionCode libsignalSessionBin img.base
-    (Rust.withPanics ext) hfn 0x5b4d8 1248
-  clear hfn
-  have h_epi := @recvKey_epilogue img hkdf A ext x s0 c3 R
-  dsimp only [prog] at *
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr
-      chainRecvKeyName = entry_addr
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)) = prog_val
-    reverting [Program.fetch, Program.externAt?, subroutine_ok, SepWPp]
-  examples_hide_fetches
-  have hsp_align := hinv.spAligned
-  rcases hinv with ⟨hF, hrun, hsp, hsp0_align, hx26, hx27, hx28, htrace, hvregs⟩
-  rw [memRegion_32_err_u32_split x.out]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  apply SepWPp.exists_elim; intro v0
-  apply SepWPp.exists_elim; intro v8
-  apply SepWPp.exists_elim; intro v12
-  wp_norm_hyp hrun
-  wp_norm_hyp hsp_align
-  wp_norm_hyp hsp
-  wp_norm_hyp hw8
-  wp_norm_hyp hx19
-  wp_norm_hyp hw20
-  refine SepWPp.of_sepWP_inImage (mid := entry_addr + 248#64) hF ?_
-  wp_steps
-  refine SepWP.fold (recvKeyErrAt_keyTrimmed_intro x.out x.index) (by sep_focus) ?_
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-  intro hF'
-  have hinv' : RecvKeyStateInv img s0 _ :=
-    ⟨hF', by wp_norm_goal, by wp_norm_goal, hsp0_align,
-     by rw [← hx26]; wp_norm_goal,
-     by rw [← hx27]; wp_norm_goal,
-     by rw [← hx28]; wp_norm_goal,
-     htrace,
-     by rw [← hvregs]; wp_norm_goal⟩
-  refine SepWPp.mono_pre _ ?_ (h_epi _ hinv' (by wp_norm_goal))
-  rw [hres]; dsimp only [recvKeyPostAt]; sep_frame
-
-/-- `Err(Error::KeyAlreadyRequested(index))` return tail at `+880` (`0x60c40` -> `+884` -> `+236` -> `+248`). -/
-theorem recvKey_err_keyAlreadyRequested_from_880 {img : Obj.Image} {hkdf : HkdfFn} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (x : ChainRecvKeyGhost) (s0 : State) (c3 : BitVec 64) {R : SepProp}
-    (hres : Chain.recvKey hkdf x.self x.epoch x.index = .error (.err (.keyAlreadyRequested x.index)))
-    (s : State) (hinv : RecvKeyStateInv img s0 s)
-    (hpc : s.pc = (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr chainRecvKeyName + 880#64)
-    (hx19 : s.readReg64 (.gpr 19#5) = x.out)
-    (hw20 : (s.readReg64 (.gpr 20#5)).setWidth 32 = x.index) :
-    let prog := libsignalSessionCode.rebase img.base (Rust.withPanics ext)
-    SepWPp prog (s0.readReg64 (.gpr 30#5)) s
-      (memRegion x.out 32 ∗
-        chainRepr A x.selfPtr x.self ∗
-        stackAt (s0.sp - 128#64) nextKeyInternalStackX ∗
-        memRegion (s0.sp - 120#64) 36 ∗
-        recvKeyFrameRestAt s0 c3 ∗
-        A.pool)
-      (recvKeyPost hkdf A x s0)
-      (recvKeyPanic hkdf A x s0 R) := by
-  intro prog
-  have hfn : libsignalSessionCode.fnOff chainRecvKeyName = 0x5b4d8 := chainRecvKey_fnOff
-  code_fetches libsignalSessionCode libsignalSessionBin img.base
-    (Rust.withPanics ext) hfn 0x5b4d8 1248
-  clear hfn
-  have h_epi := @recvKey_epilogue img hkdf A ext x s0 c3 R
-  dsimp only [prog] at *
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr
-      chainRecvKeyName = entry_addr
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)) = prog_val
-    reverting [Program.fetch, Program.externAt?, subroutine_ok, SepWPp]
-  examples_hide_fetches
-  have hsp_align := hinv.spAligned
-  rcases hinv with ⟨hF, hrun, hsp, hsp0_align, hx26, hx27, hx28, htrace, hvregs⟩
-  rw [memRegion_32_err_u32_split x.out]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  apply SepWPp.exists_elim; intro v0
-  apply SepWPp.exists_elim; intro v8
-  apply SepWPp.exists_elim; intro v12
-  wp_norm_hyp hrun
-  wp_norm_hyp hsp_align
-  wp_norm_hyp hsp
-  wp_norm_hyp hx19
-  wp_norm_hyp hw20
-  refine SepWPp.of_sepWP_inImage (mid := entry_addr + 248#64) hF ?_
-  wp_steps
-  refine SepWP.fold (recvKeyErrAt_keyAlreadyRequested_intro x.out x.index) (by sep_focus) ?_
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-  intro hF'
-  have hinv' : RecvKeyStateInv img s0 _ :=
-    ⟨hF', by wp_norm_goal, by wp_norm_goal, hsp0_align,
-     by rw [← hx26]; wp_norm_goal,
-     by rw [← hx27]; wp_norm_goal,
-     by rw [← hx28]; wp_norm_goal,
-     htrace,
-     by rw [← hvregs]; wp_norm_goal⟩
-  refine SepWPp.mono_pre _ ?_ (h_epi _ hinv' (by wp_norm_goal))
-  rw [hres]; dsimp only [recvKeyPostAt]; sep_frame
-
-/-- `Err(Error::KeyJump(ctr, index))` return tail at `+204` (`0x6099c` -> `+248`). -/
-theorem recvKey_err_keyJump_from_204 {img : Obj.Image} {hkdf : HkdfFn} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (x : ChainRecvKeyGhost) (s0 : State) (c3 : BitVec 64) {R : SepProp}
-    (ctr : BitVec 32)
-    (hres : Chain.recvKey hkdf x.self x.epoch x.index = .error (.err (.keyJump ctr x.index)))
-    (s : State) (hinv : RecvKeyStateInv img s0 s)
-    (hpc : s.pc = (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr chainRecvKeyName + 204#64)
-    (hw8 : (s.readReg64 (.gpr 8#5)).setWidth 32 = ctr)
-    (hx19 : s.readReg64 (.gpr 19#5) = x.out)
-    (hw20 : (s.readReg64 (.gpr 20#5)).setWidth 32 = x.index) :
-    let prog := libsignalSessionCode.rebase img.base (Rust.withPanics ext)
-    SepWPp prog (s0.readReg64 (.gpr 30#5)) s
-      (memRegion x.out 32 ∗
-        chainRepr A x.selfPtr x.self ∗
-        stackAt (s0.sp - 128#64) nextKeyInternalStackX ∗
-        memRegion (s0.sp - 120#64) 36 ∗
-        recvKeyFrameRestAt s0 c3 ∗
-        A.pool)
-      (recvKeyPost hkdf A x s0)
-      (recvKeyPanic hkdf A x s0 R) := by
-  intro prog
-  have hfn : libsignalSessionCode.fnOff chainRecvKeyName = 0x5b4d8 := chainRecvKey_fnOff
-  code_fetches libsignalSessionCode libsignalSessionBin img.base
-    (Rust.withPanics ext) hfn 0x5b4d8 1248
-  clear hfn
-  have h_epi := @recvKey_epilogue img hkdf A ext x s0 c3 R
-  dsimp only [prog] at *
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr
-      chainRecvKeyName = entry_addr
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)) = prog_val
-    reverting [Program.fetch, Program.externAt?, subroutine_ok, SepWPp]
-  examples_hide_fetches
-  have hsp_align := hinv.spAligned
-  rcases hinv with ⟨hF, hrun, hsp, hsp0_align, hx26, hx27, hx28, htrace, hvregs⟩
-  rw [memRegion_32_err_jump_split x.out]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  apply SepWPp.exists_elim; intro v0
-  apply SepWPp.exists_elim; intro v8
-  apply SepWPp.exists_elim; intro v12
-  apply SepWPp.exists_elim; intro v16
-  wp_norm_hyp hrun
-  wp_norm_hyp hsp_align
-  wp_norm_hyp hsp
-  wp_norm_hyp hw8
-  wp_norm_hyp hx19
-  wp_norm_hyp hw20
-  refine SepWPp.of_sepWP_inImage (mid := entry_addr + 248#64) hF ?_
-  wp_steps
-  refine SepWP.fold (recvKeyErrAt_keyJump_intro x.out ctr x.index) (by sep_focus) ?_
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-  intro hF'
-  have hinv' : RecvKeyStateInv img s0 _ :=
-    ⟨hF', by wp_norm_goal, by wp_norm_goal, hsp0_align,
-     by rw [← hx26]; wp_norm_goal,
-     by rw [← hx27]; wp_norm_goal,
-     by rw [← hx28]; wp_norm_goal,
-     htrace,
-     by rw [← hvregs]; wp_norm_goal⟩
-  refine SepWPp.mono_pre _ ?_ (h_epi _ hinv' (by wp_norm_goal))
-  rw [hres]; dsimp only [recvKeyPostAt]; sep_frame
-
-/-- `Err(Error::EpochOutOfRange(epoch))` return tail at `+228` (`0x609b4` -> `+248`). -/
-theorem recvKey_err_epochOutOfRange_from_228 {img : Obj.Image} {hkdf : HkdfFn} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (x : ChainRecvKeyGhost) (s0 : State) (c3 : BitVec 64) {R : SepProp}
-    (hres : Chain.recvKey hkdf x.self x.epoch x.index = .error (.err (.epochOutOfRange x.epoch)))
-    (s : State) (hinv : RecvKeyStateInv img s0 s)
-    (hpc : s.pc = (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr chainRecvKeyName + 228#64)
-    (hx2 : s.readReg64 (.gpr 2#5) = x.epoch)
-    (hx19 : s.readReg64 (.gpr 19#5) = x.out) :
-    let prog := libsignalSessionCode.rebase img.base (Rust.withPanics ext)
-    SepWPp prog (s0.readReg64 (.gpr 30#5)) s
-      (memRegion x.out 32 ∗
-        chainRepr A x.selfPtr x.self ∗
-        stackAt (s0.sp - 128#64) nextKeyInternalStackX ∗
-        memRegion (s0.sp - 120#64) 36 ∗
-        recvKeyFrameRestAt s0 c3 ∗
-        A.pool)
-      (recvKeyPost hkdf A x s0)
-      (recvKeyPanic hkdf A x s0 R) := by
-  intro prog
-  have hfn : libsignalSessionCode.fnOff chainRecvKeyName = 0x5b4d8 := chainRecvKey_fnOff
-  code_fetches libsignalSessionCode libsignalSessionBin img.base
-    (Rust.withPanics ext) hfn 0x5b4d8 1248
-  clear hfn
-  have h_epi := @recvKey_epilogue img hkdf A ext x s0 c3 R
-  dsimp only [prog] at *
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr
-      chainRecvKeyName = entry_addr
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)) = prog_val
-    reverting [Program.fetch, Program.externAt?, subroutine_ok, SepWPp]
-  examples_hide_fetches
-  have hsp_align := hinv.spAligned
-  rcases hinv with ⟨hF, hrun, hsp, hsp0_align, hx26, hx27, hx28, htrace, hvregs⟩
-  rw [memRegion_32_err_epoch_split x.out]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  apply SepWPp.exists_elim; intro v0
-  apply SepWPp.exists_elim; intro v8
-  apply SepWPp.exists_elim; intro v16
-  wp_norm_hyp hrun
-  wp_norm_hyp hsp_align
-  wp_norm_hyp hsp
-  wp_norm_hyp hx2
-  wp_norm_hyp hx19
-  refine SepWPp.of_sepWP_inImage (mid := entry_addr + 248#64) hF ?_
-  wp_steps
-  refine SepWP.fold (recvKeyErrAt_epochOutOfRange_intro x.out x.epoch) (by sep_focus) ?_
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-  intro hF'
-  have hinv' : RecvKeyStateInv img s0 _ :=
-    ⟨hF', by wp_norm_goal, by wp_norm_goal, hsp0_align,
-     by rw [← hx26]; wp_norm_goal,
-     by rw [← hx27]; wp_norm_goal,
-     by rw [← hx28]; wp_norm_goal,
-     htrace,
-     by rw [← hvregs]; wp_norm_goal⟩
-  refine SepWPp.mono_pre _ ?_ (h_epi _ hinv' (by wp_norm_goal))
-  rw [hres]; dsimp only [recvKeyPostAt]; sep_frame
 
 /-! ## Relocatable `[LibsignalPlacement]` Tail Helpers (`blkPC_366`) -/
 

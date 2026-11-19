@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.ReprPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.ReprPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodePlaced1 -- shake: keep
@@ -24,7 +24,7 @@ Defines `AuthEncode1*PlacedOk*` contract propositions and proves shared basic-bl
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -73,25 +73,25 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
     base + (target - base - 0#64) = target := by bv_omega
 
 /-- `encode<Authenticator> [local#3]` (Block `454`) meets `authEncodePinnedSpec A` under `[LibsignalPlacement]`. -/
-def AuthEncode1PinnedPlacedOk [LibsignalPlacement] (A : RustAlloc)
+@[expose] def AuthEncode1PinnedPlacedOk [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_454 H) (blkPl_454).base
     (withLsCodeLoaded lsmpl (authEncodePinnedSpec A))
 
 /-- `encode<Authenticator> [local#3]` (Block `454`) meets `authEncodeSpec A` under `[LibsignalPlacement]`. -/
-def AuthEncode1PlacedOk [LibsignalPlacement] (A : RustAlloc)
+@[expose] def AuthEncode1PlacedOk [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_454 H) (blkPl_454).base
     (withLsCodeLoaded lsmpl (authEncodeSpec A))
 
 /-- `encode<Authenticator> [local#3]` (Block `454`) meets `authEncodePinnedSpecX A` under `[LibsignalPlacement]`. -/
-def AuthEncode1PinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def AuthEncode1PinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_454 H) (blkPl_454).base
     (withLsCodeLoaded lsmpl (authEncodePinnedSpecX A))
 
 /-- `encode<Authenticator> [local#3]` (Block `454`) meets `authEncodeSpecX A` under `[LibsignalPlacement]`. -/
-def AuthEncode1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def AuthEncode1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_454 H) (blkPl_454).base
     (withLsCodeLoaded lsmpl (authEncodeSpecX A))

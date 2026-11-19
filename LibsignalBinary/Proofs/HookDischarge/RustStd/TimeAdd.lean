@@ -10,9 +10,12 @@ limitations under the License.
 module
 
 public import VerifiedLibraries.RustStd.Proofs.Wave1.TimeAdd
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
-public import LibsignalBinary.Proofs.HookDischarge.RustStd.Common
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
+import LibsignalBinary.Proofs.HookDischarge.RustStd.Common
 import ProofLib.SepLogic.WP.Structural
+public import LibsignalBinary.Proofs.HookDischarge.Libc.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApi
+public import LibsignalBinary.Specifications.LibsignalPublicApi
 
 /-!
 # `<SystemTime as Add<Duration>>::add` CLI hook discharge
@@ -22,7 +25,7 @@ overflow stack frame) to `LibsignalPublicApi.timeAddSpec`. On whole-second durat
 with `tvNsec < 10 ^ 9`, `timespecCheckedAdd` agrees with `SystemTime.checkedAddSecs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +42,7 @@ open LibsignalBinary.Proofs.HookDischarge.Libc.Common (keepsFs)
 open LibsignalBinary.Proofs.HookDischarge.RustStd.Common (SpecSimulates)
 
 /-- Stack-parameterized `LibsignalPublicApi.timeAddSpec` (`cliTimeAddSpec extHookStack = timeAddSpec`). -/
-def cliTimeAddSpec (hookStack : Nat := extHookStack) : Spec (SystemTime × Nat) where
+@[expose] def cliTimeAddSpec (hookStack : Nat := extHookStack) : Spec (SystemTime × Nat) where
   pre := fun (t, secs) s =>
     ⌜s.readReg64 .x0 = t.tvSec ∧ (s.readReg64 .x1).setWidth 32 = t.tvNsec ∧
       t.tvNsec.toNat < 10 ^ 9 ∧ (s.readReg64 .x2).toNat = secs ∧

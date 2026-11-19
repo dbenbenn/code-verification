@@ -9,14 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.Common
-public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Specs
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Shared Stack and Memory Helpers for `InMemSessionStore::store_session::{closure#0}` (`0x08ee4`)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.InMem.HashbrownBin.SessionStoreFutures
 
@@ -531,41 +535,6 @@ theorem wpp_call_stringClone {prog : Program} {entry ret_pc ret : BitVec 64}
   refine SepWPp.pure_elim fun htr_f => ?_
   simp only [sepConj_assoc] at hnext ⊢
   exact hnext sf hpcf hrunf (hspf.trans hsp_eq) hcsf (htr_f.trans htr)
-
-theorem wpp_call_reserveRehash {prog : Program} {entry ret_pc ret : BitVec 64}
-    {A : RustAlloc} {s0 s : Arm64.State} {P F : SepProp}
-    {Q : Arm64.State → SepProp → Prop} {Fr : SepProp}
-    (base mp rsPtr k0 k1 sp' : BitVec 64)
-    (hcall : subroutine_ok prog entry (reserveRehashSessionEmptySpec A))
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = mp) (hx1 : s.readReg64 .x1 = 1#64)
-    (hx2 : s.readReg64 .x2 = rsPtr) (hx3 : s.readReg64 .x3 = 1#64)
-    (hsp_eq : s.sp = sp') (htr : s.trace = s0.trace)
-    (hP : P = (emptyTableAt base mp k0 k1 ∗ A.pool ∗ stackAt sp' reserveRehashStack) ∗ F)
-    (hnext : ∀ sf : Arm64.State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = sp' → CalleeSavedPreserved s sf →
-      sf.readReg64 .x0 = 0xffffffffffffffff#64 → sf.trace = s0.trace →
-      SepWPp prog ret sf
-        ((table4EmptyAt A sessionBucketStride mp k0 k1 ∗ A.pool ∗ stackAt sp' reserveRehashStack) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) → (sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr))) :
-    SepWPp prog ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) → (sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr)) := by
-  refine SepWPp.call_frame (x := ⟨base, mp, rsPtr, k0, k1⟩)
-    (φ := s.readReg64 .x0 = mp ∧ s.readReg64 .x1 = 1#64 ∧ s.readReg64 .x2 = rsPtr ∧ s.readReg64 .x3 = 1#64)
-    (T := emptyTableAt base mp k0 k1 ∗ A.pool ∗ stackAt sp' reserveRehashStack)
-    hcall hpc hrun hsp hlr
-    (by dsimp only [reserveRehashSessionEmptySpec, reserveRehashEmptySpec]; rw [hsp_eq])
-    ⟨hx0, hx1, hx2, hx3⟩ hP
-    (fun _ _ _ _ h => not_satisfies_false_sepConj h)
-    (fun sf _ h => Satisfies.mono (sepConj_mono_left
-      (allocPanic_frame_of_trace_eq (⟨base, mp, rsPtr, k0, k1⟩ : ReserveRehashEmptyGhost) s0 s sf F htr)) h)
-    fun sf hpcf hrunf hspf hcsf => ?_
-  dsimp only [reserveRehashSessionEmptySpec, reserveRehashEmptySpec]
-  rw [hsp_eq, sepConj_assoc]
-  refine SepWPp.pure_elim fun ⟨hx0_f, htr_f⟩ => ?_
-  simp only [sepConj_assoc] at hnext ⊢
-  exact hnext sf hpcf hrunf (hspf.trans hsp_eq) hcsf hx0_f (htr_f.trans htr)
 
 attribute [local irreducible] CanonSession
 

@@ -10,12 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudget159Aux
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudget159
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudget549Aux
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudget159Aux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudget159 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudget549Aux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKeyBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable Segment S5 (`PqRecv`) Proofs
@@ -25,7 +29,7 @@ Re-exports `spqrRecvRawSpecPlaced`, `PqRecvEnv`, `pqRecv_159_placed_ok`, and
 `pqRecv_549_placed_ok_x`) over `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -38,14 +42,14 @@ open LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs.Simp (
   sessionStateAt_atState trAt_atState trRestAt_atState speBodyAt_atState
   protocolAddressAt_atState signalMessageAt_atState signalMessageRestAt_atState
   vecU8At_atState vecU8_atState spqrRecvKeyAt_atState spqrRecvResultAt_atState
-  vecArg_at_atState
+  spqrRecvResultDispAt_atState vecArg_at_atState
 )
 open LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs (
   steps_of_sepWP_placed_state s5_out_add_np_evs
   tryDecryptFnOnPanic_eq_tryDecryptOnPanic
-  spqrRecvRawSpecPlaced PqRecvEnv
+  spqrRecvRawSpecPlaced spqrRecvRawDispSpec spqrRecvRawDispSpecPlaced PqRecvEnv
   fitsEnv_recv_of_pqRecvEnv fitsEnv_fmt_of_pqRecvEnv_err pqRecvEnv_of_err_parts
-  onPanic_of_spqrRecv_budget_placed
+  onPanic_of_spqrRecv_budget_placed onPanic_of_spqrRecv_disp_budget_placed
 )
 
 open LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudget549Aux (
@@ -98,6 +102,15 @@ open LibsignalBinary.Heap (
 open LibsignalBinary.Heap.SpecBudget (
   FormatInnerEnv formatInnerBudgetEnvSpec formatInnerBudgetSpec
 )
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (
+  CliFormatInnerEnv formatInnerLsEnvSpec
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs (
+  formatInnerCallLsEnvSpec
+)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag (
+  spqrRecvResultDispAt
+)
 open LibsignalBinary.Proofs.Placed.BudgetPoolSync (
   hooksException sepWP_seg_ls_vm
 )
@@ -117,6 +130,8 @@ attribute [local simp, local wp_norm, local arm64_norm] extractLsb0_8_append56
 /-! ## Re-Exports from `PqRecvBudgetDefs`, `PqRecvBudget159Aux`, `PqRecvBudget159`, `PqRecvBudget549Aux` -/
 
 abbrev spqrRecvRawSpecPlaced := @PqRecvBudgetDefs.spqrRecvRawSpecPlaced
+abbrev spqrRecvRawDispSpec := @PqRecvBudgetDefs.spqrRecvRawDispSpec
+abbrev spqrRecvRawDispSpecPlaced := @PqRecvBudgetDefs.spqrRecvRawDispSpecPlaced
 abbrev PqRecvEnv := @PqRecvBudgetDefs.PqRecvEnv
 abbrev pqRecv_dealloc_tail_159_placed := @PqRecvBudget159Aux.pqRecv_dealloc_tail_159_placed
 abbrev pqRecv_recv_err_true_159_placed := @PqRecvBudget159Aux.pqRecv_recv_err_true_159_placed
@@ -132,14 +147,15 @@ theorem pqRecv_549_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (S : SpqrModel)
     (RecvEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
-    (fmtEnv : List AllocEvent → Prop := FormatInnerEnv)
+    (fmtEnv : List AllocEvent → Prop := CliFormatInnerEnv)
     (H : String → Option (State → State))
     (hrecv_call : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 329)
-      (withLsCodeRoLoaded lsmpl (spqrRecvRawSpecPlaced A lim S RecvEnv)))
+      (withLsCodeRoLoaded lsmpl (spqrRecvRawDispSpecPlaced A lim S RecvEnv)))
     (hfmt_call : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsρ lsFormatInnerSym) (formatInnerBudgetEnvSpec M A lim fmtEnv))
+      (lsρ lsFormatInnerSym) (formatInnerCallLsEnvSpec M A lim fmtEnv))
     (hdealloc_call : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim)) :
+      (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
+    (hfmt_sub : ∀ evs, CliFormatInnerEnv evs → fmtEnv evs := by exact fun _ h => h) :
     S5SeamPlaced ((blkPC_434).rebase (blkPl_434).base H) (blkPl_434).base
       C A lim ctl uuidTryParse S (PqRecvEnv S RecvEnv fmtEnv) := by
   intro x st trG tr st1 mkg draws R s0 s hfits hpqr_eq h5 hL
@@ -245,7 +261,7 @@ theorem pqRecv_549_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     let stArg : VecArg := ⟨sp + 232#64, trG.pq.cap, trG.pq.ptr, tr.pqrState⟩
     let msgArg : VecArg := ⟨x.msgA, x.msgG.pqCap, x.msgG.pqPtr, x.msg.pqRatchet⟩
     have hpre_call : sm.mem ⊨
-        (spqrRecvRawSpecPlaced A lim S RecvEnv).pre ((stArg, msgArg, sp + 1280#64), st) sm ∗
+        (spqrRecvRawDispSpecPlaced A lim S RecvEnv).pre ((stArg, msgArg, sp + 1280#64), st) sm ∗
         ((trRestAt A.repAlloc sp trG tr ∗
           signalMessageRestAt A.repAlloc x.msgG x.msgA x.msg ∗
           sessionStateAt A.repAlloc x.ss x.G.afterTrFrom st1 ∗
@@ -272,8 +288,8 @@ theorem pqRecv_549_placed_ok [LibsignalPlacement] {M : AllocCostModel}
           memRegion (sp - BitVec.ofNat 64 tryDecryptSubStack)
             (tryDecryptSubStack - spqrRecvStack) ∗
           tryDecryptSavedRegs s0.sp s0) ∗ R) := by
-      dsimp only [spqrRecvRawSpecPlaced, PqRecvBudgetDefs.spqrRecvRawSpecPlaced,
-        spqrRecvRawSpec, stArg, msgArg]
+      dsimp only [spqrRecvRawDispSpecPlaced, PqRecvBudgetDefs.spqrRecvRawDispSpecPlaced,
+        spqrRecvRawDispSpec, PqRecvBudgetDefs.spqrRecvRawDispSpec, spqrRecvRawSpec, stArg, msgArg]
       simp only [vecArg_at_atState, RustCliAllocBudget.atState_pool]
       dsimp only [VecArg.at]
       rw [hspm]
@@ -291,12 +307,12 @@ theorem pqRecv_549_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       refine steps_call_out_placed_cro ((stArg, msgArg, sp + 1280#64), st) hrecv_call
         hpcm hrunm hsp_alm hlrm hclm hLm hpre_call
         (fun sf hpan hpost => Or.inr ⟨hpan,
-          onPanic_of_spqrRecv_budget_placed (st_v := stArg) (msg_v := msgArg)
+          onPanic_of_spqrRecv_disp_budget_placed (st_v := stArg) (msg_v := msgArg)
             (ret := sp + 1280#64) (st_m := st) htracem hpqr_eq rfl hpost⟩) ?_
       intro sf1 hpcf1 hrunf1 hspf1 hsp_alf1 hcsf1 hclf1 hLf1 hpost1
-      dsimp only [spqrRecvRawSpecPlaced, PqRecvBudgetDefs.spqrRecvRawSpecPlaced,
-        spqrRecvRawSpec, stArg, msgArg] at hpost1
-      simp only [vecArg_at_atState, spqrRecvResultAt_atState,
+      dsimp only [spqrRecvRawDispSpecPlaced, PqRecvBudgetDefs.spqrRecvRawDispSpecPlaced,
+        spqrRecvRawDispSpec, PqRecvBudgetDefs.spqrRecvRawDispSpec, stArg, msgArg] at hpost1
+      simp only [vecArg_at_atState, spqrRecvResultDispAt_atState,
         RustCliAllocBudget.atState_pool] at hpost1
       dsimp only [VecArg.at] at hpost1
       rw [hspm] at hspf1 hpost1
@@ -317,7 +333,7 @@ theorem pqRecv_549_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       have hnpF : S.recvPanics tr.pqrState x.msg.pqRatchet = false := by simpa using hnoP
       rw [htracem] at htrace1
       rw [hrecv] at hpost1
-      dsimp only [spqrRecvResultAt] at hpost1
+      dsimp only [spqrRecvResultDispAt, spqrRecvResultAt] at hpost1
       unfold vecU8 at hpost1
       simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hpost1
       rcases hpost1 with ⟨newPqrCap, newPqrPtr, hpost1⟩
@@ -432,12 +448,12 @@ theorem pqRecv_549_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       refine steps_call_out_placed_cro ((stArg, msgArg, sp + 1280#64), st) hrecv_call
         hpcm hrunm hsp_alm hlrm hclm hLm hpre_call
         (fun sf hpan hpost => Or.inr ⟨hpan,
-          onPanic_of_spqrRecv_budget_placed (st_v := stArg) (msg_v := msgArg)
+          onPanic_of_spqrRecv_disp_budget_placed (st_v := stArg) (msg_v := msgArg)
             (ret := sp + 1280#64) (st_m := st) htracem hpqr_eq rfl hpost⟩) ?_
       intro sf1 hpcf1 hrunf1 hspf1 hsp_alf1 hcsf1 hclf1 hLf1 hpost1
-      dsimp only [spqrRecvRawSpecPlaced, PqRecvBudgetDefs.spqrRecvRawSpecPlaced,
-        spqrRecvRawSpec, stArg, msgArg] at hpost1
-      simp only [vecArg_at_atState, spqrRecvResultAt_atState,
+      dsimp only [spqrRecvRawDispSpecPlaced, PqRecvBudgetDefs.spqrRecvRawDispSpecPlaced,
+        spqrRecvRawDispSpec, PqRecvBudgetDefs.spqrRecvRawDispSpec, stArg, msgArg] at hpost1
+      simp only [vecArg_at_atState, spqrRecvResultDispAt_atState,
         RustCliAllocBudget.atState_pool] at hpost1
       dsimp only [VecArg.at] at hpost1
       rw [hspm] at hspf1 hpost1
@@ -457,13 +473,13 @@ theorem pqRecv_549_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       have hnpF : S.recvPanics tr.pqrState x.msg.pqRatchet = false := by simpa using hnoP
       rw [htracem] at htrace1
       rw [hrecv] at hpost1
-      dsimp only [spqrRecvResultAt, errTag] at hpost1
+      dsimp only [spqrRecvResultDispAt, errTag] at hpost1
       simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hpost1
       rcases hpost1 with ⟨d, hpost1⟩
       simp only [sepConj_assoc] at hpost1
       rw [sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
         satisfies_pure_sepConj] at hpost1
-      rcases hpost1 with ⟨hd_iff, hpost1⟩
+      rcases hpost1 with ⟨⟨hd_iff, hd_valid⟩, hpost1⟩
       set st_r := M.stepEvents evs1 st
       have hfits_fmt := fitsEnv_fmt_of_pqRecvEnv_err hrecv hfits hevs1
       have hpost1' : sf1.mem ⊨
@@ -513,7 +529,7 @@ theorem pqRecv_549_placed_ok [LibsignalPlacement] {M : AllocCostModel}
         refine s5_out_add_np_evs hnpF ?_
         obtain ⟨s', hsteps, (⟨evs2, evs3, hevs2, hevs3, hok⟩ | hpan)⟩ :=
           pqRecv_recv_err_true_549_placed C A lim st_r ctl S fmtEnv H x trG tr st1 mkg draws R s0
-            hfits_fmt hsp0_al' hseed1 hseed2 hfmt_call hdealloc_call hsp_def
+            hfits_fmt hsp0_al' hseed1 hseed2 hfmt_call hdealloc_call hfmt_sub hsp_def
             sf1 hpcf1 hrunf1 hspf1 hsp_alf1 hx19_1 hx20_1 hx23_1 hw24_1 hx25_1 hx28_1 hfp_1
             htrace1 hvregs_1 hclf1 hLf1 hpost1'
         · refine ⟨s', hsteps, Or.inl ⟨(evs1 ++ evs2) ++ evs3,
@@ -525,7 +541,7 @@ theorem pqRecv_549_placed_ok [LibsignalPlacement] {M : AllocCostModel}
         refine s5_out_add_np_evs hnpF ?_
         obtain ⟨s', hsteps, (⟨evs2, evs3, hevs2, hevs3, hok⟩ | hpan)⟩ :=
           pqRecv_recv_err_false_549_placed C A lim st_r ctl S fmtEnv H x trG tr st1 mkg draws R s0
-            hfits_fmt hmsgW hsp0_al' hseed1 hseed2 hfmt_call hdealloc_call hsp_def hd_ne
+            hfits_fmt hmsgW hsp0_al' hseed1 hseed2 hfmt_call hdealloc_call hfmt_sub hsp_def hd_ne hd_valid
             sf1 hpcf1 hrunf1 hspf1 hsp_alf1 hx19_1 hx20_1 hx23_1 hw24_1 hx25_1 hx28_1 hfp_1
             htrace1 hvregs_1 hclf1 hLf1 hpost1'
         · refine ⟨s', hsteps, Or.inl ⟨(evs1 ++ evs2) ++ evs3,
@@ -539,19 +555,20 @@ theorem pqRecv_549_placed_ok_x [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (S : SpqrModel)
     (RecvEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
-    (fmtEnv : List AllocEvent → Prop := FormatInnerEnv)
+    (fmtEnv : List AllocEvent → Prop := CliFormatInnerEnv)
     (H : String → Option (State → State))
     (hrecv_call : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 329)
-      (withLsCodeRoLoaded lsmpl (spqrRecvRawSpecPlaced A lim S RecvEnv)))
+      (withLsCodeRoLoaded lsmpl (spqrRecvRawDispSpecPlaced A lim S RecvEnv)))
     (hfmt_call : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsρ lsFormatInnerSym) (formatInnerBudgetEnvSpec M A lim fmtEnv))
+      (lsρ lsFormatInnerSym) (formatInnerCallLsEnvSpec M A lim fmtEnv))
     (hdealloc_call : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim)) :
+      (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
+    (hfmt_sub : ∀ evs, CliFormatInnerEnv evs → fmtEnv evs := by exact fun _ h => h) :
     S5SeamXPlaced ((blkPC_434).rebase (blkPl_434).base H) (blkPl_434).base
       C decFn A lim ctl uuidTryParse S (PqRecvEnv S RecvEnv fmtEnv) := by
   unfold S5SeamXPlaced
   simp only [tryDecryptFnOnPanic_eq_tryDecryptOnPanic]
-  exact pqRecv_549_placed_ok C A lim ctl S RecvEnv fmtEnv H hrecv_call hfmt_call hdealloc_call
+  exact pqRecv_549_placed_ok C A lim ctl S RecvEnv fmtEnv H hrecv_call hfmt_call hdealloc_call hfmt_sub
 
 
 end LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudget

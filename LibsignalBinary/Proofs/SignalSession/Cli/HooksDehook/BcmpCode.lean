@@ -18,11 +18,12 @@ public import LibsignalBinary.Heap.Fine.SpecBudgetHelpersFine
 public import LibsignalBinary.Heap.IfaceSimp
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Bcmp -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetCode -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHook -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.E2E.HooksE.Common -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHook
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.HooksE.Common
 public import LibsignalBinary.Proofs.E2E.HooksE.CommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.HookDischarge.RustStd.Common
 
 /-!
 # Region-Local `bcmp` / `memcmp` Code Verification & Master Spec (`HooksDehook.BcmpCode`)
@@ -190,8 +191,6 @@ theorem BcmpStatePreserved.toAllocCallPreserved {s0 sf : State}
 
 theorem stdBcmp_pre_eq : stdBcmpSpec.pre = masterBcmpSpec.pre := rfl
 
-theorem stdMemcmp_pre_eq : stdMemcmpSpec.pre = masterBcmpSpec.pre := rfl
-
 /-- `K`-route precondition narrowing: conjoins `⌜keep (s.readReg64 .lr) = false⌝` to `spec.pre`,
     leaving `post`, `onPanic`, `onExit`, and `onOom` unchanged (mirrors `memsetSpecK`). -/
 @[expose] def bcmpSpecK (keep : BitVec 64 → Bool) {α : Type} (spec : Spec α) : Spec α :=
@@ -321,16 +320,6 @@ theorem pureWordsProg_memcmp_hasWords (base : BitVec 64) :
     (pureWordsProg base memcmpLibcaWords).hasWords base memcmpLibcaWords :=
   pureWordsProg_hasWords_of_fit base memcmpLibcaWords (by decide)
 
-/-- `pureWordsProg base (Obj.patchCalls bcmpCalls bcmpWords base resolve)` holds the relocation-patched
-    `bcmp` word (`1` word `b memcmp`) at `base` for any `base` and `resolve`. -/
-theorem pureWordsProg_bcmp_hasWords (base : BitVec 64) (resolve : String → BitVec 64) :
-    (pureWordsProg base (Obj.patchCalls bcmpCalls bcmpWords base resolve)).hasWords base
-      (Obj.patchCalls bcmpCalls bcmpWords base resolve) := by
-  refine pureWordsProg_hasWords_of_fit base _ ?_
-  have hlen : (Obj.patchCalls bcmpCalls bcmpWords base resolve).length = 1 := by
-    simp [Obj.patchCalls, bcmpCalls, bcmpWords]
-  omega
-
 /-- `pureWordsProg m (bcmpHullWords m resolve)` holds the full 14-word (`56`-byte) `memcmp ++ bcmp`
     hull at `m` for every `m` and `resolve`. -/
 theorem pureWordsProg_bcmpHull_hasWords (m : BitVec 64)
@@ -458,67 +447,6 @@ theorem subroutine_ok_memcmp_stdBcmp_of_hasWords {P_sub : Program} {m : BitVec 6
   rw [hpost.1.1]
   exact memcmpBytes_eq_zero_iff hlen.symm
 
-/-- Single-block region-local `subroutine_ok` for `masterMemcmpSpec` on any hook-free `P_sub`
-    holding `memcmpLibcaWords` (`13` words) at `m`. -/
-theorem subroutine_ok_memcmp_masterMemcmp_of_hasWords {P_sub : Program} {m : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords m memcmpLibcaWords) :
-    subroutine_ok P_sub m masterMemcmpSpec := by
-  refine subroutine_ok_map (subroutine_ok_memcmp_stdMemcmp_of_hasWords hsub_no hwords)
-    (fun x R s0 hpre => ⟨x, R, hpre, fun sf hpost => ?_⟩)
-  dsimp only [stdMemcmpSpec, masterMemcmpSpec] at hpost ⊢
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-  exact ⟨⟨hpost.1.1, hpost.1.2.1, BcmpStatePreserved.of_processFieldsPreserved hpost.1.2.2⟩, hpost.2⟩
-
-/-- Single-block region-local `subroutine_ok` for `bcmpSpecK keep masterMemcmpSpec` on any
-    hook-free `P_sub` holding `memcmpLibcaWords`. -/
-theorem subroutine_ok_memcmp_masterMemcmpK_of_hasWords (keep : BitVec 64 → Bool)
-    {P_sub : Program} {m : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords m memcmpLibcaWords) :
-    subroutine_ok P_sub m (bcmpSpecK keep masterMemcmpSpec) := by
-  refine subroutine_ok_mono (subroutine_ok_memcmp_masterMemcmp_of_hasWords hsub_no hwords)
-    (fun _ _ _ hp => ?_) (fun _ _ _ _ hq => hq)
-  dsimp only [bcmpSpecK] at hp
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hp
-  exact hp.2
-
-/-- Single-block region-local `subroutine_ok` for `masterBcmpSpec` on any hook-free `P_sub`
-    holding `memcmpLibcaWords` (`13` words) at `m`. -/
-theorem subroutine_ok_memcmp_masterBcmp_of_hasWords {P_sub : Program} {m : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords m memcmpLibcaWords) :
-    subroutine_ok P_sub m masterBcmpSpec := by
-  refine subroutine_ok_map (subroutine_ok_memcmp_stdBcmp_of_hasWords hsub_no hwords)
-    (fun x R s0 hpre => ⟨x, R, hpre, fun sf hpost => ?_⟩)
-  dsimp only [stdBcmpSpec, masterBcmpSpec] at hpost ⊢
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-  exact ⟨⟨hpost.1.1, hpost.1.2.1, BcmpStatePreserved.of_processFieldsPreserved hpost.1.2.2⟩, hpost.2⟩
-
-/-- Single-block region-local `subroutine_ok` for `bcmpSpecK keep masterBcmpSpec` on any
-    hook-free `P_sub` holding `memcmpLibcaWords`. -/
-theorem subroutine_ok_memcmp_masterBcmpK_of_hasWords (keep : BitVec 64 → Bool)
-    {P_sub : Program} {m : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords m memcmpLibcaWords) :
-    subroutine_ok P_sub m (bcmpSpecK keep masterBcmpSpec) := by
-  refine subroutine_ok_mono (subroutine_ok_memcmp_masterBcmp_of_hasWords hsub_no hwords)
-    (fun _ _ _ hp => ?_) (fun _ _ _ _ hq => hq)
-  dsimp only [bcmpSpecK] at hp
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hp
-  exact hp.2
-
-private theorem subroutine_ok_twoBlocks_stdMemcmp {P_sub : Program}
-    {bcmpEntry : BitVec 64} {resolve : String → BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hrange : Obj.BranchInRange (bcmpEntry + 0#64) (resolve "memcmp"))
-    (hbcmp : P_sub.hasWords bcmpEntry (Obj.patchCalls bcmpCalls bcmpWords bcmpEntry resolve))
-    (hmemcmp : P_sub.hasWords (resolve "memcmp") memcmpLibcaWords) :
-    subroutine_ok P_sub bcmpEntry stdMemcmpSpec :=
-  bcmp_tail_ok hrange hbcmp
-    (subroutine_ok_memcmp_stdMemcmp_of_hasWords hsub_no hmemcmp)
-    (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) (fun _ _ _ => rfl)
-
 private theorem subroutine_ok_twoBlocks_stdBcmp {P_sub : Program}
     {bcmpEntry : BitVec 64} {resolve : String → BitVec 64}
     (hsub_no : ∀ pc, P_sub.externAt? pc = none)
@@ -529,20 +457,6 @@ private theorem subroutine_ok_twoBlocks_stdBcmp {P_sub : Program}
   bcmp_tail_ok hrange hbcmp
     (subroutine_ok_memcmp_stdBcmp_of_hasWords hsub_no hmemcmp)
     (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) (fun _ _ _ => rfl)
-
-/-- Contiguous 56 B hull `subroutine_ok` for `stdMemcmpSpec` (full `ProcessFieldsPreserved`) on a
-    single hook-free `P_sub` holding `bcmpHullWords m resolve` (`memcmp ++ bcmp`) at `m`, entered
-    at `m + memcmpByteLen` (`= m + 52#64`). -/
-theorem subroutine_ok_hull_stdMemcmp_of_hasWords {P_sub : Program}
-    {m : BitVec 64} {resolve : String → BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hhull : P_sub.hasWords m (bcmpHullWords m resolve))
-    (hres : resolve "memcmp" = m := by rfl) :
-    subroutine_ok P_sub (m + memcmpByteLen) stdMemcmpSpec :=
-  subroutine_ok_twoBlocks_stdMemcmp hsub_no
-    (branchInRange_bcmp_hull m hres)
-    (bcmpHull_hasWords_bcmp hhull)
-    (hres ▸ bcmpHull_hasWords_memcmp hhull)
 
 /-- Contiguous 56 B hull `subroutine_ok` for `stdBcmpSpec` (full `ProcessFieldsPreserved`) on a
     single hook-free `P_sub` holding `bcmpHullWords m resolve` (`memcmp ++ bcmp`) at `m`, entered
@@ -557,34 +471,6 @@ theorem subroutine_ok_hull_stdBcmp_of_hasWords {P_sub : Program}
     (branchInRange_bcmp_hull m hres)
     (bcmpHull_hasWords_bcmp hhull)
     (hres ▸ bcmpHull_hasWords_memcmp hhull)
-
-/-- Contiguous 56 B hull `subroutine_ok` for `masterMemcmpSpec` on a single hook-free `P_sub`
-    holding `bcmpHullWords m resolve` at `m`, entered at `m + memcmpByteLen` (`= m + 52#64`). -/
-theorem subroutine_ok_hull_masterMemcmp_of_hasWords {P_sub : Program}
-    {m : BitVec 64} {resolve : String → BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hhull : P_sub.hasWords m (bcmpHullWords m resolve))
-    (hres : resolve "memcmp" = m := by rfl) :
-    subroutine_ok P_sub (m + memcmpByteLen) masterMemcmpSpec := by
-  refine subroutine_ok_map (subroutine_ok_hull_stdMemcmp_of_hasWords hsub_no hhull hres)
-    (fun x R s0 hpre => ⟨x, R, hpre, fun sf hpost => ?_⟩)
-  dsimp only [stdMemcmpSpec, masterMemcmpSpec] at hpost ⊢
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-  exact ⟨⟨hpost.1.1, hpost.1.2.1, BcmpStatePreserved.of_processFieldsPreserved hpost.1.2.2⟩, hpost.2⟩
-
-/-- Contiguous 56 B hull `subroutine_ok` for `bcmpSpecK keep masterMemcmpSpec` on a single
-    hook-free `P_sub` holding `bcmpHullWords m resolve` at `m`. -/
-theorem subroutine_ok_hull_masterMemcmpK_of_hasWords (keep : BitVec 64 → Bool)
-    {P_sub : Program} {m : BitVec 64} {resolve : String → BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hhull : P_sub.hasWords m (bcmpHullWords m resolve))
-    (hres : resolve "memcmp" = m := by rfl) :
-    subroutine_ok P_sub (m + memcmpByteLen) (bcmpSpecK keep masterMemcmpSpec) := by
-  refine subroutine_ok_mono (subroutine_ok_hull_masterMemcmp_of_hasWords hsub_no hhull hres)
-    (fun _ _ _ hp => ?_) (fun _ _ _ _ hq => hq)
-  dsimp only [bcmpSpecK] at hp
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hp
-  exact hp.2
 
 /-- Contiguous 56 B hull `subroutine_ok` for `masterBcmpSpec` on a single hook-free `P_sub`
     holding `bcmpHullWords m resolve` at `m`, entered at `m + memcmpByteLen` (`= m + 52#64`). -/
@@ -613,62 +499,6 @@ theorem subroutine_ok_hull_masterBcmpK_of_hasWords (keep : BitVec 64 → Bool)
   dsimp only [bcmpSpecK] at hp
   rw [sepConj_assoc, satisfies_pure_sepConj] at hp
   exact hp.2
-
-/-- Concrete 56 B hull `pureWordsProg m (bcmpHullWords m)` satisfying `stdMemcmpSpec` at
-    `m + memcmpByteLen` (`= m + 52#64`). -/
-theorem pureWordsProg_bcmpHull_stdMemcmp_ok (m : BitVec 64) :
-    subroutine_ok (pureWordsProg m (bcmpHullWords m)) (m + memcmpByteLen) stdMemcmpSpec :=
-  subroutine_ok_hull_stdMemcmp_of_hasWords
-    (pureWordsProg_externAt_none m (bcmpHullWords m))
-    (pureWordsProg_bcmpHull_hasWords m)
-
-/-- Concrete 56 B hull `pureWordsProg m (bcmpHullWords m)` satisfying `stdBcmpSpec` at
-    `m + memcmpByteLen` (`= m + 52#64`). -/
-theorem pureWordsProg_bcmpHull_stdBcmp_ok (m : BitVec 64) :
-    subroutine_ok (pureWordsProg m (bcmpHullWords m)) (m + memcmpByteLen) stdBcmpSpec :=
-  subroutine_ok_hull_stdBcmp_of_hasWords
-    (pureWordsProg_externAt_none m (bcmpHullWords m))
-    (pureWordsProg_bcmpHull_hasWords m)
-
-/-- Concrete 56 B hull `pureWordsProg m (bcmpHullWords m)` satisfying `masterMemcmpSpec` at
-    `m + memcmpByteLen` (`= m + 52#64`). -/
-theorem pureWordsProg_bcmpHull_masterMemcmp_ok (m : BitVec 64) :
-    subroutine_ok (pureWordsProg m (bcmpHullWords m)) (m + memcmpByteLen) masterMemcmpSpec :=
-  subroutine_ok_hull_masterMemcmp_of_hasWords
-    (pureWordsProg_externAt_none m (bcmpHullWords m))
-    (pureWordsProg_bcmpHull_hasWords m)
-
-/-- Concrete 56 B hull `pureWordsProg m (bcmpHullWords m)` satisfying `masterBcmpSpec` at
-    `m + memcmpByteLen` (`= m + 52#64`). -/
-theorem pureWordsProg_bcmpHull_masterBcmp_ok (m : BitVec 64) :
-    subroutine_ok (pureWordsProg m (bcmpHullWords m)) (m + memcmpByteLen) masterBcmpSpec :=
-  subroutine_ok_hull_masterBcmp_of_hasWords
-    (pureWordsProg_externAt_none m (bcmpHullWords m))
-    (pureWordsProg_bcmpHull_hasWords m)
-
-/-- Concrete 56 B hull `pureWordsProg m (bcmpHullWords m)` satisfying
-    `bcmpSpecK keep masterBcmpSpec` at `m + memcmpByteLen` (`= m + 52#64`). -/
-theorem pureWordsProg_bcmpHull_masterBcmpK_ok (keep : BitVec 64 → Bool) (m : BitVec 64) :
-    subroutine_ok (pureWordsProg m (bcmpHullWords m)) (m + memcmpByteLen)
-      (bcmpSpecK keep masterBcmpSpec) :=
-  subroutine_ok_hull_masterBcmpK_of_hasWords keep
-    (pureWordsProg_externAt_none m (bcmpHullWords m))
-    (pureWordsProg_bcmpHull_hasWords m)
-
-/-- Concrete 1-block `pureWordsProg base memcmpLibcaWords` instance satisfying `masterBcmpSpec`. -/
-theorem pureWordsProg_memcmp_masterBcmp_ok (base : BitVec 64) :
-    subroutine_ok (pureWordsProg base memcmpLibcaWords) base masterBcmpSpec :=
-  subroutine_ok_memcmp_masterBcmp_of_hasWords
-    (pureWordsProg_externAt_none base memcmpLibcaWords)
-    (pureWordsProg_memcmp_hasWords base)
-
-/-- Concrete 1-block `pureWordsProg base memcmpLibcaWords` instance satisfying
-    `bcmpSpecK keep masterBcmpSpec`. -/
-theorem pureWordsProg_memcmp_masterBcmpK_ok (keep : BitVec 64 → Bool) (base : BitVec 64) :
-    subroutine_ok (pureWordsProg base memcmpLibcaWords) base (bcmpSpecK keep masterBcmpSpec) :=
-  subroutine_ok_memcmp_masterBcmpK_of_hasWords keep
-    (pureWordsProg_externAt_none base memcmpLibcaWords)
-    (pureWordsProg_memcmp_hasWords base)
 
 /-! ## 3. `W`-Independent Fallback Soundness for `masterBcmpSpec` -/
 
@@ -740,16 +570,6 @@ theorem hookBcmpFallback_vmPreserved (s : State) :
     VmPreserved s (hookBcmpFallback s) :=
   cliBcmpHook_vmPreserved canonicalBcmp s
 
-/-- Corollary: `cliBcmpHook W.bcmp` satisfies `masterBcmpSpec` for every `W : CliHooks`. -/
-theorem hookBcmp_masterBcmp_ok (_W : CliHooks) :
-    HookOk (cliBcmpHook CryptoVerification.SignalSession.cliDefaultBcmp) masterBcmpSpec :=
-  hookBcmpOf_masterBcmp_ok CryptoVerification.SignalSession.cliDefaultBcmp CryptoVerification.SignalSession.cliDefaultBcmp_ok
-
-/-- Corollary: `cliBcmpHook W.bcmp` satisfies `bcmpSpecK keep masterBcmpSpec` for every `W`. -/
-theorem hookBcmp_masterBcmpK_ok (keep : BitVec 64 → Bool) (_W : CliHooks) :
-    HookOk (cliBcmpHook CryptoVerification.SignalSession.cliDefaultBcmp) (bcmpSpecK keep masterBcmpSpec) :=
-  hookBcmpOf_masterBcmpK_ok keep CryptoVerification.SignalSession.cliDefaultBcmp CryptoVerification.SignalSession.cliDefaultBcmp_ok
-
 /-! ## 4. Generic `HookOk` Consequence Lifts from `masterBcmpSpec` -/
 
 /-- General non-aborting ghost-reindexing frame/consequence lemma for `HookOk` (mirrors
@@ -812,57 +632,6 @@ theorem hookOk_bcmpSpecK_map_frame_pureAbort (keep : BitVec 64 → Bool)
   dsimp only [bcmpSpecK]
   rw [sepConj_assoc]
   exact Entails.pure_left fun hlr => Entails.pure_right hlr (hpre y s0)
-
-/-- Weaken `HookOk f masterMemcmpSpec` (`w0 = memcmpBytes bsA bsB`) to `HookOk f masterBcmpSpec`
-    (`w0 = 0 ↔ bsA = bsB`). -/
-theorem hookOk_masterBcmp_of_masterMemcmp {f : State → State}
-    (hh : HookOk f masterMemcmpSpec) :
-    HookOk f masterBcmpSpec := by
-  intro x R s0 hrun hpre hsp
-  have hlen : x.bsB.length = x.bsA.length := by
-    dsimp only [masterBcmpSpec] at hpre
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-    exact hpre.1.2.2.2
-  obtain ⟨hkf, hsym, hout⟩ := hh x R s0 hrun hpre hsp
-  refine ⟨hkf, hsym, ?_⟩
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨_, hp⟩ | ⟨_, _, he⟩ | ⟨_, ho⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [masterMemcmpSpec, masterBcmpSpec] at hq ⊢
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-    refine ⟨⟨?_, hq.1.2.1, hq.1.2.2⟩, hq.2⟩
-    change (f s0).readReg32 .x0 = 0#32 ↔ x.bsA = x.bsB
-    rw [hq.1.1]
-    exact memcmpBytes_eq_zero_iff hlen.symm
-  · dsimp only [masterMemcmpSpec] at hp; rw [satisfies_pure_sepConj] at hp; exact False.elim hp.1
-  · dsimp only [masterMemcmpSpec] at he; rw [satisfies_pure_sepConj] at he; exact False.elim he.1
-  · dsimp only [masterMemcmpSpec] at ho; rw [satisfies_pure_sepConj] at ho; exact False.elim ho.1
-
-/-- Weaken `HookOk f (bcmpSpecK keep masterMemcmpSpec)` to
-    `HookOk f (bcmpSpecK keep masterBcmpSpec)`. -/
-theorem hookOk_masterBcmpK_of_masterMemcmp (keep : BitVec 64 → Bool) {f : State → State}
-    (hh : HookOk f (bcmpSpecK keep masterMemcmpSpec)) :
-    HookOk f (bcmpSpecK keep masterBcmpSpec) := by
-  intro x R s0 hrun hpre hsp
-  have hlen : x.bsB.length = x.bsA.length := by
-    dsimp only [bcmpSpecK, masterBcmpSpec] at hpre
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-    exact hpre.2.1.2.2.2
-  obtain ⟨hkf, hsym, hout⟩ := hh x R s0 hrun hpre hsp
-  refine ⟨hkf, hsym, ?_⟩
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨_, hp⟩ | ⟨_, _, he⟩ | ⟨_, ho⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [bcmpSpecK, masterMemcmpSpec, masterBcmpSpec] at hq ⊢
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-    refine ⟨⟨?_, hq.1.2.1, hq.1.2.2⟩, hq.2⟩
-    change (f s0).readReg32 .x0 = 0#32 ↔ x.bsA = x.bsB
-    rw [hq.1.1]
-    exact memcmpBytes_eq_zero_iff hlen.symm
-  · dsimp only [bcmpSpecK, masterMemcmpSpec] at hp
-    rw [satisfies_pure_sepConj] at hp; exact False.elim hp.1
-  · dsimp only [bcmpSpecK, masterMemcmpSpec] at he
-    rw [satisfies_pure_sepConj] at he; exact False.elim he.1
-  · dsimp only [bcmpSpecK, masterMemcmpSpec] at ho
-    rw [satisfies_pure_sepConj] at ho; exact False.elim ho.1
 
 /-- Consumer 1 (`DirSpecs.cliBcmpSpec`): lift `HookOk f masterBcmpSpec` to
     `HookOk f DirSpecs.cliBcmpSpec` (framing `stackAt s0.sp extHookStack`). -/

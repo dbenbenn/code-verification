@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # `PrfChainKey` Sub-Hop `PrimBaseSpec` Simulation and Creation-Order Slot Helpers
@@ -20,7 +21,7 @@ chain-key hybrid (`authCkStepWith`), together with creation-order `SlotM` well-f
 invariants (`AuthSlotStateWf`) and slot-indexed send/receive helpers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -110,7 +111,7 @@ theorem primBounded_finishAuthSendCkPrim (S : Setup)
       spqrSalt? pqRatchetMsg _ _ _ msgPlain _ _ hst.toAuthHybridState)
     (fun _ => primBounded_pure') (by omega)
 
-def finishAuthSendCkSlots {S : Setup} (P : Primitives)
+@[expose] def finishAuthSendCkSlots {S : Setup} (P : Primitives)
     (sid : SessionId S) (uEntry : PrincipalEntry)
     (peerPrincipal? : Option (Nat × PrincipalEntry))
     (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
@@ -163,34 +164,6 @@ theorem primBounded_finishAuthRecvCkSlotsPrim (S : Setup)
   exact primBounded_bind_le 0
     (primBounded_recvFinishTag_runPrim S true prep.finishTag _)
     (fun _ => primBounded_pure') (by omega)
-
-theorem primBounded_finishAuthRecvCkPrim (S : Setup)
-    (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S)
-    (drKey : DRKey) (rk1 : Bytes) (spqrSalt? : Option Bytes)
-    (recvCount' : Nat) (p : Bytes × Bytes) :
-    PrimBounded
-      (finishAuthRecvCkPrim S msg prep drKey rk1 spqrSalt? recvCount' p)
-      (S.N_dh * 12 + 2) :=
-  primBounded_finishAuthRecvCkSlotsPrim S msg prep drKey rk1 spqrSalt? recvCount' p {}
-
-theorem simulateQ_finishAuthRecvCkPrim (S : Setup) (P : Primitives)
-    (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S)
-    (drKey : DRKey) (rk1 : Bytes) (spqrSalt? : Option Bytes)
-    (recvCount' : Nat) (p : Bytes × Bytes)
-    (hPrin : prep.finishTag.hstDec.base.principals.length ≤ S.N_dh)
-    (hSentOPK : prep.finishTag.hstDec.base.sentOPKEvents.length ≤ S.N_dh)
-    (hSentNoOPK : prep.finishTag.hstDec.base.sentNoOPKEvents.length ≤ S.N_dh) :
-    simulateQ (primBaseImpl P)
-      (finishAuthRecvCkPrim S msg prep drKey rk1 spqrSalt? recvCount' p) =
-      pure (finishAuthRecvCk P msg (prep.toPure true P) drKey rk1 spqrSalt? recvCount' p) := by
-  unfold finishAuthRecvCkPrim finishAuthRecvCkSlotsPrim finishAuthRecvCk PreparedAuthRecvPrim.toPure
-  dsimp only
-  rw [simulateQ_bind, simulateQ_primQ_deriveMsgKeys, pure_bind,
-      simulateQ_bind, simulateQ_primQ_aeadDec, pure_bind,
-      simulateQ_bind,
-      simulateQ_recvFinishTag_runPrim S true P prep.finishTag _ hPrin hSentOPK hSentNoOPK,
-      pure_bind]
-  rfl
 
 @[simp] theorem recvFinishTag_mapState_toPure_fst {S : Setup} (checkAuth : Bool) (P : Primitives)
     (tag : RecvFinishTag S)
@@ -533,7 +506,7 @@ theorem primBounded_authCkSendWithPrim (S : Setup)
                         _ _ _ _ _ _ hst.toAuthHybridState)
                       (fun _ => primBounded_pure') (by omega)
 
-def authCkSendWithSlots (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (Bytes × Bytes))
+@[expose] def authCkSendWithSlots (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (Bytes × Bytes))
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthHybridStateFixed S) : ProbComp (AuthResponse × AuthHybridStateFixed S) := do
   let st := hst.toAuthHybridState.base
@@ -874,62 +847,6 @@ theorem authCkSendWithSlots_cacheAuthAdvKeysFixed (S : Setup) (P : Primitives)
                 dsimp only
                 simp [Prod.map, finishAuthHybridSend]
 
-theorem authCkSendWith_cacheAuthAdvKeysFixed (S : Setup) (P : Primitives)
-    (sampAtPure : Nat → ProbComp (Bytes × Bytes))
-    (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
-    (hst : AuthHybridStateFixed S) :
-    authCkSendWith S P sampAtPure sid u bundle m0 m1 (cacheAuthAdvKeysFixed P hst) =
-      Prod.map id (cacheAuthAdvKeysFixed P) <$>
-        authCkSendWith S P sampAtPure sid u bundle m0 m1 hst := by
-  unfold authCkSendWith
-  dsimp only
-  have hWonEq : (cacheAuthAdvKeysFixed P hst).base.hasWonAuth = hst.base.hasWonAuth := rfl
-  rw [hWonEq]
-  by_cases hWon : hst.base.hasWonAuth = true
-  · simp [hWon, Prod.map]
-  simp only [hWon, Bool.false_eq_true, ↓reduceIte]
-  unfold cacheAuthAdvKeysFixed cacheAuthAdvKeys
-  dsimp only
-  rw [koskBundleOk_cacheAuthAdvKeys]
-  split; · simp [Prod.map]
-  split; · simp [Prod.map]
-  split
-  · simp [Prod.map]
-  · split
-    · simp [Prod.map]
-    · split
-      · simp [Prod.map]
-      · simp only [map_bind]
-        congr 1; funext ekASk; congr 1; funext kemCoins
-        congr 1; funext ephASk; congr 1; funext spqrCoins
-        split
-        · simp [Prod.map]
-        · cases P.kemEncaps bundle.pqspkB kemCoins with
-          | none => simp [Prod.map]
-          | some pair =>
-            rcases pair with ⟨ss, kemCt⟩
-            dsimp only
-            split
-            · simp only [map_bind]
-              congr 1; funext drKey
-              congr 1; funext rk1
-              cases P.spqrInitSend drKey.pqrKey spqrCoins with
-              | none => simp [Prod.map]
-              | some spqrVal =>
-                rcases spqrVal with ⟨_, spqrSalt?, pqRatchetMsg⟩
-                dsimp only
-                simp only [map_bind, map_pure]
-                congr 1
-            · simp only [map_bind]
-              congr 1; funext ⟨drKey, roCache'⟩
-              congr 1; funext ⟨⟨rk1, ck1_0⟩, rootRoCache'⟩
-              cases P.spqrInitSend drKey.pqrKey spqrCoins with
-              | none => simp [Prod.map]
-              | some spqrVal =>
-                rcases spqrVal with ⟨_, spqrSalt?, pqRatchetMsg⟩
-                dsimp only
-                simp [Prod.map, finishAuthHybridSend]
-
 theorem prepareAuthHybridRecvOPKPure_finishTag_base {S : Setup} (P : Primitives)
     (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) (msg : PreKeyMsg)
     (hst : AuthHybridState S) (prep : PreparedAuthRecvPrim S)
@@ -1052,7 +969,7 @@ theorem primBounded_authCkRecvWithPrim (S : Setup)
         exact primBounded_bind_le 0 (primBounded_recvFinishTag_runPrim S true prep.finishTag _)
           (fun _ => primBounded_pure') (by omega)
 
-def finishAuthRecvCkSlots {S : Setup} (P : Primitives)
+@[expose] def finishAuthRecvCkSlots {S : Setup} (P : Primitives)
     (msg : PreKeyMsg) (prep : PreparedAuthRecv S)
     (drKey : DRKey) (rk1 : Bytes) (spqrSalt? : Option Bytes)
     (recvCount' : Nat) (p : Bytes × Bytes) (slots' : AuthSlotState) :
@@ -1079,7 +996,7 @@ theorem simulateQ_finishAuthRecvCkSlotsPrim (S : Setup) (P : Primitives)
       pure_bind]
   rfl
 
-def authCkRecvWithSlots (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (Bytes × Bytes))
+@[expose] def authCkRecvWithSlots (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (Bytes × Bytes))
     (msg : PreKeyMsg) (prep? : Option (PreparedAuthRecv S))
     (hst : AuthHybridStateFixed S) : ProbComp (AuthResponse × AuthHybridStateFixed S) := do
   let recvCount' := hst.recvCount + 1
@@ -1233,67 +1150,6 @@ theorem simulateQ_authCkRecvWithPrim (S : Setup) (P : Primitives)
             pure_bind]
         rfl
 
-theorem authCkRecvWith_cacheAuthAdvKeysFixed (S : Setup) (P : Primitives)
-    (sampAtPure : Nat → ProbComp (Bytes × Bytes))
-    (msg : PreKeyMsg) (prep? : Option (PreparedAuthRecvPrim S))
-    (hst : AuthHybridStateFixed S) :
-    authCkRecvWith S P sampAtPure msg
-      ((prep?.map (PreparedAuthRecvPrim.mapState (cacheAuthAdvKeys P))).map
-        (PreparedAuthRecvPrim.toPure true P))
-      (cacheAuthAdvKeysFixed P hst) =
-    Prod.map id (cacheAuthAdvKeysFixed P) <$>
-      authCkRecvWith S P sampAtPure msg
-        (prep?.map (PreparedAuthRecvPrim.toPure true P)) hst := by
-  unfold authCkRecvWith cacheAuthAdvKeysFixed
-  cases prep? with
-  | none => simp [Prod.map]
-  | some prep =>
-    dsimp only [Option.map, PreparedAuthRecvPrim.mapState, PreparedAuthRecvPrim.toPure]
-    simp only [cacheAuthAdvKeys_roCache, cacheAuthAdvKeys_rootRoCache]
-    split
-    · cases prep.matchedSess? with
-      | some s =>
-        dsimp only
-        split
-        · cases P.spqrInitRecv s.drKey.pqrKey msg.pqRatchetMsg with
-          | none => simp [Prod.map]
-          | some pqr =>
-            rcases pqr with ⟨_, spqrSalt?⟩
-            dsimp only
-            simp [Prod.map, finishAuthRecvCk]
-        · simp only [map_bind]
-          congr 1; funext rk1
-          cases P.spqrInitRecv s.drKey.pqrKey msg.pqRatchetMsg with
-          | none => simp [Prod.map]
-          | some pqr =>
-            rcases pqr with ⟨_, spqrSalt?⟩
-            dsimp only
-            simp only [map_bind, map_pure]
-            congr 1; funext p
-            simp [Prod.map, finishAuthRecvCk]
-      | none =>
-        dsimp only
-        simp only [map_bind]
-        congr 1; funext drKey
-        congr 1; funext rk1
-        cases P.spqrInitRecv drKey.pqrKey msg.pqRatchetMsg with
-        | none => simp [Prod.map]
-        | some pqr =>
-          rcases pqr with ⟨_, spqrSalt?⟩
-          dsimp only
-          simp only [map_bind, map_pure]
-          congr 1; funext p
-          simp [Prod.map, finishAuthRecvCk]
-    · simp only [map_bind]
-      congr 1; funext ⟨drKey, roCache'⟩
-      congr 1; funext ⟨⟨rk1, ck1_0⟩, rootRoCache'⟩
-      cases P.spqrInitRecv drKey.pqrKey msg.pqRatchetMsg with
-      | none => simp [Prod.map]
-      | some pqr =>
-        rcases pqr with ⟨_, spqrSalt?⟩
-        dsimp only
-        simp [Prod.map]
-
 theorem primBounded_authCkStepWithPrim (S : Setup)
     (sampAt : Nat → OracleComp PrimBaseSpec (Bytes × Bytes))
     (hSamp : ∀ s, PrimBounded (sampAt s) 2)
@@ -1440,7 +1296,7 @@ theorem evalDist_preSample_eq_lazy_of_slotStep_inv
 
 end SlotM
 
-def authCreationSlotFired (idx : Nat) {S : Setup} (hst : AuthHybridStateFixed S) : Bool :=
+@[expose] def authCreationSlotFired (idx : Nat) {S : Setup} (hst : AuthHybridStateFixed S) : Bool :=
   decide (idx < hst.slots.nextSlot)
 
 structure AuthSlotStateWf (S : Setup) (hst : AuthHybridStateFixed S) : Prop where
@@ -1569,7 +1425,7 @@ private def isAuthSendQueryB {S : Setup} : (Nat ⊕ AuthQuery S) → Bool
   · simp [isAuthSendQueryB, isAuthSendQuery]
   · cases q <;> simp [isAuthSendQueryB, isAuthSendQuery]
 
-def isAuthSessQueryB {S : Setup} : (Nat ⊕ AuthQuery S) → Bool
+@[expose] def isAuthSessQueryB {S : Setup} : (Nat ⊕ AuthQuery S) → Bool
   | .inr (.sendOPK _ _ _ _ _)   => true
   | .inr (.sendNoOPK _ _ _ _ _) => true
   | .inr (.recvOPK _ _ _ _)     => true

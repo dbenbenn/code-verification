@@ -10,18 +10,19 @@ limitations under the License.
 module
 
 public import Computational.Proofs.E2E.Dsl.DrSessionSim -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.DrSessionSimBookkeeping -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.DrSessionSimSend -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.DrSessionSimBookkeeping
+import Computational.Proofs.E2E.Dsl.DrSessionSimSend
 public import Computational.Proofs.E2E.Dsl.HaltedDrSessionLifter -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.LocalSessionStep -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.SmReachInv -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.LocalSessionStep
+import Computational.Proofs.E2E.Dsl.SmReachInv
 public import Computational.Proofs.E2E.Dsl.SpqrSim -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge
 import Computational.Proofs.E2E.Dsl.DrSessionSimHooks
 import Computational.Proofs.E2E.Dsl.SmReachInvParty
 import Computational.Proofs.E2E.Dsl.SpqrSimChain
 import Computational.Proofs.E2E.Dsl.SpqrSimSend
 import Computational.Proofs.E2E.Dsl.TablesHonest
+import Computational.Proofs.ReductionDsl.SM.GameCosted
 
 /-!
 # Pre-Tracker `e2eOps` Send and Challenge Stages
@@ -167,7 +168,6 @@ open Computational.Proofs.E2E.Dsl.SmReachInvParty (serializedPartyAddresses_leng
 private theorem hb0_s : bits 0 = 1 := rfl
 private theorem hb1_s : bits 1 = 1 := rfl
 private theorem hb2_s : bits 2 = 2 := rfl
-private theorem hb3_s : bits 3 = 2 := rfl
 private theorem hb4_s : bits 4 = 3 := rfl
 private theorem hb256_s : bits 256 = 9 := rfl
 

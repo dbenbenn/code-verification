@@ -10,13 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainStatesClPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Drop.States2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.States2BudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainStatesClPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.States2Budget
+public import LibsignalBinary.Proofs.SpqrV1.Drop.States2BudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
@@ -25,7 +25,8 @@ import LibsignalBinary.Proofs.SpqrV1.Drop.PolyDecoder
 import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoder
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-import GeneratedLean.LibsignalSessionObj
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudgetAux
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Code-Loaded Drop Glue for `chunked::states::States` (Block `273`)
@@ -35,7 +36,7 @@ Block `273` (`drop_glue::<spqr::v1::chunked::states::States> [local#2]`), re-exp
 `279`, `287`, `266`, and `269` from `ChainStatesClPlacedBudgetAux`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

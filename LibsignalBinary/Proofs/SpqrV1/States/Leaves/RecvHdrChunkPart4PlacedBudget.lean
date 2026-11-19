@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart1PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart1PlacedBudget -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart1PlacedBudget -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart4
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart4
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
@@ -22,6 +22,9 @@ import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart3
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
 
 /-!
 # `<NoHeaderReceived>::recv_hdr_chunk` (Block `369`) — Budget-Threaded Part 4
@@ -31,7 +34,7 @@ Budget-threaded `[LibsignalPlacement]` proofs on `lsProg_369 (Rust.withPanics ex
 `FreeOnlyEvs` deallocation (offsets `696 .. 800` / `1060`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,15 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdRegIdHelpersBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdRegIdPollPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.PollCommonPlacedBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdRegIdHelpersBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdRegIdPollPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.PollCommonPlacedBudget
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecDefs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdRegIdPoll -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LscroKitPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.PollCommonPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded `IdentityFiles::get_local_registration_id::{closure#0}` (`[LibsignalPlacement]`, Block `568`)
@@ -26,7 +36,7 @@ Defines `OptRegIdMalformedEnv` and `CliIdRegIdPollEnv` and verifies Block `568` 
 `SpecsPlacedBudget.idRegIdPollSpecPlaced` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -149,7 +159,7 @@ attribute [local arm64_norm]
 - `Ok bs` with `bs.length ≠ 4`: allocates the 14-byte `"malformed file"` string
   (`evs = rustAllocEvents 14 1`);
 - `Err ()`: `0` heap events (`evs = []`). -/
-def OptRegIdMalformedEnv (gr : Except Unit (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
+@[expose] def OptRegIdMalformedEnv (gr : Except Unit (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
   match gr with
   | .ok bs =>
     if bs.length = 4 then evs = [] else evs = rustAllocEvents 14 1
@@ -158,7 +168,7 @@ def OptRegIdMalformedEnv (gr : Except Unit (List (BitVec 8))) (evs : List AllocE
 /-- Tight budget envelope for `IdentityFiles::get_local_registration_id::{closure#0}` (Block `568`):
 runs `Dir::get("registration-id")`, allocates the 14-byte `"malformed file"` string iff `Dir::get`
 returns `Ok bs` with `bs.length ≠ 4`, and optionally frees a non-zero-capacity `Dir::get` buffer. -/
-def CliIdRegIdPollEnv
+@[expose] def CliIdRegIdPollEnv
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (rd : ReadRule) (F0 : FsFiles) (x : IdOwnPollGhostPlaced) : List AllocEvent → Prop :=
   SeqEnv (GetEnv F0 x.own (utf8 "registration-id"))

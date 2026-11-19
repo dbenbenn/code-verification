@@ -10,6 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Defs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `MessageDecrypt` Active-Session Region Segment (`SegRegionSome`)
@@ -19,7 +21,7 @@ Instantiates `recordDecryptSpec` restricted to a PQ-state predicate `Q` (`ScopeP
 `withStoresDecSpec.onPanic`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageDecrypt.Pf.SegRegionSome
 
@@ -98,96 +100,6 @@ theorem allocFailedIn_of_load_prefix {s0 s sf : State} {evs : List TraceEvent}
   rw [← hsf, List.drop_left] at halloc
   rw [← hsf, htr, List.append_assoc, List.drop_left]
   exact List.mem_append_right _ halloc
-
-theorem post_meta_extract {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel} {img : Obj.Image} {x_rg : RecordDecryptGhost} {s sf : State} {F : SepProp}
-    (hm : sf.mem ⊨ (recordDecryptSpec C A ctl uuidTryParse S img).post x_rg s sf ∗ F) :
-    sf.sp = s.sp ∧ sf.readReg64 .x29 = s.readReg64 .x29 ∧ sf.readReg64 .x27 = x_rg.sret := by
-  dsimp only [recordDecryptSpec, Spec.inImage] at hm
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hm
-  rcases hm with ⟨⟨_, _, hsp, hx29, hx27, _, _⟩, _⟩
-  exact ⟨hsp, hx29, hx27⟩
-
-theorem segRegionSomeV_ok {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {abs : String → Option (State → State)}
-    {kit : SessionStoreSpec A img.base} {ikit : IdentityStoreSpec A img.base}
-    {st0 : kit.StoreState} {ist0 : ikit.IdState}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop} :
-    SegRegionSomeSpecV img C A ctl uuidTryParse S encRecord abs kit ikit st0 ist0 Scope := by
-  intro _hHyps Q hreg hQ x ans R s0 s hRS hL
-  obtain ⟨hpc, ⟨hrun, hsp, hal0, hal, hx29, _hx27, hfrozen, hsym, hvregs⟩,
-    rec, ses, G, prevCap, prevPtr, hload, hscope, hcur, hw0, htrace, hmem⟩ := hRS
-  let x_rg := recGhostOf x prevPtr G ses.state
-  let R_rg := wsRegionFrameV img kit ikit x s0 prevCap prevPtr ∗
-    decStoreExtra kit ikit st0 ist0 s0 ∗ R
-  have hmem_rg : s.mem ⊨ (recordDecryptSpec C A ctl uuidTryParse S img).withVRegs.pre x_rg s ∗ R_rg := by
-    dsimp only [x_rg, R_rg, Spec.withVRegs]
-    simpa only [sepConj_assoc] using hmem
-  have hmemQ : s.mem ⊨
-      ((recordDecryptSpec C A ctl uuidTryParse S img).withVRegs.restrictPre (Q ·.st.pqRatchetState)).pre
-        x_rg s ∗ R_rg :=
-    Spec.satisfies_restrictPre.mpr ⟨hQ x.rem.val rec ses hscope hcur, hmem_rg⟩
-  obtain ⟨sf, hsteps, hout⟩ := hreg x_rg R_rg s hpc hrun hmemQ hL
-  try dsimp only [Spec.restrictPre] at hout
-  rcases hout with ⟨hpc_sf, hrun_sf, hmf⟩ | ⟨hpan_sf, hmf⟩
-  · refine ⟨sf, hsteps, Or.inl ?_⟩
-    dsimp only [Spec.withVRegs] at hmf
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hmf
-    obtain ⟨hvregs_sf, hmf⟩ := hmf
-    obtain ⟨hsp_sf, hx29_sf, hx27_sf⟩ := post_meta_extract hmf
-    have hfrozen_sf : img.FrozenLoaded sf := hfrozen.of_keepsFrozen hsteps.keepsFrozen
-    have hsym_sf : sf.symtab = img.symtab := hsteps.symtab_eq.trans hsym
-    have hal_sf : sf.spAligned = true := by
-      rw [State.spAligned, hsp_sf]
-      exact hal
-    have hmeta_sf : wsMeta img x s0 sf :=
-      ⟨hrun_sf, hsp_sf.trans hsp, hal0, hal_sf, hx29_sf.trans hx29,
-        hx27_sf, hfrozen_sf, hsym_sf, hvregs_sf.trans hvregs⟩
-    refine ⟨hpc_sf, hmeta_sf, s, rec, ses, G, prevCap, prevPtr, hsp, htrace,
-      hload, hscope, hcur, hw0, ?_⟩
-    dsimp only [x_rg, R_rg] at hmf
-    simpa only [sepConj_assoc] using hmf
-  · refine ⟨sf, hsteps, Or.inr (Or.inr (Or.inl ⟨hpan_sf, ?_⟩))⟩
-    dsimp only [Spec.withVRegs, recordDecryptSpec, withStoresDecSpecV, Spec.inImage, R_rg] at hmf ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hmf
-    rcases hmf with ⟨⟨hdisj, hpref⟩, hmf⟩
-    have hload_pref : s0.trace ++ kit.loadEvs encRecord x.rem.val ans.loadSession <+: sf.trace := by
-      rwa [← htrace]
-    have hs0_pref : s0.trace <+: sf.trace :=
-      (List.prefix_append s0.trace (kit.loadEvs encRecord x.rem.val ans.loadSession)).trans hload_pref
-    have hpan_pure :
-        s0.trace <+: sf.trace ∧
-          (allocFailedIn s0 sf ∨
-            ∃ answers : StoreAnswers (List (BitVec 8)) Unit,
-              kit.loadRel st0 x.rem.val answers.loadSession ∧
-              s0.trace ++ kit.loadEvs encRecord x.rem.val answers.loadSession <+: sf.trace ∧
-              ((x.model C S uuidTryParse answers).1 = .error .panic ∨ x.recvPanics S answers)) := by
-      refine ⟨hs0_pref, ?_⟩
-      rcases hdisj with hmod_pan | hrecv_pan | halloc
-      · exact Or.inr ⟨ans, hload ▸ hscope.2, hload_pref, Or.inl
-          (model_panic_of_region_panic C S x ans rec ses G prevPtr hload hcur hmod_pan)⟩
-      · exact Or.inr ⟨ans, hload ▸ hscope.2, hload_pref, Or.inr
-          (recvPanics_of_region_recvPanics S x ans rec ses G prevPtr hload hcur hrecv_pan)⟩
-      · exact Or.inl (allocFailedIn_of_load_prefix htrace hpref halloc)
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hpan_pure, ?_⟩
-    have h_any : anyHeap ∗ (wsRegionFrameV img kit ikit x s0 prevCap prevPtr ∗
-        decStoreExtra kit ikit st0 ist0 s0) ⊢ anyHeap :=
-      entails_anyHeap _
-    rw [← sepConj_assoc, ← sepConj_assoc] at hmf
-    rw [sepConj_assoc anyHeap] at hmf
-    exact Satisfies.mono (sepConj_mono_left h_any) hmf
-
-theorem segRegionSome_ok {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {abs : String → Option (State → State)} :
-    SegRegionSomeSpec img C A ctl uuidTryParse S encRecord abs :=
-  segRegionSomeV_ok
-
-/-! ## Relocatable `[LibsignalPlacement]` Proofs -/
 
 section Placed
 

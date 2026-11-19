@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.IoSitesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.IoSitesPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable I/O Call-Site Helpers for `main` (Block `617`)
@@ -22,7 +24,7 @@ Projects budget-threaded `subroutine_ok` contracts for `read_stdin`, `read_file`
 `write_stdout` on Block `617` from `SpecsPlacedBudget.MainIoPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvFreshStepBobSid
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvFreshStepBobSid -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -19,9 +19,8 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import ProofLib.Lemmas
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.COMPOSED.CompPresTRExp
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -45,7 +44,7 @@ reachable composed trace, every logged `ComposedEvent.HandshakeSession s d` with
 root key is bound in `s.sid`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -62,7 +61,7 @@ open Symbolic.Swarm.COMPOSED.CompTrace (eventLoggedAt_mono eventLoggedAt_here
 
 /-- Every non-initiator `HandshakeSession s d` has a `BobDone s.me` event logged at `d` whose root
 key is bound in `s.sid`. -/
-def BobSessionSidInv (tr : ExecTrace) : Prop := BobSidLink tr
+@[expose] def BobSessionSidInv (tr : ExecTrace) : Prop := BobSidLink tr
 
 /-! ## Trace Extension -/
 

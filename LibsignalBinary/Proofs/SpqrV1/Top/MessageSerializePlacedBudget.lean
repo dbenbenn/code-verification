@@ -10,15 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializeBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializePlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializeBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrowBudget
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
@@ -30,6 +30,7 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodedLen -- shake: keep
 meta import ProofLib.SepLogic.WP.Apply -- shake: keep
 meta import ProofLib.SepLogic.WPp -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Verification of `<Message>::serialize`
@@ -38,7 +39,7 @@ Proves the allocation-budget `MessageSerializePlacedOkX` contract for
 `<spqr::v1::chunked::states::Message>::serialize` (Block `352`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -114,7 +115,7 @@ export LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializeBudget
 /-- `<spqr::v1::chunked::states::Message>::serialize` (Block `352`) meets `withLsCodeLoaded
     lsmpl (messageSerializeSpecX P_api A lim)` on `libsignalSessionLib.blockProgram lsmpl 352
     (Rust.withPanics ext)`. -/
-def MessageSerializePlacedOkX [LibsignalPlacement] (P_api : PolyApi) {M : AllocCostModel}
+@[expose] def MessageSerializePlacedOkX [LibsignalPlacement] (P_api : PolyApi) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 352 (Rust.withPanics ext))
@@ -1068,22 +1069,6 @@ theorem messageSerialize_placed_ok_x [LibsignalPlacement] (P_api : PolyApi)
   rw [← IsLsBlockProg.eq_blockProgram
     (prog := (blkPC_352).rebase (blkPl_352).base (Rust.withPanics ext))]
   exact messageSerialize_placed_ok_blk_x P_api A lim ext h_panic hshim halloc hres7 henc
-
-/-- Convenience wrapper discharging `hres7` directly from `HookSat` contracts via
-    `DoReserveBudget.do_reserve_7_placed_ok`. -/
-theorem messageSerialize_placed_ok_blk_of_hooks [LibsignalPlacement] (P_api : PolyApi)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State))
-    (h_panic : (Rust.withPanics ext) spqrHandleErrorSym = some Rust.panicked)
-    (hshim : HookSat (Rust.withPanics ext) spqrRustNoAllocShimSym noAllocShimSpec)
-    (halloc : HookSat (Rust.withPanics ext) spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat (Rust.withPanics ext) spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (henc : SpqrEncodeVarintPlacedOkExt A lim ext) :
-    subroutine_ok ((blkPC_352).rebase (blkPl_352).base (Rust.withPanics ext))
-      (blkPl_352).base
-      (withLsCodeLoaded lsmpl (messageSerializeSpecX P_api A lim)) :=
-  messageSerialize_placed_ok_blk_x P_api A lim ext h_panic hshim halloc
-    (do_reserve_7_placed_ok h_panic hshim halloc hrealloc) henc
 
 /-- Convenience wrapper on `blockProgram lsmpl 352` discharging `hres7` directly from `HookSat`
     contracts AND accepting `SpqrEncodeVarintPlacedOkX A lim ext`. -/

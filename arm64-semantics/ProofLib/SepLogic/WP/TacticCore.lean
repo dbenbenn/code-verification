@@ -22,7 +22,7 @@ public import ProofLib.SepLogic.WP.ProjGuardAttr
 public import ProofLib.Abi.Aapcs
 public import ProofLib.SepLogic
 public import ProofLib.SepLogic.Bytes
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 public import ProofLib.Hoare.Safety
 public import ProofLib.VCGen
 public import ProofLib.LitNorm
@@ -69,34 +69,9 @@ private def multiPlacedLibAllowHeads : Array Name :=
   #[`Arm64.Obj.Interned.MultiLib.toMultiPlacedLib]
 
 private def programAllowHeads : Array Name :=
-  #[``Arm64.Program.rebase, ``Arm64.Program.ofImage, ``Arm64.Program.ofImageWithSvc,
-    ``Arm64.Obj.LinkedImage.toProgram, ``Arm64.Obj.LinkedImage.toProgramWithSvc,
+  #[``Arm64.Program.rebase,
     ``Arm64.Obj.PlacedLib.program, ``Arm64.Obj.MultiPlacedLib.blockProgram]
 
-declare_wp_proj_guard guardObjImageCode Arm64.Obj.Image code ``Arm64.Obj.Image.code ``Arm64.Obj.Image.mk
-declare_wp_proj_guard guardObjImageData Arm64.Obj.Image data ``Arm64.Obj.Image.data ``Arm64.Obj.Image.mk
-declare_wp_proj_guard guardObjImageRoData Arm64.Obj.Image roData ``Arm64.Obj.Image.roData ``Arm64.Obj.Image.mk
-declare_wp_proj_guard guardObjImageExternData Arm64.Obj.Image externData ``Arm64.Obj.Image.externData ``Arm64.Obj.Image.mk
-declare_wp_proj_guard guardObjImageGot Arm64.Obj.Image got ``Arm64.Obj.Image.got ``Arm64.Obj.Image.mk
-declare_wp_proj_guard guardObjImageSymbols Arm64.Obj.Image symbols ``Arm64.Obj.Image.symbols ``Arm64.Obj.Image.mk
-declare_wp_proj_guard guardObjImageObjSymbols Arm64.Obj.Image objSymbols ``Arm64.Obj.Image.objSymbols ``Arm64.Obj.Image.mk
-declare_wp_proj_guard guardObjImageStubs Arm64.Obj.Image stubs ``Arm64.Obj.Image.stubs ``Arm64.Obj.Image.mk
-
-declare_wp_proj_guard guardLinkedImageCode Arm64.Obj.LinkedImage code ``Arm64.Obj.LinkedImage.code ``Arm64.Obj.LinkedImage.mk
-declare_wp_proj_guard guardLinkedImageData Arm64.Obj.LinkedImage data ``Arm64.Obj.LinkedImage.data ``Arm64.Obj.LinkedImage.mk
-declare_wp_proj_guard guardLinkedImageRoData Arm64.Obj.LinkedImage roData ``Arm64.Obj.LinkedImage.roData ``Arm64.Obj.LinkedImage.mk
-declare_wp_proj_guard guardLinkedImageExternData Arm64.Obj.LinkedImage externData ``Arm64.Obj.LinkedImage.externData ``Arm64.Obj.LinkedImage.mk
-declare_wp_proj_guard guardLinkedImageGot Arm64.Obj.LinkedImage got ``Arm64.Obj.LinkedImage.got ``Arm64.Obj.LinkedImage.mk
-declare_wp_proj_guard guardLinkedImageRelocs Arm64.Obj.LinkedImage relocs ``Arm64.Obj.LinkedImage.relocs ``Arm64.Obj.LinkedImage.mk
-declare_wp_proj_guard guardLinkedImageSymbols Arm64.Obj.LinkedImage symbols ``Arm64.Obj.LinkedImage.symbols ``Arm64.Obj.LinkedImage.mk
-declare_wp_proj_guard guardLinkedImageObjSymbols Arm64.Obj.LinkedImage objSymbols ``Arm64.Obj.LinkedImage.objSymbols ``Arm64.Obj.LinkedImage.mk
-declare_wp_proj_guard guardLinkedImageStubs Arm64.Obj.LinkedImage stubs ``Arm64.Obj.LinkedImage.stubs ``Arm64.Obj.LinkedImage.mk
-declare_wp_proj_guard guardLinkedImageObjects Arm64.Obj.LinkedImage objects ``Arm64.Obj.LinkedImage.objects ``Arm64.Obj.LinkedImage.mk
-
-declare_wp_proj_guard guardObjectInfoFns Arm64.Obj.ObjectInfo fns ``Arm64.Obj.ObjectInfo.fns ``Arm64.Obj.ObjectInfo.mk
-declare_wp_proj_guard guardObjectInfoCallFns Arm64.Obj.ObjectInfo callFns ``Arm64.Obj.ObjectInfo.callFns ``Arm64.Obj.ObjectInfo.mk
-declare_wp_proj_guard guardObjectInfoRelocFns Arm64.Obj.ObjectInfo relocFns ``Arm64.Obj.ObjectInfo.relocFns ``Arm64.Obj.ObjectInfo.mk
-declare_wp_proj_guard guardObjectInfoDataSyms Arm64.Obj.ObjectInfo dataSyms ``Arm64.Obj.ObjectInfo.dataSyms ``Arm64.Obj.ObjectInfo.mk
 declare_wp_proj_guard guardSymCodeInfoCode Arm64.Obj.SymCodeInfo code ``Arm64.Obj.SymCodeInfo.code ``Arm64.Obj.SymCodeInfo.mk
 declare_wp_proj_guard guardSymCodeInfoRelocs Arm64.Obj.SymCodeInfo relocs ``Arm64.Obj.SymCodeInfo.relocs ``Arm64.Obj.SymCodeInfo.mk
 declare_wp_proj_guard guardSymDataInfoBytes Arm64.Obj.SymDataInfo bytes ``Arm64.Obj.SymDataInfo.bytes ``Arm64.Obj.SymDataInfo.mk internedSymDataAllowHeads
@@ -344,12 +319,23 @@ register_option proofLib.wpDecideBranchOnStep : Bool := {
   descr := "Decide conditional branch PCs from local context in single-step wp_step / wp_sym_step before failing."
 }
 
-/-- When `true` (default), `wp_step` automatically splits wider `↦₆₄` / `↦₃₂` / `↦₁₆` cells or
-    `memRegion` / `stackFrameAt` containers at the accessed subword/slice offset when a load/store
-    step would otherwise fail with 'no step rule succeeded'. -/
+/-- When `true` (default), `wp_step` (for GPR and SIMD loads/stores) and `wp_steps` (for SIMD
+    loads/stores, or GPR loads/stores when `proofLib.wpAutoFocusInSteps` is `true`) automatically
+    split wider `↦₁₂₈` / `↦₆₄` / `↦₃₂` / `↦₁₆` cells, `memRegion` / `stackFrame*` containers, or
+    transparent spatial bundles at the accessed offset(s) when a load/store step would otherwise
+    fail with 'no step rule succeeded'. -/
 register_option proofLib.wpAutoSubwordFocus : Bool := {
   defValue := true
-  descr := "Automatically focus subword or region cells on load/store step fallback in wp_step."
+  descr := "Automatically focus subword, region, or bundle cells on load/store step fallback."
+}
+
+/-- When `true` (`false` by default so legacy `wp_steps` / `wp_sym_steps` boundaries on GPR
+    prologues and subword stores remain unchanged), also enable GPR subword/region/bundle
+    auto-focus inside multi-step `wp_steps` / `wp_sym_steps`. SIMD loads/stores always auto-focus
+    inside `wp_steps` under `proofLib.wpAutoSubwordFocus`. -/
+register_option proofLib.wpAutoFocusInSteps : Bool := {
+  defValue := false
+  descr := "Enable GPR subword/region/bundle auto-focus inside multi-step wp_steps / wp_sym_steps."
 }
 
 /-- When `true` (default), `wp_focus_close` tries a bounded default closer chain (`tryCloseFetchFromHasCode`,
@@ -452,23 +438,38 @@ elab "wp_focus_close " tac:tacticSeq : tactic => do
   setGoals (← rest.filterM fun m => not <$> m.isAssigned)
 
 /-- Decompose an address `base + c_1 - c_2 ...` with literal 64-bit offsets `c_i` into
-    `(base, offset mod 2^64)`; a literal address `c` decomposes as `(0#64, c)`. Used to match an
-    access address such as `(sp - 48#64) + 12#64` with an atom address such as `sp - 36#64`. -/
-partial def sepAddrBaseOff (e : Expr) : MetaM (Expr × Nat) := do
-  let e := e.consumeMData
+    `(base, offset mod 2^64)`, transparently peeling bounded local `let`-bindings of type
+    `BitVec 64` (such as `let sp := s0.sp - 848#64`); a literal address `c` decomposes as
+    `(0#64, c)`. Used to match an access address such as `sp + 616#64` with an atom address such as
+    `s0.sp - 232#64`. -/
+partial def sepAddrBaseOff (e : Expr) (fuel : Nat := 8) : MetaM (Expr × Nat) := do
+  let e := SepSolver.zetaPeelTop e.consumeMData
+  if fuel > 0 then
+    if let .fvar fv := e then
+      if let some decl := (← getLCtx).find? fv then
+        if let some val := decl.value? then
+          let val := val.consumeMData
+          if !val.containsFVar fv && val.approxDepth <= 40 then
+            let ty := (← instantiateMVars decl.type).consumeMData
+            if SepSolver.isBitVec64Type ty then
+              let valInst ← instantiateMVars val
+              if ← SepSolver.isConstOffsetBV64LetVal? valInst then
+                return ← sepAddrBaseOff valInst (fuel - 1)
+  let evalOff64? (arg : Expr) : MetaM (Option Nat) := do
+    if let some c ← SepSolver.evalBV64Lit? arg (allowLetFVar := true) (depth := 3) then return some c
+    if let some (64, c) ← evalBitVecLit? arg then return some c
+    return none
   let isAdd := e.isAppOfArity ``HAdd.hAdd 6
   if isAdd || e.isAppOfArity ``HSub.hSub 6 then
-    if let some (w, c) ← evalBitVecLit? (e.getArg! 5) then
-      if w == 64 then
-        let (b, o) ← sepAddrBaseOff (e.getArg! 4)
-        return (b, if isAdd then (o + c) % 2 ^ 64 else (o + 2 ^ 64 - c) % 2 ^ 64)
+    if let some c ← evalOff64? (e.getArg! 5) then
+      let (b, o) ← sepAddrBaseOff (e.getArg! 4) fuel
+      return (b, if isAdd then (o + c) % 2 ^ 64 else (o + 2 ^ 64 - c) % 2 ^ 64)
     if isAdd then
-      if let some (w, c) ← evalBitVecLit? (e.getArg! 4) then
-        if w == 64 then
-          let (b, o) ← sepAddrBaseOff (e.getArg! 5)
-          return (b, (o + c) % 2 ^ 64)
-  if let some (w, c) ← evalBitVecLit? e then
-    if w == 64 then return (toExpr (0#64), c)
+      if let some c ← evalOff64? (e.getArg! 4) then
+        let (b, o) ← sepAddrBaseOff (e.getArg! 5) fuel
+        return (b, (o + c) % 2 ^ 64)
+  if let some c ← evalOff64? e then
+    return (toExpr (0#64), c)
   return (e, 0)
 
 /-- Proof-free, `whnf`-free variant of `sepAddrBaseOff`: decomposes `base + c_1 - c_2 ...` into
@@ -517,9 +518,9 @@ def findSpSubst? (e : Expr) : MetaM (Option Expr) := do
     `s.sp = rhs` equation for an `s.sp` base, so atoms written against the entry stack pointer and
     accesses through a renamed `sp` decompose to the same base. Used only as a cheap pre-filter: a
     candidate found this way is confirmed by `proveSepAddrEqMeta?`. -/
-partial def sepAddrBaseOffFast (e : Expr) (cache : SpSubstCache) (fuel : Nat := 4) :
+partial def sepAddrBaseOffFast (e : Expr) (cache : SpSubstCache) (fuel : Nat := 8) :
     MetaM ((Expr × Nat) × SpSubstCache) := do
-  let (b, o) ← sepAddrBaseOff e
+  let (b, o) ← sepAddrBaseOff e fuel
   if fuel == 0 || !b.isAppOfArity ``State.sp 1 then return ((b, o), cache)
   let (rhs?, cache) ← match cache[b]? with
     | some r => Pure.pure ((if r == b then none else some r), cache)
@@ -538,8 +539,8 @@ def proveSepAddrEqMeta? (a' a : Expr) : MetaM (Option Expr) := do
   if a' == a then return some (← mkExpectedTypeHint (← mkEqRefl a) eqTy)
   if ← withReducibleAndInstances (isDefEq a' a) then
     return some (← mkExpectedTypeHint (← mkEqRefl a) eqTy)
-  let (a'Norm, ha'Prf?) ← SepSolver.normAddrMeta a'
-  let (aNorm, haPrf?) ← SepSolver.normAddrMeta a
+  let (a'Norm, ha'Prf?) ← SepSolver.normAddrMeta a' 64 (peelLets := true)
+  let (aNorm, haPrf?) ← SepSolver.normAddrMeta a 64 (peelLets := true)
   if a'Norm == aNorm || (← withReducibleAndInstances (isDefEq a'Norm aNorm)) then
     let ha'Prf ← match ha'Prf? with | some p => Pure.pure p | none => mkEqRefl a'
     let haPrf ← match haPrf? with | some p => Pure.pure p | none => mkEqRefl a
@@ -2156,8 +2157,6 @@ def getDsimpNormMemoRef : CoreM (IO.Ref (Option DsimpNormMemo)) := do
 def dsimpOnlyAtStarMemo (passKey : UInt64) (stx : Syntax) : TacticM Bool := withMainContext do
   if !proofLib.dsimpAtStarMemo.get (← getOptions) then
     return ← tryTactic (evalTactic stx)
-  let { ctx, simprocs, .. } ← mkSimpContext stx (eraseLocal := false) (kind := .dsimp)
-  let ctx ← ctx.setConfig { ctx.config with failIfUnchanged := false }
   let declName := (← Term.getDeclName?).getD .anonymous
   let ref ← getDsimpNormMemoRef
   let memo : DsimpNormMemo ← match ← ref.get with
@@ -2175,6 +2174,9 @@ def dsimpOnlyAtStarMemo (passKey : UInt64) (stx : Syntax) : TacticM Bool := with
   trace[proofLib.dsimpMemo] "pass {passKey}: {todo.size}/{hyps.size} hyps, target {doTgt}"
   if todo.isEmpty && !doTgt then
     return false
+  -- Elaborate the simp set only when there is something to simplify.
+  let { ctx, simprocs, .. } ← mkSimpContext stx (eraseLocal := false) (kind := .dsimp)
+  let ctx ← ctx.setConfig { ctx.config with failIfUnchanged := false }
   let (r?, _) ← dsimpGoal g ctx simprocs (simplifyTarget := doTgt) (fvarIdsToSimp := todo.map (·.1))
   let some g' := r? | replaceMainGoal []; return true
   let mut seen := memo.seen
@@ -2191,28 +2193,80 @@ def dsimpOnlyAtStarMemo (passKey : UInt64) (stx : Syntax) : TacticM Bool := with
   replaceMainGoal [g']
   return true
 
+/-- Per-declaration memo for the constant collection of `wp_unfold_specs`: the `Spec`-valued
+    constants of each (instantiated) goal or hypothesis type, in first-occurrence order, and
+    whether a constant is `Spec`-valued. Both depend only on the type and on the types of the
+    environment's constants, which do not change within a declaration. -/
+structure UnfoldSpecsMemo where
+  declName : Name
+  byType : Std.HashMap Expr (Array Name) := {}
+  isSpec : Std.HashMap Name Bool := {}
+
+initialize registerTraceClass `proofLib.unfoldSpecsMemo
+
+/-- Per-declaration `IO.Ref` backing `UnfoldSpecsMemo` (see `dsimpNormMemoRefExt`). -/
+initialize unfoldSpecsMemoRefExt : EnvExtension (Option (IO.Ref (Option UnfoldSpecsMemo))) ←
+  registerEnvExtension (pure none) (asyncMode := .local)
+
+/-- Obtain (or lazily allocate) the `IO.Ref` backing `UnfoldSpecsMemo`. -/
+def getUnfoldSpecsMemoRef : CoreM (IO.Ref (Option UnfoldSpecsMemo)) := do
+  if let some ref := unfoldSpecsMemoRefExt.getState (← getEnv) then
+    return ref
+  let ref ← IO.mkRef none
+  modify fun s => { s with env := unfoldSpecsMemoRefExt.setState s.env (some ref) }
+  return ref
+
+/-- The `Spec`-valued constants of `e` other than `Spec.mk`, in `Expr.forEach` order, memoized in
+    `memo` (which also caches the per-constant test). -/
+def specConstsOf (memo : IO.Ref UnfoldSpecsMemo) (e : Expr) : MetaM (Array Name) := do
+  if let some ns := (← memo.get).byType[e]? then return ns
+  let found ← IO.mkRef (#[] : Array Name)
+  e.forEach fun sub => do
+    if sub.isConst then
+      let nm := sub.constName!
+      if nm != ``Arm64.Spec.mk then
+        let isS ← match (← memo.get).isSpec[nm]? with
+          | some b => pure b
+          | none => do
+            let b := (← inferType sub).getForallBody.isAppOf ``Arm64.Spec
+            memo.modify fun m => { m with isSpec := m.isSpec.insert nm b }
+            pure b
+        if isS then
+          let arr ← found.get
+          unless arr.contains nm do found.set (arr.push nm)
+  let ns ← found.get
+  memo.modify fun m => { m with byType := m.byType.insert e ns }
+  return ns
+
 /-- Unfold `Arm64.Spec` constants (including parameterized `Spec` functions and combinators)
     appearing in the goal or local context. -/
 elab "wp_unfold_specs" : tactic => do
+  let declName := (← Term.getDeclName?).getD .anonymous
+  let memoRef ← getUnfoldSpecsMemoRef
+  let memo0 : UnfoldSpecsMemo ← match ← memoRef.get with
+    | some m => pure (if m.declName == declName && m.byType.size < 65536 then m else { declName })
+    | none => pure { declName }
+  let memo ← IO.mkRef memo0
   for _ in [:3] do
     if (← getUnsolvedGoals).isEmpty then return
     let mvarId ← getMainGoal
-    let ref ← IO.mkRef #[]
+    let ref ← IO.mkRef (#[] : Array Ident)
+    let hits ← IO.mkRef (0 : Nat)
+    let total ← IO.mkRef (0 : Nat)
     mvarId.withContext do
       let collectFromExpr (e : Expr) : MetaM Unit := do
-        e.forEach fun sub => do
-          if sub.isConst then
-            let nm := sub.constName!
-            if nm != ``Arm64.Spec.mk then
-              let ty ← inferType sub
-              if ty.getForallBody.isAppOf ``Arm64.Spec then
-                let arr ← ref.get
-                if !arr.any (fun i => i.getId == nm) then
-                  ref.set (arr.push (mkIdent nm))
+        total.modify (· + 1)
+        if (← memo.get).byType.contains e then hits.modify (· + 1)
+        for nm in ← specConstsOf memo e do
+          let arr ← ref.get
+          if !arr.any (fun i => i.getId == nm) then
+            ref.set (arr.push (mkIdent nm))
       collectFromExpr (← instantiateMVars (← mvarId.getType))
       for decl in (← getLCtx) do
         if !decl.isImplementationDetail && !decl.isAuxDecl then
           collectFromExpr (← instantiateMVars decl.type)
+    memoRef.set (some (← memo.get))
+    trace[proofLib.unfoldSpecsMemo] "{← hits.get}/{← total.get} types memoized"
     let ids ← ref.get
     if ids.isEmpty then break
     for id in ids do
@@ -2220,8 +2274,13 @@ elab "wp_unfold_specs" : tactic => do
       let _ ← tryTactic (discard <| dsimpOnlyAtStarMemo (mixHash 0x5350 (hash id.getId))
         (← `(tactic| dsimp only [$id:ident, wp_proj_guard] at *)))
   if (← getUnsolvedGoals).isEmpty then return
+  if (← getEnv).contains `Arm64.Spec.inImage then
+    let inImgId := mkCIdent `Arm64.Spec.inImage
+    let _ ← tryTactic (discard <| dsimpOnlyAtStarMemo 0x5341 (← `(tactic|
+      dsimp only [$inImgId:ident, wp_proj_guard] at *)))
+  if (← getUnsolvedGoals).isEmpty then return
   let _ ← tryTactic (discard <| dsimpOnlyAtStarMemo 0x5342 (← `(tactic|
-    dsimp only [ToBaseSpec.toSpec, instToBaseSpecId, instToBaseSpecFn, Spec.inImage,
+    dsimp only [ToBaseSpec.toSpec, instToBaseSpecId, instToBaseSpecFn,
       Spec.allowPanicWhen, Spec.allowOomWhen, Spec.allowOom, wp_proj_guard] at *)))
   if (← getUnsolvedGoals).isEmpty then return
   let _ ← tryTactic (discard <| dsimpOnlyAtStarMemo 0x5047
@@ -2450,8 +2509,7 @@ def unwrapRebasedProgExpr (progExpr : Expr) : MetaM Expr := do
   if fn.isConst then
     let nm := fn.constName!
     if nm != ``Arm64.Program.mk && nm != ``Arm64.Program.rebase &&
-       nm != ``Arm64.Program.ofImage && nm != ``Arm64.Program.ofWords &&
-       nm != ``Arm64.Obj.LinkedImage.toProgram then
+       nm != ``Arm64.Program.ofWords then
       if let some info := (← getEnv).find? nm then
         if let some val := info.value? then
           let applied := val.beta progExpr.getAppArgs
@@ -2474,8 +2532,7 @@ def wpUnfoldProgAbbrs : TacticM Unit := do
         if sub.isConst then
           let nm := sub.constName!
           if nm != ``Arm64.Program.mk && nm != ``Arm64.Program.rebase &&
-             nm != ``Arm64.Program.ofImage && nm != ``Arm64.Program.ofWords &&
-             nm != ``Arm64.Obj.LinkedImage.toProgram then
+             nm != ``Arm64.Program.ofWords then
             if !(← isReducible nm) then
               if let some info := env.find? nm then
                 if let some val := info.value? then
@@ -2512,7 +2569,7 @@ elab_rules : tactic
     let hspId ← freshIdent `hsp_align
     let _ ← tryTactic (evalTactic (← `(tactic|
       dsimp only [Program.relocSubroutineOk, Program.alignedSubroutineOk,
-        Obj.LinkedImage.subroutineOk, Program.subroutineOk, fn_subroutine_ok,
+        Program.subroutineOk, fn_subroutine_ok,
         ToBaseSpec.toSpec, instToBaseSpecId, instToBaseSpecFn, wp_proj_guard])))
     if P_init?.isNone then
       evalTactic (← `(tactic| (

@@ -9,12 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftWf
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionSpecPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlBridgePlaced
-public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftWf
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionSpecPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlBridgePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # SPQR Send and `CliPqOrD3RecvInputs` Domain-Tie Lemmas
@@ -27,7 +31,7 @@ and `TopStateTight`, and lifts `PeerSpqrStateTight640` / `CliRunTightSpqrStateCa
 `CliPqOrD3RecvInputs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

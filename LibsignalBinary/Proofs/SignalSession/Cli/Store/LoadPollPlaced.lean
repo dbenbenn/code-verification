@@ -9,10 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Session
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.SymPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Defs
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `<SessionFiles as SessionStore>::load_session::{closure#0}`
@@ -20,7 +28,7 @@ import Arm64.Trusted.Spec.SepLogic
 Proves `sessLoadPollSpecPlaced` on Block `569` (`lsProg_569 H`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

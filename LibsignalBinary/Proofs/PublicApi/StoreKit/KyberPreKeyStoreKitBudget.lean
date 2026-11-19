@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKit
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKit -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `KyberPreKeyStore` Contracts
@@ -21,7 +21,7 @@ public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKit
 `onOom = ⌜False⌝`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +50,7 @@ structure KyberPreKeyStoreBudgetEnv {A : RustAlloc} {b : BitVec 64}
   markPollEnv : kit.KpkState → BitVec 32 → BitVec 32 → PublicKey → List AllocEvent → Prop
 
 /-- Budget-threaded `get_kyber_pre_key` shim contract. -/
-def kitKpkGetShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitKpkGetShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (kit : KyberPreKeyStoreSpec A.repAlloc b) (fds : Bool := false) :
     Spec (PreKeyShimCall × M.σ) where
   pre := fun (x, st) s =>
@@ -78,7 +78,7 @@ def kitKpkGetShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Bud
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp kit.getShimStack
 
 /-- Budget-threaded `mark_kyber_pre_key_used` shim contract. -/
-def kitKpkMarkShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitKpkMarkShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (kit : KyberPreKeyStoreSpec A.repAlloc b) (fds : Bool := false) :
     Spec (KyberMarkShimCall × M.σ) where
   pre := fun (x, st) s =>
@@ -108,7 +108,7 @@ def kitKpkMarkShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Bu
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp kit.markShimStack
 
 /-- Budget-threaded `get_kyber_pre_key` poll contract. -/
-def kitKpkGetPollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitKpkGetPollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (kit : KyberPreKeyStoreSpec A.repAlloc b)
     (kitEnv : KyberPreKeyStoreBudgetEnv kit) (fds : Bool := false) :
     Spec (PreKeyPollCall × kit.KpkState × M.σ) where
@@ -133,7 +133,7 @@ def kitKpkGetPollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Bud
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp kit.getPollStack
 
 /-- Budget-threaded `mark_kyber_pre_key_used` poll contract. -/
-def kitKpkMarkPollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitKpkMarkPollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (kit : KyberPreKeyStoreSpec A.repAlloc b)
     (kitEnv : KyberPreKeyStoreBudgetEnv kit) (fds : Bool := false) :
     Spec (KyberMarkPollCall × kit.KpkState × M.σ) where

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.SlotsZ6Pure
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh
+public import Symbolic.Proofs.Swarm.CREF.TR.SlotsZ6Pure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TROpen
@@ -23,7 +23,7 @@ Bundles the per-explanation receiver key-length, non-low-order, skipped-key byte
 history, and randomness-freshness invariants at a fixed `(g, ms)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

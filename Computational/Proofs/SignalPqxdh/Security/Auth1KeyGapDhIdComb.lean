@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdA
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhRestCaseC
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyPre
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdA
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhRestCaseC
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyPre
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim -- proof-setup: allow-public-import
 
 /-!
 # One-key `Auth` `G3 → G3.5` Case A + Case C combiner
@@ -23,7 +24,7 @@ bounds into the union bound for `badAuthFgAnyLatched` on `runAuthFgLatchedSim1Ke
 mixture reduction `fgAuth1KeyGapDhAdv4`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

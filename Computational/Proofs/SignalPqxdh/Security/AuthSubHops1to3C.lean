@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3
-public import Computational.Proofs.SignalPqxdh.Security.CollisionsC
-public import Computational.Proofs.SignalPqxdh.Security.SigHopA
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.CollisionsC -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.SigHopA -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.SigHop
 
 /-!
@@ -21,7 +21,7 @@ Defines `PrimBaseSpec` step liftings, `cacheAuthAdvKeysFixed` commutation lemmas
 `ValidAuthHybrid` state-size invariant for `pqxdh_auth` sub-hops 1–3.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,12 +36,12 @@ namespace AuthSubHops1to3
 
 /-! ## `PrimBaseSpec` combinators and `cacheAuthAdvKeys` -/
 
-def cacheAuthAdvKeys {S : Setup} (P : Primitives) (hst : AuthHybridState S) : AuthHybridState S :=
+@[expose] def cacheAuthAdvKeys {S : Setup} (P : Primitives) (hst : AuthHybridState S) : AuthHybridState S :=
   { hst with
     base := { hst.base with
       advKeys := hst.base.advKeys.map (fun (_, pk) => (P.pow8 pk, pk)) } }
 
-def cacheAuthAdvKeysFixed {S : Setup} (P : Primitives) (hst : AuthHybridStateFixed S) :
+@[expose] def cacheAuthAdvKeysFixed {S : Setup} (P : Primitives) (hst : AuthHybridStateFixed S) :
     AuthHybridStateFixed S :=
   { hst with toAuthHybridState := cacheAuthAdvKeys P hst.toAuthHybridState }
 
@@ -422,7 +422,7 @@ theorem simulateQ_allHonestEcPksAuthPrim (S : Setup) (P : Primitives) (hst : Aut
       pure_bind]
   rfl
 
-def ValidRecvKemRecords (P : Primitives) (recvRecs : List RecvKemRecord) : Prop :=
+@[expose] def ValidRecvKemRecords (P : Primitives) (recvRecs : List RecvKemRecord) : Prop :=
   ∀ r ∈ recvRecs, P.kemDecaps r.pqspkSk r.kemCt = some r.kemSs
 
 theorem hasBadKemShCrRecordsPure_eq {S : Setup} (P : Primitives)
@@ -623,7 +623,7 @@ theorem ValidAuthHybrid.sentNoOPKEvents_le {S : Setup} {P : Primitives}
     · rfl
     · simp [consumeMatchingSentNoOPK_length P r xs]
 
-def RecvFinishTag.toPure {S : Setup} (checkAuth : Bool) (P : Primitives) :
+@[expose] def RecvFinishTag.toPure {S : Setup} (checkAuth : Bool) (P : Primitives) :
     RecvFinishTag S →
     Option (DRKey × Bytes × Bytes × Bytes × List (Bytes × DRKey) ×
       List ((Bytes × Bytes) × (Bytes × Bytes))) →
@@ -767,7 +767,7 @@ theorem recvFinishTag_toPure_cacheAuthAdvKeys {S : Setup} (checkAuth : Bool) (P 
         dsimp only
         split_ifs <;> rfl
 
-def PreparedAuthRecvPrim.toPure {S : Setup} (checkAuth : Bool) (P : Primitives)
+@[expose] def PreparedAuthRecvPrim.toPure {S : Setup} (checkAuth : Bool) (P : Primitives)
     (p : PreparedAuthRecvPrim S) : PreparedAuthRecv S where
   kEntry                    := p.kEntry
   bEntry                    := p.bEntry
@@ -780,7 +780,7 @@ def PreparedAuthRecvPrim.toPure {S : Setup} (checkAuth : Bool) (P : Primitives)
   hstDec                    := p.hstDec
   finish                    := p.finishTag.toPure checkAuth P
 
-def prepareAuthHybridRecvOPKPure {S : Setup} (P : Primitives)
+@[expose] def prepareAuthHybridRecvOPKPure {S : Setup} (P : Primitives)
     (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) (msg : PreKeyMsg)
     (hst : AuthHybridState S) : Option (PreparedAuthRecvPrim S) :=
   let st := hst.base
@@ -991,7 +991,7 @@ theorem simulateQ_prepareAuthHybridRecvOPKPrim (S : Setup) (P : Primitives)
               | none => rfl
               | some s => rfl
 
-def prepareAuthHybridRecvNoOPKPure {S : Setup} (P : Primitives)
+@[expose] def prepareAuthHybridRecvNoOPKPure {S : Setup} (P : Primitives)
     (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk) (msg : PreKeyMsg)
     (hst : AuthHybridState S) : Option (PreparedAuthRecvPrim S) :=
   let st := hst.base

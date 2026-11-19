@@ -9,15 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeys
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.LoadRatchetSym
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.Identity
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeys
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.LoadRatchetSym
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Identity
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.RegChain
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
 # Relocatable Segment `S0` (`IdentityKeys`) on Block `433`
@@ -26,7 +28,7 @@ Proves `S0PSeamPlaced` for segment `S0` of `try_decrypt_with_state::<Coins>` (bl
 `DistinctSid`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

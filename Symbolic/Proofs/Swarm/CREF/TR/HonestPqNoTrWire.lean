@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.SpqrSemDef
-public import Symbolic.Proofs.Swarm.CREF.TR.SrHonestVer
+import Symbolic.Proofs.Swarm.CREF.TR.SpqrSemDef
+import Symbolic.Proofs.Swarm.CREF.TR.SrHonestVer
 import all DY.Bytes.Basic
 import all DY.Bytes.AttackerKnowledge
 import all DY.ALaCarte.Basic
@@ -51,6 +51,9 @@ import Symbolic.Proofs.Swarm.COMPOSED.CompTermAlgebra
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRPq
 import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma -- shake: keep
+public import Symbolic.Proofs.Swarm.COMPOSED.CompInvDefs
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
+public import Symbolic.Specifications.Refinement.TraceExplanation
 
 /-!
 # Authentic Encrypt MAC and SPQR Ciphertext Provenance
@@ -61,7 +64,7 @@ carries an honest `SendMsg.SubF.pack ⟨st_s.spqr, randTerm t_c coinsLen⟩` cip
 available state `st_s`, or has all three message keys in `AttackerKnows`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false

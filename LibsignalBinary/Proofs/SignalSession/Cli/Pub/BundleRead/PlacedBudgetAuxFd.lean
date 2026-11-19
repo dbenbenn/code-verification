@@ -9,13 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.PlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.PlacedBudgetAux
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.Hoare.Safety
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Fs
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # `FdsGe3Closed`-Threaded `read_file` Call Steps for `read_bundle::{closure#0}`
@@ -24,7 +32,7 @@ File-descriptor-preserving (`FdsGe3Closed`) call-site lemmas for `bl signal_sess
 at `+40` on Block `563`, parameterized by return-address guards (`lrOk`, `LsRetAddr624`, or `keepSet`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -93,16 +101,6 @@ abbrev ReadCallGuardHypPlacedFd [LibsignalPlacement] {M : AllocCostModel}
     (withLsCodeRoLoaded lsmpl
       (withPreGuard (fun s => lrOk (s.readReg64 .lr))
         (withFdsGe3Closed (readFileSpecPlaced rd pathOk A lim readStk ReadEnv))))
-
-/-- `LsRetAddr624`-guarded `withFdsGe3Closed` subroutine hypothesis for `read_file` on Block `563`. -/
-abbrev ReadCallHypPlacedFd [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (H : LibsignalHooks) (rd : ReadRule)
-    (pathOk : List (BitVec 8) → Prop) (readStk : Nat)
-    (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop := ReadFileRuleEnv rd) : Prop :=
-  subroutine_ok (lsProg_563 H) (lsρ lsReadFileSym)
-    (withLsCodeRoLoaded lsmpl
-      (withLsRetAddr624AndFds (readFileSpecPlaced rd pathOk A lim readStk ReadEnv)))
 
 /-- Executes `bl signal_session_io::read_file` at `+40` on Block `563`, preserving `FdsGe3Closed` under return-address guard `lrOk`. -/
 theorem readCall_step_p_guard_fd [LibsignalPlacement] {M : AllocCostModel}
@@ -248,101 +246,6 @@ theorem readCall_step_p_guard_fd [LibsignalPlacement] {M : AllocCostModel}
         readFileSpecPlaced] at hpost
       rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
       exact (not_satisfies_false_sepConj hpost.2).elim
-
-/-- `LsRetAddr624` specialization of `readCall_step_p_guard_fd` from a `subroutine_ok` witness. -/
-theorem readCall_step_p_subroutine_fd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} {rd : ReadRule}
-    {pathOk : List (BitVec 8) → Prop} {readStk : Nat}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    (hRead : ReadCallHypPlacedFd A lim H rd pathOk readStk ReadEnv)
-    (hFs : TraceFsSound (lsProg_563 H))
-    (F0 : FsFiles) (T0 : List TraceEvent)
-    {ret : BitVec 64} {s : State} {st : M.σ}
-    {pathPtr retSlot : BitVec 64} {p : List (BitVec 8)}
-    {F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hPC : s.pc = (blkPl_563).base + 40#64)
-    (hRun : s.status = .Running)
-    (hAl : s.spAligned = true)
-    (hcrl : LibsignalCodeRoLoaded lsmpl s.mem)
-    (hinv : FsInv F0 T0 s)
-    (hfds : FdsGe3Closed s.fs)
-    (htr : s.trace = T0)
-    (hx0 : s.readReg64 .x0 = pathPtr)
-    (hx1 : (s.readReg64 .x1).toNat = p.length)
-    (hx8 : s.readReg64 .x8 = retSlot)
-    (hlen : p.length < 2 ^ 32)
-    (hpOk : pathOk p)
-    (hfit : FitsEnv M lim st (ReadEnv F0 p))
-    (hnext : ∀ sf : State,
-      sf.pc = (blkPl_563).base + 44#64 →
-      sf.status = .Running →
-      sf.sp = s.sp →
-      sf.spAligned = true →
-      CalleeSavedPreserved s sf →
-      LibsignalCodeRoLoaded lsmpl sf.mem →
-      FsInv F0 T0 sf →
-      FdsGe3Closed sf.fs →
-      ∀ evs : List AllocEvent,
-      ReadEnv F0 p evs →
-      ∀ r : Except Unit (List (BitVec 8)),
-      (r = rd F0 p ∧ sf.trace = T0) →
-      SepWPp (lsProg_563 H) ret sf
-        (ioVecAt A.repAlloc retSlot r ∗ (pathPtr ↦ₛ p) ∗ stackAt s.sp readStk ∗
-          A.pool lim (M.stepEvents evs st) sf ∗ F) Q Qp) :
-    SepWPp (lsProg_563 H) ret s
-      (((pathPtr ↦ₛ p) ∗ memRegion retSlot 24 ∗ stackAt s.sp readStk ∗ A.pool lim st s) ∗ F) Q Qp :=
-  readCall_step_p_guard_fd hRead
-    (lsRetAddr624_blockPlacement_base_add 563 44#64 (by decide) (by decide))
-    hFs F0 T0 hPC hRun hAl hcrl hinv hfds htr hx0 hx1 hx8 hlen hpOk hfit hnext
-
-/-- `LsRetAddr624` specialization of `readCall_step_p_guard_fd` from a `HookSat` witness. -/
-theorem readCall_step_p_fd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} {rd : ReadRule}
-    {pathOk : List (BitVec 8) → Prop} {readStk : Nat}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    (hSat : HookSat H lsReadFileSym
-      (withLsRetAddr624AndFds (readFileSpecPlaced rd pathOk A lim readStk ReadEnv)))
-    (hFs : TraceFsSound (lsProg_563 H))
-    (F0 : FsFiles) (T0 : List TraceEvent)
-    {ret : BitVec 64} {s : State} {st : M.σ}
-    {pathPtr retSlot : BitVec 64} {p : List (BitVec 8)}
-    {F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hPC : s.pc = (blkPl_563).base + 40#64)
-    (hRun : s.status = .Running)
-    (hAl : s.spAligned = true)
-    (hcrl : LibsignalCodeRoLoaded lsmpl s.mem)
-    (hinv : FsInv F0 T0 s)
-    (hfds : FdsGe3Closed s.fs)
-    (htr : s.trace = T0)
-    (hx0 : s.readReg64 .x0 = pathPtr)
-    (hx1 : (s.readReg64 .x1).toNat = p.length)
-    (hx8 : s.readReg64 .x8 = retSlot)
-    (hlen : p.length < 2 ^ 32)
-    (hpOk : pathOk p)
-    (hfit : FitsEnv M lim st (ReadEnv F0 p))
-    (hnext : ∀ sf : State,
-      sf.pc = (blkPl_563).base + 44#64 →
-      sf.status = .Running →
-      sf.sp = s.sp →
-      sf.spAligned = true →
-      CalleeSavedPreserved s sf →
-      LibsignalCodeRoLoaded lsmpl sf.mem →
-      FsInv F0 T0 sf →
-      FdsGe3Closed sf.fs →
-      ∀ evs : List AllocEvent,
-      ReadEnv F0 p evs →
-      ∀ r : Except Unit (List (BitVec 8)),
-      (r = rd F0 p ∧ sf.trace = T0) →
-      SepWPp (lsProg_563 H) ret sf
-        (ioVecAt A.repAlloc retSlot r ∗ (pathPtr ↦ₛ p) ∗ stackAt s.sp readStk ∗
-          A.pool lim (M.stepEvents evs st) sf ∗ F) Q Qp) :
-    SepWPp (lsProg_563 H) ret s
-      (((pathPtr ↦ₛ p) ∗ memRegion retSlot 24 ∗ stackAt s.sp readStk ∗ A.pool lim st s) ∗ F) Q Qp :=
-  readCall_step_p_subroutine_fd
-    (lsReadFile_withLsCodeRoLoaded_of_hookSat (callerProg := lsProg_563 H) (i := 563) hSat)
-    hFs F0 T0 hPC hRun hAl hcrl hinv hfds htr hx0 hx1 hx8 hlen hpOk hfit hnext
 
 /-- `keepSet`-guarded `HookSat` specialization of `readCall_step_p_guard_fd`. -/
 theorem readCall_step_p_keep_fd [LibsignalPlacement] {M : AllocCostModel}

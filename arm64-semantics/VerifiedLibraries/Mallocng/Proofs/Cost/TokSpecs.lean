@@ -54,14 +54,14 @@ open Arm64 Arm64.Obj Arm64.CType ProofLib VerifiedLibraries.Mallocng
 def libcMallocImplPlacedTokSpec [MallocngMultiPlacement]
     (B : GhostName → BitVec 64 → Nat → Nat → SepProp)
     (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
-    (ivs0 : List (BitVec 64 × Nat)) (req : Nat) : Spec Unit :=
+    (ivs0 : List (BitVec 64 × Nat)) (req : Nat) (ro : Bool := false) : Spec Unit :=
   let ok := decide (req ≤ MallocngMaxAllocSize)
   let bf := mallocngAllocBudget ok req b
   withCL mmpl {
     pre := fun (_ : Unit) s0 =>
       ⌜(s0.readReg64 .x0).toNat = req⌝ ∗
       stackFrame s0 704 ∗
-      MallocngEnv mallocngIface γ maddrs tp brkStart b ivs0 s0
+      MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart b ivs0 s0
     post := fun _ s0 sf =>
       ⌜MallocngProcPreserved s0 sf ∧
        MallocngMappedDelta 16 (MallocngTightStepBound (if ok then req else 0) b.peakCount) s0.mem sf.mem⌝ ∗
@@ -81,44 +81,45 @@ def libcMallocImplPlacedTokSpec [MallocngMultiPlacement]
              p.toNat - (g'.slotStart idx).toNat ≤ 255 * 16 ∧
              (g'.isMmapped = true → bs = List.replicate req 0#8)⌝ ∗
           MallocngRoTablesA maddrs ∗
-          MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+          MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
           MallocngRuntime maddrs tp ∗
           (p ↦ₛ bs) ∗
           B γ p req 16
       else
         ⌜sf.readReg64 .x0 = 0#64⌝ ∗
-        MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf
+        MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf
     onOom := fun _ s0 sf => ⌜MallocngTightOomCond msvc (if ok then req else 0) b.peakCount s0 sf⌝
   }
 
 /-- Placed `__libc_malloc_impl(req)` (`blk09`, `704` B stack) returning `B γ p req 16`. -/
-def LibcMallocImplPlacedTokStmt (B : GhostName → BitVec 64 → Nat → Nat → SepProp) : Prop :=
+def LibcMallocImplPlacedTokStmt (B : GhostName → BitVec 64 → Nat → Nat → SepProp) (ro : Bool := false) : Prop :=
   ∀ [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
     (ivs0 : List (BitVec 64 × Nat)) (req : Nat),
     subroutine_ok (mallocngBlockProg mmpl 9 msvc) (mbase 9)
-      (libcMallocImplPlacedTokSpec B γ tp brkStart b ivs0 req)
+      (libcMallocImplPlacedTokSpec B γ tp brkStart b ivs0 req ro)
 
 /-- Placed `default_malloc(req)` / `malloc(req)` (`blk04`, `704` B stack) returning `B γ p req 16`. -/
-def DefaultMallocPlacedTokStmt (B : GhostName → BitVec 64 → Nat → Nat → SepProp) : Prop :=
+def DefaultMallocPlacedTokStmt (B : GhostName → BitVec 64 → Nat → Nat → SepProp) (ro : Bool := false) : Prop :=
   ∀ [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
     (ivs0 : List (BitVec 64 × Nat)) (req : Nat),
     subroutine_ok (mallocngBlockProg mmpl 4 msvc) (mbase 4)
-      (libcMallocImplPlacedTokSpec B γ tp brkStart b ivs0 req)
+      (libcMallocImplPlacedTokSpec B γ tp brkStart b ivs0 req ro)
 
-theorem call_placed_defaultMalloc_tok [MallocngMultiPlacement]
-    {B : GhostName → BitVec 64 → Nat → Nat → SepProp} (h : DefaultMallocPlacedTokStmt B)
+theorem call_placed_defaultMalloc_tok [MallocngMultiPlacement] {ro : Bool}
+    {B : GhostName → BitVec 64 → Nat → Nat → SepProp} (h : DefaultMallocPlacedTokStmt B ro)
     {P : Program} (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
     (ivs0 : List (BitVec 64 × Nat)) (req : Nat)
     (hext : ∀ pc, P.externAt? pc = none := by
       intro pc; simp [Program.rebase, PlacedLib.program, Program.externAt?, Program.hookAtOff?])
     (hsvc : P.svc = msvc := by rfl) :
-    subroutine_ok P (mbase 4) (libcMallocImplPlacedTokSpec B γ tp brkStart b ivs0 req) :=
+    subroutine_ok P (mbase 4) (libcMallocImplPlacedTokSpec B γ tp brkStart b ivs0 req ro) :=
   subroutine_ok_block_to_block (j := 4) (by decide) (h γ tp brkStart b ivs0 req) hext hsvc
 
-theorem DefaultMallocPlacedTightStmt.toTok (h : DefaultMallocPlacedTightStmt) :
-    DefaultMallocPlacedTokStmt mallocngOldTok := h
+theorem DefaultMallocPlacedTightStmt.toTok {ro : Bool} (h : DefaultMallocPlacedTightStmt ro) :
+    DefaultMallocPlacedTokStmt mallocngOldTok ro := by
+  cases ro <;> exact h
 
 /-! ## Public C Specs over `B` -/
 
@@ -226,5 +227,136 @@ example (svc : State → State) (γ : GhostName) (A : MallocngAddrs) :
     mallocngPosixMemalignTokSpec mallocngOldTok svc γ A =
       mallocngPosixMemalignTightSpec mallocngIface svc γ A :=
   rfl
+
+/-- Mode-parameterized `mallocngMallocTightSpec` with block token `B`. -/
+c_type_spec mallocngMallocTokModeSpec (ctx ro : Bool)
+    (ctx B : GhostName → BitVec 64 → Nat → Nat → SepProp)
+    (ctx svc : State → State)
+    (ctx γ : GhostName) (ctx A : MallocngAddrs) (load_addr _b)
+    (req : u64) (sp : sp)
+    (ghost tp brkStart : BitVec 64) (ghost b : MallocngBudget)
+    (ghost ivs0 : List (BitVec 64 × Nat)) : (ret : ptr) where
+  let ok := decide (req.toNat ≤ MallocngMaxAllocSize)
+  let b' := mallocngAllocBudget ok req.toNat b
+  c_arg req : Val SizeT
+  c_ret : Own (OptOwn (MallocngTokBlock (B γ)))
+    (if ok then some (req.toNat, 16) else none)
+  c_env (MallocngEnv (mallocngModeIface ro) γ A tp brkStart b ivs0 s0 ∗ stackFrameAt sp mallocngStackBytes) ⇝
+        (MallocngPostEnv (mallocngModeIface ro) γ A tp brkStart b' ivs0 s0 sf ∗
+          stackFrameAt sp mallocngStackBytes)
+  ensures_pure MallocngCallAccounting
+    16 (MallocngTightStepBound (if ok then req.toNat else 0) b.peakCount) s0 sf
+  oom_when MallocngTightOomCond svc (if ok then req.toNat else 0) b.peakCount s0 sf
+
+/-- Mode-parameterized `mallocngCallocTightSpec` with block token `B`. -/
+c_type_spec mallocngCallocTokModeSpec (ctx ro : Bool)
+    (ctx B : GhostName → BitVec 64 → Nat → Nat → SepProp)
+    (ctx svc : State → State)
+    (ctx γ : GhostName) (ctx A : MallocngAddrs) (load_addr _b)
+    (nmemb : u64) (size : u64) (sp : sp)
+    (ghost tp brkStart : BitVec 64) (ghost b : MallocngBudget)
+    (ghost ivs0 : List (BitVec 64 × Nat)) : (ret : ptr) where
+  let total := nmemb.toNat * size.toNat
+  let ok := decide (total ≤ MallocngMaxAllocSize)
+  let b' := mallocngAllocBudget ok total b
+  c_arg nmemb : Val SizeT
+  c_arg size : Val SizeT
+  c_ret : Own (OptOwn (MallocngTokZeroedBlock (B γ)))
+    (if ok then some (total, 16) else none)
+  c_env (MallocngEnv (mallocngModeIface ro) γ A tp brkStart b ivs0 s0 ∗ stackFrameAt sp mallocngStackBytes) ⇝
+        (MallocngPostEnv (mallocngModeIface ro) γ A tp brkStart b' ivs0 s0 sf ∗
+          stackFrameAt sp mallocngStackBytes)
+  ensures_pure MallocngCallAccounting
+    16 (MallocngTightStepBound (if ok then total else 0) b.peakCount) s0 sf
+  oom_when MallocngTightOomCond svc (if ok then total else 0) b.peakCount s0 sf
+
+/-- Mode-parameterized `mallocngAlignedAllocTightSpec` with block token `B`. -/
+c_type_spec mallocngAlignedAllocTokModeSpec (ctx ro : Bool)
+    (ctx B : GhostName → BitVec 64 → Nat → Nat → SepProp)
+    (ctx svc : State → State)
+    (ctx γ : GhostName) (ctx A : MallocngAddrs) (load_addr _b)
+    (align : u64) (len : u64) (sp : sp)
+    (ghost tp brkStart : BitVec 64) (ghost b : MallocngBudget)
+    (ghost ivs0 : List (BitVec 64 × Nat)) : (ret : ptr) where
+  let ok := mallocngAlignedAllocOk align len
+  let eff := mallocngAlignedEffSize align.toNat len.toNat
+  let b' := mallocngAlignedBudget ok align.toNat len.toNat b
+  caveat [API_RESTRICTION] "align ≤ 2^31 avoids musl 1.2.5 set_size int32 reserved overflow" :
+    align.toNat ≤ MaxAlignedAllocAlign
+  c_arg align : Val SizeT
+  c_arg len : Val SizeT
+  c_ret : Own (OptOwn (MallocngTokBlock (B γ)))
+    (if ok then some (len.toNat, max align.toNat 16) else none)
+  c_env (MallocngEnv (mallocngModeIface ro) γ A tp brkStart b ivs0 s0 ∗ stackFrameAt sp mallocngStackBytes) ⇝
+        (MallocngPostEnv (mallocngModeIface ro) γ A tp brkStart b' ivs0 s0 sf ∗
+          stackFrameAt sp mallocngStackBytes)
+  ensures_pure MallocngCallAccounting
+    16 (MallocngTightStepBound (if ok then eff else 0) b.peakCount) s0 sf
+  oom_when MallocngTightOomCond svc (if ok then eff else 0) b.peakCount s0 sf
+
+/-- Mode-parameterized `mallocngPosixMemalignTightSpec` with block token `B`. -/
+c_type_spec mallocngPosixMemalignTokModeSpec (ctx ro : Bool)
+    (ctx B : GhostName → BitVec 64 → Nat → Nat → SepProp)
+    (ctx svc : State → State)
+    (ctx γ : GhostName) (ctx A : MallocngAddrs) (load_addr _b)
+    (res : ptr) (align : u64) (len : u64) (sp : sp)
+    (ghost tp brkStart : BitVec 64) (ghost b : MallocngBudget)
+    (ghost ivs0 : List (BitVec 64 × Nat)) : (ret : u32) where
+  let ok := mallocngPosixMemalignOk align len
+  let eff := mallocngAlignedEffSize align.toNat len.toNat
+  let b' := mallocngAlignedBudget ok align.toNat len.toNat b
+  caveat [API_RESTRICTION] "align ≤ 2^31 avoids musl 1.2.5 set_size int32 reserved overflow" :
+    align.toNat ≤ MaxAlignedAllocAlign
+  c_arg res : MutRef (OptOutPtr (MallocngTokBlock (B γ))) none ⇝
+    (if ok then some (len.toNat, max align.toNat 16) else none)
+  c_arg align : Val SizeT
+  c_arg len : Val SizeT
+  c_env (MallocngEnv (mallocngModeIface ro) γ A tp brkStart b ivs0 s0 ∗ stackFrameAt sp mallocngStackBytes) ⇝
+        (MallocngPostEnv (mallocngModeIface ro) γ A tp brkStart b' ivs0 s0 sf ∗
+          stackFrameAt sp mallocngStackBytes)
+  returns mallocngPosixMemalignRet align len
+  ensures_pure MallocngCallAccounting
+    16 (MallocngTightStepBound (if ok then eff else 0) b.peakCount) s0 sf
+  oom_when MallocngTightOomCond svc (if ok then eff else 0) b.peakCount s0 sf
+
+theorem mallocngMallocTokModeSpec_false (B : GhostName → BitVec 64 → Nat → Nat → SepProp)
+    (svc : State → State) (γ : GhostName) (A : MallocngAddrs) :
+    mallocngMallocTokModeSpec false B svc γ A = mallocngMallocTokSpec B svc γ A := rfl
+
+theorem mallocngCallocTokModeSpec_false (B : GhostName → BitVec 64 → Nat → Nat → SepProp)
+    (svc : State → State) (γ : GhostName) (A : MallocngAddrs) :
+    mallocngCallocTokModeSpec false B svc γ A = mallocngCallocTokSpec B svc γ A := rfl
+
+theorem mallocngAlignedAllocTokModeSpec_false (B : GhostName → BitVec 64 → Nat → Nat → SepProp)
+    (svc : State → State) (γ : GhostName) (A : MallocngAddrs) :
+    mallocngAlignedAllocTokModeSpec false B svc γ A = mallocngAlignedAllocTokSpec B svc γ A := rfl
+
+theorem mallocngPosixMemalignTokModeSpec_false (B : GhostName → BitVec 64 → Nat → Nat → SepProp)
+    (svc : State → State) (γ : GhostName) (A : MallocngAddrs) :
+    mallocngPosixMemalignTokModeSpec false B svc γ A = mallocngPosixMemalignTokSpec B svc γ A := rfl
+
+theorem mallocngMallocTokModeSpec_oldTok (ro : Bool)
+    (svc : State → State) (γ : GhostName) (A : MallocngAddrs) :
+    mallocngMallocTokModeSpec ro mallocngOldTok svc γ A =
+      mallocngMallocTightSpec (mallocngModeIface ro) svc γ A := by
+  cases ro <;> rfl
+
+theorem mallocngCallocTokModeSpec_oldTok (ro : Bool)
+    (svc : State → State) (γ : GhostName) (A : MallocngAddrs) :
+    mallocngCallocTokModeSpec ro mallocngOldTok svc γ A =
+      mallocngCallocTightSpec (mallocngModeIface ro) svc γ A := by
+  cases ro <;> rfl
+
+theorem mallocngAlignedAllocTokModeSpec_oldTok (ro : Bool)
+    (svc : State → State) (γ : GhostName) (A : MallocngAddrs) :
+    mallocngAlignedAllocTokModeSpec ro mallocngOldTok svc γ A =
+      mallocngAlignedAllocTightSpec (mallocngModeIface ro) svc γ A := by
+  cases ro <;> rfl
+
+theorem mallocngPosixMemalignTokModeSpec_oldTok (ro : Bool)
+    (svc : State → State) (γ : GhostName) (A : MallocngAddrs) :
+    mallocngPosixMemalignTokModeSpec ro mallocngOldTok svc γ A =
+      mallocngPosixMemalignTightSpec (mallocngModeIface ro) svc γ A := by
+  cases ro <;> rfl
 
 end VerifiedLibraries.Mallocng.Proofs

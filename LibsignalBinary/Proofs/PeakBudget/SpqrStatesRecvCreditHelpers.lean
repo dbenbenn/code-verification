@@ -10,13 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Sub-Phase `PhaseCreditSpec` Helpers for SPQR `<States>::recv`
@@ -27,7 +28,7 @@ inlined `Poly::lagrange_interpolate` with 16-slot polynomial cache-miss accounti
 `<PolyDecoder>::decoded_message`, `libcruxHmacSha256Events`, and `<Ct1SentEkReceived>::send_ct2`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -121,22 +122,8 @@ theorem PhaseCreditSpec.rustRealloc_small_any {M : AllocCostModel} [HasFineReall
 
 /-! ## `<PolyDecoder as Decoder>::add_chunk` (`AddChunkSlotsEnv` and `AddChunkEnv`) -/
 
-theorem addChunkSlotsEnv_iff_iterSeqEnv :
-    ∀ (pts : List SortedSetPt) (evs : List AllocEvent),
-      AddChunkSlotsEnv pts evs ↔ IterSeqEnv AddChunkSlotEnv pts evs
-  | [], _ => Iff.rfl
-  | s :: rest, evs => by
-    dsimp only [AddChunkSlotsEnv, IterSeqEnv]
-    constructor <;> intro h
-    · rcases h with h1 | ⟨e1, e2, rfl, he1, he2⟩
-      · exact Or.inl h1
-      · exact Or.inr ⟨e1, e2, rfl, he1, (addChunkSlotsEnv_iff_iterSeqEnv rest e2).mp he2⟩
-    · rcases h with h1 | ⟨e1, e2, rfl, he1, he2⟩
-      · exact Or.inl h1
-      · exact Or.inr ⟨e1, e2, rfl, he1, (addChunkSlotsEnv_iff_iterSeqEnv rest e2).mpr he2⟩
-
 /-- Total point count across a list of `SortedSetPt` buckets. -/
-def ptsLenSum (pts : List SortedSetPt) : Nat :=
+@[expose] def ptsLenSum (pts : List SortedSetPt) : Nat :=
   (pts.map (fun s => s.vec.length)).sum
 
 theorem growOnePt_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
@@ -153,26 +140,6 @@ theorem growOnePt_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
       (new := 4 * max (2 * len) 4) (al := 2) (by decide) hal_new).mono
       (by omega) (by omega) (by omega) hnew_le
 
-theorem growOnePt_small_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) {len : Nat}
-    (hsmall : 8 * len + 16 ≤ HasFineReallocCredit.smallMaxReq M) :
-    PhaseCreditSpec M (· = growOnePtEvents len)
-      (16 * len + 9571) 0 0 (8 * len + 16) := by
-  unfold growOnePtEvents
-  split
-  · have h16 : 16 ≤ HasFineReallocCredit.smallMaxReq M := by omega
-    have hsa := hM.smallAlloc_le h16
-    exact (PhaseCreditSpec.rustAlloc_small_any hM (req := 16) (al := 2) (by decide) h16).mono
-      (by omega) (Nat.le_refl 0) (Nat.le_refl 0) (by omega)
-  · have hal_new : 2 ≤ 4 * max (2 * len) 4 := by omega
-    have hnew_le : 4 * max (2 * len) 4 ≤ 8 * len + 16 := by omega
-    have hold_sm : 4 * len ≤ HasFineReallocCredit.smallMaxReq M := by omega
-    have hnew_sm : 4 * max (2 * len) 4 ≤ HasFineReallocCredit.smallMaxReq M :=
-      Nat.le_trans hnew_le hsmall
-    exact (PhaseCreditSpec.rustRealloc_small_any hM (old := 4 * len)
-      (new := 4 * max (2 * len) 4) (al := 2) (by decide) hal_new hold_sm hnew_sm).mono
-      (by omega) (Nat.le_refl 0) (Nat.le_refl 0) hnew_le
-
 theorem addChunkSlot_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) (s : SortedSetPt) :
     PhaseCreditSpec M (AddChunkSlotEnv s)
@@ -180,15 +147,6 @@ theorem addChunkSlot_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit 
       (8 * s.vec.length + 8211) (8 * s.vec.length + 16) := by
   unfold AddChunkSlotEnv
   exact ((PhaseCreditSpec.nil M).or (growOnePt_phaseCreditSpec hM s.vec.length)).mono
-    (by omega) (by omega) (by omega) (by omega)
-
-theorem addChunkSlot_small_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) {s : SortedSetPt}
-    (hsmall : 8 * s.vec.length + 16 ≤ HasFineReallocCredit.smallMaxReq M) :
-    PhaseCreditSpec M (AddChunkSlotEnv s)
-      (16 * s.vec.length + 9571) 0 0 (8 * s.vec.length + 16) := by
-  unfold AddChunkSlotEnv
-  exact ((PhaseCreditSpec.nil M).or (growOnePt_small_phaseCreditSpec hM hsmall)).mono
     (by omega) (by omega) (by omega) (by omega)
 
 /-- Regime-uniform `PhaseCreditSpec` for `AddChunkSlotsEnv pts` under `ModelHyps M`. -/
@@ -210,50 +168,11 @@ theorem addChunkSlots_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit
     refine (h1.seq h2).mono ?_ ?_ ?_ ?_ <;>
       simp only [ptsLenSum, List.map_cons, List.sum_cons, List.length_cons] <;> omega
 
-/-- Small-class `PhaseCreditSpec` (`Δlive = Δpeak = 0`) for `AddChunkSlotsEnv pts` when `8 * maxPts + 16 ≤ smallMaxReq M`.
--/
-theorem addChunkSlots_small_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) {maxPts : Nat} :
-    ∀ (pts : List SortedSetPt),
-      (∀ s ∈ pts, s.vec.length ≤ maxPts) →
-      8 * maxPts + 16 ≤ HasFineReallocCredit.smallMaxReq M →
-      PhaseCreditSpec M (AddChunkSlotsEnv pts)
-        (16 * ptsLenSum pts + 9571 * pts.length) 0 0 (8 * maxPts + 16)
-  | [], _, _ =>
-    (PhaseCreditSpec.nil M).mono
-      (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-  | s :: rest, hpts, hsmall => by
-    dsimp only [AddChunkSlotsEnv]
-    have hs : s.vec.length ≤ maxPts := hpts s List.mem_cons_self
-    have h1 := addChunkSlot_small_phaseCreditSpec hM (s := s) (by omega)
-    have h2 := addChunkSlots_small_phaseCreditSpec hM rest
-      (fun t ht => hpts t (List.mem_cons_of_mem s ht)) hsmall
-    refine (h1.seq h2).mono ?_ (by omega) (by omega) (by omega)
-    simp only [ptsLenSum, List.map_cons, List.sum_cons, List.length_cons]
-    omega
-
-theorem addChunk_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (x : AddChunkGhost) :
-    PhaseCreditSpec M (AddChunkEnv x)
-      (16 * ptsLenSum x.dec.pts + 9571 * x.dec.pts.length)
-      (8 * ptsLenSum x.dec.pts + 8211 * x.dec.pts.length)
-      (8 * ptsLenSum x.dec.pts + 8211 * x.dec.pts.length)
-      (8 * ptsLenSum x.dec.pts + 16) :=
-  addChunkSlots_phaseCreditSpec hM x.dec.pts
-
-theorem addChunk_small_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) {x : AddChunkGhost} {maxPts : Nat}
-    (hpts : ∀ s ∈ x.dec.pts, s.vec.length ≤ maxPts)
-    (hsmall : 8 * maxPts + 16 ≤ HasFineReallocCredit.smallMaxReq M) :
-    PhaseCreditSpec M (AddChunkEnv x)
-      (16 * ptsLenSum x.dec.pts + 9571 * x.dec.pts.length) 0 0 (8 * maxPts + 16) :=
-  addChunkSlots_small_phaseCreditSpec hM x.dec.pts hpts hsmall
-
 /-! ## 16-Slot Polynomial Cache Invariants and `<PolyDecoder>::decoded_message` -/
 
 /-- Count of unpopulated (`none`) entries in the 16-slot `polys` cache, bounding `LagrangeInterpolateMissEnv` calls across `decodedMessageLoop` by at most `16`.
 -/
-def polyNoneCount : List (Option Poly) → Nat
+@[expose] def polyNoneCount : List (Option Poly) → Nat
   | [] => 0
   | none :: tl => polyNoneCount tl + 1
   | some _ :: tl => polyNoneCount tl
@@ -287,7 +206,7 @@ theorem polyNoneCount_set_some_eq :
     simp only [List.set_cons_succ, polyNoneCount, ih]
 
 /-- Bounds the coefficient length of every populated `Poly` entry in `polys` by `K`. -/
-def PolyCacheDegBound (K : Nat) : List (Option Poly) → Prop
+@[expose] def PolyCacheDegBound (K : Nat) : List (Option Poly) → Prop
   | [] => True
   | none :: tl => PolyCacheDegBound K tl
   | some p :: tl => p.coefficients.length ≤ K ∧ PolyCacheDegBound K tl
@@ -417,17 +336,6 @@ theorem lagrangeInterpolateMiss_small_phaseCreditSpec
   have halloc := PhaseCreditSpec.append_eq (PhaseCreditSpec.append_eq h1 h2) h2
   exact (halloc.seq (PhaseCreditSpec.freeOnly_of_hyps hM)).mono
     (by omega) (by omega) (by omega) (by omega)
-
-theorem lagrangeInterpolateInlined_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (optPoly : Option Poly) {k K : Nat} (hk : k ≤ K) :
-    PhaseCreditSpec M (LagrangeInterpolateInlinedEnv optPoly k)
-      (12 * K + 28625) (6 * K + 24589) (6 * K + 24589) (2 * K + 2) := by
-  cases optPoly with
-  | some _ =>
-    exact (PhaseCreditSpec.nil M).mono
-      (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-  | none =>
-    exact lagrangeInterpolateMiss_phaseCreditSpec hM hk
 
 private theorem decodedMessageLoopEnv_succ (self : PolyDecoder) (pointsVecs : List (List Pt))
     (i rem : Nat) (polys : List (Option Poly)) :
@@ -743,24 +651,6 @@ theorem libcruxHmacSha256_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCr
   unfold libcruxHmacSha256Events
   simp only [List.append_assoc]
 
-theorem libcruxHmacSha256_small_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hsmall : 64 ≤ HasFineReallocCredit.smallMaxReq M) :
-    PhaseCreditSpec M (· = libcruxHmacSha256Events) 38604 0 0 64 := by
-  unfold libcruxHmacSha256Events
-  have h32 : 32 ≤ HasFineReallocCredit.smallMaxReq M := by omega
-  have hsa64 := hM.smallAlloc_le hsmall
-  have hsa32 := hM.smallAlloc_le h32
-  have ha64 := PhaseCreditSpec.rustAlloc_small_any hM (req := 64) (al := 1) (by decide) hsmall
-  have hd64 := PhaseCreditSpec.rustDealloc_align16 M (req := 64) (al := 1) (by decide)
-  have ha32 := PhaseCreditSpec.rustAlloc_small_any hM (req := 32) (al := 1) (by decide) h32
-  exact (PhaseCreditSpec.append_eq
-    (PhaseCreditSpec.append_eq
-      (PhaseCreditSpec.append_eq
-        (PhaseCreditSpec.append_eq
-          (PhaseCreditSpec.append_eq
-            (PhaseCreditSpec.append_eq ha64 ha64) ha64) hd64) hd64) hd64) ha32).mono
-    (by omega) (by decide) (by decide) (by decide)
-
 theorem sendCt2Seg23_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) (es : Bytes) :
     PhaseCreditSpec M (· = sendCt2Seg23Events es) 23494 8323 18598 2080 := by
@@ -807,36 +697,6 @@ theorem sendCt2Reserve128_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCr
       · exact ((PhaseCreditSpec.rustRealloc_aff hM (old := cap.toNat)
           (new := reserveCap cap.toNat ct1Len 128) (al := 1) (by decide) hnew_ge).mono
           (by omega) (by omega) (by omega) hnew_le).credit_le st0 rfl
-
-/-- Regime-uniform `PhaseCreditSpec` for `UnchunkedSendCt2Env x`, linear in `x.st.ct1.length`. -/
-theorem unchunkedSendCt2_phaseCreditSpec {F : ShaCompress}
-    {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (x : UnchunkedSendCt2Ghost F) :
-    let L := x.st.ct1.length
-    PhaseCreditSpec M (UnchunkedSendCt2Env x)
-      (6 * L + 82026) (3 * L + 58130) (3 * L + 68405) (max 2080 (2 * L + 254)) := by
-  intro L
-  have hSeg23 := sendCt2Seg23_phaseCreditSpec hM x.st.es
-  have hRes := sendCt2Reserve128_phaseCreditSpec hM L
-  have hConcatHmac :
-      PhaseCreditSpec M (· = sendCt2ConcatHmacEvents L)
-        (2 * L + 48485) (L + 41358) (L + 41358) (max (L + 171) 64) := by
-    unfold sendCt2ConcatHmacEvents
-    have hc := PhaseCreditSpec.rustAlloc_aff hM (req := 35 + 8 + (L + 128)) (al := 1) (by decide)
-    exact (PhaseCreditSpec.append_eq hc (libcruxHmacSha256_phaseCreditSpec hM)).mono
-      (by omega) (by omega) (by omega) (by omega)
-  have hPre :
-      PhaseCreditSpec M (UnchunkedSendCt2PreEnv x)
-        (6 * L + 82026) (3 * L + 58130) (3 * L + 68405) (max 2080 (2 * L + 254)) := by
-    refine (((hSeg23.concat hRes).concat hConcatHmac).of_imp ?_).mono
-      (by omega) (by omega) (by omega) (by omega)
-    rintro evs ⟨evsRes, hResEv, rfl⟩
-    exact ⟨sendCt2Seg23Events x.st.es ++ evsRes, sendCt2ConcatHmacEvents L, rfl,
-      ⟨sendCt2Seg23Events x.st.es, evsRes, rfl, rfl, hResEv⟩, rfl⟩
-  refine ((hPre.concat (PhaseCreditSpec.freeOnly_of_hyps hM)).of_imp ?_).mono
-    (by omega) (by omega) (by omega) (by omega)
-  rintro evs ⟨evsPre, evsFree, hPreEv, hFreeEv, rfl⟩
-  exact ⟨evsPre, evsFree, rfl, hPreEv, hFreeEv⟩
 
 /-! ## Tight Small-Class and `fineCostModel` Credit Helpers -/
 
@@ -996,16 +856,6 @@ theorem encodeBytes_fine_160_phaseCreditSpec :
   rw [fineSmallAllocCost_160] at h
   exact h.mono (by decide) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 160)
 
-theorem encodeBytes_fine_le_1280_phaseCreditSpec {msgLen : Nat} (hle : msgLen ≤ 1280) :
-    PhaseCreditSpec fineCostModel (EncodeBytesEnv msgLen) 156624 0 0 1280 := by
-  have hsm : msgLen ≤ HasFineReallocCredit.smallMaxReq fineCostModel := by
-    rw [fineCostModel_smallMaxReq_eq]; omega
-  have hc : 16 * HasFineReallocCredit.smallAllocCost fineCostModel msgLen ≤ 156624 := by
-    have h1 := fineSmallAllocCost_le_9789_of_le_1280 hle
-    omega
-  exact (encodeBytes_small_phaseCreditSpec fineCostModel_modelHyps hsm).mono
-    hc (Nat.le_refl 0) (Nat.le_refl 0) hle
-
 private theorem addChunkSlot_fine_empty_phaseCreditSpec :
     PhaseCreditSpec fineCostModel (AddChunkSlotEnv SortedSetPt.new) 488 0 0 16 := by
   unfold AddChunkSlotEnv
@@ -1126,54 +976,6 @@ theorem addChunkSlots_fine_640_phaseCreditSpec {pts : List SortedSetPt}
   have hc : 13440 * pts.length ≤ 215040 := by omega
   exact (hall pts hpts).mono hc (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 5120)
 
-private theorem addChunkSlot_fine_raw_phaseCreditSpec {s : SortedSetPt}
-    (hsmall : 8 * s.vec.length + 16 ≤ 135167) :
-    PhaseCreditSpec fineCostModel (AddChunkSlotEnv s)
-      (8 * s.vec.length + 26381) 0 0 (8 * s.vec.length + 16) := by
-  unfold AddChunkSlotEnv
-  have hgrow :
-      PhaseCreditSpec fineCostModel (· = growOnePtEvents s.vec.length)
-        (8 * s.vec.length + 26381) 0 0 (8 * s.vec.length + 16) := by
-    unfold growOnePtEvents
-    split
-    · have h16 := PhaseCreditSpec.rustAlloc_small_any fineCostModel_modelHyps (req := 16) (al := 2)
-        (by decide) (by rw [fineCostModel_smallMaxReq_eq]; decide)
-      have hc := smallAllocCost_le_488_of_le_28 (req := 16) (by decide)
-      exact h16.mono (by omega) (Nat.le_refl 0) (Nat.le_refl 0) (by omega)
-    · have hal_new : 2 ≤ 4 * max (2 * s.vec.length) 4 := by omega
-      have hnew_le : 4 * max (2 * s.vec.length) 4 ≤ 8 * s.vec.length + 16 := by omega
-      have hnew_sm :
-          4 * max (2 * s.vec.length) 4 ≤ HasFineReallocCredit.smallMaxReq fineCostModel := by
-        rw [fineCostModel_smallMaxReq_eq]; omega
-      have hc := smallReallocCost_le_add_26365 (4 * max (2 * s.vec.length) 4)
-      exact (PhaseCreditSpec.rustRealloc_small_exact fineCostModel_modelHyps
-        (old := 4 * s.vec.length) (new := 4 * max (2 * s.vec.length) 4) (al := 2)
-        (by decide) hal_new hnew_sm).mono (by omega) (Nat.le_refl 0) (Nat.le_refl 0) hnew_le
-  exact ((PhaseCreditSpec.nil fineCostModel).or hgrow).mono
-    (by omega) (by decide) (by decide) (by omega)
-
-theorem addChunkSlots_fine_raw_phaseCreditSpec :
-    ∀ (pts : List SortedSetPt),
-      8 * ptsLenSum pts + 16 ≤ 135167 →
-      PhaseCreditSpec fineCostModel (AddChunkSlotsEnv pts)
-        (8 * ptsLenSum pts + 26381 * pts.length) 0 0 (8 * ptsLenSum pts + 16)
-  | [], _ =>
-    (PhaseCreditSpec.nil fineCostModel).mono
-      (Nat.zero_le _) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.zero_le _)
-  | s :: rest, hsm => by
-    dsimp only [AddChunkSlotsEnv]
-    have hsum : ptsLenSum (s :: rest) = s.vec.length + ptsLenSum rest := by
-      simp [ptsLenSum]
-    have hs_sm : 8 * s.vec.length + 16 ≤ 135167 := by omega
-    have hrest_sm : 8 * ptsLenSum rest + 16 ≤ 135167 := by omega
-    have h1 := addChunkSlot_fine_raw_phaseCreditSpec hs_sm
-    have h2 := addChunkSlots_fine_raw_phaseCreditSpec rest hrest_sm
-    refine (h1.seq h2).mono ?_ (by decide) (by decide) ?_
-    · simp only [List.length_cons, hsum]
-      omega
-    · rw [hsum]
-      omega
-
 /-- Small-class `PhaseCreditSpec` for `ComputeAtCallEnv len` when `2 ≤ len` (avoiding the `len = 1` temporary 8-byte `realloc`).
 -/
 theorem computeAtCall_small_exact_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
@@ -1267,7 +1069,7 @@ theorem lagrangeInterpolateMiss_fine_le2_phaseCreditSpec {k : Nat} (hle2 : k ≤
 
 /-- Two-sided coefficient-length invariant `[lo, hi]` on populated entries of the 16-slot `polys` cache.
 -/
-def PolyCacheRangeBound (lo hi : Nat) : List (Option Poly) → Prop
+@[expose] def PolyCacheRangeBound (lo hi : Nat) : List (Option Poly) → Prop
   | [] => True
   | none :: tl => PolyCacheRangeBound lo hi tl
   | some p :: tl =>
@@ -1586,35 +1388,6 @@ theorem sendCt2Reserve128_fine_le_1088_phaseCreditSpec {ct1Len : Nat} (hct1 : ct
           (by decide) hnew_ge hnew_sm).mono
           hc (Nat.le_refl 0) (Nat.le_refl 0) hnew_2430).credit_le st0 rfl
 
-theorem unchunkedSendCt2_fine_le_1088_phaseCreditSpec {F : ShaCompress}
-    (x : UnchunkedSendCt2Ghost F) (hct1 : x.st.ct1.length ≤ 1088) :
-    PhaseCreditSpec fineCostModel (UnchunkedSendCt2Env x) 40102 0 0 2430 := by
-  have hSeg23 := sendCt2Seg23_fine_phaseCreditSpec x.st.es
-  have hRes := sendCt2Reserve128_fine_le_1088_phaseCreditSpec hct1
-  have hConcatHmac :
-      PhaseCreditSpec fineCostModel (· = sendCt2ConcatHmacEvents x.st.ct1.length)
-        15348 0 0 1280 := by
-    unfold sendCt2ConcatHmacEvents
-    have hsm : 35 + 8 + (x.st.ct1.length + 128) ≤
-        HasFineReallocCredit.smallMaxReq fineCostModel := by
-      rw [fineCostModel_smallMaxReq_eq]; omega
-    have hc := (PhaseCreditSpec.rustAlloc_small_any fineCostModel_modelHyps
-      (req := 35 + 8 + (x.st.ct1.length + 128)) (al := 1) (by decide) hsm).mono
-      (fineSmallAllocCost_le_9789_of_le_1280 (by omega))
-      (Nat.le_refl 0) (Nat.le_refl 0) (show 35 + 8 + (x.st.ct1.length + 128) ≤ 1280 by omega)
-    exact (PhaseCreditSpec.append_eq hc libcruxHmacSha256_fine_phaseCreditSpec).mono
-      (by decide) (by decide) (by decide) (by decide)
-  have hPre : PhaseCreditSpec fineCostModel (UnchunkedSendCt2PreEnv x) 40102 0 0 2430 := by
-    refine (((hSeg23.concat hRes).concat hConcatHmac).of_imp ?_).mono
-      (by decide) (by decide) (by decide) (by decide)
-    rintro evs ⟨evsRes, hResEv, rfl⟩
-    exact ⟨sendCt2Seg23Events x.st.es ++ evsRes, sendCt2ConcatHmacEvents x.st.ct1.length, rfl,
-      ⟨sendCt2Seg23Events x.st.es, evsRes, rfl, rfl, hResEv⟩, rfl⟩
-  refine ((hPre.concat (PhaseCreditSpec.freeOnly_of_hyps fineCostModel_modelHyps)).of_imp ?_).mono
-    (by decide) (by decide) (by decide) (by decide)
-  rintro evs ⟨evsPre, evsFree, hPreEv, hFreeEv, rfl⟩
-  exact ⟨evsPre, evsFree, rfl, hPreEv, hFreeEv⟩
-
 private theorem addChunkSlot_fine_two_mul_phaseCreditSpec {s : SortedSetPt}
     (hsmall : 8 * s.vec.length + 16 ≤ 135167) :
     PhaseCreditSpec fineCostModel (AddChunkSlotEnv s)
@@ -1821,18 +1594,5 @@ theorem sendCt2ConcatHmac_nonFreeBound (ct1Len : Nat) :
   exact (NonFreeBound.append_eq
     (NonFreeBound.rustAlloc (35 + 8 + (ct1Len + 128)) 1)
     libcruxHmacSha256_nonFreeBound).mono (by decide)
-
-theorem unchunkedSendCt2_nonFreeBound {F : ShaCompress} (x : UnchunkedSendCt2Ghost F) :
-    NonFreeBound (UnchunkedSendCt2Env x) 8 := by
-  have hPre : NonFreeBound (UnchunkedSendCt2PreEnv x) 8 := by
-    refine ((((sendCt2Seg23_nonFreeBound x.st.es).concat
-      (sendCt2Reserve128_nonFreeBound x.st.ct1.length)).concat
-      (sendCt2ConcatHmac_nonFreeBound x.st.ct1.length)).of_imp ?_).mono (by decide)
-    rintro evs ⟨evsRes, hResEv, rfl⟩
-    exact ⟨sendCt2Seg23Events x.st.es ++ evsRes, sendCt2ConcatHmacEvents x.st.ct1.length, rfl,
-      ⟨sendCt2Seg23Events x.st.es, evsRes, rfl, rfl, hResEv⟩, rfl⟩
-  refine ((hPre.concat NonFreeBound.freeOnly).of_imp ?_).mono (by decide)
-  rintro evs ⟨evsPre, evsFree, hPreEv, hFreeEv, rfl⟩
-  exact ⟨evsPre, evsFree, rfl, hPreEv, hFreeEv⟩
 
 end LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvCreditHelpers

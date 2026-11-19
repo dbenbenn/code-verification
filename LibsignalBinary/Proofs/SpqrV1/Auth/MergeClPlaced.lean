@@ -9,13 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MergePlaced
+import LibsignalBinary.Proofs.SpqrV1.Auth.MergePlaced
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBase
 
 /-!
 # Code-Loaded `[LibsignalPlacement]` Proof of `Authenticator::merge` (Block `295`)
@@ -25,7 +29,7 @@ subroutine contracts for `prost::encoding::message::merge::<Authenticator, &mut 
 (Block `295`) against `withLsCodeRoLoaded lsmpl (authMergeSpec A)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

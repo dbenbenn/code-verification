@@ -9,29 +9,40 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CallsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.DropsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortAfterGetPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortErrPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortLoopPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.SymPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CallsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.DropsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.EpiloguePlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortAfterGetPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortErrPlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortLoopPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
-import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Fetches
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Pure
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Calls
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CallsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Drops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.DropsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortLoop
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortAfterGetPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortErrPlacedBudget
 
 /-!
 # Budget-Threaded `KpkMarkPoll` Envelopes & Post-`one_time.get` Dispatch
@@ -40,7 +51,7 @@ Defines `CliKpkMarkPollEnv` and `KpkMarkEnvSpec`, proves `cliKpkMarkPollEnv_spec
 the post-`one_time.get` dispatch `kpk_after_ot_get_58_placed` (`+88`) on Block `578`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedTactic false
@@ -121,7 +132,7 @@ local macro_rules
 
 /-- Pre-dispatch one-time lookup envelope (`+0 .. +88`): `decimal(x.id)` followed by
 `one_time.get(keyName x.id)`. -/
-def KpkOneTimePreAfterGetEnv
+@[expose] def KpkOneTimePreAfterGetEnv
     (DecEnv : BitVec 32 → List AllocEvent → Prop)
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (F0 : FsFiles) (x : KpkMarkPollGhost) : List AllocEvent → Prop :=
@@ -129,7 +140,7 @@ def KpkOneTimePreAfterGetEnv
 
 /-- Tail envelope on `one_time.get = .ok (_ :: _)`: dual-`Vec` drop (`FreeOnlyEvs`),
 `decimal(x.id)`, and `one_time.put(keyName x.id, [])`. -/
-def KpkOneTimeConsTailEnv
+@[expose] def KpkOneTimeConsTailEnv
     (DecEnv : BitVec 32 → List AllocEvent → Prop)
     (PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (x : KpkMarkPollGhost) : List AllocEvent → Prop :=
@@ -137,7 +148,7 @@ def KpkOneTimeConsTailEnv
 
 /-- Concrete `do_reserve_and_handle` event list on `seen.reserve(37)` when `seen` has `spare`
 unused capacity bytes (`0 ≤ spare < 37`). -/
-def kpkSeenAppendReserveEventsAt (seenBs : List (BitVec 8)) (spare : Nat) : List AllocEvent :=
+@[expose] def kpkSeenAppendReserveEventsAt (seenBs : List (BitVec 8)) (spare : Nat) : List AllocEvent :=
   doReserveEvents ⟨0#64, BitVec.ofNat 64 (seenBs.length + spare), 0#64, seenBs, 37⟩
 
 /-- Finite, capacity-bounded pre-`put` envelope on the `last_resort` append exit:
@@ -151,7 +162,7 @@ inductive KpkSeenAppendReserveMidEnv (seenBs : List (BitVec 8)) : List AllocEven
         (kpkSeenAppendReserveEventsAt seenBs spare ++ optDeallocBufEvents 37#64)
 
 /-- Capacity-free post-`kpkAfterLrGetPreEvents` branch envelope on `last_resort.get = .ok seenBs`. -/
-def KpkAfterLrGetCapFreeBranchEnv
+@[expose] def KpkAfterLrGetCapFreeBranchEnv
     (PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (x : KpkMarkPollGhost) (seenBs : List (BitVec 8)) : List AllocEvent → Prop :=
   if seenBs.length % 37 = 0 then
@@ -165,7 +176,7 @@ def KpkAfterLrGetCapFreeBranchEnv
     SeqEnv (· = rustAllocEvents 14 1) FreeOnlyEvs
 
 /-- Capacity-free tail envelope after `last_resort.get` returns `grLr`. -/
-def OptKpkMarkLastResortTailEnv
+@[expose] def OptKpkMarkLastResortTailEnv
     (PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (x : KpkMarkPollGhost) (grLr : Except Unit (List (BitVec 8))) : List AllocEvent → Prop :=
   match grLr with
@@ -174,7 +185,7 @@ def OptKpkMarkLastResortTailEnv
     SeqEnv (· = kpkAfterLrGetPreEvents) (KpkAfterLrGetCapFreeBranchEnv PutEnv x seenBs)
 
 /-- Capacity-free tail envelope after `one_time.get` returns `grOt`. -/
-def OptKpkMarkOneTimeTailEnv (rd : ReadRule)
+@[expose] def OptKpkMarkOneTimeTailEnv (rd : ReadRule)
     (DecEnv : BitVec 32 → List AllocEvent → Prop)
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
@@ -189,7 +200,7 @@ def OptKpkMarkOneTimeTailEnv (rd : ReadRule)
         (OptKpkMarkLastResortTailEnv PutEnv x (x.kg.lastResort.get rd F0 (baseKeysName x.id))))
 
 /-- Complete, existential-free `AllocEvent` envelope for `mark_kyber_pre_key_used::{closure#0}`. -/
-def CliKpkMarkPollEnv (rd : ReadRule)
+@[expose] def CliKpkMarkPollEnv (rd : ReadRule)
     (DecEnv : BitVec 32 → List AllocEvent → Prop)
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)

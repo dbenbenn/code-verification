@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Chain.Repr
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2
+public import LibsignalBinary.Proofs.SpqrV1.Chain.Repr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
 import ProofLib.BV.WidthNorm
 
 /-!
@@ -22,7 +22,7 @@ Callee hypotheses (`Concat<u8>::concat [local#2]`, `spqr::kdf::hkdf_to_slice`,
 `<spqr::chain::Chain>::new` (`0x5fea4`, 116 instructions).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ChainProofs
 
@@ -59,7 +59,7 @@ abbrev chainNewStackX : Nat := 224 + extHookStack
 
 /-- Byte slice permission at `p`: read-only (`p ↦ᵣ bs`) when `ro = true`, read-write (`p ↦ₛ bs`)
 when `ro = false`. -/
-def bytesAt (ro : Bool) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def bytesAt (ro : Bool) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   if ro then p ↦ᵣ bs else p ↦ₛ bs
 
 @[simp] theorem bytesAt_true (p : BitVec 64) (bs : List (BitVec 8)) :
@@ -86,7 +86,7 @@ structure SliceConcat2Ghost where
 * `x0 = outVec` (24-byte `Vec<u8>` sret), `x1 = slicesA` (32-byte `[&[u8]; 2]` header array),
   `x2 = 2#64`.
 * Allocates a `Vec<u8>` at `outVec` containing `bs0 ++ bs1`, or panics on OOM. -/
-def sliceConcat2Spec (A : RustAlloc) : Spec SliceConcat2Ghost where
+@[expose] def sliceConcat2Spec (A : RustAlloc) : Spec SliceConcat2Ghost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.outVec ∧ s.readReg64 .x1 = x.slicesA ∧ s.readReg64 .x2 = 2#64 ∧
       x.bs0.length + x.bs1.length < 2 ^ 63⌝ ∗
@@ -103,14 +103,6 @@ def sliceConcat2Spec (A : RustAlloc) : Spec SliceConcat2Ghost where
       bytesAt x.ro0 x.p0 x.bs0 ∗ bytesAt x.ro1 x.p1 x.bs1 ∗
       A.pool ∗ stackAt s0.sp extHookStack
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-def SliceConcat2OkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr sliceConcatName)
-    ((sliceConcat2Spec A).inImage img)
-
-/-! ## `spqr::kdf::hkdf_to_slice` (`0x63284`, 473 instructions) -/
 
 /-- Ghost arguments for `spqr::kdf::hkdf_to_slice` (`0x63284`). -/
 structure HkdfToSliceGhost where
@@ -133,7 +125,7 @@ structure HkdfToSliceGhost where
 * `x4 = infoA`, `x5 = info.length` (`info: &[u8]`, `32 ≤ info.length < 55`)
 * `x6 = okmA`, `x7 = okmLen` (`okm: &mut [u8]`, `okmLen ∈ {32, 64, 96}`)
 * Writes `hkdf salt ikm info okmLen` (of length `okmLen`) to `[okmA .. okmA + okmLen)`. -/
-def hkdfToSliceSpec (hkdf : HkdfFn) : Spec HkdfToSliceGhost where
+@[expose] def hkdfToSliceSpec (hkdf : HkdfFn) : Spec HkdfToSliceGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.saltA ∧ s.readReg64 .x1 = BitVec.ofNat 64 x.salt.length ∧
       s.readReg64 .x2 = x.ikmA ∧ s.readReg64 .x3 = BitVec.ofNat 64 x.ikm.length ∧
@@ -158,21 +150,9 @@ def hkdfToSliceSpec (hkdf : HkdfFn) : Spec HkdfToSliceGhost where
 abbrev hkdfToSliceSpqrSpec (hkdf : HkdfFn) : Spec HkdfToSliceGhost :=
   hkdfToSliceSpec hkdf
 
-def HkdfToSliceSpqrOkX (img : Obj.Image) (hkdf : HkdfFn)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr hkdfToSliceName)
-    ((hkdfToSliceSpqrSpec hkdf).inImage img)
-
-abbrev HkdfToSliceOkX (img : Obj.Image) (hkdf : HkdfFn)
-    (ext : String → Option (State → State)) : Prop :=
-  HkdfToSliceSpqrOkX img hkdf ext
-
-/-! ## `<VecDeque<ChainEpoch>>::grow` (`0x5f93c`, 23 instructions) -/
-
 /-- New capacity of `VecDeque<ChainEpoch>` after `grow` (`MIN_NON_ZERO_CAP = 4` for 112-byte
 `ChainEpoch`). -/
-def newCapChainEpoch (cap : BitVec 64) : BitVec 64 :=
+@[expose] def newCapChainEpoch (cap : BitVec 64) : BitVec 64 :=
   BitVec.ofNat 64 (max (2 * cap.toNat) 4)
 
 /-- Ghost arguments for `<VecDeque<ChainEpoch>>::grow` (`0x5f93c`). -/
@@ -187,7 +167,7 @@ structure VecDequeGrowGhost where
 * `x0 = v` (`&mut VecDeque<ChainEpoch>`, full: `xs.length = cap.toNat`).
 * Reallocates the ring buffer to capacity `newCapChainEpoch cap = max (2 * cap.toNat) 4` at `ptr'`
   (preserving `head' = 0#64` whenever `head = 0#64`), or panics on OOM. -/
-def vecDequeGrowSpec (A : RustAlloc) : Spec VecDequeGrowGhost where
+@[expose] def vecDequeGrowSpec (A : RustAlloc) : Spec VecDequeGrowGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.v ∧ x.xs.length = x.cap.toNat ∧
       max (2 * x.cap.toNat) 4 * chainEpochSize < 2 ^ 63⌝ ∗
@@ -203,14 +183,6 @@ def vecDequeGrowSpec (A : RustAlloc) : Spec VecDequeGrowGhost where
       A.pool ∗ stackAt s0.sp extHookStack
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def VecDequeGrowOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr vecDequeGrowName)
-    ((vecDequeGrowSpec A).inImage img)
-
-/-! ## `<spqr::chain::ChainEpochDirection>::next_key_internal` (`0x5fd94`, 68 instructions) -/
-
 /-- Ghost arguments of `<ChainEpochDirection>::next_key_internal` (`0x5fd94`). -/
 structure NextKeyInternalGhost where
   /-- Sret pointer (`x0`, 36-byte `(u32, [u8; 32])` output tuple). -/
@@ -223,11 +195,11 @@ structure NextKeyInternalGhost where
   ctr : BitVec 32
 
 /-- Next chain key (`genr8r[..32]`) produced by `next_key_internal`. -/
-def nextKeyNext (hkdf : HkdfFn) (next : Bytes) (ctr : BitVec 32) : Bytes :=
+@[expose] def nextKeyNext (hkdf : HkdfFn) (next : Bytes) (ctr : BitVec 32) : Bytes :=
   (hkdf (List.replicate 32 0#8) next (toBEBytes 4 (ctr + 1#32) ++ chainNextInfo) 64).take 32
 
 /-- Returned message key (`genr8r[32..64]`) produced by `next_key_internal`. -/
-def nextKeyOut (hkdf : HkdfFn) (next : Bytes) (ctr : BitVec 32) : Bytes :=
+@[expose] def nextKeyOut (hkdf : HkdfFn) (next : Bytes) (ctr : BitVec 32) : Bytes :=
   ((hkdf (List.replicate 32 0#8) next (toBEBytes 4 (ctr + 1#32) ++ chainNextInfo) 64).drop 32).take 32
 
 theorem nextKeyInternal_eq_ok (hkdf : HkdfFn) {next : Bytes} {ctr : BitVec 32}
@@ -246,7 +218,7 @@ image offset `0x5fd94`, 68 instructions):
 * Increments `*ctrA` to `ctr + 1#32`, derives 64 bytes via `hkdf_to_slice`, updates `*nextA` to
   `nextKeyNext hkdf next ctr` (`genr8r[..32]`), and writes `(ctr + 1#32, nextKeyOut hkdf next ctr)`
   at `out`. -/
-def nextKeyInternalSpecX (hkdf : HkdfFn) (A : RustAlloc) : Spec NextKeyInternalGhost where
+@[expose] def nextKeyInternalSpecX (hkdf : HkdfFn) (A : RustAlloc) : Spec NextKeyInternalGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.nextA ∧
       s.readReg64 .x2 = 32#64 ∧ s.readReg64 .x3 = x.ctrA ∧
@@ -261,16 +233,8 @@ def nextKeyInternalSpecX (hkdf : HkdfFn) (A : RustAlloc) : Spec NextKeyInternalG
       A.pool ∗ stackAt s0.sp nextKeyInternalStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def NextKeyInternalOkX (img : Obj.Image) (hkdf : HkdfFn) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr nextKeyInternalName)
-    ((nextKeyInternalSpecX hkdf A).inImage img)
-
-/-! ## `<spqr::chain::Chain>::new` (`0x5fea4`, 116 instructions) -/
-
 /-- Pure `Chain` value constructed by `Chain.new hkdf initialKey dir params`. -/
-def chainNewVal (hkdf : HkdfFn) (initialKey : Bytes) (dir : Direction) (params : ChainParamsPB) :
+@[expose] def chainNewVal (hkdf : HkdfFn) (initialKey : Bytes) (dir : Direction) (params : ChainParamsPB) :
     Chain :=
   let salt := List.replicate 32 0#8
   let genr8r := hkdf salt initialKey chainStartInfo 96
@@ -307,7 +271,7 @@ structure ChainNewGhost where
 * Derives 96 bytes via `hkdf_to_slice`, allocates the initial `ChainEpoch` and `next_root` buffers,
   grows `links` to capacity 4 (`head = 0, len = 1`), and writes `chainNewVal hkdf initialKey dir params`
   at `out` (`chainAt` with `linksCap = 4#64, linksHead = 0#64`). -/
-def chainNewSpecX (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainNewGhost where
+@[expose] def chainNewSpecX (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainNewGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.ikmA ∧
       s.readReg64 .x2 = BitVec.ofNat 64 x.initialKey.length ∧
@@ -326,14 +290,6 @@ def chainNewSpecX (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainNewGhost where
       A.pool ∗ stackAt s0.sp chainNewStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def ChainNewOkX (img : Obj.Image) (hkdf : HkdfFn) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainNewName)
-    ((chainNewSpecX hkdf A).inImage img)
-
-/-! ## Contract-Backed (`*Ext`) Specifications (`hkdfToSliceStackExt = 17616` B) -/
-
 /-- Stack budget of `spqr::kdf::hkdf_to_slice` (`0x63284`) under contract-backed
 `CliExt.compress256Spec` (`688 + 544 + extHookStack = 1232 + 16384 = 17616` B). -/
 abbrev hkdfToSliceStackExt : Nat := 1232 + extHookStack
@@ -341,7 +297,7 @@ abbrev hkdfToSliceStackExt : Nat := 1232 + extHookStack
 /-- Contract-backed SPQR V1 spec of `spqr::kdf::hkdf_to_slice` (`0x63284`) at
 `hkdfToSliceStackExt` (`17616` B), requiring RW slices whenever `compress256` is invoked
 directly (`salt.length > 64` or `ikm.length ≥ 64`). -/
-def hkdfToSliceSpecExt (hkdf : HkdfFn) : Spec HkdfToSliceGhost where
+@[expose] def hkdfToSliceSpecExt (hkdf : HkdfFn) : Spec HkdfToSliceGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.saltA ∧ s.readReg64 .x1 = BitVec.ofNat 64 x.salt.length ∧
       s.readReg64 .x2 = x.ikmA ∧ s.readReg64 .x3 = BitVec.ofNat 64 x.ikm.length ∧
@@ -367,22 +323,12 @@ def hkdfToSliceSpecExt (hkdf : HkdfFn) : Spec HkdfToSliceGhost where
 abbrev hkdfToSliceSpqrSpecExt (hkdf : HkdfFn) : Spec HkdfToSliceGhost :=
   hkdfToSliceSpecExt hkdf
 
-def HkdfToSliceSpqrOkExt (img : Obj.Image) (hkdf : HkdfFn)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr hkdfToSliceName)
-    ((hkdfToSliceSpecExt hkdf).inImage img)
-
-abbrev HkdfToSliceOkExt (img : Obj.Image) (hkdf : HkdfFn)
-    (ext : String → Option (State → State)) : Prop :=
-  HkdfToSliceSpqrOkExt img hkdf ext
-
 /-- `<spqr::chain::ChainEpochDirection>::next_key_internal` frame (`176` B) + `hkdfToSliceStackExt` (`17616` B). -/
 abbrev nextKeyInternalStackExt : Nat := 176 + hkdfToSliceStackExt
 
 /-- Contract-backed spec of `<spqr::chain::ChainEpochDirection>::next_key_internal` at
 `nextKeyInternalStackExt` (`17792` B). -/
-def nextKeyInternalSpecExt (hkdf : HkdfFn) (A : RustAlloc) : Spec NextKeyInternalGhost where
+@[expose] def nextKeyInternalSpecExt (hkdf : HkdfFn) (A : RustAlloc) : Spec NextKeyInternalGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.nextA ∧
       s.readReg64 .x2 = 32#64 ∧ s.readReg64 .x3 = x.ctrA ∧
@@ -397,17 +343,11 @@ def nextKeyInternalSpecExt (hkdf : HkdfFn) (A : RustAlloc) : Spec NextKeyInterna
       A.pool ∗ stackAt s0.sp nextKeyInternalStackExt
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def NextKeyInternalOkExt (img : Obj.Image) (hkdf : HkdfFn) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr nextKeyInternalName)
-    ((nextKeyInternalSpecExt hkdf A).inImage img)
-
 /-- `<spqr::chain::Chain>::new` frame (`224` B) + `hkdfToSliceStackExt` (`17616` B). -/
 abbrev chainNewStackExt : Nat := 224 + hkdfToSliceStackExt
 
 /-- Contract-backed spec of `<spqr::chain::Chain>::new` at `chainNewStackExt` (`17840` B). -/
-def chainNewSpecExt (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainNewGhost where
+@[expose] def chainNewSpecExt (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainNewGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.ikmA ∧
       s.readReg64 .x2 = BitVec.ofNat 64 x.initialKey.length ∧
@@ -426,11 +366,5 @@ def chainNewSpecExt (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainNewGhost where
       bytesAt x.ikmRO x.ikmA x.initialKey ∗
       A.pool ∗ stackAt s0.sp chainNewStackExt
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-def ChainNewOkExt (img : Obj.Image) (hkdf : HkdfFn) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainNewName)
-    ((chainNewSpecExt hkdf A).inImage img)
 
 end CryptoVerification.SpqrV1.ChainProofs

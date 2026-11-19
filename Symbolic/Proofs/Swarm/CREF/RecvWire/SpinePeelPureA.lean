@@ -19,7 +19,7 @@ import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
 public import Symbolic.Proofs.Swarm.CREF.TR.G1.SpineRkKDefs
-public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful
+public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.COMPOSED.CompPresPQXDH
 import Symbolic.Proofs.Swarm.CREF.ModelSplit
@@ -43,7 +43,7 @@ Defines `DoneOpkEkAk` and `NoDoneEv`, and proves `spineRkK_and_ikmHolesK` along 
 preservation across `Traceful` ratchet and handshake subprograms.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -125,7 +125,7 @@ attribute [local instance 2000]
   DY.Libsignal.Composed.instHasExecBytes
   DY.Libsignal.Composed.instHasExecTrace
 
-def DoneOpkEkAk (tr : ExecTrace) : Prop :=
+@[expose] def DoneOpkEkAk (tr : ExecTrace) : Prop :=
   (∀ a b ikA ikB spk pqpk opk ek ct keys i,
     tr.EventLoggedAt (PQXDHEvent.AliceDone a b ikA ikB spk pqpk opk ek ct keys) i →
     ∀ o, opk = some o → o.AttackerKnows tr) ∧
@@ -133,12 +133,12 @@ def DoneOpkEkAk (tr : ExecTrace) : Prop :=
     tr.EventLoggedAt (PQXDHEvent.BobDone b a ikB ikA spk pqpk opk ek ct keys) i →
     ek.AttackerKnows tr)
 
-def isDoneEv : PQXDHEvent → Bool
+@[expose] def isDoneEv : PQXDHEvent → Bool
   | .AliceDone .. => true
   | .BobDone .. => true
   | _ => false
 
-def NoDoneEv {α : Type} (f : Traceful α) : Prop :=
+@[expose] def NoDoneEv {α : Type} (f : Traceful α) : Prop :=
   ∀ tr ev idx, isDoneEv ev = true → ((f.run tr).2.val).EventLoggedAt ev idx →
     tr.EventLoggedAt ev idx
 

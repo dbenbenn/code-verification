@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersX
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Bridge
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsB
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersX -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsB -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
@@ -23,7 +23,7 @@ unified Stage P2 stack budgets, and instance-specialized and universal contracts
 `SessionRecord::promote_matching_session` (miss) and `SessionRecord::promote_state` (archive-and-promote).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -49,15 +49,15 @@ abbrev prevVecAt (A : RustAlloc) (r cap ptr : BitVec 64) (ps : List (List (BitVe
   vecAt A 24 8 (prevElem A) r cap ptr ps
 
 /-- Capacity-4 1-element `previous_sessions` backing buffer. -/
-def Prev1 (A : RustAlloc) (q : BitVec 64) (enc : List (BitVec 8)) : SepProp :=
+@[expose] def Prev1 (A : RustAlloc) (q : BitVec 64) (enc : List (BitVec 8)) : SepProp :=
   vecBuf A 24 8 (prevElem A) 4#64 q [enc]
 
 /-- `SessionGhost` after `clear_unacknowledged_pre_key_message()`. -/
-def clearPendingGhost (G : SessionGhost) : SessionGhost :=
+@[expose] def clearPendingGhost (G : SessionGhost) : SessionGhost :=
   { G with pending := none, kyber := none }
 
 /-- Model `Session` after `clear_unacknowledged_pre_key_message()`. -/
-def clearPending (s : Session (List (BitVec 8))) : Session (List (BitVec 8)) :=
+@[expose] def clearPending (s : Session (List (BitVec 8))) : Session (List (BitVec 8)) :=
   { s with
     state := { s.state with pendingPreKey := false }
     pendingPreKey := none
@@ -157,11 +157,11 @@ abbrev p2PromoteStackX : Nat := 32 + p2ArchiveStackX
 abbrev p2PromoteMissStack : Nat := 1248
 
 /-- Stack floor across Over-path Substages P2.1–P2.6 pure callees and error exits. -/
-def stageP2OverPureAndErrStack : Nat :=
+@[expose] def stageP2OverPureAndErrStack : Nat :=
   max stageP2PureAndErrStack (max p2PromoteMissStack p2PromoteStackX)
 
 /-- Unified stack budget for Over-path Stage P2 at `stageP2CallStack`. -/
-def stageP2OverCallStack {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
+@[expose] def stageP2OverCallStack {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
     (spkKit : SignedPreKeyStoreSpec A b)
     (kpkKit : KyberPreKeyStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b)
@@ -169,7 +169,7 @@ def stageP2OverCallStack {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSp
   max (stageP2CallStack spkKit kpkKit pkKit skit) stageP2OverPureAndErrStack
 
 /-- Unified stack budget for Over-path Stage P2 with concrete SPQR-V1 Substage P2.5. -/
-def stageP2OverV1CallStack {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
+@[expose] def stageP2OverV1CallStack {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
     (spkKit : SignedPreKeyStoreSpec A b)
     (kpkKit : KyberPreKeyStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b)
@@ -245,14 +245,14 @@ theorem p2_over_v1CallStack_lt_32 {A : RustAlloc} {b : BitVec 64} {ikit : Identi
 `CliExt.blackBoxSpec` (`1248 + extHookStack = 17632` B). -/
 abbrev p2OverPromoteMissStackExt : Nat := p2PromoteMissStack + extHookStack
 
-def stageP2OverCallStack4K {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
+@[expose] def stageP2OverCallStack4K {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
     (spkKit : SignedPreKeyStoreSpec A b)
     (kpkKit : KyberPreKeyStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b)
     (skit : IdentitySelfStoreSpec ikit) : Nat :=
   max (stageP2CallStack4K spkKit kpkKit pkKit skit) stageP2OverPureAndErrStack
 
-def stageP2OverV1CallStack4K {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
+@[expose] def stageP2OverV1CallStack4K {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
     (spkKit : SignedPreKeyStoreSpec A b)
     (kpkKit : KyberPreKeyStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b)
@@ -369,7 +369,7 @@ abbrev p2PromoteStateName : String :=
 
 /-- Predicate stating that `Session` `s` matches `(msgVer, serBytes)` in
 `SessionRecord::promote_matching_session`. -/
-def P2SessMatchesMsg (s : Session (List (BitVec 8))) (msgVer : BitVec 8)
+@[expose] def P2SessMatchesMsg (s : Session (List (BitVec 8))) (msgVer : BitVec 8)
     (serBytes : List (BitVec 8)) : Prop :=
   s.state.version = msgVer.zeroExtend 32 ∧ s.aliceBaseKey = serBytes
 
@@ -379,7 +379,7 @@ structure P2PromoteMatchingMissCallGhost where
 
 /-- Instance-specialized specification of `<SessionRecord>::promote_matching_session` returning
 `Ok(false)` without modifying the populated `SessionRecord` at `coroPtr + 0xe0`. -/
-def p2PromoteMatchingMissAtSpec (A : RustAlloc) (coroPtr : BitVec 64)
+@[expose] def p2PromoteMatchingMissAtSpec (A : RustAlloc) (coroPtr : BitVec 64)
     (g : RecordGhost) (recG : SessionGhost) (sess : Session (List (BitVec 8)))
     (msgVer : BitVec 8) (serBytes : List (BitVec 8)) : Spec P2PromoteMatchingMissCallGhost where
   pre := fun x st =>
@@ -402,14 +402,6 @@ def p2PromoteMatchingMissAtSpec (A : RustAlloc) (coroPtr : BitVec 64)
     ((x.outPtr + 8#64) ↦₈ 0#8) ∗
     memRegion (x.outPtr + 9#64) 7 ∗
     stackAt s0.sp p2PromoteMissStack
-
-def PromoteMatchingMissAtProp (A : RustAlloc) (img : Obj.Image)
-    (ext : String → Option (State → State))
-    (coroPtr : BitVec 64) (g : RecordGhost) (recG : SessionGhost)
-    (sess : Session (List (BitVec 8))) (msgVer : BitVec 8) (serBytes : List (BitVec 8)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr promoteMatchingSessionName)
-    (p2PromoteMatchingMissAtSpec A coroPtr g recG sess msgVer serBytes)
 
 structure P2PromoteMissGhost where
   recPtr : BitVec 64
@@ -422,7 +414,7 @@ structure P2PromoteMissGhost where
   s : Session (List (BitVec 8))
 
 /-- Universal specification for a `<SessionRecord>::promote_matching_session` miss. -/
-def p2PromoteMatchingMissGenSpec (A : RustAlloc) : Spec P2PromoteMissGhost where
+@[expose] def p2PromoteMatchingMissGenSpec (A : RustAlloc) : Spec P2PromoteMissGhost where
   pre := fun x st =>
     ⌜st.readReg64 .x0 = x.recPtr ∧
      st.readReg64 .x1 = x.msgVer.zeroExtend 64 ∧
@@ -445,58 +437,9 @@ def p2PromoteMatchingMissGenSpec (A : RustAlloc) : Spec P2PromoteMissGhost where
     memRegion (x.outPtr + 9#64) 7 ∗
     stackAt s0.sp p2PromoteMissStack
 
-def PromoteMatchingMissGenProp (A : RustAlloc) (img : Obj.Image)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr promoteMatchingSessionName)
-    (p2PromoteMatchingMissGenSpec A)
-
-theorem promoteMatchingMissAt_of_gen {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (hGen : PromoteMatchingMissGenProp A img ext)
-    (coroPtr : BitVec 64) (g : RecordGhost) (recG : SessionGhost)
-    (sess : Session (List (BitVec 8))) (msgVer : BitVec 8) (serBytes : List (BitVec 8))
-    (hmiss : ¬ P2SessMatchesMsg sess msgVer serBytes)
-    (hlen : serBytes.length = 33) :
-    PromoteMatchingMissAtProp A img ext coroPtr g recG sess msgVer serBytes := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre halign => ?_
-  let g' : RecordGhost := ⟨g.prevCap, g.prevPtr, some recG⟩
-  let xg : P2PromoteMissGhost :=
-    ⟨coroPtr + 0xe0#64, msgVer, x.serPtr, serBytes, x.outPtr, g', ⟨some sess⟩, sess⟩
-  have hpre' : s0.mem ⊨ (p2PromoteMatchingMissGenSpec A).pre xg s0 ∗ R := by
-    refine Arm64.Satisfies.mono (sepConj_mono_left ?_) hpre
-    dsimp only [p2PromoteMatchingMissAtSpec, p2PromoteMatchingMissGenSpec, xg, g']
-    have hre :
-        prevSessionsEmptyAt A coroPtr g ∗ (sessionStateReprAt A (coroPtr + 0xf8#64) recG sess ∗
-          ((x.serPtr ↦ₛ serBytes) ∗ (memRegion x.outPtr 16 ∗ stackAt s0.sp p2PromoteMissStack))) =
-        (prevSessionsEmptyAt A coroPtr g ∗ sessionStateReprAt A (coroPtr + 0xf8#64) recG sess) ∗
-          ((x.serPtr ↦ₛ serBytes) ∗ (memRegion x.outPtr 16 ∗ stackAt s0.sp p2PromoteMissStack)) := by
-      ac_rfl
-    rw [hre, prevEmpty_sessionAt_eq_sessionRecordAt]
-    refine Entails.pure_left fun ⟨h0, h1, h2, h3, h8⟩ => ?_
-    exact Entails.pure_right ⟨h0, h1, h2, h3, h8, rfl, hmiss, hlen⟩ (Entails.of_eq (by ac_rfl))
-  refine hGen.mono_outcome xg R s0 hpc hrun hpre' halign ?_
-  rintro sf (⟨hret, hcs, hpost⟩ | hpan | hexit | hoom)
-  · refine Or.inl ⟨hret, hcs, ?_⟩
-    refine Arm64.Satisfies.mono (sepConj_mono_left ?_) hpost
-    dsimp only [p2PromoteMatchingMissAtSpec, p2PromoteMatchingMissGenSpec, xg, g']
-    rw [← prevEmpty_sessionAt_eq_sessionRecordAt]
-    exact Entails.of_eq (by ac_rfl)
-  · exact Or.inr (Or.inl hpan)
-  · exact Or.inr (Or.inr (Or.inl hexit))
-  · exact Or.inr (Or.inr (Or.inr hoom))
-
-theorem p2_subroutine_ok_inImage {α : Type} {prog : Program} {entry : BitVec 64}
-    {spec : Spec α} (img : Obj.Image) (h : subroutine_ok prog entry spec) :
-    subroutine_ok prog entry (spec.inImage img) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hal => ?_
-  dsimp only [Spec.inImage] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact h.mono_outcome x R s0 hpc hrun hpre.2 hal fun _ hout => hout
-
 /-- Specification of `<SessionRecord>::promote_matching_session` returning `Ok(false)` at the
 extended hook stack budget `p2OverPromoteMissStackExt`. -/
-def p2PromoteMatchingMissAtSpecExt (A : RustAlloc) (coroPtr : BitVec 64)
+@[expose] def p2PromoteMatchingMissAtSpecExt (A : RustAlloc) (coroPtr : BitVec 64)
     (g : RecordGhost) (recG : SessionGhost) (sess : Session (List (BitVec 8)))
     (msgVer : BitVec 8) (serBytes : List (BitVec 8)) : Spec P2PromoteMatchingMissCallGhost where
   pre := fun x st =>
@@ -520,15 +463,7 @@ def p2PromoteMatchingMissAtSpecExt (A : RustAlloc) (coroPtr : BitVec 64)
     memRegion (x.outPtr + 9#64) 7 ∗
     stackAt s0.sp p2OverPromoteMissStackExt
 
-def PromoteMatchingMissAtPropExt (A : RustAlloc) (img : Obj.Image)
-    (ext : String → Option (State → State))
-    (coroPtr : BitVec 64) (g : RecordGhost) (recG : SessionGhost)
-    (sess : Session (List (BitVec 8))) (msgVer : BitVec 8) (serBytes : List (BitVec 8)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr promoteMatchingSessionName)
-    ((p2PromoteMatchingMissAtSpecExt A coroPtr g recG sess msgVer serBytes).inImage img)
-
-def p2PromoteMatchingMissGenSpecExt (A : RustAlloc) : Spec P2PromoteMissGhost where
+@[expose] def p2PromoteMatchingMissGenSpecExt (A : RustAlloc) : Spec P2PromoteMissGhost where
   pre := fun x st =>
     ⌜st.readReg64 .x0 = x.recPtr ∧
      st.readReg64 .x1 = x.msgVer.zeroExtend 64 ∧
@@ -551,89 +486,13 @@ def p2PromoteMatchingMissGenSpecExt (A : RustAlloc) : Spec P2PromoteMissGhost wh
     memRegion (x.outPtr + 9#64) 7 ∗
     stackAt s0.sp p2OverPromoteMissStackExt
 
-def PromoteMatchingMissGenPropExt (A : RustAlloc) (img : Obj.Image)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr promoteMatchingSessionName)
-    ((p2PromoteMatchingMissGenSpecExt A).inImage img)
-
-theorem promoteMatchingMissGen_ext_of_plain {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (h : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr promoteMatchingSessionName)
-      (p2PromoteMatchingMissGenSpecExt A)) :
-    PromoteMatchingMissGenPropExt A img ext :=
-  p2_subroutine_ok_inImage img h
-
-theorem promoteMatchingMissAt_of_gen_ext {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (hGen : PromoteMatchingMissGenPropExt A img ext)
-    (coroPtr : BitVec 64) (g : RecordGhost) (recG : SessionGhost)
-    (sess : Session (List (BitVec 8))) (msgVer : BitVec 8) (serBytes : List (BitVec 8))
-    (hmiss : ¬ P2SessMatchesMsg sess msgVer serBytes)
-    (hlen : serBytes.length = 33) :
-    PromoteMatchingMissAtPropExt A img ext coroPtr g recG sess msgVer serBytes := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre halign => ?_
-  let g' : RecordGhost := ⟨g.prevCap, g.prevPtr, some recG⟩
-  let xg : P2PromoteMissGhost :=
-    ⟨coroPtr + 0xe0#64, msgVer, x.serPtr, serBytes, x.outPtr, g', ⟨some sess⟩, sess⟩
-  have hpre' : s0.mem ⊨ ((p2PromoteMatchingMissGenSpecExt A).inImage img).pre xg s0 ∗ R := by
-    refine Arm64.Satisfies.mono (sepConj_mono_left ?_) hpre
-    dsimp only [Spec.inImage, p2PromoteMatchingMissAtSpecExt, p2PromoteMatchingMissGenSpecExt, xg, g']
-    refine Entails.pure_left fun hinv => Entails.pure_right hinv ?_
-    refine Entails.pure_left fun ⟨h0, h1, h2, h3, h8⟩ => ?_
-    have hre :
-        prevSessionsEmptyAt A coroPtr g ∗ (sessionStateReprAt A (coroPtr + 0xf8#64) recG sess ∗
-          ((x.serPtr ↦ₛ serBytes) ∗ (memRegion x.outPtr 16 ∗ stackAt s0.sp p2OverPromoteMissStackExt))) =
-        (prevSessionsEmptyAt A coroPtr g ∗ sessionStateReprAt A (coroPtr + 0xf8#64) recG sess) ∗
-          ((x.serPtr ↦ₛ serBytes) ∗ (memRegion x.outPtr 16 ∗ stackAt s0.sp p2OverPromoteMissStackExt)) := by
-      ac_rfl
-    rw [hre, prevEmpty_sessionAt_eq_sessionRecordAt]
-    exact Entails.pure_right ⟨h0, h1, h2, h3, h8, rfl, hmiss, hlen⟩ (Entails.of_eq (by ac_rfl))
-  refine hGen.mono_outcome xg R s0 hpc hrun hpre' halign ?_
-  rintro sf (⟨hret, hcs, hpost⟩ | hpan | hexit | hoom)
-  · refine Or.inl ⟨hret, hcs, ?_⟩
-    refine Arm64.Satisfies.mono (sepConj_mono_left ?_) hpost
-    dsimp only [Spec.inImage, p2PromoteMatchingMissAtSpecExt, p2PromoteMatchingMissGenSpecExt, xg, g']
-    rw [← prevEmpty_sessionAt_eq_sessionRecordAt]
-    exact Entails.of_eq (by ac_rfl)
-  · exact Or.inr (Or.inl hpan)
-  · exact Or.inr (Or.inr (Or.inl hexit))
-  · exact Or.inr (Or.inr (Or.inr hoom))
-
-theorem promoteMatchingMissAt_to_ext {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    {coroPtr : BitVec 64} {g : RecordGhost} {recG : SessionGhost}
-    {sess : Session (List (BitVec 8))} {msgVer : BitVec 8} {serBytes : List (BitVec 8)}
-    (h : PromoteMatchingMissAtProp A img ext coroPtr g recG sess msgVer serBytes) :
-    PromoteMatchingMissAtPropExt A img ext coroPtr g recG sess msgVer serBytes := by
-  refine p2_subroutine_ok_inImage img (subroutine_ok_map h ?_)
-  intro x R s0 hpre
-  dsimp only [p2PromoteMatchingMissAtSpecExt] at hpre
-  rw [p2_stackAt_split_of_le s0.sp p2OverPromoteMissStackExt p2PromoteMissStack
-    (by decide) (by decide)] at hpre
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hpure, hmem⟩
-  refine ⟨x,
-    memRegion (s0.sp - BitVec.ofNat 64 p2OverPromoteMissStackExt)
-      (p2OverPromoteMissStackExt - p2PromoteMissStack) ∗ R,
-    ?_, fun sf hpost => ?_⟩
-  · dsimp only [p2PromoteMatchingMissAtSpec]
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hpure, Arm64.Satisfies.of_eq hmem (by ac_rfl)⟩
-  · dsimp only [p2PromoteMatchingMissAtSpec, p2PromoteMatchingMissAtSpecExt] at hpost ⊢
-    rw [p2_stackAt_split_of_le s0.sp p2OverPromoteMissStackExt p2PromoteMissStack
-      (by decide) (by decide)]
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    exact ⟨hpost.1, Arm64.Satisfies.of_eq hpost.2 (by ac_rfl)⟩
-
 structure P2PromoteOverCallGhost where
   src : BitVec 64
   newBs : List (BitVec 8)
 
 /-- Instance-specialized specification of `<SessionRecord>::promote_state(coroPtr + 0xe0, src)`,
 archiving `sess` into `previous_sessions` and copying the 344-byte `newBs` into `coroPtr + 0xf8`. -/
-def p2PromoteOverAtSpec (A : RustAlloc) (coroPtr : BitVec 64)
+@[expose] def p2PromoteOverAtSpec (A : RustAlloc) (coroPtr : BitVec 64)
     (g : RecordGhost) (recG : SessionGhost) (sess : Session (List (BitVec 8))) :
     Spec P2PromoteOverCallGhost where
   pre := fun x st =>
@@ -657,14 +516,6 @@ def p2PromoteOverAtSpec (A : RustAlloc) (coroPtr : BitVec 64)
     stackAt s0.sp p2PromoteStackX
   onPanic := allocPanic
 
-def PromoteOverAtProp (A : RustAlloc) (img : Obj.Image)
-    (ext : String → Option (State → State))
-    (coroPtr : BitVec 64) (g : RecordGhost) (recG : SessionGhost)
-    (sess : Session (List (BitVec 8))) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr p2PromoteStateName)
-    ((p2PromoteOverAtSpec A coroPtr g recG sess).inImage img)
-
 structure P2PromoteOverGenGhost where
   recPtr : BitVec 64
   src : BitVec 64
@@ -675,7 +526,7 @@ structure P2PromoteOverGenGhost where
   newBs : List (BitVec 8)
 
 /-- Universal specification of `<SessionRecord>::promote_state` on empty `previous_sessions`. -/
-def p2PromoteOverGenSpec (A : RustAlloc) : Spec P2PromoteOverGenGhost where
+@[expose] def p2PromoteOverGenSpec (A : RustAlloc) : Spec P2PromoteOverGenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.recPtr ∧
      s.readReg64 .x1 = x.src ∧
@@ -697,50 +548,5 @@ def p2PromoteOverGenSpec (A : RustAlloc) : Spec P2PromoteOverGenGhost where
     A.pool ∗
     stackAt s0.sp p2PromoteStackX
   onPanic := allocPanic
-
-def PromoteOverGenProp (A : RustAlloc) (img : Obj.Image)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr p2PromoteStateName)
-    ((p2PromoteOverGenSpec A).inImage img)
-
-theorem promoteOverAt_of_gen {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (hGen : PromoteOverGenProp A img ext)
-    (coroPtr : BitVec 64) (g : RecordGhost) (recG : SessionGhost)
-    (sess : Session (List (BitVec 8)))
-    (hlen : (encSessionMem (OverP2.clearPendingGhost recG) (OverP2.clearPending sess)).length < 2 ^ 32) :
-    PromoteOverAtProp A img ext coroPtr g recG sess := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre halign => ?_
-  let xg : P2PromoteOverGenGhost := ⟨coroPtr + 0xe0#64, x.src, g.prevCap, g.prevPtr, recG, sess, x.newBs⟩
-  have hrec_eq :
-      prevSessionsEmptyAt A coroPtr g ∗ sessionStateReprAt A (coroPtr + 0xf8#64) recG sess =
-      vecAt A 24 8 (fun (_ : Unit) _ => emp) (coroPtr + 0xe0#64) g.prevCap g.prevPtr [] ∗
-      sessionStateReprAt A (coroPtr + 0xe0#64 + 0x18#64) recG sess := by
-    rw [prevEmpty_sessionAt_eq_sessionRecordAt]
-    rfl
-  have hpre' : s0.mem ⊨ ((p2PromoteOverGenSpec A).inImage img).pre xg s0 ∗ R := by
-    refine Arm64.Satisfies.mono (sepConj_mono_left ?_) hpre
-    dsimp only [Spec.inImage, p2PromoteOverAtSpec, p2PromoteOverGenSpec, xg]
-    refine Entails.pure_left fun hinv => Entails.pure_right hinv ?_
-    refine Entails.pure_left fun ⟨h0, h1, hnb⟩ => ?_
-    have hre :
-        prevSessionsEmptyAt A coroPtr g ∗ (sessionStateReprAt A (coroPtr + 0xf8#64) recG sess ∗
-          (A.pool ∗ ((x.src ↦ₛ x.newBs) ∗ stackAt s0.sp p2PromoteStackX))) =
-        (prevSessionsEmptyAt A coroPtr g ∗ sessionStateReprAt A (coroPtr + 0xf8#64) recG sess) ∗
-          (A.pool ∗ ((x.src ↦ₛ x.newBs) ∗ stackAt s0.sp p2PromoteStackX)) := by
-      ac_rfl
-    rw [hre, hrec_eq]
-    exact Entails.pure_right ⟨h0, h1, hnb, hlen⟩ (Entails.of_eq (by ac_rfl))
-  refine hGen.mono_outcome xg R s0 hpc hrun hpre' halign ?_
-  rintro sf (⟨hret, hcs, hpost⟩ | hpan | hexit | hoom)
-  · refine Or.inl ⟨hret, hcs, ?_⟩
-    refine Arm64.Satisfies.mono (sepConj_mono_left ?_) hpost
-    dsimp only [Spec.inImage, p2PromoteOverAtSpec, p2PromoteOverGenSpec, xg]
-    simp only [BitVec.add_assoc, BitVec.reduceAdd]
-    exact Entails.of_eq (by ac_rfl)
-  · exact Or.inr (Or.inl hpan)
-  · exact Or.inr (Or.inr (Or.inl hexit))
-  · exact Or.inr (Or.inr (Or.inr hoom))
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over

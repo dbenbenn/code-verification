@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.Soundness
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
 
 /-!
 # ReductionDsl Size Bounds
@@ -19,7 +19,7 @@ Proves size bounds (`Ty.Fits`) and cost-independent leaf-width bounds (`Ty.BaseF
 `OpsSizeHonest` and `SampSizeHonest`.
 -/
 
-@[expose] public section
+public section
 
 namespace ReductionDsl
 
@@ -41,7 +41,7 @@ theorem Ty.fits_mono {B B' : ℕ} (h : B ≤ B') : ∀ (t : Ty S) (x : t.denote)
     exact ⟨by omega, fun x hm => Ty.fits_mono h t x (hx.2 x hm)⟩
   | .tbl t, m, hx => fun i => Ty.fits_mono h t _ (hx i)
 
-def Env.Fits (B : ℕ) : {Γ : List (Ty S)} → Env Γ → Prop
+@[expose] def Env.Fits (B : ℕ) : {Γ : List (Ty S)} → Env Γ → Prop
   | _, .nil => True
   | _, .cons (t := t) x ρ => t.Fits B x ∧ Env.Fits B ρ
 
@@ -671,7 +671,7 @@ theorem runFuel_fits {κ : Type} {G : OracleSpec κ} {C : GameCodec S G} {σ : T
             (qB + h.cost + h.nq * aB) + f * (qB + h.cost + h.nq * aB) := by ring
         exact Ty.fits_mono (by omega) _ _ hrec
 
-def Mid.Fits {κ : Type} {G : OracleSpec κ} {α : Type} (π σ ch : Ty S) (B : ℕ) :
+@[expose] def Mid.Fits {κ : Type} {G : OracleSpec κ} {α : Type} (π σ ch : Ty S) (B : ℕ) :
     Mid G α π.denote σ.denote ch.denote → Prop
   | .done _ s => σ.Fits B s
   | .paused _ c p s _ => ch.Fits B c ∧ π.Fits B p ∧ σ.Fits B s
@@ -835,7 +835,7 @@ theorem TwoStageCostedReduction.fits_eval2 {κ : Type} {G : OracleSpec κ} {C : 
 /-! ## Input-conditioned and dual-fuel size bounds -/
 
 /-- Every `.inr t` game query along every reachable branch of `oa` satisfies `qPred t`. -/
-def AllGameQueries {κ : Type} {G : OracleSpec κ} (qPred : κ → Prop) :
+@[expose] def AllGameQueries {κ : Type} {G : OracleSpec κ} (qPred : κ → Prop) :
     {α : Type} → OracleComp (unifSpec + G) α → Prop :=
   OracleComp.construct (C := fun _ => Prop)
     (fun _ => True)
@@ -890,37 +890,6 @@ theorem CostedReduction.fits_simulateQ_on {κ : Type} {G : OracleSpec κ} {C : G
           (qB + R.handle.cost + R.handle.nq * aB) +
             m * (qB + R.handle.cost + R.handle.nq * aB) := by ring
       exact Ty.fits_mono (by omega) _ _ hrec
-
-/-- One-stage reduction size bound with the codec premise restricted to `AllGameQueries qPred`. -/
-theorem CostedReduction.fits_eval_on {κ : Type} {G : OracleSpec κ} {C : GameCodec S G}
-    {rIn aIn aOut out : Ty S} (R : CostedReduction O I G C rIn aIn aOut out)
-    (hO : OpsSizeHonest O) (hS : SampSizeHonest I.smp) (aB : ℕ)
-    (hq : ∀ g x u, (I.cod g).Fits aB (I.dec g x u))
-    {qPred : κ → Prop} (qB : ℕ) (henc : C.FitsOn qPred qB)
-    (aAdvB : ℕ) (hA : ∀ v : aOut.denote, aOut.Fits aAdvB v)
-    (A : aIn.denote → OracleComp (unifSpec + G) aOut.denote) (qAdv B : ℕ)
-    (hb : ∀ a, (A a).IsQueryBoundP (isGameQuery (G := G)) qAdv)
-    (hqp : ∀ a, AllGameQueries qPred (A a))
-    (x : rIn.denote) (hx : rIn.Fits B x) :
-    ∀ y ∈ support (R.eval A x),
-      out.Fits (B + aAdvB + qAdv * qB + R.totalCost qAdv + R.nq qAdv * aB) y := by
-  intro y hy
-  simp only [CostedReduction.eval, mem_support_bind_iff] at hy
-  obtain ⟨⟨oAdv, s₀⟩, hs₀, ⟨outAdv, s₁⟩, hs₁, hy⟩ := hy
-  have h0 : R.σ.Fits (B + R.init.cost + R.init.nq * aB) s₀ :=
-    (Comp.fits_eval hO hS aB hq R.init B (.cons x .nil) ⟨hx, trivial⟩ (oAdv, s₀) hs₀).2
-  have h1 := R.fits_simulateQ_on hO hS aB hq qB henc (hb oAdv) (hqp oAdv) _ s₀ h0 (outAdv, s₁) hs₁
-  have h2 := Comp.fits_eval hO hS aB hq R.finish _ (.cons s₁ (.cons outAdv .nil))
-    (Env.fits_pair h1 (hA outAdv)) y hy
-  refine Ty.fits_mono ?_ _ _ h2
-  have hle : qAdv * R.handle.cost ≤ qAdv * max I.uCost (R.handle.cost + C.codecCost) :=
-    Nat.mul_le_mul_left qAdv (le_trans (Nat.le_add_right _ _) (le_max_right _ _))
-  have e1 : qAdv * (qB + R.handle.cost + R.handle.nq * aB) =
-      qAdv * qB + qAdv * R.handle.cost + qAdv * R.handle.nq * aB := by ring
-  have e2 : (R.init.nq + qAdv * R.handle.nq + R.finish.nq) * aB =
-      R.init.nq * aB + qAdv * R.handle.nq * aB + R.finish.nq * aB := by ring
-  dsimp only [CostedReduction.totalCost, CostedReduction.nq, CostedReduction.totalQueries, Comp.nq] at e1 e2 ⊢
-  omega
 
 theorem runFuelBounded_fits_on {κ : Type} {G : OracleSpec κ} {C : GameCodec S G} {σ : Ty S}
     (h : Comp O I [σ, C.Q] (.prod C.R σ))
@@ -1050,17 +1019,7 @@ theorem Ty.baseFits_mono {W W' : ℕ} (h : W ≤ W') :
   | .list t, l, hx => fun x hm => Ty.baseFits_mono h t x (hx x hm)
   | .tbl t, m, hx => fun i => Ty.baseFits_mono h t _ (hx i)
 
-theorem Ty.baseFits_of_fits {B : ℕ} : ∀ (t : Ty S) (x : t.denote), t.Fits B x → t.BaseFits B x
-  | .base _, _, hx => hx
-  | .unit, _, _ | .bool, _, _ | .nat, _, _ | .opt _, none, _ => trivial
-  | .opt t, some a, hx => Ty.baseFits_of_fits t a hx
-  | .prod t u, _, hx => ⟨Ty.baseFits_of_fits t _ hx.1, Ty.baseFits_of_fits u _ hx.2⟩
-  | .sum t _, .inl a, hx => Ty.baseFits_of_fits t a hx
-  | .sum _ u, .inr b, hx => Ty.baseFits_of_fits u b hx
-  | .list t, _, hx => fun x hm => Ty.baseFits_of_fits t x (hx.2 x hm)
-  | .tbl t, _, hx => fun i => Ty.baseFits_of_fits t _ (hx i)
-
-def Env.BaseFits (W : ℕ) : {Γ : List (Ty S)} → Env Γ → Prop
+@[expose] def Env.BaseFits (W : ℕ) : {Γ : List (Ty S)} → Env Γ → Prop
   | _, .nil => True
   | _, .cons (t := t) x ρ => t.BaseFits W x ∧ Env.BaseFits W ρ
 
@@ -1220,65 +1179,12 @@ theorem Comp.baseFits_eval_preserve {W_op W_samp W : ℕ}
       ((l.eval ρ).take K) 0 (z.eval ρ)
       (fun x hx => hl x (List.mem_of_mem_take hx)) hz y hy
 
-/-- Every `.base` leaf in `R.eval A x` and in `R`'s state stays bounded by `W` independently of `R.totalCost`. -/
-theorem CostedReduction.baseFits_eval_on {κ : Type} {G : OracleSpec κ} {C : GameCodec S G}
-    {rIn aIn aOut out : Ty S} (R : CostedReduction O I G C rIn aIn aOut out)
-    {W_op W_samp W : ℕ} (hO : OpsBaseBounded O W_op) (hS : SampBaseBounded I.smp W_samp)
-    (hWop : W_op ≤ W) (hWsamp : W_samp ≤ W)
-    (hq : ∀ g x u, (I.cod g).BaseFits W (I.dec g x u))
-    {qPred : κ → Prop} (henc : C.BaseFitsOn qPred W)
-    (hA : ∀ v : aOut.denote, aOut.BaseFits W v)
-    (A : aIn.denote → OracleComp (unifSpec + G) aOut.denote)
-    (hqp : ∀ a, AllGameQueries qPred (A a))
-    (x : rIn.denote) (hx : rIn.BaseFits W x) :
-    (∀ y ∈ support (R.eval A x), out.BaseFits W y) ∧
-    (∀ r0 ∈ support (R.init.eval (.cons x .nil)),
-      ∀ r1 ∈ support ((simulateQ R.impl (A r0.1)).run r0.2), R.σ.BaseFits W r1.2) := by
-  have hSim : ∀ {α : Type} {oa : OracleComp (unifSpec + G) α},
-      AllGameQueries qPred oa → ∀ s, R.σ.BaseFits W s →
-        ∀ r ∈ support ((simulateQ R.impl oa).run s), R.σ.BaseFits W r.2 := by
-    intro α oa
-    induction oa using OracleComp.inductionOn with
-    | pure a =>
-      intro _ s hs r hr
-      simp only [simulateQ_pure, StateT.run_pure, support_pure, Set.mem_singleton_iff] at hr
-      subst hr; exact hs
-    | query_bind q mx ih =>
-      intro hqp' s hs r hr
-      simp only [AllGameQueries, construct_query_bind] at hqp'
-      rw [run_simulateQ_query_bind, mem_support_bind_iff] at hr
-      obtain ⟨⟨v, s'⟩, hstep, hr⟩ := hr
-      cases q with
-      | inl n =>
-        simp only [CostedReduction.impl, handlerImpl, StateT.run_lift, mem_support_bind_iff,
-          support_pure, Set.mem_singleton_iff] at hstep
-        obtain ⟨_, -, hvs⟩ := hstep; cases hvs
-        exact ih v (hqp'.2 v) s hs r hr
-      | inr t =>
-        simp only [CostedReduction.impl, handlerImpl, StateT.run_mk, mem_support_bind_iff,
-          support_pure, Set.mem_singleton_iff] at hstep
-        obtain ⟨⟨ans, s₁⟩, hstep, hvs⟩ := hstep; cases hvs
-        have hs₁ := (Comp.baseFits_eval_preserve hO hS hWop hWsamp hq R.handle
-          (.cons s (.cons (C.qenc t) .nil)) ⟨hs, henc t hqp'.1, trivial⟩ (ans, s₁) hstep).2
-        exact ih (C.rdec t ans) (hqp'.2 _) s₁ hs₁ r hr
-  refine ⟨fun y hy => ?_, fun r0 hr0 r1 hr1 => ?_⟩
-  · simp only [CostedReduction.eval, mem_support_bind_iff] at hy
-    obtain ⟨⟨oAdv, s₀⟩, hs₀, ⟨outAdv, s₁⟩, hs₁, hy⟩ := hy
-    have h0 := (Comp.baseFits_eval_preserve hO hS hWop hWsamp hq R.init (.cons x .nil)
-      ⟨hx, trivial⟩ (oAdv, s₀) hs₀).2
-    have h1 := hSim (hqp oAdv) s₀ h0 (outAdv, s₁) hs₁
-    exact Comp.baseFits_eval_preserve hO hS hWop hWsamp hq R.finish
-      (.cons s₁ (.cons outAdv .nil)) ⟨h1, hA outAdv, trivial⟩ y hy
-  · have h0 := (Comp.baseFits_eval_preserve hO hS hWop hWsamp hq R.init (.cons x .nil)
-      ⟨hx, trivial⟩ r0 hr0).2
-    exact hSim (hqp r0.1) r0.2 h0 r1 hr1
-
-def Ty.structNodes : Ty S → ℕ
+@[expose] def Ty.structNodes : Ty S → ℕ
   | .base _ | .unit | .bool | .nat => 1
   | .opt t | .list t | .tbl t => 1 + t.structNodes
   | .prod t u | .sum t u => 1 + t.structNodes + u.structNodes
 
-def Ty.NatFits (N : ℕ) : (t : Ty S) → t.denote → Prop
+@[expose] def Ty.NatFits (N : ℕ) : (t : Ty S) → t.denote → Prop
   | .nat, n => bits n ≤ N
   | .base _, _ | .unit, _ | .bool, _ | .opt _, none => True
   | .opt t, some a => t.NatFits N a
@@ -1297,145 +1203,6 @@ theorem Ty.natFits_of_fits {B : ℕ} : ∀ (t : Ty S) (x : t.denote), t.Fits B x
   | .sum _ u, .inr b, hx => Ty.natFits_of_fits u b hx
   | .list t, _, hx => fun x hm => Ty.natFits_of_fits t x (hx.2 x hm)
   | .tbl t, _, hx => fun i => Ty.natFits_of_fits t _ (hx i)
-
-private theorem list_sum_map_le_length_mul {α : Type} (f : α → ℕ) (M : ℕ) :
-    ∀ (l : List α), (∀ x ∈ l, f x ≤ M) → (l.map f).sum ≤ l.length * M
-  | [], _ => by simp
-  | x :: xs, h => by
-    have hx := h x (by simp)
-    have hxs := list_sum_map_le_length_mul f M xs (fun y hy => h y (by simp [hy]))
-    simp only [List.map_cons, List.sum_cons, List.length_cons]
-    calc f x + (xs.map f).sum ≤ M + xs.length * M := Nat.add_le_add hx hxs
-      _ = (xs.length + 1) * M := by ring
-
-theorem Ty.treeBlocks_le_of_listDepth_zero {W N : ℕ} :
-    ∀ (t : Ty S), t.listDepth = 0 → t.HasNoTbl = true →
-      ∀ (v : t.denote), t.BaseFits W v → t.NatFits N v →
-        t.treeBlocks v ≤ t.structNodes * (max W N + 1)
-  | .base _, _, _, x, hW, _ => by
-    simp only [Ty.treeBlocks, Ty.structNodes, Ty.BaseFits, one_mul] at hW ⊢
-    have := le_max_left W N
-    omega
-  | .unit, _, _, _, _, _ | .bool, _, _, _, _, _ => by
-    simp [Ty.treeBlocks, Ty.structNodes]
-  | .nat, _, _, n, _, hN => by
-    simp only [Ty.treeBlocks, Ty.structNodes, Ty.NatFits, one_mul] at hN ⊢
-    have := le_max_right W N
-    omega
-  | .opt t, _, _, none, _, _ => by
-    simp only [Ty.treeBlocks, Ty.structNodes]
-    have hr : (1 + t.structNodes) * (max W N + 1) =
-        (max W N + 1) + t.structNodes * (max W N + 1) := by ring
-    omega
-  | .opt t, hd, hnt, some a, hW, hN => by
-    simp only [Ty.listDepth, Ty.HasNoTbl] at hd hnt
-    have ih := Ty.treeBlocks_le_of_listDepth_zero t hd hnt a hW hN
-    simp only [Ty.treeBlocks, Ty.structNodes]
-    have hr : (1 + t.structNodes) * (max W N + 1) =
-        (max W N + 1) + t.structNodes * (max W N + 1) := by ring
-    omega
-  | .prod t u, hd, hnt, x, hW, hN => by
-    simp only [Ty.listDepth, Nat.max_eq_zero_iff, Ty.HasNoTbl, Bool.and_eq_true] at hd hnt
-    have iht := Ty.treeBlocks_le_of_listDepth_zero t hd.1 hnt.1 x.1 hW.1 hN.1
-    have ihu := Ty.treeBlocks_le_of_listDepth_zero u hd.2 hnt.2 x.2 hW.2 hN.2
-    simp only [Ty.treeBlocks, Ty.structNodes]
-    have hr : (1 + t.structNodes + u.structNodes) * (max W N + 1) =
-        (max W N + 1) + t.structNodes * (max W N + 1) + u.structNodes * (max W N + 1) := by ring
-    omega
-  | .sum t u, hd, hnt, .inl a, hW, hN => by
-    simp only [Ty.listDepth, Nat.max_eq_zero_iff, Ty.HasNoTbl, Bool.and_eq_true] at hd hnt
-    have iht := Ty.treeBlocks_le_of_listDepth_zero t hd.1 hnt.1 a hW hN
-    simp only [Ty.treeBlocks, Ty.structNodes]
-    have hr : (1 + t.structNodes + u.structNodes) * (max W N + 1) =
-        (max W N + 1) + t.structNodes * (max W N + 1) + u.structNodes * (max W N + 1) := by ring
-    omega
-  | .sum t u, hd, hnt, .inr b, hW, hN => by
-    simp only [Ty.listDepth, Nat.max_eq_zero_iff, Ty.HasNoTbl, Bool.and_eq_true] at hd hnt
-    have ihu := Ty.treeBlocks_le_of_listDepth_zero u hd.2 hnt.2 b hW hN
-    simp only [Ty.treeBlocks, Ty.structNodes]
-    have hr : (1 + t.structNodes + u.structNodes) * (max W N + 1) =
-        (max W N + 1) + t.structNodes * (max W N + 1) + u.structNodes * (max W N + 1) := by ring
-    omega
-  | .list _, hd, _, _, _, _ => by simp [Ty.listDepth] at hd
-  | .tbl _, _, hnt, _, _, _ => by simp [Ty.HasNoTbl] at hnt
-
-/-- For table-free types without nested lists (`listDepth ≤ 1`), `treeBlocks` is bounded by `t.structNodes * (B + 1) * (max W N + 1)`. -/
-theorem Ty.treeBlocks_linear_of_noNestedLists {B W N : ℕ} :
-    ∀ (t : Ty S), t.NoNestedLists → t.HasNoTbl = true →
-      ∀ (v : t.denote), t.Fits B v → t.BaseFits W v → t.NatFits N v →
-        t.treeBlocks v ≤ t.structNodes * (B + 1) * (max W N + 1)
-  | .base _, _, _, x, _, hW, _ => by
-    simp only [Ty.treeBlocks, Ty.structNodes, Ty.BaseFits, one_mul] at hW ⊢
-    have := le_max_left W N
-    have := Nat.le_mul_of_pos_left (max W N + 1) (by omega : 0 < B + 1)
-    omega
-  | .unit, _, _, _, _, _, _ | .bool, _, _, _, _, _, _ => by
-    simp only [Ty.treeBlocks, Ty.structNodes, one_mul]
-    have := Nat.le_mul_of_pos_left (max W N + 1) (by omega : 0 < B + 1)
-    omega
-  | .nat, _, _, n, _, _, hN => by
-    simp only [Ty.treeBlocks, Ty.structNodes, Ty.NatFits, one_mul] at hN ⊢
-    have := le_max_right W N
-    have := Nat.le_mul_of_pos_left (max W N + 1) (by omega : 0 < B + 1)
-    omega
-  | .opt t, _, _, none, _, _, _ => by
-    simp only [Ty.treeBlocks, Ty.structNodes]
-    have h1 := Nat.le_mul_of_pos_left (max W N + 1) (by omega : 0 < B + 1)
-    have hr : (1 + t.structNodes) * (B + 1) * (max W N + 1) =
-        (B + 1) * (max W N + 1) + t.structNodes * (B + 1) * (max W N + 1) := by ring
-    omega
-  | .opt t, hd, hnt, some a, hB, hW, hN => by
-    simp only [Ty.NoNestedLists, Ty.listDepth, Ty.HasNoTbl] at hd hnt
-    have ih := Ty.treeBlocks_linear_of_noNestedLists t hd hnt a hB hW hN
-    simp only [Ty.treeBlocks, Ty.structNodes]
-    have h1 := Nat.le_mul_of_pos_left (max W N + 1) (by omega : 0 < B + 1)
-    have hr : (1 + t.structNodes) * (B + 1) * (max W N + 1) =
-        (B + 1) * (max W N + 1) + t.structNodes * (B + 1) * (max W N + 1) := by ring
-    omega
-  | .prod t u, hd, hnt, x, hB, hW, hN => by
-    simp only [Ty.NoNestedLists, Ty.listDepth, Nat.max_le, Ty.HasNoTbl, Bool.and_eq_true] at hd hnt
-    have iht := Ty.treeBlocks_linear_of_noNestedLists t hd.1 hnt.1 x.1 hB.1 hW.1 hN.1
-    have ihu := Ty.treeBlocks_linear_of_noNestedLists u hd.2 hnt.2 x.2 hB.2 hW.2 hN.2
-    simp only [Ty.treeBlocks, Ty.structNodes]
-    have h1 := Nat.le_mul_of_pos_left (max W N + 1) (by omega : 0 < B + 1)
-    have hr : (1 + t.structNodes + u.structNodes) * (B + 1) * (max W N + 1) =
-        (B + 1) * (max W N + 1) + t.structNodes * (B + 1) * (max W N + 1) +
-          u.structNodes * (B + 1) * (max W N + 1) := by ring
-    omega
-  | .sum t u, hd, hnt, .inl a, hB, hW, hN => by
-    simp only [Ty.NoNestedLists, Ty.listDepth, Nat.max_le, Ty.HasNoTbl, Bool.and_eq_true] at hd hnt
-    have iht := Ty.treeBlocks_linear_of_noNestedLists t hd.1 hnt.1 a hB hW hN
-    simp only [Ty.treeBlocks, Ty.structNodes]
-    have h1 := Nat.le_mul_of_pos_left (max W N + 1) (by omega : 0 < B + 1)
-    have hr : (1 + t.structNodes + u.structNodes) * (B + 1) * (max W N + 1) =
-        (B + 1) * (max W N + 1) + t.structNodes * (B + 1) * (max W N + 1) +
-          u.structNodes * (B + 1) * (max W N + 1) := by ring
-    omega
-  | .sum t u, hd, hnt, .inr b, hB, hW, hN => by
-    simp only [Ty.NoNestedLists, Ty.listDepth, Nat.max_le, Ty.HasNoTbl, Bool.and_eq_true] at hd hnt
-    have ihu := Ty.treeBlocks_linear_of_noNestedLists u hd.2 hnt.2 b hB hW hN
-    simp only [Ty.treeBlocks, Ty.structNodes]
-    have h1 := Nat.le_mul_of_pos_left (max W N + 1) (by omega : 0 < B + 1)
-    have hr : (1 + t.structNodes + u.structNodes) * (B + 1) * (max W N + 1) =
-        (B + 1) * (max W N + 1) + t.structNodes * (B + 1) * (max W N + 1) +
-          u.structNodes * (B + 1) * (max W N + 1) := by ring
-    omega
-  | .list t, hd, hnt, l, hB, hW, hN => by
-    simp only [Ty.NoNestedLists, Ty.listDepth, Ty.HasNoTbl] at hd hnt
-    have hd0 : t.listDepth = 0 := by omega
-    have hsum : (l.map t.treeBlocks).sum ≤ l.length * (t.structNodes * (max W N + 1)) :=
-      list_sum_map_le_length_mul t.treeBlocks _ l fun x hx =>
-        Ty.treeBlocks_le_of_listDepth_zero t hd0 hnt x (hW x hx) (hN x hx)
-    have hlen : l.length ≤ B := hB.1
-    have hmul : l.length * (t.structNodes * (max W N + 1)) ≤
-        B * (t.structNodes * (max W N + 1)) := Nat.mul_le_mul_right _ hlen
-    have h1 := Nat.le_mul_of_pos_left (max W N + 1) (by omega : 0 < B + 1)
-    have hr : (1 + t.structNodes) * (B + 1) * (max W N + 1) =
-        (B + 1) * (max W N + 1) + B * (t.structNodes * (max W N + 1)) +
-          t.structNodes * (max W N + 1) := by ring
-    simp only [Ty.treeBlocks, Ty.structNodes]
-    omega
-  | .tbl _, _, hnt, _, _, _, _ => by simp [Ty.HasNoTbl] at hnt
 
 end BaseFitsAndTreeWeight
 

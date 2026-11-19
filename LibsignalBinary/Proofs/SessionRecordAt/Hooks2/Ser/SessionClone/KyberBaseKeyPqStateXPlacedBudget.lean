@@ -9,17 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.BaseBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.AdaptersBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.KyberBaseKeyPqStateXPlaced
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.BaseBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.AdaptersBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.KyberBaseKeyPqStateXPlaced
 meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.KyberBaseKeyPqStateX -- shake: keep
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SepWPpIn -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.BaseX -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `SessionStructure::clone` Fields 7–9 (Block `80`)
@@ -29,7 +38,7 @@ Verifies relocatable cloning of `pending_kyber_pre_key`, `alice_base_key`, and `
 `FitsEvents`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -833,7 +842,7 @@ theorem sc_aliceBaseKey_placed_x [LibsignalPlacement] {M : AllocCostModel}
 /-! ## Field 9: `pq_ratchet_state` (`+912 / +780 → +924`) -/
 
 /-- Allocation events emitted by Field 9 (`pq_ratchet_state`). -/
-def pqCloneEvents (bs : List (BitVec 8)) : List AllocEvent :=
+@[expose] def pqCloneEvents (bs : List (BitVec 8)) : List AllocEvent :=
   if bs.length = 0 then [] else rustAllocEvents bs.length 1
 
 theorem sc_pqRatchet_314_pos_placed_x [LibsignalPlacement] {M : AllocCostModel}

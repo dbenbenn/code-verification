@@ -10,7 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Defs
-import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.ChainMerge
+import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.ChainDefs
+import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.BodyDefs
 import LibsignalBinary.Proofs.E2E.Record.L1GX.Frame
 import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.MergeFieldX10
 import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.MergeFieldX11
@@ -20,6 +21,8 @@ import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.MergeFieldX15
 import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.MergeFieldX9P
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Deser.DeserCalleesX
 import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.B3DeserQ
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Full PQXDH-scope `SessionStructure::merge_field` contract
@@ -30,7 +33,7 @@ the PQXDH extension leaves for tags 9, 10, 11, 13, 14, and 15 into the unrestric
 corollaries.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.L1GX
 
@@ -39,39 +42,6 @@ open CryptoVerification.E2E.Record CryptoVerification.RustHeap
 open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalTripleRatchetRepr
 open CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.E2E.Record.DeserializeSeed CryptoVerification.E2E.Record.DeserializeGeneral
-
-theorem mergeFieldX_ok_of (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)} (hC : DeserializeSeed.DeserializeCallees C ctl abs)
-    (h14 : MergeFieldXOk C ctl (fun fl => fl.tag = 14) abs) :
-    MergeFieldXOk C ctl (fun _ => True) abs := by
-  have hB := mergeFieldXBaseAll_ok C ctl hC (DeserializeGeneral.chainMergeGen_ok C ctl hC)
-  have h9 := Leaf.MergeFieldX9P.mergeFieldX9P_ok C ctl hC
-  have h10 := Leaf.MergeFieldX10.mergeFieldX10_ok C ctl hC
-  have h11 := Leaf.MergeFieldX11.mergeFieldX11_ok C ctl hC
-  have h13 := Leaf.MergeFieldX13.mergeFieldX13_ok C ctl hC
-  have h15 := Leaf.MergeFieldX15.mergeFieldX15_ok C ctl hC
-  have hAll := mergeFieldXOk_or hB
-    (mergeFieldXOk_or h9 (mergeFieldXOk_or h10 (mergeFieldXOk_or h11
-      (mergeFieldXOk_or h13 (mergeFieldXOk_or h14 h15)))))
-  refine mergeFieldXOk_of_imp hAll ?_
-  intro fl _
-  cases fl with
-  | base f => exact Or.inl ⟨f, rfl⟩
-  | pendingId i k => exact Or.inr (Or.inl (Or.inl ⟨i, k, rfl⟩))
-  | pendingSpk o k spk => exact Or.inr (Or.inl (Or.inr ⟨o, k, spk, rfl⟩))
-  | remReg r => exact Or.inr (Or.inr (Or.inl rfl))
-  | locReg l => exact Or.inr (Or.inr (Or.inr (Or.inl rfl)))
-  | abk b => exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl rfl))))
-  | kyber i ct => exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl rfl)))))
-  | pq b => exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr rfl)))))
-
-/-- Unrestricted `SessionStructure::merge_field` contract over all `GenFieldX` constructors. -/
-theorem mergeFieldX_ok (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)} (hC : DeserializeSeed.DeserializeCallees C ctl abs) :
-    MergeFieldXOk C ctl (fun _ => True) abs :=
-  mergeFieldX_ok_of C ctl hC (Leaf.MergeFieldX14.mergeFieldX14_ok C ctl hC)
-
-/-! ## Relocatable `SessionStructure::merge_field` corollaries -/
 
 section Placed
 

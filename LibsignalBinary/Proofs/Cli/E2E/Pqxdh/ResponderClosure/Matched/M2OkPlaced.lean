@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TailPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsCPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsDPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsAPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Ok
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TailPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsCPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsDPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsAPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Ok
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
@@ -28,6 +28,10 @@ import LibsignalBinary.Proofs.TripleRatchet.Glue
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.CtEqRO
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Aux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Tail
 
 /-!
 # Relocatable Stage P2 Matched-Session `Some ik` Check and Match Branch
@@ -36,7 +40,7 @@ Relocatable `[LibsignalPlacement]` counterpart of `Matched.M2Ok` on Block `518` 
 `(blkPl_518).base = lsmpl.base 518`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -47,8 +51,6 @@ attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_add_neg688_eq_hsp
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_sub_96_eq_hsp_592
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_add_neg96_eq_hsp_592
-
-noncomputable section
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched
 
@@ -138,14 +140,6 @@ theorem memRegion_a90_48_join_10_38_placed [LibsignalPlacement] (sp : BitVec 64)
       memRegion (sp + 0xa90#64) 48 :=
   memRegion_a90_48_join_10_38 sp u_a90 u_a98
 
-theorem stack_root_to_pkEq_placed [LibsignalPlacement] (sp : BitVec 64) (hn : rootStack ≤ 2 ^ 64) :
-    stackAt sp rootStack =
-      memRegion (sp - BitVec.ofNat 64 rootStack) (rootStack - 64) ∗
-      stackFrameFor libsignalSessionImage
-        "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq" sp ∗
-      stackFrameFor libsignalSessionImage
-        "<[u8] as subtle::ConstantTimeEq>::ct_eq" (sp - 16#64) :=
-  stack_root_to_pkEq sp hn
 
 theorem stack_root_to_pkEq_mem_placed (sp : BitVec 64) (hn : rootStack ≤ 2 ^ 64) :
     stackAt sp rootStack =
@@ -174,7 +168,7 @@ theorem remoteIdentityOkAt_some_eq_placed [LibsignalPlacement] (sp : BitVec 64) 
       ((sp + 0x3e2#64) ↦ₛ ik.publicKey.bytes.toList) :=
   remoteIdentityOkAt_some_eq sp ik
 
-def stageP2MatchedOk10ccPrePlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def stageP2MatchedOk10ccPrePlaced [LibsignalPlacement] (A : RustAlloc)
     (sp coroPtr outPtr msgPtr remoteAddrPtr localAddrPtr v_330 v_388
       u_80 u_88 u_90 u_a8 u_b0 v_d0
       u_298 u_2a0 u_3a0 u_3b0 u_3b8 u_3c0 u_3c8 u_3d0 u_3d8 : BitVec 64)
@@ -199,7 +193,7 @@ def stageP2MatchedOk10ccPrePlaced [LibsignalPlacement] (A : RustAlloc)
   ((sp + 0x3d0#64) ↦₆₄ u_3d0) ∗ ((sp + 0x3d8#64) ↦₆₄ u_3d8) ∗
   stackAt sp rootStack
 
-def stageP2MatchedOk1778PostPlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def stageP2MatchedOk1778PostPlaced [LibsignalPlacement] (A : RustAlloc)
     (sp coroPtr outPtr msgPtr remoteAddrPtr localAddrPtr v_330 v_388 v_d0 : BitVec 64)
     (msgVerByte : BitVec 8)
     (recG : SessionGhost) (recSt : SessionState (List (BitVec 8))) : SepProp :=
@@ -696,4 +690,3 @@ theorem stageP2_matched_094c_match_placed [LibsignalPlacement] {A : RustAlloc}
   exact Entails.of_eq (eq_of_sep_emp (by sep_focus))
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched
-end

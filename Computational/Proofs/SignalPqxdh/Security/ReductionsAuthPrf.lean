@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndSigKem
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndSigKem -- proof-setup: allow-public-import
 
 /-!
 # Black-Box Reductions for PQXDH `Auth`: Key-Schedule PRF Simulators
@@ -19,7 +19,7 @@ public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndSigKem
 `Auth` security game.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,9 +34,9 @@ open RoKem
 abbrev AuthMkSaltCache (S : Setup) := List ((SessionId S × Option Bytes) × (Nat × MessageKeys))
 
 /-- Salt equivalence up to 32-byte HKDF salt normalization (`effectiveHkdfSaltBytes`, DEV-LS25). -/
-def sameSaltKey (s₁ s₂ : Option Bytes) : Bool := effectiveHkdfSaltBytes s₁ == effectiveHkdfSaltBytes s₂
+@[expose] def sameSaltKey (s₁ s₂ : Option Bytes) : Bool := effectiveHkdfSaltBytes s₁ == effectiveHkdfSaltBytes s₂
 
-def mkSaltKeyMatch {S : Setup} (k : SessionId S × Option Bytes) (sid : SessionId S)
+@[expose] def mkSaltKeyMatch {S : Setup} (k : SessionId S × Option Bytes) (sid : SessionId S)
     (salt? : Option Bytes) : Bool :=
   k.1 == sid && sameSaltKey k.2 salt?
 
@@ -48,17 +48,17 @@ structure AuthSlotState where
   sendNoOpkTbl : Nat → Nat → Option Nat := fun _ _ => none
   recvTbl      : Nat → Option Nat := fun _ => none
 
-def AuthSlotState.empty : AuthSlotState := {}
+@[expose] def AuthSlotState.empty : AuthSlotState := {}
 
-def AuthSlotState.lookupSend {S : Setup} (ss : AuthSlotState) : SessionId S → Option Nat
+@[expose] def AuthSlotState.lookupSend {S : Setup} (ss : AuthSlotState) : SessionId S → Option Nat
   | .sendOPK u i => ss.sendOpkTbl u.1 i.1
   | .sendNoOPK u i => ss.sendNoOpkTbl u.1 i.1
   | _ => none
 
-def AuthSlotState.lookupSendOrZero {S : Setup} (ss : AuthSlotState) (sid : SessionId S) : Nat :=
+@[expose] def AuthSlotState.lookupSendOrZero {S : Setup} (ss : AuthSlotState) (sid : SessionId S) : Nat :=
   (ss.lookupSend sid).getD 0
 
-def AuthSlotState.allocSend {S : Setup} (ss : AuthSlotState) :
+@[expose] def AuthSlotState.allocSend {S : Setup} (ss : AuthSlotState) :
     SessionId S → Nat × AuthSlotState
   | .sendOPK u i =>
     match ss.sendOpkTbl u.1 i.1 with
@@ -85,10 +85,7 @@ def AuthSlotState.allocSend {S : Setup} (ss : AuthSlotState) :
 def AuthSlotState.lookupRecv (ss : AuthSlotState) (rc : Nat) : Option Nat :=
   ss.recvTbl rc
 
-def AuthSlotState.lookupRecvOrZero (ss : AuthSlotState) (rc : Nat) : Nat :=
-  (ss.recvTbl rc).getD 0
-
-def AuthSlotState.allocRecv (ss : AuthSlotState) (rc : Nat) : Nat × AuthSlotState :=
+@[expose] def AuthSlotState.allocRecv (ss : AuthSlotState) (rc : Nat) : Nat × AuthSlotState :=
   match ss.recvTbl rc with
   | some k => (k, ss)
   | none =>
@@ -103,7 +100,7 @@ structure AuthHybridStateFixed (S : Setup) extends AuthHybridState S where
   mkSaltCache : AuthMkSaltCache S := []
   slots       : AuthSlotState := {}
 
-def AuthHybridStateFixed.empty (S : Setup) (secb : Bool) : AuthHybridStateFixed S :=
+@[expose] def AuthHybridStateFixed.empty (S : Setup) (secb : Bool) : AuthHybridStateFixed S :=
   { toAuthHybridState := AuthHybridState.empty S secb
     recvCount := 0
     mkSaltCache := []
@@ -111,7 +108,7 @@ def AuthHybridStateFixed.empty (S : Setup) (secb : Bool) : AuthHybridStateFixed 
 
 namespace AuthSubHops1to3
 
-def evalHkdfRoPure (roCache : List (Bytes × DRKey))
+@[expose] def evalHkdfRoPure (roCache : List (Bytes × DRKey))
     (secrets : Bytes) : ProbComp (DRKey × List (Bytes × DRKey)) :=
   match roCache.find? (fun (s, _) => s == secrets) with
   | some (_, dk) => pure (dk, roCache)
@@ -119,7 +116,7 @@ def evalHkdfRoPure (roCache : List (Bytes × DRKey))
     let dk ← sampleDRKey96
     pure (dk, (secrets, dk) :: roCache)
 
-def evalRootKdfRoPure (rootRoCache : List ((Bytes × Bytes) × (Bytes × Bytes)))
+@[expose] def evalRootKdfRoPure (rootRoCache : List ((Bytes × Bytes) × (Bytes × Bytes)))
     (rk dh : Bytes) : ProbComp ((Bytes × Bytes) × List ((Bytes × Bytes) × (Bytes × Bytes))) :=
   match rootRoCache.find? (fun (k, _) => k == (rk, dh)) with
   | some (_, out) => pure (out, rootRoCache)
@@ -128,7 +125,7 @@ def evalRootKdfRoPure (rootRoCache : List ((Bytes × Bytes) × (Bytes × Bytes))
     let c ← sampleBytes32
     pure ((r, c), ((rk, dh), (r, c)) :: rootRoCache)
 
-def mapMPrim {α β : Type} (f : α → OracleComp PrimBaseSpec β) :
+@[expose] def mapMPrim {α β : Type} (f : α → OracleComp PrimBaseSpec β) :
     List α → OracleComp PrimBaseSpec (List β)
   | [] => pure []
   | x :: xs => do
@@ -136,7 +133,7 @@ def mapMPrim {α β : Type} (f : α → OracleComp PrimBaseSpec β) :
     let ys ← mapMPrim f xs
     pure (y :: ys)
 
-def consumeFirstMPrim {α : Type} (p : α → OracleComp PrimBaseSpec Bool) (mark : α → α) :
+@[expose] def consumeFirstMPrim {α : Type} (p : α → OracleComp PrimBaseSpec Bool) (mark : α → α) :
     List α → OracleComp PrimBaseSpec (Bool × List α)
   | [] => pure (false, [])
   | x :: xs => do
@@ -146,7 +143,7 @@ def consumeFirstMPrim {α : Type} (p : α → OracleComp PrimBaseSpec Bool) (mar
       let (ok, xs') ← consumeFirstMPrim p mark xs
       pure (ok, x :: xs')
 
-def matchSentOPKPrim (r : RecvdOPKEvent) (s : SentOPKEvent) : OracleComp PrimBaseSpec Bool := do
+@[expose] def matchSentOPKPrim (r : RecvdOPKEvent) (s : SentOPKEvent) : OracleComp PrimBaseSpec Bool := do
   let pa0r ← primQ (.pow8 r.a0)
   let pa0s ← primQ (.pow8 s.a0)
   let pb0r ← primQ (.pow8 r.b0)
@@ -168,7 +165,7 @@ def matchSentOPKPrim (r : RecvdOPKEvent) (s : SentOPKEvent) : OracleComp PrimBas
     r.ct == s.ct &&
     r.m == s.m)
 
-def matchSentNoOPKPrim (r : RecvdNoOPKEvent) (s : SentNoOPKEvent) :
+@[expose] def matchSentNoOPKPrim (r : RecvdNoOPKEvent) (s : SentNoOPKEvent) :
     OracleComp PrimBaseSpec Bool := do
   let pa0r ← primQ (.pow8 r.a0)
   let pa0s ← primQ (.pow8 s.a0)
@@ -188,7 +185,7 @@ def matchSentNoOPKPrim (r : RecvdNoOPKEvent) (s : SentNoOPKEvent) :
     r.ct == s.ct &&
     r.m == s.m)
 
-def checkBundleProvenanceExactPrim (S : Setup)
+@[expose] def checkBundleProvenanceExactPrim (S : Setup)
     (principals : List (Nat × PrincipalEntry))
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (opkEntries : List ((Nat × Nat × Nat) × OpkEntry))
@@ -208,7 +205,7 @@ def checkBundleProvenanceExactPrim (S : Setup)
           return (u == k && p1 == p2)) (opkEntries.take S.N_dh)
     return (spkHon, opkHon, pqspkHon)
 
-def checkBundleSpkHonIdealPrim (S : Setup)
+@[expose] def checkBundleSpkHonIdealPrim (S : Setup)
     (principals : List (Nat × PrincipalEntry))
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (bundle : PreKeyBundleInput) : OracleComp PrimBaseSpec Bool := do
@@ -221,7 +218,7 @@ def checkBundleSpkHonIdealPrim (S : Setup)
       return (u == k && ((pEntry.corrupted && p1 == p2) || b.spkPk == bundle.spkB)))
       (spkBundles.take S.N_dh)
 
-def sameOpkPkPrim (o1 o2 : Option Bytes) : OracleComp PrimBaseSpec Bool :=
+@[expose] def sameOpkPkPrim (o1 o2 : Option Bytes) : OracleComp PrimBaseSpec Bool :=
   match o1, o2 with
   | none, none => return true
   | some pk1, some pk2 => do
@@ -230,7 +227,7 @@ def sameOpkPkPrim (o1 o2 : Option Bytes) : OracleComp PrimBaseSpec Bool :=
     return (p1 == p2)
   | _, _ => return false
 
-def matchIdealAuthHandshakePrim {S : Setup}
+@[expose] def matchIdealAuthHandshakePrim {S : Setup}
     (ikBPk spkBPk : Bytes) (opkBPk? : Option Bytes) (pqspkBPk : Bytes)
     (hdr : HandshakeHdr) (s : IdealAuthSession S) : OracleComp PrimBaseSpec Bool := do
   let pIk1 ← primQ (.pow8 hdr.ikAPk)
@@ -250,7 +247,7 @@ def matchIdealAuthHandshakePrim {S : Setup}
           pqspkBPk == s.peerPqspkPk &&
           hdr.kemCt == s.kemCt)
 
-def allHonestEcPksAuthPrim (S : Setup) (st : AuthState S) :
+@[expose] def allHonestEcPksAuthPrim (S : Setup) (st : AuthState S) :
     OracleComp PrimBaseSpec (List Bytes) := do
   let p1 ← mapMPrim (fun (_, e) => primQ (.pow8 e.ikAPk)) (st.principals.take S.N_dh)
   let p2 ← mapMPrim (fun (_, b) => primQ (.pow8 b.spkPk)) (st.spkBundles.take S.N_dh)
@@ -260,7 +257,7 @@ def allHonestEcPksAuthPrim (S : Setup) (st : AuthState S) :
     primQ (.pow8 pk)) (st.sessions.take S.N_dh)
   return (p1 ++ p2 ++ p3 ++ p4)
 
-def hasBadKemShCrRecordsPure {S : Setup}
+@[expose] def hasBadKemShCrRecordsPure {S : Setup}
     (initRecs : List (InitKemRecord S)) (recvRecs : List RecvKemRecord) : Bool :=
   initRecs.any (fun i =>
     recvRecs.any (fun r =>
@@ -268,10 +265,10 @@ def hasBadKemShCrRecordsPure {S : Setup}
       (r.kemCt != i.kemCt || i.pqspkPk != r.pqspkPk)))
 
 
-def allChallengedCleanPure {S : Setup} (st : AuthState S) : Bool :=
+@[expose] def allChallengedCleanPure {S : Setup} (st : AuthState S) : Bool :=
   st.sessions.all (fun s => !s.challenged || (s.fresh && s.pqspkHonest))
 
-def finalizeAuthFixedPrim (S : Setup) (secb b' : Bool) (finalSt : AuthHybridState S) :
+@[expose] def finalizeAuthFixedPrim (S : Setup) (secb b' : Bool) (finalSt : AuthHybridState S) :
     OracleComp PrimBaseSpec Bool := do
   let ecPks ← allHonestEcPksAuthPrim S finalSt.base
   if hasDuplicateBytes ecPks || hasBadSigAuth finalSt ||
@@ -295,18 +292,18 @@ inductive RecvFinishTag (S : Setup) where
           (usedTriples' : List (Nat × KeyId × KeyId × Bytes)) (msg : PreKeyMsg)
           (hstDec : AuthHybridState S)
 
-def RecvFinishTag.hstDec {S : Setup} : RecvFinishTag S → AuthHybridState S
+@[expose] def RecvFinishTag.hstDec {S : Setup} : RecvFinishTag S → AuthHybridState S
   | .opk _ _ _ _ _ _ _ _ hstDec => hstDec
   | .noOpk _ _ _ _ _ _ _ hstDec => hstDec
 
-def RecvFinishTag.mapState {S : Setup} (f : AuthHybridState S → AuthHybridState S) :
+@[expose] def RecvFinishTag.mapState {S : Setup} (f : AuthHybridState S → AuthHybridState S) :
     RecvFinishTag S → RecvFinishTag S
   | .opk k j o kEntry bEntry oEntry usedTriples' msg hstDec =>
     .opk k j o kEntry bEntry oEntry usedTriples' msg (f hstDec)
   | .noOpk k j l kEntry bEntry usedTriples' msg hstDec =>
     .noOpk k j l kEntry bEntry usedTriples' msg (f hstDec)
 
-def RecvFinishTag.runPrim (S : Setup) (checkAuth : Bool) (tag : RecvFinishTag S)
+@[expose] def RecvFinishTag.runPrim (S : Setup) (checkAuth : Bool) (tag : RecvFinishTag S)
     (res? : Option (DRKey × Bytes × Bytes × Bytes × List (Bytes × DRKey) ×
       List ((Bytes × Bytes) × (Bytes × Bytes)))) :
     OracleComp PrimBaseSpec (AuthResponse × AuthHybridState S) :=
@@ -409,11 +406,11 @@ structure PreparedAuthRecvPrim (S : Setup) where
   hstDec                    : AuthHybridState S
   finishTag                 : RecvFinishTag S
 
-def PreparedAuthRecvPrim.mapState {S : Setup} (f : AuthHybridState S → AuthHybridState S)
+@[expose] def PreparedAuthRecvPrim.mapState {S : Setup} (f : AuthHybridState S → AuthHybridState S)
     (p : PreparedAuthRecvPrim S) : PreparedAuthRecvPrim S :=
   { p with hstDec := f p.hstDec, finishTag := p.finishTag.mapState f }
 
-def prepareAuthHybridRecvOPKPrim (S : Setup)
+@[expose] def prepareAuthHybridRecvOPKPrim (S : Setup)
     (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) (msg : PreKeyMsg)
     (hst : AuthHybridState S) : OracleComp PrimBaseSpec (Option (PreparedAuthRecvPrim S)) := do
   let st := hst.base
@@ -485,7 +482,7 @@ def prepareAuthHybridRecvOPKPrim (S : Setup)
                 finishTag := .opk k j o kEntry bEntry oEntry usedTriples' msg hstDec }
       | _, _, _ => return none
 
-def prepareAuthHybridRecvNoOPKPrim (S : Setup)
+@[expose] def prepareAuthHybridRecvNoOPKPrim (S : Setup)
     (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk) (msg : PreKeyMsg)
     (hst : AuthHybridState S) : OracleComp PrimBaseSpec (Option (PreparedAuthRecvPrim S)) := do
   let st := hst.base
@@ -552,7 +549,7 @@ def prepareAuthHybridRecvNoOPKPrim (S : Setup)
               finishTag := .noOpk k j l kEntry bEntry usedTriples' msg hstDec }
       | _, _ => return none
 
-def finishAuthHybridSendPrim (S : Setup)
+@[expose] def finishAuthHybridSendPrim (S : Setup)
     (sid : SessionId S) (uEntry : PrincipalEntry)
     (peerPrincipal? : Option (Nat × PrincipalEntry)) (isFreshPeer : Bool)
     (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
@@ -662,7 +659,7 @@ def finishAuthHybridSendPrim (S : Setup)
       AuthResponse.sendUnfreshResp drKey rk1 ck1_1 wireMsg
   return (resp, hst')
 
-def stepAuthOtherPrim (S : Setup) (q : AuthQuery S)
+@[expose] def stepAuthOtherPrim (S : Setup) (q : AuthQuery S)
     (hst : AuthHybridStateFixed S) :
     OracleComp PrimBaseSpec (AuthResponse × AuthHybridStateFixed S) := do
   let st := hst.toAuthHybridState.base
@@ -774,7 +771,7 @@ def stepAuthOtherPrim (S : Setup) (q : AuthQuery S)
 
 /-! ## `PrfChainKey` simulator -/
 
-def finishAuthSendCkPrim (S : Setup)
+@[expose] def finishAuthSendCkPrim (S : Setup)
     (sid : SessionId S) (uEntry : PrincipalEntry)
     (peerPrincipal? : Option (Nat × PrincipalEntry))
     (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
@@ -799,7 +796,7 @@ def finishAuthSendCkPrim (S : Setup)
     hst.toAuthHybridState
   return (resp, { toAuthHybridState := hst', recvCount := hst.recvCount, slots := hst.slots })
 
-def finishAuthRecvCkSlotsPrim (S : Setup)
+@[expose] def finishAuthRecvCkSlotsPrim (S : Setup)
     (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S)
     (drKey : DRKey) (rk1 : Bytes) (spqrSalt? : Option Bytes)
     (recvCount' : Nat) (p : Bytes × Bytes) (slots' : AuthSlotState) :
@@ -815,14 +812,14 @@ def finishAuthRecvCkSlotsPrim (S : Setup)
   let (resp, hst') ← prep.finishTag.runPrim S true res?
   return (resp, { toAuthHybridState := hst', recvCount := recvCount', slots := slots' })
 
-def finishAuthRecvCkPrim (S : Setup)
+@[expose] def finishAuthRecvCkPrim (S : Setup)
     (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S)
     (drKey : DRKey) (rk1 : Bytes) (spqrSalt? : Option Bytes)
     (recvCount' : Nat) (p : Bytes × Bytes) :
     OracleComp PrimBaseSpec (AuthResponse × AuthHybridStateFixed S) :=
   finishAuthRecvCkSlotsPrim S msg prep drKey rk1 spqrSalt? recvCount' p {}
 
-def sampCkPairPrim (ideal : Bool) : OracleComp PrimBaseSpec (Bytes × Bytes) := do
+@[expose] def sampCkPairPrim (ideal : Bool) : OracleComp PrimBaseSpec (Bytes × Bytes) := do
   let ck ← embedUnif sampleBytes32
   if ideal then do
     let r1 ← embedUnif sampleBytes32
@@ -833,11 +830,11 @@ def sampCkPairPrim (ideal : Bool) : OracleComp PrimBaseSpec (Bytes × Bytes) := 
     let ck1_1 ← primQ (.chainKdfNext ck)
     return (mkSeed, ck1_1)
 
-def sampAtCkPrim (idx : Nat) (p : Bytes × Bytes) (s : Nat) :
+@[expose] def sampAtCkPrim (idx : Nat) (p : Bytes × Bytes) (s : Nat) :
     OracleComp PrimBaseSpec (Bytes × Bytes) :=
   if s == idx then pure p else sampCkPairPrim (s < idx)
 
-def authCkSendWithPrim (S : Setup) (sampAt : Nat → OracleComp PrimBaseSpec (Bytes × Bytes))
+@[expose] def authCkSendWithPrim (S : Setup) (sampAt : Nat → OracleComp PrimBaseSpec (Bytes × Bytes))
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthHybridStateFixed S) :
     OracleComp PrimBaseSpec (AuthResponse × AuthHybridStateFixed S) := do
@@ -927,7 +924,7 @@ def authCkSendWithPrim (S : Setup) (sampAt : Nat → OracleComp PrimBaseSpec (By
                   return (resp, { toAuthHybridState := hst', recvCount := hst.recvCount,
                                   slots := hst.slots })
 
-def authCkRecvWithPrim (S : Setup) (sampAt : Nat → OracleComp PrimBaseSpec (Bytes × Bytes))
+@[expose] def authCkRecvWithPrim (S : Setup) (sampAt : Nat → OracleComp PrimBaseSpec (Bytes × Bytes))
     (msg : PreKeyMsg) (prep? : Option (PreparedAuthRecvPrim S))
     (hst : AuthHybridStateFixed S) :
     OracleComp PrimBaseSpec (AuthResponse × AuthHybridStateFixed S) := do
@@ -988,7 +985,7 @@ def authCkRecvWithPrim (S : Setup) (sampAt : Nat → OracleComp PrimBaseSpec (By
         let (resp, hst') ← prep.finishTag.runPrim S true res?
         return (resp, { toAuthHybridState := hst', recvCount := recvCount', slots := hst.slots })
 
-def authCkStepWithPrim (S : Setup) (sampAt : Nat → OracleComp PrimBaseSpec (Bytes × Bytes))
+@[expose] def authCkStepWithPrim (S : Setup) (sampAt : Nat → OracleComp PrimBaseSpec (Bytes × Bytes))
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
     OracleComp PrimBaseSpec ((authSpec S).Range q × AuthHybridStateFixed S) :=
   match q with
@@ -1007,7 +1004,7 @@ def authCkStepWithPrim (S : Setup) (sampAt : Nat → OracleComp PrimBaseSpec (By
   | qOther =>
     stepAuthOtherPrim S qOther hst
 
-def runWithPrimStep {ιI : Type} {GSpec : OracleSpec.{0, 0} ιI} {St α : Type}
+@[expose] def runWithPrimStep {ιI : Type} {GSpec : OracleSpec.{0, 0} ιI} {St α : Type}
     (step : (q : ιI) → St → OracleComp PrimBaseSpec (GSpec.Range q × St))
     (mx : OracleComp (unifSpec + GSpec) α) (st : St) :
     OracleComp PrimBaseSpec (α × St) :=
@@ -1024,7 +1021,7 @@ def runWithPrimStep {ιI : Type} {GSpec : OracleSpec.{0, 0} ιI} {St α : Type}
         r x.1 x.2)
     mx st
 
-def authCkPreSampleRunPrim (S : Setup) (idx : Nat)
+@[expose] def authCkPreSampleRunPrim (S : Setup) (idx : Nat)
     (p : Bytes × Bytes) (A : AuthAdversary S) : OracleComp PrimBaseSpec Bool := do
   let secb ← embedUnif ($ᵗ Bool)
   let initSt := AuthHybridStateFixed.empty S secb
@@ -1033,7 +1030,7 @@ def authCkPreSampleRunPrim (S : Setup) (idx : Nat)
   finalizeAuthFixedPrim S secb b' finalSt.toAuthHybridState
 
 /-- `PrfChainKey` reduction for `Auth` embedding the challenge pair at a uniformly sampled creation-order slot. -/
-def prfCkReductionAuthFixed (S : Setup) (b : QueryBudget)
+@[expose] def prfCkReductionAuthFixed (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : PrfCkAdv where
   dist mkSeedChal ck1_1Chal := do
     let idx ← embedUnif (sampleIndexRange (min b.q_total S.N_sess_tot))
@@ -1043,7 +1040,7 @@ def prfCkReductionAuthFixed (S : Setup) (b : QueryBudget)
 
 /-! ## `PrfMsgKeys` simulator -/
 
-def finishAuthSendMkPrim (S : Setup) (sid : SessionId S) (uEntry : PrincipalEntry)
+@[expose] def finishAuthSendMkPrim (S : Setup) (sid : SessionId S) (uEntry : PrincipalEntry)
     (peerPrincipal? : Option (Nat × PrincipalEntry)) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (ekASk ekAPk ss kemCt ephASk ephAPk : Bytes) (drKey : DRKey) (rk1 mkSeed ck1_1 : Bytes)
     (spqrSalt? : Option Bytes) (pqRatchetMsg msgPlain : Bytes)
@@ -1071,7 +1068,7 @@ inductive PreparedAuthSend (S : Setup) where
       (ekASk ekAPk ss kemCt ephASk ephAPk : Bytes)
       (drKey : DRKey) (rk1 : Bytes)
       (spqrSalt? : Option Bytes) (pqRatchetMsg msgPlain : Bytes)
-def PreparedAuthSend.mapState {S : Setup} (f : AuthHybridStateFixed S → AuthHybridStateFixed S) :
+@[expose] def PreparedAuthSend.mapState {S : Setup} (f : AuthHybridStateFixed S → AuthHybridStateFixed S) :
     PreparedAuthSend S → PreparedAuthSend S
   | .done resp hst' => .done resp (f hst')
   | .idealMk uEntry peerPrincipal? ekASk ekAPk ss kemCt ephASk ephAPk
@@ -1079,7 +1076,7 @@ def PreparedAuthSend.mapState {S : Setup} (f : AuthHybridStateFixed S → AuthHy
     .idealMk uEntry peerPrincipal? ekASk ekAPk ss kemCt ephASk ephAPk
       drKey rk1 spqrSalt? pqRatchetMsg msgPlain
 
-def prepareAuthSendMkPrim (S : Setup)
+@[expose] def prepareAuthSendMkPrim (S : Setup)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthHybridStateFixed S) : OracleComp PrimBaseSpec (PreparedAuthSend S) := do
   let st := hst.toAuthHybridState.base
@@ -1165,7 +1162,7 @@ def prepareAuthSendMkPrim (S : Setup)
                   return .done resp { toAuthHybridState := hst', recvCount := hst.recvCount,
                                       mkSaltCache := hst.mkSaltCache, slots := hst.slots }
 
-def finishAuthRecvMkSlotsPrim (S : Setup) (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S)
+@[expose] def finishAuthRecvMkSlotsPrim (S : Setup) (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S)
     (drKey : DRKey) (rk1 ck1_1 : Bytes) (recvCount' : Nat)
     (mkSaltCache' : List ((SessionId S × Option Bytes) × (Nat × MessageKeys)))
     (slots' : AuthSlotState)
@@ -1179,7 +1176,7 @@ def finishAuthRecvMkSlotsPrim (S : Setup) (msg : PreKeyMsg) (prep : PreparedAuth
   return (resp, { toAuthHybridState := hst', recvCount := recvCount',
                   mkSaltCache := mkSaltCache', slots := slots' })
 
-def finishAuthRecvMkPrim (S : Setup) (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S)
+@[expose] def finishAuthRecvMkPrim (S : Setup) (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S)
     (drKey : DRKey) (rk1 ck1_1 : Bytes) (recvCount' : Nat)
     (mkSaltCache' : List ((SessionId S × Option Bytes) × (Nat × MessageKeys)))
     (deriveMessageKeys : MessageKeys) :
@@ -1192,10 +1189,10 @@ abbrev embedPrimMk {α : Type} (mx : OracleComp PrimBaseSpec α) : OracleComp Pr
   embedPrim (spec := prfMsgKeysSpec) mx
 abbrev embedUnifMk {α : Type} (mx : ProbComp α) : OracleComp PrfMkSimSpec α :=
   embedPrimMk (embedUnif mx)
-def deriveMkQ (spqrSalt? : Option Bytes) : OracleComp PrfMkSimSpec MessageKeys :=
+@[expose] def deriveMkQ (spqrSalt? : Option Bytes) : OracleComp PrfMkSimSpec MessageKeys :=
   query (spec := PrfMkSimSpec) (Sum.inr (.derive (effectiveHkdfSaltBytes spqrSalt?)))
 
-def authMkSendReduction (S : Setup) (idx : Nat)
+@[expose] def authMkSendReduction (S : Setup) (idx : Nat)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthHybridStateFixed S) (sentChal : Bool) :
     OracleComp PrfMkSimSpec ((AuthResponse × AuthHybridStateFixed S) × Bool) := do
@@ -1228,7 +1225,7 @@ def authMkSendReduction (S : Setup) (idx : Nat)
         spqrSalt? pqRatchetMsg msgPlain hst' deriveMessageKeys)
       return (res, sentChal)
 
-def finishAuthRecvUnmatchedSlotsReduction (S : Setup) (idx : Nat)
+@[expose] def finishAuthRecvUnmatchedSlotsReduction (S : Setup) (idx : Nat)
     (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S) (drKey : DRKey) (rk1 : Bytes)
     (spqrSalt? : Option Bytes) (rSlot recvCount' : Nat)
     (mkSaltCache : List ((SessionId S × Option Bytes) × (Nat × MessageKeys)))
@@ -1250,14 +1247,14 @@ def finishAuthRecvUnmatchedSlotsReduction (S : Setup) (idx : Nat)
     let deriveMessageKeys ← embedPrimMk (primQ (.deriveMsgKeys mkSeed spqrSalt?))
     embedPrimMk (finishAuthRecvMkSlotsPrim S msg prep drKey rk1 ck1_1 recvCount' mkSaltCache slots' deriveMessageKeys)
 
-def finishAuthRecvUnmatchedReduction (S : Setup) (idx : Nat)
+@[expose] def finishAuthRecvUnmatchedReduction (S : Setup) (idx : Nat)
     (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S) (drKey : DRKey) (rk1 : Bytes)
     (spqrSalt? : Option Bytes) (rSlot recvCount' : Nat)
     (mkSaltCache : List ((SessionId S × Option Bytes) × (Nat × MessageKeys))) (sentChal : Bool) :
     OracleComp PrfMkSimSpec (AuthResponse × AuthHybridStateFixed S) :=
   finishAuthRecvUnmatchedSlotsReduction S idx msg prep drKey rk1 spqrSalt? rSlot recvCount' mkSaltCache {} sentChal
 
-def matchedSameEphMkSlotsReduction (S : Setup) (idx : Nat) (s : IdealAuthSession S) (sIdx : Nat)
+@[expose] def matchedSameEphMkSlotsReduction (S : Setup) (idx : Nat) (s : IdealAuthSession S) (sIdx : Nat)
     (spqrSalt? : Option Bytes) (recvCount : Nat)
     (mkSaltCache : List ((SessionId S × Option Bytes) × (Nat × MessageKeys))) :
     OracleComp PrfMkSimSpec (MessageKeys × List ((SessionId S × Option Bytes) ×
@@ -1284,14 +1281,14 @@ def matchedSameEphMkSlotsReduction (S : Setup) (idx : Nat) (s : IdealAuthSession
     let mk ← embedPrimMk (primQ (.deriveMsgKeys s.mkSeed spqrSalt?))
     pure (mk, mkSaltCache)
 
-def matchedSameEphMkReduction (S : Setup) (idx : Nat) (s : IdealAuthSession S)
+@[expose] def matchedSameEphMkReduction (S : Setup) (idx : Nat) (s : IdealAuthSession S)
     (spqrSalt? : Option Bytes) (recvCount : Nat)
     (mkSaltCache : List ((SessionId S × Option Bytes) × (Nat × MessageKeys))) :
     OracleComp PrfMkSimSpec (MessageKeys × List ((SessionId S × Option Bytes) ×
                                                   (Nat × MessageKeys))) :=
   matchedSameEphMkSlotsReduction S idx s (sessionSlotIndex s.sid) spqrSalt? recvCount mkSaltCache
 
-def authMkRecvReduction (S : Setup) (idx : Nat)
+@[expose] def authMkRecvReduction (S : Setup) (idx : Nat)
     (msg : PreKeyMsg) (prep? : Option (PreparedAuthRecvPrim S))
     (hst : AuthHybridStateFixed S) (sentChal : Bool) :
     OracleComp PrfMkSimSpec (AuthResponse × AuthHybridStateFixed S) := do
@@ -1358,7 +1355,7 @@ def authMkRecvReduction (S : Setup) (idx : Nat)
         return (resp, { toAuthHybridState := hst', recvCount := recvCount',
                         mkSaltCache := hst.mkSaltCache, slots := hst.slots })
 
-def authMkStepReduction (S : Setup) (idx : Nat)
+@[expose] def authMkStepReduction (S : Setup) (idx : Nat)
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) (sentChal : Bool) :
     OracleComp PrfMkSimSpec (((authSpec S).Range q × AuthHybridStateFixed S) × Bool) :=
   match q with
@@ -1379,7 +1376,7 @@ def authMkStepReduction (S : Setup) (idx : Nat)
   | qOther => do
     let res ← embedPrimMk (stepAuthOtherPrim S qOther hst)
     return (res, sentChal)
-def runWithPrfMkStep {S : Setup} {α : Type}
+@[expose] def runWithPrfMkStep {S : Setup} {α : Type}
     (step : (q : AuthQuery S) → AuthHybridStateFixed S → Bool →
       OracleComp PrfMkSimSpec (((authSpec S).Range q × AuthHybridStateFixed S) × Bool))
     (mx : OracleComp (unifSpec + authSpec S) α) (hst : AuthHybridStateFixed S) (sentChal : Bool) :
@@ -1397,7 +1394,7 @@ def runWithPrfMkStep {S : Setup} {α : Type}
         r resp s' c')
     mx hst sentChal
 
-def authMkReductionRun (S : Setup) (idx : Nat) (A : AuthAdversary S) :
+@[expose] def authMkReductionRun (S : Setup) (idx : Nat) (A : AuthAdversary S) :
     OracleComp PrfMkSimSpec Bool := do
   let secb ← embedUnifMk ($ᵗ Bool)
   let initSt := AuthHybridStateFixed.empty S secb
@@ -1406,7 +1403,7 @@ def authMkReductionRun (S : Setup) (idx : Nat) (A : AuthAdversary S) :
   embedPrimMk (finalizeAuthFixedPrim S secb b' finalSt.toAuthHybridState)
 
 /-- `PrfMsgKeys` reduction for `Auth` forwarding message-key derivations at a uniformly sampled creation-order slot. -/
-def prfMsgKeysReductionAuthFixed (S : Setup) (b : QueryBudget)
+@[expose] def prfMsgKeysReductionAuthFixed (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : PrfMsgKeysAdv where
   run := do
     let idx ← embedUnifMk (sampleIndexRange (min b.q_total S.N_sess_tot))

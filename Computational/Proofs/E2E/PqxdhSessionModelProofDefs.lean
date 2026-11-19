@@ -20,7 +20,7 @@ Proof-side send helpers (`sendWireAcknowledged`, `sendWireModel`) and the `Pqxdh
 predicate over `PqxdhSessionModel`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 namespace CryptoVerification.E2E
@@ -39,7 +39,7 @@ def sendWireAcknowledged (W : PEParams) (x : RecordExtras) (g : GhostState Bytes
   | (.error _, _) => some none
 
 /-- Model outcome of `send` on session `g` with extras `x` and coins `r`. -/
-def sendWireModel (W : PEParams) (x : RecordExtras) (g : GhostState Bytes) (m : Bytes)
+@[expose] def sendWireModel (W : PEParams) (x : RecordExtras) (g : GhostState Bytes) (m : Bytes)
     (r : Bytes) : Option (Option (Bytes × Bytes)) :=
   if g.session.pendingPreKey then sendWirePending W x g m r else sendWireAcknowledged W x g m r
 
@@ -47,7 +47,7 @@ def sendWireModel (W : PEParams) (x : RecordExtras) (g : GhostState Bytes) (m : 
 length bound `pt.length + 2304 < 2 ^ 32` (`DEV-PQ10`, `DEV-M1`): Alice's `init` and first `send`
 produce `3 ‖ m.bytes` with `m.inner.length + 2048 < 2 ^ 32`, which Bob's pre-key receive model
 decodes to `preKeyStoreEventsBytes m ++ pt`. -/
-def PqxdhFirstMessageRoundtrip (X : UnreachedPqxdhPrimitives) (W : PEParams) : Prop :=
+@[expose] def PqxdhFirstMessageRoundtrip (X : UnreachedPqxdhPrimitives) (W : PEParams) : Prop :=
   ∀ (meA meB : LocalIdentity) (k : ResponderPreKeySecrets) (spkSig kpkSig : List.Vector (BitVec 8) 64)
     (t : List.Vector (BitVec 8) initiateTapeLen) (rs : List.Vector (BitVec 8) 64)
     (rc : BitVec 256) (pt : Bytes)

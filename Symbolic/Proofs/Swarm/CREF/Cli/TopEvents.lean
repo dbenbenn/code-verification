@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Specifications.Refinement.RefinementPreservation
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.UA.BreakInvert
 import Symbolic.Proofs.Swarm.UA.HwKnows
 import Symbolic.Proofs.TopLevelHelpers.Composed.FS
@@ -26,7 +26,7 @@ Establishes top-level CLI refinement preservation (`comp_refinement_preservation
 lift the ten symbolic security queries (`AllModelSecurityQueriesHold`) to hardware CLI event traces.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

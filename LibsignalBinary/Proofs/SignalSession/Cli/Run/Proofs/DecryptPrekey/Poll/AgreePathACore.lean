@@ -9,17 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3Stmt
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KyberKitOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3Stmt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KyberKitOk -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathAKeys
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathB
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeCoins
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSize
-import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Pure Path A `acceptKeys`, `StageP3Gen`, and `StageP4` Commit Agreement
@@ -29,7 +31,7 @@ Proves agreement between Path A `Model.acceptKeys` / `StageP3Gen` (`ver_ne`, `pa
 bridges, and `decPkDef_pathA_ok` + `StoresWrOk cliWrOk`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -77,7 +79,7 @@ theorem pkStoreKeys_ids_eq {F : FsFiles} {m : PreKeyMessageFields} {k : Responde
   · cases hk
 
 /-- Initial recipient `SessionState` constructed after `Model.acceptKeys = some dk`. -/
-def pathAInitState (W : PEParams) (me : LocalIdentity) (k : ResponderPreKeySecrets) (m : PreKeyMessageFields)
+@[expose] def pathAInitState (W : PEParams) (me : LocalIdentity) (k : ResponderPreKeySecrets) (m : PreKeyMessageFields)
     (dk : SignalPqxdh.DRKey) : SessionState (List (BitVec 8)) :=
   initializeRecipientSession (pqxdhSpqrSession W)
     ⟨(keyPairOf W.C me.idPriv).publicKey⟩
@@ -311,7 +313,7 @@ theorem spqrV1Init_pqInV1 (F : ShaCompress) (K : CryptoVerification.LibsignalSpq
   · decide
 
 /-- Newly initialized recipient `Session` before the inner `PreKey` decryption step. -/
-def pathAInitSession (W : PEParams) (me : LocalIdentity) (k : ResponderPreKeySecrets) (m : PreKeyMessageFields)
+@[expose] def pathAInitSession (W : PEParams) (me : LocalIdentity) (k : ResponderPreKeySecrets) (m : PreKeyMessageFields)
     (dk : SignalPqxdh.DRKey) : Session (List (BitVec 8)) :=
   { state := pathAInitState W me k m dk
     pendingPreKey := none

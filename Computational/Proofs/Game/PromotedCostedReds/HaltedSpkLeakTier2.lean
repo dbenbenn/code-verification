@@ -10,13 +10,13 @@ limitations under the License.
 module
 
 public import Computational.Proofs.E2E.HaltedSpkDefs
-public import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.SpkTier2Bookkeeping -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon
+import Computational.Proofs.Game.PromotedCostedReds.SpkTier2Bookkeeping
 import Computational.Proofs.Game.PromotedCostedReds.SpkTier2BookkeepingProofs
 public import Computational.Proofs.Game.PromotedCostedReds.KemFailTrackTier2 -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInProg -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInProg
 import Computational.Proofs.Game.PromotedCostedReds.SpkTier2Lift
-public import Computational.Proofs.Game.PromotedCostedReds.HaltedSpkLeakTier2Defs -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.HaltedSpkLeakTier2Defs
 import Computational.Proofs.Game.PromotedCostedReds.HaltedSpkLeakTier2Step
 import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.CostedTables
 import Computational.Proofs.ReductionDsl.SpkLeakRed
@@ -24,6 +24,9 @@ import Computational.Proofs.ReductionDsl.SpkHop2Red
 import Computational.Proofs.E2E.ComposedPrefixHelpers
 import Computational.Proofs.E2E.Dsl.SmReachInvParty
 import Computational.Proofs.E2E.Dsl.SpqrSim
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.ReductionDsl.Bridge
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 
 /-!
 # Tier-2 Tracker-Halted `spkLeakRed` Witness

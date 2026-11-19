@@ -9,12 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.PollCommonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.PollCommonPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `FdsGe3Closed`-Threaded Store Poll Helpers (`[LibsignalPlacement]`)
@@ -24,7 +27,7 @@ and `<IdentityKeyPair as TryFrom<&[u8]>>::try_from` (Block `84`), plus shared Bl
 helpers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -90,74 +93,6 @@ abbrev dirGetRoFsCellsSpec_fd {M : AllocCostModel} (rd : ReadRule)
     (calleeStk : Nat) : Spec (DirGetRoCellsGhost × M.σ) :=
   withFdsGe3Closed (dirGetRoFsCellsSpec rd pathOk A lim GetEnv calleeStk)
 
-theorem dirGetRo_cells_placed_ok_fd [LibsignalPlacement] {prog : Program} {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DirGetEnv : DirGetGhost → List AllocEvent → Prop}
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop} {getStk calleeStk : Nat}
-    (hGet : subroutine_ok prog (lsmpl.base 589)
-      (withFdsGe3Closed
-        (withLsCodeRoLoaded lsmpl (dirGetRawSpec rd pathOk A lim DirGetEnv getStk))))
-    (hle : getStk ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok prog (lsmpl.base 589)
-      (withLsCodeRoLoaded lsmpl
-        (withFdsGe3Closed (dirGetRoCellsSpec M A lim DirGetEnv rd pathOk calleeStk))) := by
-  refine subroutine_ok.of_codeLoaded fun
-    ⟨⟨ret, self, dir, nameA, name, fsp⟩, st⟩ R s0 hpc hrun hpre hsp _ => ?_
-  obtain ⟨hcrl, hpre⟩ := extract_withLsCodeRoLoaded hpre
-  obtain ⟨hfds0, hpre⟩ := extract_withFdsGe3Closed hpre
-  simp only [dirGetRoCellsSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx2, hx3, hfsp, hnl, hpl, hpok, hfit⟩, hmem⟩
-  subst hfsp
-  rw [stackAt_sub_split s0.sp hle hhi] at hmem
-  let stkRem := memRegion (s0.sp - BitVec.ofNat 64 calleeStk) (calleeStk - getStk)
-  let callG : DirGetGhost := ⟨ret, self, dir, nameA, name, true⟩
-  have hif : (if true = true then (nameA ↦ᵣ name) else (nameA ↦ₛ name)) = (nameA ↦ᵣ name) := rfl
-  have hpre0 : s0.mem ⊨
-      (withFdsGe3Closed
-        (withLsCodeRoLoaded lsmpl (dirGetRawSpec rd pathOk A lim DirGetEnv getStk))).pre
-        (callG, st) s0 ∗ (stkRem ∗ R) := by
-    dsimp only [withFdsGe3Closed]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hfds0, satisfies_lscro_pre hcrl ?_⟩
-    dsimp only [dirGetRawSpec, bytesAt, callG, stkRem]
-    rw [hif, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hx2, hx3, hnl, hpl, hpok, hfit⟩, ?_⟩
-    convert hmem using 1; sep_ac_rfl
-  refine hGet.mono_outcome (callG, st) (stkRem ∗ R) s0 hpc hrun hpre0 hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨_, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    obtain ⟨hfdsf, hq⟩ := extract_withFdsGe3Closed_post hq
-    dsimp only [withLsCodeRoLoaded, withFdsGe3Closed, dirGetRawSpec, dirGetRoCellsSpec,
-      bytesAt, callG] at hq ⊢
-    rw [hif] at hq
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hfdsf, ?_⟩
-    simp only [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-    rcases hq with ⟨evs, r, hq⟩
-    refine ⟨evs, r, ?_⟩
-    rw [stackAt_sub_split s0.sp hle hhi]
-    dsimp only [stkRem] at hq
-    convert hq using 1; sep_ac_rfl
-  · dsimp only [withFdsGe3Closed, withLsCodeRoLoaded, dirGetRawSpec] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-  · dsimp only [withFdsGe3Closed, withLsCodeRoLoaded, dirGetRawSpec] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-  · dsimp only [withFdsGe3Closed, withLsCodeRoLoaded, dirGetRawSpec] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-
-theorem dirGetRo_cells_rocl_placed_ok_fd [LibsignalPlacement] {prog : Program} {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DirGetEnv : DirGetGhost → List AllocEvent → Prop}
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop} {getStk calleeStk : Nat}
-    (hGet : subroutine_ok prog (lsmpl.base 589)
-      (withFdsGe3Closed
-        (withLsCodeRoLoaded lsmpl (dirGetRawSpec rd pathOk A lim DirGetEnv getStk))))
-    (hle : getStk ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok prog (lsmpl.base 589)
-      (withLsRoCl lsmpl
-        (withFdsGe3Closed (dirGetRoCellsSpec M A lim DirGetEnv rd pathOk calleeStk))) :=
-  subroutine_ok_rocl_of_withLsCodeRoLoaded (dirGetRo_cells_placed_ok_fd hGet hle hhi)
-
 theorem dirGetRoFs_cells_placed_ok_fd [LibsignalPlacement] {prog : Program} {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop}
@@ -212,31 +147,6 @@ theorem dirGetRoFs_cells_placed_ok_fd [LibsignalPlacement] {prog : Program} {M :
     exact (not_satisfies_false_sepConj hq).elim
   · dsimp only [withFdsGe3Closed, dirGetSpecPlaced, withLsCodeRoLoaded] at hq
     exact (not_satisfies_false_sepConj hq).elim
-
-theorem dirGetRoFs_cells_rocl_placed_ok_fd [LibsignalPlacement] {prog : Program}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop}
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop} {getStk calleeStk : Nat}
-    (hGet : subroutine_ok prog (lsmpl.base 589)
-      (withFdsGe3Closed (dirGetSpecPlaced rd pathOk A lim GetEnv getStk)))
-    (hle : getStk ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok prog (lsmpl.base 589)
-      (withLsRoCl lsmpl
-        (dirGetRoFsCellsSpec_fd rd pathOk A lim GetEnv calleeStk)) :=
-  subroutine_ok_rocl_of_withLsCodeRoLoaded (dirGetRoFs_cells_placed_ok_fd hGet hle hhi)
-
-theorem dirGetRo_cells_placed_of_dirGetSpecPlaced_fd [LibsignalPlacement] {prog : Program}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DirGetEnv : DirGhost → List (BitVec 8) → List AllocEvent → Prop}
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop} {getStk calleeStk : Nat}
-    (hGet : subroutine_ok prog (lsmpl.base 589)
-      (withFdsGe3Closed (dirGetSpecPlaced rd pathOk A lim (fun _ => DirGetEnv) getStk)))
-    (hle : getStk ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok prog (lsmpl.base 589)
-      (withLsCodeRoLoaded lsmpl
-        (withFdsGe3Closed
-          (dirGetRoCellsSpec M A lim (fun g => DirGetEnv g.dir g.name) rd pathOk calleeStk))) :=
-  dirGetRoFs_cells_placed_ok_fd hGet hle hhi
 
 /-! ## `Vec<u8>` Buffer Deallocation Cell Wrappers (`AllocContractsFsPlaced`) -/
 
@@ -338,16 +248,6 @@ theorem deallocAt_cells_placed_ok_fd [LibsignalPlacement] {prog : Program} {i : 
   exact subroutine_ok_withLsCodeRoLoaded_withFdsGe3Closed
     (subroutine_ok_withFdsGe3Closed_of_keepsFs h1)
 
-theorem deallocAt_cells_rocl_placed_ok_fd [LibsignalPlacement] {prog : Program} {i : Nat}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} [IsLsBlockProg prog i H] {calleeStk : Nat}
-    (hC : AllocContractsFsPlaced A lim H)
-    (hi : i < 619 := by decide)
-    (hle : extHookStack ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok prog (lsρ lsRustDeallocSymCli)
-      (withLsRoCl lsmpl (withFdsGe3Closed (deallocVecBufSpec A lim calleeStk))) :=
-  subroutine_ok_rocl_of_withLsCodeRoLoaded (deallocAt_cells_placed_ok_fd hC hi hle hhi)
-
 /-! ## `<IdentityKeyPair as TryFrom<&[u8]>>::try_from` Cell Wrappers (Block `84`) -/
 
 /-- Two-sided `FdsGe3Closed` wrapper around `PollCommonPlacedBudget.ikpTryFromCellsPlacedSpec`. -/
@@ -417,24 +317,6 @@ theorem ikpTryFrom_cells_placed_ok_fd [LibsignalPlacement] {prog : Program} {M :
   · dsimp only [withFdsGe3Closed, identityKeyPairTryFromPlacedSpec, withLsCodeRoLoaded,
       identityKeyPairTryFromRawSpec] at hq
     exact (not_satisfies_false_sepConj hq).elim
-
-theorem ikpTryFrom_cells_rocl_placed_ok_fd [LibsignalPlacement] {prog : Program}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {calleeStk : Nat}
-    (hDec : subroutine_ok prog (lsmpl.base 84)
-      (withFdsGe3Closed (identityKeyPairTryFromPlacedSpec A lim)))
-    (hle : smallRootStack ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok prog (lsmpl.base 84)
-      (withLsRoCl lsmpl (ikpTryFromCellsPlacedSpec_fd A lim calleeStk)) :=
-  subroutine_ok_rocl_of_withLsCodeRoLoaded (ikpTryFrom_cells_placed_ok_fd hDec hle hhi)
-
-theorem ikpTryFrom_cells_keepsFs_placed_ok [LibsignalPlacement] {prog : Program}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {calleeStk : Nat}
-    (hDec : subroutine_ok prog (lsmpl.base 84)
-      (identityKeyPairTryFromPlacedSpec A lim).keepsFs)
-    (hle : smallRootStack ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok prog (lsmpl.base 84)
-      (withLsCodeRoLoaded lsmpl (ikpTryFromCellsPlacedSpec_fd A lim calleeStk)) :=
-  ikpTryFrom_cells_placed_ok_fd (subroutine_ok_withFdsGe3Closed_of_keepsFs hDec) hle hhi
 
 /-! ## Shared Block `567` (`IdKeyPairPoll`) Frame Layout Helpers -/
 

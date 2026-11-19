@@ -19,7 +19,6 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegs
-import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4SpatialPlaced
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4SpatialPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudgetAux
@@ -35,6 +34,22 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.Cl
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverStage4PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverAux2Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4Spatial
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage1InstPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TopPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.BodyPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced
 
 /-!
 # `hRead`-Free Stage-P4 Continuation for Non-Matching Overwrite (`OverD3`)
@@ -464,7 +479,7 @@ theorem closure_pathCOver_p4_d3_cont_at_b_placedBudget [LibsignalPlacement]
       LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget.RunHooksPlaced
         A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
     ⟨hh.alloc, hh.allocFs, hh.panics, hh.memcpyRO, hh.bcmp, hh.fs, hh.utf8, hh.memrchr,
-      hh.codecHooks, hh.allocZeroed, hh.stringClone, hh.formatInner, hh.blackBox⟩
+      hh.codecHooks, hh.allocZeroed, hh.stringClone, hh.formatInner, hh.fmtWrite, hh.blackBox⟩
   have hf' : s'.fs.files = y.g.F :=
     (cliFiles_eq_of_trace_eq_placed hh hsteps2' (htr'.trans htr2.symm)).trans hfiles2
   have hsub64 : dpClosSubStack B ≤ 2 ^ 64 := by
@@ -602,8 +617,12 @@ theorem closure_pathCOver_p4_d3_cont_at_b_placedBudget [LibsignalPlacement]
   have hrecOk : ops.RecPrev1Ok G' ses' enc := by
     refine ⟨canonSession_of_sessionStateAt_extraRel hex' hm_sess, ?_⟩
     have hlen := encodeRecordPrev1_pathCOver_lt_32 hd0 hr_in hcur hver hok
-    dsimp only at hlen
-    rwa [hst'_eq] at hlen
+    change (encodeRecordPrev1
+      { pathAInitSession ⟨W.C, W.Q⟩ meE k m dk with
+        state := (genP3S5Model W.C W.Q.K y.g.peer y.g.me y.g.msg.message y.g.coins st0).2
+        pendingPreKey := none, pendingKyberPreKey := none } enc).length < 2 ^ 32 at hlen
+    rw [hst'_eq] at hlen
+    exact hlen
   have hwp4 := hP4 y.g.F y.g.peer pid m.kpkId m.spkId y.g.msg.baseKey st_pre hh_p4
     s0 s'
     y.fut y.cx y.g.msgA y.out y.g.peerA (y.g.msgA + 0xc8#64)

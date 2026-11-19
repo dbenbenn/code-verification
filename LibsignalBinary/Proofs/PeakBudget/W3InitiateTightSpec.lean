@@ -10,18 +10,22 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
-public import LibsignalBinary.Proofs.PeakBudget.CallSiteFacts
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+public import LibsignalBinary.Proofs.PeakBudget.CallSiteFacts -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
 public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit
-public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.W3InitiateEnvBridges
-public import LibsignalBinary.Proofs.PeakBudget.W3InitiatePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W3InitiateStagesPeak
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
+import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit
+import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps
+public import LibsignalBinary.Proofs.PeakBudget.W3InitiateEnvBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W3InitiatePeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W3InitiateStagesPeak
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Tight `fineCostModel` Spec for W3 `process_prekey_bundle`
@@ -31,7 +35,7 @@ poll deltas and `0`-prev Fresh-Alice / `aliceInitiatedSession` `SessionRecord::s
 yielding closed numerical caps at `sessionCapBytes` (`2 MiB`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -79,9 +83,7 @@ open LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
   (recordSerializeMaxReq recordSerializeOutLarge recordSerializePeak recordSerializeTightCum
    serializeSomeMaxReq serializeSomeTightCum)
 open LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps (sessionCapBytes)
-open LibsignalBinary.Proofs.PeakBudget.W3InitiateEnvBridges
-  (mkW3InitiateSlotParams peer_name_length_le_of_initCallSite
-   recordSerializeOutLarge_le_peak recordSerializePeak_eq_zero_of_maxReq_le)
+open LibsignalBinary.Proofs.PeakBudget.W3InitiateEnvBridges (mkW3InitiateSlotParams recordSerializeOutLarge_le_peak recordSerializePeak_eq_zero_of_maxReq_le)
 open LibsignalBinary.Proofs.PeakBudget.W3InitiatePeakSpec
   (W3InitiateSlotEnv W3InitiateSlotParams W3SessLoadStepEnv W3SessStoreStepEnv
    W3SmallStoreStepEnv w3BoxedStepCum w3BoxedStepLive w3BoxedStepMaxReq w3BoxedStepPeak
@@ -90,7 +92,7 @@ open LibsignalBinary.Proofs.PeakBudget.W3InitiatePeakSpec
 open LibsignalBinary.Proofs.PeakBudget.W3InitiateStagesPeak
   (phaseCreditSpec_w3InitiateFull_small w3InitiateNativeSmallCum)
 open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit (HasFineReallocCredit)
-open LibsignalBinary.Proofs.PeakBudget.CallSiteFacts (InitCallSite)
+
 open LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
   (senderChainAsProtoGhost)
 open LibsignalBinary.Heap.Fine.ClientBounds
@@ -539,7 +541,7 @@ theorem serializeSomeMaxReq_aliceInitiatedAnyCk_le_3820
     have hsnd := senderChainMaxReq_le_44 sc hsrk hpriv
     omega
 
-def RecordFreshAlice0RecvBounds (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) : Prop :=
+@[expose] def RecordFreshAlice0RecvBounds (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) : Prop :=
   ∀ G sess, g.cur = some G → r.currentSession = some sess → FreshAlice0RecvBounds G sess
 
 theorem recordSerializeTightCum_freshAlice0Recv_le_17132
@@ -566,7 +568,7 @@ theorem recordSerializeMaxReq_freshAlice0Recv_le_3820
   · rename_i G sess
     exact serializeSomeMaxReq_freshAlice0Recv_le_3820 (hb G sess hg hr)
 
-def RecordAliceInitiatedBounds (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) : Prop :=
+@[expose] def RecordAliceInitiatedBounds (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) : Prop :=
   ∀ G sess, g.cur = some G → r.currentSession = some sess → AliceInitiatedBounds G sess
 
 theorem recordSerializeTightCum_aliceInitiated_le_31747
@@ -594,7 +596,7 @@ theorem recordSerializeMaxReq_aliceInitiated_le_3820
     exact serializeSomeMaxReq_aliceInitiated_le_3820 (hb G sess hg hr)
 
 /-- Record-level `0`-prev `AliceInitiatedAnyCkBounds` (`≤ 32,485` B, `maxReq ≤ 3,820`). -/
-def RecordAliceInitiatedAnyCkBounds (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) : Prop :=
+@[expose] def RecordAliceInitiatedAnyCkBounds (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) : Prop :=
   ∀ G sess, g.cur = some G → r.currentSession = some sess → AliceInitiatedAnyCkBounds G sess
 
 theorem recordSerializeTightCum_aliceInitiatedAnyCk_le_32485
@@ -678,7 +680,7 @@ theorem w3SessStoreStep_phaseCredit_tight
 
 /-! ## 4. End-to-End Tight `W3InitiateSlotEnv` `PhaseCreditSpec` -/
 
-def w3InitiateSlotTightDeltaCum (fileCap maxEntries deserCum serCum : Nat) : Nat :=
+@[expose] def w3InitiateSlotTightDeltaCum (fileCap maxEntries deserCum serCum : Nat) : Nat :=
   w3InitiateNativeSmallCum +
   w3BoxedStepCum 32 (smallStorePollTightDeltaCum fileCap maxEntries) +
   w3BoxedStepCum 24 (sessLoadPollTightDeltaCum fileCap deserCum) +
@@ -688,7 +690,7 @@ def w3InitiateSlotTightDeltaCum (fileCap maxEntries deserCum serCum : Nat) : Nat
   w3BoxedStepCum 32 (smallStorePollTightDeltaCum fileCap maxEntries) +
   w3BoxedStepCum 32 (sessStorePollTightDeltaCum serCum maxEntries)
 
-def w3InitiateSlotTightDeltaLive (fileCap maxEntries deserLive serLive : Nat) : Nat :=
+@[expose] def w3InitiateSlotTightDeltaLive (fileCap maxEntries deserLive serLive : Nat) : Nat :=
   w3BoxedStepLive 32 (smallStorePollTightDeltaLive fileCap maxEntries) +
   w3BoxedStepLive 24 (sessLoadPollTightDeltaLive fileCap deserLive) +
   w3BoxedStepLive 16 (smallStorePollTightDeltaLive fileCap maxEntries) +
@@ -697,7 +699,7 @@ def w3InitiateSlotTightDeltaLive (fileCap maxEntries deserLive serLive : Nat) : 
   w3BoxedStepLive 32 (smallStorePollTightDeltaLive fileCap maxEntries) +
   w3BoxedStepLive 32 (sessStorePollTightDeltaLive serLive maxEntries)
 
-def w3InitiateSlotTightDeltaPeak
+@[expose] def w3InitiateSlotTightDeltaPeak
     (fileCap maxEntries deserLive deserPeak serPeak : Nat) : Nat :=
   let l_t := w3BoxedStepLive 32 (smallStorePollTightDeltaLive fileCap maxEntries)
   let p_t := w3BoxedStepPeak 32 (smallStorePollTightDeltaPeak fileCap maxEntries)
@@ -720,7 +722,7 @@ def w3InitiateSlotTightDeltaPeak
       (max l12 (l12 + max p_q l_q)))
     (l14 + max p_r (l_r + max p_i (l_i + p_ss)))
 
-def w3InitiateSlotTightMaxReq (fileCap maxEntries deserMaxReq serMaxReq : Nat) : Nat :=
+@[expose] def w3InitiateSlotTightMaxReq (fileCap maxEntries deserMaxReq serMaxReq : Nat) : Nat :=
   let r_sm32 := w3BoxedStepMaxReq 32 (smallStorePollTightMaxReq fileCap maxEntries)
   let r_sm16 := w3BoxedStepMaxReq 16 (smallStorePollTightMaxReq fileCap maxEntries)
   let r_sl := w3BoxedStepMaxReq 24 (sessLoadPollTightMaxReq fileCap deserMaxReq)
@@ -894,7 +896,7 @@ theorem w3InitiateSlot_tight_phaseCredit_of_serCaps
     (w3InitiateSlotTightMaxReq_mono (Nat.le_refl _) hserReq)
 
 /-- Parametric-`DeserEnv` constructor for `W3InitiateSlotParams` at `StoresGhost.opened`. -/
-def mkW3InitiateSlotParamsDeser
+@[expose] def mkW3InitiateSlotParamsDeser
     (rd : ReadRule)
     (DeserEnv : List (BitVec 8) → List AllocEvent → Prop)
     (x : InitGhost)
@@ -952,58 +954,6 @@ theorem w3InitiateSlot_opened_tight_phaseCredit
     hpeer hkeyName hregName hspqrKey hfileCap hdeser hserCum hserReq hserSmall
   simpa only [Nat.zero_max] using h
 
-/-- `InitCallSite` specialization of `w3InitiateSlot_opened_tight_phaseCredit` for an arbitrary `DeserEnv`.
--/
-theorem w3InitiateSlot_at_initCallSite_deser_tight_phaseCredit
-    {img : Obj.Image} {S : RunSem} {g : RunCall} {x : InitGhost}
-    (hsite : InitCallSite img S g x)
-    {rd : ReadRule} {DeserEnv : List (BitVec 8) → List AllocEvent → Prop}
-    {ownKeyName ownRegName : List (BitVec 8)}
-    {F : ShaCompress} {x_spqr : InitialStateGhost}
-    {g_rec : RecordGhost} {r_rec : SessionRecord (List (BitVec 8))}
-    {fileCap deserCum deserLive deserPeak deserMaxReq serCumCap serMaxReqCap : Nat}
-    (hkeyName : ownKeyName.length ≤ 64)
-    (hregName : ownRegName.length ≤ 64)
-    (hspqrKey : x_spqr.p.authKey.length ≤ 32)
-    (hfileCap : ∀ p bs, rd x.F p = .ok bs → bs.length ≤ fileCap)
-    (hdeser : ∀ bs, bs.length ≤ 2097152 →
-      PhaseCreditSpec fineCostModel (DeserEnv bs) deserCum deserLive deserPeak deserMaxReq)
-    (hserCum : recordSerializeTightCum fineCostModel g_rec r_rec ≤ serCumCap)
-    (hserReq : recordSerializeMaxReq g_rec r_rec ≤ serMaxReqCap)
-    (hserSmall : serMaxReqCap ≤ 135167) :
-    let P := mkW3InitiateSlotParamsDeser rd DeserEnv x ownKeyName ownRegName F x_spqr g_rec r_rec
-    PhaseCreditSpec fineCostModel (W3InitiateSlotEnv P)
-      (w3InitiateSlotTightDeltaCum fileCap 0 deserCum serCumCap)
-      (w3InitiateSlotTightDeltaLive fileCap 0 deserLive 0)
-      (w3InitiateSlotTightDeltaPeak fileCap 0 deserLive deserPeak 0)
-      (w3InitiateSlotTightMaxReq fileCap 0 deserMaxReq serMaxReqCap) :=
-  w3InitiateSlot_opened_tight_phaseCredit
-    (mkW3InitiateSlotParamsDeser rd DeserEnv x ownKeyName ownRegName F x_spqr g_rec r_rec)
-    rfl rfl rfl (peer_name_length_le_of_initCallSite hsite)
-    hkeyName hregName hspqrKey hfileCap hdeser hserCum hserReq hserSmall
-
-theorem w3InitiateSlot_at_initCallSite_tight_phaseCredit
-    {img : Obj.Image} {S : RunSem} {g : RunCall} {x : InitGhost}
-    (hsite : InitCallSite img S g x)
-    {rd : ReadRule} {ownKeyName ownRegName : List (BitVec 8)}
-    {F : ShaCompress} {x_spqr : InitialStateGhost}
-    {g_rec : RecordGhost} {r_rec : SessionRecord (List (BitVec 8))}
-    {fileCap serCumCap serMaxReqCap : Nat}
-    (hkeyName : ownKeyName.length ≤ 64)
-    (hregName : ownRegName.length ≤ 64)
-    (hspqrKey : x_spqr.p.authKey.length ≤ 32)
-    (hfileCap : ∀ p bs, rd x.F p = .ok bs → bs.length ≤ fileCap)
-    (hserCum : recordSerializeTightCum fineCostModel g_rec r_rec ≤ serCumCap)
-    (hserReq : recordSerializeMaxReq g_rec r_rec ≤ serMaxReqCap)
-    (hserSmall : serMaxReqCap ≤ 135167) :
-    let P := mkW3InitiateSlotParams rd x ownKeyName ownRegName F x_spqr g_rec r_rec
-    PhaseCreditSpec fineCostModel (W3InitiateSlotEnv P)
-      (w3InitiateSlotTightDeltaCum fileCap 0 0 serCumCap)
-      (w3InitiateSlotTightDeltaLive fileCap 0 0 0)
-      (w3InitiateSlotTightDeltaPeak fileCap 0 0 0 0)
-      (w3InitiateSlotTightMaxReq fileCap 0 0 serMaxReqCap) :=
-  w3InitiateSlot_at_initCallSite_deser_tight_phaseCredit hsite hkeyName hregName hspqrKey hfileCap
-    (fun _ _ => PhaseCreditSpec.nil fineCostModel) hserCum hserReq hserSmall
 
 /-- `FitsEnv fineCostModel` discharge for `W3InitiateSlotEnv P` using `w3InitiateSlotTightDelta*`.
 -/
@@ -1145,101 +1095,5 @@ theorem w3InitiateSlotTight_le_setA_and_train_caps :
   obtain ⟨_, hc64⟩ := w3InitiateSlotTight_real64_eq
   rw [hc192, hc64, hlive, hpeak, hreq]
   decide
-
-/-- `InitCallSite` corollary on `RecordAliceInitiatedBounds` (`serCum ≤ 31,747`). -/
-theorem w3InitiateSlot_at_initCallSite_aliceInitiated_phaseCredit
-    {img : Obj.Image} {S : RunSem} {g : RunCall} {x : InitGhost}
-    (hsite : InitCallSite img S g x)
-    {rd : ReadRule} {DeserEnv : List (BitVec 8) → List AllocEvent → Prop}
-    {ownKeyName ownRegName : List (BitVec 8)}
-    {F : ShaCompress} {x_spqr : InitialStateGhost}
-    {g_rec : RecordGhost} {r_rec : SessionRecord (List (BitVec 8))}
-    {deserCum deserLive deserPeak deserMaxReq : Nat}
-    (hkeyName : ownKeyName.length ≤ 64)
-    (hregName : ownRegName.length ≤ 64)
-    (hspqrKey : x_spqr.p.authKey.length ≤ 32)
-    (hfileCap : ∀ p bs, rd x.F p = .ok bs → bs.length ≤ sessionCapBytes)
-    (hdeser : ∀ bs, bs.length ≤ 2097152 →
-      PhaseCreditSpec fineCostModel (DeserEnv bs) deserCum deserLive deserPeak deserMaxReq)
-    (halice : RecordAliceInitiatedBounds g_rec r_rec) :
-    let P := mkW3InitiateSlotParamsDeser rd DeserEnv x ownKeyName ownRegName F x_spqr g_rec r_rec
-    PhaseCreditSpec fineCostModel (W3InitiateSlotEnv P)
-      (7873672 + deserCum)
-      (w3InitiateSlotTightDeltaLive sessionCapBytes 0 deserLive 0)
-      (w3InitiateSlotTightDeltaPeak sessionCapBytes 0 deserLive deserPeak 0)
-      (w3InitiateSlotTightMaxReq sessionCapBytes 0 deserMaxReq 3820) := by
-  intro P
-  have h := w3InitiateSlot_at_initCallSite_deser_tight_phaseCredit (F := F) hsite
-    hkeyName hregName hspqrKey hfileCap hdeser
-    (recordSerializeTightCum_aliceInitiated_le_31747 halice)
-    (recordSerializeMaxReq_aliceInitiated_le_3820 halice)
-    (by decide)
-  refine h.mono ?_ (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _)
-  rw [w3InitiateSlotTightDeltaCum_sessionCap_eq]
-  omega
-
-/-- `InitCallSite` corollary on `RecordFreshAlice0RecvBounds` (`serCum ≤ 17,132`). -/
-theorem w3InitiateSlot_at_initCallSite_freshAlice0Recv_phaseCredit
-    {img : Obj.Image} {S : RunSem} {g : RunCall} {x : InitGhost}
-    (hsite : InitCallSite img S g x)
-    {rd : ReadRule} {DeserEnv : List (BitVec 8) → List AllocEvent → Prop}
-    {ownKeyName ownRegName : List (BitVec 8)}
-    {F : ShaCompress} {x_spqr : InitialStateGhost}
-    {g_rec : RecordGhost} {r_rec : SessionRecord (List (BitVec 8))}
-    {deserCum deserLive deserPeak deserMaxReq : Nat}
-    (hkeyName : ownKeyName.length ≤ 64)
-    (hregName : ownRegName.length ≤ 64)
-    (hspqrKey : x_spqr.p.authKey.length ≤ 32)
-    (hfileCap : ∀ p bs, rd x.F p = .ok bs → bs.length ≤ sessionCapBytes)
-    (hdeser : ∀ bs, bs.length ≤ 2097152 →
-      PhaseCreditSpec fineCostModel (DeserEnv bs) deserCum deserLive deserPeak deserMaxReq)
-    (hfresh : RecordFreshAlice0RecvBounds g_rec r_rec) :
-    let P := mkW3InitiateSlotParamsDeser rd DeserEnv x ownKeyName ownRegName F x_spqr g_rec r_rec
-    PhaseCreditSpec fineCostModel (W3InitiateSlotEnv P)
-      (7859057 + deserCum)
-      (w3InitiateSlotTightDeltaLive sessionCapBytes 0 deserLive 0)
-      (w3InitiateSlotTightDeltaPeak sessionCapBytes 0 deserLive deserPeak 0)
-      (w3InitiateSlotTightMaxReq sessionCapBytes 0 deserMaxReq 3820) := by
-  intro P
-  have h := w3InitiateSlot_at_initCallSite_deser_tight_phaseCredit (F := F) hsite
-    hkeyName hregName hspqrKey hfileCap hdeser
-    (recordSerializeTightCum_freshAlice0Recv_le_17132 hfresh)
-    (recordSerializeMaxReq_freshAlice0Recv_le_3820 hfresh)
-    (by decide)
-  refine h.mono ?_ (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _)
-  rw [w3InitiateSlotTightDeltaCum_sessionCap_eq]
-  omega
-
-/-- `InitCallSite` corollary on `RecordAliceInitiatedAnyCkBounds` (`serCum ≤ 32,485`). -/
-theorem w3InitiateSlot_at_initCallSite_aliceInitiatedAnyCk_phaseCredit
-    {img : Obj.Image} {S : RunSem} {g : RunCall} {x : InitGhost}
-    (hsite : InitCallSite img S g x)
-    {rd : ReadRule} {DeserEnv : List (BitVec 8) → List AllocEvent → Prop}
-    {ownKeyName ownRegName : List (BitVec 8)}
-    {F : ShaCompress} {x_spqr : InitialStateGhost}
-    {g_rec : RecordGhost} {r_rec : SessionRecord (List (BitVec 8))}
-    {deserCum deserLive deserPeak deserMaxReq : Nat}
-    (hkeyName : ownKeyName.length ≤ 64)
-    (hregName : ownRegName.length ≤ 64)
-    (hspqrKey : x_spqr.p.authKey.length ≤ 32)
-    (hfileCap : ∀ p bs, rd x.F p = .ok bs → bs.length ≤ sessionCapBytes)
-    (hdeser : ∀ bs, bs.length ≤ 2097152 →
-      PhaseCreditSpec fineCostModel (DeserEnv bs) deserCum deserLive deserPeak deserMaxReq)
-    (halice : RecordAliceInitiatedAnyCkBounds g_rec r_rec) :
-    let P := mkW3InitiateSlotParamsDeser rd DeserEnv x ownKeyName ownRegName F x_spqr g_rec r_rec
-    PhaseCreditSpec fineCostModel (W3InitiateSlotEnv P)
-      (7874410 + deserCum)
-      (w3InitiateSlotTightDeltaLive sessionCapBytes 0 deserLive 0)
-      (w3InitiateSlotTightDeltaPeak sessionCapBytes 0 deserLive deserPeak 0)
-      (w3InitiateSlotTightMaxReq sessionCapBytes 0 deserMaxReq 3820) := by
-  intro P
-  have h := w3InitiateSlot_at_initCallSite_deser_tight_phaseCredit (F := F) hsite
-    hkeyName hregName hspqrKey hfileCap hdeser
-    (recordSerializeTightCum_aliceInitiatedAnyCk_le_32485 halice)
-    (recordSerializeMaxReq_aliceInitiatedAnyCk_le_3820 halice)
-    (by decide)
-  refine h.mono ?_ (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _)
-  rw [w3InitiateSlotTightDeltaCum_sessionCap_eq]
-  omega
 
 end LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec

@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalShortDefs
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RestrictedReds
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.MsgAeadCorrect
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.SessionShort.SimAndSM
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RestrictedReds -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.MsgAeadCorrect
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.SessionShort.SimAndSM -- proof-setup: allow-public-import
 import Std.Tactic.BVDecide.Normalize.Bool
 import Std.Tactic.BVDecide.Normalize.Prop
 
@@ -25,7 +25,7 @@ Proves that `redFSAuth`, `redFSPriv`, and `redFSPrivCoin` on `lFS` map `SendMsgs
 `FSAEAD.EncMsgsOk` and preserve `GuardedFSInjectShort`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -43,12 +43,12 @@ section Defs
 
 variable {St Msg Coins C : Type}
 
-def badSendMsg (ok : Msg → Bool) : (unifSpec + SM.spec St Msg Coins C).Domain → Bool
+@[expose] def badSendMsg (ok : Msg → Bool) : (unifSpec + SM.spec St Msg Coins C).Domain → Bool
   | .inr (.inl (.inl (.inl (.inl ⟨_, m, _⟩)))) => !ok m
   | .inr (.inl (.inl (.inl (.inr ⟨_, m₀, m₁, _⟩)))) => !ok m₀ || !ok m₁
   | _ => false
 
-def SendMsgsOk (ok : Msg → Bool) (A : SM.Adversary St Msg Coins C) : Prop :=
+@[expose] def SendMsgsOk (ok : Msg → Bool) (A : SM.Adversary St Msg Coins C) : Prop :=
   A.IsQueryBoundP (fun t => badSendMsg (St := St) (Coins := Coins) (C := C) ok t = true) 0
 
 end Defs
@@ -199,7 +199,7 @@ section GuardedShort
 
 open GuardedSafe ReductionsQueries
 
-def FsSendShort {K SS RS T M : Type} (ok : M → Bool)
+@[expose] def FsSendShort {K SS RS T M : Type} (ok : M → Bool)
     (fs : FSAEADScheme K SS RS (Header T) M (ℕ × LibsignalCiphertextWithSalt32)) : Prop :=
   ∀ ss h m, ok m = true → (fs.send ss h m).2.2.1.1.length + 8 < 2 ^ 32
 

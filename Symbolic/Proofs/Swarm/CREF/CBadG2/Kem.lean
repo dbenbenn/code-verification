@@ -9,8 +9,8 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import Symbolic.Proofs.Swarm.CREF.Stage1Kyber
-public import Symbolic.Proofs.Swarm.CREF.Stage1Trials
+import Symbolic.Proofs.Swarm.CREF.Stage1Kyber
+import Symbolic.Proofs.Swarm.CREF.Stage1Trials
 
 /-!
 # KEM and Trial Collision Imports
@@ -18,7 +18,7 @@ public import Symbolic.Proofs.Swarm.CREF.Stage1Trials
 Re-exports `Stage1Kyber` and `Stage1Trials` for downstream KEM collision modules.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

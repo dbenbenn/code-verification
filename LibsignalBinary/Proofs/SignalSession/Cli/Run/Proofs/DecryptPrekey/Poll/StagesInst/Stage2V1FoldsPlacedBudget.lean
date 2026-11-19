@@ -11,14 +11,17 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Agree
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1FoldsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Agree
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1FoldsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureSpeOwned
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureDefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` CLI Poll Stage P2 V1 Entry and Error-Exit Folds
@@ -28,7 +31,7 @@ Generalizes `pathAInnerFramePlaced`, `kyberPtr ≠ 0` extraction bridges,
 over `A.repAlloc` and `A.atState lim st s`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -56,7 +59,7 @@ open CryptoVerification.SignalSession.Cli.RunSkeleton (RunBudgets)
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1FoldsPlacedBudget
 
-open Arm64 Arm64.Process ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection ProofLib.Variant
+open Arm64 Arm64.Process ProofLib ProofLib.ProgramReflection ProofLib.Variant
 open CryptoVerification.SpqrV1.GF.Mul2U16 (tokenInitPlacedAt)
 open LibsignalBinary.Heap (AllocCostModel AllocEvent BudgetLimits RustCliAllocBudget)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedBudget
@@ -70,7 +73,7 @@ abbrev p2ErrFrameAtPlaced :=
 
 /-- Placed spatial frame preserved untouched across `stageP2_v1_kits` on Path A, parameterized
 by representation allocator `A_r : RustAlloc` and budget-threaded poll ghost `y`. -/
-def pathAInnerFramePlaced {M : AllocCostModel} {A_b : RustCliAllocBudget M} {lim : BudgetLimits}
+@[expose] def pathAInnerFramePlaced {M : AllocCostModel} {A_b : RustCliAllocBudget M} {lim : BudgetLimits}
     {DecPkEnv : DecPkGhost → List AllocEvent → Prop} {B : RunBudgets} {S : RunSem}
     [LibsignalPlacement] (A_r : RustAlloc)
     (y : DpPollGhostStateBudget (dpSlotPollKStatePlaced A_b lim DecPkEnv B S))

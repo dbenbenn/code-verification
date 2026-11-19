@@ -12,22 +12,36 @@ module
 public import Arm64.Trusted.Spec.Hoare
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.ModelBridge
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.VerifySignaturePlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.VerifySignaturePlacedASat
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.ModelBridge
+import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.VerifySignaturePlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.VerifySignaturePlacedASat
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSat
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat
 import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.VerifySignaturePlacedSat
+import LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4Block204
 import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyExactCore
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraRowSpecs.CryptoDalekRowSpecs
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W3VerifySigBbSat
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat
 import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
 import ProofLib.SepLogic.Fresh
 import ProofLib.SepLogic.HeapIntro
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.TripleRatchet.Hooks
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
+import ProofLib.ProgramReflection
+meta import ProofLib.ProgramReflection
 
 /-!
 # Block-203 `<PublicKey>::verify_signature` `VmPreserved` Contract
@@ -39,7 +53,7 @@ Proves `w3m_verifySignature_vm_ok`, establishing `subroutine_ok` for block 203
 `withLsCodeRoLoaded`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -54,33 +68,23 @@ open CryptoVerification
    LibsignalRoLoaded blkPC_203 blkPl_203 libsignalMutatedBlocks libsignalSessionLib
    libsignalSessionLib_blocks_length lsBlackBoxU8Sym lsMemcpySym lsmpl)
 open CryptoVerification.E2E
-  (UnreachedPqxdhPrimitives compress512Hook compressHook dsmbHook edNegHook modelPrims
-   readSha512State readVecN scalarModHook scalarWideHook toEdwardsHook)
-open CryptoVerification.E2E.Pqxdh.Initiator (structuralPrims_initiatorModelPrims)
+  (PEParams UnreachedPqxdhPrimitives compress512Hook modelPrims sha512StateBytesBE)
 open CryptoVerification.E2E.Pqxdh.Shared
-  (VerifySignaturePlacedGhost VerifySignaturePrims
+  (VerifySignaturePlacedGhost compressInPlaceStubSpecPlaced
    lsDalekCompressSym lsDalekDoubleMulSym lsDalekEdNegSym lsDalekScalarModSym
    lsDalekScalarWideSym lsSha512CompressSym lsVerifyMemsetSym lsVerifyMontToEdSym
-   pqxdhHookStack verifySignatureCallSpec)
-open CryptoVerification.LibsignalAesCbc (returnToLinkRegister)
+   pqxdhHookStack sha512CompressOutBytes)
 open CryptoVerification.LibsignalPublicApi.StoreKit (extract_withLsCodeRoLoaded withLsCodeRoLoaded)
 open CryptoVerification.LibsignalSession (blackBoxHook)
-open CryptoVerification.SignalSession
-  (CliHooks cliExternsPlaced cliHookTablePlaced lsReadFileSym lsReadStdinSym
-   lsRustAllocSymCli lsRustAllocZeroedSymCli lsRustDeallocSymCli lsRustNoAllocShimSymCli
-   lsRustReallocSymCli lsStringCloneSym)
+open CryptoVerification.SignalSession (CliHooks cliExternsPlaced)
 open CryptoVerification.SignalSession.Cli.RunGlue
-  (CliGhostHooks cliExternsPlaced_row cliExtraGhostSyms cliGhostExterns
-   cliGhostExterns_memcpy_some cliGhostExterns_memset_some cliGhostExterns_other)
+  (CliGhostHooks cliGhostExterns cliGhostExterns_memcpy_some cliGhostExterns_memset_some)
 open CryptoVerification.SignalSession.Cli.RunProofs.Initiate
   (initProgPlaced transfer_withLsCodeRoLoaded)
 open CryptoVerification.SignalSession.Cli.Slots
-  (cliExternsPlaced_compress512_sat cliExternsPlaced_compress_sat
-   cliExternsPlaced_dsmb_sat cliExternsPlaced_edNeg_sat cliExternsPlaced_scalarMod_sat
-   cliExternsPlaced_scalarWide_sat cliExternsPlaced_toEdwards_sat
-   cliGhostExterns_sat_of_cliExternsPlaced compress512_row_placed compress_row_placed
-   dsmb_row_placed edNeg_row_placed scalarMod_row_placed scalarWide_row_placed
-   toEdwards_row_placed)
+  (cliGhostExterns_compress_sat cliGhostExterns_dsmb_sat cliGhostExterns_edNegExt_sat
+   cliGhostExterns_scalarMod_sat cliGhostExterns_scalarWide_sat cliGhostExterns_toEdwards_sat
+   compress512Hook_ok_std3)
 open CryptoVerification.LibsignalTripleRatchet
   (RW blackBoxSpec hookMemset_region_trace_ok sessionMemcpyRegionSpec sessionMemsetRegionSpec
    sessionMemsetSpec truncate8_truncate32 withStack)
@@ -91,18 +95,38 @@ open LibsignalBinary.Heap.MuslMemOpsRunsTo (applyMemcpyClobber)
 open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
 open LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat
   (blackBoxHook_ok_sat blackBoxSpec16 blackBoxSpecSat)
-open LibsignalBinary.Proofs.E2E.Pqxdh.Shared.VerifySignaturePlacedASat
-  (VerifySignaturePlacedHooksSat)
-open LibsignalBinary.Proofs.E2E.Pqxdh.Shared.VerifySignaturePlacedSat
-  (verifySignature_placed_ok_sat)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.ConsumerBridges (dalekEdNegVec)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.CurveSpecs
+  (edDoubleScalarMulBasepoint edExtOfBytes fe51Point4Bounded montToEdwards)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.DalekPureFallbacks
+  (dalekCompressFallback dalekDsmbFallback dalekHookStack dalekMontToEdFallback
+   dalekScalarModFallback dalekScalarWideFallback)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4Block202
+  (dalekMontToEdExtOutAt dalekMontToEdExtSpec)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4Block204
+  (VerifySignatureExtHooks dalekCompressExtSpec dalekDsmbExtSpec dalekEdNegExtSpec
+   dalekScalarModExtSpec dalekScalarWideExtSpec verifySignatureCallSpecAt
+   verifySignature_ext_dalekPrimsRef_placed_ok_at)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyExactCore
   (HookExactMemcpy hookMemcpy_exact)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
+  (hookOk_withLsRet hookSat_withLsRet withLsRet)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlacedBudget
   (verifySignatureInnerSpec)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-  (CliGhostAllocHooks cliGhostExterns_blackBoxSat_budget_sat)
+  (CliGhostAllocHooks cliGhostExterns_blackBoxSat_budget_sat cliGhostExterns_compress_budget_sat
+   cliGhostExterns_dsmb_budget_sat cliGhostExterns_edNegExt_budget_sat
+   cliGhostExterns_scalarMod_budget_sat cliGhostExterns_scalarWide_budget_sat
+   cliGhostExterns_toEdwards_budget_sat)
+open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs
+  (hookSat_cliGhostExterns_of_extraOk)
+open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraRowSpecs.CryptoDalekRowSpecs
+  (DalekLsRowTuple dalekCompressFallback_ext_at_stk dalekDsmbFallback_ext_at_stk
+   dalekMontToEdFallback_ext_at_stk dalekScalarModFallback_ext_at_stk
+   dalekScalarWideFallback_ext_at_stk edNegFallback_rowSpec)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W3VerifySigBbSat
   (hookOk_blackBoxSpecSat_elim)
+open LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy (edNegHook)
 open LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
   (calleeSavedPreserved_of_stripS_right checkBlockSafeVm checkBytesSafeVm
    isTotalTrapHooks_vmTrapHooks placedLib_rebase_allInstrs_safeVm stripS_pc stripS_readReg64
@@ -111,18 +135,9 @@ open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat
   (hookExactMemcpy_sessionMemcpyRegionBudget_ok hookExactMemcpy_vmPreserved
    hookOk_sessionMemsetRegion_elim)
 
-private theorem cliGhost_row (mmpl : MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    {sym : String} {f : State → State} (hrow : (sym, f) ∈ cliHookTablePlaced mmpl W)
-    (h1 : sym ≠ lsRustAllocSymCli := by decide) (h2 : sym ≠ lsRustDeallocSymCli := by decide)
-    (h3 : sym ≠ lsRustReallocSymCli := by decide) (h4 : sym ≠ lsRustAllocZeroedSymCli := by decide)
-    (h5 : sym ≠ lsRustNoAllocShimSymCli := by decide) (h6 : sym ≠ lsStringCloneSym := by decide)
-    (h7 : sym ≠ lsReadFileSym := by decide) (h8 : sym ≠ lsReadStdinSym := by decide)
-    (h9 : sym ≠ "memset" := by decide) (h10 : sym ≠ "memcpy" := by decide)
-    (h11 : cliExtraGhostSyms.contains sym = false ∨ g.extra.lookup sym = none := by
-      left; decide) :
-    cliGhostExterns g (cliExternsPlaced mmpl W) sym = some f :=
-  (cliGhostExterns_other g _ h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11).trans
-    (cliExternsPlaced_row mmpl W hrow)
+attribute [local irreducible] VerifiedLibraries.Common.edSmul VerifiedLibraries.Common.fpInv
+  VerifiedLibraries.Common.recoverXEven fe51Point4Bounded edExtOfBytes
+  edDoubleScalarMulBasepoint montToEdwards
 
 private theorem hookSat_of_eq {α : Type} {H H' : LibsignalHooks} {sym : String} {spec : Spec α}
     (heq : H' sym = H sym) (hs : HookSat H sym spec) : HookSat H' sym spec := by
@@ -145,8 +160,9 @@ private theorem w3VerifySigHooks_vsigOnly [LibsignalPlacement]
     (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF512 : W.Q.F512 = CryptoGames.SHA512.sha512CompressState)
     (Y : UnreachedPqxdhPrimitives) :
-    VerifySignaturePlacedHooksSat (modelPrims Y ⟨W.C, W.Q⟩)
+    VerifySignatureExtHooks dalekHookStack (modelPrims Y ⟨W.C, W.Q⟩)
       (vsigOnlyHooks (cliGhostExterns gh (cliExternsPlaced mmpl W))) where
   memcpy := by
     obtain ⟨f, hf, _, _, _, hok, _, _, _, _, _⟩ := hG.memcpy
@@ -157,7 +173,7 @@ private theorem w3VerifySigHooks_vsigOnly [LibsignalPlacement]
       (cliGhostExterns_memcpy_some gh (cliExternsPlaced mmpl W) hf)
   memset := by
     obtain ⟨f, hf, _, hok, _, _, _, _, _⟩ := hG.memset
-    refine ⟨f, ?_, hok pqxdhHookStack (by decide)⟩
+    refine ⟨f, ?_, hok dalekHookStack (by decide)⟩
     exact (show vsigOnlyHooks (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsVerifyMemsetSym =
         cliGhostExterns gh (cliExternsPlaced mmpl W) "memset" by
         simp [vsigOnlyHooks, vsigKeepSym, lsVerifyMemsetSym]).trans
@@ -167,27 +183,21 @@ private theorem w3VerifySigHooks_vsigOnly [LibsignalPlacement]
         cliGhostExterns gh (cliExternsPlaced mmpl W) lsBlackBoxU8Sym by
       simp [vsigOnlyHooks, vsigKeepSym])
     (cliGhostExterns_blackBoxSat_budget_sat gh (cliExternsPlaced mmpl W) hG.extraOk)
-  montToEd := hookSat_of_eq (by simp [vsigOnlyHooks, vsigKeepSym])
-    (cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-      (cliExternsPlaced_toEdwards_sat mmpl W Y (img := default)))
-  compress := hookSat_of_eq (by simp [vsigOnlyHooks, vsigKeepSym])
-    (cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-      (cliExternsPlaced_compress_sat mmpl W))
-  edNeg := hookSat_of_eq (by simp [vsigOnlyHooks, vsigKeepSym])
-    (cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-      (cliExternsPlaced_edNeg_sat mmpl W))
   sha512Compress := hookSat_of_eq (by simp [vsigOnlyHooks, vsigKeepSym])
-    (cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-      (cliExternsPlaced_compress512_sat mmpl W Y (img := default)))
+    (hookSat_cliGhostExterns_of_extraOk gh (cliExternsPlaced mmpl W) hG.extraOk
+      fun _ _ hRow => hRow.compress512_pqxdhStubPlaced_ok Y (P0 := ⟨W.C, W.Q⟩) hF512)
+  montToEd := hookSat_of_eq (by simp [vsigOnlyHooks, vsigKeepSym])
+    (cliGhostExterns_toEdwards_sat gh (cliExternsPlaced mmpl W) hG.extraOk)
+  compress := hookSat_of_eq (by simp [vsigOnlyHooks, vsigKeepSym])
+    (cliGhostExterns_compress_sat gh (cliExternsPlaced mmpl W) hG.extraOk)
+  edNeg := hookSat_of_eq (by simp [vsigOnlyHooks, vsigKeepSym])
+    (cliGhostExterns_edNegExt_sat gh (cliExternsPlaced mmpl W) hG.extraOk)
   scalarWide := hookSat_of_eq (by simp [vsigOnlyHooks, vsigKeepSym])
-    (cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-      (cliExternsPlaced_scalarWide_sat mmpl W))
+    (cliGhostExterns_scalarWide_sat gh (cliExternsPlaced mmpl W) hG.extraOk)
   scalarMod := hookSat_of_eq (by simp [vsigOnlyHooks, vsigKeepSym])
-    (cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-      (cliExternsPlaced_scalarMod_sat mmpl W))
+    (cliGhostExterns_scalarMod_sat gh (cliExternsPlaced mmpl W) hG.extraOk)
   doubleMul := hookSat_of_eq (by simp [vsigOnlyHooks, vsigKeepSym])
-    (cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-      (cliExternsPlaced_dsmb_sat mmpl W Y (img := default)))
+    (cliGhostExterns_dsmb_sat gh (cliExternsPlaced mmpl W) hG.extraOk)
 
 private def keepLs [LibsignalPlacement] (pc : BitVec 64) : Bool :=
   (List.range libsignalSessionLib.blocks.length).any fun j =>
@@ -196,29 +206,58 @@ private def keepLs [LibsignalPlacement] (pc : BitVec 64) : Bool :=
 
 private def relocsSorted : Nat → List Obj.RelocEntry → Bool
   | _, [] => true
-  | bound, r :: rs => decide (bound ≤ r.off ∧ r.off % 4 = 0) && relocsSorted (r.off + 4) rs
+  | bound, r :: rs => (Nat.ble bound r.off && Nat.beq (r.off % 4) 0) && relocsSorted (r.off + 4) rs
 
 private theorem find?_none_of_relocsSorted :
     ∀ {off bound : Nat} {rs : List Obj.RelocEntry},
       off < bound → relocsSorted bound rs = true → rs.find? (·.off == off) = none
   | _, _, [], _, _ => rfl
   | off, bound, r :: rs, hlt, hs => by
-    simp only [relocsSorted, Bool.and_eq_true, decide_eq_true_eq] at hs
+    simp only [relocsSorted, Bool.and_eq_true, Nat.ble_eq, Nat.beq_eq] at hs
     dsimp only [List.find?]
     rw [beq_false_of_ne (by omega)]
     exact find?_none_of_relocsSorted (by omega) hs.2
 
+private def wordSafeVmFast (b0 b1 b2 b3 : BitVec 8) : Bool :=
+  if b3 == 0xd4#8 || b3 == 0xd5#8 then
+    let w := Obj.wordOfBytesLE [b0, b1, b2, b3] 0
+    (w != 0xd400_0001#32) && !Arm64.isMsrTpidrEl0Word w
+  else true
+
+private theorem wordSafeVmFast_eq (b0 b1 b2 b3 : BitVec 8) :
+    wordSafeVmFast b0 b1 b2 b3 =
+      ((Obj.wordOfBytesLE [b0, b1, b2, b3] 0 != 0xd400_0001#32) &&
+        !Arm64.isMsrTpidrEl0Word (Obj.wordOfBytesLE [b0, b1, b2, b3] 0)) := by
+  unfold wordSafeVmFast
+  split
+  · rfl
+  · rename_i h
+    simp only [Bool.or_eq_true, beq_iff_eq, not_or] at h
+    rcases h with ⟨h4, h5⟩
+    have hw4 : Obj.wordOfBytesLE [b0, b1, b2, b3] 0 ≠ 0xd400_0001#32 := by
+      intro heq; apply h4
+      dsimp only [Obj.wordOfBytesLE, List.getD, List.getElem?_cons_zero,
+        List.getElem?_cons_succ, Option.getD_some] at heq
+      bv_bits
+    have hw5 : Arm64.isMsrTpidrEl0Word (Obj.wordOfBytesLE [b0, b1, b2, b3] 0) = false := by
+      unfold Arm64.isMsrTpidrEl0Word Obj.wordOfBytesLE
+      dsimp only [List.getD, List.getElem?_cons_zero, List.getElem?_cons_succ, Option.getD_some]
+      apply Bool.eq_false_iff.mpr; intro hm
+      apply h5
+      have hm' := beq_iff_eq.mp hm
+      bv_bits
+    simp [hw4, hw5]
+
 private def scanWordsRelocs : Nat → List Obj.RelocEntry → List (BitVec 8) → Bool
   | _, _, [] => true
   | off, [], b0 :: b1 :: b2 :: b3 :: rest =>
-    let w := Obj.wordOfBytesLE [b0, b1, b2, b3] 0
-    ((w != 0xd400_0001#32) && !Arm64.isMsrTpidrEl0Word w) && scanWordsRelocs (off + 4) [] rest
+    wordSafeVmFast b0 b1 b2 b3 && scanWordsRelocs (off + 4) [] rest
   | off, r :: rs, b0 :: b1 :: b2 :: b3 :: rest =>
-    let w := Obj.wordOfBytesLE [b0, b1, b2, b3] 0
     if r.off == off then
+      let w := Obj.wordOfBytesLE [b0, b1, b2, b3] 0
       VerifiedLibraries.RustStd.checkRelocWordNoSvc0 w r && scanWordsRelocs (off + 4) rs rest
     else
-      decide (off < r.off) && ((w != 0xd400_0001#32) && !Arm64.isMsrTpidrEl0Word w) &&
+      Nat.blt off r.off && wordSafeVmFast b0 b1 b2 b3 &&
         scanWordsRelocs (off + 4) (r :: rs) rest
   | _, _, _ => false
 
@@ -231,19 +270,19 @@ private theorem scanWordsRelocs_imp (blk : Obj.CodeBlock) :
   | [_], _, rs, _, _, _, h | [_, _], _, rs, _, _, _, h | [_, _, _], _, rs, _, _, _, h => by
     cases rs <;> simp [scanWordsRelocs] at h
   | b0 :: b1 :: b2 :: b3 :: rest, off, [], hal, _, hrel, h => by
-    simp only [scanWordsRelocs, Bool.and_eq_true] at h
+    simp only [scanWordsRelocs, wordSafeVmFast_eq, Bool.and_eq_true] at h
     unfold checkBytesSafeVm
     rw [hrel off (Nat.le_refl off)]; dsimp only [List.find?]; simp only [Bool.and_eq_true]
     exact ⟨h.1, scanWordsRelocs_imp blk rest (off + 4) [] (by omega) rfl
       (fun k hk => hrel k (by omega)) h.2⟩
   | b0 :: b1 :: b2 :: b3 :: rest, off, r :: rs, hal, hsort, hrel, h => by
-    simp only [relocsSorted, Bool.and_eq_true, decide_eq_true_eq] at hsort
+    simp only [relocsSorted, Bool.and_eq_true, Nat.ble_eq, Nat.beq_eq] at hsort
     dsimp only [scanWordsRelocs] at h
     cases heq : r.off == off
     · rw [heq] at h
-      simp only [Bool.false_eq_true, ↓reduceIte, Bool.and_eq_true, decide_eq_true_eq] at h
+      simp only [Bool.false_eq_true, ↓reduceIte, Bool.and_eq_true, Nat.blt_eq, wordSafeVmFast_eq] at h
       have hsort' : relocsSorted (off + 4) (r :: rs) = true := by
-        simp only [relocsSorted, Bool.and_eq_true, decide_eq_true_eq]
+        simp only [relocsSorted, Bool.and_eq_true, Nat.ble_eq, Nat.beq_eq]
         exact ⟨⟨by omega, hsort.1.2⟩, hsort.2⟩
       unfold checkBytesSafeVm
       rw [hrel off (Nat.le_refl off), find?_none_of_relocsSorted (by omega) hsort']
@@ -306,9 +345,9 @@ private theorem checkBlocksAt_getD :
     exact checkBlocksAt_getD (k + 1) bs i (by simp at hi; omega) h.2
 
 private theorem safeVm_lo : checkBlocksAt 0 (libsignalSessionLib.blocks.take 310) = true := by
-  decide +kernel
+  open ProofLib.ProgramReflection in rfl_kernel
 private theorem safeVm_hi : checkBlocksAt 310 (libsignalSessionLib.blocks.drop 310) = true := by
-  decide +kernel
+  open ProofLib.ProgramReflection in rfl_kernel
 private theorem allUnmutated_safeVm : checkBlocksAt 0 libsignalSessionLib.blocks = true := by
   rw [← List.take_append_drop 310 libsignalSessionLib.blocks]
   exact checkBlocksAt_append 0 _ _ safeVm_lo
@@ -477,14 +516,6 @@ private theorem stripWx_read64 [LibsignalPlacement] (m : Memory) (a : BitVec 64)
 private theorem stripWx_readBytes [LibsignalPlacement] (m : Memory) (a : BitVec 64) (n : Nat) :
     (stripWx m).readBytes a n = m.readBytes a n :=
   (strip_readBytes keepLs (hideWx m) a n).trans (hideWx_readBytes m a n)
-
-private theorem stripWx_readVecN [LibsignalPlacement] (m : Memory) (a : BitVec 64) (n : Nat) :
-    readVecN (stripWx m) a n = readVecN m a n :=
-  Subtype.ext (stripWx_readBytes m a n)
-
-private theorem stripWx_readSha512State [LibsignalPlacement] (m : Memory) (a : BitVec 64) :
-    readSha512State (stripWx m) a = readSha512State m a := by
-  unfold readSha512State; congr 1; funext i; exact stripWx_read64 m _
 
 private theorem hideWx_write8 (m : Memory) (addr : BitVec 64) (val : BitVec 8) :
     (hideWx m).write8 addr val = hideWx (m.write8 addr val) := by
@@ -781,15 +812,17 @@ private theorem hw_st (s : State) : (hideWxS s).status = s.status := by cases s;
 private theorem hw_sym (s : State) : (hideWxS s).symtab = s.symtab := by cases s; rfl
 private theorem hw_sig (s : State) : (hideWxS s).sigActions = s.sigActions := by cases s; rfl
 private theorem hw_sas (s : State) : (hideWxS s).sigAltStack = s.sigAltStack := by cases s; rfl
+private theorem hw_sm (s : State) : (hideWxS s).sigMask = s.sigMask := by cases s; rfl
+private theorem hw_spnd (s : State) : (hideWxS s).sigPending = s.sigPending := by cases s; rfl
 private theorem hw_pma (s : State) : (hideWxS s).physMemAvail = s.physMemAvail := by cases s; rfl
-private theorem hw_mk {rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas pma} :
-    State.mk rg vr sp pc ps (hideWx m) tp fp bs b fs o oi ef tr st sym sig sas pma =
-      hideWxS (State.mk rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas pma) := rfl
+private theorem hw_mk {rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas sm spnd pma} :
+    State.mk rg vr sp pc ps (hideWx m) tp fp bs b fs o oi ef tr st sym sig sas sm spnd pma =
+      hideWxS (State.mk rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas sm spnd pma) := rfl
 
 private theorem status_setStatus (s : State) (st : ExecStatus) :
     (s.setStatus st).status = st := by cases s; rfl
-private theorem status_mk {rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas pma} :
-    (State.mk rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas pma).status = st := rfl
+private theorem status_mk {rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas sm spnd pma} :
+    (State.mk rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas sm spnd pma).status = st := rfl
 private theorem status_adv (s : State) : s.advancePC.status = s.status := by cases s; rfl
 private theorem status_spc (s : State) (q : BitVec 64) : (s.setPC q).status = s.status := by cases s; rfl
 private theorem status_w64 (s : State) (r : Reg) (v : BitVec 64) : (s.writeReg64 r v).status = s.status := by cases s; cases r <;> rfl
@@ -817,7 +850,7 @@ private theorem ite_exc_running_iff (c : Prop) [Decidable c] (msg : String) (x :
 local macro "close_hideWxS_mem " h:ident : tactic => `(tactic| (
   try dsimp only [execInst, execInstWithSvc, execLdrLit, execLdp, execStp, evalAddrMode] at $h:ident ⊢
   simp only [hw_mem, hw_regs, hw_vregs, hw_bs, hw_brk, hw_fs, hw_orc, hw_oi, hw_ef, hw_tr,
-    hw_st, hw_sym, hw_sig, hw_sas, hw_pma, hw_mk, hw_r64, hw_r32, hw_rr, hw_rv128, hw_rv128_eta,
+    hw_st, hw_sym, hw_sig, hw_sas, hw_sm, hw_spnd, hw_pma, hw_mk, hw_r64, hw_r32, hw_rr, hw_rv128, hw_rv128_eta,
     hw_rv64, hw_rv32, hw_pc, hw_sp, hw_ps, hw_fp, hw_tp, hw_ewf, hw_csp, hw_casp, hw_eam,
     hideWx_canWrite, hideWx_readSized, hideWx_readSimdSized,
     hideWx_write8, hideWx_write16, hideWx_write32, hideWx_write64, hideWx_writeSized,
@@ -858,7 +891,7 @@ private theorem execInst_hideWxS {inst : Instr} (h : inst.isSvc0 = false) (s : S
     · dsimp only [execInst, execInstWithSvc]
       simp only [hop, Bool.false_eq_true, ↓reduceIte, hw_rv128, hw_regs, hw_vregs, hw_sp, hw_pc,
         hw_ps, hw_mem, hw_tp, hw_fp, hw_bs, hw_brk, hw_fs, hw_orc, hw_oi, hw_ef, hw_tr, hw_st,
-        hw_sym, hw_sig, hw_sas, hw_pma, hw_mk, hw_adv, hw_wv128, hw_sst, hw_wst, hw_as, hw_ass,
+        hw_sym, hw_sig, hw_sas, hw_sm, hw_spnd, hw_pma, hw_mk, hw_adv, hw_wv128, hw_sst, hw_wst, hw_as, hw_ass,
         hw_ite]
   case st1SinglePost q rm opcode sBit size rn vt =>
     dsimp only [execInst, execInstWithSvc]
@@ -866,14 +899,14 @@ private theorem execInst_hideWxS {inst : Instr} (h : inst.isSvc0 = false) (s : S
       by_cases hs0 : size.extractLsb' 0 1 == 0#1 <;>
       simp only [h0, h1, hs0, Bool.false_eq_true, ↓reduceIte, hw_mem, hw_regs, hw_vregs, hw_sp,
         hw_pc, hw_ps, hw_tp, hw_fp, hw_bs, hw_brk, hw_fs, hw_orc, hw_oi, hw_ef, hw_tr, hw_st,
-        hw_sym, hw_sig, hw_sas, hw_pma, hw_mk, hw_r64, hw_rv128, hw_csp, hideWx_canWrite,
+        hw_sym, hw_sig, hw_sas, hw_sm, hw_spnd, hw_pma, hw_mk, hw_r64, hw_rv128, hw_csp, hideWx_canWrite,
         hideWx_write8, hideWx_write16, hideWx_write32, hideWx_write64, hw_smem, hw_w64, hw_adv,
         hw_sst, hw_ite]
   case simdLdStMulti isLoad q size selem rn postIdx rm vt =>
     dsimp only [execInst, execInstWithSvc] at hrun ⊢
     by_cases hbad : (size == 3#2 && !q || !(selem == 2 || selem == 3 || selem == 4)) = true
     · simp only [hbad, ↓reduceIte, hw_regs, hw_vregs, hw_sp, hw_pc, hw_ps, hw_mem, hw_tp, hw_fp,
-        hw_bs, hw_brk, hw_fs, hw_orc, hw_oi, hw_ef, hw_tr, hw_st, hw_sym, hw_sig, hw_sas, hw_pma,
+        hw_bs, hw_brk, hw_fs, hw_orc, hw_oi, hw_ef, hw_tr, hw_st, hw_sym, hw_sig, hw_sas, hw_sm, hw_spnd, hw_pma,
         hw_mk, hw_wst]
     · cases isLoad <;> by_cases h3 : selem ≥ 3 <;> by_cases h4 : selem ≥ 4 <;>
         (simp only [hbad, h3, h4, Bool.false_eq_true, ↓reduceIte, hw_r64, hw_rv128_eta, hw_mem,
@@ -952,25 +985,276 @@ private theorem steps_to_stepsList {P : Program} {s1 sf : State} (h : Steps P s1
     · exact stepsList_drop_until htr hmem
     · exact ⟨a :: tr, .step hab htr hmem⟩
 
-private noncomputable def findState [LibsignalPlacement] (tr0 : List State) (s' : State) :
-    Option State :=
-  tr0.find? fun u => Classical.propDecidable (stripWxS u = s') |>.decide
+private def keepMeta (base out : State) : State :=
+  { out with
+    fs := { out.fs with entries := base.fs.entries }
+    oracle := base.oracle
+    symtab := base.symtab }
 
-private theorem findState_eq_head [LibsignalPlacement] {seen0 tl0 : List State} {s1 : State}
-    (hnone : ∀ u ∈ seen0, stripWxS u ≠ stripWxS s1) :
-    findState (seen0.reverse ++ s1 :: tl0) (stripWxS s1) = some s1 := by
+private def stripWxMeta [LibsignalPlacement] (base u : State) : State :=
+  keepMeta base (stripWxS u)
+
+private def ArchEq (a b : State) : Prop :=
+  keepMeta b a = b
+
+private theorem km_mem (base s : State) : (keepMeta base s).mem = s.mem := by cases s; rfl
+private theorem km_r64 (base s : State) (r : Reg) : (keepMeta base s).readReg64 r = s.readReg64 r := by cases s; rfl
+private theorem km_r32 (base s : State) (r : Reg) : (keepMeta base s).readReg32 r = s.readReg32 r := by cases s; rfl
+private theorem km_rr (base s : State) (w : Width) (r : Reg) : (keepMeta base s).readReg w r = s.readReg w r := by cases s; rfl
+private theorem km_rv128 (base s : State) (r : BitVec 5) : (keepMeta base s).readVReg128 r = s.readVReg128 r := by cases s; rfl
+private theorem km_rv128_eta (base s : State) : (keepMeta base s).readVReg128 = s.readVReg128 := by funext r; cases s; rfl
+private theorem km_rv64 (base s : State) (r : BitVec 5) : (keepMeta base s).readVReg64 r = s.readVReg64 r := by cases s; rfl
+private theorem km_rv32 (base s : State) (r : BitVec 5) : (keepMeta base s).readVReg32 r = s.readVReg32 r := by cases s; rfl
+private theorem km_pc (base s : State) : (keepMeta base s).pc = s.pc := by cases s; rfl
+private theorem km_sp (base s : State) : (keepMeta base s).sp = s.sp := by cases s; rfl
+private theorem km_ps (base s : State) : (keepMeta base s).pstate = s.pstate := by cases s; rfl
+private theorem km_fp (base s : State) : (keepMeta base s).fpsr = s.fpsr := by cases s; rfl
+private theorem km_tp (base s : State) : (keepMeta base s).tpidrEl0 = s.tpidrEl0 := by cases s; rfl
+private theorem km_ewf (base s : State) : (keepMeta base s).exclWillFail = s.exclWillFail := by cases s; rfl
+private theorem km_csp (base s : State) (r : Reg) : checkRegSPAligned (keepMeta base s) r = checkRegSPAligned s r := by cases s; cases r <;> rfl
+private theorem km_casp (base s : State) (a : AddrMode) : checkAddrSPAligned (keepMeta base s) a = checkAddrSPAligned s a := by cases s; cases a <;> rfl
+private theorem km_eam (base s : State) (a : AddrMode) : evalAddrMode (keepMeta base s) a = evalAddrMode s a := by cases s; cases a <;> rfl
+private theorem km_adv (base s : State) : (keepMeta base s).advancePC = keepMeta base s.advancePC := by cases s; rfl
+private theorem km_spc (base s : State) (q : BitVec 64) : (keepMeta base s).setPC q = keepMeta base (s.setPC q) := by cases s; rfl
+private theorem km_w64 (base s : State) (r : Reg) (v : BitVec 64) : (keepMeta base s).writeReg64 r v = keepMeta base (s.writeReg64 r v) := by cases s; cases r <;> rfl
+private theorem km_w32 (base s : State) (r : Reg) (v : BitVec 32) : (keepMeta base s).writeReg32 r v = keepMeta base (s.writeReg32 r v) := km_w64 base s r _
+private theorem km_w (base s : State) (w : Width) (r : Reg) (v : BitVec 64) : (keepMeta base s).writeReg w r v = keepMeta base (s.writeReg w r v) := km_w64 base s r _
+private theorem km_wv128 (base s : State) (r : BitVec 5) (v : BitVec 128) : (keepMeta base s).writeVReg128 r v = keepMeta base (s.writeVReg128 r v) := by cases s; rfl
+private theorem km_wv64 (base s : State) (r : BitVec 5) (v : BitVec 64) : (keepMeta base s).writeVReg64 r v = keepMeta base (s.writeVReg64 r v) := km_wv128 base s r _
+private theorem km_wv32 (base s : State) (r : BitVec 5) (v : BitVec 32) : (keepMeta base s).writeVReg32 r v = keepMeta base (s.writeVReg32 r v) := km_wv128 base s r _
+private theorem km_sps (base s : State) (q : PState) : (keepMeta base s).setPState q = keepMeta base (s.setPState q) := by cases s; rfl
+private theorem km_sfp (base s : State) (f : BitVec 32) : (keepMeta base s).setFpsr f = keepMeta base (s.setFpsr f) := by cases s; rfl
+private theorem km_sofp (base s : State) (f : BitVec 32) : (keepMeta base s).orFpsr f = keepMeta base (s.orFpsr f) := by cases s; rfl
+private theorem km_sst (base s : State) (st : ExecStatus) : (keepMeta base s).setStatus st = keepMeta base (s.setStatus st) := by cases s; rfl
+private theorem km_wst (base s : State) (st : ExecStatus) : { keepMeta base s with status := st } = keepMeta base { s with status := st } := by cases s; rfl
+private theorem km_stp (base s : State) (v : BitVec 64) : setTpidrEl0 (keepMeta base s) v = keepMeta base (setTpidrEl0 s v) := by cases s; rfl
+private theorem km_sex (base s : State) : (keepMeta base s).stepExclOracle = keepMeta base s.stepExclOracle := by cases s; rfl
+private theorem km_smem (base s : State) (m : Memory) : (keepMeta base s).setMem m = keepMeta base (s.setMem m) := by cases s; rfl
+private theorem km_as (base s : State) (rd : BitVec 5) (r : Except String (BitVec 128)) :
+    applySimdResult (keepMeta base s) rd r = keepMeta base (applySimdResult s rd r) := by cases s; cases r <;> rfl
+private theorem km_ass (base s : State) (rd : BitVec 5) (r : Except String (BitVec 128)) (sat : Option (BitVec 32)) :
+    applySimdSatResult (keepMeta base s) rd r sat = keepMeta base (applySimdSatResult s rd r sat) := by cases s; cases r <;> cases sat <;> rfl
+private theorem km_slr (base : State) (sz : SimdMemSize) (m : Memory) :
+    ∀ (n : Nat) (vt : BitVec 5) (ea : BitVec 64) (s : State),
+      simdLoadRegs sz m n vt ea (keepMeta base s) = keepMeta base (simdLoadRegs sz m n vt ea s)
+  | 0, _, _, _ => rfl
+  | n + 1, _, _, s => by simp only [simdLoadRegs, km_slr base sz m n, km_wv128]
+private theorem km_ite (base : State) (c : Prop) [Decidable c] (a b : State) :
+    (if c then keepMeta base a else keepMeta base b) = keepMeta base (if c then a else b) := by split <;> rfl
+private theorem km_regs (base s : State) : (keepMeta base s).regs = s.regs := by cases s; rfl
+private theorem km_vregs (base s : State) : (keepMeta base s).vregs = s.vregs := by cases s; rfl
+private theorem km_bs (base s : State) : (keepMeta base s).brkStart = s.brkStart := by cases s; rfl
+private theorem km_brk (base s : State) : (keepMeta base s).brk = s.brk := by cases s; rfl
+private theorem km_fs (base s : State) : (keepMeta base s).fs = { s.fs with entries := base.fs.entries } := by cases s; rfl
+private theorem km_orc (base s : State) : (keepMeta base s).oracle = base.oracle := by cases s; rfl
+private theorem km_oi (base s : State) : (keepMeta base s).oracleIdx = s.oracleIdx := by cases s; rfl
+private theorem km_ef (base s : State) : (keepMeta base s).exclFails = s.exclFails := by cases s; rfl
+private theorem km_tr (base s : State) : (keepMeta base s).trace = s.trace := by cases s; rfl
+private theorem km_st (base s : State) : (keepMeta base s).status = s.status := by cases s; rfl
+private theorem km_sym (base s : State) : (keepMeta base s).symtab = base.symtab := by cases s; rfl
+private theorem km_sig (base s : State) : (keepMeta base s).sigActions = s.sigActions := by cases s; rfl
+private theorem km_sas (base s : State) : (keepMeta base s).sigAltStack = s.sigAltStack := by cases s; rfl
+private theorem km_sm (base s : State) : (keepMeta base s).sigMask = s.sigMask := by cases s; rfl
+private theorem km_spnd (base s : State) : (keepMeta base s).sigPending = s.sigPending := by cases s; rfl
+private theorem km_pma (base s : State) : (keepMeta base s).physMemAvail = s.physMemAvail := by cases s; rfl
+private theorem km_mk (base s : State) {rg vr sp pc ps m tp fp bs b oi ef tr st sig sas sm spnd pma} :
+    State.mk rg vr sp pc ps m tp fp bs b { s.fs with entries := base.fs.entries } base.oracle oi ef tr st base.symtab sig sas sm spnd pma =
+      keepMeta base (State.mk rg vr sp pc ps m tp fp bs b s.fs s.oracle oi ef tr st s.symtab sig sas sm spnd pma) := rfl
+
+set_option linter.unusedSimpArgs false in
+set_option maxHeartbeats 400000 in
+private theorem execInst_keepMeta {inst : Instr} (h : inst.isSvc0 = false) (base s : State) :
+    execInst inst (keepMeta base s) = keepMeta base (execInst inst s) := by
+  cases inst
+  case system isHalt imm =>
+    cases isHalt
+    · by_cases himm : imm == 0#16
+      · have heq : imm = 0#16 := of_decide_eq_true himm; subst heq; simp [Instr.isSvc0] at h
+      · dsimp only [execInst, execInstWithSvc]; simp [himm, km_sst]
+    · dsimp only [execInst, execInstWithSvc]; by_cases himm : imm == 1#16 <;> simp [himm, km_sst]
+  case simdThreeSame q u size rm opcode rn rd =>
+    by_cases hop : opcode == 0b00011#5
+    · have hsz : size = 0#2 ∨ size = 1#2 ∨ size = 2#2 ∨ size = 3#2 := by clear h; revert size; decide
+      rcases hsz with rfl | rfl | rfl | rfl <;> cases u <;>
+        (dsimp only [execInst, execInstWithSvc]; simp only [hop, ↓reduceIte, km_rv128];
+         split <;> simp only [km_wv128, km_adv, km_ass])
+    · dsimp only [execInst, execInstWithSvc]
+      simp only [hop, Bool.false_eq_true, ↓reduceIte, km_rv128, km_regs, km_vregs, km_sp, km_pc, km_ps,
+        km_mem, km_tp, km_fp, km_bs, km_brk, km_fs, km_orc, km_oi, km_ef, km_tr, km_st, km_sym, km_sig, km_sas, km_sm, km_spnd, km_pma,
+        km_mk, km_adv, km_wv128, km_sst, km_wst, km_as, km_ass, km_ite]
+  case st1SinglePost q rm opcode sBit size rn vt =>
+    dsimp only [execInst, execInstWithSvc]
+    by_cases h0 : opcode.extractLsb' 1 2 == 0#2 <;> by_cases h1 : opcode.extractLsb' 1 2 == 1#2 <;>
+      by_cases hs0 : size.extractLsb' 0 1 == 0#1 <;>
+      simp only [h0, h1, hs0, Bool.false_eq_true, ↓reduceIte, km_mem, km_regs, km_vregs, km_sp, km_pc,
+        km_ps, km_tp, km_fp, km_bs, km_brk, km_fs, km_orc, km_oi, km_ef, km_tr, km_st, km_sym, km_sig, km_sas, km_sm, km_spnd, km_pma,
+        km_mk, km_r64, km_rv128, km_csp, km_smem, km_w64, km_adv, km_sst, km_ite]
+  case simdLdStMulti isLoad q size selem rn postIdx rm vt =>
+    dsimp only [execInst, execInstWithSvc]
+    by_cases hbad : (size == 3#2 && !q || !(selem == 2 || selem == 3 || selem == 4)) = true
+    · simp only [hbad, ↓reduceIte, km_regs, km_vregs, km_sp, km_pc, km_ps, km_mem, km_tp, km_fp,
+        km_bs, km_brk, km_fs, km_orc, km_oi, km_ef, km_tr, km_st, km_sym, km_sig, km_sas, km_sm, km_spnd, km_pma, km_mk, km_wst]
+    · by_cases h3 : selem ≥ 3 <;> by_cases h4 : selem ≥ 4 <;>
+        simp only [hbad, h3, h4, Bool.false_eq_true, ↓reduceIte, km_r64, km_rv128_eta, km_mem, km_csp,
+          km_w64, km_wv128, km_adv, km_smem, km_sst, km_ite]
+  case ldr _ _ _ _ addr | str _ _ addr | ldp _ _ _ _ addr | stp _ _ _ addr
+     | ldpSimd _ _ _ addr | stpSimd _ _ _ addr | ldrSimd _ _ addr | strSimd _ _ addr =>
+    dsimp only [execInst, execInstWithSvc, execLdr, execStr, execLdp, execStp]
+    rw [km_casp, km_eam]
+    rcases evalAddrMode s addr with ⟨_, _ | ⟨_, _⟩⟩ <;>
+      simp only [km_mem, km_r64, km_rv128, km_w64, km_w, km_wv128, km_smem, km_adv, km_sst, km_ite]
+  case addSubImm | logicalImm | moveWide | bitfield | extr | logicalShift | addSubShift
+     | addSubExt | addSubCarry | condCompareReg | condCompareImm | condSelect
+     | dataProc1 | dataProc2 | dataProc3 =>
+    dsimp only [execInst, execInstWithSvc, execAddSubImm, execLogicalImm, execMoveWide, execBitfield,
+      execLogicalShift, execAddSubShift, execAddSubExt, execAddSubCarry, execCondCompare,
+      execCondSelect, execDataProc1, execDataProc2, execDataProc3]
+    simp only [km_r64, km_r32, km_rr, km_pc, km_sp, km_ps, km_w64, km_w32, km_w, km_sps, km_adv, km_ite]
+    try ((repeat' split) <;> simp only [km_w64, km_w32, km_w, km_sps, km_adv, km_ite])
+  all_goals
+    dsimp only [execInst, execInstWithSvc, execLdrLit, execLdp, execStp, evalAddrMode]
+    simp only [km_mem, km_regs, km_vregs, km_bs, km_brk, km_fs, km_orc, km_oi, km_ef, km_tr, km_st,
+      km_sym, km_sig, km_sas, km_sm, km_spnd, km_pma, km_mk, km_r64, km_r32, km_rr, km_rv128, km_rv128_eta, km_rv64, km_rv32,
+      km_pc, km_sp, km_ps, km_fp, km_tp, km_ewf, km_csp, km_casp, km_eam, km_slr,
+      km_adv, km_spc, km_w64, km_w32, km_w, km_wv128, km_wv64, km_wv32,
+      km_sps, km_sfp, km_sofp, km_sst, km_wst, km_stp, km_sex, km_smem, km_as, km_ass, km_ite]
+
+private theorem execInst_stripWxMeta [LibsignalPlacement] {inst : Instr} (h : inst.isSvc0 = false)
+    (base s : State) (hrun : (execInst inst (stripWxMeta base s)).status = .Running) :
+    execInst inst (stripWxMeta base s) = stripWxMeta base (execInst inst s) := by
+  unfold stripWxMeta at hrun ⊢
+  rw [execInst_keepMeta h base (stripWxS s)] at hrun ⊢
+  have hrun' : (execInst inst (stripWxS s)).status = .Running := by
+    rwa [km_st] at hrun
+  rw [execInst_stripWxS h s hrun']
+
+private def allLt (P : Nat → Bool) : Nat → Bool
+  | 0 => true
+  | n + 1 => allLt P n && P n
+
+private theorem allLt_eq_true_iff (P : Nat → Bool) :
+    ∀ n : Nat, allLt P n = true ↔ ∀ k < n, P k = true
+  | 0 => by simp [allLt]
+  | n + 1 => by
+    simp only [allLt, Bool.and_eq_true, allLt_eq_true_iff P n]
+    constructor
+    · rintro ⟨h1, h2⟩ k hk
+      rcases Nat.lt_succ_iff_lt_or_eq.mp hk with hlt | rfl
+      · exact h1 k hlt
+      · exact h2
+    · intro h
+      exact ⟨fun k hk => h k (Nat.lt_succ_of_lt hk), h n (Nat.lt_succ_self n)⟩
+
+private def decForallLt (n : Nat) (P : Nat → Prop) [∀ k, Decidable (P k)] :
+    Decidable (∀ k < n, P k) :=
+  decidable_of_iff (allLt (fun k => decide (P k)) n = true) <| by
+    rw [allLt_eq_true_iff]
+    simp only [decide_eq_true_eq]
+
+private theorem forall_bitVec_iff {w : Nat} (P : BitVec w → Prop) :
+    (∀ x : BitVec w, P x) ↔ ∀ k < 2 ^ w, P (BitVec.ofNat w k) := by
+  constructor
+  · intro h k _; exact h _
+  · intro h x; simpa using h x.toNat x.isLt
+
+/-- Constructively decides `∀ x : BitVec w, P x` over `2 ^ w` bitvectors (`w = 5` for register files;
+`w = 64` for `VmPreserved` / `AnonMono`, which is infeasible to `#eval` exhaustively). -/
+private def decForallBV (w : Nat) (P : BitVec w → Prop) [∀ x, Decidable (P x)] :
+    Decidable (∀ x : BitVec w, P x) :=
+  letI : Decidable (∀ k < 2 ^ w, P (BitVec.ofNat w k)) :=
+    decForallLt (2 ^ w) (fun k => P (BitVec.ofNat w k))
+  decidable_of_iff (∀ k < 2 ^ w, P (BitVec.ofNat w k)) (forall_bitVec_iff P).symm
+
+private def decFuncBV {w : Nat} {β : Type} [DecidableEq β] (f g : BitVec w → β) :
+    Decidable (f = g) :=
+  letI : Decidable (∀ x : BitVec w, f x = g x) := decForallBV w (fun x => f x = g x)
+  decidable_of_iff (∀ x : BitVec w, f x = g x) funext_iff.symm
+
+private local instance instDecEqRegFile : DecidableEq RegFile := fun a b =>
+  letI : Decidable (a.regs = b.regs) := decFuncBV a.regs b.regs
+  decidable_of_iff (a.regs = b.regs) ⟨fun h => by cases a; cases b; congr, congrArg RegFile.regs⟩
+
+private local instance instDecEqVRegFile : DecidableEq VRegFile := fun a b =>
+  letI : Decidable (a.regs = b.regs) := decFuncBV a.regs b.regs
+  decidable_of_iff (a.regs = b.regs) ⟨fun h => by cases a; cases b; congr, congrArg VRegFile.regs⟩
+
+private local instance instDecEqMemory : DecidableEq Memory := fun a b =>
+  letI : Decidable (a.cells = b.cells) := decFuncBV a.cells b.cells
+  decidable_of_iff (a.cells = b.cells) ⟨fun h => by cases a; cases b; congr, congrArg Memory.cells⟩
+
+private theorem archEq_iff (a b : State) :
+    ArchEq a b ↔
+      a.regs = b.regs ∧ a.vregs = b.vregs ∧ a.sp = b.sp ∧ a.pc = b.pc ∧
+      a.pstate = b.pstate ∧ a.mem = b.mem ∧ a.tpidrEl0 = b.tpidrEl0 ∧
+      a.fpsr = b.fpsr ∧ a.brkStart = b.brkStart ∧ a.brk = b.brk ∧
+      a.fs.stdin = b.fs.stdin ∧ a.fs.fds = b.fs.fds ∧
+      a.oracleIdx = b.oracleIdx ∧ a.exclFails = b.exclFails ∧
+      a.trace = b.trace ∧ a.status = b.status ∧
+      a.sigActions = b.sigActions ∧ a.sigAltStack = b.sigAltStack ∧
+      a.sigMask = b.sigMask ∧ a.sigPending = b.sigPending ∧
+      a.physMemAvail = b.physMemAvail := by
+  rcases a with ⟨_, _, _, _, _, _, _, _, _, _, ⟨_, _, _⟩, _, _, _, _, _, _, _, _, _, _, _⟩
+  rcases b with ⟨_, _, _, _, _, _, _, _, _, _, ⟨_, _, _⟩, _, _, _, _, _, _, _, _, _, _, _⟩
+  simp [ArchEq, keepMeta, and_assoc]
+
+private local instance instDecArchEq (a b : State) : Decidable (ArchEq a b) :=
+  letI : Decidable (a.fs.fds = b.fs.fds) := decFuncBV a.fs.fds b.fs.fds
+  letI : Decidable (a.sigActions = b.sigActions) := decFuncBV a.sigActions b.sigActions
+  decidable_of_iff _ (archEq_iff a b).symm
+
+private local instance instDecDisjointRegions (b₁ : BitVec 64) (n₁ : Nat)
+    (b₂ : BitVec 64) (n₂ : Nat) : Decidable (DisjointRegions b₁ n₁ b₂ n₂) :=
+  inferInstanceAs (Decidable (n₁ ≤ (b₂ - b₁).toNat ∧ n₂ ≤ (b₁ - b₂).toNat))
+
+private local instance instDecReadable (m : Memory) (base : BitVec 64) (len : Nat) :
+    Decidable (m.Readable base len) :=
+  decForallBV 64 fun a => InRegion base len a → (m.perm a).r = true ∧ m.isLazyFree a = false
+
+private local instance instDecRW (m : Memory) (base : BitVec 64) (len : Nat) :
+    Decidable (m.RW base len) :=
+  decForallBV 64 fun a => InRegion base len a → m.permNoLazy a = some Perm.rw
+
+private theorem stripWxMeta_self [LibsignalPlacement] (s : State) :
+    stripWxMeta s s = stripWxS s := by
+  rcases s with ⟨_, _, _, _, _, _, _, _, _, _, ⟨_, _, _⟩, _, _, _, _, _, _, _, _, _, _, _⟩
+  rfl
+
+private theorem stripWxMeta_idem_base [LibsignalPlacement] (base s u : State) :
+    stripWxMeta (stripWxMeta base s) u = stripWxMeta base u := by
+  rcases base with ⟨_, _, _, _, _, _, _, _, _, _, ⟨_, _, _⟩, _, _, _, _, _, _, _, _, _, _, _⟩
+  rcases s with ⟨_, _, _, _, _, _, _, _, _, _, ⟨_, _, _⟩, _, _, _, _, _, _, _, _, _, _, _⟩
+  rcases u with ⟨_, _, _, _, _, _, _, _, _, _, ⟨_, _, _⟩, _, _, _, _, _, _, _, _, _, _, _⟩
+  rfl
+
+private theorem archEq_stripWxS_stripWxMeta_iff [LibsignalPlacement] (base u s : State) :
+    ArchEq (stripWxS u) (stripWxMeta base s) ↔ stripWxMeta base u = stripWxMeta base s := by
+  rcases base with ⟨_, _, _, _, _, _, _, _, _, _, ⟨_, _, _⟩, _, _, _, _, _, _, _, _, _, _, _⟩
+  rcases u with ⟨_, _, _, _, _, _, _, _, _, _, ⟨_, _, _⟩, _, _, _, _, _, _, _, _, _, _, _⟩
+  rcases s with ⟨_, _, _, _, _, _, _, _, _, _, ⟨_, _, _⟩, _, _, _, _, _, _, _, _, _, _, _⟩
+  rfl
+
+private def findState [LibsignalPlacement] (tr0 : List State) (s' : State) :
+    Option State :=
+  tr0.find? fun u => decide (ArchEq (stripWxS u) s')
+
+private theorem findState_eq_head [LibsignalPlacement] {seen0 tl0 : List State} {base s1 : State}
+    (hnone : ∀ u ∈ seen0, stripWxMeta base u ≠ stripWxMeta base s1) :
+    findState (seen0.reverse ++ s1 :: tl0) (stripWxMeta base s1) = some s1 := by
   unfold findState
   rw [List.find?_append]
   have h1 : (seen0.reverse.find? fun u =>
-      (Classical.propDecidable (stripWxS u = stripWxS s1)).decide) = none := by
+      decide (ArchEq (stripWxS u) (stripWxMeta base s1))) = none := by
     rw [List.find?_eq_none]
     intro u hu
     have hne := hnone u (List.mem_reverse.mp hu)
-    simp [hne]
+    rw [decide_eq_true_iff, archEq_stripWxS_stripWxMeta_iff]
+    exact hne
   rw [h1]
-  simp
+  have hhead : decide (ArchEq (stripWxS s1) (stripWxMeta base s1)) = true := by
+    rw [decide_eq_true_iff, archEq_stripWxS_stripWxMeta_iff]
+  simp [hhead]
 
-private noncomputable def shadowMemcpy [LibsignalPlacement] (tr0 : List State)
+private def shadowMemcpy [LibsignalPlacement] (tr0 : List State)
     (f_mc : State → State) (s' : State) : State :=
   match findState tr0 s' with
   | none => ProofLib.hookMemcpy s'
@@ -978,49 +1262,68 @@ private noncomputable def shadowMemcpy [LibsignalPlacement] (tr0 : List State)
     let dst := s'.readReg64 .x0
     let src := s'.readReg64 .x1
     let len := (s'.readReg64 .x2).toNat
-    @ite State (s'.status = .Running ∧ s'.spAligned = true ∧ s'.mem.RW dst len ∧
-        s'.mem.Readable src len ∧ (len = 0 ∨ DisjointRegions dst len src len))
-      (Classical.propDecidable _)
-      (stripWxS (f_mc u))
-      (s'.setStatus (.Exception "ext"))
+    if s'.status = .Running ∧ s'.spAligned = true ∧ s'.mem.RW dst len ∧
+        s'.mem.Readable src len ∧ (len = 0 ∨ DisjointRegions dst len src len) then
+      stripWxMeta s' (f_mc u)
+    else
+      s'.setStatus (.Exception "ext")
 
-private noncomputable def shadowMemset [LibsignalPlacement] (tr0 : List State)
+private def shadowMemset [LibsignalPlacement] (tr0 : List State)
     (f_ms : State → State) (s' : State) : State :=
   match findState tr0 s' with
   | none => ProofLib.hookMemset s'
   | some u =>
     let dst := s'.readReg64 .x0
     let len := (s'.readReg64 .x2).toNat
-    @ite State (s'.status = .Running ∧ s'.spAligned = true ∧ s'.mem.RW dst len)
-      (Classical.propDecidable _)
-      (stripWxS (f_ms u))
-      (s'.setStatus (.Exception "ext"))
+    if s'.status = .Running ∧ s'.spAligned = true ∧ s'.mem.RW dst len then
+      stripWxMeta s' (f_ms u)
+    else
+      s'.setStatus (.Exception "ext")
 
-private theorem findState_some_stripWxS [LibsignalPlacement] {tr0 : List State} {s' u : State}
+private theorem findState_some_stripWxMeta [LibsignalPlacement] {tr0 : List State} {s' u : State}
     (hf : findState tr0 s' = some u) :
-    stripWxS u = s' := by
+    stripWxMeta s' u = s' := by
+  unfold findState at hf
   have hp := List.find?_some hf
-  simpa [decide_eq_true_eq] using hp
+  exact (of_decide_eq_true hp : ArchEq (stripWxS u) s')
 
-private theorem stripWxS_mem [LibsignalPlacement] (s : State) :
-    (stripWxS s).mem = stripWx s.mem := by cases s; rfl
-private theorem stripWxS_symtab [LibsignalPlacement] (s : State) :
-    (stripWxS s).symtab = s.symtab := by cases s; rfl
-private theorem stripWxS_trace [LibsignalPlacement] (s : State) :
-    (stripWxS s).trace = s.trace := by cases s; rfl
-private theorem stripWxS_readReg64 [LibsignalPlacement] (s : State) (r : Reg) :
-    (stripWxS s).readReg64 r = s.readReg64 r := by cases s; rfl
-private theorem stripWxS_returned [LibsignalPlacement] {s1 s2 : State} (h : Returned s1 s2) :
-    Returned (stripWxS s1) (stripWxS s2) := by cases s1; cases s2; exact h
-private theorem stripWxS_ccPreserved [LibsignalPlacement] {s1 s2 : State}
+private theorem findState_some_elim [LibsignalPlacement] {tr0 : List State} {s' u : State}
+    (hf : findState tr0 s' = some u) :
+    ∃ base : State, s' = stripWxMeta base u ∧ ∀ v : State, stripWxMeta s' v = stripWxMeta base v :=
+  ⟨s', (findState_some_stripWxMeta hf).symm, fun _ => rfl⟩
+
+private theorem stripWxMeta_mem [LibsignalPlacement] (base s : State) :
+    (stripWxMeta base s).mem = stripWx s.mem := by cases s; rfl
+private theorem stripWxMeta_symtab [LibsignalPlacement] (base s : State) :
+    (stripWxMeta base s).symtab = base.symtab := by cases s; rfl
+private theorem stripWxMeta_trace [LibsignalPlacement] (base s : State) :
+    (stripWxMeta base s).trace = s.trace := by cases s; rfl
+private theorem stripWxMeta_status [LibsignalPlacement] (base s : State) :
+    (stripWxMeta base s).status = s.status := by cases s; rfl
+private theorem stripWxMeta_sp [LibsignalPlacement] (base s : State) :
+    (stripWxMeta base s).sp = s.sp := by cases s; rfl
+private theorem stripWxMeta_pc [LibsignalPlacement] (base s : State) :
+    (stripWxMeta base s).pc = s.pc := by cases s; rfl
+private theorem stripWxMeta_spAligned [LibsignalPlacement] (base s : State) :
+    (stripWxMeta base s).spAligned = s.spAligned := by cases s; rfl
+private theorem stripWxMeta_readReg64 [LibsignalPlacement] (base s : State) (r : Reg) :
+    (stripWxMeta base s).readReg64 r = s.readReg64 r := by cases s; rfl
+private theorem stripWxMeta_readReg32 [LibsignalPlacement] (base s : State) (r : Reg) :
+    (stripWxMeta base s).readReg32 r = s.readReg32 r := by cases s; rfl
+private theorem stripWxMeta_returned [LibsignalPlacement] (base : State) {s1 s2 : State}
+    (h : Returned s1 s2) :
+    Returned (stripWxMeta base s1) (stripWxMeta base s2) := by cases s1; cases s2; exact h
+private theorem stripWxMeta_ccPreserved [LibsignalPlacement] (base : State) {s1 s2 : State}
     (h : CallingConventionPreserved s1 s2) :
-    CallingConventionPreserved (stripWxS s1) (stripWxS s2) := by cases s1; cases s2; exact h
+    CallingConventionPreserved (stripWxMeta base s1) (stripWxMeta base s2) := by
+  cases s1; cases s2; exact h
 
-private theorem stripWxS_applyMemcpyClobber [LibsignalPlacement] (u : State) (dst : BitVec 64)
-    (bs : List (BitVec 8)) (lr : BitVec 64) (c : LibsignalBinary.Heap.MuslMemOpsRunsTo.MemcpyClobber) :
-    stripWxS (applyMemcpyClobber u (u.mem.writeBytes dst bs) lr c) =
-      applyMemcpyClobber (stripWxS u) ((stripWxS u).mem.writeBytes dst bs) lr c := by
-  rw [stripWxS_mem, stripWx_writeBytes]
+private theorem stripWxMeta_applyMemcpyClobber [LibsignalPlacement] (base u : State)
+    (dst : BitVec 64) (bs : List (BitVec 8)) (lr : BitVec 64)
+    (c : LibsignalBinary.Heap.MuslMemOpsRunsTo.MemcpyClobber) :
+    stripWxMeta base (applyMemcpyClobber u (u.mem.writeBytes dst bs) lr c) =
+      applyMemcpyClobber (stripWxMeta base u) ((stripWxMeta base u).mem.writeBytes dst bs) lr c := by
+  rw [stripWxMeta_mem, stripWx_writeBytes]
   cases u; rfl
 
 private theorem hookExactMemcpy_shadowMemcpy [LibsignalPlacement] (tr0 : List State)
@@ -1031,31 +1334,35 @@ private theorem hookExactMemcpy_shadowMemcpy [LibsignalPlacement] (tr0 : List St
   cases hfs : findState tr0 s' with
   | none => exact hookMemcpy_exact hrun' hsp' hx0' hx1' hx2' hlr' hread' hrw' hreadable' hdisj'
   | some u =>
-    have hus : stripWxS u = s' := findState_some_stripWxS hfs
-    have hcond : s'.status = .Running ∧ s'.spAligned = true ∧
-        s'.mem.RW (s'.readReg64 .x0) (s'.readReg64 .x2).toNat ∧
-        s'.mem.Readable (s'.readReg64 .x1) (s'.readReg64 .x2).toNat ∧
-        ((s'.readReg64 .x2).toNat = 0 ∨
-          DisjointRegions (s'.readReg64 .x0) (s'.readReg64 .x2).toNat
-            (s'.readReg64 .x1) (s'.readReg64 .x2).toNat) := by
+    obtain ⟨base, rfl, hmeta⟩ := findState_some_elim hfs
+    have hcond : (stripWxMeta base u).status = .Running ∧
+        (stripWxMeta base u).spAligned = true ∧
+        (stripWxMeta base u).mem.RW ((stripWxMeta base u).readReg64 .x0)
+          ((stripWxMeta base u).readReg64 .x2).toNat ∧
+        (stripWxMeta base u).mem.Readable ((stripWxMeta base u).readReg64 .x1)
+          ((stripWxMeta base u).readReg64 .x2).toNat ∧
+        (((stripWxMeta base u).readReg64 .x2).toNat = 0 ∨
+          DisjointRegions ((stripWxMeta base u).readReg64 .x0)
+            ((stripWxMeta base u).readReg64 .x2).toNat
+            ((stripWxMeta base u).readReg64 .x1)
+            ((stripWxMeta base u).readReg64 .x2).toNat) := by
       rw [hx0', hx1', hx2']
       exact ⟨hrun', hsp', hrw', hreadable', hdisj'⟩
     dsimp only []
-    simp only [hcond, and_self, ↓reduceIte]
-    subst hus
-    have hu_run : u.status = .Running := by cases u; exact hrun'
-    have hu_sp : u.spAligned = true := by cases u; exact hsp'
-    have hu_x0 : u.readReg64 .x0 = dst := by cases u; exact hx0'
-    have hu_x1 : u.readReg64 .x1 = src := by cases u; exact hx1'
-    have hu_x2 : (u.readReg64 .x2).toNat = len := by cases u; exact hx2'
-    have hu_lr : u.readReg64 .lr = lr := by cases u; exact hlr'
-    rw [stripWxS_mem] at hread' hrw' hreadable'
+    simp only [hcond, and_self, ↓reduceIte, hmeta]
+    have hu_run : u.status = .Running := by rwa [stripWxMeta_status] at hrun'
+    have hu_sp : u.spAligned = true := by rwa [stripWxMeta_spAligned] at hsp'
+    have hu_x0 : u.readReg64 .x0 = dst := by rwa [stripWxMeta_readReg64] at hx0'
+    have hu_x1 : u.readReg64 .x1 = src := by rwa [stripWxMeta_readReg64] at hx1'
+    have hu_x2 : (u.readReg64 .x2).toNat = len := by rwa [stripWxMeta_readReg64] at hx2'
+    have hu_lr : u.readReg64 .lr = lr := by rwa [stripWxMeta_readReg64] at hlr'
+    rw [stripWxMeta_mem] at hread' hrw' hreadable'
     have hu_read : u.mem.readBytes src len = bs := (stripWx_readBytes u.mem src len).symm.trans hread'
     have hu_rw : u.mem.RW dst len := (stripWx_rw_iff u.mem dst len).mp hrw'
     have hu_readable : u.mem.Readable src len := stripWx_readable_imp hreadable'
     obtain ⟨c, hc⟩ :=
       hf_exact hu_run hu_sp hu_x0 hu_x1 hu_x2 hu_lr hu_read hu_rw hu_readable hdisj'
-    exact ⟨c, by rw [hc, stripWxS_applyMemcpyClobber]⟩
+    exact ⟨c, by rw [hc, stripWxMeta_applyMemcpyClobber]⟩
 
 private theorem hookOk_shadowMemcpy [LibsignalPlacement] (tr0 : List State)
     {f_mc : State → State} (hf_exact : HookExactMemcpy f_mc) :
@@ -1226,42 +1533,43 @@ private theorem hookOk_shadowMemset_region [LibsignalPlacement] (tr0 : List Stat
   cases hfs : findState tr0 s' with
   | none => exact hookMemset_region_trace_ok (dst, val, len) R' s' hrun' hpre' hsp'
   | some u =>
-    have hus : stripWxS u = s' := findState_some_stripWxS hfs
+    obtain ⟨base, rfl, hmeta⟩ := findState_some_elim hfs
     have hpre_open := hpre'
     dsimp only [sessionMemsetRegionSpec, memsetRegionSpec] at hpre_open
     rw [sepConj_assoc, satisfies_pure_sepConj] at hpre_open
     rcases hpre_open with ⟨⟨hx0', hx1_32', hx2', hlen⟩, hmem'⟩
-    have hrw' : s'.mem.RW dst len := (IsBlock.memRegion dst len).rw hmem'
-    have hcond : s'.status = .Running ∧ s'.spAligned = true ∧
-        s'.mem.RW (s'.readReg64 .x0) (s'.readReg64 .x2).toNat := by
+    have hrw' : (stripWxMeta base u).mem.RW dst len := (IsBlock.memRegion dst len).rw hmem'
+    have hcond : (stripWxMeta base u).status = .Running ∧
+        (stripWxMeta base u).spAligned = true ∧
+        (stripWxMeta base u).mem.RW ((stripWxMeta base u).readReg64 .x0)
+          ((stripWxMeta base u).readReg64 .x2).toNat := by
       rw [hx0', hx2']; exact ⟨hrun', hsp', hrw'⟩
     dsimp only []
-    simp only [hcond, and_self, ↓reduceIte]
-    subst hus
-    have hu_run : u.status = .Running := by cases u; exact hrun'
-    have hu_x0 : u.readReg64 .x0 = dst := by cases u; exact hx0'
+    simp only [hcond, and_self, ↓reduceIte, hmeta]
+    have hu_run : u.status = .Running := by rwa [stripWxMeta_status] at hrun'
+    have hu_x0 : u.readReg64 .x0 = dst := by rwa [stripWxMeta_readReg64] at hx0'
     have hu_x1 : (u.readReg64 .x1).truncate 8 = val := by
-      have h32 : (u.readReg32 .x1).truncate 8 = val := by cases u; exact hx1_32'
+      have h32 : (u.readReg32 .x1).truncate 8 = val := by rwa [stripWxMeta_readReg32] at hx1_32'
       rwa [State.readReg32, truncate8_truncate32] at h32
-    have hu_x2 : (u.readReg64 .x2).toNat = len := by cases u; exact hx2'
+    have hu_x2 : (u.readReg64 .x2).toNat = len := by rwa [stripWxMeta_readReg64] at hx2'
     have hu_sp_al : (u.sp &&& 15#64) = 0#64 := by
-      have hsp_u : u.spAligned = true := by cases u; exact hsp'
+      have hsp_u : u.spAligned = true := by rwa [stripWxMeta_spAligned] at hsp'
       simpa [State.spAligned] using hsp_u
-    rw [stripWxS_mem] at hrw' hmem'
+    rw [stripWxMeta_mem] at hrw' hmem'
     have hu_rw : u.mem.RW dst len := (stripWx_rw_iff u.mem dst len).mp hrw'
-    obtain ⟨hkf_u, hsym_u, hret_u, hcc_u, hx0_ret, htr_u, hread_u, hs2_u, _⟩ :=
+    obtain ⟨hkf_u, _, hret_u, hcc_u, hx0_ret, htr_u, hread_u, hs2_u, _⟩ :=
       hookOk_sessionMemsetRegion_elim hf_ms_reg hu_run hu_x0 hu_x1 hu_x2 hu_sp_al hu_rw
     have hperm_u : ∀ a, (f_ms u).mem.perm a = u.mem.perm a := (hvm_ms u).perm_eq
-    have hkf' : (stripWxS u).mem.KeepsFrozen (stripWxS (f_ms u)).mem := by
-      rw [stripWxS_mem, stripWxS_mem]; exact stripWx_keepsFrozen hkf_u
-    have hsym' : (stripWxS (f_ms u)).symtab = (stripWxS u).symtab := by
-      rw [stripWxS_symtab, stripWxS_symtab]; exact hsym_u
-    refine ⟨hkf', hsym', Or.inl ⟨stripWxS_returned hret_u, stripWxS_ccPreserved hcc_u, ?_⟩⟩
+    have hkf' : (stripWxMeta base u).mem.KeepsFrozen (stripWxMeta base (f_ms u)).mem := by
+      rw [stripWxMeta_mem, stripWxMeta_mem]; exact stripWx_keepsFrozen hkf_u
+    have hsym' : (stripWxMeta base (f_ms u)).symtab = (stripWxMeta base u).symtab := by
+      rw [stripWxMeta_symtab, stripWxMeta_symtab]
+    refine ⟨hkf', hsym', Or.inl ⟨stripWxMeta_returned base hret_u, stripWxMeta_ccPreserved base hcc_u, ?_⟩⟩
     dsimp only [sessionMemsetRegionSpec]
     rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨by rw [stripWxS_readReg64]; exact hx0_ret,
-      by rw [stripWxS_trace, stripWxS_trace]; exact htr_u⟩, ?_⟩
-    rw [stripWxS_mem]
+    refine ⟨⟨by rw [stripWxMeta_readReg64]; exact hx0_ret,
+      by rw [stripWxMeta_trace, stripWxMeta_trace]; exact htr_u⟩, ?_⟩
+    rw [stripWxMeta_mem]
     have hrep_len : (List.replicate len val).length = len := List.length_replicate
     have hb_post := IsBlock.pointsToBytes_len (a := dst) hrep_len
     have hp_pts : (dst ↦ₛ List.replicate len val) (regionHeap dst len (stripWx (f_ms u).mem)) :=
@@ -1296,28 +1604,27 @@ private theorem hookOk_shadowMemset [LibsignalPlacement] (tr0 : List State)
   · exact False.elim (not_satisfies_false_sepConj he)
   · exact False.elim (not_satisfies_false_sepConj ho)
 
-private noncomputable def shadowBlackBox [LibsignalPlacement] (tr0 : List State)
+private def shadowBlackBox [LibsignalPlacement] (tr0 : List State)
     (f_bb : State → State) (s' : State) : State :=
   match findState tr0 s' with
   | none => blackBoxHook s'
   | some u =>
-    @ite State
-      (s'.status = .Running ∧ s'.spAligned = true ∧ s'.mem.RW (s'.sp - 16#64) 16)
-      (Classical.propDecidable _)
-      (stripWxS (f_bb u))
-      (s'.setStatus (.Exception "ext"))
+    if s'.status = .Running ∧ s'.spAligned = true ∧ s'.mem.RW (s'.sp - 16#64) 16 then
+      stripWxMeta s' (f_bb u)
+    else
+      s'.setStatus (.Exception "ext")
 
-private theorem stripWxS_sp [LibsignalPlacement] (s : State) :
-    (stripWxS s).sp = s.sp := by cases s; rfl
-
-private theorem stripWxS_vmPreserved [LibsignalPlacement] {s1 s2 : State}
+private theorem stripWxMeta_vmPreserved [LibsignalPlacement] (base : State) {s1 s2 : State}
     (h : VmPreserved s1 s2) :
-    VmPreserved (stripWxS s1) (stripWxS s2) := by
+    VmPreserved (stripWxMeta base s1) (stripWxMeta base s2) := by
   refine ⟨?_, ?_, fun a => ?_, ?_⟩
   · cases s1; cases s2; exact h.1
   · cases s1; cases s2; exact h.2.1
-  · rw [stripWxS_mem, stripWxS_mem]; exact stripWx_perm_congr (h.2.2.1 a)
-  · cases s1; cases s2; exact h.2.2.2
+  · rw [stripWxMeta_mem, stripWxMeta_mem]; exact stripWx_perm_congr (h.2.2.1 a)
+  · intro fd hlo hhi
+    rcases s1 with ⟨_, _, _, _, _, _, _, _, _, _, ⟨_, _, _⟩, _, _, _, _, _, _, _, _, _, _, _⟩
+    rcases s2 with ⟨_, _, _, _, _, _, _, _, _, _, ⟨_, _, _⟩, _, _, _, _, _, _, _, _, _, _, _⟩
+    exact h.2.2.2 fd hlo hhi
 
 private theorem hookOk_shadowBlackBox [LibsignalPlacement] (tr0 : List State)
     {f_bb : State → State} (hf_bb : HookOk f_bb blackBoxSpecSat) :
@@ -1327,51 +1634,628 @@ private theorem hookOk_shadowBlackBox [LibsignalPlacement] (tr0 : List State)
   cases hfs : findState tr0 s' with
   | none => exact blackBoxHook_ok_sat v R' s' hrun' hpre' hsp'
   | some u =>
-    have hus : stripWxS u = s' := findState_some_stripWxS hfs
+    obtain ⟨base, rfl, hmeta⟩ := findState_some_elim hfs
     have hpre_open := hpre'
     dsimp only [blackBoxSpecSat, blackBoxSpec16, withVmPreserved, withStack, blackBoxSpec,
       stackAt] at hpre_open
     rw [sepConj_assoc, satisfies_pure_sepConj] at hpre_open
     rcases hpre_open with ⟨hx0', hmem'⟩
-    have hrw' : s'.mem.RW (s'.sp - 16#64) 16 :=
-      (IsBlock.memRegion (s'.sp - 16#64) 16).rw hmem'
-    have hcond : s'.status = .Running ∧ s'.spAligned = true ∧ s'.mem.RW (s'.sp - 16#64) 16 :=
+    have hrw' : (stripWxMeta base u).mem.RW ((stripWxMeta base u).sp - 16#64) 16 :=
+      (IsBlock.memRegion ((stripWxMeta base u).sp - 16#64) 16).rw hmem'
+    have hcond : (stripWxMeta base u).status = .Running ∧
+        (stripWxMeta base u).spAligned = true ∧
+        (stripWxMeta base u).mem.RW ((stripWxMeta base u).sp - 16#64) 16 :=
       ⟨hrun', hsp', hrw'⟩
     dsimp only []
-    simp only [hcond, and_self, ↓reduceIte]
-    subst hus
-    have hu_run : u.status = .Running := by cases u; exact hrun'
-    have hu_sp : u.spAligned = true := by cases u; exact hsp'
-    have hu_x0 : u.readReg64 .x0 = v := by cases u; exact hx0'
-    rw [stripWxS_mem, stripWxS_sp] at hrw' hmem'
+    simp only [hcond, and_self, ↓reduceIte, hmeta]
+    have hu_run : u.status = .Running := by rwa [stripWxMeta_status] at hrun'
+    have hu_sp : u.spAligned = true := by rwa [stripWxMeta_spAligned] at hsp'
+    have hu_x0 : u.readReg64 .x0 = v := by rwa [stripWxMeta_readReg64] at hx0'
+    rw [stripWxMeta_mem, stripWxMeta_sp] at hrw' hmem'
     have hu_rw : u.mem.RW (u.sp - 16#64) 16 :=
       (stripWx_rw_iff u.mem (u.sp - 16#64) 16).mp hrw'
-    obtain ⟨hkf_u, hsym_u, hret_u, hcc_u, hvm_u, hx0_ret, htr_u, hs2_u⟩ :=
+    obtain ⟨hkf_u, _, hret_u, hcc_u, hvm_u, hx0_ret, htr_u, hs2_u⟩ :=
       hookOk_blackBoxSpecSat_elim hf_bb hu_run hu_x0 hu_sp hu_rw
-    have hkf' : (stripWxS u).mem.KeepsFrozen (stripWxS (f_bb u)).mem := by
-      rw [stripWxS_mem, stripWxS_mem]; exact stripWx_keepsFrozen hkf_u
-    have hsym' : (stripWxS (f_bb u)).symtab = (stripWxS u).symtab := by
-      rw [stripWxS_symtab, stripWxS_symtab]; exact hsym_u
-    refine ⟨hkf', hsym', Or.inl ⟨stripWxS_returned hret_u, stripWxS_ccPreserved hcc_u, ?_⟩⟩
+    have hkf' : (stripWxMeta base u).mem.KeepsFrozen (stripWxMeta base (f_bb u)).mem := by
+      rw [stripWxMeta_mem, stripWxMeta_mem]; exact stripWx_keepsFrozen hkf_u
+    have hsym' : (stripWxMeta base (f_bb u)).symtab = (stripWxMeta base u).symtab := by
+      rw [stripWxMeta_symtab, stripWxMeta_symtab]
+    refine ⟨hkf', hsym', Or.inl ⟨stripWxMeta_returned base hret_u, stripWxMeta_ccPreserved base hcc_u, ?_⟩⟩
     dsimp only [blackBoxSpecSat, blackBoxSpec16, withVmPreserved, withStack, blackBoxSpec,
       stackAt]
     rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨stripWxS_vmPreserved hvm_u, ?_⟩
+    refine ⟨stripWxMeta_vmPreserved base hvm_u, ?_⟩
     rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨by rw [stripWxS_readReg64]; exact hx0_ret,
-      by rw [stripWxS_trace, stripWxS_trace]; exact htr_u⟩, ?_⟩
-    rw [stripWxS_mem, stripWxS_sp]
+    refine ⟨⟨by rw [stripWxMeta_readReg64]; exact hx0_ret,
+      by rw [stripWxMeta_trace, stripWxMeta_trace]; exact htr_u⟩, ?_⟩
+    rw [stripWxMeta_mem, stripWxMeta_sp]
     have hb_post := IsBlock.memRegion (u.sp - 16#64) 16
     have hp_pts :
         (memRegion (u.sp - 16#64) 16) (regionHeap (u.sp - 16#64) 16 (stripWx (f_bb u).mem)) :=
       (hb_post.iff _).mpr ⟨stripWx (f_bb u).mem, trivial, rfl⟩
     exact stripWx_s2Frame_one_block hp_pts hmem' hu_rw hkf_u hvm_u.perm_eq hs2_u
 
-private noncomputable def shadowVsigHooks [LibsignalPlacement] (tr0 : List State)
+private def RwOnlyHeap (h : Heap) : Prop :=
+  (∀ a c, h.phys a = some c → (∃ b, c = .rw b) ∨ c = .lazy) ∧
+  (∀ γ k, h.auth γ k = none) ∧
+  (∀ γ k, h.frag γ k = none) ∧
+  (∀ a, h.mapped a = false)
+
+private def StrictRwOnlyHeap (h : Heap) : Prop :=
+  (∀ a c, h.phys a = some c → ∃ b, c = .rw b) ∧
+  (∀ γ k, h.auth γ k = none) ∧
+  (∀ γ k, h.frag γ k = none) ∧
+  (∀ a, h.mapped a = false)
+
+private theorem StrictRwOnlyHeap.toRwOnlyHeap {h : Heap} (hs : StrictRwOnlyHeap h) :
+    RwOnlyHeap h :=
+  ⟨fun a c hc => Or.inl (hs.1 a c hc), hs.2.1, hs.2.2.1, hs.2.2.2⟩
+
+private theorem rwOnlyHeap_of_isBlock {Q : SepProp} {base : BitVec 64} {len : Nat}
+    {Φ : Memory → Prop} (hb : IsBlock Q base len Φ) (h : Heap) (hq : Q h) :
+    RwOnlyHeap h := by
+  obtain ⟨m1, _, rfl⟩ := (hb.iff h).mp hq
+  refine ⟨fun a c hc => ?_, fun _ _ => by simp [regionHeap],
+    fun _ _ => by simp [regionHeap], fun _ => by simp [regionHeap]⟩
+  by_cases hin : InRegion base len a
+  · simp [regionHeap, hin] at hc; exact Or.inl ⟨_, hc.symm⟩
+  · simp [regionHeap, hin] at hc
+
+private theorem strictRwOnlyHeap_of_isBlock {Q : SepProp} {base : BitVec 64} {len : Nat}
+    {Φ : Memory → Prop} (hb : IsBlock Q base len Φ) (h : Heap) (hq : Q h) :
+    StrictRwOnlyHeap h := by
+  obtain ⟨m1, _, rfl⟩ := (hb.iff h).mp hq
+  refine ⟨fun a c hc => ?_, fun _ _ => by simp [regionHeap],
+    fun _ _ => by simp [regionHeap], fun _ => by simp [regionHeap]⟩
+  by_cases hin : InRegion base len a
+  · simp [regionHeap, hin] at hc; exact ⟨_, hc.symm⟩
+  · simp [regionHeap, hin] at hc
+
+private theorem rwOnlyHeap_sepConj {P Q : SepProp}
+    (hp : ∀ h, P h → RwOnlyHeap h) (hq : ∀ h, Q h → RwOnlyHeap h)
+    (h : Heap) (hpq : (P ∗ Q) h) : RwOnlyHeap h := by
+  rcases Arm64.SepProp.holds_sepConj_elim hpq with ⟨h1, h2, _, rfl, hp1, hq2⟩
+  obtain ⟨h1_p, h1_a, h1_f, h1_m⟩ := hp h1 hp1
+  obtain ⟨h2_p, h2_a, h2_f, h2_m⟩ := hq h2 hq2
+  refine ⟨fun a c hc => ?_, fun γ k => ?_, fun γ k => ?_, fun a => ?_⟩
+  · unfold Heap.union at hc; dsimp only at hc
+    cases hc1 : h1.phys a with
+    | some c1 => rw [hc1] at hc; injection hc with hc'; subst hc'; exact h1_p a c1 hc1
+    | none => rw [hc1] at hc; exact h2_p a c hc
+  · unfold Heap.union; dsimp only; rw [h1_a γ k, h2_a γ k]
+  · unfold Heap.union; dsimp only; rw [h1_f γ k, h2_f γ k]
+  · unfold Heap.union; dsimp only; rw [h1_m a, h2_m a]; rfl
+
+private theorem strictRwOnlyHeap_sepConj {P Q : SepProp}
+    (hp : ∀ h, P h → StrictRwOnlyHeap h) (hq : ∀ h, Q h → StrictRwOnlyHeap h)
+    (h : Heap) (hpq : (P ∗ Q) h) : StrictRwOnlyHeap h := by
+  rcases Arm64.SepProp.holds_sepConj_elim hpq with ⟨h1, h2, _, rfl, hp1, hq2⟩
+  obtain ⟨h1_p, h1_a, h1_f, h1_m⟩ := hp h1 hp1
+  obtain ⟨h2_p, h2_a, h2_f, h2_m⟩ := hq h2 hq2
+  refine ⟨fun a c hc => ?_, fun γ k => ?_, fun γ k => ?_, fun a => ?_⟩
+  · unfold Heap.union at hc; dsimp only at hc
+    cases hc1 : h1.phys a with
+    | some c1 => rw [hc1] at hc; injection hc with hc'; subst hc'; exact h1_p a c1 hc1
+    | none => rw [hc1] at hc; exact h2_p a c hc
+  · unfold Heap.union; dsimp only; rw [h1_a γ k, h2_a γ k]
+  · unfold Heap.union; dsimp only; rw [h1_f γ k, h2_f γ k]
+  · unfold Heap.union; dsimp only; rw [h1_m a, h2_m a]; rfl
+
+private theorem strictRwOnlyHeap_pure_sepConj {P : Prop} {Q : SepProp}
+    (hq : ∀ h, Q h → StrictRwOnlyHeap h) (h : Heap) (hh : (⌜P⌝ ∗ Q) h) :
+    StrictRwOnlyHeap h :=
+  hq h (Arm64.SepProp.holds_pure_sepConj hh).2
+
+private theorem rwOnlyHeap_matches_stripWx_iff [LibsignalPlacement] {h : Heap}
+    (hrw : RwOnlyHeap h) (m : Memory) :
+    h.Matches (stripWx m) ↔ h.Matches m := by
+  unfold Heap.Matches
+  refine ⟨fun hm => ⟨fun a c hc => ?_, hm.2.1, fun a hma => by rw [hrw.2.2.2 a] at hma; cases hma⟩,
+          fun hm => ⟨fun a c hc => ?_, hm.2.1, fun a hma => by rw [hrw.2.2.2 a] at hma; cases hma⟩⟩
+  · have hcell := hm.1 a c hc
+    rcases hrw.1 a c hc with ⟨b, rfl⟩ | rfl
+    · obtain ⟨hp, hlf⟩ := Memory.permNoLazy_eq_some_rw_iff.mp
+        ((stripWx_permNoLazy_rw_iff m a).mp
+          (Memory.permNoLazy_eq_some_rw_iff.mpr ⟨hcell.2.1, hcell.2.2⟩))
+      exact ⟨(stripWx_read8 m a).symm.trans hcell.1, hp, hlf⟩
+    · exact ((ProofLib.strip_perm_props keepLs (hideWx m) a).2.2.2.trans
+        (by dsimp only [hideWx, Memory.perm, Perm.rw, Perm.rwx, Perm.protNone];
+            rcases m.cells a with _ | ⟨_ | ⟨r, w, x, _, _⟩, _⟩ <;>
+              [simp; simp; (cases r <;> cases w <;> cases x <;> simp)])).mp hcell
+  · have hcell := hm.1 a c hc
+    rcases hrw.1 a c hc with ⟨b, rfl⟩ | rfl
+    · obtain ⟨hp, hlf⟩ := Memory.permNoLazy_eq_some_rw_iff.mp
+        ((stripWx_permNoLazy_rw_iff m a).mpr
+          (Memory.permNoLazy_eq_some_rw_iff.mpr ⟨hcell.2.1, hcell.2.2⟩))
+      exact ⟨(stripWx_read8 m a).trans hcell.1, hp, hlf⟩
+    · exact ((ProofLib.strip_perm_props keepLs (hideWx m) a).2.2.2.trans
+        (by dsimp only [hideWx, Memory.perm, Perm.rw, Perm.rwx, Perm.protNone];
+            rcases m.cells a with _ | ⟨_ | ⟨r, w, x, _, _⟩, _⟩ <;>
+              [simp; simp; (cases r <;> cases w <;> cases x <;> simp)])).mpr hcell
+
+private theorem stripWx_perm_eq_rw_iff [LibsignalPlacement] (m : Memory) (a : BitVec 64) :
+    (stripWx m).perm a = some Perm.rw ↔ m.perm a = some Perm.rw := by
+  unfold stripWx
+  rw [(ProofLib.strip_perm_props keepLs (hideWx m) a).2.2.2]
+  dsimp only [hideWx, Memory.perm, Perm.rw, Perm.rwx, Perm.protNone]
+  rcases m.cells a with _ | ⟨_ | ⟨r, w, x, _, _⟩, _⟩
+  · simp
+  · simp
+  · cases r <;> cases w <;> cases x <;> simp
+
+private theorem stripWx_r_imp [LibsignalPlacement] {m : Memory} {a : BitVec 64}
+    (hr : ((stripWx m).perm a).r = true) : (m.perm a).r = true := by
+  unfold stripWx at hr
+  rw [(ProofLib.strip_perm_props keepLs (hideWx m) a).1] at hr
+  dsimp only [hideWx, Memory.perm, Option.r, Perm.protNone] at hr ⊢
+  revert hr
+  rcases m.cells a with _ | ⟨_ | ⟨r, w, x, _, _⟩, _⟩ <;> intro hr
+  · simp at hr
+  · simp at hr
+  · cases r <;> cases w <;> cases x <;> simp at hr ⊢
+
+private theorem fullComplementHeap_nonlazy_preserved [LibsignalPlacement]
+    {m0 mf : Memory} {h_P : Heap} {a : BitVec 64}
+    (hP_none : h_P.phys a = none)
+    (hm_c : (fullComplementHeap h_P m0).Matches mf)
+    (hkf : m0.KeepsFrozen mf)
+    (hmap_sw : ((stripWx m0).perm a).mapped = true)
+    (hlf_sw : (stripWx m0).isLazyFree a = false)
+    (hkind : ((stripWx m0).perm a).r = true ∨ (stripWx m0).perm a = some Perm.protNone) :
+    mf.read8 a = m0.read8 a ∧ mf.isLazyFree a = false := by
+  obtain ⟨_, hlf_eq0, _⟩ := stripWx_mapped_props hmap_sw
+  have hlf0 : m0.isLazyFree a = false := hlf_eq0.symm.trans hlf_sw
+  unfold Heap.Matches at hm_c
+  by_cases hrw0 : m0.perm a = some Perm.rw
+  · have hca : (fullComplementHeap h_P m0).phys a = some (.rw (m0.read8 a)) := by
+      simp [fullComplementHeap, hP_none, hrw0, hlf0]
+    obtain ⟨hrd, _, hlf⟩ := hm_c.1 a _ hca
+    exact ⟨hrd, hlf⟩
+  · by_cases hr0 : (m0.perm a).r = true
+    · have hca : (fullComplementHeap h_P m0).phys a = some (.ro (m0.read8 a)) := by
+        simp [fullComplementHeap, hP_none, hrw0, hr0, hlf0]
+      obtain ⟨hrd, _, hlf⟩ := hm_c.1 a _ hca
+      exact ⟨hrd, hlf⟩
+    · by_cases hpn0 : m0.perm a = some Perm.protNone
+      · have hca : (fullComplementHeap h_P m0).phys a = some (.protNone (m0.read8 a)) := by
+          simp [fullComplementHeap, hP_none, hpn0, hlf0, Perm.protNone, Perm.rw, Option.r]
+        obtain ⟨hrd, _, hlf⟩ := hm_c.1 a _ hca
+        exact ⟨hrd, hlf⟩
+      · rcases hkind with hr_sw | hpn_sw
+        · exact absurd (stripWx_r_imp hr_sw) hr0
+        · have hfz : m0.Frozen a := by
+            unfold stripWx at hpn_sw
+            rw [ProofLib.strip_perm, hideWx_perm] at hpn_sw
+            unfold Memory.Frozen
+            generalize keepLs a = ic at hpn_sw
+            revert hpn_sw hr0 hpn0
+            rcases m0.perm a with _ | ⟨r, w, x, lf, an⟩ <;> intro h1 h2 h3
+            · simp at h1 h2 h3
+            · cases ic <;> cases r <;> cases w <;> cases x <;> cases lf <;> cases an <;>
+                simp [ProofLib.stripPerm, Perm.protNone, Option.r, Option.frozen, Perm.frozen]
+                  at h1 h2 h3 ⊢
+          obtain ⟨hrd, _, hlf_eq, _⟩ := hkf a hfz
+          exact ⟨hrd, hlf_eq.trans hlf0⟩
+
+private theorem strip_strictRwOnly_frame [LibsignalPlacement]
+    {m0 mf : Memory} {P_post R' : SepProp} {h_P h_R' : Heap}
+    (hP_rw : StrictRwOnlyHeap h_P) (hQ_rw : ∀ h, P_post h → StrictRwOnlyHeap h)
+    (hdisj_PR' : h_P.Disjoint h_R') (hp_R' : R' h_R') (hm_R' : h_R'.Matches (stripWx m0))
+    (hkf : m0.KeepsFrozen mf)
+    (hperm : ∀ a, mf.perm a = m0.perm a)
+    (hpost_u : mf ⊨ P_post ∗ ⟨fun h => h = fullComplementHeap h_P m0⟩) :
+    stripWx mf ⊨ P_post ∗ R' := by
+  obtain ⟨h_Q, _, hdisj_Qc, hp_Q, rfl, hm_Qc⟩ := Satisfies.sepConj_elim hpost_u
+  have hQr : StrictRwOnlyHeap h_Q := hQ_rw h_Q hp_Q
+  have hm_Q : h_Q.Matches mf := Heap.Matches.of_union_left hm_Qc
+  have hm_Q_swx : h_Q.Matches (stripWx mf) :=
+    (rwOnlyHeap_matches_stripWx_iff hQr.toRwOnlyHeap mf).mpr hm_Q
+  have hm_c : (fullComplementHeap h_P m0).Matches mf :=
+    Heap.Matches.of_union_right hdisj_Qc hm_Qc
+  have hm_c_raw := hm_c
+  unfold Heap.Disjoint at hdisj_PR' hdisj_Qc
+  unfold Heap.Matches at hm_Q hm_R' hm_c_raw
+  have hP_none_of_R' : ∀ a c_R, h_R'.phys a = some c_R → h_P.phys a = none := by
+    intro a c_R hcR
+    cases hp : h_P.phys a with
+    | none => rfl
+    | some cp =>
+      rcases hdisj_PR'.1 a with h1 | h2 | ⟨_, h3, _⟩
+      · rw [hp] at h1; cases h1
+      · rw [hcR] at h2; cases h2
+      · obtain ⟨_, hcp⟩ := hP_rw.1 a cp hp; rw [hcp] at hp; rw [hp] at h3; cases h3
+  have hdisj_QR' : h_Q.Disjoint h_R' := by
+    unfold Heap.Disjoint
+    refine ⟨fun a => ?_,
+      fun γ k => Or.inl (hQr.2.1 γ k),
+      fun γ k => Or.inl (hQr.2.2.1 γ k),
+      (fun γ k _ _ h => by
+        rcases h with ⟨ha, _⟩ | ⟨_, hf⟩
+        · rw [hQr.2.1 γ k] at ha; cases ha
+        · rw [hQr.2.2.1 γ k] at hf; cases hf),
+      fun a => Or.inl (hQr.2.2.2 a)⟩
+    cases hcR : h_R'.phys a with
+    | none => exact Or.inr (Or.inl rfl)
+    | some c_R =>
+      cases hcQ : h_Q.phys a with
+      | none => exact Or.inl rfl
+      | some c_Q =>
+        obtain ⟨b_Q, rfl⟩ := hQr.1 a c_Q hcQ
+        have hm0_rw : m0.perm a = some Perm.rw :=
+          (hperm a).symm.trans (hm_Q.1 a (.rw b_Q) hcQ).2.1
+        have hPn := hP_none_of_R' a c_R hcR
+        rcases hdisj_Qc.1 a with h1 | h2 | ⟨_, h3, _⟩
+        · rw [hcQ] at h1; cases h1
+        · cases hlf0 : m0.isLazyFree a <;>
+            simp [fullComplementHeap, hPn, hm0_rw, hlf0] at h2
+        · rw [hcQ] at h3; cases h3
+  have hperm_swx : ∀ a, (stripWx mf).perm a = (stripWx m0).perm a :=
+    fun a => stripWx_perm_congr (hperm a)
+  have hm_R'_swx : h_R'.Matches (stripWx mf) := by
+    unfold Heap.Matches
+    refine ⟨fun a c_R hcR => ?_, hm_R'.2.1, fun a hma => ?_⟩
+    · have hcell := hm_R'.1 a c_R hcR
+      have hPn := hP_none_of_R' a c_R hcR
+      cases c_R with
+      | lazy => rw [hperm_swx a]; exact hcell
+      | protNoneLazy => rw [hperm_swx a]; exact hcell
+      | rw b =>
+        have hmap_sw : ((stripWx m0).perm a).mapped = true := by rw [hcell.2.1]; rfl
+        have hr_sw : ((stripWx m0).perm a).r = true := by rw [hcell.2.1]; rfl
+        obtain ⟨hrd_mf, hlf_mf⟩ :=
+          fullComplementHeap_nonlazy_preserved hPn hm_c hkf hmap_sw hcell.2.2 (Or.inl hr_sw)
+        have hmap_mf : ((stripWx mf).perm a).mapped = true := by rw [hperm_swx a]; exact hmap_sw
+        obtain ⟨_, hlf_sw_mf, _⟩ := stripWx_mapped_props hmap_mf
+        exact ⟨(stripWx_read8 mf a).trans (hrd_mf.trans ((stripWx_read8 m0 a).symm.trans hcell.1)),
+          (hperm_swx a).trans hcell.2.1, hlf_sw_mf.trans hlf_mf⟩
+      | ro b =>
+        have hmap_sw : ((stripWx m0).perm a).mapped = true := by
+          have hr_sw : ((stripWx m0).perm a).r = true := hcell.2.1
+          revert hr_sw
+          rcases (stripWx m0).perm a with _ | _ <;> intro hr_sw <;> [cases hr_sw; rfl]
+        obtain ⟨hrd_mf, hlf_mf⟩ :=
+          fullComplementHeap_nonlazy_preserved hPn hm_c hkf hmap_sw hcell.2.2 (Or.inl hcell.2.1)
+        have hmap_mf : ((stripWx mf).perm a).mapped = true := by rw [hperm_swx a]; exact hmap_sw
+        obtain ⟨_, hlf_sw_mf, _⟩ := stripWx_mapped_props hmap_mf
+        exact ⟨(stripWx_read8 mf a).trans (hrd_mf.trans ((stripWx_read8 m0 a).symm.trans hcell.1)),
+          by rw [hperm_swx a]; exact hcell.2.1, hlf_sw_mf.trans hlf_mf⟩
+      | protNone b =>
+        have hmap_sw : ((stripWx m0).perm a).mapped = true := by rw [hcell.2.1]; rfl
+        obtain ⟨hrd_mf, hlf_mf⟩ :=
+          fullComplementHeap_nonlazy_preserved hPn hm_c hkf hmap_sw hcell.2.2 (Or.inr hcell.2.1)
+        have hmap_mf : ((stripWx mf).perm a).mapped = true := by rw [hperm_swx a]; exact hmap_sw
+        obtain ⟨_, hlf_sw_mf, _⟩ := stripWx_mapped_props hmap_mf
+        exact ⟨(stripWx_read8 mf a).trans (hrd_mf.trans ((stripWx_read8 m0 a).symm.trans hcell.1)),
+          (hperm_swx a).trans hcell.2.1, hlf_sw_mf.trans hlf_mf⟩
+    · obtain ⟨hmap_sw, han_sw⟩ := hm_R'.2.2 a hma
+      obtain ⟨hmap0, _, han_eq0⟩ := stripWx_mapped_props hmap_sw
+      have han0 : m0.isAnon a = true := han_eq0.symm.trans han_sw
+      have hc_map : (fullComplementHeap h_P m0).mapped a = true := by
+        simp [fullComplementHeap, hP_rw.2.2.2 a, hmap0, han0]
+      have hmf_an : mf.isAnon a = true := (hm_c_raw.2.2 a hc_map).2
+      have hmap_mf : ((stripWx mf).perm a).mapped = true := by rw [hperm_swx a]; exact hmap_sw
+      exact ⟨hmap_mf, (stripWx_mapped_props hmap_mf).2.2.trans hmf_an⟩
+  exact Satisfies.sepConj_intro hdisj_QR' hp_Q hp_R' (Heap.Matches.union hm_Q_swx hm_R'_swx)
+
+private def AnonMono (m1 m2 : Memory) : Prop :=
+  ∀ a, (m1.perm a).mapped = true → m1.isAnon a = true → m2.isAnon a = true
+
+private theorem AnonMono.refl (m : Memory) : AnonMono m m := fun _ _ h => h
+
+private theorem AnonMono.trans {m1 m2 m3 : Memory} (h12 : AnonMono m1 m2) (h23 : AnonMono m2 m3)
+    (hp12 : ∀ a, m2.perm a = m1.perm a) : AnonMono m1 m3 :=
+  fun a hm ha => h23 a (by rw [hp12 a]; exact hm) (h12 a hm ha)
+
+private local instance instDecAnonMono (m1 m2 : Memory) : Decidable (AnonMono m1 m2) :=
+  decForallBV 64 fun a => (m1.perm a).mapped = true → m1.isAnon a = true → m2.isAnon a = true
+
+private local instance instDecFdsHiFrame (s s' : State) :
+    Decidable (LibsignalBinary.Heap.FdsHiFrame s s') :=
+  letI : Decidable (∀ fd < 2 ^ 31, 3 ≤ fd → s'.fs.fds (BitVec.ofNat 64 fd) = s.fs.fds (BitVec.ofNat 64 fd)) :=
+    decForallLt (2 ^ 31) fun fd => 3 ≤ fd → s'.fs.fds (BitVec.ofNat 64 fd) = s.fs.fds (BitVec.ofNat 64 fd)
+  decidable_of_iff
+    (∀ fd < 2 ^ 31, 3 ≤ fd → s'.fs.fds (BitVec.ofNat 64 fd) = s.fs.fds (BitVec.ofNat 64 fd))
+    ⟨fun h fd hlo hhi => h fd hhi hlo, fun h fd hhi hlo => h fd hlo hhi⟩
+
+private local instance instDecVmPreserved (s s' : State) : Decidable (VmPreserved s s') :=
+  letI : Decidable (∀ a : BitVec 64, s'.mem.perm a = s.mem.perm a) :=
+    decForallBV 64 fun a => s'.mem.perm a = s.mem.perm a
+  inferInstanceAs
+    (Decidable (LibsignalBinary.Heap.PoolPreserved s s' ∧ s'.physMemAvail = s.physMemAvail ∧
+      (∀ a : BitVec 64, s'.mem.perm a = s.mem.perm a) ∧ LibsignalBinary.Heap.FdsHiFrame s s'))
+
+private def shadowRwOnly [LibsignalPlacement] (tr0 : List State)
+    (fb f : State → State) (s' : State) : State :=
+  match findState tr0 s' with
+  | none => fb s'
+  | some u =>
+    if s'.status = .Running ∧ s'.spAligned = true ∧
+        VmPreserved u (f u) ∧ AnonMono u.mem (f u).mem then
+      stripWxMeta s' (f u)
+    else
+      s'.setStatus (.Exception "ext")
+
+private theorem hookOk_shadowRwOnly [LibsignalPlacement] (tr0 : List State)
+    {α : Type} {spec : Spec α} {fb f : State → State}
+    (hfb : HookOk fb (withLsRet spec))
+    (hf : HookOk f (withLsRet (withVmPreserved spec)))
+    (hPreRw : ∀ (x : α) (s : State) (h : Heap), (withLsRet spec).pre x s h → StrictRwOnlyHeap h)
+    (hPostRw : ∀ (x : α) (s0 sf : State) (h : Heap), spec.post x s0 sf h → StrictRwOnlyHeap h)
+    (hPreEq : ∀ (x : α) (base u : State), (withLsRet spec).pre x (stripWxMeta base u) = (withLsRet spec).pre x u)
+    (hPostImp : ∀ (x : α) (base u v : State) (R : SepProp) (m : Memory),
+      m ⊨ spec.post x u v ∗ R → m ⊨ spec.post x (stripWxMeta base u) (stripWxMeta base v) ∗ R)
+    (hPan : spec.onPanic = fun _ _ _ => ⌜False⌝ := by rfl)
+    (hEx : spec.onExit = fun _ _ _ _ => ⌜False⌝ := by rfl)
+    (hOom : spec.onOom = fun _ _ _ => ⌜False⌝ := by rfl) :
+    HookOk (shadowRwOnly tr0 fb f) (withLsRet spec) := by
+  intro x R' s' hrun' hpre' hsp'
+  unfold shadowRwOnly
+  cases hfs : findState tr0 s' with
+  | none => exact hfb x R' s' hrun' hpre' hsp'
+  | some u =>
+    obtain ⟨base, rfl, hmeta⟩ := findState_some_elim hfs
+    have hu_run : u.status = .Running := by rwa [stripWxMeta_status] at hrun'
+    have hu_sp : u.spAligned = true := by rwa [stripWxMeta_spAligned] at hsp'
+    rw [hPreEq x base u, stripWxMeta_mem] at hpre'
+    obtain ⟨h_P, h_R', hdisj_PR', hp_P, hp_R', hm_PR'⟩ := Satisfies.sepConj_elim hpre'
+    have hP_rw : StrictRwOnlyHeap h_P := hPreRw x u h_P hp_P
+    have hm_P_u : h_P.Matches u.mem :=
+      (rwOnlyHeap_matches_stripWx_iff hP_rw.toRwOnlyHeap u.mem).mp (Heap.Matches.of_union_left hm_PR')
+    let R_comp : SepProp := ⟨fun h => h = fullComplementHeap h_P u.mem⟩
+    have hpre_u : u.mem ⊨ (withLsRet (withVmPreserved spec)).pre x u ∗ R_comp :=
+      Satisfies.sepConj_intro (disjoint_fullComplementHeap h_P u.mem) hp_P rfl
+        (Heap.Matches.union hm_P_u (matches_fullComplementHeap h_P u.mem))
+    obtain ⟨hkf_u, _, hout_u⟩ := hf x R_comp u hu_run hpre_u hu_sp
+    rcases hout_u with ⟨hret_u, hcc_u, hpost_u⟩ | ⟨_, hp⟩ | ⟨_, _, he⟩ | ⟨_, ho⟩
+    · dsimp only [withLsRet, withVmPreserved] at hpost_u
+      rw [sepConj_assoc, satisfies_pure_sepConj] at hpost_u
+      obtain ⟨hvm_u, hpost_spec⟩ := hpost_u
+      have han_u : AnonMono u.mem (f u).mem := by
+        obtain ⟨_, _, hdisj_Qc, _, rfl, hm_Qc⟩ := Satisfies.sepConj_elim hpost_spec
+        have hm_c : (fullComplementHeap h_P u.mem).Matches (f u).mem :=
+          Heap.Matches.of_union_right hdisj_Qc hm_Qc
+        unfold Heap.Matches at hm_c
+        intro a hmap ha
+        have hc_map : (fullComplementHeap h_P u.mem).mapped a = true := by
+          simp [fullComplementHeap, hP_rw.2.2.2 a, hmap, ha]
+        exact (hm_c.2.2 a hc_map).2
+      have hcond : (stripWxMeta base u).status = .Running ∧
+          (stripWxMeta base u).spAligned = true ∧
+          VmPreserved u (f u) ∧ AnonMono u.mem (f u).mem :=
+        ⟨hrun', hsp', hvm_u, han_u⟩
+      dsimp only []
+      simp only [hcond, and_self, ↓reduceIte, hmeta]
+      have hkf' : (stripWxMeta base u).mem.KeepsFrozen (stripWxMeta base (f u)).mem := by
+        rw [stripWxMeta_mem, stripWxMeta_mem]; exact stripWx_keepsFrozen hkf_u
+      have hsym' : (stripWxMeta base (f u)).symtab = (stripWxMeta base u).symtab := by
+        rw [stripWxMeta_symtab, stripWxMeta_symtab]
+      refine ⟨hkf', hsym', Or.inl ⟨stripWxMeta_returned base hret_u, stripWxMeta_ccPreserved base hcc_u, ?_⟩⟩
+      dsimp only [withLsRet]
+      rw [stripWxMeta_mem]
+      exact hPostImp x base u (f u) R' (stripWx (f u).mem)
+        (strip_strictRwOnly_frame hP_rw (hPostRw x u (f u)) hdisj_PR' hp_R'
+          (Heap.Matches.of_union_right hdisj_PR' hm_PR') hkf_u hvm_u.perm_eq hpost_spec)
+    · dsimp only [withLsRet, withVmPreserved] at hp; rw [hPan] at hp
+      exact False.elim (not_satisfies_false_sepConj hp)
+    · dsimp only [withLsRet, withVmPreserved] at he; rw [hEx] at he
+      exact False.elim (not_satisfies_false_sepConj he)
+    · dsimp only [withLsRet, withVmPreserved] at ho; rw [hOom] at ho
+      exact False.elim (not_satisfies_false_sepConj ho)
+
+private theorem dalekMontToEdExtOutAt_strictRwOnly (outPtr : BitVec 64) (u_bs : List (BitVec 8))
+    (sign : Nat) (h : Heap) (hh : dalekMontToEdExtOutAt outPtr u_bs sign h) :
+    StrictRwOnlyHeap h := by
+  unfold dalekMontToEdExtOutAt at hh
+  cases hmont : montToEdwards u_bs sign
+  · rw [hmont] at hh
+    exact strictRwOnlyHeap_sepConj
+      (strictRwOnlyHeap_of_isBlock (IsBlock.pointsTo64 _ _))
+      (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _)) h hh
+  · rw [hmont] at hh
+    obtain ⟨ed_bs, hed⟩ := Arm64.SepProp.holds_sepExists hh
+    exact strictRwOnlyHeap_pure_sepConj
+      (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _)) h hed
+
+private theorem dalekMontToEdExt_pre_strictRwOnly [LibsignalPlacement] (stk : Nat)
+    (g : _) (s : State) (h : Heap) (hh : (withLsRet (dalekMontToEdExtSpec stk)).pre g s h) :
+    StrictRwOnlyHeap h := by
+  dsimp only [withLsRet, dalekMontToEdExtSpec] at hh
+  exact strictRwOnlyHeap_pure_sepConj
+    (strictRwOnlyHeap_pure_sepConj
+      (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+        (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _))
+          (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _))))) h hh
+
+private theorem dalekMontToEdExt_post_strictRwOnly (stk : Nat)
+    (g : _) (s0 sf : State) (h : Heap) (hh : (dalekMontToEdExtSpec stk).post g s0 sf h) :
+    StrictRwOnlyHeap h := by
+  dsimp only [dalekMontToEdExtSpec] at hh
+  exact strictRwOnlyHeap_pure_sepConj
+    (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+      (strictRwOnlyHeap_sepConj (dalekMontToEdExtOutAt_strictRwOnly _ _ _)
+        (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _)))) h hh
+
+private theorem dalekCompressExt_pre_strictRwOnly [LibsignalPlacement] (stk : Nat)
+    (g : _) (s : State) (h : Heap) (hh : (withLsRet (dalekCompressExtSpec stk)).pre g s h) :
+    StrictRwOnlyHeap h := by
+  dsimp only [withLsRet, dalekCompressExtSpec] at hh
+  exact strictRwOnlyHeap_pure_sepConj
+    (strictRwOnlyHeap_pure_sepConj
+      (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+        (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _))
+          (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _))))) h hh
+
+private theorem dalekCompressExt_post_strictRwOnly (stk : Nat)
+    (g : _) (s0 sf : State) (h : Heap) (hh : (dalekCompressExtSpec stk).post g s0 sf h) :
+    StrictRwOnlyHeap h := by
+  dsimp only [dalekCompressExtSpec] at hh
+  exact strictRwOnlyHeap_pure_sepConj
+    (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+      (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+        (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _)))) h hh
+
+private theorem dalekEdNegExt_pre_strictRwOnly [LibsignalPlacement] (stk : Nat)
+    (g : _) (s : State) (h : Heap) (hh : (withLsRet (dalekEdNegExtSpec stk)).pre g s h) :
+    StrictRwOnlyHeap h := by
+  dsimp only [withLsRet, dalekEdNegExtSpec] at hh
+  exact strictRwOnlyHeap_pure_sepConj
+    (strictRwOnlyHeap_pure_sepConj
+      (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+        (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _))
+          (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _))))) h hh
+
+private theorem dalekEdNegExt_post_strictRwOnly (stk : Nat)
+    (g : _) (s0 sf : State) (h : Heap) (hh : (dalekEdNegExtSpec stk).post g s0 sf h) :
+    StrictRwOnlyHeap h := by
+  dsimp only [dalekEdNegExtSpec] at hh
+  exact strictRwOnlyHeap_pure_sepConj
+    (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+      (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+        (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _)))) h hh
+
+private theorem dalekScalarWideExt_pre_strictRwOnly [LibsignalPlacement] (stk : Nat)
+    (g : _) (s : State) (h : Heap) (hh : (withLsRet (dalekScalarWideExtSpec stk)).pre g s h) :
+    StrictRwOnlyHeap h := by
+  dsimp only [withLsRet, dalekScalarWideExtSpec] at hh
+  exact strictRwOnlyHeap_pure_sepConj
+    (strictRwOnlyHeap_pure_sepConj
+      (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+        (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _))
+          (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _))))) h hh
+
+private theorem dalekScalarWideExt_post_strictRwOnly (stk : Nat)
+    (g : _) (s0 sf : State) (h : Heap) (hh : (dalekScalarWideExtSpec stk).post g s0 sf h) :
+    StrictRwOnlyHeap h := by
+  dsimp only [dalekScalarWideExtSpec] at hh
+  exact strictRwOnlyHeap_pure_sepConj
+    (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+      (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+        (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _)))) h hh
+
+private theorem dalekScalarModExt_pre_strictRwOnly [LibsignalPlacement] (stk : Nat)
+    (g : _) (s : State) (h : Heap) (hh : (withLsRet (dalekScalarModExtSpec stk)).pre g s h) :
+    StrictRwOnlyHeap h := by
+  dsimp only [withLsRet, dalekScalarModExtSpec] at hh
+  exact strictRwOnlyHeap_pure_sepConj
+    (strictRwOnlyHeap_pure_sepConj
+      (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+        (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _))
+          (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _))))) h hh
+
+private theorem dalekScalarModExt_post_strictRwOnly (stk : Nat)
+    (g : _) (s0 sf : State) (h : Heap) (hh : (dalekScalarModExtSpec stk).post g s0 sf h) :
+    StrictRwOnlyHeap h := by
+  dsimp only [dalekScalarModExtSpec] at hh
+  exact strictRwOnlyHeap_pure_sepConj
+    (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+      (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+        (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _)))) h hh
+
+private theorem dalekDsmbExt_pre_strictRwOnly [LibsignalPlacement] (stk : Nat)
+    (g : _) (s : State) (h : Heap) (hh : (withLsRet (dalekDsmbExtSpec stk)).pre g s h) :
+    StrictRwOnlyHeap h := by
+  dsimp only [withLsRet, dalekDsmbExtSpec] at hh
+  exact strictRwOnlyHeap_pure_sepConj
+    (strictRwOnlyHeap_pure_sepConj
+      (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+        (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+          (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+            (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _))
+              (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _))))))) h hh
+
+private theorem dalekDsmbExt_post_strictRwOnly (stk : Nat)
+    (g : _) (s0 sf : State) (h : Heap) (hh : (dalekDsmbExtSpec stk).post g s0 sf h) :
+    StrictRwOnlyHeap h := by
+  dsimp only [dalekDsmbExtSpec] at hh
+  exact strictRwOnlyHeap_pure_sepConj
+    (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+      (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+        (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+          (strictRwOnlyHeap_sepConj
+            (fun h1 hex => by
+              obtain ⟨res_bs, hres⟩ := Arm64.SepProp.holds_sepExists hex
+              exact strictRwOnlyHeap_pure_sepConj
+                (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _)) h1 hres)
+            (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _)))))) h hh
+
+private def unreachedDummy : UnreachedPqxdhPrimitives where
+  sigPkGen _ := []
+  sigSign _ _ _ := []
+  scalarMul _ _ := []
+  scalarAdd _ _ := []
+  kemKeyGen _ := ([], [])
+  pow8 _ := []
+  isValidDhTriple _ _ _ := false
+
+private def sha512PrimsRef : PEParams where
+  C := { F := fun s _ => s, E := fun _ b => b, D := fun _ b => b,
+         X := fun _ u => u, pubKey := fun s => s }
+  Q := { F512 := CryptoGames.SHA512.sha512CompressState
+         encaps := fun pk r => (pk, r)
+         decaps := fun _ _ => List.Vector.replicate 32 0#8
+         K := { keyPair := fun _ => List.Vector.replicate 2400 0#8
+                encaps1 := fun _ _ => none
+                encaps2 := fun _ _ => List.Vector.replicate 128 0#8
+                decaps := fun _ _ _ => List.Vector.replicate 32 0#8
+                validPk := fun _ _ => false } }
+
+private theorem sha512CompressOutBytes_modelPrims_eq
+    (Y : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (hF512 : W.Q.F512 = CryptoGames.SHA512.sha512CompressState) :
+    sha512CompressOutBytes (modelPrims Y ⟨W.C, W.Q⟩) =
+      sha512CompressOutBytes (modelPrims unreachedDummy sha512PrimsRef) := by
+  have hcomp : (modelPrims Y ⟨W.C, W.Q⟩).sha512Compress =
+      (modelPrims unreachedDummy sha512PrimsRef).sha512Compress := by
+    funext st blk
+    change sha512StateBytesBE (W.Q.F512 _ _) = sha512StateBytesBE (sha512PrimsRef.Q.F512 _ _)
+    rw [hF512]; rfl
+  have hstep : SignalPqxdh.sha512Step (modelPrims Y ⟨W.C, W.Q⟩) =
+      SignalPqxdh.sha512Step (modelPrims unreachedDummy sha512PrimsRef) := by
+    funext s b; unfold SignalPqxdh.sha512Step; rw [hcomp]
+  funext st blk; unfold sha512CompressOutBytes; rw [hstep]
+
+private theorem compressInPlaceStubPlaced_pre_strictRwOnly [LibsignalPlacement]
+    (fn : SignalPqxdh.Bytes → SignalPqxdh.Bytes → SignalPqxdh.Bytes)
+    (g : _) (s : State) (h : Heap)
+    (hh : (withLsRet (compressInPlaceStubSpecPlaced fn 64 128)).pre g s h) :
+    StrictRwOnlyHeap h := by
+  dsimp only [withLsRet, compressInPlaceStubSpecPlaced] at hh
+  exact strictRwOnlyHeap_pure_sepConj
+    (strictRwOnlyHeap_pure_sepConj
+      (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+        (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+          (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _))))) h hh
+
+private theorem compressInPlaceStubPlaced_post_strictRwOnly
+    (fn : SignalPqxdh.Bytes → SignalPqxdh.Bytes → SignalPqxdh.Bytes)
+    (g : _) (s0 sf : State) (h : Heap)
+    (hh : (compressInPlaceStubSpecPlaced fn 64 128).post g s0 sf h) :
+    StrictRwOnlyHeap h := by
+  dsimp only [compressInPlaceStubSpecPlaced] at hh
+  exact strictRwOnlyHeap_pure_sepConj
+    (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+      (strictRwOnlyHeap_sepConj (strictRwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
+        (strictRwOnlyHeap_of_isBlock (IsBlock.memRegion _ _)))) h hh
+
+private def shadowVsigHooks [LibsignalPlacement] (tr0 : List State)
     (H : LibsignalHooks) (n : String) : Option (State → State) :=
   if n == lsMemcpySym then (H n).map (shadowMemcpy tr0)
   else if n == lsVerifyMemsetSym then (H n).map (shadowMemset tr0)
   else if n == lsBlackBoxU8Sym then (H n).map (shadowBlackBox tr0)
+  else if n == lsVerifyMontToEdSym then
+    (H n).map (shadowRwOnly tr0 dalekMontToEdFallback)
+  else if n == lsDalekCompressSym then
+    (H n).map (shadowRwOnly tr0 dalekCompressFallback)
+  else if n == lsDalekEdNegSym then
+    (H n).map (shadowRwOnly tr0 (edNegHook dalekEdNegVec))
+  else if n == lsSha512CompressSym then
+    (H n).map (shadowRwOnly tr0 (compress512Hook CryptoGames.SHA512.sha512CompressState))
+  else if n == lsDalekScalarWideSym then
+    (H n).map (shadowRwOnly tr0 dalekScalarWideFallback)
+  else if n == lsDalekScalarModSym then
+    (H n).map (shadowRwOnly tr0 dalekScalarModFallback)
+  else if n == lsDalekDoubleMulSym then
+    (H n).map (shadowRwOnly tr0 dalekDsmbFallback)
   else vsigOnlyHooks H n
 
 private theorem shadowVsigHooks_memcpy [LibsignalPlacement] (tr0 : List State)
@@ -1392,33 +2276,126 @@ private theorem shadowVsigHooks_blackBox [LibsignalPlacement] (tr0 : List State)
   have h2 : (lsBlackBoxU8Sym == lsVerifyMemsetSym) = false := by decide
   simp [shadowVsigHooks, h1, h2]
 
+private theorem shadowVsigHooks_montToEd [LibsignalPlacement] (tr0 : List State)
+    (H : LibsignalHooks) :
+    shadowVsigHooks tr0 H lsVerifyMontToEdSym =
+      (H lsVerifyMontToEdSym).map (shadowRwOnly tr0 dalekMontToEdFallback) := by
+  have h1 : (lsVerifyMontToEdSym == lsMemcpySym) = false := by decide
+  have h2 : (lsVerifyMontToEdSym == lsVerifyMemsetSym) = false := by decide
+  have h3 : (lsVerifyMontToEdSym == lsBlackBoxU8Sym) = false := by decide
+  simp [shadowVsigHooks, h1, h2, h3]
+
+private theorem shadowVsigHooks_compress [LibsignalPlacement] (tr0 : List State)
+    (H : LibsignalHooks) :
+    shadowVsigHooks tr0 H lsDalekCompressSym =
+      (H lsDalekCompressSym).map (shadowRwOnly tr0 dalekCompressFallback) := by
+  have h1 : (lsDalekCompressSym == lsMemcpySym) = false := by decide
+  have h2 : (lsDalekCompressSym == lsVerifyMemsetSym) = false := by decide
+  have h3 : (lsDalekCompressSym == lsBlackBoxU8Sym) = false := by decide
+  have h4 : (lsDalekCompressSym == lsVerifyMontToEdSym) = false := by decide
+  simp [shadowVsigHooks, h1, h2, h3, h4]
+
+private theorem shadowVsigHooks_edNeg [LibsignalPlacement] (tr0 : List State)
+    (H : LibsignalHooks) :
+    shadowVsigHooks tr0 H lsDalekEdNegSym =
+      (H lsDalekEdNegSym).map (shadowRwOnly tr0 (edNegHook dalekEdNegVec)) := by
+  have h1 : (lsDalekEdNegSym == lsMemcpySym) = false := by decide
+  have h2 : (lsDalekEdNegSym == lsVerifyMemsetSym) = false := by decide
+  have h3 : (lsDalekEdNegSym == lsBlackBoxU8Sym) = false := by decide
+  have h4 : (lsDalekEdNegSym == lsVerifyMontToEdSym) = false := by decide
+  have h5 : (lsDalekEdNegSym == lsDalekCompressSym) = false := by decide
+  simp [shadowVsigHooks, h1, h2, h3, h4, h5]
+
+private theorem shadowVsigHooks_sha512Compress [LibsignalPlacement] (tr0 : List State)
+    (H : LibsignalHooks) :
+    shadowVsigHooks tr0 H lsSha512CompressSym =
+      (H lsSha512CompressSym).map
+        (shadowRwOnly tr0 (compress512Hook CryptoGames.SHA512.sha512CompressState)) := by
+  have h1 : (lsSha512CompressSym == lsMemcpySym) = false := by decide
+  have h2 : (lsSha512CompressSym == lsVerifyMemsetSym) = false := by decide
+  have h3 : (lsSha512CompressSym == lsBlackBoxU8Sym) = false := by decide
+  have h4 : (lsSha512CompressSym == lsVerifyMontToEdSym) = false := by decide
+  have h5 : (lsSha512CompressSym == lsDalekCompressSym) = false := by decide
+  have h6 : (lsSha512CompressSym == lsDalekEdNegSym) = false := by decide
+  simp [shadowVsigHooks, h1, h2, h3, h4, h5, h6]
+
+private theorem shadowVsigHooks_scalarWide [LibsignalPlacement] (tr0 : List State)
+    (H : LibsignalHooks) :
+    shadowVsigHooks tr0 H lsDalekScalarWideSym =
+      (H lsDalekScalarWideSym).map (shadowRwOnly tr0 dalekScalarWideFallback) := by
+  have h1 : (lsDalekScalarWideSym == lsMemcpySym) = false := by decide
+  have h2 : (lsDalekScalarWideSym == lsVerifyMemsetSym) = false := by decide
+  have h3 : (lsDalekScalarWideSym == lsBlackBoxU8Sym) = false := by decide
+  have h4 : (lsDalekScalarWideSym == lsVerifyMontToEdSym) = false := by decide
+  have h5 : (lsDalekScalarWideSym == lsDalekCompressSym) = false := by decide
+  have h6 : (lsDalekScalarWideSym == lsDalekEdNegSym) = false := by decide
+  have h7 : (lsDalekScalarWideSym == lsSha512CompressSym) = false := by decide
+  simp [shadowVsigHooks, h1, h2, h3, h4, h5, h6, h7]
+
+private theorem shadowVsigHooks_scalarMod [LibsignalPlacement] (tr0 : List State)
+    (H : LibsignalHooks) :
+    shadowVsigHooks tr0 H lsDalekScalarModSym =
+      (H lsDalekScalarModSym).map (shadowRwOnly tr0 dalekScalarModFallback) := by
+  have h1 : (lsDalekScalarModSym == lsMemcpySym) = false := by decide
+  have h2 : (lsDalekScalarModSym == lsVerifyMemsetSym) = false := by decide
+  have h3 : (lsDalekScalarModSym == lsBlackBoxU8Sym) = false := by decide
+  have h4 : (lsDalekScalarModSym == lsVerifyMontToEdSym) = false := by decide
+  have h5 : (lsDalekScalarModSym == lsDalekCompressSym) = false := by decide
+  have h6 : (lsDalekScalarModSym == lsDalekEdNegSym) = false := by decide
+  have h7 : (lsDalekScalarModSym == lsSha512CompressSym) = false := by decide
+  have h8 : (lsDalekScalarModSym == lsDalekScalarWideSym) = false := by decide
+  simp [shadowVsigHooks, h1, h2, h3, h4, h5, h6, h7, h8]
+
+private theorem shadowVsigHooks_doubleMul [LibsignalPlacement] (tr0 : List State)
+    (H : LibsignalHooks) :
+    shadowVsigHooks tr0 H lsDalekDoubleMulSym =
+      (H lsDalekDoubleMulSym).map (shadowRwOnly tr0 dalekDsmbFallback) := by
+  have h1 : (lsDalekDoubleMulSym == lsMemcpySym) = false := by decide
+  have h2 : (lsDalekDoubleMulSym == lsVerifyMemsetSym) = false := by decide
+  have h3 : (lsDalekDoubleMulSym == lsBlackBoxU8Sym) = false := by decide
+  have h4 : (lsDalekDoubleMulSym == lsVerifyMontToEdSym) = false := by decide
+  have h5 : (lsDalekDoubleMulSym == lsDalekCompressSym) = false := by decide
+  have h6 : (lsDalekDoubleMulSym == lsDalekEdNegSym) = false := by decide
+  have h7 : (lsDalekDoubleMulSym == lsSha512CompressSym) = false := by decide
+  have h8 : (lsDalekDoubleMulSym == lsDalekScalarWideSym) = false := by decide
+  have h9 : (lsDalekDoubleMulSym == lsDalekScalarModSym) = false := by decide
+  simp [shadowVsigHooks, h1, h2, h3, h4, h5, h6, h7, h8, h9]
+
 private theorem shadowVsigHooks_other [LibsignalPlacement] (tr0 : List State)
     (H : LibsignalHooks) {n : String}
     (h1 : (n == lsMemcpySym) = false := by decide)
     (h2 : (n == lsVerifyMemsetSym) = false := by decide)
-    (h3 : (n == lsBlackBoxU8Sym) = false := by decide) :
+    (h3 : (n == lsBlackBoxU8Sym) = false := by decide)
+    (h4 : (n == lsVerifyMontToEdSym) = false := by decide)
+    (h5 : (n == lsDalekCompressSym) = false := by decide)
+    (h6 : (n == lsDalekEdNegSym) = false := by decide)
+    (h7 : (n == lsSha512CompressSym) = false := by decide)
+    (h8 : (n == lsDalekScalarWideSym) = false := by decide)
+    (h9 : (n == lsDalekScalarModSym) = false := by decide)
+    (h10 : (n == lsDalekDoubleMulSym) = false := by decide) :
     shadowVsigHooks tr0 H n = vsigOnlyHooks H n := by
-  simp [shadowVsigHooks, h1, h2, h3]
+  simp [shadowVsigHooks, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10]
 
 private theorem w3VerifySigHooks_shadow [LibsignalPlacement] (tr0 : List State)
     (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hG : CliGhostAllocHooks M A lim gh) (Y : UnreachedPqxdhPrimitives) :
-    VerifySignaturePlacedHooksSat (modelPrims Y ⟨W.C, W.Q⟩)
+    (hG : CliGhostAllocHooks M A lim gh)
+    (hF512 : W.Q.F512 = CryptoGames.SHA512.sha512CompressState)
+    (Y : UnreachedPqxdhPrimitives) :
+    VerifySignatureExtHooks dalekHookStack (modelPrims Y ⟨W.C, W.Q⟩)
       (shadowVsigHooks tr0 (cliGhostExterns gh (cliExternsPlaced mmpl W))) := by
-  have hv := w3VerifySigHooks_vsigOnly mmpl gh W hG Y
   let H := cliGhostExterns gh (cliExternsPlaced mmpl W)
   refine
     { memcpy := ?_
       memset := ?_
       blackBox := ?_
-      montToEd := hookSat_of_eq (shadowVsigHooks_other tr0 H) hv.montToEd
-      compress := hookSat_of_eq (shadowVsigHooks_other tr0 H) hv.compress
-      edNeg := hookSat_of_eq (shadowVsigHooks_other tr0 H) hv.edNeg
-      sha512Compress := hookSat_of_eq (shadowVsigHooks_other tr0 H) hv.sha512Compress
-      scalarWide := hookSat_of_eq (shadowVsigHooks_other tr0 H) hv.scalarWide
-      scalarMod := hookSat_of_eq (shadowVsigHooks_other tr0 H) hv.scalarMod
-      doubleMul := hookSat_of_eq (shadowVsigHooks_other tr0 H) hv.doubleMul }
+      sha512Compress := ?_
+      montToEd := ?_
+      compress := ?_
+      edNeg := ?_
+      scalarWide := ?_
+      scalarMod := ?_
+      doubleMul := ?_ }
   · obtain ⟨f, hf, _, _, _, _, _, _, _, _, _⟩ := hG.memcpy
     have hH : H lsMemcpySym = some f := cliGhostExterns_memcpy_some gh (cliExternsPlaced mmpl W) hf
     exact ⟨shadowMemcpy tr0 f, by rw [shadowVsigHooks_memcpy (H := H), hH]; rfl,
@@ -1427,23 +2404,90 @@ private theorem w3VerifySigHooks_shadow [LibsignalPlacement] (tr0 : List State)
     have hH : H lsVerifyMemsetSym = some f :=
       cliGhostExterns_memset_some gh (cliExternsPlaced mmpl W) hf
     exact ⟨shadowMemset tr0 f, by rw [shadowVsigHooks_memset (H := H), hH]; rfl,
-      hookOk_shadowMemset tr0 hreg hvm pqxdhHookStack⟩
+      hookOk_shadowMemset tr0 hreg hvm dalekHookStack⟩
   · have hbb_sat : HookSat H lsBlackBoxU8Sym blackBoxSpecSat :=
       cliGhostExterns_blackBoxSat_budget_sat gh (cliExternsPlaced mmpl W) hG.extraOk
     obtain ⟨f, hH, hok⟩ := hbb_sat
     exact ⟨shadowBlackBox tr0 f, by rw [shadowVsigHooks_blackBox (H := H), hH]; rfl,
       hookOk_shadowBlackBox tr0 hok⟩
+  · rw [sha512CompressOutBytes_modelPrims_eq Y W hF512]
+    obtain ⟨f, hH, hok⟩ :=
+      hookSat_cliGhostExterns_of_extraOk gh (cliExternsPlaced mmpl W) hG.extraOk
+        fun _ _ hRow =>
+          hRow.compress512_pqxdhStubPlaced_budget_ok unreachedDummy (P0 := sha512PrimsRef) rfl
+    have hH' : H lsSha512CompressSym = some f := hH
+    exact ⟨_, by rw [shadowVsigHooks_sha512Compress (H := H), hH']; rfl,
+      hookOk_shadowRwOnly tr0
+        (hookOk_withLsRet (compress512Hook_ok_std3 unreachedDummy sha512PrimsRef))
+        hok
+        (compressInPlaceStubPlaced_pre_strictRwOnly _)
+        (compressInPlaceStubPlaced_post_strictRwOnly _)
+        (fun _ _ u => by cases u; rfl) (fun _ _ u v _ _ hm => by cases u; cases v; exact hm)⟩
+  · obtain ⟨f, hH, hok⟩ := cliGhostExterns_toEdwards_budget_sat gh (cliExternsPlaced mmpl W) hG.extraOk
+    have hH' : H lsVerifyMontToEdSym = some f := hH
+    exact ⟨_, by rw [shadowVsigHooks_montToEd (H := H), hH']; rfl,
+      hookOk_shadowRwOnly tr0 (dalekMontToEdFallback_ext_at_stk dalekHookStack).plain hok
+        (dalekMontToEdExt_pre_strictRwOnly dalekHookStack)
+        (dalekMontToEdExt_post_strictRwOnly dalekHookStack)
+        (fun _ _ u => by cases u; rfl)
+        (fun g base u v R m hm => by
+          dsimp only [dalekMontToEdExtSpec] at hm ⊢
+          simp only [sepConj_assoc, satisfies_pure_sepConj, stripWxMeta_trace, stripWxMeta_sp] at hm ⊢
+          refine ⟨⟨?_, hm.1.2⟩, hm.2⟩
+          rcases u with ⟨_, _, _, _, _, _, _, _, _, _, ⟨_, _, _⟩, _, _, _, _, _, _, _, _, _, _, _⟩
+          rcases v with ⟨_, _, _, _, _, _, _, _, _, _, ⟨_, _, _⟩, _, _, _, _, _, _, _, _, _, _, _⟩
+          dsimp only [stripWxMeta, keepMeta, stripWxS, ProofLib.stripS, hideWxS] at *
+          simp [hm.1.1])⟩
+  · obtain ⟨f, hH, hok⟩ := cliGhostExterns_compress_budget_sat gh (cliExternsPlaced mmpl W) hG.extraOk
+    have hH' : H lsDalekCompressSym = some f := hH
+    exact ⟨_, by rw [shadowVsigHooks_compress (H := H), hH']; rfl,
+      hookOk_shadowRwOnly tr0 (dalekCompressFallback_ext_at_stk dalekHookStack).plain hok
+        (dalekCompressExt_pre_strictRwOnly dalekHookStack)
+        (dalekCompressExt_post_strictRwOnly dalekHookStack)
+        (fun _ _ u => by cases u; rfl) (fun _ _ u v _ _ hm => by cases u; cases v; exact hm)⟩
+  · obtain ⟨f, hH, hok⟩ := cliGhostExterns_edNegExt_budget_sat gh (cliExternsPlaced mmpl W) hG.extraOk
+    have hH' : H lsDalekEdNegSym = some f := hH
+    exact ⟨_, by rw [shadowVsigHooks_edNeg (H := H), hH']; rfl,
+      hookOk_shadowRwOnly tr0 (edNegFallback_rowSpec.at_stk dalekHookStack).plain hok
+        (dalekEdNegExt_pre_strictRwOnly dalekHookStack)
+        (dalekEdNegExt_post_strictRwOnly dalekHookStack)
+        (fun _ _ u => by cases u; rfl) (fun _ _ u v _ _ hm => by cases u; cases v; exact hm)⟩
+  · obtain ⟨f, hH, hok⟩ := cliGhostExterns_scalarWide_budget_sat gh (cliExternsPlaced mmpl W) hG.extraOk
+    have hH' : H lsDalekScalarWideSym = some f := hH
+    exact ⟨_, by rw [shadowVsigHooks_scalarWide (H := H), hH']; rfl,
+      hookOk_shadowRwOnly tr0 (dalekScalarWideFallback_ext_at_stk dalekHookStack).plain hok
+        (dalekScalarWideExt_pre_strictRwOnly dalekHookStack)
+        (dalekScalarWideExt_post_strictRwOnly dalekHookStack)
+        (fun _ _ u => by cases u; rfl) (fun _ _ u v _ _ hm => by cases u; cases v; exact hm)⟩
+  · obtain ⟨f, hH, hok⟩ := cliGhostExterns_scalarMod_budget_sat gh (cliExternsPlaced mmpl W) hG.extraOk
+    have hH' : H lsDalekScalarModSym = some f := hH
+    exact ⟨_, by rw [shadowVsigHooks_scalarMod (H := H), hH']; rfl,
+      hookOk_shadowRwOnly tr0 (dalekScalarModFallback_ext_at_stk dalekHookStack).plain hok
+        (dalekScalarModExt_pre_strictRwOnly dalekHookStack)
+        (dalekScalarModExt_post_strictRwOnly dalekHookStack)
+        (fun _ _ u => by cases u; rfl) (fun _ _ u v _ _ hm => by cases u; cases v; exact hm)⟩
+  · obtain ⟨f, hH, hok⟩ := cliGhostExterns_dsmb_budget_sat gh (cliExternsPlaced mmpl W) hG.extraOk
+    have hH' : H lsDalekDoubleMulSym = some f := hH
+    exact ⟨_, by rw [shadowVsigHooks_doubleMul (H := H), hH']; rfl,
+      hookOk_shadowRwOnly tr0 (dalekDsmbFallback_ext_at_stk dalekHookStack).plain hok
+        (dalekDsmbExt_pre_strictRwOnly dalekHookStack)
+        (dalekDsmbExt_post_strictRwOnly dalekHookStack)
+        (fun _ _ u => by cases u; rfl) (fun _ _ u v _ _ hm => by cases u; cases v; exact hm)⟩
 
 /-! ### `isAnon` Preservation & Shadow Lockstep -/
 
-private def AnonMono (m1 m2 : Memory) : Prop :=
-  ∀ a, (m1.perm a).mapped = true → m1.isAnon a = true → m2.isAnon a = true
-
-private theorem AnonMono.refl (m : Memory) : AnonMono m m := fun _ _ h => h
-
-private theorem AnonMono.trans {m1 m2 m3 : Memory} (h12 : AnonMono m1 m2) (h23 : AnonMono m2 m3)
-    (hp12 : ∀ a, m2.perm a = m1.perm a) : AnonMono m1 m3 :=
-  fun a hm ha => h23 a (by rw [hp12 a]; exact hm) (h12 a hm ha)
+private theorem shadowRwOnly_active [LibsignalPlacement] {tr0 : List State}
+    {fb f : State → State} {base s : State}
+    (hfs : findState tr0 (stripWxMeta base s) = some s)
+    (hrun : (shadowRwOnly tr0 fb f (stripWxMeta base s)).status = .Running) :
+    shadowRwOnly tr0 fb f (stripWxMeta base s) = stripWxMeta base (f s) ∧
+    VmPreserved s (f s) ∧
+    AnonMono s.mem (f s).mem := by
+  unfold shadowRwOnly at hrun ⊢
+  rw [hfs] at hrun ⊢; dsimp only [] at hrun ⊢
+  split_ifs at hrun ⊢ with hcond
+  · exact ⟨stripWxMeta_idem_base base s (f s), hcond.2.2.1, hcond.2.2.2⟩
+  · rw [status_setStatus] at hrun; cases hrun
 
 private theorem write8_isAnon_fn (m : Memory) (a : BitVec 64) (v : BitVec 8) :
     (m.write8 a v).isAnon = m.isAnon := funext (write8_isAnon m a v)
@@ -1502,8 +2546,8 @@ private theorem ia_slr (sz : SimdMemSize) (m : Memory) :
       ia (simdLoadRegs sz m n vt ea s) = ia s
   | 0, _, _, _ => rfl
   | n + 1, _, _, s => by simp only [simdLoadRegs, ia_slr sz m n, ia_wv128]
-private theorem ia_mk {rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas pma} :
-    ia (State.mk rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas pma) = m.isAnon := rfl
+private theorem ia_mk {rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas sm spnd pma} :
+    ia (State.mk rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas sm spnd pma) = m.isAnon := rfl
 private theorem ia_mem (s : State) : s.mem.isAnon = ia s := rfl
 
 set_option linter.unusedSimpArgs false in
@@ -1565,21 +2609,7 @@ private theorem execInst_isAnon_of_not_isSvc0 {inst : Instr} (h : inst.isSvc0 = 
       writeSized_isAnon_fn, writeSimdSized_isAnon_fn, simdStoreRegs_isAnon_fn,
       apply_ite ia, apply_ite Prod.fst, apply_ite Memory.isAnon, ite_self]
 
-private theorem hook_writeBytes_reg_stripWx_vm [LibsignalPlacement] (r : Reg) (s : State)
-    (bs : List (BitVec 8)) :
-    returnToLinkRegister ((stripWxS s).setMem
-        ((stripWxS s).mem.writeBytes ((stripWxS s).readReg64 r) bs)) =
-      stripWxS (returnToLinkRegister (s.setMem (s.mem.writeBytes (s.readReg64 r) bs))) ∧
-    VmPreserved s (returnToLinkRegister (s.setMem (s.mem.writeBytes (s.readReg64 r) bs))) ∧
-    AnonMono s.mem (returnToLinkRegister (s.setMem (s.mem.writeBytes (s.readReg64 r) bs))).mem := by
-  refine ⟨?_, ?_, fun a _ ha => (writeBytes_isAnon bs s.mem (s.readReg64 r) a).trans ha⟩
-  · have hm : (stripWxS s).mem = stripWx s.mem := by cases s; rfl
-    have hr : (stripWxS s).readReg64 r = s.readReg64 r := by cases s; rfl
-    rw [hm, hr, stripWx_writeBytes]; cases s; rfl
-  · unfold returnToLinkRegister
-    exact ⟨⟨rfl, rfl, rfl⟩, rfl, writeBytes_perm_eq _ _ _, fun _ _ _ => rfl⟩
-
-private theorem shadowVsigHooks_findSome?_active [LibsignalPlacement] (tr0 : List State)
+private theorem shadowVsigHooks_findSome?_active [LibsignalPlacement] (base : State) (tr0 : List State)
     (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (hG : CliGhostAllocHooks M A lim gh) :
@@ -1587,12 +2617,12 @@ private theorem shadowVsigHooks_findSome?_active [LibsignalPlacement] (tr0 : Lis
     ∀ (l : List (String × Nat)) {off : Nat} {f' : State → State},
       (l.findSome? fun (n, o) => if o == off then shadowVsigHooks tr0 H n else none) = some f' →
       ∀ s : State,
-        findState tr0 (stripWxS s) = some s →
-        (f' (stripWxS s)).status = .Running →
+        findState tr0 (stripWxMeta base s) = some s →
+        (f' (stripWxMeta base s)).status = .Running →
         ∃ f : State → State,
           (l.findSome? fun (n, o) => if o == off then vsigOnlyHooks H n else none) = some f ∧
           (l.findSome? fun (n, o) => if o == off then H n else none) = some f ∧
-          f' (stripWxS s) = stripWxS (f s) ∧
+          f' (stripWxMeta base s) = stripWxMeta base (f s) ∧
           VmPreserved s (f s) ∧
           AnonMono s.mem (f s).mem := by
   intro H l
@@ -1620,20 +2650,24 @@ private theorem shadowVsigHooks_findSome?_active [LibsignalPlacement] (tr0 : Lis
           rw [hsh] at h; injection h with hf'; subst hf'
           unfold shadowMemcpy at hrun ⊢
           rw [hfs] at hrun ⊢; dsimp only [] at hrun ⊢
-          by_cases hcond : (stripWxS s).status = .Running ∧ (stripWxS s).spAligned = true ∧
-              (stripWxS s).mem.RW ((stripWxS s).readReg64 .x0) ((stripWxS s).readReg64 .x2).toNat ∧
-              (stripWxS s).mem.Readable ((stripWxS s).readReg64 .x1)
-                ((stripWxS s).readReg64 .x2).toNat ∧
-              (((stripWxS s).readReg64 .x2).toNat = 0 ∨
-                DisjointRegions ((stripWxS s).readReg64 .x0) ((stripWxS s).readReg64 .x2).toNat
-                  ((stripWxS s).readReg64 .x1) ((stripWxS s).readReg64 .x2).toNat)
-          · simp only [hcond, and_self, ↓reduceIte]
+          by_cases hcond : (stripWxMeta base s).status = .Running ∧
+              (stripWxMeta base s).spAligned = true ∧
+              (stripWxMeta base s).mem.RW ((stripWxMeta base s).readReg64 .x0)
+                ((stripWxMeta base s).readReg64 .x2).toNat ∧
+              (stripWxMeta base s).mem.Readable ((stripWxMeta base s).readReg64 .x1)
+                ((stripWxMeta base s).readReg64 .x2).toNat ∧
+              (((stripWxMeta base s).readReg64 .x2).toNat = 0 ∨
+                DisjointRegions ((stripWxMeta base s).readReg64 .x0)
+                  ((stripWxMeta base s).readReg64 .x2).toNat
+                  ((stripWxMeta base s).readReg64 .x1)
+                  ((stripWxMeta base s).readReg64 .x2).toNat)
+          · simp only [hcond, and_self, ↓reduceIte, stripWxMeta_idem_base]
             rcases hcond with ⟨hr_s', hsp_s', hrw_s', hrd_s', hdisj_s'⟩
-            have hu_run : s.status = .Running := by cases s; exact hr_s'
-            have hu_sp : s.spAligned = true := by cases s; exact hsp_s'
-            rw [stripWxS_mem, stripWxS_readReg64, stripWxS_readReg64] at hrw_s'
-            rw [stripWxS_mem, stripWxS_readReg64, stripWxS_readReg64] at hrd_s'
-            rw [stripWxS_readReg64, stripWxS_readReg64, stripWxS_readReg64] at hdisj_s'
+            have hu_run : s.status = .Running := by rwa [stripWxMeta_status] at hr_s'
+            have hu_sp : s.spAligned = true := by rwa [stripWxMeta_spAligned] at hsp_s'
+            rw [stripWxMeta_mem, stripWxMeta_readReg64, stripWxMeta_readReg64] at hrw_s'
+            rw [stripWxMeta_mem, stripWxMeta_readReg64, stripWxMeta_readReg64] at hrd_s'
+            rw [stripWxMeta_readReg64, stripWxMeta_readReg64, stripWxMeta_readReg64] at hdisj_s'
             have hu_rw : s.mem.RW (s.readReg64 .x0) (s.readReg64 .x2).toNat :=
               (stripWx_rw_iff s.mem _ _).mp hrw_s'
             have hu_rd : s.mem.Readable (s.readReg64 .x1) (s.readReg64 .x2).toNat :=
@@ -1656,15 +2690,17 @@ private theorem shadowVsigHooks_findSome?_active [LibsignalPlacement] (tr0 : Lis
           rw [hsh] at h; injection h with hf'; subst hf'
           unfold shadowMemset at hrun ⊢
           rw [hfs] at hrun ⊢; dsimp only [] at hrun ⊢
-          by_cases hcond : (stripWxS s).status = .Running ∧ (stripWxS s).spAligned = true ∧
-              (stripWxS s).mem.RW ((stripWxS s).readReg64 .x0) ((stripWxS s).readReg64 .x2).toNat
-          · simp only [hcond, and_self, ↓reduceIte]
+          by_cases hcond : (stripWxMeta base s).status = .Running ∧
+              (stripWxMeta base s).spAligned = true ∧
+              (stripWxMeta base s).mem.RW ((stripWxMeta base s).readReg64 .x0)
+                ((stripWxMeta base s).readReg64 .x2).toNat
+          · simp only [hcond, and_self, ↓reduceIte, stripWxMeta_idem_base]
             rcases hcond with ⟨hr_s', hsp_s', hrw_s'⟩
-            have hu_run : s.status = .Running := by cases s; exact hr_s'
+            have hu_run : s.status = .Running := by rwa [stripWxMeta_status] at hr_s'
             have hu_sp_al : (s.sp &&& 15#64) = 0#64 := by
-              have hsp_u : s.spAligned = true := by cases s; exact hsp_s'
+              have hsp_u : s.spAligned = true := by rwa [stripWxMeta_spAligned] at hsp_s'
               simpa [State.spAligned] using hsp_u
-            rw [stripWxS_mem, stripWxS_readReg64, stripWxS_readReg64] at hrw_s'
+            rw [stripWxMeta_mem, stripWxMeta_readReg64, stripWxMeta_readReg64] at hrw_s'
             have hu_rw : s.mem.RW (s.readReg64 .x0) (s.readReg64 .x2).toNat :=
               (stripWx_rw_iff s.mem _ _).mp hrw_s'
             obtain ⟨_, _, _, _, _, _, _, hs2, _⟩ :=
@@ -1681,13 +2717,14 @@ private theorem shadowVsigHooks_findSome?_active [LibsignalPlacement] (tr0 : Lis
           rw [hsh] at h; injection h with hf'; subst hf'
           unfold shadowBlackBox at hrun ⊢
           rw [hfs] at hrun ⊢; dsimp only [] at hrun ⊢
-          by_cases hcond : (stripWxS s).status = .Running ∧ (stripWxS s).spAligned = true ∧
-              (stripWxS s).mem.RW ((stripWxS s).sp - 16#64) 16
-          · simp only [hcond, and_self, ↓reduceIte]
+          by_cases hcond : (stripWxMeta base s).status = .Running ∧
+              (stripWxMeta base s).spAligned = true ∧
+              (stripWxMeta base s).mem.RW ((stripWxMeta base s).sp - 16#64) 16
+          · simp only [hcond, and_self, ↓reduceIte, stripWxMeta_idem_base]
             rcases hcond with ⟨hr_s', hsp_s', hrw_s'⟩
-            have hu_run : s.status = .Running := by cases s; exact hr_s'
-            have hu_sp : s.spAligned = true := by cases s; exact hsp_s'
-            rw [stripWxS_mem, stripWxS_sp] at hrw_s'
+            have hu_run : s.status = .Running := by rwa [stripWxMeta_status] at hr_s'
+            have hu_sp : s.spAligned = true := by rwa [stripWxMeta_spAligned] at hsp_s'
+            rw [stripWxMeta_mem, stripWxMeta_sp] at hrw_s'
             have hu_rw : s.mem.RW (s.sp - 16#64) 16 :=
               (stripWx_rw_iff s.mem _ _).mp hrw_s'
             obtain ⟨_, _, _, _, hvm, _, _, hs2⟩ :=
@@ -1696,121 +2733,89 @@ private theorem shadowVsigHooks_findSome?_active [LibsignalPlacement] (tr0 : Lis
             exact ⟨f, rfl, rfl, rfl, hvm, fun a hm ha => (hs2.2.1.2.1 a ⟨hm, ha⟩).2⟩
           · simp only [hcond, ↓reduceIte, status_setStatus] at hrun; cases hrun
         · -- lsVerifyMontToEdSym
-          have hrow : H lsVerifyMontToEdSym = some (toEdwardsHook W.Q.montToEd) :=
-            cliGhost_row mmpl gh W (toEdwards_row_placed mmpl W)
+          obtain ⟨f, hH, _⟩ :=
+            cliGhostExterns_toEdwards_budget_sat gh (cliExternsPlaced mmpl W) hG.extraOk
+          have hH' : H lsVerifyMontToEdSym = some f := hH
           have hsh : shadowVsigHooks tr0 H lsVerifyMontToEdSym =
-              some (toEdwardsHook W.Q.montToEd) :=
-            (shadowVsigHooks_other tr0 H).trans (hk_v.trans hrow)
+              some (shadowRwOnly tr0 dalekMontToEdFallback f) := by
+            rw [shadowVsigHooks_montToEd, hH']; rfl
           rw [hsh] at h; injection h with hf'; subst hf'
-          rw [hrow]; refine ⟨toEdwardsHook W.Q.montToEd, rfl, rfl, ?_⟩
-          unfold toEdwardsHook; dsimp only []
-          rw [stripWxS_readReg64, stripWxS_readReg64, stripWxS_mem, stripWx_readVecN]
-          cases W.Q.montToEd (readVecN s.mem (s.readReg64 .x0) 32)
-              ((s.readReg64 .x1).setWidth 8 &&& 1#8) with
-          | none =>
-            refine ⟨?_, ?_, fun a _ ha => by
-              dsimp only [returnToLinkRegister, State.setPC, State.setMem]
-              exact congrFun (write64_isAnon_fn s.mem _ _) a |>.trans ha⟩
-            · cases s; dsimp only [stripWxS, hideWxS, ProofLib.stripS, returnToLinkRegister,
-                State.setMem, State.setPC, State.readReg64]; rw [stripWx_write64]; rfl
-            · unfold returnToLinkRegister
-              exact ⟨⟨rfl, rfl, rfl⟩, rfl, fun a =>
-                congrFun (LibsignalBinary.Heap.IfaceBudgetLemmas.perm_write64_norm _ _ _) a,
-                fun _ _ _ => rfl⟩
-          | some p =>
-            refine ⟨?_, ?_, fun a _ ha => by
-              dsimp only [returnToLinkRegister, State.setPC, State.setMem]
-              exact (writeBytes_isAnon _ _ _ a).trans
-                (congrFun (write64_isAnon_fn s.mem _ _) a |>.trans ha)⟩
-            · cases s; dsimp only [stripWxS, hideWxS, ProofLib.stripS, returnToLinkRegister,
-                State.setMem, State.setPC, State.readReg64]
-              rw [stripWx_write64, stripWx_writeBytes]; rfl
-            · unfold returnToLinkRegister
-              exact ⟨⟨rfl, rfl, rfl⟩, rfl, fun a =>
-                (writeBytes_perm_eq _ _ _ a).trans
-                  (congrFun (LibsignalBinary.Heap.IfaceBudgetLemmas.perm_write64_norm _ _ _) a),
-                fun _ _ _ => rfl⟩
+          obtain ⟨hcomm, hvm, han⟩ := shadowRwOnly_active hfs hrun
+          rw [hH']; exact ⟨f, rfl, rfl, hcomm, hvm, han⟩
         · -- lsDalekCompressSym
-          have hrow : H lsDalekCompressSym = some (compressHook W.Q.compress) :=
-            cliGhost_row mmpl gh W (compress_row_placed mmpl W)
+          obtain ⟨f, hH, _⟩ :=
+            cliGhostExterns_compress_budget_sat gh (cliExternsPlaced mmpl W) hG.extraOk
+          have hH' : H lsDalekCompressSym = some f := hH
           have hsh : shadowVsigHooks tr0 H lsDalekCompressSym =
-              some (compressHook W.Q.compress) :=
-            (shadowVsigHooks_other tr0 H).trans (hk_v.trans hrow)
+              some (shadowRwOnly tr0 dalekCompressFallback f) := by
+            rw [shadowVsigHooks_compress, hH']; rfl
           rw [hsh] at h; injection h with hf'; subst hf'
-          rw [hrow]; refine ⟨compressHook W.Q.compress, rfl, rfl, ?_⟩
-          unfold compressHook
-          rw [stripWxS_readReg64, stripWxS_mem, stripWx_readVecN]
-          exact hook_writeBytes_reg_stripWx_vm .x8 s _
+          obtain ⟨hcomm, hvm, han⟩ := shadowRwOnly_active hfs hrun
+          rw [hH']; exact ⟨f, rfl, rfl, hcomm, hvm, han⟩
         · -- lsDalekEdNegSym
-          have hrow : H lsDalekEdNegSym = some (edNegHook W.Q.edNeg) :=
-            cliGhost_row mmpl gh W (edNeg_row_placed mmpl W)
-          have hsh : shadowVsigHooks tr0 H lsDalekEdNegSym = some (edNegHook W.Q.edNeg) :=
-            (shadowVsigHooks_other tr0 H).trans (hk_v.trans hrow)
+          obtain ⟨f, hH, _⟩ :=
+            cliGhostExterns_edNegExt_budget_sat gh (cliExternsPlaced mmpl W) hG.extraOk
+          have hH' : H lsDalekEdNegSym = some f := hH
+          have hsh : shadowVsigHooks tr0 H lsDalekEdNegSym =
+              some (shadowRwOnly tr0 (edNegHook dalekEdNegVec) f) := by
+            rw [shadowVsigHooks_edNeg, hH']; rfl
           rw [hsh] at h; injection h with hf'; subst hf'
-          rw [hrow]; refine ⟨edNegHook W.Q.edNeg, rfl, rfl, ?_⟩
-          unfold edNegHook
-          rw [stripWxS_readReg64, stripWxS_mem, stripWx_readVecN]
-          exact hook_writeBytes_reg_stripWx_vm .x8 s _
+          obtain ⟨hcomm, hvm, han⟩ := shadowRwOnly_active hfs hrun
+          rw [hH']; exact ⟨f, rfl, rfl, hcomm, hvm, han⟩
         · -- lsSha512CompressSym
-          have hrow : H lsSha512CompressSym = some (compress512Hook W.Q.F512) :=
-            cliGhost_row mmpl gh W (compress512_row_placed mmpl W)
+          obtain ⟨f, hH, _⟩ :=
+            hookSat_cliGhostExterns_of_extraOk gh (cliExternsPlaced mmpl W) hG.extraOk
+              fun _ _ hRow =>
+                hRow.compress512_pqxdhStubPlaced_budget_ok unreachedDummy (P0 := sha512PrimsRef) rfl
+          have hH' : H lsSha512CompressSym = some f := hH
           have hsh : shadowVsigHooks tr0 H lsSha512CompressSym =
-              some (compress512Hook W.Q.F512) :=
-            (shadowVsigHooks_other tr0 H).trans (hk_v.trans hrow)
+              some (shadowRwOnly tr0 (compress512Hook CryptoGames.SHA512.sha512CompressState) f) := by
+            rw [shadowVsigHooks_sha512Compress, hH']; rfl
           rw [hsh] at h; injection h with hf'; subst hf'
-          rw [hrow]; refine ⟨compress512Hook W.Q.F512, rfl, rfl, ?_⟩
-          unfold compress512Hook; dsimp only []
-          rw [stripWxS_readReg64, stripWxS_readReg64, stripWxS_readReg64, stripWxS_mem,
-            stripWx_readSha512State, stripWx_readBytes]
-          exact hook_writeBytes_reg_stripWx_vm .x0 s _
+          obtain ⟨hcomm, hvm, han⟩ := shadowRwOnly_active hfs hrun
+          rw [hH']; exact ⟨f, rfl, rfl, hcomm, hvm, han⟩
         · -- lsDalekScalarWideSym
-          have hrow : H lsDalekScalarWideSym = some (scalarWideHook W.Q.scalarWide) :=
-            cliGhost_row mmpl gh W (scalarWide_row_placed mmpl W)
+          obtain ⟨f, hH, _⟩ :=
+            cliGhostExterns_scalarWide_budget_sat gh (cliExternsPlaced mmpl W) hG.extraOk
+          have hH' : H lsDalekScalarWideSym = some f := hH
           have hsh : shadowVsigHooks tr0 H lsDalekScalarWideSym =
-              some (scalarWideHook W.Q.scalarWide) :=
-            (shadowVsigHooks_other tr0 H).trans (hk_v.trans hrow)
+              some (shadowRwOnly tr0 dalekScalarWideFallback f) := by
+            rw [shadowVsigHooks_scalarWide, hH']; rfl
           rw [hsh] at h; injection h with hf'; subst hf'
-          rw [hrow]; refine ⟨scalarWideHook W.Q.scalarWide, rfl, rfl, ?_⟩
-          unfold scalarWideHook
-          rw [stripWxS_readReg64, stripWxS_mem, stripWx_readVecN]
-          exact hook_writeBytes_reg_stripWx_vm .x8 s _
+          obtain ⟨hcomm, hvm, han⟩ := shadowRwOnly_active hfs hrun
+          rw [hH']; exact ⟨f, rfl, rfl, hcomm, hvm, han⟩
         · -- lsDalekScalarModSym
-          have hrow : H lsDalekScalarModSym = some (scalarModHook W.Q.scalarMod) :=
-            cliGhost_row mmpl gh W (scalarMod_row_placed mmpl W)
+          obtain ⟨f, hH, _⟩ :=
+            cliGhostExterns_scalarMod_budget_sat gh (cliExternsPlaced mmpl W) hG.extraOk
+          have hH' : H lsDalekScalarModSym = some f := hH
           have hsh : shadowVsigHooks tr0 H lsDalekScalarModSym =
-              some (scalarModHook W.Q.scalarMod) :=
-            (shadowVsigHooks_other tr0 H).trans (hk_v.trans hrow)
+              some (shadowRwOnly tr0 dalekScalarModFallback f) := by
+            rw [shadowVsigHooks_scalarMod, hH']; rfl
           rw [hsh] at h; injection h with hf'; subst hf'
-          rw [hrow]; refine ⟨scalarModHook W.Q.scalarMod, rfl, rfl, ?_⟩
-          unfold scalarModHook
-          rw [stripWxS_readReg64, stripWxS_mem, stripWx_readVecN]
-          exact hook_writeBytes_reg_stripWx_vm .x8 s _
+          obtain ⟨hcomm, hvm, han⟩ := shadowRwOnly_active hfs hrun
+          rw [hH']; exact ⟨f, rfl, rfl, hcomm, hvm, han⟩
         · -- lsDalekDoubleMulSym
-          have hrow : H lsDalekDoubleMulSym = some (dsmbHook W.Q.dsmb) :=
-            cliGhost_row mmpl gh W (dsmb_row_placed mmpl W)
-          have hsh : shadowVsigHooks tr0 H lsDalekDoubleMulSym = some (dsmbHook W.Q.dsmb) :=
-            (shadowVsigHooks_other tr0 H).trans (hk_v.trans hrow)
+          obtain ⟨f, hH, _⟩ :=
+            cliGhostExterns_dsmb_budget_sat gh (cliExternsPlaced mmpl W) hG.extraOk
+          have hH' : H lsDalekDoubleMulSym = some f := hH
+          have hsh : shadowVsigHooks tr0 H lsDalekDoubleMulSym =
+              some (shadowRwOnly tr0 dalekDsmbFallback f) := by
+            rw [shadowVsigHooks_doubleMul, hH']; rfl
           rw [hsh] at h; injection h with hf'; subst hf'
-          rw [hrow]; refine ⟨dsmbHook W.Q.dsmb, rfl, rfl, ?_⟩
-          unfold dsmbHook
-          rw [stripWxS_readReg64, stripWxS_readReg64, stripWxS_readReg64, stripWxS_mem,
-            stripWx_readVecN, stripWx_readVecN, stripWx_readVecN]
-          exact hook_writeBytes_reg_stripWx_vm .x8 s _
+          obtain ⟨hcomm, hvm, han⟩ := shadowRwOnly_active hfs hrun
+          rw [hH']; exact ⟨f, rfl, rfl, hcomm, hvm, han⟩
       · simp only [Bool.not_eq_true] at hn
-        have hn_mc : (n == lsMemcpySym) = false := by
-          by_cases hc : (n == lsMemcpySym) = true
-          · rw [beq_iff_eq] at hc; subst hc; simp [vsigKeepSym] at hn
+        have hn_not : ∀ sym, vsigKeepSym sym = true → (n == sym) = false := by
+          intro sym hsym
+          by_cases hc : (n == sym) = true
+          · rw [beq_iff_eq] at hc; subst hc; rw [hsym] at hn; cases hn
           · simpa using hc
-        have hn_ms : (n == lsVerifyMemsetSym) = false := by
-          by_cases hc : (n == lsVerifyMemsetSym) = true
-          · rw [beq_iff_eq] at hc; subst hc; simp [vsigKeepSym] at hn
-          · simpa using hc
-        have hn_bb : (n == lsBlackBoxU8Sym) = false := by
-          by_cases hc : (n == lsBlackBoxU8Sym) = true
-          · rw [beq_iff_eq] at hc; subst hc; simp [vsigKeepSym] at hn
-          · simpa using hc
-        have hsh_eq : shadowVsigHooks tr0 H n = vsigOnlyHooks H n := by
-          simp [shadowVsigHooks, hn_mc, hn_ms, hn_bb]
+        have hsh_eq : shadowVsigHooks tr0 H n = vsigOnlyHooks H n :=
+          shadowVsigHooks_other tr0 H
+            (hn_not _ (by decide)) (hn_not _ (by decide)) (hn_not _ (by decide))
+            (hn_not _ (by decide)) (hn_not _ (by decide)) (hn_not _ (by decide))
+            (hn_not _ (by decide)) (hn_not _ (by decide)) (hn_not _ (by decide))
+            (hn_not _ (by decide))
         rw [hsh_eq] at h
         cases hHn : H n with
         | none =>
@@ -1820,7 +2825,7 @@ private theorem shadowVsigHooks_findSome?_active [LibsignalPlacement] (tr0 : Lis
           have hk_g : vsigOnlyHooks H n = some (fun s => s.setStatus (.Exception "ext")) := by
             unfold vsigOnlyHooks; rw [hn]; simp [hHn]
           rw [hk_g] at h; dsimp only at h
-          injection h with hf'; subst hf'; intro s _ hrun; cases s; cases hrun
+          injection h with hf'; subst hf'; intro s _ hrun; rw [status_setStatus] at hrun; cases hrun
     · simp only [ho, Bool.false_eq_true, ↓reduceIte] at h ⊢
       exact ih h
 
@@ -1828,13 +2833,17 @@ private theorem shadowVsigHooks_isSome_eq [LibsignalPlacement] (tr0 : List State
     (H : LibsignalHooks) (n : String) :
     (shadowVsigHooks tr0 H n).isSome = (vsigOnlyHooks H n).isSome := by
   unfold shadowVsigHooks vsigOnlyHooks vsigKeepSym
-  by_cases h1 : (n == lsMemcpySym) = true
-  · simp [h1]
-  · by_cases h2 : (n == lsVerifyMemsetSym) = true
-    · simp [h1, h2]
-    · by_cases h3 : (n == lsBlackBoxU8Sym) = true
-      · simp [h1, h2, h3]
-      · simp [h1, h2, h3]
+  by_cases h1 : (n == lsMemcpySym) = true; · simp [h1]
+  by_cases h2 : (n == lsVerifyMemsetSym) = true; · simp [h1, h2]
+  by_cases h3 : (n == lsBlackBoxU8Sym) = true; · simp [h1, h2, h3]
+  by_cases h4 : (n == lsVerifyMontToEdSym) = true; · simp [h1, h2, h3, h4]
+  by_cases h5 : (n == lsDalekCompressSym) = true; · simp [h1, h2, h3, h4, h5]
+  by_cases h6 : (n == lsDalekEdNegSym) = true; · simp [h1, h2, h3, h4, h5, h6]
+  by_cases h7 : (n == lsSha512CompressSym) = true; · simp [h1, h2, h3, h4, h5, h6, h7]
+  by_cases h8 : (n == lsDalekScalarWideSym) = true; · simp [h1, h2, h3, h4, h5, h6, h7, h8]
+  by_cases h9 : (n == lsDalekScalarModSym) = true; · simp [h1, h2, h3, h4, h5, h6, h7, h8, h9]
+  by_cases h10 : (n == lsDalekDoubleMulSym) = true <;>
+    simp [h1, h2, h3, h4, h5, h6, h7, h8, h9, h10]
 
 private theorem shadowVsigHooks_findSome?_isSome [LibsignalPlacement] (tr0 : List State)
     (H : LibsignalHooks) :
@@ -1885,21 +2894,21 @@ private theorem vsigOnlyHooks_findSome?_none {H : LibsignalHooks} :
     · simp only [ho, Bool.false_eq_true, ↓reduceIte] at h ⊢
       exact vsigOnlyHooks_findSome?_none tl h
 
-private theorem shadowVsigHooks_externAt?_active [LibsignalPlacement] (tr0 : List State)
+private theorem shadowVsigHooks_externAt?_active [LibsignalPlacement] (base : State) (tr0 : List State)
     (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (hG : CliGhostAllocHooks M A lim gh)
     {pc : BitVec 64} {f' : State → State}
     (hext' : ((blkPC_203).rebase (blkPl_203).base
       (shadowVsigHooks tr0 (cliGhostExterns gh (cliExternsPlaced mmpl W)))).externAt? pc = some f')
-    {s : State} (hfs : findState tr0 (stripWxS s) = some s)
-    (hrun : (f' (stripWxS s)).status = .Running) :
+    {s : State} (hfs : findState tr0 (stripWxMeta base s) = some s)
+    (hrun : (f' (stripWxMeta base s)).status = .Running) :
     ∃ f : State → State,
       ((blkPC_203).rebase (blkPl_203).base
         (vsigOnlyHooks (cliGhostExterns gh (cliExternsPlaced mmpl W)))).externAt? pc = some f ∧
       ((blkPC_203).rebase (blkPl_203).base
         (cliGhostExterns gh (cliExternsPlaced mmpl W))).externAt? pc = some f ∧
-      f' (stripWxS s) = stripWxS (f s) ∧
+      f' (stripWxMeta base s) = stripWxMeta base (f s) ∧
       VmPreserved s (f s) ∧
       AnonMono s.mem (f s).mem := by
   let H := cliGhostExterns gh (cliExternsPlaced mmpl W)
@@ -1912,7 +2921,7 @@ private theorem shadowVsigHooks_externAt?_active [LibsignalPlacement] (tr0 : Lis
   | some g =>
     rw [hm] at hext'; injection hext' with hgf; subst hgf
     obtain ⟨f, hv, hH, hcomm, hvm, han⟩ :=
-      shadowVsigHooks_findSome?_active tr0 mmpl gh W hG (blkPC_203).stubs hm s hfs hrun
+      shadowVsigHooks_findSome?_active base tr0 mmpl gh W hG (blkPC_203).stubs hm s hfs hrun
     rw [hv, hH]
     exact ⟨f, rfl, rfl, hcomm, hvm, han⟩
 
@@ -1932,7 +2941,7 @@ private theorem vsigOnlyHooks_externAt?_none [LibsignalPlacement] {H : Libsignal
   rw [vsigOnlyHooks_findSome?_none (blkPC_203).stubs h1]; rfl
 
 private theorem steps_vsig_lockstep_vm [LibsignalPlacement]
-    (tr0_all : List State)
+    (base : State) (tr0_all : List State)
     (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (hG : CliGhostAllocHooks M A lim gh)
@@ -1942,14 +2951,14 @@ private theorem steps_vsig_lockstep_vm [LibsignalPlacement]
     (hrun0 : sf0.status = .Running) :
     ∀ (seen0 : List State) {tr' : List State} {s1' : State},
       tr0_all = seen0.reverse ++ tr0 →
-      (∀ u ∈ seen0, stripWxS u ∉ tr') →
-      s1' = stripWxS s1 →
+      (∀ u ∈ seen0, stripWxMeta base u ∉ tr') →
+      s1' = stripWxMeta base s1 →
       StepsList ((blkPC_203).rebase (blkPl_203).base
         (shadowVsigHooks tr0_all (cliGhostExterns gh (cliExternsPlaced mmpl W)))) tr' s1' sf' →
       sf'.status = .Running →
       LibsignalCodeLoaded lsmpl s1.mem →
       ∃ sf : State,
-        (sf = sf0 ∨ (sf' = stripWxS sf ∧ AnonMono s1.mem sf.mem)) ∧
+        (sf = sf0 ∨ (sf' = stripWxMeta base sf ∧ AnonMono s1.mem sf.mem)) ∧
         Steps ((blkPC_203).rebase (blkPl_203).base
           (cliGhostExterns gh (cliExternsPlaced mmpl W))) s1 sf ∧
         VmPreserved s1 sf := by
@@ -1973,18 +2982,18 @@ private theorem steps_vsig_lockstep_vm [LibsignalPlacement]
         cases hrest' with
         | refl => exact hrun_f
         | step hs _ _ => cases hs <;> assumption
-      have hfs : findState tr0_all (stripWxS s1) = some s1 := by
+      have hfs : findState tr0_all (stripWxMeta base s1) = some s1 := by
         rw [hdecomp]
         exact findState_eq_head fun u hu heq =>
           hseen u hu (List.mem_cons.mpr (Or.inl heq))
       have hdecomp2 : tr0_all = (s1 :: seen0).reverse ++ tl0 := by
         rw [List.reverse_cons, List.append_assoc, List.singleton_append]; exact hdecomp
-      have hseen2 : ∀ u ∈ s1 :: seen0, stripWxS u ∉ tl' := by
+      have hseen2 : ∀ u ∈ s1 :: seen0, stripWxMeta base u ∉ tl' := by
         intro u hu hmem_tl
         rcases List.mem_cons.mp hu with rfl | hu_s
         · exact hnot' hmem_tl
         · exact hseen u hu_s (List.mem_cons.mpr (Or.inr hmem_tl))
-      have hpc_eq : (stripWxS s1).pc = s1.pc := by cases s1; rfl
+      have hpc_eq : (stripWxMeta base s1).pc = s1.pc := stripWxMeta_pc base s1
       cases h1_0 with
       | halt_unmapped _ _ _ => cases s1; cases hr2_0
       | extern_fault _ _ _ => cases s1; cases hr2_0
@@ -1995,13 +3004,13 @@ private theorem steps_vsig_lockstep_vm [LibsignalPlacement]
         | @exec inst' _ hfe' =>
           unfold Program.fetchMem at hfe'
           have his : (((blkPC_203).rebase (blkPl_203).base
-              (shadowVsigHooks tr0_all H)).externAt? (stripWxS s1).pc).isSome = true := by
+              (shadowVsigHooks tr0_all H)).externAt? (stripWxMeta base s1).pc).isSome = true := by
             rw [hpc_eq, shadowVsigHooks_externAt?_isSome, hext0]; rfl
           rw [his] at hfe'; simp at hfe'
         | @extern f' _ hext' _ _ =>
           rw [hpc_eq] at hext'
           obtain ⟨f_v, hext_v, hext_H, hcomm, hvm1, han1⟩ :=
-            shadowVsigHooks_externAt?_active tr0_all mmpl gh W hG hext' hfs hr2'
+            shadowVsigHooks_externAt?_active base tr0_all mmpl gh W hG hext' hfs hr2'
           rw [hext0] at hext_v; injection hext_v with hff; subst hff
           have hstep_H : Step ((blkPC_203).rebase (blkPl_203).base H) s1 (f s1) :=
             Step.extern hr1 hext_H hkf_s1 hsym_s1
@@ -2033,7 +3042,7 @@ private theorem steps_vsig_lockstep_vm [LibsignalPlacement]
         | @extern f' _ hext' _ _ =>
           rw [hpc_eq, hext_sh] at hext'; cases hext'
         | @exec inst' _ hfe' =>
-          have hmem_eq : (stripWxS s1).mem = stripWx s1.mem := by cases s1; rfl
+          have hmem_eq : (stripWxMeta base s1).mem = stripWx s1.mem := stripWxMeta_mem base s1
           rw [hpc_eq, hmem_eq] at hfe'
           have hext_H : P_H.externAt? s1.pc = none := vsigOnlyHooks_externAt?_none hext_v
           have ⟨hal_pc, hce', hdec⟩ : s1.pc.toNat % 4 = 0 ∧
@@ -2078,15 +3087,16 @@ private theorem steps_vsig_lockstep_vm [LibsignalPlacement]
               execInst inst' s1 :=
             Arm64.evalInst_eq_execInst_of_not_isSvc0 hnsvc0 s1
           have hev_sh0 : ((blkPC_203).rebase (blkPl_203).base
-              (shadowVsigHooks tr0_all H)).evalInst inst' (stripWxS s1) =
-              execInst inst' (stripWxS s1) :=
-            Arm64.evalInst_eq_execInst_of_not_isSvc0 hnsvc0 (stripWxS s1)
-          have hr_exec' : (execInst inst' (stripWxS s1)).status = .Running := by
+              (shadowVsigHooks tr0_all H)).evalInst inst' (stripWxMeta base s1) =
+              execInst inst' (stripWxMeta base s1) :=
+            Arm64.evalInst_eq_execInst_of_not_isSvc0 hnsvc0 (stripWxMeta base s1)
+          have hr_exec' : (execInst inst' (stripWxMeta base s1)).status = .Running := by
             rwa [← hev_sh0]
           have hev_v : ((blkPC_203).rebase (blkPl_203).base
-              (shadowVsigHooks tr0_all H)).evalInst inst' (stripWxS s1) =
-              stripWxS (((blkPC_203).rebase (blkPl_203).base (vsigOnlyHooks H)).evalInst inst' s1) := by
-            rw [hev_sh0, hev0, execInst_stripWxS hnsvc0 s1 hr_exec']
+              (shadowVsigHooks tr0_all H)).evalInst inst' (stripWxMeta base s1) =
+              stripWxMeta base
+                (((blkPC_203).rebase (blkPl_203).base (vsigOnlyHooks H)).evalInst inst' s1) := by
+            rw [hev_sh0, hev0, execInst_stripWxMeta hnsvc0 base s1 hr_exec']
           have hstep_H : Step P_H s1
               (((blkPC_203).rebase (blkPl_203).base (vsigOnlyHooks H)).evalInst inst' s1) := by
             rw [hev0]
@@ -2116,41 +3126,10 @@ private theorem steps_vsig_lockstep_vm [LibsignalPlacement]
 
 /-! ### `RwOnlyHeap` Frame Unstripping & `verifySignature_203_vm_ok` -/
 
-private def RwOnlyHeap (h : Heap) : Prop :=
-  (∀ a c, h.phys a = some c → (∃ b, c = .rw b) ∨ c = .lazy) ∧
-  (∀ γ k, h.auth γ k = none) ∧
-  (∀ γ k, h.frag γ k = none) ∧
-  (∀ a, h.mapped a = false)
-
-private theorem rwOnlyHeap_of_isBlock {Q : SepProp} {base : BitVec 64} {len : Nat}
-    {Φ : Memory → Prop} (hb : IsBlock Q base len Φ) (h : Heap) (hq : Q h) :
-    RwOnlyHeap h := by
-  obtain ⟨m1, _, rfl⟩ := (hb.iff h).mp hq
-  refine ⟨fun a c hc => ?_, fun _ _ => by simp [regionHeap],
-    fun _ _ => by simp [regionHeap], fun _ => by simp [regionHeap]⟩
-  by_cases hin : InRegion base len a
-  · simp [regionHeap, hin] at hc; exact Or.inl ⟨_, hc.symm⟩
-  · simp [regionHeap, hin] at hc
-
-private theorem rwOnlyHeap_sepConj {P Q : SepProp}
-    (hp : ∀ h, P h → RwOnlyHeap h) (hq : ∀ h, Q h → RwOnlyHeap h)
-    (h : Heap) (hpq : (P ∗ Q) h) : RwOnlyHeap h := by
-  rcases Arm64.SepProp.holds_sepConj_elim hpq with ⟨h1, h2, _, rfl, hp1, hq2⟩
-  obtain ⟨h1_p, h1_a, h1_f, h1_m⟩ := hp h1 hp1
-  obtain ⟨h2_p, h2_a, h2_f, h2_m⟩ := hq h2 hq2
-  refine ⟨fun a c hc => ?_, fun γ k => ?_, fun γ k => ?_, fun a => ?_⟩
-  · unfold Heap.union at hc; dsimp only at hc
-    cases hc1 : h1.phys a with
-    | some c1 => rw [hc1] at hc; injection hc with hc'; subst hc'; exact h1_p a c1 hc1
-    | none => rw [hc1] at hc; exact h2_p a c hc
-  · unfold Heap.union; dsimp only; rw [h1_a γ k, h2_a γ k]
-  · unfold Heap.union; dsimp only; rw [h1_f γ k, h2_f γ k]
-  · unfold Heap.union; dsimp only; rw [h1_m a, h2_m a]; rfl
-
 private theorem vsigPre_rwOnly (P : SignalPqxdh.Primitives)
     (g' : VerifySignaturePlacedGhost) (s0 : State) (h : Heap)
-    (hh : (verifySignatureCallSpec P).pre g' s0 h) : RwOnlyHeap h := by
-  dsimp only [verifySignatureCallSpec] at hh
+    (hh : (verifySignatureCallSpecAt dalekHookStack P).pre g' s0 h) : RwOnlyHeap h := by
+  dsimp only [verifySignatureCallSpecAt] at hh
   exact rwOnlyHeap_sepConj (rwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
     (rwOnlyHeap_sepConj (rwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
       (rwOnlyHeap_sepConj (rwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
@@ -2159,40 +3138,13 @@ private theorem vsigPre_rwOnly (P : SignalPqxdh.Primitives)
 
 private theorem vsigPost_rwOnly (P : SignalPqxdh.Primitives)
     (g' : VerifySignaturePlacedGhost) (s0 sf : State) (h : Heap)
-    (hh : (verifySignatureCallSpec P).post g' s0 sf h) : RwOnlyHeap h := by
-  dsimp only [verifySignatureCallSpec] at hh
+    (hh : (verifySignatureCallSpecAt dalekHookStack P).post g' s0 sf h) : RwOnlyHeap h := by
+  dsimp only [verifySignatureCallSpecAt] at hh
   exact rwOnlyHeap_sepConj (rwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
     (rwOnlyHeap_sepConj (rwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
       (rwOnlyHeap_sepConj (rwOnlyHeap_of_isBlock (IsBlock.pointsToBytes _ _))
         (rwOnlyHeap_of_isBlock (IsBlock.memRegion _ _)))) h
     (Arm64.SepProp.holds_pure_sepConj hh).2
-
-private theorem rwOnlyHeap_matches_stripWx_iff [LibsignalPlacement] {h : Heap}
-    (hrw : RwOnlyHeap h) (m : Memory) :
-    h.Matches (stripWx m) ↔ h.Matches m := by
-  unfold Heap.Matches
-  refine ⟨fun hm => ⟨fun a c hc => ?_, hm.2.1, fun a hma => by rw [hrw.2.2.2 a] at hma; cases hma⟩,
-          fun hm => ⟨fun a c hc => ?_, hm.2.1, fun a hma => by rw [hrw.2.2.2 a] at hma; cases hma⟩⟩
-  · have hcell := hm.1 a c hc
-    rcases hrw.1 a c hc with ⟨b, rfl⟩ | rfl
-    · obtain ⟨hp, hlf⟩ := Memory.permNoLazy_eq_some_rw_iff.mp
-        ((stripWx_permNoLazy_rw_iff m a).mp
-          (Memory.permNoLazy_eq_some_rw_iff.mpr ⟨hcell.2.1, hcell.2.2⟩))
-      exact ⟨(stripWx_read8 m a).symm.trans hcell.1, hp, hlf⟩
-    · exact ((ProofLib.strip_perm_props keepLs (hideWx m) a).2.2.2.trans
-        (by dsimp only [hideWx, Memory.perm, Perm.rw, Perm.rwx, Perm.protNone];
-            rcases m.cells a with _ | ⟨_ | ⟨r, w, x, _, _⟩, _⟩ <;>
-              [simp; simp; (cases r <;> cases w <;> cases x <;> simp)])).mp hcell
-  · have hcell := hm.1 a c hc
-    rcases hrw.1 a c hc with ⟨b, rfl⟩ | rfl
-    · obtain ⟨hp, hlf⟩ := Memory.permNoLazy_eq_some_rw_iff.mp
-        ((stripWx_permNoLazy_rw_iff m a).mpr
-          (Memory.permNoLazy_eq_some_rw_iff.mpr ⟨hcell.2.1, hcell.2.2⟩))
-      exact ⟨(stripWx_read8 m a).trans hcell.1, hp, hlf⟩
-    · exact ((ProofLib.strip_perm_props keepLs (hideWx m) a).2.2.2.trans
-        (by dsimp only [hideWx, Memory.perm, Perm.rw, Perm.rwx, Perm.protNone];
-            rcases m.cells a with _ | ⟨_ | ⟨r, w, x, _, _⟩, _⟩ <;>
-              [simp; simp; (cases r <;> cases w <;> cases x <;> simp)])).mpr hcell
 
 private theorem unstrip_vsigPost_frame [LibsignalPlacement]
     {m0 mf : Memory} {P_post R : SepProp} {h_P h_R : Heap}
@@ -2390,6 +3342,7 @@ private theorem verifySignature_203_vm_ok [LibsignalPlacement]
     {mmpl : MultiPlacement} (ghFixed : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (hG : CliGhostAllocHooks M A lim ghFixed)
+    (hF512 : W.Q.F512 = CryptoGames.SHA512.sha512CompressState)
     (Y : UnreachedPqxdhPrimitives) :
     subroutine_ok
       ((blkPC_203).rebase (blkPl_203).base (cliGhostExterns ghFixed (cliExternsPlaced mmpl W)))
@@ -2397,36 +3350,36 @@ private theorem verifySignature_203_vm_ok [LibsignalPlacement]
       (withLsCodeRoLoaded lsmpl (verifySignatureInnerSpec (modelPrims Y ⟨W.C, W.Q⟩))) := by
   let H := cliGhostExterns ghFixed (cliExternsPlaced mmpl W)
   let P := modelPrims Y ⟨W.C, W.Q⟩
-  have hprims := VerifySignaturePrims.of_structuralPrims (structuralPrims_initiatorModelPrims Y ⟨W.C, W.Q⟩)
-  have hbase0 := verifySignature_placed_ok_sat (H := vsigOnlyHooks H) hprims
-    (w3VerifySigHooks_vsigOnly mmpl ghFixed W hG Y)
+  have hbase0 := verifySignature_ext_dalekPrimsRef_placed_ok_at (hookStack := dalekHookStack)
+    (H := vsigOnlyHooks H) (by decide) (by decide) Y W.C W.Q
+    (w3VerifySigHooks_vsigOnly mmpl ghFixed W hG hF512 Y)
   refine subroutine_ok_outcome_intro fun g R s0 hpc hrun hpre_cro hsp => ?_
   obtain ⟨⟨hcl, hro⟩, hpre_vs⟩ := extract_withLsCodeRoLoaded hpre_cro
   dsimp only [verifySignatureInnerSpec, withVmPreserved] at hpre_vs
   let g' : VerifySignaturePlacedGhost :=
     { pkPtr := g.pkPtr, pk := g.pk, msgPtr := g.msgPtr, m := g.m,
       sigPtr := g.sigPtr, sig := g.sig }
-  have hpre_call : s0.mem ⊨ (verifySignatureCallSpec P).pre g' s0 ∗ R := hpre_vs
+  have hpre_call : s0.mem ⊨ (verifySignatureCallSpecAt dalekHookStack P).pre g' s0 ∗ R := hpre_vs
   obtain ⟨h_P, h_R, hdisj_PR, hp_P, hp_R, hm_PR⟩ := Satisfies.sepConj_elim hpre_call
   have hP_rw : RwOnlyHeap h_P := vsigPre_rwOnly P g' s0 h_P hp_P
   have hm_P_swx : h_P.Matches (stripWx s0.mem) :=
     (rwOnlyHeap_matches_stripWx_iff hP_rw s0.mem).mpr (Heap.Matches.of_union_left hm_PR)
   let R_view : SepProp := ⟨fun h => h = fullComplementHeap h_P (stripWx s0.mem)⟩
-  have hpre_strip : stripWx s0.mem ⊨ (verifySignatureCallSpec P).pre g' s0 ∗ R_view :=
+  have hpre_strip : stripWx s0.mem ⊨ (verifySignatureCallSpecAt dalekHookStack P).pre g' s0 ∗ R_view :=
     ProofLib.Satisfies.sepConj_intro (disjoint_fullComplementHeap h_P (stripWx s0.mem)) hp_P rfl
       (Heap.Matches.union hm_P_swx (matches_fullComplementHeap h_P (stripWx s0.mem)))
   have hs0'_mem : (stripWxS s0).mem = stripWx s0.mem := by cases s0; rfl
-  have hpre_s0' : (verifySignatureCallSpec P).pre g' (stripWxS s0) =
-      (verifySignatureCallSpec P).pre g' s0 := by cases s0; rfl
+  have hpre_s0' : (verifySignatureCallSpecAt dalekHookStack P).pre g' (stripWxS s0) =
+      (verifySignatureCallSpecAt dalekHookStack P).pre g' s0 := by cases s0; rfl
   have hpre_P : s0.mem ⊨
       (CryptoVerification.LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl
-        (verifySignatureCallSpec P)).pre g' s0 ∗ R := by
+        (verifySignatureCallSpecAt dalekHookStack P)).pre g' s0 ∗ R := by
     dsimp only [CryptoVerification.LibsignalTripleRatchet.withLsCodeRoLoaded]
     rw [sepConj_comm _ ⌜_⌝, sepConj_assoc, satisfies_pure_sepConj]
     exact ⟨⟨hcl, hro⟩, hpre_call⟩
   have hpre_Q : (stripWxS s0).mem ⊨
       (CryptoVerification.LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl
-        (verifySignatureCallSpec P)).pre g' (stripWxS s0) ∗ R_view := by
+        (verifySignatureCallSpecAt dalekHookStack P)).pre g' (stripWxS s0) ∗ R_view := by
     dsimp only [CryptoVerification.LibsignalTripleRatchet.withLsCodeRoLoaded]
     rw [hpre_s0', hs0'_mem, sepConj_comm _ ⌜_⌝, sepConj_assoc, satisfies_pure_sepConj]
     exact ⟨⟨libsignalCodeLoaded_stripWx hcl, libsignalRoLoaded_stripWx hro⟩, hpre_strip⟩
@@ -2438,8 +3391,9 @@ private theorem verifySignature_203_vm_ok [LibsignalPlacement]
   rcases hbase0.no_fault_before_outcome g' R s0 hpc hrun hpre_P hsp hL0 with
     ⟨sf0, hsteps0, ⟨hret0, hcc0, hpost0⟩ | ⟨_, hp⟩ | ⟨_, _, he⟩ | ⟨_, ho⟩, _⟩
   · obtain ⟨tr0, htr0⟩ := steps_to_stepsList hsteps0
-    have hbase_sh := verifySignature_placed_ok_sat (H := shadowVsigHooks tr0 H) hprims
-      (w3VerifySigHooks_shadow tr0 mmpl ghFixed W hG Y)
+    have hbase_sh := verifySignature_ext_dalekPrimsRef_placed_ok_at (hookStack := dalekHookStack)
+      (H := shadowVsigHooks tr0 H) (by decide) (by decide) Y W.C W.Q
+      (w3VerifySigHooks_shadow tr0 mmpl ghFixed W hG hF512 Y)
     have hLQ : ((blkPC_203).rebase (blkPl_203).base (shadowVsigHooks tr0 H)).CodeLoaded
         (stripWxS s0).mem := by
       rw [hs0'_mem, heq203]
@@ -2450,8 +3404,8 @@ private theorem verifySignature_203_vm_ok [LibsignalPlacement]
       ⟨sf', hsteps', ⟨hret', hcc', hpost'⟩ | ⟨_, hp⟩ | ⟨_, _, he⟩ | ⟨_, ho⟩, _⟩
     · obtain ⟨tr', htr'⟩ := steps_to_stepsList hsteps'
       obtain ⟨sf, hsf_eq | ⟨hsf'_eq, hanon⟩, hsteps_H, hvm⟩ :=
-        steps_vsig_lockstep_vm tr0 mmpl ghFixed W hG htr0 hret0.2.2 [] rfl
-          (by intro _ hu; cases hu) rfl htr' hret'.2.2 hcl
+        steps_vsig_lockstep_vm s0 tr0 mmpl ghFixed W hG htr0 hret0.2.2 [] rfl
+          (by intro _ hu; cases hu) (stripWxMeta_self s0).symm htr' hret'.2.2 hcl
       · subst hsf_eq
         dsimp only [CryptoVerification.LibsignalTripleRatchet.withLsCodeRoLoaded] at hpost0
         refine reaches_outcome_steps hsteps_H (reaches_outcome.of_outcome (Or.inl ⟨hret0, hcc0, ?_⟩))
@@ -2461,11 +3415,11 @@ private theorem verifySignature_203_vm_ok [LibsignalPlacement]
       · subst hsf'_eq
         dsimp only [CryptoVerification.LibsignalTripleRatchet.withLsCodeRoLoaded] at hpost'
         have hpost_eq :
-            (verifySignatureCallSpec P).post g' (stripWxS s0) (stripWxS sf) =
-            (verifySignatureCallSpec P).post g' s0 sf := by cases s0; cases sf; rfl
-        have hsf_mem : (stripWxS sf).mem = stripWx sf.mem := by cases sf; rfl
-        have hpost'' : (stripWxS sf).mem ⊨
-            (verifySignatureCallSpec P).post g' (stripWxS s0) (stripWxS sf) ∗ R_view := hpost'
+            (verifySignatureCallSpecAt dalekHookStack P).post g' (stripWxS s0) (stripWxMeta s0 sf) =
+            (verifySignatureCallSpecAt dalekHookStack P).post g' s0 sf := by cases s0; cases sf; rfl
+        have hsf_mem : (stripWxMeta s0 sf).mem = stripWx sf.mem := stripWxMeta_mem s0 sf
+        have hpost'' : (stripWxMeta s0 sf).mem ⊨
+            (verifySignatureCallSpecAt dalekHookStack P).post g' (stripWxS s0) (stripWxMeta s0 sf) ∗ R_view := hpost'
         rw [hpost_eq, hsf_mem] at hpost''
         have hret : Returned s0 sf := by
           cases s0; cases sf; exact hret'
@@ -2474,27 +3428,27 @@ private theorem verifySignature_203_vm_ok [LibsignalPlacement]
         refine reaches_outcome_steps hsteps_H (reaches_outcome.of_outcome (Or.inl ⟨hret, hcc, ?_⟩))
         dsimp only [withLsCodeRoLoaded, verifySignatureInnerSpec, withVmPreserved]
         rw [sepConj_assoc, satisfies_pure_sepConj]
-        have hres : sf.mem ⊨ (verifySignatureCallSpec P).post g' s0 sf ∗ R :=
+        have hres : sf.mem ⊨ (verifySignatureCallSpecAt dalekHookStack P).post g' s0 sf ∗ R :=
           unstrip_vsigPost_frame hP_rw (vsigPost_rwOnly P g' s0 sf) hdisj_PR hp_R
             (Heap.Matches.of_union_right hdisj_PR hm_PR) hvm.perm_eq hanon hpost''
         exact ⟨hvm, hres⟩
     · dsimp only [CryptoVerification.LibsignalTripleRatchet.withLsCodeRoLoaded,
-        verifySignatureCallSpec] at hp
+        verifySignatureCallSpecAt] at hp
       exact False.elim (not_satisfies_false_sepConj hp)
     · dsimp only [CryptoVerification.LibsignalTripleRatchet.withLsCodeRoLoaded,
-        verifySignatureCallSpec] at he
+        verifySignatureCallSpecAt] at he
       exact False.elim (not_satisfies_false_sepConj he)
     · dsimp only [CryptoVerification.LibsignalTripleRatchet.withLsCodeRoLoaded,
-        verifySignatureCallSpec] at ho
+        verifySignatureCallSpecAt] at ho
       exact False.elim (not_satisfies_false_sepConj ho)
   · dsimp only [CryptoVerification.LibsignalTripleRatchet.withLsCodeRoLoaded,
-      verifySignatureCallSpec] at hp
+      verifySignatureCallSpecAt] at hp
     exact False.elim (not_satisfies_false_sepConj hp)
   · dsimp only [CryptoVerification.LibsignalTripleRatchet.withLsCodeRoLoaded,
-      verifySignatureCallSpec] at he
+      verifySignatureCallSpecAt] at he
     exact False.elim (not_satisfies_false_sepConj he)
   · dsimp only [CryptoVerification.LibsignalTripleRatchet.withLsCodeRoLoaded,
-      verifySignatureCallSpec] at ho
+      verifySignatureCallSpecAt] at ho
     exact False.elim (not_satisfies_false_sepConj ho)
 
 /-- Block-203 `<PublicKey>::verify_signature` contract with `VmPreserved` on `initProgPlaced mmpl ghFixed W`. -/
@@ -2502,12 +3456,13 @@ theorem w3m_verifySignature_vm_ok [LibsignalFullPlacement]
     {mmpl : MultiPlacement} (ghFixed : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (hG : CliGhostAllocHooks M A lim ghFixed)
+    (hF512 : W.Q.F512 = CryptoGames.SHA512.sha512CompressState)
     (Y : UnreachedPqxdhPrimitives) :
     subroutine_ok (initProgPlaced mmpl ghFixed W) (lsmpl.base 203)
       (withLsCodeRoLoaded lsmpl (verifySignatureInnerSpec (modelPrims Y ⟨W.C, W.Q⟩))) :=
   transfer_withLsCodeRoLoaded
     (calleeProg := (blkPC_203).rebase (blkPl_203).base
       (cliGhostExterns ghFixed (cliExternsPlaced mmpl W)))
-    (verifySignature_203_vm_ok ghFixed W hG Y)
+    (verifySignature_203_vm_ok ghFixed W hG hF512 Y)
 
 end LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W3VerifySigAux

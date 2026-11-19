@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
-public import Symbolic.Proofs.Swarm.CREF.Xpl.InvSend
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Xpl.InvSend -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
@@ -39,6 +39,8 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
 
 /-!
 # Whisper `SendWire` Block Shape, Quietness, and Encrypt Matching
@@ -47,7 +49,7 @@ Proves single-session `PureCRecRelH` reduction, failed-block quietness, `CHist` 
 encrypt blocks, and return-block visible-event matching (`snd_encrypt_vis_match`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -148,7 +150,7 @@ theorem xquiet_messageEncryptAbort (me : Participant) (si : Nat) :
   exact xquiet_bind (xquiet_of_fix (xfix_getLocalState _ _)) fun _ =>
     xquiet_bind (xquiet_genRand _) fun _ => xquiet_of_fix xfix_failure
 
-def XLastSent (n : Nat) (t : ExecTrace) : Prop :=
+@[expose] def XLastSent (n : Nat) (t : ExecTrace) : Prop :=
   n < t.length ∧ ∃ w, t.getMessageSentAt (t.length - 1) = some w
 
 theorem xlastSent_anti : QAnti XLastSent :=
@@ -360,7 +362,7 @@ theorem snd_encrypt_pqIdx {r : ProtocolSetup} {ms₀ pre post : List Move}
   simp only [ownSaltsFrom, Bool.and_eq_true] at h2
   exact beq_iff_eq.mp h2.1
 
-def wrapVisEntry (tr : ExecTrace) (wrap : Option (Nat × Nat)) (v : VisEntry) : VisEntry :=
+@[expose] def wrapVisEntry (tr : ExecTrace) (wrap : Option (Nat × Nat)) (v : VisEntry) : VisEntry :=
   match v.kind, wrap with
   | .send, some (e, c) => ⟨.send, received tr [e, c] ++ v.terms, .preKeySend, none⟩
   | _, _ => v

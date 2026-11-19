@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.DecInterface
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DecDefsPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.DecInterface -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DecDefsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import ProofLib.FsTrace
 
 /-!
 # Placed Inlined `SessionStructure::decode` Loop-Body Interface
@@ -21,7 +23,7 @@ import Arm64.Trusted.Spec.SepLogic
 (`OverDecArmPlacedStmt`) corresponding to `VerNe.Chain3.DecInterface`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,7 +42,7 @@ open CryptoVerification.LibsignalPlacement
 open CryptoVerification.CliHandshake.RespClosurePlaced
 
 /-- Placed register invariant at offset `off` inside `decryptPrekeyClosureName` (Block `518`). -/
-def OverDecRegsPlaced [LibsignalPlacement]
+@[expose] def OverDecRegsPlaced [LibsignalPlacement]
     (_ext : String → Option (State → State)) (s0 : State) (g : OverDecG)
     (off : BitVec 64) (s : State) : Prop :=
   s.pc = (blkPl_518).base + off ∧
@@ -62,7 +64,7 @@ def OverDecRegsPlaced [LibsignalPlacement]
 
 /-- Placed arm contract (`overDecArmOff fl → +0x2160`) for fields satisfying
 `P : GenFieldQ → Prop`. -/
-def OverDecArmPlacedStmt [LibsignalPlacement] (P : GenFieldQ → Prop) : Prop :=
+@[expose] def OverDecArmPlacedStmt [LibsignalPlacement] (P : GenFieldQ → Prop) : Prop :=
   ∀ (ext : String → Option (State → State)),
   ∀ (s0 s : State) (g : OverDecG) (v : SSGQ) (fl : GenFieldQ) (rest : List (BitVec 8)),
     P fl → fl.Ok → fl.Fresh v →

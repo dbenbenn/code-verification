@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordChainClone.ClonePlacedDefs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
 import ProofLib.ProgramReflection
@@ -19,6 +19,11 @@ import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.Clone
+import LibsignalBinary.Proofs.Common.HookTrace
 
 /-!
 # Relocatable `[LibsignalPlacement]` Mid-Segment Proofs for `Chain::clone` (Block `524`)
@@ -27,7 +32,7 @@ Epilogue (`+736 → ret`), `message_keys` loop and empty fast path (`+260 .. +73
 `chain_key = none` join (`+244 .. +256`) on `(blkPC_524).rebase (blkPl_524).base H`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.Cli.LibsignalE2E.Pqxdh.Reloc.ChainClone4
 

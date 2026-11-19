@@ -9,14 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3PlacedBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.W4PathCVerNeWideDefs
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3StageP3Prev1PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.StageP3RawBodyPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotDom0BridgePostBob
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotDom0BridgePostBobProducerAux
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3StageP3Prev1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.StageP3RawBodyPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotDom0BridgePostBob -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotDom0BridgePostBobProducerAux -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TopPlacedBudget
 
 /-!
 # `verNeEnv`-Parametric and Fixed-Budget `OverD3` Poll Producers
@@ -26,7 +41,7 @@ generalizes the Stage-P3 `VerNe` obligation from `VerNeTopEnv` to an arbitrary `
 provides closed `VerNeTightTopRawEnv` poll producers extracting `SessionGhostValid` from memory.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -197,7 +212,7 @@ private theorem h7pbt_stageP3Prev1D3_ofVerNe_at_full_placed_of_verNeAt [Libsigna
     H7pbStageP3Prev1D3OfVerNeAtFrozenPlacedStmt A lim tdEnv verNeEnv mmpl gh W := by
   intro st_b hG hAllocX hcc hscc hroot hDropSS3 s0 s coroPtr ctxPtr outPtr initErrsPtr
     prevCap prevPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer b_2c0 enc rest recG st rem loc
-    msgG msg F_frame Q hfits hinit hcap hprev hv4 hns hsd hrc hpq hfr hpc hrun hsp hroot_sp hfp
+    msgG msg F_frame Q hfits hinit hcap hprev hv4 hns hsd hrc hpq hrem_le hfr hpc hrun hsp hroot_sp hfp
     htr hvregs hOk hErr hVerNe
   let ext := cliGhostExterns gh (cliExternsPlaced mmpl W)
   have hshim : subroutine_ok (lsProg_518 ext) (lsρ lsRustNoAllocShimSym)
@@ -237,7 +252,7 @@ private theorem h7pbt_stageP3Prev1D3_ofVerNe_at_full_placed_of_verNeAt [Libsigna
     hDropSS3 hcc hscc hrootM3 (hVerNeAt hG hAllocX hDropSS3)
     st_b s0 s coroPtr ctxPtr outPtr initErrsPtr prevCap prevPtr remAddrPtr locAddrPtr whisperMsgPtr
     cur msgVer b_2c0 enc rest recG st rem loc msgG msg F_frame Q
-    hfits hinit hcap hprev hv4 hns hsd hrc hpq hfr hpc hrun hsp hroot_sp hfp htr hvregs
+    hfits hinit hcap hprev hv4 hns hsd hrc hpq hrem_le hfr hpc hrun hsp hroot_sp hfp htr hvregs
     (fun G₁ G' pt ptCap ptPtr evs_ok s' P_s' => hOk G₁ G' evs_ok pt ptCap ptPtr s' P_s')
     (fun G₁ G' e evs_err sf P_f => hErr G₁ G' evs_err e sf P_f)
     (fun evs_vn sf P_f hver hevs hPf => hVerNe evs_vn sf P_f hver hevs

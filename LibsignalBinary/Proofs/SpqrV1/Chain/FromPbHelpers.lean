@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Repr
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Repr -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeHeap
 
 /-!
@@ -21,7 +21,7 @@ Bit-level characterizations of `Direction.fromI32?`, `ChainEpochDirection.fromPb
 splitting; and separation-logic bridges between `ChainPB` and `Chain` epoch representations.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ChainProofs
 
@@ -268,14 +268,6 @@ theorem div_112_magic_eq {k : Nat} (hk : k * 112 < 2 ^ 63) :
   change ((BitVec.ofNat 64 (k * 112)) >>> 4) * 0x6db6db6db6db6db7#64 = BitVec.ofNat 64 k
   rw [ofNat_mul_112_lsr_4 hk, magic_div7_mul]
 
-theorem sub_ptr_add_mul_112 (ptr : BitVec 64) (a b : Nat) (h : b ≤ a) :
-    (ptr + BitVec.ofNat 64 (a * 112)) - (ptr + BitVec.ofNat 64 (b * 112)) =
-      BitVec.ofNat 64 ((a - b) * 112) := by
-  have ha : a * 112 = b * 112 + (a - b) * 112 := by
-    rw [← Nat.add_mul, Nat.add_sub_of_le h]
-  rw [ha, BitVec.ofNat_add]
-  bv_lin
-
 theorem sub_ptr_self_add_mul_112 (ptr : BitVec 64) (k : Nat) :
     (ptr + BitVec.ofNat 64 (k * 112)) - ptr = BitVec.ofNat 64 (k * 112) := by
   bv_lin
@@ -292,20 +284,13 @@ theorem add_one_beq_zero_of_lt_pow63 {c : BitVec 64} (hlt : c.toNat < 2 ^ 63) :
   change 0xffffffffffffffff < 2 ^ 63 at hlt
   omega
 
-theorem ult_cap_ofNat_of_le {k : Nat} {cap : BitVec 64}
-    (hle : k ≤ cap.toNat) (hcap : cap.toNat * 112 < 2 ^ 63) :
-    BitVec.ult cap (BitVec.ofNat 64 k) = false := by
-  have hk64 : k < 18446744073709551616 := by omega
-  simp [BitVec.ult, BitVec.toNat_ofNat, Nat.mod_eq_of_lt hk64]
-  omega
-
 /-! ## Separation-Logic Bridges for `FromPb` -/
 
-def toChainEpochDirectionGhost (g : EpochDirectionPBGhost) : ChainEpochDirectionGhost :=
+@[expose] def toChainEpochDirectionGhost (g : EpochDirectionPBGhost) : ChainEpochDirectionGhost :=
   { next := ⟨g.next.cap, g.next.ptr⟩
     prev := ⟨g.prev.cap, g.prev.ptr⟩ }
 
-def toChainEpochGhost (g : ChainEpochPBGhost) : ChainEpochGhost :=
+@[expose] def toChainEpochGhost (g : ChainEpochPBGhost) : ChainEpochGhost :=
   { send := toChainEpochDirectionGhost g.send
     recv := toChainEpochDirectionGhost g.recv }
 
@@ -314,13 +299,6 @@ theorem epochDirectionPBAt_eq_chainEpochDirectionAt (A : RustAlloc)
     epochDirectionPBAt A g a d =
       chainEpochDirectionAt A a (toChainEpochDirectionGhost g)
         { ctr := d.ctr, next := d.next, prev := { data := d.prev } } := rfl
-
-theorem chainEpochPBAt_some_some_eq_chainEpochAt (A : RustAlloc)
-    (g : ChainEpochPBGhost) (a : BitVec 64) (s r : EpochDirectionPB) :
-    chainEpochPBAt A (g, { send := some s, recv := some r }) a =
-      chainEpochAt A (toChainEpochGhost g,
-        { send := { ctr := s.ctr, next := s.next, prev := { data := s.prev } }
-          recv := { ctr := r.ctr, next := r.next, prev := { data := r.prev } } }) a := rfl
 
 /-- `arrayAt (chainEpochPBAt A) 112 ptr (epochs.zip links)` entails the unpinned
     `arrayAt (fun ep addr => ProtoRepr.chainEpochPBAt A addr ep) 112 ptr links`
@@ -395,7 +373,7 @@ theorem arrayAt_chainEpochAt_snoc (A : RustAlloc) (ptr : BitVec 64)
 /-! ## `chainPBAt` Unpacking and Raw Heap Helpers -/
 
 /-- All 80 bytes of `ChainPB` header cells at `a`. -/
-def chainPBHeadersAt (a : BitVec 64) (g : ChainPBGhost) (pb : ChainPB) : SepProp :=
+@[expose] def chainPBHeadersAt (a : BitVec 64) (g : ChainPBGhost) (pb : ChainPB) : SepProp :=
   (a ↦₆₄ g.linksCap) ∗
   ((a + 8#64) ↦₆₄ g.linksPtr) ∗
   ((a + 16#64) ↦₆₄ BitVec.ofNat 64 pb.links.length) ∗
@@ -444,13 +422,13 @@ theorem chainPBHeadersAt_entails_memRegion_80 (a : BitVec 64) (g : ChainPBGhost)
                     (ProofLib.pointsTo32_entails_memRegion _ _)))))))))
 
 /-- Raw allocation + spare capacity for a stride-112 `Vec` buffer at `ptr` of length `n`. -/
-def linksRawAllocAt (A : RustAlloc) (cap ptr : BitVec 64) (n : Nat) : SepProp :=
+@[expose] def linksRawAllocAt (A : RustAlloc) (cap ptr : BitVec 64) (n : Nat) : SepProp :=
   if cap = 0 then emp
   else A.live ptr (cap.toNat * 112) 8 ∗
     memRegion (ptr + BitVec.ofNat 64 (n * 112)) ((cap.toNat - n) * 112)
 
 /-- Heap buffer of a `Vec<u8>` at `(cap, ptr)` holding `bs`. -/
-def vecU8BufAt (A : RustAlloc) (cap ptr : BitVec 64) (bs : Bytes) : SepProp :=
+@[expose] def vecU8BufAt (A : RustAlloc) (cap ptr : BitVec 64) (bs : Bytes) : SepProp :=
   if cap = 0 then emp
   else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
     memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)
@@ -600,7 +578,7 @@ theorem chainPBAt_unpack (A : RustAlloc) (g : ChainPBGhost) (a : BitVec 64) (pb 
 
 /-! ## Loop-Element (`chainEpochPBAt`) Unpack, Repack, and Dealloc Lemmas -/
 
-def epochDirPBCellsAt (a : BitVec 64) (g : EpochDirectionPBGhost) (d : EpochDirectionPB) : SepProp :=
+@[expose] def epochDirPBCellsAt (a : BitVec 64) (g : EpochDirectionPBGhost) (d : EpochDirectionPB) : SepProp :=
   (a ↦₆₄ g.next.cap) ∗
   ((a + 8#64) ↦₆₄ g.next.ptr) ∗
   ((a + 16#64) ↦₆₄ BitVec.ofNat 64 d.next.length) ∗
@@ -1018,153 +996,6 @@ theorem chainResultAt_ok_pack (A : RustAlloc) (out : BitVec 64)
   exact sepConj_mono (sepConj_mono_right hrb) (sepConj_mono_left hn)
 
 /-! ## Stack Frame Split and Join (`chainFromPbStackX = 16800` B) -/
-
-theorem stackAt_chainFromPb_split (sp : BitVec 64) :
-    stackAt sp chainFromPbStackX =
-      memRegion (sp - 16800#64) 12480 ∗
-      stackAt (sp - 192#64) dropStack32 ∗
-      (∃∗ s00 : BitVec 64, (sp - 192#64) ↦₆₄ s00) ∗
-      (∃∗ s08 : BitVec 64, (sp - 184#64) ↦₆₄ s08) ∗
-      (∃∗ s10 : BitVec 64, (sp - 176#64) ↦₆₄ s10) ∗
-      (∃∗ s18 : BitVec 64, (sp - 168#64) ↦₆₄ s18) ∗
-      (∃∗ s20 : BitVec 64, (sp - 160#64) ↦₆₄ s20) ∗
-      memRegion (sp - 152#64) 4 ∗
-      (∃∗ s2c : BitVec 32, (sp - 148#64) ↦₃₂ s2c) ∗
-      (∃∗ s30 : BitVec 64, (sp - 144#64) ↦₆₄ s30) ∗
-      (∃∗ s38 : BitVec 64, (sp - 136#64) ↦₆₄ s38) ∗
-      (∃∗ s40 : BitVec 64, (sp - 128#64) ↦₆₄ s40) ∗
-      (∃∗ s48 : BitVec 64, (sp - 120#64) ↦₆₄ s48) ∗
-      (∃∗ s50 : BitVec 64, (sp - 112#64) ↦₆₄ s50) ∗
-      (∃∗ s58 : BitVec 64, (sp - 104#64) ↦₆₄ s58) ∗
-      (∃∗ s60 : BitVec 64, (sp - 96#64) ↦₆₄ s60) ∗
-      (∃∗ s68 : BitVec 64, (sp - 88#64) ↦₆₄ s68) ∗
-      (∃∗ s70 : BitVec 64, (sp - 80#64) ↦₆₄ s70) ∗
-      (∃∗ s78 : BitVec 64, (sp - 72#64) ↦₆₄ s78) ∗
-      (∃∗ s80 : BitVec 64, (sp - 64#64) ↦₆₄ s80) ∗
-      (∃∗ s88 : BitVec 64, (sp - 56#64) ↦₆₄ s88) ∗
-      (∃∗ s90 : BitVec 64, (sp - 48#64) ↦₆₄ s90) ∗
-      (∃∗ s98 : BitVec 64, (sp - 40#64) ↦₆₄ s98) ∗
-      (∃∗ sa0 : BitVec 64, (sp - 32#64) ↦₆₄ sa0) ∗
-      (∃∗ sa8 : BitVec 64, (sp - 24#64) ↦₆₄ sa8) ∗
-      (∃∗ sb0 : BitVec 64, (sp - 16#64) ↦₆₄ sb0) ∗
-      (∃∗ sb8 : BitVec 64, (sp - 8#64) ↦₆₄ sb8) := by
-  unfold stackAt
-  change memRegion (sp - 16800#64) 16800 =
-    memRegion (sp - 16800#64) 12480 ∗
-      memRegion (sp - 192#64 - 4128#64) 4128 ∗ _
-  have hsub : sp - 192#64 - 4128#64 = sp - 4320#64 := by bv_omega
-  rw [hsub,
-    ProofLib.memRegion_split' (b := sp - 16800#64) (n := 12480) (k := 4320)
-      (b' := sp - 4320#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 4320#64) (n := 4128) (k := 192)
-      (b' := sp - 192#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 192#64) (n := 8) (k := 184) (b' := sp - 184#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 184#64) (n := 8) (k := 176) (b' := sp - 176#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 176#64) (n := 8) (k := 168) (b' := sp - 168#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 168#64) (n := 8) (k := 160) (b' := sp - 160#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 160#64) (n := 8) (k := 152) (b' := sp - 152#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 152#64) (n := 4) (k := 148) (b' := sp - 148#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 148#64) (n := 4) (k := 144) (b' := sp - 144#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 144#64) (n := 8) (k := 136) (b' := sp - 136#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 136#64) (n := 8) (k := 128) (b' := sp - 128#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 128#64) (n := 8) (k := 120) (b' := sp - 120#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 120#64) (n := 8) (k := 112) (b' := sp - 112#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 112#64) (n := 8) (k := 104) (b' := sp - 104#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 104#64) (n := 8) (k := 96) (b' := sp - 96#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 96#64) (n := 8) (k := 88) (b' := sp - 88#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 88#64) (n := 8) (k := 80) (b' := sp - 80#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 80#64) (n := 8) (k := 72) (b' := sp - 72#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 72#64) (n := 8) (k := 64) (b' := sp - 64#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 64#64) (n := 8) (k := 56) (b' := sp - 56#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 56#64) (n := 8) (k := 48) (b' := sp - 48#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 48#64) (n := 8) (k := 40) (b' := sp - 40#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 40#64) (n := 8) (k := 32) (b' := sp - 32#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 32#64) (n := 8) (k := 24) (b' := sp - 24#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 24#64) (n := 8) (k := 16) (b' := sp - 16#64) rfl (by bv_omega) (by decide),
-    ProofLib.memRegion_split' (b := sp - 16#64) (n := 8) (k := 8) (b' := sp - 8#64) rfl (by bv_omega) (by decide)]
-  rw [ProofLib.memRegion_eight (sp - 192#64),
-    ProofLib.memRegion_eight (sp - 184#64),
-    ProofLib.memRegion_eight (sp - 176#64),
-    ProofLib.memRegion_eight (sp - 168#64),
-    ProofLib.memRegion_eight (sp - 160#64),
-    ProofLib.memRegion_four (sp - 148#64),
-    ProofLib.memRegion_eight (sp - 144#64),
-    ProofLib.memRegion_eight (sp - 136#64),
-    ProofLib.memRegion_eight (sp - 128#64),
-    ProofLib.memRegion_eight (sp - 120#64),
-    ProofLib.memRegion_eight (sp - 112#64),
-    ProofLib.memRegion_eight (sp - 104#64),
-    ProofLib.memRegion_eight (sp - 96#64),
-    ProofLib.memRegion_eight (sp - 88#64),
-    ProofLib.memRegion_eight (sp - 80#64),
-    ProofLib.memRegion_eight (sp - 72#64),
-    ProofLib.memRegion_eight (sp - 64#64),
-    ProofLib.memRegion_eight (sp - 56#64),
-    ProofLib.memRegion_eight (sp - 48#64),
-    ProofLib.memRegion_eight (sp - 40#64),
-    ProofLib.memRegion_eight (sp - 32#64),
-    ProofLib.memRegion_eight (sp - 24#64),
-    ProofLib.memRegion_eight (sp - 16#64),
-    ProofLib.memRegion_eight (sp - 8#64)]
-
-theorem stackAt_chainFromPb_join (sp : BitVec 64)
-    (s00 s08 s10 s18 s20 : BitVec 64) (s2c : BitVec 32)
-    (s30 s38 s40 s48 s50 s58 s60 s68 s70 s78 s80 s88 s90 s98 sa0 sa8 sb0 sb8 : BitVec 64) :
-    memRegion (sp - 16800#64) 12480 ∗
-      stackAt (sp - 192#64) dropStack32 ∗
-      ((sp - 192#64) ↦₆₄ s00) ∗
-      ((sp - 184#64) ↦₆₄ s08) ∗
-      ((sp - 176#64) ↦₆₄ s10) ∗
-      ((sp - 168#64) ↦₆₄ s18) ∗
-      ((sp - 160#64) ↦₆₄ s20) ∗
-      memRegion (sp - 152#64) 4 ∗
-      ((sp - 148#64) ↦₃₂ s2c) ∗
-      ((sp - 144#64) ↦₆₄ s30) ∗
-      ((sp - 136#64) ↦₆₄ s38) ∗
-      ((sp - 128#64) ↦₆₄ s40) ∗
-      ((sp - 120#64) ↦₆₄ s48) ∗
-      ((sp - 112#64) ↦₆₄ s50) ∗
-      ((sp - 104#64) ↦₆₄ s58) ∗
-      ((sp - 96#64) ↦₆₄ s60) ∗
-      ((sp - 88#64) ↦₆₄ s68) ∗
-      ((sp - 80#64) ↦₆₄ s70) ∗
-      ((sp - 72#64) ↦₆₄ s78) ∗
-      ((sp - 64#64) ↦₆₄ s80) ∗
-      ((sp - 56#64) ↦₆₄ s88) ∗
-      ((sp - 48#64) ↦₆₄ s90) ∗
-      ((sp - 40#64) ↦₆₄ s98) ∗
-      ((sp - 32#64) ↦₆₄ sa0) ∗
-      ((sp - 24#64) ↦₆₄ sa8) ∗
-      ((sp - 16#64) ↦₆₄ sb0) ∗
-      ((sp - 8#64) ↦₆₄ sb8) ⊢
-      stackAt sp chainFromPbStackX := by
-  rw [stackAt_chainFromPb_split sp]
-  refine sepConj_mono_right (sepConj_mono_right ?_)
-  refine sepConj_mono (Entails.sepExists_right s00 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right s08 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right s10 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right s18 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right s20 (Entails.refl _)) ?_
-  refine sepConj_mono_right ?_
-  refine sepConj_mono (Entails.sepExists_right s2c (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right s30 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right s38 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right s40 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right s48 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right s50 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right s58 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right s60 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right s68 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right s70 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right s78 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right s80 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right s88 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right s90 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right s98 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right sa0 (Entails.refl _)) ?_
-  refine sepConj_mono (Entails.sepExists_right sa8 (Entails.refl _)) ?_
-  exact sepConj_mono (Entails.sepExists_right sb0 (Entails.refl _))
-    (Entails.sepExists_right sb8 (Entails.refl _))
 
 theorem stackAt_chainFromPb_split_allocHook (sp : BitVec 64) :
     stackAt sp chainFromPbStackX =

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem1.Queries
+public import Computational.Proofs.CryptoGames.SM.Theorem1.Queries -- proof-setup: allow-public-import
 import VCVio.CryptoFoundations.SecExp.Measure
 
 /-!
@@ -19,7 +19,7 @@ import VCVio.CryptoFoundations.SecExp.Measure
 between the SM game and `privRed`, and proves step-by-step and `simulateQ` equivalence.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -31,10 +31,10 @@ section SimRel
 
 variable (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
 
-def challMsgI (i : ℕ) (mbar : Msg) : ℕ → Option Msg :=
+@[expose] def challMsgI (i : ℕ) (mbar : Msg) : ℕ → Option Msg :=
   fun t => if t < i then some mbar else none
 
-def cfgHyb (i : ℕ) (mbar : Msg) (b_priv : Bool) : Config Msg :=
+@[expose] def cfgHyb (i : ℕ) (mbar : Msg) (b_priv : Bool) : Config Msg :=
   if b_priv then Config.h3 i mbar else Config.h3 (i + 1) mbar
 
 lemma cfgHyb_deliverWin (i : ℕ) (mbar : Msg) (b_priv : Bool) :
@@ -59,7 +59,7 @@ lemma cfgHyb_challMsg_ne (i : ℕ) (mbar : Msg) (b_priv : Bool) {t : ℕ} (hne :
   have hiff : (t ≤ i) ↔ (t < i) := by omega
   cases b_priv <;> simp [cfgHyb, Config.h3, challMsgI, hiff]
 
-def posBound (h : GameState St Msg C) (pos : Pos) : Prop :=
+@[expose] def posBound (h : GameState St Msg C) (pos : Pos) : Prop :=
   pos.epoch < h.epoch pos.sender ∨
     (pos.epoch = h.epoch pos.sender ∧ pos.idx ≤ h.idx pos.sender)
 
@@ -861,7 +861,7 @@ variable [SampleableType Key]
 
 /-- Hybrid branch computation returning `b == b' || h.win` when `canon i h == tL` is admissible,
 and a uniform coin otherwise. -/
-def hybBranch (tL : Option ℕ) (i : ℕ) (cfg : Config Msg) (A : Adversary St Msg Coins C) :
+@[expose] def hybBranch (tL : Option ℕ) (i : ℕ) (cfg : Config Msg) (A : Adversary St Msg Coins C) :
     ProbComp Bool := do
   let b ← $ᵗ Bool
   let (b', h) ← run sm Δ qep cfg b A

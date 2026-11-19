@@ -10,15 +10,39 @@ limitations under the License.
 module
 
 public import Arm64.Trusted.Spec.Hoare
-public import LibsignalBinary.Proofs.Placed.Bridge
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidMatchAuxPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidMatchPathAPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.PreKeyGeneralAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfFrozen
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidMatchAuxPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidMatchPathAPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.PreKeyGeneralAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfFrozen
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Process
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Top -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StackBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Pksm
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+public import ProofLib.Disproof.Basic
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.MuslStage1Init
+public import VerifiedLibraries.Musl.Spec
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Non-Canonical Valid Pre-Key Message Specs & Canonical `runAns` Equivalence
@@ -28,14 +52,14 @@ Defines `MainOkValidMatchD3TightPlaced` and `MainOkValidMatchD3TightFrozenPlaced
 payloads `body` satisfying `Pksm.pksmParse body = some pm` and `pkToE? pm = some m`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.D3
 
-open Arm64 Arm64.Process ProofLib ProofLib.ObjectLoad
+open Arm64 Arm64.Process ProofLib
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
@@ -59,7 +83,7 @@ open CryptoVerification.SignalSession.Cli.RunProofs
 
 /-- Tight `main`-level specification for empty-or-matching session pre-key `recv` on arbitrary
 valid wire payloads `body` under `[LibsignalPlacement]` (`LibsignalCodeRoLoaded lsmpl`). -/
-def MainOkValidMatchD3TightPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement) : Prop :=
+@[expose] def MainOkValidMatchD3TightPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement) : Prop :=
   lsmpl.base 547 ≠ 0#64 →
   ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
     let WP : PEParams := ⟨W.C, W.Q⟩
@@ -81,7 +105,7 @@ def MainOkValidMatchD3TightPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacemen
 
 /-- Tight `main`-level specification (`LibsignalFrozen lsmpl`) for empty-or-matching session
 pre-key `recv` on arbitrary valid wire payloads `body` under `[LibsignalPlacement]`. -/
-def MainOkValidMatchD3TightFrozenPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement) : Prop :=
+@[expose] def MainOkValidMatchD3TightFrozenPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement) : Prop :=
   lsmpl.base 547 ≠ 0#64 →
   ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
     let WP : PEParams := ⟨W.C, W.Q⟩

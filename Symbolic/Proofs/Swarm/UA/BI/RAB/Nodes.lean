@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.UA.BI.RunAfterBreak
+public import Symbolic.Proofs.Swarm.UA.BI.RunAfterBreak -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -18,7 +18,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.UA.BI.G.XlateSteps
+public import Symbolic.Proofs.Swarm.UA.BI.G.XlateSteps -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.UA.BI.G.SlotInit
 import Symbolic.Proofs.Swarm.UA.BI.G.SlotRecvW
 import Symbolic.Proofs.Swarm.UA.BI.G.SlotRpkNO
@@ -33,6 +33,7 @@ import Symbolic.Proofs.Swarm.UA.BI.RAB.Xport
 import Symbolic.Proofs.Swarm.UA.BI.Step
 import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+import Symbolic.Proofs.Swarm.CREF.Xpl.StepsMix
 
 /-!
 # Run-After-Break Refinement Node Wiring
@@ -42,7 +43,7 @@ specifications from their leaf modules, constructs the retired break moves `brkM
 combines them with `refines_run_after_break_of_specs` to prove `refines_run_after_break_B`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

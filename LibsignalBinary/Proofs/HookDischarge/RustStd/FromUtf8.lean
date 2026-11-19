@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import VerifiedLibraries.RustStd.Proofs.Wave2.FromUtf8
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
-public import LibsignalBinary.Proofs.HookDischarge.RustStd.Common
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.HookDischarge.RustStd.Common -- proof-setup: allow-public-import
 
 /-!
 # `core::str::converts::from_utf8` CLI hook discharge
@@ -21,7 +21,7 @@ stack frame) to `CliExt.fromUtf8Spec` (`fromUtf8AsciiSpec`), under either `withR
 `withRoData` for the 256-byte `UTF8_CHAR_WIDTH` table `corePlacedData1`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -41,7 +41,7 @@ open LibsignalBinary.Proofs.HookDischarge.RustStd.Common (withRoData withRoDataS
   subroutine_ok_withRoData_of_sep SpecSimulates keepsFs_withRoData)
 
 /-- Stack-parameterized `CliExt.fromUtf8Spec` (`fromUtf8AsciiSpec extHookStack = fromUtf8Spec`). -/
-def fromUtf8AsciiSpec (hookStack : Nat := extHookStack) :
+@[expose] def fromUtf8AsciiSpec (hookStack : Nat := extHookStack) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (r, p, bs) s0 =>
     ⌜s0.readReg64 .x0 = p ∧ s0.readReg64 .x1 = BitVec.ofNat 64 bs.length ∧

@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful
+public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful -- proof-setup: allow-public-import
 import Mathlib.Data.List.Forall2
-import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
-import Symbolic.Proofs.Swarm.CREF.Xpl.StepsMix
+public import Symbolic.Proofs.Swarm.CREF.Xpl.StepsMix -- proof-setup: allow-public-import
 
 /-!
 # Shared Call-Block Inversion Lemmas
@@ -23,7 +23,7 @@ which decomposes any call block with a single `recv`/`pt` head and no subsequent
 events into a single visible move surrounded by `InvisibleNoEffect` moves.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -190,7 +190,7 @@ theorem xpl_forall₂_length {α β : Type} {R : α → β → Prop} :
   | _ :: _, _ :: _, .cons _ h => by simp [xpl_forall₂_length h]
 
 /-- Moves that can emit a `recv` visible entry. -/
-def RecvHeadKind : Move → Prop
+@[expose] def RecvHeadKind : Move → Prop
   | .aliceStart .. | .bobStart .. | .decrypt .. | .decryptSkipped .. | .reject _ => True
   | _ => False
 

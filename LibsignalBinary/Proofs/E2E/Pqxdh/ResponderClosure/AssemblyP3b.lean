@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneBase
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Stage P3 `SessionState` Folding, `try_decrypt_with_state` Bridge, and Version-Mismatch Funnel
@@ -23,7 +23,7 @@ Folds the 43-slot cloned `SessionState` at `sp + 0xa90` and `coroPtr + 0xf8`, br
 `try_decrypt_with_state` call (`+0x1bac -> +0x1cd8`), and proves the `msgVer ≠ 4#32` error funnel.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -60,50 +60,6 @@ theorem SepWPp.pure_left_focus {prog : Program} {ret : BitVec 64} {s : State}
   rw [hP]
   exact SepWPp.pure_elim h
 
-theorem SepWPp.call_frame_inImage_nopanic {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s : State} {φ : Prop} {P T F : SepProp}
-    {Q Qp : State → SepProp → Prop} (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab) (hcall
-    : subroutine_ok prog entry (spec.inImage img)) (hpc : s.pc = entry) (hrun : s.status = .Running)
-    (hsp : s.spAligned = true) (hlr : s.readReg64 Reg.lr = ret_pc) (hspec : spec.pre x s = (⌜φ⌝ ∗
-    T)) (hφ : φ) (hP : P = T ∗ F)
-    (hpan_false : ∀ sf, spec.onPanic x s sf = ⌜False⌝ := by intro _; rfl)
-    (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by intro _ _; rfl)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running → sf.sp = s.sp → sf.spAligned =
-      true → CalleeSavedPreserved s sf → img.FrozenLoaded sf → sf.symtab = img.symtab → SepWPp prog
-      ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intro sf; first | rfl | simp only [Spec.inImage]) :
-    SepWPp prog ret s P Q Qp := by
-  refine SepWPp.call_frame_frozen_nopanic hF hsym hcall hpc hrun hsp hlr
-    (φ := (img.FrozenLoaded s ∧ s.symtab = img.symtab) ∧ φ) (T := T) (F := F) ?_ ⟨⟨hF, hsym⟩, hφ⟩ hP
-    hpan_false hexit_false hnext hoom_false
-  dsimp only [Spec.inImage]
-  rw [hspec, pure_sepConj_pure_assoc]
-
-theorem SepWPp.call_inImage_frame {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s : State} {φ : Prop} {P T F : SepProp}
-    {Q Qp : State → SepProp → Prop} (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab) (hcall
-    : subroutine_ok prog entry (spec.inImage img)) (hpc : s.pc = entry) (hrun : s.status = .Running)
-    (hsp : s.spAligned = true) (hlr : s.readReg64 Reg.lr = ret_pc) (hspec : spec.pre x s = (⌜φ⌝ ∗
-    T)) (hφ : φ) (hP : P = T ∗ F)
-    (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by intro _ _; rfl)
-    (hpanic : ∀ sf, sf.status = .Panicked → Qp sf (spec.onPanic x s sf ∗ F)) (hnext : ∀ sf : State,
-    sf.pc = ret_pc → sf.status = .Running → sf.sp = s.sp → sf.spAligned = true →
-    CalleeSavedPreserved s sf → img.FrozenLoaded sf → sf.symtab = img.symtab → SepWPp prog ret sf
-    (spec.post x s sf ∗ F) Q Qp)
-    (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intro sf; first | rfl | simp only [Spec.inImage]) :
-    SepWPp prog ret s P Q Qp := by
-  exact ProofLib.SepWPp.call_inImage_frame hcall hF hsym hpc hrun hsp hlr (x := x) (T := T) (F := F)
-    hspec hφ hP
-    (fun sf code _ _ hpost => by
-      rw [hexit_false] at hpost
-      exact not_satisfies_false_sepConj hpost)
-    hpanic
-    (fun sf hpcm hrunm hspm hcsm hfz hsym' =>
-      hnext sf hpcm hrunm hspm (by simpa [State.spAligned, hspm] using hsp) hcsm hfz hsym')
-    (fun sf _ _ _hoom_post => by
-      rw [hoom_false] at _hoom_post
-      exact (not_satisfies_false_sepConj _hoom_post).elim)
-
 theorem SepWPp.bind_oom_frame {prog : Program} {mid ret : BitVec 64}
     {s0 s : State} {P P₁ F : SepProp} {Q₁ Q₂ : State → SepProp → Prop} (h1 : SepWPp prog mid s P₁ Q₁
     (PanicOomProp s0)) (hP : P = P₁ ∗ F) (h2 : ∀ s1 P_f, s1.pc = mid → s1.status = .Running → Q₁ s1
@@ -128,7 +84,7 @@ theorem SepWPp.bind_oom_frame {prog : Program} {mid ret : BitVec 64}
 
 /-- Ghost layout for a freshly-initialized or cloned Bob `SessionState`
 (`receiverChains = []`, `pqRatchetState = []`, `pending = none`, `kyber = none`). -/
-def mkClonedGhost (locIdPtr remIdPtr rootKeyPtr aliceBasePtr : BitVec 64)
+@[expose] def mkClonedGhost (locIdPtr remIdPtr rootKeyPtr aliceBasePtr : BitVec 64)
     (locIdBytes remIdBytes aliceBaseBytes : List (BitVec 8)) (sg : SenderChainGhost) (f248 f24c :
     BitVec 32) : SessionGhost :=
   { localIk := ⟨33#64, locIdPtr, locIdBytes⟩, remoteIk := ⟨33#64, remIdPtr, remIdBytes⟩,
@@ -138,7 +94,7 @@ def mkClonedGhost (locIdPtr remIdPtr rootKeyPtr aliceBasePtr : BitVec 64)
 
 /-- Spatial layout of the 43 uninitialized stack slots + 8 bytes of padding at `sp + 0xa90..0xbe8`.
   -/
-def spA90SlotsAt (sp : BitVec 64) (dv : DstVals) : SepProp :=
+@[expose] def spA90SlotsAt (sp : BitVec 64) (dv : DstVals) : SepProp :=
   ((sp + 0xa90#64) ↦₆₄ dv.w_ca0) ∗ ((sp + 0xa98#64) ↦₆₄ dv.w_ca8) ∗ ((sp + 0xaa0#64) ↦₆₄ dv.w_cb0) ∗
   ((sp + 0xaa8#64) ↦₆₄ dv.w_cb8) ∗ ((sp + 0xab0#64) ↦₆₄ dv.w_cc0) ∗ ((sp + 0xab8#64) ↦₆₄ dv.w_cc8) ∗
   ((sp + 0xac0#64) ↦₆₄ dv.w_cd0) ∗ ((sp + 0xac8#64) ↦₆₄ dv.w_cd8) ∗ ((sp + 0xad0#64) ↦₆₄ dv.w_ce0) ∗
@@ -495,31 +451,13 @@ theorem stackAt_root_eq_chainClone (sp : BitVec 64) :
       ∗ stackAt sp chainCloneStack :=
   stackAt_split_bottom sp chainCloneStack (rootStack - chainCloneStack) (by decide)
 
-def tryDecryptRawSpec (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (uuidParse : UuidParser)
-    (S : SpqrModel) (img : Obj.Image) : Spec TryDecryptGhost where
-  pre x s := ⌜x.st.pqRatchetState = [] ∧ s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.ss ∧
-      s.readReg64 .x2 = x.remA ∧ s.readReg64 .x3 = x.locA ∧ s.readReg64 .x4 = x.msgA ∧ (s.readReg64
-      .x5).setWidth 8 = msgTypeByte x.msgType ∧ x.st.remoteIdentity ≠ some x.st.localIdentity ∧
-      SeedsLen32 x.st ∧ x.st.receiverChains.length < 2 ^ 32 ∧ rootStack ≤ s.sp.toNat⌝ ∗
-      sessionStateAt A x.ss x.G x.st ∗ protocolAddressAt A x.rem x.remA ∗ protocolAddressAt A x.loc
-      x.locA ∗ signalMessageAt A x.msgG x.msgA x.msg ∗ memRegion x.ret 48 ∗ tapeAt ctl x.cur x.rest
-      ∗ logOff img ∗ stackAt s.sp rootStack ∗ A.pool
-  post x s0 sf := ⌜(x.model C S uuidParse).1 ≠ .error .panic ∧ sf.trace = s0.trace⌝ ∗ (∃∗ G' :
-    SessionGhost, ⌜x.G.AfterTryDecrypt (x.model C S uuidParse).1.toBool G'⌝ ∗ sessionStateAt A x.ss G'
-    (x.model C S uuidParse).2) ∗ vecResultAt A x.ret (x.model C S uuidParse).1 ∗ protocolAddressAt A
-    x.rem x.remA ∗ protocolAddressAt A x.loc x.locA ∗ signalMessageAt A x.msgG x.msgA x.msg ∗
-    tapeAfter ctl x.cur x.rest (decryptDraws C x.st x.msg.senderRatchetKey x.rest) ∗ logOff img ∗
-    stackAt s0.sp rootStack ∗ A.pool
-  onPanic x s0 sf := ⌜((x.model C S uuidParse).1 = .error .panic ∨ S.recvPanics x.st.pqRatchetState
-      x.msg.pqRatchet ∨ allocFailedIn s0 sf) ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
 abbrev pqxdhTryDecryptModel (C : Crypto) (S : SpqrModel) (parse : UuidParser)
     (rem loc : AddrGhost) (msg : SignalMessage) (rest : List (BitVec 8)) (st : SessionState (List
     (BitVec 8))) : Except SignalProtocolError (List (BitVec 8)) × SessionState (List (BitVec 8)) :=
   Mut.exec (SessionState.tryDecryptWithState C S.spqr
     (serializeAddresses (serviceIdParse parse) rem loc) msg .preKey (coinsOf rest)) st
 
-def mkClonedTryDecryptGhost (sp : BitVec 64)
+@[expose] def mkClonedTryDecryptGhost (sp : BitVec 64)
     (newLocIdPtr newRemIdPtr newRootKeyPtr newAliceBasePtr : BitVec 64) (locIdBytes remIdBytes
     aliceBaseBytes : List (BitVec 8)) (sg' : SenderChainGhost) (f248 f24c : BitVec 32) (st :
     SessionState (List (BitVec 8))) (remAddrPtr : BitVec 64) (rem : AddrGhost) (locAddrPtr : BitVec
@@ -531,7 +469,7 @@ def mkClonedTryDecryptGhost (sp : BitVec 64)
       locA := locAddrPtr, loc := loc,
     msgA := whisperMsgPtr, msgG := msgG, msg := msg, msgType := .preKey, cur := cur, rest := rest }
 
-def TryDecryptPanicProp (C : Crypto) (S : SpqrModel) (_parse : UuidParser)
+@[expose] def TryDecryptPanicProp (C : Crypto) (S : SpqrModel) (_parse : UuidParser)
     (rem loc : AddrGhost) (st : SessionState (List (BitVec 8))) (msg : SignalMessage) (rest : List
     (BitVec 8)) (s0 sf : State) (P : SepProp) : Prop := ∀ R, (sf.mem ⊨ P ∗ R) → sf.mem ⊨
       (⌜((pqxdhTryDecryptModel C S uuidTryParse rem loc msg rest st).1 = .error .panic ∨
@@ -580,21 +518,6 @@ theorem entails_anyHeap_10 {P P1 P2 P3 P4 P5 P6 P7 P8 P9 P10 F : SepProp}
   repeat apply sepConj_mono_right
   exact entails_anyHeap F
 
-theorem fnAddr_growOneSpe_eq_trap (b : BitVec 64) (C : Crypto)
-    (abs : String → Option (State → State)) : (trTrapProgAt b C
-    abs).fnAddr growOneSpeName = b + bv% (ls_off% "<alloc::raw_vec::RawVec<libsignal_protocol::error::SignalProtocolError>>::grow_one") := by
-  rw [trTrapProgAt, Program.fnAddr_rebase,
-    (ls_lemma% fnOff "<alloc::raw_vec::RawVec<libsignal_protocol::error::SignalProtocolError>>::grow_one")]
-
-theorem fnAddr_growOneSpe_eq (b : BitVec 64) (C : Crypto)
-    (ctl : BitVec 64) (abs : String → Option (State → State)) : (tripleRatchetProgAt b C ctl
-    abs).fnAddr growOneSpeName = b + 0x15c44#64 := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr growOneSpeName]
-  exact fnAddr_growOneSpe_eq_trap b C abs
-
-theorem logOff_eq_5b810 (img : Obj.Image) :
-    logOff img = ((img.base + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256)) ↦₆₄ 0#64) := rfl
-
 theorem growOneSpe_pre_zero_eq (A : RustAlloc) (sp errsPtr0 : BitVec 64) (s : State) :
     (growOneSpeSpec A).pre (sp + 0x3c8#64, 0#64, errsPtr0, []) s = (⌜s.readReg64 .x0 = sp + 0x3c8#64
       ∧ ([] : List (BitVec 8)).length = (0#64).toNat * 48 ∧ errsPtr0 ≠ 0 ∧ max (2 * (0#64).toNat) 4
@@ -618,7 +541,7 @@ theorem growOneSpe_post_zero_eq (A : RustAlloc) (sp errsPtr0 : BitVec 64) (s0 sf
   rw [hlen, BitVec.add_zero, pointsToBytes_nil, emp_sepConj]
   rfl
 
-def vecGhostRestAt (A : RustAlloc) (g : VecGhost) (a : BitVec 64) : SepProp :=
+@[expose] def vecGhostRestAt (A : RustAlloc) (g : VecGhost) (a : BitVec 64) : SepProp :=
   ((a + 8#64) ↦₆₄ g.ptr) ∗ ((a + 16#64) ↦₆₄ BitVec.ofNat 64 g.bytes.length) ∗ ⌜g.bytes.length ≤
     g.cap.toNat ∧ g.cap.toNat < 2 ^ 63 ∧ g.ptr ≠ 0⌝ ∗ (if g.cap = 0 then emp
      else A.live g.ptr g.cap.toNat 1 ∗ (g.ptr ↦ₛ g.bytes) ∗ memRegion (g.ptr + BitVec.ofNat 64
@@ -628,7 +551,7 @@ theorem vecGhostAt_split_cap (A : RustAlloc) (g : VecGhost) (a : BitVec 64) :
     vecGhostAt A g a = (a ↦₆₄ g.cap) ∗ vecGhostRestAt A g a := by
   simp only [vecGhostAt, vecU8At, vecHeader, vecGhostRestAt, sepConj_assoc]
 
-def sessionStateRestAt (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
+@[expose] def sessionStateRestAt (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
     (st : SessionState (List (BitVec 8))) : SepProp :=
   ⌜PublicKey.deserialize G.localIk.bytes = .ok st.localIdentity.publicKey ∧ (match st.remoteIdentity
     with
@@ -858,7 +781,7 @@ theorem sp3e0_104_split_48 (sp : BitVec 64) :
     memRegion (sp + 0x3e0#64) 104 = memRegion (sp + 0x3e0#64) 48 ∗ memRegion (sp + 0x410#64) 56 :=
   ProofLib.memRegion_split' rfl (by bv_omega) (by decide)
 
-def stageP3ClonePre (A : RustAlloc) (sp coroPtr locIdPtr remIdPtr rootKeyPtr aliceBasePtr ctxPtr
+@[expose] def stageP3ClonePre (A : RustAlloc) (sp coroPtr locIdPtr remIdPtr rootKeyPtr aliceBasePtr ctxPtr
     u_38 u_40 u_48 u_50 u_60 u_68 u_70 u_98 u_d0 u930 u938 u940 u948 u950 u958 u960 u968 u970 u978
     u980 u988 : BitVec 64) (prevCounter f248 f24c u_30 u_34 u_5c u_7c : BitVec 32) (sg :
     SenderChainGhost) (sc : SenderChain) (locIdBytes remIdBytes rootKeyBytes aliceBaseBytes : List
@@ -892,7 +815,7 @@ def stageP3ClonePre (A : RustAlloc) (sp coroPtr locIdPtr remIdPtr rootKeyPtr ali
   ((sp + 0x970#64) ↦₆₄ u970) ∗ ((sp + 0x978#64) ↦₆₄ u978) ∗ ((sp + 0x980#64) ↦₆₄ u980) ∗ ((sp +
     0x988#64) ↦₆₄ u988)
 
-def bobCoroRestAt (A : RustAlloc) (coroPtr locIdPtr remIdPtr rootKeyPtr aliceBasePtr : BitVec 64) :
+@[expose] def bobCoroRestAt (A : RustAlloc) (coroPtr locIdPtr remIdPtr rootKeyPtr aliceBasePtr : BitVec 64) :
   SepProp :=
   ((coroPtr + 0xf8#64) ↦₆₄ 33#64) ∗ ((coroPtr + 0x110#64) ↦₆₄ 33#64) ∗
   ((coroPtr + 0x128#64) ↦₆₄ 32#64) ∗ ((coroPtr + 0x140#64) ↦₆₄ 0#64) ∗

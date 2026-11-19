@@ -173,11 +173,6 @@ theorem isAnon_eq {fm : FastMem} {m : Memory} (h : fm.Agrees m) (a : BitVec 64) 
   rw [isAnon, Memory.isAnon, h a]
   rcases m.cells a with _ | ⟨_ | _, _⟩ <;> rfl
 
-theorem permNoLazy_eq {fm : FastMem} {m : Memory} (h : fm.Agrees m) (a : BitVec 64) :
-    fm.permNoLazy a = m.permNoLazy a := by
-  rw [permNoLazy, Memory.permNoLazy, h a]
-  rcases m.cells a with _ | ⟨_ | _, _⟩ <;> rfl
-
 theorem read8_eq {fm : FastMem} {m : Memory} (h : fm.Agrees m) (a : BitVec 64) :
     fm.read8 a = m.read8 a := by
   rw [read8_eq_of_cellAt, Memory.read8, h a]
@@ -913,11 +908,6 @@ def allocBytes (fm : FastMem) (addr : BitVec 64) (size : Nat) (bs : List (BitVec
 def allocBytes? (fm : FastMem) (addr : BitVec 64) (size : Nat) (bs : List (BitVec 8)) : Option FastMem :=
   some (fm.allocBytes addr size bs)
 
-theorem allocBytes_agrees {fm : FastMem} {m : Memory} (h : fm.Agrees m)
-    (addr : BitVec 64) (size : Nat) (bs : List (BitVec 8)) :
-    (fm.allocBytes addr size bs).Agrees ((m.mapFresh addr size Perm.rw).writeBytes addr bs) :=
-  writeBytes_agrees (mapFresh_agrees h _ size Perm.rw) _ bs
-
 def allPermCached (fm : FastMem) (pred : Option Perm → Bool)
     (curHi : Nat) (curLine : Option Line64) (addr : BitVec 64) : Nat → Bool
   | 0 => true
@@ -1109,13 +1099,6 @@ theorem canMap_eq {fm : FastMem} {m : Memory} (h : fm.Agrees m) (addr : BitVec 6
     fm.canMap addr n = m.canMap addr n := by simp only [canMap, Memory.canMap, allPerm_eq h]
 
 end FastMem
-
-theorem fastMem_read8_eq {fm : FastMem} {m : Memory} (h : fm.Agrees m) (a : BitVec 64) :
-    fm.read8 a = m.read8 a := fm.read8_eq h a
-
-theorem fastMem_write8_agrees {fm : FastMem} {m : Memory} (h : fm.Agrees m)
-    (a : BitVec 64) (v : BitVec 8) (fm' : FastMem) (hw : fm.write8? a v = some fm') :
-    fm'.Agrees (m.write8 a v) := by injection hw with hw; subst hw; exact fm.write8_agrees h a v
 
 export Symbolic.BugInjection.Proofs.CliExec.RadixMemLine (
   loadRegionsLines rawCellAt_loadRegionsLines baseRegions_mapZero_cells_eq

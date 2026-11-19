@@ -9,14 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchDefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SlotPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDetPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchDefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SlotPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDetPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.FramePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverUntrustedPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.WrapperStatePlacedBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` D2(c) Wrapper-to-Slot Lift
@@ -26,7 +40,7 @@ Block `518` (`dpPollEntryPlaced`) through outer Block `520` (`lsmpl.base 520`) t
 `OverDecPkD2cSlotOkPlaced` and its `LibsignalFrozen` counterpart.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -196,7 +210,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.WrapperSt
 )
 
 /-- Base (unwrapped) budget-threaded `[LibsignalPlacement]` D2(c) slot contract. -/
-def decPkSlotSpecBasePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def decPkSlotSpecBasePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) (S : RunSem) (stk : Nat) :
     Spec (DecPkGhost × M.σ) where
@@ -220,7 +234,7 @@ def decPkSlotSpecBasePlaced [LibsignalPlacement] {M : AllocCostModel}
   onPanic := (decPkSlotSpecPlaced A lim DecPkEnv S stk).onPanic
 
 /-- `CodeOk`-parameterized budget-threaded `[LibsignalPlacement]` D2(c) slot contract. -/
-def decPkSlotSpecPlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) {M : AllocCostModel}
+@[expose] def decPkSlotSpecPlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) (S : RunSem) (stk : Nat) :
     Spec (DecPkGhost × M.σ) :=
@@ -379,7 +393,7 @@ theorem dpSlot_ok_state_frozen_placed [LibsignalPlacement] {prog : Program} {ent
   · exact Or.inr (Or.inr (Or.inr ⟨ho_st, ho⟩))
 
 /-- Extern-parametric `LibsignalFrozen` D2(c) `decryptPrekey` slot contract. -/
-def DecPkD2cSlotOkFrozenPlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DecPkD2cSlotOkFrozenPlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (H : CryptoVerification.LibsignalHooks) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) : Prop :=

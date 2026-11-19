@@ -9,23 +9,23 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead
-public import Computational.Proofs.SignalPqxdh.Security.SigHopA
-public import Computational.Proofs.GameHop.Swap
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B2
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B
+import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
+import Computational.Proofs.GameHop.Swap
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B2
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
 public import VCVio.EvalDist.Monad.Basic
 public import VCVio.OracleComp.EvalDist.Measure
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C1 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 
 /-!
 # One-Key Ideal-Session AEAD Validity Invariant
@@ -34,7 +34,7 @@ Proves that `IdealSessionsAeadValid` is preserved by `pqxdhAuthHybridSplitFixedI
 `recvStage.idealMsgKeys = true`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000

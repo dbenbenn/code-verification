@@ -9,14 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Leaf
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafAPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Leaf
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafAPlaced -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
 import LibsignalBinary.Proofs.VarintBridge
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafDefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5Placed
+import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldLemmas
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafVarintPlaced
 
 /-!
 # Relocatable `prost::encoding::skip_field::<&mut &[u8]> [local#5]`
@@ -26,7 +31,7 @@ Relocatable (`[LibsignalPlacement]`) verification of `.startGroup` and full dept
 `prost::encoding::skip_field::<&mut &[u8]> [local#5]`, plus `growOneMessageKey_placed_ok_ext_x`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -618,7 +623,7 @@ theorem skipField6_placed_ok_cl
   ls_subroutine_ok_cl_of_block (callerProg := callerProg) (skipField6_placed_ok hAlloc) hi
 
 /-- Relocatable `[LibsignalPlacement]` contract for `skip_field [local#5]` (Block `508`) on `lsProg_518 ext`. -/
-def SkipField6Placed508OkExtX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def SkipField6Placed508OkExtX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 507)
     (withLsCl lsmpl (skipField3Spec A))

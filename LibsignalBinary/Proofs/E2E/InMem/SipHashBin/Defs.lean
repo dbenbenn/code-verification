@@ -10,23 +10,13 @@ limitations under the License.
 module
 
 public import Aesop.BuiltinRules
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
-public import LibsignalBinary.Proofs.E2E.InMem.SipHashModel.Model
+public import LibsignalBinary.Proofs.E2E.InMem.SipHashModel.Model -- proof-setup: allow-public-import
 public import Mathlib.Algebra.Group.Nat.Defs
 public import Mathlib.Tactic.ToDual
 public import ProofLib.SepLogic
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
-
-/-!
-# Compiled SipHash-1-3 Definitions and Memory Layouts
-
-Symbol names, stack budgets, and separation-logic layouts (`sipStateAt`, `sipHasher13At`,
-`randomStateAt`, `addrBorrowAt`) for `SipHasher13::write`,
-`RandomState::hash_one::<&ProtocolAddress>`, and the `RawTable::reserve_rehash` closures.
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.InMem.SipHashBin
 
@@ -34,14 +24,6 @@ open Arm64 ProofLib
 open CryptoVerification.E2E.InMem.SipHashModel
 
 abbrev HookMap : Type := String → Option (Arm64.State → Arm64.State)
-
-/-- `libsignalSessionCode` rebased at `b` with extern hook table `ext`. Because the
-SipHash routines make no extern calls, contracts proved on `RebasedProg b ext` apply under
-any extern table. -/
-noncomputable abbrev RebasedProg (b : BitVec 64) (ext : HookMap) : Program :=
-  libsignalSessionCode.rebase b ext
-
-/-! ## Symbol Names -/
 
 abbrev sipWriteName : String :=
   "<core::hash::sip::Hasher<core::hash::sip::Sip13Rounds> as core::hash::Hasher>::write"
@@ -95,7 +77,7 @@ abbrev rehashSessionClosureStack : Nat := hashOneAddrStack
 
 /-- Layout of the 32-byte SipHash state (`#[repr(C)] struct State { v0, v2, v1, v3 }`) at `a`:
 `v0` at `+0x00`, `v2` at `+0x08`, `v1` at `+0x10`, `v3` at `+0x18`. -/
-def sipStateAt (a : BitVec 64) (st : SipHashModel.State) : SepProp :=
+@[expose] def sipStateAt (a : BitVec 64) (st : SipHashModel.State) : SepProp :=
   (a ↦₆₄ st.v0.toBitVec) ∗
   ((a + 8#64) ↦₆₄ st.v2.toBitVec) ∗
   ((a + 16#64) ↦₆₄ st.v1.toBitVec) ∗
@@ -104,7 +86,7 @@ def sipStateAt (a : BitVec 64) (st : SipHashModel.State) : SepProp :=
 /-- Layout of `core::hash::sip::Hasher<Sip13Rounds>` (72 B) at `a`:
 `state` (`+0x00..0x20`), `k0` (`+0x20`), `k1` (`+0x28`), `length` (`+0x30`),
 `tail` (`+0x38`), and `ntail` (`+0x40`). -/
-def sipHasher13At (a : BitVec 64) (h : SipHasher13) : SepProp :=
+@[expose] def sipHasher13At (a : BitVec 64) (h : SipHasher13) : SepProp :=
   ⌜h.length < 2 ^ 64 ∧ h.ntail < 8⌝ ∗
   sipStateAt a h.state ∗
   ((a + 0x20#64) ↦₆₄ h.k0.toBitVec) ∗
@@ -114,12 +96,12 @@ def sipHasher13At (a : BitVec 64) (h : SipHasher13) : SepProp :=
   ((a + 0x40#64) ↦₆₄ BitVec.ofNat 64 h.ntail)
 
 /-- Layout of `std::hash::random::RandomState { k0, k1 }` (16 B) at `a`. -/
-def randomStateAt (a : BitVec 64) (k0 k1 : BitVec 64) : SepProp :=
+@[expose] def randomStateAt (a : BitVec 64) (k0 k1 : BitVec 64) : SepProp :=
   (a ↦₆₄ k0) ∗ ((a + 8#64) ↦₆₄ k1)
 
 /-- Borrowed `ProtocolAddress` footprint read by `hash_one::<&ProtocolAddress>`:
 `name.ptr` (`+0x08`), `name.len` (`+0x10`), `device_id` (`+0x18`), and the `name` slice at `ptr`. -/
-def addrBorrowAt (addr ptr : BitVec 64) (name : List (BitVec 8)) (dev : BitVec 8) : SepProp :=
+@[expose] def addrBorrowAt (addr ptr : BitVec 64) (name : List (BitVec 8)) (dev : BitVec 8) : SepProp :=
   ((addr + 8#64) ↦₆₄ ptr) ∗
   ((addr + 16#64) ↦₆₄ BitVec.ofNat 64 name.length) ∗
   ((addr + 24#64) ↦₈ dev) ∗

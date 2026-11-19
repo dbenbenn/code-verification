@@ -9,18 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3PollRejectAuxPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3V3PathAKitsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3PollRejectAuxPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3V3PathAKitsPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Common.SharedHelpers
-meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub1
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlaced
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Base
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Folds
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCallees
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBMain
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureSpeOwned
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Budget-Threaded `v3` (`"X3DH no longer supported"`) Poll Rejection
@@ -29,7 +39,7 @@ Proves `stageP2_v3_reject_placedBudget` and `decPk_v3_reject_poll_placedBudget` 
 `3` `PreKeySignalMessage`s under `[LibsignalPlacement]` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3V3RejectPlacedBudget
 
@@ -68,7 +78,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedB
 open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget (readFileSpecPlaced sessDeserializeSpecPlaced)
 /-! ## 1. `v3` Message Condition & Pure `decPkDef` Evaluation -/
 
-def MsgCondV3 (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] def MsgCondV3 (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer _me : AddrVal) (pm : PreKeySignalMessage) : Prop :=
   pm.messageVersion = 3#8 ∧
   ∀ r s, loadRec Scope F peer = .ok (some r) → r.currentSession = some s → ¬ SessMatchesPm s pm
@@ -91,7 +101,7 @@ theorem msgCondPkToENone_of_v3
 
 /-! ## 2. Spatial Split & Exit Fold Between `stageP2PostP1At` and `v3` Stage P2 Kits -/
 
-def v3StackRemAt (sp : BitVec 64) : SepProp :=
+@[expose] def v3StackRemAt (sp : BitVec 64) : SepProp :=
   memRegion (sp + 8#64) 144 ∗ memRegion (sp + 564#64) 316 ∗ memRegion (sp + 916#64) 76 ∗
   memRegion (sp + 1016#64) 344 ∗ memRegion (sp + 1360#64) 1344 ∗ memRegion (sp + 2752#64) 432
 

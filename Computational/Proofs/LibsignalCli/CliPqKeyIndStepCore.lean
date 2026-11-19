@@ -16,6 +16,7 @@ import Computational.Proofs.GameHop.Rnd
 import Computational.Proofs.ReductionDsl.SM.GameCosted
 import ProofLib.SepLogic.WP.StateNorm
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.E2E.ComposedKeyIndHop
 
 /-!
 # Helpers for 1-key `KeyInd`, `Unif`, and `startDR` adapter step coupling
@@ -25,7 +26,7 @@ for `pqxdhKeyIndImpl` and `pqxdhKeyIndImpl1KeyReal`, projection `DEq` for `bhDrv
 monotonicity of `CliAdapterInstRel`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.constructorNameAsVariable false
@@ -60,7 +61,7 @@ theorem stateT_run_get_bind_cli {m : Type → Type} [Monad m] [LawfulMonad m] {�
   simp [StateT.run_bind, StateT.run_get]
 
 /-- Extract Alice's 256-bit initial ratchet coins from the 32-byte DR initiate tape `t_dr`. -/
-def cliTape32AliceCoins (t_dr : List.Vector (BitVec 8) 32) : BitVec 256 :=
+@[expose] def cliTape32AliceCoins (t_dr : List.Vector (BitVec 8) 32) : BitVec 256 :=
   HKDF.bytesToKey32 t_dr.toList
 
 private def wordToVec32Step (w : BitVec 256) : List.Vector (BitVec 8) 32 :=
@@ -260,7 +261,7 @@ theorem cliAdapterStepCoupled_of_proj {S : SignalPqxdh.Setup} {ℓ : ℕ} {α : 
     exact hInv x hx'
 
 /-- True when `kq` is `.corruptIK u` and `u` is a promoted no-OPK responder in `instMeta`. -/
-def cliKiNoOpkCorrupt {S : SignalPqxdh.Setup}
+@[expose] def cliKiNoOpkCorrupt {S : SignalPqxdh.Setup}
     (instMeta : List (ModelDriverInstanceMeta S)) (kq : SignalPqxdh.KeyIndQuery S) : Bool :=
   match kq with
   | .corruptIK u => bhNoOpkRespPromoted instMeta u
@@ -409,7 +410,7 @@ theorem find_cliSpkBundles_rel_of_forall2
     | none => exact False.elim hf
     | some x₂ => exact Or.inr ⟨x₁, x₂, rfl, rfl, hf⟩
 
-def cliUpdateSpkBundlesForQuery {S : SignalPqxdh.Setup} (kq : SignalPqxdh.KeyIndQuery S)
+@[expose] def cliUpdateSpkBundlesForQuery {S : SignalPqxdh.Setup} (kq : SignalPqxdh.KeyIndQuery S)
     (spks₂ : List ((ℕ × ℕ) × SignalPqxdh.SpkBundleEntry))
     (r : SignalPqxdh.KeyIndResponse)
     (st₁' : SignalPqxdh.KeyIndState S) : List ((ℕ × ℕ) × SignalPqxdh.SpkBundleEntry) :=

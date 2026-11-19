@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.CliPqAdapterCoupling
+public import Computational.Proofs.LibsignalCli.CliPqAdapterCoupling -- proof-setup: allow-public-import
 import Computational.Proofs.E2E.BhKindCouplingV1
 import Computational.Proofs.LibsignalCli.CliPqHandshakeStepCore
 import Computational.Proofs.LibsignalCli.CliPqKeyIndStepCore
@@ -17,8 +17,10 @@ import Computational.Proofs.ReductionDsl.SM.GameCosted
 import Computational.Specifications.Pqxdh.Security.HeadlineDelta
 import ProofLib.SepLogic.WP.StateNorm
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.E2E.ComposedKeyIndHop
+import LibsignalBinary.Proofs.SpecLemmas.SignalPqxdh.ModelProofDefs
 
-@[expose] public section
+public section
 
 /-!
 # The `startDR` step of the CLI-to-model adapter coupling

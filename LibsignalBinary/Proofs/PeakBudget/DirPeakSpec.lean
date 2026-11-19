@@ -10,11 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.DirPeakHelpers
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PureBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.DirPeakHelpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PureBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Peak Live-Heap Interface for CLI `Dir` and File Read Callees
@@ -25,7 +27,7 @@ guard `[]`, `cliIoReadScheduleCaps 9`, and over-cap `rustDeallocEvents 2097152 1
 `Dir::get`, `Dir::put`, and `Dir::put_str` under `ModelHyps M` and `DirDomainCaps`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -71,12 +73,12 @@ private theorem phaseCreditSpec_and_left {M : AllocCostModel} [HasFineReallocCre
 /-! ## 1. `decimal`, `path`, and `address_text` Envelopes -/
 
 /-- Allocator envelope of `decimal(n : u32)`: allocates up to a 10-byte `String` (`≤ 32` B). -/
-def CliDecimalEnv (n : BitVec 32) (evs : List AllocEvent) : Prop :=
+@[expose] def CliDecimalEnv (n : BitVec 32) (evs : List AllocEvent) : Prop :=
   evs = [] ∨ ∃ cap : Nat, (decimalText n.toNat).length ≤ cap ∧ cap ≤ 32 ∧
     SeqEnv (· = rustAllocEvents cap 1) FreeOnlyEvs evs
 
 /-- Allocator envelope of `path(dir, name)`: `String::with_capacity`, `push('/')`, and `push_str`. -/
-def CliPathEnv (dir name : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def CliPathEnv (dir name : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   if dir = [] then
     evs = allocBytes1Events name
   else
@@ -90,14 +92,14 @@ def CliPathEnv (dir name : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
       evs
 
 /-- Allocator envelope of `address_text(&ProtocolAddress)`: formats `<name>.<device_id>`. -/
-def CliAddrTextEnv (g : AddrGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def CliAddrTextEnv (g : AddrGhost) (evs : List AllocEvent) : Prop :=
   let maxCap := 4 * g.name.bytes.length + 32
   ∃ cap : Nat, cap ≤ maxCap ∧
     SeqEnv (· = rustAllocEvents cap 1) FreeOnlyEvs evs
 
-def decimalDeltaCum : Nat := 2 * 32 + 9539
-def decimalDeltaLive : Nat := 32 + 8195
-def decimalDeltaPeak : Nat := 32 + 8195
+@[expose] def decimalDeltaCum : Nat := 2 * 32 + 9539
+@[expose] def decimalDeltaLive : Nat := 32 + 8195
+@[expose] def decimalDeltaPeak : Nat := 32 + 8195
 
 theorem decimal_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) (n : BitVec 32) :
@@ -115,17 +117,17 @@ theorem decimal_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
             (by omega) (by omega) (by omega) (by omega)
   exact ((PhaseCreditSpec.nil M).or hbr).mono (by omega) (by omega) (by omega) (by omega)
 
-def pathDeltaCum (maxDir maxName : Nat) : Nat :=
+@[expose] def pathDeltaCum (maxDir maxName : Nat) : Nat :=
   let maxCap := max (4 * maxDir + maxName + 16) 16
   6 * maxCap + 3 * 9539
 
-def pathDeltaLive (maxDir maxName : Nat) : Nat :=
+@[expose] def pathDeltaLive (maxDir maxName : Nat) : Nat :=
   max (4 * maxDir + maxName + 16) 16 + 8195
 
-def pathDeltaPeak (maxDir maxName : Nat) : Nat :=
+@[expose] def pathDeltaPeak (maxDir maxName : Nat) : Nat :=
   3 * max (4 * maxDir + maxName + 16) 16 + 2 * 8195
 
-def pathMaxReq (maxDir maxName : Nat) : Nat :=
+@[expose] def pathMaxReq (maxDir maxName : Nat) : Nat :=
   max (4 * maxDir + maxName + 16) 16
 
 private theorem pathDeltaLive_le_peak (maxDir maxName : Nat) :
@@ -181,16 +183,16 @@ theorem path_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
       have hlive := optLargeLive_le hM hcf_le
       exact h012.mono (by omega) (by omega) (by omega) (by omega)
 
-def addrTextDeltaCum (maxName : Nat) : Nat :=
+@[expose] def addrTextDeltaCum (maxName : Nat) : Nat :=
   2 * (4 * maxName + 32) + 9539
 
-def addrTextDeltaLive (maxName : Nat) : Nat :=
+@[expose] def addrTextDeltaLive (maxName : Nat) : Nat :=
   (4 * maxName + 32) + 8195
 
-def addrTextDeltaPeak (maxName : Nat) : Nat :=
+@[expose] def addrTextDeltaPeak (maxName : Nat) : Nat :=
   (4 * maxName + 32) + 8195
 
-def addrTextMaxReq (maxName : Nat) : Nat :=
+@[expose] def addrTextMaxReq (maxName : Nat) : Nat :=
   4 * maxName + 32
 
 theorem addrText_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
@@ -209,9 +211,9 @@ theorem addrText_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
 
 /-! ## 2. `allocBytes1Events` and `read_file` (`CliIo` Doubling and `ReadFileRuleEnv`) -/
 
-def allocBytes1DeltaCum (maxLen : Nat) : Nat := 2 * maxLen + 9539
-def allocBytes1DeltaLive (maxLen : Nat) : Nat := maxLen + 8195
-def allocBytes1DeltaPeak (maxLen : Nat) : Nat := maxLen + 8195
+@[expose] def allocBytes1DeltaCum (maxLen : Nat) : Nat := 2 * maxLen + 9539
+@[expose] def allocBytes1DeltaLive (maxLen : Nat) : Nat := maxLen + 8195
+@[expose] def allocBytes1DeltaPeak (maxLen : Nat) : Nat := maxLen + 8195
 
 private theorem allocBytes1DeltaLive_eq_peak (maxLen : Nat) :
     allocBytes1DeltaLive maxLen = allocBytes1DeltaPeak maxLen :=
@@ -230,13 +232,13 @@ theorem allocBytes1_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
   · exact (PhaseCreditSpec.rustAlloc_aff hM (req := bs.length) (al := 1) (by decide)).mono
       (by omega) (by omega) (by omega) hlen
 
-def CliIoReadFileEnv (r : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def CliIoReadFileEnv (r : Nat) (evs : List AllocEvent) : Prop :=
   evs = cliIoCapEvents (cliIoReadCaps 9 r)
 
-def readFileCliIoDeltaCum : Nat := 8475806
-def readFileCliIoDeltaLive : Nat := 2105347
-def readFileCliIoDeltaPeak : Nat := 3162118
-def readFileCliIoMaxReq : Nat := 2097152
+@[expose] def readFileCliIoDeltaCum : Nat := 8475806
+@[expose] def readFileCliIoDeltaLive : Nat := 2105347
+@[expose] def readFileCliIoDeltaPeak : Nat := 3162118
+@[expose] def readFileCliIoMaxReq : Nat := 2097152
 
 theorem readFile_cliIo_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) (r : Nat) :
@@ -293,16 +295,16 @@ private theorem specCliIoReadSchedule_events_eq (K r : Nat) :
       rw [specCliIoCapsEvents_pos_eq cs (hpos c0 List.mem_cons_self)
         (fun x hx => hpos x (List.mem_cons_of_mem c0 hx))]
 
-def readFileRuleDeltaCum (fileCap : Nat) : Nat :=
+@[expose] def readFileRuleDeltaCum (fileCap : Nat) : Nat :=
   max (allocBytes1DeltaCum fileCap) readFileCliIoDeltaCum
 
-def readFileRuleDeltaLive (fileCap : Nat) : Nat :=
+@[expose] def readFileRuleDeltaLive (fileCap : Nat) : Nat :=
   max (allocBytes1DeltaLive fileCap) readFileCliIoDeltaLive
 
-def readFileRuleDeltaPeak (fileCap : Nat) : Nat :=
+@[expose] def readFileRuleDeltaPeak (fileCap : Nat) : Nat :=
   max (allocBytes1DeltaPeak fileCap) readFileCliIoDeltaPeak
 
-def readFileRuleMaxReq (fileCap : Nat) : Nat :=
+@[expose] def readFileRuleMaxReq (fileCap : Nat) : Nat :=
   max fileCap readFileCliIoMaxReq
 
 private theorem readFileRuleDeltaLive_le_peak (fileCap : Nat) :
@@ -377,16 +379,16 @@ theorem readFile_rule_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
 
 /-! ## 3. `GrowOneDir`, `Dir::get`, `Dir::put`, and `Dir::put_str` -/
 
-def growOneDirDeltaCum (maxEntries : Nat) : Nat :=
+@[expose] def growOneDirDeltaCum (maxEntries : Nat) : Nat :=
   2 * (48 * max 4 (2 * maxEntries)) + 9539
 
-def growOneDirDeltaLive (maxEntries : Nat) : Nat :=
+@[expose] def growOneDirDeltaLive (maxEntries : Nat) : Nat :=
   48 * max 4 (2 * maxEntries) + 8195
 
-def growOneDirDeltaPeak (maxEntries : Nat) : Nat :=
+@[expose] def growOneDirDeltaPeak (maxEntries : Nat) : Nat :=
   48 * max 4 (2 * maxEntries) + 8195
 
-def growOneDirMaxReq (maxEntries : Nat) : Nat :=
+@[expose] def growOneDirMaxReq (maxEntries : Nat) : Nat :=
   48 * max 4 (2 * maxEntries)
 
 theorem growOneDir_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
@@ -400,7 +402,7 @@ theorem growOneDir_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
 
 /-- `Dir::get`: cache hit clones existing `v` (`allocBytes1Events v`), or cache miss builds
 `CliPathEnv dir.path name`, runs `ReadEnv files (pathOf dir.path name)`, and drops `path` (`FreeOnlyEvs`). -/
-def CliDirGetEnv (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
+@[expose] def CliDirGetEnv (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (files : FsFiles) (dir : DirGhost) (name : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   (∃ k v, (k, v) ∈ dir.changed ∧ k = name ∧ evs = allocBytes1Events v) ∨
@@ -408,16 +410,16 @@ def CliDirGetEnv (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → 
     (SeqEnv (ReadEnv files (pathOf dir.path name)) FreeOnlyEvs)
     evs
 
-def dirGetRuleDeltaCum (maxDir maxName maxVal fileCap : Nat) : Nat :=
+@[expose] def dirGetRuleDeltaCum (maxDir maxName maxVal fileCap : Nat) : Nat :=
   max (allocBytes1DeltaCum maxVal) (pathDeltaCum maxDir maxName + readFileRuleDeltaCum fileCap)
 
-def dirGetRuleDeltaLive (maxDir maxName maxVal fileCap : Nat) : Nat :=
+@[expose] def dirGetRuleDeltaLive (maxDir maxName maxVal fileCap : Nat) : Nat :=
   max (allocBytes1DeltaLive maxVal) (pathDeltaLive maxDir maxName + readFileRuleDeltaLive fileCap)
 
-def dirGetRuleDeltaPeak (maxDir maxName maxVal fileCap : Nat) : Nat :=
+@[expose] def dirGetRuleDeltaPeak (maxDir maxName maxVal fileCap : Nat) : Nat :=
   max (allocBytes1DeltaPeak maxVal) (pathDeltaPeak maxDir maxName + readFileRuleDeltaPeak fileCap)
 
-def dirGetRuleMaxReq (maxDir maxName maxVal fileCap : Nat) : Nat :=
+@[expose] def dirGetRuleMaxReq (maxDir maxName maxVal fileCap : Nat) : Nat :=
   max maxVal (max (pathMaxReq maxDir maxName) (readFileRuleMaxReq fileCap))
 
 theorem dirGet_rule_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
@@ -460,26 +462,26 @@ theorem dirGet_rule_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
 
 /-- `Dir::put`: either overwrites an existing entry in place (`FreeOnlyEvs` dropping old key + value)
 or grows `dir.changed` by one `48`-byte `(String, Vec<u8>)` slot (`GrowOneDirEnv`). -/
-def CliDirPutEnv (dir : DirGhost) (_name _bytes : List (BitVec 8))
+@[expose] def CliDirPutEnv (dir : DirGhost) (_name _bytes : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
   (∃ x : GrowOneDirGhost, x.cap.toNat ≤ max 4 (2 * dir.changed.length) ∧ GrowOneDirEnv x evs)
 
 /-- `Dir::put_str`: allocates owned `name` (`allocBytes1Events name`) followed by `CliDirPutEnv`. -/
-def CliDirPutStrEnv (dir : DirGhost) (name bytes : List (BitVec 8))
+@[expose] def CliDirPutStrEnv (dir : DirGhost) (name bytes : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   SeqEnv (· = allocBytes1Events name) (CliDirPutEnv dir name bytes) evs
 
-def dirPutDeltaCum (maxEntries : Nat) : Nat :=
+@[expose] def dirPutDeltaCum (maxEntries : Nat) : Nat :=
   growOneDirDeltaCum (max 4 (2 * maxEntries))
 
-def dirPutDeltaLive (maxEntries : Nat) : Nat :=
+@[expose] def dirPutDeltaLive (maxEntries : Nat) : Nat :=
   growOneDirDeltaLive (max 4 (2 * maxEntries))
 
-def dirPutDeltaPeak (maxEntries : Nat) : Nat :=
+@[expose] def dirPutDeltaPeak (maxEntries : Nat) : Nat :=
   growOneDirDeltaPeak (max 4 (2 * maxEntries))
 
-def dirPutMaxReq (maxEntries : Nat) : Nat :=
+@[expose] def dirPutMaxReq (maxEntries : Nat) : Nat :=
   growOneDirMaxReq (max 4 (2 * maxEntries))
 
 theorem dirPut_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
@@ -507,16 +509,16 @@ theorem dirPut_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
   exact ((PhaseCreditSpec.freeOnly_of_hyps hM).or hgrow).mono
     (by omega) (by omega) (by omega) (by omega)
 
-def dirPutStrDeltaCum (maxName maxEntries : Nat) : Nat :=
+@[expose] def dirPutStrDeltaCum (maxName maxEntries : Nat) : Nat :=
   allocBytes1DeltaCum maxName + dirPutDeltaCum maxEntries
 
-def dirPutStrDeltaLive (maxName maxEntries : Nat) : Nat :=
+@[expose] def dirPutStrDeltaLive (maxName maxEntries : Nat) : Nat :=
   allocBytes1DeltaLive maxName + dirPutDeltaLive maxEntries
 
-def dirPutStrDeltaPeak (maxName maxEntries : Nat) : Nat :=
+@[expose] def dirPutStrDeltaPeak (maxName maxEntries : Nat) : Nat :=
   allocBytes1DeltaPeak maxName + dirPutDeltaPeak maxEntries
 
-def dirPutStrMaxReq (maxName maxEntries : Nat) : Nat :=
+@[expose] def dirPutStrMaxReq (maxName maxEntries : Nat) : Nat :=
   max maxName (dirPutMaxReq maxEntries)
 
 theorem dirPutStr_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]

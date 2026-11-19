@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Top
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP3ExitFold
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmt
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Top -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP3ExitFold -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmt -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Poll Path B Stage P2 Spatial Entry Unpack and Inner Frame
@@ -22,7 +25,7 @@ Defines `matchedInnerFrame` (and `matchedInnerFrameExt`) and proves `matched_ent
 `Matched.stageP2_matched_ok_framed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -80,7 +83,7 @@ theorem x29_eq_sp0_sub_60 {s0 s2 : State} {sp : BitVec 64}
 /-! ## 1. Fine-Grained Coroutine, Stack, & Message Remainder Predicates -/
 
 /-- Tail 11 words (`+0x88.. +0xe0`) of `decryptPrekeyCoroCopyAt` untouched by `stageP2MatchedPre`. -/
-def coroCopyTail11At (coroPtr sessStorePtr sessStoreVt idStorePtr idStoreVt
+@[expose] def coroCopyTail11At (coroPtr sessStorePtr sessStoreVt idStorePtr idStoreVt
     preKeyStorePtr preKeyStoreVt spkStorePtr spkStoreVt
     kyberStorePtr kyberStoreVt rngPtr : BitVec 64) : SepProp :=
   ((coroPtr + 0x88#64) ↦₆₄ sessStorePtr) ∗
@@ -113,7 +116,7 @@ theorem coroCopyAt_eq_head3_tail11 (coroPtr msgPtr remoteAddrPtr localAddrPtr
   ac_rfl
 
 /-- Remaining 23 words of `processPrekeyInnerInitAt` outside `+0x330` and `+0x388`. -/
-def processPrekeyInnerRem23At (coroPtr msgPtr remoteAddrPtr localAddrPtr
+@[expose] def processPrekeyInnerRem23At (coroPtr msgPtr remoteAddrPtr localAddrPtr
     idStorePtr idStoreVt preKeyStorePtr preKeyStoreVt
     spkStorePtr spkStoreVt kyberStorePtr kyberStoreVt : BitVec 64) : SepProp :=
   ((coroPtr + 0x2c8#64) ↦₆₄ msgPtr) ∗
@@ -155,7 +158,7 @@ theorem processPrekeyInnerInitAt_eq_330_388_rem23 (coroPtr msgPtr remoteAddrPtr 
   ac_rfl
 
 /-- Remainder of `signalMessageAt` outside `(a + 0x70#64) ↦₈ m.messageVersion`. -/
-def signalMessageRestVerAt (A : RustAlloc) (g : SignalMessageGhost) (a : BitVec 64)
+@[expose] def signalMessageRestVerAt (A : RustAlloc) (g : SignalMessageGhost) (a : BitVec 64)
     (m : SignalMessage) : SepProp :=
   ⌜macLength + 1 ≤ m.serialized.length ∧ m.serialized.length < 2 ^ 40 ∧
     m.ciphertext.length < 2 ^ 40 ∧ m.pqRatchet.length < 2 ^ 40 ∧
@@ -178,7 +181,7 @@ theorem signalMessageAt_eq_ver_sep (A : RustAlloc) (g : SignalMessageGhost) (a :
   ac_rfl
 
 /-- Remainder of `preKeyMsgRemBaseIdKeyAt` outside `(a + 0xf0#64) ↦₈ m.messageVersion`. -/
-def preKeyMsgRemMatchedAt (A : RustAlloc) (g : PreKeyMsgGhost) (a : BitVec 64)
+@[expose] def preKeyMsgRemMatchedAt (A : RustAlloc) (g : PreKeyMsgGhost) (a : BitVec 64)
     (m : PreKeySignalMessage) : SepProp :=
   optU32At (a + 0x78#64) m.preKeyId ∗
   boxU8At A (a + 0x80#64) g.serPtr m.serialized ∗
@@ -238,126 +241,6 @@ structure MatchedEntryWords where
   u_2a8 : BitVec 32
   b_4f1 : BitVec 8
   b_3ac : BitVec 8
-
-/-- Inner coroutine/stack/message frame untouched by `stageP2_matched_ok_framed`. -/
-def matchedInnerFrame {B : RunBudgets} {S : RunSem}
-    (img : Obj.Image) (y : DpPollGhostState (dpSlotPollKState E2E.HooksE.A0 img B S))
-    (rngPtr sp : BitVec 64) : SepProp :=
-  decryptPrekeyCoroInitAt y.fut y.g.msgA y.g.peerA y.g.meA
-    (y.g.stores + 0xf0#64) (sessVt img) y.g.stores (idVt img)
-    (y.g.stores + 0xc8#64) (oneTimeVt img) (y.g.stores + 0x50#64) (signedVt img)
-    (y.g.stores + 0x78#64) (kyberVt img) rngPtr ∗
-  coroCopyTail11At y.fut (y.g.stores + 0xf0#64) (sessVt img) y.g.stores (idVt img)
-    (y.g.stores + 0xc8#64) (oneTimeVt img) (y.g.stores + 0x50#64) (signedVt img)
-    (y.g.stores + 0x78#64) (kyberVt img) rngPtr ∗
-  processPrekeyInnerRem23At y.fut y.g.msgA y.g.peerA y.g.meA
-    y.g.stores (idVt img) (y.g.stores + 0xc8#64) (oneTimeVt img)
-    (y.g.stores + 0x50#64) (signedVt img) (y.g.stores + 0x78#64) (kyberVt img) ∗
-  processPrekeyPostTrustAt y.fut y.g.msgA y.g.peerA y.g.meA
-    y.g.stores (idVt img) (y.g.stores + 0xc8#64) (oneTimeVt img)
-    (y.g.stores + 0x50#64) (signedVt img) (y.g.stores + 0x78#64) (kyberVt img) ∗
-  cells (y.fut + 0x398#64) 2 ∗
-  memRegion (y.fut + 0x280#64) 24 ∗
-  memRegion (y.fut + 0x2ac#64) 8 ∗
-  memRegion (y.fut + 0x2b4#64) 12 ∗
-  memRegion (y.fut + 0x2c1#64) 7 ∗
-  memRegion (y.fut + 0x391#64) 7 ∗
-  memRegion (y.fut + 0x3a8#64) 80 ∗
-  memRegion (y.fut + 0x488#64) 8 ∗
-  memRegion (y.fut + 0x4b0#64) 65 ∗
-  memRegion (y.fut + 0x4f3#64) 5 ∗
-  memRegion (y.fut + 0x4f8#64) 736 ∗
-  (sp ↦₆₄ 0#64) ∗
-  memRegion (sp + 0x8#64) 120 ∗
-  memRegion (sp + 0xbc#64) 4 ∗
-  ((sp + 0xc0#64) ↦₆₄ y.cx) ∗
-  memRegion (sp + 0xd8#64) 348 ∗
-  memRegion (sp + 0x250#64) 20 ∗
-  memRegion (sp + 0x270#64) 48 ∗
-  memRegion (sp + 0x2b0#64) 36 ∗
-  memRegion (sp + 0x2e0#64) 36 ∗
-  memRegion (sp + 0x310#64) 36 ∗
-  memRegion (sp + 0x340#64) 36 ∗
-  spMidGapsAt sp ∗
-  memRegion (sp + 0x402#64) 70 ∗
-  memRegion (sp + 0x448#64) 240 ∗
-  memRegion (sp + 0x538#64) 24 ∗
-  memRegion (sp + 0x550#64) 976 ∗
-  memRegion (sp + 0x926#64) 10 ∗
-  memRegion (sp + 0x930#64) 96 ∗
-  memRegion (sp + 0x990#64) 256 ∗
-  memRegion (sp + 0xac0#64) 296 ∗
-  memRegion (sp + 0xbe8#64) 136 ∗
-  signalMessageRestVerAt E2E.HooksE.A0 y.g.msgG.msg y.g.msgA y.g.msg.message ∗
-  preKeyMsgRemMatchedAt E2E.HooksE.A0 y.g.msgG y.g.msgA y.g.msg ∗
-  protocolAddressAt E2E.HooksE.A0 y.g.peer y.g.peerA ∗
-  protocolAddressAt E2E.HooksE.A0 y.g.me y.g.meA ∗
-  coinsInstalled img y.g.coinsP y.g.coins ∗
-  TokenInit img
-
-/-- `A`-polymorphic generalization of `matchedInnerFrame` over `(A : RustAlloc)`. -/
-def matchedInnerFrameExt {A : RustAlloc} {B : RunBudgets} {S : RunSem}
-    (img : Obj.Image) (y : DpPollGhostState (dpSlotPollKState A img B S))
-    (rngPtr sp : BitVec 64) : SepProp :=
-  decryptPrekeyCoroInitAt y.fut y.g.msgA y.g.peerA y.g.meA
-    (y.g.stores + 0xf0#64) (sessVt img) y.g.stores (idVt img)
-    (y.g.stores + 0xc8#64) (oneTimeVt img) (y.g.stores + 0x50#64) (signedVt img)
-    (y.g.stores + 0x78#64) (kyberVt img) rngPtr ∗
-  coroCopyTail11At y.fut (y.g.stores + 0xf0#64) (sessVt img) y.g.stores (idVt img)
-    (y.g.stores + 0xc8#64) (oneTimeVt img) (y.g.stores + 0x50#64) (signedVt img)
-    (y.g.stores + 0x78#64) (kyberVt img) rngPtr ∗
-  processPrekeyInnerRem23At y.fut y.g.msgA y.g.peerA y.g.meA
-    y.g.stores (idVt img) (y.g.stores + 0xc8#64) (oneTimeVt img)
-    (y.g.stores + 0x50#64) (signedVt img) (y.g.stores + 0x78#64) (kyberVt img) ∗
-  processPrekeyPostTrustAt y.fut y.g.msgA y.g.peerA y.g.meA
-    y.g.stores (idVt img) (y.g.stores + 0xc8#64) (oneTimeVt img)
-    (y.g.stores + 0x50#64) (signedVt img) (y.g.stores + 0x78#64) (kyberVt img) ∗
-  cells (y.fut + 0x398#64) 2 ∗
-  memRegion (y.fut + 0x280#64) 24 ∗
-  memRegion (y.fut + 0x2ac#64) 8 ∗
-  memRegion (y.fut + 0x2b4#64) 12 ∗
-  memRegion (y.fut + 0x2c1#64) 7 ∗
-  memRegion (y.fut + 0x391#64) 7 ∗
-  memRegion (y.fut + 0x3a8#64) 80 ∗
-  memRegion (y.fut + 0x488#64) 8 ∗
-  memRegion (y.fut + 0x4b0#64) 65 ∗
-  memRegion (y.fut + 0x4f3#64) 5 ∗
-  memRegion (y.fut + 0x4f8#64) 736 ∗
-  (sp ↦₆₄ 0#64) ∗
-  memRegion (sp + 0x8#64) 120 ∗
-  memRegion (sp + 0xbc#64) 4 ∗
-  ((sp + 0xc0#64) ↦₆₄ y.cx) ∗
-  memRegion (sp + 0xd8#64) 348 ∗
-  memRegion (sp + 0x250#64) 20 ∗
-  memRegion (sp + 0x270#64) 48 ∗
-  memRegion (sp + 0x2b0#64) 36 ∗
-  memRegion (sp + 0x2e0#64) 36 ∗
-  memRegion (sp + 0x310#64) 36 ∗
-  memRegion (sp + 0x340#64) 36 ∗
-  spMidGapsAt sp ∗
-  memRegion (sp + 0x402#64) 70 ∗
-  memRegion (sp + 0x448#64) 240 ∗
-  memRegion (sp + 0x538#64) 24 ∗
-  memRegion (sp + 0x550#64) 976 ∗
-  memRegion (sp + 0x926#64) 10 ∗
-  memRegion (sp + 0x930#64) 96 ∗
-  memRegion (sp + 0x990#64) 256 ∗
-  memRegion (sp + 0xac0#64) 296 ∗
-  memRegion (sp + 0xbe8#64) 136 ∗
-  signalMessageRestVerAt A y.g.msgG.msg y.g.msgA y.g.msg.message ∗
-  preKeyMsgRemMatchedAt A y.g.msgG y.g.msgA y.g.msg ∗
-  protocolAddressAt A y.g.peer y.g.peerA ∗
-  protocolAddressAt A y.g.me y.g.meA ∗
-  coinsInstalled img y.g.coinsP y.g.coins ∗
-  TokenInit img
-
-theorem matchedInnerFrame_eq_A0 {B : RunBudgets} {S : RunSem}
-    (img : Obj.Image) (y : DpPollGhostState (dpSlotPollKState E2E.HooksE.A0 img B S))
-    (rngPtr sp : BitVec 64) :
-    matchedInnerFrame img y rngPtr sp = matchedInnerFrameExt img y rngPtr sp :=
-  rfl
-
-/-! ## 4. Entry Precondition Unpack (`matched_entry_unpack`) -/
 
 private theorem step_mr8 {a : BitVec 64} {Rest Acc Q : SepProp}
     (h : ∀ u : BitVec 64, Rest ∗ ((a ↦₆₄ u) ∗ Acc) ⊢ Q) :
@@ -549,143 +432,5 @@ theorem stack_unused_split_matched (sp v_b8 : BitVec 64) :
       (Entails.sepExists_right u3b0 (Entails.sepExists_right u3b8 (Entails.sepExists_right u3c0
         (Entails.sepExists_right u3c8 (Entails.sepExists_right u3d0
           (Entails.sepExists_right u3d8 (by sep_frame)))))))))))
-
-/-- `A`-polymorphic generalization of `matched_entry_unpack` over `(A : RustAlloc)`. -/
-theorem matched_entry_unpack_ext {A : RustAlloc} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {B : RunBudgets} {S : RunSem}
-    (img : Obj.Image) (y : DpPollGhostState (dpSlotPollKState A img B S))
-    (sess : Session (List (BitVec 8))) (s0 : State)
-    (sp rngPtr v_a8 v_b8 v_d0 : BitVec 64) :
-    stageP2PostP1At A y.fut y.out y.cx y.g.msgA y.g.peerA y.g.meA
-      (y.g.stores + 0xf0#64) (sessVt img) y.g.stores (idVt img)
-      (y.g.stores + 0xc8#64) (oneTimeVt img) (y.g.stores + 0x50#64) (signedVt img)
-      (y.g.stores + 0x78#64) (kyberVt img) rngPtr sp v_a8 v_b8 v_d0 s0 ∗
-    p1LoadedRecordAt Scope A y.fut (some ⟨some sess⟩) ∗
-    preKeyMsgAt A y.g.msgG y.g.msgA y.g.msg ∗
-    protocolAddressAt A y.g.peer y.g.peerA ∗
-    protocolAddressAt A y.g.me y.g.meA ∗
-    coinsInstalled img y.g.coinsP y.g.coins ∗
-    TokenInit img ∗
-    logOff img ∗
-    stackAt sp rootStack ⊢
-      ∃∗ g : RecordGhost, ∃∗ w : MatchedEntryWords,
-        stageP2MatchedPre A img s0 sp y.fut y.out y.g.msgA y.g.peerA y.g.meA
-          y.g.peerA (y.g.msgA + 0xc8#64)
-          w.u_80 w.u_88 w.u_90 v_a8 (y.fut + 0x390#64) v_d0
-          w.u_298 w.u_2a0 w.u_3a0 w.u_3b0 w.u_3b8 w.u_3c0 w.u_3c8 w.u_3d0 w.u_3d8
-          w.u_2a8 (v_b8.extractLsb' 0 32)
-          y.g.msg.messageVersion y.g.msg.message.messageVersion
-          w.b_4f1 0#8 0#8 0#8 w.b_3ac
-          y.g.msg.baseKey y.g.msg.identityKey g ⟨some sess⟩
-          (matchedInnerFrameExt img y rngPtr sp) := by
-  rw [sepConj_comm (stageP2PostP1At _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) _, ← sepConj_assoc]
-  dsimp only [p1LoadedRecordAt]
-  simp only [sepConj_assoc]
-  refine Entails.pure_left fun _ => ?_
-  rw [sepExists_sepConj_left]
-  refine Entails.sepExists_elim fun g => ?_
-  dsimp only [stageP2PostP1At]
-  rw [coroCopyAt_eq_head3_tail11, processPrekeyInnerInitAt_eq_330_388_rem23,
-      preKeyMsgAt_eq_base_idKey_sep, signalMessageAt_eq_ver_sep, preKeyMsgRemBaseIdKeyAt_eq_ver_sep]
-  have h250 : memRegion (y.fut + 0x250#64) 48 = cells (y.fut + 0x250#64) 6 :=
-    ProofLib.memRegion_cells (y.fut + 0x250#64) 6 (by decide)
-  rw [h250]
-  refine Entails.trans (show _ ⊢
-      coroUnusedP1At y.fut ∗
-      (((sp + 0xb8#64) ↦₆₄ v_b8) ∗ memRegion (sp + 0x3e0#64) 368 ∗ closStackUnusedP1OkAt sp) ∗
-      (sessionRecordAt A (y.fut + 0xe0#64) g ⟨some sess⟩ ∗
-        decryptPrekeyCoroInitAt y.fut y.g.msgA y.g.peerA y.g.meA
-          (y.g.stores + 0xf0#64) (sessVt img) y.g.stores (idVt img)
-          (y.g.stores + 0xc8#64) (oneTimeVt img) (y.g.stores + 0x50#64) (signedVt img)
-          (y.g.stores + 0x78#64) (kyberVt img) rngPtr ∗
-        ((y.fut + 0x70#64) ↦₆₄ y.g.msgA) ∗
-        ((y.fut + 0x78#64) ↦₆₄ y.g.peerA) ∗
-        ((y.fut + 0x80#64) ↦₆₄ y.g.meA) ∗
-        coroCopyTail11At y.fut (y.g.stores + 0xf0#64) (sessVt img) y.g.stores (idVt img)
-          (y.g.stores + 0xc8#64) (oneTimeVt img) (y.g.stores + 0x50#64) (signedVt img)
-          (y.g.stores + 0x78#64) (kyberVt img) rngPtr ∗
-        cells (y.fut + 0x250#64) 6 ∗
-        ((y.fut + 0x2c0#64) ↦₈ 0#8) ∗
-        ((y.fut + 0x330#64) ↦₆₄ y.g.peerA) ∗
-        ((y.fut + 0x388#64) ↦₆₄ (y.g.msgA + 0xc8#64)) ∗
-        processPrekeyInnerRem23At y.fut y.g.msgA y.g.peerA y.g.meA
-          y.g.stores (idVt img) (y.g.stores + 0xc8#64) (oneTimeVt img)
-          (y.g.stores + 0x50#64) (signedVt img) (y.g.stores + 0x78#64) (kyberVt img) ∗
-        processPrekeyPostTrustAt y.fut y.g.msgA y.g.peerA y.g.meA
-          y.g.stores (idVt img) (y.g.stores + 0xc8#64) (oneTimeVt img)
-          (y.g.stores + 0x50#64) (signedVt img) (y.g.stores + 0x78#64) (kyberVt img) ∗
-        ((y.fut + 0x390#64) ↦₈ 0#8) ∗
-        cells (y.fut + 0x398#64) 2 ∗
-        ((y.fut + 0x4f2#64) ↦₈ 0#8) ∗
-        (sp ↦₆₄ 0#64) ∗
-        ((sp + 0x98#64) ↦₆₄ (y.fut + 0x398#64)) ∗
-        ((sp + 0xa0#64) ↦₆₄ (y.fut + 0x4f2#64)) ∗
-        ((sp + 0xa8#64) ↦₆₄ v_a8) ∗
-        ((sp + 0xb0#64) ↦₆₄ (y.fut + 0x390#64)) ∗
-        ((sp + 0xc0#64) ↦₆₄ y.cx) ∗
-        ((sp + 0xc8#64) ↦₆₄ y.out) ∗
-        ((sp + 0xd0#64) ↦₆₄ v_d0) ∗
-        memRegion (sp + 0xd8#64) 348 ∗
-        decryptPrekeySavedRegsAt (sp + 0xcd0#64) s0 ∗
-        memRegion y.out 48 ∗
-        A.pool ∗
-        ((y.g.msgA + 0x70#64) ↦₈ y.g.msg.message.messageVersion) ∗
-        signalMessageRestVerAt A y.g.msgG.msg y.g.msgA y.g.msg.message ∗
-        ((y.g.msgA + 0xa8#64) ↦ₛ y.g.msg.baseKey.bytes.toList) ∗
-        ((y.g.msgA + 0xc8#64) ↦ₛ y.g.msg.identityKey.publicKey.bytes.toList) ∗
-        ((y.g.msgA + 0xf0#64) ↦₈ y.g.msg.messageVersion) ∗
-        preKeyMsgRemMatchedAt A y.g.msgG y.g.msgA y.g.msg ∗
-        protocolAddressAt A y.g.peer y.g.peerA ∗
-        protocolAddressAt A y.g.me y.g.meA ∗
-        coinsInstalled img y.g.coinsP y.g.coins ∗
-        TokenInit img ∗
-        logOff img ∗
-        stackAt sp rootStack) by sep_frame) ?_
-  refine Entails.trans (sepConj_mono (coro_unused_split_matched y.fut)
-    (sepConj_mono_left (stack_unused_split_matched sp v_b8))) ?_
-  simp only [sepExists_sepConj_left]
-  refine Entails.sepExists_elim fun u298 => Entails.sepExists_elim fun u2a0 =>
-    Entails.sepExists_elim fun u2a8 => Entails.sepExists_elim fun b4f1 => ?_
-  rw [sepConj_comm _ (∃∗ u_80 : BitVec 64, _), ← sepConj_assoc]
-  simp only [sepExists_sepConj_left]
-  refine Entails.sepExists_elim fun u80 => Entails.sepExists_elim fun u88 =>
-    Entails.sepExists_elim fun u90 => Entails.sepExists_elim fun u3a0 =>
-    Entails.sepExists_elim fun b3ac => Entails.sepExists_elim fun u3b0 =>
-    Entails.sepExists_elim fun u3b8 => Entails.sepExists_elim fun u3c0 =>
-    Entails.sepExists_elim fun u3c8 => Entails.sepExists_elim fun u3d0 =>
-    Entails.sepExists_elim fun u3d8 => ?_
-  exact Entails.sepExists_right g (Entails.sepExists_right
-    ⟨u80, u88, u90, u298, u2a0, u3a0, u3b0, u3b8, u3c0, u3c8, u3d0, u3d8, u2a8, b4f1, b3ac⟩
-    (by dsimp only [stageP2MatchedPre, matchedInnerFrameExt]; sep_frame))
-
-/-- Full entry spatial unpack from `StageP2MatchedFramedCliStmt` into `stageP2MatchedPre... matchedInnerFrame`. -/
-theorem matched_entry_unpack {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {B : RunBudgets} {S : RunSem}
-    (img : Obj.Image) (y : DpPollGhostState (dpSlotPollKState E2E.HooksE.A0 img B S))
-    (sess : Session (List (BitVec 8))) (s0 : State)
-    (sp rngPtr v_a8 v_b8 v_d0 : BitVec 64) :
-    stageP2PostP1At E2E.HooksE.A0 y.fut y.out y.cx y.g.msgA y.g.peerA y.g.meA
-      (y.g.stores + 0xf0#64) (sessVt img) y.g.stores (idVt img)
-      (y.g.stores + 0xc8#64) (oneTimeVt img) (y.g.stores + 0x50#64) (signedVt img)
-      (y.g.stores + 0x78#64) (kyberVt img) rngPtr sp v_a8 v_b8 v_d0 s0 ∗
-    p1LoadedRecordAt Scope E2E.HooksE.A0 y.fut (some ⟨some sess⟩) ∗
-    preKeyMsgAt E2E.HooksE.A0 y.g.msgG y.g.msgA y.g.msg ∗
-    protocolAddressAt E2E.HooksE.A0 y.g.peer y.g.peerA ∗
-    protocolAddressAt E2E.HooksE.A0 y.g.me y.g.meA ∗
-    coinsInstalled img y.g.coinsP y.g.coins ∗
-    TokenInit img ∗
-    logOff img ∗
-    stackAt sp rootStack ⊢
-      ∃∗ g : RecordGhost, ∃∗ w : MatchedEntryWords,
-        stageP2MatchedPre E2E.HooksE.A0 img s0 sp y.fut y.out y.g.msgA y.g.peerA y.g.meA
-          y.g.peerA (y.g.msgA + 0xc8#64)
-          w.u_80 w.u_88 w.u_90 v_a8 (y.fut + 0x390#64) v_d0
-          w.u_298 w.u_2a0 w.u_3a0 w.u_3b0 w.u_3b8 w.u_3c0 w.u_3c8 w.u_3d0 w.u_3d8
-          w.u_2a8 (v_b8.extractLsb' 0 32)
-          y.g.msg.messageVersion y.g.msg.message.messageVersion
-          w.b_4f1 0#8 0#8 0#8 w.b_3ac
-          y.g.msg.baseKey y.g.msg.identityKey g ⟨some sess⟩
-          (matchedInnerFrame img y rngPtr sp) :=
-  matched_entry_unpack_ext img y sess s0 sp rngPtr v_a8 v_b8 v_d0
 
 end CryptoVerification.SignalSession.Cli.RunProofs.Poll

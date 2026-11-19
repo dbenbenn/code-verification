@@ -5,16 +5,15 @@
 // Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Untrusted Proof & Lemma Generator (`untrusted_lemmas`) — `[OUTSIDE TCB]`.
+//! Untrusted Proof & Analysis Helpers (`untrusted_lemmas`) — `[OUTSIDE TCB]`.
 //!
 //! # Purpose & Trust Role
-//! - **Trust Role:** `[OUTSIDE TCB]` (every Lean theorem emitted here is proved by kernel
-//!   reduction against the trusted `Arm64.Obj.LinkedImage` definition and verified by Lean's
+//! - **Trust Role:** `[OUTSIDE TCB]` (provides developer analysis hints, `*Index.json` sidecar
+//!   schema/discovery, and standalone `gen_decodes` emission whose outputs are verified by Lean's
 //!   kernel; a bug here can only cause `lake build` to fail, never unsoundness).
-//! - **Purpose:** Generates `<ObjName>Code.lean` ([`code`]), per-target `gen_fetches` lemma modules
-//!   ([`code`]), function/callee/frame metadata sidecars `<Target>Index.json`
-//!   ([`index`]), symbolic execution certificates/traces ([`symexec`]), and the standalone
-//!   `fetch-decode-lemmas` subcommand.
+//! - **Purpose:** Provides prologue stack-frame inference and `*Index.json` sidecar schema
+//!   ([`index`], [`index_schema`]), DWARF layout inspection ([`dwarf`]), symbolic execution
+//!   certificates/traces ([`symexec`]), and the standalone `fetch-decode-lemmas` subcommand.
 //!
 //! # Key Types & Functions
 //! - [`lemma_patterns`], [`name_selected`]: Compiles and matches `lemma_allowlist` regexes.
@@ -22,19 +21,17 @@
 //!   Bitfield and integer literal helpers shared across `untrusted_lemmas`.
 //! - [`format_gen_decodes_line`], [`run_fetch_decode_lemmas`]: Implements the `fetch-decode-lemmas`
 //!   CLI subcommand, emitting `gen_decodes` invocations.
-//! - Submodules: [`code`], [`dwarf`] (DWARF signatures/layouts/lines from an
-//!   untrusted `-g` companion compile), [`index`], [`symexec`].
+//! - Submodules: [`dwarf`] (DWARF signatures/layouts/lines from an untrusted `-g` companion
+//!   compile), [`index`], [`index_schema`], [`symexec`].
 //!
 //! # When to Read This File
 //! - Read this file when modifying `lemma_allowlist` symbol matching, shared bitfield helpers, or
-//!   the standalone `fetch-decode-lemmas` subcommand; otherwise jump directly to [`code.rs`](code.rs),
-//!   [`index.rs`](index.rs), or [`symexec/mod.rs`](symexec/mod.rs).
+//!   the standalone `fetch-decode-lemmas` subcommand; otherwise jump directly to
+//!   [`index.rs`](index.rs), [`dwarf/mod.rs`](dwarf/mod.rs), or [`symexec/mod.rs`](symexec/mod.rs).
 
-pub mod code;
 pub mod dwarf;
 pub mod index;
 pub mod index_schema;
-pub mod registry_facts;
 pub mod symexec;
 
 use std::path::PathBuf;
@@ -132,8 +129,8 @@ pub fn parse_u32_lit(s: &str) -> Result<u32> {
     u32::try_from(v).map_err(|_| anyhow::anyhow!("32-bit word out of range: {s}"))
 }
 
-// Naming helpers for the untrusted `Code` and lemma modules (kept out of `trusted_common`,
-// which only names the trusted `Obj` module and its `Image`/`ObjectInfo` definitions).
+// Naming helpers for untrusted target and shard modules (kept out of `trusted_common`,
+// which only names object modules).
 
 impl ExportTarget {
     /// Output path and Lean module name of shard `i` (0-based) of this target's lemmas.

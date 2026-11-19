@@ -9,15 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreSession.StoreShim
-public import LibsignalBinary.Proofs.PublicApi.StoreSession.StorePoll
-public import LibsignalBinary.Proofs.TripleRatchet.Prog
+public import LibsignalBinary.Proofs.PublicApi.StoreSession.StoreShim -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreSession.StorePoll -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prog -- proof-setup: allow-public-import
 public import ProofLib.SepLogic.WP.ControlTactics
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.PublicApi.StoreSession.Decodes
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public meta import Lean
+public meta import ProofLib.GenDecodes
+public meta import ProofLib.ProgramReflection
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `store_session` Call Segment of `session_message_decrypt_signal_with_stores`
@@ -28,7 +32,7 @@ Verifies `0x3c830 .. 0x3c8d0` (`+0x2388 .. +0x2428` of `0x3a4a8`): dispatches
 32-byte future box, and reaches `0x3c8d0: cmn x28, #2` with `x28 = pollTag ans`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.StoreSession
 
@@ -51,7 +55,7 @@ abbrev futDropName : String :=
   "core::ptr::drop_glue::<<libsignal_session_stores::HookSessionStore as libsignal_protocol::storage::traits::SessionStore>::load_session::{closure#0}>"
 
 /-- The no-op drop: no footprint, trace unchanged. -/
-def futDropSpec : Spec Unit where
+@[expose] def futDropSpec : Spec Unit where
   pre := fun _ _ => emp
   post := fun _ s0 sf => ⌜sf.trace = s0.trace⌝
 
@@ -205,104 +209,5 @@ private theorem stack_seg_alloc' (sp : BitVec 64) :
     stackAt sp storeSessionPollStack =
       memRegion (sp - 16416#64) (storeSegStack - allocHookStack) ∗ stackAt sp allocHookStack :=
   stack_seg_alloc sp
-
-private theorem drop_ne (b : BitVec 64) (hb : b &&& 0xfff#64 = 0#64) : b + bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15744) ≠ 0#64 := by
-  intro h
-  rw [show b = 0#64 - 273192#64 by rw [← h, BitVec.add_sub_cancel]] at hb
-  exact absurd hb (by decide)
-
-set_option maxHeartbeats 3200000 in
-/-- The `store_session` call segment (`0x3c830 .. 0x3c8d0`). -/
-theorem storeCallSeg_ok {A : RustAlloc}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)} {b : BitVec 64} {C : Crypto}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (hA : AllocHooks A abs)
-    (hshim : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 16792)) (storeSessionShimSpec A b))
-    (hpoll : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15988)) (storeSessionPollSpec A encRecord b))
-    (hdrop : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15744)) futDropSpec)
-    (hb : b &&& 0xfff#64 = 0#64)
-    {s : State} {R : SepProp} {self vtS addrA : BitVec 64} {addr : AddrGhost} {g : RecordGhost}
-    {record : SessionRecord (List (BitVec 8))} {c0 c1 d0 d1 d2 d3 : BitVec 64} {d5 : BitVec 32}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr decWithStoresName + 0x2388#64)
-    (hrun : s.status = .Running) (hsp_align : (s.sp &&& 15#64 == 0#64) = true) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr decWithStoresName + 0x2428#64) s
-      (((s.sp + 0xe8#64) ↦₆₄ addrA) ∗ ((s.sp + 0xf8#64) ↦₆₄ self) ∗ ((s.sp + 0x100#64) ↦₆₄ vtS) ∗
-        ((vtS + 0x20#64) ↦₆₄ᵣ (b + bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 16792))) ∗
-        ((b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}") - 16)) ↦₆₄ᵣ (b + bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15744))) ∗ ((b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}") - 8)) ↦₆₄ᵣ 32#64) ∗
-        ((b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}"))) ↦₆₄ᵣ 8#64) ∗ ((b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}") + 8)) ↦₆₄ᵣ (b + bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15988))) ∗
-        ((s.sp + 0x2d0#64) ↦₆₄ c0) ∗ ((s.sp + 0x2d8#64) ↦₆₄ c1) ∗
-        ((s.sp + 0x550#64) ↦₆₄ d0) ∗ ((s.sp + 0x558#64) ↦₆₄ d1) ∗ ((s.sp + 0x560#64) ↦₆₄ d2) ∗
-        ((s.sp + 0x568#64) ↦₆₄ d3) ∗ ((s.sp + 0x570#64) ↦₃₂ d5) ∗
-        memRegion (s.sp + 0x5f0#64) 48 ∗
-        protocolAddressAt A addr addrA ∗
-        sessionRecordAt A (s.readReg64 .x26 + 0x80#64) g record ∗ A.pool ∗
-        stackAt s.sp storeSegStack)
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) →
-        (sf.mem ⊨ (∃∗ ans : Except Unit Unit, ∃∗ box : BitVec 64,
-          ∃∗ e0 : BitVec 64, ∃∗ e1 : BitVec 64, ∃∗ e2 : BitVec 64, ∃∗ e3 : BitVec 64,
-          ∃∗ e5 : BitVec 32, ∃∗ o1 : BitVec 32, ∃∗ o2 : BitVec 64, ∃∗ o3 : BitVec 64,
-          ∃∗ o4 : BitVec 64, ∃∗ o5 : BitVec 64, ∃∗ o6 : BitVec 32,
-          ⌜sf.readReg64 .x28 = pollTag ans ∧
-            sf.trace = s.trace ++ [storeSessionEvent encRecord addr.val record ans]⌝ ∗
-          ((s.sp + 0xe8#64) ↦₆₄ addrA) ∗ ((s.sp + 0xf8#64) ↦₆₄ self) ∗
-          ((s.sp + 0x100#64) ↦₆₄ vtS) ∗
-          ((vtS + 0x20#64) ↦₆₄ᵣ (b + bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 16792))) ∗
-          ((b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}") - 16)) ↦₆₄ᵣ (b + bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15744))) ∗ ((b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}") - 8)) ↦₆₄ᵣ 32#64) ∗
-          ((b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}"))) ↦₆₄ᵣ 8#64) ∗ ((b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}") + 8)) ↦₆₄ᵣ (b + bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15988))) ∗
-          ((s.sp + 0x2d0#64) ↦₆₄ box) ∗ ((s.sp + 0x2d8#64) ↦₆₄ (b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}") - 16))) ∗
-          ((s.sp + 0x550#64) ↦₆₄ e0) ∗ ((s.sp + 0x558#64) ↦₆₄ e1) ∗
-          ((s.sp + 0x560#64) ↦₆₄ e2) ∗ ((s.sp + 0x568#64) ↦₆₄ e3) ∗
-          ((s.sp + 0x570#64) ↦₃₂ e5) ∗
-          ((s.sp + 0x5f0#64) ↦₆₄ pollTag ans) ∗ ((s.sp + 0x5f8#64) ↦₃₂ o1) ∗
-          ((s.sp + 0x5fc#64) ↦₆₄ o2) ∗ ((s.sp + 0x604#64) ↦₆₄ o3) ∗
-          ((s.sp + 0x60c#64) ↦₆₄ o4) ∗ ((s.sp + 0x614#64) ↦₆₄ o5) ∗
-          ((s.sp + 0x61c#64) ↦₃₂ o6) ∗
-          protocolAddressAt A addr addrA ∗
-          sessionRecordAt A (s.readReg64 .x26 + 0x80#64) g record ∗ A.pool ∗
-          stackAt s.sp storeSegStack) ∗ R) ∧
-        sf.sp = s.sp ∧ sf.readReg64 .x26 = s.readReg64 .x26)
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) →
-        (sf.mem ⊨ (⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R)) := by
-  have hfn : libsignalSessionCode.fnOff decWithStoresName = num% (ls_off% "session_message_decrypt_signal") := by
-    simp only [decWithStoresName, arm64_norm]
-  have hdealloc := dealloc_ok_at_norm (b := b) (C := C) (ctl := ctl)
-    (name := decWithStoresName) (k := num% (ls_off% "__rustc::__rust_dealloc" - ls_off% "session_message_decrypt_signal")) hA
-  code_fetches_range CryptoVerification.libsignalSessionCode storeSessionBin b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn (num% (ls_off% "session_message_decrypt_signal")) 0x2388 0xa8
-  dsimp only [tripleRatchetProgAt] at hpc hshim hpoll hdrop hdealloc ⊢
-  generalize (libsignalSessionCode.rebase b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr decWithStoresName = entry at *
-  examples_hide_fetches
-  refine SepWPp.congr_pre (by rw [stack_seg_shim]) ?_
-  apply SepWPp.of_sepWP (mid := b + bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 16792))
-  wp_steps
-  apply SepWP.done (by simp_all) (by simp_all)
-  storeSession_call_panic hshim (⟨self, addrA, s.readReg64 .x26 + 0x80#64⟩ : StoreShimCall)
-  apply SepWP.fold (Entails.of_eq (stack_seg_shim' s.sp)) (by sep_focus)
-  wp_steps
-  wp_call hpoll (⟨sf.readReg64 (Reg.gpr 0#5), s.sp + 0x5f0#64,
-    ⟨addrA, addr, s.readReg64 .x26 + 0x80#64, g, record⟩⟩ : StorePollCall)
-  generalize hbox : sf.readReg64 (Reg.gpr 0#5) = box at *
-  simp only [hsp_sf] at hsp_sf_1 ⊢
-  wp_simp_pre [ProofLib.memRegion_eight, sepExists_sepConj_left, sepExists_sepConj_right]
-  apply SepWP.exists_elim; intro w5
-  apply SepWP.fold
-    (Entails.of_eq (out_repack_sp s.sp (b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}"))) 10#64 1#64 (b + bv% (ls_xref% (ls_off% "<libsignal_protocol::fingerprint::ScannableFingerprint>::serialize" + 620) (ls_off% "<libsignal_protocol::fingerprint::ScannableFingerprint>::serialize" + 624) + 16)) w5))
-    (by sep_focus)
-  have hdz := drop_ne b hb
-  have hdz' : (b + bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15744) == 0#64) = false := by simpa using hdz
-  rcases w with ⟨⟨⟩⟩ | ⟨⟨⟩⟩ <;> wp_simp_pre [pollTag] <;> wp_steps
-  all_goals (
-    wp_apply
-    wp_steps
-    apply SepWP.fold (box_fold box self addrA (s.readReg64 (Reg.gpr 26#5) + 128#64) 1#8)
-      (by sep_focus)
-    apply SepWP.fold (Entails.of_eq (stack_seg_alloc' s.sp)) (by sep_focus)
-    wp_apply
-    simp only [h_24, hsp_sf_1] at hsp_sf_2 ⊢
-    apply SepWP.fold (Entails.of_eq (stack_seg_alloc' s.sp).symm) (by sep_focus)
-    simp only [show (9223372036854775834#64 : BitVec 64) = pollTag (.error ()) from rfl,
-      show (bv% (2 ^ 64 - 2) : BitVec 64) = pollTag (.ok ()) from rfl] at *
-    wp_done)
 
 end CryptoVerification.LibsignalPublicApi.StoreSession

@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbJoinClPlacedBudgetAux1
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbJoinClPlacedBudgetAux1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Code-Loaded Join Proofs for `<spqr::chain::Chain>::from_pb` (Block `364`)
@@ -24,7 +26,7 @@ under `RustCliAllocBudget M`, re-exporting the bad-direction and error-path lemm
 `FromPbJoinClPlacedBudgetAux1`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 800000

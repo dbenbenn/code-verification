@@ -9,10 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.FSAEAD.HybridRedBase -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.FSAEAD.HybridRedZero -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.FSAEAD.HybridRedBase
+import Computational.Proofs.ReductionDsl.FSAEAD.HybridRedZero
 import Computational.Proofs.ReductionDsl.Size
 import Computational.Proofs.ReductionDsl.Tables
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.FSAEAD.CostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.OTCCA.CostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRG.CostedTables -- proof-setup: allow-public-import
+public import Computational.Specifications.Reductions.ReductionDsl.Samplers
 
 /-!
 # Soundness and bounds for the costed ACD19 Theorem 5 reductions

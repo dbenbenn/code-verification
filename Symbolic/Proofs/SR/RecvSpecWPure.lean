@@ -9,8 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SR.ModelW
+public import Symbolic.Proofs.SR.ModelW -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.RngFree.SpecsPure -- shake: keep
+import LibsignalBinary.Specifications.LibsignalE2E.SchemeModel
+import LibsignalBinary.Specifications.LibsignalE2E.State
+import LibsignalBinary.Specifications.LibsignalSessionRepr
+import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
+import Symbolic.Proofs.Refinement.RngFree.SendSpecPure
+import Symbolic.Proofs.SpecLemmas.CliPureBytes
 
 /-!
 # Record- and API-level whole-message AES decryption
@@ -19,7 +25,7 @@ Lifts `SessionState.tryDecryptFromRecordW` to `SessionRecord` (`SessionRecord.tr
 and the store-backed public API (`messageDecryptSignalW`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,7 +38,7 @@ open CryptoVerification.LibsignalSessionRepr CryptoVerification.LibsignalProtoCo
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open Proofs.libsignal.Refinement.RngFree
 
-def SessionRecord.tryDecryptFromRecordW {PQ PQC : Type} [Inhabited PQ] (C : Crypto) (W : AesW)
+@[expose] def SessionRecord.tryDecryptFromRecordW {PQ PQC : Type} [Inhabited PQ] (C : Crypto) (W : AesW)
     (spqr : Spqr PQ PQC) (expected : Option (List (BitVec 8))) (ciphertext : SignalMessage)
     (coins : BitVec 256) (record : SessionRecord PQ) :
     Except SignalProtocolError (List (BitVec 8) × SessionRecord PQ) :=
@@ -47,7 +53,7 @@ def SessionRecord.tryDecryptFromRecordW {PQ PQC : Type} [Inhabited PQ] (C : Cryp
       .ok (ptext, { currentSession := some updated })
     | (.error e, _) => .error e
 
-def messageDecryptSignalW {Addr PQ PQC E : Type} [Inhabited PQ] (C : Crypto) (W : AesW)
+@[expose] def messageDecryptSignalW {Addr PQ PQC E : Type} [Inhabited PQ] (C : Crypto) (W : AesW)
     (spqr : Spqr PQ PQC)
     (serializeAddresses : Addr → Addr → Option (List (BitVec 8)))
     (answers : StoreAnswers PQ E) (ciphertext : SignalMessage) (remoteAddress localAddress : Addr)

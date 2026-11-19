@@ -9,14 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.LeavesBudget
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.W4ArchiveCancelPeak
-public import LibsignalBinary.Proofs.PeakBudget.W4InnerHelpers
-public import LibsignalBinary.Proofs.PeakBudget.W4PrevDecPeak
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.LeavesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W4ArchiveCancelPeak -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W4InnerHelpers
+import LibsignalBinary.Proofs.PeakBudget.W4PrevDecPeak
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # W4 `init_bob` (`initialize_bob_session`) Peak Live-Heap Bounds
@@ -27,7 +29,7 @@ Parametric `(M : AllocCostModel) [HasFineReallocCredit M]` (`ModelHyps M`) seque
 `W4BobSessionBuildEnv`, `W4InitBobEnv`, and Stage P2 `Over`-path composition (`W4StageP2OverBobEnv`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -82,14 +84,14 @@ theorem phaseCredit_seq_freeOnly {M : AllocCostModel} [HasFineReallocCredit M]
         stepEvents_freeOnly_le hM.freeNonInc hfo (M.stepEvents evs₁ st0)
       exact ⟨Nat.le_trans hc₂ hc₁, Nat.le_trans hl₂ hl₁, Nat.le_trans hp₂ hp₁⟩
 
-def nonFreeCount : List AllocEvent → Nat
+@[expose] def nonFreeCount : List AllocEvent → Nat
   | [] => 0
   | .free _ _ :: tl => nonFreeCount tl
   | _ :: tl => nonFreeCount tl + 1
 
 /-- Bounded-count, bounded-request (`align ≤ 16`) allocator event predicate with interleaved `.free` events.
 -/
-def W4BoundedEvs (maxOps maxReq : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def W4BoundedEvs (maxOps maxReq : Nat) (evs : List AllocEvent) : Prop :=
   nonFreeCount evs ≤ maxOps ∧
   ∀ ev ∈ evs, eventStepReq ev ≤ maxReq ∧ eventStepAlign ev ≤ 16
 
@@ -305,20 +307,6 @@ theorem phaseCredit_doReserve_aff {M : AllocCostModel} [HasFineReallocCredit M]
       simpa [DoReserveEnv, doReserveEvents, hc0, newCap] using he
     exact (h.of_imp heq).mono (by omega) (by omega) (by omega) hnew
 
-theorem phaseCredit_publicKeySerialize_small {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hSmall33 : 33 ≤ HasFineReallocCredit.smallMaxReq M) :
-    PhaseCreditSpec M (· = publicKeySerializeEvents) 9605 0 0 33 := by
-  have h := PhaseCreditSpec.rustAlloc_small_any hM (req := 33) (al := 1) (by decide) hSmall33
-  have ha := hM.smallAlloc_le hSmall33
-  exact (h.of_imp fun _ he => he).mono (by omega) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 33)
-
-theorem phaseCredit_publicKeySerialize_tempFree_aff {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) :
-    PhaseCreditSpec M (· = publicKeySerializeEvents ++ rustDeallocEvents 33 1)
-      9605 0 8228 33 := by
-  have h := PhaseCreditSpec.tempAllocFree_aff hM (req := 33) (al := 1) (by decide)
-  exact h.of_imp fun _ he => ⟨publicKeySerializeEvents, rustDeallocEvents 33 1, he, rfl, rfl⟩
-
 theorem phaseCredit_growOneSpeZero_small {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) (hSmall192 : 192 ≤ HasFineReallocCredit.smallMaxReq M) :
     PhaseCreditSpec M (GrowOneSpeEnv 0#64) 9923 0 0 192 := by
@@ -344,30 +332,30 @@ theorem phaseCredit_growOneSpeZero_aff {M : AllocCostModel} [HasFineReallocCredi
 
 /-- DH `PublicKey::serialize` sub-phase of `pqxdhAccept` (`3` or `4` `33`-byte serializations with drops).
 -/
-def W4PqxdhDhKeysEnv (hasOpk : Bool) : List AllocEvent → Prop :=
+@[expose] def W4PqxdhDhKeysEnv (hasOpk : Bool) : List AllocEvent → Prop :=
   W4BoundedEvs (if hasOpk then 4 else 3) 33
 
 /-- `.ok` allocator trace envelope of `pqxdhAccept` (`DoReserveEnv` → `W4PqxdhDhKeysEnv` → `KemSerialize1569Env` → `FreeOnlyEvs`).
 -/
-def W4PqxdhAcceptOkEnv (x_res : DoReserveCall) (hasOpk : Bool) : List AllocEvent → Prop :=
+@[expose] def W4PqxdhAcceptOkEnv (x_res : DoReserveCall) (hasOpk : Bool) : List AllocEvent → Prop :=
   SeqEnv (DoReserveEnv x_res)
     (SeqEnv (W4PqxdhDhKeysEnv hasOpk)
       (SeqEnv KemSerialize1569Env FreeOnlyEvs))
 
 /-- Full `.ok`/`.error` allocator trace envelope of `pqxdhAccept`. -/
-def W4PqxdhAcceptEnv (x_res : DoReserveCall) (hasOpk : Bool) (evs : List AllocEvent) : Prop :=
+@[expose] def W4PqxdhAcceptEnv (x_res : DoReserveCall) (hasOpk : Bool) (evs : List AllocEvent) : Prop :=
   W4PqxdhAcceptOkEnv x_res hasOpk evs ∨
   SeqEnv (W4PqxdhAcceptOkEnv x_res hasOpk)
     (SeqEnv (GrowOneSpeEnv 0#64) FreeOnlyEvs) evs
 
 /-- Post-`initial_state` `SessionState::new` responder session assembly envelope (`≤ 6` small ops `≤ 68` B + `FreeOnlyEvs`).
 -/
-def W4BobSessionBuildEnv : List AllocEvent → Prop :=
+@[expose] def W4BobSessionBuildEnv : List AllocEvent → Prop :=
   SeqEnv (W4BoundedEvs 6 68) FreeOnlyEvs
 
 /-- Full `initialize_bob_session` (`init_bob`) envelope (`W4PqxdhAcceptEnv → E_spqrInit → W4BobSessionBuildEnv`).
 -/
-def W4InitBobEnv (x_res : DoReserveCall) (hasOpk : Bool)
+@[expose] def W4InitBobEnv (x_res : DoReserveCall) (hasOpk : Bool)
     (E_spqrInit : List AllocEvent → Prop) : List AllocEvent → Prop :=
   SeqEnv (W4PqxdhAcceptEnv x_res hasOpk)
     (SeqEnv E_spqrInit W4BobSessionBuildEnv)
@@ -376,10 +364,10 @@ abbrev W4InitBobSpqrEnv (F : ShaCompress) (x_res : DoReserveCall) (hasOpk : Bool
     (x_spqr : InitialStateGhost) : List AllocEvent → Prop :=
   W4InitBobEnv x_res hasOpk (InitialStateEnv F x_spqr)
 
-def w4PqxdhAcceptCum (ikmCap : Nat) : Nat :=
+@[expose] def w4PqxdhAcceptCum (ikmCap : Nat) : Nat :=
   (2 * ikmCap + 9539) + 38420 + 12677 + 9923
 
-def w4InitBobOuterCum (ikmCap : Nat) : Nat :=
+@[expose] def w4InitBobOuterCum (ikmCap : Nat) : Nat :=
   w4PqxdhAcceptCum ikmCap + 58050
 
 /-- Small-regime (`max ikmCap 1569 ≤ smallMaxReq M`) `PhaseCreditSpec` for `W4PqxdhAcceptEnv` (`Δlive = 0`, `Δpeak = 0`).
@@ -475,7 +463,7 @@ theorem phaseCredit_w4InitBob_aff {M : AllocCostModel} [HasFineReallocCredit M]
 /-! ## 4. Stage P2 `Over`-Path Composition -/
 
 /-- Stage P2 `Over` responder envelope (`PromoteStateArchiveEnv → W4InitBobEnv`). -/
-def W4StageP2OverBobEnv
+@[expose] def W4StageP2OverBobEnv
     (SerializeArchivedEnv VecPushEnv : List AllocEvent → Prop)
     (x_res : DoReserveCall) (hasOpk : Bool)
     (E_spqrInit : List AllocEvent → Prop) : List AllocEvent → Prop :=

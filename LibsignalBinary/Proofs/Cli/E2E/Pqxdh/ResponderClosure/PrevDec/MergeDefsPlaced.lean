@@ -10,13 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ConstsMergePlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafVarintPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafReservePlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ConstsMergePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafVarintPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafReservePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.VarintBridge
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
 
 /-!
 # Relocatable Handshake `bytes::merge [local#5]` Definitions
@@ -26,7 +27,7 @@ Relocatable (`[LibsignalPlacement]`) specifications (`bytesMerge3PlacedSpec`,
 `BytesMerge6ProtoPlacedOkExt`) for `prost::encoding::bytes::merge [local#5]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,7 +58,7 @@ abbrev bytesMerge3ProtoPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec By
 /-- Relocatable `[LibsignalPlacement]` contract for
 `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#5]`
 (Block `508`, `(blkPl_507).base = lsmpl.base 507`) against `bytesMerge3PlacedSpec A`. -/
-def BytesMerge6PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def BytesMerge6PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 507)
     (bytesMerge3PlacedSpec A)
@@ -65,7 +66,7 @@ def BytesMerge6PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
 /-- Relocatable `[LibsignalPlacement]` contract for
 `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#5]`
 (Block `508`, `(blkPl_507).base = lsmpl.base 507`) against `bytesMerge3ProtoPlacedSpec A`. -/
-def BytesMerge6ProtoPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def BytesMerge6ProtoPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 507)
     (bytesMerge3ProtoPlacedSpec A)

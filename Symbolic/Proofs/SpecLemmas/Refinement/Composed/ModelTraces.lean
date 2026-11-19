@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent -- proof-setup: allow-public-import
 import Mathlib.Tactic.Push
 
 /-!
@@ -20,7 +20,7 @@ for visible trace entries (`runVis_known`) and setup messages (`setupSent_known`
 snoc closure for `ModelRun`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -63,7 +63,7 @@ theorem runTrace_take_le (r : ProtocolSetup) (ms : List Move) (i : Nat) :
 /-! ## Observed terms are attacker-known -/
 
 /-- Every term of a `send`, `recv`, or `leak` entry is attacker-known on `tr`. -/
-def VisKnown (tr : ExecTrace) (v : VisEntry) : Prop :=
+@[expose] def VisKnown (tr : ExecTrace) (v : VisEntry) : Prop :=
   (v.kind = .send ∨ v.kind = .recv ∨ v.kind = .leak) → ∀ t ∈ v.terms, t.AttackerKnows tr
 
 theorem VisKnown.mono {tr₁ tr₂ : ExecTrace} {v : VisEntry} (hle : tr₁ ≤ tr₂)

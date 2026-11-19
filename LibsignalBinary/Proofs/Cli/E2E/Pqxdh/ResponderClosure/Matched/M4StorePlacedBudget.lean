@@ -11,19 +11,19 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1LoadTrustTailsXExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StorePlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StorePlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1LoadTrustTailsXExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4DefsPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StorePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StorePlacedBudgetAux
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlacedBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4ErrUnwind
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveId
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveIdProof
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSession
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4Defs
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSessionProof
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4Unwind
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -32,6 +32,12 @@ import LibsignalBinary.Proofs.E2E.Bin.Hooks
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP4
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4SaveIdPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Matched-Session Substage P4.4 (`store_session`)
@@ -41,7 +47,7 @@ Budget-threaded `[LibsignalPlacement]` counterpart of `Matched.M4StorePlaced` on
 `FreeOnlyEvs` (`+0x3cc → s0.readReg64 .x30`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -172,7 +178,7 @@ theorem storePoll_pre_intro_placed [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Shared resources across entry, `Ok(())` exit, and `Err(())` exit of matched `P4.4`
 under `[LibsignalPlacement]`, separating the stack-frame anchor `s` from the pool state `s_pool`. -/
-def stageP4MatchedStoreSharedPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4MatchedStoreSharedPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (kit : SessionStoreSpec A.repAlloc 0#64)
     (s0 s s_pool : State)
@@ -190,7 +196,7 @@ def stageP4MatchedStoreSharedPlaced [LibsignalPlacement] {M : AllocCostModel}
   A.pool lim st s_pool ∗
   stackAt s.sp (storeSessionCallStack kit)
 
-def stageP4MatchedStorePrePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4MatchedStorePrePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st0 : M.σ)
     (kit : SessionStoreSpec A.repAlloc 0#64)
     (s0 s : State)
@@ -212,7 +218,7 @@ def stageP4MatchedStorePrePlaced [LibsignalPlacement] {M : AllocCostModel}
   memRegion outPtr 48 ∗
   kit.storeAt sessionStorePtr sst0
 
-def stageP4MatchedStoreOkPostPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4MatchedStoreOkPostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stf : M.σ)
     (kit : SessionStoreSpec A.repAlloc 0#64)
     (s0 s sf : State)
@@ -227,7 +233,7 @@ def stageP4MatchedStoreOkPostPlaced [LibsignalPlacement] {M : AllocCostModel}
   ((coroPtr + 0x2c0#64) ↦₈ 1#8) ∗
   kit.storeAt sessionStorePtr (kit.storeUpdate sst0 peer.val ⟨some ss⟩ (.ok ()))
 
-def stageP4MatchedStoreErrPostPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4MatchedStoreErrPostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stf : M.σ)
     (kit : SessionStoreSpec A.repAlloc 0#64)
     (s0 s sf : State)

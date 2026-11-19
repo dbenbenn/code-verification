@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Ct1AcknowledgedRecvEkChunkSym
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Ct1AcknowledgedRecvEkChunkSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.Common
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::send_ct::Ct1Acknowledged>::recv_ek_chunk` (Block `349`): Relocatable Symbolic Helpers
@@ -25,7 +26,7 @@ Relocatable `[LibsignalPlacement]` framed call rules, shared epilogue
 and `decoded? = none` branch (`ct1_ack_recv_ek_none_branch_placed`) for Block `349`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

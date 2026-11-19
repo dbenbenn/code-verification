@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint4BasePlaced
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint4BasePlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4Base
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommon
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommon -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2BasePlaced
 import ProofLib.SepLogic.WPp
 
@@ -22,7 +22,7 @@ Proves continuation-byte stages 4–8 and top-level `[LibsignalPlacement]` contr
 `prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#4]` (Block `451`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

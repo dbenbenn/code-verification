@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto
-public import Computational.Proofs.E2E.Dsl.SpqrSimChain
-public import Computational.Proofs.E2E.Dsl.ClampsLossless
+public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto
+import Computational.Proofs.E2E.Dsl.SpqrSimChain
+import Computational.Proofs.E2E.Dsl.ClampsLossless
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost -- proof-setup: allow-public-import
 
 /-!
 # Atomic SPQR V1 Braid-Tracker Delivery Combinators and Bounds
@@ -24,7 +25,7 @@ Defines the atomic state encodings and expressions for `simStepKemFailDeliver`
 and description-size bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -49,14 +50,14 @@ open Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost
   (atomicSortDescBits atomicTyDescBits atomicPureOpDescBits
    atomicSessionOpDescBits atomicExprDescBits varIdx kemCandVecToBv)
 
-@[reducible] def kemCoinsT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def kemCoinsT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .sum .unit (.sum (BV512 (ℓ := ℓ) (Pt := Pt)) (.prod (BV512 (ℓ := ℓ) (Pt := Pt)) (BV256 (ℓ := ℓ) (Pt := Pt))))
 
-@[reducible] def kemSentEntryT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def kemSentEntryT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (.prod (U64 (ℓ := ℓ) (Pt := Pt)) (B (ℓ := ℓ) (Pt := Pt) 64)) (U32 (ℓ := ℓ) (Pt := Pt))
 
 /-- `SimKemFailTrack` state type in `atomicSig ℓ Pt`. -/
-@[reducible] def kemTrackT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def kemTrackT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (U64 (ℓ := ℓ) (Pt := Pt))
     (.prod (kemCoinsT ℓ Pt)
       (.prod (.prod (B (ℓ := ℓ) (Pt := Pt) 32) (B (ℓ := ℓ) (Pt := Pt) 32))
@@ -64,12 +65,12 @@ open Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost
           (.prod (.prod (.tbl .nat) (.tbl .nat))
             (.opt (.prod (BV512 (ℓ := ℓ) (Pt := Pt)) (BV256 (ℓ := ℓ) (Pt := Pt))))))))
 
-@[reducible] def kemCoinsAtomicEnc {ℓ : ℕ} {Pt : Type} : SimKemCoins → (kemCoinsT ℓ Pt).denote
+@[expose, reducible] def kemCoinsAtomicEnc {ℓ : ℕ} {Pt : Type} : SimKemCoins → (kemCoinsT ℓ Pt).denote
   | .init => .inl ()
   | .seed s => .inr (.inl (bytesToWordLE 512 s.toList))
   | .both s r => .inr (.inr (bytesToWordLE 512 s.toList, bytesToWordLE 256 r.toList))
 
-@[reducible] def kemTrackAtomicEnc {ℓ : ℕ} {Pt : Type} {F : ShaCompress}
+@[expose, reducible] def kemTrackAtomicEnc {ℓ : ℕ} {Pt : Type} {F : ShaCompress}
     (tr : SimKemFailTrack F) : (kemTrackT ℓ Pt).denote :=
   (tr.e,
    (kemCoinsAtomicEnc tr.c,
@@ -89,14 +90,14 @@ local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
 /-- Coerce a `B 64` SPQR payload suffix of length `≤ 48` losslessly into `B 32` via
 `.spqrAssembleMsg`. -/
-def b64Take48ToB32E {Γ : List (Ty ASig)} (suf : Expr AOps Γ (B 64)) : Expr AOps Γ (B 32) :=
+@[expose] def b64Take48ToB32E {Γ : List (Ty ASig)} (suf : Expr AOps Γ (B 64)) : Expr AOps Γ (B 32) :=
   sOpPure (.bytesDrop 32)
     (.pair (.nat 3)
       (sOpPure .spqrAssembleMsg
         (.pair (sOpPure (.u64Lit 0#64) .unit)
           (.pair (sOpPure (.u32Lit 0#32) .unit) suf))))
 
-def listNthOptB (L : ℕ) {t : Ty ASig} {Γ : List (Ty ASig)}
+@[expose] def listNthOptB (L : ℕ) {t : Ty ASig} {Γ : List (Ty ASig)}
     (xsE : Expr AOps Γ (.list t)) (jE : Expr AOps Γ .nat) : Expr AOps Γ (.opt t) :=
   eLet (.pair xsE jE) (
     let xs := Expr.fst .v0
@@ -106,7 +107,7 @@ def listNthOptB (L : ℕ) {t : Ty ASig} {Γ : List (Ty ASig)}
        .pair dec (.ite (.eqN dec (.snd .v2)) (.some .v0) (.snd .v1)))))
 
 /-- Reverse index search in `honest` matching `honest.reverse.findIdx?` when `honest.length ≤ L`. -/
-def findRevHonestIdxE (L : ℕ) {Γ : List (Ty ASig)}
+@[expose] def findRevHonestIdxE (L : ℕ) {Γ : List (Ty ASig)}
     (honestE : Expr AOps Γ (.list (.prod (B 32) (fig8CtT (ℓ := ℓ) (Pt := Pt)))))
     (qBE : Expr AOps Γ .bool)
     (wE : Expr AOps Γ (B 32)) : Expr AOps Γ (.opt .nat) :=
@@ -125,7 +126,7 @@ def findRevHonestIdxE (L : ℕ) {Γ : List (Ty ASig)}
       .pair nextOpt (.add cnt (.nat 1)))))
 
 /-- Atomic expression implementing `simStepKemFailDeliver C.F K tr Q j` over `kemTrackT ℓ Pt`. -/
-def kemTrackDeliverAtomicE (L : ℕ) {Γ : List (Ty ASig)}
+@[expose] def kemTrackDeliverAtomicE (L : ℕ) {Γ : List (Ty ASig)}
     (trE : Expr AOps Γ (kemTrackT ℓ Pt))
     (qBE : Expr AOps Γ .bool)
     (jE : Expr AOps Γ .nat) : Expr AOps Γ (kemTrackT ℓ Pt) :=
@@ -162,7 +163,7 @@ def kemTrackDeliverAtomicE (L : ℕ) {Γ : List (Ty ASig)}
           (.pair (.ite advance (.inl .unit) c2)
             (.pair v1Pair' rest2)))))
 
-def kemOnDeliverPostAtomicE (L : ℕ) {Γ : List (Ty ASig)}
+@[expose] def kemOnDeliverPostAtomicE (L : ℕ) {Γ : List (Ty ASig)}
     (qBE : Expr AOps Γ .bool)
     (jOptE : Expr AOps Γ (.opt .nat))
     (rrOptE : Expr AOps Γ (.opt (recvResultT (ℓ := ℓ) (Pt := Pt))))

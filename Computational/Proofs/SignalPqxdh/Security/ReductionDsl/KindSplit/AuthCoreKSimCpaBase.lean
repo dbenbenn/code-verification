@@ -202,16 +202,6 @@ theorem prf_findMV_min_eq {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T}
   simp only [_root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.findMV, Comp.eval,
     take_min_eq_of_length_le hL hKQ]
 
-theorem prf_anyMV_min_eq {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T}
-    {Γ : List (Ty pqSig)} {τ : Ty pqSig} (K Q N : ℕ)
-    (xs : Expr pqxdhOps Γ (.list τ))
-    (p : Var (τ :: Γ) τ → Comp pqxdhOps I (τ :: Γ) .bool) (ρ : Env Γ)
-    (hL : (xs.eval ρ).length ≤ K) (hKQ : K ≤ Q) :
-    (_root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.anyMV (min K N) xs p).eval ρ =
-      (_root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.anyMV (min Q N) xs p).eval ρ := by
-  simp only [_root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.anyMV, Comp.eval,
-    take_min_eq_of_length_le hL hKQ]
-
 theorem findHonestC_prf_fuel_eq (S : Setup) (K Q : ℕ) {n : ℕ}
     {Γ Δ : List (Ty pqSig)} (st : Var Γ authStateTy) [h : Ext Γ Δ]
     (ik : Expr pqxdhOps Δ (B 32)) (env : Env Δ)
@@ -365,14 +355,6 @@ theorem support_prf_letV {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T}
     (h : ∀ x, x = e.eval ρ → ∀ y ∈ support ((k .zero).eval (.cons x ρ)), P y) :
     ∀ y ∈ support ((_root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.letV e k).eval ρ), P y := by
   intro y hy; rw [prf_letV_eval] at hy; exact h (e.eval ρ) rfl y hy
-
-theorem support_prf_letV_any {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T}
-    {Γ : List (Ty pqSig)} {τ₁ τ₂ : Ty pqSig}
-    {e : Expr pqxdhOps Γ τ₁} {k : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps I (τ₁ :: Γ) τ₂}
-    {ρ : Env Γ} {P : τ₂.denote → Prop}
-    (h : ∀ x, ∀ y ∈ support ((k .zero).eval (.cons x ρ)), P y) :
-    ∀ y ∈ support ((_root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.letV e k).eval ρ), P y :=
-  support_prf_letV fun x _ => h x
 
 theorem support_prf_bindV {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T}
     {Γ : List (Ty pqSig)} {τ₁ τ₂ : Ty pqSig}

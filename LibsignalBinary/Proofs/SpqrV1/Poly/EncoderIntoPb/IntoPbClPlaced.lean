@@ -9,12 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Proof
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Proof
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.OuterPlaced
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbClPlaced
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Poly -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Loop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Outer -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder>::into_pb` (Block `375`): `withLsCodeLoaded` Proof
@@ -23,7 +32,7 @@ Relocatable `[LibsignalPlacement]` verification of `<PolyEncoder>::into_pb` thre
 `withLsCodeLoaded lsmpl` across both `drop_glue::<[Poly; 16]>` (Block `265`) and Block `375`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,7 +55,7 @@ set_option maxHeartbeats 400000
 set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 attribute [local arm64_norm, local wp_norm]
   bv384_toNat bv8_toNat

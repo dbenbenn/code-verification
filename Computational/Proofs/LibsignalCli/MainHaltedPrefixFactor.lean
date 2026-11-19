@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.MainHaltedPrefixEndpoints
-public import Computational.Proofs.ReductionDsl.Soundness
+import Computational.Proofs.LibsignalCli.MainHaltedPrefixEndpoints
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.FSAEAD.CellForgery
 import Computational.Proofs.GameHop.GlobalHybrid
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.ComposedPrefixHelpers
 
 /-!
 # Session-Tracked Stage-1 Prefix Factorization
@@ -23,7 +25,7 @@ import VCVio.EvalDist.Monad.Basic
 `bhPrefixRedWithSessionTracked` and `bhPrefixExtExpWithSessionTracked`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -71,16 +73,16 @@ abbrev bhDefaultPrefixCtx : BHPrefixCtx :=
 
 abbrev ExtState (ℓ : ℕ) := GameState (GhostState Bytes) (Plain ℓ) Bytes
 
-def bhPlugExtInst {S : SignalPqxdh.Setup} {ℓ : ℕ} (gs_ext : ExtState ℓ)
+@[expose] def bhPlugExtInst {S : SignalPqxdh.Setup} {ℓ : ℕ} (gs_ext : ExtState ℓ)
     (d : BHModelInst S ℓ) : BHModelInst S ℓ :=
   match d.gs with | some _ => d | none => { d with gs := some gs_ext }
 
-def bhPlugExt {S : SignalPqxdh.Setup} {ℓ : ℕ} (gs_ext : ExtState ℓ)
+@[expose] def bhPlugExt {S : SignalPqxdh.Setup} {ℓ : ℕ} (gs_ext : ExtState ℓ)
     (σ : BHE2EDrvState S ℓ) : BHE2EDrvState S ℓ :=
   { σ with insts := σ.insts.map (bhPlugExtInst gs_ext) }
 
 /-- Plug `(gs_ext, tr_ext)` into `σH` at session slot `k`. -/
-def bhPlugExtSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhPlugExtSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (k : ℕ) (gs_ext : ExtState ℓ) (tr_ext : τ)
     (σH : BHE2EDrvState S ℓ × List τ) : BHE2EDrvState S ℓ × List τ :=
   (bhPlugExt gs_ext σH.1, σH.2.set k tr_ext)
@@ -90,7 +92,7 @@ theorem bhPlugExtInst_of_some {S : SignalPqxdh.Setup} {ℓ : ℕ} (gs_ext : ExtS
     bhPlugExtInst gs_ext d = d := by simp [bhPlugExtInst, h]
 
 /-- Every instance in `σ.insts` has `d.gs ≠ none`. -/
-def BHAllInstsSome {S : SignalPqxdh.Setup} {ℓ : ℕ} (σ : BHE2EDrvState S ℓ) : Prop :=
+@[expose] def BHAllInstsSome {S : SignalPqxdh.Setup} {ℓ : ℕ} (σ : BHE2EDrvState S ℓ) : Prop :=
   ∀ d ∈ σ.insts, d.gs ≠ none
 
 theorem bhAllInstsSome_empty {S : SignalPqxdh.Setup} {ℓ : ℕ} :
@@ -538,7 +540,7 @@ theorem bhPrefixRedWithSessionTracked_run1_query_bind_inr_succ {τ : Type}
   refine bind_congr fun step => ?_
   rcases step with ⟨r, σH'⟩ | ⟨c, p, σH'⟩ <;> rfl
 
-def bhPrefixPlugContWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhPrefixPlugContWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
@@ -560,7 +562,7 @@ def bhPrefixPlugContWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ 
     (simulateQ (bhE2EDrvImplGenWithSessionTracked T ki P C K qep decT encT (bhMkKeyBitConst false))
       (cont v)).run (bhPlugExtSessionTracked k gs0 tr0 σH_p)
 
-def bhPrefixExtPairExpWithSessionTracked {τ : Type} {ℓ : ℕ}
+@[expose] def bhPrefixExtPairExpWithSessionTracked {τ : Type} {ℓ : ℕ}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (S : SignalPqxdh.Setup)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
@@ -576,7 +578,7 @@ def bhPrefixExtPairExpWithSessionTracked {τ : Type} {ℓ : ℕ}
   return (match o.2 with | .paused _ _ _ _ _ => true | .done _ _ => false, y)
 
 /-- Scalar experiment at `o` in the plugged session-tracked world over `ki`. -/
-def bhPrefixExtExpWithSessionTracked {τ : Type} {ℓ : ℕ}
+@[expose] def bhPrefixExtExpWithSessionTracked {τ : Type} {ℓ : ℕ}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (S : SignalPqxdh.Setup)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))

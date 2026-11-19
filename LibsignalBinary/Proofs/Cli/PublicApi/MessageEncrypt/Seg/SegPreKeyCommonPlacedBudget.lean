@@ -10,17 +10,23 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyCommonPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyCommon
-public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyCommonPlaced
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyTailDefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Budget-Threaded Shared Helpers for `segPreKey`
@@ -30,7 +36,7 @@ external hook `subroutine_ok` lemmas, and `SegExitBudget` / panic bridges on Blo
 (`lsProg_464 Hk`) under `RustCliAllocBudget M` and `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -78,7 +84,7 @@ attribute [local irreducible] Program.fetch Program.externAt?
 /-! ## 1. `SegPreKey` Allocation Sub-Envelopes (`FromPreKeyRetEnv`, `FromPreKeyEncEnv`) -/
 
 /-- Remaining allocation envelope after `bl OTR::encrypt` returns on the `PreKey` path (`+0x8c8`). -/
-def FromPreKeyRetEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : UuidParser)
+@[expose] def FromPreKeyRetEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : UuidParser)
     (kit : SessionStoreSpec A 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
     (x : WithStoresEncGhost) (sess : Session (List (BitVec 8)))
@@ -87,7 +93,7 @@ def FromPreKeyRetEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : UuidP
   PreKeyPostEncryptEnv C S parse kit kitEnv st0 ikit ikitEnv ist0 x sess otr taken k items evs'
 
 /-- Remaining allocation envelope at `+0x8b4` right before `bl OTR::encrypt` on the `PreKey` path. -/
-def FromPreKeyEncEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
+@[expose] def FromPreKeyEncEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
     (parse : UuidParser)
     (kit : SessionStoreSpec A 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -118,29 +124,6 @@ theorem fromPreKeyRetEnv_fitsEnv_witness :
         LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget.witnessIdentityKey
         LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.witnessPendingPreKey) := by
   exact LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyTailDefsPlacedBudget.preKeyFromRetEnv_fitsEnv_witness
-
-/-- Non-vacuity witness for `FromPreKeyEncEnv`. -/
-theorem fromPreKeyEncEnv_fitsEnv_witness :
-    FitsEnv LibsignalBinary.Heap.Fine.fineCostModel
-      { staticCount := 16, staticBytes := 16 * 1024 * 1024,
-        physCap := 2 ^ 30, enforced := true }
-      LibsignalBinary.Heap.Fine.fineCostModel.init
-      (FromPreKeyEncEnv
-        LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget.witnessCrypto
-        LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget.witnessSpqrModel
-        LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget.witnessSendEnv
-        LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget.witnessUuidParse
-        LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.witnessKit
-        LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.witnessKitEnv ()
-        LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.witnessIkit
-        LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.witnessIkitEnv ()
-        LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.witnessWithStoresGhost
-        LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.witnessEncSession
-        LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget.witnessOtr
-        { LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.witnessEncSession.state with pqRatchetState := [] }
-        LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget.witnessIdentityKey
-        LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget.TempTwins.witnessPendingPreKey) := by
-  exact LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyTailDefsPlacedBudget.preKeyFromEncryptEnv_fitsEnv_witness
 
 /-! ## 2. External Hook `subroutine_ok` Lemmas (`timeAddBudgetSpec`, `durationSinceBoundedBudgetSpec`) -/
 

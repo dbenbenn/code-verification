@@ -9,13 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainCodeSym
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SmallCallees
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserialize
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainCodeSym
+import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SmallCallees
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserialize.Spec
+import LibsignalBinary.Proofs.SpqrV1.Alloc.Concat
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserialize.Helpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `[LibsignalPlacement]` `kem::Key<Public>::deserialize` (Block `590`)
@@ -24,7 +31,7 @@ Proves `cliKemDeserialize_placed_ok` on Block `590` (calling `KeyKind::key_lengt
 and transfers it to any caller block `i < 619`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -47,7 +54,7 @@ abbrev lsHandleAllocErrorSymCli : String :=
   "_RNvNtCs69KKACWg7bl_5alloc5alloc18handle_alloc_error"
 
 /-- Relocatable `[LibsignalPlacement]` counterpart of `cliKemDeserializeSpec` (Block `590`). -/
-def cliKemDeserializeSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
+@[expose] def cliKemDeserializeSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
     Spec KemDeserializeGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl (cliKemDeserializeSpec A stk)
 

@@ -14,8 +14,10 @@ import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.Sav
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageDecrypt.Pf.SegWrite
 
@@ -36,10 +38,6 @@ attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## 1. Decode lemmas (`0x3c97c .. 0x3c9b8`, 16 instructions) -/
-
-gen_decodes libsignalSessionCode_tree messageDecryptWriteBin [(ls_off% "session_message_decrypt_signal" + 9428) → (ls_off% "session_message_decrypt_signal" + 9488)]
-
-/-! ## 2. 36-byte Staged Buffer & 48-byte `sret` Helpers -/
 
 theorem exists_unpack32_of_length_4 {bs : List (BitVec 8)} (h : bs.length = 4) :
     ∃ w : BitVec 32, bs = unpack32 w := by
@@ -166,29 +164,6 @@ theorem savedRegs_entails_cells12 (sp0 : BitVec 64) (s0 : State) :
             (Entails.sepExists_right _ (sepConj_mono_right
               (Entails.sepExists_right _ (Entails.refl _)))))))))))))))))))))))
 
-theorem argMsgCellsV_entails_memRegion {A : RustAlloc} {img : Obj.Image}
-    (kit : SessionStoreSpec A img.base) (ikit : IdentityStoreSpec A img.base)
-    (x : DecryptGhost) (s0 : State) (sp : BitVec 64) :
-    wsMsgCells x sp ∗ wsArgCellsV kit ikit x s0 sp ⊢ memRegion (sp + 0xe0#64) 0x40 := by
-  unfold wsMsgCells wsArgCellsV
-  have hreord :
-      (((sp + 0xe0#64) ↦₆₄ x.msgA) ∗ ((sp + 0xf0#64) ↦₆₄ x.locA)) ∗
-      (((sp + 0xe8#64) ↦₆₄ x.remA) ∗ ((sp + 0xf8#64) ↦₆₄ s0.readReg64 .x3) ∗
-       ((sp + 0x100#64) ↦₆₄ kit.ss_vt) ∗ ((sp + 0x108#64) ↦₆₄ s0.readReg64 .x5) ∗
-       ((sp + 0x110#64) ↦₆₄ ikit.id_vt) ∗ ((sp + 0x118#64) ↦₆₄ (s0.sp - 0x71#64))) =
-      ((sp + 0xe0#64) ↦₆₄ x.msgA) ∗ ((sp + 0xe8#64) ↦₆₄ x.remA) ∗
-      ((sp + 0xf0#64) ↦₆₄ x.locA) ∗ ((sp + 0xf8#64) ↦₆₄ s0.readReg64 .x3) ∗
-      ((sp + 0x100#64) ↦₆₄ kit.ss_vt) ∗ ((sp + 0x108#64) ↦₆₄ s0.readReg64 .x5) ∗
-      ((sp + 0x110#64) ↦₆₄ ikit.id_vt) ∗ ((sp + 0x118#64) ↦₆₄ (s0.sp - 0x71#64)) := by
-    ac_rfl
-  rw [hreord, ProofLib.memRegion_cells (sp + 0xe0#64) 8 (by decide)]
-  simp only [cells_succ, cells_zero, sepConj_emp, BitVec.add_assoc, BitVec.reduceAdd]
-  exact Entails.sepExists_right _ (sepConj_mono_right (Entails.sepExists_right _ (sepConj_mono_right
-    (Entails.sepExists_right _ (sepConj_mono_right (Entails.sepExists_right _ (sepConj_mono_right
-      (Entails.sepExists_right _ (sepConj_mono_right (Entails.sepExists_right _ (sepConj_mono_right
-        (Entails.sepExists_right _ (sepConj_mono_right
-          (Entails.sepExists_right _ (Entails.refl _)))))))))))))))
-
 theorem frame_regions_fold_wsStack (sp0 : BitVec 64) :
     let sp := sp0 - 0xee0#64
     stackAt sp wsCalleeStack ∗
@@ -232,173 +207,6 @@ theorem frame_regions_fold_wsStack (sp0 : BitVec 64) :
     rw [e3]
   rw [hstack, hframe]
   exact Entails.of_eq (by ac_rfl)
-
-theorem segWriteV_ok {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {abs : String → Option (State → State)}
-    {kit : SessionStoreSpec A img.base} {ikit : IdentityStoreSpec A img.base}
-    {st0 : kit.StoreState} {ist0 : ikit.IdState}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop} :
-    SegWriteSpecV img C A ctl uuidTryParse S encRecord abs kit ikit st0 ist0 Scope := by
-  intro hH x R s0 s hRF hL
-  obtain ⟨hpc, ⟨hrun, hsp, hal0, hal, hx29, hx27, _hfrozen, _hsym, hvregs⟩,
-    ans, hno_pan, hscope, hcalls, hid_calls, htrace, hmem⟩ := hRF
-  have hentry := entryOf_eq_tripleRatchetProgAt (C := C) (ctl := ctl) (abs := abs) hH.loads
-    msgDecryptName
-  have hfn : libsignalSessionCode.fnOff msgDecryptName = num% (ls_off% "session_message_decrypt_signal") :=
-    CryptoVerification.LibsignalTripleRatchet.Record.libsignalSessionCode_fnOff_sym_3a4a8
-  unfold resultFinalPC at hpc
-  rw [hentry] at hpc
-  simp only [wp_norm, arm64_norm] at hx29 hx27
-  dsimp only [StagedRes] at hmem
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists,
-    sepConj_pure_left_comm, satisfies_pure_sepConj, sepConj_assoc] at hmem
-  obtain ⟨bs, F, ⟨hbs_len, hres_ent⟩, hmem⟩ := hmem
-  obtain ⟨w0, w1, w2, w3, w4, hbs_eq⟩ := exists_split_36 hbs_len
-  let sp := s0.sp - 0xee0#64
-  let stf := kit.storeFinal st0 ans (x.model C S uuidTryParse ans).2
-  let istf := ikit.idFinal ist0 ans (x.model C S uuidTryParse ans).2
-  have hmem_act : s.mem ⊨
-      (((sp + 0x300#64) ↦₆₄ w0) ∗ ((sp + 0x300#64 + 8#64) ↦₆₄ w1) ∗
-       ((sp + 0x300#64 + 16#64) ↦₆₄ w2) ∗ ((sp + 0x300#64 + 24#64) ↦₆₄ w3) ∗
-       ((sp + 0x300#64 + 32#64) ↦₃₂ w4) ∗ memRegion x.ret 48 ∗ wsSavedRegs s0.sp s0) ∗
-      (wsArgCellsV kit ikit x s0 sp ∗ wsMsgCells x sp ∗ decVtablesAtV kit ikit ∗
-       memRegion (sp + 0xa0#64) 0x40 ∗ memRegion (sp + 0x2c8#64) 8 ∗
-       memRegion (sp + 0x2e0#64) 0x20 ∗ memRegion (sp + 0xe00#64) 0x80 ∗
-       wsEnv A img x sp ∗ F ∗
-       memRegion sp 0xa0 ∗ memRegion (sp + 0x120#64) 0x1a8 ∗ memRegion (sp + 0x2d0#64) 0x10 ∗
-       memRegion (sp + 0x324#64) 0xadc ∗ tapeAfter ctl x.cur x.rest (x.draws C ans) ∗
-       decStoreExtra kit ikit stf istf s0 ∗ R) := by
-    rw [hbs_eq, pointsToBytes_36_eq] at hmem
-    dsimp only [wsFixedV, sp, stf, istf] at hmem ⊢
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hmem
-  clear hmem
-  have hwp : SepWP (tripleRatchetProgAt img.base C ctl abs) (s0.readReg64 .x30) s
-      (((sp + 0x300#64) ↦₆₄ w0) ∗ ((sp + 0x300#64 + 8#64) ↦₆₄ w1) ∗
-       ((sp + 0x300#64 + 16#64) ↦₆₄ w2) ∗ ((sp + 0x300#64 + 24#64) ↦₆₄ w3) ∗
-       ((sp + 0x300#64 + 32#64) ↦₃₂ w4) ∗ memRegion x.ret 48 ∗ wsSavedRegs s0.sp s0)
-      (fun sf Pf =>
-        (Pf ⊢ memRegion (sp + 0x300#64) 0x24 ∗
-          ((x.ret ↦₆₄ s.readReg64 .x28) ∗
-           ((x.ret + 8#64) ↦₃₂ resWord1 (s.readReg64 .x20) (s.readReg64 .x21)) ∗
-           ((x.ret + 12#64) ↦ₛ bs)) ∗
-          memRegion (s0.sp - 96#64) 96) ∧
-        sf.sp = s0.sp ∧ sf.trace = s.trace ∧
-        CalleeSavedPreserved s0 sf) := by
-    code_fetches_range CryptoVerification.libsignalSessionCode messageDecryptWriteBin img.base
-      (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn (num% (ls_off% "session_message_decrypt_signal")) 0x24d4 0x40
-    dsimp only [tripleRatchetProgAt] at hpc ⊢
-    generalize (libsignalSessionCode.rebase img.base
-      (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr msgDecryptName = entry at *
-    examples_hide_fetches
-    rw [memRegion_48_sret_split x.ret]
-    unfold wsSavedRegs
-    dsimp only [sp]
-    wp_simp_pre [BitVec.add_assoc, BitVec.reduceAdd,
-      sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    repeat' (apply SepWP.exists_elim; intro _)
-    have hal_s0 : (s0.sp &&& 15#64 == 0#64) = true := hal0
-    have hal_s : (s.sp &&& 15#64 == 0#64) = true := hal
-    have hal_sub96 : ((s0.sp - 96#64) &&& 15#64 == 0#64) = true :=
-      ProofLib.spAligned_sub s0.sp 96 hal0 (by decide)
-    wp_steps
-    rw [bfm_24_23_eq_resWord1]
-    apply SepWP.fold (staged36_entails_memRegion (s0.sp - 0xee0#64) w0 w1 w2 w3 w4) (by sep_focus)
-    apply SepWP.fold (sret_36_fold x.ret w0 w1 w2 w3 w4 hbs_eq) (by sep_focus)
-    apply SepWP.fold (savedRegs_entails_cells12 s0.sp s0) (by sep_focus)
-    apply SepWP.done (by wp_norm_lhs) (by wp_norm_lhs)
-    refine ⟨?_, ?_, rfl, ?_⟩
-    · simp (config := { decide := true }) only [bv_sub_add_lit, Nat.reduceSub, Reg.x20, Reg.x21, Reg.x28]
-      exact Entails.of_eq (by ac_rfl)
-    · wp_norm_lhs
-    · simp only [CalleeSavedPreserved, wp_norm, arm64_norm, hvregs]
-  obtain ⟨sf, hsteps, ⟨hpc_sf, hrun_sf, Pf, hmf, hent_pf, hsp_sf, htr_sf, hcs_sf⟩ | ⟨_, _hoom⟩⟩ :=
-    hwp.elim hmem_act hL
-  rotate_left; · exact (not_satisfies_false_sepConj _hoom).elim
-  refine ⟨sf, hsteps, Or.inr (Or.inl ⟨⟨hpc_sf, hsp_sf, hrun_sf⟩, ⟨hsp_sf, hcs_sf⟩, ?_⟩)⟩
-  have hmf1 := Satisfies.mono (sepConj_mono_left hent_pf) hmf
-  clear hmf hent_pf
-  dsimp only [withStoresDecSpecV, Spec.inImage]
-  simp only [sepExists_sepConj_left, satisfies_sepExists]
-  refine ⟨ans, ?_⟩
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  refine ⟨⟨hno_pan, hscope, hcalls, hid_calls, htr_sf.trans htrace⟩, ?_⟩
-  have hcomb :
-      (memRegion (sp + 0x300#64) 0x24 ∗
-        ((x.ret ↦₆₄ s.readReg64 .x28) ∗
-         ((x.ret + 8#64) ↦₃₂ resWord1 (s.readReg64 .x20) (s.readReg64 .x21)) ∗
-         ((x.ret + 12#64) ↦ₛ bs)) ∗
-        memRegion (s0.sp - 96#64) 96) ∗
-      (wsArgCellsV kit ikit x s0 sp ∗ wsMsgCells x sp ∗ decVtablesAtV kit ikit ∗
-       memRegion (sp + 0xa0#64) 0x40 ∗ memRegion (sp + 0x2c8#64) 8 ∗
-       memRegion (sp + 0x2e0#64) 0x20 ∗ memRegion (sp + 0xe00#64) 0x80 ∗
-       wsEnv A img x sp ∗ F ∗
-       memRegion sp 0xa0 ∗ memRegion (sp + 0x120#64) 0x1a8 ∗ memRegion (sp + 0x2d0#64) 0x10 ∗
-       memRegion (sp + 0x324#64) 0xadc ∗ tapeAfter ctl x.cur x.rest (x.draws C ans) ∗
-       decStoreExtra kit ikit stf istf s0 ∗ R) ⊢
-      (kit.storeAt (s0.readReg64 .x3) stf ∗
-       ikit.identityAt (s0.readReg64 .x5) istf ∗
-       apiDecResultAt A x.ret (x.model C S uuidTryParse ans).1 ∗
-       signalMessageAt A x.msgG x.msgA x.msg ∗ protocolAddressAt A x.rem x.remA ∗
-       protocolAddressAt A x.loc x.locA ∗ tapeAfter ctl x.cur x.rest (x.draws C ans) ∗
-       logOff img ∗ decVtablesAtV kit ikit ∗ stackAt s0.sp (wsStackV kit ikit) ∗ A.pool) ∗ R := by
-    unfold wsEnv
-    have hreord :
-        (memRegion (sp + 0x300#64) 0x24 ∗
-          ((x.ret ↦₆₄ s.readReg64 .x28) ∗
-           ((x.ret + 8#64) ↦₃₂ resWord1 (s.readReg64 .x20) (s.readReg64 .x21)) ∗
-           ((x.ret + 12#64) ↦ₛ bs)) ∗
-          memRegion (s0.sp - 96#64) 96) ∗
-        (wsArgCellsV kit ikit x s0 sp ∗ wsMsgCells x sp ∗ decVtablesAtV kit ikit ∗
-         memRegion (sp + 0xa0#64) 0x40 ∗ memRegion (sp + 0x2c8#64) 8 ∗
-         memRegion (sp + 0x2e0#64) 0x20 ∗ memRegion (sp + 0xe00#64) 0x80 ∗
-         (signalMessageAt A x.msgG x.msgA x.msg ∗ protocolAddressAt A x.rem x.remA ∗
-          protocolAddressAt A x.loc x.locA ∗ logOff img ∗ stackAt sp wsCalleeStack ∗ A.pool) ∗ F ∗
-         memRegion sp 0xa0 ∗ memRegion (sp + 0x120#64) 0x1a8 ∗ memRegion (sp + 0x2d0#64) 0x10 ∗
-         memRegion (sp + 0x324#64) 0xadc ∗ tapeAfter ctl x.cur x.rest (x.draws C ans) ∗
-         decStoreExtra kit ikit stf istf s0 ∗ R) =
-        (((x.ret ↦₆₄ s.readReg64 .x28) ∗
-          ((x.ret + 8#64) ↦₃₂ resWord1 (s.readReg64 .x20) (s.readReg64 .x21)) ∗
-          ((x.ret + 12#64) ↦ₛ bs) ∗ F) ∗
-         ((stackAt sp wsCalleeStack ∗ memRegion sp 0xa0 ∗ memRegion (sp + 0xa0#64) 0x40 ∗
-           (wsMsgCells x sp ∗ wsArgCellsV kit ikit x s0 sp) ∗
-           memRegion (sp + 0x120#64) 0x1a8 ∗ memRegion (sp + 0x2c8#64) 8 ∗
-           memRegion (sp + 0x2d0#64) 0x10 ∗ memRegion (sp + 0x2e0#64) 0x20 ∗
-           memRegion (sp + 0x300#64) 0x24 ∗ memRegion (sp + 0x324#64) 0xadc ∗
-           memRegion (sp + 0xe00#64) 0x80 ∗ memRegion (s0.sp - 96#64) 96) ∗
-          decStoreExtra kit ikit stf istf s0) ∗
-         (signalMessageAt A x.msgG x.msgA x.msg ∗ protocolAddressAt A x.rem x.remA ∗
-          protocolAddressAt A x.loc x.locA ∗ tapeAfter ctl x.cur x.rest (x.draws C ans) ∗
-          logOff img ∗ decVtablesAtV kit ikit ∗ A.pool ∗ R)) := by
-      ac_rfl
-    rw [hreord]
-    have hstk :
-        (stackAt sp wsCalleeStack ∗ memRegion sp 0xa0 ∗ memRegion (sp + 0xa0#64) 0x40 ∗
-          (wsMsgCells x sp ∗ wsArgCellsV kit ikit x s0 sp) ∗
-          memRegion (sp + 0x120#64) 0x1a8 ∗ memRegion (sp + 0x2c8#64) 8 ∗
-          memRegion (sp + 0x2d0#64) 0x10 ∗ memRegion (sp + 0x2e0#64) 0x20 ∗
-          memRegion (sp + 0x300#64) 0x24 ∗ memRegion (sp + 0x324#64) 0xadc ∗
-          memRegion (sp + 0xe00#64) 0x80 ∗ memRegion (s0.sp - 96#64) 96) ∗
-        decStoreExtra kit ikit stf istf s0 ⊢
-        kit.storeAt (s0.readReg64 .x3) stf ∗ ikit.identityAt (s0.readReg64 .x5) istf ∗
-          stackAt s0.sp (wsStackV kit ikit) := by
-      refine Entails.trans (sepConj_mono_left ?_) (wsStack_join_extra kit ikit stf istf s0)
-      refine Entails.trans ?_ (frame_regions_fold_wsStack s0.sp)
-      exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-        (sepConj_mono_left (argMsgCellsV_entails_memRegion kit ikit x s0 sp))))
-    refine Entails.trans (sepConj_mono (hres_ent x.ret) (sepConj_mono_left hstk)) ?_
-    exact Entails.of_eq (by ac_rfl)
-  exact Satisfies.mono hcomb hmf1
-
-theorem segWrite_ok {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {abs : String → Option (State → State)} :
-    SegWriteSpec img C A ctl uuidTryParse S encRecord abs :=
-  segWriteV_ok
-
-/-! ## Relocatable `[LibsignalPlacement]` Proofs -/
 
 section Placed
 

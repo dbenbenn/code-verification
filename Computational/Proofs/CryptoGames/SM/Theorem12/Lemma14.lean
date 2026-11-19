@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Reductions
-public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Lazy
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.FSAEAD.Lazy -- proof-setup: allow-public-import
 import VCVio.OracleComp.EvalDist.Measure
 
 /-!
@@ -21,7 +21,7 @@ world (`b = true`), `redCKAPriv` has bias at most the real PRF-PRNG world (`b = 
 `redPRNGPriv` (`DEV-SM24`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory CryptoGames.Lazy
 
@@ -39,27 +39,27 @@ section GenericEngine
 variable {ι : Type} {tspec : OracleSpec.{0, 0} ι} {OS : Type}
   {Γ T Sig SS RS M E CCoins : Type} {Γv Sv SSv RSv HS : Type}
 
-def outerFull (oimpl : QueryImpl tspec (StateT OS ProbComp)) :
+@[expose] def outerFull (oimpl : QueryImpl tspec (StateT OS ProbComp)) :
     QueryImpl (unifSpec + tspec) (StateT OS ProbComp) :=
   (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT OS ProbComp) + oimpl
 
-def runHM (oimpl : QueryImpl tspec (StateT OS ProbComp)) {α : Type}
+@[expose] def runHM (oimpl : QueryImpl tspec (StateT OS ProbComp)) {α : Type}
     (x : HM tspec HS α) (h : HS) (os : OS) : ProbComp ((α × HS) × OS) :=
   (simulateQ (outerFull oimpl) (x.run h)).run os
 
-def runEM (oimpl : QueryImpl tspec (StateT OS ProbComp)) {α : Type}
+@[expose] def runEM (oimpl : QueryImpl tspec (StateT OS ProbComp)) {α : Type}
     (x : EM tspec Γv T Sv SSv RSv M E HS α)
     (s : EState (VP Γv T Sv SSv RSv) M (Header T × E) HS × OS) :
     ProbComp (α × (EState (VP Γv T Sv SSv RSv) M (Header T × E) HS × OS)) :=
   (fun r => (r.1.1, (r.1.2, r.2))) <$>
     (simulateQ (outerFull oimpl) (x.run s.1)).run s.2
 
-def privOutP [DecidableEq M] {VPt C HS : Type} (Δ : ℕ) (π : Policy) (b b' : Bool)
+@[expose] def privOutP [DecidableEq M] {VPt C HS : Type} (Δ : ℕ) (π : Policy) (b b' : Bool)
     (es : EState VPt M C HS) : ProbComp Bool :=
   if !es.abort && lastLeakGuessAdmissible Δ π.tL π.tStar && canon π.tStar es.g == π.tL then pure (b == b')
   else ($ᵗ Bool : ProbComp Bool)
 
-def evalEng [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E]
+@[expose] def evalEng [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E]
     (oimpl : QueryImpl tspec (StateT OS ProbComp))
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ qep maxSkip : ℕ) (cfg : Config M) (π : Policy) (b : Bool)
@@ -183,11 +183,11 @@ theorem evalEng_invalid [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabit
 
 /-! ### Doomed states -/
 
-def MissedTL {St Msg C : Type} (tL : Option ℕ) (g : SM.GameState St Msg C) : Prop :=
+@[expose] def MissedTL {St Msg C : Type} (tL : Option ℕ) (g : SM.GameState St Msg C) : Prop :=
   ∃ l, tL = some l ∧ l ≤ g.epoch .A ∧ l ≤ g.epoch .B ∧ l < max (g.epoch .A) (g.epoch .B) ∧
     l ∉ g.leaks
 
-def Doom {VPt M C HS : Type} (tL : Option ℕ) (es : EState VPt M C HS) : Prop :=
+@[expose] def Doom {VPt M C HS : Type} (tL : Option ℕ) (es : EState VPt M C HS) : Prop :=
   es.abort = true ∨ MissedTL tL es.g
 
 theorem canon_ne_of_not_mem {St Msg C : Type} {tStar l : ℕ} {g : SM.GameState St Msg C}
@@ -569,7 +569,7 @@ section SyncInvariant
 
 variable {KC Γ CCoins T I : Type} {KR Sig K : Type} {SS RS M E : Type}
 
-def eraseSt {St Msg C : Type} (g : SM.GameState St Msg C) : SM.GameState Unit Msg C :=
+@[expose] def eraseSt {St Msg C : Type} (g : SM.GameState St Msg C) : SM.GameState Unit Msg C :=
   { st := fun _ => ()
     epoch := g.epoch
     idx := g.idx
@@ -722,7 +722,7 @@ theorem eraseSt_epMgmt_some {StL StR Msg C : Type} {gL s₁L : SM.GameState StL 
   rcases Option.map_eq_some_iff.mp hmap with ⟨s₁R, hR, he₁⟩
   exact ⟨s₁R, hR, he₁.symm, epMgmt_st hL, epMgmt_st hR⟩
 
-def GameInv {St Msg T E : Type} (g : SM.GameState St Msg (Header T × E)) : Prop :=
+@[expose] def GameInv {St Msg T E : Type} (g : SM.GameState St Msg (Header T × E)) : Prop :=
   (∀ r ∈ g.trans, r.ct.1.1 = r.pos.epoch) ∧
   (∀ x ∈ g.leaks, ∃ m, g.tL = some m ∧ x ≤ m)
 
@@ -790,7 +790,7 @@ theorem GameInv.inTransit_epoch {St Msg T E : Type} [DecidableEq T] [DecidableEq
   simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at hp
   rw [← h.1 r hmem, hp.2]
 
-def PartyRel (Δcka : ℕ) (tL : Option ℕ) (tStar : ℕ) (P : Party) (ep : ℕ)
+@[expose] def PartyRel (Δcka : ℕ) (tL : Option ℕ) (tStar : ℕ) (P : Party) (ep : ℕ)
     (vpL : PartyState (Option Γ) T Sig SS RS)
     (vpR : PartyState Γ T (Option Sig) SS RS) : Prop :=
   vpL.id = P ∧ vpR.id = P ∧
@@ -800,7 +800,7 @@ def PartyRel (Δcka : ℕ) (tL : Option ℕ) (tStar : ℕ) (P : Party) (ep : ℕ
   vpR.root = (if decide (tStar ≤ ep) || (tL.isSome && decide (ep < healEpoch tL))
     then some vpL.root else none)
 
-def CKARel (Δcka : ℕ) (tL : Option ℕ)
+@[expose] def CKARel (Δcka : ℕ) (tL : Option ℕ)
     (gL : Ctx (Option Γ) T Sig SS RS M E)
     (gR : Ctx Γ T (Option Sig) SS RS M E)
     (cs : CKA.GameState Γ T) : Prop :=
@@ -808,7 +808,7 @@ def CKARel (Δcka : ℕ) (tL : Option ℕ)
   ∀ P, tL.isSome = true → gL.epoch P < healEpoch tL + Δcka →
     cs.st P = (gR.st P).γ ∧ cs.epoch P = gL.epoch P
 
-def PingPongRel (prng : PRFPRNG KR Sig I K) (Δcka : ℕ) (tL : Option ℕ) (tStar : ℕ)
+@[expose] def PingPongRel (prng : PRFPRNG KR Sig I K) (Δcka : ℕ) (tL : Option ℕ) (tStar : ℕ)
     (esL : EState (PartyState (Option Γ) T Sig SS RS) M (Header T × E) (CKAState T I))
     (esR : EState (PartyState Γ T (Option Sig) SS RS) M (Header T × E) (PRNGState T Sig K))
     (cs : CKA.GameState Γ T) : Prop :=
@@ -828,7 +828,7 @@ def PingPongRel (prng : PRFPRNG KR Sig I K) (Δcka : ℕ) (tL : Option ℕ) (tSt
      (tL.isSome = true → t0 < healEpoch tL + Δcka →
        cs.epoch P = t0 + 1 ∧ cs.lastMsg = some Tc))
 
-def PRNGRel (tL : Option ℕ) (tStar : ℕ)
+@[expose] def PRNGRel (tL : Option ℕ) (tStar : ℕ)
     (gL : Ctx (Option Γ) T Sig SS RS M E)
     (ps : PRFPRNG.GameState Sig I K) : Prop :=
   let tmax := max (gL.epoch .A) (gL.epoch .B)
@@ -838,7 +838,7 @@ def PRNGRel (tL : Option ℕ) (tStar : ℕ)
     ps.σ = (gL.st (Party.senderOf tmax)).root
 
 /-- Full lockstep invariant between Left (`redCKA`) and Right (`redPRNG`) joint states. -/
-def Sync (prng : PRFPRNG KR Sig I K) (Δcka : ℕ) (tL : Option ℕ) (tStar : ℕ)
+@[expose] def Sync (prng : PRFPRNG KR Sig I K) (Δcka : ℕ) (tL : Option ℕ) (tStar : ℕ)
     (sL : EState (PartyState (Option Γ) T Sig SS RS) M (Header T × E) (CKAState T I) ×
       CKA.GameState Γ T)
     (sR : EState (PartyState Γ T (Option Sig) SS RS) M (Header T × E) (PRNGState T Sig K) ×
@@ -1257,7 +1257,7 @@ end RunHMPRNG
 
 /-! ### Receive and corruption step lemmas -/
 
-def SyncOrDoom (prng : PRFPRNG KR Sig I K) (Δcka : ℕ) (tL : Option ℕ) (tStar : ℕ)
+@[expose] def SyncOrDoom (prng : PRFPRNG KR Sig I K) (Δcka : ℕ) (tL : Option ℕ) (tStar : ℕ)
     (sL : EState (PartyState (Option Γ) T Sig SS RS) M (Header T × E) (CKAState T I) ×
       CKA.GameState Γ T)
     (sR : EState (PartyState Γ T (Option Sig) SS RS) M (Header T × E) (PRNGState T Sig K) ×
@@ -1441,7 +1441,7 @@ theorem runEM_corrE_sync [DecidableEq M] [DecidableEq T] [DecidableEq E] [Decida
       rcases hs with ⟨_, _, _, hinv, hp, hcka, hpp, hprng⟩
       exact ⟨habL, habR, he_ac, hinv.afterCorr, hp, hcka, hpp, hprng⟩
 
-def RecvStep (cka : CKAScheme KC Γ CCoins T I)
+@[expose] def RecvStep (cka : CKAScheme KC Γ CCoins T I)
     (Δcka : ℕ) (tL : Option ℕ) (tStar : ℕ)
     (esL : EState (PartyState (Option Γ) T Sig SS RS) M (Header T × E) (CKAState T I))
     (esR : EState (PartyState Γ T (Option Sig) SS RS) M (Header T × E) (PRNGState T Sig K))
@@ -2046,7 +2046,7 @@ theorem runEM_injectE_sync [DecidableEq M] [DecidableEq T] [DecidableEq E] [Deci
 
 /-! ### Send step and adversary coupling -/
 
-def sendCore {ι : Type} {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
+@[expose] def sendCore {ι : Type} {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
     [Inhabited E]
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ : ℕ) (s₁ : Ctx Γv T Sv SSv RSv M E) (P : Party) (m : M)
@@ -3570,14 +3570,6 @@ variable {KC Γ CCoins T I : Type} {KR Sig K : Type} {SS RS M E : Type}
 
 variable (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
   (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep : ℕ)
-
-/-- Lemma 14: ideal CKA bias of `redCKAPriv` is bounded by the real PRF-PRNG bias of `redPRNGPriv`. -/
-theorem lemma14_proof (_hc : cka.Correct) (tL : Option ℕ) (t : ℕ)
-    (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
-    𝒟[CKA.branch cka Δcka (healEpoch tL) true
-        (redCKAPriv cka prng fs lam Δcka qep tL t A)].boolBias ≤
-      𝒟[PRFPRNG.branch prng false (redPRNGPriv cka prng fs lam Δcka qep tL t A)].boolBias := by
-  rw [(branch_redCKAPriv_dEq_redPRNGPriv cka prng fs lam Δcka qep tL t A).evalDist_eq]
 
 end CryptoGames.SM.Construction.PrivL14
 

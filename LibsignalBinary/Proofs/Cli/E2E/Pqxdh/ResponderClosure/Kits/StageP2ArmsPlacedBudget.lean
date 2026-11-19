@@ -9,21 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ArmsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BridgePlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsBPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsCPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ArmsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BridgePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsBPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsCPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsB
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5Defs
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Exit Arm Bridges
@@ -32,7 +38,7 @@ Proves `RustCliAllocBudget M` placed spatial entailments into `p2ErrFrameAtPlace
 1–3 and `SepWPp` unwind bridges for Error Arms 4–5 on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -60,17 +66,7 @@ open CryptoVerification.E2E.Pqxdh.ResponderClosure (
   processPrekeyActive10At sessionRecordEmptyHeaderAt
 )
 open CryptoVerification.E2E.Pqxdh.ResponderClosure.SepWPp (weaken_frame)
-open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits (
-  hdrOpkIdBv? opkOptTag32 p2CoroScratchTailAt p2ErrFrameAt p2MsgFieldsAt p2Sub1To4Frame
-  p2_a90_err45_to_288 p2_bobParamsFieldsAt_err_weaken p2_cells8_a90_to_cells6_2
-  p2_coro398_bytes_words4_entails_96 p2_coro4b0_byte_bytes_entails_65
-  p2_coro4f8_2cells_328_eq_344 p2_coro4f8_words2_328_entails_344 p2_coro658_298_rejoin
-  p2_ctBuf_split p2_drop_frame_mid p2_entails_frame_v1 p2_fp80_to_memRegion9
-  p2_pointsToBytes_entails_memRegion p2_pqsk_split_rejoin p2_processPrekeyActive10At_eq
-  p2_sessionRecordEmptyHeaderAt_eq p2_sp3b0_48_split_8_40 p2_sp3e0_arm4_to_368
-  p2_sp3e0_arm5_to_368 p2_sp80_11words_entails_88 p2_stack_split_alloc
-  stageP1EntryPlaced stageP1ProgPlaced
-)
+open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits (hdrOpkIdBv? opkOptTag32 p2CoroScratchTailAt p2MsgFieldsAt p2Sub1To4Frame p2_a90_err45_to_288 p2_bobParamsFieldsAt_err_weaken p2_cells8_a90_to_cells6_2 p2_coro398_bytes_words4_entails_96 p2_coro4b0_byte_bytes_entails_65 p2_coro4f8_2cells_328_eq_344 p2_coro4f8_words2_328_entails_344 p2_coro658_298_rejoin p2_ctBuf_split p2_drop_frame_mid p2_entails_frame_v1 p2_fp80_to_memRegion9 p2_pointsToBytes_entails_memRegion p2_pqsk_split_rejoin p2_processPrekeyActive10At_eq p2_sessionRecordEmptyHeaderAt_eq p2_sp3b0_48_split_8_40 p2_sp3e0_arm4_to_368 p2_sp3e0_arm5_to_368 p2_sp80_11words_entails_88 p2_stack_split_alloc stageP1EntryPlaced stageP1ProgPlaced)
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits.SepWPp (mono_run)
 open LibsignalBinary.Heap (AllocCostModel BudgetLimits RustCliAllocBudget)
 open LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget (retagSignedPreKeyStore)
@@ -317,7 +313,7 @@ theorem p2_v1_arm3_entails_placed [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Frame held constant across `stageP2_sub5_v1_kits_placed` (`+0x36ac -> +0x125c` and Arms 4–5),
 parameterized by `A : RustCliAllocBudget M`. -/
-def p2Sub5FramePlaced {M : AllocCostModel} (A : RustCliAllocBudget M) {b : BitVec 64}
+@[expose] def p2Sub5FramePlaced {M : AllocCostModel} (A : RustCliAllocBudget M) {b : BitVec 64}
     (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
     (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
     (pkKit : PreKeyStoreSpec A.repAlloc b)
@@ -554,7 +550,7 @@ theorem p2_v1_arm4_ok_hooks_placed [LibsignalPlacement] {M : AllocCostModel}
       hCont sf P_f hst hpcf hrunf htrf hspf hcsf hvregsf hinvf hent)
   dsimp only [p2ErrFrameAtPlaced,
     CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits.p2ErrFrameAtPlaced,
-    p2ErrFrameAt, p2CoroScratchTailAt, p2MsgFieldsAt]
+    p2CoroScratchTailAt, p2MsgFieldsAt]
   rw [protocolAddressAt_atState_eq, protocolAddressAt_atState_eq, lsLogOff_eq_pl]
   dsimp only [RustCliAllocBudget.atState]
   refine p2_entails_frame_v1
@@ -723,7 +719,7 @@ theorem p2_v1_arm5_ok_hooks_placed [LibsignalPlacement] {M : AllocCostModel}
   rw [emp_sepConj]
   dsimp only [p2ErrFrameAtPlaced,
     CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits.p2ErrFrameAtPlaced,
-    p2ErrFrameAt, p2CoroScratchTailAt, p2MsgFieldsAt]
+    p2CoroScratchTailAt, p2MsgFieldsAt]
   rw [protocolAddressAt_atState_eq, protocolAddressAt_atState_eq, lsLogOff_eq_pl]
   dsimp only [RustCliAllocBudget.atState]
   refine p2_entails_frame_v1

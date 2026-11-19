@@ -9,11 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.ModelBridge
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Folds
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.ModelBridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Folds -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAlice
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionLenAux.Pure
 import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.Link
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathACore -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathAKeys
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePreKeyWf
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.Open
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.OpenDeserId
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # CLI Poll Stage P2 V1 Store Canonicality and Model Agreement
@@ -23,7 +31,7 @@ Provides `SepWPp` step/pure-extraction combinators, pre-key store canonicality b
 agreement lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -114,103 +122,6 @@ theorem pathAMsgRemInnerAt_dup_kyberPtr (g : PreKeyMsgGhost) (msgA : BitVec 64)
     pathAMsgRemInnerAt g msgA m i ⊢
       ⌜g.kyberPtr ≠ 0#64⌝ ∗ pathAMsgRemInnerAt g msgA m i :=
   pathAMsgRemInnerAt_dup_kyberPtr_ext E2E.HooksE.A0 g msgA m i
-
-/-- Duplicate `⌜y.g.msgG.kyberPtr ≠ 0#64⌝` out of `pathAInnerFrameExt`. -/
-theorem pathAInnerFrame_dup_kyberPtr_ext {A : RustAlloc} {B : RunBudgets} {S : RunSem}
-    (img : Obj.Image) (y : DpPollGhostState (dpSlotPollKState A img B S))
-    (m : PreKeyMessageFields) (i : SignalMessage) (rngPtr sp : BitVec 64) :
-    pathAInnerFrameExt img y m i rngPtr sp ⊢
-      ⌜y.g.msgG.kyberPtr ≠ 0#64⌝ ∗ pathAInnerFrameExt img y m i rngPtr sp := by
-  unfold pathAInnerFrameExt
-  repeat (first
-    | exact dup_pure_sepConj_left (pathAMsgRemInnerAt_dup_kyberPtr_ext A y.g.msgG y.g.msgA m i)
-    | refine dup_pure_sepConj_right ?_)
-
-/-- Duplicate `⌜y.g.msgG.kyberPtr ≠ 0#64⌝` out of `pathAInnerFrame`. -/
-theorem pathAInnerFrame_dup_kyberPtr {B : RunBudgets} {S : RunSem}
-    (img : Obj.Image) (y : DpPollGhostState (dpSlotPollKState E2E.HooksE.A0 img B S))
-    (m : PreKeyMessageFields) (i : SignalMessage) (rngPtr sp : BitVec 64) :
-    pathAInnerFrame img y m i rngPtr sp ⊢
-      ⌜y.g.msgG.kyberPtr ≠ 0#64⌝ ∗ pathAInnerFrame img y m i rngPtr sp :=
-  pathAInnerFrame_dup_kyberPtr_ext img y m i rngPtr sp
-
-/-- Duplicate `⌜y.g.msgG.kyberPtr ≠ 0#64⌝` to the front of `stageP2PreAt... (pathAInnerFrameExt...)`. -/
-theorem stageP2PreAt_dup_kyberPtr_ext {A : RustAlloc} {B : RunBudgets} {S : RunSem}
-    (img : Obj.Image) (y : DpPollGhostState (dpSlotPollKState A img B S))
-    (m : PreKeyMessageFields) (i : SignalMessage) (w : PathAEntryWords)
-    (s0 : State) (sp fp rngPtr v_a8 v_b8 v_d0 : BitVec 64) :
-    stageP2PreAt A img
-      (cliPollSpkKit A img.base y.g.F m.spkId (cliKitStk B))
-      (cliPollKpkKit A img.base y.g.F m.kpkId m.spkId y.g.msg.baseKey (cliKitStk B))
-      (cliPollPkKit A img.base y.g.F w.opkWord (cliKitStk B))
-      (cliPollIdKit A img.base y.g.F y.g.peer (cliKitStk B))
-      s0 sp fp y.fut y.cx y.out y.g.msgA y.g.msgG.kyberPtr y.g.peerA y.g.meA
-      y.g.stores (y.g.stores + 0xc8#64) (y.g.stores + 0x50#64) (y.g.stores + 0x78#64)
-      y.g.peerA (y.g.msgA + 0xc8#64) w.u_488 w.u_80 w.u_88 w.u_90 v_a8 v_b8 v_d0
-      (mkPathAHdr m) i.messageVersion 0#8 0#8 w.b_4b0 w.b_4f1 0#8
-      w.opkWord m.kpkId m.regId m.spkId
-      StoresGhost.opened.signed StoresGhost.opened.kyber
-      StoresGhost.opened.oneTime StoresGhost.opened.identity
-      y.g.me y.g.peer (dpClosSubStack B)
-      (pathAInnerFrameExt img y m i rngPtr sp) ⊢
-    ⌜y.g.msgG.kyberPtr ≠ 0#64⌝ ∗
-    stageP2PreAt A img
-      (cliPollSpkKit A img.base y.g.F m.spkId (cliKitStk B))
-      (cliPollKpkKit A img.base y.g.F m.kpkId m.spkId y.g.msg.baseKey (cliKitStk B))
-      (cliPollPkKit A img.base y.g.F w.opkWord (cliKitStk B))
-      (cliPollIdKit A img.base y.g.F y.g.peer (cliKitStk B))
-      s0 sp fp y.fut y.cx y.out y.g.msgA y.g.msgG.kyberPtr y.g.peerA y.g.meA
-      y.g.stores (y.g.stores + 0xc8#64) (y.g.stores + 0x50#64) (y.g.stores + 0x78#64)
-      y.g.peerA (y.g.msgA + 0xc8#64) w.u_488 w.u_80 w.u_88 w.u_90 v_a8 v_b8 v_d0
-      (mkPathAHdr m) i.messageVersion 0#8 0#8 w.b_4b0 w.b_4f1 0#8
-      w.opkWord m.kpkId m.regId m.spkId
-      StoresGhost.opened.signed StoresGhost.opened.kyber
-      StoresGhost.opened.oneTime StoresGhost.opened.identity
-      y.g.me y.g.peer (dpClosSubStack B)
-      (pathAInnerFrameExt img y m i rngPtr sp) := by
-  unfold stageP2PreAt
-  repeat (first
-    | exact pathAInnerFrame_dup_kyberPtr_ext img y m i rngPtr sp
-    | exact dup_pure_sepConj_left (pathAInnerFrame_dup_kyberPtr_ext img y m i rngPtr sp)
-    | refine dup_pure_sepConj_right ?_)
-
-/-- Duplicate `⌜y.g.msgG.kyberPtr ≠ 0#64⌝` to the front of `stageP2PreAt... (pathAInnerFrame...)`. -/
-theorem stageP2PreAt_dup_kyberPtr {B : RunBudgets} {S : RunSem}
-    (img : Obj.Image) (y : DpPollGhostState (dpSlotPollKState E2E.HooksE.A0 img B S))
-    (m : PreKeyMessageFields) (i : SignalMessage) (w : PathAEntryWords)
-    (s0 : State) (sp fp rngPtr v_a8 v_b8 v_d0 : BitVec 64) :
-    stageP2PreAt E2E.HooksE.A0 img
-      (cliPollSpkKit E2E.HooksE.A0 img.base y.g.F m.spkId (cliKitStk B))
-      (cliPollKpkKit E2E.HooksE.A0 img.base y.g.F m.kpkId m.spkId y.g.msg.baseKey (cliKitStk B))
-      (cliPollPkKit E2E.HooksE.A0 img.base y.g.F w.opkWord (cliKitStk B))
-      (cliPollIdKit E2E.HooksE.A0 img.base y.g.F y.g.peer (cliKitStk B))
-      s0 sp fp y.fut y.cx y.out y.g.msgA y.g.msgG.kyberPtr y.g.peerA y.g.meA
-      y.g.stores (y.g.stores + 0xc8#64) (y.g.stores + 0x50#64) (y.g.stores + 0x78#64)
-      y.g.peerA (y.g.msgA + 0xc8#64) w.u_488 w.u_80 w.u_88 w.u_90 v_a8 v_b8 v_d0
-      (mkPathAHdr m) i.messageVersion 0#8 0#8 w.b_4b0 w.b_4f1 0#8
-      w.opkWord m.kpkId m.regId m.spkId
-      StoresGhost.opened.signed StoresGhost.opened.kyber
-      StoresGhost.opened.oneTime StoresGhost.opened.identity
-      y.g.me y.g.peer (dpClosSubStack B)
-      (pathAInnerFrame img y m i rngPtr sp) ⊢
-    ⌜y.g.msgG.kyberPtr ≠ 0#64⌝ ∗
-    stageP2PreAt E2E.HooksE.A0 img
-      (cliPollSpkKit E2E.HooksE.A0 img.base y.g.F m.spkId (cliKitStk B))
-      (cliPollKpkKit E2E.HooksE.A0 img.base y.g.F m.kpkId m.spkId y.g.msg.baseKey (cliKitStk B))
-      (cliPollPkKit E2E.HooksE.A0 img.base y.g.F w.opkWord (cliKitStk B))
-      (cliPollIdKit E2E.HooksE.A0 img.base y.g.F y.g.peer (cliKitStk B))
-      s0 sp fp y.fut y.cx y.out y.g.msgA y.g.msgG.kyberPtr y.g.peerA y.g.meA
-      y.g.stores (y.g.stores + 0xc8#64) (y.g.stores + 0x50#64) (y.g.stores + 0x78#64)
-      y.g.peerA (y.g.msgA + 0xc8#64) w.u_488 w.u_80 w.u_88 w.u_90 v_a8 v_b8 v_d0
-      (mkPathAHdr m) i.messageVersion 0#8 0#8 w.b_4b0 w.b_4f1 0#8
-      w.opkWord m.kpkId m.regId m.spkId
-      StoresGhost.opened.signed StoresGhost.opened.kyber
-      StoresGhost.opened.oneTime StoresGhost.opened.identity
-      y.g.me y.g.peer (dpClosSubStack B)
-      (pathAInnerFrame img y m i rngPtr sp) :=
-  stageP2PreAt_dup_kyberPtr_ext img y m i w s0 sp fp rngPtr v_a8 v_b8 v_d0
-
-/-! ## 2. Store Canonicality & Self-Kit Relations -/
 
 theorem cliPollSelf_kpRel_ok {A : RustAlloc} {b : BitVec 64} {F : FsFiles}
     {peer : AddrGhost} {σ : DpKitStk} {kp : IdentityKeyPair}

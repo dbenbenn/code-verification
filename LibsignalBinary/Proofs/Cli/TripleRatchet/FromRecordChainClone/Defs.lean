@@ -18,7 +18,7 @@ Defines the symbol name and `subroutine_ok` target predicates (`ChainCloneOk*`,
 `SenderChainCloneOk*`) for `Chain::clone [local#3]` in the CLI image.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.FromRecordChainClone
 
@@ -33,34 +33,14 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalT
 abbrev _root_.CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordChainClone.chainCloneName : String :=
   "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#3]"
 
-def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordChainClone.ChainCloneOkExt (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordChainClone.chainCloneName)
-    (chainCloneSpec A)
-
-def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordChainClone.ChainCloneOk_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
+@[expose] def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordChainClone.ChainCloneOk_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordChainClone.chainCloneName)
     (chainCloneSpec A)
 
-def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordChainClone.ChainCloneOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordChainClone.chainCloneName)
-    (chainCloneSpec A)
-
-/-! ## Sender-Chain Clone Predicates -/
-
-def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordChainClone.SenderChainCloneOkExt (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordChainClone.chainCloneName)
-    (senderChainCloneSpec A)
-
-def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordChainClone.SenderChainCloneOk_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
+@[expose] def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordChainClone.SenderChainCloneOk_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordChainClone.chainCloneName)
-    (senderChainCloneSpec A)
-
-def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordChainClone.SenderChainCloneOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordChainClone.chainCloneName)
     (senderChainCloneSpec A)
 
 end CryptoVerification.LibsignalTripleRatchet.FromRecordChainClone

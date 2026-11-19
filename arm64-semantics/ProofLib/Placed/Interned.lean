@@ -287,9 +287,7 @@ def relocAtId? (rs : List Reloc) (off : Nat) : Option Reloc := rs.find? fun r =>
 
 theorem relocAt?_block (L : Lib) (off : Nat) :
     L.block.relocAt? off = (relocAtId? L.relocs off).map (Reloc.toEntry L.names) := by
-  simp only [CodeBlock.relocAt?, Lib.block_relocs, relocAtId?, List.find?_map]
-  congr 1
-  have : ((fun r : RelocEntry => r.off == off) ∘ Reloc.toEntry L.names) =
+  have hpred : ((fun r : RelocEntry => r.off == off) ∘ Reloc.toEntry L.names) =
       fun r : Reloc => Nat.beq r.off off := by
     funext r
     simp only [Function.comp, Reloc.toEntry_off]
@@ -297,7 +295,7 @@ theorem relocAt?_block (L : Lib) (off : Nat) :
     · simp only [beq_eq_false_iff_ne]
       intro h'; subst h'; rw [Nat.beq_refl] at h; exact Bool.noConfusion h
     · simpa using Nat.eq_of_beq_eq_true h
-  rw [this]
+  simp only [CodeBlock.relocAt?, Lib.block_relocs, relocAtId?, List.find?_map, hpred]
 
 theorem relocAtId?_mem {rs : List Reloc} {off : Nat} {r : Reloc}
     (h : relocAtId? rs off = some r) : r ∈ rs :=

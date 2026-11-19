@@ -12,11 +12,16 @@ module
 public import Arm64
 public import ProofLib
 public import ProofLib.StdStartup.MemOps
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public meta import LibsignalBinary.Proofs.Placed.GenLsBlock -- shake: keep
-public import LibsignalBinary.Proofs.Common.StringCloneFlat
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.GenLsBlock -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Common.StringCloneFlat -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalPublicApi
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks
+import LibsignalBinary.Proofs.TripleRatchet.Hooks
+public import ProofLib.GenDecodes
+public import ProofLib.Placed.Multi
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
+meta import GeneratedLean.LibsignalSessionPlacedObjShard31
 
 /-!
 # Placed `<String as Clone>::clone` Proofs
@@ -28,7 +33,7 @@ satisfying `stringCloneSpec A`, lifted across blocks via `withLsCodeLoaded` and 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.Common.StringClonePlaced
 
@@ -36,12 +41,11 @@ open Arm64 ProofLib SepProp
 open Arm64.Obj (MultiPlacement)
 open ProofLib.StdStartup (hasInstrs)
 open CryptoVerification
-  (LibsignalHooks LibsignalPlacement LsBlockBound IsLsBlockProg lsmpl lsρ
-   libsignalSessionLib libsignalSessionExterns libsignalMutatedBlocks
-   withLsCodeLoaded withLsCl subroutine_ok_withLsCodeLoaded_of_plain
-   ls_subroutine_ok_of_block ls_subroutine_ok_cl_of_plain
-   ls_hook_ok ls_externAt?_of_blockProg
-   ls_blockPlacement_ρ_extern ls_resolve_block)
+  (IsLsBlockProg LibsignalHooks LibsignalPlacement LsBlockBound
+   libsignalHookedExterns libsignalMutatedBlocks libsignalSessionLib ls_blockPlacement_ρ_extern
+   ls_externAt?_of_blockProg ls_hook_ok ls_resolve_block ls_subroutine_ok_cl_of_plain
+   ls_subroutine_ok_of_block lsmpl lsρ mem_libsignalSessionExterns_of_hooked
+   subroutine_ok_withLsCodeLoaded_of_plain withLsCl withLsCodeLoaded)
 open CryptoVerification.RustHeap (RustAlloc rustAllocSpec)
 open CryptoVerification.LibsignalPublicApi (stringCloneSpec)
 open CryptoVerification.LibsignalTripleRatchet (sessionShimSpec sessionMemcpyRegionSpec)
@@ -144,18 +148,18 @@ theorem lsProg_623_hasInstrs [LibsignalPlacement] (H : LibsignalHooks) :
   | n + 33, hi => omega
 
 private theorem ls_hook_ok_623 [LibsignalPlacement] {α : Type} {H : LibsignalHooks} {sym : String}
-    {spec : Spec α} (hmem : sym ∈ libsignalSessionExterns := by decide) (h : HookSat H sym spec) :
+    {spec : Spec α} (hmem : sym ∈ libsignalHookedExterns := by decide) (h : HookSat H sym spec) :
     subroutine_ok (lsProg_623 H) (lsρ sym) spec := by
-  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem hmem
+  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
   exact ls_hook_ok (prog := lsProg_623 H) (i := 623) (k := k)
-    (by rw [List.getElem?_eq_getElem hlt, hk]) h
+    (by rw [List.getElem?_eq_getElem hlt, hk]) h (hhooked := hmem)
 
 private theorem ls_externAt?_623 [LibsignalPlacement] {H : LibsignalHooks} {sym : String}
-    (hmem : sym ∈ libsignalSessionExterns := by decide) :
+    (hmem : sym ∈ libsignalHookedExterns := by decide) :
     (lsProg_623 H).externAt? (lsρ sym) = H sym := by
-  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem hmem
+  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
   exact ls_externAt?_of_blockProg (prog := lsProg_623 H) (i := 623) (k := k)
-    (by rw [List.getElem?_eq_getElem hlt, hk])
+    (by rw [List.getElem?_eq_getElem hlt, hk]) (hhooked := hmem)
 
 /-- Block-623 correctness of `<String as Clone>::clone` under `HookSat` and panic-hook hypotheses. -/
 theorem stringClone_blk623_ok [LibsignalPlacement] {A : RustAlloc} {H : LibsignalHooks}

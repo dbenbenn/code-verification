@@ -9,9 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyA
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyA -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.SigHopB -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkCoupling
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # One-Key `GapDhWithSign` Coupling for Case B
@@ -21,7 +25,7 @@ by embedding the challenge identity key with signing access into responder slot 
 with a ghost two-key `FgSimInvDh2` state.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -100,7 +104,7 @@ theorem pqxdhKeyIndFgPreImpl1KeyIk_preserves_deadDh2 {S : Setup} (P : Primitives
 
 /-- One-key Case B simulation invariant coupling `st.sim` with a ghost two-key `FgSimInvDh2` state
     via `clearTargetSecIKAsign`. -/
-def FgSimInvDh2_1Key (S : Setup) (b : QueryBudget) (P : Primitives)
+@[expose] def FgSimInvDh2_1Key (S : Setup) (b : QueryBudget) (P : Primitives)
     (hP : CryptoWellFormedPrimitivesδ P) (sIdx kIdx : ℕ)
     (ikSk ekSk : Bytes) (hikSk : ikSk.length = 32) (hekSk : ekSk.length = 32)
     (rem : ℕ) (hst : KeyIndFgCutoffState S) (st : FgKeyInd1KeySimState S) : Prop :=

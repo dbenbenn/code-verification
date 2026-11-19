@@ -9,37 +9,46 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
 public import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
 public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedGroupSplit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightGroupSplit
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptPhasePeak
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptTrialPeak
-public import LibsignalBinary.Proofs.PeakBudget.W2Seg4CmkSeeds738
-public import LibsignalBinary.Proofs.PeakBudget.W4InitBobPeak
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterStageHelpers
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB
-public import LibsignalBinary.Proofs.PeakBudget.W4SlotGroupSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4TryDecryptPqPeak
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedGroupSplit
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightGroupSplit
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptPhasePeak
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptTrialPeak
+import LibsignalBinary.Proofs.PeakBudget.W2Seg4CmkSeeds738
+import LibsignalBinary.Proofs.PeakBudget.W4InitBobPeak
+import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W4OuterStageHelpers
+import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpec
+import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB
+import LibsignalBinary.Proofs.PeakBudget.W4SlotGroupSpec
+import LibsignalBinary.Proofs.PeakBudget.W4TryDecryptPqPeak
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.E2E.Seed.Defs
+import LibsignalBinary.Proofs.PeakBudget.W4InnerPeakSpec
 
 /-!
 # Zero-Archived-Trial (`archivedTrials = []`) `recv-prekey` Real-Slot Instance
@@ -49,7 +58,7 @@ instances for `W4RecvPrekeyRealEnv` at both baseline `(4096, 65536)` and `1 MiB`
 `(sessionCapBytes, msgCapBytes)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -151,7 +160,7 @@ Citations:
 - `LibsignalBinary/Specifications/SignalSession/PqDir.lean` l.60–72 (`DEV-C-PREV`,
   "`encodeRecordUnderExtras` writes none")
 - `LibsignalBinary/Specifications/LibsignalE2E/StateXModel.lean` l.124–125 ("(no previous sessions)"). -/
-def W4RecvPrekeyRealDom0 (R : W4RecvPrekeyRealParams) : Prop :=
+@[expose] def W4RecvPrekeyRealDom0 (R : W4RecvPrekeyRealParams) : Prop :=
   W4RecvPrekeyRealDom R ∧ R.archivedTrials = []
 
 /-- Parametric `(smallFileCap, maxCt)` counterpart of `W4RecvPrekeyRealDom0` over
@@ -160,7 +169,7 @@ Citations:
 - `LibsignalBinary/Specifications/SignalSession/PqDir.lean` l.60–72 (`DEV-C-PREV`,
   "`encodeRecordUnderExtras` writes none")
 - `LibsignalBinary/Specifications/LibsignalE2E/StateXModel.lean` l.124–125 ("(no previous sessions)"). -/
-def W4RecvPrekeyRealDom0Of (smallFileCap maxCt : Nat) (R : W4RecvPrekeyRealParams) : Prop :=
+@[expose] def W4RecvPrekeyRealDom0Of (smallFileCap maxCt : Nat) (R : W4RecvPrekeyRealParams) : Prop :=
   W4RecvPrekeyRealDomOf smallFileCap maxCt R ∧ R.archivedTrials = []
 
 abbrev W4RecvPrekeyRealDomOf0 := W4RecvPrekeyRealDom0Of
@@ -168,25 +177,25 @@ abbrev W4RecvPrekeyRealDomOf0 := W4RecvPrekeyRealDom0Of
 /-! ## Closed `Nat` `Dom0` Constants & Kernel `by decide` Cap Checks -/
 
 /-- Closed-`Nat` W4 (`recv-prekey`) `Δcum` bound at `0` archived trials (`R.archivedTrials = []`). -/
-def w4RecvPrekeyRealDom0Cum : Nat :=
+@[expose] def w4RecvPrekeyRealDom0Cum : Nat :=
   w4DecryptPrekeySplitTightCum 2097152 4096 0 deserCancelFineCum
     w4RealFailTdCum 0 0 9923
     w4RealFailTdCum w4RealTdACCum 4096
 
 /-- Closed-`Nat` W4 (`recv-prekey`) `Δlive` bound at `0` archived trials (`R.archivedTrials = []`). -/
-def w4RecvPrekeyRealDom0Live : Nat :=
+@[expose] def w4RecvPrekeyRealDom0Live : Nat :=
   w4DecryptPrekeySplitTightLive 2097152 4096 0 deserCancelFineLive
     2097152 2097152 2457152 w4RealTdBLive w4RealTdACLive
 
 /-- Closed-`Nat` W4 (`recv-prekey`) `Δpeak` bound at `0` archived trials (`R.archivedTrials = []`). -/
-def w4RecvPrekeyRealDom0Peak : Nat :=
+@[expose] def w4RecvPrekeyRealDom0Peak : Nat :=
   w4DecryptPrekeySplitTightPeak 2097152 4096 0 deserCancelFineLive deserCancelFinePeak
     286196 286196 2097152 286196 2097152 16384 2097152 2457152
     w4RealFailTdPeak 0 0
     w4RealTdBLive w4RealFailTdPeak w4RealTdACLive w4RealTdACPeak
 
 /-- Closed-`Nat` W4 (`recv-prekey`) `maxReq` bound at `0` archived trials (`R.archivedTrials = []`). -/
-def w4RecvPrekeyRealDom0MaxReq : Nat :=
+@[expose] def w4RecvPrekeyRealDom0MaxReq : Nat :=
   w4DecryptPrekeySplitTightMaxReq 2097152 4096 0 deserCancelFineMaxReq
     286196 286196 2097152 286196 2097152 16384 2097152 2457152
     w4RealTdMaxReq 0 0 192
@@ -194,7 +203,7 @@ def w4RecvPrekeyRealDom0MaxReq : Nat :=
 
 /-- Closed-`Nat` W4 (`recv-prekey`) `grpS` bound at `0` archived trials (`R.archivedTrials = []`,
 replacing `4 * (gDec + gTr)` by `0` in `gB` and `gC`). -/
-def w4RecvPrekeyRealDom0GrpS : Nat :=
+@[expose] def w4RecvPrekeyRealDom0GrpS : Nat :=
   let gDeser := deserCancelFineGrpS
   let gCur := w2TryDecryptFailTightGroupS_split_12
   let gPush := 3 * FineScale
@@ -233,15 +242,6 @@ theorem w4RecvPrekeyRealDom0_caps_le :
     w4RecvPrekeyRealDom0GrpS ≤ cliRecvPrekeySlotGrpSCap :=
   ⟨by decide, by decide, by decide, by decide, by decide, by decide⟩
 
-/-- Monotonicity check (`Dom0 ≤ Real` across all 5 coordinates) by plain kernel `decide`. -/
-theorem w4RecvPrekeyRealDom0_le_real :
-    w4RecvPrekeyRealDom0Cum ≤ w4RecvPrekeyRealCum ∧
-    w4RecvPrekeyRealDom0Live ≤ w4RecvPrekeyRealLive ∧
-    w4RecvPrekeyRealDom0Peak ≤ w4RecvPrekeyRealPeak ∧
-    w4RecvPrekeyRealDom0MaxReq ≤ w4RecvPrekeyRealMaxReq ∧
-    w4RecvPrekeyRealDom0GrpS ≤ w4RecvPrekeyRealGrpS :=
-  ⟨by decide, by decide, by decide, by decide, by decide⟩
-
 /-- Parametric uniform-`smallFileCap` `Δcum` at `0` archived trials. -/
 def w4RecvPrekeyRealDom0CumOf (smallFileCap : Nat) : Nat :=
   w4DecryptPrekeySplitTightCum 2097152 smallFileCap 0 deserCancelFineCum
@@ -268,11 +268,11 @@ def w4RecvPrekeyRealDom0MaxReqOf (smallFileCap maxCt : Nat) : Nat :=
     (w4TdMaxReqOf maxCt) (w4TdMaxReqOf maxCt) 4096
 
 /-- Variant (i) `Dom0` closed constants at `(sessionCapBytes, msgCapBytes)`. -/
-def w4RecvPrekeyReal1MiB_i_Dom0Cum : Nat := w4RecvPrekeyRealDom0CumOf sessionCapBytes
-def w4RecvPrekeyReal1MiB_i_Dom0Live : Nat := w4RecvPrekeyRealDom0LiveOf sessionCapBytes msgCapBytes
-def w4RecvPrekeyReal1MiB_i_Dom0Peak : Nat := w4RecvPrekeyRealDom0PeakOf sessionCapBytes msgCapBytes
-def w4RecvPrekeyReal1MiB_i_Dom0MaxReq : Nat := w4RecvPrekeyRealDom0MaxReqOf sessionCapBytes msgCapBytes
-def w4RecvPrekeyReal1MiB_i_Dom0GrpS : Nat := w4RecvPrekeyRealDom0GrpS
+@[expose] def w4RecvPrekeyReal1MiB_i_Dom0Cum : Nat := w4RecvPrekeyRealDom0CumOf sessionCapBytes
+@[expose] def w4RecvPrekeyReal1MiB_i_Dom0Live : Nat := w4RecvPrekeyRealDom0LiveOf sessionCapBytes msgCapBytes
+@[expose] def w4RecvPrekeyReal1MiB_i_Dom0Peak : Nat := w4RecvPrekeyRealDom0PeakOf sessionCapBytes msgCapBytes
+@[expose] def w4RecvPrekeyReal1MiB_i_Dom0MaxReq : Nat := w4RecvPrekeyRealDom0MaxReqOf sessionCapBytes msgCapBytes
+@[expose] def w4RecvPrekeyReal1MiB_i_Dom0GrpS : Nat := w4RecvPrekeyRealDom0GrpS
 
 /-- Variant (i) `Dom0` cap check against `w4RecvPrekeyReal1MiB_i_*` and `d3RecvW4Ext*` by `decide`. -/
 theorem w4RecvPrekeyReal1MiB_i_Dom0_caps_le :
@@ -314,12 +314,6 @@ private theorem z0_w2GenSeeds12Cum_le_5 {dhCap : Nat} (needGrow : Bool) (h : dhC
   | 2, false, _ | 2, true, _ | 3, false, _ | 3, true, _
   | 4, false, _ | 4, true, _ | 5, false, _ | 5, true, _ => decide
 
-private theorem z0_w2MaxReq_le_5 {dhCap : Nat} (h : dhCap ≤ 5) :
-    w2TryDecryptMaxReq dhCap 2000 302480 65536 ≤ w4RealTdMaxReq := by
-  unfold w4RealTdMaxReq
-  match dhCap, h with
-  | 0, _ | 1, _ | 2, _ | 3, _ | 4, _ | 5, _ => decide
-
 private theorem z0_w2MaxReqOf_le_5 {dhCap maxCt : Nat} (h : dhCap ≤ 5) :
     w2TryDecryptMaxReq dhCap 2000 302480 maxCt ≤ w4TdMaxReqOf maxCt := by
   unfold w4TdMaxReqOf w2TryDecryptMaxReq
@@ -358,61 +352,6 @@ private theorem z0_optDeallocListEvs_freeOnly (pairs : List (Nat × Nat)) :
         rw [List.mem_singleton] at he
         exact ⟨al, req, he⟩
     · exact ih ev he
-
-private theorem z0_w4TryDecryptPathB_phaseCredit
-    {F : ShaCompress} {K : MlKem} {td : W4TryDecryptCall F}
-    (hDom : W4TryDecryptCallDom F K td) :
-    PhaseCreditSpec fineCostModel (W4TryDecryptPathBEnv F K td)
-      w4RealFailTdCum w4RealTdBLive w4RealFailTdPeak w4RealTdMaxReq := by
-  have hBase := w2TryDecrypt_spqrC07_c09a_linked_uncondHist_phaseCreditSpec_seeds738 F K
-    (needGrow := td.needGrow) (withAddr := td.withAddr) (errAlloc := td.errAlloc)
-    td.stBytes td.w.pre_pb td.w.vn td.w.pb td.w.st0 td.w.sckaMsg td.w.v
-    td.w.xInit td.w.xNew td.w.xAdd td.w.xRk td.w.xSInto td.w.xCInto
-    (z0_dhSmall_of_le_5 hDom.dh_le) hDom.caps_len hDom.chain_le hDom.top_tight hDom.ct_le
-  exact hBase.mono
-    (z0_w2Seeds738Cum_le_5 td.needGrow hDom.dh_le)
-    (Nat.le_refl _) (Nat.le_refl _) (z0_w2MaxReq_le_5 hDom.dh_le)
-
-private theorem z0_w4TryDecryptPathAC_phaseCredit
-    {F : ShaCompress} {K : MlKem} {td : W4TryDecryptCall F}
-    (hDom : W4TryDecryptPathACDom F K td) :
-    PhaseCreditSpec fineCostModel (W4TryDecryptPathACEnv F K td)
-      w4RealTdACCum w4RealTdACLive w4RealTdACPeak w4RealTdMaxReq := by
-  have hBase := w2TryDecrypt_genSeeds_fine_phaseCreditSpec (maxSeeds := 12)
-    (needGrow := td.needGrow) (withAddr := td.withAddr) (errAlloc := td.errAlloc)
-    (z0_dhSmall_of_le_5 hDom.base.dh_le) hDom.base.caps_len hDom.base.chain_le
-    (spqrRecvLinked_zeroSkip_c09a_phaseCreditSpec F K td.stBytes td.w
-      hDom.base.top_tight hDom.zero_skip)
-    hDom.base.ct_le
-  exact hBase.mono
-    (z0_w2GenSeeds12Cum_le_5 td.needGrow hDom.base.dh_le)
-    (Nat.le_refl _) (Nat.le_refl _) (z0_w2MaxReq_le_5 hDom.base.dh_le)
-
-private theorem z0_w4FailedTdCancel_phaseCredit
-    {F : ShaCompress} {K : MlKem} {fc : W4FailedTryDecryptCall F}
-    (hDom : W4FailedTdDom F K fc) :
-    PhaseCreditSpec fineCostModel (W4FailedTdCancelEnv F K fc)
-      w4RealFailTdCum 0 w4RealFailTdPeak w4RealTdMaxReq := by
-  have hTd0 : PhaseCreditSpec fineCostModel (W4TryDecryptFailLinkedEnv F K fc.td) _ _ _ _ :=
-    w2TryDecryptFail_spqrC07_c09a_linked_uncondHist_phaseCreditSpec_seeds738 F K
-      (needGrow := fc.td.needGrow) (withAddr := fc.td.withAddr) (errAlloc := fc.td.errAlloc)
-      fc.td.stBytes fc.td.w.pre_pb fc.td.w.vn fc.td.w.pb fc.td.w.st0 fc.td.w.sckaMsg fc.td.w.v
-      fc.td.w.xInit fc.td.w.xNew fc.td.w.xAdd fc.td.w.xRk fc.td.w.xSInto fc.td.w.xCInto
-      (z0_dhSmall_of_le_5 hDom.td_dom.dh_le) hDom.td_dom.caps_len hDom.td_dom.chain_le
-      hDom.td_dom.top_tight hDom.td_dom.ct_le
-  have hTd := hTd0.mono
-    (z0_w2Seeds738Cum_le_5 fc.td.needGrow hDom.td_dom.dh_le)
-    (Nat.le_of_eq (Nat.zero_add _).symm)
-    (Nat.le_refl _) (z0_w2MaxReq_le_5 hDom.td_dom.dh_le)
-  have hDrop := z0_deallocCreditSpec_mono_le
-    (LibsignalBinary.Proofs.PeakBudget.W2DecryptPhasePeak.DeallocCreditSpec.optDeallocList
-      fineCostModel fc.failDropPairs hDom.align_le)
-    hDom.cancel_live
-  have hCancel := hTd.concat_dealloc_cancel hDrop
-  exact ((PhaseCreditSpec.freeOnly_of_hyps fineCostModel_modelHyps).or hCancel).mono
-    (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩) (Nat.le_refl 0)
-    (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩)
-    (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩)
 
 private theorem z0_w4TryDecryptPathBOf_phaseCredit {maxCt : Nat}
     {F : ShaCompress} {K : MlKem} {td : W4TryDecryptCall F}
@@ -545,24 +484,6 @@ private theorem z0_recordSerializeCancelEnv_of_valid_fine_groupSpec {pqCap : Nat
     obtain ⟨hgv, hdom⟩ := hValid G ses hg hr
     exact serializeSomeCancelEnv_groupSpec fineCostModel (segCloneEnv_dom_fine_groupSpec hgv hdom)
 
-private theorem z0_w4FailedTdCancel_fine_groupSpec
-    {F : ShaCompress} {K : MlKem} {fc : W4FailedTryDecryptCall F}
-    (hDom : W4FailedTdDom F K fc) :
-    PhaseGroupSpec fineCostModel (W4FailedTdCancelEnv F K fc)
-      w2TryDecryptFailTightGroupS_split_12 := by
-  have hFail := w2TryDecryptFailTightEnv_linked_fine_groupSpec_split_12 F K
-    fc.td.dhCap fc.td.needGrow fc.td.withAddr fc.td.errAlloc fc.td.ctLen
-    fc.td.stBytes fc.td.w.pre_pb fc.td.w.vn fc.td.w.pb fc.td.w.st0 fc.td.w.sckaMsg fc.td.w.v
-    fc.td.w.xInit fc.td.w.xNew fc.td.w.xAdd fc.td.w.xRk fc.td.w.xSInto fc.td.w.xCInto
-    hDom.td_dom.caps_len hDom.td_dom.top_tight
-  have hDrop : PhaseGroupSpec fineCostModel (· = optDeallocListEvs fc.failDropPairs) 0 :=
-    (PhaseGroupSpec.freeOnly fineCostModel).of_imp fun _ h => by
-      subst h
-      exact z0_optDeallocListEvs_freeOnly fc.failDropPairs
-  have hCat := (hFail.concat hDrop).mono (Nat.le_of_eq (Nat.add_zero _))
-  exact ((PhaseGroupSpec.freeOnly fineCostModel).or hCat).mono
-    (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩)
-
 private theorem z0_w4FailedTdCancelOf_fine_groupSpec {maxCt : Nat}
     {F : ShaCompress} {K : MlKem} {fc : W4FailedTryDecryptCall F}
     (hDom : W4FailedTdDomOf F K maxCt fc) :
@@ -666,210 +587,7 @@ private theorem z0_phaseCredit_exists_guarded_u {α : Sort _} {M : AllocCostMode
   req_align evs := fun ⟨x, hx, he⟩ => (h x hx).req_align evs he
   credit_le st0 := fun ⟨x, hx, he⟩ => (h x hx).credit_le st0 he
 
-private theorem z0_phaseGroup_exists_guarded_u {α : Sort _} {M : AllocCostModel}
-    [HasFineGroupCredit M] {P : α → Prop} {E : α → List AllocEvent → Prop} {g : Nat}
-    (h : ∀ x, P x → PhaseGroupSpec M (E x) g) :
-    PhaseGroupSpec M (fun evs => ∃ x, P x ∧ E x evs) g where
-  groups_le st0 := fun ⟨x, hx, he⟩ => (h x hx).groups_le st0 he
-
 /-! ## Baseline `W4RecvPrekeyRealDom0` Credit, Group, & `SingleSlotFineSpec` -/
-
-/-- Witness-free `PhaseCreditSpec fineCostModel` for `W4RecvPrekeyRealEnv R` under
-`W4RecvPrekeyRealDom0 R` (`R.archivedTrials = []`). -/
-theorem w4RecvPrekeyRealDom0_phaseCreditSpec
-    (R : W4RecvPrekeyRealParams) (h : W4RecvPrekeyRealDom0 R) :
-    PhaseCreditSpec fineCostModel (W4RecvPrekeyRealEnv R)
-      w4RecvPrekeyRealDom0Cum w4RecvPrekeyRealDom0Live
-      w4RecvPrekeyRealDom0Peak w4RecvPrekeyRealDom0MaxReq := by
-  obtain ⟨hDom, hNil⟩ := h
-  let P := mkW4RecvPrekeySlotParams R
-  have hPNil : P.archivedTrials = [] := hNil
-  have hCur : PhaseCreditSpec fineCostModel P.CurTrialFailEnv
-      w4RealFailTdCum 0 w4RealFailTdPeak w4RealTdMaxReq := by
-    change PhaseCreditSpec fineCostModel
-      (if R.hasCurSession then W4FailedTdCancelEnv R.F R.K R.fc_cur else fun _ => False)
-      _ _ _ _
-    cases hcs : R.hasCurSession
-    · exact (PhaseCreditSpec.empty fineCostModel).mono
-        (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-    · exact z0_w4FailedTdCancel_phaseCredit (hDom.cur_fail_dom hcs)
-  have hPush : PhaseCreditSpec fineCostModel P.VecPushEnv 9923 0 0 192 := by
-    have hsm : 192 ≤ HasFineReallocCredit.smallMaxReq fineCostModel := by
-      rw [fineCostModel_smallMaxReq_eq]; decide
-    have hc9923 : 1 * (2 * 192 + 9539) ≤ 9923 := by decide
-    exact PhaseCreditSpec.mono hc9923 (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 192)
-      (phaseCredit_w4BoundedEvs_small fineCostModel_modelHyps 1 192 hsm)
-  have hTdB : PhaseCreditSpec fineCostModel P.TryDecEnv
-      w4RealFailTdCum w4RealTdBLive w4RealFailTdPeak w4RealTdMaxReq := by
-    change PhaseCreditSpec fineCostModel
-      (if R.isPathB then W4TryDecryptPathBEnv R.F R.K R.td_B else fun _ => False)
-      _ _ _ _
-    cases hpb : R.isPathB
-    · exact (PhaseCreditSpec.empty fineCostModel).mono
-        (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-    · exact z0_w4TryDecryptPathB_phaseCredit (hDom.tdB_dom hpb)
-  have hTdAC : PhaseCreditSpec fineCostModel (W4RecvPrekeyTryDecACEnv R)
-      w4RealTdACCum w4RealTdACLive w4RealTdACPeak w4RealTdMaxReq := by
-    unfold W4RecvPrekeyTryDecACEnv
-    cases hpac : R.isPathAC
-    · exact (PhaseCreditSpec.empty fineCostModel).mono
-        (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-    · exact z0_w4TryDecryptPathAC_phaseCredit (hDom.tdAC_dom hpac)
-  have hFalse : ∀ x ∈ P.archivedTrials, False := by
-    rw [hPNil]; intro _ hx; cases hx
-  unfold W4RecvPrekeyRealEnv w4RecvPrekeyRealDom0Cum w4RecvPrekeyRealDom0Live
-    w4RecvPrekeyRealDom0Peak w4RecvPrekeyRealDom0MaxReq
-  exact w4DecryptPrekeySplitSlot_opened_fine_phaseCredit P
-    (c_dec := 0) (p_dec := 0) (r_dec := 0) (c_tr := 0) (p_tr := 0) (r_tr := 0)
-    (l_dec := fun _ => 0)
-    rfl rfl rfl hDom.kpk_dir rfl rfl hDom.outer_dom
-    (fun _ hbs => recordDeserializeCancelEnv_fine_phaseCreditSpec hbs)
-    hCur
-    (fun x hx => (hFalse x hx).elim)
-    (fun x hx => (hFalse x hx).elim)
-    (fun x hx => (hFalse x hx).elim)
-    (fun x hx => (hFalse x hx).elim)
-    hPush hTdB hTdAC
-
-/-- Witness-free `PhaseGroupSpec fineCostModel` for `W4RecvPrekeyRealEnv R` under
-`W4RecvPrekeyRealDom0 R` (`R.archivedTrials = []`). -/
-theorem w4RecvPrekeyRealDom0_fine_groupSpec
-    (R : W4RecvPrekeyRealParams) (h : W4RecvPrekeyRealDom0 R) :
-    PhaseGroupSpec fineCostModel (W4RecvPrekeyRealEnv R) w4RecvPrekeyRealDom0GrpS := by
-  obtain ⟨hDom, hNil⟩ := h
-  let P := mkW4RecvPrekeySlotParams R
-  have hPNil : P.archivedTrials = [] := hNil
-  let TryDecAC := W4RecvPrekeyTryDecACEnv R
-  have hDeser : ∀ bs : List (BitVec 8), bs.length ≤ 2097152 →
-      PhaseGroupSpec fineCostModel (P.DeserEnv bs) deserCancelFineGrpS :=
-    fun bs _ => recordDeserializeCancelEnv_fine_groupSpec bs
-  have hCur : PhaseGroupSpec fineCostModel P.CurTrialFailEnv w2TryDecryptFailTightGroupS_split_12 := by
-    change PhaseGroupSpec fineCostModel
-      (if R.hasCurSession then W4FailedTdCancelEnv R.F R.K R.fc_cur else fun _ => False) _
-    cases hcs : R.hasCurSession
-    · exact { groups_le := fun _ {_} he => False.elim he }
-    · exact z0_w4FailedTdCancel_fine_groupSpec (hDom.cur_fail_dom hcs)
-  have hDec : ∀ x ∈ P.archivedTrials, PhaseGroupSpec fineCostModel (P.DecEnv x) 0 :=
-    fun _ hx => nomatch (hPNil ▸ hx : _ ∈ ([] : List _))
-  have hTr : ∀ x ∈ P.archivedTrials, PhaseGroupSpec fineCostModel (P.TrialEnv x) 0 :=
-    fun _ hx => nomatch (hPNil ▸ hx : _ ∈ ([] : List _))
-  have hDrop : ∀ x ∈ P.archivedTrials, PhaseGroupSpec fineCostModel (P.DropEnv x) 0 :=
-    fun _ hx => nomatch (hPNil ▸ hx : _ ∈ ([] : List _))
-  have hPush : PhaseGroupSpec fineCostModel P.VecPushEnv (3 * FineScale) := by
-    change PhaseGroupSpec fineCostModel (W4BoundedEvs 1 192) (3 * FineScale)
-    simpa [Nat.one_mul] using w4BoundedEvs_groupSpec fineCostModel 1 192
-  have hArchSer : PhaseGroupSpec fineCostModel (RecordSerializeCancelEnv P.g_arch P.r_arch)
-      recordSerializeDomFineGrpS :=
-    z0_recordSerializeCancelEnv_of_valid_fine_groupSpec hDom.outer_dom.arch_valid
-  have hOut0Ser : PhaseGroupSpec fineCostModel (RecordSerializeCancelEnv P.g_out0 P.r_out0)
-      recordSerializeDomFineGrpS :=
-    z0_recordSerializeCancelEnv_of_valid_fine_groupSpec hDom.outer_dom.out0_valid
-  have hOut1Ser : PhaseGroupSpec fineCostModel
-      (SerializePrev1CancelEnv P.G_out1 P.sess_out1 P.enc_prev1)
-      serializePrev1FreshBobFineGrpS :=
-    z0_serializePrev1CancelEnv_freshBob_fine_groupSpec hDom.outer_dom.out1_freshBob
-  have hTdB : PhaseGroupSpec fineCostModel P.TryDecEnv w2TryDecryptTightGroupS_split_12 := by
-    change PhaseGroupSpec fineCostModel
-      (if R.isPathB then W4TryDecryptPathBEnv R.F R.K R.td_B else fun _ => False) _
-    cases hpb : R.isPathB
-    · exact { groups_le := fun _ {_} he => False.elim he }
-    · have hd := hDom.tdB_dom hpb
-      exact w2TryDecryptTightEnv_linked_fine_groupSpec_split_12 R.F R.K
-        R.td_B.dhCap R.td_B.needGrow R.td_B.withAddr R.td_B.errAlloc R.td_B.ctLen
-        R.td_B.stBytes R.td_B.w.pre_pb R.td_B.w.vn R.td_B.w.pb R.td_B.w.st0
-        R.td_B.w.sckaMsg R.td_B.w.v R.td_B.w.xInit R.td_B.w.xNew R.td_B.w.xAdd
-        R.td_B.w.xRk R.td_B.w.xSInto R.td_B.w.xCInto hd.caps_len hd.top_tight
-  have hTdAC : PhaseGroupSpec fineCostModel TryDecAC w2TryDecryptSeeds12GroupS_split_12 := by
-    unfold TryDecAC W4RecvPrekeyTryDecACEnv
-    cases hpac : R.isPathAC
-    · exact { groups_le := fun _ {_} he => False.elim he }
-    · have hd := (hDom.tdAC_dom hpac).base
-      exact w2TryDecryptSeedsEnv_12_linked_fine_groupSpec_split_12 R.F R.K
-        R.td_AC.dhCap R.td_AC.needGrow R.td_AC.withAddr R.td_AC.errAlloc R.td_AC.ctLen
-        R.td_AC.stBytes R.td_AC.w.pre_pb R.td_AC.w.vn R.td_AC.w.pb R.td_AC.w.st0
-        R.td_AC.w.sckaMsg R.td_AC.w.v R.td_AC.w.xInit R.td_AC.w.xNew R.td_AC.w.xAdd
-        R.td_AC.w.xRk R.td_AC.w.xSInto R.td_AC.w.xCInto hd.caps_len hd.top_tight
-  have hP1 := w4StageP1OkCli_fine_groupSpec P.rd P.files P.sessDir P.peersDir P.peer hDeser
-  let gU := w4StageP1UntrustedBaseFineGrpS + deserCancelFineGrpS
-  let gB := (w4StageP1OkBaseFineGrpS + deserCancelFineGrpS) +
-    (4 * (0 + 0) + recordSerializeDomFineGrpS + 3 * FineScale) +
-    w4StageP3FineGrpS w2TryDecryptTightGroupS_split_12 +
-    (w4SmallStoreStep32FineGrpS + (16659 + (6 * FineScale + recordSerializeDomFineGrpS)))
-  let gA := (w4StageP1OkBaseFineGrpS + deserCancelFineGrpS) +
-    w4StageP2PathACliFineGrpS +
-    w4StageP3FineGrpS w2TryDecryptSeeds12GroupS_split_12 +
-    (2 * w4SmallStoreStep32FineGrpS + w4SmallStoreStep16FineGrpS +
-      (16659 + (6 * FineScale + recordSerializeDomFineGrpS)))
-  let gC := (w4StageP1OkBaseFineGrpS + deserCancelFineGrpS) +
-    ((segCloneDomFineGrpS + w4ErrTailFineGrpS + 5 * w4SmallStoreStep16FineGrpS +
-        recordSerializeDomFineGrpS + w4InitBobSpqrFineGrpS + w4ErrTailFineGrpS) +
-      w2TryDecryptFailTightGroupS_split_12 +
-      4 * (0 + 0) + 3 * FineScale) +
-    w4StageP3FineGrpS w2TryDecryptSeeds12GroupS_split_12 +
-    (2 * w4SmallStoreStep32FineGrpS + w4SmallStoreStep16FineGrpS +
-      (16659 + (6 * FineScale + serializePrev1FreshBobFineGrpS)))
-  have hLeU : gU ≤ w4RecvPrekeyRealDom0GrpS :=
-    Nat.le_trans (Nat.le_max_left _ _) (Nat.le_max_left _ _)
-  have hLeB : gB ≤ w4RecvPrekeyRealDom0GrpS :=
-    Nat.le_trans (Nat.le_max_right _ _) (Nat.le_max_left _ _)
-  have hLeA : gA ≤ w4RecvPrekeyRealDom0GrpS :=
-    Nat.le_trans (Nat.le_max_left _ _) (Nat.le_max_right _ _)
-  have hLeC : gC ≤ w4RecvPrekeyRealDom0GrpS :=
-    Nat.le_trans (Nat.le_max_right _ _) (Nat.le_max_right _ _)
-  have hArms : PhaseGroupSpec fineCostModel
-      (fun e =>
-        W4StageP1UntrustedCliEnv P.rd P.DeserEnv P.files P.sessDir P.peersDir P.peer e ∨
-        W4DecryptPrekeyPathBEnv P e ∨
-        W4DecryptPrekeyPathAEnv ({ P with TryDecEnv := TryDecAC }) e ∨
-        W4DecryptPrekeyPathCEnv ({ P with TryDecEnv := TryDecAC }) e)
-      w4RecvPrekeyRealDom0GrpS :=
-    { groups_le := fun st0 {e} hArm => by
-        rcases hArm with hU | hB | hA | hC
-        · exact ((w4StageP1UntrustedCli_fine_groupSpec P.rd P.files P.sessDir P.peersDir P.peer
-            hDeser).mono hLeU).groups_le st0 hU
-        · have hp2 := w4StageP2Matched_groupSpec fineCostModel hDom.outer_dom.trials_len4
-            hDec hTr hDrop hArchSer hPush
-          have hp3 := w4StageP3_fine_groupSpec hTdB
-          have hp4 := w4StageP4MatchedCli_fine_groupSpec P.rd P.files P.peersDir P.sessDir P.peer
-            hOut0Ser
-          exact (((hP1.seq (hp2.seq (hp3.seq hp4))).mono
-            (z0_four_stages_grp_reassoc _ _ _ _)).mono hLeB).groups_le st0 hB
-        · have hp2 := w4StageP2PathACli_fine_groupSpec P.hasOpk P.rd P.files
-            P.spkDir P.kpkDir P.opkDir P.ownDir P.spkId P.kpkId P.opkId
-            P.ownKeyName P.ownRegName P.F P.x_res P.x_spqr
-          have hp3 := w4StageP3_fine_groupSpec hTdAC
-          have hp4 := w4StageP4PathACli_fine_groupSpec P.hasOpk P.rd P.files
-            P.peersDir P.kpkDir P.opkDir P.sessDir P.peer P.kpkMarkName P.opkId hOut0Ser
-          exact (((hP1.seq (hp2.seq (hp3.seq hp4))).mono
-            (z0_four_stages_grp_reassoc _ _ _ _)).mono hLeA).groups_le st0 hA
-        · have hp2 := z0_w4StageP2PathCCli_curDom_fine_groupSpec P.hasOpk P.rd P.files
-            P.spkDir P.kpkDir P.opkDir P.ownDir P.spkId P.kpkId P.opkId
-            P.ownKeyName P.ownRegName P.F P.x_res P.x_spqr
-            hDom.outer_dom.cur_dom hCur hDom.outer_dom.trials_len4
-            hDec hTr hDrop hArchSer hPush
-          have hp3 := w4StageP3_fine_groupSpec hTdAC
-          have hp4 := w4StageP4PathCCli_fine_groupSpec P.hasOpk P.rd P.files
-            P.peersDir P.kpkDir P.opkDir P.sessDir P.peer P.kpkMarkName P.opkId hOut1Ser
-          exact (((hP1.seq (hp2.seq (hp3.seq hp4))).mono
-            (z0_four_stages_grp_reassoc _ _ _ _)).mono hLeC).groups_le st0 hC }
-  have hSeq := (hArms.seq (PhaseGroupSpec.freeOnly fineCostModel)).mono
-    (Nat.le_of_eq (Nat.add_zero _))
-  exact ((PhaseGroupSpec.freeOnly fineCostModel).or hSeq).mono
-    (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩)
-
-/-- Witness-free `SingleSlotFineSpec` for `W4RecvPrekeyRealEnv R` under
-`W4RecvPrekeyRealDom0 R` (`R.archivedTrials = []`). -/
-def w4RecvPrekeyRealDom0_singleSlotFineSpec
-    (R : W4RecvPrekeyRealParams) (h : W4RecvPrekeyRealDom0 R) :
-    SingleSlotFineSpec (W4RecvPrekeyRealEnv R) where
-  cum := w4RecvPrekeyRealDom0Cum
-  live := w4RecvPrekeyRealDom0Live
-  peak := w4RecvPrekeyRealDom0Peak
-  maxReq := w4RecvPrekeyRealDom0MaxReq
-  grpS := w4RecvPrekeyRealDom0GrpS
-  credit := w4RecvPrekeyRealDom0_phaseCreditSpec R h
-  live_le_peak := w4RecvPrekeyRealDom0_caps_le.1
-  groups := w4RecvPrekeyRealDom0_fine_groupSpec R h
 
 /-! ## Parametric & `1 MiB` Variant (i) `Dom0` `SingleSlotFineSpec` -/
 
@@ -1049,20 +767,6 @@ theorem w4RecvPrekeyRealDom0Of_fine_groupSpec {smallFileCap maxCt : Nat}
   exact ((PhaseGroupSpec.freeOnly fineCostModel).or hSeq).mono
     (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩)
 
-/-- Parametric `SingleSlotFineSpec` for `W4RecvPrekeyRealEnv R` under
-`W4RecvPrekeyRealDom0Of smallFileCap maxCt R`. -/
-def w4RecvPrekeyRealDom0Of_singleSlotFineSpec {smallFileCap maxCt : Nat}
-    (R : W4RecvPrekeyRealParams) (h : W4RecvPrekeyRealDom0Of smallFileCap maxCt R) :
-    SingleSlotFineSpec (W4RecvPrekeyRealEnv R) where
-  cum := w4RecvPrekeyRealDom0CumOf smallFileCap
-  live := w4RecvPrekeyRealDom0LiveOf smallFileCap maxCt
-  peak := w4RecvPrekeyRealDom0PeakOf smallFileCap maxCt
-  maxReq := w4RecvPrekeyRealDom0MaxReqOf smallFileCap maxCt
-  grpS := w4RecvPrekeyRealDom0GrpS
-  credit := w4RecvPrekeyRealDom0Of_phaseCreditSpec R h
-  live_le_peak := Nat.le_max_right _ _
-  groups := w4RecvPrekeyRealDom0Of_fine_groupSpec R h
-
 /-- Variant (i) closed `Dom0` `SingleSlotFineSpec` (`W4RecvPrekeyRealDom0Of sessionCapBytes msgCapBytes`). -/
 def w4RecvPrekeyReal1MiB_i_Dom0_singleSlotFineSpec
     (R : W4RecvPrekeyRealParams)
@@ -1078,7 +782,7 @@ def w4RecvPrekeyReal1MiB_i_Dom0_singleSlotFineSpec
   groups := w4RecvPrekeyRealDom0Of_fine_groupSpec R h
 
 /-- Existential Variant (i) `Dom0` W4 real-slot envelope (`(sessionCapBytes, msgCapBytes)`). -/
-def ValidOverRealSlotEnvDom0 (evs : List AllocEvent) : Prop :=
+@[expose] def ValidOverRealSlotEnvDom0 (evs : List AllocEvent) : Prop :=
   ∃ w4R : W4RecvPrekeyRealParams,
     W4RecvPrekeyRealDom0Of sessionCapBytes msgCapBytes w4R ∧ W4RecvPrekeyRealEnv w4R evs
 
@@ -1088,22 +792,5 @@ theorem validOverRealSlotEnvDom0_phaseCreditSpec :
       w4RecvPrekeyReal1MiB_i_Dom0Peak w4RecvPrekeyReal1MiB_i_Dom0MaxReq :=
   z0_phaseCredit_exists_guarded_u fun w4R hw4 =>
     (w4RecvPrekeyReal1MiB_i_Dom0_singleSlotFineSpec w4R hw4).credit
-
-theorem validOverRealSlotEnvDom0_fine_groupSpec :
-    PhaseGroupSpec fineCostModel ValidOverRealSlotEnvDom0 w4RecvPrekeyReal1MiB_i_Dom0GrpS :=
-  z0_phaseGroup_exists_guarded_u fun w4R hw4 =>
-    (w4RecvPrekeyReal1MiB_i_Dom0_singleSlotFineSpec w4R hw4).groups
-
-/-- Closed `SingleSlotFineSpec` on `ValidOverRealSlotEnvDom0`. -/
-def validOverRealSlotEnvDom0_singleSlotFineSpec :
-    SingleSlotFineSpec ValidOverRealSlotEnvDom0 where
-  cum := w4RecvPrekeyReal1MiB_i_Dom0Cum
-  live := w4RecvPrekeyReal1MiB_i_Dom0Live
-  peak := w4RecvPrekeyReal1MiB_i_Dom0Peak
-  maxReq := w4RecvPrekeyReal1MiB_i_Dom0MaxReq
-  grpS := w4RecvPrekeyReal1MiB_i_Dom0GrpS
-  credit := validOverRealSlotEnvDom0_phaseCreditSpec
-  live_le_peak := w4RecvPrekeyReal1MiB_i_Dom0_caps_le.1
-  groups := validOverRealSlotEnvDom0_fine_groupSpec
 
 end LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlotDom0

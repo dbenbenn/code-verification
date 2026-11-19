@@ -13,6 +13,13 @@ public import Computational.Proofs.E2E.Dsl.LocalSessionStep -- proof-setup: allo
 public import Computational.Proofs.E2E.Dsl.SpqrSim -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.DrSessionSim -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
+public import Computational.Proofs.E2E.Dsl.SpqrSimRecv -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.SpqrSimSend -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.SpqrSimChain
+import Computational.Proofs.E2E.Dsl.SpqrSimHist
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.ReductionDsl.Soundness
 
 /-!
 # Compositional Syntax-Size Bound for `stepLocalSmC`

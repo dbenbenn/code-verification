@@ -26,7 +26,7 @@ segments, `PROT_NONE` batch allocation, and circular-list pop helpers for `__mal
 set_option autoImplicit false
 set_option maxRecDepth 20000
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 
@@ -160,7 +160,7 @@ abbrev AllocMetaFinePost [MallocngMultiPlacement] (inflight : Nat) (γ : GhostNa
      MallocngNoOrphanMappings (dynamicRootRegions st) (dynamicRootRegions st') s0.mem sf.mem ∧
      MallocngMappedDelta 1 (allocMetaFineByteBound maxMetaAreas) s0.mem sf.mem⌝ ∗
     stackFrame s0 224 ∗ MallocngRuntime maddrs tp ∗ (m ↦ₛ List.replicate 40 0#8) ∗
-    MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st') ∧
+    MallocngCoreStInflightModeA true (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st') ∧
   sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf
 
 theorem allocMetaFinePost_congr [MallocngMultiPlacement] {inflight : Nat} {γ : GhostName}
@@ -198,7 +198,7 @@ private theorem sepWP_epilogue_278_fine [MallocngMultiPlacement]
     SepWP (mallocngBlockProg mmpl 7 msvc) (s0.readReg64 Reg.lr) s
       (StackFrameOpen s0 ∗ (((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ (StaticFrameA γ maddrs st'.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
         (m ↦₆₄ w0) ∗ ((m + 8#64) ↦₆₄ w1) ∗ ((m + 16#64) ↦ₛ List.replicate 24 0#8) ∗ CtxCells maddrs.ctx st'.ctx ∗
-        ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+        MallocngAuxvPtrCell true maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo true γ st'.auxvPtr st'.auxvSnap ∗
         ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗ ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗ MappedSet st'.masterDom (OwnedMappedByte st'))))
       (AllocMetaFinePost inflight γ tp brkStart liveCost peakCost maxMetaAreas st s0) oom := by
   have hSpA : (s0.sp &&& 15#64 == 0#64) = true := by simpa [State.spAligned] using hSp0
@@ -208,7 +208,7 @@ private theorem sepWP_epilogue_278_fine [MallocngMultiPlacement]
     (sepPost (fun sf => MallocngProcPreserved s0 sf ∧ sf.brk = s.brk ∧ sf.readReg64 .x0 = m ∧ sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
       (StackFrameOpen s0 ∗ (((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ (StaticFrameA γ maddrs st'.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
         (m ↦₆₄ 0#64) ∗ ((m + 8#64) ↦₆₄ 0#64) ∗ ((m + 16#64) ↦ₛ List.replicate 24 0#8) ∗ CtxCells maddrs.ctx st'.ctx ∗
-        ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+        MallocngAuxvPtrCell true maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo true γ st'.auxvPtr st'.auxvSnap ∗
         ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗ ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗ MappedSet st'.masterDom (OwnedMappedByte st'))))) hcl ?_) ?_
   · unfold StackFrameOpen SavedRegs0; simp only [BitVec.reduceSub] at hPc
     wp_sym_steps; simp only [hSubAddSp] at *
@@ -227,7 +227,7 @@ private theorem sepWP_epilogue_278_fine [MallocngMultiPlacement]
       hPres.1, hPres.2.1, hPres.2.2.1, hPres.2.2.2.1, hCntEq, hMaBound, hPres.2.2.2.2.1, hPres.2.2.2.2.2.1,
       hPres.2.2.2.2.2.2.1, hPres.2.2.2.2.2.2.2.1, hPres.2.2.2.2.2.2.2.2, hGrpPost, hNoOrphF, hDeltaF⟩ ?_
     refine Entails.trans (sepConj_mono_left (stack224_fold s0)) ?_
-    unfold StaticFrameA MallocngCoreStInflightA MallocngRuntime; rw [← hCtxEq, ← hZ40, pure_sepConj_of_true hWfF]; sep_frame
+    unfold StaticFrameA MallocngCoreStInflightModeA MallocngRuntime; rw [← hCtxEq, ← hZ40, pure_sepConj_of_true hWfF]; sep_frame
 
 theorem sepWP_epilogue_26c_fine [MallocngMultiPlacement]
     {inflight : Nat} {γ : GhostName} {tp brkStart : BitVec 64} {liveCost peakCost maxMetaAreas : Nat}
@@ -250,7 +250,7 @@ theorem sepWP_epilogue_26c_fine [MallocngMultiPlacement]
     SepWP (mallocngBlockProg mmpl 7 msvc) (s0.readReg64 Reg.lr) s
       (StackFrameOpen s0 ∗ (((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ (StaticFrameA γ maddrs st'.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
         (m ↦ₛ List.replicate 40 0#8) ∗ CtxCells maddrs.ctx { st'.ctx with availMeta := oldAv, availMetaCount := oldCnt } ∗
-        ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+        MallocngAuxvPtrCell true maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo true γ st'.auxvPtr st'.auxvSnap ∗
         ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗ ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗ MappedSet st'.masterDom (OwnedMappedByte st'))))
       (AllocMetaFinePost inflight γ tp brkStart liveCost peakCost maxMetaAreas st s0) oom := by
   rw [zero40_eq_cells m]
@@ -260,7 +260,7 @@ theorem sepWP_epilogue_26c_fine [MallocngMultiPlacement]
       s1.readReg64 .x19 = m ∧ Cs21Preserved s0 s1 ∧ MallocngProcPreserved s0 s1 ∧ s1.brk = s.brk)
       (StackFrameOpen s0 ∗ (((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ (StaticFrameA γ maddrs st'.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
         (m ↦₆₄ 0#64) ∗ ((m + 8#64) ↦₆₄ 0#64) ∗ ((m + 16#64) ↦ₛ List.replicate 24 0#8) ∗ CtxCells maddrs.ctx st'.ctx ∗
-        ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+        MallocngAuxvPtrCell true maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo true γ st'.auxvPtr st'.auxvSnap ∗
         ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗ ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗ MappedSet st'.masterDom (OwnedMappedByte st'))))) hcl ?_) ?_)
   · unfold CtxCells; dsimp only [ctxMiddleBytes]; simp only [BitVec.reduceSub] at hPc; conv => arg 2; simp only [BitVec.reduceSub]
     wp_sym_steps; simp only [← hAvEq] at *
@@ -300,7 +300,7 @@ theorem sepWP_activate_2a0_fine [MallocngMultiPlacement]
     SepWP (mallocngBlockProg mmpl 7 msvc) (s0.readReg64 Reg.lr) s
       (StackFrameSlow s0 ∗ (((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ (StaticFrameA γ maddrs st'.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
         (ap ↦ₛ List.replicate 4096 0#8) ∗ CtxCells maddrs.ctx { st'.ctx with availMeta := oldAv, availMetaCount := oldCnt, availMetaAreaCount := st'.ctx.availMetaAreaCount + 1#64, metaAreaHead := oldHd, metaAreaTail := oldTl, availMetaAreas := oldAreas } ∗
-        ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+        MallocngAuxvPtrCell true maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo true γ st'.auxvPtr st'.auxvSnap ∗
         ByteMap st'.masterDom (OwnedRwByte st) bv0 ∗ ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗ MappedSet st'.masterDom (OwnedMappedByte st'))))
       (AllocMetaFinePost inflight γ tp brkStart liveCost peakCost maxMetaAreas st s0) oom := by
   have hSpA : (s0.sp &&& 15#64 == 0#64) = true := by simpa [State.spAligned] using hSp0
@@ -315,7 +315,7 @@ theorem sepWP_activate_2a0_fine [MallocngMultiPlacement]
       Cs21Preserved s0 s1 ∧ MallocngProcPreserved s0 s1 ∧ s1.brk = s.brk)
       (StackFrameSlow s0 ∗ (((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ (StaticFrameA γ maddrs st'.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
         ((ap + 24#64) ↦ₛ List.replicate 40 0#8) ∗ CtxCells maddrs.ctx { st'.ctx with availMeta := oldAv, availMetaCount := oldCnt } ∗
-        ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+        MallocngAuxvPtrCell true maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo true γ st'.auxvPtr st'.auxvSnap ∗
         ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗ ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗ MappedSet st'.masterDom (OwnedMappedByte st'))))) hcl ?_) ?_)
   · rw [← hApBm, metaHdrBytes_eq_cells]; unfold StackFrameSlow SavedRegs21 CtxCells; dsimp only [ctxMiddleBytes]
     conv => arg 2; simp only [BitVec.reduceSub]
@@ -374,14 +374,14 @@ theorem sepWP_mprotect_224_fine [MallocngMultiPlacement]
         (StaticFrameA γ maddrs st'.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
           (ap ↦ₙ List.replicate 4096 0#8) ∗
           CtxCells maddrs.ctx { st'.ctx with availMeta := oldAv, availMetaCount := oldCnt, availMetaAreaCount := st'.ctx.availMetaAreaCount + 1#64, metaAreaHead := oldHd, metaAreaTail := oldTl, availMetaAreas := oldAreas } ∗
-          ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+          MallocngAuxvPtrCell true maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo true γ st'.auxvPtr st'.auxvSnap ∗
           ByteMap st'.masterDom (OwnedRwByte st) bv0 ∗ ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
           MappedSet st'.masterDom (OwnedMappedByte st'))))
       (AllocMetaFinePost inflight γ tp brkStart liveCost peakCost maxMetaAreas st s0)
       (fun sf => ⌜MallocngPlacedOomCond msvc 1 (allocMetaFineByteBound maxMetaAreas) s0 sf⌝) := by
   let P_rest := StaticFrameA γ maddrs st'.liveMap ∗
     CtxCells maddrs.ctx { st'.ctx with availMeta := oldAv, availMetaCount := oldCnt, availMetaAreaCount := st'.ctx.availMetaAreaCount + 1#64, metaAreaHead := oldHd, metaAreaTail := oldTl, availMetaAreas := oldAreas } ∗
-    ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+    MallocngAuxvPtrCell true maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo true γ st'.auxvPtr st'.auxvSnap ∗
     ByteMap st'.masterDom (OwnedRwByte st) bv0 ∗ ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
     MappedSet st'.masterDom (OwnedMappedByte st')
   let retPc := mbase 7 + (reloc_call_off% blk07Relocs "mprotect" + 4#64)
@@ -601,7 +601,7 @@ theorem sepWP_slowPathC_144_fine [MallocngMultiPlacement]
     SepWP (mallocngBlockProg mmpl 7 msvc) (s0.readReg64 Reg.lr) s
       (StackFrameSlow s0 ∗ (((tp - 0xa4#64) ↦₃₂ errnoVal) ∗
         (StaticFrameA γ maddrs st.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
-          CtxCells maddrs.ctx st.ctx ∗ ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+          CtxCells maddrs.ctx st.ctx ∗ MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo true γ st.auxvPtr st.auxvSnap ∗
           ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗ ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
           MappedSet st.masterDom (OwnedMappedByte st))))
       (AllocMetaFinePost inflight γ tp brkStart liveCost peakCost maxMetaAreas st s0)
@@ -617,7 +617,7 @@ theorem sepWP_slowPathC_144_fine [MallocngMultiPlacement]
   have hPowLe36 : 2 ^ (m + 1) ≤ 2 ^ 36 := Nat.pow_le_pow_right (n := 2) (by decide) (by omega)
   let retMmap := mbase 7 + (reloc_call_off% blk07Relocs "__mmap" 0 + 4#64)
   let P_rest := StaticFrameA γ maddrs st.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
-    CtxCells maddrs.ctx st.ctx ∗ ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+    CtxCells maddrs.ctx st.ctx ∗ MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo true γ st.auxvPtr st.auxvSnap ∗
     ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗ ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
     MappedSet st.masterDom (OwnedMappedByte st)
   refine SepWP.cut (mid := mbase 16)
@@ -660,7 +660,7 @@ theorem sepWP_slowPathC_144_fine [MallocngMultiPlacement]
           MappedSet st.masterDom (OwnedMappedByte st) ∗
           (stackAt (s0.sp - 80#64) 64 ∗ ((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ memRegion (s0.sp - 224#64) 80 ∗
             SavedRegs0 s0 ∗ SavedRegs21 s0 ∗ cells (s0.sp - 16#64) 2 ∗ StaticFrameA γ maddrs st.liveMap ∗
-            ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗ ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗ R_sat) :=
+            ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗ MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo true γ st.auxvPtr st.auxvSnap ∗ R_sat) :=
         Satisfies.of_entails hmSat (by unfold SavedRegs0 SavedRegs21; rw [← ctx_toBytes_eq_cells _ _ l1 l2 l3 l4 l5Len]; sep_frame)
       have hDisjRoot := disjoint_protNone_batch (A := maddrs) hWf hAv0 hMbAlign hLenGe (by simpa [hmDef, hLenDef] using hMbFit) hmBatch'
       obtain ⟨hmProps, hWf', hGrpPost, hPnEq, hTailBm, hRw0Dom, hApBm, hMpEq⟩ :=
@@ -685,11 +685,11 @@ theorem sepWP_slowPathC_144_fine [MallocngMultiPlacement]
           (MappedSet st'.masterDom (OwnedMappedByte st') ∗
             (StackFrameSlow s0 ∗ (((tp - 0xa4#64) ↦₃₂ errnoVal) ∗
               (StaticFrameA γ maddrs st'.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
-                CtxCells maddrs.ctx st.ctx ∗ ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+                CtxCells maddrs.ctx st.ctx ∗ MallocngAuxvPtrCell true maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo true γ st'.auxvPtr st'.auxvSnap ∗
                 ByteMap st'.masterDom (OwnedRwByte st) bv0)))))
         (R := StackFrameSlow s0 ∗ (((tp - 0xa4#64) ↦₃₂ errnoVal) ∗
           (StaticFrameA γ maddrs st'.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
-            (ap ↦ₙ List.replicate 4096 0#8) ∗ CtxCells maddrs.ctx st.ctx ∗ ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+            (ap ↦ₙ List.replicate 4096 0#8) ∗ CtxCells maddrs.ctx st.ctx ∗ MallocngAuxvPtrCell true maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo true γ st'.auxvPtr st'.auxvSnap ∗
             ByteMap st'.masterDom (OwnedRwByte st) bv0 ∗ ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
             MappedSet st'.masterDom (OwnedMappedByte st'))))
         (by rw [← hPn', ← hMp', hRw0Dom]; unfold StackFrameSlow SavedRegs0 SavedRegs21; dsimp only [P_rest, st']; sep_frame)
@@ -704,7 +704,7 @@ theorem sepWP_slowPathC_144_fine [MallocngMultiPlacement]
             (StaticFrameA γ maddrs st'.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
               (ap ↦ₙ List.replicate 4096 0#8) ∗
               CtxCells maddrs.ctx { st'.ctx with availMeta := st.ctx.availMeta, availMetaCount := st.ctx.availMetaCount, availMetaAreaCount := st'.ctx.availMetaAreaCount + 1#64, metaAreaHead := st.ctx.metaAreaHead, metaAreaTail := st.ctx.metaAreaTail, availMetaAreas := ap } ∗
-              ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+              MallocngAuxvPtrCell true maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo true γ st'.auxvPtr st'.auxvSnap ∗
               ByteMap st'.masterDom (OwnedRwByte st) bv0 ∗ ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
               MappedSet st'.masterDom (OwnedMappedByte st'))))) hcl2 ?_) ?_)
       · dsimp only [retMmap] at hPc2
@@ -764,12 +764,12 @@ theorem sepWP_fastPath1_028_fine [MallocngMultiPlacement]
     SepWP (mallocngBlockProg mmpl 7 msvc) (s0.readReg64 Reg.lr) s
       (StackFrameOpen s0 ∗ (((tp - 0xa4#64) ↦₃₂ errnoVal) ∗
         (StaticFrameA γ maddrs st.liveMap ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
-          CtxCells maddrs.ctx st.ctx ∗ ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+          CtxCells maddrs.ctx st.ctx ∗ MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo true γ st.auxvPtr st.auxvSnap ∗
           ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗ ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
           MappedSet st.masterDom (OwnedMappedByte st))))
       (AllocMetaFinePost inflight γ tp brkStart liveCost peakCost maxMetaAreas st s0) oom := by
   let R_inv := StackFrameOpen s0 ∗ ((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ StaticFrameA γ maddrs st.liveMap ∗
-    ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗ ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+    ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗ MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo true γ st.auxvPtr st.auxvSnap ∗
     ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗ MappedSet st.masterDom (OwnedMappedByte st)
   let epOff := words_ret_off% blk07Words - 16#64
   rcases rest with _ | ⟨fm1, _ | ⟨fm2, tl⟩⟩

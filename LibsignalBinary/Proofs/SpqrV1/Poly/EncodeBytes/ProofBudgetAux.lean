@@ -9,15 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.Proof
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.LoopBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.Proof
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.LoopBudget
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.Alloc
 import ProofLib.SepLogic.WP.Apply
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
 
 /-!
 # `VmPreserved` Non-Allocation Segments for `<PolyEncoder as Encoder>::encode_bytes`
@@ -26,7 +32,7 @@ Provides `VmPreserved`-strengthened `[LibsignalPlacement]` prologue, length-disp
 and `memcpy` finish lemmas for Block `417`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -77,8 +83,6 @@ attribute [local arm64_norm, local wp_norm] bv_sub_add_lit bv_add_add_lit BitVec
   sp_sub_96_add_72 sp_sub_96_add_80 sp_sub_96_add_88 sp_sub_96_add_96 sp_sub_88_add_8
   sp_sub_80_add_8 sp_sub_72_add_8 sp_sub_64_add_8 sp_sub_56_add_8 sp_sub_48_add_8
   sp_sub_40_add_8 sp_sub_32_add_8 sp_sub_24_add_8 sp_sub_16_add_8
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓] (ls_stub% "memcpy")
-
 private noncomputable abbrev keep417 [LibsignalPlacement] : BitVec 64 → Bool :=
   ProofLib.progKeep ((blkPC_417).rebase (blkPl_417).base (Rust.withPanics vmTrapHooks))
 

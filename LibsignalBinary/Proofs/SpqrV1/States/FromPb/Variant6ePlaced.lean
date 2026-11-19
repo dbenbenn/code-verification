@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch3Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2a
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6e
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 6 (`HeaderReceived`, `+1464`, Block `333`) — Part E
@@ -21,7 +22,7 @@ import ProofLib.SepLogic.WPp
 Relocatable (`Obj.MultiPlacedLib`) migration of `Variant6e.lean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

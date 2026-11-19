@@ -20,7 +20,7 @@ Partitions Alice's persistent and transient `init` file paths, characterizes
 path class.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,7 +42,7 @@ open CryptoVerification.SignalSession
 def aliceTopDirs : List String := ["identities", "sessions", "bundle"]
 
 /-- Persistent paths of Alice's directory (`commonFiles` and optional session file). -/
-def aliceKeepPaths : List String :=
+@[expose] def aliceKeepPaths : List String :=
   [addressFile, identityKeyPairFile, registrationIdFile,
    identityFile bobUuid, sessionFile ⟨bobUuid, 1⟩]
 
@@ -56,10 +56,10 @@ def aliceScrubPaths : List String :=
    bundleDir ++ "/one-time-pre-key"]
 
 /-- All 11 file paths appearing in Alice's `encodeDir`, `PublicBundle.files bundleDir`, and `coins`. -/
-def aliceAllPaths : List String := aliceKeepPaths ++ aliceScrubPaths
+@[expose] def aliceAllPaths : List String := aliceKeepPaths ++ aliceScrubPaths
 
 /-- Every file entry in `files` uses one of the 11 canonical Alice/bundle/coins paths. -/
-def AlicePathList (files : List (String × HwBytes)) : Prop :=
+@[expose] def AlicePathList (files : List (String × HwBytes)) : Prop :=
   ∀ f ∈ files, f.1 ∈ aliceAllPaths
 
 theorem AlicePathList.append {l₁ l₂ : List (String × HwBytes)}

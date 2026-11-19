@@ -12,7 +12,7 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafDefs
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
 
 /-!
@@ -23,7 +23,7 @@ Total-correctness (`RustCliAllocBudget M`) contracts (`skipField3Spec`, `skipFie
 invariant precondition `skipGroupLoopPre3` for `prost::encoding::skip_field::<&mut &[u8]> [local#5]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,7 +47,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget (SkipFieldEnv skipFie
 
 /-- Budget-threaded contract of `prost::encoding::skip_field::<&mut &[u8]>` in terms of
 `LibsignalProtoCodec.skipField` under Regime A (`skipField3Stack`). -/
-def skipField3Spec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def skipField3Spec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SkipFieldGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
@@ -75,7 +75,7 @@ theorem skipField3Spec_eq_gen {M : AllocCostModel} (A : RustCliAllocBudget M)
   rfl
 
 /-- Depth- and predicate-specialized budget-threaded `skip_field` contract at `skipField3Stack`. -/
-def skipField3SpecAt {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def skipField3SpecAt {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (depth : Nat) (P : SkipFieldGhost → Prop) :
     Spec (SkipFieldGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -184,14 +184,6 @@ theorem subroutine_ok_skipField3_imp_lscl {M : AllocCostModel}
   simp only [skipField3SpecAt, sepConj_assoc, satisfies_pure_sepConj]
   exact ⟨⟨himp x hpre.1.1, hpre.1.2⟩, hpre.2⟩
 
-theorem skipField3SpecAt_reaches_outcome_lscl_eq {M : AllocCostModel}
-    (pl : Obj.MultiPlacement) (prog : Program)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (P : SkipFieldGhost → Prop) (x : SkipFieldGhost) (st : M.σ) (R : SepProp) (s0 : State) :
-    reaches_outcome prog (withLsCodeLoaded pl (skipField3SpecAt A lim x.depth P)) (x, st) R s0 s0 =
-      reaches_outcome prog (withLsCodeLoaded pl (skipField3Spec A lim)) (x, st) R s0 s0 :=
-  reaches_outcome_eq_of_parts_eq (fun _ => rfl) (fun _ => rfl) (fun _ _ => rfl) (fun _ => rfl)
-
 theorem subroutine_ok_skipField3Spec_of_at_depth_lscl {M : AllocCostModel}
     {pl : Obj.MultiPlacement} {prog : Program} {entry : BitVec 64}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -276,13 +268,5 @@ abbrev skipGroupLoopPre3 {M : AllocCostModel} (A : RustCliAllocBudget M)
     ((s0.sp - 16#64) ↦₆₄ s0.readReg64 (Reg.gpr 20#5)) ∗
     ((s0.sp - 8#64) ↦₆₄ s0.readReg64 (Reg.gpr 19#5)) ∗
     skipBelow3 s0.sp (d + 1)
-
-theorem skipGroupLoopPre3_eq_atState {M : AllocCostModel} (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (st : M.σ) (s0 s : State) (d : Nat)
-    (bufRef slot ptr v_pad : BitVec 64) (bs cur : List (BitVec 8)) :
-    skipGroupLoopPre3 A lim st s0 s d bufRef slot ptr v_pad bs cur =
-      CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.skipGroupLoopPre3
-        (A.atState lim st s) s0 d bufRef slot ptr v_pad bs cur :=
-  rfl
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafDefsBudget

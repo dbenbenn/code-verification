@@ -10,14 +10,14 @@ limitations under the License.
 module
 
 import all Init.Data.String.Defs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Kits
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 
 /-!
 # Pure Arithmetic, Byte-Slice, and `hasChunk` Lemmas for `mark_kyber_pre_key_used::{closure#0}`
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,9 +34,6 @@ theorem utf8_dot_base_ke :
 
 theorem utf8_dot_base_ke_length : (utf8 ".base-ke").length = 8 := by
   rw [utf8_dot_base_ke]; rfl
-
-theorem utf8_ys : utf8 "ys" = [0x79#8, 0x73#8] := by
-  decide +kernel
 
 theorem baseKeysName_eq_append (id : BitVec 32) :
     keyName id ++ utf8 ".base-ke" ++ [0x79#8, 0x73#8] = baseKeysName id := by

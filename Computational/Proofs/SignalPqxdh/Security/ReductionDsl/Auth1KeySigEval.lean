@@ -9,16 +9,36 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySig
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhStepEval
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhGrow
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimSend
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeSigStep
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepBase
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhStep
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySig -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhStepEval -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhGrow
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimSend
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeSigStep
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepBase
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhStep
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepSmall
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepSend
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepRecv
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuth1KeySig -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhEvalEq
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEval
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEvalEq
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhProofsBase
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Handler Evaluation for the One-Key `Auth` `GapSigEufCma` DSL Program
@@ -27,7 +47,7 @@ import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepRecv
 shallow step `sigAuth1KeyStep`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -43,20 +63,20 @@ set_option allowUnsafeReducibility true
 attribute [implicit_reducible] sigAndDdhOracle
 end
 
-@[simp] def a1sStToVal {S : Setup} (st : SigAuth1KeySimState S) : a1sStTy.denote :=
+@[expose, simp] def a1sStToVal {S : Setup} (st : SigAuth1KeySimState S) : a1sStTy.denote :=
   (((paVal st.targetPk st.targetPk true st.targetParty S.N_spk_tot, fgSimToVal st.fg.sim),
       st.fg.sigBudget),
     (st.targetParty, (st.targetPk, st.forgery)))
 
-@[simp] def a1sRSVal {S : Setup} (r : AuthResponse × SigAuth1KeySimState S) : a1sRS.denote :=
+@[expose, simp] def a1sRSVal {S : Setup} (r : AuthResponse × SigAuth1KeySimState S) : a1sRS.denote :=
   (authRespToVal r.1, a1sStToVal r.2)
 
-def a1sSendBundle? {S : Setup} : AuthQuery S → Option PreKeyBundleInput
+@[expose] def a1sSendBundle? {S : Setup} : AuthQuery S → Option PreKeyBundleInput
   | .sendOPK _ _ bu _ _ => some bu
   | .sendNoOPK _ _ bu _ _ => some bu
   | _ => none
 
-def a1sSendCheckShallow (S : Setup) (bu : PreKeyBundleInput) (st : SigAuth1KeySimState S) :
+@[expose] def a1sSendCheckShallow (S : Setup) (bu : PreKeyBundleInput) (st : SigAuth1KeySimState S) :
     OracleComp GdhSignSimSpec (a1sRS.denote ⊕ Unit) := do
   let fg' ← _root_.SignalPqxdh.Security.embedPrim (spec := sigAndDdhSpec)
     (extractBundleForgeryPrim S st.targetParty st.targetPk
@@ -68,58 +88,6 @@ section Branches
 
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)} [h₁ : Ext Γ₁ Δ] [h₂ : Ext Γ₂ Δ]
   (env : Env Δ)
-
-theorem a1sSendCheckC_eval (s : Var Γ₁ a1sStTy) (x : Var Γ₂ sendQTy)
-    (st : SigAuth1KeySimState S) (bu : PreKeyBundleInput) (n1 n2 : Nat) (b1 b2 : Bytes)
-    (hs : Env.get env (h₁.wk s) = a1sStToVal st)
-    (hx : Env.get env (h₂.wk x) = (n1, (n2, (preKeyBundleToVal bu, (b1, b2)))))
-    (hfg : st.forgery = none) (hK : st.fg.sim.base.spkBundles.length ≤ K)
-    (hPrin : st.fg.sim.base.principals.length ≤ K) :
-    (a1sSendCheckC S K s x).eval env = a1sSendCheckShallow S bu st := by
-  unfold a1sSendCheckC a1sSendCheckShallow
-  simp only [letV, bindV, Comp.eval_letC, Comp.eval, KeyIndGapDh.liftBase_eval]
-  rw [extractC_eval S K _ st.fg.sim.base _ _ _ _ st.targetParty st.targetPk bu
-    ?_ ?_ ?_ ?_ hK hPrin]
-  rw [hfg]
-  refine bind_congr fun fg' => ?_
-  cases fg' <;> simp [isSomeE, Expr.eval, aNone]
-  all_goals simp [Expr.eval, v, hs, hx, Env.get_vs, Env.get_vz, Ext.step_wk, Ext.refl_wk]
-
-theorem a1sDelegateC_eval (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy)
-    (st : SigAuth1KeySimState S) (qv : AuthQuery S)
-    (hs : Env.get env (h₁.wk s) = a1sStToVal st)
-    (hq : Env.get env (h₂.wk q) = authQueryToVal qv) (hB : AgBnd K st.fg.sim) :
-    (a1sDelegateC S K s q).eval env = a1sRSVal <$> sigAuth1KeyDelegate S K qv st := by
-  unfold a1sDelegateC sigAuth1KeyDelegate
-  simp only [letV, bindV, Comp.eval_letC, Comp.eval]
-  rw [a1gStepC_eval S K _ st.fg st.targetPk st.targetPk true st.targetParty S.N_spk_tot _ _ qv
-    ?_ ?_ hB]
-  · simp only [map_eq_bind_pure_comp, bind_assoc, Function.comp_def, pure_bind]
-    refine bind_congr fun r => ?_
-    simp [Expr.eval, v, hs, Env.get_vs, Env.get_vz, Ext.step_wk, Ext.refl_wk]
-  · simp [Expr.eval, v, hs, Env.get_vz, Ext.refl_wk]
-  · simp [Expr.eval, v, hq, Env.get_vs, Ext.step_wk]
-
-theorem a1sPreC_eval (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy)
-    (st : SigAuth1KeySimState S) (qv : AuthQuery S)
-    (hs : Env.get env (h₁.wk s) = a1sStToVal st)
-    (hq : Env.get env (h₂.wk q) = authQueryToVal qv)
-    (hfg : st.forgery = none) (hK : st.fg.sim.base.spkBundles.length ≤ K)
-    (hPrin : st.fg.sim.base.principals.length ≤ K) :
-    (a1sPreC S K s q).eval env =
-      match a1sSendBundle? qv with
-      | some bu => a1sSendCheckShallow S bu st
-      | none => pure (Sum.inr ()) := by
-  cases qv <;>
-    simp only [a1sPreC, caseSumV, v, Comp.eval_caseSumC_elim, Comp.eval, Expr.eval, hq,
-      authQueryToVal, authQenc, Sum.elim_inl, Sum.elim_inr, a1sSendBundle?,
-      Ext.refl_wk, Env.get_vz]
-  case sendOPK a b bu c d =>
-    exact a1sSendCheckC_eval S K _ s .vz st bu _ _ _ _
-      (by simp only [Ext.step_wk, Env.get_vs, hs]) rfl hfg hK hPrin
-  case sendNoOPK a b bu c d =>
-    exact a1sSendCheckC_eval S K _ s .vz st bu _ _ _ _
-      (by simp only [Ext.step_wk, Env.get_vs, hs]) rfl hfg hK hPrin
 
 end Branches
 
@@ -135,60 +103,18 @@ theorem sigAuth1KeyStep_of_bundle_some (S : Setup) (K : Nat) (q : AuthQuery S)
   cases q <;> simp only [a1sSendBundle?, reduceCtorEq, Option.some.injEq] at hb <;>
     subst hb <;> simp [sigAuth1KeyStep, hfg]
 
-/-- Handler agreement: `a1sHandleDsl` evaluates to the shallow `sigAuth1KeyStep`. -/
-theorem a1sHandleDsl_eval (S : Setup) (K : Nat) (q : AuthQuery S) (st : SigAuth1KeySimState S)
-    (hB : AgBnd K st.fg.sim) :
-    (a1sHandleDsl S K).eval (.cons (a1sStToVal st) (.cons (authQueryToVal q) .nil)) =
-      a1sRSVal <$> sigAuth1KeyStep S K q st := by
-  let env0 : Env [a1sStTy, authQueryTy] := .cons (a1sStToVal st) (.cons (authQueryToVal q) .nil)
-  change (a1sHandleDsl S K).eval env0 = _
-  rcases hfg : st.forgery with _ | fgVal
-  · simp only [a1sHandleDsl, a1sStepC, bindV, caseSumV, Comp.iteC, Comp.caseSumC, Comp.eval,
-      isSomeE, a1sFg, v, Expr.eval, env0, a1sStToVal, hfg]
-    rw [a1sPreC_eval S K _ .vz (.vs .vz) st q (by simp [Ext.refl_wk, Env.get_vz, hfg])
-      (by simp [Ext.refl_wk, Env.get_vz, Env.get_vs]) hfg hB.base.spkBundles_le
-      hB.base.principals_le]
-    let envD : Env (Ty.unit :: Ty.sum a1sRS Ty.unit :: [a1sStTy, authQueryTy]) :=
-      Env.cons () (Env.cons (Sum.inr ()) env0)
-    have hDel : (a1sDelegateC S K (Var.vz : Var [a1sStTy, authQueryTy] a1sStTy)
-        (Var.vs Var.vz : Var [a1sStTy, authQueryTy] authQueryTy)).eval
-        envD =
-        a1sRSVal <$> sigAuth1KeyDelegate S K q st :=
-      a1sDelegateC_eval S K _ (Var.vz : Var [a1sStTy, authQueryTy] a1sStTy)
-        (Var.vs Var.vz : Var [a1sStTy, authQueryTy] authQueryTy) st q
-        rfl
-        rfl hB
-    simp only [envD, env0, a1sStToVal, hfg] at hDel
-    rcases hb : a1sSendBundle? q with _ | bu
-    · simp only [pure_bind]
-      have hs := sigAuth1KeyStep_of_bundle_none S K q st hfg hb
-      rw [hs]
-      simp only [Ext.refl_wk, Env.get_vz]
-      exact hDel
-    · have hs := sigAuth1KeyStep_of_bundle_some S K q st bu hfg hb
-      rw [hs]
-      simp only [a1sSendCheckShallow, sigAuth1KeySend, bind_assoc, map_bind]
-      refine bind_congr fun fg' => ?_
-      cases hf' : fg'.isSome
-      · simp only [Bool.false_eq_true, ↓reduceIte, pure_bind]
-        simp only [Ext.refl_wk, Env.get_vz]
-        exact hDel
-      · simp [Env.get_vz, a1sRSVal]
-  · simp [a1sHandleDsl, a1sStepC, Comp.iteC, Comp.eval, isSomeE, a1sFg, Expr.eval, v, env0, hfg,
-      Env.get_vz, sigAuth1KeyStep, aNone]
-
 /-! ## Clamped evaluation -/
 
-@[simp] def a1sSt2ToVal {S : Setup} (K : Nat) (st : SigAuth1KeySimState S) : a1sStTy.denote :=
+@[expose, simp] def a1sSt2ToVal {S : Setup} (K : Nat) (st : SigAuth1KeySimState S) : a1sStTy.denote :=
   (((paVal st.targetPk st.targetPk true st.targetParty 0, fgSimToVal st.fg.sim),
       a1gClampedSigB S K st.fg),
     (st.targetParty, (st.targetPk, st.forgery)))
 
-@[simp] def a1sRS2Val {S : Setup} (K : Nat) (r : AuthResponse × SigAuth1KeySimState S) :
+@[expose, simp] def a1sRS2Val {S : Setup} (K : Nat) (r : AuthResponse × SigAuth1KeySimState S) :
     a1sRS.denote :=
   (authRespToVal r.1, a1sSt2ToVal K r.2)
 
-def a1sSendCheckShallow2 (S : Setup) (K : Nat) (bu : PreKeyBundleInput)
+@[expose] def a1sSendCheckShallow2 (S : Setup) (K : Nat) (bu : PreKeyBundleInput)
     (st : SigAuth1KeySimState S) : OracleComp GdhSignSimSpec (a1sRS.denote ⊕ Unit) := do
   let fg' ← _root_.SignalPqxdh.Security.embedPrim (spec := sigAndDdhSpec)
     (extractBundleForgeryPrim S st.targetParty st.targetPk

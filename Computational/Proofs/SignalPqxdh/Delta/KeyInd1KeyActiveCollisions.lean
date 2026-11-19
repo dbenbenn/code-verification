@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Pqxdh.Bound
-public import Computational.Proofs.GameHop.StateSim -- proof-setup: allow-public-import
-public import Computational.Proofs.GameHop.Fel -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.Collisions -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.SigHop1Key -- proof-setup: allow-public-import
+import Computational.Proofs.GameHop.StateSim
+import Computational.Proofs.GameHop.Fel
+import Computational.Proofs.SignalPqxdh.Security.Collisions
+import Computational.Proofs.SignalPqxdh.Security.SigHop1Key
 public import Computational.Proofs.SignalPqxdh.Security.RoKemHop1Key -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveLengths -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveLengths
 
 /-!
 # Creation-Order Active-Count Birthday Collision Hops
@@ -345,14 +345,6 @@ theorem keyInd1Key_hop_G2_G2_1_active_le (S : Setup) (P : Primitives)
       let n_spk := activeSpkCount S b.q_on
       ((n_spk * (n_spk - 1) : ℕ) : ℝ) / (2 : ℝ) ^ 256 :=
   (keyInd1Key_hop_G2_G2_1_le_prob S P A.1).trans (kemCollProbKeyInd1Key_active_le S P hP b A)
-
-theorem keyInd1Key_hop_G2_G2_5_active_le (S : Setup) (P : Primitives)
-    (hP : CryptoWellFormedPrimitivesδ P) (b : QueryBudget)
-    (A : BoundedAdv (KeyIndAdversary S) b) :
-    |keyInd1KeyAdvG2 S P A.1 - keyInd1KeyAdvG2_5 S P A.1| ≤
-      let n_spk := activeSpkCount S b.q_on
-      ((n_spk * (n_spk - 1) : ℕ) : ℝ) / (2 : ℝ) ^ 256 :=
-  keyInd1Key_hop_G2_G2_1_active_le S P hP b A
 
 /-! ## Active X25519 and initiator `dh2` birthday collision hops -/
 
@@ -960,16 +952,6 @@ theorem keyInd1Key_hop_G0_G0_1_active_le (S : Setup) (P : Primitives)
       let n_send := activeSendCount S b.q_on
       ((n_dh * (n_dh - 1) + n_send * (n_send - 1) : ℕ) : ℝ) / (2 : ℝ) ^ 251 :=
   (keyInd1Key_hop_G0_G0_1_le_prob S P A.1).trans (ecCollProbKeyInd1Key_active_le S P hP b A)
-
-/-- Active-count `G1 -> G2` birthday collision hop. -/
-theorem keyInd1Key_hop_G1_G2_active_le (S : Setup) (P : Primitives)
-    (hP : CryptoWellFormedPrimitivesδ P) (b : QueryBudget)
-    (A : BoundedAdv (KeyIndAdversary S) b) :
-    |keyInd1KeyAdvG1 S P A.1 - keyInd1KeyAdvG2 S P A.1| ≤
-      let n_dh := activeDhCount S b.q_on
-      let n_send := activeSendCount S b.q_on
-      ((n_dh * (n_dh - 1) + n_send * (n_send - 1) : ℕ) : ℝ) / (2 : ℝ) ^ 251 := by
-  have _ := hP; rw [keyInd1KeyAdvG1_eq_G2, sub_self, abs_zero]; positivity
 
 end
 

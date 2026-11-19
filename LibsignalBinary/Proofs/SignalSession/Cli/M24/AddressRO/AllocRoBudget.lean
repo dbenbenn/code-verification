@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.AllocBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.AllocBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budgeted Read-Only `argv` Postcondition for `signal_session::address`
@@ -18,7 +20,7 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Alloc
 Defines `AddrGoalPostRO` over `M24.CalleesRO.addressSpecRO` for read-only (`↦ᵣ`) input slices.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

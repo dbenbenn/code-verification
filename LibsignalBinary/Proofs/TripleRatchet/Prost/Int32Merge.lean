@@ -9,16 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSlice
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSlice -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.FnOffEq
-import LibsignalBinary.Proofs.TripleRatchet.InImage.Prost
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
+import LibsignalBinary.Proofs.TripleRatchet.TrapRng
 import LibsignalBinary.Proofs.TripleRatchet.InImage.VarintSlow.Slow
 import LibsignalBinary.Proofs.VarintBridge
+import ProofLib.Sep
 import ProofLib.SepLogic.WPp
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Prost
 
@@ -46,7 +47,7 @@ structure DecodeVarintSlowGhost where
 
 /-- Contract of `prost::encoding::varint::decode_varint_slow::<&mut &[u8]>` (`0x47f64`)
 in terms of `decodeVarint`. -/
-def decodeVarintSlowSpec (A : RustAlloc) : Spec DecodeVarintSlowGhost where
+@[expose] def decodeVarintSlowSpec (A : RustAlloc) : Spec DecodeVarintSlowGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.bufRef ∧ x.bs.length < 2 ^ 63⌝ ∗
       (x.bufRef ↦₆₄ x.slot) ∗ sliceCursorAt x.slot x.ptr x.bs ∗
@@ -103,9 +104,7 @@ theorem keepsFrozen_write64_pointsTo64 {m : Memory} {a v₀ : BitVec 64} (v : Bi
 
 theorem pointsTo64_pair_entails_memRegion16 (a v0 v1 : BitVec 64) :
     ((a ↦₆₄ v0) ∗ ((a + 8#64) ↦₆₄ v1)) ⊢ memRegion a 16 := by
-  rw [show (16 : Nat) = 8 + 8 from rfl, memRegion_split a 8 8 (by decide)]
-  exact sepConj_mono (pointsTo64_entails_memRegion a v0)
-    (pointsTo64_entails_memRegion (a + 8#64) v1)
+  sep_interval
 
 theorem stackAt_decodeVarintSlow_split (sp : BitVec 64) :
     stackAt sp decodeVarintSlowStack =
@@ -113,30 +112,16 @@ theorem stackAt_decodeVarintSlow_split (sp : BitVec 64) :
         memRegion (sp - 56#64) 40 ∗
         memRegion (sp - 16#64) 16 ∗
         stackAt (sp - 64#64) decodeErrorHookStack := by
-  simp only [stackAt, decodeVarintSlowStack, decodeErrorHookStack, allocHookStack]
-  have h1 := memRegion_split' (b := sp - 8256#64) (b' := sp - 64#64)
-    (n := 8192) (k := 64) (N := 8256) rfl (by bv_omega) (by decide)
-  have h2 := memRegion_split' (b := sp - 64#64) (b' := sp - 16#64)
-    (n := 48) (k := 16) (N := 64) rfl (by bv_omega) (by decide)
-  have h3 := memRegion_split' (b := sp - 64#64) (b' := sp - 56#64)
-    (n := 8) (k := 40) (N := 48) rfl (by bv_omega) (by decide)
-  have hsp : sp - 64#64 - 8192#64 = sp - 8256#64 := by bv_omega
-  rw [hsp, h1, h2, h3, memRegion_eight (sp - 64#64)]
-  ac_rfl
+  dsimp only [stackAt, decodeVarintSlowStack, decodeErrorHookStack, allocHookStack]
+  sep_interval_eq
 
 theorem stackAt_decodeVarintSlow_join (sp : BitVec 64) :
     memRegion (sp - 64#64) 48 ∗
       memRegion (sp - 16#64) 16 ∗
       stackAt (sp - 64#64) decodeErrorHookStack =
       stackAt sp decodeVarintSlowStack := by
-  simp only [stackAt, decodeVarintSlowStack, decodeErrorHookStack, allocHookStack]
-  have h1 := memRegion_split' (b := sp - 8256#64) (b' := sp - 64#64)
-    (n := 8192) (k := 64) (N := 8256) rfl (by bv_omega) (by decide)
-  have h2 := memRegion_split' (b := sp - 64#64) (b' := sp - 16#64)
-    (n := 48) (k := 16) (N := 64) rfl (by bv_omega) (by decide)
-  have hsp : sp - 64#64 - 8192#64 = sp - 8256#64 := by bv_omega
-  rw [hsp, h1, h2]
-  ac_rfl
+  dsimp only [stackAt, decodeVarintSlowStack, decodeErrorHookStack, allocHookStack]
+  sep_interval_eq
 
 theorem decodeVarintSlow_hookOk {A : RustAlloc} {fromHook : State → State}
     (hFrom : HookOk fromHook (decodeErrorFromSpec A)) :
@@ -209,17 +194,8 @@ theorem decodeVarintSlow_hookOk {A : RustAlloc} {fromHook : State → State}
     have hm_fold : ((s0.mem.write64 x.slot (x.ptr + BitVec.ofNat 64 (min 10 x.bs.length))).write64
         (x.slot + 8#64) (BitVec.ofNat 64 (x.bs.length - min 10 x.bs.length))) ⊨
         stackAt s0.sp decodeVarintSlowStack ∗
-        (x.bufRef ↦₆₄ x.slot) ∗ memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs) ∗ A.pool ∗ R := by
-      have hm_adv' : ((s0.mem.write64 x.slot (x.ptr + BitVec.ofNat 64 (min 10 x.bs.length))).write64
-          (x.slot + 8#64) (BitVec.ofNat 64 (x.bs.length - min 10 x.bs.length))) ⊨
-          ((x.slot ↦₆₄ (x.ptr + BitVec.ofNat 64 (min 10 x.bs.length))) ∗
-            ((x.slot + 8#64) ↦₆₄ BitVec.ofNat 64 (x.bs.length - min 10 x.bs.length))) ∗
-          (stackAt s0.sp decodeVarintSlowStack ∗ (x.bufRef ↦₆₄ x.slot) ∗
-            (x.ptr ↦ₛ x.bs) ∗ A.pool ∗ R) :=
-        Satisfies.of_eq hm_adv
-      have hm_adv'' := Satisfies.mono
-        (sepConj_mono_left (pointsTo64_pair_entails_memRegion16 x.slot _ _)) hm_adv'
-      exact Satisfies.of_eq hm_adv''
+        (x.bufRef ↦₆₄ x.slot) ∗ memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs) ∗ A.pool ∗ R :=
+      Satisfies.mono (by sep_interval) hm_adv
     rw [stackAt_decodeVarintSlow_split, sepConj_assoc, sepConj_assoc, sepConj_assoc,
       sepExists_sepConj_left, satisfies_sepExists] at hm_fold
     obtain ⟨v_stk, hm_stk⟩ := hm_fold
@@ -252,13 +228,14 @@ theorem decodeVarintSlow_hookOk {A : RustAlloc} {fromHook : State → State}
       refine ⟨hkf_all, hsym_from, Or.inl ⟨⟨rfl, rfl, rfl⟩, ⟨rfl, ?_⟩, ?_⟩⟩
       · simp only [CalleeSavedPreserved, arm64_norm] at hcs2 ⊢
         exact hcs2
-      · simp only [decodeErrorFromSpec, R_frame, arm64_norm,
-          sepConj_assoc, satisfies_pure_sepConj] at hpost2
+      · dsimp only [decodeErrorFromSpec, R_frame] at hpost2
+        simp only [arm64_norm, sepConj_assoc, satisfies_pure_sepConj] at hpost2
         rcases hpost2 with ⟨⟨he_ne, htr2⟩, hmem2⟩
-        simp only [decodeVarintSlowSpec, hd, arm64_norm, htr2, ne_eq, he_ne,
+        dsimp only [decodeVarintSlowSpec]
+        rw [hd]
+        simp only [arm64_norm, htr2, ne_eq, he_ne,
           not_false_eq_true, pure_true, emp_sepConj, sepConj_assoc]
-        have hjoin := stackAt_decodeVarintSlow_join s0.sp
-        exact Satisfies.of_eq hmem2 (by rw [← hjoin]; ac_rfl)
+        exact Satisfies.mono (by rw [← stackAt_decodeVarintSlow_join s0.sp]; sep_interval) hmem2
     · dsimp only [s1] at hpan2 hpost2
       rw [hpan2]
       refine ⟨hkf_all, hsym_from, Or.inr (Or.inl ⟨hpan2, ?_⟩)⟩
@@ -272,26 +249,14 @@ theorem decodeVarintSlow_hookOk {A : RustAlloc} {fromHook : State → State}
 theorem stackAt_decodeVarintSlowExt_split (sp : BitVec 64) :
     stackAt sp extHookStack =
       memRegion (sp - 16384#64) 8128 ∗ stackAt sp decodeVarintSlowStack := by
-  change memRegion (sp - 16384#64) 16384 =
-    memRegion (sp - 16384#64) 8128 ∗ memRegion (sp - 8256#64) 8256
-  exact memRegion_split' (b := sp - 16384#64) (b' := sp - 8256#64)
-    (n := 8128) (k := 8256) (N := 16384) rfl (by bv_omega) (by decide)
-
-theorem fnAddr_rebase_offset {b : BitVec 64} {H : String → Option (State → State)}
-    {name1 name2 : String} {off1 off2 k : Nat}
-    (h1 : libsignalSessionCode.fnOff name1 = off1)
-    (h2 : libsignalSessionCode.fnOff name2 = off2)
-    (hk : off1 + k = off2) :
-    (libsignalSessionCode.rebase b H).fnAddr name1 + BitVec.ofNat 64 k =
-      (libsignalSessionCode.rebase b H).fnAddr name2 := by
-  change (b + BitVec.ofNat 64 (libsignalSessionCode.fnOff name1)) + BitVec.ofNat 64 k =
-    b + BitVec.ofNat 64 (libsignalSessionCode.fnOff name2)
-  rw [h1, h2, ← hk, BitVec.ofNat_add, BitVec.add_assoc]
+  simp only [stackAt, extHookStack, decodeVarintSlowStack, decodeErrorHookStack, allocHookStack,
+    Nat.reducePow]
+  sep_interval_eq
 
 /-- Stack-parameterized contract of `prost::encoding::varint::decode_varint_slow::<&mut &[u8]>` (`0x47f64`)
 in terms of `decodeVarint` (`= decodeVarintSlowSpec A` at `decodeErrorHookStack`,
 `= decodeVarintSlowSpecX A` at `decodeErrorHookStackX`). -/
-def decodeVarintSlowSpecGen (A : RustAlloc) (errStack : Nat) : Spec DecodeVarintSlowGhost where
+@[expose] def decodeVarintSlowSpecGen (A : RustAlloc) (errStack : Nat) : Spec DecodeVarintSlowGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.bufRef ∧ x.bs.length < 2 ^ 63⌝ ∗
       (x.bufRef ↦₆₄ x.slot) ∗ sliceCursorAt x.slot x.ptr x.bs ∗
@@ -311,137 +276,16 @@ def decodeVarintSlowSpecGen (A : RustAlloc) (errStack : Nat) : Spec DecodeVarint
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-theorem decodeVarintSlowGen_ok_of_session2 {oimg : Option Obj.Image} {A : RustAlloc}
-    {prog : Program} {entry : BitVec 64} {errStack : Nat}
-    (hSlow : subroutine_ok prog entry
-      (specWithOptInv oimg
-        (CryptoVerification.LibsignalTripleRatchet.decodeVarintSlowSpecWithStack A (0x40 + errStack)))) :
-    subroutine_ok prog entry (specWithOptInv oimg (decodeVarintSlowSpecGen A errStack)) := by
-  refine subroutine_ok_map_panic hSlow fun y R s0 hpre => ?_
-  refine ⟨(y.bufRef, y.slot, y.ptr, y.bs), R, ?_, ?_, fun _ h => h⟩
-  · simp only [decodeVarintSlowSpecGen,
-      CryptoVerification.LibsignalTripleRatchet.decodeVarintSlowSpecWithStack,
-      sliceCursorAt, sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-    exact ⟨hpre.1, ⟨hpre.2.1.1, by omega⟩, hpre.2.2⟩
-  · intro sf hpost
-    have hvs : varintSlow y.bs =
-        (decodeVarint y.bs).map (fun p => (p.1, y.bs.length - p.2.length)) :=
-      decodeVarint_eq_varintSlow y.bs
-    dsimp only [specWithOptInv, CryptoVerification.LibsignalTripleRatchet.decodeVarintSlowSpecWithStack,
-      decodeVarintSlowSpecGen] at hpost ⊢
-    rw [hvs] at hpost
-    cases hd : decodeVarint y.bs with
-    | some p =>
-      rcases p with ⟨v, rest⟩
-      rw [hd] at hpost
-      dsimp only [Option.map, sliceCursorAfter] at hpost ⊢
-      obtain ⟨k, _, _, hrest_eq⟩ := decodeVarintAux_suffix y.bs 0 0#64 v rest hd
-      have hlen_sub : y.bs.length - (y.bs.length - rest.length) = rest.length := by
-        rw [hrest_eq, List.length_drop]; omega
-      rw [hlen_sub] at hpost
-      exact Satisfies.of_eq hpost
-    | none =>
-      rw [hd] at hpost
-      dsimp only [Option.map] at hpost ⊢
-      have hpost1 : sf.mem ⊨
-          ((y.slot ↦₆₄ (y.ptr + BitVec.ofNat 64 (min 10 y.bs.length))) ∗
-            ((y.slot + 8#64) ↦₆₄ BitVec.ofNat 64 (y.bs.length - min 10 y.bs.length))) ∗
-          (⌜sf.readReg64 .x0 = 1#64 ∧ sf.readReg64 .x1 ≠ 0#64⌝ ∗
-            ⌜sf.trace = s0.trace⌝ ∗
-            (y.bufRef ↦₆₄ y.slot) ∗ A.pool ∗ stackAt s0.sp (0x40 + errStack) ∗
-            decodeErrorAtStackLen A (sf.readReg64 .x1) 0 ∗ (y.ptr ↦ₛ y.bs) ∗ R) :=
-        Satisfies.of_eq hpost
-      have hmem1 := Satisfies.mono
-        (sepConj_mono_left (pointsTo64_pair_entails_memRegion16 y.slot _ _)) hpost1
-      have hmem2 : sf.mem ⊨
-          ⌜sf.readReg64 .x0 = 1#64 ∧ sf.readReg64 .x1 ≠ 0#64⌝ ∗
-          (⌜sf.trace = s0.trace⌝ ∗ (y.bufRef ↦₆₄ y.slot) ∗ A.pool ∗
-            stackAt s0.sp (0x40 + errStack) ∗
-            decodeErrorAtStackLen A (sf.readReg64 .x1) 0 ∗
-            memRegion y.slot 16 ∗ (y.ptr ↦ₛ y.bs) ∗ R) :=
-        Satisfies.of_eq hmem1
-      rw [satisfies_pure_sepConj] at hmem2
-      rcases hmem2 with ⟨⟨hx0, hx1⟩, hmem3⟩
-      have hmem4 : sf.mem ⊨
-          ⌜sf.readReg64 .x0 = 1#64⌝ ∗
-          (⌜sf.readReg64 .x1 ≠ 0#64⌝ ∗
-            (⌜sf.trace = s0.trace⌝ ∗ (y.bufRef ↦₆₄ y.slot) ∗ A.pool ∗
-              stackAt s0.sp (0x40 + errStack) ∗
-              decodeErrorAtStackLen A (sf.readReg64 .x1) 0 ∗
-              memRegion y.slot 16 ∗ (y.ptr ↦ₛ y.bs) ∗ R)) := by
-        rw [satisfies_pure_sepConj, satisfies_pure_sepConj]
-        exact ⟨hx0, hx1, hmem3⟩
-      exact Satisfies.of_eq hmem4
-
-theorem decodeVarintSlow_ok_of_session2 {A : RustAlloc} {prog : Program} {entry : BitVec 64}
-    (hSlow : subroutine_ok prog entry (CryptoVerification.LibsignalTripleRatchet.decodeVarintSlowSpec A)) :
-    subroutine_ok prog entry (decodeVarintSlowSpec A) :=
-  subroutine_ok_of_optNone
-    (decodeVarintSlowGen_ok_of_session2 (oimg := none) (errStack := decodeErrorHookStack)
-      (subroutine_ok_to_optNone hSlow))
-
-theorem decodeVarintSlow_ok_at_of_contract {A : RustAlloc} {b : BitVec 64}
-    {H : String → Option (State → State)}
-    {name : String} {off k : Nat} (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "prost::encoding::varint::decode_varint_slow::<&mut &[u8]>"))
-    (hSlow : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr varintSlowName)
-      (decodeVarintSlowSpec A)) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr name + BitVec.ofNat 64 k)
-      (decodeVarintSlowSpec A) := by
-  rw [fnAddr_rebase_offset hfn (ls_lemma% fnOff "prost::encoding::varint::decode_varint_slow::<&mut &[u8]>") hk]
-  exact hSlow
-
-theorem decodeVarintSlow_ok_at_ext {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel} {ext : String → Option (State → State)}
-    (hC : Stage2Contracts b C A ctl uuidTryParse S ext)
-    {name : String} {off k : Nat} (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "prost::encoding::varint::decode_varint_slow::<&mut &[u8]>")) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (decodeVarintSlowSpec A) :=
-  decodeVarintSlow_ok_at_of_contract hfn hk (decodeVarintSlow_ok_of_session2 hC.decode_varint_slow)
-
-/-- Restates the in-image `decode_varint_slow` contract at `fnAddr name + k` in terms of
-`decodeVarint` and `sliceCursorAt`. -/
-theorem decodeVarintSlow_ok_at {A : RustAlloc} {b : BitVec 64} {C : Crypto}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (hFrom : AllocHooks A abs)
-    {name : String} {off k : Nat} (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "prost::encoding::varint::decode_varint_slow::<&mut &[u8]>")) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      (decodeVarintSlowSpec A) :=
-  decodeVarintSlow_ok_at_of_contract hfn hk
-    (decodeVarintSlow_ok_of_session2 (LibsignalTripleRatchet.decodeVarintSlow_ok b C A ctl abs hFrom))
-
-/-! ## Helper lemmas for `int32::merge::<&mut &[u8]>` -/
-
-theorem fnAddr_tripleRatchetProgAt_offset {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    {name1 name2 : String} {off1 off2 k : Nat}
-    (h1 : libsignalSessionCode.fnOff name1 = off1)
-    (h2 : libsignalSessionCode.fnOff name2 = off2)
-    (hk : off1 + k = off2) :
-    (tripleRatchetProgAt b C ctl abs).fnAddr name1 + BitVec.ofNat 64 k =
-      (tripleRatchetProgAt b C ctl abs).fnAddr name2 :=
-  fnAddr_rebase_offset h1 h2 hk
-
-theorem memRegion_four (a : BitVec 64) : memRegion a 4 = ∃∗ v : BitVec 32, a ↦₃₂ v :=
-  IsBlock.eq (IsBlock.memRegion a 4)
-    (IsBlock.sepExists fun v => IsBlock.pointsTo32 a v)
-    fun _ => ⟨fun _ => ⟨_, rfl⟩, fun _ => trivial⟩
+theorem memRegion_four (a : BitVec 64) : memRegion a 4 = ∃∗ v : BitVec 32, a ↦₃₂ v := by
+  sep_interval_eq
 
 theorem pointsTo8_entails_memRegion1 (a : BitVec 64) (v : BitVec 8) :
     (a ↦₈ v) ⊢ memRegion a 1 := by
-  rw [memRegion_one]
-  exact Entails.sepExists_intro v
+  sep_interval
 
 theorem pointsTo32_entails_memRegion4 (a : BitVec 64) (v : BitVec 32) :
     (a ↦₃₂ v) ⊢ memRegion a 4 := by
-  rw [memRegion_four]
-  exact Entails.sepExists_intro v
+  sep_interval
 
 theorem stackAt_int32MergeGen {errStack : Nat} (herr : 0x50 + (0x50 + errStack) ≤ 2 ^ 64)
     (sp : BitVec 64) :
@@ -455,18 +299,9 @@ theorem stackAt_int32MergeGen {errStack : Nat} (herr : 0x50 + (0x50 + errStack) 
   rw [← memRegion_cells (sp - BitVec.ofNat 64 (8 * 10)) 10 (by decide)] at h0
   rw [show 0x50 + (0x50 + errStack) = (0x50 + errStack) + 8 * 10 by omega, h0]
   change stackAt (sp - 80#64) (0x50 + errStack) ∗ memRegion (sp - 80#64) 80 = _
-  have s1 := memRegion_split (sp - 80#64) 48 32 (by decide)
-  rw [bv_sub_add_lit sp 80 48] at s1
-  have s2 := memRegion_split (sp - 32#64) 8 24 (by decide)
-  rw [bv_sub_add_lit sp 32 8] at s2
-  have s3 := memRegion_split (sp - 24#64) 8 16 (by decide)
-  rw [bv_sub_add_lit sp 24 8] at s3
-  have s4 := memRegion_split (sp - 16#64) 8 8 (by decide)
-  rw [bv_sub_add_lit sp 16 8] at s4
-  rw [s1, s2, s3, s4,
-    memRegion_eight (sp - 32#64), memRegion_eight (sp - 24#64),
-    memRegion_eight (sp - 16#64), memRegion_eight (sp - 8#64)]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
+  congr 1
+  simp only [← sepExists_sepConj_left]
+  sep_interval_eq
 
 theorem stackAt_int32Merge (sp : BitVec 64) :
     stackAt sp int32MergeStack =
@@ -478,7 +313,7 @@ theorem stackAt_int32Merge (sp : BitVec 64) :
   stackAt_int32MergeGen (errStack := decodeErrorHookStack) (by decide) sp
 
 /-- Opaque bottom-of-slice address `sp - (0x50 + errStack)` preserved untouched by `[arm64_norm]`. -/
-def sliceBot (sp : BitVec 64) (errStack : Nat) : BitVec 64 :=
+@[expose] def sliceBot (sp : BitVec 64) (errStack : Nat) : BitVec 64 :=
   sp - BitVec.ofNat 64 (0x50 + errStack)
 
 theorem stackAt_sliceGen_eq_errorHookGen {errStack : Nat} (herr : 0x50 + errStack ≤ 2 ^ 64)
@@ -502,55 +337,30 @@ theorem memRegion_48_wtErr (sp : BitVec 64) :
       (∃∗ b1 : BitVec 8, ∃∗ b0 : BitVec 8, ∃∗ v0 : BitVec 64,
         ((sp - 80#64) ↦₆₄ v0) ∗ ((sp - 72#64) ↦₈ b0) ∗ ((sp - 71#64) ↦₈ b1)) ∗
         memRegion (sp - 70#64) 38 := by
-  have s1 := memRegion_split (sp - 80#64) 8 40 (by decide)
-  rw [bv_sub_add_lit sp 80 8] at s1
-  have s2 := memRegion_split (sp - 72#64) 1 39 (by decide)
-  rw [bv_sub_add_lit sp 72 1] at s2
-  have s3 := memRegion_split (sp - 71#64) 1 38 (by decide)
-  rw [bv_sub_add_lit sp 71 1] at s3
-  change memRegion (sp - 71#64) 39 = memRegion (sp - 71#64) 1 ∗ memRegion (sp - 70#64) 38 at s3
-  rw [s1, s2, s3, memRegion_eight (sp - 80#64), memRegion_one (sp - 72#64), memRegion_one (sp - 71#64)]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  ac_rfl
+  simp only [← sepExists_sepConj_left]
+  sep_interval_eq
 
 theorem wtErr_entails_memRegion40 (sp : BitVec 64) (b0 b1 : BitVec 8) :
     ((sp - 72#64) ↦₈ b0) ∗ ((sp - 71#64) ↦₈ b1) ∗ memRegion (sp - 70#64) 38 ⊢
       memRegion (sp - 72#64) 40 := by
-  have s2 := memRegion_split (sp - 72#64) 1 39 (by decide)
-  rw [bv_sub_add_lit sp 72 1] at s2
-  have s3 := memRegion_split (sp - 71#64) 1 38 (by decide)
-  rw [bv_sub_add_lit sp 71 1] at s3
-  rw [s2, s3]
-  exact sepConj_mono (pointsTo8_entails_memRegion1 _ b0)
-    (sepConj_mono (pointsTo8_entails_memRegion1 _ b1) (Entails.refl _))
+  sep_interval
 
 theorem memRegion_48_slice (sp : BitVec 64) :
     memRegion (sp - 80#64) 48 =
       memRegion (sp - 80#64) 24 ∗ memRegion (sp - 56#64) 24 := by
-  have s1 := memRegion_split (sp - 80#64) 24 24 (by decide)
-  rw [bv_sub_add_lit sp 80 24] at s1
-  exact s1
+  sep_interval_eq
 
 theorem sliceErr_entails_memRegion48 (sp v0 v1 : BitVec 64) :
     ((sp - 80#64) ↦₆₄ v0) ∗ ((sp - 72#64) ↦₆₄ v1) ∗
       memRegion (sp - 64#64) 8 ∗ memRegion (sp - 56#64) 24 ⊢
       memRegion (sp - 80#64) 48 := by
-  have s1 := memRegion_split (sp - 80#64) 8 40 (by decide)
-  rw [bv_sub_add_lit sp 80 8] at s1
-  have s2 := memRegion_split (sp - 72#64) 8 32 (by decide)
-  rw [bv_sub_add_lit sp 72 8] at s2
-  have s3 := memRegion_split (sp - 64#64) 8 24 (by decide)
-  rw [bv_sub_add_lit sp 64 8] at s3
-  rw [s1, s2, s3]
-  exact sepConj_mono (pointsTo64_entails_memRegion8 _ v0)
-    (sepConj_mono (pointsTo64_entails_memRegion8 _ v1) (Entails.refl _))
+  sep_interval
 
 theorem sliceOk_entails_memRegion48 (sp v0 v1 v2 : BitVec 64) :
     ((sp - 80#64) ↦₆₄ v0) ∗ ((sp - 72#64) ↦₆₄ v1) ∗
       ((sp - 64#64) ↦₆₄ v2) ∗ memRegion (sp - 56#64) 24 ⊢
       memRegion (sp - 80#64) 48 := by
-  refine Entails.trans ?_ (sliceErr_entails_memRegion48 sp v0 v1)
-  exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_left (pointsTo64_entails_memRegion8 _ v2)))
+  sep_interval
 
 theorem wt_beq_zero_of_varint {w : BitVec 64} (h : w.setWidth 8 = 0#8) :
     (BitVec.truncate 32 w &&& 255#32 == 0#32) = true := by
@@ -623,7 +433,7 @@ theorem len_cons_sub_one (b0 : BitVec 8) (bs1 : List (BitVec 8)) :
 
 /-- Stack-parameterized `int32MergeSpec` (`= int32MergeSpec A` at `decodeErrorHookStack`,
 `= int32MergeSpecX A` at `decodeErrorHookStackX`, `= int32MergeSpecW A` at `decodeErrorHookStackW`). -/
-def int32MergeSpecGen (A : RustAlloc) (errStack : Nat) : Spec Int32MergeGhost where
+@[expose] def int32MergeSpecGen (A : RustAlloc) (errStack : Nat) : Spec Int32MergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.valPtr ∧ s.readReg64 .x2 = x.bufRef ∧ x.bs.length < 2 ^ 63⌝ ∗
@@ -644,315 +454,7 @@ def int32MergeSpecGen (A : RustAlloc) (errStack : Nat) : Spec Int32MergeGhost wh
 section
 attribute [local irreducible] _root_.Arm64.Program.fnOff
 
-theorem int32Merge_ok_of_hooks_gen {oimg : Option Obj.Image} {b : BitVec 64} {A : RustAlloc}
-    {H : String → Option (State → State)} {errStack : Nat}
-    (herr : 0x50 + (0x50 + errStack) ≤ 2 ^ 64)
-    (hFromCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr int32MergeName + bv% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" - ls_off% "prost::encoding::int32::merge::<&mut &[u8]>"))
-      (specWithOptInv oimg (decodeErrorFromSpecWithStack A errStack)))
-    (hSlowCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr int32MergeName + bv% (ls_off% "prost::encoding::varint::decode_varint_slow::<&mut &[u8]>" - ls_off% "prost::encoding::int32::merge::<&mut &[u8]>"))
-      (specWithOptInv oimg (decodeVarintSlowSpecGen A errStack)))
-    (hSlice : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr decodeVarintSliceName)
-      (specWithOptInv oimg (decodeVarintSliceSpecGen A errStack))) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr int32MergeName)
-      (specWithOptInv oimg (int32MergeSpecGen A errStack)) := by
-  have herrSlice : 0x50 + errStack ≤ 2 ^ 64 := by omega
-  have hfn := (ls_lemma% fnOff "prost::encoding::int32::merge::<&mut &[u8]>")
-  have hfn_slice := (ls_lemma% fnOff "prost::encoding::varint::decode_varint_slice")
-  have hSliceCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr int32MergeName + bv% (ls_off% "prost::encoding::varint::decode_varint_slice" - ls_off% "prost::encoding::int32::merge::<&mut &[u8]>"))
-      (specWithOptInv oimg (decodeVarintSliceSpecGen A errStack)) := by
-    rw [fnAddr_rebase_offset hfn hfn_slice (by decide)]
-    exact hSlice
-  clear hSlice hfn_slice
-  tripleRatchet_fetches b H hfn (num% (ls_off% "prost::encoding::int32::merge::<&mut &[u8]>")) 300
-  clear hfn
-  conv =>
-    arg 3; arg 2
-    unfold int32MergeSpecGen
-    simp only [sliceCursorAt, stackAt_int32MergeGen herr, sepExists_sepConj_left, sepExists_sepConj_right]
-  wpp_init_optImage x s0 hinv0
-  rcases x with ⟨wt, valPtr, bufRef, slot, ptr, bs⟩
-  dsimp only at *
-  examples_generalize_entry
-  examples_hide_fetches
-  by_cases hwt : wt = .varint
-  · subst hwt
-    have hwt_br := wt_beq_zero_of_varint h_1
-    cases bs with
-    | nil =>
-      simp only [mergeUint32, decodeVarint, decodeVarintAux, ne_eq, not_true_eq_false, ite_false]
-      apply SepWPp.of_sepWP_optImage (mid := entry + bv% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" - ls_off% "prost::encoding::int32::merge::<&mut &[u8]>")) hinv0
-      conv => arg 4; rw [memRegion_48_split (s0.sp - 80#64), bv_sub_add_lit s0.sp 80 8]
-      simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-      apply SepWP.exists_elim; intro v_err0
-      wp_steps
-      apply SepWP.fold (pointsTo64_pair_entails_memRegion16 slot ptr 0#64) (by sep_focus)
-      conv => arg 4; rw [stackAt_sliceGen_eq_errorHookGen herrSlice (s0.sp - 80#64)]
-      wp_reach
-      intro hinv1
-      refine SepWPp.call_frame_optImage (oimg := oimg) (spec := decodeErrorFromSpecWithStack A errStack)
-        (x := (s0.sp - 80#64, 0x8000000000000001#64))
-        (ret_pc := entry + bv% (52)) hFromCall hinv1
-        (by simp only [arm64_norm]) (by simp only [arm64_norm, hrun])
-        (by simp only [State.spAligned, arm64_norm]; exact hsp_align)
-        (by simp only [arm64_norm])
-        (by simp only [decodeErrorFromSpecWithStack, arm64_norm]; rfl)
-        (⟨rfl, by decide⟩ : s0.sp - 80#64 = s0.sp - 80#64 ∧ KindNoHeap 0x8000000000000001#64)
-        (by sep_focus)
-        (fun _ _ _ _ hex => allowPanic_not_exited hex)
-        (fun sf _ hpan => allowPanic_frame (allocFailedIn_trans (by simp only [arm64_norm])) hpan) ?_
-      intro sm hpcm hrunm hspm hcsm _
-      apply SepWPp.of_sepWP_ret
-      simp only [decodeErrorFromSpecWithStack, arm64_norm]
-      apply SepWP.fold (Entails.of_eq (stackAt_sliceGen_eq_errorHookGen herrSlice (s0.sp - 80#64)).symm) (by sep_focus)
-      wp_steps
-      wp_done
-    | cons b0 bs1 =>
-      have hcbz := cbz_len_cons_false h
-      by_cases hb0 : b0 ≤ 0x7f#8
-      · have hbit0 := signExtend64_getLsbD_63_of_le hb0
-        rw [mergeUint32_varint_1 bs1 hb0]
-        apply SepWPp.of_sepWP_ret
-        conv => arg 4; rw [pointsToBytes_cons, memRegion_four valPtr]
-        simp only [sepExists_sepConj_left]
-        apply SepWP.exists_elim; intro v_val
-        wp_steps
-        conv => arg 4; rw [len_cons_sub_one b0 bs1, ← pointsToBytes_cons]
-        simp only [sliceCursorAfter, List.length_cons, Nat.add_sub_cancel_left]
-        wp_done
-      · have hbit0 := signExtend64_getLsbD_63_of_gt hb0
-        have hlen_toNat : (BitVec.ofNat 64 (b0 :: bs1).length).toNat = (b0 :: bs1).length := by
-          rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-        apply SepWPp.of_sepWP_optImage (mid := entry + bv% (144)) hinv0
-        conv => arg 4; rw [pointsToBytes_cons]
-        wp_steps
-        wp_reach
-        intro hinv1
-        by_cases h11 : 11 ≤ (b0 :: bs1).length
-        · have hhi := ult_10_of_ge_11 h11 h
-          have hpre_slice : VarintSlicePre (b0 :: bs1) := Or.inl h11
-          apply SepWPp.of_sepWP_optImage (mid := entry + bv% (ls_off% "prost::encoding::varint::decode_varint_slice" - ls_off% "prost::encoding::int32::merge::<&mut &[u8]>")) hinv1
-          conv => arg 4; rw [memRegion_48_slice s0.sp]
-          wp_steps
-          wp_reach
-          intro hinv2
-          refine SepWPp.call_frame_optImage (oimg := oimg) (spec := decodeVarintSliceSpecGen A errStack)
-            (x := ⟨s0.sp - 80#64, ptr, b0 :: bs1⟩)
-            (ret_pc := entry + bv% (176)) hSliceCall hinv2
-            (by simp only [arm64_norm]) (by simp only [arm64_norm, hrun])
-            (by simp only [State.spAligned, arm64_norm]; exact hsp_align)
-            (by simp only [arm64_norm])
-            (by simp only [decodeVarintSliceSpecGen, arm64_norm]; rfl)
-            (⟨rfl, rfl, hlen_toNat, h, hpre_slice⟩ :
-              s0.sp - 80#64 = s0.sp - 80#64 ∧ ptr = ptr ∧
-                (BitVec.ofNat 64 (b0 :: bs1).length).toNat = (b0 :: bs1).length ∧
-                (b0 :: bs1).length < 2 ^ 63 ∧ VarintSlicePre (b0 :: bs1))
-            (by sep_focus)
-            (fun _ _ _ _ hex => allowPanic_not_exited hex)
-            (fun sf _ hpan => allowPanic_frame (allocFailedIn_trans (by simp only [arm64_norm])) hpan) ?_
-          intro sm hpcm hrunm hspm hcsm _
-          simp only [CalleeSavedPreserved] at hcsm
-          obtain ⟨hx19, hx20, hx21, hx22, hx23, hx24, hx25, hx26, hx27, hx28, hfp, hvregs⟩ := hcsm
-          simp (config := { decide := true }) only [arm64_norm] at hpcm hspm hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx26 hx27 hx28 hfp hvregs
-          apply SepWPp.of_sepWP_ret
-          cases hd : decodeVarint (b0 :: bs1) with
-          | none =>
-            simp only [decodeVarintSliceSpecGen, mergeUint32, hd, ne_eq, not_true_eq_false, ite_false, varintSliceResultAt,
-              sepExists_sepConj_left, sepExists_sepConj_right, arm64_norm]
-            apply SepWP.exists_elim; intro e_err
-            wp_steps
-            apply SepWP.fold (pointsTo64_pair_entails_memRegion16 slot ptr (BitVec.ofNat 64 (b0 :: bs1).length)) (by sep_focus)
-            apply SepWP.fold (sliceErr_entails_memRegion48 s0.sp 1#64 e_err) (by sep_focus)
-            wp_done
-          | some p =>
-            rcases p with ⟨v, rest⟩
-            have hcc := len_ult_consumed_false (rest := rest) h
-            have hsub_len := bv_len_sub_consumed hd
-            simp only [decodeVarintSliceSpecGen, mergeUint32, hd, ne_eq, not_true_eq_false, ite_false, varintSliceResultAt,
-              sliceCursorAfter, arm64_norm]
-            conv => arg 4; rw [memRegion_four valPtr]
-            simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-            apply SepWP.exists_elim; intro v_val
-            wp_steps
-            apply SepWP.fold (sliceOk_entails_memRegion48 s0.sp 0#64 v (BitVec.ofNat 64 ((b0 :: bs1).length - rest.length))) (by sep_focus)
-            wp_done
-        · have hhi := ult_10_of_lt_11 h11 h
-          have hne_cons : b0 :: bs1 ≠ [] := List.cons_ne_nil b0 bs1
-          apply SepWPp.of_sepWP_optImage (mid := entry + bv% (156)) hinv1
-          conv => arg 4; rw [← pointsToBytes_cons, pointsToBytes_split_last ptr (b0 :: bs1) hne_cons h]
-          wp_steps
-          conv => arg 4; rw [← pointsToBytes_split_last ptr (b0 :: bs1) hne_cons h]
-          wp_reach
-          intro hinv2
-          by_cases hlast : ((b0 :: bs1).getLast hne_cons).toNat ≤ 0x7F
-          · have hbit_last := getLsbD_7_of_le hlast
-            have hpre_slice : VarintSlicePre (b0 :: bs1) := Or.inr ⟨hne_cons, hlast⟩
-            apply SepWPp.of_sepWP_optImage (mid := entry + bv% (ls_off% "prost::encoding::varint::decode_varint_slice" - ls_off% "prost::encoding::int32::merge::<&mut &[u8]>")) hinv2
-            conv => arg 4; rw [pointsToBytes_cons, memRegion_48_slice s0.sp]
-            wp_steps
-            wp_reach
-            intro hinv3
-            refine SepWPp.call_frame_optImage (oimg := oimg) (spec := decodeVarintSliceSpecGen A errStack)
-              (x := ⟨s0.sp - 80#64, ptr, b0 :: bs1⟩)
-              (ret_pc := entry + bv% (176)) hSliceCall hinv3
-              (by simp only [arm64_norm]) (by simp only [arm64_norm, hrun])
-              (by simp only [State.spAligned, arm64_norm]; exact hsp_align)
-              (by simp only [arm64_norm])
-              (by simp only [decodeVarintSliceSpecGen, arm64_norm]; rfl)
-              (⟨rfl, rfl, hlen_toNat, h, hpre_slice⟩ :
-                s0.sp - 80#64 = s0.sp - 80#64 ∧ ptr = ptr ∧
-                  (BitVec.ofNat 64 (b0 :: bs1).length).toNat = (b0 :: bs1).length ∧
-                  (b0 :: bs1).length < 2 ^ 63 ∧ VarintSlicePre (b0 :: bs1))
-              (by sep_focus)
-              (fun _ _ _ _ hex => allowPanic_not_exited hex)
-              (fun sf _ hpan => allowPanic_frame (allocFailedIn_trans (by simp only [arm64_norm])) hpan) ?_
-            intro sm hpcm hrunm hspm hcsm _
-            simp only [CalleeSavedPreserved] at hcsm
-            obtain ⟨hx19, hx20, hx21, hx22, hx23, hx24, hx25, hx26, hx27, hx28, hfp, hvregs⟩ := hcsm
-            simp (config := { decide := true }) only [arm64_norm] at hpcm hspm hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx26 hx27 hx28 hfp hvregs
-            apply SepWPp.of_sepWP_ret
-            cases hd : decodeVarint (b0 :: bs1) with
-            | none =>
-              simp only [decodeVarintSliceSpecGen, mergeUint32, hd, ne_eq, not_true_eq_false, ite_false, varintSliceResultAt,
-                sepExists_sepConj_left, sepExists_sepConj_right, arm64_norm]
-              apply SepWP.exists_elim; intro e_err
-              wp_steps
-              apply SepWP.fold (pointsTo64_pair_entails_memRegion16 slot ptr (BitVec.ofNat 64 (b0 :: bs1).length)) (by sep_focus)
-              apply SepWP.fold (sliceErr_entails_memRegion48 s0.sp 1#64 e_err) (by sep_focus)
-              wp_done
-            | some p =>
-              rcases p with ⟨v, rest⟩
-              have hcc := len_ult_consumed_false (rest := rest) h
-              have hsub_len := bv_len_sub_consumed hd
-              simp only [decodeVarintSliceSpecGen, mergeUint32, hd, ne_eq, not_true_eq_false, ite_false, varintSliceResultAt,
-                sliceCursorAfter, arm64_norm]
-              conv => arg 4; rw [memRegion_four valPtr]
-              simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-              apply SepWP.exists_elim; intro v_val
-              wp_steps
-              apply SepWP.fold (sliceOk_entails_memRegion48 s0.sp 0#64 v (BitVec.ofNat 64 ((b0 :: bs1).length - rest.length))) (by sep_focus)
-              wp_done
-          · have hbit_last := getLsbD_7_of_gt hlast
-            apply SepWPp.of_sepWP_optImage (mid := entry + bv% (ls_off% "prost::encoding::varint::decode_varint_slow::<&mut &[u8]>" - ls_off% "prost::encoding::int32::merge::<&mut &[u8]>")) hinv2
-            wp_steps
-            conv => arg 4; rw [stackAt_sliceGen_eq_slowGen herrSlice (s0.sp - 80#64)]
-            wp_reach
-            intro hinv3
-            refine SepWPp.call_frame_optImage (oimg := oimg) (spec := decodeVarintSlowSpecGen A errStack)
-              (x := ⟨bufRef, slot, ptr, b0 :: bs1⟩)
-              (ret_pc := entry + bv% (268)) hSlowCall hinv3
-              (by simp only [arm64_norm]) (by simp only [arm64_norm, hrun])
-              (by simp only [State.spAligned, arm64_norm]; exact hsp_align)
-              (by simp only [arm64_norm])
-              (by simp only [decodeVarintSlowSpecGen, arm64_norm]; rfl)
-              (⟨rfl, h⟩ : bufRef = bufRef ∧ (b0 :: bs1).length < 2 ^ 63)
-              (by simp only [sliceCursorAt]; sep_focus)
-              (fun _ _ _ _ hex => allowPanic_not_exited hex)
-              (fun sf _ hpan => allowPanic_frame (allocFailedIn_trans (by simp only [arm64_norm])) hpan) ?_
-            intro sm hpcm hrunm hspm hcsm _
-            simp only [CalleeSavedPreserved] at hcsm
-            obtain ⟨hx19, hx20, hx21, hx22, hx23, hx24, hx25, hx26, hx27, hx28, hfp, hvregs⟩ := hcsm
-            simp (config := { decide := true }) only [arm64_norm] at hpcm hspm hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx26 hx27 hx28 hfp hvregs
-            apply SepWPp.of_sepWP_ret
-            cases hd : decodeVarint (b0 :: bs1) with
-            | none =>
-              simp only [decodeVarintSlowSpecGen, mergeUint32, hd, ne_eq, not_true_eq_false, ite_false,
-                sepConj_assoc, arm64_norm]
-              apply SepWP.pure_elim; intro hsm0
-              apply SepWP.fold (Entails.of_eq (stackAt_sliceGen_eq_slowGen herrSlice (s0.sp - 80#64)).symm) (by sep_focus)
-              wp_steps
-              wp_done
-            | some p =>
-              rcases p with ⟨v, rest⟩
-              simp only [decodeVarintSlowSpecGen, mergeUint32, hd, ne_eq, not_true_eq_false, ite_false,
-                sepConj_assoc, arm64_norm]
-              apply SepWP.pure_elim; rintro ⟨hsm0, hsm1⟩
-              apply SepWP.fold (Entails.of_eq (stackAt_sliceGen_eq_slowGen herrSlice (s0.sp - 80#64)).symm) (by sep_focus)
-              conv => arg 4; rw [memRegion_four valPtr]
-              simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-              apply SepWP.exists_elim; intro v_val
-              wp_steps
-              wp_done
-  · have hwt_br := wt_beq_zero_of_ne_varint h_1 hwt
-    rw [mergeUint32_ne_varint bs hwt]
-    apply SepWPp.of_sepWP_optImage (mid := entry + bv% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" - ls_off% "prost::encoding::int32::merge::<&mut &[u8]>")) hinv0
-    conv => arg 4; rw [memRegion_48_wtErr s0.sp]
-    simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-    apply SepWP.exists_elim; intro b_err1
-    apply SepWP.exists_elim; intro b_err0
-    apply SepWP.exists_elim; intro v_err0
-    wp_steps
-    apply SepWP.fold (wtErr_entails_memRegion40 s0.sp _ _) (by sep_focus)
-    apply SepWP.fold (pointsTo64_pair_entails_memRegion16 slot ptr (BitVec.ofNat 64 bs.length)) (by sep_focus)
-    conv => arg 4; rw [stackAt_sliceGen_eq_errorHookGen herrSlice (s0.sp - 80#64)]
-    wp_reach
-    intro hinv1
-    refine SepWPp.call_frame_optImage (oimg := oimg) (spec := decodeErrorFromSpecWithStack A errStack)
-      (x := (s0.sp - 80#64, 0x8000000000000006#64))
-      (ret_pc := entry + bv% (52)) hFromCall hinv1
-      (by simp only [arm64_norm]) (by simp only [arm64_norm, hrun])
-      (by simp only [State.spAligned, arm64_norm]; exact hsp_align)
-      (by simp only [arm64_norm])
-      (by simp only [decodeErrorFromSpecWithStack, arm64_norm]; rfl)
-      (⟨rfl, by decide⟩ : s0.sp - 80#64 = s0.sp - 80#64 ∧ KindNoHeap 0x8000000000000006#64)
-      (by sep_focus)
-      (fun _ _ _ _ hex => allowPanic_not_exited hex)
-      (fun sf _ hpan => allowPanic_frame (allocFailedIn_trans (by simp only [arm64_norm])) hpan) ?_
-    intro sm hpcm hrunm hspm hcsm _
-    apply SepWPp.of_sepWP_ret
-    simp only [decodeErrorFromSpecWithStack, arm64_norm]
-    apply SepWP.fold (Entails.of_eq (stackAt_sliceGen_eq_errorHookGen herrSlice (s0.sp - 80#64)).symm) (by sep_focus)
-    wp_steps
-    wp_done
-
 end
-
-theorem int32Merge_ok_of_contracts {b : BitVec 64} {A : RustAlloc}
-    {H : String → Option (State → State)}
-    (hFromCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr int32MergeName + bv% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" - ls_off% "prost::encoding::int32::merge::<&mut &[u8]>"))
-      (decodeErrorFromSpec A))
-    (hSlowCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr int32MergeName + bv% (ls_off% "prost::encoding::varint::decode_varint_slow::<&mut &[u8]>" - ls_off% "prost::encoding::int32::merge::<&mut &[u8]>"))
-      (decodeVarintSlowSpec A))
-    (hSlice : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr decodeVarintSliceName)
-      (decodeVarintSliceSpec A)) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr int32MergeName)
-      (int32MergeSpec A) :=
-  subroutine_ok_of_optNone
-    (int32Merge_ok_of_hooks_gen (oimg := none) (errStack := decodeErrorHookStack) (by decide)
-      (subroutine_ok_to_optNone hFromCall)
-      (subroutine_ok_to_optNone hSlowCall)
-      (subroutine_ok_to_optNone hSlice))
-
-theorem int32Merge_ok_ext {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel} {ext : String → Option (State → State)}
-    (hC : Stage2Contracts b C A ctl uuidTryParse S ext) :
-    Int32MergeOkExt b A ext :=
-  int32Merge_ok_of_contracts
-    (hC.decode_error_from_ok_at int32MergeName (num% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" - ls_off% "prost::encoding::int32::merge::<&mut &[u8]>"))
-      (by fnoff_eq))
-    (decodeVarintSlow_ok_at_ext hC (ls_lemma% fnOff "prost::encoding::int32::merge::<&mut &[u8]>") (k := num% (ls_off% "prost::encoding::varint::decode_varint_slow::<&mut &[u8]>" - ls_off% "prost::encoding::int32::merge::<&mut &[u8]>")) (by decide))
-    (decodeVarintSlice_ok_ext hC)
-
-theorem int32Merge_ok {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hFrom : AllocHooks A abs) :
-    Int32MergeOk b C A ctl abs :=
-  int32Merge_ok_of_contracts
-    (decodeErrorFrom_ok_at (b := b) (C := C) (ctl := ctl)
-      hFrom (ls_lemma% fnOff "prost::encoding::int32::merge::<&mut &[u8]>") (k := num% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" - ls_off% "prost::encoding::int32::merge::<&mut &[u8]>")) (by decide))
-    (decodeVarintSlow_ok_at (b := b) (C := C) (ctl := ctl)
-      hFrom (ls_lemma% fnOff "prost::encoding::int32::merge::<&mut &[u8]>") (k := num% (ls_off% "prost::encoding::varint::decode_varint_slow::<&mut &[u8]>" - ls_off% "prost::encoding::int32::merge::<&mut &[u8]>")) (by decide))
-    (decodeVarintSlice_ok hFrom)
-
-/-! ## Extended-stack variants (`decodeVarintSlowSpecX` and `int32MergeSpecX`) -/
 
 /-- Stack budget for `decode_varint_slow::<&mut &[u8]>` (`0x47f64`) with `decodeErrorHookStackX`. -/
 abbrev decodeVarintSlowStackX : Nat := 0x40 + decodeErrorHookStackX
@@ -962,58 +464,6 @@ in terms of `decodeVarint` with `decodeVarintSlowStackX`. -/
 abbrev decodeVarintSlowSpecX (A : RustAlloc) : Spec DecodeVarintSlowGhost :=
   decodeVarintSlowSpecGen A decodeErrorHookStackX
 
-theorem decodeVarintSlowSpecWithStack_inImage_mono {P : Program} {addr : BitVec 64} {img : Obj.Image}
-    {A : RustAlloc} {s1 s2 : Nat}
-    (h : subroutine_ok P addr ((CryptoVerification.LibsignalTripleRatchet.decodeVarintSlowSpecWithStack A s1).inImage img))
-    (hle : s1 ≤ s2 := by decide) (hmax : s2 ≤ 2 ^ 64 := by decide) :
-    subroutine_ok P addr ((CryptoVerification.LibsignalTripleRatchet.decodeVarintSlowSpecWithStack A s2).inImage img) := by
-  refine subroutine_ok_outcome_intro fun ⟨slotA, slot, ptr, bs⟩ R s0 hpc hrun hpre hal => ?_
-  have hsplit : stackAt s0.sp s2 =
-      memRegion (s0.sp - BitVec.ofNat 64 s2) (s2 - s1) ∗ stackAt s0.sp s1 := by
-    have h1 := stackAt_split_bottom s0.sp s1 (s2 - s1) (by omega)
-    rwa [Nat.add_sub_of_le hle] at h1
-  let R' : SepProp := memRegion (s0.sp - BitVec.ofNat 64 s2) (s2 - s1) ∗ R
-  have hpre' : s0.mem ⊨ ((CryptoVerification.LibsignalTripleRatchet.decodeVarintSlowSpecWithStack A s1).inImage img).pre
-      (slotA, slot, ptr, bs) s0 ∗ R' := by
-    dsimp only [Spec.inImage, CryptoVerification.LibsignalTripleRatchet.decodeVarintSlowSpecWithStack, R'] at hpre ⊢
-    rw [hsplit] at hpre
-    ac_nf at hpre ⊢
-  refine h.mono_outcome (slotA, slot, ptr, bs) R' s0 hpc hrun hpre' hal fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, _, hex⟩ | ⟨_, hoom⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [Spec.inImage, CryptoVerification.LibsignalTripleRatchet.decodeVarintSlowSpecWithStack, R'] at hpost ⊢
-    rw [hsplit]
-    ac_nf at hpost ⊢
-  · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
-    dsimp only [Spec.inImage, CryptoVerification.LibsignalTripleRatchet.decodeVarintSlowSpecWithStack, R'] at hpost ⊢
-    rw [← sepConj_assoc] at hpost
-    exact allowPanic_frame id hpost
-  · dsimp only [Spec.inImage, CryptoVerification.LibsignalTripleRatchet.decodeVarintSlowSpecWithStack] at hex
-    rw [satisfies_pure_sepConj] at hex
-    exact False.elim hex.1
-  · dsimp only [Spec.inImage, CryptoVerification.LibsignalTripleRatchet.decodeVarintSlowSpecWithStack] at hoom
-    rw [satisfies_pure_sepConj] at hoom
-    exact False.elim hoom.1
-
-theorem decodeVarintSlowX_ok_of_session2 {img : Obj.Image} {A : RustAlloc} {prog : Program} {entry : BitVec 64}
-    (hSlow0 : subroutine_ok prog entry
-      ((CryptoVerification.LibsignalTripleRatchet.decodeVarintSlowSpecWithStack A decodeVarintSlowStackX).inImage img)) :
-    subroutine_ok prog entry ((decodeVarintSlowSpecX A).inImage img) :=
-  decodeVarintSlowGen_ok_of_session2 (oimg := some img) (errStack := decodeErrorHookStackX) hSlow0
-
-theorem decodeVarintSlowX_ok_at_ext {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {encFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → List (BitVec 8)}
-    {decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8))}
-    {ext : String → Option (State → State)}
-    (hC : Stage2ContractsX img C A encFn decFn ext)
-    {name : String} {off k : Nat} (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "prost::encoding::varint::decode_varint_slow::<&mut &[u8]>")) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((decodeVarintSlowSpecX A).inImage img) := by
-  rw [fnAddr_rebase_offset hfn (ls_lemma% fnOff "prost::encoding::varint::decode_varint_slow::<&mut &[u8]>") hk]
-  exact decodeVarintSlowX_ok_of_session2 hC.decode_varint_slow
-
 theorem stackAt_int32MergeX (sp : BitVec 64) :
     stackAt sp int32MergeStackX =
       stackAt (sp - 80#64) decodeVarintSliceStackX ∗
@@ -1022,37 +472,6 @@ theorem stackAt_int32MergeX (sp : BitVec 64) :
           ((sp - 32#64) ↦₆₄ v4) ∗ ((sp - 24#64) ↦₆₄ v3) ∗
           ((sp - 16#64) ↦₆₄ v2) ∗ ((sp - 8#64) ↦₆₄ v1)) :=
   stackAt_int32MergeGen (errStack := decodeErrorHookStackX) (by decide) sp
-
-theorem int32Merge_ok_of_contracts_x {img : Obj.Image} {A : RustAlloc}
-    {H : String → Option (State → State)}
-    (hFromCall0 : subroutine_ok (libsignalSessionCode.rebase img.base H)
-      ((libsignalSessionCode.rebase img.base H).fnAddr int32MergeName + bv% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" - ls_off% "prost::encoding::int32::merge::<&mut &[u8]>"))
-      ((decodeErrorFromSpecWithStack A decodeErrorHookStackX).inImage img))
-    (hSlowCall : subroutine_ok (libsignalSessionCode.rebase img.base H)
-      ((libsignalSessionCode.rebase img.base H).fnAddr int32MergeName + bv% (ls_off% "prost::encoding::varint::decode_varint_slow::<&mut &[u8]>" - ls_off% "prost::encoding::int32::merge::<&mut &[u8]>"))
-      ((decodeVarintSlowSpecX A).inImage img))
-    (hSlice : subroutine_ok (libsignalSessionCode.rebase img.base H)
-      ((libsignalSessionCode.rebase img.base H).fnAddr decodeVarintSliceName)
-      ((decodeVarintSliceSpecX A).inImage img)) :
-    subroutine_ok (libsignalSessionCode.rebase img.base H)
-      ((libsignalSessionCode.rebase img.base H).fnAddr int32MergeName)
-      ((int32MergeSpecX A).inImage img) :=
-  int32Merge_ok_of_hooks_gen (oimg := some img) (errStack := decodeErrorHookStackX)
-    (by decide) hFromCall0 hSlowCall hSlice
-
-theorem int32Merge_ok_ext_x {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {encFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → List (BitVec 8)}
-    {decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8))}
-    {ext : String → Option (State → State)}
-    (hC : Stage2ContractsX img C A encFn decFn ext) :
-    Int32MergeOkExtX img A ext :=
-  int32Merge_ok_of_contracts_x
-    (hC.decode_error_from_ok_at int32MergeName (num% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" - ls_off% "prost::encoding::int32::merge::<&mut &[u8]>"))
-      (by fnoff_eq))
-    (decodeVarintSlowX_ok_at_ext hC (ls_lemma% fnOff "prost::encoding::int32::merge::<&mut &[u8]>") (k := num% (ls_off% "prost::encoding::varint::decode_varint_slow::<&mut &[u8]>" - ls_off% "prost::encoding::int32::merge::<&mut &[u8]>")) (by decide))
-    (decodeVarintSlice_ok_ext_x hC)
-
-/-! ## Relocatable per-block proofs (blocks 8 and 293) -/
 
 theorem subroutine_ok_lscl_of_sepWPp {α : Type} {prog : Program} {entry : BitVec 64}
     {spec : Spec α} {pl : Obj.MultiPlacement}
@@ -1377,16 +796,9 @@ theorem stackAt_varintSlowGen {errStack : Nat} (herr : 0x40 + errStack ≤ 2 ^ 6
   rw [← ProofLib.memRegion_cells (sp - BitVec.ofNat 64 (8 * 8)) 8 (by decide)] at h0
   rw [show 0x40 + errStack = errStack + 8 * 8 by omega, h0]
   change stackAt (sp - 64#64) errStack ∗ memRegion (sp - 64#64) 64 = _
-  have s1 := ProofLib.memRegion_split (sp - 64#64) 8 56 (by decide)
-  rw [bv_sub_add_lit sp 64 8] at s1
-  have s2 := ProofLib.memRegion_split (sp - 56#64) 40 16 (by decide)
-  rw [bv_sub_add_lit sp 56 40] at s2
-  have s3 := ProofLib.memRegion_split (sp - 16#64) 8 8 (by decide)
-  rw [bv_sub_add_lit sp 16 8] at s3
-  rw [s1, s2, s3,
-    ProofLib.memRegion_eight (sp - 64#64), ProofLib.memRegion_eight (sp - 16#64), ProofLib.memRegion_eight (sp - 8#64)]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  ac_rfl
+  congr 1
+  simp only [← sepExists_sepConj_left]
+  sep_interval_eq
 
 theorem decode_varint_slow_placed_ok_with_stack [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)} {errStack : Nat}
@@ -1973,35 +1385,13 @@ theorem decodeVarintSlowGen_lscl_ok_of_session2 {pl : Obj.MultiPlacement} {A : R
     | none =>
       rw [hd] at hpost
       dsimp only [Option.map] at hpost ⊢
-      have hpost1 : sf.mem ⊨
-          ((y.slot ↦₆₄ (y.ptr + BitVec.ofNat 64 (min 10 y.bs.length))) ∗
-            ((y.slot + 8#64) ↦₆₄ BitVec.ofNat 64 (y.bs.length - min 10 y.bs.length))) ∗
-          (⌜sf.readReg64 .x0 = 1#64 ∧ sf.readReg64 .x1 ≠ 0#64⌝ ∗
-            ⌜sf.trace = s0.trace⌝ ∗
-            (y.bufRef ↦₆₄ y.slot) ∗ A.pool ∗ stackAt s0.sp (0x40 + errStack) ∗
-            decodeErrorAtStackLen A (sf.readReg64 .x1) 0 ∗ (y.ptr ↦ₛ y.bs) ∗ R) :=
-        Satisfies.of_eq hpost
-      have hmem1 := Satisfies.mono
-        (sepConj_mono_left (pointsTo64_pair_entails_memRegion16 y.slot _ _)) hpost1
-      have hmem2 : sf.mem ⊨
-          ⌜sf.readReg64 .x0 = 1#64 ∧ sf.readReg64 .x1 ≠ 0#64⌝ ∗
-          (⌜sf.trace = s0.trace⌝ ∗ (y.bufRef ↦₆₄ y.slot) ∗ A.pool ∗
-            stackAt s0.sp (0x40 + errStack) ∗
-            decodeErrorAtStackLen A (sf.readReg64 .x1) 0 ∗
-            memRegion y.slot 16 ∗ (y.ptr ↦ₛ y.bs) ∗ R) :=
-        Satisfies.of_eq hmem1
-      rw [satisfies_pure_sepConj] at hmem2
-      rcases hmem2 with ⟨⟨hx0, hx1⟩, hmem3⟩
-      have hmem4 : sf.mem ⊨
-          ⌜sf.readReg64 .x0 = 1#64⌝ ∗
-          (⌜sf.readReg64 .x1 ≠ 0#64⌝ ∗
-            (⌜sf.trace = s0.trace⌝ ∗ (y.bufRef ↦₆₄ y.slot) ∗ A.pool ∗
-              stackAt s0.sp (0x40 + errStack) ∗
-              decodeErrorAtStackLen A (sf.readReg64 .x1) 0 ∗
-              memRegion y.slot 16 ∗ (y.ptr ↦ₛ y.bs) ∗ R)) := by
-        rw [satisfies_pure_sepConj, satisfies_pure_sepConj]
-        exact ⟨hx0, hx1, hmem3⟩
-      exact Satisfies.of_eq hmem4
+      refine Satisfies.mono ?_ hpost
+      generalize decodeErrorAtStackLen A (sf.readReg64 .x1) 0 = E
+      generalize hP01 : (⌜sf.readReg64 .x0 = 1#64 ∧ sf.readReg64 .x1 ≠ 0#64⌝ : SepProp) = P01
+      generalize hPtr : (⌜sf.trace = s0.trace⌝ : SepProp) = Ptr
+      exact Entails.trans (by bi_frame)
+        (Entails.trans (sepConj_mono_left (pointsTo64_pair_entails_memRegion16 y.slot _ _))
+          (by subst hP01 hPtr; bi_entail))
 
 theorem decode_varint_slow_placed_ok_gen [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)} {errStack : Nat}

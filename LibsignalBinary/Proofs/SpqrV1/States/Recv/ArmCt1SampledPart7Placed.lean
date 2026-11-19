@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.Defs
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1Placed
@@ -29,7 +29,7 @@ Relocatable `[LibsignalPlacement]` common `recv_ek_chunk` prefix (`+11404 -> +11
 Path 4a (`outMsg = none, ack = false`: `+11496 -> s0.x30`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

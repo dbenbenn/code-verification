@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.ReadableBy2Pure
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.ReadableBy2Pure -- proof-setup: allow-public-import
 import all DY.Trace.Basic
 import all DY.Trace.Monad
 import all DY.Trace.Manipulation
@@ -32,6 +32,12 @@ import Symbolic.Proofs.Swarm.UA.SlotInitTransfer
 import Symbolic.Proofs.Swarm.CREF.CBadG2.Stamps -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.CBadReadableBridge -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CBadG2Pure -- shake: keep
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
 
 /-!
 # Shared Whisper `recv` Slot Helpers
@@ -41,7 +47,7 @@ Provides schedule, flattening, and collision-predicate bridges for `recv` calls,
 `recv` runs, and lifting of `RecvDecryptRawWitness` to `ModelAcceptsTermAfterAttackerSendsClassical`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

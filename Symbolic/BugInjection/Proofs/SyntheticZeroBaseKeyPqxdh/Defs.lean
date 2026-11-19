@@ -116,9 +116,9 @@ theorem cliEventsZbk_eq : cliEventsZbk = Witnesses.ZeroBaseKeyPqxdhCli.trace := 
     Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443.CliBridge.nil_eq_hexBytes]
 
 theorem compFits_hb_of_zbk {i : ExternInterpretation} {r : Records}
-    (h : compFits Witnesses.ZeroBaseKeyPqxdhCli.setup i r) :
-    compFits Witnesses.Cheval26SmallSubgroupHighBitComp.setup i r := by
-  simpa [compFits, Witnesses.ZeroBaseKeyPqxdhCli.setup,
+    (h : SetupMatches Witnesses.ZeroBaseKeyPqxdhCli.setup i r) :
+    SetupMatches Witnesses.Cheval26SmallSubgroupHighBitComp.setup i r := by
+  simpa [SetupMatches, Witnesses.ZeroBaseKeyPqxdhCli.setup,
     Witnesses.Cheval26SmallSubgroupHighBitComp.setup,
     Witnesses.Cheval26SmallSubgroupHighBitCli.setup] using h
 

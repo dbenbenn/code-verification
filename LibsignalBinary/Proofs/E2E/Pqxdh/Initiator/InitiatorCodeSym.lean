@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.KeysCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.KeysCodeSym -- shake: keep -- proof-setup: allow-public-import
+meta import GeneratedLean.LibsignalSessionPlacedObjShard3
 
 /-!
 # Relocatable Per-Block Instruction Fetches for `E2E/Pqxdh/Initiator`
@@ -22,7 +23,7 @@ Per-block `CodeSym` / instruction-fetch definitions for the PQXDH initiator bloc
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

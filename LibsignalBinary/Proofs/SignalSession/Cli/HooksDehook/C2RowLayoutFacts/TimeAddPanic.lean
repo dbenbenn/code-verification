@@ -11,11 +11,16 @@ module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.CodeSubslice -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.Time -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.TimeAddGhostReplays -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl4 -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.TimeAddGhostReplays
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl4
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts
 import ProofLib.ProgramReflection
 meta import ProofLib.ProgramReflection
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl3
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Card `W-ADD` — `hPanReal` & `SystemTime::add` Cutover-2 (`C2`) Row Glue
@@ -63,7 +68,8 @@ namespace LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib ProofLib.ProgramReflection
 open VerifiedLibraries.RustStd (rustTimeExpectFailedSym timeAddSym timeMultiLib)
-open CryptoVerification (LibsignalPlacement libsignalSessionExterns lsmpl)
+open CryptoVerification (ExternsDistinctOnHooked LibsignalPlacement libsignalHookedExterns
+  libsignalSessionExterns lsmpl)
 open CryptoVerification.SignalSession
   (CliHooks cliElfBytes cliExternsPlaced isCliPanicSymbolPlaced libsignalSessionLib lsTimeAddSym)
 open CryptoVerification.SignalSession.Cli.RunGlue (CliGhostHooks)
@@ -89,13 +95,14 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie (f3TrialRxProg)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts
   (C2ExternTableFacts f3LsRetAddr624_lt_firstExternStub f3LsRetAddr624_ne_panicStubs
-   f3RxSeg_realProg617_externAt_none keepLib2Text keepLib2Text_sub_rxProg lsExpectFailedSymC2)
+   f3RxSeg_realProg617_externAt_none isLinkedPanicAddr isLinkedPanicAddr_false_of_ge
+   keepLib2Text keepLib2Text_sub_rxProg lsExpectFailedSymC2)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics (F3CodeInv)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced
-  (cliElfMultiPlacement cliElf_externs_nodup_of_linkedAt lsInternedMultiLib lsSharedExterns
+  (cliElfMultiPlacement cliElf_externs_distinct_of_linkedAt lsInternedMultiLib lsSharedExterns
    ls_names_nodup ls_toMultiPlacedLib_eq)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen
-  (c2FirstExternStubAddr c2Lib2TextLo c2TimeAddAddr)
+  (c2FirstExternStubAddr c2Lib2TextHi c2Lib2TextLo c2TimeAddAddr)
 
 /-! ## 1. CLI `expect_failed` Symbol (`lsExpectFailedSymC2`) & `cliExternsPlaced` Membership -/
 
@@ -183,6 +190,55 @@ theorem externAt?_cliProgExtPlacedAt_617
     MultiPlacedLib.blockPlacement, Program.externAt?, Program.hookAtOff?]
   simp only [ite_self, h0, Option.or_none, List.findSome?_map, Function.comp_def, key]
 
+private theorem findSome?_none_of_forall {α γ : Type}
+    {xs : List α} {p : α → Option γ}
+    (hall : ∀ e ∈ xs, p e = none) :
+    xs.findSome? p = none := by
+  induction xs with
+  | nil => rfl
+  | cons b tl ihtl =>
+    simp only [List.findSome?_cons, hall b (.head _)]
+    exact ihtl (fun e he => hall e (.tail _ he))
+
+private theorem findSome?_eq_of_unique {α β γ : Type} [BEq β] [LawfulBEq β]
+    {xs : List α} {f : α → β} (g : α → Option γ) {x : α}
+    (hMem : x ∈ xs) (hUniq : ∀ e ∈ xs, f e = f x → e = x) :
+    (xs.findSome? fun e => if f e == f x then g e else none) = g x := by
+  induction xs with
+  | nil => cases hMem
+  | cons a rest ih =>
+    simp only [List.findSome?_cons]
+    by_cases hax : f a = f x
+    · obtain rfl : a = x := hUniq a (.head _) hax
+      simp only [beq_self_eq_true, ↓reduceIte]
+      cases hg : g a with
+      | some v => rfl
+      | none =>
+        refine findSome?_none_of_forall fun b hb => ?_
+        by_cases hba : f b = f a
+        · obtain rfl : b = a := hUniq b (.tail _ hb) hba
+          simp [hg]
+        · simp [beq_eq_false_iff_ne.mpr hba]
+    · rcases List.mem_cons.mp hMem with rfl | hx_rest
+      · exact absurd rfl hax
+      · simp only [beq_eq_false_iff_ne.mpr hax, Bool.false_eq_true, ↓reduceIte]
+        exact ih hx_rest (fun e he => hUniq e (.tail _ he))
+
+/-- Lookup `(cliProgExtPlacedAt mpl ext 617 W).externAt?` at `libsignalSessionLib.resolve mpl sym`
+    when no other extern in block `617` resolves to the same address as `sym`. -/
+theorem externAt?_cliProgExtPlacedAt_617_of_unique_resolve
+    {mpl : Obj.MultiPlacement}
+    {ext : CliHooks → String → Option (State → State)}
+    {sym : String}
+    (hMem : sym ∈ (libsignalSessionLib.blockLib 617).text.externs)
+    (hUniq : ∀ e ∈ (libsignalSessionLib.blockLib 617).text.externs,
+      libsignalSessionLib.resolve mpl e = libsignalSessionLib.resolve mpl sym → e = sym)
+    (W : CliHooks) :
+    (cliProgExtPlacedAt mpl ext 617 W).externAt?
+      (libsignalSessionLib.resolve mpl sym) = ext W sym := by
+  rw [externAt?_cliProgExtPlacedAt_617]
+  exact findSome?_eq_of_unique (ext W) hMem hUniq
+
 /-- Lookup `(cliProgExtPlacedAt mpl ext 617 W).externAt?` at `libsignalSessionLib.resolve mpl sym`
     under pairwise distinctness of block `617`'s resolved extern addresses. -/
 theorem externAt?_cliProgExtPlacedAt_617_of_nodup_resolve
@@ -216,8 +272,8 @@ theorem timeAdd_hPanReal_of_nodup_resolve
     externAt?_cliProgExtPlacedAt_617_of_nodup_resolve hMem hNodup,
     cliExternsPlaced_lsExpectFailedSymC2]
 
-/-- **Generic `hPanReal` discharge (form 2 — `libsignalSessionExterns` + `mpl.ρ` `Nodup`):**
-    Plugs directly into `ElfPlaced.cliElf_externs_nodup_of_linkedAt` and
+/-- **Generic `hPanReal` discharge (form 2 — `libsignalSessionExterns` + `ExternsDistinctOnHooked`):**
+    Plugs directly into `ElfPlaced.cliElf_externs_distinct_of_linkedAt` and
     `ElfCodeMatchesData.ls_block617_externs_eq` without re-evaluating block `617` in the kernel. -/
 theorem timeAdd_hPanReal_of_externs_eq_nodup_rho
     (mpl mmpl timeMpl : Obj.MultiPlacement)
@@ -226,23 +282,22 @@ theorem timeAdd_hPanReal_of_externs_eq_nodup_rho
     (hExt617 : (libsignalSessionLib.blockLib 617).text.externs = libsignalSessionExterns)
     (hResolveEqRho : ∀ e ∈ libsignalSessionExterns,
       libsignalSessionLib.resolve mpl e = mpl.ρ e)
-    (hNodupRho : (libsignalSessionExterns.map mpl.ρ).Nodup) :
+    (hDistRho : ExternsDistinctOnHooked mpl.ρ) :
     ∀ W : CliHooks,
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt?
         (timeAddExpectFailedStubPc timeMpl) = some Rust.panicked := by
+  have hHooked : lsExpectFailedSymC2 ∈ libsignalHookedExterns := by decide
   have hMem : lsExpectFailedSymC2 ∈ (libsignalSessionLib.blockLib 617).text.externs := by
     rw [hExt617]
     exact lsExpectFailedSymC2_mem_libsignalSessionExterns
-  have hMapEq :
-      (libsignalSessionLib.blockLib 617).text.externs.map (libsignalSessionLib.resolve mpl) =
-        libsignalSessionExterns.map mpl.ρ := by
-    rw [hExt617]
-    exact List.map_congr_left hResolveEqRho
-  have hNodup :
-      ((libsignalSessionLib.blockLib 617).text.externs.map
-        (libsignalSessionLib.resolve mpl)).Nodup := by
-    rwa [hMapEq]
-  exact timeAdd_hPanReal_of_nodup_resolve mpl mmpl timeMpl hStubEq hMem hNodup
+  intro W
+  rw [hStubEq, externAt?_cliProgExtPlacedAt_617_of_unique_resolve hMem ?_ W,
+    cliExternsPlaced_lsExpectFailedSymC2]
+  intro e he hres
+  rw [hExt617] at he
+  rw [hResolveEqRho e he,
+    hResolveEqRho lsExpectFailedSymC2 lsExpectFailedSymC2_mem_libsignalSessionExterns] at hres
+  exact hDistRho lsExpectFailedSymC2 hHooked e he hres
 
 set_option maxRecDepth 4000000 in
 private theorem ls_sharedExterns_lookupId_ok :
@@ -288,7 +343,7 @@ theorem timeAdd_hPanReal_of_linkedAt
   timeAdd_hPanReal_of_externs_eq_nodup_rho mpl mmpl timeMpl hStubEq
     ls_block617_externs_eq_libsignalSessionExterns
     (libsignalSessionExterns_resolve_eq_rho mpl)
-    (cliElf_externs_nodup_of_linkedAt hLs)
+    (cliElf_externs_distinct_of_linkedAt hLs)
 
 /-! ## 3. Generic Add-Row Premise Reductions (`hTargetEq`, `hCL`, `hkeep_stub`, `hlr_ne_stub`, `hKeep`, `hRealHullNoExt`) -/
 
@@ -466,6 +521,15 @@ theorem c2_timeAdd_hKeep [LibsignalPlacement]
     rw [decide_eq_true_eq] at hlib2
     omega
 
+theorem keepR_timeAdd_c2_noPanic {pc : BitVec 64}
+    (h : keepR_timeAdd c2TimeMpl pc = true) :
+    isLinkedPanicAddr pc = false := by
+  have hb := keepR_timeAdd_sub_interval (lo := 0x4cb0e4#64) (hi := c2Lib2TextHi)
+    (by rw [c2TimeMpl_base2]; decide)
+    (by rw [c2TimeMpl_base2]; decide)
+    h
+  exact isLinkedPanicAddr_false_of_ge (of_decide_eq_true hb).1
+
 /-- **Cutover-2 `hRealHullNoExt` at `c2TimeMpl`:** matches `TimeAddGhostReplays.lean:359, 511`
     verbatim from `C2ExternTableFacts mpl`. -/
 theorem c2_timeAdd_hRealHullNoExt {mpl mmpl : Obj.MultiPlacement}
@@ -475,6 +539,7 @@ theorem c2_timeAdd_hRealHullNoExt {mpl mmpl : Obj.MultiPlacement}
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none :=
   fun W {_} hkeep =>
     f3RxSeg_realProg617_externAt_none hExt W (keepR_timeAdd_c2_sub_rxProg hkeep)
+      (keepR_timeAdd_c2_noPanic hkeep)
 
 /-- Combined Cutover-2 `GhostRowReplayOn` discharge for `lsTimeAddSym` at `c2TimeMpl` for any
     `KeepsFrozen`/`fs`-stable `InvS` projecting to `F3CodeInv mpl mmpl u.mem`. -/

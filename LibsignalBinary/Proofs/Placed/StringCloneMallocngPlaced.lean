@@ -22,7 +22,7 @@ public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetBase
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Common.SharedHelpers
 
 /-!
 # Placed `<String as Clone>::clone` over Budget-Threaded `mallocng`
@@ -35,7 +35,7 @@ lifts.
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.Placed.StringCloneMallocngPlaced
 
@@ -150,7 +150,7 @@ attribute [local arm64_norm] bv_sub_add_lit bv_sub_add_cancel48 bv_add_neg48 bv_
     (`alloc-33b97f6bdb98e862.alloc.ca0639e201ef4727-cgu.0.rcgu.o`, symbol
     `_RNvXs4_NtCshlmZ2E5RoO1_5alloc6stringNtB5_6StringNtNtCs2kXltWtc1W_4core5clone5Clone5clone`,
     offsets `0x00..0x84`). -/
-def rustStringCloneInstrs
+@[expose] def rustStringCloneInstrs
     (fnAddr shimAddr allocAddr memcpyAddr handleErrorAddr : BitVec 64) : List Instr :=
   [ .stp .W64 .x29 .x30 (.PreIndex .sp (-0x30#64)), .stp .W64 .x22 .x21 (.Offset .sp 0x10#64),
     .stp .W64 .x20 .x19 (.Offset .sp 0x20#64), .addSubImm .W64 .ADD .x29 .sp 0x0#12 false,

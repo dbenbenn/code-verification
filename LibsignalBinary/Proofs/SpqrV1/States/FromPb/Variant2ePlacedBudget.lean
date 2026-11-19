@@ -10,18 +10,26 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2ePlaced
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2ePlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch2Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2e
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2d -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1Placed
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Budget-Threaded Variant 1 (`KeysSampled`) — Part E
@@ -30,7 +38,7 @@ Relocatable Block-`333` `<PolyEncoder>::from_pb` call (`+4096`), result branches
 epilogue composition (`+6568 -> +8180 -> ret`) under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -903,58 +911,6 @@ theorem v1_keysSampled_6568_ret_placed [LibsignalPlacement]
           A.pool lim st sf ∗ Rest ∗ stackAt s0.sp statesFromPbStack) ∧
         VmPreserved s sf ∧ sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace) :=
   v1_keysSampled_6568_ret_placed_of_memcpy A lim st hA.toPlacedBudget.memcpy_ok s0 s
-    out tag pa1 pa2 u8 u16 u24 u32 u40 u48 u72 u96 u104 bs hbs hi32 enc P_heap hreloc
-    ek dk rootKey macKey hek hdk hl1 hl2 hu24_1152 Rest
-    hsp0_align hpc hrun hsp hx15 hx19 hx21 hx22 hx23 hx25 hx26 hx28 htr
-
-theorem v1_keysSampled_6568_ret_placed_of_placedHooks [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksPlacedBudget M A lim ext) (st : M.σ)
-    (s0 s : State) (out tag pa1 pa2 u8 u16 u24 u32 u40 u48 u72 u96 u104 : BitVec 64)
-    (bs : List (BitVec 8)) (hbs : bs.length = 384)
-    (hi32 : BitVec 32) (enc : PolyEncoder) (P_heap : SepProp)
-    (hreloc :
-      ((out + 8#64) ↦₆₄ tag) ∗ (((out + 8#64) + 8#64) ↦ₛ bs) ∗
-        (((out + 8#64) + 392#64) ↦₆₄ (hi32 ++ enc.idx)) ∗ P_heap ⊢
-        polyEncoderAt A.repAlloc (out + 8#64) enc)
-    (ek dk rootKey macKey : List (BitVec 8))
-    (hek : u24 = BitVec.ofNat 64 ek.length) (hdk : u48 = BitVec.ofNat 64 dk.length)
-    (hl1 : u72 = BitVec.ofNat 64 rootKey.length) (hl2 : u96 = BitVec.ofNat 64 macKey.length)
-    (hu24_1152 : u24 = 1152#64) (Rest : SepProp)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = lsmpl.base 333 + 6568#64) (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 2400#64)
-    (hx15 : s.readReg64 .x15 = tag) (hx19 : s.readReg64 .x19 = out) (hx21 : s.readReg64 .x21 = u8)
-    (hx22 : s.readReg64 .x22 = u72) (hx23 : s.readReg64 .x23 = (s0.sp - 2400#64) + 848#64)
-    (hx25 : s.readReg64 .x25 = (s0.sp - 2400#64) + 1792#64)
-    (hx26 : s.readReg64 .x26 = u8) (hx28 : s.readReg64 .x28 = u32)
-    (htr : TraceCalleeSaved s s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext)) (s0.readReg64 .x30) s
-      (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        memRegion (s0.sp - 2400#64) 64 ∗ ((s0.sp - 2400#64 + 64#64) ↦₆₄ u104) ∗
-        memRegion (s0.sp - 2400#64 + 72#64) 104 ∗ ((s0.sp - 2400#64 + 176#64) ↦₆₄ u16) ∗
-        ((s0.sp - 2400#64 + 184#64) ↦₆₄ pa2) ∗ ((s0.sp - 2400#64 + 192#64) ↦₆₄ u48) ∗
-        ((s0.sp - 2400#64 + 200#64) ↦₆₄ pa1) ∗ memRegion (s0.sp - 2400#64 + 208#64) 8 ∗
-        ((s0.sp - 2400#64 + 216#64) ↦₆₄ u40) ∗ ((s0.sp - 2400#64 + 224#64) ↦₆₄ u32) ∗
-        ((s0.sp - 2400#64 + 232#64) ↦₆₄ u96) ∗ memRegion (s0.sp - 2400#64 + 240#64) 1648 ∗
-        ((s0.sp - 2400#64 + 1888#64) ↦₆₄ tag) ∗ v1_encCellsAt (s0.sp - 2400#64 + 1888#64) bs ∗
-        ((s0.sp - 2400#64 + 2280#64) ↦₆₄ (hi32 ++ enc.idx)) ∗
-        memRegion (s0.sp - 2400#64 + 2288#64) 16 ∗ statesFromPbSavedCells s0 ∗
-        memRegion out chunkedStatesSize ∗ P_heap ∗
-        vecU8Payload A.repAlloc u8 u16 ek ∗ vecU8Payload A.repAlloc u32 u40 dk ∗
-        vecU8Payload A.repAlloc u72 pa1 rootKey ∗ vecU8Payload A.repAlloc u96 pa2 macKey ∗
-        A.pool lim st s ∗ Rest)
-      (fun sf Pf =>
-        (Pf ⊢
-          resultChunkedStatesAt A.repAlloc (F := F) out
-            (.ok (.keysSampled
-              { uc := { ek := ek, dk := dk, auth := { rootKey := rootKey, macKey := macKey },
-                        epoch := u104 },
-                sending_hdr := enc })) ∗
-          A.pool lim st sf ∗ Rest ∗ stackAt s0.sp statesFromPbStack) ∧
-        VmPreserved s sf ∧ sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace) :=
-  v1_keysSampled_6568_ret_placed_of_memcpy A lim st hA.memcpy_ok s0 s
     out tag pa1 pa2 u8 u16 u24 u32 u40 u48 u72 u96 u104 bs hbs hi32 enc P_heap hreloc
     ek dk rootKey macKey hek hdk hl1 hl2 hu24_1152 Rest
     hsp0_align hpc hrun hsp hx15 hx19 hx21 hx22 hx23 hx25 hx26 hx28 htr

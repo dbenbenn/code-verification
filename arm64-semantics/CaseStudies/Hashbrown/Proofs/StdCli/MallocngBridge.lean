@@ -62,49 +62,49 @@ structure HbMallocngPlaced (P : Program) (C : HbCliLayout) (mpl : Obj.MultiPlace
 /-! ## Supervisor-Call Validity and Sanitized `mmap` -/
 
 private theorem execMremap_mremapStep (s : State) : MallocngMremapStep s (execMremap s) := by
-  intro hflags hal holdPos hnewPos hnewMax holdFit hrw hanon
-  dsimp only [execMremap]
-  have hf_flags : (s.readReg64 Reg.x3 != MREMAP_MAYMOVE) = false := by rw [hflags]; decide
-  have hf_al : ((s.readReg64 Reg.x0).toNat % PAGE_SIZE != 0 || (s.readReg64 Reg.x2).toNat == 0 ||
-      !decide ((s.readReg64 Reg.x2).toNat ≤ 2 ^ 64 - PAGE_SIZE)) = false := by
-    have h2 : ((s.readReg64 Reg.x2).toNat == 0) = false := beq_eq_false_iff_ne.mpr (Nat.ne_of_gt hnewPos)
-    simp [hal, h2, hnewMax]
-  have hf_old0 : ((s.readReg64 Reg.x1).toNat == 0) = false := beq_eq_false_iff_ne.mpr (Nat.ne_of_gt holdPos)
-  have hf_lim : (!decide ((s.readReg64 Reg.x0).toNat + pageAlignUp (s.readReg64 Reg.x1).toNat ≤ USER_VA_LIMIT)) = false := by
-    have hfit' : (s.readReg64 Reg.x0).toNat + pageAlignUp (s.readReg64 Reg.x1).toNat ≤ USER_VA_LIMIT := by
-      simpa [USER_VA_LIMIT] using holdFit
-    simp [hfit']
-  have hf_nf : (!s.mem.allPerm (fun p => !p.frozen) (s.readReg64 Reg.x0)
-      (pageAlignUp (s.readReg64 Reg.x1).toNat)) = false := by
-    have hall : s.mem.allPerm (fun p => !p.frozen) (s.readReg64 Reg.x0)
-        (pageAlignUp (s.readReg64 Reg.x1).toNat) = true := by
-      rw [Memory.allPerm_iff]; intro i hi
-      rw [beq_iff_eq.mp ((Memory.allPerm_iff _ _ _ _).mp hrw i hi)]; decide
-    simp [hall]
-  have hf_can : s.mem.canMap (s.readReg64 Reg.x0) (pageAlignUp (s.readReg64 Reg.x1).toNat) = false := by
-    apply Bool.eq_false_iff.mpr; intro hcan
-    have hpos_al : 0 < pageAlignUp (s.readReg64 Reg.x1).toNat := by unfold pageAlignUp PAGE_SIZE; omega
-    have h0_unmap := (Memory.allPerm_iff _ _ _ _).mp hcan 0 hpos_al
-    rw [beq_iff_eq.mp ((Memory.allPerm_iff _ _ _ _).mp hrw 0 hpos_al)] at h0_unmap
-    revert h0_unmap; decide
-  have hf_rw : (!s.mem.allPerm (· == some Perm.rw) (s.readReg64 Reg.x0)
-      (pageAlignUp (s.readReg64 Reg.x1).toNat)) = false := by simp [hrw]
-  have hf_anon : (!s.mem.allAnon (s.readReg64 Reg.x0)
-      (pageAlignUp (s.readReg64 Reg.x1).toNat)) = false := by simp [hanon]
-  simp only [hf_flags, hf_al, hf_old0, hf_lim, hf_nf, hf_can, hf_rw, hf_anon, Bool.false_eq_true, ↓reduceIte]
-  split
-  · exact Or.inl rfl
-  · cases hsan : sanitizeMmapAddr
-        (s.mem.unmapNonFrozen (s.readReg64 Reg.x0) (pageAlignUp (s.readReg64 Reg.x1).toNat))
-        (s.oracle.mmap s.oracleIdx) (pageAlignUp (s.readReg64 Reg.x2).toNat) with
-    | none => exact Or.inl rfl
-    | some newBase =>
-      simp only []; split
-      · next hphys =>
-        simp only [Bool.not_eq_true', decide_eq_false_iff_not] at hphys
-        exact Or.inr (Or.inl ⟨by omega, rfl⟩)
-      · obtain ⟨hne, hnbAl, hnbFit, hcan⟩ := sanitizeMmapAddr_spec hsan
-        exact Or.inr (Or.inr ⟨newBase, hne, hnbAl, by simpa [USER_VA_LIMIT] using hnbFit, hcan, rfl⟩)
+  intro hflags hal holdPos hnewPos _hnewMax holdFit hrw hanon
+  have hflags' : s.readReg64 Reg.x3 = MREMAP_MAYMOVE := hflags
+  have holdNe : s.readReg64 Reg.x1 ≠ 0#64 := by
+    intro hz; rw [hz] at holdPos; contradiction
+  have hnewNe : s.readReg64 Reg.x2 ≠ 0#64 := by
+    intro hz; rw [hz] at hnewPos; contradiction
+  by_cases hnewLim : (s.readReg64 Reg.x2).toNat ≤ USER_VA_LIMIT
+  · cases hmf : s.oracle.mremapRefusal s.oracleIdx with
+    | some r =>
+      cases r with
+      | enomem =>
+        refine Or.inl ⟨12, by decide, by decide, Or.inr ?_⟩
+        simpa [ENOMEM] using
+          ProofLib.execMremap_enomem_of_fail s hflags' hal holdNe hnewNe hnewLim holdFit hrw hanon (Or.inl hmf)
+      | efault =>
+        refine Or.inl ⟨14, by decide, by decide, Or.inr ?_⟩
+        have heq : EFAULT_RET = -BitVec.ofNat 64 14 := by decide
+        simpa [heq] using
+          ProofLib.execMremap_efault_of_refusal s (Or.inr hflags') hal holdNe hnewNe hnewLim holdFit hrw hanon hmf
+    | none =>
+      cases hsan : sanitizeMmapAddr
+          (s.mem.unmapNonFrozen (s.readReg64 Reg.x0) (pageAlignUp (s.readReg64 Reg.x1).toNat))
+          (s.oracle.mmap s.oracleIdx) (pageAlignUp (s.readReg64 Reg.x2).toNat) with
+      | none =>
+        refine Or.inl ⟨12, by decide, by decide, Or.inr ?_⟩
+        simpa [ENOMEM] using
+          ProofLib.execMremap_enomem_of_fail s hflags' hal holdNe hnewNe hnewLim holdFit hrw hanon (Or.inr ⟨hmf, hsan⟩)
+      | some newBase =>
+        obtain ⟨hne, hnbAl, hnbFit, hcan⟩ := ProofLib.sanitizeMmapAddr_spec hsan
+        by_cases hphys : pageAlignUp (s.readReg64 Reg.x2).toNat ≤
+            s.physMemAvail + pageAlignUp (s.readReg64 Reg.x1).toNat
+        · refine Or.inr (Or.inr ⟨newBase, hne, hnbAl, by simpa [USER_VA_LIMIT] using hnbFit, hcan, ?_⟩)
+          have hrem : mallocngRemapRw s.mem (s.readReg64 Reg.x0)
+              (pageAlignUp (s.readReg64 Reg.x1).toNat) newBase
+              (pageAlignUp (s.readReg64 Reg.x2).toNat) =
+              s.mem.remapRw (s.readReg64 Reg.x0) (pageAlignUp (s.readReg64 Reg.x1).toNat)
+                newBase (pageAlignUp (s.readReg64 Reg.x2).toNat) := rfl
+          rw [hrem]
+          exact ProofLib.execMremap_ok s hflags' hal holdNe hnewNe hnewLim holdFit hrw hanon hmf hsan hphys
+        · refine Or.inr (Or.inl ⟨by omega, ?_⟩)
+          exact ProofLib.execMremap_oom s hflags' hal holdNe hnewNe hnewLim holdFit hrw hanon hmf hsan (by omega)
+  · refine Or.inl ⟨22, by decide, by decide, Or.inl ?_⟩
+    simpa [EINVAL] using ProofLib.execMremap_einval_of_newLen_gt s (Or.inr hflags') hnewLim
 
 theorem allocMallocng_svcValid : MallocngSvcValid allocMallocng := by
   intro s; refine ⟨?_, ?_, ?_, ?_, ?_⟩

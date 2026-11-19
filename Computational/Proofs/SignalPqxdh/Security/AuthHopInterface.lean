@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthPrf
-public import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthPrf -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.CollisionsA -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
 import VCVio.CryptoFoundations.SecExp.Measure
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SpecLemmas.SignalPqxdh.Assumptions -- proof-setup: allow-public-import
 
 /-!
 # PQXDH `Auth` shared hop interface
@@ -22,7 +23,7 @@ Defines the KOSK-aligned hybrid oracles on `AuthHybridStateFixed`, shared post-h
 decomposition helpers, and the intermediate hop statements and interface bundles for `pqxdh_auth`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +36,7 @@ open SignalPqxdh
 /-! ## KOSK-aligned hybrid oracle -/
 
 /-- Exact-byte SPK, OPK, and PQSPK provenance check for a pre-key bundle. -/
-def checkBundleProvenanceExact (P : Primitives)
+@[expose] def checkBundleProvenanceExact (P : Primitives)
     (principals : List (Nat × PrincipalEntry))
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (opkEntries : List ((Nat × Nat × Nat) × OpkEntry))
@@ -57,7 +58,7 @@ def checkBundleProvenanceExact (P : Primitives)
 
 /-- SPK provenance predicate for `isIdealSend`, relaxing to `pow8` equality on corrupted peers to
     align with `matchSentOPK` and `matchSentNoOPK`. -/
-def checkBundleSpkHonIdeal (P : Primitives)
+@[expose] def checkBundleSpkHonIdeal (P : Primitives)
     (principals : List (Nat × PrincipalEntry))
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (bundle : PreKeyBundleInput) : Bool :=
@@ -69,7 +70,7 @@ def checkBundleSpkHonIdeal (P : Primitives)
         ((pEntry.corrupted && P.pow8 b.spkPk == P.pow8 bundle.spkB) || b.spkPk == bundle.spkB))
 
 /-- KOSK-aligned stage-parameterised `send` helper for `Auth` hybrids `G3` through `G5`. -/
-def runAuthHybridSendKosk (stage : AuthHybridStage) (useRo : Bool) (S : Setup) (P : Primitives)
+@[expose] def runAuthHybridSendKosk (stage : AuthHybridStage) (useRo : Bool) (S : Setup) (P : Primitives)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes) :
     StateT (AuthHybridState S) ProbComp AuthResponse := do
   let hst ← get
@@ -235,7 +236,7 @@ def runAuthHybridSendKosk (stage : AuthHybridStage) (useRo : Bool) (S : Setup) (
     return .sendUnfreshResp drKey rk1 ck1_1 wireMsg
 
 /-- KOSK-aligned stage-parameterised `Auth` oracle implementation for hybrids `G3` through `G5`. -/
-def pqxdhAuthHybridKoskImpl (stage : AuthHybridStage) (useRo checkAuth : Bool)
+@[expose] def pqxdhAuthHybridKoskImpl (stage : AuthHybridStage) (useRo checkAuth : Bool)
     (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthHybridState S) ProbComp) := fun q => do
   let hst ← get
@@ -397,7 +398,7 @@ def pqxdhAuthHybridKoskImpl (stage : AuthHybridStage) (useRo checkAuth : Bool)
 
 /-- Receiver key-schedule and AEAD helper caching `(s.sid, spqrSalt?)` message keys when
     `stage.idealMsgKeys = true`. -/
-def evalAuthFixedRecvScheduleCached {S : Setup} (stage : AuthHybridStage) (useRo : Bool)
+@[expose] def evalAuthFixedRecvScheduleCached {S : Setup} (stage : AuthHybridStage) (useRo : Bool)
     (P : Primitives)
     (hst : AuthHybridState S) (recvCount : Nat) (mkSaltCache : AuthMkSaltCache S)
     (kEntry : PrincipalEntry) (bEntry : SpkBundleEntry)
@@ -506,7 +507,7 @@ def evalAuthFixedRecvScheduleCached {S : Setup} (stage : AuthHybridStage) (useRo
 /-- Stage-parameterised `Auth` oracle on `AuthHybridStateFixed S`, caching `(s.sid, spqrSalt?)`
     message keys up to `effectiveHkdfSaltBytes` (`mkSaltKeyMatch`, DEV-LS25) when
     `stage.idealMsgKeys = true`. -/
-def pqxdhAuthHybridFixedImpl (stage : AuthHybridStage) (useRo checkAuth : Bool)
+@[expose] def pqxdhAuthHybridFixedImpl (stage : AuthHybridStage) (useRo checkAuth : Bool)
     (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthHybridStateFixed S) ProbComp) := fun q => do
   let hst ← get
@@ -742,7 +743,7 @@ theorem map_toAuthHybridState_fullAuthHybridFixedImpl (stage : AuthHybridStage)
     exact map_toAuthHybridState_pqxdhAuthHybridFixedImpl stage useRo checkAuth S P kq hst hStage
 
 /-- Stage experiment for `Auth` running `pqxdhAuthHybridKoskImpl` on `AuthHybridState S`. -/
-noncomputable def authKoskExpAtStage (stage : AuthHybridStage) (S : Setup) (P : Primitives)
+@[expose] def authKoskExpAtStage (stage : AuthHybridStage) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthHybridState.empty S secb
@@ -763,7 +764,7 @@ noncomputable def authKoskExpAtStage (stage : AuthHybridStage) (S : Setup) (P : 
     return (b' == secb)
 
 /-- Stage experiment for `Auth` running `pqxdhAuthHybridFixedImpl` on `AuthHybridStateFixed S`. -/
-noncomputable def authFixedExpAtStage (stage : AuthHybridStage) (S : Setup) (P : Primitives)
+@[expose] def authFixedExpAtStage (stage : AuthHybridStage) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthHybridStateFixed.empty S secb
@@ -803,11 +804,11 @@ theorem authFixedExpAtStage_eq_authKoskExpAtStage (stage : AuthHybridStage)
   rw [← hsim, bind_map_left]
   rfl
 
-noncomputable def authKoskAdvAtStage (stage : AuthHybridStage) (S : Setup) (P : Primitives)
+@[expose] noncomputable def authKoskAdvAtStage (stage : AuthHybridStage) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ℝ :=
   (𝒟[authKoskExpAtStage stage S P A].boolBias).toReal
 
-noncomputable def authFixedAdvAtStage (stage : AuthHybridStage) (S : Setup) (P : Primitives)
+@[expose] noncomputable def authFixedAdvAtStage (stage : AuthHybridStage) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ℝ :=
   (𝒟[authFixedExpAtStage stage S P A].boolBias).toReal
 
@@ -821,7 +822,7 @@ theorem authFixedAdvAtStage_eq_authKoskAdvAtStage (stage : AuthHybridStage)
 /-- Idealised `Auth` execution branch on `AuthHybridStateFixed S` (`stage = .g5`, `checkAuth =
     false`), where every fresh session encrypts `m0` and unmatched honest-sender `recv` branches
     reject. -/
-noncomputable def authFixedIdealBranch (useRo : Bool) (S : Setup) (P : Primitives)
+@[expose] def authFixedIdealBranch (useRo : Bool) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool := do
   let initSt := AuthHybridStateFixed.empty S false
   let impl :=
@@ -839,48 +840,48 @@ noncomputable def authFixedIdealBranch (useRo : Bool) (S : Setup) (P : Primitive
   else
     return b'
 
-noncomputable def authFixedExpG3 (S : Setup) (P : Primitives)
+@[expose] def authFixedExpG3 (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   authFixedExpAtStage .g3 S P A
 
-noncomputable def authFixedExpG3_5 (S : Setup) (P : Primitives)
+@[expose] def authFixedExpG3_5 (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   authFixedExpAtStage .g3_5 S P A
 
-noncomputable def authFixedExpG3_6 (S : Setup) (P : Primitives)
+@[expose] def authFixedExpG3_6 (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   authFixedExpAtStage .g3_6 S P A
 
-noncomputable def authFixedExpG3_7 (S : Setup) (P : Primitives)
+@[expose] def authFixedExpG3_7 (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   authFixedExpAtStage .g3_7 S P A
 
-noncomputable def authFixedExpG3_8 (S : Setup) (P : Primitives)
+@[expose] def authFixedExpG3_8 (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   authFixedExpAtStage .g3_8 S P A
 
-noncomputable def authFixedExpG5 (S : Setup) (P : Primitives)
+@[expose] def authFixedExpG5 (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let z ← if secb then authFixedIdealBranch true S P A else authFixedIdealBranch true S P A
   return (secb == z)
 
-noncomputable def authFixedAdvG3 (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
+@[expose] noncomputable def authFixedAdvG3 (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
   (𝒟[authFixedExpG3 S P A].boolBias).toReal
 
-noncomputable def authFixedAdvG3_5 (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
+@[expose] noncomputable def authFixedAdvG3_5 (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
   (𝒟[authFixedExpG3_5 S P A].boolBias).toReal
 
-noncomputable def authFixedAdvG3_6 (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
+@[expose] noncomputable def authFixedAdvG3_6 (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
   (𝒟[authFixedExpG3_6 S P A].boolBias).toReal
 
-noncomputable def authFixedAdvG3_7 (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
+@[expose] noncomputable def authFixedAdvG3_7 (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
   (𝒟[authFixedExpG3_7 S P A].boolBias).toReal
 
-noncomputable def authFixedAdvG3_8 (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
+@[expose] noncomputable def authFixedAdvG3_8 (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
   (𝒟[authFixedExpG3_8 S P A].boolBias).toReal
 
-noncomputable def authFixedAdvG5 (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
+@[expose] noncomputable def authFixedAdvG5 (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
   (𝒟[authFixedExpG5 S P A].boolBias).toReal
 
 @[simp]
@@ -892,7 +893,7 @@ theorem authFixedAdvG5_eq_zero (S : Setup) (P : Primitives) (A : AuthAdversary S
 /-! ## Post-handshake decomposition helpers -/
 
 /-- Finalizes an `Auth` hybrid game execution from `(b', finalSt)`. -/
-noncomputable def finalizeAuthGame {S : Setup} {σ : Type} [HasAuthState σ S]
+@[expose] def finalizeAuthGame {S : Setup} {σ : Type} [HasAuthState σ S]
     (useRo checkAuth : Bool) (S_param : Setup) (P : Primitives)
     (b' : Bool) (finalSt : AuthHybridState S) : ProbComp Bool := do
   let _ := S_param
@@ -911,7 +912,7 @@ noncomputable def finalizeAuthGame {S : Setup} {σ : Type} [HasAuthState σ S]
 
 /-- Complete a `sendOPK` / `sendNoOPK` state transition on `AuthHybridState S` once the handshake
     keys, message keys, and ciphertext have been derived. -/
-def finishAuthHybridSend {S : Setup} (P : Primitives)
+@[expose] def finishAuthHybridSend {S : Setup} (P : Primitives)
     (sid : SessionId S) (uEntry : PrincipalEntry)
     (peerPrincipal? : Option (Nat × PrincipalEntry)) (isFreshPeer : Bool)
     (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
@@ -1020,7 +1021,7 @@ def finishAuthHybridSend {S : Setup} (P : Primitives)
       AuthResponse.sendUnfreshResp drKey rk1 ck1_1 wireMsg
   (resp, hst')
 
-def finishAuthHybridRecvOPK {S : Setup} (checkAuth : Bool) (P : Primitives)
+@[expose] def finishAuthHybridRecvOPK {S : Setup} (checkAuth : Bool) (P : Primitives)
     (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk)
     (kEntry : PrincipalEntry) (bEntry : SpkBundleEntry) (oEntry : OpkEntry)
     (usedTriples' : List (Nat × KeyId × KeyId × Bytes)) (msg : PreKeyMsg)
@@ -1071,7 +1072,7 @@ def finishAuthHybridRecvOPK {S : Setup} (checkAuth : Bool) (P : Primitives)
           roCache          := roCache'
           rootRoCache      := rootRoCache' } })
 
-def finishAuthHybridRecvNoOPK {S : Setup} (checkAuth : Bool) (P : Primitives)
+@[expose] def finishAuthHybridRecvNoOPK {S : Setup} (checkAuth : Bool) (P : Primitives)
     (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk)
     (kEntry : PrincipalEntry) (bEntry : SpkBundleEntry)
     (usedTriples' : List (Nat × KeyId × KeyId × Bytes)) (msg : PreKeyMsg)
@@ -1134,7 +1135,7 @@ structure PreparedAuthRecv (S : Setup) where
                               AuthResponse × AuthHybridState S
 
 /-- Validates and prepares a `recvOPK k j o msg` query on `hst : AuthHybridState S`. -/
-def prepareAuthHybridRecvOPK {S : Setup} (checkAuth : Bool) (P : Primitives)
+@[expose] def prepareAuthHybridRecvOPK {S : Setup} (checkAuth : Bool) (P : Primitives)
     (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) (msg : PreKeyMsg)
     (hst : AuthHybridState S) : Option (PreparedAuthRecv S) :=
   let st := hst.base
@@ -1206,7 +1207,7 @@ def prepareAuthHybridRecvOPK {S : Setup} (checkAuth : Bool) (P : Primitives)
     | _, _, _ => none
 
 /-- Validates and prepares a `recvNoOPK k j l msg` query on `hst : AuthHybridState S`. -/
-def prepareAuthHybridRecvNoOPK {S : Setup} (checkAuth : Bool) (P : Primitives)
+@[expose] def prepareAuthHybridRecvNoOPK {S : Setup} (checkAuth : Bool) (P : Primitives)
     (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk) (msg : PreKeyMsg)
     (hst : AuthHybridState S) : Option (PreparedAuthRecv S) :=
   let st := hst.base
@@ -1286,7 +1287,7 @@ theorem abs_sub_le_sum_range_postHandshake (N : Nat) (H : Nat → ℝ) :
 /-! ## Hop statements and interface bundles -/
 
 /-- Pre-key and handshake hop `G0 → G3` (`SigEufCma`, EC/KEM collision bounds, and `KemShCr`). -/
-def AuthHopG0G3Stmt (S : Setup)
+@[expose] def AuthHopG0G3Stmt (S : Setup)
     (sig : (b : QueryBudget) → BoundedAdv (AuthAdversary S) b → SigEufCmaAdv)
     (shcr : (b : QueryBudget) → BoundedAdv (AuthAdversary S) b → KemShCrAdv) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
@@ -1298,14 +1299,14 @@ def AuthHopG0G3Stmt (S : Setup)
         ((S.N_spk_tot * (S.N_spk_tot - 1) : ℕ) : ℝ) / (2 : ℝ) ^ 256
 
 /-- Sub-hop `G3.5 → G3.6`: `RootKdfRO` replacement on fresh and unmatched honest-sender sessions. -/
-def AuthHopG3_5G3_6Stmt (S : Setup) : Prop :=
+@[expose] def AuthHopG3_5G3_6Stmt (S : Setup) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b),
       |authFixedAdvG3_5 S P A.1 - authFixedAdvG3_6 S P A.1| ≤
         rootKdfRoTermReal S b.q_roRoot
 
 /-- Sub-hop `G3.6 → G3.7`: `PrfChainKey` replacement across `S.N_sess_tot` sessions. -/
-def AuthHopG3_6G3_7Stmt (S : Setup)
+@[expose] def AuthHopG3_6G3_7Stmt (S : Setup)
     (ck : (b : QueryBudget) → BoundedAdv (AuthAdversary S) b → PrfCkAdv) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b),
@@ -1313,7 +1314,7 @@ def AuthHopG3_6G3_7Stmt (S : Setup)
         2 * (S.N_sess_tot : ℝ) * PrfChainKeyReal P (ck b A)
 
 /-- Sub-hop `G3.7 → G3.8`: `PrfMsgKeys` replacement across `S.N_sess_tot` sessions. -/
-def AuthHopG3_7G3_8Stmt (S : Setup)
+@[expose] def AuthHopG3_7G3_8Stmt (S : Setup)
     (mk : (b : QueryBudget) → BoundedAdv (AuthAdversary S) b → PrfMsgKeysAdv) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b),
@@ -1321,7 +1322,7 @@ def AuthHopG3_7G3_8Stmt (S : Setup)
         2 * (S.N_sess_tot : ℝ) * PrfMsgKeysReal P (mk b A)
 
 /-- Combined sub-hops `G3.8 → G5`: IND-CPA and multi-key INT-CTXT of the first-message AEAD. -/
-def AuthHopG3_8G5Stmt (S : Setup)
+@[expose] def AuthHopG3_8G5Stmt (S : Setup)
     (cpa : (b : QueryBudget) → BoundedAdv (AuthAdversary S) b → AeadIndCpaAdv)
     (int : (b : QueryBudget) → BoundedAdv (AuthAdversary S) b → AeadMuIntCtxtAdv) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →

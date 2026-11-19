@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.Defs
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMessageBridge
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyDecoder as Decoder>::decoded_message` & `add_chunk` Relocatable Bridges
@@ -22,7 +23,7 @@ Relocatable `[LibsignalPlacement]` bridges lifting `decodedMessagePlacedSpec` (B
 `addChunkSpec` (Block `419`) to `addChunkSpecX` by framing the unused bottom stack region.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

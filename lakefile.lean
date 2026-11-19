@@ -40,7 +40,6 @@ def rustExportInputs : Array FilePath := (#[
   "arm64-semantics/tools/rust-obj2lean/src/trusted_common/mod.rs",
   "arm64-semantics/tools/rust-obj2lean/src/trusted_extractor/extracted_obj.rs",
   "arm64-semantics/tools/rust-obj2lean/src/trusted_extractor/mod.rs",
-  "arm64-semantics/tools/rust-obj2lean/src/untrusted_legacy_linker/mod.rs",
   "arm64-semantics/tools/rust-obj2lean/src/untrusted_driver/mod.rs",
   "arm64-semantics/tools/rust-obj2lean/src/untrusted_driver/config.rs",
   "arm64-semantics/tools/rust-obj2lean/src/untrusted_driver/externs.rs",
@@ -49,8 +48,6 @@ def rustExportInputs : Array FilePath := (#[
   "arm64-semantics/tools/rust-obj2lean/src/untrusted_lemmas/dwarf/cli.rs",
   "arm64-semantics/tools/rust-obj2lean/src/untrusted_lemmas/dwarf/companion.rs",
   "arm64-semantics/tools/rust-obj2lean/src/untrusted_driver/pipeline.rs",
-  "arm64-semantics/tools/rust-obj2lean/src/untrusted_lemmas/registry_facts.rs",
-  "arm64-semantics/tools/rust-obj2lean/src/untrusted_lemmas/code.rs",
   "arm64-semantics/tools/rust-obj2lean/src/untrusted_lemmas/index.rs",
   "arm64-semantics/tools/rust-obj2lean/src/untrusted_lemmas/index_schema.rs",
   "arm64-semantics/tools/rust-obj2lean/src/untrusted_lemmas/symexec/mod.rs",
@@ -92,50 +89,42 @@ def exportInputs : Array FilePath := rustExportInputs
 
 /-- Files `rust-obj2lean` writes for `GeneratedLean` (inside `.GeneratedLean/GeneratedLean/`). -/
 def exportOutputs : Array FilePath := (#[
-  ".GeneratedLean/GeneratedLean/LibsignalSession.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalTripleRatchet.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalTripleRatchetIndex.json",
-  ".GeneratedLean/GeneratedLean/LibsignalTripleRatchetShard0.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalTripleRatchetShard1.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalTripleRatchetShard2.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalTripleRatchetShard3.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalTripleRatchetShard4.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalTripleRatchetShard5.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalTripleRatchetShard6.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalTripleRatchetShard7.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionCode.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionCodeShard0.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionCodeShard1.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionCodeShard2.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionCodeShard3.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionCodeShard4.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionCodeShard5.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionCodeShard6.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionCodeShard7.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionCodeShard8.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionCodeShard9.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionCodeShard10.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionCodeShard11.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionCodeShard12.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionCodeShard13.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionCodeShard14.lean",
   ".GeneratedLean/GeneratedLean/LibsignalSessionExtractedObj.bin",
   ".GeneratedLean/GeneratedLean/LibsignalSessionExtractedObj.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionIndex.json",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionObj.code.bin",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionObj.data.bin",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionObj.lean",
   ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObj.bin",
   ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObj.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionShard0.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionShard1.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionShard2.lean",
-  ".GeneratedLean/GeneratedLean/LibsignalSessionShard3.lean",
-  ".GeneratedLean/GeneratedLean/SignalSessionIoCode.lean",
-  ".GeneratedLean/GeneratedLean/SignalSessionIoIndex.json",
-  ".GeneratedLean/GeneratedLean/SignalSessionIoObj.code.bin",
-  ".GeneratedLean/GeneratedLean/SignalSessionIoObj.data.bin",
-  ".GeneratedLean/GeneratedLean/SignalSessionIoObj.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard0.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard1.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard2.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard3.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard4.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard5.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard6.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard7.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard8.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard9.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard10.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard11.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard12.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard13.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard14.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard15.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard16.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard17.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard18.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard19.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard20.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard21.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard22.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard23.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard24.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard25.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard26.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard27.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard28.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard29.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard30.lean",
+  ".GeneratedLean/GeneratedLean/LibsignalSessionPlacedObjShard31.lean",
   ".GeneratedLean/GeneratedLean/SignalSessionIoPlacedObj.bin",
   ".GeneratedLean/GeneratedLean/SignalSessionIoPlacedObj.lean"
 ] : Array String).map FilePath.mk
@@ -344,11 +333,11 @@ require «cv-input-facet» from "scripts/lake-facets"
 require «arm64-semantics» from "arm64-semantics"
 
 require VCVio from git
-  "https://github.com/Verified-zkEVM/VCVio" @ "967fdf2eae87e86127ca309cc941745c8334f6fe"
+  "https://github.com/Verified-zkEVM/VCVio" @ "88efe9715a9fa9e7d89635c38cf70259836766c2"
 
 -- DyLean symbolic protocol framework (ePrint 2026/1493) for `Symbolic/Specifications/Model/`.
 require dylean from git
-  "https://github.com/BobDyLean/dylean" @ "v4.34.0"
+  "https://github.com/BobDyLean/dylean" @ "v4.35.0"
 
 /-- Adaptive per-process Lean memory cap (`-M`, in MiB):
 * `$LEAN_MAX_MEM_MB` if set;
@@ -526,13 +515,12 @@ lean_lib Symbolic where
   roots := #[`Symbolic]
 
 /-- SPQR V1 specification (`LibsignalBinary/Specifications/LibsignalSpqrV1/`,
-`Computational/docs/SPQR_V1_CAMPAIGN.md`), image guards, `spec-audit` checks
+`Computational/docs/SPQR_V1_CAMPAIGN.md`), `spec-audit` checks
 (`LibsignalBinary.SpecAudit.SpqrV1`), ML-KEM δ-correctness and initialization lemmas, and
 differential test vectors against `spqr` 1.6.0 (`LibsignalBinary/Proofs/SpqrV1/Vectors/*Check`). -/
 @[default_target]
 lean_lib LibsignalSpqrV1Spec where
   roots := #[
-    `LibsignalBinary.Specifications.LibsignalSpqrV1.Guards,
     `LibsignalBinary.Specifications.LibsignalSpqrV1.MlKemCorrect,
     `LibsignalBinary.Specifications.LibsignalSpqrV1.Init,
     `LibsignalBinary.Proofs.SpqrV1.MlKemCorrectFacts,
@@ -547,19 +535,16 @@ lean_lib LibsignalSpqrV1Spec where
     `LibsignalBinary.Proofs.SpqrV1.Vectors.TopCheck
   ]
 
-/-- SPQR V1 binary functional-correctness and state-synchronization proofs
-(`LibsignalBinary/Proofs/SpqrV1/` and `LibsignalBinary/Proofs/SpqrV1Sync/`,
-`Computational/docs/SPQR_V1_CAMPAIGN.md`): `spqr_send_ok` (`Top.Send.Top`), `spqr_recv_ok`
-(`Top.Recv.Final`), `spqr::initial_state` (`Top.InitialState.{Proof,Link}`), state-size growth
-bounds, `GF(2^16)` erasure-code round-trip and protobuf codec lemmas, and honest-run synchronization
-and `send` totality. Game-level SPQR V1 results under `Computational/Proofs/SpqrV1Sync/` are built
-through `Computational.lean`. -/
+/-- SPQR V1 relocatable binary functional-correctness and state-synchronization proofs
+(`LibsignalBinary/Proofs/SpqrV1/`, `LibsignalBinary/Proofs/Placed/SubsetA4{b,c}.lean`, and
+`LibsignalBinary/Proofs/SpqrV1Sync/`, `Computational/docs/SPQR_V1_CAMPAIGN.md`):
+`spqr::initial_state` (`Top.InitialState.Link`), state-size growth bounds, `GF(2^16)` erasure-code
+round-trip and protobuf codec lemmas, and honest-run synchronization and `send` totality.
+Game-level SPQR V1 results under `Computational/Proofs/SpqrV1Sync/` are built through
+`Computational.lean`. -/
 @[default_target]
 lean_lib LibsignalSpqrV1Proofs where
   roots := #[
-    `LibsignalBinary.Proofs.SpqrV1.Top.Send.Top,
-    `LibsignalBinary.Proofs.SpqrV1.Top.Recv.Final,
-    `LibsignalBinary.Proofs.SpqrV1.Alloc.Defs,
     `LibsignalBinary.Proofs.SpqrV1.Alloc.GrowAmortized,
     `LibsignalBinary.Proofs.SpqrV1Sync.GF16Field,
     `LibsignalBinary.Proofs.SpqrV1Sync.ErasureRoundTrip,
@@ -578,7 +563,6 @@ lean_lib LibsignalSpqrV1Proofs where
     `LibsignalBinary.Proofs.SpqrV1Sync.TopSize,
     `LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Assembly,
     `LibsignalBinary.Proofs.E2E.V1.ReachSteps,
-    `LibsignalBinary.Proofs.SpqrV1.Top.InitialState.Proof,
     `LibsignalBinary.Proofs.SpqrV1.Top.InitialState.Link,
     `LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow,
     `LibsignalBinary.Proofs.Placed.SubsetA4b,
@@ -595,7 +579,6 @@ lean_lib LibsignalSymbolic where
     `Symbolic.Specifications.Model.EquationalTheory.Representable,
     `Symbolic.Specifications.Model.EquationalTheory.SymEnc,
     `Symbolic.Specifications.Model.EquationalTheory.Trunc,
-    `Symbolic.Specifications.Model.EquationalTheory.WireMsg,
     `Symbolic.Specifications.Model.EquationalTheory.X25519,
     `Symbolic.Specifications.Model.EquationalTheory.Spqr,
     `Symbolic.Specifications.Model.EquationalTheory.TrWireMsg,
@@ -665,10 +648,9 @@ lean_lib BugInjection where
 `Symbolic/BugInjection/{,Synthetic/}Disproofs/<Witness>.lean` negates the witness's target statement on
 `mutantCliElfBytes` (the mutant's `libsignal-cli` ELF, built from libsignal with the bug's patch):
 `¬ SignalSessionSecurePlaced mutantCliElfBytes` (carrier-proved on Cheval '26 bugs; open with `sorry`
-otherwise) or `¬ SignalSessionSecure mutantCliElfBytes` (synthetic bugs). Each file builds only with
-its bug's image and ELF (`CV_BUG_INJECTION=<bug>`, prepared by `scripts/bug_injection.py disproof`,
-which builds that one module). Not a default target, and nothing else imports these files, so any open
-`sorry`s never reach an ordinary build or the audits. -/
+on synthetic mutants). Each file builds only with its bug's image and ELF (`CV_BUG_INJECTION=<bug>`,
+prepared by `scripts/bug_injection.py disproof`, which builds that one module). Not a default target,
+and nothing else imports these files, so any open `sorry`s never reach an ordinary build or the audits. -/
 lean_lib BugInjectionDisproofs where
   globs := #[.submodules `Symbolic.BugInjection.Disproofs,
     .submodules `Symbolic.BugInjection.Synthetic.Disproofs]

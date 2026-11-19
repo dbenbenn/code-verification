@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Proof
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Proof -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldLemmas -- proof-setup: allow-public-import
 
 /-!
 # Shared Leaf `prost::encoding::message::merge` Definitions
@@ -26,7 +26,7 @@ leaf SPQR V1 `prost::encoding::message::merge` subroutines (`ChainParams`, `Epoc
 `PolynomialDecoder`, and `PolynomialEncoder`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageMerge
 
@@ -56,38 +56,6 @@ abbrev polyDecoderMergeName : String :=
 abbrev polyEncoderMergeName : String :=
   "prost::encoding::message::merge::<spqr::proto::pq_ratchet::PolynomialEncoder, &mut &[u8]>"
 
-theorem chainParamsMerge_fnOff :
-    libsignalSessionCode.fnOff chainParamsMergeName = ls_off% "prost::encoding::message::merge::<spqr::proto::pq_ratchet::ChainParams, &mut &[u8]>" :=
-  ls_lemma% fnOff "prost::encoding::message::merge::<spqr::proto::pq_ratchet::ChainParams, &mut &[u8]>"
-
-theorem epochDirectionMerge_fnOff :
-    libsignalSessionCode.fnOff epochDirectionMergeName = ls_off% "prost::encoding::message::merge::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, &mut &[u8]>" :=
-  ls_lemma% fnOff "prost::encoding::message::merge::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, &mut &[u8]>"
-
-theorem polyDecoderMerge_fnOff :
-    libsignalSessionCode.fnOff polyDecoderMergeName = ls_off% "prost::encoding::message::merge::<spqr::proto::pq_ratchet::PolynomialDecoder, &mut &[u8]>" :=
-  ls_lemma% fnOff "prost::encoding::message::merge::<spqr::proto::pq_ratchet::PolynomialDecoder, &mut &[u8]>"
-
-theorem polyEncoderMerge_fnOff :
-    libsignalSessionCode.fnOff polyEncoderMergeName = ls_off% "prost::encoding::message::merge::<spqr::proto::pq_ratchet::PolynomialEncoder, &mut &[u8]>" :=
-  ls_lemma% fnOff "prost::encoding::message::merge::<spqr::proto::pq_ratchet::PolynomialEncoder, &mut &[u8]>"
-
-gen_decodes libsignalSessionCode_tree chainParamsMergeBin [
-  0x48900 → 0x48b3c
-]
-
-gen_decodes libsignalSessionCode_tree epochDirectionMergeBin [
-  0x4a14c → 0x4a38c
-]
-
-gen_decodes libsignalSessionCode_tree polyDecoderMergeBin [
-  0x48d14 → 0x4909c
-]
-
-gen_decodes libsignalSessionCode_tree polyEncoderMergeBin [
-  0x490a0 → 0x493ec
-]
-
 open Lean Elab Tactic in
 /-- `code_fetches_from <code> <decPrefix> b H hfn off k0 len` adds `<code>_fetch_fnAddr`
     hypotheses for the instructions `k = k0, k0 + 4, …, k0 + len - 4` of the function at offset
@@ -112,32 +80,6 @@ elab "code_fetches_from " codeId:ident decPrefix:ident b:term:max H:term:max hfn
       evalTactic (← `(tactic|
         have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
 
-/-- Fetch hypotheses for `ChainParams::merge` (`0x4dcf8`), from fn-relative offset `k0`, `len` bytes. -/
-macro "chainParamsMerge_fetches " b:term:max H:term:max k0:num len:num : tactic =>
-  `(tactic| code_fetches_from CryptoVerification.libsignalSessionCode
-    CryptoVerification.SpqrV1.Prost.MessageMerge.chainParamsMergeBin $b $H
-    chainParamsMerge_fnOff 0x48900 $k0 $len)
-
-/-- Fetch hypotheses for `EpochDirection::merge` (`0x4f544`), from fn-relative offset `k0`, `len` bytes. -/
-macro "epochDirectionMerge_fetches " b:term:max H:term:max k0:num len:num : tactic =>
-  `(tactic| code_fetches_from CryptoVerification.libsignalSessionCode
-    CryptoVerification.SpqrV1.Prost.MessageMerge.epochDirectionMergeBin $b $H
-    epochDirectionMerge_fnOff 0x4a14c $k0 $len)
-
-/-- Fetch hypotheses for `PolynomialDecoder::merge` (`0x4e10c`), from fn-relative offset `k0`, `len` bytes. -/
-macro "polyDecoderMerge_fetches " b:term:max H:term:max k0:num len:num : tactic =>
-  `(tactic| code_fetches_from CryptoVerification.libsignalSessionCode
-    CryptoVerification.SpqrV1.Prost.MessageMerge.polyDecoderMergeBin $b $H
-    polyDecoderMerge_fnOff 0x48d14 $k0 $len)
-
-/-- Fetch hypotheses for `PolynomialEncoder::merge` (`0x4e498`), from fn-relative offset `k0`, `len` bytes. -/
-macro "polyEncoderMerge_fetches " b:term:max H:term:max k0:num len:num : tactic =>
-  `(tactic| code_fetches_from CryptoVerification.libsignalSessionCode
-    CryptoVerification.SpqrV1.Prost.MessageMerge.polyEncoderMergeBin $b $H
-    polyEncoderMerge_fnOff 0x490a0 $k0 $len)
-
-/-! ## 1. Bridges between `LibsignalSpqrV1.Proto` and `LibsignalProtoCodec` -/
-
 open CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.SpqrV1.Prost.BytesMerge
 open CryptoVerification.LibsignalSpqrV1 hiding decodeVarint encodeVarint WireType
@@ -145,7 +87,7 @@ open CryptoVerification.LibsignalSpqrV1 hiding decodeVarint encodeVarint WireTyp
 set_option linter.unusedSimpArgs false
 
 /-- Convert `LibsignalProtoCodec.WireType` to `LibsignalSpqrV1.Proto.WireType`. -/
-def codecWireTypeToProto : CryptoVerification.LibsignalProtoCodec.WireType → Proto.WireType
+@[expose] def codecWireTypeToProto : CryptoVerification.LibsignalProtoCodec.WireType → Proto.WireType
   | .varint => .varint
   | .sixtyFourBit => .SixtyFourBit
   | .lengthDelimited => .lengthDelimited
@@ -848,127 +790,10 @@ theorem decodeErrorWith_one_entails_le1 (A : RustAlloc) (e : BitVec 64) :
 
 /-! ## 4. `ImgCallInv` Threading Combinators for `SepWPp` in `message::merge` -/
 
-/-- Run a `SepWP` segment to `mid` while preserving `ImgCallInv img` (`FrozenLoaded ∧ symtab`). -/
-theorem SepWPp.of_sepWP_img {prog : Program} {img : Obj.Image} {mid ret : BitVec 64}
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hinv : ImgCallInv img s)
-    (h : SepWP prog mid s P (fun sm Pm =>
-      ImgCallInv img sm → SepWPp prog ret sm Pm Q Qp)) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm hL
-  obtain ⟨sm, hsteps, ⟨-, -, Pm, hmm, hnext⟩ | ⟨hoom, hfalse⟩⟩ := h.elim hm hL
-  · obtain ⟨sf, hsteps', hout⟩ :=
-      hnext (hinv.of_steps hsteps) R hmm (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout⟩
-  · exact ⟨sm, hsteps, Or.inr (Or.inr ⟨hoom, hfalse⟩)⟩
-
-/-- Framed `SepWPp.call` to an `(spec.inImage img)` callee, threading `ImgCallInv img` to `hnext`. -/
-theorem SepWPp.call_frame_inImage {α : Type} {prog : Program} {img : Obj.Image}
-    {entry ret_pc ret : BitVec 64} {spec : Spec α} {x : α} {φ : Prop}
-    {T F : SepProp} {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (hinv : ImgCallInv img s)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hexit : ∀ sf code R', sf.status = .Exited code → (sf.mem ⊨ spec.onExit x code s sf ∗ R') → False)
-    (hpanic : ∀ sf, sf.status = .Panicked → Qp sf (spec.onPanic x s sf ∗ F))
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf → ImgCallInv img sf →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom : ∀ sf R', sf.status = .OutOfMemory →
-      (sf.mem ⊨ spec.onOom x s sf ∗ (F ∗ R')) →
-      (sf.mem ⊨ (⌜False⌝ : SepProp) ∗ R') := by wp_close_oom_default) :
-    SepWPp prog ret s P Q Qp :=
-  ProofLib.SepWPp.call_inImage_frame hcall hinv.1 hinv.2 hpc hrun hsp hlr hspec hφ hP hexit hpanic
-    (fun sf hpcf hrunf hspf hcsf hfz hsym => hnext sf hpcf hrunf hspf hcsf ⟨hfz, hsym⟩) hoom
-
-/-- Framed `SepWPp.call` to a raw `spec` callee, preserving `ImgCallInv img` for `hnext`. -/
-theorem SepWPp.call_frame_keep {α : Type} {prog : Program} {img : Obj.Image}
-    {entry ret_pc ret : BitVec 64} {spec : Spec α} {x : α} {φ : Prop}
-    {T F : SepProp} {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hcall : subroutine_ok prog entry spec)
-    (hinv : ImgCallInv img s)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hexit : ∀ sf code R', sf.status = .Exited code → (sf.mem ⊨ spec.onExit x code s sf ∗ R') → False)
-    (hpanic : ∀ sf, sf.status = .Panicked → Qp sf (spec.onPanic x s sf ∗ F))
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf → ImgCallInv img sf →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom : ∀ sf R', sf.status = .OutOfMemory →
-      (sf.mem ⊨ spec.onOom x s sf ∗ (F ∗ R')) →
-      (sf.mem ⊨ (⌜False⌝ : SepProp) ∗ R') := by wp_close_oom_default) :
-    SepWPp prog ret s P Q Qp :=
-  ProofLib.SepWPp.call_frame_frozen hcall hinv.1 hinv.2 hpc hrun hsp hlr hspec hφ hP hexit hpanic
-    (fun sf hpcf hrunf hspf hcsf hfz hsym => hnext sf hpcf hrunf hspf hcsf ⟨hfz, hsym⟩) hoom
-
-/-- Irreducible wrapper around `⌜ImgCallInv img s⌝` so `wpp_init` keeps it as a spatial atom
-without shifting pure-hypothesis names (`h_1`, `h_2`, `h_3`, `h`). -/
-@[irreducible]
-def imgCallInvProp (img : Obj.Image) (s : State) : SepProp :=
-  ⌜ImgCallInv img s⌝
-
-/-- Variant of `Spec.inImage` that wraps `ImgCallInv img s` in `imgCallInvProp` for `wpp_init`. -/
-def withImgProp {α : Type} (spec : Spec α) (img : Obj.Image) : Spec α where
-  pre := fun x s => imgCallInvProp img s ∗ spec.pre x s
-  post := spec.post
-  onExit := spec.onExit
-  onPanic := spec.onPanic
-  onOom := spec.onOom
-
-theorem withImgProp_eq_inImage {α : Type} (spec : Spec α) (img : Obj.Image) :
-    withImgProp spec img = spec.inImage img := by
-  unfold withImgProp Spec.inImage imgCallInvProp ImgCallInv
-  rfl
-
-theorem subroutine_ok_inImage_of_withImgProp {α : Type} {prog : Program} {img : Obj.Image}
-    {entry : BitVec 64} {spec : Spec α}
-    (h : subroutine_ok prog entry (withImgProp spec img)) :
-    subroutine_ok prog entry (spec.inImage img) :=
-  withImgProp_eq_inImage spec img ▸ h
-
-theorem SepWPp.elim_imgCallInvProp {prog : Program} {img : Obj.Image} {ret : BitVec 64}
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (h : ImgCallInv img s → SepWPp prog ret s P Q Qp) :
-    SepWPp prog ret s (imgCallInvProp img s ∗ P) Q Qp := by
-  unfold imgCallInvProp
-  exact ProofLib.SepWPp.pure_elim h
-
 open CryptoVerification.RustHeap
 open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.SpqrV1.Varint
 open CryptoVerification.SpqrV1.Prost.BytesMerge
-
-/-- Bundle of the contract hypotheses of `bytes_merge_3_ok_ext` (`0x4d13c`) on `tripleRatchetProgAtExt img.base ext`. -/
-structure BytesMerge3Contracts (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop where
-  loads : Obj.Loads libsignalSessionImage img
-  alloc : AllocContracts img.base A ext
-  decode_error_from : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr decodeErrorFromName) (decodeErrorFromSpec A)
-  decode_varint2 : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr BytesMerge.decodeVarint2Name)
-    ((decodeVarint2Spec A).inImage img)
-  bytes_from_vec : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr bytesFromVecName)
-    ((bytesFromVecSpec A img.base).inImage img)
-  reserve7 : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr doReserve7Name) (doReserveSpec A)
-  vtable_slot : BytesVtableSlotLoadedStmt
-  vtable_drop : ∀ (tmpPtr : BitVec 64) (v : List (BitVec 8)),
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      (bytesDropFnAddr img.base tmpPtr v.length)
-      ((bytesVtableDropSpec A tmpPtr v v.length).inImage img)
-
-theorem BytesMerge3Contracts.ok_ext {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hBC : BytesMerge3Contracts img A ext) :
-    BytesMerge3OkExt img A ext :=
-  bytes_merge_3_ok_ext hBC.loads hBC.alloc hBC.decode_error_from hBC.decode_varint2
-    hBC.bytes_from_vec hBC.reserve7 hBC.vtable_slot hBC.vtable_drop
-
-/-! ## 5. Relocatable `[LibsignalPlacement]` `LibsignalCodeRoLoaded` Threading Combinators -/
 
 /-- Run a `SepWP` segment to `mid` while preserving `LibsignalCodeRoLoaded pl` (`KeepsFrozen`). -/
 theorem SepWPp.of_sepWP_lscro {prog : Program} {pl : Obj.MultiPlacement} {mid ret : BitVec 64}
@@ -1054,7 +879,7 @@ def lscroProp (pl : Obj.MultiPlacement) (s : State) : SepProp :=
   ⌜LibsignalCodeRoLoaded pl s.mem⌝
 
 /-- Variant of `withLsCodeRoLoaded` that wraps `LibsignalCodeRoLoaded pl s.mem` in `lscroProp` for `wpp_init`. -/
-def withLscroProp {α : Type} (pl : Obj.MultiPlacement) (spec : Spec α) : Spec α where
+@[expose] def withLscroProp {α : Type} (pl : Obj.MultiPlacement) (spec : Spec α) : Spec α where
   pre := fun x s => lscroProp pl s ∗ spec.pre x s
   post := spec.post
   onExit := spec.onExit

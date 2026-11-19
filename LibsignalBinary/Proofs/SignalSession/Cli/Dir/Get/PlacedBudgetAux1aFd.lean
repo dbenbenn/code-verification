@@ -9,14 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # `FdsGe3Closed`-Threaded Epilogues and Cache-Hit Exit for `Dir::get`
@@ -25,7 +34,7 @@ Verifies `.keepsFs` lifts for `bcmp` and `memcpy` together with the `FdsGe3Close
 epilogues and cache-hit exit for `Dir::get` on Block 589.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -140,7 +149,7 @@ theorem memcpy_bytesAt_keepsFs_lscro_vm_ok_at_589 [LibsignalPlacement] {M : Allo
 
 /-! ## 2. `FdsGe3Closed`-Threaded Postcondition Helpers for `withFdsGe3Closed (dirGetSpecPlaced …)` -/
 
-def dirGetPostQPlacedBudgetFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def dirGetPostQPlacedBudgetFd [LibsignalPlacement] {M : AllocCostModel}
     (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)

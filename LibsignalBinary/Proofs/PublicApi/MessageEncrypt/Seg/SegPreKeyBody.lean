@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyTail
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyTail -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -17,6 +17,9 @@ import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyFetch
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyStale
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `segPreKey` Non-Stale Kyber Setup and Top-Level Composition (`segPreKey_ok_body`)
@@ -26,7 +29,7 @@ Steps the non-stale pending-pre-key branch from `+0x6fc` through `localRegistrat
 sub-segments into `SegPreKeySpec`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.SegPreKey
 
@@ -72,7 +75,7 @@ theorem pointsToBytes_regIds_eq (a : BitVec 64) {regIds : List (BitVec 8)} {remI
       pointsToBytes_leBytes4_eq_pointsTo32, pointsToBytes_leBytes4_eq_pointsTo32]
   rfl
 
-def sessionRegIdFrame (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
+@[expose] def sessionRegIdFrame (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
     (sess : Session (List (BitVec 8))) (taken : SessionState (List (BitVec 8))) : SepProp :=
   ⌜PendingRel G.pending sess.pendingPreKey ∧ KyberRel G.kyber sess.pendingKyberPreKey ∧
     G.alice.bytes = sess.aliceBaseKey ∧ G.regIds.take 4 = leBytes 4 sess.remoteRegistrationId.toNat ∧
@@ -134,7 +137,7 @@ theorem sessionAt_regId_pack (A : RustAlloc) (sp : BitVec 64) (G : SessionGhost)
   apply Entails.pure_right ⟨hlik, hrik, hch, hpend, hlen, hlik33, hrik33⟩
   exact Entails.of_eq (by ac_rfl)
 
-def vecU8BorrowRest (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8BorrowRest (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
   (if cap = 0 then emp
    else A.live ptr cap.toNat 1 ∗
@@ -175,7 +178,7 @@ theorem vecU8Buf_unborrow (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitV
   · simp only [hcap, ↓reduceIte]
     exact Entails.of_eq (by ac_rfl)
 
-def optTailVecBorrowRest (A : RustAlloc) (a : BitVec 64) (g : TailVecGhost) : SepProp :=
+@[expose] def optTailVecBorrowRest (A : RustAlloc) (a : BitVec 64) (g : TailVecGhost) : SepProp :=
   ⌜g.tail.length = 8⌝ ∗
   vecHeader a g.vec.cap g.vec.ptr (BitVec.ofNat 64 g.vec.bytes.length) ∗
   vecU8BorrowRest A g.vec.cap g.vec.ptr g.vec.bytes ∗
@@ -422,271 +425,5 @@ theorem kyberPost_unpack (A : RustAlloc) (out arg ctPtr : BitVec 64) (kp : Optio
       ∃∗ bp : BitVec 64, kyberArgAt ⟨out, arg, ctPtr, kp⟩ ∗ optKyberAt A out bp kp := by
   rw [sepExists_sepConj_right]
   exact Entails.refl _
-
-set_option maxHeartbeats 800000 in
-theorem segPreKey_regId_kyber_ok {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {Q : List (BitVec 8) → Prop} {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {kit : SessionStoreSpec A img.base} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A img.base} {ist0 : ikit.IdState}
-    {ctl : BitVec 64} {S : SpqrModel}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {abs : String → Option (State → State)}
-    (env : EncEnv kit st0 ikit ist0 Scope Q C ctl uuidTryParse S encRecord abs)
-    (x : WithStoresEncGhost) (r : SessionRecord (List (BitVec 8)))
-    (sess : Session (List (BitVec 8))) (otr : OutgoingTripleRatchet (List (BitVec 8)))
-    (taken : SessionState (List (BitVec 8))) (pqCap pqPtr : BitVec 64)
-    (k : IdentityKey) (items : PendingPreKey)
-    (prevCap prevPtr : BitVec 64) (G : SessionGhost)
-    (ts expiry : SystemTime) (pkVal kyIdVal : BitVec 32) (kyPtr kyLen : BitVec 64)
-    (R : SepProp) (s0 s : State)
-    (hcur : r.currentSession = some sess)
-    (hscope : kit.ScopeAt Scope st0 x.rem.val r)
-    (hlt : expiry.lt x.now = false)
-    (hadd : StalenessAddState kit st0 ikit ist0 ctl encRecord x r sess otr taken pqCap pqPtr k items
-      prevCap prevPtr G ts expiry pkVal kyIdVal kyPtr kyLen R s0 s) :
-    SegExit kit st0 ikit ist0 C ctl uuidTryParse S encRecord abs x R s0 s
-      (PreKeyEncryptState kit st0 ikit ist0 ctl encRecord x r sess otr taken pqCap pqPtr k items R s0) := by
-  rcases hadd with ⟨hts, hexp, hpkVal, hkyIdVal, hkySlice, hpc, hmeta, htr,
-    hx0, hx1, hx20, _hx21, hx22, hx23, hx24, hx25, hx26, _hx27, hx28,
-    hptlen, hrestlen, hlocA, hnow, hstack, hmem⟩
-  rcases hmeta with ⟨hstat, hsp, hsp0Al, hspAl, hx29, hx19, hfrozen, hsym, hvregs⟩
-  have hky_bound := (env.scopeIn r hscope sess hcur).2.2.2
-  set sp := s0.sp - 0xbe0#64
-  change s.pc = encEntry img + 1788#64 at hpc
-  apply segExit_of_sepWPp_callInv ⟨hfrozen, hsym⟩
-    (target := (tripleRatchetProgAt img.base C ctl abs).fnAddr encryptWithStoresName + 2228#64)
-    (dur_mem_group hmem)
-  have himg := env.loads
-  refine SepWPp.fold (sessionAt_regId_unpack A sp G sess taken) (by sep_focus) ?_
-  rw [sepConj_assoc]
-  refine SepWPp.pure_elim fun hkyRel => ?_
-  refine SepWPp.fold
-    (preKeyScratch_regId_unpack sp kyLen items.signedPreKeyId kyIdVal pkVal sess.pendingKyberPreKey)
-    (by sep_focus) ?_
-  refine sepWPp_elim_ex fun w14 => ?_
-  refine SepWPp.fold (pollWithBaseKey_regId_unpack sp items) (by sep_focus) ?_
-  refine sepWPp_elim_ex fun w590 => sepWPp_elim_ex fun w588 => sepWPp_elim_ex fun w580 => ?_
-  dsimp only [encSpillsAt, encSpillsAtV, encCommon, nowAt, logOff]
-  rw [encSubStack_split_kyber hsp]
-  have henc_fn := encEntry_eq_fnAddr env
-  rw [henc_fn] at hpc
-  have hkyber_call := henc_fn ▸ kyber_ok_at_enc env
-  have hentry_val : (tripleRatchetProgAt img.base C ctl abs).fnAddr encryptWithStoresName =
-      img.base + 248792#64 := by
-    rw [Program.fnAddr_rebase, libsignalSessionCode_fnOff_0x3cbd8]
-  clear env
-  messageEncryptPreKey_fetches img.base (Rust.withPanics (tripleRatchetExterns C ctl abs)) libsignalSessionCode_fnOff_0x3cbd8 0x6fc 0x28
-  messageEncryptPreKey_fetches img.base (Rust.withPanics (tripleRatchetExterns C ctl abs)) libsignalSessionCode_fnOff_0x3cbd8 0x7d0 0x1c
-  messageEncryptPreKey_fetches img.base (Rust.withPanics (tripleRatchetExterns C ctl abs)) libsignalSessionCode_fnOff_0x3cbd8 0x880 0x34
-  dsimp only [tripleRatchetProgAt] at hpc hkyber_call henc_fn hentry_val ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr encryptWithStoresName = entry
-  examples_hide_fetches
-  have hlog := adrp_0x718_logFilterAddr himg hentry_val
-  have hlog_norm := adrp_0x718_logFilterAddr_norm himg hentry_val
-  clear hentry_val
-  cases hky : sess.pendingKyberPreKey with
-  | none =>
-    cases hGky : G.kyber with
-    | some g =>
-      rw [hGky, hky] at hkyRel
-      exact False.elim hkyRel
-    | none =>
-      rw [hGky] at hkySlice
-      dsimp only [unackKyberSliceProp] at hkySlice
-      subst hkySlice
-      apply SepWPp.of_sepWP (mid := entry + 18446744073709516640#64)
-      wp_steps
-      refine SepWP.fold (kyberArgAt_none_pack sp w580 w590) (by sep_focus) ?_
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-      refine SepWPp.call_frame hkyber_call
-        (x := ⟨sp + 0x8a0#64, sp + 0x580#64, 0#64, none⟩)
-        (ret_pc := entry + 2228#64)
-        (by wp_norm_goal) (by wp_norm_goal)
-        (by dsimp [State.spAligned, State.sp, State.setPC, State.setMem, State.setPState, State.writeReg64, State.readReg64]; exact hspAl)
-        rfl rfl ⟨by wp_norm_goal, by wp_norm_goal⟩
-        (by dsimp [State.sp, State.setPC, State.setMem, State.setPState, State.writeReg64, State.readReg64]; sep_focus)
-        (fun _ _ _ _ hm => not_satisfies_false_sepConj hm)
-        (fun sf _ hm => by
-          rw [sepConj_assoc] at hm
-          refine onPanic_of_alloc (s := _) ?_ hm
-          change s0.trace <+: s.trace
-          rw [htr]
-          exact ⟨kit.loadEvs encRecord x.rem.val (.ok (some r)), rfl⟩)
-        fun s1 hpc1 hstat1 hsp1 hcs1 => ?_
-      dsimp only [kyberMapSpec]
-      rw [sepConj_assoc]
-      refine SepWPp.pure_elim fun htr1 => ?_
-      refine SepWPp.fold (stackAt_eq_sp hsp1) (by sep_focus) ?_
-      refine SepWPp.fold (kyberPost_unpack A (sp + 0x8a0#64) (sp + 0x580#64) 0#64 none) (by sep_focus) ?_
-      refine sepWPp_elim_ex fun bp => ?_
-      refine SepWPp.fold (kyberArgAt_none_to_memRegion sp) (by sep_focus) ?_
-      rcases hcs1 with ⟨hx19_1, hx20_1, _hx21_1, hx22_1, _hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hx29_1, hvregs_1⟩
-      simp only [wp_norm, arm64_norm]
-        at hx19_1 hx20_1 hx22_1 hx24_1 hx25_1 hx26_1 hx27_1 hx28_1 hx29_1 hvregs_1 hsp1 htr1
-      rw [hx19] at hx19_1; rw [hx20] at hx20_1; rw [hx22] at hx22_1
-      rw [hx25] at hx25_1; rw [hx26] at hx26_1
-      rw [hx28] at hx28_1; rw [hx29] at hx29_1; rw [hvregs] at hvregs_1
-      have hx24_1' : (s1.readReg64 .x24).setWidth 32 = (if items.preKeyId.isSome then 1#32 else 0#32) := by
-        change (s1.readReg64 (.gpr 24#5)).setWidth 32 = _; rw [hx24_1]; exact hx24
-      have hsp1_al : s1.spAligned = true := by
-        unfold State.spAligned at hspAl ⊢; rwa [hsp1]
-      rw [hsp] at hsp1
-      rw [htr] at htr1
-      rw [← hGky]
-      apply SepWPp.of_sepWP_ret
-      refine SepWP.fold (sessionAt_regId_pack A sp G sess taken) (by sep_focus) ?_
-      refine SepWP.fold (takenRecord_sessionRecordAt_pack_exact A sp prevCap prevPtr G sess taken)
-        (by sep_focus) ?_
-      refine SepWP.fold (preKeyEncryptScratch_pack sp kyLen _ sess.localRegistrationId items.signedPreKeyId pkVal)
-        (by sep_focus) ?_
-      refine SepWP.fold (pollPreKeyEncrypt_pack A sp bp items sess.pendingKyberPreKey none (by simp [hky]))
-        (by sep_focus) ?_
-      have hsp1_pack :
-          (memRegion (sp - BitVec.ofNat 64 encSubStack) (encSubStack - (allocHookStack + 0x40)) ∗
-            stackAt s1.sp (allocHookStack + 0x40)) ⊢ stackAt sp encSubStack := by
-        rw [hsp1, ← encSubStack_split_kyber rfl]
-        exact Entails.refl _
-      refine SepWP.fold hsp1_pack (by sep_focus) ?_
-      apply SepWP.done hpc1 hstat1
-      intro hinv1 hmf
-      dsimp only [PreKeyEncryptState, PreKeyEncryptState', preKeyEncryptScratch, pollPreKeyEncrypt, encMidMeta, encSpillsAt, encSpillsAtV, encCommon, nowAt, logOff, sp]
-        at hsp1 hx19_1 hx20_1 hx22_1 hx24_1' hx25_1 hx26_1 hx27_1 hx28_1 hx29_1 hvregs_1 hmf ⊢
-      refine ⟨prevCap, prevPtr, G, ts, expiry, pkVal, bp, hts, hexp, hlt, hpkVal,
-        by rw [henc_fn]; exact hpc1,
-        ⟨hstat1, hsp1, hsp0Al, hsp1_al, hx29_1, hx19_1, hinv1.1, hinv1.2, hvregs_1⟩,
-        htr1, hx20_1, hx22_1, hx24_1', hx25_1, hx26_1, hx27_1, hx28_1,
-        hptlen, hrestlen, hlocA, hnow, hstack, ?_⟩
-      arm64_sep_close
-  | some ky =>
-    cases hGky : G.kyber with
-    | none =>
-      rw [hGky, hky] at hkyRel
-      exact False.elim hkyRel
-    | some g =>
-      rw [hGky, hky] at hkyRel
-      dsimp only [KyberRel] at hkyRel
-      rcases hkyRel with ⟨hkyBytes, _⟩
-      rw [hGky] at hkySlice
-      dsimp only [unackKyberSliceProp] at hkySlice
-      rcases hkySlice with ⟨rfl, rfl⟩
-      have hkyId_eq : kyIdVal = ky.preKeyId := hkyIdVal ky.preKeyId (by simp [hky])
-      subst hkyId_eq
-      have hct_lt : ky.ciphertext.length < 2 ^ 32 := hky_bound ky hky
-      rw [hkyBytes]
-      refine SepWPp.fold (optTailVecAt_borrow A (sp + 0x250#64) g) (by sep_focus) ?_
-      rw [sepConj_assoc, sepConj_assoc]
-      refine SepWPp.pure_elim fun hptr => ?_
-      rw [hkyBytes]
-      dsimp only [Option.map, Option.isSome]
-      have hptr_beq : (g.vec.ptr == 0#64) = false := _root_.beq_false_of_ne hptr
-      apply SepWPp.of_sepWP (mid := entry + 18446744073709516640#64)
-      wp_steps
-      refine SepWP.fold (kyberArgAt_some_pack sp g.vec.ptr ky hptr hct_lt) (by sep_focus) ?_
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-      refine SepWPp.call_frame hkyber_call
-        (x := ⟨sp + 0x8a0#64, sp + 0x580#64, g.vec.ptr,
-          some (⟨ky.preKeyId, ky.ciphertext⟩ : KyberPayload)⟩)
-        (ret_pc := entry + 2228#64)
-        (by wp_norm_goal) (by wp_norm_goal)
-        (by dsimp [State.spAligned, State.sp, State.setPC, State.setMem, State.setPState, State.writeReg64, State.readReg64]; exact hspAl)
-        rfl rfl ⟨by wp_norm_goal, by wp_norm_goal⟩
-        (by dsimp [State.sp, State.setPC, State.setMem, State.setPState, State.writeReg64, State.readReg64]; sep_focus)
-        (fun _ _ _ _ hm => not_satisfies_false_sepConj hm)
-        (fun sf _ hm => by
-          rw [sepConj_assoc] at hm
-          refine onPanic_of_alloc (s := _) ?_ hm
-          change s0.trace <+: s.trace
-          rw [htr]
-          exact ⟨kit.loadEvs encRecord x.rem.val (.ok (some r)), rfl⟩)
-        fun s1 hpc1 hstat1 hsp1 hcs1 => ?_
-      dsimp only [kyberMapSpec]
-      rw [sepConj_assoc]
-      refine SepWPp.pure_elim fun htr1 => ?_
-      refine SepWPp.fold (stackAt_eq_sp hsp1) (by sep_focus) ?_
-      refine SepWPp.fold
-        (kyberPost_unpack A (sp + 0x8a0#64) (sp + 0x580#64) g.vec.ptr
-          (some (⟨ky.preKeyId, ky.ciphertext⟩ : KyberPayload)))
-        (by sep_focus) ?_
-      refine sepWPp_elim_ex fun bp => ?_
-      refine SepWPp.fold (kyberArgAt_some_unpack sp g.vec.ptr ky) (by sep_focus) ?_
-      rw [← hkyBytes]
-      refine SepWPp.fold (optTailVecAt_unborrow A (sp + 0x250#64) g) (by sep_focus) ?_
-      rw [hkyBytes, ← hGky]
-      rcases hcs1 with ⟨hx19_1, hx20_1, _hx21_1, hx22_1, _hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hx29_1, hvregs_1⟩
-      simp only [wp_norm, arm64_norm]
-        at hx19_1 hx20_1 hx22_1 hx24_1 hx25_1 hx26_1 hx27_1 hx28_1 hx29_1 hvregs_1 hsp1 htr1
-      rw [hx19] at hx19_1; rw [hx20] at hx20_1; rw [hx22] at hx22_1
-      rw [hx25] at hx25_1; rw [hx26] at hx26_1
-      rw [hx28] at hx28_1; rw [hx29] at hx29_1; rw [hvregs] at hvregs_1
-      have hx24_1' : (s1.readReg64 .x24).setWidth 32 = (if items.preKeyId.isSome then 1#32 else 0#32) := by
-        change (s1.readReg64 (.gpr 24#5)).setWidth 32 = _; rw [hx24_1]; exact hx24
-      have hsp1_al : s1.spAligned = true := by
-        unfold State.spAligned at hspAl ⊢; rwa [hsp1]
-      rw [hsp] at hsp1
-      rw [htr] at htr1
-      apply SepWPp.of_sepWP_ret
-      refine SepWP.fold (sessionAt_regId_pack A sp G sess taken) (by sep_focus) ?_
-      refine SepWP.fold (takenRecord_sessionRecordAt_pack_exact A sp prevCap prevPtr G sess taken)
-        (by sep_focus) ?_
-      refine SepWP.fold (preKeyEncryptScratch_pack sp _ _ sess.localRegistrationId items.signedPreKeyId pkVal)
-        (by sep_focus) ?_
-      refine SepWP.fold
-        (pollPreKeyEncrypt_pack A sp bp items sess.pendingKyberPreKey
-          (some (⟨ky.preKeyId, ky.ciphertext⟩ : KyberPayload)) (by simp [hky]))
-        (by sep_focus) ?_
-      have hsp1_pack :
-          (memRegion (sp - BitVec.ofNat 64 encSubStack) (encSubStack - (allocHookStack + 0x40)) ∗
-            stackAt s1.sp (allocHookStack + 0x40)) ⊢ stackAt sp encSubStack := by
-        rw [hsp1, ← encSubStack_split_kyber rfl]
-        exact Entails.refl _
-      refine SepWP.fold hsp1_pack (by sep_focus) ?_
-      apply SepWP.done hpc1 hstat1
-      intro hinv1 hmf
-      dsimp only [PreKeyEncryptState, PreKeyEncryptState', preKeyEncryptScratch, pollPreKeyEncrypt, encMidMeta, encSpillsAt, encSpillsAtV, encCommon, nowAt, logOff, sp]
-        at hsp1 hx19_1 hx20_1 hx22_1 hx24_1' hx25_1 hx26_1 hx27_1 hx28_1 hx29_1 hvregs_1 hmf ⊢
-      refine ⟨prevCap, prevPtr, G, ts, expiry, pkVal, bp, hts, hexp, hlt, hpkVal,
-        by rw [henc_fn]; exact hpc1,
-        ⟨hstat1, hsp1, hsp0Al, hsp1_al, hx29_1, hx19_1, hinv1.1, hinv1.2, hvregs_1⟩,
-        htr1, hx20_1, hx22_1, hx24_1', hx25_1, hx26_1, hx27_1, hx28_1,
-        hptlen, hrestlen, hlocA, hnow, hstack, ?_⟩
-      arm64_sep_close
-
-/-! ## Top-Level `segPreKey_ok_body` Composition -/
-
-theorem segPreKey_ok_body {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {Q : List (BitVec 8) → Prop} {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {kit : SessionStoreSpec A img.base} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A img.base} {ist0 : ikit.IdState}
-    {ctl : BitVec 64} {S : SpqrModel}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {abs : String → Option (State → State)} :
-    SegPreKeySpecV kit st0 ikit ist0 Scope Q C ctl uuidTryParse S encRecord abs := by
-  intro env x r sess otr taken pqCap pqPtr k R s0 s his hkey
-  obtain ⟨items, hpk⟩ := Option.isSome_iff_exists.mp his
-  have hcur := hkey.1
-  have hscope := hkey.2.1
-  have hfrom := hkey.2.2.1
-  have hrem := hkey.2.2.2.1
-  refine segExit_trans
-    (segPreKey_unackItems_to_dur_ok env x r sess otr taken pqCap pqPtr k items R s0 s hpk hkey) ?_
-  rintro s1 ⟨prevCap, prevPtr, G, ts, pkVal, kyIdVal, kyPtr, kyLen, hdur⟩
-  refine segExit_trans
-    (segPreKey_staleness_to_add_ok env x r sess otr taken pqCap pqPtr k items
-      prevCap prevPtr G ts pkVal kyIdVal kyPtr kyLen R s0 s1
-      hcur hscope hfrom hrem hpk hdur) ?_
-  rintro s2 ⟨expiry, hadd⟩
-  by_cases hlt : expiry.lt x.now = true
-  · exact segExit_of_false (segPreKey_stale_ok env x r sess otr taken pqCap pqPtr k items
-      prevCap prevPtr G ts expiry pkVal kyIdVal kyPtr kyLen R s0 s2
-      hcur hscope hfrom hrem hpk hlt hadd)
-  · have hlt_f : expiry.lt x.now = false := Bool.eq_false_iff.mpr hlt
-    refine segExit_trans
-      (segPreKey_regId_kyber_ok env x r sess otr taken pqCap pqPtr k items
-        prevCap prevPtr G ts expiry pkVal kyIdVal kyPtr kyLen R s0 s2
-        hcur hscope hlt_f hadd) ?_
-    intro s3 he6c
-    exact segPreKey_tail_ok env x r sess otr taken pqCap pqPtr k items R s0 s3
-      hcur hscope hfrom hrem hpk he6c
 
 end CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.SegPreKey

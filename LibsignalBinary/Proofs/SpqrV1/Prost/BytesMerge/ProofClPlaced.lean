@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Proof
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2ClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Proof -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2ClPlaced
 import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve
 import LibsignalBinary.Proofs.TripleRatchet.Bytes.Drops
 import LibsignalBinary.Proofs.TripleRatchet.Bytes.From
@@ -22,7 +22,7 @@ Discharges the `withLsCodeLoaded` callee contracts of `bytes_merge_3_placed_ok_o
 `bytes_merge_3_proto_placed_ok_of_contracts` using `decodeVarint2_cl_placed_ok` (Block `291`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

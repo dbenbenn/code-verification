@@ -12,8 +12,10 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.E2E.Record.DeserializeSeedTop
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
+public import LibsignalBinary.Proofs.E2E.Record.DeserializeSeedTop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Top-Level Specification of Seed `SessionRecord::deserialize`
@@ -23,7 +25,7 @@ input-length allocation envelope `DeserializeSeedEnv`, and external hook bundle
 `PlacedDeserializeHooks` for `SessionRecord::deserialize` on `seedRecord f`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -51,12 +53,12 @@ open LibsignalBinary.Heap.RustStdAllocBudgetBridge (allocMemcpyVmSpec)
 open LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget (BoundedRustEvs)
 
 /-- Input-length-bounded allocation envelope for `SessionRecord::deserialize` on seed bytes `bs`. -/
-def DeserializeSeedEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def DeserializeSeedEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   BoundedRustEvs (8 * bs.length + 64) (256 * (bs.length + 16)) evs
 
 /-- Image-free budget-threaded contract of `SessionRecord::deserialize` on seed bytes `seedRecord f`
     (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝` under `FitsEnv M lim st (DeserializeSeedEnv x.bs)`). -/
-noncomputable def deserializeSeedRawSpec (M : AllocCostModel)
+@[expose] def deserializeSeedRawSpec (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DeserializeSeedGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -75,14 +77,14 @@ noncomputable def deserializeSeedRawSpec (M : AllocCostModel)
 
 /-- Relocatable `[LibsignalPlacement]` budget-threaded contract of `SessionRecord::deserialize`
     (Block `46`) on seed bytes, carrying `LibsignalCodeRoLoaded lsmpl`. -/
-noncomputable abbrev deserializeSeedPlacedSpec [LibsignalPlacement]
+abbrev deserializeSeedPlacedSpec [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DeserializeSeedGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl (deserializeSeedRawSpec M A lim)
 
 /-- `SessionRecord::deserialize` (Block `46`) satisfies `deserializeSeedPlacedSpec M A lim` on
     `lsProg_46 H`. -/
-def DeserializeSeedPlacedOk [LibsignalPlacement]
+@[expose] def DeserializeSeedPlacedOk [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_46 H) (blkPl_46).base (deserializeSeedPlacedSpec M A lim)

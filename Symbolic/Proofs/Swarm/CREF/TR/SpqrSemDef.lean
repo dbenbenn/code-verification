@@ -19,7 +19,7 @@ Exports `Symbolic.Swarm.CREF.TR.SpqrSem` as an alias for `OpaqueSymbolSemantics`
 Triple Ratchet proofs.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

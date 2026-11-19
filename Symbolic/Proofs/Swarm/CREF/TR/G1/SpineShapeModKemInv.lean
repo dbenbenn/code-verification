@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.COMPOSED.CompInvDefs
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpineRkCore
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpineRkCore -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 
 /-!
@@ -20,7 +20,7 @@ Defines `SkippedSeedLogged` (message-key seeds logged in `TREvent.SkippedKeyStor
 `SpStateRk (LoggedIkmRk T) idx st` from `TRStoredAt T me st idx` via `spStateRk_of_trStoredAt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,7 +34,7 @@ open DY.Libsignal.TripleRatchet
 open Symbolic.Swarm.COMPOSED.CompInv (TRStoredAt)
 
 /-- `u` was logged as the `mkSeed` of a `TREvent.SkippedKeyStored` event on `T`. -/
-def SkippedSeedLogged (T : ExecTrace) (u : DY.Bytes) : Prop :=
+@[expose] def SkippedSeedLogged (T : ExecTrace) (u : DY.Bytes) : Prop :=
   ∃ j ses pk n rIdx src,
     T.EventLoggedAt (TREvent.SkippedKeyStored ses pk n u rIdx src) j
 

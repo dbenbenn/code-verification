@@ -18,15 +18,19 @@ meta import LibsignalBinary.Proofs.Placed.GenLsBlock -- shake: keep
 meta import LibsignalBinary.Proofs.SignalSession.Cli.CliElfProof
 meta import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers
 meta import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+meta import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced
 meta import VerifiedLibraries.Mallocng.Proofs.PlacedInterned
 public import Arm64
-public import GeneratedLean.LibsignalSessionPlacedObj
+import GeneratedLean.LibsignalSessionPlacedObj
 public import LibsignalBinary.Heap.Fine.F3LayoutData
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import ProofLib.Placed.Multi
 public import ProofLib.ProgramReflection
 public import VerifiedLibraries.Mallocng.Proofs.PlacedInterned
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Meta-Reflected Interned Layout and Relocation-Inversion Data
@@ -37,7 +41,7 @@ block and symbol address tables decoded from `cliElfImage`, and `cliHookTablePla
 `libsignalSessionLib` in the kernel.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -579,22 +583,20 @@ local elab_rules : command
     addSafeDefF3 (currNs ++ `lsInternedMultiLib) (Lean.mkConst ``Arm64.Obj.Interned.MultiLib)
       multiLibVal (markNoncomp := false)
 
-    -- Reflect `cliHookTablePlaced mmpl W` into `lsHookNamesPlaced`, `lsPlacedStubPairs`,
+    -- Reflect `cliHookTablePlaced` into `lsHookNamesPlaced`, `lsPlacedStubPairs`,
     -- `lsPlacedTagTableLit`, and `lsPlacedCompactLit`.
-    let hookNamesStrArr ←
-      withLocalDeclD `mmpl (Lean.mkConst ``Arm64.Obj.MultiPlacement) fun mmplE =>
-        withLocalDeclD `W (Lean.mkConst ``CryptoVerification.SignalSession.CliHooks) fun wE => do
-          let rows ← listElemsWhnf
-            (mkApp2 (Lean.mkConst ``CryptoVerification.SignalSession.cliHookTablePlaced) mmplE wE)
-          rows.mapM fun row => do
-            let p ← whnfAllF3 row
-            evalStrLitF3 (p.getArg! 2)
+    let hookNamesStrArr ← do
+      let rows ← listElemsWhnf
+        (Lean.mkConst ``CryptoVerification.SignalSession.cliHookTablePlaced)
+      rows.mapM fun row => do
+        let p ← whnfAllF3 row
+        evalStrLitF3 (p.getArg! 2)
     addSafeDefF3 (currNs ++ `lsHookNamesPlaced)
       (mkApp (Lean.mkConst ``List [Level.zero]) strTy)
       (mkListExprF3 strTy (hookNamesStrArr.map mkStrLit)) (markNoncomp := false)
 
     let placedPanicsRaw ← listElemsWhnf
-      (Lean.mkConst ``CryptoVerification.SignalSession.cliPanicSymbolsPlaced)
+      (Lean.mkConst ``CryptoVerification.SignalSession.cliCratePanicSyms)
     let placedPanics : Array String ← (placedPanicsRaw.mapM evalStrLitF3 : MetaM (Array String))
 
     let prodStrBvTy := mkApp2 (Lean.mkConst ``Prod [Level.zero, Level.zero]) strTy bv64Ty
@@ -630,9 +632,9 @@ local elab_rules : command
       (mkApp (Lean.mkConst ``List [Level.zero]) prodNatNatTy)
       (mkListExprF3 prodNatNatTy compactArr) (markNoncomp := false)
 
-    -- Emit `f3DehookedEntries` for the `cliDehookedSymsPlaced` symbols.
+    -- Emit `f3DehookedEntries` for the `cliNonPanicDehookedSyms` symbols.
     let dehookedRaw ← listElemsWhnf
-      (Lean.mkConst ``CryptoVerification.SignalSession.cliDehookedSymsPlaced)
+      (Lean.mkConst ``CryptoVerification.SignalSession.cliNonPanicDehookedSyms)
     let prodBvBvTy := mkApp2 (Lean.mkConst ``Prod [Level.zero, Level.zero]) bv64Ty bv64Ty
     let prodBvBvMk := mkApp2 (Lean.mkConst ``Prod.mk [Level.zero, Level.zero]) bv64Ty bv64Ty
     let prodCharBvBvTy := mkApp2 (Lean.mkConst ``Prod [Level.zero, Level.zero]) charListTy prodBvBvTy

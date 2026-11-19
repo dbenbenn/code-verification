@@ -9,19 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.DefsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.LoopBudget
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.LoopErrorBudget
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.LoopMergeBudget
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.PostPkBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.DefsBudget
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.LoopBudget
+public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.LoopErrorBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.LoopMergeBudget
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.PostPkBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.Decode
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.Loop
 import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.LoopError
 import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.LoopMerge
@@ -30,6 +28,7 @@ import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.PostPk
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBody
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `<IdentityKeyPair as TryFrom<&[u8]>>::try_from` Proof
@@ -39,7 +38,7 @@ Proves `identityKeyPair_tryFrom_placed_ok` (`identityKeyPairTryFromPlacedSpec`, 
 under `FitsEnv`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

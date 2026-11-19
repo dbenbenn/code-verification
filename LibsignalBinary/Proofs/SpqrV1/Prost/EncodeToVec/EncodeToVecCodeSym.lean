@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard20
 
 /-!
 # Relocatable Per-Block Fetches for `Prost/EncodeToVec`
@@ -21,7 +22,7 @@ Pre-extracted instruction-fetch tables for `encode::<PolynomialDecoder>` (Block 
 `encode::<PolynomialEncoder>` (Block `316`), and `PqRatchetState::encode_to_vec` (Block `426`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

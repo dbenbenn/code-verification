@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Chain.Repr
+public import LibsignalBinary.Proofs.SpqrV1.Chain.Repr -- proof-setup: allow-public-import
 public import ProofLib.SepLogic.Bytes
 
 /-!
@@ -21,7 +21,7 @@ connecting `vecDequeSlotsAt (chainEpochAt A) 112` to `arrayAt` and `memRegion` f
 `VecDeque<ChainEpoch>::grow`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Alloc
 
@@ -33,7 +33,7 @@ open CryptoVerification.SpqrV1.ChainProofs
 /-! ## `Vec` Header and Buffer Helpers -/
 
 /-- 24 little-endian bytes of a `Vec` header `{cap, ptr, len}`. -/
-def vecHeaderBytes (cap ptr len : BitVec 64) : List (BitVec 8) :=
+@[expose] def vecHeaderBytes (cap ptr len : BitVec 64) : List (BitVec 8) :=
   unpack64 cap ++ unpack64 ptr ++ unpack64 len
 
 @[local simp]
@@ -51,7 +51,7 @@ theorem vecHeader_eq_pointsToBytes (v cap ptr len : BitVec 64) :
   rw [h16]
 
 /-- Detached heap buffer of a `Vec<u8>`. -/
-def vecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
@@ -98,7 +98,7 @@ theorem chainEpochDirBytes_length (g : ChainEpochDirectionGhost) (ced : ChainEpo
   simp [chainEpochDirBytes, hpad]
 
 /-- Detached heap buffers owned by a `ChainEpochDirection`. -/
-def chainEpochDirHeap (A : RustAlloc) (g : ChainEpochDirectionGhost)
+@[expose] def chainEpochDirHeap (A : RustAlloc) (g : ChainEpochDirectionGhost)
     (ced : ChainEpochDirection) : SepProp :=
   vecU8Buf A g.next.cap g.next.ptr ced.next ∗
     vecU8Buf A g.prev.cap g.prev.ptr ced.prev.data
@@ -165,7 +165,7 @@ theorem IsChainEpochBytes.length_eq {gce : ChainEpochGhost × ChainEpoch} {bs : 
     rw [List.length_append, chainEpochDirBytes_length _ _ h1, chainEpochDirBytes_length _ _ h2]
 
 /-- Detached heap buffers owned by a `ChainEpoch`. -/
-def chainEpochHeap (A : RustAlloc) (gce : ChainEpochGhost × ChainEpoch) : SepProp :=
+@[expose] def chainEpochHeap (A : RustAlloc) (gce : ChainEpochGhost × ChainEpoch) : SepProp :=
   chainEpochDirHeap A gce.1.send gce.2.send ∗
     chainEpochDirHeap A gce.1.recv gce.2.recv
 
@@ -245,7 +245,7 @@ theorem chainEpochAt_of_bytes (A : RustAlloc) (gce : ChainEpochGhost × ChainEpo
       (sepConj_mono_left (Entails.sepExists_right pad1 (Entails.pure_right h1 (Entails.refl _))))
       (sepConj_mono_left (Entails.sepExists_right pad2 (Entails.pure_right h2 (Entails.refl _))))
 
-def chainEpochHeaps (A : RustAlloc) : List (ChainEpochGhost × ChainEpoch) → SepProp
+@[expose] def chainEpochHeaps (A : RustAlloc) : List (ChainEpochGhost × ChainEpoch) → SepProp
   | [] => emp
   | gce :: gces => chainEpochHeap A gce ∗ chainEpochHeaps A gces
 

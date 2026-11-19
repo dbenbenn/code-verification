@@ -12,6 +12,7 @@ module
 public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.Defs
 import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhDefs
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Pure Unfolding and Error-Branch Helpers for `S3Spec`
@@ -20,7 +21,7 @@ Pure `RatchetState.dhRatchetStep` branch lemmas and stack-layout staging helpers
 exits (`→ +0x30c`) and first `RootKey::create_chain` transition of `S3Spec`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegB
 
@@ -328,42 +329,6 @@ theorem optSenderChainBytes_none_pointsTo32 (a : BitVec 64) (pad : List (BitVec 
     rfl
   rw [pointsToBytes_append, show (leBytes 4 0).length = 4 from rfl, h0]
 
-/-- Intermediate state at `+0x70c` (`0x34aa8`) right after `RootKey::create_chain` #1 returns
-`.ok (rk1, rck)` and `+0x548..+0x54c` (`ldr w8, [sp, #0x190]; tbz w8, #0, 0x34aa8`) branches to
-`+0x70c`. -/
-def S3AfterCc1State (A : RustAlloc) (ctl : BitVec 64) (img : Obj.Image)
-    (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
-    (st1 : SessionState (List (BitVec 8))) (rk1 : RootKey) (rck : ChainKey)
-    (R : SepProp) (s0 s : State) : Prop :=
-  let sp := s0.sp - 1504#64
-  s.pc = tryDecryptEntry img + 0x70c#64 ∧
-  tryDecryptMidMeta img s0 s ∧
-  s.readReg64 .x19 = x.ret ∧
-  s.readReg64 .x20 = sp + 0x140#64 ∧
-  s.readReg64 .x21 = x.ss ∧
-  s.readReg64 .x22 = x.msgA ∧
-  s.readReg64 .x23 = sp + 0x500#64 ∧
-  (s.readReg64 .x24).setWidth 8 = msgTypeByte x.msgType ∧
-  s.readReg64 .x25 = sp + 0x190#64 ∧
-  s.readReg64 .x26 = sp + 0x2c0#64 ∧
-  s.readReg64 .x27 = sp + 0x38#64 ∧
-  s.readReg64 .x28 = sp + 0x2c0#64 ∧
-  (s.mem ⊨
-    sessionStateAt A x.ss x.G.afterTrFrom st1 ∗
-    trAt A (sp + 0x38#64) trG { tr with ratchet := { tr.ratchet with rootKey := (0 : RootKey) } } ∗
-    memRegion x.ret 48 ∗
-    memRegion sp 0x20 ∗
-    ((sp + 0x20#64) ↦₆₄ x.locA) ∗
-    ((sp + 0x28#64) ↦₃₂ x.msg.counter) ∗
-    memRegion (sp + 0x2c#64) 4 ∗
-    ((sp + 0x30#64) ↦₆₄ x.remA) ∗
-    memRegion (sp + 0x140#64) 0x50 ∗
-    ((sp + 0x190#64) ↦₃₂ 0#32) ∗
-    ((sp + 0x194#64) ↦ₛ keyToBytes32 rk1) ∗
-    ((sp + 0x1b4#64) ↦ₛ chainKeyBytes rck) ∗
-    memRegion (sp + 0x1d8#64) 0x3a8 ∗
-    tryDecryptCommonHeap A ctl img x 0 s0 ∗ R)
-
 /-- Split `memRegion (sp + 0x1a0) 56` into `8 + 8 + 4 + 8 + 8 + 4 + 16` for the dummy reads at
 `+0x550..+0x55c` and `+0x7e4..+0x7f0`. -/
 theorem split_1a0_56 (sp : BitVec 64) :
@@ -442,22 +407,5 @@ theorem fold_for_7f8 (sp : BitVec 64) (u190 : BitVec 32) (u1a0 u1a8 u1b4 u1bc : 
             (sepConj_mono (pointsTo64_entails_memRegion _ _)
               (sepConj_mono_left (pointsTo32_entails_memRegion _ _))))))
   refine Entails.trans (Entails.of_eq (by ac_rfl)) (sepConj_mono h58 h3e0)
-
-/-- Propagate an allocator failure panic from `createChainSpec` to `tryDecryptSpec.onPanic`. -/
-theorem onPanic_of_createChain {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel} {img : Obj.Image}
-    {x : TryDecryptGhost} {ccG : CreateChainGhost} {s0 sc sm : State} {Frame R : SepProp}
-    (htrace : sc.trace = s0.trace)
-    (hpost : sm.mem ⊨ ((createChainSpec C A).inImage img).onPanic ccG sc sm ∗ (Frame ∗ R)) :
-    sm.mem ⊨ (tryDecryptSpec C A ctl uuidTryParse S img).onPanic x s0 sm ∗ R := by
-  dsimp only [createChainSpec, tryDecryptSpec, Spec.inImage] at hpost ⊢
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-  obtain ⟨⟨halloc, hpre⟩, hmem⟩ := hpost
-  unfold allocFailedIn at halloc ⊢
-  rw [htrace] at halloc hpre
-  refine ⟨⟨Or.inr (Or.inr halloc), hpre⟩, ?_⟩
-  have hmem' : sm.mem ⊨ (anyHeap ∗ Frame) ∗ R :=
-    Eq.mp (congrArg (sm.mem ⊨ ·) (by ac_rfl)) hmem
-  exact Satisfies.mono (sepConj_mono_left (entails_anyHeap _)) hmem'
 
 end CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegB

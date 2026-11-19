@@ -11,8 +11,9 @@ module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
 public import LibsignalBinary.Specifications.LibsignalPublicApi -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # `SystemTime::add` Consumer `HookOk` Row Arm (`ExtraRowSpecs.TimeAddRowSpec`)

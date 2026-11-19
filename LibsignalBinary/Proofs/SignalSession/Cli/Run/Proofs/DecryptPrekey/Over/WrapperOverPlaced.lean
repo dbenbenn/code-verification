@@ -9,15 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SlotPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchDefsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SlotPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDetPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchDefsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
+public import LibsignalBinary.Proofs.SessionRecordMin.Deserialize -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.FramePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.WrapperStatePlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable `[LibsignalPlacement]` D2(c) Wrapper-to-Slot Lift
@@ -27,7 +35,7 @@ Relocatable `[LibsignalPlacement]` lift of `CliDpPollOkD2cStatePlacedStmt` throu
 `OverDecPkD2cSlotOkPlaced` and its `LibsignalFrozen` counterpart.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -62,7 +70,7 @@ private theorem withPanics_cliGhostExterns_wrapper (mmpl : Obj.MultiPlacement)
 /-- Placed D2(c) Poll Closure Statement (`[LibsignalPlacement]`): exact D2(c) counterpart to
 `CliDpPollOkStatePlacedStmt`, replacing `decPkDef` and
 `DecPkOk₀` with `decPkDefD2c` and `DecPkOkD2c`. -/
-def CliDpPollOkD2cStatePlacedStmt [LibsignalPlacement]
+@[expose] def CliDpPollOkD2cStatePlacedStmt [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks) : Prop :=
   ∀ (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
     (Scope : SessionRecord (List (BitVec 8)) → Prop),
@@ -107,35 +115,6 @@ theorem cliDpPollOkD2cState_iff_poll_placed [LibsignalPlacement]
     have hEq := dpPollProgPlaced_eq_poll mmpl g W
     exact hEq.symm ▸ h X B S Scope hh (hEq ▸ hRead) (hEq ▸ hDeser)
       hinjK hsub hS hok stk' h1 h2
-
-/-- Placed D2(c) wrapper-to-slot lift from `CliDpPollOkD2cStatePlacedStmt`: mirrors
-`cliDecryptPrekey_slot_of_poll_placed` via `cliDecryptPrekey_ok_state_placed` and
-`decPk_slot_ok_state_placed` on Block `520`. -/
-theorem cliDecryptPrekey_slot_d2c_of_poll_placed [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop)
-    (hh : RunHooksPlaced E2E.HooksE.A0 (cliGhostExterns g (cliExternsPlaced mmpl W)))
-    (hRead : subroutine_ok (dpPollProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsρ lsReadFileSym)
-      (readFileSpecPlaced cliIo.rd cliWrOk E2E.HooksE.A0 B.readFile))
-    (hDeser : subroutine_ok (dpPollProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 46)
-      (sessDeserializeSpecPlaced Slots.scopeKit E2E.HooksE.A0))
-    (hinjK : Slots.EncodeInjOn Slots.scopeKit)
-    (hsub : ∀ r, Scope r → Slots.scopeIn r)
-    (hS : S.decryptPrekey = decPkDefD2c X ⟨W.C, W.Q⟩ Scope)
-    (hok : ∀ F peer me pm, S.filesOk F peer me → S.decPkOk F peer me pm →
-      Slots.FilesOkPeer Scope F peer ∧ DecPkOkD2c ⟨W.C, W.Q⟩ Scope F peer me pm)
-    (hpoll : CliDpPollOkD2cStatePlacedStmt mmpl g W)
-    (stk : Nat) (hstk : cliDecryptPrekeyNeed B ≤ stk) (hstk64 : stk ≤ 2 ^ 63) :
-    subroutine_ok (dpWrapProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) dpWrapEntryPlaced
-      (decPkSlotSpecPlaced E2E.HooksE.A0 S stk) := by
-  exact decPk_slot_ok_state_placed B S stk hstk hstk64
-    (cliDecryptPrekey_ok_state_placed (ext := cliGhostExterns g (cliExternsPlaced mmpl W)) (K₀_statePlaced B S)
-      (fun stk' h1 h2 => hpoll X B S Scope hh hRead hDeser hinjK hsub hS hok stk' h1 h2)
-      stk
-      (by simp only [dpWrapFrame, dpPollNeed, cliDecryptPrekeyNeed, K₀_statePlaced,
-        dpSlotPollKStatePlaced] at hstk ⊢; omega)
-      hstk64)
 
 /-- Caller-block transfer of `cliDecryptPrekey_slot_d2c_of_poll_placed` onto any block
 `i < 619` (e.g. Block `579` `lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))`) at target `lsmpl.base 520`. -/
@@ -196,7 +175,7 @@ theorem cliDecryptPrekey_slotOk_d2c_of_poll_placed [LibsignalPlacement]
 /-- Placed caller-side D2(c) `decrypt_prekey` wrapper slot bundle on Block `579`
 (`lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))`, matching `SlotPlaced.cliDecryptPrekey_slotOk_of_poll_placed`
 via `mkSlot (decPkSlotSpecPlaced E2E.HooksE.A0 S) needs.decryptPrekey`). -/
-def OverDecPkD2cSlotOkPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
+@[expose] def OverDecPkD2cSlotOkPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (g : CliGhostHooks) (W : CliHooks) : Prop :=
   ∀ (X : UnreachedPqxdhPrimitives) (S : RunSem) (needs : RunNeeds),
     S.filesOk = Slots.filesOk₀ Slots.scopeIn (fun _ => True) →
@@ -262,23 +241,9 @@ theorem decPkD2cSlotOk_of_cliStages_placed [LibsignalPlacement]
   decPkD2cSlotOk_of_pollPoll_placed mmpl g W hh hRead hStage2
     (Poll.cliDpPollOk_d2c_placed_of_cliStages mmpl g W hSt2 hD2c)
 
-/-- Discharges `OverDecPkD2cSlotOkPlaced` from `ClosureBaseStagesPlacedStmt` and
-`D2cStagesPlacedStmt`. -/
-theorem decPkD2cSlotOk_of_stages_placed [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    (hh : RunHooksPlaced E2E.HooksE.A0 (cliGhostExterns g (cliExternsPlaced mmpl W)))
-    (hRead : subroutine_ok (Poll.dpPollProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsρ lsReadFileSym)
-      (readFileSpecPlaced cliIo.rd cliWrOk E2E.HooksE.A0 cliRunBudgets_placed.readFile))
-    (hStage2 : Proofs.libsignal.Hooks2.Stage2ContractsMinPlaced (cliGhostExterns g (cliExternsPlaced mmpl W)))
-    (hSt2 : Poll.ClosureBaseStagesPlacedStmt mmpl g W)
-    (hD2c : Poll.D2cStagesPlacedStmt mmpl g W) :
-    OverDecPkD2cSlotOkPlaced mmpl g W :=
-  decPkD2cSlotOk_of_pollPoll_placed mmpl g W hh hRead hStage2
-    (Poll.cliDpPollOk_d2c_placed_of_stages mmpl g W hSt2 hD2c)
-
 /-! ## `LibsignalFrozen`-Guarded D2(c) Wrapper-to-Slot Lift under `[LibsignalFullPlacement]` -/
 
-def CliDpPollOkD2cStateFrozenPlacedStmt [LibsignalPlacement]
+@[expose] def CliDpPollOkD2cStateFrozenPlacedStmt [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks) : Prop :=
   ∀ (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
     (Scope : SessionRecord (List (BitVec 8)) → Prop),
@@ -309,32 +274,6 @@ theorem cliDpPollOkD2cState_iff_poll_frozen_placed [LibsignalPlacement]
     have hEq := dpPollProgPlaced_eq_poll mmpl g W
     exact hEq.symm ▸ h X B S Scope hh (hEq ▸ hRead) (hEq ▸ hDeser)
       hinjK hsub hS hok stk' h1 h2
-
-theorem cliDecryptPrekey_slot_d2c_of_poll_full_placed [LibsignalFullPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop)
-    (hh : RunHooksPlaced E2E.HooksE.A0 (cliGhostExterns g (cliExternsPlaced mmpl W)))
-    (hRead : subroutine_ok (dpPollProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsρ lsReadFileSym)
-      (readFileSpecPlaced cliIo.rd cliWrOk E2E.HooksE.A0 B.readFile))
-    (hDeser : subroutine_ok (dpPollProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 46)
-      (sessDeserializeSpecPlaced Slots.scopeKit E2E.HooksE.A0))
-    (hinjK : Slots.EncodeInjOn Slots.scopeKit)
-    (hsub : ∀ r, Scope r → Slots.scopeIn r)
-    (hS : S.decryptPrekey = decPkDefD2c X ⟨W.C, W.Q⟩ Scope)
-    (hok : ∀ F peer me pm, S.filesOk F peer me → S.decPkOk F peer me pm →
-      Slots.FilesOkPeer Scope F peer ∧ DecPkOkD2c ⟨W.C, W.Q⟩ Scope F peer me pm)
-    (hpoll : CliDpPollOkD2cStateFrozenPlacedStmt mmpl g W)
-    (stk : Nat) (hstk : cliDecryptPrekeyNeed B ≤ stk) (hstk64 : stk ≤ 2 ^ 63) :
-    subroutine_ok (dpWrapProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) dpWrapEntryPlaced
-      (decPkSlotSpecFrozenPlaced E2E.HooksE.A0 S stk) := by
-  exact decPk_slot_ok_state_frozen_placed B S stk hstk hstk64
-    (cliDecryptPrekey_ok_state_frozen_placed (ext := cliGhostExterns g (cliExternsPlaced mmpl W)) (K₀_statePlaced B S)
-      (fun stk' h1 h2 => hpoll X B S Scope hh hRead hDeser hinjK hsub hS hok stk' h1 h2)
-      stk
-      (by simp only [dpWrapFrame, dpPollNeed, cliDecryptPrekeyNeed, K₀_statePlaced,
-        dpSlotPollKStatePlaced] at hstk ⊢; omega)
-      hstk64)
 
 theorem cliDecryptPrekey_slot_d2c_of_poll_full_placed_at_block [LibsignalFullPlacement]
     {prog : Program} {i : Nat} (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
@@ -388,7 +327,7 @@ theorem cliDecryptPrekey_slotOk_d2c_of_poll_full_placed [LibsignalFullPlacement]
     cliDecryptPrekey_slot_d2c_of_poll_full_placed_at_block mmpl g W hi X B S Scope hh hRead hDeser hinjK hsub
       hS hok hpoll stk (hneed ▸ h1) h2
 
-def OverDecPkD2cSlotOkFrozenPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
+@[expose] def OverDecPkD2cSlotOkFrozenPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (g : CliGhostHooks) (W : CliHooks) : Prop :=
   ∀ (X : UnreachedPqxdhPrimitives) (S : RunSem) (needs : RunNeeds),
     S.filesOk = Slots.filesOk₀ Slots.scopeIn (fun _ => True) →

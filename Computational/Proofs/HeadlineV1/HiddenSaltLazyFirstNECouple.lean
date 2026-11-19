@@ -9,9 +9,53 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNERel
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedFS
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNERel -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedFS -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.StateNorm
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatementsShort
+import Computational.Proofs.CryptoGames.SM.GameProofDefs
+import Computational.Proofs.CryptoGames.SM.Theorem1.Lemma17Aux
+import LibsignalBinary.Proofs.SpqrV1Sync.InSyncEpoch
+import LibsignalBinary.Specifications.CryptoGames.Party
+import LibsignalBinary.Specifications.CryptoGames.SM.Game
+import Mathlib.Algebra.BigOperators.Group.Finset.Defs
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Data.FinEnum
+import Mathlib.Data.Finset.Defs
+import Mathlib.Data.Fintype.BigOperators
+import Mathlib.Data.List.Dedup
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.Integral.Lebesgue.Add
+import Mathlib.Order.Disjoint
+import Mathlib.Order.SetNotation
+import Mathlib.Tactic.Attr.Register
+import PolyFun.Control.Monad.Support
+import Std.Tactic.BVDecide.Normalize.BitVec
+import Std.Tactic.BVDecide.Normalize.Bool
+import Std.Tactic.BVDecide.Normalize.Prop
+import ToMathlib.Control.StateT
+import VCVio.CryptoFoundations.SecExp
+import VCVio.CryptoFoundations.SecExp.Measure
+import VCVio.EvalDist.Defs.Measure.Core
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Basic
+import VCVio.EvalDist.Monad.Bool
+import VCVio.EvalDist.ProbabilityBounds
+import VCVio.EvalDist.ProbabilityNotation
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.EvalDist.Measure
+import VCVio.OracleComp.OracleSpec
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.QueryTracking.QueryBound.Simulation
+import VCVio.OracleComp.QueryTracking.SubSpec
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.Basic
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Relational.SimulateQ.UntilBad
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # `firstNESimImpl` Paper-Engine Coupling
@@ -20,11 +64,9 @@ Defines the shifted paper games and advantages, the per-cell parameters `cellDel
 and `cellWinPred`, and the pre-divergence leak-shift relation `ShiftedLeakRel` with its step lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec ENNReal MeasureTheory
@@ -41,7 +83,7 @@ open CryptoGames.LibsignalSM.Proofs.Refinement
 
 /-- Authenticity predicate for the `Δ = 2` shifted paper game requiring
 `SM.authLosingConditionsAvoided 2 tL tStar s` and `(Party.senderOf tStar, tStar) ∉ s.corrs`. -/
-def authOKDir2 {St Msg C : Type} (tL : Option ℕ) (tStar : ℕ)
+@[expose] def authOKDir2 {St Msg C : Type} (tL : Option ℕ) (tStar : ℕ)
     (s : SM.GameState St Msg C) : Bool :=
   SM.authLosingConditionsAvoided 2 tL tStar s &&
     !(s.corrs.any (fun pe => pe.1 == Party.senderOf tStar && pe.2 == tStar))
@@ -55,7 +97,7 @@ export CryptoGames.SM.Construction.DeliverForge (
 )
 
 /-- Shifted paper `DeliverForge` game at `Δ = 2` and shift boundary `l = tStar - 1`. -/
-def forgeGameGuessedShiftedDir2Paper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def forgeGameGuessedShiftedDir2Paper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Key] [SampleableType Coins]
     (sm : SMScheme Key St Msg Coins C) (qep : ℕ) (sameHdr : C → C → Bool)
     (l tStar : ℕ) (B : DeliverForge.AdversaryDF St Msg Coins C) : ProbComp Bool := do
@@ -63,28 +105,28 @@ def forgeGameGuessedShiftedDir2Paper {Key St Msg Coins C : Type} [DecidableEq Ms
     DeliverForge.runBaseDFShiftedDir2Paper sm l qep tStar sameHdr (SM.Config.auth tStar) false B
   return s'.win && authOKDir2 (some (l - 1)) tStar s'
 
-noncomputable def forgeGuessedAdvantageShiftedDir2Paper {Key St Msg Coins C : Type}
+@[expose] noncomputable def forgeGuessedAdvantageShiftedDir2Paper {Key St Msg Coins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins]
     (sm : SMScheme Key St Msg Coins C) (qep : ℕ) (sameHdr : C → C → Bool)
     (l tStar : ℕ) (B : DeliverForge.AdversaryDF St Msg Coins C) : ℝ≥0∞ :=
   𝒟[forgeGameGuessedShiftedDir2Paper sm qep sameHdr l tStar B] {true}
 
 /-- `Δ`-parametric shifted paper `DeliverForge` game at shift boundary `l = tStar - 2`. -/
-def forgeGameGuessedShiftedPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def forgeGameGuessedShiftedPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Key] [SampleableType Coins]
     (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) (sameHdr : C → C → Bool)
     (l tStar : ℕ) (B : DeliverForge.AdversaryDF St Msg Coins C) : ProbComp Bool := do
   let (_, s') ← runBaseDFShiftedPaper sm Δ l qep sameHdr (SM.Config.auth tStar) false B
   return s'.win && SM.authLosingConditionsAvoided Δ (some (l - 1)) tStar s'
 
-noncomputable def forgeGuessedAdvantageShiftedPaper {Key St Msg Coins C : Type}
+@[expose] noncomputable def forgeGuessedAdvantageShiftedPaper {Key St Msg Coins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins]
     (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) (sameHdr : C → C → Bool)
     (l tStar : ℕ) (B : DeliverForge.AdversaryDF St Msg Coins C) : ℝ≥0∞ :=
   𝒟[forgeGameGuessedShiftedPaper sm Δ qep sameHdr l tStar B] {true}
 
 /-- Per-cell paper `DeliverForge` advantage (3-way dispatch). -/
-noncomputable def forgeGuessedAdvantageCellPaper {Key St Msg Coins C : Type}
+@[expose] noncomputable def forgeGuessedAdvantageCellPaper {Key St Msg Coins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins]
     (sm : SMScheme Key St Msg Coins C) (qep : ℕ) (sameHdr : C → C → Bool)
     (tL : Option ℕ) (t : ℕ) (B : DeliverForge.AdversaryDF St Msg Coins C) : ℝ≥0∞ :=
@@ -95,13 +137,13 @@ noncomputable def forgeGuessedAdvantageCellPaper {Key St Msg Coins C : Type}
   else
     DeliverForge.forgeGuessedAdvantagePaper sm (2 + 1) qep sameHdr tL t B
 
-def cellDelta (tL : Option ℕ) (t : ℕ) : ℕ :=
+@[expose] def cellDelta (tL : Option ℕ) (t : ℕ) : ℕ :=
   if 2 ≤ t ∧ tL = some (t - 2) then 2 else 2 + 1
 
-def cellShift (tL : Option ℕ) (t : ℕ) : ℕ :=
+@[expose] def cellShift (tL : Option ℕ) (t : ℕ) : ℕ :=
   if 2 ≤ t ∧ tL = some (t - 2) then t - 1 else if 3 ≤ t ∧ tL = some (t - 3) then t - 2 else 0
 
-def cellWinPred {St Msg C : Type} (tL : Option ℕ) (t : ℕ) (s : SM.GameState St Msg C) : Bool :=
+@[expose] def cellWinPred {St Msg C : Type} (tL : Option ℕ) (t : ℕ) (s : SM.GameState St Msg C) : Bool :=
   if 2 ≤ t ∧ tL = some (t - 2) then s.win && authOKDir2 (some (t - 2)) t s
   else s.win && SM.authLosingConditionsAvoided (2 + 1) tL t s
 
@@ -516,4 +558,3 @@ theorem exists_cell_healed_of_corrs_bound {St Msg C : Type}
 
 end CryptoVerification.LibsignalSession.HeadlineV1
 
-end

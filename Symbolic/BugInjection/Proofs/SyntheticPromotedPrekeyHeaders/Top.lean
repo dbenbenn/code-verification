@@ -12,14 +12,13 @@ module
 public import Symbolic.BugInjection.Synthetic.Witnesses.PromotedPrekeyHeadersCli
 public import Symbolic.BugInjection.Proofs.Cheval26WeakStateIdx1.CliBridge
 public import Symbolic.BugInjection.Proofs.Common.CoinsFresh
-public import Symbolic.Proofs.SpecLemmas.SecurityBinaryFixed
 import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeCollisionsFalse
 
 /-!
 # Spec-Half Disproof for `PromotedPrekeyHeadersCli`
 
-Proves `cliCompFitsPinned_satisfiable`, `spec_half_pinned`, and
-`not_signalSessionSecure_of_implHalf` for the `PromotedPrekeyHeadersCli` witness, reusing the
+Proves `cliSetupMatchesPinned_satisfiable`, `spec_half_pinned`, and
+`not_signalSessionSecurePlaced_of_implHalf` for the `PromotedPrekeyHeadersCli` witness, reusing the
 four-event prefix invariants of `Cheval26WeakStateIdx1Cli` and refuting the mutated fifth receive
 event by identity-key mismatch and known base key.
 -/
@@ -40,7 +39,7 @@ open Symbolic.Swarm.CREF
 open Symbolic.BugInjection
 open Symbolic.BugInjection.Synthetic.Witnesses
 open Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable
-  (cliCompFitsPinned cliCompFitsPinned_satisfiable_of_plausible)
+  (CliSetupMatchesPinned cliSetupMatchesPinned_satisfiable_of_plausible)
 open Symbolic.BugInjection.Proofs.Common443
 open Symbolic.BugInjection.Proofs.Common443.CompI0Laws (compI0_kyberCorrectOn)
 open Symbolic.BugInjection.Proofs.Common443.CliCoinSplitClose (coinSplit_nonRng_cons coinSplit_rng_cons)
@@ -60,9 +59,9 @@ open Symbolic.BugInjection.Proofs.Cheval26WeakStateIdx1.CliBridge
    not_pt_cli_2_self not_pt_cli_5_self not_kyberMismatch_cli_8 wireAt_40_head_ne_whisper
    noBscCliAt_8_sub map_rng_kind_local map_rng_snoc_send_kind_local rpk_blk_cut_eq)
 
-theorem cliCompFitsPinned_satisfiable :
-    ∃ iw r, cliCompFitsPinned PromotedPrekeyHeadersCli.setup iw r :=
-  cliCompFitsPinned_satisfiable_of_plausible
+theorem cliSetupMatchesPinned_satisfiable :
+    ∃ iw r, CliSetupMatchesPinned PromotedPrekeyHeadersCli.setup iw r :=
+  cliSetupMatchesPinned_satisfiable_of_plausible
     PromotedPrekeyHeadersCli.setup
     (by decide +kernel)
     (fun _ h => nomatch h)
@@ -448,7 +447,7 @@ private theorem not_nextEventCollidesClassical_ev4Mut {r : ProtocolSetup}
       exact hnkb (knownBaseKeyOn_take4 hwf hp4 hex)
 
 theorem spec_half_pinned :
-    cliCompShape.SpecHalf (cliCompFitsPinned PromotedPrekeyHeadersCli.setup)
+    cliCompShape.SpecHalf (CliSetupMatchesPinned PromotedPrekeyHeadersCli.setup)
       PromotedPrekeyHeadersCli.trace := by
   intro (iw : cliCompShape.Interp) (r : ProtocolSetup) hfits
   have hwf : ProtocolSetupWF r := hfits.1.1.1
@@ -490,12 +489,15 @@ theorem spec_half_pinned :
         simpa [hmsg] using noBscCliAt_8_sub hfits0 hex hp40 hex_cli hnb htr hsalts hpre hpt
     · exact not_nextEventCollidesClassical_ev4Mut hwf hs0 hex
 
-theorem not_signalSessionSecure_of_implHalf {bytes : List (BitVec 8)}
+theorem not_signalSessionSecurePlaced_of_implHalf {bytes : List (BitVec 8)}
+    {mpl mmpl : Arm64.Obj.MultiPlacement}
+    (hls : CryptoVerification.SignalSession.libsignalSessionLib.LinkedAt bytes mpl)
+    (hmg : VerifiedLibraries.mallocngLib.LinkedAt bytes mmpl)
     (hi : ∀ elf : Arm64.Process.ElfImage, Arm64.Process.ElfImage.parse bytes = .ok elf →
-      cliCompShape.ImplHalf (cliCompFitsPinned PromotedPrekeyHeadersCli.setup) elf
+      (cliCompShapePlaced mpl mmpl).ImplHalf (CliSetupMatchesPinned PromotedPrekeyHeadersCli.setup) elf
         PromotedPrekeyHeadersCli.trace) :
-    ¬ DY.Libsignal.Composed.Security.SignalSessionSecure bytes :=
-  not_signalSessionSecure_of_witness spec_half_pinned hi
+    ¬ DY.Libsignal.Composed.Security.SignalSessionSecurePlaced bytes :=
+  not_signalSessionSecurePlaced_of_witness hls hmg spec_half_pinned hi
     Symbolic.BugInjection.Proofs.Common.CoinsFresh.coinsFresh_promotedPrekeyHeadersCli
 
 end Symbolic.BugInjection.Proofs.SyntheticPromotedPrekeyHeaders.Top

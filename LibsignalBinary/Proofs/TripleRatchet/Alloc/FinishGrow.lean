@@ -9,10 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContracts
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
-import GeneratedLean.LibsignalSession -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContracts -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import ProofLib.SepLogic.WPp
 
@@ -24,7 +23,7 @@ against the unified `finishGrowSpec A` contract on `tripleRatchetProgAt`, coveri
 and `cap ≠ 0` (`__rust_realloc`) and generic `(stride, align)` (`(1, 1)`, `(104, 8)`, `(72, 8)`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 
@@ -121,7 +120,7 @@ private theorem stackAt_finishGrow_opt {hookStack : Nat}
 
 /-! ## Case 1: `cap = 0` (`__rust_alloc`) -/
 
-def finishGrowAllocSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec FinishGrowCall :=
+@[expose] def finishGrowAllocSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec FinishGrowCall :=
   { finishGrowSpecWithStack A hookStack with
     pre := fun x s =>
       ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.cap ∧ s.readReg64 .x2 = x.ptr ∧
@@ -131,79 +130,7 @@ def finishGrowAllocSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec Finish
         LayoutOk (x.new.toNat * x.stride.toNat) x.align.toNat⌝ ∗
       memRegion x.out 24 ∗ A.pool ∗ stackAt s.sp (hookStack + 48) }
 
-theorem finish_grow_zero_ok_of_hooks_opt {oimg : Option Obj.Image} {A : RustAlloc}
-    {b : BitVec 64} {ext : String → Option (State → State)} {hookStack : Nat}
-    (hstack : hookStack + 48 ≤ 2 ^ 64 := by decide)
-    (hshim : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName +
-        BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" -
-          ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")))
-      (specWithOptInv oimg (shimSpecWithStack hookStack)))
-    (halloc : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName +
-        BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_alloc" -
-          ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")))
-      (specWithOptInv oimg (rustAllocSpecWithStack A hookStack))) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName)
-      (specWithOptInv oimg (finishGrowAllocSpecWithStack A hookStack)) := by
-  unfold specWithOptInv finishGrowAllocSpecWithStack finishGrowSpecWithStack
-  simp only [memRegion_24, stackAt_finishGrow_opt hstack, sepExists_sepConj_left, sepExists_sepConj_right]
-  cells_unfold
-  have hfn : libsignalSessionCode.fnOff finishGrowName = num% (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]") :=
-    (ls_lemma% fnOff "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")
-  code_fetches CryptoVerification.libsignalSessionCode
-    CryptoVerification.LibsignalSession.libsignalSessionBin b
-    (Rust.withPanics ext) hfn (num% (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")) 180
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨out, cap, ptr, new, align, stride, bs⟩ := x
-  dsimp only at *
-  rcases h with ⟨hsz_pos, hpow, hbound⟩
-  subst cap
-  subst bs
-  have hinv0 : OptCallInv oimg s0 := by assumption
-  have hlt64 : new.toNat * stride.toNat < 2 ^ 64 := by omega
-  have humulh := umulh_stride_eq_zero hlt64
-  have hhi := hi_stride_eq_false hbound
-  have hcbz := beq_mul_stride_zero_eq_false hsz_pos hlt64
-  have hmul : (stride * new).toNat = new.toNat * stride.toNat := mul_stride_toNat hlt64
-  have hlay : LayoutOk (new.toNat * stride.toNat) align.toNat := ⟨hsz_pos, hpow, hbound⟩
-  apply SepWP.seq_optImage (mid := entry + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")) hinv0
-  wp_steps
-  apply SepWP.done (by rfl) (by wp_norm_lhs)
-  intro hinv1
-  apply SepWP.seq_optImage (mid := entry + bv% (ls_off% "__rustc::__rust_alloc" - ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")) hinv1
-  wp_call hshim ()
-  wp_steps
-  apply SepWP.done (by rfl) (by wp_norm_lhs)
-  intro hinv2
-  wp_call halloc (new.toNat * stride.toNat, align.toNat)
-  wp_steps
-  wp_if hoom
-  · have hoom' : sf_1.readReg64 Reg.x0 ≠ 0 := hoom
-    have hmul_bv : stride * new = BitVec.ofNat 64 (new.toNat * stride.toNat) :=
-      mul_stride_eq_ofNat hlt64
-    simp only [hoom', ite_false]
-    wp_steps
-    apply SepWP.instantiate_post_exists 0#64
-    apply SepWP.instantiate_post_exists (sf_1.readReg64 Reg.x0)
-    simp only [(by decide : (0#64 : BitVec 64) = 1#64 ↔ False), ite_false,
-      pointsToBytes_nil, List.length_nil, BitVec.add_zero, Nat.sub_zero, emp_sepConj]
-    wp_done
-  · have hmul_bv : stride * new = BitVec.ofNat 64 (new.toNat * stride.toNat) :=
-      mul_stride_eq_ofNat hlt64
-    simp only [hoom, BitVec.ofNat_eq_ofNat, ite_true]
-    wp_steps
-    apply SepWP.instantiate_post_exists 1#64
-    apply SepWP.instantiate_post_exists align
-    simp only [ite_true, FinishGrowCall.oldBuf]
-    wp_done
-
-/-! ## Case 2: `cap ≠ 0` (`__rust_realloc`) -/
-
-def finishGrowReallocSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec FinishGrowCall :=
+@[expose] def finishGrowReallocSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec FinishGrowCall :=
   { finishGrowSpecWithStack A hookStack with
     pre := fun x s =>
       ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.cap ∧ s.readReg64 .x2 = x.ptr ∧
@@ -216,163 +143,6 @@ def finishGrowReallocSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec Fini
       memRegion (x.ptr + BitVec.ofNat 64 x.bs.length)
         (x.cap.toNat * x.stride.toNat - x.bs.length) ∗
       A.pool ∗ stackAt s.sp (hookStack + 48) }
-
-theorem finish_grow_ne_ok_of_hooks_opt {oimg : Option Obj.Image} {A : RustAlloc}
-    {b : BitVec 64} {ext : String → Option (State → State)} {hookStack : Nat}
-    (hstack : hookStack + 48 ≤ 2 ^ 64 := by decide)
-    (hrealloc : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName +
-        BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_realloc" -
-          ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")))
-      (specWithOptInv oimg (rustReallocExternSpecWithStack A hookStack))) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName)
-      (specWithOptInv oimg (finishGrowReallocSpecWithStack A hookStack)) := by
-  unfold specWithOptInv finishGrowReallocSpecWithStack finishGrowSpecWithStack
-  simp only [memRegion_24, stackAt_finishGrow_opt hstack, sepExists_sepConj_left, sepExists_sepConj_right]
-  cells_unfold
-  have hfn : libsignalSessionCode.fnOff finishGrowName = num% (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]") :=
-    (ls_lemma% fnOff "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")
-  code_fetches CryptoVerification.libsignalSessionCode
-    CryptoVerification.LibsignalSession.libsignalSessionBin b
-    (Rust.withPanics ext) hfn (num% (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")) 180
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨out, cap, ptr, new, align, stride, bs⟩ := x
-  dsimp only at *
-  rcases h with ⟨hsz_pos, hpow, hbound⟩
-  have hinv0 : OptCallInv oimg s0 := by assumption
-  have hcap_ne : cap ≠ 0#64 := by assumption
-  have hstr_pos : 0 < stride.toNat := by assumption
-  have hcap_le_new : cap.toNat ≤ new.toNat := by assumption
-  have hbs_le_cap : bs.length ≤ cap.toNat * stride.toNat := by assumption
-  have hlt64 : new.toNat * stride.toNat < 2 ^ 64 := by omega
-  have hcap_le : cap.toNat * stride.toNat ≤ new.toNat * stride.toNat :=
-    Nat.mul_le_mul_right stride.toNat hcap_le_new
-  have hcap_lt64 : cap.toNat * stride.toNat < 2 ^ 64 := by omega
-  have hcap_pos : 0 < cap.toNat :=
-    Nat.pos_of_ne_zero (fun hc => hcap_ne (BitVec.eq_of_toNat_eq hc))
-  have hold_pos : 0 < cap.toNat * stride.toNat := Nat.mul_pos hcap_pos hstr_pos
-  have humulh := umulh_stride_eq_zero hlt64
-  have hhi := hi_stride_eq_false hbound
-  have hcap_beq : (cap == 0#64) = false := beq_eq_false_iff_ne.mpr hcap_ne
-  have hmul : (stride * new).toNat = new.toNat * stride.toNat := mul_stride_toNat hlt64
-  have hmul_cap : (stride * cap).toNat = cap.toNat * stride.toNat := mul_stride_toNat hcap_lt64
-  have hle_new : bs.length ≤ new.toNat * stride.toNat := by omega
-  have hlay_old : LayoutOk (cap.toNat * stride.toNat) align.toNat := ⟨hold_pos, hpow, by omega⟩
-  have hlay : LayoutOk (new.toNat * stride.toNat) align.toNat := ⟨hsz_pos, hpow, hbound⟩
-  apply SepWP.seq_optImage (mid := entry + bv% (ls_off% "__rustc::__rust_realloc" - ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")) hinv0
-  wp_steps
-  apply SepWP.done (by rfl) (by wp_norm_lhs)
-  intro hinv1
-  wp_call hrealloc (ptr, cap.toNat * stride.toNat, align.toNat, new.toNat * stride.toNat, bs)
-  wp_steps
-  wp_if hoom
-  · have hoom' : sf.readReg64 Reg.x0 ≠ 0 := hoom
-    have hmul_bv : stride * new = BitVec.ofNat 64 (new.toNat * stride.toNat) :=
-      mul_stride_eq_ofNat hlt64
-    simp only [hoom', ite_false]
-    wp_steps
-    apply SepWP.instantiate_post_exists 0#64
-    apply SepWP.instantiate_post_exists (sf.readReg64 Reg.x0)
-    simp only [(by decide : (0#64 : BitVec 64) = 1#64 ↔ False), ite_false]
-    wp_done
-  · have hmul_bv : stride * new = BitVec.ofNat 64 (new.toNat * stride.toNat) :=
-      mul_stride_eq_ofNat hlt64
-    simp only [hoom, BitVec.ofNat_eq_ofNat, ite_true]
-    wp_steps
-    apply SepWP.instantiate_post_exists 1#64
-    apply SepWP.instantiate_post_exists align
-    simp only [ite_true, FinishGrowCall.oldBuf, hcap_ne, ite_false]
-    wp_done
-
-/-! ## Unified `finish_grow_ok` theorems -/
-
-theorem finish_grow_ok_of_hooks_opt {oimg : Option Obj.Image} {A : RustAlloc}
-    {b : BitVec 64} {ext : String → Option (State → State)} {hookStack : Nat}
-    (hstack : hookStack + 48 ≤ 2 ^ 64 := by decide)
-    (hshim : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName +
-        BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" -
-          ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")))
-      (specWithOptInv oimg (shimSpecWithStack hookStack)))
-    (halloc : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName +
-        BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_alloc" -
-          ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")))
-      (specWithOptInv oimg (rustAllocSpecWithStack A hookStack)))
-    (hrealloc : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName +
-        BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_realloc" -
-          ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")))
-      (specWithOptInv oimg (rustReallocExternSpecWithStack A hookStack))) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName)
-      (specWithOptInv oimg (finishGrowSpecWithStack A hookStack)) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  by_cases hcap0 : x.cap = 0#64
-  · refine (finish_grow_zero_ok_of_hooks_opt hstack hshim halloc).mono_outcome
-      x R s0 hpc hrun ?_ hsp fun _ hout => hout
-    simp only [finishGrowSpecWithStack, finishGrowAllocSpecWithStack,
-      FinishGrowCall.oldBuf, hcap0, ite_true, emp_sepConj, sepConj_assoc,
-      satisfies_pure_sepConj] at hpre ⊢
-    rcases hpre with ⟨hinv, ⟨hx0, hx1, hx2, hx3, hx4, hx5, hbs0, _, hle, hnew, hstr, hlay⟩, hmem⟩
-    exact ⟨hinv, ⟨hx0, hx1, hx2, hx3, hx4, hx5, trivial, hbs0 trivial, hle, hnew, hstr, hlay⟩, hmem⟩
-  · refine (finish_grow_ne_ok_of_hooks_opt hstack hrealloc).mono_outcome
-      x R s0 hpc hrun ?_ hsp fun _ hout => hout
-    simp only [finishGrowSpecWithStack, finishGrowReallocSpecWithStack,
-      FinishGrowCall.oldBuf, hcap0, ite_false, sepConj_assoc,
-      satisfies_pure_sepConj] at hpre ⊢
-    rcases hpre with ⟨hinv, ⟨hx0, hx1, hx2, hx3, hx4, hx5, _, hbs, hle, hnew, hstr, hlay⟩, hmem⟩
-    exact ⟨hinv, ⟨hx0, hx1, hx2, hx3, hx4, hx5, hcap0, hbs, hle, hnew, hstr, hlay⟩, hmem⟩
-
-theorem finish_grow_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName)
-      (finishGrowSpec A) :=
-  subroutine_ok_of_optNone <|
-    finish_grow_ok_of_hooks_opt (by decide)
-      (shim_opt_of_base hA (name := finishGrowName)
-        (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")))
-      (alloc_opt_of_base hA (name := finishGrowName)
-        (k := num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")))
-      (realloc_opt_of_base hA (name := finishGrowName)
-        (k := num% (ls_off% "__rustc::__rust_realloc" - ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")))
-
-theorem finish_grow_ok_trap {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr finishGrowName)
-      (finishGrowSpec A) :=
-  finish_grow_ok_ext (AllocContracts.of_tripleRatchetProgAt_trap b C A abs hA)
-
-/-- `<alloc::raw_vec::RawVecInner>::finish_grow [local#1]` (`0x15de4`) meets `finishGrowSpec A`
-on `tripleRatchetProgAt`. -/
-theorem finish_grow_ok {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr finishGrowName)
-      (finishGrowSpec A) :=
-  subroutine_ok_kit_of_trTrap (finish_grow_ok_trap hA)
-
-theorem finish_grow_ok_ext_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr finishGrowName)
-      ((finishGrowSpecX A).inImage img) :=
-  finish_grow_ok_of_hooks_opt (oimg := some img) (by decide)
-    (shim_opt_of_x hA (name := finishGrowName)
-      (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")))
-    (alloc_opt_of_x hA (name := finishGrowName)
-      (k := num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")))
-    (realloc_opt_of_x hA (name := finishGrowName)
-      (k := num% (ls_off% "__rustc::__rust_realloc" - ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]")))
-
-/-! ## Relocatable Per-Block Proofs (`[LibsignalPlacement]`, Block `45`) -/
 
 private theorem shimWithStack_of_noAllocShim {prog : Program} {addr : BitVec 64} (hookStack : Nat)
     (h : subroutine_ok prog addr noAllocShimSpec) :

@@ -10,20 +10,29 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2BudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2BudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopClPlacedBudgetAux1
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2BudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2BudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopClPlacedBudgetAux1
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-import GeneratedLean.LibsignalSessionObj
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.DropCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudgetAux
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Code-Loaded Loop Variants and Full Contract for `Option<InnerState>` (Block `267`)
@@ -32,7 +41,7 @@ Proves `ct1Acknowledged_cl`, `ct1Sampled_cl`, and the top-level `withLsCodeLoade
 `drop_opt_proto_inner_state_cl_placed_ok` for Block `267` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

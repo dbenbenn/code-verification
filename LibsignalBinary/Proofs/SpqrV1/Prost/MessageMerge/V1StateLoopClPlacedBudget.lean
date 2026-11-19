@@ -10,20 +10,20 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoop
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopClPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1BudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoop
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopClPlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1BudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
@@ -32,6 +32,7 @@ import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Code-Loaded Outer Loop and Dispatch for `V1State::merge` (Block `298`)
@@ -41,7 +42,7 @@ arm, 11-way jump-table dispatch, and outer loop induction for `V1State::merge`, 
 and latch helpers from `V1StateLoopClPlacedBudgetAux`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

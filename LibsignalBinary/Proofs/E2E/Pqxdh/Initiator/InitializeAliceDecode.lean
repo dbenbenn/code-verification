@@ -9,10 +9,13 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import GeneratedLean.LibsignalSessionCode
-public import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.CodeLayout
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib.GenDecodes
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.VCGen
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

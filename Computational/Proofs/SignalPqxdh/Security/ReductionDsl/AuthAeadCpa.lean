@@ -18,7 +18,7 @@ Defines the two-stage `ReductionDsl` program `aeadCpaRedProg S K` mirroring the 
 `aeadCpaReductionAuthFixed` reduction.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -61,21 +61,21 @@ abbrev cpaSlotSendResTy : PT :=
 abbrev cpaPreTy : PT :=
   .sum (.prod authRespTy cpaStTy) (.prod cpaChOutTy (.prod cpaPayloadTy cpaStTy))
 
-def getDBytes {Γ : List PT} (o : Expr pqxdhOps Γ (.opt (B 32))) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def getDBytes {Γ : List PT} (o : Expr pqxdhOps Γ (.opt (B 32))) : Expr pqxdhOps Γ (B 32) :=
   eCaseOpt o (litB 32 []) fun x => v x
 
-def defaultMsgKeysE {Γ : List PT} : Expr pqxdhOps Γ msgKeysTy :=
+@[expose] def defaultMsgKeysE {Γ : List PT} : Expr pqxdhOps Γ msgKeysTy :=
   .pair (litB 32 (default : MessageKeys).cipherKey)
     (.pair (litB 32 (default : MessageKeys).macKey) (litB 16 (default : MessageKeys).iv))
 
-def iasAdE {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 158) :=
+@[expose] def iasAdE {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 158) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))))))
-def iasAeadCtE {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def iasAeadCtE {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))))))
-def iasMsgPlainE {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def iasMsgPlainE {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd
     (.snd (.snd (.snd (.snd (.snd (.snd s)))))))))))))
-def iasCk1_0E {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def iasCk1_0E {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd
     (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))))))))))
 
@@ -85,7 +85,7 @@ variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Δ : List PT}
 
 /-! ## Send -/
 
-def finishCpaC (fhst : Var Γ₁ authHybridStateFixedTy) (fresh isIdeal : Expr pqxdhOps Δ .bool)
+@[expose] def finishCpaC (fhst : Var Γ₁ authHybridStateFixedTy) (fresh isIdeal : Expr pqxdhOps Δ .bool)
     (p : Expr pqxdhOps Δ cpaPayloadTy) (aeadCt : Expr pqxdhOps Δ (B 32)) [Ext Γ₁ Δ] :
     Comp pqxdhOps pqPrimIface Δ RSF :=
   letV (.pair fresh (.pair isIdeal (.pair p aeadCt))) fun a =>
@@ -147,7 +147,7 @@ def finishCpaC (fhst : Var Γ₁ authHybridStateFixedTy) (fresh isIdeal : Expr p
       (aSendUnfresh (v drKey) (v rk1) (v ck1_1) (v wireMsg))) fun resp =>
   .ret (.pair (v resp) (ahsfUpd (v fhst) (hst := v hst')))
 
-def spkHonIdealFromPeerC (st : Var Γ₁ authStateTy)
+@[expose] def spkHonIdealFromPeerC (st : Var Γ₁ authStateTy)
     (pp : Var Γ₂ (.opt (.prod .nat principalEntryTy)))
     (bu : Var Γ₃ preKeyBundleTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] :
     Comp pqxdhOps pqPrimIface Δ .bool :=
@@ -162,7 +162,7 @@ def spkHonIdealFromPeerC (st : Var Γ₁ authStateTy)
         (.and (peCorrupted (v pE)) (bytesBeq 32 (v p1) (v p2)))
         (bytesBeq 32 (sbSpkPk (.snd (v b))) (pkbSpkB (v bu)))))
 
-def cpaSendB (opk allowPause : Bool) (idx : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy)
+@[expose] def cpaSendB (opk allowPause : Bool) (idx : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy)
     (x : Var Γ₃ sendQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] :
     Comp pqxdhOps pqPrimIface Δ cpaSendResTy :=
   letV (.inl (.pair aNone (v fhst)) : Expr pqxdhOps _ cpaSendResTy) fun noneDone =>
@@ -265,7 +265,7 @@ def cpaSendB (opk allowPause : Bool) (idx : Var Γ₁ .nat) (fhst : Var Γ₂ au
 
 /-! ## Receive -/
 
-def cpaRecvC (opk : Bool) (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var Γ₂ recvQTy)
+@[expose] def cpaRecvC (opk : Bool) (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var Γ₂ recvQTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ RSF :=
   letV (ahsfHybrid (v fhst)) fun hst =>
   letV (ahsBase (v hst)) fun st =>
@@ -424,11 +424,11 @@ def cpaRecvC (opk : Bool) (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var Γ�
 
 /-! ## Step dispatch -/
 
-def wrapCpa (idx : Var Γ₁ .nat) [Ext Γ₁ Δ] (m : Comp pqxdhOps pqPrimIface Δ RSF) :
+@[expose] def wrapCpa (idx : Var Γ₁ .nat) [Ext Γ₁ Δ] (m : Comp pqxdhOps pqPrimIface Δ RSF) :
     Comp pqxdhOps pqPrimIface Δ (.prod authRespTy cpaStTy) :=
   bindV m fun r => .ret (.pair (.fst (v r)) (.pair (v idx) (.pair (.nat 0) (.snd (v r)))))
 
-def cpaNonSendC (idx : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy)
+@[expose] def cpaNonSendC (idx : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy)
     (q : Var Γ₃ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ]
     (send : (opk : Bool) → {Δ' : List PT} → [Ext Γ₁ Δ'] → [Ext Γ₂ Δ'] →
       Var Δ' sendQTy → Comp pqxdhOps pqPrimIface Δ' cpaPreTy)
@@ -454,7 +454,7 @@ section CpaSlotBranches
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
 
 /-- Creation-order send handler using `ns` as the fresh-send slot counter. -/
-def cpaSendSlotB (opk allowPause : Bool) (idx : Var Γ₁ .nat) (ns : Var Γ₂ .nat)
+@[expose] def cpaSendSlotB (opk allowPause : Bool) (idx : Var Γ₁ .nat) (ns : Var Γ₂ .nat)
     (fhst : Var Γ₃ authHybridStateFixedTy) (x : Var Γ₄ sendQTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] :
     Comp pqxdhOps pqPrimIface Δ cpaSlotSendResTy :=
@@ -556,12 +556,12 @@ def cpaSendSlotB (opk allowPause : Bool) (idx : Var Γ₁ .nat) (ns : Var Γ₂ 
      bindV (finishCpaC fhst (.bool false) (v isIdealSend) (v pl) (v aeadCt)) fun res =>
      .ret (.inl (.pair (.fst (v res)) (.pair (v ns) (.snd (v res))))))
 
-def wrapCpaSlot (idx : Var Γ₁ .nat) (ns : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def wrapCpaSlot (idx : Var Γ₁ .nat) (ns : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (m : Comp pqxdhOps pqPrimIface Δ RSF) :
     Comp pqxdhOps pqPrimIface Δ (.prod authRespTy cpaStTy) :=
   bindV m fun r => .ret (.pair (.fst (v r)) (.pair (v idx) (.pair (v ns) (.snd (v r)))))
 
-def cpaNonSendSlotC (idx : Var Γ₁ .nat) (ns : Var Γ₂ .nat)
+@[expose] def cpaNonSendSlotC (idx : Var Γ₁ .nat) (ns : Var Γ₂ .nat)
     (fhst : Var Γ₃ authHybridStateFixedTy) (q : Var Γ₄ authQueryTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
     (send : (opk : Bool) → {Δ' : List PT} → [Ext Γ₁ Δ'] → [Ext Γ₂ Δ'] → [Ext Γ₃ Δ'] →
@@ -590,7 +590,7 @@ section Prog
 
 variable (S : Setup) (K : Nat)
 
-def cpaStepC (allowPause : Bool) : Comp pqxdhOps pqPrimIface [cpaStTy, authQueryTy] cpaPreTy :=
+@[expose] def cpaStepC (allowPause : Bool) : Comp pqxdhOps pqPrimIface [cpaStTy, authQueryTy] cpaPreTy :=
   letV (.fst (.var .zero) : Expr pqxdhOps [cpaStTy, authQueryTy] .nat) fun idx =>
   letV (.fst (.snd (.var (.succ .zero))) :
       Expr pqxdhOps [.nat, cpaStTy, authQueryTy] .nat) fun ns =>
@@ -609,21 +609,21 @@ def cpaStepC (allowPause : Bool) : Comp pqxdhOps pqPrimIface [cpaStTy, authQuery
           else .ret (.inl (.pair aNone (.pair (v idx) (.pair (v ns) (v fhst)))))))
     (fun m => bindV m fun r => .ret (.inl (v r)))
 
-def cpaPreC : Comp pqxdhOps pqPrimIface [cpaStTy, authQueryTy] cpaPreTy := cpaStepC S K true
+@[expose] def cpaPreC : Comp pqxdhOps pqPrimIface [cpaStTy, authQueryTy] cpaPreTy := cpaStepC S K true
 
-def cpaPostC : Comp pqxdhOps pqPrimIface [cpaStTy, authQueryTy] (.prod authRespTy cpaStTy) :=
+@[expose] def cpaPostC : Comp pqxdhOps pqPrimIface [cpaStTy, authQueryTy] (.prod authRespTy cpaStTy) :=
   bindV (cpaStepC S K false) fun r =>
   caseSumV (v r) (fun d => .ret (v d)) fun _ =>
     .ret (.pair aNone (.var (.succ (.succ .zero)) : Expr pqxdhOps _ cpaStTy))
 
-def cpaInitC : Comp pqxdhOps pqPrimIface [.unit] (.prod .unit cpaStTy) :=
+@[expose] def cpaInitC : Comp pqxdhOps pqPrimIface [.unit] (.prod .unit cpaStTy) :=
   bindV (samplePrim (.index (min K S.N_send_tot))) fun idx =>
   .ret (.pair .unit (.pair (v idx) (.pair (.nat 0) (emptyAuthHybridStFixedE (.bool true)))))
 
-def cpaDefaultChC : Comp pqxdhOps pqPrimIface [cpaStTy, .bool] cpaChOutTy :=
+@[expose] def cpaDefaultChC : Comp pqxdhOps pqPrimIface [cpaStTy, .bool] cpaChOutTy :=
   .ret (.pair (litB 158 []) (.pair (litB 32 [0]) (litB 32 [0])))
 
-def cpaResumeC :
+@[expose] def cpaResumeC :
     Comp pqxdhOps pqPrimIface [cpaStTy, cpaPayloadTy, .opt (B 32)] (.prod authRespTy cpaStTy) :=
   letV (.fst (.var .zero) : Expr pqxdhOps [cpaStTy, cpaPayloadTy, .opt (B 32)] .nat) fun idx =>
   letV (.snd (.snd (.var (.succ .zero))) :
@@ -634,7 +634,7 @@ def cpaResumeC :
       (getDBytes (.var (.succ (.succ (.succ (.succ .zero)))))))
     fun r => .ret (.pair (.fst (v r)) (.pair (v idx) (.pair (.add (v idx) (.nat 1)) (.snd (v r)))))
 
-def cpaFinishC : Comp pqxdhOps pqPrimIface [cpaStTy, .bool, .opt (B 32)] .bool :=
+@[expose] def cpaFinishC : Comp pqxdhOps pqPrimIface [cpaStTy, .bool, .opt (B 32)] .bool :=
   letV (.bool true : Expr pqxdhOps [cpaStTy, .bool, .opt (B 32)] .bool) fun _secb =>
   letV (.var (.succ (.succ .zero)) : Expr pqxdhOps [.bool, cpaStTy, .bool, .opt (B 32)] .bool) fun _b' =>
   letV (ahsfHybrid (.snd (.snd (.var (.succ (.succ .zero)) :
@@ -642,7 +642,7 @@ def cpaFinishC : Comp pqxdhOps pqPrimIface [cpaStTy, .bool, .opt (B 32)] .bool :
   finalizeAuthFixedDsl S K
 
 /-- Two-stage `ReductionDsl` program for `aeadCpaReductionAuthFixed` with list bound `K`. -/
-def aeadCpaRedProg :
+@[expose] def aeadCpaRedProg :
     TwoStageCostedReduction pqxdhOps pqPrimIface (authSpec S) (authCodec S)
       .unit .unit .bool cpaChOutTy (.opt (B 32)) .bool where
   σ          := cpaStTy

@@ -9,14 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bErrWKyber
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bErrWSharedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bKyberPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailCWPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bErrWKyber
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bErrWSharedPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bKyberPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailCWPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailCleanup
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPost
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKyberPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKyberWPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKyberc
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKybercWPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bErrWShared
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.Common
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysPlacedSym
 
 /-!
 # Relocatable `[LibsignalPlacement]` Kyber Dispatch Error Continuation (`PreKeyKyberErrWPlaced`)
@@ -25,7 +32,7 @@ Proves `preKeyKyberErrW_placed_proof` (`+0x684 → +0xa24 → +0x504 → ret`) o
 `preKeyPlacedProg H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -132,7 +139,7 @@ theorem w8bKyberErr_684_to_a24_placed_wpE [LibsignalPlacement] {A : RustAlloc}
     apply entails_of_eq; ac_rfl
 
 /-- Frame carried across `w8bKyberErr_684_to_a24_placed_wpE` (`+0x684 → +0xa24`). -/
-def w8bKyberErr684FramePlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
+@[expose] def w8bKyberErr684FramePlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
     (sp' ptr bkCap bkPtr kyberLen ikCap ikPtr msgCap msgPtr : BitVec 64)
     (regTag regVal opkTag opkVal spkId kpkVal : BitVec 32)
     (bk ik msg bytes : List (BitVec 8)) : SepProp :=
@@ -154,7 +161,7 @@ def w8bKyberErr684FramePlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
       (preKeyTryFromSubStack - Prost.skipFieldStackX 100)
 
 /-- Frame `R` carried across `ErrTailCWPlaced.tail_a24_placed_wpX` (`+0xa24 → +0x504`). -/
-def w8bKyberErrA24RestPlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
+@[expose] def w8bKyberErrA24RestPlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
     (sp' sret ptr bkLen msgLen kyberLen ikLen : BitVec 64)
     (regTag regVal opkTag opkVal spkId kpkTag kpkVal : BitVec 32)
     (bytes : List (BitVec 8)) : SepProp :=

@@ -9,16 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightP297PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoderClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderClPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightP297PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoderClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderClPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncodedLenBase
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1Acknowledged
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoderTightPlacedBudgetAux
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbLeaf
 import ProofLib.Hoare.SubroutineOk
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
 
 /-!
 # Guarded-Tight Placed Budget Contracts for `PolynomialDecoder::merge` & `PolynomialEncoder::merge` (Blocks `296`–`297`)
@@ -30,7 +33,7 @@ Proves `tlb_PolyDecoderMergePlacedTightOkOf` (Block `296`) and exports
 `tlb_Poly{Decoder,Encoder}Dom` inputs, falling back to `Poly{Decoder,Encoder}MergeEnv` outside the domain.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -91,11 +94,11 @@ open LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget (skipField3Spec)
 
 /-- Valid `Vec<Vec<u8>>` capacities along Rust `RawVec::grow_one` doubling from `0`:
 `0 → 4 → 8 → 16` (or `≥ 16`, where no further grow occurs on `≤ 16` elements). -/
-def e2p_ValidPolyVecCap (cap : Nat) : Prop :=
+@[expose] def e2p_ValidPolyVecCap (cap : Nat) : Prop :=
   cap = 0 ∨ cap = 4 ∨ cap = 8 ∨ 16 ≤ cap
 
 /-- Remaining `grow_one` operations needed on `≤ 16` total pushes starting from `cap`. -/
-def e2p_polyGrowRemOps (cap : Nat) : Nat :=
+@[expose] def e2p_polyGrowRemOps (cap : Nat) : Nat :=
   if 16 ≤ cap then 0
   else if 8 ≤ cap then 1
   else if 4 ≤ cap then 2
@@ -117,7 +120,7 @@ theorem e2p_validPolyVecCap_step {cap : Nat} (hv : e2p_ValidPolyVecCap cap) (hlt
 
 /-- Domain-guarded `ProtoPolynomialDecoder`: requires `g.pts.cap = 0#64` when `Dom x` holds,
 and matches unpinned `protoPolynomialDecoderAt` on `¬ Dom x`. -/
-def e2p_protoPolynomialDecoderDomAt (Dom : PolyDecoderMergeGhost → Prop) (A : RustAlloc)
+@[expose] def e2p_protoPolynomialDecoderDomAt (Dom : PolyDecoderMergeGhost → Prop) (A : RustAlloc)
     (x : PolyDecoderMergeGhost) : SepProp :=
   ∃∗ g : ProtoPolynomialDecoderGhost,
     ⌜Dom x → g.pts.cap = 0#64⌝ ∗
@@ -125,7 +128,7 @@ def e2p_protoPolynomialDecoderDomAt (Dom : PolyDecoderMergeGhost → Prop) (A : 
 
 /-- Domain-guarded `ProtoPolynomialEncoder`: requires `g.pts.cap = 0#64 ∧ g.polys.cap = 0#64`
 when `Dom x` holds, and matches unpinned `protoPolynomialEncoderAt` on `¬ Dom x`. -/
-def e2p_protoPolynomialEncoderDomAt (Dom : PolyEncoderMergeGhost → Prop) (A : RustAlloc)
+@[expose] def e2p_protoPolynomialEncoderDomAt (Dom : PolyEncoderMergeGhost → Prop) (A : RustAlloc)
     (x : PolyEncoderMergeGhost) : SepProp :=
   ∃∗ g : ProtoPolynomialEncoderGhost,
     ⌜Dom x → g.pts.cap = 0#64 ∧ g.polys.cap = 0#64⌝ ∗
@@ -154,7 +157,7 @@ theorem e2p_satisfies_encoderAt_of_domAt {Dom : PolyEncoderMergeGhost → Prop}
 /-! ## 2. Guarded Zero-Cap Specifications (`Dom` → `ZeroCap`, `¬ Dom` → Unpinned `At`) -/
 
 /-- `Dom`-zero-cap guarded specification of `PolynomialDecoder::merge` (`Block 296`). -/
-def e2p_polyDecoderMergeZeroCapSpecOfEnv {M : AllocCostModel}
+@[expose] def e2p_polyDecoderMergeZeroCapSpecOfEnv {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PreEnv PostEnv : PolyDecoderMergeGhost → List AllocEvent → Prop) :
     Spec (PolyDecoderMergeGhost × M.σ) where
@@ -170,7 +173,7 @@ def e2p_polyDecoderMergeZeroCapSpecOfEnv {M : AllocCostModel}
   post := (polyDecoderMergeSpecOfEnv A lim PreEnv PostEnv).post
 
 /-- `Dom`-zero-cap guarded specification of `PolynomialEncoder::merge` (`Block 297`). -/
-def e2p_polyEncoderMergeZeroCapSpecOfEnv {M : AllocCostModel}
+@[expose] def e2p_polyEncoderMergeZeroCapSpecOfEnv {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PreEnv PostEnv : PolyEncoderMergeGhost → List AllocEvent → Prop) :
     Spec (PolyEncoderMergeGhost × M.σ) where

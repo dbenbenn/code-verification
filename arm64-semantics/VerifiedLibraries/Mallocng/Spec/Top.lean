@@ -24,7 +24,7 @@ The specification is parameterized by an existential allocator interface `J : Ma
 per-symbol static addresses `A : MallocngAddrs` (with no contiguity assumptions across functions or
 `.rodata` tables), a byte-cost and allocation-count budget `MallocngBudget`, and a dynamic virtual
 address interval list `ivs` satisfying `MallocngNoOrphanMappings`. Contracts hold across all
-`Oracle.mmap` and `Oracle.mremapFail` schedules (`MallocngSvcValid`) with no external leaf hooks,
+`Oracle.mmap` and `Oracle.mremapRefusal` schedules (`MallocngSvcValid`) with no external leaf hooks,
 bundling interface well-formedness (`MallocngIfaceWfStmt`) and all six exported C entry points
 (`malloc`, `free`, `calloc`, `realloc`, `aligned_alloc`, `posix_memalign`) in `MallocngTopStmt`.
 -/
@@ -37,13 +37,13 @@ open Arm64 Arm64.CType
 
 /-! ## Constants and Pure Size, Alignment, and Budget Predicates -/
 
-/-- Exact `ENOMEM` request ceiling in `musl` 1.2.5 `mallocng` (`SIZE_MAX / 2 - 4097` in
+/-- Exact `ENOMEM` request ceiling in `musl` `mallocng` (`SIZE_MAX / 2 - 4097` in
     `__libc_malloc_impl` and `__libc_realloc`): requests `≤ MallocngMaxAllocSize` succeed on
     `.Running`, and requests `> MallocngMaxAllocSize` return `NULL` (`0#64`) with `errno = ENOMEM`. -/
 def MallocngMaxAllocSize : Nat := 0x7fffffffffffeffe
 
 /-- Maximum supported alignment (`2 ^ 31 = 0x80000000`) for `aligned_alloc` and `posix_memalign`
-    over unmodified `musl` 1.2.5 `mallocng` (avoiding the signed
+    over unmodified `musl` `mallocng` (avoiding the signed
     32-bit `int reserved = end - p - n` overflow in `src/malloc/mallocng/meta.h:186`). -/
 def MaxAlignedAllocAlign : Nat := 2 ^ 31
 
@@ -169,7 +169,9 @@ def mallocngRemapRw (m : Memory) (oldBase : BitVec 64) (oldSize : Nat)
     when `oldAddr` is page-aligned, `0 < oldLen`, `0 < newLen ≤ 2 ^ 64 - PAGE_SIZE`,
     `oldAddr.toNat + pageAlignUp oldLen ≤ 2 ^ 48`, and `[oldAddr, oldAddr + pageAlignUp oldLen)` is
     uniformly anonymous `some Perm.rw` (hence non-frozen), `mremap` either:
-    1. refuses with `-ENOMEM` (`s' = ((s.nextOracle).writeReg64 Reg.x0 (-ENOMEM)).advancePC`),
+    1. refuses with a negative Linux errno `-err` (`1 ≤ err ≤ 4095`, e.g. `-EINVAL` when
+       `newLen > USER_VA_LIMIT`, `-ENOMEM` on VA/map-count exhaustion, or `-EFAULT` on unmerged
+       adjacent VMAs, optionally advancing `s.nextOracle`), leaving `s.mem` unchanged,
     2. transitions to `.OutOfMemory` when `s.physMemAvail + pageAlignUp oldLen < pageAlignUp newLen`
        (`s' = s.setStatus .OutOfMemory`), or
     3. remaps onto a page-aligned destination `newBase` (`newBase ≠ 0#64`,
@@ -191,7 +193,9 @@ def MallocngMremapStep (s s' : State) : Prop :=
   oldAddr.toNat + oldAligned ≤ 2 ^ 48 →
   s.mem.allPerm (· == some Perm.rw) oldAddr oldAligned = true →
   s.mem.allAnon oldAddr oldAligned = true →
-  s' = ((s.nextOracle).writeReg64 Reg.x0 (-ENOMEM)).advancePC ∨
+  (∃ err : Nat, 1 ≤ err ∧ err ≤ 4095 ∧
+    (s' = (s.writeReg64 Reg.x0 (-BitVec.ofNat 64 err)).advancePC ∨
+     s' = ((s.nextOracle).writeReg64 Reg.x0 (-BitVec.ofNat 64 err)).advancePC)) ∨
   (s.physMemAvail + oldAligned < newAligned ∧ s' = s.setStatus .OutOfMemory) ∨
     ∃ newBase : BitVec 64,
       newBase ≠ 0#64 ∧
@@ -213,11 +217,17 @@ def MallocngSvcValid (svc : State → State) : Prop :=
     (s.readReg64 Reg.x8 = SYS_MPROTECT → s.readReg64 Reg.x2 = MMAP_PROT_RW → svc s = execMprotect s) ∧
     (s.readReg64 Reg.x8 = MALLOCNG_SYS_MREMAP → MallocngMremapStep s (svc s))
 
+/-- Placed block program for block `i` of `lib : Obj.MultiPlacedLib` under multi-block placement
+    `mpl` and supervisor-call handler `svc` (no external hooks or overrides). -/
+abbrev mallocngLibBlockProg (lib : Obj.MultiPlacedLib) (mpl : Obj.MultiPlacement) (i : Nat)
+    (svc : State → State) : Program :=
+  lib.blockProgram mpl i (fun _ => none) (fun _ => none) svc
+
 /-- Placed block program for block `i` of `VerifiedLibraries.mallocngLib` under multi-block placement
     `mpl` and supervisor-call handler `svc` (no external hooks or overrides). When
     `svc = Syscall.standard`, this is definitionally `VerifiedLibraries.mallocngLib.blockProgram mpl i`. -/
-def mallocngBlockProg (mpl : Obj.MultiPlacement) (i : Nat) (svc : State → State) : Program :=
-  VerifiedLibraries.mallocngLib.blockProgram mpl i (fun _ => none) (fun _ => none) svc
+abbrev mallocngBlockProg (mpl : Obj.MultiPlacement) (i : Nat) (svc : State → State) : Program :=
+  mallocngLibBlockProg VerifiedLibraries.mallocngLib mpl i svc
 
 /-- `[MMAP_MIN_ADDR, 2 ^ 48)` contains an unmapped page-aligned range of `sz` bytes in `m`. -/
 def MallocngHasGap (m : Memory) (sz : Nat) : Prop :=
@@ -313,7 +323,7 @@ abbrev MallocngProcPreserved (s0 sf : State) : Prop :=
 
 /-! ## Placement-Generic Addresses, `.rodata` Tables, and `MallocngIface` -/
 
-/-- Stock `musl` v1.2.5 `__malloc_size_classes[0..47]` (`48` entries, in `UNIT = 16`-byte multiples). -/
+/-- Upstream `musl` `__malloc_size_classes[0..47]` (`48` entries, in `UNIT = 16`-byte multiples). -/
 def mallocngSizeClassUnits : List Nat :=
   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15,
    18, 20, 25, 31, 36, 42, 50, 63, 72, 84, 102, 127,
@@ -348,14 +358,15 @@ def mallocngRoTablesBytes : List (BitVec 8) :=
   mallocngSmallCntTabBytes ++ List.replicate 5 0#8 ++
   mallocngDebruijn32Table
 
-/-- Placement-resolved static symbol addresses for `musl` 1.2.5 `mallocng`, with all five `.rodata`
-    lookup tables resolved per symbol (no contiguity assumption):
+/-- Placement-resolved static symbol addresses for `musl` `mallocng`, with `.rodata` lookup tables
+    resolved per symbol (no contiguity assumption; toolchains that fold `a_ctz_32` into `rbit`+`clz`
+    pass `0#64` for `debruijnFree` and `debruijnAlloc`):
     - `base`: nominal placement base (`mpl.base 0`).
     - `sizeClasses`: `__malloc_size_classes` (`96` B `.rodata`).
-    - `debruijnFree`: `debruijn32.4681` (`32` B `.rodata`).
+    - `debruijnFree`: `debruijn32.4681` (`32` B `.rodata`, or `0#64` when unused).
     - `medCntTab`: `med_cnt_tab` (`4` B `.rodata`).
     - `smallCntTab`: `small_cnt_tab` (`27` B `.rodata`).
-    - `debruijnAlloc`: `debruijn32.5048` (`32` B `.rodata`).
+    - `debruijnAlloc`: `debruijn32.5048` (`32` B `.rodata`, or `0#64` when unused).
     - `ctx`: `__malloc_context` (`928` B `.bss`).
     - `libc`: `__libc` (`+3` `need_locks`, `+8` `auxv`, `+48` `page_size`).
     - `lock`: `__malloc_lock` (`4` B `.bss`).
@@ -453,7 +464,7 @@ def MallocngStartupResources (A : MallocngAddrs) (tp : BitVec 64) : SepProp :=
     ((A.libc + 8#64) ↦₆₄ auxvPtr) ∗
     MallocngAuxvAt auxvPtr
 
-/-- Abstract separation-logic interface for stock `musl` v1.2.5 `mallocng`:
+/-- Abstract separation-logic interface for `musl` `mallocng`:
     - `MallocngHeap γ A tp brkStart brk b ivs` is the complete allocator and runtime invariant at
       ghost instance `γ`, symbol placement `A : MallocngAddrs`, thread pointer `tp`, initial break
       `brkStart`, current break `brk`, cost/count budget `b : MallocngBudget`, and concrete dynamic
@@ -554,26 +565,31 @@ def mallocngReallocBudget (ok : Bool) (oldBlk : Option (Nat × List (BitVec 8)))
       peakCount := max b.peakCount (b.liveCount + 1) }
   else b
 
-/-- Placement-generic startup initialization statement (`mallocngInitStmt J`) over
-    `VerifiedLibraries.mallocngLib.dataInit mpl`: for any multi-block placement
-    `mpl : Obj.MultiPlacement` with `A = mallocngAddrsOfPlacement mpl` and any well-formed initial
-    break `brkStart` (`MallocngBrkStartWf brkStart`), ghost initialization from
-    `VerifiedLibraries.mallocngLib.dataInit mpl`, `MallocngRuntime A tp`, `(A.libc + 8#64) ↦₆₄ auxvPtr`,
-    and `MallocngAuxvAt auxvPtr` yields an empty `MallocngHeap` at `A` with `mallocngZeroBudget` and
-    `ivs = []` alongside any caller frame `R`. -/
-def mallocngInitStmt (J : MallocngIface) : Prop :=
+/-- Placement-generic startup initialization statement (`mallocngLibInitStmt lib addrsOf J`) over
+    `lib.dataInit mpl`: for any multi-block placement `mpl : Obj.MultiPlacement` with
+    `A = addrsOf mpl` and any well-formed initial break `brkStart` (`MallocngBrkStartWf brkStart`),
+    ghost initialization from `lib.dataInit mpl`, `MallocngRuntime A tp`,
+    `(A.libc + 8#64) ↦₆₄ auxvPtr`, and `MallocngAuxvAt auxvPtr` yields an empty `MallocngHeap` at
+    `A` with `mallocngZeroBudget` and `ivs = []` alongside any caller frame `R`. -/
+abbrev mallocngLibInitStmt (lib : Obj.MultiPlacedLib) (addrsOf : Obj.MultiPlacement → MallocngAddrs)
+    (J : MallocngIface) : Prop :=
   ∀ (mpl : Obj.MultiPlacement) (tp brkStart auxvPtr : BitVec 64) (R : SepProp) (m : Memory),
-    let A := mallocngAddrsOfPlacement mpl
+    let A := addrsOf mpl
     0xa4 ≤ tp.toNat →
     tp.toNat ≤ 2 ^ 48 →
     MallocngBrkStartWf brkStart →
     (m ⊨
-      VerifiedLibraries.mallocngLib.dataInit mpl ∗
+      lib.dataInit mpl ∗
       MallocngRuntime A tp ∗
       ((A.libc + 8#64) ↦₆₄ auxvPtr) ∗
       MallocngAuxvAt auxvPtr ∗ R) →
     ∃ γ : GhostName,
       m ⊨ |==> (J.MallocngHeap γ A tp brkStart brkStart mallocngZeroBudget [] ∗ R)
+
+/-- Placement-generic startup initialization statement (`mallocngInitStmt J`) over
+    `VerifiedLibraries.mallocngLib.dataInit mpl`. -/
+abbrev mallocngInitStmt (J : MallocngIface) : Prop :=
+  mallocngLibInitStmt VerifiedLibraries.mallocngLib mallocngAddrsOfPlacement J
 
 /-! ## Canonical Semantic C Types (`SemType`) for `mallocng` Allocations -/
 
@@ -605,9 +621,8 @@ def mallocngInitStmt (J : MallocngIface) : Prop :=
   pureWf := fun p (sz, bs) =>
     p ≠ 0#64 ∧ 16 ∣ p.toNat ∧ p.toNat + sz < 2 ^ 64 ∧ bs.length ≤ sz
 
-/-- Nullable `mallocng` allocation block of `n` bytes at `p` passed to `free(p)` or
-    `malloc_usable_size(p)`: `emp` when `p = 0#64`, or `J.Block γ p n ∗ memRegion p n` when
-    `p ≠ 0#64`. -/
+/-- Nullable `mallocng` allocation block of `n` bytes at `p` passed to `free(p)`: `emp` when
+    `p = 0#64`, or `J.Block γ p n ∗ memRegion p n` when `p ≠ 0#64`. -/
 @[reducible] def MallocngFreeableBlock (J : MallocngIface) (γ : GhostName) : SemType Nat where
   tyName := "void * (nullable mallocng allocated block)"
   interp := fun p n => if p = 0#64 then emp else J.Block γ p n ∗ memRegion p n
@@ -704,7 +719,7 @@ c_type_spec mallocngReallocSpec (ctx J : MallocngIface) (ctx svc : State → Sta
 
 /-- `void *aligned_alloc(size_t align, size_t len)`:
     - Requires `align.toNat ≤ MaxAlignedAllocAlign` (`2 ^ 31`), avoiding the signed 32-bit
-      `int reserved` overflow in `musl` 1.2.5 `set_size`.
+      `int reserved` overflow in `musl` `set_size`.
     - When `mallocngAlignedAllocOk align len` holds, returns a non-null `max align.toNat 16`-aligned
       block `MallocngBlock J γ (len.toNat, max align.toNat 16)`; otherwise returns `0#64` (`NULL`). -/
 c_type_spec mallocngAlignedAllocSpec (ctx J : MallocngIface) (ctx svc : State → State)
@@ -715,7 +730,7 @@ c_type_spec mallocngAlignedAllocSpec (ctx J : MallocngIface) (ctx svc : State �
   let ok := mallocngAlignedAllocOk align len
   let eff := mallocngAlignedEffSize align.toNat len.toNat
   let b' := mallocngAlignedBudget ok align.toNat len.toNat b
-  caveat [API_RESTRICTION] "align ≤ 2^31 avoids musl 1.2.5 set_size int32 reserved overflow" :
+  caveat [API_RESTRICTION] "align ≤ 2^31 avoids musl set_size int32 reserved overflow" :
     align.toNat ≤ MaxAlignedAllocAlign
   c_arg align : Val SizeT
   c_arg len : Val SizeT
@@ -741,7 +756,7 @@ c_type_spec mallocngPosixMemalignSpec (ctx J : MallocngIface) (ctx svc : State �
   let ok := mallocngPosixMemalignOk align len
   let eff := mallocngAlignedEffSize align.toNat len.toNat
   let b' := mallocngAlignedBudget ok align.toNat len.toNat b
-  caveat [API_RESTRICTION] "align ≤ 2^31 avoids musl 1.2.5 set_size int32 reserved overflow" :
+  caveat [API_RESTRICTION] "align ≤ 2^31 avoids musl set_size int32 reserved overflow" :
     align.toNat ≤ MaxAlignedAllocAlign
   c_arg res : MutRef (OptOutPtr (MallocngBlock J γ)) none ⇝
     (if ok then some (len.toNat, max align.toNat 16) else none)
@@ -756,20 +771,22 @@ c_type_spec mallocngPosixMemalignSpec (ctx J : MallocngIface) (ctx svc : State �
 
 /-! ## Interface Well-Formedness and Top-Level API Bundle -/
 
-/-- Interface well-formedness, placement-generic startup initialization, runtime/RO splitting, and
-    linear interval/byte footprint accounting laws (`MallocngIfaceFacts J`) for `J : MallocngIface`
-    (independent of the entry-point `subroutine_ok` contracts bundled in `MallocngTopFacts`). -/
-structure MallocngIfaceFacts (J : MallocngIface) : Prop where
-  init : mallocngInitStmt J
+/-- Library-generic interface well-formedness, placement-generic startup initialization over `lib`,
+    runtime/RO splitting, and linear interval/byte footprint accounting laws for `J : MallocngIface`
+    at symbol mapping `addrsOf` and separation-logic startup bundle `startupRes`. -/
+structure MallocngLibIfaceFacts (lib : Obj.MultiPlacedLib)
+    (addrsOf : Obj.MultiPlacement → MallocngAddrs)
+    (startupRes : MallocngAddrs → BitVec 64 → SepProp) (J : MallocngIface) : Prop where
+  init : mallocngLibInitStmt lib addrsOf J
   /-- Separation-logic startup entailment: any post-`__init_libc` state owning
-      `MallocngStartupResources A tp` ghost-initializes to an empty `MallocngHeap` with
-      `mallocngZeroBudget` and `ivs = []`. -/
+      `startupRes A tp` ghost-initializes to an empty `MallocngHeap` with `mallocngZeroBudget` and
+      `ivs = []`. -/
   init_resources :
     ∀ (A : MallocngAddrs) (tp brkStart : BitVec 64),
       0xa4 ≤ tp.toNat →
       tp.toNat ≤ 2 ^ 48 →
       MallocngBrkStartWf brkStart →
-      MallocngStartupResources A tp ⊢
+      startupRes A tp ⊢
         |==> (∃∗ γ : GhostName, J.MallocngHeap γ A tp brkStart brkStart mallocngZeroBudget [])
   /-- Split/rejoin law exposing `MallocngRuntime A tp` (`*(tp - 0xa4)` `errno`,
       `__libc.need_locks = 0`, `__libc.page_size = 4096`) separately from `J.MallocngCore` so
@@ -827,47 +844,69 @@ structure MallocngIfaceFacts (J : MallocngIface) : Prop where
         dom.length ≤ MallocngBaseOverhead + MallocngLinearFactor * b.peakCost ∧
         ∀ a : BitVec 64, (h a ≠ none ∨ h.mapped a = true) → a ∈ dom
 
+/-- Interface well-formedness, placement-generic startup initialization, runtime/RO splitting, and
+    linear interval/byte footprint accounting laws (`MallocngIfaceFacts J`) for
+    `VerifiedLibraries.mallocngLib`. -/
+abbrev MallocngIfaceFacts (J : MallocngIface) : Prop :=
+  MallocngLibIfaceFacts VerifiedLibraries.mallocngLib mallocngAddrsOfPlacement
+    MallocngStartupResources J
+
 /-- Existential interface well-formedness, startup initialization, runtime/RO splitting, and linear
     interval/byte footprint bound statement. -/
 def MallocngIfaceWfStmt : Prop :=
   ∃ J : MallocngIface, MallocngIfaceFacts J
 
 /-- Multi-block placement-generic contract for an exported function `fnName` of
-    `VerifiedLibraries.mallocngLib` under `mpl : Obj.MultiPlacement` and supervisor-call handler `svc`:
-    `fnName` is exported by `VerifiedLibraries.mallocngLib`, resolves via `Obj.lookupBlockSym` to some
-    block `(i, off)`, and satisfies `subroutine_ok` on `mallocngBlockProg mpl i svc` at
-    `VerifiedLibraries.mallocngLib.fnAddr mpl fnName` with `VerifiedLibraries.mallocngLib.withCodeLoaded mpl`
-    adjoined. -/
-def mallocngMultiEntryOk {S α : Type} [ToBaseSpec S α]
+    `lib : Obj.MultiPlacedLib` under `mpl : Obj.MultiPlacement` and supervisor-call handler `svc`:
+    `fnName` is exported by `lib`, resolves via `Obj.lookupBlockSym` to some block `(i, off)`, and
+    satisfies `subroutine_ok` on `mallocngLibBlockProg lib mpl i svc` at `lib.fnAddr mpl fnName`
+    with `lib.withCodeLoaded mpl` adjoined. -/
+abbrev mallocngLibMultiEntryOk {S α : Type} [ToBaseSpec S α]
+    (lib : Obj.MultiPlacedLib) (mpl : Obj.MultiPlacement) (svc : State → State)
+    (fnName : String) (spec : S) : Prop :=
+  fnName ∈ lib.exports ∧
+  ∃ i off, Obj.lookupBlockSym fnName lib.blocks = some (i, off) ∧
+    subroutine_ok (mallocngLibBlockProg lib mpl i svc)
+      (lib.fnAddr mpl fnName)
+      (lib.withCodeLoaded mpl (ToBaseSpec.toSpec spec (mpl.base i)))
+
+/-- Multi-block placement-generic contract for an exported function `fnName` of
+    `VerifiedLibraries.mallocngLib` under `mpl : Obj.MultiPlacement` and supervisor-call handler
+    `svc`. -/
+abbrev mallocngMultiEntryOk {S α : Type} [ToBaseSpec S α]
     (mpl : Obj.MultiPlacement) (svc : State → State) (fnName : String) (spec : S) : Prop :=
-  fnName ∈ VerifiedLibraries.mallocngLib.exports ∧
-  ∃ i off, Obj.lookupBlockSym fnName VerifiedLibraries.mallocngLib.blocks = some (i, off) ∧
-    subroutine_ok (mallocngBlockProg mpl i svc)
-      (VerifiedLibraries.mallocngLib.fnAddr mpl fnName)
-      (VerifiedLibraries.mallocngLib.withCodeLoaded mpl (ToBaseSpec.toSpec spec (mpl.base i)))
+  mallocngLibMultiEntryOk VerifiedLibraries.mallocngLib mpl svc fnName spec
+
+/-- Joint `subroutine_ok` bundle for the six ISO/POSIX C allocator entry points (`malloc`, `free`,
+    `calloc`, `realloc`, `aligned_alloc`, `posix_memalign`) exported by `lib` at symbol mapping
+    `addrsOf`. -/
+structure MallocngLibPlacedEntryContracts (lib : Obj.MultiPlacedLib)
+    (addrsOf : Obj.MultiPlacement → MallocngAddrs)
+    (J : MallocngIface) (mpl : Obj.MultiPlacement) (svc : State → State) : Prop where
+  malloc_ok : ∀ γ : GhostName,
+    mallocngLibMultiEntryOk lib mpl svc "malloc"
+      (mallocngMallocSpec J svc γ (addrsOf mpl))
+  free_ok : ∀ γ : GhostName,
+    mallocngLibMultiEntryOk lib mpl svc "free"
+      (mallocngFreeSpec J γ (addrsOf mpl))
+  calloc_ok : ∀ γ : GhostName,
+    mallocngLibMultiEntryOk lib mpl svc "calloc"
+      (mallocngCallocSpec J svc γ (addrsOf mpl))
+  realloc_ok : ∀ γ : GhostName,
+    mallocngLibMultiEntryOk lib mpl svc "realloc"
+      (mallocngReallocSpec J svc γ (addrsOf mpl))
+  alignedAlloc_ok : ∀ γ : GhostName,
+    mallocngLibMultiEntryOk lib mpl svc "aligned_alloc"
+      (mallocngAlignedAllocSpec J svc γ (addrsOf mpl))
+  posixMemalign_ok : ∀ γ : GhostName,
+    mallocngLibMultiEntryOk lib mpl svc "posix_memalign"
+      (mallocngPosixMemalignSpec J svc γ (addrsOf mpl))
 
 /-- Joint `subroutine_ok` bundle for the six C allocator entry points (`malloc`, `free`, `calloc`,
     `realloc`, `aligned_alloc`, `posix_memalign`) exported by `VerifiedLibraries.mallocngLib`. -/
-structure MallocngPlacedEntryContracts (J : MallocngIface) (mpl : Obj.MultiPlacement)
-    (svc : State → State) : Prop where
-  malloc_ok : ∀ γ : GhostName,
-    mallocngMultiEntryOk mpl svc "malloc"
-      (mallocngMallocSpec J svc γ (mallocngAddrsOfPlacement mpl))
-  free_ok : ∀ γ : GhostName,
-    mallocngMultiEntryOk mpl svc "free"
-      (mallocngFreeSpec J γ (mallocngAddrsOfPlacement mpl))
-  calloc_ok : ∀ γ : GhostName,
-    mallocngMultiEntryOk mpl svc "calloc"
-      (mallocngCallocSpec J svc γ (mallocngAddrsOfPlacement mpl))
-  realloc_ok : ∀ γ : GhostName,
-    mallocngMultiEntryOk mpl svc "realloc"
-      (mallocngReallocSpec J svc γ (mallocngAddrsOfPlacement mpl))
-  alignedAlloc_ok : ∀ γ : GhostName,
-    mallocngMultiEntryOk mpl svc "aligned_alloc"
-      (mallocngAlignedAllocSpec J svc γ (mallocngAddrsOfPlacement mpl))
-  posixMemalign_ok : ∀ γ : GhostName,
-    mallocngMultiEntryOk mpl svc "posix_memalign"
-      (mallocngPosixMemalignSpec J svc γ (mallocngAddrsOfPlacement mpl))
+abbrev MallocngPlacedEntryContracts (J : MallocngIface) (mpl : Obj.MultiPlacement)
+    (svc : State → State) : Prop :=
+  MallocngLibPlacedEntryContracts VerifiedLibraries.mallocngLib mallocngAddrsOfPlacement J mpl svc
 
 /-- Complete top-level correctness record (`MallocngTopFacts J`) for stock `musl` v1.2.5 `mallocng`
     at a single abstract interface `J : MallocngIface`: combines `MallocngIfaceFacts J` with
@@ -875,7 +914,9 @@ structure MallocngPlacedEntryContracts (J : MallocngIface) (mpl : Obj.MultiPlace
     (`MallocngPlacedEntryContracts`) for all 6 C allocator exports surviving `--gc-sections` in
     stock static links (`malloc`, `free`, `calloc`, `realloc`, `aligned_alloc`, `posix_memalign`),
     with zero external leaf-helper hooks and zero `.rodata`/`.text` contiguity assumptions. -/
-structure MallocngTopFacts (J : MallocngIface) : Prop extends MallocngIfaceFacts J where
+structure MallocngTopFacts (J : MallocngIface) : Prop extends
+    MallocngLibIfaceFacts VerifiedLibraries.mallocngLib mallocngAddrsOfPlacement
+      MallocngStartupResources J where
   /-- Multi-block placement-generic entry-point contracts (`entries_ok`): for every multi-block
       placement `mpl : Obj.MultiPlacement` under which `VerifiedLibraries.mallocngLib` is `Placeable`
       (`Obj.MultiPlacedLib.Placeable`) and every valid supervisor-call handler `svc`
@@ -888,6 +929,10 @@ structure MallocngTopFacts (J : MallocngIface) : Prop extends MallocngIfaceFacts
       VerifiedLibraries.mallocngLib.Placeable mpl →
       MallocngSvcValid svc →
       MallocngPlacedEntryContracts J mpl svc
+
+abbrev MallocngTopFacts.toMallocngIfaceFacts {J : MallocngIface} (h : MallocngTopFacts J) :
+    MallocngIfaceFacts J :=
+  h.toMallocngLibIfaceFacts
 
 /-- Complete top-level existential correctness statement for `mallocng`: there exists a single
     `J : MallocngIface` satisfying both `MallocngIfaceFacts J` and all placed

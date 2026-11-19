@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -19,7 +19,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful
+public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
 import Symbolic.Proofs.Swarm.COMPOSED.CompLineage
@@ -47,7 +47,7 @@ preservation (`messageKeyCurrentInv_reachable`), and derives `isCurrentSnapshot_
 `isCurrentSnapshot_of_decryptSkipped_accept`, and `rcvCurrentSnapshot_of_xplBlock`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -75,7 +75,7 @@ open Symbolic.Swarm.COMPOSED.CompRatchet (InertOnPQXDH)
 
 /-- Snapshot `parent` is stored on `tr` before `j` and no index `k` with `parent < k < j` stores a
 `TRState` with the same `(participant, initiator)`. -/
-def IsCurrentSnapshotBefore (tr : ExecTrace) (parent j : Nat) : Prop :=
+@[expose] def IsCurrentSnapshotBefore (tr : ExecTrace) (parent j : Nat) : Prop :=
   ∃ e : TRStEntry,
     (tr.at? parent : Option TRStEntry) = some e ∧
     parent < j ∧
@@ -86,7 +86,7 @@ def IsCurrentSnapshotBefore (tr : ExecTrace) (parent j : Nat) : Prop :=
 
 /-- Every `TREvent.MessageKey` logged at index `j` with `parent ≠ j + 1`
 reads a snapshot `parent` that was current up to `j`. -/
-def MessageKeyCurrentInv (tr : ExecTrace) : Prop :=
+@[expose] def MessageKeyCurrentInv (tr : ExecTrace) : Prop :=
   ∀ s dir seed salt n rIdx parent j,
     tr.EventLoggedAt (TREvent.MessageKey s dir seed salt n rIdx parent) j →
     parent ≠ j + 1 →

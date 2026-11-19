@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Stage1Kyber -- shake: keep
+import Symbolic.Proofs.Swarm.CREF.Stage1Kyber -- shake: keep
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.Actions.ProtocolEvent
 public import Symbolic.Proofs.Swarm.COMPOSED.CompInvDefs
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompHsClass
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.COMPOSED.CompPubInv
@@ -45,7 +45,7 @@ between an honest sender seed `(kdfCk st_s.cks).2` and a receiver seed `mkSeed` 
 on reachable composed traces.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

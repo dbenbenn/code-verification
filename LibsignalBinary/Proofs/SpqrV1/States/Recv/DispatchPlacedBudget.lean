@@ -10,13 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
@@ -27,6 +27,27 @@ import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch5Placed
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Defs
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Chunked -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChunkedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.Dispatch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudgetAux
+public import ProofLib.SepLogic.WP.SyscallsMmap
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommonPlaced
 
 /-!
 # `<States>::recv` (Block `332`): Budget-Threaded Prologue, Dispatch, and Epilogues
@@ -35,7 +56,7 @@ Relocatable `[LibsignalPlacement]` `RustCliAllocBudget` proofs of the prologue, 
 tail-call drop/dealloc epilogues (`FreeOnlyEvs`), and `Ok(V1Recv)` writeback epilogue with `VmPreserved`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -678,48 +699,6 @@ theorem states_recv_tail_drop_ekSentCt1Received_552_placed [LibsignalPlacement]
       unfold withLsCodeLoaded dropChunkedEkSentCt1ReceivedSpec at ho; dsimp only at ho
       exact False.elim ((satisfies_pure_sepConj _ _ _).mp ho).1
 
-theorem states_recv_tail_drop_ekSentCt1Received_552_dealloc_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hdealloc : HookSat (Rust.withPanics ext) spqrDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (st_cost : M.σ) (s0 s1 : State) (a : BitVec 64)
-    (st : EkSentCt1Received spqrPolyApi (spqrAuthApi F))
-    (Rest : SepProp)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = lsmpl.base 332 + 552#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 4240#64)
-    (hx0_1 : s1.readReg64 .x0 = a)
-    (htr1 : TraceCalleeSaved s1 s0)
-    (hcode : LibsignalCodeLoaded lsmpl s1.mem)
-    (hlr_ls : LsRetAddr624 (s0.readReg64 .x30) := by
-      first
-      | assumption
-      | simp (config := { decide := true }) only [Reg.x30, Reg.lr, arm64_norm, wp_norm]) :
-    SepWP (lsProg_332 (Rust.withPanics ext)) (s0.readReg64 .x30) s1
-      (stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗
-        memRegion (s0.sp - 4240#64) 4144 ∗
-        statesRecvSavedCells s0 ∗
-        chunkedEkSentCt1ReceivedAt A.repAlloc a st ∗
-        A.pool lim st_cost s1 ∗
-        Rest)
-      (fun sf Pf =>
-        ∃ evs : List AllocEvent,
-          FreeOnlyEvs evs ∧
-          (Pf ⊢
-            memRegion a chunkedEkSentCt1ReceivedSize ∗
-            A.pool lim (M.stepEvents evs st_cost) sf ∗
-            Rest ∗
-            stackAt s0.sp statesRecvStackX) ∧
-          sf.sp = s0.sp ∧
-          AllocCallPreserved s1 sf ∧
-          CalleeSavedPreserved s0 sf ∧
-          sf.trace = s0.trace) :=
-  states_recv_tail_drop_ekSentCt1Received_552_placed
-    (drop_chunked_ek_sent_ct1_received_cl_on
-      (callerProg := lsProg_332 (Rust.withPanics ext)) (idx := 332) hdealloc)
-    st_cost s0 s1 a st Rest hsp0_align hpc1 hrun1 hsp1 hx0_1 htr1 hcode hlr_ls
-
 /-- Relocatable budget-threaded tail-call epilogue at `+1168` (Block `332`):
     restores `sp = s0.sp` and `x19..x30`, tail-calls `drop_glue::<HeaderSent>` (Block `276`),
     and returns to `s0.readReg64 .x30`. -/
@@ -857,48 +836,6 @@ theorem states_recv_tail_drop_headerSent_1168_placed [LibsignalPlacement]
     · intro _ _ _ ho
       unfold withLsCodeLoaded dropChunkedHeaderSentSpec at ho; dsimp only at ho
       exact False.elim ((satisfies_pure_sepConj _ _ _).mp ho).1
-
-theorem states_recv_tail_drop_headerSent_1168_dealloc_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hdealloc : HookSat (Rust.withPanics ext) spqrDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (st_cost : M.σ) (s0 s1 : State) (a : BitVec 64)
-    (st : HeaderSent spqrPolyApi (spqrAuthApi F))
-    (Rest : SepProp)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = lsmpl.base 332 + 1168#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 4240#64)
-    (hx0_1 : s1.readReg64 .x0 = a)
-    (htr1 : TraceCalleeSaved s1 s0)
-    (hcode : LibsignalCodeLoaded lsmpl s1.mem)
-    (hlr_ls : LsRetAddr624 (s0.readReg64 .x30) := by
-      first
-      | assumption
-      | simp (config := { decide := true }) only [Reg.x30, Reg.lr, arm64_norm, wp_norm]) :
-    SepWP (lsProg_332 (Rust.withPanics ext)) (s0.readReg64 .x30) s1
-      (stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗
-        memRegion (s0.sp - 4240#64) 4144 ∗
-        statesRecvSavedCells s0 ∗
-        chunkedHeaderSentAt A.repAlloc a st ∗
-        A.pool lim st_cost s1 ∗
-        Rest)
-      (fun sf Pf =>
-        ∃ evs : List AllocEvent,
-          FreeOnlyEvs evs ∧
-          (Pf ⊢
-            memRegion a chunkedHeaderSentSize ∗
-            A.pool lim (M.stepEvents evs st_cost) sf ∗
-            Rest ∗
-            stackAt s0.sp statesRecvStackX) ∧
-          sf.sp = s0.sp ∧
-          AllocCallPreserved s1 sf ∧
-          CalleeSavedPreserved s0 sf ∧
-          sf.trace = s0.trace) :=
-  states_recv_tail_drop_headerSent_1168_placed
-    (drop_chunked_header_sent_cl_on (callerProg := lsProg_332 (Rust.withPanics ext)) (idx := 332)
-      hdealloc)
-    st_cost s0 s1 a st Rest hsp0_align hpc1 hrun1 hsp1 hx0_1 htr1 hcode hlr_ls
 
 /-- Relocatable budget-threaded tail-call epilogue at `+1760` (Block `332`):
     restores `sp = s0.sp` and `x19..x30`, tail-calls `drop_glue::<[SortedSet<Pt>; 16]>` (Block `264`),
@@ -1217,48 +1154,6 @@ theorem states_recv_tail_drop_ct2Sampled_10952_placed [LibsignalPlacement]
     · intro _ _ _ ho
       unfold withLsCodeLoaded dropChunkedCt2SampledSpec at ho; dsimp only at ho
       exact False.elim ((satisfies_pure_sepConj _ _ _).mp ho).1
-
-theorem states_recv_tail_drop_ct2Sampled_10952_dealloc_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hdealloc : HookSat (Rust.withPanics ext) spqrDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (st_cost : M.σ) (s0 s1 : State) (a : BitVec 64)
-    (st : Ct2Sampled spqrPolyApi (spqrAuthApi F))
-    (Rest : SepProp)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = lsmpl.base 332 + 10952#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 4240#64)
-    (hx0_1 : s1.readReg64 .x0 = a)
-    (htr1 : TraceCalleeSaved s1 s0)
-    (hcode : LibsignalCodeLoaded lsmpl s1.mem)
-    (hlr_ls : LsRetAddr624 (s0.readReg64 .x30) := by
-      first
-      | assumption
-      | simp (config := { decide := true }) only [Reg.x30, Reg.lr, arm64_norm, wp_norm]) :
-    SepWP (lsProg_332 (Rust.withPanics ext)) (s0.readReg64 .x30) s1
-      (stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗
-        memRegion (s0.sp - 4240#64) 4144 ∗
-        statesRecvSavedCells s0 ∗
-        chunkedCt2SampledAt A.repAlloc a st ∗
-        A.pool lim st_cost s1 ∗
-        Rest)
-      (fun sf Pf =>
-        ∃ evs : List AllocEvent,
-          FreeOnlyEvs evs ∧
-          (Pf ⊢
-            memRegion a chunkedCt2SampledSize ∗
-            A.pool lim (M.stepEvents evs st_cost) sf ∗
-            Rest ∗
-            stackAt s0.sp statesRecvStackX) ∧
-          sf.sp = s0.sp ∧
-          AllocCallPreserved s1 sf ∧
-          CalleeSavedPreserved s0 sf ∧
-          sf.trace = s0.trace) :=
-  states_recv_tail_drop_ct2Sampled_10952_placed
-    (drop_chunked_ct2_sampled_cl_on (callerProg := lsProg_332 (Rust.withPanics ext)) (idx := 332)
-      hdealloc)
-    st_cost s0 s1 a st Rest hsp0_align hpc1 hrun1 hsp1 hx0_1 htr1 hcode hlr_ls
 
 /-! ## Relocatable Jump-Table Dispatch (`+36 -> +statesRecvArmOffset tag`) -/
 

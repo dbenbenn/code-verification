@@ -9,10 +9,18 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.RedProg2Sim
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaShallow
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.RedProg2Sim -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaShallow -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaLeaves
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.GameHop.Swap
+import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
 
 /-!
 # Shallow Runner Characterization for the `AeadIndCpa` Reduction
@@ -21,7 +29,7 @@ Relates the shallow `aeadCpaReductionAuthFixed` stage runners to the generic
 `TwoStageCostedReduction` runners and proves experiment-level congruence `aeadIndCpaExp_congr`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,39 +38,7 @@ namespace SignalPqxdh.Security.ReductionDsl.AuthAead
 open SignalPqxdh SignalPqxdh.Security SignalPqxdh.Security.ReductionDsl SignalPqxdh.Security.ReductionDsl.AuthPrf
 open OracleSpec OracleComp
 
-abbrev CpaPI (S : Setup) : Nat → (Bytes × Bytes × Bytes) → AuthCpaPausePayload S →
-    AuthHybridStateFixed S → Prop :=
-  fun n c p h => CpaPauseInv n c p h
-
-theorem cpaSendResToStep_leaf (S : Setup) (n : Nat) (x : CpaSendRes S) (hx : CpaSendLeaf n x) :
-    PreStepInvP (R := AuthResponse) (fun n h => CpaInv n h) (CpaPI S) n (cpaSendResToStep x) := by
-  rcases x with ⟨r, h⟩ | ⟨ad, m0, m1, p, h⟩
-  · exact hx
-  · exact hx
-
-theorem stepMidCpa_leaves (S : Setup) (idx n : Nat) (q : AuthQuery S)
-    (hst : AuthHybridStateFixed S) (hI : CpaInv n hst) :
-    HoldsOnLeaves (PreStepInvP (fun n h => CpaInv n h) (CpaPI S) n) (stepMidCpa S idx q hst) := by
-  cases q
-  case sendOPK u i b m0 m1 =>
-    simp only [stepMidCpa, cpaSendShOpk]
-    split
-    · exact HoldsOnLeaves.pure (hI.mono (Nat.le_succ n))
-    · exact HoldsOnLeaves.map _
-        (tryPauseAuthCpaSendFixedPrim_leaves S true idx n _ u b m0 m1 hst hI).toHoldsOnLeaves
-        (fun x hx => cpaSendResToStep_leaf S n x hx)
-  case sendNoOPK u i b m0 m1 =>
-    simp only [stepMidCpa, cpaSendShNoOpk]
-    split
-    · exact HoldsOnLeaves.pure (hI.mono (Nat.le_succ n))
-    · exact HoldsOnLeaves.map _
-        (tryPauseAuthCpaSendFixedPrim_leaves S true idx n _ u b m0 m1 hst hI).toHoldsOnLeaves
-        (fun x hx => cpaSendResToStep_leaf S n x hx)
-  all_goals
-    exact HoldsOnLeaves.map _ (stepAuthCpaNonSendPrim_leaves S n _ hst hI).toHoldsOnLeaves
-      (fun x hx => hx)
-
-def Gcpa {S : Setup} :
+@[expose] def Gcpa {S : Setup} :
     Option (Bytes × Bytes × Bytes) ×
       RedProg2State (authSpec S) Bool (AuthCpaPausePayload S) (AuthHybridStateFixed S) →
     AuthCpaPauseResult S Bool
@@ -107,23 +83,6 @@ theorem stepUntilCpa_eq (S : Setup) (idx : Nat) (mx : OracleComp (unifSpec + aut
     all_goals
       simp only [stepMidCpa]
       rw [bind_map_left]
-
-theorem runWithPrimStepFuel_eq (S : Setup) (idx : Nat)
-    (mx : OracleComp (unifSpec + authSpec S) Bool) (fuel : Nat) (hst : AuthHybridStateFixed S) :
-    runWithPrimStepFuel false (stepAuthCpaCutoffPrim idx S) mx fuel hst =
-      runWithFuelPrim false (stepAuthCpaCutoffPrim idx S) mx fuel hst := by
-  have := runWithFuelPrim_char false (stepAuthCpaCutoffPrim idx S) id
-    (fun mx fuel h => runWithPrimStepFuel false (stepAuthCpaCutoffPrim idx S) mx fuel h)
-    (fun _ _ _ => rfl)
-    (fun uq k fuel s => by
-      simp only [runWithPrimStepFuel]; rw [OracleComp.construct_query_bind]
-      rfl)
-    (fun gq k s => by
-      simp only [runWithPrimStepFuel]; rw [OracleComp.construct_query_bind]; rfl)
-    (fun gq k fuel s => by
-      simp only [runWithPrimStepFuel]; rw [OracleComp.construct_query_bind])
-    mx fuel hst
-  rw [this, id_map]
 
 /-- Two `AeadIndCpaAdv` adversaries whose `choose` stages are pushforwards of a common computation
     agreeing on `I`-leaves and whose `dist` stages agree on the mapped states induce equal experiments. -/
@@ -196,7 +155,7 @@ theorem stepMidCpaSlot_leaves (S : Setup) (idx n : Nat) (q : AuthQuery S)
       (stepAuthCpaNonSendPrim_ideal_leaves S n _ shst.2 hI.inv hI.ideal_le).toHoldsOnLeaves
       (fun x ⟨hinv, hideal⟩ => ⟨hinv, hideal, Nat.le_trans hI.slot_le (Nat.le_succ n)⟩)
 
-def GcpaSlot {S : Setup} :
+@[expose] def GcpaSlot {S : Setup} :
     Option (Bytes × Bytes × Bytes) ×
       RedProg2State (authSpec S) Bool (AuthCpaPausePayload S) (CpaSlotSt S) →
     CpaSlotPauseRes S Bool

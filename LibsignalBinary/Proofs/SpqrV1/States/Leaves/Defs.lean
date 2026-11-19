@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # SPQR V1 Chunked Braid Leaf Transitions: Shared Definitions & Send-Leaf Specifications
@@ -25,7 +25,7 @@ specifications for `<Ct2Sampled>::recv_next_epoch`, `<EkReceivedCt1Sampled>::sen
 and `<Ct1Sampled>::send_ct1_chunk`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.Leaves
 
@@ -70,32 +70,6 @@ abbrev ct1ReceivedSendEkChunkName : String :=
 abbrev ct1SampledSendCt1ChunkName : String :=
   "<spqr::v1::chunked::send_ct::Ct1Sampled>::send_ct1_chunk"
 
-@[simp, arm64_norm] theorem ct2SampledRecvNextEpoch_fnOff :
-    libsignalSessionCode.fnOff ct2SampledRecvNextEpochName = 0x5a664 :=
-  libsignalSessionCode_fnOff_0x5a664
-
-@[simp, arm64_norm] theorem ekReceivedCt1SampledSendCt1Chunk_fnOff :
-    libsignalSessionCode.fnOff ekReceivedCt1SampledSendCt1ChunkName = 0x58dd8 :=
-  libsignalSessionCode_fnOff_0x58dd8
-
-@[simp, arm64_norm] theorem ct2SampledSendCt2Chunk_fnOff :
-    libsignalSessionCode.fnOff ct2SampledSendCt2ChunkName = 0x5a5dc :=
-  libsignalSessionCode_fnOff_0x5a5dc
-
-@[simp, arm64_norm] theorem headerSentSendEkChunk_fnOff :
-    libsignalSessionCode.fnOff headerSentSendEkChunkName = 0x58468 :=
-  libsignalSessionCode_fnOff_0x58468
-
-@[simp, arm64_norm] theorem ct1ReceivedSendEkChunk_fnOff :
-    libsignalSessionCode.fnOff ct1ReceivedSendEkChunkName = 0x58e58 :=
-  libsignalSessionCode_fnOff_0x58e58
-
-@[simp, arm64_norm] theorem ct1SampledSendCt1Chunk_fnOff :
-    libsignalSessionCode.fnOff ct1SampledSendCt1ChunkName = 0x583c4 :=
-  libsignalSessionCode_fnOff_0x583c4
-
-/-! ## 2. SIMD 128-Bit Concatenation / Extraction & Word-Slice Bridge Lemmas -/
-
 @[simp, arm64_norm, wp_norm]
 theorem extractLsb'_0_64_append (hi lo : BitVec 64) :
     (hi ++ lo).extractLsb' 0 64 = lo := by
@@ -107,7 +81,7 @@ theorem extractLsb'_64_64_append (hi lo : BitVec 64) :
   bv_kernel
 
 /-- Byte list representation of a list of 64-bit little-endian words. -/
-def wordsBytes : List (BitVec 64) → List (BitVec 8)
+@[expose] def wordsBytes : List (BitVec 64) → List (BitVec 8)
   | [] => []
   | w :: ws => unpack64 w ++ wordsBytes ws
 
@@ -127,7 +101,7 @@ theorem length_wordsBytes : ∀ ws : List (BitVec 64), (wordsBytes ws).length = 
     omega
 
 /-- Contiguous 64-bit word cells starting at `a`. -/
-def wordsAt (a : BitVec 64) : List (BitVec 64) → SepProp
+@[expose] def wordsAt (a : BitVec 64) : List (BitVec 64) → SepProp
   | [] => emp
   | w :: ws => (a ↦₆₄ w) ∗ wordsAt (a + 8#64) ws
 
@@ -143,17 +117,6 @@ theorem wordsAt_eq_pointsToBytes :
         wordsAt_eq_pointsToBytes ws (a + BitVec.ofNat 64 8)]
 
 /-! ## 3. Instruction Decode Trees (`spqrStatesLeavesBin`) -/
-
-gen_decodes libsignalSessionCode_tree spqrStatesLeavesBin [
-  0x583c4 → 0x58464,
-  0x58468 → 0x58500,
-  0x58dd8 → 0x58e54,
-  0x58e58 → 0x58ef8,
-  0x5a5dc → 0x5a660,
-  0x5a664 → 0x5a6dc
-]
-
-/-! ## 4. Address-Independent Relocation Combinators (`relocatedHeap`, `Relocatable`) -/
 
 theorem wordsAt_entails_memRegion (ws : List (BitVec 64)) (a : BitVec 64) (n : Nat)
     (hn : 8 * ws.length = n) :
@@ -177,7 +140,7 @@ theorem wordsAt_append (ws1 ws2 : List (BitVec 64)) (a : BitVec 64) :
 
 /-- Address-independent heap resource for relocating a `SepProp` family `F : BitVec 64 → SepProp`
     along with its inline byte slice `bs`. -/
-def relocatedHeap (F : BitVec 64 → SepProp) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def relocatedHeap (F : BitVec 64 → SepProp) (bs : List (BitVec 8)) : SepProp :=
   ∃∗ P : SepProp, ⌜∀ dst : BitVec 64, (dst ↦ₛ bs) ∗ P ⊢ F dst⌝ ∗ P
 
 theorem relocatedHeap_intro {F : BitVec 64 → SepProp} {bs : List (BitVec 8)} (P : SepProp)
@@ -196,7 +159,7 @@ theorem relocatedHeap_recompose (F : BitVec 64 → SepProp) (bs : List (BitVec 8
 
 /-- `Relocatable n F` means that for any `src`, `F src` decomposes into an `n`-byte slice
     `(src ↦ₛ bs)` (`bs.length = n`) and `relocatedHeap F bs`. -/
-def Relocatable (n : Nat) (F : BitVec 64 → SepProp) : Prop :=
+@[expose] def Relocatable (n : Nat) (F : BitVec 64 → SepProp) : Prop :=
   ∀ src : BitVec 64,
     F src ⊢ ∃∗ bs : List (BitVec 8),
       ⌜bs.length = n⌝ ∗ (src ↦ₛ bs) ∗ relocatedHeap F bs
@@ -465,7 +428,7 @@ structure VecWords where
   w1 : BitVec 64
   w2 : BitVec 64
 
-def vecWordsList (v : VecWords) : List (BitVec 64) :=
+@[expose] def vecWordsList (v : VecWords) : List (BitVec 64) :=
   [v.w0, v.w1, v.w2]
 
 @[simp]
@@ -499,7 +462,7 @@ structure AuthWords where
   v1 : VecWords
   v2 : VecWords
 
-def authWordsList (g : AuthWords) : List (BitVec 64) :=
+@[expose] def authWordsList (g : AuthWords) : List (BitVec 64) :=
   [g.v1.w0, g.v1.w1, g.v1.w2, g.v2.w0, g.v2.w1, g.v2.w2]
 
 @[simp]
@@ -519,7 +482,7 @@ theorem authenticatorAt_extract (A : RustAlloc) (a : BitVec 64) (auth : Authenti
 
 /-! ### Word-List Extraction for `unchunked::*` States -/
 
-def ct2SentWordsList (g : AuthWords) (ep : BitVec 64) : List (BitVec 64) :=
+@[expose] def ct2SentWordsList (g : AuthWords) (ep : BitVec 64) : List (BitVec 64) :=
   authWordsList g ++ [ep]
 
 @[simp]
@@ -543,7 +506,7 @@ structure ThreeVecWords where
   v1 : VecWords
   auth : AuthWords
 
-def ekSentWordsList (g : ThreeVecWords) (ep : BitVec 64) : List (BitVec 64) :=
+@[expose] def ekSentWordsList (g : ThreeVecWords) (ep : BitVec 64) : List (BitVec 64) :=
   vecWordsList g.v1 ++ ct2SentWordsList g.auth ep
 
 @[simp]
@@ -582,7 +545,7 @@ structure FourVecWords where
   v1 : VecWords
   rest : ThreeVecWords
 
-def ekSentCt1ReceivedWordsList (g : FourVecWords) (ep : BitVec 64) : List (BitVec 64) :=
+@[expose] def ekSentCt1ReceivedWordsList (g : FourVecWords) (ep : BitVec 64) : List (BitVec 64) :=
   vecWordsList g.v1 ++ ekSentWordsList g.rest ep
 
 @[simp]
@@ -631,7 +594,7 @@ structure FiveVecWords where
   v1 : VecWords
   rest : FourVecWords
 
-def fiveVecWordsList (g : FiveVecWords) (ep : BitVec 64) : List (BitVec 64) :=
+@[expose] def fiveVecWordsList (g : FiveVecWords) (ep : BitVec 64) : List (BitVec 64) :=
   vecWordsList g.v1 ++ ekSentCt1ReceivedWordsList g.rest ep
 
 @[simp]
@@ -711,7 +674,7 @@ structure Ct2SampledRecvNextEpochGhost (F : ShaCompress) where
   out : Chunked.SendEk.KeysUnsampled (spqrAuthApi F)
 
 /-- Specification of `<spqr::v1::chunked::send_ct::Ct2Sampled>::recv_next_epoch` (`0x5fa5c`, 31 insns). -/
-def ct2SampledRecvNextEpochSpec (A : RustAlloc) (F : ShaCompress) :
+@[expose] def ct2SampledRecvNextEpochSpec (A : RustAlloc) (F : ShaCompress) :
     Spec (Ct2SampledRecvNextEpochGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.outA ∧ s.readReg64 .x1 = x.stA ∧ s.readReg64 .x2 = x.epoch ∧
@@ -725,7 +688,7 @@ def ct2SampledRecvNextEpochSpec (A : RustAlloc) (F : ShaCompress) :
       memRegion x.stA 456 ∗
       A.pool ∗ stackAt s0.sp (dropGluePoly16Stack + 32)
 
-/-- Ghost arguments for `<EkReceivedCt1Sampled>::send_ct1_chunk` (`0x5e1d0`, 32 insns). -/
+/-- Ghost arguments for `<EkReceivedCt1Sampled>::send_ct1_chunk` (32 insns). -/
 structure EkReceivedCt1SampledSendCt1ChunkGhost (F : ShaCompress) where
   outA : BitVec 64
   stA : BitVec 64
@@ -733,29 +696,7 @@ structure EkReceivedCt1SampledSendCt1ChunkGhost (F : ShaCompress) where
   outSt : Chunked.SendCt.EkReceivedCt1Sampled spqrPolyApi (spqrAuthApi F)
   chunk : Chunk
 
-/-- Specification of `<spqr::v1::chunked::send_ct::EkReceivedCt1Sampled>::send_ct1_chunk` (`0x5e1d0`, 32 insns). -/
-def ekReceivedCt1SampledSendCt1ChunkSpec (A : RustAlloc) (F : ShaCompress) (b : BitVec 64) :
-    Spec (EkReceivedCt1SampledSendCt1ChunkGhost F) where
-  pre := fun x s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      s.readReg64 .x8 = x.outA ∧ s.readReg64 .x0 = x.stA ∧
-      x.st.send_ct1_chunk = .ok (x.outSt, x.chunk)⌝ ∗
-      memRegion x.outA (528 + chunkSize) ∗
-      chunkedEkReceivedCt1SampledAt A x.stA x.st ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool ∗ stackAt s.sp (polyNextChunkStack + 960)
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      chunkedEkReceivedCt1SampledAt A x.outA x.outSt ∗
-      chunkAt (x.outA + 528#64) x.chunk ∗
-      memRegion x.stA 528 ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool ∗ stackAt s0.sp (polyNextChunkStack + 960)
-  onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- Ghost arguments for `<Ct2Sampled>::send_ct2_chunk` (`0x5f9d4`, 34 insns). -/
+/-- Ghost arguments for `<Ct2Sampled>::send_ct2_chunk` (34 insns). -/
 structure Ct2SampledSendCt2ChunkGhost (F : ShaCompress) where
   outA : BitVec 64
   stA : BitVec 64
@@ -763,29 +704,7 @@ structure Ct2SampledSendCt2ChunkGhost (F : ShaCompress) where
   outSt : Chunked.SendCt.Ct2Sampled spqrPolyApi (spqrAuthApi F)
   chunk : Chunk
 
-/-- Specification of `<spqr::v1::chunked::send_ct::Ct2Sampled>::send_ct2_chunk` (`0x5f9d4`, 34 insns). -/
-def ct2SampledSendCt2ChunkSpec (A : RustAlloc) (F : ShaCompress) (b : BitVec 64) :
-    Spec (Ct2SampledSendCt2ChunkGhost F) where
-  pre := fun x s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      s.readReg64 .x8 = x.outA ∧ s.readReg64 .x0 = x.stA ∧
-      x.st.send_ct2_chunk = .ok (x.outSt, x.chunk)⌝ ∗
-      memRegion x.outA (456 + chunkSize) ∗
-      chunkedCt2SampledAt A x.stA x.st ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool ∗ stackAt s.sp (polyNextChunkStack + 896)
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      chunkedCt2SampledAt A x.outA x.outSt ∗
-      chunkAt (x.outA + 456#64) x.chunk ∗
-      memRegion x.stA 456 ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool ∗ stackAt s0.sp (polyNextChunkStack + 896)
-  onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- Ghost arguments for `<HeaderSent>::send_ek_chunk` (`0x5d860`, 39 insns). -/
+/-- Ghost arguments for `<HeaderSent>::send_ek_chunk` (39 insns). -/
 structure HeaderSentSendEkChunkGhost (F : ShaCompress) where
   outA : BitVec 64
   stA : BitVec 64
@@ -793,29 +712,7 @@ structure HeaderSentSendEkChunkGhost (F : ShaCompress) where
   outSt : Chunked.SendEk.HeaderSent spqrPolyApi (spqrAuthApi F)
   chunk : Chunk
 
-/-- Specification of `<spqr::v1::chunked::send_ek::HeaderSent>::send_ek_chunk` (`0x5d860`, 39 insns). -/
-def headerSentSendEkChunkSpec (A : RustAlloc) (F : ShaCompress) (b : BitVec 64) :
-    Spec (HeaderSentSendEkChunkGhost F) where
-  pre := fun x s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      s.readReg64 .x8 = x.outA ∧ s.readReg64 .x0 = x.stA ∧
-      x.st.send_ek_chunk = .ok (x.outSt, x.chunk)⌝ ∗
-      memRegion x.outA (880 + chunkSize) ∗
-      chunkedHeaderSentAt A x.stA x.st ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool ∗ stackAt s.sp (polyNextChunkStack + 1328)
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      chunkedHeaderSentAt A x.outA x.outSt ∗
-      chunkAt (x.outA + 880#64) x.chunk ∗
-      memRegion x.stA 880 ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool ∗ stackAt s0.sp (polyNextChunkStack + 1328)
-  onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- Ghost arguments for `<Ct1Received>::send_ek_chunk` (`0x5e250`, 41 insns). -/
+/-- Ghost arguments for `<Ct1Received>::send_ek_chunk` (41 insns). -/
 structure Ct1ReceivedSendEkChunkGhost (F : ShaCompress) where
   outA : BitVec 64
   stA : BitVec 64
@@ -823,57 +720,13 @@ structure Ct1ReceivedSendEkChunkGhost (F : ShaCompress) where
   outSt : Chunked.SendEk.Ct1Received spqrPolyApi (spqrAuthApi F)
   chunk : Chunk
 
-/-- Specification of `<spqr::v1::chunked::send_ek::Ct1Received>::send_ek_chunk` (`0x5e250`, 41 insns). -/
-def ct1ReceivedSendEkChunkSpec (A : RustAlloc) (F : ShaCompress) (b : BitVec 64) :
-    Spec (Ct1ReceivedSendEkChunkGhost F) where
-  pre := fun x s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      s.readReg64 .x8 = x.outA ∧ s.readReg64 .x0 = x.stA ∧
-      x.st.send_ek_chunk = .ok (x.outSt, x.chunk)⌝ ∗
-      memRegion x.outA (504 + chunkSize) ∗
-      chunkedCt1ReceivedAt A x.stA x.st ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool ∗ stackAt s.sp (polyNextChunkStack + 944)
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      chunkedCt1ReceivedAt A x.outA x.outSt ∗
-      chunkAt (x.outA + 504#64) x.chunk ∗
-      memRegion x.stA 504 ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool ∗ stackAt s0.sp (polyNextChunkStack + 944)
-  onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- Ghost arguments for `<Ct1Sampled>::send_ct1_chunk` (`0x5d7bc`, 41 insns). -/
+/-- Ghost arguments for `<Ct1Sampled>::send_ct1_chunk` (41 insns). -/
 structure Ct1SampledSendCt1ChunkGhost (F : ShaCompress) where
   outA : BitVec 64
   stA : BitVec 64
   st : Chunked.SendCt.Ct1Sampled spqrPolyApi (spqrAuthApi F)
   outSt : Chunked.SendCt.Ct1Sampled spqrPolyApi (spqrAuthApi F)
   chunk : Chunk
-
-/-- Specification of `<spqr::v1::chunked::send_ct::Ct1Sampled>::send_ct1_chunk` (`0x5d7bc`, 41 insns). -/
-def ct1SampledSendCt1ChunkSpec (A : RustAlloc) (F : ShaCompress) (b : BitVec 64) :
-    Spec (Ct1SampledSendCt1ChunkGhost F) where
-  pre := fun x s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      s.readReg64 .x8 = x.outA ∧ s.readReg64 .x0 = x.stA ∧
-      x.st.send_ct1_chunk = .ok (x.outSt, x.chunk)⌝ ∗
-      memRegion x.outA (928 + chunkSize) ∗
-      chunkedCt1SampledAt A x.stA x.st ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool ∗ stackAt s.sp (polyNextChunkStack + 1376)
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      chunkedCt1SampledAt A x.outA x.outSt ∗
-      chunkAt (x.outA + 928#64) x.chunk ∗
-      memRegion x.stA 928 ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool ∗ stackAt s0.sp (polyNextChunkStack + 1376)
-  onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-! ## 7. `Relocatable` for `unchunked::*` & `chunked::*` States and Pure Inversion Lemmas -/
 

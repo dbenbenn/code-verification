@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Reductions
-public import Computational.Proofs.CryptoGames.SM.Theorem1.Lemma17
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Theorem1.Lemma17 -- proof-setup: allow-public-import
 import VCVio.OracleComp.EvalDist.Measure
+public import Computational.Proofs.CryptoGames.SM.Engine -- proof-setup: allow-public-import
 
 /-!
 # `DeliverForge` Game and Epoch-Guessing Reduction
@@ -22,7 +23,7 @@ in-transit records without requiring `safeInj`. Proves the epoch-guessing bound 
 attributing every non-trivial `deliverForge` win to its canonical `(t*_L, t*)` guess.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -47,7 +48,7 @@ abbrev AdversaryDF (St Msg Coins C : Type) :=
   AdversaryCompDF St Msg Coins C Bool
 
 /-- `A` makes at most `q` `specDF` oracle queries on every execution path. -/
-def MakesAtMostQueriesDF {St Msg Coins C α : Type}
+@[expose] def MakesAtMostQueriesDF {St Msg Coins C α : Type}
     (A : AdversaryCompDF St Msg Coins C α) (q : ℕ) : Prop :=
   A.IsQueryBoundP (· matches .inr _) q
 
@@ -65,32 +66,32 @@ section QueriesDF
 
 variable {St Msg Coins C : Type}
 
-def transmitQueryDF (P : Party) (m : Msg) (r : Option Coins) :
+@[expose] def transmitQueryDF (P : Party) (m : Msg) (r : Option Coins) :
     AdversaryCompDF St Msg Coins C (Option C) :=
   query (spec := unifSpec + specDF St Msg Coins C)
     (.inr (.inl (.inl (.inl (.inl (.inl (P, m, r)))))))
 
-def challQueryDF (P : Party) (m₀ m₁ : Msg) (r : Option Coins) :
+@[expose] def challQueryDF (P : Party) (m₀ m₁ : Msg) (r : Option Coins) :
     AdversaryCompDF St Msg Coins C (Option C) :=
   query (spec := unifSpec + specDF St Msg Coins C)
     (.inr (.inl (.inl (.inl (.inl (.inr (P, m₀, m₁, r)))))))
 
-def deliverQueryDF (P : Party) (c : C) :
+@[expose] def deliverQueryDF (P : Party) (c : C) :
     AdversaryCompDF St Msg Coins C (Option (RecvResult Msg)) :=
   query (spec := unifSpec + specDF St Msg Coins C)
     (.inr (.inl (.inl (.inl (.inr (P, c))))))
 
-def injectQueryDF (P : Party) (c : C) :
+@[expose] def injectQueryDF (P : Party) (c : C) :
     AdversaryCompDF St Msg Coins C (Option (RecvResult Msg)) :=
   query (spec := unifSpec + specDF St Msg Coins C)
     (.inr (.inl (.inl (.inr (P, c)))))
 
-def corrQueryDF (P : Party) :
+@[expose] def corrQueryDF (P : Party) :
     AdversaryCompDF St Msg Coins C (Option St) :=
   query (spec := unifSpec + specDF St Msg Coins C)
     (.inr (.inl (.inr P)))
 
-def deliverForgeQuery (P : Party) (c c' : C) :
+@[expose] def deliverForgeQuery (P : Party) (c c' : C) :
     AdversaryCompDF St Msg Coins C (Option (RecvResult Msg)) :=
   query (spec := unifSpec + specDF St Msg Coins C)
     (.inr (.inr (P, c, c')))
@@ -105,7 +106,7 @@ variable {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
 
 /-- `deliverForge-P(c, c')` on `GameState`, evaluating `c'` against an uncompromised in-transit `c`
 with matching header without requiring `safeInj`. -/
-def deliverForgeBaseImpl (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
+@[expose] def deliverForgeBaseImpl (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
     (sameHdr : C → C → Bool) (cfg : Config Msg) :
     QueryImpl ((Party × C × C) →ₒ Option (RecvResult Msg))
       (StateT (GameState St Msg C) ProbComp) := fun ⟨P, c, c'⟩ => do
@@ -128,7 +129,7 @@ def deliverForgeBaseImpl (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
         if cfg.injectFull t' then set { s with win := true }
         return some .rejected
 
-def oracleImplBaseDF (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) [SampleableType Coins]
+@[expose] def oracleImplBaseDF (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) [SampleableType Coins]
     (sameHdr : C → C → Bool) (cfg : Config Msg) :
     QueryImpl (specDF St Msg Coins C) (StateT (GameState St Msg C) ProbComp) :=
   oracleImpl sm Δ qep cfg + deliverForgeBaseImpl sm Δ qep sameHdr cfg
@@ -139,7 +140,7 @@ abbrev fullImplBaseDF (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) [Samplea
   (QueryImpl.ofLift unifSpec ProbComp).liftTarget
     (StateT (GameState St Msg C) ProbComp) + oracleImplBaseDF sm Δ qep sameHdr cfg
 
-def liftBaseImpl {ι : Type} {ospec : OracleSpec.{0, 0} ι}
+@[expose] def liftBaseImpl {ι : Type} {ospec : OracleSpec.{0, 0} ι}
     (impl : QueryImpl ospec (StateT (GameState St Msg C) ProbComp))
     (noneOut : (t : ι) → ospec.Range t) :
     QueryImpl ospec (StateT (GameStateDF St Msg C) ProbComp) := fun t => do
@@ -149,7 +150,7 @@ def liftBaseImpl {ι : Type} {ospec : OracleSpec.{0, 0} ι}
   set { s with base := base' }
   return res
 
-def deliverForgeImpl (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
+@[expose] def deliverForgeImpl (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
     (sameHdr : C → C → Bool) (cfg : Config Msg) :
     QueryImpl ((Party × C × C) →ₒ Option (RecvResult Msg))
       (StateT (GameStateDF St Msg C) ProbComp) := fun ⟨P, c, c'⟩ => do
@@ -175,14 +176,14 @@ def deliverForgeImpl (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
                        forgeEpoch := some t' }
         return some .rejected
 
-def noneOutBase : (q : (spec St Msg Coins C).Domain) → (spec St Msg Coins C).Range q
+@[expose] def noneOutBase : (q : (spec St Msg Coins C).Domain) → (spec St Msg Coins C).Range q
   | .inl (.inl (.inl (.inl _))) => none
   | .inl (.inl (.inl (.inr _))) => none
   | .inl (.inl (.inr _)) => none
   | .inl (.inr _) => none
   | .inr _ => none
 
-def oracleImplDF (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) [SampleableType Coins]
+@[expose] def oracleImplDF (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) [SampleableType Coins]
     (sameHdr : C → C → Bool) (cfg : Config Msg) :
     QueryImpl (specDF St Msg Coins C) (StateT (GameStateDF St Msg C) ProbComp) :=
   liftBaseImpl (oracleImpl sm Δ qep cfg) noneOutBase +
@@ -207,7 +208,7 @@ variable {ι : Type} {tspec : OracleSpec.{0, 0} ι}
 local notation "EMt" => EM tspec Γv T Sv SSv RSv M E HS
 
 /-- Engine implementation of `deliverForge-P(c, c')` via `vRecv` and `commitE`. -/
-def deliverForgeE (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
+@[expose] def deliverForgeE (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ qep : ℕ) (cfg : Config M) :
     QueryImpl ((Party × (Header T × E) × (Header T × E)) →ₒ Option (RecvResult M)) EMt :=
   fun ⟨P, c, c'⟩ => do
@@ -237,7 +238,7 @@ def deliverForgeE (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
           if cfg.injectFull t' then modify fun es => { es with g := { es.g with win := true } }
           return some .rejected
 
-def implEDF (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
+@[expose] def implEDF (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ qep maxSkip : ℕ) (cfg : Config M) (π : Policy) :
     QueryImpl (unifSpec + specDF (PartyState Γ T Sig SS RS) M CCoins (Header T × E)) EMt :=
   let i₀ : QueryImpl unifSpec EMt := coinsE
@@ -253,7 +254,7 @@ def implEDF (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     deliverForgeE hk Δ qep cfg
   HAdd.hAdd i₀ (HAdd.hAdd i₁ i₂)
 
-def engRunDF (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
+@[expose] def engRunDF (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ qep maxSkip : ℕ) (cfg : Config M) (π : Policy)
     (init : HM tspec HS (Option (VP Γv T Sv SSv RSv × VP Γv T Sv SSv RSv))) (h₀ : HS)
     (b : Bool) (A : AdversaryDF (PartyState Γ T Sig SS RS) M CCoins (Header T × E)) :
@@ -281,7 +282,7 @@ variable {KC Γ CCoins T I : Type} {KR Sig K : Type} {SS RS M E : Type}
 abbrev SchemeAdversaryDF (Γ T Sig SS RS M CCoins E : Type) :=
   AdversaryDF (PartyState Γ T Sig SS RS) M CCoins (Header T × E)
 
-def authSimDF {ι : Type} {tspec : OracleSpec.{0, 0} ι} {HS Γv Sv SSv RSv : Type}
+@[expose] def authSimDF {ι : Type} {tspec : OracleSpec.{0, 0} ι} {HS Γv Sv SSv RSv : Type}
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep : ℕ)
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (init : HM tspec HS (Option (VP Γv T Sv SSv RSv × VP Γv T Sv SSv RSv))) (h₀ : HS)
@@ -293,7 +294,7 @@ def authSimDF {ι : Type} {tspec : OracleSpec.{0, 0} ι} {HS Γv Sv SSv RSv : Ty
     | none => false
     | some (_, es) => authOut (2 + Δcka) π es
 
-def redCKAAuthDF (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def redCKAAuthDF (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep : ℕ)
     (tL : Option ℕ) (tStar : ℕ) (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) :
     CKA.Adversary Γ CCoins T I :=
@@ -301,7 +302,7 @@ def redCKAAuthDF (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
   authSimDF fs Δcka qep (hooksCKA cka prng fs Δcka ⟨true, tL, tStar⟩)
     (initCKA cka prng fs lam ⟨true, tL, tStar⟩) {} tL tStar A
 
-def redPRNGAuthDF (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def redPRNGAuthDF (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep : ℕ)
     (tL : Option ℕ) (tStar : ℕ) (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) :
     PRFPRNG.Adversary Sig I K :=
@@ -309,7 +310,7 @@ def redPRNGAuthDF (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
   authSimDF fs Δcka qep (hooksPRNG cka prng fs ⟨true, tL, tStar⟩)
     (initPRNG cka prng fs lam ⟨true, tL, tStar⟩) {} tL tStar A
 
-def redFSAuthDF (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def redFSAuthDF (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep : ℕ)
     (j : ℕ) (tL : Option ℕ) (tStar : ℕ) (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) :
     FSAEAD.Adversary SS RS (Header T) M E :=
@@ -329,7 +330,7 @@ variable {St Msg Coins C : Type}
 local notation "CompDF" => AdversaryCompDF St Msg Coins C
 local notation "RedMDF" => StateT (Mirror Msg C) (AdversaryCompDF St Msg Coins C)
 
-def simTransmitDF (Δ qep : ℕ) :
+@[expose] def simTransmitDF (Δ qep : ℕ) :
     QueryImpl ((Party × Msg × Option Coins) →ₒ Option C) RedMDF :=
   fun ⟨P, m, r⟩ => do
     let s ← get
@@ -339,7 +340,7 @@ def simTransmitDF (Δ qep : ℕ) :
     | _, _ => pure ()
     return res
 
-def simChallDF (Δ qep : ℕ) :
+@[expose] def simChallDF (Δ qep : ℕ) :
     QueryImpl ((Party × Msg × Msg × Option Coins) →ₒ Option C) RedMDF :=
   fun ⟨P, m₀, m₁, r⟩ => do
     let s ← get
@@ -355,7 +356,7 @@ def simChallDF (Δ qep : ℕ) :
         set (s₁.record Δ P () ⟨⟨P, s₁.epoch P, s₁.idx P + 1⟩, mb, c⟩ true)
         return some c
 
-def simDeliverDF [DecidableEq C] : QueryImpl ((Party × C) →ₒ Option (RecvResult Msg)) RedMDF :=
+@[expose] def simDeliverDF [DecidableEq C] : QueryImpl ((Party × C) →ₒ Option (RecvResult Msg)) RedMDF :=
   fun ⟨P, c⟩ => do
     let s ← get
     let res ← StateT.lift (deliverQueryDF (St := St) (Coins := Coins) P c)
@@ -365,7 +366,7 @@ def simDeliverDF [DecidableEq C] : QueryImpl ((Party × C) →ₒ Option (RecvRe
       return some (.accepted t' i' (if s.chall.contains r.pos then none else m))
     | _, _ => return res
 
-def simInjectDF : QueryImpl ((Party × C) →ₒ Option (RecvResult Msg)) RedMDF :=
+@[expose] def simInjectDF : QueryImpl ((Party × C) →ₒ Option (RecvResult Msg)) RedMDF :=
   fun ⟨P, c⟩ => do
     let s ← get
     let res ← StateT.lift (injectQueryDF (St := St) (Coins := Coins) P c)
@@ -374,13 +375,13 @@ def simInjectDF : QueryImpl ((Party × C) →ₒ Option (RecvResult Msg)) RedMDF
     | _ => pure ()
     return res
 
-def simCorrDF : QueryImpl (Party →ₒ Option St) RedMDF := fun P => do
+@[expose] def simCorrDF : QueryImpl (Party →ₒ Option St) RedMDF := fun P => do
   let s ← get
   let res ← StateT.lift (corrQueryDF (Msg := Msg) (Coins := Coins) (C := C) P)
   if res.isSome then set (s.afterCorr P)
   return res
 
-def simDeliverForgeDF :
+@[expose] def simDeliverForgeDF :
     QueryImpl ((Party × C × C) →ₒ Option (RecvResult Msg)) RedMDF :=
   fun ⟨P, c, c'⟩ => do
     let s ← get
@@ -390,10 +391,10 @@ def simDeliverForgeDF :
     | _ => pure ()
     return res
 
-def simCoinsDF : QueryImpl unifSpec RedMDF := fun n =>
+@[expose] def simCoinsDF : QueryImpl unifSpec RedMDF := fun n =>
   StateT.lift (query (spec := unifSpec + specDF St Msg Coins C) (.inl n))
 
-def simOraclesDF [DecidableEq C] (Δ qep : ℕ) : QueryImpl (specDF St Msg Coins C) RedMDF :=
+@[expose] def simOraclesDF [DecidableEq C] (Δ qep : ℕ) : QueryImpl (specDF St Msg Coins C) RedMDF :=
   let i₁ : QueryImpl ((Party × Msg × Option Coins) →ₒ Option C) RedMDF := simTransmitDF Δ qep
   let i₂ : QueryImpl ((Party × Msg × Msg × Option Coins) →ₒ Option C) RedMDF := simChallDF Δ qep
   let i₃ : QueryImpl ((Party × C) →ₒ Option (RecvResult Msg)) RedMDF := simDeliverDF
@@ -402,14 +403,14 @@ def simOraclesDF [DecidableEq C] (Δ qep : ℕ) : QueryImpl (specDF St Msg Coins
   let i₆ : QueryImpl ((Party × C × C) →ₒ Option (RecvResult Msg)) RedMDF := simDeliverForgeDF
   HAdd.hAdd (HAdd.hAdd (HAdd.hAdd (HAdd.hAdd (HAdd.hAdd i₁ i₂) i₃) i₄) i₅) i₆
 
-def simImplDF [DecidableEq C] (Δ qep : ℕ) :
+@[expose] def simImplDF [DecidableEq C] (Δ qep : ℕ) :
     QueryImpl (unifSpec + specDF St Msg Coins C) RedMDF :=
   let c : QueryImpl unifSpec RedMDF := simCoinsDF
   let o : QueryImpl (specDF St Msg Coins C) RedMDF := simOraclesDF Δ qep
   HAdd.hAdd c o
 
 /-- Authenticity simulator lifting `Thm1.challSim` to `specDF`. -/
-def challSimDF [DecidableEq C] (Δ qep : ℕ) (A : AdversaryDF St Msg Coins C) :
+@[expose] def challSimDF [DecidableEq C] (Δ qep : ℕ) (A : AdversaryDF St Msg Coins C) :
     AdversaryDF St Msg Coins C :=
   show AdversaryCompDF St Msg Coins C Bool from do
   let b ← (liftM ($ᵗ Bool : ProbComp Bool) : AdversaryCompDF St Msg Coins C Bool)
@@ -423,7 +424,7 @@ section GamesDF
 
 variable {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
 
-def runBaseDF (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
+@[expose] def runBaseDF (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
     [SampleableType Key] [SampleableType Coins]
     (sameHdr : C → C → Bool) (cfg : Config Msg) (b : Bool)
     (B : AdversaryDF St Msg Coins C) : ProbComp (Bool × GameState St Msg C) := do
@@ -438,14 +439,14 @@ def runDF (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
   (simulateQ (fullImplDF sm Δ qep sameHdr cfg) B).run (initStateDF sm k b)
 
 /-- Unguessed `DeliverForge` game returning `s.forgeWin` at `Config.h1`. -/
-def forgeGame (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
+@[expose] def forgeGame (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
     [SampleableType Key] [SampleableType Coins]
     (sameHdr : C → C → Bool) (B : AdversaryDF St Msg Coins C) : ProbComp Bool := do
   let b ← $ᵗ Bool
   let (_, s) ← runDF sm Δ qep sameHdr Config.h1 b B
   return s.forgeWin
 
-def forgeGameWin (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
+@[expose] def forgeGameWin (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
     [SampleableType Key] [SampleableType Coins]
     (sameHdr : C → C → Bool) (B : AdversaryDF St Msg Coins C) : ProbComp Bool := do
   let b ← $ᵗ Bool
@@ -453,19 +454,19 @@ def forgeGameWin (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
   return s.win
 
 /-- Guessed `DeliverForge` authenticity game for target `(tLStar, tStar)`. -/
-def forgeGameGuessed (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
+@[expose] def forgeGameGuessed (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
     [SampleableType Key] [SampleableType Coins]
     (sameHdr : C → C → Bool) (tLStar : Option ℕ) (tStar : ℕ)
     (B : AdversaryDF St Msg Coins C) : ProbComp Bool := do
   let (_, s) ← runBaseDF sm Δ qep sameHdr (Config.auth tStar) false B
   return s.win && authLosingConditionsAvoided Δ tLStar tStar s
 
-noncomputable def forgeAdvantage (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
+@[expose] noncomputable def forgeAdvantage (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
     [SampleableType Key] [SampleableType Coins]
     (sameHdr : C → C → Bool) (B : AdversaryDF St Msg Coins C) : ℝ≥0∞ :=
   𝒟[forgeGame sm Δ qep sameHdr B] {true}
 
-noncomputable def forgeGuessedAdvantage (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
+@[expose] noncomputable def forgeGuessedAdvantage (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
     [SampleableType Key] [SampleableType Coins]
     (sameHdr : C → C → Bool) (tLStar : Option ℕ) (tStar : ℕ)
     (B : AdversaryDF St Msg Coins C) : ℝ≥0∞ :=

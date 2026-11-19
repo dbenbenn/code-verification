@@ -22,7 +22,7 @@ Frame-polymorphic `try_avail` and `alloc_slot` slow-path step lemmas inside `__l
 set_option autoImplicit false
 set_option maxRecDepth 20000
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 

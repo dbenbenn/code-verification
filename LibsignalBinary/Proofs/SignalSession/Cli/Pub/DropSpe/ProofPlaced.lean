@@ -9,18 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.Proof
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.Proof -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.Common
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.Proof.Helpers
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton
 
 /-!
 # Relocatable `drop_glue::<SignalProtocolError> [local#3]` (Block `552`)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -678,7 +686,7 @@ theorem cliDropSpe_placed_caller_ok_x [LibsignalPlacement] {A : RustAlloc}
   ls_transfer_lscro (callerProg := callerProg) (j := 553)
     (cliDropSpe_placed_ok_x_proof hA) hi
 
-def dropSpeSpecStkPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec DropSpeGhost :=
+@[expose] def dropSpeSpecStkPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec DropSpeGhost :=
   StoreKit.withLsCodeRoLoaded lsmpl (dropSpeSpecStk A stk)
 
 theorem cliDropSpe_placed_ok_stk [LibsignalPlacement] {A : RustAlloc}

@@ -9,8 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptPeakSpec
+public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightSpec
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Tight `738` B/Seed `fineCostModel` Bounds for W2/W4 Segment 4
@@ -21,7 +25,7 @@ Tightens W2/W4 `try_decrypt` Segment 4 (`consume_message_key` `33`-B message-key
 `PhaseGroupSpec` companions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -182,7 +186,7 @@ theorem phaseCreditSpec_boundedFresh_fine_44
 /-! ## 2. W2/W4 Segment 4 `738` B/Seed Bounds -/
 
 /-- Fresh-seed W2/W4 Segment 4 envelope parameterized by `maxSeeds`. -/
-def W2Seg4CmkSeedsEnv (maxSeeds : Nat) (caps : List Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def W2Seg4CmkSeedsEnv (maxSeeds : Nat) (caps : List Nat) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
     SeqEnv (BoundedFreshEvs maxSeeds (2 * maxSeeds) 33)
       (SeqEnv (· = doublingChain104Evs caps) FreeOnlyEvs) evs
@@ -228,37 +232,6 @@ theorem w2Seg4CmkSeeds_fine_phaseCreditSpec
     (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _)
     (by generalize 104 * (2 * maxOldCap) = r; omega)
 
-/-- Tightens `W2Seg4CmkTightEnv caps` (`≤ 2,000` `33`-B seeds) on `fineCostModel` to `1,476,000 + maxSteps * 143,484` B.
--/
-theorem w2Seg4CmkTight_fine_phaseCreditSpec_seeds738
-    {caps : List Nat} {maxSteps maxOldCap : Nat}
-    (hlen : caps.length ≤ maxSteps)
-    (hchain : DoublingChainLe maxOldCap caps) :
-    PhaseCreditSpec fineCostModel (W2Seg4CmkTightEnv caps)
-      (1476000 + maxSteps * 143484)
-      (w2CmkChainTightLive maxOldCap)
-      (w2CmkChainTightPeak maxOldCap)
-      (max 416 (104 * (2 * maxOldCap))) := by
-  simpa [w2Seg4CmkSeedsEnv_2000_eq] using
-    w2Seg4CmkSeeds_fine_phaseCreditSpec (maxSeeds := 2000) hlen hchain
-
-theorem phaseCreditSpec_cmkJumpList_tower_seeds738
-    (jumps : List (Bool × Bool))
-    (hlen : jumps.length ≤ 2000)
-    (hkf : cmkJumpFinalIdx 0 jumps ≤ 10) :
-    PhaseCreditSpec fineCostModel (· = cmkJumpListEvs 0 jumps)
-      (1476000 + v104TowerCum2048 fineCostModel)
-      (v104TowerPeak fineCostModel 10)
-      (v104TowerPeak fineCostModel 10)
-      212992 := by
-  have h33 : 33 ≤ HasFineReallocCredit.smallMaxReq fineCostModel := by
-    rw [fineCostModel_smallMaxReq_eq]; decide
-  have hc33 := smallAllocCost_le_738_of_le_44 (req := 33) (by decide)
-  have hmul : 2000 * HasFineReallocCredit.smallAllocCost fineCostModel 33 ≤ 1476000 :=
-    Nat.le_trans (Nat.mul_le_mul_left 2000 hc33) (by decide)
-  exact (phaseCreditSpec_cmkJumpList_tower fineCostModel h33 jumps hlen hkf).mono
-    (Nat.add_le_add_right hmul _) (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _)
-
 theorem w2Seg4CmkSeedsEnv_fine_groupSpec {maxSeeds : Nat} {caps : List Nat} {maxSteps : Nat}
     (hcaps : caps.length ≤ maxSteps) :
     PhaseGroupSpec fineCostModel (W2Seg4CmkSeedsEnv maxSeeds caps)
@@ -275,7 +248,7 @@ theorem w2Seg4CmkSeedsEnv_fine_groupSpec {maxSeeds : Nat} {caps : List Nat} {max
 /-! ## 3. Full `try_decrypt` and Failed-Trial Envelopes and Bounds -/
 
 /-- Failed-trial counterpart of `CliGroupBounds.W2TryDecryptTightEnv`. -/
-def W2TryDecryptFailTightEnv (dhCap : Nat) (needGrow : Bool) (caps : List Nat)
+@[expose] def W2TryDecryptFailTightEnv (dhCap : Nat) (needGrow : Bool) (caps : List Nat)
     (SpqrStepEnv : List AllocEvent → Prop) (withAddr errAlloc : Bool) (ctLen : Nat)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
@@ -287,7 +260,7 @@ def W2TryDecryptFailTightEnv (dhCap : Nat) (needGrow : Bool) (caps : List Nat)
               (SeqEnv (W2AesDecErrEnv ctLen) FreeOnlyEvs))))) evs
 
 /-- `maxSeeds`-parameterized `W2TryDecrypt` envelope. -/
-def W2TryDecryptSeedsEnv (maxSeeds dhCap : Nat) (needGrow : Bool) (caps : List Nat)
+@[expose] def W2TryDecryptSeedsEnv (maxSeeds dhCap : Nat) (needGrow : Bool) (caps : List Nat)
     (SpqrStepEnv : List AllocEvent → Prop) (withAddr errAlloc : Bool) (ctLen : Nat)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
@@ -300,7 +273,7 @@ def W2TryDecryptSeedsEnv (maxSeeds dhCap : Nat) (needGrow : Bool) (caps : List N
                 (SeqEnv TrApplyBoundedEnv FreeOnlyEvs)))))) evs
 
 /-- `maxSeeds`-parameterized failed-trial `W2TryDecrypt` envelope. -/
-def W2TryDecryptFailSeedsEnv (maxSeeds dhCap : Nat) (needGrow : Bool) (caps : List Nat)
+@[expose] def W2TryDecryptFailSeedsEnv (maxSeeds dhCap : Nat) (needGrow : Bool) (caps : List Nat)
     (SpqrStepEnv : List AllocEvent → Prop) (withAddr errAlloc : Bool) (ctLen : Nat)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
@@ -317,13 +290,7 @@ theorem w2TryDecryptSeedsEnv_2000_eq (dhCap : Nat) (needGrow : Bool) (caps : Lis
       W2TryDecryptTightEnv dhCap needGrow caps SpqrStepEnv withAddr errAlloc ctLen :=
   rfl
 
-theorem w2TryDecryptFailSeedsEnv_2000_eq (dhCap : Nat) (needGrow : Bool) (caps : List Nat)
-    (SpqrStepEnv : List AllocEvent → Prop) (withAddr errAlloc : Bool) (ctLen : Nat) :
-    W2TryDecryptFailSeedsEnv 2000 dhCap needGrow caps SpqrStepEnv withAddr errAlloc ctLen =
-      W2TryDecryptFailTightEnv dhCap needGrow caps SpqrStepEnv withAddr errAlloc ctLen :=
-  rfl
-
-def w2TryDecryptGenSeeds738Cum (maxSeeds dhCap : Nat) (needGrow : Bool) (maxSteps c_spqr : Nat) :
+@[expose] def w2TryDecryptGenSeeds738Cum (maxSeeds dhCap : Nat) (needGrow : Bool) (maxSteps c_spqr : Nat) :
     Nat :=
   58734 +
     (2214 + (if needGrow then v104GrowStepCum fineCostModel dhCap else 0)) +
@@ -334,7 +301,7 @@ def w2TryDecryptGenSeeds738Cum (maxSeeds dhCap : Nat) (needGrow : Bool) (maxStep
     57642
 
 /-- Tight `fineCostModel` `Δcum` for `W2TryDecryptTightEnv` and `W2TryDecryptFailTightEnv`. -/
-def w2TryDecryptSeeds738Cum (dhCap : Nat) (needGrow : Bool) (maxSteps c_spqr : Nat) : Nat :=
+@[expose] def w2TryDecryptSeeds738Cum (dhCap : Nat) (needGrow : Bool) (maxSteps c_spqr : Nat) : Nat :=
   w2TryDecryptGenSeeds738Cum 2000 dhCap needGrow maxSteps c_spqr
 
 theorem w2TryDecryptSeeds738Cum_add_eq
@@ -499,186 +466,5 @@ theorem w2TryDecryptFailTightEnv_fine_groupSpec
     (Nat.max_le.mpr ⟨Nat.zero_le _, by omega⟩)
 
 /-! ## 4. Concrete SPQR `recv` Instantiations -/
-
-/-- SPQR `recv` instantiation of `w2TryDecrypt_fine_phaseCreditSpec_seeds738` under `KeyHistorySmallOrReserved xRk`.
--/
-theorem w2TryDecrypt_spqrC07_phaseCreditSpec_seeds738
-    (F : ShaCompress) (K : MlKem)
-    {StatesRecvEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
-      List AllocEvent → Prop}
-    {cRecv rRecv : Nat}
-    (C09a : StatesRecvTightCreditSpec F StatesRecvEnv cRecv rRecv)
-    (hcRecv : cRecv ≤ 1910199)
-    {dhCap : Nat} {needGrow : Bool} {caps : List Nat} {withAddr errAlloc : Bool}
-    {ctLen maxSteps maxOldCap maxCt : Nat}
-    (stBytes : Bytes)
-    (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
-    (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
-    (v : V1Recv spqrPolyApi (spqrAuthApi F))
-    (xInit : InitInnerGhost) (xNew : ChainNewGhost)
-    (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
-    (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
-    (hDhSmall : 104 * max 4 (2 * dhCap) ≤ HasFineReallocCredit.smallMaxReq fineCostModel)
-    (hlen : caps.length ≤ maxSteps)
-    (hchain : DoublingChainLe maxOldCap caps)
-    (hDom : SpqrRecvTightDomain F K stBytes xAdd xRk)
-    (hHist : KeyHistorySmallOrReserved xRk)
-    (hct : ctLen ≤ maxCt) :
-    PhaseCreditSpec fineCostModel
-      (W2TryDecryptTightEnv dhCap needGrow caps
-        (SpqrRecvC07TightEnv F K StatesRecvEnv
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto)
-        withAddr errAlloc ctLen)
-      (w2TryDecryptSeeds738Cum dhCap needGrow maxSteps 23313687)
-      (w2TryDecryptTightLive maxOldCap 294391 maxCt)
-      (w2TryDecryptTightPeak maxOldCap 294391 294391 maxCt)
-      (w2TryDecryptMaxReq dhCap maxOldCap (max rRecv 286196) maxCt) :=
-  w2TryDecrypt_fine_phaseCreditSpec_seeds738 hDhSmall hlen hchain
-    (spqrRecvParts_c07_phaseCreditSpec_tight F K C09a hcRecv
-      stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hDom hHist)
-    hct
-
-theorem w2TryDecrypt_spqrC07_c09a_phaseCreditSpec_seeds738
-    (F : ShaCompress) (K : MlKem)
-    {StatesRecvEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
-      List AllocEvent → Prop}
-    {rRecv : Nat}
-    (C09a : StatesRecvTightCreditSpec F StatesRecvEnv 1647247 rRecv)
-    {dhCap : Nat} {needGrow : Bool} {caps : List Nat} {withAddr errAlloc : Bool}
-    {ctLen maxSteps maxOldCap maxCt : Nat}
-    (stBytes : Bytes)
-    (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
-    (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
-    (v : V1Recv spqrPolyApi (spqrAuthApi F))
-    (xInit : InitInnerGhost) (xNew : ChainNewGhost)
-    (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
-    (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
-    (hDhSmall : 104 * max 4 (2 * dhCap) ≤ HasFineReallocCredit.smallMaxReq fineCostModel)
-    (hlen : caps.length ≤ maxSteps)
-    (hchain : DoublingChainLe maxOldCap caps)
-    (hDom : SpqrRecvTightDomain F K stBytes xAdd xRk)
-    (hHist : KeyHistorySmallOrReserved xRk)
-    (hct : ctLen ≤ maxCt) :
-    PhaseCreditSpec fineCostModel
-      (W2TryDecryptTightEnv dhCap needGrow caps
-        (SpqrRecvC07TightEnv F K StatesRecvEnv
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto)
-        withAddr errAlloc ctLen)
-      (w2TryDecryptSeeds738Cum dhCap needGrow maxSteps 23313687)
-      (w2TryDecryptTightLive maxOldCap 294391 maxCt)
-      (w2TryDecryptTightPeak maxOldCap 294391 294391 maxCt)
-      (w2TryDecryptMaxReq dhCap maxOldCap (max rRecv 286196) maxCt) :=
-  w2TryDecrypt_fine_phaseCreditSpec_seeds738 hDhSmall hlen hchain
-    (spqrRecvParts_c07_phaseCreditSpec_tight_c09a F K C09a
-      stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hDom hHist)
-    hct
-
-theorem w2TryDecryptFail_spqrC07_phaseCreditSpec_seeds738
-    (F : ShaCompress) (K : MlKem)
-    {StatesRecvEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
-      List AllocEvent → Prop}
-    {cRecv rRecv : Nat}
-    (C09a : StatesRecvTightCreditSpec F StatesRecvEnv cRecv rRecv)
-    (hcRecv : cRecv ≤ 1910199)
-    {dhCap : Nat} {needGrow : Bool} {caps : List Nat} {withAddr errAlloc : Bool}
-    {ctLen maxSteps maxOldCap maxCt : Nat}
-    (stBytes : Bytes)
-    (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
-    (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
-    (v : V1Recv spqrPolyApi (spqrAuthApi F))
-    (xInit : InitInnerGhost) (xNew : ChainNewGhost)
-    (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
-    (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
-    (hDhSmall : 104 * max 4 (2 * dhCap) ≤ HasFineReallocCredit.smallMaxReq fineCostModel)
-    (hlen : caps.length ≤ maxSteps)
-    (hchain : DoublingChainLe maxOldCap caps)
-    (hDom : SpqrRecvTightDomain F K stBytes xAdd xRk)
-    (hHist : KeyHistorySmallOrReserved xRk)
-    (hct : ctLen ≤ maxCt) :
-    PhaseCreditSpec fineCostModel
-      (W2TryDecryptFailTightEnv dhCap needGrow caps
-        (SpqrRecvC07TightEnv F K StatesRecvEnv
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto)
-        withAddr errAlloc ctLen)
-      (w2TryDecryptSeeds738Cum dhCap needGrow maxSteps 23313687)
-      (w2CmkChainTightLive maxOldCap + 294391)
-      (w2TryDecryptTightPeak maxOldCap 294391 294391 maxCt)
-      (w2TryDecryptMaxReq dhCap maxOldCap (max rRecv 286196) maxCt) :=
-  w2TryDecryptFail_fine_phaseCreditSpec_seeds738 hDhSmall hlen hchain
-    (spqrRecvParts_c07_phaseCreditSpec_tight F K C09a hcRecv
-      stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hDom hHist)
-    hct
-
-/-- Unconditional-history SPQR `recv` instantiation of `w2TryDecrypt_fine_phaseCreditSpec_seeds738`.
--/
-theorem w2TryDecrypt_spqrC07_uncondHist_phaseCreditSpec_seeds738
-    (F : ShaCompress) (K : MlKem)
-    {StatesRecvEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
-      List AllocEvent → Prop}
-    {cRecv rRecv : Nat}
-    (C09a : StatesRecvTightCreditSpec F StatesRecvEnv cRecv rRecv)
-    (hcRecv : cRecv ≤ 1900660)
-    {dhCap : Nat} {needGrow : Bool} {caps : List Nat} {withAddr errAlloc : Bool}
-    {ctLen maxSteps maxOldCap maxCt : Nat}
-    (stBytes : Bytes)
-    (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
-    (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
-    (v : V1Recv spqrPolyApi (spqrAuthApi F))
-    (xInit : InitInnerGhost) (xNew : ChainNewGhost)
-    (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
-    (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
-    (hDhSmall : 104 * max 4 (2 * dhCap) ≤ HasFineReallocCredit.smallMaxReq fineCostModel)
-    (hlen : caps.length ≤ maxSteps)
-    (hchain : DoublingChainLe maxOldCap caps)
-    (hDom : SpqrRecvTightDomain F K stBytes xAdd xRk)
-    (hct : ctLen ≤ maxCt) :
-    PhaseCreditSpec fineCostModel
-      (W2TryDecryptTightEnv dhCap needGrow caps
-        (SpqrRecvC07TightEnv F K StatesRecvEnv
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto)
-        withAddr errAlloc ctLen)
-      (w2TryDecryptSeeds738Cum dhCap needGrow maxSteps 23313687)
-      (w2TryDecryptTightLive maxOldCap 605066 maxCt)
-      (w2TryDecryptTightPeak maxOldCap 605066 621350 maxCt)
-      (w2TryDecryptMaxReq dhCap maxOldCap (max rRecv 302480) maxCt) :=
-  w2TryDecrypt_fine_phaseCreditSpec_seeds738 hDhSmall hlen hchain
-    (spqrRecvParts_c07_phaseCreditSpec_tight_uncondHist F K C09a hcRecv
-      stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hDom)
-    hct
-
-theorem w2TryDecryptFail_spqrC07_uncondHist_phaseCreditSpec_seeds738
-    (F : ShaCompress) (K : MlKem)
-    {StatesRecvEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
-      List AllocEvent → Prop}
-    {cRecv rRecv : Nat}
-    (C09a : StatesRecvTightCreditSpec F StatesRecvEnv cRecv rRecv)
-    (hcRecv : cRecv ≤ 1900660)
-    {dhCap : Nat} {needGrow : Bool} {caps : List Nat} {withAddr errAlloc : Bool}
-    {ctLen maxSteps maxOldCap maxCt : Nat}
-    (stBytes : Bytes)
-    (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
-    (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
-    (v : V1Recv spqrPolyApi (spqrAuthApi F))
-    (xInit : InitInnerGhost) (xNew : ChainNewGhost)
-    (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
-    (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
-    (hDhSmall : 104 * max 4 (2 * dhCap) ≤ HasFineReallocCredit.smallMaxReq fineCostModel)
-    (hlen : caps.length ≤ maxSteps)
-    (hchain : DoublingChainLe maxOldCap caps)
-    (hDom : SpqrRecvTightDomain F K stBytes xAdd xRk)
-    (hct : ctLen ≤ maxCt) :
-    PhaseCreditSpec fineCostModel
-      (W2TryDecryptFailTightEnv dhCap needGrow caps
-        (SpqrRecvC07TightEnv F K StatesRecvEnv
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto)
-        withAddr errAlloc ctLen)
-      (w2TryDecryptSeeds738Cum dhCap needGrow maxSteps 23313687)
-      (w2CmkChainTightLive maxOldCap + 605066)
-      (w2TryDecryptTightPeak maxOldCap 605066 621350 maxCt)
-      (w2TryDecryptMaxReq dhCap maxOldCap (max rRecv 302480) maxCt) :=
-  w2TryDecryptFail_fine_phaseCreditSpec_seeds738 hDhSmall hlen hchain
-    (spqrRecvParts_c07_phaseCreditSpec_tight_uncondHist F K C09a hcRecv
-      stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hDom)
-    hct
 
 end LibsignalBinary.Proofs.PeakBudget.W2Seg4CmkSeeds738

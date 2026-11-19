@@ -9,27 +9,42 @@ limitations under the License.
 
 module
 
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.AddChunkCl1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Ct1AcknowledgedRecvEkChunkPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.KeysSampledRecvCt1ChunkPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt1ChunkPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.Ct1ReceivedPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.RecvCt1AckPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkProofPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvNextEpochPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.UnchunkedRecvEkPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.ProofPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveExtBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.AddChunkCl1Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.AddChunkCl1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Ct1AcknowledgedRecvEkChunkPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl2PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.KeysSampledRecvCt1ChunkPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt1ChunkPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.Ct1ReceivedPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.RecvCt1AckPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvNextEpochBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvNextEpochPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk2PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2ClPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.UnchunkedRecvEkPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.ProofPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegsBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2ProofBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux
 
 /-!
 # SPQR V1 Leaf Subroutines: Closed Relocatable `RustCliAllocBudget` Contracts
@@ -40,7 +55,7 @@ Aggregates and closes all 15 relocatable `Obj.MultiPlacedLib` leaf contracts (`3
 and `419`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -61,6 +76,7 @@ open CryptoVerification.LibsignalTripleRatchet (HkdfPlacedHooks keys_ls_subrouti
 open LibsignalBinary.Proofs.HookDischarge.Libc.Memmove (sessionMemmoveBoundedSpec)
 open CryptoVerification.SpqrV1.Alloc (growOneStack spqrHandleErrorSym spqrMemcpySym spqrMemmoveSym
   spqrPanicConstAddOverflowSym spqrRustAllocSym spqrRustNoAllocShimSym spqrRustReallocSym)
+open CryptoVerification.SpqrV1.GF.Mul2U16 (OnceCallHookOk)
 open CryptoVerification.SpqrV1.Kdf (spqrRustAllocZeroedSym)
 open CryptoVerification.SpqrV1.Poly.AddChunk (addChunkTotal)
 open CryptoVerification.SpqrV1.States.Leaves (Ct1AcknowledgedRecvEkChunkGhost
@@ -79,6 +95,8 @@ open LibsignalBinary.Heap (AllocCostModel AllocEvent BudgetLimits FitsEnv FitsEv
   rustCliReallocBudgetSpec zeroBudgetLimits)
 open LibsignalBinary.Heap.RustStdAllocBudgetBridge (rustAllocShimVmSpec)
 open LibsignalBinary.Heap.SpecBudget (libcruxHmacBudgetSpec withVmPreserved)
+open LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase (mlkemDecapsAtSpec)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux (framelessMemcpyAcpSpec
   sessionMemcpyRegionROSpec)
 open LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget (withAllocVmPreserved)
@@ -177,14 +195,11 @@ open LibsignalBinary.Proofs.SpqrV1.States.Leaves.UnchunkedRecvEkPlacedBudget
    unchunked_ct1_sent_recv_ek_placed_ok_x)
 open LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlacedBudget
   (PolyDecodedMessagePlacedOkX RecvCt2ChunkEnv RecvCt2ChunkPlacedOkExt
-   RecvCt2ChunkPlacedOkExtOfEnv RecvCt2ChunkPlacedOkExtOfPrePostEnv RecvCt2ChunkPlacedOkX
-   RecvCt2ChunkPlacedOkXOfEnv RecvCt2ChunkPlacedOkXOfPrePostEnv RecvCt2PlacedAlloc
+   RecvCt2ChunkPlacedOkExtOfEnv RecvCt2ChunkPlacedOkExtOfPrePostEnv RecvCt2PlacedAlloc
    hookSat_framelessMemcpyAcp_of_allocMemcpyVm hookSat_noAllocShim_of_rustAllocShimVm)
 open LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.ProofPlacedBudget
   (recv_ct2_chunk_placed_ok_ext recv_ct2_chunk_placed_ok_ext_ofEnv
-   recv_ct2_chunk_placed_ok_ext_ofPrePostEnv recv_ct2_chunk_placed_ok_ext_of_hooks
-   recv_ct2_chunk_placed_ok_x recv_ct2_chunk_placed_ok_x_ofEnv
-   recv_ct2_chunk_placed_ok_x_ofPrePostEnv recv_ct2_chunk_placed_ok_x_of_hooks)
+   recv_ct2_chunk_placed_ok_ext_ofPrePostEnv recv_ct2_chunk_placed_ok_ext_of_hooks)
 open LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
   (UnchunkedSendCt2Env UnchunkedSendCt2PostEnv UnchunkedSendCt2PreEnv
    unchunkedCt1SentEkReceivedSendCt2PlacedSpec unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfEnv
@@ -605,7 +620,8 @@ theorem header_sent_recv_ct1_chunk_placed_ok_x_ofPrePostEnv [LibsignalPlacement]
     (hmemcpy : HookSat (Rust.withPanics ext) "memcpy" sessionMemcpyRegionBudgetSpec)
     (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym
       (withAllocVmPreserved (sessionMemmoveBoundedSpec growOneStack)))
-    (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec) :
+    (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     HeaderSentRecvCt1ChunkPlacedOkXOfPrePostEnv M A lim F PreEnv PostEnv ext :=
   header_sent_recv_ct1_chunk_placed_cl_ext_ofPrePostEnv hPre hPost hdealloc hmemcpy
     (ls_subroutine_ok_of_block (i := 337) (j := 419)
@@ -613,7 +629,7 @@ theorem header_sent_recv_ct1_chunk_placed_ok_x_ofPrePostEnv [LibsignalPlacement]
     (keys_ls_subroutine_ok_of_block_cro (i := 337) (j := 418)
       (polyDecoderDecodedMessage_cro_placed_ok_x h_panic
         (hookSat_sessionShimBudget_of_rustAllocShimVm hshim)
-        halloc hrealloc hdealloc hmemcpy hmemset))
+        halloc hrealloc hdealloc hmemcpy hmemset hOnce))
 
 theorem header_sent_recv_ct1_chunk_placed_ok_x_ofEnv [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -632,10 +648,11 @@ theorem header_sent_recv_ct1_chunk_placed_ok_x_ofEnv [LibsignalPlacement]
     (hmemcpy : HookSat (Rust.withPanics ext) "memcpy" sessionMemcpyRegionBudgetSpec)
     (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym
       (withAllocVmPreserved (sessionMemmoveBoundedSpec growOneStack)))
-    (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec) :
+    (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     HeaderSentRecvCt1ChunkPlacedOkXOfEnv M A lim F Env ext :=
   header_sent_recv_ct1_chunk_placed_ok_x_ofPrePostEnv
-    hPre hPost h_panic hshim halloc hrealloc hdealloc hmemcpy hmemmove hmemset
+    hPre hPost h_panic hshim halloc hrealloc hdealloc hmemcpy hmemmove hmemset hOnce
 
 theorem header_sent_recv_ct1_chunk_placed_ok_x [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -648,7 +665,8 @@ theorem header_sent_recv_ct1_chunk_placed_ok_x [LibsignalPlacement]
     (hmemcpy : HookSat (Rust.withPanics ext) "memcpy" sessionMemcpyRegionBudgetSpec)
     (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym
       (withAllocVmPreserved (sessionMemmoveBoundedSpec growOneStack)))
-    (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec) :
+    (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     HeaderSentRecvCt1ChunkPlacedOkX M A lim F ext :=
   header_sent_recv_ct1_chunk_placed_cl_ext hdealloc hmemcpy
     (ls_subroutine_ok_of_block (i := 337) (j := 419)
@@ -656,7 +674,7 @@ theorem header_sent_recv_ct1_chunk_placed_ok_x [LibsignalPlacement]
     (keys_ls_subroutine_ok_of_block_cro (i := 337) (j := 418)
       (polyDecoderDecodedMessage_cro_placed_ok_x h_panic
         (hookSat_sessionShimBudget_of_rustAllocShimVm hshim)
-        halloc hrealloc hdealloc hmemcpy hmemset))
+        halloc hrealloc hdealloc hmemcpy hmemset hOnce))
 
 /-! ## 6. Closed Contract for Block `346` (`<Ct1Received>::recv_ct2_chunk`) -/
 
@@ -731,7 +749,7 @@ theorem ek_received_ct1_sampled_recv_ct1_ack_placed_ok_x_ofPrePostEnv [Libsignal
     (hmemcpy_ro : HookSat (Rust.withPanics ext) "memcpy" sessionMemcpyRegionROSpec)
     (hencaps2 : HookSat (Rust.withPanics ext) spqrMlkemEncaps2Sym
       (withVmPreserved (mlkemEncaps2Spec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacBudgetSpec F M A lim)) :
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     EkReceivedCt1SampledRecvCt1AckPlacedOkXOfPrePostEnv M A lim F K PreEnv PostEnv ext :=
   ek_received_ct1_sampled_recv_ct1_ack_placed_cl_ext_ofPrePostEnv hpre_sub hpost_sub hdealloc
     (ls_subroutine_ok_of_block (i := 343) (j := 347)
@@ -756,7 +774,7 @@ theorem ek_received_ct1_sampled_recv_ct1_ack_placed_ok_x_ofEnv [LibsignalPlaceme
     (hmemcpy_ro : HookSat (Rust.withPanics ext) "memcpy" sessionMemcpyRegionROSpec)
     (hencaps2 : HookSat (Rust.withPanics ext) spqrMlkemEncaps2Sym
       (withVmPreserved (mlkemEncaps2Spec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacBudgetSpec F M A lim)) :
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     EkReceivedCt1SampledRecvCt1AckPlacedOkXOfEnv M A lim F K Env ext :=
   ek_received_ct1_sampled_recv_ct1_ack_placed_cl_ext_ofEnv hpost_sub hdealloc
     (ls_subroutine_ok_of_block (i := 343) (j := 347)
@@ -779,7 +797,7 @@ theorem ek_received_ct1_sampled_recv_ct1_ack_placed_ok_x [LibsignalPlacement]
     (hmemcpy_ro : HookSat (Rust.withPanics ext) "memcpy" sessionMemcpyRegionROSpec)
     (hencaps2 : HookSat (Rust.withPanics ext) spqrMlkemEncaps2Sym
       (withVmPreserved (mlkemEncaps2Spec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacBudgetSpec F M A lim)) :
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     EkReceivedCt1SampledRecvCt1AckPlacedOkX M A lim F K ext :=
   ek_received_ct1_sampled_recv_ct1_ack_placed_cl_ext hdealloc
     (ls_subroutine_ok_of_block (i := 343) (j := 347)
@@ -813,7 +831,8 @@ theorem ct1_acknowledged_recv_ek_chunk_placed_closed_ok_x_ofPrePostEnv [Libsigna
       (withVmPreserved (mlkemValidatePkSpec K)))
     (hencaps2 : HookSat (Rust.withPanics ext) spqrMlkemEncaps2Sym
       (withVmPreserved (mlkemEncaps2Spec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacBudgetSpec F M A lim)) :
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (withLsRet (libcruxHmacBudgetSpec F M A lim)))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     Ct1AcknowledgedRecvEkChunkPlacedOkXOfPrePostEnv M A lim F K PreEnv PostEnv ext :=
   ct1_acknowledged_recv_ek_chunk_placed_cl_ext_ofPrePostEnv hpre_sub hpost_sub hdealloc hmemcpy
     (ls_subroutine_ok_of_block (i := 349) (j := 419)
@@ -821,7 +840,7 @@ theorem ct1_acknowledged_recv_ek_chunk_placed_closed_ok_x_ofPrePostEnv [Libsigna
     (keys_ls_subroutine_ok_of_block_cro (i := 349) (j := 418)
       (polyDecoderDecodedMessage_cro_placed_ok_x h_panic
         (hookSat_sessionShimBudget_of_rustAllocShimVm hshim)
-        halloc hrealloc hdealloc hmemcpy hmemset))
+        halloc hrealloc hdealloc hmemcpy hmemset hOnce))
     (ls_subroutine_ok_of_block (i := 349) (j := 338)
       (unchunked_ct1_sent_recv_ek_placed_cl_twoEnv_ok_x (F := F) hdealloc hval_pk))
     (ls_subroutine_ok_of_block (i := 349) (j := 347)
@@ -852,7 +871,8 @@ theorem ct1_acknowledged_recv_ek_chunk_placed_closed_ok_x_ofEnv [LibsignalPlacem
       (withVmPreserved (mlkemValidatePkSpec K)))
     (hencaps2 : HookSat (Rust.withPanics ext) spqrMlkemEncaps2Sym
       (withVmPreserved (mlkemEncaps2Spec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacBudgetSpec F M A lim)) :
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (withLsRet (libcruxHmacBudgetSpec F M A lim)))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     Ct1AcknowledgedRecvEkChunkPlacedOkXOfEnv M A lim F K Env ext :=
   ct1_acknowledged_recv_ek_chunk_placed_cl_ext_ofEnv hpost_sub hdealloc hmemcpy
     (ls_subroutine_ok_of_block (i := 349) (j := 419)
@@ -860,7 +880,7 @@ theorem ct1_acknowledged_recv_ek_chunk_placed_closed_ok_x_ofEnv [LibsignalPlacem
     (keys_ls_subroutine_ok_of_block_cro (i := 349) (j := 418)
       (polyDecoderDecodedMessage_cro_placed_ok_x h_panic
         (hookSat_sessionShimBudget_of_rustAllocShimVm hshim)
-        halloc hrealloc hdealloc hmemcpy hmemset))
+        halloc hrealloc hdealloc hmemcpy hmemset hOnce))
     (ls_subroutine_ok_of_block (i := 349) (j := 338)
       (unchunked_ct1_sent_recv_ek_placed_cl_twoEnv_ok_x (F := F) hdealloc hval_pk))
     (ls_subroutine_ok_of_block (i := 349) (j := 347)
@@ -889,7 +909,8 @@ theorem ct1_acknowledged_recv_ek_chunk_placed_closed_ok_x [LibsignalPlacement]
       (withVmPreserved (mlkemValidatePkSpec K)))
     (hencaps2 : HookSat (Rust.withPanics ext) spqrMlkemEncaps2Sym
       (withVmPreserved (mlkemEncaps2Spec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacBudgetSpec F M A lim)) :
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (withLsRet (libcruxHmacBudgetSpec F M A lim)))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     Ct1AcknowledgedRecvEkChunkPlacedOkX M A lim F K ext :=
   ct1_acknowledged_recv_ek_chunk_placed_cl_ext hdealloc hmemcpy
     (ls_subroutine_ok_of_block (i := 349) (j := 419)
@@ -897,7 +918,7 @@ theorem ct1_acknowledged_recv_ek_chunk_placed_closed_ok_x [LibsignalPlacement]
     (keys_ls_subroutine_ok_of_block_cro (i := 349) (j := 418)
       (polyDecoderDecodedMessage_cro_placed_ok_x h_panic
         (hookSat_sessionShimBudget_of_rustAllocShimVm hshim)
-        halloc hrealloc hdealloc hmemcpy hmemset))
+        halloc hrealloc hdealloc hmemcpy hmemset hOnce))
     (ls_subroutine_ok_of_block (i := 349) (j := 338)
       (unchunked_ct1_sent_recv_ek_placed_cl_twoEnv_ok_x (F := F) hdealloc hval_pk))
     (ls_subroutine_ok_of_block (i := 349) (j := 347)
@@ -925,17 +946,18 @@ theorem noHeaderReceived_recv_hdr_chunk_placed_closed_okX_ofPrePostEnv [Libsigna
     (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym
       (withAllocVmPreserved (sessionMemmoveBoundedSpec growOneStack)))
     (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacBudgetSpec F M A lim))
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (withLsRet (libcruxHmacBudgetSpec F M A lim)))
     (h_handle_error : (Rust.withPanics ext) spqrHandleErrorSym = some Rust.panicked)
     (h_assert_failed : (Rust.withPanics ext) assertFailedRecvHdrSym = some Rust.panicked)
     (h_slice_index_fail : (Rust.withPanics ext) sliceIndexFailRecvHdrSym = some Rust.panicked)
-    (h_panic_bounds_check : (Rust.withPanics ext) panicBoundsCheckRecvHdrSym = some Rust.panicked) :
+    (h_panic_bounds_check : (Rust.withPanics ext) panicBoundsCheckRecvHdrSym = some Rust.panicked)
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     NoHeaderReceivedRecvHdrChunkPlacedOkXOfPrePostEnv M A lim F PreEnv PostEnv ext :=
   noHeaderReceived_recv_hdr_chunk_placed_okX_ofPrePostEnv hPre hPost
     (add_chunk_cl_placed_ok_x h_handle_error hshim halloc hrealloc hmemmove)
     (polyDecodedMessagePlacedOkX_of_hooks h_handle_error
       (hookSat_sessionShimBudget_of_rustAllocShimVm hshim)
-      halloc hrealloc hdealloc hmemcpy hmemset)
+      halloc hrealloc hdealloc hmemcpy hmemset hOnce)
     hshim halloc hdealloc hmemcpy_fl hRO hhmac
     h_handle_error h_assert_failed h_slice_index_fail h_panic_bounds_check
 
@@ -955,15 +977,16 @@ theorem noHeaderReceived_recv_hdr_chunk_placed_closed_okX_ofEnv [LibsignalPlacem
     (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym
       (withAllocVmPreserved (sessionMemmoveBoundedSpec growOneStack)))
     (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacBudgetSpec F M A lim))
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (withLsRet (libcruxHmacBudgetSpec F M A lim)))
     (h_handle_error : (Rust.withPanics ext) spqrHandleErrorSym = some Rust.panicked)
     (h_assert_failed : (Rust.withPanics ext) assertFailedRecvHdrSym = some Rust.panicked)
     (h_slice_index_fail : (Rust.withPanics ext) sliceIndexFailRecvHdrSym = some Rust.panicked)
-    (h_panic_bounds_check : (Rust.withPanics ext) panicBoundsCheckRecvHdrSym = some Rust.panicked) :
+    (h_panic_bounds_check : (Rust.withPanics ext) panicBoundsCheckRecvHdrSym = some Rust.panicked)
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     NoHeaderReceivedRecvHdrChunkPlacedOkXOfEnv M A lim F Env ext :=
   noHeaderReceived_recv_hdr_chunk_placed_closed_okX_ofPrePostEnv hPre hPost
     hshim halloc hrealloc hdealloc hmemcpy_fl hmemcpy hRO hmemmove hmemset hhmac
-    h_handle_error h_assert_failed h_slice_index_fail h_panic_bounds_check
+    h_handle_error h_assert_failed h_slice_index_fail h_panic_bounds_check hOnce
 
 theorem noHeaderReceived_recv_hdr_chunk_placed_closed_okX [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
@@ -978,125 +1001,22 @@ theorem noHeaderReceived_recv_hdr_chunk_placed_closed_okX [LibsignalPlacement]
     (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym
       (withAllocVmPreserved (sessionMemmoveBoundedSpec growOneStack)))
     (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacBudgetSpec F M A lim))
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (withLsRet (libcruxHmacBudgetSpec F M A lim)))
     (h_handle_error : (Rust.withPanics ext) spqrHandleErrorSym = some Rust.panicked)
     (h_assert_failed : (Rust.withPanics ext) assertFailedRecvHdrSym = some Rust.panicked)
     (h_slice_index_fail : (Rust.withPanics ext) sliceIndexFailRecvHdrSym = some Rust.panicked)
-    (h_panic_bounds_check : (Rust.withPanics ext) panicBoundsCheckRecvHdrSym = some Rust.panicked) :
+    (h_panic_bounds_check : (Rust.withPanics ext) panicBoundsCheckRecvHdrSym = some Rust.panicked)
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     NoHeaderReceivedRecvHdrChunkPlacedOkX M A lim F ext :=
   noHeaderReceived_recv_hdr_chunk_placed_okX
     (add_chunk_cl_placed_ok_x h_handle_error hshim halloc hrealloc hmemmove)
     (polyDecodedMessagePlacedOkX_of_hooks h_handle_error
       (hookSat_sessionShimBudget_of_rustAllocShimVm hshim)
-      halloc hrealloc hdealloc hmemcpy hmemset)
+      halloc hrealloc hdealloc hmemcpy hmemset hOnce)
     hshim halloc hdealloc hmemcpy_fl hRO hhmac
     h_handle_error h_assert_failed h_slice_index_fail h_panic_bounds_check
 
 /-! ## 10. Closed Contract for Block `350` (`<EkSentCt1Received>::recv_ct2_chunk`) -/
-
-theorem ek_sent_ct1_received_recv_ct2_chunk_placed_ok_x_ofPrePostEnv [LibsignalPlacement]
-    {K : MlKem} {F : ShaCompress} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {PreEnv PostEnv : RecvCt2ChunkGhost F → List AllocEvent → Prop}
-    {ext : String → Option (State → State)} [HkdfPlacedHooks F (Rust.withPanics ext)]
-    (hsub_pre : ∀ (x : RecvCt2ChunkGhost F) {evs : List AllocEvent}, RecvCt2ChunkEnv x evs → PreEnv x evs)
-    (hsub_post : ∀ (x : RecvCt2ChunkGhost F) {evs : List AllocEvent}, RecvCt2ChunkEnv x evs → PostEnv x evs)
-    (hA : RecvCt2PlacedAlloc M A lim ext)
-    (hmemcpy : HookSat (Rust.withPanics ext) spqrMemcpySym sessionMemcpyRegionBudgetSpec)
-    (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym
-      (withAllocVmPreserved (sessionMemmoveBoundedSpec growOneStack)))
-    (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
-    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym (withVmPreserved (mlkemDecapsSpec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym' (libcruxHmacBudgetSpec F M A lim)) :
-    RecvCt2ChunkPlacedOkXOfPrePostEnv K F M A lim PreEnv PostEnv ext :=
-  recv_ct2_chunk_placed_ok_x_ofPrePostEnv hsub_pre hsub_post hA
-    (add_chunk_cl_placed_ok_x hA.handleError hA.shim hA.alloc hA.realloc hmemmove)
-    (polyDecodedMessagePlacedOkX_of_hooks hA.handleError
-      (hookSat_sessionShimBudget_of_rustAllocShimVm hA.shim)
-      hA.alloc hA.realloc hA.dealloc hmemcpy hmemset)
-    hdecaps hhmac
-
-theorem ek_sent_ct1_received_recv_ct2_chunk_placed_ok_x_ofEnv [LibsignalPlacement]
-    {K : MlKem} {F : ShaCompress} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Env : RecvCt2ChunkGhost F → List AllocEvent → Prop}
-    {ext : String → Option (State → State)} [HkdfPlacedHooks F (Rust.withPanics ext)]
-    (hsub : ∀ (x : RecvCt2ChunkGhost F) {evs : List AllocEvent}, RecvCt2ChunkEnv x evs → Env x evs)
-    (hA : RecvCt2PlacedAlloc M A lim ext)
-    (hmemcpy : HookSat (Rust.withPanics ext) spqrMemcpySym sessionMemcpyRegionBudgetSpec)
-    (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym
-      (withAllocVmPreserved (sessionMemmoveBoundedSpec growOneStack)))
-    (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
-    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym (withVmPreserved (mlkemDecapsSpec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym' (libcruxHmacBudgetSpec F M A lim)) :
-    RecvCt2ChunkPlacedOkXOfEnv K F M A lim Env ext :=
-  recv_ct2_chunk_placed_ok_x_ofEnv hsub hA
-    (add_chunk_cl_placed_ok_x hA.handleError hA.shim hA.alloc hA.realloc hmemmove)
-    (polyDecodedMessagePlacedOkX_of_hooks hA.handleError
-      (hookSat_sessionShimBudget_of_rustAllocShimVm hA.shim)
-      hA.alloc hA.realloc hA.dealloc hmemcpy hmemset)
-    hdecaps hhmac
-
-theorem ek_sent_ct1_received_recv_ct2_chunk_placed_ok_x [LibsignalPlacement]
-    {K : MlKem} {F : ShaCompress} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)} [HkdfPlacedHooks F (Rust.withPanics ext)]
-    (hA : RecvCt2PlacedAlloc M A lim ext)
-    (hmemcpy : HookSat (Rust.withPanics ext) spqrMemcpySym sessionMemcpyRegionBudgetSpec)
-    (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym
-      (withAllocVmPreserved (sessionMemmoveBoundedSpec growOneStack)))
-    (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
-    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym (withVmPreserved (mlkemDecapsSpec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym' (libcruxHmacBudgetSpec F M A lim)) :
-    RecvCt2ChunkPlacedOkX K F M A lim ext :=
-  recv_ct2_chunk_placed_ok_x hA
-    (add_chunk_cl_placed_ok_x hA.handleError hA.shim hA.alloc hA.realloc hmemmove)
-    (polyDecodedMessagePlacedOkX_of_hooks hA.handleError
-      (hookSat_sessionShimBudget_of_rustAllocShimVm hA.shim)
-      hA.alloc hA.realloc hA.dealloc hmemcpy hmemset)
-    hdecaps hhmac
-
-theorem ek_sent_ct1_received_recv_ct2_chunk_placed_ok_x_of_alloc [LibsignalPlacement]
-    {K : MlKem} {F : ShaCompress} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)} [HkdfPlacedHooks F (Rust.withPanics ext)]
-    (hA : RecvCt2PlacedAlloc M A lim ext)
-    (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym
-      (withAllocVmPreserved (sessionMemmoveBoundedSpec growOneStack)))
-    (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
-    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym (withVmPreserved (mlkemDecapsSpec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym' (libcruxHmacBudgetSpec F M A lim)) :
-    RecvCt2ChunkPlacedOkX K F M A lim ext :=
-  ek_sent_ct1_received_recv_ct2_chunk_placed_ok_x hA
-    (hookSat_sessionMemcpyRegionBudget_of_framelessAcp hA.memcpy) hmemmove hmemset hdecaps hhmac
-
-theorem ek_sent_ct1_received_recv_ct2_chunk_placed_ok_x_of_hooks [LibsignalPlacement]
-    {K : MlKem} {F : ShaCompress} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)} [HkdfPlacedHooks F (Rust.withPanics ext)]
-    (hshim : HookSat (Rust.withPanics ext) spqrRustNoAllocShimSym rustAllocShimVmSpec)
-    (halloc : HookSat (Rust.withPanics ext) spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hallocZeroed : HookSat (Rust.withPanics ext) spqrRustAllocZeroedSym (rustCliAllocBudgetSpec M A lim true))
-    (hdealloc : HookSat (Rust.withPanics ext) spqrRustDeallocSym' (rustCliDeallocBudgetSpec M A lim))
-    (hrealloc : HookSat (Rust.withPanics ext) spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmemcpy_fl : HookSat (Rust.withPanics ext) spqrMemcpySym framelessMemcpyAcpSpec)
-    (hmemcpy : HookSat (Rust.withPanics ext) spqrMemcpySym sessionMemcpyRegionBudgetSpec)
-    (hRO : HookSat (Rust.withPanics ext) spqrMemcpySym sessionMemcpyRegionROSpec)
-    (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym
-      (withAllocVmPreserved (sessionMemmoveBoundedSpec growOneStack)))
-    (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
-    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym (withVmPreserved (mlkemDecapsSpec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym' (libcruxHmacBudgetSpec F M A lim))
-    (h_handle_error : Rust.withPanics ext spqrHandleErrorSym = some Rust.panicked)
-    (h_assert_failed_u64 : Rust.withPanics ext spqrAssertFailedU64Sym = some Rust.panicked)
-    (h_slice_index_fail : Rust.withPanics ext spqrSliceIndexFailSym = some Rust.panicked)
-    (h_unwrap_failed : Rust.withPanics ext spqrUnwrapFailedSym = some Rust.panicked)
-    (h_panic_bounds_check : Rust.withPanics ext spqrPanicBoundsCheckSym = some Rust.panicked)
-    (h_panic_add_overflow : Rust.withPanics ext spqrPanicConstAddOverflowSym = some Rust.panicked) :
-    RecvCt2ChunkPlacedOkX K F M A lim ext :=
-  recv_ct2_chunk_placed_ok_x_of_hooks
-    (add_chunk_cl_placed_ok_x h_handle_error hshim halloc hrealloc hmemmove)
-    (polyDecodedMessagePlacedOkX_of_hooks h_handle_error
-      (hookSat_sessionShimBudget_of_rustAllocShimVm hshim)
-      halloc hrealloc hdealloc hmemcpy hmemset)
-    hshim halloc hallocZeroed hdealloc hrealloc hmemcpy_fl hRO hdecaps hhmac
-    h_handle_error h_assert_failed_u64 h_slice_index_fail
-    h_unwrap_failed h_panic_bounds_check h_panic_add_overflow
 
 theorem ek_sent_ct1_received_recv_ct2_chunk_placed_ok_ext_ofPrePostEnv [LibsignalPlacement]
     {K : MlKem} {F : ShaCompress} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -1109,14 +1029,16 @@ theorem ek_sent_ct1_received_recv_ct2_chunk_placed_ok_ext_ofPrePostEnv [Libsigna
     (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym
       (withAllocVmPreserved (sessionMemmoveBoundedSpec growOneStack)))
     (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
-    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym (withVmPreserved (mlkemDecapsSpec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym' (libcruxHmacBudgetSpec F M A lim)) :
+    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym' (withLsRet (libcruxHmacBudgetSpec F M A lim)))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     RecvCt2ChunkPlacedOkExtOfPrePostEnv K F M A lim PreEnv PostEnv ext :=
   recv_ct2_chunk_placed_ok_ext_ofPrePostEnv hsub_pre hsub_post hA
     (add_chunk_cl_placed_ok_x hA.handleError hA.shim hA.alloc hA.realloc hmemmove)
     (polyDecodedMessagePlacedOkX_of_hooks hA.handleError
       (hookSat_sessionShimBudget_of_rustAllocShimVm hA.shim)
-      hA.alloc hA.realloc hA.dealloc hmemcpy hmemset)
+      hA.alloc hA.realloc hA.dealloc hmemcpy hmemset hOnce)
     hdecaps hhmac
 
 theorem ek_sent_ct1_received_recv_ct2_chunk_placed_ok_ext_ofEnv [LibsignalPlacement]
@@ -1129,14 +1051,16 @@ theorem ek_sent_ct1_received_recv_ct2_chunk_placed_ok_ext_ofEnv [LibsignalPlacem
     (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym
       (withAllocVmPreserved (sessionMemmoveBoundedSpec growOneStack)))
     (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
-    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym (withVmPreserved (mlkemDecapsSpec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym' (libcruxHmacBudgetSpec F M A lim)) :
+    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym' (withLsRet (libcruxHmacBudgetSpec F M A lim)))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     RecvCt2ChunkPlacedOkExtOfEnv K F M A lim Env ext :=
   recv_ct2_chunk_placed_ok_ext_ofEnv hsub hA
     (add_chunk_cl_placed_ok_x hA.handleError hA.shim hA.alloc hA.realloc hmemmove)
     (polyDecodedMessagePlacedOkX_of_hooks hA.handleError
       (hookSat_sessionShimBudget_of_rustAllocShimVm hA.shim)
-      hA.alloc hA.realloc hA.dealloc hmemcpy hmemset)
+      hA.alloc hA.realloc hA.dealloc hmemcpy hmemset hOnce)
     hdecaps hhmac
 
 theorem ek_sent_ct1_received_recv_ct2_chunk_placed_ok_ext [LibsignalPlacement]
@@ -1147,14 +1071,16 @@ theorem ek_sent_ct1_received_recv_ct2_chunk_placed_ok_ext [LibsignalPlacement]
     (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym
       (withAllocVmPreserved (sessionMemmoveBoundedSpec growOneStack)))
     (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
-    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym (withVmPreserved (mlkemDecapsSpec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym' (libcruxHmacBudgetSpec F M A lim)) :
+    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym' (withLsRet (libcruxHmacBudgetSpec F M A lim)))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     RecvCt2ChunkPlacedOkExt K F M A lim ext :=
   recv_ct2_chunk_placed_ok_ext hA
     (add_chunk_cl_placed_ok_x hA.handleError hA.shim hA.alloc hA.realloc hmemmove)
     (polyDecodedMessagePlacedOkX_of_hooks hA.handleError
       (hookSat_sessionShimBudget_of_rustAllocShimVm hA.shim)
-      hA.alloc hA.realloc hA.dealloc hmemcpy hmemset)
+      hA.alloc hA.realloc hA.dealloc hmemcpy hmemset hOnce)
     hdecaps hhmac
 
 theorem ek_sent_ct1_received_recv_ct2_chunk_placed_ok_ext_of_alloc [LibsignalPlacement]
@@ -1164,11 +1090,13 @@ theorem ek_sent_ct1_received_recv_ct2_chunk_placed_ok_ext_of_alloc [LibsignalPla
     (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym
       (withAllocVmPreserved (sessionMemmoveBoundedSpec growOneStack)))
     (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
-    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym (withVmPreserved (mlkemDecapsSpec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym' (libcruxHmacBudgetSpec F M A lim)) :
+    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym' (withLsRet (libcruxHmacBudgetSpec F M A lim)))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     RecvCt2ChunkPlacedOkExt K F M A lim ext :=
   ek_sent_ct1_received_recv_ct2_chunk_placed_ok_ext hA
-    (hookSat_sessionMemcpyRegionBudget_of_framelessAcp hA.memcpy) hmemmove hmemset hdecaps hhmac
+    (hookSat_sessionMemcpyRegionBudget_of_framelessAcp hA.memcpy) hmemmove hmemset hdecaps hhmac hOnce
 
 theorem ek_sent_ct1_received_recv_ct2_chunk_placed_ok_ext_of_hooks [LibsignalPlacement]
     {K : MlKem} {F : ShaCompress} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -1184,20 +1112,22 @@ theorem ek_sent_ct1_received_recv_ct2_chunk_placed_ok_ext_of_hooks [LibsignalPla
     (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym
       (withAllocVmPreserved (sessionMemmoveBoundedSpec growOneStack)))
     (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
-    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym (withVmPreserved (mlkemDecapsSpec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym' (libcruxHmacBudgetSpec F M A lim))
+    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym' (withLsRet (libcruxHmacBudgetSpec F M A lim)))
     (h_handle_error : Rust.withPanics ext spqrHandleErrorSym = some Rust.panicked)
     (h_assert_failed_u64 : Rust.withPanics ext spqrAssertFailedU64Sym = some Rust.panicked)
     (h_slice_index_fail : Rust.withPanics ext spqrSliceIndexFailSym = some Rust.panicked)
     (h_unwrap_failed : Rust.withPanics ext spqrUnwrapFailedSym = some Rust.panicked)
     (h_panic_bounds_check : Rust.withPanics ext spqrPanicBoundsCheckSym = some Rust.panicked)
-    (h_panic_add_overflow : Rust.withPanics ext spqrPanicConstAddOverflowSym = some Rust.panicked) :
+    (h_panic_add_overflow : Rust.withPanics ext spqrPanicConstAddOverflowSym = some Rust.panicked)
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     RecvCt2ChunkPlacedOkExt K F M A lim ext :=
   recv_ct2_chunk_placed_ok_ext_of_hooks
     (add_chunk_cl_placed_ok_x h_handle_error hshim halloc hrealloc hmemmove)
     (polyDecodedMessagePlacedOkX_of_hooks h_handle_error
       (hookSat_sessionShimBudget_of_rustAllocShimVm hshim)
-      halloc hrealloc hdealloc hmemcpy hmemset)
+      halloc hrealloc hdealloc hmemcpy hmemset hOnce)
     hshim halloc hallocZeroed hdealloc hrealloc hmemcpy_fl hRO hdecaps hhmac
     h_handle_error h_assert_failed_u64 h_slice_index_fail
     h_unwrap_failed h_panic_bounds_check h_panic_add_overflow

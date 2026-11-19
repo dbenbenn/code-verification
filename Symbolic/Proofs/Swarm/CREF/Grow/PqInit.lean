@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.CREF.Grow.Defs
-public import Symbolic.Proofs.Swarm.CREF.Initiate.Is1aRunPure
+public import Symbolic.Proofs.Swarm.CREF.Initiate.Is1aRunPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.SHARED.StateSizePure
 import Symbolic.Proofs.Swarm.SHARED.SpqrX.Prost.MessageMerge.AppendX
 
@@ -22,7 +22,7 @@ and proves `SpqrOooBounded` for encoded `is1StateRaw` states via protobuf wire-d
 lemmas when `chain = none`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -44,13 +44,17 @@ open Symbolic.Swarm.SHARED.SpqrBytes (spqrInitOf)
 
 /-! ## `spqrInitOf` equations with `is1StateRaw` -/
 
+set_option maxRecDepth 8000 in
 theorem spqrInitOf_a2b_eq_is1StateRaw (i : ExternInterpretation) (k : Bytes) :
     spqrInitOf i k [0#8] =
-      PqRatchetState.encodeRaw (is1StateRaw (sha256CompressFunction i) .a2b k) := rfl
+      PqRatchetState.encodeRaw (is1StateRaw (sha256CompressFunction i) .a2b k) := by
+  rfl
 
+set_option maxRecDepth 8000 in
 theorem spqrInitOf_b2a_eq_is1StateRaw (i : ExternInterpretation) (k : Bytes) :
     spqrInitOf i k [1#8] =
-      PqRatchetState.encodeRaw (is1StateRaw (sha256CompressFunction i) .b2a k) := rfl
+      PqRatchetState.encodeRaw (is1StateRaw (sha256CompressFunction i) .b2a k) := by
+  rfl
 
 /-! ## Protobuf roundtrip helpers for `chain = none` -/
 

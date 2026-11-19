@@ -9,12 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bPack
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bSigMsgPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.PackWPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailWPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bPack
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bSigMsgPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.PackWPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailWPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailBWPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailCWPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.Common
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysPlacedSym
 
 /-!
 # Relocatable `[LibsignalPlacement]` `+0x8c0` `Ok` Packing, Deallocation, and Epilogue (`PreKey8c0OkWPlaced`)
@@ -23,7 +27,7 @@ Proves `preKey8c0OkW_placed_proof` (`+0x8c0 → +0x970 → +0x504 → ret`) on
 `preKeyPlacedProg H` against `(pksmTryFromSpecPlaced A).post`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -53,7 +57,7 @@ open CryptoVerification.SignalSession.Cli.RunProofs
 
 /-- The part of `w8bRowSPost ∗ w8bRowSFramePlaced` at `+0x8c0` that `PackWPlaced`
 does not read or write: passed as Pack's `frame`, refolded for the epilogue. -/
-def w8bPackJunkPlaced [LibsignalPlacement] (s0 : State) (sp' ptr : BitVec 64)
+@[expose] def w8bPackJunkPlaced [LibsignalPlacement] (s0 : State) (sp' ptr : BitVec 64)
     (regTag regVal : BitVec 32) (ik msg bytes : List (BitVec 8)) (kyberLen : BitVec 64) :
     SepProp :=
   ((sp' + 48#64) ↦₃₂ regTag) ∗ ((sp' + 52#64) ↦₃₂ regVal) ∗

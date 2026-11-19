@@ -9,9 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.PureAuxMacroLift
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.SessionShort
-public import Computational.Proofs.E2E.SignedPrims
+public import Computational.Proofs.ReductionDsl.PureAuxMacroLift -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.SessionShort -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SignedPrims -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.Soundness
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
 
 /-!
 # Structural Game-Query Subsumption Across Coin Re-encoding
@@ -22,7 +25,7 @@ identical game queries on matching response paths across coin re-encodings, and 
 lemmas for `advAvg` mixtures.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -178,30 +181,6 @@ theorem map {α β : Type} {oa₁ oa₂ : OracleComp (unifSpec + G) α}
   rw [map_eq_bind_pure_comp, map_eq_bind_pure_comp]
   exact h.bind fun a => .ret (f a)
 
-theorem isQueryBound {B : Type*} {α : Type} {oa₁ oa₂ : OracleComp (unifSpec + G) α}
-    {b : B} {canQuery : (unifSpec + G).Domain → B → Prop}
-    {cost : (unifSpec + G).Domain → B → B}
-    (h : QuerySubsumes oa₁ oa₂)
-    (hcan : ∀ n b', canQuery (.inl n) b')
-    (hcost : ∀ n b', cost (.inl n) b' = b')
-    (hb : IsQueryBound oa₂ b canQuery cost) :
-    IsQueryBound oa₁ b canQuery cost := by
-  induction h generalizing b with
-  | ret _ => trivial
-  | coin_l n k _ _ ih =>
-    rw [isQueryBound_query_bind_iff]
-    refine ⟨hcan n b, fun u => ?_⟩
-    rw [hcost n b]
-    exact ih u hb
-  | coin_r _ n k u _ ih =>
-    rw [isQueryBound_query_bind_iff] at hb
-    have hbu := hb.2 u
-    rw [hcost n b] at hbu
-    exact ih hbu
-  | game g k₁ k₂ _ ih =>
-    rw [isQueryBound_query_bind_iff] at hb ⊢
-    exact ⟨hb.1, fun r => ih r (hb.2 r)⟩
-
 theorem isQueryBoundP {α : Type} {oa₁ oa₂ : OracleComp (unifSpec + G) α}
     {p : (unifSpec + G).Domain → Prop} [DecidablePred p] {n : ℕ}
     (h : QuerySubsumes oa₁ oa₂)
@@ -224,15 +203,6 @@ theorem isQueryBoundP {α : Type} {oa₁ oa₂ : OracleComp (unifSpec + G) α}
     rw [isQueryBoundP_query_bind_iff] at hb ⊢
     exact ⟨hb.1, fun r => ih r (hb.2 r)⟩
 
-theorem allQueriesSatisfy {α : Type} {oa₁ oa₂ : OracleComp (unifSpec + G) α}
-    {P : (unifSpec + G).Domain → Prop}
-    (h : QuerySubsumes oa₁ oa₂)
-    (hP : ∀ u, P (.inl u))
-    (hb : AllQueriesSatisfy oa₂ P) :
-    AllQueriesSatisfy oa₁ P := by
-  rw [allQueriesSatisfy_def] at hb ⊢
-  exact h.isQueryBound (fun u _ => hP u) (fun _ _ => rfl) hb
-
 end Basic
 
 /-! ## Coin lifting -/
@@ -240,80 +210,6 @@ end Basic
 section LiftP
 
 variable {κ : Type} {G : OracleSpec.{0, 0} κ}
-
-theorem pure_liftP_of_mem_support {S : Sig} (I : Iface S (unifSpec + G))
-    (hFwdU : ∀ n, I.fwdU n = query (spec := unifSpec + G) (.inl n))
-    {α : Type} (c : ProbComp α) {a : α} (ha : a ∈ support c) :
-    QuerySubsumes (pure a) (I.liftP c) := by
-  induction c using OracleComp.inductionOn with
-  | pure x =>
-    rw [support_pure, Set.mem_singleton_iff] at ha
-    subst ha
-    exact .ret a
-  | query_bind n mx ih =>
-    rw [mem_support_bind_iff] at ha
-    obtain ⟨u, _, hmu⟩ := ha
-    have hstep :
-        I.liftP (liftM (OracleSpec.query (spec := unifSpec) n) >>= mx) =
-          liftM (OracleSpec.query (spec := unifSpec + G) (.inl n)) >>=
-            fun v => I.liftP (mx v) := by
-      dsimp only [Iface.liftP]
-      rw [simulateQ_query_bind]
-      change (I.fwdU n >>= fun v => I.liftP (mx v)) = _
-      rw [hFwdU n]
-      rfl
-    rw [hstep]
-    exact .coin_r (pure a) n (fun v => I.liftP (mx v)) u (ih u hmu)
-
-theorem liftP_bind_left {S : Sig} (I : Iface S (unifSpec + G))
-    (hFwdU : ∀ n, I.fwdU n = query (spec := unifSpec + G) (.inl n))
-    {α β : Type} (c : ProbComp α) (k : α → OracleComp (unifSpec + G) β)
-    (oa₂ : OracleComp (unifSpec + G) β)
-    (hk : ∀ a, QuerySubsumes (k a) oa₂) :
-    QuerySubsumes (I.liftP c >>= k) oa₂ := by
-  induction c using OracleComp.inductionOn with
-  | pure a =>
-    have hp : I.liftP (pure a) = pure a := simulateQ_pure _ a
-    rw [hp, pure_bind]
-    exact hk a
-  | query_bind n mx ih =>
-    have hstep :
-        (I.liftP (liftM (OracleSpec.query (spec := unifSpec) n) >>= mx) >>= k) =
-          liftM (OracleSpec.query (spec := unifSpec + G) (.inl n)) >>=
-            fun u => I.liftP (mx u) >>= k := by
-      dsimp only [Iface.liftP]
-      rw [simulateQ_query_bind, bind_assoc]
-      change (I.fwdU n >>= fun u => I.liftP (mx u) >>= k) = _
-      rw [hFwdU n]
-      rfl
-    rw [hstep]
-    exact .coin_l n _ oa₂ fun u => ih u
-
-theorem liftP_map_uniformSample {S₁ S₂ : Sig}
-    (I₁ : Iface S₁ (unifSpec + G)) (I₂ : Iface S₂ (unifSpec + G))
-    (hFwdU₁ : ∀ n, I₁.fwdU n = query (spec := unifSpec + G) (.inl n))
-    (hFwdU₂ : ∀ n, I₂.fwdU n = query (spec := unifSpec + G) (.inl n))
-    {α β : Type} [SampleableType β] (c : ProbComp α) (f : α → β) :
-    QuerySubsumes (I₂.liftP c >>= fun x => pure (f x)) (I₁.liftP ($ᵗ β)) :=
-  liftP_bind_left I₂ hFwdU₂ c _ _ fun _ =>
-    pure_liftP_of_mem_support I₁ hFwdU₁ ($ᵗ β) (mem_support_uniformSample (α := β))
-
-theorem sampleBoolFig8Comp_querySubsumes (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero Pt]
-    (C : Crypto) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (lam : Pt)
-    {S₁ : Sig} (I₁ : Iface S₁ (unifSpec + G))
-    (I₂ : Iface (atomicSig ℓ Pt) (unifSpec + G))
-    (hFwdU₁ : ∀ n, I₁.fwdU n = query (spec := unifSpec + G) (.inl n))
-    (hFwdU₂ : ∀ n, I₂.fwdU n = query (spec := unifSpec + G) (.inl n))
-    {Γ : List (Ty (atomicSig ℓ Pt))}
-    (sampBv128 : Comp (atomicFig8Ops ℓ Pt C Dh encPt encT lam) I₂ Γ BV128)
-    (ρ : Env Γ)
-    (hSamp : sampBv128.eval ρ = I₂.liftP ($ᵗ (BitVec 128) : ProbComp (BitVec 128))) :
-    QuerySubsumes
-      ((sampleBoolFig8Comp ℓ Pt C Dh encPt encT lam sampBv128).eval ρ)
-      (I₁.liftP ($ᵗ Bool : ProbComp Bool)) := by
-  simp only [sampleBoolFig8Comp, Comp.eval, hSamp]
-  exact liftP_map_uniformSample I₁ I₂ hFwdU₁ hFwdU₂ ($ᵗ (BitVec 128)) _
 
 end LiftP
 
@@ -768,25 +664,6 @@ end Compiler
 
 section ProtocolBounds
 
-theorem smMakesAtMostQueries_of_querySubsumes {St Msg Coins C : Type}
-    {A₁ A₂ : CryptoGames.SM.Adversary St Msg Coins C} {q : ℕ}
-    (h : QuerySubsumes A₁ A₂) (hq : CryptoGames.SM.MakesAtMostQueries A₂ q) :
-    CryptoGames.SM.MakesAtMostQueries A₁ q :=
-  h.isQueryBoundP (fun _ => by simp) hq
-
-theorem sendMsgsOk_of_querySubsumes {St Msg Coins C : Type} {ok : Msg → Bool}
-    {A₁ A₂ : CryptoGames.SM.Adversary St Msg Coins C}
-    (h : QuerySubsumes A₁ A₂)
-    (hok : CryptoGames.LibsignalSM.Proofs.SessionShort.SendMsgsOk ok A₂) :
-    CryptoGames.LibsignalSM.Proofs.SessionShort.SendMsgsOk ok A₁ :=
-  h.isQueryBoundP (fun _ => by simp [CryptoGames.LibsignalSM.Proofs.SessionShort.badSendMsg]) hok
-
-theorem smEqualPubChalls_of_querySubsumes {St Msg Coins C Pub : Type} [DecidableEq Pub]
-    {pubOf : Msg → Pub} {A₁ A₂ : CryptoGames.SM.Adversary St Msg Coins C}
-    (h : QuerySubsumes A₁ A₂) (heq : CryptoGames.SM.EqualPubChalls pubOf A₂) :
-    CryptoGames.SM.EqualPubChalls pubOf A₁ :=
-  h.isQueryBoundP (fun _ => by simp [CryptoGames.SM.unequalPubChall]) heq
-
 theorem fsaeadMakesAtMostQueries_of_querySubsumes {SS RS AD Msg C : Type}
     {R₁ R₂ : CryptoGames.FSAEAD.Adversary SS RS AD Msg C} {q : ℕ}
     (h : QuerySubsumes R₁ R₂) (hq : CryptoGames.FSAEAD.MakesAtMostQueries R₂ q) :
@@ -899,18 +776,6 @@ theorem prngAdvantage_advAvg_congr {Key State Input Output α : Type}
     CryptoGames.PRFPRNG.advantage P (advAvg oa D₁) =
       CryptoGames.PRFPRNG.advantage P (advAvg oa D₂) :=
   prngAdvantage_congr P (coinSimEquiv_advAvg oa hD)
-
-theorem fsaeadGame_mix_evalDistEq_of_coinSimEquiv {Key SS RS AD Msg C α : Type}
-    [DecidableEq AD] [DecidableEq Msg] [DecidableEq C] [SampleableType Key]
-    (fs : FSAEADScheme Key SS RS AD Msg C) (oa : ProbComp α)
-    {D₁ D₂ : α → CryptoGames.FSAEAD.Adversary SS RS AD Msg C}
-    (hD : ∀ o,
-      CoinSimEquiv
-        (fun n => query (spec := unifSpec + CryptoGames.FSAEAD.spec SS RS AD Msg C) (.inl n))
-        (D₁ o) (D₂ o)) :
-    (oa >>= fun o => CryptoGames.FSAEAD.game fs (D₁ o)) =ᵈ
-      (oa >>= fun o => CryptoGames.FSAEAD.game fs (D₂ o)) :=
-  EvalDistEq.rfl.bind fun o => fsaeadGame_evalDistEq_of_coinSimEquiv fs (hD o)
 
 end AdvAvg
 

@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Assemble
-public import LibsignalBinary.Proofs.CodeLayout
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Repr
+import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Repr -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
-import GeneratedLean.LibsignalSessionObj
+public import ProofLib.GenDecodes
 
 /-!
 # `<Ct1SentEkReceived>::send_ct2`: Pure Inversion and Memory Helpers
@@ -24,7 +24,7 @@ Provides pure model inversion lemmas (`send_ct2`, `macCt`, `encaps2`), `.rodata`
 and `Vec<u8>` / encapsulation-state byte-slice splitting helpers for `Ct1SentEkReceived::send_ct2`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Unchunked
 
@@ -155,19 +155,8 @@ theorem macCtUnchecked_eq_hmacWith (F : ShaState → List (BitVec 8) → ShaStat
   unfold Authenticator.macCtUnchecked Authenticator.macSize
   exact List.take_of_length_le (by rw [length_hmacWith])
 
-/-- `.rodata` slice (35 bytes): `Authenticator.ctLabel`. -/
-theorem rodata_ctLabel {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + bv% (ls_str% "Signal_PQCKA_V1_MLKEM768:ciphertext")) ↦ᵣ Authenticator.ctLabel) ∗ P := by
-  have hhb := loads_rodata_holdsBytes himg hF
-    (off := num% (ls_str% "Signal_PQCKA_V1_MLKEM768:ciphertext")) (n := 35) (bs := Authenticator.ctLabel)
-    (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel)
-    (by rfl_kernel) (by decide) (by rfl_kernel)
-  have ⟨h1, h2⟩ := holdsBytes_ro hhb
-  exact Satisfies.rodata_intro h1 h2 (by decide) hP
-
 /-- Remaining heap tail of a `Vec<u8>` when `(ptr ↦ₛ bs)` is borrowed out. -/
-def vecU8Tail (A : RustAlloc) (cap ptr : BitVec 64) (bs : Bytes) : SepProp :=
+@[expose] def vecU8Tail (A : RustAlloc) (cap ptr : BitVec 64) (bs : Bytes) : SepProp :=
   if (cap == 0#64) = true then emp
   else A.live ptr cap.toNat 1 ∗ memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)
 

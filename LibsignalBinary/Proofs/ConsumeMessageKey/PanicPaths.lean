@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.Fetch
-import LibsignalBinary.Proofs.Common.CallInv
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.Fetch -- proof-setup: allow-public-import
+import ProofLib
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.FindIndexCodeSym
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym
@@ -31,24 +31,12 @@ Symbolic execution of the `consume_message_key` panic branches (Block 24):
   (`expect_failed` at `+0x99c`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalSession
 
 open Arm64 ProofLib CryptoGames CryptoGames.HMAC CryptoGames.LibsignalSession
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
-
-/-- Store-loop missing-chain panic contract (`LoopNoChainPanicSpec`). -/
-theorem loopNoChainPanic_ok (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
-    (alloc : String → Option (State → State)) (img : Obj.Image) :
-    LoopNoChainPanicSpec F A alloc img := by
-  exact PanicPaths.loopNoChainPanic_ok' F A alloc img
-
-/-- Epilogue overflow and missing-chain panic contract (`EpiloguePanicSpec`). -/
-theorem epiloguePanic_ok (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
-    (alloc : String → Option (State → State)) (img : Obj.Image) :
-    EpiloguePanicSpec F A alloc img := by
-  exact PanicPaths.epiloguePanic_ok' F A alloc img
 
 /-- Placed store-loop missing-chain panic contract. -/
 theorem loopNoChainPanic_placed_ok [LibsignalPlacement]

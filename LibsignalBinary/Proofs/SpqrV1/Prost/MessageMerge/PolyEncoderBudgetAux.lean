@@ -9,18 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoderBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoder
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderClPlaced
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoderBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoder
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderClPlaced
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirection
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParams -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Shared Exit/Skip & Tag-1 Budget Lemmas for `PolynomialEncoder::merge` (Block `297`)
@@ -29,7 +34,7 @@ Provides `PolyEncoderMergeEnv` fuel helpers, relocatable `[LibsignalPlacement]` 
 and unknown-tag skip lemmas, and the `withLsCodeRoLoaded` tag-1 (`idx`) varint step on Block `297`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

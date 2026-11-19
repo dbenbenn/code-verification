@@ -9,9 +9,40 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedFS
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedFS -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma9
 import ProofLib.SepLogic.WP.StateNorm
+import Computational.Proofs.CryptoGames.FSAEAD.HybridLazy
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5On
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Start
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux
+import Computational.Proofs.E2E.RefuseCorrB0Core
+import Computational.Proofs.E2E.Relabel.GameEq
+import Computational.Proofs.E2E.SpkHop1A
+import Computational.Proofs.HeadlineV1.CouplingV1
+import Computational.Proofs.HeadlineV1.SignedRefineC
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.Fig8Atomic
+import Computational.Proofs.ReductionDsl.Fig8ExcessCosts
+import Computational.Proofs.ReductionDsl.Fig8SourceCosts
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.MacroLift
+import Computational.Proofs.ReductionDsl.PureAuxMacroLift
+import Computational.Proofs.ReductionDsl.SM.DeliverForge
+import Computational.Proofs.ReductionDsl.SM.Engine
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.ReductionDsl.SM.RedCKA
+import Computational.Proofs.ReductionDsl.SM.RedFS
+import Computational.Proofs.ReductionDsl.SM.RedPRNG
+import Computational.Proofs.ReductionDsl.SM.Theorem1
+import Computational.Proofs.ReductionDsl.Soundness
+import Computational.Proofs.SessionCostedFig8.Bundles
+import Computational.Proofs.SessionCostedFig8.ProgSizeBounds
+import Computational.Proofs.SpecLemmas.Reductions.Primitives.CKA.CostedTables
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
 
 /-!
 # Shifted-Paper Hop 1 at `Δ = 2`
@@ -21,7 +52,7 @@ Step lemmas and synchronization invariant for `lemma9_df_shifted_dir2_paper`, bo
 of `redCKAAuthDFShiftedDir2Paper`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,7 +73,7 @@ variable {KC Γ CCoins T I KR Sig K SS RS M E : Type}
   [SampleableType KR] [SampleableType KC] [SampleableType CCoins] [SampleableType I]
   [SampleableType K]
 
-def DoomedAuthShiftedDir2Paper {St Msg C : Type} (l : ℕ) (s : GameState St Msg C) : Prop :=
+@[expose] def DoomedAuthShiftedDir2Paper {St Msg C : Type} (l : ℕ) (s : GameState St Msg C) : Prop :=
   Doomed1 (some (l - 1)) (l + 1) s ∨ Doomed2 (l + 1) s ∨
     Doomed3 (some (l - 1)) (l + 1) s ∨ (Party.senderOf (l + 1), l + 1) ∈ s.corrs ∨
     (s.win = true ∧ l - 1 ∉ s.leaks)
@@ -589,7 +620,7 @@ theorem sync9ShiftedDir2_init (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG
 local notation "ASpecDF" =>
   unifSpec + specDF (PartyState Γ T Sig SS RS) M CCoins (Header T × E)
 
-def runLDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def runLDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (qep l : ℕ) {α : Type}
     (oa : AdversaryCompDF (PartyState Γ T Sig SS RS) M CCoins (Header T × E) α)
     (s : GameState (PartyState Γ T Sig SS RS) M (Header T × E)) : ProbComp Bool :=
@@ -598,7 +629,7 @@ def runLDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR
       (Config.auth (l + 1))) oa).run s) >>=
     fun res => pure (res.2.win && authOKDir2 (some (l - 1)) (l + 1) res.2)
 
-def runRDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def runRDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (qep l : ℕ) {α : Type}
     (oa : AdversaryCompDF (PartyState Γ T Sig SS RS) M CCoins (Header T × E) α)
     (es : EState (PartyState (Option Γ) T Sig SS RS) M (Header T × E) (CKAStateShifted Γ T I))

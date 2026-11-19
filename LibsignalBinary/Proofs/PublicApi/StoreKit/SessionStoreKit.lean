@@ -10,10 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.PublicApi.StoreKit.Defs
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs
-public import LibsignalBinary.Proofs.PublicApi.StoreSession.StoreCallSite
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreSession.StoreCallSite -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.StoreKit
 
@@ -60,21 +61,21 @@ theorem PublicApiHooks.toNoSessionStore {C : Crypto} {A : RustAlloc} {S : SpqrMo
 /-- The 48-byte `Poll<Result<(), SPE>>` written by `store_session`'s future poll:
     on `Ok(())`, word 0 is `-2` (`0xFFFFFFFFFFFFFFFE`) and bytes `8..48` are uninspected;
     on `Err(())`, word 0 is `speWord 26` followed by the `ApplicationCallbackError` payload. -/
-def storePollOutAt (b out : BitVec 64) : Except Unit Unit → SepProp
+@[expose] def storePollOutAt (b out : BitVec 64) : Except Unit Unit → SepProp
   | .ok () => (out ↦₆₄ 0xFFFFFFFFFFFFFFFE#64) ∗ memRegion (out + 8#64) 40
   | .error () =>
     -- Hook-store error description string (`"store hook"`, unreachable for infallible in-memory kits)
-    (out ↦₆₄ 0x800000000000001A#64) ∗ ((out + 8#64) ↦₆₄ (b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}")))) ∗
+    (out ↦₆₄ 0x800000000000001A#64) ∗ ((out + 8#64) ↦₆₄ b) ∗
       ((out + 0x10#64) ↦₆₄ 10#64) ∗ ((out + 0x18#64) ↦₆₄ 1#64) ∗
-      ((out + 0x20#64) ↦₆₄ (b + bv% (ls_xref% (ls_off% "<libsignal_protocol::fingerprint::ScannableFingerprint>::serialize" + 620) (ls_off% "<libsignal_protocol::fingerprint::ScannableFingerprint>::serialize" + 624) + 16))) ∗ ((b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}"))) ↦ᵣ storeHookStr) ∗
+      ((out + 0x20#64) ↦₆₄ (b + 16#64)) ∗ (b ↦ᵣ storeHookStr) ∗
       memRegion (out + 0x28#64) 8
 
 /-- Pure data, trace projections, answer relations, and separation-logic predicates of a
     `SessionStore` implementation. -/
 structure SessionStoreSpec (A : RustAlloc) (b : BitVec 64) where
-  /-- `SessionStore` trait-object vtable address (`E₀`: `b + 0x4dbf8#64`). -/
+  /-- `SessionStore` trait-object vtable address. -/
   ss_vt : BitVec 64
-  /-- `IdentityKeyStore` trait-object vtable address (`E₀`: `b + 0x4dc20#64`). -/
+  /-- `IdentityKeyStore` trait-object vtable address. -/
   id_vt : BitVec 64
   /-- Logical state of the session store (`Unit` for `E₀`). -/
   StoreState : Type
@@ -194,7 +195,7 @@ variable {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
 
 /-- Resulting `StoreState` after executing a list of `StoreCall`s starting from `st0`:
     `storeUpdate st0 rem r' ans.storeSession` when `.storeSession rem r'` ran, and `st0` otherwise. -/
-def storeFinal (st0 : kit.StoreState) (ans : StoreAnswers (List (BitVec 8)) Unit) :
+@[expose] def storeFinal (st0 : kit.StoreState) (ans : StoreAnswers (List (BitVec 8)) Unit) :
     List (StoreCall AddrVal (List (BitVec 8))) → kit.StoreState
   | [] => st0
   | .storeSession rem r' :: cs =>
@@ -203,7 +204,7 @@ def storeFinal (st0 : kit.StoreState) (ans : StoreAnswers (List (BitVec 8)) Unit
 
 /-- Pure relation tying `st0` and `ans` across a list of `StoreCall`s: requires `kit.loadRel`
     on every `.loadSession` call and `kit.storeRel` on every `.storeSession` call. -/
-def callsRel (st0 : kit.StoreState) (ans : StoreAnswers (List (BitVec 8)) Unit) :
+@[expose] def callsRel (st0 : kit.StoreState) (ans : StoreAnswers (List (BitVec 8)) Unit) :
     List (StoreCall AddrVal (List (BitVec 8))) → Prop
   | [] => True
   | .loadSession rem :: cs => kit.loadRel st0 rem ans.loadSession ∧ callsRel st0 ans cs
@@ -212,7 +213,7 @@ def callsRel (st0 : kit.StoreState) (ans : StoreAnswers (List (BitVec 8)) Unit) 
 
 /-- Combined scope predicate on a loaded record `r`: both `Scope r` (from `loadPollOutAtS Scope`)
     and `kit.loadRel st0 rem (.ok (some r))` (from `kitLoadPollSpecS`). -/
-def ScopeAt (Scope : SessionRecord (List (BitVec 8)) → Prop) (st0 : kit.StoreState)
+@[expose] def ScopeAt (Scope : SessionRecord (List (BitVec 8)) → Prop) (st0 : kit.StoreState)
     (rem : AddrVal) (r : SessionRecord (List (BitVec 8))) : Prop :=
   Scope r ∧ kit.loadRel st0 rem (.ok (some r))
 
@@ -245,9 +246,9 @@ theorem hookStoreBoxAt_memRegion (box self addrA recA : BitVec 64) (st : BitVec 
         (sepConj_mono_left (pointsTo8_entails_memRegion _ _))))
 
 /-- Canonical `E₀` (`HookSessionStore`) instance of `SessionStoreSpec`. -/
-def hookSessionStoreSpec (A : RustAlloc) (b : BitVec 64) : SessionStoreSpec A b where
-  ss_vt := b + bv% (ls_xref% (ls_off% "<libsignal_protocol::proto::wire::PreKeySignalMessage as core::fmt::Debug>::fmt" + 100) (ls_off% "<libsignal_protocol::proto::wire::PreKeySignalMessage as core::fmt::Debug>::fmt" + 104) + 8)
-  id_vt := b + bv% (ls_xref% (ls_off% "<libsignal_protocol::proto::wire::PreKeySignalMessage as core::fmt::Debug>::fmt" + 136) (ls_off% "<libsignal_protocol::proto::wire::PreKeySignalMessage as core::fmt::Debug>::fmt" + 140) + 16)
+@[expose] def hookSessionStoreSpec (A : RustAlloc) (b : BitVec 64) : SessionStoreSpec A b where
+  ss_vt := b
+  id_vt := b
   StoreState := Unit
   storeAt := fun _ _ => .emp
   RecOk := fun _ => True
@@ -262,15 +263,15 @@ def hookSessionStoreSpec (A : RustAlloc) (b : BitVec 64) : SessionStoreSpec A b 
   traceOf_load_trust_save := fun _ _ _ _ _ => rfl
   traceOf_all4 := fun _ _ _ _ _ _ => rfl
   traceOf_load_store := fun _ _ _ _ => rfl
-  loadShimOff := bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 16712)
-  loadFutVtOff := bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}") - 16)
-  loadPollOff := bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15748)
-  loadFutDropOff := bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15744)
+  loadShimOff := 0#64
+  loadFutVtOff := 0#64
+  loadPollOff := 0#64
+  loadFutDropOff := 256#64
   loadBoxSize := 24
-  storeShimOff := bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 16792)
-  storeFutVtOff := bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}") - 16)
-  storePollOff := bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15988)
-  storeFutDropOff := bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15744)
+  storeShimOff := 0#64
+  storeFutVtOff := 0#64
+  storePollOff := 0#64
+  storeFutDropOff := 256#64
   storeBoxSize := 32
   loadShimStack := loadSessionShimStack
   loadPollStack := loadSessionPollStack
@@ -289,10 +290,10 @@ def hookSessionStoreSpec (A : RustAlloc) (b : BitVec 64) : SessionStoreSpec A b 
   loadBoxSize_lt := by decide
   storeBoxSize_lt := by decide
   loadFutDrop_ne_zero := fun hb h => by
-    rw [show b = 0#64 - bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15744) by rw [← h, BitVec.add_sub_cancel]] at hb
+    rw [show b = 0#64 - 256#64 by rw [← h, BitVec.add_sub_cancel]] at hb
     exact absurd hb (by decide)
   storeFutDrop_ne_zero := fun hb h => by
-    rw [show b = 0#64 - bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15744) by rw [← h, BitVec.add_sub_cancel]] at hb
+    rw [show b = 0#64 - 256#64 by rw [← h, BitVec.add_sub_cancel]] at hb
     exact absurd hb (by decide)
 
 theorem hookSessionStoreSpec_callsRel_true {A : RustAlloc} {b : BitVec 64}
@@ -309,7 +310,7 @@ theorem hookSessionStoreSpec_callsRel_true {A : RustAlloc} {b : BitVec 64}
     · exact ⟨trivial, ih⟩
 
 /-- Generic `load_session` shim spec parameterized by `kit : SessionStoreSpec A b`. -/
-def kitLoadShimSpec {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b) :
+@[expose] def kitLoadShimSpec {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b) :
     Spec LoadShimCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x1 = x.addrA⌝ ∗ A.pool ∗
@@ -323,7 +324,7 @@ def kitLoadShimSpec {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Generic `store_session` shim spec parameterized by `kit : SessionStoreSpec A b`. -/
-def kitStoreShimSpec {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b) :
+@[expose] def kitStoreShimSpec {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b) :
     Spec StoreShimCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x1 = x.addrA ∧ s.readReg64 .x2 = x.recA⌝ ∗
@@ -336,27 +337,8 @@ def kitStoreShimSpec {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b
       A.pool ∗ stackAt s0.sp kit.storeShimStack
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-/-- Generic `load_session` poll spec parameterized by `kit : SessionStoreSpec A img.base`. -/
-def kitLoadPollSpecS {A : RustAlloc} (img : Obj.Image) (kit : SessionStoreSpec A img.base)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)) :
-    Spec (LoadPollCall × BitVec 64 × kit.StoreState) where
-  pre := fun (x, self, st0) s =>
-    ⌜img.FrozenLoaded s ∧ s.symtab = img.symtab ∧
-      s.readReg64 .x0 = x.fut ∧ s.readReg64 .x8 = x.out ∧ kit.addrOk x.addr.val⌝ ∗
-      kit.loadBoxAt x.fut self x.addrA 0#8 ∗ kit.storeAt self st0 ∗ memRegion x.out 368 ∗
-      protocolAddressAt A x.addr x.addrA ∗ A.pool ∗ stackAt s.sp kit.loadPollStack
-  post := fun (x, self, st0) s0 sf =>
-    ∃∗ ans : Except Unit (Option (SessionRecord (List (BitVec 8)))),
-      ⌜kit.loadRel st0 x.addr.val ans ∧
-        sf.trace = s0.trace ++ kit.loadEvs encRecord x.addr.val ans⌝ ∗
-      kit.loadBoxAt x.fut self x.addrA 1#8 ∗ kit.storeAt self st0 ∗
-      loadPollOutAtS Scope A img.base x.out ans ∗
-      protocolAddressAt A x.addr x.addrA ∗ A.pool ∗ stackAt s0.sp kit.loadPollStack
-  onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
 /-- Generic `store_session` poll spec parameterized by `kit : SessionStoreSpec A b`. -/
-def kitStorePollSpec {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
+@[expose] def kitStorePollSpec {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)) :
     Spec (StorePollCall × BitVec 64 × kit.StoreState) where
   pre := fun (x, self, st0) s =>
@@ -379,13 +361,6 @@ def kitStorePollSpec {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b
       A.pool ∗ stackAt s0.sp kit.storePollStack
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-/-- The `load_session` poll spec with `kit.envOk` on the entry files. -/
-abbrev kitLoadPollSpecSE {A : RustAlloc} (img : Obj.Image) (kit : SessionStoreSpec A img.base)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)) :
-    Spec (LoadPollCall × BitVec 64 × kit.StoreState) :=
-  withEnvPre (kitLoadPollSpecS img kit Scope encRecord) fun s => kit.envOk s.fs.files
-
 /-- The `store_session` poll spec with `kit.envOk` on the entry files. -/
 abbrev kitStorePollSpecE {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)) :
@@ -393,68 +368,8 @@ abbrev kitStorePollSpecE {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec
   withEnvPre (kitStorePollSpec kit encRecord) fun s => kit.envOk s.fs.files
 
 /-- The session store's own trace events contain no file system event (`FsCtx`'s `Q`). -/
-def SessionStoreSpec.Quiet {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b) : Prop :=
+@[expose] def SessionStoreSpec.Quiet {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b) : Prop :=
   (∀ encRecord rem ans, NoFsEv (kit.loadEvs encRecord rem ans)) ∧
     (∀ encRecord rem r ans, NoFsEv (kit.storeEvs encRecord rem r ans))
-
-/-- Read-only `.rodata` vtable slots required by `kit : SessionStoreSpec A img.base` under
-    `img.FrozenLoaded`. -/
-structure KitVtablesOk {A : RustAlloc} (img : Obj.Image) (kit : SessionStoreSpec A img.base) : Prop where
-  loadSlot : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((kit.ss_vt + 0x18#64) ↦₆₄ᵣ (img.base + kit.loadShimOff)) ∗ P
-  storeSlot : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((kit.ss_vt + 0x20#64) ↦₆₄ᵣ (img.base + kit.storeShimOff)) ∗ P
-  saveSlot : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((kit.id_vt + 0x28#64) ↦₆₄ᵣ (img.base + bv% (ls_off% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#3]" + 88))) ∗ P
-  trustSlot : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((kit.id_vt + 0x30#64) ↦₆₄ᵣ (img.base + bv% (ls_off% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#3]" + 184))) ∗ P
-  loadFutDrop : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.loadFutVtOff) ↦₆₄ᵣ (img.base + kit.loadFutDropOff)) ∗ P
-  loadFutSize : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.loadFutVtOff + 8#64) ↦₆₄ᵣ BitVec.ofNat 64 kit.loadBoxSize) ∗ P
-  loadFutAlign : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.loadFutVtOff + 0x10#64) ↦₆₄ᵣ 8#64) ∗ P
-  loadFutPoll : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.loadFutVtOff + 0x18#64) ↦₆₄ᵣ (img.base + kit.loadPollOff)) ∗ P
-  storeFutDrop : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.storeFutVtOff) ↦₆₄ᵣ (img.base + kit.storeFutDropOff)) ∗ P
-  storeFutSize : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.storeFutVtOff + 8#64) ↦₆₄ᵣ BitVec.ofNat 64 kit.storeBoxSize) ∗ P
-  storeFutAlign : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.storeFutVtOff + 0x10#64) ↦₆₄ᵣ 8#64) ∗ P
-  storeFutPoll : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.storeFutVtOff + 0x18#64) ↦₆₄ᵣ (img.base + kit.storePollOff)) ∗ P
-
-/-- Full `SessionStoreKitOkS` bundle for a `SessionStoreSpec` at scope `Scope`. -/
-structure SessionStoreKitOkS {A : RustAlloc} {img : Obj.Image} (kit : SessionStoreSpec A img.base)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop)
-    (C : Crypto) (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop where
-  loadShim : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + kit.loadShimOff)
-    ((kitLoadShimSpec kit).inImage img)
-  loadPoll : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + kit.loadPollOff)
-    (kitLoadPollSpecSE img kit Scope encRecord)
-  loadFutDrop : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + kit.loadFutDropOff)
-    futDropSpec
-  storeShim : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + kit.storeShimOff)
-    ((kitStoreShimSpec kit).inImage img)
-  storePoll : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + kit.storePollOff)
-    ((kitStorePollSpecE kit encRecord).inImage img)
-  storeFutDrop : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + kit.storeFutDropOff)
-    futDropSpec
-  trustShim : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + bv% (ls_off% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#3]" + 184))
-    (isTrustedShimSpec A img.base)
-  trustPoll : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 16328))
-    (isTrustedPollSpec A img.base)
-  saveShim : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + bv% (ls_off% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#3]" + 88))
-    (saveIdentityShimSpec A img.base)
-  savePoll : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 16192))
-    (saveIdentityPollSpec A img.base)
-  idFutDrop : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15744)) futDropSpec
-
-abbrev SessionStoreKitOk {A : RustAlloc} {img : Obj.Image} (kit : SessionStoreSpec A img.base)
-    (C : Crypto) (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
-  SessionStoreKitOkS kit RecordInScope C encRecord ctl abs
 
 end CryptoVerification.LibsignalPublicApi.StoreKit

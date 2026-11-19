@@ -10,10 +10,18 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionSpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.ShimsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.ShimsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import VerifiedLibraries.Musl.Spec
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
 
 /-!
 # Placed CLI `SessionFiles` Store Specification
@@ -21,7 +29,7 @@ import Arm64.Trusted.Spec.SepLogic
 Relocatable `[LibsignalPlacement]` instantiation of `cliSessionStoreSpec` at base `0#64`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 
 namespace CryptoVerification.SignalSession.Cli.KitInst
@@ -39,7 +47,7 @@ open CryptoVerification.SignalSession.Cli.Placed
 open CryptoVerification.SignalSession.Cli.RunProofs.Initiate.StoreCalleesProofs
 
 /-- Relocatable `SessionStoreSpec` for CLI `SessionFiles` at base `0#64`. -/
-def cliSessionStoreSpecPlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def cliSessionStoreSpecPlaced [LibsignalPlacement] (A : RustAlloc)
     (rd : ReadRule) (F0 : FsFiles) (pathOk : List (BitVec 8) → Prop)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (peer : AddrGhost)
     (s1 s2 s3 s4 : Nat) : SessionStoreSpec A 0#64 :=
@@ -63,18 +71,6 @@ theorem cliSessionStoreSpecPlaced_quiet [LibsignalPlacement] {A : RustAlloc}
     {peer : AddrGhost} {s1 s2 s3 s4 : Nat} :
     (cliSessionStoreSpecPlaced A rd F0 pathOk Scope peer s1 s2 s3 s4).Quiet :=
   ⟨fun _ _ _ => NoFsEv.nil, fun _ _ _ _ => NoFsEv.nil⟩
-
-theorem cliSessionStoreSpecPlaced_storeUpdate_inv [LibsignalPlacement] {A : RustAlloc}
-    {rd : ReadRule} {F0 : FsFiles}
-    {pathOk : List (BitVec 8) → Prop} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {peer : AddrGhost} {s1 s2 s3 s4 : Nat} {g : DirGhost} {rem : AddrVal}
-    {rec : SessionRecord (List (BitVec 8))} {ans : Except Unit Unit}
-    (hinv : CliSessInv rd F0 pathOk Scope peer g) (hrem : rem = peer.val)
-    (hrec : (cliSessionStoreSpec A 0#64 rd F0 pathOk Scope peer s1 s2 s3 s4).RecOk rec) :
-    CliSessInv rd F0 pathOk Scope peer
-      ((cliSessionStoreSpecPlaced A rd F0 pathOk Scope peer s1 s2 s3 s4).storeUpdate g rem rec ans) :=
-  cliSessionStoreSpec_storeUpdate_inv (A := A) (b := 0#64)
-    (s1 := s1) (s2 := s2) (s3 := s3) (s4 := s4) (ans := ans) hinv hrem hrec
 
 theorem cliSessionStoreSpecPlaced_futDrop [LibsignalPlacement] (H : LibsignalHooks) :
     subroutine_ok (lsProg_547 H) (lsmpl.base 547) futDropSpec :=

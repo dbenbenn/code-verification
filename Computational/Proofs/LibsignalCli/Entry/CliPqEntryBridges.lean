@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.Entry.CliPqDirRoundtrip
+public import Computational.Proofs.LibsignalCli.Entry.CliPqDirRoundtrip -- proof-setup: allow-public-import
 public import Computational.Specifications.Session.StatementSpkModel
-public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Lazy
+public import Computational.Proofs.CryptoGames.FSAEAD.Lazy
 public import Computational.Specifications.Pqxdh.Game
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.Crypto
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
@@ -28,7 +28,7 @@ SPQR-V1 session model (`paramsPqIds` and `paramsPqBIds`), proving `GhostState.Al
 `EpochGhost` commutation, and `CliSpecPqxdh` commutation for whisper and pre-key messages.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,20 +47,20 @@ local notation "RawBytes" => List (BitVec 8)
 /-! ## SPQR-V1 `Params` at arbitrary identity keys -/
 
 /-- `pqxdhSessionParams W` generalized to caller-chosen identity keys `idA`, `idB`. -/
-def paramsPqIds (W : PEParams) (idA idB : IdentityKey) :
+@[expose] def paramsPqIds (W : PEParams) (idA idB : IdentityKey) :
     Params RawBytes RawBytes :=
   ⟨W.C, protoSignalCodec, pqxdhSpqrSession W, idA, idB,
     serializedPartyAddresses LibsignalTripleRatchetRepr.uuidTryParse .A .B,
     serializedPartyAddresses LibsignalTripleRatchetRepr.uuidTryParse .B .A⟩
 
 /-- `pqxdhSessionParams W` with 512-bit uniform `send` coins and caller-chosen identity keys. -/
-def paramsPqBIds (W : PEParams) (idA idB : IdentityKey) :
+@[expose] def paramsPqBIds (W : PEParams) (idA idB : IdentityKey) :
     Params RawBytes (BitVec 512) :=
   ⟨W.C, protoSignalCodec, spqrV1SessionUniformCoins W.C.F W.Q.K, idA, idB,
     serializedPartyAddresses LibsignalTripleRatchetRepr.uuidTryParse .A .B,
     serializedPartyAddresses LibsignalTripleRatchetRepr.uuidTryParse .B .A⟩
 
-def coinBytesVec64 (r : BitVec 512) : List.Vector (BitVec 8) 64 :=
+@[expose] def coinBytesVec64 (r : BitVec 512) : List.Vector (BitVec 8) 64 :=
   ⟨coinBytes r, coinBytes_length r⟩
 
 @[simp]
@@ -96,7 +96,7 @@ structure CliDirState where
   dirFiles : List (String × List (BitVec 8))
   epochs : EpochGhost
 
-def cliDirStateOf (W : PEParams) (st : PqParty) : CliDirState :=
+@[expose] def cliDirStateOf (W : PEParams) (st : PqParty) : CliDirState :=
   { party := st.party
     candidatePaths := pqPartyCandidatePathsOf st
     dirFiles := encodeDir W st
@@ -105,7 +105,7 @@ def cliDirStateOf (W : PEParams) (st : PqParty) : CliDirState :=
       | none => ⟨0, []⟩ }
 
 /-- Run `recv <peer>` on whisper wire `2 ‖ c` and update `EpochGhost` (`DEV-M2`). -/
-def cliPqRecvWhisperDir (run : CliRun) (s : CliDirState) (c : RawBytes)
+@[expose] def cliPqRecvWhisperDir (run : CliRun) (s : CliDirState) (c : RawBytes)
     (rc : BitVec 256) : Option (CliDirState × ℕ × ℕ × RawBytes) :=
   match run (cliPqRecvInputsFromFiles s.party s.dirFiles (wireWhisper :: c) rc),
       SignalMessage.tryFrom protoSignalCodec c with
@@ -118,7 +118,7 @@ def cliPqRecvWhisperDir (run : CliRun) (s : CliDirState) (c : RawBytes)
   | _, _ => none
 
 /-- Run `recv <peer>` on pre-key message `3 ‖ m.bytes` when no session exists yet. -/
-def cliPqRecvPrekeyInitDir (run : CliRun) (s : CliDirState) (m : PreKeyMessageFields)
+@[expose] def cliPqRecvPrekeyInitDir (run : CliRun) (s : CliDirState) (m : PreKeyMessageFields)
     (rc : BitVec 256) : Option (CliDirState × ℕ × ℕ × RawBytes) :=
   match run (cliPqRecvInputsFromFiles s.party s.dirFiles (wirePrekey :: m.bytes) rc),
       SignalMessage.tryFrom protoSignalCodec m.inner with
@@ -132,7 +132,7 @@ def cliPqRecvPrekeyInitDir (run : CliRun) (s : CliDirState) (m : PreKeyMessageFi
   | _, _ => none
 
 /-- Run `recv <peer>` on pre-key message `3 ‖ m.bytes` when a matching session already exists. -/
-def cliPqRecvPrekeyMatchingDir (run : CliRun) (s : CliDirState) (m : PreKeyMessageFields)
+@[expose] def cliPqRecvPrekeyMatchingDir (run : CliRun) (s : CliDirState) (m : PreKeyMessageFields)
     (rc : BitVec 256) : Option (CliDirState × ℕ × ℕ × RawBytes) :=
   match run (cliPqRecvInputsFromFiles s.party s.dirFiles (wirePrekey :: m.bytes) rc),
       SignalMessage.tryFrom protoSignalCodec m.inner with
@@ -1288,7 +1288,7 @@ theorem cliPqRecvPrekeyMatchingDir_eq_paramsPqBIds_receive
         rfl
 
 /-- Extract the 256-bit `aliceCoins` word from bytes `160..192` of a 192-byte `init` tape (`DEV-PQ6`). -/
-def tapeAliceCoins (t : List.Vector (BitVec 8) initiateTapeLen) : BitVec 256 :=
+@[expose] def tapeAliceCoins (t : List.Vector (BitVec 8) initiateTapeLen) : BitVec 256 :=
   HKDF.bytesToKey32 ((t.toList.drop 160).take 32)
 
 end CryptoVerification.SignalSession

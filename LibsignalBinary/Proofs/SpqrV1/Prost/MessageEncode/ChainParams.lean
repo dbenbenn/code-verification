@@ -10,9 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBase
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBasePlaced
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
@@ -26,7 +25,7 @@ Proves `subroutine_ok` contracts for `prost::encoding::message::encode::<ChainPa
 (`0x52170`, Block `313`) and re-exports `[local#1]` from `ChainParams1`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageEncode
 
@@ -63,11 +62,8 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 private theorem bv_pc_add_sub_cancel (a b : BitVec 64) : a + (b - a) = b := by bv_omega
 
 /-- Program/entry/callee relation for `encode<ChainParams> [local#2]` (`0x4cc94`, block `313`). -/
-def IsCp2EntryProg (prog : Program) (entry varint_pc reserve_pc : BitVec 64) : Prop :=
-  (∃ b ext, prog = tripleRatchetProgAtExt b ext ∧
-    prog.fnAddr encodeChainParams2Name = entry ∧
-    varint_pc = entry + 18446744073709532576#64 ∧
-    reserve_pc = entry + 3888#64) ∨
+@[expose] def IsCp2EntryProg (prog : Program) (entry varint_pc reserve_pc : BitVec 64) : Prop :=
+  False ∨
   (∃ (_ : LibsignalPlacement) (H : String → Option (State → State)),
     prog = lsProg_313 H ∧ entry = (blkPl_313).base ∧
     varint_pc = (blkPl_292).base ∧ reserve_pc = (blkPl_320).base)
@@ -75,39 +71,31 @@ def IsCp2EntryProg (prog : Program) (entry varint_pc reserve_pc : BitVec 64) : P
 private theorem isChainParamsEncodeEntryProg_of_cp2 {prog : Program} {entry varint_pc reserve_pc : BitVec 64}
     (hfn2 : IsCp2EntryProg prog entry varint_pc reserve_pc) :
     IsChainParamsEncodeEntryProg prog entry := by
-  rcases hfn2 with ⟨b, ext, rfl, hfn, _, _⟩ | ⟨inst, H, rfl, rfl, _, _⟩
-  · exact Or.inl ⟨b, ext, rfl, Or.inr hfn⟩
+  rcases hfn2 with h | ⟨inst, H, rfl, rfl, _, _⟩
+  · nomatch h
   · exact Or.inr (Or.inr ⟨inst, H, rfl, rfl⟩)
 
 private theorem cp2_fetch_add {prog : Program} {entry varint_pc reserve_pc : BitVec 64}
     (hfn : IsCp2EntryProg prog entry varint_pc reserve_pc)
     {k : Nat} {ins : Instr}
-    (h2 : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch
-      ((tripleRatchetProgAtExt b ext).fnAddr encodeChainParams2Name + BitVec.ofNat 64 k) = some ins)
     (h363 : ∀ [LibsignalPlacement] H,
       ((blkPC_313).rebase (blkPl_313).base H).fetch ((blkPl_313).base + BitVec.ofNat 64 k) = some ins) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some ins := by
-  rcases hfn with ⟨b, ext, rfl, rfl, _, _⟩ | ⟨inst, H, rfl, rfl, _, _⟩
-  · exact h2 b ext
+  rcases hfn with h | ⟨inst, H, rfl, rfl, _, _⟩
+  · nomatch h
   · exact @h363 inst H
 
 private theorem cp2_fetch_bl_varint {prog : Program} {entry varint_pc reserve_pc : BitVec 64}
     (hfn : IsCp2EntryProg prog entry varint_pc reserve_pc)
-    {k : Nat} {imm : BitVec 64}
-    (h_imm : (18446744073709532576#64 : BitVec 64) - BitVec.ofNat 64 k = imm)
-    (h2 : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch
-      ((tripleRatchetProgAtExt b ext).fnAddr encodeChainParams2Name + BitVec.ofNat 64 k) = some (Instr.bl imm))
+    {k : Nat}
     (h363 : ∀ [LibsignalPlacement] H,
       ((blkPC_313).rebase (blkPl_313).base H).fetch ((blkPl_313).base + BitVec.ofNat 64 k) =
         some (Instr.bl ((blkPl_313).ρ "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#3]" -
           (blkPl_313).base - BitVec.ofNat 64 k))) :
     prog.fetch (entry + BitVec.ofNat 64 k) =
       some (Instr.bl (varint_pc - (entry + BitVec.ofNat 64 k))) := by
-  rcases hfn with ⟨b, ext, rfl, rfl, rfl, _⟩ | ⟨inst, H, rfl, rfl, rfl, _⟩
-  · have h : (tripleRatchetProgAtExt b ext).fnAddr encodeChainParams2Name + 18446744073709532576#64 -
-        ((tripleRatchetProgAtExt b ext).fnAddr encodeChainParams2Name + BitVec.ofNat 64 k) = imm := by
-      rw [← h_imm]; bv_omega
-    rw [h]; exact h2 b ext
+  rcases hfn with h | ⟨inst, H, rfl, rfl, rfl, _⟩
+  · nomatch h
   · letI := inst
     have h := @h363 inst H
     simp only [blkPl_313_ρ, ls_resolve_blk_292] at h
@@ -118,21 +106,15 @@ private theorem cp2_fetch_bl_varint {prog : Program} {entry varint_pc reserve_pc
 
 private theorem cp2_fetch_b_varint {prog : Program} {entry varint_pc reserve_pc : BitVec 64}
     (hfn : IsCp2EntryProg prog entry varint_pc reserve_pc)
-    {k : Nat} {imm : BitVec 64}
-    (h_imm : (18446744073709532576#64 : BitVec 64) - BitVec.ofNat 64 k = imm)
-    (h2 : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch
-      ((tripleRatchetProgAtExt b ext).fnAddr encodeChainParams2Name + BitVec.ofNat 64 k) = some (Instr.b imm))
+    {k : Nat}
     (h363 : ∀ [LibsignalPlacement] H,
       ((blkPC_313).rebase (blkPl_313).base H).fetch ((blkPl_313).base + BitVec.ofNat 64 k) =
         some (Instr.b ((blkPl_313).ρ "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#3]" -
           (blkPl_313).base - BitVec.ofNat 64 k))) :
     prog.fetch (entry + BitVec.ofNat 64 k) =
       some (Instr.b (varint_pc - (entry + BitVec.ofNat 64 k))) := by
-  rcases hfn with ⟨b, ext, rfl, rfl, rfl, _⟩ | ⟨inst, H, rfl, rfl, rfl, _⟩
-  · have h : (tripleRatchetProgAtExt b ext).fnAddr encodeChainParams2Name + 18446744073709532576#64 -
-        ((tripleRatchetProgAtExt b ext).fnAddr encodeChainParams2Name + BitVec.ofNat 64 k) = imm := by
-      rw [← h_imm]; bv_omega
-    rw [h]; exact h2 b ext
+  rcases hfn with h | ⟨inst, H, rfl, rfl, rfl, _⟩
+  · nomatch h
   · letI := inst
     have h := @h363 inst H
     simp only [blkPl_313_ρ, ls_resolve_blk_292] at h
@@ -143,21 +125,15 @@ private theorem cp2_fetch_b_varint {prog : Program} {entry varint_pc reserve_pc 
 
 private theorem cp2_fetch_bl_reserve {prog : Program} {entry varint_pc reserve_pc : BitVec 64}
     (hfn : IsCp2EntryProg prog entry varint_pc reserve_pc)
-    {k : Nat} {imm : BitVec 64}
-    (h_imm : (3888#64 : BitVec 64) - BitVec.ofNat 64 k = imm)
-    (h2 : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch
-      ((tripleRatchetProgAtExt b ext).fnAddr encodeChainParams2Name + BitVec.ofNat 64 k) = some (Instr.bl imm))
+    {k : Nat}
     (h363 : ∀ [LibsignalPlacement] H,
       ((blkPC_313).rebase (blkPl_313).base H).fetch ((blkPl_313).base + BitVec.ofNat 64 k) =
         some (Instr.bl ((blkPl_313).ρ "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#6]" -
           (blkPl_313).base - BitVec.ofNat 64 k))) :
     prog.fetch (entry + BitVec.ofNat 64 k) =
       some (Instr.bl (reserve_pc - (entry + BitVec.ofNat 64 k))) := by
-  rcases hfn with ⟨b, ext, rfl, rfl, _, rfl⟩ | ⟨inst, H, rfl, rfl, _, rfl⟩
-  · have h : (tripleRatchetProgAtExt b ext).fnAddr encodeChainParams2Name + 3888#64 -
-        ((tripleRatchetProgAtExt b ext).fnAddr encodeChainParams2Name + BitVec.ofNat 64 k) = imm := by
-      rw [← h_imm]; bv_omega
-    rw [h]; exact h2 b ext
+  rcases hfn with h | ⟨inst, H, rfl, rfl, _, rfl⟩
+  · nomatch h
   · letI := inst
     have h := @h363 inst H
     simp only [blkPl_313_ρ, ls_resolve_blk_320] at h
@@ -168,35 +144,26 @@ private theorem cp2_fetch_bl_reserve {prog : Program} {entry varint_pc reserve_p
 
 open Lean Elab Tactic in
 elab "cp2_fetches_prog " hfn:ident kStart:num kEnd:num : tactic => do
-  let off := 0x4cd78
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  let fnOff := mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x4cd78
   for i in [kStart.getNat / 4 : kEnd.getNat / 4] do
     let k := 4 * i
     let hexK := String.ofList (Nat.toDigits 16 k)
-    let dec := mkIdent (`CryptoVerification.SpqrV1.Prost.MessageEncode |>.str
-      s!"libsignalSessionBin_decode_0x{String.ofList (Nat.toDigits 16 (off + k))}")
     let p363 := mkIdent (`CryptoVerification |>.str s!"blkPC_313_rebase_fetch_0x{hexK}")
     let kq := Syntax.mkNumLit (toString k)
     if k == 40 || k == 116 || k == 204 || k == 256 then
       evalTactic (← `(tactic|
-        have := cp2_fetch_bl_varint $hfn (k := $kq) (by decide)
-          (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff (by decide) $dec (by decide))
+        have := cp2_fetch_bl_varint $hfn (k := $kq)
           (fun [LibsignalPlacement] H => $p363 _ H)))
     else if k == 184 then
       evalTactic (← `(tactic|
-        have := cp2_fetch_b_varint $hfn (k := $kq) (by decide)
-          (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff (by decide) $dec (by decide))
+        have := cp2_fetch_b_varint $hfn (k := $kq)
           (fun [LibsignalPlacement] H => $p363 _ H)))
     else if k == 296 || k == 324 then
       evalTactic (← `(tactic|
-        have := cp2_fetch_bl_reserve $hfn (k := $kq) (by decide)
-          (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff (by decide) $dec (by decide))
+        have := cp2_fetch_bl_reserve $hfn (k := $kq)
           (fun [LibsignalPlacement] H => $p363 _ H)))
     else
       evalTactic (← `(tactic|
         have := cp2_fetch_add $hfn (k := $kq)
-          (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff (by decide) $dec (by decide))
           (fun [LibsignalPlacement] H => $p363 _ H)))
 
 private theorem step_reserve_212_2 {resStack : Nat} (hres : resStack + 48 + 64 < 2 ^ 64)
@@ -629,7 +596,7 @@ private theorem step_maxOooKeys_2 {resStack : Nat} (hres : resStack + 48 + 64 < 
         (s0.readReg64 .x21) sv3 (s0.readReg64 .x20) (s0.readReg64 .x19)) ∗ F)
     (hnext : ∀ (sf : State) (nextCap nextPtr : BitVec 64),
       sf.pc = s0.readReg64 .lr → sf.status = .Running → sf.sp = sp → sf.trace = s0.trace →
-      CalleeSavedPreserved s0 sf → StepInv s0 sf → curCap.toNat ≤ nextCap.toNat →
+      CalleeSavedPreserved s0 sf → StepInvPlaced s0 sf → curCap.toNat ≤ nextCap.toNat →
       (curBs.length + (Proto.encodeUint32Field 2#32 p.maxOooKeys).length ≤ curCap.toNat →
         nextCap = curCap ∧ nextPtr = curPtr) →
       Q sf ((vecU8At A v nextCap nextPtr (curBs ++ Proto.encodeUint32Field 2#32 p.maxOooKeys) ∗
@@ -663,7 +630,7 @@ private theorem step_maxOooKeys_2 {resStack : Nat} (hres : resStack + 48 + 64 < 
       v cap01 ptr01 sp sv3 (curBs ++ [0x10#8]) hfit_v
       hpc2 hrun2 hsp2 halign htr2 hlr2 hx0_2 hx1_2 hcc2 hcs2 (F := F) (by ac_rfl) ?_
     intro sf nextCap nextPtr hpcf hrunf hspf htrf hccf hcsf hge1 hpres1
-    have hq := hnext sf nextCap nextPtr hpcf hrunf hspf htrf hccf hcsf.2.2.2.2.2.2.2.2.1 (Nat.le_trans hge01 hge1) (by
+    have hq := hnext sf nextCap nextPtr hpcf hrunf hspf htrf hccf hcsf.2.2.2.2.2.2.2.2 (Nat.le_trans hge01 hge1) (by
       intro hle
       obtain ⟨rfl, rfl⟩ := hpres01 (by omega)
       exact hpres1 (by rw [List.length_append, List.length_singleton]; omega))
@@ -693,7 +660,7 @@ theorem chainParams2_gen_ok_prog {resStack : Nat} (hres : resStack + 48 + 64 < 2
       SepWPp prog (s0.readReg64 .lr) s0 P
         (fun s' Q =>
           ((s'.mem ⊨ Q ∗ R) → (s'.mem ⊨ (encodeChainParamsSpecOf resStack A).post x s0 s' ∗ R)) ∧
-          StepInv s0 s' ∧ s'.sp = s0.sp ∧ CalleeSavedPreserved s0 s')
+          StepInvPlaced s0 s' ∧ s'.sp = s0.sp ∧ CalleeSavedPreserved s0 s')
         (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeChainParamsSpec A).onPanic x s0 sf ∗ R)) := by
   have halign : s0.sp &&& 15#64 = 0#64 := by simpa only [State.spAligned, beq_iff_eq] using hsp_align
   have hres96 : resStack + 96 < 2 ^ 64 := by omega
@@ -758,68 +725,6 @@ theorem chainParams2_gen_ok_prog {resStack : Nat} (hres : resStack + 48 + 64 < 2
     eq_true ⟨hge_all, hpres_all⟩
   rw [hpure, pure_true, emp_sepConj, bs0_append_encodeChainParamsMsg x.bs x.tag x.p]
   convert hm using 1; ac_rfl
-
-theorem chainParams2_gen_ok_ext {resStack : Nat} (hres : resStack + 48 + 64 < 2 ^ 64)
-    {b : BitVec 64} {A : RustAlloc} {ext : String → Option (State → State)}
-    {x : EncodeChainParamsGhost} {R : SepProp} {s0 : State}
-    (hencV : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr encodeChainParams2Name + 18446744073709532576#64)
-      (withMsgEnc48CSPlaced s0 (encodeVarintFitSpecOf resStack A)))
-    (hdoR : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr encodeChainParams2Name + 3888#64)
-      (withMsgEnc48CSPlaced s0 (doReserveSpecOf resStack A)))
-    (hpc : s0.pc = (tripleRatchetProgAtExt b ext).fnAddr encodeChainParams2Name)
-    (hrun : s0.status = .Running)
-    (hpre : s0.mem ⊨ (encodeChainParamsSpecOf resStack A).pre x s0 ∗ R)
-    (hsp_align : s0.spAligned = true) :
-    ∃ P, (s0.mem ⊨ P ∗ R) ∧
-      SepWPp (tripleRatchetProgAtExt b ext) (s0.readReg64 .lr) s0 P
-        (fun s' Q =>
-          ((s'.mem ⊨ Q ∗ R) → (s'.mem ⊨ (encodeChainParamsSpecOf resStack A).post x s0 s' ∗ R)) ∧
-          s'.sp = s0.sp ∧ CalleeSavedPreserved s0 s')
-        (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeChainParamsSpec A).onPanic x s0 sf ∗ R)) := by
-  obtain ⟨P, hP, hwp⟩ := chainParams2_gen_ok_prog hres (Or.inl ⟨b, ext, rfl, rfl, rfl, rfl⟩) hencV hdoR hpc hrun hpre hsp_align
-  exact ⟨P, hP, sepWPp_mono_placed hwp (fun _ _ ⟨hq, _, hsp, hcc⟩ => ⟨hq, hsp, hcc⟩) (fun _ _ h => h)⟩
-
-theorem encode_chainParams_2_ok_ext {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    EncodeChainParams2OkExt b A ext := by
-  apply subroutine_ok_of_sepWPp; intro x R s0 hpc hrun hpre hsp
-  have henc0 : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr encodeChainParams2Name + 18446744073709532576#64)
-      (encodeVarintFitSpecOf doReserveStack A) := by
-    rw [encodeChainParams2_encodeVarint4_fnAddr_eq]; exact encode_varint4_fit_ok_ext hA
-  have hdoR0 : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr encodeChainParams2Name + 3888#64)
-      (doReserveSpecOf doReserveStack A) := by
-    rw [encodeChainParams2_doReserve7_fnAddr_eq]; exact do_reserve_7_ok_ext hA
-  obtain ⟨P, hP, hwp⟩ := chainParams2_gen_ok_ext (by decide)
-    (subroutine_ok_withMsgEnc48CSPlaced_ext s0 henc0) (subroutine_ok_withMsgEnc48CSPlaced_ext s0 hdoR0)
-    hpc hrun hpre hsp
-  exact ⟨P, R, hP, hwp⟩
-
-theorem encode_chainParams_2_ok_ext_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hA : AllocContracts img.base A ext) :
-    EncodeChainParams2OkX img A ext := by
-  have hdoReserve := do_reserve_7_ok_ext_x (img := img) hA
-  apply subroutine_ok_of_sepWPp; intro x R s0 hpc hrun hpre hsp
-  rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre; obtain ⟨hinv0, hpre⟩ := hpre
-  have henc0 : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr encodeChainParams2Name + 18446744073709532576#64)
-      ((encodeVarintFitSpecOf doReserveStackX A).inImage img) := by
-    rw [encodeChainParams2_encodeVarint4_fnAddr_eq]
-    exact encodeVarint4_fit_ok_ext_x img A ext hdoReserve
-  have hdoR0 : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr encodeChainParams2Name + 3888#64)
-      ((doReserveSpecOf doReserveStackX A).inImage img) := by
-    rw [encodeChainParams2_doReserve7_fnAddr_eq]; exact hdoReserve
-  obtain ⟨P, hP, hwp⟩ := chainParams2_gen_ok_prog (by decide)
-    (Or.inl ⟨img.base, ext, rfl, rfl, rfl, rfl⟩)
-    (subroutine_ok_withMsgEnc48CSPlaced_x img s0 hinv0 henc0)
-    (subroutine_ok_withMsgEnc48CSPlaced_x img s0 hinv0 hdoR0)
-    hpc hrun hpre hsp
-  refine ⟨P, R, hP, sepWPp_mono_placed hwp (fun _ _ ⟨hq, _, hsp', hcc'⟩ => ⟨hq, hsp', hcc'⟩) (fun _ _ h => h)⟩
 
 theorem encode_chainParams_2_placed_ok [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}

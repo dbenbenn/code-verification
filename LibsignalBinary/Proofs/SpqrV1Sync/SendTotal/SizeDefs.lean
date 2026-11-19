@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Defs
-public import LibsignalBinary.Proofs.SpqrV1Sync.TopSize
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeBase
-public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncCalib
+public import LibsignalBinary.Proofs.SpqrV1Sync.TopSize -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeBase
+public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncCalib -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Auth
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.GF16
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Proto
@@ -28,7 +28,7 @@ Defines `BSizeStmt` in a standalone module so `StateSizeBase` simp lemmas only e
 proof files.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 
@@ -37,7 +37,7 @@ open CryptoVerification.SpqrV1Sync.InSync
 open CryptoVerification.SpqrV1Sync.Braid
 open CryptoGames.LibsignalSession (ShaCompress)
 /-- Every `BOk` braid state satisfies `rawV1State st.into_pb ≤ 2 ^ 40`. -/
-def BSizeStmt (F : ShaCompress) : Prop :=
+@[expose] def BSizeStmt (F : ShaCompress) : Prop :=
   ∀ st : St F, BOk st → CryptoVerification.SpqrV1.Top.StateSize.rawV1State st.into_pb ≤ 2 ^ 40
 
 end CryptoVerification.SpqrV1Sync.SendTotal

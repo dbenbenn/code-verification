@@ -11,6 +11,7 @@ module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Defs
 import all Init.Data.String.Defs
+import LibsignalBinary.Proofs.E2E.Bin.Record
 
 /-!
 # Stage 5 Pure Model, `SepWPp`, Stack, and `SpeOwned` Relocation Bridge
@@ -20,12 +21,10 @@ import all Init.Data.String.Defs
 lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage5Lemmas
 
@@ -142,7 +141,7 @@ theorem pointsToBytes_8_exists_64 {bs : List (BitVec 8)} (h : bs.length = 8) :
 
 /-- `F` owns an `8 * n`-byte inline region at `a` whose words can be read word-by-word at `src`
 and reassembled at any `dst` while leaving any heap frame untouched. -/
-def RelocWords : Nat → (BitVec 64 → SepProp) → Prop
+@[expose] def RelocWords : Nat → (BitVec 64 → SepProp) → Prop
   | 0, F => ∀ src dst R (m : Memory), m ⊨ F src ∗ R →
       ∃ H : SepProp, (m ⊨ H ∗ R) ∧ (H ⊢ F dst)
   | n + 1, F => ∀ src dst R (m : Memory), m ⊨ F src ∗ R →
@@ -853,7 +852,7 @@ theorem slotTrace_of_trace_eq {x : InitGhost} {s0 sf : State}
 theorem slotOut_err_of_some_none {ans : SlotAns Unit} {s0 sf : State}
     (hans : ans = some none) :
     slotOut ans StoresGhost.opened (.error (.protocol .invalidProtobufEncoding)) s0 sf :=
-  ⟨by decide, by decide, hans⟩
+  ⟨by nofun, by nofun, hans⟩
 
 theorem slotOut_ok_of_accept {W : PEParams} {ans : SlotAns Unit}
     {F : FsFiles} {peer me : AddrVal} {idKey : IdentityKey} {recBytes : List (BitVec 8)}
@@ -862,14 +861,5 @@ theorem slotOut_ok_of_accept {W : PEParams} {ans : SlotAns Unit}
     (hans : ans = some (some (initAcceptStoresGhost F peer idKey recBytes, ()))) :
     slotOut ans (initAcceptStoresGhost F peer idKey recBytes) (.ok ()) s0 sf :=
   ⟨by nofun, by nofun, hans, initAcceptStoresGhost_writes_cliWrOk hok idKey recBytes⟩
-
-/-- Any OOM panic (`allocFailedIn s0 sf` with `anyHeap`) entails `InitPanicPost`. -/
-theorem initPanicPost_of_oom {A : RustAlloc} {img : Obj.Image} {S : RunSem}
-    {x : InitGhost} {stk : Nat} {s0 sf : State} {Pf : SepProp}
-    (hoom : allocFailedIn s0 sf) (hheap : Pf ⊢ anyHeap) :
-    InitPanicPost A img S x stk s0 sf Pf := by
-  dsimp only [InitPanicPost, initSlotSpec, Spec.inImage]
-  rw [pure_sepConj_of_true (Or.inr hoom)]
-  exact hheap
 
 end CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage5Lemmas

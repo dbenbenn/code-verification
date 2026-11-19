@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncEpoch
-public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncCalib
+public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncEpoch -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1Sync.InSyncCalib
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.GF16
 
 /-!
@@ -26,7 +26,7 @@ via `ekSide e`:
 * `Run` and `run_inSync`: inductive honest braid executions maintain `InSync` and `inSync_codec`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.Braid
 
@@ -60,13 +60,6 @@ theorem inSync_of_b {F : ShaCompress} {K : MlKem} {e : Epoch} {auth : Authentica
     InSync F K e auth c stA stB toA toB ↔ InSyncE F K e auth c stB stA toA toB := by
   simp [InSync, hs]
 
-theorem inSync_hepoch {F : ShaCompress} {K : MlKem} {e : Epoch} {auth : Authenticator}
-    {c : Coins} {stA stB : St F} {toA toB : List Msg} (h : InSync F K e auth c stA stB toA toB) :
-    e.toNat + 1 < 2 ^ 64 := by
-  cases hs : ekSide e
-  · exact ((inSync_of_a hs).mp h).hepoch
-  · exact ((inSync_of_b hs).mp h).hepoch
-
 /-- `noneMsg (e + 1)` never appears in `toX`, since messages toward `X_e` have epoch `≤ e`. -/
 theorem noneNext_not_mem_toX {F : ShaCompress} {K : MlKem} {e : Epoch} {auth : Authenticator}
     {c : Coins} {x y : St F} {toY toX : List Msg} (h : InSyncE F K e auth c x y toY toX) :
@@ -89,7 +82,7 @@ theorem noneNext_not_mem_toX {F : ShaCompress} {K : MlKem} {e : Epoch} {auth : A
     · exact hne_ep (congrArg Message.epoch hEq)
 
 /-- Relational coin transition and optional `EpochSecret` output of a single braid send. -/
-def CoinStep (F : ShaCompress) (K : MlKem) (e : Epoch) (tape : Bytes) (c c' : Coins)
+@[expose] def CoinStep (F : ShaCompress) (K : MlKem) (e : Epoch) (tape : Bytes) (c c' : Coins)
     (key : Option EpochSecret) : Prop :=
   (c' = c ∧ key = none) ∨
   (c = .init ∧ key = none ∧ ∃ s : Seed, s.toList = tape.take 64 ∧ c' = .seed s) ∨
@@ -97,7 +90,7 @@ def CoinStep (F : ShaCompress) (K : MlKem) (e : Epoch) (tape : Bytes) (c c' : Co
     key = some { epoch := e, secret := secOf F K e s r })
 
 /-- Possible key outputs of a braid receive at epoch `e`: `none` or `some (e, secOf F K e s r)`. -/
-def RecvKey (F : ShaCompress) (K : MlKem) (e : Epoch) (c : Coins) (key : Option EpochSecret) :
+@[expose] def RecvKey (F : ShaCompress) (K : MlKem) (e : Epoch) (c : Coins) (key : Option EpochSecret) :
     Prop :=
   key = none ∨ ∃ s r, c = .both s r ∧ key = some { epoch := e, secret := secOf F K e s r }
 
@@ -117,46 +110,6 @@ theorem coinStep_of_y {F : ShaCompress} {K : MlKem} {e : Epoch} {tape : Bytes} {
   rcases h with h1 | h2
   · exact Or.inl h1
   · exact Or.inr (Or.inr h2)
-
-/-- Party `A` send step preserving `InSync`. -/
-theorem inSync_sendA (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (c : Coins)
-    (stA stB : St F) (toA toB : List Msg) (h : InSync F K e auth c stA stB toA toB)
-    (tape : Bytes) (htape : 64 ≤ tape.length)
-    (hkem : ekSide e = .b → ∀ (s : Seed) (r : EncRand), c = .seed s → r.toList = tape.take 32 →
-      KemOk K s r) :
-    ∃ (c' : Coins) (m : Msg) (key : Option EpochSecret) (stA' : St F) (tape' : Bytes),
-      stA.send K tape = .ok ({ msg := m, key := key, state := stA' }, tape') ∧
-      CoinStep F K e tape c c' key ∧
-      InSync F K e auth c' stA' stB toA (toB ++ [m]) := by
-  cases hs : ekSide e
-  · have hE := (inSync_of_a hs).mp h
-    rcases inSyncE_sendX F K e auth c stA stB toB toA hE tape htape with
-      ⟨c', m, stA', tape', hsend, hcs, hE'⟩
-    exact ⟨c', m, none, stA', tape', hsend, coinStep_of_x hcs, (inSync_of_a hs).mpr hE'⟩
-  · have hE := (inSync_of_b hs).mp h
-    rcases inSyncE_sendY F K e auth c stB stA toA toB hE tape (by omega) (hkem hs) with
-      ⟨c', m, key, stA', tape', hsend, hcs, hE'⟩
-    exact ⟨c', m, key, stA', tape', hsend, coinStep_of_y hcs, (inSync_of_b hs).mpr hE'⟩
-
-/-- Party `B` send step preserving `InSync`. -/
-theorem inSync_sendB (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator) (c : Coins)
-    (stA stB : St F) (toA toB : List Msg) (h : InSync F K e auth c stA stB toA toB)
-    (tape : Bytes) (htape : 64 ≤ tape.length)
-    (hkem : ekSide e = .a → ∀ (s : Seed) (r : EncRand), c = .seed s → r.toList = tape.take 32 →
-      KemOk K s r) :
-    ∃ (c' : Coins) (m : Msg) (key : Option EpochSecret) (stB' : St F) (tape' : Bytes),
-      stB.send K tape = .ok ({ msg := m, key := key, state := stB' }, tape') ∧
-      CoinStep F K e tape c c' key ∧
-      InSync F K e auth c' stA stB' (toA ++ [m]) toB := by
-  cases hs : ekSide e
-  · have hE := (inSync_of_a hs).mp h
-    rcases inSyncE_sendY F K e auth c stA stB toB toA hE tape (by omega) (hkem hs) with
-      ⟨c', m, key, stB', tape', hsend, hcs, hE'⟩
-    exact ⟨c', m, key, stB', tape', hsend, coinStep_of_y hcs, (inSync_of_a hs).mpr hE'⟩
-  · have hE := (inSync_of_b hs).mp h
-    rcases inSyncE_sendX F K e auth c stB stA toA toB hE tape htape with
-      ⟨c', m, stB', tape', hsend, hcs, hE'⟩
-    exact ⟨c', m, none, stB', tape', hsend, coinStep_of_x hcs, (inSync_of_b hs).mpr hE'⟩
 
 /-- Party `A` receive of any `m ∈ toA` with `m ≠ noneMsg (e + 1)` preserves `InSync` at epoch `e`. -/
 theorem inSync_recvA_stay (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator)
@@ -216,40 +169,6 @@ theorem inSync_advanceB (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authen
   · have hE := (inSync_of_b hs).mp h
     exact absurd hm (noneNext_not_mem_toX hE)
 
-/-- Party `A` receive of any `m ∈ toA`: either stays at `e` or advances to `e + 1`. -/
-theorem inSync_recvA (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator)
-    (c : Coins) (stA stB : St F) (toA toB : List Msg) (h : InSync F K e auth c stA stB toA toB)
-    (m : Msg) (hm : m ∈ toA) (hnext : e.toNat + 2 < 2 ^ 64) :
-    ∃ (key : Option EpochSecret) (stA' : St F), stA.recv K m = .ok { key := key, state := stA' } ∧
-      ((RecvKey F K e c key ∧ InSync F K e auth c stA' stB toA toB) ∨
-        (key = none ∧ ∃ s r, c = .both s r ∧
-          InSync F K (e + 1#64) (authNext F K e auth s r) .init stA' stB toA toB)) := by
-  by_cases hne : m = noneMsg (e + 1#64)
-  · subst hne
-    rcases inSync_advanceA F K e auth c stA stB toA toB h hm hnext with
-      ⟨s, r, hc, stA', hrecv, hIn⟩
-    exact ⟨none, stA', hrecv, Or.inr ⟨rfl, s, r, hc, hIn⟩⟩
-  · rcases inSync_recvA_stay F K e auth c stA stB toA toB h m hm hne with
-      ⟨key, stA', hrecv, hkey, hIn⟩
-    exact ⟨key, stA', hrecv, Or.inl ⟨hkey, hIn⟩⟩
-
-/-- Party `B` receive of any `m ∈ toB`: either stays at `e` or advances to `e + 1`. -/
-theorem inSync_recvB (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator)
-    (c : Coins) (stA stB : St F) (toA toB : List Msg) (h : InSync F K e auth c stA stB toA toB)
-    (m : Msg) (hm : m ∈ toB) (hnext : e.toNat + 2 < 2 ^ 64) :
-    ∃ (key : Option EpochSecret) (stB' : St F), stB.recv K m = .ok { key := key, state := stB' } ∧
-      ((RecvKey F K e c key ∧ InSync F K e auth c stA stB' toA toB) ∨
-        (key = none ∧ ∃ s r, c = .both s r ∧
-          InSync F K (e + 1#64) (authNext F K e auth s r) .init stA stB' toA toB)) := by
-  by_cases hne : m = noneMsg (e + 1#64)
-  · subst hne
-    rcases inSync_advanceB F K e auth c stA stB toA toB h hm hnext with
-      ⟨s, r, hc, stB', hrecv, hIn⟩
-    exact ⟨none, stB', hrecv, Or.inr ⟨rfl, s, r, hc, hIn⟩⟩
-  · rcases inSync_recvB_stay F K e auth c stA stB toA toB h m hm hne with
-      ⟨key, stB', hrecv, hkey, hIn⟩
-    exact ⟨key, stB', hrecv, Or.inl ⟨hkey, hIn⟩⟩
-
 /-- Both parties' states in `InSync` round-trip through `States.from_pb ∘ States.into_pb`. -/
 theorem inSync_codec (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authenticator)
     (c : Coins) (stA stB : St F) (toA toB : List Msg) (h : InSync F K e auth c stA stB toA toB) :
@@ -260,7 +179,7 @@ theorem inSync_codec (F : ShaCompress) (K : MlKem) (e : Epoch) (auth : Authentic
   · exact (inSyncE_codec F K e auth c stB stA toA toB ((inSync_of_b hs).mp h)).symm
 
 /-- Deterministic ghost-coin transition of a braid send from state `st` on `tape`. -/
-def nextCoins (F : ShaCompress) (c : Coins) (st : St F) (tape : Bytes) : Coins :=
+@[expose] def nextCoins (F : ShaCompress) (c : Coins) (st : St F) (tape : Bytes) : Coins :=
   match c, st with
   | .init, .keysUnsampled _ =>
     if h : (tape.take 64).length = 64 then .seed ⟨tape.take 64, h⟩ else .init
@@ -457,67 +376,5 @@ inductive Run (F : ShaCompress) (K : MlKem) (authKey : Bytes) :
       (hm : noneMsg (e + 1#64) ∈ toB) (hnext : e.toNat + 2 < 2 ^ 64) (stB' : St F)
       (hrecv : stB.recv K (noneMsg (e + 1#64)) = .ok { key := none, state := stB' }) :
       Run F K authKey (e + 1#64) (authNext F K e auth s r) .init stA stB' toA toB
-
-private theorem ok_eq_imp {ε α : Type} {a b : α} (h : (Except.ok a : Except ε α) = Except.ok b) :
-    a = b := by
-  cases h; rfl
-
-private theorem coins_both_inj {s s0 : Seed} {r r0 : EncRand}
-    (h : Coins.both s r = Coins.both s0 r0) : s = s0 ∧ r = r0 := by
-  cases h; exact ⟨rfl, rfl⟩
-
-/-- Every reachable `Run` trace satisfies `InSync`. -/
-theorem run_inSync (F : ShaCompress) (K : MlKem) (authKey : Bytes) {e : Epoch}
-    {auth : Authenticator} {c : Coins} {stA stB : St F} {toA toB : List Msg}
-    (hr : Run F K authKey e auth c stA stB toA toB) : InSync F K e auth c stA stB toA toB := by
-  induction hr with
-  | init stA stB hA hB =>
-    rcases inSync_init F K authKey with ⟨stA0, stB0, hA0, hB0, hIn⟩
-    have hEqA : stA = stA0 := ok_eq_imp (hA.symm.trans hA0)
-    have hEqB : stB = stB0 := ok_eq_imp (hB.symm.trans hB0)
-    rw [← hEqA, ← hEqB] at hIn
-    exact hIn
-  | sendA _ tape htape hkem m key stA' tape' hsend ih =>
-    rcases inSync_sendA_det F K _ _ _ _ _ _ _ ih tape htape hkem with
-      ⟨m0, key0, stA0, tape0, hsend0, _, hIn⟩
-    have ho := congrArg Prod.fst (ok_eq_imp (hsend.symm.trans hsend0))
-    have hmEq : m = m0 := congrArg (fun o => o.msg) ho
-    have hstEq : stA' = stA0 := congrArg (fun o => o.state) ho
-    rw [← hmEq, ← hstEq] at hIn
-    exact hIn
-  | sendB _ tape htape hkem m key stB' tape' hsend ih =>
-    rcases inSync_sendB_det F K _ _ _ _ _ _ _ ih tape htape hkem with
-      ⟨m0, key0, stB0, tape0, hsend0, _, hIn⟩
-    have ho := congrArg Prod.fst (ok_eq_imp (hsend.symm.trans hsend0))
-    have hmEq : m = m0 := congrArg (fun o => o.msg) ho
-    have hstEq : stB' = stB0 := congrArg (fun o => o.state) ho
-    rw [← hmEq, ← hstEq] at hIn
-    exact hIn
-  | recvA _ m hm hne key stA' hrecv ih =>
-    rcases inSync_recvA_stay F K _ _ _ _ _ _ _ ih m hm hne with ⟨key0, stA0, hrecv0, _, hIn⟩
-    have ho := ok_eq_imp (hrecv.symm.trans hrecv0)
-    have hstEq : stA' = stA0 := congrArg (fun o => o.state) ho
-    rw [← hstEq] at hIn
-    exact hIn
-  | recvB _ m hm hne key stB' hrecv ih =>
-    rcases inSync_recvB_stay F K _ _ _ _ _ _ _ ih m hm hne with ⟨key0, stB0, hrecv0, _, hIn⟩
-    have ho := ok_eq_imp (hrecv.symm.trans hrecv0)
-    have hstEq : stB' = stB0 := congrArg (fun o => o.state) ho
-    rw [← hstEq] at hIn
-    exact hIn
-  | advanceA _ hm hnext stA' hrecv ih =>
-    rcases inSync_advanceA F K _ _ _ _ _ _ _ ih hm hnext with ⟨s0, r0, hc, stA0, hrecv0, hIn⟩
-    rcases coins_both_inj hc with ⟨hsEq, hrEq⟩
-    have ho := ok_eq_imp (hrecv.symm.trans hrecv0)
-    have hstEq : stA' = stA0 := congrArg (fun o => o.state) ho
-    rw [← hsEq, ← hrEq, ← hstEq] at hIn
-    exact hIn
-  | advanceB _ hm hnext stB' hrecv ih =>
-    rcases inSync_advanceB F K _ _ _ _ _ _ _ ih hm hnext with ⟨s0, r0, hc, stB0, hrecv0, hIn⟩
-    rcases coins_both_inj hc with ⟨hsEq, hrEq⟩
-    have ho := ok_eq_imp (hrecv.symm.trans hrecv0)
-    have hstEq : stB' = stB0 := congrArg (fun o => o.state) ho
-    rw [← hsEq, ← hrEq, ← hstEq] at hIn
-    exact hIn
 
 end CryptoVerification.SpqrV1Sync.Braid

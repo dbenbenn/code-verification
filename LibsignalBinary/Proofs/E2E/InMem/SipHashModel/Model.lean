@@ -18,23 +18,23 @@ Pure functional specification of Rust's `DefaultHasher` (`core::hash::sip::Hashe
 and `hashbrown`'s 64-bit `(h1, h2)` probe/control-tag split.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.InMem.SipHashModel
 
 /-! ## SipHash-1-3 Constants and Round Function -/
 
 /-- SipHash initialization constant `c0` (`"somepseu"`). -/
-def c0 : UInt64 := 0x736f6d6570736575
+@[expose] def c0 : UInt64 := 0x736f6d6570736575
 
 /-- SipHash initialization constant `c1` (`"dorandom"`). -/
-def c1 : UInt64 := 0x646f72616e646f6d
+@[expose] def c1 : UInt64 := 0x646f72616e646f6d
 
 /-- SipHash initialization constant `c2` (`"lygenera"`). -/
-def c2 : UInt64 := 0x6c7967656e657261
+@[expose] def c2 : UInt64 := 0x6c7967656e657261
 
 /-- SipHash initialization constant `c3` (`"tedbytes"`). -/
-def c3 : UInt64 := 0x7465646279746573
+@[expose] def c3 : UInt64 := 0x7465646279746573
 
 /-- Four-word SipHash state (`#[repr(C)] struct State { v0, v2, v1, v3 }`). -/
 structure State where
@@ -44,12 +44,12 @@ structure State where
   v3 : UInt64
   deriving DecidableEq, Repr, Inhabited
 
-@[inline]
+@[expose, inline]
 def rotl64 (x : UInt64) (k : UInt64) : UInt64 :=
   (x <<< k) ||| (x >>> (64 - k))
 
 /-- Single SipRound permutation. -/
-@[inline]
+@[expose, inline]
 def compress (s : State) : State :=
   let v0 := s.v0 + s.v1
   let v2 := s.v2 + s.v3
@@ -63,12 +63,12 @@ def compress (s : State) : State :=
   let v2 := rotl64 v2 32
   { v0, v2, v1, v3 }
 
-@[inline] def cRounds (s : State) : State := compress s
+@[expose, inline] def cRounds (s : State) : State := compress s
 
-@[inline] def dRounds (s : State) : State := compress (compress (compress s))
+@[expose, inline] def dRounds (s : State) : State := compress (compress (compress s))
 
 /-- Compress one 64-bit little-endian message word `m` (`v3 ^= m; compress; v0 ^= m`). -/
-@[inline]
+@[expose, inline]
 def compressBlock (s : State) (m : UInt64) : State :=
   let s1 := { s with v3 := s.v3 ^^^ m }
   let s2 := cRounds s1
@@ -76,18 +76,18 @@ def compressBlock (s : State) (m : UInt64) : State :=
 
 /-! ## Little-Endian Byte Packing -/
 
-def asciiBytes (s : String) : List UInt8 :=
+@[expose] def asciiBytes (s : String) : List UInt8 :=
   s.toList.map fun c => UInt8.ofNat c.toNat
 
-@[inline] def byteAt64 (buf : List UInt8) (i : Nat) : UInt64 := (buf.getD i 0).toUInt64
+@[expose, inline] def byteAt64 (buf : List UInt8) (i : Nat) : UInt64 := (buf.getD i 0).toUInt64
 
 /-- Pack `len < 8` bytes starting at `start` into the low bytes of a `UInt64` in little-endian order. -/
-def u8to64Le (buf : List UInt8) (start : Nat) : Nat → UInt64
+@[expose] def u8to64Le (buf : List UInt8) (start : Nat) : Nat → UInt64
   | 0 => 0
   | k + 1 => u8to64Le buf start k ||| (byteAt64 buf (start + k) <<< (UInt64.ofNat (8 * k)))
 
 /-- Load an 8-byte little-endian `UInt64` starting at `start`. -/
-@[inline]
+@[expose, inline]
 def loadU64Le (buf : List UInt8) (start : Nat) : UInt64 :=
   byteAt64 buf start |||
   (byteAt64 buf (start + 1) <<< 8) |||
@@ -112,23 +112,23 @@ structure SipHasher13 where
 
 namespace SipHasher13
 
-@[inline]
+@[expose, inline]
 def initState (k0 k1 : UInt64) : State :=
   { v0 := k0 ^^^ c0, v2 := k0 ^^^ c2, v1 := k1 ^^^ c1, v3 := k1 ^^^ c3 }
 
-@[inline]
+@[expose, inline]
 def newWithKeys (k0 k1 : UInt64) : SipHasher13 :=
   { k0, k1, length := 0, state := initState k0 k1, tail := 0, ntail := 0 }
 
-@[inline] def new : SipHasher13 := newWithKeys 0 0
+@[expose, inline] def new : SipHasher13 := newWithKeys 0 0
 
 /-- Compress `count` consecutive 8-byte little-endian blocks starting at byte offset `i`. -/
-def writeBlocks (s : State) (msg : List UInt8) (i : Nat) : Nat → State
+@[expose] def writeBlocks (s : State) (msg : List UInt8) (i : Nat) : Nat → State
   | 0 => s
   | count + 1 => writeBlocks (compressBlock s (loadU64Le msg i)) msg (i + 8) count
 
 /-- Stream an arbitrary byte slice into `SipHasher13` (`Hasher::write`). -/
-def write (h : SipHasher13) (msg : List UInt8) : SipHasher13 :=
+@[expose] def write (h : SipHasher13) (msg : List UInt8) : SipHasher13 :=
   if h.ntail != 0 then
     if msg.length < 8 - h.ntail then
       let fill := u8to64Le msg 0 (min msg.length (8 - h.ntail))
@@ -161,17 +161,17 @@ def write (h : SipHasher13) (msg : List UInt8) : SipHasher13 :=
       tail := u8to64Le msg endIdx left
       ntail := left }
 
-@[inline] def writeU8 (h : SipHasher13) (i : UInt8) : SipHasher13 := h.write [i]
+@[expose, inline] def writeU8 (h : SipHasher13) (i : UInt8) : SipHasher13 := h.write [i]
 
-@[inline]
+@[expose, inline]
 def writeU16 (h : SipHasher13) (i : UInt16) : SipHasher13 :=
   h.write [i.toUInt8, (i >>> 8).toUInt8]
 
-@[inline]
+@[expose, inline]
 def writeU32 (h : SipHasher13) (i : UInt32) : SipHasher13 :=
   h.write [i.toUInt8, (i >>> 8).toUInt8, (i >>> 16).toUInt8, (i >>> 24).toUInt8]
 
-@[inline]
+@[expose, inline]
 def writeU64 (h : SipHasher13) (i : UInt64) : SipHasher13 :=
   h.write [
     i.toUInt8, (i >>> 8).toUInt8, (i >>> 16).toUInt8, (i >>> 24).toUInt8,
@@ -179,12 +179,12 @@ def writeU64 (h : SipHasher13) (i : UInt64) : SipHasher13 :=
   ]
 
 /-- Hash a `&str` slice via `Hasher::write_str` (`write s` followed by `0xff`). -/
-@[inline] def writeStr (h : SipHasher13) (s : List UInt8) : SipHasher13 := (h.write s).writeU8 0xff
+@[expose, inline] def writeStr (h : SipHasher13) (s : List UInt8) : SipHasher13 := (h.write s).writeU8 0xff
 
-@[inline] def writeString (h : SipHasher13) (s : String) : SipHasher13 := h.writeStr (asciiBytes s)
+@[expose, inline] def writeString (h : SipHasher13) (s : String) : SipHasher13 := h.writeStr (asciiBytes s)
 
 /-- Finalize `SipHasher13`, folding `(length & 0xff) << 56 | tail` with 1 c-round and 3 d-rounds. -/
-@[inline]
+@[expose, inline]
 def finish (h : SipHasher13) : UInt64 :=
   let b : UInt64 := (((UInt64.ofNat h.length) &&& 0xff) <<< 56) ||| h.tail
   let s1 := compressBlock h.state b
@@ -196,37 +196,37 @@ end SipHasher13
 
 /-! ## `ProtocolAddress` Hash and `hashbrown` Split -/
 
-@[inline]
+@[expose, inline]
 def hashBytes (k0 k1 : UInt64) (msg : List UInt8) : UInt64 :=
   ((SipHasher13.newWithKeys k0 k1).write msg).finish
 
-@[inline]
+@[expose, inline]
 def hashStr (k0 k1 : UInt64) (s : List UInt8) : UInt64 :=
   ((SipHasher13.newWithKeys k0 k1).writeStr s).finish
 
 /-- Hash of `libsignal_core::ProtocolAddress { name, device_id }` under `RandomState` keys
 `(k0, k1)`: writes `name`, the `0xff` string terminator, and `dev`, then finalizes. -/
-@[inline]
+@[expose, inline]
 def hashAddr (k0 k1 : UInt64) (name : List UInt8) (dev : UInt8) : UInt64 :=
   (((SipHasher13.newWithKeys k0 k1).writeStr name).writeU8 dev).finish
 
 /-- `BitVec`-typed wrapper around `hashAddr` for binary specifications. -/
-@[inline]
+@[expose, inline]
 def hashAddrBv (k0 k1 : BitVec 64) (name : List (BitVec 8)) (dev : BitVec 8) : BitVec 64 :=
   (hashAddr (UInt64.ofBitVec k0) (UInt64.ofBitVec k1)
     (name.map UInt8.ofBitVec) (UInt8.ofBitVec dev)).toBitVec
 
 /-- `hashbrown` primary hash `h1` (identity on 64-bit targets). -/
-@[inline] def h1 (hash : UInt64) : UInt64 := hash
+@[expose, inline] def h1 (hash : UInt64) : UInt64 := hash
 
-@[inline] def h1Bv (hash : BitVec 64) : BitVec 64 := hash
+@[expose, inline] def h1Bv (hash : BitVec 64) : BitVec 64 := hash
 
 /-- `hashbrown` secondary control tag `h2` (`Tag::full`: top 7 bits `(hash >> 57) & 0x7f`). -/
-@[inline] def h2 (hash : UInt64) : UInt8 := (hash >>> 57).toUInt8 &&& 0x7f
+@[expose, inline] def h2 (hash : UInt64) : UInt8 := (hash >>> 57).toUInt8 &&& 0x7f
 
-@[inline] def h2Bv (hash : BitVec 64) : BitVec 8 := (h2 (UInt64.ofBitVec hash)).toBitVec
+@[expose, inline] def h2Bv (hash : BitVec 64) : BitVec 8 := (h2 (UInt64.ofBitVec hash)).toBitVec
 
 /-- Initial `hashbrown` triangular-probe index `h1 hash &&& mask`. -/
-@[inline] def probeStart (hash mask : UInt64) : UInt64 := h1 hash &&& mask
+@[expose, inline] def probeStart (hash mask : UInt64) : UInt64 := h1 hash &&& mask
 
 end CryptoVerification.E2E.InMem.SipHashModel

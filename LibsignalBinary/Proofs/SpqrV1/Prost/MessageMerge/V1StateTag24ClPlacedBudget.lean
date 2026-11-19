@@ -10,21 +10,21 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1Budget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1Budget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag24
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag24Budget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag24ClPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1Budget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag24 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag24Budget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag24ClPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
@@ -40,7 +40,7 @@ Re-exports pure 20-word (`160` B) helpers from `V1StateTag24Budget` and proves t
 `V1State::merge` (Block `298`) with `withLsCl`-wrapped drop callees (`282`, `267`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

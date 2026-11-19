@@ -11,19 +11,25 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.MallocngBridgeBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbExitPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbExitPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbCopy
-import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbExit
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbExit -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym -- proof-setup: allow-public-import
+public import VerifiedLibraries.Musl.Spec
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Relocatable Success Copy and Deallocation for `<PolyDecoder>::from_pb`
@@ -32,7 +38,7 @@ Threads `RustCliAllocBudget M`, `FreeOnlyEvs`, and `AllocCallPreserved` through 
 success exit of `<PolyDecoder>::from_pb` on Block `376`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -91,7 +97,7 @@ attribute [local simp] truncate8_truncate32_zeroExtend64 fromPb_bv384_toNat
 
 /-- `sessionMemcpySpec` strengthened with `AllocCallPreserved` and `VmPreserved` so both
     `A.pool lim st` and `AllocCallPreserved` transport across `memcpy` in `<PolyDecoder>::from_pb`. -/
-def sessionMemcpyVmAcpSpec (hookStack : Nat := 4096) :
+@[expose] def sessionMemcpyVmAcpSpec (hookStack : Nat := 4096) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := (sessionMemcpySpec hookStack).pre
   post := fun (dst, src, bs) s0 sf =>

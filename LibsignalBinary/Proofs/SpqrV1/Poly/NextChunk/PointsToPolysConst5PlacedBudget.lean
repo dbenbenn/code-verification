@@ -9,18 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
-public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst5Placed
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
+public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst5Placed
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlacedBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysDefs
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysInit
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Budget-Threaded Constant Basis `n = 5` and Loop Exit
@@ -30,7 +34,7 @@ Relocatable `[LibsignalPlacement]` verification of `basis_n5_placed_sepWPp` (`+1
 `BasisN5Env`, and `BasisLoopExitEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -123,7 +127,7 @@ private theorem shl_one_bv_eq_two_mul_placed (x : BitVec 64) : x <<< 1#64 = 2#64
 /-- Exact allocator event sequence for the `n = 5` constant basis path (`+1136..+2608`):
     `120` bytes (align `8`) for `basisPtr`, five `10`-byte (align `2`) buffers for `basis[0..4]`,
     and `10` bytes (align `2`) for `accPtr`. -/
-def basisN5Events : List AllocEvent :=
+@[expose] def basisN5Events : List AllocEvent :=
   rustAllocEvents 120 8 ++ rustAllocEvents 10 2 ++ rustAllocEvents 10 2 ++
     rustAllocEvents 10 2 ++ rustAllocEvents 10 2 ++ rustAllocEvents 10 2 ++
     rustAllocEvents 10 2
@@ -133,7 +137,7 @@ theorem basisN5Events_eq_replicate :
       rustAllocEvents (24 * 5) 8 ++ (List.replicate (5 + 1) (rustAllocEvents (2 * 5) 2)).flatten :=
   rfl
 
-def BasisN5Env (evs : List AllocEvent) : Prop :=
+@[expose] def BasisN5Env (evs : List AllocEvent) : Prop :=
   evs = basisN5Events
 
 theorem fitsEnv_basisN5_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :
@@ -144,10 +148,10 @@ theorem fitsEnv_basisN5_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ
 
 /-- Exact allocator event sequence for the shared loop exit (`+2456..+2608`):
     `2 * n` bytes (align `2`) for `accPtr`. -/
-def basisLoopExitEvents (n : Nat) : List AllocEvent :=
+@[expose] def basisLoopExitEvents (n : Nat) : List AllocEvent :=
   rustAllocEvents (2 * n) 2
 
-def BasisLoopExitEnv (n : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def BasisLoopExitEnv (n : Nat) (evs : List AllocEvent) : Prop :=
   evs = basisLoopExitEvents n
 
 theorem fitsEnv_basisLoopExit_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} (n : Nat) :

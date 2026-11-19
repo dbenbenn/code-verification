@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ChainEncodedLenBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ChainEncodedLen
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ChainEncodedLenBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ChainEncodedLen
 
 /-!
 # `VmPreserved` Placed Verification of `Chain::encoded_len` (Blocks `178`, `406`)
@@ -20,7 +20,7 @@ Unpinning bridges and `[LibsignalPlacement]` `subroutine_ok` theorems for `Chain
 (Blocks `178 -> 171` and `406 -> 399`) with `VmPreserved`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -153,12 +153,6 @@ theorem chainEncodedLen_local1_pinned_placed_ok_hooks [inst : LibsignalPlacement
             (epochEncodedLen_ok_of_pinned
               (epochEncodedLen_entry_pinned_ok _ A _
                 (Or.inr ⟨inst, hooksException H, Or.inl ⟨rfl, rfl⟩⟩)))))))
-
-theorem chainEncodedLen_local1_placed_ok_hooks [LibsignalPlacement]
-    (A : RustAlloc) (H : String → Option (State → State)) :
-    subroutine_ok ((blkPC_178).rebase (blkPl_178).base H)
-      (blkPl_178).base (withLsCodeLoaded lsmpl (chainEncodedLenSpec A)) :=
-  chainEncodedLen_lscl_ok_of_pinned (chainEncodedLen_local1_pinned_placed_ok_hooks A H)
 
 theorem chainEncodedLen_local1_pinned_placed_ok_ext [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) :

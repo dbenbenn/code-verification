@@ -9,8 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.AddressRoA1PlacedBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesROSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.AddressRoA1PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesROSat
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.AddressRoPlacedBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # `HookSat` Sibling of `AddressRoA1PlacedBudget` (`AddressRoA1PlacedBudgetSat`)
@@ -59,19 +69,6 @@ theorem address_ro_placed_ok_a1_of_hooks_sat [LibsignalPlacement]
     subroutine_ok (lsProg_617 H) (lsmpl.base 580)
       (withLsRoCl lsmpl (addressSpecRO A lim uuidTryParse resStack)) :=
   address_ro_placed_ok_ls hFs (memrchr_ro_blk580_ok_of_hooks_sat hext) hres hres64
-
-/-- `HookSat` sibling of `address_ro_placed_ok_a1_rocl_of_hooks` (`AddressRoA1PlacedBudget.lean:73`). -/
-theorem address_ro_placed_ok_a1_rocl_of_hooks_sat [LibsignalPlacement] {prog : Program} {i : Nat}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} [IsLsBlockProg prog i H] {resStack : Nat}
-    (hFs : AllocContractsFsPlaced A lim H)
-    (hext : HookSat H lsMemrchrSym (withLsRet (withVmPreserved (memrchrSpecRO extHookStack))))
-    (hres : 0xB0 + extHookStack ≤ resStack) (hres64 : resStack ≤ 2 ^ 63)
-    (hi : i < 619 := by decide) :
-    subroutine_ok prog (lsmpl.base 580)
-      (withLsRoCl lsmpl (addressSpecRO A lim uuidTryParse resStack)) :=
-  address_ro_placed_ok_rocl_ls (prog := prog) (i := i)
-    hFs (memrchr_ro_blk580_ok_of_hooks_sat hext) hres hres64 hi
 
 /-- `HookSat` sibling of `mainCalleesROBlk617_of_mainCalleesBlk617_and_hooks`
     (`AddressRoA1PlacedBudget.lean:98`), weakening both `hutf8` and `hmemrchr` to `HookSat` and

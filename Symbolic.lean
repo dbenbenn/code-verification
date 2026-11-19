@@ -31,14 +31,16 @@ public import Symbolic.Proofs.Tests.Refinement.Cli.SDetGuard
 public import Symbolic.Proofs.Tests.Refinement.Cli.SetupInitDirsGuard
 public import Symbolic.Proofs.Tests.Refinement.Cli.RecvWhisperNonVacuity
 public import Symbolic.Proofs.Swarm.CREF.TR.PureSessionBounds
+public import Symbolic.Proofs.Swarm.WIT.RealX25519Laws
+public import Symbolic.Proofs.TopLevelHelpers.Composed.Cli.MlKemExternWitness
 public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.Steps
 -- Parametric CLI refinement and security (`CliElfLib` builds the `cliElfBytes` instantiations)
 public import Symbolic.Theorems.RefinementPreservation
 public import Symbolic.Proofs.TopLevelHelpers.Composed.Cli.AsmLevelSecurity
 public import Symbolic.Proofs.Refinement.Composed.Cli.ElfToModelV2BridgeF3Placed
+public import Symbolic.Proofs.Refinement.Composed.Cli.ElfToModelV2PlainBridge
 public import Symbolic.Proofs.TopLevelHelpers.Composed.Cli.ProgressElfPlacedG
-public import Symbolic.Proofs.SpecLemmas.ElfBindingFixed
-public import Symbolic.Proofs.SpecLemmas.SecurityBinaryFixed
+public import Symbolic.Proofs.TopLevelHelpers.Composed.Cli.ProgressElfPlainPlaced
 
 /-!
 # Symbolic Library Umbrella

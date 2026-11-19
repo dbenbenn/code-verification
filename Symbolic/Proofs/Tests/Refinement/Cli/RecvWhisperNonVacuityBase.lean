@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.NonVacuity
+public import LibsignalBinary.Proofs.SignalSession.NonVacuity -- proof-setup: allow-public-import
 public import Symbolic.Specifications.Concrete.MachineEvents
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
+import LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4SymbolicBridge
+import LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Math.Edwards
 
 /-!
 # Concrete SPQR-ON Non-Vacuity Base Helpers
@@ -21,7 +23,7 @@ short-circuits, opaque ML-KEM vector wrappers, and `Mut.exec` / `SignalMessage` 
 for the concrete SPQR-ON roundtrip witness.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,7 +34,7 @@ open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification.E2E CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.SignalSession
 
-def nvMlKem : CryptoVerification.LibsignalSpqrV1.MlKem where
+@[expose] def nvMlKem : CryptoVerification.LibsignalSpqrV1.MlKem where
   keyPair := fun _ => List.Vector.replicate 2400 0#8
   encaps1 := fun _ _ => some (List.Vector.replicate 960 0#8, List.Vector.replicate 2080 0#8,
     List.Vector.replicate 32 1#8)
@@ -40,30 +42,35 @@ def nvMlKem : CryptoVerification.LibsignalSpqrV1.MlKem where
   decaps := fun _ _ _ => List.Vector.replicate 32 1#8
   validPk := fun _ _ => true
 
-def nvCrypto : Crypto where
+@[expose] def nvPubKeyA : List.Vector (BitVec 8) 32 :=
+  ⟨9#8 :: List.replicate 31 0#8, rfl⟩
+
+@[expose] def nvPubKeyB : List.Vector (BitVec 8) 32 :=
+  ⟨[0xab#8, 0xbb#8, 0x90#8, 0x4f#8, 0x2c#8, 0x8f#8, 0x86#8, 0xf7#8,
+    0x13#8, 0x32#8, 0xb8#8, 0x05#8, 0x93#8, 0x13#8, 0xb1#8, 0xa1#8,
+    0xcb#8, 0xad#8, 0x7b#8, 0x33#8, 0x2d#8, 0x85#8, 0x92#8, 0x7b#8,
+    0x48#8, 0x5e#8, 0x5b#8, 0x0e#8, 0x10#8, 0x49#8, 0xc3#8, 0x4d#8], rfl⟩
+
+@[expose] def nvSigZero64 : List.Vector (BitVec 8) 64 :=
+  ⟨1#8 :: List.replicate 63 0#8, rfl⟩
+
+@[expose] def nvCrypto : Crypto where
   F := fun s _ => s
   E := fun _ b => b
   D := fun _ b => b
   X := fun _ _ => List.Vector.replicate 32 1#8
-  pubKey := fun sk => sk
+  pubKey := fun sk => if sk.get 1 == 2#8 then nvPubKeyA else nvPubKeyB
 
-def nvW : PEParams where
+@[expose] def nvW : PEParams where
   C := nvCrypto
   Q := {
-    F512 := fun s _ => s
-    scalarMod := fun _ => List.Vector.replicate 32 0#8
-    scalarWide := fun _ => List.Vector.replicate 32 0#8
-    montToEd := fun _ _ => some (List.Vector.replicate 160 0#8)
-    isTorsionFree := fun _ => true
-    edNeg := fun _ => List.Vector.replicate 160 0#8
-    dsmb := fun _ _ _ => List.Vector.replicate 160 0#8
-    compress := fun _ => List.Vector.replicate 32 0#8
+    F512 := fun _ _ => List.Vector.replicate 8 0#64
     encaps := fun _ _ => (List.Vector.replicate 1568 0#8, List.Vector.replicate 32 1#8)
     decaps := fun _ _ => List.Vector.replicate 32 1#8
     K := nvMlKem
   }
 
-def nvX : UnreachedPqxdhPrimitives where
+@[expose] def nvX : UnreachedPqxdhPrimitives where
   sigPkGen := fun _ => List.replicate 32 0
   sigSign := fun _ _ _ => List.replicate 64 0
   scalarMul := fun _ _ => List.replicate 32 0
@@ -72,7 +79,7 @@ def nvX : UnreachedPqxdhPrimitives where
   pow8 := fun x => x
   isValidDhTriple := fun _ _ _ => true
 
-def nvKeysB : ResponderPreKeySecrets where
+@[expose] def nvKeysB : ResponderPreKeySecrets where
   spkId := 1#32
   spkPriv := List.Vector.replicate 32 2#8
   kpkId := 2#32
@@ -80,29 +87,29 @@ def nvKeysB : ResponderPreKeySecrets where
   kpkSec := List.Vector.replicate 3168 0#8
   opk := none
 
-def nvStA0 : PqParty :=
+@[expose] def nvStA0 : PqParty :=
   { emptyParty with party := .A, me := ⟨List.Vector.replicate 32 3#8, 10#32⟩ }
 
-def nvStB0 : PqParty :=
+@[expose] def nvStB0 : PqParty :=
   { party := .B
     me := ⟨List.Vector.replicate 32 4#8, 20#32⟩
     peerId := none
     session := none
-    signed := [(1#32, ⟨List.Vector.replicate 32 2#8, List.Vector.replicate 64 0#8, 0#64⟩)]
+    signed := [(1#32, ⟨List.Vector.replicate 32 2#8, nvSigZero64, 0#64⟩)]
     oneTime := []
     kyberOneTime := [(2#32, some ⟨List.Vector.replicate 1568 0#8, List.Vector.replicate 3168 0#8,
-      List.Vector.replicate 64 0#8, 0#64⟩)]
+      nvSigZero64, 0#64⟩)]
     kyberLastResort := [] }
 
-def nvBundleB : PreKeyBundleFields :=
-  honestBundle nvW.C nvStB0.me nvKeysB (List.Vector.replicate 64 0#8) (List.Vector.replicate 64 0#8)
+@[expose] def nvBundleB : PreKeyBundleFields :=
+  honestBundle nvW.C nvStB0.me nvKeysB nvSigZero64 nvSigZero64
 
-def nvTapeA : List.Vector (BitVec 8) initiateTapeLen :=
+@[expose] def nvTapeA : List.Vector (BitVec 8) initiateTapeLen :=
   List.Vector.replicate initiateTapeLen 5#8
-def nvCoins64A : HwBytes := List.replicate 64 6#8
-def nvCoins64B : HwBytes := List.replicate 64 7#8
-def nvPt1 : HwBytes := [0x48#8, 0x69#8]
-def nvPt2 : HwBytes := [0x4F#8, 0x4B#8]
+@[expose] def nvCoins64A : HwBytes := List.replicate 64 6#8
+@[expose] def nvCoins64B : HwBytes := List.replicate 64 7#8
+@[expose] def nvPt1 : HwBytes := [0x48#8, 0x69#8]
+@[expose] def nvPt2 : HwBytes := [0x4F#8, 0x4B#8]
 
 /-! ## Algebraic Short-Circuit Helpers for `nvW` and `nvX` -/
 
@@ -152,28 +159,7 @@ theorem hmacSha256Ref_nvB1 (k msg : List UInt8) :
   dsimp only [SignalPqxdh.hmacSha256Ref]
   simp only [sha256Ref_nvB1]
 
-theorem sha512Step_nvB (blk : List UInt8) :
-    SignalPqxdh.sha512Step (blockLevelPrims nvX nvW) SignalPqxdh.sha512InitState blk =
-      SignalPqxdh.sha512InitState := by
-  dsimp only [SignalPqxdh.sha512Step, blockLevelPrims, nvW]
-  rfl
-
-theorem foldl_sha512Step_nvB (blocks : List (List UInt8)) :
-    blocks.foldl (SignalPqxdh.sha512Step (blockLevelPrims nvX nvW)) SignalPqxdh.sha512InitState =
-      SignalPqxdh.sha512InitState := by
-  induction blocks with
-  | nil => rfl
-  | cons blk tl ih =>
-    simp only [List.foldl_cons, sha512Step_nvB]
-    exact ih
-
-theorem sha512Ref_nvB (msg : List UInt8) :
-    SignalPqxdh.sha512Ref (blockLevelPrims nvX nvW) msg = SignalPqxdh.sha512InitState := by
-  dsimp only [SignalPqxdh.sha512Ref]
-  rw [foldl_sha512Step_nvB]
-  rfl
-
-def nvDk : SignalPqxdh.DRKey :=
+@[expose] def nvDk : SignalPqxdh.DRKey :=
   { rootKey := SignalPqxdh.sha256InitState
     chainKey := SignalPqxdh.sha256InitState
     pqrKey := SignalPqxdh.sha256InitState }
@@ -185,15 +171,200 @@ theorem hkdfDerive96_nv (secrets : List UInt8) :
   simp only [hmacSha256Ref_nvB1]
   rfl
 
-theorem sigVerify_nv_zero64 (ikPk msg : List UInt8) (hik : ikPk.length = 32) :
-    (modelPrims nvX nvW).sigVerify ikPk msg
-      (vecU8 (List.Vector.replicate 64 0#8)) = true := by
-  have hsig : vecU8 (List.Vector.replicate 64 0#8) = List.replicate 64 0 := rfl
-  dsimp only [modelPrims]
+section NvCurveHelpers
+
+open VerifiedLibraries.Common (
+  edOrderL fpInv recoverXEven leBytesToNat
+  EdPoint edZero edBasepoint edOnCurve edAdd edNeg edSub edSmul encodeEd
+)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.CurveSpecs (montToEdwards)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4RefBridge (
+  montLiftEd signalMontLiftEd_eq montLiftEd_some_onCurve
+  isCanonicalRef_blockLevelPrims_eq xeddsaVerifyRef_blockLevelPrims_eq
+)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4SymbolicBridge (
+  signalMontLiftEd_u9_torsionFree signalMontLiftEd_ekAPub_torsionFree
+)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Math.Edwards (
+  edOnCurve_edZero edOnCurve_edBasepoint edAdd_edZero edNeg_edZero edSmul_eq_edNatSmul
+)
+
+attribute [local irreducible] fpInv recoverXEven montLiftEd montToEdwards edSmul
+
+private def nvSigZeroEd64 : List UInt8 := (1 : UInt8) :: List.replicate 63 0
+
+private theorem nv_ite_true {α : Sort _} {p : Prop} [Decidable p] (h : p) (a b : α) :
+    (if p then a else b) = a := by simp [h]
+
+private theorem nv_pubKey_cases (sk : List.Vector (BitVec 8) 32) :
+    nvW.C.pubKey sk = nvPubKeyA ∨ nvW.C.pubKey sk = nvPubKeyB := by
+  dsimp only [nvW, nvCrypto]
+  split
+  · exact Or.inl rfl
+  · exact Or.inr rfl
+
+private theorem nv_pubKey_montLiftEd (v : List.Vector (BitVec 8) 32)
+    (hv : v = nvPubKeyA ∨ v = nvPubKeyB) :
+    ∃ P : EdPoint, montLiftEd v 0#8 = some P ∧ (edSmul edOrderL P == edZero) = true := by
+  rcases hv with rfl | rfl
+  · rcases signalMontLiftEd_u9_torsionFree (b := nvPubKeyA.toList) nvPubKeyA.toList_length
+      (by decide) with ⟨P, hP, htf⟩
+    rw [signalMontLiftEd_eq] at hP
+    exact ⟨P, hP, htf⟩
+  · rcases signalMontLiftEd_ekAPub_torsionFree (b := nvPubKeyB.toList) nvPubKeyB.toList_length
+      (by decide) with ⟨P, hP, htf⟩
+    rw [signalMontLiftEd_eq] at hP
+    exact ⟨P, hP, htf⟩
+
+private theorem nv_pubKey_guard (v : List.Vector (BitVec 8) 32)
+    (hv : v = nvPubKeyA ∨ v = nvPubKeyB) :
+    ((vecU8 v).length == 32 && (((vecU8 v).getD 31 0 &&& 0x80) == 0) &&
+      SignalPqxdh.scalarIsInRange (vecU8 v)) = true := by
+  rcases hv with rfl | rfl <;> decide
+
+private theorem nv_upd9_isCanonical (B1 : SignalPqxdh.Primitives)
+    (sv h96 rcc cks ckn dmk ae ad) (pk : List UInt8) :
+    ({ B1 with
+        sigVerify := sv
+        isCanonical := SignalPqxdh.isCanonicalRef B1
+        hkdfDerive96 := h96
+        rootCreateChain := rcc
+        chainKdfSeed := cks
+        chainKdfNext := ckn
+        deriveMsgKeys := dmk
+        aeadEnc := ae
+        aeadDec := ad } : SignalPqxdh.Primitives).isCanonical pk =
+      SignalPqxdh.isCanonicalRef B1 pk := rfl
+
+private theorem nv_upd1_isCanonicalRef (B : SignalPqxdh.Primitives) (s512) (pk : List UInt8) :
+    SignalPqxdh.isCanonicalRef { B with sha512 := s512 } pk =
+      SignalPqxdh.isCanonicalRef B pk := rfl
+
+private theorem nv_modelPrims_isCanonical_eq (pk : List UInt8) :
+    (modelPrims nvX nvW).isCanonical pk =
+      SignalPqxdh.isCanonicalRef (blockLevelPrims nvX nvW) pk :=
+  (nv_upd9_isCanonical _ _ _ _ _ _ _ _ _ pk).trans (nv_upd1_isCanonicalRef _ _ pk)
+
+private theorem nv_block_eq_upd :
+    blockLevelPrims nvX nvW =
+      { blockLevelPrims nvX nvW with isTorsionFree := fun P => edSmul edOrderL P == edZero } := rfl
+
+private theorem nv_upd_isTorsionFree (B : SignalPqxdh.Primitives) (f : EdPoint → Bool) (P : EdPoint) :
+    ({ B with isTorsionFree := f } : SignalPqxdh.Primitives).isTorsionFree P = f P := rfl
+
+private theorem nv_block_isTorsionFree (P : EdPoint) :
+    (blockLevelPrims nvX nvW).isTorsionFree P = (edSmul edOrderL P == edZero) :=
+  (congrArg (fun B : SignalPqxdh.Primitives => B.isTorsionFree P) nv_block_eq_upd).trans
+    (nv_upd_isTorsionFree _ _ P)
+
+private theorem nv_block_montToEd_zero (pk : List UInt8) :
+    (blockLevelPrims nvX nvW).montToEd pk 0 = montLiftEd (u8Vec 32 pk) 0#8 := by
+  change SignalPqxdh.montLiftEd (u8Vec 32 pk).toList (0 : UInt8).toBitVec = _
+  rw [show (0 : UInt8).toBitVec = 0#8 from rfl,
+    LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4RefBridge.signalMontLiftEd_eq]
+
+private theorem nv_isCanonicalRef_of_some (B : SignalPqxdh.Primitives) (pk : List UInt8) (P : EdPoint)
+    (hg : (pk.length == 32 && ((pk.getD 31 0 &&& 0x80) == 0) && SignalPqxdh.scalarIsInRange pk) = true)
+    (hm : B.montToEd pk 0 = some P) :
+    SignalPqxdh.isCanonicalRef B pk = B.isTorsionFree P := by
+  rw [SignalPqxdh.isCanonicalRef.eq_def, nv_ite_true hg]
+  split
+  · rename_i Q hQ; exact congrArg B.isTorsionFree (Option.some.inj (hQ.symm.trans hm))
+  · rename_i hQ; exact absurd (hQ.symm.trans hm) nofun
+
+theorem isCanonical_nv_pubKey (sk : List.Vector (BitVec 8) 32) :
+    (modelPrims nvX nvW).isCanonical (vecU8 (nvW.C.pubKey sk)) = true := by
+  have hv := nv_pubKey_cases sk
+  rcases nv_pubKey_montLiftEd _ hv with ⟨P, hP, htf⟩
+  have hm : (blockLevelPrims nvX nvW).montToEd (vecU8 (nvW.C.pubKey sk)) 0 = some P := by
+    rw [nv_block_montToEd_zero, u8Vec_vecU8]
+    exact hP
+  exact (nv_modelPrims_isCanonical_eq _).trans
+    ((nv_isCanonicalRef_of_some _ _ P (nv_pubKey_guard _ hv) hm).trans
+      ((nv_block_isTorsionFree P).trans htf))
+
+private theorem nv_sha512Pad_len_ge_128 (msg : List UInt8) :
+    128 ≤ (SignalPqxdh.sha512Pad msg).length := by
+  unfold SignalPqxdh.sha512Pad SignalPqxdh.encodeBitLen128BE SignalPqxdh.encodeBitLen64BE
+  simp only [List.length_append, List.length_cons, List.length_nil, List.length_replicate]
+  set rem := (msg.length + 17) % 128
+  have hrem_lt : rem < 128 := Nat.mod_lt _ (by decide)
+  by_cases h0 : rem == 0
+  · have hr0 : rem = 0 := beq_iff_eq.mp h0
+    simp only [h0, ↓reduceIte]; omega
+  · simp only [h0, Bool.false_eq_true, ↓reduceIte]; omega
+
+private theorem nv_foldl_const_aux {α β : Type} (f : α → β → α) (z : α)
+    (hf : ∀ s x, f s x = z) :
+    ∀ (l : List β), l.foldl f z = z
+  | [] => rfl
+  | _ :: rest => by simp only [List.foldl_cons, hf]; exact nv_foldl_const_aux f z hf rest
+
+private theorem nv_foldl_const {α β : Type} (f : α → β → α) (z : α)
+    (hf : ∀ s x, f s x = z) :
+    ∀ (l : List β) (init : α), l ≠ [] → l.foldl f init = z
+  | [], _, hne => absurd rfl hne
+  | _ :: rest, _, _ => by
+    simp only [List.foldl_cons, hf]
+    exact nv_foldl_const_aux f z hf rest
+
+private theorem nv_sha512_zero (msg : List UInt8) :
+    SignalPqxdh.sha512Ref (blockLevelPrims nvX nvW) msg = List.replicate 64 0 := by
+  unfold SignalPqxdh.sha512Ref SignalPqxdh.chunkBlocks
+  dsimp only []
+  have hdiv : 1 ≤ (SignalPqxdh.sha512Pad msg).length / 128 :=
+    Nat.div_pos (nv_sha512Pad_len_ge_128 msg) (by decide)
+  have hne : ((List.range ((SignalPqxdh.sha512Pad msg).length / 128)).map
+      (fun i => ((SignalPqxdh.sha512Pad msg).drop (i * 128)).take 128)) ≠ [] := by
+    intro heq
+    have hl := congrArg List.length heq
+    simp at hl
+    omega
+  have hstep : ∀ s b, SignalPqxdh.sha512Step (blockLevelPrims nvX nvW) s b = List.replicate 64 0 := by
+    intro s b
+    unfold SignalPqxdh.sha512Step
+    dsimp only [blockLevelPrims, nvW]
+    decide
+  rw [nv_foldl_const _ (List.replicate 64 0) hstep _ _ hne]
+  decide
+
+theorem sigVerify_nv_sigZero64 (sk : List.Vector (BitVec 8) 32) (msg : List UInt8) :
+    (modelPrims nvX nvW).sigVerify (vecU8 (nvW.C.pubKey sk)) msg (vecU8 nvSigZero64) = true := by
+  have hsig : vecU8 nvSigZero64 = nvSigZeroEd64 := by decide
   rw [hsig]
-  unfold SignalPqxdh.xeddsaVerifyRef
-  simp only [hik, List.length_replicate, beq_self_eq_true, Bool.true_and, sha512Ref_nvB]
-  rfl
+  have hv := nv_pubKey_cases sk
+  rcases nv_pubKey_montLiftEd _ hv with ⟨P, hmont, _⟩
+  have hP_on : edOnCurve P = true := montLiftEd_some_onCurve hmont
+  change SignalPqxdh.xeddsaVerifyRef
+    ({ blockLevelPrims nvX nvW with sha512 := SignalPqxdh.sha512Ref (blockLevelPrims nvX nvW) })
+    (vecU8 (nvW.C.pubKey sk)) msg nvSigZeroEd64 = true
+  rw [xeddsaVerifyRef_blockLevelPrims_eq]
+  have hcond : ((vecU8 (nvW.C.pubKey sk)).length == 32 &&
+      nvSigZeroEd64.length == 64 &&
+      ((nvSigZeroEd64.getD 63 0 &&& 0x60) == 0)) = true := by
+    rw [vecU8_length]; decide
+  rw [nv_ite_true hcond]
+  dsimp only
+  have hs0 : ((nvSigZeroEd64.getD 63 0 &&& 0x80) >>> 7).toBitVec = 0#8 := by decide
+  rw [hs0, u8Vec_vecU8, hmont]
+  dsimp only
+  rw [nv_sha512_zero]
+  have hh0 : leBytesToNat (u8Vec 64 (List.replicate 64 (0 : UInt8))).toList % edOrderL = 0 := by
+    decide
+  have hsNat0 : leBytesToNat (u8Vec 32
+      ((nvSigZeroEd64.drop 32).take 31 ++ [(nvSigZeroEd64.drop 32).getD 31 0 &&& 0x7F])).toList %
+      edOrderL = 0 := by decide
+  rw [hh0, hsNat0,
+    edSmul_eq_edNatSmul (by decide) edOnCurve_edBasepoint,
+    edSmul_eq_edNatSmul (by decide) hP_on]
+  change (toU8 (encodeEd (edSub edZero edZero)) == nvSigZeroEd64.take 32) = true
+  have hsub0 : edSub edZero edZero = edZero := by
+    change edAdd edZero (edNeg edZero) = edZero
+    rw [edNeg_edZero, edAdd_edZero edOnCurve_edZero]
+  rw [hsub0]
+  decide
+
+end NvCurveHelpers
 
 theorem sha256With_nvCrypto (m : HwBytes) :
     CryptoGames.HMAC.sha256With nvCrypto.F m =
@@ -302,17 +473,17 @@ theorem nvVec3168_eq : List.Vector.replicate 3168 0#8 = nvVec3168 := by
 
 theorem nvCoins64A_len : nvCoins64A.length = 64 := rfl
 
-def nvSeedA : List.Vector (BitVec 8) 64 := ⟨nvCoins64A, nvCoins64A_len⟩
+@[expose] def nvSeedA : List.Vector (BitVec 8) 64 := ⟨nvCoins64A, nvCoins64A_len⟩
 
 theorem nvMlKem_fromSeed_hdr (s : List.Vector (BitVec 8) 64) :
     (nvMlKem.fromSeed s).1.toList = List.replicate 64 0#8 := by
   rw [CryptoVerification.LibsignalSpqrV1.MlKem.fromSeed_hdr]
   simp [nvMlKem, CryptoVerification.LibsignalSpqrV1.pk1Off]
 
-@[irreducible] def nvEk1152 : HwBytes :=
+@[expose, irreducible] def nvEk1152 : HwBytes :=
   (nvMlKem.fromSeed nvSeedA).2.1.toList
 
-@[irreducible] def nvDk2400 : HwBytes :=
+@[expose, irreducible] def nvDk2400 : HwBytes :=
   (nvMlKem.fromSeed nvSeedA).2.2.toList
 
 theorem nvEk1152_def :

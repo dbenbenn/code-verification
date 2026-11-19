@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Session.StatementSession
-public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge
+public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.CryptoGames.SM.Game
 public import ToMathlib.MeasureTheory.Measure.Bool
 import ProofLib.Lemmas
@@ -18,7 +18,7 @@ import VCVio.OracleComp.SimSemantics.SimulateQ
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -672,19 +672,6 @@ theorem gameRTrackHalted_single_min_eq {PQ : Type} [Inhabited PQ]
       Set.mem_singleton_iff] at hz
     rcases hz with ⟨_, -, rfl⟩
     rfl
-
-theorem evalDist_gameRTrackHalted_single_min_eq {PQ : Type} [Inhabited PQ]
-    (pqrOf : SampledSessionKey → BitVec 256)
-    (P : Params PQ (BitVec 512)) (K : MlKem)
-    (ℓ Δ qep q : ℕ) (s : BitVec 256)
-    (cfg : ConfigR (GhostState PQ) (Plain ℓ) Bytes)
-    (A : Adversary (GhostState PQ) (Plain ℓ) (BitVec 512) Bytes)
-    (hq : MakesAtMostQueries A q) :
-    let sm := sessionSchemeFixedSpk P ℓ s
-    𝒟[Prod.fst <$> KemFailTrackBridge.gameRTrackHalted pqrOf P.C.F K sm Δ qep cfg A] =
-      𝒟[Prod.fst <$> KemFailTrackBridge.gameRTrackHalted pqrOf P.C.F K sm Δ (min qep (q + 4)) cfg A] := by
-  intro sm
-  rw [gameRTrackHalted_single_min_eq pqrOf P K ℓ Δ qep q s cfg A hq]
 
 /-- Prefix-averaged `Measure Bool` invariance of `gameRTrackHalted` under `qep ↦ min qep (q + 4)`. -/
 theorem evalDist_mixGameRTrackHalted_min_eq {α PQ : Type} [Inhabited PQ]

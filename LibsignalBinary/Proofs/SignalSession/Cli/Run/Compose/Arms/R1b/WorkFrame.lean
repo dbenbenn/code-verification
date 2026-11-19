@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDeser
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDeser -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanup
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.SliceHelpers
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanup -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.SliceHelpers
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CallHelpers
 import LibsignalBinary.Specifications.AsmConstants
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -188,63 +188,6 @@ elab "r1b_sepWPp_frame " t1:term:arg h:term:arg t2:term:arg hk:term:arg : term <
       #[some prog, some ret, some st, some a1, some a2, some r, some p, some p',
         some q, some qp, some oom, h1Expr, hExpr, h2Expr, hkExpr]
 
-macro "r1b_ro_at!" himg:term:arg adrpOff:num lit:str : term =>
-  `(r1b_ro_xref $himg
-    (num% (ls_xref% (ls_off% "libsignal_cli::run" + $adrpOff)
-      (ls_off% "libsignal_cli::run" + ($adrpOff + 4))))
-    $lit
-    (by rfl_kernel) (by rfl_kernel) (by rfl_kernel) (by rfl_kernel)
-    (by rfl_kernel) (by rfl_kernel) (by rfl_kernel) (by rfl_kernel))
-
-theorem r1b_ro_reg_id {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {m : Memory} {P : SepProp} (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + BitVec.ofNat 64 (num% (ls_xref%
-      (ls_off% "libsignal_cli::run" + 0x750)
-      (ls_off% "libsignal_cli::run" + (0x750 + 4))))) ↦ᵣ utf8 "registration-id") ∗ P :=
-  (r1b_ro_at! himg 0x750 "registration-id") hro hP
-
-theorem r1b_ro_unreadable_c28 {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {m : Memory} {P : SepProp} (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + BitVec.ofNat 64 (num% (ls_xref%
-      (ls_off% "libsignal_cli::run" + 0xc28)
-      (ls_off% "libsignal_cli::run" + (0xc28 + 4))))) ↦ᵣ utf8 "file could not be read") ∗ P :=
-  (r1b_ro_at! himg 0xc28 "file could not be read") hro hP
-
-theorem r1b_ro_spk {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {m : Memory} {P : SepProp} (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + BitVec.ofNat 64 (num% (ls_xref%
-      (ls_off% "libsignal_cli::run" + 0xc80)
-      (ls_off% "libsignal_cli::run" + (0xc80 + 4))))) ↦ᵣ utf8 "signed-pre-key") ∗ P :=
-  (r1b_ro_at! himg 0xc80 "signed-pre-key") hro hP
-
-theorem r1b_ro_malformed_e04 {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {m : Memory} {P : SepProp} (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + BitVec.ofNat 64 (num% (ls_xref%
-      (ls_off% "libsignal_cli::run" + 0xe04)
-      (ls_off% "libsignal_cli::run" + (0xe04 + 4))))) ↦ᵣ utf8 "malformed file") ∗ P :=
-  (r1b_ro_at! himg 0xe04 "malformed file") hro hP
-
-theorem r1b_ro_unreadable_11c8 {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {m : Memory} {P : SepProp} (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + BitVec.ofNat 64 (num% (ls_xref%
-      (ls_off% "libsignal_cli::run" + 0x11c8)
-      (ls_off% "libsignal_cli::run" + (0x11c8 + 4))))) ↦ᵣ utf8 "file could not be read") ∗ P :=
-  (r1b_ro_at! himg 0x11c8 "file could not be read") hro hP
-
-theorem r1b_ro_kpk {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {m : Memory} {P : SepProp} (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + BitVec.ofNat 64 (num% (ls_xref%
-      (ls_off% "libsignal_cli::run" + 0x1268)
-      (ls_off% "libsignal_cli::run" + (0x1268 + 4))))) ↦ᵣ utf8 "kyber-pre-key") ∗ P :=
-  (r1b_ro_at! himg 0x1268 "kyber-pre-key") hro hP
-
-theorem r1b_ro_opk {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {m : Memory} {P : SepProp} (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + BitVec.ofNat 64 (num% (ls_xref%
-      (ls_off% "libsignal_cli::run" + 0x12dc)
-      (ls_off% "libsignal_cli::run" + (0x12dc + 4))))) ↦ᵣ utf8 "one-time-pre-key") ∗ P :=
-  (r1b_ro_at! himg 0x12dc "one-time-pre-key") hro hP
-
 theorem r1b_ownedBytes_facts (A : RustAlloc) (cap ptr len : BitVec 64) (bs : List (BitVec 8)) :
     ownedBytes A cap ptr len bs ⊢
       ⌜len = BitVec.ofNat 64 bs.length ∧ cap.toNat < 2 ^ 63 ∧ bs.length < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
@@ -405,12 +348,12 @@ theorem r1b_head7_to_region (d : BitVec 64) (b0 b1 b2 b3 b4 b5 b6 : BitVec 8) :
   exact Entails.sepExists_right _ (Entails.sepExists_right _
     (Entails.sepExists_right _ (Entails.sepExists_right _ (Entails.refl _))))
 
-def r1b_spkLayoutAt (a : BitVec 64)
+@[expose] def r1b_spkLayoutAt (a : BitVec 64)
     (w0 : BitVec 64) (w8 w12 : BitVec 32) (w16 w24 : BitVec 64) : SepProp :=
   (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₃₂ w8) ∗ ((a + 12#64) ↦₃₂ w12) ∗
     ((a + 16#64) ↦₆₄ w16) ∗ ((a + 24#64) ↦₆₄ w24)
 
-def r1b_spkBytesOf (w0 : BitVec 64) (w8 w12 : BitVec 32) (w16 w24 : BitVec 64) :
+@[expose] def r1b_spkBytesOf (w0 : BitVec 64) (w8 w12 : BitVec 32) (w16 w24 : BitVec 64) :
     List (BitVec 8) :=
   unpack64 w0 ++ unpack32 w8 ++ unpack32 w12 ++ unpack64 w16 ++ unpack64 w24
 
@@ -621,252 +564,6 @@ theorem r1b_join_region (fsp : BitVec 64) (o n1 n2 : Nat)
       memRegion (fsp + BitVec.ofNat 64 (o + n1)) n2 =
       memRegion (fsp + BitVec.ofNat 64 o) (n1 + n2) :=
   (r1b_split_region fsp o n1 n2 ho hb).symm
-
-def r1b_invCore (A : RustAlloc) (img : Obj.Image) (g : RunCall) (d : Init1Data)
-    (s0 : State) : SepProp :=
-  let fsp := runFsp s0
-  memRegion g.res runResSize ∗ memRegion g.call 56 ∗
-    storesAt A g.stores StoresGhost.opened ∗ (g.inp ↦ₛ inputOf g.i g.c) ∗
-    coinsInstalled img g.coins (MainHops.coinsOf g.i) ∗
-    CryptoVerification.LibsignalSpqrV1.TokenInit img ∗
-    addrNameHeap A d.meG ∗ runSaved s0 ∗
-    memRegion (fsp + 0x118#64) 4 ∗ memRegion (fsp + 0x160#64) 4 ∗
-    ((fsp + 0x180#64) ↦₆₄ d.ikW0) ∗
-    ((fsp + 0x1b8#64) ↦₆₄ d.meG.name.ptr) ∗
-    ((fsp + 0x1c0#64) ↦₆₄ d.dirCap) ∗
-    ((fsp + 0x1c8#64) ↦₆₄ d.dirPtr) ∗
-    memRegion (fsp + 0x1d0#64) 0x90 ∗
-    addrUpperAt (fsp + 0x260#64) d.meG ∗
-    memRegion (fsp + 0x270#64) 0x30 ∗
-    protocolAddressAt A d.peerG (fsp + 0x2a0#64) ∗
-    memRegion (fsp + 0x2c0#64) 0x210 ∗
-    memRegion (fsp + 0x500#64) 0x1250 ∗
-    memRegion (fsp + 0x1768#64) 0x1288
-
-theorem r1b_init1Mem_unpack (A : RustAlloc) (img : Obj.Image) (g : RunCall) (d : Init1Data)
-    (s0 : State) (resStack : Nat) :
-    let fsp := runFsp s0
-    init1Mem A img g d s0 resStack ⊢
-      r1b_invCore A img g d s0 ∗ logOff img ∗
-        ownedBytes A d.dirCap d.dirPtr (BitVec.ofNat 64 d.dir.length) d.dir ∗
-        memRegion fsp 0x110 ∗
-        memRegion (fsp + 0x110#64) 8 ∗ memRegion (fsp + 0x11c#64) 4 ∗
-        memRegion (fsp + 0x120#64) 8 ∗ memRegion (fsp + 0x128#64) 8 ∗
-        memRegion (fsp + 0x130#64) 8 ∗ memRegion (fsp + 0x138#64) 8 ∗
-        memRegion (fsp + 0x140#64) 8 ∗ memRegion (fsp + 0x148#64) 8 ∗
-        memRegion (fsp + 0x150#64) 8 ∗ memRegion (fsp + 0x158#64) 8 ∗
-        memRegion (fsp + 0x164#64) 4 ∗
-        memRegion (fsp + 0x168#64) 8 ∗ memRegion (fsp + 0x170#64) 8 ∗
-        memRegion (fsp + 0x178#64) 8 ∗
-        memRegion (fsp + 0x188#64) 8 ∗ ((fsp + 0x190#64) ↦₆₄ d.ikW3) ∗
-        memRegion (fsp + 0x198#64) 16 ∗ ((fsp + 0x1a8#64) ↦₆₄ d.ikW1) ∗
-        ((fsp + 0x1b0#64) ↦₃₂ d.peerV.device.zeroExtend 32) ∗
-        memRegion (fsp + 0x1b4#64) 4 ∗
-        memRegion (fsp + 0x4d0#64) 48 ∗ memRegion (fsp + 0x1750#64) 24 ∗
-        stackAt fsp (resStack - runFrame) ∗ A.pool := by
-  intro fsp
-  dsimp only [init1Mem, init1Cells, runLocals, runLocalsFrom, runLocalBytes, r1b_invCore, fsp]
-  simp only [Nat.reduceAdd, Nat.reduceSub, BitVec.add_zero,
-    memRegion_zero, emp_sepConj]
-  have h000 : memRegion (runFsp s0) 0x180 =
-      memRegion (runFsp s0) 0x110 ∗ memRegion (runFsp s0 + 0x110#64) 8 ∗
-      memRegion (runFsp s0 + 0x118#64) 4 ∗ memRegion (runFsp s0 + 0x11c#64) 4 ∗
-      memRegion (runFsp s0 + 0x120#64) 8 ∗ memRegion (runFsp s0 + 0x128#64) 8 ∗
-      memRegion (runFsp s0 + 0x130#64) 8 ∗ memRegion (runFsp s0 + 0x138#64) 8 ∗
-      memRegion (runFsp s0 + 0x140#64) 8 ∗ memRegion (runFsp s0 + 0x148#64) 8 ∗
-      memRegion (runFsp s0 + 0x150#64) 8 ∗ memRegion (runFsp s0 + 0x158#64) 8 ∗
-      memRegion (runFsp s0 + 0x160#64) 4 ∗ memRegion (runFsp s0 + 0x164#64) 4 ∗
-      memRegion (runFsp s0 + 0x168#64) 8 ∗ memRegion (runFsp s0 + 0x170#64) 8 ∗
-      memRegion (runFsp s0 + 0x178#64) 8 := by
-    rw [ProofLib.memRegion_split (runFsp s0) 0x110 0x70 (by decide),
-      r1b_split_region (runFsp s0) 0x110 8 0x68,
-      r1b_split_region (runFsp s0) 0x118 4 0x64,
-      r1b_split_region (runFsp s0) 0x11c 4 0x60,
-      r1b_split_region (runFsp s0) 0x120 8 0x58,
-      r1b_split_region (runFsp s0) 0x128 8 0x50,
-      r1b_split_region (runFsp s0) 0x130 8 0x48,
-      r1b_split_region (runFsp s0) 0x138 8 0x40,
-      r1b_split_region (runFsp s0) 0x140 8 0x38,
-      r1b_split_region (runFsp s0) 0x148 8 0x30,
-      r1b_split_region (runFsp s0) 0x150 8 0x28,
-      r1b_split_region (runFsp s0) 0x158 8 0x20,
-      r1b_split_region (runFsp s0) 0x160 4 0x1c,
-      r1b_split_region (runFsp s0) 0x164 4 0x18,
-      r1b_split_region (runFsp s0) 0x168 8 0x10,
-      r1b_split_region (runFsp s0) 0x170 8 8]
-  have h2c0 : memRegion (runFsp s0 + 0x2c0#64) 0x2730 =
-      memRegion (runFsp s0 + 0x2c0#64) 0x210 ∗ memRegion (runFsp s0 + 0x4d0#64) 48 ∗
-      memRegion (runFsp s0 + 0x500#64) 0x1250 ∗ memRegion (runFsp s0 + 0x1750#64) 24 ∗
-      memRegion (runFsp s0 + 0x1768#64) 0x1288 := by
-    rw [r1b_split_region (runFsp s0) 0x2c0 0x210 0x2520,
-      r1b_split_region (runFsp s0) 0x4d0 0x30 0x24f0,
-      r1b_split_region (runFsp s0) 0x500 0x1250 0x12a0,
-      r1b_split_region (runFsp s0) 0x1750 0x18 0x1288]
-  rw [h000, h2c0]
-  exact Entails.of_eq (by ac_rfl)
-
-theorem r1b_invCore_to_errCommon (A : RustAlloc) (img : Obj.Image) (g : RunCall) (d : Init1Data)
-    (s0 : State) (resStack : Nat) :
-    let fsp := runFsp s0
-    (r1b_invCore A img g d s0 ∗ logOff img ∗
-      ownedBytes A d.dirCap d.dirPtr (BitVec.ofNat 64 d.dir.length) d.dir ∗
-      memRegion fsp 0x110 ∗ memRegion (fsp + 0x130#64) 0x20 ∗
-      memRegion (fsp + 0x164#64) 4 ∗ memRegion (fsp + 0x1750#64) 24 ∗
-      stackAt fsp (resStack - runFrame) ∗ A.pool) ⊢
-      r1b_errCommon A g d s0 resStack := by
-  intro fsp
-  dsimp only [r1b_invCore, r1b_errCommon, r1b_errCore, r1b_errFrameRest]
-  have hfsp : runFsp s0 = fsp := rfl
-  simp only [hfsp]
-  have hheap :
-      coinsInstalled img g.coins (MainHops.coinsOf g.i) ∗
-        CryptoVerification.LibsignalSpqrV1.TokenInit img ∗ logOff img ⊢ anyHeap :=
-    entails_anyHeap _
-  have h180 : ((fsp + 0x180#64) ↦₆₄ d.ikW0) ⊢ memRegion (fsp + 0x180#64) 8 :=
-    pointsTo64_entails_memRegion _ _
-  have h160 : memRegion (fsp + 0x160#64) 4 ∗ memRegion (fsp + 0x164#64) 4 =
-      memRegion (fsp + 0x160#64) 8 := r1b_join_region fsp 0x160 4 4
-  have h1d0 :
-      memRegion (fsp + 0x1d0#64) 0x90 ∗ addrUpperAt (fsp + 0x260#64) d.meG ∗
-        memRegion (fsp + 0x270#64) 0x30 ⊢ memRegion (fsp + 0x1d0#64) 0xd0 := by
-    refine Entails.trans (sepConj_mono_right
-      (sepConj_mono_left (addrUpperAt_entails_memRegion (fsp + 0x260#64) d.meG))) ?_
-    rw [r1b_join_region fsp 0x260 0x10 0x30, r1b_join_region fsp 0x1d0 0x90 0x40]
-    exact Entails.refl _
-  have h500 :
-      memRegion (fsp + 0x500#64) 0x1250 ∗ memRegion (fsp + 0x1750#64) 24 ∗
-        memRegion (fsp + 0x1768#64) 0x1288 = memRegion (fsp + 0x500#64) 0x24f0 := by
-    rw [r1b_join_region fsp 0x1750 0x18 0x1288,
-      r1b_join_region fsp 0x500 0x1250 0x12a0]
-  refine r1b_entails_frame_core
-    (A1 := (coinsInstalled img g.coins (MainHops.coinsOf g.i) ∗
-        CryptoVerification.LibsignalSpqrV1.TokenInit img ∗ logOff img) ∗
-      ((fsp + 0x180#64) ↦₆₄ d.ikW0) ∗
-      (memRegion (fsp + 0x160#64) 4 ∗ memRegion (fsp + 0x164#64) 4) ∗
-      (memRegion (fsp + 0x1d0#64) 0x90 ∗ addrUpperAt (fsp + 0x260#64) d.meG ∗
-        memRegion (fsp + 0x270#64) 0x30) ∗
-      (memRegion (fsp + 0x500#64) 0x1250 ∗ memRegion (fsp + 0x1750#64) 24 ∗
-        memRegion (fsp + 0x1768#64) 0x1288))
-    (A2 := anyHeap ∗ memRegion (fsp + 0x180#64) 8 ∗ memRegion (fsp + 0x160#64) 8 ∗
-      memRegion (fsp + 0x1d0#64) 0xd0 ∗ memRegion (fsp + 0x500#64) 0x24f0)
-    (R := memRegion g.res runResSize ∗ memRegion g.call 56 ∗
-      storesAt A g.stores StoresGhost.opened ∗ (g.inp ↦ₛ inputOf g.i g.c) ∗
-      addrNameHeap A d.meG ∗ runSaved s0 ∗
-      ownedBytes A d.dirCap d.dirPtr (BitVec.ofNat 64 d.dir.length) d.dir ∗
-      memRegion fsp 0x110 ∗ memRegion (fsp + 0x118#64) 4 ∗ memRegion (fsp + 0x130#64) 0x20 ∗
-      ((fsp + 0x1b8#64) ↦₆₄ d.meG.name.ptr) ∗ ((fsp + 0x1c0#64) ↦₆₄ d.dirCap) ∗
-      ((fsp + 0x1c8#64) ↦₆₄ d.dirPtr) ∗
-      protocolAddressAt A d.peerG (fsp + 0x2a0#64) ∗ memRegion (fsp + 0x2c0#64) 0x210 ∗
-      stackAt fsp (resStack - runFrame) ∗ A.pool)
-    (by ac_rfl) ?_ (by ac_rfl)
-  rw [h160, h500]
-  exact sepConj_mono hheap (sepConj_mono h180
-    (sepConj_mono_right (sepConj_mono_left h1d0)))
-
-/-! ## Control-Flow and `readBundleV` Semantic Bundle Helpers -/
-
-structure r1b_OkCtx (S : RunSem) (img : Obj.Image) (ext : String → Option (State → State))
-    (g : RunCall) (d : Init1Data) (s0 s : State) (off : Nat) : Prop where
-  st : InRun img ext s0 s off
-  he : AtRunEntry S img ext g s0
-  callEq : g.c = .init d.peerV d.dir
-  x19 : s.readReg64 (.gpr 19#5) = g.stores
-  x20 : s.readReg64 (.gpr 20#5) = g.res
-  x21 : s.readReg64 (.gpr 21#5) = d.meG.name.cap
-  x22 : s.readReg64 (.gpr 22#5) = d.ikW2
-  peerVal : d.peerG.val = addrValOf d.peerV
-  meVal : d.meG.val = addrValOf d.meV
-  ownSem : ∃ ownB : Bytes,
-    StoresGhost.opened.identity.own.get cliIo.rd (runFiles g.i) (utf8 "address") = .ok ownB ∧
-      addrParse uuidTryParse ownB = some d.meV
-  ikSem : ∃ ikB : Bytes,
-    bundleFile (runFiles g.i) d.dir "identity-key" = some ikB ∧
-      exceptOpt (decodeIdentityKey ikB) = some d.idKey
-  ikWords : Words32Eq d.idKey.publicKey.bytes.toList d.ikW0 d.ikW1 d.ikW2 d.ikW3
-  rejectIfNone : readBundleV (runFiles g.i) d.dir d.peerV.device = none → g.a = some none
-  trace : s0.trace <+: s.trace
-  fs : s.fs.files = runFiles g.i
-  stdout : Arm64.Process.ProcessOutcome.traceStreamBytes .stdout s.trace = []
-
-theorem r1b_OkCtx.of_init1 {S : RunSem} {img : Obj.Image} {ext : String → Option (State → State)}
-    {g : RunCall} {d : Init1Data} {s0 s1 : State}
-    (he : AtRunEntry S img ext g s0) (hi1 : AtInit1 img ext g d s0 s1) :
-    r1b_OkCtx S img ext g d s0 s1 0x74c := {
-  st := hi1.base, he := he, callEq := hi1.callEq,
-  x19 := hi1.x19, x20 := hi1.x20, x21 := hi1.x21, x22 := hi1.x22,
-  peerVal := hi1.peerVal, meVal := hi1.meVal, ownSem := hi1.ownSem,
-  ikSem := hi1.ikSem, ikWords := hi1.ikWords,
-  rejectIfNone := r1b_reject_of_readBundle_none he hi1,
-  trace := hi1.trace, fs := hi1.fs, stdout := hi1.stdout
-}
-
-theorem r1b_OkCtx.of_step {S : RunSem} {img : Obj.Image} {ext : String → Option (State → State)}
-    {g : RunCall} {d : Init1Data} {s0 s sm : State} {off off' : Nat}
-    (hok : r1b_OkCtx S img ext g d s0 s off)
-    (hin : InRun img ext s0 sm off')
-    (hx19 : sm.readReg64 (.gpr 19#5) = s.readReg64 (.gpr 19#5))
-    (hx20 : sm.readReg64 (.gpr 20#5) = s.readReg64 (.gpr 20#5))
-    (hx21 : sm.readReg64 (.gpr 21#5) = s.readReg64 (.gpr 21#5))
-    (hx22 : sm.readReg64 (.gpr 22#5) = s.readReg64 (.gpr 22#5))
-    (htr : sm.trace = s.trace)
-    (hfs : sm.fs.files = s.fs.files) :
-    r1b_OkCtx S img ext g d s0 sm off' := {
-  st := hin, he := hok.he, callEq := hok.callEq,
-  x19 := hx19.trans hok.x19, x20 := hx20.trans hok.x20,
-  x21 := hx21.trans hok.x21, x22 := hx22.trans hok.x22,
-  peerVal := hok.peerVal, meVal := hok.meVal, ownSem := hok.ownSem,
-  ikSem := hok.ikSem, ikWords := hok.ikWords, rejectIfNone := hok.rejectIfNone,
-  trace := htr ▸ hok.trace, fs := hfs.trans hok.fs,
-  stdout := r1b_stdout_eq_of_trace_eq htr hok.stdout
-}
-
-theorem r1b_OkCtx.of_call {S : RunSem} {img : Obj.Image} {ext : String → Option (State → State)}
-    {g : RunCall} {d : Init1Data} {s0 st_bl sf : State} {off off' : Nat}
-    (hok : r1b_OkCtx S img ext g d s0 st_bl off)
-    (hin : InRun img ext s0 sf off')
-    (hcs : CalleeSavedPreserved st_bl sf)
-    (hfs : sf.fs.files = st_bl.fs.files)
-    (htr : sf.trace = st_bl.trace) :
-    r1b_OkCtx S img ext g d s0 sf off' :=
-  hok.of_step hin hcs.1 hcs.2.1 hcs.2.2.1 hcs.2.2.2.1 htr hfs
-
-theorem r1b_OkCtx.to_err {S : RunSem} {img : Obj.Image} {ext : String → Option (State → State)}
-    {g : RunCall} {d : Init1Data} {s0 s : State} {off : Nat}
-    (hok : r1b_OkCtx S img ext g d s0 s off)
-    (hnone : readBundleV (runFiles g.i) d.dir d.peerV.device = none) :
-    r1b_ErrCtx img ext g d s0 s off := {
-  st := hok.st, x19 := hok.x19, x20 := hok.x20, x21 := hok.x21,
-  trace := hok.trace, hist := ⟨hok.fs, hok.stdout⟩,
-  ans := hok.rejectIfNone hnone
-}
-
-theorem r1b_OkCtx.to_readErr {S : RunSem} {img : Obj.Image} {ext : String → Option (State → State)}
-    {g : RunCall} {d : Init1Data} {s0 st_bl sf : State} {off off' : Nat} {path : List (BitVec 8)}
-    (hok : r1b_OkCtx S img ext g d s0 st_bl off)
-    (hin : InRun img ext s0 sf off')
-    (hcs : CalleeSavedPreserved st_bl sf)
-    (hout : cliIo.rd st_bl.fs.files path = .error () ∧
-      sf.fs.files = st_bl.fs.files ∧ sf.trace = st_bl.trace)
-    (hnone_of_err : cliIo.rd (runFiles g.i) path = .error () →
-      readBundleV (runFiles g.i) d.dir d.peerV.device = none) :
-    r1b_ErrCtx img ext g d s0 sf off' :=
-  (hok.of_call hin hcs hout.2.1 hout.2.2).to_err (hnone_of_err (hok.fs ▸ hout.1))
-
-theorem r1b_ErrCtx.of_step {img : Obj.Image} {ext : String → Option (State → State)}
-    {g : RunCall} {d : Init1Data} {s0 s sm : State} {off off' : Nat}
-    (hc : r1b_ErrCtx img ext g d s0 s off)
-    (hin : InRun img ext s0 sm off')
-    (hx19 : sm.readReg64 (.gpr 19#5) = s.readReg64 (.gpr 19#5))
-    (hx20 : sm.readReg64 (.gpr 20#5) = s.readReg64 (.gpr 20#5))
-    (hx21 : sm.readReg64 (.gpr 21#5) = s.readReg64 (.gpr 21#5))
-    (htr : sm.trace = s.trace)
-    (hfs : sm.fs.files = s.fs.files) :
-    r1b_ErrCtx img ext g d s0 sm off' := {
-  st := hin, x19 := hx19.trans hc.x19, x20 := hx20.trans hc.x20, x21 := hx21.trans hc.x21,
-  trace := htr ▸ hc.trace,
-  hist := ⟨hfs.trans hc.hist.1, htr ▸ hc.hist.2⟩,
-  ans := hc.ans
-}
 
 theorem r1b_allocFailed_of_null {s0 st_bl sf : State}
     (htr0 : s0.trace <+: st_bl.trace)
@@ -1097,85 +794,5 @@ theorem r1b_readBundleV_some {F : FsFiles} {dir spkBs spkKey spkSig kpkBs kpkKey
     rw [he_opk]; dsimp only [Bind.bind, Option.bind, Pure.pure]
     rw [he_spk]; dsimp only [Bind.bind, Option.bind]
     rw [hkpk_d]
-
-theorem r1b_OkCtx.after_call {S : RunSem} {img : Obj.Image} {ext : String → Option (State → State)}
-    {g : RunCall} {d : Init1Data} {s0 s st_bl sf : State} {off off' : Nat}
-    (hok : r1b_OkCtx S img ext g d s0 s off)
-    (hx19_bl : st_bl.readReg64 (.gpr 19#5) = s.readReg64 (.gpr 19#5))
-    (hx20_bl : st_bl.readReg64 (.gpr 20#5) = s.readReg64 (.gpr 20#5))
-    (hx21_bl : st_bl.readReg64 (.gpr 21#5) = s.readReg64 (.gpr 21#5))
-    (hx22_bl : st_bl.readReg64 (.gpr 22#5) = s.readReg64 (.gpr 22#5))
-    (htr_bl : st_bl.trace = s.trace)
-    (hfs_bl : st_bl.fs.files = s.fs.files)
-    (hin : InRun img ext s0 sf off')
-    (hcs : CalleeSavedPreserved st_bl sf)
-    (hfs : sf.fs.files = st_bl.fs.files)
-    (htr : sf.trace = st_bl.trace) :
-    r1b_OkCtx S img ext g d s0 sf off' :=
-  hok.of_step hin (hcs.1.trans hx19_bl) (hcs.2.1.trans hx20_bl)
-    (hcs.2.2.1.trans hx21_bl) (hcs.2.2.2.1.trans hx22_bl)
-    (htr.trans htr_bl) (hfs.trans hfs_bl)
-
-theorem r1b_OkCtx.after_readErr {S : RunSem} {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    {g : RunCall} {d : Init1Data} {s0 s st_bl sf : State} {off off' : Nat}
-    {path : List (BitVec 8)}
-    (hok : r1b_OkCtx S img ext g d s0 s off)
-    (hx19_bl : st_bl.readReg64 (.gpr 19#5) = s.readReg64 (.gpr 19#5))
-    (hx20_bl : st_bl.readReg64 (.gpr 20#5) = s.readReg64 (.gpr 20#5))
-    (hx21_bl : st_bl.readReg64 (.gpr 21#5) = s.readReg64 (.gpr 21#5))
-    (hx22_bl : st_bl.readReg64 (.gpr 22#5) = s.readReg64 (.gpr 22#5))
-    (htr_bl : st_bl.trace = s.trace)
-    (hfs_bl : st_bl.fs.files = s.fs.files)
-    (hin : InRun img ext s0 sf off')
-    (hcs : CalleeSavedPreserved st_bl sf)
-    (hout : cliIo.rd st_bl.fs.files path = .error () ∧
-      sf.fs.files = st_bl.fs.files ∧ sf.trace = st_bl.trace)
-    (hnone_of_err : cliIo.rd (runFiles g.i) path = .error () →
-      readBundleV (runFiles g.i) d.dir d.peerV.device = none) :
-    r1b_ErrCtx img ext g d s0 sf off' :=
-  (hok.after_call hx19_bl hx20_bl hx21_bl hx22_bl htr_bl hfs_bl hin hcs hout.2.1 hout.2.2).to_err
-    (hnone_of_err (hok.fs ▸ hfs_bl ▸ hout.1))
-
-theorem r1b_stage_to_err (A : RustAlloc) (img : Obj.Image) (g : RunCall) (d : Init1Data)
-    (s0 : State) (resStack : Nat) (v164 : BitVec 32) :
-    let fsp := runFsp s0
-    (r1b_invCore A img g d s0 ∗ logOff img ∗
-      ownedBytes A d.dirCap d.dirPtr (BitVec.ofNat 64 d.dir.length) d.dir ∗
-      memRegion fsp 0x110 ∗ memRegion (fsp + 0x130#64) 0x20 ∗
-      ((fsp + 0x164#64) ↦₃₂ v164) ∗
-      ((fsp + 0x190#64) ↦₆₄ d.ikW3) ∗
-      ((fsp + 0x1a8#64) ↦₆₄ d.ikW1) ∗
-      ((fsp + 0x1b0#64) ↦₃₂ d.peerV.device.zeroExtend 32) ∗
-      memRegion (fsp + 0x1b4#64) 4 ∗ memRegion (fsp + 0x1750#64) 24 ∗
-      stackAt fsp (resStack - runFrame) ∗ A.pool) ⊢
-      r1b_errCommon A g d s0 resStack ∗
-        memRegion (fsp + 0x190#64) 8 ∗ memRegion (fsp + 0x1a8#64) 16 := by
-  intro fsp
-  have h164 : ((fsp + 0x164#64) ↦₃₂ v164) ⊢ memRegion (fsp + 0x164#64) 4 :=
-    pointsTo32_entails_memRegion _ _
-  have hcore :
-      (r1b_invCore A img g d s0 ∗ logOff img ∗
-        ownedBytes A d.dirCap d.dirPtr (BitVec.ofNat 64 d.dir.length) d.dir ∗
-        memRegion fsp 0x110 ∗ memRegion (fsp + 0x130#64) 0x20 ∗
-        ((fsp + 0x164#64) ↦₃₂ v164) ∗ memRegion (fsp + 0x1750#64) 24 ∗
-        stackAt fsp (resStack - runFrame) ∗ A.pool) ⊢
-        r1b_errCommon A g d s0 resStack :=
-    Entails.trans (r1b_entails_frame (by ac_rfl) h164 (by ac_rfl))
-      (r1b_invCore_to_errCommon A img g d s0 resStack)
-  have h190 : ((fsp + 0x190#64) ↦₆₄ d.ikW3) ⊢ memRegion (fsp + 0x190#64) 8 :=
-    pointsTo64_entails_memRegion _ _
-  have h1a8 :
-      ((fsp + 0x1a8#64) ↦₆₄ d.ikW1) ∗
-        ((fsp + 0x1b0#64) ↦₃₂ d.peerV.device.zeroExtend 32) ∗
-        memRegion (fsp + 0x1b4#64) 4 ⊢ memRegion (fsp + 0x1a8#64) 16 := by
-    refine Entails.trans (sepConj_mono_right (sepConj_mono_left
-      (pointsTo32_entails_memRegion _ _))) ?_
-    rw [r1b_join_region fsp 0x1b0 4 4]
-    simpa only [BitVec.add_assoc, BitVec.reduceAdd] using
-      r1b_cell64_cons (a := fsp + 0x1a8#64) d.ikW1 (n := 8) (by decide)
-  exact r1b_entails_frame (by dsimp only [fsp]; ac_rfl)
-    (sepConj_mono hcore (sepConj_mono h190 h1a8))
-    rfl
 
 end CryptoVerification.SignalSession.Cli.RunCompose

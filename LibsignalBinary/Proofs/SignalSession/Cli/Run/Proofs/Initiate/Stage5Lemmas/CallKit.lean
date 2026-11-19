@@ -9,15 +9,14 @@ limitations under the License.
 
 module
 
-public meta import LibsignalBinary.Proofs.Common.InImageKit -- shake: keep
-public import LibsignalBinary.Proofs.Common.InImageKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCallees
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.Common.CallInv
+public meta import LibsignalBinary.Proofs.Common.InImageKit -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Common.InImageKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCallees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.Vtables
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 public meta import Lean -- shake: keep
+public meta import ProofLib
 
 /-!
 # Stage 5 Call Combinators, Frame Tactics, and Stack Splits
@@ -27,14 +26,12 @@ combinators (`s5_call_raw`, `s5_call_futDrop`, `s5_call_dealloc`, `s5_call_dropS
 offsets, and stack-budget split equalities for Stage 5.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
 set_option maxRecDepth 2000000
 set_option maxHeartbeats 400000
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage5Lemmas
 
@@ -53,31 +50,6 @@ open CryptoVerification.SignalSession.Cli.RunSkeleton
 open CryptoVerification.SignalSession.Cli.RunCompose
 open CryptoVerification.SignalSession.Cli.RunProofs
 open CryptoVerification.SignalSession.Cli.RunProofs.Initiate
-
-theorem s5Prog_fnAddr_eq (img : Obj.Image) (extP : String → Option (State → State))
-    (name : String) :
-    (tripleRatchetProgAtExt img.base extP).fnAddr name =
-      img.base + BitVec.ofNat 64 (libsignalSessionCode.fnOff name) := by
-  simp [tripleRatchetProgAtExt, Program.fnAddr_rebase]
-
-theorem initProg_fnAddr_eq (img : Obj.Image) (W : CliHooks) (name : String) :
-    (initProg img W).fnAddr name =
-      img.base + BitVec.ofNat 64 (libsignalSessionCode.fnOff name) :=
-  s5Prog_fnAddr_eq img (cliExterns W) name
-
-/-- Minimal extern/program obligations required across Stage 5 on
-`tripleRatchetProgAtExt img.base extP` (`__rust_dealloc`, `memcpy`, and `TraceFsSound`). -/
-structure Stage5ExternDeps (img : Obj.Image) (A : RustAlloc)
-    (extP : String → Option (State → State)) : Prop where
-  fs : TraceFsSound (tripleRatchetProgAtExt img.base extP)
-  dealloc_at : subroutine_ok (tripleRatchetProgAtExt img.base extP)
-    ((tripleRatchetProgAtExt img.base extP).fnAddr cliInitiateName +
-      bv% (ls_rel% "libsignal_cli_handshake::initiate" "__rustc::__rust_dealloc"))
-    ((rustDeallocExternSpecWithStack A extHookStack).inImage img)
-  memcpy_at : subroutine_ok (tripleRatchetProgAtExt img.base extP)
-    ((tripleRatchetProgAtExt img.base extP).fnAddr cliInitiateName +
-      bv% (ls_rel% "libsignal_cli_handshake::initiate" "memcpy"))
-    ((sessionMemcpySpec extHookStack).inImage img)
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff
 attribute [local arm64_norm] BitVec.toNat_zero
@@ -106,17 +78,6 @@ theorem sepWPp_with_oom {prog : Program} {ret : BitVec 64} {s : State} {P : SepP
   obtain ⟨sf, hst, hout⟩ := h R hm hL
   exact ⟨sf, hst, hout.elim Or.inl fun h2 => h2.elim (Or.inr ∘ Or.inl) fun h3 =>
     (not_satisfies_false_sepConj h3.2).elim⟩
-
-theorem sepWPp_step_to_frozen {prog : Program} {img : Obj.Image} {ret mid : BitVec 64}
-    {s sm : State} {P Pm : SepProp} {Q Qp : State → SepProp → Prop}
-    (hinv : ImgCallInv img s)
-    (hstep : SepWP prog mid s P (fun s' P' => s' = sm ∧ P' = Pm))
-    (hcont : img.FrozenLoaded sm → sm.symtab = img.symtab → SepWPp prog ret sm Pm Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  refine SepWPp.of_sepWP_frozen (mid := mid) hinv.1 hinv.2 ?_
-  refine SepWP.seq (mid := mid) hstep ?_
-  rintro _ _ hpc hrun ⟨rfl, rfl⟩
-  exact SepWP.done hpc hrun hcont
 
 theorem s5_with_rodata {prog : Program} {ret : BitVec 64} {s : State}
     {RO P : SepProp} {Q Qp : State → SepProp → Prop}
@@ -467,10 +428,9 @@ elab "s5_fold_pre " h:term : tactic => withMainContext do
     #[prog, ret, s, aExpr, bExpr, pExpr, restExpr, qExpr, qpExpr, oom, hExpr, heqExpr, hwMVar])
   setGoals (hwMVar.mvarId! :: otherGoals)
 
-elab "inImageKitClearInvHyps" : tactic => inImageKitClearInvHyps
+elab "inImageKitClearInvHyps" : tactic => pure ()
 
 elab "s5_close_frame" : tactic => do
-  inImageKitClearInvHyps
   evalTactic (← `(tactic| refine Entails.of_eq ?_))
   evalTactic (← `(tactic| (conv => lhs; simp (config := { zetaDelta := false, failIfUnchanged := false }) only [wp_norm, arm64_norm, *])))
   evalTactic (← `(tactic| (conv => rhs; arg 1; simp (config := { zetaDelta := false, failIfUnchanged := false }) only [wp_norm, arm64_norm, *])))
@@ -493,107 +453,37 @@ elab "s5_close_frame" : tactic => do
 
 end FrameTactics
 
-/-- Unified `SepWPp` call combinator preserving `s.trace`, `s.fs.files`, `s.spAligned`, and
-`ImgCallInv img` across every normal return, while routing `allocFailedIn` panics to `Qp`. -/
-theorem s5_call_raw {α : Type} {prog : Program} {img : Obj.Image}
-    {callee ret_pc ret : BitVec 64} {spec : Spec α}
-    (hFs : TraceFsSound prog)
-    (hcall : subroutine_ok prog callee spec)
-    (xg : α) (F : SepProp) {s0 s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = callee)
-    (hrun : s.status = .Running)
-    (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (htr : s.trace = s0.trace)
-    (hinv : ImgCallInv img s)
-    (hpan : ∀ sf P_f, allocFailedIn s0 sf → Qp sf P_f)
-    (hpre : P ⊢ spec.pre xg s ∗ F)
-    (htr_post : ∀ (sm : State) (R' : SepProp),
-      (sm.mem ⊨ spec.post xg s sm ∗ R') → sm.trace = s.trace)
-    (hpan_imp : ∀ (sm : State) (R' : SepProp),
-      (sm.mem ⊨ spec.onPanic xg s sm ∗ R') → allocFailedIn s sm)
-    (hexit_imp : ∀ (code : BitVec 64) (sm : State) (R' : SepProp),
-      ¬ (sm.mem ⊨ spec.onExit xg code s sm ∗ R'))
-    (hoom_imp : ∀ (sm : State) (R' : SepProp),
-      ¬ (sm.mem ⊨ spec.onOom xg s sm ∗ R'))
-    (hnext : ∀ sm : State, sm.pc = ret_pc → sm.status = .Running →
-      sm.sp = s.sp → sm.spAligned = true → CalleeSavedPreserved s sm → ImgCallInv img sm →
-      sm.trace = s0.trace → sm.fs.files = s.fs.files →
-      SepWPp prog ret sm (spec.post xg s sm ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  refine sepWPp_conseq hpre ?_
-  have h1 : SepWPp prog ret_pc s (spec.pre xg s ∗ F)
-      (fun sm Pm => sm.sp = s.sp ∧ CalleeSavedPreserved s sm ∧ Pm = spec.post xg s sm ∗ F) Qp := by
-    refine SepWPp.call_wpp hcall (x := xg) (F := F) hpc hrun hsp_align hlr
-      (fun R' hm => by rwa [sepConj_assoc] at hm)
-      (fun sm code R' _ hpost => hexit_imp code sm R' hpost)
-      (fun sm _ ⟨R', hpost⟩ =>
-        hpan sm _ (by simpa [allocFailedIn, htr] using hpan_imp sm R' hpost))
-      (fun sm hpcm hrunm hspm hcsm => SepWPp.done hpcm hrunm ⟨hspm, hcsm, rfl⟩)
-      (fun sm R' _ hpost => (hoom_imp sm (F ∗ R') hpost).elim)
-  intro R' hm hL
-  rcases h1 R' hm hL with ⟨sm, hsteps, ⟨hpcm, hrunm, Pm, hpost, hspm, hcsm, rfl⟩ | hpan_out | hoom_out⟩
-  · have hpost' : sm.mem ⊨ spec.post xg s sm ∗ (F ∗ R') := by rwa [sepConj_assoc] at hpost
-    have htrm : sm.trace = s.trace := htr_post sm (F ∗ R') hpost'
-    have hfilesm : sm.fs.files = s.fs.files :=
-      hFs.files_eq hsteps (evs := []) (by rw [htrm, List.append_nil]) NoFsEv.nil
-    have halignm : sm.spAligned = true := by
-      simp only [State.spAligned] at hsp_align ⊢
-      rwa [hspm]
-    obtain ⟨sf, hsteps', hout'⟩ :=
-      hnext sm hpcm hrunm hspm halignm hcsm (hinv.of_steps hsteps) (htrm.trans htr) hfilesm
-        R' hpost (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout'⟩
-  · exact ⟨sm, hsteps, Or.inr (Or.inl hpan_out)⟩
-  · exact ⟨sm, hsteps, Or.inr (Or.inr hoom_out)⟩
-
-/-! ## Symbolic Offsets, `fnAddr` Bridges, and Stack Splits -/
-
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offEpilogue         : BitVec 64 := 848#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offErrTramp         : BitVec 64 := 4828#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offEntry            : BitVec 64 := 5252#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offAfterUnackMsg    : BitVec 64 := 5288#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offAfterUnackKyb    : BitVec 64 := 5304#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offAfterRegShim     : BitVec 64 := 5320#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offAfterRegPoll     : BitVec 64 := 5348#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offErrDealloc       : BitVec 64 := 5488#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offErrAfterDealloc  : BitVec 64 := 5500#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offRegDrop          : BitVec 64 := 5620#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offRegDealloc       : BitVec 64 := 5664#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offRegDeallocDone   : BitVec 64 := 5684#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offSave             : BitVec 64 := 5692#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offAfterSaveShim    : BitVec 64 := 5732#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offAfterSavePoll    : BitVec 64 := 5760#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offSaveDrop         : BitVec 64 := 5876#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offSaveDealloc      : BitVec 64 := 5920#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offSaveDeallocDone  : BitVec 64 := 5940#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offPromote          : BitVec 64 := 5948#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offAfterMemcpy      : BitVec 64 := 5972#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offStore            : BitVec 64 := 5992#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offAfterStoreShim   : BitVec 64 := 6012#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offAfterStorePoll   : BitVec 64 := 6040#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offStoreDrop        : BitVec 64 := 6096#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offStoreDealloc     : BitVec 64 := 6140#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offStoreDeallocDone : BitVec 64 := 6160#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offOkClean          : BitVec 64 := 6168#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offOkAfterDealloc   : BitVec 64 := 6192#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offOkAfterDrop      : BitVec 64 := 6216#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offErrEntry         : BitVec 64 := 6232#64
-@[scoped simp, scoped arm64_norm, scoped wp_norm] def offErrEntryDropDone : BitVec 64 := 6248#64
-
-theorem cliInitiate_fnOff :
-    libsignalSessionCode.fnOff cliInitiateName =
-      num% (ls_off% "libsignal_cli_handshake::initiate") :=
-  ls_lemma% fnOff "libsignal_cli_handshake::initiate"
-
-theorem futDrop_ne_zero {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img) :
-    img.base + BitVec.ofNat 64 (libsignalSessionCode.fnOff KitInst.cliIdFutDropName) ≠ 0#64 := by
-  rw [futDrop_fnOff_nat]
-  have hb := RunSkeleton.base_aligned himg
-  intro h
-  rw [show img.base = 0#64 - KitInst.cliIdFutDropOff by rw [← h, BitVec.add_sub_cancel]] at hb
-  dsimp only [KitInst.cliIdFutDropOff] at hb
-  exact absurd hb (by decide)
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offEpilogue         : BitVec 64 := 848#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offErrTramp         : BitVec 64 := 4828#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offEntry            : BitVec 64 := 5252#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offAfterUnackMsg    : BitVec 64 := 5288#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offAfterUnackKyb    : BitVec 64 := 5304#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offAfterRegShim     : BitVec 64 := 5320#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offAfterRegPoll     : BitVec 64 := 5348#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offErrDealloc       : BitVec 64 := 5488#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offErrAfterDealloc  : BitVec 64 := 5500#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offRegDrop          : BitVec 64 := 5620#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offRegDealloc       : BitVec 64 := 5664#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offRegDeallocDone   : BitVec 64 := 5684#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offSave             : BitVec 64 := 5692#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offAfterSaveShim    : BitVec 64 := 5732#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offAfterSavePoll    : BitVec 64 := 5760#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offSaveDrop         : BitVec 64 := 5876#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offSaveDealloc      : BitVec 64 := 5920#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offSaveDeallocDone  : BitVec 64 := 5940#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offPromote          : BitVec 64 := 5948#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offAfterMemcpy      : BitVec 64 := 5972#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offStore            : BitVec 64 := 5992#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offAfterStoreShim   : BitVec 64 := 6012#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offAfterStorePoll   : BitVec 64 := 6040#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offStoreDrop        : BitVec 64 := 6096#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offStoreDealloc     : BitVec 64 := 6140#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offStoreDeallocDone : BitVec 64 := 6160#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offOkClean          : BitVec 64 := 6168#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offOkAfterDealloc   : BitVec 64 := 6192#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offOkAfterDrop      : BitVec 64 := 6216#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offErrEntry         : BitVec 64 := 6232#64
+@[expose, scoped simp, scoped arm64_norm, scoped wp_norm] def offErrEntryDropDone : BitVec 64 := 6248#64
 
 theorem spAligned_fsp {s0 s : State}
     (h0 : s0.spAligned = true) (hsp : s.sp = s0.sp - BitVec.ofNat 64 cliInitiateFrame) :
@@ -604,117 +494,6 @@ theorem spAligned_fsp {s0 s : State}
   simp only [BitVec.toNat_and, BitVec.toNat_sub, BitVec.toNat_ofNat,
     Nat.and_two_pow_sub_one_eq_mod _ 4] at h1 ⊢
   omega
-
-theorem s5_dealloc_ok_at_ext {img : Obj.Image} {A : RustAlloc}
-    {extP : String → Option (State → State)}
-    (hA : AllocContractsX img A extP) :
-    subroutine_ok (tripleRatchetProgAtExt img.base extP)
-      ((tripleRatchetProgAtExt img.base extP).fnAddr cliInitiateName +
-        bv% (ls_rel% "libsignal_cli_handshake::initiate" "__rustc::__rust_dealloc"))
-      ((rustDeallocExternSpecWithStack A extHookStack).inImage img) :=
-  hA.dealloc_ok_at cliInitiateName
-    (num% (ls_rel% "libsignal_cli_handshake::initiate" "__rustc::__rust_dealloc"))
-    (by rw [cliInitiate_fnOff, (ls_stub% "__rustc::__rust_dealloc")])
-
-theorem s5_dealloc_ok_at {img : Obj.Image} {A : RustAlloc} {W : CliHooks}
-    (hA : AllocContractsX img A (cliExterns W)) :
-    subroutine_ok (initProg img W)
-      ((initProg img W).fnAddr cliInitiateName +
-        bv% (ls_rel% "libsignal_cli_handshake::initiate" "__rustc::__rust_dealloc"))
-      ((rustDeallocExternSpecWithStack A extHookStack).inImage img) :=
-  s5_dealloc_ok_at_ext hA
-
-theorem s5_memcpy_ok_at_ext {img : Obj.Image} {A : RustAlloc}
-    {extP : String → Option (State → State)}
-    (hA : AllocContractsX img A extP) :
-    subroutine_ok (tripleRatchetProgAtExt img.base extP)
-      ((tripleRatchetProgAtExt img.base extP).fnAddr cliInitiateName +
-        bv% (ls_rel% "libsignal_cli_handshake::initiate" "memcpy"))
-      ((sessionMemcpySpec extHookStack).inImage img) :=
-  hA.session_memcpy_ok_at cliInitiateName
-    (num% (ls_rel% "libsignal_cli_handshake::initiate" "memcpy"))
-    extHookStack (by decide) (by decide)
-    (by rw [cliInitiate_fnOff, (ls_stub% "memcpy")])
-
-theorem s5_memcpy_ok_at {img : Obj.Image} {A : RustAlloc} {W : CliHooks}
-    (hA : AllocContractsX img A (cliExterns W)) :
-    subroutine_ok (initProg img W)
-      ((initProg img W).fnAddr cliInitiateName +
-        bv% (ls_rel% "libsignal_cli_handshake::initiate" "memcpy"))
-      ((sessionMemcpySpec extHookStack).inImage img) :=
-  s5_memcpy_ok_at_ext hA
-
-theorem stage5ExternDeps_of_alloc_and_fs {img : Obj.Image} {A : RustAlloc}
-    {extP : String → Option (State → State)}
-    (hA : AllocContractsX img A extP)
-    (hfs : TraceFsSound (tripleRatchetProgAtExt img.base extP)) :
-    Stage5ExternDeps img A extP :=
-  ⟨hfs, s5_dealloc_ok_at_ext hA, s5_memcpy_ok_at_ext hA⟩
-
-theorem stage5ExternDeps_of_runHooks {img : Obj.Image} {A : RustAlloc} {W : CliHooks}
-    (hh : RunHooks img A (cliExterns W)) :
-    Stage5ExternDeps img A (cliExterns W) :=
-  stage5ExternDeps_of_alloc_and_fs hh.toExt.alloc hh.fs
-
-theorem s5_setUnackMsg_fnAddr_eq_ext (img : Obj.Image) (extP : String → Option (State → State)) :
-    (tripleRatchetProgAtExt img.base extP).fnAddr cliInitiateName +
-      bv% (2 ^ 64 + ls_off% "<libsignal_protocol::state::session::SessionState>::set_unacknowledged_pre_key_message" -
-        ls_off% "libsignal_cli_handshake::initiate") =
-      (tripleRatchetProgAtExt img.base extP).fnAddr cliSetUnackPreKeyMsgName := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, cliInitiateName,
-    cliSetUnackPreKeyMsgName, cliInitiate_fnOff, cliSetUnackPreKeyMsg_fnOff]; bv_omega
-
-theorem s5_setUnackMsg_fnAddr_eq (img : Obj.Image) (W : CliHooks) :
-    (initProg img W).fnAddr cliInitiateName +
-      bv% (2 ^ 64 + ls_off% "<libsignal_protocol::state::session::SessionState>::set_unacknowledged_pre_key_message" -
-        ls_off% "libsignal_cli_handshake::initiate") =
-      (initProg img W).fnAddr cliSetUnackPreKeyMsgName :=
-  s5_setUnackMsg_fnAddr_eq_ext img (cliExterns W)
-
-theorem s5_setUnackKyb_fnAddr_eq_ext (img : Obj.Image) (extP : String → Option (State → State)) :
-    (tripleRatchetProgAtExt img.base extP).fnAddr cliInitiateName +
-      bv% (2 ^ 64 + ls_off% "<libsignal_protocol::state::session::SessionState>::set_unacknowledged_kyber_pre_key_id" -
-        ls_off% "libsignal_cli_handshake::initiate") =
-      (tripleRatchetProgAtExt img.base extP).fnAddr cliSetUnackKyberIdName := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, cliInitiateName,
-    cliSetUnackKyberIdName, cliInitiate_fnOff, cliSetUnackKyberId_fnOff]; bv_omega
-
-theorem s5_setUnackKyb_fnAddr_eq (img : Obj.Image) (W : CliHooks) :
-    (initProg img W).fnAddr cliInitiateName +
-      bv% (2 ^ 64 + ls_off% "<libsignal_protocol::state::session::SessionState>::set_unacknowledged_kyber_pre_key_id" -
-        ls_off% "libsignal_cli_handshake::initiate") =
-      (initProg img W).fnAddr cliSetUnackKyberIdName :=
-  s5_setUnackKyb_fnAddr_eq_ext img (cliExterns W)
-
-theorem s5_dropSS_fnAddr_eq_ext (img : Obj.Image) (extP : String → Option (State → State)) :
-    (tripleRatchetProgAtExt img.base extP).fnAddr cliInitiateName +
-      bv% (2 ^ 64 + ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]" -
-        ls_off% "libsignal_cli_handshake::initiate") =
-      (tripleRatchetProgAtExt img.base extP).fnAddr cliDropSessionStructureName := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, cliInitiateName,
-    cliDropSessionStructureName, cliInitiate_fnOff, cliDropSessionStructure_fnOff]; bv_omega
-
-theorem s5_dropSS_fnAddr_eq (img : Obj.Image) (W : CliHooks) :
-    (initProg img W).fnAddr cliInitiateName +
-      bv% (2 ^ 64 + ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]" -
-        ls_off% "libsignal_cli_handshake::initiate") =
-      (initProg img W).fnAddr cliDropSessionStructureName :=
-  s5_dropSS_fnAddr_eq_ext img (cliExterns W)
-
-theorem s5_promote_fnAddr_eq_ext (img : Obj.Image) (extP : String → Option (State → State)) :
-    (tripleRatchetProgAtExt img.base extP).fnAddr cliInitiateName +
-      bv% (2 ^ 64 + ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_state" -
-        ls_off% "libsignal_cli_handshake::initiate") =
-      (tripleRatchetProgAtExt img.base extP).fnAddr cliPromoteStateName := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, cliInitiateName,
-    cliPromoteStateName, cliInitiate_fnOff, cliPromoteState_fnOff]; bv_omega
-
-theorem s5_promote_fnAddr_eq (img : Obj.Image) (W : CliHooks) :
-    (initProg img W).fnAddr cliInitiateName +
-      bv% (2 ^ 64 + ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_state" -
-        ls_off% "libsignal_cli_handshake::initiate") =
-      (initProg img W).fnAddr cliPromoteStateName :=
-  s5_promote_fnAddr_eq_ext img (cliExterns W)
 
 theorem s5_stackAt_sub_split (sp : BitVec 64) {sub full : Nat}
     (hle : sub ≤ full) (hfull : full ≤ 2 ^ 64) :
@@ -822,144 +601,6 @@ theorem stackAt_split_setUnack_ext (fsp : BitVec 64) :
         (by dsimp only [extHookStack]; bv_omega) hle]
   exact congrArg (memRegion _ _ ∗ ·) (memRegion_eq_cells 18 (by decide) (fsp - 144#64))
 
-/-- Stacked empty-record `SessionRecord::promote_state` contract (`ImgCallInv img s` + `stackAt s.sp stk`),
-accommodating both frameless `promoteStateEmptySpec` (`96` B) and stacked `memcpy` (`memHookStack + 32`
-or `extHookStack + 32`). -/
-def promoteStateEmptyExtSpec (img : Obj.Image) (stk : Nat) :
-    Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
-  pre := fun (recPtr, srcPtr, bs) s =>
-    ⌜ImgCallInv img s⌝ ∗
-    ⌜s.readReg64 .x0 = recPtr ∧ s.readReg64 .x1 = srcPtr ∧ bs.length = 344⌝ ∗
-    ((recPtr + 0x18#64) ↦₆₄ 0xffffffffffffffff#64) ∗
-    memRegion (recPtr + 0x20#64) 336 ∗
-    (srcPtr ↦ₛ bs) ∗
-    stackAt s.sp stk
-  post := fun (recPtr, srcPtr, bs) s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-    ((recPtr + 0x18#64) ↦ₛ bs) ∗
-    (srcPtr ↦ₛ bs) ∗
-    stackAt s0.sp stk
-
-theorem promoteStateEmptySpec_to_ext {prog : Program} {entry : BitVec 64} {img : Obj.Image}
-    (h : subroutine_ok prog entry Pqxdh.ResponderStore.promoteStateEmptySpec) :
-    subroutine_ok prog entry (promoteStateEmptyExtSpec img (extHookStack + 32)) := by
-  refine subroutine_ok_map h ?_
-  intro ⟨recPtr, srcPtr, bs⟩ R s0 hpre
-  dsimp only [promoteStateEmptyExtSpec] at hpre
-  rw [s5_stackAt_sub_split s0.sp (sub := 96) (full := extHookStack + 32) (by decide) (by decide),
-      stackAt_96_eq_promoteState_cells s0.sp] at hpre
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨_hinv, hpure, hpre⟩
-  refine ⟨(recPtr, srcPtr, bs),
-    memRegion (s0.sp - BitVec.ofNat 64 (extHookStack + 32)) ((extHookStack + 32) - 96) ∗ R,
-    ?_, ?_⟩
-  · dsimp only [Pqxdh.ResponderStore.promoteStateEmptySpec]
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hpure, Satisfies.of_eq hpre (by ac_rfl)⟩
-  · intro sf hpost
-    dsimp only [Pqxdh.ResponderStore.promoteStateEmptySpec, promoteStateEmptyExtSpec] at hpost ⊢
-    rw [s5_stackAt_sub_split s0.sp (sub := 96) (full := extHookStack + 32) (by decide) (by decide),
-        stackAt_96_eq_promoteState_cells s0.sp]
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨htr, hpost⟩
-    exact ⟨htr, Satisfies.of_eq hpost (by ac_rfl)⟩
-
-theorem promoteStateEmptyExtSpec_mono {prog : Program} {entry : BitVec 64} {img : Obj.Image}
-    {k : Nat} (hle : k ≤ extHookStack + 32)
-    (h : subroutine_ok prog entry (promoteStateEmptyExtSpec img k)) :
-    subroutine_ok prog entry (promoteStateEmptyExtSpec img (extHookStack + 32)) := by
-  refine subroutine_ok_map h ?_
-  intro ⟨recPtr, srcPtr, bs⟩ R s0 hpre
-  dsimp only [promoteStateEmptyExtSpec] at hpre
-  rw [s5_stackAt_sub_split s0.sp (sub := k) (full := extHookStack + 32) hle (by decide)] at hpre
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, hpure, hpre⟩
-  refine ⟨(recPtr, srcPtr, bs),
-    memRegion (s0.sp - BitVec.ofNat 64 (extHookStack + 32)) ((extHookStack + 32) - k) ∗ R,
-    ?_, ?_⟩
-  · dsimp only [promoteStateEmptyExtSpec]
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hinv, hpure, Satisfies.of_eq hpre (by ac_rfl)⟩
-  · intro sf hpost
-    dsimp only [promoteStateEmptyExtSpec] at hpost ⊢
-    rw [s5_stackAt_sub_split s0.sp (sub := k) (full := extHookStack + 32) hle (by decide)]
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨htr, hpost⟩
-    exact ⟨htr, Satisfies.of_eq hpost (by ac_rfl)⟩
-
-theorem setUnackPreKeyMsgEpochSpec_to_ext {prog : Program} {entry : BitVec 64}
-    {A : RustAlloc} {img : Obj.Image}
-    (h : subroutine_ok prog entry (setUnackPreKeyMsgEpochSpec A img)) :
-    subroutine_ok prog entry (Slots.setUnackPreKeyMsgExtStackEpochSpec A img) := by
-  refine subroutine_ok_map_panic h ?_
-  intro g R s0 hpre
-  dsimp only [Slots.setUnackPreKeyMsgExtStackEpochSpec] at hpre
-  rw [s5_stackAt_sub_split (s0.sp - 144#64) (sub := allocHookStack + 32)
-        (full := extHookStack + 32) (by decide) (by decide)] at hpre
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hep, hregs, hpre⟩
-  refine ⟨g,
-    memRegion ((s0.sp - 144#64) - BitVec.ofNat 64 (extHookStack + 32))
-      ((extHookStack + 32) - (allocHookStack + 32)) ∗ R,
-    ?_, ?_, ?_⟩
-  · dsimp only [setUnackPreKeyMsgEpochSpec, Pqxdh.TopLevel.setUnackPreKeyMsgExactStackSpec]
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hep, hregs, Satisfies.of_eq hpre (by ac_rfl)⟩
-  · intro sf hpost
-    dsimp only [setUnackPreKeyMsgEpochSpec, Pqxdh.TopLevel.setUnackPreKeyMsgExactStackSpec,
-      Slots.setUnackPreKeyMsgExtStackEpochSpec] at hpost ⊢
-    rw [s5_stackAt_sub_split (s0.sp - 144#64) (sub := allocHookStack + 32)
-          (full := extHookStack + 32) (by decide) (by decide)]
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨htr, hpost⟩
-    exact ⟨htr, Satisfies.of_eq hpost (by ac_rfl)⟩
-  · intro sf hpan
-    dsimp only [setUnackPreKeyMsgEpochSpec, Pqxdh.TopLevel.setUnackPreKeyMsgExactStackSpec,
-      Slots.setUnackPreKeyMsgExtStackEpochSpec,
-      Pqxdh.Initiator.rustPanicOnOom] at hpan ⊢
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpan ⊢
-    rcases hpan with ⟨hp, hpan⟩
-    refine ⟨hp, ?_⟩
-    have hany :
-        anyHeap ∗ memRegion ((s0.sp - 144#64) - BitVec.ofNat 64 (extHookStack + 32))
-          ((extHookStack + 32) - (allocHookStack + 32)) ⊢ anyHeap :=
-      entails_anyHeap _
-    exact Satisfies.mono (by
-      rw [← sepConj_assoc anyHeap _ R]
-      exact sepConj_mono_left hany) hpan
-
-/-- Bundled Stage-5 local callee contracts on `tripleRatchetProgAtExt img.base extP`. -/
-structure Stage5CalleesExt (img : Obj.Image) (A : RustAlloc)
-    (extP : String → Option (State → State)) : Prop where
-  dropSessionStructure : subroutine_ok (tripleRatchetProgAtExt img.base extP)
-    ((tripleRatchetProgAtExt img.base extP).fnAddr cliDropSessionStructureName)
-    (FromRecordCallees.dropSessionStructureLocal2Spec A)
-  setUnackPreKeyMsg : subroutine_ok (tripleRatchetProgAtExt img.base extP)
-    ((tripleRatchetProgAtExt img.base extP).fnAddr cliSetUnackPreKeyMsgName)
-    (Slots.setUnackPreKeyMsgExtStackEpochSpec A img)
-  setUnackKyberId : subroutine_ok (tripleRatchetProgAtExt img.base extP)
-    ((tripleRatchetProgAtExt img.base extP).fnAddr cliSetUnackKyberIdName)
-    Pqxdh.setUnackKyberPreKeyIdSpec
-  promoteState : subroutine_ok (tripleRatchetProgAtExt img.base extP)
-    ((tripleRatchetProgAtExt img.base extP).fnAddr cliPromoteStateName)
-    (promoteStateEmptyExtSpec img (extHookStack + 32))
-
-/-- Fixed-table `InitLocalCallees img A W stk` lifts directly to `Stage5CalleesExt`. -/
-theorem Stage5CalleesExt.of_initLocalCallees {img : Obj.Image} {A : RustAlloc}
-    {W : CliHooks} {stk : Nat} (h : InitLocalCallees img A W stk) :
-    Stage5CalleesExt img A (cliExterns W) :=
-  { dropSessionStructure := h.dropSessionStructure
-    setUnackPreKeyMsg := setUnackPreKeyMsgEpochSpec_to_ext h.setUnackPreKeyMsg
-    setUnackKyberId := h.setUnackKyberId
-    promoteState := promoteStateEmptySpec_to_ext h.promoteState }
-
-theorem initStoreCallees_to_ext {img : Obj.Image} {A : RustAlloc} {W : CliHooks}
-    {B : RunBudgets} {stk : Nat} (h : InitStoreCallees img A W B stk) :
-    InitStoreCalleesExt img A (cliExterns W) B stk :=
-  ⟨h.futDrop, h.idTrustShim, h.idTrustPoll, h.sessLoadShim, h.sessLoadPoll,
-   h.idKeyPairShim, h.idKeyPairPoll, h.idRegIdShim, h.idRegIdPoll,
-   h.idSaveShim, h.idSavePoll, h.sessStoreShim, h.sessStorePoll⟩
-
 @[scoped arm64_norm, scoped wp_norm]
 theorem fsp_epilogue_eqs (sp0 : BitVec 64) :
     let fsp := sp0 - BitVec.ofNat 64 cliInitiateFrame
@@ -985,183 +626,5 @@ theorem out48_add_eqs (out : BitVec 64) :
   ⟨by bv_omega, by bv_omega, by bv_omega, by bv_omega, by bv_omega⟩
 
 /-! ## Specialized Call Helpers -/
-
-theorem s5_call_futDrop_ext {img : Obj.Image} {A : RustAlloc}
-    {extP : String → Option (State → State)} {B : RunBudgets} {stk : Nat} {ret_pc ret : BitVec 64}
-    (hExt : Stage5ExternDeps img A extP) (hStore : InitStoreCalleesExt img A extP B stk)
-    (fsp : BitVec 64) (F : SepProp) {s0 s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = img.base + BitVec.ofNat 64 (libsignalSessionCode.fnOff KitInst.cliIdFutDropName))
-    (hrun : s.status = .Running) (hsp : s.sp = fsp) (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc) (htr : s.trace = s0.trace) (hinv : ImgCallInv img s)
-    (hpan : ∀ sf P_f, allocFailedIn s0 sf → Qp sf P_f) (hpre : P ⊢ F)
-    (hnext : ∀ sm : State, sm.pc = ret_pc → sm.status = .Running →
-      sm.sp = fsp → sm.spAligned = true → CalleeSavedPreserved s sm → ImgCallInv img sm →
-      sm.trace = s0.trace → sm.fs.files = s.fs.files →
-      SepWPp (tripleRatchetProgAtExt img.base extP) ret sm F Q Qp) :
-    SepWPp (tripleRatchetProgAtExt img.base extP) ret s P Q Qp := by
-  have hcall : subroutine_ok (tripleRatchetProgAtExt img.base extP)
-      (img.base + BitVec.ofNat 64 (libsignalSessionCode.fnOff KitInst.cliIdFutDropName))
-      futDropSpec := s5Prog_fnAddr_eq img extP KitInst.cliIdFutDropName ▸ hStore.futDrop
-  refine s5_call_raw hExt.fs hcall () F hpc hrun hsp_align hlr htr hinv hpan ?_ ?_ ?_ ?_ ?_ ?_
-  · simp only [StoreSession.futDropSpec, emp_sepConj]; exact hpre
-  · intro sm R' hpost; simp only [StoreSession.futDropSpec, satisfies_pure_sepConj] at hpost; exact hpost.1
-  · intro sm R' hpost; simp only [StoreSession.futDropSpec] at hpost; exact (not_satisfies_false_sepConj hpost).elim
-  · intro code sm R' hpost; simp only [StoreSession.futDropSpec] at hpost; exact not_satisfies_false_sepConj hpost
-  · intro sm R' hpost; simp only [StoreSession.futDropSpec] at hpost; exact not_satisfies_false_sepConj hpost
-  · intro sm hpcm hrunm hspm halm hcsm hinvm htrm hfilesm
-    simp only [StoreSession.futDropSpec]; refine SepWPp.pure_elim fun _ => ?_
-    exact hnext sm hpcm hrunm (hspm.trans hsp) halm hcsm hinvm htrm hfilesm
-
-theorem s5_call_futDrop {img : Obj.Image} {A : RustAlloc} {W : CliHooks} {B : RunBudgets}
-    {stk : Nat} {ret_pc ret : BitVec 64}
-    (hh : RunHooks img A (cliExterns W)) (hStore : InitStoreCallees img A W B stk)
-    (fsp : BitVec 64) (F : SepProp) {s0 s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = img.base + BitVec.ofNat 64 (libsignalSessionCode.fnOff KitInst.cliIdFutDropName))
-    (hrun : s.status = .Running) (hsp : s.sp = fsp) (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc) (htr : s.trace = s0.trace) (hinv : ImgCallInv img s)
-    (hpan : ∀ sf P_f, allocFailedIn s0 sf → Qp sf P_f) (hpre : P ⊢ F)
-    (hnext : ∀ sm : State, sm.pc = ret_pc → sm.status = .Running →
-      sm.sp = fsp → sm.spAligned = true → CalleeSavedPreserved s sm → ImgCallInv img sm →
-      sm.trace = s0.trace → sm.fs.files = s.fs.files →
-      SepWPp (initProg img W) ret sm F Q Qp) :
-    SepWPp (initProg img W) ret s P Q Qp :=
-  s5_call_futDrop_ext (stage5ExternDeps_of_runHooks hh) (initStoreCallees_to_ext hStore)
-    fsp F hpc hrun hsp hsp_align hlr htr hinv hpan hpre hnext
-
-theorem s5_call_dealloc_ext {img : Obj.Image} {A : RustAlloc}
-    {extP : String → Option (State → State)}
-    {callee ret_pc ret : BitVec 64}
-    (hExt : Stage5ExternDeps img A extP)
-    (hcall : subroutine_ok (tripleRatchetProgAtExt img.base extP) callee
-      ((rustDeallocExternSpecWithStack A extHookStack).inImage img))
-    (fsp ptr : BitVec 64) (size align : Nat) (F : SepProp)
-    {s0 s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = callee) (hrun : s.status = .Running) (hsp : s.sp = fsp)
-    (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc) (htr : s.trace = s0.trace) (hinv : ImgCallInv img s)
-    (hx0 : s.readReg64 .x0 = ptr) (hx1 : (s.readReg64 .x1).toNat = size)
-    (hx2 : (s.readReg64 .x2).toNat = align) (hlay : LayoutOk size align)
-    (hpan : ∀ sf P_f, allocFailedIn s0 sf → Qp sf P_f)
-    (hpre : P ⊢ (A.pool ∗ A.live ptr size align ∗ memRegion ptr size ∗ stackAt fsp extHookStack) ∗ F)
-    (hnext : ∀ sm : State, sm.pc = ret_pc → sm.status = .Running →
-      sm.sp = fsp → sm.spAligned = true → CalleeSavedPreserved s sm → ImgCallInv img sm →
-      sm.trace = s0.trace → sm.fs.files = s.fs.files →
-      SepWPp (tripleRatchetProgAtExt img.base extP) ret sm ((A.pool ∗ stackAt fsp extHookStack) ∗ F) Q Qp) :
-    SepWPp (tripleRatchetProgAtExt img.base extP) ret s P Q Qp := by
-  refine s5_call_raw hExt.fs hcall (ptr, size, align) F
-    hpc hrun hsp_align hlr htr hinv hpan ?_ ?_ ?_ ?_ ?_ ?_
-  · refine Entails.trans hpre ?_
-    simp only [rustDeallocExternSpecWithStack, Spec.inImage, hsp, sepConj_assoc]
-    exact Entails.pure_right hinv (Entails.pure_right ⟨hx0, hx1, hx2, hlay⟩ (Entails.refl _))
-  · intro sm R' hpost
-    simp only [rustDeallocExternSpecWithStack, Spec.inImage, sepConj_assoc,
-      satisfies_pure_sepConj] at hpost
-    exact hpost.1
-  · intro sm R' hpost
-    simp only [rustDeallocExternSpecWithStack, Spec.inImage] at hpost
-    exact (not_satisfies_false_sepConj hpost).elim
-  · intro code sm R' hpost
-    simp only [rustDeallocExternSpecWithStack, Spec.inImage] at hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm R' hpost
-    simp only [rustDeallocExternSpecWithStack, Spec.inImage] at hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm hpcm hrunm hspm halm hcsm hinvm htrm hfilesm
-    simp only [rustDeallocExternSpecWithStack, Spec.inImage, hsp, sepConj_assoc]
-    refine SepWPp.pure_elim fun _ => ?_
-    exact sepWPp_conseq (Entails.of_eq (by ac_rfl))
-      (hnext sm hpcm hrunm (hspm.trans hsp) halm hcsm hinvm htrm hfilesm)
-
-theorem s5_call_dealloc {img : Obj.Image} {A : RustAlloc} {W : CliHooks}
-    {callee ret_pc ret : BitVec 64}
-    (hh : RunHooks img A (cliExterns W))
-    (hcall : subroutine_ok (initProg img W) callee
-      ((rustDeallocExternSpecWithStack A extHookStack).inImage img))
-    (fsp ptr : BitVec 64) (size align : Nat) (F : SepProp)
-    {s0 s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = callee) (hrun : s.status = .Running) (hsp : s.sp = fsp)
-    (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc) (htr : s.trace = s0.trace) (hinv : ImgCallInv img s)
-    (hx0 : s.readReg64 .x0 = ptr) (hx1 : (s.readReg64 .x1).toNat = size)
-    (hx2 : (s.readReg64 .x2).toNat = align) (hlay : LayoutOk size align)
-    (hpan : ∀ sf P_f, allocFailedIn s0 sf → Qp sf P_f)
-    (hpre : P ⊢ (A.pool ∗ A.live ptr size align ∗ memRegion ptr size ∗ stackAt fsp extHookStack) ∗ F)
-    (hnext : ∀ sm : State, sm.pc = ret_pc → sm.status = .Running →
-      sm.sp = fsp → sm.spAligned = true → CalleeSavedPreserved s sm → ImgCallInv img sm →
-      sm.trace = s0.trace → sm.fs.files = s.fs.files →
-      SepWPp (initProg img W) ret sm ((A.pool ∗ stackAt fsp extHookStack) ∗ F) Q Qp) :
-    SepWPp (initProg img W) ret s P Q Qp :=
-  s5_call_dealloc_ext (stage5ExternDeps_of_runHooks hh) hcall fsp ptr size align F
-    hpc hrun hsp hsp_align hlr htr hinv hx0 hx1 hx2 hlay hpan hpre hnext
-
-theorem s5_call_dropSS_ext {img : Obj.Image} {A : RustAlloc}
-    {extP : String → Option (State → State)}
-    {callee ret_pc ret : BitVec 64}
-    (hExt : Stage5ExternDeps img A extP)
-    (hcall : subroutine_ok (tripleRatchetProgAtExt img.base extP) callee
-      (FromRecordCallees.dropSessionStructureLocal2Spec A))
-    (fsp ssPtr : BitVec 64) (G : SessionGhost) (st : SessionState (List (BitVec 8))) (F : SepProp)
-    {s0 s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = callee) (hrun : s.status = .Running) (hsp : s.sp = fsp)
-    (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc) (htr : s.trace = s0.trace) (hinv : ImgCallInv img s)
-    (hx0 : s.readReg64 .x0 = ssPtr)
-    (hpan : ∀ sf P_f, allocFailedIn s0 sf → Qp sf P_f)
-    (hpre : P ⊢ (sessionStateAt A ssPtr G st ∗ A.pool ∗
-      stackAt fsp FromRecordCallees.dropSessionStructureLocal2Stack) ∗ F)
-    (hnext : ∀ sm : State, sm.pc = ret_pc → sm.status = .Running →
-      sm.sp = fsp → sm.spAligned = true → CalleeSavedPreserved s sm → ImgCallInv img sm →
-      sm.trace = s0.trace → sm.fs.files = s.fs.files →
-      SepWPp (tripleRatchetProgAtExt img.base extP) ret sm
-        ((memRegion ssPtr 344 ∗ A.pool ∗
-          stackAt fsp FromRecordCallees.dropSessionStructureLocal2Stack) ∗ F) Q Qp) :
-    SepWPp (tripleRatchetProgAtExt img.base extP) ret s P Q Qp := by
-  refine s5_call_raw hExt.fs hcall ⟨ssPtr, G, st⟩ F
-    hpc hrun hsp_align hlr htr hinv hpan ?_ ?_ ?_ ?_ ?_ ?_
-  · refine Entails.trans hpre ?_
-    simp only [FromRecordCallees.dropSessionStructureLocal2Spec, hsp, sepConj_assoc]
-    exact Entails.pure_right hx0 (Entails.refl _)
-  · intro sm R' hpost
-    simp only [FromRecordCallees.dropSessionStructureLocal2Spec, sepConj_assoc,
-      satisfies_pure_sepConj] at hpost
-    exact hpost.1
-  · intro sm R' hpost
-    simp only [FromRecordCallees.dropSessionStructureLocal2Spec] at hpost
-    exact (not_satisfies_false_sepConj hpost).elim
-  · intro code sm R' hpost
-    simp only [FromRecordCallees.dropSessionStructureLocal2Spec] at hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm R' hpost
-    simp only [FromRecordCallees.dropSessionStructureLocal2Spec] at hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm hpcm hrunm hspm halm hcsm hinvm htrm hfilesm
-    simp only [FromRecordCallees.dropSessionStructureLocal2Spec, hsp, sepConj_assoc]
-    refine SepWPp.pure_elim fun _ => ?_
-    exact sepWPp_conseq (Entails.of_eq (by ac_rfl))
-      (hnext sm hpcm hrunm (hspm.trans hsp) halm hcsm hinvm htrm hfilesm)
-
-theorem s5_call_dropSS {img : Obj.Image} {A : RustAlloc} {W : CliHooks}
-    {callee ret_pc ret : BitVec 64}
-    (hh : RunHooks img A (cliExterns W))
-    (hcall : subroutine_ok (initProg img W) callee
-      (FromRecordCallees.dropSessionStructureLocal2Spec A))
-    (fsp ssPtr : BitVec 64) (G : SessionGhost) (st : SessionState (List (BitVec 8))) (F : SepProp)
-    {s0 s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = callee) (hrun : s.status = .Running) (hsp : s.sp = fsp)
-    (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc) (htr : s.trace = s0.trace) (hinv : ImgCallInv img s)
-    (hx0 : s.readReg64 .x0 = ssPtr)
-    (hpan : ∀ sf P_f, allocFailedIn s0 sf → Qp sf P_f)
-    (hpre : P ⊢ (sessionStateAt A ssPtr G st ∗ A.pool ∗
-      stackAt fsp FromRecordCallees.dropSessionStructureLocal2Stack) ∗ F)
-    (hnext : ∀ sm : State, sm.pc = ret_pc → sm.status = .Running →
-      sm.sp = fsp → sm.spAligned = true → CalleeSavedPreserved s sm → ImgCallInv img sm →
-      sm.trace = s0.trace → sm.fs.files = s.fs.files →
-      SepWPp (initProg img W) ret sm
-        ((memRegion ssPtr 344 ∗ A.pool ∗
-          stackAt fsp FromRecordCallees.dropSessionStructureLocal2Stack) ∗ F) Q Qp) :
-    SepWPp (initProg img W) ret s P Q Qp :=
-  s5_call_dropSS_ext (stage5ExternDeps_of_runHooks hh) hcall fsp ssPtr G st F
-    hpc hrun hsp hsp_align hlr htr hinv hx0 hpan hpre hnext
 
 end CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage5Lemmas

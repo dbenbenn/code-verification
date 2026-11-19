@@ -10,21 +10,27 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysSteps
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysSymBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case2Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysSteps
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysSymBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 public meta import Lean -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.FindIndexCodeSym
 import ProofLib.RegChain
+import ProofLib.Sep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEq -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysSym -- proof-setup: allow-public-import
+public meta import ProofLib.SepLogic.WP
 
 /-!
 # Budget & `VmPreserved` Relocatable Step Lemmas for `IdentityKeysSteps`
@@ -97,7 +103,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysSymBud
   identityKeys_remote_none_wp_placed
 )
 
-@[expose] public section
+public section
 
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 attribute [local simp]
@@ -109,7 +115,7 @@ attribute [local simp, local wp_norm, local arm64_norm] Bool.and_assoc
 
 /-! ## 1. Budget `clearUpkSpecWithStack` (`FreeOnlyEvs`, `0` `FitsEnv`) -/
 
-def clearUpkSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def clearUpkSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (ClearUpkGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ss⌝ ∗
@@ -363,7 +369,7 @@ elab_rules : tactic
 
 end
 
-@[expose] public section
+public section
 
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
@@ -374,7 +380,7 @@ attribute [local simp]
   publicKey_bytes_toList_length and64_mask255_ite_1_0 csinc_eq_zero32_ite_1_0
 attribute [local simp, local wp_norm, local arm64_norm] Bool.and_assoc
 
-noncomputable def ctEqSliceBudgetSpec :
+@[expose] def ctEqSliceBudgetSpec :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) :=
   withVmPreserved ctEqSliceSpec
 
@@ -409,18 +415,18 @@ theorem ct_eq_placed_ok [LibsignalPlacement] {H : String → Option (State → S
 
 /-! ## 3. Blocks `212`, `17`, `211`, and `28` with `VmPreserved` -/
 
-noncomputable def publicKeyEqBudgetSpec :
+@[expose] def publicKeyEqBudgetSpec :
     Spec (BitVec 64 × PublicKey × BitVec 64 × PublicKey × BitVec 64) :=
   withVmPreserved publicKeyEqSpec
 
-def publicKeyEqMemBudgetSpec :
+@[expose] def publicKeyEqMemBudgetSpec :
     Spec (BitVec 64 × PublicKey × BitVec 64 × PublicKey × BitVec 64) :=
   withVmPreserved publicKeyEqMemSpec
 
-def isSameAccountBudgetSpec : Spec IsSameAccountGhost :=
+@[expose] def isSameAccountBudgetSpec : Spec IsSameAccountGhost :=
   withVmPreserved isSameAccountSpec
 
-def deserializeMemPlacedBudgetSpec [LibsignalPlacement] :
+@[expose] def deserializeMemPlacedBudgetSpec [LibsignalPlacement] :
     Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64) :=
   withVmPreserved deserializeMemPlacedSpec
 
@@ -438,15 +444,7 @@ private theorem stackAt_isSameAccount_split_placed (sp : BitVec 64) :
     stackAt sp isSameAccountStack =
       memRegion (sp - 80#64 - 16#64) 16 ∗ memRegion (sp - 80#64 - 16#64 - 48#64) 48 ∗
       memRegion (sp - 80#64) 32 ∗ cells (sp - 48#64) 6 := by
-  simp only [stackAt, isSameAccountStack]
-  rw [show sp - 80#64 - 16#64 - 48#64 = sp - 144#64 by bv_omega,
-      show sp - 80#64 - 16#64 = sp - 96#64 by bv_omega,
-      show (80 + 64 : Nat) = 144 from rfl, show BitVec.ofNat 64 144 = 144#64 from rfl,
-      ProofLib.memRegion_split' (b := sp - 144#64) (n := 48) (k := 96) (b' := sp - 96#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_split' (b := sp - 96#64) (n := 16) (k := 80) (b' := sp - 80#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_split' (b := sp - 80#64) (n := 32) (k := 48) (b' := sp - 48#64) rfl (by bv_omega) (by decide),
-      (memRegion_cells (sp - 48#64) 6 (by decide) : memRegion (sp - 48#64) 48 = cells (sp - 48#64) 6)]
-  ac_rfl
+  dsimp only [isSameAccountStack]; sep_interval_eq
 
 section CalleeVmProofs
 attribute [local irreducible] VmPreserved
@@ -668,9 +666,7 @@ theorem identityKeys_step1_reaches_placed [LibsignalPlacement] {A : RustAlloc}
   intro s1 _ _ ⟨P_f, hm_s1, hvm, hsp, halign, htr, hx19, hx20, hx21, hx22, hx23, hx24, hx25, hx29, hPf⟩
   refine ⟨hvm, hsp, halign, htr, hx19, hx20, hx21, hx22, hx23, hx24, hx25, hx29, ?_⟩
   have hm2 := Satisfies.mono (sepConj_mono_left hPf) hm_s1
-  have h48 : (sp ↦₆₄ 0#64) ∗ memRegion (sp + 8#64) 40 ⊢ memRegion sp 48 := by
-    refine Entails.trans (sepConj_mono_left (pointsTo64_entails_memRegion sp 0#64)) ?_
-    rw [← memRegion_split sp 8 40 (by decide)]; exact Entails.refl _
+  have h48 : (sp ↦₆₄ 0#64) ∗ memRegion (sp + 8#64) 40 ⊢ memRegion sp 48 := by sep_interval
   have hm3 : s1.mem ⊨
       ((sp ↦₆₄ 0#64) ∗ memRegion (sp + 8#64) 40) ∗
       (localIdentityOkAt (sp + 400#64) x.st.localIdentity ∗ memRegion (sp + 56#64) 344 ∗
@@ -853,13 +849,8 @@ theorem identityKeys_step4_reaches_placed [LibsignalPlacement]
   have h400_34 :
       (((sp + 400#64) ↦₈ 0#8) ∗ ((sp + 401#64) ↦₈ tag) ∗
        remoteGroupC (sp + 402#64) w0 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 b16 b17 b18 b19 b20 b21 b22 w3 b31) ⊢
-      memRegion (sp + 400#64) 34 := by
-    refine Entails.trans (sepConj_mono (pointsTo8_entails_memRegion (sp + 400#64) 0#8)
-      (sepConj_mono (pointsTo8_entails_memRegion (sp + 401#64) tag) hent_402)) ?_
-    rw [show sp + 402#64 = (sp + 401#64) + 1#64 by bv_omega,
-        ← memRegion_split (sp + 401#64) 1 32 (by decide),
-        show sp + 401#64 = (sp + 400#64) + 1#64 by bv_omega,
-        ← memRegion_split (sp + 400#64) 1 33 (by decide)]; exact Entails.refl _
+      memRegion (sp + 400#64) 34 :=
+    Entails.trans (sepConj_mono_right (sepConj_mono_right hent_402)) (by sep_interval)
   have hm3 : s4.mem ⊨
       (((sp + 400#64) ↦₈ 0#8) ∗ ((sp + 401#64) ↦₈ tag) ∗
        remoteGroupC (sp + 402#64) w0 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 b16 b17 b18 b19 b20 b21 b22 w3 b31) ∗
@@ -892,27 +883,19 @@ theorem identityKeys_step5_none_reaches_placed [LibsignalPlacement]
         s5.readReg64 .x29 = s0.sp - 96#64 ∧
         (s5.mem ⊨ memRegion (sp + 56#64) 1352 ∗ logOff tryDecryptDummyImg ∗ F)) := by
   dsimp only; let sp := s0.sp - 1504#64
-  rw [memRegion_split (sp + 56#64) 968 384 (by decide), show sp + 56#64 + 968#64 = sp + 1024#64 by bv_omega,
-      memRegion_split (sp + 1024#64) 8 376 (by decide), show sp + 1024#64 + 8#64 = sp + 1032#64 by bv_omega,
-      memRegion_split (sp + 1032#64) 8 368 (by decide), show sp + 1032#64 + 8#64 = sp + 1040#64 by bv_omega,
-      memRegion_split (sp + 1040#64) 240 128 (by decide), show sp + 1040#64 + 240#64 = sp + 1280#64 by bv_omega,
-      memRegion_split (sp + 1280#64) 8 120 (by decide), show sp + 1280#64 + 8#64 = sp + 1288#64 by bv_omega] at hm
-  have hm1 : s4.mem ⊨ memRegion (sp + 1024#64) 8 ∗ (memRegion (sp + 1032#64) 8 ∗ memRegion (sp + 1280#64) 8 ∗
-       logOff tryDecryptDummyImg ∗ (memRegion (sp + 56#64) 968 ∗ memRegion (sp + 1040#64) 240 ∗ memRegion (sp + 1288#64) 120 ∗ F)) := by
-    dsimp only [sp] at hm ⊢; convert hm using 1; sep_ac_rfl
-  obtain ⟨u1024, hm1⟩ := exists_word64_of_memRegion_8 hm1
-  have hm2 : s4.mem ⊨ memRegion (sp + 1032#64) 8 ∗ (((sp + 1024#64) ↦₆₄ u1024) ∗ memRegion (sp + 1280#64) 8 ∗
-       logOff tryDecryptDummyImg ∗ (memRegion (sp + 56#64) 968 ∗ memRegion (sp + 1040#64) 240 ∗ memRegion (sp + 1288#64) 120 ∗ F)) := by
-    convert hm1 using 1; sep_ac_rfl
-  obtain ⟨u1032, hm2⟩ := exists_word64_of_memRegion_8 hm2
-  have hm3 : s4.mem ⊨ memRegion (sp + 1280#64) 8 ∗ (((sp + 1024#64) ↦₆₄ u1024) ∗ ((sp + 1032#64) ↦₆₄ u1032) ∗
-       logOff tryDecryptDummyImg ∗ (memRegion (sp + 56#64) 968 ∗ memRegion (sp + 1040#64) 240 ∗ memRegion (sp + 1288#64) 120 ∗ F)) := by
-    convert hm2 using 1; sep_ac_rfl
-  obtain ⟨u1280, hm3⟩ := exists_word64_of_memRegion_8 hm3
+  have hsplit : memRegion (sp + 56#64) 1352 =
+      (∃∗ u1024 : BitVec 64, (sp + 1024#64) ↦₆₄ u1024) ∗
+      (∃∗ u1032 : BitVec 64, (sp + 1032#64) ↦₆₄ u1032) ∗
+      (∃∗ u1280 : BitVec 64, (sp + 1280#64) ↦₆₄ u1280) ∗
+      memRegion (sp + 56#64) 968 ∗ memRegion (sp + 1040#64) 240 ∗ memRegion (sp + 1288#64) 120 := by
+    sep_interval_eq
+  rw [hsplit] at hm
+  simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hm
+  rcases hm with ⟨u1280, u1032, u1024, hm⟩
   have hm_pre : s4.mem ⊨
       (((s4.sp + 1024#64) ↦₆₄ u1024) ∗ ((s4.sp + 1032#64) ↦₆₄ u1032) ∗ ((s4.sp + 1280#64) ↦₆₄ u1280) ∗ logOff tryDecryptDummyImg) ∗
       (memRegion (sp + 56#64) 968 ∗ memRegion (sp + 1040#64) 240 ∗ memRegion (sp + 1288#64) 120 ∗ F) := by
-    rw [h_sp]; dsimp only [sp] at hm3 ⊢; convert hm3 using 1; sep_ac_rfl
+    rw [h_sp]; dsimp only [sp] at hm ⊢; convert hm using 1; sep_ac_rfl
   have hx29' : s4.readReg64 .x29 = s4.sp + 1408#64 := by rw [hx29, h_sp]; bv_omega
   have hwp := identityKeys_remote_none_wp_placed (H := H) s4 u1024 u1032 u1280 h_pc h_run h_sp_align hx11 hx29'
   refine reaches_pc_mono (sepWP_to_reaches_pc hwp hm_pre) ?_
@@ -924,11 +907,7 @@ theorem identityKeys_step5_none_reaches_placed [LibsignalPlacement]
       (memRegion (sp + 56#64) 968 ∗ memRegion (sp + 1024#64) 16 ∗ memRegion (sp + 1040#64) 240 ∗
        memRegion (sp + 1280#64) 8 ∗ memRegion (sp + 1288#64) 120) ∗ (logOff tryDecryptDummyImg ∗ F) := by
     dsimp only [sp] at hm4 ⊢; convert hm4 using 1; sep_ac_rfl
-  rw [show sp + 1288#64 = (sp + 1280#64) + 8#64 by bv_omega, ← memRegion_split (sp + 1280#64) 8 120 (by decide),
-      show sp + 1280#64 = (sp + 1040#64) + 240#64 by bv_omega, ← memRegion_split (sp + 1040#64) 240 128 (by decide),
-      show sp + 1040#64 = (sp + 1024#64) + 16#64 by bv_omega, ← memRegion_split (sp + 1024#64) 16 368 (by decide),
-      show sp + 1024#64 = (sp + 56#64) + 968#64 by bv_omega, ← memRegion_split (sp + 56#64) 968 384 (by decide)] at hm5
-  exact hm5
+  exact Satisfies.mono (sepConj_mono_left (by sep_interval)) hm5
 
 end
 

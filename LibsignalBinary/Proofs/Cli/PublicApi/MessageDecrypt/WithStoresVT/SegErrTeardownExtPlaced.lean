@@ -9,10 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.ExtDefsPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegErrTeardownPlaced
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.ExtDefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegErrTeardownPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegSaveAuxPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegStoreAuxPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegStorePlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSave
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSaveAux
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegStore
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegStoreAux
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsVX
 
 /-!
 # Relocatable `SegErrTeardown` (`+0x2294 / +0x22a8 → +0x24d4`)
@@ -20,7 +31,7 @@ import Arm64.Trusted.Spec.SepLogic
 Proves relocatable (`[LibsignalPlacement]`) `segErrTeardownVX_placed_ok` on `lsProg_463 H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.ProofPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateHeaderPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.ProofPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateHeaderPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateHeader
@@ -28,6 +28,15 @@ import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateBranchesB
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpers
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpersBudget
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateHeaderPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesChunkedHeaderSent
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Phase 2d Infrastructure & `V1State::encoded_len [local#2]` Placed Proof
@@ -37,7 +46,7 @@ Proves the `[LibsignalPlacement]` `VmPreserved` `subroutine_ok` contracts for `V
 dispatch bridges, and proves `step_encodeToVec_phase2d_placed` (`+1740 .. +1808`, `Block 426`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -486,7 +495,7 @@ macro "step_etv_jump16_to_placed " off:num s1:term:max idx:term:max hx8:term:max
 
 /-- Budget-threaded stepping obligation from `(blkPl_426).base + 1880#64` (jump-table dispatch)
 to `(blkPl_426).base + 1808#64` (epilogue) for a `V1State.InnerState` value `is`. -/
-def StepInnerStateAt1880Placed [LibsignalPlacement] (resStack : Nat)
+@[expose] def StepInnerStateAt1880Placed [LibsignalPlacement] (resStack : Nat)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (H : String → Option (State → State)) (s0 : State) (is : V1State.InnerState) : Prop :=
   ∀ (a sp cap ptr : BitVec 64) (g : V1StatePBGhost) (bs : List (BitVec 8)),

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SessionPrimsPure
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecord.DRBound
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
+public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SessionPrimsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.GrowthRecord.DRBound -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Closure.Promote
 
 /-!
@@ -22,7 +22,7 @@ Proves `ReachablePqxdhSession` and `WireRecCanon` closure under matching-session
 `recv` steps, and defines `BobPromDirInv`, `PromPureAcceptOut`, and `rpkPromMid`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -247,7 +247,7 @@ structure PromPureAcceptOut (interp : ExternInterpretation) (r : ProtocolSetup)
                  pf.inner.senderRatchetKey = false
 
 /-- Deterministic `(who, ok)`-independent middle event list of a promote accept call. -/
-def rpkPromMid (interp : ExternInterpretation) (x : RecordExtras) (g : GhostState HwBytes)
+@[expose] def rpkPromMid (interp : ExternInterpretation) (x : RecordExtras) (g : GhostState HwBytes)
     (inner : SignalMessage) (c_coins : HwBytes) : List MachineEvent :=
   if Symbolic.Swarm.CREF.CliPure.pureDrawsCoins (cryptoOf' interp) (pqSession x g).state
       inner.senderRatchetKey then

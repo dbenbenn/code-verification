@@ -35,10 +35,6 @@ def rng79Chars : List Char := chars_of_hex (rngAt 79)
 theorem rngAt79_eq_hex : rngAt 79 = hexBytes (str_of_hex (rngAt 79)) := rfl
 theorem rng79Str_eq : (str_of_hex (rngAt 79)) = String.ofList rng79Chars := rfl
 theorem rngAt79_eq_fast : rngAt 79 = hexBytes.go Symbolic.BugInjection.Proofs.Cheval26WeakStateIdx1.SpecTop.hexDigit rng79Chars := by rw [rngAt79_eq_hex, rng79Str_eq, Symbolic.BugInjection.Proofs.Cheval26WeakStateIdx1.SpecTop.hexBytes_ofList]
-theorem rngAt79_length : (rngAt 79).length = 64 := by
-  rw [rngAt79_eq_fast]; rfl
-theorem rVal_rngAt79 : RVal (rngAt 79) :=
-  rVal_of_len (by rw [rngAt79_length]; decide) (by rw [rngAt79_length]; decide)
 theorem rVal_rngAt79_inits : ∀ c ∈ (rngAt 79).inits, RVal c := by
   rw [rngAt79_eq_fast]; unfold RVal NonInjOff KdfFree; decide +kernel
 theorem call4Rng_length : call4Rng.length = 34 := rfl

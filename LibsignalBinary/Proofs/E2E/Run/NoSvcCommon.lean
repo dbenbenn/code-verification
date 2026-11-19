@@ -10,14 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
-public import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.CodeLayout
 public import ProofLib.OpcodeExclusion
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Record.Support.ImageWitness
-import GeneratedLean.LibsignalSessionObj
+public import ProofLib.ProgramReflection.SortedFresh
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Run
 
@@ -25,9 +24,8 @@ open Arm64 ProofLib
 open CryptoGames.LibsignalSession
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
 
-
 /-- `svc #0`, the only ARM64 instruction in the model that executes a system call (`execSyscall`). -/
-def svc0 : Instr := .system false 0#16
+@[expose] def svc0 : Instr := .system false 0#16
 
 namespace NoSvcAux
 
@@ -78,7 +76,7 @@ theorem svc_mask_eq_false_of_bytes {b0 b1 b2 b3 : BitVec 8}
   unfold isSvc0Word
   bv_bits
 
-def noSvc0Tree : WordTree → Bool
+@[expose] def noSvc0Tree : WordTree → Bool
   | .empty => true
   | .leaf b0 b1 b2 b3 => !(b3 == 0xd4#8 && b0 == 0x01#8 && b1 == 0x00#8 && b2 == 0x00#8)
   | .node _ l r => noSvc0Tree l && noSvc0Tree r
@@ -134,11 +132,6 @@ theorem noSvc0Tree_drop_toBytesAux :
       rw [WordTree.toBytesAux, hj_eq, ← List.drop_drop,
           drop_all_toBytesAux' l (r.toBytesAux acc) hl]
       exact noSvc0Tree_drop_toBytesAux r acc (j - lw) hr hno.2 (by omega)
-
-set_option maxRecDepth 2000000 in
-theorem libsignalSessionCode_tree_noSvc0 :
-    noSvc0Tree libsignalSessionCode_tree = true := by
-  rfl_kernel
 
 theorem readWordOff_bind_decode_ne_svc0 {prog : Program} {t : WordTree} {n : Nat}
     (hcode : prog.code = t.toBytesAux [])
@@ -239,33 +232,12 @@ theorem readWordOff_congr {p1 p2 : Program} (hc : p1.code = p2.code) (off : Nat)
   unfold Program.readWordOff
   rw [hc]
 
-theorem ofImage_code (img : Obj.Image) : (Program.ofImage img).code = img.code := rfl
-
-theorem libsignalSessionImage_code_length : libsignalSessionImage.code.length = num% (ls_field% codeLen) := by
-  change libsignalSessionCode.code.length = num% (ls_field% codeLen)
-  rw [libsignalSessionCode_code_eq]
-  exact Record.ImageWitness.WordTree.length_toBytesAux_nil' libsignalSessionCode_tree
-    libsignalSessionCode_tree_size
-
 end NoSvcAux
-
-/-- Evaluates `tripleRatchetProg` field projections without unfolding `img`. -/
-theorem tripleRatchetProg_fields (img : Obj.Image) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    (tripleRatchetProg img C ctl abs).base = img.base ∧
-    (tripleRatchetProg img C ctl abs).code = img.code ∧
-    (tripleRatchetProg img C ctl abs).overrides = (fun _ => none) ∧
-    (tripleRatchetProg img C ctl abs).stubs = img.stubs ∧
-    (tripleRatchetProg img C ctl abs).externs =
-      Rust.withPanics (tripleRatchetExterns C ctl abs) :=
-  ⟨rfl, rfl, rfl, rfl, rfl⟩
-
 
 /-- Every instruction other than `svc #0` preserves memory permissions and the trace. -/
 theorem execInst_perm_trace {inst : Instr} (h : inst ≠ svc0) (s : State) :
     (∀ a, (execInst inst s).mem.perm a = s.mem.perm a) ∧ (execInst inst s).trace = s.trace := by
   exact ⟨congrFun (NoSvcAux.execInst_keepsPerm h s).elim, NoSvcAux.execInst_trace h s⟩
-
 
 /-! ## Relocatable `[LibsignalPlacement]` `noSvc0` helpers -/
 
@@ -276,7 +248,7 @@ open Arm64.Obj CryptoVerification ProofLib.ProgramReflection
 /-- Preserved-bit check guaranteeing that relocation patching of template word `w` with relocation
     kind `k` (`patchRelocWord` or `CodeBlock.patchGotOrTlsIeRelaxed`) never produces `0xd4000001#32`
     under any placement. -/
-def relocWordNoSvc0 (k : RelocKind) (w : BitVec 32) : Bool :=
+@[expose] def relocWordNoSvc0 (k : RelocKind) (w : BitVec 32) : Bool :=
   match k with
   | .call26 | .jump26 => (w &&& 0xfc000000#32) != 0xd4000000#32
   | .adrpHi21 | .adrpHi21Nc | .adrGotPage | .tlsieAdrGottprelPage21 | .adrPrelLo21 =>
@@ -297,7 +269,7 @@ def relocWordNoSvc0 (k : RelocKind) (w : BitVec 32) : Bool :=
 
 /-- Consume all leading relocation entries at byte offset `off`, verifying `relocWordNoSvc0` against
     the current 32-bit little-endian word `w`. -/
-def consumeRelocsAt (off : Nat) (w : BitVec 32) : List RelocEntry → Option (List RelocEntry)
+@[expose] def consumeRelocsAt (off : Nat) (w : BitVec 32) : List RelocEntry → Option (List RelocEntry)
   | r :: rs =>
     if r.off == off then
       if relocWordNoSvc0 r.kind w then consumeRelocsAt off w rs
@@ -307,7 +279,7 @@ def consumeRelocsAt (off : Nat) (w : BitVec 32) : List RelocEntry → Option (Li
 
 /-- Tail-recursive linear-time check that `bs` has length divisible by 4, contains no `svc #0` word
 (`0xd4000001`), and satisfies `relocWordNoSvc0` at all sorted relocation entries `rs`. -/
-def scanCodeRelocs (off : Nat) : List (BitVec 8) → List RelocEntry → Bool
+@[expose] def scanCodeRelocs (off : Nat) : List (BitVec 8) → List RelocEntry → Bool
   | b0 :: b1 :: b2 :: b3 :: rest, rs =>
     if (b3 == 0xd4#8 && b0 == 0x01#8 && b1 == 0x00#8 && b2 == 0x00#8) then false
     else
@@ -897,7 +869,7 @@ theorem libsignalSessionLib_fetchMem_ne_svc0_of_codeLoaded [LibsignalFullPlaceme
     have hL : (libsignalSessionLib.blockProgram lsmpl i (fun _ => none) (fun _ => none)
         Syscall.standard).CodeLoaded m := by
       have h := hcl i hi_len
-      rwa [Program.codeLoaded_iff] at h ⊢
+      rw [Program.codeLoaded_iff] at h ⊢; exact h
     exact fetchMem_ne_svc0_of_block lsmpl prog hi_len hL hin
   · exact fetchMem_ne_of_not_exec prog hexec
 

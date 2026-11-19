@@ -11,19 +11,19 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Trap.SameAccount
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropSessionStructure3
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Fetch
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Trap.SameAccount -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropSessionStructure3
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Fetch
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Defs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderStore.SessionRecordCallees
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2a
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2b
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCut
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCallees
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKit
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKit
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKit
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.Defs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderStore.SessionRecordCallees
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2a
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2b
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCut
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCallees
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKit
+import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKit
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKit
+import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.Defs
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -39,7 +39,7 @@ Provides `RustCliAllocBudget M` generic-capacity `vecU8` helpers and `VmPreserve
 bridges.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -99,7 +99,7 @@ export CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits (
 /-! ## 1. `RustCliAllocBudget M` Generic-Capacity `vecU8` Helpers -/
 
 /-- Heap part of a `Vec<u8>` with capacity `cap` at `ptr` holding `bs` over `A.repAlloc`. -/
-def p2BobSpqrVecBufBudget {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def p2BobSpqrVecBufBudget {M : AllocCostModel} (A : RustCliAllocBudget M)
     (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits.p2BobSpqrVecBuf A.repAlloc cap ptr bs
 
@@ -118,7 +118,7 @@ theorem p2_vecBuf_dealloc_nonzero_budget {M : AllocCostModel} (A : RustCliAllocB
 /-! ## 2. `VmPreserved`-Augmented `0`-Allocation Callee Contracts & Stack-Lift Bridges -/
 
 /-- `VmPreserved`-augmented 4 KiB-stacked `memcpy` contract (`0` allocations). -/
-def p2Memcpy4KSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
+@[expose] def p2Memcpy4KSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
   withVmPreserved CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits.p2Memcpy4KSpec
 
 /-- Lift `withVmPreserved framelessMemcpySpec` (`framelessMemcpyBudgetSpec`) to `p2Memcpy4KSpec`. -/
@@ -141,11 +141,11 @@ theorem p2_framelessMemcpy_to_4K {prog : Program} {entry : BitVec 64}
     exact ⟨hpost.1, hpost.2.1, Satisfies.of_eq hpost.2.2 (by ac_rfl)⟩
 
 /-- `VmPreserved`-augmented `SessionRecord::promote_state` (empty-record fast path, `96` B stack). -/
-def promoteStateEmptySpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
+@[expose] def promoteStateEmptySpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
   withVmPreserved CryptoVerification.E2E.Pqxdh.ResponderStore.promoteStateEmptySpec
 
 /-- `VmPreserved`-augmented 4 KiB-stacked `SessionRecord::promote_state` (empty-record fast path). -/
-def promoteStateEmpty4KSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
+@[expose] def promoteStateEmpty4KSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
   withVmPreserved CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits.promoteStateEmpty4KSpec
 
 /-- Lift `promoteStateEmptySpec` (`96` B stack) to `promoteStateEmpty4KSpec` (`allocHookStack = 4096` B). -/
@@ -173,19 +173,19 @@ theorem promoteStateEmptySpec_to_4K {prog : Program} {entry : BitVec 64}
     exact ⟨hpost.1, hpost.2.1, Satisfies.of_eq hpost.2.2 (by ac_rfl)⟩
 
 /-- `VmPreserved`-augmented `<IdentityKey>::is_same_account` contract under `DistinctSid` (`0` allocations). -/
-def isSameAccountDistinctSpec (A : RustAlloc) (parse : UuidParser) :
+@[expose] def isSameAccountDistinctSpec (A : RustAlloc) (parse : UuidParser) :
     Spec IsSameAccountDistinctGhost :=
   withVmPreserved (CryptoVerification.E2E.Pqxdh.WireEntries.isSameAccountDistinctSpec A parse)
 
 /-- `VmPreserved`-augmented stack-parameterized `<IdentityKey>::is_same_account` contract under `DistinctSid`. -/
-def isSameAccountDistinctAtSpec (A : RustAlloc) (parse : UuidParser) (stk : Nat) :
+@[expose] def isSameAccountDistinctAtSpec (A : RustAlloc) (parse : UuidParser) (stk : Nat) :
     Spec (BitVec 64 × IdentityKey × BitVec 64 × AddrGhost ×
       BitVec 64 × IdentityKey × BitVec 64 × AddrGhost) :=
   withVmPreserved
     (CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits.isSameAccountDistinctAtSpec A parse stk)
 
 /-- `VmPreserved`-augmented `isSameAccountDistinctStackExt`-stacked `<IdentityKey>::is_same_account` contract. -/
-def isSameAccountDistinctSpecExt (A : RustAlloc) (parse : UuidParser) :
+@[expose] def isSameAccountDistinctSpecExt (A : RustAlloc) (parse : UuidParser) :
     Spec (BitVec 64 × IdentityKey × BitVec 64 × AddrGhost ×
       BitVec 64 × IdentityKey × BitVec 64 × AddrGhost) :=
   withVmPreserved

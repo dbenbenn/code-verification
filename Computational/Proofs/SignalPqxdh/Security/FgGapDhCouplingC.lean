@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingB
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingB -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
 
@@ -20,7 +20,7 @@ Defines the lazily tagged `KeyInd` implementation `pqxdhKeyIndAdvTagImpl`, prove
 equivalence between pre-warmed and lazy caches, and establishes per-query `RelEagerTag` couplings.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +36,7 @@ open Proofs.SignalPqxdh.Security.FgGapDh.Opk
 namespace Proofs.SignalPqxdh.Security
 
 /-- Build a `KeyInd` `QueryImpl` on `KeyIndLazyState S` from a view-level step function. -/
-def mkLazyKeyIndImpl (eagerRoHonest eagerRand : Bool) (S : Setup)
+@[expose] def mkLazyKeyIndImpl (eagerRoHonest eagerRand : Bool) (S : Setup)
     (stepView : KeyIndQuery S → KeyIndAdvCutoffState S → ProbComp (LazyPost × KeyIndAdvCutoffState
       S)) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndLazyState S) ProbComp) := fun q =>
@@ -133,7 +133,7 @@ theorem evalDist_simulateQ_mkLazyKeyIndImpl_true_true_eq_false_false {S : Setup}
       oa hObsRo lst lst (CacheLens.Equiv.refl (roLens S) lst)
   exact h1.trans h2
 
-def tagStepInitiate (S : Setup) (P : Primitives)
+@[expose] def tagStepInitiate (S : Setup) (P : Primitives)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput)
     (adv : KeyIndAdvCutoffState S) : ProbComp (LazyPost × KeyIndAdvCutoffState S) := do
   let hst := adv.shCr
@@ -193,7 +193,7 @@ def tagStepInitiate (S : Setup) (P : Primitives)
     return (.handshake isHonest (.hdrResp hdr) (fun dk => .initUnfreshResp dk hdr) secrets pid?,
             { adv with shCr := shCr' })
 
-def tagStepAcceptOPK (S : Setup) (P : Primitives)
+@[expose] def tagStepAcceptOPK (S : Setup) (P : Primitives)
     (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) (hdr : HandshakeHdr)
     (adv : KeyIndAdvCutoffState S) : ProbComp (LazyPost × KeyIndAdvCutoffState S) := do
   let hst := adv.shCr
@@ -264,7 +264,7 @@ def tagStepAcceptOPK (S : Setup) (P : Primitives)
   return (.handshake senderHonest .acceptFreshResp KeyIndResponse.drKeyResp secrets pid?,
           { adv with shCr := shCr' })
 
-def tagStepAcceptNoOPK (S : Setup) (P : Primitives)
+@[expose] def tagStepAcceptNoOPK (S : Setup) (P : Primitives)
     (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk) (hdr : HandshakeHdr)
     (adv : KeyIndAdvCutoffState S) : ProbComp (LazyPost × KeyIndAdvCutoffState S) := do
   let hst := adv.shCr
@@ -328,7 +328,7 @@ def tagStepAcceptNoOPK (S : Setup) (P : Primitives)
   return (.handshake senderHonest .acceptFreshResp KeyIndResponse.drKeyResp secrets pid?,
           { adv with shCr := shCr' })
 
-def tagStepRevealSessionKey (S : Setup) (sid : SessionId S)
+@[expose] def tagStepRevealSessionKey (S : Setup) (sid : SessionId S)
     (adv : KeyIndAdvCutoffState S) : ProbComp (LazyPost × KeyIndAdvCutoffState S) :=
   let st := adv.shCr.base
   match st.sessions.find? (fun e => e.sid == sid) with
@@ -350,7 +350,7 @@ def tagStepRevealSessionKey (S : Setup) (sid : SessionId S)
         let adv' := { adv with shCr := { adv.shCr with base := { st with respSessions := resp' } } }
         pure (.evalRo r.drKeyReal.rootKey KeyIndResponse.drKeyResp, adv')
 
-def tagStepTestSession (testReal : Bool) (S : Setup) (sid : SessionId S)
+@[expose] def tagStepTestSession (testReal : Bool) (S : Setup) (sid : SessionId S)
     (adv : KeyIndAdvCutoffState S) : ProbComp (LazyPost × KeyIndAdvCutoffState S) :=
   let st := adv.shCr.base
   if !isKeyIndSessionTestable st sid then
@@ -377,7 +377,7 @@ def tagStepTestSession (testReal : Bool) (S : Setup) (sid : SessionId S)
         else
           pure (.evalRand r.drKeyRand.rootKey KeyIndResponse.drKeyResp, adv')
 
-def tagStepView (testReal : Bool) (S : Setup) (P : Primitives) (q : KeyIndQuery S)
+@[expose] def tagStepView (testReal : Bool) (S : Setup) (P : Primitives) (q : KeyIndQuery S)
     (adv : KeyIndAdvCutoffState S) : ProbComp (LazyPost × KeyIndAdvCutoffState S) :=
   match q with
   | .initiateOPK u i bundle =>
@@ -398,7 +398,7 @@ def tagStepView (testReal : Bool) (S : Setup) (P : Primitives) (q : KeyIndQuery 
 
 /-- Tagged `KeyInd` oracle implementation on `KeyIndLazyState S` parameterized by cache eagerness
     (`eagerRoHonest`, `eagerRand`) and test mode (`testReal`). -/
-def pqxdhKeyIndAdvTagImpl (eagerRoHonest eagerRand testReal : Bool) (S : Setup) (P : Primitives) :
+@[expose] def pqxdhKeyIndAdvTagImpl (eagerRoHonest eagerRand testReal : Bool) (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndLazyState S) ProbComp) :=
   mkLazyKeyIndImpl eagerRoHonest eagerRand S (tagStepView testReal S P)
 
@@ -490,7 +490,7 @@ theorem evalCache_preserves_find_some {K : Type} [BEq K] [LawfulBEq K]
         cases hFind'
     simp [List.find?, hne, hFind]
 
-def lookupCacheKey (c : List (Bytes × DRKey)) (k : Bytes) : DRKey :=
+@[expose] def lookupCacheKey (c : List (Bytes × DRKey)) (k : Bytes) : DRKey :=
   match c.find? (fun (x, _) => x == k) with
   | some (_, dk) => dk
   | none => default
@@ -555,29 +555,29 @@ theorem lookupCacheKey_cons_of_find_none_of_isSome
       simp [hNone] at hSome
   simp [lookupCacheKey, List.find?, hne, hSome]
 
-def resolveSessionEntry {S : Setup} (roCache randCache : List (Bytes × DRKey))
+@[expose] def resolveSessionEntry {S : Setup} (roCache randCache : List (Bytes × DRKey))
     (s : KeyIndInitiatorEntry S) : KeyIndInitiatorEntry S :=
   { s with
     drKeyReal := lookupCacheKey roCache s.drKeyReal.rootKey
     drKeyRand := lookupCacheKey randCache s.drKeyRand.rootKey }
 
-def resolveRespEntry {S : Setup} (roCache randCache : List (Bytes × DRKey))
+@[expose] def resolveRespEntry {S : Setup} (roCache randCache : List (Bytes × DRKey))
     (r : KeyIndRespEntry S) : KeyIndRespEntry S :=
   { r with
     drKeyReal := lookupCacheKey roCache r.drKeyReal.rootKey
     drKeyRand := lookupCacheKey randCache r.drKeyRand.rootKey }
 
-def resolveLazyBase {S : Setup} (randCache : List (Bytes × DRKey))
+@[expose] def resolveLazyBase {S : Setup} (randCache : List (Bytes × DRKey))
     (st : KeyIndState S) : KeyIndState S :=
   { st with
     sessions := st.sessions.map (resolveSessionEntry st.roCache randCache)
     respSessions := st.respSessions.map (resolveRespEntry st.roCache randCache) }
 
-def resolveLazyShCr {S : Setup} (randCache : List (Bytes × DRKey))
+@[expose] def resolveLazyShCr {S : Setup} (randCache : List (Bytes × DRKey))
     (hst : KeyIndShCrState S) : KeyIndShCrState S :=
   { hst with base := resolveLazyBase randCache hst.base }
 
-def resolveLazyAdv {S : Setup} (lst : KeyIndLazyState S) : KeyIndAdvCutoffState S :=
+@[expose] def resolveLazyAdv {S : Setup} (lst : KeyIndLazyState S) : KeyIndAdvCutoffState S :=
   { lst.adv with shCr := resolveLazyShCr lst.randCache lst.adv.shCr }
 
 structure WellFormedLazy {S : Setup} (lst : KeyIndLazyState S) : Prop where
@@ -891,7 +891,7 @@ theorem mem_support_base_of_pqxdhKeyIndAdvG3Impl {S : Setup} (P : Primitives)
   simp only [Functor.map_map, support_map, Set.mem_image]
   exact ⟨z, hz, rfl⟩
 
-def RelEagerTag {S : Setup} (s1 : KeyIndAdvCutoffState S) (s2 : KeyIndLazyState S) : Prop :=
+@[expose] def RelEagerTag {S : Setup} (s1 : KeyIndAdvCutoffState S) (s2 : KeyIndLazyState S) : Prop :=
   s1 = resolveLazyAdv s2 ∧ WellFormedLazy s2
 
 theorem relEagerTag_empty (S : Setup) :

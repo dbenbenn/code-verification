@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompSchedule
+public import Symbolic.Proofs.Swarm.COMPOSED.CompSchedule -- proof-setup: allow-public-import
 import DY.Actions.ProtocolEvent
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecBasePure
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecBasePure -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
 import Symbolic.Proofs.Swarm.COMPOSED.CompRatchet
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.RatchetDHRkSwapPeelTR
@@ -30,7 +30,7 @@ the same session and `findRecvChain st.recv msg.ratchetKey = some c`, equal `gam
 `seed_c` and `seed_s` force `seed_s = seed_c ∧ rIdx_s = c.rIdx`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false

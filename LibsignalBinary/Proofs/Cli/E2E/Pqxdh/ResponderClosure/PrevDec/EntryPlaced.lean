@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Entry
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Entry
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 
 /-!
 # Relocatable Entry (`+0x1ee8 → +0x216c`) of Inlined `SessionStructure::decode`
@@ -22,14 +24,14 @@ Relocatable (`[LibsignalPlacement]`) verification of the 28-instruction entry bl
 (`+0x1ee8..+0x1f54`) of inlined `SessionStructure::decode` on Block `518` (`overDecEntry_placed`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec
 
-open Arm64 ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection SepProp
+open Arm64 ProofLib ProofLib.ProgramReflection SepProp
 open CryptoGames CryptoGames.LibsignalSession
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr

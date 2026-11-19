@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.CommonBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Core
+public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.CommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Core
 import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.DuplicatedMessageReturnBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.LoopBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -19,6 +19,7 @@ import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 import ProofLib.RegChain
+import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.DuplicatedMessageReturn
 
 /-!
 # Budget-Threaded Top-Level `TakePath` Proof (Block 24)
@@ -26,7 +27,7 @@ import ProofLib.RegChain
 Proves `TakePathPlacedSpec` under `RustCliAllocBudget M` and `SeamBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,14 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.Startup
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Inst
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.Startup -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Inst -- proof-setup: allow-public-import
 public import ProofLib.ProgramReflection
 public meta import ProofLib.ProgramReflection
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
 import LibsignalBinary.Proofs.HookDischarge.Libc.Strlen
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl3
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Concrete Startup Framing, `F3CodeOk`, and `CliElfF3B2NeedLocksAssumptions`
@@ -28,7 +33,7 @@ across `musl` startup and exit, and discharges `CliElfF3B2NeedLocksAssumptions` 
 `LinkedAt cliElfBytes` placements `(mpl, mmpl)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 400000
@@ -39,6 +44,9 @@ open Arm64 Arm64.Obj Arm64.Process ProofLib ProofLib.ProgramReflection ProofLib.
 open CryptoVerification (LibsignalFrozen LibsignalRoLoaded lsLogFilterSym)
 open CryptoVerification.LibsignalPublicApi.StoreKit (LibsignalCodeRoLoaded)
 open CryptoVerification.LibsignalSpqrV1 (tokenName tokenStorageName)
+open CryptoVerification.SpqrV1.GF.Mul2U16
+  (spqrLazyLockVtableSym spqrProbeEnvAtMpl spqrProbeEnvAtMpl_eq
+   tokenProbedPlacedAtMpl tokenUnprobedPlacedAtMpl)
 open CryptoVerification.SignalSession
   (CliHooks Inputs cliElfBytes cliElfImage cliElf_parse cliElf_staticOk
    cliExternsPlaced cliProcessInputs libsignalSessionLib patchElfByte patchRegionByte processInputs)
@@ -49,39 +57,44 @@ open CryptoVerification.SignalSession.Coins (coinsLeftSym coinsNextSym)
 open CryptoVerification.SignalSession.InitStack
   (cliStackSize cliStrs loadState_cli_layout sp0 stackBase toNat_sp0)
 open CryptoVerification.SignalSession.MuslElf (SegSlice)
-open CryptoVerification.SignalSession.Placed (cliProgPlacedSig cliTokenPatchPlaced)
+open CryptoVerification.SignalSession.Placed (cliTokenPatchPlaced)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliProgPlacedSig)
 open LibsignalBinary.Heap (BudgetLimits)
 open LibsignalBinary.Heap.Fine
   (CliElfMallocngLayout StartupVmPreserved f3MallocngMpl f3SegByteSum f3SegCount f3StdLayout
    fineCostModel fineHookRustCliAllocBudget)
+open LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase (aesStorageCell)
 open LibsignalBinary.Proofs.HookDischarge.Libc.Strlen (StrlenSwarPadBound)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2
-  (CliElfF3B2NeedLocksAssumptions MuslHarnessFineNeedLocksGuardedPerInput
+  (CliElfF3PlainB2NeedLocksAssumptions MuslHarnessFineNeedLocksGuardedPerInput
    MuslHarnessFineNeedLocksPerInput StdMainEntryLr argvAtRO cStrAtRO cliBudgetLimits
-   muslHarnessFineNeedLocksGuardedPerInput_of_startup)
+   muslHarnessFineNeedLocksGuardedPerInput_of_startup_ro)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
-  (CliElfTokenCellsPlacedAt cliElfMallocngLayout_iff_patchElfTokensPlacedAt cliProgExtPlacedAt
+  (CliElfTokenCellsPlacedAt b2FineHookPool_of_needLocks_ro
+   cliElfMallocngLayout_iff_patchElfTokensPlacedAt cliProgExtPlacedAt
    cliProgExtPlacedSigAt_cliExternsPlaced_eq cliStackShape_cliProcessInputs cliStaticsPlacedAt
    codeLoaded_cliProgExtPlaced_of_codeRoLoaded coinsStaticsPlacedAt
    externAt?_cliProgExtPlacedSigAt_eq_none loadState_patchElfTokensPlacedAt lsLogOffAt
    patchElfTokensPlacedAt tokenInitPlacedAtMpl)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.Startup
-  (F3StartupCode f3StartupExtraChunks f3StartupMainPre
-   f3StartupMainPreNeedLocks f3StartupResidual steps_lift_setTidOnly)
+  (F3StartupCode F3TlsTid auxv_bupd_mallocngAuxvRoAt_and_bytesRO checkF3StartupCode
+   f3StartupCode_of_wordTree f3StartupExtraChunks f3StartupMainPre
+   f3StartupMainPreNeedLocks f3StartupResidual f3TlsState_entails_tid
+   steps_lift_setTidOnly steps_lift_setTidOnly_sig)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.TlsZero
   (F3BssGlobals F3DataGlobals F3InitGlobals F3LayoutImageFacts F3RoConstants F3TlsState
    extractF3LayoutImageFacts f3AllRwAtoms f3AllRwAtoms_sep_eq f3BssAtoms f3CheckRoSegment
    f3CheckRwSegment f3DataNoStderrAtoms f3MatchesImage f3MatchesImage_codeLoaded
-   f3MatchesImage_satisfies_roConstants f3MatchesImage_segments f3SetTidOnlySvc
-   f3StaticInitTlsSpec f3StaticInitTls_setTidOnly_ok)
+   f3MatchesImage_holdsBytes_ro_slice f3MatchesImage_satisfies_roConstants f3MatchesImage_segments
+   f3SetTidOnlySvc f3StaticInitTlsSpec f3StaticInitTls_setTidOnly_ok)
 open VerifiedLibraries.Mallocng
   (MallocngAddrs MallocngAuxvAt MallocngBrkStartWf mallocngAddrsOfPlacement)
-open VerifiedLibraries.Mallocng.Proofs (mallocngMultiL)
+open VerifiedLibraries.Mallocng.Proofs (MallocngAuxvRoAt mallocngMultiL)
 
 /-! ## `MemExecFrozen`, `F3CodeInv`, and `F3CodeOk` -/
 
 /-- Every executable byte in `m` is read-only (`r = true ∧ w = false`). -/
-def MemExecFrozen (m : Memory) : Prop :=
+@[expose] def MemExecFrozen (m : Memory) : Prop :=
   ∀ a : BitVec 64, (m.perm a).x = true → (m.perm a).r = true ∧ (m.perm a).w = false
 
 theorem MemExecFrozen.of_perm_eq {m m' : Memory} (h : MemExecFrozen m)
@@ -117,7 +130,7 @@ theorem F3CodeInv.mngBlockCodeLoaded {mpl mmpl : Obj.MultiPlacement} {m : Memory
     ⟨hc.byte_eq i hi, hc.perm_eq i hi, hc.isLazyFree_eq i hi⟩
 
 /-- Combined `F3CodeInv` and `MemExecFrozen` invariant for `CliElfF3B2NeedLocksAssumptions`. -/
-def F3CodeOk (mpl mmpl : Obj.MultiPlacement) (m : Memory) : Prop :=
+@[expose] def F3CodeOk (mpl mmpl : Obj.MultiPlacement) (m : Memory) : Prop :=
   F3CodeInv mpl mmpl m ∧ MemExecFrozen m
 
 theorem f3CodeOk_of_keepsFrozen_and_perm {mpl mmpl : Obj.MultiPlacement} {m m' : Memory}
@@ -128,7 +141,7 @@ theorem f3CodeOk_of_keepsFrozen_and_perm {mpl mmpl : Obj.MultiPlacement} {m m' :
 /-! ## Patched ELF, Token Cells, and `mallocngAddrsOfPlacement` Uniqueness -/
 
 /-- Token-patched `cliElfImage` at canonical placement `f3LsMpl`. -/
-noncomputable def f3PatchedElf : ElfImage :=
+@[expose] noncomputable def f3PatchedElf : ElfImage :=
   patchElfTokensPlacedAt ElfCodeMatchesPlaced.f3LsMpl cliElfImage
 
 theorem f3PatchedElf_eq_of_linkedAt {mpl : Obj.MultiPlacement}
@@ -453,6 +466,52 @@ theorem keepsFrozen_cliTokenPatchPlacedAt {mpl : Obj.MultiPlacement} {elf : ElfI
     (keepsFrozen_write8_of_perm_rw 0#8 (by simpa only [Memory.perm_write8_apply] using p2))).trans
     (keepsFrozen_write8_of_perm_rw 0#8 (by simpa only [Memory.perm_write8_apply] using p3))
 
+private theorem keepsFrozen_of_write8_perm_rw {m : Memory} {addr : BitVec 64} (val : BitVec 8)
+    (hp : m.perm addr = some Perm.rw) : (m.write8 addr val).KeepsFrozen m := by
+  intro a ha
+  have hne : a ≠ addr := by
+    rintro rfl
+    unfold Memory.Frozen at ha
+    rw [Memory.perm_write8_apply, hp] at ha
+    simp only [Option.frozen, Perm.frozen] at ha
+    exact Bool.noConfusion ha
+  simp [Memory.write8, Memory.read8, Memory.perm, Memory.isLazyFree, Memory.isAnon, hne]
+
+theorem keepsFrozen_of_cliTokenPatchPlacedAt {mpl : Obj.MultiPlacement} {elf : ElfImage}
+    (hE : ElfStaticOk elf) (htok : CliElfTokenCellsPlacedAt mpl elf)
+    {inputs : ProcessInputs} {s0 : State} (hload : elf.loadState inputs = .ok s0) :
+    (cliTokenPatchPlaced mpl s0).mem.KeepsFrozen s0.mem := by
+  have ps : s0.mem.perm (mpl.ρ tokenStorageName) = some .rw := by
+    simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero, show Perm.rw.rwx = Perm.rw from rfl] using
+      ((htok.storage.holdsBytes hE.1 hE.2 hload) 0 (by decide)).2.1
+  have p0 : s0.mem.perm (mpl.ρ tokenName + 8#64) = some .rw := by
+    simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero, show Perm.rw.rwx = Perm.rw from rfl] using
+      ((htok.once.holdsBytes hE.1 hE.2 hload) 0 (by decide)).2.1
+  have p1 : s0.mem.perm (mpl.ρ tokenName + 8#64 + 1#64) = some .rw :=
+    ((htok.once.holdsBytes hE.1 hE.2 hload) 1 (by decide)).2.1
+  have p2 : s0.mem.perm (mpl.ρ tokenName + 8#64 + 2#64) = some .rw :=
+    ((htok.once.holdsBytes hE.1 hE.2 hload) 2 (by decide)).2.1
+  have p3 : s0.mem.perm (mpl.ρ tokenName + 8#64 + 3#64) = some .rw :=
+    ((htok.once.holdsBytes hE.1 hE.2 hload) 3 (by decide)).2.1
+  have hmem : (cliTokenPatchPlaced mpl s0).mem =
+      (((((s0.mem.write8 (mpl.ρ tokenStorageName) 0#8).write8
+        (mpl.ρ tokenName + 8#64) 0#8).write8
+        (mpl.ρ tokenName + 8#64 + 1#64) 0#8).write8
+        (mpl.ρ tokenName + 8#64 + 2#64) 0#8).write8
+        (mpl.ρ tokenName + 8#64 + 3#64) 0#8) := by
+    simp only [cliTokenPatchPlaced, State.setMem, Memory.writeBytes,
+      bv_add_1_1_tok, bv_add_2_1_tok]
+  rw [hmem]
+  exact ((((keepsFrozen_of_write8_perm_rw 0#8
+      (by simpa only [Memory.perm_write8_apply] using p3)).trans
+    (keepsFrozen_of_write8_perm_rw 0#8
+      (by simpa only [Memory.perm_write8_apply] using p2))).trans
+    (keepsFrozen_of_write8_perm_rw 0#8
+      (by simpa only [Memory.perm_write8_apply] using p1))).trans
+    (keepsFrozen_of_write8_perm_rw 0#8
+      (by simpa only [Memory.perm_write8_apply] using p0))).trans
+    (keepsFrozen_of_write8_perm_rw 0#8 ps)
+
 private def regionExecFrozenB (r : Snapshot.Region) : Bool :=
   !r.perm.x || (r.perm.r && !r.perm.w)
 
@@ -516,10 +575,27 @@ private theorem buildInitialStack_perm_rw {img : ElfImage} {inputs : ProcessInpu
   injection hb with hpr
   exact (congrArg (Snapshot.Region.perm ∘ Prod.snd) hpr).symm
 
+private theorem regionExecFrozenB_patchRegionByte (a : BitVec 64) (v : BitVec 8)
+    (r : Snapshot.Region) : regionExecFrozenB (patchRegionByte a v r) = regionExecFrozenB r := by
+  unfold patchRegionByte regionExecFrozenB
+  dsimp only
+  split <;> rfl
+
+private theorem segments_execFrozen_patchElfByte (a : BitVec 64) (v : BitVec 8)
+    (elf : ElfImage) :
+    (patchElfByte a v elf).segments.all regionExecFrozenB = elf.segments.all regionExecFrozenB := by
+  simp [patchElfByte, List.all_map, Function.comp_def, regionExecFrozenB_patchRegionByte]
+
 set_option maxRecDepth 4000000 in
+private theorem cliElf_segments_execFrozen :
+    cliElfImage.segments.all regionExecFrozenB = true := by
+  rfl_kernel
+
 private theorem f3PatchedElf_segments_execFrozen :
     f3PatchedElf.segments.all regionExecFrozenB = true := by
-  rfl_kernel
+  unfold f3PatchedElf patchElfTokensPlacedAt
+  dsimp only
+  simpa only [segments_execFrozen_patchElfByte] using cliElf_segments_execFrozen
 
 private theorem elfLoadState_execFrozen {img : ElfImage}
     (hsegs : img.segments.all regionExecFrozenB = true)
@@ -587,19 +663,68 @@ theorem f3CodeOk_of_patchedLoadState {mpl mmpl : Obj.MultiPlacement}
              fromLoad := ⟨inputs, s0, hload, Memory.KeepsFrozen.refl s0.mem⟩ },
            hexecFrz⟩
 
-/-! ## `cliStaticsPlacedAt` Framing Across Startup and Exit -/
+theorem cliElf_matchesImage : f3MatchesImage f3StdLayout cliElfImage = true :=
+  Tie.f3Trial_matchesImage
+
+/-- Every initial state `s0` loaded directly from plain `cliElfImage` satisfies
+`F3CodeOk mpl mmpl s0.mem`. -/
+theorem f3CodeOk_of_plainLoadState {mpl mmpl : Obj.MultiPlacement}
+    (hls : libsignalSessionLib.LinkedAt cliElfBytes mpl)
+    (hmng : VerifiedLibraries.mallocngLib.LinkedAt cliElfBytes mmpl)
+    {inputs : ProcessInputs} {s0 : State}
+    (hload : cliElfImage.loadState inputs = .ok s0) :
+    F3CodeOk mpl mmpl s0.mem := by
+  have htok := cliElf_tokenCellsPlacedAt_of_linkedAt hls
+  have hmap := loadState_patchElfTokensPlacedAt cliElf_staticOk htok inputs
+  rw [hload] at hmap
+  have hkf : (cliTokenPatchPlaced mpl s0).mem.KeepsFrozen s0.mem :=
+    keepsFrozen_of_cliTokenPatchPlacedAt cliElf_staticOk htok hload
+  have hlsRo0 : LibsignalCodeRoLoaded mpl s0.mem :=
+    CryptoVerification.LibsignalTripleRatchet.Record.LibsignalCodeRoLoaded.of_libsignalFrozen
+      (cliElf_frozen_of_linkedAt hls hload)
+  obtain ⟨_, hp_mng, hpl_mng, hin_mng⟩ := hmng
+  cases cliElf_parse.symm.trans hp_mng
+  have hmngCode0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl s0.mem :=
+    MultiPlacedLib.codeLoaded_of_inElf hpl_mng hin_mng hload
+  have hrxCode : Tie.f3TrialRxProg.CodeLoaded s0.mem :=
+    f3MatchesImage_codeLoaded cliElf_matchesImage hload
+  have hexecFrz : MemExecFrozen s0.mem :=
+    elfLoadState_execFrozen cliElf_segments_execFrozen hload
+  exact ⟨{ lsRo := hlsRo0
+           mngCode := hmngCode0
+           rxCode := hrxCode
+           fromLoad := ⟨inputs, cliTokenPatchPlaced mpl s0, hmap, hkf⟩ },
+         hexecFrz⟩
+
+/-! ## `cliStaticsPlacedAt` and `F3PanicFrame` Framing Across Startup and Exit -/
+
+/-- Three `.got` 64-bit pointer slots read on `core`/`alloc` panic-formatting paths. -/
+@[expose] def F3PanicGotCells : SepProp :=
+  (0x4cd118#64 ↦₆₄ 0x47afbc#64) ∗
+    (0x4cd120#64 ↦₆₄ 0x47afbc#64) ∗
+    (0x4cd128#64 ↦₆₄ 0x47ad80#64)
+
+/-- Main-thread `tid = 1` cell (`F3TlsTid`) and `.got` panic cells framed across `main` for
+`PanicBridge`. -/
+@[expose] def F3PanicFrame (L : StdBinaryLayout) : SepProp :=
+  F3TlsTid L ∗ F3PanicGotCells
 
 private noncomputable def f3CliStaticsAtoms : List RwAtom :=
-  [ .u64 (ElfCodeMatchesPlaced.f3LsMpl.ρ coinsNextSym) 1#64,
+  [ .u8  (f3StdLayout.brkStart - 8160#64) 0xff#8,
+    .u64 (ElfCodeMatchesPlaced.f3LsMpl.ρ coinsNextSym) 1#64,
     .u64 (ElfCodeMatchesPlaced.f3LsMpl.ρ coinsLeftSym) 0#64,
-    .u8  (ElfCodeMatchesPlaced.f3LsMpl.ρ tokenStorageName) 0#8,
-    .u32 (ElfCodeMatchesPlaced.f3LsMpl.ρ tokenName + 8#64) 0#32,
-    .u64 (ElfCodeMatchesPlaced.f3LsMpl.ρ lsLogFilterSym) 0#64 ]
+    .u8  (ElfCodeMatchesPlaced.f3LsMpl.ρ tokenStorageName) 0xff#8,
+    .u64 (ElfCodeMatchesPlaced.f3LsMpl.ρ tokenName) (ElfCodeMatchesPlaced.f3LsMpl.base 385),
+    .u32 (ElfCodeMatchesPlaced.f3LsMpl.ρ tokenName + 8#64) 3#32,
+    .u64 (ElfCodeMatchesPlaced.f3LsMpl.ρ lsLogFilterSym) 0#64,
+    .u64 0x4cd118#64 0x47afbc#64,
+    .u64 0x4cd120#64 0x47afbc#64,
+    .u64 0x4cd128#64 0x47ad80#64 ]
 
 set_option maxRecDepth 4000000 in
-private theorem f3PatchedElf_statics_seg3_chk :
+private theorem cliElf_statics_seg3_chk :
     ∃ seg3 : Snapshot.Region,
-      f3PatchedElf.segments[3]? = some seg3 ∧
+      cliElfImage.segments[3]? = some seg3 ∧
       seg3.perm = Perm.rw ∧
       (f3CliStaticsAtoms.all fun x =>
         checkSegSlice seg3 seg3.bytes.length x.addr x.rawBytes &&
@@ -607,40 +732,136 @@ private theorem f3PatchedElf_statics_seg3_chk :
       intervalsPairwiseDisjoint
         ((f3CliStaticsAtoms ++ f3AllRwAtoms f3StdLayout).map fun x =>
           (x.addr.toNat, x.rawBytes.length)) = true := by
-  refine ⟨f3PatchedElf.segments[3]'(by simp [f3PatchedElf, patchElfTokensPlacedAt,
-      patchElfByte, cliElf_seg3_lt]),
+  refine ⟨cliElfImage.segments[3]'cliElf_seg3_lt,
     by simp, by rfl_kernel, by rfl_kernel, by rfl_kernel⟩
+
+private def findCharListIdx : List (List Char) → List Char → Nat → Nat
+  | [], _, acc => acc
+  | cs :: rest, pat, acc => if cs == pat then acc else findCharListIdx rest pat (acc + 1)
+
+private noncomputable def f3SpqrVtableIdx : Nat :=
+  findCharListIdx ElfCodeMatchesData.lsNameChars spqrLazyLockVtableSym.toList 0
+
+set_option maxRecDepth 4000000 in
+private theorem f3SpqrVtable_pin_ok :
+    (Nat.blt f3SpqrVtableIdx ElfCodeMatchesData.lsInternedMultiLib.names.length &&
+     (ElfCodeMatchesData.lsInternedMultiLib.names.getD f3SpqrVtableIdx "" == spqrLazyLockVtableSym) &&
+     (Obj.Interned.lookupBlockSymId f3SpqrVtableIdx ElfCodeMatchesData.lsInternedMultiLib.blocks == none)) = true := by
+  rfl_kernel
+
+private theorem f3CliElf_rho_spqrVtable_eq_of_linkedAt {mpl : Obj.MultiPlacement}
+    (hls : libsignalSessionLib.LinkedAt cliElfBytes mpl) :
+    mpl.ρ spqrLazyLockVtableSym = ElfCodeMatchesPlaced.f3LsMpl.ρ spqrLazyLockVtableSym := by
+  have hc := f3SpqrVtable_pin_ok
+  simp only [Bool.and_eq_true, Nat.blt_eq, beq_iff_eq] at hc
+  obtain ⟨⟨hlt, hname⟩, hid⟩ := hc
+  have hmem : spqrLazyLockVtableSym ∈ ElfCodeMatchesData.lsInternedMultiLib.names := by
+    rw [← hname, Obj.Interned.getD_of_lt hlt]
+    exact List.getElem_mem hlt
+  have hnone : Obj.lookupBlockSym spqrLazyLockVtableSym libsignalSessionLib.blocks = none := by
+    rw [← hname, ElfCodeMatchesData.ls_toMultiPlacedLib_eq,
+      Obj.Interned.lookupBlockSym_toMultiPlacedLib ElfCodeMatchesData.ls_names_nodup
+        ElfCodeMatchesData.ls_idsOk hlt]
+    exact hid
+  exact (ElfCodeMatchesPlaced.f3CliElf_libsignal_linkedAt_unique hls).2.2.1 _ hmem hnone
+
+private theorem f3CliElf_base321_385_eq_of_linkedAt {mpl : Obj.MultiPlacement}
+    (hls : libsignalSessionLib.LinkedAt cliElfBytes mpl) :
+    mpl.base 321 = ElfCodeMatchesPlaced.f3LsMpl.base 321 ∧
+    mpl.base 385 = ElfCodeMatchesPlaced.f3LsMpl.base 385 := by
+  have hlen := Nat.beq_eq.mp ElfCodeMatchesData.libsignalBlocks_len
+  have hge : 600 ≤ ElfCodeMatchesData.f3LsBlocksLen :=
+    Nat.ble_eq.mp ElfCodeMatchesData.f3LsBlocksLen_ge_600
+  have hb := (ElfCodeMatchesPlaced.f3CliElf_libsignal_linkedAt_unique hls).1
+  exact ⟨hb 321 (by omega), hb 385 (by omega)⟩
+
+private theorem spqrProbeEnvAtMpl_eq_f3LsMpl_of_linkedAt {mpl : Obj.MultiPlacement}
+    (hls : libsignalSessionLib.LinkedAt cliElfBytes mpl) :
+    spqrProbeEnvAtMpl mpl = spqrProbeEnvAtMpl ElfCodeMatchesPlaced.f3LsMpl := by
+  have hst := ElfCodeMatchesPlaced.f3CliElf_statics_rho_eq_of_linkedAt hls
+  have hvt := f3CliElf_rho_spqrVtable_eq_of_linkedAt hls
+  have ⟨hb321, hb385⟩ := f3CliElf_base321_385_eq_of_linkedAt hls
+  rw [spqrProbeEnvAtMpl_eq mpl, spqrProbeEnvAtMpl_eq ElfCodeMatchesPlaced.f3LsMpl,
+    hst.2.2.2.2, hvt, hb321, hb385]
 
 private theorem cliStaticsPlacedAt_eq_f3LsMpl_of_linkedAt {mpl : Obj.MultiPlacement}
     (hls : libsignalSessionLib.LinkedAt cliElfBytes mpl) :
     cliStaticsPlacedAt mpl =
       cliStaticsPlacedAt ElfCodeMatchesPlaced.f3LsMpl := by
   have hst := ElfCodeMatchesPlaced.f3CliElf_statics_rho_eq_of_linkedAt hls
-  unfold cliStaticsPlacedAt coinsStaticsPlacedAt tokenInitPlacedAtMpl lsLogOffAt
-  rw [hst.1, hst.2.1, hst.2.2.1, hst.2.2.2.1, hst.2.2.2.2]
+  have henv := spqrProbeEnvAtMpl_eq_f3LsMpl_of_linkedAt hls
+  unfold cliStaticsPlacedAt coinsStaticsPlacedAt tokenInitPlacedAtMpl
+    CryptoVerification.SpqrV1.GF.Mul2U16.tokenInitPlacedAtMpl
+    tokenProbedPlacedAtMpl tokenUnprobedPlacedAtMpl lsLogOffAt
+  rw [hst.1, hst.2.1, hst.2.2.1, hst.2.2.2.1, hst.2.2.2.2, henv]
+
+private noncomputable def f3SpqrVtableSlotBytes : List (BitVec 8) :=
+  List.ofFn (fun i : Fin 8 => (ElfCodeMatchesPlaced.f3LsMpl.base 321).extractLsb' (8 * i.val) 8)
+
+private theorem cliElf_seg0_lt : 0 < cliElfImage.segments.length := by
+  rw [Fixture.f3TrialElf_seg_count]; decide
+
+set_option maxRecDepth 4000000 in
+private theorem cliElf_spqrVtableSlot_chk :
+    checkSegSlice (cliElfImage.segments[0]'cliElf_seg0_lt)
+      (cliElfImage.segments[0]'cliElf_seg0_lt).bytes.length
+      (ElfCodeMatchesPlaced.f3LsMpl.ρ spqrLazyLockVtableSym + 0x20#64)
+      f3SpqrVtableSlotBytes = true := by
+  rfl_kernel
+
+private theorem cliElf_satisfies_spqrVtableSlot {inputs : ProcessInputs} {s0 : State}
+    {P : SepProp} (hload : cliElfImage.loadState inputs = .ok s0) (hP : s0.mem ⊨ P) :
+    s0.mem ⊨
+      ((ElfCodeMatchesPlaced.f3LsMpl.ρ spqrLazyLockVtableSym + 0x20#64) ↦₆₄ᵣ
+        ElfCodeMatchesPlaced.f3LsMpl.base 321) ∗ P := by
+  have hseg0 : cliElfImage.segments[f3StdLayout.roSegIdx]? =
+      some (cliElfImage.segments[0]'cliElf_seg0_lt) := by simp [f3StdLayout]
+  have ⟨hhb, _, _⟩ :=
+    f3MatchesImage_holdsBytes_ro_slice cliElf_matchesImage hload (Or.inl hseg0)
+      cliElf_spqrVtableSlot_chk
+  have hro := Satisfies.rodata_intro (holdsBytes_ro hhb).1 (holdsBytes_ro hhb).2
+    (by simp [f3SpqrVtableSlotBytes]) hP
+  rwa [pointsTo64RO_eq_pointsToBytesRO]
+
+private noncomputable def f3RawCliStatics : SepProp :=
+  aesStorageCell f3StdLayout.brkStart ∗
+    coinsStaticsPlacedAt ElfCodeMatchesPlaced.f3LsMpl ∗
+    (ElfCodeMatchesPlaced.f3LsMpl.ρ tokenStorageName ↦₈ 0xff#8) ∗
+    (ElfCodeMatchesPlaced.f3LsMpl.ρ tokenName ↦₆₄ ElfCodeMatchesPlaced.f3LsMpl.base 385) ∗
+    ((ElfCodeMatchesPlaced.f3LsMpl.ρ tokenName + 8#64) ↦₃₂ 3#32) ∗
+    ((ElfCodeMatchesPlaced.f3LsMpl.ρ spqrLazyLockVtableSym + 0x20#64) ↦₆₄ᵣ
+      ElfCodeMatchesPlaced.f3LsMpl.base 321) ∗
+    lsLogOffAt ElfCodeMatchesPlaced.f3LsMpl ∗
+    F3PanicGotCells
 
 private theorem rwAtomListSep_f3CliStaticsAtoms_entails :
-    rwAtomListSep f3CliStaticsAtoms ⊢
-      cliStaticsPlacedAt ElfCodeMatchesPlaced.f3LsMpl := by
+    rwAtomListSep f3CliStaticsAtoms ∗
+      ((ElfCodeMatchesPlaced.f3LsMpl.ρ spqrLazyLockVtableSym + 0x20#64) ↦₆₄ᵣ
+        ElfCodeMatchesPlaced.f3LsMpl.base 321) ⊢
+      f3RawCliStatics := by
   dsimp only [f3CliStaticsAtoms, rwAtomListSep, RwAtom.toSepProp,
-    cliStaticsPlacedAt, coinsStaticsPlacedAt, tokenInitPlacedAtMpl, lsLogOffAt]
+    f3RawCliStatics, aesStorageCell, coinsStaticsPlacedAt, lsLogOffAt, F3PanicGotCells]
+  have h0 : ((f3StdLayout.brkStart - 8160#64) ↦₈ 0xff#8) ⊢
+      (∃∗ v : BitVec 8, (f3StdLayout.brkStart - 8160#64) ↦₈ v) :=
+    Entails.sepExists_right 0xff#8 (Entails.refl _)
   have h1 : (ElfCodeMatchesPlaced.f3LsMpl.ρ coinsNextSym ↦₆₄ 1#64) ⊢
       (∃∗ v : BitVec 64, ElfCodeMatchesPlaced.f3LsMpl.ρ coinsNextSym ↦₆₄ v) :=
     Entails.sepExists_right 1#64 (Entails.refl _)
   have h2 : (ElfCodeMatchesPlaced.f3LsMpl.ρ coinsLeftSym ↦₆₄ 0#64) ⊢
       (∃∗ v : BitVec 64, ElfCodeMatchesPlaced.f3LsMpl.ρ coinsLeftSym ↦₆₄ v) :=
     Entails.sepExists_right 0#64 (Entails.refl _)
-  refine Entails.trans (sepConj_mono h1 (sepConj_mono_left h2)) ?_
+  refine Entails.trans
+    (sepConj_mono_left (sepConj_mono h0 (sepConj_mono h1 (sepConj_mono_left h2)))) ?_
   sep_entail
 
-private theorem f3PatchedElf_supportedOn_statics_and_initGlobals {inputs : ProcessInputs} {s0 : State}
-    (hload : f3PatchedElf.loadState inputs = .ok s0) :
+private theorem cliElf_supportedOn_statics_and_initGlobals {inputs : ProcessInputs} {s0 : State}
+    (hload : cliElfImage.loadState inputs = .ok s0) :
     SupportedOn 0#64 (fun k => 0 ≤ k ∧ k < f3StdLayout.brkStart.toNat) s0.mem
       (rwAtomListSep f3CliStaticsAtoms ∗ (F3InitGlobals f3StdLayout ∗ StdExtraRw f3StdLayout)) := by
   obtain ⟨hwf, _, _, _, hbrk_eq, _, _, _, _, _, rwSeg, _, _, _, hrw, _, _, _, _, _, _, hrwC⟩ :=
-    f3MatchesImage_segments f3PatchedElf_matchesImage
-  obtain ⟨seg3, hseg3, hperm3, hall, hdisj⟩ := f3PatchedElf_statics_seg3_chk
-  have hbel_all : f3PatchedElf.segments.all (Snapshot.Below f3StdLayout.brkStart) = true := by
+    f3MatchesImage_segments cliElf_matchesImage
+  obtain ⟨seg3, hseg3, hperm3, hall, hdisj⟩ := cliElf_statics_seg3_chk
+  have hbel_all : cliElfImage.segments.all (Snapshot.Below f3StdLayout.brkStart) = true := by
     have hwf' := hwf; unfold ElfImage.WellFormed at hwf'
     simp only [Bool.and_eq_true] at hwf'; rw [← hbrk_eq]; exact hwf'.2
   have hbel := List.all_eq_true.mp hbel_all rwSeg (List.mem_of_getElem? hrw)
@@ -717,7 +938,7 @@ private theorem f3EmptyFsInputs_valid {i : Inputs} (hi : CliInputsOk i) :
     (f3EmptyFsInputs i).Valid := by
   obtain ⟨hprint, hfit⟩ := hi
   have hinit : (f3EmptyFsInputs i).init.Valid :=
-    show ({ stackSize := 8388608 } : ProcessInit).Valid from
+    show ({ stackSize := 8388608, auxv := { hwcap := 0x1b#64 } } : ProcessInit).Valid from
       (ProcessInit.check_iff_valid _).mp (by decide)
   have hfs : FsValid (f3EmptyFsInputs i) :=
     (FsValid.check_iff (f3EmptyFsInputs i)).mp rfl
@@ -862,49 +1083,49 @@ private theorem scratch_supportedOn_of_headroom {img : ElfImage} {inputs : Proce
     (fun a _ => hnolf a)
   rwa [hbase, show sp0.toNat - K + K = sp0.toNat by omega] at hsup
 
-private theorem s0_satisfies_f3InitAllSep_and_statics {mpl : Obj.MultiPlacement}
-    (hls : libsignalSessionLib.LinkedAt cliElfBytes mpl)
+private theorem s0_satisfies_f3InitAllSep_and_statics
     {inputs : ProcessInputs} {s0 : State}
-    (hload : f3PatchedElf.loadState inputs = .ok s0)
-    (hinfo : InitialStackInfo f3PatchedElf inputs s0) (hvalid : inputs.Valid)
+    (hload : cliElfImage.loadState inputs = .ok s0)
+    (hinfo : InitialStackInfo cliElfImage inputs s0) (hvalid : inputs.Valid)
     (hhr8 : inputs.init.stackTop.toNat - inputs.init.stackSize + 8371824 ≤
-      (StackLayout.of f3PatchedElf inputs).sp0.toNat) :
-    s0.mem ⊨ f3InitAllSep f3StdLayout f3PatchedElf inputs ∗
-      cliStaticsPlacedAt mpl := by
-  have hseg := f3MatchesImage_segments f3PatchedElf_matchesImage
+      (StackLayout.of cliElfImage inputs).sp0.toNat) :
+    s0.mem ⊨ f3InitAllSep f3StdLayout cliElfImage inputs ∗ f3RawCliStatics := by
+  have hseg := f3MatchesImage_segments cliElf_matchesImage
   have hbrk_eq := hseg.2.2.2.2.1
   have hbrk_le := hseg.2.2.2.2.2.1.2
   have hfl := hinfo.stackBase_floor
   unfold STACK_BASE_MIN at hfl
-  have htop_pos : (StackLayout.of f3PatchedElf inputs).sp0.toNat ≤ inputs.init.stackTop.toNat := by
+  have htop_pos : (StackLayout.of cliElfImage inputs).sp0.toNat ≤ inputs.init.stackTop.toNat := by
     have := hinfo.addrs_nat; omega
-  have h01 := SupportedOn.bupd_intro (f3PatchedElf_supportedOn_statics_and_initGlobals hload)
+  have h01 := SupportedOn.bupd_intro (cliElf_supportedOn_statics_and_initGlobals hload)
   have h2_sc := SupportedOn.bupd_intro (scratch_supportedOn_of_headroom hinfo hhr8)
   have h2_0 := hinfo.stack_supportedOn_bupd hvalid.auxv.random16 (K := 0) (Nat.zero_le _)
   have h2 := SupportedOn.sepConj_bupd_interval
-    (lo := (StackLayout.of f3PatchedElf inputs).sp0.toNat - 8371824)
+    (lo := (StackLayout.of cliElfImage inputs).sp0.toNat - 8371824)
     (hi := inputs.init.stackTop.toNat) h2_sc h2_0 (by omega) (by omega) (by omega)
   have h012 := SupportedOn.sepConj_bupd_interval
     (lo := 0) (hi := inputs.init.stackTop.toNat) h01 h2 (by omega) (by omega) (by omega)
-  have hsat := f3MatchesImage_satisfies_roConstants f3PatchedElf_matchesImage hload
+  have hsat0 := f3MatchesImage_satisfies_roConstants cliElf_matchesImage hload
     (SupportedOn.satisfies_bupd h012)
-  have hmr0 : memRegion ((StackLayout.of f3PatchedElf inputs).sp0 - 8371824#64) 8371824 ∗
-      memRegion ((StackLayout.of f3PatchedElf inputs).sp0 - 0#64) 0 =
-      memRegion ((StackLayout.of f3PatchedElf inputs).sp0 - 8371824#64) 8371824 := by
-    have hs := memRegion_split_le ((StackLayout.of f3PatchedElf inputs).sp0 - 8371824#64)
+  have hsat := cliElf_satisfies_spqrVtableSlot hload hsat0
+  have hmr0 : memRegion ((StackLayout.of cliElfImage inputs).sp0 - 8371824#64) 8371824 ∗
+      memRegion ((StackLayout.of cliElfImage inputs).sp0 - 0#64) 0 =
+      memRegion ((StackLayout.of cliElfImage inputs).sp0 - 8371824#64) 8371824 := by
+    have hs := memRegion_split_le ((StackLayout.of cliElfImage inputs).sp0 - 8371824#64)
       8371824 8371824 (by decide) (by decide)
-    rw [show (StackLayout.of f3PatchedElf inputs).sp0 - 8371824#64 + BitVec.ofNat 64 8371824 =
-      (StackLayout.of f3PatchedElf inputs).sp0 - 0#64 by bv_lin] at hs
+    rw [show (StackLayout.of cliElfImage inputs).sp0 - 8371824#64 + BitVec.ofNat 64 8371824 =
+      (StackLayout.of cliElfImage inputs).sp0 - 0#64 by bv_lin] at hs
     exact hs.symm
-  rw [cliStaticsPlacedAt_eq_f3LsMpl_of_linkedAt hls]
   refine Satisfies.mono ?_ hsat
-  dsimp only [f3InitAllSep]
-  rw [← sepConj_assoc (memRegion ((StackLayout.of f3PatchedElf inputs).sp0 - 8371824#64) 8371824)
-    (memRegion ((StackLayout.of f3PatchedElf inputs).sp0 - 0#64) 0), hmr0]
+  rw [← sepConj_assoc (memRegion ((StackLayout.of cliElfImage inputs).sp0 - 8371824#64) 8371824)
+    (memRegion ((StackLayout.of cliElfImage inputs).sp0 - 0#64) 0), hmr0]
   refine Entails.trans
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left
-      (sepConj_mono_left rwAtomListSep_f3CliStaticsAtoms_entails)))) ?_
-  sep_entail
+    (Q := f3InitAllSep f3StdLayout cliElfImage inputs ∗
+      (rwAtomListSep f3CliStaticsAtoms ∗
+        ((ElfCodeMatchesPlaced.f3LsMpl.ρ spqrLazyLockVtableSym + 0x20#64) ↦₆₄ᵣ
+          ElfCodeMatchesPlaced.f3LsMpl.base 321)))
+    (by dsimp only [f3InitAllSep]; sep_entail)
+    (sepConj_mono_right rwAtomListSep_f3CliStaticsAtoms_entails)
 
 private theorem argvTable_dup_argvAtRO {img : ElfImage} {inputs : ProcessInputs} {s0 : State}
     (hinfo : InitialStackInfo img inputs s0) (hargs : ArgsValid inputs) :
@@ -1131,6 +1352,8 @@ private theorem initialStackInfo_strip (keep : BitVec 64 → Bool) {img : ElfIma
   s0_exclFails := by dsimp [stripS, State.setMem]; exact h.s0_exclFails
   s0_sigActions := by dsimp [stripS, State.setMem]; exact h.s0_sigActions
   s0_sigAltStack := by dsimp [stripS, State.setMem]; exact h.s0_sigAltStack
+  s0_sigMask := by dsimp [stripS, State.setMem]; exact h.s0_sigMask
+  s0_sigPending := by dsimp [stripS, State.setMem]; exact h.s0_sigPending
   s0_physMemAvail := by dsimp [stripS, State.setMem]; exact h.s0_physMemAvail
   sp0_align16 := h.sp0_align16
   random_align16 := h.random_align16
@@ -1167,14 +1390,14 @@ private theorem codeLoaded_withSvc_iff {P : Program} {svc : State → State} {m 
     (P.withSvc svc).CodeLoaded m ↔ P.CodeLoaded m := by
   simp [Program.codeLoaded_iff, Program.withSvc]
 
-private theorem f3Exit80_of_layout {L : StdBinaryLayout} {elf : ElfImage} {P : Program}
+private theorem f3Exit80_of_layout {L : StdBinaryLayout} {P_rx P : Program}
     (lf : F3LayoutImageFacts L)
-    (hc : F3StartupCode (L.rxProgram elf) L)
+    (hc : F3StartupCode P_rx L)
     (hsvc : P.svc = Syscall.standard)
-    (hHookFree : ∀ pc, progKeep (L.rxProgram elf) pc = true → (P.externAt? pc).isNone = true)
+    (hHookFree : ∀ pc, progKeep P_rx pc = true → (P.externAt? pc).isNone = true)
     (fs0 : FsState)
     {sm sr : State}
-    (hL_rx : (L.rxProgram elf).CodeLoaded sr.mem)
+    (hL_rx : P_rx.CodeLoaded sr.mem)
     (hlr_sm : sm.readReg64 .lr = L.libcStartMainStage2Addr + 56#64)
     (hal_sm : sm.spAligned = true)
     (hret : Returned sm sr)
@@ -1182,7 +1405,6 @@ private theorem f3Exit80_of_layout {L : StdBinaryLayout} {elf : ElfImage} {P : P
     ∃ sx : State, Steps P sr sx ∧
       sx.status = .Exited (((sr.readReg64 .x0).setWidth 32).signExtend 64) ∧
       sx.fs = sr.fs ∧ sx.trace = sr.trace := by
-  let P_rx := L.rxProgram elf
   let P_st := P_rx.withSvc f3SetTidOnlySvc
   obtain ⟨hpc_sr, hsp_sr, hrun_sr⟩ := hret
   have hal_sr : sr.spAligned = true := by
@@ -1311,18 +1533,18 @@ private theorem lookup_zip_eq_map_f3 {α : Type} (d : α) :
       cases lookupKeyIdxF3 ks s <;> rfl
     · rfl
 
-private noncomputable def cliHookValsF3 (mmpl : Obj.MultiPlacement) (W : CliHooks) :
+private def cliHookValsF3 (mmpl : Obj.MultiPlacement) (W : CliHooks) :
     List (State → State) :=
-  (CryptoVerification.SignalSession.cliHookTablePlaced mmpl W).map Prod.snd
+  (LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.cliHookTablePlaced mmpl W).map Prod.snd
 
 private theorem cliHookTablePlaced_eq_zip_f3 (mmpl : Obj.MultiPlacement) (W : CliHooks) :
-    CryptoVerification.SignalSession.cliHookTablePlaced mmpl W =
+    LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.cliHookTablePlaced mmpl W =
       List.zip ElfCodeMatchesData.lsHookNamesPlaced (cliHookValsF3 mmpl W) := by
   rfl_kernel
 
 private theorem lsHookNamesPlaced_eq_fst_f3 (mmpl : Obj.MultiPlacement) (W : CliHooks) :
     ElfCodeMatchesData.lsHookNamesPlaced =
-      (CryptoVerification.SignalSession.cliHookTablePlaced mmpl W).map Prod.fst := by
+      (LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.cliHookTablePlaced mmpl W).map Prod.fst := by
   rfl_kernel
 
 private theorem lsHookNamesPlaced_len_f3 (mmpl : Obj.MultiPlacement) (W : CliHooks) :
@@ -1333,16 +1555,16 @@ private noncomputable def placedExternTagF3 (s : String) : Option Nat :=
   if CryptoVerification.SignalSession.isCliPanicSymbolPlaced s then some 0
   else (lookupKeyIdxF3 ElfCodeMatchesData.lsHookNamesPlaced s).map Nat.succ
 
-private noncomputable def evalCliTagF3 (mmpl : Obj.MultiPlacement) (W : CliHooks) :
+private def evalCliTagF3 (mmpl : Obj.MultiPlacement) (W : CliHooks) :
     Nat → State → State
   | 0 => CryptoVerification.SignalSession.abortOnPanic Rust.panicked
   | k + 1 => CryptoVerification.SignalSession.abortOnPanic ((cliHookValsF3 mmpl W).getD k Rust.panicked)
 
 private theorem cliExternsPlacedSig_eq_tag_f3 (mmpl : Obj.MultiPlacement) (W : CliHooks)
     (s : String) :
-    CryptoVerification.SignalSession.cliExternsPlacedSig mmpl W s =
+    LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.cliExternsPlacedSig mmpl W s =
       (placedExternTagF3 s).map (evalCliTagF3 mmpl W) := by
-  unfold CryptoVerification.SignalSession.cliExternsPlacedSig cliExternsPlaced placedExternTagF3
+  unfold LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.cliExternsPlacedSig cliExternsPlaced placedExternTagF3
   cases CryptoVerification.SignalSession.isCliPanicSymbolPlaced s
   · simp only [Bool.false_eq_true, ↓reduceIte]
     rw [cliHookTablePlaced_eq_zip_f3 mmpl W,
@@ -1389,7 +1611,7 @@ private theorem cliProgPlacedSig_f3Ls_externAt_tag_f3 (mmpl : Obj.MultiPlacement
     ElfCodeMatchesData.ls_block617_externs_eq, List.findSome?_map]
   have hstep : (ElfCodeMatchesData.lsSharedExterns.findSome? (Function.comp
       (fun e => if libsignalSessionLib.resolve ElfCodeMatchesPlaced.f3LsMpl e == pc then
-        CryptoVerification.SignalSession.cliExternsPlacedSig mmpl W e else none)
+        LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.cliExternsPlacedSig mmpl W e else none)
       (fun idx => ElfCodeMatchesData.lsInternedMultiLib.names.getD idx ""))) =
       ElfCodeMatchesData.lsSharedExterns.findSome? (fun idx =>
         ((if ElfCodeMatchesData.f3LsSymAddrs.getD idx 0#64 == pc then
@@ -1441,7 +1663,7 @@ private theorem isPanicSymbol_eq_fast_f3 (name : String) :
   rw [hsw, core_panicking_toList_eq_f3]
 
 private noncomputable def placedExternTagFastF3 (s : String) : Option Nat :=
-  if CryptoVerification.SignalSession.cliPanicSymbolsPlaced.contains s || isPanicSymbolFastF3 s then some 0
+  if CryptoVerification.SignalSession.cliCratePanicSyms.contains s || isPanicSymbolFastF3 s then some 0
   else (lookupKeyIdxF3 ElfCodeMatchesData.lsHookNamesPlaced s).map Nat.succ
 
 private theorem placedExternTag_eq_fast_f3 (s : String) :
@@ -1508,68 +1730,168 @@ private theorem compactTagTbl_placed_eq_lit_f3 :
     compactTagTblF3 ElfCodeMatchesData.lsPlacedTagTableLit = ElfCodeMatchesData.lsPlacedCompactLit := by
   rfl_kernel
 
-private theorem lookupAddrTagNat_none_of_all_lt_f3 :
+@[expose] def f3StartupRxSubWords : Nat := 5606
+
+/-- Hook-free `Syscall.standard` prefix of `Tie.f3TrialRxProg` covering `[0x474000, 0x479798)`,
+containing all `musl` startup, TLS, `RUST_LSE_INIT`, `memcpy`/`memset`, and `exit` routines
+strictly below all `libsignalSessionLib` extern and panic addresses (`≥ 0x479798`). -/
+@[expose] def f3StartupRxSub : Program :=
+  { base := Tie.f3RxSegBase
+    code := Tie.f3TrialRxWordTree.toBytes.take (4 * f3StartupRxSubWords)
+    svc := Syscall.standard }
+
+set_option maxHeartbeats 800000 in
+private def wtStartupRxSub : WordTree :=
+  word_tree_of% f3StartupRxSub
+
+set_option maxRecDepth 4000000 in
+private theorem wtStartupRxSub_eq : f3StartupRxSub.code = wtStartupRxSub.toBytes := by
+  rfl_kernel
+
+set_option maxRecDepth 4000000 in
+private theorem wtStartupRxSub_size : wtStartupRxSub.checkSize? = some f3StartupRxSubWords := by
+  rfl_kernel
+
+private theorem f3StartupRxSub_base : f3StartupRxSub.base = Tie.f3RxSegBase := rfl
+private theorem f3StartupRxSub_svc : f3StartupRxSub.svc = Syscall.standard := rfl
+private theorem f3StartupRxSub_stubs : f3StartupRxSub.stubs = [] := rfl
+private theorem f3StartupRxSub_symbols : f3StartupRxSub.symbols = [] := rfl
+private theorem f3StartupRxSub_externs_none (s : String) :
+    (f3StartupRxSub.externs s).isNone = true := rfl
+private theorem f3StartupRxSub_overrides_none (s : String) :
+    (f3StartupRxSub.overrides s).isNone = true := rfl
+
+private theorem f3StartupRxSub_code_len :
+    f3StartupRxSub.code.length = 4 * f3StartupRxSubWords := by
+  rw [wtStartupRxSub_eq]
+  exact WordTree.length_toBytes_of_checkSize? wtStartupRxSub_size
+
+private theorem f3StartupRxSub_code_eq_take :
+    f3StartupRxSub.code = Tie.f3TrialRxProg.code.take (4 * f3StartupRxSubWords) :=
+  let h1 : f3StartupRxSub.code =
+    Tie.f3TrialRxWordTree.toBytes.take (4 * f3StartupRxSubWords) := rfl
+  h1.trans (congrArg (List.take (4 * f3StartupRxSubWords)) Tie.f3TrialRxWordTree_eq.symm)
+
+private theorem getElem_of_eq_take {α : Type} {l1 l2 : List α} {k i : Nat}
+    (heq : l1 = l2.take k) (hi1 : i < l1.length) (hi2 : i < l2.length) :
+    l1[i]'hi1 = l2[i]'hi2 := by
+  subst heq
+  exact List.getElem_take
+
+theorem f3StartupRxSub_codeLoaded_of_f3TrialRxProg {m : Memory}
+    (hL : Tie.f3TrialRxProg.CodeLoaded m) :
+    f3StartupRxSub.CodeLoaded m := by
+  have hlen_full : Tie.f3TrialRxProg.code.length =
+      4 * LibsignalBinary.Heap.Fine.f3RxWordCount := by
+    rw [Tie.f3TrialRxWordTree_eq]
+    exact WordTree.length_toBytes_of_checkSize? Tie.f3TrialRxWordTree_size
+  have hle_len : f3StartupRxSub.code.length ≤ Tie.f3TrialRxProg.code.length := by
+    have h1 : f3StartupRxSubWords = 5606 := rfl
+    have h2 : LibsignalBinary.Heap.Fine.f3RxWordCount = 90112 := rfl
+    rw [f3StartupRxSub_code_len, hlen_full, h1, h2]
+    omega
+  have hal : f3StartupRxSub.base.toNat % 4 = 0 := by
+    rw [f3StartupRxSub_base, ← Tie.f3TrialRxProg_base]
+    exact hL.aligned
+  have hnw : f3StartupRxSub.base.toNat + f3StartupRxSub.code.length ≤ 2 ^ 64 := by
+    have h0 := hL.no_wrap
+    rw [f3StartupRxSub_base, ← Tie.f3TrialRxProg_base]
+    omega
+  have hbase_eq : f3StartupRxSub.base = Tie.f3TrialRxProg.base := by
+    rw [f3StartupRxSub_base, Tie.f3TrialRxProg_base]
+  refine Program.CodeLoaded.intro hal hnw fun i hi => ?_
+  have hi_full : i < Tie.f3TrialRxProg.code.length := Nat.lt_of_lt_of_le hi hle_len
+  have hbyte_prog : f3StartupRxSub.code[i]'hi = Tie.f3TrialRxProg.code[i]'hi_full :=
+    getElem_of_eq_take f3StartupRxSub_code_eq_take hi hi_full
+  have hb := hL.byte_eq i hi_full
+  have hp := hL.perm_eq i hi_full
+  have hlf := hL.isLazyFree_eq i hi_full
+  rw [← hbase_eq] at hb hp hlf
+  exact ⟨hb.trans hbyte_prog.symm, hp, hlf⟩
+
+set_option maxRecDepth 4000000 in
+private theorem f3StartupRxSub_startupCode_chk :
+    checkF3StartupCode f3StdLayout Tie.f3RxSegBase wtStartupRxSub = true := by
+  rfl_kernel
+
+theorem f3StartupRxSub_startupCode : F3StartupCode f3StartupRxSub f3StdLayout :=
+  f3StartupCode_of_wordTree f3StartupRxSubWords wtStartupRxSub_eq wtStartupRxSub_size
+    f3StartupRxSub_svc f3StartupRxSub_stubs f3StartupRxSub_symbols
+    f3StartupRxSub_externs_none f3StartupRxSub_overrides_none
+    f3StartupRxSub_startupCode_chk
+
+theorem keepStartupRxSub_iff (pc : BitVec 64) :
+    progKeep f3StartupRxSub pc = true ↔ 0x474000 ≤ pc.toNat ∧ pc.toNat < 0x479798 := by
+  have hbase_nat : Tie.f3RxSegBase.toNat = 0x474000 := by decide
+  have hlen : f3StartupRxSub.code.length = 0x5798 := by
+    rw [f3StartupRxSub_code_len]; rfl
+  simp only [progKeep, f3StartupRxSub_base, hlen, decide_eq_true_eq]
+  constructor
+  · intro hlt
+    have hadd : Tie.f3RxSegBase + (pc - Tie.f3RxSegBase) = pc := by bv_omega
+    have hpow : (2 ^ 64 : Nat) = 18446744073709551616 := rfl
+    have hsum : Tie.f3RxSegBase.toNat + (pc - Tie.f3RxSegBase).toNat < 2 ^ 64 := by omega
+    have htn : pc.toNat = Tie.f3RxSegBase.toNat + (pc - Tie.f3RxSegBase).toNat := by
+      have h := congrArg BitVec.toNat hadd
+      rw [BitVec.toNat_add, Nat.mod_eq_of_lt hsum] at h
+      exact h.symm
+    omega
+  · rintro ⟨hlo, hhi⟩
+    have hle : Tie.f3RxSegBase ≤ pc := by
+      show Tie.f3RxSegBase.toNat ≤ pc.toNat
+      omega
+    rw [BitVec.toNat_sub_of_le hle]
+    omega
+
+private theorem lookupAddrTagNat_none_of_all_ne_f3 :
     ∀ (xs : List (Nat × Nat)) (pc : Nat),
-      (xs.all fun p => Nat.blt p.1 pc) = true →
+      (xs.all fun p => !Nat.beq p.1 pc) = true →
       lookupAddrTagNatF3 xs pc = none
   | [], _, _ => rfl
   | (a, t) :: xs, pc, hall => by
-    simp only [List.all_cons, Bool.and_eq_true, Nat.blt_eq] at hall
-    have hne : Nat.beq a pc = false := by
-      rw [Bool.eq_false_iff, Ne, Nat.beq_eq]
-      omega
-    simp only [lookupAddrTagNatF3, hne, Bool.false_eq_true, ↓reduceIte]
-    exact lookupAddrTagNat_none_of_all_lt_f3 xs pc hall.2
+    simp only [List.all_cons, Bool.and_eq_true, Bool.not_eq_true'] at hall
+    simp only [lookupAddrTagNatF3, hall.1, Bool.false_eq_true, ↓reduceIte]
+    exact lookupAddrTagNat_none_of_all_ne_f3 xs pc hall.2
 
 set_option maxRecDepth 4000000 in
-private theorem lsPlacedCompactLit_lt_rxSegBase :
+private theorem lsPlacedCompactLit_outside_startupRxSub :
     (ElfCodeMatchesData.lsPlacedCompactLit.all fun p =>
-      Nat.blt p.1 Tie.f3RxSegBase.toNat) = true := by
+      Nat.blt p.1 0x474000 || Nat.ble 0x479798 p.1) = true := by
   rfl_kernel
 
-private theorem f3ProgExt_hookFree_in_rxSeg {mpl mmpl : Obj.MultiPlacement}
+theorem f3PlacedSig_hookFree_in_startupRxSub {mpl mmpl : Obj.MultiPlacement}
     (hls : libsignalSessionLib.LinkedAt cliElfBytes mpl) (W : CliHooks) :
-    ∀ pc, progKeep (f3StdLayout.rxProgram f3PatchedElf) pc = true →
-      ((cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc).isNone =
-        true := by
+    ∀ pc, progKeep f3StartupRxSub pc = true →
+      ((cliProgPlacedSig mpl mmpl W).externAt? pc).isNone = true := by
   obtain ⟨_, hp, hpl, hin⟩ := hls
   cases cliElf_parse.symm.trans hp
   intro pc hkeep
-  rw [f3PatchedElf_rxProgram_eq] at hkeep
-  simp only [progKeep, Tie.f3TrialRxProg_base, decide_eq_true_eq] at hkeep
-  have hcode_lt : Tie.f3TrialRxProg.code.length < 2 ^ 64 := by
-    have hs := Tie.f3TrialRxWordTree_size
-    have hl : Tie.f3TrialRxProg.code.length = 4 * LibsignalBinary.Heap.Fine.f3RxWordCount := by
-      rw [Tie.f3TrialRxWordTree_eq, WordTree.length_toBytes_of_checkSize? hs]
-    rw [hl]; decide
-  have hbase_hi : Tie.f3RxSegBase.toNat + Tie.f3TrialRxProg.code.length ≤ 2 ^ 64 := by
-    have hrx_bnd : Tie.f3RxSegBase.toNat < 2 ^ 48 := by decide
-    have hlen_bnd : Tie.f3TrialRxProg.code.length < 2 ^ 30 := by
-      have hs := Tie.f3TrialRxWordTree_size
-      have hl : Tie.f3TrialRxProg.code.length = 4 * LibsignalBinary.Heap.Fine.f3RxWordCount := by
-        rw [Tie.f3TrialRxWordTree_eq, WordTree.length_toBytes_of_checkSize? hs]
-      rw [hl]; decide
-    omega
-  have hge_rx : Tie.f3RxSegBase.toNat ≤ pc.toNat := by
-    by_contra hlt_pc
-    have hlt' : pc.toNat < Tie.f3RxSegBase.toNat := Nat.lt_of_not_ge hlt_pc
-    have hsub : (pc - Tie.f3RxSegBase).toNat = 2 ^ 64 + pc.toNat - Tie.f3RxSegBase.toNat := by
-      bv_omega
-    omega
-  have hall : (ElfCodeMatchesData.lsPlacedCompactLit.all fun p => Nat.blt p.1 pc.toNat) = true := by
+  obtain ⟨hlo, hhi⟩ := (keepStartupRxSub_iff pc).mp hkeep
+  have hall : (ElfCodeMatchesData.lsPlacedCompactLit.all fun p => !Nat.beq p.1 pc.toNat) = true := by
     rw [List.all_eq_true]
     intro p hp_mem
-    have hlt := Nat.blt_eq.mp (List.all_eq_true.mp lsPlacedCompactLit_lt_rxSegBase p hp_mem)
-    rw [Nat.blt_eq]
+    have hout := List.all_eq_true.mp lsPlacedCompactLit_outside_startupRxSub p hp_mem
+    simp only [Bool.or_eq_true, Nat.blt_eq, Nat.ble_eq] at hout
+    rw [Bool.not_eq_true', Bool.eq_false_iff, Ne, Nat.beq_eq]
     omega
   have hnone_cmp : lookupAddrTagNatF3 ElfCodeMatchesData.lsPlacedCompactLit pc.toNat = none :=
-    lookupAddrTagNat_none_of_all_lt_f3 ElfCodeMatchesData.lsPlacedCompactLit pc.toNat hall
+    lookupAddrTagNat_none_of_all_ne_f3 ElfCodeMatchesData.lsPlacedCompactLit pc.toNat hall
   have hsig_none : (cliProgPlacedSig mpl mmpl W).externAt? pc = none := by
     rw [ElfCodeMatchesPlaced.cliProgPlacedSig_externAt_eq_of_inElf hpl hin mmpl W pc,
       cliProgPlacedSig_f3Ls_externAt_tag_f3, placedTagAt_eq_table_f3,
       lsPlacedTagTable_eq_lit_f3, lookupAddrTag_eq_compact_f3,
       compactTagTbl_placed_eq_lit_f3, hnone_cmp]
     rfl
+  rw [hsig_none]; rfl
+
+theorem f3ProgExt_hookFree_in_startupRxSub {mpl mmpl : Obj.MultiPlacement}
+    (hls : libsignalSessionLib.LinkedAt cliElfBytes mpl) (W : CliHooks) :
+    ∀ pc, progKeep f3StartupRxSub pc = true →
+      ((cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc).isNone =
+        true := by
+  intro pc hkeep
+  have hsig_none := Option.isNone_iff_eq_none.mp
+    (f3PlacedSig_hookFree_in_startupRxSub (mmpl := mmpl) hls W pc hkeep)
   rw [← cliProgExtPlacedSigAt_cliExternsPlaced_eq,
     externAt?_cliProgExtPlacedSigAt_eq_none] at hsig_none
   rw [hsig_none]; rfl
@@ -1602,41 +1924,151 @@ theorem cliElf_f3MallocngLayout : CliElfMallocngLayout cliElfImage cliBudgetLimi
     cliBudgetLimits_layout_bounds.2.1
     cliBudgetLimits_layout_bounds.2.2
 
+private theorem f3_pointsTo64_freeze_ro (a v : BitVec 64) :
+    (a ↦₆₄ v) ⊢ |==> (a ↦₆₄ᵣ v) := by
+  rw [pointsTo64_eq_pointsToBytes, pointsTo64RO_eq_pointsToBytesRO]
+  exact pointsToBytes_freeze_ro a _
+
+set_option maxRecDepth 4000000 in
+private theorem f3TokenPlus8_aligned :
+    MemWidth.isAligned .W32 (ElfCodeMatchesPlaced.f3LsMpl.ρ tokenName + 8#64) = true := by
+  rfl_kernel
+
+set_option maxRecDepth 4000000 in
+private theorem f3TokenAddr_ne_zero :
+    ElfCodeMatchesPlaced.f3LsMpl.ρ tokenName ≠ 0#64 := by
+  have h : (ElfCodeMatchesPlaced.f3LsMpl.ρ tokenName == 0#64) = false := by rfl_kernel
+  intro heq
+  rw [heq] at h
+  exact Bool.noConfusion h
+
+private theorem freeze_startup_four {img : ElfImage} {inputs : ProcessInputs} {s0 : State}
+    (hinfo : InitialStackInfo img inputs s0) (hvalid : inputs.Valid)
+    (L : StdBinaryLayout) {R : SepProp} {m : Memory}
+    (hm : m ⊨
+      ((L.haveLseAtomicsAddr ↦₈ 0#8) ∗
+        ((L.libcAddr + 8#64) ↦₆₄ (StackLayout.of img inputs).auxvTableAddr) ∗
+        (((StackLayout.of img inputs).auxvTableAddr ↦ₛ
+            encodeAuxvBytes (StackLayout.of img inputs).auxvEntries) ∗
+          ((StackLayout.of img inputs).randomAddr ↦ₛ inputs.init.auxv.randomBytes)) ∗
+        (ElfCodeMatchesPlaced.f3LsMpl.ρ tokenName ↦₆₄ ElfCodeMatchesPlaced.f3LsMpl.base 385)) ∗
+        R) :
+    let sl := StackLayout.of img inputs
+    m ⊨
+      ((L.haveLseAtomicsAddr ↦₈ᵣ 0#8) ∗
+        ((L.libcAddr + 8#64) ↦₆₄ᵣ sl.auxvTableAddr) ∗
+        ((L.libcAddr + 8#64) ↦₆₄ᵣ sl.auxvTableAddr) ∗
+        MallocngAuxvRoAt sl.auxvTableAddr ∗
+        (sl.auxvTableAddr ↦ᵣ encodeAuxvBytes sl.auxvEntries) ∗
+        (sl.randomAddr ↦ₛ inputs.init.auxv.randomBytes.take 8) ∗
+        (ElfCodeMatchesPlaced.f3LsMpl.ρ tokenName ↦₆₄ᵣ ElfCodeMatchesPlaced.f3LsMpl.base 385)) ∗
+        R := by
+  dsimp only
+  have hb := bupd_sep
+    (pointsTo8_freeze_ro L.haveLseAtomicsAddr 0#8)
+    (bupd_sep
+      (f3_pointsTo64_freeze_ro (L.libcAddr + 8#64) (StackLayout.of img inputs).auxvTableAddr)
+      (bupd_sep
+        (auxv_bupd_mallocngAuxvRoAt_and_bytesRO hinfo hvalid)
+        (f3_pointsTo64_freeze_ro (ElfCodeMatchesPlaced.f3LsMpl.ρ tokenName)
+          (ElfCodeMatchesPlaced.f3LsMpl.base 385))))
+  have hm' := Satisfies.of_bupd_frame_left hb hm
+  refine Satisfies.mono (sepConj_mono_left ?_) hm'
+  refine Entails.trans
+    (sepConj_mono_right
+      (sepConj_mono_left (Entails.of_eq (pointsTo64RO_dup _ _).symm))) ?_
+  sep_entail
+
+private theorem fold_spqrProbeEnv_f3LsMpl {auxvAddr : BitVec 64}
+    {entries : List (BitVec 64 × BitVec 64)}
+    (hnonull : ∀ t v, (t, v) ∈ entries → t ≠ 0#64)
+    (hfind16 : entries.find? (·.1 == 16#64) = some (16#64, 0x1b#64)) :
+    ((ElfCodeMatchesPlaced.f3LsMpl.ρ tokenName ↦₆₄ᵣ ElfCodeMatchesPlaced.f3LsMpl.base 385) ∗
+      ((ElfCodeMatchesPlaced.f3LsMpl.ρ spqrLazyLockVtableSym + 0x20#64) ↦₆₄ᵣ
+        ElfCodeMatchesPlaced.f3LsMpl.base 321) ∗
+      (f3StdLayout.haveLseAtomicsAddr ↦₈ᵣ 0#8) ∗
+      ((f3StdLayout.libcAddr + 8#64) ↦₆₄ᵣ auxvAddr) ∗
+      (auxvAddr ↦ᵣ encodeAuxvBytes entries)) ⊢
+      spqrProbeEnvAtMpl ElfCodeMatchesPlaced.f3LsMpl := by
+  rw [spqrProbeEnvAtMpl_eq]
+  exact Entails.sepExists_right 0#8
+    (Entails.sepExists_right auxvAddr
+      (Entails.sepExists_right entries
+        (Entails.pure_right
+          ⟨f3TokenPlus8_aligned, f3TokenAddr_ne_zero, hnonull, hfind16⟩
+          (Entails.refl _))))
+
+private theorem fold_cliStatics_f3LsMpl :
+    (coinsStaticsPlacedAt ElfCodeMatchesPlaced.f3LsMpl ∗
+      ((ElfCodeMatchesPlaced.f3LsMpl.ρ tokenStorageName ↦₈ 0xff#8) ∗
+        ((ElfCodeMatchesPlaced.f3LsMpl.ρ tokenName + 8#64) ↦₃₂ 3#32) ∗
+        spqrProbeEnvAtMpl ElfCodeMatchesPlaced.f3LsMpl) ∗
+      lsLogOffAt ElfCodeMatchesPlaced.f3LsMpl) ⊢
+      cliStaticsPlacedAt ElfCodeMatchesPlaced.f3LsMpl := by
+  unfold cliStaticsPlacedAt tokenInitPlacedAtMpl
+    CryptoVerification.SpqrV1.GF.Mul2U16.tokenInitPlacedAtMpl tokenUnprobedPlacedAtMpl
+  exact sepConj_mono_right
+    (sepConj_mono_left
+      (Entails.sepExists_right false (Entails.refl _)))
+
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000000 in
-/-- `MuslHarnessFineNeedLocksGuardedPerInput` at `StdMainEntryLr f3StdLayout` on
-`patchElfTokensPlacedAt mpl cliElfImage` for any `LinkedAt cliElfBytes` placements `(mpl, mmpl)`. -/
-theorem cliElf_f3MuslHarnessLr_of_linkedAt {mpl mmpl : Obj.MultiPlacement}
+/-- Plain-memory `cliElfImage` `musl` startup and exit witness for any `Syscall.standard`
+program `P` with no hooks inside `f3StartupRxSub` (`[0x474000, 0x479798)`), preserving signal
+state to `cMainAddr` and carrying `F3PanicFrame f3StdLayout` explicitly inside `Fr`. -/
+theorem cliElf_f3StartupWithPanicFrame_of_linkedAt
+    {mpl mmpl : Obj.MultiPlacement}
     (hls : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (hmng : VerifiedLibraries.mallocngLib.LinkedAt cliElfBytes mmpl)
-    (W : CliHooks) :
-    MuslHarnessFineNeedLocksGuardedPerInput 80
-      (mallocngAddrsOfPlacement mmpl).libc
-      (patchElfTokensPlacedAt mpl cliElfImage)
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-      (mpl.base 617)
-      cliProcessInputs
-      mmpl cliBudgetLimits fineCostModel.init cliMainStk
-      (F3CodeOk mpl mmpl)
-      (cliStaticsPlacedAt mpl) (StdMainEntryLr f3StdLayout) := by
+    {P : Program}
+    (hsvc : P.svc = Syscall.standard)
+    (hHookFree : ∀ pc, progKeep f3StartupRxSub pc = true → (P.externAt? pc).isNone = true)
+    {i : Inputs} (hok : CliInputsOk i ∧ InputsLoadable i) :
+    ∃ (s0 sm : State) (R_rest : SepProp) (auxvPtr : BitVec 64),
+      let Fr := F3PanicFrame f3StdLayout ∗ R_rest
+      cliElfImage.loadState (cliProcessInputs i) = .ok s0 ∧
+      Steps P s0 sm ∧
+      sm.pc = mpl.base 617 ∧
+      sm.status = .Running ∧
+      sm.spAligned = true ∧
+      sm.fs = s0.fs ∧
+      sm.trace = s0.trace ∧
+      StdMainEntryLr f3StdLayout sm ∧
+      sm.tpidrEl0 = f3StdLayout.builtinTlsAddr + 200#64 ∧
+      sm.sigMask = s0.sigMask ∧
+      sm.sigPending = s0.sigPending ∧
+      sm.sigActions = s0.sigActions ∧
+      (sm.readReg64 .x0).setWidth 32 = BitVec.ofNat 32 (i.argv.length + 1) ∧
+      StartupVmPreserved s0 sm ∧
+      0xa4 ≤ sm.tpidrEl0.toNat ∧ sm.tpidrEl0.toNat ≤ 2 ^ 48 ∧
+      F3CodeOk mpl mmpl sm.mem ∧
+      VerifiedLibraries.mallocngLib.CodeLoaded mmpl sm.mem ∧
+      cliMainStk ≤ sm.sp.toNat ∧
+      (sm.mem ⊨
+        VerifiedLibraries.mallocngLib.dataInit mmpl ∗
+          ((sm.tpidrEl0 - 0xa4#64) ↦₃₂ 0#32) ∗
+          (((mallocngAddrsOfPlacement mmpl).libc + 3#64) ↦₈ 0#8) ∗
+          (((mallocngAddrsOfPlacement mmpl).libc + 48#64) ↦₆₄ 4096#64) ∗
+          (((mallocngAddrsOfPlacement mmpl).libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+          MallocngAuxvRoAt auxvPtr ∗
+          aesStorageCell cliElfImage.brkStart ∗
+          (LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.argvAtRO
+              (sm.readReg64 .x1) (("libsignal-cli" :: i.argv).map bytesOfString) ∗
+            stackAt sm.sp cliMainStk ∗ cliStaticsPlacedAt mpl ∗ Fr)) ∧
+      ∀ sr : State, Steps P sm sr → Returned sm sr →
+        (sr.mem ⊨ (((mallocngAddrsOfPlacement mmpl).libc + 3#64) ↦₈ 0#8) ∗
+          stackAt sm.sp 80 ∗ Fr ∗ anyHeap) →
+        ∃ sx : State, Steps P sr sx ∧
+          sx.status = .Exited (((sr.readReg64 .x0).setWidth 32).signExtend 64) ∧
+          sx.fs = sr.fs ∧ sx.trace = sr.trace := by
+  obtain ⟨hi, hl⟩ := hok
   have hlibc_mmpl : (mallocngAddrsOfPlacement mmpl).libc = f3StdLayout.libcAddr := by
     rw [mallocngAddrsOfPlacement_eq_f3_of_linkedAt hmng]
     exact Inst.f3MAddrs_libc
-  have hlay_patched : CliElfMallocngLayout
-      (patchElfTokensPlacedAt mpl cliElfImage) cliBudgetLimits :=
-    (cliElfMallocngLayout_iff_patchElfTokensPlacedAt).mpr cliElf_f3MallocngLayout
-  refine muslHarnessFineNeedLocksGuardedPerInput_of_startup
-    cliStackShape_cliProcessInputs hlay_patched rfl ?_
-  intro _hE i ⟨hi, hl⟩
-  let P := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W
-  have hpatch_eq := f3PatchedElf_eq_of_linkedAt hls
-  have hmatch := f3PatchedElf_matchesImage
-  have hc : F3StartupCode (f3StdLayout.rxProgram f3PatchedElf) f3StdLayout := by
-    rw [f3PatchedElf_rxProgram_eq]; exact Inst.f3Trial_startupCode
-  have hsvc : P.svc = Syscall.standard := rfl
-  have hHookFree := f3ProgExt_hookFree_in_rxSeg (mmpl := mmpl) hls W
+  have hmatch := cliElf_matchesImage
+  have hc : F3StartupCode f3StartupRxSub f3StdLayout := f3StartupRxSub_startupCode
   let L := f3StdLayout
-  let elf := f3PatchedElf
+  let elf := cliElfImage
   let inputs0 := f3EmptyFsInputs i
   have hvalid0 : inputs0.Valid := f3EmptyFsInputs_valid hi
   obtain ⟨hwf, hentry_eq, hphdr_eq, hphnum_eq, hbrk_eq, ⟨hbrk_lo, hbrk_hi⟩, _⟩ :=
@@ -1644,16 +2076,15 @@ theorem cliElf_f3MuslHarnessLr_of_linkedAt {mpl mmpl : Obj.MultiPlacement}
   have hbrk_sbm : elf.brkStart.toNat ≤ STACK_BASE_MIN := by
     rw [hbrk_eq]; unfold STACK_BASE_MIN; omega
   obtain ⟨s0_0, hload0, hinfo0⟩ := loadState_ok_initialStackInfo elf hwf hvalid0 hbrk_sbm
-  obtain ⟨s0, hload_c, hs0_0_eq, hfs0, htr0, hmem0, hbrk0, hbrkS0, hphys0⟩ :=
+  obtain ⟨s0, hload, hs0_0_eq, hfs0, htr0, hmem0, hbrk0, hbrkS0, hphys0⟩ :=
     loadState_f3CliInputs_of_empty hl hload0
-  have hload : (patchElfTokensPlacedAt mpl cliElfImage).loadState (cliProcessInputs i) =
-      .ok s0 := by
-    rw [hpatch_eq]; exact hload_c
-  let P_rx := L.rxProgram elf
+  let P_rx := f3StartupRxSub
   let P_st := P_rx.withSvc f3SetTidOnlySvc
   let s0' := stripS (progKeep P_rx) s0_0
   have hinfo' : InitialStackInfo elf inputs0 s0' := initialStackInfo_strip (progKeep P_rx) hinfo0
-  have hL0_rx : P_rx.CodeLoaded s0_0.mem := f3MatchesImage_codeLoaded hmatch hload0
+  have hL0_full : Tie.f3TrialRxProg.CodeLoaded s0_0.mem :=
+    f3MatchesImage_codeLoaded hmatch hload0
+  have hL0_rx : P_rx.CodeLoaded s0_0.mem := f3StartupRxSub_codeLoaded_of_f3TrialRxProg hL0_full
   have hL0_st : P_st.CodeLoaded s0'.mem := codeLoaded_withSvc_iff.mpr (strip_codeLoaded_f3 hL0_rx)
   have lf : F3LayoutImageFacts L := extractF3LayoutImageFacts hmatch hload0
   have hextra := hc.extra
@@ -1689,6 +2120,10 @@ theorem cliElf_f3MuslHarnessLr_of_linkedAt {mpl mmpl : Obj.MultiPlacement}
   rw [← hinfo'.auxvEntries_eq] at hwf_aux
   have hfind_aux := mkAuxvEntries_find? elf hvalid0.auxv sl.platformAddr sl.randomAddr sl.execfnAddr []
   rw [List.append_nil, ← hinfo'.auxvEntries_eq] at hfind_aux
+  have hnonull_aux : ∀ t v, (t, v) ∈ sl.auxvEntries → t ≠ 0#64 :=
+    fun t v hm => (hwf_aux.2.2 t v hm).1
+  have hfind16_aux : sl.auxvEntries.find? (·.1 == 16#64) = some (16#64, 0x1b#64) :=
+    hfind_aux.2.2.2.2.2.2.2.2.2.2.1
   have hphent_eq := (wellFormed_segments_bounds hwf).1
   have hbrk_mod : elf.brkStart.toNat % 4096 = 0 := (wellFormed_segments_bounds hwf).2.1
   have hTlsSpec : subroutine_ok P_st L.staticInitTlsAddr (f3StaticInitTlsSpec L) :=
@@ -1770,9 +2205,12 @@ theorem cliElf_f3MuslHarnessLr_of_linkedAt {mpl mmpl : Obj.MultiPlacement}
           stackAt (sl.sp0 - 48#64) cliMainStk ∗
           StdExtraRo L ∗ StdExtraRw L ∗
           ((L.builtinTlsAddr + 200#64 - 164#64) ↦₃₂ 0#32) ∗
+          F3TlsTid L ∗
+          (L.haveLseAtomicsAddr ↦₈ 0#8) ∗
           ((L.libcAddr + 8#64) ↦₆₄ sl.auxvTableAddr) ∗
           ((L.libcAddr + 48#64) ↦₆₄ 4096#64) ∗
-          MallocngAuxvAt sl.auxvTableAddr ∗
+          (sl.auxvTableAddr ↦ₛ encodeAuxvBytes sl.auxvEntries) ∗
+          (sl.randomAddr ↦ₛ inputs0.init.auxv.randomBytes) ∗
           f3StartupResidual L elf i ∗
           StdMuslExitGlobalsNoNeedLocks L 0#8)) := by
     apply SepWP.cut (mid := L.libcStartMainStage2Addr)
@@ -1824,11 +2262,15 @@ theorem cliElf_f3MuslHarnessLr_of_linkedAt {mpl mmpl : Obj.MultiPlacement}
     refine stage2_to_cMain P_st L hc_st2 hLsiSpec
       hpc_st2 hrun_st2 hsp_st2 hsp_al_st2
       hx0_st2 hx1_st2 hx2_st2 hinfo'.argc_bounds.2.1 hvalid0.auxv.hwcap_fp_asimd
-      (fun t v hm => (hwf_aux.2.2 t v hm).1) hfind_aux.2.2.2.2.2.2.2.2.2.2.1
+      hnonull_aux hfind16_aux
       hfind_aux.2.2.2.2.2.2.2.2.2.2.2.2.2.1 lf.initArray_bnd
       fun s_cm hpc_cm hrun_cm hsp_cm hsp_al_cm hlr_cm hx0_cm hx1_cm _ hstd_cm => ?_
     dsimp only [stdInitGlobalsPost]
-    wp_conv_pre => simp only [sepExists_sepConj_left, sepExists_sepConj_right]
+    have hhwcap_lse :
+        (if inputs0.init.auxv.hwcap.getLsbD 8 then (1#8 : BitVec 8) else 0#8) = 0#8 := by
+      show (if (0x1b#64 : BitVec 64).getLsbD 8 then (1#8 : BitVec 8) else 0#8) = 0#8
+      decide
+    wp_conv_pre => rw [hhwcap_lse]; simp only [sepExists_sepConj_left, sepExists_sepConj_right]
     apply SepWP.exists_elim; intro cacheVal
     have hstk_cm : stackAt (sl.sp0 - 304#64) 8371520 ∗ stackFrameAt (sl.sp0 - 48#64) 256 =
         stackAt (sl.sp0 - 48#64) cliMainStk := by
@@ -1846,52 +2288,52 @@ theorem cliElf_f3MuslHarnessLr_of_linkedAt {mpl mmpl : Obj.MultiPlacement}
       rw [hsp_cm, BitVec.toNat_sub_of_le (by change 48 ≤ sl.sp0.toNat; omega)]
       change 8371776 ≤ sl.sp0.toNat - 48; omega
     have hargv_dup := argvTable_dup_argvAtRO hinfo0 hvalid0.args
-    have hauxv_ent := auxv_entails_mallocngAuxvAt hinfo0 hvalid0
     apply SepWP.done hpc_cm hrun_cm
     refine ⟨⟨hsp_cm, hsp_al_cm, hsp_cm_ge, hlr_cm, hx0_cm, hx1_cm, htp_cm, htlf_0_cm⟩, ?_⟩
     dsimp only [StdMuslExitGlobalsNoNeedLocks]
     refine Entails.trans (Q := ((stackAt (sl.sp0 - 304#64) 8371520 ∗
         stackFrameAt (sl.sp0 - 48#64) 256) ∗
       ((sl.argvTableAddr ↦₆₄ᵣ* (sl.argvAddrs ++ [0#64])) ∗ (sl.argvBase ↦ᵣ sl.upperStrBytes)) ∗
-      ((sl.auxvTableAddr ↦ₛ encodeAuxvBytes sl.auxvEntries) ∗
-        (sl.randomAddr ↦ₛ inputs0.init.auxv.randomBytes)) ∗ _))
+      F3TlsState L sysinfoVal ∗ _))
       (by sep_frame) ?_
     rw [hstk_cm]
     refine Entails.trans
       (sepConj_mono_right
-        (sepConj_mono hargv_dup (sepConj_mono_left hauxv_ent))) ?_
+        (sepConj_mono hargv_dup (sepConj_mono_left (f3TlsState_entails_tid L sysinfoVal)))) ?_
     unfold f3StartupResidual
-    refine Entails.trans (Q := ((L.libcAddr + 3#64) ↦₈ 0#8) ∗
+    refine Entails.trans (Q :=
+      (((L.libcAddr + 3#64) ↦₈ 0#8) ∗
         argvAtRO sl.argvTableAddr inputs0.argv ∗
         stackAt (sl.sp0 - 48#64) cliMainStk ∗
         StdExtraRo L ∗ StdExtraRw L ∗
         ((L.builtinTlsAddr + 200#64 - 164#64) ↦₃₂ 0#32) ∗
+        F3TlsTid L ∗
+        (L.haveLseAtomicsAddr ↦₈ 0#8) ∗
         ((L.libcAddr + 8#64) ↦₆₄ sl.auxvTableAddr) ∗
         ((L.libcAddr + 48#64) ↦₆₄ 4096#64) ∗
-        MallocngAuxvAt sl.auxvTableAddr ∗
+        (sl.auxvTableAddr ↦ₛ encodeAuxvBytes sl.auxvEntries) ∗
+        (sl.randomAddr ↦ₛ inputs0.init.auxv.randomBytes) ∗
         ((L.finiArrayAddr ↦₆₄ L.doFiniAddr) ∗ ((L.gotAddr + 32#64) ↦₆₄ 0#64) ∗
           ((L.gotAddr + 40#64) ↦₆₄ 0#64) ∗ ((L.gotAddr + 96#64) ↦₆₄ (L.finiArrayAddr + 8#64)) ∗
           ((L.gotAddr + 104#64) ↦₆₄ L.finiArrayAddr) ∗ (L.finalizedAddr ↦₈ 0#8) ∗
           (L.oflHeadAddr ↦₆₄ 0#64) ∗ (L.stdinUsedAddr ↦₆₄ 0#64) ∗
           (if L.stdoutUsedAddr == L.stdinUsedAddr then emp else L.stdoutUsedAddr ↦₆₄ 0#64) ∗
-          (L.stderrUsedAddr ↦₆₄ L.stderrFileAddr) ∗ StdStderrFile L) ∗ _)
+          (L.stderrUsedAddr ↦₆₄ L.stderrFileAddr) ∗ StdStderrFile L)) ∗ _)
       (by sep_frame) ?_
     refine Entails.trans
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-        (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-          (sepConj_mono_right (sepConj_mono_right
-            (Entails.sepExists_right (Q := fun R_unused => R_unused) _ (Entails.refl _)))))))))))) ?_
+      (sepConj_mono_right
+        (Entails.sepExists_right (Q := fun R_unused => R_unused) _ (Entails.refl _))) ?_
     sep_entail
-  have hm0_0 : s0_0.mem ⊨ f3InitAllSep L elf inputs0 ∗ cliStaticsPlacedAt mpl :=
-    s0_satisfies_f3InitAllSep_and_statics hls hload0 hinfo0 hvalid0 hhr8
+  have hm0_0 : s0_0.mem ⊨ f3InitAllSep L elf inputs0 ∗ f3RawCliStatics :=
+    s0_satisfies_f3InitAllSep_and_statics hload0 hinfo0 hvalid0 hhr8
   obtain ⟨R_view, hs0'_sat, hunstrip⟩ := strip_frame (progKeep P_rx) hm0_0
   obtain ⟨s_cm', hsteps_st, ⟨hpc_cm', hrun_cm', P_out, hm_out',
     ⟨hsp_cm', hsp_al_cm', hsp_ge_cm', hlr_cm', hx0_cm', hx1_cm', htp_cm', htlf_cm'⟩,
     hent_out⟩ | ⟨_, hfalse⟩⟩ :=
     SepWP.to_reaches_pc hwp_startup hs0'_sat hL0_st
-  · obtain ⟨sm, hsteps_P, hsm_eq, hfs_sm, hphys_sm, hperm_sm⟩ :=
-      steps_lift_setTidOnly hc.no_hooks hsvc hHookFree hsteps_st hrun_cm' s0 (initFsState inputs0)
-        (congrArg (stripS (progKeep P_rx)) hs0_0_eq)
+  · obtain ⟨sm, hsteps_P, hsm_eq, hfs_sm, hphys_sm, hperm_sm, hsm_sm, hsp_sig_sm, hsa_sm⟩ :=
+      steps_lift_setTidOnly_sig hc.no_hooks hsvc hHookFree hsteps_st hrun_cm' s0
+        (initFsState inputs0) (congrArg (stripS (progKeep P_rx)) hs0_0_eq)
     have hpc_sm : sm.pc = mpl.base 617 := by
       rw [mpl_base617_eq_cMainAddr_of_linkedAt hls]
       have := congrArg State.pc hsm_eq; simpa [stripS, State.setFs] using this.symm.trans hpc_cm'
@@ -1935,67 +2377,134 @@ theorem cliElf_f3MuslHarnessLr_of_linkedAt {mpl mmpl : Obj.MultiPlacement}
     have hbrkS_s0 : s0.brkStart = L.brkStart := hbrkS0.trans (hinfo0.s0_brkStart.trans hbrk_eq)
     have hvm_sm : StartupVmPreserved s0 sm :=
       ⟨hbrkS_sm.trans hbrkS_s0.symm, hbrk_sm.trans hbrk_s0.symm, hphys_sm, hperm_sm⟩
-    have hCO0 : F3CodeOk mpl mmpl s0.mem := f3CodeOk_of_patchedLoadState hls hmng hload
+    have hCO0 : F3CodeOk mpl mmpl s0.mem := f3CodeOk_of_plainLoadState hls hmng hload
     have hCO_sm : F3CodeOk mpl mmpl sm.mem :=
       f3CodeOk_of_keepsFrozen_and_perm hCO0 hsteps_P.keepsFrozen hperm_sm
     have hm_sm_stripped :
         stripExecOutside (progKeep P_rx) sm.mem ⊨ P_out ∗ R_view := by
       have hmem_eq : s_cm'.mem = stripExecOutside (progKeep P_rx) sm.mem := by rw [hsm_eq]; rfl
       rwa [← hmem_eq]
-    have hm_sm_unstripped : sm.mem ⊨ P_out ∗ cliStaticsPlacedAt mpl :=
+    have hm_sm_unstripped : sm.mem ⊨ P_out ∗ f3RawCliStatics :=
       hunstrip (fun a => (hperm_sm a).trans (by rw [hmem0])) hm_sm_stripped
     have hm_sm_post := Satisfies.mono (sepConj_mono_left hent_out) hm_sm_unstripped
-    let Fr : SepProp :=
-      Inst.f3MallocngRoPad ∗ f3StartupResidual L elf i ∗ StdMuslExitGlobalsNoNeedLocks L 0#8
+    have hm_sm_prefrz : sm.mem ⊨
+        ((L.haveLseAtomicsAddr ↦₈ 0#8) ∗
+          ((L.libcAddr + 8#64) ↦₆₄ sl.auxvTableAddr) ∗
+          ((sl.auxvTableAddr ↦ₛ encodeAuxvBytes sl.auxvEntries) ∗
+            (sl.randomAddr ↦ₛ inputs0.init.auxv.randomBytes)) ∗
+          (ElfCodeMatchesPlaced.f3LsMpl.ρ tokenName ↦₆₄ ElfCodeMatchesPlaced.f3LsMpl.base 385)) ∗
+        (((L.libcAddr + 3#64) ↦₈ 0#8) ∗
+          argvAtRO sl.argvTableAddr inputs0.argv ∗
+          stackAt (sl.sp0 - 48#64) cliMainStk ∗
+          (StdExtraRo L ∗ StdExtraRw L) ∗
+          ((L.builtinTlsAddr + 200#64 - 164#64) ↦₃₂ 0#32) ∗
+          ((L.libcAddr + 48#64) ↦₆₄ 4096#64) ∗
+          aesStorageCell L.brkStart ∗
+          coinsStaticsPlacedAt ElfCodeMatchesPlaced.f3LsMpl ∗
+          (ElfCodeMatchesPlaced.f3LsMpl.ρ tokenStorageName ↦₈ 0xff#8) ∗
+          ((ElfCodeMatchesPlaced.f3LsMpl.ρ tokenName + 8#64) ↦₃₂ 3#32) ∗
+          ((ElfCodeMatchesPlaced.f3LsMpl.ρ spqrLazyLockVtableSym + 0x20#64) ↦₆₄ᵣ
+            ElfCodeMatchesPlaced.f3LsMpl.base 321) ∗
+          lsLogOffAt ElfCodeMatchesPlaced.f3LsMpl ∗
+          (F3TlsTid L ∗ F3PanicGotCells) ∗
+          f3StartupResidual L elf i ∗
+          StdMuslExitGlobalsNoNeedLocks L 0#8) := by
+      dsimp only [f3RawCliStatics] at hm_sm_post
+      exact Satisfies.mono (by sep_entail) hm_sm_post
+    have hm_sm_frz := freeze_startup_four hinfo0 hvalid0 L hm_sm_prefrz
+    let R_rest : SepProp :=
+      (sl.randomAddr ↦ₛ inputs0.init.auxv.randomBytes.take 8) ∗
+        Inst.f3MallocngRoPad ∗ f3StartupResidual L elf i ∗ StdMuslExitGlobalsNoNeedLocks L 0#8
+    let Fr : SepProp := F3PanicFrame L ∗ R_rest
     have hm_sm_entry : sm.mem ⊨
         VerifiedLibraries.mallocngLib.dataInit mmpl ∗
           ((sm.tpidrEl0 - 164#64) ↦₃₂ 0#32) ∗
           (((mallocngAddrsOfPlacement mmpl).libc + 3#64) ↦₈ 0#8) ∗
           (((mallocngAddrsOfPlacement mmpl).libc + 48#64) ↦₆₄ 4096#64) ∗
-          (((mallocngAddrsOfPlacement mmpl).libc + 8#64) ↦₆₄ sl.auxvTableAddr) ∗
-          MallocngAuxvAt sl.auxvTableAddr ∗
+          (((mallocngAddrsOfPlacement mmpl).libc + 8#64) ↦₆₄ᵣ sl.auxvTableAddr) ∗
+          MallocngAuxvRoAt sl.auxvTableAddr ∗
+          aesStorageCell cliElfImage.brkStart ∗
           (LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.argvAtRO
               (sm.readReg64 .x1) (("libsignal-cli" :: i.argv).map bytesOfString) ∗
             stackAt sm.sp cliMainStk ∗ cliStaticsPlacedAt mpl ∗ Fr) := by
       have hargv_eq : inputs0.argv = ("libsignal-cli" :: i.argv).map bytesOfString := rfl
-      rw [hlibc_mmpl, htp_sm, hx1_sm, hsp_sm, ← hargv_eq]
-      refine Satisfies.mono ?_ hm_sm_post
-      dsimp only [Fr]
+      rw [hlibc_mmpl, htp_sm, hx1_sm, hsp_sm, hbrk_eq, ← hargv_eq,
+        cliStaticsPlacedAt_eq_f3LsMpl_of_linkedAt hls]
+      refine Satisfies.mono ?_ hm_sm_frz
+      dsimp only [Fr, R_rest, F3PanicFrame]
       refine Entails.trans
         (Q := (StdExtraRo L ∗ StdExtraRw L) ∗
+          ((ElfCodeMatchesPlaced.f3LsMpl.ρ tokenName ↦₆₄ᵣ ElfCodeMatchesPlaced.f3LsMpl.base 385) ∗
+            ((ElfCodeMatchesPlaced.f3LsMpl.ρ spqrLazyLockVtableSym + 0x20#64) ↦₆₄ᵣ
+              ElfCodeMatchesPlaced.f3LsMpl.base 321) ∗
+            (L.haveLseAtomicsAddr ↦₈ᵣ 0#8) ∗
+            ((L.libcAddr + 8#64) ↦₆₄ᵣ sl.auxvTableAddr) ∗
+            (sl.auxvTableAddr ↦ᵣ encodeAuxvBytes sl.auxvEntries)) ∗
           (((L.libcAddr + 3#64) ↦₈ 0#8) ∗
             argvAtRO sl.argvTableAddr inputs0.argv ∗
             stackAt (sl.sp0 - 48#64) cliMainStk ∗
             ((L.builtinTlsAddr + 200#64 - 164#64) ↦₃₂ 0#32) ∗
-            ((L.libcAddr + 8#64) ↦₆₄ sl.auxvTableAddr) ∗
+            ((L.libcAddr + 8#64) ↦₆₄ᵣ sl.auxvTableAddr) ∗
             ((L.libcAddr + 48#64) ↦₆₄ 4096#64) ∗
-            MallocngAuxvAt sl.auxvTableAddr ∗
+            MallocngAuxvRoAt sl.auxvTableAddr ∗
+            aesStorageCell L.brkStart ∗
+            coinsStaticsPlacedAt ElfCodeMatchesPlaced.f3LsMpl ∗
+            (ElfCodeMatchesPlaced.f3LsMpl.ρ tokenStorageName ↦₈ 0xff#8) ∗
+            ((ElfCodeMatchesPlaced.f3LsMpl.ρ tokenName + 8#64) ↦₃₂ 3#32) ∗
+            lsLogOffAt ElfCodeMatchesPlaced.f3LsMpl ∗
+            F3TlsTid L ∗ F3PanicGotCells ∗
+            (sl.randomAddr ↦ₛ inputs0.init.auxv.randomBytes.take 8) ∗
             f3StartupResidual L elf i ∗
-            StdMuslExitGlobalsNoNeedLocks L 0#8 ∗
-            cliStaticsPlacedAt mpl))
+            StdMuslExitGlobalsNoNeedLocks L 0#8))
         (by sep_entail) ?_
       refine Entails.trans
-        (sepConj_mono_left (f3StdExtra_entails_mallocngDataInit_of_linkedAt hmng)) ?_
+        (sepConj_mono
+          (f3StdExtra_entails_mallocngDataInit_of_linkedAt hmng)
+          (sepConj_mono_left (fold_spqrProbeEnv_f3LsMpl hnonull_aux hfind16_aux))) ?_
+      refine Entails.trans
+        (Q := (coinsStaticsPlacedAt ElfCodeMatchesPlaced.f3LsMpl ∗
+            ((ElfCodeMatchesPlaced.f3LsMpl.ρ tokenStorageName ↦₈ 0xff#8) ∗
+              ((ElfCodeMatchesPlaced.f3LsMpl.ρ tokenName + 8#64) ↦₃₂ 3#32) ∗
+              spqrProbeEnvAtMpl ElfCodeMatchesPlaced.f3LsMpl) ∗
+            lsLogOffAt ElfCodeMatchesPlaced.f3LsMpl) ∗
+          (VerifiedLibraries.mallocngLib.dataInit mmpl ∗
+            ((L.builtinTlsAddr + 200#64 - 164#64) ↦₃₂ 0#32) ∗
+            ((L.libcAddr + 3#64) ↦₈ 0#8) ∗
+            ((L.libcAddr + 48#64) ↦₆₄ 4096#64) ∗
+            ((L.libcAddr + 8#64) ↦₆₄ᵣ sl.auxvTableAddr) ∗
+            MallocngAuxvRoAt sl.auxvTableAddr ∗
+            aesStorageCell L.brkStart ∗
+            argvAtRO sl.argvTableAddr inputs0.argv ∗
+            stackAt (sl.sp0 - 48#64) cliMainStk ∗
+            F3TlsTid L ∗ F3PanicGotCells ∗
+            (sl.randomAddr ↦ₛ inputs0.init.auxv.randomBytes.take 8) ∗
+            Inst.f3MallocngRoPad ∗
+            f3StartupResidual L elf i ∗
+            StdMuslExitGlobalsNoNeedLocks L 0#8))
+        (by sep_entail) ?_
+      refine Entails.trans (sepConj_mono_left fold_cliStatics_f3LsMpl) ?_
       sep_entail
-    refine ⟨s0, sm, Fr, sl.auxvTableAddr, 0#32, hload, hsteps_P, hpc_sm, hrun_sm, hal_sm,
-      hfs_sm, htr_sm, hlr_sm, hx0_sm32, hvm_sm,
+    refine ⟨s0, sm, R_rest, sl.auxvTableAddr, hload, hsteps_P, hpc_sm, hrun_sm, hal_sm,
+      hfs_sm, htr_sm, hlr_sm, htp_sm, hsm_sm, hsp_sig_sm, hsa_sm, hx0_sm32, hvm_sm,
       htp_sm ▸ lf.tp_bounds.1, htp_sm ▸ lf.tp_bounds.2,
       hCO_sm, hCO_sm.1.mngCode, hsp_sm ▸ hsp_cm' ▸ hsp_ge_cm', hm_sm_entry,
       fun sr hsteps1 hret hm_sr => ?_⟩
     rw [hlibc_mmpl] at hm_sr
-    have hL_sr_rx : P_rx.CodeLoaded sr.mem := by
-      rw [show P_rx = Tie.f3TrialRxProg from f3PatchedElf_rxProgram_eq]
-      exact hCO_sm.1.rxCode.of_keepsFrozen hsteps1.keepsFrozen
+    have hL_sr_rx : P_rx.CodeLoaded sr.mem :=
+      f3StartupRxSub_codeLoaded_of_f3TrialRxProg (hCO_sm.1.rxCode.of_keepsFrozen hsteps1.keepsFrozen)
     have hm_reord : sr.mem ⊨ ((L.libcAddr + 3#64) ↦₈ 0#8) ∗
         (stackAt sm.sp 80 ∗ StdMuslExitGlobalsNoNeedLocks L 0#8 ∗
-          (Inst.f3MallocngRoPad ∗ f3StartupResidual L elf i ∗ anyHeap)) := by
-      dsimp only [Fr] at hm_sr
+          (F3PanicFrame L ∗ (sl.randomAddr ↦ₛ inputs0.init.auxv.randomBytes.take 8) ∗
+            Inst.f3MallocngRoPad ∗ f3StartupResidual L elf i ∗ anyHeap)) := by
+      dsimp only [Fr, R_rest] at hm_sr
       exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hm_sr
     have hm_frz := Satisfies.of_bupd_frame_left (pointsTo8_freeze_ro (L.libcAddr + 3#64) 0#8) hm_reord
     have hm_exit : sr.mem ⊨ stackAt sm.sp 80 ∗ StdMuslExitGlobals L 0#8 ∗ anyHeap := by
       refine Satisfies.mono ?_ hm_frz
       dsimp only [StdMuslExitGlobalsNoNeedLocks, StdMuslExitGlobals]
-      have hany : Inst.f3MallocngRoPad ∗ f3StartupResidual L elf i ∗ anyHeap ⊢ anyHeap :=
+      have hany :
+          (F3PanicFrame L ∗ (sl.randomAddr ↦ₛ inputs0.init.auxv.randomBytes.take 8) ∗
+            Inst.f3MallocngRoPad ∗ f3StartupResidual L elf i ∗ anyHeap) ⊢ anyHeap :=
         entails_anyHeap _
       refine Entails.trans
         (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right hany))) ?_
@@ -2004,28 +2513,54 @@ theorem cliElf_f3MuslHarnessLr_of_linkedAt {mpl mmpl : Obj.MultiPlacement}
       hL_sr_rx hlr_sm hal_sm hret hm_exit
   · exact False.elim (not_satisfies_false_sepConj hfalse)
 
-/-- Unguarded corollary of `cliElf_f3MuslHarnessLr_of_linkedAt` (statement unchanged from `main`). -/
+/-- `MuslHarnessFineNeedLocksGuardedPerInput` at `StdMainEntryLr f3StdLayout` on plain
+`cliElfImage` for any `LinkedAt cliElfBytes` placements `(mpl, mmpl)`. -/
+theorem cliElf_f3MuslHarnessLr_of_linkedAt {mpl mmpl : Obj.MultiPlacement}
+    (hls : libsignalSessionLib.LinkedAt cliElfBytes mpl)
+    (hmng : VerifiedLibraries.mallocngLib.LinkedAt cliElfBytes mmpl)
+    (W : CliHooks) :
+    MuslHarnessFineNeedLocksGuardedPerInput 80
+      (mallocngAddrsOfPlacement mmpl).libc
+      cliElfImage
+      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
+      (mpl.base 617)
+      cliProcessInputs
+      mmpl cliBudgetLimits fineCostModel.init cliMainStk
+      (F3CodeOk mpl mmpl)
+      (cliStaticsPlacedAt mpl) (StdMainEntryLr f3StdLayout) := by
+  refine muslHarnessFineNeedLocksGuardedPerInput_of_startup_ro
+    cliStackShape_cliProcessInputs cliElf_f3MallocngLayout rfl ?_
+  intro _hE i hok
+  obtain ⟨s0, sm, R_rest, auxvPtr, hload, hsteps, hpc, hrun, hal, hfs, htr, hlr,
+    _htp, _hsm, _hsp_sig, _hsa, hx0, hvm, htpLo, htpHi, hCO, hCL, hsp, hmem, hexit⟩ :=
+    cliElf_f3StartupWithPanicFrame_of_linkedAt hls hmng
+      (P := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) rfl
+      (f3ProgExt_hookFree_in_startupRxSub hls W) hok
+  exact ⟨s0, sm, F3PanicFrame f3StdLayout ∗ R_rest, auxvPtr, 0#32,
+    hload, hsteps, hpc, hrun, hal, hfs, htr, hlr, hx0, hvm, htpLo, htpHi,
+    hCO, hCL, hsp, hmem, hexit⟩
+
+/-- Unguarded corollary of `cliElf_f3MuslHarnessLr_of_linkedAt` on plain `cliElfImage`. -/
 theorem cliElf_f3MuslHarness_of_linkedAt {mpl mmpl : Obj.MultiPlacement}
     (hls : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (hmng : VerifiedLibraries.mallocngLib.LinkedAt cliElfBytes mmpl) (W : CliHooks) :
     MuslHarnessFineNeedLocksPerInput 80 (mallocngAddrsOfPlacement mmpl).libc
-      (patchElfTokensPlacedAt mpl cliElfImage)
+      cliElfImage
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) (mpl.base 617) cliProcessInputs mmpl
       cliBudgetLimits fineCostModel.init cliMainStk (F3CodeOk mpl mmpl) (cliStaticsPlacedAt mpl) :=
   (cliElf_f3MuslHarnessLr_of_linkedAt hls hmng W).toUnguarded
 
-/-! ## Closed `CliElfF3B2NeedLocksAssumptions` Witness -/
+/-! ## Closed `CliElfF3PlainB2NeedLocksAssumptions` Witness -/
 
-/-- Closed `CliElfF3B2NeedLocksAssumptions` bundle on `cliElfImage` for arbitrary
+/-- Closed `CliElfF3PlainB2NeedLocksAssumptions` bundle on plain `cliElfImage` for arbitrary
 `LinkedAt cliElfBytes` placements `(mpl, mmpl)`. -/
 theorem cliElf_f3B2NeedLocksAssumptions {mpl mmpl : Obj.MultiPlacement}
     (hls : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (hmng : VerifiedLibraries.mallocngLib.LinkedAt cliElfBytes mmpl) :
-    CliElfF3B2NeedLocksAssumptions mpl mmpl 80
+    CliElfF3PlainB2NeedLocksAssumptions mpl mmpl 80
       (mallocngAddrsOfPlacement mmpl).libc cliMainStk (F3CodeOk mpl mmpl) cliElfImage where
   elfStaticOk := cliElf_staticOk
   codeMatches := ElfPlaced.cliElf_codeMatchesPlaced_of_linkedAt hls hmng
-  tokenCells := cliElf_tokenCellsPlacedAt_of_linkedAt hls
   mallocngLayout := cliElf_f3MallocngLayout
   base547NeZero := ElfCodeMatchesPlaced.f3CliElf_libsignal_base547_ne_zero_of_linkedAt hls
   stkLo := by decide

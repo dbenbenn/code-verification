@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.ContractsPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1DispatchPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1FromPbPlaced
@@ -30,7 +30,7 @@ Combines relocatable `.rodata` and global invariant extraction with panic-polymo
 execution and top-level entry wrappers under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -85,7 +85,7 @@ attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 /-- Full `.rodata` + global invariant bundle for `spqr::send::<signal_session_ratchet::Coins>` (Block `427`):
     combines `spqrSendRoPlacedAt` with `spqrLogLevelZeroPlacedAt` (`lsLogFilterAddr ↦₆₄ 0#64`).
     Note that `GF.Mul2U16.tokenInitPlacedAt` is already included inside `spqrSendRoPlacedAt`. -/
-def spqrSendFullRoPlacedAt : SepProp :=
+@[expose] def spqrSendFullRoPlacedAt : SepProp :=
   spqrSendRoPlacedAt ∗
   spqrLogLevelZeroPlacedAt
 

@@ -9,18 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErr
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErr
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3Stmt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
 
 /-!
 # Relocatable General-`prevCap` Stage P3 Error Helpers
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -74,20 +77,5 @@ theorem bind_sepWP_frame_steps_placed {prog : Program} {mid ret : BitVec 64}
   obtain ⟨sf, hsteps', hout'⟩ :=
     hnext sm hsteps hpc hrun (hsteps.codeLoaded hCL) hregs R hmm' (hsteps.codeLoaded hL)
   exact ⟨sf, hsteps.trans hsteps', hout'⟩
-
-theorem bind_sepWPp_genPanic_steps_placed {prog : Program} {mid ret : BitVec 64} {s0 s : State}
-    {C : Crypto} {K : LibsignalSpqrV1.MlKem}
-    {rem loc : AddrGhost} {st : SessionState (List (BitVec 8))}
-    {msg : SignalMessage} {msgVer : BitVec 32} {rest : List (BitVec 8)}
-    {P P_stage F : SepProp} {Q_mid : State → SepProp → Prop}
-    {Q : State → SepProp → Prop}
-    (hstage : SepWPp prog mid s P_stage Q_mid
-      (CryptoVerification.E2E.Pqxdh.ResponderClosure.PanicOomProp s0))
-    (hP : P = P_stage ∗ F)
-    (hnext : ∀ sm P_m, Steps prog s sm → sm.pc = mid → sm.status = .Running → Q_mid sm P_m →
-      SepWPp prog ret sm (P_m ∗ F) Q
-        (genP3S5PanicProp C K rem loc st msg msgVer rest s0)) :
-    SepWPp prog ret s P Q (genP3S5PanicProp C K rem loc st msg msgVer rest s0) :=
-  bind_sepWPp_genPanic_steps hstage hP hnext
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched

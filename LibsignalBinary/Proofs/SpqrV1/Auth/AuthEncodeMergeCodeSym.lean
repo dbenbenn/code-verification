@@ -9,15 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpqrV1.Varint.VarintCodeSym -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MessageEncodeCodeSym -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Varint.VarintCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MessageEncodeCodeSym -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym -- shake: keep
+public import ProofLib.ProgramReflection.SortedFresh
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.SpqrAuthCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.DropCodeSym -- proof-setup: allow-public-import
+meta import GeneratedLean.LibsignalSessionPlacedObjShard11
+meta import GeneratedLean.LibsignalSessionPlacedObjShard13
+meta import GeneratedLean.LibsignalSessionPlacedObjShard7
 
 /-!
 # Relocatable Per-Block Fetches for `Authenticator` Encode and Merge
@@ -26,7 +34,7 @@ Generates per-block code symbols (`gen_ls_blk`) for blocks 151 (`encode<Authenti
 314 (`encode<Authenticator> [local#2]`), and 295 (`merge<Authenticator, &mut &[u8]>`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

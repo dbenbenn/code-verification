@@ -27,7 +27,7 @@ Equivalence between the polynomial routines in `LibsignalSpqrV1.Poly` (`Poly.com
 `Lagrange.interpolate` over `Field GF16`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.Erasure
 
@@ -75,14 +75,6 @@ theorem lagrangeInterpolate_spec (pts : List Pt) (hnd : (pts.map Pt.x).Nodup) :
 /-- `polyOf cs` has degree strictly less than `cs.length`. -/
 theorem degree_polyOf_lt (cs : List GF16) : (polyOf cs).degree < cs.length :=
   DegreePolyOf.degree_polyOf_lt_proof cs
-
-/-- `lagrangePolysForCompletePoints n` computes the Lagrange basis polynomials for nodes
-`idxPt 0, …, idxPt (n - 1)`. -/
-theorem lagrangePolysForCompletePoints_spec (n : Nat) (hn : n < 2 ^ 16) :
-    ∃ cps, lagrangePolysForCompletePoints n = .ok cps ∧ cps.length = n ∧
-      ∀ i (h : i < cps.length), cps[i].coefficients.length = n ∧
-        polyOf cps[i].coefficients = Lagrange.basis (Finset.range n) idxPt i :=
-  ConstPolys.lagrangePolysForCompletePoints_spec_aux n hn
 
 /-- `Poly.lagrangeInterpolatePt` computes the `i`-th Lagrange basis polynomial for `pts`. -/
 theorem lagrangeInterpolatePt_spec (pts : List Pt) (i : Nat) (hi : i < pts.length)

@@ -10,9 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.KeyDefs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.CodePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.CodePlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.DefsPlaced -- proof-setup: allow-public-import
 
 /-!
 # Placed `message::merge<Chain> [local#4]`: ChainKey Shared Definitions
@@ -21,7 +23,7 @@ import Arm64.Trusted.Spec.SepLogic
 `Chain3Seg3dPlacedStmt`) corresponding to `VerNe.Chain3.KeyDefs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,7 +47,7 @@ open CryptoVerification.CliHandshake.Placed
 
 /-! ## Sub-step statements for `Chain3ChainKeyPlacedStmt` -/
 
-def Chain3Seg3aPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
+@[expose] def Chain3Seg3aPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
   Chain3CalleesPlacedW ext →
   ∀ (a bufRef slot ptr sp0 : BitVec 64)
     (ck_body afterCk : List (BitVec 8)) (outerTailLen : Nat)
@@ -96,7 +98,7 @@ def Chain3Seg3aPlacedStmt [LibsignalPlacement] (ext : String → Option (State �
         stackAt (sp0 - 0xf0#64) chainMerge3SubStackX) ∗ F)
       Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ chainMerge3PlacedSpecW.onPanic x s_init sf ∗ R))
 
-def Chain3Seg3bPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
+@[expose] def Chain3Seg3bPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
   Chain3CalleesPlacedW ext →
   ∀ (a bufRef slot ptr sp0 : BitVec 64)
     (i : BitVec 32) (rest afterCk : List (BitVec 8)) (outerTailLen : Nat)
@@ -132,7 +134,7 @@ def Chain3Seg3bPlacedStmt [LibsignalPlacement] (ext : String → Option (State �
         stackAt (sp0 - 0xf0#64) chainMerge3SubStackX) ∗ F)
       Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ chainMerge3PlacedSpecW.onPanic x s_init sf ∗ R))
 
-def Chain3Seg3cPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
+@[expose] def Chain3Seg3cPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
   Chain3CalleesPlacedW ext →
   ∀ (a bufRef slot ptr sp0 : BitVec 64)
     (k afterCk : List (BitVec 8)) (outerTailLen : Nat)
@@ -169,7 +171,7 @@ def Chain3Seg3cPlacedStmt [LibsignalPlacement] (ext : String → Option (State �
         stackAt (sp0 - 0xf0#64) chainMerge3SubStackX) ∗ F)
       Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ chainMerge3PlacedSpecW.onPanic x s_init sf ∗ R))
 
-def Chain3Seg3dPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
+@[expose] def Chain3Seg3dPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
   ∀ (a bufRef slot ptr sp0 : BitVec 64)
     (afterCk : List (BitVec 8)) (outerTailLen : Nat)
     {ret : BitVec 64} {s_init s0 : State} {F : SepProp}
@@ -199,8 +201,4 @@ def Chain3Seg3dPlacedStmt [LibsignalPlacement] (ext : String → Option (State �
       Q Qp
 
 abbrev Chain3CkLenPlacedStmt [LibsignalPlacement] := Chain3Seg3aPlacedStmt
-abbrev Chain3CkIdxPlacedStmt [LibsignalPlacement] := Chain3Seg3bPlacedStmt
-abbrev Chain3CkKeyPlacedStmt [LibsignalPlacement] := Chain3Seg3cPlacedStmt
-abbrev Chain3CkExitPlacedStmt [LibsignalPlacement] := Chain3Seg3dPlacedStmt
-
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3

@@ -26,7 +26,7 @@ Relates `CliTurn` directory snapshots to Alice's `PqParty` state across
 transitions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.Witness
-public import Symbolic.Proofs.Tests.CliNonvacuity.RecvNoCollisionAux
+public import Symbolic.Proofs.Tests.CliNonvacuity.Witness -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.RecvNoCollisionAux -- proof-setup: allow-public-import
 
 /-!
 # Reusable Collision-Excuses Dischargers
@@ -20,7 +20,7 @@ for discharging `¬ CollisionAfterExplainedPrefix` in the CLI non-vacuity handsh
 reachability proofs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,7 +57,7 @@ open Symbolic.Proofs.Tests.CliNonvacuity.RecvNoCollisionAux
 /-- Suffix-indexed invariant asserting that no split `rest = δ ++ (.run ev :: evs₂)` extends `evs₁`
 to a prefix `evs₁ ++ δ` whose next run event `ev` triggers `NextEventCollides` under an `Explains`
 witness. -/
-def NoCollisionFrom (interp : ExternInterpretation) (r : ProtocolSetup)
+@[expose] def NoCollisionFrom (interp : ExternInterpretation) (r : ProtocolSetup)
     (S : OpaqueSymbolSemantics) (evs₁ rest : List CliEvent) : Prop :=
   ∀ (δ : List CliEvent) (ev : RunEvent) (evs₂ : List CliEvent)
     (g : Ghost) (ss : List Step) (vis : List VisEntry),
@@ -124,7 +124,7 @@ theorem not_collision_step_run {interp : ExternInterpretation} {r : ProtocolSetu
 
 /-- CLI events that never trigger `NextEventCollides`: environment events, `init` calls, rejected
 `recv` calls, and empty `recv` calls. -/
-def isIrrelevantCliEvent : CliEvent → Bool
+@[expose] def isIrrelevantCliEvent : CliEvent → Bool
   | .env _ => true
   | .run ev =>
     match ev.cmd with
@@ -181,7 +181,7 @@ theorem not_collision_steps_irrelevant {interp : ExternInterpretation} {r : Prot
 
 /-- Decidable pairwise non-collision check between a new-term memo entry `x₁` and a prefix-or-new
 memo entry `x₂`, conservatively dropping `¬ known` so soundness holds for every `known` predicate. -/
-def noMemoEntryPairCollides (pts : List DY.Bytes)
+@[expose] def noMemoEntryPairCollides (pts : List DY.Bytes)
     (x₁ x₂ : DY.Bytes × DY.Bytes × HwBytes) : Bool :=
   !(x₁.2.2 == x₂.2.2) ||
   (x₁.2.1 == x₂.2.1) ||
@@ -190,7 +190,7 @@ def noMemoEntryPairCollides (pts : List DY.Bytes)
   (pts.contains x₂.1 && (pts.contains x₁.1 || !(assumedInjective x₁.1)))
 
 /-- Computable `Bool` over-approximation refuting `MemoCollisionOn` for all `known` predicates. -/
-def noMemoCollisionBool (interp : ExternInterpretation) (r : ProtocolSetup)
+@[expose] def noMemoCollisionBool (interp : ExternInterpretation) (r : ProtocolSetup)
     (S : OpaqueSymbolSemantics) (g : Ghost) (tr : ExecTrace) (vis : List VisEntry)
     (newTerms newPts : List DY.Bytes) : Bool :=
   let memo := fun t => (gamma' interp S g t).memo
@@ -225,7 +225,7 @@ theorem noMemoCollision_of_bool {interp : ExternInterpretation} {r : ProtocolSet
 /-! ## Computable `noMacForgeryBool` and Soundness -/
 
 /-- Syntactically extracts `seed` from `computeMac (trMsgKeys salt seed).macKey peerIk myIk w`. -/
-def extractMacSeed? (mac : DY.Bytes) : Option DY.Bytes := do
+@[expose] def extractMacSeed? (mac : DY.Bytes) : Option DY.Bytes := do
   let t ← mac.view? DY.Trunc.Trunc8.SubF
   let hOuter ← t.input.view? DY.KdfExtract.KdfExtract.SubF
   let hMk ← hOuter.salt.view? DY.KdfExtract.KdfExtract.SubF
@@ -239,7 +239,7 @@ theorem extractMacSeed?_computeMac (salt seed peerIk myIk w : DY.Bytes) :
 
 /-- Computable check refuting `UnknownSeedMacGuess` for all `known` predicates: every own-salt trial
 matching `γ msg.mac` has some `salt ∈ honest` producing identical `(cipherKey, macKey, iv)` bytes. -/
-def noUnknownSeedMacGuessBool (interp : ExternInterpretation) (S : OpaqueSymbolSemantics)
+@[expose] def noUnknownSeedMacGuessBool (interp : ExternInterpretation) (S : OpaqueSymbolSemantics)
     (g : Ghost) (honest : List DY.Bytes) (msg : TRSignalMsg) (ctxs : List TrialCtx) : Bool :=
   let γ := gamma interp S g
   ctxs.all fun ctx =>
@@ -273,7 +273,7 @@ theorem not_unknownSeedMacGuess_of_bool {interp : ExternInterpretation} {S : Opa
 /-- Computable check refuting `TruncatedMacSeedCollision`: whenever a trial `(ctx, seed, k)` matches
 `γ msg.mac`, every trial `(ctx₀, seed₀)` with `γ seed ≠ γ seed₀` neither matches `γ msg.mac` on
 `ctx₀.ownSalts ++ honest` nor equals `extractMacSeed? msg.mac`. -/
-def noTruncatedMacSeedCollisionBool (interp : ExternInterpretation) (S : OpaqueSymbolSemantics)
+@[expose] def noTruncatedMacSeedCollisionBool (interp : ExternInterpretation) (S : OpaqueSymbolSemantics)
     (g : Ghost) (honest : List DY.Bytes) (msg : TRSignalMsg) (ctxs : List TrialCtx) : Bool :=
   let γ := gamma interp S g
   let macSeed? := extractMacSeed? msg.mac
@@ -325,7 +325,7 @@ theorem not_truncatedMacSeedCollision_of_bool {interp : ExternInterpretation}
         exact hnoSyntactic rfl
 
 /-- Combined computable check refuting `MacTagForgeryOrCollision` for every `known` predicate. -/
-def noMacForgeryBool (interp : ExternInterpretation) (S : OpaqueSymbolSemantics)
+@[expose] def noMacForgeryBool (interp : ExternInterpretation) (S : OpaqueSymbolSemantics)
     (g : Ghost) (honest : List DY.Bytes) (msg : TRSignalMsg) (ctxs : List TrialCtx) : Bool :=
   noUnknownSeedMacGuessBool interp S g honest msg ctxs &&
     noTruncatedMacSeedCollisionBool interp S g honest msg ctxs
@@ -344,7 +344,7 @@ theorem not_macTagForgeryOrCollision_of_bool {interp : ExternInterpretation}
 /-! ## Receiver and Session-Start Dischargers -/
 
 /-- Computable `Bool` check for the memo + MAC body of `BobSessionStartCollidesOrImplicitRejectsOn`. -/
-def noBobStartCollisionBool (interp : ExternInterpretation) (r : ProtocolSetup)
+@[expose] def noBobStartCollisionBool (interp : ExternInterpretation) (r : ProtocolSetup)
     (S : OpaqueSymbolSemantics) (g : Ghost) (tr : ExecTrace) (vis : List VisEntry)
     (salts : List DY.Bytes) (p : PreKeyFields) (x : PreKeyRep) : Bool :=
   match parseTrSignalMsg x.msg with
@@ -374,7 +374,7 @@ theorem not_bobSessionStartCollidesOrImplicitRejectsOn_check {interp : ExternInt
     · exact not_macTagForgeryOrCollision_of_bool hb.2 _ hmac
 
 /-- Computable `Bool` check refuting `RecvCollisionOn interp r S g tr vis salts t`. -/
-def noRecvCollisionBool (interp : ExternInterpretation) (r : ProtocolSetup)
+@[expose] def noRecvCollisionBool (interp : ExternInterpretation) (r : ProtocolSetup)
     (S : OpaqueSymbolSemantics) (g : Ghost) (tr : ExecTrace) (vis : List VisEntry)
     (salts : List DY.Bytes) (t : DY.Bytes) : Bool :=
   match parseTrSignalMsg t with
@@ -405,7 +405,7 @@ theorem not_recvCollisionOn_check {interp : ExternInterpretation} {r : ProtocolS
 /-- Computable `Bool` check refuting `ReselectCollisionOn interp r S g tr vis salts t`: every stored
 ratchet key `rk ∈ storedRatchetKeys r tr msg` either equals `msg.ratchetKey` syntactically or has
 distinct concretized bytes `γ rk ≠ γ msg.ratchetKey`. -/
-def noReselectCollisionBool (interp : ExternInterpretation) (r : ProtocolSetup)
+@[expose] def noReselectCollisionBool (interp : ExternInterpretation) (r : ProtocolSetup)
     (S : OpaqueSymbolSemantics) (g : Ghost) (tr : ExecTrace) (t : DY.Bytes) : Bool :=
   let γ := gamma interp S g
   match parseTrSignalMsg t with

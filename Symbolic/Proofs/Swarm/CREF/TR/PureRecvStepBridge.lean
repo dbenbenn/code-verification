@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Actions.ProtocolEvent
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSpqrPureA
-public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigmaReach
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeIdInv
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
-public import Symbolic.Proofs.Swarm.CREF.TR.SrHonestVer
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSpqrPureA -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigmaReach -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeIdInv -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.SrHonestVer -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Spqr
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.TrWireMsg
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RatchetDHRkSwapStepTRPure
@@ -33,6 +33,7 @@ import Symbolic.Proofs.Swarm.CREF.TROpen
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- shake: keep
 import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 
 /-!
 # Ghost-Free Canonical and Singleton `PureTRRecordStateInv` Step Bridges
@@ -41,7 +42,7 @@ Ghost-free `slots_RecordCanonical_Q` and `PureTRRecordStateInv` variants of the 
 singleton decrypt-tail step lemmas for `recv_wire` whisper verification.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

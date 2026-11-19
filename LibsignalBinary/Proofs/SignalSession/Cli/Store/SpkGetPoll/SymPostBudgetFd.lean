@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.SymPostBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudgetFd -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.SymPostBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `FdsGe3Closed`-Threaded Postcondition and Panic Predicates for `SpkGetPoll`
@@ -18,7 +20,7 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.SymPostB
 Defines `spkPostQ_fd` and `spkPanicQp_fd` over `CalleesBudgetFd.spkGetPollInnerSpec_fd`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,7 +32,7 @@ open CryptoVerification.SignalSession.Cli (DirGhost ReadRule PkPollGhost)
 open LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudgetFd
   (spkGetPollInnerSpec_fd)
 
-def spkPostQ_fd {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def spkPostQ_fd {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecEnv : BitVec 32 → List AllocEvent → Prop)
     (GetEnv : DirGhost → BitVec 32 → List AllocEvent → Prop)
@@ -44,7 +46,7 @@ def spkPostQ_fd {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) �
           (x, st) s0 sf ∗ R)) ∧
     sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf
 
-def spkPanicQp_fd {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def spkPanicQp_fd {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecEnv : BitVec 32 → List AllocEvent → Prop)
     (GetEnv : DirGhost → BitVec 32 → List AllocEvent → Prop)

@@ -25,11 +25,11 @@ Supplements `ProofLib.Placed.Multi` with:
 - the static relocation-inversion DAG checker (`checkRelocInvStepsB`, `checkRelocInvStepsB_sound`).
 -/
 
-@[expose] public section
+public section
 
 namespace Arm64.Obj
 
-open Arm64.Process ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection
+open Arm64.Process ProofLib ProofLib.ProgramReflection
 
 theorem allIdx_of_forall {α : Type} {f : Nat → α → Bool} :
     ∀ {k : Nat} {xs : List α},
@@ -51,21 +51,21 @@ set_option linter.literalFetch false
 
 /-! ## Balanced `VecTree` Random Access -/
 
-def withHeadTail {α β : Type} (d : α) (xs : List α) (k : α → List α → β) : β :=
+@[expose] def withHeadTail {α β : Type} (d : α) (xs : List α) (k : α → List α → β) : β :=
   List.casesOn xs (k d []) (fun x xs' => k x xs')
 
 @[simp] theorem withHeadTail_eq {α β : Type} (d : α) (xs : List α) (k : α → List α → β) :
     withHeadTail d xs k = k (xs.getD 0 d) (xs.drop 1) := by
   cases xs <;> rfl
 
-def withBitVec64 {α : Type} (v : BitVec 64) (k : BitVec 64 → α) : α :=
+@[expose] def withBitVec64 {α : Type} (v : BitVec 64) (k : BitVec 64 → α) : α :=
   BitVec.casesOn v fun f => k (BitVec.ofFin f)
 
 @[simp] theorem withBitVec64_eq {α : Type} (v : BitVec 64) (k : BitVec 64 → α) :
     withBitVec64 v k = k v := by
   cases v; rfl
 
-def bv8Beq (a b : BitVec 8) : Bool :=
+@[expose] def bv8Beq (a b : BitVec 8) : Bool :=
   Nat.beq a.toNat b.toNat
 
 @[simp] theorem bv8Beq_eq (a b : BitVec 8) : bv8Beq a b = (a == b) := by
@@ -76,7 +76,7 @@ def bv8Beq (a b : BitVec 8) : Bool :=
     exact absurd (beq_iff_eq.mpr (BitVec.eq_of_toNat_eq h')) (by simp [h])
   · rw [beq_iff_eq] at h; subst h; exact Nat.beq_refl _
 
-def isPrefixOfFast : List (BitVec 8) → List (BitVec 8) → Bool
+@[expose] def isPrefixOfFast : List (BitVec 8) → List (BitVec 8) → Bool
   | [], _ => true
   | _ :: _, [] => false
   | x :: xs, y :: ys => bv8Beq x y && isPrefixOfFast xs ys
@@ -88,7 +88,7 @@ def isPrefixOfFast : List (BitVec 8) → List (BitVec 8) → Bool
   | x :: xs, y :: ys => by
     simp only [isPrefixOfFast, List.isPrefixOf, bv8Beq_eq, isPrefixOfFast_eq xs ys]
 
-def bytes4Eq (xs : List (BitVec 8)) (s0 s1 s2 s3 : BitVec 8) : Bool :=
+@[expose] def bytes4Eq (xs : List (BitVec 8)) (s0 s1 s2 s3 : BitVec 8) : Bool :=
   match xs with
   | [x0, x1, x2, x3] => bv8Beq x0 s0 && bv8Beq x1 s1 && bv8Beq x2 s2 && bv8Beq x3 s3
   | _ => false
@@ -106,7 +106,7 @@ def bytes4Eq (xs : List (BitVec 8)) (s0 s1 s2 s3 : BitVec 8) : Bool :=
   simp only [bv8Beq_eq, Bool.and_true, Bool.and_assoc]
 
 /-- Builds a balanced `VecTree α` in CPS over `n` elements in a single linear pass over `xs`. -/
-def buildVecTree {α : Type} (d : α) :
+@[expose] def buildVecTree {α : Type} (d : α) :
     Nat → Nat → List α → (VecTree α → List α → VecTree α) → VecTree α
   | 0, _, xs, k => k .leaf xs
   | fuel + 1, n, xs, k =>
@@ -159,20 +159,20 @@ theorem buildVecTree_spec {α : Type} (d : α) :
       rw [nat_beq_false_of_ne (by omega)]
       exact hr_ge (i - (n / 2 + 1)) (by omega)
 
-def toVecTree {α : Type} (d : α) (xs : List α) : VecTree α :=
+@[expose] def toVecTree {α : Type} (d : α) (xs : List α) : VecTree α :=
   withNat xs.length fun n =>
     buildVecTree d 20 n xs (fun t _ => t)
 
 /-- Forces `t` to WHNF constructor form via `VecTree.casesOn` before invoking `k`, avoiding
 repeated call-by-name evaluation in the kernel. -/
-def forceVecTree {α β : Type} (t : VecTree α) (k : VecTree α → β) : β :=
+@[expose] def forceVecTree {α β : Type} (t : VecTree α) (k : VecTree α → β) : β :=
   VecTree.casesOn t (k .leaf) (fun half l v r => k (.node half l v r))
 
 @[simp] theorem forceVecTree_eq {α β : Type} (t : VecTree α) (k : VecTree α → β) :
     forceVecTree t k = k t := by
   cases t <;> rfl
 
-def withVecTree {α β : Type} (d : α) (xs : List α) (k : VecTree α → β) : β :=
+@[expose] def withVecTree {α β : Type} (d : α) (xs : List α) (k : VecTree α → β) : β :=
   forceVecTree (toVecTree d xs) k
 
 @[simp] theorem withVecTree_eq {α β : Type} (d : α) (xs : List α) (k : VecTree α → β) :
@@ -203,10 +203,10 @@ theorem toStrTree_getD {xs : List String} (hn : xs.length < 2 ^ 20) {i : Nat} (_
     (toStrTree xs).getD "" i = xs.getD i "" :=
   toVecTree_getD_all "" xs hn i
 
-def Reloc.toEntryTree (t : VecTree String) (r : Reloc) : RelocEntry :=
+@[expose] def Reloc.toEntryTree (t : VecTree String) (r : Reloc) : RelocEntry :=
   { off := r.off, kind := r.kind, sym := t.getD "" r.sym, addend := r.addend, localSym := r.localSym }
 
-def Block.toCodeBlockTree (t : VecTree String) (extStrings : List String) (b : Block) : CodeBlock :=
+@[expose] def Block.toCodeBlockTree (t : VecTree String) (extStrings : List String) (b : Block) : CodeBlock :=
   { code := b.code
     align := b.align
     symbols := b.symbols.map fun s => (t.getD "" s.1, s.2)
@@ -214,7 +214,7 @@ def Block.toCodeBlockTree (t : VecTree String) (extStrings : List String) (b : B
     externs := extStrings
     weakRefs := b.weakRefs.map fun e => t.getD "" e }
 
-def Data.toInfoTree (t : VecTree String) (d : Data) : SymDataInfo :=
+@[expose] def Data.toInfoTree (t : VecTree String) (d : Data) : SymDataInfo :=
   { sym := t.getD "" d.sym
     align := d.align
     readOnly := d.readOnly
@@ -222,7 +222,7 @@ def Data.toInfoTree (t : VecTree String) (d : Data) : SymDataInfo :=
     zeroTail := d.zeroTail
     relocs := d.relocs.map (Reloc.toEntryTree t) }
 
-def MultiLib.toMultiPlacedLibFast (ML : MultiLib) (sharedExterns : List Nat) : MultiPlacedLib :=
+@[expose] def MultiLib.toMultiPlacedLibFast (ML : MultiLib) (sharedExterns : List Nat) : MultiPlacedLib :=
   withVecTree "" ML.names fun t =>
     let extStrings := sharedExterns.map fun e => t.getD "" e
     { name := ML.name
@@ -243,10 +243,10 @@ theorem natListBeq_eq : ∀ {l₁ l₂ : List Nat}, natListBeq l₁ l₂ = true 
       simp only [hn, ↓reduceIte] at h
       rw [Nat.eq_of_beq_eq_true hn, natListBeq_eq h]
 
-def blocksSharedExternsOk (ML : MultiLib) (sharedExterns : List Nat) : Bool :=
+@[expose] def blocksSharedExternsOk (ML : MultiLib) (sharedExterns : List Nat) : Bool :=
   ML.blocks.all fun b => natListBeq b.externs sharedExterns
 
-def multiIdsOkFast (ML : MultiLib) : Bool :=
+@[expose] def multiIdsOkFast (ML : MultiLib) : Bool :=
   withNat ML.names.length fun n =>
     ML.blocks.all (Block.idsOk n) &&
     ML.exports.all (fun e => Nat.blt e n) &&
@@ -283,7 +283,7 @@ theorem toMultiPlacedLib_of_fast {lib : MultiPlacedLib} {ML : MultiLib} {sharedE
 
 /-! ## `VecTree.setFresh` for `O(N log N)` Block-Symbol Distinctness and Lookup -/
 
-def mkNoneTree {α : Type} : Nat → Nat → VecTree (Option α)
+@[expose] def mkNoneTree {α : Type} : Nat → Nat → VecTree (Option α)
   | 0, _ => .leaf
   | fuel + 1, n =>
     Nat.casesOn n .leaf fun n =>
@@ -305,7 +305,7 @@ theorem getD_mkNoneTree {α : Type} :
       · rfl
     · exact getD_mkNoneTree fuel (n / 2) j
 
-def VecTree.setFresh {α : Type} : VecTree (Option α) → Nat → α → Option (VecTree (Option α))
+@[expose] def VecTree.setFresh {α : Type} : VecTree (Option α) → Nat → α → Option (VecTree (Option α))
   | .leaf, _, _ => none
   | .node half l v r, i, x =>
     match Nat.blt i half with
@@ -403,7 +403,7 @@ theorem VecTree.getD_setFresh_of_ne {α : Type} :
         · rfl
         · exact VecTree.getD_setFresh_of_ne hl hne
 
-def insertBlockSyms (blkIdx : Nat) :
+@[expose] def insertBlockSyms (blkIdx : Nat) :
     List (Nat × Nat) → VecTree (Option (Nat × Nat)) → Option (VecTree (Option (Nat × Nat)))
   | [], t => some t
   | (s, off) :: rest, t =>
@@ -480,7 +480,7 @@ theorem lookupId_isSome_of_mem :
         nomatch hk
       · exact lookupId_isSome_of_mem ⟨off, hm_rest⟩
 
-def insertAllBlocks :
+@[expose] def insertAllBlocks :
     Nat → List Block → VecTree (Option (Nat × Nat)) → Option (VecTree (Option (Nat × Nat)))
   | _, [], t => some t
   | blkIdx, b :: rest, t =>
@@ -543,7 +543,7 @@ theorem natNodup_of_nodup : ∀ {l : List Nat}, l.Nodup → natNodup l = true
 
 /-! ## Split and Sliced `Placeable` / `InElf` / `DataDisjoint` Checkers -/
 
-def blockSymsMatchTree (ML : MultiLib) (tBase tAddr : VecTree (BitVec 64)) : Bool :=
+@[expose] def blockSymsMatchTree (ML : MultiLib) (tBase tAddr : VecTree (BitVec 64)) : Bool :=
   allIdx (fun i b =>
     withBitVec64 (tBase.getD 0#64 i) fun base =>
       b.symbols.all fun s =>
@@ -557,7 +557,7 @@ theorem blockSymsMatchTree_eq (ML : MultiLib) (mly : MultiLayout)
   simp only [blockSymsMatchTree, blockSymsMatchB, withBitVec64_eq,
     toVecTree_getD_all _ _ hb, toVecTree_getD_all _ _ ha]
 
-def buildExtAddrs (tAddr : VecTree (BitVec 64)) :
+@[expose] def buildExtAddrs (tAddr : VecTree (BitVec 64)) :
     List Nat → (List (Nat × BitVec 64) → Bool) → Bool
   | [], k => k []
   | e :: es, k =>
@@ -587,7 +587,7 @@ theorem ext0Addrs_all_eq (getAddr : Nat → BitVec 64) (ext0 : List Nat) (b : Bl
     rfl
   · rfl
 
-def textPlaceableTreeMulti (ML : MultiLib) (tBase tAddr : VecTree (BitVec 64)) : Bool :=
+@[expose] def textPlaceableTreeMulti (ML : MultiLib) (tBase tAddr : VecTree (BitVec 64)) : Bool :=
   let ext0 := (ML.blocks.headD { code := [] }).externs
   buildExtAddrs tAddr ext0 fun ext0Addrs =>
     allIdx (fun i b =>
@@ -613,7 +613,7 @@ theorem textPlaceableTreeMulti_eq (ML : MultiLib) (mly : MultiLayout)
     MultiLayout.blockLayout, withBitVec64_eq, withNat_eq, fastLen512_eq_length, ext0Addrs_all_eq,
     toVecTree_getD_all _ _ hb, toVecTree_getD_all _ _ ha]
 
-def blockRanges (tBase : VecTree (BitVec 64)) : Nat → List Block → List (BitVec 64 × Nat)
+@[expose] def blockRanges (tBase : VecTree (BitVec 64)) : Nat → List Block → List (BitVec 64 × Nat)
   | _, [] => []
   | i, b :: bs =>
     withBitVec64 (tBase.getD 0#64 i) fun base =>
@@ -676,7 +676,7 @@ theorem blocksDisjoint_of_rangesSorted {ML : MultiLib} {mly : MultiLayout}
     exact Or.inl hrel
   · exact Or.inl hij
 
-def dataRelocOkTreeMulti (tAddr : VecTree (BitVec 64))
+@[expose] def dataRelocOkTreeMulti (tAddr : VecTree (BitVec 64))
     (addr : BitVec 64) (n : Nat) (r : Reloc) : Bool :=
   let tgt := addSignedAddr (tAddr.getD 0#64 r.sym) r.addend
   Nat.blt 0 (dataRelocWidth r.kind) && Nat.ble (r.off + dataRelocWidth r.kind) n &&
@@ -685,7 +685,7 @@ def dataRelocOkTreeMulti (tAddr : VecTree (BitVec 64))
     | .prel32 => sInRange (-2147483648) 2147483648 (tgt - (addr + BitVec.ofNat 64 r.off))
     | _ => true
 
-def dataPlaceableTreeMulti (ML : MultiLib) (tAddr : VecTree (BitVec 64)) : Bool :=
+@[expose] def dataPlaceableTreeMulti (ML : MultiLib) (tAddr : VecTree (BitVec 64)) : Bool :=
   ML.data.all fun d =>
     withBitVec64 (tAddr.getD 0#64 d.sym) fun a =>
       withNat (fastLen512 4096 d.bytes) fun dlen =>
@@ -710,21 +710,21 @@ theorem dataPlaceableTreeMulti_imp (ML : MultiLib) (mly : MultiLayout)
   refine ⟨by simp [natNodupFast, MultiLib.blockLib, natNodup_of_nodup hnd], ?_⟩
   simpa [lookupId, MultiLib.blockLib, MultiLayout.dataLayout] using h
 
-def resolveTree (b : Block) (base : BitVec 64) (tAddr : VecTree (BitVec 64)) (sym : Nat) : BitVec 64 :=
+@[expose] def resolveTree (b : Block) (base : BitVec 64) (tAddr : VecTree (BitVec 64)) (sym : Nat) : BitVec 64 :=
   match lookupId sym b.symbols with
   | some off => base + BitVec.ofNat 64 off
   | none => tAddr.getD 0#64 sym
 
-def targetTreeMulti (b : Block) (base : BitVec 64) (tAddr : VecTree (BitVec 64)) (r : Reloc) : BitVec 64 :=
+@[expose] def targetTreeMulti (b : Block) (base : BitVec 64) (tAddr : VecTree (BitVec 64)) (r : Reloc) : BitVec 64 :=
   addSignedAddr (resolveTree b base tAddr r.sym) r.addend
 
-def relocTargetTreeMulti (L : Lib) (b : Block) (base : BitVec 64) (b2b : List Nat)
+@[expose] def relocTargetTreeMulti (L : Lib) (b : Block) (base : BitVec 64) (b2b : List Nat)
     (tAddr : VecTree (BitVec 64)) (off : Nat) (r : Reloc) : BitVec 64 :=
   match (if memNat off b2b then b2bNextId L r else none) with
   | some r2 => targetTreeMulti b base tAddr r2
   | none => targetTreeMulti b base tAddr r
 
-def siteOutTreeMulti (L : Lib) (ly : Layout) (b : Block) (tAddr : VecTree (BitVec 64))
+@[expose] def siteOutTreeMulti (L : Lib) (ly : Layout) (b : Block) (tAddr : VecTree (BitVec 64))
     (o : Nat) (r : Reloc) (w : BitVec 32) (rel prev : Bool) : BitVec 32 :=
   let place := ly.base + BitVec.ofNat 64 o
   if rel then nopWord
@@ -739,13 +739,13 @@ def siteOutTreeMulti (L : Lib) (ly : Layout) (b : Block) (tAddr : VecTree (BitVe
   else patchRelocWord r.kind w place
     (if undefWeakId L ly r then place + 4 else relocTargetTreeMulti L b ly.base ly.b2b tAddr o r)
 
-def siteRangeOkTreeMulti (L : Lib) (ly : Layout) (b : Block) (tAddr : VecTree (BitVec 64))
+@[expose] def siteRangeOkTreeMulti (L : Lib) (ly : Layout) (b : Block) (tAddr : VecTree (BitVec 64))
     (o : Nat) (r : Reloc) (prev : Bool) : Bool :=
   let place := ly.base + BitVec.ofNat 64 o
   relocInRangeB L ly r.kind o place (relocTargetTreeMulti L b ly.base ly.b2b tAddr o r) &&
     (!prev || sInRange (-1048576) 1048576 (targetTreeMulti b ly.base tAddr r - place))
 
-def walkTreeMulti (L : Lib) (ly : Layout) (b : Block) (tAddr : VecTree (BitVec 64)) :
+@[expose] def walkTreeMulti (L : Lib) (ly : Layout) (b : Block) (tAddr : VecTree (BitVec 64)) :
     Nat → Bool → List Reloc → List (BitVec 8) → List (BitVec 8) → Bool
   | _, _, _, [], _ => true
   | o, prev, rs, b0 :: b1 :: b2 :: b3 :: cs, s0 :: s1 :: s2 :: s3 :: ss =>
@@ -802,7 +802,7 @@ theorem walkTreeMulti_eq (ML : MultiLib) (mly : MultiLayout) (ha : mly.addrs.len
       bytes4Eq_bytesOfWordLE, bv8Beq_eq, htgt, hrtgt,
       walkTreeMulti_eq ML mly ha b i (o + 4) _ _ cs ss]
 
-def withRegionsWithLen {α : Type} :
+@[expose] def withRegionsWithLen {α : Type} :
     List Snapshot.Region → (List (Snapshot.Region × Nat) → α) → α
   | [], k => k []
   | r :: rs, k =>
@@ -817,7 +817,7 @@ def withRegionsWithLen {α : Type} :
   | r :: rs, k => by
     simp [withRegionsWithLen, withNat_eq, fastLen512_eq_length, withRegionsWithLen_eq rs]
 
-def regionViewWithLen (addr : BitVec 64) :
+@[expose] def regionViewWithLen (addr : BitVec 64) :
     List (Snapshot.Region × Nat) → Option (Perm × List (BitVec 8) × Nat)
   | [] => none
   | (r, len) :: rs =>
@@ -844,7 +844,7 @@ def regionViewWithLen (addr : BitVec 64) :
       withForcedList_eq, fastDrop_eq_drop, regionViewWithLen_eq addr rs]
     rfl
 
-def nextViewWithLen (regsWithLen : List (Snapshot.Region × Nat)) (a : BitVec 64) :
+@[expose] def nextViewWithLen (regsWithLen : List (Snapshot.Region × Nat)) (a : BitVec 64) :
     Option (BitVec 64 × Perm × List (BitVec 8)) → Option (Perm × List (BitVec 8))
   | some (c, p, bs) =>
     if Nat.ble c.toNat a.toNat then
@@ -861,7 +861,7 @@ def nextViewWithLen (regsWithLen : List (Snapshot.Region × Nat)) (a : BitVec 64
   rcases cur with _ | ⟨c, p, bs⟩ <;>
     simp only [nextViewWithLen, nextView, regionViewWithLen_eq] <;> rfl
 
-def multiTextWalkTree (ML : MultiLib) (tBase tAddr : VecTree (BitVec 64))
+@[expose] def multiTextWalkTree (ML : MultiLib) (tBase tAddr : VecTree (BitVec 64))
     (tRelax tB2b : VecTree (List Nat)) (undefWeak : List Nat)
     (regsWithLen : List (Snapshot.Region × Nat)) :
     Nat → Option (BitVec 64 × Perm × List (BitVec 8)) → List Block → Bool
@@ -929,7 +929,7 @@ theorem multiTextWalkTree_eq (ML : MultiLib) (mly : MultiLayout)
       rw [walkTreeMulti_eq ML mly ha b i]
       rw [multiTextWalkTree_eq ML mly hb ha hrx hb2b regions (i + 1) _ rest]
 
-def patchDataRelocTreeMulti (tAddr : VecTree (BitVec 64)) (addr : BitVec 64)
+@[expose] def patchDataRelocTreeMulti (tAddr : VecTree (BitVec 64)) (addr : BitVec 64)
     (bytes : List (BitVec 8)) (r : Reloc) : List (BitVec 8) :=
   let t := addSignedAddr (tAddr.getD 0#64 r.sym) r.addend
   let put (n : Nat) (v : BitVec 64) := bytes.take r.off ++ bytesLE n v ++ bytes.drop (r.off + n)
@@ -939,11 +939,11 @@ def patchDataRelocTreeMulti (tAddr : VecTree (BitVec 64)) (addr : BitVec 64)
   | .prel32 => put 4 (t - (addr + BitVec.ofNat 64 r.off))
   | _ => bytes
 
-def patchedDataTreeMulti (tAddr : VecTree (BitVec 64)) (a : BitVec 64) (d : Data) : List (BitVec 8) :=
+@[expose] def patchedDataTreeMulti (tAddr : VecTree (BitVec 64)) (a : BitVec 64) (d : Data) : List (BitVec 8) :=
   d.relocs.foldl (patchDataRelocTreeMulti tAddr a) d.bytes ++
     List.replicate d.zeroTail 0#8
 
-def dataWalkTreeMulti (tAddr : VecTree (BitVec 64)) (regsWithLen : List (Snapshot.Region × Nat)) :
+@[expose] def dataWalkTreeMulti (tAddr : VecTree (BitVec 64)) (regsWithLen : List (Snapshot.Region × Nat)) :
     Option (BitVec 64 × Perm × List (BitVec 8)) → List Data → Bool
   | _, [] => true
   | cur, d :: ds =>
@@ -982,7 +982,7 @@ theorem dataWalkTreeMulti_eq (ML : MultiLib) (mly : MultiLayout)
       rw [show ({ base := 0#64, addrs := mly.addrs } : Layout) = mly.dataLayout from rfl]
       rw [dataWalkTreeMulti_eq ML mly ha regions (some (mly.addrs.getD d.sym 0#64, p, bs)) ds]
 
-def forceNatList {α : Type} : List Nat → (List Nat → α) → α
+@[expose] def forceNatList {α : Type} : List Nat → (List Nat → α) → α
   | [], k => k []
   | x :: xs, k =>
     withNat x fun x' =>
@@ -994,7 +994,7 @@ def forceNatList {α : Type} : List Nat → (List Nat → α) → α
   | [], _ => rfl
   | _ :: xs, k => by simp [forceNatList, withNat_eq, forceNatList_eq xs]
 
-def withEncodeCharKey {α : Type} (cs : List Char) (k : (Nat × List Nat) → α) : α :=
+@[expose] def withEncodeCharKey {α : Type} (cs : List Char) (k : (Nat × List Nat) → α) : α :=
   withNat cs.length fun len =>
     forceNatList (cs.map (·.val.toNat)) fun codes =>
       k (len, codes)
@@ -1003,7 +1003,7 @@ def withEncodeCharKey {α : Type} (cs : List Char) (k : (Nat × List Nat) → α
     withEncodeCharKey cs k = k (encodeCharKey cs) := by
   simp [withEncodeCharKey, encodeCharKey]
 
-def buildEncSymTable {α : Type} :
+@[expose] def buildEncSymTable {α : Type} :
     List (List Char × BitVec 64) → (EncSymTable (BitVec 64) → α) → α
   | [], k => k []
   | (cs, v) :: rest, k =>
@@ -1019,7 +1019,7 @@ def buildEncSymTable {α : Type} :
   | _ :: rest, k => by
     simp [buildEncSymTable, prepareCharAssocVal, buildEncSymTable_eq rest]
 
-def multiExportsOkTree (ML : MultiLib) (tBase : VecTree (BitVec 64))
+@[expose] def multiExportsOkTree (ML : MultiLib) (tBase : VecTree (BitVec 64))
     (tSym : VecTree (Option (Nat × Nat))) (tNameChars : VecTree (List Char))
     (enc : EncSymTable (BitVec 64)) : Bool :=
   ML.exportSyms.all (fun p => Nat.blt p.1 ML.names.length) &&
@@ -1050,7 +1050,7 @@ theorem multiExportsOkTree_eq (ML : MultiLib) (mly : MultiLayout) (nameChars : L
     simp only [withEncodeCharKey_eq, toVecTree_getD_all _ _ hb]
     rfl
 
-def dataEntriesDisjointFastAux (rw : List (Bool × BitVec 64 × Nat)) :
+@[expose] def dataEntriesDisjointFastAux (rw : List (Bool × BitVec 64 × Nat)) :
     List (Bool × BitVec 64 × Nat) → Bool
   | [] => true
   | (ro1, a1, n1) :: rest =>
@@ -1082,7 +1082,7 @@ theorem dataEntriesDisjointFastAux_imp {rw : List (Bool × BitVec 64 × Nat)} :
         simp [hchk (false, a2, n2) hmem_rw]
       · simp
 
-def buildDisjointLists (tAddr : VecTree (BitVec 64)) :
+@[expose] def buildDisjointLists (tAddr : VecTree (BitVec 64)) :
     List Data →
     (List (Bool × BitVec 64 × Nat) → List (Bool × BitVec 64 × Nat) → Bool) → Bool
   | [], k => k [] []
@@ -1108,7 +1108,7 @@ theorem buildDisjointLists_eq (tAddr : VecTree (BitVec 64)) :
       buildDisjointLists_eq tAddr rest, List.map_cons, List.filter_cons]
     cases d.readOnly <;> rfl
 
-def multiDataDisjointTree (ML : MultiLib) (tAddr : VecTree (BitVec 64)) : Bool :=
+@[expose] def multiDataDisjointTree (ML : MultiLib) (tAddr : VecTree (BitVec 64)) : Bool :=
   buildDisjointLists tAddr ML.data dataEntriesDisjointFastAux
 
 theorem multiDataDisjointTree_imp {ML : MultiLib} {mly : MultiLayout}
@@ -1120,7 +1120,7 @@ theorem multiDataDisjointTree_imp {ML : MultiLib} {mly : MultiLayout}
     (fun y hy hfalse => List.mem_filter.2 ⟨hy, by simp [hfalse]⟩) h
 
 /-- Combined tree-accelerated checker for `MultiPlacedLib.Placeable`, `InElf`, and `DataDisjoint`. -/
-def checkMultiFastB (ML : MultiLib) (mly : MultiLayout) (nameChars : List (List Char))
+@[expose] def checkMultiFastB (ML : MultiLib) (mly : MultiLayout) (nameChars : List (List Char))
     (img : ElfImage) (enc : EncSymTable (BitVec 64)) : Bool :=
   Nat.blt mly.bases.length 1048576 &&
   Nat.blt mly.addrs.length 1048576 &&
@@ -1210,7 +1210,7 @@ theorem checkMultiFastB_spec {ML : MultiLib} {mly : MultiLayout} {nameChars : Li
 
 /-- Metadata, `Placeable`, exports, and `DataDisjoint` checker factored out from ELF segment byte
 walks so each walk can be checked in a separate `rfl_kernel` declaration. -/
-def checkMultiMetaFastB (ML : MultiLib) (mly : MultiLayout) (nameChars : List (List Char))
+@[expose] def checkMultiMetaFastB (ML : MultiLib) (mly : MultiLayout) (nameChars : List (List Char))
     (symChars : List (List Char × BitVec 64)) : Bool :=
   Nat.blt mly.bases.length 1048576 &&
   Nat.blt mly.addrs.length 1048576 &&
@@ -1237,7 +1237,7 @@ def checkMultiMetaFastB (ML : MultiLib) (mly : MultiLayout) (nameChars : List (L
       multiExportsOkTree ML tBase tSym tNameChars enc &&
       multiDataDisjointTree ML tAddr
 
-def checkMultiMetaCoreFastB (ML : MultiLib) (mly : MultiLayout)
+@[expose] def checkMultiMetaCoreFastB (ML : MultiLib) (mly : MultiLayout)
     (nameChars : List (List Char)) : Bool :=
   Nat.blt mly.bases.length 1048576 &&
   Nat.blt mly.addrs.length 1048576 &&
@@ -1259,12 +1259,12 @@ def checkMultiMetaCoreFastB (ML : MultiLib) (mly : MultiLayout)
       textPlaceableTreeMulti ML tBase tAddr &&
       rangesSorted (blockRanges tBase 0 ML.blocks)
 
-def checkMultiMetaDataFastB (ML : MultiLib) (mly : MultiLayout) : Bool :=
+@[expose] def checkMultiMetaDataFastB (ML : MultiLib) (mly : MultiLayout) : Bool :=
   withVecTree 0#64 mly.addrs fun tAddr =>
     dataPlaceableTreeMulti ML tAddr &&
     multiDataDisjointTree ML tAddr
 
-def checkMultiMetaExportsFastB (ML : MultiLib) (mly : MultiLayout)
+@[expose] def checkMultiMetaExportsFastB (ML : MultiLib) (mly : MultiLayout)
     (nameChars : List (List Char)) (symChars : List (List Char × BitVec 64)) : Bool :=
   withVecTree 0#64 mly.bases fun tBase =>
   withVecTree [] nameChars fun tNameChars =>
@@ -1302,12 +1302,12 @@ theorem checkMultiMetaFastB_of_parts {ML : MultiLib} {mly : MultiLayout}
       obtain ⟨⟨hmatch, htp⟩, hdisj⟩ := hrest
       exact ⟨⟨⟨⟨⟨hmatch, htp⟩, hdisj⟩, hdata.1⟩, hexp⟩, hdata.2⟩
 
-def checkMultiDataWalkFastB (ML : MultiLib) (mly : MultiLayout) (img : ElfImage) : Bool :=
+@[expose] def checkMultiDataWalkFastB (ML : MultiLib) (mly : MultiLayout) (img : ElfImage) : Bool :=
   withVecTree 0#64 mly.addrs fun tAddr =>
   withRegionsWithLen img.segments fun regsWithLen =>
     dataWalkTreeMulti tAddr regsWithLen none ML.data
 
-def checkMultiTextWalkFastB (ML : MultiLib) (mly : MultiLayout) (img : ElfImage) : Bool :=
+@[expose] def checkMultiTextWalkFastB (ML : MultiLib) (mly : MultiLayout) (img : ElfImage) : Bool :=
   withVecTree 0#64 mly.bases fun tBase =>
   withVecTree 0#64 mly.addrs fun tAddr =>
   withVecTree [] mly.relax fun tRelax =>
@@ -1350,7 +1350,7 @@ theorem checkMultiSplit_spec {lib : MultiPlacedLib} {ML : MultiLib} {mly : Multi
       exact ⟨⟨⟨⟨⟨⟨⟨hmatch, htp⟩, hdisj⟩, hdp⟩, htwalk⟩, hdwalk⟩, hexp⟩, hddisj⟩
 
 /-- `.text` segment walk restricted to block slice `[start, start + count)`. -/
-def checkMultiTextSliceB (ML : MultiLib) (mly : MultiLayout) (img : ElfImage)
+@[expose] def checkMultiTextSliceB (ML : MultiLib) (mly : MultiLayout) (img : ElfImage)
     (start count : Nat) : Bool :=
   withVecTree 0#64 mly.bases fun tBase =>
   withVecTree 0#64 mly.addrs fun tAddr =>
@@ -1360,7 +1360,7 @@ def checkMultiTextSliceB (ML : MultiLib) (mly : MultiLayout) (img : ElfImage)
     multiTextWalkTree ML tBase tAddr tRelax tB2b mly.undefWeak regsWithLen
       start none ((ML.blocks.drop start).take count)
 
-def BlockTextWalkOk (ML : MultiLib) (mly : MultiLayout) (regions : List Snapshot.Region)
+@[expose] def BlockTextWalkOk (ML : MultiLib) (mly : MultiLayout) (regions : List Snapshot.Region)
     (i : Nat) (hi : i < ML.blocks.length) : Prop :=
   (∃ p bs, View regions (mly.blockLayout i).base p bs ∧ p = Perm.rx ∧
     ((ML.blockLib ML.blocks[i]).block.patched
@@ -1727,9 +1727,9 @@ theorem length_patchedData_multi {lib : MultiPlacedLib} {mpl : MultiPlacement} {
     have hl : (lib.patchDataReloc mpl (mpl.ρ d.sym) bs r).length = bs.length := by
       unfold MultiPlacedLib.patchDataReloc
       have hr := hrs r List.mem_cons_self
+      have hlen_le : ∀ n v, (bytesLE n v).length = n := fun _ _ => by simp [bytesLE]
       cases hk : r.kind <;> simp only [hk, dataRelocWidth] at hr ⊢ <;>
-        simp only [List.length_append, List.length_take, List.length_drop,
-          ProofLib.ObjectLoad.RoDataFactsAux.bytesLE_length] <;> omega
+        simp only [List.length_append, List.length_take, List.length_drop, hlen_le] <;> omega
     simp only [List.foldl_cons]
     rw [ih _ (fun r' hr' => hl ▸ hrs r' (List.mem_cons_of_mem _ hr')), hl]
 
@@ -1885,7 +1885,7 @@ theorem lo12Word_ne_adrWord {scale : Nat} {w : BitVec 32} {place target t : BitV
     (adrp_mask_preserve (adrWordOff_mask (adrTemplate w) (t - place))).1.trans (adrTemplate_mask w)
   rw [← lo12Word_mask_9f (scale := scale) w target, h, hadr]
 
-def lo12Scale? : RelocKind → Option Nat
+@[expose] def lo12Scale? : RelocKind → Option Nat
   | .addLo12 | .ldst8Lo12 => some 0
   | .ldst16Lo12 => some 1
   | .ldst32Lo12 => some 2
@@ -1957,7 +1957,7 @@ theorem splice_drop_take_self {d bs : List (BitVec 8)} {off : Nat}
 
 /-- Checks that `relocs` contains an `.abs64` relocation at `off` targeting `(sym, addend)` with
 `off + 8 ≤ bytesLen` and all subsequent relocations in bounds and disjoint from `[off, off + 8)`. -/
-def hasUnoverwrittenAbs64 (bytesLen off sym : Nat) (addend : Int) : List Reloc → Bool
+@[expose] def hasUnoverwrittenAbs64 (bytesLen off sym : Nat) (addend : Int) : List Reloc → Bool
   | [] => false
   | r :: rs =>
     if Nat.beq r.off off && (r.kind == .abs64) && Nat.beq r.sym sym && (r.addend == addend) &&
@@ -1969,6 +1969,9 @@ def hasUnoverwrittenAbs64 (bytesLen off sym : Nat) (addend : Int) : List Reloc �
     else
       hasUnoverwrittenAbs64 bytesLen off sym addend rs
 
+private theorem bytesLE_length (n : Nat) (v : BitVec 64) : (bytesLE n v).length = n := by
+  simp [bytesLE]
+
 theorem splice_bytesLE_step {bs : List (BitVec 8)} {r_off off n bytesLen w : Nat} {v : BitVec 64}
     (hlen : bs.length = bytesLen)
     (hr_bound : r_off + w ≤ bytesLen)
@@ -1976,7 +1979,7 @@ theorem splice_bytesLE_step {bs : List (BitVec 8)} {r_off off n bytesLen w : Nat
     (((bs.take r_off ++ bytesLE w v ++ bs.drop (r_off + w)).drop off).take n =
       (bs.drop off).take n) ∧
     (bs.take r_off ++ bytesLE w v ++ bs.drop (r_off + w)).length = bytesLen := by
-  have hbw : (bytesLE w v).length = w := RoDataFactsAux.bytesLE_length w v
+  have hbw : (bytesLE w v).length = w := bytesLE_length w v
   have hb : r_off + (bytesLE w v).length ≤ bs.length := by omega
   have hdisj : r_off + (bytesLE w v).length ≤ off ∨ off + n ≤ r_off := by rw [hbw]; exact hr_disj
   have h1 := splice_drop_take_eq hb hdisj
@@ -2040,7 +2043,7 @@ theorem foldl_patchDataReloc_slice_abs64 {lib : MultiPlacedLib} {mpl : MultiPlac
         simp [Reloc.toEntry, hkind]
       rw [hpr]
       have hbw : (bytesLE 8 (addSignedAddr (lib.resolve mpl (names.getD r.sym "")) r.addend)).length = 8 :=
-        RoDataFactsAux.bytesLE_length 8 _
+        bytesLE_length 8 _
       have hb : r.off + (bytesLE 8 (addSignedAddr (lib.resolve mpl (names.getD r.sym "")) r.addend)).length ≤
           bs.length := by omega
       have hlen₁ : (bs.take r.off ++ bytesLE 8 (addSignedAddr (lib.resolve mpl (names.getD r.sym "")) r.addend) ++
@@ -2080,10 +2083,10 @@ inductive InvStep where
   | dataAbs64 (di off sym : Nat) (addend : Int)
   deriving DecidableEq, Repr, Inhabited
 
-def defaultBlock : Block := { code := [] }
-def defaultData : Data := { sym := 0 }
+@[expose] def defaultBlock : Block := { code := [] }
+@[expose] def defaultData : Data := { sym := 0 }
 
-def fastWordOfBytesLE (xs : List (BitVec 8)) (off : Nat) : BitVec 32 :=
+@[expose] def fastWordOfBytesLE (xs : List (BitVec 8)) (off : Nat) : BitVec 32 :=
   withForcedList (fastDrop off xs) fun ys => wordOfBytesLE ys 0
 
 @[simp] theorem fastWordOfBytesLE_eq (xs : List (BitVec 8)) (off : Nat) :
@@ -2091,7 +2094,7 @@ def fastWordOfBytesLE (xs : List (BitVec 8)) (off : Nat) : BitVec 32 :=
   simp only [fastWordOfBytesLE, withForcedList_eq, fastDrop_eq_drop, wordOfBytesLE,
     getD_drop, Nat.add_zero]
 
-def checkInvStepB (ML : MultiLib) (tBlk : VecTree Block) (tData : VecTree Data)
+@[expose] def checkInvStepB (ML : MultiLib) (tBlk : VecTree Block) (tData : VecTree Data)
     (tSym : VecTree (Option (Nat × Nat)))
     (tBlkKnown tSymKnown : VecTree (Option Unit)) (step : InvStep) :
     Option (VecTree (Option Unit) × VecTree (Option Unit)) :=
@@ -2164,7 +2167,7 @@ def checkInvStepB (ML : MultiLib) (tBlk : VecTree Block) (tData : VecTree Data)
       else none
     else none
 
-def checkInvStepsLoop (ML : MultiLib) (tBlk : VecTree Block) (tData : VecTree Data)
+@[expose] def checkInvStepsLoop (ML : MultiLib) (tBlk : VecTree Block) (tData : VecTree Data)
     (tSym : VecTree (Option (Nat × Nat))) :
     VecTree (Option Unit) → VecTree (Option Unit) → List InvStep →
       Option (VecTree (Option Unit) × VecTree (Option Unit))
@@ -2176,7 +2179,7 @@ def checkInvStepsLoop (ML : MultiLib) (tBlk : VecTree Block) (tData : VecTree Da
     | none => none
 
 /-- Boolean checker validating a relocation-inversion DAG `steps` on `ML`. -/
-def checkRelocInvStepsB (ML : MultiLib) (nameChars : List (List Char))
+@[expose] def checkRelocInvStepsB (ML : MultiLib) (nameChars : List (List Char))
     (steps : List InvStep) : Bool :=
   Nat.blt ML.blocks.length 1048576 &&
   Nat.blt ML.data.length 1048576 &&
@@ -2587,12 +2590,12 @@ theorem checkInvStepB_sound {ML : MultiLib} {mpl mpl₀ : MultiPlacement} {img :
           have hlen_s₁ : (((d.relocs.map (Reloc.toEntry ML.names)).foldl
               (ML.toMultiPlacedLib.patchDataReloc mpl (mpl.ρ dInfo.sym)) d.bytes).drop off).length ≥ 8 := by
             have := congrArg List.length hslice₁
-            rw [List.length_take, RoDataFactsAux.bytesLE_length] at this
+            rw [List.length_take, bytesLE_length] at this
             omega
           have hlen_s₂ : (((d.relocs.map (Reloc.toEntry ML.names)).foldl
               (ML.toMultiPlacedLib.patchDataReloc mpl₀ (mpl₀.ρ dInfo.sym)) d.bytes).drop off).length ≥ 8 := by
             have := congrArg List.length hslice₂
-            rw [List.length_take, RoDataFactsAux.bytesLE_length] at this
+            rw [List.length_take, bytesLE_length] at this
             omega
           have hpd_slice := congrArg (fun bs => (bs.drop off).take 8) hpd
           unfold MultiPlacedLib.patchedData at hpd_slice

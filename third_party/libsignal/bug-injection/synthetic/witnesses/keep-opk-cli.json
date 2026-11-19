@@ -1,13 +1,15 @@
 {
-  "comment": "Synthetic mutant for Issue 6 (message_decrypt_prekey skips pre_key_store.remove_pre_key): provisioned with a one-time pre-key (with_opk = true), Alice sends an OPK-bearing pre-key message and Bob receives it; on the mutant, one-time-pre-keys/<opk_id> remains non-empty on disk, so the environment leaks Bob's OPK before Bob's reply.",
-  "setup_seed": 5003,
-  "rng_seed": 50030,
+  "comment": "Synthetic mutant for Issue 6 (message_decrypt_prekey skips pre_key_store.remove_pre_key): provisioned with a one-time pre-key (with_opk = true), Alice initiates session A1 and sends m1, which Bob receives (leaving one-time-pre-keys/3 on disk under the mutant while clean v0.105.4 deletes it); Alice clears her session, initiates session A2 reusing the same one-time pre-key bundle, and sends m2, which the mutant accepts (exit 0) and clean v0.105.4 rejects (exit 1).",
+  "setup_seed": 23209,
+  "rng_seed": 41,
   "with_opk": true,
   "calls": [
     {"entry": "init", "b": {"honest_bundle": true}},
-    {"entry": "send", "who": 0, "b": {"utf8": "opk-handshake"}},
+    {"entry": "send", "who": 0, "b": {"utf8": "m1"}},
     {"entry": "recv", "who": 1, "b": {"message_of": 1}},
-    {"entry": "leak", "who": 1, "secret": "opk"},
-    {"entry": "send", "who": 1, "b": {"utf8": "opk-reply"}}
+    {"entry": "clear", "who": 0},
+    {"entry": "init", "b": {"honest_bundle": true}},
+    {"entry": "send", "who": 0, "b": {"utf8": "m2"}},
+    {"entry": "recv", "who": 1, "b": {"message_of": 5}}
   ]
 }

@@ -14,6 +14,8 @@ import Symbolic.Proofs.Swarm.CREF.Cli.World.LeakPure
 import Symbolic.Proofs.Swarm.CREF.Cli.World.XplTransferPure
 import Symbolic.Proofs.Swarm.UA.Base
 import Symbolic.Proofs.Swarm.UA.XlateSteps
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 
 /-!
 # Prefix Explanation Translation
@@ -23,7 +25,7 @@ translates to a clean `ExplainsCli` explanation of `flatEvents evs` with identic
 `runTrace`, `honestSalts`, `prefixTerms`, and `plaintextTerms`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

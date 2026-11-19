@@ -9,13 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollariesBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollariesBudget
 public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetSat -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecPlacedBudget
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedBBudget
-import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptErrOwnedPlacedBudget
-import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlacedBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptErrOwnedPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlacedBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCut -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `HookSat` Sibling of `FullPlacementCorollariesBudget` (`FullPlacementCorollariesBudgetSat`)
@@ -38,7 +43,7 @@ open CryptoVerification
    blkPl_75 lsLogFilterAddr lsMemcpySym lsProg_75 lsmpl)
 open CryptoVerification.E2E.Pqxdh.Initiator
   (AcceptKeysInput Bytes DRKey Primitives StructuralPrims WellSizedAcceptKeysInput
-   bytesToBv8 pqxdhEntryStack)
+   bytesToBv8)
 open CryptoVerification.E2E.Pqxdh.Initiator.Model (acceptKeys)
 open CryptoVerification.E2E.Pqxdh.ResponderCore
   (BobCutPost PrimitivesMatchCrypto
@@ -50,7 +55,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (framelessMemcpySpec)
 open LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecPlacedBudget
   (vecAppendElements_fast_placed_ok_cl)
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget
-  (pqxdhAcceptOptFieldsFrozenPlacedSpec)
+  (pqxdhAcceptOptFieldsFrozenPlacedSpec pqxdhAcceptPlacedStack)
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget (AcceptOptFieldsEnv)
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedBBudget
   (pqxdhAccept_opt_fields_placed_ok_of_block)
@@ -225,7 +230,7 @@ public theorem initBob_to_spqr_full_placed_sat [LibsignalFullPlacement]
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr
         inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (768 + pqxdhEntryStack) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp (768 + pqxdhAcceptPlacedStack) ∗ A.pool lim st s0 ∗ Frame)
       (fun sf P_f =>
         (∃ evs : List AllocEvent, AcceptOptFieldsEnv P inp evs ∧
           (P_f ⊢
@@ -237,7 +242,7 @@ public theorem initBob_to_spqr_full_placed_sat [LibsignalFullPlacement]
             ((argPtr + 297#64) ↦₈ 0#8) ∗
             memRegion outPtr 344 ∗ initBobSavedRegs s0.sp s0 ∗
             (lsLogFilterAddr ↦₆₄ 0#64) ∗
-            stackAt (s0.sp - 768#64) pqxdhEntryStack ∗
+            stackAt (s0.sp - 768#64) pqxdhAcceptPlacedStack ∗
             A.pool lim (M.stepEvents evs st) sf ∗ Frame)) ∧
         LibsignalFrozen lsmpl sf.mem ∧
         sf.status = ExecStatus.Running ∧ sf.sp = s0.sp - 768#64 ∧
@@ -285,7 +290,7 @@ public theorem initBob_to_spqr_full_placed_std_sat [LibsignalFullPlacement]
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr
         inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (768 + pqxdhEntryStack) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp (768 + pqxdhAcceptPlacedStack) ∗ A.pool lim st s0 ∗ Frame)
       (fun sf P_f =>
         (∃ evs : List AllocEvent, AcceptOptFieldsEnv P inp evs ∧
           (P_f ⊢
@@ -297,7 +302,7 @@ public theorem initBob_to_spqr_full_placed_std_sat [LibsignalFullPlacement]
             ((argPtr + 297#64) ↦₈ 0#8) ∗
             memRegion outPtr 344 ∗ initBobSavedRegs s0.sp s0 ∗
             (lsLogFilterAddr ↦₆₄ 0#64) ∗
-            stackAt (s0.sp - 768#64) pqxdhEntryStack ∗
+            stackAt (s0.sp - 768#64) pqxdhAcceptPlacedStack ∗
             A.pool lim (M.stepEvents evs st) sf ∗ Frame)) ∧
         LibsignalFrozen lsmpl sf.mem ∧
         sf.status = ExecStatus.Running ∧ sf.sp = s0.sp - 768#64 ∧
@@ -347,7 +352,7 @@ public theorem initializeBobSession_cut_full_placed_sat [LibsignalFullPlacement]
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr
         inp ikBPk spkBPk sameAccountByte ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (768 + pqxdhEntryStack) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp (768 + pqxdhAcceptPlacedStack) ∗ A.pool lim st s0 ∗ Frame)
       (BobCutPost (blkPl_75).base s0 ratchetKeyPairPtr
         drKey.rootKey drKey.pqrKey drKey.chainKey spkBPk inp.spkBSk Frame)
       Qp :=
@@ -387,7 +392,7 @@ public theorem initializeBobSession_cut_full_placed_std_sat [LibsignalFullPlacem
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr
         inp ikBPk spkBPk sameAccountByte ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (768 + pqxdhEntryStack) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp (768 + pqxdhAcceptPlacedStack) ∗ A.pool lim st s0 ∗ Frame)
       (BobCutPost (blkPl_75).base s0 ratchetKeyPairPtr
         drKey.rootKey drKey.pqrKey drKey.chainKey spkBPk inp.spkBSk Frame)
       Qp :=

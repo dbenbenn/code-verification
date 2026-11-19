@@ -213,27 +213,6 @@ private theorem slotDecl63_congr_update {alignMap : BitVec 64 → Option Nat}
     simp [slotDecl63, hNe]
   | _ => rfl
 
-/-- Updating `alignMap` at a fresh pointer `p` (`st.liveMap p = none` in a `MallocngWFInflight`
-    state) leaves `large63DeclBytes st` unchanged. -/
-theorem large63DeclBytes_update_fresh {inflight : Nat}
-    {base brkStart brk : BitVec 64} {liveCost peakCost : Nat}
-    {st : MallocngSt} {alignMap : BitVec 64 → Option Nat}
-    (hwf : MallocngWFInflight inflight base brkStart brk liveCost peakCost st)
-    {p : BitVec 64} (hFresh : st.liveMap p = none) (alNew : Option Nat) :
-    large63DeclBytes st (fun k => if k = p then alNew else alignMap k) =
-      large63DeclBytes st alignMap := by
-  unfold large63DeclBytes large63Groups groups63
-  congr 1
-  refine List.map_congr_left fun g hg => ?_
-  have hgMem : g ∈ st.groups := (List.mem_filter.mp (List.mem_filter.mp hg).1).1
-  congr 1
-  refine List.map_congr_left fun s hs => ?_
-  obtain ⟨idx, hIdx, rfl⟩ := List.getElem_of_mem hs
-  refine slotDecl63_congr_update fun req eff hSlot => ?_
-  have hLive := (hwf.liveMap_wf p req).mpr ⟨g, hgMem, idx, hIdx, eff, hSlot⟩
-  rw [hFresh] at hLive
-  cases hLive
-
 /-- General slab `.claimed → .liveUser p req eff` commit into `MallocngFineInv 0 b'`. -/
 theorem commit_claimed_slab_slot_general
     {base brkStart brk1 brk' : BitVec 64} {live1 peak1 live' peak' : Nat}
@@ -544,43 +523,6 @@ theorem synthCoarseBudget_countIvsWF {liveCost peakCost : Nat} (st : MallocngSt)
     MallocngCountIvsWF (synthCoarseBudget liveCost peakCost st) (dynamicRootRegions st) st := by
   dsimp only [synthCoarseBudget, MallocngCountIvsWF]
   refine ⟨by omega, Nat.le_refl _, rfl, by omega, by omega, hGrp.mono (by omega)⟩
-
-/-- Reconstructs `MallocngFineInv inflight b` at any intermediate `alloc_slot` state satisfying
-    `AllocSlotInvPres`. -/
-theorem mallocngFineInv_of_allocSlotInvPres {inflight : Nat}
-    {b : FineBudget} {ivs0 : List (BitVec 64 × Nat)}
-    {alignMap : BitVec 64 → Option Nat} {st0 st1 : MallocngSt}
-    {pk : List Nat} {pkSC pkSB sc : Nat}
-    (hInv0 : MallocngFineInv 0 b ivs0 alignMap st0)
-    (hPk :
-      pk.length = 48 ∧
-      (∀ k < 48, liveSlotsInClass st0 k ≤ pk.getD k 0) ∧
-      (∀ k < 48, (allGroups st0 k).length ≤ gBound pk k) ∧
-      (∀ ch < 48, ∀ pSc < 48, (nestedEdge st0 ch pSc).length ≤ edgeBound pk ch pSc) ∧
-      (∀ k < 48, rootBytes st0 k ≤ rBound pk k) ∧
-      (straddle63Groups st0).length ≤ pkSC ∧
-      straddle63Bytes st0 ≤ pkSB ∧
-      linForm grpWtS pk + FineScale * pkSC ≤ b.cumSmallGroupsS ∧
-      linForm slotWt pk + pkSB ≤ b.cumSmallBytes)
-    (hPres : AllocSlotInvPres sc pk alignMap st0 st1)
-    (hLiveMap1 : st1.liveMap = st0.liveMap)
-    (hMeta1 : st1.metaAreas.length ≤ fineMaxMetaAreas b) :
-    MallocngFineInv inflight b (dynamicRootRegions st1) alignMap st1 :=
-  { ivs_eq := fun _ => rfl
-    groups_geom := hPres.groups_geom
-    alignMap_wf := ⟨fun q al hAl => by
-      obtain ⟨h16, n, hL0⟩ := hInv0.alignMap_wf.1 q al hAl
-      exact ⟨h16, n, hLiveMap1 ▸ hL0⟩, hPres.user_slots_wf⟩
-    live63_eq := ⟨hPres.large63_eq.1.trans hInv0.live63_eq.1,
-      hPres.large63_eq.2.trans hInv0.live63_eq.2⟩
-    live63_le_peak := hInv0.live63_le_peak
-    metaAreas_le := hMeta1
-    small_witness := ⟨pk, pkSC, pkSB, hPk.1,
-      fun k hk => hPres.live_eq k ▸ hPk.2.1 k hk,
-      hPres.groups_le, hPres.edges_le, hPres.roots_le,
-      hPres.straddle63_eq.1 ▸ hPk.2.2.2.2.2.1,
-      hPres.straddle63_eq.2 ▸ hPk.2.2.2.2.2.2.1,
-      hPk.2.2.2.2.2.2.2.1, hPk.2.2.2.2.2.2.2.2⟩ }
 
 /-- Slab commit specialized to `FineBudget.stepAligned align req b` (`malloc` / `calloc` at `align = 16`,
     and `aligned_alloc` / `posix_memalign` at general `align`). -/

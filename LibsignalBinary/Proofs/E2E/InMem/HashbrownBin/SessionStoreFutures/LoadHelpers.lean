@@ -10,17 +10,18 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Specs
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.Common
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.RecClone
 import LibsignalBinary.Proofs.E2E.InMem.SipHashBin.HashOne
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Helpers for `InMemSessionStore::load_session::{closure#0}` (`0x08ce4`)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.InMem.HashbrownBin.SessionStoreFutures
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge
+public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.InitiateDefs
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.DecCryptoAPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.InitiateCrypto
@@ -24,7 +24,7 @@ Connects `initiateState` outputs to `recordBytes (sessionToRecordRecPending (pqS
 `initiateDrawsOfCoins`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

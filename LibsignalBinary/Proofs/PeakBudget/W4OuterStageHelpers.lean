@@ -10,19 +10,21 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterHelpers
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
+import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W4OuterHelpers
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Concrete CLI Store-Step & Stage `PhaseCreditSpec` Kit
@@ -37,7 +39,7 @@ call order:
    and Stage P4 (`Matched`, `0`-prev, and `prev1`) composers.
 -/
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.PeakBudget.W4OuterStageHelpers
 
@@ -115,18 +117,6 @@ theorem phaseCreditSpec_seq_freeOnly_exact
       obtain ⟨hc₂, hl₂, hp₂⟩ := stepEvents_freeOnly_le hM.freeNonInc h2 (M.stepEvents evs₁ st0)
       exact ⟨Nat.le_trans hc₂ hc₁, Nat.le_trans hl₂ hl₁, Nat.le_trans hp₂ hp₁⟩
 
-/-- Appending any free-only predicate `F` (`∀ evs, F evs → FreeOnlyEvs evs`) in exact binary order
-preserves `(c, l, p, r)` unconditionally. -/
-theorem phaseCreditSpec_seq_freeOnlyPred_exact
-    {M : AllocCostModel} [HasFineReallocCredit M] (hM : ModelHyps M)
-    {E F : List AllocEvent → Prop} {c l p r : Nat}
-    (hF : ∀ evs, F evs → FreeOnlyEvs evs)
-    (h : PhaseCreditSpec M E c l p r) :
-    PhaseCreditSpec M (SeqEnv E F) c l p r :=
-  PhaseCreditSpec.of_imp
-    (fun _ hevs => LibsignalBinary.Proofs.PeakBudget.SeqCreditKit.SeqEnv.mono (fun _ hx => hx) hF hevs)
-    (phaseCreditSpec_seq_freeOnly_exact hM h)
-
 theorem rustDealloc8_freeOnly {boxSz : Nat} {evs : List AllocEvent}
     (h : evs = rustDeallocEvents boxSz 8) : FreeOnlyEvs evs := by
   subst h
@@ -166,14 +156,14 @@ theorem boxAllocEnv_phaseCredit_small {M : AllocCostModel} [HasFineReallocCredit
 
 /-- Boxed-future async store step (`BoxAllocEnv boxSz → E_poll → FreeOnlyEvs`) in exact binary
 call order. -/
-def W4BoxedStoreStepEnv (boxSz : Nat) (E_poll : List AllocEvent → Prop)
+@[expose] def W4BoxedStoreStepEnv (boxSz : Nat) (E_poll : List AllocEvent → Prop)
     (evs : List AllocEvent) : Prop :=
   SeqEnv (BoxAllocEnv boxSz) (SeqEnv E_poll FreeOnlyEvs) evs
 
-def w4BoxedStepCum (boxSz pollCum : Nat) : Nat := (2 * boxSz + 9539) + pollCum
-def w4BoxedStepLive (boxSz pollLive : Nat) : Nat := (boxSz + 8195) + pollLive
-def w4BoxedStepPeak (boxSz pollPeak : Nat) : Nat := (boxSz + 8195) + pollPeak
-def w4BoxedStepMaxReq (boxSz pollMaxReq : Nat) : Nat := max boxSz pollMaxReq
+@[expose] def w4BoxedStepCum (boxSz pollCum : Nat) : Nat := (2 * boxSz + 9539) + pollCum
+@[expose] def w4BoxedStepLive (boxSz pollLive : Nat) : Nat := (boxSz + 8195) + pollLive
+@[expose] def w4BoxedStepPeak (boxSz pollPeak : Nat) : Nat := (boxSz + 8195) + pollPeak
+@[expose] def w4BoxedStepMaxReq (boxSz pollMaxReq : Nat) : Nat := max boxSz pollMaxReq
 
 /-- Regime-uniform `PhaseCreditSpec` for `W4BoxedStoreStepEnv boxSz E_poll` (unconditional in
 `l_p`, `p_p`). -/
@@ -241,21 +231,6 @@ theorem loadStepEnv_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
     (fun _ h => boxedDeallocPred_to_w4BoxedStoreStep (fun _ hd => rustDealloc8_freeOnly hd) h)
     (w4BoxedStoreStep_phaseCredit hM kit.loadBoxSize hpoll)
 
-theorem storeStepEnv_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) {A : RustAlloc} {b : BitVec 64}
-    (kit : SessionStoreSpec A b) (kitEnv : SessionStoreBudgetEnv kit)
-    (st0 : kit.StoreState) (rem : AddrVal) (rec : SessionRecord (List (BitVec 8)))
-    {c l p r : Nat}
-    (hpoll : PhaseCreditSpec M (kitEnv.storePollEnv st0 rem rec) c l p r) :
-    PhaseCreditSpec M (StoreStepEnv kit kitEnv st0 rem rec)
-      (w4BoxedStepCum kit.storeBoxSize c)
-      (w4BoxedStepLive kit.storeBoxSize l)
-      (w4BoxedStepPeak kit.storeBoxSize p)
-      (w4BoxedStepMaxReq kit.storeBoxSize r) :=
-  PhaseCreditSpec.of_imp
-    (fun _ h => boxedDeallocPred_to_w4BoxedStoreStep (fun _ hd => rustDealloc8_freeOnly hd) h)
-    (w4BoxedStoreStep_phaseCredit hM kit.storeBoxSize hpoll)
-
 theorem trustStepEnv_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) {A : RustAlloc} {b : BitVec 64}
     (ikit : IdentityStoreSpec A b) (ikitEnv : IdentityStoreBudgetEnv ikit)
@@ -270,49 +245,6 @@ theorem trustStepEnv_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
   PhaseCreditSpec.of_imp
     (fun _ h => boxedDeallocPred_to_w4BoxedStoreStep (fun _ hd => rustDealloc8_freeOnly hd) h)
     (w4BoxedStoreStep_phaseCredit hM ikit.trustBoxSize hpoll)
-
-theorem saveStepEnv_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) {A : RustAlloc} {b : BitVec 64}
-    (ikit : IdentityStoreSpec A b) (ikitEnv : IdentityStoreBudgetEnv ikit)
-    (ist0 : ikit.IdState) (rem : AddrVal) (key : IdentityKey)
-    {c l p r : Nat}
-    (hpoll : PhaseCreditSpec M (ikitEnv.savePollEnv ist0 rem key) c l p r) :
-    PhaseCreditSpec M (SaveStepEnv ikit ikitEnv ist0 rem key)
-      (w4BoxedStepCum ikit.saveBoxSize c)
-      (w4BoxedStepLive ikit.saveBoxSize l)
-      (w4BoxedStepPeak ikit.saveBoxSize p)
-      (w4BoxedStepMaxReq ikit.saveBoxSize r) :=
-  PhaseCreditSpec.of_imp
-    (fun _ h => boxedDeallocPred_to_w4BoxedStoreStep (fun _ hd => rustDealloc8_freeOnly hd) h)
-    (w4BoxedStoreStep_phaseCredit hM ikit.saveBoxSize hpoll)
-
-theorem kpStepEnv_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
-    (skit : IdentitySelfStoreSpec ikit) (senv : IdentitySelfStoreBudgetEnv skit)
-    (ist0 : ikit.IdState) {c l p r : Nat}
-    (hpoll : PhaseCreditSpec M (senv.kpPollEnv ist0) c l p r) :
-    PhaseCreditSpec M (KpStepEnv skit senv ist0)
-      (w4BoxedStepCum skit.kpBoxSize c)
-      (w4BoxedStepLive skit.kpBoxSize l)
-      (w4BoxedStepPeak skit.kpBoxSize p)
-      (w4BoxedStepMaxReq skit.kpBoxSize r) :=
-  PhaseCreditSpec.of_imp
-    (fun _ h => boxedDeallocPred_to_w4BoxedStoreStep (fun _ hd => rustDealloc8_freeOnly hd) h)
-    (w4BoxedStoreStep_phaseCredit hM skit.kpBoxSize hpoll)
-
-theorem regIdStepEnv_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
-    (skit : IdentitySelfStoreSpec ikit) (senv : IdentitySelfStoreBudgetEnv skit)
-    (ist0 : ikit.IdState) {c l p r : Nat}
-    (hpoll : PhaseCreditSpec M (senv.regIdPollEnv ist0) c l p r) :
-    PhaseCreditSpec M (RegIdStepEnv skit senv ist0)
-      (w4BoxedStepCum skit.regIdBoxSize c)
-      (w4BoxedStepLive skit.regIdBoxSize l)
-      (w4BoxedStepPeak skit.regIdBoxSize p)
-      (w4BoxedStepMaxReq skit.regIdBoxSize r) :=
-  PhaseCreditSpec.of_imp
-    (fun _ h => boxedDeallocPred_to_w4BoxedStoreStep (fun _ hd => rustDealloc8_freeOnly hd) h)
-    (w4BoxedStoreStep_phaseCredit hM skit.regIdBoxSize hpoll)
 
 /-- Regime-uniform `PhaseCreditSpec` for `GrowOneSpeEnv 0#64` (`192`-byte `SignalProtocolError`
 vec allocation on `try_decrypt_pq` error). -/
@@ -337,7 +269,7 @@ theorem growOneSpeZero_phaseCredit_small {M : AllocCostModel} [HasFineReallocCre
 
 /-- Small-store async step (`idTrust 32 B`, `idSave 32 B`, `idKp 16 B`, `idRegId 16 B`,
 `spkGet 16 B`, `kpkGet 16 B`, `pkGet 16 B`, `pkRemove 16 B`, `kpkMark 32 B`). -/
-def W4SmallStoreStepEnv (boxSz : Nat) (rd : ReadRule) (files : FsFiles)
+@[expose] def W4SmallStoreStepEnv (boxSz : Nat) (rd : ReadRule) (files : FsFiles)
     (dir : DirGhost) (name : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   W4BoxedStoreStepEnv boxSz (CliSmallStorePollEnv rd files dir name) evs
 
@@ -355,23 +287,6 @@ theorem w4SmallStoreStep_phaseCredit {M : AllocCostModel} [HasFineReallocCredit 
       (w4BoxedStepPeak boxSz (smallStorePollDeltaPeak (max maxVal fileCap) maxEntries))
       (w4BoxedStepMaxReq boxSz (smallStorePollMaxReq (max maxVal fileCap) maxEntries)) :=
   w4BoxedStoreStep_phaseCredit hM boxSz (smallStorePoll_phaseCredit hM hdc hdir hname hcap)
-
-theorem w4SmallStoreStep_small_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (boxSz : Nat)
-    (hsz : boxSz ≤ HasFineReallocCredit.smallMaxReq M)
-    {rd : ReadRule} {files : FsFiles} {dir : DirGhost} {name : List (BitVec 8)}
-    {maxDir maxEntries maxVal fileCap : Nat}
-    (hdc : DirDomainCaps maxDir maxEntries maxVal dir)
-    (hdir : maxDir ≤ 64)
-    (hname : name.length ≤ 64)
-    (hcap : ∀ bs, rd files (pathOf dir.path name) = .ok bs → bs.length ≤ fileCap) :
-    PhaseCreditSpec M (W4SmallStoreStepEnv boxSz rd files dir name)
-      (w4BoxedStepCum boxSz (smallStorePollDeltaCum (max maxVal fileCap) maxEntries))
-      (smallStorePollDeltaLive (max maxVal fileCap) maxEntries)
-      (smallStorePollDeltaPeak (max maxVal fileCap) maxEntries)
-      (w4BoxedStepMaxReq boxSz (smallStorePollMaxReq (max maxVal fileCap) maxEntries)) :=
-  w4BoxedStoreStep_small_phaseCredit hM boxSz hsz
-    (smallStorePoll_phaseCredit hM hdc hdir hname hcap)
 
 /-- Peer-address length bound: `peer.name.bytes.length ≤ 40 ⇒ (addressText peer.val).length ≤ 64`. -/
 theorem addressText_peer_length_le_64 {peer : AddrGhost}
@@ -415,25 +330,8 @@ theorem w4KeyIdSmallStoreStep_phaseCredit {M : AllocCostModel} [HasFineReallocCr
   w4SmallStoreStep_phaseCredit hM boxSz hdc hdir
     (Nat.le_trans (keyName_length_le id) (by decide)) hcap
 
-/-- Base-keys-indexed small-store step (`kpkMark`, `boxSz = 32`, `name = baseKeysName id`,
-`(baseKeysName id).length ≤ 20 ≤ 64`). -/
-theorem w4BaseKeysSmallStoreStep_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (boxSz : Nat) {rd : ReadRule} {files : FsFiles}
-    {dir : DirGhost} (id : BitVec 32)
-    {maxDir maxEntries maxVal fileCap : Nat}
-    (hdc : DirDomainCaps maxDir maxEntries maxVal dir)
-    (hdir : maxDir ≤ 64)
-    (hcap : ∀ bs, rd files (pathOf dir.path (baseKeysName id)) = .ok bs → bs.length ≤ fileCap) :
-    PhaseCreditSpec M (W4SmallStoreStepEnv boxSz rd files dir (baseKeysName id))
-      (w4BoxedStepCum boxSz (smallStorePollDeltaCum (max maxVal fileCap) maxEntries))
-      (w4BoxedStepLive boxSz (smallStorePollDeltaLive (max maxVal fileCap) maxEntries))
-      (w4BoxedStepPeak boxSz (smallStorePollDeltaPeak (max maxVal fileCap) maxEntries))
-      (w4BoxedStepMaxReq boxSz (smallStorePollMaxReq (max maxVal fileCap) maxEntries)) :=
-  w4SmallStoreStep_phaseCredit hM boxSz hdc hdir
-    (Nat.le_trans (baseKeysName_length_le id) (by decide)) hcap
-
 /-- Stage P1 `load_session` async step (`24 B` box + `CliSessLoadPollEnv` + `FreeOnlyEvs`). -/
-def W4SessLoadStepEnv (rd : ReadRule)
+@[expose] def W4SessLoadStepEnv (rd : ReadRule)
     (DeserEnv : List (BitVec 8) → List AllocEvent → Prop)
     (files : FsFiles) (sessDir : DirGhost) (peer : AddrGhost)
     (evs : List AllocEvent) : Prop :=
@@ -458,7 +356,7 @@ theorem w4SessLoadStep_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
   w4BoxedStoreStep_phaseCredit hM 24 (sessLoadPoll_phaseCredit hM hdc hdir hpeer hcap hdeser)
 
 /-- Stage P4 `0`-prev `store_session` async step (`32 B` box + `CliSessStorePollEnv` + `FreeOnlyEvs`). -/
-def W4SessStoreStepEnv (sessDir : DirGhost) (peer : AddrGhost)
+@[expose] def W4SessStoreStepEnv (sessDir : DirGhost) (peer : AddrGhost)
     (g_rec : RecordGhost) (r_rec : SessionRecord (List (BitVec 8)))
     (evs : List AllocEvent) : Prop :=
   W4BoxedStoreStepEnv 32 (CliSessStorePollEnv sessDir peer g_rec r_rec) evs
@@ -478,7 +376,7 @@ theorem w4SessStoreStep_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M
 
 /-- Stage P4 Path C `prev1` `store_session` async step (`32 B` box + `CliSessStorePollPrev1Env` +
 `FreeOnlyEvs`). -/
-def W4SessStorePrev1StepEnv (sessDir : DirGhost) (peer : AddrGhost)
+@[expose] def W4SessStorePrev1StepEnv (sessDir : DirGhost) (peer : AddrGhost)
     (G : SessionGhost) (sess : Session (List (BitVec 8))) (enc : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   W4BoxedStoreStepEnv 32 (CliSessStorePollPrev1Env sessDir peer G sess enc) evs
@@ -500,7 +398,7 @@ theorem w4SessStorePrev1Step_phaseCredit {M : AllocCostModel} [HasFineReallocCre
 
 /-- Concrete CLI Stage P1 `.ok` (`is_trusted_identity = .ok true`) envelope:
 `W4SessLoadStepEnv` (`24 B`) → `W4SmallStoreStepEnv 32` (`idTrust`). -/
-def W4StageP1OkCliEnv (rd : ReadRule)
+@[expose] def W4StageP1OkCliEnv (rd : ReadRule)
     (DeserEnv : List (BitVec 8) → List AllocEvent → Prop)
     (files : FsFiles) (sessDir peersDir : DirGhost) (peer : AddrGhost)
     (evs : List AllocEvent) : Prop :=
@@ -510,7 +408,7 @@ def W4StageP1OkCliEnv (rd : ReadRule)
 /-- Concrete CLI Stage P1 `.untrusted` (`is_trusted_identity = .ok false`) envelope:
 `W4SessLoadStepEnv` (`24 B`) → `W4SmallStoreStepEnv 32` (`idTrust`) →
 `StringCloneEnv peer.name` → `FreeOnlyEvs` (record/coro drop). -/
-def W4StageP1UntrustedCliEnv (rd : ReadRule)
+@[expose] def W4StageP1UntrustedCliEnv (rd : ReadRule)
     (DeserEnv : List (BitVec 8) → List AllocEvent → Prop)
     (files : FsFiles) (sessDir peersDir : DirGhost) (peer : AddrGhost)
     (evs : List AllocEvent) : Prop :=
@@ -616,10 +514,10 @@ theorem w4StageP1UntrustedCli_small_phaseCredit {M : AllocCostModel} [HasFineRea
 
 /-! ## Stage P2 `InitialStateEnv` & Key-Lookup + Handshake Composer -/
 
-def w4SpqrInitReq (authKeyLen : Nat) : Nat := 4 * authKeyLen + 4096
-def w4SpqrInitCum (authKeyLen : Nat) : Nat := 128 * (2 * w4SpqrInitReq authKeyLen + 9539)
-def w4SpqrInitLive (authKeyLen : Nat) : Nat := 128 * (w4SpqrInitReq authKeyLen + 8195)
-def w4SpqrInitPeak (authKeyLen : Nat) : Nat := 128 * (w4SpqrInitReq authKeyLen + 8195)
+@[expose] def w4SpqrInitReq (authKeyLen : Nat) : Nat := 4 * authKeyLen + 4096
+@[expose] def w4SpqrInitCum (authKeyLen : Nat) : Nat := 128 * (2 * w4SpqrInitReq authKeyLen + 9539)
+@[expose] def w4SpqrInitLive (authKeyLen : Nat) : Nat := 128 * (w4SpqrInitReq authKeyLen + 8195)
+@[expose] def w4SpqrInitPeak (authKeyLen : Nat) : Nat := 128 * (w4SpqrInitReq authKeyLen + 8195)
 
 /-- `32`-byte root-key specialization (`x_spqr.p.authKey.length ≤ 32 ⇒ R ≤ 4224`) of
 `SpqrCodecPeakSpec.initialState_phaseCreditSpec`. -/
@@ -640,7 +538,7 @@ theorem w4SpqrInit32_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
 /-- Stage P2 (Path A / Path C) key-lookup & PQXDH responder handshake envelope in exact binary
 call order (`SpkGet → KpkGet → opt PkGet → IdKp → PreAccept → InitialStateEnv → BobInit →
 IdRegId → FreeOnlyEvs` early-exit/drop closure). -/
-def W4StageP2ShapeEnv (hasOpk : Bool)
+@[expose] def W4StageP2ShapeEnv (hasOpk : Bool)
     (SpkGet KpkGet PkGet IdKp PreAccept SpqrInit BobInit IdRegId : List AllocEvent → Prop)
     (evs : List AllocEvent) : Prop :=
   SeqEnv
@@ -688,7 +586,7 @@ theorem w4StageP2Shape_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
 
 /-- Concrete CLI Stage P4 Path B (`Matched`) envelope in exact binary order:
 `idSave (32 B)` → `sessStore 0-prev (32 B)` → `FreeOnlyEvs`. -/
-def W4StageP4MatchedCliEnv (rd : ReadRule) (files : FsFiles)
+@[expose] def W4StageP4MatchedCliEnv (rd : ReadRule) (files : FsFiles)
     (peersDir sessDir : DirGhost) (peer : AddrGhost)
     (g_rec : RecordGhost) (r_rec : SessionRecord (List (BitVec 8)))
     (evs : List AllocEvent) : Prop :=
@@ -728,7 +626,7 @@ theorem w4StageP4MatchedCli_phaseCredit {M : AllocCostModel} [HasFineReallocCred
 
 /-- Concrete CLI Stage P4 Path A (`0`-prev) envelope in exact binary order:
 `idSave (32 B)` → `kpkMark (32 B)` → `opt pkRemove (16 B)` → `sessStore 0-prev (32 B)` → `FreeOnlyEvs`. -/
-def W4StageP4PathACliEnv (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
+@[expose] def W4StageP4PathACliEnv (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
     (peersDir kpkDir opkDir sessDir : DirGhost) (peer : AddrGhost)
     (kpkName : List (BitVec 8)) (opkId : BitVec 32)
     (g_rec : RecordGhost) (r_rec : SessionRecord (List (BitVec 8)))
@@ -790,7 +688,7 @@ theorem w4StageP4PathACli_phaseCredit {M : AllocCostModel} [HasFineReallocCredit
 
 /-- Concrete CLI Stage P4 Path C (`prev1`) envelope in exact binary order:
 `idSave (32 B)` → `kpkMark (32 B)` → `opt pkRemove (16 B)` → `sessStorePrev1 (32 B)` → `FreeOnlyEvs`. -/
-def W4StageP4PathCCliEnv (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
+@[expose] def W4StageP4PathCCliEnv (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
     (peersDir kpkDir opkDir sessDir : DirGhost) (peer : AddrGhost)
     (kpkName : List (BitVec 8)) (opkId : BitVec 32)
     (G : SessionGhost) (sess : Session (List (BitVec 8))) (enc : List (BitVec 8))

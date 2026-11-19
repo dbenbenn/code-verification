@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
-public import Symbolic.Proofs.Swarm.COMPOSED.CompClosed
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.COMPOSED.CompClosed
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -40,7 +40,7 @@ Defines `TrDHS.InertOnNonTR` for composed-trace predicates invariant under netwo
 PQXDH entries, discharging all non-ratchet branches of `composed_reachable_induction`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

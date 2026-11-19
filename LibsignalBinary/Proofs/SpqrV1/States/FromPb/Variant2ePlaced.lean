@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2d
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2d -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch2Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1b
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2e
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 1 (`KeysSampled`, `+1104`) — Part E
@@ -25,7 +26,7 @@ Relocatable Block-`333` `<PolyEncoder>::from_pb` call (`+4096`), result dispatch
 epilogue composition (`+6568 -> +8180 -> ret`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedCKA2
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedCKA2 -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedCKA
 import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedFS3
 import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedPRNG3
@@ -20,12 +20,12 @@ import ProofLib.SepLogic.WP.StateNorm
 # Paper-Engine Healing-Epoch Boundary and Shifted Reductions
 
 Reductions and Lemma 9 for the boundary cell of the paper `DeliverForge` engine at `Δ = 2`,
-the Theorem 8 bounds for the shifted paper games, and `NoBadCoinsDF` for `challSimDF'Paper`.
--/
+the Theorem 8 bounds for the shifted paper games, and `NoBadCoinsDF` for `challSimDF'Paper`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
 open scoped BigOperators ENNReal
 open MeasureTheory ProbabilityTheory OracleComp OracleSpec

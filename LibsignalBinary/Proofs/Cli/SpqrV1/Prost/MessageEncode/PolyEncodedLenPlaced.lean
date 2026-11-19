@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyEncodedLenBasePlaced
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyEncodedLenBasePlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesPolyPlaced
 
 /-!
@@ -20,7 +20,7 @@ Proves `[LibsignalPlacement]` `subroutine_ok` contracts for CLI Blocks `493`
 (`PolynomialEncoder::encoded_len [local#3]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

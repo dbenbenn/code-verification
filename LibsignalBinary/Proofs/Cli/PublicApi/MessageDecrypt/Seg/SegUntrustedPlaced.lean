@@ -9,13 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegUntrusted
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegSavePlaced
-public import LibsignalBinary.Proofs.Common.StringClonePlaced
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegUntrusted -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegSavePlaced
+import LibsignalBinary.Proofs.Common.StringClonePlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlaced -- proof-setup: allow-public-import
+public import ProofLib.BV
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSave
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -139,7 +148,7 @@ theorem segUntrusted_placed_wp [LibsignalPlacement] {A : RustAlloc} {H : Libsign
     (by sep_focus)
   wp_done
 
-def wsUntrustedFixedEnvPlaced [LibsignalPlacement] (A : RustAlloc) (x : DecryptGhost)
+@[expose] def wsUntrustedFixedEnvPlaced [LibsignalPlacement] (A : RustAlloc) (x : DecryptGhost)
     (sp : BitVec 64) : SepProp :=
   FromRecordCallees.lsLogOff ∗
   ((sp + 0xe8#64) ↦₆₄ x.remA) ∗
@@ -147,7 +156,7 @@ def wsUntrustedFixedEnvPlaced [LibsignalPlacement] (A : RustAlloc) (x : DecryptG
   ((x.remA + 0x18#64) ↦₈ x.rem.device) ∗
   A.pool ∗ stackAt sp extHookStack
 
-def wsUntrustedFixedRestPlaced (A : RustAlloc)
+@[expose] def wsUntrustedFixedRestPlaced (A : RustAlloc)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (s0 : State) (sp : BitVec 64) : SepProp :=
   wsSavedRegs s0.sp s0 ∗
@@ -172,7 +181,7 @@ theorem wsFixed_wsEnv_untrusted_split_placed [LibsignalPlacement] (A : RustAlloc
   rw [protocolAddressAt_eq A x.rem x.remA, stack_wsCallee_extHook sp]
   ac_rfl
 
-def wsUntrustedPrePlaced [LibsignalPlacement] (A : RustAlloc) (x : DecryptGhost) (sp : BitVec 64)
+@[expose] def wsUntrustedPrePlaced [LibsignalPlacement] (A : RustAlloc) (x : DecryptGhost) (sp : BitVec 64)
     (e0 e1 e3 : BitVec 64) (e2 : BitVec 32) (d0 : BitVec 8) (pad : List (BitVec 8)) : SepProp :=
   FromRecordCallees.lsLogOff ∗
   ((sp + 0xe8#64) ↦₆₄ x.remA) ∗
@@ -184,7 +193,7 @@ def wsUntrustedPrePlaced [LibsignalPlacement] (A : RustAlloc) (x : DecryptGhost)
   ((sp + 0x590#64) ↦₃₂ e2) ∗ ((sp + 0x594#64) ↦₆₄ e3) ∗
   A.pool ∗ stackAt sp extHookStack
 
-def wsUntrustedCommonRestPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def wsUntrustedCommonRestPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (ans : StoreAnswers (List (BitVec 8)) Unit)
     (s0 : State) (sp : BitVec 64) (rec' : SessionRecord (List (BitVec 8)))
@@ -197,7 +206,7 @@ def wsUntrustedCommonRestPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc
   (memRegion (sp + 0x5a4#64) 0x4c ∗ memRegion (sp + 0x620#64) 0x7e0) ∗
   memRegion x.ret 48 ∗ cliTapeAfter ctl x.cur x.rest (x.draws C ans)
 
-def wsUntrustedFramePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def wsUntrustedFramePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (ans : StoreAnswers (List (BitVec 8)) Unit)
     (s0 : State) (sp : BitVec 64) (rec' : SessionRecord (List (BitVec 8)))
@@ -252,7 +261,7 @@ theorem trusted_entails_untrustedPre_placed [LibsignalPlacement] (C : Crypto) (A
       (Entails.sepExists_right e4 (Entails.sepExists_right d0
         (Entails.sepExists_right pad (Entails.pure_right hpad (Entails.refl _))))))))
 
-def wsUntrustedPostSpatialPlaced [LibsignalPlacement] (A : RustAlloc) (x : DecryptGhost) (sp : BitVec 64)
+@[expose] def wsUntrustedPostSpatialPlaced [LibsignalPlacement] (A : RustAlloc) (x : DecryptGhost) (sp : BitVec 64)
     (cap ptr devWord : BitVec 64) : SepProp :=
   FromRecordCallees.lsLogOff ∗
   ((sp + 0xe8#64) ↦₆₄ x.remA) ∗

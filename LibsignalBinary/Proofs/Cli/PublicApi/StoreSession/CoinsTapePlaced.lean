@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 
@@ -21,7 +21,7 @@ phantom `_ctl` parameter so relocatable `<Coins>` proofs preserve the arity and 
 `tapeAt` / `tapeAfter` while reducing definitionally at the CLI slot boundary.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,22 +32,18 @@ open CryptoVerification
 open CryptoVerification.SignalSession.Coins
 
 /-- Relocatable CLI coins tape predicate with phantom `_ctl` parameter matching `tapeAt`. -/
-def cliTapeAt [LibsignalPlacement] (_ctl : BitVec 64) (cur : BitVec 64) (rest : List (BitVec 8)) :
+@[expose] def cliTapeAt [LibsignalPlacement] (_ctl : BitVec 64) (cur : BitVec 64) (rest : List (BitVec 8)) :
     SepProp :=
   coinsAtPlaced cur rest
 
 /-- Relocatable CLI coins tape predicate after `k` draws, matching `tapeAfter`. -/
-def cliTapeAfter [LibsignalPlacement] (_ctl : BitVec 64) (cur : BitVec 64)
+@[expose] def cliTapeAfter [LibsignalPlacement] (_ctl : BitVec 64) (cur : BitVec 64)
     (rest : List (BitVec 8)) (k : Nat) : SepProp :=
   coinsAfterPlaced cur rest k
 
 theorem cliTapeAt_eq_coinsAtPlaced [LibsignalPlacement] (ctl cur : BitVec 64)
     (rest : List (BitVec 8)) :
     cliTapeAt ctl cur rest = coinsAtPlaced cur rest := rfl
-
-theorem cliTapeAfter_eq_coinsAfterPlaced [LibsignalPlacement] (ctl cur : BitVec 64)
-    (rest : List (BitVec 8)) (k : Nat) :
-    cliTapeAfter ctl cur rest k = coinsAfterPlaced cur rest k := rfl
 
 theorem cliTapeAt_eq_pure_sep_cliTapeAfter_zero [LibsignalPlacement] (ctl cur : BitVec 64)
     (rest : List (BitVec 8)) :

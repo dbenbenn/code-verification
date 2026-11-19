@@ -10,14 +10,14 @@ limitations under the License.
 module
 
 import all Init.Data.String.Defs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanup
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanup -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.WorkFrame
 
 /-!
 # Read-Only `.rodata` String Splitting and `r1b_ErrCtx.after_call` Helpers for Arm `R1b`
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -37,22 +37,6 @@ open CryptoVerification.SignalSession.Cli.RunSkeleton
 theorem r1b_layout1 (n : Nat) (h1 : 0 < n := by decide) (h2 : n + 1 ≤ 2 ^ 63 := by decide) :
     LayoutOk n 1 :=
   ⟨h1, ⟨0, rfl⟩, h2⟩
-
-theorem r1b_ErrCtx.after_call {img : Obj.Image} {ext : String → Option (State → State)}
-    {g : RunCall} {d : Init1Data} {s0 s st_bl sf : State} {off off' : Nat}
-    (hc : r1b_ErrCtx img ext g d s0 s off)
-    (hx19 : st_bl.readReg64 (.gpr 19#5) = s.readReg64 (.gpr 19#5))
-    (hx20 : st_bl.readReg64 (.gpr 20#5) = s.readReg64 (.gpr 20#5))
-    (hx21 : st_bl.readReg64 (.gpr 21#5) = s.readReg64 (.gpr 21#5))
-    (htr0 : st_bl.trace = s.trace)
-    (hfs0 : st_bl.fs.files = s.fs.files)
-    (hin : InRun img ext s0 sf off')
-    (hcs : CalleeSavedPreserved st_bl sf)
-    (hfs : sf.fs.files = st_bl.fs.files)
-    (htr : sf.trace = st_bl.trace) :
-    r1b_ErrCtx img ext g d s0 sf off' :=
-  hc.of_step hin (hcs.1.trans hx19) (hcs.2.1.trans hx20) (hcs.2.2.1.trans hx21)
-    (htr.trans htr0) (hfs.trans hfs0)
 
 theorem r1b_ro8_u64 (bs : List (BitVec 8)) (h : bs.length = 8) :
     ∃ w : BitVec 64, ∀ a : BitVec 64, (a ↦ᵣ bs) = (a ↦₆₄ᵣ w) := by

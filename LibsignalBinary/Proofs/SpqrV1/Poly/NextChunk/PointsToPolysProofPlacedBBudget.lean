@@ -10,20 +10,27 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProof
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProofPlacedB
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlaced
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProof -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProofPlacedB
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlaced
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConstPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackExitPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProofPlacedABudget
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSetupPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSumMult1Placed
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Pure
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlacedBudget
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Budget-Threaded Placed `points_to_polys` Loop
@@ -33,7 +40,7 @@ Relocatable `[LibsignalPlacement]` verification of `pointsToPolysStep_placed_sep
 `BudgetLimits`, `PointsToPolysIterEnv`, and `PointsToPolysLoopEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -60,7 +67,7 @@ open CryptoVerification.SpqrV1.Poly.LagrangePrepare
 open CryptoVerification.SpqrV1.Poly.NextChunk
   (add_8_add_8_eq completePointsPolysPlacedAt enumeratePts_length memRegion24_off_eq_polyHeader
    memRegion_112_fold_216 memRegion_112_split_216 memRegion_656_fold newPolyBufAt_n0_intro
-   newPolyBufAt_pos_intro pointListOf_cons_mul24_off pointToPolyPure polyListOf_cons_mul24_off
+   newPolyBufAt_pos_intro onceScratch416 pointListOf_cons_mul24_off pointToPolyPure polyListOf_cons_mul24_off
    ptVecBufAt ptVecBufAt_pos_fold stackAt_lagrangePrepare_fold_alloc
    stackAt_lagrangePrepare_split_alloc zeroPolySlotsAt zeroPolySlotsAt_entails_polyListOf)
 open LibsignalBinary.Heap
@@ -174,6 +181,21 @@ private theorem sepWPp_done_s0WithLrB [LibsignalPlacement]
 
 /-! ## 1. Budget-Threaded Per-Iteration `pointsToPolysStep_placed_sepWPp` (`+976 -> +976 / +4424`) -/
 
+private theorem onceScratch416_intro_u1040 (fsp u1040 : BitVec 64) :
+    memRegion fsp 8 ∗ ((fsp + 1040#64) ↦₆₄ u1040) ∗ memRegion (fsp + 1064#64) 40 ⊢
+      onceScratch416 fsp := by
+  unfold onceScratch416
+  rw [ProofLib.memRegion_eight (fsp + 1040#64)]
+  exact sepConj_mono (Entails.refl _)
+    (sepConj_mono (Entails.sepExists_intro u1040) (Entails.refl _))
+
+private theorem onceScratch416_elim_u1040 (fsp : BitVec 64) :
+    onceScratch416 fsp =
+      memRegion fsp 8 ∗ (∃∗ u1040 : BitVec 64, (fsp + 1040#64) ↦₆₄ u1040) ∗
+        memRegion (fsp + 1064#64) 40 := by
+  unfold onceScratch416
+  rw [ProofLib.memRegion_eight (fsp + 1040#64)]
+
 /-- One full budget-threaded iteration (`j < 16`, `+976 -> +976 / +4424` in Block `416`) of the
     `points_to_polys` conversion loop: converts `pts[j]` into `pointToPolyPure pts[j]`, stores it
     into slot `j` of `[fsp + 256 .. fsp + 640)`, and steps `st` along
@@ -225,6 +247,7 @@ theorem pointsToPolysStep_placed_sepWPp [LibsignalPlacement]
          memRegion (fsp + 656#64) 24 ∗
          ((fsp + 1040#64) ↦₆₄ u1040') ∗ ((fsp + 1048#64) ↦₆₄ u1048') ∗
          ((fsp + 1056#64) ↦₆₄ u1056') ∗
+         memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
          completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
          stackAt fsp lagrangePrepareStack ∗ Frame)
         Q Q_panic) :
@@ -243,6 +266,7 @@ theorem pointsToPolysStep_placed_sepWPp [LibsignalPlacement]
        memRegion (fsp + 656#64) 24 ∗
        ((fsp + 1040#64) ↦₆₄ u1040) ∗ ((fsp + 1048#64) ↦₆₄ u1048) ∗
        ((fsp + 1056#64) ↦₆₄ u1056) ∗
+       memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
        completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
        stackAt fsp lagrangePrepareStack ∗ Frame)
       Q Q_panic := by
@@ -266,6 +290,7 @@ theorem pointsToPolysStep_placed_sepWPp [LibsignalPlacement]
        memRegion (fsp + 656#64) 24 ∗
        ((fsp + 1040#64) ↦₆₄ u1040) ∗ ((fsp + 1048#64) ↦₆₄ u1048) ∗
        ((fsp + 1056#64) ↦₆₄ u1056) ∗
+       memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
        completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
        memRegion (fsp - BitVec.ofNat 64 lagrangePrepareStack)
          (lagrangePrepareStack - allocHookStack) ∗ Frame) R
@@ -302,6 +327,7 @@ theorem pointsToPolysStep_placed_sepWPp [LibsignalPlacement]
          ((fsp + 656#64) ↦₆₄ u656) ∗
          ((fsp + 1040#64) ↦₆₄ u1040) ∗ ((fsp + 1048#64) ↦₆₄ u1048) ∗
          ((fsp + 1056#64) ↦₆₄ u1056) ∗
+         memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
          completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
          memRegion (fsp - BitVec.ofNat 64 lagrangePrepareStack)
            (lagrangePrepareStack - allocHookStack) ∗ Frame) R
@@ -330,6 +356,7 @@ theorem pointsToPolysStep_placed_sepWPp [LibsignalPlacement]
          ((fsp + 656#64) ↦₆₄ u656) ∗ ((fsp + 664#64) ↦₆₄ 2#64) ∗ ((fsp + 672#64) ↦₆₄ 0#64) ∗
          ((fsp + 1040#64) ↦₆₄ u1040) ∗ ((fsp + 1048#64) ↦₆₄ u1048) ∗
          ((fsp + 1056#64) ↦₆₄ u1056) ∗
+         memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
          completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
          memRegion (fsp - BitVec.ofNat 64 lagrangePrepareStack)
            (lagrangePrepareStack - allocHookStack) ∗ Frame)
@@ -391,7 +418,8 @@ theorem pointsToPolysStep_placed_sepWPp [LibsignalPlacement]
          ((fsp + 64#64) ↦₆₄ u64) ∗
          ((fsp + 88#64) ↦₆₄ ptsBase) ∗
          memRegion (fsp + 112#64) 104 ∗
-         ((fsp + 640#64) ↦₆₄ u640) ∗ ((fsp + 648#64) ↦₆₄ u648) ∗ Frame) R
+         ((fsp + 640#64) ↦₆₄ u640) ∗ ((fsp + 648#64) ↦₆₄ u648) ∗
+         memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗ Frame) R
         hpc1 hrun1 hsp1 htr1 hx24_1' hx25_1' hx26_1 (hx29_1.trans hx29) hfit_basis ?_)
     intro evsBasis s2 basisPtr accPtr u72' u80' u216' u224' u1040' u1048' u1056'
       _hevsBasis hextBasis hcl2 hbasis_ne hacc_ne hpc2 hrun2 hsp2 htr2 hvregs2
@@ -417,6 +445,7 @@ theorem pointsToPolysStep_placed_sepWPp [LibsignalPlacement]
       rw [hpts_len]
       exact fun evs_s hevs_s => hfit_tail evs_s (Or.inl hevs_s)
     apply SepWPp.fold (memRegion_112_fold_216 fsp u216' u224') (by sep_frame)
+    apply SepWPp.fold (onceScratch416_intro_u1040 fsp u1040') (by sep_frame)
     refine SepWPp.weaken_pre (Entails.of_eq (by sep_ac_rfl))
       (lagrangeSumAndFree_placed_sepWPp hA
         (st := M.stepEvents evsBasis (M.stepEvents (setupPtVecEvents pt.value.length) st))
@@ -430,13 +459,16 @@ theorem pointsToPolysStep_placed_sepWPp [LibsignalPlacement]
          ((fsp + 48#64) ↦₆₄ 2#64) ∗
          polyOf A.repAlloc ((fsp + 256#64) + BitVec.ofNat 64 (24 * j)) ⟨[]⟩ ∗
          ((fsp + 88#64) ↦₆₄ ptsBase) ∗
-         ((fsp + 1040#64) ↦₆₄ u1040') ∗ ((fsp + 1048#64) ↦₆₄ u1048') ∗
+         ((fsp + 1048#64) ↦₆₄ u1048') ∗
          ((fsp + 1056#64) ↦₆₄ u1056') ∗
          completePointsPolysPlacedAt ∗ Frame) R
         hpc2 hrun2 hsp2 htr2 hx0_2 (hx20_2.trans hx20_1) hx24_2 hx25_2 hx26_2
         (hx27_2.trans hx27_1) (hx28_2.trans hx28_1) hx29_2 hfit_sum ?_)
     intro evsSum s3 u656' u664' u672' henvSum hcl3 hpc3 hrun3 hsp3 htr3 hvregs3
       hx19_3 hx20_3 hx26_3 hx27_3 hx28_3 hx29_3
+    rw [onceScratch416_elim_u1040 fsp]
+    conv => arg 4; simp only [sepExists_sepConj_left, sepExists_sepConj_right]
+    apply SepWPp.exists_elim; intro u1040''
     have hx19_3' : s3.readReg64 .x19 = BitVec.ofNat 64 pt.value.length := by
       rw [← hpts_len, hx19_3]
     have hnewPoly := newPolyBufAt_pos_intro A.repAlloc accPtr pt hn0 hacc_ne emp
@@ -464,8 +496,9 @@ theorem pointsToPolysStep_placed_sepWPp [LibsignalPlacement]
          ((fsp + 96#64) ↦₆₄ BitVec.ofNat 64 pt.value.length) ∗
          memRegion (fsp + 112#64) 120 ∗
          memRegion (fsp + 656#64) 24 ∗
-         ((fsp + 1040#64) ↦₆₄ u1040') ∗ ((fsp + 1048#64) ↦₆₄ u1048') ∗
+         ((fsp + 1040#64) ↦₆₄ u1040'') ∗ ((fsp + 1048#64) ↦₆₄ u1048') ∗
          ((fsp + 1056#64) ↦₆₄ u1056') ∗
+         memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
          completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
          memRegion (fsp - BitVec.ofNat 64 lagrangePrepareStack)
            (lagrangePrepareStack - allocHookStack) ∗ Frame)
@@ -501,7 +534,7 @@ theorem pointsToPolysStep_placed_sepWPp [LibsignalPlacement]
         s4 (BitVec.ofNat 64 j) (BitVec.ofNat 64 pt.value.length)
         (BitVec.ofNat 64 (j + 1)) (BitVec.ofNat 64 pt.value.length)
         (s.readReg64 .x27) basisPtr ptVecPtr (BitVec.ofNat 64 pt.value.length)
-        accPtr (BitVec.ofNat 64 pt.value.length) u1040' u1048' u1056'
+        accPtr (BitVec.ofNat 64 pt.value.length) u1040'' u1048' u1056'
         hiter_pos hcl4 hpc4 hrun4 hsp4 (htr4.trans htr3)
         (hvregs4.trans (hvregs3.trans (hvregs2.trans hvregs1))) hx19_4 hx20_4
         (hx27_4.trans hx27_3) hx28_4 (hx29_4.trans hx29_3))
@@ -559,6 +592,7 @@ theorem pointsToPolysLoop_tail_placed_sepWPp [LibsignalPlacement]
            memRegion (fsp + 656#64) 24 ∗
            ((fsp + 1040#64) ↦₆₄ u1040') ∗ ((fsp + 1048#64) ↦₆₄ u1048') ∗
            ((fsp + 1056#64) ↦₆₄ u1056') ∗
+           memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
            completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
            stackAt fsp lagrangePrepareStack ∗ Frame)
           Q Q_panic) →
@@ -578,6 +612,7 @@ theorem pointsToPolysLoop_tail_placed_sepWPp [LibsignalPlacement]
          memRegion (fsp + 656#64) 24 ∗
          ((fsp + 1040#64) ↦₆₄ u1040) ∗ ((fsp + 1048#64) ↦₆₄ u1048) ∗
          ((fsp + 1056#64) ↦₆₄ u1056) ∗
+         memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
          completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
          stackAt fsp lagrangePrepareStack ∗ Frame)
         Q Q_panic
@@ -670,6 +705,7 @@ theorem pointsToPolysLoop_tail_placed_sepWPp [LibsignalPlacement]
           memRegion (fsp + 656#64) 24 ∗
           ((fsp + 1040#64) ↦₆₄ u1040') ∗ ((fsp + 1048#64) ↦₆₄ u1048') ∗
           ((fsp + 1056#64) ↦₆₄ u1056') ∗
+          memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
           completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
           stackAt fsp lagrangePrepareStack ∗
           (pointOf A.repAlloc (ptsBase + BitVec.ofNat 64 (24 * j)) pt ∗
@@ -689,6 +725,7 @@ theorem pointsToPolysLoop_tail_placed_sepWPp [LibsignalPlacement]
           memRegion (fsp + 656#64) 24 ∗
           ((fsp + 1040#64) ↦₆₄ u1040') ∗ ((fsp + 1048#64) ↦₆₄ u1048') ∗
           ((fsp + 1056#64) ↦₆₄ u1056') ∗
+          memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
           completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
           stackAt fsp lagrangePrepareStack ∗ Frame := by
         rw [hstep12, List.map_cons,
@@ -753,6 +790,7 @@ theorem pointsToPolysLoop_polyList_placed_sepWPp [LibsignalPlacement]
          memRegion (fsp + 656#64) 24 ∗
          ((fsp + 1040#64) ↦₆₄ u1040') ∗ ((fsp + 1048#64) ↦₆₄ u1048') ∗
          ((fsp + 1056#64) ↦₆₄ u1056') ∗
+         memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
          completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
          stackAt fsp lagrangePrepareStack ∗ Frame)
         Q Q_panic) :
@@ -771,6 +809,7 @@ theorem pointsToPolysLoop_polyList_placed_sepWPp [LibsignalPlacement]
        memRegion (fsp + 656#64) 24 ∗
        ((fsp + 1040#64) ↦₆₄ u1040) ∗ ((fsp + 1048#64) ↦₆₄ u1048) ∗
        ((fsp + 1056#64) ↦₆₄ u1056) ∗
+       memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
        completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
        stackAt fsp lagrangePrepareStack ∗ Frame)
       Q Q_panic := by
@@ -840,6 +879,7 @@ theorem pointsToPolysLoop_placed_sepWPp [LibsignalPlacement]
          memRegion (fsp + 656#64) 24 ∗
          ((fsp + 1040#64) ↦₆₄ u1040') ∗ ((fsp + 1048#64) ↦₆₄ u1048') ∗
          ((fsp + 1056#64) ↦₆₄ u1056') ∗
+         memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
          completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
          stackAt fsp lagrangePrepareStack ∗ Frame)
         Q Q_panic) :
@@ -858,6 +898,7 @@ theorem pointsToPolysLoop_placed_sepWPp [LibsignalPlacement]
        memRegion (fsp + 656#64) 24 ∗
        ((fsp + 1040#64) ↦₆₄ u1040) ∗ ((fsp + 1048#64) ↦₆₄ u1048) ∗
        ((fsp + 1056#64) ↦₆₄ u1056) ∗
+       memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
        completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
        stackAt fsp lagrangePrepareStack ∗ Frame)
       Q Q_panic := by
@@ -872,7 +913,7 @@ theorem pointsToPolysLoop_placed_sepWPp [LibsignalPlacement]
 /-- Relocatable `[LibsignalPlacement]` budget-threaded contract for the 16-iteration
     `points_to_polys` conversion loop (`+976 -> +4424` in Block `416`), stepping `st` along
     `PointsToPolysLoopEnv pts`. -/
-def PointsToPolysLoopPlacedBudgetProp [LibsignalPlacement]
+@[expose] def PointsToPolysLoopPlacedBudgetProp [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   ∀ {st : M.σ} {Q Q_panic : State → SepProp → Prop}
@@ -917,6 +958,7 @@ def PointsToPolysLoopPlacedBudgetProp [LibsignalPlacement]
          memRegion (fsp + 656#64) 24 ∗
          ((fsp + 1040#64) ↦₆₄ u1040') ∗ ((fsp + 1048#64) ↦₆₄ u1048') ∗
          ((fsp + 1056#64) ↦₆₄ u1056') ∗
+         memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
          completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
          stackAt fsp lagrangePrepareStack ∗ Frame)
         Q Q_panic) →
@@ -935,6 +977,7 @@ def PointsToPolysLoopPlacedBudgetProp [LibsignalPlacement]
        memRegion (fsp + 656#64) 24 ∗
        ((fsp + 1040#64) ↦₆₄ u1040) ∗ ((fsp + 1048#64) ↦₆₄ u1048) ∗
        ((fsp + 1056#64) ↦₆₄ u1056) ∗
+       memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
        completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
        stackAt fsp lagrangePrepareStack ∗ Frame)
       Q Q_panic

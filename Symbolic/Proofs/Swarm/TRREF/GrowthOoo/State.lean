@@ -35,7 +35,7 @@ Proves that `VersionNegotiationPB` roundtrips under `Proto.mergeFieldsLoop` and 
 `chain` parameters, yielding the unfolded `SpqrOooBounded` consequence `ooo_of_decodeState`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

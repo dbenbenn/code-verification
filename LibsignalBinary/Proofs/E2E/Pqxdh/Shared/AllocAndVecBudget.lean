@@ -11,8 +11,51 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVec
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVec -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.GenDecodes
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
 
 /-!
 # Budget-Threaded `RawVecInner::try_allocate_in` Specifications
@@ -22,7 +65,7 @@ and total-correctness (`FitsEnv`) and conditional-OOM `RustCliAllocBudget M` con
 `<alloc::raw_vec::RawVecInner>::try_allocate_in [local#2]` (Block `588`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,20 +83,15 @@ open LibsignalBinary.Heap (
 /-! ## Allocator Event List and Envelope -/
 
 /-- Deterministic `AllocEvent` list emitted by `<alloc::raw_vec::RawVecInner>::try_allocate_in`. -/
-def tryAllocateInEvents (x : TryAllocateInCall) : List AllocEvent :=
+@[expose] def tryAllocateInEvents (x : TryAllocateInCall) : List AllocEvent :=
   rustAllocEvents (x.new.toNat * x.stride.toNat) x.align.toNat
 
-def TryAllocateInEnv (x : TryAllocateInCall) (evs : List AllocEvent) : Prop :=
+@[expose] def TryAllocateInEnv (x : TryAllocateInCall) (evs : List AllocEvent) : Prop :=
   evs = tryAllocateInEvents x
 
 theorem tryAllocateInEnv_events (x : TryAllocateInCall) :
     TryAllocateInEnv x (tryAllocateInEvents x) :=
   rfl
-
-theorem fitsEnv_tryAllocateIn_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
-    (x : TryAllocateInCall) :
-    FitsEnv M lim st (TryAllocateInEnv x) ↔ FitsEvents M lim st (tryAllocateInEvents x) :=
-  FitsEnv.eq_iff
 
 theorem fitsEvents_tryAllocateIn_of_fitsEnv (M : AllocCostModel) (lim : BudgetLimits) (st : M.σ)
     (x : TryAllocateInCall) (h : FitsEnv M lim st (TryAllocateInEnv x)) :
@@ -65,7 +103,7 @@ theorem fitsEvents_tryAllocateIn_of_fitsEnv (M : AllocCostModel) (lim : BudgetLi
 /-- Total-correctness (`FitsEnv`) contract for `<alloc::raw_vec::RawVecInner>::try_allocate_in [local#2]`
 (Block `588`): under `LayoutOk` and `FitsEnv M lim st (TryAllocateInEnv x)`, `__rust_alloc` returns
 a non-null pointer (`tag = 0#64`), so `onPanic = ⌜False⌝` and `onOom = ⌜False⌝`. -/
-def tryAllocateInSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def tryAllocateInSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (TryAllocateInCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.new ∧
@@ -84,7 +122,7 @@ def tryAllocateInSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp finishGrowStack
 
 /-- Conditional-OOM variant of `tryAllocateInSpec` without `FitsEnv` in `pre`. -/
-def tryAllocateInCondSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def tryAllocateInCondSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (TryAllocateInCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.new ∧

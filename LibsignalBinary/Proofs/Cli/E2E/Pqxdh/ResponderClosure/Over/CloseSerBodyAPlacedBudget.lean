@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyAPlaced
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersXBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyAPlaced
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersXBudget
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -23,6 +23,8 @@ import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.BaseX
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyA
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable `SessionRecord::serialize`: Field-2 Proof
@@ -32,7 +34,7 @@ Proves the budget-threaded `[LibsignalPlacement]` field-2 encoding steps
 `+444 .. +692`) from `DoReservePlacedOkX` and `EncodeVarintPlacedOkX`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option relaxedAutoImplicit false
@@ -221,7 +223,7 @@ private theorem lenField_two_length_ge_two (enc : List (BitVec 8)) :
 /-! ## Lifted `doReserveSubSpecX` and callee steps -/
 
 /-- `doReserveSpecX M A lim` lifted from `doReserveStackX` to `serializeSubStackX`. -/
-def doReserveSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def doReserveSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DoReserveCall × M.σ) where
   pre := fun (x, st) s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional

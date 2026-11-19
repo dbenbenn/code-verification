@@ -10,11 +10,12 @@ limitations under the License.
 module
 
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDh -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyGapDh -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyGapDh
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhEvalEq -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEval
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEvalEq
 
 /-!
 # Query Transfer and Distributional Equivalence for `fgKeyInd1KeyGapDh2Prog`
@@ -85,20 +86,6 @@ private theorem isQueryBoundP_of_bind_mem_support {ι : Type} {spec : OracleSpec
     · simp only [hp, ↓reduceIte] at h; exact (ih u (h.2 u) x hxu).mono (Nat.sub_le B 1)
     · simp only [hp, ↓reduceIte] at h; exact ih u (h.2 u) x hxu
 
-private theorem isQueryBoundP_bind_of_zero_mem_support {ι : Type} {spec : OracleSpec.{0, 0} ι}
-    {α β : Type} {m : OracleComp spec α} {f : α → OracleComp spec β}
-    {p : ι → Prop} [DecidablePred p] {B : Nat}
-    (hm : IsQueryBoundP m p 0) (hf : ∀ x ∈ support m, IsQueryBoundP (f x) p B) :
-    IsQueryBoundP (m >>= f) p B := by
-  induction m using OracleComp.inductionOn with
-  | pure a => simpa only [pure_bind] using hf a (by simp)
-  | query_bind q k ih =>
-    rw [isQueryBoundP_query_bind_iff] at hm; rcases hm with ⟨hFirst, hCont⟩
-    have hnp : ¬ p q := hFirst.elim id fun hlt => by omega
-    simp only [hnp, ↓reduceIte] at hCont; rw [bind_assoc, isQueryBoundP_query_bind_iff]
-    refine ⟨Or.inl hnp, fun u => ?_⟩; simp only [hnp, ↓reduceIte]
-    exact ih u (hCont u) fun x hx => hf x (by rw [mem_support_bind_iff]; exact ⟨u, mem_support_query q u, hx⟩)
-
 private theorem unifGdh_pure {α : Type} (a : α) : unifGdh (pure a : ProbComp α) = pure a := rfl
 
 private theorem unifGdh_bind {α β : Type} (m : ProbComp α) (k : α → ProbComp β) :
@@ -113,37 +100,6 @@ private theorem unifGdh_bind {α β : Type} (m : ProbComp α) (k : α → ProbCo
 
 private theorem unifGdh_map {α β : Type} (f : α → β) (m : ProbComp α) : unifGdh (f <$> m) = f <$> unifGdh m := by
   simp only [map_eq_bind_pure_comp, unifGdh_bind, Function.comp_def, unifGdh_pure]
-
-private theorem liftGdhToSign_unifGdh {α : Type} (m : ProbComp α) :
-    liftGdhToSign (unifGdh m) = unifGdhSign m := rfl
-
-private theorem unifGdhSign_query_bind_eq {α : Type} (n : ℕ) (k : Fin (n + 1) → ProbComp α) :
-    unifGdhSign (liftM (OracleSpec.query (spec := unifSpec) n) >>= k) =
-      (liftM (OracleSpec.query (spec := GdhSignSimSpec) (Sum.inl (Sum.inl n))) >>= fun u => unifGdhSign (k u)) := by
-  change liftGdhToSign (unifGdh (liftM (OracleSpec.query (spec := unifSpec) n) >>= k)) = _; rw [unifGdh_bind]
-  have hq : unifGdh (liftM (OracleSpec.query (spec := unifSpec) n)) =
-      liftM (OracleSpec.query (spec := GdhSimSpec) (Sum.inl (Sum.inl n))) := by
-    unfold unifGdh embedUnif _root_.SignalPqxdh.Security.FgGapDh.embedPrim; rw [liftComp_query]
-    exact bind_pure (liftM (OracleSpec.query (spec := GdhSimSpec) (Sum.inl (Sum.inl n))))
-  rw [hq, liftGdhToSign_bind, liftGdhToSign_query_inl]; rfl
-
-private theorem mem_support_unifGdhSign_iff {α : Type} {mx : ProbComp α} {x : α} :
-    x ∈ support (unifGdhSign mx) ↔ x ∈ support mx := by
-  induction mx using OracleComp.inductionOn with
-  | pure _ => rfl
-  | query_bind n k ih =>
-    rw [unifGdhSign_query_bind_eq, mem_support_bind_iff, mem_support_bind_iff]
-    exact ⟨fun ⟨u, _, hu⟩ => ⟨u, mem_support_query n u, (ih u).mp hu⟩,
-      fun ⟨u, _, hu⟩ => ⟨u, mem_support_query _ u, (ih u).mpr hu⟩⟩
-
-private theorem unifGdhSign_isQueryBoundP_zero {α : Type} (mx : ProbComp α)
-    (p : ((ℕ ⊕ PrimQuery) ⊕ (SigQuery ⊕ DdhQuery)) → Prop) [DecidablePred p]
-    (hpUnif : ∀ n : ℕ, ¬ p (Sum.inl (Sum.inl n))) : IsQueryBoundP (unifGdhSign mx) p 0 := by
-  induction mx using OracleComp.inductionOn with
-  | pure a => exact isQueryBoundP_pure p a 0
-  | query_bind n k ih =>
-    rw [unifGdhSign_query_bind_eq, isQueryBoundP_query_bind_iff]
-    refine ⟨Or.inl (hpUnif n), fun u => ?_⟩; simp only [hpUnif n, ↓reduceIte]; exact ih u
 
 /-! ## Parameter Tree Distributional Equivalence -/
 
@@ -766,26 +722,6 @@ private theorem evalDist_initParams1Key2Prob_map_bind_measure (S : Setup) (U V :
       𝒟[sampleIndexRange (fgTotalIndexCount S) >>= fun idx => g (params1KeyFlatVal S U V idx)] :=
   MeasureTheory.Measure.ext_of_singleton (evalDist_initParams1Key2Prob_map_bind S U V g)
 
-private theorem exists_flat_of_mem_support_initParams1Key2Prob (S : Setup) (U V : Bytes)
-    {pa2 : params2Ty.denote} (hpa : pa2 ∈ support (initParams1Key2Prob S U V)) :
-    ∃ idx ∈ support (sampleIndexRange (fgTotalIndexCount S)),
-      params2ToFlat S pa2 = params1KeyFlatVal S U V idx := by
-  classical
-  let P : paramsTy.denote → Prop := fun pa =>
-    ∃ idx ∈ support (sampleIndexRange (fgTotalIndexCount S)), pa = params1KeyFlatVal S U V idx
-  let g : paramsTy.denote → ProbComp Bool := fun pa => pure (decide (P pa))
-  have hNoFalseR : false ∉ support (sampleIndexRange (fgTotalIndexCount S) >>=
-      fun idx => g (params1KeyFlatVal S U V idx)) := by
-    rw [mem_support_bind_iff]; rintro ⟨idx, hIdx, hF⟩
-    have hP : P (params1KeyFlatVal S U V idx) := ⟨idx, hIdx, rfl⟩; simp [g, hP] at hF
-  have hZeroR : ¬ (0 < 𝒟[sampleIndexRange (fgTotalIndexCount S) >>=
-      fun idx => g (params1KeyFlatVal S U V idx)] {false}) :=
-    mt (mem_support_iff_evalDist_singleton_pos _ false).mpr hNoFalseR
-  rw [← evalDist_initParams1Key2Prob_map_bind S U V g false] at hZeroR
-  have hNoFalseL : false ∉ support (initParams1Key2Prob S U V >>= fun pa2' => g (params2ToFlat S pa2')) :=
-    mt (mem_support_iff_evalDist_singleton_pos _ false).mp hZeroR
-  by_contra hNotP; apply hNoFalseL; rw [mem_support_bind_iff]; exact ⟨pa2, hpa, by simp [g]; exact hNotP⟩
-
 private theorem simulateQ_primBaseImpl_unifGdhSign_bind {α β : Type} (P : Primitives)
     (rest : QueryImpl sigAndDdhSpec ProbComp) (m : ProbComp α) (f : α → OracleComp GdhSignSimSpec β) :
     simulateQ (primBaseImpl P + rest) (unifGdhSign m >>= f) =
@@ -1264,54 +1200,6 @@ private theorem fgKeyInd1KeyGapDh2Prog_eval_runFrom1Key2 (S : Setup) (K : Nat)
   rfl
 
 /-! ## Query Transfer and Distributional Equivalence -/
-
-/-- Transfers any `IsQueryBoundP` bound (ignoring `unifSpec` draws) from flat-index runs in the
-support of `sampleIndexRange (fgTotalIndexCount S)` to `(fgKeyInd1KeyGapDh2Prog S K).eval`. -/
-theorem fgKeyInd1KeyGapDh2Prog_transfer_queryBound (S : Setup) (K : Nat)
-    (A : OracleComp (unifSpec + keyIndSpec S) Bool)
-    (hA : IsQueryBoundP A (fun q : ℕ ⊕ KeyIndQuery S => q.isRight = true) K)
-    (U V : Bytes) (p : _ → Prop) [DecidablePred p]
-    (hpUnif : ∀ n : ℕ, ¬ p (Sum.inl (Sum.inl n))) (B : Nat)
-    (hFlat : ∀ idx ∈ support (unifGdhSign (sampleIndexRange (fgTotalIndexCount S))),
-      IsQueryBoundP (fgKeyInd1KeyGapDhRunAtFlatComp S K idx A U V) p B) :
-    IsQueryBoundP ((fgKeyInd1KeyGapDh2Prog S K).eval (fun _ => A) (U, V)) p B := by
-  have hProg : IsQueryBoundP ((fgKeyInd1KeyGapDhProg S K).eval (fun _ => A) (U, V)) p B := by
-    rw [fgKeyInd1KeyGapDhProg_eval_eq_of_queryBound S K (fun _ => A) hA U V]
-    exact isQueryBoundP_bind_of_zero_mem_support (unifGdhSign_isQueryBoundP_zero _ p hpUnif) hFlat
-  rw [fgKeyInd1KeyGapDhProg_eval_runFrom1Key S K A U V] at hProg
-  have hRun1 := isQueryBoundP_of_bind_mem_support hProg
-  rw [fgKeyInd1KeyGapDh2Prog_eval_runFrom1Key2 S K A U V]
-  refine isQueryBoundP_bind_of_zero_mem_support
-    (unifGdhSign_isQueryBoundP_zero _ p hpUnif) fun pa2 hpa2 => ?_
-  have hpa2Prob : pa2 ∈ support (initParams1Key2Prob S U V) := mem_support_unifGdhSign_iff.mp hpa2
-  have hInB := mem_support_initParams1Key2Prob_inBounds S U V hpa2Prob
-  obtain ⟨idx, hIdx, hFlatEq⟩ := exists_flat_of_mem_support_initParams1Key2Prob S U V hpa2Prob
-  have hEq : (do
-      let secb ← unifGdhSign ($ᵗ Bool)
-      runFrom1Key2 S K A
-        ((pa2, simStateToVal (FgKeyInd1KeySimState.empty S secb).sim),
-          min K (min S.N_spk_tot S.N_recv))) =
-      (do
-        let secb ← unifGdhSign ($ᵗ Bool)
-        runFrom1Key S K A
-          (sim1KeyStateToVal (params1KeyFlatVal S U V idx)
-            (FgKeyInd1KeySimState.empty S secb))) :=
-    _root_.bind_congr fun secb => by rw [runFrom1Key2_eq_runFrom1Key S K pa2 hInB A hA secb, hFlatEq]
-  rw [hEq]
-  exact hRun1 idx (mem_support_unifGdhSign_iff.mpr hIdx)
-
-/-- Transfers any `IsQueryBoundP` bound (ignoring `unifSpec` draws) from
-`(fgKeyInd1KeyGapDhProg S K).eval` to `(fgKeyInd1KeyGapDh2Prog S K).eval`. -/
-theorem fgKeyInd1KeyGapDh2Prog_queryBound_of_flatProg (S : Setup) (K : Nat)
-    (A : OracleComp (unifSpec + keyIndSpec S) Bool)
-    (hA : IsQueryBoundP A (fun q : ℕ ⊕ KeyIndQuery S => q.isRight = true) K)
-    (U V : Bytes) (p : _ → Prop) [DecidablePred p]
-    (hpUnif : ∀ n : ℕ, ¬ p (Sum.inl (Sum.inl n))) (B : Nat)
-    (hProg : IsQueryBoundP ((fgKeyInd1KeyGapDhProg S K).eval (fun _ => A) (U, V)) p B) :
-    IsQueryBoundP ((fgKeyInd1KeyGapDh2Prog S K).eval (fun _ => A) (U, V)) p B := by
-  rw [fgKeyInd1KeyGapDhProg_eval_eq_of_queryBound S K (fun _ => A) hA U V] at hProg
-  exact fgKeyInd1KeyGapDh2Prog_transfer_queryBound S K A hA U V p hpUnif B
-    (isQueryBoundP_of_bind_mem_support hProg)
 
 /-- `fgKeyInd1KeyGapDh2Prog` and `fgKeyInd1KeyGapDhAdv4` induce the exact same output
     distribution in `gapDhWithSignExp`. -/

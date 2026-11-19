@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegUntrusted
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegUntrusted -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedAux
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Stage P2 Matched-Session Alignment, Error Reassembly, and `.rodata` Helpers
@@ -19,7 +20,7 @@ Pure 32-byte chunk realignment (`chunks32At`), `InvalidMessage` result reassembl
 mismatch-string helpers for matched-session Stage P2, re-exporting `M2StepsD..E`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -51,7 +52,7 @@ scoped macro "sep_norm" : tactic =>
 /-! ## Pure realignment and `InvalidMessage` reassembly -/
 
 /-- Base-generic 32-byte chunk bundle `(4B, 2B, 8B, 8B, 8B, 2B)` matching `+0x1064..+0x10c4`. -/
-def chunks32At (base : BitVec 64) (w0 : BitVec 32) (h1 : BitVec 16)
+@[expose] def chunks32At (base : BitVec 64) (w0 : BitVec 32) (h1 : BitVec 16)
     (q2 q3 q4 : BitVec 64) (h5 : BitVec 16) : SepProp :=
   (base ↦₃₂ w0) ∗
   ((base + 4#64) ↦₁₆ h1) ∗
@@ -60,15 +61,15 @@ def chunks32At (base : BitVec 64) (w0 : BitVec 32) (h1 : BitVec 16)
   ((base + 22#64) ↦₆₄ q4) ∗
   ((base + 30#64) ↦₁₆ h5)
 
-def pack16LE : List (BitVec 8) → BitVec 16
+@[expose] def pack16LE : List (BitVec 8) → BitVec 16
   | [b0, b1] => b1 ++ b0
   | _ => 0#16
 
-def pack32LE : List (BitVec 8) → BitVec 32
+@[expose] def pack32LE : List (BitVec 8) → BitVec 32
   | [b0, b1, b2, b3] => b3 ++ b2 ++ b1 ++ b0
   | _ => 0#32
 
-def pack64LE : List (BitVec 8) → BitVec 64
+@[expose] def pack64LE : List (BitVec 8) → BitVec 64
   | [b0, b1, b2, b3, b4, b5, b6, b7] =>
     b7 ++ b6 ++ b5 ++ b4 ++ b3 ++ b2 ++ b1 ++ b0
   | _ => 0#64
@@ -220,56 +221,5 @@ theorem invalidMessage_prekey_out_entails (A : RustAlloc) (outPtr cap ptr typeWo
   exact Entails.of_eq rfl
 
 /-! ## `.rodata` conjuring for the 70-byte mismatch string -/
-
-abbrev mismatchRemoteIkOff : Nat :=
-  num% (ls_xref% (ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}" + 4860) (ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}" + 4864))
-
-/-- The 70-byte `.rodata` mismatch message referenced at `decryptPrekeyClosure + 0x12fc..+0x1300`. -/
-noncomputable def mismatchRemoteIkStr : List (BitVec 8) :=
-  (libsignalSessionImage.data.drop
-    (mismatchRemoteIkOff - libsignalSessionImage.dataOff)).take 70
-
-set_option maxRecDepth 2000000 in
-private theorem mismatchRemoteIk_dataOff_le :
-    libsignalSessionImage.dataOff ≤ mismatchRemoteIkOff :=
-  Nat.le_of_ble_eq_true (by rfl_kernel)
-
-set_option maxRecDepth 2000000 in
-private theorem mismatchRemoteIk_bound :
-    (mismatchRemoteIkOff - libsignalSessionImage.dataOff) + 70 ≤
-      libsignalSessionImage.data.length :=
-  Nat.le_of_ble_eq_true (by rfl_kernel)
-
-theorem mismatchRemoteIkStr_length : mismatchRemoteIkStr.length = 70 := by
-  unfold mismatchRemoteIkStr
-  have h := mismatchRemoteIk_bound
-  rw [List.length_take, List.length_drop]
-  omega
-
-set_option maxRecDepth 2000000 in
-theorem rodata_mismatchRemoteIk_intro {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + bv% (ls_xref% (ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}" + 4860) (ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}" + 4864))) ↦ᵣ mismatchRemoteIkStr) ∗ P := by
-  have hh := ProofLib.ObjectLoad.loads_rodata_holdsBytes himg hF
-    (off := mismatchRemoteIkOff) (n := 70) (bs := mismatchRemoteIkStr)
-    mismatchRemoteIk_dataOff_le mismatchRemoteIk_bound
-    (by rfl_kernel) (by rfl_kernel) mismatchRemoteIkStr_length rfl
-  obtain ⟨hRO, hread⟩ := ProofLib.ObjectLoad.holdsBytes_ro hh
-  exact Satisfies.rodata_intro hRO hread (by rw [mismatchRemoteIkStr_length]; decide) hP
-
-theorem SepWPp.intro_rodata_mismatchRemoteIk {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img)
-    {prog : Program} {ret : BitVec 64} {s : State} {P : SepProp}
-    {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s)
-    (h : SepWPp prog ret s
-      (((img.base + bv% (ls_xref% (ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}" + 4860) (ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}" + 4864))) ↦ᵣ mismatchRemoteIkStr) ∗ P) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm hL
-  have hm' : s.mem ⊨ (((img.base + bv% (ls_xref% (ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}" + 4860) (ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}" + 4864))) ↦ᵣ mismatchRemoteIkStr) ∗ P) ∗ R := by
-    rw [sepConj_assoc]
-    exact rodata_mismatchRemoteIk_intro himg hF hm
-  exact h R hm' hL
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched

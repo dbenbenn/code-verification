@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropSessionStructure3
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Fetch
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKit
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKit
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropSessionStructure3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Fetch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Stage P4 Stack Budgets, Poll Layouts, and Callee Helpers
@@ -24,7 +24,7 @@ Shared stack budgets (`saveIdCallStack`, `markKyberCallStack`, `removePreKeyCall
 `stagingCellsAt`), and deallocation-only contract bundle `StageP4Alloc` for Stage P4 (`+0x34dc → exit`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -49,32 +49,32 @@ set_option maxRecDepth 200000
 
 /-- Stack budget for error-unwind tails in Stage P4 (`__rust_dealloc` and
     `drop_glue::<SessionStructure>`; `futDropSpec` uses `emp` stack). -/
-def stageP4ErrUnwindStack : Nat :=
+@[expose] def stageP4ErrUnwindStack : Nat :=
   max allocHookStack dropSessionStructureLocal2Stack
 
 /-- Stack budget for Substage `P4.1` (`save_identity` shim, poll, future drop, dealloc, and
     error unwind). -/
-def saveIdCallStack {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b) : Nat :=
+@[expose] def saveIdCallStack {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b) : Nat :=
   max ikit.saveShimStack (max ikit.savePollStack stageP4ErrUnwindStack)
 
 /-- Stack budget for Substage `P4.2` (`mark_kyber_pre_key_used` shim, poll, future drop,
 deallocation, and refusal error unwind). -/
-def markKyberCallStack {A : RustAlloc} {b : BitVec 64} (kpkKit : KyberPreKeyStoreSpec A b) : Nat :=
+@[expose] def markKyberCallStack {A : RustAlloc} {b : BitVec 64} (kpkKit : KyberPreKeyStoreSpec A b) : Nat :=
   max kpkKit.markShimStack (max kpkKit.markPollStack stageP4ErrUnwindStack)
 
 /-- Stack budget for Substage `P4.3` (`remove_pre_key` shim, poll, future drop, dealloc, and
     error unwind). -/
-def removePreKeyCallStack {A : RustAlloc} {b : BitVec 64} (pkKit : PreKeyStoreSpec A b) : Nat :=
+@[expose] def removePreKeyCallStack {A : RustAlloc} {b : BitVec 64} (pkKit : PreKeyStoreSpec A b) : Nat :=
   max pkKit.removeShimStack (max pkKit.removePollStack stageP4ErrUnwindStack)
 
 /-- Stack budget for Substage `P4.4` (`store_session` shim, poll, future drop, dealloc,
     `drop_glue::<SessionStructure>`, and error unwind). -/
-def storeSessionCallStack {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b) : Nat :=
+@[expose] def storeSessionCallStack {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b) : Nat :=
   max kit.storeShimStack (max kit.storePollStack stageP4ErrUnwindStack)
 
 /-- Unified stack budget for Stage P4 across `save_identity`, `mark_kyber_pre_key_used`,
     `remove_pre_key`, `store_session`, and all error-unwind tails. -/
-def stageP4CallStack {A : RustAlloc} {b : BitVec 64}
+@[expose] def stageP4CallStack {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (ikit : IdentityStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b) : Nat :=
   max (saveIdCallStack ikit)
@@ -291,14 +291,6 @@ theorem stack_stageP4_to_storeSession {A : RustAlloc} {b : BitVec 64}
 
 /-! ## Callee contract abbreviation and `SepWPp` combinators -/
 
-/-- `core::ptr::drop_glue::<SessionStructure> [local#5]` contract on `tripleRatchetProgAtExt`. -/
-abbrev DropSessionStructure3OkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr
-      CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees.dropSessionStructure3Name)
-    (dropSessionStructureLocal2Spec A)
-
 theorem allocFailedIn_of_trace_prefix {s0 s sf : State}
     (htr : s0.trace <+: s.trace) (ha : allocFailedIn s sf) :
     allocFailedIn s0 sf := by
@@ -326,50 +318,6 @@ theorem SepWPp.with_steps {prog : Program} {ret : BitVec 64} {s : State}
   · exact ⟨sf, hst, Or.inl ⟨hpc, hrun, Pf, hmf, hst, hQ⟩⟩
   · exact ⟨sf, hst, Or.inr (Or.inl hpan)⟩
   · exact ⟨sf, hst, Or.inr (Or.inr hex)⟩
-
-theorem SepWPp.call_frame_frozen_oom_prefix {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s0 s : State} {φ : Prop}
-    {P T F : SepProp} {Q : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (htr : s0.trace <+: s.trace)
-    (hcall : subroutine_ok prog entry spec)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hpan_eq : ∀ sf, spec.onPanic x s sf =
-      (⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap) := by intro _; rfl)
-    (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by intro _ _; rfl)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      Steps prog s sf →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q (PanicOomProp s0))
-    (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by
-      intro sf; first | rfl | simp only [Spec.inImage]) :
-    SepWPp prog ret s P Q (PanicOomProp s0) := by
-  intro R hm hL
-  have hm' : s.mem ⊨ spec.pre x s ∗ (F ∗ R) := by
-    rw [hspec, sepConj_assoc, satisfies_pure_sepConj, ← sepConj_assoc, ← hP]
-    exact ⟨hφ, hm⟩
-  obtain ⟨sm, hsteps, hout, -⟩ :=
-    hcall.no_fault_before_outcome x (F ∗ R) s hpc hrun hm' hsp hL
-  rcases hout with ⟨⟨hpcm, _, hrunm⟩, ⟨hspm, hcsm⟩, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, _, hpost⟩ |
-    ⟨_hoom_st, _hoom_post⟩
-  rotate_right; · rw [hoom_false] at _hoom_post; exact (not_satisfies_false_sepConj _hoom_post).elim
-  · rw [← sepConj_assoc] at hpost
-    rw [hlr] at hpcm
-    have hsp_alm : sm.spAligned = true := by simpa [State.spAligned, hspm] using hsp
-    obtain ⟨sf, hsteps', hout'⟩ :=
-      hnext sm hpcm hrunm hspm hsp_alm hcsm
-        (hF.of_keepsFrozen hsteps.keepsFrozen) (hsteps.symtab_eq.trans hsym) hsteps
-        R hpost (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout'⟩
-  · rw [hpan_eq, ← sepConj_assoc] at hpost
-    exact ⟨sm, hsteps, Or.inr (Or.inl ⟨hpan, _, hpost, allowPanic_oom_of_trace_prefix htr⟩)⟩
-  · rw [hexit_false] at hpost
-    exact (allowPanic_not_exited hpost).elim
-
-/-! ## Poll cell bijections and `StageP4Alloc` -/
 
 private theorem extractLsb'_lo32 (hi lo : BitVec 32) (k : Nat) (hk : k + 8 ≤ 32) :
     (hi ++ lo).extractLsb' k 8 = lo.extractLsb' k 8 := by
@@ -432,7 +380,7 @@ theorem words3_eq_head_mid_tail (a w0 w1 w2 : BitVec 64) :
 
 /-- Unaligned 48-byte poll/sret cell layout `(w0, o1, o2, o3, o4, o5, o6)` read from `sp + 0x3e0`
 and written to `outPtr` by the closure's store-poll dispatch and exit tail. -/
-def pollCellsAt (p w0 : BitVec 64) (o1 : BitVec 32)
+@[expose] def pollCellsAt (p w0 : BitVec 64) (o1 : BitVec 32)
     (o2 o3 o4 o5 : BitVec 64) (o6 : BitVec 32) : SepProp :=
   (p ↦₆₄ w0) ∗
   ((p + 0x8#64) ↦₃₂ o1) ∗
@@ -443,7 +391,7 @@ def pollCellsAt (p w0 : BitVec 64) (o1 : BitVec 32)
   ((p + 0x2c#64) ↦₃₂ o6)
 
 /-- 36-byte error-tail staging slot layout (`sp + 0x2b0` / `0x2e0` / `0x310` / `0x340` / `0x370`). -/
-def stagingCellsAt (slot o2 o3 o4 o5 : BitVec 64) (o6 : BitVec 32) : SepProp :=
+@[expose] def stagingCellsAt (slot o2 o3 o4 o5 : BitVec 64) (o6 : BitVec 32) : SepProp :=
   (slot ↦₆₄ o2) ∗
   ((slot + 0x8#64) ↦₆₄ o3) ∗
   ((slot + 0x10#64) ↦₆₄ o4) ∗
@@ -566,61 +514,10 @@ theorem ptextBuf_dealloc_nonzero (A : RustAlloc) (ptCap ptPtr : BitVec 64) (pt :
   refine Entails.trans (Entails.of_eq (by ac_rfl))
     (sepConj_mono_right (sepConj_mono_left (ProofLib.pointsToBytes_entails_memRegion ptPtr pt)))
 
-/-- Minimal deallocation-only contract bundle for Stage P4 (`__rust_dealloc` meeting
-`rustDeallocSpec A` with `allocHookStack = 4096` bytes). -/
-structure StageP4Alloc (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop where
-  dealloc :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr deallocName) (rustDeallocSpec A)
-
 namespace StageP4Alloc
 
 variable {b : BitVec 64} {A : RustAlloc} {ext : String → Option (State → State)}
 
-theorem dealloc_ok_at (hA : StageP4Alloc b A ext) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff deallocName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k) (rustDeallocSpec A) :=
-  sub_ok_at_of_fnAddr hA.dealloc name k hk
-
-theorem of_allocContracts (hA : AllocContracts b A ext) : StageP4Alloc b A ext :=
-  ⟨hA.dealloc⟩
-
-theorem of_allocHooks (b : BitVec 64) (hAlloc : AllocHooks A ext) : StageP4Alloc b A ext :=
-  ⟨by
-    simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero] using
-      dealloc_ok_at_ext b A ext hAlloc deallocName 0 (Nat.add_zero _)⟩
-
 end StageP4Alloc
-
-theorem dealloc_at_closure_p4 {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : StageP4Alloc b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr
-        CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.decryptPrekeyClosureName +
-        bv% (ls_off% "__rustc::__rust_dealloc" -
-          ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}"))
-      (rustDeallocSpec A) := by
-  have hfn := (ls_lemma% fnOff "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}")
-  exact hA.dealloc_ok_at
-    CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.decryptPrekeyClosureName
-    (num% (ls_off% "__rustc::__rust_dealloc" -
-      ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}"))
-    (by
-      dsimp only [CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.decryptPrekeyClosureName]
-      rw [hfn]
-      simp only [arm64_norm])
-
-theorem dealloc_at_closure_ext {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr
-        CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.decryptPrekeyClosureName +
-        bv% (ls_off% "__rustc::__rust_dealloc" -
-          ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}"))
-      (rustDeallocSpec A) :=
-  dealloc_at_closure_p4 (.of_allocContracts hA)
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits

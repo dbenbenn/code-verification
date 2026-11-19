@@ -10,16 +10,17 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Defs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.AllocContractsMem4K
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropLocal1Ext4K
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops.Common
 import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Fetch
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -161,20 +162,6 @@ private def dropSessionStructureLocal1HeadSpec4K (A : RustAlloc) : Spec DropSess
     ⌜sf.trace = s0.trace⌝ ∗
       memRegion x.ss 344 ∗ A.pool ∗ stackAt s0.sp dropSessionStructureLocal1Stack
 
-private theorem drop_session_structure_local1_head_ok_4k {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hdrop1 : DropSessionStructureLocal1OkExt b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr dropSessionStructureLocal1Name)
-      (dropSessionStructureLocal1HeadSpec4K A) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  refine hdrop1.mono_outcome x R s0 hpc hrun ?_ hsp fun _ hout => hout
-  simp only [dropSessionStructureLocal1Spec, dropSessionStructureLocal1HeadSpec4K,
-    sessionStateAt_unfold_cap_4k, sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-  exact ⟨hpre.1.1, hpre.1.2, hpre.2⟩
-
-/-! ## Case 1: `cur = none` -/
-
 private def setSessionStateNoneSpec4K (A : RustAlloc) : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (record, src, bs) s =>
     ⌜s.readReg64 .x0 = record ∧ s.readReg64 .x1 = src ∧ bs.length = 344⌝ ∗
@@ -184,44 +171,6 @@ private def setSessionStateNoneSpec4K (A : RustAlloc) : Spec (BitVec 64 × BitVe
     ⌜sf.trace = s0.trace⌝ ∗
       ((record + 0x18#64) ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ A.pool ∗
       stackAt s0.sp setSessionStateStack
-
-private theorem set_session_state_none_ok_4k {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hmemcpy0 : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr memcpyName) (sessionMemcpySpec allocHookStack)) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr setSessionStateName)
-      (setSessionStateNoneSpec4K A) := by
-  unfold setSessionStateNoneSpec4K
-  simp only [noneCap]
-  have hfn : libsignalSessionCode.fnOff setSessionStateName = num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::set_session_state") :=
-    (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::set_session_state")
-  have hmemcpy : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr setSessionStateName + BitVec.ofNat 64 (num% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::set_session_state")))
-      (sessionMemcpySpec allocHookStack) :=
-    sub_ok_at_of_fnAddr (b := b) (ext := ext) (sym := memcpyName) hmemcpy0 setSessionStateName
-      (num% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::set_session_state"))
-      (by fnoff_eq)
-  clear hmemcpy0
-  code_fetches_from CryptoVerification.libsignalSessionCode fromRecordCalleesBin b
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::set_session_state")) 0 12
-  code_fetches_from CryptoVerification.libsignalSessionCode fromRecordCalleesBin b
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::set_session_state")) 0x34 8
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨record, src, bs⟩ := x
-  dsimp only at *
-  rw [stackAt_setSessionState_split_alloc_4k s0.sp]
-  wp_steps
-  refine SepWP.fold (pointsTo64_memRegion_336_entails_344_4k record 0xffffffffffffffff#64)
-    (by sep_focus) ?_
-  rw [← h]
-  wp_apply
-  rw [← stackAt_setSessionState_split_alloc_4k s0.sp]
-  wp_done
-
-/-! ## Case 2: `cur = some (G, st)` -/
 
 private def setSessionStateSomeStack4K (sp : BitVec 64) : SepProp :=
   ∃∗ v0 : BitVec 64, ∃∗ v1 : BitVec 64, ∃∗ v2 : BitVec 64, ∃∗ v3 : BitVec 64,
@@ -239,78 +188,5 @@ private def setSessionStateSomeSpec4K (A : RustAlloc) :
     ⌜sf.trace = s0.trace⌝ ∗
       ((record + 0x18#64) ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ A.pool ∗
       stackAt s0.sp setSessionStateStack
-
-private theorem set_session_state_some_ok_4k {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hmemcpy0 : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr memcpyName) (sessionMemcpySpec allocHookStack))
-    (hdrop1 : DropSessionStructureLocal1OkExt b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr setSessionStateName)
-      (setSessionStateSomeSpec4K A) := by
-  unfold setSessionStateSomeSpec4K
-  simp only [sessionStateAt_unfold_cap_4k, setSessionStateSomeStack4K, sepExists_sepConj_right]
-  have hfn : libsignalSessionCode.fnOff setSessionStateName = num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::set_session_state") :=
-    (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::set_session_state")
-  have hmemcpy : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr setSessionStateName + BitVec.ofNat 64 (num% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::set_session_state")))
-      (sessionMemcpySpec allocHookStack) :=
-    sub_ok_at_of_fnAddr (b := b) (ext := ext) (sym := memcpyName) hmemcpy0 setSessionStateName
-      (num% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::set_session_state"))
-      (by fnoff_eq)
-  clear hmemcpy0
-  have hdrop := drop_session_structure_local1_head_ok_4k hdrop1
-  clear hdrop1
-  have hrel : (tripleRatchetProgAtExt b ext).fnAddr dropSessionStructureLocal1Name =
-      (tripleRatchetProgAtExt b ext).fnAddr setSessionStateName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#1]") - (ls_off% "<libsignal_protocol::state::session::SessionRecord>::set_session_state")) := by
-    simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#1]"),
-      (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::set_session_state"), BitVec.add_assoc]
-    rfl
-  rw [hrel] at hdrop
-  clear hrel
-  code_fetches_from CryptoVerification.libsignalSessionCode fromRecordCalleesBin b
-    (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::set_session_state")) 0 60
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨record, src, G, st, bs⟩ := x
-  dsimp only at *
-  have hcmn : (G.localIk.cap + 1#64 == 0#64) = false := cap_add_one_beq_zero_eq_false_4k (by omega)
-  wp_steps
-  wp_apply
-  wp_steps
-  refine SepWP.fold (cells4_local1_entails_setSessionState_split_4k s0.sp _ _ _ _)
-    (by sep_focus) ?_
-  rw [← h_2]
-  wp_apply
-  refine SepWP.fold (Entails.of_eq (stackAt_setSessionState_split_alloc_4k s0.sp).symm)
-    (by sep_focus) ?_
-  wp_done
-
-/-! ## Unified `set_session_state_ok_ext_4k` -/
-
-theorem set_session_state_ok_of_memcpy_4k {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hmemcpy0 : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr memcpyName) (sessionMemcpySpec allocHookStack))
-    (hdrop1 : DropSessionStructureLocal1OkExt b A ext) :
-    SetSessionStateOkExt b A ext := by
-  refine subroutine_ok_outcome_intro fun ⟨record, src, cur, bs⟩ R s0 hpc hrun hpre hsp => ?_
-  rcases cur with _ | ⟨G, st⟩
-  · exact (set_session_state_none_ok_4k hmemcpy0).mono_outcome (record, src, bs) R s0 hpc hrun
-      (by simpa only [setSessionStateSpec, setSessionStateNoneSpec4K, sepConj_assoc] using hpre) hsp
-      fun _ hout => hout
-  · exact (set_session_state_some_ok_4k hmemcpy0 hdrop1).mono_outcome (record, src, G, st, bs) R s0 hpc hrun
-      (by simpa only [setSessionStateSpec, setSessionStateSomeSpec4K,
-        stackAt_setSessionState_4k, setSessionStateSomeStack4K, sepConj_assoc] using hpre) hsp
-      fun _ hout => hout
-
-/-- `<SessionRecord>::set_session_state` meets `setSessionStateSpec A` (`SetSessionStateOkExt b A ext`)
-on `tripleRatchetProgAtExt b ext` under `AllocContractsMem4K b A ext`. -/
-theorem set_session_state_ok_ext_4k {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hA : AllocContractsMem4K b A ext) :
-    SetSessionStateOkExt b A ext :=
-  set_session_state_ok_of_memcpy_4k hA.session_memcpy (drop_session_structure_local1_ok_ext_4k hA)
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.GenP3

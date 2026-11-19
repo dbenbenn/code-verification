@@ -9,17 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ChainLookupErrSym507Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropChain2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailProof
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ChainLookupErrSym507Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropChain2PlacedBudget
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailProof
+import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailSym
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
 # Budget-Threaded Relocatable `ErrTail` Symbolic Execution on Block `507`
@@ -29,7 +30,7 @@ the `ErrTail` cleanup block of `try_decrypt_with_state::<signal_session_handshak
 (Block `507`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

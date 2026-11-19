@@ -11,7 +11,7 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 public import LibsignalBinary.Proofs.TripleRatchet.Bytes.Defs
 
 /-!
@@ -23,7 +23,7 @@ and `RustCliAllocBudget M` contracts with deterministic `bytesDropEvents` envelo
 for `promotable_even_drop`, `promotable_odd_drop`, and unified vtable `drop` dispatch.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +36,7 @@ open CryptoVerification.LibsignalTripleRatchet (
   BytesFromVecGhost BytesDropGhost
   bytesFromVecStack promotableEvenDropStack promotableOddDropStack bytesVtableDropStack
   promotableEvenDropStackX promotableOddDropStackX bytesVtableDropStackX
-  bytesPtr bytesData bytesBoxU8Buf bytesHeader bytesAt
+  bytesPtr bytesData bytesBoxU8Buf bytesHeader
   staticVtablePlacedAddr bytesPlacedAt
 )
 open LibsignalBinary.Heap (
@@ -45,17 +45,15 @@ open LibsignalBinary.Heap (
 )
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 
-noncomputable section
-
 /-! ## 1. Deterministic Drop Events for `bytes::Bytes` -/
 
 /-- Deterministic `AllocEvent` list emitted when dropping a `bytes::Bytes` with buffer `bs`:
     `[]` when `bs.length = 0` (`STATIC_VTABLE` → `static_drop`), else
     `rustDeallocEvents bs.length 1` (`promotable_{even,odd}_drop` → `__rust_dealloc(ptr, len, 1)`). -/
-def bytesDropEvents (bs : List (BitVec 8)) : List AllocEvent :=
+@[expose] def bytesDropEvents (bs : List (BitVec 8)) : List AllocEvent :=
   if bs.length = 0 then [] else rustDeallocEvents bs.length 1
 
-def BytesDropEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def BytesDropEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   evs = bytesDropEvents bs
 
 theorem freeOnlyEvs_bytesDropEvents (bs : List (BitVec 8)) :
@@ -80,26 +78,13 @@ theorem liveBytes_stepEvents_bytesDropEvents_le (M : AllocCostModel) (bs : List 
 
 /-! ## 2. Pure (`0`-Allocation, `VmPreserved`) `Bytes` Specifications -/
 
-/-- VM-preserving specification of `<Bytes as From<Vec<u8>>>::from` at base `b`. -/
-def bytesFromVecSpec (A : RustAlloc) (b : BitVec 64) : Spec BytesFromVecGhost where
-  pre := fun (v, out, cap, ptr, bs) s =>
-    ⌜s.readReg64 .x0 = v ∧ s.readReg64 .x8 = out ∧ cap.toNat = bs.length⌝ ∗
-    vecU8At A v cap ptr bs ∗
-    memRegion out 32 ∗
-    stackAt s.sp bytesFromVecStack
-  post := fun (v, out, cap, ptr, bs) s0 sf =>
-    ⌜sf.trace = s0.trace ∧ VmPreserved s0 sf⌝ ∗
-    vecHeader v cap ptr (BitVec.ofNat 64 bs.length) ∗
-    bytesAt A b out ptr bs ∗
-    stackAt s0.sp bytesFromVecStack
-
 /-- VM-preserving specification of `bytes::bytes::static_drop` (`ret`, `0` allocations). -/
-def bytesStaticDropSpec : Spec Unit where
+@[expose] def bytesStaticDropSpec : Spec Unit where
   pre := fun _ _ => emp
   post := fun _ s0 sf => ⌜sf.trace = s0.trace ∧ VmPreserved s0 sf⌝
 
 /-- Relocatable VM-preserving specification of `<Bytes as From<Vec<u8>>>::from` (Block `250`). -/
-def bytesFromVecPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec BytesFromVecGhost where
+@[expose] def bytesFromVecPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec BytesFromVecGhost where
   pre := fun (v, out, cap, ptr, bs) s =>
     ⌜s.readReg64 .x0 = v ∧ s.readReg64 .x8 = out ∧ cap.toNat = bs.length⌝ ∗
     vecU8At A v cap ptr bs ∗
@@ -112,7 +97,7 @@ def bytesFromVecPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec BytesFrom
     stackAt s0.sp bytesFromVecStack
 
 /-- Relocatable VM-preserving specification of `bytes::bytes::static_clone` (Block `226`). -/
-def bytesStaticClonePlacedSpec [LibsignalPlacement] :
+@[expose] def bytesStaticClonePlacedSpec [LibsignalPlacement] :
     Spec (BitVec 64 × BitVec 64 × BitVec 64) where
   pre := fun (out, ptr, len) s =>
     ⌜s.readReg64 .x8 = out ∧ s.readReg64 .x1 = ptr ∧ s.readReg64 .x2 = len⌝ ∗
@@ -124,7 +109,7 @@ def bytesStaticClonePlacedSpec [LibsignalPlacement] :
 /-! ## 3. Budget-Threaded Drop Specifications (`allocHookStack + 48`) -/
 
 /-- Budget-threaded specification of `bytes::bytes::promotable_even_drop` (Block `237`). -/
-def promotableEvenDropSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def promotableEvenDropSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BytesDropGhost × M.σ) where
   pre := fun ((ptr, bs, off), st) s =>
     ⌜0 < bs.length ∧
@@ -144,7 +129,7 @@ def promotableEvenDropSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCl
     stackAt s0.sp promotableEvenDropStack
 
 /-- Budget-threaded specification of `bytes::bytes::promotable_odd_drop` (Block `236`). -/
-def promotableOddDropSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def promotableOddDropSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BytesDropGhost × M.σ) where
   pre := fun ((ptr, bs, off), st) s =>
     ⌜0 < bs.length ∧
@@ -164,7 +149,7 @@ def promotableOddDropSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCli
     stackAt s0.sp promotableOddDropStack
 
 /-- Budget-threaded unified vtable `drop` specification at `bytesVtableDropStack`. -/
-def bytesVtableDropSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def bytesVtableDropSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (ptr : BitVec 64) (bs : List (BitVec 8)) (off : Nat) :
     Spec M.σ where
   pre := fun st s =>
@@ -185,7 +170,7 @@ def bytesVtableDropSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAl
 /-! ## 4. Budget-Threaded Drop Specifications at `extHookStack + 48` (`*SpecX`) -/
 
 /-- Budget-threaded `promotableEvenDropSpec` at `promotableEvenDropStackX` (`= extHookStack + 48`). -/
-def promotableEvenDropSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def promotableEvenDropSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BytesDropGhost × M.σ) where
   pre := fun ((ptr, bs, off), st) s =>
     ⌜0 < bs.length ∧
@@ -205,7 +190,7 @@ def promotableEvenDropSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustC
     stackAt s0.sp promotableEvenDropStackX
 
 /-- Budget-threaded `promotableOddDropSpec` at `promotableOddDropStackX` (`= extHookStack + 48`). -/
-def promotableOddDropSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def promotableOddDropSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BytesDropGhost × M.σ) where
   pre := fun ((ptr, bs, off), st) s =>
     ⌜0 < bs.length ∧
@@ -225,7 +210,7 @@ def promotableOddDropSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCl
     stackAt s0.sp promotableOddDropStackX
 
 /-- Budget-threaded `bytesVtableDropSpec` at `bytesVtableDropStackX` (`= extHookStack + 48`). -/
-def bytesVtableDropSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def bytesVtableDropSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (ptr : BitVec 64) (bs : List (BitVec 8)) (off : Nat) :
     Spec M.σ where
   pre := fun st s =>
@@ -242,7 +227,5 @@ def bytesVtableDropSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliA
     ⌜sf.trace = s0.trace ∧ M.liveBytes st' ≤ M.liveBytes st⌝ ∗
     A.pool lim st' sf ∗
     stackAt s0.sp bytesVtableDropStackX
-
-end
 
 end LibsignalBinary.Proofs.TripleRatchet.Bytes.DefsBudget

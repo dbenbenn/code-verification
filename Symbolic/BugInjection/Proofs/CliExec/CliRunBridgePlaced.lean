@@ -10,6 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import ProofLib.Process.Core
 
 /-!
@@ -32,8 +33,8 @@ open Arm64.Process (ElfImage ProcessExitsWith ProcessOutcome ProcessRunsTo
   ProcessTerminatedOutcome)
 open CryptoVerification.SignalSession (CliHooks Inputs Outcome
   OutcomeMatchesProcess cliProcessInputs)
-open CryptoVerification.SignalSession.Placed (CliRunsToPlaced cliProgPlacedSig
-  cliRunPlacedSig cliTokenPatchPlaced)
+open CryptoVerification.SignalSession.Placed (cliTokenPatchPlaced)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (CliRunsToPlaced cliProgPlacedSig cliRunPlacedSig)
 
 private theorem processTerminatedOutcome_unique {sf : State} {out₁ out₂ : ProcessOutcome}
     (h₁ : ProcessTerminatedOutcome sf out₁) (h₂ : ProcessTerminatedOutcome sf out₂) :
@@ -112,15 +113,5 @@ theorem cliRunPlacedSig_eq_some_of_signaled
     (hout : OutcomeMatchesProcess out (ProcessOutcome.ofSignal sig sf)) :
     cliRunPlacedSig mpl mmpl elf W inp = some out :=
   cliRunPlacedSig_eq_some_of_terminated hload hsteps (Or.inr ⟨sig, hst, rfl⟩) hout
-
-theorem cliRunPlacedSig_eq_some_of_stepsUntil
-    {mpl mmpl : MultiPlacement} {elf : ElfImage} {W : CliHooks} {inp : Inputs}
-    {out : Outcome} {stop : State → Prop} {s0 sf : State} {pout : ProcessOutcome}
-    (hload : elf.loadState (cliProcessInputs inp) = .ok s0)
-    (hsteps : StepsUntil (cliProgPlacedSig mpl mmpl W) stop (cliTokenPatchPlaced mpl s0) sf)
-    (hterm : ProcessTerminatedOutcome sf pout)
-    (hout : OutcomeMatchesProcess out pout) :
-    cliRunPlacedSig mpl mmpl elf W inp = some out :=
-  cliRunPlacedSig_eq_some_of_terminated hload hsteps.toSteps hterm hout
 
 end Symbolic.BugInjection.Proofs.CliExec.CliRunBridgePlaced

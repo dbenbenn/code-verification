@@ -9,11 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesChunked
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesChunked -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MessageEncodeCodeSym
-import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesPoly
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked59_71
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93
@@ -27,7 +25,7 @@ wires `BL` callee contracts to establish `[local#1]` and `[local#2]` theorems fo
 `Chunked.Ct1Sampled` and `Chunked.HeaderSent`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ProtoRepr
 
@@ -37,8 +35,6 @@ open CryptoVerification.LibsignalTripleRatchetRepr
 open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalSpqrV1
 open EncodedLen
-
-local notation "tripleRatchetProgAtExt" => CryptoVerification.LibsignalTripleRatchet.contractProg
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
@@ -55,40 +51,19 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## 1. `V1State.Chunked.HeaderSent::encoded_len` (`0x39fc8`, `0x69f70`, 67 insns) -/
 
-/-- Entry-point membership for the two identical-structure copies of `chunked::HeaderSent::encoded_len`
-    (`0x39fc8`, `0x69f70`). -/
-def IsChunkedHeaderSentEntry (b : BitVec 64) (abs : String → Option (State → State))
-    (entry : BitVec 64) : Prop :=
-  (tripleRatchetProgAtExt b abs).fnAddr chunkedHeaderSentEncodedLenLocal1Name = entry ∨
-  (tripleRatchetProgAtExt b abs).fnAddr chunkedHeaderSentEncodedLenLocal2Name = entry
-
 open Lean Elab Tactic in
 elab "headerSent_fetches_range " hfn:ident kStart:num kEnd:num : tactic => do
-  let offs := #[0x3a0ac, 0x64b78]
-  let fnOffs := #[
-    mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x3a0ac,
-    mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x64b78
-  ]
   let kStart := kStart.getNat
   let kEnd := kEnd.getNat
-  let fetchEntry := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
   for i in [kStart / 4 : kEnd / 4] do
     let k := 4 * i
     if k != 32 && k != 92 && k != 192 then
-      let decs := offs.map fun off =>
-        mkIdent (`CryptoVerification.SpqrV1.ProtoRepr |>.str
-          s!"spqrChunkedHeaderSentBin_decode_0x{String.ofList (Nat.toDigits 16 (off + k))}")
-      let d0 := decs[0]!; let d1 := decs[1]!
-      let f0 := fnOffs[0]!; let f1 := fnOffs[1]!
       let kq := Syntax.mkNumLit (toString k)
       if k == 0 then
         let pf0 := mkIdent (`CryptoVerification.blkPC_188_rebase_fetch_base)
         let pf1 := mkIdent (`CryptoVerification.blkPC_414_rebase_fetch_base)
         evalTactic (← `(tactic|
           have := dualBlockP2_fetch_entry $hfn
-            (fun b H => $fetchEntry (b := b) (H := H) $f0 (by decide) $d0)
-            (fun b H => $fetchEntry (b := b) (H := H) $f1 (by decide) $d1)
             (fun [LibsignalPlacement] H => $pf0 _ H)
             (fun [LibsignalPlacement] H => $pf1 _ H)))
       else
@@ -97,13 +72,11 @@ elab "headerSent_fetches_range " hfn:ident kStart:num kEnd:num : tactic => do
         let pf1 := mkIdent (`CryptoVerification |>.str s!"blkPC_414_rebase_fetch_0x{kHex}")
         evalTactic (← `(tactic|
           have := dualBlockP2_fetch_add $hfn (k := $kq)
-            (fun b H => $fetchAdd (b := b) (H := H) (k := $kq) $f0 (by decide) $d0)
-            (fun b H => $fetchAdd (b := b) (H := H) (k := $kq) $f1 (by decide) $d1)
             (fun [LibsignalPlacement] H => $pf0 _ H)
             (fun [LibsignalPlacement] H => $pf1 _ H)))
 
 /-- Unpacked representation of `chunkedHeaderSentPBPinnedAt` with the 3 option `cap` words exposed. -/
-def chunkedHeaderSentUnpacked (A : RustAlloc) (g : ChunkedHeaderSentPBGhost)
+@[expose] def chunkedHeaderSentUnpacked (A : RustAlloc) (g : ChunkedHeaderSentPBGhost)
     (a : BitVec 64) (m : V1State.Chunked.HeaderSent) : SepProp :=
   (a ↦₆₄ optEkSentCap g.uc m.uc) ∗ optEkSentRest A g.uc a m.uc ∗
     ((a + 80#64) ↦₆₄ optPolyEncCap g.sendingEk m.sendingEk) ∗
@@ -788,21 +761,6 @@ theorem headerSent_entry_pinned_lscl_ok [LibsignalPlacement] (prog : Program) (A
     subroutine_ok prog entry (withLsCodeLoaded lsmpl (chunkedHeaderSentEncodedLenPinnedSpec A)) :=
   subroutine_ok_of_sepWPpF_lscl (headerSent_entry_pinned_wp_p2 (LibsignalCodeLoaded lsmpl) prog A entry hfn hbl1 hbl2 hbl3)
 
-theorem headerSent_entry_pinned_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) (entry : BitVec 64)
-    (hfn : IsChunkedHeaderSentEntry b ext entry)
-    (hbl1 : CallPinnedEncLenAt (tripleRatchetProgAtExt b ext) entry 32
-      (ekSentPBPinnedAt A) ekSentPBEncodedLen polyEncodedLenStack)
-    (hbl2 : CallPinnedEncLenAt (tripleRatchetProgAtExt b ext) entry 92
-      (polynomialEncoderPBPinnedAt A) polynomialEncoderPBEncodedLen polyEncodedLenStack)
-    (hbl3 : CallPinnedEncLenAt (tripleRatchetProgAtExt b ext) entry 192
-      (polynomialDecoderPBPinnedAt A) polynomialDecoderPBEncodedLen polyEncodedLenStack) :
-    subroutine_ok (tripleRatchetProgAtExt b ext) entry (chunkedHeaderSentEncodedLenPinnedSpec A) :=
-  headerSent_entry_pinned_ok_p2 (tripleRatchetProgAtExt b ext) A entry (Or.inl ⟨b, ext, rfl, hfn⟩)
-    (callPinnedEncLenAtF_true_of_callPinnedEncLenAt hbl1)
-    (callPinnedEncLenAtF_true_of_callPinnedEncLenAt hbl2)
-    (callPinnedEncLenAtF_true_of_callPinnedEncLenAt hbl3)
-
 theorem chunkedHeaderSentEncodedLen_ok_of_pinned {prog : Program} {entry : BitVec 64} {A : RustAlloc}
     (hpinned : subroutine_ok prog entry (chunkedHeaderSentEncodedLenPinnedSpec A)) :
     subroutine_ok prog entry (chunkedHeaderSentEncodedLenSpec A) := by
@@ -841,58 +799,6 @@ theorem chunkedHeaderSentEncodedLen_lscl_ok_of_pinned {prog : Program} {entry : 
   · exact Or.inr (Or.inr hex)
 
 /-! ## 2. Wired `[local#1]` and `[local#2]` Theorems for `Chunked.Ct1Sampled` and `Chunked.HeaderSent` -/
-
-theorem chunkedCt1SampledEncodedLen_local1_pinned_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : ChunkedCt1SampledEncodedLenLocal1PinnedOkExt b A ext := by
-  refine ct1Sampled_entry_pinned_ok_ext b A ext _ (Or.inl rfl) ?_ ?_ ?_
-  · exact callPinnedEncLenAt_of_bl (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl)
-      (libsignalSessionCode_fetch_fnAddr (b := b) (H := Rust.withPanics ext) (k := 32)
-        libsignalSessionCode_fnOff_0x39974 (by decide) spqrChunkedCt1SampledBin_decode_0x39994)
-      (fnAddr_bl_target libsignalSessionCode_fnOff_0x39974 libsignalSessionCode_fnOff_0x39a94)
-      (ct1SentEncodedLen_local1_pinned_ok_ext b A ext)
-  · exact callPinnedEncLenAt_of_bl (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl)
-      (libsignalSessionCode_fetch_fnAddr (b := b) (H := Rust.withPanics ext) (k := 92)
-        libsignalSessionCode_fnOff_0x39974 (by decide) spqrChunkedCt1SampledBin_decode_0x399d0)
-      (fnAddr_bl_target libsignalSessionCode_fnOff_0x39974 libsignalSessionCode_fnOff_0x38e70)
-      (polynomialEncoderEncodedLen_local1_pinned_ok_ext b A ext)
-  · exact callPinnedEncLenAt_of_bl (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl)
-      (libsignalSessionCode_fetch_fnAddr (b := b) (H := Rust.withPanics ext) (k := 192)
-        libsignalSessionCode_fnOff_0x39974 (by decide) spqrChunkedCt1SampledBin_decode_0x39a34)
-      (fnAddr_bl_target libsignalSessionCode_fnOff_0x39974 libsignalSessionCode_fnOff_0x39f7c)
-      (polynomialDecoderEncodedLen_local1_pinned_ok_ext b A ext)
-
-theorem chunkedCt1SampledEncodedLen_local1_ok_ext (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) : ChunkedCt1SampledEncodedLenLocal1OkExt b A ext :=
-  chunkedCt1SampledEncodedLen_ok_of_pinned (chunkedCt1SampledEncodedLen_local1_pinned_ok_ext b A ext)
-theorem chunkedCt1SampledEncodedLen_local1_pinned_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : ChunkedCt1SampledEncodedLenLocal1PinnedOk b C A ctl abs :=
-  chunkedCt1SampledEncodedLen_local1_pinned_ok_ext b A (tripleRatchetExterns C ctl abs)
-theorem chunkedCt1SampledEncodedLen_local1_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : ChunkedCt1SampledEncodedLenLocal1Ok b C A ctl abs :=
-  chunkedCt1SampledEncodedLen_local1_ok_ext b A (tripleRatchetExterns C ctl abs)
-
-theorem chunkedCt1SampledEncodedLen_local2_pinned_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : ChunkedCt1SampledEncodedLenLocal2PinnedOkExt b A ext := by
-  refine ct1Sampled_entry_pinned_ok_ext b A ext _ (Or.inr rfl) ?_ ?_ ?_
-  · exact callPinnedEncLenAt_of_bl (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl)
-      (libsignalSessionCode_fetch_fnAddr (b := b) (H := Rust.withPanics ext) (k := 32)
-        libsignalSessionCode_fnOff_0x63768 (by decide) spqrChunkedCt1SampledBin_decode_0x63788)
-      (fnAddr_bl_target libsignalSessionCode_fnOff_0x63768 libsignalSessionCode_fnOff_0x63948)
-      (ct1SentEncodedLen_local2_pinned_ok_ext b A ext)
-  · exact callPinnedEncLenAt_of_bl (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl)
-      (libsignalSessionCode_fetch_fnAddr (b := b) (H := Rust.withPanics ext) (k := 92)
-        libsignalSessionCode_fnOff_0x63768 (by decide) spqrChunkedCt1SampledBin_decode_0x637c4)
-      (fnAddr_bl_target libsignalSessionCode_fnOff_0x63768 libsignalSessionCode_fnOff_0x615f4)
-      (polynomialEncoderEncodedLen_local2_pinned_ok_ext b A ext)
-  · exact callPinnedEncLenAt_of_bl (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl)
-      (libsignalSessionCode_fetch_fnAddr (b := b) (H := Rust.withPanics ext) (k := 192)
-        libsignalSessionCode_fnOff_0x63768 (by decide) spqrChunkedCt1SampledBin_decode_0x63828)
-      (fnAddr_bl_target libsignalSessionCode_fnOff_0x63768 libsignalSessionCode_fnOff_0x642fc)
-      (polynomialDecoderEncodedLen_local2_pinned_ok_ext b A ext)
-
-theorem chunkedCt1SampledEncodedLen_local2_ok_ext (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) : ChunkedCt1SampledEncodedLenLocal2OkExt b A ext :=
-  chunkedCt1SampledEncodedLen_ok_of_pinned (chunkedCt1SampledEncodedLen_local2_pinned_ok_ext b A ext)
-theorem chunkedCt1SampledEncodedLen_local2_pinned_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : ChunkedCt1SampledEncodedLenLocal2PinnedOk b C A ctl abs :=
-  chunkedCt1SampledEncodedLen_local2_pinned_ok_ext b A (tripleRatchetExterns C ctl abs)
-theorem chunkedCt1SampledEncodedLen_local2_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : ChunkedCt1SampledEncodedLenLocal2Ok b C A ctl abs :=
-  chunkedCt1SampledEncodedLen_local2_ok_ext b A (tripleRatchetExterns C ctl abs)
 
 theorem bl_reloc_target_eq (entry off tgt : BitVec 64) :
     entry + off + (tgt - entry - off) = tgt := by
@@ -934,91 +840,22 @@ theorem chunkedCt1SampledEncodedLen_local2_pinned_placed_ok [LibsignalPlacement]
 theorem chunkedCt1SampledEncodedLen_local2_placed_ok [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : ChunkedCt1SampledEncodedLenLocal2PlacedOk C A ctl abs :=
   chunkedCt1SampledEncodedLen_local2_placed_ok_ext A (tripleRatchetExterns C ctl abs)
 
-def ChunkedHeaderSentEncodedLenLocal1PinnedOkExt (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr chunkedHeaderSentEncodedLenLocal1Name) (chunkedHeaderSentEncodedLenPinnedSpec A)
-def ChunkedHeaderSentEncodedLenLocal1OkExt (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr chunkedHeaderSentEncodedLenLocal1Name) (chunkedHeaderSentEncodedLenSpec A)
-def ChunkedHeaderSentEncodedLenLocal1PinnedOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr chunkedHeaderSentEncodedLenLocal1Name) (chunkedHeaderSentEncodedLenPinnedSpec A)
-def ChunkedHeaderSentEncodedLenLocal1Ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr chunkedHeaderSentEncodedLenLocal1Name) (chunkedHeaderSentEncodedLenSpec A)
-def ChunkedHeaderSentEncodedLenLocal2PinnedOkExt (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr chunkedHeaderSentEncodedLenLocal2Name) (chunkedHeaderSentEncodedLenPinnedSpec A)
-def ChunkedHeaderSentEncodedLenLocal2OkExt (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr chunkedHeaderSentEncodedLenLocal2Name) (chunkedHeaderSentEncodedLenSpec A)
-def ChunkedHeaderSentEncodedLenLocal2PinnedOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr chunkedHeaderSentEncodedLenLocal2Name) (chunkedHeaderSentEncodedLenPinnedSpec A)
-def ChunkedHeaderSentEncodedLenLocal2Ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr chunkedHeaderSentEncodedLenLocal2Name) (chunkedHeaderSentEncodedLenSpec A)
-
-def ChunkedHeaderSentEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def ChunkedHeaderSentEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_188).rebase (blkPl_188).base (Rust.withPanics ext)) (blkPl_188).base (withLsCodeLoaded lsmpl (chunkedHeaderSentEncodedLenPinnedSpec A))
-def ChunkedHeaderSentEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def ChunkedHeaderSentEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_188).rebase (blkPl_188).base (Rust.withPanics ext)) (blkPl_188).base (withLsCodeLoaded lsmpl (chunkedHeaderSentEncodedLenSpec A))
-def ChunkedHeaderSentEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
+@[expose] def ChunkedHeaderSentEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   ChunkedHeaderSentEncodedLenLocal1PinnedPlacedOkExt A (tripleRatchetExterns C ctl abs)
-def ChunkedHeaderSentEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
+@[expose] def ChunkedHeaderSentEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   ChunkedHeaderSentEncodedLenLocal1PlacedOkExt A (tripleRatchetExterns C ctl abs)
-def ChunkedHeaderSentEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def ChunkedHeaderSentEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_414).rebase (blkPl_414).base (Rust.withPanics ext)) (blkPl_414).base (withLsCodeLoaded lsmpl (chunkedHeaderSentEncodedLenPinnedSpec A))
-def ChunkedHeaderSentEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def ChunkedHeaderSentEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_414).rebase (blkPl_414).base (Rust.withPanics ext)) (blkPl_414).base (withLsCodeLoaded lsmpl (chunkedHeaderSentEncodedLenSpec A))
-def ChunkedHeaderSentEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
+@[expose] def ChunkedHeaderSentEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   ChunkedHeaderSentEncodedLenLocal2PinnedPlacedOkExt A (tripleRatchetExterns C ctl abs)
-def ChunkedHeaderSentEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
+@[expose] def ChunkedHeaderSentEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   ChunkedHeaderSentEncodedLenLocal2PlacedOkExt A (tripleRatchetExterns C ctl abs)
-
-theorem chunkedHeaderSentEncodedLen_local1_pinned_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : ChunkedHeaderSentEncodedLenLocal1PinnedOkExt b A ext := by
-  refine headerSent_entry_pinned_ok_ext b A ext _ (Or.inl rfl) ?_ ?_ ?_
-  · exact callPinnedEncLenAt_of_bl (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl)
-      (libsignalSessionCode_fetch_fnAddr (b := b) (H := Rust.withPanics ext) (k := 32)
-        libsignalSessionCode_fnOff_0x3a0ac (by decide) spqrChunkedHeaderSentBin_decode_0x3a0cc)
-      (fnAddr_bl_target libsignalSessionCode_fnOff_0x3a0ac libsignalSessionCode_fnOff_0x3a1cc)
-      (ekSentEncodedLen_local1_pinned_ok_ext b A ext)
-  · exact callPinnedEncLenAt_of_bl (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl)
-      (libsignalSessionCode_fetch_fnAddr (b := b) (H := Rust.withPanics ext) (k := 92)
-        libsignalSessionCode_fnOff_0x3a0ac (by decide) spqrChunkedHeaderSentBin_decode_0x3a108)
-      (fnAddr_bl_target libsignalSessionCode_fnOff_0x3a0ac libsignalSessionCode_fnOff_0x38e70)
-      (polynomialEncoderEncodedLen_local1_pinned_ok_ext b A ext)
-  · exact callPinnedEncLenAt_of_bl (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl)
-      (libsignalSessionCode_fetch_fnAddr (b := b) (H := Rust.withPanics ext) (k := 192)
-        libsignalSessionCode_fnOff_0x3a0ac (by decide) spqrChunkedHeaderSentBin_decode_0x3a16c)
-      (fnAddr_bl_target libsignalSessionCode_fnOff_0x3a0ac libsignalSessionCode_fnOff_0x39f7c)
-      (polynomialDecoderEncodedLen_local1_pinned_ok_ext b A ext)
-
-theorem chunkedHeaderSentEncodedLen_local1_ok_ext (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) : ChunkedHeaderSentEncodedLenLocal1OkExt b A ext :=
-  chunkedHeaderSentEncodedLen_ok_of_pinned (chunkedHeaderSentEncodedLen_local1_pinned_ok_ext b A ext)
-theorem chunkedHeaderSentEncodedLen_local1_pinned_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : ChunkedHeaderSentEncodedLenLocal1PinnedOk b C A ctl abs :=
-  chunkedHeaderSentEncodedLen_local1_pinned_ok_ext b A (tripleRatchetExterns C ctl abs)
-theorem chunkedHeaderSentEncodedLen_local1_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : ChunkedHeaderSentEncodedLenLocal1Ok b C A ctl abs :=
-  chunkedHeaderSentEncodedLen_local1_ok_ext b A (tripleRatchetExterns C ctl abs)
-
-theorem chunkedHeaderSentEncodedLen_local2_pinned_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : ChunkedHeaderSentEncodedLenLocal2PinnedOkExt b A ext := by
-  refine headerSent_entry_pinned_ok_ext b A ext _ (Or.inr rfl) ?_ ?_ ?_
-  · exact callPinnedEncLenAt_of_bl (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl)
-      (libsignalSessionCode_fetch_fnAddr (b := b) (H := Rust.withPanics ext) (k := 32)
-        libsignalSessionCode_fnOff_0x64b78 (by decide) spqrChunkedHeaderSentBin_decode_0x64b98)
-      (fnAddr_bl_target libsignalSessionCode_fnOff_0x64b78 libsignalSessionCode_fnOff_0x64d94)
-      (ekSentEncodedLen_local2_pinned_ok_ext b A ext)
-  · exact callPinnedEncLenAt_of_bl (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl)
-      (libsignalSessionCode_fetch_fnAddr (b := b) (H := Rust.withPanics ext) (k := 92)
-        libsignalSessionCode_fnOff_0x64b78 (by decide) spqrChunkedHeaderSentBin_decode_0x64bd4)
-      (fnAddr_bl_target libsignalSessionCode_fnOff_0x64b78 libsignalSessionCode_fnOff_0x615f4)
-      (polynomialEncoderEncodedLen_local2_pinned_ok_ext b A ext)
-  · exact callPinnedEncLenAt_of_bl (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl)
-      (libsignalSessionCode_fetch_fnAddr (b := b) (H := Rust.withPanics ext) (k := 192)
-        libsignalSessionCode_fnOff_0x64b78 (by decide) spqrChunkedHeaderSentBin_decode_0x64c38)
-      (fnAddr_bl_target libsignalSessionCode_fnOff_0x64b78 libsignalSessionCode_fnOff_0x642fc)
-      (polynomialDecoderEncodedLen_local2_pinned_ok_ext b A ext)
-
-theorem chunkedHeaderSentEncodedLen_local2_ok_ext (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) : ChunkedHeaderSentEncodedLenLocal2OkExt b A ext :=
-  chunkedHeaderSentEncodedLen_ok_of_pinned (chunkedHeaderSentEncodedLen_local2_pinned_ok_ext b A ext)
-theorem chunkedHeaderSentEncodedLen_local2_pinned_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : ChunkedHeaderSentEncodedLenLocal2PinnedOk b C A ctl abs :=
-  chunkedHeaderSentEncodedLen_local2_pinned_ok_ext b A (tripleRatchetExterns C ctl abs)
-theorem chunkedHeaderSentEncodedLen_local2_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : ChunkedHeaderSentEncodedLenLocal2Ok b C A ctl abs :=
-  chunkedHeaderSentEncodedLen_local2_ok_ext b A (tripleRatchetExterns C ctl abs)
 
 theorem chunkedHeaderSentEncodedLen_local1_pinned_placed_ok_ext [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : ChunkedHeaderSentEncodedLenLocal1PinnedPlacedOkExt A ext := by

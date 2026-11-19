@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.ErrTails
+import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.ErrTails
 public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.Defs
-public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.RecordCodecs.Deps
 import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA
@@ -27,7 +27,7 @@ import ProofLib.SepLogic.WPp
 `RustCliAllocBudget`-threaded relocatable loop-exit error stubs targeting `+656` on Block `562`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000

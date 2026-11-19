@@ -13,8 +13,7 @@ public import Arm64
 public import ProofLib.Lemmas
 public import ProofLib.SepLogic
 public import ProofLib.SepLogic.Stack
-public import ProofLib.ObjectLoad
-public import ProofLib.Library
+public import ProofLib.PlacedHelpers
 import ProofLib.SepLogic.Model
 import ProofLib.Hoare.Model
 
@@ -22,8 +21,8 @@ import ProofLib.Hoare.Model
 # Extern Hooks and Subroutine Combinators
 
 Lifts `HookOk` contracts and Rust panic stubs into `subroutine_ok` facts on rebased programs,
-and provides consequence, ghost-refinement, case-splitting, trampoline (`B target`), and
-library-dependency combinators for `subroutine_ok` and `library_ok`.
+and provides consequence, ghost-refinement, case-splitting, and trampoline (`B target`)
+combinators for `subroutine_ok`.
 -/
 
 @[expose] public section
@@ -380,65 +379,11 @@ theorem subroutine_ok_of_b {α : Type} {prog : Program} {entry tgt : BitVec 64} 
   · exact Or.inr (Or.inr (Or.inl ⟨code, hex_sf, by rwa [hexit] at hq⟩))
   · exact Or.inr (Or.inr (Or.inr ⟨hoom_sf, by rwa [hoom] at hq⟩))
 
-/-- Lift a `subroutine_ok` proof on `code.rebase img.base hooks` to `prog` (typically
-    `Program.ofImage img hooks`, or a `.text`-sliced variant thereof) in $O(1)$ using
-    `hEq : prog = code.rebase img.base hooks`. -/
-theorem subroutine_ok_ofImage {α : Type} {code prog : Program} (img : Obj.Image)
-    (hooks : String → Option (State → State)) (name : String) (spec : Spec α)
-    (hEq : prog = code.rebase img.base hooks)
-    (h : subroutine_ok (code.rebase img.base hooks)
-      ((code.rebase img.base hooks).fnAddr name) spec) :
-    subroutine_ok prog (prog.fnAddr name) spec :=
-  @Eq.ndrec Program (code.rebase img.base hooks)
-    (fun p => subroutine_ok p (p.fnAddr name) spec)
-    h prog hEq.symm
-
-/-- Establish `library_ok L` when `L.obj = some o`, every direct dependency `D ∈ L.deps`
-    already satisfies `library_ok D`, and every contract in `L.contracts` holds in any
-    image linking `o`. -/
-theorem library_ok_of_deps {L : LibrarySpec} {o : Obj.ObjectInfo}
-    (hobj : L.obj = some o)
-    (hdeps : ∀ D ∈ L.deps, library_ok D)
-    (hcontracts : ∀ (img : Obj.Image) (X : String → Option (State → State)),
-      (∃ li : Obj.LinkedImage, o ∈ li.objects ∧ Obj.Loads li img) →
-      ∀ c ∈ L.contracts, Contract.Holds L img X c) :
-    library_ok L := by
-  refine ⟨fun D hD _ => ?_, fun img X hLinks _ D hD hDT c hc => ?_⟩
-  · rcases LibrarySpec.mem_closure_iff.1 hD with ⟨B, hB, hDB⟩ | rfl
-    · exact (hdeps B hB).1 D hDB List.not_mem_nil
-    · simp [hobj]
-  · rcases LibrarySpec.mem_closure_iff.1 hD with ⟨B, hB, hDB⟩ | rfl
-    · have hB_closure : B ∈ L.closure :=
-        LibrarySpec.mem_closure_iff.2 (Or.inl ⟨B, hB, B.self_mem_closure⟩)
-      have hLinksB : LinksIn B.closure img [] :=
-        hLinks.mono fun D' hD' => ⟨L.closure_trans hB_closure hD', id⟩
-      have hTrustedB : TrustedLibrariesOK [] img X B.closure :=
-        fun _ _ h => False.elim (List.not_mem_nil h)
-      exact (hdeps B hB).2 img X hLinksB hTrustedB D hDB hDT c hc
-    · obtain ⟨li, hmem, hloads⟩ := hLinks
-      have ho : o ∈ li.objects :=
-        LinksIn.objectLoaded hmem D.self_mem_closure List.not_mem_nil hobj
-      exact hcontracts img X ⟨li, ho, hloads⟩ c hc
-
-/-- Special case of `library_ok_of_deps` when `L.deps = [B]` and `library_ok B`. -/
-theorem library_ok_dep1 {L B : LibrarySpec} {o : Obj.ObjectInfo}
-    (hB : library_ok B)
-    (hdeps : L.deps = [B])
-    (hobj : L.obj = some o)
-    (hcontracts : ∀ (img : Obj.Image) (X : String → Option (State → State)),
-      (∃ li : Obj.LinkedImage, o ∈ li.objects ∧ Obj.Loads li img) →
-      ∀ c ∈ L.contracts, Contract.Holds L img X c) :
-    library_ok L := by
-  refine library_ok_of_deps hobj (fun D hD => ?_) hcontracts
-  rw [hdeps, List.mem_singleton] at hD
-  subst hD
-  exact hB
-
 end ProofLib
 
 namespace Arm64
 export ProofLib (
   subroutine_ok_mono_sp subroutine_ok_refine_entails subroutine_ok_refine_frame
-  subroutine_ok_of_b subroutine_ok_ofImage library_ok_of_deps library_ok_dep1
+  subroutine_ok_of_b
 )
 end Arm64

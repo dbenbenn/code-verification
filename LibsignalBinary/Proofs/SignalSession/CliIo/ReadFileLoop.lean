@@ -9,10 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileSteps
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileGrowSteps
-public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslOpenDeterministic
+import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileSteps
+import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileGrowSteps
+import LibsignalBinary.Proofs.SignalSession.CliIo.MuslOpenDeterministic
 public import VerifiedLibraries.Musl.Proofs.SyscallProof
+public import GeneratedLean.SignalSessionIoPlacedObj -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslDirReadClose -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslReadStdin -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadLoopCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.Sym -- proof-setup: allow-public-import
+public import ProofLib.Hoare.LibcHooks
 
 /-!
 # Bounded `read_file` `.localFile` Chunk Loop
@@ -22,7 +28,7 @@ from loop header `+0xd8` (`FILE_CAP = 2^21 = 2,097,152`): bounded `4096`-byte `.
 and `close(fd)` restoring `sf.fs = s0.fs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -81,7 +87,7 @@ section
 arm64_proof_prelude
 
 /-- Spatial + `fs` postcondition of `read_file` on `.localFile` (`rem = (s0.fs.fdBytes d0).drop d0.offset`). -/
-def cliIoFileLoopResult {oom : State → State → Prop} (A : RustStdAlloc oom)
+@[expose] def cliIoFileLoopResult {oom : State → State → Prop} (A : RustStdAlloc oom)
     (sret : BitVec 64) (d0 : FdEntry) (lb lk : Nat) (s0 sf : State) : SepProp :=
   let rem := (s0.fs.fdBytes d0).drop d0.offset
   if rem.length ≤ cliIoFileCap then
@@ -96,7 +102,7 @@ def cliIoFileLoopResult {oom : State → State → Prop} (A : RustStdAlloc oom)
       A.pool lb lk sf
 
 /-- OOM postcondition of `read_file` on `.localFile` (`fd` still open at `d0.offset + k`). -/
-def cliIoFileOom (oom : State → State → Prop) (fd : BitVec 64) (d0 : FdEntry) (s0 sf : State) : SepProp :=
+@[expose] def cliIoFileOom (oom : State → State → Prop) (fd : BitVec 64) (d0 : FdEntry) (s0 sf : State) : SepProp :=
   ⌜∃ k sm, k ≤ min ((s0.fs.fdBytes d0).drop d0.offset).length cliIoFileCap ∧
     IoFrame s0 sm ∧
     sm.fs = s0.fs.setFd fd (some { d0 with offset := d0.offset + k }) ∧

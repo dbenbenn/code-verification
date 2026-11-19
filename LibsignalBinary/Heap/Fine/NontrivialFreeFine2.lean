@@ -56,12 +56,12 @@ theorem sepWP_nf_kept_130_fine [MallocngMultiPlacement]
     (hSc48 : g.sc < 48) (hSc7 : 7 ≤ g.sc) (hSc38 : g.sc ≤ 38)
     (hMpPos : 0 < g.maplen) (hNxSelf : g.next = g.metaPtr)
     (hStrideFit : g.lastIdx = 0 → slotStride g.sc + 16 ≤ g.maplen * 4096)
-    (hCont : NfDeqCont b (s0.readReg64 .lr) st g (NfAllFreeFrame fuel γ st s0) s0 s
+    (hCont : NfDeqCont b (s0.readReg64 .lr) st g (NfAllFreeFrame fuel γ st s0 true) s0 s
       (NfFuelFinePost k fuel γ brkStart liveCost peakCost st s0) oom) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       ((maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-       NfAllFreeFrame fuel γ st s0)
+       NfAllFreeFrame fuel γ st s0 true)
       (NfFuelFinePost k fuel γ brkStart liveCost peakCost st s0) oom := by
   have _ := hb
   have hCtx20 : pageOf maddrs.ctx + lo12Of maddrs.ctx = maddrs.ctx := pageOf_add_lo12Of maddrs.ctx
@@ -170,7 +170,7 @@ theorem sepWP_nf_kept_130_fine [MallocngMultiPlacement]
           SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s474
             ((maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
              ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-             NfAllFreeFrame fuel γ st s0)
+             NfAllFreeFrame fuel γ st s0 true)
             (NfFuelFinePost k fuel γ brkStart liveCost peakCost st s0) oom := by
         intro s4 hpc4 hrun4 hx19_4 hw1_4 hsp4 hProc4 hbrk4 hperm4 hcs4
         have hBmG0 := (byteMap_update40 hwf.masterDom_wf.1 st.byteVal (P := OwnedRwByte st)
@@ -256,12 +256,12 @@ theorem sepWP_nf_at_0e4_fine [MallocngMultiPlacement]
     (hg : g ∈ st.groups) (hIdx : idx < g.slots.length) (hClaimed : g.slots[idx]'hIdx = .claimed)
     (hSc48 : g.sc < 48) (hMpPos : 0 < g.maplen)
     (hStrideFit : g.lastIdx = 0 → slotStride g.sc + 16 ≤ g.maplen * 4096)
-    (hCont : NfDeqCont b (s0.readReg64 .lr) st g (NfAllFreeFrame fuel γ st s0) s0 s
+    (hCont : NfDeqCont b (s0.readReg64 .lr) st g (NfAllFreeFrame fuel γ st s0 true) s0 s
       (NfFuelFinePost k fuel γ brkStart liveCost peakCost st s0) oom) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       ((maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-       NfAllFreeFrame fuel γ st s0)
+       NfAllFreeFrame fuel γ st s0 true)
       (NfFuelFinePost k fuel γ brkStart liveCost peakCost st s0) oom := by
   have _ := hb
   have hLast31 : g.lastIdx ≤ 31 := (hwf.groups_wf g hg).2.1
@@ -493,7 +493,7 @@ theorem sepWP_nf_retire_root_fine [MallocngMultiPlacement]
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       ((maddrs.ctx ↦ₛ { st.ctx with active := active1, usageByClass := usage1 }.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) bvDeq ∗
-       NfAllFreeFrame fuel γ st s0)
+       NfAllFreeFrame fuel γ st s0 true)
       (NfFuelFinePost k fuel γ brkStart liveCost peakCost st s0) oom := by
   have _ := hb
   have hCtx20 : pageOf maddrs.ctx + lo12Of maddrs.ctx = maddrs.ctx := pageOf_add_lo12Of maddrs.ctx
@@ -558,9 +558,9 @@ theorem sepWP_nf_retire_root_fine [MallocngMultiPlacement]
       rw [hUSliceRead]
       have hAssocIn :
           ((((maddrs.ctx + 848#64) ↦ₛ cDeq.unmapSeq) ∗ USliceRest) ∗
-           ByteMap st.masterDom (OwnedRwByte st) bvDeq ∗ NfAllFreeFrame fuel γ st s0) =
+           ByteMap st.masterDom (OwnedRwByte st) bvDeq ∗ NfAllFreeFrame fuel γ st s0 true) =
           (((maddrs.ctx + 848#64) ↦ₛ st.ctx.unmapSeq) ∗
-           (USliceRest ∗ ByteMap st.masterDom (OwnedRwByte st) bvDeq ∗ NfAllFreeFrame fuel γ st s0)) := by
+           (USliceRest ∗ ByteMap st.masterDom (OwnedRwByte st) bvDeq ∗ NfAllFreeFrame fuel γ st s0 true)) := by
         dsimp only [cDeq]; ac_rfl
       rw [hAssocIn]
       refine sepWP_nf_zero_uSeq_2e8 hb st.ctx.unmapSeq
@@ -574,9 +574,9 @@ theorem sepWP_nf_retire_root_fine [MallocngMultiPlacement]
       rw [hwf.ctx_lens.2.2.1]
       have hFoldU :
           (((maddrs.ctx + 848#64) ↦ₛ List.replicate 32 0#8) ∗
-           (USliceRest ∗ ByteMap st.masterDom (OwnedRwByte st) bvDeq ∗ NfAllFreeFrame fuel γ st s0)) =
+           (USliceRest ∗ ByteMap st.masterDom (OwnedRwByte st) bvDeq ∗ NfAllFreeFrame fuel γ st s0 true)) =
           ((((maddrs.ctx + 848#64) ↦ₛ List.replicate 32 0#8) ∗ USliceRest) ∗
-           ByteMap st.masterDom (OwnedRwByte st) bvDeq ∗ NfAllFreeFrame fuel γ st s0) := by
+           ByteMap st.masterDom (OwnedRwByte st) bvDeq ∗ NfAllFreeFrame fuel γ st s0 true) := by
         ac_rfl
       rw [hFoldU, hUSliceWrite]
       have hx20Z' : sZ.readReg64 (.gpr 20#5) = pageOf maddrs.ctx :=
@@ -680,12 +680,12 @@ theorem sepWP_nf_allFree_to_1d4_fine [MallocngMultiPlacement]
     (hwf : MallocngWFInflight (k + 1) maddrs.base brkStart s0.brk liveCost peakCost st)
     (hKeep : EmptyGroupKeepWf st)
     (hg : g ∈ st.groups) (hIdx : idx < g.slots.length) (hClaimed : g.slots[idx]'hIdx = .claimed)
-    (hCont : NfDeqCont b (s0.readReg64 .lr) st g (NfAllFreeFrame fuel γ st s0) s0 s
+    (hCont : NfDeqCont b (s0.readReg64 .lr) st g (NfAllFreeFrame fuel γ st s0 true) s0 s
       (NfFuelFinePost k fuel γ brkStart liveCost peakCost st s0) oom) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       ((maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-       NfAllFreeFrame fuel γ st s0)
+       NfAllFreeFrame fuel γ st s0 true)
       (NfFuelFinePost k fuel γ brkStart liveCost peakCost st s0) oom := by
   have _ := hb
   have hLast31 : g.lastIdx ≤ 31 := (hwf.groups_wf g hg).2.1
@@ -833,7 +833,7 @@ theorem sepWP_nf_allFree_to_1d4_fine [MallocngMultiPlacement]
             · bv_omega
             rw [← hRoFocus]
             change SepWP _ _ _ ((maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
-              ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗ NfAllFreeFrame fuel γ st s0) _ _
+              ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗ NfAllFreeFrame fuel γ st s0 true) _ _
             wp_step
             wp_step
             wp_step
@@ -924,7 +924,7 @@ theorem sepWP_nf_allFree_to_1d4_fine [MallocngMultiPlacement]
 
 /-! ## Fuel-Indexed Plain Specification -/
 
-noncomputable def nontrivialFreeFuelFinePlainSpec [MallocngMultiPlacement]
+def nontrivialFreeFuelFinePlainSpec [MallocngMultiPlacement]
     (k fuel : Nat) (γ : GhostName) (brkStart : BitVec 64) (liveCost peakCost : Nat)
     (st : MallocngSt) (g : GroupDesc) (idx : Nat) : Spec Unit :=
   { pre := fun (_ : Unit) s0 =>
@@ -934,7 +934,7 @@ noncomputable def nontrivialFreeFuelFinePlainSpec [MallocngMultiPlacement]
        ∃ hIdx : idx < g.slots.length, g.slots[idx]'hIdx = .claimed⌝ ∗
       stackFrameAt s0.sp (32 * (fuel + 1)) ∗
       MallocngRoTablesA maddrs ∗
-      MallocngCoreStInflightA (k + 1) γ maddrs brkStart s0.brk liveCost peakCost st
+      MallocngCoreStInflightModeA true (k + 1) γ maddrs brkStart s0.brk liveCost peakCost st
     post := fun (_ : Unit) s0 sf =>
       ∃∗ st' : MallocngSt,
         ⌜MallocngProcPreserved s0 sf ∧ sf.brk = s0.brk ∧ sf.tpidrEl0 = s0.tpidrEl0 ∧
@@ -944,7 +944,7 @@ noncomputable def nontrivialFreeFuelFinePlainSpec [MallocngMultiPlacement]
          totalLiveCount st' ≤ totalLiveCount st ∧
          (dynamicRootRegions st').length ≤ (dynamicRootRegions st).length⌝ ∗
         stackFrameAt s0.sp (32 * (fuel + 1)) ∗ MallocngRoTablesA maddrs ∗
-        MallocngCoreStInflightA k γ maddrs brkStart s0.brk liveCost peakCost st' ∗
+        MallocngCoreStInflightModeA true k γ maddrs brkStart s0.brk liveCost peakCost st' ∗
         NfRetSep st st' (sf.readReg64 .x0) (sf.readReg64 .x1) }
 
 end LibsignalBinary.Heap.Fine

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon
-public import Symbolic.Proofs.Tests.Model.ExplanationTightness.Scope
-public import Symbolic.Proofs.Tests.Model.ExplanationTightness.Compromised
-public import Symbolic.Proofs.Tests.Model.ExplanationTightness.Handshake
+import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon
+public import Symbolic.Proofs.Tests.Model.ExplanationTightness.Scope -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.Model.ExplanationTightness.Compromised -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.Model.ExplanationTightness.Handshake -- proof-setup: allow-public-import
 import Symbolic.Theorems.ModelSecurity
 
 /-!
@@ -23,7 +23,7 @@ the proved composed security theorems (`Proven.*`), yielding unconditional stren
 statements on reachable traces.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

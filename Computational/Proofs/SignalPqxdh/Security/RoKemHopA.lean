@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndSigKem
-public import Computational.Proofs.SpecLemmas.SignalPqxdh.Assumptions
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndSigKem -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Assumptions
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,16 +33,16 @@ theorem drop_take_slice {pfx mid sfx : Bytes} {n m : Nat}
     ((pfx ++ mid ++ sfx).drop n).take m = mid := by
   rw [List.append_assoc, ← hp, List.drop_left, ← hm, List.take_left]
 
-def extractDh2 (secrets : Bytes) : Bytes :=
+@[expose] def extractDh2 (secrets : Bytes) : Bytes :=
   (secrets.drop 64).take 32
 
-def extractDh4 (secrets : Bytes) : Bytes :=
+@[expose] def extractDh4 (secrets : Bytes) : Bytes :=
   (secrets.drop 128).take 32
 
-def extractKemSsNoOPK (secrets : Bytes) : Bytes :=
+@[expose] def extractKemSsNoOPK (secrets : Bytes) : Bytes :=
   (secrets.drop 128).take 32
 
-def extractKemSsOPK (secrets : Bytes) : Bytes :=
+@[expose] def extractKemSsOPK (secrets : Bytes) : Bytes :=
   (secrets.drop 160).take 32
 
 theorem extractDh1_buildSecrets
@@ -166,11 +166,11 @@ abbrev ShCrState.base {S : Setup} {Base : Type} (s : ShCrState S Base) : Base :=
     RoKem.ShCrState.base s
 export SignalPqxdh.Security.RoKem (sampleIndexRange)
 
-def isKemShCrPair {S : Setup} (P : Primitives) (i : InitKemRecord S) (r : RecvKemRecord) : Bool :=
+@[expose] def isKemShCrPair {S : Setup} (P : Primitives) (i : InitKemRecord S) (r : RecvKemRecord) : Bool :=
   decide (P.kemDecaps r.pqspkSk r.kemCt = some i.kemSs) &&
   decide (r.kemCt ≠ i.kemCt ∨ i.pqspkPk ≠ r.pqspkPk)
 
-def hasBadKemShCrRecordsAt (S : Setup) (P : Primitives) (idx : Nat)
+@[expose] def hasBadKemShCrRecordsAt (S : Setup) (P : Primitives) (idx : Nat)
     (initRecs : List (InitKemRecord S)) (recvRecs : List RecvKemRecord) : Bool :=
   let bIdx := idx / S.N_send_tot
   let sIdx := idx % S.N_send_tot
@@ -178,15 +178,15 @@ def hasBadKemShCrRecordsAt (S : Setup) (P : Primitives) (idx : Nat)
     (i.sendIdx == sIdx) &&
     recvRecs.any (fun r => (r.bIdx == bIdx) && isKemShCrPair P i r))
 
-def hasBadKemShCrRecords (S : Setup) (P : Primitives)
+@[expose] def hasBadKemShCrRecords (S : Setup) (P : Primitives)
     (initRecs : List (InitKemRecord S)) (recvRecs : List RecvKemRecord) : Bool :=
   (List.range (S.N_spk_tot * S.N_send_tot)).any (fun idx =>
     hasBadKemShCrRecordsAt S P idx initRecs recvRecs)
 
-def isWinningKemShCrCt (P : Primitives) (pk sk chosenPk ct ss candCt : Bytes) : Bool :=
+@[expose] def isWinningKemShCrCt (P : Primitives) (pk sk chosenPk ct ss candCt : Bytes) : Bool :=
   decide (P.kemDecaps sk candCt = some ss) && decide (candCt ≠ ct ∨ chosenPk ≠ pk)
 
-def extractCollidingKemCt (P : Primitives)
+@[expose] def extractCollidingKemCt (P : Primitives)
     (pk sk chosenPk ct ss : Bytes) (recvRecs : List RecvKemRecord) : Bytes :=
   match recvRecs.find? (fun r => isWinningKemShCrCt P pk sk chosenPk ct ss r.kemCt) with
   | some r => r.kemCt
@@ -244,10 +244,10 @@ theorem spkBundleFlatIdx_inj (S : Setup) (u1 u2 : Fin S.N_id) (j1 j2 : Fin S.N_r
     exact Nat.add_left_cancel heq
   exact ⟨Fin.ext hu, Fin.ext hj⟩
 
-def clearShCrTarget {S : Setup} {Base : Type} (hst : ShCrState S Base) : ShCrState S Base :=
+@[expose] def clearShCrTarget {S : Setup} {Base : Type} (hst : ShCrState S Base) : ShCrState S Base :=
   { hst with targetBIdx? := none, targetPk := [], targetSk := [] }
 
-def setShCrTarget {S : Setup} {Base : Type} (hst : ShCrState S Base)
+@[expose] def setShCrTarget {S : Setup} {Base : Type} (hst : ShCrState S Base)
     (bIdx : Nat) (pk sk : Bytes) : ShCrState S Base :=
   { hst with targetBIdx? := some bIdx, targetPk := pk, targetSk := sk }
 
@@ -259,7 +259,7 @@ def setShCrTarget {S : Setup} {Base : Type} (hst : ShCrState S Base)
     (hst : ShCrState S Base) (bIdx : Nat) (pk sk : Bytes) :
     clearShCrTarget (setShCrTarget hst bIdx pk sk) = clearShCrTarget hst := rfl
 
-def hasGeneratedTargetBundle (S : Setup) (bIdx : Nat)
+@[expose] def hasGeneratedTargetBundle (S : Setup) (bIdx : Nat)
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry)) : Prop :=
   ∃ (u₀ : Fin S.N_id) (j₀ : Fin S.N_recv),
     spkBundleFlatIdx S u₀ j₀ = bIdx ∧
@@ -479,10 +479,10 @@ theorem evalDist_simulateQ_embedTarget_eq {S : Setup} {Base ι α : Type}
                   (simulateQ fullFalse (oa x.1)).run x.2 >>= obs] :=
                 hDist (fun x => (simulateQ fullFalse (oa x.1)).run x.2 >>= obs)
 
-def spkBundleFlatIdxVal (S : Setup) (k : Nat × Nat) : Nat :=
+@[expose] def spkBundleFlatIdxVal (S : Setup) (k : Nat × Nat) : Nat :=
   k.1 * S.N_recv + k.2
 
-def ValidTargetRecv {S : Setup} {Base : Type}
+@[expose] def ValidTargetRecv {S : Setup} {Base : Type}
     (getBundles : Base → List ((Nat × Nat) × SpkBundleEntry))
     (bIdx : Nat) (pk sk : Bytes) (hst : ShCrState S Base) : Prop :=
   hst.targetBIdx? = some bIdx ∧ hst.targetPk = pk ∧ hst.targetSk = sk ∧
@@ -641,7 +641,7 @@ structure PausedShCrKem (S : Setup) (Base : Type) where
   bundle : PreKeyBundleInput
   resume : Bytes → Bytes → ProbComp (Bool × ShCrState S Base)
 
-noncomputable def stepUntilShCr {S : Setup} {Base ι : Type} {QSpec : OracleSpec.{0, 0} ι}
+@[expose] def stepUntilShCr {S : Setup} {Base ι : Type} {QSpec : OracleSpec.{0, 0} ι}
     (implTrue : QueryImpl QSpec (StateT (ShCrState S Base) ProbComp))
     (tryPause : (q : ι) → (QSpec.Range q → OracleComp (unifSpec + QSpec) Bool) →
       ShCrState S Base → Option (PausedShCrKem S Base))
@@ -827,7 +827,7 @@ theorem evalDist_stepUntilShCr_le {S : Setup} {Base ι : Type}
           exact evalDist_simulateQ_badKem_le_win_of_gt P getBundles implTrue idx pk sk
             paused.bundle.pqspkB ct ss hValidStep hSendStep (oa y.1) y.2 hVy hLty hRecy
 
-noncomputable def shcrChoosePkGenericAt {S : Setup} {Base ι : Type}
+@[expose] def shcrChoosePkGenericAt {S : Setup} {Base ι : Type}
     {QSpec : OracleSpec.{0, 0} ι} (P : Primitives)
     (initBaseComp : ProbComp Base)
     (implTrue : QueryImpl QSpec (StateT (ShCrState S Base) ProbComp))
@@ -853,7 +853,7 @@ noncomputable def shcrChoosePkGenericAt {S : Setup} {Base ι : Type}
     return extractCollidingKemCt P pk sk chosenPk ct ss finalHst.recvKemRecs
   return (chosenPk, finishComp)
 
-noncomputable def kemShCrExpProb (P : Primitives)
+@[expose] def kemShCrExpProb (P : Primitives)
     (choosePk : Bytes → Bytes → ProbComp (Bytes × (Bytes → Bytes → ProbComp Bytes))) :
     ProbComp Bool := do
   let (pk, sk) ← sampleKemKeyGen P
@@ -1049,7 +1049,7 @@ theorem clearShCrTarget_eq_iff {S : Setup} {Base : Type} (hst : ShCrState S Base
   cases hst
   simp [clearShCrTarget, eq_comm]
 
-def liftShCrBase {S : Setup} {Base α : Type}
+@[expose] def liftShCrBase {S : Setup} {Base α : Type}
     (m : StateT Base ProbComp α) : StateT (ShCrState S Base) ProbComp α := fun hst => do
   let (a, base') ← m.run hst.base
   return (a, { hst with base := base' })
@@ -1125,7 +1125,7 @@ theorem liftShCrBase_pauseNone {S : Setup} {Base α : Type}
   subst hx
   exact hLe
 
-def recordAcceptKemGeneric {S : Setup} {Base Resp : Type} (P : Primitives)
+@[expose] def recordAcceptKemGeneric {S : Setup} {Base Resp : Type} (P : Primitives)
     (getBundles : Base → List ((Nat × Nat) × SpkBundleEntry))
     (isNoneResp : Resp → Bool)
     (k : Fin S.N_id) (j : Fin S.N_recv) (hdr : HandshakeHdr)
@@ -1265,7 +1265,7 @@ theorem recordAcceptKemGeneric_validStep {S : Setup} {Base Resp : Type} (P : Pri
       exact hV.2.2.2.1 (idxPair, bEntry) hmem hb_eq
     · exact hV.2.2.2.2 r hr_old hrb
 
-def mkSpkBundlePair (P : Primitives) (j : Nat) (uEntry : PrincipalEntry)
+@[expose] def mkSpkBundlePair (P : Primitives) (j : Nat) (uEntry : PrincipalEntry)
     (spkSk rSpk pqspkPk pqspkSk rPq : Bytes) : SpkBundleEntry × PreKeyBundleInput :=
   let spkPk := P.x25519Base spkSk
   let spkSig := P.sigSign uEntry.secIKAsign (encodeEC spkPk) rSpk
@@ -1290,7 +1290,7 @@ def mkSpkBundlePair (P : Primitives) (j : Nat) (uEntry : PrincipalEntry)
   }
   (bEntry, bundleOut)
 
-def genSpkBaseGeneric {S : Setup} {Base Resp : Type} (P : Primitives)
+@[expose] def genSpkBaseGeneric {S : Setup} {Base Resp : Type} (P : Primitives)
     (getPrincipals : Base → List (Nat × PrincipalEntry))
     (getBundles : Base → List ((Nat × Nat) × SpkBundleEntry))
     (setBundles : Base → List ((Nat × Nat) × SpkBundleEntry) → Base)
@@ -1309,7 +1309,7 @@ def genSpkBaseGeneric {S : Setup} {Base Resp : Type} (P : Primitives)
   set (setBundles st (((u.val, j.val), bEntry) :: getBundles st))
   return bundleResp bundleOut
 
-def genSpkTargetGeneric {S : Setup} {Base Resp : Type} (P : Primitives)
+@[expose] def genSpkTargetGeneric {S : Setup} {Base Resp : Type} (P : Primitives)
     (getPrincipals : Base → List (Nat × PrincipalEntry))
     (getBundles : Base → List ((Nat × Nat) × SpkBundleEntry))
     (setBundles : Base → List ((Nat × Nat) × SpkBundleEntry) → Base)
@@ -1328,7 +1328,7 @@ def genSpkTargetGeneric {S : Setup} {Base Resp : Type} (P : Primitives)
   return (bundleResp bundleOut,
     { hst with base := setBundles st (((u.val, j.val), bEntry) :: getBundles st) })
 
-def runShCrGenSPKGeneric {S : Setup} {Base Resp : Type} (embedTarget : Bool) (P : Primitives)
+@[expose] def runShCrGenSPKGeneric {S : Setup} {Base Resp : Type} (embedTarget : Bool) (P : Primitives)
     (getPrincipals : Base → List (Nat × PrincipalEntry))
     (getBundles : Base → List ((Nat × Nat) × SpkBundleEntry))
     (setBundles : Base → List ((Nat × Nat) × SpkBundleEntry) → Base)
@@ -1739,7 +1739,7 @@ theorem runShCrGenSPKGeneric_sendStep {S : Setup} {Base Resp : Type} (P : Primit
 
 /-! ### Generic Receiver & Initiator Combinators -/
 
-def runShCrAcceptGeneric {S : Setup} {Base Resp : Type} (P : Primitives)
+@[expose] def runShCrAcceptGeneric {S : Setup} {Base Resp : Type} (P : Primitives)
     (getBundles : Base → List ((Nat × Nat) × SpkBundleEntry))
     (isNoneResp : Resp → Bool)
     (baseAccept : StateT Base ProbComp Resp)

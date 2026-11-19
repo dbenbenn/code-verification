@@ -10,7 +10,8 @@ limitations under the License.
 module
 
 public import Computational.Proofs.SignalPqxdh.Delta.AuthDefs
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDh -- shake: keep
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh -- shake: keep
+import Computational.Proofs.SignalPqxdh.Security.Collisions
 
 /-!
 # PQXDH δ authentication: `.recvOPK` step coupling
@@ -19,7 +20,7 @@ public import Computational.Proofs.SignalPqxdh.Security.FgGapDh -- shake: keep
 coupling on `AuthSendLatchedState` with bad event `badSendδ`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

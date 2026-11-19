@@ -9,19 +9,19 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.AtomicLift
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigWire
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndShcrWire
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeSigWire
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrWire
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeGapDhWire
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaWire
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacWire
-public import Computational.Proofs.ReductionDsl.Size
+public import Computational.Proofs.SignalPqxdh.AtomicLift -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigWire -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndShcrWire -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeSigWire -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrWire -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeGapDhWire -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaWire -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacWire -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.Size
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfBase
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDh
-public import Computational.Proofs.SignalPqxdh.Security.Reductions
-public import Computational.Proofs.SpecLemmas.Pqxdh.Security.Headline
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDh -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Reductions -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Pqxdh.Security.Headline -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthAssembly
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhCoupling
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKemBounds
@@ -37,6 +37,44 @@ import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaProofs
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacEval
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacProofs
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkEval
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpa -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshake -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeGapDh -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCr -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeSig -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacDsl -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKem -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.AtomicSizeHonest
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrEval
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC1
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3b
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC4
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6b
+import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacC
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3B
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3D
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G2
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H2
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H3
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C1
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C2b
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5D
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M1
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M3a
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M3b
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M3c
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepBase
 
 /-!
 # Atomic-Signature PQXDH Reduction Bundles and Bounds
@@ -47,7 +85,7 @@ block-size bounds and semantic query bounds, and equates their game advantages w
 simulators.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -83,51 +121,6 @@ theorem pqOpsSizeHonest : PqOpsSizeHonest pqAtomicOps :=
 theorem pqSampSizeHonest : PqSampSizeHonest pqAtomicSamplers :=
   pqAtomicSamplers_sizeHonest
 
-theorem stepCostBudget_le_quadratic_old (S : Setup) (b : QueryBudget) :
-    _root_.SignalPqxdh.Security.stepCostBudget S b ≤
-      2 ^ 16 * (b.q_total + S.N_dh + S.N_sess_tot + 1) ^ 2 := by
-  unfold _root_.SignalPqxdh.Security.stepCostBudget
-  dsimp only
-  have hMd : min b.q_total S.N_dh ≤ S.N_dh := Nat.min_le_right _ _
-  have hMs : min b.q_total S.N_sess_tot ≤ S.N_sess_tot := Nat.min_le_right _ _
-  have hLd : Nat.log 2 S.N_dh ≤ S.N_dh := Nat.log_le_self 2 S.N_dh
-  have hLs : Nat.log 2 S.N_sess_tot ≤ S.N_sess_tot := Nat.log_le_self 2 S.N_sess_tot
-  have h1 : 2 ^ 15 * (b.q_total + 1) * (min b.q_total S.N_dh + min b.q_total S.N_sess_tot) ≤
-      2 ^ 15 * (b.q_total + 1) * (S.N_dh + S.N_sess_tot) :=
-    Nat.mul_le_mul_left _ (Nat.add_le_add hMd hMs)
-  have h2 : 2 ^ 10 * (b.q_total + 1) * (Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot) ≤
-      2 ^ 10 * (b.q_total + 1) * (S.N_dh + S.N_sess_tot) :=
-    Nat.mul_le_mul_left _ (Nat.add_le_add hLd hLs)
-  have h3 : 2 ^ 11 * min b.q_total S.N_dh ^ 2 ≤ 2 ^ 11 * S.N_dh ^ 2 :=
-    Nat.mul_le_mul_left _ (Nat.pow_le_pow_left hMd 2)
-  have h4 : 2 ^ 8 * min b.q_total S.N_dh * min b.q_total S.N_sess_tot ≤
-      2 ^ 8 * S.N_dh * S.N_sess_tot :=
-    Nat.mul_le_mul (Nat.mul_le_mul_left _ hMd) hMs
-  nlinarith [Nat.zero_le (b.q_total * S.N_dh), Nat.zero_le (b.q_total * S.N_sess_tot),
-    Nat.zero_le (S.N_dh * S.N_sess_tot)]
-
-theorem stepCostBudget_le_old (S : Setup) (b : QueryBudget) :
-    _root_.SignalPqxdh.Security.stepCostBudget S b ≤
-      2 ^ 18 * (b.q_total + 1) *
-        (b.q_ro + b.q_roRoot + b.q_total + S.N_dh + S.N_sess_tot + 1) ^ 2 := by
-  have hQ := stepCostBudget_le_quadratic_old S b
-  have hU : b.q_total + S.N_dh + S.N_sess_tot + 1 ≤
-      b.q_ro + b.q_roRoot + b.q_total + S.N_dh + S.N_sess_tot + 1 := by omega
-  have hU2 : (b.q_total + S.N_dh + S.N_sess_tot + 1) ^ 2 ≤
-      (b.q_ro + b.q_roRoot + b.q_total + S.N_dh + S.N_sess_tot + 1) ^ 2 :=
-    Nat.pow_le_pow_left hU 2
-  have h1 : 2 ^ 16 ≤ 2 ^ 18 * (b.q_total + 1) := by omega
-  exact le_trans hQ (Nat.mul_le_mul h1 hU2)
-
-theorem outputSizeBudget_le_old (S : Setup) (b : QueryBudget) (ℓ : Nat) :
-    outputSizeBudget S b ℓ ≤
-      2 * (2 ^ 18 * (b.q_total + 1) *
-        (b.q_ro + b.q_roRoot + b.q_total + S.N_dh + S.N_sess_tot + 1) ^ 2 + b.q_total + 1) *
-          (ℓ + 1) := by
-  unfold outputSizeBudget
-  have hStep := stepCostBudget_le_old S b
-  nlinarith
-
 end SizeAndBudgets
 
 /-! ## Unsupported-query bounds for `KeyInd` programs -/
@@ -144,11 +137,11 @@ attribute [local implicit_reducible] pqChalIface pqPrimIface pqSamplers
   eufCmaSignOracle gapDhDdhOracle sigAndDdhOracle
 open Computational.Proofs.SignalPqxdh.AtomicLift
 
-def zPrimWS : SignalPqxdh.LegacyCosted.pqPrimIface.smp.Samp → ℕ := fun _ => 0
-def zEufW : SignalPqxdh.LegacyCosted.pqxdhEufCmaIface.Tag → ℕ := tlEufCmaKeyInd.unsupportedW
-def zEufWS : SignalPqxdh.LegacyCosted.pqxdhEufCmaIface.smp.Samp → ℕ := fun _ => 0
-def zGapDhW : SignalPqxdh.LegacyCosted.pqGapDhIface.Tag → ℕ := tlGapDhKeyInd.unsupportedW
-def zGapDhWS : SignalPqxdh.LegacyCosted.pqGapDhIface.smp.Samp → ℕ := fun _ => 0
+@[expose] def zPrimWS : SignalPqxdh.LegacyCosted.pqPrimIface.smp.Samp → ℕ := fun _ => 0
+@[expose] def zEufW : SignalPqxdh.LegacyCosted.pqxdhEufCmaIface.Tag → ℕ := tlEufCmaKeyInd.unsupportedW
+@[expose] def zEufWS : SignalPqxdh.LegacyCosted.pqxdhEufCmaIface.smp.Samp → ℕ := fun _ => 0
+@[expose] def zGapDhW : SignalPqxdh.LegacyCosted.pqGapDhIface.Tag → ℕ := tlGapDhKeyInd.unsupportedW
+@[expose] def zGapDhWS : SignalPqxdh.LegacyCosted.pqGapDhIface.smp.Samp → ℕ := fun _ => 0
 
 @[simp] theorem sBool_unsupported {Γ : List (Ty SignalPqxdh.LegacyCosted.pqSig)} :
     (sBool (Γ := Γ)).queries keyIndUnsupportedPrimW zPrimWS = 0 := rfl
@@ -694,12 +687,19 @@ open _root_.SignalPqxdh.Security
 open _root_.SignalPqxdh.Security.ReductionDsl.KeyInd
 open Computational.Proofs.SignalPqxdh.AtomicLift (pqOpLitSize exprLitSize compLitSize red1LitSize red2LitSize)
 
+set_option allowUnsafeReducibility true in
+attribute [local implicit_reducible] pqChalIface pqPrimIface pqSamplers
+  eufCmaSignOracle gapDhDdhOracle sigAndDdhOracle
+  pqxdhEufCmaIface pqGapDhIface keyIndCodec keyIndQT keyIndRT dhSecretsT
+
 @[simp] private theorem hl_F_X25519_length : F_X25519.length = 32 := by decide
 
 @[simp] private theorem ki_liftBase_litSize {C : ChallengerOracle} {Γ : List PT} {t : PT}
     (c : Comp pqxdhOps pqPrimIface Γ t) :
     compLitSize (liftBase (C := C) c) = compLitSize c := by
-  induction c <;> simp_all [liftBase, compLitSize, pqChalIface, pqPrimIface]
+  induction c with
+  | ret _ | sample _ _ | query _ _ => rfl
+  | _ => simp only [liftBase, compLitSize, *]
 
 @[simp] private theorem ki_liftBase_euf_litSize {Γ : List PT} {t : PT}
     (c : Comp pqxdhOps pqPrimIface Γ t) :
@@ -711,7 +711,9 @@ open Computational.Proofs.SignalPqxdh.AtomicLift (pqOpLitSize exprLitSize compLi
 @[simp] private theorem ki_liftBase_size {C : ChallengerOracle} {Γ : List PT} {t : PT}
     (c : Comp pqxdhOps pqPrimIface Γ t) :
     (liftBase (C := C) c).size = c.size := by
-  induction c <;> simp_all [liftBase, Comp.size, pqChalIface, pqPrimIface]
+  induction c with
+  | ret _ | sample _ _ | query _ _ => rfl
+  | _ => simp only [liftBase, Comp.size, *]
 
 @[simp] private theorem ki_liftBase_euf_size {Γ : List PT} {t : PT}
     (c : Comp pqxdhOps pqPrimIface Γ t) :
@@ -821,6 +823,127 @@ variable {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T}
     (ddhQ x y z).size = x.size + (y.size + z.size + 1) + 2 := rfl
 @[simp] private theorem ki_encEC_size (e : Expr pqxdhOps Γ (B 32)) : (encEC e).size = e.size + 1 := rfl
 @[simp] private theorem ki_encKEM_size (e : Expr pqxdhOps Γ (B 1568)) : (encKEM e).size = e.size + 1 := rfl
+@[simp] private theorem ki_widenEC_size (e : Expr pqxdhOps Γ (B 33)) : (widenEC e).size = e.size + 1 := rfl
+@[simp] private theorem ki_buildSecretsE_size (dh1 dh2 dh3 : Expr pqxdhOps Γ (B 32))
+    (dh4? : Expr pqxdhOps Γ (.opt (B 32))) (ss : Expr pqxdhOps Γ (B 32)) :
+    (buildSecretsE dh1 dh2 dh3 dh4? ss).size =
+      dh1.size + dh2.size + dh3.size + dh4?.size + ss.size + 63 := by
+  simp only [buildSecretsE, eLet2, eLet, eCaseOpt, widenB, catB, litB, ki_v_size, Expr.size]
+  dsimp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.ReductionDsl.Ops.sum,
+    _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Sum.elim]
+  omega
+
+@[simp] private theorem ki_v_litSize [Ext Γ Δ] (x : Var Γ τ) : exprLitSize (v (Δ := Δ) x) = 0 := rfl
+@[simp] private theorem ki_bindV_litSize (m : Comp pqxdhOps I Γ τ₁)
+    (k : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps I (τ₁ :: Γ) τ₂) :
+    compLitSize (bindV m k) = compLitSize m + compLitSize (k .zero) := rfl
+@[simp] private theorem ki_letV_litSize (e : Expr pqxdhOps Γ τ₁)
+    (k : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps I (τ₁ :: Γ) τ₂) :
+    compLitSize (letV (I := I) e k) = exprLitSize e + compLitSize (k .zero) := rfl
+@[simp] private theorem ki_caseOptV_litSize (o : Expr pqxdhOps Γ (.opt τ₁))
+    (kn : Comp pqxdhOps I Γ τ₂) (ks : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps I (τ₁ :: Γ) τ₂) :
+    compLitSize (caseOptV o kn ks) = exprLitSize o + compLitSize kn + compLitSize (ks .zero) := rfl
+@[simp] private theorem ki_caseSumV_litSize (s : Expr pqxdhOps Γ (.sum τ₁ τ₂))
+    (kl : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps I (τ₁ :: Γ) τ)
+    (kr : Var (τ₂ :: Γ) τ₂ → Comp pqxdhOps I (τ₂ :: Γ) τ) :
+    compLitSize (caseSumV s kl kr) = exprLitSize s + compLitSize (kl .zero) + compLitSize (kr .zero) := rfl
+@[simp] private theorem ki_findMV_litSize (K : Nat) (xs : Expr pqxdhOps Γ (.list τ))
+    (p : Var (τ :: Γ) τ → Comp pqxdhOps I (τ :: Γ) .bool) :
+    compLitSize (findMV K xs p) = exprLitSize xs + compLitSize (p .zero) := rfl
+@[simp] private theorem ki_anyMV_litSize (K : Nat) (xs : Expr pqxdhOps Γ (.list τ))
+    (p : Var (τ :: Γ) τ → Comp pqxdhOps I (τ :: Γ) .bool) :
+    compLitSize (anyMV K xs p) = exprLitSize xs + compLitSize (p .zero) := rfl
+@[simp] private theorem ki_mapMV_litSize (K : Nat) (xs : Expr pqxdhOps Γ (.list τ₁))
+    (f : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps I (τ₁ :: Γ) τ₂) :
+    compLitSize (mapMV K xs f) = exprLitSize xs + compLitSize (f .zero) := rfl
+@[simp] private theorem ki_foldMV_litSize (K : Nat) (xs : Expr pqxdhOps Γ (.list τ₁))
+    (init : Expr pqxdhOps Γ τ₂)
+    (f : Var (τ₁ :: τ₂ :: Γ) τ₁ → Var (τ₁ :: τ₂ :: Γ) τ₂ → Comp pqxdhOps I (τ₁ :: τ₂ :: Γ) τ₂) :
+    compLitSize (foldMV K xs init f) =
+      exprLitSize xs + exprLitSize init + compLitSize (f .zero (.succ .zero)) := rfl
+@[simp] private theorem ki_eLet_litSize (e : Expr pqxdhOps Γ τ₁)
+    (k : Var (τ₁ :: Γ) τ₁ → Expr pqxdhOps (τ₁ :: Γ) τ₂) :
+    exprLitSize (eLet e k) = exprLitSize e + exprLitSize (k .zero) := rfl
+@[simp] private theorem ki_eCaseOpt_litSize (o : Expr pqxdhOps Γ (.opt τ₁)) (kn : Expr pqxdhOps Γ τ₂)
+    (ks : Var (τ₁ :: Γ) τ₁ → Expr pqxdhOps (τ₁ :: Γ) τ₂) :
+    exprLitSize (eCaseOpt o kn ks) = exprLitSize o + exprLitSize kn + exprLitSize (ks .zero) := rfl
+@[simp] private theorem ki_eCaseSum_litSize (s : Expr pqxdhOps Γ (.sum τ₁ τ₂))
+    (kl : Var (τ₁ :: Γ) τ₁ → Expr pqxdhOps (τ₁ :: Γ) τ)
+    (kr : Var (τ₂ :: Γ) τ₂ → Expr pqxdhOps (τ₂ :: Γ) τ) :
+    exprLitSize (eCaseSum s kl kr) = exprLitSize s + exprLitSize (kl .zero) + exprLitSize (kr .zero) := rfl
+@[simp] private theorem ki_eFind_litSize (K : Nat) (xs : Expr pqxdhOps Γ (.list τ))
+    (p : Var (τ :: Γ) τ → Expr pqxdhOps (τ :: Γ) .bool) :
+    exprLitSize (eFind K xs p) = exprLitSize xs + exprLitSize (p .zero) := rfl
+@[simp] private theorem ki_eAny_litSize (K : Nat) (xs : Expr pqxdhOps Γ (.list τ))
+    (p : Var (τ :: Γ) τ → Expr pqxdhOps (τ :: Γ) .bool) :
+    exprLitSize (eAny K xs p) = exprLitSize xs + exprLitSize (p .zero) := rfl
+@[simp] private theorem ki_eMap_litSize (K : Nat) (xs : Expr pqxdhOps Γ (.list τ₁))
+    (f : Var (τ₁ :: Γ) τ₁ → Expr pqxdhOps (τ₁ :: Γ) τ₂) :
+    exprLitSize (eMap K xs f) = exprLitSize xs + exprLitSize (f .zero) := rfl
+@[simp] private theorem ki_litB_litSize (w : ℕ+) (bs : Bytes) :
+    exprLitSize (litB w bs (Γ := Γ)) = bs.length := Nat.zero_add _
+@[simp] private theorem ki_catB_litSize {m n : ℕ+} (a : Expr pqxdhOps Γ (B m)) (b : Expr pqxdhOps Γ (B n)) :
+    exprLitSize (catB a b) = exprLitSize a + exprLitSize b := rfl
+@[simp] private theorem ki_consB_litSize {w : ℕ+} (b : UInt8) (e : Expr pqxdhOps Γ (B w)) :
+    exprLitSize (consB b e) = exprLitSize e + 1 := rfl
+@[simp] private theorem ki_widenB_litSize (w d : ℕ+) (e : Expr pqxdhOps Γ (B w)) :
+    exprLitSize (widenB w d e) = exprLitSize e := rfl
+@[simp] private theorem ki_takeKB_litSize (w k : ℕ+) (e : Expr pqxdhOps Γ (B w)) :
+    exprLitSize (takeKB w k e) = exprLitSize e := rfl
+@[simp] private theorem ki_dropB_litSize {w : ℕ+} (n : Expr pqxdhOps Γ .nat) (e : Expr pqxdhOps Γ (B w)) :
+    exprLitSize (dropB n e) = exprLitSize n + exprLitSize e := rfl
+@[simp] private theorem ki_lenB_litSize {w : ℕ+} (e : Expr pqxdhOps Γ (B w)) :
+    exprLitSize (lenB e) = exprLitSize e := rfl
+@[simp] private theorem ki_eqB_litSize {m n : ℕ+} (a : Expr pqxdhOps Γ (B m)) (b : Expr pqxdhOps Γ (B n)) :
+    exprLitSize (eqB a b) = exprLitSize a + exprLitSize b := rfl
+@[simp] private theorem ki_u32OfNat_litSize (e : Expr pqxdhOps Γ .nat) :
+    exprLitSize (u32OfNat e) = exprLitSize e := rfl
+@[simp] private theorem ki_eqU32_litSize (a b : Expr pqxdhOps Γ U32) :
+    exprLitSize (eqU32 a b) = exprLitSize a + exprLitSize b := rfl
+@[simp] private theorem ki_sBool_litSize : compLitSize (sBool (Γ := Γ)) = 0 := rfl
+@[simp] private theorem ki_sBytes32_litSize : compLitSize (sBytes32 (Γ := Γ)) = 0 := rfl
+@[simp] private theorem ki_sRandom64_litSize : compLitSize (sRandom64 (Γ := Γ)) = 0 := rfl
+@[simp] private theorem ki_sDrKey96_litSize : compLitSize (sDrKey96 (Γ := Γ)) = 0 := rfl
+@[simp] private theorem ki_sIndex_litSize (N : ℕ) : compLitSize (sIndex N (Γ := Γ)) = 0 := rfl
+@[simp] private theorem ki_qX25519_litSize (e : Expr pqxdhOps Γ (.prod (B 32) (B 32))) :
+    compLitSize (qX25519 e) = exprLitSize e := rfl
+@[simp] private theorem ki_qX25519Base_litSize (e : Expr pqxdhOps Γ (B 32)) :
+    compLitSize (qX25519Base e) = exprLitSize e := rfl
+@[simp] private theorem ki_qIsCanonical_litSize (e : Expr pqxdhOps Γ (B 32)) :
+    compLitSize (qIsCanonical e) = exprLitSize e := rfl
+@[simp] private theorem ki_qPow8_litSize (e : Expr pqxdhOps Γ (B 32)) :
+    compLitSize (qPow8 e) = exprLitSize e := rfl
+@[simp] private theorem ki_qSigPkGen_litSize (e : Expr pqxdhOps Γ (B 32)) :
+    compLitSize (qSigPkGen e) = exprLitSize e := rfl
+@[simp] private theorem ki_qSigSign_litSize (m : ℕ+) (e : Expr pqxdhOps Γ (.prod (B 32) (.prod (B m) (B 64)))) :
+    compLitSize (qSigSign m e) = exprLitSize e := rfl
+@[simp] private theorem ki_qSigVerify_litSize (m : ℕ+) (e : Expr pqxdhOps Γ (.prod (B 32) (.prod (B m) (B 64)))) :
+    compLitSize (qSigVerify m e) = exprLitSize e := rfl
+@[simp] private theorem ki_qKemKeyGen_litSize (e : Expr pqxdhOps Γ (B 64)) :
+    compLitSize (qKemKeyGen e) = exprLitSize e := rfl
+@[simp] private theorem ki_qKemEncaps_litSize (e : Expr pqxdhOps Γ (.prod (B 1568) (B 32))) :
+    compLitSize (qKemEncaps e) = exprLitSize e := rfl
+@[simp] private theorem ki_qKemDecaps_litSize (e : Expr pqxdhOps Γ (.prod (B 3168) (B 1568))) :
+    compLitSize (qKemDecaps e) = exprLitSize e := rfl
+@[simp] private theorem ki_qHkdfDerive96_litSize (w : ℕ+) (e : Expr pqxdhOps Γ (B w)) :
+    compLitSize (qHkdfDerive96 w e) = exprLitSize e := rfl
+@[simp] private theorem ki_qChalSign_litSize (m : ℕ+) (e : Expr pqxdhOps Γ (B m)) :
+    compLitSize (qChalSign m e) = exprLitSize e := rfl
+@[simp] private theorem ki_ddhQ_litSize (x y z : Expr pqxdhOps Γ (B 32)) :
+    compLitSize (ddhQ x y z) = exprLitSize x + (exprLitSize y + exprLitSize z) := rfl
+@[simp] private theorem ki_encEC_litSize (e : Expr pqxdhOps Γ (B 32)) :
+    exprLitSize (encEC e) = exprLitSize e + 1 := rfl
+@[simp] private theorem ki_encKEM_litSize (e : Expr pqxdhOps Γ (B 1568)) :
+    exprLitSize (encKEM e) = exprLitSize e + 1 := rfl
+@[simp] private theorem ki_widenEC_litSize (e : Expr pqxdhOps Γ (B 33)) :
+    exprLitSize (widenEC e) = exprLitSize e := rfl
+@[simp] private theorem ki_buildSecretsE_litSize (dh1 dh2 dh3 : Expr pqxdhOps Γ (B 32))
+    (dh4? : Expr pqxdhOps Γ (.opt (B 32))) (ss : Expr pqxdhOps Γ (B 32)) :
+    exprLitSize (buildSecretsE dh1 dh2 dh3 dh4? ss) =
+      exprLitSize dh1 + exprLitSize dh2 + exprLitSize dh3 + exprLitSize dh4? + exprLitSize ss + 64 := by
+  simp only [buildSecretsE, eLet2, eLet, eCaseOpt, widenB, catB, litB,
+    ki_v_litSize, exprLitSize, pqOpLitSize, hl_F_X25519_length, Nat.add_zero, Nat.zero_add]
+  omega
 
 end KiAtomicSizeSimp
 
@@ -828,164 +951,12 @@ private theorem ki_bits_mono {x y : ℕ} (h : x ≤ y) : bits x ≤ bits y := by
   unfold bits
   exact Nat.add_le_add_right (Nat.log_mono_right h) 1
 
-private theorem ki_bits_le_of_le_four_mul_sq {x N : ℕ} (h : x ≤ 4 * (N * N)) :
-    bits x ≤ 2 * bits N + 3 := by
-  have h1 := ki_bits_mono h
-  have h2 := bits_mul 4 (N * N)
-  have h3 := bits_mul N N
-  have h4 : bits 4 = 3 := by decide
-  omega
+private theorem ki_hb_consts :
+    bits 0 = 1 ∧ bits 1 = 1 ∧ bits 32 = 6 ∧ bits 64 = 7 ∧
+    bits 96 = 7 ∧ bits 128 = 8 ∧ bits 160 = 8 ∧ bits 192 = 8 := by decide
 
-private theorem ki_nRecv_le_dh (S : Setup) : nRecv S ≤ S.N_dh := by
-  have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
-  have hspk : S.N_spk_tot = S.N_id * S.N_recv := rfl
-  unfold nRecv
-  split_ifs with h0
-  · omega
-  · have hpos : 1 ≤ S.N_id := by omega
-    have hle : S.N_recv ≤ S.N_id * S.N_recv := by simpa using Nat.mul_le_mul_right S.N_recv hpos
-    omega
-
-set_option linter.unusedSimpArgs false in
-set_option maxRecDepth 100000 in
-set_option maxHeartbeats 1600000 in
-private theorem ki_sigKeyIndProg_handle_size_le (useRo : Bool) (S : Setup) (K : Nat) :
-    (sigKeyIndProg useRo S K).handle.size ≤ 100 * bits K + 11800 := by
-  cases useRo <;> {
-    dsimp only [sigKeyIndProg]
-    simp (config := { maxSteps := 1000000 }) only [
-      sigHandleC, sigInitPrinB, sigCorruptB, sigGenSpkB, sigInitiateB,
-      Security.ReductionDsl.KeyInd.onGame, extractC, widenEC,
-      sgGame, sgTarget, sgPk, sgForgery, sgBudget, sgUpd,
-      initPrinB, corruptB, genSpkB, genOpkB, initSidE, initFinishC, preCheckC, checkSigsC,
-      initiateC, initiateOpkB, initiateNoOpkB, acceptOpkB, acceptNoOpkB,
-      testB, revealB, roB, revealDhB, registerB, revealSpkB,
-      findHonestC, isAdvRegC, isGameSpkC, isGameOpkC, koskBundleOkC, koskSenderOkC,
-      resolveSigPkC, honestPeerC, checkProvC, partnerC, recordRespC, hkdfOrRoC,
-      aiIkSk, aiSpkSk, aiOpkSk, aiPqSk, aiReplay, aiHdr, acceptKeysC,
-      qK, qJ, qO, qHdr, qKJO,
-      stSecb, stPrin, stSpks, stOpks, stSess, stResps, stUsedO, stUsedN, stKyb, stRo, stAdv,
-      stMk, stUpd,
-      peSecIKA0, peIkAPk, peSecIKAsign, peIkSignPk, peCorrupted, peMk, peUpd,
-      sbSpkSk, sbSpkPk, sbSpkSig, sbPqspkSk, sbPqspkPk, sbPqspkSig, sbRevealed, sbMk, sbUpd,
-      oeOpkSk, oeOpkPk, oeConsumed, oeMk, oeUpd,
-      seSid, seHonestPeer, sePeerIk, sePeerSpk, sePeerOpk, sePeerPqspk,
-      seSpkHon, seOpkHon, sePqspkHon, seEkASk, seFresh, seDrReal, seDrRand, seHdr,
-      seTested, seRevealed, seMk, seUpd,
-      reSid, reRespIk, reSpk, reOpk, rePqspk, reHdr, reSenderHonest, reDrReal, reDrRand,
-      reTested, reRevealed, reMk, reUpd,
-      buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk,
-      hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk,
-      rNone, rInitPrin, rPk, rCorr, rBundle, rHdr, rInitUnfresh, rAccFresh, rDrKey, rDh, rSpkSk,
-      isSomeE, getDBytes, optFst, optSnd, dhOptNZ, guardE, rs, kyberCheckE, freshE, emptyStE,
-      orE, mulRight, natEq, nat2Eq, nat3Eq, optBytesEq, optU32Eq, sidEq, kyberEq, nonZero32,
-      buildSecretsE, eLet2,
-      ki_liftBase_size, ki_liftBase_euf_size, liftBase,
-      v, bindV, letV, caseOptV, caseSumV, findMV, anyMV, mapMV, foldMV,
-      eLet, eCaseOpt, eCaseSum, eFind, eAny, eMap,
-      litB, catB, consB, widenB, takeKB, dropB, lenB, eqB, u32OfNat, eqU32,
-      sBool, sBytes32, sRandom64, sDrKey96, sIndex,
-      qX25519, qX25519Base, qIsCanonical, qPow8,
-      qSigPkGen, qSigSign, qSigVerify,
-      qKemKeyGen, qKemEncaps, qKemDecaps, qHkdfDerive96,
-      qChalSign, encEC, encKEM,
-      Comp.size, Expr.size, ↓reduceIte, Bool.false_eq_true, Bool.true_eq_false, Bool.not_true, Bool.not_false]
-    dsimp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.ReductionDsl.Ops.sum,
-      _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Sum.elim]
-    have hb0 : bits 0 = 1 := rfl
-    have hb1 : bits 1 = 1 := rfl
-    have hb32 : bits 32 = 6 := by decide
-    have hb64 : bits 64 = 7 := by decide
-    have hb96 : bits 96 = 7 := by decide
-    have hb128 : bits 128 = 8 := by decide
-    have hb160 : bits 160 = 8 := by decide
-    have hb192 : bits 192 = 8 := by decide
-    have : bits (min K S.N_spk_tot) ≤ bits K := ki_bits_mono (Nat.min_le_left _ _)
-    have : bits (min K S.N_dh) ≤ bits K := ki_bits_mono (Nat.min_le_left _ _)
-    have : bits (min K S.N_sess_tot) ≤ bits K := ki_bits_mono (Nat.min_le_left _ _)
-    omega
-  }
-
-set_option linter.unusedSimpArgs false in
-private theorem ki_sigKeyIndProg_size_le_clamped (useRo : Bool) (S : Setup) (K : Nat) :
-    (sigKeyIndProg useRo S K).size ≤ 101 * bits K + 12000 := by
-  have hH := ki_sigKeyIndProg_handle_size_le useRo S K
-  have hI : (sigKeyIndProg useRo S K).init.size ≤ bits K + 150 := by
-    dsimp only [sigKeyIndProg]
-    simp only [emptyStE, ki_liftBase_size, ki_liftBase_euf_size, liftBase,
-      v, bindV, sBool, sIndex, Comp.size, Expr.size]
-    have hb0 : bits 0 = 1 := rfl
-    have : bits (min K S.N_spk_tot) ≤ bits K := ki_bits_mono (Nat.min_le_left _ _)
-    omega
-  have hF : (sigKeyIndProg useRo S K).finish.size ≤ 40 := by
-    dsimp only [sigKeyIndProg]
-    split_ifs <;> simp [sgForgery, ki_eCaseOpt_size, ki_litB_size, ki_v_size, Comp.size, Expr.size]
-  change (sigKeyIndProg useRo S K).init.size + (sigKeyIndProg useRo S K).handle.size +
-    (sigKeyIndProg useRo S K).finish.size ≤ _
-  omega
-
-set_option linter.unusedSimpArgs false in
-set_option maxRecDepth 100000 in
-set_option maxHeartbeats 1600000 in
-private theorem ki_sigKeyIndProg_litSize_le (useRo : Bool) (S : Setup) (K : Nat) :
-    red1LitSize (sigKeyIndProg useRo S K) ≤ 20000 := by
-  cases useRo <;> {
-    dsimp only [sigKeyIndProg, red1LitSize]
-    simp (config := { maxSteps := 1000000 }) only [
-      sigHandleC, sigInitPrinB, sigCorruptB, sigGenSpkB, sigInitiateB,
-      Security.ReductionDsl.KeyInd.onGame, extractC, widenEC,
-      sgGame, sgTarget, sgPk, sgForgery, sgBudget, sgUpd,
-      initPrinB, corruptB, genSpkB, genOpkB, initSidE, initFinishC, preCheckC, checkSigsC,
-      initiateC, initiateOpkB, initiateNoOpkB, acceptOpkB, acceptNoOpkB,
-      testB, revealB, roB, revealDhB, registerB, revealSpkB,
-      findHonestC, isAdvRegC, isGameSpkC, isGameOpkC, koskBundleOkC, koskSenderOkC,
-      resolveSigPkC, honestPeerC, checkProvC, partnerC, recordRespC, hkdfOrRoC,
-      aiIkSk, aiSpkSk, aiOpkSk, aiPqSk, aiReplay, aiHdr, acceptKeysC,
-      qK, qJ, qO, qHdr, qKJO,
-      stSecb, stPrin, stSpks, stOpks, stSess, stResps, stUsedO, stUsedN, stKyb, stRo, stAdv,
-      stMk, stUpd,
-      peSecIKA0, peIkAPk, peSecIKAsign, peIkSignPk, peCorrupted, peMk, peUpd,
-      sbSpkSk, sbSpkPk, sbPqspkSk, sbPqspkPk, sbSpkSig, sbPqspkSig, sbRevealed, sbMk, sbUpd,
-      oeOpkSk, oeOpkPk, oeConsumed, oeMk, oeUpd,
-      seSid, seHonestPeer, sePeerIk, sePeerSpk, sePeerOpk, sePeerPqspk,
-      seSpkHon, seOpkHon, sePqspkHon, seEkASk, seFresh, seDrReal, seDrRand, seHdr,
-      seTested, seRevealed, seMk, seUpd,
-      reSid, reRespIk, reSpk, reOpk, rePqspk, reHdr, reSenderHonest, reDrReal, reDrRand,
-      reTested, reRevealed, reMk, reUpd,
-      buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk,
-      hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk,
-      rNone, rInitPrin, rPk, rCorr, rBundle, rHdr, rInitUnfresh, rAccFresh, rDrKey, rDh, rSpkSk,
-      isSomeE, getDBytes, optFst, optSnd, dhOptNZ, guardE, rs, kyberCheckE, freshE, emptyStE,
-      orE, mulRight, natEq, nat2Eq, nat3Eq, optBytesEq, optU32Eq, sidEq, kyberEq, nonZero32,
-      buildSecretsE, eLet2,
-      ki_liftBase_litSize, ki_liftBase_euf_litSize, liftBase,
-      v, bindV, letV, caseOptV, caseSumV, findMV, anyMV, mapMV, foldMV,
-      eLet, eCaseOpt, eCaseSum, eFind, eAny, eMap,
-      litB, catB, consB, widenB, takeKB, dropB, lenB, eqB, u32OfNat, eqU32,
-      sBool, sBytes32, sRandom64, sDrKey96, sIndex,
-      qX25519, qX25519Base, qIsCanonical, qPow8,
-      qSigPkGen, qSigSign, qSigVerify,
-      qKemKeyGen, qKemEncaps, qKemDecaps, qHkdfDerive96,
-      qChalSign, encEC, encKEM,
-      compLitSize, exprLitSize, pqOpLitSize,
-      List.length_nil, List.length_cons, List.length_replicate, hl_F_X25519_length,
-      Nat.add_zero, Nat.zero_add,
-      ↓reduceIte, Bool.false_eq_true, Bool.true_eq_false, Bool.not_true, Bool.not_false]
-    split_ifs <;> simp only [exprLitSize, pqOpLitSize, List.length_nil, Nat.add_zero, Nat.zero_add] <;> omega
-  }
-
-set_option linter.unusedSimpArgs false in
-set_option maxRecDepth 100000 in
-set_option maxHeartbeats 1600000 in
-private theorem ki_shcrPostC_size_bounds (S : Setup) (K : Nat)
-    {Γ₁ Γ₂ Δ : List (Ty SignalPqxdh.LegacyCosted.pqSig)}
-    (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (shcrPostC (Δ := Δ) S K s q).size ≤
-      53 * bits K + 35 * bits (min K S.N_dh) + 2 * bits (min K S.N_sess_tot) + 11600 := by
+local macro "ki_leaf_size_simp" : tactic => `(tactic|
   simp (config := { maxSteps := 1000000 }) only [
-    shcrPostC, shcrGenSpkB, initGuardE, shcrInitiateC, shcrAcceptB, onBase, shcrFinE,
-    scBase, scTB, scTPk, scTSk, scCnt, scIR, scRR, scSIdx, scChosen, scMk, scUpd, rrCt,
-    isNoneRespE,
     initPrinB, corruptB, genSpkB, genOpkB, initSidE, initFinishC, preCheckC, checkSigsC,
     initiateC, initiateOpkB, initiateNoOpkB, acceptOpkB, acceptNoOpkB,
     testB, revealB, roB, revealDhB, registerB, revealSpkB,
@@ -1008,144 +979,183 @@ private theorem ki_shcrPostC_size_bounds (S : Setup) (K : Nat)
     rNone, rInitPrin, rPk, rCorr, rBundle, rHdr, rInitUnfresh, rAccFresh, rDrKey, rDh, rSpkSk,
     isSomeE, getDBytes, optFst, optSnd, dhOptNZ, guardE, rs, kyberCheckE, freshE, emptyStE,
     orE, mulRight, natEq, nat2Eq, nat3Eq, optBytesEq, optU32Eq, sidEq, kyberEq, nonZero32,
-    buildSecretsE, eLet2,
-    v, bindV, letV, caseOptV, caseSumV, findMV, anyMV, mapMV, foldMV,
-    eLet, eCaseOpt, eCaseSum, eFind, eAny, eMap,
-    litB, catB, consB, widenB, takeKB, dropB, lenB, eqB, u32OfNat, eqU32,
-    sBool, sBytes32, sRandom64, sDrKey96, sIndex,
-    qX25519, qX25519Base, qIsCanonical, qPow8,
-    qSigPkGen, qSigSign, qSigVerify,
-    qKemKeyGen, qKemEncaps, qKemDecaps, qHkdfDerive96,
-    encEC, encKEM,
-    Comp.size, Expr.size, ↓reduceIte, Bool.false_eq_true, Bool.true_eq_false, Bool.not_true, Bool.not_false]
-  dsimp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.ReductionDsl.Ops.sum,
-    _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Sum.elim]
-  have hb0 : bits 0 = 1 := rfl
-  have hb1 : bits 1 = 1 := rfl
-  have hb32 : bits 32 = 6 := by decide
-  have hb64 : bits 64 = 7 := by decide
-  have hb96 : bits 96 = 7 := by decide
-  have hb128 : bits 128 = 8 := by decide
-  have hb160 : bits 160 = 8 := by decide
-  have hb192 : bits 192 = 8 := by decide
+    ki_buildSecretsE_size, ki_widenEC_size, eLet2,
+    ki_liftBase_size, ki_liftBase_euf_size, ki_gPrim_size,
+    ki_v_size, ki_bindV_size, ki_letV_size, ki_caseOptV_size, ki_caseSumV_size,
+    ki_findMV_size, ki_anyMV_size, ki_mapMV_size, ki_foldMV_size,
+    ki_eLet_size, ki_eCaseOpt_size, ki_eCaseSum_size, ki_eFind_size, ki_eAny_size, ki_eMap_size,
+    ki_litB_size, ki_catB_size, ki_consB_size, ki_widenB_size, ki_takeKB_size, ki_dropB_size,
+    ki_lenB_size, ki_eqB_size, ki_u32OfNat_size, ki_eqU32_size,
+    ki_sBool_size, ki_sBytes32_size, ki_sRandom64_size, ki_sDrKey96_size, ki_sIndex_size,
+    ki_qX25519_size, ki_qX25519Base_size, ki_qIsCanonical_size, ki_qPow8_size,
+    ki_qSigPkGen_size, ki_qSigSign_size, ki_qSigVerify_size,
+    ki_qKemKeyGen_size, ki_qKemEncaps_size, ki_qKemDecaps_size, ki_qHkdfDerive96_size,
+    ki_qChalSign_size, ki_ddhQ_size, ki_encEC_size, ki_encKEM_size,
+    Comp.size, Expr.size,
+    ↓reduceIte, Bool.false_eq_true, Bool.true_eq_false, Bool.not_true, Bool.not_false])
+
+local macro "ki_leaf_litSize_simp" : tactic => `(tactic|
+  simp (config := { maxSteps := 1000000 }) only [
+    initPrinB, corruptB, genSpkB, genOpkB, initSidE, initFinishC, preCheckC, checkSigsC,
+    initiateC, initiateOpkB, initiateNoOpkB, acceptOpkB, acceptNoOpkB,
+    testB, revealB, roB, revealDhB, registerB, revealSpkB,
+    findHonestC, isAdvRegC, isGameSpkC, isGameOpkC, koskBundleOkC, koskSenderOkC,
+    resolveSigPkC, honestPeerC, checkProvC, partnerC, recordRespC, hkdfOrRoC,
+    aiIkSk, aiSpkSk, aiOpkSk, aiPqSk, aiReplay, aiHdr, acceptKeysC,
+    qK, qJ, qO, qHdr, qKJO,
+    stSecb, stPrin, stSpks, stOpks, stSess, stResps, stUsedO, stUsedN, stKyb, stRo, stAdv,
+    stMk, stUpd,
+    peSecIKA0, peIkAPk, peSecIKAsign, peIkSignPk, peCorrupted, peMk, peUpd,
+    sbSpkSk, sbSpkPk, sbSpkSig, sbPqspkSk, sbPqspkPk, sbPqspkSig, sbRevealed, sbMk, sbUpd,
+    oeOpkSk, oeOpkPk, oeConsumed, oeMk, oeUpd,
+    seSid, seHonestPeer, sePeerIk, sePeerSpk, sePeerOpk, sePeerPqspk,
+    seSpkHon, seOpkHon, sePqspkHon, seEkASk, seFresh, seDrReal, seDrRand, seHdr,
+    seTested, seRevealed, seMk, seUpd,
+    reSid, reRespIk, reSpk, reOpk, rePqspk, reHdr, reSenderHonest, reDrReal, reDrRand,
+    reTested, reRevealed, reMk, reUpd,
+    buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk,
+    hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk,
+    rNone, rInitPrin, rPk, rCorr, rBundle, rHdr, rInitUnfresh, rAccFresh, rDrKey, rDh, rSpkSk,
+    isSomeE, getDBytes, optFst, optSnd, dhOptNZ, guardE, rs, kyberCheckE, freshE, emptyStE,
+    orE, mulRight, natEq, nat2Eq, nat3Eq, optBytesEq, optU32Eq, sidEq, kyberEq, nonZero32,
+    ki_buildSecretsE_litSize, ki_widenEC_litSize, eLet2,
+    ki_liftBase_litSize, ki_liftBase_euf_litSize, ki_gPrim_litSize,
+    ki_v_litSize, ki_bindV_litSize, ki_letV_litSize, ki_caseOptV_litSize, ki_caseSumV_litSize,
+    ki_findMV_litSize, ki_anyMV_litSize, ki_mapMV_litSize, ki_foldMV_litSize,
+    ki_eLet_litSize, ki_eCaseOpt_litSize, ki_eCaseSum_litSize, ki_eFind_litSize, ki_eAny_litSize, ki_eMap_litSize,
+    ki_litB_litSize, ki_catB_litSize, ki_consB_litSize, ki_widenB_litSize, ki_takeKB_litSize, ki_dropB_litSize,
+    ki_lenB_litSize, ki_eqB_litSize, ki_u32OfNat_litSize, ki_eqU32_litSize,
+    ki_sBool_litSize, ki_sBytes32_litSize, ki_sRandom64_litSize, ki_sDrKey96_litSize, ki_sIndex_litSize,
+    ki_qX25519_litSize, ki_qX25519Base_litSize, ki_qIsCanonical_litSize, ki_qPow8_litSize,
+    ki_qSigPkGen_litSize, ki_qSigSign_litSize, ki_qSigVerify_litSize,
+    ki_qKemKeyGen_litSize, ki_qKemEncaps_litSize, ki_qKemDecaps_litSize, ki_qHkdfDerive96_litSize,
+    ki_qChalSign_litSize, ki_ddhQ_litSize, ki_encEC_litSize, ki_encKEM_litSize,
+    compLitSize, exprLitSize, pqOpLitSize,
+    List.length_nil, List.length_cons, List.length_replicate, hl_F_X25519_length,
+    Nat.add_zero, Nat.zero_add,
+    ↓reduceIte, Bool.false_eq_true, Bool.true_eq_false, Bool.not_true, Bool.not_false])
+
+set_option linter.unusedSimpArgs false in
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 800000 in
+private theorem ki_sigKeyIndProg_handle_size_le (useRo : Bool) (S : Setup) (K : Nat) :
+    (sigKeyIndProg useRo S K).handle.size ≤ 100 * bits K + 11800 := by
+  have ⟨hb0, hb1, hb32, hb64, hb96, hb128, hb160, hb192⟩ := ki_hb_consts
+  have : bits (min K S.N_spk_tot) ≤ bits K := ki_bits_mono (Nat.min_le_left _ _)
+  have : bits (min K S.N_dh) ≤ bits K := ki_bits_mono (Nat.min_le_left _ _)
+  have : bits (min K S.N_sess_tot) ≤ bits K := ki_bits_mono (Nat.min_le_left _ _)
+  cases useRo <;> {
+    dsimp only [sigKeyIndProg]
+    unfold sigHandleC sigInitPrinB sigCorruptB sigGenSpkB sigInitiateB
+      Security.ReductionDsl.KeyInd.onGame extractC
+      sgGame sgTarget sgPk sgForgery sgBudget sgUpd
+    ki_leaf_size_simp
+    omega
+  }
+
+set_option linter.unusedSimpArgs false in
+private theorem ki_sigKeyIndProg_size_le_clamped (useRo : Bool) (S : Setup) (K : Nat) :
+    (sigKeyIndProg useRo S K).size ≤ 101 * bits K + 12000 := by
+  have hH := ki_sigKeyIndProg_handle_size_le useRo S K
+  have hI : (sigKeyIndProg useRo S K).init.size ≤ bits K + 150 := by
+    dsimp only [sigKeyIndProg]
+    simp only [emptyStE, ki_liftBase_size, ki_liftBase_euf_size,
+      ki_v_size, ki_bindV_size, ki_sBool_size, ki_sIndex_size, Comp.size, Expr.size]
+    have hb0 : bits 0 = 1 := rfl
+    have : bits (min K S.N_spk_tot) ≤ bits K := ki_bits_mono (Nat.min_le_left _ _)
+    omega
+  have hF : (sigKeyIndProg useRo S K).finish.size ≤ 40 := by
+    dsimp only [sigKeyIndProg]
+    split_ifs <;> simp only [sgForgery, ki_eCaseOpt_size, ki_litB_size, ki_v_size,
+      Comp.size, Expr.size] <;> omega
+  change (sigKeyIndProg useRo S K).init.size + (sigKeyIndProg useRo S K).handle.size +
+    (sigKeyIndProg useRo S K).finish.size ≤ _
   omega
 
 set_option linter.unusedSimpArgs false in
 set_option maxRecDepth 100000 in
-set_option maxHeartbeats 1600000 in
+set_option maxHeartbeats 800000 in
+private theorem ki_sigKeyIndProg_litSize_le (useRo : Bool) (S : Setup) (K : Nat) :
+    red1LitSize (sigKeyIndProg useRo S K) ≤ 20000 := by
+  cases useRo <;> {
+    dsimp only [sigKeyIndProg, red1LitSize]
+    simp only [sigHandleC, sigInitPrinB, sigCorruptB, sigGenSpkB, sigInitiateB,
+      Security.ReductionDsl.KeyInd.onGame, extractC,
+      sgGame, sgTarget, sgPk, sgForgery, sgBudget, sgUpd]
+    ki_leaf_litSize_simp
+    split_ifs <;> simp only [ki_eCaseOpt_litSize, ki_litB_litSize, ki_v_litSize,
+      compLitSize, exprLitSize, pqOpLitSize, List.length_nil, Nat.add_zero, Nat.zero_add] <;> omega
+  }
+
+set_option linter.unusedSimpArgs false in
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 800000 in
+private theorem ki_shcrPostC_size_bounds (S : Setup) (K : Nat)
+    {Γ₁ Γ₂ Δ : List (Ty SignalPqxdh.LegacyCosted.pqSig)}
+    (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+    (shcrPostC (Δ := Δ) S K s q).size ≤
+      53 * bits K + 26 * bits (min K S.N_dh) + 2 * bits (min K S.N_sess_tot) + 11600 := by
+  have ⟨hb0, hb1, hb32, hb64, hb96, hb128, hb160, hb192⟩ := ki_hb_consts
+  simp only [shcrPostC, shcrGenSpkB, initGuardE, shcrInitiateC, shcrAcceptB, onBase, shcrFinE,
+    scBase, scTB, scTPk, scTSk, scCnt, scIR, scRR, scSIdx, scChosen, scMk, scUpd, rrCt,
+    isNoneRespE]
+  ki_leaf_size_simp
+  omega
+
+set_option linter.unusedSimpArgs false in
+private theorem ki_shcrPreC_size_bounds (S : Setup) (K : Nat)
+    {Γ₁ Γ₂ Δ : List (Ty SignalPqxdh.LegacyCosted.pqSig)}
+    (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+    (shcrPreC (Δ := Δ) S K s q).size ≤
+      63 * bits K + 34 * bits (min K S.N_dh) + 2 * bits (min K S.N_sess_tot) + 12600 := by
+  have ⟨hb0, hb1, hb32, hb64, hb96, hb128, hb160, hb192⟩ := ki_hb_consts
+  unfold shcrPreC
+  have hPost := ki_shcrPostC_size_bounds S K (Δ := .opt pauseTy :: Δ) s q
+  simp only [pauseCheckC, tryPauseC, initGuardE,
+    scBase, scTB, scTPk, scTSk, scCnt, scIR, scRR, scSIdx, scChosen, scMk, scUpd, rrCt,
+    isNoneRespE]
+  ki_leaf_size_simp
+  omega
+
+set_option linter.unusedSimpArgs false in
 private theorem ki_shcrKeyIndProg_size_bounds (S : Setup) (Q K : Nat) :
     (shcrKeyIndProg S Q K).size ≤
-      bits Q + 120 * bits K + 75 * bits (min K S.N_dh) + 5 * bits (min K S.N_sess_tot) + 26000 := by
+      bits Q + 118 * bits K + 65 * bits (min K S.N_dh) + 5 * bits (min K S.N_sess_tot) + 26000 := by
   have hIni : (shcrKeyIndProg S Q K).init.size ≤ 60 := by
     dsimp only [shcrKeyIndProg]
     split_ifs <;> {
-      simp only [scMk, emptyStE, v, bindV, sBool, sIndex, Comp.size, Expr.size]
+      simp only [scMk, emptyStE, ki_v_size, ki_bindV_size, ki_sBool_size, ki_sIndex_size,
+        Comp.size, Expr.size]
       have hb0 : bits 0 = 1 := rfl
       omega
     }
   have hPre : (shcrKeyIndProg S Q K).handlePre.size ≤
-      64 * bits K + 35 * bits (min K S.N_dh) + 2 * bits (min K S.N_sess_tot) + 12600 := by
+      63 * bits K + 34 * bits (min K S.N_dh) + 2 * bits (min K S.N_sess_tot) + 12600 := by
     dsimp only [shcrKeyIndProg]
-    simp (config := { maxSteps := 1000000 }) only [
-      shcrPreC, pauseCheckC, tryPauseC, shcrPostC, shcrGenSpkB, initGuardE, shcrInitiateC,
-      shcrAcceptB, shcrResumeC, shcrExtractC, onBase, shcrFinE,
-      scBase, scTB, scTPk, scTSk, scCnt, scIR, scRR, scSIdx, scChosen, scMk, scUpd, rrCt,
-      isNoneRespE,
-      initPrinB, corruptB, genSpkB, genOpkB, initSidE, initFinishC, preCheckC, checkSigsC,
-      initiateC, initiateOpkB, initiateNoOpkB, acceptOpkB, acceptNoOpkB,
-      testB, revealB, roB, revealDhB, registerB, revealSpkB,
-      findHonestC, isAdvRegC, isGameSpkC, isGameOpkC, koskBundleOkC, koskSenderOkC,
-      resolveSigPkC, honestPeerC, checkProvC, partnerC, recordRespC, hkdfOrRoC,
-      aiIkSk, aiSpkSk, aiOpkSk, aiPqSk, aiReplay, aiHdr, acceptKeysC,
-      qK, qJ, qO, qHdr, qKJO,
-      stSecb, stPrin, stSpks, stOpks, stSess, stResps, stUsedO, stUsedN, stKyb, stRo, stAdv,
-      stMk, stUpd,
-      peSecIKA0, peIkAPk, peSecIKAsign, peIkSignPk, peCorrupted, peMk, peUpd,
-      sbSpkSk, sbSpkPk, sbSpkSig, sbPqspkSk, sbPqspkPk, sbPqspkSig, sbRevealed, sbMk, sbUpd,
-      oeOpkSk, oeOpkPk, oeConsumed, oeMk, oeUpd,
-      seSid, seHonestPeer, sePeerIk, sePeerSpk, sePeerOpk, sePeerPqspk,
-      seSpkHon, seOpkHon, sePqspkHon, seEkASk, seFresh, seDrReal, seDrRand, seHdr,
-      seTested, seRevealed, seMk, seUpd,
-      reSid, reRespIk, reSpk, reOpk, rePqspk, reHdr, reSenderHonest, reDrReal, reDrRand,
-      reTested, reRevealed, reMk, reUpd,
-      buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk,
-      hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk,
-      rNone, rInitPrin, rPk, rCorr, rBundle, rHdr, rInitUnfresh, rAccFresh, rDrKey, rDh, rSpkSk,
-      isSomeE, getDBytes, optFst, optSnd, dhOptNZ, guardE, rs, kyberCheckE, freshE, emptyStE,
-      orE, mulRight, natEq, nat2Eq, nat3Eq, optBytesEq, optU32Eq, sidEq, kyberEq, nonZero32,
-      buildSecretsE, eLet2,
-      v, bindV, letV, caseOptV, caseSumV, findMV, anyMV, mapMV, foldMV,
-      eLet, eCaseOpt, eCaseSum, eFind, eAny, eMap,
-      litB, catB, consB, widenB, takeKB, dropB, lenB, eqB, u32OfNat, eqU32,
-      sBool, sBytes32, sRandom64, sDrKey96, sIndex,
-      qX25519, qX25519Base, qIsCanonical, qPow8,
-      qSigPkGen, qSigSign, qSigVerify,
-      qKemKeyGen, qKemEncaps, qKemDecaps, qHkdfDerive96,
-      encEC, encKEM,
-      Comp.size, Expr.size, ↓reduceIte, Bool.false_eq_true, Bool.true_eq_false, Bool.not_true, Bool.not_false]
-    dsimp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.ReductionDsl.Ops.sum,
-      _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Sum.elim]
-    have hb0 : bits 0 = 1 := rfl
-    have hb1 : bits 1 = 1 := rfl
-    have hb32 : bits 32 = 6 := by decide
-    have hb64 : bits 64 = 7 := by decide
-    have hb96 : bits 96 = 7 := by decide
-    have hb128 : bits 128 = 8 := by decide
-    have hb160 : bits 160 = 8 := by decide
-    have hb192 : bits 192 = 8 := by decide
-    omega
+    exact ki_shcrPreC_size_bounds S K (Δ := [shcrStTy, keyIndQueryTy]) .zero .zero
   have hPost : (shcrKeyIndProg S Q K).handlePost.size ≤
-      53 * bits K + 35 * bits (min K S.N_dh) + 2 * bits (min K S.N_sess_tot) + 11600 := by
-    dsimp only [shcrKeyIndProg, keyIndCodec]
-    exact ki_shcrPostC_size_bounds S K _ _
-  have hDone : (shcrKeyIndProg S Q K).chDone.size ≤ 20 := by
-    simp [shcrKeyIndProg, scTPk, Comp.size, Expr.size]
-  have hRes : (shcrKeyIndProg S Q K).resume.size ≤
-      3 * bits K + 5 * bits (min K S.N_dh) + 1 * bits (min K S.N_sess_tot) + 1160 := by
+      53 * bits K + 26 * bits (min K S.N_dh) + 2 * bits (min K S.N_sess_tot) + 11600 := by
     dsimp only [shcrKeyIndProg]
-    simp (config := { maxSteps := 1000000 }) only [
-      shcrResumeC, initFinishC, shcrFinE, honestPeerC, checkProvC, hkdfOrRoC, partnerC,
-      findHonestC, isGameSpkC, isGameOpkC, buildSecretsE, dhOptNZ,
-      scBase, scCnt, scIR, scUpd, stSecb, stPrin, stSpks, stOpks, stSess, stResps, stRo, stAdv, stUpd,
-      peSecIKA0, peIkAPk, sbSpkPk, sbPqspkPk, oeOpkPk,
-      seSid, seHonestPeer, sePeerIk, sePeerSpk, sePeerOpk, sePeerPqspk,
-      seSpkHon, seOpkHon, sePqspkHon, seEkASk, seFresh, seDrReal, seDrRand, seHdr,
-      seTested, seRevealed, seMk, seUpd, reSid, reRespIk, reSpk, reOpk, rePqspk, reHdr, reDrRand,
-      buIkB, buSpkId, buSpkB, buOpkB, buPqspkId, buPqspkB, hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk,
-      rHdr, rInitUnfresh, getDBytes, rs, guardE, isSomeE, optFst, optSnd, nonZero32, kyberEq, sidEq, natEq, nat2Eq, optU32Eq, optBytesEq, eLet2,
-      v, bindV, letV, caseOptV, findMV, anyMV, eLet, eCaseOpt, eFind, eAny,
-      litB, catB, widenB, eqB, eqU32, sBytes32, sDrKey96, qX25519, qX25519Base, qIsCanonical, qPow8, qHkdfDerive96,
-      Comp.size, Expr.size, ↓reduceIte]
-    dsimp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.ReductionDsl.Ops.sum,
-      _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Sum.elim]
-    have hb0 : bits 0 = 1 := rfl
-    have hb1 : bits 1 = 1 := rfl
-    have hb32 : bits 32 = 6 := by decide
-    have hb64 : bits 64 = 7 := by decide
-    have hb96 : bits 96 = 7 := by decide
-    have hb128 : bits 128 = 8 := by decide
-    have hb160 : bits 160 = 8 := by decide
-    have hb192 : bits 192 = 8 := by decide
+    exact ki_shcrPostC_size_bounds S K (Δ := [shcrStTy, keyIndQueryTy]) .zero .zero
+  have hDone : (shcrKeyIndProg S Q K).chDone.size ≤ 20 := by
+    simp only [shcrKeyIndProg, scTPk, ki_v_size, Comp.size, Expr.size]; omega
+  have hRes : (shcrKeyIndProg S Q K).resume.size ≤
+      2 * bits K + 5 * bits (min K S.N_dh) + 1 * bits (min K S.N_sess_tot) + 1160 := by
+    have ⟨hb0, hb1, hb32, hb64, hb96, hb128, hb160, hb192⟩ := ki_hb_consts
+    dsimp only [shcrKeyIndProg]
+    simp only [shcrResumeC, shcrFinE, scBase, scCnt, scIR, scUpd]
+    ki_leaf_size_simp
     omega
   have hFin : (shcrKeyIndProg S Q K).finish.size ≤ bits Q + 100 := by
     simp only [shcrKeyIndProg, shcrExtractC, scRR, scTSk, scChosen, scTPk, rrCt,
-      optBytesEq, eLet2, orE, eqB, qKemDecaps,
-      bindV, findMV, eLet, eCaseOpt, v, Comp.size, Expr.size]
-    dsimp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.ReductionDsl.Ops.sum,
-      _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Sum.elim]
+      optBytesEq, eLet2, orE, ki_eqB_size, ki_qKemDecaps_size,
+      ki_bindV_size, ki_findMV_size, ki_eLet_size, ki_eCaseOpt_size, ki_v_size,
+      Comp.size, Expr.size]
     omega
   change (shcrKeyIndProg S Q K).init.size + (shcrKeyIndProg S Q K).handlePre.size +
     (shcrKeyIndProg S Q K).chDone.size + (shcrKeyIndProg S Q K).resume.size +
     (shcrKeyIndProg S Q K).handlePost.size +
     (shcrKeyIndProg S Q K).finish.size ≤ _
-  omega
-
-theorem ki_shcrKeyIndProg_size_le (S : Setup) (Q K : Nat) :
-    (shcrKeyIndProg S Q K).size ≤
-      bits Q + 120 * bits K + 75 * bits S.N_dh + 5 * bits S.N_sess_tot + 26000 := by
-  have h := ki_shcrKeyIndProg_size_bounds S Q K
-  have hd : bits (min K S.N_dh) ≤ bits S.N_dh := ki_bits_mono (Nat.min_le_right _ _)
-  have hs : bits (min K S.N_sess_tot) ≤ bits S.N_sess_tot := ki_bits_mono (Nat.min_le_right _ _)
   omega
 
 private theorem ki_shcrKeyIndProg_size_le_clamped (S : Setup) (Q K : Nat) :
@@ -1158,237 +1168,55 @@ private theorem ki_shcrKeyIndProg_size_le_clamped (S : Setup) (Q K : Nat) :
 
 set_option linter.unusedSimpArgs false in
 set_option maxRecDepth 100000 in
-set_option maxHeartbeats 1600000 in
-theorem ki_gdhHandle_size_le (S : Setup) (K : Nat) :
-    (gdhHandle S K).size ≤ 54 * bits K + 42 * bits S.N_dh + 5 * bits S.N_sess_tot + 15000 := by
-  simp (config := { maxSteps := 1000000 }) only [gdhHandle, initPrinGdhB, corruptB, genSpkGdhB,
-    genOpkGdhB, initiateGdhB, finishAcceptGdhC, acceptOpkGdhB, acceptNoOpkGdhB,
-    testB, roParsedC, roRawFallbackC, revealB, registerGdhB, revealSpkB,
-    wrapBase, wrapSim,
-    fePos1, fePos2, fePos3, fePos4, feSs, feDk, feMk,
-    paU, paV, paUp, paPrinFlag, paPrinIdx, paDhFlag, paEphIdx, paSpkIdx, paOpkMode, paOpkIdx,
-    smBase, smFgL, smRaw, smLog, smPows, smMk, smUpd,
-    buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk,
-    hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk,
-    qKJO, qK, qJ, qO, qHdr, rs, slice32,
-    rNone, rInitPrin, rPk, rCorr, rBundle, rHdr, rInitUnfresh, rAccFresh, rDrKey, rSpkSk,
-    spkFlatIdxE, opkFlatIdxE, initSlotIdxE, initSidE,
-    natEq, nat2Eq, nat3Eq, sidEq, kyberEq, kyberCheckE, freshE,
-    optU32Eq, optBytesEq, getDBytes, isSomeE, optFst, optSnd, nonZero32,
-    orE, mulRight, eLet2, isAdvPowsE,
-    mkSecretPosC, mkPairPosC, computePosC, computeOptPosInitC,
-    ddhEqC, ddhEqOptC, entryMatchesC, fgPatchC,
-    findHonestC, isGameSpkC, isGameOpkC, koskSenderOkPowsC, koskBundleOkPowsC,
-    lookupSpkSkC, resolveSigPkC, honestPeerC, checkProvC, partnerC,
-    chooseRespRandC, chooseInitRandC,
-    ki_gPrim_size, gPrim, liftBase,
-    v, letV, bindV, caseOptV, caseSumV, findMV, anyMV,
-    eLet, eCaseOpt, eCaseSum, eFind, eAny, eMap,
-    litB, catB, consB, widenB, takeKB, dropB, lenB, eqB, u32OfNat, eqU32,
-    sBytes32, sRandom64, sDrKey96,
-    qX25519, qX25519Base, qIsCanonical, qPow8,
-    qSigPkGen, qSigSign, qSigVerify,
-    qKemKeyGen, qKemEncaps, qKemDecaps, ddhQ, encEC, encKEM,
-    Comp.size, Expr.size, ↓reduceIte, Bool.false_eq_true, Bool.true_eq_false, Bool.not_true, Bool.not_false]; dsimp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.ReductionDsl.Ops.sum, _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Sum.elim]
-  have hb0 : bits 0 = 1 := rfl
-  have hb32 : bits 32 = 6 := by decide
-  have hb64 : bits 64 = 7 := by decide
-  have hb96 : bits 96 = 7 := by decide
-  have hb128 : bits 128 = 8 := by decide
-  have hb160 : bits 160 = 8 := by decide
-  have hb192 : bits 192 = 8 := by decide
-  have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
-  have hs : S.N_send_tot = S.N_send_opk_tot + S.N_send_no_opk_tot := rfl
-  have b1 : bits (S.N_recv.min S.N_spk_tot) ≤ bits S.N_dh :=
-    ki_bits_mono (le_trans (Nat.min_le_right _ _) (by omega))
-  have b2 : bits (S.N_opk.min S.N_opk_tot) ≤ bits S.N_dh :=
-    ki_bits_mono (le_trans (Nat.min_le_right _ _) (by omega))
-  have b3 : bits (S.N_send_opk.min S.N_send_opk_tot) ≤ bits S.N_dh :=
-    ki_bits_mono (le_trans (Nat.min_le_right _ _) (by omega))
-  have b4 : bits S.N_send_opk_tot ≤ bits S.N_dh := ki_bits_mono (by omega)
-  have b5 : bits (S.N_send_no_opk.min S.N_send_no_opk_tot) ≤ bits S.N_dh :=
-    ki_bits_mono (le_trans (Nat.min_le_right _ _) (by omega))
-  have b6 : bits S.N_send_tot ≤ bits S.N_dh := ki_bits_mono (by omega)
-  have : bits (min K S.N_dh) ≤ bits S.N_dh := ki_bits_mono (Nat.min_le_right _ _)
-  have : bits (min K S.N_sess_tot) ≤ bits S.N_sess_tot := ki_bits_mono (Nat.min_le_right _ _)
-  omega
-
-theorem ki_gdhFinish_size_le (S : Setup) (K : Nat) :
-    (gdhFinish S K).size ≤ 9 * bits K + 5 * bits S.N_dh + 2 * bits S.N_sess_tot + 900 := by
-  simp only [gdhFinish, extractMode0C, logFindC, spkPowsC, findMapStepC,
-    initDh1CandC, respDh1CandC, lookupFromPowsE, respBundleKeyE, slice32,
-    smBase, smLog, smPows, paU, paV, paMode, natEq, nat2Eq,
-    ki_letV_size, ki_bindV_size, ki_caseOptV_size, ki_findMV_size, ki_mapMV_size, ki_foldMV_size,
-    ki_eCaseOpt_size, ki_eCaseSum_size, ki_eFind_size, ki_eMap_size,
-    ki_gPrim_size, ki_qPow8_size, ki_qX25519_size, ki_ddhQ_size,
-    ki_litB_size, ki_takeKB_size, ki_dropB_size, ki_eqB_size, ki_v_size, Comp.size, Expr.size]
-  have hb0 : bits 0 = 1 := rfl
-  have hb1 : bits 1 = 1 := rfl
-  have hb2 : bits 2 = 2 := rfl
-  have hb32 : bits 32 = 6 := by decide
-  have hb64 : bits 64 = 7 := by decide
-  have hb96 : bits 96 = 7 := by decide
-  have hb128 : bits 128 = 8 := by decide
-  have : bits (min K S.N_dh) ≤ bits S.N_dh := ki_bits_mono (Nat.min_le_right _ _)
-  have : bits (min K S.N_sess_tot) ≤ bits S.N_sess_tot := ki_bits_mono (Nat.min_le_right _ _)
-  omega
-
-private theorem ki_fgKeyIndGapDhProg_size_le (S : Setup) (K : Nat) :
-    (fgKeyIndGapDhProg S K).size ≤
-      65 * bits K + 85 * bits S.N_dh + 10 * bits S.N_sess_tot + 17000 := by
-  have hH := ki_gdhHandle_size_le S K
-  have hF := ki_gdhFinish_size_le S K
-  have hI : (fgKeyIndGapDhProg S K).init.size ≤ 36 * bits S.N_dh + 300 := by
-    simp only [fgKeyIndGapDhProg, initAdv4, initParamsFlat, initParamsDh, initParamsIk,
-      initParamsOpk, paMk, emptySimE, smMk, emptyStE,
-      ki_letV_size, ki_bindV_size, ki_gPrim_size, ki_sIndex_size, ki_sBool_size, ki_v_size,
-      Comp.size, Expr.size]
-    have hb0 : bits 0 = 1 := rfl
-    have hb1 : bits 1 = 1 := rfl
-    have hb2 : bits 2 = 2 := rfl
-    have hb3 : bits 3 = 2 := rfl
-    have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
-    have hs : S.N_send_tot = S.N_send_opk_tot + S.N_send_no_opk_tot := rfl
-    have c1 := ki_bits_le_of_le_four_mul_sq (x := S.N_id * S.N_spk_tot) (N := S.N_dh) (by nlinarith)
-    have c2 : bits S.N_spk_tot ≤ bits S.N_dh := ki_bits_mono (by omega)
-    have c3 : bits S.N_opk_tot ≤ bits S.N_dh := ki_bits_mono (by omega)
-    have c4 := ki_bits_le_of_le_four_mul_sq
-      (x := S.N_id * S.N_spk_tot + S.N_send_tot * S.N_spk_tot) (N := S.N_dh) (by nlinarith)
-    have c5 := ki_bits_le_of_le_four_mul_sq
-      (x := S.N_id * S.N_spk_tot + S.N_send_tot * S.N_spk_tot + S.N_send_tot * S.N_id)
-      (N := S.N_dh) (by nlinarith)
-    have c6 : bits S.N_id ≤ bits S.N_dh := ki_bits_mono (by omega)
-    omega
-  change (fgKeyIndGapDhProg S K).init.size + (gdhHandle S K).size + (gdhFinish S K).size ≤ _
-  omega
-
-set_option linter.unusedSimpArgs false in
-set_option maxRecDepth 100000 in
-set_option maxHeartbeats 1600000 in
+set_option maxHeartbeats 800000 in
 private theorem ki_shcrPostC_litSize_le (S : Setup) (K : Nat)
     {Γ₁ Γ₂ Δ : List (Ty SignalPqxdh.LegacyCosted.pqSig)}
     (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     compLitSize (shcrPostC (Δ := Δ) S K s q) ≤ 8000 := by
-  simp (config := { maxSteps := 1000000 }) only [
-    shcrPostC, shcrGenSpkB, initGuardE, shcrInitiateC, shcrAcceptB, onBase, shcrFinE,
+  simp only [shcrPostC, shcrGenSpkB, initGuardE, shcrInitiateC, shcrAcceptB, onBase, shcrFinE,
     scBase, scTB, scTPk, scTSk, scCnt, scIR, scRR, scSIdx, scChosen, scMk, scUpd, rrCt,
-    isNoneRespE,
-    initPrinB, corruptB, genSpkB, genOpkB, initSidE, initFinishC, preCheckC, checkSigsC,
-    initiateC, initiateOpkB, initiateNoOpkB, acceptOpkB, acceptNoOpkB,
-    testB, revealB, roB, revealDhB, registerB, revealSpkB,
-    findHonestC, isAdvRegC, isGameSpkC, isGameOpkC, koskBundleOkC, koskSenderOkC,
-    resolveSigPkC, honestPeerC, checkProvC, partnerC, recordRespC, hkdfOrRoC,
-    aiIkSk, aiSpkSk, aiOpkSk, aiPqSk, aiReplay, aiHdr, acceptKeysC,
-    qK, qJ, qO, qHdr, qKJO,
-    stSecb, stPrin, stSpks, stOpks, stSess, stResps, stUsedO, stUsedN, stKyb, stRo, stAdv,
-    stMk, stUpd,
-    peSecIKA0, peIkAPk, peSecIKAsign, peIkSignPk, peCorrupted, peMk, peUpd,
-    sbSpkSk, sbSpkPk, sbSpkSig, sbPqspkSk, sbPqspkPk, sbPqspkSig, sbRevealed, sbMk, sbUpd,
-    oeOpkSk, oeOpkPk, oeConsumed, oeMk, oeUpd,
-    seSid, seHonestPeer, sePeerIk, sePeerSpk, sePeerOpk, sePeerPqspk,
-    seSpkHon, seOpkHon, sePqspkHon, seEkASk, seFresh, seDrReal, seDrRand, seHdr,
-    seTested, seRevealed, seMk, seUpd,
-    reSid, reRespIk, reSpk, reOpk, rePqspk, reHdr, reSenderHonest, reDrReal, reDrRand,
-    reTested, reRevealed, reMk, reUpd,
-    buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk,
-    hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk,
-    rNone, rInitPrin, rPk, rCorr, rBundle, rHdr, rInitUnfresh, rAccFresh, rDrKey, rDh, rSpkSk,
-    isSomeE, getDBytes, optFst, optSnd, dhOptNZ, guardE, rs, kyberCheckE, freshE, emptyStE,
-    orE, mulRight, natEq, nat2Eq, nat3Eq, optBytesEq, optU32Eq, sidEq, kyberEq, nonZero32,
-    buildSecretsE, eLet2,
-    v, bindV, letV, caseOptV, caseSumV, findMV, anyMV, mapMV, foldMV,
-    eLet, eCaseOpt, eCaseSum, eFind, eAny, eMap,
-    litB, catB, consB, widenB, takeKB, dropB, lenB, eqB, u32OfNat, eqU32,
-    sBool, sBytes32, sRandom64, sDrKey96, sIndex,
-    qX25519, qX25519Base, qIsCanonical, qPow8,
-    qSigPkGen, qSigSign, qSigVerify,
-    qKemKeyGen, qKemEncaps, qKemDecaps, qHkdfDerive96,
-    encEC, encKEM,
-    compLitSize, exprLitSize, pqOpLitSize,
-    List.length_nil, List.length_cons, List.length_replicate, hl_F_X25519_length,
-    Nat.add_zero, Nat.zero_add,
-    ↓reduceIte, Bool.false_eq_true, Bool.true_eq_false, Bool.not_true, Bool.not_false]
+    isNoneRespE]
+  ki_leaf_litSize_simp
   omega
 
 set_option linter.unusedSimpArgs false in
-set_option maxRecDepth 100000 in
-set_option maxHeartbeats 1600000 in
+private theorem ki_shcrPreC_litSize_le (S : Setup) (K : Nat)
+    {Γ₁ Γ₂ Δ : List (Ty SignalPqxdh.LegacyCosted.pqSig)}
+    (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+    compLitSize (shcrPreC (Δ := Δ) S K s q) ≤ 10000 := by
+  unfold shcrPreC
+  have hPost := ki_shcrPostC_litSize_le S K (Δ := .opt pauseTy :: Δ) s q
+  simp only [pauseCheckC, tryPauseC, initGuardE,
+    scBase, scTB, scTPk, scTSk, scCnt, scIR, scRR, scSIdx, scChosen, scMk, scUpd, rrCt,
+    isNoneRespE]
+  ki_leaf_litSize_simp
+  omega
+
+set_option linter.unusedSimpArgs false in
 theorem ki_shcrKeyIndProg_litSize_le (S : Setup) (Q K : Nat) :
     red2LitSize (shcrKeyIndProg S Q K) ≤ 20000 := by
   have hIni : compLitSize (shcrKeyIndProg S Q K).init = 0 := by
     dsimp only [shcrKeyIndProg]
-    split_ifs <;> simp [scMk, emptyStE, v, bindV, sBool, sIndex,
-      compLitSize, exprLitSize, pqOpLitSize]
+    split_ifs <;> simp only [scMk, emptyStE, ki_v_litSize, ki_bindV_litSize,
+      ki_sBool_litSize, ki_sIndex_litSize, compLitSize, exprLitSize, pqOpLitSize]
   have hPre : compLitSize (shcrKeyIndProg S Q K).handlePre ≤ 10000 := by
     dsimp only [shcrKeyIndProg]
-    simp (config := { maxSteps := 1000000 }) only [
-      shcrPreC, pauseCheckC, tryPauseC, shcrPostC, shcrGenSpkB, initGuardE, shcrInitiateC,
-      shcrAcceptB, shcrResumeC, shcrExtractC, onBase, shcrFinE,
-      scBase, scTB, scTPk, scTSk, scCnt, scIR, scRR, scSIdx, scChosen, scMk, scUpd, rrCt,
-      isNoneRespE,
-      initPrinB, corruptB, genSpkB, genOpkB, initSidE, initFinishC, preCheckC, checkSigsC,
-      initiateC, initiateOpkB, initiateNoOpkB, acceptOpkB, acceptNoOpkB,
-      testB, revealB, roB, revealDhB, registerB, revealSpkB,
-      findHonestC, isAdvRegC, isGameSpkC, isGameOpkC, koskBundleOkC, koskSenderOkC,
-      resolveSigPkC, honestPeerC, checkProvC, partnerC, recordRespC, hkdfOrRoC,
-      aiIkSk, aiSpkSk, aiOpkSk, aiPqSk, aiReplay, aiHdr, acceptKeysC,
-      qK, qJ, qO, qHdr, qKJO,
-      stSecb, stPrin, stSpks, stOpks, stSess, stResps, stUsedO, stUsedN, stKyb, stRo, stAdv,
-      stMk, stUpd,
-      peSecIKA0, peIkAPk, peSecIKAsign, peIkSignPk, peCorrupted, peMk, peUpd,
-      sbSpkSk, sbSpkPk, sbSpkSig, sbPqspkSk, sbPqspkPk, sbPqspkSig, sbRevealed, sbMk, sbUpd,
-      oeOpkSk, oeOpkPk, oeConsumed, oeMk, oeUpd,
-      seSid, seHonestPeer, sePeerIk, sePeerSpk, sePeerOpk, sePeerPqspk,
-      seSpkHon, seOpkHon, sePqspkHon, seEkASk, seFresh, seDrReal, seDrRand, seHdr,
-      seTested, seRevealed, seMk, seUpd,
-      reSid, reRespIk, reSpk, reOpk, rePqspk, reHdr, reSenderHonest, reDrReal, reDrRand,
-      reTested, reRevealed, reMk, reUpd,
-      buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk,
-      hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk,
-      rNone, rInitPrin, rPk, rCorr, rBundle, rHdr, rInitUnfresh, rAccFresh, rDrKey, rDh, rSpkSk,
-      isSomeE, getDBytes, optFst, optSnd, dhOptNZ, guardE, rs, kyberCheckE, freshE, emptyStE,
-      orE, mulRight, natEq, nat2Eq, nat3Eq, optBytesEq, optU32Eq, sidEq, kyberEq, nonZero32,
-      buildSecretsE, eLet2,
-      v, bindV, letV, caseOptV, caseSumV, findMV, anyMV, mapMV, foldMV,
-      eLet, eCaseOpt, eCaseSum, eFind, eAny, eMap,
-      litB, catB, consB, widenB, takeKB, dropB, lenB, eqB, u32OfNat, eqU32,
-      sBool, sBytes32, sRandom64, sDrKey96, sIndex,
-      qX25519, qX25519Base, qIsCanonical, qPow8,
-      qSigPkGen, qSigSign, qSigVerify,
-      qKemKeyGen, qKemEncaps, qKemDecaps, qHkdfDerive96,
-      encEC, encKEM,
-      compLitSize, exprLitSize, pqOpLitSize,
-      List.length_nil, List.length_cons, List.length_replicate, hl_F_X25519_length,
-      Nat.add_zero, Nat.zero_add,
-      ↓reduceIte, Bool.false_eq_true, Bool.true_eq_false, Bool.not_true, Bool.not_false]
-    omega
+    exact ki_shcrPreC_litSize_le S K (Δ := [shcrStTy, keyIndQueryTy]) .zero .zero
   have hPost : compLitSize (shcrKeyIndProg S Q K).handlePost ≤ 8000 := by
-    dsimp only [shcrKeyIndProg, keyIndCodec]
-    exact ki_shcrPostC_litSize_le S K _ _
+    dsimp only [shcrKeyIndProg]
+    exact ki_shcrPostC_litSize_le S K (Δ := [shcrStTy, keyIndQueryTy]) .zero .zero
   have hRes : compLitSize (shcrKeyIndProg S Q K).resume ≤ 1500 := by
     dsimp only [shcrKeyIndProg]
-    simp (config := { maxSteps := 1000000 }) only [
-      shcrResumeC, initFinishC, shcrFinE, honestPeerC, checkProvC, hkdfOrRoC, partnerC,
-      findHonestC, isGameSpkC, isGameOpkC, buildSecretsE, dhOptNZ,
-      scBase, scCnt, scIR, scUpd, stSecb, stPrin, stSpks, stOpks, stSess, stResps, stRo, stAdv, stUpd,
-      peSecIKA0, peIkAPk, sbSpkPk, sbPqspkPk, oeOpkPk,
-      seSid, seHonestPeer, sePeerIk, sePeerSpk, sePeerOpk, sePeerPqspk,
-      seSpkHon, seOpkHon, sePqspkHon, seEkASk, seFresh, seDrReal, seDrRand, seHdr,
-      seTested, seRevealed, seMk, seUpd, reSid, reRespIk, reSpk, reOpk, rePqspk, reHdr, reDrRand,
-      buIkB, buSpkId, buSpkB, buOpkB, buPqspkId, buPqspkB, hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk,
-      rHdr, rInitUnfresh, getDBytes, rs, guardE, isSomeE, optFst, optSnd, nonZero32, kyberEq, sidEq, natEq, nat2Eq, optU32Eq, optBytesEq, eLet2,
-      v, bindV, letV, caseOptV, findMV, anyMV, eLet, eCaseOpt, eFind, eAny,
-      litB, catB, widenB, eqB, eqU32, sBytes32, sDrKey96, qX25519, qX25519Base, qIsCanonical, qPow8, qHkdfDerive96,
-      compLitSize, exprLitSize, pqOpLitSize,
-      List.length_nil, List.length_cons, List.length_replicate, hl_F_X25519_length,
-      Nat.add_zero, Nat.zero_add, ↓reduceIte]
+    simp only [shcrResumeC, shcrFinE, scBase, scCnt, scIR, scUpd]
+    ki_leaf_litSize_simp
     omega
   have hDone : compLitSize (shcrKeyIndProg S Q K).chDone = 0 := by
-    simp [shcrKeyIndProg, scTPk, compLitSize, exprLitSize, pqOpLitSize]
+    simp only [shcrKeyIndProg, scTPk, ki_v_litSize, compLitSize, exprLitSize]
   have hFin : compLitSize (shcrKeyIndProg S Q K).finish = 0 := by
-    simp [shcrKeyIndProg, shcrExtractC, scRR, scTSk, scChosen, scTPk, rrCt,
-      optBytesEq, eLet2, orE, eqB, qKemDecaps, bindV, findMV, eLet, eCaseOpt, v,
-      compLitSize, exprLitSize, pqOpLitSize]
+    simp only [shcrKeyIndProg, shcrExtractC, scRR, scTSk, scChosen, scTPk, rrCt,
+      optBytesEq, eLet2, orE, ki_eqB_litSize, ki_qKemDecaps_litSize,
+      ki_bindV_litSize, ki_findMV_litSize, ki_eLet_litSize, ki_eCaseOpt_litSize, ki_v_litSize,
+      compLitSize, exprLitSize]
   change compLitSize (shcrKeyIndProg S Q K).init + compLitSize (shcrKeyIndProg S Q K).handlePre +
     compLitSize (shcrKeyIndProg S Q K).chDone + compLitSize (shcrKeyIndProg S Q K).resume +
     compLitSize (shcrKeyIndProg S Q K).handlePost +
@@ -1396,110 +1224,20 @@ theorem ki_shcrKeyIndProg_litSize_le (S : Setup) (Q K : Nat) :
   omega
 
 set_option linter.unusedSimpArgs false in
-set_option maxRecDepth 100000 in
-set_option maxHeartbeats 1600000 in
-theorem ki_gdhHandle_litSize_le (S : Setup) (K : Nat) :
-    compLitSize (gdhHandle S K) ≤ 10000 := by
-  simp (config := { maxSteps := 1000000 }) only [gdhHandle, initPrinGdhB, corruptB, genSpkGdhB,
-    genOpkGdhB, initiateGdhB, finishAcceptGdhC, acceptOpkGdhB, acceptNoOpkGdhB,
-    testB, roParsedC, roRawFallbackC, revealB, registerGdhB, revealSpkB,
-    wrapBase, wrapSim,
-    fePos1, fePos2, fePos3, fePos4, feSs, feDk, feMk,
-    paU, paV, paUp, paPrinFlag, paPrinIdx, paDhFlag, paEphIdx, paSpkIdx, paOpkMode, paOpkIdx,
-    smBase, smFgL, smRaw, smLog, smPows, smMk, smUpd,
-    buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk,
-    hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk,
-    qKJO, qK, qJ, qO, qHdr, rs, slice32,
-    rNone, rInitPrin, rPk, rCorr, rBundle, rHdr, rInitUnfresh, rAccFresh, rDrKey, rSpkSk,
-    spkFlatIdxE, opkFlatIdxE, initSlotIdxE, initSidE,
-    natEq, nat2Eq, nat3Eq, sidEq, kyberEq, kyberCheckE, freshE,
-    optU32Eq, optBytesEq, getDBytes, isSomeE, optFst, optSnd, nonZero32,
-    orE, mulRight, eLet2, isAdvPowsE,
-    mkSecretPosC, mkPairPosC, computePosC, computeOptPosInitC,
-    ddhEqC, ddhEqOptC, entryMatchesC, fgPatchC,
-    findHonestC, isGameSpkC, isGameOpkC, koskSenderOkPowsC, koskBundleOkPowsC,
-    lookupSpkSkC, resolveSigPkC, honestPeerC, checkProvC, partnerC,
-    chooseRespRandC, chooseInitRandC,
-    ki_gPrim_litSize, gPrim, liftBase,
-    v, letV, bindV, caseOptV, caseSumV, findMV, anyMV,
-    eLet, eCaseOpt, eCaseSum, eFind, eAny, eMap,
-    litB, catB, consB, widenB, takeKB, dropB, lenB, eqB, u32OfNat, eqU32,
-    sBytes32, sRandom64, sDrKey96,
-    qX25519, qX25519Base, qIsCanonical, qPow8,
-    qSigPkGen, qSigSign, qSigVerify,
-    qKemKeyGen, qKemEncaps, qKemDecaps, ddhQ, encEC, encKEM,
-    compLitSize, exprLitSize, pqOpLitSize,
-    List.length_nil, List.length_cons, List.length_replicate, hl_F_X25519_length,
-    Nat.add_zero, Nat.zero_add,
-    ↓reduceIte, Bool.false_eq_true, Bool.true_eq_false, Bool.not_true, Bool.not_false]
-  omega
-
-set_option linter.unusedSimpArgs false in
-theorem ki_gdhFinish_litSize_le (S : Setup) (K : Nat) :
-    compLitSize (gdhFinish S K) ≤ 1000 := by
-  simp only [gdhFinish, extractMode0C, logFindC, spkPowsC, findMapStepC,
-    initDh1CandC, respDh1CandC, lookupFromPowsE, respBundleKeyE, slice32,
-    smBase, smLog, smPows, paU, paV, paMode, natEq, nat2Eq,
-    letV, bindV, caseOptV, findMV, mapMV, foldMV,
-    eCaseOpt, eCaseSum, eFind, eMap,
-    ki_gPrim_litSize, gPrim, liftBase, qPow8, qX25519, ddhQ,
-    litB, takeKB, dropB, eqB, v,
-    compLitSize, exprLitSize, pqOpLitSize,
-    List.length_nil, List.length_cons, List.length_replicate, hl_F_X25519_length,
-    Nat.add_zero, Nat.zero_add]
-  omega
-
-set_option linter.unusedSimpArgs false in
-private theorem ki_fgKeyIndGapDhProg_litSize_le (S : Setup) (K : Nat) :
-    red1LitSize (fgKeyIndGapDhProg S K) ≤ 20000 := by
-  have hH := ki_gdhHandle_litSize_le S K
-  have hF := ki_gdhFinish_litSize_le S K
-  have hI : compLitSize (fgKeyIndGapDhProg S K).init ≤ 100 := by
-    simp only [fgKeyIndGapDhProg, initAdv4, initParamsFlat, initParamsDh, initParamsIk,
-      initParamsOpk, paMk, emptySimE, smMk, emptyStE,
-      letV, bindV, ki_gPrim_litSize, gPrim, liftBase, sIndex, sBool, v,
-      compLitSize, exprLitSize, pqOpLitSize, Nat.add_zero, Nat.zero_add]
-    omega
-  change compLitSize (fgKeyIndGapDhProg S K).init + compLitSize (gdhHandle S K) + compLitSize (gdhFinish S K) ≤ _
-  omega
-
-set_option linter.unusedSimpArgs false in
-set_option maxRecDepth 100000 in
-set_option maxHeartbeats 1600000 in
 private theorem ki_gdhHandle2_litSize_le (S : Setup) (K : Nat) :
     compLitSize (gdhHandle2 S K) ≤ 10000 := by
-  simp (config := { maxSteps := 1000000 }) only [gdhHandle2, initPrinGdh2B, corruptB, genSpkGdh2B,
+  simp only [gdhHandle2, initPrinGdh2B, genSpkGdh2B,
     genOpkGdh2B, initiateGdh2B, finishAcceptGdhC, acceptOpkGdh2B, acceptNoOpkGdhB,
-    testB, roParsedC, roRawFallbackC, revealB, registerGdhB, revealSpkB,
+    roParsedC, roRawFallbackC, registerGdhB,
     wrapBase2, wrapSim2, ephSidMatchesE,
     fePos1, fePos2, fePos3, fePos4, feSs, feDk, feMk,
     pa2U, pa2V, pa2Up, pa2PrinTarget, pa2DhFlag, pa2EphTarget, pa2SpkTarget, pa2OpkMode, pa2OpkTarget,
     smBase, smFgL, smRaw, smLog, smPows, smMk, smUpd,
-    buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk,
-    hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk,
-    qKJO, qK, qJ, qO, qHdr, rs, slice32,
-    rNone, rInitPrin, rPk, rCorr, rBundle, rHdr, rInitUnfresh, rAccFresh, rDrKey, rSpkSk,
-    initSidE,
-    natEq, nat2Eq, nat3Eq, sidEq, kyberEq, kyberCheckE, freshE,
-    optU32Eq, optBytesEq, getDBytes, isSomeE, optFst, optSnd, nonZero32,
-    orE, mulRight, eLet2, isAdvPowsE,
+    slice32, isAdvPowsE,
     mkSecretPosC, mkPairPosC, computePosC, computeOptPosInitC,
     ddhEqC, ddhEqOptC, entryMatchesC, fgPatchC,
-    findHonestC, isGameSpkC, isGameOpkC, koskSenderOkPowsC, koskBundleOkPowsC,
-    lookupSpkSkC, resolveSigPkC, honestPeerC, checkProvC, partnerC,
-    chooseRespRandC, chooseInitRandC,
-    ki_gPrim_litSize, gPrim, liftBase,
-    v, letV, bindV, caseOptV, caseSumV, findMV, anyMV,
-    eLet, eCaseOpt, eCaseSum, eFind, eAny, eMap,
-    litB, catB, consB, widenB, takeKB, dropB, lenB, eqB, u32OfNat, eqU32,
-    sBytes32, sRandom64, sDrKey96,
-    qX25519, qX25519Base, qIsCanonical, qPow8,
-    qSigPkGen, qSigSign, qSigVerify,
-    qKemKeyGen, qKemEncaps, qKemDecaps, ddhQ, encEC, encKEM,
-    compLitSize, exprLitSize, pqOpLitSize,
-    List.length_nil, List.length_cons, List.length_replicate, hl_F_X25519_length,
-    Nat.add_zero, Nat.zero_add,
-    ↓reduceIte, Bool.false_eq_true, Bool.true_eq_false, Bool.not_true, Bool.not_false]
+    koskSenderOkPowsC, koskBundleOkPowsC, lookupSpkSkC, chooseRespRandC, chooseInitRandC]
+  ki_leaf_litSize_simp
   omega
 
 set_option linter.unusedSimpArgs false in
@@ -1507,14 +1245,8 @@ private theorem ki_gdhFinish2_litSize_le (S : Setup) (K : Nat) :
     compLitSize (gdhFinish2 S K) ≤ 1000 := by
   simp only [gdhFinish2, extractMode0_2C, logFind2C, spkPowsC, findMapStep2C,
     initDh1CandC, respDh1CandC, lookupFromPowsE, respBundleKeyE, slice32,
-    smBase, smLog, smPows, pa2U, pa2V, pa2Mode, natEq, nat2Eq,
-    letV, bindV, caseOptV, findMV, mapMV, foldMV,
-    eCaseOpt, eCaseSum, eFind, eMap,
-    ki_gPrim_litSize, gPrim, liftBase, qPow8, qX25519, ddhQ,
-    litB, takeKB, dropB, eqB, v,
-    compLitSize, exprLitSize, pqOpLitSize,
-    List.length_nil, List.length_cons, List.length_replicate, hl_F_X25519_length,
-    Nat.add_zero, Nat.zero_add]
+    smBase, smLog, smPows, pa2U, pa2V, pa2Mode]
+  ki_leaf_litSize_simp
   omega
 
 set_option linter.unusedSimpArgs false in
@@ -1529,12 +1261,13 @@ private theorem ki_chooseArm2C_litSize
   have hb : ∀ {Δ'} (a b : Nat),
       compLitSize (bernoulliRatioGdhC (Δ := Δ') a b) = 0 := by
     intro Δ' a b; unfold bernoulliRatioGdhC
-    split_ifs <;> simp [bindV, ki_gPrim_litSize, gPrim, liftBase, sIndex, v, compLitSize, exprLitSize, pqOpLitSize]
+    split_ifs <;> simp only [ki_bindV_litSize, ki_gPrim_litSize, ki_sIndex_litSize, ki_v_litSize,
+      compLitSize, exprLitSize]
   unfold chooseArm2C
   split_ifs
   · exact h2
   · exact h1
-  · simp [bindV, v, hb, h1, h2, compLitSize, exprLitSize, pqOpLitSize]
+  · simp only [ki_bindV_litSize, ki_v_litSize, hb, h1, h2, compLitSize, exprLitSize]
 
 set_option linter.unusedSimpArgs false in
 private theorem ki_fgKeyIndGapDh2Prog_litSize_le (S : Setup) (K : Nat) :
@@ -1544,23 +1277,28 @@ private theorem ki_fgKeyIndGapDh2Prog_litSize_le (S : Setup) (K : Nat) :
   have hP1 : ∀ {Δ : List (Ty SignalPqxdh.LegacyCosted.pqSig)},
       compLitSize (samplePrin2C S (Δ := Δ)) = 0 := by
     intro Δ; unfold samplePrin2C
-    split_ifs <;> simp [bindV, ki_gPrim_litSize, gPrim, liftBase, sIndex, v, compLitSize, exprLitSize, pqOpLitSize]
+    split_ifs <;> simp only [ki_bindV_litSize, ki_gPrim_litSize, ki_sIndex_litSize, ki_v_litSize,
+      compLitSize, exprLitSize]
   have hP2 : ∀ {Δ : List (Ty SignalPqxdh.LegacyCosted.pqSig)},
       compLitSize (sampleSpkPair2C S (Δ := Δ)) = 0 := by
     intro Δ; unfold sampleSpkPair2C
-    split_ifs <;> simp [bindV, ki_gPrim_litSize, gPrim, liftBase, sIndex, v, compLitSize, exprLitSize, pqOpLitSize]
+    split_ifs <;> simp only [ki_bindV_litSize, ki_gPrim_litSize, ki_sIndex_litSize, ki_v_litSize,
+      compLitSize, exprLitSize]
   have hP3 : ∀ {Δ : List (Ty SignalPqxdh.LegacyCosted.pqSig)},
       compLitSize (sampleOpkTriple2C S (Δ := Δ)) = 0 := by
     intro Δ; unfold sampleOpkTriple2C
-    split_ifs <;> simp [bindV, ki_gPrim_litSize, gPrim, liftBase, sIndex, v, compLitSize, exprLitSize, pqOpLitSize]
+    split_ifs <;> simp only [ki_bindV_litSize, ki_gPrim_litSize, ki_sIndex_litSize, ki_v_litSize,
+      compLitSize, exprLitSize]
   have hP4 : ∀ {Δ : List (Ty SignalPqxdh.LegacyCosted.pqSig)},
       compLitSize (sampleSendOpkTarget2C S (Δ := Δ)) = 0 := by
     intro Δ; unfold sampleSendOpkTarget2C
-    split_ifs <;> simp [bindV, ki_gPrim_litSize, gPrim, liftBase, sIndex, v, compLitSize, exprLitSize, pqOpLitSize]
+    split_ifs <;> simp only [ki_bindV_litSize, ki_gPrim_litSize, ki_sIndex_litSize, ki_v_litSize,
+      compLitSize, exprLitSize]
   have hP5 : ∀ {Δ : List (Ty SignalPqxdh.LegacyCosted.pqSig)},
       compLitSize (sampleSendNoOpkTarget2C S (Δ := Δ)) = 0 := by
     intro Δ; unfold sampleSendNoOpkTarget2C
-    split_ifs <;> simp [bindV, ki_gPrim_litSize, gPrim, liftBase, sIndex, v, compLitSize, exprLitSize, pqOpLitSize]
+    split_ifs <;> simp only [ki_bindV_litSize, ki_gPrim_litSize, ki_sIndex_litSize, ki_v_litSize,
+      compLitSize, exprLitSize]
   have hP6 : ∀ {Δ : List (Ty SignalPqxdh.LegacyCosted.pqSig)},
       compLitSize (sampleSendTarget2C S (Δ := Δ)) = 0 := by
     intro Δ; unfold sampleSendTarget2C
@@ -1573,18 +1311,18 @@ private theorem ki_fgKeyIndGapDh2Prog_litSize_le (S : Setup) (K : Nat) :
     intro Γ₁ Δ _ uv
     unfold initParams2C
     split_ifs
-    · simp [pa2Mk, v, compLitSize, exprLitSize, pqOpLitSize]
+    · simp only [pa2Mk, ki_v_litSize, compLitSize, exprLitSize]
     · refine ki_chooseArm2C_litSize _ _ _ _ ?_ ?_
       · exact ki_chooseArm2C_litSize _ _ _ _
-          (by simp [bindV, pa2Mk, v, hP1, hP2, compLitSize, exprLitSize, pqOpLitSize])
-          (by simp [bindV, pa2Mk, v, hP6, hP2, compLitSize, exprLitSize, pqOpLitSize])
+          (by intro Δ' _; simp only [ki_bindV_litSize, pa2Mk, ki_v_litSize, hP1, hP2, compLitSize, exprLitSize])
+          (by intro Δ' _; simp only [ki_bindV_litSize, pa2Mk, ki_v_litSize, hP6, hP2, compLitSize, exprLitSize])
       · exact ki_chooseArm2C_litSize _ _ _ _
-          (by simp [bindV, pa2Mk, v, hP6, hP1, compLitSize, exprLitSize, pqOpLitSize])
-          (by simp [bindV, pa2Mk, v, hP4, hP3, compLitSize, exprLitSize, pqOpLitSize])
+          (by intro Δ' _; simp only [ki_bindV_litSize, pa2Mk, ki_v_litSize, hP6, hP1, compLitSize, exprLitSize])
+          (by intro Δ' _; simp only [ki_bindV_litSize, pa2Mk, ki_v_litSize, hP4, hP3, compLitSize, exprLitSize])
   have hI : compLitSize (fgKeyIndGapDh2Prog S K).init ≤ 100 := by
-    simp only [fgKeyIndGapDh2Prog, initAdv4_2, emptySimE, smMk, emptyStE,
-      letV, bindV, ki_gPrim_litSize, gPrim, liftBase, sBool, v, hIP,
-      compLitSize, exprLitSize, pqOpLitSize, Nat.add_zero, Nat.zero_add]
+    simp only [fgKeyIndGapDh2Prog, initAdv4_2, emptySimE, smMk, emptyStE, stMk,
+      ki_letV_litSize, ki_bindV_litSize, ki_gPrim_litSize, ki_sBool_litSize, ki_v_litSize, hIP,
+      compLitSize, exprLitSize, Nat.add_zero, Nat.zero_add]
     omega
   change compLitSize (fgKeyIndGapDh2Prog S K).init + compLitSize (gdhHandle2 S K) + compLitSize (gdhFinish2 S K) ≤ _
   omega
@@ -1869,86 +1607,9 @@ private theorem ah_bits_mono {x y : ℕ} (h : x ≤ y) : bits x ≤ bits y := by
   unfold bits
   exact Nat.add_le_add_right (Nat.log_mono_right h) 1
 
-private theorem ah_eff_le_dh (S : Setup) :
-    nRecvEff S ≤ S.N_dh ∧ nSendOpkEff S ≤ S.N_dh ∧ nSendNoOpkEff S ≤ S.N_dh := by
-  have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
-  have hs : S.N_send_tot = S.N_send_opk_tot + S.N_send_no_opk_tot := rfl
-  have hspk : S.N_spk_tot = S.N_id * S.N_recv := rfl
-  have hso : S.N_send_opk_tot = S.N_id * S.N_send_opk := rfl
-  have hsn : S.N_send_no_opk_tot = S.N_id * S.N_send_no_opk := rfl
-  unfold nRecvEff nSendOpkEff nSendNoOpkEff
-  split_ifs with h0
-  · omega
-  · have hpos : 1 ≤ S.N_id := by omega
-    have h1 : S.N_recv ≤ S.N_id * S.N_recv := by simpa using Nat.mul_le_mul_right S.N_recv hpos
-    have h2 : S.N_send_opk ≤ S.N_id * S.N_send_opk := by
-      simpa using Nat.mul_le_mul_right S.N_send_opk hpos
-    have h3 : S.N_send_no_opk ≤ S.N_id * S.N_send_no_opk := by
-      simpa using Nat.mul_le_mul_right S.N_send_no_opk hpos
-    omega
-
 set_option linter.unusedSimpArgs false in
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 1600000 in
-private theorem ah_sigReductionAuthProg_size_le (S : Setup) (K : Nat) :
-    (sigReductionAuthProg S K).size ≤
-      80 * bits K + 20 * bits S.N_dh + 20 * bits S.N_sess_tot + 12000 := by
-  dsimp only [sigReductionAuthProg, CostedReduction.size]
-  simp (config := { maxSteps := 1000000 }) only [
-    sigInitDsl, sigHandleDsl, sigFinishDsl, sigStepC, extractC, wrapC,
-    initPrinB, corruptB, genSpkB, genOpkB, registerB, sendC, sendB, recvTailC, recvB, roB, roRootB,
-    findHonestC, isAdvRegC, isGameSpkC, isGameOpkC, koskBundleOkC, koskSenderOkC,
-    resolveSigPkC, honestPeerC, hkdfOrRoC, rootRoC, sendGuardE,
-    stSecb, stHasWon, stPrin, stSpks, stOpks, stSess, stUsedS, stUsedO, stUsedN, stKyb,
-    stSOE, stSNE, stROE, stRNE, stRo, stRoot, stAdv, stMk, stUpd,
-    seSid, sePeerIk, sePeerSpk, sePeerOpk, sePeerPqspk, seSpkHon, seOpkHon, sePqspkHon,
-    seEkASk, seEphASk, seFresh, seChal, seMk,
-    pmHdr, pmEphAPk, pmPqMsg, pmAeadCt, pmMk, pmUpd,
-    peSecIKA0, peIkAPk, peSecIKAsign, peIkSignPk, peCorrupted, peMk, peUpd,
-    sbSpkSk, sbSpkPk, sbSpkSig, sbPqspkSk, sbPqspkPk, sbPqspkSig, sbRevealed, sbMk,
-    oeOpkSk, oeOpkPk, oeConsumed, oeMk, oeUpd,
-    buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk, buUpd,
-    hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk, hdUpd,
-    aNone, aInitPrin, aPk, aCorr, aBundle, aSendFresh, aSendUnfresh, aRecvHonest, aRecvUnfresh,
-    aDrKey, aRootKdf, rs, firstMsgADE, bytes2Eq, emptyAuthStE,
-    isSomeE, getDBytes, optFst, optSnd, dhOptNZ, guardE, kyberCheckE,
-    natEq, nat2Eq, nat3Eq, optBytesEq, optU32Eq, sidEq, kyberEq, nonZero32, buildSecretsE, eLet2,
-    Expr.litUnit, Expr.litBool, Expr.litNat, Expr.noneE, Expr.someE, Expr.boolNot, Expr.boolAnd,
-    Expr.boolOr, Expr.listNil, Expr.listCons, Expr.findBounded, Expr.anyBounded, Expr.mapBounded,
-    Comp.iteC, Comp.caseOptC, Comp.caseSumC, Comp.findBoundedM, Comp.anyBoundedM, Comp.mapBoundedM,
-    Comp.foldBoundedM,
-    ah_liftChal_size, ah_liftChal_euf_size, v, Comp.letC, bindV, letV,
-    caseOptV, caseSumV, findMV, anyMV, mapMV,
-    foldMV, eLet, eCaseOpt, eCaseSum,
-    eFind, eAny, eMap,
-    Expr.litBytes, Expr.bytesAppend, Expr.bytesCons, Expr.bytesWiden,
-    Expr.bytesTakeK, Expr.bytesDrop, Expr.bytesLen, Expr.bytesBeq, Expr.bytesVarint,
-    Expr.u32OfNat, Expr.u32Beq,
-    Comp.sampleBool, Comp.sampleBytes32, Comp.sampleRandom64, Comp.sampleDrKey96,
-    Comp.sampleIndex, Comp.queryPrim,
-    Comp.sampleBoolC, Comp.sampleBytes32C, Comp.sampleRandom64C, Comp.sampleDrKey96C,
-    Comp.sampleIndexC, Comp.queryPrimC, Comp.queryChal,
-    encEC, encKEM, Comp.size, Expr.size, ↓reduceIte, Bool.false_eq_true, Bool.true_eq_false, Bool.not_true, Bool.not_false]; dsimp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.ReductionDsl.Ops.sum, _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Sum.elim]
-  have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
-  have hs : S.N_send_tot = S.N_send_opk_tot + S.N_send_no_opk_tot := rfl
-  have bId : bits S.N_id ≤ bits S.N_dh := ah_bits_mono (by omega)
-  have bSpk : bits S.N_spk_tot ≤ bits S.N_dh := ah_bits_mono (by omega)
-  have bOpk : bits S.N_opk_tot ≤ bits S.N_dh := ah_bits_mono (by omega)
-  have bSend : bits S.N_send_tot ≤ bits S.N_dh := ah_bits_mono (by omega)
-  have bSendO : bits S.N_send_opk_tot ≤ bits S.N_dh := ah_bits_mono (by omega)
-  have bSendN : bits S.N_send_no_opk_tot ≤ bits S.N_dh := ah_bits_mono (by omega)
-  have hb0 : bits 0 = 1 := by decide
-  have hb1 : bits 1 = 1 := by decide
-  have hb32 : bits 32 = 6 := by decide
-  have hb64 : bits 64 = 7 := by decide
-  have hb96 : bits 96 = 7 := by decide
-  have hb128 : bits 128 = 8 := by decide
-  have hb160 : bits 160 = 8 := by decide
-  have hb192 : bits 192 = 8 := by decide
-  have : bits (min K S.N_dh) ≤ bits S.N_dh := ah_bits_mono (Nat.min_le_right _ _)
-  have : bits (min K S.N_sess_tot) ≤ bits S.N_sess_tot := ah_bits_mono (Nat.min_le_right _ _)
-  omega
-
 set_option linter.unusedSimpArgs false in
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 1600000 in
@@ -2021,14 +1682,6 @@ private theorem ah_shcrReductionAuthProg_size_bounds (S : Setup) (Q K : Nat) :
     (shcrReductionAuthProg S Q K).handlePost.size + (shcrReductionAuthProg S Q K).finish.size ≤ _
   omega
 
-theorem ah_shcrReductionAuthProg_size_le (S : Setup) (Q K : Nat) :
-    (shcrReductionAuthProg S Q K).size ≤
-      bits Q + 115 * bits K + 50 * bits S.N_dh + 5 * bits S.N_sess_tot + 21000 := by
-  have h := ah_shcrReductionAuthProg_size_bounds S Q K
-  have hd : bits (min K S.N_dh) ≤ bits S.N_dh := ah_bits_mono (Nat.min_le_right _ _)
-  have hs : bits (min K S.N_sess_tot) ≤ bits S.N_sess_tot := ah_bits_mono (Nat.min_le_right _ _)
-  omega
-
 private theorem ah_shcrReductionAuthProg_size_le_clamped (S : Setup) (Q K : Nat) :
     (shcrReductionAuthProg S Q K).size ≤
       bits Q + 170 * bits K + 21000 := by
@@ -2038,249 +1691,14 @@ private theorem ah_shcrReductionAuthProg_size_le_clamped (S : Setup) (Q K : Nat)
   omega
 
 set_option linter.unusedSimpArgs false in
-theorem ah_extractC_size_le (S : Setup) (K : Nat)
-    {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List (Ty pqSig)}
-    (tp : Var Γ₁ .nat) (tpk : Var Γ₂ (B 32)) (st : Var Γ₃ authStateTy)
-    (bu : Var Γ₄ preKeyBundleTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] :
-    (AuthHs.extractC (Δ := Δ) S K tp tpk st bu).size ≤
-      4 * bits K + 2 * bits S.N_dh + 300 := by
-  simp only [AuthHs.extractC, honestPeerC, findHonestC,
-    stPrin, stSpks, peIkAPk, peCorrupted, sbSpkPk, sbPqspkPk,
-    buIkB, buSpkB, buSpkSig, buPqspkB, buPqspkSig,
-    natEq, Expr.noneE, Expr.someE, Expr.boolNot, Expr.boolAnd,
-    Expr.findBounded, Expr.anyBounded, Comp.findBoundedM,
-    v, Comp.letC, bindV, letV, findMV,
-    eCaseOpt, eAny, Expr.bytesCons, Expr.bytesWiden, Expr.bytesBeq,
-    Comp.queryPrim, encEC, encKEM, Comp.size, Expr.size]; dsimp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.ReductionDsl.Ops.sum, _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Sum.elim]
-  have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
-  have bId : bits S.N_id ≤ bits S.N_dh := ah_bits_mono (by omega)
-  have : bits (min K S.N_dh) ≤ bits S.N_dh := ah_bits_mono (Nat.min_le_right _ _)
-  omega
-
 set_option linter.unusedSimpArgs false in
-theorem ah_fgInitDsl_size_le (S : Setup) :
-    (AuthHs.fgInitDsl S).size ≤ 4 * bits S.N_dh + 200 := by
-  simp only [fgInitDsl, emptySimE, emptyAuthStE, fsMk, stMk,
-    Expr.litUnit, Expr.litBool, Expr.litNat, Expr.noneE, Expr.listNil,
-    v, Comp.letC, bindV, letV,
-    Comp.sampleBoolC, Comp.sampleIndexC, Comp.size, Expr.size]
-  have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
-  have bId : bits S.N_id ≤ bits S.N_dh := ah_bits_mono (by omega)
-  omega
-
 set_option linter.unusedSimpArgs false in
-theorem ah_fgFinishDsl_size_le (S : Setup) (K : Nat) :
-    (AuthHs.fgFinishDsl S K).size ≤
-      10 * bits K + 10 * bits S.N_dh + 4 * bits S.N_sess_tot + 800 := by
-  simp only [fgFinishDsl, fgExtractC, initDh1CandC, respCandC, logScanC, findMapC,
-    paDh1, paU, paV, fsLog, fsBase, fsPows, fsResp,
-    stSpks, stSess, stPrin, sbSpkPk, sbSpkSk, sePeerSpk, seSid, seEkASk, peIkAPk,
-    slice32, bytesEmpty, zero32, natEq, nat2Eq,
-    Expr.litNat, Expr.noneE, Expr.someE, Expr.boolNot, Expr.boolAnd, Comp.iteC, Comp.caseOptC,
-    Expr.findBounded, Expr.mapBounded, Comp.findBoundedM, Comp.mapBoundedM, Comp.foldBoundedM,
-    v, Comp.letC, bindV, letV, caseOptV,
-    findMV, mapMV, foldMV,
-    eCaseOpt, eCaseSum, eFind, eMap,
-    Expr.litBytes, Expr.bytesTakeK, Expr.bytesDrop, Expr.bytesLen, Expr.bytesBeq,
-    Comp.queryPrimC, Comp.queryChal, AuthHs.Comp.queryDdh, Comp.size, Expr.size]; dsimp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.ReductionDsl.Ops.sum, _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Sum.elim]
-  have hb32 : bits 32 = 6 := by decide
-  have hb96 : bits 96 = 7 := by decide
-  have : bits (min K S.N_dh) ≤ bits S.N_dh := ah_bits_mono (Nat.min_le_right _ _)
-  have : bits (min K S.N_sess_tot) ≤ bits S.N_sess_tot := ah_bits_mono (Nat.min_le_right _ _)
-  omega
-
 set_option linter.unusedSimpArgs false in
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 1600000 in
-theorem ah_fgStepC_size_le (S : Setup) (K : Nat)
-    {Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)}
-    (pa : Var Γ₁ AuthHs.paramsTy) (sim : Var Γ₂ fgSimTy) (q : Var Γ₃ authQueryTy)
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] :
-    (AuthHs.fgStepC (Δ := Δ) S K pa sim q).size ≤
-      105 * bits K + 45 * bits S.N_dh + 15 * bits S.N_sess_tot + 18500 := by
-  simp (config := { maxSteps := 1000000 }) only [fgStepC, fgInitPrinC, fgGenSpkC, fgSendC,
-    fgRecvC, fgRecvB, fgRoC, fgRoRootC, fgRegisterC, onBaseF,
-    isAdvPowsC, koskBundleOkPowsC, koskSenderOkPowsC, lookupSpkSkC,
-    mkSecretPosC, mkPairPosC, twoSideC, twoSideOptC, ddhEqC, ddhEqOptC, entryMatchesC,
-    patchC, rootPatchC, sendGuardE,
-    fsBase, fsL, fsRootL, fsRaw, fsLog, fsResp, fsPows, fsMk, fsUpd,
-    paU, paV, paDh1, paTI, paTS, feP1, feP2, feP3, feP4, feSs, feDk,
-    pkP1, pkP2, pkP3, pkP4, pkSs, reRk, rePos, reRk1, reCk,
-    q4, bytesEmpty, slice32, zero32, emptySimE,
-    initPrinB, corruptB, genSpkB, genOpkB, registerB, sendC, sendB, recvTailC, recvB, roB, roRootB,
-    findHonestC, isAdvRegC, isGameSpkC, isGameOpkC, koskBundleOkC, koskSenderOkC,
-    resolveSigPkC, honestPeerC, hkdfOrRoC, rootRoC,
-    stSecb, stHasWon, stPrin, stSpks, stOpks, stSess, stUsedS, stUsedO, stUsedN, stKyb,
-    stSOE, stSNE, stROE, stRNE, stRo, stRoot, stAdv, stMk, stUpd,
-    seSid, sePeerIk, sePeerSpk, sePeerOpk, sePeerPqspk, seSpkHon, seOpkHon, sePqspkHon,
-    seEkASk, seEphASk, seFresh, seChal, seMk,
-    pmHdr, pmEphAPk, pmPqMsg, pmAeadCt, pmMk, pmUpd,
-    peSecIKA0, peIkAPk, peSecIKAsign, peIkSignPk, peCorrupted, peMk, peUpd,
-    sbSpkSk, sbSpkPk, sbSpkSig, sbPqspkSk, sbPqspkPk, sbPqspkSig, sbRevealed, sbMk,
-    oeOpkSk, oeOpkPk, oeConsumed, oeMk, oeUpd,
-    buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk, buUpd,
-    hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk, hdUpd,
-    aNone, aInitPrin, aPk, aCorr, aBundle, aSendFresh, aSendUnfresh, aRecvHonest, aRecvUnfresh,
-    aDrKey, aRootKdf, rs, firstMsgADE, bytes2Eq, emptyAuthStE,
-    isSomeE, getDBytes, optFst, optSnd, dhOptNZ, guardE, kyberCheckE,
-    natEq, nat2Eq, nat3Eq, optBytesEq, optU32Eq, sidEq, kyberEq, nonZero32, buildSecretsE, eLet2,
-    Expr.litUnit, Expr.litBool, Expr.litNat, Expr.noneE, Expr.someE, Expr.boolNot, Expr.boolAnd,
-    Expr.boolOr, Expr.listNil, Expr.listCons, Expr.findBounded, Expr.anyBounded, Expr.mapBounded,
-    Comp.iteC, Comp.caseOptC, Comp.caseSumC, Comp.findBoundedM, Comp.anyBoundedM, Comp.mapBoundedM,
-    Comp.foldBoundedM,
-    ah_liftChal_size, ah_liftChal_gdh_size, v, Comp.letC, bindV, letV,
-    caseOptV, caseSumV, findMV, anyMV, mapMV,
-    foldMV, eLet, eCaseOpt, eCaseSum,
-    eFind, eAny, eMap,
-    Expr.litBytes, Expr.bytesAppend, Expr.bytesCons, Expr.bytesWiden,
-    Expr.bytesTakeK, Expr.bytesDrop, Expr.bytesLen, Expr.bytesBeq, Expr.bytesVarint,
-    Expr.u32OfNat, Expr.u32Beq,
-    Comp.sampleBool, Comp.sampleBytes32, Comp.sampleRandom64, Comp.sampleDrKey96,
-    Comp.sampleIndex, Comp.queryPrim,
-    Comp.sampleBoolC, Comp.sampleBytes32C, Comp.sampleRandom64C, Comp.sampleDrKey96C,
-    Comp.sampleIndexC, Comp.queryPrimC, Comp.queryChal, AuthHs.Comp.queryDdh,
-    encEC, encKEM, Comp.size, Expr.size, ↓reduceIte, Bool.false_eq_true, Bool.true_eq_false, Bool.not_true, Bool.not_false]; dsimp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.ReductionDsl.Ops.sum, _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Sum.elim]
-  obtain ⟨hNR, hSO, hSN⟩ := ah_eff_le_dh S
-  have bNR : bits (nRecvEff S) ≤ bits S.N_dh := ah_bits_mono hNR
-  have bSO : bits (nSendOpkEff S) ≤ bits S.N_dh := ah_bits_mono hSO
-  have bSN : bits (nSendNoOpkEff S) ≤ bits S.N_dh := ah_bits_mono hSN
-  have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
-  have hs : S.N_send_tot = S.N_send_opk_tot + S.N_send_no_opk_tot := rfl
-  have bId : bits S.N_id ≤ bits S.N_dh := ah_bits_mono (by omega)
-  have bSpk : bits S.N_spk_tot ≤ bits S.N_dh := ah_bits_mono (by omega)
-  have bOpk : bits S.N_opk_tot ≤ bits S.N_dh := ah_bits_mono (by omega)
-  have bSend : bits S.N_send_tot ≤ bits S.N_dh := ah_bits_mono (by omega)
-  have bSendO : bits S.N_send_opk_tot ≤ bits S.N_dh := ah_bits_mono (by omega)
-  have bSendN : bits S.N_send_no_opk_tot ≤ bits S.N_dh := ah_bits_mono (by omega)
-  have b1 : bits (S.N_recv.min S.N_spk_tot) ≤ bits S.N_dh :=
-    ah_bits_mono (le_trans (Nat.min_le_right _ _) (by omega))
-  have b2 : bits (S.N_opk.min S.N_opk_tot) ≤ bits S.N_dh :=
-    ah_bits_mono (le_trans (Nat.min_le_right _ _) (by omega))
-  have b3 : bits (S.N_send_opk.min S.N_send_opk_tot) ≤ bits S.N_dh :=
-    ah_bits_mono (le_trans (Nat.min_le_right _ _) (by omega))
-  have b4 : bits (S.N_send_no_opk.min S.N_send_no_opk_tot) ≤ bits S.N_dh :=
-    ah_bits_mono (le_trans (Nat.min_le_right _ _) (by omega))
-  have hb0 : bits 0 = 1 := by decide
-  have hb1 : bits 1 = 1 := by decide
-  have hb32 : bits 32 = 6 := by decide
-  have hb64 : bits 64 = 7 := by decide
-  have hb96 : bits 96 = 7 := by decide
-  have hb128 : bits 128 = 8 := by decide
-  have hb160 : bits 160 = 8 := by decide
-  have hb192 : bits 192 = 8 := by decide
-  have : bits (min K S.N_dh) ≤ bits S.N_dh := ah_bits_mono (Nat.min_le_right _ _)
-  have : bits (min K S.N_sess_tot) ≤ bits S.N_sess_tot := ah_bits_mono (Nat.min_le_right _ _)
-  omega
-
 set_option linter.unusedSimpArgs false in
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 1600000 in
-theorem ah_fgAuthGapDhProg_size_le (S : Setup) (K : Nat) :
-    (fgAuthGapDhProg S K).size ≤
-      120 * bits K + 60 * bits S.N_dh + 20 * bits S.N_sess_tot + 20000 := by
-  have hb0 : bits 0 = 1 := by decide
-  have hb1 : bits 1 = 1 := by decide
-  have hb2 : bits 2 = 2 := by decide
-  have hb32 : bits 32 = 6 := by decide
-  have hb64 : bits 64 = 7 := by decide
-  have hb96 : bits 96 = 7 := by decide
-  have hb128 : bits 128 = 8 := by decide
-  have hb160 : bits 160 = 8 := by decide
-  have hb192 : bits 192 = 8 := by decide
-  have hmd : bits (min K S.N_dh) ≤ bits S.N_dh := ah_bits_mono (Nat.min_le_right _ _)
-  have hms : bits (min K S.N_sess_tot) ≤ bits S.N_sess_tot := ah_bits_mono (Nat.min_le_right _ _)
-  have hT : (fgSampleTargetC S (Γ := [.prod (B 32) (B 32)])).size ≤ 100 := by
-    unfold fgSampleTargetC
-    dsimp only
-    split_ifs <;>
-      (simp only [bindV, natEq, v, Comp.sampleIndexC, Expr.litBool, Expr.litNat,
-        Comp.iteC, Comp.size, Expr.size, hb0, hb1, hb2]; omega)
-  have hSpk : (fgSampleSpkC S (Γ := [targetChoiceTy, .prod (B 32) (B 32)])).size ≤ 30 := by
-    unfold fgSampleSpkC
-    split_ifs <;>
-      (simp only [bindV, v, Comp.sampleIndexC, Expr.noneE, Expr.someE, Comp.size, Expr.size]; omega)
-  have hI : (fg2InitDsl S).size ≤ 220 := by
-    simp only [fg2InitDsl, emptySimE, emptyAuthStE, fsMk, stMk,
-      Expr.litUnit, Expr.litBool, Expr.listNil, v, bindV, Comp.sampleBoolC,
-      Comp.size, Expr.size]
-    omega
-  have hF : (fg2FinishDsl S K).size ≤
-      10 * bits K + 10 * bits S.N_dh + 4 * bits S.N_sess_tot + 800 := by
-    simp only [fg2FinishDsl, fg2ExtractC, fg2InitDh1CandC, fg2RespCandC, fg2LogScanC, fg2FindMapC,
-      fg2PaDh1, fg2PaU, fg2PaV, fsLog, fsBase, fsPows, fsResp,
-      stSpks, stSess, stPrin, sbSpkPk, sbSpkSk, sePeerSpk, seSid, seEkASk, peIkAPk,
-      slice32, bytesEmpty, zero32, natEq, nat2Eq,
-      Expr.litNat, Expr.noneE, Expr.someE, Expr.boolNot, Expr.boolAnd, Comp.iteC, Comp.caseOptC,
-      Expr.findBounded, Expr.mapBounded, Comp.findBoundedM, Comp.mapBoundedM, Comp.foldBoundedM,
-      v, Comp.letC, bindV, letV, caseOptV, findMV, mapMV, foldMV,
-      eCaseOpt, eCaseSum, eFind, eMap,
-      Expr.litBytes, Expr.bytesTakeK, Expr.bytesDrop, Expr.bytesLen, Expr.bytesBeq,
-      Comp.queryPrimC, Comp.queryChal, AuthHs.Comp.queryDdh, Comp.size, Expr.size, hb32, hb96]
-    dsimp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.ReductionDsl.Ops.sum,
-      _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Sum.elim]
-    omega
-  have hS : (fg2StepC (Δ := fgSimTy :: fg2ParamsTy :: fg2GsTy :: [authQueryTy]) S K
-      (.vz : Var (fg2ParamsTy :: fg2GsTy :: [authQueryTy]) fg2ParamsTy)
-      (.vz : Var (fgSimTy :: fg2ParamsTy :: fg2GsTy :: [authQueryTy]) fgSimTy)
-      (.vs .vz : Var [fg2GsTy, authQueryTy] authQueryTy)).size ≤
-      105 * bits K + 45 * bits S.N_dh + 15 * bits S.N_sess_tot + 18500 := by
-    simp (config := { maxSteps := 1000000 }) only [fg2StepC, fg2InitPrinC, fg2GenSpkC, fg2SendC,
-      fgRecvC, fgRecvB, fgRoC, fgRoRootC, fgRegisterC, onBaseF,
-      isAdvPowsC, koskBundleOkPowsC, koskSenderOkPowsC, lookupSpkSkC,
-      mkSecretPosC, mkPairPosC, twoSideC, twoSideOptC, ddhEqC, ddhEqOptC, entryMatchesC,
-      patchC, rootPatchC, sendGuardE,
-      fsBase, fsL, fsRootL, fsRaw, fsLog, fsResp, fsPows, fsMk, fsUpd,
-      fg2PaU, fg2PaV, fg2PaDh1, fg2PaTI, fg2PaSendOpk, fg2PaSendIdx, fg2PaTS,
-      feP1, feP2, feP3, feP4, feSs, feDk,
-      pkP1, pkP2, pkP3, pkP4, pkSs, reRk, rePos, reRk1, reCk,
-      q4, bytesEmpty, slice32, zero32, emptySimE,
-      corruptB, genOpkB,
-      findHonestC, isAdvRegC, isGameSpkC, isGameOpkC, koskBundleOkC, koskSenderOkC,
-      resolveSigPkC, honestPeerC, hkdfOrRoC, rootRoC,
-      stSecb, stHasWon, stPrin, stSpks, stOpks, stSess, stUsedS, stUsedO, stUsedN, stKyb,
-      stSOE, stSNE, stROE, stRNE, stRo, stRoot, stAdv, stMk, stUpd,
-      seSid, sePeerIk, sePeerSpk, sePeerOpk, sePeerPqspk, seSpkHon, seOpkHon, sePqspkHon,
-      seEkASk, seEphASk, seFresh, seChal, seMk,
-      pmHdr, pmEphAPk, pmPqMsg, pmAeadCt, pmMk, pmUpd,
-      peSecIKA0, peIkAPk, peSecIKAsign, peIkSignPk, peCorrupted, peMk, peUpd,
-      sbSpkSk, sbSpkPk, sbSpkSig, sbPqspkSk, sbPqspkPk, sbPqspkSig, sbRevealed, sbMk,
-      oeOpkSk, oeOpkPk, oeConsumed, oeMk, oeUpd,
-      buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk, buUpd,
-      hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk, hdUpd,
-      aNone, aInitPrin, aPk, aCorr, aBundle, aSendFresh, aSendUnfresh, aRecvHonest, aRecvUnfresh,
-      aDrKey, aRootKdf, rs, firstMsgADE, bytes2Eq, emptyAuthStE,
-      isSomeE, getDBytes, optFst, optSnd, dhOptNZ, guardE, kyberCheckE,
-      natEq, nat2Eq, nat3Eq, optBytesEq, optU32Eq, sidEq, kyberEq, nonZero32, buildSecretsE, eLet2,
-      Expr.litUnit, Expr.litBool, Expr.litNat, Expr.noneE, Expr.someE, Expr.boolNot, Expr.boolAnd,
-      Expr.boolOr, Expr.listNil, Expr.listCons, Expr.findBounded, Expr.anyBounded, Expr.mapBounded,
-      Comp.iteC, Comp.caseOptC, Comp.caseSumC, Comp.findBoundedM, Comp.anyBoundedM, Comp.mapBoundedM,
-      Comp.foldBoundedM,
-      ah_liftChal_size, ah_liftChal_gdh_size, v, Comp.letC, bindV, letV,
-      caseOptV, caseSumV, findMV, anyMV, mapMV, foldMV, eLet, eCaseOpt, eCaseSum,
-      eFind, eAny, eMap,
-      Expr.litBytes, Expr.bytesAppend, Expr.bytesCons, Expr.bytesWiden,
-      Expr.bytesTakeK, Expr.bytesDrop, Expr.bytesLen, Expr.bytesBeq, Expr.bytesVarint,
-      Expr.u32OfNat, Expr.u32Beq,
-      Comp.sampleBool, Comp.sampleBytes32, Comp.sampleRandom64, Comp.sampleDrKey96,
-      Comp.sampleIndex, Comp.queryPrim,
-      Comp.sampleBoolC, Comp.sampleBytes32C, Comp.sampleRandom64C, Comp.sampleDrKey96C,
-      Comp.sampleIndexC, Comp.queryPrimC, Comp.queryChal, AuthHs.Comp.queryDdh,
-      encEC, encKEM, Comp.size, Expr.size,
-      hb0, hb1, hb32, hb64, hb96, hb128, hb160, hb192,
-      ↓reduceIte, Bool.false_eq_true, Bool.true_eq_false, Bool.not_true, Bool.not_false]
-    dsimp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.ReductionDsl.Ops.sum,
-      _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Sum.elim]
-    omega
-  have hH : (fg2HandleDsl S K).size ≤
-      106 * bits K + 45 * bits S.N_dh + 15 * bits S.N_sess_tot + 18600 := by
-    simp only [fg2HandleDsl, fg2PaDh1, fg2PaTI, fsBase, stPrin, peCorrupted, aNone, natEq,
-      Expr.litUnit, Expr.litBool, Expr.boolAnd, Comp.iteC, Expr.findBounded,
-      v, Comp.letC, bindV, letV, eCaseOpt, eFind,
-      Comp.size, Expr.size]
-    omega
-  change (fg2InitDsl S).size + (fg2HandleDsl S K).size + (fg2FinishDsl S K).size ≤ _
-  omega
-
 set_option linter.unusedSimpArgs false in
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 1600000 in
@@ -2395,90 +1813,10 @@ theorem ah_shcrReductionAuthProg_litSize_le (S : Setup) (Q K : Nat) :
       Nat.add_zero, Nat.zero_add]; omega)
 
 set_option linter.unusedSimpArgs false in
-theorem ah_fgInitDsl_litSize_le (S : Setup) :
-    compLitSize (AuthHs.fgInitDsl S) ≤ 200 := by
-  simp only [fgInitDsl, emptySimE, emptyAuthStE, fsMk, stMk,
-    Expr.litUnit, Expr.litBool, Expr.litNat, Expr.noneE, Expr.listNil,
-    v, Comp.letC, bindV, letV,
-    Comp.sampleBoolC, Comp.sampleIndexC,
-    compLitSize, exprLitSize, pqOpLitSize, Nat.add_zero, Nat.zero_add]
-  omega
-
 set_option linter.unusedSimpArgs false in
-theorem ah_fgFinishDsl_litSize_le (S : Setup) (K : Nat) :
-    compLitSize (AuthHs.fgFinishDsl S K) ≤ 1000 := by
-  simp only [fgFinishDsl, fgExtractC, initDh1CandC, respCandC, logScanC, findMapC,
-    paDh1, paU, paV, fsLog, fsBase, fsPows, fsResp,
-    stSpks, stSess, stPrin, sbSpkPk, sbSpkSk, sePeerSpk, seSid, seEkASk, peIkAPk,
-    slice32, bytesEmpty, zero32, natEq, nat2Eq,
-    Expr.litNat, Expr.noneE, Expr.someE, Expr.boolNot, Expr.boolAnd, Comp.iteC, Comp.caseOptC,
-    Expr.findBounded, Expr.mapBounded, Comp.findBoundedM, Comp.mapBoundedM, Comp.foldBoundedM,
-    v, Comp.letC, bindV, letV, caseOptV,
-    findMV, mapMV, foldMV,
-    eCaseOpt, eCaseSum, eFind, eMap,
-    Expr.litBytes, Expr.bytesTakeK, Expr.bytesDrop, Expr.bytesLen, Expr.bytesBeq,
-    Comp.queryPrimC, Comp.queryChal, AuthHs.Comp.queryDdh,
-    compLitSize, exprLitSize, pqOpLitSize,
-    List.length_nil, List.length_cons, List.length_replicate, hl_F_X25519_length,
-    Nat.add_zero, Nat.zero_add]
-  omega
-
 set_option linter.unusedSimpArgs false in
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 1600000 in
-theorem ah_fgStepC_litSize_le (S : Setup) (K : Nat)
-    {Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)}
-    (pa : Var Γ₁ AuthHs.paramsTy) (sim : Var Γ₂ fgSimTy) (q : Var Γ₃ authQueryTy)
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] :
-    compLitSize (AuthHs.fgStepC (Δ := Δ) S K pa sim q) ≤ 18500 := by
-  simp (config := { maxSteps := 1000000 }) only [fgStepC, fgInitPrinC, fgGenSpkC, fgSendC,
-    fgRecvC, fgRecvB, fgRoC, fgRoRootC, fgRegisterC, onBaseF,
-    isAdvPowsC, koskBundleOkPowsC, koskSenderOkPowsC, lookupSpkSkC,
-    mkSecretPosC, mkPairPosC, twoSideC, twoSideOptC, ddhEqC, ddhEqOptC, entryMatchesC,
-    patchC, rootPatchC, sendGuardE,
-    fsBase, fsL, fsRootL, fsRaw, fsLog, fsResp, fsPows, fsMk, fsUpd,
-    paU, paV, paDh1, paTI, paTS, feP1, feP2, feP3, feP4, feSs, feDk,
-    pkP1, pkP2, pkP3, pkP4, pkSs, reRk, rePos, reRk1, reCk,
-    q4, bytesEmpty, slice32, zero32, emptySimE,
-    initPrinB, corruptB, genSpkB, genOpkB, registerB, sendC, sendB, recvTailC, recvB, roB, roRootB,
-    findHonestC, isAdvRegC, isGameSpkC, isGameOpkC, koskBundleOkC, koskSenderOkC,
-    resolveSigPkC, honestPeerC, hkdfOrRoC, rootRoC,
-    stSecb, stHasWon, stPrin, stSpks, stOpks, stSess, stUsedS, stUsedO, stUsedN, stKyb,
-    stSOE, stSNE, stROE, stRNE, stRo, stRoot, stAdv, stMk, stUpd,
-    seSid, sePeerIk, sePeerSpk, sePeerOpk, sePeerPqspk, seSpkHon, seOpkHon, sePqspkHon,
-    seEkASk, seEphASk, seFresh, seChal, seMk,
-    pmHdr, pmEphAPk, pmPqMsg, pmAeadCt, pmMk, pmUpd,
-    peSecIKA0, peIkAPk, peSecIKAsign, peIkSignPk, peCorrupted, peMk, peUpd,
-    sbSpkSk, sbSpkPk, sbSpkSig, sbPqspkSk, sbPqspkPk, sbPqspkSig, sbRevealed, sbMk,
-    oeOpkSk, oeOpkPk, oeConsumed, oeMk, oeUpd,
-    buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk, buUpd,
-    hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk, hdUpd,
-    aNone, aInitPrin, aPk, aCorr, aBundle, aSendFresh, aSendUnfresh, aRecvHonest, aRecvUnfresh,
-    aDrKey, aRootKdf, rs, firstMsgADE, bytes2Eq, emptyAuthStE,
-    isSomeE, getDBytes, optFst, optSnd, dhOptNZ, guardE, kyberCheckE,
-    natEq, nat2Eq, nat3Eq, optBytesEq, optU32Eq, sidEq, kyberEq, nonZero32, buildSecretsE, eLet2,
-    Expr.litUnit, Expr.litBool, Expr.litNat, Expr.noneE, Expr.someE, Expr.boolNot, Expr.boolAnd,
-    Expr.boolOr, Expr.listNil, Expr.listCons, Expr.findBounded, Expr.anyBounded, Expr.mapBounded,
-    Comp.iteC, Comp.caseOptC, Comp.caseSumC, Comp.findBoundedM, Comp.anyBoundedM, Comp.mapBoundedM,
-    Comp.foldBoundedM,
-    ah_liftChal_litSize, ah_liftChal_gdh_litSize, v, Comp.letC, bindV, letV,
-    caseOptV, caseSumV, findMV, anyMV, mapMV,
-    foldMV, eLet, eCaseOpt, eCaseSum,
-    eFind, eAny, eMap,
-    Expr.litBytes, Expr.bytesAppend, Expr.bytesCons, Expr.bytesWiden,
-    Expr.bytesTakeK, Expr.bytesDrop, Expr.bytesLen, Expr.bytesBeq, Expr.bytesVarint,
-    Expr.u32OfNat, Expr.u32Beq,
-    Comp.sampleBool, Comp.sampleBytes32, Comp.sampleRandom64, Comp.sampleDrKey96,
-    Comp.sampleIndex, Comp.queryPrim,
-    Comp.sampleBoolC, Comp.sampleBytes32C, Comp.sampleRandom64C, Comp.sampleDrKey96C,
-    Comp.sampleIndexC, Comp.queryPrimC, Comp.queryChal, AuthHs.Comp.queryDdh,
-    encEC, encKEM,
-    compLitSize, exprLitSize, pqOpLitSize,
-    List.length_nil, List.length_cons, List.length_replicate, hl_F_X25519_length,
-    Nat.add_zero, Nat.zero_add,
-    ↓reduceIte, Bool.false_eq_true, Bool.true_eq_false, Bool.not_true, Bool.not_false]
-  omega
-
 set_option linter.unusedSimpArgs false in
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 1600000 in
@@ -2885,22 +2223,6 @@ private theorem ap_bits_mono {x y : ℕ} (h : x ≤ y) : bits x ≤ bits y := by
   unfold bits
   exact Nat.add_le_add_right (Nat.log_mono_right h) 1
 
-private theorem ap_eff_le_dh (S : Setup) :
-    (if S.N_id = 0 then 0 else S.N_send_opk) ≤ S.N_dh ∧
-    (if S.N_id = 0 then 0 else S.N_send_no_opk) ≤ S.N_dh := by
-  have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
-  have hs : S.N_send_tot = S.N_send_opk_tot + S.N_send_no_opk_tot := rfl
-  have hso : S.N_send_opk_tot = S.N_id * S.N_send_opk := rfl
-  have hsn : S.N_send_no_opk_tot = S.N_id * S.N_send_no_opk := rfl
-  split_ifs with h0
-  · omega
-  · have hpos : 1 ≤ S.N_id := by omega
-    have h1 : S.N_send_opk ≤ S.N_id * S.N_send_opk := by
-      simpa using Nat.mul_le_mul_right S.N_send_opk hpos
-    have h2 : S.N_send_no_opk ≤ S.N_id * S.N_send_no_opk := by
-      simpa using Nat.mul_le_mul_right S.N_send_no_opk hpos
-    omega
-
 set_option linter.unusedSimpArgs false in
 @[simp] private theorem ap_recvFinishTagRunC_size (S : Setup) (K : Nat) {Γ₁ Δ : List PT}
     (tag : Var Γ₁ recvFinishTagTy) (res? : Expr pqxdhOps Δ recvFinishResTy) [Ext Γ₁ Δ] :
@@ -3086,19 +2408,6 @@ private theorem ap_prfCkRedProg_size_bounds (S : Setup) (K : Nat) :
   have hb192 : bits 192 = 8 := by decide
   omega
 
-theorem ap_prfCkRedProg_size_le (S : Setup) (K : Nat) :
-    (prfCkRedProg S K).size ≤
-      90 * bits K + 125 * bits S.N_dh + 20 * bits S.N_sess_tot + 50000 := by
-  have h := ap_prfCkRedProg_size_bounds S K
-  have h1 : bits (min K S.N_dh) ≤ bits S.N_dh := ap_bits_mono (Nat.min_le_right _ _)
-  have h2 : bits (min K S.N_sess_tot) ≤ bits S.N_sess_tot := ap_bits_mono (Nat.min_le_right _ _)
-  have h4 : bits (4 * min K S.N_dh) ≤ bits S.N_dh + 3 := by
-    have hm := _root_.ReductionDsl.bits_mul 4 S.N_dh
-    have hb4 : bits 4 = 3 := by decide
-    have hmle := ap_bits_mono (Nat.mul_le_mul_left 4 (Nat.min_le_right K S.N_dh))
-    omega
-  omega
-
 private theorem ap_prfCkRedProg_size_le_clamped (S : Setup) (K : Nat) :
     (prfCkRedProg S K).size ≤ 250 * bits K + 55000 := by
   have h := ap_prfCkRedProg_size_bounds S K
@@ -3182,30 +2491,6 @@ private theorem ap_prfMsgKeysRedProg_size_bounds (S : Setup) (K : Nat) :
   have hb128 : bits 128 = 8 := by decide
   have hb160 : bits 160 = 8 := by decide
   have hb192 : bits 192 = 8 := by decide
-  omega
-
-theorem ap_prfMsgKeysRedProg_size_le (S : Setup) (K : Nat) :
-    (prfMsgKeysRedProg S K).size ≤
-      110 * bits K + 225 * bits S.N_dh + 20 * bits S.N_sess_tot + 95000 := by
-  have h := ap_prfMsgKeysRedProg_size_bounds S K
-  have h1 : bits (min K S.N_dh) ≤ bits S.N_dh := ap_bits_mono (Nat.min_le_right _ _)
-  have h2 : bits (min K S.N_sess_tot) ≤ bits S.N_sess_tot := ap_bits_mono (Nat.min_le_right _ _)
-  have h4 : bits (4 * min K S.N_dh) ≤ bits S.N_dh + 3 := by
-    have hm := _root_.ReductionDsl.bits_mul 4 S.N_dh
-    have hb4 : bits 4 = 3 := by decide
-    have hmle := ap_bits_mono (Nat.mul_le_mul_left 4 (Nat.min_le_right K S.N_dh))
-    omega
-  have bMinRecv : bits (min K S.N_recv_tot + 1) ≤ bits S.N_sess_tot + 2 := by
-    have hss : S.N_sess_tot = S.N_send_tot + S.N_recv_tot := rfl
-    rcases Nat.eq_zero_or_pos S.N_sess_tot with h0 | hpos
-    · have h1r : S.N_recv_tot = 0 := by omega
-      have hmin0 : min K S.N_recv_tot = 0 := by omega
-      rw [hmin0, h0]; decide
-    · have hle := ap_bits_mono (show min K S.N_recv_tot + 1 ≤ 2 * S.N_sess_tot by
-        have := Nat.min_le_right K S.N_recv_tot; omega)
-      have hm := _root_.ReductionDsl.bits_mul 2 S.N_sess_tot
-      have hb2 : bits 2 = 2 := by decide
-      omega
   omega
 
 private theorem ap_prfMsgKeysRedProg_size_le_clamped (S : Setup) (K : Nat) :
@@ -3296,23 +2581,6 @@ private theorem ap_aeadCpaRedProg_size_bounds (S : Setup) (K : Nat) :
   have hb128 : bits 128 = 8 := by decide
   have hb160 : bits 160 = 8 := by decide
   have hb192 : bits 192 = 8 := by decide
-  omega
-
-theorem ap_aeadCpaRedProg_size_le (S : Setup) (K : Nat) :
-    (aeadCpaRedProg S K).size ≤
-      155 * bits K + 245 * bits S.N_dh + 5 * bits S.N_sess_tot + 50000 := by
-  have h := ap_aeadCpaRedProg_size_bounds S K
-  have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
-  have bSend : bits S.N_send_tot ≤ bits S.N_dh := ap_bits_mono (by omega)
-  have h1 : bits (min K S.N_dh) ≤ bits S.N_dh := ap_bits_mono (Nat.min_le_right _ _)
-  have h2 : bits (min K S.N_sess_tot) ≤ bits S.N_sess_tot := ap_bits_mono (Nat.min_le_right _ _)
-  have hSend : bits (min K S.N_send_tot) ≤ bits S.N_dh :=
-    (ap_bits_mono (Nat.min_le_right K S.N_send_tot)).trans bSend
-  have h4 : bits (4 * min K S.N_dh) ≤ bits S.N_dh + 3 := by
-    have hm := _root_.ReductionDsl.bits_mul 4 S.N_dh
-    have hb4 : bits 4 = 3 := by decide
-    have hmle := ap_bits_mono (Nat.mul_le_mul_left 4 (Nat.min_le_right K S.N_dh))
-    omega
   omega
 
 private theorem ap_aeadCpaRedProg_size_le_clamped (S : Setup) (K : Nat) :
@@ -3670,128 +2938,6 @@ end HmAtomicSizeSimp
     Comp.size (I := pqPrfHmacIface) (liftPrimComp c) = c.size := ap_liftPrimComp_size c
 
 set_option linter.unusedSimpArgs false in
-private theorem sc_recvFinishTagRunC_size (S : Setup) (K : Nat) {Γ₁ Δ : List PT}
-    (tag : Var Γ₁ recvFinishTagTy) (res? : Expr pqxdhOps Δ recvFinishResTy) [Ext Γ₁ Δ] :
-    (recvFinishTagRunC S K tag res?).size =
-      res?.size + bits K + 4 * bits (min K S.N_dh) + 1864 := by
-  simp only [recvFinishTagRunC, findHonestC, matchSentOPKC, matchSentNoOPKC,
-    natEq, nat2Eq, nat3Eq, oeMk, oeUpd, roMk, rnoMk, stMk, stUpd, ahsMk, ahsUpd,
-    aNone, aRecvHonest, aRecvUnfresh, peIkAPk, peCorrupted,
-    sbSpkPk, sbPqspkPk, oeOpkSk, oeOpkPk, hdrIkAPk, hdrEkAPk, hdrKemCt,
-    pkmHdr, soA0, soB0, soSb, soOb, soA1, soPk1, soCt, soM, soMatched, soMarkMatched, snoA0, snoB0,
-    snoSb, snoA1, snoPk1, snoCt, snoM, snoMatched, snoMarkMatched, roBCorr, roA0, roB0, roSb, roOb,
-    roA1, roPk1, roCt, roM, rnoBCorr, rnoA0, rnoB0, rnoSb, rnoA1, rnoPk1, rnoCt, rnoM, asSecb,
-    asHasWonAuth, asPrincipals, asSpkBundles, asOpkEntries, asSessions, asUsedSendSessions,
-    asUsedRecvOPK, asUsedRecvNoOPK, asSentOPKEvents, asSentNoOPKEvents, asRecvdOPKEvents,
-    asRecvdNoOPKEvents, asAdvKeys, ahsBase, ahsInitKemRecs, ahsRecvKemRecs, ahsIdealSessions,
-    boolOr, Expr.litUnit, Expr.litBool, Expr.litNat, Expr.noneE, Expr.someE, Expr.boolNot, Expr.boolAnd,
-    Expr.boolOr, Expr.listNil, Expr.listCons, Expr.findBounded, Expr.anyBounded, Expr.mapBounded,
-    Comp.iteC, Comp.caseOptC, Comp.caseSumC, Comp.findBoundedM, Comp.anyBoundedM, Comp.mapBoundedM,
-    v, AuthPrf.Comp.letC, _root_.ReductionDsl.Comp.letC, bindV, letV,
-    caseOptV, caseSumV, findMV, consumeFirstMV, eMap,
-    bytesBeq, queryPrim, Comp.size, Expr.size]
-  dsimp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.ReductionDsl.Ops.sum,
-    _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Sum.elim]
-  omega
-
-set_option linter.unusedSimpArgs false in
-private theorem sc_prepareAuthHybridRecvC_true_size (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (hst : Var Γ₁ authHybridStateTy) (x : Var Γ₂ recvQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (prepareAuthHybridRecvC S K true hst x :
-      Comp pqxdhOps pqPrimIface Δ (.opt preparedAuthRecvTy)).size =
-      6 * bits K + 3 * bits (min K S.N_dh) + 875 := by
-  simp only [prepareAuthHybridRecvC, koskSenderOkC, findHonestC, isAdvRegC,
-    matchIdealAuthHandshakeC, natEq, nat2Eq, nat3Eq, optU32Eq, kyberCheckE, buildSecretsE,
-    kyberEq, isSomeE, eLet2, boolOr, rkrMk,
-    ahsMk, ahsUpd, peSecIKA0, peIkAPk, peCorrupted, sbSpkSk, sbSpkPk, sbPqspkSk, sbPqspkPk,
-    oeOpkSk, oeOpkPk, oeConsumed, hdrIkAPk, hdrEkAPk, hdrSpkId, hdrOpkId?, hdrPqspkId, hdrKemCt,
-    pkmHdr, pkmEphAPk, iasIkAPk, iasPeerIkPk, iasPeerSpkPk, iasPeerOpkPk?, iasEkAPk,
-    iasPeerPqspkPk, iasKemCt, iasEphAPk, asHasWonAuth, asPrincipals, asSpkBundles, asOpkEntries,
-    asUsedRecvOPK, asUsedKyberTriples, asAdvKeys, ahsBase, ahsInitKemRecs, ahsRecvKemRecs,
-    ahsIdealSessions,
-    Expr.litUnit, Expr.litBool, Expr.litNat, Expr.noneE, Expr.someE, Expr.boolNot, Expr.boolAnd,
-    Expr.boolOr, Expr.listNil, Expr.listCons, Expr.findBounded, Expr.anyBounded, Expr.mapBounded,
-    Comp.iteC, Comp.caseOptC, Comp.caseSumC, Comp.findBoundedM, Comp.anyBoundedM, Comp.mapBoundedM,
-    v, AuthPrf.Comp.letC, _root_.ReductionDsl.Comp.letC, bindV, letV, caseOptV, findMV,
-    eLet, eFind, eAny, eCaseOpt,
-    litB, catB, bytesCons, widenB, takeKB, bytesLen, bytesBeq, u32OfNat, u32Beq,
-    queryPrim, encEC, encKEM, Comp.size, Expr.size, ↓reduceIte]
-  dsimp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.ReductionDsl.Ops.sum,
-    _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Sum.elim]
-  have hb32 : bits 32 = 6 := by decide
-  omega
-
-set_option linter.unusedSimpArgs false in
-private theorem sc_prepareAuthHybridRecvC_false_size (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (hst : Var Γ₁ authHybridStateTy) (x : Var Γ₂ recvQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (prepareAuthHybridRecvC S K false hst x :
-      Comp pqxdhOps pqPrimIface Δ (.opt preparedAuthRecvTy)).size =
-      5 * bits K + 3 * bits (min K S.N_dh) + 813 := by
-  simp only [prepareAuthHybridRecvC, koskSenderOkC, findHonestC, isAdvRegC,
-    matchIdealAuthHandshakeC, natEq, nat2Eq, nat3Eq, optU32Eq, kyberCheckE, buildSecretsE,
-    kyberEq, isSomeE, eLet2, boolOr, rkrMk,
-    ahsMk, ahsUpd, peSecIKA0, peIkAPk, peCorrupted, sbSpkSk, sbSpkPk, sbPqspkSk, sbPqspkPk,
-    hdrIkAPk, hdrEkAPk, hdrSpkId, hdrOpkId?, hdrPqspkId, hdrKemCt, pkmHdr, pkmEphAPk,
-    iasIkAPk, iasPeerIkPk, iasPeerSpkPk, iasPeerOpkPk?, iasEkAPk, iasPeerPqspkPk, iasKemCt,
-    iasEphAPk, asHasWonAuth, asPrincipals, asSpkBundles, asUsedRecvNoOPK,
-    asUsedKyberTriples, asAdvKeys, ahsBase, ahsInitKemRecs, ahsRecvKemRecs, ahsIdealSessions,
-    Expr.litUnit, Expr.litBool, Expr.litNat, Expr.noneE, Expr.someE, Expr.boolNot, Expr.boolAnd,
-    Expr.boolOr, Expr.listNil, Expr.listCons, Expr.findBounded, Expr.anyBounded, Expr.mapBounded,
-    Comp.iteC, Comp.caseOptC, Comp.caseSumC, Comp.findBoundedM, Comp.anyBoundedM, Comp.mapBoundedM,
-    v, AuthPrf.Comp.letC, _root_.ReductionDsl.Comp.letC, bindV, letV, caseOptV, findMV,
-    eLet, eFind, eAny, eCaseOpt,
-    litB, catB, bytesCons, widenB, takeKB, bytesLen, bytesBeq, u32OfNat, u32Beq,
-    queryPrim, encEC, encKEM, Comp.size, Expr.size, ↓reduceIte, Bool.false_eq_true]
-  dsimp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.ReductionDsl.Ops.sum,
-    _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Sum.elim]
-  have hb32 : bits 32 = 6 := by decide
-  omega
-
-set_option linter.unusedSimpArgs false in
-private theorem sc_finishAuthHybridSendC_size (S : Setup) (K : Nat) {Γ₁ Δ : List PT}
-    (hst : Var Γ₁ authHybridStateTy) (args : Expr pqxdhOps Δ finishSendArgsTy) [Ext Γ₁ Δ] :
-    (finishAuthHybridSendC S K hst args).size =
-      args.size + 4 * bits (min K S.N_dh) + 2 * bits K + 1040 := by
-  simp only [finishAuthHybridSendC, checkBundleProvenanceExactC, checkBundleSpkHonIdealC,
-    findHonestC, natEq, isSomeE, boolOr,
-    optFst, optSnd, hdMk, pmMk, seMk, iasMk, soMk, snoMk, ikrMk, stMk, stUpd, ahsMk, ahsUpd,
-    aSendFresh, aSendUnfresh, peIkAPk, peCorrupted, sbSpkPk, sbPqspkPk, oeOpkPk, pkbIkB, pkbSpkId,
-    pkbSpkB, pkbOpkB?, pkbPqspkId, pkbPqspkB, asSecb, asHasWonAuth, asPrincipals, asSpkBundles,
-    asOpkEntries, asSessions, asUsedSendSessions, asUsedRecvOPK, asUsedRecvNoOPK,
-    asUsedKyberTriples, asSentOPKEvents, asSentNoOPKEvents, asRecvdOPKEvents, asRecvdNoOPKEvents,
-    asAdvKeys, ahsBase, ahsInitKemRecs, ahsRecvKemRecs, ahsIdealSessions,
-    Expr.litUnit, Expr.litBool, Expr.litNat, Expr.noneE, Expr.someE, Expr.boolNot, Expr.boolAnd,
-    Expr.boolOr, Expr.listNil, Expr.listCons, Expr.findBounded, Expr.anyBounded, Expr.mapBounded,
-    Comp.iteC, Comp.caseOptC, Comp.caseSumC, Comp.findBoundedM, Comp.anyBoundedM, Comp.mapBoundedM,
-    v, AuthPrf.Comp.letC, _root_.ReductionDsl.Comp.letC, bindV, letV, caseOptV, findMV, anyMV,
-    eCaseOpt, eAny, bytesBeq, queryPrim, Comp.size, Expr.size]
-  dsimp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.ReductionDsl.Ops.sum,
-    _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Sum.elim]
-  omega
-
-set_option linter.unusedSimpArgs false in
-private theorem sc_finalizeAuthFixedDsl_size (S : Setup) (K : Nat) {Γ : List PT} :
-    (finalizeAuthFixedDsl S K (Γ := Γ)).size =
-      4 * bits (min K S.N_dh) + 5 * bits (4 * min K S.N_dh) + 7 * bits K + 292 := by
-  simp only [finalizeAuthFixedDsl, finalizeAuthFixedBodyDsl, allHonestEcPksAuthDslK,
-    hasDuplicateBytesDsl, hasBadSigAuthDsl, hasKemPkCollisionAuthDsl,
-    hasBadKemShCrRecordsDsl, notAllChallengedCleanDsl,
-    asHasWonAuth, asSessions, asSpkBundles, asPrincipals, asOpkEntries,
-    ahsBase, ahsInitKemRecs, ahsRecvKemRecs,
-    aseFresh, aseSpkHonest, asePqspkHonest, aseChallenged, aseEkASk,
-    peIkAPk, sbSpkPk, sbPqspkPk, oeOpkPk,
-    rkrKemSs, ikrKemSs, rkrKemCt, ikrKemCt, ikrPqspkPk, rkrPqspkPk,
-    boolOr, boolBeq,
-    Expr.litUnit, Expr.litBool, Expr.litNat, Expr.noneE, Expr.someE, Expr.boolNot, Expr.boolAnd,
-    Expr.boolOr, Expr.listNil, Expr.listCons, Expr.findBounded, Expr.anyBounded, Expr.mapBounded,
-    Comp.iteC, Comp.caseOptC, Comp.caseSumC, Comp.findBoundedM, Comp.anyBoundedM, Comp.mapBoundedM,
-    v, AuthPrf.Comp.letC, _root_.ReductionDsl.Comp.letC, bindV, letV,
-    eLet, eAny, eMap, bytesBeq, samplePrim, queryPrim, Comp.size, Expr.size]
-  dsimp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.ReductionDsl.Ops.sum,
-    _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops, Sum.elim]
-  omega
-
-set_option linter.unusedSimpArgs false in
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 1600000 in
 private theorem hm_prfHmacRedProg_size_le_clamped (S : Setup) (K : Nat) :
@@ -3810,8 +2956,8 @@ private theorem hm_prfHmacRedProg_size_le_clamped (S : Setup) (K : Nat) :
     ipSalt, ipPqMsg, ipAd, ipProv, ipRoC, ipRootC,
     getDBytes, defaultMsgKeysE, iasAdE, iasAeadCtE, iasMsgPlainE, iasCk1_0E,
     spkHonIdealFromPeerC,
-    sc_recvFinishTagRunC_size, sc_prepareAuthHybridRecvC_true_size,
-    sc_prepareAuthHybridRecvC_false_size, sc_finishAuthHybridSendC_size, sc_finalizeAuthFixedDsl_size,
+    ap_recvFinishTagRunC_size, ap_prepareAuthHybridRecvC_true_size,
+    ap_prepareAuthHybridRecvC_false_size, ap_finishAuthHybridSendC_size, ap_finalizeAuthFixedDsl_size,
     findHonestC, isAdvRegC, isGameSpkC, isGameOpkC, koskBundleOkC, koskSenderOkC,
     resolveSigPkC, hkdfRoC, rootRoC, checkBundleProvenanceExactC, checkBundleSpkHonIdealC,
     matchSentOPKC, matchSentNoOPKC, matchIdealAuthHandshakeC,
@@ -3881,12 +3027,6 @@ private theorem hm_prfHmacRedProg_size_le_clamped (S : Setup) (K : Nat) :
     have hm := _root_.ReductionDsl.bits_mul 4 (min K S.N_dh)
     have hb4 : bits 4 = 3 := by decide
     omega
-  omega
-
-theorem hm_prfHmacRedProg_size_le (S : Setup) (K : Nat) :
-    (prfHmacRedProg S K).size ≤
-      120 * bits K + 80 * bits S.N_dh + 20 * bits S.N_sess_tot + 35000 := by
-  have h := hm_prfHmacRedProg_size_le_clamped S K
   omega
 
 set_option linter.unusedSimpArgs false in
@@ -3986,55 +3126,55 @@ open OracleSpec OracleComp
 
 /-! ## Lifted atomic reductions and step-cost bounds -/
 
-def sigKeyIndAtomicProg (useRo : Bool) (S : Setup) (b : QueryBudget) :
+@[expose] def sigKeyIndAtomicProg (useRo : Bool) (S : Setup) (b : QueryBudget) :
     CostedReduction pqAtomicOps pqxdhEufCmaIface (keyIndSpec S) (pqKeyIndCodec S)
       (PB 32) .unit .bool (.prod (PB 1569) (PB 64)) :=
   liftKeyInd1Stage tlEufCmaKeyInd S (sigKeyIndDslProg useRo S b)
 
-def shcrKeyIndAtomicProg (S : Setup) (b : QueryBudget) :
+@[expose] def shcrKeyIndAtomicProg (S : Setup) (b : QueryBudget) :
     TwoStageCostedReduction pqAtomicOps pqPrimIface (keyIndSpec S) (pqKeyIndCodec S)
       (.prod (PB 1568) (PB 3168)) .unit .bool (PB 1568)
       (.prod (PB 32) (PB 1568)) (PB 1568) :=
   liftKeyInd2Stage tlPrimKeyInd S (shcrKeyIndDslProg S b)
 
-def fgKeyIndGapDhAtomicProg (S : Setup) (b : QueryBudget) :
+@[expose] def fgKeyIndGapDhAtomicProg (S : Setup) (b : QueryBudget) :
     CostedReduction pqAtomicOps pqGapDhIface (keyIndSpec S) (pqKeyIndCodec S)
       (.prod (PB 32) (PB 32)) .unit .bool (PB 32) :=
   liftKeyInd1Stage tlGapDhKeyInd S (fgKeyIndGapDh2Prog S b.q_total)
 
-def sigReductionAuthAtomicProg (S : Setup) (b : QueryBudget) :
+@[expose] def sigReductionAuthAtomicProg (S : Setup) (b : QueryBudget) :
     CostedReduction pqAtomicOps pqAuthEufCmaIface (authSpec S) (authCodec S)
       (PB 32) .unit .bool (.prod (PB 1569) (PB 64)) :=
   liftAuth1Stage tlAuthEufCma S (sigReductionAuthDslProg2 S b)
 
-def shcrAuthAtomicProg (S : Setup) (b : QueryBudget) :
+@[expose] def shcrAuthAtomicProg (S : Setup) (b : QueryBudget) :
     TwoStageCostedReduction pqAtomicOps pqAuthPrimIface (authSpec S) (authCodec S)
       (.prod (PB 1568) (PB 3168)) .unit .bool (PB 1568)
       (.prod (PB 32) (PB 1568)) (PB 1568) :=
   liftAuth2Stage tlAuthPrim S (shcrAuthDslProg S b)
 
-def fgAuthGapDhAtomicProg (S : Setup) (b : QueryBudget) :
+@[expose] def fgAuthGapDhAtomicProg (S : Setup) (b : QueryBudget) :
     CostedReduction pqAtomicOps pqAuthGapDhIface (authSpec S) (authCodec S)
       (.prod (PB 32) (PB 32)) .unit .bool (PB 32) :=
   liftAuth1Stage tlAuthGapDh S (fgAuthGapDhDslProg S b)
 
-def prfCkAtomicProg (S : Setup) (b : QueryBudget) :
+@[expose] def prfCkAtomicProg (S : Setup) (b : QueryBudget) :
     CostedReduction pqAtomicOps pqAuthPrimIface (authSpec S) (authCodec S)
       (.prod (PB 32) (PB 32)) .unit .bool .bool :=
   liftAuth1Stage tlAuthPrim S (prfCkRedProg S b.q_total)
 
-def prfMsgKeysAtomicProg (S : Setup) (b : QueryBudget) :
+@[expose] def prfMsgKeysAtomicProg (S : Setup) (b : QueryBudget) :
     CostedReduction pqAtomicOps pqPrfMkIface (authSpec S) (authCodec S)
       .unit .unit .bool .bool :=
   liftAuth1Stage tlPrfMk S (prfMsgKeysRedProg S b.q_total)
 
-def aeadCpaAtomicProg (S : Setup) (b : QueryBudget) :
+@[expose] def aeadCpaAtomicProg (S : Setup) (b : QueryBudget) :
     TwoStageCostedReduction pqAtomicOps pqAuthPrimIface (authSpec S) (authCodec S)
       .unit .unit .bool (.prod (PB 158) (.prod (PB 32) (PB 32)))
       (.opt (PB 32)) .bool :=
   liftAuth2Stage tlAuthPrim S (aeadCpaDslProg S b)
 
-def prfHmacAtomicProg (S : Setup) (b : QueryBudget) :
+@[expose] def prfHmacAtomicProg (S : Setup) (b : QueryBudget) :
     CostedReduction pqAtomicOps pqPrfHmacIface (authSpec S) (authCodec S)
       .unit .unit .bool .bool :=
   liftAuth1Stage tlPrfHmac S (prfHmacDslProg S b)
@@ -5185,30 +4325,6 @@ open Computational.Proofs.ReductionDsl.AtomicSizeHonest
 open Computational.Proofs.SignalPqxdh.AtomicLift
 open OracleSpec OracleComp
 
-theorem eleven_mul_cost_le_stepCostBudget {c : ℕ} (S : Setup) (b : QueryBudget)
-    (h11 : 11 * c ≤ 720896 + 1441792 * b.q_total +
-      360448 * min b.q_total S.N_dh + 360448 * min b.q_total S.N_sess_tot +
-      11264 * (b.q_total + 1) * (Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot) +
-      720896 * (b.q_total * b.q_total) +
-      360448 * (b.q_total * min b.q_total S.N_dh) +
-      360448 * (b.q_total * min b.q_total S.N_sess_tot) +
-      22528 * (min b.q_total S.N_dh * min b.q_total S.N_dh) +
-      2816 * (min b.q_total S.N_dh * min b.q_total S.N_sess_tot)) :
-    c ≤ _root_.SignalPqxdh.Security.stepCostBudget S b :=
-  eleven_mul_clamped_le_stepCostBudget S b h11
-
-theorem two_mul_cost_le_stepCostBudget {c : ℕ} (S : Setup) (b : QueryBudget)
-    (h2 : 2 * c ≤ 131072 + 262144 * b.q_total +
-      65536 * min b.q_total S.N_dh + 65536 * min b.q_total S.N_sess_tot +
-      2048 * (b.q_total + 1) * (Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot) +
-      131072 * (b.q_total * b.q_total) +
-      65536 * (b.q_total * min b.q_total S.N_dh) +
-      65536 * (b.q_total * min b.q_total S.N_sess_tot) +
-      4096 * (min b.q_total S.N_dh * min b.q_total S.N_dh) +
-      512 * (min b.q_total S.N_dh * min b.q_total S.N_sess_tot)) :
-    c ≤ _root_.SignalPqxdh.Security.stepCostBudget S b :=
-  two_mul_clamped_le_stepCostBudget S b h2
-
 private theorem sc_log_dh_le_prod (S : Setup) (q : ℕ) :
     Nat.log 2 S.N_dh ≤ (q + 1) * (Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot) := by
   have h1 : 1 ≤ q + 1 := by omega
@@ -5716,14 +4832,6 @@ private theorem h_bits_params_le_stepCostBudget (S : Setup) (b : QueryBudget) :
     h_bits_mono ((Nat.min_le_left _ _).trans hq),
     h_bits_mono ((Nat.min_le_left _ _).trans hq)⟩
 
-private theorem h_bits_le_of_le_four_mul_sq {x N : ℕ} (h : x ≤ 4 * (N * N)) :
-    _root_.ReductionDsl.bits x ≤ 2 * _root_.ReductionDsl.bits N + 3 := by
-  have h1 := h_bits_mono h
-  have h2 := _root_.ReductionDsl.bits_mul 4 (N * N)
-  have h3 := _root_.ReductionDsl.bits_mul N N
-  have h4 : _root_.ReductionDsl.bits 4 = 3 := by decide
-  omega
-
 theorem sigKeyIndAtomicProg_size_le_budget (useRo : Bool) (S : Setup) (b : QueryBudget) :
     (sigKeyIndAtomicProg useRo S b).size ≤
       _root_.ReductionDsl.reductionSizeBudget +
@@ -5888,7 +4996,7 @@ theorem gred2BlockBounded_of_cost {ι κ : Type} {T : OracleSpec ι}
     (hsmp ▸ one_le_pqAtomicSamplers_sCost) S b ℓ R hCost hSize
 
 /-- Two-key `KeyInd` costed reduction family over `pqAtomicOps`. -/
-def pqxdhKeyIndCostedSims (S : Setup) : KeyInd2KeyCostedReductionFamily S where
+@[expose] def pqxdhKeyIndCostedSims (S : Setup) : KeyInd2KeyCostedReductionFamily S where
   sig  b := sigKeyIndAtomicProg true S b
   shcr b := shcrKeyIndAtomicProg S b
   gdh  b := fgKeyIndGapDhAtomicProg S b
@@ -6019,7 +5127,7 @@ theorem pqxdhKeyIndCostedSims_simBounds (S : Setup) :
         (fun _ => A.1.run) hAg U V).mono (fgKeyIndGapDh2Prog_totalPrimQueries_le S b)
 
 /-- Two-key `Auth` costed reduction family over `pqAtomicOps`. -/
-def pqxdhAuthCostedSims (S : Setup) : AuthCostedReductionFamily S :=
+@[expose] def pqxdhAuthCostedSims (S : Setup) : AuthCostedReductionFamily S :=
   AuthCostedReductionFamily.mk'
     (fun b => sigReductionAuthAtomicProg S b)
     (fun b => shcrAuthAtomicProg S b)
@@ -6299,162 +5407,8 @@ theorem pqxdhAuthCostedSims_simBounds (S : Setup) :
 
 /-! ## Advantage equalities with shallow simulators -/
 
-theorem pqxdhKeyIndCostedSims_sig_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (KeyIndAdversary S) b) :
-    SigEufCma P ((pqxdhKeyIndCostedSims S).eval.sig b A) =
-      SigEufCma P ((pqxdhKeyIndSimulators S).sig b A) := by
-  have hAdv : (pqxdhKeyIndCostedSims S).eval.sig b A =
-      { run := fun pk => (sigKeyIndDslProg true S b).eval (fun _ => A.1.run) pk
-        q_sig := 2 * S.N_spk_tot
-        q_prim := primQueryBudget S b } :=
-    congrArg (fun r =>
-      ({ run := r, q_sig := 2 * S.N_spk_tot, q_prim := primQueryBudget S b } : SigEufCmaAdv))
-      (funext fun pk => sigKeyIndAtomicProg_eval_eq true S b (fun _ => A.1.run) pk)
-  rw [hAdv]
-  exact sigKeyIndProg_sigEufCma_eq P true S b A
-
-theorem pqxdhKeyIndCostedSims_shcr_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (KeyIndAdversary S) b) :
-    KemShCr P ((pqxdhKeyIndCostedSims S).eval.shcr b A) =
-      KemShCr P ((pqxdhKeyIndSimulators S).shcr b A) := by
-  refine Eq.trans (kemShCr_eq_of_state_map P (shcrKeyIndDslAdv S b A)
-    ((pqxdhKeyIndCostedSims S).eval.shcr b A)
-    (embedMid (ch := SignalPqxdh.LegacyCosted.B 1568))
-    (fun pk sk => ?_) (fun st ss ct => ?_))
-    (KemShCr_shcrKeyIndDslAdv P S b A)
-  · exact liftKeyInd2Stage_eval1 tlPrimKeyInd S (shcrKeyIndDslProg S b)
-      (shcrKeyIndProg_init_unsupported S b.q_total (keyIndLoopBound b))
-      (shcrKeyIndProg_handlePre_unsupported S b.q_total (keyIndLoopBound b))
-      (shcrKeyIndProg_chDone_unsupported S b.q_total (keyIndLoopBound b))
-      (fun _ => A.1.run) (pk, sk) b.q_total false
-  · have hId : embedVal (SignalPqxdh.LegacyCosted.B 1568) = id := rfl
-    have h := liftKeyInd2Stage_eval2 tlPrimKeyInd S (shcrKeyIndDslProg S b)
-      (shcrKeyIndProg_resume_unsupported S b.q_total (keyIndLoopBound b))
-      (shcrKeyIndProg_handlePost_unsupported S b.q_total (keyIndLoopBound b))
-      (shcrKeyIndProg_finish_unsupported S b.q_total (keyIndLoopBound b))
-      st (ss, ct) b.q_total false
-    rw [hId, id_map] at h
-    exact h
-
-theorem pqxdhKeyIndCostedSims_gdh_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (KeyIndAdversary S) b) :
-    GapDH P P.isValidDhTriple P.pow8 ((pqxdhKeyIndCostedSims S).eval.gdh b A) =
-      GapDH P P.isValidDhTriple P.pow8 ((pqxdhKeyIndSimulators S).gdh b A) := by
-  have hAdv : (pqxdhKeyIndCostedSims S).eval.gdh b A =
-      { run := fun U V => (fgKeyIndGapDh2Prog S b.q_total).eval (fun _ => A.1.run) (U, V)
-        q_ddh := gdhQueryBudget S b
-        q_prim := primQueryBudget S b } :=
-    congrArg (fun r =>
-      ({ run := r, q_ddh := gdhQueryBudget S b, q_prim := primQueryBudget S b } : GapDhAdv))
-      (funext fun U => funext fun V => fgKeyIndGapDhAtomicProg_eval_eq S b (fun _ => A.1.run) U V)
-  rw [hAdv]
-  exact (fgKeyIndGapDh2Prog_gapDh_eq P P.isValidDhTriple P.pow8 S b A).trans
-    (fgKeyIndGapDhProg_gapDh_eq P P.isValidDhTriple P.pow8 S b A)
-
-theorem pqxdhAuthCostedSims_sig_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    SigEufCma P ((pqxdhAuthCostedSims S).eval.sig b A) =
-      SigEufCma P ((pqxdhAuthSimulators S).sig b A) := by
-  have hAdv : (pqxdhAuthCostedSims S).eval.sig b A = sigReductionAuthDslAdv2 S b A :=
-    congrArg (fun r =>
-      ({ run := r, q_sig := 2 * S.N_spk_tot, q_prim := primQueryBudget S b } : SigEufCmaAdv))
-      (funext fun pk => sigReductionAuthAtomicProg_eval_eq S b (fun _ => A.1.run) pk)
-  rw [hAdv]
-  exact sigReductionAuthProg2_sigEufCma_eq P S b A
-
-theorem pqxdhAuthCostedSims_shcr_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    KemShCr P ((pqxdhAuthCostedSims S).eval.shcr b A) =
-      KemShCr P ((pqxdhAuthSimulators S).shcr b A) := by
-  refine Eq.trans (kemShCr_eq_of_state_map P (shcrAuthDslAdv S b A.1)
-    ((pqxdhAuthCostedSims S).eval.shcr b A)
-    (embedMid (ch := SignalPqxdh.LegacyCosted.B 1568))
-    (fun pk sk => ?_) (fun st ss ct => ?_))
-    (shcrAuthDslAdv_kemShCr_eq P S b A)
-  · exact liftAuth2Stage_eval1 tlAuthPrim S (fun _ => rfl) (shcrAuthDslProg S b)
-      (fun _ => A.1.run) (pk, sk) b.q_total false
-  · have hId : embedVal (SignalPqxdh.LegacyCosted.B 1568) = id := rfl
-    have h := liftAuth2Stage_eval2 tlAuthPrim S (fun _ => rfl) (shcrAuthDslProg S b)
-      st (ss, ct) b.q_total false
-    rw [hId, id_map] at h
-    exact h
-
-theorem pqxdhAuthCostedSims_gdh_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    GapDH P P.isValidDhTriple P.pow8 ((pqxdhAuthCostedSims S).eval.gdh b A) =
-      GapDH P P.isValidDhTriple P.pow8 ((pqxdhAuthSimulators S).gdh b A) := by
-  have hAdv : (pqxdhAuthCostedSims S).eval.gdh b A =
-      { run := fun U V => (fgAuthGapDhDslProg S b).eval (fun _ => A.1.run) (U, V)
-        q_ddh := 5 * b.q_total ^ 2 + b.q_total + S.N_dh + S.N_sess_tot
-        q_prim := primQueryBudget S b } :=
-    congrArg (fun r =>
-      ({ run := r, q_ddh := 5 * b.q_total ^ 2 + b.q_total + S.N_dh + S.N_sess_tot, q_prim := primQueryBudget S b } : GapDhAdv))
-      (funext fun U => funext fun V => fgAuthGapDhAtomicProg_eval_eq S b (fun _ => A.1.run) U V)
-  rw [hAdv]
-  exact fgAuthGapDhProg_gapDh_eq P P.isValidDhTriple P.pow8 S b A
-
-theorem pqxdhAuthCostedSims_ck_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    PrfChainKey P ((pqxdhAuthCostedSims S).eval.ck b A) =
-      PrfChainKey P ((pqxdhAuthSimulators S).ck b A) := by
-  have hAdv : (pqxdhAuthCostedSims S).eval.ck b A =
-      { dist := fun mkSeedChal ck1_1Chal =>
-          (prfCkRedProg S b.q_total).eval (fun _ => A.1.run) (mkSeedChal, ck1_1Chal)
-        q_prf := 1
-        q_prim := primQueryBudget S b } :=
-    congrArg (fun r =>
-      ({ dist := r, q_prf := 1, q_prim := primQueryBudget S b } : PrfCkAdv))
-      (funext fun mkSeed => funext fun ck1 => prfCkAtomicProg_eval_eq S b (fun _ => A.1.run) mkSeed ck1)
-  rw [hAdv]
-  exact prfCkRedProg_prfCk_eq P S b A
-
-theorem pqxdhAuthCostedSims_mk_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    PrfMsgKeys P ((pqxdhAuthCostedSims S).eval.mk b A) =
-      PrfMsgKeys P ((pqxdhAuthSimulators S).mk b A) := by
-  have hAdv : (pqxdhAuthCostedSims S).eval.mk b A =
-      { run := (prfMsgKeysRedProg S b.q_total).eval (fun _ => A.1.run) ()
-        q_prf := S.N_recv_tot + 1
-        q_prim := primQueryBudget S b } :=
-    congrArg (fun r =>
-      ({ run := r, q_prf := S.N_recv_tot + 1, q_prim := primQueryBudget S b } : PrfMsgKeysAdv))
-      (prfMsgKeysAtomicProg_eval_eq S b (fun _ => A.1.run))
-  rw [hAdv]
-  exact prfMsgKeysRedProg_prfMsgKeys_eq P S b A
-
-theorem pqxdhAuthCostedSims_cpa_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    AeadIndCpa P ((pqxdhAuthCostedSims S).eval.cpa b A) =
-      AeadIndCpa P ((pqxdhAuthSimulators S).cpa b A) := by
-  refine Eq.trans (aeadIndCpa_eq_of_state_map P (aeadCpaDslAdv S b A.1)
-    ((pqxdhAuthCostedSims S).eval.cpa b A) (embedMid (ch := cpaChOutTy))
-    ?_ (fun st c? => ?_))
-    (aeadCpaDslAdv_aeadIndCpa_eq P S b A)
-  · exact cpa_choose_map_eq _ _ (liftAuth2Stage_eval1 tlAuthPrim S (fun _ => rfl)
-      (aeadCpaDslProg S b) (fun _ => A.1.run) () b.q_total false)
-  · have hc : embedVal (.opt (SignalPqxdh.LegacyCosted.B 32)) c? = c? := by cases c? <;> rfl
-    have hId : embedVal .bool = id := rfl
-    have h : (aeadCpaAtomicProg S b).eval2 (embedMid (ch := cpaChOutTy) st)
-        (embedVal (.opt (SignalPqxdh.LegacyCosted.B 32)) c?) b.q_total false =
-        embedVal .bool <$> (aeadCpaDslProg S b).eval2 st c? b.q_total false :=
-      liftAuth2Stage_eval2 tlAuthPrim S (fun _ => rfl) (aeadCpaDslProg S b)
-        st c? b.q_total false
-    rw [hc, hId, id_map] at h
-    exact h
-
-theorem pqxdhAuthCostedSims_int_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    PrfHmac P ((pqxdhAuthCostedSims S).eval.int b A) =
-      PrfHmac P ((pqxdhAuthSimulators S).int b A) := by
-  have hAdv : (pqxdhAuthCostedSims S).eval.int b A = prfHmacDslAdv S b A :=
-    congrArg (fun r =>
-      ({ run := r, q_prf := S.N_recv_tot + 1, q_prim := primQueryBudget S b } : PrfHmacAdv))
-      (prfHmacAtomicProg_eval_eq S b (fun _ => A.1.run))
-  rw [hAdv]
-  exact prfHmacRedProg_prfHmac_eq S P b A
-
 /-- Combined `PqxdhReds S` bundle for `KeyInd` and `Auth`. -/
-def pqxdhReds (S : Setup) : PqxdhReds S where
+@[expose] def pqxdhReds (S : Setup) : PqxdhReds S where
   keyInd := pqxdhKeyIndCostedSims S
   auth   := pqxdhAuthCostedSims S
 

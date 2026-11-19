@@ -9,23 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderRepr
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Prog
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prog -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import ProofLib.SepLogic.WPp
-
-/-!
-# `<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::encode_bytes`: Definitions and Specifications
-
-**Checked by Lean.**
-
-Pure totality (`encodeBytesResult`) and AArch64 separation-logic specifications (`encodeBytesSpec`,
-`encodeBytesSpecX`) for `<PolyEncoder as Encoder>::encode_bytes` (`0x6b6b8`, Block `417`).
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.EncodeBytes
 
@@ -53,7 +42,7 @@ abbrev encodeBytesStackX : Nat := 560 + extHookStack
 
 /-- Byte slice permission at `p`: read-only (`p ↦ᵣ bs`) when `ro = true`, read-write (`p ↦ₛ bs`)
     when `ro = false`. -/
-def bytesAt (ro : Bool) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def bytesAt (ro : Bool) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   if ro then p ↦ᵣ bs else p ↦ₛ bs
 
 @[simp] theorem bytesAt_true (p : BitVec 64) (bs : List (BitVec 8)) :
@@ -65,7 +54,7 @@ def bytesAt (ro : Bool) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
 /-! ## Pure Total Characterization of `PolyEncoder.encodeBytes` -/
 
 /-- Total version of `PolyEncoder.distributeMsgChunks` for `pts.length = 16` and even-length `msg`. -/
-def distributeMsgChunksTotal : Nat → List (BitVec 8) → List Point → List Point
+@[expose] def distributeMsgChunksTotal : Nat → List (BitVec 8) → List Point → List Point
   | _, [], pts => pts
   | _, [ _ ], pts => pts
   | i, c0 :: c1 :: rest, pts =>
@@ -76,7 +65,7 @@ def distributeMsgChunksTotal : Nat → List (BitVec 8) → List Point → List P
     distributeMsgChunksTotal (i + 1) rest pts'
 
 /-- Total pure result of `PolyEncoder.encodeBytes msg` (`PolyEncoder.encodeBytes` never panics). -/
-def encodeBytesResult (msg : List (BitVec 8)) : Except EncodingError PolyEncoder :=
+@[expose] def encodeBytesResult (msg : List (BitVec 8)) : Except EncodingError PolyEncoder :=
   if msg.length % 2 != 0 then
     .error (.polynomialError .messageLengthEven)
   else if msg.length > (1 <<< 16) * NUM_POLYS then
@@ -253,7 +242,7 @@ structure EncodeBytesGhost where
   msg : List (BitVec 8)
 
 /-- Specification of `<PolyEncoder as Encoder>::encode_bytes` (`0x6b6b8`): reads `bytesAt x.msgRO x.msgA x.msg` (`x0 = msgA`, `x1 = msg.length`) and writes `resultPolyEncoderAt A out (encodeBytesResult x.msg)` to `x8 = out` (or panics on OOM). -/
-def encodeBytesSpec (A : RustAlloc) : Spec EncodeBytesGhost where
+@[expose] def encodeBytesSpec (A : RustAlloc) : Spec EncodeBytesGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.msgA ∧
       s.readReg64 .x1 = BitVec.ofNat 64 x.msg.length ∧
@@ -269,7 +258,7 @@ def encodeBytesSpec (A : RustAlloc) : Spec EncodeBytesGhost where
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Extended-stack variant of `encodeBytesSpec` (`encodeBytesStackX = 560 + extHookStack`). -/
-def encodeBytesSpecX (A : RustAlloc) : Spec EncodeBytesGhost where
+@[expose] def encodeBytesSpecX (A : RustAlloc) : Spec EncodeBytesGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.msgA ∧
       s.readReg64 .x1 = BitVec.ofNat 64 x.msg.length ∧
@@ -284,30 +273,18 @@ def encodeBytesSpecX (A : RustAlloc) : Spec EncodeBytesGhost where
       A.pool ∗ stackAt s0.sp encodeBytesStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def EncodeBytesOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (contractProg b ext)
-    ((contractProg b ext).fnAddr encodeBytesName)
-    (encodeBytesSpec A)
-
-def EncodeBytesOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (contractProg img.base ext)
-    ((contractProg img.base ext).fnAddr encodeBytesName)
-    ((encodeBytesSpecX A).inImage img)
-
 @[simp, arm64_norm, wp_norm]
 theorem ls_resolve_blk_417 (pl : Obj.MultiPlacement) :
     libsignalSessionLib.resolve pl encodeBytesName = pl.base 417 :=
   ls_resolve_block (by decide +kernel)
 
-def EncodeBytesPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncodeBytesPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_417).rebase (blkPl_417).base (Rust.withPanics ext))
     ((blkPl_417).base)
     (encodeBytesSpec A)
 
-def EncodeBytesPlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncodeBytesPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_417).rebase (blkPl_417).base (Rust.withPanics ext))
     ((blkPl_417).base)
@@ -316,18 +293,6 @@ def EncodeBytesPlacedOkX [LibsignalPlacement] (A : RustAlloc)
 /-! ## Instruction Decode Tree and Fetch Macro (`0x6b6b8..0x6b9fc`) -/
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
-
-gen_decodes libsignalSessionCode_tree spqrEncodeBytesBin
-  [0x662c0 → 0x66604]
-
-@[simp, arm64_norm] theorem encodeBytes_fnOff :
-    libsignalSessionCode.fnOff encodeBytesName = 0x662c0 :=
-  libsignalSessionCode_fnOff_0x662c0
-
-macro "encode_bytes_fetches_range " b:term:max H:term:max k0:num len:num : tactic =>
-  `(tactic| code_fetches_range CryptoVerification.libsignalSessionCode spqrEncodeBytesBin $b $H libsignalSessionCode_fnOff_0x662c0 0x662c0 $k0 $len)
-
-/-! ## Shared Pure & Separation-Logic Helpers for `encode_bytes` -/
 
 theorem sepWPp_pure_mid {prog : Program} {target_pc : BitVec 64}
     {s : State} {L1 L2 R : SepProp} {φ : Prop}
@@ -484,7 +449,7 @@ theorem cells9_fsp_entails (fsp v0 v1 v2 v3 v4 v5 v6 v7 v8 : BitVec 64) :
   simpa only [Nat.reduceAdd, BitVec.ofNat_eq_ofNat, sepConj_emp] using h0
 
 /-- The 12 saved register cells at `s0.sp - 96#64 .. s0.sp - 8#64`. -/
-def savedCells (s0 : State) : SepProp :=
+@[expose] def savedCells (s0 : State) : SepProp :=
   ((s0.sp - 96#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5)) ∗
   ((s0.sp - 88#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5)) ∗
   ((s0.sp - 80#64) ↦₆₄ s0.readReg64 (Reg.gpr 28#5)) ∗

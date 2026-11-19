@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # Relocatable Frame and `InMainPlaced` Helpers for `main`
@@ -21,7 +22,7 @@ Re-exports pure stack-frame helpers from `Frame.lean` and provides `[LibsignalPl
 `InMainPlaced` alignment and step-preservation lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -96,24 +97,6 @@ theorem InMainPlaced.of_call [LibsignalPlacement] {CodeOk : Memory → Prop} [hC
   sp := hsp.trans hs.sp
   fp := hcs.2.2.2.2.2.2.2.2.2.2.1.trans hs.fp
   inv := hCI.of_keepsFrozen hs.inv hkf
-  vregs := hcs.2.2.2.2.2.2.2.2.2.2.2.trans hs.vregs
-  spAligned := hs.spAligned
-
-/-- Assemble `InMainPlaced` across a call that directly hands back `CodeOk s'.mem`. -/
-theorem InMainPlaced.of_call_inv [LibsignalPlacement] {CodeOk : Memory → Prop}
-    {s0 s s' : State} {k k' : Nat}
-    (hs : InMainPlaced CodeOk s0 s k)
-    (hpc : s'.pc = mPcPlaced k')
-    (hrun : s'.status = .Running)
-    (hsp : s'.sp = s.sp)
-    (hcs : CalleeSavedPreserved s s')
-    (hinv : CodeOk s'.mem) :
-    InMainPlaced CodeOk s0 s' k' where
-  pc := hpc
-  run := hrun
-  sp := hsp.trans hs.sp
-  fp := hcs.2.2.2.2.2.2.2.2.2.2.1.trans hs.fp
-  inv := hinv
   vregs := hcs.2.2.2.2.2.2.2.2.2.2.2.trans hs.vregs
   spAligned := hs.spAligned
 

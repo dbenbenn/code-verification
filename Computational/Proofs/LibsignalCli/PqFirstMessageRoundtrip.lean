@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Specifications.SignalSession.PqStatement
+public import LibsignalBinary.Proofs.SignalSession.PqStatement
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.Crypto
 import Computational.Proofs.LibsignalCli.PqFirstMessageSpqr
 import Computational.Proofs.E2E.Pqxdh.FirstMessageRoundtrip
 import Computational.Proofs.SignalWireRoundTrip
 import LibsignalBinary.Proofs.SpecLemmas.SignalPqxdh.Model
-import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDec
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.CBCDec
 
 /-!
 # First-Message Roundtrip Through the CLI Models
@@ -25,7 +25,7 @@ pre-key bundle and sends `pt`, her wire output is a valid pre-key message naming
 Bob's `pqRecvPrekeyModel` recovers `pt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

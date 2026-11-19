@@ -10,15 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Phase23PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Proof
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Bytes.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Phase23PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Proof -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Bytes.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
@@ -27,6 +27,7 @@ import LibsignalBinary.Proofs.TripleRatchet.Bytes.FromBudget
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSliceBudget
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `prost::encoding::bytes::merge [local#3]` (Block `290`): Budget-Threaded Verification
@@ -36,7 +37,7 @@ Relocatable `[LibsignalPlacement]` verification of `prost::encoding::bytes::merg
 `RustCliAllocBudget M` and `BudgetLimits`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -113,7 +114,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Envelope-parameterized budget-threaded raw contract of
 `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#3]` (Block `290`). -/
-def bytesMerge3RawSpecOfEnv2 {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def bytesMerge3RawSpecOfEnv2 {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : BytesMergeGhost → List AllocEvent → Prop) :
     Spec (BytesMergeGhost × M.σ) where
@@ -149,7 +150,7 @@ abbrev bytesMerge3RawSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
 /-- Canonical budget-threaded raw contract of
 `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#3]` (Block `290`),
 parameterized by `MergeDefsBudget.BytesMergeEnv`. -/
-def bytesMerge3RawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def bytesMerge3RawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BytesMergeGhost × M.σ) :=
   bytesMerge3RawSpecOfEnv A lim BytesMergeEnv
 
@@ -163,7 +164,7 @@ theorem bytesMerge3RawSpec_eq_polyCommon {M : AllocCostModel} (A : RustCliAllocB
   rfl
 
 /-- Envelope-parameterized `LibsignalSpqrV1.Proto.mergeBytes` raw contract of `bytes::merge [local#3]`. -/
-def bytesMerge3ProtoRawSpecOfEnv2 {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def bytesMerge3ProtoRawSpecOfEnv2 {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : BytesMergeProtoGhost → List AllocEvent → Prop) :
     Spec (BytesMergeProtoGhost × M.σ) where
@@ -191,7 +192,7 @@ def bytesMerge3ProtoRawSpecOfEnv2 {M : AllocCostModel} (A : RustCliAllocBudget M
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
 /-- Canonical `LibsignalSpqrV1.Proto.mergeBytes` budget-threaded raw contract of `bytes::merge [local#3]`. -/
-def bytesMerge3ProtoRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def bytesMerge3ProtoRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BytesMergeProtoGhost × M.σ) :=
   bytesMerge3ProtoRawSpecOfEnv2 A lim (fun x => BytesMergeEnv x.toCodec)
     (fun x => BytesMergeEnv x.toCodec)

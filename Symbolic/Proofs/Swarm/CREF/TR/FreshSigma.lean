@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Stage1Kyber -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.Stage1Kyber -- shake: keep -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.Bytes.AttackerKnowledge
 import DY.ALaCarte.Basic
@@ -32,7 +32,7 @@ import Symbolic.Specifications.Model.EquationalTheory.X25519
 import Symbolic.Specifications.Model.EquationalTheory.Kem
 import Symbolic.Specifications.Model.EquationalTheory.Spqr
 import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.SymEnc
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
@@ -61,7 +61,7 @@ Invariance of concretization (`gamma'` and `gamma`), session state relations, an
 matching under `updateFreshAt` at timestamps beyond `MemoStampsLt` / `StampsLt`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -145,7 +145,7 @@ theorem at?_eq_some_of_getLocalState_some {p : Participant} {stateIdx : Nat}
 
 /-! ## `updateFreshAt` and `MemoStampsLt` / `StampsLt` -/
 
-def updateFreshAt (σ : Nat → Nat → DY.Libsignal.HwBytes) (ts n : Nat) (m : DY.Libsignal.HwBytes) :
+@[expose] def updateFreshAt (σ : Nat → Nat → DY.Libsignal.HwBytes) (ts n : Nat) (m : DY.Libsignal.HwBytes) :
     Nat → Nat → DY.Libsignal.HwBytes :=
   fun i k => if i = ts ∧ k = n then m else σ i k
 
@@ -155,11 +155,11 @@ def updateFreshAt (σ : Nat → Nat → DY.Libsignal.HwBytes) (ts n : Nat) (m : 
 theorem setupTrace_le_runTrace (r₀ : ProtocolSetup) (ms : List Move) :
     setupTrace r₀ ≤ runTraceMoves r₀ ms := runMoves_le ms (setupTrace r₀)
 
-def MemoStampsLt (ts : Nat) (g : ConcretizedTerm) : Prop :=
+@[expose] def MemoStampsLt (ts : Nat) (g : ConcretizedTerm) : Prop :=
   ∀ (t sh : DY.Bytes) (v : HwBytes) (r : DY.Random.Random DY.Bytes),
     (t, sh, v) ∈ g.memo → t.view? DY.Random.Random = some r → r.timestamp < ts
 
-def StampsLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat) (b : DY.Bytes) : Prop :=
+@[expose] def StampsLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat) (b : DY.Bytes) : Prop :=
   MemoStampsLt ts (gamma' i S g b)
 
 theorem memoStampsLt_of_mem {ts : Nat} {v : HwBytes} {self sh : DY.Bytes} {cs : List ConcretizedTerm}
@@ -179,7 +179,7 @@ theorem memoStampsLt_of_spqrKeyNode {ts : Nat} {v : HwBytes} {cs : List Concreti
     (h : MemoStampsLt ts (spqrKeyNode v cs)) {c : ConcretizedTerm} (hc : c ∈ cs) : MemoStampsLt ts c :=
   memoStampsLt_of_spqrNode h hc
 
-def MemoRel (ts : Nat) (p : ConcretizedTerm × ConcretizedTerm) : Prop := MemoStampsLt ts p.1 → p.2 = p.1
+@[expose] def MemoRel (ts : Nat) (p : ConcretizedTerm × ConcretizedTerm) : Prop := MemoStampsLt ts p.1 → p.2 = p.1
 
 theorem gConcat0_pp2 (ts : Nat) (rec1 rec2 : DY.Bytes → ConcretizedTerm) :
     DY.Bytes.PartialProof2 concretizeConcat concretizeConcat rec1 rec2 (MemoRel ts) := by
@@ -975,7 +975,7 @@ theorem stampsLt_trHonestWireMsg {i : ExternInterpretation} {S : OpaqueSymbolSem
 
 /-! ## State, visible-entry, and trace-entry stamp predicates -/
 
-def StateStampsLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat) (st : TRState) : Prop :=
+@[expose] def StateStampsLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat) (st : TRState) : Prop :=
   StampsLt i S g ts st.myIk ∧ StampsLt i S g ts st.peerIk ∧ StampsLt i S g ts st.rk ∧
   StampsLt i S g ts st.dhs ∧ StampsLt i S g ts st.cks ∧ StampsLt i S g ts st.spqr ∧
   ∀ c ∈ st.recv, StampsLt i S g ts c.ratchetKey ∧ StampsLt i S g ts c.chainKey
@@ -1014,12 +1014,12 @@ theorem trKeyShape_updateFreshAt_of_stampsLt {i : ExternInterpretation} {S : Opa
 
 /-- Additional symbolic terms carried by a layout (`preKeyInner` base keys) and read by
 `EventMatchesEntry` through `gamma`. -/
-def layoutKeys : VisByteLayout → List DY.Bytes
+@[expose] def layoutKeys : VisByteLayout → List DY.Bytes
   | .preKeyInner eks => eks
   | _ => []
 
 /-- Every symbolic term read by `gamma` when matching `v` has random timestamps below `ts`. -/
-def VisStampsLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat) (v : VisEntry) : Prop :=
+@[expose] def VisStampsLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat) (v : VisEntry) : Prop :=
   (∀ t ∈ v.terms, StampsLt i S g ts t) ∧ ∀ t ∈ layoutKeys v.layout, StampsLt i S g ts t
 
 theorem visStampsLt_of_terms {i : ExternInterpretation} {S : OpaqueSymbolSemantics} {g : Ghost} {ts : Nat}
@@ -1128,19 +1128,19 @@ theorem eventMatchesEntry_updateFreshAt_of_visStampsLt (i : ExternInterpretation
     refine exists_congr fun t => and_congr_right fun ht => ?_
     rw [gamma_updateFreshAt_of_stampsLt i S g ts n m t (hv t (by simp [ht]))]
 
-def EventStampsLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat) : TREvent → Prop
+@[expose] def EventStampsLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat) : TREvent → Prop
   | .SkippedKeyStored _ pk _ seed _ _ => StampsLt i S g ts seed ∧ StampsLt i S g ts pk
   | .ExposedMK _ seed _ _ => StampsLt i S g ts seed
   | .ExposedSpqr _ spqr _ => StampsLt i S g ts spqr
   | .Received _ _ _ _ m => StampsLt i S g ts m
   | _ => True
 
-def PQEventStampsLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat) : PQXDHEvent → Prop
+@[expose] def PQEventStampsLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat) : PQXDHEvent → Prop
   | .IdentityRegistered _ ikPk vk _ => StampsLt i S g ts ikPk ∧ StampsLt i S g ts vk
   | .BobDone _ _ _ _ _ _ _ ek _ _ => StampsLt i S g ts ek
   | _ => True
 
-def EntryStampsLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat)
+@[expose] def EntryStampsLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat)
     (ent : ExecTrace.Entry) : Prop :=
   (∀ e : Network.ExecEntryT, TraceEntryHas.proj ent = some e → StampsLt i S g ts e.msg) ∧
   (∀ e : StEntry, TraceEntryHas.proj ent = some e → StateStampsLt i S g ts e.st.state) ∧
@@ -1148,7 +1148,7 @@ def EntryStampsLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Gh
   (∀ e : PQStEntry, TraceEntryHas.proj ent = some e → StampsLt i S g ts e.st.state.sk) ∧
   (∀ e : PQEvEntry, TraceEntryHas.proj ent = some e → PQEventStampsLt i S g ts e.ev)
 
-def TraceEntriesLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat)
+@[expose] def TraceEntriesLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat)
     (tr : ExecTrace) : Prop :=
   (∀ b, tr.BaseAttackerKnows b → StampsLt i S g ts b) ∧
   (∀ j (hj : j < tr.length), EntryStampsLt i S g ts (tr.at j hj))

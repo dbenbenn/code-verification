@@ -22,7 +22,7 @@ at most one session per ephemeral key (`bhE2EGuard`), replacing the tested sessi
 index `k` with a uniform `SampledSessionKey` preserves the adversary's view.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -49,7 +49,7 @@ abbrev BHDrvPrefixKeyBitGen :=
 
 /-- Initializes and appends a promoted `sessionSchemeFixedSpk` instance when `bhE2EGuard` and
 32-byte key lengths hold. -/
-def bhFinishStartSpkGen {S : SignalPqxdh.Setup} {ℓ : ℕ} (C : Crypto) (K : MlKem)
+@[expose] def bhFinishStartSpkGen {S : SignalPqxdh.Setup} {ℓ : ℕ} (C : Crypto) (K : MlKem)
     (σ : BHE2EDrvState S ℓ) (sid : SignalPqxdh.SessionId S)
     (kr1 kr2 : SignalPqxdh.KeyIndResponse) (kb : SampledSessionKey × Bool) :
     Option ℕ × BHE2EDrvState S ℓ :=
@@ -72,7 +72,7 @@ def bhFinishStartSpkGen {S : SignalPqxdh.Setup} {ℓ : ℕ} (C : Crypto) (K : Ml
 
 /-- Exact hybrid generator at step `k`: derives `bhKeySOf dk ac` with challenge bit `b_k` at `k`,
 `true` below `k`, and `false` above `k`. -/
-def bhMkPrefixExact (k : ℕ) (b_k : Bool) : BHDrvPrefixKeyBitGen :=
+@[expose] def bhMkPrefixExact (k : ℕ) (b_k : Bool) : BHDrvPrefixKeyBitGen :=
   fun len kr1 _ => do
     let ac ← ($ᵗ BitVec 256 : ProbComp (BitVec 256))
     let dk := match kr1 with | .drKeyResp dk => dk | _ => default
@@ -81,7 +81,7 @@ def bhMkPrefixExact (k : ℕ) (b_k : Bool) : BHDrvPrefixKeyBitGen :=
 
 /-- Lazy hybrid generator at step `k`: substitutes a fresh uniform `SampledSessionKey` at valid
 instance `k`. -/
-def bhMkPrefixLazy (k : ℕ) (b_k : Bool) : BHDrvPrefixKeyBitGen :=
+@[expose] def bhMkPrefixLazy (k : ℕ) (b_k : Bool) : BHDrvPrefixKeyBitGen :=
   fun len kr1 kr2 => do
     let ac ← ($ᵗ BitVec 256 : ProbComp (BitVec 256))
     let b_use := if len == k then b_k else decide (len < k)
@@ -100,7 +100,7 @@ def bhMkPrefixLazy (k : ℕ) (b_k : Bool) : BHDrvPrefixKeyBitGen :=
 
 /-- Post-observation of a model-state E2E driver run: outputs a uniform coin if a tested session
 lost freshness, otherwise prioritizes adversary win flags over the guess `b'`. -/
-def bhComposedPostObs {S : SignalPqxdh.Setup} {ℓ : ℕ} (P : SignalPqxdh.Primitives) :
+@[expose] def bhComposedPostObs {S : SignalPqxdh.Setup} {ℓ : ℕ} (P : SignalPqxdh.Primitives) :
     Bool × BHE2EDrvState S ℓ → ProbComp Bool :=
   fun ⟨b', σ⟩ =>
     if !allTestedSessionsFresh P σ.st then do
@@ -113,7 +113,7 @@ namespace Prefix1Key
 
 /-- Promotes `sid` under `bhE2EGuard` by querying `ki` for `.testSession` and `.revealSpkSk` and
 sampling `(key, bit)` via `mkKeyBit`. -/
-def bhE2ELocalStartGenWith {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhE2ELocalStartGenWith {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : MlKem) (mkKeyBit : ModelDriverKeyBitGen)
     (σ : BHE2EDrvState S ℓ) (sid : SignalPqxdh.SessionId S) :
@@ -127,7 +127,7 @@ def bhE2ELocalStartGenWith {S : SignalPqxdh.Setup} {ℓ : ℕ}
     return bhFinishStartSpkGen C K { σ with st := st2 } sid kr1 kr2 kb
 
 /-- Model-state E2E driver `QueryImpl` over `ki` for a fixed `ModelDriverKeyBitGen`. -/
-def bhE2EDrvImplGenWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhE2EDrvImplGenWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) (mkKeyBit : ModelDriverKeyBitGen) :
@@ -158,7 +158,7 @@ def bhE2EDrvImplGenWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
 
 /-- Model-state E2E driver `QueryImpl` over `ki` dispatching to `mkP σ.insts.length` at each
 promotion. -/
-def bhE2EDrvImplPrefixWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhE2EDrvImplPrefixWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) (mkP : BHDrvPrefixKeyBitGen) :
@@ -168,7 +168,7 @@ def bhE2EDrvImplPrefixWith {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (bhE2EDrvImplGenWith ki P C K qep decT encT (mkP σ.insts.length) q).run σ
 
 /-- Exact hybrid prefix experiment at step `k` with bit `b_k`. -/
-def bhPrefixExactFullExpWith (S : SignalPqxdh.Setup)
+@[expose] def bhPrefixExactFullExpWith (S : SignalPqxdh.Setup)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (ℓ qep : ℕ) {Pt : Type}
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) (k : ℕ) (b_k : Bool)
@@ -177,7 +177,7 @@ def bhPrefixExactFullExpWith (S : SignalPqxdh.Setup)
     bhComposedPostObs P
 
 /-- Lazy hybrid prefix experiment at step `k` with bit `b_k`. -/
-def bhPrefixLazyFullExpWith (S : SignalPqxdh.Setup)
+@[expose] def bhPrefixLazyFullExpWith (S : SignalPqxdh.Setup)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (ℓ qep : ℕ) {Pt : Type}
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) (k : ℕ) (b_k : Bool)

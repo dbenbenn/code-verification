@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProof
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProof -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsFastPlaced
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsSlow
@@ -19,6 +19,7 @@ import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsSlowPlaced
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PolysLoopPlaced
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PolysTailPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Placed Top-Level Verification
@@ -28,7 +29,7 @@ parameterized over `PointsToPolysLoopPlacedProp A ext` (`+976 -> +4424`), to pro
 `poly_next_chunk_rodata_placed_ok_of_p2p` and `poly_next_chunk_placed_ok_of_p2p`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -66,7 +67,7 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 
 /-- Relocatable `[LibsignalPlacement]` contract for the 16-iteration `points_to_polys` conversion
     loop (`+976 -> +4424` in Block `416`), matching `pointsToPolysLoop_tail_sepWPp` at `rem = 15, j = 0`. -/
-def PointsToPolysLoopPlacedProp [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PointsToPolysLoopPlacedProp [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   ∀ {Q : State → SepProp → Prop}
     (s0 s : State) (_hcl : LibsignalCodeLoaded lsmpl s.mem)
@@ -104,6 +105,7 @@ def PointsToPolysLoopPlacedProp [LibsignalPlacement] (A : RustAlloc)
          ((fsp + 640#64) ↦₆₄ u640') ∗ ((fsp + 648#64) ↦₆₄ u648') ∗
          memRegion (fsp + 656#64) 24 ∗
          ((fsp + 1040#64) ↦₆₄ u1040') ∗ ((fsp + 1048#64) ↦₆₄ u1048') ∗ ((fsp + 1056#64) ↦₆₄ u1056') ∗
+         memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
          completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
          stackAt fsp lagrangePrepareStack ∗ Frame)
         Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ nextChunkOnPanic s0 sf ∗ R))) →
@@ -120,6 +122,7 @@ def PointsToPolysLoopPlacedProp [LibsignalPlacement] (A : RustAlloc)
        ((fsp + 640#64) ↦₆₄ u640) ∗ ((fsp + 648#64) ↦₆₄ u648) ∗
        memRegion (fsp + 656#64) 24 ∗
        ((fsp + 1040#64) ↦₆₄ u1040) ∗ ((fsp + 1048#64) ↦₆₄ u1048) ∗ ((fsp + 1056#64) ↦₆₄ u1056) ∗
+       memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
        completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
        stackAt fsp lagrangePrepareStack ∗ Frame)
       Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ nextChunkOnPanic s0 sf ∗ R))
@@ -163,6 +166,7 @@ private theorem pointsToPolysLoop_lscl_of_prop [LibsignalPlacement] {A : RustAll
          ((fsp + 640#64) ↦₆₄ u640') ∗ ((fsp + 648#64) ↦₆₄ u648') ∗
          memRegion (fsp + 656#64) 24 ∗
          ((fsp + 1040#64) ↦₆₄ u1040') ∗ ((fsp + 1048#64) ↦₆₄ u1048') ∗ ((fsp + 1056#64) ↦₆₄ u1056') ∗
+         memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
          completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
          stackAt fsp lagrangePrepareStack ∗ Frame)
         Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ nextChunkOnPanic s0 sf ∗ R))) :
@@ -179,6 +183,7 @@ private theorem pointsToPolysLoop_lscl_of_prop [LibsignalPlacement] {A : RustAll
        ((fsp + 640#64) ↦₆₄ u640) ∗ ((fsp + 648#64) ↦₆₄ u648) ∗
        memRegion (fsp + 656#64) 24 ∗
        ((fsp + 1040#64) ↦₆₄ u1040) ∗ ((fsp + 1048#64) ↦₆₄ u1048) ∗ ((fsp + 1056#64) ↦₆₄ u1056) ∗
+       memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
        completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
        stackAt fsp lagrangePrepareStack ∗ Frame)
       Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ nextChunkOnPanic s0 sf ∗ R)) := by
@@ -405,9 +410,7 @@ theorem nextChunk_points_slow_placed_sepWPp [LibsignalPlacement]
        ((x.encA + polyEncoderIdxOff) ↦₃₂ x.enc.idx) ∗
        memRegion (x.encA + polyEncoderPadOff) polyEncoderPadSize ∗
        (((s0.sp - 1200#64) + 56#64) ↦₆₄ x.outA) ∗
-       memRegion (s0.sp - 1200#64) 8 ∗
        memRegion ((s0.sp - 1200#64) + 680#64) 360 ∗
-       memRegion ((s0.sp - 1200#64) + 1064#64) 40 ∗
        savedCells s0 ∗
        memRegion ((s0.sp - 1200#64) - 17232#64) 12928)
       R hpc4 hrun4 hsp4 htr4 hx19_4 hx20_4 hx28_4 hx29_4 ?_)

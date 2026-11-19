@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopErrDefs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ConstsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Fetch
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ConstsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Previous-Session Version-Skip Tail Statement
@@ -21,7 +24,7 @@ Relocatable (`[LibsignalPlacement]`) statement `OverPrevErrCliPlacedStmt`
 (`(blkPl_518).base + 0x1fd4 → (blkPl_518).base + 0x2cfc`) on `lsProg_518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,7 +43,7 @@ open CryptoVerification.CliHandshake.RespClosurePlaced
 
 /-- Relocatable `[LibsignalPlacement]` previous-session version-skip tail
 (`(blkPl_518).base + 0x1fd4 → (blkPl_518).base + 0x2cfc`) on `lsProg_518 ext`. -/
-def OverPrevErrCliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverPrevErrCliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {A : RustAlloc} (ext : String → Option (State → State)),
     ∀ (s0 s : State) (prevPtr errsPtr : BitVec 64) (msgVer : BitVec 32)
       (G : SessionGhost) (st : SessionState (List (BitVec 8))),

@@ -9,13 +9,10 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Specs
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP2a
-import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.DecodesIsTrusted
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP2a -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.IsTrusted
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
-import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadDecodes
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.RecClone
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreEmptyHelpers
@@ -23,6 +20,9 @@ import LibsignalBinary.Proofs.E2E.InMem.IdentityKeyStoreImpl.Defs
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Empty-Table `InMemSessionStore` and `InMemIdentityKeyStore` Poll Closures
@@ -34,7 +34,7 @@ Proves `subroutine_ok` for the empty-table (`emptyTableAt`) fast paths of
 and unaligned 64-byte `KeyPair` repack helpers.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Pqxdh.ResponderClosure
 
@@ -99,61 +99,6 @@ structure IsTrustedIdentityEmptyGhost where
   qKeyPtr : BitVec 64
   direction : BitVec 8
 
-/-- Specification of `InMemIdentityKeyStore::is_trusted_identity::{closure#0}` (`0x079c4`)
-on an empty table (`emptyTableAt base mp k0 k1`):
-reads `items == 0` at `mp + 24`, branches at `0x7a04` (`cbz x8, 0x7adc`) directly to `mov w0, #1`,
-writes `Ready(Ok(true))` (`pollBoolResultAt sret true`) and `[futPtr + 24] = 1#8`, and returns. -/
-def isTrustedIdentityEmptySpec : Spec IsTrustedIdentityEmptyGhost where
-  pre := fun x s =>
-    ⌜s.readReg64 .x0 = x.futPtr ∧ s.readReg64 .x8 = x.sret⌝ ∗
-      (x.futPtr ↦₆₄ x.mp) ∗ ((x.futPtr + 8#64) ↦₆₄ x.qAddrPtr) ∗
-      ((x.futPtr + 16#64) ↦₆₄ x.qKeyPtr) ∗ ((x.futPtr + 24#64) ↦₈ 0#8) ∗
-      ((x.futPtr + 25#64) ↦₈ x.direction) ∗
-      emptyTableAt x.base x.mp x.k0 x.k1 ∗
-      memRegion x.sret 48 ∗
-      stackAt s.sp isTrustedIdentityClosureStack
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      (x.futPtr ↦₆₄ x.mp) ∗ ((x.futPtr + 8#64) ↦₆₄ x.qAddrPtr) ∗
-      ((x.futPtr + 16#64) ↦₆₄ x.qKeyPtr) ∗ ((x.futPtr + 24#64) ↦₈ 1#8) ∗
-      ((x.futPtr + 25#64) ↦₈ x.direction) ∗
-      emptyTableAt x.base x.mp x.k0 x.k1 ∗
-      pollBoolResultAt x.sret true ∗
-      stackAt s0.sp isTrustedIdentityClosureStack
-
-theorem isTrustedIdentityEmpty_ok (b : BitVec 64) (ext : HookMap) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr isTrustedIdentityClosureName)
-      isTrustedIdentityEmptySpec := by
-  simp only [isTrustedIdentityEmptySpec]
-  have hfn : libsignalSessionCode.fnOff isTrustedIdentityClosureName = 0x079c4 :=
-    isTrustedIdentityClosure_fnOff
-  code_fetches CryptoVerification.libsignalSessionCode libsignalSessionBin b ext hfn 31172 368
-  clear hfn
-  dsimp only [RebasedProg, BitVec.ofNat_eq_ofNat]
-  generalize_entry (libsignalSessionCode.rebase b ext).fnAddr isTrustedIdentityClosureName = entry
-  generalize_entry (libsignalSessionCode.rebase b ext) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  wp_init x s0
-  examples_hide_fetches
-  obtain ⟨futPtr, sret, base, mp, k0, k1, qAddrPtr, qKeyPtr, direction⟩ := x
-  dsimp only at *
-  wp_conv_pre => rw [emptyTableAt_eq]
-  wp_conv_pre => rw [sret48_isTrusted_split_eq sret]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  repeat' (apply IsTrusted.sepWP_exists_elim; intro _)
-  wp_conv_pre => rw [stackAt_isTrusted_eq s0.sp]
-  simp only [sepExists_sepConj_right]
-  repeat' (apply IsTrusted.sepWP_exists_elim; intro _)
-  wp_steps
-  refine SepWP.fold (pollBoolResultAt_true_of_cells sret) (by sep_focus) ?_
-  refine SepWP.fold (Entails.of_eq (emptyTableAt_eq base mp k0 k1).symm) (by sep_focus) ?_
-  refine SepWP.fold (stackAt_isTrusted_of_parts s0.sp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-    (by sep_focus) ?_
-  wp_done
-
-/-! ## 2. `load_session::{closure#0}` (`0x08ce4`) on `emptyTableAt` -/
-
 /-- Ghost parameters for `InMemSessionStore::load_session::{closure#0}` (`0x08ce4`)
 on an empty table (`emptyTableAt`). -/
 structure LoadSessionEmptyGhost where
@@ -164,82 +109,6 @@ structure LoadSessionEmptyGhost where
   k0 : BitVec 64
   k1 : BitVec 64
   qAddrPtr : BitVec 64
-
-/-- Specification of `InMemSessionStore::load_session::{closure#0}` (`0x08ce4`)
-on an empty table (`emptyTableAt base mp k0 k1`):
-reads `items == 0` at `mp + 24`, branches at `0x8d24` (`cbz x8, 0x8e10`) directly to the
-`None` return path (`0x8e98`), writes `Ready(Ok(None))` (`pollOptSessionRecordResultAt A sret none`)
-and `[futPtr + 16] = 1#8`, and returns. -/
-def loadSessionEmptySpec (A : RustAlloc) : Spec LoadSessionEmptyGhost where
-  pre := fun x s =>
-    ⌜s.readReg64 .x0 = x.futPtr ∧ s.readReg64 .x8 = x.sret⌝ ∗
-      (x.futPtr ↦₆₄ x.mp) ∗ ((x.futPtr + 8#64) ↦₆₄ x.qAddrPtr) ∗ ((x.futPtr + 16#64) ↦₈ 0#8) ∗
-      emptyTableAt x.base x.mp x.k0 x.k1 ∗
-      memRegion x.sret 368 ∗
-      stackAt s.sp loadSessionClosureStack
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      (x.futPtr ↦₆₄ x.mp) ∗ ((x.futPtr + 8#64) ↦₆₄ x.qAddrPtr) ∗ ((x.futPtr + 16#64) ↦₈ 1#8) ∗
-      emptyTableAt x.base x.mp x.k0 x.k1 ∗
-      pollOptSessionRecordResultAt A x.sret none ∗
-      stackAt s0.sp loadSessionClosureStack
-
-theorem loadSessionEmpty_ok (b : BitVec 64) (ext : HookMap) (A : RustAlloc)
-    (hHooks : HashbrownBinHooks A ext) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr loadSessionClosureName)
-      (loadSessionEmptySpec A) := by
-  have hMemcpyReg := memcpy_region_ok_at_loadSessionClosure b hHooks
-  simp only [loadSessionEmptySpec]
-  have hfn : libsignalSessionCode.fnOff loadSessionClosureName = 0x08ce4 :=
-    libsignalSessionCode_fnOff_0x8ce4
-  code_fetches CryptoVerification.libsignalSessionCode libsignalSessionBin b ext hfn 36068 512
-  clear hfn
-  dsimp only [RebasedProg, BitVec.ofNat_eq_ofNat] at hMemcpyReg ⊢
-  generalize_entry (libsignalSessionCode.rebase b ext).fnAddr loadSessionClosureName = entry
-  generalize_entry (libsignalSessionCode.rebase b ext) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  wp_init x s0
-  examples_hide_fetches
-  obtain ⟨futPtr, sret, base, mp, k0, k1, qAddrPtr⟩ := x
-  dsimp only at *
-  wp_conv_pre => rw [emptyTableAt_eq]
-  wp_conv_pre => rw [LoadSingle.sret368_split_eq sret]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  apply LoadSingle.sepWP_exists_elim; intro c_sret0
-  wp_conv_pre => rw [LoadSingle.stackAt_load_eq s0.sp]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  repeat' (apply LoadSingle.sepWP_exists_elim; intro _)
-  refine step_stpSimd64_sp_pre (by wp_norm_lhs) (by wp_norm_lhs) (by wp_assumption)
-    (by wp_norm_lhs) (by wp_norm_lhs) (by wp_norm_lhs)
-    (by wp_sep_access_fast) (by wp_sep_access_fast) fun _ => ?_
-  wp_norm_state
-  wp_steps
-  wp_conv_pre => rw [LoadSingle.stackAt_load_sub_eq (s0.sp - 1200#64) 4096 (by decide),
-    memRegion_eq_exists_bytes (s0.sp - 1184#64) 360 (by decide)]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  apply LoadSingle.sepWP_exists_elim; intro bs_uninit
-  refine LoadSingle.sepWP_extract_pure (P := bs_uninit.length =
-    360) (by sep_focus) fun hbs_uninit => ?_
-  wp_call hMemcpyReg (sret + 8#64, s0.sp - 1184#64, bs_uninit)
-  refine SepWP.fold (Entails.of_eq (LoadSingle.stackAt_load_sub_eq (s0.sp - 1200#64) 4096
-    (by decide)).symm)
-    (by sep_focus) ?_
-  refine SepWP.fold (hbs_uninit ▸ pointsToBytes_entails_memRegion (sret + 8#64) bs_uninit)
-    (by sep_focus) ?_
-  refine SepWP.fold (hbs_uninit ▸ pointsToBytes_entails_memRegion (s0.sp - 1184#64) bs_uninit)
-    (by sep_focus) ?_
-  wp_steps
-  refine SepWP.fold (LoadSingle.pollOptSessionRecordResultAt_none_of_parts A sret)
-    (by sep_focus) ?_
-  refine SepWP.fold (Entails.of_eq (emptyTableAt_eq base mp k0 k1).symm)
-    (by sep_focus) ?_
-  refine SepWP.fold (LoadSingle.stackAt_load_of_parts s0.sp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-    (by sep_focus) ?_
-  wp_done
-
-/-! ## 3. `get_identity_key_pair` (`0x2de88`, `0x07b34`) & `get_local_registration_id`
-(`0x2ded4`, `0x07b7c`) -/
 
 open ProofLib.ProgramReflection
 open CryptoVerification.E2E.InMem.IdentityKeyStoreImpl
@@ -252,21 +121,9 @@ abbrev getLocalRegistrationIdClosureName : String :=
   "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::\
     storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}"
 
-theorem getIdentityKeyPairClosure_fnOff :
-    libsignalSessionCode.fnOff getIdentityKeyPairClosureName = 0x07b34 :=
-  libsignalSessionCode_fnOff_0x7b34
-
-theorem getLocalRegistrationIdClosure_fnOff :
-    libsignalSessionCode.fnOff getLocalRegistrationIdClosureName = 0x07b7c :=
-  libsignalSessionCode_fnOff_0x7b7c
-
-gen_decodes libsignalSessionCode_tree storeEmpty [0x2df6c → 0x2e004]
-gen_decodes libsignalSessionCode_tree storeEmpty [0x7b34 → 0x7b68]
-gen_decodes libsignalSessionCode_tree storeEmpty [0x7b7c → 0x7ba4]
-
 /-- 16-byte boxed future for `get_identity_key_pair` and `get_local_registration_id`:
 `[self, state : u8, 7 uninitialized bytes]`. -/
-def inMemId16BoxAt (box self : BitVec 64) (st : BitVec 8) : SepProp :=
+@[expose] def inMemId16BoxAt (box self : BitVec 64) (st : BitVec 8) : SepProp :=
   (box ↦₆₄ self) ∗ ((box + 8#64) ↦₈ st) ∗ memRegion (box + 9#64) 7
 
 theorem inMemId16BoxAt_memRegion (box self : BitVec 64) (st : BitVec 8) :
@@ -297,234 +154,12 @@ private theorem stackAt_inMemId16Shim (sp : BitVec 64) :
       stackAt (sp - 32#64) allocHookStack ∗ cells (sp - 32#64) 4 :=
   ProofLib.stackAt_split_cells sp allocHookStack 4 (by decide)
 
-private theorem fnAddr_tripleRatchetProgAt_storeEmpty_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (Arm64.State → Arm64.State)} {name : String} {off : Nat}
-    (h : libsignalSessionCode.fnOff name = off) :
-    (trTrapProgAt b C abs).fnAddr name = b + BitVec.ofNat 64 off := by
-  simp only [trTrapProgAt, Program.fnAddr_rebase, h]
-
-private theorem fnAddr_tripleRatchetProgAt_storeEmpty {b : BitVec 64} {C : Crypto} {ctl : BitVec
-  64} 
-    {abs : String → Option (Arm64.State → Arm64.State)} {name : String} {off : Nat}
-    (h : libsignalSessionCode.fnOff name = off) :
-    (tripleRatchetProgAt b C ctl abs).fnAddr name = b + BitVec.ofNat 64 off := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr name]
-  exact fnAddr_tripleRatchetProgAt_storeEmpty_trap h
-
 private theorem sepWPp_pure_mid_storeEmpty {prog : Program} {ret : BitVec 64} {s : Arm64.State}
     {A B C : SepProp} {φ : Prop} {Q Qp : Arm64.State → SepProp → Prop}
     (h : φ → SepWPp prog ret s (A ∗ B ∗ C) Q Qp) :
     SepWPp prog ret s (A ∗ B ∗ ⌜φ⌝ ∗ C) Q Qp := by
   rw [show A ∗ B ∗ ⌜φ⌝ ∗ C = ⌜φ⌝ ∗ A ∗ B ∗ C by ac_rfl]
   exact SepWPp.pure_elim h
-
-private theorem idKp_shim_adrp {b : BitVec 64} {H : String → Option (Arm64.State → Arm64.State)}
-    (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr getIdentityKeyPairShimName + 36#64) &&&
-      0xfffffffffffff000#64) = b + 0x2d000#64 := by
-  rw [Program.fnAddr_rebase, libsignalSessionCode_fnOff_0x2df6c, BitVec.add_assoc,
-    ProofLib.ObjectLoad.adrp_page_of_aligned hb]
-  rfl
-
-private theorem regId_shim_adrp {b : BitVec 64} {H : String → Option (Arm64.State → Arm64.State)}
-    (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr getLocalRegistrationIdShimName + 36#64) &&&
-      0xfffffffffffff000#64) = b + 0x2d000#64 := by
-  rw [Program.fnAddr_rebase, libsignalSessionCode_fnOff_0x2dfb8, BitVec.add_assoc,
-    ProofLib.ObjectLoad.adrp_page_of_aligned hb]
-  rfl
-
-/-- Specification of `<InMemIdentityKeyStore as IdentityKeyStore>::get_identity_key_pair`
-(`0x2de88`). -/
-def getIdentityKeyPairShimSpec (A : RustAlloc) (b : BitVec 64) : Spec (BitVec 64) :=
-  ({ pre := fun self s =>
-      ⌜s.readReg64 .x0 = self⌝ ∗
-        A.pool ∗ stackAt s.sp inMemId16ShimStack
-     post := fun self s0 sf =>
-      (∃∗ box : BitVec 64,
-        ⌜sf.readReg64 .x0 = box ∧ sf.readReg64 .x1 = b + bv% (ls_reloc% 0x7b34 - 24) ∧ sf.trace = s0.trace⌝ ∗
-        A.live box 16 8 ∗ inMemId16BoxAt box self 0#8 ∗
-        A.pool ∗ stackAt s0.sp inMemId16ShimStack) } : Spec (BitVec 64)).allowPanicWhen
-    (fun _ s0 sf => allocFailedIn s0 sf ∧ s0.trace <+: sf.trace)
-
-/-- Specification of `<InMemIdentityKeyStore as IdentityKeyStore>::get_local_registration_id`
-(`0x2ded4`). -/
-def getLocalRegIdShimSpec (A : RustAlloc) (b : BitVec 64) : Spec (BitVec 64) :=
-  ({ pre := fun self s =>
-      ⌜s.readReg64 .x0 = self⌝ ∗
-        A.pool ∗ stackAt s.sp inMemId16ShimStack
-     post := fun self s0 sf =>
-      (∃∗ box : BitVec 64,
-        ⌜sf.readReg64 .x0 = box ∧ sf.readReg64 .x1 = b + bv% (ls_reloc% 0x7b7c - 24) ∧ sf.trace = s0.trace⌝ ∗
-        A.live box 16 8 ∗ inMemId16BoxAt box self 0#8 ∗
-        A.pool ∗ stackAt s0.sp inMemId16ShimStack) } : Spec (BitVec 64)).allowPanicWhen
-    (fun _ s0 sf => allocFailedIn s0 sf ∧ s0.trace <+: sf.trace)
-
-set_option maxHeartbeats 1200000 in
-theorem getIdentityKeyPairShim_ok_trap {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (Arm64.State → Arm64.State)}
-    (hA : AllocHooks A abs)
-    (hb : b &&& 0xfff#64 = 0#64) :
-    subroutine_ok (trTrapProgAt b C abs)
-      (b + bv% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair"))
-      (getIdentityKeyPairShimSpec A b) := by
-  have hfn : libsignalSessionCode.fnOff getIdentityKeyPairShimName =
-      num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair") :=
-    getIdentityKeyPairShim_fnOff
-  change subroutine_ok (trTrapProgAt b C abs)
-    (b + BitVec.ofNat 64 (num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair")))
-    (getIdentityKeyPairShimSpec A b)
-  rw [← fnAddr_tripleRatchetProgAt_storeEmpty_trap (b := b) (C := C) (abs := abs) hfn]
-  simp only [getIdentityKeyPairShimSpec, inMemId16BoxAt, inMemId16ShimStack, stackAt_inMemId16Shim]
-  cells_unfold
-  have hAc := AllocContracts.of_tripleRatchetProgAt_trap b C A abs hA
-  have hshim := shim_ok_at2_ext hAc
-    (name := getIdentityKeyPairShimName)
-    (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair"))
-    (by rw [hfn, (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")])
-  have halloc := alloc_ok_at_norm_ext hAc
-    (name := getIdentityKeyPairShimName)
-    (k := num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair"))
-    (by rw [hfn, (ls_stub% "__rustc::__rust_alloc")])
-  clear hAc
-  dsimp only [tripleRatchetProgAtExt] at hshim halloc
-  have hpanic : (trTrapProgAt b C abs).externAt?
-      ((trTrapProgAt b C abs).fnAddr getIdentityKeyPairShimName + BitVec.ofNat 64
-        (num% (ls_off% "alloc::alloc::handle_alloc_error" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair"))) =
-      some Rust.panicked :=
-    panic_at_panicSymbol (hname := "alloc::alloc::handle_alloc_error") hfn
-      (show _ = num% (ls_off% "alloc::alloc::handle_alloc_error") from rfl)
-      (by decide)
-      (fun H => (ls_hook% "alloc::alloc::handle_alloc_error") H)
-      (by simp [Rust.isPanicSymbol])
-  code_fetches CryptoVerification.libsignalSessionCode storeEmpty b
-    (Rust.withPanics (trTrapExterns C abs)) hfn
-    (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair") 76
-  wpp_init self s0
-  have hadrp := idKp_shim_adrp (H := Rust.withPanics (trTrapExterns C abs)) hb
-  examples_generalize_entry
-  examples_hide_fetches
-  have hpow8 : ∃ k, 8 = 2 ^ k := ⟨3, rfl⟩
-  have hlay : LayoutOk 16 8 := ⟨by decide, hpow8, by decide⟩
-  apply SepWPp.of_sepWP (mid := entry + 32#64)
-  wp_steps
-  wp_call hshim ()
-  wp_steps
-  wp_call halloc (16, 8)
-  apply SepWP.done (by simp_all) (by simp_all)
-  by_cases hoom : sf_1.readReg64 (Reg.gpr 0#5) = 0
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) = 0#64 := hoom
-    simp only [hoom, ite_true, sepConj_assoc]
-    refine sepWPp_pure_mid_storeEmpty fun htrace => ?_
-    apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::alloc::handle_alloc_error" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair"))
-    wp_steps
-    apply SepWP.done (by simp_all) (by simp_all)
-    refine SepWPp.panic (by simp_all) (by simp_all) fun hm => ?_
-    simpa only [sepConj_assoc] using
-      allowPanic_panicked (allocFailedIn_of_eq (by simp_all [Rust.panicked])) hm
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom
-    simp only [hoom, ite_false, memRegion_16_id_box, sepExists_sepConj_left,
-      sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun b0 => SepWPp.exists_elim fun u0 => ?_
-    refine sepWPp_pure_mid_storeEmpty fun ⟨hmod, htrace⟩ => ?_
-    apply SepWPp.of_sepWP_ret
-    wp_steps
-    wp_done
-
-set_option maxHeartbeats 1600000 in
-theorem getIdentityKeyPairShim_ok {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64} 
-    {abs : String → Option (Arm64.State → Arm64.State)}
-    (hA : AllocHooks A abs)
-    (hb : b &&& 0xfff#64 = 0#64) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      (b + 0x2df6c#64)
-      (getIdentityKeyPairShimSpec A b) :=
-  subroutine_ok_kit_of_trTrap (getIdentityKeyPairShim_ok_trap hA hb)
-
-set_option maxHeartbeats 1200000 in
-theorem getLocalRegIdShim_ok_trap {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (Arm64.State → Arm64.State)}
-    (hA : AllocHooks A abs)
-    (hb : b &&& 0xfff#64 = 0#64) :
-    subroutine_ok (trTrapProgAt b C abs)
-      (b + bv% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id"))
-      (getLocalRegIdShimSpec A b) := by
-  have hfn : libsignalSessionCode.fnOff getLocalRegistrationIdShimName =
-      num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id") :=
-    getLocalRegistrationIdShim_fnOff
-  change subroutine_ok (trTrapProgAt b C abs)
-    (b + BitVec.ofNat 64 (num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id")))
-    (getLocalRegIdShimSpec A b)
-  rw [← fnAddr_tripleRatchetProgAt_storeEmpty_trap (b := b) (C := C) (abs := abs) hfn]
-  simp only [getLocalRegIdShimSpec, inMemId16BoxAt, inMemId16ShimStack, stackAt_inMemId16Shim]
-  cells_unfold
-  have hAc := AllocContracts.of_tripleRatchetProgAt_trap b C A abs hA
-  have hshim := shim_ok_at2_ext hAc
-    (name := getLocalRegistrationIdShimName)
-    (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id"))
-    (by rw [hfn, (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")])
-  have halloc := alloc_ok_at_norm_ext hAc
-    (name := getLocalRegistrationIdShimName)
-    (k := num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id"))
-    (by rw [hfn, (ls_stub% "__rustc::__rust_alloc")])
-  clear hAc
-  dsimp only [tripleRatchetProgAtExt] at hshim halloc
-  have hpanic : (trTrapProgAt b C abs).externAt?
-      ((trTrapProgAt b C abs).fnAddr getLocalRegistrationIdShimName + BitVec.ofNat 64
-        (num% (ls_off% "alloc::alloc::handle_alloc_error" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id"))) =
-      some Rust.panicked :=
-    panic_at_panicSymbol (hname := "alloc::alloc::handle_alloc_error") hfn
-      (show _ = num% (ls_off% "alloc::alloc::handle_alloc_error") from rfl)
-      (by decide)
-      (fun H => (ls_hook% "alloc::alloc::handle_alloc_error") H)
-      (by simp [Rust.isPanicSymbol])
-  code_fetches CryptoVerification.libsignalSessionCode storeEmpty b
-    (Rust.withPanics (trTrapExterns C abs)) hfn
-    (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id") 76
-  wpp_init self s0
-  have hadrp := regId_shim_adrp (H := Rust.withPanics (trTrapExterns C abs)) hb
-  examples_generalize_entry
-  examples_hide_fetches
-  have hpow8 : ∃ k, 8 = 2 ^ k := ⟨3, rfl⟩
-  have hlay : LayoutOk 16 8 := ⟨by decide, hpow8, by decide⟩
-  apply SepWPp.of_sepWP (mid := entry + 32#64)
-  wp_steps
-  wp_call hshim ()
-  wp_steps
-  wp_call halloc (16, 8)
-  apply SepWP.done (by simp_all) (by simp_all)
-  by_cases hoom : sf_1.readReg64 (Reg.gpr 0#5) = 0
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) = 0#64 := hoom
-    simp only [hoom, ite_true, sepConj_assoc]
-    refine sepWPp_pure_mid_storeEmpty fun htrace => ?_
-    apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::alloc::handle_alloc_error" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id"))
-    wp_steps
-    apply SepWP.done (by simp_all) (by simp_all)
-    refine SepWPp.panic (by simp_all) (by simp_all) fun hm => ?_
-    simpa only [sepConj_assoc] using
-      allowPanic_panicked (allocFailedIn_of_eq (by simp_all [Rust.panicked])) hm
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom
-    simp only [hoom, ite_false, memRegion_16_id_box, sepExists_sepConj_left,
-      sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun b0 => SepWPp.exists_elim fun u0 => ?_
-    refine sepWPp_pure_mid_storeEmpty fun ⟨hmod, htrace⟩ => ?_
-    apply SepWPp.of_sepWP_ret
-    wp_steps
-    wp_done
-
-set_option maxHeartbeats 1600000 in
-theorem getLocalRegIdShim_ok {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64} 
-    {abs : String → Option (Arm64.State → Arm64.State)}
-    (hA : AllocHooks A abs)
-    (hb : b &&& 0xfff#64 = 0#64) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      (b + 0x2dfb8#64)
-      (getLocalRegIdShimSpec A b) :=
-  subroutine_ok_kit_of_trTrap (getLocalRegIdShim_ok_trap hA hb)
 
 structure GetIdentityKeyPairPollGhost where
   futPtr : BitVec 64
@@ -550,7 +185,7 @@ structure GetIdentityKeyPairPollGhost where
 
 /-- Specification of `<InMemIdentityKeyStore as
 IdentityKeyStore>::get_identity_key_pair::{closure#0}` (`0x07b34`). -/
-def getIdentityKeyPairPollSpec : Spec GetIdentityKeyPairPollGhost where
+@[expose] def getIdentityKeyPairPollSpec : Spec GetIdentityKeyPairPollGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.futPtr ∧ s.readReg64 .x8 = x.sret⌝ ∗
       (x.futPtr ↦₆₄ x.self) ∗ ((x.futPtr + 8#64) ↦₈ 0#8) ∗
@@ -576,40 +211,6 @@ def getIdentityKeyPairPollSpec : Spec GetIdentityKeyPairPollGhost where
       ((x.sret + 0x21#64) ↦₆₄ x.ik4) ∗ ((x.sret + 0x29#64) ↦₆₄ x.ik5) ∗
       ((x.sret + 0x31#64) ↦₆₄ x.ik6) ∗ ((x.sret + 0x39#64) ↦₆₄ x.ik7)
 
-theorem getIdentityKeyPairPoll_ok_trap {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (Arm64.State → Arm64.State)} :
-    subroutine_ok (trTrapProgAt b C abs)
-      (b + bv% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}"))
-      getIdentityKeyPairPollSpec := by
-  have hfn : libsignalSessionCode.fnOff getIdentityKeyPairClosureName =
-      num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}") :=
-    getIdentityKeyPairClosure_fnOff
-  change subroutine_ok (trTrapProgAt b C abs)
-    (b + BitVec.ofNat 64 (num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}")))
-    getIdentityKeyPairPollSpec
-  rw [← fnAddr_tripleRatchetProgAt_storeEmpty_trap (b := b) (C := C) (abs := abs) hfn]
-  simp only [getIdentityKeyPairPollSpec]
-  code_fetches CryptoVerification.libsignalSessionCode storeEmpty b
-    (Rust.withPanics (trTrapExterns C abs)) hfn
-    (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}") 52
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨futPtr, sret, self, ik0, ik1, ik2, ik3, ik4, ik5, ik6, ik7,
-    b_sret0, u0, u1, u2, u3, u4, u5, u6, u7⟩ := x
-  dsimp only at *
-  wp_steps
-  wp_done
-
-theorem getIdentityKeyPairPoll_ok {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64} 
-    {abs : String → Option (Arm64.State → Arm64.State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      (b + 0x07b34#64)
-      getIdentityKeyPairPollSpec :=
-  subroutine_ok_kit_of_trTrap getIdentityKeyPairPoll_ok_trap
-
 structure GetLocalRegIdPollGhost where
   futPtr : BitVec 64
   sret : BitVec 64
@@ -620,7 +221,7 @@ structure GetLocalRegIdPollGhost where
 
 /-- Specification of `<InMemIdentityKeyStore as
 IdentityKeyStore>::get_local_registration_id::{closure#0}` (`0x07b7c`). -/
-def getLocalRegIdPollSpec : Spec GetLocalRegIdPollGhost where
+@[expose] def getLocalRegIdPollSpec : Spec GetLocalRegIdPollGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.futPtr ∧ s.readReg64 .x8 = x.sret⌝ ∗
       (x.futPtr ↦₆₄ x.self) ∗ ((x.futPtr + 8#64) ↦₈ 0#8) ∗
@@ -631,41 +232,6 @@ def getLocalRegIdPollSpec : Spec GetLocalRegIdPollGhost where
       (x.futPtr ↦₆₄ x.self) ∗ ((x.futPtr + 8#64) ↦₈ 1#8) ∗
       ((x.self + 0x70#64) ↦₃₂ x.regId) ∗
       (x.sret ↦₆₄ 0xfffffffffffffffe#64) ∗ ((x.sret + 8#64) ↦₃₂ x.regId)
-
-theorem getLocalRegIdPoll_ok_trap {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (Arm64.State → Arm64.State)} :
-    subroutine_ok (trTrapProgAt b C abs)
-      (b + bv% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}"))
-      getLocalRegIdPollSpec := by
-  have hfn : libsignalSessionCode.fnOff getLocalRegistrationIdClosureName =
-      num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}") :=
-    getLocalRegistrationIdClosure_fnOff
-  change subroutine_ok (trTrapProgAt b C abs)
-    (b + BitVec.ofNat 64 (num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}")))
-    getLocalRegIdPollSpec
-  rw [← fnAddr_tripleRatchetProgAt_storeEmpty_trap (b := b) (C := C) (abs := abs) hfn]
-  simp only [getLocalRegIdPollSpec]
-  code_fetches CryptoVerification.libsignalSessionCode storeEmpty b
-    (Rust.withPanics (trTrapExterns C abs)) hfn
-    (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}") 40
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨futPtr, sret, self, regId, u_sret0, u_sret8⟩ := x
-  dsimp only at *
-  wp_steps
-  wp_done
-
-theorem getLocalRegIdPoll_ok {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64} 
-    {abs : String → Option (Arm64.State → Arm64.State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      (b + 0x07b7c#64)
-      getLocalRegIdPollSpec :=
-  subroutine_ok_kit_of_trTrap getLocalRegIdPoll_ok_trap
-
-/-! ## 4. Unaligned 64-Byte `KeyPair` Repack Lemmas (`bytes7_byte_fold`, `bytes7_word_shift`) -/
 
 /-- Pure std3 helper for byte extraction at offsets `8..56` of `y[0..56] ++ x[56..64]`. -/
 private theorem extract56_8_hi (x y : BitVec 64) (k : Nat) (hk : 8 ≤ k) (hk2 : k + 8 ≤ 64) :

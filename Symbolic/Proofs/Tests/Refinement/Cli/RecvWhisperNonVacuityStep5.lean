@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Refinement.Cli.RecvWhisperNonVacuitySteps34
+public import Symbolic.Proofs.Tests.Refinement.Cli.RecvWhisperNonVacuitySteps34 -- proof-setup: allow-public-import
 import Symbolic.Proofs.Tests.Refinement.Cli.RecvWhisperNonVacuityDecode
 
 /-!
@@ -19,7 +19,7 @@ Step 5 (`pqRecvWhisperModel` on Alice receiving Bob's V1 SPQR whisper reply) and
 5-step roundtrip witness `mock_nonvacuous_spqr_on`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -141,20 +141,7 @@ theorem nv_spqrRecv2 :
     rw [htop]
 
 theorem nvSpkB_ne_nvEphB : (⟨nvSpkB.publicKey.bytes⟩ == nvEphB.publicKey) = false := by
-  rw [beq_eq_false_iff_ne]
-  intro h
-  have h0 : nvSpkB.publicKey.bytes.toList.head? = nvEphB.publicKey.bytes.toList.head? :=
-    congrArg (fun (k : PublicKey) => k.bytes.toList.head?) h
-  dsimp only [nvSpkB, nvEphB] at h0
-  (try unfold keyPairOf at h0)
-  (try unfold KeyPair.generate at h0)
-  (try unfold Ratchet.clampScalar at h0)
-  (try unfold List.Vector.set at h0)
-  (try unfold List.Vector.get at h0)
-  (try unfold List.Vector.replicate at h0)
-  dsimp only [nvKeysB, nvW, nvCrypto, Ratchet.keyToBytesVec32, HMAC.keyToBytes32,
-    List.Vector.toList] at h0
-  cases h0
+  decide
 
 theorem nv_step5_recvA :
     ∃ sA2,

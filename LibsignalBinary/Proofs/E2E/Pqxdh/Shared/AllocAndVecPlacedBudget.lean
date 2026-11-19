@@ -10,15 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecPlaced
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.SharedCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Relocatable Per-Block Proofs for `AllocAndVec`
@@ -29,7 +33,7 @@ Proves `RustCliAllocBudget M` total-correctness and conditional-OOM contracts un
 `[LibsignalFullPlacement]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -194,7 +198,7 @@ private theorem ofNat_beq_zero_eq_false {n : Nat} (hpos : 0 < n) (hlt : n < 2 ^ 
 
 /-- Total-correctness (`FitsEnv`) budget contract under `RustLayoutOk` (`align ≤ 2 ^ 31`) for
 `<alloc::raw_vec::RawVecInner>::try_allocate_in [local#2]` (Block `588`). -/
-def tryAllocateInSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def tryAllocateInSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (TryAllocateInCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.new ∧
@@ -207,7 +211,7 @@ def tryAllocateInSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-- Conditional-OOM budget contract under `RustLayoutOk` (`align ≤ 2 ^ 31`) for
 `<alloc::raw_vec::RawVecInner>::try_allocate_in [local#2]` (Block `588`). -/
-def tryAllocateInCondSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def tryAllocateInCondSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (TryAllocateInCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.new ∧
@@ -263,15 +267,6 @@ theorem tryAllocateIn2_noOom_placed_ok_of_contracts [LibsignalPlacement] {M : Al
   dsimp only [tryAllocateInEvents, TryAllocateInEnv]
   wp_done
 
-theorem tryAllocateIn2_noOom_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hshim : HookSat H lsRustNoAllocShimSym noAllocShimSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocNoOomSpec M A lim false)) :
-    subroutine_ok ((blkPC_588).rebase (blkPl_588).base H)
-      (blkPl_588).base
-      (tryAllocateInSpec M A lim) :=
-  tryAllocateIn2_noOom_placed_ok_of_contracts (ls_hook_ok_any hshim) (ls_hook_ok_any halloc)
-
 /-- Relocatable `<alloc::raw_vec::RawVecInner>::try_allocate_in [local#2]` (Block `588`, unmutated)
 meets `tryAllocateInSpec M A lim` from conditional-OOM `rustCliAllocBudgetSpec` hooks. -/
 theorem tryAllocateIn2_placed_ok [LibsignalPlacement] {M : AllocCostModel}
@@ -295,36 +290,16 @@ theorem tryAllocateIn2_placed_ok_cl [LibsignalPlacement] {callerProg : Program} 
   ls_subroutine_ok_of_block (j := 588)
     (subroutine_ok_withLsCodeLoaded_of_plain (tryAllocateIn2_placed_ok hshim halloc)) hi
 
-/-- Per-call specialization of `AllocAndVecBudget.tryAllocateInSpec` at any `x` with
-`x.align.toNat ≤ 2 ^ 31`. -/
-theorem tryAllocateIn2_at_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (x : TryAllocateInCall) (hal : x.align.toNat ≤ 2 ^ 31)
-    (hshim : HookSat H lsRustNoAllocShimSym noAllocShimSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false)) :
-    subroutine_ok ((blkPC_588).rebase (blkPl_588).base H)
-      (blkPl_588).base
-      { pre := fun (st : M.σ) s => (AllocAndVecBudget.tryAllocateInSpec M A lim).pre (x, st) s
-        post := fun (st : M.σ) s0 sf => (AllocAndVecBudget.tryAllocateInSpec M A lim).post (x, st) s0 sf } := by
-  have hbase := tryAllocateIn2_placed_ok hshim halloc
-  refine subroutine_ok_outcome_intro fun st R s0 hpc hrun hpre hsp => ?_
-  have hpre' : s0.mem ⊨ (tryAllocateInSpec M A lim).pre (x, st) s0 ∗ R := by
-    dsimp only [AllocAndVecBudget.tryAllocateInSpec, tryAllocateInSpec] at hpre ⊢
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-    rcases hpre with ⟨⟨h0, h1, h2, h3, h4, h5, hlay, hfit⟩, hrest⟩
-    exact ⟨⟨h0, h1, h2, h3, h4, h5, ⟨hlay, hal⟩, hfit⟩, hrest⟩
-  exact hbase.mono_outcome (x, st) R s0 hpc hrun hpre' hsp fun _ hout => hout
-
 /-! ## Block `55`: `Vec<u8>::append_elements` (`[LibsignalFullPlacement]`) -/
 
 /-- `VmPreserved`-strengthened fast-path contract for `<Vec<u8>>::append_elements` (Block `55`). -/
-def pqxdhVecAppendElementsFastSpec :
+@[expose] def pqxdhVecAppendElementsFastSpec :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × List (BitVec 8)) :=
   withVmPreserved CryptoVerification.E2E.Pqxdh.Shared.pqxdhVecAppendElementsFastSpec
 
 /-- `VmPreserved`-strengthened general fast-path contract for `<Vec<u8>>::append_elements`
 (Block `55`). -/
-def vecAppendElementsGenFastSpec : Spec VecAppendFastCall :=
+@[expose] def vecAppendElementsGenFastSpec : Spec VecAppendFastCall :=
   withVmPreserved CryptoVerification.E2E.Pqxdh.Shared.vecAppendElementsGenFastSpec
 
 /-- Relocatable fast-path `<alloc::vec::Vec<u8>>::append_elements` (`128 + 32 ≤ 192`, Block `55`)

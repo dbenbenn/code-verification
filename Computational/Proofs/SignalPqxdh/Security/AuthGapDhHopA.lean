@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake
-public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
-public import Computational.Proofs.SignalPqxdh.Security.SigHopC
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.SigHopC -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.SigHop
 import VCVio.EvalDist.Monad.Basic
 
@@ -22,11 +22,9 @@ Defines the bundle-provenance-parameterized `Auth` game (`pqxdhAuthWithProvImpl`
 simplified simulator `pqxdhAuthSimImpl` used by the `SigEufCma` and `KemShCr` reductions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal
 open MeasureTheory
@@ -52,7 +50,7 @@ abbrev ProvFnType :=
   List ((Nat × Nat × Nat) × OpkEntry) →
   PreKeyBundleInput → Bool × Bool × Bool
 
-def runAuthSendWithProv (S : Setup) (P : Primitives) (provFn : ProvFnType)
+@[expose] def runAuthSendWithProv (S : Setup) (P : Primitives) (provFn : ProvFnType)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes) :
     StateT (AuthState S) ProbComp AuthResponse := do
   let st ← get
@@ -156,7 +154,7 @@ def runAuthSendWithProv (S : Setup) (P : Primitives) (provFn : ProvFnType)
     return .sendUnfreshResp drKey rk1 ck1_1 wireMsg
 
 /-- `pqxdhAuthImpl true true S P` parameterized by `provFn`. -/
-def pqxdhAuthWithProvImpl (S : Setup) (P : Primitives) (provFn : ProvFnType) :
+@[expose] def pqxdhAuthWithProvImpl (S : Setup) (P : Primitives) (provFn : ProvFnType) :
     QueryImpl (authSpec S) (StateT (AuthState S) ProbComp) := fun q =>
   match q with
   | .sendOPK u i bundle m0 m1 => do
@@ -173,7 +171,7 @@ theorem pqxdhAuthWithProvImpl_checkBundleProvenance (S : Setup) (P : Primitives)
   funext q
   cases q <;> rfl
 
-def mapAuthSessions {S : Setup} (f : AuthInitiatorEntry S → AuthInitiatorEntry S)
+@[expose] def mapAuthSessions {S : Setup} (f : AuthInitiatorEntry S → AuthInitiatorEntry S)
     (st : AuthState S) : AuthState S :=
   { st with sessions := st.sessions.map f }
 
@@ -250,7 +248,7 @@ theorem pqxdhAuthWithProvImpl_commutes_mapAuthSessions (S : Setup) (P : Primitiv
       | apply CommutesRel.ite
       | split)
 
-def checkBundleProvenanceDual (P : Primitives) : ProvFnType :=
+@[expose] def checkBundleProvenanceDual (P : Primitives) : ProvFnType :=
   fun principals spkBundles opkEntries bundle =>
     let (spkExact, _, _) :=
       checkBundleProvenanceExact P principals spkBundles opkEntries bundle
@@ -258,13 +256,13 @@ def checkBundleProvenanceDual (P : Primitives) : ProvFnType :=
       checkBundleProvenance P principals spkBundles opkEntries bundle
     (spkExact, spkHon || opkHon, pqspkHon)
 
-def checkBundleProvenanceSquashed (P : Primitives) : ProvFnType :=
+@[expose] def checkBundleProvenanceSquashed (P : Primitives) : ProvFnType :=
   fun principals spkBundles opkEntries bundle =>
     let (spkHon, opkHon, pqspkHon) :=
       checkBundleProvenance P principals spkBundles opkEntries bundle
     (false, spkHon || opkHon, pqspkHon)
 
-def checkBundleProvenanceNoOpk (P : Primitives) : ProvFnType :=
+@[expose] def checkBundleProvenanceNoOpk (P : Primitives) : ProvFnType :=
   fun principals spkBundles opkEntries bundle =>
     let (spkExact, _, _) :=
       checkBundleProvenanceExact P principals spkBundles opkEntries bundle
@@ -272,10 +270,10 @@ def checkBundleProvenanceNoOpk (P : Primitives) : ProvFnType :=
       checkBundleProvenance P principals spkBundles opkEntries bundle
     (spkExact, false, pqspkHon)
 
-def squashTriples : Bool × Bool × Bool → Bool × Bool × Bool :=
+@[expose] def squashTriples : Bool × Bool × Bool → Bool × Bool × Bool :=
   fun (s, o, p) => (false, s || o, p)
 
-def eraseOpkTriples : Bool × Bool × Bool → Bool × Bool × Bool :=
+@[expose] def eraseOpkTriples : Bool × Bool × Bool → Bool × Bool × Bool :=
   fun (s, _, p) => (s, false, p)
 
 theorem checkBundleProvenanceSquashed_eq_squash_orig (P : Primitives) :
@@ -334,7 +332,7 @@ theorem simulateQ_evalRootKdfOrRoPrim (useRo : Bool) (P : Primitives)
     | some p => rfl
     | none => simp
 
-def runAuthSendSim (S : Setup) (P : Primitives)
+@[expose] def runAuthSendSim (S : Setup) (P : Primitives)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes) :
     StateT (AuthState S) ProbComp AuthResponse := do
   let st ← get
@@ -426,7 +424,7 @@ def runAuthSendSim (S : Setup) (P : Primitives)
     return .sendUnfreshResp drKey rk1 ck1_1 wireMsg
 
 /-- Simplified `Auth` oracle for `SigEufCma` and `KemShCr` reductions, omitting win/event logs and caching `(P.pow8 pk, pk)` on `.registerKey`. -/
-def pqxdhAuthSimImpl (S : Setup) (P : Primitives) :
+@[expose] def pqxdhAuthSimImpl (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthState S) ProbComp) := fun q =>
   match q with
   | .sendOPK u i bundle m0 m1 => do
@@ -552,7 +550,7 @@ def pqxdhAuthSimImpl (S : Setup) (P : Primitives) :
     return .pkResp pk
   | q_other => pqxdhAuthImpl true true S P q_other
 
-def projAuthSim (S : Setup) (P : Primitives) (st : AuthState S) : AuthState S :=
+@[expose] def projAuthSim (S : Setup) (P : Primitives) (st : AuthState S) : AuthState S :=
   { st with
     hasWonAuth       := false
     sentOPKEvents    := []
@@ -1075,4 +1073,3 @@ theorem simulateQ_pqxdhAuthSimImplPrim (S : Setup) (P : Primitives)
 
 end Proofs.SignalPqxdh.Security
 
-end

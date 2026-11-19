@@ -9,19 +9,33 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.FsAtomicBundles
+public import Computational.Proofs.ReductionDsl.FsAtomicBundles -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Out -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.FSAEAD.HybridRed
+import Computational.Proofs.ReductionDsl.FSAEAD.HybridRedAuth
 import Computational.Proofs.GameHop.StateSim
+public import Computational.Proofs.CryptoGames.FSAEAD.HybridWithProofDefs
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.FSAEAD.HybridLazy
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5On
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Start
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.FSAEAD.HybridRedBase
+import Computational.Proofs.ReductionDsl.FSAEAD.HybridRedZero
+import Computational.Proofs.ReductionDsl.FSAEAD.SaltWire
+import Computational.Proofs.ReductionDsl.FsAtomicMacrosSim
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.PubRed
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
 
 /-!
 # Evaluation and `CoinSimEquiv` Bridges for `fsCostedRedsInst`
 
 Proves exact evaluation equality for `pubRed` and `CoinSimEquiv` soundness with query-count
 preservation at `clampedProtoSignalCodec` for `prgRedZero`, `multiRed`, `slotSaltRed`, `lSaltRed`,
-`slotWireRed`, and `lWireRed`.
--/
+`slotWireRed`, and `lWireRed`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,9 +59,9 @@ open _root_.CryptoGames.SM.Construction (Header)
 open _root_.CryptoGames.LibsignalSession (Crypto PublicKey IdentityKey SignalHeader
   SignalMessageProtoCodec maxForwardJumps)
 open _root_.CryptoGames.FSAEAD (RatchetSenderState RatchetReceiverState ReceiveResult)
-open CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
-open CryptoVerification.LibsignalSession (LCt FsAdv evalTwoStage1 pubToAD pubToADCosted
-  multiSlotAdv multiSlotAdvCosted)
+open _root_.CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
+open _root_.CryptoVerification.LibsignalSession (LCt FsAdv evalTwoStage1 pubToAD pubToADCosted
+  multiSlotAdv multiSlotAdvCosted multiSlotAdvAuthCosted)
 open Computational.Proofs.ReductionDsl.MacroLift (mapTy toVal guardTwoStageRed guardTwoStageRed_pos)
 open Computational.Proofs.ReductionDsl.FsAtomicMacros (CoinSimEquiv compilePureRed
   compilePureRed_eval_eq compilePureRed_coinSimEquiv compilePureTwoStageRed
@@ -57,6 +71,8 @@ open Computational.Proofs.ReductionDsl.FsAtomicMacros (CoinSimEquiv compilePureR
   lctOfV_lctV lctV_lctOfV fig8PubAdOfV_fig8PubAdV fig8PubAdV_fig8PubAdOfV
   slotAdOfV_slotAdV slotAdV_slotAdOfV fsSendStOfV_fsSendStV fsSendStV_fsSendStOfV
   fsRecvStOfV_fsRecvStV fsRecvStV_fsRecvStOfV fsRrDec_fsRrEnc fitBytesN_toList)
+open Computational.Proofs.CryptoGames.FSAEAD.Theorem5Out (advBit
+  cumulativeChainPrgReductionOut multiSlotOtccaReductionOut)
 open Computational.Proofs.ReductionDsl.FsAtomicOps (env_get_zero env_get_succ clampedProtoSignalCodec
   lPubOfExpr_eval chainGenExpr_eval lIdsExpr_eval lHeaderExpr_eval eqWireSignalHdrExpr_eval
   fitPlainExpr_eval eqPlainExpr_eval eqSaltExpr_eval saltOfSlotAdExpr_eval
@@ -418,6 +434,165 @@ theorem multiSlotAdv_clamped_queries (qR : ℕ) (la : Bool) (A : FsAdv Pt ℓ)
     qR maxForwardJumps (if la then qR + (maxForwardJumps + 1) else qR) la
     (pubToAD clampedProtoSignalCodec A) (isQueryBoundP_pubToAD ℓ hA)]
   exact CryptoGames.FSAEAD.Thm5.Costed.multiRedProg_queries
+    (lAeadR C clampedProtoSignalCodec ℓ encT idOf) (lChainPRG C.F) 1 1
+    (lIdeal C clampedProtoSignalCodec ℓ encT) 1
+    qR maxForwardJumps (if la then qR + (maxForwardJumps + 1) else qR) la
+    (pubToAD clampedProtoSignalCodec A) (isQueryBoundP_pubToAD ℓ hA)
+
+/-- Direct-output (`advBit`) uncosted multi-slot OT-CCA reduction matching `multiSlotAdvAuthCosted`. -/
+@[expose] def multiSlotAdvAuth (qR : ℕ) (la : Bool) (A : FsAdv Pt ℓ) :=
+  multiSlotOtccaReductionOut (lIdeal C codec ℓ encT) (lAeadR C codec ℓ encT idOf) (lChainPRG C.F)
+    maxForwardJumps (if la then qR + (maxForwardJumps + 1) else qR) la advBit (pubToAD codec A)
+
+theorem prgRedAuth_inst_coinSimEquiv (qR j : ℕ)
+    (hℓ : ℓ < 10 ^ 6) (hj : j ≤ 2 * (qR + maxForwardJumps + 1))
+    (hinj : Function.Injective encT) (A : FsAdv Pt ℓ)
+    (hA : CryptoGames.FSAEAD.MakesAtMostQueries A qR) (mt : BitVec 256 × BitVec 256) :
+    CoinSimEquiv (coinOnlyBaseIface ℓ Pt).fwdU
+      (evalTwoStage1 ((fsCostedRedsInst C codec ℓ encT idOf qR).prgRedAuth j) qR false
+        (fun _ => pubToADCosted (fsCostedRedsInst C codec ℓ encT idOf qR) A) mt)
+      (cumulativeChainPrgReductionOut
+        (lIdeal C clampedProtoSignalCodec ℓ encT)
+        (lAeadR C clampedProtoSignalCodec ℓ encT idOf)
+        (lChainPRG C.F) maxForwardJumps j advBit (pubToAD clampedProtoSignalCodec A) mt) := by
+  rw [pubToADCosted_inst_eq C codec ℓ encT idOf qR hℓ A]
+  change CoinSimEquiv _
+    (evalTwoStage1 ((fsCostedRedsInst C codec ℓ encT idOf qR).prgRedAuth j) qR false
+      (fun _ => pubToAD clampedProtoSignalCodec A) mt) _
+  dsimp only [fsCostedRedsInst, guardTwoStageRed]
+  simp only [hℓ, hj, and_self, ↓reduceIte]
+  refine (compilePureTwoStageRed_coinSimEquiv (fsaeadRatchetCodec ℓ Pt)
+    (prgZeroMacroBundle (Pt := Pt) C ℓ encT idOf)
+    (CryptoGames.FSAEAD.Thm5.Costed.prgRedAuthProg
+      (lAeadR C clampedProtoSignalCodec ℓ encT idOf) (lChainPRG C.F) 1 1
+      (lIdeal C clampedProtoSignalCodec ℓ encT) 1 qR maxForwardJumps j)
+    rfl rfl (fun _ => rfl) (hybOpMacro_eval C ℓ encT idOf hinj)
+    (fun s x => by
+      cases s with
+      | inl s =>
+        cases s with
+        | inl e => exact nomatch e
+        | inr u =>
+          cases u; rcases x with ⟨i, a⟩
+          refine (sampleIdealComp_coinSimEquiv ℓ Pt C encT (I := coinOnlyBaseIface ℓ Pt)
+            (fun b => Comp.sample (I := coinOnlyBaseIface ℓ Pt) (UniformSamplerTag.base b) .unit)
+            (fun b _ => by cases b <;> rfl) (i, fig8PubAdV a)).trans (CoinSimEquiv.of_eq ?_)
+          have hsl : slotAdOfV (ℓ := ℓ) (Pt := Pt) (i, fig8PubAdV (ℓ := ℓ) (Pt := Pt) a) = (i, a) := by
+            simp [slotAdOfV, fig8PubAdOfV_fig8PubAdV]
+          rw [hsl]
+          dsimp only [prgZeroMacroBundle, Iface.withSamp, Samplers.sum,
+            CryptoGames.PRG.Costed.prgIface, CryptoGames.OTCCA.Costed.idealSamplers,
+            coinOnlyBaseIface, Iface.liftP, toVal, hybToDen, hybBaseTy, mapTy,
+            CryptoGames.FSAEAD.Costed.bt]
+          rfl
+      | inr t =>
+        rcases t with _ | N | (_ | _)
+        · exact CoinSimEquiv.of_eq rfl
+        · exact CoinSimEquiv.of_eq (by
+            dsimp only [prgZeroMacroBundle, coinOnlyBaseIface, Iface.withSamp, Samplers.sum,
+              Sum.elim, CryptoGames.PRG.Costed.prgIface, Iface.liftP, unifSamplers,
+              CryptoGames.FSAEAD.Costed.fsStateSampleSort, CryptoGames.FSAEAD.Costed.fsSig,
+              Comp.eval, atomicBaseSamplers, AtomicBaseUnif.sort, AtomicSort.den,
+              toVal, hybToDen, hybBaseTy, mapTy]
+            exact (id_map _).symm)
+        · exact CoinSimEquiv.of_eq rfl
+        · exact CoinSimEquiv.of_eq rfl)
+    (fun g => nomatch g)
+    (fun t => by rcases t with (((((⟨a, m⟩ | ⟨a, m0, m1⟩) | ⟨⟩) | ⟨⟩) | ⟨a, c⟩) | ⟨a, c⟩) <;> rfl)
+    (fun t r₁ => hybRdec_eq (Pt := Pt) ℓ t r₁)
+    qR false (fun _ => pubToAD clampedProtoSignalCodec A) mt).trans (CoinSimEquiv.of_eq ?_)
+  exact CryptoGames.FSAEAD.Thm5.Costed.prgRedAuthProg_eval
+    (lAeadR C clampedProtoSignalCodec ℓ encT idOf) (lChainPRG C.F) 1 1
+    (lIdeal C clampedProtoSignalCodec ℓ encT) 1 qR maxForwardJumps j
+    (pubToAD clampedProtoSignalCodec A) (isQueryBoundP_pubToAD ℓ hA) mt
+
+theorem multiSlotAdvAuthCosted_inst_coinSimEquiv (qR : ℕ) (la : Bool)
+    (hℓ : ℓ < 10 ^ 6) (hinj : Function.Injective encT) (A : FsAdv Pt ℓ)
+    (hA : CryptoGames.FSAEAD.MakesAtMostQueries A qR) :
+    CoinSimEquiv (slotOtccaTargetIface ℓ Pt).fwdU
+      (multiSlotAdvAuthCosted qR (fsCostedRedsInst C codec ℓ encT idOf qR) la A)
+      (multiSlotAdvAuth C clampedProtoSignalCodec ℓ encT idOf qR la A) := by
+  unfold multiSlotAdvAuthCosted multiSlotAdvAuth
+  rw [pubToADCosted_inst_eq C codec ℓ encT idOf qR hℓ A]
+  change CoinSimEquiv _
+    (evalTwoStage1 ((fsCostedRedsInst C codec ℓ encT idOf qR).multiRedAuth la) qR false
+      (fun _ => pubToAD clampedProtoSignalCodec A) ()) _
+  dsimp only [fsCostedRedsInst]
+  rw [guardTwoStageRed_pos hℓ]
+  refine (compilePureTwoStageRed_coinSimEquiv (fsaeadRatchetCodec ℓ Pt)
+    (multiMacroBundle (Pt := Pt) C ℓ encT idOf)
+    (CryptoGames.FSAEAD.Thm5.Costed.multiRedAuthProg
+      (lAeadR C clampedProtoSignalCodec ℓ encT idOf) (lChainPRG C.F) 1 1
+      (lIdeal C clampedProtoSignalCodec ℓ encT) 1
+      qR maxForwardJumps (if la then qR + (maxForwardJumps + 1) else qR) la)
+    rfl rfl (fun _ => rfl) (hybOpMacro_eval C ℓ encT idOf hinj)
+    (fun s x => by
+      cases s with
+      | inl u =>
+        cases u; rcases x with ⟨i, a⟩
+        refine (sampleIdealComp_coinSimEquiv ℓ Pt C encT (I := slotOtccaTargetIface ℓ Pt)
+          (fun b => Comp.sample (I := slotOtccaTargetIface ℓ Pt) (UniformSamplerTag.base b) .unit)
+          (fun b _ => by cases b <;> rfl) (i, fig8PubAdV a)).trans (CoinSimEquiv.of_eq ?_)
+        have hsl : slotAdOfV (ℓ := ℓ) (Pt := Pt) (i, fig8PubAdV (ℓ := ℓ) (Pt := Pt) a) = (i, a) := by
+          simp [slotAdOfV, fig8PubAdOfV_fig8PubAdV]
+        rw [hsl]
+        dsimp only [multiMacroBundle, Iface.withSamp, Samplers.sum,
+          CryptoGames.OTCCA.Costed.otccaIface, CryptoGames.OTCCA.Costed.idealSamplers,
+          slotOtccaTargetIface, Iface.liftP, toVal, hybToDen, hybBaseTy, mapTy,
+          CryptoGames.FSAEAD.Costed.bt]
+        rfl
+      | inr t =>
+        rcases t with _ | N | (_ | _)
+        · exact CoinSimEquiv.of_eq rfl
+        · exact CoinSimEquiv.of_eq (by
+            dsimp only [multiMacroBundle, slotOtccaTargetIface, Iface.withSamp, Samplers.sum,
+              Sum.elim, CryptoGames.OTCCA.Costed.otccaIface, Iface.liftP, unifSamplers,
+              CryptoGames.FSAEAD.Costed.fsStateSampleSort, CryptoGames.FSAEAD.Costed.fsSig,
+              Comp.eval, atomicBaseSamplers, AtomicBaseUnif.sort, AtomicSort.den,
+              toVal, hybToDen, hybBaseTy, mapTy]
+            exact (id_map _).symm)
+        · exact CoinSimEquiv.of_eq rfl
+        · exact CoinSimEquiv.of_eq rfl)
+    (fun g x => by
+      cases g
+      · apply CoinSimEquiv.of_eq
+        dsimp only [multiMacroBundle, slotOtccaTargetIface, Iface.withSamp,
+          CryptoGames.OTCCA.Costed.otccaIface, CryptoGames.FSAEAD.Costed.fsSig,
+          CryptoGames.FSAEAD.Costed.bt, Ty.denote,
+          Comp.eval, Expr.eval, hybBaseTy, mapTy, toVal, hybToDen, slotAdOfV, id] at x ⊢
+        rcases x with ⟨⟨i, a⟩, m⟩
+        simp only [env_get_zero, Functor.map_map]
+        rw [fig8PubAdOfV_fig8PubAdV]
+      · apply CoinSimEquiv.of_eq
+        dsimp only [multiMacroBundle, slotOtccaTargetIface, Iface.withSamp,
+          CryptoGames.OTCCA.Costed.otccaIface, CryptoGames.FSAEAD.Costed.fsSig,
+          CryptoGames.FSAEAD.Costed.bt, Ty.denote,
+          Comp.eval, Expr.eval, hybBaseTy, mapTy, toVal, hybToDen, slotAdOfV, id] at x ⊢
+        rcases x with ⟨⟨i, a⟩, e⟩
+        simp only [env_get_zero, Functor.map_map]
+        rw [fig8PubAdOfV_fig8PubAdV, wireSaltCtOfV_wireSaltCtV]
+        congr 1; funext r; cases r <;> rfl)
+    (fun t => by rcases t with (((((⟨a, m⟩ | ⟨a, m0, m1⟩) | ⟨⟩) | ⟨⟩) | ⟨a, c⟩) | ⟨a, c⟩) <;> rfl)
+    (fun t r₁ => hybRdec_eq (Pt := Pt) ℓ t r₁)
+    qR false (fun _ => pubToAD clampedProtoSignalCodec A) ()).trans (CoinSimEquiv.of_eq ?_)
+  exact CryptoGames.FSAEAD.Thm5.Costed.multiRedAuthProg_eval
+    (lAeadR C clampedProtoSignalCodec ℓ encT idOf) (lChainPRG C.F) 1 1
+    (lIdeal C clampedProtoSignalCodec ℓ encT) 1
+    qR maxForwardJumps (if la then qR + (maxForwardJumps + 1) else qR) la
+    (pubToAD clampedProtoSignalCodec A) (isQueryBoundP_pubToAD ℓ hA)
+
+theorem multiSlotAdvAuth_clamped_queries (qR : ℕ) (la : Bool) (A : FsAdv Pt ℓ)
+    (hA : CryptoGames.FSAEAD.MakesAtMostQueries A qR) :
+    (multiSlotAdvAuth C clampedProtoSignalCodec ℓ encT idOf qR la A).IsQueryBoundP
+      (isGameQuery (G := AEADScheme.otccaSpec
+        (ℕ × (Header Pt × LibsignalMsgPublicPart)) (Plain ℓ) LCt)) qR := by
+  unfold multiSlotAdvAuth
+  rw [← CryptoGames.FSAEAD.Thm5.Costed.multiRedAuthProg_eval
+    (lAeadR C clampedProtoSignalCodec ℓ encT idOf) (lChainPRG C.F) 1 1
+    (lIdeal C clampedProtoSignalCodec ℓ encT) 1
+    qR maxForwardJumps (if la then qR + (maxForwardJumps + 1) else qR) la
+    (pubToAD clampedProtoSignalCodec A) (isQueryBoundP_pubToAD ℓ hA)]
+  exact CryptoGames.FSAEAD.Thm5.Costed.multiRedAuthProg_queries
     (lAeadR C clampedProtoSignalCodec ℓ encT idOf) (lChainPRG C.F) 1 1
     (lIdeal C clampedProtoSignalCodec ℓ encT) 1
     qR maxForwardJumps (if la then qR + (maxForwardJumps + 1) else qR) la

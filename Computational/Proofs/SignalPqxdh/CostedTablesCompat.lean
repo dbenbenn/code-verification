@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthGames
+import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthGames
 public import Computational.Specifications.Reductions.ReductionDsl.Core
+public import Computational.Specifications.Assumptions.Assumptions
+public import Computational.Specifications.Pqxdh.Security.Auth.Game
 
 /-!
 # Legacy PQXDH `ReductionDsl` Compatibility Tables
@@ -20,7 +22,7 @@ uniform sampler table `pqSamplers`, challenger interfaces, and game codecs (`key
 `authCodec`), bridged to the shared atomic tables via `AtomicLift.lean`.
 -/
 
-@[expose] public section
+public section
 
 namespace SignalPqxdh.LegacyCosted
 
@@ -33,42 +35,42 @@ inductive PSort
   | bytes (w : ℕ+)
   | u32
 
-@[reducible] def PSort.den : PSort → Type
+@[expose, reducible] def PSort.den : PSort → Type
   | .bytes _ => Bytes
   | .u32 => UInt32
 
 /-- Size of a base value in blocks of its sort's width: `⌈len / w⌉` for bytes, `1` for `u32`. -/
-def PSort.blocks : (s : PSort) → s.den → ℕ
+@[expose] def PSort.blocks : (s : PSort) → s.den → ℕ
   | .bytes w, x => (x.length + w - 1) / w
   | .u32, _ => 1
 
-@[reducible] def pqSig : Sig where
+@[expose, reducible] def pqSig : Sig where
   Base := PSort
   den := PSort.den
   sz := PSort.blocks
 
 local notation "PT" => Ty pqSig
 
-@[reducible] def B (w : ℕ+) : PT := .base (.bytes w)
+@[expose, reducible] def B (w : ℕ+) : PT := .base (.bytes w)
 
-@[reducible] def U32 : PT := .base .u32
+@[expose, reducible] def U32 : PT := .base .u32
 
 /-- Nominal byte width of the base leaves of a value type (`u32` counts as 4 bytes). -/
-def Ty.wd : PT → ℕ
+@[expose] def Ty.wd : PT → ℕ
   | .base (.bytes w) => w
   | .base .u32 => 4
   | .unit | .bool | .nat => 0
   | .opt t | .list t | .tbl t => Ty.wd t
   | .prod t u | .sum t u => Ty.wd t + Ty.wd u
 
-@[reducible] def drKeyT : PT := .prod (B 32) (.prod (B 32) (B 32))
+@[expose, reducible] def drKeyT : PT := .prod (B 32) (.prod (B 32) (B 32))
 
-@[reducible] def msgKeysT : PT := .prod (B 32) (.prod (B 32) (B 16))
+@[expose, reducible] def msgKeysT : PT := .prod (B 32) (.prod (B 32) (B 16))
 
-def drKeyV (k : DRKey) : drKeyT.denote := (k.rootKey, k.chainKey, k.pqrKey)
+@[expose] def drKeyV (k : DRKey) : drKeyT.denote := (k.rootKey, k.chainKey, k.pqrKey)
 
-def msgKeysV (k : MessageKeys) : msgKeysT.denote := (k.cipherKey, k.macKey, k.iv)
-def msgKeysOfV (v : msgKeysT.denote) : MessageKeys := ⟨v.1, v.2.1, v.2.2⟩
+@[expose] def msgKeysV (k : MessageKeys) : msgKeysT.denote := (k.cipherKey, k.macKey, k.iv)
+@[expose] def msgKeysOfV (v : msgKeysT.denote) : MessageKeys := ⟨v.1, v.2.1, v.2.2⟩
 
 /-! ## Byte-string operations -/
 
@@ -85,7 +87,7 @@ inductive BOp
   | varint
 
 /-- Byte-string operation table; each operation's cost bounds the nominal widths read and written. -/
-@[reducible] def pqBytesOps : Ops pqSig where
+@[expose, reducible] def pqBytesOps : Ops pqSig where
   Op := BOp
   dom := fun
     | .lit _ _ => .unit
@@ -134,7 +136,7 @@ inductive UOp
   | toNat
   | eq
 
-@[reducible] def pqU32Ops : Ops pqSig where
+@[expose, reducible] def pqU32Ops : Ops pqSig where
   Op := UOp
   dom := fun | .lit _ => .unit | .ofNat => .nat | .toNat => U32 | .eq => .prod U32 U32
   cod := fun | .lit _ | .ofNat => U32 | .toNat => .nat | .eq => .bool
@@ -146,7 +148,7 @@ inductive UOp
   cost := fun | .lit _ | .ofNat | .eq => 1 | .toNat => 32
 
 /-- Combined byte-string and `UInt32` operation table for PQXDH reductions. -/
-@[reducible] def pqxdhOps : Ops pqSig := Ops.sum pqBytesOps pqU32Ops
+@[expose, reducible] def pqxdhOps : Ops pqSig := Ops.sum pqBytesOps pqU32Ops
 
 /-! ## Primitive-oracle tags -/
 
@@ -161,7 +163,7 @@ inductive PTag
   | deriveMsgKeys (s : ℕ+)
   | aeadEnc (a m c : ℕ+) | aeadDec (a c m : ℕ+)
 
-@[reducible] def PTag.dom : PTag → PT
+@[expose, reducible] def PTag.dom : PTag → PT
   | .x25519 => .prod (B 32) (B 32)
   | .x25519Base | .isCanonical | .pow8 | .sigPkGen => B 32
   | .sigSign m => .prod (B 32) (.prod (B m) (B 64))
@@ -178,7 +180,7 @@ inductive PTag
   | .aeadEnc a m _ => .prod msgKeysT (.prod (B a) (B m))
   | .aeadDec a c _ => .prod msgKeysT (.prod (B a) (B c))
 
-@[reducible] def PTag.cod : PTag → PT
+@[expose, reducible] def PTag.cod : PTag → PT
   | .x25519 | .x25519Base | .pow8 | .sigPkGen | .chainKdfSeed | .chainKdfNext => B 32
   | .isCanonical | .sigVerify _ => .bool
   | .sigSign _ => B 64
@@ -193,7 +195,7 @@ inductive PTag
   | .aeadEnc _ _ c => B c
   | .aeadDec _ _ m => .opt (B m)
 
-def PTag.enc : (t : PTag) → t.dom.denote → PrimQuery
+@[expose] def PTag.enc : (t : PTag) → t.dom.denote → PrimQuery
   | .x25519, (sk, pk) => .x25519 sk pk
   | .x25519Base, sk => .x25519Base sk
   | .isCanonical, pk => .isCanonical pk
@@ -214,7 +216,7 @@ def PTag.enc : (t : PTag) → t.dom.denote → PrimQuery
   | .aeadEnc _ _ _, (k, ad, pt) => .aeadEnc (msgKeysOfV k) ad pt
   | .aeadDec _ _ _, (k, ad, ct) => .aeadDec (msgKeysOfV k) ad ct
 
-def PTag.dec : (t : PTag) → (x : t.dom.denote) → primSpec (t.enc x) → t.cod.denote
+@[expose] def PTag.dec : (t : PTag) → (x : t.dom.denote) → primSpec (t.enc x) → t.cod.denote
   | .x25519, _, r | .x25519Base, _, r | .isCanonical, _, r | .pow8, _, r
   | .sigPkGen, _, r | .sigSign _, _, r | .sigVerify _, _, r | .kemKeyGen, _, r
   | .kemEncaps, _, r | .kemDecaps, _, r | .rootCreateChain, _, r | .chainKdfSeed, _, r
@@ -229,7 +231,7 @@ inductive PSamp
   | bool | bytes32 | random64 | drKey96 | msgKeys80
   | index (N : ℕ)
 
-@[reducible] def PSamp.ty : PSamp → PT
+@[expose, reducible] def PSamp.ty : PSamp → PT
   | .bool => .bool
   | .bytes32 => B 32
   | .random64 => B 64
@@ -237,13 +239,13 @@ inductive PSamp
   | .msgKeys80 => msgKeysT
   | .index _ => .nat
 
-def sampleIndex (N : ℕ) : ProbComp ℕ :=
+@[expose] def sampleIndex (N : ℕ) : ProbComp ℕ :=
   if h : 0 < N then
     letI : NeZero N := ⟨Nat.ne_of_gt h⟩
     do let x ← $ᵗ (Fin N); return x.val
   else return 0
 
-def PSamp.run : (s : PSamp) → ProbComp s.ty.denote
+@[expose] def PSamp.run : (s : PSamp) → ProbComp s.ty.denote
   | .bool => $ᵗ Bool
   | .bytes32 => sampleBytes32
   | .random64 => sampleRandom64
@@ -251,12 +253,12 @@ def PSamp.run : (s : PSamp) → ProbComp s.ty.denote
   | .msgKeys80 => msgKeysV <$> sampleMessageKeys80
   | .index N => sampleIndex N
 
-def PSamp.cost : PSamp → ℕ
+@[expose] def PSamp.cost : PSamp → ℕ
   | .index N => bits N + 1
   | s => 1 + Ty.wd s.ty
 
 /-- Uniform sampler table shared across legacy PQXDH interfaces. -/
-def pqSamplers : Samplers pqSig where
+@[expose] def pqSamplers : Samplers pqSig where
   Samp := PSamp
   sDom := fun _ => .unit
   sTy := PSamp.ty
@@ -266,7 +268,7 @@ def pqSamplers : Samplers pqSig where
 /-! ## Challenger interfaces -/
 
 /-- Primitive-oracle `ReductionDsl` interface over `PrimBaseSpec`. -/
-def pqPrimIface : Iface pqSig PrimBaseSpec where
+@[expose] def pqPrimIface : Iface pqSig PrimBaseSpec where
   fwdU := fun n => query (spec := PrimBaseSpec) (.inl n)
   uCost := 1
   Tag := PTag
@@ -288,10 +290,10 @@ structure ChallengerOracle where
   dec : (t : Tag) → (x : (dom t).denote) → spec (enc t x) → (cod t).denote
   encCost : ℕ
 
-def ChallengerOracle.qCost (C : ChallengerOracle) (t : C.Tag) : ℕ :=
+@[expose] def ChallengerOracle.qCost (C : ChallengerOracle) (t : C.Tag) : ℕ :=
   1 + Ty.wd (C.dom t) + C.encCost + Ty.wd (C.cod t)
 
-def pqChalIface (C : ChallengerOracle) : Iface pqSig (PrimBaseSpec + C.spec) where
+@[expose] def pqChalIface (C : ChallengerOracle) : Iface pqSig (PrimBaseSpec + C.spec) where
   fwdU := fun n => query (spec := PrimBaseSpec + C.spec) (.inl (.inl n))
   uCost := 1
   Tag := PTag ⊕ C.Tag
@@ -303,7 +305,7 @@ def pqChalIface (C : ChallengerOracle) : Iface pqSig (PrimBaseSpec + C.spec) whe
   smp := pqSamplers
 
 /-- Combined XEdDSA signing and X25519 DDH challenger oracle (`sigAndDdhSpec`). -/
-def sigAndDdhOracle : ChallengerOracle where
+@[expose] def sigAndDdhOracle : ChallengerOracle where
   ι := SigQuery ⊕ DdhQuery
   spec := sigAndDdhSpec
   Tag := ℕ+ ⊕ Unit
@@ -325,46 +327,46 @@ abbrev pqSigAndDdhIface := pqChalIface sigAndDdhOracle
 
 /-! ## Game codecs -/
 
-def drKeyOfV (v : drKeyT.denote) : DRKey := ⟨v.1, v.2.1, v.2.2⟩
+@[expose] def drKeyOfV (v : drKeyT.denote) : DRKey := ⟨v.1, v.2.1, v.2.2⟩
 
-@[reducible] def bundleT : PT :=
+@[expose, reducible] def bundleT : PT :=
   .prod (B 32) (.prod U32 (.prod (B 32) (.prod (B 64)
     (.prod (.opt (.prod U32 (B 32))) (.prod U32 (.prod (B 1568) (B 64)))))))
 
-def bundleV (b : PreKeyBundleInput) : bundleT.denote :=
+@[expose] def bundleV (b : PreKeyBundleInput) : bundleT.denote :=
   (b.ikB, (b.spkId, (b.spkB, (b.spkSig, (b.opkB?, (b.pqspkId, (b.pqspkB, b.pqspkSig)))))))
-def bundleOfV (v : bundleT.denote) : PreKeyBundleInput :=
+@[expose] def bundleOfV (v : bundleT.denote) : PreKeyBundleInput :=
   ⟨v.1, v.2.1, v.2.2.1, v.2.2.2.1, v.2.2.2.2.1, v.2.2.2.2.2.1, v.2.2.2.2.2.2.1, v.2.2.2.2.2.2.2⟩
 
-@[reducible] def hdrT : PT :=
+@[expose, reducible] def hdrT : PT :=
   .prod (B 32) (.prod (B 32) (.prod U32 (.prod (.opt U32) (.prod U32 (B 1568)))))
 
-def hdrV (h : HandshakeHdr) : hdrT.denote :=
+@[expose] def hdrV (h : HandshakeHdr) : hdrT.denote :=
   (h.ikAPk, (h.ekAPk, (h.spkId, (h.opkId?, (h.pqspkId, h.kemCt)))))
-def hdrOfV (v : hdrT.denote) : HandshakeHdr :=
+@[expose] def hdrOfV (v : hdrT.denote) : HandshakeHdr :=
   ⟨v.1, v.2.1, v.2.2.1, v.2.2.2.1, v.2.2.2.2.1, v.2.2.2.2.2⟩
 
-@[reducible] def sidT : PT :=
+@[expose, reducible] def sidT : PT :=
   .sum (.prod .nat .nat) (.sum (.prod .nat .nat)
     (.sum (.prod .nat (.prod .nat .nat)) (.prod .nat (.prod .nat .nat))))
 
-def sidV {S : Setup} : SessionId S → sidT.denote
+@[expose] def sidV {S : Setup} : SessionId S → sidT.denote
   | .sendOPK u i => .inl (u.val, i.val)
   | .sendNoOPK u i => .inr (.inl (u.val, i.val))
   | .recvOPK k j o => .inr (.inr (.inl (k.val, (j.val, o.val))))
   | .recvNoOPK k j l => .inr (.inr (.inr (k.val, (j.val, l.val))))
 
-@[reducible] def dhSecretsT : PT :=
+@[expose, reducible] def dhSecretsT : PT :=
   .prod (.list (B 32)) (.prod (.list (B 32)) (.prod (.list (B 32)) (.list (B 32))))
 
-@[reducible] def keyIndQT : PT :=
+@[expose, reducible] def keyIndQT : PT :=
   .sum .nat (.sum .nat (.sum (.prod .nat .nat) (.sum (.prod .nat (.prod .nat .nat))
   (.sum (.prod .nat (.prod .nat bundleT)) (.sum (.prod .nat (.prod .nat bundleT))
   (.sum (.prod .nat (.prod .nat (.prod .nat hdrT)))
   (.sum (.prod .nat (.prod .nat (.prod .nat hdrT)))
   (.sum sidT (.sum (B 192) (.sum .unit (.sum sidT (.sum (B 32) (.prod .nat .nat)))))))))))))
 
-def keyIndQenc {S : Setup} : KeyIndQuery S → keyIndQT.denote
+@[expose] def keyIndQenc {S : Setup} : KeyIndQuery S → keyIndQT.denote
   | .initPrin u => .inl u.val
   | .corruptIK u => .inr (.inl u.val)
   | .genSPK u j => .inr (.inr (.inl (u.val, j.val)))
@@ -392,12 +394,12 @@ def keyIndQenc {S : Setup} : KeyIndQuery S → keyIndQT.denote
     .inr (.inr (.inr (.inr (.inr (.inr
       (.inr (.inr (.inr (.inr (.inr (.inr (.inr (u.val, j.val)))))))))))))
 
-@[reducible] def keyIndRT : PT :=
+@[expose, reducible] def keyIndRT : PT :=
   .sum .unit (.sum (.prod (B 32) (B 32)) (.sum (B 32) (.sum (.prod (B 32) (B 32))
   (.sum bundleT (.sum hdrT (.sum (.prod drKeyT hdrT)
   (.sum .unit (.sum drKeyT (.sum dhSecretsT (B 32))))))))))
 
-def keyIndRdec : keyIndRT.denote → KeyIndResponse
+@[expose] def keyIndRdec : keyIndRT.denote → KeyIndResponse
   | .inl () => .noneResp
   | .inr (.inl (ik, s)) => .initPrinResp ik s
   | .inr (.inr (.inl pk)) => .pkResp pk
@@ -413,7 +415,7 @@ def keyIndRdec : keyIndRT.denote → KeyIndResponse
   | .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr sk))))))))) => .spkSkResp sk
 
 /-- `ReductionDsl` game codec for `keyIndSpec S`. -/
-def keyIndCodec (S : Setup) : GameCodec pqSig (keyIndSpec S) where
+@[expose] def keyIndCodec (S : Setup) : GameCodec pqSig (keyIndSpec S) where
   Q := keyIndQT
   R := keyIndRT
   qenc := keyIndQenc
@@ -422,7 +424,7 @@ def keyIndCodec (S : Setup) : GameCodec pqSig (keyIndSpec S) where
 
 /-! ## Two-key and authentication interfaces -/
 
-def eufCmaSignOracle : ChallengerOracle where
+@[expose] def eufCmaSignOracle : ChallengerOracle where
   ι := SigQuery
   spec := sigOracleSpec
   Tag := ℕ+
@@ -432,7 +434,7 @@ def eufCmaSignOracle : ChallengerOracle where
   dec := fun _ _ r => r
   encCost := 0
 
-def gapDhDdhOracle : ChallengerOracle where
+@[expose] def gapDhDdhOracle : ChallengerOracle where
   ι := DdhQuery
   spec := gapDhOracleSpec
   Tag := Unit
@@ -444,11 +446,11 @@ def gapDhDdhOracle : ChallengerOracle where
 
 /-- Maps the reduction's optional raw SPQR salt to the 32-byte `PrfMsgKeys` salt key
 (`effectiveHkdfSaltBytes`, DEV-LS25). -/
-def saltKeyEnc (salt? : Option Bytes) : PrfMsgKeysQuery := .derive (effectiveHkdfSaltBytes salt?)
+@[expose] def saltKeyEnc (salt? : Option Bytes) : PrfMsgKeysQuery := .derive (effectiveHkdfSaltBytes salt?)
 
-def saltKeyEncCost : ℕ := 32
+@[expose] def saltKeyEncCost : ℕ := 32
 
-def msgKeyPrfOracle : ChallengerOracle where
+@[expose] def msgKeyPrfOracle : ChallengerOracle where
   ι := PrfMsgKeysQuery
   spec := prfMsgKeysSpec
   Tag := ℕ+
@@ -458,7 +460,7 @@ def msgKeyPrfOracle : ChallengerOracle where
   dec := fun _ _ r => msgKeysV r
   encCost := saltKeyEncCost
 
-def hmacPrfOracle : ChallengerOracle where
+@[expose] def hmacPrfOracle : ChallengerOracle where
   ι := PrfHmacQuery
   spec := prfHmacSpec
   Tag := ℕ+
@@ -473,14 +475,14 @@ abbrev pqGapDhIface := pqChalIface gapDhDdhOracle
 abbrev pqPrfMkIface := pqChalIface msgKeyPrfOracle
 abbrev pqPrfHmacIface := pqChalIface hmacPrfOracle
 
-@[reducible] def preKeyMsgT : PT := .prod hdrT (.prod (B 32) (.prod (B 32) (B 32)))
+@[expose, reducible] def preKeyMsgT : PT := .prod hdrT (.prod (B 32) (.prod (B 32) (B 32)))
 
-def preKeyMsgV (m : PreKeyMsg) : preKeyMsgT.denote :=
+@[expose] def preKeyMsgV (m : PreKeyMsg) : preKeyMsgT.denote :=
   (hdrV m.hdr, (m.ephAPk, (m.pqRatchetMsg, m.aeadCt)))
-def preKeyMsgOfV (v : preKeyMsgT.denote) : PreKeyMsg :=
+@[expose] def preKeyMsgOfV (v : preKeyMsgT.denote) : PreKeyMsg :=
   ⟨hdrOfV v.1, v.2.1, v.2.2.1, v.2.2.2⟩
 
-@[reducible] def authQT : PT :=
+@[expose, reducible] def authQT : PT :=
   .sum .nat (.sum .nat (.sum (.prod .nat .nat) (.sum (.prod .nat (.prod .nat .nat))
   (.sum (.prod .nat (.prod .nat (.prod bundleT (.prod (B 32) (B 32)))))
   (.sum (.prod .nat (.prod .nat (.prod bundleT (.prod (B 32) (B 32)))))
@@ -488,7 +490,7 @@ def preKeyMsgOfV (v : preKeyMsgT.denote) : PreKeyMsg :=
   (.sum (.prod .nat (.prod .nat (.prod .nat preKeyMsgT)))
   (.sum (B 192) (.sum (.prod (B 32) (B 32)) (.sum .unit (B 32)))))))))))
 
-def authQenc {S : Setup} : AuthQuery S → authQT.denote
+@[expose] def authQenc {S : Setup} : AuthQuery S → authQT.denote
   | .initPrin u => .inl u.val
   | .corruptIK u => .inr (.inl u.val)
   | .genSPK u j => .inr (.inr (.inl (u.val, j.val)))
@@ -511,14 +513,14 @@ def authQenc {S : Setup} : AuthQuery S → authQT.denote
   | .registerKey sk =>
     .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr sk))))))))))
 
-@[reducible] def authRT : PT :=
+@[expose, reducible] def authRT : PT :=
   .sum .unit (.sum (.prod (B 32) (B 32)) (.sum (B 32) (.sum (.prod (B 32) (B 32))
   (.sum bundleT (.sum preKeyMsgT
   (.sum (.prod drKeyT (.prod (B 32) (.prod (B 32) preKeyMsgT)))
   (.sum .unit (.sum (.prod drKeyT (.prod (B 32) (.prod (B 32) (B 32))))
   (.sum drKeyT (.sum (.prod (B 32) (B 32)) dhSecretsT))))))))))
 
-def authRdec : authRT.denote → AuthResponse
+@[expose] def authRdec : authRT.denote → AuthResponse
   | .inl () => .noneResp
   | .inr (.inl (ik, s)) => .initPrinResp ik s
   | .inr (.inr (.inl pk)) => .pkResp pk
@@ -539,7 +541,7 @@ def authRdec : authRT.denote → AuthResponse
     .dhSecretsResp l1 l2 l3 l4
 
 /-- `ReductionDsl` game codec for `authSpec S`. -/
-def authCodec (S : Setup) : GameCodec pqSig (authSpec S) where
+@[expose] def authCodec (S : Setup) : GameCodec pqSig (authSpec S) where
   Q := authQT
   R := authRT
   qenc := authQenc
@@ -548,10 +550,10 @@ def authCodec (S : Setup) : GameCodec pqSig (authSpec S) where
 
 /-! ## Legacy cost and block-size bounds -/
 
-def stepCostBudget (S : Setup) (b : QueryBudget) : Nat :=
+@[expose] def stepCostBudget (S : Setup) (b : QueryBudget) : Nat :=
   2 ^ 16 * (b.q_total + S.N_dh + S.N_sess_tot + 1) ^ 2
 
-def outputSizeBudget (S : Setup) (b : QueryBudget) (ℓ : Nat) : Nat :=
+@[expose] def outputSizeBudget (S : Setup) (b : QueryBudget) (ℓ : Nat) : Nat :=
   2 * stepCostBudget S b * (ℓ + 1) + 2 * (b.q_total + 1) * ℓ
 
 export _root_.ReductionDsl (ValFits)
@@ -566,7 +568,7 @@ abbrev PqSampSizeHonest {S : Sig} (X : Samplers S) : Prop :=
     ∀ y ∈ support (X.samp s x), ValFits (B + X.sCost s) (X.sTy s) y
 
 /-- Legacy output block-size bound for a one-stage `CostedReduction` over `pqxdhOps`. -/
-def GRedBlockBounded {ι κ : Type} {T : OracleSpec ι}
+@[expose] def GRedBlockBounded {ι κ : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {G : OracleSpec κ} {C : GameCodec pqSig G} {rIn out : Ty pqSig}
     (S : Setup) (b : QueryBudget) (ℓ : Nat)
     (R : CostedReduction pqxdhOps I G C rIn .unit .bool out) : Prop :=
@@ -578,7 +580,7 @@ def GRedBlockBounded {ι κ : Type} {T : OracleSpec ι}
       ∀ y ∈ support (R.eval A x), ValFits (outputSizeBudget S b ℓ) out y
 
 /-- Legacy output block-size bound for a two-stage `TwoStageCostedReduction` over `pqxdhOps`. -/
-def GRed2BlockBounded {ι κ : Type} {T : OracleSpec ι}
+@[expose] def GRed2BlockBounded {ι κ : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {G : OracleSpec κ} {C : GameCodec pqSig G} {rIn ch rIn2 out : Ty pqSig}
     (S : Setup) (b : QueryBudget) (ℓ : Nat)
     (R : TwoStageCostedReduction pqxdhOps I G C rIn .unit .bool ch rIn2 out) : Prop :=
@@ -591,24 +593,24 @@ def GRed2BlockBounded {ι κ : Type} {T : OracleSpec ι}
         ∀ z ∈ support (R.eval2 cm.2 y b.q_total false),
           ValFits (outputSizeBudget S b ℓ) out z
 
-def primIfacePrimQueryWeight : PTag → ℕ := fun _ => 1
+@[expose] def primIfacePrimQueryWeight : PTag → ℕ := fun _ => 1
 
-def chalIfacePrimQueryWeight {C : ChallengerOracle} : PTag ⊕ C.Tag → ℕ
+@[expose] def chalIfacePrimQueryWeight {C : ChallengerOracle} : PTag ⊕ C.Tag → ℕ
   | .inl _ => 1
   | .inr _ => 0
 
-def chalIfaceSigQueryWeight : PTag ⊕ (ℕ+ ⊕ Unit) → ℕ
+@[expose] def chalIfaceSigQueryWeight : PTag ⊕ (ℕ+ ⊕ Unit) → ℕ
   | .inr (.inl _) => 1
   | _ => 0
 
-def chalIfaceDdhQueryWeight : PTag ⊕ (ℕ+ ⊕ Unit) → ℕ
+@[expose] def chalIfaceDdhQueryWeight : PTag ⊕ (ℕ+ ⊕ Unit) → ℕ
   | .inr (.inr ()) => 1
   | _ => 0
 
-def chalIfaceChalQueryWeight {C : ChallengerOracle} : PTag ⊕ C.Tag → ℕ
+@[expose] def chalIfaceChalQueryWeight {C : ChallengerOracle} : PTag ⊕ C.Tag → ℕ
   | .inl _ => 0
   | .inr _ => 1
 
-def samplerZeroQueryWeight : PSamp → ℕ := fun _ => 0
+@[expose] def samplerZeroQueryWeight : PSamp → ℕ := fun _ => 0
 
 end SignalPqxdh.LegacyCosted

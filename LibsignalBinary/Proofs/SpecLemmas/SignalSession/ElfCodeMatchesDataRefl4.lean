@@ -10,20 +10,23 @@ limitations under the License.
 module
 
 public import Arm64
-public import GeneratedLean.LibsignalSessionPlacedObj
+import GeneratedLean.LibsignalSessionPlacedObj
 public import LibsignalBinary.Heap.Fine.F3LayoutData
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataGen
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl1
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl2
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl3
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataGen -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl1
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl3
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import ProofLib.Placed.Multi
 public import ProofLib.ProgramReflection
 public import VerifiedLibraries.Mallocng.Proofs.PlacedInterned
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -45,7 +48,7 @@ noncomputable section ReflectionLemmas
 open ProofLib ProofLib.ProgramReflection
 open CryptoVerification.LibsignalSpqrV1 (tokenName tokenStorageName)
 open CryptoVerification.SignalSession
-  (cliDehookedSymsPlaced libsignalSessionLib lsRustNoAllocShimSymCli)
+  (cliNonPanicDehookedSyms libsignalSessionLib lsRustNoAllocShimSymCli)
 open LibsignalBinary.Heap.Fine
   (f3MallocngMpl f3StdLayout f3StubNoShimAddr)
 open VerifiedLibraries.Mallocng.Proofs
@@ -71,7 +74,7 @@ theorem f3HandleError_pin_ok :
 
 /-- Static 66-step relocation-inversion DAG for `VerifiedLibraries.mallocngLib`
 (6 global exports resolving 24 blocks and 42 symbols). -/
-def mallocngRelocInvSteps : List Obj.Interned.InvStep :=
+@[expose] def mallocngRelocInvSteps : List Obj.Interned.InvStep :=
   [ .exportSym 29 4 0, .exportSym 28 3 0, .exportSym 24 2 0,
     .exportSym 40 13 0, .exportSym 22 12 0, .exportSym 39 11 0,
     .symOfBlock 2 24 0, .symOfBlock 3 28 0, .symOfBlock 4 27 0,
@@ -116,7 +119,7 @@ theorem f3LsBlockBases_lt_codeHi :
     (f3LsBlockBases.all fun b => Nat.blt b.toNat f3LsCodeHi) = true := by
   rfl_kernel
 
-def checkMallocngCodeBoundsB : Bool :=
+@[expose] def checkMallocngCodeBoundsB : Bool :=
   Nat.beq VerifiedLibraries.mallocngLib.blocks.length 24 &&
   Nat.ble f3LsCodeHi f3MngCodeLo &&
   Nat.ble f3MngCodeHi 18446744073709551616 &&
@@ -135,12 +138,12 @@ theorem f3Ls_mng_base0_lt :
 /-- 3-band `libsignalSessionLib` data-bounds predicate on stock `ld.lld`:
 every `d ∈ lsInternedMultiLib.data` lies in `[0, f3LsRoHi)` (`.rodata`),
 `[f3LsRw1Lo, f3LsRw1Hi)` (`.data`), or `[f3LsRw2Lo, f3LsRw2Hi)` (`.bss`). -/
-def lsDataInStockBandsB (a len : Nat) : Bool :=
+@[expose] def lsDataInStockBandsB (a len : Nat) : Bool :=
   Nat.ble (a + len) f3LsRoHi ||
   (Nat.ble f3LsRw1Lo a && Nat.ble (a + len) f3LsRw1Hi) ||
   (Nat.ble f3LsRw2Lo a && Nat.ble (a + len) f3LsRw2Hi)
 
-def checkLsDataBoundsB : Bool :=
+@[expose] def checkLsDataBoundsB : Bool :=
   lsInternedMultiLib.data.all fun d =>
     Nat.blt d.sym lsInternedMultiLib.names.length &&
     lsDataInStockBandsB (f3LsSymAddrs.getD d.sym 0#64).toNat (d.bytes.length + d.zeroTail)
@@ -183,7 +186,7 @@ theorem checkLsDataBounds_ok : checkLsDataBoundsB = true := by
 /-- 5-band RO/RW separation check between `libsignalSessionLib` and `mallocngLib`
 (`[0, f3LsRoHi) ≤ [f3MngRoLo, f3MngRoHi) ≤ [f3LsRw1Lo, f3LsRw1Hi) ≤ [f3MngRwLo, f3MngRwHi) ≤ [f3LsRw2Lo, f3LsRw2Hi) ≤ 2^64`),
 keeping `Arm64.Obj.MultiPlacedLib.DataDisjoint` completely untouched. -/
-def checkMallocngDataBoundsB : Bool :=
+@[expose] def checkMallocngDataBoundsB : Bool :=
   Nat.ble f3LsRoHi f3MngRoLo &&
   Nat.ble f3MngRoLo f3MngRoHi &&
   Nat.ble f3MngRoHi f3LsRw1Lo &&
@@ -203,13 +206,6 @@ def checkMallocngDataBoundsB : Bool :=
      (!d.readOnly && Nat.ble f3MngRwLo a && Nat.ble e f3MngRwHi)))
 
 theorem checkMallocngDataBounds_ok : checkMallocngDataBoundsB = true := by
-  rfl_kernel
-
-theorem lsPlacedCompactLit_in_seg1 :
-    ((lsPlacedCompactLit.all fun p =>
-        Nat.ble stockTextStartNat p.1 &&
-        Nat.blt p.1 (stockTextStartNat + stockTextLenNat)) &&
-     Nat.ble (stockTextStartNat + stockTextLenNat) 18446744073709551616) = true := by
   rfl_kernel
 
 theorem f3TokenPins_ok :
@@ -264,12 +260,13 @@ theorem lsPlacedStubPairs_eq :
       (lsInternedMultiLib.names.getD idx "", f3LsSymAddrs.getD idx 0#64) := by
   rfl_kernel
 
-theorem lsPlacedCompactLit_lt_mngCodeLo :
-    (lsPlacedCompactLit.all fun p => Nat.blt p.1 f3MngCodeLo) = true := by
+theorem lsPlacedCompactLit_ge_mngCodeHi :
+    (Nat.ble f3MngCodeHi 0x479798 &&
+     (lsPlacedCompactLit.all fun p => Nat.ble 0x479798 p.1)) = true := by
   rfl_kernel
 
-theorem cliDehookedSymsPlaced_eq_entries :
-    cliDehookedSymsPlaced = f3DehookedEntries.map (fun e => String.ofList e.2.1) := by
+theorem cliNonPanicDehookedSyms_eq_entries :
+    cliNonPanicDehookedSyms = f3DehookedEntries.map (fun e => String.ofList e.2.1) := by
   rfl_kernel
 
 end ReflectionLemmas

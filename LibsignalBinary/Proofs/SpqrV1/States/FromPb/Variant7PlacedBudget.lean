@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7kPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7aPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7kPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
@@ -19,6 +19,14 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7dPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7fPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7gPlacedBudget
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
 
 /-!
 # Budget-Threaded Placed Variant 7 (`Ct1Sampled`, `+1056`, Block `333`)
@@ -28,7 +36,7 @@ Total-correctness (`SepWP`) relocatable stage compositions (`+3552`, `+3480`) an
 `<spqr::v1::chunked::states::States>::from_pb` under `Ct1SampledFromPbEnv` and `StatesFromPbEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

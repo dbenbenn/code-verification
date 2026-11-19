@@ -9,21 +9,43 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6bPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6ePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6fPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6Placed
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6bPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6ePlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6fPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6
-import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6a
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6a -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6b
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6c
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6e
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6f
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.FromPbBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6fPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6bPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeBase
+import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6bPlaced
 
 /-!
 # Budget Envelopes and Low-Stack Helpers for Placed Variant 6 (`HeaderReceived`)
@@ -33,7 +55,7 @@ Defines the Variant 6 (`InnerState.headerReceived`, `+1464`, Block `333`) alloca
 and lifts the `v6hr_lowStack_*` header-load and early-error helpers to `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -104,7 +126,7 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
     - `V6hrAuthCloneEnv rootKey macKey` followed by `FromPbDecAllocEnv (pbToProtoPolyDecoder decPb)`
       when `receivingEk = some decPb`, `uc = some { auth := some authPb, hdr := hdr, .. }`,
       `decPb.ptsNeeded = 576#32`, and `hdr.length = 64`. -/
-def HeaderReceivedFromPbAllocEnv (s : V1State.Chunked.HeaderReceived)
+@[expose] def HeaderReceivedFromPbAllocEnv (s : V1State.Chunked.HeaderReceived)
     (evs : List AllocEvent) : Prop :=
   match s.receivingEk, s.uc with
   | none, some uc =>
@@ -128,7 +150,7 @@ def HeaderReceivedFromPbAllocEnv (s : V1State.Chunked.HeaderReceived)
 /-- Complete postcondition event envelope of Variant 6 (`HeaderReceived`, `+1464`, Block `333`) of
     `<spqr::v1::chunked::states::States>::from_pb`, including trailing `FreeOnlyEvs` drops of the
     input `V1State` buffers and any cloned buffers freed on error. -/
-def HeaderReceivedFromPbEnv (s : V1State.Chunked.HeaderReceived)
+@[expose] def HeaderReceivedFromPbEnv (s : V1State.Chunked.HeaderReceived)
     (evs : List AllocEvent) : Prop :=
   match s.receivingEk, s.uc with
   | none, none => evs = []

@@ -21,7 +21,7 @@ Proves `simC_queries_proof` and `simC_equalPub_proof`, showing that `libsignalTo
 makes at most one Fig. 8 query per adversary query and issues equal public parts in `chall` queries.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

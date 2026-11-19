@@ -9,14 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import ProofLib.BV.ReflectROBDD -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout -- shake: keep
-import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.Fetch
+import ProofLib.ProgramReflection.SortedFresh
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Frame -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.IsCanonical
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerialize
@@ -35,7 +34,7 @@ curve and ML-KEM key-pair constructors, `KeySerde::serialize` implementations, `
 `key_pair`, and tail-call `__rust_dealloc` helpers used by the PQXDH responder store.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Pqxdh.ResponderStore
 
@@ -77,46 +76,7 @@ private theorem pointsToBytes_cons_fold (a : BitVec 64) (b0 : BitVec 8) (bs : Li
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit bv_sub_add_lit' BitVec.toNat_zero
 
-set_option maxHeartbeats 200000 in
-theorem subroutine_ok_rel2_trap {α : Type} {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)}
-    {spec : Spec α} {callee name : String} {offc off k : Nat}
-    (h : subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr callee) spec)
-    (hc : libsignalSessionCode.fnOff callee = offc) (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : (off + k) % 2 ^ 64 = offc) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) spec := by
-  have hrel : (trTrapProgAt b C abs).fnAddr callee =
-      (trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase, hfn, hc, BitVec.add_assoc,
-      ← BitVec.ofNat_add]
-    congr 1
-    apply BitVec.eq_of_toNat_eq
-    rw [BitVec.toNat_ofNat, BitVec.toNat_ofNat, hk, ← hk, Nat.mod_mod]
-  rwa [hrel] at h
-
-theorem subroutine_ok_rel2 {α : Type} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    {spec : Spec α} {callee name : String} {offc off k : Nat}
-    (h : subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr callee) spec)
-    (hc : libsignalSessionCode.fnOff callee = offc) (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : (off + k) % 2 ^ 64 = offc) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) spec := by
-  have hrel : (tripleRatchetProgAt b C ctl abs).fnAddr callee =
-      (tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase, hfn, hc, BitVec.add_assoc,
-      ← BitVec.ofNat_add]
-    congr 1
-    apply BitVec.eq_of_toNat_eq
-    rw [BitVec.toNat_ofNat, BitVec.toNat_ofNat, hk, ← hk, Nat.mod_mod]
-  rwa [hrel] at h
-
-/-! ## Byte-Level Normalization Helpers for `curve::KeyPair` -/
-
-def clampBv8List (l : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def clampBv8List (l : List (BitVec 8)) : List (BitVec 8) :=
   (l.take 1).map (fun b => b &&& 0xf8#8) ++
     (l.drop 1).take 30 ++
     ((l.drop 31).take 1).map (fun b => (b &&& 0x7f#8) ||| 0x40#8)
@@ -231,7 +191,7 @@ theorem bv64_mask_low16_orr_zext16
   rw [h1, h2]
   exact bv64_mask_low16_orr_zext16_16 (a7 ++ a6 ++ a5 ++ a4 ++ a3 ++ a2) (a1 ++ a0) (b1 ++ b0)
 
-def bytes32At (a : BitVec 64)
+@[expose] def bytes32At (a : BitVec 64)
     (b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15
      b16 b17 b18 b19 b20 b21 b22 b23 b24 b25 b26 b27 b28 b29 b30 b31 : BitVec 8) : SepProp :=
   (a ↦₈ b0) ∗ ((a + 1#64) ↦₈ b1) ∗ ((a + 2#64) ↦₈ b2) ∗ ((a + 3#64) ↦₈ b3) ∗
@@ -293,7 +253,7 @@ theorem memRegion_65_cells (a : BitVec 64) :
 abbrev curveKeyPairFromPubPrivName : String :=
   "<libsignal_core::curve::KeyPair>::from_public_and_private"
 
-def curveKeyPairFromPubPrivOkSpec :
+@[expose] def curveKeyPairFromPubPrivOkSpec :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (pubPtr, pk, privPtr, sk, outPtr) s =>
     ⌜s.readReg64 .x0 = pubPtr ∧ s.readReg64 .x1 = 33#64 ∧
@@ -311,61 +271,6 @@ def curveKeyPairFromPubPrivOkSpec :
     ((outPtr + 1#64) ↦ₛ pk) ∗
     ((outPtr + 33#64) ↦ₛ clampBv8List sk) ∗
     cells (s0.sp - 64#64) 8
-
-set_option maxHeartbeats 1200000 in
-theorem curveKeyPairFromPubPriv_ok_trap {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr curveKeyPairFromPubPrivName)
-      curveKeyPairFromPubPrivOkSpec := by
-  unfold curveKeyPairFromPubPrivOkSpec
-  simp only [memRegion_65_cells, cells, sepConj_emp, sepExists_sepConj_right,
-    bv_sub_add_lit', BitVec.add_assoc, BitVec.reduceAdd, BitVec.reduceSub]
-  have hfn : libsignalSessionCode.fnOff curveKeyPairFromPubPrivName =
-      num% (ls_off% "<libsignal_core::curve::KeyPair>::from_public_and_private") :=
-    (ls_lemma% fnOff "<libsignal_core::curve::KeyPair>::from_public_and_private")
-  responder_fetches_from b (Rust.withPanics (trTrapExterns C abs)) hfn 256028 0 424
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨pubPtr, pk, privPtr, sk, outPtr⟩ := x
-  dsimp only at *
-  subst h_1 h_3 h_5
-  obtain ⟨pk0, pk1, pk2, pk3, pk4, pk5, pk6, pk7, pk8, pk9, pk10, pk11, pk12, pk13, pk14, pk15,
-    pk16, pk17, pk18, pk19, pk20, pk21, pk22, pk23, pk24, pk25, pk26, pk27, pk28, pk29, pk30, pk31,
-    hpk, _⟩ := exists_bytes32_of_length_32 h_6
-  obtain ⟨sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, sk13, sk14, sk15,
-    sk16, sk17, sk18, sk19, sk20, sk21, sk22, sk23, sk24, sk25, sk26, sk27, sk28, sk29, sk30, sk31,
-    hsk, hsk_clamp⟩ := exists_bytes32_of_length_32 h
-  wp_pull_exists
-  rw [pointsToBytes_cons, hpk (s0.readReg64 (.gpr 0#5) + 1#64),
-    hsk (s0.readReg64 (.gpr 2#5)),
-    hpk (s0.readReg64 (.gpr 8#5) + 1#64),
-    hsk_clamp (s0.readReg64 (.gpr 8#5) + 33#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 1#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 9#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 17#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 25#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 33#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 41#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 49#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 57#64)]
-  dsimp only [bytes32At]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-  wp_steps
-  wp_done
-
-theorem curveKeyPairFromPubPriv_ok {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr curveKeyPairFromPubPrivName)
-      curveKeyPairFromPubPrivOkSpec := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr curveKeyPairFromPubPrivName]
-  exact subroutine_ok_kit_of_trTrap curveKeyPairFromPubPriv_ok_trap
-
-/-! ## `curveKeyPairSerde_ok` (`0x2a930`) and `preKeyRecordKeyPair_ok` (`0x1e9f8`) -/
 
 abbrev curveKeyPairSerdeName : String :=
   "<libsignal_core::curve::KeyPair as \
@@ -466,7 +371,7 @@ theorem cells_14_curveKeyPairSerde (sp : BitVec 64) :
   simp only [ProofLib.memRegion_eight, ProofLib.memRegion_four, ProofLib.memRegion_one,
     bv_sub_add_lit', BitVec.reduceSub, sepConj_assoc]
 
-def curveKeyPairSerdeOkSpec :
+@[expose] def curveKeyPairSerdeOkSpec :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (pubPtr, pk, privPtr, sk, outPtr) s =>
     ⌜s.readReg64 .x0 = pubPtr ∧ s.readReg64 .x1 = 33#64 ∧
@@ -564,74 +469,7 @@ theorem cells_14_curveKeyPairSerde_mr (sp : BitVec 64) :
     memRegion_8_bytes_mr (sp - 8#64)]
   simp only [memRegion_8_bytes_mr_rhs, sepConj_assoc]
 
-set_option maxHeartbeats 1200000 in
-theorem curveKeyPairSerde_ok_trap {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr curveKeyPairSerdeName)
-      curveKeyPairSerdeOkSpec := by
-  unfold curveKeyPairSerdeOkSpec
-  have hfn : libsignalSessionCode.fnOff curveKeyPairSerdeName =
-      num% (ls_off% "<libsignal_core::curve::KeyPair as libsignal_protocol::state::signed_prekey::KeyPairSerde>::from_public_and_private") :=
-    (ls_lemma% fnOff "<libsignal_core::curve::KeyPair as libsignal_protocol::state::signed_prekey::KeyPairSerde>::from_public_and_private")
-  have hinner := subroutine_ok_rel2_trap
-    (curveKeyPairFromPubPriv_ok_trap (b := b) (C := C) (abs := abs))
-    (ls_lemma% fnOff "<libsignal_core::curve::KeyPair>::from_public_and_private") hfn (k := 81416) (by decide)
-  simp only [curveKeyPairFromPubPrivOkSpec, cells, sepExists_sepConj_right,
-    sepConj_emp, bv_sub_add_lit', BitVec.reduceSub] at hinner
-  responder_fetches_from b (Rust.withPanics (trTrapExterns C abs)) hfn 174612 0 288
-  wp_init x s0
-  dsimp only [trTrapProgAt] at hinner ⊢
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨pubPtr, pk, privPtr, sk, outPtr⟩ := x
-  dsimp only at *
-  subst h_1 h_3 h_5
-  obtain ⟨pk0, pk1, pk2, pk3, pk4, pk5, pk6, pk7, pk8, pk9, pk10, pk11, pk12, pk13, pk14, pk15,
-    pk16, pk17, pk18, pk19, pk20, pk21, pk22, pk23, pk24, pk25, pk26, pk27, pk28, pk29, pk30, pk31,
-    hpk, _⟩ := exists_bytes32_of_length_32 h_6
-  obtain ⟨sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, sk13, sk14, sk15,
-    sk16, sk17, sk18, sk19, sk20, sk21, sk22, sk23, sk24, sk25, sk26, sk27, sk28, sk29, sk30, sk31,
-    _, hsk_clamp⟩ := exists_bytes32_of_length_32 h
-  rw (occs := .pos [1]) [cells_8_sub176 s0.sp]
-  rw (occs := .pos [1]) [cells_14_curveKeyPairSerde s0.sp]
-  rw [memRegion_8_bytes (s0.sp - 8#64)]
-  simp only [bv_sub_add_lit', BitVec.reduceSub]
-  wp_pull_exists
-  wp_steps
-  wp_call hinner (s0.readReg64 (.gpr 0#5), pk, s0.readReg64 (.gpr 2#5), sk, s0.sp - 104#64)
-  rw [memRegion_65_bytes8 (s0.readReg64 (.gpr 8#5))]
-  simp only [ProofLib.memRegion_eight]
-  wp_pull_exists
-  rw [hpk (s0.sp - 103#64),
-    hsk_clamp (s0.sp - 71#64),
-    hpk (s0.readReg64 (.gpr 8#5) + 1#64),
-    hsk_clamp (s0.readReg64 (.gpr 8#5) + 33#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 1#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 9#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 17#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 25#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 33#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 41#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 49#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 57#64)]
-  rw [cells_8_sub176_mr s0.sp, cells_14_curveKeyPairSerde_mr s0.sp]
-  dsimp only [memRegion_8_bytes_mr_rhs, bytes32At]
-  simp only [bv_sub_add_lit', BitVec.add_assoc, BitVec.reduceAdd, BitVec.reduceSub, sepConj_assoc]
-  wp_steps
-  wp_done
-
-theorem curveKeyPairSerde_ok {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr curveKeyPairSerdeName)
-      curveKeyPairSerdeOkSpec := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr curveKeyPairSerdeName]
-  exact subroutine_ok_kit_of_trTrap curveKeyPairSerde_ok_trap
-
-def preKeyRecordKeyPairOkSpec :
+@[expose] def preKeyRecordKeyPairOkSpec :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (recPtr, pubPtr, pk, privPtr, sk, outPtr) s =>
     ⌜s.readReg64 .x0 = recPtr ∧
@@ -659,75 +497,6 @@ def preKeyRecordKeyPairOkSpec :
     cells (s0.sp - 176#64) 8 ∗
     cells (s0.sp - 112#64) 14
 
-set_option maxHeartbeats 1200000 in
-theorem preKeyRecordKeyPair_ok_trap {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr preKeyRecordKeyPairName)
-      preKeyRecordKeyPairOkSpec := by
-  unfold preKeyRecordKeyPairOkSpec
-  have hfn : libsignalSessionCode.fnOff preKeyRecordKeyPairName =
-      num% (ls_off% "<libsignal_protocol::state::prekey::PreKeyRecord>::key_pair") :=
-    (ls_lemma% fnOff "<libsignal_protocol::state::prekey::PreKeyRecord>::key_pair")
-  have hinner := subroutine_ok_rel2_trap
-    (curveKeyPairFromPubPriv_ok_trap (b := b) (C := C) (abs := abs))
-    (ls_lemma% fnOff "<libsignal_core::curve::KeyPair>::from_public_and_private") hfn (k := 130596) (by decide)
-  simp only [curveKeyPairFromPubPrivOkSpec, cells, sepExists_sepConj_right,
-    sepConj_emp, bv_sub_add_lit', BitVec.reduceSub] at hinner
-  responder_fetches_from b (Rust.withPanics (trTrapExterns C abs)) hfn 125432 0 300
-  wp_init x s0
-  dsimp only [trTrapProgAt] at hinner ⊢
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨recPtr, pubPtr, pk, privPtr, sk, outPtr⟩ := x
-  dsimp only at *
-  subst h_1 h_2
-  obtain ⟨pk0, pk1, pk2, pk3, pk4, pk5, pk6, pk7, pk8, pk9, pk10, pk11, pk12, pk13, pk14, pk15,
-    pk16, pk17, pk18, pk19, pk20, pk21, pk22, pk23, pk24, pk25, pk26, pk27, pk28, pk29, pk30, pk31,
-    hpk, _⟩ := exists_bytes32_of_length_32 h_3
-  obtain ⟨sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, sk13, sk14, sk15,
-    sk16, sk17, sk18, sk19, sk20, sk21, sk22, sk23, sk24, sk25, sk26, sk27, sk28, sk29, sk30, sk31,
-    _, hsk_clamp⟩ := exists_bytes32_of_length_32 h
-  rw (occs := .pos [1]) [cells_8_sub176 s0.sp]
-  rw (occs := .pos [1]) [cells_14_curveKeyPairSerde s0.sp]
-  rw [memRegion_8_bytes (s0.sp - 8#64)]
-  simp only [bv_sub_add_lit', BitVec.reduceSub]
-  wp_pull_exists
-  wp_steps
-  wp_call hinner (pubPtr, pk, privPtr, sk, s0.sp - 104#64)
-  rw [memRegion_65_bytes8 (s0.readReg64 (.gpr 8#5))]
-  simp only [ProofLib.memRegion_eight]
-  wp_pull_exists
-  rw [hpk (s0.sp - 103#64),
-    hsk_clamp (s0.sp - 71#64),
-    hpk (s0.readReg64 (.gpr 8#5) + 1#64),
-    hsk_clamp (s0.readReg64 (.gpr 8#5) + 33#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 1#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 9#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 17#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 25#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 33#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 41#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 49#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 57#64)]
-  rw [cells_8_sub176_mr s0.sp, cells_14_curveKeyPairSerde_mr s0.sp]
-  dsimp only [memRegion_8_bytes_mr_rhs, bytes32At]
-  simp only [bv_sub_add_lit', BitVec.add_assoc, BitVec.reduceAdd, BitVec.reduceSub, sepConj_assoc]
-  wp_steps
-  wp_done
-
-theorem preKeyRecordKeyPair_ok {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr preKeyRecordKeyPairName)
-      preKeyRecordKeyPairOkSpec := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr preKeyRecordKeyPairName]
-  exact subroutine_ok_kit_of_trTrap preKeyRecordKeyPair_ok_trap
-
-/-! ## `kemKeyPairFromPubPriv_ok` (`0x1f908`) and `kemKeyPairSerde_ok` (`0x2ae08`) -/
-
 abbrev kemKeyPairFromPubPrivName : String :=
   "<libsignal_protocol::kem::KeyPair>::from_public_and_private"
 
@@ -747,7 +516,7 @@ private theorem stackAt_kemKeyPairFromPubPriv (sp : BitVec 64) :
   rw [h5] at h2
   rw [← h1, h3, h2]
 
-def kemKeyPairFromPubPrivOkSpec (A : RustAlloc) :
+@[expose] def kemKeyPairFromPubPrivOkSpec (A : RustAlloc) :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (pubPtr, pk, privPtr, sk, outPtr) s =>
     ⌜s.readReg64 .x0 = pubPtr ∧ s.readReg64 .x1 = 0x621#64 ∧
@@ -774,163 +543,9 @@ def kemKeyPairFromPubPrivOkSpec (A : RustAlloc) :
       A.pool
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-set_option maxHeartbeats 1200000 in
-theorem kemKeyPairFromPubPriv_ok_trap {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr kemKeyPairFromPubPrivName)
-      (kemKeyPairFromPubPrivOkSpec A) := by
-  unfold kemKeyPairFromPubPrivOkSpec
-  simp only [stackAt_kemKeyPairFromPubPriv]
-  simp only [cells, sepConj_emp, sepExists_sepConj_right,
-    BitVec.add_assoc, BitVec.reduceAdd]
-  have hshim := session_shim_ok_at_trap b C abs kemKeyPairFromPubPrivName
-    (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" -
-      ls_off% "<libsignal_protocol::kem::KeyPair>::from_public_and_private"))
-    (by simp only [arm64_norm])
-  have halloc := alloc_ok_at_trap b C A abs hA kemKeyPairFromPubPrivName
-    (num% (ls_off% "__rustc::__rust_alloc" -
-      ls_off% "<libsignal_protocol::kem::KeyPair>::from_public_and_private"))
-    (by simp only [arm64_norm])
-  have hmemcpy := session_memcpy_region_ok_at_trap b C abs kemKeyPairFromPubPrivName
-    (num% (ls_off% "memcpy" -
-      ls_off% "<libsignal_protocol::kem::KeyPair>::from_public_and_private"))
-    (by simp only [arm64_norm])
-  have hpanic := panic_at_handle_alloc_error_trap b C abs kemKeyPairFromPubPrivName
-    (num% (ls_off% "alloc::alloc::handle_alloc_error" -
-      ls_off% "<libsignal_protocol::kem::KeyPair>::from_public_and_private"))
-    (by simp only [arm64_norm])
-  clear hA
-  wpp_init g s0
-  simp only [sepConj_assoc]
-  have hfn : libsignalSessionCode.fnOff kemKeyPairFromPubPrivName =
-      num% (ls_off% "<libsignal_protocol::kem::KeyPair>::from_public_and_private") :=
-    (ls_lemma% fnOff "<libsignal_protocol::kem::KeyPair>::from_public_and_private")
-  responder_fetches_from b (Rust.withPanics (trTrapExterns C abs)) hfn 129288 0 364
-  replace hpc : s0.pc =
-      (libsignalSessionCode.rebase b
-        (Rust.withPanics (trTrapExterns C abs))).fnAddr kemKeyPairFromPubPrivName := by
-    rw [hpc, Program.fnAddr_rebase, hfn]
-  dsimp only [trTrapProgAt] at hshim halloc hmemcpy hpanic ⊢
-  clear hfn
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))).fnAddr kemKeyPairFromPubPrivName = entry
-  examples_hide_fetches
-  obtain ⟨pubPtr, pk, privPtr, sk, outPtr⟩ := g
-  dsimp only at *
-  subst h_1 h_3 h_5
-  have hpow2 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  have hlay1 : LayoutOk 1568 1 := ⟨by decide, hpow2, by decide⟩
-  have hlay2 : LayoutOk 3168 1 := ⟨by decide, hpow2, by decide⟩
-  rw [pointsToBytes_cons (s0.readReg64 (.gpr 0#5)),
-    pointsToBytes_cons (s0.readReg64 (.gpr 2#5))]
-  apply SepWPp.of_sepWP (mid := entry + 76#64)
-  wp_steps
-  wp_call hshim ()
-  wp_steps
-  wp_call halloc (1568, 1)
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  by_cases hoom1 : sf_1.readReg64 (Reg.gpr 0#5) = 0
-  · have hoom1_64 : sf_1.readReg64 (Reg.gpr 0#5) = 0#64 := hoom1
-    simp only [hoom1, ite_true]
-    refine sepWPp_pure_mid fun htrace1 => ?_
-    apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::alloc::handle_alloc_error" -
-      ls_off% "<libsignal_protocol::kem::KeyPair>::from_public_and_private"))
-    wp_steps
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    apply SepWPp_panic_oom (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      hpanic (by simp only [arm64_norm, *])
-  · have hoom1_64 : sf_1.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom1
-    simp only [hoom1, ite_false, sepConj_assoc]
-    refine sepWPp_pure_mid fun ⟨hmod1, htrace1⟩ => ?_
-    apply SepWPp.of_sepWP (mid := entry + 140#64)
-    wp_steps
-    rw [← h_6]
-    wp_call hmemcpy (sf_1.readReg64 (Reg.gpr 0#5), s0.readReg64 (Reg.gpr 0#5) + 1#64, pk)
-    simp only [h_6] at *
-    wp_steps
-    wp_call hshim ()
-    wp_steps
-    wp_call halloc (3168, 1)
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    by_cases hoom2 : sf_4.readReg64 (Reg.gpr 0#5) = 0
-    · have hoom2_64 : sf_4.readReg64 (Reg.gpr 0#5) = 0#64 := hoom2
-      simp only [hoom2, ite_true]
-      refine sepWPp_pure_mid fun htrace2 => ?_
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::alloc::handle_alloc_error" -
-        ls_off% "<libsignal_protocol::kem::KeyPair>::from_public_and_private"))
-      wp_steps
-      apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      apply SepWPp_panic_oom (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        hpanic (by simp only [arm64_norm, *])
-    · have hoom2_64 : sf_4.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom2
-      simp only [hoom2, ite_false, sepConj_assoc]
-      refine sepWPp_pure_mid fun ⟨hmod2, htrace2⟩ => ?_
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      rw [← h]
-      wp_call hmemcpy (sf_4.readReg64 (Reg.gpr 0#5), s0.readReg64 (Reg.gpr 2#5) + 1#64, sk)
-      simp only [h] at *
-      wp_steps
-      wp_done
-
-theorem kemKeyPairFromPubPriv_ok {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr kemKeyPairFromPubPrivName)
-      (kemKeyPairFromPubPrivOkSpec A) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr kemKeyPairFromPubPrivName]
-  exact subroutine_ok_kit_of_trTrap (kemKeyPairFromPubPriv_ok_trap hA)
-
-set_option maxHeartbeats 1200000 in
-theorem kemKeyPairSerde_ok_trap {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr kemKeyPairSerdeName)
-      (kemKeyPairFromPubPrivOkSpec A) := by
-  have hfn : libsignalSessionCode.fnOff kemKeyPairSerdeName =
-      num% (ls_off% "<libsignal_protocol::kem::KeyPair as libsignal_protocol::state::signed_prekey::KeyPairSerde>::from_public_and_private") :=
-    (ls_lemma% fnOff "<libsignal_protocol::kem::KeyPair as libsignal_protocol::state::signed_prekey::KeyPairSerde>::from_public_and_private")
-  responder_fetches_from b (Rust.withPanics (trTrapExterns C abs)) hfn 175852 0 4
-  have hinner := kemKeyPairFromPubPriv_ok_trap (b := b) (C := C) (A := A)
-    (abs := abs) hA
-  exact subroutine_ok_of_b ‹_›
-    (by simp only [trTrapProgAt, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "<libsignal_protocol::kem::KeyPair as libsignal_protocol::state::signed_prekey::KeyPairSerde>::from_public_and_private"),
-      (ls_lemma% fnOff "<libsignal_protocol::kem::KeyPair>::from_public_and_private"), arm64_norm])
-    rfl (by intros; rfl) hinner (by intros; rfl) (by intros; rfl) (by intros; rfl)
-
-theorem kemKeyPairSerde_ok {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr kemKeyPairSerdeName)
-      (kemKeyPairFromPubPrivOkSpec A) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr kemKeyPairSerdeName]
-  exact subroutine_ok_kit_of_trTrap (kemKeyPairSerde_ok_trap hA)
-
-/-! ## `privKeySerdeSerialize_ok` (`0x28eb8`) -/
-
 abbrev privKeySerdeSerializeName : String :=
   "<libsignal_core::curve::PrivateKey as \
 libsignal_protocol::state::signed_prekey::KeySerde>::serialize"
-
-theorem privKeySerdeSerialize_ok {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr privKeySerdeSerializeName)
-      (privSerializeSpec A) := by
-  have hfn : libsignalSessionCode.fnOff privKeySerdeSerializeName = 0x28f9c :=
-    libsignalSessionCode_fnOff_0x28f9c
-  responder_fetches_from b (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x28f9c 0 4
-  have hinner := privSerialize_ok b C A ctl abs hA
-  exact subroutine_ok_of_b ‹_›
-    (by simp only [tripleRatchetProgAt, Program.fnAddr_rebase, libsignalSessionCode_fnOff_0x28f9c,
-      libsignalSessionCode_fnOff_0x3e7c0, arm64_norm])
-    rfl (by intros; rfl) hinner (by intros; rfl) (by intros; rfl) (by intros; rfl)
-
 
 /-! ## Tail-Call `__rust_dealloc` and `SepWPp` Call Helpers -/
 
@@ -1023,70 +638,6 @@ private def rustDeallocTail48Spec (A : RustAlloc) : Spec DeallocTail48Ghost wher
     ⌜sf.trace = s0.trace⌝ ∗ A.pool ∗
       stackAt (s0.sp - 48#64) allocHookStack ∗ cells (s0.sp - 48#64) 6
 
-private theorem dealloc_tail48_ok_at (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (hA : AllocHooks A abs) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff deallocName) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      (rustDeallocTail48Spec A) := by
-  refine subroutine_ok_outcome_intro ?_
-  intro ⟨p, bs, align, v0, v1, v2, v3, v4, v5⟩ R s0 hpc hrun hpre hsp
-  have hcells :
-      (((s0.sp - 48#64) ↦₆₄ v0) ∗ ((s0.sp - 40#64) ↦₆₄ v1) ∗
-        ((s0.sp - 32#64) ↦₆₄ v2) ∗ ((s0.sp - 24#64) ↦₆₄ v3) ∗
-        ((s0.sp - 16#64) ↦₆₄ v4) ∗ ((s0.sp - 8#64) ↦₆₄ v5)) ⊢ cells (s0.sp - 48#64) 6 := by
-    have h := pointsTo64_6_entails_cells (s0.sp - 48#64) v0 v1 v2 v3 v4 v5
-    have ha1 : s0.sp - 48#64 + 8#64 = s0.sp - 40#64 := by bv_lin
-    have ha2 : s0.sp - 48#64 + 16#64 = s0.sp - 32#64 := by bv_lin
-    have ha3 : s0.sp - 48#64 + 24#64 = s0.sp - 24#64 := by bv_lin
-    have ha4 : s0.sp - 48#64 + 32#64 = s0.sp - 16#64 := by bv_lin
-    have ha5 : s0.sp - 48#64 + 40#64 = s0.sp - 8#64 := by bv_lin
-    rwa [ha1, ha2, ha3, ha4, ha5] at h
-  have hbs_mem := pointsToBytes_entails_memRegion p bs
-  have hpre2 : s0.mem ⊨ (rustDeallocSpec A).pre (p, bs.length, align) s0 ∗
-      (stackAt (s0.sp - BitVec.ofNat 64 allocHookStack) 48 ∗ R) := by
-    unfold rustDeallocTail48Spec at hpre
-    unfold rustDeallocSpec
-    dsimp only at hpre ⊢
-    have h1 : s0.mem ⊨
-        (⌜s0.readReg64 .x0 = p ∧ (s0.readReg64 .x1).toNat = bs.length ∧
-          (s0.readReg64 .x2).toNat = align⌝ ∗
-          A.pool ∗ A.live p bs.length align ∗ memRegion p bs.length ∗
-          (stackAt (s0.sp - 48#64) allocHookStack ∗ cells (s0.sp - 48#64) 6)) ∗ R := by
-      refine Satisfies.mono (sepConj_mono_left ?_) hpre
-      exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-        (sepConj_mono hbs_mem (sepConj_mono_right hcells))))
-    rw [← stackAt_add_48, stackAt_add_48_comm] at h1
-    exact (by ac_rfl :
-      ((⌜s0.readReg64 .x0 = p ∧ (s0.readReg64 .x1).toNat = bs.length ∧
-          (s0.readReg64 .x2).toNat = align⌝ ∗
-        A.pool ∗ A.live p bs.length align ∗ memRegion p bs.length ∗
-        (stackAt (s0.sp - BitVec.ofNat 64 allocHookStack) 48 ∗ stackAt s0.sp allocHookStack)) ∗ R) =
-      ((⌜s0.readReg64 .x0 = p ∧ (s0.readReg64 .x1).toNat = bs.length ∧
-          (s0.readReg64 .x2).toNat = align⌝ ∗
-        A.pool ∗ A.live p bs.length align ∗ memRegion p bs.length ∗ stackAt s0.sp allocHookStack) ∗
-        (stackAt (s0.sp - BitVec.ofNat 64 allocHookStack) 48 ∗ R))) ▸ h1
-  refine ((dealloc_ok_at b C A ctl abs hA name k hk).to_outcome
-    (p, bs.length, align)
-    (stackAt (s0.sp - BitVec.ofNat 64 allocHookStack) 48 ∗ R) s0 hpc hrun hpre2 hsp).mono_outcome
-    fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨_, hpost⟩ | ⟨_, _, hpost⟩ | ⟨_, hpost⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    unfold rustDeallocTail48Spec
-    unfold rustDeallocSpec at hpost
-    dsimp only at hpost ⊢
-    rw [← stackAt_add_48, stackAt_add_48_comm]
-    exact (by ac_rfl :
-      ((⌜sf.trace = s0.trace⌝ ∗ A.pool ∗ stackAt s0.sp allocHookStack) ∗
-        (stackAt (s0.sp - BitVec.ofNat 64 allocHookStack) 48 ∗ R)) =
-      ((⌜sf.trace = s0.trace⌝ ∗ A.pool ∗
-        (stackAt (s0.sp - BitVec.ofNat 64 allocHookStack) 48 ∗
-          stackAt s0.sp allocHookStack)) ∗ R)) ▸ hpost
-  · exact False.elim (not_satisfies_false_sepConj hpost)
-  · exact False.elim (not_satisfies_false_sepConj hpost)
-  · exact False.elim (not_satisfies_false_sepConj hpost)
-
 private abbrev DeallocTail64Ghost :=
   BitVec 64 × List (BitVec 8) × Nat ×
     BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64
@@ -1103,73 +654,6 @@ private def rustDeallocTail64Spec (A : RustAlloc) : Spec DeallocTail64Ghost wher
   post := fun _ s0 sf =>
     ⌜sf.trace = s0.trace⌝ ∗ A.pool ∗
       stackAt (s0.sp - 64#64) allocHookStack ∗ cells (s0.sp - 64#64) 8
-
-private theorem dealloc_tail64_ok_at (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (hA : AllocHooks A abs) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff deallocName) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      (rustDeallocTail64Spec A) := by
-  refine subroutine_ok_outcome_intro ?_
-  intro ⟨p, bs, align, v0, v1, v2, v3, v4, v5, v6, v7⟩ R s0 hpc hrun hpre hsp
-  have hcells :
-      (((s0.sp - 64#64) ↦₆₄ v0) ∗ ((s0.sp - 56#64) ↦₆₄ v1) ∗
-        ((s0.sp - 48#64) ↦₆₄ v2) ∗ ((s0.sp - 40#64) ↦₆₄ v3) ∗
-        ((s0.sp - 32#64) ↦₆₄ v4) ∗ ((s0.sp - 24#64) ↦₆₄ v5) ∗
-        ((s0.sp - 16#64) ↦₆₄ v6) ∗ ((s0.sp - 8#64) ↦₆₄ v7)) ⊢ cells (s0.sp - 64#64) 8 := by
-    have h := pointsTo64_8_entails_cells (s0.sp - 64#64) v0 v1 v2 v3 v4 v5 v6 v7
-    have ha1 : s0.sp - 64#64 + 8#64 = s0.sp - 56#64 := by bv_lin
-    have ha2 : s0.sp - 64#64 + 16#64 = s0.sp - 48#64 := by bv_lin
-    have ha3 : s0.sp - 64#64 + 24#64 = s0.sp - 40#64 := by bv_lin
-    have ha4 : s0.sp - 64#64 + 32#64 = s0.sp - 32#64 := by bv_lin
-    have ha5 : s0.sp - 64#64 + 40#64 = s0.sp - 24#64 := by bv_lin
-    have ha6 : s0.sp - 64#64 + 48#64 = s0.sp - 16#64 := by bv_lin
-    have ha7 : s0.sp - 64#64 + 56#64 = s0.sp - 8#64 := by bv_lin
-    rwa [ha1, ha2, ha3, ha4, ha5, ha6, ha7] at h
-  have hbs_mem := pointsToBytes_entails_memRegion p bs
-  have hpre2 : s0.mem ⊨ (rustDeallocSpec A).pre (p, bs.length, align) s0 ∗
-      (stackAt (s0.sp - BitVec.ofNat 64 allocHookStack) 64 ∗ R) := by
-    unfold rustDeallocTail64Spec at hpre
-    unfold rustDeallocSpec
-    dsimp only at hpre ⊢
-    have h1 : s0.mem ⊨
-        (⌜s0.readReg64 .x0 = p ∧ (s0.readReg64 .x1).toNat = bs.length ∧
-          (s0.readReg64 .x2).toNat = align⌝ ∗
-          A.pool ∗ A.live p bs.length align ∗ memRegion p bs.length ∗
-          (stackAt (s0.sp - 64#64) allocHookStack ∗ cells (s0.sp - 64#64) 8)) ∗ R := by
-      refine Satisfies.mono (sepConj_mono_left ?_) hpre
-      exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-        (sepConj_mono hbs_mem (sepConj_mono_right hcells))))
-    rw [← stackAt_add_64, stackAt_add_64_comm] at h1
-    exact (by ac_rfl :
-      ((⌜s0.readReg64 .x0 = p ∧ (s0.readReg64 .x1).toNat = bs.length ∧
-          (s0.readReg64 .x2).toNat = align⌝ ∗
-        A.pool ∗ A.live p bs.length align ∗ memRegion p bs.length ∗
-        (stackAt (s0.sp - BitVec.ofNat 64 allocHookStack) 64 ∗ stackAt s0.sp allocHookStack)) ∗ R) =
-      ((⌜s0.readReg64 .x0 = p ∧ (s0.readReg64 .x1).toNat = bs.length ∧
-          (s0.readReg64 .x2).toNat = align⌝ ∗
-        A.pool ∗ A.live p bs.length align ∗ memRegion p bs.length ∗ stackAt s0.sp allocHookStack) ∗
-        (stackAt (s0.sp - BitVec.ofNat 64 allocHookStack) 64 ∗ R))) ▸ h1
-  refine ((dealloc_ok_at b C A ctl abs hA name k hk).to_outcome
-    (p, bs.length, align)
-    (stackAt (s0.sp - BitVec.ofNat 64 allocHookStack) 64 ∗ R) s0 hpc hrun hpre2 hsp).mono_outcome
-    fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨_, hpost⟩ | ⟨_, _, hpost⟩ | ⟨_, hpost⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    unfold rustDeallocTail64Spec
-    unfold rustDeallocSpec at hpost
-    dsimp only at hpost ⊢
-    rw [← stackAt_add_64, stackAt_add_64_comm]
-    exact (by ac_rfl :
-      ((⌜sf.trace = s0.trace⌝ ∗ A.pool ∗ stackAt s0.sp allocHookStack) ∗
-        (stackAt (s0.sp - BitVec.ofNat 64 allocHookStack) 64 ∗ R)) =
-      ((⌜sf.trace = s0.trace⌝ ∗ A.pool ∗
-        (stackAt (s0.sp - BitVec.ofNat 64 allocHookStack) 64 ∗
-          stackAt s0.sp allocHookStack)) ∗ R)) ▸ hpost
-  · exact False.elim (not_satisfies_false_sepConj hpost)
-  · exact False.elim (not_satisfies_false_sepConj hpost)
-  · exact False.elim (not_satisfies_false_sepConj hpost)
 
 private theorem spAligned_sub_48 {sp sp' : BitVec 64} (halign : (sp &&& 15#64 == 0#64) = true)
     (hsp : sp' = sp - 48#64) : (sp' &&& 15#64 == 0#64) = true := by
@@ -1251,8 +735,6 @@ private theorem SepWPp_call_priv_gen {prog : Program} {ret : BitVec 64} {s0 s : 
     rw [hsp_eq, htr]
     exact hnext sf hpc_f hrun_f (hsp_f.trans hsp_eq) hcs_f
 
-/-! ## `pubKeySerdeSerialize_ok` (`0x2657c`) -/
-
 abbrev pubKeySerdeSerializeName : String :=
   "<libsignal_core::curve::PublicKey as \
 libsignal_protocol::state::signed_prekey::KeySerde>::serialize"
@@ -1271,7 +753,7 @@ private theorem stackAt_publicKeySerialize_sub48_assoc (sp : BitVec 64) (R : Sep
       stackAt (sp - 48#64) publicKeySerializeStack ∗ R := by
   rw [← sepConj_assoc, stackAt_publicKeySerialize_sub48]
 
-def pubKeySerdeSerializeOkSpec (A : RustAlloc) :
+@[expose] def pubKeySerdeSerializeOkSpec (A : RustAlloc) :
     Spec (BitVec 64 × PublicKey × BitVec 64) where
   pre := fun (self, pk, outPtr) s =>
     ⌜s.readReg64 .x0 = self ∧ s.readReg64 .x8 = outPtr⌝ ∗
@@ -1291,106 +773,6 @@ def pubKeySerdeSerializeOkSpec (A : RustAlloc) :
       A.pool
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-theorem pubKeySerdeSerialize_ok {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr pubKeySerdeSerializeName)
-      (pubKeySerdeSerializeOkSpec A) := by
-  unfold pubKeySerdeSerializeOkSpec
-  simp only [cells, sepConj_emp, sepExists_sepConj_right, BitVec.add_assoc, BitVec.reduceAdd]
-  have hpubser := subroutine_ok_rel2 (public_key_serialize_ok (b := b) (C := C) (ctl := ctl) hA)
-    libsignalSessionCode_fnOff_0x3e2c4 libsignalSessionCode_fnOff_0x26630 (k := 97428) (by decide)
-  have hshim := session_shim_ok_at b C ctl abs pubKeySerdeSerializeName (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - 0x26630))
-    (by simp only [arm64_norm])
-  have halloc := alloc_ok_at b C A ctl abs hA pubKeySerdeSerializeName (num% (ls_off% "__rustc::__rust_alloc" - 0x26630))
-    (by simp only [arm64_norm])
-  have hmemcpy := session_memcpy_region_ok_at b C ctl abs pubKeySerdeSerializeName (num% (ls_off% "memcpy" - 0x26630))
-    (by simp only [arm64_norm])
-  have hpanic := panic_at_handle_error b C ctl abs pubKeySerdeSerializeName (num% (ls_off% "alloc::raw_vec::handle_error" - 0x26630))
-    (by simp only [arm64_norm])
-  have hdealloc := dealloc_tail48_ok_at b C A ctl abs hA pubKeySerdeSerializeName (num% (ls_off% "__rustc::__rust_dealloc" - 0x26630))
-    (by simp only [arm64_norm])
-  simp only [rustDeallocTail48Spec, cells, sepConj_emp, sepExists_sepConj_right,
-    sepExists_sepConj_left, BitVec.add_assoc, BitVec.reduceAdd, bv_sub_add_lit] at hdealloc
-  clear hA
-  wpp_init g s0
-  simp only [sepConj_assoc]
-  have hfn : libsignalSessionCode.fnOff pubKeySerdeSerializeName = 0x26630 :=
-    libsignalSessionCode_fnOff_0x26630
-  responder_fetches_from b (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x26630 0 156
-  replace hpc : s0.pc =
-      (libsignalSessionCode.rebase b
-        (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr pubKeySerdeSerializeName := by
-    rw [hpc, Program.fnAddr_rebase, hfn]
-  dsimp only [tripleRatchetProgAt] at hpubser hshim halloc hmemcpy hpanic hdealloc ⊢
-  clear hfn
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr pubKeySerdeSerializeName = entry
-  examples_hide_fetches
-  obtain ⟨self, pk, outPtr⟩ := g
-  dsimp only at *
-  subst h_1 h
-  have hpow2 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  have hlay : LayoutOk 33 1 := ⟨by decide, hpow2, by decide⟩
-  have hser_len : pk.serialize.length = 33 := by
-    simp [PublicKey.serialize, List.Vector.toList_length]
-  rw [stackAt_publicKeySerialize_sub48_assoc s0.sp]
-  apply SepWPp.of_sepWP (mid := entry + 97428#64)
-  wp_steps
-  apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-  refine SepWPp_call_pk_gen hpubser pk
-    (ret_pc := entry + 24#64) (sp_call := s0.sp - 48#64) (selfPtr := s0.readReg64 (Reg.gpr 0#5))
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (spAligned_sub_48 hsp_align rfl) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by sep_focus)
-    fun sf_pk hpc_pk hrun_pk hsp_pk hcs_pk => ?_
-  dsimp only [CalleeSavedPreserved, Reg.fp] at hcs_pk
-  rcases hcs_pk with
-    ⟨hcs_k19, hcs_k20, hcs_k21, hcs_k22, hcs_k23, hcs_k24, hcs_k25, hcs_k26, hcs_k27, hcs_k28,
-      hcs_k29⟩
-  simp only [arm64_norm, *]
-    at hcs_k19 hcs_k20 hcs_k21 hcs_k22 hcs_k23 hcs_k24 hcs_k25 hcs_k26 hcs_k27 hcs_k28 hcs_k29
-  simp only [sepConj_assoc]
-  refine SepWPp.pure_elim fun ⟨hx1, htrace0⟩ => ?_
-  refine SepWPp.fold (boxU8Buf_pk_expose A (sf_pk.readReg64 .x0) pk) (by sep_focus) ?_
-  rw [← stackAt_publicKeySerialize_sub48 s0.sp]
-  simp only [sepConj_assoc]
-  refine SepWPp.pure_elim fun hbox_ne => ?_
-  apply SepWPp.of_sepWP (mid := entry + 76#64)
-  wp_steps
-  wp_call hshim ()
-  wp_steps
-  wp_call halloc (33, 1)
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  by_cases hoom : sf_1.readReg64 (Reg.gpr 0#5) = 0
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) = 0#64 := hoom
-    simp only [hoom, ite_true]
-    refine sepWPp_pure_mid fun htrace2 => ?_
-    apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x26630))
-    wp_steps
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    apply SepWPp_panic_oom (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      hpanic (by simp only [arm64_norm, *])
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom
-    simp only [hoom, ite_false, sepConj_assoc]
-    refine sepWPp_pure_mid fun ⟨hmod, htrace2⟩ => ?_
-    apply SepWPp.of_sepWP_ret
-    wp_steps
-    rw [← hser_len]
-    wp_call hmemcpy (sf_1.readReg64 (Reg.gpr 0#5), sf_pk.readReg64 (Reg.gpr 0#5), pk.serialize)
-    simp only [hser_len]
-    wp_steps
-    rw [← hser_len]
-    wp_call hdealloc (sf_pk.readReg64 (Reg.gpr 0#5), pk.serialize, 1,
-      s0.readReg64 (Reg.gpr 29#5), s0.readReg64 (Reg.gpr 30#5),
-      s0.readReg64 (Reg.gpr 22#5), s0.readReg64 (Reg.gpr 21#5),
-      s0.readReg64 (Reg.gpr 20#5), s0.readReg64 (Reg.gpr 19#5))
-    simp only [hser_len]
-    wp_done
-
-/-! ## `kemPubKeySerdeSerialize_ok` and `kemSecretKeySerdeSerialize_ok` (`0x29484`) -/
-
 abbrev kemPubKeySerdeSerializeName : String :=
   "<libsignal_protocol::kem::Key<libsignal_protocol::kem::Public> as \
 libsignal_protocol::state::signed_prekey::KeySerde>::serialize"
@@ -1407,7 +789,7 @@ private theorem memRegion_3169_cons (a : BitVec 64) :
     memRegion a 3169 = (∃∗ b0 : BitVec 8, (a ↦₈ b0) ∗ memRegion (a + 1#64) 3168) := by
   rw [memRegion_split a 1 3168 (by decide), ProofLib.memRegion_one, sepExists_sepConj_left]
 
-def kemPubKeySerdeSerializeOkSpec (A : RustAlloc) :
+@[expose] def kemPubKeySerdeSerializeOkSpec (A : RustAlloc) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (self, boxPtr, pk, outPtr) s =>
     ⌜s.readReg64 .x0 = self ∧ s.readReg64 .x8 = outPtr ∧ pk.length = 1568⌝ ∗
@@ -1427,106 +809,7 @@ def kemPubKeySerdeSerializeOkSpec (A : RustAlloc) :
       A.pool
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-theorem kemPubKeySerdeSerialize_ok {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr kemPubKeySerdeSerializeName)
-      (kemPubKeySerdeSerializeOkSpec A) := by
-  unfold kemPubKeySerdeSerializeOkSpec
-  simp only [cells, sepConj_emp, sepExists_sepConj_right, BitVec.add_assoc, BitVec.reduceAdd]
-  have hshim := session_shim_ok_at b C ctl abs kemPubKeySerdeSerializeName (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - 0x29568))
-    (by simp only [arm64_norm])
-  have halloc := alloc_ok_at b C A ctl abs hA kemPubKeySerdeSerializeName (num% (ls_off% "__rustc::__rust_alloc" - 0x29568))
-    (by simp only [arm64_norm])
-  have hmemcpy := session_memcpy_region_ok_at b C ctl abs kemPubKeySerdeSerializeName (num% (ls_off% "memcpy" - 0x29568))
-    (by simp only [arm64_norm])
-  have hpanic := panic_at_handle_error b C ctl abs kemPubKeySerdeSerializeName (num% (ls_off% "alloc::raw_vec::handle_error" - 0x29568))
-    (by simp only [arm64_norm])
-  have hdealloc := dealloc_tail64_ok_at b C A ctl abs hA kemPubKeySerdeSerializeName (num% (ls_off% "__rustc::__rust_dealloc" - 0x29568))
-    (by simp only [arm64_norm])
-  simp only [rustDeallocTail64Spec, cells, sepConj_emp, sepExists_sepConj_right,
-    sepExists_sepConj_left, BitVec.add_assoc, BitVec.reduceAdd, bv_sub_add_lit] at hdealloc
-  clear hA
-  wpp_init g s0
-  simp only [sepConj_assoc]
-  have hfn : libsignalSessionCode.fnOff kemPubKeySerdeSerializeName = 0x29568 :=
-    libsignalSessionCode_fnOff_0x29568
-  responder_fetches_from b (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x29568 0 212
-  replace hpc : s0.pc =
-      (libsignalSessionCode.rebase b
-        (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr kemPubKeySerdeSerializeName := by
-    rw [hpc, Program.fnAddr_rebase, hfn]
-  dsimp only [tripleRatchetProgAt] at hshim halloc hmemcpy hpanic hdealloc ⊢
-  clear hfn
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr kemPubKeySerdeSerializeName = entry
-  examples_hide_fetches
-  obtain ⟨self, boxPtr, pk, outPtr⟩ := g
-  dsimp only at *
-  subst h_1 h_2
-  have hpow2 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  have hlay : LayoutOk 1569 1 := ⟨by decide, hpow2, by decide⟩
-  have hcons_len : (8#8 :: pk).length = 1569 := by simp [h]
-  apply SepWPp.of_sepWP (mid := entry + 80#64)
-  wp_steps
-  wp_call hshim ()
-  wp_steps
-  wp_call halloc (1569, 1)
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  by_cases hoom1 : sf_1.readReg64 (Reg.gpr 0#5) = 0
-  · have hoom1_64 : sf_1.readReg64 (Reg.gpr 0#5) = 0#64 := hoom1
-    simp only [hoom1, ite_true]
-    refine sepWPp_pure_mid fun htrace1 => ?_
-    apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x29568))
-    wp_steps
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    apply SepWPp_panic_oom (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      hpanic (by simp only [arm64_norm, *])
-  · have hoom1_64 : sf_1.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom1
-    simp only [hoom1, ite_false, memRegion_1569_cons, sepExists_sepConj_left,
-      sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun b0 => sepWPp_pure_mid fun ⟨hmod1, htrace1⟩ => ?_
-    apply SepWPp.of_sepWP (mid := entry + 132#64)
-    wp_steps
-    rw [← h]
-    wp_call hmemcpy (sf_1.readReg64 (Reg.gpr 0#5) + 1#64, boxPtr, pk)
-    simp only [h] at *
-    refine SepWP.fold
-      (pointsToBytes_cons_fold (sf_1.readReg64 (Reg.gpr 0#5)) 8#8 pk) (by sep_focus) ?_
-    wp_steps
-    wp_call hshim ()
-    wp_steps
-    wp_call halloc (1569, 1)
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    by_cases hoom2 : sf_4.readReg64 (Reg.gpr 0#5) = 0
-    · have hoom2_64 : sf_4.readReg64 (Reg.gpr 0#5) = 0#64 := hoom2
-      simp only [hoom2, ite_true]
-      refine sepWPp_pure_mid fun htrace2 => ?_
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x29568))
-      wp_steps
-      apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      apply SepWPp_panic_oom (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        hpanic (by simp only [arm64_norm, *])
-    · have hoom2_64 : sf_4.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom2
-      simp only [hoom2, ite_false, sepConj_assoc]
-      refine sepWPp_pure_mid fun ⟨hmod2, htrace2⟩ => ?_
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      rw [← hcons_len]
-      wp_call hmemcpy (sf_4.readReg64 (Reg.gpr 0#5), sf_1.readReg64 (Reg.gpr 0#5), 8#8 :: pk)
-      simp only [hcons_len]
-      wp_steps
-      rw [← hcons_len]
-      wp_call hdealloc (sf_1.readReg64 (Reg.gpr 0#5), 8#8 :: pk, 1,
-        s0.readReg64 (Reg.gpr 29#5), s0.readReg64 (Reg.gpr 30#5),
-        s0.readReg64 (Reg.gpr 24#5), s0.readReg64 (Reg.gpr 23#5),
-        s0.readReg64 (Reg.gpr 22#5), s0.readReg64 (Reg.gpr 21#5),
-        s0.readReg64 (Reg.gpr 20#5), s0.readReg64 (Reg.gpr 19#5))
-      simp only [hcons_len]
-      wp_done
-
-def kemSecretKeySerdeSerializeOkSpec (A : RustAlloc) :
+@[expose] def kemSecretKeySerdeSerializeOkSpec (A : RustAlloc) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (self, boxPtr, sk, outPtr) s =>
     ⌜s.readReg64 .x0 = self ∧ s.readReg64 .x8 = outPtr ∧ sk.length = 3168⌝ ∗
@@ -1545,109 +828,6 @@ def kemSecretKeySerdeSerializeOkSpec (A : RustAlloc) :
       (stackAt (s0.sp - 64#64) allocHookStack ∗ cells (s0.sp - 64#64) 8) ∗
       A.pool
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-theorem kemSecretKeySerdeSerialize_ok {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr kemSecretKeySerdeSerializeName)
-      (kemSecretKeySerdeSerializeOkSpec A) := by
-  unfold kemSecretKeySerdeSerializeOkSpec
-  simp only [cells, sepConj_emp, sepExists_sepConj_right, BitVec.add_assoc, BitVec.reduceAdd]
-  have hshim := session_shim_ok_at b C ctl abs kemSecretKeySerdeSerializeName (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - 0x29568))
-    (by simp only [arm64_norm])
-  have halloc := alloc_ok_at b C A ctl abs hA kemSecretKeySerdeSerializeName (num% (ls_off% "__rustc::__rust_alloc" - 0x29568))
-    (by simp only [arm64_norm])
-  have hmemcpy := session_memcpy_region_ok_at b C ctl abs kemSecretKeySerdeSerializeName (num% (ls_off% "memcpy" - 0x29568))
-    (by simp only [arm64_norm])
-  have hpanic := panic_at_handle_error b C ctl abs kemSecretKeySerdeSerializeName (num% (ls_off% "alloc::raw_vec::handle_error" - 0x29568))
-    (by simp only [arm64_norm])
-  have hdealloc := dealloc_tail64_ok_at b C A ctl abs hA kemSecretKeySerdeSerializeName (num% (ls_off% "__rustc::__rust_dealloc" - 0x29568))
-    (by simp only [arm64_norm])
-  simp only [rustDeallocTail64Spec, cells, sepConj_emp, sepExists_sepConj_right,
-    sepExists_sepConj_left, BitVec.add_assoc, BitVec.reduceAdd, bv_sub_add_lit] at hdealloc
-  clear hA
-  wpp_init g s0
-  simp only [sepConj_assoc]
-  have hfn : libsignalSessionCode.fnOff kemSecretKeySerdeSerializeName = 0x29568 :=
-    libsignalSessionCode_fnOff_0x29568_1
-  responder_fetches_from b (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x29568 0 212
-  replace hpc : s0.pc =
-      (libsignalSessionCode.rebase b
-        (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr
-        kemSecretKeySerdeSerializeName := by
-    rw [hpc, Program.fnAddr_rebase, hfn]
-  dsimp only [tripleRatchetProgAt] at hshim halloc hmemcpy hpanic hdealloc ⊢
-  clear hfn
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr
-    kemSecretKeySerdeSerializeName = entry
-  examples_hide_fetches
-  obtain ⟨self, boxPtr, sk, outPtr⟩ := g
-  dsimp only at *
-  subst h_1 h_2
-  have hpow2 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  have hlay : LayoutOk 3169 1 := ⟨by decide, hpow2, by decide⟩
-  have hcons_len : (8#8 :: sk).length = 3169 := by simp [h]
-  apply SepWPp.of_sepWP (mid := entry + 80#64)
-  wp_steps
-  wp_call hshim ()
-  wp_steps
-  wp_call halloc (3169, 1)
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  by_cases hoom1 : sf_1.readReg64 (Reg.gpr 0#5) = 0
-  · have hoom1_64 : sf_1.readReg64 (Reg.gpr 0#5) = 0#64 := hoom1
-    simp only [hoom1, ite_true]
-    refine sepWPp_pure_mid fun htrace1 => ?_
-    apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x29568))
-    wp_steps
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    apply SepWPp_panic_oom (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      hpanic (by simp only [arm64_norm, *])
-  · have hoom1_64 : sf_1.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom1
-    simp only [hoom1, ite_false, memRegion_3169_cons, sepExists_sepConj_left,
-      sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun b0 => sepWPp_pure_mid fun ⟨hmod1, htrace1⟩ => ?_
-    apply SepWPp.of_sepWP (mid := entry + 132#64)
-    wp_steps
-    rw [← h]
-    wp_call hmemcpy (sf_1.readReg64 (Reg.gpr 0#5) + 1#64, boxPtr, sk)
-    simp only [h] at *
-    refine SepWP.fold
-      (pointsToBytes_cons_fold (sf_1.readReg64 (Reg.gpr 0#5)) 8#8 sk) (by sep_focus) ?_
-    wp_steps
-    wp_call hshim ()
-    wp_steps
-    wp_call halloc (3169, 1)
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    by_cases hoom2 : sf_4.readReg64 (Reg.gpr 0#5) = 0
-    · have hoom2_64 : sf_4.readReg64 (Reg.gpr 0#5) = 0#64 := hoom2
-      simp only [hoom2, ite_true]
-      refine sepWPp_pure_mid fun htrace2 => ?_
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x29568))
-      wp_steps
-      apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      apply SepWPp_panic_oom (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        hpanic (by simp only [arm64_norm, *])
-    · have hoom2_64 : sf_4.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom2
-      simp only [hoom2, ite_false, sepConj_assoc]
-      refine sepWPp_pure_mid fun ⟨hmod2, htrace2⟩ => ?_
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      rw [← hcons_len]
-      wp_call hmemcpy (sf_4.readReg64 (Reg.gpr 0#5), sf_1.readReg64 (Reg.gpr 0#5), 8#8 :: sk)
-      simp only [hcons_len]
-      wp_steps
-      rw [← hcons_len]
-      wp_call hdealloc (sf_1.readReg64 (Reg.gpr 0#5), 8#8 :: sk, 1,
-        s0.readReg64 (Reg.gpr 29#5), s0.readReg64 (Reg.gpr 30#5),
-        s0.readReg64 (Reg.gpr 24#5), s0.readReg64 (Reg.gpr 23#5),
-        s0.readReg64 (Reg.gpr 22#5), s0.readReg64 (Reg.gpr 21#5),
-        s0.readReg64 (Reg.gpr 20#5), s0.readReg64 (Reg.gpr 19#5))
-      simp only [hcons_len]
-      wp_done
-
-/-! ## `preKeyRecordNew_ok` (`0x1e8b4`) -/
 
 abbrev preKeyRecordNewName : String :=
   "<libsignal_protocol::state::prekey::PreKeyRecord>::new"
@@ -1739,7 +919,7 @@ private theorem vecU8_priv_expose_104 (A : RustAlloc) (sp : BitVec 64)
   exact Entails.sepExists_right cap
     (Entails.sepExists_right ptr (vecU8At_priv_expose_104 A sp cap ptr k))
 
-def preKeyRecordNewOkSpec (A : RustAlloc) :
+@[expose] def preKeyRecordNewOkSpec (A : RustAlloc) :
     Spec (BitVec 64 × BitVec 64 × PublicKey × List.Vector (BitVec 8) 32 × BitVec 64) where
   pre := fun (id, kpPtr, pk, priv, outPtr) s =>
     (∃∗ v_id : BitVec 32,
@@ -1763,162 +943,6 @@ def preKeyRecordNewOkSpec (A : RustAlloc) :
       (stackAt (s0.sp - 112#64) extHookStack ∗ cells (s0.sp - 104#64) 13) ∗
       A.pool
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-theorem preKeyRecordNew_ok {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr preKeyRecordNewName)
-      (preKeyRecordNewOkSpec A) := by
-  unfold preKeyRecordNewOkSpec
-  simp only [cells, sepConj_emp, sepExists_sepConj_right, BitVec.add_assoc, BitVec.reduceAdd]
-  have hpubser := subroutine_ok_rel2 (public_key_serialize_ok (b := b) (C := C) (ctl := ctl) hA)
-    libsignalSessionCode_fnOff_0x3e2c4 libsignalSessionCode_fnOff_0x1e8b4 (k := 129552) (by decide)
-  have hprivser := priv_serialize_ok_at b C A ctl abs hA preKeyRecordNewName 130828
-    (by simp only [arm64_norm])
-  have hshim := session_shim_ok_at b C ctl abs preKeyRecordNewName (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - 0x1e8b4))
-    (by simp only [arm64_norm])
-  have halloc := alloc_ok_at b C A ctl abs hA preKeyRecordNewName (num% (ls_off% "__rustc::__rust_alloc" - 0x1e8b4))
-    (by simp only [arm64_norm])
-  have hdealloc := dealloc_ok_at b C A ctl abs hA preKeyRecordNewName (num% (ls_off% "__rustc::__rust_dealloc" - 0x1e8b4))
-    (by simp only [arm64_norm])
-  have hmemcpy := session_memcpy_region_ok_at b C ctl abs preKeyRecordNewName (num% (ls_off% "memcpy" - 0x1e8b4))
-    (by simp only [arm64_norm])
-  have hpanic := panic_at_handle_error b C ctl abs preKeyRecordNewName (num% (ls_off% "alloc::raw_vec::handle_error" - 0x1e8b4))
-    (by simp only [arm64_norm])
-  clear hA
-  wpp_init g s0
-  simp only [sepConj_assoc]
-  have hfn : libsignalSessionCode.fnOff preKeyRecordNewName = 0x1e8b4 :=
-    libsignalSessionCode_fnOff_0x1e8b4
-  responder_fetches_from b (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x1e8b4 0 324
-  replace hpc : s0.pc =
-      (libsignalSessionCode.rebase b
-        (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr preKeyRecordNewName := by
-    rw [hpc, Program.fnAddr_rebase, hfn]
-  dsimp only [tripleRatchetProgAt] at hpubser hprivser hshim halloc hdealloc hmemcpy hpanic ⊢
-  clear hfn
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr preKeyRecordNewName = entry
-  examples_hide_fetches
-  obtain ⟨id, kpPtr, pk, priv, outPtr⟩ := g
-  dsimp only at *
-  subst h h_1 h_2
-  have hpow2 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  have hlay33 : LayoutOk 33 1 := ⟨by decide, hpow2, by decide⟩
-  have hlay32 : LayoutOk 32 1 := ⟨by decide, hpow2, by decide⟩
-  have hser_len : pk.serialize.length = 33 := by
-    simp [PublicKey.serialize, List.Vector.toList_length]
-  have hpriv_len : priv.toList.length = 32 := priv.toList_length
-  refine SepWPp.fold (stackAt_112_ext_to s0.sp publicKeySerializeStack) (by sep_focus) ?_
-  apply SepWPp.of_sepWP (mid := entry + 129552#64)
-  wp_steps
-  apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-  refine SepWPp_call_pk_gen hpubser pk
-    (ret_pc := entry + 48#64) (sp_call := s0.sp - 112#64) (selfPtr := s0.readReg64 (Reg.gpr 1#5))
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (spAligned_sub_112 hsp_align rfl) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by sep_focus)
-    fun sf_pk hpc_pk hrun_pk hsp_pk hcs_pk => ?_
-  dsimp only [CalleeSavedPreserved, Reg.fp] at hcs_pk
-  rcases hcs_pk with
-    ⟨hcs_k19, hcs_k20, hcs_k21, hcs_k22, hcs_k23, hcs_k24, hcs_k25, hcs_k26, hcs_k27, hcs_k28,
-      hcs_k29⟩
-  simp only [arm64_norm, *]
-    at hcs_k19 hcs_k20 hcs_k21 hcs_k22 hcs_k23 hcs_k24 hcs_k25 hcs_k26 hcs_k27 hcs_k28 hcs_k29
-  simp only [sepConj_assoc]
-  refine SepWPp.pure_elim fun ⟨hx1, htrace0⟩ => ?_
-  refine SepWPp.fold (boxU8Buf_pk_expose A (sf_pk.readReg64 .x0) pk) (by sep_focus) ?_
-  simp only [sepConj_assoc]
-  refine SepWPp.pure_elim fun hbox_ne => ?_
-  refine SepWPp_fold_stack_112_to_ext s0.sp publicKeySerializeStack
-    (by decide) (by sep_focus) rfl ?_
-  refine SepWPp.fold (stackAt_112_ext_to s0.sp allocHookStack) (by sep_focus) ?_
-  apply SepWPp.of_sepWP (mid := entry + 100#64)
-  wp_steps
-  wp_call hshim ()
-  wp_steps
-  wp_call halloc (33, 1)
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  by_cases hoom1 : sf_1.readReg64 (Reg.gpr 0#5) = 0
-  · have hoom1_64 : sf_1.readReg64 (Reg.gpr 0#5) = 0#64 := hoom1
-    simp only [hoom1, ite_true]
-    refine sepWPp_pure_mid fun htrace1 => ?_
-    apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x1e8b4))
-    wp_steps
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    apply SepWPp_panic_oom (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      hpanic (by simp only [arm64_norm, *])
-  · have hoom1_64 : sf_1.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom1
-    simp only [hoom1, ite_false, sepConj_assoc]
-    refine sepWPp_pure_mid fun ⟨hmod1, htrace1⟩ => ?_
-    apply SepWPp.of_sepWP (mid := entry + 130828#64)
-    wp_steps
-    rw [← hser_len]
-    wp_call hmemcpy (sf_1.readReg64 (Reg.gpr 0#5), sf_pk.readReg64 (Reg.gpr 0#5), pk.serialize)
-    simp only [hser_len]
-    refine SepWP.fold (pk_buf_to_memRegion (sf_pk.readReg64 .x0) pk) (by sep_focus) ?_
-    wp_steps
-    wp_call hdealloc (sf_pk.readReg64 (Reg.gpr 0#5), 33, 1)
-    wp_steps
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    refine SepWPp_fold_stack_112_to_ext s0.sp allocHookStack
-      (by decide) (by sep_focus) (by simp only [arm64_norm, *]) ?_
-    refine SepWPp.fold (stack_24_to_memRegion_104 s0.sp v_stk_1 v_stk_2 v_stk_3) (by sep_focus) ?_
-    refine SepWPp_call_priv_gen hprivser priv.toList
-      (ret_pc := entry + 148#64) (sp_call := s0.sp - 112#64)
-      (selfPtr := s0.readReg64 (Reg.gpr 1#5) + 32#64) (retPtr := s0.sp - 104#64)
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (spAligned_sub_112 hsp_align rfl)
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by sep_focus)
-      fun sf_priv hpc_priv hrun_priv hsp_priv hcs_priv => ?_
-    dsimp only [CalleeSavedPreserved, Reg.fp] at hcs_priv
-    rcases hcs_priv with
-      ⟨hcs_p19, hcs_p20, hcs_p21, hcs_p22, hcs_p23, hcs_p24, hcs_p25, hcs_p26, hcs_p27, hcs_p28,
-        hcs_p29⟩
-    simp only [arm64_norm, *]
-      at hcs_p19 hcs_p20 hcs_p21 hcs_p22 hcs_p23 hcs_p24 hcs_p25 hcs_p26 hcs_p27 hcs_p28 hcs_p29
-    simp only [sepConj_assoc]
-    refine SepWPp.pure_elim fun hpriv_tr => ?_
-    refine SepWPp.fold (vecU8_priv_expose_104 A s0.sp priv) (by sep_focus) ?_
-    simp only [sepExists_sepConj_left, sepConj_assoc]
-    refine SepWPp.exists_elim fun privTempCap => SepWPp.exists_elim fun privTempPtr => ?_
-    refine SepWPp.pure_elim fun ⟨hpt_le, hpt_lt, hpt_c0, hpt_ptr⟩ => ?_
-    refine SepWPp.fold (stackAt_112_ext_to s0.sp allocHookStack) (by sep_focus) ?_
-    apply SepWPp.of_sepWP (mid := entry + 224#64)
-    wp_steps
-    wp_call hshim ()
-    wp_steps
-    wp_call halloc (32, 1)
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    by_cases hoom2 : sf_5.readReg64 (Reg.gpr 0#5) = 0
-    · have hoom2_64 : sf_5.readReg64 (Reg.gpr 0#5) = 0#64 := hoom2
-      simp only [hoom2, ite_true]
-      refine sepWPp_pure_mid fun htrace2 => ?_
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x1e8b4))
-      wp_steps
-      apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      apply SepWPp_panic_oom (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        hpanic (by simp only [arm64_norm, *])
-    · have hoom2_64 : sf_5.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom2
-      simp only [hoom2, ite_false, sepConj_assoc]
-      refine sepWPp_pure_mid fun ⟨hmod2, htrace2⟩ => ?_
-      have hpt_layout : LayoutOk privTempCap.toNat 1 :=
-        layoutOk_of_pos_lt (Nat.lt_of_lt_of_le (by decide : 0 < 32) hpt_le) hpt_lt
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      rw [show memRegion (sf_5.readReg64 (Reg.gpr 0#5)) 32 =
-        memRegion (sf_5.readReg64 (Reg.gpr 0#5)) priv.toList.length by rw [hpriv_len]]
-      wp_call hmemcpy (sf_5.readReg64 (Reg.gpr 0#5), privTempPtr, priv.toList)
-      refine SepWP.fold
-        (priv_buf_to_memRegion privTempPtr privTempCap priv hpt_le hpt_lt) (by sep_focus) ?_
-      wp_steps
-      wp_call hdealloc (privTempPtr, privTempCap.toNat, 1)
-      wp_steps
-      refine SepWP_fold_stack_112_to_ext s0.sp allocHookStack
-        (by decide) (by sep_focus) (by simp only [arm64_norm, *]) ?_
-      wp_done
 
 /-! ## Relocatable `[LibsignalPlacement]` Contracts -/
 

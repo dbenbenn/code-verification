@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigmaReach
-public import Symbolic.Proofs.Swarm.CREF.Stage1Trials -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigmaReach -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.Stage1Trials -- shake: keep
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import VCVio.Prelude.Core
@@ -23,7 +23,7 @@ ghosts agreeing on `addr` and on `σ` below `n` produce identical `gamma'` evalu
 `MemoCollisionOn` on terms stamped below `n`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -37,7 +37,7 @@ open Symbolic.Swarm.CREF.TR.FreshSigma (updateFreshAt StampsLt MemoRel StateStam
   TraceEntriesLt TRSignalMsgStampsLt traceEntriesLt_knows)
 
 /-- Ghosts `g` and `g₁` agree on `σ` at all timestamps below `n` and share `addr`. -/
-def CBadSigmaFrame (g g₁ : Ghost) (n : Nat) : Prop :=
+@[expose] def CBadSigmaFrame (g g₁ : Ghost) (n : Nat) : Prop :=
   (∀ ts < n, ∀ len, g₁.σ ts len = g.σ ts len) ∧ g₁.addr = g.addr
 
 theorem cBadSigmaFrame_refl (g : Ghost) (n : Nat) : CBadSigmaFrame g g n :=
@@ -50,7 +50,7 @@ theorem cBadSigmaFrame_updateFreshAt (g : Ghost) {n ts : Nat} (hn : n ≤ ts) (k
   simp [updateFreshAt, hne]
 
 /-- Ghosts `g` and `g₁` evaluate `gamma'` identically on every term satisfying `StampsLt ... n`. -/
-def CBadGammaAgree (interpretation : ExternInterpretation) (S : OpaqueSymbolSemantics) (g g₁ : Ghost) (n : Nat) :
+@[expose] def CBadGammaAgree (interpretation : ExternInterpretation) (S : OpaqueSymbolSemantics) (g g₁ : Ghost) (n : Nat) :
     Prop :=
   ∀ b, StampsLt interpretation S g n b → gamma' interpretation S g₁ b = gamma' interpretation S g b
 

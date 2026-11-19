@@ -9,18 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChunkedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoderBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChunkedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoderBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Drop.PolyDecoderBudget
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-import GeneratedLean.LibsignalSessionObj
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Code-Loaded Leaf Drop Glue for `SpqrV1/States/Recv`
@@ -29,7 +30,7 @@ Budget-threaded `withLsCodeLoaded` `subroutine_ok` proofs (`FreeOnlyEvs`) for `d
 (Block `264`), `[Poly; 16]` (Block `265`), `PolyDecoder` (Block `137`), and `PolynomialEncoder` (Block `271`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -129,7 +130,7 @@ abbrev savedFrame32 (s0 : State) (w3 : BitVec 64) : SepProp :=
   ((s0.sp - 32#64) ↦₆₄ s0.readReg64 .fp) ∗ ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .lr) ∗
     ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x19) ∗ ((s0.sp - 8#64) ↦₆₄ w3)
 
-def deallocFreeOnlySpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def deallocFreeOnlySpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BitVec 64 × Nat × Nat × M.σ) where
   pre := (rustCliDeallocBudgetSpec M A lim).pre
   post := fun (_, size, align, st) s0 sf =>

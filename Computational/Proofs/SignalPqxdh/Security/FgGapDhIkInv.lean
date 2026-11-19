@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkPre
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhF
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkPre -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhF -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 
 /-!
@@ -22,7 +22,7 @@ Defines the Case B simulator projection `eraseStateFgIk`, the per-index bad even
 `FgSimInvDh2`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,7 +38,7 @@ namespace Proofs.SignalPqxdh.Security.FgGapDh.Ik
 open Proofs.SignalPqxdh.Security.FgGapDh
 
 /-- Simulator view of a `KeyInd` state in Case B. -/
-def eraseStateFgIk {S : Setup} (sIdx kIdx : ℕ) (st : KeyIndState S) : KeyIndState S :=
+@[expose] def eraseStateFgIk {S : Setup} (sIdx kIdx : ℕ) (st : KeyIndState S) : KeyIndState S :=
   { st with
     principals := erasePrincipalsFg kIdx st.principals
     sessions   := eraseSessionsFg sIdx st.sessions
@@ -52,7 +52,7 @@ theorem isFreshKeyIndSession_eraseStateFgIk {S : Setup} (sIdx kIdx : ℕ)
   simp only [find?_sid_eraseSessionsFg]
   cases st.sessions.find? (fun e => e.sid == sid) <;> simp
 
-def FgSlotReps.ofDh2 (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
+@[expose] def FgSlotReps.ofDh2 (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
     (uSk vSk : Bytes) (huSk : uSk.length = 32) (hvSk : vSk.length = 32) : FgSlotReps P where
   Rep1 := FgPosLeftRep P uSk
   Rep2 := FgPosRightRep P vSk
@@ -81,7 +81,7 @@ def FgSlotReps.ofDh2 (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
 /-- Case B (`DH2 = CDH(ek_U*, ik_V*)`) bad event at `(sIdx, kIdx)`: initiator session `sIdx` is
     fresh against uncorrupted principal `kIdx` and `P.x25519 s.ekASk kEntry.ikAPk` is queried in
     `advRoLog.take maxLen`. -/
-def badKeyIndFgDh2At {S : Setup} (P : Primitives) (maxLen sIdx kIdx : ℕ)
+@[expose] def badKeyIndFgDh2At {S : Setup} (P : Primitives) (maxLen sIdx kIdx : ℕ)
     (st : KeyIndState S) (advRoLog : List Bytes) : Bool :=
   match st.sessions.find? (fun s => initSessionSlotIdx s.sid == sIdx),
         st.principals.find? (fun (u, _) => u == kIdx) with
@@ -92,10 +92,10 @@ def badKeyIndFgDh2At {S : Setup} (P : Primitives) (maxLen sIdx kIdx : ℕ)
       extractDh2 sec == P.x25519 s.ekASk kEntry.ikAPk)
   | _, _ => false
 
-def prinTargetIsV {S : Setup} (kIdx : ℕ) (V : Bytes) (hst : KeyIndFgCutoffState S) : Bool :=
+@[expose] def prinTargetIsV {S : Setup} (kIdx : ℕ) (V : Bytes) (hst : KeyIndFgCutoffState S) : Bool :=
   hst.base.principals.all (fun (k, e) => !(k == kIdx) || (e.ikAPk == V))
 
-def sessDeadIk {S : Setup} (P : Primitives) (sIdx : ℕ) (V : Bytes)
+@[expose] def sessDeadIk {S : Setup} (P : Primitives) (sIdx : ℕ) (V : Bytes)
     (hst : KeyIndFgCutoffState S) : Bool :=
   match hst.base.sessions.find? (fun s => initSessionSlotIdx s.sid == sIdx) with
   | some s => P.pow8 s.peerIkPk != P.pow8 V
@@ -103,7 +103,7 @@ def sessDeadIk {S : Setup} (P : Primitives) (sIdx : ℕ) (V : Bytes)
 
 /-- Sticky Case B death: the target principal is corrupted, or the target initiator session
     exists with a peer identity key not matching `V`. -/
-def deadDh2 {S : Setup} (P : Primitives) (sIdx kIdx : ℕ) (V : Bytes)
+@[expose] def deadDh2 {S : Setup} (P : Primitives) (sIdx kIdx : ℕ) (V : Bytes)
     (hst : KeyIndFgCutoffState S) : Bool :=
   prinTargetIsV kIdx V hst && (deadDh1 kIdx hst || sessDeadIk P sIdx V hst)
 
@@ -379,7 +379,7 @@ theorem pqxdhKeyIndFgPreImplIk_preserves_deadDh2 {S : Setup} (P : Primitives)
     exact pqxdhKeyIndFgPreImpl_preserves_deadDh2 P sIdx kIdx hsIdx uSk (P.x25519Base vSk) _
       (fun _ h => by cases h) hst hDead
 
-def FgSimInvDh2 (S : Setup) (b : QueryBudget) (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
+@[expose] def FgSimInvDh2 (S : Setup) (b : QueryBudget) (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
     (sIdx kIdx : ℕ) (uSk vSk : Bytes) (huSk : uSk.length = 32) (hvSk : vSk.length = 32)
     (rem : ℕ) (hst : KeyIndFgCutoffState S) (st : FgKeyIndSimState S) : Prop :=
   st.base = eraseStateFgIk sIdx kIdx hst.base ∧

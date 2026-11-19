@@ -10,19 +10,22 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyTailSym
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tails -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Step Lemmas (`VmPreserved`) for the `segPreKey` Tail (`+0x8b4..+0xa70`)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,7 +37,6 @@ open CryptoVerification.Cli.LibsignalPublicApi.MessageEncrypt.Tails
 open CryptoVerification.CliRatchet.EncPlaced
 open CryptoVerification.CliRatchet.Placed
 open CryptoVerification.Cli.CoinsTape
-open CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.SegPreKey
 open Arm64
 open ProofLib
 open ProofLib.ProgramReflection

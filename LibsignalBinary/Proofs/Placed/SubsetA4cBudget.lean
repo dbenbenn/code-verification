@@ -10,19 +10,28 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.Placed.SubsetA4c
-public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.TopPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeamsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.TopPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.SubsetA4c
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.TopPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.TopPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesTopPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk2PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeamsBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false
@@ -37,11 +46,14 @@ open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalSpqrV1
 open CryptoVerification.SpqrV1.Alloc
 open CryptoVerification.SpqrV1.Kdf
+open CryptoVerification.SpqrV1.GF.Mul2U16 (OnceCallHookOk)
 open CryptoVerification.SpqrV1.States.RecvCt2Chunk (spqrMlkemDecapsSym)
 open CryptoVerification.SpqrV1.Unchunked
 open LibsignalBinary.Heap
 open LibsignalBinary.Heap.SpecBudget (libcruxHmacBudgetSpec withVmPreserved)
+open LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase (mlkemDecapsAtSpec)
 open LibsignalBinary.Proofs.HookDischarge.Libc.Memmove (sessionMemmoveBoundedSpec)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget (withAllocVmPreserved)
 open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 open LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget (StatesFromPbEnv)
@@ -121,9 +133,10 @@ theorem statesPlacedSeams_of_hooks [LibsignalPlacement]
     (hencaps2 : HookSat (Rust.withPanics ext) spqrMlkemEncaps2Sym
       (withVmPreserved (mlkemEncaps2Spec K)))
     (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
     (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym
-      (libcruxHmacBudgetSpec F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec F M A lim)))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     StatesPlacedSeamsOfEnv M A lim F K
       StatesFromPbEnv (StatesRecvExactEnv K)
       HeaderSentSendEkChunkEnv Ct1ReceivedSendEkChunkEnv
@@ -142,6 +155,7 @@ theorem statesPlacedSeams_of_hooks [LibsignalPlacement]
     realloc := hA.realloc
     session_memcpy := fun hookStack => hookSat_sessionMemcpyBudget_of_region_any hookStack hmemcpy_reg
     session_memset_region := hmemset
+    once_ok := hOnce
   }
   let hFromPb : SpqrV1.States.FromPb.Variant2aPlacedBudgetAux.FromPbAllocHooksBudget M A lim ext := {
     panic_ok := hA.handleError
@@ -156,7 +170,7 @@ theorem statesPlacedSeams_of_hooks [LibsignalPlacement]
     statesRecv_ok :=
       SpqrV1.States.Recv.TopPlacedBudget.states_recv_placed_ok_x_closed hA
         (hookSat_withAllocVmPreserved_memmove_of_zero growOneStack hmemmove0)
-        hmemset hval_pk hencaps2 hdecaps hhmac
+        hmemset hval_pk hencaps2 hdecaps hhmac hOnce
     headerSentSendEkChunk_ok :=
       SpqrV1.States.Leaves.LeavesTopPlacedBudget.header_sent_send_ek_chunk_placed_blockProgram_ok_x
         hAllocPlaced

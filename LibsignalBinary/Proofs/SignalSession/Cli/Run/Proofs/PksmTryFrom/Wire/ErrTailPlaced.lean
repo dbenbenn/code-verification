@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTail
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailCPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTail
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailCPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 
@@ -21,7 +21,7 @@ Re-exports `PreKeyTryFromRawGhost` and bit-level normalizers from `ErrTail` alon
 `epilogue_504_placed_wpX` and `epilogue_504_err_placed_wpE` on `preKeyPlacedProg H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -47,13 +47,5 @@ open CryptoVerification.E2E.Pqxdh.ResponderWire hiding
 open CryptoVerification.SignalSession.Cli
 open CryptoVerification.SignalSession.Cli.RunCompose
 open CryptoVerification.SignalSession.Cli.RunProofs
-
-/-- Shared epilogue (`+0x504 .. +0x520` → `ret`) of `PreKeySignalMessage::try_from` on
-`preKeyPlacedProg H` specialized to `x : PreKeyTryFromRawGhost`. -/
-abbrev epilogue_504_placed_wpX := @err_epilogue_504_placed_wp
-
-/-- Error-specialized epilogue (`+0x504 .. +0x520` → `ret`) on `preKeyPlacedProg H` with exact
-`pksmErrE A fn x.ret e`. -/
-abbrev epilogue_504_err_placed_wpE := @err_epilogue_504_placed_wpE
 
 end CryptoVerification.SignalSession.Cli.RunProofs.PksmWire

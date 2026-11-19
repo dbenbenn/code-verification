@@ -9,17 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeams
-public import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhCorrectModelProofDefs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CoinsBridgePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPlaced
-public import LibsignalBinary.Proofs.Placed.SubsetA4
-public import LibsignalBinary.Proofs.Placed.SubsetA4b
-public import LibsignalBinary.Proofs.Placed.SubsetA4c
-public import LibsignalBinary.Proofs.Placed.SubsetA4d
-public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlaced
-import LibsignalBinary.Proofs.SignalSession.Coins.Fill
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeams -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhCorrectModelProofDefs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CoinsBridgePlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.SubsetA4 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.SubsetA4b
+public import LibsignalBinary.Proofs.Placed.SubsetA4c -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.SubsetA4d
+public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Coins.Defs
 import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeGrow
 import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpoch
 import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKey
@@ -33,6 +34,21 @@ import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializePlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.ContractsPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.ContractsPlaced
 import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbJoin
+public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.FinalPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeams -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochPlaced
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOk
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.TopPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.TopPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.ProofPlaced
 
 /-!
 # Placed `spqr::send::<Coins>` & SPQR-V1 Peer Leaf Instantiations
@@ -41,7 +57,7 @@ Integrates `spqr::send::<Coins>` (Block 427), `spqr::initial_state` (Block 327),
 placed allocator, chain, authenticator, drop, and message-codec callees on `cliGhostExterns`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
@@ -60,6 +76,7 @@ open CryptoVerification.Cli.CoinsTape
 open CryptoVerification.SignalSession.Coins
 open CryptoVerification.SignalSession.Coins.Placed
 open CryptoVerification.SpqrV1
+open CryptoVerification.SpqrV1.GF.Mul2U16 (OnceCallHookOk spqrOnceCallGhostSpec spqrOnceCallSym)
 open CryptoVerification.SpqrV1.States.RecvCt2Chunk
 open CryptoVerification.SpqrV1.ChainProofs
 open CryptoVerification.SpqrV1.ChainProofs.NextKeyInternalFacts
@@ -121,19 +138,21 @@ theorem cliSpqrSend_coinsFill_ok_cli [LibsignalPlacement]
 private theorem instHkdfPlacedHooks_cli
     (mmpl : Obj.MultiPlacement) (gh : RunGlue.CliGhostHooks) (W : CliHooks)
     (hMs : gh.memset = some memsetHook)
-    (hMc : gh.memcpy = some memcpyHook) :
+    (hMc : gh.memcpy = some memcpyHook)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (LibsignalHmac.compress256Hook W.C.F)) :
     HkdfPlacedHooks W.C.F (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)) where
   memset := RunGlue.cliGhostExterns_memset_some gh (cliExternsPlaced mmpl W) hMs
   memcpy := RunGlue.cliGhostExterns_memcpy_some gh (cliExternsPlaced mmpl W) hMc
-  compress256 := cliGhostExterns_eq_of_base mmpl gh W
-    (RunGlue.cliExternsPlaced_row mmpl W (Slots.compress256_row_placed mmpl W))
+  compress256 := RunGlue.cliGhostExterns_extra_some gh (cliExternsPlaced mmpl W) hCp
 
 private theorem instHkdfPlacedHooks_withPanics_cli
     (mmpl : Obj.MultiPlacement) (gh : RunGlue.CliGhostHooks) (W : CliHooks)
     (hMs : gh.memset = some memsetHook)
-    (hMc : gh.memcpy = some memcpyHook) :
+    (hMc : gh.memcpy = some memcpyHook)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (LibsignalHmac.compress256Hook W.C.F)) :
     HkdfPlacedHooks W.C.F (Rust.withPanics (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))) :=
-  (RunGlue.withPanics_cliGhostExterns mmpl gh W).symm ▸ instHkdfPlacedHooks_cli mmpl gh W hMs hMc
+  (RunGlue.withPanics_cliGhostExterns mmpl gh W).symm ▸
+    instHkdfPlacedHooks_cli mmpl gh W hMs hMc hCp
 
 theorem cliRecvCt2PlacedAlloc [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : RunGlue.CliGhostHooks) (W : CliHooks)
@@ -180,17 +199,72 @@ theorem cliRecvCt2PlacedAlloc [LibsignalPlacement]
       rw [RunGlue.withPanics_cliGhostExterns mmpl gh W]
       exact Slots.cliExternsPlaced_memcpyRegionRO_sat mmpl gh W hG }
 
+/-- 5-row ML-KEM + `Once::call` hook contract bundle for the legacy `A0` SPQR seams
+(`SubsetA4c` / `TopPlaced`); legacy A0 island, not on the 0-hook headline path. -/
+structure CliSpqrA0MlKemHooks (W : CliHooks)
+    (ext : String → Option (State → State)) : Prop where
+  mlkemValidatePk : HookSat ext Slots.lsMlkemValidatePkSymCli (mlkemValidatePkSpec W.Q.K)
+  mlkemEncaps2 : HookSat ext Slots.lsMlkemEncaps2SymCli (mlkemEncaps2Spec W.Q.K)
+  mlkemDecaps : HookSat ext Slots.lsMlkemDecapsSymCli (mlkemDecapsSpec W.Q.K)
+  mlkemFromSeed : HookSat ext Slots.lsMlkemFromSeedSymCli (mlkemFromSeedSpec W.Q.K)
+  mlkemEncaps1 : HookSat ext Slots.lsMlkemEncaps1SymCli (mlkemEncaps1Spec W.Q.K)
+  onceCall : ∀ [LibsignalPlacement], OnceCallHookOk ext
+
+private theorem hookSat_withPanics_of_not_panic {α : Type} {ext : String → Option (State → State)}
+    {sym : String} {spec : Spec α}
+    (hnp : Rust.isPanicSymbol sym = false)
+    (h : HookSat ext sym spec) :
+    HookSat (Rust.withPanics ext) sym spec :=
+  RunGlue.hookSat_of_eq (by simp [Rust.withPanics, hnp]) h
+
+private theorem hookSat_toTrTrap_of_ne {α : Type} {ext : String → Option (State → State)}
+    {sym : String} {spec : Spec α}
+    (hne : sym ≠ "libsignal_session_rng_fill")
+    (h : HookSat ext sym spec) :
+    HookSat (Slots.trTrapExternsPlaced ext) sym spec :=
+  RunGlue.hookSat_of_eq (by simp [Slots.trTrapExternsPlaced, Slots.lsRngFillSym, trapAt, hne]) h
+
+theorem CliSpqrA0MlKemHooks.withPanics {W : CliHooks}
+    {ext : String → Option (State → State)}
+    (h : CliSpqrA0MlKemHooks W ext) :
+    CliSpqrA0MlKemHooks W (Rust.withPanics ext) where
+  mlkemValidatePk := hookSat_withPanics_of_not_panic
+    (by simp [Rust.isPanicSymbol, Slots.lsMlkemValidatePkSymCli]) h.mlkemValidatePk
+  mlkemEncaps2 := hookSat_withPanics_of_not_panic
+    (by simp [Rust.isPanicSymbol, Slots.lsMlkemEncaps2SymCli]) h.mlkemEncaps2
+  mlkemDecaps := hookSat_withPanics_of_not_panic
+    (by simp [Rust.isPanicSymbol, Slots.lsMlkemDecapsSymCli]) h.mlkemDecaps
+  mlkemFromSeed := hookSat_withPanics_of_not_panic
+    (by simp [Rust.isPanicSymbol, Slots.lsMlkemFromSeedSymCli]) h.mlkemFromSeed
+  mlkemEncaps1 := hookSat_withPanics_of_not_panic
+    (by simp [Rust.isPanicSymbol, Slots.lsMlkemEncaps1SymCli]) h.mlkemEncaps1
+  onceCall := ⟨hookSat_withPanics_of_not_panic
+    (by simp [Rust.isPanicSymbol, spqrOnceCallSym]) h.onceCall.1, h.onceCall.2⟩
+
+theorem CliSpqrA0MlKemHooks.toTrTrap {W : CliHooks}
+    {ext : String → Option (State → State)}
+    (h : CliSpqrA0MlKemHooks W ext) :
+    CliSpqrA0MlKemHooks W (Slots.trTrapExternsPlaced ext) where
+  mlkemValidatePk := hookSat_toTrTrap_of_ne (by decide) h.mlkemValidatePk
+  mlkemEncaps2 := hookSat_toTrTrap_of_ne (by decide) h.mlkemEncaps2
+  mlkemDecaps := hookSat_toTrTrap_of_ne (by decide) h.mlkemDecaps
+  mlkemFromSeed := hookSat_toTrTrap_of_ne (by decide) h.mlkemFromSeed
+  mlkemEncaps1 := hookSat_toTrTrap_of_ne (by decide) h.mlkemEncaps1
+  onceCall := ⟨hookSat_toTrTrap_of_ne (by decide) h.onceCall.1, h.onceCall.2⟩
+
 theorem cliStatesPlacedSeams [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : RunGlue.CliGhostHooks) (W : CliHooks)
     (hG : Slots.CliGhostA0Hooks E2E.HooksE.A0 gh)
     (hMs : gh.memset = some memsetHook)
     (hMc : gh.memcpy = some memcpyHook)
     (hMv : gh.extra.lookup "memmove" = some hookMemmove)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (LibsignalHmac.compress256Hook W.C.F))
     (hHmac : HookSat (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))
-      Slots.lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F E2E.HooksE.A0)) :
+      Slots.lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F E2E.HooksE.A0))
+    (hMlkem : CliSpqrA0MlKemHooks W (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))) :
     CryptoVerification.SpqrV1.StatesPlacedSeams E2E.HooksE.A0 W.C.F W.Q.K
       (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
-  letI := instHkdfPlacedHooks_withPanics_cli mmpl gh W hMs hMc
+  letI := instHkdfPlacedHooks_withPanics_cli mmpl gh W hMs hMc hCp
   LibsignalBinary.Proofs.Placed.SubsetA4c.statesPlacedSeams_of_hooks
     (cliRecvCt2PlacedAlloc mmpl gh W hG)
     (by
@@ -200,21 +274,13 @@ theorem cliStatesPlacedSeams [LibsignalPlacement]
     (by
       rw [RunGlue.withPanics_cliGhostExterns mmpl gh W]
       exact Slots.cliExternsPlaced_sessionMemsetRegion_sat mmpl gh W hG)
-    (by
-      rw [RunGlue.withPanics_cliGhostExterns mmpl gh W]
-      exact Slots.cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-        (Slots.cliExternsPlaced_mlkemValidatePk_sat mmpl W))
-    (by
-      rw [RunGlue.withPanics_cliGhostExterns mmpl gh W]
-      exact Slots.cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-        (Slots.cliExternsPlaced_mlkemEncaps2_sat mmpl W))
-    (by
-      rw [RunGlue.withPanics_cliGhostExterns mmpl gh W]
-      exact Slots.cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-        (Slots.cliExternsPlaced_mlkemDecaps_sat mmpl W))
+    hMlkem.withPanics.mlkemValidatePk
+    hMlkem.withPanics.mlkemEncaps2
+    hMlkem.withPanics.mlkemDecaps
     (by
       rw [RunGlue.withPanics_cliGhostExterns mmpl gh W]
       exact Slots.cliExternsPlaced_libcruxHmac_sat mmpl gh W hHmac)
+    hMlkem.withPanics.onceCall
 
 theorem cliSpqrSendPeerSeams_of_peers [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : RunGlue.CliGhostHooks) (W : CliHooks)
@@ -222,8 +288,10 @@ theorem cliSpqrSendPeerSeams_of_peers [LibsignalPlacement]
     (hMs : gh.memset = some memsetHook)
     (hMc : gh.memcpy = some memcpyHook)
     (hMv : gh.extra.lookup "memmove" = some hookMemmove)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (LibsignalHmac.compress256Hook W.C.F))
     (hHmac : HookSat (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))
       Slots.lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F E2E.HooksE.A0))
+    (hMlkem : CliSpqrA0MlKemHooks W (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hDecodeState : subroutine_ok
       (libsignalSessionLib.blockProgram lsmpl 325
         (Rust.withPanics (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))))
@@ -252,7 +320,7 @@ theorem cliSpqrSendPeerSeams_of_peers [LibsignalPlacement]
       (lsmpl.base 352)
       (LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl (messageSerializeSpecX spqrPolyApi E2E.HooksE.A0))) :
     CliSpqrSendPeerSeams E2E.HooksE.A0 W.C (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
-  let hS := cliStatesPlacedSeams mmpl gh W hG hMs hMc hMv hHmac
+  let hS := cliStatesPlacedSeams mmpl gh W hG hMs hMc hMv hCp hHmac hMlkem
   { decodeState_ok := hDecodeState
     encodeVarint_ok := hEncodeVarint
     chainFromVn_ok := hChainFromVn
@@ -266,9 +334,10 @@ theorem cliSpqrSendPeerSeams_of_peers [LibsignalPlacement]
     ct2SampledSendCt2Chunk_ok := hS.ct2SampledSendCt2Chunk_ok
     coinsFill_ok := cliSpqrSend_coinsFill_ok_cli mmpl gh W hG }
 
-theorem cliSpqrSendAllocContractsPlaced
+theorem cliSpqrSendAllocContractsPlaced [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : RunGlue.CliGhostHooks) (W : CliHooks)
-    (hG : Slots.CliGhostA0Hooks E2E.HooksE.A0 gh) :
+    (hG : Slots.CliGhostA0Hooks E2E.HooksE.A0 gh)
+    (hOnce : OnceCallHookOk (Rust.withPanics (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)))) :
     AllocContractsPlaced E2E.HooksE.A0 (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
   { handle_error := by
       rw [RunGlue.withPanics_cliGhostExterns mmpl gh W]
@@ -290,26 +359,38 @@ theorem cliSpqrSendAllocContractsPlaced
       exact Slots.cliExternsPlaced_sessionMemcpy_sat mmpl gh W hG stk
     session_memset_region := by
       rw [RunGlue.withPanics_cliGhostExterns mmpl gh W]
-      exact Slots.cliExternsPlaced_sessionMemsetRegion_sat mmpl gh W hG }
+      exact Slots.cliExternsPlaced_sessionMemsetRegion_sat mmpl gh W hG
+    once_ok := hOnce }
 
 theorem cliPolyNextChunkPlacedOkX [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : RunGlue.CliGhostHooks) (W : CliHooks)
-    (hG : Slots.CliGhostA0Hooks E2E.HooksE.A0 gh) :
+    (hG : Slots.CliGhostA0Hooks E2E.HooksE.A0 gh)
+    (hOnce : OnceCallHookOk (Rust.withPanics (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)))) :
     CryptoVerification.Cli.SpqrV1.Top.Send.PolyNextChunkPlacedOkX E2E.HooksE.A0
       (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
   CryptoVerification.Cli.SpqrV1.Top.Send.ls_subroutine_ok_of_blockProgram_cro
     (CryptoVerification.Cli.SpqrV1.Top.Send.ls_subroutine_ok_to_blockProgram
       (CryptoVerification.SpqrV1.Poly.NextChunk.poly_next_chunk_placed_ok_ext
-        (cliSpqrSendAllocContractsPlaced mmpl gh W hG)))
+        (cliSpqrSendAllocContractsPlaced mmpl gh W hG hOnce)))
 
 theorem cliEncodeBytesPlacedOkX [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : RunGlue.CliGhostHooks) (W : CliHooks)
     (hG : Slots.CliGhostA0Hooks E2E.HooksE.A0 gh) :
     CryptoVerification.Cli.SpqrV1.Top.Send.EncodeBytesPlacedOkX E2E.HooksE.A0
       (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)) := by
-  have hA := cliSpqrSendAllocContractsPlaced mmpl gh W hG
   have hraw := CryptoVerification.SpqrV1.Poly.EncodeBytes.encode_bytes_placed_ok_x
-    hA.handle_error hA.shim hA.alloc (hA.session_memcpy _)
+    (by
+      rw [RunGlue.withPanics_cliGhostExterns mmpl gh W]
+      exact Slots.cliGhostExterns_panic_handle_error mmpl gh W)
+    (by
+      rw [RunGlue.withPanics_cliGhostExterns mmpl gh W]
+      exact Slots.cliExternsPlaced_shim_sat mmpl gh W hG.shim_eq)
+    (by
+      rw [RunGlue.withPanics_cliGhostExterns mmpl gh W]
+      exact Slots.cliExternsPlaced_alloc_sat mmpl gh W hG)
+    (by
+      rw [RunGlue.withPanics_cliGhostExterns mmpl gh W]
+      exact Slots.cliExternsPlaced_sessionMemcpy_sat mmpl gh W hG _)
   exact @CryptoVerification.Cli.SpqrV1.Top.Send.ls_subroutine_ok_cro_of_plain _ _
     (spqrSendPlacedProg (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))) _ 427 417
     (Rust.withPanics (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)))
@@ -324,12 +405,13 @@ theorem cliHkdfToVec_placed_ok [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : RunGlue.CliGhostHooks) (W : CliHooks)
     (hG : Slots.CliGhostA0Hooks E2E.HooksE.A0 gh)
     (hMs : gh.memset = some memsetHook)
-    (hMc : gh.memcpy = some memcpyHook) :
+    (hMc : gh.memcpy = some memcpyHook)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (LibsignalHmac.compress256Hook W.C.F)) :
     subroutine_ok (spqrSendPlacedProg (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 378)
       (LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl
         (hkdfToVecSpec E2E.HooksE.A0 (spqrHkdfWith W.C.F))) := by
-  have := instHkdfPlacedHooks_withPanics_cli mmpl gh W hMs hMc
+  have := instHkdfPlacedHooks_withPanics_cli mmpl gh W hMs hMc hCp
   have hA := cliRecvCt2PlacedAlloc mmpl gh W hG
   exact CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.hkdf_to_vec_spqr_placed_ok_of_other_block
     (i := 427) W.C E2E.HooksE.A0 hA.handleError hA.shim hA.allocZeroed
@@ -355,12 +437,13 @@ theorem cliAuthUpdate_placed_ok [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : RunGlue.CliGhostHooks) (W : CliHooks)
     (hG : Slots.CliGhostA0Hooks E2E.HooksE.A0 gh)
     (hMs : gh.memset = some memsetHook)
-    (hMc : gh.memcpy = some memcpyHook) :
+    (hMc : gh.memcpy = some memcpyHook)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (LibsignalHmac.compress256Hook W.C.F)) :
     subroutine_ok (spqrSendPlacedProg (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 341)
       (LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl
         (authUpdateSpec W.C.F E2E.HooksE.A0)) := by
-  have := instHkdfPlacedHooks_withPanics_cli mmpl gh W hMs hMc
+  have := instHkdfPlacedHooks_withPanics_cli mmpl gh W hMs hMc hCp
   have hA := cliRecvCt2PlacedAlloc mmpl gh W hG
   have hconcat_341 : subroutine_ok
       ((blkPC_341).rebase (blkPl_341).base
@@ -480,6 +563,7 @@ theorem spqrSendExtraContractsPlaced_of_cli [LibsignalPlacement]
     (hG : Slots.CliGhostA0Hooks E2E.HooksE.A0 gh)
     (hHmac : HookSat (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))
       Slots.lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F E2E.HooksE.A0))
+    (hMlkem : CliSpqrA0MlKemHooks W (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hMacHdrPinned : AuthMacHdrPinnedPlacedOkX W.C.F E2E.HooksE.A0
       (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
         cliAuthMacHdrPinnedPlacedOkX mmpl gh W hG hHmac) :
@@ -495,31 +579,23 @@ theorem spqrSendExtraContractsPlaced_of_cli [LibsignalPlacement]
   allocZeroed_hook := by
     rw [RunGlue.withPanics_cliGhostExterns mmpl gh W]
     exact Slots.cliExternsPlaced_allocZeroed_sat mmpl gh W hG
-  mlkemFromSeed_hook := by
-    rw [RunGlue.withPanics_cliGhostExterns mmpl gh W]
-    exact Slots.cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-      (Slots.cliExternsPlaced_mlkemFromSeed_sat mmpl W)
+  mlkemFromSeed_hook := hMlkem.withPanics.mlkemFromSeed
   mlkemPk1_hook := by
     rw [RunGlue.withPanics_cliGhostExterns mmpl gh W]
-    exact Slots.cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-      (Slots.cliExternsPlaced_mlkemPk1_sat mmpl W)
+    exact Slots.cliGhostExterns_mlkemPk1_sat gh (cliExternsPlaced mmpl W) hG.extraOk
   mlkemPk2_hook := by
     rw [RunGlue.withPanics_cliGhostExterns mmpl gh W]
-    exact Slots.cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-      (Slots.cliExternsPlaced_mlkemPk2_sat mmpl W)
-  mlkemEncaps1_hook := by
-    rw [RunGlue.withPanics_cliGhostExterns mmpl gh W]
-    exact Slots.cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-      (Slots.cliExternsPlaced_mlkemEncaps1_sat mmpl W)
+    exact Slots.cliGhostExterns_mlkemPk2_sat gh (cliExternsPlaced mmpl W) hG.extraOk
+  mlkemEncaps1_hook := hMlkem.withPanics.mlkemEncaps1
   fromSeed_pk1_slice := W.Q.K.fromSeed_pk1
   fromSeed_pk2_slice := W.Q.K.fromSeed_pk2
   macHdrPinned_ok := hMacHdrPinned
   doReserve2_ok := CryptoVerification.Cli.SpqrV1.Top.Send.doReserve2_placed_ok_ext_x
-    (cliSpqrSendAllocContractsPlaced mmpl gh W hG)
+    (cliSpqrSendAllocContractsPlaced mmpl gh W hG hMlkem.withPanics.onceCall)
   dropChainEpochSlice_raw_ok := spqrSend_dropChainEpochSlice_raw_ok_of_dealloc
-    (cliSpqrSendAllocContractsPlaced mmpl gh W hG).dealloc
+    (cliSpqrSendAllocContractsPlaced mmpl gh W hG hMlkem.withPanics.onceCall).dealloc
   dropChunkedStates_ok := spqrSend_dropChunkedStates_ok_of_dealloc
-    (cliSpqrSendAllocContractsPlaced mmpl gh W hG).dealloc
+    (cliSpqrSendAllocContractsPlaced mmpl gh W hG hMlkem.withPanics.onceCall).dealloc
 
 theorem spqrSendCoins_placed_seam_of_contracts [LibsignalPlacement]
     {mmpl : Obj.MultiPlacement} {gh : RunGlue.CliGhostHooks} {W : CliHooks}
@@ -552,8 +628,10 @@ theorem spqrSendCoins_placed_seam_of_peer_contracts [LibsignalPlacement]
     (hMs : gh.memset = some memsetHook)
     (hMc : gh.memcpy = some memcpyHook)
     (hMv : gh.extra.lookup "memmove" = some hookMemmove)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (LibsignalHmac.compress256Hook W.C.F))
     (hHmac : HookSat (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))
       Slots.lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F E2E.HooksE.A0))
+    (hMlkem : CliSpqrA0MlKemHooks W (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hChainFromPb : subroutine_ok
       (spqrSendPlacedProg (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))) (lsmpl.base 364)
       (LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl (chainFromPbSpecX E2E.HooksE.A0)))
@@ -612,16 +690,17 @@ theorem spqrSendCoins_placed_seam_of_peer_contracts [LibsignalPlacement]
           E2E.HooksE.A0 0#64 (E2E.pqxdhSpqrModel ⟨W.C, W.Q⟩))) :=
   spqrSendCoins_placed_seam_of_contracts
     (spqrSendPlacedContracts_of_okX
-      (cliSpqrSendAllocContractsPlaced mmpl gh W hG)
+      (cliSpqrSendAllocContractsPlaced mmpl gh W hG hMlkem.withPanics.onceCall)
       hChainFromPb hChainAddEpoch hChainSendKey hChainIntoPb
       hAuthMacHdr hAuthUpdate hHkdfToVec
-      (cliEncodeBytesPlacedOkX mmpl gh W hG) (cliPolyNextChunkPlacedOkX mmpl gh W hG)
-      (cliSpqrSendPeerSeams_of_peers mmpl gh W hG hMs hMc hMv hHmac
+      (cliEncodeBytesPlacedOkX mmpl gh W hG)
+      (cliPolyNextChunkPlacedOkX mmpl gh W hG hMlkem.withPanics.onceCall)
+      (cliSpqrSendPeerSeams_of_peers mmpl gh W hG hMs hMc hMv hCp hHmac hMlkem
         hDecodeState hEncodeVarint hChainFromVn hStatesIntoPb hMessageSerialize))
-    (spqrSendExtraContractsPlaced_of_cli mmpl gh W hG hHmac hMacHdrPinned)
+    (spqrSendExtraContractsPlaced_of_cli mmpl gh W hG hHmac hMlkem hMacHdrPinned)
 
 /-- External hook table class matching `RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)` on all
-non-RNG symbols for some `(mmpl, gh)` satisfying `CliGhostA0Hooks`, stock `memset`/`memcpy`/`memmove` hooks,
+non-RNG symbols for some `(mmpl, gh)` satisfying `CliGhostA0Hooks`, stock `memset`/`memcpy`/`memmove`/`compress256` hooks,
 and the `libcrux_hmac` contract (satisfied by both `RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)`
 and its `trTrapExternsPlaced` wrap, while keeping `[CliSpqrExt W ext]` 2-argument for downstream SPQR modules). -/
 class CliSpqrExt (W : CliHooks) (ext : String → Option (State → State)) : Prop where
@@ -631,6 +710,7 @@ class CliSpqrExt (W : CliHooks) (ext : String → Option (State → State)) : Pr
       gh.memset = some memsetHook ∧
       gh.memcpy = some memcpyHook ∧
       gh.extra.lookup "memmove" = some hookMemmove ∧
+      gh.extra.lookup lsCompress256Sym = some (LibsignalHmac.compress256Hook W.C.F) ∧
       HookSat (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))
         Slots.lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F E2E.HooksE.A0) ∧
       ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
@@ -641,28 +721,31 @@ theorem cliSpqrExt_self (mmpl : Obj.MultiPlacement) (gh : RunGlue.CliGhostHooks)
     (hMs : gh.memset = some memsetHook)
     (hMc : gh.memcpy = some memcpyHook)
     (hMv : gh.extra.lookup "memmove" = some hookMemmove)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (LibsignalHmac.compress256Hook W.C.F))
     (hHmac : HookSat (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))
       Slots.lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F E2E.HooksE.A0)) :
     CliSpqrExt W (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
-  ⟨⟨mmpl, gh, hG, hMs, hMc, hMv, hHmac, fun _ _ => rfl⟩⟩
+  ⟨⟨mmpl, gh, hG, hMs, hMc, hMv, hCp, hHmac, fun _ _ => rfl⟩⟩
 
 theorem cliSpqrExt_trTrap (mmpl : Obj.MultiPlacement) (gh : RunGlue.CliGhostHooks) (W : CliHooks)
     (hG : Slots.CliGhostA0Hooks E2E.HooksE.A0 gh)
     (hMs : gh.memset = some memsetHook)
     (hMc : gh.memcpy = some memcpyHook)
     (hMv : gh.extra.lookup "memmove" = some hookMemmove)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (LibsignalHmac.compress256Hook W.C.F))
     (hHmac : HookSat (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))
       Slots.lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F E2E.HooksE.A0)) :
     CliSpqrExt W (Slots.trTrapExternsPlaced (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))) :=
-  ⟨⟨mmpl, gh, hG, hMs, hMc, hMv, hHmac, fun sym hne => by
+  ⟨⟨mmpl, gh, hG, hMs, hMc, hMv, hCp, hHmac, fun sym hne => by
     simp [Slots.trTrapExternsPlaced, Slots.lsRngFillSym, trapAt, hne]⟩⟩
 
 instance instCliSpqrExtWithPanics (W : CliHooks)
     {ext : String → Option (State → State)} [CliSpqrExt W ext] :
     CliSpqrExt W (Rust.withPanics ext) where
   exists_ghost := by
-    obtain ⟨mmpl, gh, hG, hMs, hMc, hMv, hHmac, heq⟩ := CliSpqrExt.exists_ghost (W := W) (ext := ext)
-    refine ⟨mmpl, gh, hG, hMs, hMc, hMv, hHmac, fun sym hne => ?_⟩
+    obtain ⟨mmpl, gh, hG, hMs, hMc, hMv, hCp, hHmac, heq⟩ :=
+      CliSpqrExt.exists_ghost (W := W) (ext := ext)
+    refine ⟨mmpl, gh, hG, hMs, hMc, hMv, hCp, hHmac, fun sym hne => ?_⟩
     have h1 : Rust.withPanics ext sym =
         Rust.withPanics (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)) sym := by
       simp only [Rust.withPanics, heq sym hne]
@@ -678,7 +761,7 @@ private theorem cliSpqrExt_hookSat_of_ghost (W : CliHooks)
         Slots.lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F E2E.HooksE.A0) →
       HookSat (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)) sym spec) :
     HookSat ext sym spec := by
-  obtain ⟨mmpl, gh, hG, _, _, _, hHmac, heq⟩ := CliSpqrExt.exists_ghost (W := W) (ext := ext)
+  obtain ⟨mmpl, gh, hG, _, _, _, _, hHmac, heq⟩ := CliSpqrExt.exists_ghost (W := W) (ext := ext)
   exact RunGlue.hookSat_of_eq (heq sym hne) (hf mmpl gh hG hHmac)
 
 private theorem cliSpqrExt_eq_of_ghost (W : CliHooks)
@@ -688,7 +771,7 @@ private theorem cliSpqrExt_eq_of_ghost (W : CliHooks)
     (hf : ∀ (mmpl : Obj.MultiPlacement) (gh : RunGlue.CliGhostHooks),
       RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W) sym = v) :
     ext sym = v := by
-  obtain ⟨mmpl, gh, _, _, _, _, _, heq⟩ := CliSpqrExt.exists_ghost (W := W) (ext := ext)
+  obtain ⟨mmpl, gh, _, _, _, _, _, _, heq⟩ := CliSpqrExt.exists_ghost (W := W) (ext := ext)
   exact (heq sym hne).trans (hf mmpl gh)
 
 theorem cliSpqrExt_shim_sat (W : CliHooks)
@@ -760,7 +843,7 @@ theorem cliSpqrExt_memcpyRegionRO_sat (W : CliHooks)
 theorem cliSpqrExt_sessionMemmove_sat (W : CliHooks) (stk : Nat)
     {ext : String → Option (State → State)} [CliSpqrExt W ext] :
     HookSat ext "memmove" (sessionMemmoveSpec stk) := by
-  obtain ⟨mmpl, gh, _, _, _, hMv, _, heq⟩ := CliSpqrExt.exists_ghost (W := W) (ext := ext)
+  obtain ⟨mmpl, gh, _, _, _, hMv, _, _, heq⟩ := CliSpqrExt.exists_ghost (W := W) (ext := ext)
   exact RunGlue.hookSat_of_eq (heq "memmove" (by decide))
     ⟨hookMemmove, RunGlue.cliGhostExterns_extra_some gh (cliExternsPlaced mmpl W) hMv,
       CryptoVerification.LibsignalTripleRatchet.hookMemmove_trace_ok stk⟩
@@ -774,30 +857,26 @@ theorem cliSpqrExt_sessionMemsetRegion_sat (W : CliHooks)
 theorem cliSpqrExt_formatInner_sat (W : CliHooks)
     {ext : String → Option (State → State)} [CliSpqrExt W ext] :
     HookSat ext lsFormatInnerSym (formatInnerSpec E2E.HooksE.A0) :=
-  cliSpqrExt_hookSat_of_ghost W (by decide) fun mmpl gh _ _ =>
-    Slots.cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-      (Slots.cliExternsPlaced_formatInner_sat mmpl W)
+  cliSpqrExt_hookSat_of_ghost W (by decide) fun mmpl gh hG _ =>
+    Slots.cliExternsPlaced_a0_formatInner_sat mmpl gh W hG
 
 theorem cliSpqrExt_mlkemValidatePk_sat (W : CliHooks)
-    {ext : String → Option (State → State)} [CliSpqrExt W ext] :
+    {ext : String → Option (State → State)} [CliSpqrExt W ext]
+    (hMlkem : CliSpqrA0MlKemHooks W ext) :
     HookSat ext Slots.lsMlkemValidatePkSymCli (mlkemValidatePkSpec W.Q.K) :=
-  cliSpqrExt_hookSat_of_ghost W (by decide) fun mmpl gh _ _ =>
-    Slots.cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-      (Slots.cliExternsPlaced_mlkemValidatePk_sat mmpl W)
+  hMlkem.mlkemValidatePk
 
 theorem cliSpqrExt_mlkemEncaps2_sat (W : CliHooks)
-    {ext : String → Option (State → State)} [CliSpqrExt W ext] :
+    {ext : String → Option (State → State)} [CliSpqrExt W ext]
+    (hMlkem : CliSpqrA0MlKemHooks W ext) :
     HookSat ext Slots.lsMlkemEncaps2SymCli (mlkemEncaps2Spec W.Q.K) :=
-  cliSpqrExt_hookSat_of_ghost W (by decide) fun mmpl gh _ _ =>
-    Slots.cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-      (Slots.cliExternsPlaced_mlkemEncaps2_sat mmpl W)
+  hMlkem.mlkemEncaps2
 
 theorem cliSpqrExt_mlkemDecaps_sat (W : CliHooks)
-    {ext : String → Option (State → State)} [CliSpqrExt W ext] :
+    {ext : String → Option (State → State)} [CliSpqrExt W ext]
+    (hMlkem : CliSpqrA0MlKemHooks W ext) :
     HookSat ext Slots.lsMlkemDecapsSymCli (mlkemDecapsSpec W.Q.K) :=
-  cliSpqrExt_hookSat_of_ghost W (by decide) fun mmpl gh _ _ =>
-    Slots.cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-      (Slots.cliExternsPlaced_mlkemDecaps_sat mmpl W)
+  hMlkem.mlkemDecaps
 
 theorem cliSpqrExt_libcruxHmac_sat (W : CliHooks)
     {ext : String → Option (State → State)} [CliSpqrExt W ext] :
@@ -886,14 +965,14 @@ private theorem instHkdfPlacedHooks_cliExt (W : CliHooks)
     {H : String → Option (State → State)} [CliSpqrExt W H] :
     HkdfPlacedHooks W.C.F H where
   memset := by
-    obtain ⟨mmpl, gh, _, hMs, hMc, _, _, heq⟩ := CliSpqrExt.exists_ghost (W := W) (ext := H)
-    exact (heq _ (by decide)).trans (instHkdfPlacedHooks_cli mmpl gh W hMs hMc).memset
+    obtain ⟨mmpl, gh, _, hMs, hMc, _, hCp, _, heq⟩ := CliSpqrExt.exists_ghost (W := W) (ext := H)
+    exact (heq _ (by decide)).trans (instHkdfPlacedHooks_cli mmpl gh W hMs hMc hCp).memset
   memcpy := by
-    obtain ⟨mmpl, gh, _, hMs, hMc, _, _, heq⟩ := CliSpqrExt.exists_ghost (W := W) (ext := H)
-    exact (heq _ (by decide)).trans (instHkdfPlacedHooks_cli mmpl gh W hMs hMc).memcpy
+    obtain ⟨mmpl, gh, _, hMs, hMc, _, hCp, _, heq⟩ := CliSpqrExt.exists_ghost (W := W) (ext := H)
+    exact (heq _ (by decide)).trans (instHkdfPlacedHooks_cli mmpl gh W hMs hMc hCp).memcpy
   compress256 := by
-    obtain ⟨mmpl, gh, _, hMs, hMc, _, _, heq⟩ := CliSpqrExt.exists_ghost (W := W) (ext := H)
-    exact (heq _ (by decide)).trans (instHkdfPlacedHooks_cli mmpl gh W hMs hMc).compress256
+    obtain ⟨mmpl, gh, _, hMs, hMc, _, hCp, _, heq⟩ := CliSpqrExt.exists_ghost (W := W) (ext := H)
+    exact (heq _ (by decide)).trans (instHkdfPlacedHooks_cli mmpl gh W hMs hMc hCp).compress256
 
 theorem cliRecvCt2PlacedAllocExt [LibsignalPlacement] (W : CliHooks)
     {ext : String → Option (State → State)} [CliSpqrExt W ext] :
@@ -913,20 +992,23 @@ theorem cliRecvCt2PlacedAllocExt [LibsignalPlacement] (W : CliHooks)
   memcpyRO := cliSpqrExt_memcpyRegionRO_sat W (ext := Rust.withPanics ext)
 
 theorem cliStatesPlacedSeamsExt [LibsignalPlacement] (W : CliHooks)
-    {ext : String → Option (State → State)} [CliSpqrExt W ext] :
+    {ext : String → Option (State → State)} [CliSpqrExt W ext]
+    (hMlkem : CliSpqrA0MlKemHooks W ext) :
     CryptoVerification.SpqrV1.StatesPlacedSeams E2E.HooksE.A0 W.C.F W.Q.K ext :=
   letI := instHkdfPlacedHooks_cliExt W (H := Rust.withPanics ext)
   LibsignalBinary.Proofs.Placed.SubsetA4c.statesPlacedSeams_of_hooks
     (cliRecvCt2PlacedAllocExt W)
     (cliSpqrExt_sessionMemmove_sat W 0 (ext := Rust.withPanics ext))
     (cliSpqrExt_sessionMemsetRegion_sat W (ext := Rust.withPanics ext))
-    (cliSpqrExt_mlkemValidatePk_sat W (ext := Rust.withPanics ext))
-    (cliSpqrExt_mlkemEncaps2_sat W (ext := Rust.withPanics ext))
-    (cliSpqrExt_mlkemDecaps_sat W (ext := Rust.withPanics ext))
+    hMlkem.withPanics.mlkemValidatePk
+    hMlkem.withPanics.mlkemEncaps2
+    hMlkem.withPanics.mlkemDecaps
     (cliSpqrExt_libcruxHmac_sat W (ext := Rust.withPanics ext))
+    hMlkem.withPanics.onceCall
 
-theorem cliSpqrSendAllocContractsPlacedExt (W : CliHooks)
-    {ext : String → Option (State → State)} [CliSpqrExt W ext] :
+theorem cliSpqrSendAllocContractsPlacedExt [LibsignalPlacement] (W : CliHooks)
+    {ext : String → Option (State → State)} [CliSpqrExt W ext]
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     AllocContractsPlaced E2E.HooksE.A0 ext where
   handle_error := cliSpqrExt_panic_handle_error W (ext := Rust.withPanics ext)
   shim := cliSpqrExt_shim_sat W (ext := Rust.withPanics ext)
@@ -935,6 +1017,7 @@ theorem cliSpqrSendAllocContractsPlacedExt (W : CliHooks)
   realloc := cliSpqrExt_realloc_sat W (ext := Rust.withPanics ext)
   session_memcpy stk := cliSpqrExt_sessionMemcpy_sat W stk (ext := Rust.withPanics ext)
   session_memset_region := cliSpqrExt_sessionMemsetRegion_sat W (ext := Rust.withPanics ext)
+  once_ok := hOnce
 
 /-!
 ### Block-Level Hook Helpers & `Alloc` / `Chain` Leaves (`Blocks 320, 328, 353, 356, 362..368`)
@@ -1319,11 +1402,12 @@ theorem cliMessageSerialize_placed_ok [LibsignalPlacement] (W : CliHooks)
       (lsmpl.base 352)
       (LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl
         (messageSerializeSpecX spqrPolyApi E2E.HooksE.A0)) := by
-  have hA := cliSpqrSendAllocContractsPlacedExt W (ext := ext)
   have hraw :=
     CryptoVerification.SpqrV1.Top.MessageSerialize.messageSerialize_placed_ok_x
       spqrPolyApi E2E.HooksE.A0 ext
-      hA.handle_error hA.shim hA.alloc
+      (cliSpqrExt_panic_handle_error W (ext := Rust.withPanics ext))
+      (cliSpqrExt_shim_sat W (ext := Rust.withPanics ext))
+      (cliSpqrExt_alloc_sat W (ext := Rust.withPanics ext))
       (cliDoReserve7_placed_ok W)
       (cliEncodeVarintExt_placed_ok W)
   exact LibsignalTripleRatchet.subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded hraw
@@ -1389,10 +1473,12 @@ theorem cliAuthNew_placed_ok [LibsignalPlacement] (W : CliHooks)
 theorem cliEncodeToVec_placed_ok [LibsignalPlacement] (W : CliHooks)
     {ext : String → Option (State → State)} [CliSpqrExt W ext] :
     CryptoVerification.SpqrV1.Prost.EncodeToVec.PqRatchetStateEncodeToVecPlacedOkExt
-      E2E.HooksE.A0 ext := by
-  have hA := cliSpqrSendAllocContractsPlacedExt W (ext := ext)
-  exact CryptoVerification.SpqrV1.Prost.EncodeToVec.pqRatchetStateEncodeToVec_placed_ok
-    hA.handle_error hA.shim hA.alloc hA.realloc
+      E2E.HooksE.A0 ext :=
+  CryptoVerification.SpqrV1.Prost.EncodeToVec.pqRatchetStateEncodeToVec_placed_ok
+    (cliSpqrExt_panic_handle_error W (ext := Rust.withPanics ext))
+    (cliSpqrExt_shim_sat W (ext := Rust.withPanics ext))
+    (cliSpqrExt_alloc_sat W (ext := Rust.withPanics ext))
+    (cliSpqrExt_realloc_sat W (ext := Rust.withPanics ext))
     (cliSpqrExt_sessionMemcpyRegion_sat W (ext := Rust.withPanics ext))
 
 /-! ### Top-Level SPQR-V1 Placed Entry Seams (`Blocks 427, 327`) -/
@@ -1413,8 +1499,10 @@ theorem cliSpqrSendCoins_placed_ok [LibsignalPlacement]
     (hMs : gh.memset = some memsetHook)
     (hMc : gh.memcpy = some memcpyHook)
     (hMv : gh.extra.lookup "memmove" = some hookMemmove)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (LibsignalHmac.compress256Hook W.C.F))
     (hHmac : HookSat (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))
       Slots.lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F E2E.HooksE.A0))
+    (hMlkem : CliSpqrA0MlKemHooks W (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hChainFromPb : subroutine_ok
       (spqrSendPlacedProg (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))) (lsmpl.base 364)
       (LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl (chainFromPbSpecX E2E.HooksE.A0)))
@@ -1442,8 +1530,8 @@ theorem cliSpqrSendCoins_placed_ok [LibsignalPlacement]
       (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
         (spqrSendCoinsPlacedSpecT E2E.HooksE.A0 0#64 (E2E.pqxdhSpqrModel ⟨W.C, W.Q⟩))) := by
   have : CliSpqrExt W (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
-    cliSpqrExt_self mmpl gh W hG hMs hMc hMv hHmac
-  exact spqrSendCoins_placed_seam_of_peer_contracts mmpl gh W hG hMs hMc hMv hHmac
+    cliSpqrExt_self mmpl gh W hG hMs hMc hMv hCp hHmac
+  exact spqrSendCoins_placed_seam_of_peer_contracts mmpl gh W hG hMs hMc hMv hCp hHmac hMlkem
     hChainFromPb
     (keys_ls_subroutine_ok_of_block_cro (i := 427) (j := 368)
       (CryptoVerification.SpqrV1.States.Leaves.subroutine_ok_withLsCodeRoLoaded_of_withLsCallInv
@@ -1453,8 +1541,8 @@ theorem cliSpqrSendCoins_placed_ok [LibsignalPlacement]
         (cliChainSendKey_placed_ok W)))
     hChainIntoPb
     (cliAuthMacHdr_placed_ok mmpl gh W hG hHmac)
-    (cliAuthUpdate_placed_ok mmpl gh W hG hMs hMc)
-    (cliHkdfToVec_placed_ok mmpl gh W hG hMs hMc)
+    (cliAuthUpdate_placed_ok mmpl gh W hG hMs hMc hCp)
+    (cliHkdfToVec_placed_ok mmpl gh W hG hMs hMc hCp)
     hDecodeState
     (cliEncodeVarint_placed_ok mmpl gh W hG)
     (cliChainFromVn_placed_ok W)
@@ -1469,6 +1557,7 @@ theorem cliSpqrInitialState_placed_ok [LibsignalPlacement]
     (hMs : gh.memset = some memsetHook)
     (hMc : gh.memcpy = some memcpyHook)
     (hMv : gh.extra.lookup "memmove" = some hookMemmove)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (LibsignalHmac.compress256Hook W.C.F))
     (hHmac : HookSat (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))
       Slots.lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F E2E.HooksE.A0))
     (hInitInner :
@@ -1488,7 +1577,7 @@ theorem cliSpqrInitialState_placed_ok [LibsignalPlacement]
       (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
         (CryptoVerification.Cli.E2E.V1.spqrInitialStatePlacedInnerSpec E2E.HooksE.A0 W.C.F)) := by
   have : CliSpqrExt W (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
-    cliSpqrExt_self mmpl gh W hG hMs hMc hMv hHmac
+    cliSpqrExt_self mmpl gh W hG hMs hMc hMv hCp hHmac
   have := CryptoVerification.SpqrV1.Top.Placed.instIsLsBlockProg_327
     (Rust.withPanics (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)))
   exact CryptoVerification.SpqrV1.Top.InitialState.initial_state_placed_ok_blockProgram_ext

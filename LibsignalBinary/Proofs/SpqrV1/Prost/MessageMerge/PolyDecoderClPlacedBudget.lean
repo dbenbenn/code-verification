@@ -9,8 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoderBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoderBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoderBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoderBudgetAux
+public import LibsignalBinary.Heap.GrowOneSpecs
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParams -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Code-Loaded Placed Budget Verification of `PolynomialDecoder::merge` (Block `296`)
@@ -20,7 +33,7 @@ and top-level budget contracts (`polyDecoderMerge_cro_placed_ok_of_contracts`,
 `polyDecoderMerge_cl_placed_ok_of_contracts`) on Block `296`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -208,52 +221,6 @@ theorem polyDecoder_tag4_step_cl_placed [LibsignalPlacement] {M : AllocCostModel
       (WppPost (polyDecoderMergeSpec A lim) (x, st0) R s0)
       (WppBudgetPanic (polyDecoderMergeSpec A lim) (x, st0) R s0) :=
   polyDecoder_tag4_step_cro hFromCall hPushCall hVarintCall
-
-/-- Code-loaded placed shared element-copy join block at `+0x1b0` (`(blkPl_296).base + 432#64`)
-for tag 3 (`pts : Vec<Vec<u8>>`). -/
-theorem polyDecoder_tag3_copy_step_cl_placed [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {x : PolyDecoderMergeGhost} {st0 st_next : M.σ} {R : SepProp}
-    {s0 : State} {m : PolynomialDecoder} {s : State}
-    {v rest' : List (BitVec 8)} {limit : Nat} {v_stk0 cap' ptr' cap_e ptr_e : BitVec 64} :
-    (s0.sp &&& 15#64 == 0#64) = true →
-    m.pts.length < cap'.toNat → cap'.toNat * 24 < 2 ^ 63 → ptr' ≠ 0 →
-    (∀ (s' : State),
-      s'.pc = (blkPl_296).base + 164#64 →
-      s'.status = .Running → s'.sp = s0.sp - 160#64 → s'.trace = s0.trace →
-      s'.readReg64 (Reg.gpr 19#5) = x.bufRef → s'.readReg64 (Reg.gpr 20#5) = x.msgPtr →
-      s'.readReg64 (Reg.gpr 21#5) = x.slot → s'.readReg64 (Reg.gpr 22#5) = BitVec.ofNat 64 limit →
-      s'.readReg64 (Reg.gpr 23#5) = 1#64 → s'.readReg64 (Reg.gpr 24#5) = 24#64 →
-      PolyCalleeSaved s0 s' → LibsignalCodeRoLoaded lsmpl s'.mem →
-      SepWPp ((blkPC_296).rebase (blkPl_296).base H) (s0.readReg64 Reg.lr) s'
-        (polyDecoderLoopPre A lim st_next s0 s' x.msgPtr x.bufRef x.slot x.ptr
-          { m with pts := m.pts ++ [v] } x.bs rest')
-        (WppPost (polyDecoderMergeSpec A lim) (x, st0) R s0)
-        (WppBudgetPanic (polyDecoderMergeSpec A lim) (x, st0) R s0)) →
-    s.pc = (blkPl_296).base + 432#64 →
-    s.status = .Running → s.sp = s0.sp - 160#64 → s.trace = s0.trace →
-    s.readReg64 (Reg.gpr 19#5) = x.bufRef → s.readReg64 (Reg.gpr 20#5) = x.msgPtr →
-    s.readReg64 (Reg.gpr 21#5) = x.slot → s.readReg64 (Reg.gpr 22#5) = BitVec.ofNat 64 limit →
-    s.readReg64 (Reg.gpr 23#5) = 1#64 → s.readReg64 (Reg.gpr 24#5) = 24#64 →
-    s.readReg64 (Reg.gpr 25#5) = BitVec.ofNat 64 m.pts.length →
-    PolyCalleeSaved s0 s → LibsignalCodeRoLoaded lsmpl s.mem →
-    SepWPp ((blkPC_296).rebase (blkPl_296).base H) (s0.readReg64 Reg.lr) s
-      (((s0.sp - 160#64) ↦₆₄ v_stk0) ∗ vecU8At A.repAlloc (s0.sp - 152#64) cap_e ptr_e v ∗
-        (x.msgPtr ↦₆₄ cap') ∗ ((x.msgPtr + 8#64) ↦₆₄ ptr') ∗
-        ((x.msgPtr + 16#64) ↦₆₄ BitVec.ofNat 64 m.pts.length) ∗
-        A.repAlloc.live ptr' (cap'.toNat * 24) 8 ∗
-        arrayAt (fun bs addr => vecU8 A.repAlloc addr bs) 24 ptr' m.pts ∗
-        memRegion (ptr' + BitVec.ofNat 64 (m.pts.length * 24)) ((cap'.toNat - m.pts.length) * 24) ∗
-        ((x.msgPtr + protoPolynomialDecoderPtsNeededOff) ↦₃₂ m.ptsNeeded) ∗
-        ((x.msgPtr + protoPolynomialDecoderPolysOff) ↦₃₂ m.polys) ∗
-        ((x.msgPtr + protoPolynomialDecoderIsCompleteOff) ↦₈ boolByte m.isComplete) ∗
-        memRegion (x.msgPtr + protoPolynomialDecoderPadOff) protoPolynomialDecoderPadSize ∗
-        stackAt (s0.sp - 160#64) polyBelowStack ∗ memRegion (s0.sp - 128#64) 48 ∗
-        polySavedRegsAny s0.sp s0 ∗ (x.bufRef ↦₆₄ x.slot) ∗
-        sliceCursorAfter x.slot x.ptr x.bs rest' ∗ A.pool lim st_next s)
-      (WppPost (polyDecoderMergeSpec A lim) (x, st0) R s0)
-      (WppBudgetPanic (polyDecoderMergeSpec A lim) (x, st0) R s0) :=
-  polyDecoder_tag3_copy_step_cro
 
 /-- Code-loaded placed budget step lemma for tag 3 (`pts : Vec<Vec<u8>>` at `msgPtr`) at `+0x178`
 (`(blkPl_296).base + 376#64`). -/

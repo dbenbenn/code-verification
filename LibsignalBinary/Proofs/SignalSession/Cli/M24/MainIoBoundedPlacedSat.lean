@@ -13,16 +13,17 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced -
 public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudgetSat -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
 import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
 /-!
-# Honest-Write-Spec Bounded-Stdin Relocatable `MainIo` Contracts (`MainIoBoundedPlacedSat`)
+# Bounded-Stdin Relocatable `MainIo` Contracts (`MainIoBoundedPlacedSat`)
 
-- **Role**: `Role::Proof` (outside the TCB). Untrusted groundwork for #1255 (HOOKS-PREP).
-- **Overview**:
-  Honest-write-spec sibling of
-  `LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced` (`MainIoOfPlacedSat`,
-  `MainIoBoundedPlacedSat`, equivalences with `SpecsPlacedBudgetSat.MainIoPlacedSat`, Block-`617`
-  call-site projections, and field-copy constructors replacing `readStdin`).
+Honest-write-spec sibling of `LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced`,
+providing `MainIoOfPlacedSat`, `MainIoBoundedPlacedSat`, equivalences with
+`SpecsPlacedBudgetSat.MainIoPlacedSat`, Block-`617` call-site projections, and field-copy
+constructors replacing `readStdin`.
 -/
 
 public section
@@ -42,6 +43,7 @@ open CryptoVerification.SignalSession.Cli.Main.Placed (blkPC_617 blkPl_617 lsPro
 open CryptoVerification.SignalSession.Cli.MainHops (IoModel)
 open LibsignalBinary.Heap (AllocCostModel AllocEvent BudgetLimits RustCliAllocBudget)
 open LibsignalBinary.Heap.SpecBudget (ReadStdinEnv)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced
   (ReadStdinBoundedEnv readStdinSpecOfPlaced)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHonestSpecs
@@ -64,9 +66,9 @@ structure MainIoOfPlacedSat [LibsignalPlacement] {M : AllocCostModel}
   readFile : subroutine_ok (lsProg_617 H) (lsρ lsReadFileSym)
     (withLsRoCl lsmpl (readFileLitSpecPlaced io A lim hookStack ReadEnv))
   writeFile : subroutine_ok (lsProg_617 H) (lsρ lsWriteFileSym)
-    (withLsRoCl lsmpl (writeFileSpecPlacedSat io A lim hookStack))
+    (withLsRoCl lsmpl (withLsRet (writeFileSpecPlacedSat io A lim hookStack)))
   writeStdout : subroutine_ok (lsProg_617 H) (lsρ lsWriteStdoutSym)
-    (withLsRoCl lsmpl (writeStdoutSpecPlacedSat A lim hookStack))
+    (withLsRoCl lsmpl (withLsRet (writeStdoutSpecPlacedSat A lim hookStack)))
   hWriteFileStack : writeFileStackFloor ≤ hookStack
   hWriteStdoutStack : writeStdoutStackFloor ≤ hookStack
 
@@ -175,7 +177,7 @@ theorem main_writeFile_of_placed_ok_sat [LibsignalPlacement]
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
     (hio : MainIoOfPlacedSat A lim H io hookStack StdinEnv ReadEnv) :
     subroutine_ok ((blkPC_617).rebase (blkPl_617).base H) (lsρ lsWriteFileSym)
-      (withLsRoCl lsmpl (writeFileSpecPlacedSat io A lim hookStack)) :=
+      (withLsRoCl lsmpl (withLsRet (writeFileSpecPlacedSat io A lim hookStack))) :=
   hio.writeFile
 
 theorem main_writeStdout_of_placed_ok_sat [LibsignalPlacement]
@@ -185,7 +187,7 @@ theorem main_writeStdout_of_placed_ok_sat [LibsignalPlacement]
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
     (hio : MainIoOfPlacedSat A lim H io hookStack StdinEnv ReadEnv) :
     subroutine_ok ((blkPC_617).rebase (blkPl_617).base H) (lsρ lsWriteStdoutSym)
-      (withLsRoCl lsmpl (writeStdoutSpecPlacedSat A lim hookStack)) :=
+      (withLsRoCl lsmpl (withLsRet (writeStdoutSpecPlacedSat A lim hookStack))) :=
   hio.writeStdout
 
 /-! ## 3. Field-Copy Constructors Replacing `readStdin` -/

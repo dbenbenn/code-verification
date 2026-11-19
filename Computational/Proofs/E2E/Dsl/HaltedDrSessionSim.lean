@@ -9,18 +9,18 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.DrSessionSim -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.DrSessionSim
 public import Computational.Proofs.E2E.Dsl.HaltedDrSessionLifter -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.HaltedDrSessionSimAux -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.HaltedDrSessionSimDispatch -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.HaltedDrSessionSimRecvSteps -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.HaltedDrTrackerDsl -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.LocalSessionStep -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.HaltedDrTrackerDsl
+import Computational.Proofs.E2E.Dsl.LocalSessionStep
 public import Computational.Proofs.E2E.Dsl.CompositionHaltedWitness -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.KemFailTrackDslBase
-public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore -- proof-setup: allow-public-import
-public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge
+import Computational.Proofs.Game.PromotedCostedReds.KemFailTrackDslBase
+import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore
+import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge
 public import Computational.Proofs.SpecLemmas.Session.KemFailTrackEpochClamp -- proof-setup: allow-public-import
 
 /-!
@@ -955,42 +955,6 @@ theorem haltedStepLocalSmGenC_eval {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Typ
               rw [hFinEval, hSetEval]
               simp only [ρ₅, ρ₄, ρ₃, ρ₁, Expr.eval, Expr.v0, Expr.v4, Env.get]
               rw [map_set_eq (sessHEnc (ℓ := ℓ) (Pt := Pt)) tracks i tr']
-
-theorem haltedStepLocalSmGenC_eval_of_simInv {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
-    {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    (ops : HaltedDrStepOps ℓ Pt P C K decT encT)
-    {ι : Type} {T : OracleSpec ι} (I₀ : Iface (atomicSig ℓ Pt) T)
-    (hsmp : I₀.smp = atomicBaseSamplers ℓ Pt)
-    {TrackInv : ℕ → KemFailSessionTrack C.F Bytes → Prop}
-    (hImp : ∀ q st, TrackInv q st → KemBridgeTrackInv C.F K q st)
-    (b : SignalPqxdh.QueryBudget) (qStart qInst qep : ℕ)
-    {qKiDone qStartDone qInstDone : ℕ}
-    {σH : BHE2EDrvState S ℓ × List (KemFailSessionTrack C.F Bytes)}
-    (hInv : Computational.Proofs.E2E.Dsl.CompositionHaltedWitness.HaltedSimInv
-      TrackInv C K b qStart qInst qKiDone qStartDone qInstDone σH)
-    (hInstLen : σH.1.insts.length ≤ min qStart (min b.q_total S.N_send_tot))
-    (hEpoch : ∀ d ∈ σH.1.insts, ∀ gs ∈ d.gs, SmEpochBounded qInst gs)
-    {Γ : List (Ty (atomicSig ℓ Pt))}
-    (σHE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (.prod (drvTy S ℓ Pt) (.list (sessHTy ℓ Pt))))
-    (idxE : Expr (atomicE2EOps ℓ P C K decT encT) Γ .nat)
-    (sqE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (atomicSmQT ℓ Pt))
-    (ρ : Env Γ) (i : ℕ)
-    (sq : (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Domain)
-    (hσH : σHE.eval ρ = (drvEnc σH.1, σH.2.map sessHEnc))
-    (hidx : idxE.eval ρ = i)
-    (hsq : sqE.eval ρ = _root_.ReductionDsl.smQenc (ℓ := ℓ) (Pt := Pt) sq) :
-    (haltedStepLocalSmGenC ops I₀ hsmp b qStart qInst qep σHE idxE sqE).eval ρ =
-      I₀.liftP
-        ((fun out => (packAtomicSmRespEnc (Pt := Pt) out.1, (drvEnc out.2.1, out.2.2.map sessHEnc))) <$>
-          bhE2EStepLocalSmSessionTracked
-            (Computational.Proofs.E2E.Dsl.CompositionHaltedWitness.kemFailSessionTracker C.F K)
-            C K qep decT encT σH i sq) := by
-  have hMir := hInv.mirror_full
-  exact haltedStepLocalSmGenC_eval ops I₀ hsmp b qStart qInst qep σHE idxE sqE ρ σH i sq
-    hσH hidx hsq hInstLen hInv.metaAligned hMir.corrPrins_le hMir.revSpks_le hMir.prins_le
-    (hInv.sessions.mono hInv.dr_le) hEpoch (hInv.tracks_len ▸ hInstLen)
-    (fun st hst => kemBridgeTrackInv_mono hInv.dr_le (hImp qInstDone st (hInv.tracks_inv st hst)))
 
 /-! ## Concrete step wiring -/
 

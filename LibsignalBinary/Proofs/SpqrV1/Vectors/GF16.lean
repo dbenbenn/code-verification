@@ -16,7 +16,7 @@ Deterministic `spqr-vectors` suite for `GF(2^16)` arithmetic (`add`, `poly_mul`,
 `REDUCE_BYTES`, and `parallel_mult`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Vectors.GF16
 
@@ -31,7 +31,7 @@ structure GF16Entry where
   deriving DecidableEq, Repr
 
 /-- 228 edge-case GF(2^16) pairs (0, 1, powers of 2, 0x100b, 0xfffe, 0xffff, etc.). -/
-def gf16EdgeVectors : List GF16Entry := [
+@[expose] def gf16EdgeVectors : List GF16Entry := [
   { a := 0x0000#16, b := 0x0000#16, add := 0x0000#16, polyMul := 0x00000000#32, mul := 0x0000#16, div := 0x0000#16 },
   { a := 0x0001#16, b := 0x0000#16, add := 0x0001#16, polyMul := 0x00000000#32, mul := 0x0000#16, div := 0x0000#16 },
   { a := 0x0000#16, b := 0x0001#16, add := 0x0001#16, polyMul := 0x00000000#32, mul := 0x0000#16, div := 0x0000#16 },
@@ -263,7 +263,7 @@ def gf16EdgeVectors : List GF16Entry := [
 ]
 
 /-- 200 random GF(2^16) pairs (ChaCha20Rng seed `0x01..01`). -/
-def gf16RandomVectors : List GF16Entry := [
+@[expose] def gf16RandomVectors : List GF16Entry := [
   { a := 0x3f02#16, b := 0x2037#16, add := 0x1f35#16, polyMul := 0x07e4ed6e#32, mul := 0x0921#16, div := 0xea91#16 },
   { a := 0x243a#16, b := 0xc476#16, add := 0xe04c#16, polyMul := 0x1b8c7afc#32, mul := 0x65fe#16, div := 0x2287#16 },
   { a := 0x6625#16, b := 0x1ca6#16, add := 0x7a83#16, polyMul := 0x04f56efe#32, mul := 0xa6cc#16, div := 0xa404#16 },
@@ -466,10 +466,8 @@ def gf16RandomVectors : List GF16Entry := [
   { a := 0xf4be#16, b := 0xc416#16, add := 0x30a8#16, polyMul := 0x44af0864#32, mul := 0xbcb5#16, div := 0xc8d6#16 }
 ]
 
-def gf16Vectors : List GF16Entry := gf16EdgeVectors ++ gf16RandomVectors
-
 /-- The 256-entry `REDUCE_BYTES` lookup table (`src/encoding/gf.rs:519–537`). -/
-def reduceBytesTable : List (BitVec 16) := [
+@[expose] def reduceBytesTable : List (BitVec 16) := [
   0x0000#16, 0x100b#16, 0x2016#16, 0x301d#16, 0x402c#16, 0x5027#16, 0x603a#16, 0x7031#16, 0x8058#16, 0x9053#16, 0xa04e#16, 0xb045#16, 0xc074#16, 0xd07f#16, 0xe062#16, 0xf069#16, 
   0x10bb#16, 0x00b0#16, 0x30ad#16, 0x20a6#16, 0x5097#16, 0x409c#16, 0x7081#16, 0x608a#16, 0x90e3#16, 0x80e8#16, 0xb0f5#16, 0xa0fe#16, 0xd0cf#16, 0xc0c4#16, 0xf0d9#16, 0xe0d2#16, 
   0x2176#16, 0x317d#16, 0x0160#16, 0x116b#16, 0x615a#16, 0x7151#16, 0x414c#16, 0x5147#16, 0xa12e#16, 0xb125#16, 0x8138#16, 0x9133#16, 0xe102#16, 0xf109#16, 0xc114#16, 0xd11f#16, 
@@ -496,7 +494,7 @@ structure ParallelMultEntry where
   deriving DecidableEq, Repr
 
 /-- Differential vectors for `parallel_mult` (even and odd slice lengths). -/
-def parallelMultVectors : List ParallelMultEntry := [
+@[expose] def parallelMultVectors : List ParallelMultEntry := [
   { scalar := 0xe412#16, input := [], output := [] },
   { scalar := 0x38e4#16, input := [0x93bc#16], output := [0xf8e8#16] },
   { scalar := 0x0953#16, input := [0xa01a#16, 0x8fd1#16], output := [0xed9c#16, 0xc905#16] },

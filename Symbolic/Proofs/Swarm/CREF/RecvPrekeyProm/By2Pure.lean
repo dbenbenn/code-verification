@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure
-public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyTR
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BobKyberNonePure
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyTR -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BobKyberNonePure -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.OooRpkPure
 import Symbolic.Proofs.Swarm.CREF.Cli.World.RelCliPure
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
@@ -25,6 +25,9 @@ import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj
 import Symbolic.Proofs.Swarm.CREF.Xpl.InvCommon
 import Symbolic.Proofs.Swarm.CREF.Xpl.PrefixReach
 import Symbolic.Proofs.Swarm.TRREF.EncodeRecordPqInj
+public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.OpkRelC
 
 /-!
 # Per-Call `PureCRel` and `CReadyPure` Preservation on Session Promotion
@@ -34,7 +37,7 @@ Proves `prom_accept_cRel` and `cEntry_recvPrekey_prom_call`, establishing `PureC
 (`PromExplainOK`, `PromNewRecOK`, `PromHistOK`, `PromOpkOK`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

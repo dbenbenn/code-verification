@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyTR
-public import Symbolic.Proofs.Swarm.CREF.Initiate.InitOk35Pure
+import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyTR
+import Symbolic.Proofs.Swarm.CREF.Initiate.InitOk35Pure
 import all DY.Trace.Basic
 import all DY.Trace.Monad
 import all DY.Trace.Manipulation
@@ -20,7 +20,7 @@ import all DY.Actions.PersistentGlobalState
 import all DY.Actions.ProtocolEvent
 import all DY.Actions.Random
 public import Symbolic.Proofs.Swarm.UA.Defs
-public import Symbolic.Proofs.Swarm.UA.PendingPreKey
+public import Symbolic.Proofs.Swarm.UA.PendingPreKey -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompTermAlgebra
 import Symbolic.Proofs.Swarm.UA.BI.RAB.Base
 import Symbolic.Proofs.Swarm.UA.Base
@@ -33,7 +33,7 @@ of `AlicePendingKeysOn` and `AliceRecordPendingInSession` across non-handshake s
 environment compromise and inversion events.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,13 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Frame
-public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.Common.CallInv
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Frame -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym -- proof-setup: allow-public-import
+import ProofLib
+import ProofLib.Sep
+meta import Lean
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `OutgoingTripleRatchet::from_session_state` Case 4 (`st.remoteIdentity = some rem`)
@@ -24,7 +26,7 @@ Verifies the `Ok` path (`st.senderChain = some sc`, `st.version.toNat < 256`, an
 `st.remoteIdentity = some rem`) of `<OutgoingTripleRatchet>::from_session_state`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.OutgoingRatchet
 
@@ -45,6 +47,14 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   zeroExtend64_setWidth8 zeroExtend32_setWidth8
   localIk_bytes0_7_low32 localIk_bytes0_7_mid16 localIk_bytes0_7_hi8
   shift40_shift16_eq_shift56
+
+run_meta do
+  let env ← Lean.getEnv
+  for (h, ks) in #[(``sessionStateAt, #[1]), (``otrResultAt, #[1])] do
+    let n := Lean.mkPrivateName env (((ks.foldl Lean.Name.mkNum ProofLib.Sep.sepKeyMarker).str "_TARGET_") ++ h)
+    unless env.contains n do
+      Lean.withExporting (isExporting := false) do
+        Lean.addDecl <| .defnDecl { name := n, levelParams := [], type := .const ``Unit [], value := .const ``Unit.unit [], hints := .abbrev, safety := .safe }
 
 /-! ## Case 4 (`st.remoteIdentity = some rem`) helpers and proof -/
 
@@ -96,32 +106,7 @@ theorem frame128_fold_phaseB_64 (sp : BitVec 64)
       ((sp - 284#64) ↦₃₂ s64) ∗ ((sp - 280#64) ↦₆₄ s68) ∗
       ((sp - 272#64) ↦₆₄ s70) ∗ ((sp - 264#64) ↦₆₄ s78)) ⊢
     memRegion (sp - 384#64) 128 := by
-  rw [mr_cut' sp 384 376 8 120 128 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 376 368 8 112 120 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 368 360 8 104 112 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 360 352 8 96 104 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 352 344 8 88 96 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 344 336 8 80 88 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 336 328 8 72 80 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 328 320 8 64 72 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 320 312 8 56 64 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 312 304 8 48 56 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 304 296 8 40 48 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 296 292 4 36 40 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 292 288 4 32 36 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 288 284 4 28 32 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 284 280 4 24 28 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 280 272 8 16 24 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 272 264 8 8 16 rfl rfl (by decide) (by decide) (by decide)]
-  refine sepConj_mono (pointsTo64_entails_memRegion _ s00) (sepConj_mono (pointsTo64_entails_memRegion _ s08) ?_)
-  refine sepConj_mono (pointsTo64_entails_memRegion _ s10) (sepConj_mono (pointsTo64_entails_memRegion _ s18) ?_)
-  refine sepConj_mono (pointsTo64_entails_memRegion _ s20) (sepConj_mono (pointsTo64_entails_memRegion _ s28) ?_)
-  refine sepConj_mono (pointsTo64_entails_memRegion _ s30) (sepConj_mono (pointsTo64_entails_memRegion _ s38) ?_)
-  refine sepConj_mono (pointsTo64_entails_memRegion _ s40) (sepConj_mono (pointsTo64_entails_memRegion _ s48) ?_)
-  refine sepConj_mono (pointsTo64_entails_memRegion _ s50) (sepConj_mono (Entails.refl _) ?_)
-  refine sepConj_mono (pointsTo32_entails_memRegion _ s5c) (sepConj_mono (pointsTo32_entails_memRegion _ s60) ?_)
-  refine sepConj_mono (pointsTo32_entails_memRegion _ s64) (sepConj_mono (pointsTo64_entails_memRegion _ s68) ?_)
-  exact sepConj_mono (pointsTo64_entails_memRegion _ s70) (pointsTo64_entails_memRegion _ s78)
+  sep_interval
 
 theorem spe_missingRemote_at_sp152 (A : RustAlloc) (sp p w0 w8 w16 w24 : BitVec 64) (w32 : BitVec 16)
     (hw0 : w0 = speWord 20) (hw8 : w8 = p) (hw16 : w16 = 27#64) :
@@ -132,29 +117,15 @@ theorem spe_missingRemote_at_sp152 (A : RustAlloc) (sp p w0 w8 w16 w24 : BitVec 
     speAt A [] (sp - 152#64) (.invalidSessionStructure .missingRemoteIdentity) ∗
       memRegion (sp - 104#64) 8 := by
   subst w0 w8 w16
-  have h16 : memRegion (sp - BitVec.ofNat 64 112) 16 =
-      memRegion (sp - 112#64) 8 ∗ memRegion (sp - 104#64) 8 :=
-    mr_cut' sp 112 104 8 8 16 rfl rfl (by decide) (by decide) (by decide)
-  have hspe := spe_missingRemote_at_sret A (sp - 152#64) p w24 w32
-  rw [sub_add_eq_sub sp 8#64 152#64 144#64,
-      sub_add_eq_sub sp 16#64 152#64 136#64,
-      sub_add_eq_sub sp 24#64 152#64 128#64,
-      sub_add_eq_sub sp 32#64 152#64 120#64,
-      sub_add_eq_sub sp 34#64 152#64 118#64,
-      sub_add_eq_sub sp 40#64 152#64 112#64] at hspe
-  rw [h16]
-  have hassoc :
-      (((sp - 152#64) ↦₆₄ speWord 20) ∗ ((sp - 144#64) ↦₆₄ p) ∗
-        ((sp - 136#64) ↦₆₄ 27#64) ∗ (p ↦ᵣ invalidSessionStructureStr .missingRemoteIdentity) ∗
-        ((sp - 128#64) ↦₆₄ w24) ∗ ((sp - 120#64) ↦₁₆ w32) ∗
-        memRegion (sp - 118#64) 6 ∗ (memRegion (sp - 112#64) 8 ∗ memRegion (sp - 104#64) 8)) =
-      (((sp - 152#64) ↦₆₄ speWord 20) ∗ ((sp - 144#64) ↦₆₄ p) ∗
-        ((sp - 136#64) ↦₆₄ 27#64) ∗ (p ↦ᵣ invalidSessionStructureStr .missingRemoteIdentity) ∗
-        ((sp - 128#64) ↦₆₄ w24) ∗ ((sp - 120#64) ↦₁₆ w32) ∗
-        memRegion (sp - 118#64) 6 ∗ memRegion (sp - 112#64) 8) ∗ memRegion (sp - 104#64) 8 := by
-    simp only [sepConj_assoc]
-  rw [hassoc]
-  exact sepConj_mono_left hspe
+  dsimp only [speAt, strRefAt]
+  rw [sub_add_eq_sub sp 8#64 152#64 144#64, sub_add_eq_sub sp 8#64 144#64 136#64,
+      sub_add_eq_sub sp 24#64 152#64 128#64, issStr_missingRemoteIdentity_len]
+  have h24 : (((sp - 128#64) ↦₆₄ w24) ∗ ((sp - 120#64) ↦₁₆ w32) ∗
+      memRegion (sp - 118#64) 6 ∗ memRegion (sp - 112#64) 16) ⊢
+      memRegion (sp - 128#64) 24 ∗ memRegion (sp - 104#64) 8 := by
+    sep_interval
+  refine Entails.trans (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right h24)))) ?_
+  bi_entail
 
 theorem sevenBytes_421_to_124_sp232 (sp : BitVec 64) (bs : List (BitVec 8)) (h : bs.length = 32) :
     (((sp - 232#64) ↦₃₂ pack32 (bs.take 4)) ∗
@@ -216,26 +187,8 @@ theorem ret24_fold_srk (ret : BitVec 64) (bs : List (BitVec 8)) (h : bs.length =
   subst v0 v1 v3 v7 v15 v23 v31
   have h7 := (sevenBytes_4_2_1_eq_1_2_4 (ret + 24#64) bs h).symm
   have h32 := (bytes32_eq_4_2_1_8_8_8_1 (ret + 24#64) bs h).symm
-  simp only [BitVec.add_assoc, BitVec.reduceAdd] at h7 h32
-  have hgrp :
-      (((ret + 24#64) ↦₈ pack8 (bs.take 1)) ∗
-       ((ret + 25#64) ↦₁₆ pack16 ((bs.drop 1).take 2)) ∗
-       ((ret + 27#64) ↦₃₂ pack32 ((bs.drop 3).take 4)) ∗
-       ((ret + 31#64) ↦₆₄ pack64 ((bs.drop 7).take 8)) ∗
-       ((ret + 39#64) ↦₆₄ pack64 ((bs.drop 15).take 8)) ∗
-       ((ret + 47#64) ↦₆₄ pack64 ((bs.drop 23).take 8)) ∗
-       ((ret + 55#64) ↦₈ pack8 (bs.drop 31))) =
-      (((ret + 24#64) ↦₈ pack8 (bs.take 1)) ∗
-       ((ret + 25#64) ↦₁₆ pack16 ((bs.drop 1).take 2)) ∗
-       ((ret + 27#64) ↦₃₂ pack32 ((bs.drop 3).take 4))) ∗
-      (((ret + 31#64) ↦₆₄ pack64 ((bs.drop 7).take 8)) ∗
-       ((ret + 39#64) ↦₆₄ pack64 ((bs.drop 15).take 8)) ∗
-       ((ret + 47#64) ↦₆₄ pack64 ((bs.drop 23).take 8)) ∗
-       ((ret + 55#64) ↦₈ pack8 (bs.drop 31))) := by
-    ac_rfl
-  rw [hgrp, h7]
-  simp only [sepConj_assoc]
-  rw [h32]
+  simp only [BitVec.add_assoc, BitVec.reduceAdd, ← sepConj_assoc] at h7 h32 ⊢
+  rw [h7, h32]
   exact Entails.refl _
 
 theorem ret56_split_priv (ret : BitVec 64) (bs : List (BitVec 8)) (h : bs.length = 32) :
@@ -431,447 +384,12 @@ theorem otrResultAt_ok_intro (A : RustAlloc) (ret : BitVec 64) (pq : VecPin)
   rw [hv]
   exact Entails.refl _
 
-theorem SepWP.seq_callInv {prog : Program} {img : Obj.Image} {mid_pc target_pc : BitVec 64}
-    {s : State} {P : SepProp} {post : State → SepProp → Prop}
-    (hfrozen : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h1 : SepWP prog mid_pc s P (fun sm P_m =>
-      img.FrozenLoaded sm → sm.symtab = img.symtab → SepWP prog target_pc sm P_m post)) :
-    SepWP prog target_pc s P post :=
-  SepWP.of_sepWP_inv hfrozen hsym h1
-
-def DropSpeExtOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr dropSpeName) ((dropSpeSpecX A).inImage img)
-
-theorem DropSpeExtOkX.of_DropSpeExtOk {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (h : DropSpeExtOk img A ext) :
-    DropSpeExtOkX img A ext := by
-  refine subroutine_ok_map h ?_
-  intro x R s0 hpre
-  have hsplit : stackAt s0.sp dropSpeStackX =
-      memRegion (s0.sp - 16416#64) 12288 ∗ stackAt s0.sp dropSpeStack := by
-    change memRegion (s0.sp - 16416#64) (12288 + 4128) =
-      memRegion (s0.sp - 16416#64) 12288 ∗ memRegion (s0.sp - 4128#64) 4128
-    rw [memRegion_split (s0.sp - 16416#64) 12288 4128 (by decide)]
-    have h2 : s0.sp - 16416#64 + BitVec.ofNat 64 12288 = s0.sp - 4128#64 := by bv_lin
-    rw [h2]
-  refine ⟨x, memRegion (s0.sp - 16416#64) 12288 ∗ R, ?_, fun sf hpost => ?_⟩
-  · dsimp only [Spec.inImage, dropSpeSpec, dropSpeSpecX] at hpre ⊢
-    rw [hsplit] at hpre
-    ac_nf at hpre ⊢
-  · dsimp only [Spec.inImage, dropSpeSpec, dropSpeSpecX] at hpost ⊢
-    rw [hsplit]
-    ac_nf at hpost ⊢
-
-theorem dropSpe_ok_at_otrFrom_ext_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (h : DropSpeExtOkX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr otrFromName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]") - (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state")))
-      ((dropSpeSpecX A).inImage img) := by
-  have heq : (tripleRatchetProgAtExt img.base ext).fnAddr otrFromName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]") - (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state")) =
-      (tripleRatchetProgAtExt img.base ext).fnAddr dropSpeName := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state"), (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]")]
-    bv_lin
-  rw [heq]; exact h
-
 theorem stackAt_dropSpeX (sp : BitVec 64) :
     stackAt (sp - 384#64) 65152 =
       stackAt (sp - 16800#64) 48736 ∗ stackAt (sp - 384#64) dropSpeStackX := by
-  change memRegion (sp - 384#64 - 65152#64) (48736 + 16416) =
+  change memRegion (sp - 384#64 - 65152#64) 65152 =
     memRegion (sp - 16800#64 - 48736#64) 48736 ∗ memRegion (sp - 384#64 - 16416#64) 16416
-  rw [memRegion_split (sp - 384#64 - 65152#64) 48736 16416 (by decide)]
-  have h1 : sp - 384#64 - 65152#64 = sp - 16800#64 - 48736#64 := by bv_lin
-  have h2 : sp - 16800#64 - 48736#64 + BitVec.ofNat 64 48736 = sp - 384#64 - 16416#64 := by bv_lin
-  rw [h1, h2]
-
-set_option maxHeartbeats 3200000 in
-theorem otrFrom_case4_ok_ext_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hDeser : DeserializeExtOk img.base ext)
-    (hRemIk : RemoteIdentityKeyExtOk img A ext)
-    (hDropSpe : DropSpeExtOkX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr otrFromName)
-      (otrFromCaseSpec A img
-        (fun x => ∃ sc rem, x.st.senderChain = some sc ∧
-          ¬ 256 ≤ x.st.version.toNat ∧ x.st.remoteIdentity = some rem)) := by
-  dsimp only [otrFromCaseSpec, otrFromSpec, Spec.inImage]
-  have hbase_align : img.base &&& 0xfff#64 = 0#64 :=
-    ProofLib.ObjectLoad.base_aligned_of_loads himg
-  have hdeser := deserialize_ok_at_otrFrom_ext hDeser
-  have hpkTryFrom := pkTryFromOk_ok_at_ext (ext := ext) himg (name := otrFromName)
-    (k := libsignalSessionCode.fnOff pkTryFromName - libsignalSessionCode.fnOff otrFromName)
-  have hremIk := remoteIdentityKey_ok_at_otrFrom_ext hRemIk
-  have hdropSpe := dropSpe_ok_at_otrFrom_ext_x hDropSpe
-  code_fetches_range libsignalSessionCode CryptoVerification.LibsignalTripleRatchet.OutgoingRatchet.libsignalSessionBin img.base
-    (Rust.withPanics ext) (ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state") (num% (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state")) 0 1228
-  wp_init
-  have hadrp3 := fnAddr_adrp_ba80 (b := img.base)
-    (H := Rust.withPanics ext) hbase_align
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨ss, G, st, ret⟩ := a
-  dsimp only at *
-  rcases h_1 with ⟨sc, rem, hsc, hver, hrem⟩
-  apply SepWP.seq_callInv (mid_pc := entry + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]") - (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state"))) h_2 h_3
-  refine SepWP.add_rodata (fun hm => rodata_missingRemoteIdentity_intro himg h_2.roData hm) ?_
-  refine SepWP.fold (sessionStateAt_sender_some A ss G st sc hsc) (by sep_focus) ?_
-  wp_simp_pre only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  apply SepWP.exists_elim; intro sg
-  refine SepWP.focus_pure (by sep_focus) fun hGs => ?_
-  conv =>
-    arg 4
-    rw [sessionStateAt_eq_from_some_self A ss G st sg sc hGs hsc,
-        sessionStateAt_eq_from_some A ss G st sg sc hGs hsc G.pq st.pqRatchetState,
-        stackAt_prologue s0.sp,
-        frame288_split_phaseA s0.sp,
-        memRegion40_split_deser_sp s0.sp,
-        ret200_split_ok ret]
-  wp_simp_pre only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  apply SepWP.exists_elim; intro r11
-  apply SepWP.exists_elim; intro r10
-  apply SepWP.exists_elim; intro r9
-  apply SepWP.exists_elim; intro r8
-  apply SepWP.exists_elim; intro r7
-  apply SepWP.exists_elim; intro r6
-  apply SepWP.exists_elim; intro r5
-  apply SepWP.exists_elim; intro r4
-  apply SepWP.exists_elim; intro r3
-  apply SepWP.exists_elim; intro r2
-  apply SepWP.exists_elim; intro r1
-  apply SepWP.exists_elim; intro r0
-  apply SepWP.exists_elim; intro v_deser
-  apply SepWP.exists_elim; intro tag0_deser
-  apply SepWP.exists_elim; intro ue0
-  apply SepWP.exists_elim; intro ud8
-  apply SepWP.exists_elim; intro uc8
-  apply SepWP.exists_elim; intro uc0
-  apply SepWP.exists_elim; intro u9e
-  apply SepWP.exists_elim; intro u9c
-  apply SepWP.exists_elim; intro u98
-  apply SepWP.exists_elim; intro u90
-  apply SepWP.exists_elim; intro u88
-  apply SepWP.exists_elim; intro u84
-  apply SepWP.exists_elim; intro u80
-  apply SepWP.exists_elim; intro ver0
-  apply SepWP.exists_elim; intro pc0
-  apply SepWP.exists_elim; intro idx0
-  apply SepWP.exists_elim; intro v5
-  apply SepWP.exists_elim; intro v4
-  apply SepWP.exists_elim; intro v3
-  apply SepWP.exists_elim; intro v2
-  apply SepWP.exists_elim; intro v1
-  apply SepWP.exists_elim; intro w2
-  apply SepWP.exists_elim; intro w1
-  apply SepWP.exists_elim; intro w0
-  refine SepWP.focus_pure (by sep_focus) fun hinv1 => ?_
-  refine SepWP.focus_pure (by sep_focus) fun hinv2 => ?_
-  obtain ⟨hdeser_lik, hrem_inv, hchains_len, hpend_some, hreg_len, _, _⟩ := id hinv1
-  have hrem_inv' : PublicKey.deserialize G.remoteIk.bytes = .ok rem.publicKey := by
-    rwa [hrem] at hrem_inv
-  rcases hinv2 with ⟨hdeser_srk, hpriv_eq, hpriv_clamp, hsrk_len⟩
-  refine SepWP.fold (vecU8Buf_bounds A G.localIk.cap G.localIk.ptr G.localIk.bytes) (by sep_focus) ?_
-  refine SepWP.focus_pure (by sep_focus) fun hlik_bds => ?_
-  refine SepWP.fold (vecU8Buf_bounds A sg.srk.cap sg.srk.ptr sg.srk.bytes) (by sep_focus) ?_
-  refine SepWP.focus_pure (by sep_focus) fun hsrk_bds => ?_
-  refine SepWP.fold (vecU8Buf_bounds A sg.priv.cap sg.priv.ptr sg.priv.bytes) (by sep_focus) ?_
-  refine SepWP.focus_pure (by sep_focus) fun hpriv_bds => ?_
-  refine SepWP.fold (vecU8Buf_bounds A sg.ck.cap sg.ck.ptr (keyToBytes32 sc.chainKey.key)) (by sep_focus) ?_
-  refine SepWP.focus_pure (by sep_focus) fun hck_bds => ?_
-  obtain ⟨_, hlik_ge33⟩ :=
-    CryptoVerification.LibsignalSession.FindReceiverChainIndex.publicKey_deserialize_ok_inversion hdeser_lik
-  have hlik_cap_ne0 : G.localIk.cap ≠ 0 :=
-    vecU8_cap_ne_zero_of_ge hlik_bds.1 (by omega)
-  have hlik_len_lt : G.localIk.bytes.length < 2 ^ 63 :=
-    Nat.lt_of_le_of_lt hlik_bds.1 hlik_bds.2.1
-  have hlik_len_toNat : (BitVec.ofNat 64 G.localIk.bytes.length).toNat = G.localIk.bytes.length := by
-    rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  have hlik_pk_len : st.localIdentity.publicKey.bytes.toList.length = 32 :=
-    st.localIdentity.publicKey.bytes.toList_length
-  obtain ⟨_, hsrk_ge33⟩ :=
-    CryptoVerification.LibsignalSession.FindReceiverChainIndex.publicKey_deserialize_ok_inversion hdeser_srk
-  have hsrk_cap_ne0 : sg.srk.cap ≠ 0 :=
-    vecU8_cap_ne_zero_of_ge hsrk_bds.1 (by omega)
-  have hsrk_ne_neg1 : (sg.srk.cap + 1#64 == 0#64) = false :=
-    addsPState64_neg1_eq_false hsrk_bds.2.1
-  have hsrk_len_lt : sg.srk.bytes.length < 2 ^ 63 :=
-    Nat.lt_of_le_of_lt hsrk_bds.1 hsrk_bds.2.1
-  have hsrk_len_toNat : (BitVec.ofNat 64 sg.srk.bytes.length).toNat = sg.srk.bytes.length := by
-    rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  have hpriv_len : sg.priv.bytes.length = 32 := by
-    rw [hpriv_eq, List.Vector.toList_length]
-  have hpriv_cap_ne0 : sg.priv.cap ≠ 0 :=
-    vecU8_cap_ne_zero_of_ge hpriv_bds.1 (by omega)
-  have hck_cap_ne0 : sg.ck.cap ≠ 0 := by
-    have h1 := hck_bds.1
-    rw [keyToBytes32_length] at h1
-    exact vecU8_cap_ne_zero_of_ge h1 (by decide)
-  have hck_ne_neg1 : (sg.ck.cap + 1#64 == 0#64) = false :=
-    addsPState64_neg1_eq_false hck_bds.2.1
-  have hv_deser_len : v_deser.toList.length = 32 := v_deser.toList_length
-  have hsrk_pk_len : sc.ratchetKey.publicKey.bytes.toList.length = 32 :=
-    sc.ratchetKey.publicKey.bytes.toList_length
-  have hpriv_pk_len : sc.ratchetKey.privateKey.bytes.toList.length = 32 :=
-    sc.ratchetKey.privateKey.bytes.toList_length
-  have hrem_pk_len : rem.publicKey.bytes.toList.length = 32 :=
-    rem.publicKey.bytes.toList_length
-  have hck_key_len : (keyToBytes32 sc.chainKey.key).length = 32 :=
-    keyToBytes32_length sc.chainKey.key
-  have hver_ls :
-      ConditionHolds CondCode.LS
-        (subsPState32 (if (st.sessionVersion == 0#32) = true then 2#32 else st.sessionVersion) 255#32) =
-      true := by
-    rw [version_word_eq st, subsPState32_255_ls_iff st.version, decide_eq_true_eq]
-    exact hver
-  conv =>
-    arg 4
-    rw [vecU8Buf_eq_bytes_live_of_ne_zero A G.localIk.cap G.localIk.ptr G.localIk.bytes hlik_cap_ne0,
-        vecU8Buf_eq_bytes_live_of_ne_zero A sg.srk.cap sg.srk.ptr sg.srk.bytes hsrk_cap_ne0,
-        vecU8Buf_eq_bytes_live_of_ne_zero A sg.priv.cap sg.priv.ptr sg.priv.bytes hpriv_cap_ne0,
-        vecU8Buf_eq_bytes_live_of_ne_zero A sg.ck.cap sg.ck.ptr (keyToBytes32 sc.chainKey.key) hck_cap_ne0,
-        hpriv_eq, hpriv_pk_len,
-        bytes32_eq_1_4_2_8_8_8_1 sg.priv.ptr sc.ratchetKey.privateKey.bytes.toList hpriv_pk_len,
-        bytes32_eq_4_2_1_8_8_8_1 sg.ck.ptr (keyToBytes32 sc.chainKey.key) hck_key_len]
-  dsimp only [logOff]
-  wp_steps
-  wp_call hdeser (sg.srk.ptr, sg.srk.bytes, sc.ratchetKey.publicKey,
-    s0.sp - 152#64, tag0_deser, v_deser.toList)
-  refine SepWP.fold (bytes32_split_sp151 s0.sp sc.ratchetKey.publicKey.bytes.toList hsrk_pk_len) (by sep_focus) ?_
-  wp_steps
-  refine SepWP.fold (sevenBytes_421_to_124_sp151 s0.sp sc.ratchetKey.publicKey.bytes.toList hsrk_pk_len) (by sep_focus) ?_
-  wp_steps
-  refine SepWP.fold (sevenBytes_after_store_at_0_sp232 s0.sp u9c u9e sc.ratchetKey.publicKey.bytes.toList hsrk_pk_len) (by sep_focus) ?_
-  -- Stop before the `sturh` at entry+284: the `memRegion` folds below must run first.
-  wp_steps 33
-  refine SepWP.fold (sevenBytes_124_to_421_sp232 s0.sp sc.ratchetKey.publicKey.bytes.toList hsrk_pk_len) (by sep_focus) ?_
-  refine SepWP.fold (sret_srk_entails_memRegion40 s0.sp _ _ _ _ _ _ _ _) (by sep_focus) ?_
-  refine SepWP.fold (memRegion40_split_ck_sp_entails s0.sp) (by sep_focus) ?_
-  wp_simp_pre only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  apply SepWP.exists_elim; intro c3
-  apply SepWP.exists_elim; intro c2
-  apply SepWP.exists_elim; intro c0
-  wp_steps
-  refine SepWP.fold (elevenBytes_218_to_821_sp152 s0.sp (keyToBytes32 sc.chainKey.key) hck_key_len) (by sep_focus) ?_
-  refine SepWP.fold (ent_of_eq (frame128_split_phaseB s0.sp)) (by sep_focus) ?_
-  wp_simp_pre only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  apply SepWP.exists_elim; intro s78
-  apply SepWP.exists_elim; intro s70
-  apply SepWP.exists_elim; intro s68
-  apply SepWP.exists_elim; intro s64
-  apply SepWP.exists_elim; intro s60
-  apply SepWP.exists_elim; intro s5c
-  apply SepWP.exists_elim; intro s50
-  apply SepWP.exists_elim; intro s48
-  apply SepWP.exists_elim; intro s40
-  apply SepWP.exists_elim; intro s38
-  apply SepWP.exists_elim; intro s30
-  apply SepWP.exists_elim; intro s2c
-  apply SepWP.exists_elim; intro s28
-  apply SepWP.exists_elim; intro s24
-  apply SepWP.exists_elim; intro s20
-  apply SepWP.exists_elim; intro s18
-  apply SepWP.exists_elim; intro s10
-  apply SepWP.exists_elim; intro s08
-  apply SepWP.exists_elim; intro s00
-  refine SepWP.fold (ent_of_eq (frame33_split s0.sp)) (by sep_focus) ?_
-  wp_simp_pre only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  apply SepWP.exists_elim; intro ub8
-  apply SepWP.exists_elim; intro ub4
-  apply SepWP.exists_elim; intro ub0
-  apply SepWP.exists_elim; intro ua8
-  apply SepWP.exists_elim; intro ua0
-  refine SepWP.fold (ent_of_eq (frame15_split s0.sp)) (by sep_focus) ?_
-  wp_simp_pre only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  apply SepWP.exists_elim; intro ud4
-  apply SepWP.exists_elim; intro ud0
-  apply SepWP.exists_elim; intro uc9
-  wp_steps
-  refine SepWP.fold (ck_scratch_entails_memRegion40_sp152 s0.sp _ _ _) (by sep_focus) ?_
-  wp_call hpkTryFrom (G.localIk.ptr, G.localIk.bytes, st.localIdentity.publicKey, s0.sp - 152#64)
-  refine SepWP.fold (bytes32_split_localIk_sp151 s0.sp st.localIdentity.publicKey.bytes.toList hlik_pk_len) (by sep_focus) ?_
-  refine SepWP.fold (bytes32_fold_1_4_2_8_8_8_1 sg.priv.ptr sc.ratchetKey.privateKey.bytes.toList hpriv_pk_len) (by sep_focus) ?_
-  refine SepWP.fold (vecU8Buf_fold_of_ne_zero A sg.priv.cap sg.priv.ptr sc.ratchetKey.privateKey.bytes.toList hpriv_cap_ne0) (by sep_focus) ?_
-  refine SepWP.fold (bytes32_fold_4_2_1_8_8_8_1 sg.ck.ptr (keyToBytes32 sc.chainKey.key) hck_key_len) (by sep_focus) ?_
-  refine SepWP.fold (vecU8Buf_fold_of_ne_zero A sg.ck.cap sg.ck.ptr (keyToBytes32 sc.chainKey.key) hck_cap_ne0) (by sep_focus) ?_
-  refine SepWP.fold (vecU8Buf_fold_of_ne_zero A sg.srk.cap sg.srk.ptr sg.srk.bytes hsrk_cap_ne0) (by sep_focus) ?_
-  refine SepWP.fold (vecU8Buf_fold_of_ne_zero A G.localIk.cap G.localIk.ptr G.localIk.bytes hlik_cap_ne0) (by sep_focus) ?_
-  wp_steps
-  refine SepWP.fold (sret_localIk_entails_memRegion34_6 s0.sp _ _ _ _ _ _ _ _ _ _ _) (by sep_focus) ?_
-  refine SepWP.fold (ent_of_eq (stackAt_remoteIk s0.sp)) (by sep_focus) ?_
-  wp_call hremIk ⟨ss, G.remoteIk, st.remoteIdentity, s0.sp - 152#64⟩
-  try rw [hsp_sf_2]
-  try rw [hsp_sf_1]
-  try rw [hsp_sf]
-  refine SepWP.fold (ent_of_eq (stackAt_remoteIk s0.sp).symm) (by sep_focus) ?_
-  refine SepWP.fold (remoteIdentityOkAt_some_split_sp152 s0.sp st.remoteIdentity rem hrem) (by sep_focus) ?_
-  refine SepWP.fold (sp184_pair8_to_16 s0.sp _ _) (by sep_focus) ?_
-  wp_steps
-  refine SepWP.fold (pointsTo64_of_1_1_4_2_sp152 s0.sp _ _ _ _) (by sep_focus) ?_
-  wp_simp_pre only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  apply SepWP.exists_elim; intro w152
-  wp_steps
-  refine SepWP.fold (sp352_344_pair32_to_64 s0.sp _ _ _ _) (by sep_focus) ?_
-  wp_steps
-  refine SepWP.fold (spe_missingRemote_at_sp152 A s0.sp (img.base + bv% (ls_xref% (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state" + 748) (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state" + 752))) _ _ _ _ _ ?_ ?_ ?_) (by sep_focus) ?_
-  · clear * -; dsimp only [speWord]; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  refine SepWP.fold (ent_of_eq (stackAt_dropSpeX s0.sp)) (by sep_focus) ?_
-  apply SepWP.done
-    (by simp only [State.pc_setMem, State.pc_setPC])
-    (by simp only [State.status_setMem, State.status_setPC, State.status_writeReg64,
-      State.status_setPState, hrun_sf_2])
-  intro hfrozen_call hsym_call
-  have hsym_call' := hsym_call
-  simp only [arm64_norm] at hsym_call'
-  wp_call hdropSpe ⟨s0.sp - 152#64, [], .invalidSessionStructure .missingRemoteIdentity⟩
-  try rw [hsp_sf_3]
-  try rw [hsp_sf_2]
-  try rw [hsp_sf_1]
-  try rw [hsp_sf]
-  refine SepWP.fold (ent_of_eq (stackAt_dropSpeX s0.sp).symm) (by sep_focus) ?_
-  refine SepWP.fold (ent_of_eq (memRegion48_split_dropSpe s0.sp)) (by sep_focus) ?_
-  wp_simp_pre only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  apply SepWP.exists_elim; intro d8
-  apply SepWP.exists_elim; intro d0
-  refine SepWP.fold (ret24_split_srk ret v1.toList v1.toList_length) (by sep_focus) ?_
-  refine SepWP.fold (ret56_split_priv ret v2.toList v2.toList_length) (by sep_focus) ?_
-  refine SepWP.fold (ret88_split_localIk ret v3.toList v3.toList_length) (by sep_focus) ?_
-  refine SepWP.fold (ret120_split_remoteIk ret v4.toList v4.toList_length) (by sep_focus) ?_
-  refine SepWP.fold (ret152_split_ck ret v5.toList v5.toList_length) (by sep_focus) ?_
-  wp_steps
-  refine SepWP.fold (sevenBytes_421_to_124_sp232 s0.sp sc.ratchetKey.publicKey.bytes.toList hsrk_pk_len) (by sep_focus) ?_
-  wp_steps
-  refine SepWP.fold (sevenBytes_after_store_at_0_ret24 ret _ _ _ sc.ratchetKey.publicKey.bytes.toList hsrk_pk_len ?_) (by sep_focus) ?_
-  · clear * -; bv_kernel
-  wp_steps
-  try rw [hsp_sf_4]
-  try rw [hsp_sf_3]
-  try rw [hsp_sf_2]
-  try rw [hsp_sf_1]
-  try rw [hsp_sf]
-  have hmod := otrFrom_model_ok ⟨ss, G, st, ret⟩ hsc hver hrem
-  have hmod1 : (OtrFromGhost.model ⟨ss, G, st, ret⟩).1 =
-      .ok ⟨sc.ratchetKey, sc.chainKey, st.previousCounter, st.pqRatchetState,
-        BitVec.ofNat 8 st.version.toNat, st.localIdentity, rem⟩ :=
-    congrArg Prod.fst hmod
-  have hmod2 : (OtrFromGhost.model ⟨ss, G, st, ret⟩).2 = { st with pqRatchetState := [] } :=
-    congrArg Prod.snd hmod
-  have hnopanic := otrFrom_model_no_panic ⟨ss, G, st, ret⟩
-  rw [hmod1] at hnopanic
-  have hagree : G.AgreeExceptPq { G with pq := ⟨0#64, 1#64⟩ } := rfl
-  have hagree' : G.AgreeExceptPq { G with pq := ⟨0#64, 1#64⟩, sender := some sg } :=
-    agreeExceptPq_of_sender G ⟨0#64, 1#64⟩ sg hGs
-  refine FromSessionStateFacts.finish_otrFrom ⟨ss, G, st, ret⟩ { G with pq := ⟨0#64, 1#64⟩ } _ _
-    hmod1 hmod2 hnopanic hagree (by wp_done) ?_
-  refine FromSessionStateFacts.fold_entails (ret24_fold_srk ret sc.ratchetKey.publicKey.bytes.toList hsrk_pk_len _ _ _ _ _ _ _ ?_ ?_ ?_ ?_ ?_ ?_ ?_) (by sep_focus) ?_
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  refine FromSessionStateFacts.fold_entails (ret56_fold_priv ret sc.ratchetKey.privateKey.bytes hpriv_clamp _ _ _ _ _ _ _ ?_ ?_ ?_ ?_ ?_ ?_ ?_) (by sep_focus) ?_
-  · generalize pack8 (List.take 1 sc.ratchetKey.privateKey.bytes.toList) = b; clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · generalize pack8 (List.drop 31 sc.ratchetKey.privateKey.bytes.toList) = b; clear * -; bv_kernel
-  refine FromSessionStateFacts.fold_entails (ret88_fold_localIk ret st.localIdentity.publicKey.bytes.toList hlik_pk_len _ _ _ _ _ _ _ ?_ ?_ ?_ ?_ ?_ ?_ ?_) (by sep_focus) ?_
-  · have hhi : ∀ (v4 : BitVec 16) (v6 : BitVec 8),
-        (v4.zeroExtend 64 ||| (v6.zeroExtend 32 <<< 16).zeroExtend 64).truncate 32 =
-          v4.zeroExtend 32 ||| (v6.zeroExtend 32 <<< 16) := by
-      intro v4 v6; clear * -; bv_kernel
-    rw [hhi]
-    generalize pack32 (List.take 4 st.localIdentity.publicKey.bytes.toList) = v0
-    generalize pack16 (List.take 2 (List.drop 4 st.localIdentity.publicKey.bytes.toList)) = v4
-    generalize pack8 (List.take 1 (List.drop 6 st.localIdentity.publicKey.bytes.toList)) = v6
-    clear * -; bv_kernel
-  · have hhi : ∀ (v4 : BitVec 16) (v6 : BitVec 8),
-        (v4.zeroExtend 64 ||| (v6.zeroExtend 32 <<< 16).zeroExtend 64).truncate 32 =
-          v4.zeroExtend 32 ||| (v6.zeroExtend 32 <<< 16) := by
-      intro v4 v6; clear * -; bv_kernel
-    rw [hhi]
-    generalize pack32 (List.take 4 st.localIdentity.publicKey.bytes.toList) = v0
-    generalize pack16 (List.take 2 (List.drop 4 st.localIdentity.publicKey.bytes.toList)) = v4
-    generalize pack8 (List.take 1 (List.drop 6 st.localIdentity.publicKey.bytes.toList)) = v6
-    clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  refine FromSessionStateFacts.fold_entails (ret120_fold_remoteIk ret rem.publicKey.bytes.toList hrem_pk_len _ _ _ _ _ _ ?_ ?_ ?_ ?_ ?_ ?_) (by sep_focus) ?_
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  refine FromSessionStateFacts.fold_entails (ret152_fold_ck ret (keyToBytes32 sc.chainKey.key) hck_key_len _ _ _ _ _ _ _ _ _ _ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_) (by sep_focus) ?_
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  refine FromSessionStateFacts.fold_entails (otrResultAt_ok_intro A ret G.pq sc st rem _ _ _ _ _ _ ?_ ?_ ?_ ?_ ?_ ?_) (by sep_focus) ?_
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  · clear * -; bv_kernel
-  refine FromSessionStateFacts.fold_entails (sevenBytes_124_to_421_sp232 s0.sp sc.ratchetKey.publicKey.bytes.toList hsrk_pk_len) (by sep_focus) ?_
-  refine FromSessionStateFacts.fold_entails (memRegion56_fold_ok s0.sp _ _) (by sep_focus) ?_
-  refine FromSessionStateFacts.fold_entails (FromSessionStateFacts.frame15_fold_16 s0.sp _ _ _) (by sep_focus) ?_
-  refine FromSessionStateFacts.fold_entails (frame33_fold s0.sp _ _ _ _ _) (by sep_focus) ?_
-  refine FromSessionStateFacts.fold_entails (frame128_fold_phaseB_64 s0.sp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) (by sep_focus) ?_
-  refine FromSessionStateFacts.fold_entails (frame288_fold_phaseA s0.sp _ _ _ _ _ _ _ _ _ _ _) (by sep_focus) ?_
-  refine FromSessionStateFacts.fold_entails (stackAt_prologue_fold s0.sp _ _ _ _ _ _ _ _ _ _ _ _) (by sep_focus) ?_
-  refine FromSessionStateFacts.fold_entails (pq_empty_cells_intro A ss) (by sep_focus) ?_
-  refine FromSessionStateFacts.fold_entails (sessionStateAt_from_some_pq_empty_fold A ss G st sg sc hGs hsc hinv1 hdeser_srk hpriv_eq hpriv_clamp hsrk_len) (by sep_focus) ?_
-  exact ent_of_eq (by ac_rfl)
-
-theorem otrFrom_case4_ok_ext {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hDeser : DeserializeExtOk img.base ext)
-    (hRemIk : RemoteIdentityKeyExtOk img A ext)
-    (hDropSpe : DropSpeExtOk img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr otrFromName)
-      (otrFromCaseSpec A img
-        (fun x => ∃ sc rem, x.st.senderChain = some sc ∧
-          ¬ 256 ≤ x.st.version.toNat ∧ x.st.remoteIdentity = some rem)) :=
-  otrFrom_case4_ok_ext_x himg hDeser hRemIk (DropSpeExtOkX.of_DropSpeExtOk hDropSpe)
-
-theorem otrFrom_case4_ok {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hDeser : DeserializeOk img.base C ctl abs)
-    (hRemIk : RemoteIdentityKeyOk img C A ctl abs)
-    (hDropSpe : DropSpeOk img C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr otrFromName)
-      (otrFromCaseSpec A img
-        (fun x => ∃ sc rem, x.st.senderChain = some sc ∧
-          ¬ 256 ≤ x.st.version.toNat ∧ x.st.remoteIdentity = some rem)) :=
-  otrFrom_case4_ok_ext himg hDeser hRemIk hDropSpe
-
-/-! ## Relocatable `[LibsignalPlacement]` Case 4 (`st.remoteIdentity = some rem`) -/
+  sep_interval_eq
 
 set_option maxHeartbeats 3200000 in
 theorem otrFrom_case4_placed_ok_of_contracts [LibsignalPlacement] {A : RustAlloc}
@@ -1181,7 +699,8 @@ theorem otrFrom_case4_placed_ok_of_contracts [LibsignalPlacement] {A : RustAlloc
   refine FromSessionStateFacts.fold_entails (stackAt_prologue_fold s0.sp _ _ _ _ _ _ _ _ _ _ _ _) (by sep_focus) ?_
   refine FromSessionStateFacts.fold_entails (pq_empty_cells_intro A ss) (by sep_focus) ?_
   refine FromSessionStateFacts.fold_entails (sessionStateAt_from_some_pq_empty_fold A ss G st sg sc hGs hsc hinv1 hdeser_srk hpriv_eq hpriv_clamp hsrk_len) (by sep_focus) ?_
-  exact ent_of_eq (by ac_rfl)
+  dsimp only
+  bi_entail
 
 theorem otrFrom_case4_placed_ok [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}

@@ -20,6 +20,9 @@ import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndCo
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapDhKCost
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SplitRo.AvlRoTableCost
 import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeySigKem
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigBounds
+import Computational.Proofs.ReductionDsl.AtomicSizeHonest
+import Computational.Proofs.ReductionDsl.KindedDispatch
 
 /-!
 # Size and Step-Cost Helpers for `sigKeyInd1KeyKindAtomicProg`

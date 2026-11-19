@@ -64,14 +64,6 @@ open Proofs.SignalPqxdh.Security (sigReductionAuth1Key fgAuth1KeyGapDhAdv4)
 
 namespace Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindSiggdhEq
 
-theorem sigOldAtomicProg_def_eq (S : Setup) (b : QueryBudget) :
-    sigOldAtomicProg S b = liftAuth1Stage tlAuthSigDdh S (sigAuth1KeyDslProg S b) :=
-  rfl
-
-theorem gdhOldAtomicProg_def_eq (S : Setup) (b : QueryBudget) :
-    gdhOldAtomicProg S b = liftAuth1Stage tlAuthSigDdh S (fgAuth1KeyGapDhProg S b.q_total) :=
-  rfl
-
 private theorem sigOldAtomicProg_eval_eq (S : Setup) (b : QueryBudget)
     (adv : Unit → OracleComp (unifSpec + authSpec S) Bool) (pk : Bytes) :
     (sigOldAtomicProg S b).eval adv pk = (sigAuth1KeyDslProg S b).eval adv pk := by
@@ -151,132 +143,6 @@ theorem boundedAdv_isQueryBoundP_auth (S : Setup) (b : QueryBudget)
   | ⟨3, _⟩ =>
     exact hTotSub (authSimPred S ⟨3, by omega⟩)
 
-theorem eval_sig_run_eq_of_forgetSim
-    (S : Setup) (b : QueryBudget)
-    (R' : CostedReduction pqAtomicOps pqAuthSigAndDdhIface (authSpec S) (authCodec S)
-      (PB 32) .unit .bool (.prod (PB 1569) (PB 64)))
-    {forget : R'.σ.denote → (sigOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → R'.σ.denote → Prop}
-    (hSim : ∀ pk : (PB 32).denote,
-      ForgetSim R' (sigOldAtomicProg S b) forget P B pk Inv)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j))
-    (pk : (PB 32).denote) :
-    R'.eval (fun _ => A.1.run) pk = (sigOldAtomicProg S b).eval (fun _ => A.1.run) pk :=
-  (hSim pk).eval_eq (fun _ => A.1.run) hA
-
-/-- Equality of evaluated `GapSigEufCmaAdv` adversaries from a `ForgetSim` instance against `sigOldAtomicProg`. -/
-theorem eval_sig_eq_dslAdv_of_forgetSim
-    (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forget : (R_new.sig b).σ.denote → (sigOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.sig b).σ.denote → Prop}
-    (hSim : ∀ pk : (PB 32).denote,
-      ForgetSim (R_new.sig b) (sigOldAtomicProg S b) forget P B pk Inv)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    R_new.eval.sig b A = sigAuth1KeyDslAdv S b A :=
-  congrArg (fun r =>
-    ({ run := r, q_sig := 2 * min S.N_spk_tot S.N_recv, q_ddh := authGdhQueryBudget S b,
-       q_prim := gdhPrimQueryBudget S b } : GapSigEufCmaAdv))
-    (funext fun pk =>
-      (eval_sig_run_eq_of_forgetSim S b (R_new.sig b) hSim A hA pk).trans
-        (sigOldAtomicProg_eval_eq S b (fun _ => A.1.run) pk))
-
-theorem sig_bounded_of_forgetSim
-    (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forget : (R_new.sig b).σ.denote → (sigOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.sig b).σ.denote → Prop}
-    (hSim : ∀ pk : (PB 32).denote,
-      ForgetSim (R_new.sig b) (sigOldAtomicProg S b) forget P B pk Inv)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    (R_new.eval.sig b A).Bounded := by
-  rw [eval_sig_eq_dslAdv_of_forgetSim S b R_new hSim A hA]
-  exact sigAuth1KeyDslAdv_bounded S b A
-
-theorem sig_le_of_forgetSim
-    (Prim : Primitives) (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forget : (R_new.sig b).σ.denote → (sigOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.sig b).σ.denote → Prop}
-    (hSim : ∀ pk : (PB 32).denote,
-      ForgetSim (R_new.sig b) (sigOldAtomicProg S b) forget P B pk Inv)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    GapSigEufCma Prim Prim.isValidDhTriple (sigReductionAuth1Key S b A) ≤
-      GapSigEufCma Prim Prim.isValidDhTriple (R_new.eval.sig b A) := by
-  rw [eval_sig_eq_dslAdv_of_forgetSim S b R_new hSim A hA]
-  exact sigAuth1Key_sig_le Prim Prim.isValidDhTriple S b A
-
-theorem eval_gdh_run_eq_of_forgetSim
-    (S : Setup) (b : QueryBudget)
-    (R' : CostedReduction pqAtomicOps pqAuthSigAndDdhIface (authSpec S) (authCodec S)
-      (.prod (PB 32) (PB 32)) .unit .bool (PB 32))
-    {forget : R'.σ.denote → (gdhOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → R'.σ.denote → Prop}
-    (hSim : ∀ uv : ((.prod (PB 32) (PB 32)) : Ty pqAtomicSig).denote,
-      ForgetSim R' (gdhOldAtomicProg S b) forget P B uv Inv)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j))
-    (uv : ((.prod (PB 32) (PB 32)) : Ty pqAtomicSig).denote) :
-    R'.eval (fun _ => A.1.run) uv = (gdhOldAtomicProg S b).eval (fun _ => A.1.run) uv :=
-  (hSim uv).eval_eq (fun _ => A.1.run) hA
-
-/-- Equality of evaluated `GapDhWithSignAdv` adversaries from a `ForgetSim` instance against `gdhOldAtomicProg`. -/
-theorem eval_gdh_eq_dslAdv_of_forgetSim
-    (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forget : (R_new.gdh b).σ.denote → (gdhOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.gdh b).σ.denote → Prop}
-    (hSim : ∀ uv : ((.prod (PB 32) (PB 32)) : Ty pqAtomicSig).denote,
-      ForgetSim (R_new.gdh b) (gdhOldAtomicProg S b) forget P B uv Inv)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    R_new.eval.gdh b A = fgAuth1KeyGapDhDslAdv S b A :=
-  congrArg (fun r =>
-    ({ run := r, q_ddh := authGdhQueryBudget S b, q_sig := 2 * min S.N_spk_tot S.N_recv,
-       q_prim := gdhPrimQueryBudget S b } : GapDhWithSignAdv))
-    (funext fun U => funext fun V =>
-      (eval_gdh_run_eq_of_forgetSim S b (R_new.gdh b) hSim A hA (U, V)).trans
-        (gdhOldAtomicProg_eval_eq S b (fun _ => A.1.run) U V))
-
-theorem gdh_bounded_of_forgetSim
-    (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forget : (R_new.gdh b).σ.denote → (gdhOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.gdh b).σ.denote → Prop}
-    (hSim : ∀ uv : ((.prod (PB 32) (PB 32)) : Ty pqAtomicSig).denote,
-      ForgetSim (R_new.gdh b) (gdhOldAtomicProg S b) forget P B uv Inv)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    (R_new.eval.gdh b A).Bounded := by
-  rw [eval_gdh_eq_dslAdv_of_forgetSim S b R_new hSim A hA]
-  exact fgAuth1KeyGapDhDslAdv_bounded S b A
-
-theorem gdh_le_of_forgetSim
-    (Prim : Primitives) (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forget : (R_new.gdh b).σ.denote → (gdhOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.gdh b).σ.denote → Prop}
-    (hSim : ∀ uv : ((.prod (PB 32) (PB 32)) : Ty pqAtomicSig).denote,
-      ForgetSim (R_new.gdh b) (gdhOldAtomicProg S b) forget P B uv Inv)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    GapDhWithSign Prim Prim.isValidDhTriple Prim.pow8 (fgAuth1KeyGapDhAdv4 S b A) ≤
-      GapDhWithSign Prim Prim.isValidDhTriple Prim.pow8 (R_new.eval.gdh b A) := by
-  rw [eval_gdh_eq_dslAdv_of_forgetSim S b R_new hSim A hA]
-  exact (fgAuth1KeyGapDhProg_gapDhWithSign_eq Prim Prim.isValidDhTriple Prim.pow8 S b A).ge
-
 theorem a1s2KindProg_eval_eq (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) (pk : Bytes) :
     (a1s2KindProg S b).eval (fun _ => A.1.run) pk =
@@ -339,12 +205,6 @@ theorem a1g2KindProg_gdh_le (Prim : Primitives) (S : Setup) (b : QueryBudget)
       GapDhWithSign Prim Prim.isValidDhTriple Prim.pow8 (R_new.eval.gdh b A) := by
   rw [eval_gdh_eq_dslAdv S b R_new hGdh A]
   exact (fgAuth1KeyGapDhProg_gapDhWithSign_eq Prim Prim.isValidDhTriple Prim.pow8 S b A).ge
-
-theorem pqxdhAuth1KeyKind_sig_eq (S : Setup) (b : QueryBudget) :
-    (pqxdhAuth1KeyKindCostedSims S).sig b = a1s2KindProg S b := rfl
-
-theorem pqxdhAuth1KeyKind_gdh_eq (S : Setup) (b : QueryBudget) :
-    (pqxdhAuth1KeyKindCostedSims S).gdh b = a1g2KindProg S b := rfl
 
 /-- Semantic query compliance for `(pqxdhAuth1KeyKindCostedSims S).eval.sig`. -/
 theorem pqxdhAuth1KeyKind_sig_bounded (S : Setup) (b : QueryBudget)

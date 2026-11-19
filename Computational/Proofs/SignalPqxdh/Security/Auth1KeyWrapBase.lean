@@ -9,7 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Auth1KeyStatements
+import Computational.Proofs.SignalPqxdh.Auth1KeyStatements
+public import Computational.Specifications.Pqxdh.Game
+public import Computational.Specifications.Pqxdh.Security.Auth.Game
 
 /-!
 # One-key `Auth` oracle in the two-key match shape
@@ -19,7 +21,7 @@ single Curve25519 scalar shared by X25519 and XEdDSA (`pqxdhAuthImpl1KeyG true t
 and proves agreement with `pqxdhAuthImpl` on all non-`.initPrin` queries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -28,7 +30,7 @@ namespace SignalPqxdh
 open OracleComp OracleSpec ENNReal
 
 /-- Stage-flag one-key `Auth` oracle agreeing with `pqxdhAuthImpl` outside `.initPrin`. -/
-def pqxdhAuthImpl1KeyG (useRo checkAuth : Bool) (S : Setup) (P : Primitives) :
+@[expose] def pqxdhAuthImpl1KeyG (useRo checkAuth : Bool) (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthState S) ProbComp) := fun q => do
   let st ← get
   match q with
@@ -284,10 +286,5 @@ theorem pqxdhAuthImpl1KeyG_eq_of_ne_initPrin (useRo checkAuth : Bool) (S : Setup
   cases q with
   | initPrin u => exact absurd rfl (hq u)
   | _ => rfl
-
-theorem pqxdhAuth1KeyExp_eq_with_1KeyG (S : Setup) (P : Primitives) (A : AuthAdversary S) :
-    pqxdhAuth1KeyExp S P A =
-      pqxdhAuthExpCoreWith true true S P (pqxdhAuthImpl1KeyG true true S P) A := by
-  rw [pqxdhAuthImpl1KeyG_true_true]; rfl
 
 end SignalPqxdh

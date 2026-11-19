@@ -10,8 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # `<x25519_dalek::StaticSecret as Drop>::drop` Consumer `HookOk` Row Arm (`ExtraRowSpecs.StaticSecretDropRowSpec`)

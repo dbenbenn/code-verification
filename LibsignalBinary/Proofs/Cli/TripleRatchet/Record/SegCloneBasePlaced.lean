@@ -10,9 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneBase
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneAssemblePlaced
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneAssemblePlaced -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneAssemble
 
 /-!
 # Relocatable Base Combinators and Frame Helpers for CLI `SegClone`
@@ -21,7 +23,7 @@ Defines the `LibsignalCodeLoaded`-threading weakest precondition `SepWPpCl`, ext
 tail lemmas on CLI Block `463`, and relocatable frame-reassembly helpers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,7 +49,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## `SepWPpCl` Combinators -/
 
-def SepWPpCl [LibsignalPlacement] (prog : Program) (ret : BitVec 64) (s : State) (P : SepProp)
+@[expose] def SepWPpCl [LibsignalPlacement] (prog : Program) (ret : BitVec 64) (s : State) (P : SepProp)
     (Q Qp : State → SepProp → Prop) (oom : State → SepProp := fun _ => ⌜False⌝) : Prop :=
   LibsignalCodeLoaded lsmpl s.mem → SepWPp prog ret s P Q Qp oom
 
@@ -345,7 +347,7 @@ theorem segClone_panic_0x2634_placed [LibsignalPlacement] {C : Crypto} {A : Rust
 
 /-! ## Frame Remainder and Postcondition -/
 
-def segClone_fixedRestPlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def segClone_fixedRestPlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (x : RecordDecryptGhost) (sp : BitVec 64) : SepProp :=
   ((sp + 0x80#64) ↦₆₄ x.sret) ∗ ((sp + 0x88#64) ↦₆₄ x.locA) ∗ ((sp + 0x90#64) ↦₆₄ x.msgA) ∗
   memRegion (sp + 0x98#64) 4 ∗
@@ -387,7 +389,7 @@ theorem segClone_fixedRest_reassemble_placed [LibsignalPlacement] (A : RustAlloc
   rw [memRegion_0x5f0_0x6b0_eq sp, stackAt_root_eq_chainClone sp, stackAt_chainClone_eq_alloc sp]
   exact Entails.of_eq (by ac_rfl)
 
-def segClone_clonePostPlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def segClone_clonePostPlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (x : RecordDecryptGhost) (s0 sf : State) (P_f : SepProp) : Prop :=
   sf.sp = s0.sp ∧ sf.spAligned = true ∧
     sf.readReg64 .x29 = s0.readReg64 .x29 ∧

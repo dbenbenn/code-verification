@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seams
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees
-import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seams -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
 
 /-!
 # Pure Model, Panic Bridge, and Borrowed-Input Helpers for `segSignal_ok`
@@ -20,7 +20,7 @@ Pure `messageEncrypt` unfolding on the `pendingPreKey = none` error and RNG-draw
 `OTR::encrypt` panic bridge (`segSignal_panic_bridge`), and borrowed-input frame `sgEnv`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.SegSignal
 
@@ -96,7 +96,7 @@ theorem segSignal_sendState {S : SpqrModel} {x : WithStoresEncGhost}
   · simp [EncryptGhost.draws, EncryptGhost.sendState, loadedSession, okAnswers, hcur, hfrom, hrem,
       hnone]
 
-def segSignalEncGhost (sp pqCap pqPtr : BitVec 64) (otr : OutgoingTripleRatchet (List (BitVec 8)))
+@[expose] def segSignalEncGhost (sp pqCap pqPtr : BitVec 64) (otr : OutgoingTripleRatchet (List (BitVec 8)))
     (x : WithStoresEncGhost) : OtrEncryptGhost :=
   ⟨sp + 0x580#64, sp + 0x288#64, pqCap, pqPtr, otr, x.ptA, x.ptext, 0#64, none, x.remA, x.rem,
     x.cur, x.rest⟩
@@ -109,58 +109,5 @@ theorem segSignalEncGhost_model (C : Crypto) (S : SpqrModel)
   rfl
 
 open CryptoVerification.LibsignalPublicApi.StoreKit
-
-/-- Bridges an `otrEncryptSpecQ` panic outcome to `(withStoresEncSpecV ...).onPanic`. -/
-theorem segSignal_panic_bridge {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {Q : List (BitVec 8) → Prop} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel} {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {img : Obj.Image} {kit : SessionStoreSpec A img.base} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A img.base} {ist0 : ikit.IdState}
-    {x : WithStoresEncGhost} {r : SessionRecord (List (BitVec 8))}
-    {sess : Session (List (BitVec 8))} {otr : OutgoingTripleRatchet (List (BitVec 8))}
-    {taken : SessionState (List (BitVec 8))} {k : IdentityKey} {sp pqCap pqPtr : BitVec 64}
-    {F X R0 : SepProp} {s0 s1 sf : State}
-    (hcur : r.currentSession = some sess) (hsc : kit.ScopeAt Scope st0 x.rem.val r)
-    (hnone : sess.pendingPreKey = none)
-    (hfrom : execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken))
-    (hrem : taken.remoteIdentity = some k)
-    (htr1 : s1.trace = s0.trace ++ kit.loadEvs encRecord x.rem.val (.ok (some r)))
-    (hpost : sf.mem ⊨ ((otrEncryptSpecQ Q C A ctl uuidTryParse S img).onPanic
-      (segSignalEncGhost sp pqCap pqPtr otr x) s1 sf ∗ F) ∗ (X ∗ R0)) :
-    sf.mem ⊨ (withStoresEncSpecV kit st0 ikit ist0 C ctl uuidTryParse S encRecord).onPanic x s0 sf ∗ R0 := by
-  unfold otrEncryptSpecQ otrEncryptSpec Spec.inImage at hpost
-  dsimp only at hpost
-  have h1 : sf.mem ⊨ ⌜(((segSignalEncGhost sp pqCap pqPtr otr x).model C S uuidTryParse).1 = .error .panic ∨
-        S.sendPanics otr.pqrState x.rest ∨ allocFailedIn s1 sf) ∧ s1.trace <+: sf.trace⌝ ∗
-      ((anyHeap ∗ F ∗ X) ∗ R0) :=
-    Eq.mp (congrArg (sf.mem ⊨ ·) (by ac_rfl)) hpost
-  rw [satisfies_pure_sepConj] at h1
-  rcases h1 with ⟨⟨hpan_or, hpref1⟩, hmem⟩
-  have hany : anyHeap ∗ F ∗ X ⊢ anyHeap := entails_anyHeap _
-  have hmem' : sf.mem ⊨ anyHeap ∗ R0 := Satisfies.mono (sepConj_mono_left hany) hmem
-  have hpref01 : s0.trace <+: s1.trace := by
-    rw [htr1]
-    exact List.prefix_append _ _
-  have hpref0f : s0.trace <+: sf.trace := hpref01.trans hpref1
-  unfold withStoresEncSpecV Spec.inImage
-  dsimp only
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  refine ⟨⟨hpref0f, ?_⟩, hmem'⟩
-  have hload : s0.trace ++ kit.loadEvs encRecord x.rem.val
-      (okAnswers r IdentityChange.newOrUnchanged).loadSession <+: sf.trace := by
-    have : s0.trace ++ kit.loadEvs encRecord x.rem.val
-        (okAnswers r IdentityChange.newOrUnchanged).loadSession = s1.trace := by
-      rw [htr1]
-      rfl
-    rw [this]
-    exact hpref1
-  rcases hpan_or with herr | hsp | halloc
-  · refine Or.inr ⟨okAnswers r .newOrUnchanged, hsc.2, hload, Or.inl ?_⟩
-    rw [segSignalEncGhost_model] at herr
-    rw [segSignal_model_err hcur hnone hfrom hrem (execOk_of_exec_error herr)]
-    rfl
-  · refine Or.inr ⟨okAnswers r .newOrUnchanged, hsc.2, hload, Or.inr ?_⟩
-    exact ⟨otr.pqrState, (segSignal_sendState (S := S) (x := x) hcur hnone hfrom hrem).1, hsp⟩
-  · exact Or.inl (allocFailedIn_trans hpref01 halloc)
 
 end CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.SegSignal

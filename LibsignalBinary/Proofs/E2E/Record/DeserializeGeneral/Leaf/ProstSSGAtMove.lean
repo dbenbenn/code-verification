@@ -18,7 +18,7 @@ Proves `prostSSGAt_move`, relocating `prostSSGAt A src v` across a 344-byte copy
 showing word `0` (`lik` capacity) avoids the `Option` `None` niche.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.ProstSSGAtMove
 

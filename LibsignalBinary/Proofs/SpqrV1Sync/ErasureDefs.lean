@@ -11,7 +11,7 @@ module
 
 public import Mathlib.LinearAlgebra.Lagrange
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Poly
-public import LibsignalBinary.Proofs.SpqrV1Sync.GF16Field
+public import LibsignalBinary.Proofs.SpqrV1Sync.GF16Field -- proof-setup: allow-public-import
 
 set_option warningAsError false
 
@@ -29,7 +29,7 @@ Polynomial `j` (`msgPoly msg j`) is the degree-`< needed L j` Lagrange interpola
 `idxPt idx.toNat` packed big-endian into 32 bytes (`chunkData msg idx`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.Erasure
 
@@ -37,44 +37,44 @@ open CryptoVerification.LibsignalSpqrV1
 open CryptoVerification.SpqrV1Sync.GF16Field
 open Polynomial
 /-- Evaluates a coefficient list as a polynomial `∑ k, C cs[k] * X ^ k` over `GF16`. -/
-noncomputable def polyOf (cs : List GF16) : GF16[X] :=
+@[expose] noncomputable def polyOf (cs : List GF16) : GF16[X] :=
   ∑ k ∈ Finset.range cs.length, C (cs.getD k GF16.ZERO) * X ^ k
 
 /-- Evaluation node `k` of the erasure code: `GF16.new (BitVec.ofNat 16 k)`. -/
-def idxPt (k : Nat) : GF16 :=
+@[expose] def idxPt (k : Nat) : GF16 :=
   GF16.new (BitVec.ofNat 16 k)
 
 /-- The `i`-th big-endian `u16` word of `msg` as an element of `GF16`. -/
-def msgVal (msg : List (BitVec 8)) (i : Nat) : GF16 :=
+@[expose] def msgVal (msg : List (BitVec 8)) (i : Nat) : GF16 :=
   GF16.new (((msg.getD (2 * i) 0#8).zeroExtend 16 <<< 8) + (msg.getD (2 * i + 1) 0#8).zeroExtend 16)
 
 /-- Number of interpolation points required for lane `j` on an `len`-byte message. -/
-def needed (len j : Nat) : Nat :=
+@[expose] def needed (len j : Nat) : Nat :=
   if j < len / 2 % 16 then len / 2 / 16 + 1 else len / 2 / 16
 
 /-- Lane `j` polynomial: Lagrange interpolant through `(idxPt k, msgVal msg (16 * k + j))` for
 `k < needed msg.length j`. -/
-noncomputable def msgPoly (msg : List (BitVec 8)) (j : Nat) : GF16[X] :=
+@[expose] noncomputable def msgPoly (msg : List (BitVec 8)) (j : Nat) : GF16[X] :=
   Lagrange.interpolate (Finset.range (needed msg.length j)) idxPt (fun k => msgVal msg (16 * k + j))
 
 /-- Evaluation of lane `j` polynomial at chunk index `idx`. -/
-noncomputable def chunkVal (msg : List (BitVec 8)) (idx : BitVec 16) (j : Nat) : GF16 :=
+@[expose] noncomputable def chunkVal (msg : List (BitVec 8)) (idx : BitVec 16) (j : Nat) : GF16 :=
   (msgPoly msg j).eval (idxPt idx.toNat)
 
 /-- The 32 big-endian payload bytes of honest chunk `idx`. -/
-noncomputable def chunkData (msg : List (BitVec 8)) (idx : BitVec 16) : List.Vector (BitVec 8) 32 :=
+@[expose] noncomputable def chunkData (msg : List (BitVec 8)) (idx : BitVec 16) : List.Vector (BitVec 8) 32 :=
   List.Vector.ofFn fun b : Fin 32 =>
     let v := (chunkVal msg idx (b.val / 2)).value
     if b.val % 2 = 0 then (v >>> 8).setWidth 8 else v.setWidth 8
 
 /-- Initial `Points` layout of `PolyEncoder` striped across the 16 lanes. -/
-def msgPoints (msg : List (BitVec 8)) : List Point :=
+@[expose] def msgPoints (msg : List (BitVec 8)) : List Point :=
   (List.range 16).map fun j =>
     ⟨(List.range (needed msg.length j)).map fun k => msgVal msg (16 * k + j)⟩
 
 /-- Reachable encoder invariant for `msg`: either the initial `Points` layout or the 16
 interpolated polynomials. -/
-def EncInv (msg : List (BitVec 8)) (e : PolyEncoder) : Prop :=
+@[expose] def EncInv (msg : List (BitVec 8)) (e : PolyEncoder) : Prop :=
   e.s = .points (msgPoints msg) ∨
   ∃ polys : List Poly, e.s = .polys polys ∧ polys.length = 16 ∧
     ∀ j (h : j < polys.length), polys[j].coefficients.length = needed msg.length j ∧

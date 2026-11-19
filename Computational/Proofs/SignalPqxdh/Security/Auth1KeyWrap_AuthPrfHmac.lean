@@ -9,24 +9,31 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHA2
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHB
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHC
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHD
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M1
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmac
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthPrfHmacHA2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5C1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5M1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHA2
+import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHB
+import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHC
+import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHD
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M1
+import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmac
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthPrfHmacHA2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5C1
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5M1
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Pqxdh.Security.BoundProofDefs
+import Computational.Proofs.GameHop.Advantage
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
 
 /-!
 # One-Key Multi-Key INT-CTXT to PRF-HMAC Bound
@@ -35,7 +42,7 @@ Bounds the multi-key AEAD INT-CTXT advantage of `aeadMuIntReductionAuth1Key` by 
 over the single-identity-key `Auth` oracle `pqxdhAuthImpl1KeyG`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

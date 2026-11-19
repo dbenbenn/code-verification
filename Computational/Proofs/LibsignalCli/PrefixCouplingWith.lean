@@ -9,9 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.PrefixCouplingWithCore
+public import Computational.Proofs.LibsignalCli.PrefixCouplingWithCore -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Bridge
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.BhKindCouplingV1
+import Computational.Proofs.GameHop.GlobalHybrid
 
 /-!
 # Polymorphic `bhPrefixRedWith` Prefix-Hybrid Telescope
@@ -21,7 +24,7 @@ prefix-hybrid telescope of `BhPrefixCouplingV1` to an arbitrary key-indistinguis
 `ki` under an explicit lazy-replacement hypothesis `hLazyEq`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -328,7 +331,7 @@ theorem bhPrefixRedWith_run1_query_bind_inr_succ
   refine bind_congr fun step => ?_
   rcases step with ⟨r, σ'⟩ | ⟨c, p, σ'⟩ <;> rfl
 
-def bhPrefixPlugContWith
+@[expose] def bhPrefixPlugContWith
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : LibsignalSpqrV1.MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
@@ -348,7 +351,7 @@ def bhPrefixPlugContWith
     (simulateQ (bhE2EDrvImplGenWith ki P C K qep decT encT (bhMkKeyBitConst false)) (cont v)).run
       (bhPlugExt gs0 σ_p)
 
-def bhPrefixExtPairExpWith
+@[expose] def bhPrefixExtPairExpWith
     (S : SignalPqxdh.Setup)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (P : SignalPqxdh.Primitives)
@@ -363,7 +366,7 @@ def bhPrefixExtPairExpWith
   return (match o.2 with | .paused _ _ _ _ _ => true | .done _ _ => false, y)
 
 /-- Scalar experiment at `o` in the plugged world over `ki`. -/
-def bhPrefixExtExpWith
+@[expose] def bhPrefixExtExpWith
     (S : SignalPqxdh.Setup)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (P : SignalPqxdh.Primitives)

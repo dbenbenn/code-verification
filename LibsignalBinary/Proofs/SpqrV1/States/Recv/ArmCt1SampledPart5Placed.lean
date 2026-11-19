@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart5
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart5 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1Placed
@@ -21,6 +21,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch5Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
 import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
 
 /-!
 # `<States>::recv` (Block `332`) — `.ct1Sampled` Arm, Part 5 (Relocatable)
@@ -29,7 +30,7 @@ Relocatable `[LibsignalPlacement]` proofs for the `<Ct1Sent>::recv_ek` call (`+1
 Path 5a (`recv_ek = .error`), `.ok uc_ek` staging (`+11528 -> +11620`), and Path 5b (`ack = false`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

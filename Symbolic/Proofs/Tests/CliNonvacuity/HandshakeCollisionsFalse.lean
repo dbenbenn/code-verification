@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeEval
+public import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeEval -- proof-setup: allow-public-import
 import all DY.ALaCarte.Basic
 import all DY.ALaCarte.DecidableEq
 import all DY.ALaCarte.Ordering
@@ -57,7 +57,7 @@ Ratchet handshake trace via certified table checkers and `decide +kernel`, and p
 symbolic tag, serialization, and trace-reduction helpers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -250,7 +250,7 @@ theorem not_bobStartCollides_false :
         storedStates_false_eq sendTerms_false_eq storedSecrets_false_eq ptTerms_false_eq hmemo_false,
         noMacForgeryBool_of_tableBool gamma_comp_eq_hsFalseGamma hmac_false⟩
 
-def bytesTag (b : DY.Bytes) : Nat :=
+@[expose] def bytesTag (b : DY.Bytes) : Nat :=
   if (b.view? DY.Random.Random).isSome then 0
   else if (b.view? DY.Literal.Literal.SubF).isSome then 1
   else if (b.view? DY.Concat.Concat.SubF).isSome then 2

@@ -9,22 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.TrapRng
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.TrapRng -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
-import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.Fetch
+import ProofLib.ProgramReflection.SortedFresh
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.Hooks
 import ProofLib.SepLogic.WPp
-
-/-!
-# `OneKeyStore` Trait Methods, Drop Glues, and Vtable Guards
-
-Proves `subroutine_ok` contracts on `tripleRatchetProgAt` for the `OneKeyStore` trait methods,
-store drop glues, and `.data.rel.ro` vtable guards in `libsignalSessionCode_tree`.
--/
-
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -75,148 +66,117 @@ set_option linter.unusedSimpArgs false
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  libsignalSessionCode_fnOff_0x3e2c4
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_stub% "memcpy")
-  (ls_stub% "alloc::raw_vec::handle_error")
-  (ls_stub% "alloc::alloc::handle_alloc_error")
-  (ls_hook% "alloc::alloc::handle_alloc_error")
-
-theorem panic_at_handle_alloc_error2_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "alloc::alloc::handle_alloc_error" := by fnoff_eq) :
-    (trTrapProgAt b C abs).externAt?
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) =
-      some Rust.panicked :=
-  panic_at_handle_alloc_error_trap b C abs name k hk
-
-theorem panic_at_handle_alloc_error2 {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "alloc::alloc::handle_alloc_error" := by fnoff_eq) :
-    (tripleRatchetProgAt b C ctl abs).externAt?
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) =
-      some Rust.panicked :=
-  panic_at_handle_alloc_error b C ctl abs name k hk
-
-macro "responder_fetches " b:term:max H:term:max hfn:ident
-    off:num len:num : tactic =>
-  `(tactic| responder_fetches_from $b $H $hfn $off 0 $len)
 
 /-! ## Symbol Names, Vtable Guards, and Helper Lemmas -/
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def dropOneKeyFutName : String :=
   "core::ptr::drop_glue::<<libsignal_pqxdh_e2e::OneKeyStore as libsignal_protocol::\
     storage::traits::SignedPreKeyStore>::get_signed_pre_key::{closure#0}>"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def dropOneKeyStoreName : String :=
   "core::ptr::drop_glue::<libsignal_pqxdh_e2e::OneKeyStore>"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def dropStringLocal4Name : String :=
   "core::ptr::drop_glue::<alloc::string::String> [local#7]"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def dropInMemSessionStoreName : String :=
   "core::ptr::drop_glue::<libsignal_protocol::storage::inmem::InMemSessionStore> [local#2]"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def dropInMemIdentityStoreName : String :=
   "core::ptr::drop_glue::<libsignal_protocol::storage::inmem::InMemIdentityKeyStore> [local#2]"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def oneKeyGetSpkName : String :=
   "<libsignal_pqxdh_e2e::OneKeyStore as libsignal_protocol::storage::traits::\
     SignedPreKeyStore>::get_signed_pre_key"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def oneKeySaveSpkName : String :=
   "<libsignal_pqxdh_e2e::OneKeyStore as libsignal_protocol::storage::traits::\
     SignedPreKeyStore>::save_signed_pre_key"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def oneKeyGetKyberName : String :=
   "<libsignal_pqxdh_e2e::OneKeyStore as libsignal_protocol::storage::traits::\
     KyberPreKeyStore>::get_kyber_pre_key"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def oneKeySaveKyberName : String :=
   "<libsignal_pqxdh_e2e::OneKeyStore as libsignal_protocol::storage::traits::\
     KyberPreKeyStore>::save_kyber_pre_key"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def oneKeyMarkKyberName : String :=
   "<libsignal_pqxdh_e2e::OneKeyStore as libsignal_protocol::storage::traits::\
     KyberPreKeyStore>::mark_kyber_pre_key_used"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def oneKeyGetPreKeyName : String :=
   "<libsignal_pqxdh_e2e::OneKeyStore as libsignal_protocol::storage::traits::PreKeyStore>::\
     get_pre_key"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def oneKeySavePreKeyName : String :=
   "<libsignal_pqxdh_e2e::OneKeyStore as libsignal_protocol::storage::traits::PreKeyStore>::\
     save_pre_key"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def oneKeyRemovePreKeyName : String :=
   "<libsignal_pqxdh_e2e::OneKeyStore as libsignal_protocol::storage::traits::PreKeyStore>::\
     remove_pre_key"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def spkRecordCloneName : String :=
   "<libsignal_protocol::proto::storage::SignedPreKeyRecordStructure as core::clone::\
     Clone>::clone [local#2]"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def oneKeyGetSpkClosureName : String :=
   "<libsignal_pqxdh_e2e::OneKeyStore as libsignal_protocol::storage::traits::\
     SignedPreKeyStore>::get_signed_pre_key::{closure#0}"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def oneKeySaveSpkClosureName : String :=
   "<libsignal_pqxdh_e2e::OneKeyStore as libsignal_protocol::storage::traits::\
     SignedPreKeyStore>::save_signed_pre_key::{closure#0}"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def oneKeyGetKyberClosureName : String :=
   "<libsignal_pqxdh_e2e::OneKeyStore as libsignal_protocol::storage::traits::\
     KyberPreKeyStore>::get_kyber_pre_key::{closure#0}"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def oneKeySaveKyberClosureName : String :=
   "<libsignal_pqxdh_e2e::OneKeyStore as libsignal_protocol::storage::traits::\
     KyberPreKeyStore>::save_kyber_pre_key::{closure#0}"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def oneKeyMarkKyberClosureName : String :=
   "<libsignal_pqxdh_e2e::OneKeyStore as libsignal_protocol::storage::traits::\
     KyberPreKeyStore>::mark_kyber_pre_key_used::{closure#0}"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def oneKeyGetPreKeyClosureName : String :=
   "<libsignal_pqxdh_e2e::OneKeyStore as libsignal_protocol::storage::traits::PreKeyStore>::\
     get_pre_key::{closure#0}"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def oneKeySavePreKeyClosureName : String :=
   "<libsignal_pqxdh_e2e::OneKeyStore as libsignal_protocol::storage::traits::PreKeyStore>::\
     save_pre_key::{closure#0}"
 
-@[local simp, local arm64_norm ↓, local wp_norm ↓]
+@[expose, local simp, local arm64_norm ↓, local wp_norm ↓]
 def oneKeyRemovePreKeyClosureName : String :=
   "<libsignal_pqxdh_e2e::OneKeyStore as libsignal_protocol::storage::traits::PreKeyStore>::\
     remove_pre_key::{closure#0}"
 
 /-- Trivial no-op `drop_in_place` contract for boxed store futures (`0x70c20`). -/
-def oneKeyFutNoopDropSpec : Spec Unit where
+@[expose] def oneKeyFutNoopDropSpec : Spec Unit where
   pre := fun _ _ => emp
   post := fun _ s0 sf => ⌜sf.trace = s0.trace⌝
 
@@ -262,7 +222,7 @@ theorem cond_ne_subs32_self (w : BitVec 32) :
   rw [conditionHolds_ne_subsPState32]
   simp only [bne_self_eq_false]
 
-def satIncU8 (c : BitVec 8) : BitVec 8 :=
+@[expose] def satIncU8 (c : BitVec 8) : BitVec 8 :=
   if c == 0xff#8 then 0xff#8 else c + 1#8
 
 @[local simp, local wp_norm, local arm64_norm]
@@ -297,35 +257,9 @@ theorem sepWPp_pure_mid {prog : Program} {ret : BitVec 64} {s : State}
   rw [show A ∗ B ∗ ⌜φ⌝ ∗ C = ⌜φ⌝ ∗ A ∗ B ∗ C by ac_rfl]
   exact SepWPp.pure_elim h
 
-theorem subroutine_ok_rel_call {α : Type} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    {callee caller : String} {calleeOff callerOff : Nat} {k : Int} {spec : Spec α}
-    (h : subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr callee) spec)
-    (hcallee : libsignalSessionCode.fnOff callee = calleeOff)
-    (hcaller : libsignalSessionCode.fnOff caller = callerOff)
-    (hk : BitVec.ofNat 64 callerOff + BitVec.ofInt 64 k = BitVec.ofNat 64 calleeOff) :
-    subroutine_ok
-      (libsignalSessionCode.rebase b (Rust.withPanics (tripleRatchetExterns C ctl abs)))
-      ((libsignalSessionCode.rebase b
-          (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr caller +
-        BitVec.ofInt 64 k)
-      spec := by
-  dsimp only [tripleRatchetProgAt] at h
-  have haddr :
-      (libsignalSessionCode.rebase b
-          (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr caller +
-        BitVec.ofInt 64 k =
-      (libsignalSessionCode.rebase b
-          (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr callee := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase, hcaller, hcallee, BitVec.add_assoc, hk]
-  rwa [haddr]
-
-/-! ## Drop Glues (`0x70c20`, `0x70cf0`, `0x70ed4`, `0x71068`, `0x70c24`) -/
-
 /-- Spec for `drop_glue::<alloc::string::String> [local#4]` (`0x70cf0`, 6 insns) on an empty
 `String`. -/
-def dropStringEmptySpec : Spec (BitVec 64 × BitVec 64) where
+@[expose] def dropStringEmptySpec : Spec (BitVec 64 × BitVec 64) where
   pre := fun (p, ptr) s =>
     ⌜s.readReg64 .x0 = p⌝ ∗
     stackAt s.sp 0 ∗
@@ -339,7 +273,7 @@ def dropStringEmptySpec : Spec (BitVec 64 × BitVec 64) where
 
 /-- Spec for `drop_glue::<alloc::string::String> [local#4]` (`0x70cf0`, 6 insns) on a non-empty
 `String`. -/
-def dropStringNonemptySpec (A : RustAlloc) : Spec (BitVec 64 × BitVec 64 × Nat) where
+@[expose] def dropStringNonemptySpec (A : RustAlloc) : Spec (BitVec 64 × BitVec 64 × Nat) where
   pre := fun (p, ptr, cap) s =>
     ⌜BitVec.ofNat 64 cap ≠ 0#64 ∧ cap < 2 ^ 64 ∧ s.readReg64 .x0 = p⌝ ∗
     stackAt s.sp allocHookStack ∗
@@ -362,7 +296,7 @@ private theorem stackAt_112_cells (sp : BitVec 64) :
 
 /-- Spec for `drop_glue::<InMemSessionStore> [local#2]` (`0x70ed4`, 101 insns) when `bucket_mask
 = 0`. -/
-def dropInMemSessionStoreEmptySpec : Spec (BitVec 64) where
+@[expose] def dropInMemSessionStoreEmptySpec : Spec (BitVec 64) where
   pre := fun p s =>
     ⌜s.readReg64 .x0 = p⌝ ∗
     stackAt s.sp 112 ∗
@@ -379,7 +313,7 @@ private theorem stackAt_64_cells (sp : BitVec 64) :
 
 /-- Spec for `drop_glue::<InMemIdentityKeyStore> [local#2]` (`0x71068`, 57 insns) when
 `bucket_mask = 0`. -/
-def dropInMemIdentityStoreEmptySpec : Spec (BitVec 64) where
+@[expose] def dropInMemIdentityStoreEmptySpec : Spec (BitVec 64) where
   pre := fun p s =>
     ⌜s.readReg64 .x0 = p⌝ ∗
     stackAt s.sp 64 ∗
@@ -403,7 +337,7 @@ structure DropOneKeyStoreNoneArgs where
   kpkSigPtr : BitVec 64
 
 /-- Spec for `drop_glue::<OneKeyStore>` (`0x70c24`) when `one_time = None` (`[p + 0xb0] = -1`). -/
-def dropOneKeyStoreNoneSpec (A : RustAlloc) : Spec DropOneKeyStoreNoneArgs where
+@[expose] def dropOneKeyStoreNoneSpec (A : RustAlloc) : Spec DropOneKeyStoreNoneArgs where
   pre := fun x s =>
     ⌜BitVec.ofNat 64 x.spkPubCap ≠ 0#64 ∧ x.spkPubCap < 2 ^ 64 ∧
       BitVec.ofNat 64 x.spkPrivCap ≠ 0#64 ∧ x.spkPrivCap < 2 ^ 64 ∧
@@ -469,7 +403,7 @@ structure DropOneKeyStoreSomeArgs where
   opkPrivPtr : BitVec 64
   opkPrivCap : Nat
 
-def dropOneKeyStoreSomeSpec (A : RustAlloc) : Spec DropOneKeyStoreSomeArgs where
+@[expose] def dropOneKeyStoreSomeSpec (A : RustAlloc) : Spec DropOneKeyStoreSomeArgs where
   pre := fun x s =>
     ⌜BitVec.ofNat 64 x.spkPubCap ≠ 0#64 ∧ x.spkPubCap < 2 ^ 64 ∧
       BitVec.ofNat 64 x.spkPrivCap ≠ 0#64 ∧ x.spkPrivCap < 2 ^ 64 ∧
@@ -527,7 +461,7 @@ def dropOneKeyStoreSomeSpec (A : RustAlloc) : Spec DropOneKeyStoreSomeArgs where
 
 /-! ## `OneKeyStore` Trait Methods (`0x76a30..0x76d2c`) -/
 
-def oneKeyBox16At (a storePtr : BitVec 64) (id : BitVec 32) (state : BitVec 8) : SepProp :=
+@[expose] def oneKeyBox16At (a storePtr : BitVec 64) (id : BitVec 32) (state : BitVec 8) : SepProp :=
   (a ↦₆₄ storePtr) ∗ ((a + 8#64) ↦₃₂ id) ∗ ((a + 12#64) ↦₈ state) ∗ memRegion (a + 13#64) 3
 
 private theorem memRegion_16_onekey_box (a : BitVec 64) :
@@ -550,7 +484,7 @@ theorem oneKeyBox16At_entails_memRegion (a storePtr : BitVec 64) (id : BitVec 32
     (Entails.sepExists_right id
       (Entails.sepExists_right storePtr (Entails.refl _)))
 
-def oneKeyMarkBox32At (a storePtr baseKeyPtr : BitVec 64)
+@[expose] def oneKeyMarkBox32At (a storePtr baseKeyPtr : BitVec 64)
     (kyberId spkId : BitVec 32) (state : BitVec 8) : SepProp :=
   (a ↦₆₄ storePtr) ∗ ((a + 8#64) ↦₆₄ baseKeyPtr) ∗
   ((a + 16#64) ↦₃₂ kyberId) ∗ ((a + 20#64) ↦₃₂ spkId) ∗
@@ -584,7 +518,7 @@ theorem oneKeyMarkBox32At_entails_memRegion (a storePtr baseKeyPtr : BitVec 64)
           (Entails.sepExists_right storePtr (Entails.refl _)))))
 
 /-- Shared spec for the 7 16-byte-box `OneKeyStore` trait methods parameterized by `vtOff`. -/
-def oneKeyTrait16Spec (A : RustAlloc) (b vtOff : BitVec 64) : Spec (BitVec 64 × BitVec 32) where
+@[expose] def oneKeyTrait16Spec (A : RustAlloc) (b vtOff : BitVec 64) : Spec (BitVec 64 × BitVec 32) where
   pre := fun (storePtr, id) s =>
     ⌜(b &&& 0xfff#64) = 0#64 ∧
       s.readReg64 .x0 = storePtr ∧

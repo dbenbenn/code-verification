@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.CostedTablesCompat
-public import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthStatements
-public import Computational.Proofs.ReductionDsl.AtomicSizeHonest
-public import Computational.Proofs.ReductionDsl.Size
+public import Computational.Proofs.SignalPqxdh.CostedTablesCompat -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthStatements -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.AtomicSizeHonest
+public import Computational.Proofs.ReductionDsl.Size -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
 
@@ -25,7 +25,7 @@ two-stage reductions onto `pqAtomicSig`, `pqAtomicOps`, and `pqAtomicSamplers`. 
 block-size bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -253,11 +253,11 @@ theorem gred2BlockBounded_atomic_of_totalCost_le {ι κ : Type} {T : OracleSpec 
 
 /-! ## Sort, type, and value embedding -/
 
-@[reducible] def embedSort : SignalPqxdh.LegacyCosted.PSort → AtomicSort
+@[expose, reducible] def embedSort : SignalPqxdh.LegacyCosted.PSort → AtomicSort
   | .bytes w => .pbytes w
   | .u32 => .pu32
 
-@[reducible] def embedTy : Ty SignalPqxdh.LegacyCosted.pqSig → Ty pqAtomicSig
+@[expose, reducible] def embedTy : Ty SignalPqxdh.LegacyCosted.pqSig → Ty pqAtomicSig
   | .base s => .base (embedSort s)
   | .unit => .unit
   | .bool => .bool
@@ -268,19 +268,19 @@ theorem gred2BlockBounded_atomic_of_totalCost_le {ι κ : Type} {T : OracleSpec 
   | .list t => .list (embedTy t)
   | .tbl t => .tbl (embedTy t)
 
-@[reducible] def embedBase :
+@[expose, reducible] def embedBase :
     (s : SignalPqxdh.LegacyCosted.PSort) →
       SignalPqxdh.LegacyCosted.pqSig.den s → pqAtomicSig.den (embedSort s)
   | .bytes _, x => x
   | .u32, x => x
 
-@[reducible] def projBase :
+@[expose, reducible] def projBase :
     (s : SignalPqxdh.LegacyCosted.PSort) →
       pqAtomicSig.den (embedSort s) → SignalPqxdh.LegacyCosted.pqSig.den s
   | .bytes _, x => x
   | .u32, x => x
 
-def embedVal : (t : Ty SignalPqxdh.LegacyCosted.pqSig) → t.denote → (embedTy t).denote
+@[expose] def embedVal : (t : Ty SignalPqxdh.LegacyCosted.pqSig) → t.denote → (embedTy t).denote
   | .base s, x => embedBase s x
   | .unit, () => ()
   | .bool, b => b
@@ -293,7 +293,7 @@ def embedVal : (t : Ty SignalPqxdh.LegacyCosted.pqSig) → t.denote → (embedTy
   | .list t, l => l.map (embedVal t)
   | .tbl t, f => fun i => embedVal t (f i)
 
-def projVal : (t : Ty SignalPqxdh.LegacyCosted.pqSig) → (embedTy t).denote → t.denote
+@[expose] def projVal : (t : Ty SignalPqxdh.LegacyCosted.pqSig) → (embedTy t).denote → t.denote
   | .base s, x => projBase s x
   | .unit, () => ()
   | .bool, b => b
@@ -342,17 +342,17 @@ def projVal : (t : Ty SignalPqxdh.LegacyCosted.pqSig) → (embedTy t).denote →
     simp [h]
   | .tbl t, f => funext fun i => embedVal_projVal t (f i)
 
-@[reducible] def embedCtx : List (Ty SignalPqxdh.LegacyCosted.pqSig) → List (Ty pqAtomicSig)
+@[expose, reducible] def embedCtx : List (Ty SignalPqxdh.LegacyCosted.pqSig) → List (Ty pqAtomicSig)
   | [] => []
   | t :: Γ => embedTy t :: embedCtx Γ
 
-def embedVar :
+@[expose] def embedVar :
     {Γ : List (Ty SignalPqxdh.LegacyCosted.pqSig)} → {t : Ty SignalPqxdh.LegacyCosted.pqSig} →
       Var Γ t → Var (embedCtx Γ) (embedTy t)
   | _, _, .zero => .zero
   | _, _, .succ v => .succ (embedVar v)
 
-@[reducible] def embedEnv : {Γ : List (Ty SignalPqxdh.LegacyCosted.pqSig)} → Env Γ → Env (embedCtx Γ)
+@[expose, reducible] def embedEnv : {Γ : List (Ty SignalPqxdh.LegacyCosted.pqSig)} → Env Γ → Env (embedCtx Γ)
   | _, .nil => .nil
   | _, .cons x ρ => .cons (embedVal _ x) (embedEnv ρ)
 
@@ -365,12 +365,12 @@ theorem embedEnv_get :
 
 /-! ## Context renaming -/
 
-def liftRen {S : Sig} {Γ Δ : List (Ty S)} {u : Ty S}
+@[expose] def liftRen {S : Sig} {Γ Δ : List (Ty S)} {u : Ty S}
     (ξ : ∀ {t}, Var Γ t → Var Δ t) : ∀ {t}, Var (u :: Γ) t → Var (u :: Δ) t
   | _, .zero => .zero
   | _, .succ v => .succ (ξ v)
 
-def exprRename {S : Sig} {O : Ops S} {Γ Δ : List (Ty S)} {t : Ty S}
+@[expose] def exprRename {S : Sig} {O : Ops S} {Γ Δ : List (Ty S)} {t : Ty S}
     (ξ : ∀ {a}, Var Γ a → Var Δ a) : Expr O Γ t → Expr O Δ t
   | .var v => .var (ξ v)
   | .unit => .unit
@@ -475,7 +475,7 @@ theorem exprRename_eval {S : Sig} {O : Ops S} {Γ Δ : List (Ty S)} {t : Ty S}
     | zero => rfl
     | succ v => cases v <;> simp [liftRen, Env.get, hρ]
 
-def compRename {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
+@[expose] def compRename {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     {Γ Δ : List (Ty S)} {t : Ty S} (ξ : ∀ {a}, Var Γ a → Var Δ a) :
     Comp O I Γ t → Comp O I Δ t
   | .ret e => .ret (exprRename ξ e)
@@ -574,7 +574,7 @@ theorem compRename_eval {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I
     | zero => rfl
     | succ v => cases v <;> simp [liftRen, Env.get, hρ]
 
-def swapHandlerVar {σ' Q_nat Q_fin : Ty pqAtomicSig} :
+@[expose] def swapHandlerVar {σ' Q_nat Q_fin : Ty pqAtomicSig} :
     ∀ {t}, Var [σ', Q_nat] t → Var [Q_nat, σ', Q_fin] t
   | _, .zero => .succ .zero
   | _, .succ .zero => .zero
@@ -604,7 +604,7 @@ abbrev aop {Γ : List (Ty pqAtomicSig)} (o : AtomicPureOp)
     (a : Expr pqAtomicOps Γ (o.dom 0 Empty)) : Expr pqAtomicOps Γ (o.cod 0 Empty) :=
   Expr.op (O := pqAtomicOps) o a
 
-def mapOpExpr {Γ : List (Ty pqAtomicSig)} :
+@[expose] def mapOpExpr {Γ : List (Ty pqAtomicSig)} :
     (o : SignalPqxdh.LegacyCosted.pqxdhOps.Op) →
       Expr pqAtomicOps Γ (embedTy (SignalPqxdh.LegacyCosted.pqxdhOps.dom o)) →
       Expr pqAtomicOps Γ (embedTy (SignalPqxdh.LegacyCosted.pqxdhOps.cod o))
@@ -623,7 +623,7 @@ def mapOpExpr {Γ : List (Ty pqAtomicSig)} :
   | .inr .toNat, a => aop .pu32ToNat a
   | .inr .eq, a => aop .pu32Eq a
 
-def mapExpr {Γ : List (Ty SignalPqxdh.LegacyCosted.pqSig)} {t : Ty SignalPqxdh.LegacyCosted.pqSig} :
+@[expose] def mapExpr {Γ : List (Ty SignalPqxdh.LegacyCosted.pqSig)} {t : Ty SignalPqxdh.LegacyCosted.pqSig} :
     Expr SignalPqxdh.LegacyCosted.pqxdhOps Γ t → Expr pqAtomicOps (embedCtx Γ) (embedTy t)
   | .var v => .var (embedVar v)
   | .unit => .unit
@@ -908,7 +908,7 @@ structure AtomicIface {ι : Type} (T : OracleSpec ι) where
   dec : (g : Tag) → (x : (dom g).denote) → T (enc g x) → (cod g).denote
   qCost : Tag → ℕ
 
-@[reducible] def AtomicIface.toIface {ι : Type} {T : OracleSpec ι} (A : AtomicIface T) :
+@[expose, reducible] def AtomicIface.toIface {ι : Type} {T : OracleSpec ι} (A : AtomicIface T) :
     Iface pqAtomicSig T where
   fwdU := A.fwdU
   uCost := 1
@@ -920,7 +920,7 @@ structure AtomicIface {ι : Type} (T : OracleSpec ι) where
   qCost := A.qCost
   smp := pqAtomicSamplers
 
-@[reducible] def aiOfIface {ι : Type} {T : OracleSpec ι} (I : Iface pqAtomicSig T) :
+@[expose, reducible] def aiOfIface {ι : Type} {T : OracleSpec ι} (I : Iface pqAtomicSig T) :
     AtomicIface T where
   fwdU := I.fwdU
   Tag := I.Tag
@@ -930,36 +930,36 @@ structure AtomicIface {ι : Type} (T : OracleSpec ι) where
   dec := I.dec
   qCost := I.qCost
 
-@[reducible] def aiPrim : AtomicIface SignalPqxdh.PrimBaseSpec := aiOfIface pqPrimIface
-@[reducible] def aiSigDdh : AtomicIface (SignalPqxdh.PrimBaseSpec + SignalPqxdh.sigAndDdhSpec) :=
+@[expose, reducible] def aiPrim : AtomicIface SignalPqxdh.PrimBaseSpec := aiOfIface pqPrimIface
+@[expose, reducible] def aiSigDdh : AtomicIface (SignalPqxdh.PrimBaseSpec + SignalPqxdh.sigAndDdhSpec) :=
   aiOfIface pqSigAndDdhIface
-@[reducible] def aiEufCma : AtomicIface (SignalPqxdh.PrimBaseSpec + SignalPqxdh.sigOracleSpec) :=
+@[expose, reducible] def aiEufCma : AtomicIface (SignalPqxdh.PrimBaseSpec + SignalPqxdh.sigOracleSpec) :=
   aiOfIface SignalPqxdh.Costed.pqxdhEufCmaIface
-@[reducible] def aiGapDh : AtomicIface (SignalPqxdh.PrimBaseSpec + SignalPqxdh.gapDhOracleSpec) :=
+@[expose, reducible] def aiGapDh : AtomicIface (SignalPqxdh.PrimBaseSpec + SignalPqxdh.gapDhOracleSpec) :=
   aiOfIface SignalPqxdh.Costed.pqGapDhIface
-@[reducible] def aiAuthPrim : AtomicIface SignalPqxdh.PrimBaseSpec :=
+@[expose, reducible] def aiAuthPrim : AtomicIface SignalPqxdh.PrimBaseSpec :=
   aiOfIface SignalPqxdh.Costed.pqAuthPrimIface
-@[reducible] def aiAuthEufCma :
+@[expose, reducible] def aiAuthEufCma :
     AtomicIface (SignalPqxdh.PrimBaseSpec + SignalPqxdh.sigOracleSpec) :=
   aiOfIface SignalPqxdh.Costed.pqAuthEufCmaIface
-@[reducible] def aiAuthGapDh :
+@[expose, reducible] def aiAuthGapDh :
     AtomicIface (SignalPqxdh.PrimBaseSpec + SignalPqxdh.gapDhOracleSpec) :=
   aiOfIface SignalPqxdh.Costed.pqAuthGapDhIface
-@[reducible] def aiPrfMk :
+@[expose, reducible] def aiPrfMk :
     AtomicIface (SignalPqxdh.PrimBaseSpec + SignalPqxdh.prfMsgKeysSpec) :=
   aiOfIface SignalPqxdh.Costed.pqPrfMkIface
-@[reducible] def aiPrfHmac :
+@[expose, reducible] def aiPrfHmac :
     AtomicIface (SignalPqxdh.PrimBaseSpec + SignalPqxdh.prfHmacSpec) :=
   aiOfIface SignalPqxdh.Costed.pqPrfHmacIface
-@[reducible] def aiAuthSigDdh :
+@[expose, reducible] def aiAuthSigDdh :
     AtomicIface (SignalPqxdh.PrimBaseSpec + SignalPqxdh.sigAndDdhSpec) :=
   aiOfIface SignalPqxdh.Costed.pqAuthSigAndDdhIface
 
-def r64W : SignalPqxdh.LegacyCosted.PSamp → ℕ
+@[expose] def r64W : SignalPqxdh.LegacyCosted.PSamp → ℕ
   | .random64 => 1
   | _ => 0
 
-def mapSamp {ι : Type} {T : OracleSpec ι} (A : AtomicIface T) {Γ : List (Ty pqAtomicSig)} :
+@[expose] def mapSamp {ι : Type} {T : OracleSpec ι} (A : AtomicIface T) {Γ : List (Ty pqAtomicSig)} :
     (s : SignalPqxdh.LegacyCosted.PSamp) → Comp pqAtomicOps A.toIface Γ (embedTy s.ty)
   | .bool => Comp.sample (I := A.toIface) UniformSamplerTag.bool .unit
   | .index N => Comp.sample (I := A.toIface) (UniformSamplerTag.index N) .unit
@@ -1056,12 +1056,12 @@ structure TagLift {ι : Type} {T : OracleSpec ι}
         embedVal (I.cod g) <$>
           (I.dec g (e.eval ρ) <$> (liftM (T.query (I.enc g (e.eval ρ))) : OracleComp T _))
 
-def keyIndUnsupportedPrimW : SignalPqxdh.LegacyCosted.PTag → ℕ
+@[expose] def keyIndUnsupportedPrimW : SignalPqxdh.LegacyCosted.PTag → ℕ
   | .x25519 | .x25519Base | .isCanonical | .pow8 | .sigPkGen
   | .sigSign _ | .sigVerify _ | .kemKeyGen | .kemEncaps | .kemDecaps | .hkdfDerive96 _ => 0
   | _ => 1
 
-def mapKeyIndPrimTag {ι : Type} {T : OracleSpec ι} {A : AtomicIface T}
+@[expose] def mapKeyIndPrimTag {ι : Type} {T : OracleSpec ι} {A : AtomicIface T}
     {Γ : List (Ty pqAtomicSig)}
     (inj : ∀ (t : PTag),
       Expr pqAtomicOps Γ (t.dom (ℓ := 0) (Pt := Empty)) →
@@ -1114,7 +1114,7 @@ def mapAuthPrimTag : SignalPqxdh.LegacyCosted.PTag → SignalPqxdh.Costed.AuthPT
   | .aeadEnc a m c => .inr (.aeadEnc a m c)
   | .aeadDec a c m => .inr (.aeadDec a c m)
 
-def mapAuthPrimQuery {ι : Type} {T : OracleSpec ι} {A : AtomicIface T}
+@[expose] def mapAuthPrimQuery {ι : Type} {T : OracleSpec ι} {A : AtomicIface T}
     {Γ : List (Ty pqAtomicSig)}
     (inj : ∀ (t : SignalPqxdh.Costed.AuthPTag),
       Expr pqAtomicOps Γ t.dom → Comp pqAtomicOps A.toIface Γ t.cod) :
@@ -1147,7 +1147,7 @@ private theorem eval_query_of_defeq {ι : Type} {T : OracleSpec ι} (A : AtomicI
       A.dec t' v <$> (liftM (T.query (A.enc t' v)) : OracleComp T _) := by
   cases hv; rfl
 
-def tlPrimKeyInd : TagLift SignalPqxdh.LegacyCosted.pqPrimIface aiPrim where
+@[expose] def tlPrimKeyInd : TagLift SignalPqxdh.LegacyCosted.pqPrimIface aiPrim where
   hfwd := rfl
   hsmp := rfl
   unsupportedW := keyIndUnsupportedPrimW
@@ -1172,7 +1172,7 @@ def tlPrimKeyInd : TagLift SignalPqxdh.LegacyCosted.pqPrimIface aiPrim where
         | rfl
         | (refine congrArg (· <$> _) (funext fun r => ?_); cases r <;> rfl))
 
-def tlSigDdhKeyInd : TagLift SignalPqxdh.LegacyCosted.pqSigAndDdhIface aiSigDdh where
+@[expose] def tlSigDdhKeyInd : TagLift SignalPqxdh.LegacyCosted.pqSigAndDdhIface aiSigDdh where
   hfwd := rfl
   hsmp := rfl
   unsupportedW | .inl t => keyIndUnsupportedPrimW t | .inr _ => 0
@@ -1219,7 +1219,7 @@ def tlSigDdhKeyInd : TagLift SignalPqxdh.LegacyCosted.pqSigAndDdhIface aiSigDdh 
       refine Eq.trans (eval_query_of_defeq aiSigDdh _ _ _ _ (mapExpr_eval e ρ)) ?_
       rw [Functor.map_map]; rfl
 
-def tlEufCmaKeyInd : TagLift SignalPqxdh.LegacyCosted.pqxdhEufCmaIface aiEufCma where
+@[expose] def tlEufCmaKeyInd : TagLift SignalPqxdh.LegacyCosted.pqxdhEufCmaIface aiEufCma where
   hfwd := rfl
   hsmp := rfl
   unsupportedW | .inl t => keyIndUnsupportedPrimW t | .inr _ => 0
@@ -1258,7 +1258,7 @@ def tlEufCmaKeyInd : TagLift SignalPqxdh.LegacyCosted.pqxdhEufCmaIface aiEufCma 
     · refine Eq.trans (eval_query_of_defeq aiEufCma _ _ _ _ (mapExpr_eval e ρ)) ?_
       rw [Functor.map_map]; rfl
 
-def tlGapDhKeyInd : TagLift SignalPqxdh.LegacyCosted.pqGapDhIface aiGapDh where
+@[expose] def tlGapDhKeyInd : TagLift SignalPqxdh.LegacyCosted.pqGapDhIface aiGapDh where
   hfwd := rfl
   hsmp := rfl
   unsupportedW | .inl t => keyIndUnsupportedPrimW t | .inr _ => 0
@@ -1298,7 +1298,7 @@ def tlGapDhKeyInd : TagLift SignalPqxdh.LegacyCosted.pqGapDhIface aiGapDh where
       refine Eq.trans (eval_query_of_defeq aiGapDh _ _ _ _ (mapExpr_eval e ρ)) ?_
       rw [Functor.map_map]; rfl
 
-def tlAuthPrim : TagLift SignalPqxdh.LegacyCosted.pqPrimIface aiAuthPrim where
+@[expose] def tlAuthPrim : TagLift SignalPqxdh.LegacyCosted.pqPrimIface aiAuthPrim where
   hfwd := rfl
   hsmp := rfl
   unsupportedW _ := 0
@@ -1338,7 +1338,7 @@ def tlAuthPrim : TagLift SignalPqxdh.LegacyCosted.pqPrimIface aiAuthPrim where
       refine Eq.trans (eval_query_of_defeq aiAuthPrim _ _ _ _ (mapExpr_eval e ρ)) ?_
       rw [Functor.map_map]; rfl
 
-def tlAuthEufCma : TagLift SignalPqxdh.LegacyCosted.pqxdhEufCmaIface aiAuthEufCma where
+@[expose] def tlAuthEufCma : TagLift SignalPqxdh.LegacyCosted.pqxdhEufCmaIface aiAuthEufCma where
   hfwd := rfl
   hsmp := rfl
   unsupportedW _ := 0
@@ -1392,7 +1392,7 @@ def tlAuthEufCma : TagLift SignalPqxdh.LegacyCosted.pqxdhEufCmaIface aiAuthEufCm
     · refine Eq.trans (eval_query_of_defeq aiAuthEufCma _ _ _ _ (mapExpr_eval e ρ)) ?_
       rw [Functor.map_map]; rfl
 
-def tlAuthSigDdh : TagLift SignalPqxdh.LegacyCosted.pqSigAndDdhIface aiAuthSigDdh where
+@[expose] def tlAuthSigDdh : TagLift SignalPqxdh.LegacyCosted.pqSigAndDdhIface aiAuthSigDdh where
   hfwd := rfl
   hsmp := rfl
   unsupportedW _ := 0
@@ -1455,7 +1455,7 @@ def tlAuthSigDdh : TagLift SignalPqxdh.LegacyCosted.pqSigAndDdhIface aiAuthSigDd
     · refine Eq.trans (eval_query_of_defeq aiAuthSigDdh _ _ _ _ (mapExpr_eval e ρ)) ?_
       rw [Functor.map_map]; rfl
 
-def tlAuthGapDh : TagLift SignalPqxdh.LegacyCosted.pqGapDhIface aiAuthGapDh where
+@[expose] def tlAuthGapDh : TagLift SignalPqxdh.LegacyCosted.pqGapDhIface aiAuthGapDh where
   hfwd := rfl
   hsmp := rfl
   unsupportedW _ := 0
@@ -1510,7 +1510,7 @@ def tlAuthGapDh : TagLift SignalPqxdh.LegacyCosted.pqGapDhIface aiAuthGapDh wher
       refine Eq.trans (eval_query_of_defeq aiAuthGapDh _ _ _ _ (mapExpr_eval e ρ)) ?_
       rw [Functor.map_map]; rfl
 
-def tlPrfMk : TagLift SignalPqxdh.LegacyCosted.pqPrfMkIface aiPrfMk where
+@[expose] def tlPrfMk : TagLift SignalPqxdh.LegacyCosted.pqPrfMkIface aiPrfMk where
   hfwd := rfl
   hsmp := rfl
   unsupportedW _ := 0
@@ -1565,7 +1565,7 @@ def tlPrfMk : TagLift SignalPqxdh.LegacyCosted.pqPrfMkIface aiPrfMk where
     · refine Eq.trans (eval_query_of_defeq aiPrfMk _ _ _ _ (mapExpr_eval e ρ)) ?_
       rw [Functor.map_map]; cases e.eval ρ <;> rfl
 
-def tlPrfHmac : TagLift SignalPqxdh.LegacyCosted.pqPrfHmacIface aiPrfHmac where
+@[expose] def tlPrfHmac : TagLift SignalPqxdh.LegacyCosted.pqPrfHmacIface aiPrfHmac where
   hfwd := rfl
   hsmp := rfl
   unsupportedW _ := 0
@@ -1621,7 +1621,7 @@ def tlPrfHmac : TagLift SignalPqxdh.LegacyCosted.pqPrfHmacIface aiPrfHmac where
 
 /-! ## Monadic program translation -/
 
-def castLegacySamp {ι : Type} {T : OracleSpec ι}
+@[expose] def castLegacySamp {ι : Type} {T : OracleSpec ι}
     {I : Iface SignalPqxdh.LegacyCosted.pqSig T}
     (hsmp : I.smp = SignalPqxdh.LegacyCosted.pqSamplers) (s : I.smp.Samp) :
     SignalPqxdh.LegacyCosted.PSamp :=
@@ -1636,7 +1636,7 @@ def castLegacySamp {ι : Type} {T : OracleSpec ι}
   rintro (rfl : smp = SignalPqxdh.LegacyCosted.pqSamplers) s
   rfl
 
-def mapSampH {ι : Type} {T : OracleSpec ι}
+@[expose] def mapSampH {ι : Type} {T : OracleSpec ι}
     {I : Iface SignalPqxdh.LegacyCosted.pqSig T} (A : AtomicIface T)
     (hsmp : I.smp = SignalPqxdh.LegacyCosted.pqSamplers)
     {Γ : List (Ty pqAtomicSig)} (s : I.smp.Samp) :
@@ -1670,13 +1670,13 @@ theorem mapSampH_eval {ι : Type} {T : OracleSpec ι}
   intro s
   exact mapSamp_queries_zero A w' s
 
-def mapSampCast {ι : Type} {T : OracleSpec ι}
+@[expose] def mapSampCast {ι : Type} {T : OracleSpec ι}
     {I : Iface SignalPqxdh.LegacyCosted.pqSig T} {A : AtomicIface T}
     (tl : TagLift I A) {Γ : List (Ty pqAtomicSig)} (s : I.smp.Samp) :
     Comp pqAtomicOps A.toIface Γ (embedTy (I.smp.sTy s)) :=
   mapSampH A tl.hsmp s
 
-def mapComp {ι : Type} {T : OracleSpec ι}
+@[expose] def mapComp {ι : Type} {T : OracleSpec ι}
     {I : Iface SignalPqxdh.LegacyCosted.pqSig T} {A : AtomicIface T}
     (tl : TagLift I A) {Γ : List (Ty SignalPqxdh.LegacyCosted.pqSig)}
     {t : Ty SignalPqxdh.LegacyCosted.pqSig} :
@@ -1920,7 +1920,7 @@ theorem mapComp_queries_le {ι : Type} {T : OracleSpec ι}
     simp only [mapComp, Comp.queries]
     exact Nat.mul_le_mul_left K ih
 
-def sampR64W {ι : Type} {T : OracleSpec ι}
+@[expose] def sampR64W {ι : Type} {T : OracleSpec ι}
     {I : Iface SignalPqxdh.LegacyCosted.pqSig T}
     (hsmp : I.smp = SignalPqxdh.LegacyCosted.pqSamplers) : I.smp.Samp → ℕ :=
   fun s => r64W (castLegacySamp hsmp s)
@@ -2106,7 +2106,7 @@ theorem mapComp_cost_eleven_mul_le {ι : Type} {T : OracleSpec ι}
 
 /-! ## Game codec adapters and reduction lifters -/
 
-def finSidToNatExpr (S : SignalPqxdh.Setup) {Γ : List (Ty pqAtomicSig)}
+@[expose] def finSidToNatExpr (S : SignalPqxdh.Setup) {Γ : List (Ty pqAtomicSig)}
     (e : Expr pqAtomicOps Γ (sidT (ℓ := 0) (Pt := Empty) S)) :
     Expr pqAtomicOps Γ (embedTy SignalPqxdh.LegacyCosted.sidT) :=
   .caseSum e
@@ -2123,7 +2123,7 @@ def finSidToNatExpr (S : SignalPqxdh.Setup) {Γ : List (Ty pqAtomicSig)}
           (.pair (aop (.finVal S.N_recv) (.fst (.snd .v0)))
                  (aop (.finVal S.N_no_opk) (.snd (.snd .v0))))))))))
 
-def finKeyIndQToNatExpr (S : SignalPqxdh.Setup) {Γ : List (Ty pqAtomicSig)}
+@[expose] def finKeyIndQToNatExpr (S : SignalPqxdh.Setup) {Γ : List (Ty pqAtomicSig)}
     (e : Expr pqAtomicOps Γ ((pqKeyIndCodec S).Q)) :
     Expr pqAtomicOps Γ (embedTy (SignalPqxdh.LegacyCosted.keyIndCodec S).Q) :=
   .caseSum e
@@ -2258,7 +2258,7 @@ theorem comp_queries_zero_of_zero {ι : Type} {T : OracleSpec ι}
     c.queries w (fun _ => 0) = 0 := by
   induction c <;> simp [Comp.queries, hZero, *]
 
-def liftKeyIndHandle {ι : Type} {T : OracleSpec ι}
+@[expose] def liftKeyIndHandle {ι : Type} {T : OracleSpec ι}
     {I : Iface SignalPqxdh.LegacyCosted.pqSig T} {A : AtomicIface T}
     (tl : TagLift I A) (S : SignalPqxdh.Setup)
     {σ outH : Ty SignalPqxdh.LegacyCosted.pqSig}
@@ -2326,7 +2326,7 @@ private theorem env_cons2_eq {S₀ : Sig} {a b : Ty S₀} {x : a.denote} {y y' :
     (Env.cons x (.cons y .nil) : Env [a, b]) = .cons x (.cons y' .nil) := by
   cases hy; rfl
 
-def liftAuthHandle {ι : Type} {T : OracleSpec ι}
+@[expose] def liftAuthHandle {ι : Type} {T : OracleSpec ι}
     {I : Iface SignalPqxdh.LegacyCosted.pqSig T} {A : AtomicIface T}
     (tl : TagLift I A) (S : SignalPqxdh.Setup)
     {σ outH : Ty SignalPqxdh.LegacyCosted.pqSig}
@@ -2369,7 +2369,7 @@ theorem liftAuthHandle_eval {ι : Type} {T : OracleSpec ι}
     (mapComp_eval tl h (comp_queries_zero_of_zero hZero h)
       (.cons s (.cons ((SignalPqxdh.LegacyCosted.authCodec S).qenc t) .nil)))
 
-@[reducible] def liftKeyInd1Stage {ι : Type} {T : OracleSpec ι}
+@[expose, reducible] def liftKeyInd1Stage {ι : Type} {T : OracleSpec ι}
     {I : Iface SignalPqxdh.LegacyCosted.pqSig T} {A : AtomicIface T}
     (tl : TagLift I A) (S : SignalPqxdh.Setup)
     {rIn out : Ty SignalPqxdh.LegacyCosted.pqSig}
@@ -2382,7 +2382,7 @@ theorem liftAuthHandle_eval {ι : Type} {T : OracleSpec ι}
   handle := liftKeyIndHandle tl S R.handle
   finish := mapComp tl R.finish
 
-@[reducible] def liftAuth1Stage {ι : Type} {T : OracleSpec ι}
+@[expose, reducible] def liftAuth1Stage {ι : Type} {T : OracleSpec ι}
     {I : Iface SignalPqxdh.LegacyCosted.pqSig T} {A : AtomicIface T}
     (tl : TagLift I A) (S : SignalPqxdh.Setup)
     {rIn out : Ty SignalPqxdh.LegacyCosted.pqSig}
@@ -2506,7 +2506,7 @@ theorem liftAuth1Stage_eval {ι : Type} {T : OracleSpec ι}
 
 /-! ### Two-stage reduction lifters -/
 
-@[reducible] def liftKeyInd2Stage {ι : Type} {T : OracleSpec ι}
+@[expose, reducible] def liftKeyInd2Stage {ι : Type} {T : OracleSpec ι}
     {I : Iface SignalPqxdh.LegacyCosted.pqSig T} {A : AtomicIface T}
     (tl : TagLift I A) (S : SignalPqxdh.Setup)
     {rIn ch rIn2 out : Ty SignalPqxdh.LegacyCosted.pqSig}
@@ -2523,7 +2523,7 @@ theorem liftAuth1Stage_eval {ι : Type} {T : OracleSpec ι}
   handlePost := liftKeyIndHandle tl S R.handlePost
   finish := mapComp tl R.finish
 
-@[reducible] def liftAuth2Stage {ι : Type} {T : OracleSpec ι}
+@[expose, reducible] def liftAuth2Stage {ι : Type} {T : OracleSpec ι}
     {I : Iface SignalPqxdh.LegacyCosted.pqSig T} {A : AtomicIface T}
     (tl : TagLift I A) (S : SignalPqxdh.Setup)
     {rIn ch rIn2 out : Ty SignalPqxdh.LegacyCosted.pqSig}
@@ -2541,14 +2541,14 @@ theorem liftAuth1Stage_eval {ι : Type} {T : OracleSpec ι}
   handlePost := liftAuthHandle tl S R.handlePost
   finish := mapComp tl R.finish
 
-def embedMid {κ : Type} {G : OracleSpec κ} {α : Type}
+@[expose] def embedMid {κ : Type} {G : OracleSpec κ} {α : Type}
     {π σ ch : Ty SignalPqxdh.LegacyCosted.pqSig} :
     Mid G α π.denote σ.denote ch.denote →
       Mid G α (embedTy π).denote (embedTy σ).denote (embedTy ch).denote
   | .done a s => .done a (embedVal σ s)
   | .paused t c p s k => .paused t (embedVal ch c) (embedVal π p) (embedVal σ s) k
 
-def projMid {κ : Type} {G : OracleSpec κ} {α : Type}
+@[expose] def projMid {κ : Type} {G : OracleSpec κ} {α : Type}
     {π σ ch : Ty SignalPqxdh.LegacyCosted.pqSig} :
     Mid G α (embedTy π).denote (embedTy σ).denote (embedTy ch).denote →
       Mid G α π.denote σ.denote ch.denote
@@ -3101,20 +3101,6 @@ theorem tlEufCmaKeyInd_primW {Γ : List (Ty pqAtomicSig)}
       SignalPqxdh.Security.chalIfacePrimQueryWeight,
       SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight]
 
-theorem tlEufCmaKeyInd_chalW {Γ : List (Ty pqAtomicSig)}
-    (g : SignalPqxdh.LegacyCosted.pqxdhEufCmaIface.Tag)
-    (e : Expr pqAtomicOps Γ (embedTy (SignalPqxdh.LegacyCosted.pqxdhEufCmaIface.dom g))) :
-    (tlEufCmaKeyInd.mapQuery g e).queries SignalPqxdh.Security.chalIfaceChalQueryWeight
-      (fun _ => 0) ≤ SignalPqxdh.LegacyCosted.chalIfaceChalQueryWeight g := by
-  rcases g with t | m
-  · cases t <;>
-      simp [tlEufCmaKeyInd, mapKeyIndPrimTag, Comp.queries,
-        SignalPqxdh.Security.chalIfaceChalQueryWeight,
-        SignalPqxdh.LegacyCosted.chalIfaceChalQueryWeight]
-  · simp [tlEufCmaKeyInd, Comp.queries,
-      SignalPqxdh.Security.chalIfaceChalQueryWeight,
-      SignalPqxdh.LegacyCosted.chalIfaceChalQueryWeight]
-
 theorem tlGapDhKeyInd_primW {Γ : List (Ty pqAtomicSig)}
     (g : SignalPqxdh.LegacyCosted.pqGapDhIface.Tag)
     (e : Expr pqAtomicOps Γ (embedTy (SignalPqxdh.LegacyCosted.pqGapDhIface.dom g))) :
@@ -3166,20 +3152,6 @@ theorem tlAuthEufCma_primW {Γ : List (Ty pqAtomicSig)}
   · simp [tlAuthEufCma, Comp.queries,
       SignalPqxdh.Security.authChalIfacePrimQueryWeight,
       SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight]
-
-theorem tlAuthEufCma_chalW {Γ : List (Ty pqAtomicSig)}
-    (g : SignalPqxdh.LegacyCosted.pqxdhEufCmaIface.Tag)
-    (e : Expr pqAtomicOps Γ (embedTy (SignalPqxdh.LegacyCosted.pqxdhEufCmaIface.dom g))) :
-    (tlAuthEufCma.mapQuery g e).queries SignalPqxdh.Security.chalIfaceChalQueryWeight
-      (fun _ => 0) ≤ SignalPqxdh.LegacyCosted.chalIfaceChalQueryWeight g := by
-  rcases g with t | m
-  · cases t <;>
-      simp [tlAuthEufCma, mapAuthPrimQuery, Comp.queries,
-        SignalPqxdh.Security.chalIfaceChalQueryWeight,
-        SignalPqxdh.LegacyCosted.chalIfaceChalQueryWeight]
-  · simp [tlAuthEufCma, Comp.queries,
-      SignalPqxdh.Security.chalIfaceChalQueryWeight,
-      SignalPqxdh.LegacyCosted.chalIfaceChalQueryWeight]
 
 theorem tlAuthSigDdh_primW {Γ : List (Ty pqAtomicSig)}
     (g : SignalPqxdh.LegacyCosted.pqSigAndDdhIface.Tag)
@@ -3274,20 +3246,6 @@ theorem tlPrfMk_primW {Γ : List (Ty pqAtomicSig)}
       SignalPqxdh.Security.authChalIfacePrimQueryWeight,
       SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight]
 
-theorem tlPrfMk_chalW {Γ : List (Ty pqAtomicSig)}
-    (g : SignalPqxdh.LegacyCosted.pqPrfMkIface.Tag)
-    (e : Expr pqAtomicOps Γ (embedTy (SignalPqxdh.LegacyCosted.pqPrfMkIface.dom g))) :
-    (tlPrfMk.mapQuery g e).queries SignalPqxdh.Security.chalIfaceChalQueryWeight
-      (fun _ => 0) ≤ SignalPqxdh.LegacyCosted.chalIfaceChalQueryWeight g := by
-  rcases g with t | s
-  · cases t <;>
-      simp [tlPrfMk, mapAuthPrimQuery, Comp.queries,
-        SignalPqxdh.Security.chalIfaceChalQueryWeight,
-        SignalPqxdh.LegacyCosted.chalIfaceChalQueryWeight]
-  · simp [tlPrfMk, Comp.queries,
-      SignalPqxdh.Security.chalIfaceChalQueryWeight,
-      SignalPqxdh.LegacyCosted.chalIfaceChalQueryWeight]
-
 theorem tlPrfHmac_primW {Γ : List (Ty pqAtomicSig)}
     (g : SignalPqxdh.LegacyCosted.pqPrfHmacIface.Tag)
     (e : Expr pqAtomicOps Γ (embedTy (SignalPqxdh.LegacyCosted.pqPrfHmacIface.dom g))) :
@@ -3301,20 +3259,6 @@ theorem tlPrfHmac_primW {Γ : List (Ty pqAtomicSig)}
   · simp [tlPrfHmac, Comp.queries,
       SignalPqxdh.Security.authChalIfacePrimQueryWeight,
       SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight]
-
-theorem tlPrfHmac_chalW {Γ : List (Ty pqAtomicSig)}
-    (g : SignalPqxdh.LegacyCosted.pqPrfHmacIface.Tag)
-    (e : Expr pqAtomicOps Γ (embedTy (SignalPqxdh.LegacyCosted.pqPrfHmacIface.dom g))) :
-    (tlPrfHmac.mapQuery g e).queries SignalPqxdh.Security.chalIfaceChalQueryWeight
-      (fun _ => 0) ≤ SignalPqxdh.LegacyCosted.chalIfaceChalQueryWeight g := by
-  rcases g with t | m
-  · cases t <;>
-      simp [tlPrfHmac, mapAuthPrimQuery, Comp.queries,
-        SignalPqxdh.Security.chalIfaceChalQueryWeight,
-        SignalPqxdh.LegacyCosted.chalIfaceChalQueryWeight]
-  · simp [tlPrfHmac, Comp.queries,
-      SignalPqxdh.Security.chalIfaceChalQueryWeight,
-      SignalPqxdh.LegacyCosted.chalIfaceChalQueryWeight]
 
 @[simp] theorem samplerZeroQueryWeight_eq {Samp : Type} :
     (SignalPqxdh.Security.samplerZeroQueryWeight : Samp → ℕ) = (fun _ => 0) :=
@@ -3528,41 +3472,6 @@ theorem liftAuth1Stage_totalCost_eleven_mul_le {ι : Type} {T : OracleSpec ι}
   rw [hu]
   omega
 
-theorem liftAuth2Stage_totalCost_eleven_mul_le {ι : Type} {T : OracleSpec ι}
-    {I : Iface SignalPqxdh.LegacyCosted.pqSig T} {A : AtomicIface T}
-    (tl : TagLift I A) (hu : I.uCost = 1) (S : SignalPqxdh.Setup)
-    {rIn ch rIn2 out : Ty SignalPqxdh.LegacyCosted.pqSig}
-    (R : TwoStageCostedReduction SignalPqxdh.LegacyCosted.pqxdhOps I (SignalPqxdh.authSpec S)
-      (SignalPqxdh.LegacyCosted.authCodec S) rIn .unit .bool ch rIn2 out) (q : ℕ) :
-    11 * (liftAuth2Stage tl S R).totalCost q ≤ 23 * R.totalCost q := by
-  have hI := mapComp_cost_eleven_mul_le tl R.init
-  have hPre := mapComp_cost_eleven_mul_le tl R.handlePre
-  have hPost := mapComp_cost_eleven_mul_le tl R.handlePost
-  have hDone := mapComp_cost_eleven_mul_le tl R.chDone
-  have hRes := mapComp_cost_eleven_mul_le tl R.resume
-  have hFin := mapComp_cost_eleven_mul_le tl R.finish
-  have hCR : 11 * max (mapComp tl R.chDone).cost (mapComp tl R.resume).cost ≤
-      23 * max R.chDone.cost R.resume.cost := by omega
-  have hPer : 11 * max 1 (max (mapComp tl R.handlePre).cost
-        (mapComp tl R.handlePost).cost + 32) ≤
-      23 * max 1 (max R.handlePre.cost R.handlePost.cost + 32) := by omega
-  have hMul := Nat.mul_le_mul_left q hPer
-  have hR1 : 11 * (q * max 1 (max (mapComp tl R.handlePre).cost
-        (mapComp tl R.handlePost).cost + 32)) =
-      q * (11 * max 1 (max (mapComp tl R.handlePre).cost
-        (mapComp tl R.handlePost).cost + 32)) := by ring
-  have hR2 : q * (23 * max 1 (max R.handlePre.cost R.handlePost.cost + 32)) =
-      23 * (q * max 1 (max R.handlePre.cost R.handlePost.cost + 32)) := by ring
-  rw [← hR1, hR2] at hMul
-  change 11 * ((mapComp tl R.init).cost +
-      q * max 1 (max (mapComp tl R.handlePre).cost (mapComp tl R.handlePost).cost + 32) +
-      max (mapComp tl R.chDone).cost (mapComp tl R.resume).cost +
-      (mapComp tl R.finish).cost) ≤
-    23 * (R.init.cost + q * max I.uCost (max R.handlePre.cost R.handlePost.cost + 32) +
-      max R.chDone.cost R.resume.cost + R.finish.cost)
-  rw [hu]
-  omega
-
 theorem liftAuth2Stage_totalCost_two_mul_le {ι : Type} {T : OracleSpec ι}
     {I : Iface SignalPqxdh.LegacyCosted.pqSig T} {A : AtomicIface T}
     (tl : TagLift I A) (hu : I.uCost = 1) (S : SignalPqxdh.Setup)
@@ -3685,7 +3594,7 @@ theorem liftAuth1Stage_totalCost_two_mul_le {ι : Type} {T : OracleSpec ι}
   | _, _, _, ξ, .foldM _ l z f => by
     simp only [compRename, Comp.size, exprRename_size, compRename_size _ f]
 
-def pqOpLitSize : SignalPqxdh.LegacyCosted.pqxdhOps.Op → ℕ
+@[expose] def pqOpLitSize : SignalPqxdh.LegacyCosted.pqxdhOps.Op → ℕ
   | .inl (.lit _ v) => v.length
   | .inl (.cons _ _) => 1
   | .inr (.lit _) => 4
@@ -3701,7 +3610,7 @@ def pqOpLitSize : SignalPqxdh.LegacyCosted.pqxdhOps.Op → ℕ
     (mapOpExpr o a).size = a.size + pqOpLitSize o + 1 := by
   rcases o with o | o <;> cases o <;> rfl
 
-def exprLitSize : {Γ : List (Ty SignalPqxdh.LegacyCosted.pqSig)} →
+@[expose] def exprLitSize : {Γ : List (Ty SignalPqxdh.LegacyCosted.pqSig)} →
     {t : Ty SignalPqxdh.LegacyCosted.pqSig} →
     Expr SignalPqxdh.LegacyCosted.pqxdhOps Γ t → ℕ
   | _, _, .var _ | _, _, .unit | _, _, .bool _
@@ -3774,7 +3683,7 @@ theorem mapSampH_size_le {ι : Type} {T : OracleSpec ι}
   intro s
   exact mapSamp_size_le A s
 
-def TagLift.QuerySizeLe {ι : Type} {T : OracleSpec ι}
+@[expose] def TagLift.QuerySizeLe {ι : Type} {T : OracleSpec ι}
     {I : Iface SignalPqxdh.LegacyCosted.pqSig T} {A : AtomicIface T}
     (tl : TagLift I A) : Prop :=
   ∀ {Γ : List (Ty pqAtomicSig)} (g : I.Tag) (e : Expr pqAtomicOps Γ (embedTy (I.dom g))),
@@ -3866,7 +3775,7 @@ theorem tlPrfHmac_sizeLe : tlPrfHmac.QuerySizeLe := by
     exact mapAuthPrimQuery_size_le _ (fun _ _ => rfl) t e
   · exact Nat.add_le_add_left (by decide : 1 ≤ 9) e.size
 
-def compLitSize {ι : Type} {T : OracleSpec ι} {I : Iface SignalPqxdh.LegacyCosted.pqSig T} :
+@[expose] def compLitSize {ι : Type} {T : OracleSpec ι} {I : Iface SignalPqxdh.LegacyCosted.pqSig T} :
     {Γ : List (Ty SignalPqxdh.LegacyCosted.pqSig)} → {t : Ty SignalPqxdh.LegacyCosted.pqSig} →
     Comp SignalPqxdh.LegacyCosted.pqxdhOps I Γ t → ℕ
   | _, _, .ret e | _, _, .query _ e => exprLitSize e
@@ -3879,13 +3788,13 @@ def compLitSize {ι : Type} {T : OracleSpec ι} {I : Iface SignalPqxdh.LegacyCos
   | _, _, .consumeFirstM _ l p mk => exprLitSize l + compLitSize p + exprLitSize mk
   | _, _, .foldM _ l z f => exprLitSize l + exprLitSize z + compLitSize f
 
-def red1LitSize {ι κ : Type} {T : OracleSpec ι} {I : Iface SignalPqxdh.LegacyCosted.pqSig T}
+@[expose] def red1LitSize {ι κ : Type} {T : OracleSpec ι} {I : Iface SignalPqxdh.LegacyCosted.pqSig T}
     {G : OracleSpec κ} {C : GameCodec SignalPqxdh.LegacyCosted.pqSig G}
     {rIn gIn gOut out : Ty SignalPqxdh.LegacyCosted.pqSig}
     (R : CostedReduction SignalPqxdh.LegacyCosted.pqxdhOps I G C rIn gIn gOut out) : ℕ :=
   compLitSize R.init + compLitSize R.handle + compLitSize R.finish
 
-def red2LitSize {ι κ : Type} {T : OracleSpec ι} {I : Iface SignalPqxdh.LegacyCosted.pqSig T}
+@[expose] def red2LitSize {ι κ : Type} {T : OracleSpec ι} {I : Iface SignalPqxdh.LegacyCosted.pqSig T}
     {G : OracleSpec κ} {C : GameCodec SignalPqxdh.LegacyCosted.pqSig G}
     {rIn gIn gOut ch rIn2 out : Ty SignalPqxdh.LegacyCosted.pqSig}
     (R : TwoStageCostedReduction SignalPqxdh.LegacyCosted.pqxdhOps I G C rIn gIn gOut ch rIn2 out) : ℕ :=
@@ -4064,18 +3973,6 @@ theorem bits_le_bits_stepCostBudget {k : ℕ} (S : SignalPqxdh.Setup) (b : Signa
     bits k ≤ bits (SignalPqxdh.Security.stepCostBudget S b) :=
   Computational.Proofs.ReductionDsl.SizeBudgetBridge.bits_mono
     (le_trans hk (param_le_stepCostBudget S b))
-
-theorem bits_mul_le_two_bits_stepCostBudget {k₁ k₂ : ℕ}
-    (S : SignalPqxdh.Setup) (b : SignalPqxdh.QueryBudget)
-    (h₁ : k₁ ≤ 2 * b.q_total + 2 * min b.q_total S.N_dh + 2 * min b.q_total S.N_sess_tot +
-      Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot + 1)
-    (h₂ : k₂ ≤ 2 * b.q_total + 2 * min b.q_total S.N_dh + 2 * min b.q_total S.N_sess_tot +
-      Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot + 1) :
-    bits (k₁ * k₂) ≤ 2 * bits (SignalPqxdh.Security.stepCostBudget S b) := by
-  have hm := Computational.Proofs.ReductionDsl.SizeBudgetBridge.bits_mul_le k₁ k₂
-  have hb₁ := bits_le_bits_stepCostBudget S b h₁
-  have hb₂ := bits_le_bits_stepCostBudget S b h₂
-  omega
 
 theorem atomicSize_le_budget {sz C₀ C₁ : ℕ} (S : SignalPqxdh.Setup) (b : SignalPqxdh.QueryBudget)
     (h₀ : C₀ ≤ 2 ^ 22) (h₁ : C₁ ≤ 2 ^ 11)

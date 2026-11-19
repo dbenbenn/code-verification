@@ -9,10 +9,10 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadDecodes
-public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreDecodes
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib.ProgramReflection.SortedFresh
 
 /-!
 # Instruction Decode Lemmas for `InMemSessionStore` Future Closures
@@ -20,4 +20,4 @@ import VCVio.Prelude.Core
 Re-exports `LoadDecodes` (`0x08ce4..0x08ee0`) and `StoreDecodes` (`0x08ee4..0x09270`).
 -/
 
-@[expose] public section
+public section

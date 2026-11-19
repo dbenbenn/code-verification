@@ -13,7 +13,11 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.TrapSafeWords
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpCode -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpGhost -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpGhostK -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.Block617TransferG -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.Block617TransferG
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Closed-`lr` Trap & Subroutine-Outcome `keepBcmpHull lr = false` Suite (`HooksDehook.BcmpLrTrap`)
@@ -122,26 +126,6 @@ theorem keepBcmpHull_entry (m : BitVec 64) :
   rw [hsub, memcmpByteLen_eq]
   decide
 
-/-- Every byte in the 52 B `memcmp` subrange `[m, m + 52)` lies inside `keepBcmpHull m`. -/
-theorem keepBcmpHull_of_memcmp {m pc : BitVec 64}
-    (h : keepBlock m (4 * memcmpLibcaWords.length) pc = true) :
-    keepBcmpHull m pc = true := by
-  simp only [keepBlock, decide_eq_true_eq] at h
-  rw [keepBcmpHull_iff, bcmpHullByteLen_eq]
-  have hlen : 4 * memcmpLibcaWords.length = 52 := rfl
-  omega
-
-/-- Every byte in the 4 B `bcmp` subrange `[m + memcmpByteLen, m + memcmpByteLen + 4)` lies
-    inside `keepBcmpHull m`. -/
-theorem keepBcmpHull_of_bcmp {m pc : BitVec 64}
-    (h : keepBlock (m + memcmpByteLen) (4 * bcmpWords.length) pc = true) :
-    keepBcmpHull m pc = true := by
-  simp only [keepBlock, decide_eq_true_eq] at h
-  rw [keepBcmpHull_iff, bcmpHullByteLen_eq]
-  have hlen : 4 * bcmpWords.length = 4 := rfl
-  rw [hlen, memcmpByteLen_eq] at h
-  bv_omega
-
 /-- Single-block `TrapRegion` for the contiguous 56 B `memcmp ++ bcmp` hull at `m`. -/
 @[expose] def bcmpHullRegion (m : BitVec 64) (resolve : String → BitVec 64 := fun _ => m) :
     TrapRegion :=
@@ -211,12 +195,6 @@ theorem bcmpHullRegion_hasWords_of_hasWords {P_sub : Program} {m : BitVec 64}
   subst hmem
   exact ⟨P_sub, List.mem_singleton.mpr rfl, hHas⟩
 
-/-- Unconditional `RegionHasWords` for `pureWordsProg m (bcmpHullWords m resolve)`. -/
-theorem bcmpHullRegion_hasWords_pure (m : BitVec 64)
-    (resolve : String → BitVec 64 := fun _ => m) :
-    RegionHasWords [pureWordsProg m (bcmpHullWords m resolve)] (bcmpHullRegion m resolve) :=
-  bcmpHullRegion_hasWords_of_hasWords (pureWordsProg_bcmpHull_hasWords m resolve)
-
 theorem bcmpHullRegion_codeLoaded_iff {P_sub : Program} {mem : Memory} :
     RegionCodeLoaded [P_sub] mem ↔ P_sub.CodeLoaded mem := by
   constructor
@@ -246,21 +224,10 @@ theorem bcmpEntryGuard_iff_trapEntryGuard (m stubPc : BitVec 64)
 
 /-! ## 2. `TrapHook` Instances (Idealized, Fallback, Plain Ghost, and `K` Ghost) -/
 
-/-- `cliBcmpHook bcmpFn` returns to `lr` while `.Running` with `lr` unchanged, so it satisfies
-    `TrapHook L` for every `L : BitVec 64`. -/
-theorem trapHook_cliBcmpHook
-    (bcmpFn : List (BitVec 8) → List (BitVec 8) → BitVec 64) (L : BitVec 64) :
-    TrapHook L (cliBcmpHook bcmpFn) :=
-  fun _ hrun hlr => Or.inr ⟨hrun, hlr, hlr⟩
-
 theorem trapHook_keepFsTrace_cliBcmpHook
     (bcmpFn : List (BitVec 8) → List (BitVec 8) → BitVec 64) (L : BitVec 64) :
     TrapHook L (keepFsTrace (cliBcmpHook bcmpFn)) :=
   fun _ hrun hlr => Or.inr ⟨hrun, hlr, hlr⟩
-
-theorem trapHook_hookBcmpFallback (L : BitVec 64) :
-    TrapHook L hookBcmpFallback :=
-  trapHook_cliBcmpHook _ L
 
 theorem trapHook_keepFsTrace_hookBcmpFallback (L : BitVec 64) :
     TrapHook L (keepFsTrace hookBcmpFallback) :=
@@ -272,13 +239,6 @@ theorem trapHook_bcmpGhostFn {keepR : BitVec 64 → Bool} {L : BitVec 64}
     (hkeepL : keepR L = true) :
     TrapHook L (bcmpGhostFn keepR P_real P_sub entry) :=
   trapHook_linkedCallHook hkeepL (trapHook_keepFsTrace_hookBcmpFallback L)
-
-theorem trapHook_bcmpGhostFn_of_cover {keepR : BitVec 64 → Bool} {m L : BitVec 64}
-    (P_real P_sub : Program) (entry : BitVec 64)
-    (hcover : ∀ pc, keepBcmpHull m pc = true → keepR pc = true)
-    (hL : keepBcmpHull m L = true) :
-    TrapHook L (bcmpGhostFn keepR P_real P_sub entry) :=
-  trapHook_bcmpGhostFn P_real P_sub entry (hcover L hL)
 
 /-- Plain `W`-independent `f3EmptyBcmpGhostHook` satisfies `TrapHook L` whenever `keepR L = true`. -/
 theorem trapHook_f3EmptyBcmpGhostHook {keepR : BitVec 64 → Bool} {L : BitVec 64}
@@ -303,13 +263,6 @@ theorem trapHook_bcmpGhostFnK {keepR : BitVec 64 → Bool} {L : BitVec 64}
     TrapHook L (bcmpGhostFnK keepR P_real P_sub entry) :=
   trapHook_of_exception_on_keepLr fun w _ hlr =>
     ⟨"ghost-hook precondition violated", by rw [bcmpGhostFnK_of_keepLr_true (hlr ▸ hkeepL)]⟩
-
-theorem trapHook_bcmpGhostFnK_of_cover {keepR : BitVec 64 → Bool} {m L : BitVec 64}
-    (P_real P_sub : Program) (entry : BitVec 64)
-    (hcover : ∀ pc, keepBcmpHull m pc = true → keepR pc = true)
-    (hL : keepBcmpHull m L = true) :
-    TrapHook L (bcmpGhostFnK keepR P_real P_sub entry) :=
-  trapHook_bcmpGhostFnK P_real P_sub entry (hcover L hL)
 
 /-- `K`-narrowed `W`-independent `f3EmptyBcmpGhostHookK` satisfies `TrapHook L` whenever
     `keepR L = true`. -/
@@ -483,96 +436,6 @@ theorem bcmpHull_lr_trap_after_hook_ret
     (fun hr => (keepOf_bcmpHullRegion_apply m resolve _).trans (hout_sf hr))
     hnoex_sf hnhalt_sf
 
-/-- Post-hook `Returned`-case `keepBcmpHull m (u.readReg64 .lr) = false` when `sf` is `.Running` at
-    `sf.pc = s0.readReg64 .lr`. -/
-theorem bcmpHull_lr_trap_after_hook_returned
-    {P_ghost P_sub : Program} {m : BitVec 64} {resolve : String → BitVec 64}
-    {f_u : State → State} {s0 u sf : State}
-    (hres : resolve "memcmp" = m)
-    (hHas : P_sub.hasWords m (bcmpHullWords m resolve))
-    (htrap_u : keepBcmpHull m (u.readReg64 .lr) = true → TrapHook (u.readReg64 .lr) f_u)
-    (hreg_ext : keepBcmpHull m (u.readReg64 .lr) = true → ∀ pc, keepBcmpHull m pc = true →
-      P_ghost.externAt? pc = none ∨
-        ∃ f, P_ghost.externAt? pc = some f ∧ TrapHook (u.readReg64 .lr) f)
-    (hCode_fu : P_sub.CodeLoaded (f_u u).mem)
-    (hrest : Steps P_ghost (f_u u) sf)
-    (hrun_u : u.status = .Running)
-    (hrun_sf : sf.status = .Running)
-    (hpc_sf : sf.pc = s0.readReg64 .lr)
-    (hlr_s0 : keepBcmpHull m (s0.readReg64 .lr) = false) :
-    keepBcmpHull m (u.readReg64 .lr) = false :=
-  bcmpHull_lr_trap_after_hook_ret hres hHas htrap_u hreg_ext hCode_fu hrest hrun_u
-    (fun _ => hpc_sf ▸ hlr_s0)
-    (fun _ h => by rw [hrun_sf] at h; cases h)
-    (fun h => by rw [hrun_sf] at h; cases h)
-
-/-- **Card-`c` post-hook trajectory theorem (`bcmpHull_keepLr_false_after_hook_of_outcome`):**
-    Propagates `hc_codeLoaded : P_sub.CodeLoaded s0.mem` along `Steps P_ghost s0 u` and `KeepsFrozen`.
-    Note (`H1`): `GhostRowReplayOn.replay_at_stub` Arm 2 provides `InvS u` (`P_sub.CodeLoaded u.mem`)
-    rather than `P_sub.CodeLoaded s0.mem`; card `c` should therefore apply either
-    `bcmpHull_lr_trap_after_hook_ret` (with `P_sub.CodeLoaded (f_stub u).mem` from `InvS u` +
-    `u.mem.KeepsFrozen (f_stub u).mem`) or `bcmpHull_keepLr_false_after_hook_of_codeLoaded_u` below. -/
-theorem bcmpHull_keepLr_false_after_hook_of_outcome
-    {P_ghost P_sub : Program} {m : BitVec 64} {resolve : String → BitVec 64}
-    {f_stub : State → State}
-    (hres : resolve "memcmp" = m)
-    (hHas : P_sub.hasWords m (bcmpHullWords m resolve))
-    (hreg_ext : ∀ pc : BitVec 64, keepBcmpHull m pc = true →
-      P_ghost.externAt? pc = none ∨
-        ∃ f, P_ghost.externAt? pc = some f ∧
-          ∀ L : BitVec 64, keepBcmpHull m L = true → TrapHook L f)
-    (htrap_stub : ∀ L : BitVec 64, keepBcmpHull m L = true → TrapHook L f_stub)
-    {s0 sf : State}
-    (hc_codeLoaded : P_sub.CodeLoaded s0.mem)
-    (hlr_s0 : keepBcmpHull m (s0.readReg64 .lr) = false)
-    (hret_pc : sf.status = .Running → sf.pc = s0.readReg64 .lr)
-    (hnoex_sf : ∀ msg, sf.status ≠ .Exception msg)
-    (hnhalt_sf : sf.status ≠ .Halted) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost (f_stub u) sf →
-      u.status = .Running →
-      u.mem.KeepsFrozen (f_stub u).mem →
-      keepBcmpHull m (u.readReg64 .lr) = false := by
-  intro u hsteps_s0_u hsteps_fu_sf hrun_u hkf
-  rw [← keepOf_bcmpHullRegion_apply m resolve]
-  exact keepLr_false_after_hook_of_outcome
-    (bcmpHull_regionWordsSafe hres)
-    (bcmpHullRegion_hasWords_of_hasWords hHas)
-    (fun pc hkp =>
-      (hreg_ext pc (keepOf_bcmpHullRegion_apply m resolve _ ▸ hkp)).imp id
-        fun ⟨f, hf, htf⟩ => ⟨f, hf, fun L hL => htf L (keepOf_bcmpHullRegion_apply m resolve _ ▸ hL)⟩)
-    (fun L hL => htrap_stub L (keepOf_bcmpHullRegion_apply m resolve _ ▸ hL))
-    (bcmpHullRegion_codeLoaded_iff.mpr hc_codeLoaded)
-    ((keepOf_bcmpHullRegion_apply m resolve _).trans hlr_s0)
-    hret_pc hnoex_sf hnhalt_sf u hsteps_s0_u hsteps_fu_sf hrun_u hkf
-
-/-- Direct `SubroutineOutcome` wrapper for `bcmpHull_keepLr_false_after_hook_of_outcome`. -/
-theorem bcmpHull_keepLr_false_after_hook_of_subroutineOutcome
-    {α : Type} {spec_ghost : Spec α} {x : α} {R : SepProp}
-    {P_ghost P_sub : Program} {m : BitVec 64} {resolve : String → BitVec 64}
-    {f_stub : State → State}
-    (hres : resolve "memcmp" = m)
-    (hHas : P_sub.hasWords m (bcmpHullWords m resolve))
-    (hreg_ext : ∀ pc : BitVec 64, keepBcmpHull m pc = true →
-      P_ghost.externAt? pc = none ∨
-        ∃ f, P_ghost.externAt? pc = some f ∧
-          ∀ L : BitVec 64, keepBcmpHull m L = true → TrapHook L f)
-    (htrap_stub : ∀ L : BitVec 64, keepBcmpHull m L = true → TrapHook L f_stub)
-    {s0 sf : State}
-    (hc_codeLoaded : P_sub.CodeLoaded s0.mem)
-    (hlr_s0 : keepBcmpHull m (s0.readReg64 .lr) = false)
-    (hout : SubroutineOutcome spec_ghost x R s0 sf) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost (f_stub u) sf →
-      u.status = .Running →
-      u.mem.KeepsFrozen (f_stub u).mem →
-      keepBcmpHull m (u.readReg64 .lr) = false := by
-  obtain ⟨hret_pc, hnoex_sf, hnhalt_sf⟩ := subroutineOutcome_running_pc_and_noFault hout
-  exact bcmpHull_keepLr_false_after_hook_of_outcome hres hHas hreg_ext htrap_stub
-    hc_codeLoaded hlr_s0 hret_pc hnoex_sf hnhalt_sf
-
 /-- **Card-`c` `InvS u` post-hook theorem (`bcmpHull_keepLr_false_after_hook_of_codeLoaded_u`):**
     Variant of `bcmpHull_keepLr_false_after_hook_of_outcome` taking `P_sub.CodeLoaded u.mem` at the
     call state `u` (supplied by `InvS u` in `GhostRowReplayOn.replay_at_stub` Arm 2) instead of
@@ -606,133 +469,6 @@ theorem bcmpHull_keepLr_false_after_hook_of_codeLoaded_u
     hsteps_fu_sf hrun_u
     (fun hrun_sf => hret_pc hrun_sf ▸ hlr_s0)
     hnoex_sf hnhalt_sf
-
-/-- Call-point `keepBcmpHull m (u.readReg64 .lr) = false` on `Steps P_ghost u sf` covering both
-    non-`.Running` and `Returned` outcomes. -/
-theorem bcmpHull_lr_trap_at_call_ret
-    {P_ghost P_sub : Program} {m : BitVec 64} {resolve : String → BitVec 64}
-    {f_u : State → State} {u sf : State}
-    (hres : resolve "memcmp" = m)
-    (hHas : P_sub.hasWords m (bcmpHullWords m resolve))
-    (htrap_u : keepBcmpHull m (u.readReg64 .lr) = true → TrapHook (u.readReg64 .lr) f_u)
-    (hreg_ext : keepBcmpHull m (u.readReg64 .lr) = true → ∀ pc, keepBcmpHull m pc = true →
-      P_ghost.externAt? pc = none ∨
-        ∃ f, P_ghost.externAt? pc = some f ∧ TrapHook (u.readReg64 .lr) f)
-    (hext_u : P_ghost.externAt? u.pc = some f_u)
-    (hCode_u : P_sub.CodeLoaded u.mem)
-    (hsteps_u_sf : Steps P_ghost u sf)
-    (hrun_u : u.status = .Running)
-    (hu_ne_sf : sf.status = .Running → sf.pc ≠ u.pc)
-    (hout_sf : sf.status = .Running → keepBcmpHull m sf.pc = false)
-    (hnoex_sf : ∀ msg, sf.status ≠ .Exception msg)
-    (hnhalt_sf : sf.status ≠ .Halted) :
-    keepBcmpHull m (u.readReg64 .lr) = false := by
-  rw [← keepOf_bcmpHullRegion_apply m resolve]
-  exact lr_trap_at_call_ret
-    (bcmpHull_regionWordsSafe hres)
-    (bcmpHullRegion_hasWords_of_hasWords hHas)
-    (fun hL => htrap_u (keepOf_bcmpHullRegion_apply m resolve _ ▸ hL))
-    (fun hL pc hkp =>
-      hreg_ext (keepOf_bcmpHullRegion_apply m resolve _ ▸ hL) pc
-        (keepOf_bcmpHullRegion_apply m resolve _ ▸ hkp))
-    hext_u
-    (bcmpHullRegion_codeLoaded_iff.mpr hCode_u)
-    hsteps_u_sf hrun_u hu_ne_sf
-    (fun hr => (keepOf_bcmpHullRegion_apply m resolve _).trans (hout_sf hr))
-    hnoex_sf hnhalt_sf
-
-/-- Non-`.Running` terminal call-point `keepBcmpHull m (u.readReg64 .lr) = false`. -/
-theorem bcmpHull_lr_trap_at_call
-    {P_ghost P_sub : Program} {m : BitVec 64} {resolve : String → BitVec 64}
-    {f_u : State → State} {u sf : State}
-    (hres : resolve "memcmp" = m)
-    (hHas : P_sub.hasWords m (bcmpHullWords m resolve))
-    (htrap_u : keepBcmpHull m (u.readReg64 .lr) = true → TrapHook (u.readReg64 .lr) f_u)
-    (hno_ext : ∀ pc, keepBcmpHull m pc = true →
-      P_ghost.externAt? pc = none ∨ P_ghost.externAt? pc = some f_u)
-    (hext_u : P_ghost.externAt? u.pc = some f_u)
-    (hCode_u : P_sub.CodeLoaded u.mem)
-    (hsteps_u_sf : Steps P_ghost u sf)
-    (hrun_u : u.status = .Running)
-    (hrun_sf : sf.status ≠ .Running)
-    (hnoex_sf : ∀ msg, sf.status ≠ .Exception msg)
-    (hnhalt_sf : sf.status ≠ .Halted) :
-    keepBcmpHull m (u.readReg64 .lr) = false := by
-  rw [← keepOf_bcmpHullRegion_apply m resolve]
-  exact lr_trap_at_call
-    (bcmpHull_regionWordsSafe hres)
-    (bcmpHullRegion_hasWords_of_hasWords hHas)
-    (fun hL => htrap_u (keepOf_bcmpHullRegion_apply m resolve _ ▸ hL))
-    (fun pc hkp => hno_ext pc (keepOf_bcmpHullRegion_apply m resolve _ ▸ hkp))
-    hext_u
-    (bcmpHullRegion_codeLoaded_iff.mpr hCode_u)
-    hsteps_u_sf hrun_u hrun_sf hnoex_sf hnhalt_sf
-
-/-- **Card-`c` at-stub trajectory theorem (`bcmpHull_keepLr_false_at_stub_of_outcome`):**
-    56 B `bcmp` hull counterpart of `MemsetKeepLrOfOutcome.memset_keepLr_false_at_stub_of_outcome`. -/
-theorem bcmpHull_keepLr_false_at_stub_of_outcome
-    {P_ghost P_sub : Program} {m stubPc : BitVec 64} {resolve : String → BitVec 64}
-    {f_stub : State → State}
-    (hres : resolve "memcmp" = m)
-    (hHas : P_sub.hasWords m (bcmpHullWords m resolve))
-    (hreg_ext : ∀ pc : BitVec 64, keepBcmpHull m pc = true →
-      P_ghost.externAt? pc = none ∨
-        ∃ f, P_ghost.externAt? pc = some f ∧
-          ∀ L : BitVec 64, keepBcmpHull m L = true → TrapHook L f)
-    (hext_stub : P_ghost.externAt? stubPc = some f_stub)
-    (htrap_stub : ∀ L : BitVec 64, keepBcmpHull m L = true → TrapHook L f_stub)
-    {s0 sf : State}
-    (hc_codeLoaded : P_sub.CodeLoaded s0.mem)
-    (hGuard0 : BcmpEntryGuard m stubPc s0)
-    (hret_pc : sf.status = .Running → sf.pc = s0.readReg64 .lr)
-    (hnoex_sf : ∀ msg, sf.status ≠ .Exception msg)
-    (hnhalt_sf : sf.status ≠ .Halted) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost u sf →
-      u.status = .Running →
-      u.pc = stubPc →
-      keepBcmpHull m (u.readReg64 .lr) = false := by
-  intro u hsteps_s0_u hsteps_u_sf hrun_u hpc_u
-  rw [← keepOf_bcmpHullRegion_apply m resolve]
-  exact keepLr_false_at_stub_of_outcome
-    (bcmpHull_regionWordsSafe hres)
-    (bcmpHullRegion_hasWords_of_hasWords hHas)
-    (fun pc hkp =>
-      (hreg_ext pc (keepOf_bcmpHullRegion_apply m resolve _ ▸ hkp)).imp id
-        fun ⟨f, hf, htf⟩ => ⟨f, hf, fun L hL => htf L (keepOf_bcmpHullRegion_apply m resolve _ ▸ hL)⟩)
-    hext_stub
-    (fun L hL => htrap_stub L (keepOf_bcmpHullRegion_apply m resolve _ ▸ hL))
-    (bcmpHullRegion_codeLoaded_iff.mpr hc_codeLoaded)
-    ((bcmpEntryGuard_iff_trapEntryGuard m stubPc resolve s0).mp hGuard0)
-    hret_pc hnoex_sf hnhalt_sf u hsteps_s0_u hsteps_u_sf hrun_u hpc_u
-
-/-- **Card-`c` at-stub `SubroutineOutcome` theorem (`bcmpHull_keepLr_false_at_stub_of_subroutineOutcome`).** -/
-theorem bcmpHull_keepLr_false_at_stub_of_subroutineOutcome
-    {α : Type} {spec_ghost : Spec α} {x : α} {R : SepProp}
-    {P_ghost P_sub : Program} {m stubPc : BitVec 64} {resolve : String → BitVec 64}
-    {f_stub : State → State}
-    (hres : resolve "memcmp" = m)
-    (hHas : P_sub.hasWords m (bcmpHullWords m resolve))
-    (hreg_ext : ∀ pc : BitVec 64, keepBcmpHull m pc = true →
-      P_ghost.externAt? pc = none ∨
-        ∃ f, P_ghost.externAt? pc = some f ∧
-          ∀ L : BitVec 64, keepBcmpHull m L = true → TrapHook L f)
-    (hext_stub : P_ghost.externAt? stubPc = some f_stub)
-    (htrap_stub : ∀ L : BitVec 64, keepBcmpHull m L = true → TrapHook L f_stub)
-    {s0 sf : State}
-    (hc_codeLoaded : P_sub.CodeLoaded s0.mem)
-    (hGuard0 : BcmpEntryGuard m stubPc s0)
-    (hout : SubroutineOutcome spec_ghost x R s0 sf) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost u sf →
-      u.status = .Running →
-      u.pc = stubPc →
-      keepBcmpHull m (u.readReg64 .lr) = false := by
-  obtain ⟨hret_pc, hnoex_sf, hnhalt_sf⟩ := subroutineOutcome_running_pc_and_noFault hout
-  exact bcmpHull_keepLr_false_at_stub_of_outcome hres hHas hreg_ext hext_stub htrap_stub
-    hc_codeLoaded hGuard0 hret_pc hnoex_sf hnhalt_sf
 
 /-- `∀ L` adapter bridging STARTUP's entry-excluded `externAt? pc = none` (`pc ∉ entries`) plus
     uniform per-entry `TrapHook` witnesses directly into `bcmpHull_keepLr_false_after_hook_of_outcome`,
@@ -794,91 +530,6 @@ theorem f3EmptyBcmpGhostHook_keepLr_false_after_hook_of_codeLoaded_u
     (fun _ hL => trapHook_f3EmptyBcmpGhostHook_of_cover P_sub entryTarget hcover hL)
     hlr_s0 hret_pc hnoex_sf hnhalt_sf
 
-/-- Entry-excluded card-`c` post-hook theorem for `W`-independent `f3EmptyBcmpGhostHook` when
-    `P_ghost` has no externs inside `keepBcmpHull m` other than `stubPc` (`m + memcmpByteLen`). -/
-theorem f3EmptyBcmpGhostHook_keepLr_false_after_hook_of_outcome
-    {P_ghost P_sub : Program} {keepR : BitVec 64 → Bool} {m stubPc entryTarget : BitVec 64}
-    {resolve : String → BitVec 64}
-    (hres : resolve "memcmp" = m)
-    (hHas : P_sub.hasWords m (bcmpHullWords m resolve))
-    (hcover : ∀ pc, keepBcmpHull m pc = true → keepR pc = true)
-    (hno_ext_outside : ∀ pc : BitVec 64,
-      keepBcmpHull m pc = true → pc ≠ stubPc → P_ghost.externAt? pc = none)
-    (hext_stub : P_ghost.externAt? stubPc =
-      some (f3EmptyBcmpGhostHook keepR P_sub entryTarget))
-    {s0 sf : State}
-    (hc_codeLoaded : P_sub.CodeLoaded s0.mem)
-    (hlr_s0 : keepBcmpHull m (s0.readReg64 .lr) = false)
-    (hret_pc : sf.status = .Running → sf.pc = s0.readReg64 .lr)
-    (hnoex_sf : ∀ msg, sf.status ≠ .Exception msg)
-    (hnhalt_sf : sf.status ≠ .Halted) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost (f3EmptyBcmpGhostHook keepR P_sub entryTarget u) sf →
-      u.status = .Running →
-      u.mem.KeepsFrozen (f3EmptyBcmpGhostHook keepR P_sub entryTarget u).mem →
-      keepBcmpHull m (u.readReg64 .lr) = false :=
-  bcmpHull_keepLr_false_after_hook_of_outcome hres hHas
-    (bcmpHull_reg_ext_of_stub_excluded hno_ext_outside hext_stub
-      (fun _ hL => trapHook_f3EmptyBcmpGhostHook_of_cover P_sub entryTarget hcover hL))
-    (fun _ hL => trapHook_f3EmptyBcmpGhostHook_of_cover P_sub entryTarget hcover hL)
-    hc_codeLoaded hlr_s0 hret_pc hnoex_sf hnhalt_sf
-
-/-- Entry-excluded card-`c` post-hook `SubroutineOutcome` theorem for `f3EmptyBcmpGhostHook`. -/
-theorem f3EmptyBcmpGhostHook_keepLr_false_after_hook_of_subroutineOutcome
-    {α : Type} {spec_ghost : Spec α} {x : α} {R : SepProp}
-    {P_ghost P_sub : Program} {keepR : BitVec 64 → Bool} {m stubPc entryTarget : BitVec 64}
-    {resolve : String → BitVec 64}
-    (hres : resolve "memcmp" = m)
-    (hHas : P_sub.hasWords m (bcmpHullWords m resolve))
-    (hcover : ∀ pc, keepBcmpHull m pc = true → keepR pc = true)
-    (hno_ext_outside : ∀ pc : BitVec 64,
-      keepBcmpHull m pc = true → pc ≠ stubPc → P_ghost.externAt? pc = none)
-    (hext_stub : P_ghost.externAt? stubPc =
-      some (f3EmptyBcmpGhostHook keepR P_sub entryTarget))
-    {s0 sf : State}
-    (hc_codeLoaded : P_sub.CodeLoaded s0.mem)
-    (hlr_s0 : keepBcmpHull m (s0.readReg64 .lr) = false)
-    (hout : SubroutineOutcome spec_ghost x R s0 sf) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost (f3EmptyBcmpGhostHook keepR P_sub entryTarget u) sf →
-      u.status = .Running →
-      u.mem.KeepsFrozen (f3EmptyBcmpGhostHook keepR P_sub entryTarget u).mem →
-      keepBcmpHull m (u.readReg64 .lr) = false := by
-  obtain ⟨hret_pc, hnoex_sf, hnhalt_sf⟩ := subroutineOutcome_running_pc_and_noFault hout
-  exact f3EmptyBcmpGhostHook_keepLr_false_after_hook_of_outcome hres hHas hcover
-    hno_ext_outside hext_stub hc_codeLoaded hlr_s0 hret_pc hnoex_sf hnhalt_sf
-
-/-- Entry-excluded card-`c` at-stub `SubroutineOutcome` theorem for `f3EmptyBcmpGhostHook`. -/
-theorem f3EmptyBcmpGhostHook_keepLr_false_at_stub_of_subroutineOutcome
-    {α : Type} {spec_ghost : Spec α} {x : α} {R : SepProp}
-    {P_ghost P_sub : Program} {keepR : BitVec 64 → Bool} {m stubPc entryTarget : BitVec 64}
-    {resolve : String → BitVec 64}
-    (hres : resolve "memcmp" = m)
-    (hHas : P_sub.hasWords m (bcmpHullWords m resolve))
-    (hcover : ∀ pc, keepBcmpHull m pc = true → keepR pc = true)
-    (hno_ext_outside : ∀ pc : BitVec 64,
-      keepBcmpHull m pc = true → pc ≠ stubPc → P_ghost.externAt? pc = none)
-    (hext_stub : P_ghost.externAt? stubPc =
-      some (f3EmptyBcmpGhostHook keepR P_sub entryTarget))
-    {s0 sf : State}
-    (hc_codeLoaded : P_sub.CodeLoaded s0.mem)
-    (hGuard0 : BcmpEntryGuard m stubPc s0)
-    (hout : SubroutineOutcome spec_ghost x R s0 sf) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost u sf →
-      u.status = .Running →
-      u.pc = stubPc →
-      keepBcmpHull m (u.readReg64 .lr) = false :=
-  bcmpHull_keepLr_false_at_stub_of_subroutineOutcome hres hHas
-    (bcmpHull_reg_ext_of_stub_excluded hno_ext_outside hext_stub
-      (fun _ hL => trapHook_f3EmptyBcmpGhostHook_of_cover P_sub entryTarget hcover hL))
-    hext_stub
-    (fun _ hL => trapHook_f3EmptyBcmpGhostHook_of_cover P_sub entryTarget hcover hL)
-    hc_codeLoaded hGuard0 hout
-
 /-- Entry-excluded card-`c` `InvS u` post-hook theorem for `K`-narrowed `f3EmptyBcmpGhostHookK`
     (`stubPc = m + memcmpByteLen` on stock/2C; consumes `P_sub.CodeLoaded u.mem` at `u`). -/
 theorem f3EmptyBcmpGhostHookK_keepLr_false_after_hook_of_codeLoaded_u
@@ -907,91 +558,6 @@ theorem f3EmptyBcmpGhostHookK_keepLr_false_after_hook_of_codeLoaded_u
       (fun _ hL => trapHook_f3EmptyBcmpGhostHookK_of_cover P_sub entryTarget hcover hL))
     (fun _ hL => trapHook_f3EmptyBcmpGhostHookK_of_cover P_sub entryTarget hcover hL)
     hlr_s0 hret_pc hnoex_sf hnhalt_sf
-
-/-- Entry-excluded card-`c` post-hook theorem for `K`-narrowed `f3EmptyBcmpGhostHookK` when
-    `P_ghost` has no externs inside `keepBcmpHull m` other than `stubPc` (`m + memcmpByteLen`). -/
-theorem f3EmptyBcmpGhostHookK_keepLr_false_after_hook_of_outcome
-    {P_ghost P_sub : Program} {keepR : BitVec 64 → Bool} {m stubPc entryTarget : BitVec 64}
-    {resolve : String → BitVec 64}
-    (hres : resolve "memcmp" = m)
-    (hHas : P_sub.hasWords m (bcmpHullWords m resolve))
-    (hcover : ∀ pc, keepBcmpHull m pc = true → keepR pc = true)
-    (hno_ext_outside : ∀ pc : BitVec 64,
-      keepBcmpHull m pc = true → pc ≠ stubPc → P_ghost.externAt? pc = none)
-    (hext_stub : P_ghost.externAt? stubPc =
-      some (f3EmptyBcmpGhostHookK keepR P_sub entryTarget))
-    {s0 sf : State}
-    (hc_codeLoaded : P_sub.CodeLoaded s0.mem)
-    (hlr_s0 : keepBcmpHull m (s0.readReg64 .lr) = false)
-    (hret_pc : sf.status = .Running → sf.pc = s0.readReg64 .lr)
-    (hnoex_sf : ∀ msg, sf.status ≠ .Exception msg)
-    (hnhalt_sf : sf.status ≠ .Halted) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost (f3EmptyBcmpGhostHookK keepR P_sub entryTarget u) sf →
-      u.status = .Running →
-      u.mem.KeepsFrozen (f3EmptyBcmpGhostHookK keepR P_sub entryTarget u).mem →
-      keepBcmpHull m (u.readReg64 .lr) = false :=
-  bcmpHull_keepLr_false_after_hook_of_outcome hres hHas
-    (bcmpHull_reg_ext_of_stub_excluded hno_ext_outside hext_stub
-      (fun _ hL => trapHook_f3EmptyBcmpGhostHookK_of_cover P_sub entryTarget hcover hL))
-    (fun _ hL => trapHook_f3EmptyBcmpGhostHookK_of_cover P_sub entryTarget hcover hL)
-    hc_codeLoaded hlr_s0 hret_pc hnoex_sf hnhalt_sf
-
-/-- Entry-excluded card-`c` post-hook `SubroutineOutcome` theorem for `f3EmptyBcmpGhostHookK`. -/
-theorem f3EmptyBcmpGhostHookK_keepLr_false_after_hook_of_subroutineOutcome
-    {α : Type} {spec_ghost : Spec α} {x : α} {R : SepProp}
-    {P_ghost P_sub : Program} {keepR : BitVec 64 → Bool} {m stubPc entryTarget : BitVec 64}
-    {resolve : String → BitVec 64}
-    (hres : resolve "memcmp" = m)
-    (hHas : P_sub.hasWords m (bcmpHullWords m resolve))
-    (hcover : ∀ pc, keepBcmpHull m pc = true → keepR pc = true)
-    (hno_ext_outside : ∀ pc : BitVec 64,
-      keepBcmpHull m pc = true → pc ≠ stubPc → P_ghost.externAt? pc = none)
-    (hext_stub : P_ghost.externAt? stubPc =
-      some (f3EmptyBcmpGhostHookK keepR P_sub entryTarget))
-    {s0 sf : State}
-    (hc_codeLoaded : P_sub.CodeLoaded s0.mem)
-    (hlr_s0 : keepBcmpHull m (s0.readReg64 .lr) = false)
-    (hout : SubroutineOutcome spec_ghost x R s0 sf) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost (f3EmptyBcmpGhostHookK keepR P_sub entryTarget u) sf →
-      u.status = .Running →
-      u.mem.KeepsFrozen (f3EmptyBcmpGhostHookK keepR P_sub entryTarget u).mem →
-      keepBcmpHull m (u.readReg64 .lr) = false := by
-  obtain ⟨hret_pc, hnoex_sf, hnhalt_sf⟩ := subroutineOutcome_running_pc_and_noFault hout
-  exact f3EmptyBcmpGhostHookK_keepLr_false_after_hook_of_outcome hres hHas hcover
-    hno_ext_outside hext_stub hc_codeLoaded hlr_s0 hret_pc hnoex_sf hnhalt_sf
-
-/-- Entry-excluded card-`c` at-stub `SubroutineOutcome` theorem for `f3EmptyBcmpGhostHookK`. -/
-theorem f3EmptyBcmpGhostHookK_keepLr_false_at_stub_of_subroutineOutcome
-    {α : Type} {spec_ghost : Spec α} {x : α} {R : SepProp}
-    {P_ghost P_sub : Program} {keepR : BitVec 64 → Bool} {m stubPc entryTarget : BitVec 64}
-    {resolve : String → BitVec 64}
-    (hres : resolve "memcmp" = m)
-    (hHas : P_sub.hasWords m (bcmpHullWords m resolve))
-    (hcover : ∀ pc, keepBcmpHull m pc = true → keepR pc = true)
-    (hno_ext_outside : ∀ pc : BitVec 64,
-      keepBcmpHull m pc = true → pc ≠ stubPc → P_ghost.externAt? pc = none)
-    (hext_stub : P_ghost.externAt? stubPc =
-      some (f3EmptyBcmpGhostHookK keepR P_sub entryTarget))
-    {s0 sf : State}
-    (hc_codeLoaded : P_sub.CodeLoaded s0.mem)
-    (hGuard0 : BcmpEntryGuard m stubPc s0)
-    (hout : SubroutineOutcome spec_ghost x R s0 sf) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost u sf →
-      u.status = .Running →
-      u.pc = stubPc →
-      keepBcmpHull m (u.readReg64 .lr) = false :=
-  bcmpHull_keepLr_false_at_stub_of_subroutineOutcome hres hHas
-    (bcmpHull_reg_ext_of_stub_excluded hno_ext_outside hext_stub
-      (fun _ hL => trapHook_f3EmptyBcmpGhostHookK_of_cover P_sub entryTarget hcover hL))
-    hext_stub
-    (fun _ hL => trapHook_f3EmptyBcmpGhostHookK_of_cover P_sub entryTarget hcover hL)
-    hc_codeLoaded hGuard0 hout
 
 /-- 2-block `TrapRegion` for non-adjacent `bcmp` (`bcmpBase`) + `memcmp` (`memcmpBase`) placements. -/
 @[expose] def bcmpMemcmp2Region (bcmpBase memcmpBase : BitVec 64) : TrapRegion :=
@@ -1028,32 +594,5 @@ theorem bcmpMemcmp2_keepLr_false_after_hook_of_outcome
   keepLr_false_after_hook_of_outcome
     (bcmp_memcmp_regionWordsSafe hrange) hHas hreg_ext htrap_stub
     hc_codeLoaded hlr_s0 hret_pc hnoex_sf hnhalt_sf
-
-/-- At-stub `SubroutineOutcome` theorem on the 2-block `bcmp` + `memcmp` region. -/
-theorem bcmpMemcmp2_keepLr_false_at_stub_of_subroutineOutcome
-    {α : Type} {spec_ghost : Spec α} {x : α} {R : SepProp}
-    {P_ghost : Program} {progs : List Program} {bcmpBase memcmpBase stubPc : BitVec 64}
-    {f_stub : State → State}
-    (hrange : Obj.BranchInRange bcmpBase memcmpBase)
-    (hHas : RegionHasWords progs (bcmpMemcmp2Region bcmpBase memcmpBase))
-    (hreg_ext : ∀ pc : BitVec 64, keepBcmpMemcmp2 bcmpBase memcmpBase pc = true →
-      P_ghost.externAt? pc = none ∨
-        ∃ f, P_ghost.externAt? pc = some f ∧
-          ∀ L : BitVec 64, keepBcmpMemcmp2 bcmpBase memcmpBase L = true → TrapHook L f)
-    (hext_stub : P_ghost.externAt? stubPc = some f_stub)
-    (htrap_stub : ∀ L : BitVec 64, keepBcmpMemcmp2 bcmpBase memcmpBase L = true → TrapHook L f_stub)
-    {s0 sf : State}
-    (hc_codeLoaded : RegionCodeLoaded progs s0.mem)
-    (hGuard0 : TrapEntryGuard (bcmpMemcmp2Region bcmpBase memcmpBase) stubPc s0)
-    (hout : SubroutineOutcome spec_ghost x R s0 sf) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost u sf →
-      u.status = .Running →
-      u.pc = stubPc →
-      keepBcmpMemcmp2 bcmpBase memcmpBase (u.readReg64 .lr) = false :=
-  keepLr_false_at_stub_of_subroutineOutcome
-    (bcmp_memcmp_regionWordsSafe hrange) hHas hreg_ext hext_stub htrap_stub
-    hc_codeLoaded hGuard0 hout
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpLrTrap

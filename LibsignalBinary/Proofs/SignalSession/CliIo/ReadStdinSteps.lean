@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadLoopCommon
-public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslReadStdin
+public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadLoopCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.CliIo.MuslReadStdin
 public import VerifiedLibraries.Musl.Proofs.SyscallProof
 public meta import ProofLib.ProgramReflection
+public import GeneratedLean.SignalSessionIoPlacedObj -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.Sym -- proof-setup: allow-public-import
 
 /-!
 # Bounded `read_stdin` Epilogues and Step Lemmas
@@ -21,7 +23,7 @@ Proves the `Ok` and `Err` epilogues, register-only capacity-doubling sub-loop, `
 and `memcpy` back-edge step for `signalSessionIoMultiLib` block `0` (`signal_session_io::read_stdin`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -73,12 +75,6 @@ theorem cliIoReadStdin_read_pc [CliIoPlacement] :
     cliIoPl00.base + 84#64 + (cliIoPl00.ρ cliIoReadSym - cliIoPl00.base - 84#64) =
       signalSessionIoMultiLib.resolve CliIoPlacement.mpl cliIoReadSym := by
   change cliIoPl00.base + 84#64 + (signalSessionIoMultiLib.resolve _ _ - cliIoPl00.base - 84#64) = _
-  bv_lin
-
-theorem cliIoReadStdin_errno_pc [CliIoPlacement] :
-    cliIoPl00.base + 96#64 + (cliIoPl00.ρ cliIoErrnoLocationSym - cliIoPl00.base - 96#64) =
-      signalSessionIoMultiLib.resolve CliIoPlacement.mpl cliIoErrnoLocationSym := by
-  change cliIoPl00.base + 96#64 + (signalSessionIoMultiLib.resolve _ _ - cliIoPl00.base - 96#64) = _
   bv_lin
 
 theorem cliIoReadStdin_memcpy_pc [CliIoPlacement] :

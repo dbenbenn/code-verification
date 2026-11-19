@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
@@ -27,7 +27,7 @@ Defines budget-threaded placed contract propositions (`EncodeChainParams1PlacedO
 Block `453` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -108,29 +108,29 @@ private theorem sepWP_done_vm_placed {prog : Program} {target_pc : BitVec 64} {s
 
 /-! ## 1. Budget-Threaded Placed Contract Propositions (Block `453`) -/
 
-def EncodeChainParams1PlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeChainParams1PlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_453 H) (blkPl_453).base
     (withLsCodeLoaded lsmpl (encodeChainParamsSpec A lim))
 
-def EncodeChainParams1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeChainParams1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_453 H) (blkPl_453).base
     (withLsCodeLoaded lsmpl (encodeChainParamsSpecX A lim))
 
-def EncodeChainParams1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeChainParams1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   EncodeChainParams1PlacedOk A lim (Rust.withPanics ext)
 
-def EncodeChainParams1PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeChainParams1PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   EncodeChainParams1PlacedOkX A lim (Rust.withPanics ext)
 
-def EncodeChainParams1ExactPlacedOk [LibsignalPlacement] (resStack : Nat) (A : RustAlloc)
+@[expose] def EncodeChainParams1ExactPlacedOk [LibsignalPlacement] (resStack : Nat) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_453 H) (blkPl_453).base
     (withLsCodeLoaded lsmpl (encodeChainParamsExactVmSpecOf resStack A))

@@ -11,7 +11,7 @@ module
 
 import DY.Trace.Monad
 import DY.Actions.ProtocolEvent
-public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame
+public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame -- proof-setup: allow-public-import
 public import Symbolic.Specifications.Refinement.Statement
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.CREF.CBadG2.MacGuess
@@ -22,9 +22,15 @@ import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CBadG2Pure
 import Symbolic.Proofs.Swarm.CREF.SendWire.WhisperPureA
 import Symbolic.Proofs.Swarm.CREF.TR.FreshSigmaHead
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil
-import Symbolic.Proofs.Swarm.UA.Base
+public import Symbolic.Proofs.Swarm.UA.Base
 import Symbolic.DYBridge.DY.Trace.Monad
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
+import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials
+import Symbolic.Proofs.Swarm.CREF.RoleSnapshots
+import Symbolic.Proofs.Swarm.CREF.Stage1Trials
+import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
+import Symbolic.Proofs.Swarm.CREF.TR.FreshSigmaReach
 
 /-!
 # Step Trace, Stamp, and Ghost Frame Transfer Helpers
@@ -34,7 +40,7 @@ Provides `Step`-level reachability and `MatchesEvents` append/inversion lemmas, 
 and `¬ ReadCollisionCli` across environment compromise and inversion steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

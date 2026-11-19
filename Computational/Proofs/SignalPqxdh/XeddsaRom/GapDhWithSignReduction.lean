@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.XeddsaRom.Statements
-public import Computational.Proofs.SignalPqxdh.XeddsaRom.HvzkSim
+public import Computational.Proofs.SignalPqxdh.XeddsaRom.Statements -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.XeddsaRom.HvzkSim
 import VCVio.OracleComp.Constructions.SampleableType.Measure
 
 /-!
@@ -22,7 +22,7 @@ run (`GapDhWithSignRoBound1A`), and `gapDhAdv1B` checks its first candidate agai
 before a fallback second run to eliminate the factor-2 sign-bit loss (`GapDhWithSignRoBound1B`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -157,7 +157,7 @@ private theorem isQueryBoundP_prim_primStepInGapDh (P : Primitives)
 
 /-- `XeddsaRomOracleSpec` handler inside `GapDhAdv` simulating XEdDSA signing at candidate sign bit
 `bSim` while forwarding DDH and non-XEdDSA primitive queries to the challenger. -/
-noncomputable def simStep (P : Primitives) (U : Bytes) (bSim : UInt8) :
+def simStep (P : Primitives) (U : Bytes) (bSim : UInt8) :
     QueryImpl XeddsaRomOracleSpec
       (StateT sha512RoSpec.QueryCache (OracleComp (PrimBaseSpec + gapDhOracleSpec)))
   | .inl (.inl (.inl k)) => StateT.mk fun c =>
@@ -231,7 +231,7 @@ private theorem simulateQ_simStep_oa {α : Type} (P : Primitives)
       funext p
       exact ih p.1 p.2
 
-noncomputable def simRunInGapDh (P : Primitives) (A : GapDhWithSignRoAdv)
+def simRunInGapDh (P : Primitives) (A : GapDhWithSignRoAdv)
     (bSim : UInt8) (U V : Bytes) :
     OracleComp (PrimBaseSpec + gapDhOracleSpec) Bytes :=
   (simulateQ (simStep P U bSim) (A.run U V)).run' ∅
@@ -288,7 +288,7 @@ private theorem isQueryBoundP_prim_simRunInGapDh (P : Primitives)
       isQueryBoundP_map_iff, isQueryBoundP_query_iff]
     intro hp; simp [isPrimQuery] at hp
 
-private noncomputable def gapDhExpAt (P : Primitives)
+private def gapDhExpAt (P : Primitives)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool) (pow8 : Bytes → Bytes)
     (u v : Bytes) (B : GapDhAdv) : ProbComp Bool := do
   let U := P.x25519Base u
@@ -314,7 +314,7 @@ private theorem evalDist_bind_true_le_const_mul {α : Type}
 /-! ## Single-run reduction (`GapDhWithSignRoBound1A`) -/
 
 /-- Single-run `GapDH` adversary that samples a uniform sign-bit guess for `simRunInGapDh`. -/
-noncomputable def gapDhAdv1A (P : Primitives) (A : GapDhWithSignRoAdv) : GapDhAdv where
+def gapDhAdv1A (P : Primitives) (A : GapDhWithSignRoAdv) : GapDhAdv where
   run U V := do
     let coin ← liftProbToGapDh ($ᵗ Bool)
     simRunInGapDh P A (if coin then 1 else 0) U V
@@ -408,10 +408,10 @@ theorem gapDhWithSignRoBound1A_holds : GapDhWithSignRoBound1A := by
 
 /-- Two-run `GapDH` adversary that tests the `bSim = 0` candidate against `ddhOracle` before falling
 back to `bSim = 1`. -/
-noncomputable def gapDhAdv1B (P : Primitives) (A : GapDhWithSignRoAdv) : GapDhAdv where
+def gapDhAdv1B (P : Primitives) (A : GapDhWithSignRoAdv) : GapDhAdv where
   run U V := do
     let Z₀ ← simRunInGapDh P A 0 U V
-    let ok ← liftM ((PrimBaseSpec + gapDhOracleSpec).query (.inr (U, V, Z₀)))
+    let ok : Bool ← liftM ((PrimBaseSpec + gapDhOracleSpec).query (.inr (U, V, Z₀)))
     if ok then return Z₀ else simRunInGapDh P A 1 U V
   q_ddh := 2 * A.q_ddh + 1
   q_prim := 2 * A.q_prim

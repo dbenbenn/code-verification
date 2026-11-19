@@ -9,16 +9,17 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.RngG.R3ModelInv
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CHistStepPure
-public import Symbolic.Proofs.Swarm.CREF.TR.PureRecvEval
+public import Symbolic.Proofs.RngG.R3ModelInv -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CHistStepPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PureRecvEval -- proof-setup: allow-public-import
 import Symbolic.Proofs.RngG.R3Canon
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecRecvRkOkRatchetDHPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvWire.HistHwPureA
 import Symbolic.Proofs.Swarm.CREF.TR.PureRecvStepBridge
 import Symbolic.Proofs.Swarm.TRREF.EncodeRecordPqInj
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
 
 /-!
 # Record-Level Receiver-Chain Inclusion and `RecRecvRkOk`
@@ -28,7 +29,7 @@ Proves record-level receiver-chain inclusion across `pureEvalRecvWireWithCoinsW`
 `PureCRecRel`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

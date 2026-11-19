@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard3
+meta import GeneratedLean.LibsignalSessionPlacedObjShard4
 
 /-!
 # Relocatable Per-Block Fetches for `TripleRatchet/Wire`
@@ -21,7 +23,7 @@ Generates relocatable per-block instruction fetch/decode lemmas for `<SignalMess
 (Block `63`) and `<SignalMessage as TryFrom<&[u8]>>::try_from` (Block `85`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

@@ -9,10 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.SymPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.SymPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Defs
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.LayoutPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable `<SessionFiles as SessionStore>::load_session::{closure#0}`
@@ -21,7 +34,7 @@ Proves budget-threaded `sessLoadPollSpecPlaced` on Block `569` (`lsProg_569 H`) 
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

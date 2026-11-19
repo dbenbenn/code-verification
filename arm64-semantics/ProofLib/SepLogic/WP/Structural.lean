@@ -20,7 +20,7 @@ public import ProofLib.Abi.Aapcs
 public import ProofLib.SepLogic
 public import ProofLib.SepLogic.Bytes
 import ProofLib.Hoare.Model
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 public import ProofLib.Hoare.Safety
 public import ProofLib.VCGen
 public import ProofLib.LitNorm
@@ -54,7 +54,7 @@ open Arm64
 elab "wp_close_oom_default" : tactic => do
   let _ ← Lean.Elab.Tactic.tryTactic (Lean.Elab.Tactic.evalTactic (← `(tactic| (
     dsimp only [Program.relocSubroutineOk, Program.alignedSubroutineOk,
-      Obj.LinkedImage.subroutineOk, Program.subroutineOk, fn_subroutine_ok,
+      Program.subroutineOk, fn_subroutine_ok,
       ToBaseSpec.toSpec, instToBaseSpecId, instToBaseSpecFn]))))
   for _ in [:3] do
     let mvarId ← Lean.Elab.Tactic.getMainGoal
@@ -1001,26 +1001,7 @@ theorem SepWP.bupd_pre {prog : Program} {target_pc : BitVec 64} {s : Arm64.State
     ((satisfies_bupd (Q ∗ R) s.mem).mp
       (Satisfies.mono (Entails.trans (sepConj_mono_left hb) (bupd_frame_r Q R)) hm))
 
-/-! ## Panic-aware (`SepWPp`) and frozen-image (`FrozenLoaded` / `Spec.inImage`) rules -/
-
-/-- Run a `SepWP` segment to `mid`, re-establishing `img.FrozenLoaded sm` and
-    `sm.symtab = img.symtab` at `mid` before continuing with `SepWP` to `target_pc`. -/
-theorem SepWP.of_sepWP_frozen {prog : Program} {mid target_pc : BitVec 64} {s : State}
-    {P : SepProp} {post : State → SepProp → Prop} {oom : State → SepProp}
-    {img : Obj.Image} (hfz : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h : SepWP prog mid s P (fun sm Pm =>
-      img.FrozenLoaded sm → sm.symtab = img.symtab →
-      SepWP prog target_pc sm Pm post oom) oom) :
-    SepWP prog target_pc s P post oom := by
-  intro R hm hL
-  rcases (h R hm) hL with ⟨sm, hsteps, ⟨_, _, Pm, hmm, hcont⟩ | hoom⟩
-  · have hfz_m := hfz.of_keepsFrozen hsteps.keepsFrozen
-    have hsym_m := hsteps.symtab_eq.trans hsym
-    obtain ⟨sf, hsteps', hout'⟩ := hcont hfz_m hsym_m R hmm (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout'⟩
-  · exact ⟨sm, hsteps, Or.inr hoom⟩
-
-abbrev SepWP.of_sepWP_inv := @SepWP.of_sepWP_frozen
+/-! ## Panic-aware (`SepWPp`) rules -/
 
 /-- Strengthen a state-indexed spatial postcondition entailment `Pm ⊢ Q₁ sm` to `Pm ⊢ Q₂ sm`
     in `SepWP`, preserving out-of-memory (`oom`) outcomes. -/
@@ -1038,44 +1019,6 @@ theorem SepWP.strengthen_entails_const {prog : Program} {target_pc : BitVec 64} 
     (h : SepWP prog target_pc s P (fun sm Pm => (Pm ⊢ P₁) ∧ φ sm) oom) :
     SepWP prog target_pc s P (fun sm Pm => (Pm ⊢ P₂) ∧ φ sm) oom :=
   SepWP.strengthen_entails (fun _ => himp) h
-
-/-- Framed `subroutine_ok` invocation rule for `SepWP` that also preserves `img.FrozenLoaded`
-    and `symtab = img.symtab` across the call. -/
-theorem SepWP.call_subroutine_frame_frozen {α : Type} {prog : Program} {entry target_pc : BitVec 64}
-    {spec : Spec α}
-    (hcall : subroutine_ok prog entry spec)
-    {x : α} {s : State} {P F : SepProp} {post : State → SepProp → Prop} {oom : State → SepProp}
-    {ret_pc : BitVec 64} {img : Obj.Image}
-    (hfz : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hpc : s.pc = entry)
-    (hrun : s.status = .Running)
-    (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hpre : ∀ R : SepProp, (s.mem ⊨ P ∗ R) → (s.mem ⊨ spec.pre x s ∗ (F ∗ R)))
-    (h_no_panic : ∀ R' sf, sf.status = .Panicked → ¬(sf.mem ⊨ spec.onPanic x s sf ∗ R'))
-    (h_no_exit : ∀ R' code sf, sf.status = .Exited code → ¬(sf.mem ⊨ spec.onExit x code s sf ∗ R'))
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWP prog target_pc sf (spec.post x s sf ∗ F) post oom)
-    (h_oom : ∀ R' sf, sf.status = .OutOfMemory →
-      (sf.mem ⊨ spec.onOom x s sf ∗ (F ∗ R')) → (sf.mem ⊨ oom sf ∗ R') := by
-      wp_close_oom_default) :
-    SepWP prog target_pc s P post oom := by
-  intro R hm hL
-  obtain ⟨sm, hsteps, hout⟩ :=
-    reaches_outcome_iff.1 (subroutine_ok_apply_outcome hcall x (F ∗ R) hpc hrun (hpre R hm) hsp_align) hL
-  rcases hout with ⟨⟨hpcm, _, hrunm⟩, ⟨hspm, hcsm⟩, hpostM⟩ | ⟨hpan, hpostM⟩ | ⟨code, hex, hpostM⟩ | ⟨hoom_st, hpostM⟩
-  · rw [← sepConj_assoc] at hpostM
-    rw [hlr] at hpcm
-    have hfz_m := hfz.of_keepsFrozen hsteps.keepsFrozen
-    have hsym_m := hsteps.symtab_eq.trans hsym
-    obtain ⟨sf, hsteps', hout'⟩ :=
-      (hnext sm hpcm hrunm hspm hcsm hfz_m hsym_m R hpostM) (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout'⟩
-  · exact (h_no_panic (F ∗ R) sm hpan hpostM).elim
-  · exact (h_no_exit (F ∗ R) code sm hex hpostM).elim
-  · exact ⟨sm, hsteps, Or.inr ⟨hoom_st, h_oom R sm hoom_st hpostM⟩⟩
 
 theorem entails_anyHeap (P : SepProp) : P ⊢ anyHeap :=
   Entails.top_right fun _ => SepProp.holds_anyHeap_iff.mpr trivial
@@ -1101,24 +1044,6 @@ namespace SepWPp
 
 variable {prog : Program} {ret : BitVec 64} {s : State} {P : SepProp}
   {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-
-/-- Run a `SepWP` segment to `mid`, re-establishing `img.FrozenLoaded sm` and
-    `sm.symtab = img.symtab` at `mid` before continuing with `SepWPp`. -/
-theorem of_sepWP_frozen {mid : BitVec 64} {img : Obj.Image}
-    (hfz : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h : SepWP prog mid s P (fun sm Pm =>
-      img.FrozenLoaded sm → sm.symtab = img.symtab →
-      SepWPp prog ret sm Pm Q Qp oom) oom) :
-    SepWPp prog ret s P Q Qp oom := by
-  intro R hm hL
-  rcases h.elim hm hL with ⟨sm, hsteps, ⟨-, -, Pm, hmm, hnext⟩ | hoom⟩
-  · have hfz_m := hfz.of_keepsFrozen hsteps.keepsFrozen
-    have hsym_m := hsteps.symtab_eq.trans hsym
-    obtain ⟨sf, hsteps', hout⟩ := hnext hfz_m hsym_m R hmm (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout⟩
-  · exact ⟨sm, hsteps, Or.inr (Or.inr hoom)⟩
-
-abbrev of_sepWP_inv := @of_sepWP_frozen
 
 /-- A final `SepWP` segment that reaches `ret` (no panic on this path). -/
 theorem of_sepWP_ret (h : SepWP prog ret s P Q oom) : SepWPp prog ret s P Q Qp oom := by
@@ -1256,44 +1181,6 @@ theorem call_wpp {α : Type} {entry ret_pc : BitVec 64} {spec : Spec α}
   · exact (hexit sm code _ hex hpost).elim
   · exact ⟨sm, hsteps, Or.inr (Or.inr ⟨hoom_st, hoom sm R hoom_st hpost⟩)⟩
 
-/-- Unified frozen-aware `subroutine_ok` call rule for `SepWPp`: preserves `img.FrozenLoaded`
-    and `symtab = img.symtab` across the call and hands `img.FrozenLoaded sf` and
-    `sf.symtab = img.symtab` to the continuation `hnext`. -/
-theorem call_wpp_frozen {α : Type} {entry ret_pc : BitVec 64} {spec : Spec α}
-    (hcall : subroutine_ok prog entry spec)
-    {x : α} {F : SepProp} {img : Obj.Image}
-    (hfz : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hpre : ∀ R : SepProp, (s.mem ⊨ P ∗ R) → (s.mem ⊨ spec.pre x s ∗ (F ∗ R)))
-    (hexit : ∀ sf code R', sf.status = .Exited code → (sf.mem ⊨ spec.onExit x code s sf ∗ R') → False)
-    (hpanic : ∀ sf, sf.status = .Panicked →
-      (∃ R', sf.mem ⊨ spec.onPanic x s sf ∗ R') → Qp sf (spec.onPanic x s sf ∗ F))
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp oom)
-    (hoom : ∀ sf R', sf.status = .OutOfMemory →
-      (sf.mem ⊨ spec.onOom x s sf ∗ (F ∗ R')) → (sf.mem ⊨ oom sf ∗ R') := by
-      wp_close_oom_default) :
-    SepWPp prog ret s P Q Qp oom := by
-  intro R hm hL
-  obtain ⟨sm, hsteps, hout⟩ :=
-    reaches_outcome_iff.1 (subroutine_ok_apply_outcome hcall x (F ∗ R) hpc hrun (hpre R hm) hsp) hL
-  rcases hout with ⟨⟨hpcm, _, hrunm⟩, ⟨hspm, hcsm⟩, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, hex, hpost⟩ | ⟨hoom_st, hpost⟩
-  · rw [← sepConj_assoc] at hpost
-    rw [hlr] at hpcm
-    have hfz_m := hfz.of_keepsFrozen hsteps.keepsFrozen
-    have hsym_m := hsteps.symtab_eq.trans hsym
-    obtain ⟨sf, hsteps', hout'⟩ :=
-      hnext sm hpcm hrunm hspm hcsm hfz_m hsym_m R hpost (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout'⟩
-  · have hpan_ex : ∃ R', sm.mem ⊨ spec.onPanic x s sm ∗ R' := ⟨F ∗ R, hpost⟩
-    rw [← sepConj_assoc] at hpost
-    exact ⟨sm, hsteps, Or.inr (Or.inl ⟨hpan, _, hpost, hpanic sm hpan hpan_ex⟩)⟩
-  · exact (hexit sm code _ hex hpost).elim
-  · exact ⟨sm, hsteps, Or.inr (Or.inr ⟨hoom_st, hoom sm R hoom_st hpost⟩)⟩
-
 /-- Call (`bl`) a callee with spec `spec` (which may panic), lending it `spec.pre x s` out of `P`
     and keeping the frame `F`. `hexit` excludes process exit by the callee. -/
 theorem call {α : Type} {entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {F : SepProp}
@@ -1334,58 +1221,6 @@ theorem call_frame {α : Type} {entry ret_pc : BitVec 64} {spec : Spec α} {x : 
   rw [hspec, sepConj_assoc, satisfies_pure_sepConj, ← sepConj_assoc, ← hP]
   exact ⟨hφ, hm⟩
 
-/-- Framed `SepWPp.call` carrying `img.FrozenLoaded` and `symtab = img.symtab` across the call. -/
-theorem call_frame_frozen {α : Type} {entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {φ : Prop}
-    {T F : SepProp} {img : Obj.Image}
-    (hcall : subroutine_ok prog entry spec)
-    (hfz : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hexit : ∀ sf code R', sf.status = .Exited code → (sf.mem ⊨ spec.onExit x code s sf ∗ R') → False)
-    (hpanic : ∀ sf, sf.status = .Panicked → Qp sf (spec.onPanic x s sf ∗ F))
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp oom)
-    (hoom : ∀ sf R', sf.status = .OutOfMemory →
-      (sf.mem ⊨ spec.onOom x s sf ∗ (F ∗ R')) → (sf.mem ⊨ oom sf ∗ R') := by
-      wp_close_oom_default) :
-    SepWPp prog ret s P Q Qp oom := by
-  refine call_wpp_frozen (x := x) (F := F) hcall hfz hsym hpc hrun hsp hlr ?_ hexit
-    (fun sf hpan _ => hpanic sf hpan) hnext hoom
-  intro R hm
-  rw [hspec, sepConj_assoc, satisfies_pure_sepConj, ← sepConj_assoc, ← hP]
-  exact ⟨hφ, hm⟩
-
-/-- Framed `SepWPp.call` for a `spec0.inImage img` callee, automatically discharging the
-    `img.FrozenLoaded s ∧ s.symtab = img.symtab` precondition of `Spec.inImage` and preserving
-    both facts on the post-call state `sf`. -/
-theorem call_inImage_frame {α : Type} {entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {φ : Prop}
-    {T F : SepProp} {img : Obj.Image}
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (hfz : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hexit : ∀ sf code R', sf.status = .Exited code → (sf.mem ⊨ spec.onExit x code s sf ∗ R') → False)
-    (hpanic : ∀ sf, sf.status = .Panicked → Qp sf (spec.onPanic x s sf ∗ F))
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp oom)
-    (hoom : ∀ sf R', sf.status = .OutOfMemory →
-      (sf.mem ⊨ spec.onOom x s sf ∗ (F ∗ R')) → (sf.mem ⊨ oom sf ∗ R') := by
-      wp_close_oom_default) :
-    SepWPp prog ret s P Q Qp oom := by
-  refine call_wpp_frozen (x := x) (F := F) hcall hfz hsym hpc hrun hsp hlr ?_ hexit
-    (fun sf hpan _ => hpanic sf hpan) hnext hoom
-  intro R hm
-  dsimp [Spec.inImage]
-  rw [hspec, sepConj_assoc, satisfies_pure_sepConj, sepConj_assoc, satisfies_pure_sepConj,
-    ← sepConj_assoc, ← hP]
-  exact ⟨⟨hfz, hsym⟩, hφ, hm⟩
-
 /-- Tail call (`b`) to a callee with spec `spec` (which may panic): the callee returns to our
     caller (`ret` is the current return address). -/
 theorem tailcall {α : Type} {entry : BitVec 64} {spec : Spec α} {x : α} {F : SepProp}
@@ -1405,7 +1240,5 @@ theorem tailcall {α : Type} {entry : BitVec 64} {spec : Spec α} {x : α} {F : 
     done hpcf hrunf (hret sf hpcf hrunf hspf hcsf)) hoom
 
 end SepWPp
-
-abbrev call_frame_frozen := @SepWPp.call_frame_frozen
 
 end ProofLib

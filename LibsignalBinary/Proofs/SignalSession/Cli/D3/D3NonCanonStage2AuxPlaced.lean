@@ -9,25 +9,39 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.PreKeyGeneralAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3MatchingPathBAuxPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2b2
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.StageP2
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1OkFoldPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1AgreePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverFoldsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.PreKeyGeneralAux
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3MatchingPathBAuxPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2b2
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Fetch
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP2a
+import LibsignalBinary.Proofs.TripleRatchet.TrapRng
+import ProofLib.SepLogic.WP
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1OkFoldPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1AgreePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverFoldsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDerive
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridge
+import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDerive
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridge
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverFolds
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedMatchFold
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1OkFold
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Defs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathAKeys -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeCoins -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.Ok
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CoinsBridgePlaced
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Generalized Stage P2 for Non-Canonical `PreKeySignalMessage` Wire Encodings
@@ -37,14 +51,14 @@ from canonical `pm = pmOfE m i` (`pm.serialized = m.bytes`) to arbitrary
 `pm : PreKeySignalMessage` satisfying `pkToE? pm = some m`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.D3
 
-open Arm64 Arm64.Process ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection ProofLib.Variant
+open Arm64 Arm64.Process ProofLib ProofLib.ProgramReflection ProofLib.Variant
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSession CryptoVerification.LibsignalSessionRepr
@@ -147,7 +161,7 @@ theorem tryFrom_inner_of_pksmParse_pkToE {body : List (BitVec 8)} {pm : PreKeySi
 /-- Generalized `DecPkOk₀` allowing arbitrary `pm.serialized`: `pkToE? pm = some m`, `m.inner`
 parses to `pm.message` with `m.inner.length + 2048 < 2 ^ 32`, and the canonical twin
 `pmOfE m pm.message` satisfies `DecPkOk₀`. -/
-def DecPkOkD3 (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] def DecPkOkD3 (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer me : AddrVal) (pm : PreKeySignalMessage) : Prop :=
   ∃ m : PreKeyMessageFields,
     m.inner.length + 2048 < 2 ^ 32 ∧
@@ -246,7 +260,7 @@ theorem pm_fields_of_pkToE {pm : PreKeySignalMessage} {m : PreKeyMessageFields} 
   exact pmOfE_fields m i
 
 /-- Remainder of `preKeyMsgRemBaseIdKeyAt` for arbitrary `pm.serialized`. -/
-def pathAMsgRemInnerAtD3 (g : PreKeyMsgGhost) (msgA : BitVec 64)
+@[expose] def pathAMsgRemInnerAtD3 (g : PreKeyMsgGhost) (msgA : BitVec 64)
     (pm : PreKeySignalMessage) : SepProp :=
   ⌜g.kyberPtr ≠ 0 ∧ 1569 < 2 ^ 63⌝ ∗
   E2E.HooksE.A0.live g.kyberPtr 1569 1 ∗
@@ -383,7 +397,7 @@ theorem kpkId_shift_or_one_eq_append_d3 (kpkId : BitVec 32) :
 
 /-- Placed spatial frame preserved untouched across `stageP2_v1_kits` on Path A for arbitrary
 `y.g.msg.serialized`. -/
-def pathAInnerFrameD3Placed {B : RunBudgets} {S : RunSem} [LibsignalPlacement]
+@[expose] def pathAInnerFrameD3Placed {B : RunBudgets} {S : RunSem} [LibsignalPlacement]
     (y : DpPollGhostState (dpSlotPollKStatePlaced E2E.HooksE.A0 B S))
     (i : SignalMessage) (rngPtr sp : BitVec 64) : SepProp :=
   (cliPollSessKitPlaced E2E.HooksE.A0 y.g.F Slots.scopeKit y.g.peer (cliKitStk B)).storeAt

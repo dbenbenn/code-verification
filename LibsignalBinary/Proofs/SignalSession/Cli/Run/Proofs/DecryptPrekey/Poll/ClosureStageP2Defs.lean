@@ -9,13 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropSessionStructure3
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3Stmt
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2a
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2b
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StoresAt
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropSessionStructure3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3Stmt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2b -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StoresAt -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4KyberRefused
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Poll Stage P2 and Stage P3 `Ext` Interfaces and Stack Budgets
@@ -24,7 +27,7 @@ Defines `prevSessionsEmptyAt`, Stage P2 stack budgets (`stageP2CallStack`), Path
 Stage P3 predicates (`StageP3PrevEmptyVRegsStmt`), and Path A `StageP3GenStepsVRegsStmt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -70,7 +73,7 @@ attribute [-arm64_norm]
 /-- Empty `previous_sessions` `Vec` header + optional spare capacity buffer at `coroPtr + 0xe0#64`
 extracted from `sessionRecordAt A (coroPtr + 0xe0#64) g r`
 (definitionally equal to `Matched.prevSessionsEmptyAt`). -/
-def prevSessionsEmptyAt (A : RustAlloc) (coroPtr : BitVec 64) (g : RecordGhost) : SepProp :=
+@[expose] def prevSessionsEmptyAt (A : RustAlloc) (coroPtr : BitVec 64) (g : RecordGhost) : SepProp :=
   vecAt A 24 8 (fun (_ : Unit) _ => emp) (coroPtr + 0xe0#64) g.prevCap g.prevPtr []
 
 theorem sessionRecordAt_some_eq_prev_sess (A : RustAlloc) (coroPtr : BitVec 64)
@@ -210,14 +213,14 @@ theorem coro298_two_entails_memRegion8 (coroPtr : BitVec 64) (hi : BitVec 32) :
 
 /-- Pure/unwind callee stack floor across Substages P2.1–P2.6 and error exits
 (definitionally equal to `Kits.stageP2PureAndErrStack`). -/
-def stageP2PureAndErrStack : Nat :=
+@[expose] def stageP2PureAndErrStack : Nat :=
   max (stageP2bStack + 0x700)
     (max stageP2aStack
       (max allocHookStack dropSessionStructureLocal2Stack))
 
 /-- Unified stack budget for full fresh-session Stage P2 (`+0x0868 → +0x1778` and all 6 error
 exits; definitionally equal to `Kits.stageP2CallStack`). -/
-def stageP2CallStack {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
+@[expose] def stageP2CallStack {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
     (spkKit : SignedPreKeyStoreSpec A b)
     (kpkKit : KyberPreKeyStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b)
@@ -266,7 +269,7 @@ theorem cliPollStageP2Stack_le_subStack (A : RustAlloc) (b : BitVec 64) (F0 : Fs
 
 /-- Path B counterpart of `stageP3Sub5ExtraPre` replacing `(coroPtr + 0xe0..0xf0)` (`prevCap = 0#64`)
 with general `prevSessionsEmptyAt A coroPtr g`. -/
-def stageP3Sub5ExtraPrePrevEmpty (A : RustAlloc) (s0 s : State)
+@[expose] def stageP3Sub5ExtraPrePrevEmpty (A : RustAlloc) (s0 s : State)
     (coroPtr outPtr initErrsPtr : BitVec 64) (g : RecordGhost) (b_2c0 : BitVec 8) : SepProp :=
   ((s.sp + 0x80#64) ↦₆₄ (coroPtr + 0xf8#64)) ∗
   ((s.sp + 0x88#64) ↦₆₄ (coroPtr + 0xe0#64)) ∗ ((s.sp + 0xc8#64) ↦₆₄ outPtr) ∗
@@ -275,48 +278,6 @@ def stageP3Sub5ExtraPrePrevEmpty (A : RustAlloc) (s0 s : State)
   prevSessionsEmptyAt A coroPtr g ∗ ((coroPtr + 0x2c0#64) ↦₈ b_2c0) ∗
   memRegion outPtr 48 ∗ memRegion (s.sp + 0x250#64) 20 ∗ memRegion (s.sp + 0x370#64) 36 ∗
   decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0
-
-/-- Path B counterpart of `stageP3DispatchOkMid` at `+0x34dc#64` (`Ok pt`), preserving untouched
-`prevSessionsEmptyAt A coroPtr g` into `M4`. -/
-def stageP3DispatchOkMidPrevEmpty (A : RustAlloc) (b : BitVec 64) (s0 s : State)
-    (coroPtr outPtr initErrsPtr ptCap ptPtr : BitVec 64) (g : RecordGhost)
-    (pt : List (BitVec 8)) (b_2c0 : BitVec 8)
-    (G₂ : SessionGhost) (st₂ : SessionState (List (BitVec 8))) : SepProp :=
-  ((s.sp + 0x88#64) ↦₆₄ (coroPtr + 0xe0#64)) ∗ ((s.sp + 0xc8#64) ↦₆₄ outPtr) ∗
-  ((s.sp + 0x270#64) ↦₆₄ 0xfffffffffffffffe#64) ∗ ((s.sp + 0x278#64) ↦₆₄ ptCap) ∗
-  ((s.sp + 0x280#64) ↦₆₄ ptPtr) ∗ ((s.sp + 0x288#64) ↦₆₄ BitVec.ofNat 64 pt.length) ∗
-  memRegion (s.sp + 0x290#64) 16 ∗ (ptPtr ↦ₛ pt) ∗
-  (if ptCap = 0#64 then emp
-   else A.live ptPtr ptCap.toNat 1 ∗
-     memRegion (ptPtr + BitVec.ofNat 64 pt.length) (ptCap.toNat - pt.length)) ∗
-  ((s.sp + 0x3ac#64) ↦₈ 3#8) ∗ ((s.sp + 0x3c8#64) ↦₆₄ 0#64) ∗
-  ((s.sp + 0x3d0#64) ↦₆₄ initErrsPtr) ∗ ((s.sp + 0x3d8#64) ↦₆₄ 0#64) ∗
-  memRegion (s.sp + 0x3e0#64) 344 ∗ memRegion (s.sp + 0xa90#64) 344 ∗
-  sessionStateAt A (coroPtr + 0xf8#64) G₂ st₂ ∗
-  prevSessionsEmptyAt A coroPtr g ∗
-  ((coroPtr + 0x2c0#64) ↦₈ b_2c0) ∗
-  ((b + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256)) ↦₆₄ 0#64) ∗
-  memRegion outPtr 48 ∗ memRegion (s.sp + 0x250#64) 20 ∗
-  memRegion (s.sp + 0x370#64) 36 ∗ memRegion (s.sp + 0x930#64) 48 ∗
-  decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗ A.pool ∗ stackAt s.sp growOneSpeStack
-
-/-- Path B counterpart of `stageP3ErrPost` at `s0.readReg64.x30` (`Err e` / `st.version ≠ msgVer`),
-after `+0x3588 → x30` drops `SessionStructure` and deallocates any spare `g.prevPtr` buffer,
-leaving `memRegion (coroPtr + 0xe0#64) 368`. -/
-def stageP3ErrPostPrevEmpty (A : RustAlloc) (b : BitVec 64) (s0 s : State)
-    (coroPtr outPtr : BitVec 64)
-    (e : SignalProtocolError) : SepProp :=
-  (∃∗ errsCap : BitVec 64, ∃∗ errsPtr : BitVec 64, ∃∗ errsLen : BitVec 64,
-    ((s.sp + 0x3c8#64) ↦₆₄ errsCap) ∗ ((s.sp + 0x3d0#64) ↦₆₄ errsPtr) ∗
-    ((s.sp + 0x3d8#64) ↦₆₄ errsLen)) ∗ ((s.sp + 0xc8#64) ↦₆₄ outPtr) ∗
-  ((s.sp + 0x3ac#64) ↦₈ 3#8) ∗ memRegion (s.sp + 0xa90#64) 344 ∗
-  memRegion (coroPtr + 0xe0#64) 368 ∗
-  ((coroPtr + 0x2c0#64) ↦₈ 1#8) ∗
-  ((b + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256)) ↦₆₄ 0#64) ∗
-  recordResultAt A outPtr (.error (SessionState.recordError .preKey e)) ∗
-  memRegion (s.sp + 0x250#64) 20 ∗ memRegion (s.sp + 0x270#64) 48 ∗
-  memRegion (s.sp + 0x370#64) 36 ∗ memRegion (s.sp + 0x930#64) 48 ∗
-  decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗ A.pool ∗ stackAt s.sp growOneSpeStack
 
 theorem stageP3Sub5ExtraPrePrevEmpty_zero (A : RustAlloc) (s0 s : State)
     (coroPtr outPtr initErrsPtr : BitVec 64) (g : RecordGhost) (b_2c0 : BitVec 8)
@@ -345,241 +306,5 @@ theorem stageP3Sub5ExtraPrePrevEmpty_zero (A : RustAlloc) (s0 s : State)
   refine Entails.trans h1 (Entails.trans (sepConj_mono_left hz) ?_)
   simp only [sepConj_assoc]
   exact Entails.pure_left fun hp => Entails.pure_right hp (Entails.of_eq (by ac_rfl))
-
-/-- Path B Stage P3 (`+0x1778 → +0x34dc` / `s0.readReg64.x30`) over general `prevSessionsEmptyAt A coroPtr g`:
-- `hOk` (`+0x34dc`) preserves `prevSessionsEmptyAt A coroPtr g` and provides
-  `Steps (tripleRatchetProgAtExt img.base ext) s s'` (for `FsAt` at `+0x34dc`) + `calleeSavedVRegs`.
-- `hErr` and `hVerNe` (`s0.readReg64.x30`) run `+0x3588 → x30`, dropping `SessionStructure` and
-  deallocating any spare `g.prevPtr` buffer into `memRegion (coroPtr + 0xe0#64) 368`. -/
-def StageP3PrevEmptyVRegsStmt : Prop :=
-  ∀ {A : RustAlloc} (img : Obj.Image) (ext : String → Option (State → State))
-    (C : Crypto) (ctl : BitVec 64) (K : LibsignalSpqrV1.MlKem),
-    AllocContracts img.base A ext →
-    ChainClone3OkExt img.base A ext →
-    SenderChainClone3OkExt img.base A ext →
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr
-        _root_.CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.tryDecryptName)
-      (_root_.CryptoVerification.Cli.LibsignalSpqrV1.tryDecryptSpecTPTight C A ctl uuidTryParse
-        (LibsignalSpqrV1.spqrV1 C.F K) img) →
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr
-        _root_.CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees.dropSessionStructure3Name)
-      (dropSessionStructureLocal2Spec A) →
-    Obj.Loads libsignalSessionImage img →
-    ∀ (s0 s : State)
-      (coroPtr ctxPtr outPtr initErrsPtr
-        remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
-      (msgVer : BitVec 32) (b_2c0 : BitVec 8)
-      (rest : List (BitVec 8))
-      (g : RecordGhost) (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
-      (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
-      (F_frame : SepProp) (Q : State → SepProp → Prop),
-      initErrsPtr ≠ 0#64 →
-      (st.remoteIdentity ≠ some st.localIdentity ∨
-        DistinctSid uuidTryParse loc.name.bytes rem.name.bytes) →
-      SeedsLen32 st →
-      st.receiverChains.length < 2 ^ 32 →
-      st.pqRatchetState.length < 2 ^ 32 →
-      img.FrozenLoaded s →
-      s.symtab = img.symtab →
-      s.pc = closureEntry img ext + 0x1778#64 →
-      s.status = .Running →
-      (s.sp &&& 15#64 == 0#64) = true →
-      rootStack ≤ s.sp.toNat →
-      s.trace = s0.trace →
-      calleeSavedVRegs s = calleeSavedVRegs s0 →
-      (∀ (G₁ G' : SessionGhost) (pt : List (BitVec 8)) (ptCap ptPtr : BitVec 64)
-          (s' : State) (P_s' : SepProp),
-        st.version = msgVer →
-        CloneRel recG G₁ →
-        G₁.AfterTryDecrypt true G' →
-        (genP3S5Model C K rem loc msg rest st).1 = .ok pt →
-        pt.length ≤ ptCap.toNat →
-        ptCap.toNat < 2 ^ 63 →
-        ptPtr ≠ 0#64 →
-        Steps (tripleRatchetProgAtExt img.base ext) s s' →
-        s'.pc = closureEntry img ext + 0x34dc#64 →
-        s'.status = .Running →
-        s'.sp = s.sp →
-        s'.trace = s0.trace →
-        calleeSavedVRegs s' = calleeSavedVRegs s0 →
-        s'.readReg64 .x19 = coroPtr →
-        s'.readReg64 .x24 = s.sp + 0x370#64 →
-        s'.readReg64 .x25 = s.sp + 0x210#64 →
-        s'.readReg64 .x26 = outPtr →
-        s'.readReg64 .x27 = ctxPtr →
-        s'.readReg64 .x28 = 0xfffffffffffffffe#64 →
-        img.FrozenLoaded s' →
-        s'.symtab = img.symtab →
-        (P_s' ⊢
-          stageP3DispatchOkMidPrevEmpty A img.base s0 s coroPtr outPtr initErrsPtr
-            ptCap ptPtr g pt b_2c0 G' (genP3S5Model C K rem loc msg rest st).2 ∗
-          genP3S5PostFrame A img s.sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr msgVer
-            rem loc msgG msg
-            (Coins.coinsAfter img.base cur rest
-              (decryptDraws C st msg.senderRatchetKey rest))) →
-        SepWPp (tripleRatchetProgAtExt img.base ext) (s0.readReg64 .x30) s' (P_s' ∗ F_frame) Q
-          (genP3S5PanicProp C K rem loc st msg msgVer rest s0)) →
-      (∀ (G₁ G' : SessionGhost) (e : SignalProtocolError) (sf : State) (P_f : SepProp),
-        st.version = msgVer →
-        CloneRel recG G₁ →
-        G₁.AfterTryDecrypt false G' →
-        (genP3S5Model C K rem loc msg rest st).1 = .error e →
-        e ≠ .panic →
-        (P_f ⊢
-          ((s.sp + 0x88#64) ↦₆₄ (coroPtr + 0xe0#64)) ∗
-          memRegion (s.sp + 0x3e0#64) 344 ∗
-          stageP3ErrPostPrevEmpty A img.base s0 s coroPtr outPtr e ∗
-          genP3S5PostFrame A img s.sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr msgVer
-            rem loc msgG msg
-            (Coins.coinsAfter img.base cur rest
-              (decryptDraws C st msg.senderRatchetKey rest))) →
-        sf.sp = s.sp + 0xcd0#64 →
-        sf.trace = s0.trace →
-        ClosureCalleeSaved s0 sf →
-        calleeSavedVRegs sf = calleeSavedVRegs s0 →
-        img.FrozenLoaded sf →
-        sf.symtab = img.symtab →
-        Q sf (P_f ∗ F_frame)) →
-      (∀ (sf : State) (P_f : SepProp),
-        st.version ≠ msgVer →
-        (P_f ⊢
-          ((s.sp + 0x88#64) ↦₆₄ (coroPtr + 0xe0#64)) ∗
-          memRegion (s.sp + 0x3e0#64) 344 ∗
-          stageP3ErrPostPrevEmpty A img.base s0 s coroPtr outPtr
-            (.invalidMessage .preKey .decryptionFailed) ∗
-          genP3S5PostFrame A img s.sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr msgVer
-            rem loc msgG msg (Coins.coinsAt img.base cur rest)) →
-        sf.sp = s.sp + 0xcd0#64 →
-        sf.trace = s0.trace →
-        ClosureCalleeSaved s0 sf →
-        calleeSavedVRegs sf = calleeSavedVRegs s0 →
-        img.FrozenLoaded sf →
-        sf.symtab = img.symtab →
-        Q sf (P_f ∗ F_frame)) →
-      SepWPp (tripleRatchetProgAtExt img.base ext) (s0.readReg64 .x30) s
-        (TokenInit img ∗
-          genP3Pre A img s.sp (s.readReg64 .x29) coroPtr ctxPtr remAddrPtr locAddrPtr
-            whisperMsgPtr cur msgVer rest recG st rem loc msgG msg s ∗
-          stageP3Sub5ExtraPrePrevEmpty A s0 s coroPtr outPtr initErrsPtr g b_2c0 ∗
-          F_frame)
-        Q
-        (genP3S5PanicProp C K rem loc st msg msgVer rest s0)
-
-/-- Path A counterpart of `StageP3GenVRegsStmt` adding `Steps (tripleRatchetProgAtExt img.base ext) s s'`
-and spatial CPS frame `(F_frame : SepProp)` to `hOk` so `FsAt` and Stage P4 caller resources
-transport cleanly from `+0x1778` to `+0x34dc` (proved unconditionally in `Poll/StageP3Steps.lean`). -/
-def StageP3GenStepsVRegsStmt : Prop :=
-  ∀ {A : RustAlloc} (img : Obj.Image) (ext : String → Option (State → State))
-    (C : Crypto) (ctl : BitVec 64) (K : LibsignalSpqrV1.MlKem),
-    AllocContracts img.base A ext →
-    ChainClone3OkExt img.base A ext →
-    SenderChainClone3OkExt img.base A ext →
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr
-        _root_.CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.tryDecryptName)
-      (_root_.CryptoVerification.Cli.LibsignalSpqrV1.tryDecryptSpecTPTight C A ctl uuidTryParse
-        (LibsignalSpqrV1.spqrV1 C.F K) img) →
-    Obj.Loads libsignalSessionImage img →
-    ∀ (s0 s : State)
-      (coroPtr ctxPtr outPtr initErrsPtr prevStatesPtr
-        remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
-      (msgVer : BitVec 32) (b_2c0 : BitVec 8)
-      (rest : List (BitVec 8))
-      (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
-      (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
-      (F_frame : SepProp) (Q : State → SepProp → Prop),
-      initErrsPtr ≠ 0#64 →
-      (st.remoteIdentity ≠ some st.localIdentity ∨
-        DistinctSid uuidTryParse loc.name.bytes rem.name.bytes) →
-      SeedsLen32 st →
-      st.receiverChains.length < 2 ^ 32 →
-      st.pqRatchetState.length < 2 ^ 32 →
-      img.FrozenLoaded s →
-      s.symtab = img.symtab →
-      s.pc = closureEntry img ext + 0x1778#64 →
-      s.status = .Running →
-      (s.sp &&& 15#64 == 0#64) = true →
-      rootStack ≤ s.sp.toNat →
-      s.trace = s0.trace →
-      calleeSavedVRegs s = calleeSavedVRegs s0 →
-      (∀ (G₁ G' : SessionGhost) (pt : List (BitVec 8)) (ptCap ptPtr : BitVec 64)
-          (s' : State) (P_s' : SepProp),
-        st.version = msgVer →
-        CloneRel recG G₁ →
-        G₁.AfterTryDecrypt true G' →
-        (genP3S5Model C K rem loc msg rest st).1 = .ok pt →
-        pt.length ≤ ptCap.toNat →
-        ptCap.toNat < 2 ^ 63 →
-        ptPtr ≠ 0#64 →
-        Steps (tripleRatchetProgAtExt img.base ext) s s' →
-        s'.pc = closureEntry img ext + 0x34dc#64 →
-        s'.status = .Running →
-        s'.sp = s.sp →
-        s'.trace = s0.trace →
-        calleeSavedVRegs s' = calleeSavedVRegs s0 →
-        s'.readReg64 .x19 = coroPtr →
-        s'.readReg64 .x24 = s.sp + 0x370#64 →
-        s'.readReg64 .x25 = s.sp + 0x210#64 →
-        s'.readReg64 .x26 = outPtr →
-        s'.readReg64 .x27 = ctxPtr →
-        s'.readReg64 .x28 = 0xfffffffffffffffe#64 →
-        img.FrozenLoaded s' →
-        s'.symtab = img.symtab →
-        (P_s' ⊢
-          stageP3DispatchOkMid A img.base s0 s coroPtr outPtr initErrsPtr prevStatesPtr
-            ptCap ptPtr pt b_2c0 G' (genP3S5Model C K rem loc msg rest st).2 ∗
-          genP3S5PostFrame A img s.sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr msgVer
-            rem loc msgG msg
-            (Coins.coinsAfter img.base cur rest
-              (decryptDraws C st msg.senderRatchetKey rest))) →
-        SepWPp (tripleRatchetProgAtExt img.base ext) (s0.readReg64 .x30) s' (P_s' ∗ F_frame) Q
-          (genP3S5PanicProp C K rem loc st msg msgVer rest s0)) →
-      (∀ (G₁ G' : SessionGhost) (e : SignalProtocolError) (sf : State) (P_f : SepProp),
-        st.version = msgVer →
-        CloneRel recG G₁ →
-        G₁.AfterTryDecrypt false G' →
-        (genP3S5Model C K rem loc msg rest st).1 = .error e →
-        e ≠ .panic →
-        (P_f ⊢
-          ((s.sp + 0x88#64) ↦₆₄ (coroPtr + 0xe0#64)) ∗
-          memRegion (s.sp + 0x3e0#64) 344 ∗
-          stageP3ErrPost A img.base s0 s coroPtr outPtr prevStatesPtr e ∗
-          genP3S5PostFrame A img s.sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr msgVer
-            rem loc msgG msg
-            (Coins.coinsAfter img.base cur rest
-              (decryptDraws C st msg.senderRatchetKey rest))) →
-        sf.sp = s.sp + 0xcd0#64 →
-        sf.trace = s0.trace →
-        ClosureCalleeSaved s0 sf →
-        calleeSavedVRegs sf = calleeSavedVRegs s0 →
-        img.FrozenLoaded sf →
-        sf.symtab = img.symtab →
-        Q sf (P_f ∗ F_frame)) →
-      (∀ (sf : State) (P_f : SepProp),
-        st.version ≠ msgVer →
-        (P_f ⊢
-          ((s.sp + 0x88#64) ↦₆₄ (coroPtr + 0xe0#64)) ∗
-          memRegion (s.sp + 0x3e0#64) 344 ∗
-          stageP3ErrPost A img.base s0 s coroPtr outPtr prevStatesPtr
-            (.invalidMessage .preKey .decryptionFailed) ∗
-          genP3S5PostFrame A img s.sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr msgVer
-            rem loc msgG msg (Coins.coinsAt img.base cur rest)) →
-        sf.sp = s.sp + 0xcd0#64 →
-        sf.trace = s0.trace →
-        ClosureCalleeSaved s0 sf →
-        calleeSavedVRegs sf = calleeSavedVRegs s0 →
-        img.FrozenLoaded sf →
-        sf.symtab = img.symtab →
-        Q sf (P_f ∗ F_frame)) →
-      SepWPp (tripleRatchetProgAtExt img.base ext) (s0.readReg64 .x30) s
-        (TokenInit img ∗
-          genP3Pre A img s.sp (s.readReg64 .x29) coroPtr ctxPtr remAddrPtr locAddrPtr
-            whisperMsgPtr cur msgVer rest recG st rem loc msgG msg s ∗
-          stageP3Sub5ExtraPre s0 s coroPtr outPtr initErrsPtr prevStatesPtr b_2c0 ∗
-          F_frame)
-        Q
-        (genP3S5PanicProp C K rem loc st msg msgVer rest s0)
 
 end CryptoVerification.SignalSession.Cli.RunProofs.Poll

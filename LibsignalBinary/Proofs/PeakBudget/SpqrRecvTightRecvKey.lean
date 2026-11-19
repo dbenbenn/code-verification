@@ -10,10 +10,18 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvPeakHelpers
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightHelpers
-public import LibsignalBinary.Proofs.PeakBudget.VecGrowCreditHelpers
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvPeakHelpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightHelpers
+import LibsignalBinary.Proofs.PeakBudget.VecGrowCreditHelpers
+import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeStep
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Amortized `<Chain>::recv_key` `KeyHistory` Reserve Credit Bound
@@ -25,7 +33,7 @@ Uses the remaining small-pool potential `remPot S cap = 4 * (S - min cap S)` to 
 `Δpeak = 621,350`) and under `KeyHistorySmallOrReserved` (`Δlive = Δpeak = 0`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -780,7 +788,7 @@ theorem chainRecvKey_fine_phaseCreditSpec_tight
 /-- Predicate ensuring `KeyHistory` in `<Chain>::recv_key` never allocates above
 `smallMaxReq fineCostModel = 135,167` bytes (either `gCap` already covers the post-step length or
 `self0.prev` plus window growth is at most `67,579` bytes). -/
-def KeyHistorySmallOrReserved (x : ChainRecvKeyGhost) : Prop :=
+@[expose] def KeyHistorySmallOrReserved (x : ChainRecvKeyGhost) : Prop :=
   ∀ (epochIndex : Nat) (hlt : epochIndex < x.self.links.length),
     let link := x.self.links[epochIndex]'hlt
     let gCap := if hg : epochIndex < x.G.epochs.length then

@@ -9,17 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirection1
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirection1StepsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionAuxBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirection1
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirection1StepsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionAuxBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBaseBudget
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Auth.EncodePlaced1Budget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2BaseBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Verification of `EpochDirection::encode [local#1]` (`Block 154`)
@@ -29,7 +34,7 @@ Re-exports Steps 1–3 from `EpochDirection1StepsBudget`, proves Step 4 (`prev: 
 `EpochDirection::encode [local#1]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

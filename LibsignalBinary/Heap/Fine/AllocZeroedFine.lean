@@ -23,7 +23,7 @@ both parametric `AllocCostModel` and `fineCostModel`.
 
 set_option autoImplicit false
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 
@@ -1043,97 +1043,5 @@ theorem fineRdlAllocZeroed_noOom_placed_ok
       (rustCliAllocNoOomSpecBase fineCostModel (fineRustCliAllocBudget γ mpl tp brkStart) lim true) :=
   subroutine_ok_allocNoOom_of_budgetBase
     (fineRdlAllocZeroed_budget_placed_ok hP γ tp brkStart allocZeroedAddr memsetAddr lim hCode hMemset)
-
-/-- Total-correctness (`onOom := ⌜False⌝`) specialization of `fineRustCliAllocZeroedBudget_thunk_ok`. -/
-theorem fineRustCliAllocZeroedNoOom_thunk_ok
-    {P : Program} {mpl : Obj.MultiPlacement}
-    (hP : ProgContainsMallocng P mpl)
-    (γ : GhostName) (tp brkStart thunkAddr rdlAddr memsetAddr : BitVec 64)
-    (lim : BudgetLimits)
-    (hThunk : hasInstrs P thunkAddr [ .b (rdlAddr - thunkAddr) ])
-    (hCode : hasInstrs P rdlAddr
-      (rdlAllocZeroedInstrs rdlAddr (VerifiedLibraries.mallocngLib.fnAddr mpl "calloc")
-        (mallocngPlacedCAddrs mpl).posixMemalign memsetAddr))
-    (hMemset : subroutine_ok P memsetAddr allocMemsetVmSpec) :
-    subroutine_ok P thunkAddr
-      (rustCliAllocNoOomSpecBase fineCostModel (fineRustCliAllocBudget γ mpl tp brkStart) lim true) :=
-  subroutine_ok_allocNoOom_of_budgetBase
-    (fineRustCliAllocZeroedBudget_thunk_ok hP γ tp brkStart thunkAddr rdlAddr memsetAddr lim
-      hThunk hCode hMemset)
-
-/-- Startup initialization and 4-entry Rust allocator assembly (`__rdl_{alloc,dealloc,realloc,alloc_zeroed}`)
-    over `fineRustCliAllocBudget`. -/
-theorem fineRustCliAllocZeroedBudget_of_placed_init
-    {P : Program} {mpl : Obj.MultiPlacement}
-    {addrs : RustAllocAddrs} {allocZeroedAddr memcpyAddr memsetAddr : BitVec 64}
-    (tp brkStart auxvPtr : BitVec 64) (lim : BudgetLimits)
-    (staticIvs : List (BitVec 64 × Nat)) (R : SepProp) (s0 : State)
-    (hP : ProgContainsMallocng P mpl)
-    (hShims : RustStdRdlShimCode P addrs.toRustStd (mallocngPlacedCAddrs mpl) memcpyAddr)
-    (hZeroedCode : hasInstrs P allocZeroedAddr
-      (rdlAllocZeroedInstrs allocZeroedAddr (VerifiedLibraries.mallocngLib.fnAddr mpl "calloc")
-        (mallocngPlacedCAddrs mpl).posixMemalign memsetAddr))
-    (hMemcpy : subroutine_ok P memcpyAddr allocMemcpyVmSpec)
-    (hMemset : subroutine_ok P memsetAddr allocMemsetVmSpec)
-    (htpLo : 0xa4 ≤ tp.toNat) (htpHi : tp.toNat ≤ 2 ^ 48)
-    (hbrkWf : MallocngBrkStartWf brkStart)
-    (htp : s0.tpidrEl0 = tp) (hbrkStart : s0.brkStart = brkStart) (hbrk : s0.brk = brkStart)
-    (hInv : mallocngBudgetPoolInv lim staticIvs [] s0)
-    (hmem : s0.mem ⊨
-      VerifiedLibraries.mallocngLib.dataInit mpl ∗
-        MallocngRuntime (mallocngAddrsOfPlacement mpl) tp ∗
-        (((mallocngAddrsOfPlacement mpl).libc + 8#64) ↦₆₄ auxvPtr) ∗
-        MallocngAuxvAt auxvPtr ∗ R) :
-    ∃ γ : GhostName,
-      let A := fineRustCliAllocBudget γ mpl tp brkStart
-      (s0.mem ⊨ A.pool lim fineCostModel.init s0 ∗ R) ∧
-      RustCliAllocBudgetEntriesBase fineCostModel A P addrs ∧
-      (∀ k : BudgetLimits,
-        subroutine_ok P allocZeroedAddr (rustAllocZeroedBudgetSpecBase fineCostModel A k)) := by
-  obtain ⟨γ, hPool, hEntries⟩ :=
-    fineRustCliAllocBudgetEntries_of_placed_init tp brkStart auxvPtr lim staticIvs R s0
-      hP hShims hMemcpy htpLo htpHi hbrkWf htp hbrkStart hbrk hInv hmem
-  exact ⟨γ, hPool, hEntries, fun k =>
-    fineRdlAllocZeroed_budget_placed_ok hP γ tp brkStart allocZeroedAddr memsetAddr k
-      hZeroedCode hMemset⟩
-
-/-- 1-instruction `B`-thunk (`__rust_{alloc,dealloc,realloc,alloc_zeroed}`) counterpart of
-    `fineRustCliAllocZeroedBudget_of_placed_init`. -/
-theorem fineRustCliAllocZeroedBudget_thunk_of_placed_init
-    {P : Program} {mpl : Obj.MultiPlacement}
-    {thunkAddrs rdlAddrs : RustAllocAddrs}
-    {thunkZeroedAddr rdlZeroedAddr memcpyAddr memsetAddr : BitVec 64}
-    (tp brkStart auxvPtr : BitVec 64) (lim : BudgetLimits)
-    (staticIvs : List (BitVec 64 × Nat)) (R : SepProp) (s0 : State)
-    (hP : ProgContainsMallocng P mpl)
-    (hThunks : RustStdThunkCode P thunkAddrs.toRustStd rdlAddrs.toRustStd)
-    (hShims : RustStdRdlShimCode P rdlAddrs.toRustStd (mallocngPlacedCAddrs mpl) memcpyAddr)
-    (hZeroedThunk : hasInstrs P thunkZeroedAddr [ .b (rdlZeroedAddr - thunkZeroedAddr) ])
-    (hZeroedCode : hasInstrs P rdlZeroedAddr
-      (rdlAllocZeroedInstrs rdlZeroedAddr (VerifiedLibraries.mallocngLib.fnAddr mpl "calloc")
-        (mallocngPlacedCAddrs mpl).posixMemalign memsetAddr))
-    (hMemcpy : subroutine_ok P memcpyAddr allocMemcpyVmSpec)
-    (hMemset : subroutine_ok P memsetAddr allocMemsetVmSpec)
-    (htpLo : 0xa4 ≤ tp.toNat) (htpHi : tp.toNat ≤ 2 ^ 48)
-    (hbrkWf : MallocngBrkStartWf brkStart)
-    (htp : s0.tpidrEl0 = tp) (hbrkStart : s0.brkStart = brkStart) (hbrk : s0.brk = brkStart)
-    (hInv : mallocngBudgetPoolInv lim staticIvs [] s0)
-    (hmem : s0.mem ⊨
-      VerifiedLibraries.mallocngLib.dataInit mpl ∗
-        MallocngRuntime (mallocngAddrsOfPlacement mpl) tp ∗
-        (((mallocngAddrsOfPlacement mpl).libc + 8#64) ↦₆₄ auxvPtr) ∗
-        MallocngAuxvAt auxvPtr ∗ R) :
-    ∃ γ : GhostName,
-      let A := fineRustCliAllocBudget γ mpl tp brkStart
-      (s0.mem ⊨ A.pool lim fineCostModel.init s0 ∗ R) ∧
-      RustCliAllocBudgetEntriesBase fineCostModel A P thunkAddrs ∧
-      (∀ k : BudgetLimits,
-        subroutine_ok P thunkZeroedAddr (rustAllocZeroedBudgetSpecBase fineCostModel A k)) := by
-  obtain ⟨γ, hPool, hEntries⟩ :=
-    fineRustCliAllocBudgetEntries_thunks_of_placed_init tp brkStart auxvPtr lim staticIvs R s0
-      hP hThunks hShims hMemcpy htpLo htpHi hbrkWf htp hbrkStart hbrk hInv hmem
-  exact ⟨γ, hPool, hEntries, fun k =>
-    fineRustCliAllocZeroedBudget_thunk_ok hP γ tp brkStart thunkZeroedAddr rdlZeroedAddr memsetAddr
-      k hZeroedThunk hZeroedCode hMemset⟩
 
 end LibsignalBinary.Heap.Fine

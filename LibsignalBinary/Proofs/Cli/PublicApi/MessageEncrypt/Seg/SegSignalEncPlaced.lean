@@ -9,10 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSignalUnackPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalEnc
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSignalUnackPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalEnc
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSignalMemPlaced
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalFrame
+import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CmDropPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrCommonPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrPreKeyEncryptPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrSignalEncryptPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrStoreHookPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Relocatable `segSignal` Argument Setup Before `OTR::encrypt` (`+0x348..+0x3a0`)
@@ -21,7 +35,7 @@ Defines `SegSignalEncStateVPlaced` and proves `segSignal_placed_ack_to_enc` (`+0
 Block `464` (`lsProg_464 Hk`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -48,7 +62,7 @@ set_option maxHeartbeats 400000
 
 /-- **Enc** (`OTR::encrypt`'s entry, `lr = +0x3a4`) under `[LibsignalPlacement]`:
 `segSignal_placed_step_enc` done. -/
-def SegSignalEncStateVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def SegSignalEncStateVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (ctl : BitVec 64)

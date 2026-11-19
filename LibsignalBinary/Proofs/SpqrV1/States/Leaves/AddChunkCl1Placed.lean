@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
 import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.LoopPlaced
 import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.ProofPlaced
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::add_chunk` (Block `419`, `withLsCodeLoaded`)
@@ -25,7 +26,7 @@ with `withLsCodeLoaded lsmpl`, discharging Block `357` (`RawVec<Pt>::grow_one`) 
 `addChunkSpecX` and `withLsCodeRoLoaded lsmpl`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

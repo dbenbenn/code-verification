@@ -10,15 +10,35 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8bPlaced
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8bPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch0Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8b
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPoly -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8a -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8aPlacedBudgetAux
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Placed Variant 8 (`EkReceivedCt1Sampled`, `+1764`, Block `333`) — Part B
@@ -28,7 +48,7 @@ and `es`/`ct1`/`ek` byte-length validation (`+1872 -> +1936 -> +2100 | +1972`) t
 and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -299,89 +319,6 @@ theorem v8_ekReceivedCt1Sampled_uc_none_rest_of_sub_placed [LibsignalPlacement]
     refine SepWP.mono hdrop fun sf Pf _ _ ⟨evs, hevs, hPf, hsp_f, hcc_f, htr_f⟩ =>
       ⟨evs, hevs, Entails.trans hPf (Entails.of_eq (by sep_ac_rfl)), hsp_f, hcc_f, htr_f⟩
 
-/-- Generalized (`Rest`-parametric) Variant 8 `s.uc = none` error path from `HookSat` on
-    `spqrRustDeallocSym`. -/
-theorem v8_ekReceivedCt1Sampled_uc_none_rest_of_dealloc_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hdealloc : HookSat (Rust.withPanics ext) spqrRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (st : M.σ) (s0 s1 : State) (out pbA : BitVec 64)
-    (u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128 : BitVec 64)
-    (optEnc : Option ProtoPolynomialEncoder) (w0 w8 w16 w24 w32 w40 w48 : BitVec 64)
-    (Rest : SepProp)
-    (hcl1 : LibsignalCodeLoaded lsmpl s1.mem) (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = lsmpl.base 333 + 1764#64) (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64) (hx19_1 : s1.readReg64 .x19 = out)
-    (hx27_1 : s1.readReg64 .x27 = pbA) (htr1 : TraceCalleeSaved s1 s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext)) (s0.readReg64 .x30) s1
-      (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        memRegion (s0.sp - 2400#64) 2304 ∗
-        statesFromPbSavedCells s0 ∗
-        memRegion out chunkedStatesSize ∗
-        (pbA ↦₆₄ 0x8000000000000008#64) ∗
-        v8_pb128At pbA noneCap u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128
-          w0 w8 w16 w24 w32 w40 w48 ∗
-        memRegion (pbA + 192#64) 32 ∗
-        v1_optProtoPolyEncoderHeap A.repAlloc optEnc w0 w8 w16 w24 w32 w40 w48 ∗
-        Rest ∗
-        A.pool lim st s1)
-      (fun sf Pf =>
-        ∃ evs : List AllocEvent,
-          FreeOnlyEvs evs ∧
-          (Pf ⊢
-            resultChunkedStatesAt A.repAlloc (F := F) out (.error (.err .stateDecode)) ∗
-            memRegion pbA optProtoInnerStateSize ∗
-            Rest ∗
-            A.pool lim (M.stepEvents evs st) sf ∗
-            stackAt s0.sp statesFromPbStack) ∧
-          sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace) :=
-  v8_ekReceivedCt1Sampled_uc_none_rest_of_sub_placed
-    (v1_drop_glue_proto_poly_encoder_ok_of_dealloc_placed hdealloc)
-    st s0 s1 out pbA u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128
-    optEnc w0 w8 w16 w24 w32 w40 w48 Rest
-    hcl1 hsp0_align hpc1 hrun1 hsp1 hx19_1 hx27_1 htr1
-
-/-- Generalized (`Rest`-parametric) Variant 8 `s.uc = none` error path under
-    `FromPbAllocHooksBudget`. -/
-theorem v8_ekReceivedCt1Sampled_uc_none_rest_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksBudget M A lim ext)
-    (st : M.σ) (s0 s1 : State) (out pbA : BitVec 64)
-    (u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128 : BitVec 64)
-    (optEnc : Option ProtoPolynomialEncoder) (w0 w8 w16 w24 w32 w40 w48 : BitVec 64)
-    (Rest : SepProp)
-    (hcl1 : LibsignalCodeLoaded lsmpl s1.mem) (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = lsmpl.base 333 + 1764#64) (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64) (hx19_1 : s1.readReg64 .x19 = out)
-    (hx27_1 : s1.readReg64 .x27 = pbA) (htr1 : TraceCalleeSaved s1 s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext)) (s0.readReg64 .x30) s1
-      (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        memRegion (s0.sp - 2400#64) 2304 ∗
-        statesFromPbSavedCells s0 ∗
-        memRegion out chunkedStatesSize ∗
-        (pbA ↦₆₄ 0x8000000000000008#64) ∗
-        v8_pb128At pbA noneCap u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128
-          w0 w8 w16 w24 w32 w40 w48 ∗
-        memRegion (pbA + 192#64) 32 ∗
-        v1_optProtoPolyEncoderHeap A.repAlloc optEnc w0 w8 w16 w24 w32 w40 w48 ∗
-        Rest ∗
-        A.pool lim st s1)
-      (fun sf Pf =>
-        ∃ evs : List AllocEvent,
-          FreeOnlyEvs evs ∧
-          (Pf ⊢
-            resultChunkedStatesAt A.repAlloc (F := F) out (.error (.err .stateDecode)) ∗
-            memRegion pbA optProtoInnerStateSize ∗
-            Rest ∗
-            A.pool lim (M.stepEvents evs st) sf ∗
-            stackAt s0.sp statesFromPbStack) ∧
-          sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace) :=
-  v8_ekReceivedCt1Sampled_uc_none_rest_of_dealloc_placed hA.dealloc
-    st s0 s1 out pbA u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128
-    optEnc w0 w8 w16 w24 w32 w40 w48 Rest
-    hcl1 hsp0_align hpc1 hrun1 hsp1 hx19_1 hx27_1 htr1
-
 /-- Variant 8 error path when `s.uc = none` (`+1764 -> +4212 -> s0.x30`) from a Block-`271`
     `withLsCodeLoaded` contract. -/
 theorem v8_ekReceivedCt1Sampled_uc_none_of_sub_placed [LibsignalPlacement]
@@ -592,78 +529,6 @@ theorem v8_copy_uc_1872_to_1936_placed [LibsignalPlacement]
        by simpa using hx26_m, by simpa using hx27_m,
        ⟨by simpa using htr_m.1, by simpa using htr_m.2⟩⟩
 
-theorem v8_copy_uc_1872_to_1936_placed_budget [LibsignalPlacement]
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
-    {ext : String → Option (State → State)}
-    (s0 s1 : State) (out pbA : BitVec 64)
-    (u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128 : BitVec 64)
-    (z896 z904 z912 z920 z960 z968 z976 z984 z992 z1000 z1008 z1016 : BitVec 64)
-    (Rest : SepProp)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = lsmpl.base 333 + 1872#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64)
-    (hx19_1 : s1.readReg64 .x19 = out)
-    (hx23_1 : s1.readReg64 .x23 = s0.sp - 2400#64 + 848#64)
-    (hx26_1 : s1.readReg64 .x26 = u8)
-    (hx27_1 : s1.readReg64 .x27 = pbA)
-    (htr1 : TraceCalleeSaved s1 s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333 + 1936#64) s1
-      (v8_ucWordsAt (pbA + 8#64)
-          u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128 ∗
-        ((s0.sp - 2400#64 + 1400#64) ↦₆₄ u16) ∗
-        ((s0.sp - 2400#64 + 896#64) ↦₆₄ z896) ∗
-        ((s0.sp - 2400#64 + 904#64) ↦₆₄ z904) ∗
-        ((s0.sp - 2400#64 + 912#64) ↦₆₄ z912) ∗
-        ((s0.sp - 2400#64 + 920#64) ↦₆₄ z920) ∗
-        ((s0.sp - 2400#64 + 960#64) ↦₆₄ z960) ∗
-        ((s0.sp - 2400#64 + 968#64) ↦₆₄ z968) ∗
-        ((s0.sp - 2400#64 + 976#64) ↦₆₄ z976) ∗
-        ((s0.sp - 2400#64 + 984#64) ↦₆₄ z984) ∗
-        ((s0.sp - 2400#64 + 992#64) ↦₆₄ z992) ∗
-        ((s0.sp - 2400#64 + 1000#64) ↦₆₄ z1000) ∗
-        ((s0.sp - 2400#64 + 1008#64) ↦₆₄ z1008) ∗
-        ((s0.sp - 2400#64 + 1016#64) ↦₆₄ z1016) ∗
-        A.pool lim st s1 ∗
-        Rest)
-      (fun sm Pm =>
-        (Pm ⊢
-          v8_ucWordsAt (pbA + 8#64)
-            u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128 ∗
-          ((s0.sp - 2400#64 + 1400#64) ↦₆₄ u16) ∗
-          ((s0.sp - 2400#64 + 896#64) ↦₆₄ u8) ∗
-          ((s0.sp - 2400#64 + 904#64) ↦₆₄ u16) ∗
-          ((s0.sp - 2400#64 + 912#64) ↦₆₄ u24) ∗
-          ((s0.sp - 2400#64 + 920#64) ↦₆₄ u32) ∗
-          ((s0.sp - 2400#64 + 960#64) ↦₆₄ u72) ∗
-          ((s0.sp - 2400#64 + 968#64) ↦₆₄ u80) ∗
-          ((s0.sp - 2400#64 + 976#64) ↦₆₄ u88) ∗
-          ((s0.sp - 2400#64 + 984#64) ↦₆₄ u96) ∗
-          ((s0.sp - 2400#64 + 992#64) ↦₆₄ u104) ∗
-          ((s0.sp - 2400#64 + 1000#64) ↦₆₄ u112) ∗
-          ((s0.sp - 2400#64 + 1008#64) ↦₆₄ u120) ∗
-          ((s0.sp - 2400#64 + 1016#64) ↦₆₄ u128) ∗
-          A.pool lim st sm ∗
-          Rest) ∧
-        VmPreserved s1 sm ∧
-        sm.sp = s0.sp - 2400#64 ∧
-        sm.readReg64 .x9 = u24 ∧
-        sm.readVReg128 0#5 = u48 ++ u40 ∧
-        sm.readVReg128 1#5 = u64 ++ u56 ∧
-        sm.readReg64 .x19 = out ∧
-        sm.readReg64 .x26 = u8 ∧
-        sm.readReg64 .x27 = pbA ∧
-        TraceCalleeSaved sm s0) := by
-  have hwp := v8_copy_uc_1872_to_1936_placed (ext := ext) s0 s1 out pbA
-    u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128
-    z896 z904 z912 z920 z960 z968 z976 z984 z992 z1000 z1008 z1016
-    (A.pool lim st s1 ∗ Rest)
-    hsp0_align hpc1 hrun1 hsp1 hx19_1 hx23_1 hx26_1 hx27_1 htr1
-  refine SepWP.mono hwp fun sm Pm _ _ ⟨hPm, hvm, hrest⟩ => ?_
-  rw [← A.pool_of_vmPreserved hvm] at hPm
-  exact ⟨Entails.trans hPm (Entails.of_eq (by sep_ac_rfl)), hvm, hrest⟩
-
 /-- `VmPreserved`-strengthened length-error branch at `+1936` (`+1936 -> +2100`) when
     `u24 ≠ 2080#64 ∨ u72 ≠ 960#64 ∨ u48 ≠ 1152#64`. -/
 theorem v8_check_lengths_1936_err_placed [LibsignalPlacement]
@@ -723,61 +588,6 @@ theorem v8_check_lengths_1936_err_placed [LibsignalPlacement]
     fun sm Pm hvm ⟨hPm, hsp_m, hx19_m, htr_m⟩ =>
       ⟨hPm, hvm, by simpa using hsp_m, by simpa using hx19_m,
        ⟨by simpa using htr_m.1, by simpa using htr_m.2⟩⟩
-
-theorem v8_check_lengths_1936_err_placed_budget [LibsignalPlacement]
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
-    {ext : String → Option (State → State)}
-    (s0 s1 : State) (out : BitVec 64)
-    (u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128 : BitVec 64)
-    (z928 z936 z944 z952 : BitVec 64)
-    (Rest : SepProp)
-    (herr : u24 ≠ 2080#64 ∨ u72 ≠ 960#64 ∨ u48 ≠ 1152#64)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = lsmpl.base 333 + 1936#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64)
-    (hx9_1 : s1.readReg64 .x9 = u24)
-    (hq0_1 : s1.readVReg128 0#5 = u48 ++ u40)
-    (hq1_1 : s1.readVReg128 1#5 = u64 ++ u56)
-    (hx19_1 : s1.readReg64 .x19 = out)
-    (htr1 : TraceCalleeSaved s1 s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333 + 2100#64) s1
-      (((s0.sp - 2400#64 + 896#64) ↦₆₄ u8) ∗
-        ((s0.sp - 2400#64 + 904#64) ↦₆₄ u16) ∗
-        ((s0.sp - 2400#64 + 912#64) ↦₆₄ u24) ∗
-        ((s0.sp - 2400#64 + 920#64) ↦₆₄ u32) ∗
-        ((s0.sp - 2400#64 + 928#64) ↦₆₄ z928) ∗
-        ((s0.sp - 2400#64 + 936#64) ↦₆₄ z936) ∗
-        ((s0.sp - 2400#64 + 944#64) ↦₆₄ z944) ∗
-        ((s0.sp - 2400#64 + 952#64) ↦₆₄ z952) ∗
-        ((s0.sp - 2400#64 + 960#64) ↦₆₄ u72) ∗
-        ((s0.sp - 2400#64 + 968#64) ↦₆₄ u80) ∗
-        ((s0.sp - 2400#64 + 976#64) ↦₆₄ u88) ∗
-        ((s0.sp - 2400#64 + 984#64) ↦₆₄ u96) ∗
-        ((s0.sp - 2400#64 + 992#64) ↦₆₄ u104) ∗
-        ((s0.sp - 2400#64 + 1000#64) ↦₆₄ u112) ∗
-        ((s0.sp - 2400#64 + 1008#64) ↦₆₄ u120) ∗
-        ((s0.sp - 2400#64 + 1016#64) ↦₆₄ u128) ∗
-        A.pool lim st s1 ∗
-        Rest)
-      (fun sm Pm =>
-        (Pm ⊢
-          v8_ucWordsAt (s0.sp - 2400#64 + 896#64)
-            u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128 ∗
-          A.pool lim st sm ∗
-          Rest) ∧
-        VmPreserved s1 sm ∧
-        sm.sp = s0.sp - 2400#64 ∧
-        sm.readReg64 .x19 = out ∧
-        TraceCalleeSaved sm s0) := by
-  have hwp := v8_check_lengths_1936_err_placed (ext := ext) s0 s1 out
-    u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128
-    z928 z936 z944 z952 (A.pool lim st s1 ∗ Rest)
-    herr hsp0_align hpc1 hrun1 hsp1 hx9_1 hq0_1 hq1_1 hx19_1 htr1
-  refine SepWP.mono hwp fun sm Pm _ _ ⟨hPm, hvm, hrest⟩ => ?_
-  rw [← A.pool_of_vmPreserved hvm] at hPm
-  exact ⟨Entails.trans hPm (Entails.of_eq (by sep_ac_rfl)), hvm, hrest⟩
 
 private theorem v8_check_lengths_1936_err_x26_placed_raw [LibsignalPlacement]
     {ext : String → Option (State → State)}
@@ -904,62 +714,6 @@ theorem v8_check_lengths_1936_err_x26_placed [LibsignalPlacement]
       ⟨hPm, hvm, by simpa using hsp_m, by simpa using hx19_m, by simpa using hx26_m,
        ⟨by simpa using htr_m.1, by simpa using htr_m.2⟩⟩
 
-theorem v8_check_lengths_1936_err_x26_placed_budget [LibsignalPlacement]
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
-    {ext : String → Option (State → State)}
-    (s0 s1 : State) (out : BitVec 64)
-    (u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128 : BitVec 64)
-    (z928 z936 z944 z952 : BitVec 64)
-    (Rest : SepProp)
-    (herr : u24 ≠ 2080#64 ∨ u72 ≠ 960#64 ∨ u48 ≠ 1152#64)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = lsmpl.base 333 + 1936#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64)
-    (hx9_1 : s1.readReg64 .x9 = u24)
-    (hq0_1 : s1.readVReg128 0#5 = u48 ++ u40)
-    (hq1_1 : s1.readVReg128 1#5 = u64 ++ u56)
-    (hx19_1 : s1.readReg64 .x19 = out)
-    (htr1 : TraceCalleeSaved s1 s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333 + 2100#64) s1
-      (((s0.sp - 2400#64 + 896#64) ↦₆₄ u8) ∗
-        ((s0.sp - 2400#64 + 904#64) ↦₆₄ u16) ∗
-        ((s0.sp - 2400#64 + 912#64) ↦₆₄ u24) ∗
-        ((s0.sp - 2400#64 + 920#64) ↦₆₄ u32) ∗
-        ((s0.sp - 2400#64 + 928#64) ↦₆₄ z928) ∗
-        ((s0.sp - 2400#64 + 936#64) ↦₆₄ z936) ∗
-        ((s0.sp - 2400#64 + 944#64) ↦₆₄ z944) ∗
-        ((s0.sp - 2400#64 + 952#64) ↦₆₄ z952) ∗
-        ((s0.sp - 2400#64 + 960#64) ↦₆₄ u72) ∗
-        ((s0.sp - 2400#64 + 968#64) ↦₆₄ u80) ∗
-        ((s0.sp - 2400#64 + 976#64) ↦₆₄ u88) ∗
-        ((s0.sp - 2400#64 + 984#64) ↦₆₄ u96) ∗
-        ((s0.sp - 2400#64 + 992#64) ↦₆₄ u104) ∗
-        ((s0.sp - 2400#64 + 1000#64) ↦₆₄ u112) ∗
-        ((s0.sp - 2400#64 + 1008#64) ↦₆₄ u120) ∗
-        ((s0.sp - 2400#64 + 1016#64) ↦₆₄ u128) ∗
-        A.pool lim st s1 ∗
-        Rest)
-      (fun sm Pm =>
-        (Pm ⊢
-          v8_ucWordsAt (s0.sp - 2400#64 + 896#64)
-            u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128 ∗
-          A.pool lim st sm ∗
-          Rest) ∧
-        VmPreserved s1 sm ∧
-        sm.sp = s0.sp - 2400#64 ∧
-        sm.readReg64 .x19 = out ∧
-        sm.readReg64 .x26 = s1.readReg64 .x26 ∧
-        TraceCalleeSaved sm s0) := by
-  have hwp := v8_check_lengths_1936_err_x26_placed (ext := ext) s0 s1 out
-    u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128
-    z928 z936 z944 z952 (A.pool lim st s1 ∗ Rest)
-    herr hsp0_align hpc1 hrun1 hsp1 hx9_1 hq0_1 hq1_1 hx19_1 htr1
-  refine SepWP.mono hwp fun sm Pm _ _ ⟨hPm, hvm, hrest⟩ => ?_
-  rw [← A.pool_of_vmPreserved hvm] at hPm
-  exact ⟨Entails.trans hPm (Entails.of_eq (by sep_ac_rfl)), hvm, hrest⟩
-
 /-- `VmPreserved`-strengthened length-ok fallthrough at `+1936` (`+1936 -> +1972`) when
     `u24 = 2080#64 ∧ u72 = 960#64 ∧ u48 = 1152#64`. -/
 theorem v8_check_lengths_1936_ok_placed [LibsignalPlacement]
@@ -1024,63 +778,6 @@ theorem v8_check_lengths_1936_ok_placed [LibsignalPlacement]
        by simpa using hx26_m, by simpa using hx27_m,
        ⟨by simpa using htr_m.1, by simpa using htr_m.2⟩⟩
 
-theorem v8_check_lengths_1936_ok_placed_budget [LibsignalPlacement]
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
-    {ext : String → Option (State → State)}
-    (s0 s1 : State) (out pbA : BitVec 64)
-    (u8 u16 u32 u40 u56 u64 u80 u88 u96 u104 u112 u120 u128 : BitVec 64)
-    (z928 z936 z944 z952 : BitVec 64)
-    (Rest : SepProp)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = lsmpl.base 333 + 1936#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64)
-    (hx9_1 : s1.readReg64 .x9 = 2080#64)
-    (hq0_1 : s1.readVReg128 0#5 = 1152#64 ++ u40)
-    (hq1_1 : s1.readVReg128 1#5 = u64 ++ u56)
-    (hx19_1 : s1.readReg64 .x19 = out)
-    (hx27_1 : s1.readReg64 .x27 = pbA)
-    (htr1 : TraceCalleeSaved s1 s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333 + 1972#64) s1
-      (((s0.sp - 2400#64 + 896#64) ↦₆₄ u8) ∗
-        ((s0.sp - 2400#64 + 904#64) ↦₆₄ u16) ∗
-        ((s0.sp - 2400#64 + 912#64) ↦₆₄ 2080#64) ∗
-        ((s0.sp - 2400#64 + 920#64) ↦₆₄ u32) ∗
-        ((s0.sp - 2400#64 + 928#64) ↦₆₄ z928) ∗
-        ((s0.sp - 2400#64 + 936#64) ↦₆₄ z936) ∗
-        ((s0.sp - 2400#64 + 944#64) ↦₆₄ z944) ∗
-        ((s0.sp - 2400#64 + 952#64) ↦₆₄ z952) ∗
-        ((s0.sp - 2400#64 + 960#64) ↦₆₄ 960#64) ∗
-        ((s0.sp - 2400#64 + 968#64) ↦₆₄ u80) ∗
-        ((s0.sp - 2400#64 + 976#64) ↦₆₄ u88) ∗
-        ((s0.sp - 2400#64 + 984#64) ↦₆₄ u96) ∗
-        ((s0.sp - 2400#64 + 992#64) ↦₆₄ u104) ∗
-        ((s0.sp - 2400#64 + 1000#64) ↦₆₄ u112) ∗
-        ((s0.sp - 2400#64 + 1008#64) ↦₆₄ u120) ∗
-        ((s0.sp - 2400#64 + 1016#64) ↦₆₄ u128) ∗
-        A.pool lim st s1 ∗
-        Rest)
-      (fun sm Pm =>
-        (Pm ⊢
-          v8_ucWordsAt (s0.sp - 2400#64 + 896#64)
-            u8 u16 2080#64 u32 u40 1152#64 u56 u64 960#64 u80 u88 u96 u104 u112 u120 u128 ∗
-          A.pool lim st sm ∗
-          Rest) ∧
-        VmPreserved s1 sm ∧
-        sm.sp = s0.sp - 2400#64 ∧
-        sm.readReg64 .x19 = out ∧
-        sm.readReg64 .x26 = s1.readReg64 .x26 ∧
-        sm.readReg64 .x27 = pbA ∧
-        TraceCalleeSaved sm s0) := by
-  have hwp := v8_check_lengths_1936_ok_placed (ext := ext) s0 s1 out pbA
-    u8 u16 u32 u40 u56 u64 u80 u88 u96 u104 u112 u120 u128
-    z928 z936 z944 z952 (A.pool lim st s1 ∗ Rest)
-    hsp0_align hpc1 hrun1 hsp1 hx9_1 hq0_1 hq1_1 hx19_1 hx27_1 htr1
-  refine SepWP.mono hwp fun sm Pm _ _ ⟨hPm, hvm, hrest⟩ => ?_
-  rw [← A.pool_of_vmPreserved hvm] at hPm
-  exact ⟨Entails.trans hPm (Entails.of_eq (by sep_ac_rfl)), hvm, hrest⟩
-
 /-- `VmPreserved`-strengthened combined step `+1872 -> +2100` when
     `u24 ≠ 2080#64 ∨ u72 ≠ 960#64 ∨ u48 ≠ 1152#64`. -/
 theorem v8_step_1872_to_2100_len_err_placed [LibsignalPlacement]
@@ -1133,52 +830,6 @@ theorem v8_step_1872_to_2100_len_err_placed [LibsignalPlacement]
     fun sm Pm hvm ⟨hPm, hsp_m, hx19_m, htr_m⟩ =>
       ⟨hPm, hvm, by simpa using hsp_m, by simpa using hx19_m,
        ⟨by simpa using htr_m.1, by simpa using htr_m.2⟩⟩
-
-theorem v8_step_1872_to_2100_len_err_placed_budget [LibsignalPlacement]
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
-    {ext : String → Option (State → State)}
-    (s0 s1 : State) (out pbA : BitVec 64)
-    (u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128 : BitVec 64)
-    (Rest : SepProp)
-    (herr : u24 ≠ 2080#64 ∨ u72 ≠ 960#64 ∨ u48 ≠ 1152#64)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = lsmpl.base 333 + 1872#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64)
-    (hx19_1 : s1.readReg64 .x19 = out)
-    (hx23_1 : s1.readReg64 .x23 = s0.sp - 2400#64 + 848#64)
-    (hx26_1 : s1.readReg64 .x26 = u8)
-    (hx27_1 : s1.readReg64 .x27 = pbA)
-    (htr1 : TraceCalleeSaved s1 s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333 + 2100#64) s1
-      (memRegion (s0.sp - 2400#64) 1392 ∗
-        v8_ucWordsAt (s0.sp - 2400#64 + 1392#64)
-          u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128 ∗
-        v8_ucWordsAt (pbA + 8#64)
-          u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128 ∗
-        A.pool lim st s1 ∗
-        Rest)
-      (fun sm Pm =>
-        (Pm ⊢
-          memRegion (s0.sp - 2400#64) 896 ∗
-          v8_ucWordsAt (s0.sp - 2400#64 + 896#64)
-            u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128 ∗
-          memRegion (s0.sp - 2400#64 + 1024#64) 496 ∗
-          v8_ucWordsAt (pbA + 8#64)
-            u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128 ∗
-          A.pool lim st sm ∗
-          Rest) ∧
-        VmPreserved s1 sm ∧
-        sm.sp = s0.sp - 2400#64 ∧
-        sm.readReg64 .x19 = out ∧
-        TraceCalleeSaved sm s0) := by
-  have hwp := v8_step_1872_to_2100_len_err_placed (ext := ext) s0 s1 out pbA
-    u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 u112 u120 u128
-    (A.pool lim st s1 ∗ Rest) herr hsp0_align hpc1 hrun1 hsp1 hx19_1 hx23_1 hx26_1 hx27_1 htr1
-  refine SepWP.mono hwp fun sm Pm _ _ ⟨hPm, hvm, hrest⟩ => ?_
-  rw [← A.pool_of_vmPreserved hvm] at hPm
-  exact ⟨Entails.trans hPm (Entails.of_eq (by sep_ac_rfl)), hvm, hrest⟩
 
 /-- `x26`- and `VmPreserved`-preserving combined step `+1872 -> +2100` when
     `u24 ≠ 2080#64 ∨ u72 ≠ 960#64 ∨ u48 ≠ 1152#64`. -/

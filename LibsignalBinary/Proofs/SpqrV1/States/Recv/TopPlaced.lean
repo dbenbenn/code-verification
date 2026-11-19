@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.AddChunkCl1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl2Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesTopPlaced
@@ -30,6 +31,8 @@ import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceived2Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple2Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple3Placed
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 
 /-!
 # `<States>::recv` (Block `332`): Relocatable Top-Level Assembly
@@ -38,7 +41,7 @@ Combines all relocatable arms of `<States>::recv` (Block `332`, `4,884` instruct
 `states_recv_placed_ok_x` and `states_recv_placed_ok_x_closed`, plus `.rodata` placement witnesses.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -193,7 +196,8 @@ theorem statesRecvPlacedContracts_of_ro_leaves [LibsignalPlacement]
       (mlkemValidatePkSpec K))
     (hencaps2_sat : HookSat (Rust.withPanics ext) spqrMlkemEncaps2Sym (mlkemEncaps2Spec K))
     (hdecaps_sat : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym (mlkemDecapsSpec K))
-    (hhmac_sat : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacSpec F A)) :
+    (hhmac_sat : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacSpec F A))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     StatesRecvPlacedContracts A F K ext :=
   let hshim_sess : HookSat (Rust.withPanics ext) spqrRustNoAllocShimSym sessionShimSpec :=
     ProofLib.HookSat.mono hA.shim fun x R _ hpre => ⟨x, R, hpre, fun _ hpost => hpost⟩
@@ -207,22 +211,22 @@ theorem statesRecvPlacedContracts_of_ro_leaves [LibsignalPlacement]
         hA.dealloc hmemcpy_reg_sat hmemmove_sat))
     (keys_ls_subroutine_ok_of_block_cro (i := 332) (j := 337)
       (header_sent_recv_ct1_chunk_placed_ok_x hA.handleError hA.shim hA.alloc hA.realloc
-        hA.dealloc hmemcpy_reg_sat hmemmove_sat hmemset_sat))
+        hA.dealloc hmemcpy_reg_sat hmemmove_sat hmemset_sat hOnce))
     (ls_subroutine_ok_of_block (i := 332) (j := 346)
       (ct1_received_recv_ct2_chunk_placed_ok_x hA.handleError hA.shim hA.alloc hA.realloc
         hA.dealloc hmemcpy_reg_sat hmemmove_sat))
     (keys_ls_subroutine_ok_of_block_cro (i := 332) (j := 350)
       (ek_sent_ct1_received_recv_ct2_chunk_placed_ok_x hA hmemcpy_reg_sat hmemmove_sat
-        hmemset_sat hdecaps_sat hhmac_sat))
+        hmemset_sat hdecaps_sat hhmac_sat hOnce))
     (keys_ls_subroutine_ok_of_block_cro (i := 332) (j := 369)
       (noHeaderReceived_recv_hdr_chunk_placed_closed_okX hA.shim hA.alloc hA.realloc
         hA.dealloc hA.memcpy hmemcpy_reg_sat hA.memcpyRO hmemmove_sat hmemset_sat hhmac_sat
-        hA.handleError hA.assertFailedU64 hA.sliceIndexFail hA.panicBoundsCheck))
+        hA.handleError hA.assertFailedU64 hA.sliceIndexFail hA.panicBoundsCheck hOnce))
     (ls_subroutine_ok_of_block (i := 332) (j := 419)
       (add_chunk_cl_placed_ok_x hA.handleError hshim_sess hA.alloc hA.realloc hmemmove_sat))
     (keys_ls_subroutine_ok_of_block_cro (i := 332) (j := 418)
       (polyDecoderDecodedMessage_cro_placed_ok_x hA.handleError hshim_sess
-        hA.alloc hA.realloc hA.dealloc hmemcpy_reg_sat hmemset_sat))
+        hA.alloc hA.realloc hA.dealloc hmemcpy_reg_sat hmemset_sat hOnce))
     (ls_subroutine_ok_of_block (i := 332) (j := 338)
       (unchunked_ct1_sent_recv_ek_placed_cl_ok_x hA.dealloc hval_pk_sat))
     (ls_subroutine_ok_of_block (i := 332) (j := 347)
@@ -238,7 +242,7 @@ theorem statesRecvPlacedContracts_of_ro_leaves [LibsignalPlacement]
     (keys_ls_subroutine_ok_of_block_cro (i := 332) (j := 349)
       (ct1_acknowledged_recv_ek_chunk_placed_closed_ok_x hA.handleError hA.shim hA.alloc
         hA.realloc hA.dealloc hA.memcpy hmemcpy_reg_sat hA.memcpyRO hmemmove_sat hmemset_sat
-        hval_pk_sat hencaps2_sat hhmac_sat))
+        hval_pk_sat hencaps2_sat hhmac_sat hOnce))
     (ls_subroutine_ok_of_block (i := 332) (j := 355)
       (ct2_sampled_recv_next_epoch_placed_ok_x hA.dealloc))
     hA.shim hA.alloc hA.dealloc hmemcpy_sat hA.memcpyRO
@@ -258,11 +262,12 @@ theorem states_recv_placed_ok_x_closed [LibsignalPlacement]
       (mlkemValidatePkSpec K))
     (hencaps2_sat : HookSat (Rust.withPanics ext) spqrMlkemEncaps2Sym (mlkemEncaps2Spec K))
     (hdecaps_sat : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym (mlkemDecapsSpec K))
-    (hhmac_sat : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacSpec F A)) :
+    (hhmac_sat : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacSpec F A))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     StatesRecvPlacedOkX A F K ext :=
   states_recv_placed_ok_x A F K ext
     (statesRecvPlacedContracts_of_ro_leaves hA hmemmove_sat hmemset_sat
-      hval_pk_sat hencaps2_sat hdecaps_sat hhmac_sat)
+      hval_pk_sat hencaps2_sat hdecaps_sat hhmac_sat hOnce)
 
 /-! ## Relocatable `.rodata` Extraction Lemmas for `statesRecvRoPlacedAt` -/
 

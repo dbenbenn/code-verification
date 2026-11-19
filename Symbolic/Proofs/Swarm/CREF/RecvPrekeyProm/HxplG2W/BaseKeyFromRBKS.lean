@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame
-public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKey
+public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKey -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyMono
 import Symbolic.Proofs.Swarm.CREF.CBadG2.StampsReachBob
@@ -26,7 +26,7 @@ Proves `prom_baseKeyInSession_of_rbks`: under `BobRecordBaseKeyInSession` and
 Bob's current snapshot after delivering two `Move.attackerSend` steps across a `CBadSigmaFrame`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

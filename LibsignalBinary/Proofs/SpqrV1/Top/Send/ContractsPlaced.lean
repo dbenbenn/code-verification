@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.InnerReloc
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.InnerReloc -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlaced
@@ -24,7 +24,7 @@ Provides `spqrSendRoPlacedAt` introduction/restoration helpers, `StatesPlacedSea
 for the five leaf `send_*_chunk` contracts, and `spqrSendPlacedContracts_of_okX`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -72,7 +72,7 @@ open CryptoVerification.SpqrV1.Top.Send.Placed
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## `.rodata` Bundle Introduction and Restoration -/

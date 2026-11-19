@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Tests.CliNonvacuity.SessionDefs
-public import Symbolic.Proofs.Tests.CliNonvacuity.SessionEval
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionEval -- proof-setup: allow-public-import
 import all DY.Bytes.Basic
 import all DY.ALaCarte.Basic
 import all Comparse.Basic
@@ -33,7 +33,7 @@ Defines session and handshake memo extractors (`stateAnchorPair`, `trStateProxyR
 (`r0Comp`, `S0Comp`, `myGhostComp`), and `attackerKnows_of_getMessageSentAt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -69,7 +69,7 @@ open Symbolic.Swarm.SHARED.SpqrBytes
    spqrRecvStateOf spqrRecvKeyOf)
 open Symbolic.Swarm.CREF (compSemOf b1_setupPublic_5 b1_setupPublic_6 b1_setupPublic_7)
 open Symbolic.Proofs.Tests.CliNonvacuity.Witness
-  (myParams myInterp freshBytes myKyberPubBytes myKyberSecField
+  (myParams myInterp mySigBytes freshBytes myKyberPubBytes myKyberSecField
    mkRecords mkRecords_opaqueBytes_6 padSendCoins padCompSemOf mySem)
 open Symbolic.Proofs.Tests.CliNonvacuity.SessionDefs
   (r0 S0 myGhostSigma msg0WireTerm msg1WireTerm myGhostAddr myGhost)
@@ -79,18 +79,18 @@ unseal DY.Bytes
 
 /-! ## `TRState` Proxy Roots and Memo Extraction -/
 
-def recvTailTerm (c : RecvChain) : DY.Bytes :=
+@[expose] def recvTailTerm (c : RecvChain) : DY.Bytes :=
   Comparse.concatPrefixes
     (Comparse.NonExtensibleMessageFormat.uint32.serialize c.index ++
      Comparse.NonExtensibleMessageFormat.slowNat.serialize c.rIdx)
     Comparse.BytesLike.empty
 
-def stateAnchorPair (ls : DY.PersistentLocalState.LocalState TRState) : DY.Bytes × DY.Bytes :=
+@[expose] def stateAnchorPair (ls : DY.PersistentLocalState.LocalState TRState) : DY.Bytes × DY.Bytes :=
   match ls.state.recv.getLast? with
   | none => (ls.state.spqr, Comparse.BytesLike.empty)
   | some cLast => (cLast.chainKey, recvTailTerm cLast)
 
-def trStateProxyRoots (ls : DY.PersistentLocalState.LocalState TRState) : List DY.Bytes :=
+@[expose] def trStateProxyRoots (ls : DY.PersistentLocalState.LocalState TRState) : List DY.Bytes :=
   let st := ls.state
   let (a, s) := stateAnchorPair ls
   Comparse.NonExtensibleMessageFormat.bool.serialize true ++
@@ -361,7 +361,7 @@ theorem serialize_localTR_memo (i : ExternInterpretation) (S : OpaqueSymbolSeman
         · dsimp only [trStateProxyRoots]; rw [hanc]; simp
     · exact Or.inr hspine
 
-def firstTwoBytesKey (bs : HwBytes) : Nat :=
+@[expose] def firstTwoBytesKey (bs : HwBytes) : Nat :=
   match bs with
   | [] => 0
   | [b0] => b0.toNat + 1
@@ -375,7 +375,7 @@ theorem suffix_drop_eq {α : Type} {sfx bs : List α} (h : sfx <:+ bs) :
 
 /-! ## MAC Term Helper -/
 
-def macTerms (honest : List DY.Bytes) (msg : TRSignalMsg) (ctxs : List TrialCtx) : List DY.Bytes :=
+@[expose] def macTerms (honest : List DY.Bytes) (msg : TRSignalMsg) (ctxs : List TrialCtx) : List DY.Bytes :=
   msg.mac :: ctxs.flatMap fun ctx =>
     match ctx.seed? with
     | none => []
@@ -386,14 +386,14 @@ def macTerms (honest : List DY.Bytes) (msg : TRSignalMsg) (ctxs : List TrialCtx)
 
 /-! ## Kernel-Reducible Witnesses and Direct `AttackerKnows` -/
 
-noncomputable def r0Comp : ProtocolSetup :=
+@[expose] def r0Comp : ProtocolSetup :=
   { alice := "alice", bob := "bob", withOpk := false
     regIdA := 10#32, regIdB := 20#32, spkId := 1#32, kpkId := 2#32, opkId := 3#32
     kyberSecB := myKyberSecField, fresh := freshBytes
     opaqueBytes := fun t =>
       match decEqBytesFast t (DY.PQKem.kemPk (randTerm 16 64)) with
       | isTrue _ => myKyberPubBytes
-      | isFalse _ => List.replicate 64 0#8 }
+      | isFalse _ => mySigBytes }
 
 theorem r0_eq_comp : r0 = r0Comp := by
   change mkRecords false = r0Comp
@@ -406,7 +406,7 @@ theorem r0_eq_comp : r0 = r0Comp := by
   | isTrue h => simp [h]
   | isFalse h => simp [h]
 
-def S0Comp : OpaqueSymbolSemantics where
+@[expose] def S0Comp : OpaqueSymbolSemantics where
   init := spqrInitOf myInterp
   chainKey := spqrChainKeyOf myInterp
   sendState := fun st c => spqrSendStateOf myInterp st (padSendCoins c)
@@ -418,13 +418,13 @@ def S0Comp : OpaqueSymbolSemantics where
     if sk = freshBytes 16 64 then myKyberPubBytes else 0xFF#8 :: sk
   kemDecap := fun _ ct => (kyberDecapsBytes myInterp (mkRecords false) ct).getD []
   vk := fun sk => pubBytes myInterp (clamp sk)
-  sign := fun _ _ _ => List.replicate 64 0#8
+  sign := fun _ _ _ => mySigBytes
 
 theorem S0_eq_comp : S0 = S0Comp := by
-  have ho5 : r0Comp.opaqueBytes (setupPublic r0Comp 5) = List.replicate 64 0#8 := by
+  have ho5 : r0Comp.opaqueBytes (setupPublic r0Comp 5) = mySigBytes := by
     rw [b1_setupPublic_5 r0Comp (by show "alice" ≠ "bob"; decide)]
     rfl
-  have ho7 : r0Comp.opaqueBytes (setupPublic r0Comp 7) = List.replicate 64 0#8 := by
+  have ho7 : r0Comp.opaqueBytes (setupPublic r0Comp 7) = mySigBytes := by
     rw [b1_setupPublic_7 r0Comp (by show "alice" ≠ "bob"; decide)]
     rfl
   have ho6 : (mkRecords false).opaqueBytes (setupPublic (mkRecords false) 6) = myKyberPubBytes :=
@@ -442,7 +442,7 @@ theorem S0_eq_comp : S0 = S0Comp := by
     | nil => exact ite_self _
     | cons b tl => simp only [ite_self]; split <;> rfl
 
-noncomputable def myGhostComp : Ghost where
+@[expose] def myGhostComp : Ghost where
   σ := myGhostSigma
   addr := fun t =>
     match decEqBytesFast t msg0WireTerm with

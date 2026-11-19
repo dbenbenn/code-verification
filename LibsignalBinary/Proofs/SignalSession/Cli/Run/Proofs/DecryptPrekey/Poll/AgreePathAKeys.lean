@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDet
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Pure Path A Session Load, Typed Message, and Store Lookup Agreement
@@ -22,7 +24,7 @@ Proves Path A `Slots.loadRec` (`currentSession = none`) and `DecPkOk₀.typed` (
 bridges, `pkStoreKeys` unfolding lemmas, and `decPkDef_pathA_lookup_err`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -136,38 +138,6 @@ theorem pkStoreKeys_eq_none_of_opk_err {F : FsFiles} {m : PreKeyMessageFields} {
   dsimp only
   rw [hget]
   rfl
-
-theorem pkStoreKeys_eq_none_of_key_decode_none {F : FsFiles} {m : PreKeyMessageFields}
-    {sr : RecordCodecs.SignedPreKeyRecord} {kr : RecordCodecs.KyberPreKeyRecord}
-    (hspk : getSignedPreKey cliIo.rd F StoresGhost.opened.signed m.spkId = .ok sr)
-    (hkpk : StoresGhost.opened.kyber.get cliIo.rd F m.kpkId = .ok kr)
-    (hbad : pkVec? 32 sr.signedPreKey.privateKey = none ∨
-      pkVecTag? 8 1568 kr.signedPreKey.publicKey = none ∨
-      pkVecTag? 8 3168 kr.signedPreKey.privateKey = none ∨
-      ∃ j r, m.opkId = some j ∧
-        getPreKey cliIo.rd F StoresGhost.opened.oneTime j = .ok r ∧
-        pkVec? 32 r.preKey.privateKey = none) :
-    pkStoreKeys F m = none := by
-  dsimp only [pkStoreKeys]
-  rw [hspk, hkpk]
-  dsimp only
-  rcases hbad with h1 | h2 | h3 | ⟨j, r, hj, hr, h4⟩
-  · rw [h1]
-  · rw [h2]
-    rcases pkVec? 32 sr.signedPreKey.privateKey with _ | spk <;> rfl
-  · rw [h3]
-    rcases pkVec? 32 sr.signedPreKey.privateKey with _ | spk <;>
-      rcases pkVecTag? 8 1568 kr.signedPreKey.publicKey with _ | kpub <;> rfl
-  · rcases pkVec? 32 sr.signedPreKey.privateKey with _ | spk <;>
-      rcases pkVecTag? 8 1568 kr.signedPreKey.publicKey with _ | kpub <;>
-      rcases pkVecTag? 8 3168 kr.signedPreKey.privateKey with _ | ksec <;> try rfl
-    dsimp only
-    rw [hj]
-    dsimp only
-    rw [hr]
-    dsimp only
-    rw [h4]
-    rfl
 
 theorem pkStoreKeys_eq_some_none_opk {F : FsFiles} {m : PreKeyMessageFields}
     {sr : RecordCodecs.SignedPreKeyRecord} {kr : RecordCodecs.KyberPreKeyRecord}

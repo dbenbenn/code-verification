@@ -9,25 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsX
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.FromRecordCalleesCodeSym
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymA
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymB
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SepWPpIn
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodedLen
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsX -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.FromRecordCalleesCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SepWPpIn -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodedLen -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBase
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 /-!
-# Shared Serialization Callee Contracts and `SepWPpIn` Helpers
+# Shared Serialization Callee Contracts and `SepWPpLsCl` Helpers
 
-Defines `.inImage img` and `[LibsignalPlacement]` callee-contract abbreviations for the subroutines
+Defines `[LibsignalPlacement]` callee-contract abbreviations for the subroutines
 called during `SessionRecord::serialize` (`encode_varint`, `do_reserve_and_handle`, `encode::<Chain>`,
 `SessionStructure::encode_raw`, `SessionStructure::clone`, and `drop_glue::<SessionStructure>`),
 along with framed call and stack-splitting helpers.
@@ -47,87 +48,6 @@ theorem L1_SerCommon : True := trivial
 
 /-! ## Callee contracts on `SP2Ext` -/
 
-/-- `encode_varint` (`0x30a0`) at `encodeVarintStackX`, in image. -/
-abbrev EncodeVarintOkX (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (SP2Ext img.base ext) ((SP2Ext img.base ext).fnAddr Prost.encodeVarintName)
-    ((Prost.encodeVarintSpecX A).inImage img)
-
-/-- `do_reserve_and_handle` (`0x4cac`) at `Proofs.libsignal.Hooks2.doReserveStackX`, in image. -/
-abbrev DoReserveOkX (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (SP2Ext img.base ext) ((SP2Ext img.base ext).fnAddr doReserveName)
-    ((Proofs.libsignal.Hooks2.doReserveSpecX A).inImage img)
-
-/-- `encode::<Chain>` (`0x44b0`) at `encodeChainStackX`, in image. -/
-abbrev EncodeChainOkX (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (SP2Ext img.base ext) ((SP2Ext img.base ext).fnAddr encodeChainName)
-    ((encodeChainSpecX A).inImage img)
-
-/-- `SessionStructure::encode_raw` (`0x4d38`) at `encodeRawStackX`, in image. -/
-abbrev EncodeRawOkX (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (SP2Ext img.base ext) ((SP2Ext img.base ext).fnAddr encodeRawName)
-    ((encodeRawSpecX A).inImage img)
-
-/-- `SessionStructure::clone` (`0x240f0`) at `sessionCloneStackX`, in image. -/
-abbrev SessionCloneOkX (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (SP2Ext img.base ext) ((SP2Ext img.base ext).fnAddr sessionCloneName)
-    ((sessionCloneSpecX A).inImage img)
-
-/-- `drop_glue<SessionStructure> [local#1]` (`0x25b4`) at `dropSessionStructureLocal1StackX`, in image. -/
-abbrev DropSessionStructureLocal1OkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (SP2Ext img.base ext)
-    ((SP2Ext img.base ext).fnAddr FromRecordCallees.dropSessionStructureLocal1Name)
-    ((dropSessionStructureLocal1SpecX A).inImage img)
-
-/-! ## `SepWPpIn` helpers -/
-
-namespace SepWPpIn
-
-variable {img : Obj.Image} {prog : Program} {ret : BitVec 64} {s : State} {P : SepProp}
-  {Q Qp : State → SepProp → Prop}
-
-theorem congr_pre {P' : SepProp} (hP : P = P') (h : SepWPpIn img prog ret s P' Q Qp) :
-    SepWPpIn img prog ret s P Q Qp := hP ▸ h
-
-theorem panic (hrun : s.status = .Running) (hext : prog.externAt? s.pc = some Rust.panicked)
-    (hqp : Qp (Rust.panicked s) P) : SepWPpIn img prog ret s P Q Qp :=
-  fun _ _ => SepWPp.panic hrun hext hqp
-
-/-- Framed call rule for `.inImage img` subroutine contracts in `SepWPpIn`. -/
-theorem call_frame_inImage {α : Type} {entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {φ : Prop}
-    {T F : SepProp}
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hexit : ∀ sf code R', sf.status = .Exited code → (sf.mem ⊨ spec.onExit x code s sf ∗ R') → False)
-    (hpanic : ∀ sf, sf.status = .Panicked → Qp sf (spec.onPanic x s sf ∗ F))
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf →
-      SepWPpIn img prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom : ∀ sf R', sf.status = .OutOfMemory → (sf.mem ⊨ spec.onOom x s sf ∗ R') → False := by
-      intro _ _ _ ho; exact not_satisfies_false_sepConj ho) :
-    SepWPpIn img prog ret s P Q Qp := by
-  refine call_inImage (x := x) (F := F) hcall hpc hrun hsp hlr ?_ hexit hpanic hnext hoom
-  intro R hm
-  rw [hspec, sepConj_assoc, satisfies_pure_sepConj, ← sepConj_assoc, ← hP]
-  exact ⟨hφ, hm⟩
-
-end SepWPpIn
-
-theorem sepWPpIn_extract_vecU8Buf_bounds {img : Obj.Image} {A : RustAlloc} {cap ptr : BitVec 64}
-    {bs : List (BitVec 8)} {prog : Program} {ret : BitVec 64} {s : State} {P F : SepProp}
-    {Q Qp : State → SepProp → Prop}
-    (hP : P = vecU8Buf A cap ptr bs ∗ F)
-    (h : bs.length ≤ cap.toNat → cap.toNat < 2 ^ 63 → ptr ≠ 0 → SepWPpIn img prog ret s P Q Qp) :
-    SepWPpIn img prog ret s P Q Qp := by
-  intro hF hsym R hm hL
-  have hhm : s.mem ⊨ vecU8Buf A cap ptr bs ∗ (F ∗ R) := by
-    rw [← sepConj_assoc, ← hP]; exact hm
-  obtain ⟨h1, h2, h3⟩ := Prost.vecU8Buf_bounds hhm
-  exact h h1 h2 h3 hF hsym R hm hL
-
-/-! ## Stack slack splitting -/
 
 /-- `stackAt sp n = memRegion (sp - n) (n - m) ∗ stackAt sp m` for `m ≤ n ≤ 2^64`. -/
 theorem stackAt_sub_split_ser (sp : BitVec 64) (m n : Nat) (hmn : m ≤ n) (hn : n ≤ 2 ^ 64) :

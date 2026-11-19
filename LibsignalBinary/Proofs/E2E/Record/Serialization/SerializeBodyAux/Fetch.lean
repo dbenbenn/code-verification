@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.CodeLayout -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.Serialization.SerializeBodyAux
 
@@ -41,36 +41,5 @@ scoped elab "code_fetches_from " codeId:ident decPrefix:ident b:term:max H:term:
     else
       evalTactic (← `(tactic|
         have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
-
-theorem libsignalSessionCode_fnOff_serialize :
-    libsignalSessionCode.fnOff serializeName = num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize") := by
-  exact (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::serialize")
-
-theorem libsignalSessionCode_fnOff_sessionClone :
-    libsignalSessionCode.fnOff sessionCloneName = num% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone") := by
-  exact (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone")
-
-theorem libsignalSessionCode_fnOff_vecVecClone :
-    libsignalSessionCode.fnOff vecVecCloneName = num% (ls_off% "<alloc::vec::Vec<alloc::vec::Vec<u8>> as core::clone::Clone>::clone") := by
-  exact (ls_lemma% fnOff "<alloc::vec::Vec<alloc::vec::Vec<u8>> as core::clone::Clone>::clone")
-
-theorem libsignalSessionCode_fnOff_sessionLen :
-    libsignalSessionCode.fnOff sessionLenName = num% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encoded_len") := by
-  exact (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encoded_len")
-
-theorem libsignalSessionCode_fnOff_encodeVarint :
-    libsignalSessionCode.fnOff LibsignalTripleRatchet.Prost.encodeVarintName = num% (ls_off% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]") := by
-  exact (ls_lemma% fnOff "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]")
-
-theorem libsignalSessionCode_fnOff_encodeRaw :
-    libsignalSessionCode.fnOff encodeRawName = num% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>") := by
-  exact (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>")
-
-theorem libsignalSessionCode_fnOff_dropLocal1 :
-    libsignalSessionCode.fnOff LibsignalTripleRatchet.FromRecordCallees.dropSessionStructureLocal1Name = num% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#1]") := by
-  exact (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#1]")
-
-gen_decodes libsignalSessionCode_tree serializeBin [(ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize") → (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize" + 192), (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize" + 268) → (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize" + 444),
-    (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize" + 692) → (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize" + 736), (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize" + 784) → (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize" + 788), (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize" + 812) → (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize" + 840)]
 
 end CryptoVerification.E2E.Record.Serialization.SerializeBodyAux

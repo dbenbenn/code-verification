@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EpochEncodedLen
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EpochEncodedLen -- proof-setup: allow-public-import
 
 /-!
 # `VmPreserved` Placed Verification of `Epoch::encoded_len` (Blocks `171`, `399`)
@@ -19,7 +19,7 @@ Unpinning bridge and `[LibsignalPlacement]` `subroutine_ok` theorems with `VmPre
 `Epoch::encoded_len [local#1, #2]` (Blocks `171` and `399`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -60,45 +60,45 @@ theorem epochEncodedLen_ok_of_pinned {prog : Program} {entry : BitVec 64} {A : R
   · exact Or.inr (Or.inl hpan)
   · exact Or.inr (Or.inr hex)
 
-def EpochEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EpochEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_171).rebase (blkPl_171).base (Rust.withPanics ext))
     (blkPl_171).base (epochEncodedLenPinnedSpec A)
 
-def EpochEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EpochEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_171).rebase (blkPl_171).base (Rust.withPanics ext))
     (blkPl_171).base (epochEncodedLenSpec A)
 
-def EpochEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def EpochEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_171).rebase (blkPl_171).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_171).base (epochEncodedLenPinnedSpec A)
 
-def EpochEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def EpochEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_171).rebase (blkPl_171).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_171).base (epochEncodedLenSpec A)
 
-def EpochEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EpochEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_399).rebase (blkPl_399).base (Rust.withPanics ext))
     (blkPl_399).base (epochEncodedLenPinnedSpec A)
 
-def EpochEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EpochEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_399).rebase (blkPl_399).base (Rust.withPanics ext))
     (blkPl_399).base (epochEncodedLenSpec A)
 
-def EpochEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def EpochEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_399).rebase (blkPl_399).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_399).base (epochEncodedLenPinnedSpec A)
 
-def EpochEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def EpochEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_399).rebase (blkPl_399).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))

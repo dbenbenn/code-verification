@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.KnownChain
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.Evicted
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.EncTZero
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.NewChainUnamb
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.AmbInWinFalse
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.AmbInWinTrue
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.AmbFindSome
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.KnownChain
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.Evicted
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.EncTZero
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.NewChainUnamb
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.AmbInWinFalse
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.AmbInWinTrue
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.AmbFindSome
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.Reject
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Defs
 
 /-!
 # Inject step of the C refinement
@@ -26,7 +27,7 @@ Dispatches `closeByStateC_inject_step` across the early-reject, known-chain, evi
 `RefinementC/Inject/`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

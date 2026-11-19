@@ -9,15 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Bridge
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid3Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5V1Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub6V1Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2SessV1
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsCPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Bridge -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid3Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5V1Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub6V1Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2SessV1
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsCPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosure -- proof-setup: allow-public-import
 
 /-!
 # Relocatable Stage P2 Definitions and Arm 4–6 Bridge Helpers
@@ -26,7 +27,7 @@ Relocatable `[LibsignalPlacement]` Stage P2 error-frame definitions (`p2ErrFrame
 `p2Sub5FramePlaced`) and spatial rearrangement helpers on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -53,7 +54,7 @@ open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure
 
 /-- Placed common coroutine, stack, message, address, and allocator spatial frame delivered uniformly
 at `s0.readReg64 .x30` on all 6 Stage-P2 error exits (Arms 1–6). -/
-def p2ErrFrameAtPlaced (A : RustAlloc) [LibsignalPlacement] (s0 : State)
+@[expose] def p2ErrFrameAtPlaced (A : RustAlloc) [LibsignalPlacement] (s0 : State)
     (sp fp coroPtr msgPtr ctBufPtr remoteAddrPtr localAddrPtr
      idStorePtr idVt preKeyStorePtr pkVt kyberStorePtr kpkVt v_330 v_388 : BitVec 64)
     (hdr : HandshakeHdr) (msgVerByte : BitVec 8)

@@ -9,10 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Fetch
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Fetch -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Defs
 public import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvDefs -- shake: keep
@@ -24,21 +23,21 @@ Proves 104-byte `prostChainGAt` chunk/byte move lemmas, `prostSSGQAt` `receiver_
 identities, and `growOneChainSpecX` precondition/postcondition bridges for `PrevDec/ArmChainRecvPush.lean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec
 
-open Std Arm64 ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection CryptoVerification.CodeLayout
+open Std Arm64 ProofLib ProofLib.ProgramReflection CryptoVerification.CodeLayout
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalTripleRatchet.RawByteMove
 open CryptoVerification.LibsignalSession
 open CryptoVerification.E2E.Pqxdh.ResponderClosure.P3P4 (PanicOomProp)
-open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure (decryptPrekeyClosureName decryptPrekeyClosure_fnOff)
+open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure (decryptPrekeyClosureName)
 open CryptoVerification.E2E.Record (A0)
 open CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.E2E.Record.DeserializeSeed
@@ -47,27 +46,9 @@ open Symbolic.Swarm.TRREF.B3DeserQ (SSGQ ExtraGQ GenFieldQ prostSSGQAt)
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3
 open Proofs.libsignal
 
-abbrev recvGrowOneRelOff : BitVec 64 :=
-  bv% ((2 ^ 64 + (ls_off% "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one") -
-    (ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}")) % 2 ^ 64)
-
-theorem recvGrowOne_fnAddr_eq (b : BitVec 64)
-    (ext : String → Option (State → State)) :
-    (contractProg b ext).fnAddr decryptPrekeyClosureName + recvGrowOneRelOff =
-      (contractProg b ext).fnAddr
-        "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one" := by
-  dsimp only [contractProg, recvGrowOneRelOff]
-  rw [Program.fnAddr_rebase, Program.fnAddr_rebase, decryptPrekeyClosure_fnOff,
-    (ls_lemma% fnOff "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one")]
-  bv_omega
-
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 attribute [local simp, local arm64_norm, local wp_norm] State.readReg32
-attribute [local simp, local arm64_norm ↓, local wp_norm ↓] decryptPrekeyClosure_fnOff
-
-/-! ## 104-Byte `prostChainGAt` Move and Chunk Helpers -/
-
 set_option maxHeartbeats 400000 in
 theorem vecU8_move_bytes_rc (A : RustAlloc) (a : BitVec 64) (xs : List (BitVec 8)) :
     vecU8 A a xs ⊢
@@ -435,7 +416,7 @@ theorem chunks104_6QWAt_write_a90_eq_rc (q : BitVec 64)
 
 /-! ## `prostSSGQAt` `receiver_chains` Open/Close and `growOneChainSpecX` Bridges -/
 
-def prostSSGQRest (A : RustAlloc) (ss : BitVec 64) (v : SSGQ) : SepProp :=
+@[expose] def prostSSGQRest (A : RustAlloc) (ss : BitVec 64) (v : SSGQ) : SepProp :=
   vecU8 A ss v.base.lik ∗ vecU8 A (ss + 0x18#64) v.base.rik ∗ vecU8 A (ss + 0x30#64) v.base.root ∗
     vecU8 A (ss + 0x60#64) v.ext.abk ∗ vecU8 A (ss + 0x78#64) v.ext.pq ∗
     (match v.base.sender with
@@ -560,93 +541,6 @@ theorem vecBuf_recv_not_full_open_rc (cap ptr : BitVec 64) (cs : List ChainG)
     congr 2; omega
   rw [hrem, memRegion_split (ptr + BitVec.ofNat 64 (cs.length * 104)) 104 _ (by omega),
       hoff, hmul]
-
-set_option maxHeartbeats 400000 in
-theorem growOne_inImage_pre_eq_q (img : Obj.Image) (q cap ptr : BitVec 64)
-    (bs : List (BitVec 8)) (s : State) (hsp : s.sp = q) :
-    ((Stage1X.growOneChainSpecX A0).inImage img).pre
-      (q + 0x978#64, cap, ptr, bs) s =
-    ⌜(bs.length = cap.toNat * 104 ∧ s.readReg64 .x0 = q + 0x978#64 ∧
-        ptr ≠ 0#64 ∧ 8 + max (2 * cap.toNat) 4 * 104 ≤ 2 ^ 63) ∧
-      img.FrozenLoaded s ∧ s.symtab = img.symtab⌝ ∗
-    (((q + 0x978#64) ↦₆₄ cap) ∗ ((q + 0x980#64) ↦₆₄ ptr) ∗
-      (if cap = 0#64 then emp else A0.live ptr bs.length 8 ∗ (ptr ↦ₛ bs)) ∗
-      stackAt q Stage1X.growOneChainStackX) := by
-  unfold Spec.inImage Stage1X.growOneChainSpecX Stage1X.growOne104SpecX
-  dsimp only
-  have e50 : q + 0x978#64 + 8#64 = q + 0x980#64 := by rw [BitVec.add_assoc]; rfl
-  have hpool : A0.pool = emp := rfl
-  have h0 : (0 : BitVec 64) = 0#64 := rfl
-  have hpure :
-      (s.readReg64 .x0 = q + 0x978#64 ∧ bs.length = cap.toNat * 104 ∧ ptr ≠ 0 ∧
-        max (2 * cap.toNat) 4 * 104 + 8 ≤ 2 ^ 63) =
-      (bs.length = cap.toNat * 104 ∧ s.readReg64 .x0 = q + 0x978#64 ∧ ptr ≠ 0#64 ∧
-        8 + max (2 * cap.toNat) 4 * 104 ≤ 2 ^ 63) :=
-    propext ⟨fun ⟨h1, h2, h3, h4⟩ => ⟨h2, h1, h3, by omega⟩,
-             fun ⟨h1, h2, h3, h4⟩ => ⟨h2, h1, h3, by omega⟩⟩
-  rw [hpure, e50, hpool, hsp, h0]
-  change _ = _ ∗ (_ ∗ _ ∗ _ ∗ stackAt q (464 + Stage1X.finishGrowStackX))
-  simp only [emp_sepConj, ← sepConj_assoc, pure_sepConj_pure]
-  ac_rfl
-
-set_option maxHeartbeats 400000 in
-theorem growOne_post_elim_sp_q (img : Obj.Image) (q cap ptr : BitVec 64) (cs : List ChainG)
-    (bs : List (BitVec 8)) (s_pre sf : State)
-    (hsp : s_pre.sp = q)
-    (hfull : cs.length = cap.toNat)
-    (hlt5 : cs.length < maxReceiverChains)
-    (hbs : bs.length = cap.toNat * 104) :
-    ((Stage1X.growOneChainSpecX A0).inImage img).post
-        (q + 0x978#64, cap, ptr, bs) s_pre sf ⊢
-      ⌜sf.trace = s_pre.trace⌝ ∗
-      ∃∗ cap' : BitVec 64, ∃∗ p' : BitVec 64,
-        ⌜cs.length < cap'.toNat ∧ cap'.toNat * 104 < 2 ^ 63 ∧ p' ≠ 0#64⌝ ∗
-        ((q + 0x978#64) ↦₆₄ cap') ∗ ((q + 0x980#64) ↦₆₄ p') ∗
-        (p' ↦ₛ bs) ∗
-        memRegion (p' + BitVec.ofNat 64 cs.length * 104#64) 104 ∗
-        memRegion (p' + BitVec.ofNat 64 ((cs.length + 1) * 104))
-          ((cap'.toNat - (cs.length + 1)) * 104) ∗
-        stackAt q Stage1X.growOneChainStackX := by
-  unfold Spec.inImage Stage1X.growOneChainSpecX Stage1X.growOne104SpecX
-  dsimp only
-  apply Entails.pure_left; intro htr
-  refine Entails.pure_right htr ?_
-  apply Entails.sepExists_elim; intro p'
-  set newCap : Nat := max (2 * cap.toNat) 4
-  set cap' : BitVec 64 := BitVec.ofNat 64 newCap
-  have h5 : maxReceiverChains = 5 := rfl
-  have hcap'_toNat : cap'.toNat = newCap := by
-    dsimp only [cap', newCap]
-    rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  have hlt_cap' : cs.length < cap'.toNat := by omega
-  have hcap'_lt : cap'.toNat * 104 < 2 ^ 63 := by omega
-  refine Entails.sepExists_right cap' (Entails.sepExists_right p' ?_)
-  have e50 : q + 0x978#64 + 8#64 = q + 0x980#64 := by rw [BitVec.add_assoc]; rfl
-  have hlive : A0.live p' (newCap * 104) 8 = emp := rfl
-  have hpool : A0.pool = emp := rfl
-  have h0 : (0 : BitVec 64) = 0#64 := rfl
-  rw [e50, hlive, hpool, hsp, h0]
-  change _ ⊢ _ ∗ _ ∗ _ ∗ _ ∗ _ ∗ _ ∗ stackAt q (464 + Stage1X.finishGrowStackX)
-  simp only [emp_sepConj]
-  apply Entails.pure_left; intro hp'
-  refine Entails.pure_right ⟨hlt_cap', hcap'_lt, hp'⟩ ?_
-  have hrem : (newCap - cap.toNat) * 104 =
-      104 + (cap'.toNat - (cs.length + 1)) * 104 := by
-    have : newCap - cap.toNat = 1 + (cap'.toNat - (cs.length + 1)) := by omega
-    rw [this, Nat.add_mul, Nat.one_mul]
-  have hbs_eq : BitVec.ofNat 64 bs.length = BitVec.ofNat 64 (cs.length * 104) := by
-    rw [hbs, hfull]
-  have hmul : BitVec.ofNat 64 (cs.length * 104) = BitVec.ofNat 64 cs.length * 104#64 := by
-    rw [BitVec.ofNat_mul]
-  have hoff :
-      p' + BitVec.ofNat 64 (cs.length * 104) + BitVec.ofNat 64 104 =
-        p' + BitVec.ofNat 64 ((cs.length + 1) * 104) := by
-    rw [BitVec.add_assoc, ← BitVec.ofNat_add]
-    congr 2; omega
-  rw [hbs_eq, hrem,
-      memRegion_split (p' + BitVec.ofNat 64 (cs.length * 104)) 104 _ (by omega),
-      hoff, hmul]
-  exact Entails.of_eq (by ac_rfl)
 
 set_option maxHeartbeats 400000 in
 theorem vecAt_recv_push_fold_q (q cap ptr : BitVec 64) (cs : List ChainG) (c : ChainG)
@@ -875,94 +769,6 @@ theorem vecBuf_recv_not_full_open_rc_ext (A : RustAlloc) (cap ptr : BitVec 64) (
     congr 2; omega
   rw [hrem, memRegion_split (ptr + BitVec.ofNat 64 (cs.length * 104)) 104 _ (by omega),
       hoff, hmul]
-
-set_option maxHeartbeats 400000 in
-theorem growOne_inImage_pre_eq_q_ext (A : RustAlloc) (img : Obj.Image) (q cap ptr : BitVec 64)
-    (bs : List (BitVec 8)) (s : State) (hsp : s.sp = q) :
-    ((Stage1X.growOneChainSpecX A).inImage img).pre
-      (q + 0x978#64, cap, ptr, bs) s =
-    ⌜(bs.length = cap.toNat * 104 ∧ s.readReg64 .x0 = q + 0x978#64 ∧
-        ptr ≠ 0#64 ∧ 8 + max (2 * cap.toNat) 4 * 104 ≤ 2 ^ 63) ∧
-      img.FrozenLoaded s ∧ s.symtab = img.symtab⌝ ∗
-    (((q + 0x978#64) ↦₆₄ cap) ∗ ((q + 0x980#64) ↦₆₄ ptr) ∗
-      (if cap = 0#64 then emp else A.live ptr bs.length 8 ∗ (ptr ↦ₛ bs)) ∗
-      A.pool ∗
-      stackAt q Stage1X.growOneChainStackX) := by
-  unfold Spec.inImage Stage1X.growOneChainSpecX Stage1X.growOne104SpecX
-  dsimp only
-  have e50 : q + 0x978#64 + 8#64 = q + 0x980#64 := by rw [BitVec.add_assoc]; rfl
-  have h0 : (0 : BitVec 64) = 0#64 := rfl
-  have hpure :
-      (s.readReg64 .x0 = q + 0x978#64 ∧ bs.length = cap.toNat * 104 ∧ ptr ≠ 0 ∧
-        max (2 * cap.toNat) 4 * 104 + 8 ≤ 2 ^ 63) =
-      (bs.length = cap.toNat * 104 ∧ s.readReg64 .x0 = q + 0x978#64 ∧ ptr ≠ 0#64 ∧
-        8 + max (2 * cap.toNat) 4 * 104 ≤ 2 ^ 63) :=
-    propext ⟨fun ⟨h1, h2, h3, h4⟩ => ⟨h2, h1, h3, by omega⟩,
-             fun ⟨h1, h2, h3, h4⟩ => ⟨h2, h1, h3, by omega⟩⟩
-  rw [hpure, e50, hsp, h0]
-  change _ = _ ∗ (_ ∗ _ ∗ _ ∗ A.pool ∗ stackAt q (464 + Stage1X.finishGrowStackX))
-  simp only [← sepConj_assoc, pure_sepConj_pure]
-  ac_rfl
-
-set_option maxHeartbeats 400000 in
-theorem growOne_post_elim_sp_q_ext (A : RustAlloc) (img : Obj.Image) (q cap ptr : BitVec 64)
-    (cs : List ChainG) (bs : List (BitVec 8)) (s_pre sf : State)
-    (hsp : s_pre.sp = q)
-    (hfull : cs.length = cap.toNat)
-    (hlt5 : cs.length < maxReceiverChains)
-    (hbs : bs.length = cap.toNat * 104) :
-    ((Stage1X.growOneChainSpecX A).inImage img).post
-        (q + 0x978#64, cap, ptr, bs) s_pre sf ⊢
-      ⌜sf.trace = s_pre.trace⌝ ∗
-      ∃∗ cap' : BitVec 64, ∃∗ p' : BitVec 64,
-        ⌜cs.length < cap'.toNat ∧ cap'.toNat * 104 < 2 ^ 63 ∧ p' ≠ 0#64⌝ ∗
-        ((q + 0x978#64) ↦₆₄ cap') ∗ ((q + 0x980#64) ↦₆₄ p') ∗
-        A.live p' (cap'.toNat * 104) 8 ∗
-        (p' ↦ₛ bs) ∗
-        memRegion (p' + BitVec.ofNat 64 cs.length * 104#64) 104 ∗
-        memRegion (p' + BitVec.ofNat 64 ((cs.length + 1) * 104))
-          ((cap'.toNat - (cs.length + 1)) * 104) ∗
-        A.pool ∗
-        stackAt q Stage1X.growOneChainStackX := by
-  unfold Spec.inImage Stage1X.growOneChainSpecX Stage1X.growOne104SpecX
-  dsimp only
-  apply Entails.pure_left; intro htr
-  refine Entails.pure_right htr ?_
-  apply Entails.sepExists_elim; intro p'
-  set newCap : Nat := max (2 * cap.toNat) 4
-  set cap' : BitVec 64 := BitVec.ofNat 64 newCap
-  have h5 : maxReceiverChains = 5 := rfl
-  have hcap'_toNat : cap'.toNat = newCap := by
-    dsimp only [cap', newCap]
-    rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  have hlt_cap' : cs.length < cap'.toNat := by omega
-  have hcap'_lt : cap'.toNat * 104 < 2 ^ 63 := by omega
-  refine Entails.sepExists_right cap' (Entails.sepExists_right p' ?_)
-  have e50 : q + 0x978#64 + 8#64 = q + 0x980#64 := by rw [BitVec.add_assoc]; rfl
-  have h0 : (0 : BitVec 64) = 0#64 := rfl
-  rw [e50, hsp, h0]
-  change _ ⊢ _ ∗ _ ∗ _ ∗ _ ∗ _ ∗ _ ∗ _ ∗ _ ∗ stackAt q (464 + Stage1X.finishGrowStackX)
-  apply Entails.pure_left; intro hp'
-  refine Entails.pure_right ⟨hlt_cap', hcap'_lt, hp'⟩ ?_
-  have hlive_eq : A.live p' (newCap * 104) 8 = A.live p' (cap'.toNat * 104) 8 := by
-    rw [hcap'_toNat]
-  have hrem : (newCap - cap.toNat) * 104 =
-      104 + (cap'.toNat - (cs.length + 1)) * 104 := by
-    have : newCap - cap.toNat = 1 + (cap'.toNat - (cs.length + 1)) := by omega
-    rw [this, Nat.add_mul, Nat.one_mul]
-  have hbs_eq : BitVec.ofNat 64 bs.length = BitVec.ofNat 64 (cs.length * 104) := by
-    rw [hbs, hfull]
-  have hmul : BitVec.ofNat 64 (cs.length * 104) = BitVec.ofNat 64 cs.length * 104#64 := by
-    rw [BitVec.ofNat_mul]
-  have hoff :
-      p' + BitVec.ofNat 64 (cs.length * 104) + BitVec.ofNat 64 104 =
-        p' + BitVec.ofNat 64 ((cs.length + 1) * 104) := by
-    rw [BitVec.add_assoc, ← BitVec.ofNat_add]
-    congr 2; omega
-  rw [hlive_eq, hbs_eq, hrem,
-      memRegion_split (p' + BitVec.ofNat 64 (cs.length * 104)) 104 _ (by omega),
-      hoff, hmul]
-  exact Entails.of_eq (by ac_rfl)
 
 set_option maxHeartbeats 400000 in
 theorem vecAt_recv_push_fold_q_ext (A : RustAlloc) (q cap ptr : BitVec 64)

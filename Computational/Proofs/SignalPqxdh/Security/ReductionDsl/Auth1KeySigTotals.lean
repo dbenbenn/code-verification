@@ -9,9 +9,42 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigBounds
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeGapDhProofs
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigBounds
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeGapDhProofs
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrProofs
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.CostedTablesCompat -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySig -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigBounds -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC1
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3b
+import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhD
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKemProofs
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
+import Computational.Proofs.SignalPqxdh.Security.SigHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHopC
 
 /-!
 # Init / Finish Bounds and Query Bridges for the One-Key `Auth` Sig Program
@@ -20,7 +53,7 @@ import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrP
 `CostedReduction.queryBound_eval` for signing, DDH, and primitive queries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -89,35 +122,6 @@ theorem a1s_finish_queries (S : Setup) (K : Nat) (w : pqSigAndDdhIface.Tag → �
     (sigAuth1KeyProg S K).finish.queries w SignalPqxdh.LegacyCosted.samplerZeroQueryWeight = 0 := by
   simp [sigAuth1KeyProg, a1sFinishDsl, Comp.queries]
 
-theorem sigAuth1KeyProg_sigBounded (S : Setup) (K q : Nat)
-    (A : Unit → OracleComp (unifSpec + authSpec S) Bool)
-    (hA : ∀ a, (A a).IsQueryBoundP (ReductionDsl.isGameQuery (G := authSpec S)) q)
-    (pk : Bytes) :
-    ((sigAuth1KeyProg S K).eval A pk).IsQueryBoundP
-      (fun q => isSigChalQuery q = true)
-      ((sigAuth1KeyProg S K).totalQueries
-        SignalPqxdh.LegacyCosted.chalIfaceSigQueryWeight
-        SignalPqxdh.LegacyCosted.samplerZeroQueryWeight q) := by
-  refine CostedReduction.queryBound_eval (sigAuth1KeyProg S K)
-    (fun q => isSigChalQuery q = true)
-    SignalPqxdh.LegacyCosted.chalIfaceSigQueryWeight
-    SignalPqxdh.LegacyCosted.samplerZeroQueryWeight ?_ ?_ A q hA pk
-  · intro g x hx
-    cases g with
-    | inl t => simp [pqSigAndDdhIface, pqChalIface, isSigChalQuery] at hx
-    | inr t =>
-      cases t with
-      | inl m => simp [SignalPqxdh.LegacyCosted.chalIfaceSigQueryWeight]
-      | inr u =>
-        rcases u with ⟨⟩
-        simp [pqSigAndDdhIface, pqChalIface, sigAndDdhOracle, isSigChalQuery] at hx
-  · intro n
-    change IsQueryBoundP
-      (liftM (OracleSpec.query (spec := PrimBaseSpec + sigAndDdhOracle.spec) (Sum.inl (Sum.inl n))))
-      (fun q => isSigChalQuery q = true) 0
-    rw [isQueryBoundP_query_iff]
-    simp [isSigChalQuery]
-
 theorem sigAuth1KeyProg_ddhBounded (S : Setup) (K q : Nat)
     (A : Unit → OracleComp (unifSpec + authSpec S) Bool)
     (hA : ∀ a, (A a).IsQueryBoundP (ReductionDsl.isGameQuery (G := authSpec S)) q)
@@ -144,29 +148,5 @@ theorem sigAuth1KeyProg_ddhBounded (S : Setup) (K q : Nat)
       (fun q => isDdhChalQuery q = true) 0
     rw [isQueryBoundP_query_iff]
     simp [isDdhChalQuery]
-
-theorem sigAuth1KeyProg_primBounded (S : Setup) (K q : Nat)
-    (A : Unit → OracleComp (unifSpec + authSpec S) Bool)
-    (hA : ∀ a, (A a).IsQueryBoundP (ReductionDsl.isGameQuery (G := authSpec S)) q)
-    (pk : Bytes) :
-    ((sigAuth1KeyProg S K).eval A pk).IsQueryBoundP
-      (fun q => isPrimQuery q = true)
-      ((sigAuth1KeyProg S K).totalQueries
-        SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight
-        SignalPqxdh.LegacyCosted.samplerZeroQueryWeight q) := by
-  refine CostedReduction.queryBound_eval (sigAuth1KeyProg S K)
-    (fun q => isPrimQuery q = true)
-    SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight
-    SignalPqxdh.LegacyCosted.samplerZeroQueryWeight ?_ ?_ A q hA pk
-  · intro g x hx
-    cases g with
-    | inl t => simp [SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight]
-    | inr t => simp [pqSigAndDdhIface, pqChalIface, isPrimQuery] at hx
-  · intro n
-    change IsQueryBoundP
-      (liftM (OracleSpec.query (spec := PrimBaseSpec + sigAndDdhOracle.spec) (Sum.inl (Sum.inl n))))
-      (fun q => isPrimQuery q = true) 0
-    rw [isQueryBoundP_query_iff]
-    simp [isPrimQuery]
 
 end SignalPqxdh.Security.ReductionDsl.AuthHs

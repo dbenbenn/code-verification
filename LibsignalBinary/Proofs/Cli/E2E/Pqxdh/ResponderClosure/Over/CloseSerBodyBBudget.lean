@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyB
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyNoneXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodySomeXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersXBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyB -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyNoneXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodySomeXBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersXBudget
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -24,6 +24,13 @@ import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `SessionRecord::serialize`: Epilogue Tail and Framing Helpers
@@ -33,7 +40,7 @@ Proves the budget-threaded `[LibsignalPlacement]` tail `serPrev1Tail_placed_ok :
 and precondition-folding helpers used by `CloseSerBody`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false
@@ -62,7 +69,6 @@ open CryptoVerification.E2E.Record.Serialization.SerializeBodyAuxX (
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over (
   prevElem prevVecAt serSavedCells prevVec1_cap1_merge repack_stack_hdr_cellsX
 )
-open Proofs.libsignal.Hooks2 (SepWPpIn)
 open LibsignalBinary.Heap (
   VmPreserved AllocEvent AllocCostModel BudgetLimits RustCliAllocBudget
   RustLayoutOk FreeOnlyEvs rustDeallocEvents
@@ -111,8 +117,6 @@ attribute [local wp_norm] calleeSavedVRegs_advancePC calleeSavedVRegs_setPC call
 
 abbrev k5t_false_left :=
   @CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.k5t_false_left
-abbrev sepWPpIn_fold :=
-  @CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.sepWPpIn_fold
 abbrev ult_ofNat_add_false :=
   @CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.ult_ofNat_add_false
 abbrev ofNat_add_bits :=
@@ -136,7 +140,7 @@ private theorem freeOnlyEvs_rustDealloc (size align : Nat) :
 /-- Budget-threaded `[LibsignalPlacement]` epilogue contract (`+692 .. ret` on `lsProg_52 H`):
 writes `Ok(vec)` to `out`, drops the cloned `SessionStructure` and temporary `Vec<Vec<u8>>`
 (`FreeOnlyEvs`), and returns. -/
-def SerPrev1PlacedTailStmt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def SerPrev1PlacedTailStmt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   ∀ (out q' capE ptrE cap' ptr' o0 o1 o2 o3 : BitVec 64) (bs enc : List (BitVec 8))
     (w : SessionGhost) (sess' : Session (List (BitVec 8))) (st : M.σ)
@@ -490,17 +494,6 @@ theorem vecU8At_init_byte_432_cap {M : AllocCostModel} (A : RustCliAllocBudget M
   subst e
   have hv := vecU8At_init_byte_432X A.repAlloc sp ptr n b0 hpos hlt hptr
   rwa [A.repAlloc_live_norm] at hv
-
-theorem k5_fold_q {img : Obj.Image} {prog : Program} {ret : BitVec 64} {s : State}
-    {Q Qp : State → SepProp → Prop} {M : AllocCostModel} (A : RustCliAllocBudget M)
-    (q capE ptrE : BitVec 64) (enc : List (BitVec 8)) {P F : SepProp}
-    (hP : P = ((q ↦₆₄ capE) ∗ ((q + 8#64) ↦₆₄ ptrE) ∗
-      ((q + 16#64) ↦₆₄ BitVec.ofNat 64 enc.length) ∗ vecU8Buf A.repAlloc capE ptrE enc) ∗ F)
-    (h : SepWPpIn img prog ret s (vecU8At A.repAlloc q capE ptrE enc ∗ F) Q Qp) :
-    SepWPpIn img prog ret s P Q Qp := by
-  subst hP
-  exact SepWPpIn.weaken_pre
-    (sepConj_mono_left (Entails.of_eq (vecU8At_cells A q capE ptrE enc).symm)) h
 
 theorem k5_fold_q_placed {pl : Obj.MultiPlacement} {prog : Program} {ret : BitVec 64} {s : State}
     {Q Qp : State → SepProp → Prop} {M : AllocCostModel} (A : RustCliAllocBudget M)

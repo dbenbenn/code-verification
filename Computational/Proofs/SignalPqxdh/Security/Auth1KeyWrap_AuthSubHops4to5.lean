@@ -9,17 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead
-public import Computational.Proofs.SignalPqxdh.Security.SigHopA
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead
+public import Computational.Proofs.SignalPqxdh.Security.SigHopA -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
 
 /-!
 # One-Key Primitive Query Bound on Non-Session `Auth` Queries
@@ -27,7 +27,7 @@ public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 Proves that `stepAuthOtherPrim1Key` makes at most four primitive oracle queries per `AuthQuery`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

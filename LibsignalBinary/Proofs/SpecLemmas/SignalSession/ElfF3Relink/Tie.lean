@@ -17,14 +17,16 @@ public import VerifiedLibraries.RustStd.Proofs.MallocngBridge
 public import LibsignalBinary.Heap.Fine.F3LayoutData
 public import LibsignalBinary.Heap.MallocngBridgeBudget
 public import LibsignalBinary.Heap.Fine.AllocZeroedHelpersFine
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.TlsZero
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.TlsZero -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.TieSpec
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Fixture
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.CliPlacement
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Fixture -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.CliPlacement
 public meta import ProofLib.ProgramReflection
 public meta import ProofLib.StdStartup.Layout
 public meta import LibsignalBinary.Heap.Fine.F3LayoutData
-public meta import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Fixture
+public meta import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Fixture -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.CliElfProof
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSymChars
 
 /-!
 # Stock `ld.lld` CLI `WordTree`, Shim, and `memcpy`/`memset` Kernel-Tie on `f3TrialElf`
@@ -35,12 +37,12 @@ Certifies `f3MatchesImage`, `ProgContainsMallocng f3TrialRxProg f3MallocngMpl`, 
 `F3Seg5ShimBundle` (`stock/rdl_shim.S` body/marker in `seg[2]`), checked 1-hop `Instr.b` stub thunks at
 `f3StubAddrs.{alloc,dealloc,realloc}` and `f3StubAzAddr` (`< e_entry`), `allocMemcpyVmSpec` and
 `allocMemsetVmSpec` on `f3TrialRxProg`, and `KeepsFrozen`-stable `b __rdl_*` execution witnesses
-(`f3Trial_keepsFrozen_stub_at` bundle, zero `GeneratedLean.LibsignalSessionObj` dependency).
+(`f3Trial_keepsFrozen_stub_at` bundle, zero generated legacy object dependency).
 -/
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie
 
@@ -77,21 +79,22 @@ set_option maxRecDepth 4000000
 
 /-! ## `f3TrialRxProg` (`seg[2]`) and `WordTree` Reflection -/
 
-/-- Page-aligned base address of `rxSeg` (`seg[2]`, `0x469000` on stock `StdBin`, where `.text.b_pre`
-    precedes `e_entry = 0x46a000`). -/
+/-- Page-aligned base address of `rxSeg` (`seg[2]`, `0x474000` on stock `StdBin`, where `.text.b_pre`
+    precedes `e_entry = 0x475000`). -/
 abbrev f3RxSegBase : BitVec 64 :=
   LibsignalBinary.Heap.Fine.f3RxSegBase
 
-/-- Base address of `:text_a` (`seg[1]`, `0x40a000` on stock `StdBin`). -/
-def f3ImgTextBase : BitVec 64 :=
-  0x40a000#64
+/-- Base address of `:text_a` (`seg[1]`, `0x415000` on stock `StdBin`). -/
+@[expose] def f3ImgTextBase : BitVec 64 :=
+  0x415000#64
 
 /-- Hook-free `Syscall.standard` `Program` backed by `f3TrialElf`'s `rxSeg` (`seg[2]`). -/
-noncomputable def f3TrialRxProg : Program :=
+@[expose] noncomputable def f3TrialRxProg : Program :=
   f3StdLayout.rxProgram f3TrialElf
 
+set_option maxHeartbeats 800000 in
 /-- Balanced `WordTree` reflected from `f3TrialRxProg`. -/
-def f3TrialRxWordTree : WordTree :=
+@[expose] def f3TrialRxWordTree : WordTree :=
   word_tree_of% f3TrialRxProg
 
 theorem f3TrialRxWordTree_eq :

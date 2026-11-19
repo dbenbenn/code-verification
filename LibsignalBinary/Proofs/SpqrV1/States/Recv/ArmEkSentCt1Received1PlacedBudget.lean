@@ -10,15 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommon
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
@@ -34,6 +34,10 @@ import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch3Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommonPlaced
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChunkedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
 
 /-!
 # `<States>::recv` (Block `332`) — `.ekSentCt1Received` Arm, Part 1 (Budget-Threaded)
@@ -43,7 +47,7 @@ Budget-threaded `[LibsignalPlacement]` proofs for `.ekSentCt1Received` (`+228`, 
 framed `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`) call rules.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -117,6 +121,9 @@ open LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget (
 open LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsBudget (
   RecvCt2ChunkEnv recvCt2ChunkBudgetOnPanic recvCt2ChunkPlacedSpec
   recvCt2ChunkPlacedSpecOfPrePostEnv
+)
+open LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlacedBudget (
+  recvCt2ChunkPlacedSpecExt recvCt2ChunkPlacedSpecExtOfPrePostEnv recvCt2ChunkPlacedStack
 )
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 
@@ -1661,6 +1668,146 @@ theorem call_ekSentCt1ReceivedRecvCt2Chunk_placed [LibsignalPlacement]
       (fun sm Pm =>
         SepWPp prog (s0.readReg64 Reg.lr) sm Pm post Q_panic oom) oom :=
   call_ekSentCt1ReceivedRecvCt2Chunk_ofPrePostEnv_placed hcall outA stA chunkA st chunk st_cost
+    hsort hroot hfit hcro_s hpc hrun hsp hsp_align hlr htrace hx0 hx1 hx2 hx3 hsplit hpanic hnext
+
+/-- Envelope-parametric relocatable framed call rule for
+    `withLsCodeRoLoaded lsmpl (recvCt2ChunkPlacedSpecExtOfPrePostEnv K F M A lim CalleePre CalleePost)`
+    (Block `350`, `recvCt2ChunkPlacedStack = 39360` bytes). -/
+theorem call_ekSentCt1ReceivedRecvCt2Chunk_ext_ofPrePostEnv_placed [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {F : ShaCompress} {K : MlKem}
+    {CalleePre CalleePost : RecvCt2ChunkGhost F → List AllocEvent → Prop}
+    {prog : Program} {entry ret_pc : BitVec 64}
+    (hcall : subroutine_ok prog entry
+      (withLsCodeRoLoaded lsmpl
+        (recvCt2ChunkPlacedSpecExtOfPrePostEnv K F M A lim CalleePre CalleePost)))
+    (outA stA chunkA : BitVec 64)
+    (st : CryptoVerification.LibsignalSpqrV1.Chunked.SendEk.EkSentCt1Received spqrPolyApi (spqrAuthApi F))
+    (chunk : Chunk)
+    (st_cost : M.σ)
+    (hsort : PolyDecoderStrictSorted st.receiving_ct2)
+    (hroot : st.uc.auth.rootKey.length + 32 < 2 ^ 63)
+    (hfit : FitsEnv M lim st_cost (CalleePre ⟨outA, stA, st, st.uc.epoch, chunkA, chunk⟩))
+    {s0 s : State} {sp_call : BitVec 64} {P Frame R : SepProp}
+    {post Q_panic : State → SepProp → Prop}
+    {oom : State → SepProp}
+    (hcro_s : LibsignalCodeRoLoaded lsmpl s.mem)
+    (hpc : s.pc = entry)
+    (hrun : s.status = .Running)
+    (hsp : s.sp = sp_call)
+    (hsp_align : (sp_call &&& 15#64 == 0#64) = true)
+    (hlr : s.readReg64 Reg.lr = ret_pc)
+    (htrace : TraceCalleeSaved s s0)
+    (hx0 : s.readReg64 Reg.x0 = outA)
+    (hx1 : s.readReg64 Reg.x1 = stA)
+    (hx2 : s.readReg64 Reg.x2 = st.uc.epoch)
+    (hx3 : s.readReg64 Reg.x3 = chunkA)
+    (hsplit : P = (memRegion outA chunkedEkSentCt1ReceivedSize ∗
+      ekSentCt1ReceivedAt A.repAlloc stA st ∗ chunkAt chunkA chunk ∗
+      tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
+      A.pool lim st_cost s ∗ stackAt sp_call recvCt2ChunkPlacedStack) ∗ Frame)
+    (hpanic : ∀ sf P_f,
+      ((sf.mem ⊨ P_f ∗ R) →
+        (sf.mem ⊨ (⌜(st.recv_ct2_chunk K st.uc.epoch chunk).isPanic = true ∧
+            s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R)) →
+      Q_panic sf P_f)
+    (hnext : ∀ (evs : List AllocEvent),
+      CalleePost ⟨outA, stA, st, st.uc.epoch, chunkA, chunk⟩ evs →
+      ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
+        sf.sp = sp_call → CalleeSavedPreserved s sf → TraceCalleeSaved sf s0 →
+        SepWP prog (s0.readReg64 Reg.lr) sf
+          ((ekSentCt1ReceivedRecvChunkResultAt A.repAlloc (F := F) outA
+              (st.recv_ct2_chunk K st.uc.epoch chunk) ∗
+            memRegion stA chunkedEkSentCt1ReceivedSize ∗ chunkAt chunkA chunk ∗
+            tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
+            A.pool lim (M.stepEvents evs st_cost) sf ∗ stackAt sp_call recvCt2ChunkPlacedStack) ∗
+           Frame) post oom) :
+    SepWP prog entry s P
+      (fun sm Pm =>
+        SepWPp prog (s0.readReg64 Reg.lr) sm Pm post Q_panic oom) oom := by
+  apply SepWP.done hpc hrun
+  refine SepWPp.call hcall (x := (⟨outA, stA, st, st.uc.epoch, chunkA, chunk⟩, st_cost)) (F := Frame)
+    hpc hrun (by rw [State.spAligned, hsp]; exact hsp_align) hlr ?_
+    (fun _ _ _ _ hex => (not_satisfies_false_sepConj hex).elim)
+    (fun sf _ => hpanic sf _ fun hmem => ?_)
+    (fun sf hpc_sf hrun_sf hsp_sf hcs_sf => ?_)
+    (fun _ _ _ hoom => (not_satisfies_false_sepConj hoom).elim)
+  · intro R' hm
+    rw [hsplit] at hm
+    dsimp only [withLsCodeRoLoaded]
+    rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
+    refine ⟨hcro_s, ?_⟩
+    dsimp only [recvCt2ChunkPlacedSpecExtOfPrePostEnv]
+    rw [hsp]
+    simp only [sepConj_assoc] at hm ⊢
+    rw [satisfies_pure_sepConj]
+    exact ⟨⟨hx0, hx1, hx2, hx3, hsort, hroot, hfit⟩, hm⟩
+  · dsimp only [withLsCodeRoLoaded, recvCt2ChunkPlacedSpecExtOfPrePostEnv,
+      recvCt2ChunkBudgetOnPanic] at hmem
+    exact allowPanic_frame (fun ⟨hisPanic, htr_sub⟩ => ⟨hisPanic, htrace.1 ▸ htr_sub⟩) hmem
+  · dsimp only [withLsCodeRoLoaded, recvCt2ChunkPlacedSpecExtOfPrePostEnv]
+    rw [hsp, sepExists_sepConj_left]
+    apply SepWPp.exists_elim; intro evs
+    simp only [sepConj_assoc]
+    refine SepWPp.pure_elim fun ⟨htr, hevs⟩ => ?_
+    apply SepWPp.of_sepWP_ret
+    exact SepWP.weaken_pre (Entails.of_eq (by sep_ac_rfl))
+      (hnext evs hevs sf hpc_sf hrun_sf (hsp_sf.trans hsp) hcs_sf
+        ⟨htr.trans htrace.1, hcs_sf.2.2.2.2.2.2.2.2.2.2.2.trans htrace.2⟩)
+
+/-- Canonical relocatable framed call rule for
+    `withLsCodeRoLoaded lsmpl (recvCt2ChunkPlacedSpecExt K F M A lim)` (Block `350`). -/
+theorem call_ekSentCt1ReceivedRecvCt2Chunk_ext_placed [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {F : ShaCompress} {K : MlKem}
+    {prog : Program} {entry ret_pc : BitVec 64}
+    (hcall : subroutine_ok prog entry
+      (withLsCodeRoLoaded lsmpl (recvCt2ChunkPlacedSpecExt K F M A lim)))
+    (outA stA chunkA : BitVec 64)
+    (st : CryptoVerification.LibsignalSpqrV1.Chunked.SendEk.EkSentCt1Received spqrPolyApi (spqrAuthApi F))
+    (chunk : Chunk)
+    (st_cost : M.σ)
+    (hsort : PolyDecoderStrictSorted st.receiving_ct2)
+    (hroot : st.uc.auth.rootKey.length + 32 < 2 ^ 63)
+    (hfit : FitsEnv M lim st_cost (RecvCt2ChunkEnv ⟨outA, stA, st, st.uc.epoch, chunkA, chunk⟩))
+    {s0 s : State} {sp_call : BitVec 64} {P Frame R : SepProp}
+    {post Q_panic : State → SepProp → Prop}
+    {oom : State → SepProp}
+    (hcro_s : LibsignalCodeRoLoaded lsmpl s.mem)
+    (hpc : s.pc = entry)
+    (hrun : s.status = .Running)
+    (hsp : s.sp = sp_call)
+    (hsp_align : (sp_call &&& 15#64 == 0#64) = true)
+    (hlr : s.readReg64 Reg.lr = ret_pc)
+    (htrace : TraceCalleeSaved s s0)
+    (hx0 : s.readReg64 Reg.x0 = outA)
+    (hx1 : s.readReg64 Reg.x1 = stA)
+    (hx2 : s.readReg64 Reg.x2 = st.uc.epoch)
+    (hx3 : s.readReg64 Reg.x3 = chunkA)
+    (hsplit : P = (memRegion outA chunkedEkSentCt1ReceivedSize ∗
+      ekSentCt1ReceivedAt A.repAlloc stA st ∗ chunkAt chunkA chunk ∗
+      tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
+      A.pool lim st_cost s ∗ stackAt sp_call recvCt2ChunkPlacedStack) ∗ Frame)
+    (hpanic : ∀ sf P_f,
+      ((sf.mem ⊨ P_f ∗ R) →
+        (sf.mem ⊨ (⌜(st.recv_ct2_chunk K st.uc.epoch chunk).isPanic = true ∧
+            s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R)) →
+      Q_panic sf P_f)
+    (hnext : ∀ (evs : List AllocEvent),
+      RecvCt2ChunkEnv ⟨outA, stA, st, st.uc.epoch, chunkA, chunk⟩ evs →
+      ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
+        sf.sp = sp_call → CalleeSavedPreserved s sf → TraceCalleeSaved sf s0 →
+        SepWP prog (s0.readReg64 Reg.lr) sf
+          ((ekSentCt1ReceivedRecvChunkResultAt A.repAlloc (F := F) outA
+              (st.recv_ct2_chunk K st.uc.epoch chunk) ∗
+            memRegion stA chunkedEkSentCt1ReceivedSize ∗ chunkAt chunkA chunk ∗
+            tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
+            A.pool lim (M.stepEvents evs st_cost) sf ∗ stackAt sp_call recvCt2ChunkPlacedStack) ∗
+           Frame) post oom) :
+    SepWP prog entry s P
+      (fun sm Pm =>
+        SepWPp prog (s0.readReg64 Reg.lr) sm Pm post Q_panic oom) oom :=
+  call_ekSentCt1ReceivedRecvCt2Chunk_ext_ofPrePostEnv_placed hcall outA stA chunkA st chunk st_cost
     hsort hroot hfit hcro_s hpc hrun hsp hsp_align hlr htrace hx0 hx1 hx2 hx3 hsplit hpanic hnext
 
 end LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkSentCt1Received1PlacedBudget

@@ -18,7 +18,7 @@ Defines `kemPubSerializeValAtStkSpec` and `kemPubSerializeFullAtStkSpec` over
 `RustCliAllocBudget M` recording `rustAllocEvents 1569 1`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -29,7 +29,7 @@ open LibsignalBinary.Heap
   (AllocCostModel BudgetLimits RustCliAllocBudget FitsEvents rustAllocEvents)
 
 /-- Value-level budget-threaded specification for `<kem::Key<Public>>::serialize [local#1]`. -/
-def kemPubSerializeValAtStkSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def kemPubSerializeValAtStkSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (calleeStk : Nat) :
     Spec ((BitVec 64 × List (BitVec 8)) × M.σ) where
   pre := fun ((boxPtr, pkBytes), st) s =>
@@ -43,7 +43,7 @@ def kemPubSerializeValAtStkSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
       A.pool lim (M.stepEvents (rustAllocEvents 1569 1) st) sf ∗ stackAt s0.sp calleeStk
 
 /-- Reference-level budget-threaded specification for `<kem::Key<Public>>::serialize [local#1]`. -/
-def kemPubSerializeFullAtStkSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def kemPubSerializeFullAtStkSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (calleeStk : Nat) :
     Spec ((BitVec 64 × BitVec 64 × List (BitVec 8)) × M.σ) where
   pre := fun ((keyRef, kpkPtr, kpk), st) s =>

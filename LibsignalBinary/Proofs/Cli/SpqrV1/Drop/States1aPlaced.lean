@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.TopDecodesPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.DecodesPlaced
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.TopDecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.DecodesPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.PolyDecoderPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.PolyEncoderPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.UnchunkedPlaced
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Chunked `States` Drop Glue (Block `443`, Part 1/2)
@@ -27,7 +28,7 @@ Defines `dropChunkedStatesLocal1Placed*Spec` and proves the first six variant co
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -50,7 +51,7 @@ open CryptoVerification.Cli.SpqrV1.Drop.TopPlaced
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
-def _root_.CryptoVerification.Cli.SpqrV1.Drop.dropChunkedStatesLocal1PlacedSpec
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.Drop.dropChunkedStatesLocal1PlacedSpec
     [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
     Spec (DropChunkedStatesGhost F) where
   pre := fun x s =>
@@ -64,7 +65,7 @@ def _root_.CryptoVerification.Cli.SpqrV1.Drop.dropChunkedStatesLocal1PlacedSpec
       CryptoVerification.Cli.SpqrV1.Drop.chunkedStatesLocal1JumpTablePlacedAt ∗
       A.pool ∗ stackAt s0.sp dropStackPoly64
 
-def _root_.CryptoVerification.Cli.SpqrV1.Drop.dropChunkedStatesLocal1PlacedVariantSpec
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.Drop.dropChunkedStatesLocal1PlacedVariantSpec
     [LibsignalPlacement] (A : RustAlloc) {F : ShaCompress}
     (st : States spqrPolyApi (spqrAuthApi F)) : Spec (BitVec 64) where
   pre := fun a s =>

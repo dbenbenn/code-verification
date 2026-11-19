@@ -19,7 +19,7 @@ Allocation-budget (`RustCliAllocBudget M`) specification for `kem::Key<Public>::
 pairing `kemDeserResAt A.repAlloc` with deterministic allocation events `kemDeserializeEvents`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -35,14 +35,14 @@ open CryptoVerification.SignalSession.Cli.RunProofs
 
 /-- Deterministic `AllocEvent` list emitted by `kem::Key<Public>::deserialize` on `bs`:
     `rustAllocEvents kemPkLen 1` (`1568` bytes, align `1`) on `.ok _`, and `[]` on error. -/
-def kemDeserializeEvents (bs : List (BitVec 8)) : List AllocEvent :=
+@[expose] def kemDeserializeEvents (bs : List (BitVec 8)) : List AllocEvent :=
   match kemPkDeserialize bs with
   | .ok _ => rustAllocEvents kemPkLen 1
   | _ => []
 
 /-- Budget-form counterpart of `cliKemDeserializeSpec` (`onPanic := ⌜False⌝`, `onOom := ⌜False⌝`
 under `FitsEvents M lim st (kemDeserializeEvents x.bs)`). -/
-def cliKemDeserializeSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def cliKemDeserializeSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (stk : Nat) : Spec (KemDeserializeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.r ∧ s.readReg64 .x1 = x.p ∧

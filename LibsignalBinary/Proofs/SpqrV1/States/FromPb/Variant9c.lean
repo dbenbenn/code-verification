@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9b
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1
-import LibsignalBinary.Proofs.SpqrV1.Layout.Stubs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9b -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Variant 9 (`Ct1Acknowledged`, `+444`) — Part C
@@ -22,7 +22,7 @@ Completes the Variant 9 stepping (`+2864 -> +6904`, `+2864 -> +35448 -> +3044.. 
 and epilogue reconstruction for `.ok (.ct1Acknowledged ...)`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.FromPb
 
@@ -45,17 +45,11 @@ set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
-attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff libsignalSessionCode
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   extractLsb'_0_64_append extractLsb'_64_64_append
 
-attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  statesFromPb_fnOff
-  stubOff_rust_no_alloc_shim
-  stubOff_rust_alloc
-  stubOff_rust_dealloc
-  stubOff_memcpy
-  stubOff_handle_error
+
 
 @[local simp, local arm64_norm, local wp_norm]
 theorem v9_bv_add_add_lit (x : BitVec 64) (a b : Nat) :
@@ -65,7 +59,7 @@ theorem v9_bv_add_add_lit (x : BitVec 64) (a b : Nat) :
 /-! ## 1. `PolyDecoder` Cell Unpacking and Relocation (`fsp + 1888 -> out + 136`) -/
 
 /-- Pack 8 bytes (little-endian) from `bs` into a `BitVec 64`. -/
-def v9_pack64 (bs : List (BitVec 8)) : BitVec 64 :=
+@[expose] def v9_pack64 (bs : List (BitVec 8)) : BitVec 64 :=
   (bs.getD 7 0#8) ++ (bs.getD 6 0#8) ++ (bs.getD 5 0#8) ++ (bs.getD 4 0#8) ++
   (bs.getD 3 0#8) ++ (bs.getD 2 0#8) ++ (bs.getD 1 0#8) ++ (bs.getD 0 0#8)
 
@@ -90,7 +84,7 @@ theorem v9_pointsToBytes_eq_pack64 (a : BitVec 64) (bs : List (BitVec 8)) (h : b
   rw [pointsTo64_eq_pointsToBytes, v9_unpack64_pack64 bs h]
 
 /-- Pack 16 bytes (little-endian) from `bs` into a `BitVec 128`. -/
-def v9_pack128 (bs : List (BitVec 8)) : BitVec 128 :=
+@[expose] def v9_pack128 (bs : List (BitVec 8)) : BitVec 128 :=
   v9_pack64 (bs.drop 8) ++ v9_pack64 (bs.take 8)
 
 theorem v9_pointsToBytes_eq_pack128 (a : BitVec 64) (bs : List (BitVec 8)) (h : bs.length = 16) :
@@ -106,11 +100,11 @@ theorem v9_pointsToBytes_eq_pack128 (a : BitVec 64) (bs : List (BitVec 8)) (h : 
   rfl
 
 /-- 8-byte word at byte offset `i` within `bs`. -/
-def v9_wordAt (bs : List (BitVec 8)) (i : Nat) : BitVec 64 :=
+@[expose] def v9_wordAt (bs : List (BitVec 8)) (i : Nat) : BitVec 64 :=
   v9_pack64 ((bs.drop i).take 8)
 
 /-- 16-byte quadword at byte offset `i` within `bs`. -/
-def v9_quadAt (bs : List (BitVec 8)) (i : Nat) : BitVec 128 :=
+@[expose] def v9_quadAt (bs : List (BitVec 8)) (i : Nat) : BitVec 128 :=
   v9_pack128 ((bs.drop i).take 16)
 
 theorem v9_bs_drop_step8_zero {bs : List (BitVec 8)} (hbs : bs.length = 384)
@@ -169,7 +163,7 @@ theorem v9_bs_drop_end8 {bs : List (BitVec 8)} (hbs : bs.length = 384)
 /-- The 384-byte `PolyDecoder` `pts` vector-headers region at `a..a + 384` decomposed into
 the exact 64-bit and 128-bit cells accessed at `+3044..+3340` (`a = fsp + 1888`) and
 written by `epilogueOutFull` (`a = out + 136`). -/
-def v9_decCellsAt (a : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def v9_decCellsAt (a : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   (a ↦₆₄ v9_wordAt bs 0) ∗ ((a + 8#64) ↦₆₄ v9_wordAt bs 8) ∗ ((a + 16#64) ↦₆₄ v9_wordAt bs 16) ∗
   ((a + 24#64) ↦₆₄ v9_wordAt bs 24) ∗ ((a + 32#64) ↦₁₂₈ v9_quadAt bs 32) ∗ ((a + 48#64) ↦₁₂₈ v9_quadAt bs 48) ∗
   ((a + 64#64) ↦₁₂₈ v9_quadAt bs 64) ∗ ((a + 80#64) ↦₁₂₈ v9_quadAt bs 80) ∗ ((a + 96#64) ↦₁₂₈ v9_quadAt bs 96) ∗
@@ -207,7 +201,7 @@ theorem v9_bs384_eq_decCells (bs : List (BitVec 8)) (hbs : bs.length = 384) (a :
     v9_bs_drop_step8 hbs a 368#64 376#64 368 <| v9_bs_drop_end8 hbs a 376#64
 
 /-- Concatenated 24-byte `Vec` headers for `pins` and `SortedSetPt` slices. -/
-def v9_ptHeadersBytesOf : List VecPin → List SortedSetPt → List (BitVec 8)
+@[expose] def v9_ptHeadersBytesOf : List VecPin → List SortedSetPt → List (BitVec 8)
   | [], _ => []
   | _, [] => []
   | pin :: pins, s :: ss => vecHeaderBytesOf pin s.vec.length ++ v9_ptHeadersBytesOf pins ss
@@ -417,7 +411,7 @@ theorem v9_ct1SentAt_pack (A : RustAlloc) {F : ShaCompress} (base : BitVec 64)
   exact Entails.of_eq (by ac_rfl)
 
 /-- The 128-bit quadword loaded from `fsp + 1897` (`x24 + 9`) and stored to `fsp + 848`. -/
-def v9_midQ128 (w8 w16 w24 : BitVec 64) : BitVec 128 :=
+@[expose] def v9_midQ128 (w8 w16 w24 : BitVec 64) : BitVec 128 :=
   EncoderFromPb.unshiftWord w16 (EncoderFromPb.loByte w24) ++
     EncoderFromPb.unshiftWord w8 (EncoderFromPb.loByte w16)
 
@@ -500,7 +494,7 @@ theorem v9_out_144_realign (out w8 w16 w24 : BitVec 64) :
   rw [hd145, hd153, hd160, hd152] at hdst
   exact hdst
 
-def v9_outDecTail (out : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def v9_outDecTail (out : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ((out + 168#64) ↦₁₂₈ v9_quadAt bs 32) ∗ ((out + 184#64) ↦₁₂₈ v9_quadAt bs 48) ∗
   ((out + 200#64) ↦₁₂₈ v9_quadAt bs 64) ∗ ((out + 216#64) ↦₁₂₈ v9_quadAt bs 80) ∗
   ((out + 232#64) ↦₁₂₈ v9_quadAt bs 96) ∗ ((out + 248#64) ↦₁₂₈ v9_quadAt bs 112) ∗
@@ -954,72 +948,6 @@ theorem v9_fsp_1888_entails_epilogue (fsp w2272 w2280 : BitVec 64)
   rw [hq1888, hq1904]
   exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_right hm376))
 
-/-- At `+2864`, when `ct1SentFromPb` returned `Ok(uc)` (`rkCap.toNat < 2 ^ 63`) and
-    `receivingEk = none` (`x21 = noneCap`), spills `hdr`, `es`, `ct1Len`, and `uc.epoch`
-    and branches at `+2968` (`b.eq +6904`) to `+6904`. -/
-theorem v9_step_2864_ok_none_to_6904
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (s0 s : State) (fsp out : BitVec 64)
-    (rkCap rkPtr rkLen mkCap mkPtr mkLen hdrCap hdrPtr hdrLen esCap esPtr esLen ct1Cap ct1Ptr ct1Len ep : BitVec 64)
-    (w72 w128 w144 w152 w240 w248 : BitVec 64) (d96 : BitVec 32) (Rest : SepProp)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true) (hrk_lt : rkCap.toNat < 2 ^ 63)
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 2864#64)
-    (hrun : s.status = .Running) (hsp : s.sp = fsp) (hx19 : s.readReg64 .x19 = out)
-    (hx21 : s.readReg64 .x21 = noneCap) (hx25 : s.readReg64 .x25 = fsp + 1792#64) (htr : TraceCalleeSaved s s0) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 6904#64) s
-      (((fsp + 72#64) ↦₆₄ w72) ∗ ((fsp + 96#64) ↦₃₂ d96) ∗ ((fsp + 128#64) ↦₆₄ w128) ∗
-        ((fsp + 144#64) ↦₆₄ w144) ∗ ((fsp + 152#64) ↦₆₄ w152) ∗ ((fsp + 240#64) ↦₆₄ w240) ∗
-        ((fsp + 248#64) ↦ₛ EncoderFromPb.loBytes7 w248) ∗
-        v9_optProtoUcWordsAt (fsp + 1888#64)
-          rkCap rkPtr rkLen mkCap mkPtr mkLen hdrCap hdrPtr hdrLen esCap esPtr esLen ct1Cap ct1Ptr ct1Len ep ∗
-        Rest)
-      (fun s1 P1 =>
-        (P1 ⊢
-          ((fsp + 72#64) ↦₆₄ esPtr) ∗ ((fsp + 96#64) ↦₃₂ (EncoderFromPb.loByte ct1Len).zeroExtend 32) ∗
-          ((fsp + 128#64) ↦₆₄ esCap) ∗ ((fsp + 144#64) ↦₆₄ hdrPtr) ∗ ((fsp + 152#64) ↦₆₄ hdrCap) ∗
-          ((fsp + 240#64) ↦ₛ EncoderFromPb.loBytes7 (EncoderFromPb.unshiftWord ct1Len (EncoderFromPb.loByte ep))) ∗
-          ((fsp + 247#64) ↦₆₄ ep) ∗ memRegion (fsp + 1888#64) 128 ∗ Rest) ∧
-        s1.sp = fsp ∧ s1.readReg64 .x0 = mkPtr ∧ s1.readReg64 .x1 = mkCap ∧
-        s1.readReg64 .x10 = rkCap ∧ s1.readReg64 .x13 = ct1Cap ∧ s1.readReg64 .x14 = ct1Ptr ∧
-        s1.readReg64 .x19 = out ∧ s1.readReg64 .x28 = rkPtr ∧ TraceCalleeSaved s1 s0) := by
-  subst hsp
-  have hrk_ne : (rkCap + 1#64 == 0#64) = false :=
-    Bool.eq_false_iff.mpr (cap_add_one_beq_zero_false hrk_lt)
-  dsimp only [v9_optProtoUcWordsAt, noneCap] at hx21 ⊢
-  simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-  states_from_pb_fetches_range b (Rust.withPanics ext) 2864 108
-  dsimp only [tripleRatchetProgAtExt, statesFromPbName, BitVec.ofNat_eq_ofNat] at hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::from_pb" = entry
-  examples_hide_fetches
-  iterate 21 wp_step
-  wp_conv_pre => rw [v9_fsp_2000_realign_rest s.sp ct1Len ep]
-  wp_step; wp_step; wp_step
-  wp_conv_pre =>
-    rw [v9_fsp_240_realign_64_rest s.sp (EncoderFromPb.unshiftWord ct1Len (EncoderFromPb.loByte ep)) w248,
-        v9_fsp_2000_unrealign_rest s.sp ct1Len ep]
-  wp_steps
-  refine EncoderFromPb.align_pre ?_ ?_
-  · have hm1888 := v9_optProtoUcWordsAt_entails_128 (s.sp + 1888#64)
-      rkCap rkPtr rkLen mkCap mkPtr mkLen hdrCap hdrPtr hdrLen esCap esPtr esLen ct1Cap ct1Ptr ct1Len ep
-    dsimp only [v9_optProtoUcWordsAt] at hm1888
-    simp only [BitVec.add_assoc, BitVec.reduceAdd] at hm1888
-    refine Entails.trans (Entails.of_eq (show _ =
-      ((s.sp + 72#64) ↦₆₄ esPtr) ∗ ((s.sp + 96#64) ↦₃₂ (EncoderFromPb.loByte ct1Len).zeroExtend 32) ∗
-      ((s.sp + 128#64) ↦₆₄ esCap) ∗ ((s.sp + 144#64) ↦₆₄ hdrPtr) ∗ ((s.sp + 152#64) ↦₆₄ hdrCap) ∗
-      ((s.sp + 240#64) ↦ₛ EncoderFromPb.loBytes7 (EncoderFromPb.unshiftWord ct1Len (EncoderFromPb.loByte ep))) ∗
-      ((s.sp + 247#64) ↦₆₄ ep) ∗
-      (((s.sp + 1888#64) ↦₆₄ rkCap) ∗ ((s.sp + 1896#64) ↦₆₄ rkPtr) ∗ ((s.sp + 1904#64) ↦₆₄ rkLen) ∗
-       ((s.sp + 1912#64) ↦₆₄ mkCap) ∗ ((s.sp + 1920#64) ↦₆₄ mkPtr) ∗ ((s.sp + 1928#64) ↦₆₄ mkLen) ∗
-       ((s.sp + 1936#64) ↦₆₄ hdrCap) ∗ ((s.sp + 1944#64) ↦₆₄ hdrPtr) ∗ ((s.sp + 1952#64) ↦₆₄ hdrLen) ∗
-       ((s.sp + 1960#64) ↦₆₄ esCap) ∗ ((s.sp + 1968#64) ↦₆₄ esPtr) ∗ ((s.sp + 1976#64) ↦₆₄ esLen) ∗
-       ((s.sp + 1984#64) ↦₆₄ ct1Cap) ∗ ((s.sp + 1992#64) ↦₆₄ ct1Ptr) ∗ ((s.sp + 2000#64) ↦₆₄ ct1Len) ∗
-       ((s.sp + 2008#64) ↦₆₄ ep)) ∗ Rest by ac_rfl)) ?_
-    exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left hm1888)))))))
-  · wp_done
-
 theorem v9_fsp_6904_entails_2304 (fsp esPtr esCap hdrPtr hdrCap : BitVec 64) :
     memRegion fsp 72 ∗ ((fsp + 72#64) ↦₆₄ esPtr) ∗ memRegion (fsp + 80#64) 48 ∗
       ((fsp + 128#64) ↦₆₄ esCap) ∗ memRegion (fsp + 136#64) 8 ∗
@@ -1153,5 +1081,4 @@ theorem v9_memRegion_1888_2016_eq_400_16 (fsp : BitVec 64) :
         rfl (by bv_omega) (by decide)]
 
 end CryptoVerification.SpqrV1.States.FromPb
-
 

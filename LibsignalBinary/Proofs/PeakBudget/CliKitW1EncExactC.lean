@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliKitW1EncExactSplit
+public import LibsignalBinary.Proofs.PeakBudget.CliKitW1EncExactSplit -- proof-setup: allow-public-import
 import LibsignalBinary.Heap.Fine.ClientBounds
 import LibsignalBinary.Heap.Fine.CreditInst
 import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudgetAux
@@ -56,6 +56,17 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeserAux
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
 import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefs
 import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
+import LibsignalBinary.Proofs.PeakBudget.CliKitW1SpqrSendAuxR2
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
 
 /-!
 # Guarded-Tight `W1` (`encrypt` `@109`) Credit Core
@@ -66,7 +77,7 @@ Proves `w1x_creditCore_Stmt W` from placed session/identity kit, wire-message, a
 `W1EncryptSlotPeak` credit bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -627,9 +638,7 @@ private theorem w1c_otrEncryptCore_imp_step
   cases hs : (pqxdhSpqrModel P).send otr.pqrState rest with
   | none =>
     rw [hs] at hevs'
-    have hnil : evs' = [] := hevs'
-    subst hnil
-    exact Or.inl FreeOnlyEvs.nil
+    exact Or.inl (Or.inr hevs')
   | some val =>
     rcases val with ⟨pq', pqrKey, pqrMsg⟩
     rw [hs] at hevs'
@@ -1096,6 +1105,13 @@ private theorem w1c_storePoll_credit [LibsignalPlacement]
 
 /-! ## Main Credit Theorem -/
 
+private theorem w1x_otr_cum_mono_aux {cs sc sm sig : Nat}
+    (hsc : sc = 738) (hsm : sm ≤ 143484) (h30537 : 30537 ≤ sig) :
+    cs + max 30537 (sc + sm + sig) ≤ cs + 738 + 143484 + sig := by omega
+
+private theorem w1x_otr_live_mono_aux {ls lg cap ln : Nat} (hlg : lg ≤ cap) :
+    ls + lg + ln ≤ ls + cap + ln := by omega
+
 /-- Credit core `PhaseCreditSpec` for the unguarded `@109` `CliEncryptSlotEnv`. -/
 theorem w1x_creditCore [LibsignalPlacement] (W : CliHooks) : w1x_creditCore_Stmt W := by
   intro g peerV M A w1R hi hp hGuard hrep hdom
@@ -1117,6 +1133,8 @@ theorem w1x_creditCore [LibsignalPlacement] (W : CliHooks) : w1x_creditCore_Stmt
   have hle32 : 32 ≤ HasFineReallocCredit.smallMaxReq fineCostModel :=
     Nat.le_trans (by decide) hle1569
   have hle40 : 40 ≤ HasFineReallocCredit.smallMaxReq fineCostModel :=
+    Nat.le_trans (by decide) hle1569
+  have hle320 : 320 ≤ HasFineReallocCredit.smallMaxReq fineCostModel :=
     Nat.le_trans (by decide) hle1569
   have hBoxLdEq : (w1SessKitPlaced w1R.repAlloc w1R.B F0 w1R.peer).loadBoxSize = 24 := rfl
   have hBoxStEq : (w1SessKitPlaced w1R.repAlloc w1R.B F0 w1R.peer).storeBoxSize = 32 := rfl
@@ -1189,7 +1207,7 @@ theorem w1x_creditCore [LibsignalPlacement] (W : CliHooks) : w1x_creditCore_Stmt
       phaseCreditSpec_exists fun g0 hg0 =>
         let ⟨hc, hl, hp0, hr⟩ := w1c_w1SigGuard_bounds hg0
         (signalMessageNew_phaseCredit fineCostModel_modelHyps uuidTryParse g0).mono hc hl hp0 hr
-    have hStep := otrEncryptStep_creditSpec_tight fineCostModel_modelHyps hle32
+    have hStep := otrEncryptStep_creditSpec_tight fineCostModel_modelHyps hle320
       (ptextLen := gx.ptext.length) hSend hSigEx
     set ctLen := (gx.ptext.length / 16 + 1) * 16
     have hct_le : ctLen ≤ w1CtLenCap := by
@@ -1199,18 +1217,20 @@ theorem w1x_creditCore [LibsignalPlacement] (W : CliHooks) : w1x_creditCore_Stmt
       omega
     have hsm143 := tryCloneSmallDelta_fineCostModel_le_143484 ctLen
     have hlg := tryCloneLargeDelta_fineCostModel_le_add hct_le
+    have h30537 : 30537 ≤ w1SigCumCap := by decide
+    have h320_req : 320 ≤ w1SigReqCap := by decide
     exact hStep.mono
-      (by rw [hCost32]; omega)
-      (by omega)
+      (w1x_otr_cum_mono_aux hCost32 hsm143 h30537)
+      (w1x_otr_live_mono_aux hlg)
       (Nat.max_le.mpr ⟨Nat.le_max_left _ _,
-        Nat.le_trans (by omega) (Nat.le_max_right _ _)⟩)
+        Nat.le_trans (w1x_otr_live_mono_aux hlg) (Nat.le_max_right _ _)⟩)
       (Nat.max_le.mpr ⟨Nat.le_max_left _ _,
-        Nat.le_trans
-          (Nat.max_le.mpr ⟨Nat.le_max_left 32 _,
-            Nat.le_trans
-              (Nat.max_le.mpr ⟨Nat.le_trans hct_le (Nat.le_max_left _ _), Nat.le_max_right _ _⟩)
-              (Nat.le_max_right 32 _)⟩)
-          (Nat.le_max_right _ _)⟩)
+        Nat.max_le.mpr
+          ⟨Nat.le_trans h320_req
+            (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_max_right _ _)),
+           Nat.le_trans
+             (Nat.max_le.mpr ⟨Nat.le_trans hct_le (Nat.le_max_left _ _), Nat.le_max_right _ _⟩)
+             (Nat.le_max_right _ _)⟩⟩)
   have hPk : ∀ r sess otr taken,
       (w1SessKitPlaced w1R.repAlloc w1R.B F0 w1R.peer).ScopeAt scopeKit
         StoresGhost.opened.sessions gx.rem.val r →

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Specifications.SignalSession.PqStatement
+public import LibsignalBinary.Proofs.SignalSession.PqStatement
 public import Computational.Proofs.E2E.PqxdhSessionModelProofDefs
 import Computational.Proofs.E2E.Pqxdh.FirstMessageRoundtrip
 import Computational.Proofs.LibsignalCli.PqFirstMessageRoundtrip

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
@@ -27,7 +27,7 @@ Relocatable `[LibsignalPlacement]` shared direct epilogue (`+19324 -> s0.x30`), 
 jump-table dispatch, epoch comparison at `+1528`, and Path 1 (`Error::EpochOutOfRange`).
 -/
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SpqrV1.States.Recv
 

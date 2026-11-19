@@ -9,23 +9,24 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanOracle
-public import Computational.Proofs.HeadlineV1.DeliverForgePaperChallSim
-public import Computational.Proofs.HeadlineV1.SendShortC
-public import Computational.Proofs.ReductionDsl.Fig8Atomic
-public import Computational.Proofs.ReductionDsl.Ratchet.LibsignalSimDF
+public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanOracle -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.DeliverForgePaperChallSim -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.SendShortC -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.Fig8Atomic
+import Computational.Proofs.ReductionDsl.Ratchet.LibsignalSimDF
 import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECell -- proof-setup: allow-public-import
+import Computational.Proofs.SessionCostedBase
 
 /-!
 # Outer Loop, Cost, and Program-Size Bounds for `SimDeliverForge`
 
 Assembles single-session `simDeliverForge` costed reduction programs from a single-query step
 computation, bounds their execution cost and syntactic description bit-length (`atomicDFRedDescBits`),
-and defines the `SimDeliverForgeAtomicStepBundle` contract.
--/
+and defines the `SimDeliverForgeAtomicStepBundle` contract.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,21 +38,21 @@ open _root_.ReductionDsl (Ty Expr Comp GameCodec CostedReduction bits reductionS
   B PB BV128 BV256 U64 PK PlainT PtT GhostStT smQT smRT fig8CtT
   fig8HdrT fsRecvStT lctT wireSaltCtT)
 open _root_.CryptoGames (Party)
-open CryptoGames.SM (posTy)
-open CryptoGames.CBC (Plain)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.SM.Construction.DeliverForge
+open _root_.CryptoGames.SM (posTy)
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.SM.Construction.DeliverForge
   (specDF MakesAtMostQueriesDF forgeGuessedAdvantageCellPaper sameHdrScheme challSimDF'Paper)
-open CryptoGames.Ratchet.LibsignalInst (lFig8 LibsignalMsgPublicPart)
-open CryptoGames.Ratchet.LibsignalSim (Fig8St Fig8C)
-open CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey GhostState)
-open CryptoVerification.LibsignalSession (ratchetCostBudget ratchetCostBudget_pos GRedBounded)
-open CryptoVerification.E2E.Costed (gRedBounded_of_bounds gRedBounded_of_bounds_const)
+open _root_.CryptoGames.Ratchet.LibsignalInst (lFig8 LibsignalMsgPublicPart)
+open _root_.CryptoGames.Ratchet.LibsignalSim (Fig8St Fig8C)
+open _root_.CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey GhostState)
+open _root_.CryptoVerification.LibsignalSession (ratchetCostBudget ratchetCostBudget_pos GRedBounded)
+open _root_.CryptoVerification.E2E.Costed (gRedBounded_of_bounds gRedBounded_of_bounds_const)
 open Computational.Proofs.ReductionDsl.SizeBudgetBridge
   (bits_mono bits_mul_le size_le_budget_of_log_cost)
-open CryptoVerification.LibsignalSession.HeadlineV1 (SendMsgsOkDF GuardedSMDFShort)
-open CryptoVerification.LibsignalSpqrV1 (MlKem)
-open CryptoVerification.E2E (Bytes idsOf paramsV1)
+open _root_.CryptoVerification.LibsignalSession.HeadlineV1 (SendMsgsOkDF GuardedSMDFShort)
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem)
+open _root_.CryptoVerification.E2E (Bytes idsOf paramsV1)
 open Computational.Proofs.ReductionDsl.Fig8Atomic (atomicShortPubB)
 open Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
   (atomicSamplers_sizeHonest atomicSessionOps_sizeHonest)
@@ -209,7 +210,7 @@ section DescBits
 
 /-- Total syntactic description bit-length of a session-level `CostedReduction` over
 `atomicSessionOps` and `fig8SmIfaceDF` (charging `8` bits per sampler and oracle tag). -/
-def atomicDFRedDescBits {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def atomicDFRedDescBits {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     {C : Crypto} {K : MlKem} {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → Bytes}
     {encT : Pt → PublicKey} {decT : PublicKey → Option Pt} {lam : Pt}
     {κ : Type} {G : OracleSpec κ} {GC : GameCodec (atomicSig ℓ Pt) G}
@@ -456,73 +457,6 @@ theorem two_mul_red_size_le_atomicDFRedDescBits {ℓ : ℕ} {Pt : Type} [Decidab
     atomicSessionOpDescBits (fun _ => 8) (fun _ => 8) R.finish
   omega
 
-theorem red_size_le_atomicDFRedDescBits {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
-    [SampleableType Pt] {C : Crypto} {K : MlKem} {Dh : DHFun (BitVec 256) Pt}
-    {encPt : Pt → Bytes} {encT : Pt → PublicKey} {decT : PublicKey → Option Pt} {lam : Pt}
-    {κ : Type} {G : OracleSpec κ} {GC : GameCodec (atomicSig ℓ Pt) G}
-    {rIn aIn aOut out : Ty (atomicSig ℓ Pt)}
-    (R : CostedReduction (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam)
-      (fig8SmIfaceDF ℓ Pt) G GC rIn aIn aOut out) :
-    R.size ≤ atomicDFRedDescBits R := by
-  have h := two_mul_red_size_le_atomicDFRedDescBits R
-  omega
-
-theorem simDeliverForgeProgOfStep_size_le_ratchetDescBudget {ℓ : ℕ} {Pt : Type}
-    [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt)
-    (qep q : ℕ)
-    (step : Comp (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (fig8SmIfaceDF ℓ Pt)
-      [dfFullT ℓ Pt, smQT (ℓ := ℓ) (Pt := Pt)]
-      (.prod (smRT (ℓ := ℓ) (Pt := Pt) GhostStT) (dfFullT ℓ Pt)))
-    (hstep_d : ℓ < 10 ^ 6 →
-      atomicCompDescBits atomicSessionOpDescBits (fun _ => 8) (fun _ => 8) step ≤
-        2 ^ 21 + 2 ^ 13 * bits (ratchetCostBudget q (qep + 1) + (qep + 1))) :
-    (simDeliverForgeProgOfStep C K Dh encPt encT decT lam step).size ≤
-      ratchetDescBudget q (qep + 1) :=
-  (red_size_le_atomicDFRedDescBits _).trans
-    (simDeliverForgeProgOfStep_descBits_le C K Dh encPt encT decT lam qep q step hstep_d)
-
-theorem simDeliverForgeProgOfStep_size_le_of_budget {ℓ : ℕ} {Pt : Type}
-    [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt)
-    (qep q : ℕ)
-    (step : Comp (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (fig8SmIfaceDF ℓ Pt)
-      [dfFullT ℓ Pt, smQT (ℓ := ℓ) (Pt := Pt)]
-      (.prod (smRT (ℓ := ℓ) (Pt := Pt) GhostStT) (dfFullT ℓ Pt)))
-    (hstep_d : ℓ < 10 ^ 6 →
-      atomicCompDescBits atomicSessionOpDescBits (fun _ => 8) (fun _ => 8) step ≤
-        2 ^ 21 + 2 ^ 13 * bits (ratchetCostBudget q (qep + 1) + (qep + 1)))
-    (hB : ratchetCostBudget q (qep + 1) + (qep + 1) < 2 ^ 126) :
-    (simDeliverForgeProgOfStep C K Dh encPt encT decT lam step).size ≤ reductionSizeBudget :=
-  (simDeliverForgeProgOfStep_size_le_ratchetDescBudget C K Dh encPt encT decT lam qep q step hstep_d).trans
-    (ratchetDescBudget_le_reductionSizeBudget hB)
-
-theorem simDeliverForgeProgOfStep_gRedBounded_of_budget {ℓ : ℕ} {Pt : Type}
-    [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt)
-    (qep q : ℕ)
-    (step : Comp (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (fig8SmIfaceDF ℓ Pt)
-      [dfFullT ℓ Pt, smQT (ℓ := ℓ) (Pt := Pt)]
-      (.prod (smRT (ℓ := ℓ) (Pt := Pt) GhostStT) (dfFullT ℓ Pt)))
-    (hstep_q : step.queries (fun _ => 1) (fun _ => 0) ≤ 1)
-    (hstep_c : ℓ < 10 ^ 6 →
-      step.cost ≤ 199000000 + 100000000 * q + 4096 * bits (qep + 1))
-    (hstep_d : ℓ < 10 ^ 6 →
-      atomicCompDescBits atomicSessionOpDescBits (fun _ => 8) (fun _ => 8) step ≤
-        2 ^ 21 + 2 ^ 13 * bits (ratchetCostBudget q (qep + 1) + (qep + 1)))
-    (hB : ratchetCostBudget q (qep + 1) + (qep + 1) < 2 ^ 126) :
-    GRedBounded (simDeliverForgeProgOfStep C K Dh encPt encT decT lam step)
-      (fun _ => 1) (fun _ => 0) q q (ratchetCostBudget q (qep + 1)) :=
-  gRedBounded_of_bounds_const _ (fun _ => 1) (fun _ => 0) q q (ratchetCostBudget q (qep + 1))
-    (simDeliverForgeProgOfStep_totalCost_le C K Dh encPt encT decT lam qep q step hstep_c)
-    (simDeliverForgeProgOfStep_size_le_of_budget C K Dh encPt encT decT lam qep q step hstep_d hB)
-    (simDeliverForgeProgOfStep_totalQueries_le C K Dh encPt encT decT lam q step hstep_q)
-    (atomicSessionOps_sizeHonest ℓ Pt C K Dh encPt encT decT lam)
-    (atomicSamplers_sizeHonest ℓ Pt)
-
 private theorem ratchetCostBudget_mono_qep_df {q qep₁ qep₂ : ℕ} (h : qep₁ ≤ qep₂) :
     ratchetCostBudget q qep₁ ≤ ratchetCostBudget q qep₂ := by
   unfold ratchetCostBudget
@@ -586,23 +520,6 @@ theorem simDeliverForgeProgOfStep_gRedBounded_of_clamp {ℓ : ℕ} {Pt : Type}
     (atomicSessionOps_sizeHonest ℓ Pt C K Dh encPt encT decT lam)
     (atomicSamplers_sizeHonest ℓ Pt)
 
-theorem simDeliverForgeProgOfStep_size_le_of_qep_le {ℓ : ℕ} {Pt : Type}
-    [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt)
-    (qep q : ℕ) (hqep : qep ≤ q + 10)
-    (step : Comp (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (fig8SmIfaceDF ℓ Pt)
-      [dfFullT ℓ Pt, smQT (ℓ := ℓ) (Pt := Pt)]
-      (.prod (smRT (ℓ := ℓ) (Pt := Pt) GhostStT) (dfFullT ℓ Pt)))
-    (hstep_d : ℓ < 10 ^ 6 →
-      atomicCompDescBits atomicSessionOpDescBits (fun _ => 8) (fun _ => 8) step ≤
-        2 ^ 21 + 2 ^ 13 * bits (ratchetCostBudget q (qep + 1) + (qep + 1))) :
-    (simDeliverForgeProgOfStep C K Dh encPt encT decT lam step).size ≤
-      reductionSizeBudget + 2 ^ 12 * bits (ratchetCostBudget q (qep + 1)) := by
-  have hBpos := ratchetCostBudget_pos q (qep + 1)
-  exact simDeliverForgeProgOfStep_size_le_of_clamp C K Dh encPt encT decT lam qep qep q
-    (Nat.le_refl qep) (by omega) step hstep_d
-
 theorem simDeliverForgeProgOfStep_gRedBounded_of_qep_le {ℓ : ℕ} {Pt : Type}
     [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
@@ -642,49 +559,6 @@ theorem simDeliverForgeProgOfStep_gRedBounded {ℓ : ℕ} {Pt : Type}
       (fun _ => 1) (fun _ => 0) q q (ratchetCostBudget q (qep + 1)) :=
   simDeliverForgeProgOfStep_gRedBounded_of_qep_le C K Dh encPt encT decT lam qep q hqep
     step hstep_q hstep_c hstep_d
-
-theorem simDeliverForgeProgOfStep_gRedBounded_of_size {ℓ : ℕ} {Pt : Type}
-    [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt)
-    (qep q : ℕ)
-    (step : Comp (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (fig8SmIfaceDF ℓ Pt)
-      [dfFullT ℓ Pt, smQT (ℓ := ℓ) (Pt := Pt)]
-      (.prod (smRT (ℓ := ℓ) (Pt := Pt) GhostStT) (dfFullT ℓ Pt)))
-    (hstep_q : step.queries (fun _ => 1) (fun _ => 0) ≤ 1)
-    (hstep_c : ℓ < 10 ^ 6 →
-      step.cost ≤ 199000000 + 100000000 * q + 4096 * bits (qep + 1))
-    (hstep_size : ℓ < 10 ^ 6 →
-      step.size ≤ 2 ^ 21 + 2 ^ 11 * bits (ratchetCostBudget q (qep + 1))) :
-    GRedBounded (simDeliverForgeProgOfStep C K Dh encPt encT decT lam step)
-      (fun _ => 1) (fun _ => 0) q q (ratchetCostBudget q (qep + 1)) := by
-  refine gRedBounded_of_bounds _ (fun _ => 1) (fun _ => 0) q q (ratchetCostBudget q (qep + 1))
-    (simDeliverForgeProgOfStep_totalCost_le C K Dh encPt encT decT lam qep q step hstep_c) ?_
-    (simDeliverForgeProgOfStep_totalQueries_le C K Dh encPt encT decT lam q step hstep_q)
-    (atomicSessionOps_sizeHonest ℓ Pt C K Dh encPt encT decT lam)
-    (atomicSamplers_sizeHonest ℓ Pt)
-  unfold simDeliverForgeProgOfStep
-  split_ifs with hℓ
-  · apply size_le_budget_of_log_cost (C₀ := 2 ^ 22) (C₁ := 2 ^ 11) (by decide) (by decide)
-    have hi : (simDeliverForgeInitC (ℓ := ℓ) (Pt := Pt) C K Dh encPt encT decT lam).size ≤ 100000 := by
-      have h1 := two_mul_comp_size_le_atomicCompDescBits
-        atomicSessionOpDescBits (fun _ => 8) (fun _ => 8)
-        (simDeliverForgeInitC (ℓ := ℓ) (Pt := Pt) C K Dh encPt encT decT lam)
-      have h2 := simDeliverForgeInitC_descBits_le (ℓ := ℓ) (Pt := Pt) C K Dh encPt encT decT lam
-      omega
-    have hf : (simDeliverForgeFinishC (ℓ := ℓ) (Pt := Pt) C K Dh encPt encT decT lam).size ≤ 1000 := by
-      have h1 := two_mul_comp_size_le_atomicCompDescBits
-        atomicSessionOpDescBits (fun _ => 8) (fun _ => 8)
-        (simDeliverForgeFinishC (ℓ := ℓ) (Pt := Pt) C K Dh encPt encT decT lam)
-      have h2 := simDeliverForgeFinishC_descBits_le (ℓ := ℓ) (Pt := Pt) C K Dh encPt encT decT lam
-      omega
-    have hs := hstep_size hℓ
-    dsimp only [CostedReduction.size]
-    omega
-  · have hd := SessionProgCommon.dummyBoolSessionRed_size_le
-      (O := atomicSessionOps ℓ Pt C K Dh encPt encT decT lam)
-      (fig8SmIfaceDF ℓ Pt) .unit
-    omega
 
 end DescBits
 

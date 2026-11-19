@@ -27,8 +27,6 @@ set_option autoImplicit false
 
 namespace Computational.Proofs.Game.PromotedCostedReds.SimFig8HaltedCoupling
 
-noncomputable section
-
 open OracleComp OracleSpec
 open CryptoGames (Party)
 open CryptoGames.CKA (DHFun)
@@ -867,7 +865,5 @@ theorem simFig8ClampSanHalted_simCNoneWinEvent_eq {PQ Pt : Type} [Inhabited PQ]
   dsimp only
   rw [sm_run_simFig8ClampSanHalted_eq P K Dh encPt encT decT idOf hid lam qep B T Kc Bsk
     CryptoGames.SM.Config.h1 b hq h232 hqB hT hKc hBsk]
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimFig8HaltedCoupling

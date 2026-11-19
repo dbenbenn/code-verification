@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompSchedule
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTightClosed
+public import Symbolic.Proofs.Swarm.COMPOSED.CompSchedule -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTightClosed -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.Bytes.AttackerKnowledge
 import DY.Misc.Fixpoint
@@ -52,7 +52,7 @@ and handshake-root compromise attribution (`handshakeRootCompromised_of_compTrCl
 and assembles `FSQuery` on every reachable trace.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -18,7 +18,7 @@ public import LibsignalBinary.Specifications.CryptoGames.AEAD.EtMDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HKDFDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.WireAeadDefs
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Construction
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Defs
@@ -32,16 +32,16 @@ public import LibsignalBinary.Specifications.CryptoGames.Ratchet.RootKdfDefs
 public import LibsignalBinary.Specifications.HkdfSalt
 public import LibsignalBinary.Specifications.LibsignalAesCbc
 public import LibsignalBinary.Specifications.LibsignalHmac
-public import LibsignalBinary.Specifications.LibsignalProtoCodec
+public import LibsignalBinary.Proofs.ProtoCodecKat
 public import LibsignalBinary.Specifications.LibsignalSession
 public import LibsignalBinary.Specifications.LibsignalSessionRepr
 public import LibsignalBinary.Specifications.LibsignalSignalMessage
 public import LibsignalBinary.Specifications.LibsignalSpqr
-public import LibsignalBinary.Specifications.LibsignalTripleRatchetProst
+public import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst
 public import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
 public import LibsignalBinary.Specifications.RustHeap.Alloc
 public import LibsignalBinary.Specifications.RustHeap.Vec
-public import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionProofDefs
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionProofDefs
 
 /-!
 # Preservation of 32-Byte Skipped-Key Seeds (`SeedsLen32`)
@@ -53,7 +53,7 @@ Establishes and preserves the pure session-model invariant `SeedsLen32` required
 * Any stored or freshly derived message key passed to `generate_keys` has a 32-byte HMAC-SHA256 seed.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

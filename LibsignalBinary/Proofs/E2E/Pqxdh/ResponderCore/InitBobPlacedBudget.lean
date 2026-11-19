@@ -12,16 +12,17 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCalleesBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobPlaced
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCalleesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPFrozen
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable `initialize_bob_session` (Block `75`): Specs and Session-Build Tail
@@ -31,7 +32,7 @@ envelope (`initBobSessionBuildEvents`), and post-`spqr::initial_state` session-b
 (`+252 → +564 → RET`) for unmutated Block `75` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -81,6 +82,7 @@ open LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCalleesBudget (
   withSenderChainNoneEvents withSenderChainNonePlacedSpec
   withSenderChain_none_placed_ok_of_session
 )
+open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget (pqxdhAcceptPlacedStack)
 open LibsignalBinary.Proofs.Placed.BudgetPoolSync (hooksException sepWP_seg_ls_vm)
 open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget (
   sessionMemcpyRegionBudgetSpec sessionShimBudgetSpec
@@ -166,11 +168,11 @@ private theorem hookSat_sessionMemcpyRegionBudget_of_allocMemcpyVm {H : Libsigna
 (`(blkPl_75).base + 252#64 → (blkPl_75).base + 564#64`):
 3 `<PublicKey>::serialize` 33-byte box allocations (`ikBPk`, `ikAPk`, `ekAPk`), 1 32-byte root-key
 box allocation, and `<SessionState>::with_sender_chain` (`None` branch). -/
-def initBobSessionBuildEvents : List AllocEvent :=
+@[expose] def initBobSessionBuildEvents : List AllocEvent :=
   ecPubKeySerializeAllocEvents ++ ecPubKeySerializeAllocEvents ++
     rustAllocEvents 32 1 ++ ecPubKeySerializeAllocEvents ++ withSenderChainNoneEvents
 
-def InitBobSessionBuildEnv (evs : List AllocEvent) : Prop :=
+@[expose] def InitBobSessionBuildEnv (evs : List AllocEvent) : Prop :=
   evs = initBobSessionBuildEvents
 
 theorem fitsEnv_initBobSessionBuildEnv_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :
@@ -196,7 +198,7 @@ attribute [local irreducible] FitsEvent
 /-- Budget-threaded relocatable inner contract for `initialize_bob_session` (Block `75`),
 parameterized by allocator event envelope `InitBobEnv : AcceptKeysInput → List AllocEvent → Prop`
 (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝` under `FitsEnv M lim st (InitBobEnv g.inp)`). -/
-def initializeBobSessionInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (InitBobEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobCallGhost × M.σ) where
@@ -215,7 +217,7 @@ def initializeBobSessionInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel
       g.inp g.ikBPk g.spkBPk g.sameAccountByte ∗
     memRegion g.outPtr 344 ∗
     (lsLogFilterAddr ↦₆₄ 0#64) ∗
-    stackAt s.sp (768 + pqxdhEntryStack) ∗
+    stackAt s.sp (768 + pqxdhAcceptPlacedStack) ∗
     A.pool lim st s
   post := fun (g, st) s0 sf =>
     ∃∗ evs : List AllocEvent,
@@ -254,16 +256,16 @@ def initializeBobSessionInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel
          initBobErrAt g.outPtr ∗
          anyHeap) ∗
       (lsLogFilterAddr ↦₆₄ 0#64) ∗
-      stackAt s0.sp (768 + pqxdhEntryStack) ∗
+      stackAt s0.sp (768 + pqxdhAcceptPlacedStack) ∗
       A.pool lim (M.stepEvents evs st) sf
 
-def initializeBobSessionPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (InitBobEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobCallGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl (initializeBobSessionInnerPlacedSpec P A lim InitBobEnv)
 
-def initializeBobSessionFrozenPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionFrozenPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (InitBobEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobCallGhost × M.σ) :=

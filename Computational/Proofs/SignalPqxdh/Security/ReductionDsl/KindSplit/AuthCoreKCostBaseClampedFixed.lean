@@ -10,9 +10,11 @@ limitations under the License.
 module
 
 public import Computational.Proofs.SignalPqxdh.AtomicLift -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKCostBase -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKCostBase
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfCost
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfBase
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfBase
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreK -- proof-setup: allow-public-import
 
 /-!
 # Clamped `AuthPrf` Fixed-State Wrapper Bounds

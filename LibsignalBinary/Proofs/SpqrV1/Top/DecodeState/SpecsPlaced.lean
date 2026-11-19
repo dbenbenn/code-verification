@@ -10,13 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Specs
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateCodeSym -- proof-setup: allow-public-import
 
 /-!
 # Relocatable `[LibsignalPlacement]` Specifications for `spqr::decode_state` (Block `325`)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -44,10 +44,10 @@ open CryptoVerification.LibsignalSpqrV1 hiding decodeVarint encodeVarint WireTyp
 open CryptoVerification.CodeLayout
 open CryptoVerification.SpqrV1.Top.DecodeState.Placed
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Obj.lookup
 
 /-- Relocatable contract for `core::ptr::drop_glue::<Option<spqr::proto::pq_ratchet::v1_state::InnerState>>` (Block `267`). -/
-def dropOptProtoInnerStatePlacedSpec [LibsignalPlacement] (H_inner : V1InnerHeapPred) (A : RustAlloc) :
+@[expose] def dropOptProtoInnerStatePlacedSpec [LibsignalPlacement] (H_inner : V1InnerHeapPred) (A : RustAlloc) :
     Spec DropOptProtoInnerStateGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -62,7 +62,7 @@ def dropOptProtoInnerStatePlacedSpec [LibsignalPlacement] (H_inner : V1InnerHeap
   onPanic := fun _ _ _ => ⌜False⌝
 
 /-- Relocatable contract for `core::ptr::drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>` (Block `270`). -/
-def dropProtoPqRatchetStatePlacedSpec [LibsignalPlacement] (H_inner : V1InnerHeapPred) (A : RustAlloc) :
+@[expose] def dropProtoPqRatchetStatePlacedSpec [LibsignalPlacement] (H_inner : V1InnerHeapPred) (A : RustAlloc) :
     Spec DropProtoPqRatchetStateGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -78,7 +78,7 @@ def dropProtoPqRatchetStatePlacedSpec [LibsignalPlacement] (H_inner : V1InnerHea
 
 /-- Relocatable specification of `spqr::decode_state` (Block `325`, 745 instructions) against
     trusted `spqrDecodeState`. -/
-def spqrDecodeStatePlacedSpec [LibsignalPlacement] (H_inner : V1InnerHeapPred) (A : RustAlloc) :
+@[expose] def spqrDecodeStatePlacedSpec [LibsignalPlacement] (H_inner : V1InnerHeapPred) (A : RustAlloc) :
     Spec DecodeStateGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.outPtr ∧
@@ -150,7 +150,7 @@ structure DecodeStateCalleeContractsPlacedX [LibsignalPlacement] (H_inner : V1In
 
 /-- `spqr::decode_state` (Block `325`) meets `withLsCodeRoLoaded lsmpl (spqrDecodeStatePlacedSpec H_inner A)`
     on `(blkPC_325).rebase (blkPl_325).base (Rust.withPanics ext)`. -/
-def DecodeStatePlacedOk [LibsignalPlacement] (H_inner : V1InnerHeapPred) (A : RustAlloc)
+@[expose] def DecodeStatePlacedOk [LibsignalPlacement] (H_inner : V1InnerHeapPred) (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_325).rebase (blkPl_325).base (Rust.withPanics ext))
     (blkPl_325).base

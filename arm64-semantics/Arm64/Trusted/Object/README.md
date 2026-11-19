@@ -8,8 +8,6 @@ Proofs about compiled libraries are stated over layout-generic placed objects (`
 | [`Placed.lean`](Placed.lean) | `Obj.HoldsBytes`, `Obj.CodeBlock`, `Obj.PlacedLib`, `Obj.MultiPlacedLib`, `Obj.Placement`, `patchRelocWord`, `CodeRelocInRange`, `addSignedAddr`, `CodeBlock.relaxableAt` / `relaxedAt` / `gotPairAt` / `tlsieRelaxableAt` / `b2bNext?` / `patchedWord` / `patched`, `CodeBlock.Placeable`, `PlacedLib.Placeable`, `PlacedLib.program`, `PlacedLib.fnAddr` | writing or auditing layout-generic library contracts that hold for every link by a standard static linker (relaxation included) |
 | [`Labels.lean`](Labels.lean) | `Obj.SymKind`, `Obj.SymBind`, `Obj.SymSec`, `Obj.RawReloc`, `Obj.RawSec`, `Obj.RawSym`, `Obj.RawGroup`, `Obj.ExtractedObj`, `Obj.SliceOrigin`, `Obj.Discarded`, `Obj.Resolves`, `Obj.SymNameDerived`, `Obj.UnclaimedSymName`, `Obj.CoversDataSlice`, `Obj.ValidTextSlice`, `Obj.ValidDataSlice`, `Obj.RelocMatches`, `Obj.SliceRelocsMatch`, `Obj.WeakOnlyUndef`, `Obj.LabelsFromObjects` | auditing pre-link `.o` symbol, data-slice, extern-table, and relocation provenance of an `Obj.MultiPlacedLib` directly against `trusted_extractor` output without invoking any static linker |
 
-Deprecated `[OUTSIDE TCB]` legacy fixed-base `LinkedImage` compatibility modules live under [`Arm64/Legacy/Object/`](../../Legacy/Object/LinkedImage.lean) (used only by allowlisted `ProofLib/` and `Arm64/Testing/` files via [`ProofLib/ObjectLoad.lean`](../../../ProofLib/ObjectLoad.lean) and [`tools/rust-obj2lean/src/untrusted_legacy_linker/`](../../../tools/rust-obj2lean/src/untrusted_legacy_linker/mod.rs)).
-
 ## Layout-generic placed objects (`Placed.lean`)
 
 [`Placed.lean`](Placed.lean) models relocatable code blocks (`Obj.CodeBlock`) and libraries

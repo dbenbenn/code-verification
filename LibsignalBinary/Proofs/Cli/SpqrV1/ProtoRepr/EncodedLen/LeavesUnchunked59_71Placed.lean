@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchPlaced
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked59_71
@@ -22,7 +22,7 @@ Proves `[LibsignalPlacement]` `subroutine_ok` contracts for the 59-instruction g
 `479`, `500`, `470`) and 71-instruction group (CLI Blocks `496`, `482`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -386,16 +386,16 @@ private theorem unchunked59_placed_pinned_ok [LibsignalPlacement] (A : RustAlloc
 
 /-! ### Exported Contracts for `KeysUnsampled` (`479`), `NoHeaderReceived` (`500`), `Ct2Sent` (`470`) -/
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.KeysUnsampledEncodedLenLocal1PinnedPlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.KeysUnsampledEncodedLenLocal1PinnedPlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_479 (Rust.withPanics ext)) (blkPl_479).base (keysUnsampledEncodedLenPinnedSpec A)
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.KeysUnsampledEncodedLenLocal1PlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.KeysUnsampledEncodedLenLocal1PlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_479 (Rust.withPanics ext)) (blkPl_479).base (keysUnsampledEncodedLenSpec A)
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.KeysUnsampledEncodedLenLocal1PinnedPlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.KeysUnsampledEncodedLenLocal1PinnedPlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_479 (Rust.withPanics (tripleRatchetExterns C ctl abs))) (blkPl_479).base (keysUnsampledEncodedLenPinnedSpec A)
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.KeysUnsampledEncodedLenLocal1PlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.KeysUnsampledEncodedLenLocal1PlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_479 (Rust.withPanics (tripleRatchetExterns C ctl abs))) (blkPl_479).base (keysUnsampledEncodedLenSpec A)
 
@@ -426,16 +426,16 @@ theorem _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.keysUnsampledEncodedLen_l
     CryptoVerification.Cli.SpqrV1.ProtoRepr.KeysUnsampledEncodedLenLocal1PlacedOk C A ctl abs :=
   CryptoVerification.Cli.SpqrV1.ProtoRepr.keysUnsampledEncodedLen_local1_placed_ok_ext A (tripleRatchetExterns C ctl abs)
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.NoHeaderReceivedEncodedLenLocal1PinnedPlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.NoHeaderReceivedEncodedLenLocal1PinnedPlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_500 (Rust.withPanics ext)) (blkPl_500).base (noHeaderReceivedEncodedLenPinnedSpec A)
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.NoHeaderReceivedEncodedLenLocal1PlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.NoHeaderReceivedEncodedLenLocal1PlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_500 (Rust.withPanics ext)) (blkPl_500).base (noHeaderReceivedEncodedLenSpec A)
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.NoHeaderReceivedEncodedLenLocal1PinnedPlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.NoHeaderReceivedEncodedLenLocal1PinnedPlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_500 (Rust.withPanics (tripleRatchetExterns C ctl abs))) (blkPl_500).base (noHeaderReceivedEncodedLenPinnedSpec A)
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.NoHeaderReceivedEncodedLenLocal1PlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.NoHeaderReceivedEncodedLenLocal1PlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_500 (Rust.withPanics (tripleRatchetExterns C ctl abs))) (blkPl_500).base (noHeaderReceivedEncodedLenSpec A)
 
@@ -466,16 +466,16 @@ theorem _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.noHeaderReceivedEncodedLe
     CryptoVerification.Cli.SpqrV1.ProtoRepr.NoHeaderReceivedEncodedLenLocal1PlacedOk C A ctl abs :=
   CryptoVerification.Cli.SpqrV1.ProtoRepr.noHeaderReceivedEncodedLen_local1_placed_ok_ext A (tripleRatchetExterns C ctl abs)
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.Ct2SentEncodedLenLocal1PinnedPlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.Ct2SentEncodedLenLocal1PinnedPlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_470 (Rust.withPanics ext)) (blkPl_470).base (ct2SentEncodedLenPinnedSpec A)
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.Ct2SentEncodedLenLocal1PlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.Ct2SentEncodedLenLocal1PlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_470 (Rust.withPanics ext)) (blkPl_470).base (ct2SentEncodedLenSpec A)
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.Ct2SentEncodedLenLocal1PinnedPlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.Ct2SentEncodedLenLocal1PinnedPlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_470 (Rust.withPanics (tripleRatchetExterns C ctl abs))) (blkPl_470).base (ct2SentEncodedLenPinnedSpec A)
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.Ct2SentEncodedLenLocal1PlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.Ct2SentEncodedLenLocal1PlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_470 (Rust.withPanics (tripleRatchetExterns C ctl abs))) (blkPl_470).base (ct2SentEncodedLenSpec A)
 
@@ -890,16 +890,16 @@ private theorem unchunked71_placed_pinned_ok [LibsignalPlacement] (A : RustAlloc
 
 /-! ### Exported Contracts for `EkSent` (`496`) and `HeaderReceived` (`482`) -/
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.EkSentEncodedLenLocal1PinnedPlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.EkSentEncodedLenLocal1PinnedPlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_496 (Rust.withPanics ext)) (blkPl_496).base (ekSentEncodedLenPinnedSpec A)
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.EkSentEncodedLenLocal1PlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.EkSentEncodedLenLocal1PlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_496 (Rust.withPanics ext)) (blkPl_496).base (ekSentEncodedLenSpec A)
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.EkSentEncodedLenLocal1PinnedPlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.EkSentEncodedLenLocal1PinnedPlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_496 (Rust.withPanics (tripleRatchetExterns C ctl abs))) (blkPl_496).base (ekSentEncodedLenPinnedSpec A)
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.EkSentEncodedLenLocal1PlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.EkSentEncodedLenLocal1PlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_496 (Rust.withPanics (tripleRatchetExterns C ctl abs))) (blkPl_496).base (ekSentEncodedLenSpec A)
 
@@ -930,16 +930,16 @@ theorem _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.ekSentEncodedLen_local1_p
     CryptoVerification.Cli.SpqrV1.ProtoRepr.EkSentEncodedLenLocal1PlacedOk C A ctl abs :=
   CryptoVerification.Cli.SpqrV1.ProtoRepr.ekSentEncodedLen_local1_placed_ok_ext A (tripleRatchetExterns C ctl abs)
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.HeaderReceivedEncodedLenLocal1PinnedPlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.HeaderReceivedEncodedLenLocal1PinnedPlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_482 (Rust.withPanics ext)) (blkPl_482).base (headerReceivedEncodedLenPinnedSpec A)
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.HeaderReceivedEncodedLenLocal1PlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.HeaderReceivedEncodedLenLocal1PlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_482 (Rust.withPanics ext)) (blkPl_482).base (headerReceivedEncodedLenSpec A)
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.HeaderReceivedEncodedLenLocal1PinnedPlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.HeaderReceivedEncodedLenLocal1PinnedPlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_482 (Rust.withPanics (tripleRatchetExterns C ctl abs))) (blkPl_482).base (headerReceivedEncodedLenPinnedSpec A)
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.HeaderReceivedEncodedLenLocal1PlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.HeaderReceivedEncodedLenLocal1PlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_482 (Rust.withPanics (tripleRatchetExterns C ctl abs))) (blkPl_482).base (headerReceivedEncodedLenSpec A)
 

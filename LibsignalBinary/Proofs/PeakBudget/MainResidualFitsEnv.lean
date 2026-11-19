@@ -9,8 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1Frame
+public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1Frame
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
 
 /-!
 # Residual `FitsEnv` Cost-Model States Across `main` Hops `M1`..`M6`
@@ -22,13 +30,12 @@ all `CliInputsOk i`) into residual cost-model state invariants `mainSt0`..`mainS
 and `stepEvents` transition lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.PeakBudget.MainResidualFitsEnv
 
-open Arm64.Obj (Image)
 open Arm64.Process (bytesOfString)
 open CryptoVerification (LibsignalPlacement)
 open CryptoVerification.E2E (PEParams)
@@ -48,11 +55,9 @@ open LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
    cliMaxDirPathBytes cliMaxDirtyEntries cliOneGiB)
 open LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
   (M1PhaseEnv M2CollectEnv M2CollectStepEnv M5PhaseEnv M6Env)
-open LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs (mkExistentialRealCalleeEnvs)
+
 open LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak (CliRunCalleeEnvs)
-open LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
-  (CliRunBinaryEnv RealCliMainBinaryEnvOf realCliMainBinaryEnvOf_90pct_fitsEnv_concrete
-   realCliMainBinaryEnvOf_fitsEnv_cliBudgetLimits_concrete realCliMainBinaryEnvOf_fitsEnv_concrete)
+open LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge (CliRunBinaryEnv RealCliMainBinaryEnvOf)
 open LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal (cliRealNinetyPctOneGiB)
 open LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
   (AddrOptBoundedEnv BundleOptBoundedEnv CliMainBoundedSetupEnv M2CollectFullEnv
@@ -126,7 +131,7 @@ theorem m3BoundedSetupEnv_nil : M3BoundedSetupEnv [] :=
   Or.inl (Or.inl rfl)
 
 /-- Post-`M1` setup sub-envelope (`M2` collect + `Address`/`Bundle` + `M3`). -/
-def PostM1SetupEnv (argvLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def PostM1SetupEnv (argvLen : Nat) (evs : List AllocEvent) : Prop :=
   SeqEnv (M2CollectFullEnv argvLen)
     (SeqEnv AddrOptBoundedEnv
       (SeqEnv BundleOptBoundedEnv
@@ -134,13 +139,13 @@ def PostM1SetupEnv (argvLen : Nat) (evs : List AllocEvent) : Prop :=
 
 /-- Phase-`M2` envelope (`M2CollectFullEnv` + `AddrOptBoundedEnv` + `BundleOptBoundedEnv` +
 `FreeOnlyEvs`), closed under prefix early exits. -/
-def M2PhaseEnv (argvLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def M2PhaseEnv (argvLen : Nat) (evs : List AllocEvent) : Prop :=
   SeqEnv (M2CollectFullEnv argvLen)
     (SeqEnv AddrOptBoundedEnv
       (SeqEnv BundleOptBoundedEnv FreeOnlyEvs)) evs
 
 /-- Post-setup (`M4`–`M6` or early-exit `FreeOnlyEvs`) tail of `RealCliMainBinaryEnvOf E i`. -/
-def PostSetupTailEnv (E : RunCall → CliRunCalleeEnvs) (i : Inputs)
+@[expose] def PostSetupTailEnv (E : RunCall → CliRunCalleeEnvs) (i : Inputs)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ ∃ w : ValidPostSetupWitness i, w.g.i = i ∧
     SeqEnv (CliRunBinaryEnv cliIo.rd (E w.g) sessionCapBytes w.g)
@@ -179,20 +184,20 @@ theorem postM1SetupEnv_of_m2Phase {argvLen : Nat} {evs : List AllocEvent}
 
 /-- Entry cost-model invariant at `M0`/`M1` (`Block 617` entry): unconditional setup + early-exit
 `FitsEnv` paired with domain-guarded whole-`main` `RealCliMainBinaryEnvOf E i` `FitsEnv`. -/
-def mainSt0 (WP : PEParams) (E : RunCall → CliRunCalleeEnvs) (lim : BudgetLimits)
+@[expose] def mainSt0 (WP : PEParams) (E : RunCall → CliRunCalleeEnvs) (lim : BudgetLimits)
     (i : Inputs) (st0 : FineBudget) : Prop :=
   FitsEnv fineCostModel lim st0 (SeqEnv (CliMainBoundedSetupEnv i.argv.length) FreeOnlyEvs) ∧
   (CliPqxdhInputs WP i → FitsEnv fineCostModel lim st0 (RealCliMainBinaryEnvOf E i))
 
 /-- Post-`M1` (`argv` buffer allocated) residual cost-model invariant. -/
-def mainSt1 (WP : PEParams) (E : RunCall → CliRunCalleeEnvs) (lim : BudgetLimits)
+@[expose] def mainSt1 (WP : PEParams) (E : RunCall → CliRunCalleeEnvs) (lim : BudgetLimits)
     (i : Inputs) (st1 : FineBudget) : Prop :=
   FitsEnv fineCostModel lim st1 (SeqEnv (PostM1SetupEnv i.argv.length) FreeOnlyEvs) ∧
   (CliPqxdhInputs WP i →
     FitsEnv fineCostModel lim st1 (SeqEnv (PostM1SetupEnv i.argv.length) (PostSetupTailEnv E i)))
 
 /-- Post-`M2` (`parseArgs = some c`) residual cost-model invariant entering `M3`. -/
-def mainSt2 (WP : PEParams) (E : RunCall → CliRunCalleeEnvs) (lim : BudgetLimits)
+@[expose] def mainSt2 (WP : PEParams) (E : RunCall → CliRunCalleeEnvs) (lim : BudgetLimits)
     (i : Inputs) (c : CallV) (st2 : FineBudget) : Prop :=
   parseArgs uuidTryParse (i.argv.map bytesOfString) = some c ∧
   FitsEnv fineCostModel lim st2 (SeqEnv M3BoundedSetupEnv FreeOnlyEvs) ∧
@@ -201,14 +206,14 @@ def mainSt2 (WP : PEParams) (E : RunCall → CliRunCalleeEnvs) (lim : BudgetLimi
 
 /-- Post-`M3` (`read_stdin` + `"coins"` `read_file` completed) residual cost-model invariant
 entering `M4` (`step4_overCap` or `step4_call`). -/
-def mainSt3 (WP : PEParams) (E : RunCall → CliRunCalleeEnvs) (lim : BudgetLimits)
+@[expose] def mainSt3 (WP : PEParams) (E : RunCall → CliRunCalleeEnvs) (lim : BudgetLimits)
     (i : Inputs) (c : CallV) (st3 : FineBudget) : Prop :=
   parseArgs uuidTryParse (i.argv.map bytesOfString) = some c ∧
   FitsEnv fineCostModel lim st3 FreeOnlyEvs ∧
   (CliPqxdhInputs WP i → FitsEnv fineCostModel lim st3 (PostSetupTailEnv E i))
 
 /-- Post-`M4` (`signal_session::run` returned `Ok`) residual cost-model invariant entering `M5`. -/
-def mainSt4 (lim : BudgetLimits) (i : Inputs) (c : CallV) (_g : StoresGhost)
+@[expose] def mainSt4 (lim : BudgetLimits) (i : Inputs) (c : CallV) (_g : StoresGhost)
     (st4 : FineBudget) : Prop :=
   parseArgs uuidTryParse (i.argv.map bytesOfString) = some c ∧
   i.stdin.length ≤ msgCapBytes ∧
@@ -220,7 +225,7 @@ def mainSt4 (lim : BudgetLimits) (i : Inputs) (c : CallV) (_g : StoresGhost)
     FitsEnv fineCostModel lim st4 (SeqEnv (M5PhaseEnv dirs) (M6Env ok)))
 
 /-- Post-`M5` (`commitFiles` / store drops completed) residual cost-model invariant entering `M6`. -/
-def mainSt5 (lim : BudgetLimits) (_i : Inputs) (_c : CallV) (_g : StoresGhost) (ok : Bool)
+@[expose] def mainSt5 (lim : BudgetLimits) (_i : Inputs) (_c : CallV) (_g : StoresGhost) (ok : Bool)
     (st5 : FineBudget) : Prop :=
   FitsEnv fineCostModel lim st5 FreeOnlyEvs ∧
   FitsEnv fineCostModel lim st5 (M6Env ok)
@@ -238,49 +243,6 @@ theorem mainSt0_init_of_fitsEnv {WP : PEParams} {E : RunCall → CliRunCalleeEnv
     {i : Inputs} (hok : CliInputsOk i) :
     mainSt0 WP E lim i fineCostModel.init :=
   ⟨hEarly i.argv.length (argvFits_length_le hok.2), hMain i⟩
-
-/-- Concrete `< 90%` (`cliRealNinetyPctOneGiB ≤ lim.physCap`) `hSt0` at
-`mkExistentialRealCalleeEnvs img S WP`. -/
-theorem mainSt0_init_90pct_concrete [LibsignalPlacement]
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap90 : cliRealNinetyPctOneGiB ≤ lim.physCap)
-    (img : Image) (S : RunSem) (WP : PEParams)
-    (i : Inputs) (hok : CliInputsOk i) :
-    mainSt0 WP (mkExistentialRealCalleeEnvs img S WP) lim i fineCostModel.init :=
-  mainSt0_init_of_fitsEnv
-    (fun _ hargv => cliMainSetupEarlyExit_90pct_fitsEnv_le1820 henf hsb hsc hcap90 hargv)
-    (realCliMainBinaryEnvOf_90pct_fitsEnv_concrete henf hsb hsc hcap90 img S WP)
-    hok
-
-/-- Concrete `≤ 1 GiB` (`cliOneGiB ≤ lim.physCap`) `hSt0` at `mkExistentialRealCalleeEnvs img S WP`. -/
-theorem mainSt0_init_concrete [LibsignalPlacement]
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap1G : cliOneGiB ≤ lim.physCap)
-    (img : Image) (S : RunSem) (WP : PEParams)
-    (i : Inputs) (hok : CliInputsOk i) :
-    mainSt0 WP (mkExistentialRealCalleeEnvs img S WP) lim i fineCostModel.init :=
-  mainSt0_init_of_fitsEnv
-    (fun _ hargv =>
-      cliMainSetupEarlyExit_90pct_fitsEnv_le1820 henf hsb hsc
-        (Nat.le_trans (by unfold cliRealNinetyPctOneGiB cliOneGiB; decide) hcap1G) hargv)
-    (realCliMainBinaryEnvOf_fitsEnv_concrete henf hsb hsc hcap1G img S WP)
-    hok
-
-/-- `cliBudgetLimits` (`1 GiB`) `mainSt0` initializer at `mkExistentialRealCalleeEnvs img S WP`. -/
-theorem mainSt0_init_cliBudgetLimits_concrete [LibsignalPlacement]
-    (img : Image) (S : RunSem) (WP : PEParams)
-    (i : Inputs) (hok : CliInputsOk i) :
-    mainSt0 WP (mkExistentialRealCalleeEnvs img S WP) cliBudgetLimits i fineCostModel.init :=
-  mainSt0_init_of_fitsEnv
-    cliMainSetupEarlyExit_fitsEnv_cliBudgetLimits_le1820
-    (realCliMainBinaryEnvOf_fitsEnv_cliBudgetLimits_concrete img S WP)
-    hok
 
 /-- `M1` transition (`st0 → st1`): any `M1PhaseEnv i.argv.length` event trace fits `lim` from
 `st0` and advances `mainSt0` to `mainSt1`. -/

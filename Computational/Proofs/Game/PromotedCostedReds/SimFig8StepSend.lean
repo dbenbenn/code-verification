@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SpqrDesc
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State -- proof-setup: allow-public-import
 
 /-!
 # Atomic Send and Challenge Step Program for `SimFig8`
@@ -21,7 +23,7 @@ Defines and verifies the single-query `Comp` over `atomicSessionOps` and `fig8Sm
 transmit and challenge branches (`semSendHook`) of `simFig8OracleSan`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -266,7 +268,7 @@ private theorem keptSendAtomicE_descBits_tight (idA idB : IdentityKey) {Γ : Lis
     sb_c0, sb_c1, sb_c2, sb_p32] at hstep ⊢
   omega
 
-def scPostSendAtomicE (idA idB : IdentityKey) {Γ : List (Ty ASig)}
+@[expose] def scPostSendAtomicE (idA idB : IdentityKey) {Γ : List (Ty ASig)}
     (sCE : Expr AOps Γ (simFullT ℓ Pt)) (s1E : Expr AOps Γ (simMirT ℓ Pt))
     (qBE : Expr AOps Γ .bool) (m0E : Expr AOps Γ PlainT) (chBE : Expr AOps Γ .bool)
     (pq'E : Expr AOps Γ (B 32)) (pnE : Expr AOps Γ U32)
@@ -542,7 +544,7 @@ omit [DecidableEq Pt] [Zero Pt] in
     rw [simulateQ_bind, simulateQ_query]
     exact congrArg (Bind.bind _) (funext ih)
 
-def simDrawSendCoinsC {Γ : List (Ty ASig)} (rE : Expr AOps Γ (.opt BV512)) :
+@[expose] def simDrawSendCoinsC {Γ : List (Ty ASig)} (rE : Expr AOps Γ (.opt BV512)) :
     Comp AOps (fig8SmIface ℓ Pt) Γ (.prod BV512 (.opt BV256)) :=
   .caseOpt rE
     (.bind (Comp.sample (I := fig8SmIface ℓ Pt) (UniformSamplerTag.base .bv512) .unit)
@@ -583,7 +585,7 @@ theorem simDrawSendCoinsC_eval {Γ : List (Ty ASig)} (rE : Expr AOps Γ (.opt BV
       Comp.eval, Expr.eval, Expr.v0, Expr.v1, Env.get, hr, liftP_fig8SmIface_eq_liftM] <;>
     rfl
 
-def simSendQueryC {Γ : List (Ty ASig)}
+@[expose] def simSendQueryC {Γ : List (Ty ASig)}
     (qBE : Expr AOps Γ .bool) (pubVE : Expr AOps Γ (lpubT (ℓ := ℓ) (Pt := Pt)))
     (m0E : Expr AOps Γ PlainT) (chalE : Expr AOps Γ (.opt PlainT))
     (rcOptE : Expr AOps Γ (.opt BV256)) :
@@ -699,7 +701,7 @@ abbrev sendInpT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (simFullT ℓ Pt) (.prod .bool (.prod PlainT (.prod (.opt PlainT) (.opt BV512))))
 
 /-- Atomic `Comp` implementing `semSendHook` for transmit and challenge queries. -/
-def simFig8SendHookC (idA idB : IdentityKey) (qep : ℕ) {Γ : List (Ty ASig)}
+@[expose] def simFig8SendHookC (idA idB : IdentityKey) (qep : ℕ) {Γ : List (Ty ASig)}
     (sCE : Expr AOps Γ (simFullT ℓ Pt)) (qBE : Expr AOps Γ .bool)
     (m0E : Expr AOps Γ PlainT) (chalE : Expr AOps Γ (.opt PlainT))
     (rE : Expr AOps Γ (.opt BV512)) :
@@ -989,7 +991,7 @@ theorem simFig8SendHookC_eval (idA idB : IdentityKey) (qep : ℕ) {Γ : List (Ty
       · rfl
   · rfl
 
-def unpackSendQE {O' : Ops ASig} {Γ : List (Ty ASig)}
+@[expose] def unpackSendQE {O' : Ops ASig} {Γ : List (Ty ASig)}
     (qE : Expr O' Γ (smQT (ℓ := ℓ) (Pt := Pt))) :
     Expr O' Γ (.opt (.prod .bool (.prod PlainT (.prod (.opt PlainT) (.opt BV512))))) :=
   .caseSum qE

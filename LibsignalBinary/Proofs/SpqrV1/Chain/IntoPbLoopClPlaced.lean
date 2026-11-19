@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbLoop
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbDecodes
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbLoop -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+import ProofLib.ProgramReflection.SortedFresh
 import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbLoop
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Code-Loaded `[LibsignalPlacement]` Epilogue for `<spqr::chain::Chain>::into_pb` (Block `365`)
@@ -25,7 +25,7 @@ Code-loaded `[LibsignalPlacement]` epilogue (`chainIntoPb_epilogue_cl_placed`) a
 `withLsCodeLoaded lsmpl (dropChainEpochSliceSpec A)` on cross-block callee `287`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,7 +40,7 @@ open CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation
 open CryptoVerification.SpqrV1.Top.ChainFrom
 open CryptoVerification.CodeLayout
 open CryptoVerification.SpqrV1.Layout.L36
-open IntoPbDecodes
+
 
 set_option maxRecDepth 800000
 set_option maxHeartbeats 400000

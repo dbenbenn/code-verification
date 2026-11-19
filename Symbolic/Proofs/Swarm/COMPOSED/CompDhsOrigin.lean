@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompPcsClosed
+public import Symbolic.Proofs.Swarm.COMPOSED.CompPcsClosed -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -39,7 +39,7 @@ Proves preservation of `CompDhsOriginInv` across all transitions of `Composed.re
 (`compDhsOriginInv_reachable`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

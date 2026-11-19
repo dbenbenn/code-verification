@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.RedProg2Sim
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrComp
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.RedProg2Sim -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrComp -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimSend
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrStep
 import VCVio.EvalDist.Monad.Basic
@@ -23,7 +23,7 @@ init/resume/finish components of `shcrReductionAuthProg`, relating the shallow r
 `RedProg2`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -166,7 +166,7 @@ theorem pqxdhAuthShCrPrimImpl_inv (S : Setup) (pk sk : Bytes) (n : Nat) (q : Aut
 
 /-! ## Pause check -/
 
-def tryPauseMidAux (S : Setup) (sIdx : Nat) (sid : SessionId S) (u : Fin S.N_id)
+@[expose] def tryPauseMidAux (S : Setup) (sIdx : Nat) (sid : SessionId S) (u : Fin S.N_id)
     (bu : PreKeyBundleInput) (m0 m1 : Bytes) (h : AuthShCrState S) :
     OracleComp PrimBaseSpec (Option (PauseMid S)) := do
   match ← preCheckAuthSimPrim S sid u bu m0 m1 h.base with
@@ -175,7 +175,7 @@ def tryPauseMidAux (S : Setup) (sIdx : Nat) (sid : SessionId S) (u : Fin S.N_id)
     let ok ← checkBundleSigsPrim S h.base.principals bu
     pure (if !ok then none else if h.sendCount == sIdx then some (sid, bu, m0, m1, ui) else none)
 
-def tryPauseMid (S : Setup) (sIdx : Nat) (q : AuthQuery S) (h : AuthShCrState S) :
+@[expose] def tryPauseMid (S : Setup) (sIdx : Nat) (q : AuthQuery S) (h : AuthShCrState S) :
     OracleComp PrimBaseSpec (Option (PauseMid S)) :=
   match q with
   | .sendOPK u i bu m0 m1 =>
@@ -184,7 +184,7 @@ def tryPauseMid (S : Setup) (sIdx : Nat) (q : AuthQuery S) (h : AuthShCrState S)
     if bu.opkB?.isSome then pure none else tryPauseMidAux S sIdx (.sendNoOPK u i) u bu m0 m1 h
   | _ => pure none
 
-def toPaused {S : Setup} (h : AuthShCrState S)
+@[expose] def toPaused {S : Setup} (h : AuthShCrState S)
     (cont : AuthResponse → OracleComp (unifSpec + authSpec S) Bool) (d : PauseMid S) :
     PausedShCrAuthData S :=
   { sid := d.1, bundle := d.2.1, m0 := d.2.2.1, m1 := d.2.2.2.1, uInfo := d.2.2.2.2, hst := h,
@@ -324,7 +324,7 @@ theorem pauseCheckC_eval (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)
 /-! ## Pre-pause step -/
 
 /-- One pre-pause step: pause (outputting `bundle.pqspkB`) or run the simulator handler. -/
-def stepMid (S : Setup) (sIdx : Nat) (q : AuthQuery S) (h : AuthShCrState S) :
+@[expose] def stepMid (S : Setup) (sIdx : Nat) (q : AuthQuery S) (h : AuthShCrState S) :
     OracleComp PrimBaseSpec
       ((AuthResponse × AuthShCrState S) ⊕ (Bytes × (PauseMid S × AuthShCrState S))) := do
   match ← tryPauseMid S sIdx q h with
@@ -350,7 +350,7 @@ theorem shcrPreC_eval (S : Setup) (Q K n : Nat) (q : AuthQuery S) (h : AuthShCrS
   · obtain ⟨sid, bu, m0, m1, ui⟩ := d
     simp [Expr.eval, v, pauseToVal, shcrStToVal, preKeyBundleToVal]
 
-def Gsh (S : Setup) :
+@[expose] def Gsh (S : Setup) :
     Option Bytes × RedProg2State (authSpec S) Bool (PauseMid S) (AuthShCrState S) →
       (Bool × AuthShCrState S) ⊕ PausedShCrAuthData S
   | (_, .done a h) => .inl (a, h)
@@ -432,7 +432,7 @@ theorem shcrFinish_eval (S : Setup) (Q K : Nat) (a : Bool) (h : AuthShCrState S)
   dsimp only [shcrReductionAuthProg, authCodec]
   exact shcrExtractC_eval S _ Q Var.vz Var.vz h sIdx chosen ss ct rfl rfl
 
-def initSh (S : Setup) (secb : Bool) (bIdx : Nat) (pk sk : Bytes) : AuthShCrState S where
+@[expose] def initSh (S : Setup) (secb : Bool) (bIdx : Nat) (pk sk : Bytes) : AuthShCrState S where
   base := AuthState.empty S secb
   targetBIdx? := some bIdx
   targetPk := pk

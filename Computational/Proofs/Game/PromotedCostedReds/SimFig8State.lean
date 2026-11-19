@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost
-public import Computational.Proofs.ReductionDsl.Fig8Atomic
-public import Computational.Proofs.SpqrV1Sync.TopStateTight
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.Fig8Atomic
+import Computational.Proofs.SpqrV1Sync.TopStateTight
+public import Computational.Proofs.ReductionDsl.MacroLift -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.GameCosted -- proof-setup: allow-public-import
 
 /-!
 # Base Combinators, Mirror Bookkeeping, and `GhostChain` Helpers for `simFig8`
@@ -21,7 +23,7 @@ Defines `ReductionDsl` operator wrappers, game-mirror bookkeeping expressions, b
 `atomicSessionOps`, with evaluation, cost, and description-bit bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -99,34 +101,34 @@ local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
 /-- Wrapper around `sessPureOp` keeping `Ops.sum` structure opaque to `simp`. -/
-def sOpPure {Γ : List (Ty ASig)} (o : AtomicPureOp)
+@[expose] def sOpPure {Γ : List (Ty ASig)} (o : AtomicPureOp)
     (a : Expr AOps Γ (o.dom ℓ Pt)) : Expr AOps Γ (o.cod ℓ Pt) :=
   sessPureOp o a
 
-def sOpPtEnc {Γ : List (Ty ASig)} (o : AtomicPtEncOp)
+@[expose] def sOpPtEnc {Γ : List (Ty ASig)} (o : AtomicPtEncOp)
     (a : Expr AOps Γ ((atomicPtEncOps ℓ encT).dom o)) :
     Expr AOps Γ ((atomicPtEncOps ℓ encT).cod o) :=
   sessPtEncOp o a
 
-def sOpSym {Γ : List (Ty ASig)} (o : AtomicSymOp)
+@[expose] def sOpSym {Γ : List (Ty ASig)} (o : AtomicSymOp)
     (a : Expr AOps Γ (o.dom ℓ Pt)) : Expr AOps Γ (o.cod ℓ Pt) :=
   sessSymOp o a
 
-def sOpGrp {Γ : List (Ty ASig)} (o : AtomicGroupOp)
+@[expose] def sOpGrp {Γ : List (Ty ASig)} (o : AtomicGroupOp)
     (a : Expr AOps Γ (o.dom ℓ Pt)) : Expr AOps Γ (o.cod ℓ Pt) :=
   sessGroupOp o a
 
-def sOpPtDec {Γ : List (Ty ASig)} (o : AtomicPtDecOp)
+@[expose] def sOpPtDec {Γ : List (Ty ASig)} (o : AtomicPtDecOp)
     (a : Expr AOps Γ ((atomicPtDecOps ℓ decT).dom o)) :
     Expr AOps Γ ((atomicPtDecOps ℓ decT).cod o) :=
   sessPtDecOp o a
 
-def sOpCurve {Γ : List (Ty ASig)} (o : AtomicCurveCheckOp)
+@[expose] def sOpCurve {Γ : List (Ty ASig)} (o : AtomicCurveCheckOp)
     (a : Expr AOps Γ ((atomicCurveCheckOps ℓ decT encT).dom o)) :
     Expr AOps Γ ((atomicCurveCheckOps ℓ decT encT).cod o) :=
   sessCurveOp o a
 
-def sOpSpqr {Γ : List (Ty ASig)} (o : AtomicSpqrKemOp)
+@[expose] def sOpSpqr {Γ : List (Ty ASig)} (o : AtomicSpqrKemOp)
     (a : Expr AOps Γ (o.dom ℓ Pt)) : Expr AOps Γ (o.cod ℓ Pt) :=
   sessSpqrKemOp o a
 
@@ -263,7 +265,7 @@ variable {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
 local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
-def eLet {O' : Ops ASig} {Γ : List (Ty ASig)} {a b : Ty ASig}
+@[expose] def eLet {O' : Ops ASig} {Γ : List (Ty ASig)} {a b : Ty ASig}
     (e : Expr O' Γ a) (body : Expr O' (a :: Γ) b) : Expr O' Γ b :=
   .letE e body
 
@@ -284,7 +286,7 @@ omit [DecidableEq Pt] [Zero Pt] in
     atomicExprDescBits opB (eLet e body) =
       atomicExprDescBits opB e + atomicExprDescBits opB body + 6 := rfl
 
-def eMapOpt {O' : Ops ASig} {Γ : List (Ty ASig)} {a b : Ty ASig}
+@[expose] def eMapOpt {O' : Ops ASig} {Γ : List (Ty ASig)} {a b : Ty ASig}
     (e : Expr O' Γ (.opt a)) (f : Expr O' (a :: Γ) b) : Expr O' Γ (.opt b) :=
   .caseOpt e .none (.some f)
 
@@ -309,35 +311,35 @@ omit [DecidableEq Pt] [Zero Pt] in
       atomicExprDescBits opB e + (atomicTyDescBits b + 6) +
         (atomicExprDescBits opB f + 6) + 6 := rfl
 
-def srecPos {O' : Ops ASig} {Γ} (r : Expr O' Γ (simRecT ℓ Pt)) : Expr O' Γ posTy := .fst r
-def srecMsg {O' : Ops ASig} {Γ} (r : Expr O' Γ (simRecT ℓ Pt)) : Expr O' Γ PlainT := .fst (.snd r)
-def srecCt {O' : Ops ASig} {Γ} (r : Expr O' Γ (simRecT ℓ Pt)) : Expr O' Γ (B 32) := .snd (.snd r)
+@[expose] def srecPos {O' : Ops ASig} {Γ} (r : Expr O' Γ (simRecT ℓ Pt)) : Expr O' Γ posTy := .fst r
+@[expose] def srecMsg {O' : Ops ASig} {Γ} (r : Expr O' Γ (simRecT ℓ Pt)) : Expr O' Γ PlainT := .fst (.snd r)
+@[expose] def srecCt {O' : Ops ASig} {Γ} (r : Expr O' Γ (simRecT ℓ Pt)) : Expr O' Γ (B 32) := .snd (.snd r)
 
-def mB {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) : Expr O' Γ .bool := .fst s
-def mWin {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) : Expr O' Γ .bool := .fst (.snd s)
-def mEpoch {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) : Expr O' Γ (.prod .nat .nat) :=
+@[expose] def mB {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) : Expr O' Γ .bool := .fst s
+@[expose] def mWin {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) : Expr O' Γ .bool := .fst (.snd s)
+@[expose] def mEpoch {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) : Expr O' Γ (.prod .nat .nat) :=
   .fst (.snd (.snd s))
-def mIdx {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) : Expr O' Γ (.prod .nat .nat) :=
+@[expose] def mIdx {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) : Expr O' Γ (.prod .nat .nat) :=
   .fst (.snd (.snd (.snd s)))
-def mTL {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) : Expr O' Γ (.opt .nat) :=
+@[expose] def mTL {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) : Expr O' Γ (.opt .nat) :=
   .fst (.snd (.snd (.snd (.snd s))))
-def mTrans {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) :
+@[expose] def mTrans {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) :
     Expr O' Γ (.list (simRecT ℓ Pt)) :=
   .fst (.snd (.snd (.snd (.snd (.snd s)))))
-def mChall {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) : Expr O' Γ (.list posTy) :=
+@[expose] def mChall {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) : Expr O' Γ (.list posTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd s))))))
-def mComp {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) : Expr O' Γ (.list posTy) :=
+@[expose] def mComp {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) : Expr O' Γ (.list posTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))
-def mMaxAcc {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) :
+@[expose] def mMaxAcc {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) :
     Expr O' Γ (.prod (.tbl .nat) (.tbl .nat)) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))
-def mLeaks {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) : Expr O' Γ (.list .nat) :=
+@[expose] def mLeaks {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) : Expr O' Γ (.list .nat) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))))
-def mCorrs {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) :
+@[expose] def mCorrs {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) :
     Expr O' Γ (.list (.prod .bool .nat)) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))))
 
-def mMk {O' : Ops ASig} {Γ}
+@[expose] def mMk {O' : Ops ASig} {Γ}
     (b win : Expr O' Γ .bool)
     (ep idx : Expr O' Γ (.prod .nat .nat))
     (tL : Expr O' Γ (.opt .nat))
@@ -349,21 +351,21 @@ def mMk {O' : Ops ASig} {Γ}
   .pair b (.pair win (.pair ep (.pair idx (.pair tL (.pair trs
     (.pair chall (.pair comp (.pair ma (.pair leaks corrs)))))))))
 
-def mSetWin {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) (w : Expr O' Γ .bool) :
+@[expose] def mSetWin {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) (w : Expr O' Γ .bool) :
     Expr O' Γ (simMirT ℓ Pt) :=
   eLet (.pair s w)
     (mMk (mB (.fst .v0)) (.snd .v0) (mEpoch (.fst .v0)) (mIdx (.fst .v0))
       (mTL (.fst .v0)) (mTrans (.fst .v0)) (mChall (.fst .v0)) (mComp (.fst .v0))
       (mMaxAcc (.fst .v0)) (mLeaks (.fst .v0)) (mCorrs (.fst .v0)))
 
-def mSafeChE {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) (p : Expr O' Γ .bool) :
+@[expose] def mSafeChE {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   healedByE (mTL s) 3 (pGet (mEpoch s) p)
 
-def mSafeInjE {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) : Expr O' Γ .bool :=
+@[expose] def mSafeInjE {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) : Expr O' Γ .bool :=
   eLet s (healedByE (mTL .v0) 3 (minN (.fst (mEpoch .v0)) (.snd (mEpoch .v0))))
 
-def mLeakE {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) (l : Expr O' Γ .nat) :
+@[expose] def mLeakE {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) (l : Expr O' Γ .nat) :
     Expr O' Γ (simMirT ℓ Pt) :=
   eLet (.pair s l)
     (eLet (maxOptE (mTL (.fst .v0)) (.snd .v0))
@@ -372,7 +374,7 @@ def mLeakE {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) (l : Expr O' �
         (mComp (.fst .v1)) (mMaxAcc (.fst .v1)) (.cons .v0 (mLeaks (.fst .v1)))
         (mCorrs (.fst .v1))))
 
-def mEpMgmtE {O' : Ops ASig} {Γ} (qep : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
+@[expose] def mEpMgmtE {O' : Ops ASig} {Γ} (qep : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
     (p bad : Expr O' Γ .bool) : Expr O' Γ (.opt (simMirT ℓ Pt)) :=
   eLet (.pair s (.pair p bad))
     (let s0 : Expr O' _ (simMirT ℓ Pt) := .fst .v0
@@ -391,7 +393,7 @@ def mEpMgmtE {O' : Ops ASig} {Γ} (qep : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
              (mMaxAcc .v0) (mLeaks .v0) (mCorrs .v0)))))
        (.ite (.lt (.nat qep) (pGet (mEpoch s0) p0)) .none (.some s0)))
 
-def mRecordE {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) (p : Expr O' Γ .bool)
+@[expose] def mRecordE {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) (p : Expr O' Γ .bool)
     (r : Expr O' Γ (simRecT ℓ Pt)) (isChall : Expr O' Γ .bool) : Expr O' Γ (simMirT ℓ Pt) :=
   eLet (.pair s (.pair p (.pair r isChall)))
     (let s0 : Expr O' _ (simMirT ℓ Pt) := .fst .v0
@@ -406,14 +408,14 @@ def mRecordE {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) (p : Expr O'
        (.ite (mSafeChE s0 p0) (mComp s0) (.cons (srecPos r0) (mComp s0)))
        (mMaxAcc s0) (mLeaks s0) (mCorrs s0))
 
-def mInTransitE {Γ} (Lq : ℕ) (s : Expr AOps Γ (simMirT ℓ Pt))
+@[expose] def mInTransitE {Γ} (Lq : ℕ) (s : Expr AOps Γ (simMirT ℓ Pt))
     (qParty : Expr AOps Γ .bool) (w : Expr AOps Γ (B 32)) : Expr AOps Γ (.opt (simRecT ℓ Pt)) :=
   eLet (.pair s (.pair qParty w))
     (.findB Lq (mTrans (.fst .v0))
       (.and (boolEq (posSender (srecPos .v0)) (.fst (.snd .v1)))
         (sOpPure (.bytesEq 32 32) (.pair (srecCt .v0) (.snd (.snd .v1))))))
 
-def mDeleteE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
+@[expose] def mDeleteE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
     (pos : Expr O' Γ posTy) : Expr O' Γ (simMirT ℓ Pt) :=
   eLet (.pair s pos)
     (let s0 : Expr O' _ (simMirT ℓ Pt) := .fst .v0
@@ -426,7 +428,7 @@ def mDeleteE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
      mMk (mB s0) (mWin s0) (mEpoch s0) (mIdx s0) (mTL s0) trs' ch' cp'
        (mMaxAcc s0) (mLeaks s0) (mCorrs s0))
 
-def mAcceptE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
+@[expose] def mAcceptE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
     (p : Expr O' Γ .bool) (pos : Expr O' Γ posTy) : Expr O' Γ (simMirT ℓ Pt) :=
   eLet (.pair (mDeleteE Lq s pos) (.pair p pos))
     (let s0 : Expr O' _ (simMirT ℓ Pt) := .fst .v0
@@ -440,15 +442,15 @@ def mAcceptE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
        (maxAccSet (mMaxAcc s0) p0 ep (maxN (maxAccGet (mMaxAcc s0) p0 ep) idx))
        (mLeaks s0) (mCorrs s0))
 
-def mCompContainsE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
+@[expose] def mCompContainsE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
     (pos : Expr O' Γ posTy) : Expr O' Γ .bool :=
   eLet (.pair s pos) (.anyB Lq (mComp (.fst .v0)) (posEq .v0 (.snd .v1)))
 
-def mChallContainsE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
+@[expose] def mChallContainsE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
     (pos : Expr O' Γ posTy) : Expr O' Γ .bool :=
   eLet (.pair s pos) (.anyB Lq (mChall (.fst .v0)) (posEq .v0 (.snd .v1)))
 
-def mTrivialE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
+@[expose] def mTrivialE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
     (pos : Expr O' Γ posTy) : Expr O' Γ .bool :=
   eLet (.pair s pos)
     (let s0 : Expr O' _ (simMirT ℓ Pt) := .fst .v0
@@ -457,7 +459,7 @@ def mTrivialE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
        (.and (.not (.anyB Lq (mTrans s0) (posEq (srecPos .v0) (.snd .v1))))
          (.not (healedByE (mTL s0) 3 (posEpoch p0)))))
 
-def mCorrAllowedE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
+@[expose] def mCorrAllowedE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
     (p : Expr O' Γ .bool) : Expr O' Γ .bool :=
   eLet (.pair s p)
     (let s0 : Expr O' _ (simMirT ℓ Pt) := .fst .v0
@@ -467,7 +469,7 @@ def mCorrAllowedE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ P
          (.and (boolEq (posSender (srecPos .v0)) (otherE (.snd .v1)))
            (.not (mCompContainsE Lq (.fst .v1) (srecPos .v0)))))))
 
-def mAfterCorrE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
+@[expose] def mAfterCorrE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
     (p : Expr O' Γ .bool) : Expr O' Γ (simMirT ℓ Pt) :=
   eLet (.pair s p)
     (let s0 : Expr O' _ (simMirT ℓ Pt) := .fst .v0
@@ -489,10 +491,10 @@ def mAfterCorrE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt)
 abbrev compTblTy : Ty ASig :=
   .prod (.tbl (.tbl .bool)) (.tbl (.tbl .bool))
 
-def compTblEmptyE {O' : Ops ASig} {Γ} : Expr O' Γ (compTblTy (ℓ := ℓ) (Pt := Pt)) :=
+@[expose] def compTblEmptyE {O' : Ops ASig} {Γ} : Expr O' Γ (compTblTy (ℓ := ℓ) (Pt := Pt)) :=
   .pair (.tconst (.tconst (.bool false))) (.tconst (.tconst (.bool false)))
 
-def compTblInsertE {O' : Ops ASig} {Γ}
+@[expose] def compTblInsertE {O' : Ops ASig} {Γ}
     (m : Expr O' Γ (compTblTy (ℓ := ℓ) (Pt := Pt))) (pos : Expr O' Γ posTy) :
     Expr O' Γ (compTblTy (ℓ := ℓ) (Pt := Pt)) :=
   eLet (.pair m pos)
@@ -503,7 +505,7 @@ def compTblInsertE {O' : Ops ASig} {Γ}
      pSet m0 (posSender pos0)
        (.tset sub (posEpoch pos0) (.tset row (posIdx pos0) (.bool true))))
 
-def compTblGetE {O' : Ops ASig} {Γ}
+@[expose] def compTblGetE {O' : Ops ASig} {Γ}
     (m : Expr O' Γ (compTblTy (ℓ := ℓ) (Pt := Pt))) (pos : Expr O' Γ posTy) :
     Expr O' Γ .bool :=
   eLet (.pair m pos)
@@ -511,12 +513,12 @@ def compTblGetE {O' : Ops ASig} {Γ}
      let pos0 : Expr O' _ posTy := .snd .v0
      .tget (.tget (pGet m0 (posSender pos0)) (posEpoch pos0)) (posIdx pos0))
 
-def compTblOfListE {O' : Ops ASig} {Γ} (Lq : ℕ) (xs : Expr O' Γ (.list posTy)) :
+@[expose] def compTblOfListE {O' : Ops ASig} {Γ} (Lq : ℕ) (xs : Expr O' Γ (.list posTy)) :
     Expr O' Γ (compTblTy (ℓ := ℓ) (Pt := Pt)) :=
   .foldrB Lq xs compTblEmptyE (compTblInsertE .v1 .v0)
 
 /-- `O(Lq)`-cost table-backed equivalent of `mCorrAllowedE`. -/
-def mCorrAllowedFastE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
+@[expose] def mCorrAllowedFastE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
     (p : Expr O' Γ .bool) : Expr O' Γ .bool :=
   eLet (.pair s p)
     (let s0 : Expr O' _ (simMirT ℓ Pt) := .fst .v0
@@ -529,7 +531,7 @@ def mCorrAllowedFastE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT �
              (.not (compTblGetE .v1 (srecPos .v0))))))))
 
 /-- `O(Lq)`-cost table-backed equivalent of `mAfterCorrE`. -/
-def mAfterCorrFastE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
+@[expose] def mAfterCorrFastE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ Pt))
     (p : Expr O' Γ .bool) : Expr O' Γ (simMirT ℓ Pt) :=
   eLet (.pair s p)
     (let s0 : Expr O' _ (simMirT ℓ Pt) := .fst .v0
@@ -553,15 +555,15 @@ def mAfterCorrFastE {O' : Ops ASig} {Γ} (Lq : ℕ) (s : Expr O' Γ (simMirT ℓ
           (mTrans s2) (mChall s2) (mComp s2) (mMaxAcc s2) (mLeaks s2)
           (.cons (.pair p0' (pGet (mEpoch s0') p0')) (mCorrs s2))))
 
-def mInWinE {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) (p : Expr O' Γ .bool) :
+@[expose] def mInWinE {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   eLet (.pair s p) (.not (sendsInE (.snd .v0) (pGet (mEpoch (.fst .v0)) (.snd .v0))))
 
-def mNoBobEpoch0E {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) (p : Expr O' Γ .bool) :
+@[expose] def mNoBobEpoch0E {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   eLet (.pair s p) (.not (.and (.snd .v0) (.eqN (.snd (mEpoch (.fst .v0))) (.nat 0))))
 
-def mNoSpkCorrE {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) (p : Expr O' Γ .bool) :
+@[expose] def mNoSpkCorrE {O' : Ops ASig} {Γ} (s : Expr O' Γ (simMirT ℓ Pt)) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   eLet (.pair s p) (.not (.and (.not (.snd .v0)) (.lt (.fst (mEpoch (.fst .v0))) (.nat 10))))
 
@@ -1273,7 +1275,7 @@ private theorem u8Vec_toU8_vec_local {n : ℕ} (v : List.Vector (BitVec 8) n) :
   rw [ofU8_toU8_local, List.take_append_of_le_length (Nat.le_of_eq hxs.symm)]
   exact List.take_of_length_le (Nat.le_of_eq hxs)
 
-def pkLitE {Γ : List (Ty ASig)} (pk : PublicKey) : Expr AOps Γ PK :=
+@[expose] def pkLitE {Γ : List (Ty ASig)} (pk : PublicKey) : Expr AOps Γ PK :=
   sOpPure .pkOfPbytes (sOpPure (.pbytesLit 32 (toU8 pk.bytes.toList)) .unit)
 
 @[simp] theorem eval_pkLitE {Γ : List (Ty ASig)} (pk : PublicKey) (ρ : Env Γ) :
@@ -1289,7 +1291,7 @@ def pkLitE {Γ : List (Ty ASig)} (pk : PublicKey) : Expr AOps Γ PK :=
   have hlen : (toU8 pk.bytes.toList).length = 32 := by simp [toU8]
   simp only [pkLitE, Expr.cost, cost_sOpPure, AtomicPureOp.cost, h32, hlen]
 
-def idKeyAtomLitE {Γ : List (Ty ASig)} (ik : IdentityKey) : Expr AOps Γ IdKey :=
+@[expose] def idKeyAtomLitE {Γ : List (Ty ASig)} (ik : IdentityKey) : Expr AOps Γ IdKey :=
   sOpPure .idKeyOfPbytes (sOpPure (.pbytesLit 32 (toU8 ik.publicKey.bytes.toList)) .unit)
 
 @[simp] theorem eval_idKeyAtomLitE {Γ : List (Ty ASig)} (ik : IdentityKey) (ρ : Env Γ) :
@@ -1305,7 +1307,7 @@ def idKeyAtomLitE {Γ : List (Ty ASig)} (ik : IdentityKey) : Expr AOps Γ IdKey 
   have hlen : (toU8 ik.publicKey.bytes.toList).length = 32 := by simp [toU8]
   simp only [idKeyAtomLitE, Expr.cost, cost_sOpPure, AtomicPureOp.cost, h32, hlen]
 
-def takeListE {O' : Ops ASig} {Γ : List (Ty ASig)} {t : Ty ASig} (B : ℕ)
+@[expose] def takeListE {O' : Ops ASig} {Γ : List (Ty ASig)} {t : Ty ASig} (B : ℕ)
     (xs : Expr O' Γ (.list t)) : Expr O' Γ (.list t) :=
   .mapB B xs .v0
 
@@ -1374,7 +1376,7 @@ private theorem foldl_cons_nil {α : Type} (xs : List α) :
     xs.foldl (fun acc x => x :: acc) [] = xs.reverse := by
   rw [foldl_cons_eq_rev_append]; simp
 
-def eraseFirstNatC {O' : Ops ASig} {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
+@[expose] def eraseFirstNatC {O' : Ops ASig} {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
     (B : ℕ) {Γ : List (Ty ASig)}
     (xs : Expr O' Γ (.list .nat)) (target : Expr O' Γ .nat) :
     Comp O' I' Γ (.list .nat) :=
@@ -1493,7 +1495,7 @@ private theorem range_desc_take_2000 (N hi : ℕ) (sk : List ℕ) :
     simp [List.getElem_take, List.getElem_append_left, hjN]
 
 /-- `GhostChain.accept g i` in `Comp` (exact for all `i : ℕ` whenever `g.skipped.length ≤ 2000`). -/
-def ghostAcceptC {O' : Ops ASig} {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
+@[expose] def ghostAcceptC {O' : Ops ASig} {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
     {Γ : List (Ty ASig)} (gE : Expr O' Γ (ghostChainT ℓ Pt)) (iE : Expr O' Γ .nat) :
     Comp O' I' Γ (ghostChainT ℓ Pt) :=
   .bind (.ret (.pair gE iE))
@@ -1609,7 +1611,7 @@ theorem ghostAcceptC_eval {O' : Ops ASig} {ι : Type} {T : OracleSpec ι} (I' : 
     simp [ρ0, GhostChain.accept, hlt, ghostChainEnc, Expr.eval, Expr.v0, Expr.v1]
 
 /-- `GhostChain.rejects g i` in `Expr` (exact whenever `g.skipped.length ≤ 2000`). -/
-def ghostRejectsE {O' : Ops ASig} {Γ : List (Ty ASig)}
+@[expose] def ghostRejectsE {O' : Ops ASig} {Γ : List (Ty ASig)}
     (gE : Expr O' Γ (ghostChainT ℓ Pt)) (iE : Expr O' Γ .nat) : Expr O' Γ .bool :=
   eLet (.pair gE iE)
     (let last0 : Expr O' _ .nat := .fst (.snd (.snd (.fst .v0)))
@@ -1676,7 +1678,7 @@ def unconsList {α : Type} : List α → Option (α × List α)
   | [] => none
   | h :: tl => some (h, tl)
 
-def unconsB {O' : Ops ASig} {Γ : List (Ty ASig)} {t : Ty ASig} (K : ℕ)
+@[expose] def unconsB {O' : Ops ASig} {Γ : List (Ty ASig)} {t : Ty ASig} (K : ℕ)
     (xs : Expr O' Γ (.list t)) : Expr O' Γ (.opt (.prod t (.list t))) :=
   .foldrB K xs .none
     (.caseOpt .v1
@@ -1728,7 +1730,7 @@ omit [DecidableEq Pt] [Zero Pt] in
   omega
 
 /-- `pushChain cs g` in `Expr` (exact whenever `cs.length ≤ 5`). -/
-def pushChainE {O' : Ops ASig} {Γ : List (Ty ASig)}
+@[expose] def pushChainE {O' : Ops ASig} {Γ : List (Ty ASig)}
     (csE : Expr O' Γ (.list (ghostChainT ℓ Pt))) (gE : Expr O' Γ (ghostChainT ℓ Pt)) :
     Expr O' Γ (.list (ghostChainT ℓ Pt)) :=
   eLet (.pair csE gE)
@@ -1790,7 +1792,7 @@ theorem cost_pushChainE {O' : Ops ASig} {Γ : List (Ty ASig)}
   omega
 
 /-- `(s.chains Q).findIdx? (fun g => g.key == some rk)` in `Expr` for `cs.length ≤ 5`. -/
-def findChainIdxE {Γ : List (Ty ASig)}
+@[expose] def findChainIdxE {Γ : List (Ty ASig)}
     (csE : Expr AOps Γ (.list (ghostChainT ℓ Pt))) (rkE : Expr AOps Γ PK) :
     Expr AOps Γ (.opt .nat) :=
   eLet (.pair csE rkE)
@@ -1866,7 +1868,7 @@ theorem cost_findChainIdxE {Γ : List (Ty ASig)}
     Nat.max_def, Nat.reduceLeDiff, ↓reduceIte, Nat.reduceAdd]
   omega
 
-def listGetDConstE {O' : Ops ASig} {t : Ty ASig} :
+@[expose] def listGetDConstE {O' : Ops ASig} {t : Ty ASig} :
     (fuel : ℕ) → {Γ : List (Ty ASig)} →
       Expr O' Γ (.list t) → Expr O' Γ .nat → Expr O' Γ t → Expr O' Γ t
   | 0, _, _, _, defVal => defVal
@@ -1933,7 +1935,7 @@ theorem eval_listGetDConstE {O' : Ops ASig} {t : Ty ASig} :
           (by simpa [Expr.eval, Expr.v0] using htl)
         rw [ih]; rfl
 
-def getChainDE {O' : Ops ASig} {Γ : List (Ty ASig)}
+@[expose] def getChainDE {O' : Ops ASig} {Γ : List (Ty ASig)}
     (csE : Expr O' Γ (.list (ghostChainT ℓ Pt))) (ciE : Expr O' Γ .nat) :
     Expr O' Γ (ghostChainT ℓ Pt) :=
   listGetDConstE 5 csE ciE (.pair .none (.pair (.nat 0) (.pair (.nat 0) .nil)))
@@ -1969,7 +1971,7 @@ theorem cost_getChainDE {O' : Ops ASig} {Γ : List (Ty ASig)}
     Expr.v0, Expr.v1, hb0, hb1]
   omega
 
-def listSetAtConstE {O' : Ops ASig} {t : Ty ASig} :
+@[expose] def listSetAtConstE {O' : Ops ASig} {t : Ty ASig} :
     (fuel : ℕ) → {Γ : List (Ty ASig)} →
       Expr O' Γ (.list t) → Expr O' Γ .nat → Expr O' Γ t → Expr O' Γ (.list t)
   | 0, _, xs, _, _ => xs
@@ -2040,7 +2042,7 @@ theorem eval_listSetAtConstE {O' : Ops ASig} {t : Ty ASig} :
         rw [ih]; rfl
 
 /-- `cs.modify ci (·.accept i)` in `Comp` for `cs.length ≤ 5` and `skipped.length ≤ 2000`. -/
-def modifyChainAcceptC {O' : Ops ASig} {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
+@[expose] def modifyChainAcceptC {O' : Ops ASig} {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
     {Γ : List (Ty ASig)} (csE : Expr O' Γ (.list (ghostChainT ℓ Pt)))
     (ciE : Expr O' Γ .nat) (iE : Expr O' Γ .nat) :
     Comp O' I' Γ (.list (ghostChainT ℓ Pt)) :=
@@ -2128,7 +2130,7 @@ theorem modifyChainAcceptC_eval {O' : Ops ASig} {ι : Type} {T : OracleSpec ι}
   dsimp only [ρ1, Expr.eval, Expr.v0, Expr.v1, Env.get_cons_zero, Env.get_cons_succ]
   rw [← List.map_set, set_getD_eq_modify (·.accept i) ⟨none, 0, 0, []⟩ cs ci]
 
-def anyChainKeyNoneE {O' : Ops ASig} {Γ : List (Ty ASig)}
+@[expose] def anyChainKeyNoneE {O' : Ops ASig} {Γ : List (Ty ASig)}
     (csE : Expr O' Γ (.list (ghostChainT ℓ Pt))) : Expr O' Γ .bool :=
   .anyB 5 csE (.caseOpt (.fst .v0) (.bool true) (.bool false))
 
@@ -2150,7 +2152,7 @@ theorem cost_anyChainKeyNoneE {O' : Ops ASig} {Γ : List (Ty ASig)}
     Nat.max_def, Nat.reduceLeDiff, ↓reduceIte, Nat.reduceAdd]
   omega
 
-def revealSpkChainsE {O' : Ops ASig} {Γ : List (Ty ASig)}
+@[expose] def revealSpkChainsE {O' : Ops ASig} {Γ : List (Ty ASig)}
     (csE : Expr O' Γ (.list (ghostChainT ℓ Pt))) (pkE : Expr O' Γ PK) :
     Expr O' Γ (.list (ghostChainT ℓ Pt)) :=
   eLet (.pair csE pkE)
@@ -2209,7 +2211,7 @@ private theorem foldr_tset_lookup (xs : List (ℕ × BitVec 256)) (j : ℕ) :
     · have hbeq : (j == k) = false := beq_eq_false_iff_ne.mpr hjk
       simp [hjk, hbeq, ih]
 
-def toGhostScE {Γ : List (Ty ASig)}
+@[expose] def toGhostScE {Γ : List (Ty ASig)}
     (stE : Expr AOps Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) :
     Expr AOps Γ (.opt drSenderChainT) :=
   eLet stE
@@ -2232,7 +2234,7 @@ theorem cost_toGhostScE {Γ : List (Ty ASig)}
     Nat.max_def, Nat.reduceLeDiff, ↓reduceIte, Nat.reduceAdd]
   omega
 
-def toGhostRcSomeE (B_skip : ℕ) {Γ : List (Ty ASig)}
+@[expose] def toGhostRcSomeE (B_skip : ℕ) {Γ : List (Ty ASig)}
     (gE : Expr AOps Γ (ghostChainT ℓ Pt))
     (vrE : Expr AOps Γ (fsRecvStT (ℓ := ℓ) (Pt := Pt))) :
     Expr AOps Γ drRecvChainT :=
@@ -2308,7 +2310,7 @@ theorem eval_toGhostRcSomeE (B_skip : ℕ) {Γ : List (Ty ASig)}
       simp only [List.foldr_cons, List.filterMap_cons, ih]
       cases List.lookup x (List.take B_skip vsk) <;> rfl
 
-def toGhostRcsE (B_skip : ℕ) {Γ : List (Ty ASig)}
+@[expose] def toGhostRcsE (B_skip : ℕ) {Γ : List (Ty ASig)}
     (csE : Expr AOps Γ (.list (ghostChainT ℓ Pt)))
     (stE : Expr AOps Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) :
     Expr AOps Γ (.list drRecvChainT) :=
@@ -2337,7 +2339,7 @@ theorem cost_toGhostRcsE (B_skip : ℕ) {Γ : List (Ty ASig)}
     Nat.max_def, Nat.reduceLeDiff, ↓reduceIte, Nat.reduceAdd]
   split_ifs <;> omega
 
-def toGhostTailE (B_skip : ℕ) {Γ : List (Ty ASig)}
+@[expose] def toGhostTailE (B_skip : ℕ) {Γ : List (Ty ASig)}
     (sE : Expr AOps Γ (simBaseT ℓ Pt)) (qE : Expr AOps Γ .bool)
     (stE : Expr AOps Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) :
     Expr AOps Γ (.prod .bool (.prod .nat (.prod (.list .nat)
@@ -2380,7 +2382,7 @@ theorem cost_toGhostTailE (B_skip : ℕ) {Γ : List (Ty ASig)}
   omega
 
 /-- `toGhost s Q st` in `Expr` over `AOps` using `.tbl`-accelerated `skippedKeys` lookup. -/
-def toGhostE (idA idB : IdentityKey) (B_skip : ℕ) {Γ : List (Ty ASig)}
+@[expose] def toGhostE (idA idB : IdentityKey) (B_skip : ℕ) {Γ : List (Ty ASig)}
     (sE : Expr AOps Γ (simBaseT ℓ Pt)) (qE : Expr AOps Γ .bool)
     (stE : Expr AOps Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) :
     Expr AOps Γ GhostStT :=
@@ -2502,14 +2504,14 @@ local notation "FOps" => atomicFig8Ops ℓ Pt C Dh encPt encT lam
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
 /-- Operator description-bit cost induced on `atomicFig8Ops` by `atomicSessionOpDescBits`. -/
-def atomicFig8OpDescBits : (atomicFig8Ops ℓ Pt C Dh encPt encT lam).Op → ℕ
+@[expose] def atomicFig8OpDescBits : (atomicFig8Ops ℓ Pt C Dh encPt encT lam).Op → ℕ
   | .inl (.inl o) => atomicPureOpDescBits o + 4
   | .inl (.inr (.inl _)) => 8 + 5
   | .inl (.inr (.inr o)) => atomicSymOpDescBits o + 5
   | .inr _ => 8 + 3
 
 /-- Embed any `atomicFig8Ops` expression into `atomicSessionOps` with identical `.cost` and `.eval`. -/
-def liftFig8Expr : {Γ : List (Ty ASig)} → {a : Ty ASig} → Expr FOps Γ a → Expr AOps Γ a
+@[expose] def liftFig8Expr : {Γ : List (Ty ASig)} → {a : Ty ASig} → Expr FOps Γ a → Expr AOps Γ a
   | _, _, .var v => .var v
   | _, _, .letE e body => .letE (liftFig8Expr e) (liftFig8Expr body)
   | _, _, .unit => .unit
@@ -2944,7 +2946,7 @@ theorem rename_descBits_eq {O' : Ops ASig} (opB : O'.Op → ℕ) :
 
 /-- Run a `Fig8Atomic` combinator `f : Expr FOps [a, .prod IdKey IdKey] b` on `arg : Expr AOps Γ a`
 and literal identity keys `(idA, idB)` inside `AOps`. -/
-def runFig8WithIds (idA idB : IdentityKey) {Γ : List (Ty ASig)} {a b : Ty ASig}
+@[expose] def runFig8WithIds (idA idB : IdentityKey) {Γ : List (Ty ASig)} {a b : Ty ASig}
     (f : Expr FOps [a, .prod IdKey IdKey] b) (arg : Expr AOps Γ a) : Expr AOps Γ b :=
   eLet (.pair arg (.pair (idKeyAtomLitE idA) (idKeyAtomLitE idB)))
     (eLet (.snd .v0)
@@ -3049,25 +3051,25 @@ variable {ℓ : ℕ} {Pt : Type}
 
 local notation "ASig" => atomicSig ℓ Pt
 
-def ssMir {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) : Expr O' Γ (simMirT ℓ Pt) := .fst s
-def ssPq {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) :
+@[expose] def ssMir {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) : Expr O' Γ (simMirT ℓ Pt) := .fst s
+@[expose] def ssPq {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) :
     Expr O' Γ (.prod (B 32) (B 32)) := .fst (.snd s)
-def ssPn {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) :
+@[expose] def ssPn {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) :
     Expr O' Γ (.prod U32 U32) := .fst (.snd (.snd s))
-def ssUnackA {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) : Expr O' Γ .bool :=
+@[expose] def ssUnackA {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) : Expr O' Γ .bool :=
   .fst (.snd (.snd (.snd s)))
-def ssHonest {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) :
+@[expose] def ssHonest {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) :
     Expr O' Γ (.list (.prod (B 32) fig8CtT)) :=
   .fst (.snd (.snd (.snd (.snd s))))
-def ssChains {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) :
+@[expose] def ssChains {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) :
     Expr O' Γ (.prod (.list (ghostChainT ℓ Pt)) (.list (ghostChainT ℓ Pt))) :=
   .fst (.snd (.snd (.snd (.snd (.snd s)))))
-def ssAmb {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) : Expr O' Γ .nat :=
+@[expose] def ssAmb {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) : Expr O' Γ .nat :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd s))))))
-def ssStopped {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) : Expr O' Γ .bool :=
+@[expose] def ssStopped {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) : Expr O' Γ .bool :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))
 
-def ssMk {O' : Ops ASig} {Γ}
+@[expose] def ssMk {O' : Ops ASig} {Γ}
     (mir : Expr O' Γ (simMirT ℓ Pt))
     (pq : Expr O' Γ (.prod (B 32) (B 32)))
     (pn : Expr O' Γ (.prod U32 U32))
@@ -3078,14 +3080,14 @@ def ssMk {O' : Ops ASig} {Γ}
     (stopped : Expr O' Γ .bool) : Expr O' Γ (simBaseT ℓ Pt) :=
   .pair mir (.pair pq (.pair pn (.pair unackA (.pair honest (.pair chains (.pair amb stopped))))))
 
-def ssSetAmb {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) (a : Expr O' Γ .nat) :
+@[expose] def ssSetAmb {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) (a : Expr O' Γ .nat) :
     Expr O' Γ (simBaseT ℓ Pt) :=
   eLet (.pair s a)
     (let s0 : Expr O' _ (simBaseT ℓ Pt) := .fst .v0
      ssMk (ssMir s0) (ssPq s0) (ssPn s0) (ssUnackA s0) (ssHonest s0) (ssChains s0)
        (.snd .v0) (ssStopped s0))
 
-def ssSetMirWin {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) : Expr O' Γ (simBaseT ℓ Pt) :=
+@[expose] def ssSetMirWin {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) : Expr O' Γ (simBaseT ℓ Pt) :=
   eLet s
     (let s0 : Expr O' _ (simBaseT ℓ Pt) := .v0
      ssMk (mSetWin (ssMir s0) (.bool true)) (ssPq s0) (ssPn s0) (ssUnackA s0)
@@ -3098,23 +3100,23 @@ def ssSetMir {O' : Ops ASig} {Γ} (s : Expr O' Γ (simBaseT ℓ Pt)) (m : Expr O
      ssMk (.snd .v0) (ssPq s0) (ssPn s0) (ssUnackA s0) (ssHonest s0) (ssChains s0)
        (ssAmb s0) (ssStopped s0))
 
-def scBase {O' : Ops ASig} {Γ} (sC : Expr O' Γ (simFullT ℓ Pt)) : Expr O' Γ (simBaseT ℓ Pt) :=
+@[expose] def scBase {O' : Ops ASig} {Γ} (sC : Expr O' Γ (simFullT ℓ Pt)) : Expr O' Γ (simBaseT ℓ Pt) :=
   .fst sC
-def scKept {O' : Ops ASig} {Γ} (sC : Expr O' Γ (simFullT ℓ Pt)) :
+@[expose] def scKept {O' : Ops ASig} {Γ} (sC : Expr O' Γ (simFullT ℓ Pt)) :
     Expr O' Γ (.prod (keptT ℓ Pt) (keptT ℓ Pt)) := .fst (.snd sC)
-def scSent {O' : Ops ASig} {Γ} (sC : Expr O' Γ (simFullT ℓ Pt)) :
+@[expose] def scSent {O' : Ops ASig} {Γ} (sC : Expr O' Γ (simFullT ℓ Pt)) :
     Expr O' Γ (.list (sentEntryT ℓ Pt)) := .fst (.snd (.snd sC))
-def scSnaps {O' : Ops ASig} {Γ} (sC : Expr O' Γ (simFullT ℓ Pt)) :
+@[expose] def scSnaps {O' : Ops ASig} {Γ} (sC : Expr O' Γ (simFullT ℓ Pt)) :
     Expr O' Γ (.list (snapT ℓ Pt)) := .snd (.snd (.snd sC))
 
-def scMk {O' : Ops ASig} {Γ}
+@[expose] def scMk {O' : Ops ASig} {Γ}
     (base : Expr O' Γ (simBaseT ℓ Pt))
     (kept : Expr O' Γ (.prod (keptT ℓ Pt) (keptT ℓ Pt)))
     (sent : Expr O' Γ (.list (sentEntryT ℓ Pt)))
     (snaps : Expr O' Γ (.list (snapT ℓ Pt))) : Expr O' Γ (simFullT ℓ Pt) :=
   .pair base (.pair kept (.pair sent snaps))
 
-def scSetBase {O' : Ops ASig} {Γ} (sC : Expr O' Γ (simFullT ℓ Pt))
+@[expose] def scSetBase {O' : Ops ASig} {Γ} (sC : Expr O' Γ (simFullT ℓ Pt))
     (b : Expr O' Γ (simBaseT ℓ Pt)) : Expr O' Γ (simFullT ℓ Pt) :=
   eLet (.pair sC b)
     (let s0 : Expr O' _ (simFullT ℓ Pt) := .fst .v0

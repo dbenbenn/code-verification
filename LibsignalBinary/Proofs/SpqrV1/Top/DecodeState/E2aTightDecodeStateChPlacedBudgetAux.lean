@@ -9,23 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.E2aTightBytesZeroAux
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochClPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochLoopClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainLoopClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainPushClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainStepClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.E2aTightChainParamsClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.E2aTightDecodeStateEpochPlacedBudgetR2
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.OuterLoopClPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.VersionNegotiationLoopClPlacedBudgetAux
+public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.E2aTightBytesZeroAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochClPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochLoopClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainLoopClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainPushClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainStepClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.E2aTightChainParamsClPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.E2aTightDecodeStateEpochPlacedBudgetR2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.OuterLoopClPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.VersionNegotiationLoopClPlacedBudgetAux
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
@@ -33,6 +33,11 @@ import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.VersionNegotiationLoop
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbChain
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbLeaf
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainStepPlacedBudgetAux1
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainStepClPlacedBudgetAux1
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainStepPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.VersionNegotiationLoopClPlacedBudget
 
 /-!
 # Canonical Guarded-Tight `ChainPB` Stepping Helpers (`Block 325`)
@@ -42,7 +47,7 @@ parametric key-decode steppers (`+116`, `+508`, `+984`), `ChainEpochPB` merge (`
 and bounded `Vec<ChainEpochPB>::push` (`0..3` links) for `E2aTightDecodeStateChPlacedBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.MainHaltedPrefixStage2
+public import Computational.Proofs.LibsignalCli.MainHaltedPrefixStage2 -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.FSAEAD.CellForgery
 import Computational.Proofs.GameHop.GlobalHybrid
 import Computational.Proofs.GameHop.StateSim
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.E2E.ComposedPrefixHelpers
+import Computational.Proofs.LibsignalCli.MainHaltedPrefixEndpoints
 
 /-!
 # Parametric Session-Tracked Prefix Telescope and Query Bounds
@@ -23,7 +25,7 @@ and `qStart`-step prefix-hybrid telescope for `bhPrefixRedWithSessionTracked` ov
 `SessionHaltTracker`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -225,119 +227,6 @@ private theorem isQueryBoundP_bhLiftP_sm {ℓ : ℕ} {α : Type} (p : ProbComp �
   | query_bind n mx ih =>
     rw [simulateQ_query_bind]
     exact (isQueryBoundP_bind (isQueryBoundP_bhFwdU_sm n) (fun u _ => ih u)).mono (by omega)
-
-theorem isQueryBoundP_bhPrefixHandlePostWithSessionTracked_eval {τ : Type}
-    {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
-    (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
-    (P : SignalPqxdh.Primitives)
-    (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
-    (C : Crypto) (K : MlKem) (qep : ℕ)
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) (k : ℕ)
-    (s : BHE2EDrvState S ℓ × List τ) (t : (bhTargetGameSpec S ℓ (BitVec 512)).Domain) :
-    (bhPrefixHandlePostWithSessionTracked T P ki C K qep decT encT k s
-      (bhTargetQenc t)).IsQueryBoundP (isSmTargetQuery ℓ)
-      (if bhClassifyTargetOnly (fun _ => false) (fun _ => false) (fun i => i == k) t then 1
-       else 0) := by
-  rcases t with (kq | ⟨sid⟩) | ⟨i, sq⟩
-  · simp only [bhClassifyTargetOnly, Bool.false_eq_true, ↓reduceIte, bhTargetQenc,
-      bhPrefixHandlePostWithSessionTracked]
-    exact isQueryBoundP_bhLiftP_sm _
-  · simp only [bhClassifyTargetOnly, Bool.false_eq_true, ↓reduceIte, bhTargetQenc,
-      bhPrefixHandlePostWithSessionTracked]
-    exact isQueryBoundP_bhLiftP_sm _
-  · simp only [bhClassifyTargetOnly, bhTargetQenc, bhPrefixHandlePostWithSessionTracked]
-    by_cases hp : (i == k) = true
-    · simp only [hp, ↓reduceIte]
-      cases bhShallowCheckExtSm k s.1 i sq with
-      | inl _ => exact (isQueryBoundP_bhLiftP_sm _).mono (Nat.zero_le 1)
-      | inr sq' =>
-        dsimp only
-        have hq1 :
-            (liftM
-              ((unifSpec + CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512)
-                Bytes).query (.inr sq')) :
-              OracleComp
-                (unifSpec + CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
-                _).IsQueryBoundP (isSmTargetQuery ℓ) 1 :=
-          (isQueryBoundP_query_iff (isSmTargetQuery ℓ) (Sum.inr sq') 1).2 (fun _ => Nat.zero_lt_one)
-        simpa only [Nat.add_zero] using
-          isQueryBoundP_bind hq1 (fun _ _ => isQueryBoundP_pure (isSmTargetQuery ℓ) _ 0)
-    · simp only [hp, Bool.false_eq_true, ↓reduceIte]
-      have hne : (i != k) = true := by
-        rw [bne_iff_ne]
-        exact beq_eq_false_iff_ne.mp (Bool.eq_false_iff.mpr hp)
-      have hcheck : bhShallowCheckExtSm k s.1 i sq = .inl (.inr (none, none, none)) := by
-        simp [bhShallowCheckExtSm, hne]
-      rw [hcheck]
-      exact isQueryBoundP_bhLiftP_sm _
-
-/-- Stage-2 SM query bound for `bhPrefixRedWithSessionTracked` on an arbitrary target adversary `B_A`. -/
-theorem bhPrefixRedWithSessionTracked_makesAtMostQueries_of_B {τ : Type}
-    {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
-    (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
-    (P : SignalPqxdh.Primitives)
-    (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
-    (C : Crypto) (K : MlKem) (qep : ℕ)
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
-    (B_A : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool)
-    (k q_k : ℕ)
-    (hB : B_A.IsQueryBoundP
-      (fun q => bhClassifyTarget (fun _ => false) (fun _ => false) (fun i => i == k) q = true)
-      q_k)
-    (qTot : ℕ)
-    (o : BHPrefixCtx × Mid (bhTargetGameSpec S ℓ (BitVec 512)) Bool (Option ℕ)
-      (BHE2EDrvState S ℓ × List τ) BHPrefixCtx)
-    (ho : o ∈ support (stageOneAsProbComp
-      ((bhPrefixRedWithSessionTracked T P ki C K qep decT encT k).eval1 (fun _ => B_A) () qTot
-        false)))
-    (flip : Bool) :
-    MakesAtMostQueries
-      ((bhPrefixRedWithSessionTracked T P ki C K qep decT encT k).eval2 o.2 flip qTot false)
-      q_k := by
-  have hfin : ∀ (s_out : BHE2EDrvState S ℓ × List τ) (b_out : Bool),
-      ((bhPrefixRedWithSessionTracked T P ki C K qep decT encT k).finish s_out b_out
-        flip).IsQueryBoundP (isSmTargetQuery ℓ) 0 := by
-    intro s_out b_out
-    dsimp only [bhPrefixRedWithSessionTracked]
-    exact isQueryBoundP_bhLiftP_sm _
-  unfold MakesAtMostQueries
-  refine isQueryBoundP_congr_pred (p := isSmTargetQuery ℓ) (by rintro (_ | _) <;> simp [isSmTargetQuery]) ?_
-  rcases o with ⟨c0, m⟩
-  dsimp only
-  cases m with
-  | done b_out s_out =>
-    simp only [BhShallowTwoStageRed.eval2, pure_bind]
-    exact (hfin s_out b_out).mono (Nat.zero_le _)
-  | paused t c p s_p cont =>
-    have hcont : ∀ v,
-        (cont v).IsQueryBoundP
-          (fun q => bhClassifyTarget (fun _ => false) (fun _ => false) (fun i => i == k) q = true)
-          q_k :=
-      isQueryBoundP_paused_of_mem_support_simulateQ_shallow_eval1
-        (bhPrefixRedWithSessionTracked T P ki C K qep decT encT k)
-        _ (fun _ => B_A) () qTot false q_k (fun _ => hB)
-        c0 t c p s_p cont ho
-    have hres :
-        ((bhPrefixRedWithSessionTracked T P ki C K qep decT encT k).resume s_p p flip).IsQueryBoundP
-          (isSmTargetQuery ℓ) 0 := by
-      dsimp only [bhPrefixRedWithSessionTracked]
-      exact isQueryBoundP_pure (isSmTargetQuery ℓ) _ 0
-    simp only [BhShallowTwoStageRed.eval2]
-    exact (isQueryBoundP_bind hres
-      (fun ⟨v, s₁⟩ _ =>
-        isQueryBoundP_bind
-          (bhShallowRunFuel_queryBound_of_step_le
-            bhTargetQenc bhTargetRdec
-            (bhPrefixHandlePostWithSessionTracked T P ki C K qep decT encT k)
-            isQueryBoundP_bhFwdU_sm
-            (fun t' s' => isQueryBoundP_bhPrefixHandlePostWithSessionTracked_eval T P ki C K qep
-              decT encT k s' t')
-            false
-            (q := q_k)
-            (isQueryBoundP_congr_pred (by rintro (_ | _) <;> simp [isSmTargetQuery])
-              (hcont (bhTargetRdec t v)))
-            qTot s₁)
-          (fun ⟨b_out, s_out⟩ _ => hfin s_out b_out))).mono (by omega)
 
 /-! ## Stage-2 `simulateQ` and `eval2` commutation -/
 
@@ -550,7 +439,7 @@ theorem bhPrefixHandlePostWithSessionTracked_plugExt_simulateQ_bind_eq {τ α β
           hk r σH'' gs_ext'' tr_ext'' h'' (hb''.trans hb')))
 
 /-- Post-observation in the plugged world when `σ.insts.any (·.gs.isNone) = true`. -/
-def bhComposedPostObsPlug {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhComposedPostObsPlug {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (P : SignalPqxdh.Primitives) (b_k : Bool) :
     (Bool × BHE2EDrvState S ℓ) × ExtState ℓ → ProbComp Bool :=
   fun ⟨⟨b', σ⟩, gs_ext⟩ =>
@@ -576,7 +465,7 @@ theorem bhComposedPostObsSessionTracked_bhPlugExtSessionTracked_eq {τ : Type}
   simp [bhE2EDrvWon_bhPlugExt, hAny, hb, hSt]
 
 /-- Post-processing in `bhPrefixRedWithSessionTracked` Stage 2 when `σ.paused = true`. -/
-def bhPrefixRedPost {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhPrefixRedPost {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (P : SignalPqxdh.Primitives) (flip b' : Bool)
     (σ : BHE2EDrvState S ℓ) : ProbComp Bool :=
   if !allTestedSessionsFresh P σ.st then do

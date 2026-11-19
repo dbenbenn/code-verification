@@ -11,13 +11,16 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.ResponderWireCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFromPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.ResponderWireCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFromPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W0Spec
 
 /-!
 # Budget-Threaded `PreKeySignalMessage::try_from` Slot Bridge (Placed)
@@ -27,7 +30,7 @@ Budget-pool counterparts of `pksmSlotSpecPlaced` and `pksmTryFromSpecPlaced` for
 allocation envelopes.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -51,7 +54,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFromPlacedBudget
 
 /-- Budget-threaded relocatable slot specification for
 `<PreKeySignalMessage as TryFrom<&[u8]>>::try_from` (Block `111`). -/
-def pksmSlotSpecPlaced [LibsignalPlacement]
+@[expose] def pksmSlotSpecPlaced [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PksmTryFromEnv : PksmGhost → List AllocEvent → Prop) (S : RunSem) :
     Spec (PksmGhost × M.σ) :=
@@ -71,7 +74,7 @@ def pksmSlotSpecPlaced [LibsignalPlacement]
             A.pool lim (M.stepEvents evs st) sf }
 
 /-- Concrete `pksmParse` instance of `pksmSlotSpecPlaced` under budget pool `A`. -/
-def pksmTryFromSpecPlaced [LibsignalPlacement]
+@[expose] def pksmTryFromSpecPlaced [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PksmTryFromEnv : PksmGhost → List AllocEvent → Prop) :
     Spec (PksmGhost × M.σ) :=

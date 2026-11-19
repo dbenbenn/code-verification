@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.BobStartRun
-public import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.BobStartRun -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -22,10 +22,9 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful
+public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import ProofLib.Lemmas
-import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompPresTRExp
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -37,13 +36,46 @@ import Symbolic.Proofs.Swarm.CREF.TR.Ghosts -- shake: keep
 import Symbolic.DYBridge.DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Trace.Monad
-import Symbolic.DYBridge.DY.Trace.Manipulation
+public import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.Trace.BaseAttackerKnowledge
 import Symbolic.DYBridge.DY.Actions.Network
 import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
-import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+public import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+import Batteries.Lean.Except
+import Batteries.Tactic.SeqFocus
+import DY.ALaCarte.Ordering
+import DY.Bytes.AttackerKnowledgeTheorem
+import DY.Meta.CombineMacro
+import Init.Data.List.Control
+import Init.Data.Range.Basic
+import Init.Data.String
+import Init.Data.String.Defs
+import Init.Data.String.Pattern.Basic
+import Init.Data.String.Pattern.String
+import Init.Data.String.Slice
+import Init.Data.String.TakeDrop
+import Lean.Elab.SyntheticMVars
+import Lean.Exception
+import Lean.Meta.Reduce
+import Mathlib.Data.List.Basic
+import Mathlib.Data.List.Forall2
+import Mathlib.Data.Nat.Notation
+import Mathlib.Data.Vector.Basic
+import Mathlib.Tactic.Push
+import Std.Data.DTreeMap.Internal.Operations
+import Std.Tactic.BVDecide.Normalize.Prop
+import Symbolic.Proofs.Swarm.COMPOSED.CompInvDefs
+import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
+import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
+import VCVio.CryptoFoundations.HardnessAssumptions.DiffieHellman
+import VCVio.CryptoFoundations.PRG
+import VCVio.EvalDist.Monad.Bool
+import VCVio.OracleComp.Constructions.SampleableType.Basic
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.QueryTracking.QueryBound.Basic
+import VCVio.OracleComp.SimSemantics.Append.Core
 
 /-!
 # `bobStart` Inversion, Base-Key Tie, and Stored Snapshot
@@ -54,7 +86,7 @@ that yields a received plaintext (`rpkT_bobStart_inv` and `rpkT_bobStart_block`)
 entries stored along `bobStartTr` (`rpkR_finalSt` and `rpkBH_trStateStoredAt_bobStartTr`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -427,7 +459,7 @@ theorem rpkT_bobStart_block {interpretation : ExternInterpretation} {r : Protoco
 
 /-! ## `BobDone` base-key tie -/
 
-def rpkT_bdKey (tr : ExecTrace) (i : Nat) : Option DY.Bytes :=
+@[expose] def rpkT_bdKey (tr : ExecTrace) (i : Nat) : Option DY.Bytes :=
   match tr.getEventAt PQXDH.PQXDHEvent i with
   | some (.BobDone _ _ _ _ _ _ _ ek _ _) => some ek
   | _ => none

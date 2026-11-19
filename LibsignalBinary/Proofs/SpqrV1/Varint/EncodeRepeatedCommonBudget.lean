@@ -10,15 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommon
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommon
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Specifications and Call Helpers for `encode_repeated`
@@ -28,7 +29,7 @@ Defines deterministic multi-byte `Vec<u8>` growth transitions (`reserveStep`, `p
 `encodeRepeatedSpecOf`, and generic call steppers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -73,11 +74,6 @@ open LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget
 
 /-! ## Deterministic `reserveStep`, `pushBytesStep`, and `encodeRepeatedStep` -/
 
-theorem reserveStep_fst_ge_need (cap len additional : Nat) :
-    len + additional ≤ (reserveStep cap len additional).1 := by
-  unfold reserveStep
-  split_ifs with h <;> simp only [reserveCap] <;> omega
-
 theorem pushByteStep_fst_ge (cap len : Nat) :
     cap ≤ (pushByteStep cap len).1 := by
   rw [← reserveStep_one_eq_pushByteStep]
@@ -111,19 +107,11 @@ theorem encodeRepeatedElemStep_fst_ge (tag cap len : Nat) (elemBs : List (BitVec
   exact Nat.le_trans (pushBytesStep_fst_ge _ _ _)
     (Nat.le_trans (pushBytesStep_fst_ge _ _ _) (reserveStep_fst_ge _ _ _))
 
-theorem encodeRepeatedStep_fst_ge (tag : Nat) :
-    ∀ (cap len : Nat) (elems : List (List (BitVec 8))),
-      cap ≤ (encodeRepeatedStep tag cap len elems).1
-  | _, _, [] => Nat.le_refl _
-  | cap, len, elemBs :: rest =>
-    Nat.le_trans (encodeRepeatedElemStep_fst_ge tag cap len elemBs)
-      (encodeRepeatedStep_fst_ge tag _ _ rest)
-
 /-- Deterministic `AllocEvent` list emitted by `encode_repeated` on `x`. -/
-def encodeRepeatedEvents (x : EncodeRepeatedGhost) : List AllocEvent :=
+@[expose] def encodeRepeatedEvents (x : EncodeRepeatedGhost) : List AllocEvent :=
   (encodeRepeatedStep x.tag x.cap.toNat x.bs.length (x.elems.map Prod.snd)).2
 
-def EncodeRepeatedEnv (x : EncodeRepeatedGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def EncodeRepeatedEnv (x : EncodeRepeatedGhost) (evs : List AllocEvent) : Prop :=
   evs = encodeRepeatedEvents x
 
 theorem encodeRepeatedEnv_events (x : EncodeRepeatedGhost) :
@@ -134,17 +122,6 @@ theorem encodeRepeatedEvents_of_spare {x : EncodeRepeatedGhost}
     encodeRepeatedEvents x = [] := by
   unfold encodeRepeatedEvents
   rw [encodeRepeatedStep_of_spare x.tag x.cap.toNat x.bs.length _ h]
-
-theorem fitsEnv_encodeRepeated_of_spare {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
-    {x : EncodeRepeatedGhost}
-    (h : x.bs.length + (encodeRepeatedBytes x.tag (x.elems.map Prod.snd)).length ≤ x.cap.toNat) :
-    FitsEnv M lim st (EncodeRepeatedEnv x) :=
-  FitsEnv.eq_iff.mpr (by rw [encodeRepeatedEvents_of_spare h]; trivial)
-
-theorem encodeRepeatedEnv_eq_nil_of_spare {x : EncodeRepeatedGhost} {evs : List AllocEvent}
-    (h : x.bs.length + (encodeRepeatedBytes x.tag (x.elems.map Prod.snd)).length ≤ x.cap.toNat)
-    (hev : EncodeRepeatedEnv x evs) : evs = [] :=
-  hev.trans (encodeRepeatedEvents_of_spare h)
 
 /-! ## `VecU8ReserveChain` Bridges -/
 
@@ -210,21 +187,13 @@ theorem vecU8ReserveChain_encodeRepeatedStep (tag : Nat) :
     exact (vecU8ReserveChain_encodeRepeatedElemStep (by omega)).trans (Nat.le_refl _)
       (vecU8ReserveChain_encodeRepeatedStep tag _ _ finalLen rest (by omega))
 
-theorem vecU8EncodeEnv_of_encodeRepeatedEnv {x : EncodeRepeatedGhost} {finalLen : Nat}
-    {evs : List AllocEvent}
-    (hle : x.bs.length + (encodeRepeatedBytes x.tag (x.elems.map Prod.snd)).length ≤ finalLen)
-    (hev : EncodeRepeatedEnv x evs) :
-    VecU8EncodeEnv x.cap.toNat finalLen evs := by
-  rw [hev]
-  exact ⟨_, vecU8ReserveChain_encodeRepeatedStep x.tag x.cap.toNat x.bs.length finalLen _ hle⟩
-
 /-! ## Deterministic-Capacity `encodeVarintDetSpec*` and `encodeRepeatedSpec*` -/
 
 /-- `encodeVarintFitSpecOf` refined with exact post-call capacity
 `cap'.toNat = (pushBytesStep (encodeVarint x.val).length x.cap.toNat x.bs.length).1`,
 enabling multi-call deterministic event composition (`encodeRepeatedStep`,
 `encodePolyEncoderEvents`) and `VecU8ReserveChain` composition. -/
-def encodeVarintDetSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodeVarintDetSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (EncodeVarintGhost × M.σ) where
   pre := (encodeVarintFitSpecOf resStack A lim).pre
   post := fun (x, st) s0 sf =>
@@ -239,11 +208,11 @@ def encodeVarintDetSpecOf (resStack : Nat) {M : AllocCostModel}
         A.pool lim (M.stepEvents evs st) sf) ∗
       stackAt s0.sp (0x30 + resStack)
 
-def encodeVarintDetSpec {M : AllocCostModel}
+@[expose] def encodeVarintDetSpec {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (EncodeVarintGhost × M.σ) :=
   encodeVarintDetSpecOf doReserveStack A lim
 
-def encodeVarintDetSpecX {M : AllocCostModel}
+@[expose] def encodeVarintDetSpecX {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (EncodeVarintGhost × M.σ) :=
   encodeVarintDetSpecOf doReserveStackX A lim
 
@@ -274,7 +243,7 @@ theorem subroutine_ok_withLsCodeLoaded_encodeVarintFit_of_det [LibsignalPlacemen
 
 /-- Budget-threaded specification of `prost::encoding::bytes::encode_repeated::<Vec<u8>, Vec<u8>>`
 (`[local#1, 2]`), parameterized by `resStack` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def encodeRepeatedSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodeRepeatedSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (EncodeRepeatedGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg32 .x0 = BitVec.ofNat 32 x.tag ∧
@@ -304,17 +273,17 @@ def encodeRepeatedSpecOf (resStack : Nat) {M : AllocCostModel}
         A.pool lim (M.stepEvents evs st) sf) ∗
       stackAt s0.sp (encodeRepeatedStackOf resStack)
 
-def encodeRepeatedSpec {M : AllocCostModel}
+@[expose] def encodeRepeatedSpec {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (EncodeRepeatedGhost × M.σ) :=
   encodeRepeatedSpecOf doReserveStack A lim
 
-def encodeRepeatedSpecX {M : AllocCostModel}
+@[expose] def encodeRepeatedSpecX {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (EncodeRepeatedGhost × M.σ) :=
   encodeRepeatedSpecOf doReserveStackX A lim
 
 /-- `encodeRepeatedSpecOf` relaxed to `x.elems.length < 2 ^ 59` (for `encode_repeated [local#2]`
 and `PolynomialEncoder::encode`). -/
-def encodeRepeated59DetSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodeRepeated59DetSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (EncodeRepeatedGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg32 .x0 = BitVec.ofNat 32 x.tag ∧
@@ -376,75 +345,6 @@ theorem step_memcpy_call_gen {prog : Program} {M : AllocCostModel}
       (hnext sm hpcm hrunm hspm htrm' hcsm
         (hcs.trans (EncRepeatedCalleeSaved.of_calleeSavedPreserved hcsm hinv_call)) hvm)
     exact Entails.of_eq (by sep_ac_rfl)
-
-theorem step_encode_varint_det_call_gen {resStack : Nat} {prog : Program}
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    {call_pc : BitVec 64} {s0 s : State}
-    (henc : subroutine_ok prog call_pc (withEncRepeatedCS s0 (encodeVarintDetSpecOf resStack A lim)))
-    (val v curCap curPtr sp ret_pc : BitVec 64) (curBs : List (BitVec 8)) (curSt : M.σ)
-    (hlen_lt : curBs.length + (encodeVarint val).length ≤ curCap.toNat ∨ curBs.length + 10 < 2 ^ 62)
-    (hfits : FitsEvents M lim curSt
-      (encodeVarintEvents (EncodeVarintGhost.mk val v curCap curPtr curBs)))
-    {ret : BitVec 64} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = call_pc) (hrun : s.status = .Running) (hsp : s.sp = sp - 80#64)
-    (halign : sp &&& 15#64 = 0#64) (htr : s.trace = s0.trace) (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = val) (hx1 : s.readReg64 .x1 = v)
-    (hcs : EncRepeatedCalleeSaved s0 s)
-    (hP : P = (vecU8At A.repAlloc v curCap curPtr curBs ∗ A.pool lim curSt s ∗
-      stackAt (sp - 80#64) (0x30 + resStack)) ∗ F)
-    (hnext : ∀ (sm : State) (nextCap nextPtr : BitVec 64),
-      sm.pc = ret_pc → sm.status = .Running → sm.sp = sp - 80#64 → sm.trace = s0.trace →
-      CalleeSavedPreserved s sm → EncRepeatedCalleeSaved s0 sm →
-      curCap.toNat ≤ nextCap.toNat →
-      (curBs.length + (encodeVarint val).length ≤ curCap.toNat →
-        nextCap = curCap ∧ nextPtr = curPtr) →
-      nextCap.toNat = (pushBytesStep (encodeVarint val).length curCap.toNat curBs.length).1 →
-      SepWPp prog ret sm
-        ((vecU8At A.repAlloc v nextCap nextPtr (curBs ++ encodeVarint val) ∗
-          A.pool lim (M.stepEvents (pushBytesStep (encodeVarint val).length curCap.toNat curBs.length).2 curSt) sm ∗
-          stackAt (sp - 80#64) (0x30 + resStack)) ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  have hsp_aligned : s.spAligned = true := by
-    simp only [State.spAligned, hsp, beq_iff_eq]; exact sp_sub_80_aligned halign
-  refine sepWPp_call_cs_noPanic (x := (EncodeVarintGhost.mk val v curCap curPtr curBs, curSt)) (F := F)
-    henc hpc hrun hsp_aligned hlr ?_ ?_ ?_ ?_ ?_
-  · intro R' hm; rw [hP] at hm
-    simp only [withEncRepeatedCS, encodeVarintDetSpecOf, encodeVarintFitSpecOf, hsp,
-      sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hcs, ⟨hx0, hx1, hlen_lt, FitsEnv.eq_iff.mpr hfits⟩, ?_⟩
-    convert hm using 1; sep_ac_rfl
-  · intro _ _ _ _ hm; exact not_satisfies_false_sepConj hm
-  · intro _ _ _ hm; exact not_satisfies_false_sepConj hm
-  · intro _ _ _ hm; exact not_satisfies_false_sepConj hm
-  · intro sm hpcm hrunm hspm hcsm hinv_call
-    rw [hsp] at hspm
-    dsimp only [withEncRepeatedCS, encodeVarintDetSpecOf]
-    rw [hsp]
-    simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-    refine SepWPp.exists_elim fun evs => ?_
-    refine SepWPp.exists_elim fun nextCap => ?_
-    refine SepWPp.exists_elim fun nextPtr => ?_
-    refine SepWPp.weaken_pre (P' :=
-      ⌜sm.trace = s.trace⌝ ∗
-      ⌜curCap.toNat ≤ nextCap.toNat ∧
-        (curBs.length + (encodeVarint val).length ≤ curCap.toNat →
-          nextCap = curCap ∧ nextPtr = curPtr) ∧
-        nextCap.toNat = (pushBytesStep (encodeVarint val).length curCap.toNat curBs.length).1⌝ ∗
-      ⌜EncodeVarintEnv (EncodeVarintGhost.mk val v curCap curPtr curBs) evs⌝ ∗
-      ((vecU8At A.repAlloc v nextCap nextPtr (curBs ++ encodeVarint val) ∗
-        A.pool lim (M.stepEvents evs curSt) sm ∗
-        stackAt (sp - 80#64) (0x30 + resStack)) ∗ F))
-      (Entails.of_eq (by sep_ac_rfl)) ?_
-    refine SepWPp.pure_elim fun htrm =>
-      SepWPp.pure_elim fun ⟨hge, hpres, hcap_det⟩ =>
-      SepWPp.pure_elim fun hev => ?_
-    have htrm' : sm.trace = s0.trace := htrm.trans htr
-    have hev_eq : evs = (pushBytesStep (encodeVarint val).length curCap.toNat curBs.length).2 := by
-      rw [hev, encodeVarintEvents, pushBytesStep_snd_eq]
-    rw [hev_eq]
-    exact hnext sm nextCap nextPtr hpcm hrunm hspm htrm' hcsm
-      (hcs.trans (EncRepeatedCalleeSaved.of_calleeSavedPreserved hcsm hinv_call))
-      hge hpres hcap_det
 
 theorem step_encode_varint_call_gen {resStack : Nat} {prog : Program}
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)

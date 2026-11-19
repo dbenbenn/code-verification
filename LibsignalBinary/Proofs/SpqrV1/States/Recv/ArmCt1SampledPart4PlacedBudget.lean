@@ -10,11 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart4Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart4Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
@@ -28,6 +28,19 @@ import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch5Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
 import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Poly -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledDefs
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart4 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
 
 /-!
 # `<States>::recv` (Block `332`) — `.ct1Sampled` Arm, Part 4 (Budget-Threaded)
@@ -36,7 +49,7 @@ import ProofLib.SepLogic.WPp
 Paths 4a (`ack = false`) and 4b (`ack = true`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -80,7 +93,7 @@ set_option linter.unusedSimpArgs false
 
 set_option allowUnsafeReducibility true in
 attribute [local reducible] spqrPolyApi spqrAuthApi
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
   CryptoVerification.blkPC_332
 attribute [-arm64_norm]
   HkdfToSliceProof.sp_sub_688_eq_hsp

@@ -17,12 +17,13 @@ public import LibsignalBinary.Heap.SpecBudget
 import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.IfaceSimp
 public import LibsignalBinary.Heap.Fine.SpecBudgetHelpersFine
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
 public import LibsignalBinary.Proofs.HookDischarge.Generics.ZeroizeDrop -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.HookDischarge.Generics.BlackBoxU8 -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetCode -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ZeroizeCode -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ZeroizeCode
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Region-Local `subtle::black_box::<u8>` Code Verification & Master Spec (`HooksDehook.BlackBoxCode`)
@@ -175,90 +176,6 @@ theorem subroutine_ok_processBlackBox_of_hasWords {P_sub : Program} {entry : Bit
   simp only [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
   exact ⟨⟨hq.2.1.1, hq.1⟩, hq.2.2⟩
 
-/-- `K`-narrowed full-permission region-local `subroutine_ok` for `processBlackBoxSpec`. -/
-theorem subroutine_ok_processBlackBoxK_of_hasWords (keep : BitVec 64 → Bool)
-    {P_sub : Program} {entry : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entry blackBoxU8Words) :
-    subroutine_ok P_sub entry (blackBoxSpecK keep processBlackBoxSpec) := by
-  refine subroutine_ok_mono (subroutine_ok_processBlackBox_of_hasWords hsub_no hwords)
-    (fun _ R s0 hp => ?_)
-    (fun _ _ _ _ hq => hq)
-  dsimp only [blackBoxSpecK, memsetSpecK] at hp
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hp
-  exact hp.2
-
-/-- Region-local `subroutine_ok` for `masterBlackBoxSpec` on any hook-free `P_sub` holding
-    `blackBoxU8Words` at `entry`. -/
-theorem subroutine_ok_masterBlackBox_of_hasWords {P_sub : Program} {entry : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entry blackBoxU8Words) :
-    subroutine_ok P_sub entry masterBlackBoxSpec := by
-  refine subroutine_ok_mono (subroutine_ok_processBlackBox_of_hasWords hsub_no hwords)
-    (fun _ _ _ hp => hp)
-    (fun v R s0 sf hq => ?_)
-  dsimp only [processBlackBoxSpec, masterBlackBoxSpec] at hq ⊢
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-  exact ⟨⟨hq.1.1, BlackBoxStatePreserved.of_processFieldsPreserved hq.1.2⟩, hq.2⟩
-
-/-- Region-local `subroutine_ok` for `blackBoxSpecK keep masterBlackBoxSpec` on any hook-free
-    `P_sub` holding `blackBoxU8Words`. -/
-theorem subroutine_ok_masterBlackBoxK_of_hasWords (keep : BitVec 64 → Bool)
-    {P_sub : Program} {entry : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entry blackBoxU8Words) :
-    subroutine_ok P_sub entry (blackBoxSpecK keep masterBlackBoxSpec) := by
-  refine subroutine_ok_mono (subroutine_ok_masterBlackBox_of_hasWords hsub_no hwords)
-    (fun _ R s0 hp => ?_)
-    (fun _ _ _ _ hq => hq)
-  dsimp only [blackBoxSpecK, memsetSpecK] at hp
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hp
-  exact hp.2
-
-/-- Region-local `subroutine_ok` for `masterBlackBoxBudgetSpec` (`withVmPreserved masterBlackBoxSpec`)
-    on any hook-free `P_sub` holding `blackBoxU8Words`. -/
-theorem subroutine_ok_masterBlackBoxBudget_of_hasWords {P_sub : Program} {entry : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entry blackBoxU8Words) :
-    subroutine_ok P_sub entry masterBlackBoxBudgetSpec := by
-  refine subroutine_ok_mono (subroutine_ok_processBlackBox_of_hasWords hsub_no hwords)
-    (fun _ _ _ hp => hp)
-    (fun v R s0 sf hq => ?_)
-  dsimp only [processBlackBoxSpec, masterBlackBoxBudgetSpec, withVmPreserved, masterBlackBoxSpec] at hq ⊢
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-  exact ⟨hq.1.2.toVmPreserved,
-    ⟨hq.1.1, BlackBoxStatePreserved.of_processFieldsPreserved hq.1.2⟩, hq.2⟩
-
-/-- Placement-generic `pureWordsProg base blackBoxU8Words` satisfies `processBlackBoxSpec`. -/
-theorem pureWordsProg_blackBoxU8_processBlackBox_ok (base : BitVec 64) :
-    subroutine_ok (pureWordsProg base blackBoxU8Words) base processBlackBoxSpec :=
-  subroutine_ok_processBlackBox_of_hasWords
-    (pureWordsProg_externAt_none base blackBoxU8Words)
-    (pureWordsProg_blackBoxU8_hasWords base)
-
-/-- Placement-generic `pureWordsProg base blackBoxU8Words` satisfies `masterBlackBoxSpec`. -/
-theorem pureWordsProg_blackBoxU8_masterBlackBox_ok (base : BitVec 64) :
-    subroutine_ok (pureWordsProg base blackBoxU8Words) base masterBlackBoxSpec :=
-  subroutine_ok_masterBlackBox_of_hasWords
-    (pureWordsProg_externAt_none base blackBoxU8Words)
-    (pureWordsProg_blackBoxU8_hasWords base)
-
-/-- Placement-generic `pureWordsProg base blackBoxU8Words` satisfies
-    `blackBoxSpecK keep masterBlackBoxSpec`. -/
-theorem pureWordsProg_blackBoxU8_masterBlackBoxK_ok (keep : BitVec 64 → Bool) (base : BitVec 64) :
-    subroutine_ok (pureWordsProg base blackBoxU8Words) base
-      (blackBoxSpecK keep masterBlackBoxSpec) :=
-  subroutine_ok_masterBlackBoxK_of_hasWords keep
-    (pureWordsProg_externAt_none base blackBoxU8Words)
-    (pureWordsProg_blackBoxU8_hasWords base)
-
-/-- Placement-generic `pureWordsProg base blackBoxU8Words` satisfies `masterBlackBoxBudgetSpec`. -/
-theorem pureWordsProg_blackBoxU8_masterBlackBoxBudget_ok (base : BitVec 64) :
-    subroutine_ok (pureWordsProg base blackBoxU8Words) base masterBlackBoxBudgetSpec :=
-  subroutine_ok_masterBlackBoxBudget_of_hasWords
-    (pureWordsProg_externAt_none base blackBoxU8Words)
-    (pureWordsProg_blackBoxU8_hasWords base)
-
 /-! ## 3. `W`-Independent Fallback `blackBoxHook` Soundness -/
 
 /-- The trusted-table idealized hook `LibsignalSession.blackBoxHook` (`W`-independent) satisfies
@@ -280,31 +197,6 @@ theorem blackBoxHook_masterBlackBox_ok :
 theorem blackBoxHook_masterBlackBoxK_ok (keep : BitVec 64 → Bool) :
     HookOk blackBoxHook (blackBoxSpecK keep masterBlackBoxSpec) :=
   hookOk_memsetSpecK_of_plain keep blackBoxHook_masterBlackBox_ok
-
-/-- `blackBoxHook` (`W`-independent) satisfies `masterBlackBoxBudgetSpec`
-    (`withVmPreserved masterBlackBoxSpec`). -/
-theorem blackBoxHook_masterBlackBoxBudget_ok :
-    HookOk blackBoxHook masterBlackBoxBudgetSpec :=
-  hookOk_withVmPreserved blackBoxHook_masterBlackBox_ok blackBoxHook_vmPreserved
-
-/-- `blackBoxHook` (`W`-independent) satisfies `blackBoxSpecK keep masterBlackBoxBudgetSpec`. -/
-theorem blackBoxHook_masterBlackBoxBudgetK_ok (keep : BitVec 64 → Bool) :
-    HookOk blackBoxHook (blackBoxSpecK keep masterBlackBoxBudgetSpec) :=
-  hookOk_memsetSpecK_of_plain keep blackBoxHook_masterBlackBoxBudget_ok
-
-/-- `blackBoxHook` (`W`-independent) also satisfies full-permission `processBlackBoxSpec`. -/
-theorem blackBoxHook_processBlackBox_ok :
-    HookOk blackBoxHook processBlackBoxSpec := by
-  refine hookOk_frame_pureAbort (fun _ _ => emp) blackBoxHook_masterBlackBoxBudget_ok
-    (fun _ _ => by
-      dsimp only [processBlackBoxSpec, masterBlackBoxBudgetSpec, withVmPreserved, masterBlackBoxSpec]
-      rw [sepConj_emp]; exact Entails.refl _)
-    (fun _ _ _ => ?_)
-  dsimp only [masterBlackBoxBudgetSpec, withVmPreserved, masterBlackBoxSpec, processBlackBoxSpec]
-  rw [sepConj_emp]
-  exact Entails.pure_left fun hvm =>
-    Entails.pure_left fun ⟨hx0, hst⟩ =>
-      Entails.pure_right ⟨hx0, hst.toProcessFieldsPreserved hvm⟩ (Entails.refl _)
 
 /-! ## 4. Generic `HookOk` Consequence Lifts from `masterBlackBoxSpec` -/
 
@@ -690,9 +582,5 @@ theorem blackBoxSpecK_keepsFs (keep : BitVec 64 → Bool) {α : Type} (spec : Sp
 
 theorem blackBoxSpecK_withVmPreserved (keep : BitVec 64 → Bool) {α : Type} (spec : Spec α) :
     withVmPreserved (blackBoxSpecK keep spec) = blackBoxSpecK keep (withVmPreserved spec) := rfl
-
-theorem blackBoxSpecK_withOomPoolPreserved (keep : BitVec 64 → Bool) {α : Type} (spec : Spec α) :
-    withOomPoolPreserved (blackBoxSpecK keep spec) =
-      blackBoxSpecK keep (withOomPoolPreserved spec) := rfl
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxCode

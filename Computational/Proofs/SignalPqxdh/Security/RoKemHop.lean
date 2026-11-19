@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+public import Computational.Proofs.SignalPqxdh.Security.RoKemHopB -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.Constructions.SampleableType.Measure
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -265,19 +265,19 @@ theorem map_base_fullKeyIndShCrImpl_false (S : Setup) (P : Primitives)
   | inr kq =>
     exact map_base_pqxdhKeyIndShCrImpl_false S P kq hst
 
-noncomputable def badKemShCrProbKeyInd (S : Setup) (P : Primitives)
+@[expose] noncomputable def badKemShCrProbKeyInd (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ℝ :=
   (𝒟[runKeyIndShCrSim S P A >>= fun (_, _, finalHst) =>
     pure (hasBadKemShCrRecords S P finalHst.initKemRecs finalHst.recvKemRecs)] {true}).toReal
 
-noncomputable abbrev keyIndExpG2_5 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+abbrev keyIndExpG2_5 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool :=
   _root_.SignalPqxdh.Security.keyIndExpG2_1 S P A
 
 noncomputable abbrev keyIndAdvG2_5 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   _root_.SignalPqxdh.Security.keyIndAdvG2_1 S P A
 
-noncomputable def keyIndExpG2_5ShCr (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+def keyIndExpG2_5ShCr (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool := do
   let (secb, b', finalHst) ← runKeyIndShCrSim S P A
   let finalSt := finalHst.base
@@ -298,7 +298,7 @@ noncomputable def keyIndExpG2_5ShCr (S : Setup) (P : Primitives) (A : KeyIndAdve
 noncomputable def keyIndAdvG2_5ShCr (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[keyIndExpG2_5ShCr S P A].boolBias).toReal
 
-noncomputable def keyIndExpG3 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+@[expose] def keyIndExpG3 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool := do
   let (secb, b', finalHst) ← runKeyIndShCrSim S P A
   let finalSt := finalHst.base
@@ -317,7 +317,7 @@ noncomputable def keyIndExpG3 (S : Setup) (P : Primitives) (A : KeyIndAdversary 
   else
     return (b' == secb)
 
-noncomputable def keyIndAdvG3 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
+@[expose] noncomputable def keyIndAdvG3 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[keyIndExpG3 S P A].boolBias).toReal
 
 theorem keyInd_hop_kemColl_le_prob (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
@@ -370,7 +370,7 @@ theorem keyIndAdvG2_5_eq_ShCr (S : Setup) (P : Primitives) (A : KeyIndAdversary 
   unfold keyIndAdvG2_5 _root_.SignalPqxdh.Security.keyIndAdvG2_1 keyIndAdvG2_5ShCr
   rw [keyIndExpG2_5ShCr_eq]
 
-def bundleSlotIndex (S : Setup) (u : Fin S.N_id) (j : Fin S.N_recv) : Nat :=
+@[expose] def bundleSlotIndex (S : Setup) (u : Fin S.N_id) (j : Fin S.N_recv) : Nat :=
   u.val * S.N_recv + j.val
 
 theorem bundleSlotIndex_lt (S : Setup) (u : Fin S.N_id) (j : Fin S.N_recv) :
@@ -902,7 +902,7 @@ theorem simulateQ_extractCollidingKemCtPrim (N : ℕ) (P : Primitives)
       pure_bind]
   cases recvRecs.find? (fun r => isWinningKemShCrCt P pk sk chosenPk ct ss r.kemCt) <;> rfl
 
-noncomputable def PausedShCrData.toPaused {S : Setup} (P : Primitives)
+@[expose] def PausedShCrData.toPaused {S : Setup} (P : Primitives)
     (d : PausedShCrData S) : PausedShCrKem S (KeyIndState S) where
   bundle := d.bundle
   resume := fun ss kemCt =>
@@ -912,7 +912,7 @@ noncomputable def PausedShCrData.toPaused {S : Setup} (P : Primitives)
         (StateT (KeyIndShCrState S) ProbComp) +
           pqxdhKeyIndShCrCachedImpl true S P) (d.cont y.1)).run y.2
 
-noncomputable abbrev _root_.SignalPqxdh.Security.RoKem.PausedShCrData.toPaused {S : Setup} (P :
+abbrev _root_.SignalPqxdh.Security.RoKem.PausedShCrData.toPaused {S : Setup} (P :
   Primitives)
     (d : PausedShCrData S) : PausedShCrKem S (KeyIndState S) :=
   PausedShCrData.toPaused P d
@@ -920,7 +920,7 @@ noncomputable abbrev _root_.SignalPqxdh.Security.RoKem.PausedShCrData.toPaused {
 @[simp] theorem PausedShCrData.toPaused_bundle {S : Setup} (P : Primitives)
     (d : PausedShCrData S) : (PausedShCrData.toPaused P d).bundle = d.bundle := rfl
 
-noncomputable def tryPauseKeyIndQueryData (S : Setup) (P : Primitives)
+@[expose] def tryPauseKeyIndQueryData (S : Setup) (P : Primitives)
     (sIdx : Nat) (gq : KeyIndQuery S)
     (cont : (keyIndSpec S).Range gq → OracleComp (unifSpec + keyIndSpec S) Bool)
     (hst : KeyIndShCrState S) : Option (PausedShCrData S) :=
@@ -1157,7 +1157,7 @@ theorem simulateQ_pqxdhKeyIndShCrCachedImpl_validKeyIndEc_and_recvKemRecs (embed
           have ⟨hVx, hRecx⟩ := ih y.1 y.2 f hVy (h_cont y.1) x hx
           exact ⟨hVx, by omega⟩
 
-def ValidPausedShCrData (S : Setup) (P : Primitives) (N : ℕ) (d : PausedShCrData S) : Prop :=
+@[expose] def ValidPausedShCrData (S : Setup) (P : Primitives) (N : ℕ) (d : PausedShCrData S) : Prop :=
   ValidKeyIndEcC S P d.hst.base ∧
   IsSendSessionId S d.sid ∧
   d.hst.base.sessions.any (fun e => e.sid == d.sid) = false ∧
@@ -1288,7 +1288,7 @@ theorem simulateQ_resumePausedKeyIndPrim (S : Setup) (P : Primitives)
   rw [hRecy] at hRecz
   omega
 
-def shcrReductionKeyIndAt (S : Setup) (b : QueryBudget) (idx : ℕ)
+@[expose] def shcrReductionKeyIndAt (S : Setup) (b : QueryBudget) (idx : ℕ)
     (A : KeyIndAdversary S) : KemShCrAdv where
   State := ShCrFinishState S
   choosePk := choosePkKeyIndPrimAt S b (idx / S.N_send_tot) (idx % S.N_send_tot) A

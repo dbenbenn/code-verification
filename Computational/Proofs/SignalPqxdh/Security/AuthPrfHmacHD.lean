@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacD
-public import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacD -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.CollisionsB -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.SigHopA
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.Constructions.SampleableType.Measure
@@ -23,7 +23,7 @@ Proves `gProb_last_le`, bounding the all-random hybrid (`defer = (· ≤ N - 1)`
 forgery queries are made.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +36,7 @@ open RoKem
 
 /-! ## Truncated uniform tag guessing bound -/
 
-noncomputable def hdEps : ℝ≥0∞ := ((2 : ℝ≥0∞) ^ 64)⁻¹
+@[expose] noncomputable def hdEps : ℝ≥0∞ := ((2 : ℝ≥0∞) ^ 64)⁻¹
 
 theorem hd_mod_eq_of_bytes (x y : ℕ) (h : ∀ i < 8, (x >>> (8 * i)) % 256 = (y >>> (8 * i)) % 256) :
     x % 2 ^ 64 = y % 2 ^ 64 := by
@@ -112,7 +112,7 @@ theorem hd_tag_bound (tg : Bytes) :
 
 /-! ## Expectation helpers and deferred checks -/
 
-def hdInd (b : Bool) : ℝ≥0∞ := if b then 1 else 0
+@[expose] def hdInd (b : Bool) : ℝ≥0∞ := if b then 1 else 0
 
 theorem hdInd_or_le (a b : Bool) : hdInd (a || b) ≤ hdInd a + hdInd b := by
   cases a <;> cases b <;> simp [hdInd]
@@ -136,7 +136,7 @@ theorem hd_probExpect_const_add {α : Type} (mx : ProbComp α) (c : ℝ≥0∞) 
     probExpect mx (fun x => c + g x) = c + probExpect mx g := by
   rw [hd_probExpect_add mx (fun _ => c) g, probExpect_const]
 
-def hdCnt (pending : List (ℕ × Bytes × Bytes)) (r : ℕ) (x : Bytes) : ℕ :=
+@[expose] def hdCnt (pending : List (ℕ × Bytes × Bytes)) (r : ℕ) (x : Bytes) : ℕ :=
   pending.countP (fun e => e.1 == r && e.2.1 == x)
 
 theorem hd_pendingHit_bound (r : ℕ) (x : Bytes) : ∀ pending : List (ℕ × Bytes × Bytes),
@@ -208,7 +208,7 @@ theorem hd_cnt_sum_le (pts : List (ℕ × Bytes)) (hnd : pts.Nodup) :
     simp only [hdCnt, List.countP_cons, List.sum_map_add, List.length_cons] at ih h1 ⊢
     omega
 
-noncomputable def hdFin (pending : List (ℕ × Bytes × Bytes)) : List (ℕ × Bytes) → ProbComp Bool
+@[expose] def hdFin (pending : List (ℕ × Bytes × Bytes)) : List (ℕ × Bytes) → ProbComp Bool
   | [] => pure false
   | (r, x) :: pts => do
     let t ← sampleBytes32
@@ -238,11 +238,11 @@ theorem hd_fin_bound (pending : List (ℕ × Bytes × Bytes)) : ∀ pts : List (
 /-! ## Potential argument -/
 
 /-- Invariant: the key count plus the remaining budgets is at most `N`, and all ranks are `< N`. -/
-def hdInv (N E D : ℕ) (st : PrfHmacMuState) : Prop :=
+@[expose] def hdInv (N E D : ℕ) (st : PrfHmacMuState) : Prop :=
   st.keys.length + E + D ≤ N ∧ ∀ e ∈ st.keys, e.2.1 < N
 
 /-- Potential: `[bad] + (|pending| + D) · 2^-64`. -/
-noncomputable def hdPhi (st : PrfHmacMuState) (D : ℕ) : ℝ≥0∞ :=
+@[expose] noncomputable def hdPhi (st : PrfHmacMuState) (D : ℕ) : ℝ≥0∞ :=
   hdInd st.bad + ((st.pending.length + D : ℕ) : ℝ≥0∞) * hdEps
 
 theorem hdPhi_mono (st : PrfHmacMuState) {D D' : ℕ} (h : D ≤ D') : hdPhi st D ≤ hdPhi st D' := by

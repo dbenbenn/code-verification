@@ -10,12 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Defs
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.IntoPbCodeSym
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.IntoPbCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`): Relocatable Specifications, Prologue, and Epilogue
@@ -24,7 +26,7 @@ Relocatable (`[LibsignalPlacement]`) `.rodata` jump-table assertion, subroutine 
 shared prologue (`+0 -> +44 -> +60`) and epilogue (`+1544 -> ret`) for Block `334`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -51,14 +53,14 @@ open CryptoVerification.SpqrV1.ProtoRepr
 open CryptoVerification.CodeLayout
 open CryptoVerification.SpqrV1.States.IntoPb.Placed
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero noneCap_add_two_beq_zero
 
 /-! ## 1. `.rodata` Jump Table and Relocatable `[LibsignalPlacement]` Specifications -/
 
 /-- Read-only separation-logic assertion for the 22-byte jump table of `<States>::into_pb` (Block `334`). -/
-def statesIntoPbJumpTablePlacedAt [LibsignalPlacement] : SepProp :=
+@[expose] def statesIntoPbJumpTablePlacedAt [LibsignalPlacement] : SepProp :=
   (lsρ "spqr:.rodata.<spqr::v1::chunked::states::States>::into_pb") ↦ᵣ statesIntoPbJumpTableBytes
 
 theorem lsro_statesIntoPbJumpTablePlacedAt [LibsignalPlacement] {s : State}
@@ -68,7 +70,7 @@ theorem lsro_statesIntoPbJumpTablePlacedAt [LibsignalPlacement] {s : State}
 
 /-- Relocatable specification of `<spqr::v1::chunked::states::States>::into_pb` (Block `334`)
     carrying `statesIntoPbJumpTablePlacedAt` explicitly. -/
-def statesIntoPbPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
+@[expose] def statesIntoPbPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
     Spec (StatesIntoPbGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.stA⌝ ∗
@@ -85,7 +87,7 @@ def statesIntoPbPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress
   onPanic := fun _ s0 sf => statesIntoPbOnPanic s0 sf
 
 /-- Per-variant relocatable specification of `<States>::into_pb` (Block `334`) for a fixed `st : States`. -/
-def statesIntoPbVariantPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def statesIntoPbVariantPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (st : States spqrPolyApi (spqrAuthApi F)) : Spec (BitVec 64 × BitVec 64) where
   pre := fun ⟨out, stA⟩ s =>
     ⌜s.readReg64 .x8 = out ∧ s.readReg64 .x0 = stA⌝ ∗
@@ -102,7 +104,7 @@ def statesIntoPbVariantPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaC
   onPanic := fun _ s0 sf => statesIntoPbOnPanic s0 sf
 
 /-- Extended-stack variant of `statesIntoPbPlacedSpec` (with explicit `statesIntoPbJumpTablePlacedAt`). -/
-def statesIntoPbPlacedRoSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
+@[expose] def statesIntoPbPlacedRoSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
     Spec (StatesIntoPbGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.stA⌝ ∗
@@ -120,7 +122,7 @@ def statesIntoPbPlacedRoSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompr
 
 /-- Extended-stack relocatable specification of `<States>::into_pb` (Block `334`) where `.rodata`
     is discharged from `LibsignalRoLoaded lsmpl s.mem`. -/
-def statesIntoPbPlacedSpecX (A : RustAlloc) (F : ShaCompress) :
+@[expose] def statesIntoPbPlacedSpecX (A : RustAlloc) (F : ShaCompress) :
     Spec (StatesIntoPbGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.stA⌝ ∗
@@ -140,7 +142,7 @@ abbrev statesIntoPbPlacedInnerSpecX (A : RustAlloc) (F : ShaCompress) :
 
 /-- `<States>::into_pb` (Block `334`) meets `statesIntoPbPlacedSpec A F` on
     `(blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext)`. -/
-def StatesIntoPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def StatesIntoPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
     (blkPl_334).base
@@ -149,7 +151,7 @@ def StatesIntoPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (F : ShaCompres
 /-- `<States>::into_pb` (Block `334`) meets
     `withLsCodeRoLoaded lsmpl (statesIntoPbPlacedSpecX A F)` on
     `(blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext)`. -/
-def StatesIntoPbPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def StatesIntoPbPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
     (blkPl_334).base

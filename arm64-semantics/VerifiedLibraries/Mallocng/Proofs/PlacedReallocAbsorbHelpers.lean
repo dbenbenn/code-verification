@@ -144,7 +144,7 @@ theorem metaBytes_write_mem_packedWord (g : GroupDesc) (newMem : BitVec 64) (new
 /-! ## In-Place `set_size` Separation-Logic Absorption -/
 
 set_option maxHeartbeats 400000 in
-theorem reallocInPlace_absorb (γ : GhostName) (A : MallocngAddrs)
+theorem reallocInPlace_absorb_st {ro : Bool} (γ : GhostName) (A : MallocngAddrs)
     (tp brkStart : BitVec 64) (b : MallocngBudget) (ivs0 : List (BitVec 64 × Nat))
     (s0 sf : State) (st : MallocngSt)
     {g : GroupDesc} (hg : g ∈ st.groups) {idx : Nat} (hIdx : idx < g.slots.length)
@@ -155,7 +155,6 @@ theorem reallocInPlace_absorb (γ : GhostName) (A : MallocngAddrs)
     (hNewMax : newSz ≤ 131051)
     (hFit : p.toNat + newSz ≤ (g.slotEnd idx).toNat)
     (hScLe : g.sc ≤ sizeToClassUnits ((newSz + 3) / 16) + 1)
-    (hTp : sf.tpidrEl0 = tp) (hBrkStart : sf.brkStart = brkStart)
     (hDelta : MallocngMappedDelta 0 0 s0.mem sf.mem)
     (slotBsFinal : List (BitVec 8)) (hFinalLen : slotBsFinal.length = g.stride)
     (hKeepUser : ∀ i, i < p.toNat - (g.slotStart idx).toNat + 4 + min origBs.length newSz →
@@ -172,21 +171,30 @@ theorem reallocInPlace_absorb (γ : GhostName) (A : MallocngAddrs)
         (BitVec.ofNat 32 ((g.slotEnd idx).toNat - (p.toNat + newSz))).extractLsb' (8 * j) 8) :
     let bf := mallocngReallocBudget true (some (oldSz, origBs)) newSz b
     let keptBs := origBs.take newSz
+    let newEff := (oldEff - max oldSz MallocngMinBlockCost) + max newSz MallocngMinBlockCost
+    let g' := { g with slots := g.slots.set idx (.liveUser p newSz newEff) }
+    let st' : MallocngSt :=
+      { st with groups := replaceGroup st.groups g.metaPtr g',
+                byteVal := writeBytesToMap st.byteVal (g.slotStart idx - 4#64) slotBsFinal,
+                liveMap := (st.liveMap.erase p).insert p newSz (st.liveMap.ov p) }
     MallocngRoTablesAt A ∗
     (A.ctx ↦ₛ st.ctx.toBytes) ∗
     ByteMap st.masterDom
       (fun a => OwnedRwByte st a ∧ ¬ InRegion (g.slotStart idx - 4#64) g.stride a) st.byteVal ∗
     ((g.slotStart idx - 4#64) ↦ₛ slotBsFinal) ∗
-    MallocngReadRest γ A tp brkStart sf.brk b ivs0 st ∗
+    MallocngReadRestMode ro γ A tp brkStart sf.brk b ivs0 st ∗
     MallocngTightBlock γ p oldSz al ⊢
-      |==> (MallocngPostEnv mallocngIface γ A tp brkStart bf ivs0 s0 sf ∗
-            ⌜(MallocngTightInitBlock γ al).pureWf p (newSz, keptBs)⌝ ∗
+      |==> (⌜MallocngCountIvsWF b ivs0 st ∧ MallocngNoOrphanMappings ivs0 ivs0 s0.mem sf.mem ∧
+             MallocngCountIvsWF bf ivs0 st' ∧ (MallocngTightInitBlock γ al).pureWf p (newSz, keptBs)⌝ ∗
+            MallocngRoTablesA A ∗
+            MallocngCoreStModeA ro γ A brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+            MallocngRuntime A tp ∗
             (MallocngTightInitBlock γ al).interp p (newSz, keptBs)) := by
-  intro bf keptBs
-  unfold MallocngReadRest
+  intro bf keptBs newEff0 g0' st0'
+  unfold MallocngReadRestMode
   refine Entails.trans (Entails.of_eq (by
     generalize (MallocngRoTablesAt A) = PRo
-    generalize (MallocngAuxvState γ st.auxvPtr st.auxvSnap) = PAu
+    generalize (MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap) = PAu
     ac_rfl : _ =
       ⌜MallocngCountIvsWF b ivs0 st ∧ MallocngWF A.base brkStart sf.brk b.liveCost b.peakCost st⌝ ∗
       ((MallocngLiveAuth γ st.liveMap ∗ MallocngTightBlock γ p oldSz al) ∗
@@ -198,8 +206,8 @@ theorem reallocInPlace_absorb (γ : GhostName) (A : MallocngAddrs)
         (A.lock ↦₃₂ 0#32) ∗
         (A.replaced ↦₃₂ 0#32) ∗
         (A.aaReplaced ↦₃₂ 0#32) ∗
-        ((A.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-        MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+        MallocngAuxvPtrCell ro A.libc st.auxvPtr ∗
+        MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
         ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
         MappedSet st.masterDom (OwnedMappedByte st) ∗
         MallocngRuntime A tp)))) ?_
@@ -350,40 +358,73 @@ theorem reallocInPlace_absorb (γ : GhostName) (A : MallocngAddrs)
       (mallocngTightBlock_replaceOv_bupd γ st.liveMap p oldSz p newSz al hNewBWf (Or.inl rfl)))
     (Entails.trans (bupd_frame_r _ _) (bupd_mono ?_))
   rw [hAbs, hExtU, hByteEq, hPnEq, hMpSetEq]
-  have hRepack := mallocngHeap_read_liveUser_repack γ A tp brkStart sf.brk bf ivs0 st'
-  unfold MallocngReadRest at hRepack
+  change _ ⊢
+    ⌜MallocngCountIvsWF b ivs0 st ∧ MallocngNoOrphanMappings ivs0 ivs0 s0.mem sf.mem ∧
+      MallocngCountIvsWF bf ivs0 st' ∧ (MallocngTightInitBlock γ al).pureWf p (newSz, keptBs)⌝ ∗
+    MallocngRoTablesA A ∗
+    MallocngCoreStModeA ro γ A brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+    MallocngRuntime A tp ∗
+    (MallocngTightInitBlock γ al).interp p (newSz, keptBs)
+  unfold MallocngCoreStModeA MallocngCoreStInflightModeA MallocngRoTablesA
+  rw [pure_sepConj_of_true ⟨hCount, hNoOrph, hCount', hPureInit⟩, pure_sepConj_of_true hwf',
+      show st.auxvPtr = st'.auxvPtr from rfl, show st.auxvSnap = st'.auxvSnap from rfl]
   refine Entails.trans (Entails.of_eq (by
-    change _ = _
-    rw [show st.auxvPtr = st'.auxvPtr from rfl, show st.auxvSnap = st'.auxvSnap from rfl]
-    generalize (MallocngRoTablesAt A) = PRo
-    generalize (MallocngAuxvState γ st'.auxvPtr st'.auxvSnap) = PAu
+    generalize (MallocngRoTablesAt A) = PRo, (MallocngAuxvStateRo ro γ st'.auxvPtr st'.auxvSnap) = PAu
     ac_rfl : _ =
       (MallocngRoTablesAt A ∗
-       (A.ctx ↦ₛ st'.ctx.toBytes) ∗
-       ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗
-       (MallocngLiveAuth γ st'.liveMap ∗
-        (A.lock ↦₃₂ 0#32) ∗
-        (A.replaced ↦₃₂ 0#32) ∗
-        (A.aaReplaced ↦₃₂ 0#32) ∗
-        ((A.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗
-        MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+       (MallocngLiveAuth γ st'.liveMap ∗ (A.ctx ↦ₛ st'.ctx.toBytes) ∗ (A.lock ↦₃₂ 0#32) ∗
+        (A.replaced ↦₃₂ 0#32) ∗ (A.aaReplaced ↦₃₂ 0#32) ∗ MallocngAuxvPtrCell ro A.libc st'.auxvPtr ∗
+        MallocngAuxvStateRo ro γ st'.auxvPtr st'.auxvSnap ∗
+        ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗
         ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
-        MappedSet st'.masterDom (OwnedMappedByte st') ∗
-        MallocngRuntime A tp)) ∗
+        MappedSet st'.masterDom (OwnedMappedByte st')) ∗
+       MallocngRuntime A tp) ∗
       (MallocngTightBlock γ p newSz al ∗ (p ↦ₛ readBytesFromMap val' p newSz)))) ?_
-  refine Entails.trans (sepConj_mono
-    (Entails.trans (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-      (Entails.pure_right ⟨hCount', hwf'⟩ (Entails.refl _))))) hRepack)
-    (sepConj_mono_right hUserInit)) ?_
+  refine Entails.trans (sepConj_mono_right (sepConj_mono_right hUserInit)) ?_
+  show _ ⊢ _ ∗ _ ∗ _ ∗ (MallocngTightBlock γ p newSz al ∗ (p ↦ₛ keptBs) ∗
+    memRegion (p + BitVec.ofNat 64 keptBs.length) (newSz - keptBs.length))
+  exact Entails.of_eq (by ac_rfl)
+
+theorem reallocInPlace_absorb {ro : Bool} (γ : GhostName) (A : MallocngAddrs)
+    (tp brkStart : BitVec 64) (b : MallocngBudget) (ivs0 : List (BitVec 64 × Nat))
+    (s0 sf : State) (st : MallocngSt) {g : GroupDesc} (hg : g ∈ st.groups)
+    {idx : Nat} (hIdx : idx < g.slots.length) {p : BitVec 64} {oldSz oldEff newSz al : Nat}
+    (origBs tailBs : List (BitVec 8))
+    (hOrigLen : origBs.length ≤ oldSz) (hTailLen : tailBs.length = oldSz - origBs.length)
+    (hSlot : g.slots[idx]'hIdx = .liveUser p oldSz oldEff) (hNewMax : newSz ≤ 131051)
+    (hFit : p.toNat + newSz ≤ (g.slotEnd idx).toNat)
+    (hScLe : g.sc ≤ sizeToClassUnits ((newSz + 3) / 16) + 1)
+    (hTp : sf.tpidrEl0 = tp) (hBrkStart : sf.brkStart = brkStart)
+    (hDelta : MallocngMappedDelta 0 0 s0.mem sf.mem)
+    (slotBsFinal : List (BitVec 8)) (hFinalLen : slotBsFinal.length = g.stride)
+    (hKeepUser : ∀ i, i < p.toNat - (g.slotStart idx).toNat + 4 + min origBs.length newSz →
+      i ≠ p.toNat - (g.slotStart idx).toNat + 1 →
+      slotBsFinal.getD i 0#8 = (mkLiveUserSlotBs st.byteVal g idx oldSz p (origBs ++ tailBs)).getD i 0#8)
+    (hHdrP3 : slotBsFinal.getD (p.toNat - (g.slotStart idx).toNat + 1) 0#8 =
+      BitVec.ofNat 8 (((min ((g.slotEnd idx).toNat - (p.toNat + newSz)) 5) <<< 5) ||| idx))
+    (hRes1 : 1 ≤ (g.slotEnd idx).toNat - (p.toNat + newSz) →
+      slotBsFinal.getD (p.toNat - (g.slotStart idx).toNat + 4 + newSz) 0#8 = 0#8)
+    (hRes5 : 5 ≤ (g.slotEnd idx).toNat - (p.toNat + newSz) →
+      slotBsFinal.getD (g.stride - 5) 0#8 = 0#8 ∧ ∀ j < 4, slotBsFinal.getD (g.stride - 4 + j) 0#8 =
+        (BitVec.ofNat 32 ((g.slotEnd idx).toNat - (p.toNat + newSz))).extractLsb' (8 * j) 8) :
+    let bf := mallocngReallocBudget true (some (oldSz, origBs)) newSz b
+    let keptBs := origBs.take newSz
+    MallocngRoTablesAt A ∗ (A.ctx ↦ₛ st.ctx.toBytes) ∗
+    ByteMap st.masterDom (fun a => OwnedRwByte st a ∧ ¬ InRegion (g.slotStart idx - 4#64) g.stride a) st.byteVal ∗
+    ((g.slotStart idx - 4#64) ↦ₛ slotBsFinal) ∗
+    MallocngReadRestMode ro γ A tp brkStart sf.brk b ivs0 st ∗ MallocngTightBlock γ p oldSz al ⊢
+      |==> (MallocngPostEnv (mallocngModeIface ro) γ A tp brkStart bf ivs0 s0 sf ∗
+            ⌜(MallocngTightInitBlock γ al).pureWf p (newSz, keptBs)⌝ ∗
+            (MallocngTightInitBlock γ al).interp p (newSz, keptBs)) := by
+  intro bf keptBs
+  refine Entails.trans (reallocInPlace_absorb_st (ro := ro) γ A tp brkStart b ivs0 s0 sf st hg hIdx origBs tailBs
+    hOrigLen hTailLen hSlot hNewMax hFit hScLe hDelta slotBsFinal hFinalLen
+    hKeepUser hHdrP3 hRes1 hRes5) (bupd_mono (Entails.pure_left fun ⟨_, hNoOrph, hCount', hPureInit⟩ => ?_))
   unfold MallocngPostEnv MallocngEnv
   refine Entails.trans ?_ (sepConj_mono_left (Entails.sepExists_intro ivs0))
   rw [pure_sepConj_of_true hNoOrph, pure_sepConj_of_true ⟨hTp, hBrkStart⟩, pure_sepConj_of_true hPureInit]
-  show (mallocngIface.MallocngHeap γ A tp brkStart sf.brk bf ivs0 ∗
-    (MallocngTightBlock γ p newSz al ∗
-     ((p ↦ₛ keptBs) ∗ memRegion (p + BitVec.ofNat 64 keptBs.length) (newSz - keptBs.length)))) ⊢
-    mallocngIface.MallocngHeap γ A tp brkStart sf.brk bf ivs0 ∗
-    (MallocngTightBlock γ p newSz al ∗ (p ↦ₛ keptBs) ∗
-     memRegion (p + BitVec.ofNat 64 keptBs.length) (newSz - keptBs.length))
-  exact Entails.of_eq (by ac_rfl)
+  rw [mallocngModeIface_heap_eq, mallocngModeIface_core_eq, ← sepConj_assoc, ← sepConj_assoc]
+  exact sepConj_mono_left (sepConj_mono_left (sepConj_mono_right
+    (Entails.sepExists_right _ (Entails.of_eq (pure_sepConj_of_true hCount' _).symm))))
 
 end VerifiedLibraries.Mallocng.Proofs

@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard13
 
 /-!
 # Relocatable Per-Block Fetches for `spqr::decode_state` (Block `325`)
@@ -20,7 +21,7 @@ import LibsignalBinary.Proofs.Placed.GenLsBlock
 Provides relocatable instruction-fetch helpers for Block `325` (`spqr::decode_state`, 745 insns).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

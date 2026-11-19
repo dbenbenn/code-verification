@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1OkTrapPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedOkTrapPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageDefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage1InstPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1OkTrapPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedOkTrapPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageDefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage1InstPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
@@ -26,6 +26,16 @@ import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Common.StringClonePlacedBudget
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Common.StringClonePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` Poll Stage P1 Instantiation
@@ -36,7 +46,7 @@ parametric-kit and concrete CLI Stage P1 contracts (`StageP1OkCliPlacedStmt`,
 from `hDropNz : lsmpl.base 547 ≠ 0#64`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -231,7 +241,7 @@ private theorem extHookStack_le_cliPollId_trustCallStack [LibsignalPlacement]
 /-! ## 2. Spatial Pre/Post Abbreviations (Reducible, Vtable-Free) -/
 
 /-- Vtable-free spatial precondition for budget-threaded Stage P1 (`is_trusted_identity =.ok true`). -/
-@[reducible] def stageP1OkPreAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose, reducible] def stageP1OkPreAt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ)
     (kit : SessionStoreSpec A.repAlloc 0#64) (ikit : IdentityStoreSpec A.repAlloc 0#64)
     (st : kit.StoreState) (ist : ikit.IdState)
@@ -279,7 +289,7 @@ private theorem extHookStack_le_cliPollId_trustCallStack [LibsignalPlacement]
   stackAt sp (stageP1CallStack kit ikit)
 
 /-- Vtable-free postcondition for budget-threaded Stage P1 (`is_trusted_identity =.ok true`). -/
-@[reducible] def stageP1OkPostAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose, reducible] def stageP1OkPostAt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ)
     (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
@@ -363,7 +373,7 @@ private theorem extHookStack_le_cliPollId_trustCallStack [LibsignalPlacement]
   LibsignalCodeRoLoaded lsmpl sf.mem
 
 /-- Vtable-free spatial precondition for budget-threaded Stage P1 (`is_trusted_identity =.ok false`). -/
-@[reducible] def stageP1UntrustedPreAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose, reducible] def stageP1UntrustedPreAt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ)
     (kit : SessionStoreSpec A.repAlloc 0#64) (ikit : IdentityStoreSpec A.repAlloc 0#64)
     (st : kit.StoreState) (ist : ikit.IdState)
@@ -410,7 +420,7 @@ private theorem extHookStack_le_cliPollId_trustCallStack [LibsignalPlacement]
   stackAt sp (stageP1UntrustedCallStack kit ikit)
 
 /-- Vtable-free postcondition for budget-threaded Stage P1 (`is_trusted_identity =.ok false`). -/
-@[reducible] def stageP1UntrustedPostAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose, reducible] def stageP1UntrustedPostAt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit)
@@ -751,7 +761,7 @@ theorem stageP1_ok_placed_of_kits [LibsignalPlacement]
 /-- Concrete CLI-instantiated budget-threaded Stage P1 (`is_trusted_identity =.ok true`,
 `onPanic := fun _ _ => False`) statement binding `kitEnv` to `cliPollSessBudgetEnv` and `ikitEnv`
 to `cliPollIdBudgetEnv`. -/
-def StageP1OkCliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP1OkCliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
     {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
@@ -817,7 +827,7 @@ theorem stageP1_ok_placed_inst [LibsignalPlacement] (hDropNz : lsmpl.base 547 �
       (cliPollId_kitPlacedOkI mmpl gh W B F0 peer hDropNz hh hRead)
 
 /-- Budget-threaded counterpart of `Poll.StageP1OkTrapPlacedStmt` (`onPanic := PanicOomProp s0`). -/
-def StageP1OkTrapPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP1OkTrapPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
     {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
@@ -959,7 +969,7 @@ theorem stageP1_untrusted_placed_of_kits [LibsignalPlacement]
 /-- Concrete CLI-instantiated budget-threaded Stage P1 (`is_trusted_identity =.ok false`,
 `onPanic := fun _ _ => False`) statement binding `kitEnv` to `cliPollSessBudgetEnv` and `ikitEnv`
 to `cliPollIdBudgetEnv`. -/
-def StageP1UntrustedCliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP1UntrustedCliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
     {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
@@ -1024,7 +1034,7 @@ theorem stageP1_untrusted_placed_inst [LibsignalPlacement] (hDropNz : lsmpl.base
       (cliPollId_kitPlacedOkI mmpl gh W B F0 peer hDropNz hh hRead)
 
 /-- Budget-threaded counterpart of `Poll.StageP1UntrustedTrapPlacedStmt` (`onPanic := PanicOomProp s0`). -/
-def StageP1UntrustedTrapPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP1UntrustedTrapPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
     {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}

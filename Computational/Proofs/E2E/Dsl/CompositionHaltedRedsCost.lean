@@ -14,14 +14,15 @@ public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore -- proof-se
 public import Computational.Proofs.E2E.Dsl.CompositionHaltedWitness -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.HaltedStartSessionSim -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.HaltedPrefixSubprogs -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.KindRedHalted -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.KindRedHalted
 public import Computational.Proofs.E2E.Dsl.KindRedHaltedInst -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.PrefixRedHalted -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.PrefixRedHalted
 public import Computational.Proofs.E2E.Dsl.PrefixRedHaltedInst -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.PrefixRedHaltedByKind -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.KindedCost
 import Computational.Proofs.ReductionDsl.MacroLift
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
+import Computational.Proofs.E2E.Dsl.PqxdhSimBranches
 
 /-!
 # Per-Kind and Clamped Cost Bounds for Halted Composition Reductions

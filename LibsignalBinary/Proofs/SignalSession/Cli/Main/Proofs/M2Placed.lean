@@ -9,10 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2CollectPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2DispatchPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2CollectPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2DispatchPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `main` Hop M2 (`M+0xc0 → M+0x568 / M+0xb80`, Block `617`)
@@ -21,7 +25,7 @@ Composes `main_m2_collect_placed` (`M+0xc0 → AtM2DispatchPlaced`) with `main_m
 (`AtM2DispatchPlaced → M+0x568 / M+0xb80`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -12,13 +12,31 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsCroPlaced
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.DefsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsCroPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget -- proof-setup: allow-public-import
+public import ProofLib.MallocngBridge
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Inlined `SessionStructure::decode` Loop Definitions
@@ -28,7 +46,7 @@ budget-threaded spatial bundles (`overDecHeapBudget`), and `[LibsignalPlacement]
 loop and step contracts on Block `518` (`lsProg_518 ext`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -62,22 +80,19 @@ open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsXBudget (
 
 /-- Per-field allocation envelope of one inlined `SessionStructure::decode` field `fl`
 (aligned with `B3DeserQ.DefsBudget.MergeFieldQEnv`). -/
-def OverDecFieldEnv (fl : GenFieldQ) (evs : List AllocEvent) : Prop :=
+@[expose] def OverDecFieldEnv (fl : GenFieldQ) (evs : List AllocEvent) : Prop :=
   BoundedRustEvs (8 * fl.enc.length) (256 * (fl.enc.length + 16)) evs
 
 /-- Loop-prefix allocation envelope after decoding the prefix of `enc` preceding `rest`. -/
-def OverDecPrefixEnv (enc rest : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def OverDecPrefixEnv (enc rest : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   BoundedRustEvs (8 * (enc.length - rest.length) + 32) (256 * (enc.length + 16)) evs
 
 /-- Total allocation envelope of inlined `SessionStructure::decode` on `enc`
 (`+0x1ee8 → +0x2620`). -/
-def OverPrevDecodeEnv (enc : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def OverPrevDecodeEnv (enc : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   BoundedRustEvs (8 * enc.length + 64) (256 * (enc.length + 16)) evs
 
 theorem overDecFieldEnv_nil (fl : GenFieldQ) : OverDecFieldEnv fl [] :=
-  BoundedRustEvs.nil _ _
-
-theorem overDecPrefixEnv_nil (enc rest : List (BitVec 8)) : OverDecPrefixEnv enc rest [] :=
   BoundedRustEvs.nil _ _
 
 /-- Every encoded `GenFieldQ` has at least one byte (its protobuf tag/wire-type key). -/
@@ -114,57 +129,6 @@ theorem fitsEnv_bytesMerge_of_overDecField {M : AllocCostModel} {lim : BudgetLim
     unfold MallocngMaxAllocSize; omega
   exact fitsEnv_bytesMerge_of_some hm hmax (by omega) (by omega) hFit
 
-theorem overDecPrefixEnv_entry (enc : List (BitVec 8)) {evs : List AllocEvent}
-    (h : BoundedRustEvs 32 0 evs) : OverDecPrefixEnv enc enc evs := by
-  unfold OverDecPrefixEnv
-  rw [Nat.sub_self, Nat.mul_zero, Nat.zero_add]
-  exact BoundedRustEvs.mono (Nat.le_refl _) (Nat.zero_le _) h
-
-/-- Loop-body prefix step: `OverDecPrefixEnv enc (fl.enc ++ rest)` followed by `OverDecFieldEnv fl`
-yields `OverDecPrefixEnv enc rest` whenever `(fl.enc ++ rest) <:+ enc`. -/
-theorem overDecPrefixEnv_step {enc rest : List (BitVec 8)} {fl : GenFieldQ}
-    {evs₁ evs₂ : List AllocEvent}
-    (hsuf : (fl.enc ++ rest) <:+ enc)
-    (h1 : OverDecPrefixEnv enc (fl.enc ++ rest) evs₁)
-    (h2 : OverDecFieldEnv fl evs₂) :
-    OverDecPrefixEnv enc rest (evs₁ ++ evs₂) := by
-  obtain ⟨pfx, hpfx⟩ := hsuf
-  have hlen : pfx.length + fl.enc.length + rest.length = enc.length := by
-    have := congrArg List.length hpfx
-    rw [List.length_append, List.length_append] at this
-    omega
-  unfold OverDecPrefixEnv at h1 ⊢
-  unfold OverDecFieldEnv at h2
-  rw [List.length_append] at h1
-  exact BoundedRustEvs.mono (by omega) (Nat.max_le.mpr ⟨Nat.le_refl _, by omega⟩)
-    (BoundedRustEvs.append h1 h2)
-
-theorem overDecPrefixEnv_finish {enc : List (BitVec 8)} {evs₁ evs₂ : List AllocEvent} {r₂ : Nat}
-    (h1 : OverDecPrefixEnv enc [] evs₁)
-    (h2 : BoundedRustEvs 32 r₂ evs₂)
-    (hr2 : r₂ ≤ 256 * (enc.length + 16)) :
-    OverPrevDecodeEnv enc (evs₁ ++ evs₂) := by
-  unfold OverDecPrefixEnv at h1
-  unfold OverPrevDecodeEnv
-  simp only [List.length_nil, Nat.sub_zero] at h1
-  exact BoundedRustEvs.mono (by omega) (Nat.max_le.mpr ⟨Nat.le_refl _, hr2⟩)
-    (BoundedRustEvs.append h1 h2)
-
-/-- Split `FitsEnv M lim st (OverPrevDecodeEnv enc)` into `FitsEnv M lim st (OverDecFieldEnv fl)`
-whenever `(fl.enc ++ rest) <:+ enc`. -/
-theorem fitsEnv_overDecField_of_total {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
-    {enc rest : List (BitVec 8)} {fl : GenFieldQ}
-    (hsuf : (fl.enc ++ rest) <:+ enc)
-    (hFit : FitsEnv M lim st (OverPrevDecodeEnv enc)) :
-    FitsEnv M lim st (OverDecFieldEnv fl) := by
-  obtain ⟨pfx, hpfx⟩ := hsuf
-  have hlen : fl.enc.length ≤ enc.length := by
-    have := congrArg List.length hpfx
-    rw [List.length_append, List.length_append] at this
-    omega
-  intro evs hevs
-  exact hFit evs (BoundedRustEvs.mono (by omega) (by omega) hevs)
-
 /-! ## Budget-Threaded Spatial Bundles and `atState` Bridges -/
 
 /-- Archived element of `previous_sessions` at `prevPtr` under `A.repAlloc`. -/
@@ -184,7 +148,7 @@ abbrev overDecScratchPostBudget {M : AllocCostModel} (A : RustCliAllocBudget M)
 
 /-- Budget-threaded spatial invariant of the decode loop at undecoded suffix `rest`, partial `SSGQ`
 value `v`, cost-model state `st`, and machine state `s`. -/
-def overDecHeapBudget {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def overDecHeapBudget {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) (s : State) (g : OverDecG) (rest : List (BitVec 8)) (v : SSGQ) : SepProp :=
   overPrevElemRestBudget A g.prevCap g.prevPtr g.encCap g.encPtr g.enc ∗
     ((g.q + 0xbe8#64) ↦₆₄ (g.q + 0x920#64)) ∗
@@ -231,7 +195,7 @@ theorem sepWPp_lift_cro_regs [LibsignalPlacement] {ext : String → Option (Stat
 /-- Fixed-`ext` `[LibsignalPlacement]` budget-threaded inlined `SessionStructure::decode` of `enc`
 (`(blkPl_518).base + 0x1ee8 → (blkPl_518).base + 0x2620`, closure frame `s.sp`) on `lsProg_518 ext`
 under `LibsignalCodeRoLoaded lsmpl`. -/
-def OverPrevDecodeCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OverPrevDecodeCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   ∀ (st0 : M.σ) (s0 s : State) (prevCap prevPtr encCap encPtr : BitVec 64)
@@ -271,12 +235,12 @@ def OverPrevDecodeCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Relocatable `[LibsignalPlacement]` budget-threaded inlined `SessionStructure::decode` of `enc`
 quantified over `ext`. -/
-def OverPrevDecodePlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OverPrevDecodePlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Prop :=
   ∀ (ext : String → Option (State → State)), OverPrevDecodeCroPlacedAt A lim ext
 
 /-- Relocatable `[LibsignalPlacement]` budget-threaded Entry (`+0x1ee8 → +0x216c`, `0` allocations). -/
-def OverDecEntryPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OverDecEntryPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Prop :=
   ∀ (ext : String → Option (State → State)) (st : M.σ) (s0 s : State) (g : OverDecG),
     g.enc ≠ [] → g.enc.length < 2 ^ 62 →
@@ -297,7 +261,7 @@ def OverDecEntryPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
       (fun _ _ => False)
 
 /-- Fixed-`ext` `LibsignalCodeRoLoaded` budget-threaded Entry (`+0x1ee8 → +0x216c`, `0` allocations). -/
-def OverDecEntryCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OverDecEntryCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   ∀ (st : M.σ) (s0 s : State) (g : OverDecG),
@@ -321,7 +285,7 @@ def OverDecEntryCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Fixed-`ext` `LibsignalCodeRoLoaded` budget-threaded one-field step (`+0x216c → +0x2160`)
 restricted by `P`. -/
-def OverDecFieldCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OverDecFieldCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) (P : GenFieldQ → Prop) : Prop :=
   ∀ (st : M.σ) (s0 s : State) (g : OverDecG) (v : SSGQ) (fl : GenFieldQ) (rest : List (BitVec 8)),
@@ -338,13 +302,13 @@ def OverDecFieldCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Relocatable `[LibsignalPlacement]` budget-threaded one-field step (`+0x216c → +0x2160`)
 quantified over `ext`. -/
-def OverDecFieldPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OverDecFieldPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (P : GenFieldQ → Prop) : Prop :=
   ∀ (ext : String → Option (State → State)), OverDecFieldCroPlacedAt A lim ext P
 
 /-- Relocatable `[LibsignalPlacement]` budget-threaded loop head (`+0x2160 → +0x216c`) when
 `rest ≠ []` (`0` allocations). -/
-def OverDecHeadConsPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OverDecHeadConsPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Prop :=
   ∀ (ext : String → Option (State → State)) (st : M.σ) (s0 s : State)
     (g : OverDecG) (v : SSGQ) (rest : List (BitVec 8)),
@@ -358,7 +322,7 @@ def OverDecHeadConsPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Fixed-`ext` `LibsignalCodeRoLoaded` budget-threaded loop head (`+0x2160 → +0x216c`) when
 `rest ≠ []` (`0` allocations). -/
-def OverDecHeadConsCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OverDecHeadConsCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   ∀ (st : M.σ) (s0 s : State) (g : OverDecG) (v : SSGQ) (rest : List (BitVec 8)),
@@ -372,7 +336,7 @@ def OverDecHeadConsCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Relocatable `[LibsignalPlacement]` budget-threaded loop head (`+0x2160 → +0x2620`) when
 `rest = []` (`0` allocations). -/
-def OverDecHeadNilPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OverDecHeadNilPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Prop :=
   ∀ (ext : String → Option (State → State)) (st : M.σ) (s0 s : State) (g : OverDecG) (v : SSGQ),
     g.enc.length < 2 ^ 62 →
@@ -385,7 +349,7 @@ def OverDecHeadNilPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Fixed-`ext` `LibsignalCodeRoLoaded` budget-threaded loop head (`+0x2160 → +0x2620`) when
 `rest = []` (`0` allocations). -/
-def OverDecHeadNilCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OverDecHeadNilCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   ∀ (st : M.σ) (s0 s : State) (g : OverDecG) (v : SSGQ),
@@ -399,7 +363,7 @@ def OverDecHeadNilCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Fixed-`ext` `LibsignalCodeRoLoaded` budget-threaded Key dispatch (`+0x216c → overDecArmOff fl`,
 `0` allocations on `OverDecAnyField fl` + `fl.Ok`). -/
-def OverDecKeyCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OverDecKeyCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   ∀ (st : M.σ) (s0 s : State) (g : OverDecG) (v : SSGQ) (fl : GenFieldQ) (rest : List (BitVec 8)),
@@ -415,13 +379,13 @@ def OverDecKeyCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
       (fun _ _ => False)
 
 /-- Relocatable `[LibsignalPlacement]` budget-threaded Key dispatch quantified over `ext`. -/
-def OverDecKeyPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OverDecKeyPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Prop :=
   ∀ (ext : String → Option (State → State)), OverDecKeyCroPlacedAt A lim ext
 
 /-- Fixed-`ext` `LibsignalCodeRoLoaded` budget-threaded Arm contract
 (`overDecArmOff fl → +0x2160`). -/
-def OverDecArmCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OverDecArmCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) (P : GenFieldQ → Prop) : Prop :=
   ∀ (st : M.σ) (s0 s : State) (g : OverDecG) (v : SSGQ) (fl : GenFieldQ) (rest : List (BitVec 8)),
@@ -439,7 +403,7 @@ def OverDecArmCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
       (fun _ _ => False)
 
 /-- Relocatable `[LibsignalPlacement]` budget-threaded Arm contract quantified over `ext`. -/
-def OverDecArmPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OverDecArmPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (P : GenFieldQ → Prop) : Prop :=
   ∀ (ext : String → Option (State → State)), OverDecArmCroPlacedAt A lim ext P
 

@@ -10,10 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.TrapSafeWords -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpLrTrap -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxCode -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpLrTrap
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxCode
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxGhost -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.Block617TransferG -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.Block617TransferG
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Closed-`lr` Trap & Subroutine-Outcome `keepBlackBox lr = false` Suite (`HooksDehook.BlackBoxLrTrap`)
@@ -78,8 +82,6 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxGhost (
 
 theorem blackBoxByteLen_eq : blackBoxByteLen = 20 := rfl
 
-theorem blackBoxU8Words_length : blackBoxU8Words.length = 5 := rfl
-
 theorem four_mul_blackBoxU8Words_length :
     4 * blackBoxU8Words.length = blackBoxByteLen := rfl
 
@@ -135,11 +137,6 @@ theorem blackBoxRegion_hasWords_of_hasWords {P_sub : Program} {entry : BitVec 64
   subst hmem
   exact ⟨P_sub, List.mem_singleton.mpr rfl, hHas⟩
 
-/-- Unconditional `RegionHasWords` for `pureWordsProg entry blackBoxU8Words`. -/
-theorem blackBoxRegion_hasWords_pure (entry : BitVec 64) :
-    RegionHasWords [pureWordsProg entry blackBoxU8Words] (blackBoxRegion entry) :=
-  blackBoxRegion_hasWords_of_hasWords (pureWordsProg_blackBoxU8_hasWords entry)
-
 theorem blackBoxRegion_codeLoaded_iff {P_sub : Program} {mem : Memory} :
     RegionCodeLoaded [P_sub] mem ↔ P_sub.CodeLoaded mem := by
   constructor
@@ -190,13 +187,6 @@ theorem trapHook_blackBoxGhostHook {keepR : BitVec 64 → Bool} {L : BitVec 64}
     TrapHook L (blackBoxGhostHook keepR P_real P_sub entryTarget) :=
   trapHook_linkedCallHook hkeepL (trapHook_keepFsTrace_blackBoxHook L)
 
-theorem trapHook_blackBoxGhostHook_of_cover {keepR : BitVec 64 → Bool} {entry L : BitVec 64}
-    (P_real P_sub : Program) (entryTarget : BitVec 64)
-    (hcover : ∀ pc, keepBlackBox entry pc = true → keepR pc = true)
-    (hL : keepBlackBox entry L = true) :
-    TrapHook L (blackBoxGhostHook keepR P_real P_sub entryTarget) :=
-  trapHook_blackBoxGhostHook P_real P_sub entryTarget (hcover L hL)
-
 /-- Plain `W`-independent `f3EmptyBlackBoxGhostHook` satisfies `TrapHook L` whenever
     `keepR L = true`. -/
 theorem trapHook_f3EmptyBlackBoxGhostHook {keepR : BitVec 64 → Bool} {L : BitVec 64}
@@ -212,38 +202,6 @@ theorem trapHook_f3EmptyBlackBoxGhostHook_of_cover {keepR : BitVec 64 → Bool} 
     (hL : keepBlackBox entry L = true) :
     TrapHook L (f3EmptyBlackBoxGhostHook keepR P_sub entryTarget) :=
   trapHook_f3EmptyBlackBoxGhostHook P_sub entryTarget (hcover L hL)
-
-/-- `K`-narrowed `blackBoxGhostHookK` transitions to `.Exception` whenever `keepR L = true`, so it
-    satisfies `TrapHook L`. -/
-theorem trapHook_blackBoxGhostHookK {keepR : BitVec 64 → Bool} {L : BitVec 64}
-    (P_real P_sub : Program) (entryTarget : BitVec 64)
-    (hkeepL : keepR L = true) :
-    TrapHook L (blackBoxGhostHookK keepR P_real P_sub entryTarget) :=
-  trapHook_of_exception_on_keepLr fun w _ hlr =>
-    ⟨"ghost-hook precondition violated", by rw [blackBoxGhostHookK_of_keepLr_true (hlr ▸ hkeepL)]⟩
-
-theorem trapHook_blackBoxGhostHookK_of_cover {keepR : BitVec 64 → Bool} {entry L : BitVec 64}
-    (P_real P_sub : Program) (entryTarget : BitVec 64)
-    (hcover : ∀ pc, keepBlackBox entry pc = true → keepR pc = true)
-    (hL : keepBlackBox entry L = true) :
-    TrapHook L (blackBoxGhostHookK keepR P_real P_sub entryTarget) :=
-  trapHook_blackBoxGhostHookK P_real P_sub entryTarget (hcover L hL)
-
-/-- `K`-narrowed `W`-independent `f3EmptyBlackBoxGhostHookK` satisfies `TrapHook L` whenever
-    `keepR L = true`. -/
-theorem trapHook_f3EmptyBlackBoxGhostHookK {keepR : BitVec 64 → Bool} {L : BitVec 64}
-    (P_sub : Program) (entryTarget : BitVec 64)
-    (hkeepL : keepR L = true) :
-    TrapHook L (f3EmptyBlackBoxGhostHookK keepR P_sub entryTarget) := by
-  rw [f3EmptyBlackBoxGhostHookK_eq]
-  exact trapHook_blackBoxGhostHookK _ P_sub entryTarget hkeepL
-
-theorem trapHook_f3EmptyBlackBoxGhostHookK_of_cover {keepR : BitVec 64 → Bool} {entry L : BitVec 64}
-    (P_sub : Program) (entryTarget : BitVec 64)
-    (hcover : ∀ pc, keepBlackBox entry pc = true → keepR pc = true)
-    (hL : keepBlackBox entry L = true) :
-    TrapHook L (f3EmptyBlackBoxGhostHookK keepR P_sub entryTarget) :=
-  trapHook_f3EmptyBlackBoxGhostHookK P_sub entryTarget (hcover L hL)
 
 /-! ## 3. Post-Hook Continuation & At-Stub `SubroutineOutcome` Trap Corollaries for Card `c` -/
 
@@ -275,27 +233,6 @@ theorem blackBox_lr_trap_after_hook_ret
     (fun hr => (keepOf_blackBoxRegion_apply entry _).trans (hout_sf hr))
     hnoex_sf hnhalt_sf
 
-/-- Post-hook `Returned`-case `keepBlackBox entry (u.readReg64 .lr) = false` when `sf` is
-    `.Running` at `sf.pc = s0.readReg64 .lr`. -/
-theorem blackBox_lr_trap_after_hook_returned
-    {P_ghost P_sub : Program} {entry : BitVec 64} {f_u : State → State} {s0 u sf : State}
-    (hHas : P_sub.hasWords entry blackBoxU8Words)
-    (htrap_u : keepBlackBox entry (u.readReg64 .lr) = true → TrapHook (u.readReg64 .lr) f_u)
-    (hreg_ext : keepBlackBox entry (u.readReg64 .lr) = true → ∀ pc, keepBlackBox entry pc = true →
-      P_ghost.externAt? pc = none ∨
-        ∃ f, P_ghost.externAt? pc = some f ∧ TrapHook (u.readReg64 .lr) f)
-    (hCode_fu : P_sub.CodeLoaded (f_u u).mem)
-    (hrest : Steps P_ghost (f_u u) sf)
-    (hrun_u : u.status = .Running)
-    (hrun_sf : sf.status = .Running)
-    (hpc_sf : sf.pc = s0.readReg64 .lr)
-    (hlr_s0 : keepBlackBox entry (s0.readReg64 .lr) = false) :
-    keepBlackBox entry (u.readReg64 .lr) = false :=
-  blackBox_lr_trap_after_hook_ret hHas htrap_u hreg_ext hCode_fu hrest hrun_u
-    (fun _ => hpc_sf ▸ hlr_s0)
-    (fun _ h => by rw [hrun_sf] at h; cases h)
-    (fun h => by rw [hrun_sf] at h; cases h)
-
 /-- **Card-`c` `InvS u` post-hook theorem (`blackBox_keepLr_false_after_hook_of_codeLoaded_u`):**
     Consumes `P_sub.CodeLoaded u.mem` at the call state `u` (supplied by `InvS u` in
     `GhostRowReplayOn.replay_at_stub` Arm 2) + `u.mem.KeepsFrozen (f_stub u).mem`. -/
@@ -326,208 +263,6 @@ theorem blackBox_keepLr_false_after_hook_of_codeLoaded_u
     hsteps_fu_sf hrun_u
     (fun hrun_sf => hret_pc hrun_sf ▸ hlr_s0)
     hnoex_sf hnhalt_sf
-
-/-- Direct `SubroutineOutcome` wrapper for `blackBox_keepLr_false_after_hook_of_codeLoaded_u`. -/
-theorem blackBox_keepLr_false_after_hook_of_subroutineOutcome_u
-    {α : Type} {spec_ghost : Spec α} {x : α} {R : SepProp}
-    {P_ghost P_sub : Program} {entry : BitVec 64} {f_stub : State → State}
-    (hHas : P_sub.hasWords entry blackBoxU8Words)
-    (hreg_ext : ∀ pc : BitVec 64, keepBlackBox entry pc = true →
-      P_ghost.externAt? pc = none ∨
-        ∃ f, P_ghost.externAt? pc = some f ∧
-          ∀ L : BitVec 64, keepBlackBox entry L = true → TrapHook L f)
-    (htrap_stub : ∀ L : BitVec 64, keepBlackBox entry L = true → TrapHook L f_stub)
-    {s0 sf : State}
-    (hlr_s0 : keepBlackBox entry (s0.readReg64 .lr) = false)
-    (hout : SubroutineOutcome spec_ghost x R s0 sf) :
-    ∀ u : State,
-      P_sub.CodeLoaded u.mem →
-      Steps P_ghost (f_stub u) sf →
-      u.status = .Running →
-      u.mem.KeepsFrozen (f_stub u).mem →
-      keepBlackBox entry (u.readReg64 .lr) = false := by
-  obtain ⟨hret_pc, hnoex_sf, hnhalt_sf⟩ := subroutineOutcome_running_pc_and_noFault hout
-  exact blackBox_keepLr_false_after_hook_of_codeLoaded_u hHas hreg_ext htrap_stub
-    hlr_s0 hret_pc hnoex_sf hnhalt_sf
-
-/-- Trajectory post-hook theorem propagating `hc_codeLoaded : P_sub.CodeLoaded s0.mem`.
-    Note (`H1`): `GhostRowReplayOn.replay_at_stub` provides `InvS u` (`P_sub.CodeLoaded u.mem`)
-    rather than `P_sub.CodeLoaded s0.mem`; prefer `blackBox_keepLr_false_after_hook_of_codeLoaded_u`
-    there. -/
-theorem blackBox_keepLr_false_after_hook_of_outcome
-    {P_ghost P_sub : Program} {entry : BitVec 64} {f_stub : State → State}
-    (hHas : P_sub.hasWords entry blackBoxU8Words)
-    (hreg_ext : ∀ pc : BitVec 64, keepBlackBox entry pc = true →
-      P_ghost.externAt? pc = none ∨
-        ∃ f, P_ghost.externAt? pc = some f ∧
-          ∀ L : BitVec 64, keepBlackBox entry L = true → TrapHook L f)
-    (htrap_stub : ∀ L : BitVec 64, keepBlackBox entry L = true → TrapHook L f_stub)
-    {s0 sf : State}
-    (hc_codeLoaded : P_sub.CodeLoaded s0.mem)
-    (hlr_s0 : keepBlackBox entry (s0.readReg64 .lr) = false)
-    (hret_pc : sf.status = .Running → sf.pc = s0.readReg64 .lr)
-    (hnoex_sf : ∀ msg, sf.status ≠ .Exception msg)
-    (hnhalt_sf : sf.status ≠ .Halted) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost (f_stub u) sf →
-      u.status = .Running →
-      u.mem.KeepsFrozen (f_stub u).mem →
-      keepBlackBox entry (u.readReg64 .lr) = false := by
-  intro u hsteps_s0_u hsteps_fu_sf hrun_u hkf
-  rw [← keepOf_blackBoxRegion_apply entry]
-  exact keepLr_false_after_hook_of_outcome
-    (blackBox_regionWordsSafe entry)
-    (blackBoxRegion_hasWords_of_hasWords hHas)
-    (fun pc hkp =>
-      (hreg_ext pc (keepOf_blackBoxRegion_apply entry _ ▸ hkp)).imp id
-        fun ⟨f, hf, htf⟩ => ⟨f, hf, fun L hL => htf L (keepOf_blackBoxRegion_apply entry _ ▸ hL)⟩)
-    (fun L hL => htrap_stub L (keepOf_blackBoxRegion_apply entry _ ▸ hL))
-    (blackBoxRegion_codeLoaded_iff.mpr hc_codeLoaded)
-    ((keepOf_blackBoxRegion_apply entry _).trans hlr_s0)
-    hret_pc hnoex_sf hnhalt_sf u hsteps_s0_u hsteps_fu_sf hrun_u hkf
-
-/-- Direct `SubroutineOutcome` wrapper for `blackBox_keepLr_false_after_hook_of_outcome`. -/
-theorem blackBox_keepLr_false_after_hook_of_subroutineOutcome
-    {α : Type} {spec_ghost : Spec α} {x : α} {R : SepProp}
-    {P_ghost P_sub : Program} {entry : BitVec 64} {f_stub : State → State}
-    (hHas : P_sub.hasWords entry blackBoxU8Words)
-    (hreg_ext : ∀ pc : BitVec 64, keepBlackBox entry pc = true →
-      P_ghost.externAt? pc = none ∨
-        ∃ f, P_ghost.externAt? pc = some f ∧
-          ∀ L : BitVec 64, keepBlackBox entry L = true → TrapHook L f)
-    (htrap_stub : ∀ L : BitVec 64, keepBlackBox entry L = true → TrapHook L f_stub)
-    {s0 sf : State}
-    (hc_codeLoaded : P_sub.CodeLoaded s0.mem)
-    (hlr_s0 : keepBlackBox entry (s0.readReg64 .lr) = false)
-    (hout : SubroutineOutcome spec_ghost x R s0 sf) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost (f_stub u) sf →
-      u.status = .Running →
-      u.mem.KeepsFrozen (f_stub u).mem →
-      keepBlackBox entry (u.readReg64 .lr) = false := by
-  obtain ⟨hret_pc, hnoex_sf, hnhalt_sf⟩ := subroutineOutcome_running_pc_and_noFault hout
-  exact blackBox_keepLr_false_after_hook_of_outcome hHas hreg_ext htrap_stub
-    hc_codeLoaded hlr_s0 hret_pc hnoex_sf hnhalt_sf
-
-/-- Call-point `keepBlackBox entry (u.readReg64 .lr) = false` on `Steps P_ghost u sf`. -/
-theorem blackBox_lr_trap_at_call_ret
-    {P_ghost P_sub : Program} {entry : BitVec 64} {f_u : State → State} {u sf : State}
-    (hHas : P_sub.hasWords entry blackBoxU8Words)
-    (htrap_u : keepBlackBox entry (u.readReg64 .lr) = true → TrapHook (u.readReg64 .lr) f_u)
-    (hreg_ext : keepBlackBox entry (u.readReg64 .lr) = true → ∀ pc, keepBlackBox entry pc = true →
-      P_ghost.externAt? pc = none ∨
-        ∃ f, P_ghost.externAt? pc = some f ∧ TrapHook (u.readReg64 .lr) f)
-    (hext_u : P_ghost.externAt? u.pc = some f_u)
-    (hCode_u : P_sub.CodeLoaded u.mem)
-    (hsteps_u_sf : Steps P_ghost u sf)
-    (hrun_u : u.status = .Running)
-    (hu_ne_sf : sf.status = .Running → sf.pc ≠ u.pc)
-    (hout_sf : sf.status = .Running → keepBlackBox entry sf.pc = false)
-    (hnoex_sf : ∀ msg, sf.status ≠ .Exception msg)
-    (hnhalt_sf : sf.status ≠ .Halted) :
-    keepBlackBox entry (u.readReg64 .lr) = false := by
-  rw [← keepOf_blackBoxRegion_apply entry]
-  exact lr_trap_at_call_ret
-    (blackBox_regionWordsSafe entry)
-    (blackBoxRegion_hasWords_of_hasWords hHas)
-    (fun hL => htrap_u (keepOf_blackBoxRegion_apply entry _ ▸ hL))
-    (fun hL pc hkp =>
-      hreg_ext (keepOf_blackBoxRegion_apply entry _ ▸ hL) pc
-        (keepOf_blackBoxRegion_apply entry _ ▸ hkp))
-    hext_u
-    (blackBoxRegion_codeLoaded_iff.mpr hCode_u)
-    hsteps_u_sf hrun_u hu_ne_sf
-    (fun hr => (keepOf_blackBoxRegion_apply entry _).trans (hout_sf hr))
-    hnoex_sf hnhalt_sf
-
-/-- Non-`.Running` terminal call-point `keepBlackBox entry (u.readReg64 .lr) = false`. -/
-theorem blackBox_lr_trap_at_call
-    {P_ghost P_sub : Program} {entry : BitVec 64} {f_u : State → State} {u sf : State}
-    (hHas : P_sub.hasWords entry blackBoxU8Words)
-    (htrap_u : keepBlackBox entry (u.readReg64 .lr) = true → TrapHook (u.readReg64 .lr) f_u)
-    (hno_ext : ∀ pc, keepBlackBox entry pc = true →
-      P_ghost.externAt? pc = none ∨ P_ghost.externAt? pc = some f_u)
-    (hext_u : P_ghost.externAt? u.pc = some f_u)
-    (hCode_u : P_sub.CodeLoaded u.mem)
-    (hsteps_u_sf : Steps P_ghost u sf)
-    (hrun_u : u.status = .Running)
-    (hrun_sf : sf.status ≠ .Running)
-    (hnoex_sf : ∀ msg, sf.status ≠ .Exception msg)
-    (hnhalt_sf : sf.status ≠ .Halted) :
-    keepBlackBox entry (u.readReg64 .lr) = false := by
-  rw [← keepOf_blackBoxRegion_apply entry]
-  exact lr_trap_at_call
-    (blackBox_regionWordsSafe entry)
-    (blackBoxRegion_hasWords_of_hasWords hHas)
-    (fun hL => htrap_u (keepOf_blackBoxRegion_apply entry _ ▸ hL))
-    (fun pc hkp => hno_ext pc (keepOf_blackBoxRegion_apply entry _ ▸ hkp))
-    hext_u
-    (blackBoxRegion_codeLoaded_iff.mpr hCode_u)
-    hsteps_u_sf hrun_u hrun_sf hnoex_sf hnhalt_sf
-
-/-- **Card-`c` at-stub trajectory theorem (`blackBox_keepLr_false_at_stub_of_outcome`).** -/
-theorem blackBox_keepLr_false_at_stub_of_outcome
-    {P_ghost P_sub : Program} {entry stubPc : BitVec 64} {f_stub : State → State}
-    (hHas : P_sub.hasWords entry blackBoxU8Words)
-    (hreg_ext : ∀ pc : BitVec 64, keepBlackBox entry pc = true →
-      P_ghost.externAt? pc = none ∨
-        ∃ f, P_ghost.externAt? pc = some f ∧
-          ∀ L : BitVec 64, keepBlackBox entry L = true → TrapHook L f)
-    (hext_stub : P_ghost.externAt? stubPc = some f_stub)
-    (htrap_stub : ∀ L : BitVec 64, keepBlackBox entry L = true → TrapHook L f_stub)
-    {s0 sf : State}
-    (hc_codeLoaded : P_sub.CodeLoaded s0.mem)
-    (hGuard0 : BlackBoxEntryGuard entry stubPc s0)
-    (hret_pc : sf.status = .Running → sf.pc = s0.readReg64 .lr)
-    (hnoex_sf : ∀ msg, sf.status ≠ .Exception msg)
-    (hnhalt_sf : sf.status ≠ .Halted) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost u sf →
-      u.status = .Running →
-      u.pc = stubPc →
-      keepBlackBox entry (u.readReg64 .lr) = false := by
-  intro u hsteps_s0_u hsteps_u_sf hrun_u hpc_u
-  rw [← keepOf_blackBoxRegion_apply entry]
-  exact keepLr_false_at_stub_of_outcome
-    (blackBox_regionWordsSafe entry)
-    (blackBoxRegion_hasWords_of_hasWords hHas)
-    (fun pc hkp =>
-      (hreg_ext pc (keepOf_blackBoxRegion_apply entry _ ▸ hkp)).imp id
-        fun ⟨f, hf, htf⟩ => ⟨f, hf, fun L hL => htf L (keepOf_blackBoxRegion_apply entry _ ▸ hL)⟩)
-    hext_stub
-    (fun L hL => htrap_stub L (keepOf_blackBoxRegion_apply entry _ ▸ hL))
-    (blackBoxRegion_codeLoaded_iff.mpr hc_codeLoaded)
-    ((blackBoxEntryGuard_iff_trapEntryGuard entry stubPc s0).mp hGuard0)
-    hret_pc hnoex_sf hnhalt_sf u hsteps_s0_u hsteps_u_sf hrun_u hpc_u
-
-/-- **Card-`c` at-stub `SubroutineOutcome` theorem
-    (`blackBox_keepLr_false_at_stub_of_subroutineOutcome`).** -/
-theorem blackBox_keepLr_false_at_stub_of_subroutineOutcome
-    {α : Type} {spec_ghost : Spec α} {x : α} {R : SepProp}
-    {P_ghost P_sub : Program} {entry stubPc : BitVec 64} {f_stub : State → State}
-    (hHas : P_sub.hasWords entry blackBoxU8Words)
-    (hreg_ext : ∀ pc : BitVec 64, keepBlackBox entry pc = true →
-      P_ghost.externAt? pc = none ∨
-        ∃ f, P_ghost.externAt? pc = some f ∧
-          ∀ L : BitVec 64, keepBlackBox entry L = true → TrapHook L f)
-    (hext_stub : P_ghost.externAt? stubPc = some f_stub)
-    (htrap_stub : ∀ L : BitVec 64, keepBlackBox entry L = true → TrapHook L f_stub)
-    {s0 sf : State}
-    (hc_codeLoaded : P_sub.CodeLoaded s0.mem)
-    (hGuard0 : BlackBoxEntryGuard entry stubPc s0)
-    (hout : SubroutineOutcome spec_ghost x R s0 sf) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost u sf →
-      u.status = .Running →
-      u.pc = stubPc →
-      keepBlackBox entry (u.readReg64 .lr) = false := by
-  obtain ⟨hret_pc, hnoex_sf, hnhalt_sf⟩ := subroutineOutcome_running_pc_and_noFault hout
-  exact blackBox_keepLr_false_at_stub_of_outcome hHas hreg_ext hext_stub htrap_stub
-    hc_codeLoaded hGuard0 hret_pc hnoex_sf hnhalt_sf
 
 /-- Parametric `∀ L` adapter bridging entry-excluded `externAt? pc = none` (`pc ∉ entries`) plus
     uniform per-entry `TrapHook` witnesses into the `blackBox_*` theorems. -/
@@ -584,134 +319,5 @@ theorem f3EmptyBlackBoxGhostHook_keepLr_false_after_hook_of_codeLoaded_u
       (fun _ hL => trapHook_f3EmptyBlackBoxGhostHook_of_cover P_sub entryTarget hcover hL))
     (fun _ hL => trapHook_f3EmptyBlackBoxGhostHook_of_cover P_sub entryTarget hcover hL)
     hlr_s0 hret_pc hnoex_sf hnhalt_sf
-
-/-- Entry-excluded card-`c` `InvS u` post-hook `SubroutineOutcome` theorem for
-    `f3EmptyBlackBoxGhostHook`. -/
-theorem f3EmptyBlackBoxGhostHook_keepLr_false_after_hook_of_subroutineOutcome_u
-    {α : Type} {spec_ghost : Spec α} {x : α} {R : SepProp}
-    {P_ghost P_sub : Program} {keepR : BitVec 64 → Bool} {entry stubPc entryTarget : BitVec 64}
-    (hHas : P_sub.hasWords entry blackBoxU8Words)
-    (hcover : ∀ pc, keepBlackBox entry pc = true → keepR pc = true)
-    (hno_ext_outside : ∀ pc : BitVec 64,
-      keepBlackBox entry pc = true → pc ≠ stubPc → P_ghost.externAt? pc = none)
-    (hext_stub : P_ghost.externAt? stubPc =
-      some (f3EmptyBlackBoxGhostHook keepR P_sub entryTarget))
-    {s0 sf : State}
-    (hlr_s0 : keepBlackBox entry (s0.readReg64 .lr) = false)
-    (hout : SubroutineOutcome spec_ghost x R s0 sf) :
-    ∀ u : State,
-      P_sub.CodeLoaded u.mem →
-      Steps P_ghost (f3EmptyBlackBoxGhostHook keepR P_sub entryTarget u) sf →
-      u.status = .Running →
-      u.mem.KeepsFrozen (f3EmptyBlackBoxGhostHook keepR P_sub entryTarget u).mem →
-      keepBlackBox entry (u.readReg64 .lr) = false := by
-  obtain ⟨hret_pc, hnoex_sf, hnhalt_sf⟩ := subroutineOutcome_running_pc_and_noFault hout
-  exact f3EmptyBlackBoxGhostHook_keepLr_false_after_hook_of_codeLoaded_u hHas hcover
-    hno_ext_outside hext_stub hlr_s0 hret_pc hnoex_sf hnhalt_sf
-
-/-- Entry-excluded card-`c` at-stub `SubroutineOutcome` theorem for `f3EmptyBlackBoxGhostHook`. -/
-theorem f3EmptyBlackBoxGhostHook_keepLr_false_at_stub_of_subroutineOutcome
-    {α : Type} {spec_ghost : Spec α} {x : α} {R : SepProp}
-    {P_ghost P_sub : Program} {keepR : BitVec 64 → Bool} {entry stubPc entryTarget : BitVec 64}
-    (hHas : P_sub.hasWords entry blackBoxU8Words)
-    (hcover : ∀ pc, keepBlackBox entry pc = true → keepR pc = true)
-    (hno_ext_outside : ∀ pc : BitVec 64,
-      keepBlackBox entry pc = true → pc ≠ stubPc → P_ghost.externAt? pc = none)
-    (hext_stub : P_ghost.externAt? stubPc =
-      some (f3EmptyBlackBoxGhostHook keepR P_sub entryTarget))
-    {s0 sf : State}
-    (hc_codeLoaded : P_sub.CodeLoaded s0.mem)
-    (hGuard0 : BlackBoxEntryGuard entry stubPc s0)
-    (hout : SubroutineOutcome spec_ghost x R s0 sf) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost u sf →
-      u.status = .Running →
-      u.pc = stubPc →
-      keepBlackBox entry (u.readReg64 .lr) = false :=
-  blackBox_keepLr_false_at_stub_of_subroutineOutcome hHas
-    (blackBox_reg_ext_of_stub_excluded hno_ext_outside hext_stub
-      (fun _ hL => trapHook_f3EmptyBlackBoxGhostHook_of_cover P_sub entryTarget hcover hL))
-    hext_stub
-    (fun _ hL => trapHook_f3EmptyBlackBoxGhostHook_of_cover P_sub entryTarget hcover hL)
-    hc_codeLoaded hGuard0 hout
-
-/-- Entry-excluded card-`c` `InvS u` post-hook theorem for `K`-narrowed `f3EmptyBlackBoxGhostHookK`
-    (`entries = [entry]` when `stubPc = entry`; consumes `P_sub.CodeLoaded u.mem` at `u`). -/
-theorem f3EmptyBlackBoxGhostHookK_keepLr_false_after_hook_of_codeLoaded_u
-    {P_ghost P_sub : Program} {keepR : BitVec 64 → Bool} {entry stubPc entryTarget : BitVec 64}
-    (hHas : P_sub.hasWords entry blackBoxU8Words)
-    (hcover : ∀ pc, keepBlackBox entry pc = true → keepR pc = true)
-    (hno_ext_outside : ∀ pc : BitVec 64,
-      keepBlackBox entry pc = true → pc ≠ stubPc → P_ghost.externAt? pc = none)
-    (hext_stub : P_ghost.externAt? stubPc =
-      some (f3EmptyBlackBoxGhostHookK keepR P_sub entryTarget))
-    {s0 sf : State}
-    (hlr_s0 : keepBlackBox entry (s0.readReg64 .lr) = false)
-    (hret_pc : sf.status = .Running → sf.pc = s0.readReg64 .lr)
-    (hnoex_sf : ∀ msg, sf.status ≠ .Exception msg)
-    (hnhalt_sf : sf.status ≠ .Halted) :
-    ∀ u : State,
-      P_sub.CodeLoaded u.mem →
-      Steps P_ghost (f3EmptyBlackBoxGhostHookK keepR P_sub entryTarget u) sf →
-      u.status = .Running →
-      u.mem.KeepsFrozen (f3EmptyBlackBoxGhostHookK keepR P_sub entryTarget u).mem →
-      keepBlackBox entry (u.readReg64 .lr) = false :=
-  blackBox_keepLr_false_after_hook_of_codeLoaded_u hHas
-    (blackBox_reg_ext_of_stub_excluded hno_ext_outside hext_stub
-      (fun _ hL => trapHook_f3EmptyBlackBoxGhostHookK_of_cover P_sub entryTarget hcover hL))
-    (fun _ hL => trapHook_f3EmptyBlackBoxGhostHookK_of_cover P_sub entryTarget hcover hL)
-    hlr_s0 hret_pc hnoex_sf hnhalt_sf
-
-/-- Entry-excluded card-`c` `InvS u` post-hook `SubroutineOutcome` theorem for
-    `f3EmptyBlackBoxGhostHookK`. -/
-theorem f3EmptyBlackBoxGhostHookK_keepLr_false_after_hook_of_subroutineOutcome_u
-    {α : Type} {spec_ghost : Spec α} {x : α} {R : SepProp}
-    {P_ghost P_sub : Program} {keepR : BitVec 64 → Bool} {entry stubPc entryTarget : BitVec 64}
-    (hHas : P_sub.hasWords entry blackBoxU8Words)
-    (hcover : ∀ pc, keepBlackBox entry pc = true → keepR pc = true)
-    (hno_ext_outside : ∀ pc : BitVec 64,
-      keepBlackBox entry pc = true → pc ≠ stubPc → P_ghost.externAt? pc = none)
-    (hext_stub : P_ghost.externAt? stubPc =
-      some (f3EmptyBlackBoxGhostHookK keepR P_sub entryTarget))
-    {s0 sf : State}
-    (hlr_s0 : keepBlackBox entry (s0.readReg64 .lr) = false)
-    (hout : SubroutineOutcome spec_ghost x R s0 sf) :
-    ∀ u : State,
-      P_sub.CodeLoaded u.mem →
-      Steps P_ghost (f3EmptyBlackBoxGhostHookK keepR P_sub entryTarget u) sf →
-      u.status = .Running →
-      u.mem.KeepsFrozen (f3EmptyBlackBoxGhostHookK keepR P_sub entryTarget u).mem →
-      keepBlackBox entry (u.readReg64 .lr) = false := by
-  obtain ⟨hret_pc, hnoex_sf, hnhalt_sf⟩ := subroutineOutcome_running_pc_and_noFault hout
-  exact f3EmptyBlackBoxGhostHookK_keepLr_false_after_hook_of_codeLoaded_u hHas hcover
-    hno_ext_outside hext_stub hlr_s0 hret_pc hnoex_sf hnhalt_sf
-
-/-- Entry-excluded card-`c` at-stub `SubroutineOutcome` theorem for `f3EmptyBlackBoxGhostHookK`. -/
-theorem f3EmptyBlackBoxGhostHookK_keepLr_false_at_stub_of_subroutineOutcome
-    {α : Type} {spec_ghost : Spec α} {x : α} {R : SepProp}
-    {P_ghost P_sub : Program} {keepR : BitVec 64 → Bool} {entry stubPc entryTarget : BitVec 64}
-    (hHas : P_sub.hasWords entry blackBoxU8Words)
-    (hcover : ∀ pc, keepBlackBox entry pc = true → keepR pc = true)
-    (hno_ext_outside : ∀ pc : BitVec 64,
-      keepBlackBox entry pc = true → pc ≠ stubPc → P_ghost.externAt? pc = none)
-    (hext_stub : P_ghost.externAt? stubPc =
-      some (f3EmptyBlackBoxGhostHookK keepR P_sub entryTarget))
-    {s0 sf : State}
-    (hc_codeLoaded : P_sub.CodeLoaded s0.mem)
-    (hGuard0 : BlackBoxEntryGuard entry stubPc s0)
-    (hout : SubroutineOutcome spec_ghost x R s0 sf) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost u sf →
-      u.status = .Running →
-      u.pc = stubPc →
-      keepBlackBox entry (u.readReg64 .lr) = false :=
-  blackBox_keepLr_false_at_stub_of_subroutineOutcome hHas
-    (blackBox_reg_ext_of_stub_excluded hno_ext_outside hext_stub
-      (fun _ hL => trapHook_f3EmptyBlackBoxGhostHookK_of_cover P_sub entryTarget hcover hL))
-    hext_stub
-    (fun _ hL => trapHook_f3EmptyBlackBoxGhostHookK_of_cover P_sub entryTarget hcover hL)
-    hc_codeLoaded hGuard0 hout
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxLrTrap

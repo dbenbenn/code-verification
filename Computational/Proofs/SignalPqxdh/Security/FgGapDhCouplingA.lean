@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHop
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+public import Computational.Proofs.SignalPqxdh.Security.RoKemHop -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.Constructions.SampleableType.Measure
 
@@ -22,7 +22,7 @@ Extends `keyIndExpG3` with a log `advRoLog` of adversary `.roQuery` inputs, prov
 onto `keyIndExpG3` and `runKeyIndFgSim`, and defines the `secb`-branch runs and state erasure.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +39,7 @@ namespace Proofs.SignalPqxdh.Security
 
 export _root_.SignalPqxdh.Security.RoKem (extractDh1 extractDh3 spkBundleFlatIdx)
 
-def badKeyIndFgAny4 {S : Setup} (P : Primitives) (maxLen : ℕ)
+@[expose] def badKeyIndFgAny4 {S : Setup} (P : Primitives) (maxLen : ℕ)
     (st : KeyIndState S) (advRoLog : List Bytes) : Bool :=
   badKeyIndFgAny P maxLen st advRoLog ||
   ((List.range S.N_send_tot).any (fun sIdx =>
@@ -67,11 +67,11 @@ structure KeyIndAdvCutoffState (S : Setup) where
   shCr     : KeyIndShCrState S
   advRoLog : List Bytes := []
 
-def KeyIndAdvCutoffState.toFg {S : Setup} (hst : KeyIndAdvCutoffState S) :
+@[expose] def KeyIndAdvCutoffState.toFg {S : Setup} (hst : KeyIndAdvCutoffState S) :
     KeyIndFgCutoffState S :=
   { base := hst.shCr.base, advRoLog := hst.advRoLog }
 
-def liftKeyIndAdvShCr {S : Setup} {α : Type}
+@[expose] def liftKeyIndAdvShCr {S : Setup} {α : Type}
     (m : StateT (KeyIndShCrState S) ProbComp α) :
     StateT (KeyIndAdvCutoffState S) ProbComp α :=
   StateT.mk fun hst => do
@@ -79,7 +79,7 @@ def liftKeyIndAdvShCr {S : Setup} {α : Type}
     return (r, { hst with shCr := shCr' })
 
 /-- `G3` oracle implementation appending adversary `.roQuery` inputs to `advRoLog`. -/
-def pqxdhKeyIndAdvG3Impl (S : Setup) (P : Primitives) :
+@[expose] def pqxdhKeyIndAdvG3Impl (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndAdvCutoffState S) ProbComp)
   | .roQuery sec =>
     StateT.mk fun hst => do
@@ -141,7 +141,7 @@ theorem simulateQ_pqxdhKeyIndAdvG3Impl_shCr {S : Setup} {α : Type} (P : Primiti
       exact ih y.1 y.2
 
 /-- Run the `G3` simulation recording `advRoLog` alongside `KeyIndShCrState S`. -/
-noncomputable def runKeyIndAdvG3Sim (S : Setup) (P : Primitives)
+@[expose] def runKeyIndAdvG3Sim (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ProbComp (Bool × Bool × KeyIndAdvCutoffState S) := do
   let secb ← $ᵗ Bool
   let initSt : KeyIndAdvCutoffState S :=
@@ -164,7 +164,7 @@ theorem runKeyIndAdvG3Sim_shCr (S : Setup) (P : Primitives) (A : KeyIndAdversary
   rw [← hSim, bind_map_left]
   simp [Prod.map, map_eq_bind_pure_comp, bind_assoc]
 
-noncomputable def finalizeKeyIndG3 (S : Setup) (P : Primitives)
+@[expose] def finalizeKeyIndG3 (S : Setup) (P : Primitives)
     (secb b' : Bool) (finalHst : KeyIndShCrState S) : ProbComp Bool :=
   let finalSt := finalHst.base
   let allTestedClean :=
@@ -181,7 +181,7 @@ noncomputable def finalizeKeyIndG3 (S : Setup) (P : Primitives)
   else
     pure (b' == secb)
 
-noncomputable def finalizeKeyIndG3Post (S : Setup) (P : Primitives)
+@[expose] def finalizeKeyIndG3Post (S : Setup) (P : Primitives)
     (b' : Bool) (finalHst : KeyIndShCrState S) : ProbComp Bool :=
   let finalSt := finalHst.base
   let allTestedClean :=
@@ -213,14 +213,6 @@ theorem evalDist_finalizeKeyIndG3_eq_post_beq (S : Setup) (P : Primitives)
   split_ifs with hbad
   · exact (evalDist_uniformBool_beq_fg secb).symm
   · simp [Bool.beq_comm]
-
-theorem keyIndExpG3_eq_advG3Sim (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
-    keyIndExpG3 S P A = (do
-      let (secb, b', finalHst) ← runKeyIndAdvG3Sim S P A
-      finalizeKeyIndG3 S P secb b' finalHst.shCr) := by
-  unfold keyIndExpG3 finalizeKeyIndG3
-  rw [← runKeyIndAdvG3Sim_shCr S P A, bind_map_left]
-  rfl
 
 /-! ## Projection to `runKeyIndFgSim` -/
 
@@ -260,60 +252,11 @@ theorem pqxdhKeyIndAdvG3Impl_toFg {S : Setup} (P : Primitives)
   | registerKey sk => exact liftKeyIndAdvShCr_toFg P (.registerKey sk) hst
   | revealSpkSk u j => exact liftKeyIndAdvShCr_toFg P (.revealSpkSk u j) hst
 
-theorem simulateQ_pqxdhKeyIndAdvG3Impl_toFg {S : Setup} {α : Type} (P : Primitives)
-    (oa : OracleComp (unifSpec + keyIndSpec S) α) (hst : KeyIndAdvCutoffState S) :
-    let fullAdv := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (KeyIndAdvCutoffState S) ProbComp) + pqxdhKeyIndAdvG3Impl S P
-    let fullFg := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (KeyIndFgCutoffState S) ProbComp) + pqxdhKeyIndFgImpl S P
-    Prod.map id KeyIndAdvCutoffState.toFg <$> ((simulateQ fullAdv oa).run hst) =
-      (simulateQ fullFg oa).run hst.toFg := by
-  intro fullAdv fullFg
-  induction oa using OracleComp.inductionOn generalizing hst with
-  | pure a =>
-    simp [simulateQ_pure, StateT.run_pure, Prod.map]
-  | query_bind q oa ih =>
-    cases q with
-    | inl uq =>
-      dsimp only [fullAdv, fullFg]
-      rw [simulateQ_run_query_inl, simulateQ_run_query_inl, map_bind]
-      congr 1; funext u
-      exact ih u hst
-    | inr gq =>
-      dsimp only [fullAdv, fullFg]
-      rw [simulateQ_run_query_inr, simulateQ_run_query_inr, map_bind]
-      rw [← pqxdhKeyIndAdvG3Impl_toFg P gq hst, bind_map_left]
-      congr 1; funext y
-      exact ih y.1 y.2
-
-theorem runKeyIndAdvG3Sim_toFg (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
-    Prod.map id (Prod.map id KeyIndAdvCutoffState.toFg) <$> runKeyIndAdvG3Sim S P A =
-      runKeyIndFgSim S P A := by
-  unfold runKeyIndAdvG3Sim runKeyIndFgSim
-    _root_.Proofs.SignalPqxdh.Security.FgGapDh.KeyIndFgCutoffState.empty
-  rw [map_bind]
-  congr 1; funext secb
-  dsimp only
-  have hSim := simulateQ_pqxdhKeyIndAdvG3Impl_toFg P A.run
-    { shCr := { base := KeyIndState.empty S secb }, advRoLog := [] }
-  dsimp only [KeyIndAdvCutoffState.toFg] at hSim
-  rw [← hSim, bind_map_left]
-  simp [Prod.map, KeyIndAdvCutoffState.toFg, map_eq_bind_pure_comp, bind_assoc]
-
-theorem badKeyIndFgAny_runKeyIndAdvG3Sim_eq_runKeyIndFgSim
-    (S : Setup) (P : Primitives) (maxLen : ℕ) (A : KeyIndAdversary S) :
-    (runKeyIndAdvG3Sim S P A >>= fun x =>
-      pure (badKeyIndFgAny4 P maxLen x.2.2.shCr.base x.2.2.advRoLog)) =
-    (runKeyIndFgSim S P A >>= fun x =>
-      pure (badKeyIndFgAny4 P maxLen x.2.2.base x.2.2.advRoLog)) := by
-  rw [← runKeyIndAdvG3Sim_toFg S P A, bind_map_left]
-  rfl
-
 /-! ## Branch runs and test-session implementation -/
 
 /-- Branch execution of `pqxdhKeyIndAdvG3Impl` starting from `KeyIndState.empty S secb` and
     applying `finalizeKeyIndG3Post`. -/
-noncomputable def keyIndAdvG3Branch (secb : Bool) (S : Setup) (P : Primitives)
+@[expose] def keyIndAdvG3Branch (secb : Bool) (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ProbComp Bool := do
   let initSt : KeyIndAdvCutoffState S :=
     { shCr := { base := KeyIndState.empty S secb }, advRoLog := [] }
@@ -322,13 +265,13 @@ noncomputable def keyIndAdvG3Branch (secb : Bool) (S : Setup) (P : Primitives)
   let (b', finalHst) ← (simulateQ impl A.run).run initSt
   finalizeKeyIndG3Post S P b' finalHst.shCr
 
-def withSecbBase {S : Setup} (b : Bool) (st : KeyIndState S) : KeyIndState S :=
+@[expose] def withSecbBase {S : Setup} (b : Bool) (st : KeyIndState S) : KeyIndState S :=
   { st with secb := b }
 
-def withSecbShCr {S : Setup} (b : Bool) (hst : KeyIndShCrState S) : KeyIndShCrState S :=
+@[expose] def withSecbShCr {S : Setup} (b : Bool) (hst : KeyIndShCrState S) : KeyIndShCrState S :=
   { hst with base := withSecbBase b hst.base }
 
-def withSecbAdv {S : Setup} (b : Bool) (hst : KeyIndAdvCutoffState S) : KeyIndAdvCutoffState S :=
+@[expose] def withSecbAdv {S : Setup} (b : Bool) (hst : KeyIndAdvCutoffState S) : KeyIndAdvCutoffState S :=
   { hst with shCr := withSecbShCr b hst.shCr }
 
 @[simp] theorem isFreshKeyIndSession_withSecbBase {S : Setup} (b : Bool)
@@ -344,7 +287,7 @@ def withSecbAdv {S : Setup} (b : Bool) (hst : KeyIndAdvCutoffState S) : KeyIndAd
     badKeyIndFgAny4 P maxLen (withSecbBase b st) advRoLog =
       badKeyIndFgAny4 P maxLen st advRoLog := rfl
 
-def runKeyIndTestSession (testReal : Bool) (S : Setup) (sid : SessionId S) :
+@[expose] def runKeyIndTestSession (testReal : Bool) (S : Setup) (sid : SessionId S) :
     StateT (KeyIndState S) ProbComp KeyIndResponse := do
   let st ← get
   if !isKeyIndSessionTestable st sid then
@@ -364,7 +307,7 @@ def runKeyIndTestSession (testReal : Bool) (S : Setup) (sid : SessionId S) :
       set { st with respSessions := resp' }
       return .drKeyResp (if testReal then r.drKeyReal else r.drKeyRand)
 
-def pqxdhKeyIndAdvTestImpl (testReal : Bool) (S : Setup) (P : Primitives) :
+@[expose] def pqxdhKeyIndAdvTestImpl (testReal : Bool) (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndAdvCutoffState S) ProbComp)
   | .testSession sid =>
     liftKeyIndAdvShCr (liftKeyIndShCrBase (runKeyIndTestSession testReal S sid))
@@ -767,51 +710,23 @@ theorem pqxdhKeyIndAdvG3Impl_withSecbAdv_eq_testImpl (b : Bool) (S : Setup) (P :
       (pqxdhKeyIndShCrImpl_false_withSecbShCr_of_ne_testSession b S P (.revealSpkSk u j)
         (by intro _ h; cases h) hst.shCr)
 
-theorem simulateQ_pqxdhKeyIndAdvG3Impl_withSecbAdv {S : Setup} {α : Type} (b : Bool) (P :
-  Primitives)
-    (oa : OracleComp (unifSpec + keyIndSpec S) α) (hst : KeyIndAdvCutoffState S) :
-    let fullAdv := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (KeyIndAdvCutoffState S) ProbComp) + pqxdhKeyIndAdvG3Impl S P
-    let fullTest := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (KeyIndAdvCutoffState S) ProbComp) + pqxdhKeyIndAdvTestImpl b S P
-    ((simulateQ fullAdv oa).run (withSecbAdv b hst)) =
-      Prod.map id (withSecbAdv b) <$> ((simulateQ fullTest oa).run hst) := by
-  intro fullAdv fullTest
-  induction oa using OracleComp.inductionOn generalizing hst with
-  | pure a =>
-    simp [simulateQ_pure, StateT.run_pure, Prod.map]
-  | query_bind q oa ih =>
-    cases q with
-    | inl uq =>
-      dsimp only [fullAdv, fullTest]
-      rw [simulateQ_run_query_inl, simulateQ_run_query_inl, map_bind]
-      congr 1; funext u
-      exact ih u hst
-    | inr gq =>
-      dsimp only [fullAdv, fullTest]
-      rw [simulateQ_run_query_inr, simulateQ_run_query_inr,
-        pqxdhKeyIndAdvG3Impl_withSecbAdv_eq_testImpl b S P gq hst,
-        bind_map_left, map_bind]
-      congr 1; funext y
-      exact ih y.1 y.2
-
-def eraseSessionKeys {S : Setup} (s : KeyIndInitiatorEntry S) : KeyIndInitiatorEntry S :=
+@[expose] def eraseSessionKeys {S : Setup} (s : KeyIndInitiatorEntry S) : KeyIndInitiatorEntry S :=
   { s with drKeyReal := default, drKeyRand := default }
 
-def eraseRespKeys {S : Setup} (r : KeyIndRespEntry S) : KeyIndRespEntry S :=
+@[expose] def eraseRespKeys {S : Setup} (r : KeyIndRespEntry S) : KeyIndRespEntry S :=
   { r with drKeyReal := default, drKeyRand := default }
 
-def eraseStateKeysAndCache {S : Setup} (st : KeyIndState S) : KeyIndState S :=
+@[expose] def eraseStateKeysAndCache {S : Setup} (st : KeyIndState S) : KeyIndState S :=
   { st with
     secb         := true
     sessions     := st.sessions.map eraseSessionKeys
     respSessions := st.respSessions.map eraseRespKeys
     roCache      := [] }
 
-def eraseShCrKeysAndCache {S : Setup} (hst : KeyIndShCrState S) : KeyIndShCrState S :=
+@[expose] def eraseShCrKeysAndCache {S : Setup} (hst : KeyIndShCrState S) : KeyIndShCrState S :=
   { hst with base := eraseStateKeysAndCache hst.base }
 
-def isKeyIndG3Abort {S : Setup} (P : Primitives) (finalHst : KeyIndShCrState S) : Bool :=
+@[expose] def isKeyIndG3Abort {S : Setup} (P : Primitives) (finalHst : KeyIndShCrState S) : Bool :=
   let finalSt := finalHst.base
   let allTestedClean :=
     finalSt.sessions.all (fun s =>
@@ -865,19 +780,6 @@ theorem isKeyIndInitStillFresh_erase {S : Setup} (P : Primitives) (useRo : Bool)
   unfold isKeyIndInitStillFresh
   rw [isSessionStillFreshKeyInd_eraseSessionKeys, List.all_map]
   rfl
-
-theorem find_map_eraseSessionKeys {S : Setup} (P : Primitives)
-    (sessions : List (KeyIndInitiatorEntry S)) (r : KeyIndRespEntry S) :
-    (sessions.map eraseSessionKeys).find? (fun s => keyIndPartner P s (eraseRespKeys r)) =
-      (sessions.find? (fun s => keyIndPartner P s r)).map eraseSessionKeys := by
-  induction sessions with
-  | nil => rfl
-  | cons s ss ih =>
-    simp only [List.map_cons, List.find?_cons, keyIndPartner_eraseSessionKeys,
-      keyIndPartner_eraseRespKeys]
-    cases keyIndPartner P s r
-    · exact ih
-    · rfl
 
 @[simp]
 theorem isKeyIndRespStillFresh_erase {S : Setup} (P : Primitives) (useRo : Bool)

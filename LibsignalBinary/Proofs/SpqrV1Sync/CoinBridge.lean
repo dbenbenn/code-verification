@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncParty
+public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncParty -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Init
 public import Mathlib.Data.Fintype.BigOperators
 public import Mathlib.Data.FinEnum
-public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncCalib
-public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncEpoch
+public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncCalib -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncEpoch -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.AsmConstants
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDecDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDefs
@@ -23,7 +23,7 @@ public import LibsignalBinary.Specifications.CryptoGames.AEAD.EtMDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HKDFDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.WireAeadDefs
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Construction
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Defs
@@ -37,7 +37,7 @@ public import LibsignalBinary.Specifications.CryptoGames.Ratchet.RootKdfDefs
 public import LibsignalBinary.Specifications.HkdfSalt
 public import LibsignalBinary.Specifications.LibsignalAesCbc
 public import LibsignalBinary.Specifications.LibsignalHmac
-public import LibsignalBinary.Specifications.LibsignalProtoCodec
+public import LibsignalBinary.Proofs.ProtoCodecKat
 public import LibsignalBinary.Specifications.LibsignalSession
 public import LibsignalBinary.Specifications.LibsignalSessionRepr
 public import LibsignalBinary.Specifications.LibsignalSignalMessage
@@ -59,7 +59,7 @@ public import LibsignalBinary.Specifications.LibsignalSpqrV1.States
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Top
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
-public import LibsignalBinary.Specifications.LibsignalTripleRatchetProst
+public import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst
 public import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
 public import LibsignalBinary.Specifications.RustHeap.Alloc
 public import LibsignalBinary.Specifications.RustHeap.Vec
@@ -76,7 +76,7 @@ public import LibsignalBinary.Specifications.RustHeap.Vec
   splits `r` into its high and low 256-bit halves and `encRandEquiv : BitVec 256 ≃ EncRand`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.Braid
 
@@ -108,7 +108,7 @@ theorem card_bitVec (n : ℕ) : Fintype.card (BitVec n) = 2 ^ n := by
       right_inv := fun _ => by simp }
   rw [Fintype.card_congr e, Fintype.card_fin]
 
-private def fromLEList : (bs : List (BitVec 8)) → BitVec (8 * bs.length)
+@[expose] def fromLEList : (bs : List (BitVec 8)) → BitVec (8 * bs.length)
   | [] => 0#0
   | b :: bs => ((fromLEList bs ++ b).cast (by simp; omega))
 
@@ -155,15 +155,7 @@ private theorem toLEVec_surjective (n : ℕ) :
   rw [hcast, ← hbs]
   exact toLEBytes_fromLEList bs
 
-private noncomputable def toLEVecEquiv (n : ℕ) : BitVec (8 * n) ≃ List.Vector (BitVec 8) n :=
-  Equiv.ofBijective
-    (fun x => ⟨LibsignalAesCbc.toLEBytes n x, toLEBytes_length n x⟩)
-    ⟨fun _ _ h => toLEBytes_injective n (congrArg List.Vector.toList h), toLEVec_surjective n⟩
-
-theorem card_byteVector (n : ℕ) : Fintype.card (List.Vector (BitVec 8) n) = 2 ^ (8 * n) := by
-  rw [← Fintype.card_congr (toLEVecEquiv n), card_bitVec]
-
-def coinVec (r : BitVec 512) : Seed := ⟨coinBytes r, coinBytes_length r⟩
+@[expose] def coinVec (r : BitVec 512) : Seed := ⟨coinBytes r, coinBytes_length r⟩
 
 theorem coinVec_injective : Function.Injective coinVec := by
   intro x y h
@@ -174,45 +166,42 @@ theorem coinVec_bijective : Function.Bijective coinVec :=
     obtain ⟨x, hx⟩ := toLEVec_surjective 64 v
     exact ⟨x, List.Vector.eq _ _ (congrArg List.Vector.toList hx)⟩⟩
 
+@[expose] def coinVecInv (v : Seed) : BitVec 512 :=
+  (fromLEList v.toList).cast (by simp)
+
+theorem coinVec_coinVecInv (v : Seed) : coinVec (coinVecInv v) = v := by
+  rcases v with ⟨bs, hbs⟩
+  apply List.Vector.eq
+  change LibsignalAesCbc.toLEBytes 64 ((fromLEList bs).cast _) = bs
+  have hcast : ∀ {n₁ n₂ : ℕ} (hn : n₁ = n₂) (hw : 8 * n₁ = 8 * n₂) (z : BitVec (8 * n₁)),
+      LibsignalAesCbc.toLEBytes n₂ (z.cast hw) = LibsignalAesCbc.toLEBytes n₁ z := by
+    intro n₁ n₂ hn _ z; subst hn; rfl
+  exact (hcast hbs _ (fromLEList bs)).trans (toLEBytes_fromLEList bs)
+
+theorem coinVecInv_coinVec (r : BitVec 512) : coinVecInv (coinVec r) = r :=
+  coinVec_injective (coinVec_coinVecInv (coinVec r))
+
 /-- Bijection `BitVec 512 ≃ Seed` via 64 little-endian bytes (`coinBytes`). -/
-noncomputable def coinEquiv : BitVec 512 ≃ Seed := Equiv.ofBijective coinVec coinVec_bijective
+@[expose] def coinEquiv : BitVec 512 ≃ Seed where
+  toFun := coinVec
+  invFun := coinVecInv
+  left_inv := coinVecInv_coinVec
+  right_inv := coinVec_coinVecInv
+
+/-- `coinEquiv` agrees with the `Equiv.ofBijective` bijection. -/
+theorem coinEquiv_eq_classical :
+    coinEquiv = Equiv.ofBijective coinVec coinVec_bijective := by
+  ext r; rfl
+
+set_option exponentiation.threshold 1024 in
+set_option maxRecDepth 4096 in
+example : (coinEquiv 0x04030201#512).toList.take 4 = [0x01#8, 0x02#8, 0x03#8, 0x04#8] := rfl
 
 theorem coinEquiv_apply (r : BitVec 512) : (coinEquiv r).toList = coinBytes r := by
   simp [coinEquiv, coinVec]
 
-def key32Vec (k : BitVec 256) : EncRand :=
-  ⟨LibsignalAesCbc.toLEBytes 32 k, toLEBytes_length 32 k⟩
-
-theorem key32Vec_injective : Function.Injective key32Vec := by
-  intro x y h
-  exact toLEBytes_injective 32 (congrArg List.Vector.toList h)
-
-theorem key32Vec_bijective : Function.Bijective key32Vec :=
-  ⟨key32Vec_injective, toLEVec_surjective 32⟩
-
-/-- Bijection `BitVec 256 ≃ EncRand` via 32 little-endian bytes. -/
-noncomputable def encRandEquiv : BitVec 256 ≃ EncRand :=
-  Equiv.ofBijective key32Vec key32Vec_bijective
-
-theorem encRandEquiv_apply (k : BitVec 256) :
-    (encRandEquiv k).toList = CryptoGames.HMAC.keyToBytes32 k := by
-  simp [encRandEquiv, key32Vec, LibsignalAesCbc.toLEBytes, CryptoGames.HMAC.keyToBytes32]
-
-/-- Taking the first 32 bytes of `coinBytes r` extracts the low 256 bits in little-endian order. -/
-theorem coinBytes_take32 (r : BitVec 512) :
-    (coinBytes r).take 32 = LibsignalAesCbc.toLEBytes 32 (r.setWidth 256) := by
-  apply List.ext_getElem
-  · simp [coinBytes, LibsignalAesCbc.toLEBytes]
-  · intro j hj1 hj2
-    have hj32 : j < 32 := by simpa [LibsignalAesCbc.toLEBytes] using hj2
-    simp only [coinBytes, LibsignalAesCbc.toLEBytes, List.getElem_take, List.getElem_ofFn]
-    apply BitVec.eq_of_getLsbD_eq
-    intro i hi
-    rw [BitVec.getLsbD_extractLsb', BitVec.getLsbD_extractLsb', BitVec.getLsbD_setWidth]
-    simp [hi, show 8 * j + i < 256 by omega]
-
 /-- Encapsulation randomness drawn from the first 32 bytes of `coinBytes r`. -/
-def encRandOf (r : BitVec 512) : EncRand :=
+@[expose] def encRandOf (r : BitVec 512) : EncRand :=
   ⟨(coinBytes r).take 32, by simp [coinBytes_length]⟩
 
 /-- Splits a 512-bit coin vector into its high and low 256-bit halves. -/
@@ -232,19 +221,6 @@ def splitCoins : BitVec 512 ≃ BitVec 256 × BitVec 256 where
       intro i hi
       simp only [BitVec.getLsbD_extractLsb', BitVec.getLsbD_append]
       simp [hi]
-
-/-- `encRandOf r` factors through the low 256-bit half `(splitCoins r).2` via `encRandEquiv`. -/
-theorem encRandOf_eq_split (r : BitVec 512) : encRandOf r = encRandEquiv (splitCoins r).2 := by
-  apply List.Vector.eq
-  have heq : (splitCoins r).2 = r.setWidth 256 := by
-    apply BitVec.eq_of_getLsbD_eq
-    intro i hi
-    change (r.extractLsb' 0 256).getLsbD i = (r.setWidth 256).getLsbD i
-    rw [BitVec.getLsbD_extractLsb', BitVec.getLsbD_setWidth]
-    simp [hi]
-  change (coinBytes r).take 32 = (encRandEquiv (splitCoins r).2).toList
-  rw [encRandEquiv_apply, heq, coinBytes_take32]
-  rfl
 
 theorem coinBytes_take64 (r : BitVec 512) : (coinBytes r).take 64 = coinBytes r :=
   List.take_of_length_le (by rw [coinBytes_length])
@@ -271,12 +247,5 @@ theorem nextCoins_seed_coin (F : ShaCompress) (s : Seed) (r : BitVec 512) (st : 
     simp [coinBytes_length]
   simp only [nextCoins, hlen, ↓reduceDIte]
   congr 1
-
-theorem coinBytes_tape_ok (r : BitVec 512) : 64 ≤ (coinBytes r).length := by
-  simp [coinBytes_length]
-
-theorem encRand_toList_eq_iff (r : BitVec 512) (r' : EncRand) :
-    r'.toList = (coinBytes r).take 32 ↔ r' = encRandOf r :=
-  ⟨fun h => List.Vector.eq r' (encRandOf r) h, fun h => by subst h; rfl⟩
 
 end CryptoVerification.SpqrV1Sync.Braid

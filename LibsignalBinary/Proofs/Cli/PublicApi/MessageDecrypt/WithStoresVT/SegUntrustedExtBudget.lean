@@ -10,13 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.CorePlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegUntrustedExt
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegUntrustedPlaced
-public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.CorePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegUntrustedExt
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegUntrustedPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `SegUntrusted` Helpers and Weak-Precondition Record Spec
@@ -26,7 +26,7 @@ Defines budget-threaded `recordDecryptPlacedSpecP` and proves the scope-free mod
 `SegUntrustedExtPlacedBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,7 +57,7 @@ open LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget (retagIden
 
 /-- Budget-threaded `recordDecryptPlacedSpec` with the identity guard weakened to
 `remoteIdentity ≠ some localIdentity ∨ DistinctSid uuidParse loc rem`. -/
-def recordDecryptPlacedSpecP [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def recordDecryptPlacedSpecP [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (uuidParse : UuidParser)
     (S : SpqrModel) (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) :
     Spec (RecordDecryptGhost × M.σ) :=

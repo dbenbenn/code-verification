@@ -9,19 +9,30 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathC
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCErrPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.BodyPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePanicPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathC
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCErrPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.BodyPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePanicPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBMain
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStmts
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathAP4Cont
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.ClosureOver -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4ContPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathB
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCallees
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCalleesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureExitPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Placed CLI Poll Overwrite-Path (`Path C`) Top-Level Branch
@@ -31,7 +42,7 @@ Relocatable (`[LibsignalPlacement]`) counterpart of `Over/PollOverPathC.lean`, c
 into `closure_pathC_placed_ok` from `dpPollEntryPlaced + 0x0868#64`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -155,7 +166,7 @@ theorem overSepWPp_genP3_to_tailQpan_placed [LibsignalPlacement]
     exact dpPollOnPanic_of_genP3_placed stk' y hgp hpan hmR
   · exact (not_satisfies_false_sepConj hoom).elim
 
-def overPollTryDecryptPlacedSpecP [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def overPollTryDecryptPlacedSpecP [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (uuidParse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.ss ∧ s.readReg64 .x2 = x.remA ∧
@@ -177,7 +188,7 @@ def overPollTryDecryptPlacedSpecP [LibsignalPlacement] (C : Crypto) (A : RustAll
     (_root_.CryptoVerification.Cli.LibsignalTripleRatchet.Record.tryDecryptPlacedSpec
       C A ctl uuidParse S).onPanic
 
-def overPollTryDecryptPlacedSpecTPTight [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def overPollTryDecryptPlacedSpecTPTight [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (uuidParse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost :=
   { overPollTryDecryptPlacedSpecP C A ctl uuidParse S with
     pre := fun x s =>
@@ -189,7 +200,7 @@ def overPollTryDecryptPlacedSpecTPTight [LibsignalPlacement] (C : Crypto) (A : R
         (overPollTryDecryptPlacedSpecP C A ctl uuidParse S).post x s0 sf
     onPanic := _root_.CryptoVerification.Cli.LibsignalSpqrV1.tryDecryptPqOnPanicTight C S uuidParse }
 
-def OverCliTryDecryptPqV1PlacedStmt [LibsignalPlacement]
+@[expose] def OverCliTryDecryptPqV1PlacedStmt [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) : Prop :=
   ∀ (ctl : BitVec 64),
     subroutine_ok (dpPollProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W)))
@@ -198,7 +209,7 @@ def OverCliTryDecryptPqV1PlacedStmt [LibsignalPlacement]
         (overPollTryDecryptPlacedSpecTPTight W.C E2E.HooksE.A0 ctl uuidTryParse
           (LibsignalSpqrV1.spqrV1 W.C.F W.Q.K)))
 
-def StageP3Prev1VRegsAtPlacedStmt [LibsignalPlacement]
+@[expose] def StageP3Prev1VRegsAtPlacedStmt [LibsignalPlacement]
     (A : RustAlloc) (PrevEncOK : List (BitVec 8) → Prop) : Prop :=
   ∀ (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks),
     RunHooksPlaced A (cliGhostExterns gh (cliExternsPlaced mmpl W)) →
@@ -321,7 +332,7 @@ def StageP3Prev1VRegsAtPlacedStmt [LibsignalPlacement]
 abbrev StageP3Prev1VRegsA0PlacedStmt [LibsignalPlacement] : Prop :=
   StageP3Prev1VRegsAtPlacedStmt E2E.HooksE.A0 Over.OverPrevEncOK
 
-def StageP3Prev1VRegsAtFrozenPlacedStmt [LibsignalFullPlacement]
+@[expose] def StageP3Prev1VRegsAtFrozenPlacedStmt [LibsignalFullPlacement]
     (A : RustAlloc) (PrevEncOK : List (BitVec 8) → Prop) : Prop :=
   ∀ (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks),
     RunHooksPlaced A (cliGhostExterns gh (cliExternsPlaced mmpl W)) →

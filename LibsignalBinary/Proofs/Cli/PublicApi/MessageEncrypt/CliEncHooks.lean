@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSat
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.TrapBridge
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSat -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.TrapBridge -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.Hooks
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # CLI `MessageEncrypt` Hook Bundles
@@ -23,7 +23,7 @@ Defines `CliEncHooks` (using `durationSinceBoundedSpec` on `cliExterns W` / `trT
 stepping lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -109,60 +109,11 @@ theorem cliEncHooks_of_runHooks (W : CliHooks) (S : SpqrModel) :
     CliEncHooks W.C E2E.HooksE.A0 S (trTrapExterns W.C (cliExterns W)) :=
   (cliEncHooks_trTrap_iff W.C E2E.HooksE.A0 S (cliExterns W)).mpr (cliEncHooks_cliExterns W S)
 
-/-- `__rustc::__rust_no_alloc_shim_is_unstable_v2` at call distance `k` from `name` on `trTrapProgAt`. -/
-theorem cliNoAllocShim_ok_at_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_no_alloc_shim_is_unstable_v2" := by
-        fnoff_eq) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k)
-      sessionShimSpec :=
-  shim_ok_at_trap b C abs name k hk
-
-/-- `memcpy` (`framelessMemcpySpec`) at call distance `k` from `name` on `trTrapProgAt`. -/
-theorem cliFramelessMemcpy_ok_at_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "memcpy" := by fnoff_eq) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) framelessMemcpySpec :=
-  session_memcpy_region_ok_at_trap b C abs name k hk
-
-/-- `__rust_alloc` at call distance `k` from `name` on `trTrapProgAt`, taking `AllocHooks A abs`. -/
-theorem cliAlloc_ok_at_norm_trap {A : RustAlloc} {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)}
-    (hA : AllocHooks A abs) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by fnoff_eq) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) (rustAllocSpec A) :=
-  alloc_ok_at_norm_ext (AllocContracts.of_tripleRatchetProgAt_trap b C A abs hA) hk
-
-/-- `__rust_dealloc` at call distance `k` from `name` on `trTrapProgAt`, taking `AllocHooks A abs`. -/
-theorem cliDealloc_ok_at_norm_trap {A : RustAlloc} {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)}
-    (hA : AllocHooks A abs) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_dealloc" := by fnoff_eq) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) (rustDeallocSpec A) :=
-  dealloc_ok_at_norm_ext (AllocContracts.of_tripleRatchetProgAt_trap b C A abs hA) hk
-
 /-- Extract `AllocHooks A abs` from `CliEncHooks C A S (trTrapExterns C abs)`. -/
 theorem CliEncHooks.alloc_abs {C : Crypto} {A : RustAlloc} {S : SpqrModel}
     {abs : String → Option (State → State)}
     (h : CliEncHooks C A S (trTrapExterns C abs)) : AllocHooks A abs :=
   (allocHooks_trTrap_iff C A abs).mp h.alloc
-
-/-- `entryOf img name` equals `(trTrapProgAt img.base C abs).fnAddr name`. -/
-theorem entryOf_eq_trTrapProgAt {img : Obj.Image} (C : Crypto)
-    (abs : String → Option (State → State))
-    (himg : Obj.Loads libsignalSessionImage img) (name : String) :
-    entryOf img name = (trTrapProgAt img.base C abs).fnAddr name :=
-  entryOf_eq_tripleRatchetProgAt_trap (C := C) (abs := abs) himg name
-
-/-! ## Contract-backed `Ext` hook bundle (`CliEncHooksExt`) and call-site helpers -/
 
 /-- Contract-backed hook bundle for CLI `MessageEncrypt` on `tripleRatchetProgAtExt img.base ext`:
 carries `TripleRatchetHooks`, `shim`, stacked `mem*` (`memHookStack = allocHookStack = 4096`),
@@ -189,116 +140,5 @@ theorem cliEncHooksExt_of_externsOk {P : E2E.PEParams} {A : RustAlloc}
   memset := hOk.memset
   timeAdd := hOk.timeAdd
   durationSinceEpoch := hOk.durationSince
-
-theorem cliEncHooksExt_cliExternsWith {P : E2E.PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} (S : SpqrModel)
-    (hOk : CliExternsOk P A ext) : CliEncHooksExt P.C A S (cliExternsWith ext) :=
-  cliEncHooksExt_of_externsOk S (cliExternsOk_cliExternsWith hOk)
-
-theorem cliEncHooksExt_trapUnlisted {P : E2E.PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} (S : SpqrModel)
-    (hOk : CliExternsOk P A ext) : CliEncHooksExt P.C A S (trapUnlisted ext) :=
-  cliEncHooksExt_of_externsOk S (cliExternsOk_trapUnlisted hOk)
-
-/-- `__rustc::__rust_no_alloc_shim_is_unstable_v2` at call distance `k` from `name` on `tripleRatchetProgAtExt`. -/
-theorem cliNoAllocShim_ok_at_ext {b : BitVec 64} {ext : String → Option (State → State)}
-    (hshim : HookSat ext "__rustc::__rust_no_alloc_shim_is_unstable_v2" CliExt.shimSpec)
-    {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_no_alloc_shim_is_unstable_v2" := by
-        fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      sessionShimSpec :=
-  hook_ok_at (hname := shimName)
-    rfl hk (by fnoff_eq) (by fnoff_eq) (by simp [Rust.isPanicSymbol, shimName]) hshim
-
-/-- `memcpy` (`CliExt.memcpySpec`, 4096 B stack) at call distance `k` from `name` on `tripleRatchetProgAtExt`. -/
-theorem cliMemcpy_ok_at_ext {b : BitVec 64} {ext : String → Option (State → State)}
-    (hmemcpy : HookSat ext "memcpy" CliExt.memcpySpec)
-    {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "memcpy" := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      CliExt.memcpySpec :=
-  hook_ok_at (hname := memcpyName)
-    rfl hk (by fnoff_eq) (by fnoff_eq) (by simp [Rust.isPanicSymbol, memcpyName]) hmemcpy
-
-/-- `memcpy` (`withStack framelessMemcpySpec allocHookStack`, 4096 B stack, deriving `bs.length ≤ 2^64`
-automatically from `(s0.readReg64 .x2).toNat = bs.length`) at call distance `k` from `name`. -/
-theorem cliStackedMemcpy_ok_at_ext {b : BitVec 64} {ext : String → Option (State → State)}
-    (hmemcpy : HookSat ext "memcpy" CliExt.memcpySpec)
-    {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "memcpy" := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (withStack framelessMemcpySpec allocHookStack) := by
-  have h := cliMemcpy_ok_at_ext (b := b) hmemcpy (name := name) (k := k) hk
-  refine subroutine_ok_outcome_intro fun (dst, src, bs) R s0 hpc hrun hpre hal => ?_
-  have hpre' : s0.mem ⊨ CliExt.memcpySpec.pre (dst, src, bs) s0 ∗ R := by
-    dsimp only [withStack, framelessMemcpySpec] at hpre
-    rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpre
-    rcases hpre with ⟨⟨hx0, hx1, hx2⟩, hm⟩
-    dsimp only [CliExt.memcpySpec, libcMemcpySpec, CliExt.memHookStack, allocHookStack] at hm ⊢
-    rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hx2⟩, ?_⟩
-    simpa only [sepConj_assoc] using hm
-  refine h.mono_outcome (dst, src, bs) R s0 hpc hrun hpre' hal fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | hpan | hex
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [CliExt.memcpySpec, CliExt.memHookStack, withStack, framelessMemcpySpec,
-      allocHookStack] at hpost ⊢
-    simpa only [sepConj_assoc] using hpost
-  · exact Or.inr (Or.inl hpan)
-  · exact Or.inr (Or.inr hex)
-
-/-- `memcpy` from `.rodata` (`CliExt.memcpyROSpec`, 4096 B stack) at call distance `k` from `name`. -/
-theorem cliMemcpyRO_ok_at_ext {b : BitVec 64} {ext : String → Option (State → State)}
-    (hmemcpyRO : HookSat ext "memcpy" CliExt.memcpyROSpec)
-    {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "memcpy" := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      CliExt.memcpyROSpec :=
-  hook_ok_at (hname := memcpyName)
-    rfl hk (by fnoff_eq) (by fnoff_eq) (by simp [Rust.isPanicSymbol, memcpyName]) hmemcpyRO
-
-/-- `__rust_alloc` at call distance `k` from `name` on `tripleRatchetProgAtExt`, taking `AllocHooks A ext`. -/
-theorem cliAlloc_ok_at_norm_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hA : AllocHooks A ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k) (rustAllocSpec A) :=
-  alloc_ok_at_ext b A ext hA name k hk
-
-/-- `__rust_dealloc` at call distance `k` from `name` on `tripleRatchetProgAtExt`, taking `AllocHooks A ext`. -/
-theorem cliDealloc_ok_at_norm_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hA : AllocHooks A ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_dealloc" := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k) (rustDeallocSpec A) :=
-  dealloc_ok_at_ext b A ext hA name k hk
-
-/-- `__rust_realloc` at call distance `k` from `name` on `tripleRatchetProgAtExt`, taking `AllocHooks A ext`. -/
-theorem cliRealloc_ok_at_norm_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hA : AllocHooks A ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_realloc" := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k) (rustReallocSpec A) :=
-  realloc_ok_at_ext b A ext hA name k hk
-
-private theorem entryOf_eq_trExtProgAt {img : Obj.Image} (ext : String → Option (State → State))
-    (himg : Obj.Loads libsignalSessionImage img) (name : String) :
-    entryOf img name = (tripleRatchetProgAtExt img.base ext).fnAddr name :=
-  entryOf_eq_tripleRatchetProgAtExt (ext := ext) himg name
 
 end CryptoVerification.Cli.LibsignalPublicApi.MessageEncrypt

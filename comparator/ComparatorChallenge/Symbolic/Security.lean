@@ -10,16 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.SignalSession.CliElf
-public import LibsignalBinary.Specifications.SignalSession.CliLabels
 public import Symbolic.Specifications.Security.Binary
 
 /-!
 # Comparator challenge: symbolic security of the binary (`Symbolic/Theorems/Security.lean`)
 
 **Trusted: the statements.** Each theorem below has the same name and the same statement, byte for
-byte, as the theorem of `Symbolic/Theorems/Security.lean` (lake library `CliElfLib`), with `sorry`
-as its proof. It imports the specification modules that `Security.lean` imports publicly, and no
-proof module. See `comparator/README.md`.
+byte, as the theorem of that name in `Symbolic/Theorems/Security.lean` (lake library `CliElfLib`),
+with `sorry` as its proof. It imports the specification modules that `Security.lean` imports
+publicly, and no proof module. See `comparator/README.md`.
 -/
 
 @[expose] public section
@@ -28,21 +27,17 @@ set_option autoImplicit false
 
 namespace Proven.Security
 
-open CryptoVerification.SignalSession (cliElfBytes libsignalSessionLib CliLabelsFromObjects)
-open DY.Libsignal.Composed.Security (SignalSessionSecurePlaced)
+open CryptoVerification.SignalSession (cliElfBytes)
+open DY.Libsignal.Composed.Security (SignalSessionSecure)
 
-theorem signal_session_secure_placed :
-    SignalSessionSecurePlaced cliElfBytes :=
+theorem signal_session_secure :
+    SignalSessionSecure cliElfBytes :=
   sorry
 
-theorem libsignal_cli_elf_linked_in : libsignalSessionLib.LinkedIn cliElfBytes :=
-  sorry
+open DY.Libsignal.Composed.Security (SignalSessionSecureReal)
 
-theorem libsignal_cli_elf_mallocng_linked_in :
-    VerifiedLibraries.mallocngLib.LinkedIn cliElfBytes :=
-  sorry
-
-theorem libsignal_cli_labels_from_objects : CliLabelsFromObjects :=
+theorem signal_session_secure_real :
+    SignalSessionSecureReal cliElfBytes :=
   sorry
 
 end Proven.Security

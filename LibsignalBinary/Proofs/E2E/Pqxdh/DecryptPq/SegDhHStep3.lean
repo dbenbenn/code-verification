@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHChain
+public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHChain -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `Vec<Chain>` Buffer Growth and Slot Exposure Helpers for `S3CommitSpec`
@@ -20,7 +21,7 @@ Stack-budget and `vecBuf` slot-exposure lemmas (`growOneStack`, `vecBuf_expose_n
 `S3CommitSpec`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegBH
 

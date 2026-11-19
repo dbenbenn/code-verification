@@ -9,32 +9,51 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.CorePlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.TryDecryptPV1TrapPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegClonePlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegDecryptPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegExitPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegTailPlacedBudget
+public import LibsignalBinary.Heap.AesDecErrRoBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.CorePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.TryDecryptPV1TrapPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegClonePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommit433PlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhStep433PlacedBudget
 import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordCallees.DropsPlacedBudget
 import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordChainClone.ClonePlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegDecryptPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegDecryptPlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegExitPlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegTailPlacedBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Cells
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExit
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Model
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTightModel
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops.Local1Budget
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.GrowSpeBudget
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosureVmPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.SetStateBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
+import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
+import LibsignalBinary.Proofs.TripleRatchet.Record.FetchDecrypt
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegDecrypt
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatchBudget
+import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegDecryptPlacedBudget -- shake: keep
 meta import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlacedBudget -- shake: keep
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.Common.SharedHelpers
-import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DefsBudget
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Model
-import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops.Local1Budget
-import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.GrowSpeBudget
-import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.SetStateBudget
-import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
-import ProofLib.SepLogic.WPp
 
 /-!
 # Budget-Threaded Relocatable `try_decrypt_from_record` Region on CLI Block `463`
@@ -44,7 +63,7 @@ Defines the CLI record-decryption allocation-event envelopes (`RecordDecryptCliE
 (with `Spec.withVRegs`) on `lsProg_463` under `[LibsignalPlacement]` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -69,9 +88,8 @@ open CryptoVerification.Cli.LibsignalTripleRatchet.Record (
   recMPCPlaced recMetaPlaced recVPCPlaced
 )
 open CryptoVerification.CliRatchet.DecPlaced (blkPC_463 blkPl_463 lsProg_463)
-open CryptoVerification.E2E (aesDecHookMallocng)
 open CryptoVerification.LibsignalSessionRepr (ChainGhost msgTypeByte)
-open CryptoVerification.LibsignalSpqrV1 (spqrV1)
+open CryptoVerification.LibsignalSpqrV1 (sha256Compress spqrV1)
 open CryptoVerification.LibsignalTripleRatchet (
   RecordDecryptGhost SeedsLen32 SendCall SpqrModel TryDecryptGhost
   recordResultAt recordResultTag region_ok rootStack sessionShimSpec
@@ -120,7 +138,7 @@ open CryptoVerification.LibsignalTripleRatchetRepr (
   vecResultAt
 )
 open CryptoVerification.SignalSession (
-  CliHooks cliExternsPlaced lsFmtWriteSym lsFormatInnerSym
+  CliHooks cliExternsPlaced lsAesDecSym lsFmtWriteSym lsFormatInnerSym
 )
 open CryptoVerification.SignalSession.Cli.RunGlue (
   CliGhostHooks cliGhostExterns
@@ -135,8 +153,8 @@ open LibsignalBinary.Heap (
   RustCliAllocBudget SeqEnv VmPreserved rustAllocEvents rustCliAllocBudgetSpec
   rustCliDeallocBudgetSpec rustCliReallocBudgetSpec
 )
+open LibsignalBinary.Heap.AesDecErrRoBudget (cliAesDecBudgetSpecErrRo)
 open LibsignalBinary.Heap.SpecBudget (
-  FmtWriteEnv FormatInnerEnv aesDecBudgetSpec fmtWriteBudgetEnvSpec formatInnerBudgetEnvSpec
   withVmPreserved
 )
 open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TightPTrapPlacedBudget (
@@ -182,6 +200,7 @@ open LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegTailPlacedBudget (segTai
 open LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DefsBudget (
   cmkLoopAdvanceEvs_nonempty
 )
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget (
   CliGhostAllocHooks cliExternsPlaced_alloc_budget_sat cliExternsPlaced_dealloc_budget_sat
   cliExternsPlaced_realloc_budget_sat cliExternsPlaced_sessionMemcpyRegion_budget_sat
@@ -228,6 +247,12 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (
 open LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatchBudget (
   errsAt_atState live_repAlloc protocolAddressAt_atState recordResultAt_atState
   sessionStateAt_atState signalMessageAt_atState
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs (
+  fmtWriteProtoAddrCliLsSpec formatInnerCallCliLsSpec
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (
+  CliFmtWriteEnv CliFormatInnerEnv cliFmtWriteEnv_nil cliFormatInnerEnv_nil
 )
 
 open scoped LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlacedBudget
@@ -276,7 +301,7 @@ private theorem rdp_sepExists_ok_sessionStateAt_atState {M : AllocCostModel}
 /-! ## 1. `VStatePPlaced` and `RecordDecryptCliEnv` -/
 
 /-- Budget-threaded relocatable `VStatePlaced` with weakened pure identity guard `VStatePPlaced`. -/
-def VStatePPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def VStatePPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (x : RecordDecryptGhost) (st_init st : M.σ) (G₁ : SessionGhost)
@@ -366,7 +391,7 @@ private theorem rdp_cliSeamEnvs_inhabited (C : Crypto) (S : SpqrModel)
       Or.inl (seqEnv_append rfl rfl)⟩
   s8 x _ _ := by
     unfold s8Env
-    refine seqEnv_ne ?_ ⟨[], freeOnlyEvs_nil⟩
+    refine seqEnv_ne ?_ (seqEnv_ne ⟨[], cliFormatInnerEnv_nil⟩ ⟨[], freeOnlyEvs_nil⟩)
     unfold AesDecCtEnv
     by_cases h : x.msg.ciphertext.length = 0 ∨ x.msg.ciphertext.length % 16 ≠ 0
     · simp only [h, ↓reduceIte]; exact ⟨[], rfl⟩
@@ -457,8 +482,8 @@ theorem tdEnvInhabited_tryDecryptCliEnvOf (C : Crypto) (S : SpqrModel)
 theorem tdEnvInhabited_tryDecryptCliEnv (C : Crypto) (S : SpqrModel) :
     TdEnvInhabited (TryDecryptCliEnv C S) :=
   tdEnvInhabited_tryDecryptCliEnvOf
-    (fmtWriteEnv := FmtWriteEnv) (fmtEnv := FormatInnerEnv)
-    C S spqrRecvBytesEnv_nonempty ⟨[], rfl⟩ ⟨[], rfl⟩
+    (fmtWriteEnv := CliFmtWriteEnv) (fmtEnv := CliFormatInnerEnv)
+    C S spqrRecvBytesEnv_nonempty ⟨[], cliFmtWriteEnv_nil⟩ ⟨[], cliFormatInnerEnv_nil⟩
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` clone segment theorem under weakened
     `recordDecryptPlacedSpecP` precondition and `TdEnvInhabited tdEnv`. -/
@@ -570,7 +595,7 @@ private abbrev rdpTryBudgetSpecTrap [LibsignalPlacement] {M : AllocCostModel}
     Spec (TryDecryptGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜x.st.pqRatchetState.length < 2 ^ 32⌝ ∗
-      ⌜FitsEnv M lim st (tdEnv (tryDecryptEnvArgs x))⌝ ∗
+      ⌜FitsEnv M lim st (tdEnv (tryDecryptEnvArgs x)) ∧ x.rem.name.bytes.length ≤ 40⌝ ∗
       (⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.ss ∧ s.readReg64 .x2 = x.remA ∧
         s.readReg64 .x3 = x.locA ∧ s.readReg64 .x4 = x.msgA ∧
         (s.readReg64 .x5).setWidth 8 = msgTypeByte x.msgType ∧
@@ -673,6 +698,7 @@ theorem rdp_segDecrypt_placed_ok_TPTight [LibsignalPlacement] {M : AllocCostMode
     (x : RecordDecryptGhost) (st_init st : M.σ) (G₁ : SessionGhost)
     (R : SepProp) (s0 s : State)
     (hQ : x.st.pqRatchetState.length < 2 ^ 32)
+    (hrem40 : x.rem.name.bytes.length ≤ 40)
     (hV : VStatePPlaced A lim ctl uuidTryParse tdEnv x st_init st G₁
       (tokenInitPlacedAt ∗ R) s0 s)
     (hstk : rootStack ≤ s0.sp.toNat)
@@ -688,6 +714,7 @@ theorem rdp_segDecrypt_placed_ok_TPTight [LibsignalPlacement] {M : AllocCostMode
       (withLsCodeLoaded lsmpl (rdpTryBudgetSpecTrap C A lim ctl uuidTryParse S tdEnv)) :=
     rdp_tryDecryptSpecTPTightAt_eq C A lim ctl uuidTryParse S tdEnv ▸ htd
   have _ := hQ
+  have _ := hrem40
   rcases hV with ⟨hsb, hpc, ⟨hrun, hsp, hsp_align, hx29, htr, hfl, hvregs⟩,
     ⟨hrem_or_dist, hseeds, hrc_len⟩, hclone, heq, hmem⟩
   dsimp only [recVPCPlaced] at hpc
@@ -1267,7 +1294,7 @@ theorem rdp_region_reaches_placed_TPTight [LibsignalPlacement] {M : AllocCostMod
   dsimp only [recordDecryptPlacedSpecTPTight, recordDecryptPlacedSpecTPTightF,
     recordDecryptPlacedSpecTF] at hpre
   rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hQ, hpre⟩
+  rcases hpre with ⟨⟨hQ, hrem40⟩, hpre⟩
   have hpre' : s0.mem ⊨
       (recordDecryptPlacedSpecP C A lim ctl uuidTryParse S' tdEnv).pre (x, st_init) s0 ∗
       (tokenInitPlacedAt ∗ R) := by
@@ -1316,7 +1343,7 @@ theorem rdp_region_reaches_placed_TPTight [LibsignalPlacement] {M : AllocCostMod
   rcases hnext with ⟨G₁, st₁, hv⟩ | ⟨G₁, st₁, hm⟩ | hout
   · obtain ⟨s'', hst'', hnext'⟩ :=
       rdp_segDecrypt_placed_ok_TPTight hmemcpy htd
-        hsetState hdropLocal2 hgrowSpe hclosure x st_init st₁ G₁ R s0 s' hQ hv hstk
+        hsetState hdropLocal2 hgrowSpe hclosure x st_init st₁ G₁ R s0 s' hQ hrem40 hv hstk
         (hst'.codeLoaded hL)
     rcases hnext' with ⟨st₂, hj⟩ | ⟨st₂, hf⟩ | hout
     · exact region_reaches_steps (hst'.trans hst'') (hJ s'' st₂ hj) hL
@@ -1384,28 +1411,30 @@ theorem recordDecrypt_placed_region_vregs_ok_TPTight [LibsignalPlacement] {M : A
 
 /-- Envelope-monotonic placed CLI `region_ok` with `Spec.withVRegs` on
     `lsProg_463 (cliGhostExterns g (cliExternsPlaced mmpl W))`
-    for any inhabited `tdEnv` containing `TryDecryptCliEnvOf`. -/
+    for any inhabited `tdEnv` containing `TryDecryptCliEnvOf` at `(CliFmtWriteEnv, RecvBytesEnv, CliFormatInnerEnv)`. -/
 theorem recordDecryptV1_placed_region_vregs_ok_PTight_cli_of_tdEnv [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {InitEnv : InitialStateGhost → List AllocEvent → Prop}
     {RecvBytesEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
     {SendEnv : SendCall → List AllocEvent → Prop}
-    {fmtWriteEnv fmtEnv : List AllocEvent → Prop}
     {tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks) (ctl : BitVec 64)
-    (hG : CliGhostAllocHooks M A lim g)
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hG : CliGhostAllocHooks M A lim g) (hF : W.C.F = sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hAesDec : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeamsOfEnv M A lim mmpl g W InitEnv
       (fun st msg => RecvBytesEnv st.bytes msg.bytes) SendEnv)
     (hFmtWrite : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFmtWriteSym
-      (fmtWriteBudgetEnvSpec M A lim fmtWriteEnv))
+      (fmtWriteProtoAddrCliLsSpec M A lim))
     (hFmtInner : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFormatInnerSym
-      (formatInnerBudgetEnvSpec M A lim fmtEnv))
+      (formatInnerCallCliLsSpec M A lim))
     (hRecv_ne : ∀ stBs msgBs, ∃ evs, RecvBytesEnv stBs msgBs evs)
-    (hFmtWrite_ne : ∃ evs, fmtWriteEnv evs)
-    (hFmtInner_ne : ∃ evs, fmtEnv evs)
+    (hFmtWrite_ne : ∃ evs, CliFmtWriteEnv evs)
+    (hFmtInner_ne : ∃ evs, CliFormatInnerEnv evs)
     (htd : ∀ a evs,
-      TryDecryptCliEnvOf W.C (spqrV1 W.C.F W.Q.K) fmtWriteEnv RecvBytesEnv fmtEnv a evs →
+      TryDecryptCliEnvOf W.C (spqrV1 W.C.F W.Q.K) CliFmtWriteEnv RecvBytesEnv CliFormatInnerEnv a evs →
       tdEnv a evs)
     (hclosure : subroutine_ok (lsProg_463 (cliGhostExterns g (cliExternsPlaced mmpl W)))
       (lsmpl.base 462)
@@ -1428,7 +1457,7 @@ theorem recordDecryptV1_placed_region_vregs_ok_PTight_cli_of_tdEnv [LibsignalPla
     (cliExternsPlaced_dealloc_budget_sat mmpl g W hG)
     (cliExternsPlaced_sessionMemcpyRegion_budget_sat mmpl g W hG)
     (cliGhostExterns_panic_all mmpl g W lsHandleErrorSym (by decide))
-    (tryDecryptV1_placed_ok_PTight_cli_of_tdEnv mmpl g W ctl hG hAesDec hSpqr
+    (tryDecryptV1_placed_ok_PTight_cli_of_tdEnv mmpl g W ctl hG hF hX hPub hAesDec hSpqr
       hFmtWrite hFmtInner hRecv_ne hFmtWrite_ne hFmtInner_ne htd)
     hclosure
 
@@ -1439,27 +1468,29 @@ theorem recordDecryptV1_placed_region_vregs_ok_PTight_cli_ofEnv [LibsignalPlacem
     {InitEnv : InitialStateGhost → List AllocEvent → Prop}
     {RecvBytesEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
     {SendEnv : SendCall → List AllocEvent → Prop}
-    {fmtWriteEnv fmtEnv : List AllocEvent → Prop}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks) (ctl : BitVec 64)
-    (hG : CliGhostAllocHooks M A lim g)
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hG : CliGhostAllocHooks M A lim g) (hF : W.C.F = sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hAesDec : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeamsOfEnv M A lim mmpl g W InitEnv
       (fun st msg => RecvBytesEnv st.bytes msg.bytes) SendEnv)
     (hFmtWrite : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFmtWriteSym
-      (fmtWriteBudgetEnvSpec M A lim fmtWriteEnv))
+      (fmtWriteProtoAddrCliLsSpec M A lim))
     (hFmtInner : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFormatInnerSym
-      (formatInnerBudgetEnvSpec M A lim fmtEnv))
+      (formatInnerCallCliLsSpec M A lim))
     (hRecv_ne : ∀ stBs msgBs, ∃ evs, RecvBytesEnv stBs msgBs evs)
-    (hFmtWrite_ne : ∃ evs, fmtWriteEnv evs)
-    (hFmtInner_ne : ∃ evs, fmtEnv evs)
+    (hFmtWrite_ne : ∃ evs, CliFmtWriteEnv evs)
+    (hFmtInner_ne : ∃ evs, CliFormatInnerEnv evs)
     (hclosure : subroutine_ok (lsProg_463 (cliGhostExterns g (cliExternsPlaced mmpl W)))
       (lsmpl.base 462)
       (withLsCodeLoaded lsmpl (withVmPreserved logClosurePlacedSpec))) :
     region_ok (lsProg_463 (cliGhostExterns g (cliExternsPlaced mmpl W)))
       recEntryPlaced recExitPlaced
       (recordDecryptPlacedSpecTPTight W.C A lim ctl uuidTryParse (spqrV1 W.C.F W.Q.K)
-        (TryDecryptCliEnvOf W.C (spqrV1 W.C.F W.Q.K) fmtWriteEnv RecvBytesEnv fmtEnv)).withVRegs :=
-  recordDecryptV1_placed_region_vregs_ok_PTight_cli_of_tdEnv mmpl g W ctl hG hAesDec hSpqr
+        (TryDecryptCliEnvOf W.C (spqrV1 W.C.F W.Q.K) CliFmtWriteEnv RecvBytesEnv CliFormatInnerEnv)).withVRegs :=
+  recordDecryptV1_placed_region_vregs_ok_PTight_cli_of_tdEnv mmpl g W ctl hG hF hX hPub hAesDec hSpqr
     hFmtWrite hFmtInner hRecv_ne hFmtWrite_ne hFmtInner_ne (fun _ _ h => h) hclosure
 
 /-- Concrete placed CLI `region_ok` with `Spec.withVRegs` on
@@ -1468,9 +1499,16 @@ theorem recordDecryptV1_placed_region_vregs_ok_PTight_cli_ofEnv [LibsignalPlacem
 theorem recordDecryptV1_placed_region_vregs_ok_PTight_cli [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks) (ctl : BitVec 64)
-    (hG : CliGhostAllocHooks M A lim g)
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hG : CliGhostAllocHooks M A lim g) (hF : W.C.F = sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hAesDec : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeams M A lim mmpl g W)
+    (hFmtWrite : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFmtWriteSym
+      (fmtWriteProtoAddrCliLsSpec M A lim))
+    (hFmtInner : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFormatInnerSym
+      (formatInnerCallCliLsSpec M A lim))
     (hclosure : subroutine_ok (lsProg_463 (cliGhostExterns g (cliExternsPlaced mmpl W)))
       (lsmpl.base 462)
       (withLsCodeLoaded lsmpl (withVmPreserved logClosurePlacedSpec))) :
@@ -1489,7 +1527,7 @@ theorem recordDecryptV1_placed_region_vregs_ok_PTight_cli [LibsignalPlacement]
     (cliExternsPlaced_dealloc_budget_sat mmpl g W hG)
     (cliExternsPlaced_sessionMemcpyRegion_budget_sat mmpl g W hG)
     (cliGhostExterns_panic_all mmpl g W lsHandleErrorSym (by decide))
-    (tryDecryptV1_placed_ok_PTight_cli mmpl g W ctl hG hAesDec hSpqr)
+    (tryDecryptV1_placed_ok_PTight_cli mmpl g W ctl hG hF hX hPub hAesDec hSpqr hFmtWrite hFmtInner)
     hclosure
 
 set_option maxHeartbeats 3200000 in
@@ -1549,6 +1587,7 @@ private theorem rdp_region_reaches_full_placed_TPTight [CryptoVerification.Libsi
   have hSegDec : ∀ (x : RecordDecryptGhost) (st_init st : M.σ) (G₁ : SessionGhost)
       (R : SepProp) (s0 s : State)
       (hQ : x.st.pqRatchetState.length < 2 ^ 32)
+      (hrem40 : x.rem.name.bytes.length ≤ 40)
       (hV : VStatePPlaced A lim ctl uuidTryParse tdEnv x st_init st G₁
         (tokenInitPlacedAt ∗ R) s0 s)
       (hstk : rootStack ≤ s0.sp.toNat)
@@ -1561,7 +1600,7 @@ private theorem rdp_region_reaches_full_placed_TPTight [CryptoVerification.Libsi
             (tokenInitPlacedAt ∗ R) s0 s') ∨
          regionOutcome (recordDecryptPlacedSpecTPTight C A lim ctl uuidTryParse S tdEnv)
            recExitPlaced (x, st_init) R s0 s') := by
-    intro x st_init st G₁ R s0 s hQ hV hstk hFroz hL
+    intro x st_init st G₁ R s0 s hQ hrem40 hV hstk hFroz hL
     have hgrow := hgrowSpe
     have hdrop2 := hdropLocal2
     have hset := hsetState
@@ -1569,6 +1608,7 @@ private theorem rdp_region_reaches_full_placed_TPTight [CryptoVerification.Libsi
         (withLsCodeLoaded lsmpl (rdpTryBudgetSpecTrap C A lim ctl uuidTryParse S tdEnv)) :=
       rdp_tryDecryptSpecTPTightAt_eq C A lim ctl uuidTryParse S tdEnv ▸ htd
     have _ := hQ
+    have _ := hrem40
     rcases hV with ⟨hsb, hpc, ⟨hrun, hsp, hsp_align, hx29, htr, _hfl, hvregs⟩,
       ⟨hrem_or_dist, hseeds, hrc_len⟩, hclone, heq, hmem⟩
     dsimp only [recVPCPlaced] at hpc
@@ -1890,7 +1930,7 @@ private theorem rdp_region_reaches_full_placed_TPTight [CryptoVerification.Libsi
   dsimp only [recordDecryptPlacedSpecTPTight, recordDecryptPlacedSpecTPTightF,
     recordDecryptPlacedSpecTF] at hpre
   rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hQ, hpre⟩
+  rcases hpre with ⟨⟨hQ, hrem40⟩, hpre⟩
   have hpre' : s0.mem ⊨
       (recordDecryptPlacedSpecP C A lim ctl uuidTryParse S' tdEnv).pre (x, st_init) s0 ∗
       (tokenInitPlacedAt ∗ R) := by
@@ -1942,7 +1982,7 @@ private theorem rdp_region_reaches_full_placed_TPTight [CryptoVerification.Libsi
   · have hFroz' :=
       CryptoVerification.libsignalFrozen_of_keepsFrozen hFroz0 hst'.keepsFrozen
     obtain ⟨s'', hst'', hnext'⟩ :=
-      hSegDec x st_init st₁ G₁ R s0 s' hQ hv hstk hFroz' (hst'.codeLoaded hL)
+      hSegDec x st_init st₁ G₁ R s0 s' hQ hrem40 hv hstk hFroz' (hst'.codeLoaded hL)
     rcases hnext' with ⟨st₂, hj⟩ | ⟨st₂, hf⟩ | hout
     · exact region_reaches_steps (hst'.trans hst'') (hJ s'' st₂ hj) hL
     · exact region_reaches_steps (hst'.trans hst'') (hF s'' st₂ hf) hL
@@ -2018,22 +2058,24 @@ theorem recordDecryptV1_full_placed_region_vregs_ok_PTight_cli_of_tdEnv
     {InitEnv : InitialStateGhost → List AllocEvent → Prop}
     {RecvBytesEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
     {SendEnv : SendCall → List AllocEvent → Prop}
-    {fmtWriteEnv fmtEnv : List AllocEvent → Prop}
     {tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks) (ctl : BitVec 64)
-    (hG : CliGhostAllocHooks M A lim g)
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hG : CliGhostAllocHooks M A lim g) (hF : W.C.F = sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hAesDec : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeamsOfEnv M A lim mmpl g W InitEnv
       (fun st msg => RecvBytesEnv st.bytes msg.bytes) SendEnv)
     (hFmtWrite : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFmtWriteSym
-      (fmtWriteBudgetEnvSpec M A lim fmtWriteEnv))
+      (fmtWriteProtoAddrCliLsSpec M A lim))
     (hFmtInner : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFormatInnerSym
-      (formatInnerBudgetEnvSpec M A lim fmtEnv))
+      (formatInnerCallCliLsSpec M A lim))
     (hRecv_ne : ∀ stBs msgBs, ∃ evs, RecvBytesEnv stBs msgBs evs)
-    (hFmtWrite_ne : ∃ evs, fmtWriteEnv evs)
-    (hFmtInner_ne : ∃ evs, fmtEnv evs)
+    (hFmtWrite_ne : ∃ evs, CliFmtWriteEnv evs)
+    (hFmtInner_ne : ∃ evs, CliFormatInnerEnv evs)
     (htd : ∀ a evs,
-      TryDecryptCliEnvOf W.C (spqrV1 W.C.F W.Q.K) fmtWriteEnv RecvBytesEnv fmtEnv a evs →
+      TryDecryptCliEnvOf W.C (spqrV1 W.C.F W.Q.K) CliFmtWriteEnv RecvBytesEnv CliFormatInnerEnv a evs →
       tdEnv a evs) :
     region_ok (lsProg_463 (cliGhostExterns g (cliExternsPlaced mmpl W)))
       recEntryPlaced recExitPlaced
@@ -2054,7 +2096,7 @@ theorem recordDecryptV1_full_placed_region_vregs_ok_PTight_cli_of_tdEnv
     (cliExternsPlaced_dealloc_budget_sat mmpl g W hG)
     (cliExternsPlaced_sessionMemcpyRegion_budget_sat mmpl g W hG)
     (cliGhostExterns_panic_all mmpl g W lsHandleErrorSym (by decide))
-    (tryDecryptV1_placed_ok_PTight_cli_of_tdEnv mmpl g W ctl hG hAesDec hSpqr
+    (tryDecryptV1_placed_ok_PTight_cli_of_tdEnv mmpl g W ctl hG hF hX hPub hAesDec hSpqr
       hFmtWrite hFmtInner hRecv_ne hFmtWrite_ne hFmtInner_ne htd)
 
 /-- Envelope-parametric `[LibsignalFullPlacement]` CLI `region_ok` with `Spec.withVRegs` on
@@ -2065,25 +2107,27 @@ theorem recordDecryptV1_full_placed_region_vregs_ok_PTight_cli_ofEnv
     {InitEnv : InitialStateGhost → List AllocEvent → Prop}
     {RecvBytesEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
     {SendEnv : SendCall → List AllocEvent → Prop}
-    {fmtWriteEnv fmtEnv : List AllocEvent → Prop}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks) (ctl : BitVec 64)
-    (hG : CliGhostAllocHooks M A lim g)
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hG : CliGhostAllocHooks M A lim g) (hF : W.C.F = sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hAesDec : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeamsOfEnv M A lim mmpl g W InitEnv
       (fun st msg => RecvBytesEnv st.bytes msg.bytes) SendEnv)
     (hFmtWrite : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFmtWriteSym
-      (fmtWriteBudgetEnvSpec M A lim fmtWriteEnv))
+      (fmtWriteProtoAddrCliLsSpec M A lim))
     (hFmtInner : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFormatInnerSym
-      (formatInnerBudgetEnvSpec M A lim fmtEnv))
+      (formatInnerCallCliLsSpec M A lim))
     (hRecv_ne : ∀ stBs msgBs, ∃ evs, RecvBytesEnv stBs msgBs evs)
-    (hFmtWrite_ne : ∃ evs, fmtWriteEnv evs)
-    (hFmtInner_ne : ∃ evs, fmtEnv evs) :
+    (hFmtWrite_ne : ∃ evs, CliFmtWriteEnv evs)
+    (hFmtInner_ne : ∃ evs, CliFormatInnerEnv evs) :
     region_ok (lsProg_463 (cliGhostExterns g (cliExternsPlaced mmpl W)))
       recEntryPlaced recExitPlaced
       (CryptoVerification.LibsignalTripleRatchet.withLsFrozen lsmpl
         (recordDecryptPlacedSpecTPTight W.C A lim ctl uuidTryParse (spqrV1 W.C.F W.Q.K)
-          (TryDecryptCliEnvOf W.C (spqrV1 W.C.F W.Q.K) fmtWriteEnv RecvBytesEnv fmtEnv))).withVRegs :=
-  recordDecryptV1_full_placed_region_vregs_ok_PTight_cli_of_tdEnv mmpl g W ctl hG hAesDec hSpqr
+          (TryDecryptCliEnvOf W.C (spqrV1 W.C.F W.Q.K) CliFmtWriteEnv RecvBytesEnv CliFormatInnerEnv))).withVRegs :=
+  recordDecryptV1_full_placed_region_vregs_ok_PTight_cli_of_tdEnv mmpl g W ctl hG hF hX hPub hAesDec hSpqr
     hFmtWrite hFmtInner hRecv_ne hFmtWrite_ne hFmtInner_ne (fun _ _ h => h)
 
 /-- Concrete `[LibsignalFullPlacement]` CLI `region_ok` with `Spec.withVRegs` on
@@ -2092,9 +2136,16 @@ theorem recordDecryptV1_full_placed_region_vregs_ok_PTight_cli
     [CryptoVerification.LibsignalFullPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks) (ctl : BitVec 64)
-    (hG : CliGhostAllocHooks M A lim g)
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
-    (hSpqr : SpqrV1PlacedSeams M A lim mmpl g W) :
+    (hG : CliGhostAllocHooks M A lim g) (hF : W.C.F = sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hAesDec : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
+    (hSpqr : SpqrV1PlacedSeams M A lim mmpl g W)
+    (hFmtWrite : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFmtWriteSym
+      (fmtWriteProtoAddrCliLsSpec M A lim))
+    (hFmtInner : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFormatInnerSym
+      (formatInnerCallCliLsSpec M A lim)) :
     region_ok (lsProg_463 (cliGhostExterns g (cliExternsPlaced mmpl W)))
       recEntryPlaced recExitPlaced
       (CryptoVerification.LibsignalTripleRatchet.withLsFrozen lsmpl
@@ -2111,6 +2162,6 @@ theorem recordDecryptV1_full_placed_region_vregs_ok_PTight_cli
     (cliExternsPlaced_dealloc_budget_sat mmpl g W hG)
     (cliExternsPlaced_sessionMemcpyRegion_budget_sat mmpl g W hG)
     (cliGhostExterns_panic_all mmpl g W lsHandleErrorSym (by decide))
-    (tryDecryptV1_placed_ok_PTight_cli mmpl g W ctl hG hAesDec hSpqr)
+    (tryDecryptV1_placed_ok_PTight_cli mmpl g W ctl hG hF hX hPub hAesDec hSpqr hFmtWrite hFmtInner)
 
 end LibsignalBinary.Proofs.Cli.SpqrV1.M4.RecordDecryptPV1TrapPlacedBudget

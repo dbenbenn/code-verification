@@ -16,11 +16,11 @@ public import Symbolic.Proofs.SpecLemmas.ExternInterpretationProofDefs
 # Pure Witness Interpretation
 
 Constructs the pure `ExternInterpretation` witness (`witnessInterpretation`) overriding
-`exampleInterpretation` on all 16 PQXDH and SPQR extern symbols, and proves little-endian X25519
+`exampleInterpretation` on all 9 PQXDH and SPQR extern symbols, and proves little-endian X25519
 `u`-coordinate lemmas, `ExternCryptoLawsHold`, and `X25519PubCanonical`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -60,9 +60,9 @@ open DY.Libsignal.Refinement (ExternCryptoLawsHold StubSymbol x25519PublicKeySym
   x25519AgreementSymbol x25519TorsionSymbol torsionShift aesCbcEncryptSymbol aesCbcDecryptSymbol)
 open DY.Libsignal.Composed.Refinement (leBytes x25519UCoord clamp variantBytes X25519PubCanonical)
 
-def exampleBasepoint : HwBytes := 9 :: List.replicate 31 0
+@[expose] def exampleBasepoint : HwBytes := 9 :: List.replicate 31 0
 
-def exampleAgreement (a p : HwBytes) : HwBytes :=
+@[expose] def exampleAgreement (a p : HwBytes) : HwBytes :=
   if DY.X25519.isLowOrderKey (p.map BitVec.toNat) then List.replicate 32 0
   else leBytes 32 (2 + (x25519UCoord p + DY.X25519.leValue ((clamp a).map BitVec.toNat)) % 2 ^ 200)
 
@@ -105,7 +105,7 @@ theorem length_exampleAgreement (a p : HwBytes) : (exampleAgreement a p).length 
   unfold exampleAgreement; split <;> simp [length_leBytes]
 
 /-- Base Double Ratchet witness interpretation (additive mod `2^200` X25519 + identity AES-CBC). -/
-def exampleInterpretation : ExternInterpretation := fun symbol arguments =>
+@[expose] def exampleInterpretation : ExternInterpretation := fun symbol arguments =>
   if symbol = x25519PublicKeySymbol then
     match arguments with | [secret] => some (exampleAgreement secret exampleBasepoint) | _ => none
   else if symbol = x25519AgreementSymbol then
@@ -184,26 +184,17 @@ open CryptoProofLib.Refinement (ByteString ExternInterpretation)
 open DY.Libsignal.Refinement (ExternCryptoLawsHold StubSymbol x25519AgreementSymbol
   x25519PublicKeySymbol x25519TorsionSymbol torsionShift aesCbcEncryptSymbol aesCbcDecryptSymbol)
 open DY.Libsignal.PQXDH.Refinement (kyberEncapsSymbol kyberDecapsSymbol sha512CompressSymbol
-  toEdwardsSymbol edwardsCompressSymbol edwardsNegSymbol torsionFreeSymbol doubleScalarMulSymbol
-  scalarModOrderSymbol scalarModOrderWideSymbol mlkem768FromSeedSymbol mlkem768Encaps1Symbol
+  mlkem768FromSeedSymbol mlkem768Encaps1Symbol
   mlkem768Encaps2Symbol mlkem768DecapsSymbol mlkem768ValidatePkSymbol libcruxHmacSymbol)
 open DY.Libsignal.Composed.Refinement (ReturnsLength X25519PubCanonical leBytes x25519UCoord clamp
   variantBytes)
 
-/-- Fixed output byte length for each of the 16 `ExternInterpretationTotalOnUsedSymbols` extern
-symbols (`torsionFreeSymbol ↦ 1` yields `[0#8]`, which satisfies `.isSome` and refutes
-`X25519TorsionFree`). -/
-def witnessLength (s : StubSymbol) : Option Nat :=
+/-- Fixed output byte length for each of the 9 `ExternInterpretationTotalOnUsedSymbols` extern
+symbols. -/
+@[expose] def witnessLength (s : StubSymbol) : Option Nat :=
   if s = kyberEncapsSymbol then some 1600
   else if s = kyberDecapsSymbol then some 32
   else if s = sha512CompressSymbol then some 64
-  else if s = toEdwardsSymbol then some 160
-  else if s = edwardsCompressSymbol then some 32
-  else if s = edwardsNegSymbol then some 160
-  else if s = torsionFreeSymbol then some 1
-  else if s = doubleScalarMulSymbol then some 160
-  else if s = scalarModOrderSymbol then some 32
-  else if s = scalarModOrderWideSymbol then some 32
   else if s = mlkem768FromSeedSymbol then some 2400
   else if s = mlkem768Encaps1Symbol then some (960 + 2080 + 32)
   else if s = mlkem768Encaps2Symbol then some 128
@@ -212,8 +203,8 @@ def witnessLength (s : StubSymbol) : Option Nat :=
   else if s = libcruxHmacSymbol then some 32
   else none
 
-/-- Witness interpretation: `exampleInterpretation` overridden on all 16 PQXDH + SPQR externs. -/
-def witnessInterpretation : ExternInterpretation := fun s args =>
+/-- Witness interpretation: `exampleInterpretation` overridden on all 9 PQXDH + SPQR externs. -/
+@[expose] def witnessInterpretation : ExternInterpretation := fun s args =>
   match witnessLength s with
   | some n => some (List.replicate n 0#8)
   | none => exampleInterpretation s args

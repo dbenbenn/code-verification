@@ -11,38 +11,49 @@ module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesAuxBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
-public import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterHelpers
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterStageHelpers
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB
-public import LibsignalBinary.Proofs.PeakBudget.W4SlotGroupSpec
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemEnvAPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdKeyPairPollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.LayoutBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeserAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.LayoutBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesAuxBudget
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
+import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
+import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
+public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+import LibsignalBinary.Proofs.PeakBudget.W4OuterHelpers
+import LibsignalBinary.Proofs.PeakBudget.W4OuterStageHelpers
+import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB
+import LibsignalBinary.Proofs.PeakBudget.W4SlotGroupSpec
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemEnvAPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdKeyPairPollPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.LayoutBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeserAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.LayoutBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Codec, I/O, and Poll `fineCostModel` Credit Helpers for Untyped/Bad-KEM Rejection
@@ -51,7 +62,7 @@ Proves small-regime `fineCostModel` `PhaseCreditSpec` and `PhaseGroupSpec` lemma
 record codecs, bounded `cliIo.rd` reads, and SPK/KPK poll steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -190,7 +201,7 @@ theorem decimalEnv_fine_groupSpec (n : BitVec 32) :
     rcases pushBytesEvents_le_10_cases (decimalText n.toNat).length (decimalText_length_le_10 n) with
       h | h | h <;> (rw [he, h]; decide))).mono (by decide)
 
-def SpkCapsMaxLe (caps : SpkCaps) (B : Nat) : Prop :=
+@[expose] def SpkCapsMaxLe (caps : SpkCaps) (B : Nat) : Prop :=
   caps.pub ≤ B ∧ caps.priv ≤ B ∧ caps.sig ≤ B
 
 theorem spkCaps_get_le {caps : SpkCaps} {B : Nat}
@@ -745,17 +756,17 @@ theorem dirGet_small_fine_phaseCredit {F0 : FsFiles} {dir : DirGhost}
 
 /-! ## 2. Stage P2 Poll Step & Arm Bounds -/
 
-def spkPollFineCum : Nat := 19126 + 65000 + (19348 * 512 + 19590)
-def kpkPassFineCum : Nat := 19126 + 65000 + (19348 * 4900 + 19590)
-def kpkPollFineCum : Nat := 2 * kpkPassFineCum
-def pkPollFineCum : Nat := 19126 + 65000 + 19110 * 515
-def kpPollFineCum : Nat := 65000 + 19110 * 515
+@[expose] def spkPollFineCum : Nat := 19126 + 65000 + (19348 * 512 + 19590)
+@[expose] def kpkPassFineCum : Nat := 19126 + 65000 + (19348 * 4900 + 19590)
+@[expose] def kpkPollFineCum : Nat := 2 * kpkPassFineCum
+@[expose] def pkPollFineCum : Nat := 19126 + 65000 + 19110 * 515
+@[expose] def kpPollFineCum : Nat := 65000 + 19110 * 515
 
-def spkPollFineGrpS : Nat := (6 + 39 + 3 * 514) * FineScale
-def kpkPassFineGrpS : Nat := (6 + 39 + 3 * 4902) * FineScale
-def kpkPollFineGrpS : Nat := 2 * kpkPassFineGrpS
-def pkPollFineGrpS : Nat := (6 + 39 + 3 * 1030) * FineScale
-def kpPollFineGrpS : Nat := (39 + 3 * 1030) * FineScale
+@[expose] def spkPollFineGrpS : Nat := (6 + 39 + 3 * 514) * FineScale
+@[expose] def kpkPassFineGrpS : Nat := (6 + 39 + 3 * 4902) * FineScale
+@[expose] def kpkPollFineGrpS : Nat := 2 * kpkPassFineGrpS
+@[expose] def pkPollFineGrpS : Nat := (6 + 39 + 3 * 1030) * FineScale
+@[expose] def kpPollFineGrpS : Nat := (39 + 3 * 1030) * FineScale
 
 theorem spkPoll_fine_specs {F0 : FsFiles} (spkId : BitVec 32)
     (hkf : DecPkKeyFilesBounded F0) :

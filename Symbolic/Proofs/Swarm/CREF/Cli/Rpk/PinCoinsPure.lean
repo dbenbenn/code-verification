@@ -18,18 +18,18 @@ Defines `pureCoinsOf` and `pinCoins`, converting an optional drawn byte slice in
 vector.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace Symbolic.Swarm.CREF.CliPure.RpkCli
 
 /-- Extracts a 256-bit key from the first 32 bytes of `rest`, zero-padding if shorter. -/
-def pureCoinsOf (rest : List (BitVec 8)) : BitVec 256 :=
+@[expose] def pureCoinsOf (rest : List (BitVec 8)) : BitVec 256 :=
   CryptoGames.HKDF.bytesToKey32 ((rest ++ List.replicate 32 0#8).take 32)
 
 /-- Maps `none` to `0#256` and `some bs` to `pureCoinsOf bs`. -/
-def pinCoins : Option (List (BitVec 8)) → BitVec 256
+@[expose] def pinCoins : Option (List (BitVec 8)) → BitVec 256
   | none => 0#256
   | some bs => pureCoinsOf bs
 

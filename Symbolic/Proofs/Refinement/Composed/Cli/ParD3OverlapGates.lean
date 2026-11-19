@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.Composed.Cli.ParD3ProtoCodec
 
 /-!
@@ -20,7 +20,7 @@ Proves inversion and canonical `m.bytes` evaluation lemmas for `parsePreKey`, `d
 between `pqRecvMatchingFieldsModel` and `pqRecvPrekeyModel` on typed pre-key messages.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Initiate.InitOk35Pure
+public import Symbolic.Proofs.Swarm.CREF.Initiate.InitOk35Pure -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.ALaCarte.Ordering
@@ -27,7 +27,7 @@ prekey handle, an `attackerSend` of its canonical X25519 variation, or an `attac
 match an accepted bundle's OPK slice.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

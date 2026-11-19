@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+public import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliRun
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRunFixed -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRunProofDefs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -194,42 +195,48 @@ theorem zeroizeSecretHook_symtabFree : SymtabFree LibsignalTripleRatchet.zeroize
 
 section Pqxdh
 
+open LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy
+  (toEdwardsHook compressHook edNegHook torsionFreeHook dsmbHook scalarModHook scalarWideHook
+   mlkemPk1Hook mlkemPk2Hook pqxdhHookTable spqrHookTable
+   legacyMontToEd legacyCompress legacyEdNeg legacyIsTorsionFree legacyDsmb
+   legacyScalarMod legacyScalarWide)
+
 theorem compress512Hook_symtabFree (F512 : E2E.Sha512State → List (BitVec 8) → E2E.Sha512State) :
     SymtabFree (E2E.compress512Hook F512) := by
   intro t s; unfold E2E.compress512Hook; hook_symtab_free
 
 theorem toEdwardsHook_symtabFree
     (montToEd : List.Vector (BitVec 8) 32 → BitVec 8 → Option (List.Vector (BitVec 8) 160)) :
-    SymtabFree (E2E.toEdwardsHook montToEd) := by
-  intro t s; unfold E2E.toEdwardsHook; hook_symtab_free
+    SymtabFree (toEdwardsHook montToEd) := by
+  intro t s; unfold toEdwardsHook; hook_symtab_free
 
 theorem compressHook_symtabFree
     (compress : List.Vector (BitVec 8) 160 → List.Vector (BitVec 8) 32) :
-    SymtabFree (E2E.compressHook compress) := by
-  intro t s; unfold E2E.compressHook; hook_symtab_free
+    SymtabFree (compressHook compress) := by
+  intro t s; unfold compressHook; hook_symtab_free
 
 theorem edNegHook_symtabFree
     (edNeg : List.Vector (BitVec 8) 160 → List.Vector (BitVec 8) 160) :
-    SymtabFree (E2E.edNegHook edNeg) := by
-  intro t s; unfold E2E.edNegHook; hook_symtab_free
+    SymtabFree (edNegHook edNeg) := by
+  intro t s; unfold edNegHook; hook_symtab_free
 
 theorem torsionFreeHook_symtabFree (isTorsionFree : List.Vector (BitVec 8) 160 → Bool) :
-    SymtabFree (E2E.torsionFreeHook isTorsionFree) := by
-  intro t s; unfold E2E.torsionFreeHook; hook_symtab_free
+    SymtabFree (torsionFreeHook isTorsionFree) := by
+  intro t s; unfold torsionFreeHook; hook_symtab_free
 
 theorem dsmbHook_symtabFree (dsmb : List.Vector (BitVec 8) 32 → List.Vector (BitVec 8) 160 →
-    List.Vector (BitVec 8) 32 → List.Vector (BitVec 8) 160) : SymtabFree (E2E.dsmbHook dsmb) := by
-  intro t s; unfold E2E.dsmbHook; hook_symtab_free
+    List.Vector (BitVec 8) 32 → List.Vector (BitVec 8) 160) : SymtabFree (dsmbHook dsmb) := by
+  intro t s; unfold dsmbHook; hook_symtab_free
 
 theorem scalarModHook_symtabFree
     (scalarMod : List.Vector (BitVec 8) 32 → List.Vector (BitVec 8) 32) :
-    SymtabFree (E2E.scalarModHook scalarMod) := by
-  intro t s; unfold E2E.scalarModHook; hook_symtab_free
+    SymtabFree (scalarModHook scalarMod) := by
+  intro t s; unfold scalarModHook; hook_symtab_free
 
 theorem scalarWideHook_symtabFree
     (scalarWide : List.Vector (BitVec 8) 64 → List.Vector (BitVec 8) 32) :
-    SymtabFree (E2E.scalarWideHook scalarWide) := by
-  intro t s; unfold E2E.scalarWideHook; hook_symtab_free
+    SymtabFree (scalarWideHook scalarWide) := by
+  intro t s; unfold scalarWideHook; hook_symtab_free
 
 theorem kemEncapsHook_symtabFree (encaps : List.Vector (BitVec 8) 1568 →
     List.Vector (BitVec 8) 32 → List.Vector (BitVec 8) 1568 × List.Vector (BitVec 8) 32) :
@@ -245,11 +252,11 @@ theorem mlkemFromSeedHook_symtabFree (K : LibsignalSpqrV1.MlKem) :
     SymtabFree (E2E.mlkemFromSeedHook K) := by
   intro t s; unfold E2E.mlkemFromSeedHook; hook_symtab_free
 
-theorem mlkemPk1Hook_symtabFree : SymtabFree E2E.mlkemPk1Hook := by
-  intro t s; unfold E2E.mlkemPk1Hook; hook_symtab_free
+theorem mlkemPk1Hook_symtabFree : SymtabFree mlkemPk1Hook := by
+  intro t s; unfold mlkemPk1Hook; hook_symtab_free
 
-theorem mlkemPk2Hook_symtabFree : SymtabFree E2E.mlkemPk2Hook := by
-  intro t s; unfold E2E.mlkemPk2Hook; hook_symtab_free
+theorem mlkemPk2Hook_symtabFree : SymtabFree mlkemPk2Hook := by
+  intro t s; unfold mlkemPk2Hook; hook_symtab_free
 
 theorem mlkemEncaps1Hook_symtabFree (K : LibsignalSpqrV1.MlKem) :
     SymtabFree (E2E.mlkemEncaps1Hook K) := by
@@ -281,67 +288,5 @@ theorem libcruxHmacHook_symtabFree
     · simp only [h2, ↓reduceIte]; exact Rust.panicked_symtabFree t s
 
 end Pqxdh
-
-/-! ## Hook Table and Whole Program -/
-
-/-- Every hook in `cliHookTable W` is `SymtabFree`. -/
-theorem cliHookTable_symtabFree (W : CliHooks) : ∀ p ∈ cliHookTable W, SymtabFree p.2 := by
-  simp only [cliHookTable, E2E.pqxdhHookTable, E2E.spqrHookTable, List.cons_append,
-    List.nil_append, List.forall_mem_cons, List.not_mem_nil, false_implies, implies_true,
-    and_true]
-  exact ⟨compress512Hook_symtabFree W.Q.F512, toEdwardsHook_symtabFree W.Q.montToEd,
-    compressHook_symtabFree W.Q.compress, edNegHook_symtabFree W.Q.edNeg,
-    torsionFreeHook_symtabFree W.Q.isTorsionFree, dsmbHook_symtabFree W.Q.dsmb,
-    scalarModHook_symtabFree W.Q.scalarMod, scalarWideHook_symtabFree W.Q.scalarWide,
-    kemEncapsHook_symtabFree W.Q.encaps, kemDecapsHook_symtabFree W.Q.decaps,
-    mlkemFromSeedHook_symtabFree W.Q.K, mlkemPk1Hook_symtabFree, mlkemPk2Hook_symtabFree,
-    mlkemEncaps1Hook_symtabFree W.Q.K, mlkemEncaps2Hook_symtabFree W.Q.K,
-    mlkemDecapsHook_symtabFree W.Q.K, mlkemValidatePkHook_symtabFree W.Q.K,
-    libcruxHmacHook_symtabFree W.C.F,
-    hookNoop_symtabFree, allocHook0_symtabFree, deallocHook_symtabFree,
-    reallocHook0_symtabFree, allocZeroedHook0_symtabFree, hookMemset_symtabFree,
-    hookMemmove_symtabFree, hookMemcpy_symtabFree, cliBcmpHook_symtabFree CryptoVerification.SignalSession.cliDefaultBcmp,
-    strlenHook_symtabFree, readFileHook_symtabFree, writeFileHook_symtabFree,
-    readStdinHook_symtabFree, writeStdoutHook_symtabFree, memrchrHook_symtabFree,
-    fromUtf8Hook_symtabFree CryptoVerification.SignalSession.cliDefaultUtf8Err, fmtWriteHook0_symtabFree,
-    formatInnerHook0_symtabFree, durationSinceExactHook_symtabFree, timeAddHook_symtabFree,
-    blackBoxHook_symtabFree, compress256Hook_symtabFree W.C.F, aesEncHook0_symtabFree W.C.E,
-    aesDecHook0_symtabFree W.C.D, pubFromSecretHook_symtabFree W.C.pubKey,
-    diffieHellmanHook_symtabFree W.C.X, zeroizeSecretHook_symtabFree,
-    zeroizeSecretHook_symtabFree⟩
-
-theorem symtabFreeHooks_withPanicsE {X : String → Option (State → State)}
-    (hX : SymtabFreeHooks X) : SymtabFreeHooks (E2E.withImagePanics X) := by
-  intro n f h
-  unfold E2E.withImagePanics at h
-  split at h
-  · cases h
-    exact Rust.panicked_symtabFree
-  · exact hX n f h
-
-theorem symtabFreeHooks_withCliPanics {X : String → Option (State → State)}
-    (hX : SymtabFreeHooks X) : SymtabFreeHooks (withCliPanics X) := by
-  intro n f h
-  unfold withCliPanics at h
-  split at h
-  · cases h
-    exact Rust.panicked_symtabFree
-  · exact hX n f h
-
-/-- Every extern hook in `cliExterns W` is `SymtabFree`. -/
-theorem symtabFreeHooks_cliExterns (W : CliHooks) : SymtabFreeHooks (cliExterns W) :=
-  symtabFreeHooks_withCliPanics (symtabFreeHooks_lookup (cliHookTable_symtabFree W))
-
-/-- `cliProg W` satisfies `SymtabGhost`. -/
-theorem symtabGhost_cliProg (W : CliHooks) : SymtabGhost (cliProg W) := by
-  unfold cliProg
-  exact symtabGhost_of_hooksSymtabFree
-    (Program.hooksSymtabFree_rebase (symtabFreeHooks_cliExterns W) symtabFreeHooks_none)
-
-/-- `Program.ofImage img (Rust.withPanics (cliExterns W))` satisfies `SymtabGhost` for every `img`. -/
-theorem symtabGhost_ofImage_cliExterns (img : Obj.Image) (W : CliHooks) :
-    SymtabGhost (Program.ofImage img (Rust.withPanics (cliExterns W))) :=
-  symtabGhost_of_hooksSymtabFree (Program.hooksSymtabFree_ofImage
-    (Rust.symtabFreeHooks_withPanics (symtabFreeHooks_cliExterns W)) symtabFreeHooks_none)
 
 end CryptoVerification.SignalSession

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKemBounds
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndShcrLoop
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKemBounds -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndShcrLoop -- proof-setup: allow-public-import
 
 /-!
 # Cost Bounds for the DSL `KemShCr` Adversary
@@ -18,7 +18,7 @@ public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndShcrL
 Packages syntactic step-cost and semantic primitive-query bounds for `shcrKeyIndDslAdv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,10 +30,6 @@ open OracleSpec OracleComp
 
 abbrev shcrKeyIndDslProg (S : Setup) (b : QueryBudget) :=
   shcrKeyIndProg S b.q_total (keyIndLoopBound b)
-
-theorem shcrKeyIndDslProg_totalCost_le (S : Setup) (b : QueryBudget) :
-    (shcrKeyIndDslProg S b).totalCost b.q_total ≤ stepCostBudget S b :=
-  shcrKeyIndProg_totalCost_le S b
 
 theorem shcrKeyIndDslProg_totalPrimQueries_le (S : Setup) (b : QueryBudget) :
     (shcrKeyIndDslProg S b).totalQueries primW primWS b.q_total ≤ primQueryBudget S b :=

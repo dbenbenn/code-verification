@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedRepr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPoly
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPoly -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Drop Glue for Protobuf Chunked States (`Ct1Received`, `NoHeaderReceived`)
@@ -28,7 +28,7 @@ for:
 - `core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::NoHeaderReceived>` (`0x4cce4`, Block `284`)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Drop
 
@@ -52,53 +52,53 @@ attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero noneCap_add_t
 
 /-! ## Representation Predicates for `V1State.Chunked.*` -/
 
-def protoChunkedCt1ReceivedSize : Nat := 160
+@[expose] def protoChunkedCt1ReceivedSize : Nat := 160
 
 /-- `spqr::proto::pq_ratchet::v1_state::chunked::Ct1Received` at `a` (`160` bytes = `0xa0`, align `8`):
     * `+0..+104`: `uc: Option<V1State.Unchunked.EkSentCt1Received>` (`104`B)
     * `+104..+160`: `sending_ek: Option<PolynomialEncoder>` (`56`B) -/
-def protoChunkedCt1ReceivedAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoChunkedCt1ReceivedAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Chunked.Ct1Received) : SepProp :=
   optProtoUnchunkedEkSentCt1ReceivedAt A a st.uc ∗
     optProtoPolynomialEncoderAt A (a + 104#64) (st.sendingEk.map pbToProtoPolyEncoder)
 
-def protoChunkedNoHeaderReceivedSize : Nat := 96
+@[expose] def protoChunkedNoHeaderReceivedSize : Nat := 96
 
 /-- `spqr::proto::pq_ratchet::v1_state::chunked::NoHeaderReceived` at `a` (`96` bytes = `0x60`, align `8`):
     * `+0..+40`: `receiving_hdr: Option<PolynomialDecoder>` (`40`B)
     * `+40..+96`: `uc: Option<V1State.Unchunked.NoHeaderReceived>` (`56`B) -/
-def protoChunkedNoHeaderReceivedAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoChunkedNoHeaderReceivedAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Chunked.NoHeaderReceived) : SepProp :=
   optProtoPolynomialDecoderAt A a (st.receivingHdr.map pbToProtoPolyDecoder) ∗
     optProtoUnchunkedNoHeaderReceivedAt A (a + 40#64) st.uc
 
-def protoChunkedHeaderReceivedSize : Nat := 120
+@[expose] def protoChunkedHeaderReceivedSize : Nat := 120
 
 /-- `spqr::proto::pq_ratchet::v1_state::chunked::HeaderReceived` at `a` (`120` bytes = `0x78`, align `8`):
     * `+0..+80`: `uc: Option<V1State.Unchunked.HeaderReceived>` (`80`B)
     * `+80..+120`: `receiving_ek: Option<PolynomialDecoder>` (`40`B) -/
-def protoChunkedHeaderReceivedAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoChunkedHeaderReceivedAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Chunked.HeaderReceived) : SepProp :=
   optProtoUnchunkedHeaderReceivedAt A a st.uc ∗
     optProtoPolynomialDecoderAt A (a + 80#64) (st.receivingEk.map pbToProtoPolyDecoder)
 
-def protoChunkedEkSentCt1ReceivedSize : Nat := 144
+@[expose] def protoChunkedEkSentCt1ReceivedSize : Nat := 144
 
 /-- `spqr::proto::pq_ratchet::v1_state::chunked::EkSentCt1Received` at `a` (`144` bytes = `0x90`, align `8`):
     * `+0..+104`: `uc: Option<V1State.Unchunked.EkSentCt1Received>` (`104`B)
     * `+104..+144`: `receiving_ct2: Option<PolynomialDecoder>` (`40`B) -/
-def protoChunkedEkSentCt1ReceivedAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoChunkedEkSentCt1ReceivedAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Chunked.EkSentCt1Received) : SepProp :=
   optProtoUnchunkedEkSentCt1ReceivedAt A a st.uc ∗
     optProtoPolynomialDecoderAt A (a + 104#64) (st.receivingCt2.map pbToProtoPolyDecoder)
 
-def protoChunkedHeaderSentSize : Nat := 176
+@[expose] def protoChunkedHeaderSentSize : Nat := 176
 
 /-- `spqr::proto::pq_ratchet::v1_state::chunked::HeaderSent` at `a` (`176` bytes = `0xb0`, align `8`):
     * `+0..+80`: `uc: Option<V1State.Unchunked.EkSent>` (`80`B)
     * `+80..+136`: `sending_ek: Option<PolynomialEncoder>` (`56`B)
     * `+136..+176`: `receiving_ct1: Option<PolynomialDecoder>` (`40`B) -/
-def protoChunkedHeaderSentAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def protoChunkedHeaderSentAt (A : RustAlloc) (a : BitVec 64)
     (st : V1State.Chunked.HeaderSent) : SepProp :=
   optProtoUnchunkedEkSentAt A a st.uc ∗
     optProtoPolynomialEncoderAt A (a + 80#64) (st.sendingEk.map pbToProtoPolyEncoder) ∗
@@ -127,7 +127,7 @@ theorem optProtoPolynomialDecoderAt_some' (A : RustAlloc) (d : BitVec 64)
     optProtoPolynomialDecoderAt A d (some pb) = protoPolynomialDecoderAt A d pb := rfl
 
 /-- Remainder of `protoPolynomialEncoderAt A d pb` when the initial `pts.cap` cell `d ↦₆₄ cap` is split out. -/
-def protoPolynomialEncoderRestAt (A : RustAlloc) (d cap ptr : BitVec 64)
+@[expose] def protoPolynomialEncoderRestAt (A : RustAlloc) (d cap ptr : BitVec 64)
     (pb : ProtoPolynomialEncoder) : SepProp :=
   ((d + 8#64) ↦₆₄ ptr) ∗ ((d + 16#64) ↦₆₄ BitVec.ofNat 64 pb.pts.length) ∗
     vecBuf A vecHeaderBytes 8 (fun bs addr => vecU8 A addr bs) cap ptr pb.pts ∗
@@ -273,7 +273,7 @@ theorem optProtoPolyDecoder_none_entails_memRegion_40 (d : BitVec 64) :
 
 /-! ### Flat-offset `ProtoAuthenticator` headers at `+24`, `+40`, `+48` -/
 
-def auth24HeadersAt (a : BitVec 64) (ga : TwoVecGhost) : SepProp :=
+@[expose] def auth24HeadersAt (a : BitVec 64) (ga : TwoVecGhost) : SepProp :=
   ((a + 24#64) ↦₆₄ ga.v1.cap) ∗ ((a + 32#64) ↦₆₄ ga.v1.ptr) ∗ memRegion (a + 40#64) 8 ∗
   ((a + 48#64) ↦₆₄ ga.v2.cap) ∗ ((a + 56#64) ↦₆₄ ga.v2.ptr) ∗ memRegion (a + 64#64) 8
 
@@ -304,7 +304,7 @@ theorem optProtoAuthenticatorAt_24_none_entails_memRegion_48 (A : RustAlloc) (a 
   rw [← h1]
   exact optProtoAuthenticatorAt_none_entails_memRegion_48 A (a + 24#64)
 
-def auth40HeadersAt (a : BitVec 64) (ga : TwoVecGhost) : SepProp :=
+@[expose] def auth40HeadersAt (a : BitVec 64) (ga : TwoVecGhost) : SepProp :=
   ((a + 40#64) ↦₆₄ ga.v1.cap) ∗ ((a + 48#64) ↦₆₄ ga.v1.ptr) ∗ memRegion (a + 56#64) 8 ∗
   ((a + 64#64) ↦₆₄ ga.v2.cap) ∗ ((a + 72#64) ↦₆₄ ga.v2.ptr) ∗ memRegion (a + 80#64) 8
 
@@ -341,7 +341,7 @@ theorem optProtoAuthenticatorAt_40_none_entails_memRegion_56 (A : RustAlloc) (a 
   exact sepConj_mono (optProtoAuthenticatorAt_none_entails_memRegion_48 A (a + 40#64))
     (pointsTo64_entails_memRegion _ _)
 
-def auth48HeadersAt (a : BitVec 64) (ga : TwoVecGhost) : SepProp :=
+@[expose] def auth48HeadersAt (a : BitVec 64) (ga : TwoVecGhost) : SepProp :=
   ((a + 48#64) ↦₆₄ ga.v1.cap) ∗ ((a + 56#64) ↦₆₄ ga.v1.ptr) ∗ memRegion (a + 64#64) 8 ∗
   ((a + 72#64) ↦₆₄ ga.v2.cap) ∗ ((a + 80#64) ↦₆₄ ga.v2.ptr) ∗ memRegion (a + 88#64) 8
 
@@ -427,7 +427,7 @@ structure DropProtoChunkedCt1ReceivedGhost where
   a : BitVec 64
   st : V1State.Chunked.Ct1Received
 
-def dropProtoChunkedCt1ReceivedSpec (A : RustAlloc) :
+@[expose] def dropProtoChunkedCt1ReceivedSpec (A : RustAlloc) :
     Spec DropProtoChunkedCt1ReceivedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -442,7 +442,7 @@ structure DropProtoChunkedNoHeaderReceivedGhost where
   a : BitVec 64
   st : V1State.Chunked.NoHeaderReceived
 
-def dropProtoChunkedNoHeaderReceivedSpec (A : RustAlloc) :
+@[expose] def dropProtoChunkedNoHeaderReceivedSpec (A : RustAlloc) :
     Spec DropProtoChunkedNoHeaderReceivedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -457,7 +457,7 @@ structure DropProtoChunkedHeaderReceivedGhost where
   a : BitVec 64
   st : V1State.Chunked.HeaderReceived
 
-def dropProtoChunkedHeaderReceivedSpec (A : RustAlloc) :
+@[expose] def dropProtoChunkedHeaderReceivedSpec (A : RustAlloc) :
     Spec DropProtoChunkedHeaderReceivedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -472,7 +472,7 @@ structure DropProtoChunkedEkSentCt1ReceivedGhost where
   a : BitVec 64
   st : V1State.Chunked.EkSentCt1Received
 
-def dropProtoChunkedEkSentCt1ReceivedSpec (A : RustAlloc) :
+@[expose] def dropProtoChunkedEkSentCt1ReceivedSpec (A : RustAlloc) :
     Spec DropProtoChunkedEkSentCt1ReceivedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -491,7 +491,7 @@ structure DropProtoChunkedHeaderSentGhost where
   a : BitVec 64
   st : V1State.Chunked.HeaderSent
 
-def dropProtoChunkedHeaderSentSpec (A : RustAlloc) :
+@[expose] def dropProtoChunkedHeaderSentSpec (A : RustAlloc) :
     Spec DropProtoChunkedHeaderSentGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -677,40 +677,6 @@ local macro "proto_chunked_ct1_received_steps" entry:term : tactic =>
         exact Entails.refl _
       refine SepWP.focus_weaken hjoin (by sep_focus) ?_
       wp_done))
-
-theorem drop_proto_chunked_ct1_received_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoChunkedCt1ReceivedName)
-      (dropProtoChunkedCt1ReceivedSpec A) := by
-  simp only [dropProtoChunkedCt1ReceivedSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoChunkedCt1ReceivedName +
-        bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::Ct1Received>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::Ct1Received>" "__rustc::__rust_dealloc")) (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::Ct1Received>") (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  have hpoly_enc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoChunkedCt1ReceivedName +
-        bv% (2 ^ 64 - ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::Ct1Received>"))
-      (dropProtoPolyEncoderSpec A) := by
-    have hrel : (dropProgAtExt b ext).fnAddr dropProtoChunkedCt1ReceivedName =
-        (dropProgAtExt b ext).fnAddr dropProtoPolyEncoderName +
-          bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::Ct1Received>") :=
-      Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::Ct1Received>")) (b := b) (X := Rust.withPanics ext)
-        (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>")
-        (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::Ct1Received>") (by decide)
-    refine sub_ok_of_addr_eq ?_ (drop_glue_proto_poly_encoder_ok_ext hdealloc)
-    rw [hrel, BitVec.add_assoc]; simp
-  simp only [rustDeallocSpec] at hdealloc_raw
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::Ct1Received>"
-  dsimp only [dropProgAtExt, dropProtoChunkedCt1ReceivedName,
-    protoChunkedCt1ReceivedSize, BitVec.ofNat_eq_ofNat] at hdealloc_raw hpoly_enc_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::Ct1Received>" = entry
-  examples_hide_fetches; proto_chunked_ct1_received_steps entry
 
 theorem drop_proto_chunked_ct1_received_placed_ok [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}
@@ -979,84 +945,6 @@ local macro "proto_chunked_no_header_received_main_steps" entry:term : tactic =>
           wp_call hdealloc_raw (g.ptr, g.cap.toNat * 24, 8)
           rw [← stackAt_dropStack48_split_bottom s0.sp]
           wp_done))
-
-private theorem drop_proto_chunked_no_header_received_body {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoChunkedNoHeaderReceivedName +
-        bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::NoHeaderReceived>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (s0 : State) (fsp ptsPtr ptsCap : BitVec 64)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (cur cnt : BitVec 64) (bs : List (BitVec 8)) (s : State) (Frame : SepProp),
-      s.pc = (dropProgAtExt b ext).fnAddr dropProtoChunkedNoHeaderReceivedName + 116#64 →
-      s.status = .Running → Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = ptsPtr → s.readReg64 .x20 = ptsCap →
-      s.readReg64 .x21 = cnt → s.readReg64 .x22 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext)
-        ((dropProgAtExt b ext).fnAddr dropProtoChunkedNoHeaderReceivedName + 104#64) s
-        (vecU8 A cur bs ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm =>
-          (Pm ⊢ memRegion cur 24 ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧ sm.readReg64 .x19 = ptsPtr ∧ sm.readReg64 .x20 = ptsCap ∧
-          sm.readReg64 .x21 = cnt ∧ sm.readReg64 .x22 = cur + 8#64) := by
-  simp only [rustDeallocSpec] at hdealloc
-  dsimp only [dropProgAtExt, dropProtoChunkedNoHeaderReceivedName, BitVec.ofNat_eq_ofNat] at *
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::NoHeaderReceived>"
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::NoHeaderReceived>" = entry
-  examples_hide_fetches; proto_chunked_no_header_received_body_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry
-
-private theorem drop_proto_chunked_no_header_received_loop {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoChunkedNoHeaderReceivedName +
-        bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::NoHeaderReceived>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (s0 : State) (fsp ptsPtr ptsCap : BitVec 64)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (rest : List (List (BitVec 8))) (cur : BitVec 64) (s : State) (Frame : SepProp),
-      rest ≠ [] → rest.length * 24 < 2 ^ 63 →
-      s.pc = (dropProgAtExt b ext).fnAddr dropProtoChunkedNoHeaderReceivedName + 116#64 →
-      s.status = .Running → Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = ptsPtr → s.readReg64 .x20 = ptsCap →
-      s.readReg64 .x21 = BitVec.ofNat 64 rest.length → s.readReg64 .x22 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext)
-        ((dropProgAtExt b ext).fnAddr dropProtoChunkedNoHeaderReceivedName + 140#64) s
-        (arrayAt (fun bs addr => vecU8 A addr bs) 24 cur rest ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm =>
-          (Pm ⊢ memRegion cur (rest.length * 24) ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧ sm.readReg64 .x19 = ptsPtr ∧ sm.readReg64 .x20 = ptsCap) := by
-  have hbody := drop_proto_chunked_no_header_received_body (b := b) (ext := ext) hdealloc s0 fsp ptsPtr ptsCap hfsp_align
-  dsimp only [dropProgAtExt, dropProtoChunkedNoHeaderReceivedName, BitVec.ofNat_eq_ofNat] at *
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::NoHeaderReceived>"
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::NoHeaderReceived>" = entry
-  examples_hide_fetches; proto_chunked_no_header_received_loop_steps entry
-
-theorem drop_proto_chunked_no_header_received_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoChunkedNoHeaderReceivedName)
-      (dropProtoChunkedNoHeaderReceivedSpec A) := by
-  simp only [dropProtoChunkedNoHeaderReceivedSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoChunkedNoHeaderReceivedName +
-        bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::NoHeaderReceived>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::NoHeaderReceived>" "__rustc::__rust_dealloc")) (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::NoHeaderReceived>") (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  have hloop := drop_proto_chunked_no_header_received_loop (b := b) (ext := ext) hdealloc_raw
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::NoHeaderReceived>"
-  dsimp only [dropProgAtExt, dropProtoChunkedNoHeaderReceivedName,
-    protoChunkedNoHeaderReceivedSize, BitVec.ofNat_eq_ofNat] at hloop hdealloc_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::chunked::NoHeaderReceived>" = entry
-  examples_hide_fetches; proto_chunked_no_header_received_main_steps entry
 
 section PlacedProtoChunkedNoHeaderReceived
 variable [LibsignalPlacement]

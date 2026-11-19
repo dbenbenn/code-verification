@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.PrefixRedsHonest
+public import Computational.Proofs.E2E.Dsl.PrefixRedsHonest -- proof-setup: allow-public-import
 import Computational.Proofs.LibsignalCli.KeyInd1RealRedsCosted
 import Computational.Proofs.LibsignalCli.KeyInd1RealReds
 import Computational.Proofs.ReductionDsl.Bridge
@@ -24,7 +24,7 @@ Establishes concrete step-cost, syntax-size, and query-count bounds, per-instanc
 transfer, and exact evaluation equivalence with `bhKindRedWith`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -81,7 +81,7 @@ variable {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
   {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
 
 /-- Session-promotion step of `kindRedHonest` at challenge bit `some σ.b`. -/
-def kindStartStepC (subs : M3SubprogramsIface ℓ S P C K decT encT)
+@[expose] def kindStartStepC (subs : M3SubprogramsIface ℓ S P C K decT encT)
     (b : SignalPqxdh.QueryBudget) (qStart : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (σE : Expr (e2eOps ℓ P C K decT encT) Γ (e2eDrvStateTy S ℓ))
     (sidE : Expr (e2eOps ℓ P C K decT encT) Γ (sidT S)) :
@@ -107,7 +107,7 @@ def kindStartStepC (subs : M3SubprogramsIface ℓ S P C K decT encT)
               .v1
               .v0)))))
 
-def kindHandleHonest (subs : M3SubprogramsIface ℓ S P C K decT encT)
+@[expose] def kindHandleHonest (subs : M3SubprogramsIface ℓ S P C K decT encT)
     (b : SignalPqxdh.QueryBudget) (qStart qDR qep : ℕ) :
     Comp (e2eOps ℓ P C K decT encT) (e2eKeyIndTargetIface S ℓ)
       [e2eDrvStateTy S ℓ, e2eGameQT S ℓ]
@@ -126,7 +126,7 @@ def kindHandleHonest (subs : M3SubprogramsIface ℓ S P C K decT encT)
       (.ret (.pair (.inr (.fst .v0)) (.snd .v0))))
 
 /-- One-stage handshake reduction over `e2eOps` and `e2eSamplers`. -/
-@[reducible] def kindRedHonest (subs : M3SubprogramsIface ℓ S P C K decT encT)
+@[expose, reducible] def kindRedHonest (subs : M3SubprogramsIface ℓ S P C K decT encT)
     (b : SignalPqxdh.QueryBudget) (qStart qDR qep : ℕ) :
     CostedReduction (e2eOps ℓ P C K decT encT)
       (e2eKeyIndTargetIface S ℓ)
@@ -138,14 +138,14 @@ def kindHandleHonest (subs : M3SubprogramsIface ℓ S P C K decT encT)
   finish := .ret (subs.drv.finishKindE qStart .v0 .v1)
 
 /-- Combined composition reduction bundle pairing `kindRedHonest` and `prefixRedHonest`. -/
-@[reducible] def compositionRedsHonest {qep : ℕ}
+@[expose, reducible] def compositionRedsHonest {qep : ℕ}
     (subs : M3SubprogramsIface ℓ S P C K decT encT)
     (b : SignalPqxdh.QueryBudget) (qStart qDR : ℕ) :
     CompositionCostedReductionsHonest S ℓ P C K qep decT encT where
   kindRed := kindRedHonest subs b qStart qDR qep
   prefixRed := prefixRedHonest subs b qStart qDR qep
 
-@[reducible] def compositionFamilyHonest {qep : ℕ}
+@[expose, reducible] def compositionFamilyHonest {qep : ℕ}
     (subs : M3SubprogramsIface ℓ S P C K decT encT) :
     CompositionCostedReductionFamilyHonest S ℓ P C K qep decT encT :=
   fun b qStart qDR => compositionRedsHonest subs b qStart qDR
@@ -191,17 +191,17 @@ theorem kindRedHonest_totalQueries_le (subs : M3SubprogramsIface ℓ S P C K dec
   simp only [Nat.zero_add, Nat.add_zero]
   exact (Nat.mul_le_mul_left qTot hhand).trans (by omega)
 
-def m3KindEndpointCost (subs : M3SubprogramsIface ℓ S P C K decT encT) (qStart : ℕ) : ℕ :=
+@[expose] def m3KindEndpointCost (subs : M3SubprogramsIface ℓ S P C K decT encT) (qStart : ℕ) : ℕ :=
   subs.drv.initKindCost + subs.drv.finishKindCost qStart + 20
 
-def m3KindStepCost (subs : M3SubprogramsIface ℓ S P C K decT encT)
+@[expose] def m3KindStepCost (subs : M3SubprogramsIface ℓ S P C K decT encT)
     (b : SignalPqxdh.QueryBudget) (qStart qDR qep : ℕ) : ℕ :=
   max (subs.drv.kiQueryOkCost b.q_total qStart + subs.drv.mirrorCost)
       (subs.drv.prepStartSpkCost qStart b.q_total b.q_total b.q_total b.q_total +
         subs.startExt.finishStartSpkCost qStart b.q_total b.q_total b.q_total b.q_total) +
     subs.localSm.stepLocalSmCost qStart b.q_total b.q_total qDR qep + 450
 
-def m3LeafCostBound (subs : M3SubprogramsIface ℓ S P C K decT encT)
+@[expose] def m3LeafCostBound (subs : M3SubprogramsIface ℓ S P C K decT encT)
     (b : SignalPqxdh.QueryBudget) (qStart qDR qep qTot : ℕ) : ℕ :=
   max (m3KindEndpointCost subs qStart + qTot * m3KindStepCost subs b qStart qDR qep)
       (m3PrefixEndpointCost subs b qStart + qTot * m3PrefixStepCost subs b qStart qDR qep)
@@ -277,7 +277,7 @@ theorem kindRedHonest_totalCost_le_leaf (subs : M3SubprogramsIface ℓ S P C K d
     Comp.cost, Expr.cost, Expr.v0, Expr.v1] at hinit hfin hmul ⊢
   omega
 
-def m3KindSizeBound {subs : M3SubprogramsIface ℓ S P C K decT encT}
+@[expose] def m3KindSizeBound {subs : M3SubprogramsIface ℓ S P C K decT encT}
     (sz : M3SubprogramsSizeIface subs)
     (b : SignalPqxdh.QueryBudget) (qStart qDR qep : ℕ) : ℕ :=
   sz.initKindSize +
@@ -288,7 +288,7 @@ def m3KindSizeBound {subs : M3SubprogramsIface ℓ S P C K decT encT}
     sz.finishStartSpkSize qStart b.q_total b.q_total b.q_total b.q_total +
     sz.stepLocalSmSize qStart b.q_total b.q_total qDR qep + 200
 
-def m3LeafSizeBound {subs : M3SubprogramsIface ℓ S P C K decT encT}
+@[expose] def m3LeafSizeBound {subs : M3SubprogramsIface ℓ S P C K decT encT}
     (sz : M3SubprogramsSizeIface subs)
     (b : SignalPqxdh.QueryBudget) (qStart qDR qep : ℕ) : ℕ :=
   max (m3KindSizeBound sz b qStart qDR qep)
@@ -358,19 +358,6 @@ theorem kindRedHonest_size_le_leaf {subs : M3SubprogramsIface ℓ S P C K decT e
     Expr.v0, Expr.v1] at hinit hfin hhand ⊢
   omega
 
-theorem kindRedHonest_gRedBounded_of_cost (subs : M3SubprogramsIface ℓ S P C K decT encT)
-    (b : SignalPqxdh.QueryBudget) (qStart qDR qep qTot B : ℕ)
-    (hCost : (kindRedHonest subs b qStart qDR qep).totalCost qTot ≤ B)
-    (hSize : (kindRedHonest subs b qStart qDR qep).size ≤
-      reductionSizeBudget + 2 ^ 12 * bits B) :
-    GRedBounded (kindRedHonest subs b qStart qDR qep)
-      (fun _ => 1) (fun _ => 0) qTot (2 * qTot) B :=
-  gRedBounded_of_bounds (kindRedHonest subs b qStart qDR qep)
-    (fun _ => 1) (fun _ => 0) qTot (2 * qTot) B hCost hSize
-    (kindRedHonest_totalQueries_le subs b qStart qDR qep qTot)
-    (m4_e2eOps_sizeHonest ℓ P C K decT encT)
-    (m4_e2eSamplers_sizeHonest ℓ)
-
 end Program
 
 /-! ## Bundle cost-budget predicates -/
@@ -423,7 +410,7 @@ abbrev M3SubprogramsBundleCostBounded
     (subs : M3SubprogramsIface ℓ S P C K decT encT) : Prop :=
   M3SubprogramsCostBoundedAt b qStart qDR qep (bhE2ECostBudgetHonest S b qStart qDR qep ℓ) subs
 
-def M3SubprogramsCostBounded (qep : ℕ)
+@[expose] def M3SubprogramsCostBounded (qep : ℕ)
     (subs : M3SubprogramsIface ℓ S P C K decT encT) : Prop :=
   ∀ (b : SignalPqxdh.QueryBudget) (qStart qDR : ℕ),
     M3SubprogramsBundleCostBounded b qStart qDR qep subs

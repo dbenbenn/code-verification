@@ -9,10 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3AllocStdinGhostHooks
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3AllocStdinGhostHooks -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Generic First-Stop, `CallerLrUnmapped`, `ExecFrozen`, and Scoped `Steps` Lifts
@@ -30,7 +34,7 @@ replay:
    and `StepsUntil` program lifts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -1317,7 +1321,7 @@ theorem h2fsgen_real_subroutine_run_visitedIn_of_stripS {α : Type}
 
 /-- Every `P2`-hooked address (`P2.externAt? pc ≠ none`) is non-fetchable in `Program.pureMem`
 across all `KeepsFrozen` evolutions of `m`. -/
-def h2fsgen_HooksUnfetched (P2 : Program) (m : Memory) : Prop :=
+@[expose] def h2fsgen_HooksUnfetched (P2 : Program) (m : Memory) : Prop :=
   ∀ (m' : Memory) (pc : BitVec 64),
     m.KeepsFrozen m' → P2.externAt? pc ≠ none → Program.pureMem.fetchMem m' pc = none
 

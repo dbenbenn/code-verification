@@ -9,13 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonStage2Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidMatchPathAPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverAuxPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverFoldsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3StageP3Prev1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonStage2Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidMatchPathAPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverAuxPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverFoldsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3StageP3Prev1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Overwrite-Path (`Path C Over`) `slotOutTr` Packaging Helpers
@@ -26,7 +29,7 @@ Pure and frame-arithmetic `slotOutTr` packaging helpers on `decPkOverDef`
 `pm.serialized`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -52,15 +55,6 @@ open CryptoVerification.SignalSession.Cli.RunCompose hiding Bytes
 open CryptoVerification.SignalSession.Cli.RunProofs
 
 /-! ## 1. `slotOutTr` & Postcondition Packaging Helpers on `decPkOverDef` -/
-
-theorem decPkOk0_of_d3_pkToE_aux {W : PEParams}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {F : FsFiles} {peer me : AddrVal} {pm : PreKeySignalMessage} {m : PreKeyMessageFields}
-    (hd3 : DecPkOkD3 W Scope F peer me pm) (hpk : pkToE? pm = some m) :
-    DecPkOk₀ W Scope F peer me (pmOfE m pm.message) := by
-  obtain ⟨m0, _, _, hpk0, hdec0⟩ := hd3
-  cases Option.some.inj (hpk0.symm.trans hpk)
-  exact hdec0
 
 theorem x29_eq_sp_add_c70_over_d3_placed {s0 s2 : State}
     (hx29 : s2.readReg64 .x29 = s0.sp - 0x60#64)

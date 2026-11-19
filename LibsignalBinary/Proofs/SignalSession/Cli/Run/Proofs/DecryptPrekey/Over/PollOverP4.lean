@@ -9,15 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.S_d2c
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1Store
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmt
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.S_d2c -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1Store -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmt -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeCoins
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreSessionPrev1
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
-import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathACore -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathAKeys
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathB
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # CLI Poll Overwrite-Path (`Path C`) Stage P3/P4 Kit and Pure Step Glue
@@ -27,7 +33,7 @@ session-store kit (`cliPollSessPrev1Kit`, `cliPollStorePrev1Ops`, `cliPollSess_p
 proves pure `decPkDefD2c` Path C step lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -83,7 +89,7 @@ theorem overScratch_eq_sp538_spHighGaps (sp : BitVec 64) :
 
 /-- Stack slots in `stageP3StackFrameAt` outside `Over.overScratch sp` (framed across
 `StageP3Prev1VRegsStmt`). -/
-def stageP3OverStackFrameAt (sp remoteIkPtr remAddrPtr : BitVec 64) : SepProp :=
+@[expose] def stageP3OverStackFrameAt (sp remoteIkPtr remAddrPtr : BitVec 64) : SepProp :=
   (sp ↦₆₄ 0#64) ∗
   spLowGapsAt sp ∗
   ((sp + 0x90#64) ↦₆₄ remoteIkPtr) ∗
@@ -116,7 +122,7 @@ structure CliSessPrev1Inv (peer : AddrGhost) (d : DirGhost) : Prop where
 
 /-- Spatial store predicate for `cliPollSessPrev1Kit` (named `def` so `sep_frame` cancels it as an
 atom without exposing pure `⌜...⌝` conjuncts in equation mode). -/
-def cliSessPrev1StoreAt (A : RustAlloc) (peer : AddrGhost) (self : BitVec 64)
+@[expose] def cliSessPrev1StoreAt (A : RustAlloc) (peer : AddrGhost) (self : BitVec 64)
     (d : DirGhost) : SepProp :=
   ⌜CliSessPrev1Inv peer d⌝ ∗ dirAt A self d
 
@@ -130,7 +136,7 @@ abbrev cliPollSessPrev1Kit (A : RustAlloc) (b : BitVec 64) (F0 : FsFiles)
 /-- `StorePrev1Ops` on `cliPollSessPrev1Kit`: `store_session` serializes `(sess, [enc])` to
 `Over.encodeRecordPrev1 sess enc` and buffers it in `d.put (Cli.addressText rem) ...` with `[]`
 trace events. -/
-def cliPollStorePrev1Ops {A : RustAlloc} {b : BitVec 64} {F0 : FsFiles}
+@[expose] def cliPollStorePrev1Ops {A : RustAlloc} {b : BitVec 64} {F0 : FsFiles}
     {peer : AddrGhost} {σ : DpKitStk} :
     Over.StorePrev1Ops (cliPollSessPrev1Kit A b F0 peer σ) where
   RecPrev1Ok := fun G sess enc =>
@@ -154,12 +160,6 @@ theorem cliPollSessPrev1Kit_storeAt_entails_dirAt {A : RustAlloc} {b : BitVec 64
     (cliPollSessPrev1Kit A b F0 peer σ).storeAt self d ⊢ dirAt A self d := by
   dsimp only [cliPollSessPrev1Kit, cliSessPrev1StoreAt]
   exact Entails.pure_left fun _ => Entails.refl _
-
-theorem cliPollSess_prev1VtablesOk {A : RustAlloc} {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img) (F0 : FsFiles)
-    (peer : AddrGhost) (σ : DpKitStk) :
-    SessionOnlyVtablesOk img (cliPollSessPrev1Kit A img.base F0 peer σ) :=
-  cliSessionOnlyVtablesOk himg ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 private theorem extract_prev1_pure3 {p1 p2 p3 : Prop} {box dir rest R : SepProp} {m : Memory}
     (hm : m ⊨ (⌜p1⌝ ∗ (⌜p2⌝ ∗ box ∗ (⌜p3⌝ ∗ dir) ∗ rest)) ∗ R) :
@@ -214,91 +214,6 @@ private theorem prev1_storePoll_post_sat {p : Prop} {q : Except Unit Unit → Pr
   refine ⟨hq hp, Arm64.Satisfies.mono (sepConj_mono_left ?_) hm⟩
   rw [← sepConj_assoc outA outB tail]
   exact sepConj_mono_right (sepConj_mono_left (Entails.pure_right hinv' (Entails.refl dir0)))
-
-theorem cliPollSess_prev1KitOkSE (W : CliHooks) {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img) (F0 : FsFiles)
-    (peer : AddrGhost) (B : RunBudgets) :
-    Over.SessionPrev1KitOkSE
-      (cliPollSessPrev1Kit E2E.HooksE.A0 img.base F0 peer (cliKitStk B))
-      cliPollStorePrev1Ops (cliExterns W) where
-  storeShim := Store.StoreSessionPrev1.sessStoreShim_cli_at W himg
-    (by dsimp only [cliPollSessPrev1Kit, cliPollSessKit, cliSessionStoreSpec, cliKitStk]; decide)
-  storePollPrev1 := by
-    have h := Store.StoreSessionPrev1.sessStorePollPrev1_cli_at W himg
-      (stk := (cliKitStk B).sessStorePoll)
-      (by dsimp only [cliKitStk]; decide)
-    refine subroutine_ok_map_panic h ?_
-    rintro ⟨call, self, d⟩ R s0 hpre
-    obtain ⟨_, ⟨_, _, _hrec, haddr⟩, hinv⟩ := extract_prev1_storePoll_pure hpre
-    have hname : call.addr.name.bytes = peer.name.bytes := congrArg AddrVal.name haddr
-    let x : Store.StoreSessionPrev1.SessStorePollPrev1Ghost :=
-      ⟨call.fut, self, call.out, call.addrA, call.addr, call.recA,
-       call.prevCap, call.prevPtr, call.G, call.sess, call.enc, d⟩
-    refine ⟨x, R, ?_, ?_, fun _ hpan => hpan⟩
-    · exact Arm64.Satisfies.mono
-        (sepConj_mono_left
-          (prev1_storePoll_pre_entails fun _ ⟨hx0, hx8, ⟨hcan, hlen⟩, _⟩ hinv' =>
-            ⟨hx0, hx8, hname ▸ hinv'.nameLt, hcan, hlen, hinv'.changedLt.1⟩))
-        hpre
-    · intro sf hpost
-      have hinv_put : CliSessPrev1Inv peer
-          (d.put (Cli.addressText call.addr.val) (Over.encodeRecordPrev1 call.sess call.enc)) := by
-        rw [haddr]
-        exact ⟨hinv.nameLt,
-          Store.StoreSessionPrev1.changedLt_put_self
-            (Over.encodeRecordPrev1 call.sess call.enc) hinv.changedLt⟩
-      exact prev1_storePoll_post_sat
-        (fun htr => ⟨rfl, by
-          show sf.trace = s0.trace ++ []
-          rw [List.append_nil]
-          exact htr⟩)
-        hinv_put rfl rfl hpost
-  storeFutDrop := Store.StoreSessionPrev1.sessStoreFutDrop_cli_at W img
-
-/-- `(P : PEParams) (A : RustAlloc)` contract-backed `SessionPrev1KitOkSE` on `cliExternsWith ext`
-from `CliExternsOk P A ext`. -/
-theorem cliPollSess_prev1KitOkSE_ext {P : PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img) (F0 : FsFiles)
-    (peer : AddrGhost) (B : RunBudgets) :
-    Over.SessionPrev1KitOkSE
-      (cliPollSessPrev1Kit A img.base F0 peer (cliKitStk B))
-      cliPollStorePrev1Ops (cliExternsWith ext) where
-  storeShim := Store.StoreSessionPrev1.sessStoreShim_ext_at hOk himg
-    (by dsimp only [cliPollSessPrev1Kit, cliPollSessKit, cliSessionStoreSpec, cliKitStk]; decide)
-  storePollPrev1 := by
-    have h := Store.StoreSessionPrev1.sessStorePollPrev1_ext_at hOk himg
-      (stk := (cliKitStk B).sessStorePoll)
-      (by dsimp only [cliKitStk]; decide)
-    refine subroutine_ok_map_panic h ?_
-    rintro ⟨call, self, d⟩ R s0 hpre
-    obtain ⟨_, ⟨_, _, _hrec, haddr⟩, hinv⟩ := extract_prev1_storePoll_pure hpre
-    have hname : call.addr.name.bytes = peer.name.bytes := congrArg AddrVal.name haddr
-    let x : Store.StoreSessionPrev1.SessStorePollPrev1Ghost :=
-      ⟨call.fut, self, call.out, call.addrA, call.addr, call.recA,
-       call.prevCap, call.prevPtr, call.G, call.sess, call.enc, d⟩
-    refine ⟨x, R, ?_, ?_, fun _ hpan => hpan⟩
-    · exact Arm64.Satisfies.mono
-        (sepConj_mono_left
-          (prev1_storePoll_pre_entails fun _ ⟨hx0, hx8, ⟨hcan, hlen⟩, _⟩ hinv' =>
-            ⟨hx0, hx8, hname ▸ hinv'.nameLt, hcan, hlen, hinv'.changedLt.1⟩))
-        hpre
-    · intro sf hpost
-      have hinv_put : CliSessPrev1Inv peer
-          (d.put (Cli.addressText call.addr.val) (Over.encodeRecordPrev1 call.sess call.enc)) := by
-        rw [haddr]
-        exact ⟨hinv.nameLt,
-          Store.StoreSessionPrev1.changedLt_put_self
-            (Over.encodeRecordPrev1 call.sess call.enc) hinv.changedLt⟩
-      exact prev1_storePoll_post_sat
-        (fun htr => ⟨rfl, by
-          show sf.trace = s0.trace ++ []
-          rw [List.append_nil]
-          exact htr⟩)
-        hinv_put rfl rfl hpost
-  storeFutDrop := Store.StoreSessionPrev1.sessStoreFutDrop_ext_at hOk img
-
-/-! ## 3. Pure `decPkDefD2c` Path C Agreement Lemmas -/
 
 /-- Because `Slots.loadRec (fun _ => False) F peer` can never return `.ok (some r)`,
 `DecPkOkD2c W Scope F peer me pm` implies `DecPkOk₀ W (fun _ => False) F peer me pm`,
@@ -648,6 +563,4 @@ theorem decPkDefD2c_pathC_ok (X : UnreachedPqxdhPrimitives) (W : PEParams)
   exact ⟨hDec, hWr⟩
 
 end CryptoVerification.SignalSession.Cli.RunProofs.Poll
-
-
 

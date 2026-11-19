@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Model
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSize
+public import LibsignalBinary.Proofs.SpqrV1.Top.StateSize -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeStep
 
 /-!
@@ -23,7 +23,7 @@ occurs only in `KeysSampled.recv_ct1_chunk` (`- ek.length + (ek.length + 352) + 
 `send_ct2_encoder` (`160 + 352 = 512`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

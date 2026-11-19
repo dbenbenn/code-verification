@@ -19,11 +19,11 @@
 # v4.35.0 on, comparator is part of core (`lake comparator`), see `comparator/README.md`.
 set -euo pipefail
 
-# leanprover/comparator, tag v4.34.0.
-COMPARATOR_REV='d03acab154d269c06e60e4de7e4cc85deebff94b'
-COMPARATOR_TOOLCHAIN='leanprover/lean4:v4.34.0'
-# leanprover/lean4export, tag v4.34.0 (the revision comparator's `lake-manifest.json` pins).
-LEAN4EXPORT_REV='076e8e57707e813375e8f9da8bf989799ace9680'
+# leanprover/comparator, tag v4.35.0.
+COMPARATOR_REV='e3dcf3083fc53d44b27a4431fabf7d43181583f5'
+COMPARATOR_TOOLCHAIN='leanprover/lean4:v4.35.0'
+# leanprover/lean4export, tag v4.35.0 (the revision comparator's `lake-manifest.json` pins).
+LEAN4EXPORT_REV='5a9a355dc6c5fd82b69058d433e2ae2e8dfbf8fe'
 # Zouuup/landrun `main` (comparator needs `--ldd`/`--add-exec`, which are not in a release yet).
 LANDRUN_REV='ec104f6edc1e14d7fec6d31146f1ec6f9c192c5a'
 # Go toolchain for landrun, used only when `go` is not on PATH.

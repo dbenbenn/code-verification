@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1Placed
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3
@@ -32,7 +32,7 @@ Composes `<Message>::deserialize`, `<States>::from_pb`, and `<States>::recv` (`+
 in `SepWPpLS` for `spqr::recv` (Block `329`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.Recv
 

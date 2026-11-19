@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesFinish1Placed
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesFinish1Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -17,6 +17,7 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChain
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesFinish2
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable `spqr::send`: Non-Looping `InnerState` Drop Variants & `PolynomialDecoder` Loop
@@ -25,7 +26,7 @@ Relocatable symbolic execution of the four non-looping `V1State.InnerState` drop
 shared `PolynomialDecoder` drop loop in `spqr::send::<HookRng>` (Block `124`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -65,7 +66,7 @@ private theorem send_noneCap2_add_two_beq_zero :
 private theorem send_noneCap2_add_two_bne_zero :
     (0xfffffffffffffffe#64 + 2#64 != 0#64) = false := rfl
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff Program.fnAddr
   v1StatePBPinnedAt
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero spqrSendPlacedEntry
 attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero Drop.noneCap_add_two_beq_zero

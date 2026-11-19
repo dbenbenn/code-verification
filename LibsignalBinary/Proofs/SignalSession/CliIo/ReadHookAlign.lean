@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadStdinProof
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileProof
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.CliIo.ReadStdinProof
+public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileProof -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileOpenSteps
+public import ProofLib.SepLogic.WPp
 
 /-!
 # Semantic and Spatial Alignment of `CliIo` Read Proofs with CLI Contracts
@@ -25,7 +27,7 @@ Aligns `CliIo` read postconditions with the `signal-session` CLI contracts:
    and `cliIoReadFileResult`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -297,7 +299,7 @@ theorem cliIoStdinLoopResult_entails_overCap {oom : State → State → Prop}
 
 /-- Cap-aware outcome of `signal_session_io::read_file`: rejects `4096 ≤ path.length`,
     `0#8 ∈ path`, directory/blocking-ancestor errors, and files exceeding `cliIoFileCap` (`2^21`). -/
-def cliIoReadFileExpected (files : String → Option FsEntry) (path : List (BitVec 8)) :
+@[expose] def cliIoReadFileExpected (files : String → Option FsEntry) (path : List (BitVec 8)) :
     Except Unit (List (BitVec 8)) :=
   if 4096 ≤ path.length ∨ 0#8 ∈ path then .error ()
   else

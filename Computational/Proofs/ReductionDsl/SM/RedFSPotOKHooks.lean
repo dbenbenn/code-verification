@@ -10,8 +10,10 @@ limitations under the License.
 module
 
 public import Computational.Proofs.ReductionDsl.SM.RedFS -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Potential -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Potential
 import Computational.Proofs.ReductionDsl.Notation
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.SpecLemmas.Reductions.ReductionDsl.Core
 
 /-!
 # Hook-level potential bounds for FS-AEAD reductions

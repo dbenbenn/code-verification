@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.Defs
-import GeneratedLean.LibsignalSession -- shake: keep
 import LibsignalBinary.Proofs.AesCbc.Bytes
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
@@ -53,7 +53,7 @@ theorem zero64_concat2 : (0#64 ++ 0#64 : BitVec 128) = 0#128 := rfl
 theorem adrp_177112_mask : (177112#64 &&& bv% (2 ^ 64 - 4096) : BitVec 64) = 176128#64 := rfl
 
 /-- Stack pointer of `new_from_slice` after the prologue (`s₀.sp - 544`). -/
-def nfsSp (s₀ : State) : BitVec 64 := s₀.sp - 544#64
+@[expose] def nfsSp (s₀ : State) : BitVec 64 := s₀.sp - 544#64
 
 theorem nfs_sp_eq_add (s₀ : State) :
     s₀.sp = nfsSp s₀ + 544#64 := by
@@ -75,14 +75,6 @@ theorem nfs_sp_add_544_align {s₀ : State} (h : (s₀.sp &&& 0b1111#64) = 0#64)
 theorem nfsSp_add_464_sub_464 (s₀ : State) :
     (nfsSp s₀ + 464#64) - 464#64 = nfsSp s₀ := by
   bv_omega
-
-theorem nfs_adrp_x22_0x2b3d8 {b : BitVec 64} (hb : (b &&& 0xfff#64) = 0#64) :
-    ((b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as crypto_common::KeyInit>::new_from_slice [local#1]" + 40)) &&& 0xfffffffffffff000#64) + bv% (ls_str% "kyber_pre_key_pu" + 256 - page% (ls_off% "<libsignal_protocol::protocol::SenderKeyMessage as core::convert::TryFrom<&[u8]>>::try_from" + 312)) = b + bv% (ls_str% "kyber_pre_key_pu" + 256) := by
-  bv_bits
-
-theorem nfs_adrp_x22_0x2b3d8_assoc {b : BitVec 64} (hb : (b &&& 0xfff#64) = 0#64) :
-    (((b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as crypto_common::KeyInit>::new_from_slice [local#1]" + 40)) &&& 0xfffffffffffff000#64) + bv% (page% (ls_str% "kyber_pre_key_pu" + 256) - page% (ls_off% "<libsignal_protocol::protocol::SenderKeyMessage as core::convert::TryFrom<&[u8]>>::try_from" + 312))) + bv% ((ls_str% "kyber_pre_key_pu" + 256) % 4096) = b + bv% (ls_str% "kyber_pre_key_pu" + 256) := by
-  bv_bits
 
 theorem nfs_ule_65_false {len : BitVec 64} (h : len.toNat ≤ 64) :
     BitVec.ule 0x41#64 len = false := by
@@ -193,10 +185,10 @@ theorem write64_quad_read64_eq_writeBytes_32 (m₁ m₂ : Memory) (dst src : Bit
 
 /-! ## 16-Byte XOR Chunk Helpers -/
 
-def byteAt (l : List (BitVec 8)) (i : ℕ) : BitVec 8 :=
+@[expose] def byteAt (l : List (BitVec 8)) (i : ℕ) : BitVec 8 :=
   l.getD i 0#8
 
-def slice16 (l : List (BitVec 8)) (k : ℕ) : List (BitVec 8) :=
+@[expose] def slice16 (l : List (BitVec 8)) (k : ℕ) : List (BitVec 8) :=
   [byteAt l (k + 0), byteAt l (k + 1), byteAt l (k + 2), byteAt l (k + 3),
    byteAt l (k + 4), byteAt l (k + 5), byteAt l (k + 6), byteAt l (k + 7),
    byteAt l (k + 8), byteAt l (k + 9), byteAt l (k + 10), byteAt l (k + 11),
@@ -427,9 +419,9 @@ structure NfsSavedStack (s₀ : State) (m : Memory) : Prop where
 structure NfsMemInv (b : BitVec 64) (s₀ : State) (m : Memory) : Prop where
   rw_stack : m.RW (nfsSp s₀) 544
   rw_out : m.RW (s₀.readReg64 .x0) 0x98
-  readable_iv : m.Readable (b + bv% (ls_str% "kyber_pre_key_pu" + 256)) 32
-  iv_bytes : m.readBytes (b + bv% (ls_str% "kyber_pre_key_pu" + 256)) 32 = shaStateBytes sha256IV
-  disj_iv_stack : DisjointRegions (b + bv% (ls_str% "kyber_pre_key_pu" + 256)) 32 (nfsSp s₀) 544
+  readable_iv : m.Readable (b + 0x100#64) 32
+  iv_bytes : m.readBytes (b + 0x100#64) 32 = shaStateBytes sha256IV
+  disj_iv_stack : DisjointRegions (b + 0x100#64) 32 (nfsSp s₀) 544
   disj_out_stack : DisjointRegions (s₀.readReg64 .x0) 0x98 (nfsSp s₀) 544
   saved : NfsSavedStack s₀ m
   frame : Frame s₀.mem m [(s₀.readReg64 .x0, 0x98), (nfsSp s₀, 544)]
@@ -441,7 +433,7 @@ structure NfsRegInv (b : BitVec 64) (s₀ s : State) : Prop where
   x29_eq : s.readReg64 .x29 = nfsSp s₀ + 464#64
   x19_eq : s.readReg64 .x19 = s₀.readReg64 .x0
   x20_eq : s.readReg64 .x20 = 1#64
-  x22_eq : s.readReg64 .x22 = b + bv% (ls_str% "kyber_pre_key_pu" + 256)
+  x22_eq : s.readReg64 .x22 = b + 0x100#64
   x25_eq : s.readReg64 .x25 = s₀.readReg64 .x25
   x26_eq : s.readReg64 .x26 = s₀.readReg64 .x26
   x27_eq : s.readReg64 .x27 = s₀.readReg64 .x27
@@ -517,7 +509,7 @@ theorem NfsMemInv.of_agreesOutside_low {b : BitVec 64} {s₀ : State} {m m' : Me
     (hoff : 0 < sz ∧ off.toNat + sz ≤ 432) :
     NfsMemInv b s₀ m' := by
   have hf := agreesOutside_toFrame hA
-  have hdisj_iv : DisjointRegions (nfsSp s₀ + off) sz (b + bv% (ls_str% "kyber_pre_key_pu" + 256)) 32 := by
+  have hdisj_iv : DisjointRegions (nfsSp s₀ + off) sz (b + 0x100#64) 32 := by
     refine hM.disj_iv_stack.symm.sub_left (nfsSp s₀ + off) ⟨hoff.1, ?_⟩
     rcases hoff with ⟨_, _⟩
     bv_omega
@@ -645,7 +637,7 @@ theorem write64_quad_320_eq_writeBytes_slice16 (m₁ m₂ : Memory) (sp : BitVec
       hread, slice16_32_48_eq_drop_32 l hl, writeBytes_append]
   rfl
 
-def nfsPrologueMem (s₀ : State) : Memory :=
+@[expose] def nfsPrologueMem (s₀ : State) : Memory :=
   ((((((((s₀.mem.write64 (nfsSp s₀ + 464#64) (s₀.readReg64 .x29)).write64
     (nfsSp s₀ + 472#64) (s₀.readReg64 .lr)).write64
     (nfsSp s₀ + 480#64) (s₀.readReg64 .x28)).write64
@@ -686,254 +678,6 @@ theorem nfsSavedStack_prologue_432 (s₀ : State) (m : Memory)
   }
 
 /-! ## Prologue, Key Copy, and First XOR Chunk (`0x2b3b0 → 0x2b654`) -/
-
-set_option maxHeartbeats 3200000 in
-theorem nfs_seg0 {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {s₀ : State}
-    (hpc : s₀.pc = b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as crypto_common::KeyInit>::new_from_slice [local#1]"))
-    (hstat : s₀.status = .Running)
-    (hlen : (s₀.readReg64 .x2).toNat ≤ 64)
-    (hiv : s₀.mem.readBytes (b + bv% (ls_str% "kyber_pre_key_pu" + 256)) 32 = shaStateBytes sha256IV)
-    (hb : (b &&& 0xfff#64) = 0#64)
-    (hread_iv : s₀.mem.Readable (b + bv% (ls_str% "kyber_pre_key_pu" + 256)) 32)
-    (hdisj_iv_stack : DisjointRegions (b + bv% (ls_str% "kyber_pre_key_pu" + 256)) 32 (s₀.sp - 544#64) 544)
-    (hrw_out : RW s₀.mem (s₀.readReg64 .x0) 0x98)
-    (hrw_stack : RW s₀.mem (s₀.sp - 544#64) 544)
-    (hdisj_out_stack : DisjointRegions (s₀.readReg64 .x0) 0x98 (s₀.sp - 544#64) 544)
-    (hdisj_key_stack : (s₀.readReg64 .x2).toNat = 0 ∨
-      DisjointRegions (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat (s₀.sp - 544#64) 544)
-    (hal : (s₀.sp &&& 0b1111#64) = 0#64) :
-    let key := s₀.mem.readBytes (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat
-    RunsTo (P b F alloc) s₀ (fun s' =>
-      s'.pc = b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as crypto_common::KeyInit>::new_from_slice [local#1]" + 476) ∧
-      s'.status = .Running ∧
-      NfsRegInv b s₀ s' ∧
-      NfsMemInv b s₀ s'.mem ∧
-      s'.readReg64 .x8 = 0x36#64 ∧
-      s'.readReg64 .x0 = nfsSp s₀ + 400#64 ∧
-      s'.readReg64 .x1 = nfsSp s₀ + 288#64 ∧
-      s'.readReg64 .x2 = 1#64 ∧
-      s'.readVReg128 2#5 = s'.mem.read64 (nfsSp s₀ + 152#64) ++ s'.mem.read64 (nfsSp s₀ + 144#64) ∧
-      s'.readVReg128 0#5 = s'.mem.read64 (nfsSp s₀ + 168#64) ++ s'.mem.read64 (nfsSp s₀ + 160#64) ∧
-      s'.mem.readBytes (nfsSp s₀ + 144#64) 32 = (keyBlock key).drop 32 ∧
-      s'.mem.readBytes (nfsSp s₀ + 288#64) 16 = slice16 (keyBlock key) 0 ∧
-      s'.mem.readBytes (nfsSp s₀ + 304#64) 16 = slice16 (keyBlock key) 16) := by
-  intro key
-  generalize hPost : (fun s' : State => _) = Post
-  have hkey_len : key.length ≤ 64 := by
-    dsimp only [key]; rw [Memory.readBytes_length]; exact hlen
-  have hkb_len : (keyBlock key).length = 64 := keyBlock_length hkey_len
-  have hsp₀ : s₀.sp = nfsSp s₀ + 544#64 := nfs_sp_eq_add s₀
-  have hal_nfs : (nfsSp s₀ &&& 0b1111#64) = 0#64 := nfs_sp_align hal
-  have hal_464 : ((nfsSp s₀ + 464#64) &&& 0b1111#64) = 0#64 := nfs_sp_add_464_align hal
-  have hal_544 : ((nfsSp s₀ + 544#64) &&& 0b1111#64) = 0#64 := nfs_sp_add_544_align hal
-  have hRW_stack : s₀.mem.RW (nfsSp s₀) 544 := hrw_stack
-  have hcond : BitVec.ule 0x41#64 (s₀.readReg64 .x2) = false := nfs_ule_65_false hlen
-  have hadrp1 : (((b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as crypto_common::KeyInit>::new_from_slice [local#1]" + 40)) &&& 0xfffffffffffff000#64) + bv% (page% (ls_str% "kyber_pre_key_pu" + 256) - page% (ls_off% "<libsignal_protocol::protocol::SenderKeyMessage as core::convert::TryFrom<&[u8]>>::try_from" + 312))) + bv% ((ls_str% "kyber_pre_key_pu" + 256) % 4096) = b + bv% (ls_str% "kyber_pre_key_pu" + 256) :=
-    nfs_adrp_x22_0x2b3d8_assoc hb
-  have hadrp2 : ((b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as crypto_common::KeyInit>::new_from_slice [local#1]" + 40)) &&& 0xfffffffffffff000#64) + bv% (ls_str% "kyber_pre_key_pu" + 256 - page% (ls_off% "<libsignal_protocol::protocol::SenderKeyMessage as core::convert::TryFrom<&[u8]>>::try_from" + 312)) = b + bv% (ls_str% "kyber_pre_key_pu" + 256) :=
-    nfs_adrp_x22_0x2b3d8 hb
-  sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step
-  sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step
-  have hA_pro : AgreesOutside s₀.mem (nfsPrologueMem s₀) (nfsSp s₀ + 464#64) 80 :=
-    agreesOutside_nfsPrologueMem s₀
-  have hA_zero : AgreesOutside (nfsPrologueMem s₀)
-      ((nfsPrologueMem s₀).writeBytes (nfsSp s₀ + 112#64) (List.replicate 64 0#8))
-      (nfsSp s₀ + 112#64) 64 := by
-    simpa using AgreesOutside.writeBytes_self (nfsPrologueMem s₀) (nfsSp s₀ + 112#64) (List.replicate 64 0#8)
-  have hread_key : ((nfsPrologueMem s₀).writeBytes (nfsSp s₀ + 112#64) (List.replicate 64 0#8)).readBytes
-      (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat = key := by
-    rcases hdisj_key_stack with h0 | hdisj_key_stack
-    · simp only [key, h0, Memory.readBytes]
-    have hdisj_key_pro : DisjointRegions (nfsSp s₀ + 464#64) 80 (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat := by
-      clear * - hdisj_key_stack
-      simp only [DisjointRegions, nfsSp] at hdisj_key_stack ⊢
-      bv_omega
-    have hdisj_key_112 : DisjointRegions (nfsSp s₀ + 112#64) 64 (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat := by
-      clear * - hdisj_key_stack
-      simp only [DisjointRegions, nfsSp] at hdisj_key_stack ⊢
-      bv_omega
-    rw [(agreesOutside_toFrame hA_zero).readBytes_eq (by simp [hdisj_key_112]) (by omega),
-        (agreesOutside_toFrame hA_pro).readBytes_eq (by simp [hdisj_key_pro]) (by omega)]
-  have hrw_memcpy : ((nfsPrologueMem s₀).writeBytes (nfsSp s₀ + 112#64) (List.replicate 64 0#8)).RW
-      (nfsSp s₀ + 112#64) (s₀.readReg64 .x2).toNat := by
-    have hrw0 : ((nfsPrologueMem s₀).writeBytes (nfsSp s₀ + 112#64) (List.replicate 64 0#8)).RW (nfsSp s₀) 544 :=
-      (Frame.rw_iff (agreesOutside_toFrame hA_zero) _ _).mpr
-        ((Frame.rw_iff (agreesOutside_toFrame hA_pro) _ _).mpr hrw_stack)
-    exact hrw0.sub (by clear * - hlen; bv_omega)
-  refine RunsTo.sess_memcpy_step
-    (hrun := by simp only [arm64_norm, hstat])
-    (hpc := rfl)
-    (hx0 := by simp only [arm64_norm])
-    (hx1 := by simp only [arm64_norm])
-    (hx2 := by simp only [arm64_norm])
-    (hlr := by simp only [arm64_norm]; rfl)
-    (hmem := write64_oct_zero_eq_writeBytes_64 (nfsPrologueMem s₀) (nfsSp s₀))
-    (hread := hread_key)
-    (hrw := hrw_memcpy)
-    ?_
-  rw [writeBytes_key_over_zero64]
-  have hA_k0 : AgreesOutside (nfsPrologueMem s₀)
-      ((nfsPrologueMem s₀).writeBytes (nfsSp s₀ + 112#64) (keyBlock key)) (nfsSp s₀ + 112#64) 64 := by
-    have h := AgreesOutside.writeBytes_self (nfsPrologueMem s₀) (nfsSp s₀ + 112#64) (keyBlock key)
-    rwa [hkb_len] at h
-  have hRW_k0 : ((nfsPrologueMem s₀).writeBytes (nfsSp s₀ + 112#64) (keyBlock key)).RW (nfsSp s₀) 544 :=
-    (Frame.rw_iff (agreesOutside_toFrame hA_k0) _ _).mpr
-      ((Frame.rw_iff (agreesOutside_toFrame hA_pro) _ _).mpr hrw_stack)
-  sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step
-  subst hPost
-  refine RunsTo.refl ?_
-  set m_k0 := (nfsPrologueMem s₀).writeBytes (nfsSp s₀ + 112#64) (keyBlock key)
-  have hk0_64 : m_k0.readBytes (nfsSp s₀ + 112#64) 64 = keyBlock key :=
-    Layout.readBytes_writeBytes_eq (nfsPrologueMem s₀) (nfsSp s₀ + 112#64) (keyBlock key) 64 hkb_len (by decide)
-  have hk0_take32 : m_k0.readBytes (nfsSp s₀ + 112#64) 32 = (keyBlock key).take 32 := by
-    have h := readBytes_slice_of_readBytes_eq m_k0 (nfsSp s₀ + 112#64) (keyBlock key)
-      (by rw [hkb_len]; exact hk0_64) 0 32 (by omega)
-    simpa using h
-  have hk0_drop32 : m_k0.readBytes (nfsSp s₀ + 144#64) 32 = (keyBlock key).drop 32 := by
-    have h := readBytes_slice_of_readBytes_eq m_k0 (nfsSp s₀ + 112#64) (keyBlock key)
-      (by rw [hkb_len]; exact hk0_64) 32 32 (by omega)
-    have hadd : (nfsSp s₀ + 112#64) + BitVec.ofNat 64 32 = nfsSp s₀ + 144#64 := by clear * -; bv_omega
-    rw [hadd, List.take_of_length_le (by simp [hkb_len])] at h
-    exact h
-  have hA_432 : AgreesOutside m_k0 (m_k0.write64 (nfsSp s₀ + 432#64) 1#64) (nfsSp s₀ + 432#64) 8 :=
-    AgreesOutside.write64_self m_k0 (nfsSp s₀ + 432#64) 1#64
-  have hf_k0 : Frame s₀.mem (m_k0.write64 (nfsSp s₀ + 432#64) 1#64)
-      [(s₀.readReg64 .x0, 0x98), (nfsSp s₀, 544)] := by
-    have hf0 : Frame s₀.mem s₀.mem [(s₀.readReg64 .x0, 0x98), (nfsSp s₀, 544)] := Frame.refl _ _
-    have hf1 := Frame.of_agreesOutside_stack hf0 hA_pro (by decide)
-    have hf2 := Frame.of_agreesOutside_stack hf1 hA_k0 (by decide)
-    exact Frame.of_agreesOutside_stack hf2 hA_432 (by decide)
-  have hM_432 : NfsMemInv b s₀ (m_k0.write64 (nfsSp s₀ + 432#64) 1#64) := {
-    rw_stack := (Frame.rw_iff hf_k0 _ _).mpr hrw_stack
-    rw_out := (Frame.rw_iff hf_k0 _ _).mpr hrw_out
-    readable_iv := (Frame.readable_iff hf_k0 _ _).mpr hread_iv
-    iv_bytes := by
-      have hd432 : DisjointRegions (nfsSp s₀ + 432#64) 8 (b + bv% (ls_str% "kyber_pre_key_pu" + 256)) 32 := by
-        clear * - hdisj_iv_stack; simp only [DisjointRegions, nfsSp] at hdisj_iv_stack ⊢; bv_omega
-      have hdk0 : DisjointRegions (nfsSp s₀ + 112#64) 64 (b + bv% (ls_str% "kyber_pre_key_pu" + 256)) 32 := by
-        clear * - hdisj_iv_stack; simp only [DisjointRegions, nfsSp] at hdisj_iv_stack ⊢; bv_omega
-      have hdpro : DisjointRegions (nfsSp s₀ + 464#64) 80 (b + bv% (ls_str% "kyber_pre_key_pu" + 256)) 32 := by
-        clear * - hdisj_iv_stack; simp only [DisjointRegions, nfsSp] at hdisj_iv_stack ⊢; bv_omega
-      rw [(agreesOutside_toFrame hA_432).readBytes_eq (by simp [hd432]) (by decide),
-          (agreesOutside_toFrame hA_k0).readBytes_eq (by simp [hdk0]) (by decide),
-          (agreesOutside_toFrame hA_pro).readBytes_eq (by simp [hdpro]) (by decide), hiv]
-    disj_iv_stack := hdisj_iv_stack
-    disj_out_stack := hdisj_out_stack
-    saved := nfsSavedStack_prologue_432 s₀ m_k0 hA_k0
-    frame := hf_k0
-  }
-  have hM_final : NfsMemInv b s₀
-      (((m_k0.write64 (nfsSp s₀ + 432#64) 1#64).writeBytes
-        (nfsSp s₀ + 288#64) (slice16 (keyBlock key) 0)).writeBytes
-        (nfsSp s₀ + 304#64) (slice16 (keyBlock key) 16)) :=
-    (hM_432.writeBytes_low 288#64 _ (by simp [slice16_length])).writeBytes_low
-      304#64 _ (by simp [slice16_length])
-  have h144_eq :
-      (((m_k0.write64 (nfsSp s₀ + 432#64) 1#64).writeBytes
-        (nfsSp s₀ + 288#64) (slice16 (keyBlock key) 0)).writeBytes
-        (nfsSp s₀ + 304#64) (slice16 (keyBlock key) 16)).readBytes (nfsSp s₀ + 144#64) 32 =
-      (keyBlock key).drop 32 := by
-    rw [readBytes_writeBytes_16_other _ _ _ _ _ _ (slice16_length _ _),
-        readBytes_writeBytes_16_other _ _ _ _ _ _ (slice16_length _ _),
-        (agreesOutside_toFrame hA_432).readBytes_eq
-          (by clear * -; simp only [List.mem_singleton, forall_eq, DisjointRegions]; bv_omega) (by decide),
-        hk0_drop32]
-  refine ⟨by simp only [arm64_norm], by simp only [arm64_norm, hstat],
-    ⟨by simp only [arm64_norm], hal_nfs, by simp only [arm64_norm],
-     by simp only [arm64_norm], by simp only [arm64_norm],
-     by simp only [arm64_norm], by simp only [arm64_norm],
-     by simp only [arm64_norm], by simp only [arm64_norm]⟩,
-    ?_,
-    by simp only [arm64_norm], by simp only [arm64_norm],
-    by simp only [arm64_norm], by simp only [arm64_norm],
-    by simp (config := { decide := true }) only [arm64_norm],
-    by simp (config := { decide := true }) only [arm64_norm],
-    ?_, ?_, ?_⟩
-  · dsimp only [State.setMem, State.writeReg64, State.writeVReg128, State.advancePC]
-    rw [write64_quad_288_eq_writeBytes_slice16 (m_k0.write64 (nfsSp s₀ + 432#64) 1#64) m_k0
-      (nfsSp s₀) (keyBlock key) hkb_len hk0_take32]
-    exact hM_final
-  · dsimp only [State.setMem, State.writeReg64, State.writeVReg128, State.advancePC]
-    rw [write64_quad_288_eq_writeBytes_slice16 (m_k0.write64 (nfsSp s₀ + 432#64) 1#64) m_k0
-      (nfsSp s₀) (keyBlock key) hkb_len hk0_take32]
-    exact h144_eq
-  · dsimp only [State.setMem, State.writeReg64, State.writeVReg128, State.advancePC]
-    rw [write64_quad_288_eq_writeBytes_slice16 (m_k0.write64 (nfsSp s₀ + 432#64) 1#64) m_k0
-      (nfsSp s₀) (keyBlock key) hkb_len hk0_take32]
-    exact (readBytes_writeBytes_16_other _ _ _ _ _ _ (slice16_length _ _)).trans
-      (readBytes_writeBytes_16_self _ _ _ _ (slice16_length _ _))
-  · dsimp only [State.setMem, State.writeReg64, State.writeVReg128, State.advancePC]
-    rw [write64_quad_288_eq_writeBytes_slice16 (m_k0.write64 (nfsSp s₀ + 432#64) 1#64) m_k0
-      (nfsSp s₀) (keyBlock key) hkb_len hk0_take32]
-    exact readBytes_writeBytes_16_self _ _ _ _ (slice16_length _ _)
-
-theorem nfs_chunk1 {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {s₀ s : State} {key : List (BitVec 8)}
-    (hlen : key.length ≤ 64)
-    (hpc : s.pc = b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as crypto_common::KeyInit>::new_from_slice [local#1]" + 476))
-    (hstat : s.status = .Running)
-    (hR : NfsRegInv b s₀ s)
-    (hM : NfsMemInv b s₀ s.mem)
-    (hx8 : s.readReg64 .x8 = 0x36#64)
-    (hx0 : s.readReg64 .x0 = nfsSp s₀ + 400#64)
-    (hx1 : s.readReg64 .x1 = nfsSp s₀ + 288#64)
-    (hx2 : s.readReg64 .x2 = 1#64)
-    (hs0 : s.mem.readBytes (nfsSp s₀ + 288#64) 16 = slice16 (keyBlock key) 0)
-    (hs16 : s.mem.readBytes (nfsSp s₀ + 304#64) 16 = slice16 (keyBlock key) 16) :
-    RunsTo (P b F alloc) s (fun s' =>
-      s'.pc = b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as crypto_common::KeyInit>::new_from_slice [local#1]" + 676) ∧
-      s'.status = .Running ∧
-      NfsRegInv b s₀ s' ∧
-      NfsMemInv b s₀ s'.mem ∧
-      s'.readReg64 .x8 = 0x36#64 ∧
-      s'.readReg64 .x0 = nfsSp s₀ + 400#64 ∧
-      s'.readReg64 .x1 = nfsSp s₀ + 288#64 ∧
-      s'.readReg64 .x2 = 1#64 ∧
-      s'.readReg64 .x10 = (byteAt (keyBlock key) 16).zeroExtend 64 ∧
-      s'.readReg64 .x11 = (byteAt (keyBlock key) 17).zeroExtend 64 ∧
-      s'.readVReg128 2#5 = s.readVReg128 2#5 ∧
-      s'.readVReg128 0#5 = s.readVReg128 0#5 ∧
-      s'.mem.readBytes (nfsSp s₀ + 288#64) 16 = slice16 ((keyBlock key).map (· ^^^ 0x36#8)) 0 ∧
-      s'.mem.readBytes (nfsSp s₀ + 304#64) 16 = slice16 (keyBlock key) 16) := by
-  generalize hPost : (fun s' : State => _) = Post
-  obtain ⟨hsp, hsp_align, hx29, hx19, hx20, hx22, hx25, hx26, hx27⟩ := hR
-  have hRW_stack : s.mem.RW (nfsSp s₀) 544 := hM.rw_stack
-  obtain ⟨hb0, hb1, hb2, hb3, hb4, hb5, hb6, hb7,
-          hb8, hb9, hb10, hb11, hb12, hb13, hb14, hb15⟩ :=
-    read8_16_of_readBytes_slice16 s.mem (nfsSp s₀) 288#64 (keyBlock key) 0 hs0
-  obtain ⟨hb16, hb17, -⟩ :=
-    read8_16_of_readBytes_slice16 s.mem (nfsSp s₀) 304#64 (keyBlock key) 16 hs16
-  simp only [Nat.add_zero, Nat.reduceAdd, BitVec.reduceAdd] at hb0 hb1 hb2 hb3 hb4 hb5 hb6 hb7 hb8 hb9 hb10 hb11 hb12 hb13 hb14 hb15 hb16 hb17
-  sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step
-  sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step
-  sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step
-  sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step
-  sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step; sess_step
-  subst hPost
-  refine RunsTo.refl ?_
-  refine ⟨by simp only [arm64_norm, hpc], by simp only [arm64_norm, hstat],
-    ⟨by simp only [arm64_norm, hsp], hsp_align, by simp only [arm64_norm, hx29],
-     by simp only [arm64_norm, hx19], by simp only [arm64_norm, hx20],
-     by simp only [arm64_norm, hx22], by simp only [arm64_norm, hx25],
-     by simp only [arm64_norm, hx26], by simp only [arm64_norm, hx27]⟩,
-    ?_,
-    by simp only [arm64_norm, hx8], by simp only [arm64_norm, hx0],
-    by simp only [arm64_norm, hx1], by simp only [arm64_norm, hx2],
-    by simp only [arm64_norm], by simp only [arm64_norm],
-    by simp only [arm64_norm], by simp only [arm64_norm],
-    ?_, ?_⟩
-  · dsimp only [State.setMem, State.writeReg64, State.writeVReg128, State.advancePC]
-    rw [write8_16_stack_288_xor _ _ _ _ (keyBlock_length hlen)]
-    exact hM.writeBytes_low 288#64 _ (by simp [slice16_length])
-  · dsimp only [State.setMem, State.writeReg64, State.writeVReg128, State.advancePC]
-    rw [write8_16_stack_288_xor _ _ _ _ (keyBlock_length hlen)]
-    exact readBytes_writeBytes_16_self _ _ _ _ (slice16_length _ _)
-  · dsimp only [State.setMem, State.writeReg64, State.writeVReg128, State.advancePC]
-    rw [write8_16_stack_288_xor _ _ _ _ (keyBlock_length hlen)]
-    exact (readBytes_writeBytes_16_other _ _ _ _ _ _ (slice16_length _ _)).trans hs16
-
-/-! ## Relocatable `[LibsignalPlacement]` Prologue and First Chunk (Block 114) -/
 
 set_option maxHeartbeats 3200000 in
 theorem nfs_seg0_placed [LibsignalPlacement]

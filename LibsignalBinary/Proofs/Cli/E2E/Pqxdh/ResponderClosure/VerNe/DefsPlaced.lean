@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Defs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ConstsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.PrevBridgePlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyBase
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP1
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ConstsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.PrevBridgePlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyBase
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP1
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 
@@ -26,7 +26,7 @@ Relocatable (`[LibsignalPlacement]`) error-exit postcondition (`stageP3ErrPostPr
 `+0x1e04 → ret` statement (`OverVerNe1e04CliA0PlacedStmtGen`) on Block `518` (`lsProg_518`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -43,13 +43,12 @@ open CryptoVerification.LibsignalTripleRatchet.FromRecordCallees (growOneSpeStac
 open CryptoVerification.E2E.Pqxdh.ResponderClosure hiding PanicOomProp
 open CryptoVerification.E2E.Pqxdh.ResponderClosure.P3P4
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure
-open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.GenP3
-open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched (stageP3ErrPostPrevEmpty)
+
 open CryptoVerification.CliHandshake.RespClosurePlaced
 
 /-- Relocatable Stage P3/P4 error-exit postcondition at `s0.readReg64 .x30` with
 `pqLogLevelCellPlaced` (`lsLogFilterAddr ↦₆₄ 0#64`). -/
-def stageP3ErrPostPrevEmptyPlaced [LibsignalPlacement] (A : RustAlloc) (s0 s : State)
+@[expose] def stageP3ErrPostPrevEmptyPlaced [LibsignalPlacement] (A : RustAlloc) (s0 s : State)
     (coroPtr outPtr : BitVec 64) (e : SignalProtocolError) : SepProp :=
   (∃∗ errsCap : BitVec 64, ∃∗ errsPtr : BitVec 64, ∃∗ errsLen : BitVec 64,
     ((s.sp + 0x3c8#64) ↦₆₄ errsCap) ∗ ((s.sp + 0x3d0#64) ↦₆₄ errsPtr) ∗
@@ -65,7 +64,7 @@ def stageP3ErrPostPrevEmptyPlaced [LibsignalPlacement] (A : RustAlloc) (s0 s : S
 
 /-- Relocatable `+0x1e04 → s0.readReg64 .x30` version-mismatch statement at `A = Record.A0`
 over a 1-element `previous_sessions` vector on `lsProg_518 ext`. -/
-def OverVerNe1e04CliA0PlacedStmtGen [LibsignalFullPlacement] (trackVRegs : Bool) : Prop :=
+@[expose] def OverVerNe1e04CliA0PlacedStmtGen [LibsignalFullPlacement] (trackVRegs : Bool) : Prop :=
   ∀ (ext : String → Option (State → State)),
     ∀ (s0 s s1 : State) (coroPtr ctxPtr outPtr initErrsPtr prevCap prevPtr ud0 : BitVec 64),
       initErrsPtr ≠ 0#64 →

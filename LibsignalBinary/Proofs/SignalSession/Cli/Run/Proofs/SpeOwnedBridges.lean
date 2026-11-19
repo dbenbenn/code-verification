@@ -9,7 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Error-Result to Owned `SignalProtocolError` Bridges
@@ -25,7 +27,7 @@ Note that `e ≠ .store ()` suffices on `ApiError AddrVal Unit` because `apiErrA
 owned `Vec<u8>` at `+8`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -117,17 +119,6 @@ theorem apiEncResultAt_err_owned (A : RustAlloc) (r : BitVec 64)
   | panic =>
     exact sepConj_mono_right (sepConj_mono_left (apiErrAt_owned A (r + 8#64) .panic he))
 
-theorem apiDecResultAt_err_owned (A : RustAlloc) (r : BitVec 64)
-    (e : ApiError AddrVal Unit) (he : e ≠ .store ()) :
-    apiDecResultAt A r (.error e) ⊢
-      ∃∗ k : RunDrop.SpeOwned, RunDrop.speOwnedAt A r k := by
-  cases e with
-  | protocol e' => exact recordResultAt_err_owned A r e'
-  | sessionNotFound addr op => exact apiErrAt_owned A r (.sessionNotFound addr op) he
-  | untrustedIdentity addr => exact apiErrAt_owned A r (.untrustedIdentity addr) he
-  | store u => cases u; exact absurd rfl he
-  | panic => exact apiErrAt_owned A r .panic he
-
 set_option linter.unusedVariables false in
 theorem decResAt_err_owned (A : RustAlloc) (r : BitVec 64)
     (e : ApiError AddrVal Unit) (he : e ≠ .store ()) :
@@ -136,12 +127,6 @@ theorem decResAt_err_owned (A : RustAlloc) (r : BitVec 64)
   Entails.refl _
 
 set_option linter.unusedVariables false in
-theorem initResAt_err_owned (A : RustAlloc) (r : BitVec 64)
-    (e : ApiError AddrVal Unit) (he : e ≠ .store ()) :
-    initResAt A r (.error e) ⊢
-      ∃∗ k : RunDrop.SpeOwned, RunDrop.speOwnedAt A r k :=
-  Entails.refl _
-
 /-- Decomposes `pksmResAt A r none` into `errTag` at `r`, an owned 48-byte `SignalProtocolError` at
 `r + 8`, the 192-byte tail at `r + 56`, and `anyHeap`. -/
 theorem pksmResAt_err_owned (A : RustAlloc) (r : BitVec 64) :
@@ -162,42 +147,6 @@ theorem msgResultAt_err_owned (A : RustAlloc) (fn : List (BitVec 8)) (r : BitVec
       (r ↦₆₄ errTag) ∗ (∃∗ k : RunDrop.SpeOwned, RunDrop.speOwnedAt A (r + 8#64) k) ∗
         memRegion (r + 56#64) 64 :=
   sepConj_mono_right (sepConj_mono_left (speAt_owned A fn (r + 8#64) e))
-
-/-- Pairs an error `kemDeserResAt A r d` (24 bytes) with `memRegion (r + 24) 24` to form an owned
-48-byte `SignalProtocolError` at `r`. -/
-theorem kemDeserResAt_err_owned (A : RustAlloc) (r : BitVec 64) (d : KemDeserResult)
-    (hd : ∀ key, d ≠ .ok key) :
-    (kemDeserResAt A r d ∗ memRegion (r + 24#64) 24) ⊢
-      ∃∗ k : RunDrop.SpeOwned, RunDrop.speOwnedAt A r k := by
-  cases d with
-  | ok key => exact absurd rfl (hd key)
-  | noKeyType =>
-    have hmerge : memRegion (r + 8#64) 16 ∗ memRegion (r + 24#64) 24 = memRegion (r + 8#64) 40 := by
-      rw [show r + 24#64 = (r + 8#64) + 16#64 from by rw [BitVec.add_assoc]; rfl]
-      exact (ProofLib.memRegion_split (r + 8#64) 16 24 (by omega)).symm
-    rw [kemDeserResAt, sepConj_assoc, hmerge]
-    exact Entails.sepExists_right (.proto [] .noKeyTypeIdentifier) (Entails.refl _)
-  | badType t =>
-    have hmerge1 : memRegion (r + 9#64) 15 ∗ memRegion (r + 24#64) 24 = memRegion (r + 9#64) 39 := by
-      rw [show r + 24#64 = (r + 9#64) + 15#64 from by rw [BitVec.add_assoc]; rfl]
-      exact (ProofLib.memRegion_split (r + 9#64) 15 24 (by omega)).symm
-    have hcell : ((r + 8#64) ↦₈ t) ∗ memRegion (r + 9#64) 39 ⊢ memRegion (r + 8#64) 40 := by
-      rw [show r + 9#64 = (r + 8#64) + 1#64 from by rw [BitVec.add_assoc]; rfl,
-          show (40 : Nat) = 1 + 39 from rfl,
-          ProofLib.memRegion_split (r + 8#64) 1 39 (by omega)]
-      exact sepConj_mono_left (pointsTo8_entails_memRegion (r + 8#64) t)
-    rw [kemDeserResAt, sepConj_assoc, sepConj_assoc, hmerge1]
-    exact Entails.sepExists_right .badKemKeyType (sepConj_mono_right hcell)
-  | badLength n =>
-    have hmerge1 : memRegion (r + 16#64) 8 ∗ memRegion (r + 24#64) 24 = memRegion (r + 16#64) 32 := by
-      rw [show r + 24#64 = (r + 16#64) + 8#64 from by rw [BitVec.add_assoc]; rfl]
-      exact (ProofLib.memRegion_split (r + 16#64) 8 24 (by omega)).symm
-    have hcell :
-        ((r + 8#64) ↦₆₄ BitVec.ofNat 64 n) ∗ memRegion (r + 16#64) 32 ⊢ memRegion (r + 8#64) 40 := by
-      rw [show r + 16#64 = (r + 8#64) + 8#64 from by rw [BitVec.add_assoc]; rfl]
-      exact ProofLib.memRegion_cons (r + 8#64) (BitVec.ofNat 64 n) (n := 40) (by omega) (by omega)
-    rw [kemDeserResAt, sepConj_assoc, sepConj_assoc, hmerge1]
-    exact Entails.sepExists_right .badKemKeyLength (sepConj_mono_right hcell)
 
 theorem sret248_rejoin (r tag : BitVec 64) :
     ((r ↦₆₄ tag) ∗ memRegion (r + 8#64) 48 ∗ memRegion (r + 56#64) 192) ⊢ memRegion r 248 := by

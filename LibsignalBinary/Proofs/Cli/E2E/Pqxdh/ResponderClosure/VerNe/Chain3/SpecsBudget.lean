@@ -10,9 +10,56 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.Specs
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsXBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsXBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget -- proof-setup: allow-public-import
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Callee Specifications for `message::merge<Chain>`
@@ -23,7 +70,7 @@ at 32,896 B stack) and `bytesMerge3RawSpec` (`bytes::merge::<Vec<u8>, &mut &[u8]
 33,120 B stack), together with a stack-framing lift from `MergeDefsBudget.bytesMergeRawSpecX`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -46,7 +93,7 @@ abbrev DecodeVarint2Env := DecodeVarintSliceEnv
 
 /-- Budget-threaded contract for `prost::encoding::varint::decode_varint::<&mut &[u8]> [local#4]`
 at stack bound `decodeVarint2StackX` (32,896 B). -/
-def decodeVarint2SpecX {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def decodeVarint2SpecX {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DecodeVarintSlowGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.bufRef ∧ x.bs.length < 2 ^ 63 ∧
@@ -72,7 +119,7 @@ def decodeVarint2SpecX {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : Bu
 /-- Budget-threaded raw contract for
 `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#5]` at stack bound
 `bytesMerge3Stack` (33,120 B). -/
-def bytesMerge3RawSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def bytesMerge3RawSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (BytesMergeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧

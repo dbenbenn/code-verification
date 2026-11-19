@@ -23,22 +23,12 @@ Assembles the four store-loop sub-segments (`DeriveSeed`, `InsertKey`, `EvictOld
 `StoreLoopIterPlacedSpec` and `StoreLoopPlacedSpec` on Block 24.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalSession
 
 open Arm64 ProofLib CryptoGames CryptoGames.HMAC CryptoGames.LibsignalSession
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
-
-/-- Single-iteration store-loop correctness (`StoreLoopIterSpec`). -/
-theorem storeLoop_iter_ok (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
-    (alloc : String → Option (State → State)) (img : Obj.Image) :
-    StoreLoopIterSpec F A alloc img := by
-  exact StoreLoop.storeLoop_iter_of_parts
-    (StoreLoop.deriveSeed_ok F A alloc img)
-    (StoreLoop.insertKey_ok F A alloc img)
-    StoreLoop.evictOldestKey_ok
-    (StoreLoop.advanceChainKey_ok F A alloc img)
 
 /-- Placed single-iteration store-loop correctness (`StoreLoopIterPlacedSpec`). -/
 theorem storeLoop_iter_placed_ok [LibsignalPlacement]

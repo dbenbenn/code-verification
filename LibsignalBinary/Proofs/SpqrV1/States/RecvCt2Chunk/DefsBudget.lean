@@ -10,25 +10,31 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
-public import LibsignalBinary.Proofs.SpqrV1.Auth.UpdateBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
+public import LibsignalBinary.Proofs.SpqrV1.Auth.UpdateBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Defs
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<EkSentCt1Received>::recv_ct2_chunk`: Budget Specifications & Envelopes
 
 Allocation-event envelope `RecvCt2ChunkEnv`, panic budget invariant `recvCt2ChunkBudgetOnPanic`,
-and fixed-base budget specifications (`recvCt2ChunkSpecX*`, `recvCt2ChunkSpecExt*`) for `0x5ec2c`.
+and relocatable budget specifications (`recvCt2ChunkPlacedSpec*`, `RecvCt2ChunkPlacedOkX*`) for Block `350`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -36,18 +42,17 @@ set_option maxHeartbeats 400000
 
 namespace LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsBudget
 
+open CryptoVerification.LibsignalTripleRatchet (DoReserveCall extract_withLsCodeRoLoaded reserveCap sessionMemcpyRegionSpec withLsCodeRoLoaded)
+
 open Arm64 ProofLib
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification
   (LibsignalPlacement blkPC_418 blkPl_350 blkPl_418 lsProg_350 lsmpl)
 open CryptoVerification.RustHeap (RustAlloc)
-open CryptoVerification.LibsignalTripleRatchet
-  (DoReserveCall extract_withLsCodeRoLoaded reserveCap
-   sessionMemcpyRegionSpec tripleRatchetProgAtExt withLsCodeRoLoaded)
 open CryptoVerification.LibsignalSpqrV1 (Bytes MlKem NUM_POLYS optKeyBytesAt)
 open CryptoVerification.SpqrV1.Drop (chunkedEkSentCt1ReceivedSize)
-open CryptoVerification.SpqrV1.GF.Mul2U16 (tokenInitAt tokenInitPlacedAt)
-open CryptoVerification.SpqrV1.GF.UnacceleratedMul (reduceTableAt reduceTablePlacedAt)
+open CryptoVerification.SpqrV1.GF.Mul2U16 (tokenInitPlacedAt)
+open CryptoVerification.SpqrV1.GF.UnacceleratedMul (reduceTablePlacedAt)
 open CryptoVerification.SpqrV1.Poly
   (boolByte chunkAt polyDecoderAt polyDecoderIsCompleteOff polyDecoderPadOff
    polyDecoderPadSize polyDecoderPtsNeededOff sortedSetPtListOf vecHeaderBytes)
@@ -78,7 +83,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (doReserveEvents)
 
 /-- Canonical `AllocEvent` envelope of `<PolyDecoder as Decoder>::decoded_message` (Block `418`)
     over `PolyDecodedMessageCall`. -/
-def PolyDecodedMessageEnv (x : PolyDecodedMessageCall) (evs : List AllocEvent) : Prop :=
+@[expose] def PolyDecodedMessageEnv (x : PolyDecodedMessageCall) (evs : List AllocEvent) : Prop :=
   DecodedMessageEnv x.dec evs
 
 theorem polyDecodedMessageEnv_nonempty (x : PolyDecodedMessageCall) :
@@ -90,7 +95,7 @@ theorem polyDecodedMessageEnv_nonempty (x : PolyDecodedMessageCall) :
     - `ct2FullLen ≤ 128`: `__rust_alloc(128, 1)` for `ct2_128` (`mac` slice is empty);
     - `128 < ct2FullLen`: `__rust_alloc(ct2FullLen - 128, 1)` for `mac`, then
       `__rust_alloc(128, 1)` for `ct2_128`. -/
-def recvCt2MacCt2AllocEvents (ct2FullLen : Nat) : List AllocEvent :=
+@[expose] def recvCt2MacCt2AllocEvents (ct2FullLen : Nat) : List AllocEvent :=
   (if ct2FullLen ≤ 128 then [] else rustAllocEvents (ct2FullLen - 128) 1) ++
     rustAllocEvents 128 1
 
@@ -98,12 +103,12 @@ def recvCt2MacCt2AllocEvents (ct2FullLen : Nat) : List AllocEvent :=
     `Authenticator::update` (`Part2`, `+480 .. +664`):
     `__rust_alloc(32, 1)` (`ss_raw`), `sliceConcat2(41)` (`info`), and
     `__rust_alloc_zeroed(32, 1)` (`ss`). -/
-def recvCt2PreAuthUpdateEvents : List AllocEvent :=
+@[expose] def recvCt2PreAuthUpdateEvents : List AllocEvent :=
   rustAllocEvents 32 1 ++ sliceConcat2Events 41 ++ rustAllocEvents 32 1
 
 /-- Deterministic heap allocation events for `sliceConcat3(1131)` (`35 + 8 + 1088` bytes)
     followed by `libcrux_hmac::hmac` (`SHA256`) in `Part2b` (`+664 .. +860`). -/
-def recvCt2HmacEvents : List AllocEvent :=
+@[expose] def recvCt2HmacEvents : List AllocEvent :=
   sliceConcat3Events 1131 ++ libcruxHmacSha256Events
 
 /-- Allocation envelope of `<Vec<u8>>::reserve(128)` on `self.uc.ct1` (`ct1.length = 960`) in
@@ -111,7 +116,7 @@ def recvCt2HmacEvents : List AllocEvent :=
     - `[]` when `1088 ≤ cap_ct1.toNat` (spare capacity `≥ 960 + 128`);
     - `rustReallocEvents c (reserveCap c 960 128) 1` for `960 ≤ c < 1088` when
       `do_reserve_and_handle` grows the existing `ct1` buffer. -/
-def RecvCt2ReserveCt1Env (evs : List AllocEvent) : Prop :=
+@[expose] def RecvCt2ReserveCt1Env (evs : List AllocEvent) : Prop :=
   evs = [] ∨
     ∃ c : Nat, 960 ≤ c ∧ c < 1088 ∧
       evs = rustReallocEvents c (reserveCap c 960 128) 1
@@ -137,7 +142,7 @@ theorem recvCt2ReserveCt1Env_of_doReserve (c : DoReserveCall)
 /-- Optional final `32`-byte `EpochSecret.secret` allocation (`Part3b`):
     `[]` on `Err(Error::MacVerifyFailed)` or post-HMAC bounds/overflow panic, and
     `rustAllocEvents 32 1` on `Ok(Done)`. -/
-def OptSecret32AllocEnv (evs : List AllocEvent) : Prop :=
+@[expose] def OptSecret32AllocEnv (evs : List AllocEvent) : Prop :=
   evs = [] ∨ evs = rustAllocEvents 32 1
 
 theorem optSecret32AllocEnv_nil : OptSecret32AllocEnv [] :=
@@ -158,7 +163,7 @@ theorem optSecret32AllocEnv_nonempty : ∃ evs, OptSecret32AllocEnv evs :=
     5. `FreeOnlyEvs` (`mac_data` / `tag` temporary drops);
     6. `OptSecret32AllocEnv` (`EpochSecret.secret` `32`B allocation on `Ok(Done)`, `[]` on `Err`);
     7. `FreeOnlyEvs` (epilogue buffer drops and `drop_glue_sorted_set_pt16`). -/
-def RecvCt2PostDecapsEnv (rkLen ct2FullLen : Nat) : List AllocEvent → Prop :=
+@[expose] def RecvCt2PostDecapsEnv (rkLen ct2FullLen : Nat) : List AllocEvent → Prop :=
   SeqEnv (· = recvCt2MacCt2AllocEvents ct2FullLen ++ recvCt2PreAuthUpdateEvents)
     (SeqEnv (AuthUpdateLenEnv rkLen 32)
       (SeqEnv RecvCt2ReserveCt1Env
@@ -193,7 +198,7 @@ theorem recvCt2PostDecapsEnv_nonempty (rkLen ct2FullLen : Nat) :
       `unwrap_failed`);
     - `some ct2Full` with `128 ≤ ct2Full.length`, `ct1Len = 960`, and `dkLen = 2400`:
       `RecvCt2PostDecapsEnv rkLen ct2Full.length`. -/
-def RecvCt2TailEnv (rkLen ct1Len dkLen : Nat) : Option Bytes → List AllocEvent → Prop
+@[expose] def RecvCt2TailEnv (rkLen ct1Len dkLen : Nat) : Option Bytes → List AllocEvent → Prop
   | none, evs => evs = []
   | some ct2Full, evs =>
     if ct2Full.length < 128 then
@@ -221,7 +226,7 @@ theorem recvCt2TailEnv_nonempty (rkLen ct1Len dkLen : Nat) (optCt2 : Option Byte
     - `x.epoch == x.self.uc.epoch`: sequential composition of `<PolyDecoder>::add_chunk`
       (`AddChunkSlotsEnv`), `<PolyDecoder>::decoded_message` (`DecodedMessageEnv`), and
       `RecvCt2TailEnv`. -/
-def RecvCt2ChunkEnv {F : ShaCompress} (x : RecvCt2ChunkGhost F)
+@[expose] def RecvCt2ChunkEnv {F : ShaCompress} (x : RecvCt2ChunkGhost F)
     (evs : List AllocEvent) : Prop :=
   if x.epoch != x.self.uc.epoch then
     evs = []
@@ -273,7 +278,7 @@ theorem recvCt2ChunkEnv_of_stillReceiving {F : ShaCompress} (x : RecvCt2ChunkGho
 /-- Envelope-parametric relocatable (`[LibsignalPlacement]`) callee specification of
     `<PolyDecoder as Decoder>::decoded_message` (Block `418`, `onPanic = ⌜False⌝`,
     `onOom = ⌜False⌝`). -/
-def polyDecodedMessagePlacedSpecOfEnv [LibsignalPlacement]
+@[expose] def polyDecodedMessagePlacedSpecOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Env : PolyDecodedMessageCall → List AllocEvent → Prop) :
     Spec (PolyDecodedMessageCall × M.σ) where
@@ -308,7 +313,7 @@ abbrev polyDecodedMessagePlacedSpec [LibsignalPlacement]
 
 /-- Envelope-parametric relocatable contract for `<PolyDecoder as Decoder>::decoded_message`
     (Block `418`) wrapped with `withLsCodeRoLoaded lsmpl`. -/
-def PolyDecodedMessagePlacedOkXOfEnv [LibsignalPlacement]
+@[expose] def PolyDecodedMessagePlacedOkXOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Env : PolyDecodedMessageCall → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=
@@ -394,61 +399,16 @@ theorem polyDecodedMessagePlacedOkX_of_decodedMessage [LibsignalPlacement]
   · right; right; left; exact ⟨code, hex, hpost⟩
   · right; right; right; exact ⟨hoom, hpost⟩
 
-/-- Envelope-parametric fixed-offset callee specification of
-    `<PolyDecoder as Decoder>::decoded_message` (`0x6bb80`, `onPanic = ⌜False⌝`,
-    `onOom = ⌜False⌝`). -/
-def polyDecodedMessageSpecOfEnv (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (b : BitVec 64)
-    (Env : PolyDecodedMessageCall → List AllocEvent → Prop) :
-    Spec (PolyDecodedMessageCall × M.σ) where
-  pre := fun (x, st) s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      s.readReg64 .x8 = x.outA ∧
-      s.readReg64 .x0 = x.decA ∧
-      PolyDecoderStrictSorted x.dec ∧
-      FitsEnv M lim st (Env x)⌝ ∗
-      memRegion x.outA vecHeaderBytes ∗
-      polyDecoderAt A.repAlloc x.decA x.dec ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool lim st s ∗
-      stackAt s.sp polyDecodedMessageStackX
-  post := fun (x, st) s0 sf =>
-    ∃∗ evs : List AllocEvent,
-      (∃∗ opt : Option Bytes,
-        ⌜x.dec.decodedMessage = .ok opt ∧ sf.trace = s0.trace ∧ Env x evs⌝ ∗
-          optKeyBytesAt A.repAlloc x.outA opt) ∗
-        polyDecoderAt A.repAlloc x.decA x.dec ∗
-        tokenInitAt b ∗
-        reduceTableAt b ∗
-        A.pool lim (M.stepEvents evs st) sf ∗
-        stackAt s0.sp polyDecodedMessageStackX
-
-/-- Canonical fixed-offset budget specification of `<PolyDecoder as Decoder>::decoded_message`. -/
-abbrev polyDecodedMessageSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (b : BitVec 64) :
-    Spec (PolyDecodedMessageCall × M.σ) :=
-  polyDecodedMessageSpecOfEnv M A lim b PolyDecodedMessageEnv
-
-/-- Fixed-offset contract for `<PolyDecoder as Decoder>::decoded_message` (`0x6bb80`). -/
-def PolyDecodedMessageOkX (img : Obj.Image) (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr polyDecodedMessageName)
-    ((polyDecodedMessageSpec M A lim img.base).inImage img)
-
-/-! ## Budget-Threaded `<EkSentCt1Received>::recv_ct2_chunk` Specifications & Contracts -/
-
 /-- Budget-form panic postcondition of `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`):
     retains the genuine pure model panic `(x.self.recv_ct2_chunk K x.epoch x.chunk).isPanic = true`
     while eliminating `∨ allocFailedIn s0 sf`. -/
-def recvCt2ChunkBudgetOnPanic {F : ShaCompress} (K : MlKem) (x : RecvCt2ChunkGhost F)
+@[expose] def recvCt2ChunkBudgetOnPanic {F : ShaCompress} (K : MlKem) (x : RecvCt2ChunkGhost F)
     (s0 sf : State) : SepProp :=
   ⌜(x.self.recv_ct2_chunk K x.epoch x.chunk).isPanic = true ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Two-envelope (`PreEnv` / `PostEnv`) budget-threaded relocatable (`[LibsignalPlacement]`)
     specification of `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`). -/
-def recvCt2ChunkPlacedSpecOfPrePostEnv [LibsignalPlacement]
+@[expose] def recvCt2ChunkPlacedSpecOfPrePostEnv [LibsignalPlacement]
     (K : MlKem) (F : ShaCompress)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PreEnv PostEnv : RecvCt2ChunkGhost F → List AllocEvent → Prop) :
@@ -500,7 +460,7 @@ abbrev recvCt2ChunkPlacedSpec [LibsignalPlacement]
 
 /-- Two-envelope (`PreEnv` / `PostEnv`) relocatable contract for
     `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`) wrapped with `withLsCodeRoLoaded lsmpl`. -/
-def RecvCt2ChunkPlacedOkXOfPrePostEnv [LibsignalPlacement]
+@[expose] def RecvCt2ChunkPlacedOkXOfPrePostEnv [LibsignalPlacement]
     (K : MlKem) (F : ShaCompress)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PreEnv PostEnv : RecvCt2ChunkGhost F → List AllocEvent → Prop)
@@ -527,115 +487,10 @@ abbrev RecvCt2ChunkPlacedOkX [LibsignalPlacement]
     (ext : String → Option (State → State)) : Prop :=
   RecvCt2ChunkPlacedOkXOfEnv K F M A lim RecvCt2ChunkEnv ext
 
-/-- Envelope-parametric fixed-offset specification of
-    `<EkSentCt1Received>::recv_ct2_chunk` (`0x5ec2c`, stack `recvCt2ChunkStackX`). -/
-def recvCt2ChunkSpecOfEnv (K : MlKem) (F : ShaCompress)
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (b : BitVec 64) (Env : RecvCt2ChunkGhost F → List AllocEvent → Prop) :
-    Spec (RecvCt2ChunkGhost F × M.σ) where
-  pre := fun (x, st) s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      s.readReg64 .x0 = x.outA ∧
-      s.readReg64 .x1 = x.selfA ∧
-      s.readReg64 .x2 = x.epoch ∧
-      s.readReg64 .x3 = x.chunkA ∧
-      PolyDecoderStrictSorted x.self.receiving_ct2 ∧
-      x.self.uc.auth.rootKey.length + 32 < 2 ^ 63 ∧
-      FitsEnv M lim st (Env x)⌝ ∗
-      memRegion x.outA chunkedEkSentCt1ReceivedSize ∗
-      ekSentCt1ReceivedAt A.repAlloc x.selfA x.self ∗
-      chunkAt x.chunkA x.chunk ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool lim st s ∗
-      stackAt s.sp recvCt2ChunkStackX
-  post := fun (x, st) s0 sf =>
-    ∃∗ evs : List AllocEvent,
-      ⌜sf.trace = s0.trace ∧ Env x evs⌝ ∗
-      ekSentCt1ReceivedRecvChunkResultAt A.repAlloc x.outA
-        (x.self.recv_ct2_chunk K x.epoch x.chunk) ∗
-      memRegion x.selfA chunkedEkSentCt1ReceivedSize ∗
-      chunkAt x.chunkA x.chunk ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool lim (M.stepEvents evs st) sf ∗
-      stackAt s0.sp recvCt2ChunkStackX
-  onPanic := fun (x, _) s0 sf => recvCt2ChunkBudgetOnPanic K x s0 sf
-
-/-- Canonical fixed-offset budget specification of `<EkSentCt1Received>::recv_ct2_chunk`
-    (`0x5ec2c`, stack `recvCt2ChunkStackX`). -/
-abbrev recvCt2ChunkSpec (K : MlKem) (F : ShaCompress)
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (b : BitVec 64) :
-    Spec (RecvCt2ChunkGhost F × M.σ) :=
-  recvCt2ChunkSpecOfEnv K F M A lim b RecvCt2ChunkEnv
-
-/-- Fixed-offset contract for `<EkSentCt1Received>::recv_ct2_chunk` (`0x5ec2c`, stack
-    `recvCt2ChunkStackX`). -/
-def RecvCt2ChunkOkX (img : Obj.Image) (K : MlKem) (F : ShaCompress)
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName)
-    ((recvCt2ChunkSpec K F M A lim img.base).inImage img)
-
-/-- Envelope-parametric fixed-offset specification of
-    `<EkSentCt1Received>::recv_ct2_chunk` (`0x5ec2c`, contract-backed stack
-    `recvCt2ChunkStackExt`). -/
-def recvCt2ChunkSpecExtOfEnv (K : MlKem) (F : ShaCompress)
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (b : BitVec 64) (Env : RecvCt2ChunkGhost F → List AllocEvent → Prop) :
-    Spec (RecvCt2ChunkGhost F × M.σ) where
-  pre := fun (x, st) s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      s.readReg64 .x0 = x.outA ∧
-      s.readReg64 .x1 = x.selfA ∧
-      s.readReg64 .x2 = x.epoch ∧
-      s.readReg64 .x3 = x.chunkA ∧
-      PolyDecoderStrictSorted x.self.receiving_ct2 ∧
-      x.self.uc.auth.rootKey.length + 32 < 2 ^ 63 ∧
-      FitsEnv M lim st (Env x)⌝ ∗
-      memRegion x.outA chunkedEkSentCt1ReceivedSize ∗
-      ekSentCt1ReceivedAt A.repAlloc x.selfA x.self ∗
-      chunkAt x.chunkA x.chunk ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool lim st s ∗
-      stackAt s.sp recvCt2ChunkStackExt
-  post := fun (x, st) s0 sf =>
-    ∃∗ evs : List AllocEvent,
-      ⌜sf.trace = s0.trace ∧ Env x evs⌝ ∗
-      ekSentCt1ReceivedRecvChunkResultAt A.repAlloc x.outA
-        (x.self.recv_ct2_chunk K x.epoch x.chunk) ∗
-      memRegion x.selfA chunkedEkSentCt1ReceivedSize ∗
-      chunkAt x.chunkA x.chunk ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool lim (M.stepEvents evs st) sf ∗
-      stackAt s0.sp recvCt2ChunkStackExt
-  onPanic := fun (x, _) s0 sf => recvCt2ChunkBudgetOnPanic K x s0 sf
-
-/-- Canonical fixed-offset contract-backed budget specification of
-    `<EkSentCt1Received>::recv_ct2_chunk` (`0x5ec2c`, stack `recvCt2ChunkStackExt`). -/
-abbrev recvCt2ChunkSpecExt (K : MlKem) (F : ShaCompress)
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (b : BitVec 64) :
-    Spec (RecvCt2ChunkGhost F × M.σ) :=
-  recvCt2ChunkSpecExtOfEnv K F M A lim b RecvCt2ChunkEnv
-
-/-- Fixed-offset contract-backed `subroutine_ok` predicate for
-    `<EkSentCt1Received>::recv_ct2_chunk` (`0x5ec2c`, stack `recvCt2ChunkStackExt`). -/
-def RecvCt2ChunkOkExt (img : Obj.Image) (K : MlKem) (F : ShaCompress)
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName)
-    ((recvCt2ChunkSpecExt K F M A lim img.base).inImage img)
-
-/-! ## `VmPreserved`-Strengthened `SplitBytes` Relocation Combinators -/
-
 /-- `VmPreserved`-strengthened `memcpy` relocation specification for `S : SplitBytes n P`,
     allowing `A.pool lim st s` to be transported across `504`-byte `ekSentCt1ReceivedSplit`
     copies via `A.pool_of_vmPreserved`. -/
-def SplitBytes.memcpyVmSpec {n : Nat} {P : BitVec 64 → SepProp} (S : SplitBytes n P) :
+@[expose] def SplitBytes.memcpyVmSpec {n : Nat} {P : BitVec 64 → SepProp} (S : SplitBytes n P) :
     Spec (BitVec 64 × BitVec 64) :=
   withVmPreserved S.memcpySpec
 

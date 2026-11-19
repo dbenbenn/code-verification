@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveDefs
-public import LibsignalBinary.Proofs.E2E.RecordX.Scope
+public import LibsignalBinary.Proofs.E2E.RecordX.Scope -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.PqDir
 import LibsignalBinary.Proofs.E2E.Record.Serialization.Canon
 import LibsignalBinary.Proofs.TripleRatchet.InImage.DecodeErrorPush.Push
@@ -29,7 +29,7 @@ to `Record.encSession` and `encStateUnderExtras`:
   under `PqxdhPartyInSpecDomain`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -183,77 +183,6 @@ theorem canonSession_clearPending {G : SessionGhost} {s : Session (List (BitVec 
   obtain ⟨hl, hr, hs, hlen, hc, _⟩ := h
   exact ⟨hl, hr, hs, hlen, hc, trivial⟩
 
-/-- Direct equality `encSessionMem (clearPendingGhost G) (clearPending s) = encSession (clearPending s)`
-from `m ⊨ sessionStateReprAt A ss G s ∗ R`. -/
-theorem encSessionMem_clearPending_eq_of_sessionAt {A : RustAlloc} {ss : BitVec 64}
-    {G : SessionGhost} {s : Session (List (BitVec 8))} {m : Memory} {R : SepProp}
-    (hm : m ⊨ sessionStateReprAt A ss G s ∗ R) :
-    encSessionMem (clearPendingGhost G) (clearPending s) = encSession (clearPending s) :=
-  encSessionMem_eq_of_canon (clearPendingGhost G) (clearPending s)
-    (canonSession_clearPending (canonSession_of_satisfies_sessionAt hm))
-
 /-! ## `encStateUnderExtras` Bridge and Length Bounds -/
-
-/-- On `sessionOfX (fun _ => x) g`, `encSession ∘ clearPending` equals
-`encStateUnderExtras x { g.session with pendingPreKey := false }`. -/
-theorem encSession_clearPending_sessionOfX
-    (x : RecordExtras) (g : GhostState (List (BitVec 8))) :
-    encSession (clearPending (sessionOfX (fun _ => x) g)) =
-      encStateUnderExtras x { g.session with pendingPreKey := false } :=
-  rfl
-
-/-- Combined memory-to-`encStateUnderExtras` bridge from `sessionStateReprAt` on `sessionOfX (fun _ => x) g`. -/
-theorem encSessionMem_clearPending_sessionOfX_eq {A : RustAlloc} {ss : BitVec 64}
-    {G : SessionGhost} {x : RecordExtras} {g : GhostState (List (BitVec 8))}
-    {m : Memory} {R : SepProp}
-    (hm : m ⊨ sessionStateReprAt A ss G (sessionOfX (fun _ => x) g) ∗ R) :
-    encSessionMem (clearPendingGhost G) (clearPending (sessionOfX (fun _ => x) g)) =
-      encStateUnderExtras x { g.session with pendingPreKey := false } := by
-  rw [encSessionMem_clearPending_eq_of_sessionAt hm, encSession_clearPending_sessionOfX]
-
-/-- Clearing `pendingPreKey` does not increase the length of `encStateUnderExtras`. -/
-theorem encStateX_clearPending_length_le
-    (x : RecordExtras) (st : SessionState (List (BitVec 8))) :
-    (encStateUnderExtras x { st with pendingPreKey := false }).length ≤ (encStateUnderExtras x st).length := by
-  unfold encStateUnderExtras
-  cases st.pendingPreKey
-  · simp
-  · simp only [Bool.false_eq_true, ↓reduceIte, E2E.msgField,
-      List.length_nil, List.length_append]
-    omega
-
-/-- The pending-cleared `encStateUnderExtras` is strictly shorter than `encodeRecordUnderExtras (fun _ => x) g`. -/
-theorem encStateX_clearPending_length_lt_encodeRecordX
-    (x : RecordExtras) (g : GhostState (List (BitVec 8))) :
-    (encStateUnderExtras x { g.session with pendingPreKey := false }).length <
-      (encodeRecordUnderExtras (fun _ => x) g).length := by
-  have hle := encStateX_clearPending_length_le x g.session
-  unfold encodeRecordUnderExtras E2E.msgField E2E.lenField encodeKey
-  have hk_pos : 0 < (encodeVarint (BitVec.ofNat 64 (1 * 8 + WireType.lengthDelimited.toNat))).length := by
-    decide
-  dsimp only
-  simp only [List.length_append]
-  omega
-
-/-- Under `PqxdhPartyInSpecDomain W st` with `st.session = some (x, g)`, the archived session encoding has length
-`< 2 ^ 31` (and `< 2 ^ 32`, discharging `archiveOverGenSpec` / `promoteOverGenSpec`). -/
-theorem encStateX_clearPending_length_lt_of_wfPq
-    {W : PEParams} {st : PqParty} {x : RecordExtras} {g : GhostState (List (BitVec 8))}
-    (hwf : PqxdhPartyInSpecDomain W st) (hsess : st.session = some (x, g)) :
-    (encStateUnderExtras x { g.session with pendingPreKey := false }).length < 2 ^ 31 ∧
-    (encStateUnderExtras x { g.session with pendingPreKey := false }).length < 2 ^ 32 := by
-  have hrec_lt : (encodeRecordUnderExtras (fun _ => x) g).length < 2 ^ 31 := (hwf.1 x g hsess).2.2
-  have hlt31 : (encStateUnderExtras x { g.session with pendingPreKey := false }).length < 2 ^ 31 :=
-    Nat.lt_trans (encStateX_clearPending_length_lt_encodeRecordX x g) hrec_lt
-  exact ⟨hlt31, Nat.lt_trans hlt31 (by decide)⟩
-
-theorem encSessionMem_clearPending_length_lt_of_wfPq
-    {W : PEParams} {st : PqParty} {x : RecordExtras} {g : GhostState (List (BitVec 8))}
-    {A : RustAlloc} {ss : BitVec 64} {G : SessionGhost} {m : Memory} {R : SepProp}
-    (hwf : PqxdhPartyInSpecDomain W st) (hsess : st.session = some (x, g))
-    (hm : m ⊨ sessionStateReprAt A ss G (sessionOfX (fun _ => x) g) ∗ R) :
-    (encSessionMem (clearPendingGhost G) (clearPending (sessionOfX (fun _ => x) g))).length < 2 ^ 32 := by
-  rw [encSessionMem_clearPending_sessionOfX_eq hm]
-  exact (encStateX_clearPending_length_lt_of_wfPq hwf hsess).2
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over

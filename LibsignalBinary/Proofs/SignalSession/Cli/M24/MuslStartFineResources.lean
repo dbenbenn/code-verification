@@ -13,14 +13,17 @@ public import Arm64.Trusted.Process.Loader
 public import Arm64.Trusted.Process.Placed
 public import ProofLib.SepLogic.WP.StepsProcess
 public import VerifiedLibraries.Mallocng.Spec
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliBinaryTokenPatch
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliBinaryTokenPatchPlaced
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.InitStack
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.MuslElf
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.MuslStart
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliBinaryTokenPatch -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.CliBinaryTokenPatchPlaced
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.InitStack
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.MuslElf
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.MuslStart
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WPp
 
 /-!
 # Parameterized `musl` `_start → main` Startup with `MallocngRuntime`
@@ -31,7 +34,7 @@ Proves `musl_startup_fineInit_ofProg` across `musl` `_start` / `_start_c` (param
 together with explicit-`mpl` CPU-probe token-patch lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -69,7 +72,7 @@ open CryptoVerification.SignalSession.MuslElf
 
 /-- Startup virtual/physical memory preservation from `loadState` `s0` to `main` entry `sm`
     (definitionally equal to `LibsignalBinary.Heap.Fine.StartupVmPreserved`). -/
-def MuslStartupVmPreserved (s0 sm : State) : Prop :=
+@[expose] def MuslStartupVmPreserved (s0 sm : State) : Prop :=
   sm.brkStart = s0.brkStart ∧ sm.brk = s0.brk ∧ sm.physMemAvail = s0.physMemAvail ∧
   ∀ a : BitVec 64, sm.mem.perm a = s0.mem.perm a
 
@@ -99,11 +102,6 @@ private theorem writeBytes_perm_eq (m : Memory) (base : BitVec 64) (bs : List (B
   | nil => rfl
   | cons _ rest ih => simp only [Memory.writeBytes]; rw [ih, write8_perm_eq]
 
-theorem muslStartupVmPreserved_cliTokenPatchPlaced (mpl : Obj.MultiPlacement) (s : State) :
-    MuslStartupVmPreserved s (cliTokenPatchPlaced mpl s) := by
-  refine ⟨rfl, rfl, rfl, fun a => ?_⟩
-  unfold cliTokenPatchPlaced State.setMem; dsimp only; rw [writeBytes_perm_eq, writeBytes_perm_eq]
-
 /-- `PT_LOAD` `.data` slice bundle for `spqr`'s initial unprobed CPU-feature cells under `mpl`. -/
 structure CliElfTokenCellsPlacedAt (mpl : Obj.MultiPlacement) (elf : ElfImage) : Prop where
   storage : SegSlice elf (mpl.ρ CryptoVerification.LibsignalSpqrV1.tokenStorageName) [0xff#8] Perm.rw
@@ -111,7 +109,7 @@ structure CliElfTokenCellsPlacedAt (mpl : Obj.MultiPlacement) (elf : ElfImage) :
     [3#8, 0#8, 0#8, 0#8] Perm.rw
 
 /-- Ghost `ElfImage` with `spqr`'s 5 CPU-probe `.data` bytes pre-set to `0` (`DEV-CLI10`). -/
-def patchElfTokensPlacedAt (mpl : Obj.MultiPlacement) (elf : ElfImage) : ElfImage :=
+@[expose] def patchElfTokensPlacedAt (mpl : Obj.MultiPlacement) (elf : ElfImage) : ElfImage :=
   let sAddr := mpl.ρ CryptoVerification.LibsignalSpqrV1.tokenStorageName
   let oAddr := mpl.ρ CryptoVerification.LibsignalSpqrV1.tokenName + 8#64
   patchElfByte (oAddr + 3#64) 0#8 (patchElfByte (oAddr + 2#64) 0#8
@@ -255,19 +253,6 @@ private theorem patchRegionByte_bytes_len_eq (a : BitVec 64) (v : BitVec 8) (r :
 
 theorem patchElfTokensPlacedAt_entry (mpl : Obj.MultiPlacement) (elf : ElfImage) :
     (patchElfTokensPlacedAt mpl elf).entry = elf.entry := rfl
-theorem patchElfTokensPlacedAt_phnum (mpl : Obj.MultiPlacement) (elf : ElfImage) :
-    (patchElfTokensPlacedAt mpl elf).phnum = elf.phnum := rfl
-theorem patchElfTokensPlacedAt_phdrVaddr (mpl : Obj.MultiPlacement) (elf : ElfImage) :
-    (patchElfTokensPlacedAt mpl elf).phdrVaddr = elf.phdrVaddr := rfl
-theorem patchElfTokensPlacedAt_brkStart (mpl : Obj.MultiPlacement) (elf : ElfImage) :
-    (patchElfTokensPlacedAt mpl elf).brkStart = elf.brkStart := rfl
-theorem patchElfTokensPlacedAt_segments_length (mpl : Obj.MultiPlacement) (elf : ElfImage) :
-    (patchElfTokensPlacedAt mpl elf).segments.length = elf.segments.length := by
-  simp [patchElfTokensPlacedAt]
-theorem patchElfTokensPlacedAt_segments_bytes_sum (mpl : Obj.MultiPlacement) (elf : ElfImage) :
-    (((patchElfTokensPlacedAt mpl elf).segments.map (fun r => r.bytes.length)).sum) =
-      (elf.segments.map (fun r => r.bytes.length)).sum := by simp [patchElfTokensPlacedAt]
-
 theorem phdrsMapped_patchElfTokensPlacedAt {mpl : Obj.MultiPlacement} {elf : ElfImage}
     {ph : BitVec 64} (hP : PhdrsMapped elf ph)
     (hE : ElfStaticOk elf) (htok : CliElfTokenCellsPlacedAt mpl elf) :
@@ -280,7 +265,7 @@ theorem phdrsMapped_patchElfTokensPlacedAt {mpl : Obj.MultiPlacement} {elf : Elf
 
 /-- Disjointness between `musl`'s 600-byte writable statics `[elf.entry + 0x2000, +600)` and
     `spqr`'s 5 CPU-probe token bytes under placement `mpl`. -/
-def TokenDisjointFromMuslRw (mpl : Obj.MultiPlacement) (elf : ElfImage) : Prop :=
+@[expose] def TokenDisjointFromMuslRw (mpl : Obj.MultiPlacement) (elf : ElfImage) : Prop :=
   let sAddr := mpl.ρ CryptoVerification.LibsignalSpqrV1.tokenStorageName
   let oAddr := mpl.ρ CryptoVerification.LibsignalSpqrV1.tokenName + 8#64
   ∀ j, j < 600 →
@@ -308,14 +293,14 @@ theorem cliElfMusl_patchElfTokensPlacedAt {mpl : Obj.MultiPlacement} {elf : ElfI
 /-! ## Parameterized `MuslStartFetchAt` and step lifting -/
 
 /-- Thread pointer initialized by `musl`'s `__init_tp`: `elf.entry + 0x2148#64`. -/
-def muslTpOf (elf : ElfImage) : BitVec 64 := elf.entry + 0x2148#64
+@[expose] def muslTpOf (elf : ElfImage) : BitVec 64 := elf.entry + 0x2148#64
 
 /-- Target `main` PC computed by `_start_c`'s `adrp x0, pageImm; add x0, x0, addImm` at `B`. -/
-def mainPcOf (B pageImm : BitVec 64) (addImm : BitVec 12) : BitVec 64 :=
+@[expose] def mainPcOf (B pageImm : BitVec 64) (addImm : BitVec 12) : BitVec 64 :=
   B + pageImm + addImm.zeroExtend 64
 
 /-- Hop 1 (26 instructions) parameterized over `dynPageImm` and `(pageImm, addImm)`. -/
-def MuslHop1FetchAt (Q : Program) (B dynPageImm pageImm : BitVec 64) (addImm : BitVec 12) : Prop :=
+@[expose] def MuslHop1FetchAt (Q : Program) (B dynPageImm pageImm : BitVec 64) (addImm : BitVec 12) : Prop :=
   Q.fetch B = some (.moveWide .W64 .MOVZ (.gpr 0x1d#5) 0x0000#16 0) ∧
   Q.fetch (B + 0x4#64) = some (.moveWide .W64 .MOVZ (.gpr 0x1e#5) 0x0000#16 0) ∧
   Q.fetch (B + 0x8#64) = some (.addSubImm .W64 .ADD (.gpr 0x00#5) .sp 0x000#12 false) ∧
@@ -345,7 +330,7 @@ def MuslHop1FetchAt (Q : Program) (B dynPageImm pageImm : BitVec 64) (addImm : B
   Q.fetch (B + 0x800#64) = some (.bl 0xfffffffffffffdf4#64)
 
 /-- Parameterized counterpart of `MuslStartFetch` (hops 1–7). -/
-def MuslStartFetchAt (Q : Program) (B dynPageImm pageImm : BitVec 64) (addImm : BitVec 12) : Prop :=
+@[expose] def MuslStartFetchAt (Q : Program) (B dynPageImm pageImm : BitVec 64) (addImm : BitVec 12) : Prop :=
   MuslHop1FetchAt Q B dynPageImm pageImm addImm ∧
   MuslHop2Fetch Q B ∧ MuslHop3aFetch Q B ∧ MuslHop3bFetch Q B ∧
   MuslHop4Fetch Q B ∧ MuslHop5Fetch Q B ∧ MuslHop6Fetch Q B ∧ MuslHop7Fetch Q B
@@ -568,7 +553,7 @@ theorem steps_startupVm_of_hooklessSepWP {P : Program} {B : BitVec 64} {code : L
 
 /-! ## Startup hops and `musl_start_fine_block_ofProg` -/
 
-def Hop1RegsAt (B sp0 envp p m : BitVec 64) (a32 : BitVec 32)
+@[expose] def Hop1RegsAt (B sp0 envp p m : BitVec 64) (a32 : BitVec 32)
     (fs0 : FsState) (tr0 : List TraceEvent) (s : State) : Prop :=
   s.sp = sp0 - 32#64 ∧ s.readReg64 .x0 = envp ∧ s.readReg64 .x1 = p ∧
   s.readReg64 .x19 = sp0 + 8#64 ∧ s.readReg64 .x20 = a32.zeroExtend 64 ∧
@@ -635,7 +620,7 @@ private theorem hop6_gen_state9_tp {prog : Program} {tgt : BitVec 64} {s : State
     SepWP prog tgt s P post oom :=
   h s hpc hrun hsp h0 h9 h19 h21 h30 htp hfs htr
 
-def Hop6FineRegs (B sp0 r19 m : BitVec 64)
+@[expose] def Hop6FineRegs (B sp0 r19 m : BitVec 64)
     (fs0 : FsState) (tr0 : List TraceEvent) (s : State) : Prop :=
   s.sp = sp0 - 432#64 ∧ s.readReg64 .x0 = 0#64 ∧ s.readReg64 .x19 = r19 ∧
   s.readReg64 .lr = B + 0xaec#64 ∧ s.readReg64 .x21 = m ∧
@@ -690,7 +675,7 @@ theorem musl_start_hop6_fine (Q : Program) (B : BitVec 64) (hf : MuslHop6Fetch Q
   have hal' : (s.sp &&& 15#64 == 0#64) = true := hsp ▸ sp_sub_aligned 448#64 (by decide) hal
   (iterate 14 wp_step); wp_done
 
-def Hop7FineRegs (B sp0 x19v x20v tp : BitVec 64)
+@[expose] def Hop7FineRegs (B sp0 x19v x20v tp : BitVec 64)
     (fs0 : FsState) (tr0 : List TraceEvent) (s : State) : Prop :=
   Hop7Regs B sp0 x19v x20v fs0 tr0 s ∧ s.tpidrEl0 = tp
 

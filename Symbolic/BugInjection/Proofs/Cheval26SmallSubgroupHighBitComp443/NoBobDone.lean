@@ -25,5 +25,4 @@ theorem noBobDone38HB : NoBobDone38HB :=
 theorem noAccept_torsionComp_trace_take38 : NoAccept (Witnesses.Cheval26SmallSubgroupTorsionComp.trace.take 38) := by
   unfold NoAccept
   decide
-theorem bobDone_nil_torsionComp_trace_take38 {i : ExternInterpretation} {r : Records} {S : Sem} {who₀ : List Participant} {ok₀ : Nat → Bool} {g : Ghost} {ms : List Move} (hex : DY.Libsignal.Composed.Refinement.ExplainsMoves i r S who₀ ok₀ g ms (Witnesses.Cheval26SmallSubgroupTorsionComp.trace.take 38)) : bobDoneBaseKeys (runTraceMoves r ms) = [] := bobDone_nil_of_noAccept hex noAccept_torsionComp_trace_take38
 end Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443

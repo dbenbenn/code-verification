@@ -24,6 +24,9 @@ import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.InsertKeyBudgetS
 import LibsignalBinary.Proofs.ConsumeMessageKey.TooFarPathProofs.CoreBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # `HookSat` Sibling of `RunOfCalleesBudget`
@@ -609,49 +612,5 @@ theorem consume_message_key_placed_ro_run_of_sat [LibsignalPlacement] {M : Alloc
     (advanceEpilogue_placed_ro_ok F A lim H)
     (loopNoChainPanic_placed_ro_ok F A lim H)
     (epiloguePanic_placed_ro_ok F A lim H)
-
-theorem consume_message_key_placed_run_of_unbounded_sat [LibsignalPlacement] {M : AllocCostModel}
-    (F : ShaState → List (BitVec 8) → ShaState)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (H : String → Option (State → State))
-    (hfind : FindIndexPlacedOk H A) (hhmac : HmacPlacedOk H F)
-    (hgrow : GrowOnePlacedOk H A lim) :
-    CmkPlacedRunStmtUnboundedSat F A lim H :=
-  fun hA hmm =>
-    consume_message_key_placed_run_of_sat F A lim H hfind hhmac hgrow hA
-      (hookSat_sessionMemmoveBoundedBudget_of_unbounded 4096 hmm)
-
-theorem consume_message_key_placed_ro_run_of_unbounded_sat [LibsignalPlacement] {M : AllocCostModel}
-    (F : ShaState → List (BitVec 8) → ShaState)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (H : String → Option (State → State))
-    (hfind : FindIndexPlacedOk H A) (hhmac : HmacPlacedRoOk H F)
-    (hgrow : GrowOnePlacedOk H A lim) :
-    CmkPlacedRunStmtUnboundedSat F A lim H :=
-  fun hA hmm =>
-    consume_message_key_placed_ro_run_of_sat F A lim H hfind hhmac hgrow hA
-      (hookSat_sessionMemmoveBoundedBudget_of_unbounded 4096 hmm)
-
-theorem consume_message_key_placed_run_of_exact [LibsignalPlacement] {M : AllocCostModel}
-    (F : ShaState → List (BitVec 8) → ShaState)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (H : String → Option (State → State))
-    (hfind : FindIndexPlacedOk H A) (hhmac : HmacPlacedOk H F)
-    (hgrow : GrowOnePlacedOk H A lim) :
-    CmkPlacedRunStmt F A lim H :=
-  fun hA hmm =>
-    consume_message_key_placed_run_of_sat F A lim H hfind hhmac hgrow hA
-      (hookSat_sessionMemmoveBoundedBudget_of_exact 4096 hmm)
-
-theorem consume_message_key_placed_ro_run_of_exact [LibsignalPlacement] {M : AllocCostModel}
-    (F : ShaState → List (BitVec 8) → ShaState)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (H : String → Option (State → State))
-    (hfind : FindIndexPlacedOk H A) (hhmac : HmacPlacedRoOk H F)
-    (hgrow : GrowOnePlacedOk H A lim) :
-    CmkPlacedRunStmt F A lim H :=
-  fun hA hmm =>
-    consume_message_key_placed_ro_run_of_sat F A lim H hfind hhmac hgrow hA
-      (hookSat_sessionMemmoveBoundedBudget_of_exact 4096 hmm)
 
 end LibsignalBinary.Proofs.ConsumeMessageKey.RunOfCalleesBudgetSat

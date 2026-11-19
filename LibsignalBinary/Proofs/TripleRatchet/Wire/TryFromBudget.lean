@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBodyBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBodyBudget
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Common.SharedHelpers
 
 /-!
 # Budget-Threaded `<SignalMessage>::try_from` Composition
@@ -22,7 +23,7 @@ contract interface (`TryFromPostOkGen_placed`), and shared epilogue into the rel
 `[LibsignalPlacement]` `subroutine_ok` theorem on Block `85`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -208,7 +209,7 @@ theorem prologue_88_gt9_loop_wp_placed [LibsignalPlacement] {M : AllocCostModel}
   apply entails_of_eq; sep_ac_rfl
 
 /-- Post-loop (`+0x3b0 → +0x440`) budget contract interface, parameterized by `PostEnv`. -/
-def TryFromPostOkGen_placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def TryFromPostOkGen_placed [LibsignalPlacement] {M : AllocCostModel}
     (PostEnv : TryFromGhost → List AllocEvent → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   ∀ {st : M.σ} {x : TryFromGhost} {s0 s : State},

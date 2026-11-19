@@ -11,25 +11,39 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftWf
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3MatchingPathBMainPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3MatchingPathBPollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3MatchingPathBAuxPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3ParseRejectPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SlotPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.WrapperStatePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftWf
+public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3MatchingPathBMainPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3MatchingPathBPollPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3MatchingPathBAuxPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3ParseRejectPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SlotPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.WrapperStatePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.CommitOk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bounds
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Budget-Threaded Matching-Session Path-B Slot, `main` Lift, and `W4RecvPrekeyRealEnv` Inclusion
@@ -41,7 +55,7 @@ and slot envelopes (`DecPkD3MatchingPathBEnv`, `DecPkD3MatchingPathBCliEnv`), pr
 into `W4RecvPrekeyRealEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -148,7 +162,7 @@ private theorem toSkeletonRunHooks [LibsignalPlacement] {M : AllocCostModel}
   { alloc := hh.alloc, allocFs := hh.allocFs, panics := hh.panics, memcpyRO := hh.memcpyRO,
     bcmp := hh.bcmp, fs := hh.fs, utf8 := hh.utf8, memrchr := hh.memrchr,
     codecHooks := hh.codecHooks, allocZeroed := hh.allocZeroed, stringClone := hh.stringClone,
-    formatInner := hh.formatInner, blackBox := hh.blackBox }
+    formatInner := hh.formatInner, fmtWrite := hh.fmtWrite, blackBox := hh.blackBox }
 
 private theorem withPanics_cliGhostExterns_eq (mmpl : Obj.MultiPlacement)
     (gh : CliGhostHooks) (W : CliHooks) :
@@ -159,12 +173,12 @@ private theorem withPanics_cliGhostExterns_eq (mmpl : Obj.MultiPlacement)
 /-! ## 1. Matching-Session Path-B Semantics (`cliRunSemPathB`, `cliRunSemPathBFull`) & Envelopes -/
 
 /-- Conjunction of `DecPkOk₀` and `DecPkOkPathB`. -/
-def DecPkOkPathBFull (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] def DecPkOkPathBFull (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer me : AddrVal) (pm : PreKeySignalMessage) : Prop :=
   DecPkOk₀ W Scope F peer me pm ∧ DecPkOkPathB W Scope F peer me pm
 
 /-- `RunSem` instantiated with `decPkDef`, `DecPkOkPathB`, and `Pksm.pksmParse`. -/
-noncomputable def cliRunSemPathB (X : UnreachedPqxdhPrimitives) (W : CliHooks) : RunSem :=
+@[expose] noncomputable def cliRunSemPathB (X : UnreachedPqxdhPrimitives) (W : CliHooks) : RunSem :=
   cliRunSem_placed X W (decPkDef X ⟨W.C, W.Q⟩ scopeIn)
     (DecPkOkPathB ⟨W.C, W.Q⟩ scopeIn) pksmParse
 
@@ -208,7 +222,7 @@ theorem runRel_pqRecv_matchingPathB (X : UnreachedPqxdhPrimitives) (W : CliHooks
 /-- Parametric D3 matching-session Path-B `decrypt_prekey` slot allocation envelope
 (`cliDecryptPrekey` wrapper prologue/epilogue is stack-only, so the slot envelope equals
 `MatchingPathBPollEnv`). -/
-def DecPkD3MatchingPathBEnv [LibsignalPlacement] (A : RustAlloc)
+@[expose] def DecPkD3MatchingPathBEnv [LibsignalPlacement] (A : RustAlloc)
     (W : CliHooks) (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -232,7 +246,7 @@ abbrev DecPkD3MatchingPathBOfReadEnv [LibsignalPlacement] (A : RustAlloc)
 
 /-- Concrete CLI specialization of `DecPkD3MatchingPathBEnv` wired to `ReadFileRuleEnv cliIo.rd`,
 `SessDeserializeCancelEnv`, and `cliPollSessBudgetEnv`. -/
-def DecPkD3MatchingPathBCliEnv [LibsignalPlacement] (A : RustAlloc)
+@[expose] def DecPkD3MatchingPathBCliEnv [LibsignalPlacement] (A : RustAlloc)
     (W : CliHooks) (B : RunBudgets)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (g : DecPkGhost) : List AllocEvent → Prop :=
@@ -544,7 +558,7 @@ theorem phaseCredit_exists_guarded_u {α : Sort _} {M : AllocCostModel}
   credit_le st0 := fun ⟨x, hx, he⟩ => (h x hx).credit_le st0 he
 
 /-- Existential Variant (i) W4 real-slot envelope (`(sessionCapBytes, msgCapBytes)`). -/
-def MatchingPathBRealSlotEnv (evs : List AllocEvent) : Prop :=
+@[expose] def MatchingPathBRealSlotEnv (evs : List AllocEvent) : Prop :=
   ∃ w4R : W4RecvPrekeyRealParams,
     W4RecvPrekeyRealDomOf sessionCapBytes msgCapBytes w4R ∧ W4RecvPrekeyRealEnv w4R evs
 

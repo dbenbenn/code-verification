@@ -9,19 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStoresPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStoresBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStoresPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStoresBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.Pure
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStores.Helpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
 
 /-!
 # Budget-Threaded Relocatable `IdentityFiles` Drop Glue and Directory Loop Helpers
@@ -30,7 +37,7 @@ Defines `dropStoresSpecPlaced` and `dropDirPairSpecPlaced` over `RustCliAllocBud
 inline directory-drop loop helpers, and establishes `cliDropIdentityFiles_placed_ok` on block `549`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -82,7 +89,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget (deal
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 
 /-- Budget-threaded `[LibsignalPlacement]` specification for `drop_glue::<Stores>` (block `550`). -/
-def dropStoresSpecPlaced [LibsignalPlacement]
+@[expose] def dropStoresSpecPlaced [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat) :
     Spec (DropStoresGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl { dropStoresSpec M A lim stk with
@@ -91,7 +98,7 @@ def dropStoresSpecPlaced [LibsignalPlacement]
         A.pool lim st s ∗ stackAt s.sp stk }
 
 /-- Budget-threaded `[LibsignalPlacement]` specification for `drop_glue::<IdentityFiles>` (block `549`). -/
-def dropDirPairSpecPlaced [LibsignalPlacement]
+@[expose] def dropDirPairSpecPlaced [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat) :
     Spec (DropDirPairGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl { dropDirPairSpec M A lim stk with
@@ -100,7 +107,7 @@ def dropDirPairSpecPlaced [LibsignalPlacement]
         dirAt A.repAlloc x.a x.d0 ∗ dirAt A.repAlloc (x.a + 0x28#64) x.d1 ∗
         A.pool lim st s ∗ stackAt s.sp stk }
 
-def freeOnlyPool {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def freeOnlyPool {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) (s : State) : SepProp :=
   ∃∗ evs : List AllocEvent,
     ⌜∀ ev ∈ evs, ∃ al sz, ev = .free al sz⌝ ∗ A.pool lim (M.stepEvents evs st) s
@@ -607,7 +614,7 @@ prove_dir_nontail_placed stores_dir_signed_placed stores_loop0_placed (80#64) (8
 prove_dir_nontail_placed stores_dir_onetime_placed stores_loop1_placed (200#64) (208#64) (216#64) (224#64) 4 1 3 7
 prove_dir_nontail_placed stores_dir_sessions_placed stores_loop2_placed (240#64) (248#64) (256#64) (264#64) 7 2 5 10
 
-def dropDirPairRawSpecPlaced [LibsignalPlacement]
+@[expose] def dropDirPairRawSpecPlaced [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropDirPairGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl {
@@ -618,7 +625,7 @@ def dropDirPairRawSpecPlaced [LibsignalPlacement]
       ⌜sf.trace = s0.trace⌝ ∗ memRegion x.a 80 ∗ freeOnlyPool A lim st sf ∗ stackAt s0.sp idExactStk
   }
 
-def dropStoresRawSpecPlaced [LibsignalPlacement]
+@[expose] def dropStoresRawSpecPlaced [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropStoresGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl {

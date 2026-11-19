@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordChainClone.ClonePlacedDefsBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymC
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordChainClone.ClonePlacedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymC -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 public meta import Lean
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -22,6 +22,18 @@ import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.Clone
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.StdStartup.MemOps
+public import VerifiedLibraries.RustStd.Proofs.ExecSegSym
 
 /-!
 # Budget-Threaded Relocatable Mid-Segment Proofs for CLI `Chain::clone [local#2]`
@@ -31,7 +43,7 @@ Threads `RustCliAllocBudget M` and `VmPreserved` across the epilogue, `message_k
 allocation returns under `FitsEvents`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -109,7 +121,7 @@ def mkLoopEvents (rem : List (MessageKeyGhost × MessageKeyGenerator)) : List Al
   rem.flatMap (fun p => rustAllocEvents p.2.seed.length 1)
 
 /-- Suffix of `chainCloneEvents gc` emitted during the `message_keys` clone. -/
-def chainCloneMkEvents (mks : List MessageKeyGenerator) : List AllocEvent :=
+@[expose] def chainCloneMkEvents (mks : List MessageKeyGenerator) : List AllocEvent :=
   if mks = [] then []
   else rustAllocEvents (104 * mks.length) 8 ++
     mks.flatMap (fun mkg => rustAllocEvents mkg.seed.length 1)

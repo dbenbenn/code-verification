@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHmac
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHmac -- proof-setup: allow-public-import
 public import Computational.Proofs.SpecLemmas.Pqxdh.Security.BoundProofDefs
 import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 import VCVio.CryptoFoundations.SecExp.Measure
@@ -24,7 +24,7 @@ target rank in `[0, N)`, `N = B.q_enc + B.q_dec`, and `W_b j` runs `prfHmacOfMu 
 function) oracle.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +36,7 @@ open SignalPqxdh
 open RoKem
 
 /-- The `PrfHmac` oracle of `prfHmacExp` for challenge bit `b` and key `k`. -/
-noncomputable def prfEvalImpl (P : Primitives) (b : Bool) (k : Bytes) :
+@[expose] def prfEvalImpl (P : Primitives) (b : Bool) (k : Bytes) :
     QueryImpl prfHmacSpec (StateT (List (Bytes × Bytes)) ProbComp) :=
   fun (.eval msg) => do
     if b then
@@ -50,7 +50,7 @@ noncomputable def prfEvalImpl (P : Primitives) (b : Bool) (k : Bytes) :
         set ((msg, t) :: cache)
         return t
 
-noncomputable def prfFullImpl (P : Primitives) (b : Bool) (k : Bytes) :
+@[expose] def prfFullImpl (P : Primitives) (b : Bool) (k : Bytes) :
     QueryImpl PrfHmacSimSpec (StateT (List (Bytes × Bytes)) ProbComp) :=
   (primBaseImpl P).liftTarget (StateT (List (Bytes × Bytes)) ProbComp) + prfEvalImpl P b k
 
@@ -61,13 +61,13 @@ theorem prfHmacExp_eq (P : Primitives) (A : PrfHmacAdv) :
       let (b', _) ← (simulateQ (prfFullImpl P b k) A.run).run []
       return (b' == b)) := rfl
 
-def prfAfterRun (j : ℕ) (B : AeadMuIntCtxtAdv) : OracleComp PrfHmacSimSpec Bool := do
+@[expose] def prfAfterRun (j : ℕ) (B : AeadMuIntCtxtAdv) : OracleComp PrfHmacSimSpec Bool := do
   let (_, st) ← prfHmacOfMuRunAt j B
   let hit ← prfHmacFinish j st.pending (st.pending.map (fun e => (e.1, e.2.1))).dedup
   return (st.bad || hit)
 
 /-- Rank-`j` experiment against `PrfHmac` oracle `b`. -/
-noncomputable def prfW (P : Primitives) (b : Bool) (B : AeadMuIntCtxtAdv) (j : ℕ) :
+@[expose] def prfW (P : Primitives) (b : Bool) (B : AeadMuIntCtxtAdv) (j : ℕ) :
     ProbComp Bool := do
   let k ← sampleBytes32
   let (z, _) ← (simulateQ (prfFullImpl P b k) (prfAfterRun j B)).run []

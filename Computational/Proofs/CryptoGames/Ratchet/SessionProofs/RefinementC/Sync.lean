@@ -12,7 +12,7 @@ module
 public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Defs
 import Computational.Proofs.CryptoGames.Ratchet.WireRatchet
 import Computational.Proofs.CryptoGames.SM.Theorem7Proof
-import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDec
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.CBCDec
 
 /-!
 # Synchronization invariants `EpochSync` and `KeptInv`
@@ -22,7 +22,7 @@ Preservation and consequence lemmas for the primitive invariants `EpochSync` and
 state carry-over, receiving-epoch updates, and sending steps.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

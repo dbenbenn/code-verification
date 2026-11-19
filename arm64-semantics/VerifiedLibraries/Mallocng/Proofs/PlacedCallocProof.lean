@@ -237,7 +237,7 @@ private theorem calloc_epilogue_ret [MallocngMultiPlacement]
     by simpa [arm64_norm] using h27, by simpa [arm64_norm] using h28,
     by simp [arm64_norm], by simpa [calleeSavedVRegs] using hv⟩
 
-private theorem calloc_overflow_exit [MallocngMultiPlacement]
+private theorem calloc_overflow_exit [MallocngMultiPlacement] {ro : Bool}
     {b : BitVec 64} (hb : BlkBase 2 b) (γ : GhostName) (tp brkStart sp0 : BitVec 64)
     (bud : MallocngBudget) (ivs0 : List (BitVec 64 × Nat)) (s0 s1 : State) {v2 v3 : BitVec 64}
     (hcl1 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl s1.mem)
@@ -246,12 +246,12 @@ private theorem calloc_overflow_exit [MallocngMultiPlacement]
     (hproc01 : MallocngProcPreserved s0 s1) (hbrk01 : s1.brk = s0.brk)
     (hperm01 : s1.mem.perm = s0.mem.perm) (hcs01 : CalleeSaved21_28 s0 s1)
     (htp0 : s0.tpidrEl0 = tp) (hbrks0 : s0.brkStart = brkStart) :
-    let P1 := mallocngIface.MallocngHeap γ maddrs tp brkStart s0.brk bud ivs0 ∗ callocStackSaved sp0 s0 v2 v3
+    let P1 := (mallocngModeIface ro).MallocngHeap γ maddrs tp brkStart s0.brk bud ivs0 ∗ callocStackSaved sp0 s0 v2 v3
     SepWP (blkPC_b02.rebase b (fun _ => none)) (s0.readReg64 .lr) s1 P1
       (fun sf P_f =>
         (∀ R, sf.mem ⊨ P_f ∗ R → sf.mem ⊨
           (⌜sf.readReg64 .x0 = 0#64 ∧ MallocngCallAccounting 16 (MallocngTightStepBound 0 bud.peakCount) s0 sf⌝ ∗
-           MallocngPostEnv mallocngIface γ maddrs tp brkStart bud ivs0 s0 sf ∗ stackFrameAt sp0 1024) ∗ R) ∧
+           MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bud ivs0 s0 sf ∗ stackFrameAt sp0 1024) ∗ R) ∧
         sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
       (fun _ => ⌜False⌝) := by
   intro P1; have _ := hb
@@ -259,9 +259,9 @@ private theorem calloc_overflow_exit [MallocngMultiPlacement]
     rw [State.spAligned, hsp1]; exact spAligned_sub48 (by simpa [State.spAligned, hsp0] using hspAl0)
   have htp1 : s1.tpidrEl0 = tp := hproc01.2.2.1.trans htp0
   have hSplitHeap : P1 = (∃∗ errnoVal : BitVec 32,
-      ((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ mallocngIface.MallocngCore γ maddrs brkStart s0.brk bud ivs0 ∗
+      ((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ (mallocngModeIface ro).MallocngCore γ maddrs brkStart s0.brk bud ivs0 ∗
       ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗ callocStackSaved sp0 s0 v2 v3) := by
-    dsimp only [P1]; rw [mallocngHeap_split_runtime]; unfold MallocngRuntime
+    dsimp only [P1]; rw [mallocngModeIface_heap_eq]; unfold MallocngRuntime
     simp only [sepExists_sepConj_left, sepExists_sepConj_right]
     exact congrArg sepExists (funext fun _ => by ac_rfl)
   rw [hSplitHeap]
@@ -276,9 +276,9 @@ private theorem calloc_overflow_exit [MallocngMultiPlacement]
   have h_brk : sf.brk = s1.brk := ‹sf.brk = s1.brk›
   have h_perm : sf.mem.perm = s1.mem.perm := ‹sf.mem.perm = s1.mem.perm›
   wp_step; wp_step; wp_str32_cl m3 hm3 hcl2 _hcl3; wp_step
-  let Rest := ((tp - 0xa4#64) ↦₃₂ 12#32) ∗ mallocngIface.MallocngCore γ maddrs brkStart s0.brk bud ivs0 ∗
+  let Rest := ((tp - 0xa4#64) ↦₃₂ 12#32) ∗ (mallocngModeIface ro).MallocngCore γ maddrs brkStart s0.brk bud ivs0 ∗
     ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64)
-  have hPreEq : (((tp - 0xa4#64) ↦₃₂ 12#32) ∗ mallocngIface.MallocngCore γ maddrs brkStart s0.brk bud ivs0 ∗
+  have hPreEq : (((tp - 0xa4#64) ↦₃₂ 12#32) ∗ (mallocngModeIface ro).MallocngCore γ maddrs brkStart s0.brk bud ivs0 ∗
       ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗ callocStackSaved sp0 s0 v2 v3) =
       (Rest ∗ callocStackSaved sp0 s0 v2 v3) := by dsimp only [Rest]; ac_rfl
   rw [hPreEq]
@@ -311,7 +311,7 @@ private theorem calloc_overflow_exit [MallocngMultiPlacement]
   dsimp only [Rest, MallocngPostEnv, MallocngEnv]
   refine Entails.sepExists_right ivs0 (Entails.pure_right hNoOrph
     (Entails.pure_right ⟨hproc0f.2.2.1.trans htp0, hproc0f.2.2.2.1.trans hbrks0⟩ ?_))
-  rw [hbrk0f, mallocngHeap_split_runtime]; unfold MallocngRuntime; sep_frame
+  rw [hbrk0f, mallocngModeIface_heap_eq]; unfold MallocngRuntime; sep_frame
 
 private theorem entails_withCL_pre {P : SepProp} {φ ψ : Prop} (hφ : φ) (hψ : ψ) :
     P ⊢ (⌜φ⌝ ∗ P) ∗ ⌜ψ⌝ := by
@@ -763,40 +763,38 @@ private theorem sepWP_false_oom {prog : Program} {target_pc : BitVec 64} {s : St
   rintro sf hpc hrun ⟨P_f, hmf, hpost⟩
   exact SepWP.to_reaches_pc (SepWP.done hpc hrun hpost) hmf
 
-private theorem pack_mallocngPostEnv [MallocngMultiPlacement]
+private theorem pack_mallocngPostEnv [MallocngMultiPlacement] {ro : Bool}
     (γ : GhostName) (tp brkStart : BitVec 64) (bf : MallocngBudget)
     (ivs0 : List (BitVec 64 × Nat)) (st' : MallocngSt) (s0 sf : State)
     (hNoOrph : MallocngNoOrphanMappings ivs0 (dynamicRootRegions st') s0.mem sf.mem)
     (hCount : MallocngCountIvsWF bf (dynamicRootRegions st') st')
     (htp : sf.tpidrEl0 = tp) (hbrks : sf.brkStart = brkStart) :
-    (MallocngRoTablesA maddrs ∗ MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
-     MallocngRuntime maddrs tp) ⊢ MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf := by
-  have hHeap : (MallocngRoTablesA maddrs ∗ MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
-      MallocngRuntime maddrs tp) ⊢ mallocngIface.MallocngHeap γ maddrs tp brkStart sf.brk bf (dynamicRootRegions st') := by
-    rw [mallocngHeap_split_runtime]
-    change _ ⊢ MallocngCoreImpl γ maddrs brkStart sf.brk bf (dynamicRootRegions st') ∗ _
-    rw [MallocngCoreImpl_eq, ← sepConj_assoc]
+    (MallocngRoTablesA maddrs ∗ MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+     MallocngRuntime maddrs tp) ⊢ MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf := by
+  have hHeap : (MallocngRoTablesA maddrs ∗ MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+      MallocngRuntime maddrs tp) ⊢ (mallocngModeIface ro).MallocngHeap γ maddrs tp brkStart sf.brk bf (dynamicRootRegions st') := by
+    rw [mallocngModeIface_heap_eq, mallocngModeIface_core_eq, ← sepConj_assoc]
     exact sepConj_mono_left (sepConj_mono_right
       (Entails.sepExists_right st' (Entails.pure_right hCount (Entails.refl _))))
   unfold MallocngPostEnv MallocngEnv
   exact Entails.sepExists_right (dynamicRootRegions st')
     (Entails.pure_right hNoOrph (Entails.pure_right ⟨htp, hbrks⟩ hHeap))
 
-private theorem postEnv_congr_pre_post [MallocngMultiPlacement]
+private theorem postEnv_congr_pre_post [MallocngMultiPlacement] {ro : Bool}
     (γ : GhostName) (tp brkStart : BitVec 64) (bf : MallocngBudget)
     (ivs0 : List (BitVec 64 × Nat)) (s0 s_bl sm sf : State)
     (hperm0 : s_bl.mem.perm = s0.mem.perm) (hmemf : sf.mem = sm.mem)
     (hbrkf : sf.brk = sm.brk) (htpf : sf.tpidrEl0 = sm.tpidrEl0)
     (hbrksf : sf.brkStart = sm.brkStart) :
-    MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s_bl sm ⊢
-      MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf := by
+    MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s_bl sm ⊢
+      MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf := by
   unfold MallocngPostEnv MallocngEnv
   refine Entails.sepExists_mono fun ivsf => ?_
   rw [hbrkf, htpf, hbrksf]
   exact sepConj_mono_left (Entails.pure_mono fun h =>
     noOrphanMappings_congr_perm hperm0 (congrArg Memory.perm hmemf) h)
 
-private theorem calloc_malloc_hit [MallocngMultiPlacement] {B : GhostName → BitVec 64 → Nat → Nat → SepProp}
+private theorem calloc_malloc_hit [MallocngMultiPlacement] {ro : Bool} {B : GhostName → BitVec 64 → Nat → Nat → SepProp}
     {b : BitVec 64} (hb : BlkBase 2 b) {oom : State → SepProp}
     (γ : GhostName) (tp brkStart sp0 p v2 v3 : BitVec 64)
     (bs : List (BitVec 8)) (total idx : Nat) (bud bf : MallocngBudget)
@@ -816,19 +814,19 @@ private theorem calloc_malloc_hit [MallocngMultiPlacement] {B : GhostName → Bi
     (hcs0m : CalleeSaved21_28 s0 sm) :
     SepWP (blkPC_b02.rebase b (fun _ => none)) (s0.readReg64 .lr) sm
       (MallocngRoTablesA maddrs ∗
-       MallocngCoreStA γ maddrs brkStart sm.brk bf.liveCost bf.peakCost st' ∗
+       MallocngCoreStModeA ro γ maddrs brkStart sm.brk bf.liveCost bf.peakCost st' ∗
        MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ B γ p total 16 ∗ callocStackSaved sp0 s0 v2 v3)
       (fun sf P_f => (P_f ⊢ ⌜sf.readReg64 .x0 = p ∧ MallocngBlockWf p total ∧
            MallocngCallAccounting 16 (MallocngTightStepBound total bud.peakCount) s0 sf⌝ ∗
           B γ p total 16 ∗ (p ↦ₛ List.replicate total 0#8) ∗
-          MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf ∗ stackFrameAt sp0 1024) ∧
+          MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf ∗ stackFrameAt sp0 1024) ∧
         sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf) oom := by
   have _ := hb; have hp_ne : p ≠ 0#64 := hBlkWf.1
   have hPageRep := pageOf_add_lo12Of maddrs.replaced
-  conv => arg 4; arg 2; arg 1; unfold MallocngCoreStA MallocngCoreStInflightA
+  conv => arg 4; arg 2; arg 1; unfold MallocngCoreStModeA MallocngCoreStInflightModeA
   wp_step; wp_step; wp_step; wp_step; wp_step
-  conv => arg 4; arg 2; arg 1; change MallocngCoreStA γ maddrs brkStart sm.brk bf.liveCost bf.peakCost st'
-  have hallz := placed_mallocAllzerop_ok (P := blkPC_b02.rebase b (fun _ => none))
+  conv => arg 4; arg 2; arg 1; change MallocngCoreStModeA ro γ maddrs brkStart sm.brk bf.liveCost bf.peakCost st'
+  have hallz := placed_mallocAllzerop_ok (P := blkPC_b02.rebase b (fun _ => none)) (ro := ro)
     γ brkStart p bs total (max total MallocngMinBlockCost) bf.liveCost bf.peakCost idx st' g' (B γ p total 16) hg' hIdx hSlot
   rw [at_bl_target hb 10 172#64] at hallz; wp_call hallz
   have hproc_ma : MallocngProcPreserved sm sf := by
@@ -846,11 +844,11 @@ private theorem calloc_malloc_hit [MallocngMultiPlacement] {B : GhostName → Bi
   have hx19_az : sf.readReg64 .x19 = BitVec.ofNat 64 total :=
     ‹sf.readReg64 (.gpr 19#5) = _›.trans (by simpa [arm64_norm] using hx19m)
   have hx20_az : sf.readReg64 .x20 = p := ‹sf.readReg64 (.gpr 20#5) = _›
-  let EnvRest := MallocngRoTablesA maddrs ∗ MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+  let EnvRest := MallocngRoTablesA maddrs ∗ MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
     MallocngRuntime maddrs tp ∗ B γ p total 16
   cases hMmap : g'.isMmapped
   · simp only [hMmap, Bool.false_eq_true, ↓reduceIte] at hx0_az; wp_step
-    have hPreEq : (MallocngRoTablesA maddrs ∗ MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+    have hPreEq : (MallocngRoTablesA maddrs ∗ MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
         (p ↦ₛ bs) ∗ B γ p total 16 ∗ MallocngRuntime maddrs tp ∗ callocStackSaved sp0 s0 v2 v3) =
         ((p ↦ₛ bs) ∗ EnvRest ∗ callocStackSaved sp0 s0 v2 v3) := by dsimp only [EnvRest]; ac_rfl
     rw [hPreEq]
@@ -871,23 +869,23 @@ private theorem calloc_malloc_hit [MallocngMultiPlacement] {B : GhostName → Bi
     have hperm_m_end : s_end.mem.perm = sm.mem.perm := hperm_end.trans (congrArg Memory.perm hmem_az)
     have hAcc : MallocngCallAccounting 16 (MallocngTightStepBound total bud.peakCount) s0 s_end :=
       ⟨hproc_all, mappedDelta_congr_perm rfl hperm_m_end hDelta0⟩
-    have hPost := pack_mallocngPostEnv γ tp brkStart bf ivs0 st' s0 s_end
+    have hPost := pack_mallocngPostEnv (ro := ro) γ tp brkStart bf ivs0 st' s0 s_end
       (noOrphanMappings_congr_perm rfl hperm_m_end hNoOrph0) hCount
       (hp_az_end.2.2.1.trans (hproc_ma.2.2.1.trans htpm)) (hp_az_end.2.2.2.1.trans (hproc_ma.2.2.2.1.trans hbrksm))
     have hbrk_sf : s_end.brk = sf.brk := hbrk_end
     refine ⟨Entails.trans hent (Entails.pure_right ⟨hx0_end, hBlkWf, hAcc⟩ ?_), hsp_end, hcs_end⟩
     dsimp only [EnvRest]; rw [← hbrk_sf]
     have hOrd : ((p ↦ₛ List.replicate total 0#8) ∗
-        (MallocngRoTablesA maddrs ∗ MallocngCoreStA γ maddrs brkStart s_end.brk bf.liveCost bf.peakCost st' ∗
+        (MallocngRoTablesA maddrs ∗ MallocngCoreStModeA ro γ maddrs brkStart s_end.brk bf.liveCost bf.peakCost st' ∗
          MallocngRuntime maddrs tp ∗ B γ p total 16) ∗ stackFrameAt sp0 1024) ⊢
         B γ p total 16 ∗ (p ↦ₛ List.replicate total 0#8) ∗
-        (MallocngRoTablesA maddrs ∗ MallocngCoreStA γ maddrs brkStart s_end.brk bf.liveCost bf.peakCost st' ∗
+        (MallocngRoTablesA maddrs ∗ MallocngCoreStModeA ro γ maddrs brkStart s_end.brk bf.liveCost bf.peakCost st' ∗
          MallocngRuntime maddrs tp) ∗ stackFrameAt sp0 1024 := Entails.of_eq (by ac_rfl)
     exact Entails.trans hOrd (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left hPost)))
   · simp only [hMmap, ↓reduceIte] at hx0_az; have hbsZ := hZeroMmap hMmap; subst hbsZ; wp_step
     let EpRest := B γ p total 16 ∗ (p ↦ₛ List.replicate total 0#8) ∗
-      (MallocngRoTablesA maddrs ∗ MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗ MallocngRuntime maddrs tp)
-    have hPreEq : (MallocngRoTablesA maddrs ∗ MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+      (MallocngRoTablesA maddrs ∗ MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗ MallocngRuntime maddrs tp)
+    have hPreEq : (MallocngRoTablesA maddrs ∗ MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
         (p ↦ₛ List.replicate total 0#8) ∗ B γ p total 16 ∗ MallocngRuntime maddrs tp ∗
         callocStackSaved sp0 s0 v2 v3) = (EpRest ∗ callocStackSaved sp0 s0 v2 v3) := by dsimp only [EpRest]; ac_rfl
     rw [hPreEq]
@@ -907,7 +905,7 @@ private theorem calloc_malloc_hit [MallocngMultiPlacement] {B : GhostName → Bi
     have hperm_m_end : s_end.mem.perm = sm.mem.perm := congrArg Memory.perm (hmem_end.trans hmem_az)
     have hAcc : MallocngCallAccounting 16 (MallocngTightStepBound total bud.peakCount) s0 s_end :=
       ⟨hproc_all, mappedDelta_congr_perm rfl hperm_m_end hDelta0⟩
-    have hPost := pack_mallocngPostEnv γ tp brkStart bf ivs0 st' s0 s_end
+    have hPost := pack_mallocngPostEnv (ro := ro) γ tp brkStart bf ivs0 st' s0 s_end
       (noOrphanMappings_congr_perm rfl hperm_m_end hNoOrph0) hCount
       (hp_az_end.2.2.1.trans (hproc_ma.2.2.1.trans htpm)) (hp_az_end.2.2.2.1.trans (hproc_ma.2.2.2.1.trans hbrksm))
     have hbrk_sf : s_end.brk = sf.brk := hbrk_end
@@ -915,8 +913,8 @@ private theorem calloc_malloc_hit [MallocngMultiPlacement] {B : GhostName → Bi
     dsimp only [EpRest]; rw [← hbrk_sf, sepConj_assoc, sepConj_assoc]
     exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_left hPost))
 
-private theorem calloc_no_ovf [MallocngMultiPlacement] {B : GhostName → BitVec 64 → Nat → Nat → SepProp}
-    {b : BitVec 64} (hb : BlkBase 2 b) (hDefMalloc : DefaultMallocPlacedTokStmt B)
+private theorem calloc_no_ovf [MallocngMultiPlacement] {ro : Bool} {B : GhostName → BitVec 64 → Nat → Nat → SepProp}
+    {b : BitVec 64} (hb : BlkBase 2 b) (hDefMalloc : DefaultMallocPlacedTokStmt B ro)
     (γ : GhostName) (nmemb size sp0 tp brkStart v2 v3 : BitVec 64)
     (bud : MallocngBudget) (ivs0 : List (BitVec 64 × Nat)) (R : SepProp) (s0 s : State)
     (hovf : nmemb.toNat * size.toNat < 2 ^ 64)
@@ -926,10 +924,10 @@ private theorem calloc_no_ovf [MallocngMultiPlacement] {B : GhostName → BitVec
     (hx0 : s.readReg64 .x0 = nmemb) (hx1 : s.readReg64 .x1 = size)
     (hproc0s : MallocngProcPreserved s0 s) (hbrks : s.brk = s0.brk) (hperms : s.mem.perm = s0.mem.perm)
     (htp0 : s0.tpidrEl0 = tp) (hbrks0 : s0.brkStart = brkStart) (hcs0s : CalleeSaved21_28 s0 s) :
-    let spec := ToBaseSpec.toSpec (mallocngCallocTokSpec B msvc γ maddrs) (mbase 2)
+    let spec := ToBaseSpec.toSpec (mallocngCallocTokModeSpec ro B msvc γ maddrs) (mbase 2)
     let x := (nmemb, size, sp0, tp, brkStart, bud, ivs0)
     SepWP (blkPC_b02.rebase b (fun _ => none)) (s0.readReg64 .lr) s
-      (mallocngIface.MallocngHeap γ maddrs tp brkStart s0.brk bud ivs0 ∗ callocStackSaved sp0 s0 v2 v3)
+      ((mallocngModeIface ro).MallocngHeap γ maddrs tp brkStart s0.brk bud ivs0 ∗ callocStackSaved sp0 s0 v2 v3)
       (fun sf P_f => (sf.mem ⊨ P_f ∗ R → sf.mem ⊨ spec.post x s0 sf ∗ R) ∧
         sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
       (spec.onOom x s0) := by
@@ -956,7 +954,7 @@ private theorem calloc_no_ovf [MallocngMultiPlacement] {B : GhostName → BitVec
     (by simp [arm64_norm, hrun]) (by simpa [State.spAligned, arm64_norm, hsp] using hspAl)
     (by simp [arm64_norm])
     (fun R' hm => by
-      change _ ⊨ (mallocngIface.MallocngHeap γ maddrs tp brkStart s0.brk bud ivs0 ∗
+      change _ ⊨ ((mallocngModeIface ro).MallocngHeap γ maddrs tp brkStart s0.brk bud ivs0 ∗
         (stackFrameAt (sp0 - 48#64) 704 ∗ RestStack)) ∗ R' at hm
       rw [← sepConj_assoc _ (stackFrameAt (sp0 - 48#64) 704) RestStack,
           sepConj_assoc _ RestStack R'] at hm
@@ -981,7 +979,7 @@ private theorem calloc_no_ovf [MallocngMultiPlacement] {B : GhostName → BitVec
     (fun sm hpc_m hrun_m hsp_m hcs_m => ?_)
     (fun R' sf _ ho => by
       have ho' := Satisfies.drop_mid ho
-      dsimp only [libcMallocImplPlacedTokSpec, withCL, spec, ToBaseSpec.toSpec, mallocngCallocTokSpec, x] at ho' ⊢
+      dsimp only [libcMallocImplPlacedTokSpec, withCL, spec, ToBaseSpec.toSpec, mallocngCallocTokModeSpec, x] at ho' ⊢
       rw [satisfies_pure_sepConj] at ho' ⊢
       exact ⟨MallocngTightOomCond.of_pre_perm hproc0s.1 hproc0s.2.1
         (by simpa [sigActions_setPC, sigActions_advancePC, sigActions_writeReg64] using hproc0s.2.2.2.2.2.2)
@@ -1012,10 +1010,10 @@ private theorem calloc_no_ovf [MallocngMultiPlacement] {B : GhostName → BitVec
     apply SepWP.exists_elim; intro p; apply SepWP.exists_elim; intro bs; apply SepWP.exists_elim; intro st'
     rw [sepConj_assoc]; apply SepWP.pure_elim
     rintro ⟨hx0m, htpm, hbrksm, hBlkWf, hbsLen, hNoOrph_bl, hCount, g', hg', idx, hIdx, hSlot, _, hZeroMmap⟩
-    have hPreHit : ((MallocngRoTablesA maddrs ∗ MallocngCoreStA γ maddrs brkStart sm.brk bf.liveCost bf.peakCost st' ∗
+    have hPreHit : ((MallocngRoTablesA maddrs ∗ MallocngCoreStModeA ro γ maddrs brkStart sm.brk bf.liveCost bf.peakCost st' ∗
         MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ B γ p total 16) ∗
         (stackFrameAt (sp0 - 48#64) 704 ∗ RestStack)) =
-        (MallocngRoTablesA maddrs ∗ MallocngCoreStA γ maddrs brkStart sm.brk bf.liveCost bf.peakCost st' ∗
+        (MallocngRoTablesA maddrs ∗ MallocngCoreStModeA ro γ maddrs brkStart sm.brk bf.liveCost bf.peakCost st' ∗
          MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ B γ p total 16 ∗
          callocStackSaved sp0 s0 v2 v3) := by dsimp only [callocStackSaved, RestStack]; ac_rfl
     rw [hPreHit]
@@ -1030,13 +1028,13 @@ private theorem calloc_no_ovf [MallocngMultiPlacement] {B : GhostName → BitVec
     have hsat' := Satisfies.mono (sepConj_mono_left hent) hsat
     rw [sepConj_assoc, satisfies_pure_sepConj] at hsat'; obtain ⟨⟨hx0_f, _, hAcc⟩, hsat_sp⟩ := hsat'
     refine Satisfies.mono (sepConj_mono_left ?_) hsat_sp
-    dsimp only [spec, ToBaseSpec.toSpec, mallocngCallocTokSpec, x, mallocngStackBytes]
+    dsimp only [spec, ToBaseSpec.toSpec, mallocngCallocTokModeSpec, x, mallocngStackBytes]
     change _ ⊢ ⌜(OptOwn (MallocngTokZeroedBlock (B γ))).pureWf (sf.readReg64 .x0)
         (if ok = true then some (total, 16) else none) ∧
       MallocngCallAccounting 16 (MallocngTightStepBound (if ok = true then total else 0) bud.peakCount) s0 sf⌝ ∗
       (OptOwn (MallocngTokZeroedBlock (B γ))).interp (sf.readReg64 .x0)
         (if ok = true then some (total, 16) else none) ∗
-      (MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf ∗ stackFrameAt sp0 1024)
+      (MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf ∗ stackFrameAt sp0 1024)
     simp only [hok, ↓reduceIte, hx0_f, OptOwn_pureWf_some, OptOwn_interp_some, MallocngTokZeroedBlock]
     exact Entails.pure_right
       ⟨⟨hBlkWf.1, hBlkWf.1, hBlkWf.2.1, Nat.lt_of_le_of_lt hBlkWf.2.2.1 (by omega)⟩, hAcc⟩
@@ -1061,17 +1059,17 @@ private theorem calloc_no_ovf [MallocngMultiPlacement] {B : GhostName → BitVec
     have hAcc : MallocngCallAccounting 16 (MallocngTightStepBound 0 bud.peakCount) s0 sf := by
       simp only [decide_eq_false hMax, Bool.false_eq_true, ↓reduceIte] at hDelta_bl
       exact ⟨procPreserved_trans hproc0m hp_m_f, mappedDelta_congr_perm hperms (congrArg Memory.perm hmem_end) hDelta_bl⟩
-    have hPostShift := postEnv_congr_pre_post γ tp brkStart bf ivs0 s0 _ sm sf
+    have hPostShift := postEnv_congr_pre_post (ro := ro) γ tp brkStart bf ivs0 s0 _ sm sf
       (by simpa [arm64_norm] using hperms) hmem_end hbrk_end hp_m_f.2.2.1 hp_m_f.2.2.2.1
     refine ⟨fun hsat => ?_, hsp_f, hcs_f⟩
     refine Satisfies.mono (sepConj_mono_left (Entails.trans hent ?_)) hsat
-    dsimp only [spec, ToBaseSpec.toSpec, mallocngCallocTokSpec, x, mallocngStackBytes]
+    dsimp only [spec, ToBaseSpec.toSpec, mallocngCallocTokModeSpec, x, mallocngStackBytes]
     change _ ⊢ ⌜(OptOwn (MallocngTokZeroedBlock (B γ))).pureWf (sf.readReg64 .x0)
         (if ok = true then some (total, 16) else none) ∧
       MallocngCallAccounting 16 (MallocngTightStepBound (if ok = true then total else 0) bud.peakCount) s0 sf⌝ ∗
       (OptOwn (MallocngTokZeroedBlock (B γ))).interp (sf.readReg64 .x0)
         (if ok = true then some (total, 16) else none) ∗
-      (MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf ∗ stackFrameAt sp0 1024)
+      (MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf ∗ stackFrameAt sp0 1024)
     simp only [hok, Bool.false_eq_true, ↓reduceIte, hx0_f, OptOwn_pureWf_none, OptOwn_interp_none]
     exact Entails.pure_right ⟨trivial, hAcc⟩ (Entails.pure_right trivial (sepConj_mono_left hPostShift))
 
@@ -1085,10 +1083,10 @@ private theorem unpack_stackFrame_1024 (sp0 : BitVec 64) :
   rw [stackFrameAt_1024_split_48_704 sp0]; cells_unfold
   exact Entails.refl _
 
-private theorem blk02_calloc_ok [MallocngMultiPlacement] {B : GhostName → BitVec 64 → Nat → Nat → SepProp}
-    (hDefMalloc : DefaultMallocPlacedTokStmt B) (γ : GhostName) :
+private theorem blk02_calloc_ok [MallocngMultiPlacement] {ro : Bool} {B : GhostName → BitVec 64 → Nat → Nat → SepProp}
+    (hDefMalloc : DefaultMallocPlacedTokStmt B ro) (γ : GhostName) :
     subroutine_ok (mallocngBlockProg mmpl 2 msvc) (mbase 2)
-      (withCL mmpl (ToBaseSpec.toSpec (mallocngCallocTokSpec B msvc γ maddrs) (mbase 2))) := by
+      (withCL mmpl (ToBaseSpec.toSpec (mallocngCallocTokModeSpec ro B msvc γ maddrs) (mbase 2))) := by
   refine subroutine_ok_withCL_of_cl fun m0 hcl0 => ?_
   have hfn : ∀ c, (blkPC_b02.rebase c (fun _ => none)).fnAddr "calloc" = c := fun c => by
     dsimp only [Program.fnAddr, Program.rebase]
@@ -1098,12 +1096,12 @@ private theorem blk02_calloc_ok [MallocngMultiPlacement] {B : GhostName → BitV
   have _ := hb; apply subroutine_ok_of_sepWP_init
   intro x R s0 hpc hrun hpre hsp; rw [hfn b] at hpc
   rcases x with ⟨nmemb, size, sp0, tp, brkStart, bud, ivs0⟩
-  dsimp only [ToBaseSpec.toSpec, mallocngCallocTokSpec, MallocngEnv, mallocngStackBytes] at hpre
+  dsimp only [ToBaseSpec.toSpec, mallocngCallocTokModeSpec, MallocngEnv, mallocngStackBytes] at hpre
   simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
   obtain ⟨hm0, ⟨hx0, hx1, hsp0, _, _⟩, ⟨htp0, hbrks0⟩, hmem0⟩ := hpre
   have hcl_s0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl s0.mem := hm0 ▸ hcl0
   rw [← sepConj_assoc] at hmem0
-  refine ⟨mallocngIface.MallocngHeap γ maddrs tp brkStart s0.brk bud ivs0 ∗ stackFrameAt sp0 1024, hmem0, ?_⟩
+  refine ⟨(mallocngModeIface ro).MallocngHeap γ maddrs tp brkStart s0.brk bud ivs0 ∗ stackFrameAt sp0 1024, hmem0, ?_⟩
   apply SepWP.weaken_pre (sepConj_mono_right (unpack_stackFrame_1024 sp0))
   simp only [sepExists_sepConj_right]
   apply SepWP.exists_elim; intro w0; apply SepWP.exists_elim; intro w1; apply SepWP.exists_elim; intro w2
@@ -1115,12 +1113,12 @@ private theorem blk02_calloc_ok [MallocngMultiPlacement] {B : GhostName → BitV
   have hspAl0 : (sp0 &&& 15#64 == 0#64) = true := by simpa [State.spAligned, hsp0] using hsp
   have hspAl48 : ((sp0 - 48#64) &&& 15#64 == 0#64) = true := spAligned_sub48 hspAl0
   wp_stp64_cl m1 hm1 hcl_s0 hcl1; wp_step; wp_stp64_cl m2 hm2 hcl1 hcl2
-  have hPreSaved : (mallocngIface.MallocngHeap γ maddrs tp brkStart s0.brk bud ivs0 ∗
+  have hPreSaved : ((mallocngModeIface ro).MallocngHeap γ maddrs tp brkStart s0.brk bud ivs0 ∗
       stackFrameAt (sp0 - 48#64) 704 ∗ stackFrameAt (sp0 - 752#64) 272 ∗
       ((sp0 - 48#64) ↦₆₄ s0.readReg64 (.gpr 29#5)) ∗ ((sp0 - 40#64) ↦₆₄ s0.readReg64 (.gpr 30#5)) ∗
       ((sp0 - 32#64) ↦₆₄ s0.readReg64 (.gpr 19#5)) ∗ ((sp0 - 24#64) ↦₆₄ s0.readReg64 (.gpr 20#5)) ∗
       ((sp0 - 16#64) ↦₆₄ w4) ∗ ((sp0 - 8#64) ↦₆₄ w5)) =
-      (mallocngIface.MallocngHeap γ maddrs tp brkStart s0.brk bud ivs0 ∗ callocStackSaved sp0 s0 w4 w5) := rfl
+      ((mallocngModeIface ro).MallocngHeap γ maddrs tp brkStart s0.brk bud ivs0 ∗ callocStackSaved sp0 s0 w4 w5) := rfl
   rw [hPreSaved]
   by_cases hz1 : size = 0#64
   · subst hz1; wp_step
@@ -1159,37 +1157,47 @@ private theorem blk02_calloc_ok [MallocngMultiPlacement] {B : GhostName → BitV
       have hsat' := hq R hsat; rw [sepConj_assoc, satisfies_pure_sepConj] at hsat'
       obtain ⟨⟨hx0_f, hAcc⟩, hsat_env⟩ := hsat'
       refine Satisfies.mono (sepConj_mono_left ?_) hsat_env
-      dsimp only [ToBaseSpec.toSpec, mallocngCallocTokSpec, mallocngStackBytes]
+      dsimp only [ToBaseSpec.toSpec, mallocngCallocTokModeSpec, mallocngStackBytes]
       change _ ⊢ ⌜(OptOwn (MallocngTokZeroedBlock (B γ))).pureWf (sf.readReg64 .x0)
           (if decide (nmemb.toNat * size.toNat ≤ MallocngMaxAllocSize) = true then some (nmemb.toNat * size.toNat, 16) else none) ∧
         MallocngCallAccounting 16 (MallocngTightStepBound (if decide (nmemb.toNat * size.toNat ≤ MallocngMaxAllocSize) = true
           then nmemb.toNat * size.toNat else 0) bud.peakCount) s0 sf⌝ ∗
         (OptOwn (MallocngTokZeroedBlock (B γ))).interp (sf.readReg64 .x0)
           (if decide (nmemb.toNat * size.toNat ≤ MallocngMaxAllocSize) = true then some (nmemb.toNat * size.toNat, 16) else none) ∗
-        (MallocngPostEnv mallocngIface γ maddrs tp brkStart
+        (MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart
           (mallocngAllocBudget (decide (nmemb.toNat * size.toNat ≤ MallocngMaxAllocSize)) (nmemb.toNat * size.toNat) bud)
           ivs0 s0 sf ∗ stackFrameAt sp0 1024)
       simp only [hok, Bool.false_eq_true, ↓reduceIte, mallocngAllocBudget, hx0_f, OptOwn_pureWf_none, OptOwn_interp_none]
       exact Entails.pure_right ⟨trivial, hAcc⟩ (Entails.pure_right trivial (Entails.refl _))
+
+/-- Multi-block placed `calloc(nmemb, size)` (`b02`) satisfies `mallocngCallocTokModeSpec ro B`. -/
+theorem callocPlaced_entry_tok_mode_ok {ro : Bool} {B : GhostName → BitVec 64 → Nat → Nat → SepProp}
+    (hDefMalloc : DefaultMallocPlacedTokStmt B ro)
+    (mpl : Obj.MultiPlacement) (svc : State → State)
+    (hPlace : VerifiedLibraries.mallocngLib.Placeable mpl) (hSvc : MallocngSvcValid svc)
+    (γ : GhostName) :
+    mallocngMultiEntryOk mpl svc "calloc" (mallocngCallocTokModeSpec ro B svc γ (mallocngAddrsOfPlacement mpl)) := by
+  letI : MallocngMultiPlacement := { mpl := mpl, svc := svc, placeable := hPlace, svcValid := hSvc }
+  refine ⟨by decide, 2, 0, by decide +kernel, ?_⟩
+  rw [fnAddr_calloc]
+  exact withCL_to_withCodeLoaded (blk02_calloc_ok hDefMalloc γ)
 
 /-- Multi-block placed `calloc(nmemb, size)` (`b02`) satisfies `mallocngCallocTokSpec B`. -/
 theorem callocPlaced_entry_tok_ok {B : GhostName → BitVec 64 → Nat → Nat → SepProp} (hDefMalloc : DefaultMallocPlacedTokStmt B)
     (mpl : Obj.MultiPlacement) (svc : State → State)
     (hPlace : VerifiedLibraries.mallocngLib.Placeable mpl) (hSvc : MallocngSvcValid svc)
     (γ : GhostName) :
-    mallocngMultiEntryOk mpl svc "calloc" (mallocngCallocTokSpec B svc γ (mallocngAddrsOfPlacement mpl)) := by
-  letI : MallocngMultiPlacement := { mpl := mpl, svc := svc, placeable := hPlace, svcValid := hSvc }
-  refine ⟨by decide, 2, 0, by decide +kernel, ?_⟩
-  rw [fnAddr_calloc]
-  exact withCL_to_withCodeLoaded (blk02_calloc_ok hDefMalloc γ)
+    mallocngMultiEntryOk mpl svc "calloc" (mallocngCallocTokSpec B svc γ (mallocngAddrsOfPlacement mpl)) :=
+  callocPlaced_entry_tok_mode_ok (ro := false) hDefMalloc mpl svc hPlace hSvc γ
 
 /-- Multi-block placed `calloc(nmemb, size)` (`b02`) satisfies `mallocngCallocTightSpec`. -/
-theorem callocPlaced_entry_tight_ok (hDefMalloc : DefaultMallocPlacedTightStmt)
+theorem callocPlaced_entry_tight_ok {ro : Bool} (hDefMalloc : DefaultMallocPlacedTightStmt ro)
     (mpl : Obj.MultiPlacement) (svc : State → State)
     (hPlace : VerifiedLibraries.mallocngLib.Placeable mpl) (hSvc : MallocngSvcValid svc)
     (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "calloc"
-      (mallocngCallocTightSpec mallocngIface svc γ (mallocngAddrsOfPlacement mpl)) :=
-  callocPlaced_entry_tok_ok (DefaultMallocPlacedTightStmt.toTok hDefMalloc) mpl svc hPlace hSvc γ
+      (mallocngCallocTightSpec (mallocngModeIface ro) svc γ (mallocngAddrsOfPlacement mpl)) := by
+  rw [← mallocngCallocTokModeSpec_oldTok]
+  exact callocPlaced_entry_tok_mode_ok (DefaultMallocPlacedTightStmt.toTok hDefMalloc) mpl svc hPlace hSvc γ
 
 end VerifiedLibraries.Mallocng.Proofs

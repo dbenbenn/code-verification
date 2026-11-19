@@ -155,9 +155,6 @@ attribute [local irreducible] Symbolic.BugInjection.hexBytes
 set_option maxRecDepth 200000 in theorem rngAt1_untagged : (Cheval26WeakStateIdx1.PtDead35.rngAt 1).take 4 ≠ compTag4 := by rw [WsIdx1Split40MemoNewCensus.rngAt1_eq_fast]; decide +kernel
 set_option maxRecDepth 200000 in theorem rngAt34_untagged : (Cheval26WeakStateIdx1.PtDead35.rngAt 34).take 4 ≠ compTag4 := by rw [WsIdx1Split40MemoNewCensus.rngAt34_eq_fast]; decide +kernel
 set_option maxRecDepth 200000 in
-theorem rngAt36_untagged : (Cheval26WeakStateIdx1.PtDead35.rngAt 36).take 4 ≠ compTag4 := by
-  have h : Cheval26WeakStateIdx1.PtDead35.rngAt 36 = hexBytes.go Cheval26WeakStateIdx1.SpecTop.hexDigit Cheval26WeakStateIdx1.PtDead38.rng36Chars := by rw [Cheval26WeakStateIdx1.PtDead38.rngAt36_eq_hex, Cheval26WeakStateIdx1.PtDead38.rng36Str_eq, Cheval26WeakStateIdx1.SpecTop.hexBytes_ofList]
-  rw [h]; decide +kernel
 set_option maxRecDepth 200000 in
 theorem rngAt36_inits_untagged : ∀ c ∈ (Cheval26WeakStateIdx1.PtDead35.rngAt 36).inits, c.take 4 ≠ compTag4 := by
   rw [WsIdx1Split40MemoNewCensus.rngAt36_eq_fast]; decide +kernel

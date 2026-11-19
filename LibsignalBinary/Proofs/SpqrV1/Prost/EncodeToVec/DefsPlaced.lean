@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -20,7 +20,7 @@ Relocatable `[LibsignalPlacement]` `.rodata` jump-table assertions, pinned/unpin
 and `StepInv` combinators for `PqRatchetState::encode_to_vec` (`Block 426`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -40,55 +40,20 @@ open CryptoVerification.LibsignalSpqrV1
 open CryptoVerification.SpqrV1.ProtoRepr
 
 theorem StepInv.codeLoaded {s0 s : State} (hinv : StepInv s0 s) {prog : Program}
-    (hL : prog.CodeLoaded s0.mem) : prog.CodeLoaded s.mem := by
-  let img : Obj.Image := {
-    base := prog.base
-    code := prog.code
-    dataAddr := 0
-    data := []
-    roData := []
-    externData := []
-    gotAddr := 0
-    got := []
-    symbols := []
-    stubs := []
-  }
-  have hfl0 : img.FrozenLoaded s0 := by
-    refine Obj.Image.frozenLoaded_iff.2 ⟨hL.of_base_code rfl rfl, ?_, ?_⟩
-    · intro i hi; simp [img] at hi
-    · intro i hi; simp [Obj.Image.gotBytes, img] at hi
-  exact (Obj.Image.frozenLoaded_iff.1 (hinv.1 img hfl0)).1.of_base_code rfl rfl
+    (hL : prog.CodeLoaded s0.mem) : prog.CodeLoaded s.mem :=
+  hL.of_keepsFrozen hinv.1
 
 theorem StepInv.holdsBytes_ro {s0 s : State} (hinv : StepInv s0 s) {a : BitVec 64}
     {bs : List (BitVec 8)} (hro : Obj.HoldsBytes s0.mem a bs (fun _ => Perm.ro)) :
     Obj.HoldsBytes s.mem a bs (fun _ => Perm.ro) := by
-  let img : Obj.Image := {
-    base := 0
-    code := []
-    dataAddr := a
-    data := bs
-    roData := [(a, 2 ^ 64)]
-    externData := []
-    gotAddr := 0
-    got := []
-    symbols := []
-    stubs := []
-  }
-  have hfl0 : img.FrozenLoaded s0 := by
-    refine Obj.Image.frozenLoaded_iff.2 ⟨?_, ?_, ?_⟩
-    · refine Program.CodeLoaded.intro (by simp [Program.ofImage, img]) (by simp [Program.ofImage, img]) (fun i hi => ?_)
-      simp [Program.ofImage, img] at hi
-    · intro i hi
-      dsimp only [img]
-      intro _
-      exact hro i hi
-    · intro i hi; simp [Obj.Image.gotBytes, img] at hi
-  have hrod := (Obj.Image.frozenLoaded_iff.1 (hinv.1 img hfl0)).2.1
   intro i hi
-  apply hrod i hi
-  simp only [Obj.Image.isRoData, img, List.any_cons, List.any_nil, Bool.or_false,
-    decide_eq_true_eq]
-  exact BitVec.isLt _
+  obtain ⟨hr, hp, hlf⟩ := hro i hi
+  have hfr : s0.mem.Frozen (a + BitVec.ofNat 64 i) := by
+    unfold Memory.Frozen
+    rw [hp]
+    rfl
+  obtain ⟨hr', hp', hlf', _⟩ := hinv.1 (a + BitVec.ofNat 64 i) hfr
+  exact ⟨hr'.trans hr, hp'.trans hp, hlf'.trans hlf⟩
 
 theorem StepInv.libsignalCodeLoaded {s0 s : State} (hinv : StepInv s0 s) {pl : MultiPlacement}
     (hcl : LibsignalCodeLoaded pl s0.mem) : LibsignalCodeLoaded pl s.mem :=

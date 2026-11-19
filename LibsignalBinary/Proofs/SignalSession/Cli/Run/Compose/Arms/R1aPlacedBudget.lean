@@ -9,12 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Hops -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Arm `R1a` Specification
@@ -23,7 +28,7 @@ Defines budget-threaded `RunHopInit1Placed` and `RunHopInit1PlacedOf` (`R+0x214 
 Block `579` under `[LibsignalPlacement]` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -48,7 +53,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
   (RunCalleesEnvs RunCalleesPlaced RunHooksPlaced)
 
 /-- Budget-threaded relocatable Arm `R1a` contract from `AtDispatchPlaced` (`R+0x214`) under `FitsEnv M lim st (Init1Env g me peerV dir)` to `AtInit1Placed` (`R+0x74c`) or `RejectKPlacedEnv` / `PanicK`. -/
-def RunHopInit1Placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopInit1Placed [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs) (sEnvs : RunSlotEnvs)
     (Init1Env : RunCall → MeAtDispatch → AddrV → List (BitVec 8) → List AllocEvent → Prop)
@@ -79,7 +84,7 @@ def RunHopInit1Placed [LibsignalPlacement] {M : AllocCostModel}
       (fun _ => ⌜False⌝)
 
 
-def RunHopInit1PlacedOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopInit1PlacedOf [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs)
     (Init1Env : RunCall → MeAtDispatch → AddrV → List (BitVec 8) → List AllocEvent → Prop)

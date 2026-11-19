@@ -388,19 +388,19 @@ scoped macro "wp_str8_p" m:ident hm:ident : tactic => `(tactic| (
   (wp_focus_close wp_norm_lhs); (wp_focus_close wp_sep_access); (wp_focus_close wp_norm_lhs)
   intro $m:ident $hm:ident _; try simp only [arm64_norm] at $hm:ident))
 
-def NfStaticRest (γ : GhostName) (A : MallocngAddrs) (st : MallocngSt) : SepProp :=
+def NfStaticRest (γ : GhostName) (A : MallocngAddrs) (st : MallocngSt) (ro : Bool := false) : SepProp :=
   MallocngLiveAuth γ st.liveMap ∗ (A.lock ↦₃₂ 0#32) ∗ (A.replaced ↦₃₂ 0#32) ∗
-  (A.aaReplaced ↦₃₂ 0#32) ∗ ((A.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γ st.auxvPtr st.auxvSnap
+  (A.aaReplaced ↦₃₂ 0#32) ∗ MallocngAuxvPtrCell ro A.libc st.auxvPtr ∗ MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap
 
-theorem coreStInflightA_eq_nfParts (k : Nat) (γ : GhostName) (A : MallocngAddrs)
+theorem coreStInflightA_eq_nfParts {ro : Bool} (k : Nat) (γ : GhostName) (A : MallocngAddrs)
     (brkStart brk : BitVec 64) (liveCost peakCost : Nat) (st : MallocngSt) :
-    MallocngCoreStInflightA k γ A brkStart brk liveCost peakCost st =
+    MallocngCoreStInflightModeA ro k γ A brkStart brk liveCost peakCost st =
       (⌜MallocngWFInflight k A.base brkStart brk liveCost peakCost st⌝ ∗
-       NfStaticRest γ A st ∗ (A.ctx ↦ₛ st.ctx.toBytes) ∗
+       NfStaticRest γ A st ro ∗ (A.ctx ↦ₛ st.ctx.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
        ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
        MappedSet st.masterDom (OwnedMappedByte st)) := by
-  unfold MallocngCoreStInflightA NfStaticRest; ac_rfl
+  unfold MallocngCoreStInflightModeA NfStaticRest; ac_rfl
 
 def NfRetSep (st st' : MallocngSt) (x0 x1 : BitVec 64) : SepProp :=
   if x1 = 0#64 then
@@ -421,7 +421,7 @@ theorem nfRetSep_congr_left {st0 st1 st2 : MallocngSt} (x0 x1 : BitVec 64)
     (hDyn : dynamicRootRegions st1 = dynamicRootRegions st0) :
     NfRetSep st1 st2 x0 x1 = NfRetSep st0 st2 x0 x1 := by unfold NfRetSep; rw [hDyn]
 
-def NfFuelPost [MallocngMultiPlacement]
+def NfFuelPost [MallocngMultiPlacement] {ro : Bool}
     (k fuel : Nat) (γ : GhostName) (brkStart : BitVec 64) (bud : MallocngBudget)
     (st : MallocngSt) (s0 sf : State) (P_f : SepProp) : Prop :=
   (P_f ⊢ ∃∗ st' : MallocngSt,
@@ -430,9 +430,10 @@ def NfFuelPost [MallocngMultiPlacement]
      st'.metaAreas = st.metaAreas ∧
      totalLiveCount st' ≤ totalLiveCount st ∧
      (dynamicRootRegions st').length ≤ (dynamicRootRegions st).length ∧
-     Cost.GroupsGrpMono st.groups st'.groups⌝ ∗
+     Cost.GroupsGrpMono st.groups st'.groups ∧
+     Cost.Fine.GroupsFreeMono st.groups st'.groups⌝ ∗
     stackFrameAt s0.sp (32 * (fuel + 1)) ∗ MallocngRoTablesA maddrs ∗
-    MallocngCoreStInflightA k γ maddrs brkStart s0.brk bud.liveCost bud.peakCost st' ∗
+    MallocngCoreStInflightModeA ro k γ maddrs brkStart s0.brk bud.liveCost bud.peakCost st' ∗
     NfRetSep st st' (sf.readReg64 .x0) (sf.readReg64 .x1)) ∧
   sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf
 
@@ -489,7 +490,7 @@ theorem step_stxr32_either_perm_next {prog : Program} {target_pc pc pc_next ea :
   subst hnext_pc
   exact step_stxr32_either_perm hpc hrun hfetch hsp haddr halign hval hok hfail
 
-theorem sepWP_nf_epilogue_490 [MallocngMultiPlacement]
+theorem sepWP_nf_epilogue_490 [MallocngMultiPlacement] {ro : Bool}
     {b : BitVec 64} (hb : BlkBase 5 b) {k fuel : Nat} (hFuel : fuel ≤ 6)
     {γ : GhostName} {brkStart : BitVec 64} {bud : MallocngBudget}
     {st st' : MallocngSt} {s0 s : State} {oom : State → SepProp}
@@ -502,16 +503,17 @@ theorem sepWP_nf_epilogue_490 [MallocngMultiPlacement]
     (hMa : st'.metaAreas = st.metaAreas)
     (hCnt : totalLiveCount st' ≤ totalLiveCount st)
     (hDynLen : (dynamicRootRegions st').length ≤ (dynamicRootRegions st).length)
-    (hGrp : Cost.GroupsGrpMono st.groups st'.groups) :
+    (hGrp : Cost.GroupsGrpMono st.groups st'.groups)
+    (hFree : Cost.Fine.GroupsFreeMono st.groups st'.groups) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' ∗
+       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' ro ∗
        (maddrs.ctx ↦ₛ st'.ctx.toBytes) ∗
        ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗
        ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
        MappedSet st'.masterDom (OwnedMappedByte st') ∗
        NfRetSep st st' (s.readReg64 .x0) (s.readReg64 .x1))
-      (NfFuelPost k fuel γ brkStart bud st s0) oom := by
+      (NfFuelPost (ro := ro) k fuel γ brkStart bud st s0) oom := by
   have _ := hb
   have hspAl : s.spAligned = true := by
     rw [State.spAligned, hsp]; exact spAligned_sub32 (by simpa [State.spAligned] using hspAl0)
@@ -523,7 +525,7 @@ theorem sepWP_nf_epilogue_490 [MallocngMultiPlacement]
   wp_steps
   refine SepWP.done (by simp [arm64_norm]) (by simp [arm64_norm, hrun]) ⟨?_, by simp [arm64_norm], ?_⟩
   · refine Entails.sepExists_right st' ?_
-    refine Entails.pure_right ⟨hProc, hbrk, hProc.2.2.1, hperm, hRes, hMa, hCnt, hDynLen, hGrp⟩ ?_
+    refine Entails.pure_right ⟨hProc, hbrk, hProc.2.2.1, hperm, hRes, hMa, hCnt, hDynLen, hGrp, hFree⟩ ?_
     rw [coreStInflightA_eq_nfParts, pure_sepConj_of_true hwf']
     simp only [arm64_norm]
     refine Entails.trans (repack_nfStack_rest s0.sp fuel hFuel s0 _) ?_
@@ -678,7 +680,7 @@ theorem freeMeta_toBytes_cells (m prev next : BitVec 64) :
   have h32 : (m + 24#64) + BitVec.ofNat 64 8 = m + 32#64 := by bv_arith
   rw [show BitVec.ofNat 64 8 = 8#64 from rfl, h16, h24, h32]
 
-theorem sepWP_nf_commit_474 [MallocngMultiPlacement]
+theorem sepWP_nf_commit_474 [MallocngMultiPlacement] {ro : Bool}
     {b : BitVec 64} (hb : BlkBase 5 b) {k fuel : Nat} (hFuel : fuel ≤ 6)
     {γ : GhostName} {brkStart : BitVec 64} {bud : MallocngBudget}
     {st st' : MallocngSt} {gPre gPost : GroupDesc} {self32 : BitVec 32}
@@ -697,15 +699,16 @@ theorem sepWP_nf_commit_474 [MallocngMultiPlacement]
     (hCnt : totalLiveCount st' ≤ totalLiveCount st)
     (hDynEq : dynamicRootRegions st' = dynamicRootRegions st)
     (hGrp : Cost.GroupsGrpMono st.groups st'.groups)
+    (hFree : Cost.Fine.GroupsFreeMono st.groups st'.groups)
     (hByteEq : ((gPost.metaPtr ↦ₛ gPost.metaBytes) ∗ ByteRest) =
       ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' ∗
+       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' ro ∗
        (maddrs.ctx ↦ₛ st'.ctx.toBytes) ∗ (gPre.metaPtr ↦ₛ gPre.metaBytes) ∗ ByteRest ∗
        ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
        MappedSet st'.masterDom (OwnedMappedByte st'))
-      (NfFuelPost k fuel γ brkStart bud st s0) oom := by
+      (NfFuelPost (ro := ro) k fuel γ brkStart bud st s0) oom := by
   have _ := hb
   have hAl28 : MemWidth.isAligned .W32 (gPre.metaPtr + 28#64) = true := by
     apply isAligned_w32_of_mod4
@@ -714,13 +717,13 @@ theorem sepWP_nf_commit_474 [MallocngMultiPlacement]
     change (gPre.metaPtr.toNat + 28) % 4 = 0; omega
   wp_step
   have hFocus : (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' ∗
+       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' ro ∗
        (maddrs.ctx ↦ₛ st'.ctx.toBytes) ∗ (gPre.metaPtr ↦ₛ gPre.metaBytes) ∗ ByteRest ∗
        ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
        MappedSet st'.masterDom (OwnedMappedByte st')) =
       (((gPre.metaPtr + 28#64) ↦₃₂ gPre.freedMask) ∗
        (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-        MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' ∗
+        MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' ro ∗
         (maddrs.ctx ↦ₛ st'.ctx.toBytes) ∗
         ((gPre.metaPtr ↦₆₄ gPre.prev) ∗ ((gPre.metaPtr + 8#64) ↦₆₄ gPre.next) ∗
          ((gPre.metaPtr + 16#64) ↦₆₄ gPre.mem) ∗ ((gPre.metaPtr + 24#64) ↦₃₂ gPre.availMask) ∗
@@ -742,7 +745,7 @@ theorem sepWP_nf_commit_474 [MallocngMultiPlacement]
   intro s1 P1 hpc1 hrun1 ⟨hsp1, hbrk1, hperm1, hProc1, hcs1, hx0_1, hx1_1, hP1⟩
   have hUnfocus : (((gPre.metaPtr + 28#64) ↦₃₂ (gPre.freedMask ||| self32)) ∗
        (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-        MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' ∗
+        MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' ro ∗
         (maddrs.ctx ↦ₛ st'.ctx.toBytes) ∗
         ((gPre.metaPtr ↦₆₄ gPre.prev) ∗ ((gPre.metaPtr + 8#64) ↦₆₄ gPre.next) ∗
          ((gPre.metaPtr + 16#64) ↦₆₄ gPre.mem) ∗ ((gPre.metaPtr + 24#64) ↦₃₂ gPre.availMask) ∗
@@ -750,7 +753,7 @@ theorem sepWP_nf_commit_474 [MallocngMultiPlacement]
         ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
         MappedSet st'.masterDom (OwnedMappedByte st'))) ⊢
       (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' ∗
+       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st' ro ∗
        (maddrs.ctx ↦ₛ st'.ctx.toBytes) ∗
        ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗
        ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
@@ -768,9 +771,9 @@ theorem sepWP_nf_commit_474 [MallocngMultiPlacement]
       (hsp1.trans (by simpa [arm64_norm] using hsp)) hspAl0 hProc1
       (hbrk1.trans (by simpa [arm64_norm] using hbrk))
       (hperm1.trans (by simpa [arm64_norm] using hperm)) hcs1
-      hwf' hRes hMa hCnt (by rw [hDynEq]; exact Nat.le_refl _) hGrp)
+      hwf' hRes hMa hCnt (by rw [hDynEq]; exact Nat.le_refl _) hGrp hFree)
 
-theorem sepWP_nf_freeMeta_224 [MallocngMultiPlacement]
+theorem sepWP_nf_freeMeta_224 [MallocngMultiPlacement] {ro : Bool}
     {b : BitVec 64} (hb : BlkBase 5 b) {k fuel : Nat} (hFuel : fuel ≤ 6)
     {γ : GhostName} {brkStart : BitVec 64} {bud : MallocngBudget}
     {st st_m : MallocngSt} {gZero : GroupDesc} {s0 s : State} {oom : State → SepProp}
@@ -785,16 +788,17 @@ theorem sepWP_nf_freeMeta_224 [MallocngMultiPlacement]
     (hMa_m : st_m.metaAreas = st.metaAreas)
     (hCnt_m : totalLiveCount st_m ≤ totalLiveCount st)
     (hDynLen_m : (dynamicRootRegions st_m).length ≤ (dynamicRootRegions st).length)
-    (hGrp_m : Cost.GroupsGrpMono st.groups st_m.groups) :
+    (hGrp_m : Cost.GroupsGrpMono st.groups st_m.groups)
+    (hFree_m : Cost.Fine.GroupsFreeMono st.groups st_m.groups) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       (stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st_m ∗
+       MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st_m ro ∗
        (maddrs.ctx ↦ₛ st_m.ctx.toBytes) ∗ (gZero.metaPtr ↦ₛ gZero.metaBytes) ∗
        ByteMap st_m.masterDom (OwnedRwByte st_m) st_m.byteVal ∗
        ProtNoneByteMap st_m.masterDom (OwnedProtNoneByte st_m) st_m.byteVal ∗
        MappedSet st_m.masterDom (OwnedMappedByte st_m) ∗
        NfRetSep st st_m (s.readReg64 .x0) (s.readReg64 .x1))
-      (NfFuelPost k fuel γ brkStart bud st s0) oom := by
+      (NfFuelPost (ro := ro) k fuel γ brkStart bud st s0) oom := by
   have _ := hb
   let m := gZero.metaPtr
   obtain ⟨w24, hMetaCells⟩ := metaBytes_eq_cells64 gZero
@@ -830,7 +834,7 @@ theorem sepWP_nf_freeMeta_224 [MallocngMultiPlacement]
                  by simpa [arm64_norm] using c25, by simpa [arm64_norm] using c26,
                  by simpa [arm64_norm] using c27, by simpa [arm64_norm] using c28,
                  by simpa [calleeSavedVRegs] using cv⟩)
-      hWf1 (hRes1.trans hRes_m) hMa_m (by omega) (by rw [hDyn1]; exact hDynLen_m) hGrp_m)
+      hWf1 (hRes1.trans hRes_m) hMa_m (by omega) (by rw [hDyn1]; exact hDynLen_m) hGrp_m hFree_m)
     dsimp only [m, NfStaticRest] at hCtxWrite hByte1 ⊢
     simp only [arm64_norm]
     rw [← hCtxWrite, ← hByte1, freeMeta_toBytes_cells gZero.metaPtr gZero.metaPtr gZero.metaPtr,
@@ -904,7 +908,7 @@ theorem sepWP_nf_freeMeta_224 [MallocngMultiPlacement]
                  by simpa [arm64_norm] using c25, by simpa [arm64_norm] using c26,
                  by simpa [arm64_norm] using c27, by simpa [arm64_norm] using c28,
                  by simpa [calleeSavedVRegs] using cv⟩)
-      hWf1 (hRes1.trans hRes_m) hMa_m (by omega) (by rw [hDyn1]; exact hDynLen_m) hGrp_m)
+      hWf1 (hRes1.trans hRes_m) hMa_m (by omega) (by rw [hDyn1]; exact hDynLen_m) hGrp_m hFree_m)
     dsimp only [m, NfStaticRest] at hHdCellsUpd ⊢
     simp only [arm64_norm]
     rw [hCtxRead, ← hByte1, freeMeta_toBytes_cells gZero.metaPtr hdFm.prev head,

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Reductions
-public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Lazy
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.FSAEAD.Lazy -- proof-setup: allow-public-import
 import VCVio.OracleComp.Constructions.SampleableType.Measure
 
 /-!
@@ -21,7 +21,7 @@ Fig. 8 SM scheme is bounded in bias by the real world (`b = false`) of `redCKAPr
 game.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory CryptoGames.Lazy
 
@@ -102,7 +102,7 @@ section TwoWayDoom
 
 variable {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C] [SampleableType Coins]
 
-def privEnd (Δ : ℕ) (tL : Option ℕ) (t : ℕ) (b : Bool)
+@[expose] def privEnd (Δ : ℕ) (tL : Option ℕ) (t : ℕ) (b : Bool)
     (res : Bool × SM.GameState St Msg C) : ProbComp Bool :=
   if SM.lastLeakGuessAdmissible Δ tL t && SM.canon t res.2 == tL then pure (b == res.1)
   else ($ᵗ Bool : ProbComp Bool)
@@ -137,7 +137,7 @@ theorem implP_inject (sm : SMScheme Key St Msg Coins C) (Δ qep t : ℕ) (q : Pa
 theorem implP_corr (sm : SMScheme Key St Msg Coins C) (Δ qep t : ℕ) (P : Party) :
     implP sm Δ qep t (.inr (.inr P)) = SM.corrImpl P := rfl
 
-def gsWithB (s : SM.GameState St Msg C) (b : Bool) : SM.GameState St Msg C :=
+@[expose] def gsWithB (s : SM.GameState St Msg C) (b : Bool) : SM.GameState St Msg C :=
   { s with b := b }
 
 omit [DecidableEq Msg] [DecidableEq C] [SampleableType Coins] in
@@ -153,16 +153,16 @@ theorem epMgmt_gsWithB (s : SM.GameState St Msg C) (Δ qep : ℕ) (P : Party) (b
   · split <;> rfl
 
 /-- Doom condition D1: a leak occurred strictly between `tL` and `t`. -/
-def DoomD1 (tL : Option ℕ) (t : ℕ) (s : SM.GameState St Msg C) : Prop :=
+@[expose] def DoomD1 (tL : Option ℕ) (t : ℕ) (s : SM.GameState St Msg C) : Prop :=
   ∃ l ∈ s.leaks, SM.ltOpt tL l = true ∧ l < t
 
 /-- Doom condition D2: `tL + Δ > t`, so no challenge in epoch `t` can ever be allowed. -/
-def DoomD2 (Δ t : ℕ) (s : SM.GameState St Msg C) : Prop :=
+@[expose] def DoomD2 (Δ t : ℕ) (s : SM.GameState St Msg C) : Prop :=
   SM.healedBy s.tL Δ t = false
 
 /-- Doom condition D3: `l` was skipped without leaking, and both parties are already `≥ l` with one
 strictly above `l`. -/
-def DoomD3 (l : ℕ) (s : SM.GameState St Msg C) : Prop :=
+@[expose] def DoomD3 (l : ℕ) (s : SM.GameState St Msg C) : Prop :=
   l ∉ s.leaks ∧ l < max (s.epoch .A) (s.epoch .B) ∧ l ≤ s.epoch .A ∧ l ≤ s.epoch .B
 
 omit [DecidableEq Msg] [DecidableEq C] [SampleableType Coins] in
@@ -852,9 +852,9 @@ abbrev EMc (Γ CCoins T I Sig SS RS M E : Type) :=
 
 abbrev CHMc (Γ CCoins T I : Type) := HM (CKA.spec Γ CCoins T I) (CKAState T I)
 
-def moP : Mode := ⟨false, tL, t⟩
+@[expose] def moP : Mode := ⟨false, tL, t⟩
 
-def polP : Policy := ⟨false, tL, t⟩
+@[expose] def polP : Policy := ⟨false, tL, t⟩
 
 abbrev implC (tH : ℕ) :
     QueryImpl (unifSpec + CKA.spec Γ CCoins T I) (StateT (CKA.GameState Γ T) ProbComp) :=
@@ -867,12 +867,12 @@ abbrev implEc :
   implE (hooksCKA cka prng fs Δcka (moP tL t)) (2 + Δcka) qep fs.maxSkip
     (SM.Config.priv t) (polP tL t)
 
-def Y {α : Type} (y : EMc Γ CCoins T I Sig SS RS M E α) (σ : JSt Γ T Sig SS RS M E I) :
+@[expose] def Y {α : Type} (y : EMc Γ CCoins T I Sig SS RS M E α) (σ : JSt Γ T Sig SS RS M E I) :
     ProbComp (α × JSt Γ T Sig SS RS M E I) :=
   (fun r => (r.1.1, (r.1.2, r.2))) <$>
     (simulateQ (implC cka Δcka (healEpoch tL)) (y.run σ.1)).run σ.2
 
-def ckaEnd (b : Bool) (r : Bool × JSt Γ T Sig SS RS M E I) : ProbComp Bool :=
+@[expose] def ckaEnd (b : Bool) (r : Bool × JSt Γ T Sig SS RS M E I) : ProbComp Bool :=
   if !r.2.1.abort && SM.lastLeakGuessAdmissible (2 + Δcka) tL t && SM.canon t r.2.1.g == tL then
     pure (b == r.1)
   else ($ᵗ Bool : ProbComp Bool)
@@ -1155,13 +1155,13 @@ theorem deq_ckaEnd_of_abort (b : Bool)
 
 abbrev implPs := implP (scheme cka prng fs lam) (2 + Δcka) qep t
 
-def rΓ (σ : JSt Γ T Sig SS RS M E I) (P : Party) : Γ :=
+@[expose] def rΓ (σ : JSt Γ T Sig SS RS M E I) (P : Party) : Γ :=
   (σ.1.g.st P).γ.getD (σ.2.st P)
 
-def projParty (vp : VPt Γ T Sig SS RS) (γck : Γ) : RSt Γ T Sig SS RS :=
+@[expose] def projParty (vp : VPt Γ T Sig SS RS) (γck : Γ) : RSt Γ T Sig SS RS :=
   realParty vp (vp.γ.getD γck) vp.root vp.vS vp.vR
 
-def projGame (σ : JSt Γ T Sig SS RS M E I) :
+@[expose] def projGame (σ : JSt Γ T Sig SS RS M E I) :
     SM.GameState (RSt Γ T Sig SS RS) M (Header T × E) :=
   { σ.1.g with st := fun P => projParty (σ.1.g.st P) (σ.2.st P) }
 
@@ -1221,7 +1221,7 @@ theorem epMgmt_sendsIn_epoch {St : Type} {s s₁ : SM.GameState St M (Header T �
         revert h1 hnot; cases P.sendsIn (s.epoch P) <;> simp
   exact ⟨hs, (sendsIn_iff_eq_senderOf P (s₁.epoch P)).mp hs⟩
 
-def DoomFixedB (Δ : ℕ) (tL : Option ℕ) (t : ℕ)
+@[expose] def DoomFixedB (Δ : ℕ) (tL : Option ℕ) (t : ℕ)
     (gs : SM.GameState (RSt Γ T Sig SS RS) M (Header T × E)) : Prop :=
   SM.lastLeakGuessAdmissible Δ tL t = false ∨ DoomD1 tL t gs ∨ ∃ l, tL = some l ∧ DoomD3 l gs
 
@@ -1244,7 +1244,7 @@ theorem deq_privEnd_of_doomFixedB (b : Bool)
 
 /-- Post-challenge invariant: `senderOf t` has reached epoch `t`, and either a challenge from
 `senderOf t` is in transit or `receiverOf t` has also reached epoch `t`. -/
-def PostChall (t : ℕ) (g : SM.GameState (VPt Γ T Sig SS RS) M (Header T × E)) : Prop :=
+@[expose] def PostChall (t : ℕ) (g : SM.GameState (VPt Γ T Sig SS RS) M (Header T × E)) : Prop :=
   t ≤ g.epoch (Party.senderOf t) ∧
     ((∃ pos ∈ g.chall, pos.sender = Party.senderOf t) ∨ t ≤ g.epoch (Party.receiverOf t))
 
@@ -1425,7 +1425,7 @@ theorem step_coin (n : ℕ) {σ : JSt Γ T Sig SS RS M E I} (hI : Inv cka Δcka 
   rcases hr with ⟨u, _, rfl⟩
   exact ⟨hI, id⟩
 
-def updVR {γ : Type} (st : PartyState γ T Sig SS RS) (e : ℕ) (v : Option RS) :
+@[expose] def updVR {γ : Type} (st : PartyState γ T Sig SS RS) (e : ℕ) (v : Option RS) :
     PartyState γ T Sig SS RS :=
   { st with vR := Function.update st.vR e v }
 
@@ -1771,7 +1771,7 @@ theorem step_inject (P : Party) (c : Header T × E) {σ : JSt Γ T Sig SS RS M E
                 exact ⟨DEq.refl _, fun r hr => by
                   rw [support_pure, Set.mem_singleton_iff] at hr; rw [hr]; exact ⟨hI, id⟩⟩
 
-def updVRStart {γ : Type} (prng : PRFPRNG KR Sig I K)
+@[expose] def updVRStart {γ : Type} (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E)
     (st : PartyState γ T Sig SS RS) (γ' : γ) (Ik : I) (v' : RS) :
     PartyState γ T Sig SS RS :=
@@ -4001,7 +4001,7 @@ theorem sim_postChall (b : Bool)
           (DEq.bind_const _ _)
       exact hlhs.trans hrhs.symm
 
-def σWithB (σ : JSt Γ T Sig SS RS M E I) (b : Bool) : JSt Γ T Sig SS RS M E I :=
+@[expose] def σWithB (σ : JSt Γ T Sig SS RS M E I) (b : Bool) : JSt Γ T Sig SS RS M E I :=
   ({ σ.1 with g := gsWithB σ.1.g b }, σ.2)
 
 omit [DecidableEq T] [DecidableEq M] [DecidableEq E] [DecidableEq I] [Inhabited E]
@@ -4765,14 +4765,5 @@ variable {KC Γ CCoins T I : Type} {KR Sig K : Type} {SS RS M E : Type}
 
 variable (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
   (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep : ℕ)
-
-omit [DecidableEq I] [SampleableType K] in
-/-- Lemma 13: `privGame` bias is bounded by the CKA real-world bias of `redCKAPriv`. -/
-theorem lemma13_proof (hc : cka.Correct) (tL : Option ℕ) (t : ℕ)
-    (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
-    𝒟[privGame (scheme cka prng fs lam) (2 + Δcka) qep tL t A].boolBias ≤
-      𝒟[CKA.branch cka Δcka (healEpoch tL) false
-        (redCKAPriv cka prng fs lam Δcka qep tL t A)].boolBias := by
-  rw [(privGame_dEq_redCKAPriv cka prng fs lam Δcka qep tL t hc A).evalDist_eq]
 
 end CryptoGames.SM.Construction.PrivL13

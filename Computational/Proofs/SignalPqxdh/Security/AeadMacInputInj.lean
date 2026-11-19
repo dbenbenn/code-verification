@@ -19,7 +19,7 @@ when the three EC keys are 32 bytes long, so any forgery query distinct from the
 evaluates the MAC on a fresh input.
 -/
 
-@[expose] public section
+public section
 
 namespace SignalPqxdh
 

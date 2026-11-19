@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M3c
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHA2
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M2
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M3c -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHA2 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M2 -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M1
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
 import VCVio.EvalDist.Monad.Basic
@@ -24,7 +24,7 @@ Proves the receiver key-schedule coupling between `pqxdhAuthForgeAllImpl` and
 the multi-key `INT-CTXT` sub-hop bound `auth_hop_G3_8_split_g5_boolBias_le_mu`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

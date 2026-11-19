@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Repr
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Repr -- proof-setup: allow-public-import
 
 /-!
 # Canonical `V1InnerHeapPred` Instantiation and 224-Byte Relocation Bridge
@@ -20,7 +20,7 @@ equating the `DecodeState`, `Drop`, and `ProtoRepr` spatial predicates for `V1St
 `PqRatchetState`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.DecodeState
 
@@ -45,7 +45,7 @@ set_option linter.unusedSimpArgs false
 /-! ## 1. `quadListAt` and Conversion to `Quads7` / `Quads14` / `Quads28` -/
 
 /-- Contiguous list of 64-bit quadwords starting at base address `a`. -/
-def quadListAt (a : BitVec 64) : List (BitVec 64) → SepProp
+@[expose] def quadListAt (a : BitVec 64) : List (BitVec 64) → SepProp
   | [] => emp
   | w :: ws => (a ↦₆₄ w) ∗ quadListAt (a + 8#64) ws
 
@@ -125,7 +125,7 @@ theorem exists_quads28_of_head_tail27 (w0 : BitVec 64) (ws : List (BitVec 64))
 /-- A predicate family `F : BitVec 64 → SepProp` is relocatable of size `k` quadwords (`8 * k` bytes)
     if at any address `a`, `F a` factors into `quadListAt a ws` (`ws.length = k`) and an
     address-independent heap remainder `H` that reassembles `F a'` at any `a'`. -/
-def RelocQuads (k : Nat) (F : BitVec 64 → SepProp) : Prop :=
+@[expose] def RelocQuads (k : Nat) (F : BitVec 64 → SepProp) : Prop :=
   ∀ a : BitVec 64, F a ⊢
     ∃∗ ws : List (BitVec 64), ⌜ws.length = k⌝ ∗ quadListAt a ws ∗
       ∃∗ H : SepProp, ⌜∀ a' : BitVec 64, quadListAt a' ws ∗ H ⊢ F a'⌝ ∗ H
@@ -667,7 +667,7 @@ theorem RelocQuads.chunkedCt2SampledPBCapAt (A : RustAlloc) (bsLen : Nat)
     ownership `H` of a 224-byte `V1State.InnerState` whose 28 inline quadwords are `q`,
     characterized by its ability to reassemble `Drop.protoInnerStateAt A a' is` at any
     target address `a'`. -/
-def canonicalV1InnerHeap : V1InnerHeapPred :=
+@[expose] def canonicalV1InnerHeap : V1InnerHeapPred :=
   fun A q is =>
     ∃∗ H : SepProp,
       ⌜∀ a' : BitVec 64,
@@ -733,7 +733,7 @@ theorem vecU8At_cap_ne_none3Cap {A : RustAlloc} {a cap ptr : BitVec 64} {bs : Li
   rw [h1]
   exact Entails.pure_right ⟨hpne, hle, hlt⟩ (Entails.refl _)
 
-def ct1SampledSomeBody (A : RustAlloc) (bsLen : Nat)
+@[expose] def ct1SampledSomeBody (A : RustAlloc) (bsLen : Nat)
     (s : V1State.Chunked.Ct1Sampled) (u : V1State.Unchunked.Ct1Sent)
     (cap ptr : BitVec 64) (b : BitVec 64) : SepProp :=
   (((b ↦₆₄ ptr) ∗ ((b + 8#64) ↦₆₄ BitVec.ofNat 64 u.hdr.length)) ∗

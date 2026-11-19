@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Epilogue
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Epilogue -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10b
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Variant 10 (`Ct2Sampled`, `+1632`) — Encoder Dispatch
@@ -23,7 +24,7 @@ the `ProtoPolynomialEncoder` copy and `<PolyEncoder>::from_pb` call (`+5728 -> +
 helpers.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.FromPb
 
@@ -53,28 +54,6 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 private theorem v10_add_5804_add_27192_eq (x : BitVec 64) :
     (x + 5804#64) + 27192#64 = x + 32996#64 := by bv_omega
 
-theorem v10_fnAddr_rel_encoder_from_pb (b : BitVec 64) (X : String → Option (State → State)) :
-    (libsignalSessionCode.rebase b X).fnAddr encoderFromPbName =
-      (libsignalSessionCode.rebase b X).fnAddr statesFromPbName + 32996#64 := by
-  have h1 : libsignalSessionCode.fnOff statesFromPbName = 0x54cac := statesFromPb_fnOff
-  have h2 : libsignalSessionCode.fnOff encoderFromPbName = 0x5cd90 :=
-    ls_lemma% fnOff "<spqr::encoding::polynomial::PolyEncoder>::from_pb"
-  simp only [Program.fnAddr_rebase, h1, h2]
-  bv_omega
-
-theorem v10_sub_ok_encoder_from_pb {A : RustAlloc}
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (hEnc : EncoderFromPbOkExt b A ext) :
-    subroutine_ok (libsignalSessionCode.rebase b (Rust.withPanics ext))
-      (((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr statesFromPbName + 5804#64) + 27192#64)
-      (encoderFromPbSpec A) := by
-  have h := hEnc
-  dsimp only [EncoderFromPbOkExt, contractProg, tripleRatchetProgAtExt] at h
-  rw [v10_fnAddr_rel_encoder_from_pb, ← v10_add_5804_add_27192_eq] at h
-  exact h
-
-/-! ## 1. `+1632 -> +1720`: Loading `Authenticator` PB and `epoch` -/
-
 theorem v10_cap_add_two_beq_zero_false {cap : BitVec 64} (hlt : cap.toNat < 2 ^ 63) :
     (cap + 2#64 == 0#64) = false :=
   Bool.eq_false_iff.mpr (cap_add_two_beq_zero_false hlt)
@@ -96,133 +75,6 @@ theorem v10_reconstruct_p1 (p1 : BitVec 64) :
         ((((p1.extractLsb' 40 16).zeroExtend 32 |||
           ((p1.extractLsb' 56 8).zeroExtend 32 <<< 16#64)).zeroExtend 64) <<< 32#64)) <<< 8#64))) : BitVec 64) = p1 := by
   bv_kernel
-
-/-- Steps `+1632 -> +1720` (`0x5a704 -> 0x5a75c`) when `uc = some { auth := some authPb, epoch := ep }`:
-loads `cap_enc = [pbA + 8]`, `b16 = [pbA + 16]`, `c1, p1, l1, c2, p2, l2` from `pbA + 64..112`,
-and `ep = [pbA + 112]`, storing `ep` at `[sp + 152]`, `l1` at `[sp + 200]`, `b16.zeroExtend 32` at
-`[sp + 224]`, and `p2` at `[sp + 232]`. -/
-theorem v10_ct2Sent_load_1632_to_1720
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (s0 s1 : State) (out pbA cap_enc c1 p1 l1 c2 p2 l2 ep v152 v200 v232 : BitVec 64)
-    (b16 : BitVec 8) (v224 : BitVec 32) (Rest : SepProp)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hc1_lt : c1.toNat < 2 ^ 63)
-    (hpc1 : s1.pc = (tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 1632#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64)
-    (hx19_1 : s1.readReg64 .x19 = out)
-    (hx27_1 : s1.readReg64 .x27 = pbA)
-    (htr1 : TraceCalleeSaved s1 s0) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 1720#64) s1
-      (((pbA + 8#64) ↦₆₄ cap_enc) ∗
-        ((pbA + 16#64) ↦₈ b16) ∗
-        ((pbA + 64#64) ↦₆₄ c1) ∗
-        ((pbA + 72#64) ↦₆₄ p1) ∗
-        ((pbA + 80#64) ↦₆₄ l1) ∗
-        ((pbA + 88#64) ↦₆₄ c2) ∗
-        ((pbA + 96#64) ↦₆₄ p2) ∗
-        ((pbA + 104#64) ↦₆₄ l2) ∗
-        ((pbA + 112#64) ↦₆₄ ep) ∗
-        (((s0.sp - 2400#64) + 152#64) ↦₆₄ v152) ∗
-        (((s0.sp - 2400#64) + 200#64) ↦₆₄ v200) ∗
-        (((s0.sp - 2400#64) + 224#64) ↦₃₂ v224) ∗
-        (((s0.sp - 2400#64) + 232#64) ↦₆₄ v232) ∗
-        Rest)
-      (fun sm Pm =>
-        (Pm ⊢
-          ((pbA + 8#64) ↦₆₄ cap_enc) ∗
-          ((pbA + 16#64) ↦₈ b16) ∗
-          ((pbA + 64#64) ↦₆₄ c1) ∗
-          ((pbA + 72#64) ↦₆₄ p1) ∗
-          ((pbA + 80#64) ↦₆₄ l1) ∗
-          ((pbA + 88#64) ↦₆₄ c2) ∗
-          ((pbA + 96#64) ↦₆₄ p2) ∗
-          ((pbA + 104#64) ↦₆₄ l2) ∗
-          ((pbA + 112#64) ↦₆₄ ep) ∗
-          (((s0.sp - 2400#64) + 152#64) ↦₆₄ ep) ∗
-          (((s0.sp - 2400#64) + 200#64) ↦₆₄ l1) ∗
-          (((s0.sp - 2400#64) + 224#64) ↦₃₂ b16.zeroExtend 32) ∗
-          (((s0.sp - 2400#64) + 232#64) ↦₆₄ p2) ∗
-          Rest) ∧
-        sm.sp = s0.sp - 2400#64 ∧
-        sm.readReg64 .x19 = out ∧
-        sm.readReg64 .x20 = p1 ∧
-        sm.readReg64 .x22 = cap_enc ∧
-        sm.readReg64 .x23 = pbA + 8#64 ∧
-        sm.readReg64 .x24 = c1 ∧
-        sm.readReg64 .x25 = c2 ∧
-        sm.readReg64 .x26 = l2 ∧
-        sm.readReg64 .x27 = pbA ∧
-        sm.readReg64 .x28 = l1 ∧
-        TraceCalleeSaved sm s0) := by
-  have hfsp_align : ((s0.sp - 2400#64) &&& 15#64 == 0#64) = true :=
-    spAligned_sub s0.sp 2400#64 hsp0_align (by decide)
-  have hc1_ne2 := v10_cap_add_two_beq_zero_false hc1_lt
-  have hc1_ne1 := v10_cap_add_one_beq_zero_false hc1_lt
-  have hp1_split := v10_pointsTo64_split_1_4_2_1 (pbA + 72#64) p1
-  have ha73 : (pbA + 72#64) + 1#64 = pbA + 73#64 := by bv_omega
-  have ha77 : (pbA + 72#64) + 5#64 = pbA + 77#64 := by bv_omega
-  have ha79 : (pbA + 72#64) + 7#64 = pbA + 79#64 := by bv_omega
-  have h152 : (s0.sp - 2400#64) + 152#64 = s0.sp - 2248#64 := by bv_omega
-  have h200 : (s0.sp - 2400#64) + 200#64 = s0.sp - 2200#64 := by bv_omega
-  have h224 : (s0.sp - 2400#64) + 224#64 = s0.sp - 2176#64 := by bv_omega
-  have h232 : (s0.sp - 2400#64) + 232#64 = s0.sp - 2168#64 := by bv_omega
-  rw [ha73, ha77, ha79] at hp1_split
-  rw [hp1_split, h152, h200, h224, h232]
-  simp only [sepConj_assoc]
-  states_from_pb_fetches_range b (Rust.withPanics ext) 1632 88
-  dsimp only [tripleRatchetProgAtExt, statesFromPbName, BitVec.ofNat_eq_ofNat] at hpc1 ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::from_pb" = entry
-  examples_hide_fetches
-  wp_steps
-  refine EncoderFromPb.align_pre ?_ ?_
-  · exact Entails.of_eq (by ac_rfl)
-  · wp_done
-
-/-! ## 2. `+5728 -> +7212`: `sending_ct2 = none` Branch -/
-
-/-- At `+5728` (`0x5b704`), when `l1.toNat < 2 ^ 63` (`[sp + 200] = l1`) and `x22 = noneCap`
-(`sending_ct2 = none`), `cmn x8, #1` is false and `cmn x22, #1` is true, branching to `+7212`. -/
-theorem v10_ct2Sent_5728_to_7212_none
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (s0 s1 : State) (out pa1 l1 l2 : BitVec 64) (Rest : SepProp)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hl1_lt : l1.toNat < 2 ^ 63)
-    (hpc1 : s1.pc = (tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 5728#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64)
-    (hx19_1 : s1.readReg64 .x19 = out)
-    (hx21_1 : s1.readReg64 .x21 = pa1)
-    (hx22_1 : s1.readReg64 .x22 = noneCap)
-    (hx26_1 : s1.readReg64 .x26 = l2)
-    (htr1 : TraceCalleeSaved s1 s0) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 7212#64) s1
-      ((((s0.sp - 2400#64) + 200#64) ↦₆₄ l1) ∗ Rest)
-      (fun sm Pm =>
-        (Pm ⊢ (((s0.sp - 2400#64) + 200#64) ↦₆₄ l1) ∗ Rest) ∧
-        sm.sp = s0.sp - 2400#64 ∧
-        sm.readReg64 .x19 = out ∧
-        sm.readReg64 .x21 = pa1 ∧
-        sm.readReg64 .x26 = l2 ∧
-        TraceCalleeSaved sm s0) := by
-  have hfsp_align : ((s0.sp - 2400#64) &&& 15#64 == 0#64) = true :=
-    spAligned_sub s0.sp 2400#64 hsp0_align (by decide)
-  have hl1_ne1 := v10_cap_add_one_beq_zero_false hl1_lt
-  have h200 : (s0.sp - 2400#64) + 200#64 = s0.sp - 2200#64 := by bv_omega
-  rw [h200]
-  dsimp only [noneCap] at hx22_1
-  states_from_pb_fetches_range b (Rust.withPanics ext) 5728 20
-  dsimp only [tripleRatchetProgAtExt, statesFromPbName, BitVec.ofNat_eq_ofNat] at hpc1 ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::from_pb" = entry
-  examples_hide_fetches
-  wp_steps
-  wp_done
-
-/-! ## 3. `+5728 -> +5808`: Copying `ProtoPolynomialEncoder` and Calling `<PolyEncoder>::from_pb` -/
 
 theorem v10_triple64_eq_byte_q128_tail7 (a w0 w8 w16 : BitVec 64) :
     (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w8) ∗ ((a + 16#64) ↦₆₄ w16) =
@@ -390,95 +242,6 @@ theorem v10_extract_loByte_zext (w : BitVec 64) :
   unfold loByte
   bv_kernel
 
-/-- Steps `+5728 -> fnAddr encoderFromPbName` (`0x5b704 -> 0x5b754`, 20 instructions including
-`bl +27192`): copies the 56-byte `ProtoPolynomialEncoder` from `pbA + 8..64` to
-`fsp + 1392..1448` and enters `<PolyEncoder>::from_pb` with `x0 = fsp + 1888`, `x1 = fsp + 1392`,
-and `x30 = entry + 5808`. -/
-theorem v10_ct2Sent_copy_to_encoder_call_5728
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (s1 : State)
-    (fsp out pbA pa1 l1 l2 cap_pts ptr_pts len_pts cap_polys ptr_polys len_polys w56 : BitVec 64)
-    (u1392 u1401 u1409 u1417 u1424 u1432 u1440 : BitVec 64) (b1400 : BitVec 8)
-    (Rest : SepProp)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (hl1_lt : l1.toNat < 2 ^ 63)
-    (hcap_pts_lt : cap_pts.toNat < 2 ^ 63)
-    (hpc1 : s1.pc = (tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 5728#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = fsp)
-    (hx19_1 : s1.readReg64 .x19 = out)
-    (hx21_1 : s1.readReg64 .x21 = pa1)
-    (hx22_1 : s1.readReg64 .x22 = cap_pts)
-    (hx26_1 : s1.readReg64 .x26 = l2)
-    (hx27_1 : s1.readReg64 .x27 = pbA) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr encoderFromPbName) s1
-      (((fsp + 200#64) ↦₆₄ l1) ∗
-        ((fsp + 224#64) ↦₃₂ (loByte ptr_pts).zeroExtend 32) ∗
-        ((pbA + 16#64) ↦₆₄ ptr_pts) ∗
-        ((pbA + 24#64) ↦₆₄ len_pts) ∗
-        ((pbA + 32#64) ↦₆₄ cap_polys) ∗
-        ((pbA + 40#64) ↦₆₄ ptr_polys) ∗
-        ((pbA + 48#64) ↦₆₄ len_polys) ∗
-        ((pbA + 56#64) ↦₆₄ w56) ∗
-        ((fsp + 1392#64) ↦₆₄ u1392) ∗
-        ((fsp + 1400#64) ↦₈ b1400) ∗
-        ((fsp + 1401#64) ↦₆₄ u1401) ∗
-        ((fsp + 1409#64) ↦₆₄ u1409) ∗
-        ((fsp + 1417#64) ↦ₛ loBytes7 u1417) ∗
-        ((fsp + 1424#64) ↦₆₄ u1424) ∗
-        ((fsp + 1432#64) ↦₆₄ u1432) ∗
-        ((fsp + 1440#64) ↦₆₄ u1440) ∗
-        Rest)
-      (fun sm Pm =>
-        (Pm ⊢
-          ((fsp + 200#64) ↦₆₄ l1) ∗
-          ((fsp + 224#64) ↦₃₂ (loByte ptr_pts).zeroExtend 32) ∗
-          ((pbA + 16#64) ↦₆₄ ptr_pts) ∗
-          ((pbA + 24#64) ↦₆₄ len_pts) ∗
-          ((pbA + 32#64) ↦₆₄ cap_polys) ∗
-          ((pbA + 40#64) ↦₆₄ ptr_polys) ∗
-          ((pbA + 48#64) ↦₆₄ len_polys) ∗
-          ((pbA + 56#64) ↦₆₄ w56) ∗
-          ((fsp + 1392#64) ↦₆₄ cap_pts) ∗
-          ((fsp + 1400#64) ↦₆₄ ptr_pts) ∗
-          ((fsp + 1408#64) ↦₆₄ len_pts) ∗
-          ((fsp + 1416#64) ↦₆₄ cap_polys) ∗
-          ((fsp + 1424#64) ↦₆₄ ptr_polys) ∗
-          ((fsp + 1432#64) ↦₆₄ len_polys) ∗
-          ((fsp + 1440#64) ↦₆₄ w56) ∗
-          Rest) ∧
-        sm.sp = fsp ∧
-        sm.readReg64 .x0 = fsp + 1888#64 ∧
-        sm.readReg64 .x1 = fsp + 1392#64 ∧
-        sm.readReg64 .x19 = out ∧
-        sm.readReg64 .x21 = pa1 ∧
-        sm.readReg64 .x22 = cap_pts ∧
-        sm.readReg64 .x26 = l2 ∧
-        sm.readReg64 .x27 = pbA ∧
-        sm.readReg64 .x29 = s1.readReg64 .x29 ∧
-        sm.readReg64 .x30 = (tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 5808#64 ∧
-        TraceCalleeSaved sm s1) := by
-  subst hsp1
-  have hl1_ne1 := v10_cap_add_one_beq_zero_false hl1_lt
-  have hcap_ne1 := v10_cap_add_one_beq_zero_false hcap_pts_lt
-  rw [v10_fnAddr_rel_encoder_from_pb]
-  states_from_pb_fetches_range b (Rust.withPanics ext) 5728 80
-  dsimp only [tripleRatchetProgAtExt, statesFromPbName, BitVec.ofNat_eq_ofNat] at hpc1 ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::from_pb" = entry
-  examples_hide_fetches
-  wp_simp_pre [v10_pbA_16_realign_rest, sepConj_assoc]
-  iterate 16 wp_step
-  wp_simp_pre [v10_pbA_16_unrealign_rest, sepConj_assoc]
-  wp_step; wp_step
-  wp_simp_pre [v10_fsp_1409_realign_rest, sepConj_assoc]
-  wp_step; wp_step
-  wp_simp_pre [v10_fsp_1400_realign_rest, sepConj_assoc]
-  wp_done
-
-/-! ## 4. Post-`<PolyEncoder>::from_pb` Error Branch (`+5808 -> +5820 -> s0.lr`) -/
-
 theorem v10_resultPolyEncoder_err_entails_tag_392 (A : RustAlloc) (fsp : BitVec 64)
     (err : PolynomialError) :
     resultPolyEncoderFromPbAt A (fsp + 1888#64) (.error err) ⊢
@@ -495,45 +258,8 @@ theorem v10_resultPolyEncoder_err_entails_tag_392 (A : RustAlloc) (fsp : BitVec 
   rw [ha1896, ha1897]
   exact sepConj_mono_right hm8
 
-/-- At `+5808` (`0x5b754`), when `[sp + 1888] = 2#64` (`fromPbResult pb = .error err`),
-`ldr x15, [sp, #1888]; cmp x15, #2; b.ne +7904` falls through to `+5820`. -/
-theorem v10_ct2Sent_5808_to_5820_err
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (s0 s1 : State) (out pa1 ca2 : BitVec 64) (Rest : SepProp)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = (tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 5808#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64)
-    (hx19_1 : s1.readReg64 .x19 = out)
-    (hx21_1 : s1.readReg64 .x21 = pa1)
-    (hx26_1 : s1.readReg64 .x26 = ca2)
-    (htr1 : TraceCalleeSaved s1 s0) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 5820#64) s1
-      ((((s0.sp - 2400#64) + 1888#64) ↦₆₄ 2#64) ∗ Rest)
-      (fun sm Pm =>
-        (Pm ⊢ (((s0.sp - 2400#64) + 1888#64) ↦₆₄ 2#64) ∗ Rest) ∧
-        sm.sp = s0.sp - 2400#64 ∧
-        sm.readReg64 .x19 = out ∧
-        sm.readReg64 .x21 = pa1 ∧
-        sm.readReg64 .x26 = ca2 ∧
-        TraceCalleeSaved sm s0) := by
-  have hfsp_align : ((s0.sp - 2400#64) &&& 15#64 == 0#64) = true :=
-    spAligned_sub s0.sp 2400#64 hsp0_align (by decide)
-  have h1888 : (s0.sp - 2400#64) + 1888#64 = s0.sp - 512#64 := by bv_omega
-  rw [h1888]
-  states_from_pb_fetches_range b (Rust.withPanics ext) 5808 12
-  dsimp only [tripleRatchetProgAtExt, statesFromPbName, BitVec.ofNat_eq_ofNat] at hpc1 ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::from_pb" = entry
-  examples_hide_fetches
-  wp_steps
-  wp_done
-
-/-! ## 5. `PolyEncoder` Cell Unpacking / Relocation (`fsp + 1888 -> out + 8`) -/
-
 /-- Pack 8 bytes (little-endian) from `bs` into a `BitVec 64`. -/
-def v10_pack64 (bs : List (BitVec 8)) : BitVec 64 :=
+@[expose] def v10_pack64 (bs : List (BitVec 8)) : BitVec 64 :=
   (bs.getD 7 0#8) ++ (bs.getD 6 0#8) ++ (bs.getD 5 0#8) ++ (bs.getD 4 0#8) ++
   (bs.getD 3 0#8) ++ (bs.getD 2 0#8) ++ (bs.getD 1 0#8) ++ (bs.getD 0 0#8)
 
@@ -552,7 +278,7 @@ theorem v10_pointsToBytes_eq_pack64 (a : BitVec 64) (bs : List (BitVec 8)) (h : 
   rw [pointsTo64_eq_pointsToBytes, v10_unpack64_pack64 bs h]
 
 /-- Pack 16 bytes (little-endian) from `bs` into a `BitVec 128`. -/
-def v10_pack128 (bs : List (BitVec 8)) : BitVec 128 :=
+@[expose] def v10_pack128 (bs : List (BitVec 8)) : BitVec 128 :=
   v10_pack64 (bs.drop 8) ++ v10_pack64 (bs.take 8)
 
 theorem v10_pointsToBytes_eq_pack128 (a : BitVec 64) (bs : List (BitVec 8)) (h : bs.length = 16) :
@@ -568,11 +294,11 @@ theorem v10_pointsToBytes_eq_pack128 (a : BitVec 64) (bs : List (BitVec 8)) (h :
   rfl
 
 /-- 8-byte word at byte offset `i` within `bs`. -/
-def v10_wordAt (bs : List (BitVec 8)) (i : Nat) : BitVec 64 :=
+@[expose] def v10_wordAt (bs : List (BitVec 8)) (i : Nat) : BitVec 64 :=
   v10_pack64 ((bs.drop i).take 8)
 
 /-- 16-byte quadword at byte offset `i` within `bs`. -/
-def v10_quadAt (bs : List (BitVec 8)) (i : Nat) : BitVec 128 :=
+@[expose] def v10_quadAt (bs : List (BitVec 8)) (i : Nat) : BitVec 128 :=
   v10_pack128 ((bs.drop i).take 16)
 
 theorem v10_bs_drop_step8 {bs : List (BitVec 8)} (hbs : bs.length = 384)
@@ -619,7 +345,7 @@ theorem v10_bs_drop_end8 {bs : List (BitVec 8)} (hbs : bs.length = 384)
 /-- The 384-byte `PolyEncoder` vector-headers region at `a + 8..a + 392` decomposed into
 the exact 64-bit and 128-bit cells accessed at `+7904..+8176` (for `a = fsp + 1888`) and
 written by `epilogueOutFull` (for `a = out + 8`). -/
-def v10_encCellsAt (a : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def v10_encCellsAt (a : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ((a + 8#64) ↦₆₄ v10_wordAt bs 0) ∗
   ((a + 16#64) ↦₆₄ v10_wordAt bs 8) ∗
   ((a + 24#64) ↦₆₄ v10_wordAt bs 16) ∗
@@ -801,41 +527,5 @@ theorem v10_polyEncoderAt_relocate (A : RustAlloc) (a1 a2 : BitVec 64) (enc : Po
       (sepConj_mono_right (sepConj_mono hvec2 (sepConj_mono_right hm4))) ?_
     exact Entails.pure_right hps_len (Entails.of_eq (by ac_rfl))
 
-/-- Step `+5808 -> +7904` (`0x5b754 -> 0x5bf84`, 3 instructions) when `PolyEncoder::from_pb`
-returns `Ok(enc)` (`tag = 0 ∨ tag = 1`). -/
-theorem v10_ct2Sent_5808_to_7904_ok
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (s0 s : State) (fsp : BitVec 64)
-    (tag : BitVec 64) (htag : tag = 0#64 ∨ tag = 1#64)
-    (Rest : SepProp)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 5808#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = fsp)
-    (htr : TraceCalleeSaved s s0) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 7904#64) s
-      (((fsp + 1888#64) ↦₆₄ tag) ∗ Rest)
-      (fun s2 P2 =>
-        (P2 ⊢ ((fsp + 1888#64) ↦₆₄ tag) ∗ Rest) ∧
-        s2.sp = fsp ∧
-        s2.readReg64 .x15 = tag ∧
-        s2.readReg64 .x19 = s.readReg64 .x19 ∧
-        s2.readReg64 .x21 = s.readReg64 .x21 ∧
-        s2.readReg64 .x26 = s.readReg64 .x26 ∧
-        TraceCalleeSaved s2 s0) := by
-  subst hsp
-  states_from_pb_fetches_range b (Rust.withPanics ext) 5808 12
-  dsimp only [tripleRatchetProgAtExt, statesFromPbName, BitVec.ofNat_eq_ofNat] at hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::from_pb" = entry
-  examples_hide_fetches
-  rcases htag with rfl | rfl
-  · wp_steps
-    wp_done
-  · wp_steps
-    wp_done
-
 end CryptoVerification.SpqrV1.States.FromPb
-
 

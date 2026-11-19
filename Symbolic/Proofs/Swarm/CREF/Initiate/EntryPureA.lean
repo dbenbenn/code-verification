@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Initiate.TransferPure
-public import Symbolic.Proofs.Swarm.CREF.Initiate.PostBridgePure
+public import Symbolic.Proofs.Swarm.CREF.Initiate.TransferPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Initiate.PostBridgePure -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -32,6 +32,7 @@ import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR2 -- proof-setup: allow-public-import
 
 /-!
 # `session_initiate` Frame and History Invariants
@@ -40,7 +41,7 @@ Proves `b2NsInv` and `b2Frame` preservation across `aliceStart`, `COooAll` updat
 session record, and `NoSessionEffect` for `aliceStart` moves that do not log `AliceDone`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -70,7 +71,7 @@ theorem b2_quietPre {r : ProtocolSetup} {ms₀ pre : List Move}
   rw [TR.runTrace_append]
   exact XplQuiet.quietExt_of_movesFrom _ pre (movesFrom_mono (fun _ _ h => h.2) _ _ hpre)
 
-def b2NsInv (n : Nat) (tr : ExecTrace) : Prop :=
+@[expose] def b2NsInv (n : Nat) (tr : ExecTrace) : Prop :=
   ∀ (p : Participant) (stateIdx : Nat) (st : TRState),
     ((DY.PersistentLocalState.getLocalState p stateIdx : Traceful TRState).run tr).1 = some st →
     st.ns.toNat ≤ n
@@ -117,13 +118,13 @@ theorem b2_store {n : Nat} (p : Participant) (st : TRState) (hst : st.ns.toNat �
     Symbolic.DYBridge.DY.appendEntry_eq_1, DY.Traceful.run_mk]
   exact b2NsInv_append (fun _ hp => by rw [CompTrace.proj_inj_eq] at hp; cases hp; exact hst) h
 
-def b2BobEv (b : Participant) : TREvent → Prop
+@[expose] def b2BobEv (b : Participant) : TREvent → Prop
   | .SkippedKeyUsed _ _ => False
   | .MessageKey s _ _ _ _ _ _ => s.me = b
   | .SkippedKeyStored s _ _ _ _ _ => s.me = b
   | _ => True
 
-def b2Frame (b : Participant) (tr₀ tr : ExecTrace) : Prop :=
+@[expose] def b2Frame (b : Participant) (tr₀ tr : ExecTrace) : Prop :=
   tr₀ ≤ tr ∧ ∀ i, tr₀.length ≤ i →
     (∀ e : CompTrace.TRStEntry, (tr.at? i : Option CompTrace.TRStEntry) = some e →
       e.st.participant = b) ∧
@@ -325,7 +326,7 @@ theorem ini_ok_cOOO (interpretation : ExternInterpretation) (r : ProtocolSetup)
     COooAll (fun q => if q = r.alice then some recState else records q) :=
   cOOO_step_update hooo (ini_ok_spqrOooBounded interpretation r bundle ds recState hV1)
 
-def LogsAliceDone (tr : ExecTrace) (m : Move) : Prop :=
+@[expose] def LogsAliceDone (tr : ExecTrace) (m : Move) : Prop :=
   (eventIdx isAliceDone tr (m.next tr)).isSome
 
 theorem noSessionEffect_aliceStart_of_not_logsAliceDone {tr : ExecTrace}

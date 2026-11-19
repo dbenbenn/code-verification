@@ -9,11 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.Loop
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.Loop
 import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.LoopMerge
 import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.PostPk
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBody
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.Deps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.Defs
+public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.LoopError -- proof-setup: allow-public-import
 
 /-!
 # Verification of `<IdentityKeyPair as TryFrom<&[u8]>>::try_from`
@@ -25,7 +29,7 @@ loop, validates field 1 via `PublicKey::try_from`, checks that field 2 has 32 by
 scalar clamping (`bfxil`), and frees both temporary `Vec<u8>` buffers on every path.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,21 +37,6 @@ namespace CryptoVerification.RecordCodecsBinary.IdentityKeyPairTryFrom
 
 open Arm64 ProofLib CryptoGames.LibsignalSession CryptoVerification.RustHeap
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
-
-/-- `<IdentityKeyPair as TryFrom<&[u8]>>::try_from` meets `identityKeyPairTryFromSpec` at any
-4 KiB-aligned image base, given the hooks (`Stage2ContractsX`) and the proved callees
-(`DecodeDeps`). -/
-theorem identityKeyPairTryFrom_ok_of_deps {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {encFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → List (BitVec 8)}
-    {decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8))}
-    {ext : String → Option (State → State)}
-    (hC : Stage2ContractsX img C A encFn decFn ext) (d : DecodeDeps img A ext)
-    (hb : (img.base &&& 0xfff#64) = 0#64) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr identityKeyPairTryFromName)
-      (identityKeyPairTryFromSpec A img) := by
-  let _ := hb
-  exact Helpers.ikp_subroutine_ok hC d
 
 end CryptoVerification.RecordCodecsBinary.IdentityKeyPairTryFrom
 

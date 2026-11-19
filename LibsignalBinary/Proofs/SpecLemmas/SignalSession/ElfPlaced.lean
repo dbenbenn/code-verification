@@ -9,20 +9,25 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionPlacedObj
+public import GeneratedLean.LibsignalSessionPlacedObj -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliElf
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliElfProof
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSymChars
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMallocngPlaced
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliElfProof -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSymChars -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMallocngPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers
 public import ProofLib.Placed.Multi
 public import ProofLib.ProgramReflection
 public meta import ProofLib.ProgramReflection
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataGen -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl3
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -32,8 +37,8 @@ set_option maxRecDepth 2000000
 
 **Checked by Lean.** Assembles and re-exports the two-placement `libsignalSessionLib` and
 `VerifiedLibraries.mallocngLib` witnesses on `cliElfBytes` (`LinkedAt`, `LinkedIn`,
-relocation-inversion uniqueness, `CliElfCodeMatchesPlaced`, and injective extern symbol mapping
-`cliElf_externs_nodup_of_linkedAt`).
+relocation-inversion uniqueness, `CliElfCodeMatchesPlaced`, and distinctness of dispatched extern
+targets `cliElf_externs_distinct_of_linkedAt`).
 -/
 
 namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced
@@ -41,16 +46,16 @@ namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced
 open Arm64
 open Arm64.Obj (MultiPlacedLib MultiPlacement)
 open ProofLib.ProgramReflection
-open CryptoVerification (libsignalSessionExterns)
+open CryptoVerification (ExternsDistinctOnHooked libsignalHookedExterns libsignalSessionExterns)
 open CryptoVerification.SignalSession (
-  cliElfBytes cliElfImage cliElf_parse
-  CliHooks Inputs Outcome OutcomeMatchesProcess cliProcessInputs
-  libsignalSessionLib cliHookTablePlaced isCliPanicSymbolPlaced cliExternsPlaced cliExternsPlacedSig
-  CliReachesOOMPlaced
+  cliElfBytes cliElfImage cliElf_parse CliHooks Inputs Outcome OutcomeMatchesProcess
+  cliProcessInputs libsignalSessionLib cliCratePanicSyms cliDehookedSymsPlaced
+  cliNonPanicDehookedSyms cliPanicSymbolsPlaced isCliPanicSymbolPlaced cliExternsPlaced
 )
-open CryptoVerification.SignalSession.Placed (
-  CliElfCodeMatchesPlaced cliProgPlacedSig cliTokenPatchPlaced CliRunsToPlaced cliRunPlacedSig
-)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (CliReachesOOMPlaced)
+open CryptoVerification.SignalSession.Placed (cliTokenPatchPlaced)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed
+  (CliElfCodeMatchesPlaced CliRunsToPlaced cliRunPlacedSig)
 open LibsignalBinary.Heap.Fine (f3MallocngMpl)
 
 /-! ## Re-exported Interned Layout and Reflection Witnesses -/
@@ -173,6 +178,22 @@ theorem cliElf_codeMatchesPlaced_of_linkedAt {mpl mmpl : MultiPlacement}
     CliElfCodeMatchesPlaced mpl mmpl cliElfImage :=
   ElfCodeMatchesPlaced.f3TrialElf_codeMatchesPlaced_of_linkedAt hls hmng
 
+/-- Universal trusted single-placement `CliElfCodeMatchesPlaced mpl cliElfImage` witness for
+arbitrary `mpl` linked in `cliElfBytes`. -/
+theorem cliElf_trustedCodeMatchesPlaced_of_linkedAt {mpl : MultiPlacement}
+    (hls : libsignalSessionLib.LinkedAt cliElfBytes mpl) :
+    CryptoVerification.SignalSession.Placed.CliElfCodeMatchesPlaced mpl cliElfImage :=
+  ElfCodeMatchesPlaced.f3TrialElf_trustedCodeMatchesPlaced_of_linkedAt hls
+
+/-- `ElfImage.parse` form of `cliElf_trustedCodeMatchesPlaced_of_linkedAt`. -/
+theorem cliElf_trustedCodeMatchesPlaced_of_parse {mpl : MultiPlacement}
+    (hls : libsignalSessionLib.LinkedAt cliElfBytes mpl)
+    {elf : Arm64.Process.ElfImage} (hparse : Arm64.Process.ElfImage.parse cliElfBytes = .ok elf) :
+    CryptoVerification.SignalSession.Placed.CliElfCodeMatchesPlaced mpl elf := by
+  have h : cliElfImage = elf := Except.ok.inj (cliElf_parse.symm.trans hparse)
+  subst h
+  exact cliElf_trustedCodeMatchesPlaced_of_linkedAt hls
+
 /-! ## Extern Address Injectivity -/
 
 set_option maxRecDepth 4000000 in
@@ -211,44 +232,125 @@ private theorem lookupBlockSym_none_of_lt {idx : Nat}
     Obj.Interned.lookupBlockSym_toMultiPlacedLib ls_names_nodup ElfCodeMatchesData.ls_idsOk hlt]
   exact hid
 
-private def bv64NodupBool : List (BitVec 64) → Bool
-  | [] => true
-  | x :: xs => !(xs.any (· == x)) && bv64NodupBool xs
+private def lsHookedExternPos : List Nat :=
+  [1, 2, 30, 31, 37, 38, 39, 40, 41, 42, 43, 54, 56, 57, 58, 59, 60, 61,
+   7, 3, 4, 5, 6, 12, 9, 90, 92, 91, 88, 93, 55, 53, 20, 65, 0, 73, 75,
+   19, 27, 81, 29, 28, 13, 14, 15, 16, 34, 8, 33, 32, 35, 50, 49, 17, 45,
+   46, 48, 47, 10, 11, 36, 62, 67, 21, 89]
 
-private theorem bv64NodupBool_spec :
-    ∀ {xs : List (BitVec 64)}, bv64NodupBool xs = true → xs.Nodup
-  | [], _ => List.Pairwise.nil
-  | x :: xs, h => by
-    simp only [bv64NodupBool, Bool.and_eq_true, Bool.not_eq_true'] at h
-    refine List.Pairwise.cons (fun y hy hxy => ?_) (bv64NodupBool_spec h.2)
-    rw [← hxy] at hy
-    have hany : xs.any (· == x) = true := List.any_eq_true.mpr ⟨x, hy, beq_self_eq_true x⟩
-    rw [h.1] at hany
-    exact Bool.noConfusion hany
+private noncomputable def lsHookedExternIdxs : List Nat :=
+  lsHookedExternPos.map (lsSharedExterns.getD · 0)
 
 set_option maxRecDepth 4000000 in
-private theorem cliElf_sharedExterns_addrs_nodup :
-    bv64NodupBool (lsSharedExterns.map fun idx => cliElfSymAddrs.getD idx 0#64) = true := by
-  rfl_kernel
+private theorem hookedExterns_check_ok :
+    libsignalHookedExterns =
+        lsHookedExternIdxs.map (fun idx => lsInternedMultiLib.names.getD idx "") ∧
+      (lsHookedExternIdxs.all fun idx =>
+        Nat.blt idx lsInternedMultiLib.names.length &&
+          (Obj.Interned.lookupBlockSymId idx lsInternedMultiLib.blocks == none)) = true ∧
+      (lsHookedExternIdxs.all fun sIdx =>
+        lsSharedExterns.all fun eIdx =>
+          Nat.beq eIdx sIdx ||
+            (cliElfSymAddrs.getD eIdx 0#64 != cliElfSymAddrs.getD sIdx 0#64)) = true := by
+  exact ⟨by rfl_kernel, by rfl_kernel, by rfl_kernel⟩
 
-/-- Every `mpl` satisfying `libsignalSessionLib.LinkedAt cliElfBytes mpl` maps
-`libsignalSessionExterns` injectively (`(libsignalSessionExterns.map mpl.ρ).Nodup`). -/
-theorem cliElf_externs_nodup_of_linkedAt {mpl : MultiPlacement}
+/-- Every `mpl` satisfying `libsignalSessionLib.LinkedAt cliElfBytes mpl` assigns each dispatched
+extern target in `libsignalHookedExterns` an address distinct from every other extern in
+`libsignalSessionExterns` (`ExternsDistinctOnHooked mpl.ρ`). -/
+theorem cliElf_externs_distinct_of_linkedAt {mpl : MultiPlacement}
     (hlink : libsignalSessionLib.LinkedAt cliElfBytes mpl) :
-    (libsignalSessionExterns.map mpl.ρ).Nodup := by
+    ExternsDistinctOnHooked mpl.ρ := by
   have huniq := (cliElf_linkedAt_unique hlink).2.2.1
-  have hmap :
-      libsignalSessionExterns.map mpl.ρ =
-        lsSharedExterns.map (fun idx => cliElfSymAddrs.getD idx 0#64) := by
-    rw [sharedExterns_check_ok.1, List.map_map]
-    refine List.map_congr_left fun idx hidx => ?_
-    dsimp only [Function.comp_def]
-    have hall := List.all_eq_true.mp sharedExterns_check_ok.2 idx hidx
-    simp only [Bool.and_eq_true, Nat.blt_eq, beq_iff_eq] at hall
-    exact (huniq _ (mem_lsNames_of_lt hall.1) (lookupBlockSym_none_of_lt hall.1 hall.2)).trans
-      (cliElf_rho_getD_eq hall.1)
-  rw [hmap]
-  exact bv64NodupBool_spec cliElf_sharedExterns_addrs_nodup
+  intro sym hsym e he hρ
+  rw [hookedExterns_check_ok.1, List.mem_map] at hsym
+  rcases hsym with ⟨sIdx, hsIdx, rfl⟩
+  rw [sharedExterns_check_ok.1, List.mem_map] at he
+  rcases he with ⟨eIdx, heIdx, rfl⟩
+  have hsOk := List.all_eq_true.mp hookedExterns_check_ok.2.1 sIdx hsIdx
+  simp only [Bool.and_eq_true, Nat.blt_eq, beq_iff_eq] at hsOk
+  have heOk := List.all_eq_true.mp sharedExterns_check_ok.2 eIdx heIdx
+  simp only [Bool.and_eq_true, Nat.blt_eq, beq_iff_eq] at heOk
+  have hsρ :
+      mpl.ρ (lsInternedMultiLib.names.getD sIdx "") = cliElfSymAddrs.getD sIdx 0#64 :=
+    (huniq _ (mem_lsNames_of_lt hsOk.1) (lookupBlockSym_none_of_lt hsOk.1 hsOk.2)).trans
+      (cliElf_rho_getD_eq hsOk.1)
+  have heρ :
+      mpl.ρ (lsInternedMultiLib.names.getD eIdx "") = cliElfSymAddrs.getD eIdx 0#64 :=
+    (huniq _ (mem_lsNames_of_lt heOk.1) (lookupBlockSym_none_of_lt heOk.1 heOk.2)).trans
+      (cliElf_rho_getD_eq heOk.1)
+  have haddrEq : cliElfSymAddrs.getD eIdx 0#64 = cliElfSymAddrs.getD sIdx 0#64 :=
+    heρ.symm.trans (hρ.trans hsρ)
+  have hpair :=
+    List.all_eq_true.mp (List.all_eq_true.mp hookedExterns_check_ok.2.2 sIdx hsIdx) eIdx heIdx
+  simp only [Bool.or_eq_true, Nat.beq_eq, bne_iff_ne] at hpair
+  rcases hpair with rfl | hne
+  · rfl
+  · exact absurd haddrEq hne
+
+abbrev spqrOnceCallSymName : String :=
+  "_RNvMs0_NtNtNtNtCsfr5T3GFabw_3std3sys4sync4once5futexNtB5_4Once4call"
+
+set_option maxRecDepth 4000000 in
+private theorem onceCallExtern_check_ok :
+    libsignalSessionExterns.contains spqrOnceCallSymName = true ∧
+    (lsSharedExterns.all fun sIdx =>
+      if lsInternedMultiLib.names.getD sIdx "" == spqrOnceCallSymName then
+        lsSharedExterns.all fun eIdx =>
+          Nat.beq eIdx sIdx ||
+            (cliElfSymAddrs.getD eIdx 0#64 != cliElfSymAddrs.getD sIdx 0#64)
+      else true) = true :=
+  ⟨by rfl_kernel, by rfl_kernel⟩
+
+/-- Every `mpl` satisfying `libsignalSessionLib.LinkedAt cliElfBytes mpl` assigns `spqrOnceCallSym`
+an address distinct from every other extern in `libsignalSessionExterns`. -/
+theorem cliElf_onceCall_unique_of_linkedAt {mpl : MultiPlacement}
+    (hlink : libsignalSessionLib.LinkedAt cliElfBytes mpl)
+    (e : String) (he : e ∈ libsignalSessionExterns)
+    (hρ : mpl.ρ e = mpl.ρ spqrOnceCallSymName) :
+    e = spqrOnceCallSymName := by
+  have huniq := (cliElf_linkedAt_unique hlink).2.2.1
+  have hmem_s : spqrOnceCallSymName ∈ libsignalSessionExterns :=
+    List.contains_iff_mem.mp onceCallExtern_check_ok.1
+  rw [sharedExterns_check_ok.1, List.mem_map] at hmem_s he
+  rcases hmem_s with ⟨sIdx, hsIdx, hsEq⟩
+  rcases he with ⟨eIdx, heIdx, rfl⟩
+  have hsOk := List.all_eq_true.mp sharedExterns_check_ok.2 sIdx hsIdx
+  simp only [Bool.and_eq_true, Nat.blt_eq, beq_iff_eq] at hsOk
+  have heOk := List.all_eq_true.mp sharedExterns_check_ok.2 eIdx heIdx
+  simp only [Bool.and_eq_true, Nat.blt_eq, beq_iff_eq] at heOk
+  have hsρ :
+      mpl.ρ (lsInternedMultiLib.names.getD sIdx "") = cliElfSymAddrs.getD sIdx 0#64 :=
+    (huniq _ (mem_lsNames_of_lt hsOk.1) (lookupBlockSym_none_of_lt hsOk.1 hsOk.2)).trans
+      (cliElf_rho_getD_eq hsOk.1)
+  have heρ :
+      mpl.ρ (lsInternedMultiLib.names.getD eIdx "") = cliElfSymAddrs.getD eIdx 0#64 :=
+    (huniq _ (mem_lsNames_of_lt heOk.1) (lookupBlockSym_none_of_lt heOk.1 heOk.2)).trans
+      (cliElf_rho_getD_eq heOk.1)
+  rw [← hsEq] at hρ
+  have haddrEq : cliElfSymAddrs.getD eIdx 0#64 = cliElfSymAddrs.getD sIdx 0#64 :=
+    heρ.symm.trans (hρ.trans hsρ)
+  have hrow := List.all_eq_true.mp onceCallExtern_check_ok.2 sIdx hsIdx
+  have hbeq : (lsInternedMultiLib.names.getD sIdx "" == spqrOnceCallSymName) = true :=
+    beq_iff_eq.mpr hsEq
+  simp only [hbeq, ↓reduceIte] at hrow
+  have hpair := List.all_eq_true.mp hrow eIdx heIdx
+  simp only [Bool.or_eq_true, Nat.beq_eq, bne_iff_ne] at hpair
+  rcases hpair with rfl | hne
+  · exact hsEq
+  · exact absurd haddrEq hne
+
+/-- Guard checking that `libsignalHookedExterns` equals the `18` crate-referenced Rust panic entry
+points (`cliCratePanicSyms`), the `46` ghost-spec'd linked functions (`cliDehookedSymsPlaced.take 46`),
+and `"libsignal_session_rng_fill"`, that `cliDehookedSymsPlaced` has length `55`, and that
+`libsignalHookedExterns` omits the `7` unhooked `core::fmt` helpers and `2` SPQR CPU-probe symbols
+(`cliDehookedSymsPlaced.drop 46`). -/
+theorem libsignalHookedExterns_tables_guard :
+    libsignalHookedExterns =
+        cliCratePanicSyms ++ cliDehookedSymsPlaced.take 46 ++
+          ["libsignal_session_rng_fill"] ∧
+      cliDehookedSymsPlaced.length = 55 ∧
+      ((cliDehookedSymsPlaced.drop 46).all (!libsignalHookedExterns.contains ·)) = true :=
+  ⟨rfl, rfl, by decide⟩
 
 /-! ## Two-Placement Execution Determinism Re-exports -/
 

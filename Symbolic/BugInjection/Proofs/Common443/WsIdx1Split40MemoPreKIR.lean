@@ -57,6 +57,7 @@ theorem kirc_prefixAtom40 {r : Records} {S : Sem} {g : Ghost} (hfits : compFitsP
   · exact kirc_serialize_local_tr (ls := ⟨r.alice, _⟩) hst₁
   · exact kirc_serialize_local_tr (ls := ⟨r.alice, _⟩) hst₁'
   · exact kirc_serialize_local_tr (ls := ⟨r.alice, _⟩) (trStateKIRC_encSt tr₃ cl₂ hst₁' hc₂)
+instance : CompC3KdfInjRest38HB.NoOpk setup.withOpk := ⟨rfl⟩
 theorem split40PreKIROwn_of_enum (hE : Split40PrefixEnum) (hD : ∀ (r : Records) (S : Sem) (g : Ghost) (p : PreKeyFields) (ms' : List Move) (tr₁ tr₂ tr₃ : ExecTrace) (cl₁ cl₂ : Nat), compFitsPinned setup compI0 r → parsePreKeyWire wire3Idx1Bytes = some p → WS40Idx1RunInv r S g ms' tr₁ tr₂ tr₃ cl₁ cl₂ → Links40Own r ms' tr₁ tr₂ tr₃ cl₁ cl₂ → Split40KirDraws S g tr₁ tr₂ tr₃ cl₁ cl₂) : ∀ (r : Records) (S : Sem) (g : Ghost) (p : PreKeyFields) (ms' : List Move) (tr₁ tr₂ tr₃ : ExecTrace) (cl₁ cl₂ : Nat), compFitsPinned setup compI0 r → parsePreKeyWire wire3Idx1Bytes = some p → WS40Idx1RunInv r S g ms' tr₁ tr₂ tr₃ cl₁ cl₂ → Links40Own r ms' tr₁ tr₂ tr₃ cl₁ cl₂ → ∀ x₁ ∈ preMemo40 r S g ms', ∀ x₂ ∈ preMemo40 r S g ms', x₁.1 ∉ z40Terms r tr₁ tr₂ tr₃ cl₁ cl₂ → x₂.1 ∉ z40Terms r tr₁ tr₂ tr₃ cl₁ cl₂ → QKdfInjRest S g (fun u => u.AttackerKnows (runTraceMoves r ms')) (plaintextTerms (runVis r ms') ++ []) x₁ x₂ := by
   intro r S g p ms' tr₁ tr₂ tr₃ cl₁ cl₂ hfits hp hinv hown x₁ _ x₂ hx₂ _ _; obtain ⟨u, hu, hxu⟩ := List.mem_flatMap.mp hx₂
   exact qKdfInjRest_of_entry ((hE r S g p ms' tr₁ tr₂ tr₃ cl₁ cl₂ hfits hp hinv hown u hu).elim

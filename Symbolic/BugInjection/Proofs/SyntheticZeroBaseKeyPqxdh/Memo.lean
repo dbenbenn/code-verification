@@ -164,7 +164,7 @@ private theorem checkOuter_zbk_fast :
   decide +kernel
 
 theorem outer_zbk {r : Records} {p : PreKeyFields}
-    (hfits : compFits Witnesses.Cheval26SmallSubgroupHighBitComp.setup compI0 r)
+    (hfits : SetupMatches Witnesses.Cheval26SmallSubgroupHighBitComp.setup compI0 r)
     (hp : parsePreKeyWire msg38_zbk = some p) :
     CompRPreKeyWire.PreKeyOuterMatches compI0 r msg38_zbk p := by
   refine CompFitsNames.preKeyOuterMatches_of_check hfits hp ?_
@@ -498,7 +498,7 @@ private theorem restFnEntry_rv38HB_split {blk₁ : List MachineEvent}
         (CompC3RestFn38HBA.lookupShape S g (CompC3RestFn38HB.allTerms38 tr₁ tr₂ r.bob o cl))
         CompC3RestFn38HBA.Rv38HB S g y := by
   intro tr₁ o m₀ tr₂ pq stA ms ms' x₀ hc hmr hvis hpre hmid hpost hm₀ memo preMemo newMemo
-  have hfits : compFits Witnesses.Cheval26SmallSubgroupHighBitComp.setup compI0 r :=
+  have hfits : SetupMatches Witnesses.Cheval26SmallSubgroupHighBitComp.setup compI0 r :=
     CompFitsNames.compFits_base hfitsP
   have hNe : r.alice ≠ r.bob := hfits.1.1
   have hA : r.alice = "alice" := CompFitsNames.compFits_alice hfitsP

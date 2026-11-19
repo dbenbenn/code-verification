@@ -9,18 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.E2E.Epochs
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverAgreePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverFoldsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverSlotPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3StageP3Prev1Placed
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.E2E.Epochs
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverAgreePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverFoldsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverSlotPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3StageP3Prev1Placed
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDerive
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridge
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.PreKeyGeneralAux
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeStore
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bounds
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3ParseRejectPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Non-Matching Session Pre-Key Overwrite Domain Helpers & `DecPkOkOverV4`
@@ -30,7 +34,7 @@ proves `reachPq_sessionVersion_placed` and `decPkOkOverV4_pqRecv` on reachable P
 non-matching session states.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -65,7 +69,7 @@ theorem decPkOk0_of_d3_pkToE {W : PEParams} {Scope : SessionRecord (List (BitVec
   obtain ⟨m0, _, _, hpk0, hdec0⟩ := hd3; cases Option.some.inj (hpk0.symm.trans hpk); exact hdec0
 
 /-- `DecPkOkOverD3` strengthened with `ScopeOverIn r` (`s.state.sessionVersion = 4#32`). -/
-def DecPkOkOverV4 (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] def DecPkOkOverV4 (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer me : AddrVal) (pm : PreKeySignalMessage) : Prop :=
   DecPkOkOverD3 W Scope F peer me pm ∧
     ∃ r s, Slots.loadRec Scope F peer = .ok (some r) ∧ r.currentSession = some s ∧

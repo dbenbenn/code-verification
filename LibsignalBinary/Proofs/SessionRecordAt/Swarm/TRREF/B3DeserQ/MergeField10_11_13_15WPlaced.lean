@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.MergeFieldGenIdentityRootKeysExt
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.MergeFieldGenIdentityRootKeysExt -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.Record.L1GX.Defs
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import ProofLib.SepLogic.WPp
@@ -22,7 +22,7 @@ Verifies `<SessionStructure as prost::Message>::merge_field::<&mut &[u8]>` on `l
 `int32::merge`) and tags 13 and 15 (`Vec<u8>` via `bytes::merge`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,8 +45,6 @@ open Proofs.libsignal.Hooks2
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
-theorem L1_MergeField10_11_13_15WPlaced : True := trivial
-
 private theorem int64_raw_toBitVec_dq5p (n : Nat) (h : n < 2 ^ 64) :
     ({ toUInt64 := { toBitVec := { toFin := ⟨n, h⟩ } } } : Int64).toBitVec = BitVec.ofNat 64 n := by
   apply BitVec.eq_of_toNat_eq
@@ -68,7 +66,7 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 
 /-- The 4 jump-table bytes at `lsmpl.ρ mergeFieldRodataSym + k` for tags 10 (`+9 = 214#8`),
 11 (`+10 = 203#8`), 13 (`+12 = 0x0b#8`), and 15 (`+14 = 0x24#8`). -/
-def mfRoBytes_placed [LibsignalPlacement] : SepProp :=
+@[expose] def mfRoBytes_placed [LibsignalPlacement] : SepProp :=
   ((lsmpl.ρ mergeFieldRodataSym + 9#64) ↦₈ᵣ 214#8) ∗
   ((lsmpl.ρ mergeFieldRodataSym + 10#64) ↦₈ᵣ 203#8) ∗
   ((lsmpl.ρ mergeFieldRodataSym + 12#64) ↦₈ᵣ 0x0b#8) ∗
@@ -155,21 +153,21 @@ theorem step_cbz_epilogue_placed [LibsignalPlacement]
       (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
       (by simp_all [arm64_norm]) hP hnext
 
-def bytesPost (ss fieldOff bufRef slot ptr : BitVec 64)
+@[expose] def bytesPost (ss fieldOff bufRef slot ptr : BitVec 64)
     (bytes payload tail : List (BitVec 8)) (s0 sf : State) : SepProp :=
   ⌜sf.trace = s0.trace ∧ sf.readReg64 .x0 = 0#64⌝ ∗
     vecU8 A0 (ss + fieldOff) bytes ∗ (bufRef ↦₆₄ slot) ∗
     Prost.sliceCursorAfter slot ptr (payload ++ tail) tail ∗
     stackAt s0.sp mergeFieldStackX
 
-def u32Post (ss fieldOff bufRef slot ptr : BitVec 64) (val : BitVec 32)
+@[expose] def u32Post (ss fieldOff bufRef slot ptr : BitVec 64) (val : BitVec 32)
     (payload tail : List (BitVec 8)) (s0 sf : State) : SepProp :=
   ⌜sf.trace = s0.trace ∧ sf.readReg64 .x0 = 0#64⌝ ∗
     ((ss + fieldOff) ↦₃₂ val) ∗ (bufRef ↦₆₄ slot) ∗
     Prost.sliceCursorAfter slot ptr (payload ++ tail) tail ∗
     stackAt s0.sp mergeFieldStackX
 
-def panicPost (s0 sf : State) : SepProp :=
+@[expose] def panicPost (s0 sf : State) : SepProp :=
   ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 private theorem finish_post_placed_bytes [LibsignalPlacement]
@@ -620,7 +618,7 @@ open CryptoVerification.E2E.Record.L1GX
 open Proofs.libsignal.Hooks2
 
 /-- Image-free raw `L1GX.mergeFieldXSpec` at `mergeFieldStackX` with slice length `< 2 ^ 62`. -/
-def mergeFieldXRawSpecW (P : GenFieldX → Prop) : Spec MergeFieldXGhost where
+@[expose] def mergeFieldXRawSpecW (P : GenFieldX → Prop) : Spec MergeFieldXGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ (s.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 x.fld.tag ∧
       (s.readReg64 .x2).setWidth 8 = BitVec.ofNat 8 x.fld.wt.toNat ∧ s.readReg64 .x3 = x.bufRef ∧
@@ -642,7 +640,7 @@ abbrev mergeFieldXPlacedSpecW [LibsignalPlacement] (P : GenFieldX → Prop) :
   LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl (mergeFieldXRawSpecW P)
 
 /-- `subroutine_ok` for `mergeFieldXPlacedSpecW P` on `lsProg_15 H` (`(blkPl_15).base`). -/
-def MergeFieldXPlacedOkW [LibsignalPlacement] (H : LibsignalHooks)
+@[expose] def MergeFieldXPlacedOkW [LibsignalPlacement] (H : LibsignalHooks)
     (P : GenFieldX → Prop) : Prop :=
   subroutine_ok (lsProg_15 H) (blkPl_15).base (mergeFieldXPlacedSpecW P)
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TROpen
 
@@ -20,7 +20,7 @@ Proves `PromVersionOK` (`prom_versionOK_proved`) and `PromNoDrawOK` (`prom_noDra
 accepting promote calls.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -35,7 +35,7 @@ open CryptoProofLib.Refinement (ExternInterpretation)
 open DY.Libsignal.HwEvents (MachineEvent StateAndMessage)
 
 /-- Every accepting promote call (`PromAcceptCallBy₂`) parses an inner `SignalMessage` of version 4. -/
-def PromVersionOK (interpretation : ExternInterpretation) (r : ProtocolSetup)
+@[expose] def PromVersionOK (interpretation : ExternInterpretation) (r : ProtocolSetup)
     (S : OpaqueSymbolSemantics) (who : List Participant) (ok : Nat → Bool) : Prop :=
   ∀ (j : Nat) (e' : PromTurn) (mid acc : List MachineEvent)
     (rec b : HwBytes) (sm : StateAndMessage) (pf : PreKeyFields)

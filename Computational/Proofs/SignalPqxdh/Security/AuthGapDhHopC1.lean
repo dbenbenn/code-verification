@@ -9,11 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.RoKemHopA -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
 
 /-!
 # Fiedler–Günther `GapDH` reduction and bad events for `Auth`
@@ -23,7 +26,7 @@ proves its 2D index-guessing identity over `DH1` and `DH3`, and defines the stic
 cutoff bad events (`badAuthFgDh1LatchedAt`, `badAuthFgDh3At`, `badAuthFgAnyLatched`).
 -/
 
-@[expose] public section
+public section
 open SignalPqxdh SignalPqxdh.Security
 open OracleSpec OracleComp
 open scoped ENNReal
@@ -37,7 +40,7 @@ namespace Proofs.SignalPqxdh.Security
 export _root_.SignalPqxdh.Security (FgRootEntry fgRootEntryMatches fgRootPatch AuthRespRecord FgAuthSimState fgRoQueryAuthGdh fgRoRootQueryAuthGdh fgRunSendAuthGdh fgFinishRecvStep2AuthGdh fgFinishRecvAuthGdh fgRunRecvOPKAuthGdh fgRunRecvNoOPKAuthGdh fgAuthStep isTargetPrinCorrupted fgAuthStepHalt sessionSenderIdx lookupSenderIkPk lookupAuthSpkSkFromPows initAuthDh1CandWithPowsGdh respAuthCandGdh respAuthDh1CandGdh respAuthDh3CandGdh initAuthDh3CandGdh extractCdhFromAuthSimState fgAuthGapDhRunAt fgAuthGapDhAdvAt fgAuthGapDhAdv4)
 
 /-! ## Lazy root-KDF patching -/
-def fgRootEntryMatchesPure (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def fgRootEntryMatchesPure (ddh : Bytes → Bytes → Bytes → Bool)
     (rk : Bytes) (dhPos : FgPoS) (e : FgRootEntry) : Bool :=
   if rk != e.rk then false else ddhEqPure ddh dhPos e.dhPos
 @[simp]
@@ -49,7 +52,7 @@ theorem simulateQ_gapDhFullImpl_fgRootEntryMatches (P : Primitives)
   split_ifs
   · rfl
   · exact simulateQ_gapDhFullImpl_ddhEqGdh P ddh dhPos e.dhPos
-def fgRootPatchPure (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def fgRootPatchPure (ddh : Bytes → Bytes → Bytes → Bool)
     (maxLen : ℕ) (rk : Bytes) (dhPos : FgPoS) (L : List FgRootEntry) :
     ProbComp ((Bytes × Bytes) × List FgRootEntry) := do
   match (L.take maxLen).find? (fgRootEntryMatchesPure ddh rk dhPos) with
@@ -81,12 +84,12 @@ theorem fgAuthStepHalt_false (targetIdx targetSpkIdx : ℕ)
     fgAuthStepHalt false targetIdx targetSpkIdx S maxLen U V q st =
       fgAuthStep false targetIdx targetSpkIdx S maxLen U V q st := rfl
 
-def initAuthDh3Cand {S : Setup} (P : Primitives) (s' : AuthInitiatorEntry S) : Bytes :=
+@[expose] def initAuthDh3Cand {S : Setup} (P : Primitives) (s' : AuthInitiatorEntry S) : Bytes :=
   if s'.ekASk.isEmpty then List.replicate 32 0
   else P.x25519 s'.ekASk s'.peerSpkPk
 
 /-- Looks up a non-erased SPK secret scalar matching `wSpk` in the first `S.N_dh` bundles, falling back to `advKeyPows`. -/
-def lookupAuthSpkSkTake (S : Setup) (P : Primitives)
+@[expose] def lookupAuthSpkSkTake (S : Setup) (P : Primitives)
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (advKeyPows : List (Bytes × Bytes))
     (spkPk : Bytes) : Bytes :=
@@ -115,7 +118,7 @@ theorem lookupAuthSpkSkFromPows_map_eq (P : Primitives)
     cases (!b.spkSk.isEmpty && P.pow8 b.spkPk == wSpk)
     · exact lookupAuthSpkSkFromPows_map_eq P advKeyPows wSpk tl
     · rfl
-def initAuthDh1Cand (S : Setup) (P : Primitives)
+@[expose] def initAuthDh1Cand (S : Setup) (P : Primitives)
     (principals : List (Nat × PrincipalEntry))
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (advKeyPows : List (Bytes × Bytes))
@@ -138,7 +141,7 @@ theorem simulateQ_gapDhFullImpl_initAuthDh1CandWithPowsGdh (S : Setup) (P : Prim
   simp only [simulateQ_bind, simulateQ_gapDhFullImpl_primGdhQ_pow8,
     simulateQ_gapDhFullImpl_primGdhQ_x25519, pure_bind]
   rw [lookupAuthSpkSkFromPows_map_eq P advKeyPows (P.pow8 s.peerSpkPk) (spkBundles.take S.N_dh)]
-def respAuthCand (S : Setup) (P : Primitives)
+@[expose] def respAuthCand (S : Setup) (P : Primitives)
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (bKey : Nat × Nat) (pk : Bytes) : Bytes :=
   let spkSk := match (spkBundles.take S.N_dh).find? (fun (idx, _) => idx == bKey) with
@@ -165,7 +168,7 @@ theorem simulateQ_gapDhFullImpl_initAuthDh3CandGdh {S : Setup} (P : Primitives)
     (ddh : Bytes → Bytes → Bytes → Bool) (s' : AuthInitiatorEntry S) :
     simulateQ (gapDhFullImpl P ddh) (initAuthDh3CandGdh s') = pure (initAuthDh3Cand P s') := by
   unfold initAuthDh3CandGdh initAuthDh3Cand; split_ifs <;> simp
-def pureExtractCdhFromAuthSimState (S : Setup) (P : Primitives)
+@[expose] def pureExtractCdhFromAuthSimState (S : Setup) (P : Primitives)
     (ddh : Bytes → Bytes → Bytes → Bool)
     (useDh1 : Bool) (maxLen : ℕ) (U V : Bytes) (st : FgAuthSimState S) : Bytes :=
   if useDh1 then
@@ -262,7 +265,7 @@ theorem simulateQ_gapDhFullImpl_extractCdhFromAuthSimState (S : Setup) (P : Prim
             pure_bind]
         cases ((st.respRecs.take S.N_sess_tot).map
             (respAuthDh3Cand S P st.base.spkBundles)).find? (fun z => ddh U V z) <;> rfl
-noncomputable def fgAuthSimImpl (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def fgAuthSimImpl (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
     (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (S : Setup) (maxLen : ℕ) (U V : Bytes) :
     QueryImpl (authSpec S) (StateT (FgAuthSimState S) ProbComp) :=
@@ -446,10 +449,10 @@ structure AuthFgCutoffState (S : Setup) where
   advRoLog   : List Bytes := []
   respRecs   : List AuthRespRecord := []
   latchedDh1 : List (Nat × Nat) := []
-def AuthFgCutoffState.empty (S : Setup) (secb : Bool) : AuthFgCutoffState S :=
+@[expose] def AuthFgCutoffState.empty (S : Setup) (secb : Bool) : AuthFgCutoffState S :=
   { base := AuthState.empty S secb }
 /-- Per-index `DH1 = CDH(ik_U*, spk_V*)` bad event at `(uIdx, bIdx)`. -/
-def badAuthFgDh1At {S : Setup} (P : Primitives) (maxLen uIdx bIdx : ℕ)
+@[expose] def badAuthFgDh1At {S : Setup} (P : Primitives) (maxLen uIdx bIdx : ℕ)
     (st : AuthState S) (advRoLog : List Bytes) (respRecs : List AuthRespRecord) : Bool :=
   match st.principals.find? (fun (u, _) => u == uIdx),
         st.spkBundles.find? (fun (k, _) => spkBundleFlatIdxVal S k == bIdx) with
@@ -465,7 +468,7 @@ def badAuthFgDh1At {S : Setup} (P : Primitives) (maxLen uIdx bIdx : ℕ)
        respAuthDh1Cand S P spkErased r == zTarget))
   | _, _ => false
 /-- Per-index `DH3 = CDH(ek_U*, spk_V*)` bad event at `(sIdx, bIdx)`. -/
-def badAuthFgDh3At {S : Setup} (P : Primitives) (maxLen sIdx bIdx : ℕ)
+@[expose] def badAuthFgDh3At {S : Setup} (P : Primitives) (maxLen sIdx bIdx : ℕ)
     (st : AuthState S) (advRoLog : List Bytes) (respRecs : List AuthRespRecord) : Bool :=
   match st.sessions.find? (fun s => initSessionSlotIdx s.sid == sIdx),
         st.spkBundles.find? (fun (k, _) => spkBundleFlatIdxVal S k == bIdx) with
@@ -479,7 +482,7 @@ def badAuthFgDh3At {S : Setup} (P : Primitives) (maxLen sIdx bIdx : ℕ)
      (respRecs.take S.N_sess_tot).any (fun r =>
        respAuthDh3Cand S P spkErased r == zTarget))
   | _, _ => false
-def latchDh1ForPrincipal (S : Setup) (P : Primitives) (uVal : ℕ)
+@[expose] def latchDh1ForPrincipal (S : Setup) (P : Primitives) (uVal : ℕ)
     (st : AuthState S) (advRoLog : List Bytes) (respRecs : List AuthRespRecord)
     (latched : List (Nat × Nat)) : List (Nat × Nat) :=
   ((List.range S.N_spk_tot).filter (fun bIdx =>
@@ -487,13 +490,13 @@ def latchDh1ForPrincipal (S : Setup) (P : Primitives) (uVal : ℕ)
       (fun bIdx => (uVal, bIdx)) ++ latched
 
 /-- Sticky `DH1` bad event at `(uIdx, bIdx)`, latching before `.corruptIK` marks `uIdx` corrupted. -/
-def badAuthFgDh1LatchedAt {S : Setup} (P : Primitives) (maxLen uIdx bIdx : ℕ)
+@[expose] def badAuthFgDh1LatchedAt {S : Setup} (P : Primitives) (maxLen uIdx bIdx : ℕ)
     (hst : AuthFgCutoffState S) : Bool :=
   hst.latchedDh1.contains (uIdx, bIdx) ||
     badAuthFgDh1At P maxLen uIdx bIdx hst.base hst.advRoLog hst.respRecs
 
 /-- Disjunction of `badAuthFgDh1LatchedAt` and `badAuthFgDh3At` over all target index pairs. -/
-def badAuthFgAnyLatched {S : Setup} (P : Primitives) (maxLen : ℕ)
+@[expose] def badAuthFgAnyLatched {S : Setup} (P : Primitives) (maxLen : ℕ)
     (hst : AuthFgCutoffState S) : Bool :=
   ((List.range S.N_id).any (fun uIdx =>
     (List.range S.N_spk_tot).any (fun bIdx =>

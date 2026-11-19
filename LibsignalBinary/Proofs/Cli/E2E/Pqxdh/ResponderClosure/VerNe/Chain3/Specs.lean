@@ -9,21 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32Merge
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-
-/-!
-# Callee Specifications and Kit for `message::merge<Chain> [local#5]`
-
-Defines the `X`-regime callee specifications (`decodeVarint2SpecX`, `bytesMerge3Spec`), proves the
-`RawVec<MessageKey>::grow_one` symbol-offset alias theorem `growOneMessageKey_ok_ext_x` and the
-`AllocContractsX → Stage1X.AllocContractsX` bridge `c3_stage1Alloc_of_allocContractsX`, and defines
-`Chain3CalleeKitExt` bundling the handshake `decode_varint [local#5]` and `bytes::merge [local#6]`
-contracts.
--/
-
-@[expose] public section
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32Merge -- proof-setup: allow-public-import
+public section
 
 set_option autoImplicit false
 
@@ -65,7 +53,7 @@ abbrev decodeVarint2StackX : Nat := 0x40 + decodeVarintSlowStackX
 
 /-- Contract of `prost::encoding::varint::decode_varint::<&mut &[u8]> [local#5]` at
 `decodeVarint2StackX`. -/
-def decodeVarint2SpecX (A : RustAlloc) : Spec DecodeVarintSlowGhost where
+@[expose] def decodeVarint2SpecX (A : RustAlloc) : Spec DecodeVarintSlowGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.bufRef ∧ x.bs.length < 2 ^ 63⌝ ∗
       (x.bufRef ↦₆₄ x.slot) ∗ sliceCursorAt x.slot x.ptr x.bs ∗
@@ -90,7 +78,7 @@ own frame `0xe0` (`224` B) plus `decodeVarint2StackX` (`32896` B) = `33120` B. -
 abbrev bytesMerge3Stack : Nat := 0xe0 + decodeVarint2StackX
 
 /-- Raw contract of `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#6]`. -/
-def bytesMerge3RawSpec (A : RustAlloc) : Spec BytesMergeGhost where
+@[expose] def bytesMerge3RawSpec (A : RustAlloc) : Spec BytesMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.valPtr ∧ s.readReg64 .x2 = x.bufRef ∧ x.bs.length < 2 ^ 63 ∧
@@ -111,91 +99,5 @@ def bytesMerge3RawSpec (A : RustAlloc) : Spec BytesMergeGhost where
           vecU8At A x.valPtr x.valCap x.valBuf x.valBs ∗
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- Contract of `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#6]` in
-loaded image `img`. -/
-def bytesMerge3Spec (A : RustAlloc) (img : Obj.Image) : Spec BytesMergeGhost :=
-  (bytesMerge3RawSpec A).inImage img
-
-/-- `c3GrowOneName` and `growOneChainName` resolve to the exact same symbol offset in
-`libsignalSessionCode`. -/
-theorem growOneMessageKey_fnOff_eq_chain :
-    libsignalSessionCode.fnOff c3GrowOneName =
-      libsignalSessionCode.fnOff growOneChainName := by
-  have h1 := (ls_lemma% fnOff "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::chain::MessageKey>>::grow_one")
-  have h2 := (ls_lemma% fnOff "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one")
-  rw [h1, h2]
-
-theorem growOneMessageKey_fnAddr_eq_chain (b : BitVec 64)
-    (H : String → Option (State → State)) :
-    (libsignalSessionCode.rebase b H).fnAddr c3GrowOneName =
-      (libsignalSessionCode.rebase b H).fnAddr growOneChainName := by
-  rw [Program.fnAddr_rebase, Program.fnAddr_rebase, growOneMessageKey_fnOff_eq_chain]
-
-/-- `RawVec<MessageKey>::grow_one` meets `(growOneChainSpecX A).inImage img` under
-`Proofs.libsignal.Stage1X.AllocContractsX img A ext`. -/
-theorem growOneMessageKey_ok_ext_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hA : Proofs.libsignal.Stage1X.AllocContractsX img A ext) :
-    OkAtX img.base ext c3GrowOneName ((growOneChainSpecX A).inImage img) := by
-  unfold OkAtX SP2Ext contractProg
-  rw [growOneMessageKey_fnAddr_eq_chain]
-  exact Proofs.libsignal.Stage1X.growOneChain_ok_x hA
-
-/-- `CryptoVerification.LibsignalTripleRatchet.AllocContractsX` entails
-`Proofs.libsignal.Stage1X.AllocContractsX`. -/
-theorem c3_stage1Alloc_of_allocContractsX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hAlloc : CryptoVerification.LibsignalTripleRatchet.AllocContractsX img A ext) :
-    Proofs.libsignal.Stage1X.AllocContractsX img A ext where
-  alloc := subroutine_ok_mono_entails hAlloc.alloc
-    (fun ⟨_, _⟩ _ => Entails.refl _)
-    (fun ⟨_, _⟩ _ _ => Entails.of_eq (by
-      dsimp only [Spec.inImage,
-        CryptoVerification.LibsignalTripleRatchet.rustAllocSpecWithStack,
-        Proofs.libsignal.Stage1X.rustAllocSpecWithStack]
-      ac_rfl))
-  dealloc := subroutine_ok_mono_entails hAlloc.dealloc
-    (fun ⟨_, _, _⟩ _ => Entails.of_eq (by
-      dsimp only [Spec.inImage,
-        CryptoVerification.LibsignalTripleRatchet.rustDeallocExternSpecWithStack,
-        Proofs.libsignal.Stage1X.rustDeallocExternSpecWithStack]
-      ac_rfl))
-    (fun ⟨_, _, _⟩ _ _ => Entails.refl _)
-  realloc := subroutine_ok_mono hAlloc.realloc
-    (fun ⟨_, _, _, _, _⟩ _ _ h => by
-      dsimp only [Spec.inImage,
-        CryptoVerification.LibsignalTripleRatchet.rustReallocExternSpecWithStack,
-        Proofs.libsignal.Stage1X.rustReallocExternSpecWithStack] at h ⊢
-      rw [sepConj_assoc, satisfies_pure_sepConj] at h ⊢
-      obtain ⟨hinv, h⟩ := h
-      refine ⟨hinv, ?_⟩
-      rw [sepConj_assoc, satisfies_pure_sepConj] at h ⊢
-      obtain ⟨⟨hx0, hx1, hx2, hx3, hb1, hb2, hl1, hl2⟩, h⟩ := h
-      refine ⟨⟨hx0, hx1, hx2, hx3, hl1, hl2, hb1, hb2⟩, ?_⟩
-      exact Satisfies.mono (Entails.of_eq (by ac_rfl)) h)
-    (fun ⟨_, _, _, _, _⟩ _ _ _ h => by
-      dsimp only [Spec.inImage,
-        CryptoVerification.LibsignalTripleRatchet.rustReallocExternSpecWithStack,
-        CryptoVerification.LibsignalTripleRatchet.rustReallocSpecWithStack,
-        Proofs.libsignal.Stage1X.rustReallocExternSpecWithStack,
-        Proofs.libsignal.Stage1X.rustReallocSpecWithStack] at h ⊢
-      exact Satisfies.mono (Entails.of_eq (by ac_rfl)) h)
-  shim := hAlloc.shim extHookStack (by decide) (by decide)
-  session_memmove := hAlloc.session_memmove extHookStack (by decide) (by decide)
-
-/-- Callee kit bundling the handshake `decode_varint [local#5]` and `bytes::merge [local#6]` contracts,
-parameterized over `A : RustAlloc`. -/
-structure Chain3CalleeKitExt (A : RustAlloc) : Prop where
-  dv : ∀ (img : Obj.Image) (ext : String → Option (State → State)),
-    Obj.Loads libsignalSessionImage img →
-    CryptoVerification.LibsignalTripleRatchet.AllocContractsX img A ext →
-    OkAtX img.base ext c3DecodeVarintName ((decodeVarint2SpecX A).inImage img)
-  bm : ∀ (img : Obj.Image) (ext : String → Option (State → State)),
-    Obj.Loads libsignalSessionImage img →
-    CryptoVerification.LibsignalTripleRatchet.AllocContractsX img A ext →
-    OkAtX img.base ext c3BytesMergeName (bytesMerge3Spec A img)
-
-abbrev Chain3CalleeKit : Prop := Chain3CalleeKitExt A0
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3

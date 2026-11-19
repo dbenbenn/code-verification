@@ -9,7 +9,12 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib.GenDecodes
+public import ProofLib.Placed.Multi
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # `GenLsBlock` Compatibility Re-Export

@@ -9,11 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.HopSpecsPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudgetAuxFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.HopSpecsPlacedBudgetFd -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudgetAuxFd
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupPlacedBudget
 
 /-!
 # `FdsGe3Closed`-Threaded Relocatable Arm `R0` Proof
@@ -23,7 +28,7 @@ Proves `run_hop_pre_of_slots_placed_ok_fd` and `run_hop_pre_placed_ok_fd` on Blo
 buffer deallocation to `AtDispatchPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -405,13 +410,5 @@ theorem run_hop_pre_of_slots_placed_ok_fd [LibsignalPlacement] {M : AllocCostMod
           SeqEnv.append hget_ev' (by simp only [PreAfterGetEnv, hok]; exact hseq)
         have hm := hnext s' (evs_get ++ evs_post) me' ⟨hd, hfds'⟩ hpre
         rwa [M.stepEvents_append] at hm)
-
-theorem run_hop_pre_placed_ok_fd [LibsignalPlacement] {M : AllocCostModel}
-    {CodeOk : Memory → Prop} [LsCodeInv CodeOk]
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {cEnvs : RunCalleesEnvs} {sEnvs : RunSlotEnvs}
-    {H : LibsignalHooks} {B : RunBudgets} {S : RunSem} {needs : RunNeeds} {resStack : Nat} :
-    RunHopPrePlacedFd CodeOk A lim cEnvs sEnvs (PreEnv cEnvs) H B S needs resStack :=
-  run_hop_pre_of_slots_placed_ok_fd (sEnvs := sEnvs) (needs := needs) rfl
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudgetFd

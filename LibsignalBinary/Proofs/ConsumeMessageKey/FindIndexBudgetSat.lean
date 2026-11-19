@@ -10,7 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.LoopBudgetSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.LoopBudgetSat
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.LoopBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `HookSat`-backed `black_box` Sibling of `ConsumeMessageKey/FindIndexBudget`

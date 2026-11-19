@@ -10,10 +10,15 @@ limitations under the License.
 module
 
 public import Computational.Proofs.SignalPqxdh.Delta.KeyIndDefs
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c3
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c4
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c3 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c4 -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthAssembly
 import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmac
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB1 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G3
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H
 
 /-!
 # PQXDH authentication with imperfect KEM correctness: hop statements
@@ -23,7 +28,7 @@ authentication hybrid states, states the δ hop interfaces proved under `Delta/A
 assembles them into `pqxdh_auth_with_fixedδ_of_hops` (DEV-PQ21).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,7 +45,7 @@ namespace Proofs.SignalPqxdh.Security.PqxdhDelta
 
 /-- Whether initiator KEM record `i` and responder KEM record `r` share a public key and ciphertext
 but decapsulate to a different shared secret. -/
-def isAuthKemCorrPair {S : Setup} (P : Primitives)
+@[expose] def isAuthKemCorrPair {S : Setup} (P : Primitives)
     (i : _root_.SignalPqxdh.Security.InitKemRecord S)
     (r : _root_.SignalPqxdh.Security.RecvKemRecord) : Bool :=
   decide (r.pqspkPk = i.pqspkPk) && decide (r.kemCt = i.kemCt) &&
@@ -48,12 +53,12 @@ def isAuthKemCorrPair {S : Setup} (P : Primitives)
 
 /-- Whether `AuthHybridState` contains an initiator/responder KEM record pair violating
 decapsulation correctness. -/
-def hasBadAuthKemCorr {S : Setup} (P : Primitives) (h : AuthHybridState S) : Bool :=
+@[expose] def hasBadAuthKemCorr {S : Setup} (P : Primitives) (h : AuthHybridState S) : Bool :=
   h.initKemRecs.any (fun i => h.recvKemRecs.any (isAuthKemCorrPair P i))
 
 /-- Up-to-bad predicate for the δ `G3 → G3.5` step, extending `authCutoffG3G3_5Latched` with
 `hasBadAuthKemCorr`. -/
-def badSendδ {S : Setup} (P : Primitives) (maxRo : ℕ) (s : AuthSendLatchedState S) : Bool :=
+@[expose] def badSendδ {S : Setup} (P : Primitives) (maxRo : ℕ) (s : AuthSendLatchedState S) : Bool :=
   (badAuthFgAnyLatchedMono P maxRo s.toFg || s.respEkCollLatched) || hasBadAuthKemCorr P s.hyb
 
 /-- Matching ideal and responder authentication handshakes derive identical `buildSecrets` inputs
@@ -161,7 +166,7 @@ theorem matchIdealAuthHandshake_imp_secrets_eqδ {S : Setup} (P : Primitives)
 
 /-- `.recvOPK` step coupling on `AuthSendLatchedState` under `CryptoWellFormedPrimitivesδ` with bad
 event `badSendδ`. -/
-def AuthRecvOPKδStmt (S : Setup) : Prop :=
+@[expose] def AuthRecvOPKδStmt (S : Setup) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (maxRo : ℕ) (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) (msg : PreKeyMsg)
       (s35 s3 : AuthSendLatchedState S),
@@ -181,7 +186,7 @@ def AuthRecvOPKδStmt (S : Setup) : Prop :=
 
 /-- `.recvNoOPK` step coupling on `AuthSendLatchedState` under `CryptoWellFormedPrimitivesδ` with
 bad event `badSendδ`. -/
-def AuthRecvNoOPKδStmt (S : Setup) : Prop :=
+@[expose] def AuthRecvNoOPKδStmt (S : Setup) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (maxRo : ℕ) (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk) (msg : PreKeyMsg)
       (s35 s3 : AuthSendLatchedState S),
@@ -200,14 +205,14 @@ def AuthRecvNoOPKδStmt (S : Setup) : Prop :=
         ((pqxdhAuthSendLatchedStageImpl .g3 S P (.recvNoOPK k j l msg)).run s3)
 
 /-- Monotonicity of `hasBadAuthKemCorr` along `.g3` send-latched steps. -/
-def AuthCorrMonoStmt (S : Setup) : Prop :=
+@[expose] def AuthCorrMonoStmt (S : Setup) : Prop :=
   ∀ (P : Primitives) (q : AuthQuery S) (s : AuthSendLatchedState S),
     hasBadAuthKemCorr P s.hyb = true →
     ∀ y ∈ support ((pqxdhAuthSendLatchedStageImpl .g3 S P q).run s),
       hasBadAuthKemCorr P y.2.hyb = true
 
 /-- `G3 → G3.5` cutoff bound with the `hasBadAuthKemCorr` bad-event term. -/
-def AuthCutoffδStmt (S : Setup) : Prop :=
+@[expose] def AuthCutoffδStmt (S : Setup) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b),
       |authFixedAdvG3 S P A.1 - authFixedAdvG3_5 S P A.1| ≤
@@ -219,12 +224,12 @@ def AuthCutoffδStmt (S : Setup) : Prop :=
 
 /-- Derivation of `AuthCutoffδStmt` from the `.recvOPK`/`.recvNoOPK` couplings and bad-event
 monotonicity. -/
-def AuthCutoffGlueStmt (S : Setup) : Prop :=
+@[expose] def AuthCutoffGlueStmt (S : Setup) : Prop :=
   AuthRecvOPKδStmt S → AuthRecvNoOPKδStmt S → AuthCorrMonoStmt S → AuthCutoffδStmt S
 
 /-- Transfer of `hasBadAuthKemCorr` in `runAuthSendLatchedSim .g3` to `hasBadKemCorrRecords` in
 `runAuthShCrSim`. -/
-def AuthCorrTransferStmt (S : Setup) : Prop :=
+@[expose] def AuthCorrTransferStmt (S : Setup) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b),
       (𝒟[runAuthSendLatchedSim .g3 S P A.1 >>= fun x =>
@@ -233,7 +238,7 @@ def AuthCorrTransferStmt (S : Setup) : Prop :=
           pure (hasBadKemCorrRecords S P x.2.2.initKemRecs x.2.2.recvKemRecs)] {true}).toReal
 
 /-- Per-index reduction from the KEM correctness bad event in `runAuthShCrSim` to `kemCorrExpProb`. -/
-def AuthCorrAtStmt (S : Setup) : Prop :=
+@[expose] def AuthCorrAtStmt (S : Setup) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (A : AuthAdversary S) (idx : ℕ), idx < S.N_spk_tot * S.N_send_tot →
       ∃ choosePk : Bytes → Bytes → ProbComp Bytes,

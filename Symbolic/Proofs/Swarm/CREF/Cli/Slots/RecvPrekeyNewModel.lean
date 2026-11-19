@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
+public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhCorrectModelProofDefs
 import Symbolic.Proofs.Refinement.LemmasPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -24,7 +24,7 @@ canonicality extraction under `ModelAgree`, and byte-level X25519 and ML-KEM-102
 `modelPrims`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,8 +39,7 @@ open CryptoVerification.E2E
 open CryptoVerification.LibsignalAesCbc (toLEBytes)
 open CryptoVerification.SignalSession
 open DY.Libsignal (HwBytes)
-open DY.Libsignal.PQXDH.Refinement (X25519TorsionFree toEdwardsSymbol torsionFreeSymbol
-  kyberDecapsSymbol)
+open DY.Libsignal.PQXDH.Refinement (X25519TorsionFree kyberDecapsSymbol)
 open DY.Libsignal.TripleRatchet.Refinement (clamp clampByte)
 open DY.Libsignal.Composed.Refinement
   (ProtocolSetup ProtocolSetupWF PreKeyFields pubBytes secretBytes ecKey kyberDecapsBytes vec32)
@@ -289,40 +288,56 @@ theorem leValue_lt_p25519_of_scalarIsInRange (b : HwBytes)
             omega
           · omega
 
+private theorem match_edPoint_eq_true (m : Option VerifiedLibraries.Common.EdPoint)
+    (f : VerifiedLibraries.Common.EdPoint → Bool)
+    (h : (match m with | some edPt => f edPt | none => false) = true) :
+    ∃ pt, m = some pt ∧ f pt = true := by
+  cases m with
+  | none => cases h
+  | some pt => exact ⟨pt, rfl, h⟩
+
+private theorem upd_isCanonical (B : SignalPqxdh.Primitives) (sv f h96 rcc cks ckn dmk ae ad)
+    (pk : List UInt8) :
+    ({ B with sigVerify := sv, isCanonical := f, hkdfDerive96 := h96, rootCreateChain := rcc,
+              chainKdfSeed := cks, chainKdfNext := ckn, deriveMsgKeys := dmk,
+              aeadEnc := ae, aeadDec := ad } : SignalPqxdh.Primitives).isCanonical pk = f pk := rfl
+
+private theorem upd_sha512_isCanonicalRef (B : SignalPqxdh.Primitives)
+    (s : List UInt8 → List UInt8) (pk : List UInt8) :
+    SignalPqxdh.isCanonicalRef { B with sha512 := s } pk =
+      SignalPqxdh.isCanonicalRef B pk := rfl
+
+private theorem prims_mk_montToEd (f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 f15 f16 f17 f18
+    f19 f20 f21 f22 f23 f24 f25 f26 f27 f28 f29 f30 f31 f32 f33 f34) (u : List UInt8) (s : UInt8) :
+    (SignalPqxdh.Primitives.mk f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 f15 f16 f17 f18
+      f19 f20 f21 f22 f23 f24 f25 f26 f27 f28 f29 f30 f31 f32 f33 f34).montToEd u s = f12 u s := rfl
+
+private theorem prims_mk_isTorsionFree (f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 f15 f16 f17
+    f18 f19 f20 f21 f22 f23 f24 f25 f26 f27 f28 f29 f30 f31 f32 f33 f34)
+    (pt : VerifiedLibraries.Common.EdPoint) :
+    (SignalPqxdh.Primitives.mk f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 f15 f16 f17 f18
+      f19 f20 f21 f22 f23 f24 f25 f26 f27 f28 f29 f30 f31 f32 f33 f34).isTorsionFree pt =
+      f13 pt := rfl
+
 /-- Extracts `< p25519` range and `X25519TorsionFree` from `(modelPrims X P).isCanonical`. -/
 theorem isCanonical_modelPrims_inv {interp : ExternInterpretation} {P : PEParams}
-    (hAgree : ModelAgree interp P) (X : UnreachedPqxdhPrimitives) (v : List.Vector (BitVec 8) 32)
+    (_hAgree : ModelAgree interp P) (X : UnreachedPqxdhPrimitives) (v : List.Vector (BitVec 8) 32)
     (hcanon : (modelPrims X P).isCanonical (vecU8 v) = true) :
     DY.X25519.leValue (v.toList.map BitVec.toNat) < DY.X25519.p25519 ∧
-      X25519TorsionFree interp v.toList := by
-  change SignalPqxdh.isCanonicalRef _ (vecU8 v) = true at hcanon
-  unfold SignalPqxdh.isCanonicalRef at hcanon
+      X25519TorsionFree v.toList := by
+  rw [modelPrims.eq_1, upd_isCanonical, upd_sha512_isCanonicalRef,
+      SignalPqxdh.isCanonicalRef.eq_1] at hcanon
   split at hcanon
   · rename_i hcond
     simp only [Bool.and_eq_true] at hcond
     have hlt : DY.X25519.leValue (v.toList.map BitVec.toNat) < DY.X25519.p25519 :=
       leValue_lt_p25519_of_scalarIsInRange v.toList v.toList_length hcond.2
     refine ⟨hlt, ?_⟩
-    change (match ((P.Q.montToEd (u8Vec 32 (vecU8 v)) (0 : UInt8).toBitVec).map vecU8) with
-      | some edPt => P.Q.isTorsionFree (u8Vec 160 edPt)
-      | none => false) = true at hcanon
-    rw [u8Vec_vecU8_rpnmba1] at hcanon
-    have hz : (0 : UInt8).toBitVec = 0#8 := rfl
-    rw [hz] at hcanon
-    cases hm : P.Q.montToEd v 0#8 with
-    | none => rw [hm] at hcanon; cases hcanon
-    | some pt =>
-      rw [hm] at hcanon
-      dsimp only [Option.map] at hcanon
-      rw [u8Vec_vecU8_rpnmba1] at hcanon
-      have hmont : interp toEdwardsSymbol [v.toList, [0#8]] =
-          (P.Q.montToEd v 0#8).map List.Vector.toList :=
-        hAgree.2.2.2.2.2.2.2.1 v 0#8
-      rw [hm, Option.map_some] at hmont
-      have htf : P.Q.isTorsionFree pt = decide (interp torsionFreeSymbol [pt.toList] = some [1#8]) :=
-        hAgree.2.2.2.2.2.2.2.2 pt
-      rw [hcanon] at htf
-      exact ⟨pt.toList, pt.toList_length, hmont, decide_eq_true_eq.mp htf.symm⟩
+    obtain ⟨pt, hm, htf⟩ := match_edPoint_eq_true _ _ hcanon
+    rw [blockLevelPrims.eq_1, prims_mk_montToEd, u8Vec_vecU8_rpnmba1,
+        show (0 : UInt8).toBitVec = 0#8 from rfl] at hm
+    rw [blockLevelPrims.eq_1, prims_mk_isTorsionFree] at htf
+    exact ⟨pt, hm, htf⟩
   · cases hcanon
 
 /-! ## Model Primitive Bridges -/
@@ -371,7 +386,7 @@ theorem kemDecaps_modelPrims_bob_bytesToVec {interp : ExternInterpretation} {P :
     (bytesToVec_toList_local hkdrop_len).symm
   have hk : interp kyberDecapsSymbol [kpkSec.toList, ct.toList] =
       some (P.Q.decaps kpkSec ct).toList :=
-    hAgree.2.2.2.2.2.2.1 kpkSec ct
+    hAgree.2.2.2.2.2.2 kpkSec ct
   unfold kyberDecapsBytes
   rw [hdrop, hk]
   rfl

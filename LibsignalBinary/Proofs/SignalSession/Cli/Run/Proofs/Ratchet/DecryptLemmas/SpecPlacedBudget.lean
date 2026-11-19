@@ -11,12 +11,14 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsVXPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsVXPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsVXPlaced
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsVXPlacedBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.Spec
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlBridgePlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlBridgePlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Inner Store-Kit Specification for `decrypt_signal` (Placed)
@@ -25,7 +27,7 @@ Budget-pool counterparts of `withStoresDecPlacedSpecVTP`, `InnerDecryptPlacedOk`
 `InnerDecryptFrozenPlacedOk` on Block `463` (`signal_session_ratchet::decrypt_signal`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -79,7 +81,7 @@ abbrev decDefAux_eq_model :=
 
 /-- Budget-threaded tight store-kit contract for `decrypt_signal` under `[LibsignalPlacement]`,
 threading `tokenInitPlacedAt` and `Slots.DistinctSid`. -/
-def withStoresDecPlacedSpecVTP [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def withStoresDecPlacedSpecVTP [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -97,14 +99,14 @@ def withStoresDecPlacedSpecVTP [LibsignalPlacement] {M : AllocCostModel} (C : Cr
     post := fun xs s0 sf =>
       tokenInitPlacedAt ∗ base.post xs s0 sf }
 
-noncomputable abbrev decSessKitPlaced [LibsignalPlacement] (A : RustAlloc)
+abbrev decSessKitPlaced [LibsignalPlacement] (A : RustAlloc)
     (F0 : FsFiles) (peer : AddrGhost) (B : RunBudgets) :
     SessionStoreSpec A 0#64 :=
   cliSessionStoreSpecPlaced A cliIo.rd F0 cliWrOk Slots.scopeKit peer
     SessKit.loadShimNeed (SessKit.loadPollNeed B.readFile)
     SessKit.storeShimNeed SessKit.storePollNeedX
 
-noncomputable abbrev decIdKitPlaced [LibsignalPlacement] (A : RustAlloc)
+abbrev decIdKitPlaced [LibsignalPlacement] (A : RustAlloc)
     (F0 : FsFiles) (peer : AddrGhost) (B : RunBudgets) :
     IdentityStoreSpec A 0#64 :=
   cliIdentityStoreSpecPlaced A cliIo.rd F0 cliWrOk peer
@@ -113,7 +115,7 @@ noncomputable abbrev decIdKitPlaced [LibsignalPlacement] (A : RustAlloc)
 
 /-- Budget-threaded inner store-kit hypothesis on Block `463` (`lsProg_463 H`) at
 `decSessKitPlaced A.repAlloc` and `decIdKitPlaced A.repAlloc`. -/
-def InnerDecryptPlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def InnerDecryptPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (P : PEParams) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : LibsignalHooks) (B : RunBudgets)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -131,7 +133,7 @@ def InnerDecryptPlacedOk [LibsignalPlacement] {M : AllocCostModel}
           StoresGhost.opened.sessions StoresGhost.opened.identity Slots.scopeKit)
         fun s => kit.envOk s.fs.files ∧ ikit.envOk s.fs.files)
 
-def withStoresDecFrozenPlacedSpecVTP [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def withStoresDecFrozenPlacedSpecVTP [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -144,7 +146,7 @@ def withStoresDecFrozenPlacedSpecVTP [LibsignalPlacement] {M : AllocCostModel} (
     (withStoresDecPlacedSpecVTP C A lim ctl parse S tdEnv encRecord kit kitEnv ikit ikitEnv st0 ist0 Scope)
 
 /-- `withLsFrozen`-guarded variant of `InnerDecryptPlacedOk` on Block `463` (`lsProg_463 H`). -/
-def InnerDecryptFrozenPlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def InnerDecryptFrozenPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (P : PEParams) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : LibsignalHooks) (B : RunBudgets)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)

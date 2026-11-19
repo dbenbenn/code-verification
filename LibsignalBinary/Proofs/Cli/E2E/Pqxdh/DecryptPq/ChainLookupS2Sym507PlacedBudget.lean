@@ -9,17 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ChainLookupS2Sym507Placed
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.FindReceiverChainKeyBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ChainLookupS2Sym507Placed
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.FindReceiverChainKeyBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainStack
-import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainSym
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatchBudget
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ChainLookupS1Err507Placed
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatch
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
 # Budget-Threaded Relocatable Segment `S2` Step and Call Lemmas on Block `507`
@@ -29,7 +33,7 @@ reachability (zero allocator events) for Segment `S2` of
 `try_decrypt_with_state::<signal_session_handshake::Coins>` (Block `507`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

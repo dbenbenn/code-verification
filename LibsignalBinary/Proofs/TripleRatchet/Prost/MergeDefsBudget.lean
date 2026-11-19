@@ -11,11 +11,11 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.Placed.GenLsBlock
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
 public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefs
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `prost::encoding::bytes::merge::<Vec<u8>>` Specifications
@@ -24,7 +24,7 @@ Deterministic allocator event sequence (`bytesMergeEventsCore`), envelope (`Byte
 `RustCliAllocBudget`-threaded specifications for `prost::encoding::bytes::merge::<Vec<u8>, &mut &[u8]>`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -48,7 +48,7 @@ open CryptoVerification.LibsignalTripleRatchet.Prost
 /-- Deterministic allocator events of `Vec::clear` + `RawVecInner::reserve(0, vLen)` on a `Vec<u8>`
 with initial capacity `cap`: `[]` when `vLen ≤ cap`; otherwise `alloc(newCap, 1)` when `cap = 0` or
 `realloc(cap, newCap, 1)` when `0 < cap`, where `newCap = reserveCap cap 0 vLen`. -/
-def doReserveClearEvents (cap vLen : Nat) : List AllocEvent :=
+@[expose] def doReserveClearEvents (cap vLen : Nat) : List AllocEvent :=
   if vLen ≤ cap then
     []
   else
@@ -59,7 +59,7 @@ def doReserveClearEvents (cap vLen : Nat) : List AllocEvent :=
 72-byte `Box<Inner>` allocation via `DecodeError::from` on `Err`; `[]` on `Ok ([], _)`; and temporary
 `Bytes` buffer allocation `(v.length, 1)`, optional `Vec` reserve (`doReserveClearEvents`), and
 temporary buffer deallocation `(v.length, 1)` on `Ok (v, _)` with `0 < v.length`. -/
-def bytesMergeEventsCore (wt : WireType) (valCap : BitVec 64) (bs : List (BitVec 8)) :
+@[expose] def bytesMergeEventsCore (wt : WireType) (valCap : BitVec 64) (bs : List (BitVec 8)) :
     List AllocEvent :=
   match mergeBytes wt bs with
   | none => rustAllocEvents 72 8
@@ -72,7 +72,7 @@ def bytesMergeEventsCore (wt : WireType) (valCap : BitVec 64) (bs : List (BitVec
         rustDeallocEvents v.length 1
 
 /-- Callee-fixed allocator event envelope of `prost::encoding::bytes::merge::<Vec<u8>, &mut &[u8]>`. -/
-def BytesMergeEnv (x : BytesMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def BytesMergeEnv (x : BytesMergeGhost) (evs : List AllocEvent) : Prop :=
   evs = bytesMergeEventsCore x.wt x.valCap x.bs
 
 /-! ## Parameterized budget-threaded specifications -/
@@ -105,7 +105,7 @@ abbrev bmPostVec (reqCap : Bool) (A : RustAlloc) (valPtr : BitVec 64)
 /-- Stack- and capacity-mode-parameterized budget-threaded raw contract of
 `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]`
 (`0xe0 + (0x50 + errStack)`). -/
-def bytesMergeRawSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def bytesMergeRawSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (errStack : Nat) (reqCap : Bool) :
     Spec (BytesMergeGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -129,24 +129,24 @@ def bytesMergeRawSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
 /-- Budget-threaded raw contract of `bytes::merge` at `bytesMergeStack`. -/
-def bytesMergeRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def bytesMergeRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BytesMergeGhost × M.σ) :=
   bytesMergeRawSpecGen A lim decodeErrorHookStack true
 
 /-- Budget-threaded raw contract of `bytes::merge` at `bytesMergeStackX`. -/
-def bytesMergeRawSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def bytesMergeRawSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BytesMergeGhost × M.σ) :=
   bytesMergeRawSpecGen A lim decodeErrorHookStackX true
 
 /-! ## Relocatable specifications and `subroutine_ok` propositions -/
 
 /-- Relocatable budget-threaded contract of `bytes::merge` (Block `7`) at `bytesMergeStack`. -/
-def bytesMergePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def bytesMergePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (BytesMergeGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl (bytesMergeRawSpec A lim)
 
 /-- Relocatable budget-threaded contract of `bytes::merge` (Block `7`) at `bytesMergeStackX`. -/
-def bytesMergePlacedSpecX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def bytesMergePlacedSpecX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (BytesMergeGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl (bytesMergeRawSpecX A lim)
 

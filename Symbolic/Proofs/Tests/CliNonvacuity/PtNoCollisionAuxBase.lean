@@ -40,7 +40,6 @@ import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
 public import Symbolic.Specifications.Refinement.Concretization
 public import Symbolic.Specifications.Refinement.ModelTraces
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import ProofLib.Lemmas
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.SymEnc
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import VCVio.Prelude.Core
@@ -73,7 +72,7 @@ attacker-knowledge, and Comparse serialization preservation (`termRandAt_seriali
 `termRandAt_serialize_pq`), and provides `TRand` combinators for composed protocol transitions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -110,7 +109,7 @@ open DY.Libsignal.Composed.Refinement
 
 /-! ## `RandAt`, `MemoRandAt`, and `TermRandAt` Constructor Lemmas -/
 
-def RandAt (tr : ExecTrace) (ts sz : Nat) : Prop :=
+@[expose] def RandAt (tr : ExecTrace) (ts sz : Nat) : Prop :=
   (tr.at? ts : Option DY.Random.ExecEntryT) = some ⟨sz⟩
 
 theorem RandAt.mono {tr tr' : ExecTrace} (hle : tr ≤ tr') {ts sz : Nat} (h : RandAt tr ts sz) :
@@ -118,11 +117,11 @@ theorem RandAt.mono {tr tr' : ExecTrace} (hle : tr ≤ tr') {ts sz : Nat} (h : R
   have hat := DY.Trace.at?_le (EntryT := DY.Random.ExecEntryT) tr tr' ts hle
   unfold RandAt at h ⊢; rw [h] at hat; exact hat
 
-def MemoRandAt (tr : ExecTrace) (ct : ConcretizedTerm) : Prop :=
+@[expose] def MemoRandAt (tr : ExecTrace) (ct : ConcretizedTerm) : Prop :=
   ∀ (t sh : DY.Bytes) (v : HwBytes) (r : DY.Random.Random DY.Bytes),
     (t, sh, v) ∈ ct.memo → t.view? DY.Random.Random = some r → RandAt tr r.timestamp r.size
 
-def TermRandAt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def TermRandAt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
     (tr : ExecTrace) (b : DY.Bytes) : Prop :=
   MemoRandAt tr (gamma' i S g b)
 
@@ -637,7 +636,7 @@ abbrev TREntry := DY.ProtocolEvent.ExecEntryT TREvent
 abbrev PQStEntry := PersistentGlobalState.State.ExecEntryT (PersistentLocalState.LocalState PQXDHState)
 abbrev PQEvEntry := DY.ProtocolEvent.ExecEntryT PQXDHEvent
 abbrev CEvEntry := DY.ProtocolEvent.ExecEntryT ComposedEvent
-def StateRandAt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (T : ExecTrace) (st : TRState) : Prop :=
+@[expose] def StateRandAt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (T : ExecTrace) (st : TRState) : Prop :=
   TermRandAt i S g T st.myIk ∧ TermRandAt i S g T st.peerIk ∧ TermRandAt i S g T st.rk ∧
   TermRandAt i S g T st.dhs ∧ TermRandAt i S g T st.cks ∧ TermRandAt i S g T st.sid ∧
   TermRandAt i S g T st.spqr ∧ ∀ c ∈ st.recv, TermRandAt i S g T c.ratchetKey ∧ TermRandAt i S g T c.chainKey
@@ -651,23 +650,23 @@ theorem termRandAt_serialize_pq (ls : PersistentLocalState.LocalState PQXDHState
     (hsk : TermRandAt i S g T ls.state.sk) : TermRandAt i S g T (Comparse.serialize ls) := by
   rw [Symbolic.DYBridge.DY.Comparse.serialize_eq_1, ← Comparse.ExtensibleMessageFormat.wf_eq _ (TermRandAt i S g T) ls]
   simp [Comparse.ParseableSerializeable.mf]; exact hsk
-def EventRandAt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (T : ExecTrace) : TREvent → Prop
+@[expose] def EventRandAt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (T : ExecTrace) : TREvent → Prop
   | .SkippedKeyStored _ pk _ seed _ _ => TermRandAt i S g T seed ∧ TermRandAt i S g T pk
   | .ExposedMK _ seed _ _ => TermRandAt i S g T seed
   | .ExposedSpqr _ spqr _ => TermRandAt i S g T spqr
   | .Received _ _ _ _ m => TermRandAt i S g T m
   | _ => True
-def PQEventRandAt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (T : ExecTrace) : PQXDHEvent → Prop
+@[expose] def PQEventRandAt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (T : ExecTrace) : PQXDHEvent → Prop
   | .IdentityRegistered _ ikPk vk _ => TermRandAt i S g T ikPk ∧ TermRandAt i S g T vk
   | .BobDone _ _ _ _ _ _ _ ek _ _ => TermRandAt i S g T ek
   | _ => True
-def EntryRandAt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (T : ExecTrace) (ent : ExecTrace.Entry) : Prop :=
+@[expose] def EntryRandAt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (T : ExecTrace) (ent : ExecTrace.Entry) : Prop :=
   (∀ e : Network.ExecEntryT, TraceEntryHas.proj ent = some e → TermRandAt i S g T e.msg) ∧
   (∀ e : StEntry, TraceEntryHas.proj ent = some e → StateRandAt i S g T e.st.state) ∧
   (∀ e : TREntry, TraceEntryHas.proj ent = some e → EventRandAt i S g T e.ev) ∧
   (∀ e : PQStEntry, TraceEntryHas.proj ent = some e → TermRandAt i S g T e.st.state.sk) ∧
   (∀ e : PQEvEntry, TraceEntryHas.proj ent = some e → PQEventRandAt i S g T e.ev)
-def TraceEntriesRand (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (T tr : ExecTrace) : Prop :=
+@[expose] def TraceEntriesRand (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (T tr : ExecTrace) : Prop :=
   (∀ b, tr.BaseAttackerKnows b → TermRandAt i S g T b) ∧ (∀ j (hj : j < tr.length), EntryRandAt i S g T (tr.at j hj))
 theorem traceEntriesRand_nil : TraceEntriesRand i S g T (DY.Trace.nil : ExecTrace) :=
   ⟨fun _ h => by rw [Symbolic.DYBridge.DY.Trace.BaseAttackerKnows_eq_1] at h; exact h.elim,
@@ -717,7 +716,7 @@ private theorem run_bind_snd {α β : Type} (x : Traceful α) (f : α → Tracef
   rw [Traceful.run_bind]; rcases x.run tr with ⟨_ | a, tr1⟩
   · rfl
   · rcases (f a).run tr1.val with ⟨_, _⟩; rfl
-def TRand {α : Type} (Q : α → Prop) (x : Traceful α) : Prop :=
+@[expose] def TRand {α : Type} (Q : α → Prop) (x : Traceful α) : Prop :=
   ∀ tr : ExecTrace, (x.run tr).2.val ≤ T → TraceEntriesRand i S g T tr →
     TraceEntriesRand i S g T (x.run tr).2.val ∧ ∀ a, (x.run tr).1 = some a → Q a
 theorem TRand.pure {α : Type} {Q : α → Prop} {a : α} (ha : Q a) : TRand (i := i) (S := S) (g := g) (T := T) Q (pure a) := by
@@ -902,7 +901,7 @@ theorem termRandAt_computeMac {mk sik rik w : DY.Bytes} (hmk : TermRandAt i S g 
     TermRandAt i S g T (computeMac mk sik rik w) := termRandAt_trunc8 (termRandAt_hmac hmk (termRandAt_concat hsik (termRandAt_concat hrik hw)))
 theorem termRandAt_trHonestWireMsg {rk ct pq : DY.Bytes} (hrk : TermRandAt i S g T rk) (c pc : UInt32) (hct : TermRandAt i S g T ct) (hpq : TermRandAt i S g T pq) :
     TermRandAt i S g T (trHonestWireMsg rk c pc ct pq) := termRandAt_trWireMsg hrk hct hpq
-def TRSignalMsgRandAt (msg : TRSignalMsg) : Prop :=
+@[expose] def TRSignalMsgRandAt (msg : TRSignalMsg) : Prop :=
   TermRandAt i S g T msg.wire ∧ TermRandAt i S g T msg.mac ∧ TermRandAt i S g T msg.ratchetKey ∧ TermRandAt i S g T msg.ciphertext ∧ TermRandAt i S g T msg.pqRatchet
 private theorem termRandAt_parseTrSignalMsg {t : DY.Bytes} {msg : TRSignalMsg} (ht : TermRandAt i S g T t) (hp : parseTrSignalMsg t = some msg) :
     TRSignalMsgRandAt (i := i) (S := S) (g := g) (T := T) msg := by
@@ -919,7 +918,7 @@ theorem TRand.receiveSignalMsg (msgIdx : Nat) :
   unfold DY.Libsignal.TripleRatchet.receiveSignalMsg; refine TRand.bind (TRand.receiveMessage msgIdx) fun t ht => ?_; split
   · next msg hp => exact TRand.bind (TRand.guardP _) fun _ _ => TRand.pure (termRandAt_parseTrSignalMsg ht hp)
   · exact TRand.failure
-def ChainRandAt (c : RecvChain) : Prop := TermRandAt i S g T c.ratchetKey ∧ TermRandAt i S g T c.chainKey
+@[expose] def ChainRandAt (c : RecvChain) : Prop := TermRandAt i S g T c.ratchetKey ∧ TermRandAt i S g T c.chainKey
 theorem termRandAt_findRecvChain {st : TRState} {pk : DY.Bytes} {c : RecvChain} (hst : StateRandAt i S g T st) (hf : findRecvChain st.recv pk = some c) :
     ChainRandAt (i := i) (S := S) (g := g) (T := T) c := hst.2.2.2.2.2.2.2 c (List.mem_of_find?_eq_some hf)
 private theorem termRandAt_recvChainFor {st : TRState} {pk : DY.Bytes} {c : RecvChain} {b : Bool} (hst : StateRandAt i S g T st) (hpk : TermRandAt i S g T pk)

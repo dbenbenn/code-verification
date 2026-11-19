@@ -10,58 +10,79 @@ limitations under the License.
 module
 
 public import Arm64.Trusted.Spec.Hoare
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.PeakBudget.RealCliDecPkSlotOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds
-public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFdsStrClone
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KBridges
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KHooks
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFdsStrClone
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KBridges
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KHooks -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
 public import LibsignalBinary.Specifications.SignalSession.CliElf
 public import VerifiedLibraries.Mallocng.Spec
+import ProofLib.SepLogic
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedExtPlacedBudget
 
 /-!
-# K-Route `String::clone` File-Descriptor Hook Bridges
+# K-Route `String::clone`, `format_inner`, and `fmt::write` File-Descriptor Hook Bridges
 
-Proves that `h2k_strCloneGhostHookK` preserves `State.fs`, lifts its budget contract
-through `withFdsGe3Closed` and `withFds`, and assembles the 12-field `RunHooksPlaced`
-bundle over `withFds (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)`.
+Proves that `h2k_strCloneGhostHookK` preserves `State.fs`, lifts `stringCloneBudgetSpec`,
+`formatInnerCallCliLsSpec`, and `fmtWriteProtoAddrCliLsSpec` through `withFdsGe3Closed` and
+`withFds`, and assembles the 14-field `RunHooksPlaced` bundle over
+`withFds (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.style.haveILetI false
 
 namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KStrCloneFds
 
-open Arm64 Arm64.Obj ProofLib
+open Arm64 Arm64.Obj ProofLib ProofLib.SepLogic SepProp
 open CryptoVerification (LibsignalHooks LibsignalPlacement)
 open CryptoVerification.SignalSession
-  (CliHooks cliElfBytes cliElfImage cliExternsPlaced libsignalSessionLib lsStringCloneSym)
+  (CliHooks cliElfBytes cliElfImage cliExternsPlaced libsignalSessionLib lsFmtWriteSym
+   lsFormatInnerSym lsStringCloneSym)
 open CryptoVerification.SignalSession.Cli.RunGlue
   (CliGhostHooks IsFsC cliGhostExterns cliGhostExterns_stringClone_some)
-open LibsignalBinary.Heap (AllocCostModel BudgetLimits RustCliAllocBudget)
+open LibsignalBinary.Heap (AllocCostModel AllocEvent BudgetLimits RustCliAllocBudget)
 open LibsignalBinary.Heap.Fine (fineCostModel fineHookRustCliAllocBudget)
 open LibsignalBinary.Heap.RustStdAllocBudgetBridge (stringCloneBudgetSpec)
 open LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith (cliBudgetLimits)
-open LibsignalBinary.Proofs.PeakBudget.RealCliDecPkSlotOk (cliRunHooksPlaced_of_ghost)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-  (hookOk_withFdsGe3Closed_of_fs_eq withFdsGe3Closed)
+  (FdsGe3Closed extract_withFdsGe3Closed hookOk_withFdsGe3Closed_of_fs_eq withFdsGe3Closed)
 open LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds
-  (cliGhostAllocHooks_withFds cliGhostSpqrAllocHooks_withFds withFds)
+  (cliGhostAllocHooks_withFds cliGhostSpqrAllocHooks_withFds withFds withFds_pool_enforced
+   withFds_pool_unenforced withFds_repAlloc)
 open LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFdsStrClone
   (hookOk_stringCloneBudget_withFds hookSat_stringCloneBudget_withFds)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs
+  (CliFmtWriteProtoAddrCall CliFormatInnerLsCall cliFmtWriteProtoAddrSpec
+   cliFormatInnerLsCallSpec fmtWriteProtoAddrCliLsSpec fmtWriteProtoAddrLsEnvSpec
+   formatInnerCallCliLsSpec formatInnerCallLsEnvSpec withLsRetFmtWrite withLsRetFormatInner)
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget (libsignalPlacementOf)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget (RunHooksPlaced)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
   (CliGhostAllocHooks CliGhostSpqrAllocHooks)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KBridges
-  (h2kb_hole2_hFs h2kb_hole2_hG h2kb_hole2_hGSpqr h2kb_stringCloneBudget_hookSat)
+  (h2kb_fmtWriteProtoAddrCliLs_hookSat h2kb_formatInnerCallCliLs_hookSat h2kb_hole2_hFs
+   h2kb_hole2_hG h2kb_hole2_hGSpqr h2kb_stringCloneBudget_hookSat)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KHooks
   (h2k_ghFixedK h2k_strCloneGhostHookK)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
@@ -194,6 +215,294 @@ theorem h2kb_stringCloneBudget_withFds_hookSat
    cliGhostExterns_stringClone_some (h2k_ghFixedK mpl mmpl) base rfl,
    h2kb_stringCloneBudget_withFds_hookOk mpl mmpl hLs hMm γ tp⟩
 
+/-! ## Zero-`h_fs` `withFdsGe3Closed` and `withFds` Lifts for `format_inner` and `fmt::write` -/
+
+private theorem hookOk_of_pre_post {α : Type} {f : State → State} {spec1 spec2 : Spec α}
+    {Q : α → State → Prop}
+    (hok : HookOk f spec1)
+    (hpan : spec2.onPanic = spec1.onPanic)
+    (hexc : spec2.onExit = spec1.onExit)
+    (hoom : spec2.onOom = spec1.onOom)
+    (hpre : ∀ x R s0, (s0.mem ⊨ spec2.pre x s0 ∗ R) → Q x s0 ∧ (s0.mem ⊨ spec1.pre x s0 ∗ R))
+    (hpost : ∀ x R s0 sf, Q x s0 → (sf.mem ⊨ spec1.post x s0 sf ∗ R) →
+      (sf.mem ⊨ spec2.post x s0 sf ∗ R)) :
+    HookOk f spec2 := by
+  intro x R s0 hrun hpre2 hsp
+  obtain ⟨hq, hpre1⟩ := hpre x R s0 hpre2
+  obtain ⟨hkf, hsym, hout⟩ := hok x R s0 hrun hpre1 hsp
+  refine ⟨hkf, hsym, ?_⟩
+  rcases hout with ⟨hret, hcc, hp1⟩ | ⟨hp, hpan1⟩ | ⟨c, hc, hexc1⟩ | ⟨ho, hoom1⟩
+  · exact Or.inl ⟨hret, hcc, hpost x R s0 (f s0) hq hp1⟩
+  · exact Or.inr (Or.inl ⟨hp, hpan ▸ hpan1⟩)
+  · exact Or.inr (Or.inr (Or.inl ⟨c, hc, hexc ▸ hexc1⟩))
+  · exact Or.inr (Or.inr (Or.inr ⟨ho, hoom ▸ hoom1⟩))
+
+private theorem fmt_ls_pure_extract {PureProp : Prop}
+    {P1 P2 P3 Pool Tail R : SepProp} {sf : State}
+    (h : sf.mem ⊨ (⌜PureProp⌝ ∗ P1 ∗ P2 ∗ P3 ∗ Pool ∗ Tail) ∗ R) :
+    PureProp := by
+  have hEq :
+      (⌜PureProp⌝ ∗ P1 ∗ P2 ∗ P3 ∗ Pool ∗ Tail) ∗ R =
+      ⌜PureProp⌝ ∗ ((P1 ∗ P2 ∗ P3 ∗ Pool ∗ Tail) ∗ R) := by
+    sep_ac_rfl
+  rw [hEq, satisfies_pure_sepConj] at h
+  exact h.1
+
+private theorem fmt_ls_pre_enforced {M : AllocCostModel} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} (henf : lim.enforced = true)
+    {P0 P1 P2 P3 P4 Tail R : SepProp} {st : M.σ} {s0 : State}
+    (h : s0.mem ⊨ (P0 ∗ P1 ∗ P2 ∗ P3 ∗ P4 ∗ (withFds A).pool lim st s0 ∗ Tail) ∗ R) :
+    FdsGe3Closed s0.fs ∧ (s0.mem ⊨ (P0 ∗ P1 ∗ P2 ∗ P3 ∗ P4 ∗ A.pool lim st s0 ∗ Tail) ∗ R) := by
+  rw [withFds_pool_enforced A henf] at h
+  have hEq :
+      (P0 ∗ P1 ∗ P2 ∗ P3 ∗ P4 ∗ (⌜FdsGe3Closed s0.fs⌝ ∗ A.pool lim st s0) ∗ Tail) ∗ R =
+      ⌜FdsGe3Closed s0.fs⌝ ∗ ((P0 ∗ P1 ∗ P2 ∗ P3 ∗ P4 ∗ A.pool lim st s0 ∗ Tail) ∗ R) := by
+    sep_ac_rfl
+  rwa [hEq, satisfies_pure_sepConj] at h
+
+private theorem fmt_ls_post_enforced {M : AllocCostModel} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} (henf : lim.enforced = true)
+    {PureProp : List AllocEvent → Prop} {P1 : List (BitVec 8) → SepProp}
+    {P2 P3 Tail R : SepProp} {st : M.σ} {s0 sf : State}
+    (hfs_of_pure : ∀ evs, PureProp evs → sf.fs = s0.fs)
+    (hClosed0 : FdsGe3Closed s0.fs)
+    (h : sf.mem ⊨
+        (∃∗ evs : List AllocEvent, ∃∗ bs' : List (BitVec 8),
+          ⌜PureProp evs⌝ ∗ P1 bs' ∗ P2 ∗ P3 ∗ A.pool lim (M.stepEvents evs st) sf ∗ Tail) ∗ R) :
+    sf.mem ⊨
+        (∃∗ evs : List AllocEvent, ∃∗ bs' : List (BitVec 8),
+          ⌜PureProp evs⌝ ∗ P1 bs' ∗ P2 ∗ P3 ∗
+            (withFds A).pool lim (M.stepEvents evs st) sf ∗ Tail) ∗ R := by
+  rw [sepExists_sepConj_left, satisfies_sepExists] at h ⊢
+  rcases h with ⟨evs, h⟩
+  refine ⟨evs, ?_⟩
+  rw [sepExists_sepConj_left, satisfies_sepExists] at h ⊢
+  rcases h with ⟨bs', h⟩
+  refine ⟨bs', ?_⟩
+  have hPure : PureProp evs := fmt_ls_pure_extract h
+  have hClosedF : FdsGe3Closed sf.fs := (hfs_of_pure evs hPure) ▸ hClosed0
+  rw [withFds_pool_enforced A henf]
+  have hEq :
+      (⌜PureProp evs⌝ ∗ P1 bs' ∗ P2 ∗ P3 ∗
+        (⌜FdsGe3Closed sf.fs⌝ ∗ A.pool lim (M.stepEvents evs st) sf) ∗ Tail) ∗ R =
+      ⌜FdsGe3Closed sf.fs⌝ ∗
+        ((⌜PureProp evs⌝ ∗ P1 bs' ∗ P2 ∗ P3 ∗ A.pool lim (M.stepEvents evs st) sf ∗ Tail) ∗ R) := by
+    sep_ac_rfl
+  rw [hEq, satisfies_pure_sepConj]
+  exact ⟨hClosedF, h⟩
+
+/-- Lift `HookOk fn (formatInnerCallCliLsSpec M A lim)` to `withFdsGe3Closed` (no `h_fs` needed:
+    `cliFormatInnerLsCallSpec.post` proves `sf.fs = s0.fs`). -/
+theorem hookOk_withFdsGe3Closed_formatInnerCallCliLs [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {fn : State → State}
+    (hok : HookOk fn (formatInnerCallCliLsSpec M A lim)) :
+    HookOk fn (withFdsGe3Closed (formatInnerCallCliLsSpec M A lim)) := by
+  refine hookOk_of_pre_post (Q := fun _ s0 => FdsGe3Closed s0.fs) hok rfl rfl rfl ?_ ?_
+  · intro x R s0 hpre0
+    exact extract_withFdsGe3Closed hpre0
+  · rintro ⟨c, st0⟩ R s0 sf hClosed0 hpost
+    have hfs : sf.fs = s0.fs := by
+      have hp := hpost
+      dsimp only [formatInnerCallCliLsSpec, formatInnerCallLsEnvSpec, withLsRetFormatInner,
+        cliFormatInnerLsCallSpec] at hp
+      rw [sepExists_sepConj_left, satisfies_sepExists] at hp
+      rcases hp with ⟨evs, hp⟩
+      rw [sepExists_sepConj_left, satisfies_sepExists] at hp
+      rcases hp with ⟨bs', hp⟩
+      exact (fmt_ls_pure_extract hp).2.1
+    dsimp only [withFdsGe3Closed]
+    rw [sepConj_assoc, satisfies_pure_sepConj]
+    exact ⟨hfs ▸ hClosed0, hpost⟩
+
+/-- Lift `HookSat` on `formatInnerCallCliLsSpec M A lim` to `withFdsGe3Closed`. -/
+theorem hookSat_withFdsGe3Closed_formatInnerCallCliLs [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {hooks : String → Option (State → State)} {sym : String}
+    (hsat : HookSat hooks sym (formatInnerCallCliLsSpec M A lim)) :
+    HookSat hooks sym (withFdsGe3Closed (formatInnerCallCliLsSpec M A lim)) := by
+  rcases hsat with ⟨fn, hfn, hok⟩
+  exact ⟨fn, hfn, hookOk_withFdsGe3Closed_formatInnerCallCliLs hok⟩
+
+/-- Lift `HookOk fn (formatInnerCallCliLsSpec M A lim)` to `withFds A` (no `h_fs` needed). -/
+theorem hookOk_formatInnerCallCliLs_withFds [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {fn : State → State}
+    (hok : HookOk fn (formatInnerCallCliLsSpec M A lim)) :
+    HookOk fn (formatInnerCallCliLsSpec M (withFds A) lim) := by
+  cases henf : lim.enforced
+  · refine hookOk_of_pre_post (Q := fun _ _ => True) hok rfl rfl rfl ?_ ?_
+    · rintro ⟨c, st0⟩ R s0 hpre
+      dsimp only [formatInnerCallCliLsSpec, formatInnerCallLsEnvSpec, withLsRetFormatInner,
+        cliFormatInnerLsCallSpec, withFds_repAlloc] at hpre ⊢
+      rw [withFds_pool_unenforced A henf] at hpre
+      exact ⟨trivial, hpre⟩
+    · rintro ⟨c, st0⟩ R s0 sf _ hpost
+      dsimp only [formatInnerCallCliLsSpec, formatInnerCallLsEnvSpec, withLsRetFormatInner,
+        cliFormatInnerLsCallSpec, withFds_repAlloc] at hpost ⊢
+      rw [sepExists_sepConj_left, satisfies_sepExists] at hpost ⊢
+      rcases hpost with ⟨evs, hpost⟩
+      refine ⟨evs, ?_⟩
+      rw [sepExists_sepConj_left, satisfies_sepExists] at hpost ⊢
+      rcases hpost with ⟨bs', hpost⟩
+      refine ⟨bs', ?_⟩
+      rwa [withFds_pool_unenforced A henf]
+  · refine hookOk_of_pre_post (Q := fun _ s0 => FdsGe3Closed s0.fs) hok rfl rfl rfl ?_ ?_
+    · rintro ⟨c, st0⟩ R s0 hpre
+      dsimp only [formatInnerCallCliLsSpec, formatInnerCallLsEnvSpec, withLsRetFormatInner,
+        cliFormatInnerLsCallSpec, withFds_repAlloc] at hpre ⊢
+      exact fmt_ls_pre_enforced henf hpre
+    · rintro ⟨c, st0⟩ R s0 sf hClosed0 hpost
+      dsimp only [formatInnerCallCliLsSpec, formatInnerCallLsEnvSpec, withLsRetFormatInner,
+        cliFormatInnerLsCallSpec, withFds_repAlloc] at hpost ⊢
+      exact fmt_ls_post_enforced henf (fun _ hp => hp.2.1) hClosed0 hpost
+
+/-- Lift `HookSat` on `formatInnerCallCliLsSpec M A lim` to `withFds A` (no `h_fs` needed). -/
+theorem hookSat_formatInnerCallCliLs_withFds [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {hooks : String → Option (State → State)} {sym : String}
+    (hsat : HookSat hooks sym (formatInnerCallCliLsSpec M A lim)) :
+    HookSat hooks sym (formatInnerCallCliLsSpec M (withFds A) lim) := by
+  rcases hsat with ⟨fn, hfn, hok⟩
+  exact ⟨fn, hfn, hookOk_formatInnerCallCliLs_withFds hok⟩
+
+/-- Lift `HookOk fn (fmtWriteProtoAddrCliLsSpec M A lim)` to `withFdsGe3Closed` (no `h_fs` needed:
+    `cliFmtWriteProtoAddrSpec.post` proves `sf.fs = s0.fs`). -/
+theorem hookOk_withFdsGe3Closed_fmtWriteProtoAddrCliLs [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {fn : State → State}
+    (hok : HookOk fn (fmtWriteProtoAddrCliLsSpec M A lim)) :
+    HookOk fn (withFdsGe3Closed (fmtWriteProtoAddrCliLsSpec M A lim)) := by
+  refine hookOk_of_pre_post (Q := fun _ s0 => FdsGe3Closed s0.fs) hok rfl rfl rfl ?_ ?_
+  · intro x R s0 hpre0
+    exact extract_withFdsGe3Closed hpre0
+  · rintro ⟨c, st0⟩ R s0 sf hClosed0 hpost
+    have hfs : sf.fs = s0.fs := by
+      have hp := hpost
+      dsimp only [fmtWriteProtoAddrCliLsSpec, fmtWriteProtoAddrLsEnvSpec, withLsRetFmtWrite,
+        cliFmtWriteProtoAddrSpec] at hp
+      rw [sepExists_sepConj_left, satisfies_sepExists] at hp
+      rcases hp with ⟨evs, hp⟩
+      rw [sepExists_sepConj_left, satisfies_sepExists] at hp
+      rcases hp with ⟨bs', hp⟩
+      exact (fmt_ls_pure_extract hp).2.2.1
+    dsimp only [withFdsGe3Closed]
+    rw [sepConj_assoc, satisfies_pure_sepConj]
+    exact ⟨hfs ▸ hClosed0, hpost⟩
+
+/-- Lift `HookSat` on `fmtWriteProtoAddrCliLsSpec M A lim` to `withFdsGe3Closed`. -/
+theorem hookSat_withFdsGe3Closed_fmtWriteProtoAddrCliLs [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {hooks : String → Option (State → State)} {sym : String}
+    (hsat : HookSat hooks sym (fmtWriteProtoAddrCliLsSpec M A lim)) :
+    HookSat hooks sym (withFdsGe3Closed (fmtWriteProtoAddrCliLsSpec M A lim)) := by
+  rcases hsat with ⟨fn, hfn, hok⟩
+  exact ⟨fn, hfn, hookOk_withFdsGe3Closed_fmtWriteProtoAddrCliLs hok⟩
+
+/-- Lift `HookOk fn (fmtWriteProtoAddrCliLsSpec M A lim)` to `withFds A` (no `h_fs` needed). -/
+theorem hookOk_fmtWriteProtoAddrCliLs_withFds [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {fn : State → State}
+    (hok : HookOk fn (fmtWriteProtoAddrCliLsSpec M A lim)) :
+    HookOk fn (fmtWriteProtoAddrCliLsSpec M (withFds A) lim) := by
+  cases henf : lim.enforced
+  · refine hookOk_of_pre_post (Q := fun _ _ => True) hok rfl rfl rfl ?_ ?_
+    · rintro ⟨c, st0⟩ R s0 hpre
+      dsimp only [fmtWriteProtoAddrCliLsSpec, fmtWriteProtoAddrLsEnvSpec, withLsRetFmtWrite,
+        cliFmtWriteProtoAddrSpec, withFds_repAlloc] at hpre ⊢
+      rw [withFds_pool_unenforced A henf] at hpre
+      exact ⟨trivial, hpre⟩
+    · rintro ⟨c, st0⟩ R s0 sf _ hpost
+      dsimp only [fmtWriteProtoAddrCliLsSpec, fmtWriteProtoAddrLsEnvSpec, withLsRetFmtWrite,
+        cliFmtWriteProtoAddrSpec, withFds_repAlloc] at hpost ⊢
+      rw [sepExists_sepConj_left, satisfies_sepExists] at hpost ⊢
+      rcases hpost with ⟨evs, hpost⟩
+      refine ⟨evs, ?_⟩
+      rw [sepExists_sepConj_left, satisfies_sepExists] at hpost ⊢
+      rcases hpost with ⟨bs', hpost⟩
+      refine ⟨bs', ?_⟩
+      rwa [withFds_pool_unenforced A henf]
+  · refine hookOk_of_pre_post (Q := fun _ s0 => FdsGe3Closed s0.fs) hok rfl rfl rfl ?_ ?_
+    · rintro ⟨c, st0⟩ R s0 hpre
+      dsimp only [fmtWriteProtoAddrCliLsSpec, fmtWriteProtoAddrLsEnvSpec, withLsRetFmtWrite,
+        cliFmtWriteProtoAddrSpec, withFds_repAlloc] at hpre ⊢
+      exact fmt_ls_pre_enforced henf hpre
+    · rintro ⟨c, st0⟩ R s0 sf hClosed0 hpost
+      dsimp only [fmtWriteProtoAddrCliLsSpec, fmtWriteProtoAddrLsEnvSpec, withLsRetFmtWrite,
+        cliFmtWriteProtoAddrSpec, withFds_repAlloc] at hpost ⊢
+      exact fmt_ls_post_enforced henf (fun _ hp => hp.2.2.1) hClosed0 hpost
+
+/-- Lift `HookSat` on `fmtWriteProtoAddrCliLsSpec M A lim` to `withFds A` (no `h_fs` needed). -/
+theorem hookSat_fmtWriteProtoAddrCliLs_withFds [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {hooks : String → Option (State → State)} {sym : String}
+    (hsat : HookSat hooks sym (fmtWriteProtoAddrCliLsSpec M A lim)) :
+    HookSat hooks sym (fmtWriteProtoAddrCliLsSpec M (withFds A) lim) := by
+  rcases hsat with ⟨fn, hfn, hok⟩
+  exact ⟨fn, hfn, hookOk_fmtWriteProtoAddrCliLs_withFds hok⟩
+
+/-- `HookSat` for `lsFormatInnerSym` under `withFdsGe3Closed (formatInnerCallCliLsSpec ...)`. -/
+theorem h2kb_formatInnerCallCliLs_withFdsGe3Closed_hookSat
+    (mpl mmpl : MultiPlacement)
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
+    (base : LibsignalHooks) (γ : GhostName) (tp : BitVec 64) :
+    letI : LibsignalPlacement :=
+      libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
+    HookSat (cliGhostExterns (h2k_ghFixedK mpl mmpl) base) lsFormatInnerSym
+      (withFdsGe3Closed
+        (formatInnerCallCliLsSpec fineCostModel
+          (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits)) :=
+  letI : LibsignalPlacement :=
+    libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
+  hookSat_withFdsGe3Closed_formatInnerCallCliLs
+    (h2kb_formatInnerCallCliLs_hookSat mpl mmpl hLs hMm base γ tp)
+
+/-- `HookSat` for `lsFormatInnerSym` under `formatInnerCallCliLsSpec fineCostModel (withFds A0) cliBudgetLimits`. -/
+theorem h2kb_formatInnerCallCliLs_withFds_hookSat
+    (mpl mmpl : MultiPlacement)
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
+    (base : LibsignalHooks) (γ : GhostName) (tp : BitVec 64) :
+    letI : LibsignalPlacement :=
+      libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
+    HookSat (cliGhostExterns (h2k_ghFixedK mpl mmpl) base) lsFormatInnerSym
+      (formatInnerCallCliLsSpec fineCostModel
+        (withFds (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)) cliBudgetLimits) :=
+  letI : LibsignalPlacement :=
+    libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
+  hookSat_formatInnerCallCliLs_withFds
+    (h2kb_formatInnerCallCliLs_hookSat mpl mmpl hLs hMm base γ tp)
+
+/-- `HookSat` for `lsFmtWriteSym` under `withFdsGe3Closed (fmtWriteProtoAddrCliLsSpec ...)`. -/
+theorem h2kb_fmtWriteProtoAddrCliLs_withFdsGe3Closed_hookSat
+    (mpl mmpl : MultiPlacement)
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
+    (base : LibsignalHooks) (γ : GhostName) (tp : BitVec 64) :
+    letI : LibsignalPlacement :=
+      libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
+    HookSat (cliGhostExterns (h2k_ghFixedK mpl mmpl) base) lsFmtWriteSym
+      (withFdsGe3Closed
+        (fmtWriteProtoAddrCliLsSpec fineCostModel
+          (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits)) :=
+  letI : LibsignalPlacement :=
+    libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
+  hookSat_withFdsGe3Closed_fmtWriteProtoAddrCliLs
+    (h2kb_fmtWriteProtoAddrCliLs_hookSat mpl mmpl hLs hMm base γ tp)
+
+/-- `HookSat` for `lsFmtWriteSym` under `fmtWriteProtoAddrCliLsSpec fineCostModel (withFds A0) cliBudgetLimits`. -/
+theorem h2kb_fmtWriteProtoAddrCliLs_withFds_hookSat
+    (mpl mmpl : MultiPlacement)
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
+    (base : LibsignalHooks) (γ : GhostName) (tp : BitVec 64) :
+    letI : LibsignalPlacement :=
+      libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
+    HookSat (cliGhostExterns (h2k_ghFixedK mpl mmpl) base) lsFmtWriteSym
+      (fmtWriteProtoAddrCliLsSpec fineCostModel
+        (withFds (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)) cliBudgetLimits) :=
+  letI : LibsignalPlacement :=
+    libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
+  hookSat_fmtWriteProtoAddrCliLs_withFds
+    (h2kb_fmtWriteProtoAddrCliLs_hookSat mpl mmpl hLs hMm base γ tp)
+
 /-- Lifts `RunHooksPlaced` from `A` to `withFds A` for an arbitrary `CliGhostHooks` bundle. -/
 theorem cliRunHooksPlaced_of_ghost_withFds [LibsignalPlacement]
     (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
@@ -204,12 +513,18 @@ theorem cliRunHooksPlaced_of_ghost_withFds [LibsignalPlacement]
       (stringCloneBudgetSpec M A lim))
     (hStrFs : ∀ fn,
       cliGhostExterns gh (cliExternsPlaced mmpl W) lsStringCloneSym = some fn →
-      ∀ s0 : State, (fn s0).fs = s0.fs) :
+      ∀ s0 : State, (fn s0).fs = s0.fs)
+    (hFmtInner : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsFormatInnerSym
+      (formatInnerCallCliLsSpec M A lim))
+    (hFmtWrite : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsFmtWriteSym
+      (fmtWriteProtoAddrCliLsSpec M A lim)) :
     RunHooksPlaced (withFds A) lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
-  cliRunHooksPlaced_of_ghost mmpl gh W
+  RunHooksPlaced.of_hooks mmpl gh W
     (cliGhostSpqrAllocHooks_withFds hG)
     hStrFsT
     (hookSat_stringCloneBudget_withFds hStrClone hStrFs)
+    (hookSat_formatInnerCallCliLs_withFds hFmtInner)
+    (hookSat_fmtWriteProtoAddrCliLs_withFds hFmtWrite)
 
 theorem h2kb_hole2_hGSpqr_withFds
     (mpl mmpl : MultiPlacement)
@@ -239,7 +554,7 @@ theorem h2kb_hole2_hG_withFds
     libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
   fun γ tp => cliGhostAllocHooks_withFds (h2kb_hole2_hG mpl mmpl hLs hMm γ tp)
 
-/-- Assembles the 12-field `RunHooksPlaced` bundle at
+/-- Assembles the 14-field `RunHooksPlaced` bundle at
 `withFds (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)` on `h2k_ghFixedK mpl mmpl`. -/
 theorem h2kb_runHooksPlaced_withFds
     (mpl mmpl : MultiPlacement)
@@ -257,9 +572,12 @@ theorem h2kb_runHooksPlaced_withFds
   letI : LibsignalPlacement :=
     libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
   intro W γ tp
-  exact cliRunHooksPlaced_of_ghost mmpl (h2k_ghFixedK mpl mmpl) W
-    (cliGhostSpqrAllocHooks_withFds (h2kb_hole2_hGSpqr mpl mmpl hLs hMm γ tp))
+  exact cliRunHooksPlaced_of_ghost_withFds mmpl (h2k_ghFixedK mpl mmpl) W
+    (h2kb_hole2_hGSpqr mpl mmpl hLs hMm γ tp)
     (h2kb_hole2_hFs mpl mmpl hLs hMm).stringClone_fsT
-    (h2kb_stringCloneBudget_withFds_hookSat mpl mmpl hLs hMm (cliExternsPlaced mmpl W) γ tp)
+    (h2kb_stringCloneBudget_hookSat mpl mmpl hLs hMm (cliExternsPlaced mmpl W) γ tp)
+    (h2k_ghFixedK_stringClone_fs_eq mpl mmpl (cliExternsPlaced mmpl W))
+    (h2kb_formatInnerCallCliLs_hookSat mpl mmpl hLs hMm (cliExternsPlaced mmpl W) γ tp)
+    (h2kb_fmtWriteProtoAddrCliLs_hookSat mpl mmpl hLs hMm (cliExternsPlaced mmpl W) γ tp)
 
 end LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KStrCloneFds

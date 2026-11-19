@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Vectors.Protocol2
+public import LibsignalBinary.Proofs.SpqrV1.Vectors.Protocol2 -- proof-setup: allow-public-import
 
 /-!
 # Differential Test Vectors for `spqr::send`, `spqr::recv`, and `decode_state`
@@ -19,12 +19,12 @@ tampered-message `recv` vectors (`tamperedRecvVectors`), and state round-trip ve
 (`stateRoundTripVectors`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Vectors.Protocol
 
 /-- Run 1: in-order Alice/Bob V1 execution across Epoch 1 and into Epoch 2 (81 messages sent, 162 total send/recv steps). -/
-def runInOrder : ProtocolRunVec :=
+@[expose] def runInOrder : ProtocolRunVec :=
   { name := "runInOrder"
     messagesSent := 81
     aliceInitialState := blob0
@@ -195,7 +195,7 @@ def runInOrder : ProtocolRunVec :=
     ] }
 
 /-- Run 2: reordered (window-permuted) Alice/Bob V1 execution across Epoch 1 and into Epoch 2 (81 messages sent, 162 total send/recv steps). -/
-def runReordered : ProtocolRunVec :=
+@[expose] def runReordered : ProtocolRunVec :=
   { name := "runReordered"
     messagesSent := 81
     aliceInitialState := blob177
@@ -366,7 +366,7 @@ def runReordered : ProtocolRunVec :=
     ] }
 
 /-- Run 3: dropped-message (erasure-coded Lagrange reconstruction) Alice/Bob V1 execution across Epoch 1 and into Epoch 2 (85 messages sent, 163 total send/recv steps). -/
-def runDropped : ProtocolRunVec :=
+@[expose] def runDropped : ProtocolRunVec :=
   { name := "runDropped"
     messagesSent := 85
     aliceInitialState := blob354
@@ -537,10 +537,10 @@ def runDropped : ProtocolRunVec :=
       { actor := "A", op := "recv", stateBytes := blob527, msgOrTape := (unhex "01020401033d556d3b0bc8f1ee39dcbdf0d4895eddf753d3708755e4fb9f26cd650c3fe24e"), newState := blob529, key := some (unhex "7b78e04a1ee708a75c526464bdd04becbc221a01dbbccfcc91c5e143838945f3"), msg := [], mlkemCalls := [] }
     ] }
 
-def protocolRuns : List ProtocolRunVec := [runInOrder, runReordered, runDropped]
+@[expose] def protocolRuns : List ProtocolRunVec := [runInOrder, runReordered, runDropped]
 
 /-- 50 tampered-message `spqr::recv` test vectors (all return `Err`). -/
-def tamperedRecvVectors : List TamperedRecvVec := [
+@[expose] def tamperedRecvVectors : List TamperedRecvVec := [
   { name := "hdr_mac_fail_flip_byte_0", stateBytes := blob9, tamperedMsg := (unhex "01010301026ba80b45942252d5f887743d7bd428128657f511cd6d3e21cfcafab104b377bc"), expectedError := "MacVerifyFailed", mlkemCalls := [] },
   { name := "hdr_mac_fail_flip_byte_1", stateBytes := blob9, tamperedMsg := (unhex "01010301026ba80b45942252d5f887743d7bd428128657f511cd6d3e21cfcafab104b376bd"), expectedError := "MacVerifyFailed", mlkemCalls := [] },
   { name := "hdr_mac_fail_flip_byte_5", stateBytes := blob9, tamperedMsg := (unhex "01010301026ba80b45942252d5f887743d7bd428128657f511cd6d3e21cfcafbb104b377bd"), expectedError := "MacVerifyFailed", mlkemCalls := [] },
@@ -594,7 +594,7 @@ def tamperedRecvVectors : List TamperedRecvVec := [
 ]
 
 /-- 20 state round-trip (`decode_state ∘ encode` and `States::from_pb ∘ into_pb`) test vectors. -/
-def stateRoundTripVectors : List StateRoundTripVec := [
+@[expose] def stateRoundTripVectors : List StateRoundTripVec := [
   { label := "Ct1Acknowledged", variant := "Ct1Acknowledged", stateBytes := blob111 },
   { label := "Ct1Received", variant := "Ct1Received", stateBytes := blob109 },
   { label := "Ct1Sampled", variant := "Ct1Sampled", stateBytes := blob12 },

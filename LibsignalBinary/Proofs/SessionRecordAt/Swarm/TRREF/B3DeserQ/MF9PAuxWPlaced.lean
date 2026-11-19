@@ -18,6 +18,7 @@ import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.MF14AuxW
 import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.MF9PAuxW
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable `[LibsignalPlacement]` Helpers and `pendingId` Leaf for Tag 9P (Block `15`)
@@ -27,7 +28,7 @@ Defines the relocatable `lsProg_15 H` specifications, rodata/call helpers, and
 tag 9 (`pending_pre_key`) at `mergeFieldStackX = 32768` with slice length `< 2 ^ 62`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,7 +42,7 @@ open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalTripl
 open CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.E2E.Record.DeserializeSeed CryptoVerification.E2E.Record.DeserializeGeneral
 open CryptoVerification.E2E.Record.L1GX CryptoVerification.E2E.Record.L1GX.Leaf.MF14Aux
-open CryptoVerification.E2E.Record.Serialization (OkAt allocPanic)
+open CryptoVerification.E2E.Record.Serialization (allocPanic)
 open Proofs.libsignal.Hooks2
 
 set_option maxRecDepth 200000
@@ -56,7 +57,7 @@ theorem L1_MF9PAuxWPlaced : True := trivial
 
 /-! ## Relocatable `[LibsignalPlacement]` specifications and combinators -/
 
-def mergeField9PPendingRawSpecW (P : GenFieldX → Prop) : Spec MergeFieldXGhost where
+@[expose] def mergeField9PPendingRawSpecW (P : GenFieldX → Prop) : Spec MergeFieldXGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ (s.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 x.fld.tag ∧
       (s.readReg64 .x2).setWidth 8 = BitVec.ofNat 8 x.fld.wt.toNat ∧ s.readReg64 .x3 = x.bufRef ∧
@@ -76,11 +77,11 @@ abbrev mergeField9PPendingPlacedSpecW [LibsignalPlacement] (P : GenFieldX → Pr
     Spec MergeFieldXGhost :=
   LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl (mergeField9PPendingRawSpecW P)
 
-def MergeField9PPendingPlacedOkW [LibsignalPlacement] (H : LibsignalHooks)
+@[expose] def MergeField9PPendingPlacedOkW [LibsignalPlacement] (H : LibsignalHooks)
     (P : GenFieldX → Prop) : Prop :=
   subroutine_ok (lsProg_15 H) (blkPl_15).base (mergeField9PPendingPlacedSpecW P)
 
-def mergeField9PRawSpecW (P : GenFieldX → Prop) : Spec MergeFieldXGhost where
+@[expose] def mergeField9PRawSpecW (P : GenFieldX → Prop) : Spec MergeFieldXGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ (s.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 x.fld.tag ∧
       (s.readReg64 .x2).setWidth 8 = BitVec.ofNat 8 x.fld.wt.toNat ∧ s.readReg64 .x3 = x.bufRef ∧
@@ -99,7 +100,7 @@ abbrev mergeField9PPlacedSpecW [LibsignalPlacement] (P : GenFieldX → Prop) :
     Spec MergeFieldXGhost :=
   LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl (mergeField9PRawSpecW P)
 
-def MergeField9PPlacedOkW [LibsignalPlacement] (H : LibsignalHooks)
+@[expose] def MergeField9PPlacedOkW [LibsignalPlacement] (H : LibsignalHooks)
     (P : GenFieldX → Prop) : Prop :=
   subroutine_ok (lsProg_15 H) (blkPl_15).base (mergeField9PPlacedSpecW P)
 

@@ -9,13 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyCommonPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyUnackStaleness
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyCommonPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyUnackStaleness -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyCommonPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable `segPreKey` Items Getter and Staleness Check (`+0x344..+0x6fc`)
@@ -25,7 +34,7 @@ Defines `StalenessDurStateBudget` and `StalenessAddStateBudget` and proves
 (`lsProg_464 Hk`) under `RustCliAllocBudget M` and `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -75,7 +84,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## 1. `+0x344..+0x6c4`: `StalenessDurStateBudget` & `segPreKey_unackItems_to_dur_placed_ok` -/
 
-def pollWithBaseKey_placed (sp : BitVec 64) (items : PendingPreKey) (ts : SystemTime) : SepProp :=
+@[expose] def pollWithBaseKey_placed (sp : BitVec 64) (items : PendingPreKey) (ts : SystemTime) : SepProp :=
   memRegion (sp + 0x46a#64) 0x64a ∗
     ((sp + 0xab4#64) ↦ₛ items.baseKey.bytes.toList) ∗
     memRegion (sp + 0xad4#64) 0x2c ∗
@@ -142,7 +151,7 @@ private theorem durationSinceBounded_b00_intro_placed (sp : BitVec 64) (tvSec : 
 
 /-- State at `+0x6c4` (`encEntryPlaced + 0x6c4#64`), right before `bl durationSince`,
     under `[LibsignalPlacement]`. -/
-def StalenessDurStatePlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def StalenessDurStatePlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (ctl : BitVec 64)
@@ -190,7 +199,7 @@ def StalenessDurStatePlaced [LibsignalPlacement] {A : RustAlloc}
     encCommonPlaced A ctl x 0 s0 ∗ (encStoreExtraPlaced kit st0 ikit ist0 x s0 ∗ R0))
 
 /-- Budget-threaded state at `+0x6c4` (`encEntryPlaced + 0x6c4#64`), right before `bl durationSince`. -/
-def StalenessDurStateBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StalenessDurStateBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -347,7 +356,7 @@ theorem segPreKey_unackItems_to_dur_placed_ok [LibsignalPlacement] {M : AllocCos
   · wp_norm_goal
   · wp_norm_goal
   · wp_norm_goal
-  · dsimp only [encSpillsAt, encSpillsAtV, encCommonPlaced] at hmf ⊢
+  · dsimp only [encSpillsAtV, encCommonPlaced] at hmf ⊢
     rw [show (retagSessionStore (A' := A.atState lim st _) kit).ss_vt = kit.ss_vt from rfl,
         show (retagIdentityStore (A' := A.atState lim st _) ikit).id_vt = ikit.id_vt from rfl,
         show encStoreExtraPlaced (retagSessionStore (A' := A.atState lim st _) kit) st0
@@ -364,7 +373,7 @@ theorem segPreKey_unackItems_to_dur_placed_ok [LibsignalPlacement] {M : AllocCos
 
 /-- State at `+0x6fc` (`encEntryPlaced + 0x6fc#64`), right after `bl timeAdd`,
     under `[LibsignalPlacement]`. -/
-def StalenessAddStatePlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def StalenessAddStatePlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (ctl : BitVec 64)
@@ -412,7 +421,7 @@ def StalenessAddStatePlaced [LibsignalPlacement] {A : RustAlloc}
     encCommonPlaced A ctl x 0 s0 ∗ (encStoreExtraPlaced kit st0 ikit ist0 x s0 ∗ R0))
 
 /-- Budget-threaded state at `+0x6fc` (`encEntryPlaced + 0x6fc#64`), right after `bl timeAdd`. -/
-def StalenessAddStateBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StalenessAddStateBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -583,7 +592,7 @@ theorem segPreKey_staleness_to_add_placed_ok [LibsignalPlacement] {M : AllocCost
   · refine ⟨hstat2, hsp2, hsp0Al,
       by unfold State.spAligned at hsp0Al ⊢; rw [hsp2]; wp_norm_goal,
       hx29_2, hx19_2, hcrl_f, hvregs_2⟩
-  · dsimp only [encSpillsAt, encSpillsAtV, encCommonPlaced] at hmf ⊢
+  · dsimp only [encSpillsAtV, encCommonPlaced] at hmf ⊢
     rw [show (retagSessionStore (A' := A.atState lim st _) kit).ss_vt = kit.ss_vt from rfl,
         show (retagIdentityStore (A' := A.atState lim st _) ikit).id_vt = ikit.id_vt from rfl,
         show encStoreExtraPlaced (retagSessionStore (A' := A.atState lim st _) kit) st0

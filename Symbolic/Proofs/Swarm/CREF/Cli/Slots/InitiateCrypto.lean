@@ -22,7 +22,7 @@ the symbolic handshake byte terms (`IniOkBin`, `kemEncapCtBytes`,
 `aliceLitIkmBytes`, and `pqxdhKdfBytes`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

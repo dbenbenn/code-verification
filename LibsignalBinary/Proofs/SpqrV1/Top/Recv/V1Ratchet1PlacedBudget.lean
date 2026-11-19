@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet1
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet1Placed
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet1
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet1Placed
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
@@ -20,6 +20,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part6
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable V1 Ratchet Error Tail & `<Message>::deserialize` Continuation
@@ -28,7 +29,7 @@ Budget-threaded shared error-cleanup tail (`+2500..+2536 -> +1040`) and post-`<M
 error/relocation steps (`+1568..+1636`, `+2060..+2104`) for `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -43,7 +44,7 @@ open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification (LibsignalCodeLoaded LibsignalPlacement lsmpl sepWP_seq_lscl withMemEq)
 open CryptoVerification.LibsignalSpqrV1
   (Error Message MlKem MsgPreamble PqRatchetState SpqrRecvModel V1State msgPreamble
-   recvResultExactKeyAt spqrPolyApi spqrV1Recv)
+   spqrPolyApi spqrV1Recv)
 open CryptoVerification.LibsignalTripleRatchet (VecArg)
 open CryptoVerification.LibsignalTripleRatchetRepr (noneCap)
 open CryptoVerification.RustHeap (allocHookStack)
@@ -63,7 +64,7 @@ open CryptoVerification.SpqrV1.Top.Recv
    memRegion_15_and_byte1_to_pointsTo128 memRegion_join_4288_for_1532
    memRegion_join_4512_224_4192 messageErrorAt_sub3056_to_memRegion_48
    ownFrame_join_err_2524 pointsTo128_sub_eq
-   recv_err_q0_foldX ret_48_split sp_sub_4992_aligned spqrRecvCalleeStackX
+   ret_48_split sp_sub_4992_aligned spqrRecvCalleeStackX
    spqrRecvPlacedEntry spqrRecvPlacedProg spqrRecvRoPlacedAt spqrRecvSavedRegs
    spqrV1Recv_v1_msgDeserialize_err src_3056_and_scratch_to_memRegion_3968
    stackAt_spqrRecvCallee_split statesFromPbJumpTablePlacedAt statesIntoPbJumpTablePlacedAt
@@ -75,8 +76,11 @@ open LibsignalBinary.Heap
    rustCliDeallocBudgetSpec rustDeallocEvents)
 open LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget (dropOptProtoSpqrChainSpec)
 open LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget (dropOptProtoInnerStatePlacedSpec)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag
+  (recvResultExactKeyDispAt spqrErrorTagCanonical spqrErrorTagCanonical_valid_of_ne_invalidParams)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
-  (SpqrRecvEnv spqrRecvPlacedPost0 spqrRecvPlacedPost0OfEnv step_epilogue_placed_ofEnv)
+  (SpqrRecvEnv msgDeserialize_ne_invalidParams recv_err_q0_disp_foldX
+   spqrRecvPlacedPost0 spqrRecvPlacedPost0OfEnv step_epilogue_placed_ofEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
   (SpqrRecvDropContractsBudget SpqrRecvEnv.append_freeOnly deallocFreeOnlySpec
    freeOnlyWitness seq_vm_clean seq_vm_lscl subroutine_ok_deallocFreeOnly)
@@ -115,7 +119,7 @@ theorem step_drop_chain_2524_placed_ofEnv {MC : AllocCostModel} {F : ShaCompress
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs0 st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       memRegion (s0.sp - 4992#64) 352 ∗
@@ -178,7 +182,7 @@ theorem step_drop_chain_2524_placed {MC : AllocCostModel} {F : ShaCompress}
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs0 st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       memRegion (s0.sp - 4992#64) 352 ∗
@@ -216,7 +220,7 @@ theorem step_drop_vn_chain_2500_placed_ofEnv {MC : AllocCostModel} {F : ShaCompr
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs0 st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       memRegion (s0.sp - 4992#64) 352 ∗
@@ -324,7 +328,7 @@ theorem step_drop_vn_chain_2500_placed {MC : AllocCostModel} {F : ShaCompress}
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs0 st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       memRegion (s0.sp - 4992#64) 352 ∗
@@ -490,9 +494,14 @@ theorem step_msgDeserialize_err_2060_placed_ofEnv {MC : AllocCostModel}
       unfold spqrRecvRoPlacedAt v1StateJumpTablesPlacedAt
       sep_ac_rfl
     refine SepWP.focus_weaken (Entails.of_eq hro_fold) (by sep_focus) ?_
-    refine SepWP.focus_weaken (recv_err_q0_foldX A.repAlloc ret (q0.extractLsb' 64 64) w2 q0 err htag) (by sep_focus) ?_
-    have hres_eq : recvResultExactKeyAt A.repAlloc ret (.error (err == .stateDecode)) =
-        recvResultExactKeyAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) := by
+    refine SepWP.focus_weaken
+      (recv_err_q0_disp_foldX A.repAlloc ret (q0.extractLsb' 64 64) w2 q0 (spqrErrorTag err)
+        (err == .stateDecode) htag (by cases err <;> simp [spqrErrorTag])
+        ((show spqrErrorTag err = spqrErrorTagCanonical err by cases err <;> rfl) ▸
+          spqrErrorTagCanonical_valid_of_ne_invalidParams (msgDeserialize_ne_invalidParams hmsg)))
+      (by sep_focus) ?_
+    have hres_eq : recvResultExactKeyDispAt A.repAlloc ret (.error (err == .stateDecode)) =
+        recvResultExactKeyDispAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) := by
       rw [(spqrV1Recv_v1_msgDeserialize_err F K hpre hdec hinner hmv hmin hmsg).1]
     rw [hres_eq]
     refine SepWP.focus_weaken (Entails.of_eq (pointsTo128_sub_eq s0.sp 4057 4049 q0 rfl).symm) (by sep_focus) ?_

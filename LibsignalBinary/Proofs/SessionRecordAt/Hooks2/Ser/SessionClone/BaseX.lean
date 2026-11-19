@@ -9,19 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsX
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneFetch
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SepWPpIn
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsX -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneFetch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SepWPpIn -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
-import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Fetch
+import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
+import ProofLib.SepLogic.CodeLookup
+import ProofLib.VCGen
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -88,54 +91,6 @@ theorem L1_SessionCloneBaseX : True := trivial
 
 /-! ## Extern hooks, callee address bridges, and panic tails -/
 
-theorem sc_shim_ok_at_x {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hC : SerContractsX img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr sessionCloneName + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-      (Proofs.libsignal.Stage1X.session2ShimSpecX.inImage img) :=
-  hC.alloc.shim_ok_at sessionCloneName (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-    (by fnoff_eq)
-
-theorem sc_alloc_ok_at_x {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hC : SerContractsX img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr sessionCloneName + bv% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-      ((Proofs.libsignal.Stage1X.rustAllocSpecWithStack A Stage1X.extHookStack).inImage img) :=
-  hC.alloc.alloc_ok_at sessionCloneName (num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-    (by fnoff_eq)
-
-theorem sc_memcpy_ok_at_x {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hC : SerContractsX img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr sessionCloneName + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-      ((LibsignalTripleRatchet.sessionMemcpySpec CryptoVerification.LibsignalTripleRatchet.extHookStack).inImage img) :=
-  hC.memcpy_ok_at sessionCloneName (num% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-    (by fnoff_eq)
-
-theorem sc_panic_at_handle_error_x {b : BitVec 64} {ext : String → Option (State → State)} :
-    (SP2Ext b ext).externAt?
-      ((SP2Ext b ext).fnAddr sessionCloneName + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone")) =
-      some Rust.panicked :=
-  panic_at_handle_error_ext (b := b) (ext := ext) libsignalSessionCode_fnOff_sym_240f0
-    (by fnoff_eq)
-
-theorem fnAddr_sessionClone_to_chainCloneLocal1_x (b : BitVec 64) (ext : String → Option (State → State)) :
-    (SP2Ext b ext).fnAddr sessionCloneName + bv% (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone") =
-      (SP2Ext b ext).fnAddr chainCloneLocal1Name := by
-  have h1 := libsignalSessionCode_fnOff_sym_240f0
-  have h2 := libsignalSessionCode_fnOff_sym_24848
-  simp only [SP2Ext, contractProg, Program.fnAddr_rebase, sessionCloneName, chainCloneLocal1Name, h1, h2]
-  bv_lin
-
-theorem sc_chainClone_ok_at_x {img : Obj.Image} {ext : String → Option (State → State)}
-    {α : Type} (spec : Spec α)
-    (hcc : subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr chainCloneLocal1Name) (spec.inImage img)) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr sessionCloneName + bv% (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-      (spec.inImage img) := by
-  rwa [fnAddr_sessionClone_to_chainCloneLocal1_x]
-
 abbrev scPanicPostX (A : RustAlloc) (x : SessionCloneGhost) (R : SepProp) (s0 : State) :
     State → SepProp → Prop :=
   fun sf P_f => (sf.mem ⊨ P_f ∗ R) →
@@ -164,152 +119,6 @@ theorem sc_onPanic_of_callee_panic_x {A : RustAlloc} {x : SessionCloneGhost}
   exact sc_onPanic_of_allocFailed_x ⟨haf, hpre⟩ hm'
 
 /-! ## Allocation-failure panic steps on `SP2Ext` -/
-
-set_option maxHeartbeats 1600000 in
-theorem sc_panic_0x474_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    {ret : BitVec 64} {Q : State → SepProp → Prop}
-    (x : SessionCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (SP2Ext img.base ext).fnAddr sessionCloneName + 0x474#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPpIn img (SP2Ext img.base ext) ret s P Q (scPanicPostX A x R s0) := by
-  intro _ _
-  have hfn := libsignalSessionCode_fnOff_sym_240f0
-  have hpanic := sc_panic_at_handle_error_x (b := img.base) (ext := ext)
-  sessionClone_fetches img.base (Rust.withPanics ext) hfn 0x474 12
-  clear hfn
-  unfold SP2Ext at hpc hpanic ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr sessionCloneName = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hpanic) fun hm => ?_
-  exact sc_onPanic_of_allocFailed_x (Record.SegCloneSteps.allocFailedIn_of_eq (by simp only [State.setPC, State.writeReg64, Rust.panicked, htrace])) hm
-
-set_option maxHeartbeats 1600000 in
-theorem sc_panic_0x480_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    {ret : BitVec 64} {Q : State → SepProp → Prop}
-    (x : SessionCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (SP2Ext img.base ext).fnAddr sessionCloneName + 0x480#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPpIn img (SP2Ext img.base ext) ret s P Q (scPanicPostX A x R s0) := by
-  intro _ _
-  have hfn := libsignalSessionCode_fnOff_sym_240f0
-  have hpanic := sc_panic_at_handle_error_x (b := img.base) (ext := ext)
-  sessionClone_fetches img.base (Rust.withPanics ext) hfn 0x480 12
-  clear hfn
-  unfold SP2Ext at hpc hpanic ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr sessionCloneName = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hpanic) fun hm => ?_
-  exact sc_onPanic_of_allocFailed_x (Record.SegCloneSteps.allocFailedIn_of_eq (by simp only [State.setPC, State.writeReg64, Rust.panicked, htrace])) hm
-
-set_option maxHeartbeats 1600000 in
-theorem sc_panic_0x48c_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    {ret : BitVec 64} {Q : State → SepProp → Prop}
-    (x : SessionCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (SP2Ext img.base ext).fnAddr sessionCloneName + 0x48c#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPpIn img (SP2Ext img.base ext) ret s P Q (scPanicPostX A x R s0) := by
-  intro _ _
-  have hfn := libsignalSessionCode_fnOff_sym_240f0
-  have hpanic := sc_panic_at_handle_error_x (b := img.base) (ext := ext)
-  sessionClone_fetches img.base (Rust.withPanics ext) hfn 0x48c 12
-  clear hfn
-  unfold SP2Ext at hpc hpanic ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr sessionCloneName = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hpanic) fun hm => ?_
-  exact sc_onPanic_of_allocFailed_x (Record.SegCloneSteps.allocFailedIn_of_eq (by simp only [State.setPC, State.writeReg64, Rust.panicked, htrace])) hm
-
-set_option maxHeartbeats 1600000 in
-theorem sc_panic_0x498_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    {ret : BitVec 64} {Q : State → SepProp → Prop}
-    (x : SessionCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (SP2Ext img.base ext).fnAddr sessionCloneName + 0x498#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPpIn img (SP2Ext img.base ext) ret s P Q (scPanicPostX A x R s0) := by
-  intro _ _
-  have hfn := libsignalSessionCode_fnOff_sym_240f0
-  have hpanic := sc_panic_at_handle_error_x (b := img.base) (ext := ext)
-  sessionClone_fetches img.base (Rust.withPanics ext) hfn 0x498 12
-  clear hfn
-  unfold SP2Ext at hpc hpanic ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr sessionCloneName = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hpanic) fun hm => ?_
-  exact sc_onPanic_of_allocFailed_x (Record.SegCloneSteps.allocFailedIn_of_eq (by simp only [State.setPC, State.writeReg64, Rust.panicked, htrace])) hm
-
-set_option maxHeartbeats 1600000 in
-theorem sc_panic_0x4a4_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    {ret : BitVec 64} {Q : State → SepProp → Prop}
-    (x : SessionCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (SP2Ext img.base ext).fnAddr sessionCloneName + 0x4a4#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPpIn img (SP2Ext img.base ext) ret s P Q (scPanicPostX A x R s0) := by
-  intro _ _
-  have hfn := libsignalSessionCode_fnOff_sym_240f0
-  have hpanic := sc_panic_at_handle_error_x (b := img.base) (ext := ext)
-  sessionClone_fetches img.base (Rust.withPanics ext) hfn 0x4a4 12
-  clear hfn
-  unfold SP2Ext at hpc hpanic ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr sessionCloneName = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hpanic) fun hm => ?_
-  exact sc_onPanic_of_allocFailed_x (Record.SegCloneSteps.allocFailedIn_of_eq (by simp only [State.setPC, State.writeReg64, Rust.panicked, htrace])) hm
-
-set_option maxHeartbeats 1600000 in
-theorem sc_panic_0x4b0_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    {ret : BitVec 64} {Q : State → SepProp → Prop}
-    (x : SessionCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (SP2Ext img.base ext).fnAddr sessionCloneName + 0x4b0#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPpIn img (SP2Ext img.base ext) ret s P Q (scPanicPostX A x R s0) := by
-  intro _ _
-  have hfn := libsignalSessionCode_fnOff_sym_240f0
-  have hpanic := sc_panic_at_handle_error_x (b := img.base) (ext := ext)
-  sessionClone_fetches img.base (Rust.withPanics ext) hfn 0x4b0 12
-  clear hfn
-  unfold SP2Ext at hpc hpanic ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr sessionCloneName = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hpanic) fun hm => ?_
-  exact sc_onPanic_of_allocFailed_x (Record.SegCloneSteps.allocFailedIn_of_eq (by simp only [State.setPC, State.writeReg64, Rust.panicked, htrace])) hm
-
-/-! ## Stack decomposition at `sessionCloneStackX` -/
 
 /-- Sub-stack budget below `sp0 - 0x1d0#64` (`sessionCloneStackX - 0x1d0`). -/
 abbrev scSubStackX : Nat := 0xd0 + 0x400 + Stage1X.extHookStack

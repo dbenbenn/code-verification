@@ -9,13 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve
-public import LibsignalBinary.Proofs.CliC.SpqrV1.Alloc.DoReserve
-public import LibsignalBinary.Proofs.CliC.SpqrV1.Alloc.FinishGrowPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CliC.SpqrV1.Alloc.DoReserve
+import LibsignalBinary.Proofs.CliC.SpqrV1.Alloc.FinishGrowPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+public import ProofLib.FsTrace
+public import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `RawVecInner::do_reserve_and_handle` Proofs for `CliC`
@@ -25,7 +33,7 @@ Proves `[LibsignalPlacement]` contracts (`doReserveStrideRawSpec`, `doReserveRaw
 calling `finish_grow` on Block `587`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

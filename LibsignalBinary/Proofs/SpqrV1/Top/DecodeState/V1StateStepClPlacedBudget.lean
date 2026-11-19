@@ -9,18 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitSubClPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.V1StateStepClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.V1StateStepClPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.V1StateStepPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitSubClPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.V1StateStepClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.V1StateStepClPlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.V1StateStepPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergePart2CodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.V1StateStepPlacedBudgetAux
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitSubPlacedBudgetAux
 
 /-!
 # Budget-Threaded Code-Loaded Outer `PqRatchetState::v1` (Tag 3) Entry & `none` Path (Block `325`)
@@ -30,7 +34,7 @@ and entry dispatch (`+312`), re-exporting `skip_field` and `some` helpers from
 `V1StateStepClPlacedBudgetAux`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.ReprPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Auth.Encode1
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.ReprPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.Encode1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.EncodeBasePlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2BasePlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2Placed
@@ -31,7 +31,7 @@ Block `454` (`lsProg_454 H`, calling Blocks `451` and `460` and `memcpy`) under
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -999,9 +999,6 @@ theorem etv_authEncode_1_exact_placed_ok_x [LibsignalPlacement]
 
 abbrev etv_authEncode_exact_placed_ok := @etv_authEncode_1_exact_placed_ok
 abbrev etv_authEncode_exact_placed_ok_x := @etv_authEncode_1_exact_placed_ok_x
-abbrev auth_encode_1_exact_placed_ok := @etv_authEncode_1_exact_placed_ok
-abbrev auth_encode_1_exact_placed_ok_x := @etv_authEncode_1_exact_placed_ok_x
-
 end EncodeToVecBridge
 
 end CryptoVerification.Cli.SpqrV1.Auth

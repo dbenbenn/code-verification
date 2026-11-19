@@ -11,19 +11,21 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbLoopBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbLoopClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbLoopBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbLoopClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPb
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Code-Loaded Proof of `<spqr::chain::Chain>::into_pb` (Block `365`)
@@ -33,7 +35,7 @@ contracts for `<spqr::chain::Chain>::into_pb` (`blkPC_365`) under `RustCliAllocB
 `withLsCodeLoaded lsmpl` on cross-block drop-glue callee `287` (`dropChainEpochSliceSpec M A lim`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 800000

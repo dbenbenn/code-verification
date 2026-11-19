@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.UniformStartHop
-public import Computational.Proofs.E2E.RefuseCorrB0Core
-public import Computational.Proofs.E2E.SignedAdv
+public import Computational.Proofs.E2E.UniformStartHop -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.RefuseCorrB0Core -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SignedAdv -- proof-setup: allow-public-import
 public import Computational.Specifications.Game.StatementPqOomFlag
 public import Computational.Specifications.Session.StatementIdsModel
-public import LibsignalBinary.Specifications.LibsignalSpqrV1.Encaps1Total
+public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Encaps1Total
 import ProofLib.Lemmas
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.Theorem8And12Statements
 
 /-!
 # Parametric `HaltedTracker` session core
@@ -25,7 +26,7 @@ structure-preserving tracker homomorphisms (`HaltedTrackerHom`), and proves `Adv
 commutation and the halted uniform-start PRG hop (`boolBias_mixUGenHaltedWithSpqr_le`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -90,7 +91,7 @@ structure HaltedTracker (Tr Coins C : Type) where
   onSend : Tr → Party → Coins → C → Tr
   onAccept : Tr → Party → C → Tr
 
-def transmitRGenHalted {Tr Key St Msg Coins RCoins C : Type}
+@[expose] def transmitRGenHalted {Tr Key St Msg Coins RCoins C : Type}
     [SampleableType Coins] (ht : HaltedTracker Tr Coins C)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
     QueryImpl ((Party × Msg × Option Coins) →ₒ Option C) (GenHaltedM Tr St Msg C) :=
@@ -113,7 +114,7 @@ def transmitRGenHalted {Tr Key St Msg Coins RCoins C : Type}
         StateT.lift (set (ht.onSend tr P coins out.2))
         return some out.2
 
-def challRGenHalted {Tr Key St Msg Coins RCoins C : Type}
+@[expose] def challRGenHalted {Tr Key St Msg Coins RCoins C : Type}
     [SampleableType Coins] (ht : HaltedTracker Tr Coins C)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
     QueryImpl ((Party × Msg × Msg × Option Coins) →ₒ Option C) (GenHaltedM Tr St Msg C) :=
@@ -138,7 +139,7 @@ def challRGenHalted {Tr Key St Msg Coins RCoins C : Type}
         StateT.lift (set (ht.onSend tr P coins out.2))
         return some out.2
 
-def deliverRGenHalted {Tr Key St Msg Coins RCoins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def deliverRGenHalted {Tr Key St Msg Coins RCoins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType RCoins] (ht : HaltedTracker Tr Coins C)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (cfg : ConfigR St Msg C) :
     QueryImpl ((Party × C) →ₒ Option (RecvResult Msg)) (GenHaltedM Tr St Msg C) :=
@@ -150,7 +151,7 @@ def deliverRGenHalted {Tr Key St Msg Coins RCoins C : Type} [DecidableEq Msg] [D
     | _ => pure ()
     return res
 
-def oracleImplRGenHalted {Tr Key St Msg Coins RCoins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def oracleImplRGenHalted {Tr Key St Msg Coins RCoins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Coins] [SampleableType RCoins] (ht : HaltedTracker Tr Coins C)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
     QueryImpl (spec St Msg Coins C) (GenHaltedM Tr St Msg C) :=
@@ -160,7 +161,7 @@ def oracleImplRGenHalted {Tr Key St Msg Coins RCoins C : Type} [DecidableEq Msg]
       QueryImpl ((Party × C) →ₒ Option (RecvResult Msg)) (GenHaltedM Tr St Msg C)) +
     ((fun P => liftStateT (corrR cfg P)) : QueryImpl (Party →ₒ Option St) (GenHaltedM Tr St Msg C))
 
-def runRGenHalted {Tr Key St Msg Coins RCoins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def runRGenHalted {Tr Key St Msg Coins RCoins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Key] [SampleableType Coins] [SampleableType RCoins]
     (initTr : Key → Tr) (ht : HaltedTracker Tr Coins C)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C)
@@ -172,7 +173,7 @@ def runRGenHalted {Tr Key St Msg Coins RCoins C : Type} [DecidableEq Msg] [Decid
   ((simulateQ impl A).run (initState sm.sendPart k b)).run (initTr k)
 
 /-- Tracker-halted SM R-game returning `((b == b' || s.win), tr)`. -/
-def gameRGenHalted {Tr Key St Msg Coins RCoins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def gameRGenHalted {Tr Key St Msg Coins RCoins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Key] [SampleableType Coins] [SampleableType RCoins]
     (initTr : Key → Tr) (ht : HaltedTracker Tr Coins C)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C)
@@ -198,7 +199,7 @@ theorem fst_gameRGenHalted_eq {Tr Key St Msg Coins RCoins C : Type}
   rfl
 
 /-- Online tracker-halted uniform-start PRG distinguisher on `(rk0, ck0)`. -/
-def uniformStartDistinguisherGenHalted {Tr PQ PQC : Type} [Inhabited PQ] [SampleableType PQC]
+@[expose] def uniformStartDistinguisherGenHalted {Tr PQ PQC : Type} [Inhabited PQ] [SampleableType PQC]
     (initTrRest : (BitVec 256 × BitVec 256 × BitVec 256) → Tr)
     (ht : HaltedTracker Tr PQC (List (BitVec 8))) (P : Params PQ PQC) (ℓ : ℕ)
     (cfg : ConfigR (GhostState PQ) (Plain ℓ) (List (BitVec 8))) (qep : ℕ)
@@ -211,7 +212,7 @@ def uniformStartDistinguisherGenHalted {Tr PQ PQC : Type} [Inhabited PQ] [Sample
   return (b == b' || s.win)
 
 /-- Online tracker-halted `eps0Event` in `libsignalSessionScheme`. -/
-def eps0EventGenHalted {Tr PQ PQC Pt : Type} [Inhabited PQ] [SampleableType PQC]
+@[expose] def eps0EventGenHalted {Tr PQ PQC Pt : Type} [Inhabited PQ] [SampleableType PQC]
     (initTr : (RootKey × BitVec 256 × BitVec 256 × BitVec 256) → Tr)
     (ht : HaltedTracker Tr PQC (List (BitVec 8))) (P : Params PQ PQC) (ℓ : ℕ)
     (encPt : Pt → List (BitVec 8)) (lam : Pt) (onImage : List (BitVec 8) → Bool) (qep : ℕ)
@@ -222,7 +223,7 @@ def eps0EventGenHalted {Tr PQ PQC Pt : Type} [Inhabited PQ] [SampleableType PQC]
   return (decide (0 < s.maxAcc .A 0) || s.win) && !(s.corrs.contains (.B, 0))
 
 /-- Online tracker-halted `epoch0Distinguisher` on `(rk0, ck0)`. -/
-def epoch0DistinguisherGenHalted {Tr PQ PQC : Type} [Inhabited PQ] [SampleableType PQC]
+@[expose] def epoch0DistinguisherGenHalted {Tr PQ PQC : Type} [Inhabited PQ] [SampleableType PQC]
     (initTrRest : (BitVec 256 × BitVec 256 × BitVec 256) → Tr)
     (ht : HaltedTracker Tr PQC (List (BitVec 8))) (P : Params PQ PQC) (ℓ : ℕ)
     (onImage : List (BitVec 8) → Bool) (qep : ℕ)
@@ -453,7 +454,7 @@ end Homomorphism
 /-- Build a `HaltedTracker (T0 × List (C × Party)) (BitVec 512) C` from a per-send step `stepSend`,
 halt predicate `candSome`, sticky latch `candLatch`, and chronological delivery step `stepDeliver`
 (indexing `honestWires.reverse.findIdx?`). -/
-def mkStepDeliverTracker {T0 C : Type} [DecidableEq C]
+@[expose] def mkStepDeliverTracker {T0 C : Type} [DecidableEq C]
     (stepSend : T0 → Party → BitVec 512 → T0) (candSome : T0 → Bool)
     (candLatch : T0 → T0 → T0) (stepDeliver : T0 → Party → ℕ → T0) :
     HaltedTracker (T0 × List (C × Party)) (BitVec 512) C where

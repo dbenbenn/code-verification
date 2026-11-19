@@ -1,0 +1,10 @@
+{
+  "setup_seed": 23209,
+  "rng_seed": 41,
+  "with_opk": false,
+  "torsion_shifts": [],
+  "calls": [
+    {"entry": "init", "who": 0, "b": {"honest_bundle": true}},
+    {"entry": "send", "who": 0, "b": {"utf8": "secret-msg-before-abort"}}
+  ]
+}

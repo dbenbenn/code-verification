@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpine
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpine -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong
 import Symbolic.Proofs.Swarm.CREF.TR.G1.RkInvCons
@@ -24,7 +24,7 @@ under an honest salt agreeing with `k_own`, then either `inp₀` is attacker-kno
 `AuthenticDecryptRep`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -75,7 +75,7 @@ abbrev HonestSkelUniq (interpretation : ExternInterpretation) (r₀ : ProtocolSe
   Spine.HonestSkelUniqRk interpretation r₀ S g ms
 
 /-- Identity keys of all available states satisfy `ShapeId`. -/
-def AvailableIkShapeId (r₀ : ProtocolSetup) (ms : List Move) : Prop :=
+@[expose] def AvailableIkShapeId (r₀ : ProtocolSetup) (ms : List Move) : Prop :=
   ∀ st ∈ availableStates r₀ (runTraceMoves r₀ ms), ShapeId st.myIk ∧ ShapeId st.peerIk
 
 /-- If `msg₀.mac = trunc8 inp₀` with `trunc8 inp₀` attacker-known and `inp₀` shape-matching the

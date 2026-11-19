@@ -10,7 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.Defs
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Instruction Fetch and Callee Offsets for Seed `message::merge<Chain>`
@@ -19,35 +21,13 @@ Provides instruction-fetch automation and cross-block callee transfers (`bytes::
 `int32::merge`) for `prost::encoding::message::merge::<Chain>` (`0x3974`, block `11`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.DeserializeSeed
 
 section Fetch
 
 open Lean Meta Elab Command Tactic Arm64 ProofLib ProofLib.ProgramReflection
-
-gen_decodes libsignalSessionCode_tree libsignalSessionBin [(ls_off% "prost::encoding::message::merge::<libsignal_protocol::proto::storage::session_structure::Chain, &mut &[u8]> [local#1]") → (ls_off% "prost::encoding::message::merge::<libsignal_protocol::proto::storage::session_structure::Chain, &mut &[u8]> [local#1]" + 2532)]
-
-elab "chainMerge_fetches_range " b:term:max H:term:max kStart:num kEnd:num : tactic => do
-  let off := num% (ls_off% "prost::encoding::message::merge::<libsignal_protocol::proto::storage::session_structure::Chain, &mut &[u8]> [local#1]")
-  let kStart := kStart.getNat
-  let kEnd := kEnd.getNat
-  let fetchEntry := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  let hfn ← `(ls_lemma% fnOff "prost::encoding::message::merge::<libsignal_protocol::proto::storage::session_structure::Chain, &mut &[u8]> [local#1]")
-  let mut k := kStart
-  while k <= kEnd do
-    let dec := mkIdent (.str `CryptoVerification.E2E.Record.DeserializeSeed
-      s!"libsignalSessionBin_decode_0x{String.ofList (Nat.toDigits 16 (off + k))}")
-    let kq := Syntax.mkNumLit (toString k)
-    if k == 0 then
-      evalTactic (← `(tactic|
-        have := $fetchEntry (b := $b) (H := $H) $hfn (by decide) $dec))
-    else
-      evalTactic (← `(tactic|
-        have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
-    k := k + 4
 
 end Fetch
 
@@ -58,34 +38,6 @@ open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalTripl
 open CryptoVerification.E2E.Record
 
 /-! ## Callee Offset Resolution -/
-
-theorem bytesMerge_ok_sub_seedChain {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : BytesMergeOk img C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr chainMergeName + bv% (2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") - (ls_off% "prost::encoding::message::merge::<libsignal_protocol::proto::storage::session_structure::Chain, &mut &[u8]> [local#1]")))
-      (bytesMergeSpec A img) := by
-  have heq : (tripleRatchetProgAt img.base C ctl abs).fnAddr chainMergeName + bv% (2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") - (ls_off% "prost::encoding::message::merge::<libsignal_protocol::proto::storage::session_structure::Chain, &mut &[u8]> [local#1]")) =
-      (tripleRatchetProgAt img.base C ctl abs).fnAddr bytesMergeName := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "prost::encoding::message::merge::<libsignal_protocol::proto::storage::session_structure::Chain, &mut &[u8]> [local#1]"), (ls_lemma% fnOff "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]")]
-    bv_omega
-  rw [heq]; exact h
-
-theorem int32Merge_ok_sub_seedChain {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : Int32MergeOk b C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr chainMergeName + bv% (2 ^ 64 + (ls_off% "prost::encoding::int32::merge::<&mut &[u8]>") - (ls_off% "prost::encoding::message::merge::<libsignal_protocol::proto::storage::session_structure::Chain, &mut &[u8]> [local#1]")))
-      (int32MergeSpec A) := by
-  have heq : (tripleRatchetProgAt b C ctl abs).fnAddr chainMergeName + bv% (2 ^ 64 + (ls_off% "prost::encoding::int32::merge::<&mut &[u8]>") - (ls_off% "prost::encoding::message::merge::<libsignal_protocol::proto::storage::session_structure::Chain, &mut &[u8]> [local#1]")) =
-      (tripleRatchetProgAt b C ctl abs).fnAddr int32MergeName := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "prost::encoding::message::merge::<libsignal_protocol::proto::storage::session_structure::Chain, &mut &[u8]> [local#1]"), (ls_lemma% fnOff "prost::encoding::int32::merge::<&mut &[u8]>")]
-    bv_omega
-  rw [heq]; exact h
-
-/-! ## Relocatable `[LibsignalPlacement]` Callee Transfers -/
 
 section Placed
 

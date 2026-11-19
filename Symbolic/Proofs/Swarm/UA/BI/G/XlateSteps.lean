@@ -17,7 +17,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.UA.XlateSteps
+public import Symbolic.Proofs.Swarm.UA.XlateSteps -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.UA.BI.Step
 import Symbolic.Proofs.Swarm.UA.Base
@@ -38,7 +38,7 @@ move-level `Clean` traces over `flatEvents`, and proves accumulator extension le
 network steps, DH/KEM inversion steps, and DH/KEM break steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -351,7 +351,7 @@ structure BrkMoveFor (m : Move) (s : Step) : Prop where
   keys_nil : ∀ tr : ExecTrace, honestKeysFrom tr [m] = []
 
 /-- Existence of moves satisfying `BrkMoveFor` for `Step.breakDH` and `Step.breakKEM`. -/
-def BrkMovesExist : Prop :=
+@[expose] def BrkMovesExist : Prop :=
   (∃ m, BrkMoveFor m .breakDH) ∧ ∃ m, BrkMoveFor m .breakKEM
 
 theorem eventIdx_brk_none {s : Step} (hs : s = .breakDH ∨ s = .breakKEM)

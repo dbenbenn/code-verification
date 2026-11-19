@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacEnc
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaShallow
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacEnc -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaShallow -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaLeaves
 
 /-!
@@ -20,7 +20,7 @@ Proves `hmPre_leaves`: starting from `HmInv n hst ms`, every leaf of `hmPre S jt
 satisfies `HmPreLeaf n`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -197,7 +197,7 @@ theorem hmSendPre_leaves (n jt : Nat) (sid : SessionId S) (u : Fin S.N_id)
 
 /-! ### Receive -/
 
-def RecvPrepOk {S : Setup} (n : Nat) (hst : AuthHybridState S) : Option (HmRecvData S) → Prop
+@[expose] def RecvPrepOk {S : Setup} (n : Nat) (hst : AuthHybridState S) : Option (HmRecvData S) → Prop
   | none => True
   | some d => d.usedTriples'.length ≤ n + 1 ∧
       ∃ r : RecvKemRecord, d.hstDec = { hst with recvKemRecs := r :: hst.recvKemRecs }

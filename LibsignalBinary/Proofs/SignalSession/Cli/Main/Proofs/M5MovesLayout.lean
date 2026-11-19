@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Iface
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Iface -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSites
 import LibsignalBinary.Specifications.AsmConstants
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
 
 /-!
 # Stack/Heap Decomposition and `memcpy` Helpers for `main` M5 Moves
@@ -22,7 +22,7 @@ heap/rodata ownership (`dirHeap`, `storesHeap`), bridges `storesStackAt` to 320-
 slices, and connects `locals fsp (m5Cells …)` to `locals fsp (m5LoopCells … 0)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -49,25 +49,6 @@ theorem sepWPp_exists_left {α : Type} {prog : Program} {ret : BitVec 64} {s : S
   rw [sepExists_sepConj_left, sepExists_sepConj_left, satisfies_sepExists] at hm
   rcases hm with ⟨x, hmx⟩
   exact h x R (by simpa only [sepConj_assoc] using hmx) hL
-
-theorem sepWP_seq_inImage_frame {prog : Program} {img : Obj.Image} {mid ret : BitVec 64}
-    {s : State} {P_in P P' F : SepProp} {post : State → Prop}
-    {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hinv : ImgCallInv img s)
-    (hP : P_in ⊢ P ∗ F)
-    (h : SepWP prog mid s P (fun s1 P1 => post s1 ∧ P1 = P') (fun _ => ⌜False⌝))
-    (hk : ∀ s1 : State, ImgCallInv img s1 → s1.pc = mid → s1.status = .Running → post s1 →
-      SepWPp prog ret s1 (P' ∗ F) Q Qp oom) :
-    SepWPp prog ret s P_in Q Qp oom := by
-  intro R hm hL
-  have hm0 : s.mem ⊨ P ∗ (F ∗ R) := by
-    simpa only [sepConj_assoc] using Satisfies.mono (sepConj_mono_left hP) hm
-  rcases h.elim hm0 hL with ⟨s1, hsteps, ⟨hpc1, hrun1, P1, hm1, hpost1, rfl⟩ | ⟨_, hfalse⟩⟩
-  · obtain ⟨sf, hsteps2, hout⟩ :=
-      hk s1 (hinv.of_steps hsteps) hpc1 hrun1 hpost1 R
-        (by simpa only [sepConj_assoc] using hm1) (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps2, hout⟩
-  · exact (not_satisfies_false_sepConj hfalse).elim
 
 theorem spAligned_of_s0 {s0 s : State}
     (h0 : s0.spAligned = true) (hsp : s.sp = s0.sp - 0x4e0#64) :
@@ -158,12 +139,12 @@ structure StoresWords where
   d7 : DirWords
 
 /-- Stack footprint (`40` bytes = five `↦₆₄` words) of one `Dir` at `d`. -/
-def dirStackAt (d : BitVec 64) (w : DirWords) : SepProp :=
+@[expose] def dirStackAt (d : BitVec 64) (w : DirWords) : SepProp :=
   (d ↦₆₄ w.w0) ∗ ((d + 0x08#64) ↦₆₄ w.w1) ∗ ((d + 0x10#64) ↦₆₄ w.w2) ∗
     ((d + 0x18#64) ↦₆₄ w.w3) ∗ ((d + 0x20#64) ↦₆₄ w.w4)
 
 /-- Detached heap + rodata ownership of one `Dir` given its five stack words `w`. -/
-def dirHeap (A : RustAlloc) (w : DirWords) (g : DirGhost) : SepProp :=
+@[expose] def dirHeap (A : RustAlloc) (w : DirWords) (g : DirGhost) : SepProp :=
   ⌜w.w2 = BitVec.ofNat 64 g.changed.length ∧ w.w4 = BitVec.ofNat 64 g.path.length⌝ ∗
     RustHeap.vecBuf A 48 8 (dirEntryAt A) w.w0 w.w1 g.changed ∗
     (w.w3 ↦ᵣ g.path)
@@ -209,7 +190,7 @@ theorem dirAt_repack (A : RustAlloc) (d : BitVec 64) (w : DirWords) (g : DirGhos
   exact Entails.of_eq (by ac_rfl)
 
 /-- Stack footprint (`320 = 0x140` bytes = eight `Dir`s) of a `Stores` at `a`. -/
-def storesStackAt (a : BitVec 64) (ws : StoresWords) : SepProp :=
+@[expose] def storesStackAt (a : BitVec 64) (ws : StoresWords) : SepProp :=
   dirStackAt a ws.d0 ∗
     dirStackAt (a + 0x28#64) ws.d1 ∗
     dirStackAt (a + 0x50#64) ws.d2 ∗
@@ -220,7 +201,7 @@ def storesStackAt (a : BitVec 64) (ws : StoresWords) : SepProp :=
     dirStackAt (a + 0x118#64) ws.d7
 
 /-- Detached heap + rodata ownership of all eight `Dir`s of `g`. -/
-def storesHeap (A : RustAlloc) (ws : StoresWords) (g : StoresGhost) : SepProp :=
+@[expose] def storesHeap (A : RustAlloc) (ws : StoresWords) (g : StoresGhost) : SepProp :=
   dirHeap A ws.d0 g.identity.own ∗
     dirHeap A ws.d1 g.identity.peers ∗
     dirHeap A ws.d2 g.signed ∗
@@ -285,7 +266,7 @@ theorem storesAt_repack (A : RustAlloc) (a : BitVec 64) (ws : StoresWords) (g : 
                 (dirAt_repack A (a + 0x118#64) ws.d7 g.pub)))))))
 
 /-- 40 little-endian bytes of a `DirWords`. -/
-def dirBytes (w : DirWords) : List (BitVec 8) :=
+@[expose] def dirBytes (w : DirWords) : List (BitVec 8) :=
   unpack64 w.w0 ++ (unpack64 w.w1 ++ (unpack64 w.w2 ++ (unpack64 w.w3 ++ unpack64 w.w4)))
 
 @[simp]
@@ -303,7 +284,7 @@ theorem dirStackAt_eq_bytes (d : BitVec 64) (w : DirWords) :
   simp only [BitVec.add_assoc, BitVec.reduceAdd]
 
 /-- 320 little-endian bytes of a `StoresWords`. -/
-def storesBytes (ws : StoresWords) : List (BitVec 8) :=
+@[expose] def storesBytes (ws : StoresWords) : List (BitVec 8) :=
   dirBytes ws.d0 ++ (dirBytes ws.d1 ++ (dirBytes ws.d2 ++ (dirBytes ws.d3 ++
     (dirBytes ws.d4 ++ (dirBytes ws.d5 ++ (dirBytes ws.d6 ++ dirBytes ws.d7))))))
 
@@ -427,7 +408,7 @@ theorem vecU8_unpack_ownedBytes (A : RustAlloc) (v : BitVec 64) (out : List (Bit
 
 /-- Untouched uninitialized stack sub-gaps inside `locals fsp` during M5's payload moves:
 `[0x00, 0x08)`, `[0x28, 0x58)`, `[0x60, 0x78)`, and `[0x450, 0x480)`. -/
-def m5LocalsRest (fsp : BitVec 64) : SepProp :=
+@[expose] def m5LocalsRest (fsp : BitVec 64) : SepProp :=
   memRegion fsp 0x08 ∗
     memRegion (fsp + 0x28#64) 0x30 ∗
     memRegion (fsp + 0x60#64) 0x18 ∗
@@ -557,7 +538,7 @@ theorem m5_post_first_memcpy (fsp : BitVec 64) (ws : StoresWords) :
 `[0x2f8, 0x308)` into `memRegion (fsp + 0x1c8) 0x140`, expose `(fsp + 0x310) ↦ₛ storesBytes ws`, and
 pack all dead scratch regions (`[0x78, 0x1c8)` and `[0x308, 0x310)`) together with `m5LocalsRest`
 into `m5PreMemcpy2Rest fsp`. -/
-def m5PreMemcpy2Rest (fsp : BitVec 64) : SepProp :=
+@[expose] def m5PreMemcpy2Rest (fsp : BitVec 64) : SepProp :=
   memRegion fsp 0x08 ∗
     memRegion (fsp + 0x28#64) 0x30 ∗
     memRegion (fsp + 0x60#64) 0x168 ∗
@@ -662,130 +643,6 @@ theorem m5_locals_close (A : RustAlloc)
   exact Entails.of_eq (by ac_rfl)
 
 /-! ## 4. `.keepsFs` `memcpy` Call-Site Helper for `main` -/
-
-private theorem memcpyCallee_fnOff :
-    libsignalSessionCode.fnOff "memcpy" = num% (ls_off% "memcpy") :=
-  ls_stub% "memcpy"
-
-private theorem call_inImage {α : Type} {prog : Program} {img : Obj.Image}
-    {callee retPc ret : BitVec 64} {spec : Spec α} {s0 s : State}
-    {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (x : α)
-    (hcall : subroutine_ok prog callee (spec.inImage img))
-    (hinv : ImgCallInv img s)
-    (hpc : s.pc = callee)
-    (hrun : s.status = .Running)
-    (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = retPc)
-    (hP : P ⊢ spec.pre x s ∗ F)
-    (hpanic : ∀ sf R', sf.status = .Panicked →
-      (sf.mem ⊨ spec.onPanic x s sf ∗ R') → Qp sf (spec.onPanic x s sf ∗ F) := by
-      intro _ _ _ hp; exact (not_satisfies_false_sepConj hp).elim)
-    (hexit : ∀ sf code R', sf.status = .Exited code →
-      (sf.mem ⊨ spec.onExit x code s sf ∗ R') → False := by
-      intro _ _ _ _ he; exact not_satisfies_false_sepConj he)
-    (hoom : ∀ sf R', sf.status = .OutOfMemory →
-      (sf.mem ⊨ spec.onOom x s sf ∗ (F ∗ R')) → (sf.mem ⊨ mainOom s0 sf ∗ R') := by
-      intro _ _ _ ho; exact (not_satisfies_false_sepConj ho).elim)
-    (hnext : ∀ sf : State,
-      ImgCallInv img sf →
-      sf.pc = retPc →
-      sf.status = .Running →
-      sf.sp = s.sp →
-      CalleeSavedPreserved s sf →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp (mainOom s0)) :
-    SepWPp prog ret s P Q Qp (mainOom s0) := by
-  exact ProofLib.SepWPp.call_wpp_frozen (x := x) (F := F) hcall hinv.1 hinv.2 hpc hrun hsp hlr
-    (fun R hm => by
-      have hm_pre : s.mem ⊨ (spec.pre x s ∗ F) ∗ R :=
-        Satisfies.mono (sepConj_mono_left hP) hm
-      dsimp only [Spec.inImage]
-      rw [sepConj_assoc, satisfies_pure_sepConj]
-      exact ⟨hinv, by simpa only [sepConj_assoc] using hm_pre⟩)
-    (fun sf code R' hex hpost => hexit sf code R' hex hpost)
-    (fun sf hpan ⟨R', hpost⟩ => hpanic sf R' hpan hpost)
-    (fun sf hpcm hrunm hspm hcsm hfz hsym => hnext sf ⟨hfz, hsym⟩ hpcm hrunm hspm hcsm)
-    (fun sf R' hoom_s hpost => hoom sf R' hoom_s hpost)
-
-theorem main_sessionMemcpyRegionFs_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContractsFs img A ext) :
-    subroutine_ok (mProg img ext)
-      ((mProg img ext).fnAddr mainName + BitVec.ofNat 64 (ls_rel% "main" "memcpy"))
-      ((withStack sessionMemcpyRegionSpec extHookStack).keepsFs.inImage img) :=
-  hA.session_memcpy_region_ok_at mainName (ls_rel% "main" "memcpy")
-    extHookStack (by decide) (by decide) (by rw [main_fnOff, memcpyCallee_fnOff])
-
-/-- Step a `bl memcpy` call in `main` under `(withStack sessionMemcpyRegionSpec extHookStack).keepsFs`,
-preserving `fs`, `trace`, `sp`, `CalleeSavedPreserved`, and `ImgCallInv`, and copying `src ↦ₛ bs`
-into `memRegion dst bs.length`. -/
-theorem step_memcpy_region_fs {prog : Program} {img : Obj.Image}
-    {memcpyTarget fsp retPc ret dst src : BitVec 64} {bs : List (BitVec 8)}
-    {fs0 : FsState} {tr0 : List TraceEvent}
-    {s0 s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hmc : subroutine_ok prog memcpyTarget
-      ((withStack sessionMemcpyRegionSpec extHookStack).keepsFs.inImage img))
-    (hinv : ImgCallInv img s)
-    (hpc : s.pc = memcpyTarget)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = fsp)
-    (hal : s.spAligned = true)
-    (hlr : s.readReg64 .lr = retPc)
-    (hx0 : s.readReg64 .x0 = dst)
-    (hx1 : s.readReg64 .x1 = src)
-    (hx2 : (s.readReg64 .x2).toNat = bs.length)
-    (hfs : s.fs = fs0)
-    (htr : s.trace = tr0)
-    (hP : P ⊢ memRegion dst bs.length ∗ (src ↦ₛ bs) ∗ stackAt fsp extHookStack ∗ F)
-    (hk : ∀ sm : State,
-      ImgCallInv img sm →
-      sm.pc = retPc →
-      sm.status = .Running →
-      sm.sp = fsp →
-      CalleeSavedPreserved s sm →
-      sm.fs = fs0 →
-      sm.trace = tr0 →
-      SepWPp prog ret sm
-        (((dst ↦ₛ bs) ∗ (src ↦ₛ bs)) ∗ stackAt fsp extHookStack ∗ F)
-        Q Qp (mainOom s0)) :
-    SepWPp prog ret s P Q Qp (mainOom s0) := by
-  refine call_inImage (dst, src, bs) hmc hinv hpc hrun hal hlr
-    (F := F)
-    (hP := ?_)
-    (hpanic := fun _ _ _ hp => by
-      dsimp only [Spec.keepsFs, withStack, sessionMemcpyRegionSpec] at hp
-      exact (not_satisfies_false_sepConj hp).elim)
-    (hexit := fun _ _ _ _ he => by
-      dsimp only [Spec.keepsFs, withStack, sessionMemcpyRegionSpec] at he
-      exact not_satisfies_false_sepConj he)
-    (hoom := fun _ _ _ ho => by
-      dsimp only [Spec.keepsFs, withStack, sessionMemcpyRegionSpec] at ho
-      exact (not_satisfies_false_sepConj ho).elim)
-    (hnext := ?_)
-  · dsimp only [Spec.keepsFs, withStack, sessionMemcpyRegionSpec, memcpyRegionSpec]
-    rw [hsp]
-    refine Entails.trans hP ?_
-    have hpure :
-        ⌜s.readReg64 .x0 = dst ∧ s.readReg64 .x1 = src ∧ (s.readReg64 .x2).toNat = bs.length⌝ =
-        (emp : SepProp) := by
-      simp [hx0, hx1, hx2]
-    rw [hpure, emp_sepConj]
-    exact Entails.of_eq (by ac_rfl)
-  · intro sm hinv_m hpcm hrunm hspm hcsm
-    rw [hsp] at hspm
-    dsimp only [Spec.keepsFs, withStack, sessionMemcpyRegionSpec]
-    rw [hsp]
-    have hpure_pull :
-        ((⌜sm.fs = s.fs⌝ ∗
-          (⌜sm.readReg64 .x0 = dst ∧ sm.trace = s.trace⌝ ∗ (dst ↦ₛ bs) ∗ (src ↦ₛ bs)) ∗
-          stackAt fsp extHookStack) ∗ F) =
-        ⌜sm.fs = s.fs⌝ ∗
-          (⌜sm.readReg64 .x0 = dst ∧ sm.trace = s.trace⌝ ∗
-            (((dst ↦ₛ bs) ∗ (src ↦ₛ bs)) ∗ stackAt fsp extHookStack ∗ F)) := by
-      ac_rfl
-    rw [hpure_pull]
-    refine SepWPp.pure_elim fun hfsm => ?_
-    refine SepWPp.pure_elim fun ⟨_, htrm⟩ => ?_
-    exact hk sm hinv_m hpcm hrunm hspm hcsm (hfsm.trans hfs) (htrm.trans htr)
 
 end M5MovesHelpers
 

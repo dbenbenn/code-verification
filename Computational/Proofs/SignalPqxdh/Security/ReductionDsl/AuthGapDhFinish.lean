@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepPows
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepPows -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepBase
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimSend
 import VCVio.EvalDist.Monad.Basic
@@ -21,7 +21,7 @@ Proves evaluation equivalence for `.roQuery` (`fgRoC_eval`) and CDH candidate ex
 (`fgExtractC_eval` and `fg2ExtractC_eval`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -211,108 +211,6 @@ theorem fgRoC_eval (sim : Var Γ₁ fgSimTy) (sec : Var Γ₂ (B 192)) (secv : B
     · simp only [hf, Option.map_none, map_bind, map_pure]; rfl
     · simp only [hf, Option.map_some]; rfl
 
-theorem findMapC_eval (pa : Var Γ₁ paramsTy) (N : Nat) {τ : Ty pqSig} {α : Type}
-    (g : α → τ.denote) (L : List α) (xs : Expr pqxdhOps Δ (.list τ))
-    (f : (x : Var (τ :: .opt (B 32) :: Δ) τ) → CG (τ :: .opt (B 32) :: Δ) (B 32))
-    (fS : α → OracleComp GdhSimSpec Bytes)
-    (hU : (paU (v pa)).eval env = U)
-    (hV : (paV (v pa)).eval env = V)
-    (hxs : xs.eval env = L.map g)
-    (hf : ∀ x : α, (f .vz).eval (.cons (g x) (.cons none env)) = fS x) :
-    (findMapC pa N xs f).eval env = FgGapDh.findMapMGdh fS U V (L.take N) := by
-  dsimp only [findMapC, foldMV, Comp.eval, Expr.eval]
-  rw [hxs]
-  apply agFoldML_findMap_take
-  · intro x
-    dsimp only [caseOptV, bindV, v, paU, paV, Comp.eval, Expr.eval,
-      Ext.step_wk, Ext.refl_wk, Env.get_vs, Env.get_vz]
-    rw [hf x]
-    simp only [v, Expr.eval] at hU hV
-    simp only [eval_queryDdh, Expr.eval, Env.get_vs, Env.get_vz, hU, hV]
-    rfl
-  · intro _ _
-    rfl
-
-theorem logScanC_eval (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) (off : Nat)
-    (hpa : Env.get env (h₁.wk pa) = paVal U V useDh1 t sIdx)
-    (hsim : Env.get env (h₂.wk sim) = fgSimToVal st) :
-    (logScanC K pa sim off).eval env =
-      FgGapDh.findMGdh (fun cand => FgGapDh.ddhGdhQ U V cand)
-        ((st.advRoLog.take K).map (fun s => List.take 32 (List.drop off s))) := by
-  simp only [logScanC, findMV, eMap, fsLog, slice32, paU, paV, v,
-    eval_queryDdh, Comp.eval, Expr.eval_bytesTakeK, take_pnat_32, Expr.eval_bytesDrop, Expr.eval,
-    Ext.step_wk, Ext.refl_wk, Env.get_vs, Env.get_vz,
-    hpa, hsim, fgSimToVal, paVal, ← List.map_take, List.take_take, min_self, agFindML_eq_findMGdh]
-
-theorem respCandC_eval (sim : Var Γ₁ fgSimTy) (r : Var Γ₂ respRecTy) (pk : Expr pqxdhOps Δ (B 32))
-    (rv : AuthRespRecord)
-    (hsim : Env.get env (h₁.wk sim) = fgSimToVal st)
-    (hr : Env.get env (h₂.wk r) = respRecToVal rv) :
-    (respCandC S sim r pk).eval env =
-      respAuthCandGdh S st.base.spkBundles rv.bKey (pk.eval env) := by
-  rw [respCandC, queryPrimC_x25519_eval, agRespCand_eq]
-  congr 2
-  simp only [eCaseOpt, eFind, stSpks, fsBase, nat2Eq, eval_natEq, sbSpkSk, v,
-    Expr.eval_litBytes, Expr.eval, Ext.step_wk, Ext.refl_wk, Env.get_vs, Env.get_vz,
-    hsim, hr, fgSimToVal, authStateToVal, respRecToVal, ← List.map_take, List.find?_map,
-    Function.comp_def, Prod.map_fst, id_eq]
-  generalize List.find? (fun x => x.1.1 == rv.bKey.1 && x.1.2 == rv.bKey.2)
-    (List.take S.N_dh st.base.spkBundles) = o
-  rcases o with _ | ⟨k, b⟩ <;> rfl
-
-theorem initDh1CandC_eval (sim : Var Γ₁ fgSimTy)
-    (spkPows : Var Γ₂ (.list (.prod (B 32) (B 32))))
-    (s : Var Γ₃ authSessionEntryTy) (pows : List (Bytes × Bytes)) (sv : AuthInitiatorEntry S)
-    (hsim : Env.get env (h₁.wk sim) = fgSimToVal st)
-    (hpows : Env.get env (h₂.wk spkPows) = pows)
-    (hs : Env.get env (h₃.wk s) = authSessionEntryToVal sv)
-    (hplen : pows.length ≤ S.N_dh) (hB : AgBnd K st) :
-    (initDh1CandC S K sim spkPows s).eval env =
-      initAuthDh1CandWithPowsGdh st.base.principals pows st.advKeyPows sv := by
-  simp only [initDh1CandC, bindV, letV, Comp.eval_letC, Comp.eval,
-    queryPrimC_pow8_eval, queryPrimC_x25519_eval,
-    initAuthDh1CandWithPowsGdh]
-  have hpeer : (sePeerSpk (v s)).eval env = sv.peerSpkPk := by
-    simp [v, hs, authSessionEntryToVal, Expr.eval]
-  rw [hpeer]
-  refine bind_congr' rfl (fun w => ?_)
-  congr 2
-  · simp only [eCaseOpt, eFind, bytesEmpty, fsPows, v,
-      Expr.eval_litBytes, Expr.eval_bytesBeq, Expr.eval,
-      Ext.step_wk, Ext.refl_wk, Env.get_vs, Env.get_vz,
-      hsim, hpows, fgSimToVal, List.take_of_length_le hplen, List.take_of_length_le hB.pows_le,
-      lookupAuthSpkSkFromPows]
-    have hfn : (fun x : (B 32).denote × (B 32).denote => !(x.1 == ([] : Bytes)) && x.2 == w) =
-        (fun x : Bytes × Bytes => !List.isEmpty x.1 && x.2 == w) := by
-      funext x; rw [agBytes_beq_nil]
-    erw [hfn]
-    generalize List.find? (fun x => !List.isEmpty x.1 && x.2 == w) pows = o1
-    generalize List.find? (fun x => x.2 == w) st.advKeyPows = o2
-    rcases o1 with _ | ⟨a1, b1⟩ <;> rcases o2 with _ | ⟨a2, b2⟩ <;> rfl
-  · simp only [eCaseOpt, eFind, eCaseSum, seSid, stPrin, fsBase, eval_natEq, peIkAPk, v,
-      Expr.eval_litBytes, Expr.eval, Ext.step_wk, Ext.refl_wk, Env.get_vs, Env.get_vz,
-      hsim, hs, fgSimToVal, authStateToVal, authSessionEntryToVal,
-      take_map_of_le _ _ hB.base.principals_le, List.find?_map,
-      Function.comp_def, Prod.map_fst, id_eq, lookupSenderIkPk]
-    have hi := agSenderIdx_eq sv.sid
-    generalize sessionSenderIdx sv.sid = i at hi ⊢
-    generalize sessionIdToVal sv.sid = sidv at hi ⊢
-    rcases sidv with ⟨j, _⟩ | ⟨j, _⟩ | ⟨j, _⟩ | ⟨j, _⟩ <;> simp only at hi ⊢ <;> subst hi <;>
-    · generalize List.find? (fun x => x.1 == j) st.base.principals = o3
-      rcases o3 with _ | ⟨a3, b3⟩ <;> rfl
-
-theorem spkPowsC_eval (sim : Var Γ₁ fgSimTy)
-    (hsim : Env.get env (h₁.wk sim) = fgSimToVal st) :
-    (mapMV S.N_dh (stSpks (fsBase (v sim))) (fun e =>
-      bindV (Comp.queryPrimC (C := gapDhDdhOracle) .pow8 (sbSpkPk (.snd (v e)))) (fun w =>
-      Comp.ret ((sbSpkSk (.snd (v e))).pair (v w))))).eval env =
-      FgGapDh.spkPowsGdh (st.base.spkBundles.take S.N_dh) := by
-  simp only [mapMV, bindV, sbSpkPk, sbSpkSk, stSpks, fsBase, v,
-    queryPrimC_pow8_eval, Comp.eval, Expr.eval,
-    Ext.step_wk, Ext.refl_wk, Env.get_vs, Env.get_vz,
-    hsim, fgSimToVal, authStateToVal, ← List.map_take]
-  rw [agSpkPows_eq]
-
 theorem eval_bindV {τ σ : Ty pqSig}
     (c : CG Δ τ) (k : (x : Var (τ :: Δ) τ) → CG (τ :: Δ) σ) :
     (bindV c k).eval env = (c.eval env >>= fun x => (k .vz).eval (.cons x env)) := rfl
@@ -326,117 +224,6 @@ theorem eval_bindV_caseOpt_ret {σ : Ty pqSig}
   dsimp only [bindV, Comp.eval]
   refine bind_congr' rfl (fun o => ?_)
   cases o <;> rfl
-
-theorem fgExtractC_eval (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy)
-    (hpa : Env.get env (h₁.wk pa) = paVal U V useDh1 t sIdx)
-    (hsim : Env.get env (h₂.wk sim) = fgSimToVal st)
-    (hB : AgBnd K st) :
-    (fgExtractC S K pa sim).eval env = extractCdhFromAuthSimState S useDh1 K U V st := by
-  have hdh1 : (paDh1 (v pa)).eval env = useDh1 := by
-    simp [v, hpa, paVal, Expr.eval]
-  dsimp only [fgExtractC, Comp.eval]
-  rw [hdh1]
-  simp only [extractCdhFromAuthSimState]
-  cases useDh1
-  · simp only [Bool.false_eq_true, ↓reduceIte]
-    rw [eval_bindV_caseOpt_ret, logScanC_eval (hpa := hpa) (hsim := hsim)]
-    refine bind_congr' rfl (fun o => ?_)
-    rcases o with _ | z
-    swap
-    · rfl
-    rw [eval_bindV_caseOpt_ret,
-      findMapC_eval (U := U) (V := V) (g := authSessionEntryToVal) (L := st.base.sessions)
-        (fS := initAuthDh3CandGdh)]
-    · refine bind_congr' rfl (fun o => ?_)
-      rcases o with _ | z
-      swap
-      · rfl
-      rw [eval_bindV, findMapC_eval (U := U) (V := V) (g := respRecToVal) (L := st.respRecs)
-        (fS := respAuthDh3CandGdh S st.base.spkBundles)]
-      · refine bind_congr' rfl (fun o => ?_)
-        rcases o with _ | z <;> rfl
-      · simp [v, hpa, paVal, Expr.eval]
-      · simp [v, hpa, paVal, Expr.eval]
-      · simp [v, hsim, fgSimToVal, Expr.eval]
-      · intro r
-        exact respCandC_eval (rv := r) (hsim := by simp [hsim]) (hr := rfl) ..
-    · simp [v, hpa, paVal, Expr.eval]
-    · simp [v, hpa, paVal, Expr.eval]
-    · simp [v, hsim, fgSimToVal, authStateToVal, Expr.eval]
-    · rintro ⟨_, _, _, _, _, _, _, _, _ | ⟨_, _⟩, _, _, _⟩
-      · rfl
-      · dsimp only [Comp.eval]
-        rw [queryPrimC_x25519_eval]
-        rfl
-  · simp only [↓reduceIte]
-    rw [eval_bindV_caseOpt_ret, logScanC_eval (hpa := hpa) (hsim := hsim)]
-    refine bind_congr' rfl (fun o => ?_)
-    rcases o with _ | z
-    swap
-    · rfl
-    rw [eval_bindV, spkPowsC_eval (st := st)]
-    swap
-    · simp [hsim]
-    refine bind_congr_of_forall_mem_support _ (fun pows hpows => ?_)
-    rw [agSpkPows_eq] at hpows
-    have hlen := agMemSupport_mapML_length _ _ _ hpows
-    simp only [List.length_map, List.length_take] at hlen
-    have hplen : pows.length ≤ S.N_dh := by omega
-    rw [eval_bindV_caseOpt_ret,
-      findMapC_eval (U := U) (V := V) (g := authSessionEntryToVal) (L := st.base.sessions)
-        (fS := initAuthDh1CandWithPowsGdh st.base.principals pows st.advKeyPows)]
-    · refine bind_congr' rfl (fun o => ?_)
-      rcases o with _ | z
-      swap
-      · rfl
-      rw [eval_bindV, findMapC_eval (U := U) (V := V) (g := respRecToVal) (L := st.respRecs)
-        (fS := respAuthDh1CandGdh S st.base.spkBundles)]
-      · refine bind_congr' rfl (fun o => ?_)
-        rcases o with _ | z <;> rfl
-      · simp [v, hpa, paVal, Expr.eval]
-      · simp [v, hpa, paVal, Expr.eval]
-      · simp [v, hsim, fgSimToVal, Expr.eval]
-      · intro r
-        exact respCandC_eval (rv := r) (hsim := by simp [hsim]) (hr := rfl) ..
-    · simp [v, hpa, paVal, Expr.eval]
-    · simp [v, hpa, paVal, Expr.eval]
-    · simp [v, hsim, fgSimToVal, authStateToVal, Expr.eval]
-    · intro s
-      exact initDh1CandC_eval (pows := pows) (sv := s)
-        (hsim := by simp [hsim]) (hpows := rfl) (hs := rfl) (hplen := hplen) (hB := hB) ..
-
-theorem fg2FindMapC_eval (pa : Var Γ₁ fg2ParamsTy) (N : Nat) {τ : Ty pqSig} {α : Type}
-    (g : α → τ.denote) (L : List α) (xs : Expr pqxdhOps Δ (.list τ))
-    (f : (x : Var (τ :: .opt (B 32) :: Δ) τ) → CG (τ :: .opt (B 32) :: Δ) (B 32))
-    (fS : α → OracleComp GdhSimSpec Bytes)
-    (hU : (fg2PaU (v pa)).eval env = U)
-    (hV : (fg2PaV (v pa)).eval env = V)
-    (hxs : xs.eval env = L.map g)
-    (hf : ∀ x : α, (f .vz).eval (.cons (g x) (.cons none env)) = fS x) :
-    (fg2FindMapC pa N xs f).eval env = FgGapDh.findMapMGdh fS U V (L.take N) := by
-  dsimp only [fg2FindMapC, foldMV, Comp.eval, Expr.eval]
-  rw [hxs]
-  apply agFoldML_findMap_take
-  · intro x
-    dsimp only [caseOptV, bindV, v, fg2PaU, fg2PaV, Comp.eval, Expr.eval,
-      Ext.step_wk, Ext.refl_wk, Env.get_vs, Env.get_vz]
-    rw [hf x]
-    simp only [v, Expr.eval] at hU hV
-    simp only [eval_queryDdh, Expr.eval, Env.get_vs, Env.get_vz, hU, hV]
-    rfl
-  · intro _ _
-    rfl
-
-theorem fg2LogScanC_eval (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) (off : Nat)
-    (hpa : Env.get env (h₁.wk pa) = fg2PaVal S U V useDh1 t sIdx)
-    (hsim : Env.get env (h₂.wk sim) = fgSimToVal st) :
-    (fg2LogScanC K pa sim off).eval env =
-      FgGapDh.findMGdh (fun cand => FgGapDh.ddhGdhQ U V cand)
-        ((st.advRoLog.take K).map (fun s => List.take 32 (List.drop off s))) := by
-  simp only [fg2LogScanC, findMV, eMap, fsLog, slice32, fg2PaU, fg2PaV, v,
-    eval_queryDdh, Comp.eval, Expr.eval_bytesTakeK, take_pnat_32, Expr.eval_bytesDrop, Expr.eval,
-    Ext.step_wk, Ext.refl_wk, Env.get_vs, Env.get_vz,
-    hpa, hsim, fgSimToVal, fg2PaVal, ← List.map_take, List.take_take, min_self, agFindML_eq_findMGdh]
 
 theorem fg2RespCandC_eval (sim : Var Γ₁ fgSimTy) (r : Var Γ₂ respRecTy) (pk : Expr pqxdhOps Δ (B 32))
     (rv : AuthRespRecord)
@@ -509,89 +296,6 @@ theorem fg2SpkPowsC_eval (sim : Var Γ₁ fgSimTy)
     hsim, fgSimToVal, authStateToVal, ← List.map_take,
     take_min_of_le st.base.spkBundles hB.base.spkBundles_le]
   rw [agSpkPows_eq]
-
-theorem fg2ExtractC_eval (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy)
-    (hpa : Env.get env (h₁.wk pa) = fg2PaVal S U V useDh1 t sIdx)
-    (hsim : Env.get env (h₂.wk sim) = fgSimToVal st)
-    (hB : AgBnd K st) (hresp : st.respRecs.length ≤ K) :
-    (fg2ExtractC S K pa sim).eval env = extractCdhFromAuthSimState S useDh1 K U V st := by
-  have hdh1 : (fg2PaDh1 (v pa)).eval env = useDh1 := by
-    simp [v, hpa, fg2PaVal, (paTargetChoice_dh1 S useDh1 t).1, Expr.eval]
-  dsimp only [fg2ExtractC, Comp.eval]
-  rw [hdh1]
-  simp only [extractCdhFromAuthSimState]
-  cases useDh1
-  · simp only [Bool.false_eq_true, ↓reduceIte]
-    rw [eval_bindV_caseOpt_ret, fg2LogScanC_eval (hpa := hpa) (hsim := hsim)]
-    refine bind_congr' rfl (fun o => ?_)
-    rcases o with _ | z
-    swap
-    · rfl
-    rw [eval_bindV_caseOpt_ret,
-      fg2FindMapC_eval (U := U) (V := V) (g := authSessionEntryToVal) (L := st.base.sessions)
-        (fS := initAuthDh3CandGdh),
-      take_min_of_le st.base.sessions hB.base.sessions_le]
-    · refine bind_congr' rfl (fun o => ?_)
-      rcases o with _ | z
-      swap
-      · rfl
-      rw [eval_bindV, fg2FindMapC_eval (U := U) (V := V) (g := respRecToVal) (L := st.respRecs)
-        (fS := respAuthDh3CandGdh S st.base.spkBundles),
-        take_min_of_le st.respRecs hresp]
-      · refine bind_congr' rfl (fun o => ?_)
-        rcases o with _ | z <;> rfl
-      · simp [v, hpa, fg2PaVal, Expr.eval]
-      · simp [v, hpa, fg2PaVal, Expr.eval]
-      · simp [v, hsim, fgSimToVal, Expr.eval]
-      · intro r
-        exact fg2RespCandC_eval (rv := r) (hsim := by simp [hsim]) (hr := rfl) (hB := hB) ..
-    · simp [v, hpa, fg2PaVal, Expr.eval]
-    · simp [v, hpa, fg2PaVal, Expr.eval]
-    · simp [v, hsim, fgSimToVal, authStateToVal, Expr.eval]
-    · rintro ⟨_, _, _, _, _, _, _, _, _ | ⟨_, _⟩, _, _, _⟩
-      · rfl
-      · dsimp only [Comp.eval]
-        rw [queryPrimC_x25519_eval]
-        rfl
-  · simp only [↓reduceIte]
-    rw [eval_bindV_caseOpt_ret, fg2LogScanC_eval (hpa := hpa) (hsim := hsim)]
-    refine bind_congr' rfl (fun o => ?_)
-    rcases o with _ | z
-    swap
-    · rfl
-    rw [eval_bindV, fg2SpkPowsC_eval (st := st) (hB := hB)]
-    swap
-    · simp [hsim]
-    refine bind_congr_of_forall_mem_support _ (fun pows hpows => ?_)
-    rw [agSpkPows_eq] at hpows
-    have hlen := agMemSupport_mapML_length _ _ _ hpows
-    simp only [List.length_map, List.length_take] at hlen
-    have hBspk := hB.base.spkBundles_le
-    have hplen : pows.length ≤ min K S.N_dh := by omega
-    rw [eval_bindV_caseOpt_ret,
-      fg2FindMapC_eval (U := U) (V := V) (g := authSessionEntryToVal) (L := st.base.sessions)
-        (fS := initAuthDh1CandWithPowsGdh st.base.principals pows st.advKeyPows),
-      take_min_of_le st.base.sessions hB.base.sessions_le]
-    · refine bind_congr' rfl (fun o => ?_)
-      rcases o with _ | z
-      swap
-      · rfl
-      rw [eval_bindV, fg2FindMapC_eval (U := U) (V := V) (g := respRecToVal) (L := st.respRecs)
-        (fS := respAuthDh1CandGdh S st.base.spkBundles),
-        take_min_of_le st.respRecs hresp]
-      · refine bind_congr' rfl (fun o => ?_)
-        rcases o with _ | z <;> rfl
-      · simp [v, hpa, fg2PaVal, Expr.eval]
-      · simp [v, hpa, fg2PaVal, Expr.eval]
-      · simp [v, hsim, fgSimToVal, Expr.eval]
-      · intro r
-        exact fg2RespCandC_eval (rv := r) (hsim := by simp [hsim]) (hr := rfl) (hB := hB) ..
-    · simp [v, hpa, fg2PaVal, Expr.eval]
-    · simp [v, hpa, fg2PaVal, Expr.eval]
-    · simp [v, hsim, fgSimToVal, authStateToVal, Expr.eval]
-    · intro s
-      exact fg2InitDh1CandC_eval (pows := pows) (sv := s)
-        (hsim := by simp [hsim]) (hpows := rfl) (hs := rfl) (hplen := hplen) (hB := hB) ..
 
 end Fin
 

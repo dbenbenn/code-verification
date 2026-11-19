@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Exit
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Exit -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PtsLoop
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Closed `[LibsignalPlacement]` Epilogue & Exit Blocks for `<PolyEncoder>::from_pb` (`EncoderFromPbExitClPlaced`)
@@ -24,7 +25,7 @@ in the 5 exit theorems of `<spqr::encoding::polynomial::PolyEncoder>::from_pb` (
 `hcl : LibsignalCodeLoaded lsmpl s.mem`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

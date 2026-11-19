@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 import all Init.Data.Repr
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.Composed.Cli.SDet.CodecInj
 import Symbolic.Proofs.Refinement.Composed.Cli.SDet.FilesOfAlg
 
@@ -21,7 +21,7 @@ Proves off-diagonal `InputsEquiv` disjointness between `init`, `send`, and `recv
 inputs and extracts equal call arguments and `encodeDir` snapshots from matching clauses.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

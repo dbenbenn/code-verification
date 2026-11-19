@@ -9,7 +9,7 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import Symbolic.Proofs.Swarm.Leaves.IC13_Stage1Kyber
+public import Symbolic.Proofs.Swarm.Leaves.IC13_Stage1Kyber -- proof-setup: allow-public-import
 
 /-!
 # Kyber 32-Byte Packing and Inversion Re-exports
@@ -18,7 +18,7 @@ Re-exports the KEM packing, concretization, and shape-inversion lemmas from
 `Symbolic.Proofs.Swarm.Leaves.IC13_Stage1Kyber` under `Symbolic.Swarm.CREF.Stage1Kyber`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

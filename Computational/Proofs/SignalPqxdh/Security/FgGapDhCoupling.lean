@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingF
-public import Computational.Proofs.SignalPqxdh.Security.Reductions
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingF -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Reductions
 import Computational.Proofs.SignalPqxdh.Security.FgGapDh
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkCoupling
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkCoupling
@@ -25,7 +25,7 @@ Combines the coupling of `FgGapDhCouplingA`–`F` with the per-index `GapDH` bou
 `G3` key-indistinguishability advantage and derive `pqxdh_key_ind_with`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -102,7 +102,7 @@ theorem checkBundleProvenance_imp (P : Primitives)
       rcases hPq with ⟨⟨⟨u, j⟩, bEntry⟩, hbMem, rfl, hPqEq⟩
       exact ⟨u, j, kEntry, bEntry, hkMem, hbMem, hkPow, hPqEq⟩
 
-def ValidTagStateCore {S : Setup} (P : Primitives) (adv : KeyIndAdvCutoffState S) : Prop :=
+@[expose] def ValidTagStateCore {S : Setup} (P : Primitives) (adv : KeyIndAdvCutoffState S) : Prop :=
   ValidKeyStores S P adv.shCr.base ∧
   ValidLazyRand S P adv.shCr.base ∧
   (∀ s ∈ adv.shCr.base.sessions,

@@ -9,11 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkCliPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.ReadFileHookPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkCliPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.ReadFileHookPlacedBudget
 import Arm64.Trusted.Spec.Hoare
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.SymPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPollPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
 
 /-!
 # Placed Budgeted CLI Instantiation of `IdentityStoreKitPlacedOkI`
@@ -22,7 +33,7 @@ Budget-threaded `IdentityStoreKitPlacedOkI` and `IdentityStoreKitPlacedRoClOkI` 
 CLI `IdentityFiles` under `SessKitHooksPlaced` and `cliExternsPlaced mmpl W`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -84,72 +95,6 @@ theorem cliDirPutStr_placed_ok_of_sessHooks [LibsignalPlacement] {M : AllocCostM
     (cliGrowOneDir_placed_ok hh.alloc hh.panics)
     (Nat.le_refl dirPutStrNeedPlaced)
 
-/-- Assemble `IdentityStoreKitPlacedOkI` from `SessKitHooksPlaced`. -/
-theorem cliIdKitOkIE_placed_of_sessHooks [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {rd : ReadRule} {F0 : FsFiles} {pathOk : List (BitVec 8) → Prop} {peer : AddrGhost}
-    {readStk s1 s2 s3 s4 : Nat} {vtSym : String}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {readProg : Program} {jRead : Nat} [IsLsBlockProg readProg jRead H]
-    (hDropNz : lsmpl.base 547 ≠ 0#64)
-    (hpathLen : ∀ p, pathOk p → p.length < 2 ^ 32)
-    (hh : SessKitHooksPlaced A lim H)
-    (hRead : subroutine_ok readProg (lsρ lsReadFileSym)
-      (withLsCodeRoLoaded lsmpl (readFileSpecPlaced rd pathOk A lim readStk ReadEnv)))
-    (h_bb : H lsBlackBoxU8Sym = some CryptoVerification.LibsignalSession.blackBoxHook)
-    (hs1 : trustShimNeedPlaced ≤ s1) (hs2 : trustPollNeedPlaced readStk ≤ s2)
-    (hs3 : saveShimNeedPlaced ≤ s3) (hs4 : savePollNeedPlaced readStk ≤ s4)
-    (hjRead : jRead < 619 := by decide)
-    (hjRead_unmut : (jRead ∈ libsignalMutatedBlocks) = false := by decide) :
-    IdentityStoreKitPlacedOkI A lim
-      (cliIdentityKitSpecPlaced A.repAlloc rd F0 pathOk peer s1 s2 s3 s4 vtSym)
-      (cliIdentityKitDefaultBudgetEnv A.repAlloc rd F0 pathOk peer s1 s2 s3 s4 vtSym ReadEnv)
-      H := by
-  have hGet := cliDirGet_placed_ok_of_sessHooks hpathLen hh hRead hjRead hjRead_unmut
-  have hPut := cliDirPutStr_placed_ok_of_sessHooks hh
-  have hEq := publicKeyEq_placed_ok_of_bb h_bb
-  have h566 := idTrustPoll_placed_ok_of_deps hh.alloc hGet
-    (identityKey_decode_placed_ok (A := A) H) hEq hs2
-    (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
-  have hSer := publicKeySerialize_lscro_of_cli
-    (callerProg := (blkPC_565).rebase (blkPl_565).base H) hh.alloc (by decide)
-  have hGet' := ls_transfer_lscro (callerProg := (blkPC_565).rebase (blkPl_565).base H)
-    hGet (by decide) (by decide) (by decide)
-  have hPut' := ls_transfer_lscro (callerProg := (blkPC_565).rebase (blkPl_565).base H)
-    hPut (by decide) (by decide) (by decide)
-  have hDec' := ls_transfer_cl_to_lscro (callerProg := (blkPC_565).rebase (blkPl_565).base H)
-    (identityKey_decode_placed_ok (A := A) H) (by decide) (by decide) (by decide)
-  have hEq' := ls_transfer_cl_to_lscro (callerProg := (blkPC_565).rebase (blkPl_565).base H)
-    hEq (by decide) (by decide) (by decide)
-  have h565 : subroutine_ok (lsProg_565 H) (lsmpl.base 565)
-      (idSavePollSpecPlaced rd pathOk A lim
-        (CliIdSavePollEnv rd (DirGetEnv PathEnv ReadEnv rd) DirPutStrEnv) s4) :=
-    idSavePoll_placed_ok_of_deps_core hh.alloc hSer hGet' hPut' hDec' hEq' hs4
-  exact cliIdKitOkIE_placed_of_polls hDropNz hh.alloc h566 h565 hs1 hs3
-
-theorem cliIdKitRoClOkIE_placed_of_sessHooks [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {rd : ReadRule} {F0 : FsFiles} {pathOk : List (BitVec 8) → Prop} {peer : AddrGhost}
-    {readStk s1 s2 s3 s4 : Nat} {vtSym : String}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {readProg : Program} {jRead : Nat} [IsLsBlockProg readProg jRead H]
-    (hDropNz : lsmpl.base 547 ≠ 0#64)
-    (hpathLen : ∀ p, pathOk p → p.length < 2 ^ 32)
-    (hh : SessKitHooksPlaced A lim H)
-    (hRead : subroutine_ok readProg (lsρ lsReadFileSym)
-      (withLsCodeRoLoaded lsmpl (readFileSpecPlaced rd pathOk A lim readStk ReadEnv)))
-    (h_bb : H lsBlackBoxU8Sym = some CryptoVerification.LibsignalSession.blackBoxHook)
-    (hs1 : trustShimNeedPlaced ≤ s1) (hs2 : trustPollNeedPlaced readStk ≤ s2)
-    (hs3 : saveShimNeedPlaced ≤ s3) (hs4 : savePollNeedPlaced readStk ≤ s4)
-    (hjRead : jRead < 619 := by decide)
-    (hjRead_unmut : (jRead ∈ libsignalMutatedBlocks) = false := by decide) :
-    IdentityStoreKitPlacedRoClOkI A lim
-      (cliIdentityKitSpecPlaced A.repAlloc rd F0 pathOk peer s1 s2 s3 s4 vtSym)
-      (cliIdentityKitDefaultBudgetEnv A.repAlloc rd F0 pathOk peer s1 s2 s3 s4 vtSym ReadEnv)
-      H :=
-  cliIdKitOkIE_placed_of_sessHooks hDropNz hpathLen hh hRead h_bb hs1 hs2 hs3 hs4
-    hjRead hjRead_unmut
-
 theorem cliIdKitOkIE_placed_of_sessHooks_sat [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
     {rd : ReadRule} {F0 : FsFiles} {pathOk : List (BitVec 8) → Prop} {peer : AddrGhost}
@@ -192,30 +137,6 @@ theorem cliIdKitOkIE_placed_of_sessHooks_sat [LibsignalPlacement] {M : AllocCost
         (CliIdSavePollEnv rd (DirGetEnv PathEnv ReadEnv rd) DirPutStrEnv) s4) :=
     idSavePoll_placed_ok_of_deps_core_16 hh.alloc hSer hGet' hPut' hDec' hEq' hs4
   exact cliIdKitOkIE_placed_of_polls hDropNz hh.alloc h566 h565 hs1 hs3
-
-theorem cliIdKitRoClOkIE_placed_of_sessHooks_sat [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {rd : ReadRule} {F0 : FsFiles} {pathOk : List (BitVec 8) → Prop} {peer : AddrGhost}
-    {readStk s1 s2 s3 s4 : Nat} {vtSym : String}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {readProg : Program} {jRead : Nat} [IsLsBlockProg readProg jRead H]
-    (hDropNz : lsmpl.base 547 ≠ 0#64)
-    (hpathLen : ∀ p, pathOk p → p.length < 2 ^ 32)
-    (hh : SessKitHooksPlaced A lim H)
-    (hRead : subroutine_ok readProg (lsρ lsReadFileSym)
-      (withLsCodeRoLoaded lsmpl (readFileSpecPlaced rd pathOk A lim readStk ReadEnv)))
-    (h_bb : HookSat H lsBlackBoxU8Sym
-      LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat.blackBoxSpecSat)
-    (hs1 : trustShimNeedPlaced ≤ s1) (hs2 : trustPollNeedPlaced readStk ≤ s2)
-    (hs3 : saveShimNeedPlaced ≤ s3) (hs4 : savePollNeedPlaced readStk ≤ s4)
-    (hjRead : jRead < 619 := by decide)
-    (hjRead_unmut : (jRead ∈ libsignalMutatedBlocks) = false := by decide) :
-    IdentityStoreKitPlacedRoClOkI A lim
-      (cliIdentityKitSpecPlaced A.repAlloc rd F0 pathOk peer s1 s2 s3 s4 vtSym)
-      (cliIdentityKitDefaultBudgetEnv A.repAlloc rd F0 pathOk peer s1 s2 s3 s4 vtSym ReadEnv)
-      H :=
-  cliIdKitOkIE_placed_of_sessHooks_sat hDropNz hpathLen hh hRead h_bb hs1 hs2 hs3 hs4
-    hjRead hjRead_unmut
 
 theorem cliIdentityVtablesCli_placed [LibsignalPlacement] {A : RustAlloc} {F0 : FsFiles}
     {peer : AddrGhost} {s1 s2 s3 s4 : Nat} (hDropNz : lsmpl.base 547 ≠ 0#64) :
@@ -277,94 +198,5 @@ theorem cliIdKitRoClOkIE_cli_placed [LibsignalPlacement] (mmpl : Obj.MultiPlacem
       (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
   cliIdKitOkIE_cli_placed mmpl g W hDropNz hG hAzFsT hStrFsT hRead hs1 hs2 hs3 hs4
     hjRead hjRead_unmut
-
-theorem cliIdKitOkIE_cli_placed_of_read [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
-    (g : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F0 : FsFiles}
-    {peer : AddrGhost}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {readStk s1 s2 s3 s4 : Nat} {vtSym : String}
-    (hDropNz : lsmpl.base 547 ≠ 0#64)
-    (hG : CliGhostAllocHooks M A lim g)
-    (hAzFsT : HookFsTraced IsFsC g.allocZeroed)
-    (hStrFsT : ∀ f, g.stringClone = some f → HookFsTraced IsFsC f)
-    (hRead : subroutine_ok (lsProg_589 (cliGhostExterns g (cliExternsPlaced mmpl W)))
-      (lsρ lsReadFileSym) (readFileSpecPlaced cliIo.rd cliWrOk A lim readStk ReadEnv))
-    (hs1 : trustShimNeedPlaced ≤ s1) (hs2 : trustPollNeedPlaced readStk ≤ s2)
-    (hs3 : saveShimNeedPlaced ≤ s3) (hs4 : savePollNeedPlaced readStk ≤ s4) :
-    IdentityStoreKitPlacedOkI A lim
-      (cliIdentityKitSpecPlaced A.repAlloc cliIo.rd F0 cliWrOk peer s1 s2 s3 s4 vtSym)
-      (cliIdentityKitDefaultBudgetEnv A.repAlloc cliIo.rd F0 cliWrOk peer s1 s2 s3 s4 vtSym ReadEnv)
-      (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
-  cliIdKitOkIE_cli_placed mmpl g W
-    (readProg := lsProg_589 (cliGhostExterns g (cliExternsPlaced mmpl W))) (jRead := 589)
-    hDropNz hG hAzFsT hStrFsT
-    (cliReadFilePlaced_rocl_ok mmpl g W readStk (i := 589) hRead)
-    hs1 hs2 hs3 hs4 (by decide) (by decide)
-
-theorem cliIdKitRoClOkIE_cli_placed_of_read [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
-    (g : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F0 : FsFiles}
-    {peer : AddrGhost}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {readStk s1 s2 s3 s4 : Nat} {vtSym : String}
-    (hDropNz : lsmpl.base 547 ≠ 0#64)
-    (hG : CliGhostAllocHooks M A lim g)
-    (hAzFsT : HookFsTraced IsFsC g.allocZeroed)
-    (hStrFsT : ∀ f, g.stringClone = some f → HookFsTraced IsFsC f)
-    (hRead : subroutine_ok (lsProg_589 (cliGhostExterns g (cliExternsPlaced mmpl W)))
-      (lsρ lsReadFileSym) (readFileSpecPlaced cliIo.rd cliWrOk A lim readStk ReadEnv))
-    (hs1 : trustShimNeedPlaced ≤ s1) (hs2 : trustPollNeedPlaced readStk ≤ s2)
-    (hs3 : saveShimNeedPlaced ≤ s3) (hs4 : savePollNeedPlaced readStk ≤ s4) :
-    IdentityStoreKitPlacedRoClOkI A lim
-      (cliIdentityKitSpecPlaced A.repAlloc cliIo.rd F0 cliWrOk peer s1 s2 s3 s4 vtSym)
-      (cliIdentityKitDefaultBudgetEnv A.repAlloc cliIo.rd F0 cliWrOk peer s1 s2 s3 s4 vtSym ReadEnv)
-      (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
-  cliIdKitOkIE_cli_placed_of_read mmpl g W hDropNz hG hAzFsT hStrFsT hRead hs1 hs2 hs3 hs4
-
-theorem cliIdKitOkIE_cli_placed_of_readHookSat [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
-    (g : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F0 : FsFiles}
-    {peer : AddrGhost}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {readStk s1 s2 s3 s4 : Nat} {vtSym : String}
-    (hDropNz : lsmpl.base 547 ≠ 0#64)
-    (hG : CliGhostAllocHooks M A lim g)
-    (hAzFsT : HookFsTraced IsFsC g.allocZeroed)
-    (hStrFsT : ∀ f, g.stringClone = some f → HookFsTraced IsFsC f)
-    (hReadHook : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsReadFileSym
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim readStk ReadEnv))
-    (hs1 : trustShimNeedPlaced ≤ s1) (hs2 : trustPollNeedPlaced readStk ≤ s2)
-    (hs3 : saveShimNeedPlaced ≤ s3) (hs4 : savePollNeedPlaced readStk ≤ s4) :
-    IdentityStoreKitPlacedOkI A lim
-      (cliIdentityKitSpecPlaced A.repAlloc cliIo.rd F0 cliWrOk peer s1 s2 s3 s4 vtSym)
-      (cliIdentityKitDefaultBudgetEnv A.repAlloc cliIo.rd F0 cliWrOk peer s1 s2 s3 s4 vtSym ReadEnv)
-      (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
-  cliIdKitOkIE_cli_placed mmpl g W
-    (readProg := lsProg_589 (cliGhostExterns g (cliExternsPlaced mmpl W))) (jRead := 589)
-    hDropNz hG hAzFsT hStrFsT
-    (cliReadFilePlaced_rocl_ok_of_hookSat readStk (i := 589) hReadHook)
-    hs1 hs2 hs3 hs4 (by decide) (by decide)
-
-theorem cliIdKitRoClOkIE_cli_placed_of_readHookSat [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
-    (g : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F0 : FsFiles}
-    {peer : AddrGhost}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {readStk s1 s2 s3 s4 : Nat} {vtSym : String}
-    (hDropNz : lsmpl.base 547 ≠ 0#64)
-    (hG : CliGhostAllocHooks M A lim g)
-    (hAzFsT : HookFsTraced IsFsC g.allocZeroed)
-    (hStrFsT : ∀ f, g.stringClone = some f → HookFsTraced IsFsC f)
-    (hReadHook : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsReadFileSym
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim readStk ReadEnv))
-    (hs1 : trustShimNeedPlaced ≤ s1) (hs2 : trustPollNeedPlaced readStk ≤ s2)
-    (hs3 : saveShimNeedPlaced ≤ s3) (hs4 : savePollNeedPlaced readStk ≤ s4) :
-    IdentityStoreKitPlacedRoClOkI A lim
-      (cliIdentityKitSpecPlaced A.repAlloc cliIo.rd F0 cliWrOk peer s1 s2 s3 s4 vtSym)
-      (cliIdentityKitDefaultBudgetEnv A.repAlloc cliIo.rd F0 cliWrOk peer s1 s2 s3 s4 vtSym ReadEnv)
-      (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
-  cliIdKitOkIE_cli_placed_of_readHookSat mmpl g W hDropNz hG hAzFsT hStrFsT hReadHook
-    hs1 hs2 hs3 hs4
 
 end LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkCliPlacedBudget

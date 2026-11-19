@@ -9,121 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
 import ProofLib.SepLogic.WPp
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 /-!
 # `SepWPp` Wrappers Carrying Code-Loaded Invariants
 
-Defines panic-aware weakest-precondition wrappers that thread frozen-code and symbol-table
-invariants across basic-block steps and external stub calls:
-* `SepWPpIn img`: threads `img.FrozenLoaded s ∧ s.symtab = img.symtab` for `.inImage img`
-  subroutine contracts on `SP2Ext`.
-* `SepWPpLsCl pl` and `SepWPpLsCro pl`: thread `LibsignalCodeLoaded pl s.mem` and
-  `LibsignalCodeRoLoaded pl s.mem` for relocatable `[LibsignalPlacement]` proofs.
+Defines panic-aware weakest-precondition wrappers (`SepWPpLsCl pl` and `SepWPpLsCro pl`) that
+thread `LibsignalCodeLoaded pl s.mem` and `LibsignalCodeRoLoaded pl s.mem` across basic-block
+steps and external stub calls for relocatable `[LibsignalPlacement]` proofs.
 -/
 
 namespace Proofs.libsignal.Hooks2
 
 open Arm64 ProofLib CryptoVerification
-
-/-- `SepWPp` carrying the frozen-image / symbol-table invariant `img.FrozenLoaded s ∧ s.symtab = img.symtab`. -/
-def SepWPpIn (img : Obj.Image) (prog : Program) (ret : BitVec 64) (s : State)
-    (P : SepProp) (Q Qp : State → SepProp → Prop) : Prop :=
-  img.FrozenLoaded s → s.symtab = img.symtab → SepWPp prog ret s P Q Qp
-
-namespace SepWPpIn
-
-variable {img : Obj.Image} {prog : Program} {ret : BitVec 64} {s : State} {P : SepProp}
-  {Q Qp : State → SepProp → Prop}
-
-theorem of_sepWP {mid : BitVec 64}
-    (h : SepWP prog mid s P (fun sm Pm => SepWPpIn img prog ret sm Pm Q Qp)) :
-    SepWPpIn img prog ret s P Q Qp :=
-  fun hF hsym => ProofLib.SepWPp.of_sepWP_frozen hF hsym h
-
-theorem of_sepWP_ret (h : SepWP prog ret s P Q) : SepWPpIn img prog ret s P Q Qp :=
-  fun _ _ => SepWPp.of_sepWP_ret h
-
-theorem done (hpc : s.pc = ret) (hrun : s.status = .Running) (hq : Q s P) :
-    SepWPpIn img prog ret s P Q Qp :=
-  fun _ _ => SepWPp.done hpc hrun hq
-
-theorem weaken_pre {P' : SepProp} (hent : P ⊢ P') (h : SepWPpIn img prog ret s P' Q Qp) :
-    SepWPpIn img prog ret s P Q Qp :=
-  fun hF hsym => SepWPp.weaken_pre hent (h hF hsym)
-
-theorem pure_elim {φ : Prop} (h : φ → SepWPpIn img prog ret s P Q Qp) :
-    SepWPpIn img prog ret s (⌜φ⌝ ∗ P) Q Qp :=
-  fun hF hsym => SepWPp.pure_elim fun hφ => h hφ hF hsym
-
-theorem exists_elim {α : Sort _} {P : α → SepProp}
-    (h : ∀ a, SepWPpIn img prog ret s (P a) Q Qp) :
-    SepWPpIn img prog ret s (∃∗ a, P a) Q Qp :=
-  fun hF hsym => SepWPp.exists_elim fun a => h a hF hsym
-
-theorem call {α : Type} {entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {F : SepProp}
-    (hcall : subroutine_ok prog entry spec)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hpre : ∀ R : SepProp, (s.mem ⊨ P ∗ R) → (s.mem ⊨ spec.pre x s ∗ (F ∗ R)))
-    (hexit : ∀ sf code R', sf.status = .Exited code → (sf.mem ⊨ spec.onExit x code s sf ∗ R') → False)
-    (hpanic : ∀ sf, sf.status = .Panicked → Qp sf (spec.onPanic x s sf ∗ F))
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf →
-      SepWPpIn img prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom : ∀ sf R', sf.status = .OutOfMemory → (sf.mem ⊨ spec.onOom x s sf ∗ R') → False := by
-      intro _ _ _ h; exact not_satisfies_false_sepConj h) :
-    SepWPpIn img prog ret s P Q Qp := by
-  intro hF hsym
-  exact SepWPp.call_wpp_frozen hcall (x := x) (F := F) hF hsym hpc hrun hsp hlr hpre hexit
-    (fun sf hpan _ => hpanic sf hpan) hnext
-    (fun sf R' hoom_st hpost => (hoom sf (F ∗ R') hoom_st hpost).elim)
-
-theorem call_inImage {α : Type} {entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {F : SepProp}
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hpre : ∀ R : SepProp, (s.mem ⊨ P ∗ R) → (s.mem ⊨ spec.pre x s ∗ (F ∗ R)))
-    (hexit : ∀ sf code R', sf.status = .Exited code → (sf.mem ⊨ spec.onExit x code s sf ∗ R') → False)
-    (hpanic : ∀ sf, sf.status = .Panicked → Qp sf (spec.onPanic x s sf ∗ F))
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf →
-      SepWPpIn img prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom : ∀ sf R', sf.status = .OutOfMemory → (sf.mem ⊨ spec.onOom x s sf ∗ R') → False := by
-      intro _ _ _ h; exact not_satisfies_false_sepConj h) :
-    SepWPpIn img prog ret s P Q Qp := by
-  intro hF hsym
-  refine SepWPp.call_wpp_frozen hcall (x := x) (F := F) hF hsym hpc hrun hsp hlr ?_ hexit
-    (fun sf hpan _ => hpanic sf hpan) hnext
-    (fun sf R' hoom_st hpost => (hoom sf (F ∗ R') hoom_st hpost).elim)
-  intro R hm
-  simp only [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨⟨hF, hsym⟩, hpre R hm⟩
-
-end SepWPpIn
-
-theorem subroutine_ok_inImage_of_sepWPpIn {img : Obj.Image} {α : Type} {prog : Program}
-    {entry : BitVec 64} {spec : Spec α}
-    (h : ∀ (x : α) (R : SepProp) (s0 : State), s0.pc = entry → s0.status = .Running →
-      (s0.mem ⊨ spec.pre x s0 ∗ R) → s0.spAligned = true →
-      ∃ P Fr : SepProp, (s0.mem ⊨ P ∗ Fr) ∧
-        SepWPpIn img prog (s0.readReg64 Reg.lr) s0 P
-          (fun sf P_f => ((sf.mem ⊨ P_f ∗ Fr) → (sf.mem ⊨ spec.post x s0 sf ∗ R)) ∧
-            sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
-          (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) → (sf.mem ⊨ spec.onPanic x s0 sf ∗ R))) :
-    subroutine_ok prog entry (spec.inImage img) := by
-  apply subroutine_ok_of_sepWPp
-  intro x R s0 hpc hrun hpre hsp
-  simp only [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hF, hsym⟩, hpre⟩
-  obtain ⟨P, Fr, hm, hwp⟩ := h x R s0 hpc hrun hpre hsp
-  exact ⟨P, Fr, hm, hwp hF hsym⟩
 
 /-! ## Relocatable `[LibsignalPlacement]` wrappers (`SepWPpLsCl` and `SepWPpLsCro`) -/
 
@@ -139,7 +43,7 @@ abbrev withLsRoClIn {α : Type} (pl : Obj.MultiPlacement) (spec : Spec α) : Spe
     post := fun x s0 sf => ⌜LibsignalCodeRoLoaded pl sf.mem⌝ ∗ spec.post x s0 sf }
 
 /-- `SepWPp` carrying the relocatable code-loaded invariant `LibsignalCodeLoaded pl s.mem`. -/
-def SepWPpLsCl (pl : Obj.MultiPlacement) (prog : Program) (ret : BitVec 64) (s : State)
+@[expose] def SepWPpLsCl (pl : Obj.MultiPlacement) (prog : Program) (ret : BitVec 64) (s : State)
     (P : SepProp) (Q Qp : State → SepProp → Prop) : Prop :=
   LibsignalCodeLoaded pl s.mem → SepWPp prog ret s P Q Qp
 
@@ -274,7 +178,7 @@ theorem subroutine_ok_withLsCodeLoaded_of_sepWPpLsCl {pl : Obj.MultiPlacement} {
   exact ⟨P, Fr, hm, hwp hcl⟩
 
 /-- `SepWPp` carrying both `LibsignalCodeLoaded` and `LibsignalRoLoaded` (`LibsignalCodeRoLoaded pl s.mem`). -/
-def SepWPpLsCro (pl : Obj.MultiPlacement) (prog : Program) (ret : BitVec 64) (s : State)
+@[expose] def SepWPpLsCro (pl : Obj.MultiPlacement) (prog : Program) (ret : BitVec 64) (s : State)
     (P : SepProp) (Q Qp : State → SepProp → Prop) : Prop :=
   LibsignalCodeRoLoaded pl s.mem → SepWPp prog ret s P Q Qp
 

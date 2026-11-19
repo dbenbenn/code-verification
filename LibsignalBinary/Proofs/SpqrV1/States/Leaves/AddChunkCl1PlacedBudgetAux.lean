@@ -10,21 +10,23 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeGrowBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.LoopPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.ProofPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.AddChunkCl1Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeGrowBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.LoopPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.ProofPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.AddChunkCl1Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.Alloc.Fetch
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPFrozen
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # `<PolyDecoder as Decoder>::add_chunk` (Block `419`): `RustCliAllocBudget` Inner Loop & `grow_one` Helpers
@@ -35,7 +37,7 @@ the inner binary-search helpers `bsearchReplace_cl_placed_wpp` (`+236 -> +64`) a
 `bsearchPush_cl_placed_wpp` (`+128 -> +64`) on Block `419`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -153,7 +155,7 @@ private theorem grow_new_cap_eq {cap : BitVec 64} (h : max (2 * cap.toNat) 4 < 2
 
 /-- `AllocCallPreserved`-strengthened budget contract for `RawVec<Pt>::grow_one`
     (`stride = 4, align = 2`). -/
-def growOnePtBsAcpSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def growOnePtBsAcpSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (GrowGhost × M.σ) where
   pre := fun ((v, cap, ptr, bs), st) s =>
     ⌜s.readReg64 .x0 = v ∧ bs.length ≤ cap.toNat * 4 ∧ ptr ≠ 0#64 ∧

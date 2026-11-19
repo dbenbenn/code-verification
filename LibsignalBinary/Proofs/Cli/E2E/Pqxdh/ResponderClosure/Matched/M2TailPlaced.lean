@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsEPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Tail
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsEPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Tail
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
@@ -26,6 +26,15 @@ import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3b2
 import LibsignalBinary.Proofs.TripleRatchet.ChainKey.NextChainKey
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.SessionRecordCallees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegUntrusted -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.Concat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2AuxPlaced
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Relocatable Stage P2 Matched-Session Remote-Identity Mismatch Tail
@@ -35,7 +44,7 @@ Relocatable `[LibsignalPlacement]` counterpart of `Matched.M2Tail` on Block `518
 Block-`530` `<str as ToOwned>::to_owned [local#2]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -46,8 +55,6 @@ attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_add_neg688_eq_hsp
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_sub_96_eq_hsp_592
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_add_neg96_eq_hsp_592
-
-noncomputable section
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched
 
@@ -74,7 +81,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.add_assoc BitVec.toNat_zero
 
 /-- Placed spatial precondition at `(blkPl_518).base + 0x12fc` for `stageP2_matched_mismatch_tail`
 under `[LibsignalPlacement]`, using `lsLogFilterAddr ↦₆₄ 0#64`. -/
-def stageP2MismatchTailPrePlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def stageP2MismatchTailPrePlaced [LibsignalPlacement] (A : RustAlloc)
     (s0 : State) (sp coroPtr outPtr u_a8 u_d0 : BitVec 64)
     (b_4f2 b_390 b_2c0 : BitVec 8)
     (g : RecordGhost) (recG : SessionGhost) (recSt : SessionState (List (BitVec 8))) : SepProp :=
@@ -100,7 +107,7 @@ def stageP2MismatchTailPrePlaced [LibsignalPlacement] (A : RustAlloc)
 
 /-- Placed spatial postcondition at `s0.readReg64 .x30` for `stageP2_matched_mismatch_tail`
 under `[LibsignalPlacement]`, using `lsLogFilterAddr ↦₆₄ 0#64`. -/
-def stageP2MismatchTailPostPlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def stageP2MismatchTailPostPlaced [LibsignalPlacement] (A : RustAlloc)
     (s0 : State) (sp coroPtr outPtr : BitVec 64) : SepProp :=
   memRegion (coroPtr + 0xe0#64) 368 ∗
   cells (coroPtr + 0x250#64) 6 ∗
@@ -467,4 +474,3 @@ theorem stageP2_matched_mismatch_tail_placed [LibsignalPlacement] {A : RustAlloc
     (by sep_focus) (eq_of_sep_emp (by sep_focus))
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched
-end

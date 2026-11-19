@@ -9,20 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.PrologueVersionLocalIdentity
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.PrologueVersionLocalIdentity -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
-import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.Fetch
+import Mathlib.Tactic.ToAdditive
+import Mathlib.Tactic.ToDual
 import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.RemoteIdentityRootKeyCounter
 import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.SenderReceiverChains
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # `SessionStructure::encode_raw` tag 9 (`pending_pre_key` header and length, `+0x218..+0x368`)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.Serialization.EncodeRawAux
 
@@ -131,14 +132,14 @@ theorem lenField9_eq (g : TailVecGhost) (p : PendingPreKey) :
 
 /-! ## `optTailVecAt 48` decomposition for `PendingPreKey` -/
 
-def optU32ValAt (a : BitVec 64) (bs : List (BitVec 8)) : Option (BitVec 32) → SepProp
+@[expose] def optU32ValAt (a : BitVec 64) (bs : List (BitVec 8)) : Option (BitVec 32) → SepProp
   | none => a ↦ₛ (bs.drop 4).take 4
   | some pkId => a ↦₃₂ pkId
 
 theorem optU32ValAt_some (a : BitVec 64) (bs : List (BitVec 8)) (pkId : BitVec 32) :
     optU32ValAt a bs (some pkId) = (a ↦₃₂ pkId) := rfl
 
-def pendingTailRest (ss : BitVec 64) (g : TailVecGhost) : SepProp :=
+@[expose] def pendingTailRest (ss : BitVec 64) (g : TailVecGhost) : SepProp :=
   (ss + 292#64) ↦ₛ g.tail.drop 20
 
 theorem pointsToBytes_pending_pkId_eq (ss : BitVec 64) {bs : List (BitVec 8)}
@@ -150,7 +151,7 @@ theorem pointsToBytes_pending_pkId_eq (ss : BitVec 64) {bs : List (BitVec 8)}
     dsimp [optU32ValAt]
     rw [hopt.2, pointsToBytes_leBytes_4]
 
-def pendingOpenAt (A : RustAlloc) (ss : BitVec 64) (g : TailVecGhost) (p : PendingPreKey) : SepProp :=
+@[expose] def pendingOpenAt (A : RustAlloc) (ss : BitVec 64) (g : TailVecGhost) (p : PendingPreKey) : SepProp :=
   ((ss + 248#64) ↦₆₄ g.vec.cap) ∗
   ((ss + 256#64) ↦₆₄ g.vec.ptr) ∗
   ((ss + 264#64) ↦₆₄ BitVec.ofNat 64 g.vec.bytes.length) ∗
@@ -338,203 +339,9 @@ theorem optU32Tag_bne1_pc (entry : BitVec 64) (opt : Option (BitVec 32)) :
       entry + (if opt.isSome then 596#64 else 764#64) := by
   cases opt <;> rfl
 
-theorem step_tag9_write_tag {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hDR : OkAt b C ctl abs doReserveName (doReserveSpec A))
-    (ss v sp0 cap ptr : BitVec 64) (g : TailVecGhost) (p : PendingPreKey)
-    (bs : List (BitVec 8))
-    (hcap_g : g.vec.cap.toNat < 2 ^ 63)
-    (hlen_lt : bs.length + 1 < 2 ^ 60)
-    {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName + 536#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 80#64)
-    (halign : sp0 &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = v)
-    (hx20 : s.readReg64 .x20 = ss)
-    (hcs : EncRawUpperSaved s0 s)
-    (hP : P = (pendingOpenAt A ss g p ∗ vecU8At A v cap ptr bs ∗
-      A.pool ∗ stackAt (sp0 - 80#64) encodeRawSubStack) ∗ F := by sep_focus)
-    (hnext : ∀ (sm : State) (cap' ptr' : BitVec 64),
-      sm.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName +
-        (if p.preKeyId.isSome then 596#64 else 764#64) →
-      sm.status = .Running →
-      sm.sp = sp0 - 80#64 →
-      sm.trace = s0.trace →
-      sm.readReg64 .x19 = v →
-      sm.readReg64 .x20 = ss →
-      sm.readReg64 .x24 = BitVec.zeroExtend 64 (optU32Tag p.preKeyId) →
-      EncRawUpperSaved s0 sm →
-      SepWPp (tripleRatchetProgAt b C ctl abs) ret sm
-        ((pendingOpenAt A ss g p ∗ vecU8At A v cap' ptr' (bs ++ [0x4a#8]) ∗
-          A.pool ∗ stackAt (sp0 - 80#64) encodeRawSubStack) ∗ F)
-        Q (PanicAllocPost s0)) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q (PanicAllocPost s0) := by
-  have hCallDR := @encraw_call_doReserve_buf b C A ctl abs hDR
-  encraw_fetches_range b (Rust.withPanics (tripleRatchetExterns C ctl abs)) 536 596
-  encraw_fetches_range b (Rust.withPanics (tripleRatchetExterns C ctl abs)) 2124 2152
-  generalize_entry (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName = entry
-  examples_hide_fetches
-  rw [hP]
-  refine sepWPp_extract_vecU8At_bounds (A := A) (v := v) (cap := cap) (ptr := ptr) (bs := bs)
-    (h := fun hle _ _ => ?_)
-  have hcmn1 := cmn1_beq_zero_false hcap_g
-  have hcmn2 := cap_beq_noneCap_false hcap_g
-  by_cases hlt : bs.length < cap.toNat
-  · have hbeq_cap := cap_beq_len_false hlt
-    rw [vecU8At_open_one A v cap ptr bs hlt]
-    unfold pendingOpenAt
-    simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun old => ?_
-    apply SepWPp.of_sepWP (mid := entry + (if p.preKeyId.isSome then 596#64 else 764#64))
-    wp_steps
-    apply SepWP.done
-      (by simp only [arm64_norm, optU32Tag_bne1_pc, *])
-      (by simp only [arm64_norm, *])
-    refine SepWPp.weaken_pre ?_ (hnext _ cap ptr
-      (by simp only [arm64_norm, optU32Tag_bne1_pc, *])
-      (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *])
-      (hcs.trans ⟨by simp only [arm64_norm], by simp only [arm64_norm], by simp only [arm64_norm]⟩))
-    rw [← vecU8At_close_one A v cap ptr bs 0x4a#8 hlt]
-    unfold pendingOpenAt
-    exact entails_of_sep_focus (by sep_focus)
-  · have hcap_eq : cap.toNat = bs.length := by omega
-    have hcap_bv := cap_eq_ofNat_len hcap_eq
-    rw [vecU8At_eq_header_sep_buf A v cap ptr bs]
-    unfold pendingOpenAt
-    simp only [vecHeader, sepConj_assoc]
-    apply SepWPp.of_sepWP (mid := entry + bv% (2 ^ 64 + (ls_off% "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>")))
-    wp_steps
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    have hx1_nat : (BitVec.ofNat 64 bs.length).toNat = bs.length := by
-      rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-    refine hCallDR sp0 v cap ptr (entry + bv% (2144)) bs 1
-      (by omega) (by omega) ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ (by sep_focus) ?_
-    · simp only [arm64_norm]
-    · simp only [arm64_norm, *]
-    · simp only [arm64_norm, *]
-    · exact sp_sub_80_spAligned halign (by simp only [arm64_norm, *])
-    · simp only [arm64_norm, *]
-    · simp only [arm64_norm]
-    · simp only [arm64_norm, *]
-    · simp only [arm64_norm, *]
-    · simp only [arm64_norm]
-    · simp only [arm64_norm]
-    · simp only [arm64_norm]
-    · intro s1 newCap p1 hpc1 hrun1 hsp1 htr1 hcs1 hnew_ge _
-      have hx19_1 : s1.readReg64 .x19 = v := by
-        have := hcs1.1; simp only [arm64_norm, *] at this; exact this
-      have hx20_1 : s1.readReg64 .x20 = ss := by
-        have := hcs1.2.1; simp only [arm64_norm, *] at this; exact this
-      have hcs_1 : EncRawUpperSaved s0 s1 :=
-        (hcs.trans ⟨by simp only [arm64_norm], by simp only [arm64_norm], by simp only [arm64_norm]⟩).trans
-          (EncRawUpperSaved.of_calleeSavedPreserved hcs1)
-      have hlt_new : bs.length < newCap.toNat := by omega
-      rw [vecU8At_open_one A v newCap p1 bs hlt_new]
-      simp only [sepExists_sepConj_left, sepConj_assoc]
-      refine SepWPp.exists_elim fun old => ?_
-      apply SepWPp.of_sepWP (mid := entry + (if p.preKeyId.isSome then 596#64 else 764#64))
-      wp_steps
-      apply SepWP.done
-        (by simp only [arm64_norm, optU32Tag_bne1_pc, *])
-        (by simp only [arm64_norm, *])
-      refine SepWPp.weaken_pre ?_ (hnext _ newCap p1
-        (by simp only [arm64_norm, optU32Tag_bne1_pc, *])
-        (by simp only [arm64_norm, *])
-        (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        (by simp only [arm64_norm, *])
-        (hcs_1.trans ⟨by simp only [arm64_norm], by simp only [arm64_norm], by simp only [arm64_norm]⟩))
-      rw [← vecU8At_close_one A v newCap p1 bs 0x4a#8 hlt_new]
-      unfold pendingOpenAt
-      exact entails_of_sep_focus (by sep_focus)
-
-/-! ## Subfield 1 length (`pre_key_id`, `596/764..636`) -/
-
 theorem ofNat64_len_bne_zero_true {bs : List (BitVec 8)} (hne : bs ≠ []) (hlt : bs.length < 2 ^ 63) :
     (BitVec.ofNat 64 bs.length != 0#64) = true := by
   simp only [bne, ofNat64_len_beq_zero_false hne hlt, Bool.not_false]
-
-theorem step_tag9_len1 {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (ss v sp0 : BitVec 64) (g : TailVecGhost) (p : PendingPreKey)
-    (hne_vec : g.vec.bytes ≠ []) (hlt_vec : g.vec.bytes.length < 2 ^ 63)
-    {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName +
-      (if p.preKeyId.isSome then 596#64 else 764#64))
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 80#64)
-    (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = v)
-    (hx20 : s.readReg64 .x20 = ss)
-    (hx24 : s.readReg64 .x24 = BitVec.zeroExtend 64 (optU32Tag p.preKeyId))
-    (hcs : EncRawUpperSaved s0 s)
-    (hP : P = pendingOpenAt A ss g p ∗ F := by sep_focus)
-    (hnext : ∀ sm : State,
-      sm.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName + 636#64 →
-      sm.status = .Running →
-      sm.sp = sp0 - 80#64 →
-      sm.trace = s0.trace →
-      sm.readReg64 .x19 = v →
-      sm.readReg64 .x20 = ss →
-      sm.readReg64 .x24 = BitVec.zeroExtend 64 (optU32Tag p.preKeyId) →
-      sm.readReg64 .x8 = BitVec.ofNat 64 (optUint32Field 1 p.preKeyId).length →
-      sm.readReg64 .x23 = BitVec.ofNat 64 g.vec.bytes.length →
-      EncRawUpperSaved s0 sm →
-      SepWPp (tripleRatchetProgAt b C ctl abs) ret sm (pendingOpenAt A ss g p ∗ F) Q (PanicAllocPost s0)) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q (PanicAllocPost s0) := by
-  encraw_fetches_range b (Rust.withPanics (tripleRatchetExterns C ctl abs)) 596 636
-  encraw_fetches_range b (Rust.withPanics (tripleRatchetExterns C ctl abs)) 764 776
-  generalize_entry (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName = entry
-  examples_hide_fetches
-  have hbeq0 := ofNat64_len_beq_zero_false hne_vec hlt_vec
-  have hbne0 := ofNat64_len_bne_zero_true hne_vec hlt_vec
-  rw [hP]
-  unfold pendingOpenAt
-  cases hpk : p.preKeyId with
-  | none =>
-    simp only [hpk, Option.isSome_none, Bool.false_eq_true, ↓reduceIte] at hpc
-    simp only [sepConj_assoc]
-    apply SepWPp.of_sepWP (mid := entry + bv% (636))
-    wp_steps
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    refine SepWPp.weaken_pre ?_ (hnext _
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, hpk, optUint32Field1_none_eq])
-      (by simp only [arm64_norm, *])
-      (hcs.trans ⟨by simp only [arm64_norm], by simp only [arm64_norm], by simp only [arm64_norm]⟩))
-    unfold pendingOpenAt
-    simp only [hpk]
-    exact entails_of_sep_focus (by sep_focus)
-  | some pkId =>
-    simp only [hpk, Option.isSome_some, ↓reduceIte] at hpc
-    have hpk_val : optU32ValAt (ss + 276#64) g.tail (some pkId) = ((ss + 276#64) ↦₃₂ pkId) :=
-      optU32ValAt_some _ _ _
-    rw [hpk_val]
-    simp only [sepConj_assoc]
-    apply SepWPp.of_sepWP (mid := entry + bv% (636))
-    wp_steps
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    refine SepWPp.weaken_pre ?_ (hnext _
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, ← optUint32Field1_some_length_bv pkId, *])
-      (by simp only [arm64_norm, *])
-      (hcs.trans ⟨by simp only [arm64_norm], by simp only [arm64_norm], by simp only [arm64_norm]⟩))
-    unfold pendingOpenAt
-    simp only [hpk, hpk_val]
-    exact entails_of_sep_focus (by sep_focus)
-
-/-! ## Subfield 2 length (`base_key`, `636..672/788`) -/
 
 theorem zext64_beq_zero_eq (v : BitVec 32) :
     (BitVec.zeroExtend 64 v == 0#64) = (v == 0#32) := by
@@ -550,63 +357,6 @@ theorem spk_cbz_pc (entry : BitVec 64) (v : BitVec 32) :
   rw [zext64_beq_zero_eq v]
   cases v == 0#32 <;> rfl
 
-theorem step_tag9_len2 {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (ss v sp0 : BitVec 64) (g : TailVecGhost) (p : PendingPreKey)
-    (hne_vec : g.vec.bytes ≠ [])
-    {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName + 636#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 80#64)
-    (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = v)
-    (hx20 : s.readReg64 .x20 = ss)
-    (hx24 : s.readReg64 .x24 = BitVec.zeroExtend 64 (optU32Tag p.preKeyId))
-    (hx8 : s.readReg64 .x8 = BitVec.ofNat 64 (optUint32Field 1 p.preKeyId).length)
-    (hx23 : s.readReg64 .x23 = BitVec.ofNat 64 g.vec.bytes.length)
-    (hcs : EncRawUpperSaved s0 s)
-    (hP : P = pendingOpenAt A ss g p ∗ F := by sep_focus)
-    (hnext : ∀ sm : State,
-      sm.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName +
-        (if p.signedPreKeyId == 0#32 then 788#64 else 672#64) →
-      sm.status = .Running →
-      sm.sp = sp0 - 80#64 →
-      sm.trace = s0.trace →
-      sm.readReg64 .x19 = v →
-      sm.readReg64 .x20 = ss →
-      sm.readReg64 .x24 = BitVec.zeroExtend 64 (optU32Tag p.preKeyId) →
-      sm.readReg64 .x8 = BitVec.ofNat 64 (optUint32Field 1 p.preKeyId).length →
-      sm.readReg64 .x9 = BitVec.ofNat 64 (bytesField 2 g.vec.bytes).length →
-      sm.readReg64 .x23 = BitVec.ofNat 64 g.vec.bytes.length →
-      sm.readReg64 .x22 = BitVec.signExtend 64 p.signedPreKeyId →
-      EncRawUpperSaved s0 sm →
-      SepWPp (tripleRatchetProgAt b C ctl abs) ret sm (pendingOpenAt A ss g p ∗ F) Q (PanicAllocPost s0)) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q (PanicAllocPost s0) := by
-  encraw_fetches_range b (Rust.withPanics (tripleRatchetExterns C ctl abs)) 636 672
-  generalize_entry (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName = entry
-  examples_hide_fetches
-  rw [hP]
-  unfold pendingOpenAt
-  simp only [sepConj_assoc]
-  apply SepWPp.of_sepWP (mid := entry + (if p.signedPreKeyId == 0#32 then 788#64 else 672#64))
-  wp_steps
-  apply SepWP.done
-    (by simp only [arm64_norm, spk_cbz_pc, *])
-    (by simp only [arm64_norm, *])
-  refine SepWPp.weaken_pre ?_ (hnext _
-    (by simp only [arm64_norm, spk_cbz_pc, *])
-    (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, ← bytesField2_nonempty_length_bv hne_vec, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (hcs.trans ⟨by simp only [arm64_norm], by simp only [arm64_norm], by simp only [arm64_norm]⟩))
-  unfold pendingOpenAt
-  exact entails_of_sep_focus (by sep_focus)
-
-/-! ## Subfield 3 length (`signed_pre_key_id`, `672/788..708/800`) -/
-
 theorem ts_cbz_pc (entry : BitVec 64) (v : BitVec 64) :
     (if (v == 0#64) = true then entry + bv% (800) else entry + bv% (708)) =
       entry + (if v == 0#64 then 800#64 else 708#64) := by
@@ -617,271 +367,10 @@ theorem ts_cbnz_pc (entry : BitVec 64) (v : BitVec 64) :
       entry + (if v == 0#64 then 800#64 else 708#64) := by
   cases v == 0#64 <;> rfl
 
-theorem step_tag9_len3 {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (ss v sp0 : BitVec 64) (g : TailVecGhost) (p : PendingPreKey)
-    {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName +
-      (if p.signedPreKeyId == 0#32 then 788#64 else 672#64))
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 80#64)
-    (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = v)
-    (hx20 : s.readReg64 .x20 = ss)
-    (hx24 : s.readReg64 .x24 = BitVec.zeroExtend 64 (optU32Tag p.preKeyId))
-    (hx8 : s.readReg64 .x8 = BitVec.ofNat 64 (optUint32Field 1 p.preKeyId).length)
-    (hx9 : s.readReg64 .x9 = BitVec.ofNat 64 (bytesField 2 g.vec.bytes).length)
-    (hx23 : s.readReg64 .x23 = BitVec.ofNat 64 g.vec.bytes.length)
-    (hx22 : s.readReg64 .x22 = BitVec.signExtend 64 p.signedPreKeyId)
-    (hcs : EncRawUpperSaved s0 s)
-    (hP : P = pendingOpenAt A ss g p ∗ F := by sep_focus)
-    (hnext : ∀ sm : State,
-      sm.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName +
-        (if p.timestamp == 0#64 then 800#64 else 708#64) →
-      sm.status = .Running →
-      sm.sp = sp0 - 80#64 →
-      sm.trace = s0.trace →
-      sm.readReg64 .x19 = v →
-      sm.readReg64 .x20 = ss →
-      sm.readReg64 .x24 = BitVec.zeroExtend 64 (optU32Tag p.preKeyId) →
-      sm.readReg64 .x8 = BitVec.ofNat 64 (optUint32Field 1 p.preKeyId).length →
-      sm.readReg64 .x9 = BitVec.ofNat 64 (bytesField 2 g.vec.bytes).length →
-      sm.readReg64 .x10 = BitVec.ofNat 64 (int32Field 3 p.signedPreKeyId).length →
-      sm.readReg64 .x23 = BitVec.ofNat 64 g.vec.bytes.length →
-      sm.readReg64 .x22 = BitVec.signExtend 64 p.signedPreKeyId →
-      sm.readReg64 .x21 = p.timestamp →
-      EncRawUpperSaved s0 sm →
-      SepWPp (tripleRatchetProgAt b C ctl abs) ret sm (pendingOpenAt A ss g p ∗ F) Q (PanicAllocPost s0)) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q (PanicAllocPost s0) := by
-  encraw_fetches_range b (Rust.withPanics (tripleRatchetExterns C ctl abs)) 672 708
-  encraw_fetches_range b (Rust.withPanics (tripleRatchetExterns C ctl abs)) 788 800
-  generalize_entry (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName = entry
-  examples_hide_fetches
-  rw [hP]
-  unfold pendingOpenAt
-  simp only [sepConj_assoc]
-  by_cases hspk : p.signedPreKeyId = 0#32
-  · simp only [hspk, beq_self_eq_true, ↓reduceIte] at hpc
-    apply SepWPp.of_sepWP (mid := entry + (if p.timestamp == 0#64 then 800#64 else 708#64))
-    wp_steps
-    apply SepWP.done
-      (by simp only [arm64_norm, ts_cbnz_pc, *])
-      (by simp only [arm64_norm, *])
-    refine SepWPp.weaken_pre ?_ (hnext _
-      (by simp only [arm64_norm, ts_cbnz_pc, *])
-      (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, hspk, int32Field3_zero_eq])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *])
-      (hcs.trans ⟨by simp only [arm64_norm], by simp only [arm64_norm], by simp only [arm64_norm]⟩))
-    unfold pendingOpenAt
-    exact entails_of_sep_focus (by sep_focus)
-  · have hspk_beq : (p.signedPreKeyId == 0#32) = false := bv32_beq_zero_false hspk
-    simp only [hspk_beq, Bool.false_eq_true, ↓reduceIte] at hpc
-    apply SepWPp.of_sepWP (mid := entry + (if p.timestamp == 0#64 then 800#64 else 708#64))
-    wp_steps
-    apply SepWP.done
-      (by simp only [arm64_norm, ts_cbz_pc, *])
-      (by simp only [arm64_norm, *])
-    refine SepWPp.weaken_pre ?_ (hnext _
-      (by simp only [arm64_norm, ts_cbz_pc, *])
-      (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, ← int32Field3_nonzero_length_bv hspk, *])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *])
-      (hcs.trans ⟨by simp only [arm64_norm], by simp only [arm64_norm], by simp only [arm64_norm]⟩))
-    unfold pendingOpenAt
-    exact entails_of_sep_focus (by sep_focus)
-
-/-! ## Subfield 4 length and outer varint (`708/800..824/872`) -/
-
 theorem optU32Tag_cbz_pc (entry : BitVec 64) (opt : Option (BitVec 32)) :
     (if (optU32Tag opt == 0#32) = true then entry + bv% (872) else entry + bv% (824)) =
       entry + (if opt.isSome then 824#64 else 872#64) := by
   cases opt <;> rfl
-
-theorem step_tag9_len4 {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hEV : Prost.EncodeVarintOk b C A ctl abs)
-    (ss v sp0 cap ptr : BitVec 64) (g : TailVecGhost) (p : PendingPreKey)
-    (bs : List (BitVec 8))
-    (hlen_lt : bs.length + 11 < 2 ^ 62)
-    {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName +
-      (if p.timestamp == 0#64 then 800#64 else 708#64))
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 80#64)
-    (halign : sp0 &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = v)
-    (hx20 : s.readReg64 .x20 = ss)
-    (hx24 : s.readReg64 .x24 = BitVec.zeroExtend 64 (optU32Tag p.preKeyId))
-    (hx8 : s.readReg64 .x8 = BitVec.ofNat 64 (optUint32Field 1 p.preKeyId).length)
-    (hx9 : s.readReg64 .x9 = BitVec.ofNat 64 (bytesField 2 g.vec.bytes).length)
-    (hx10 : s.readReg64 .x10 = BitVec.ofNat 64 (int32Field 3 p.signedPreKeyId).length)
-    (hx23 : s.readReg64 .x23 = BitVec.ofNat 64 g.vec.bytes.length)
-    (hx22 : s.readReg64 .x22 = BitVec.signExtend 64 p.signedPreKeyId)
-    (hx21 : s.readReg64 .x21 = p.timestamp)
-    (hcs : EncRawUpperSaved s0 s)
-    (hP : P = (pendingOpenAt A ss g p ∗ vecU8At A v cap ptr (bs ++ [0x4a#8]) ∗
-      A.pool ∗ stackAt (sp0 - 80#64) encodeRawSubStack) ∗ F := by sep_focus)
-    (hnext : ∀ (sm : State) (cap' ptr' : BitVec 64),
-      sm.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName +
-        (if p.preKeyId.isSome then 824#64 else 872#64) →
-      sm.status = .Running →
-      sm.sp = sp0 - 80#64 →
-      sm.trace = s0.trace →
-      sm.readReg64 .x19 = v →
-      sm.readReg64 .x20 = ss →
-      sm.readReg64 .x23 = BitVec.ofNat 64 g.vec.bytes.length →
-      sm.readReg64 .x22 = BitVec.signExtend 64 p.signedPreKeyId →
-      sm.readReg64 .x21 = p.timestamp →
-      EncRawUpperSaved s0 sm →
-      SepWPp (tripleRatchetProgAt b C ctl abs) ret sm
-        ((pendingOpenAt A ss g p ∗
-          vecU8At A v cap' ptr'
-            (bs ++ [0x4a#8] ++ encodeVarint (BitVec.ofNat 64 (encPendingMem g p).length)) ∗
-          A.pool ∗ stackAt (sp0 - 80#64) encodeRawSubStack) ∗ F)
-        Q (PanicAllocPost s0)) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q (PanicAllocPost s0) := by
-  have hCallEV := @encraw_call_encodeVarint b C A ctl abs hEV
-  encraw_fetches_range b (Rust.withPanics (tripleRatchetExterns C ctl abs)) 708 764
-  encraw_fetches_range b (Rust.withPanics (tripleRatchetExterns C ctl abs)) 800 824
-  generalize_entry (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName = entry
-  examples_hide_fetches
-  rw [hP]
-  by_cases hts : p.timestamp = 0#64
-  · simp only [hts, beq_self_eq_true, ↓reduceIte] at hpc
-    apply SepWPp.of_sepWP (mid := entry + bv% (2 ^ 64 + (ls_off% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>")))
-    wp_steps
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    refine hCallEV sp0 (BitVec.ofNat 64 (encPendingMem g p).length) v cap ptr (entry + bv% (820))
-      (bs ++ [0x4a#8]) (by simp; omega)
-      ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ (by sep_focus) ?_
-    · simp only [arm64_norm]
-    · simp only [arm64_norm, *]
-    · simp only [arm64_norm, *]
-    · exact sp_sub_80_spAligned halign (by simp only [arm64_norm, *])
-    · simp only [arm64_norm, *]
-    · simp only [arm64_norm]
-    · simp only [arm64_norm, ← encPendingMem_length_bv_ts_zero g p hts, *]
-    · simp only [arm64_norm, *]
-    · intro sm cap' ptr' hpcm hrunm hspm htrm hcsm
-      have hx19m : sm.readReg64 .x19 = v := by
-        have := hcsm.1; simp only [arm64_norm, *] at this; exact this
-      have hx20m : sm.readReg64 .x20 = ss := by
-        have := hcsm.2.1; simp only [arm64_norm, *] at this; exact this
-      have hx21m : sm.readReg64 .x21 = p.timestamp := by
-        have := hcsm.2.2.1; simp only [arm64_norm, *] at this; rw [hts]; exact this
-      have hx22m : sm.readReg64 .x22 = BitVec.signExtend 64 p.signedPreKeyId := by
-        have := hcsm.2.2.2.1; simp only [arm64_norm, *] at this; exact this
-      have hx23m : sm.readReg64 .x23 = BitVec.ofNat 64 g.vec.bytes.length := by
-        have := hcsm.2.2.2.2.1; simp only [arm64_norm, *] at this; exact this
-      have hx24m : sm.readReg64 .x24 = BitVec.zeroExtend 64 (optU32Tag p.preKeyId) := by
-        have := hcsm.2.2.2.2.2.1; simp only [arm64_norm, *] at this; exact this
-      have hcsm' : EncRawUpperSaved s0 sm :=
-        (hcs.trans ⟨by simp only [arm64_norm], by simp only [arm64_norm], by simp only [arm64_norm]⟩).trans
-          (EncRawUpperSaved.of_calleeSavedPreserved hcsm)
-      cases hpk : p.preKeyId with
-      | none =>
-        simp only [hpk, optU32Tag] at hx24m
-        apply SepWPp.of_sepWP (mid := entry + bv% (872))
-        wp_steps
-        apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        refine SepWPp.weaken_pre ?_ (hnext _ cap' ptr'
-          (by simp only [arm64_norm, Bool.false_eq_true, ↓reduceIte, *])
-          (by simp only [arm64_norm, *])
-          (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          (by simp only [arm64_norm, *])
-          (hcsm'.trans ⟨by simp only [arm64_norm], by simp only [arm64_norm], by simp only [arm64_norm]⟩))
-        exact entails_of_sep_focus (by sep_focus)
-      | some pkId =>
-        simp only [hpk, optU32Tag] at hx24m
-        apply SepWPp.of_sepWP (mid := entry + bv% (824))
-        wp_steps
-        apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        refine SepWPp.weaken_pre ?_ (hnext _ cap' ptr'
-          (by simp only [arm64_norm, ↓reduceIte, *])
-          (by simp only [arm64_norm, *])
-          (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          (by simp only [arm64_norm, *])
-          (hcsm'.trans ⟨by simp only [arm64_norm], by simp only [arm64_norm], by simp only [arm64_norm]⟩))
-        exact entails_of_sep_focus (by sep_focus)
-  · have hts_beq : (p.timestamp == 0#64) = false := bv64_beq_zero_false hts
-    simp only [hts_beq, Bool.false_eq_true, ↓reduceIte] at hpc
-    apply SepWPp.of_sepWP (mid := entry + bv% (2 ^ 64 + (ls_off% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>")))
-    wp_steps
-    apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    refine hCallEV sp0 (BitVec.ofNat 64 (encPendingMem g p).length) v cap ptr (entry + bv% (756))
-      (bs ++ [0x4a#8]) (by simp; omega)
-      ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ (by sep_focus) ?_
-    · simp only [arm64_norm]
-    · simp only [arm64_norm, *]
-    · simp only [arm64_norm, *]
-    · exact sp_sub_80_spAligned halign (by simp only [arm64_norm, *])
-    · simp only [arm64_norm, *]
-    · simp only [arm64_norm]
-    · simp only [arm64_norm, ← uint64Field4_nonzero_length_bv hts, ← encPendingMem_length_bv g p, *]
-    · simp only [arm64_norm, *]
-    · intro sm cap' ptr' hpcm hrunm hspm htrm hcsm
-      have hx19m : sm.readReg64 .x19 = v := by
-        have := hcsm.1; simp only [arm64_norm, *] at this; exact this
-      have hx20m : sm.readReg64 .x20 = ss := by
-        have := hcsm.2.1; simp only [arm64_norm, *] at this; exact this
-      have hx21m : sm.readReg64 .x21 = p.timestamp := by
-        have := hcsm.2.2.1; simp only [arm64_norm, *] at this; exact this
-      have hx22m : sm.readReg64 .x22 = BitVec.signExtend 64 p.signedPreKeyId := by
-        have := hcsm.2.2.2.1; simp only [arm64_norm, *] at this; exact this
-      have hx23m : sm.readReg64 .x23 = BitVec.ofNat 64 g.vec.bytes.length := by
-        have := hcsm.2.2.2.2.1; simp only [arm64_norm, *] at this; exact this
-      have hx24m : sm.readReg64 .x24 = BitVec.zeroExtend 64 (optU32Tag p.preKeyId) := by
-        have := hcsm.2.2.2.2.2.1; simp only [arm64_norm, *] at this; exact this
-      have hcsm' : EncRawUpperSaved s0 sm :=
-        (hcs.trans ⟨by simp only [arm64_norm], by simp only [arm64_norm], by simp only [arm64_norm]⟩).trans
-          (EncRawUpperSaved.of_calleeSavedPreserved hcsm)
-      cases hpk : p.preKeyId with
-      | none =>
-        simp only [hpk, optU32Tag] at hx24m
-        apply SepWPp.of_sepWP (mid := entry + bv% (872))
-        wp_steps
-        apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        refine SepWPp.weaken_pre ?_ (hnext _ cap' ptr'
-          (by simp only [arm64_norm, Bool.false_eq_true, ↓reduceIte, *])
-          (by simp only [arm64_norm, *])
-          (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          (by simp only [arm64_norm, *])
-          (hcsm'.trans ⟨by simp only [arm64_norm], by simp only [arm64_norm], by simp only [arm64_norm]⟩))
-        exact entails_of_sep_focus (by sep_focus)
-      | some pkId =>
-        simp only [hpk, optU32Tag] at hx24m
-        apply SepWPp.of_sepWP (mid := entry + bv% (824))
-        wp_steps
-        apply SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        refine SepWPp.weaken_pre ?_ (hnext _ cap' ptr'
-          (by simp only [arm64_norm, ↓reduceIte, *])
-          (by simp only [arm64_norm, *])
-          (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-          (by simp only [arm64_norm, *])
-          (hcsm'.trans ⟨by simp only [arm64_norm], by simp only [arm64_norm], by simp only [arm64_norm]⟩))
-        exact entails_of_sep_focus (by sep_focus)
-
-/-! ## Relocatable `[LibsignalPlacement]` proofs (block `14`) -/
 
 section Placed
 

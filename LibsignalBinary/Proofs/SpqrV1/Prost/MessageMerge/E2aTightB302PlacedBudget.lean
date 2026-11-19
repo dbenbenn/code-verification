@@ -9,10 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderSentClPlacedBudget
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderSentClPlacedBudget
+import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -36,6 +35,10 @@ import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Guarded-Tight Placed Budget Proof for `Chunked.HeaderSent::merge` (Block `302`)
@@ -46,7 +49,7 @@ Proves `tlb_ChunkedHeaderSentMergePlacedTightOkOf` on Block `302` within
 `PolynomialDecoder` `342,615` B) on canonical `tlb_ChunkedHeaderSentDom` inputs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -239,12 +242,12 @@ private theorem e2b302_bytesMerge3_poly_of_signed [LibsignalPlacement]
 
 /-! ## 3. Guarded Envelope & Domain-Only Spec -/
 
-def e2b302_ChunkedHeaderSentGuardedEnv (maxOps cumCap maxReq : Nat) :
+@[expose] def e2b302_ChunkedHeaderSentGuardedEnv (maxOps cumCap maxReq : Nat) :
     ChunkedHeaderSentMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_ChunkedHeaderSentDom
     (SpqrTightEvs maxOps cumCap maxReq) ChunkedHeaderSentMergeEnv
 
-private noncomputable def e2b302_domOnlySpec {M : AllocCostModel}
+private def e2b302_domOnlySpec {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps cumCap maxReq : Nat) :
     Spec (ChunkedHeaderSentMergeGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -803,7 +806,7 @@ private theorem e2b302_fitsEnv_polyDec_tight {M : AllocCostModel} {lim : BudgetL
 set_option quotPrecheck false in
 local notation "entry" => (blkPl_302).base
 
-private noncomputable def e2b302_poolAt {M : AllocCostModel} (A : RustCliAllocBudget M)
+private def e2b302_poolAt {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (evs : List AllocEvent) (s : State) : SepProp :=
   A.pool lim (M.stepEvents evs st) s
 
@@ -831,7 +834,7 @@ private theorem e2b302_pool_entails_poolAt_append {M : AllocCostModel} (A : Rust
   rw [e2b302_stepEvents_append]
   exact Entails.refl _
 
-private noncomputable def e2b302_domLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
+private def e2b302_domLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (evs : List AllocEvent) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64) (m : V1State.Chunked.HeaderSent)
     (bs cur : List (BitVec 8)) : SepProp :=
@@ -840,7 +843,7 @@ private noncomputable def e2b302_domLoopPre {M : AllocCostModel} (A : RustCliAll
     stackAt (s0.sp - 128#64) chunkedInlBelowStack ∗ memRegion (s0.sp - 128#64) 48 ∗
     chunkedInlSavedRegs10 s0.sp s0 ∗ (bufRef ↦₆₄ slot) ∗ sliceCursorAfter slot ptr bs cur
 
-private noncomputable def e2b302_domUcPreZeroDk {M : AllocCostModel} (A : RustCliAllocBudget M)
+private def e2b302_domUcPreZeroDk {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (evs : List AllocEvent) (s0 s : State)
     (msgPtr bufRef slot ptr epoch : BitVec 64) (auth : Option ProtoAuthenticator)
     (sendingEk : Option PolynomialEncoder) (receivingCt1 : Option PolynomialDecoder)
@@ -854,7 +857,7 @@ private noncomputable def e2b302_domUcPreZeroDk {M : AllocCostModel} (A : RustCl
     stackAt (s0.sp - 128#64) chunkedInlBelowStack ∗ memRegion (s0.sp - 128#64) 48 ∗
     chunkedInlSavedRegs10 s0.sp s0 ∗ (bufRef ↦₆₄ slot) ∗ sliceCursorAfter slot ptr bs cur
 
-private noncomputable def e2b302_domUcLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
+private def e2b302_domUcLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (evs : List AllocEvent) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64) (uc : V1State.Unchunked.EkSent)
     (sendingEk : Option PolynomialEncoder) (receivingCt1 : Option PolynomialDecoder)

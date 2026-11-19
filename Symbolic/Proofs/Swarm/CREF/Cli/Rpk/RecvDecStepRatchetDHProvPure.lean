@@ -18,7 +18,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.COMPOSED.CompTrDHS
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA
@@ -49,7 +49,7 @@ establishes the reachable-trace invariant `TRSkippedUsedLt` bounding `SkippedKey
 by the trace length.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

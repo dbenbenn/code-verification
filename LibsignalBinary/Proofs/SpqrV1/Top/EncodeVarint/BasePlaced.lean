@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.Base
+public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.Base
 import ProofLib.SepLogic.WPp
 
 /-!
 # Relocatable Base Step Lemmas for `spqr::encode_varint` (Block `326`, 164 insns)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,11 +41,11 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Wrap a spec with `⌜StepInvPlaced s0 s⌝` in the precondition. -/
-def spqrWithStepInvPlaced {α : Type} (s0 : State) (spec : Spec α) : Spec α :=
+@[expose] def spqrWithStepInvPlaced {α : Type} (s0 : State) (spec : Spec α) : Spec α :=
   { spec with pre := fun x s => ⌜StepInvPlaced s0 s⌝ ∗ spec.pre x s }
 
 /-- `grow_one` (`lsmpl.base 619`) contract at step state `s` given `StepInvPlaced s0 s`. -/
-def GrowOneU8StepOk [LibsignalPlacement] (s0 : State) (A : RustAlloc)
+@[expose] def GrowOneU8StepOk [LibsignalPlacement] (s0 : State) (A : RustAlloc)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_326).rebase (blkPl_326).base (Rust.withPanics abs))
     (lsmpl.base 619)

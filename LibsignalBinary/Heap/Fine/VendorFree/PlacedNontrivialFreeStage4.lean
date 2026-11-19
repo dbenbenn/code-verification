@@ -452,14 +452,14 @@ theorem sepWP_nf_at_0b8 [MallocngMultiPlacement]
           hProc' hcs')
 
 abbrev NfAllFreeFrame [MallocngMultiPlacement]
-    (fuel : Nat) (γ : GhostName) (st : MallocngSt) (s0 : State) : SepProp :=
+    (fuel : Nat) (γ : GhostName) (st : MallocngSt) (s0 : State) (ro : Bool := false) : SepProp :=
   stackFrameAt (s0.sp - 32#64) (32 * fuel) ∗ nfStackSaved s0.sp s0 ∗
-  MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ∗
+  MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ro ∗
   ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
   MappedSet st.masterDom (OwnedMappedByte st)
 
 set_option maxHeartbeats 400000 in
-private theorem sepWP_nf_kept_130 [MallocngMultiPlacement]
+private theorem sepWP_nf_kept_130 [MallocngMultiPlacement] {ro : Bool}
     {b : BitVec 64} (hb : BlkBase 5 b) {k fuel : Nat} (hFuel : fuel ≤ 6)
     {γ : GhostName} {brkStart : BitVec 64} {bud : MallocngBudget}
     {st : MallocngSt} {g : GroupDesc} {idx : Nat}
@@ -480,13 +480,13 @@ private theorem sepWP_nf_kept_130 [MallocngMultiPlacement]
     (hSc48 : g.sc < 48) (hSc7 : 7 ≤ g.sc) (hSc38 : g.sc ≤ 38)
     (hMpPos : 0 < g.maplen) (hNxSelf : g.next = g.metaPtr)
     (hStrideFit : g.lastIdx = 0 → slotStride g.sc + 16 ≤ g.maplen * 4096)
-    (hCont : NfDeqCont b (s0.readReg64 .lr) st g (NfAllFreeFrame fuel γ st s0) s0 s
-      (NfFuelPost k fuel γ brkStart bud st s0) oom) :
+    (hCont : NfDeqCont b (s0.readReg64 .lr) st g (NfAllFreeFrame fuel γ st s0 ro) s0 s
+      (NfFuelPost (ro := ro) k fuel γ brkStart bud st s0) oom) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       ((maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-       NfAllFreeFrame fuel γ st s0)
-      (NfFuelPost k fuel γ brkStart bud st s0) oom := by
+       NfAllFreeFrame fuel γ st s0 ro)
+      (NfFuelPost (ro := ro) k fuel γ brkStart bud st s0) oom := by
   have _ := hb
   have hCtx20 : pageOf maddrs.ctx + lo12Of maddrs.ctx = maddrs.ctx := pageOf_add_lo12Of maddrs.ctx
   have _hSignExt : ((BitVec.ofNat 64 g.sc).truncate 32 - 7#32).signExtend 64 =
@@ -596,8 +596,8 @@ private theorem sepWP_nf_kept_130 [MallocngMultiPlacement]
           SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s474
             ((maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
              ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-             NfAllFreeFrame fuel γ st s0)
-            (NfFuelPost k fuel γ brkStart bud st s0) oom := by
+             NfAllFreeFrame fuel γ st s0 ro)
+            (NfFuelPost (ro := ro) k fuel γ brkStart bud st s0) oom := by
         intro s4 hpc4 hrun4 hx19_4 hw1_4 hsp4 hProc4 hbrk4 hperm4 hcs4
         have hBmG0 := (byteMap_update40 hwf.masterDom_wf.1 st.byteVal (P := OwnedRwByte st)
           (m := g.metaPtr) (bs := (mkFreedKeepGroup g idx).metaBytes)
@@ -610,7 +610,10 @@ private theorem sepWP_nf_kept_130 [MallocngMultiPlacement]
             hpc4 hrun4 hx19_4 hw1_4 hmAl hmFit rfl (metaBytes_congr rfl rfl rfl rfl rfl rfl)
             hsp4 hspAl0 hProc4 hbrk4 hperm4 hcs4
             hWf1 rfl rfl (by omega) hDyn1
-            (Cost.groupsGrpMono_replaceGroupByMeta hg _ rfl rfl) hByte1
+            (Cost.groupsGrpMono_replaceGroupByMeta hg _ rfl rfl)
+            (Cost.groupsFreeMono_replaceGroupByMeta hg _ rfl rfl rfl rfl rfl
+              (Cost.Fine.SlotUserSub.set_nonUser _ _ _ (fun _ _ _ h => nomatch h)))
+            hByte1
         · dsimp only [NfAllFreeFrame, NfStaticRest]
           rw [hProt1, hMap1]
           sep_frame
@@ -662,7 +665,7 @@ private theorem sepWP_nf_kept_130 [MallocngMultiPlacement]
                      by simpa [calleeSavedVRegs] using cv⟩)
 
 set_option maxHeartbeats 400000 in
-theorem sepWP_nf_at_0e4 [MallocngMultiPlacement]
+theorem sepWP_nf_at_0e4 [MallocngMultiPlacement] {ro : Bool}
     {b : BitVec 64} (hb : BlkBase 5 b) {k fuel : Nat} (hFuel : fuel ≤ 6)
     {γ : GhostName} {brkStart : BitVec 64} {bud : MallocngBudget}
     {st : MallocngSt} {g : GroupDesc} {idx : Nat}
@@ -682,13 +685,13 @@ theorem sepWP_nf_at_0e4 [MallocngMultiPlacement]
     (hg : g ∈ st.groups) (hIdx : idx < g.slots.length) (hClaimed : g.slots[idx]'hIdx = .claimed)
     (hSc48 : g.sc < 48) (hMpPos : 0 < g.maplen)
     (hStrideFit : g.lastIdx = 0 → slotStride g.sc + 16 ≤ g.maplen * 4096)
-    (hCont : NfDeqCont b (s0.readReg64 .lr) st g (NfAllFreeFrame fuel γ st s0) s0 s
-      (NfFuelPost k fuel γ brkStart bud st s0) oom) :
+    (hCont : NfDeqCont b (s0.readReg64 .lr) st g (NfAllFreeFrame fuel γ st s0 ro) s0 s
+      (NfFuelPost (ro := ro) k fuel γ brkStart bud st s0) oom) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       ((maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-       NfAllFreeFrame fuel γ st s0)
-      (NfFuelPost k fuel γ brkStart bud st s0) oom := by
+       NfAllFreeFrame fuel γ st s0 ro)
+      (NfFuelPost (ro := ro) k fuel γ brkStart bud st s0) oom := by
   have _ := hb
   have hLast31 : g.lastIdx ≤ 31 := (hwf.groups_wf g hg).2.1
   wp_step

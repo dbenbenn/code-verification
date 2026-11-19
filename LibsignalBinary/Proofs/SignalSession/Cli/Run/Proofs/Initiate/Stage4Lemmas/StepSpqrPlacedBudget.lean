@@ -9,22 +9,48 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.CellsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepSpqrPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.CellsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepSpqrPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.Link
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Decode
+import Mathlib.Tactic.Basic
+import Mathlib.Tactic.ToAdditive
+import Mathlib.Tactic.ToDual
+import Lean
+import Lean.Elab.SyntheticMVars
+import Lean.Meta.Reduce
+import ProofLib.GenDecodes
+import ProofLib.GenPlacedFetches
+import ProofLib.ProgramReflection
+import ProofLib.SepLogic.CodeLookup
+import ProofLib.SepLogic.WP.ControlTactics
+import ProofLib.VCGen
+import ProofLib
+import ProofLib.FsTrace
+import ProofLib.Placed.Multi
+import ProofLib.ProgramReflection.Variant.TrapTransfer
+import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.Leaves -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.Defs
+import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAlice
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Cells
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExit
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExitPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Stage 4 Segment 2 (`[LibsignalPlacement]`): `spqr_chain_params` and `spqr::initial_state` (`+4576 → +4848`)
@@ -34,13 +60,11 @@ across `spqr_chain_params` and advancing `st` by `InitStateEnv pSpqr evs` across
 `spqr::initial_state`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
 set_option linter.dupNamespace false
-
-noncomputable section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepSpqrPlacedBudget
 
@@ -112,7 +136,7 @@ private theorem sepWP_done_tpidr {prog : Program} {target_pc : BitVec 64} {s0 s 
   SepWP.done hpc hrun ⟨htp, hpost⟩
 
 /-- Image-free budget-threaded inner `Spec` for `spqr::initial_state` (Block `327`) using `lsLogOff`. -/
-def spqrInitialStateInnerSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def spqrInitialStateInnerSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (InitStateEnv : CryptoVerification.LibsignalSpqrV1.Params → List AllocEvent → Prop)
     (F : ShaCompress) :
@@ -551,4 +575,3 @@ theorem stage4_step_spqr_placed [LibsignalPlacement] {M : AllocCostModel}
       hx20f, hx21f, hentf⟩
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepSpqrPlacedBudget
-end

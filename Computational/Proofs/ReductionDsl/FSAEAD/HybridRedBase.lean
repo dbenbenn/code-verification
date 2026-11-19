@@ -13,14 +13,16 @@ public import Computational.Proofs.ReductionDsl.FSAEAD.HybridCosted -- proof-set
 public import Computational.Proofs.ReductionDsl.FSAEAD.HybridInv -- proof-setup: allow-public-import
 public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
 public import Computational.Specifications.Session.ACD19.Ratchet.LibsignalBound
-public import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Out -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Out
 import Computational.Proofs.ReductionDsl.Notation
-import Computational.Proofs.ReductionDsl.SimRel
+public import Computational.Proofs.ReductionDsl.SimRel -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Size
 import Computational.Proofs.ReductionDsl.Tables
 import Computational.Proofs.GameHop.StateSim
 import Mathlib.Tactic.Ring
 import Mathlib.Tactic.Linarith
+public import Computational.Proofs.CryptoGames.FSAEAD.HybridProofDefs
+public import Computational.Proofs.CryptoGames.FSAEAD.HybridWithProofDefs
 
 /-!
 # Two-stage simulation infrastructure for ACD19 Theorem 5 reductions

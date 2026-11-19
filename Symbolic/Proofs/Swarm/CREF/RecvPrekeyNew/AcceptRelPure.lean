@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptBinPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptHypsPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieNormPure
-public import Symbolic.Proofs.Swarm.CREF.Sem
+public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptBinPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptHypsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieNormPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyStart
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptRecRelPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.DecCryptoAPure
@@ -38,7 +38,7 @@ fresh pre-key message `[.recv b, .rng d, .accept pt]` without a collision, with 
 previous session bytes `ps`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

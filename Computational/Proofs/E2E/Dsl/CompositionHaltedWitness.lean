@@ -15,11 +15,48 @@ public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge -- proo
 public import Computational.Proofs.LibsignalCli.MainHaltedKeyInd -- proof-setup: allow-public-import
 public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.M3Interfaces -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.M3Subprograms -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.M3Subprograms
 public import Computational.Proofs.E2E.Dsl.KindRedHalted -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.KindRedHaltedEval -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.PrefixRedHalted -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.PrefixRedHaltedEval -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.ComposedKeyIndHop
+import Computational.Proofs.E2E.ComposedPrefixHelpers
+import Computational.Proofs.E2E.TagSync1KeyReal
+import Computational.Proofs.GameHop.Advantage
+import Computational.Proofs.GameHop.GlobalHybrid
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.ReductionDsl.Soundness
+import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingC
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingD
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhD
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
+import Computational.Proofs.SignalPqxdh.Security.SigHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHopC
+import Mathlib.Data.List.Dedup
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Bool
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Halted Multi-Session Composition Witness Infrastructure

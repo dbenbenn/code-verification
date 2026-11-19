@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -39,7 +39,7 @@ satisfies `ShapeId st.myIk` and `ShapeId st.peerIk`, established via the trace i
 `TraceIkOk`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

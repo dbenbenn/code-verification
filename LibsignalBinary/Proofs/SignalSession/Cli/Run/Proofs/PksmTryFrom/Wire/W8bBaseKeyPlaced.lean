@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bBaseKey
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5aBaseKeyWPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bPostLoopPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bBaseKey -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5aBaseKeyWPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bPostLoopPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPost
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.OkBridgePlaced -- proof-setup: allow-public-import
 
 /-!
 # Relocatable `[LibsignalPlacement]` `+0x5b4` Continuation (`preKey5b4OkW_placed_of_684`)
@@ -23,7 +24,7 @@ Defines `w8bRowKPostPlaced`, `PreKey684OkWPlaced`, and `PreKeyBaseKeyErrWPlaced`
 proves `preKey5b4OkW_placed_of_684` on `preKeyPlacedProg H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -49,13 +50,13 @@ open CryptoVerification.SignalSession.Cli.RunProofs
 
 /-! ## 1. Frames and the `+0x684` continuation (`[LibsignalPlacement]`) -/
 
-def w8bRowKPostPlaced [LibsignalPlacement] (A : RustAlloc) (sp' bkCap bkPtr : BitVec 64)
+@[expose] def w8bRowKPostPlaced [LibsignalPlacement] (A : RustAlloc) (sp' bkCap bkPtr : BitVec 64)
     (bk : List (BitVec 8)) : SepProp :=
   ((sp' + 72#64) ↦₆₄ BitVec.ofNat 64 bk.length) ∗ ((sp' + 80#64) ↦₆₄ bkPtr) ∗
     ((sp' + 312#64) ↦₈ 0#8) ∗ ((sp' + 313#64) ↦ₛ (bk.take 33).drop 1) ∗
     memRegion (sp' + 345#64) 15 ∗ Wire.vecU8Buf A bkCap bkPtr bk ∗ lsLogOff
 
-def PreKey684OkWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def PreKey684OkWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   ∀ (x : RunCompose.PksmGhost) (s0 sf : State) (vb b1 : BitVec 8) (bs1 : List (BitVec 8))
     (m : ProtoPreKeySignalMessage) (bk ik msg : List (BitVec 8)) (spkId : BitVec 32)
     (pk : PublicKey)
@@ -85,7 +86,7 @@ def PreKey684OkWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks)
         (Pf ⊢ (pksmTryFromSpecPlaced A).post x s0 sf'))
       (tryFromQp s0)
 
-def PreKeyBaseKeyErrWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def PreKeyBaseKeyErrWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   ∀ (x : RunCompose.PksmGhost) (s0 sf : State) (vb b1 : BitVec 8) (bs1 : List (BitVec 8))
     (m : ProtoPreKeySignalMessage) (bk ik msg : List (BitVec 8)) (spkId : BitVec 32)
     (e : SignalProtocolError)

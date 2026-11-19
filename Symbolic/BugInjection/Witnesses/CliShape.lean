@@ -12,14 +12,14 @@ module
 public import Symbolic.BugInjection.Split
 public import Symbolic.Specifications.Refinement.ElfBinding
 public import Symbolic.Specifications.Security.Binary
-public import Symbolic.Proofs.SpecLemmas.SecurityBinaryFixed
 
 /-!
-# CLI Refinement Instance of `RefinementShape`
+# CLI Refinement Base Shape and Setup Helpers
 
-Instantiates `RefinementShape` for `CompRefinesCliElf` (`cliCompShape`, `cliCompFits`), defines
-witness setup records and byte-decoding helpers (`PQXDHSpqrSetup`, `CompKyberCorrectOn`,
-`compFits`, `natBytes`, `hexBytes`), and proves `not_signalSessionSecure_of_witness`.
+Defines witness setup records and byte-decoding helpers (`PQXDHSpqrSetup`, `CompKyberCorrectOn`,
+`SetupMatches`, `natBytes`, `hexBytes`, `CliSetupMatches`) and the base `RefinementShape` `cliCompShape`
+whose specification half (`cliCompShape.SpecHalf`) is shared across CLI witnesses and equipped with
+relocatable ELF traces in `Symbolic/BugInjection/Witnesses/CliShapePlaced.lean`.
 -/
 
 @[expose] public section
@@ -58,6 +58,12 @@ structure PQXDHSpqrSetup where
   kyberCts : List HwBytes
   /-- Attacker-applied X25519 8-torsion shifts as `(point, point + T)` byte pairs with `8 • T = 0`. -/
   torsionShifts : List (HwBytes × HwBytes) := []
+  /-- Whether Bob provisioned a one-time prekey (`r.withOpk`). Defaults to `false`. -/
+  withOpk : Bool := false
+  /-- Bob's one-time prekey ID (`r.opkId`), meaningful when `withOpk = true`. -/
+  opkId : BitVec 32 := 0
+  /-- Bob's one-time prekey secret (`secretBytes r 6`), meaningful when `withOpk = true`. -/
+  opk : HwBytes := []
 
 /-- Every ciphertext in `cts` produced by `kyberEncapsBytes` decapsulates to the same shared secret
 under `kyberDecapsBytes`. -/
@@ -65,10 +71,14 @@ def CompKyberCorrectOn (i : ExternInterpretation) (r : ProtocolSetup) (cts : Lis
   ∀ ct ∈ cts, ∀ e ss, e.length = 32 → kyberEncapsBytes i r e = some (ct, ss) →
     kyberDecapsBytes i r ct = some ss
 
-/-- Binds `ProtocolSetup` `r` to witness setup `w` (without one-time prekeys) and requires
+/-- Binds `ProtocolSetup` `r` to witness setup `w` (with optional one-time prekey) and requires
 `ExternCryptoLawsHold`, `X25519PubCanonical`, and `CompKyberCorrectOn` under `i`. -/
-def compFits (w : PQXDHSpqrSetup) (i : ExternInterpretation) (r : ProtocolSetup) : Prop :=
-  ProtocolSetupWF r ∧ r.withOpk = false ∧ r.regIdA = w.regIdA ∧ r.regIdB = w.regIdB ∧
+def SetupMatches (w : PQXDHSpqrSetup) (i : ExternInterpretation) (r : ProtocolSetup) : Prop :=
+  ProtocolSetupWF r ∧
+    (match w.withOpk with
+     | false => r.withOpk = false
+     | true => r.withOpk = true ∧ r.opkId = w.opkId ∧ secretBytes r 6 = w.opk) ∧
+    r.regIdA = w.regIdA ∧ r.regIdB = w.regIdB ∧
     r.spkId = w.spkId ∧ r.kpkId = w.kpkId ∧ secretBytes r 0 = w.aliceId ∧
     secretBytes r 1 = w.bobId ∧ secretBytes r 2 = w.spk ∧
     r.opaqueBytes (setupPublic r 5) = w.spkSig ∧ r.opaqueBytes (setupPublic r 6) = w.kyberPk ∧
@@ -88,8 +98,9 @@ def hexBytes (s : String) : HwBytes :=
     | _ => []
   go s.toList
 
-/-- `CompRefinesCliElf` packaged as a `RefinementShape`, with `InvertsGuarded` CLI traces from
-`initDirs` and explanation by `Explains` or `CollisionAfterExplainedPrefix`. -/
+/-- Base CLI `RefinementShape` fixing the interpretation, setup records, contracts, and explanation
+predicate (`Explains` or `CollisionAfterExplainedPrefix`); `CliShapePlaced.cliCompShapePlaced`
+overrides `traces` with `elfRelPlaced mpl mmpl elf`. -/
 def cliCompShape : RefinementShape where
   Setup := Arm64.Process.ElfImage
   Interp := ExternInterpretation × CryptoVerification.SignalSession.CliHooks
@@ -99,46 +110,14 @@ def cliCompShape : RefinementShape where
   contracts := fun iw _ => ExternContractsHoldCli iw.1 ∧ HooksMatchInterpretation iw.1 iw.2
   wf := DY.Libsignal.Composed.Refinement.ProtocolSetupWF
   ghostOk := fun _ _ _ => True
-  traces := fun elf iw r evs =>
-    CliTraces (elfRel elf iw.1 iw.2) iw.1 r (CliTurn.init (initDirs iw.1 r)) evs ∧
-      InvertsGuarded iw.1 r evs
+  traces := fun _ _ _ _ => False
   explained := fun iw r S evs =>
     (∃ g ss vis, Explains iw.1 r S g ss vis evs) ∨ CollisionAfterExplainedPrefix iw.1 r S evs
 
-theorem cliCompShape_refines_iff (elf : Arm64.Process.ElfImage) :
-    cliCompShape.Refines elf ↔ CompRefinesCliElf elf := by
-  constructor
-  · intro h interp hc W ha r hwf
-    obtain ⟨S, _, hall⟩ := h (interp, W) ⟨hc, ha⟩ r hwf
-    exact ⟨S, fun evs htr hg => hall evs ⟨htr, hg⟩⟩
-  · intro h ⟨interp, W⟩ ⟨hc, ha⟩ r hwf
-    obtain ⟨S, hall⟩ := h interp hc W ha r hwf
-    exact ⟨S, trivial, fun evs ⟨htr, hg⟩ => hall evs htr hg⟩
-
-/-- Combines `compFits w iw.1 r` with `ExternContractsHoldCli` and `HooksMatchInterpretation`. -/
-def cliCompFits (w : PQXDHSpqrSetup)
+/-- Combines `SetupMatches w iw.1 r` with `ExternContractsHoldCli` and `HooksMatchInterpretation`. -/
+def CliSetupMatches (w : PQXDHSpqrSetup)
     (iw : ExternInterpretation × CryptoVerification.SignalSession.CliHooks)
     (r : DY.Libsignal.Composed.Refinement.ProtocolSetup) : Prop :=
-  compFits w iw.1 r ∧ ExternContractsHoldCli iw.1 ∧ HooksMatchInterpretation iw.1 iw.2
-
-/-- Refutes `SignalSessionSecure bytes` from `cliCompShape.SpecHalf fits τ`, a conditional
-`cliCompShape.ImplHalf fits elf τ` for the parsed ELF image, and `CoinsFresh` under `fits`.
-`SpecHalf` of `cliCompShape` suffices because `SignalSessionSecure` strengthens
-`CompRefinesCliElf` with `CoinsFresh` and security-query postconditions on `τ` and any collision
-prefix. -/
-theorem not_signalSessionSecure_of_witness {fits : cliCompShape.Interp → cliCompShape.Rec → Prop}
-    {τ : List CliEvent} {bytes : List (BitVec 8)} (hs : cliCompShape.SpecHalf fits τ)
-    (hi : ∀ elf : Arm64.Process.ElfImage, Arm64.Process.ElfImage.parse bytes = .ok elf →
-      cliCompShape.ImplHalf fits elf τ)
-    (hcf : ∀ iw r, fits iw r → CoinsFresh r τ) :
-    ¬ DY.Libsignal.Composed.Security.SignalSessionSecure bytes := by
-  rintro ⟨elf, hparse, _hcode, _hprog, hsec⟩
-  obtain ⟨⟨interp, W⟩, r, hfit, ⟨hc, hW⟩, htr, hg⟩ := hi elf hparse
-  obtain ⟨hwf, hne⟩ := hs (interp, W) r hfit
-  obtain ⟨S, hall⟩ := hsec interp hc W hW r hwf
-  refine hne S trivial ?_
-  rcases hall τ htr hg (hcf (interp, W) r hfit) with ⟨hex, _⟩ | ⟨evs₁, ev, evs₂, heq, ⟨g, ss, vis, hE, hN⟩, _⟩
-  · exact Or.inl hex
-  · exact Or.inr ⟨evs₁, ev, evs₂, g, ss, vis, heq, hE, hN⟩
+  SetupMatches w iw.1 r ∧ ExternContractsHoldCli iw.1 ∧ HooksMatchInterpretation iw.1 iw.2
 
 end Symbolic.BugInjection

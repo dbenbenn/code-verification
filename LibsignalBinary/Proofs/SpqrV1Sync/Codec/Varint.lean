@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.VarintPure
+public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.VarintPure -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
 import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Proof
+import LibsignalBinary.Proofs.ProtoCodecRoundTrip
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append
 
 set_option autoImplicit false
 
@@ -22,7 +24,7 @@ Re-exports `LibsignalBinary.Proofs.SpqrV1Sync.Codec.VarintPure` and proves
 `proto_decodeVarint_encodeVarint`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.Codec
 

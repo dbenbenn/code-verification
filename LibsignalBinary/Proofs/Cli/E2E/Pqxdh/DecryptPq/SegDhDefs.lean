@@ -11,10 +11,10 @@ module
 
 public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhDefs
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.FnOffEq
-import LibsignalBinary.Proofs.SignalSession.Coins.Fill
+import LibsignalBinary.Proofs.SignalSession.Coins.Defs
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Segment `S3` (`dh_ratchet_step`) Definitions for CLI `try_decrypt_with_state::<Coins>`
@@ -23,7 +23,7 @@ Instruction-fetch macro `td_fetches_cli`, `S3CommitState` (`+0x8ac`) checkpoint 
 in-image `signal_session_coins_fill` callee bridge for Segment `S3` in `libsignalSessionImage`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegB
 
@@ -52,11 +52,6 @@ set_option maxHeartbeats 400000
 attribute [local irreducible] Program.fetch Program.externAt?
 
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-
-/-- Instruction-fetch macro for `try_decrypt_with_state::<signal_session_handshake::Coins>` covering `len` bytes from function-relative offset `k0`. -/
-macro "td_fetches_cli " b:term:max H:term:max hfn:ident k0:num len:num : tactic =>
-  `(tactic| code_fetches_range CryptoVerification.libsignalSessionCode
-    CryptoVerification.LibsignalTripleRatchet.libsignalTripleRatchetBinCli $b $H $hfn (ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_cli_handshake::Coins>") $k0 $len)
 
 theorem _root_.CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.SegB.tapeAfter_zero_eq (ctl cur : BitVec 64) (rest : List (BitVec 8)) :
     tapeAfter ctl cur rest 0 =
@@ -179,95 +174,7 @@ namespace ChainArrayBytes
 
 end ChainArrayBytes
 
-/-- Segment `S3` commit checkpoint PC (`+0x8ac`): state commit, `PublicKey::serialize`, `ChainKey::to_pb`, `receiver_chains` push/eviction, and `S4State` staging after sending `RootKey::create_chain` succeeds. -/
-abbrev _root_.CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.SegB.segS3CommitPC (img : Obj.Image) : BitVec 64 := CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.tryDecryptEntry img + 0x8ac#64
-
-/-- Segment `S3` commit checkpoint state (`+0x8ac`): both `RootKey::create_chain` calls and
-`KeyPair::generate` (`signal_session_coins_fill` + clamping + `derive_public_key_bytes`) have
-succeeded, `tr.ratchet.rootKey` at `sp + 0xb8..0xd8` is zeroed, `draws = min 32 x.rest.length`,
-`[sp + 0x190..0x1d8]` holds `(finalRootKey, senderChainKey)`, `[sp + 0x3d0..0x3f4]` (and staging
-copies at `sp + 0x4c0..0x4e0`, `sp + 0x10..0x14`) holds `receiverChainKey`, and
-`[sp + 0x400..0x440]` holds `newSenderKey`. -/
-def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.SegB.S3CommitState (A : RustAlloc) (ctl : BitVec 64) (img : Obj.Image)
-    (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
-    (st1 : SessionState (List (BitVec 8)))
-    (receiverChainKey : ChainKey) (newSenderKey : KeyPair)
-    (finalRootKey : RootKey) (senderChainKey : ChainKey)
-    (R : SepProp) (s0 s : State) : Prop :=
-  let sp := s0.sp - 1504#64
-  let draws := min 32 x.rest.length
-  s.pc = CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.SegB.segS3CommitPC img ∧
-  tryDecryptMidMeta img s0 s ∧
-  s.readReg64 .x19 = x.ret ∧
-  s.readReg64 .x20 = sp + 0x140#64 ∧
-  s.readReg64 .x21 = x.ss ∧
-  s.readReg64 .x22 = x.msgA ∧
-  s.readReg64 .x23 = sp + 0x500#64 ∧
-  s.readReg64 .x25 = sp + 0x190#64 ∧
-  s.readReg64 .x27 = sp + 0x38#64 ∧
-  s.readReg64 .x28 = sp + 0x3d0#64 ∧
-  ∃ (msgW : BitVec 32),
-    msgW.setWidth 8 = msgTypeByte x.msgType ∧
-    (s.mem ⊨
-      sessionStateAt A x.ss x.G.afterTrFrom st1 ∗
-      trAt A (sp + 0x38#64) trG { tr with ratchet := { tr.ratchet with rootKey := 0 } } ∗
-      memRegion x.ret 48 ∗
-      memRegion sp 0x10 ∗
-      ((sp + 0x10#64) ↦ₛ ((chainKeyBytes receiverChainKey).drop 16).take 4) ∗
-      memRegion (sp + 0x14#64) 8 ∗
-      ((sp + 0x1c#64) ↦₃₂ msgW) ∗
-      ((sp + 0x20#64) ↦₆₄ x.locA) ∗
-      ((sp + 0x28#64) ↦₃₂ x.msg.counter) ∗
-      memRegion (sp + 0x2c#64) 4 ∗
-      ((sp + 0x30#64) ↦₆₄ x.remA) ∗
-      memRegion (sp + 0x140#64) 0x50 ∗
-      ((sp + 0x190#64) ↦₃₂ 0#32) ∗
-      ((sp + 0x194#64) ↦ₛ keyToBytes32 finalRootKey) ∗
-      ((sp + 0x1b4#64) ↦ₛ chainKeyBytes senderChainKey) ∗
-      memRegion (sp + 0x1d8#64) 0xd8 ∗
-      memRegion (sp + 0x2b0#64) 0x10 ∗
-      memRegion (sp + 0x2c0#64) 0x110 ∗
-      ((sp + 0x3d0#64) ↦ₛ chainKeyBytes receiverChainKey) ∗
-      memRegion (sp + 0x3f4#64) 12 ∗
-      ((sp + 0x400#64) ↦ₛ newSenderKey.publicKey.bytes.toList) ∗
-      ((sp + 0x420#64) ↦ₛ newSenderKey.privateKey.bytes.toList) ∗
-      memRegion (sp + 0x440#64) 0x80 ∗
-      ((sp + 0x4c0#64) ↦ₛ (chainKeyBytes receiverChainKey).drop 20) ∗
-      ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes receiverChainKey).take 16) ∗
-      memRegion (sp + 0x4e0#64) 0xa0 ∗
-      CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.tryDecryptCommonHeap A ctl img x draws s0 ∗ R)
-
 namespace BS10
-
-/-- In-image `signal_session_coins_fill` (`+0x77c`) satisfies `coinsFillAtSpec b tryDecryptSubStack cur rest`. -/
-theorem _root_.CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.SegB.BS10.coinsFillAt_ok_td
-    {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl cur : BitVec 64}
-    {rest : List (BitVec 8)} {abs : String → Option (State → State)}
-    (hA : AllocHooks A abs) (hb : b &&& 0xfff#64 = 0#64) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.tryDecryptName + bv% ((2^64 + ls_off%
-        "signal_session_coins_fill" - (ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_cli_handshake::Coins>")) % 2^64))
-      (CryptoVerification.SignalSession.Coins.coinsFillAtSpec b tryDecryptSubStack cur rest) :=
-  CryptoVerification.SignalSession.Coins.coinsFillAt_of_after0
-    (CryptoVerification.SignalSession.Coins.coinsFill_ok_at (ext := tripleRatchetExterns C ctl abs)
-      (AllocContracts.of_tripleRatchetProgAt b C A ctl abs hA) hb tryDecryptSubStack (by decide) (by decide)
-      CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.tryDecryptName
-      (num% (ls_off% "signal_session_coins_fill" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_cli_handshake::Coins>"))
-      (by fnoff_eq))
-
-theorem _root_.CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.SegB.BS10.staticDrop_ok_at2_td {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.tryDecryptName + bv% ((2^64 + ls_off%
-        "<x25519_dalek::x25519::StaticSecret as core::ops::drop::Drop>::drop" - (ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_cli_handshake::Coins>")) % 2^64))
-      zeroizeSecretSpec :=
-  hook_ok_at (hname := staticDropName) (off := (ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_cli_handshake::Coins>")) (stub :=
-    num% (ls_off% "<x25519_dalek::x25519::StaticSecret as core::ops::drop::Drop>::drop")) (k :=
-    num% (ls_off% "<x25519_dalek::x25519::StaticSecret as core::ops::drop::Drop>::drop" - (ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_cli_handshake::Coins>")))
-    (ls_lemma% fnOff "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_cli_handshake::Coins>") rfl (by decide)
-    (ls_hook% "<x25519_dalek::x25519::StaticSecret as core::ops::drop::Drop>::drop")
-    (by dsimp [staticDropName]; simp [Rust.isPanicSymbol])
-    ⟨zeroizeSecretHook, rfl, zeroize32_hookOk⟩
 
 end BS10
 

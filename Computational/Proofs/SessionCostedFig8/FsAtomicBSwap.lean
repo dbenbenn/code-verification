@@ -9,11 +9,19 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Fig8SchemeBridge
+import Computational.Proofs.Fig8SchemeBridge
 public import Computational.Proofs.CryptoGames.CKA.CKAProofDefs
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRNG.PRNGProofDefs
-public import Computational.Proofs.E2E.SignedPrims
-@[expose] public section
+import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRNG.PRNGProofDefs
+import Computational.Proofs.E2E.SignedPrims
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.SessionShort -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.Fig8Atomic -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.Engine -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.RedFS -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux
+import Computational.Proofs.ReductionDsl.SM.RedCKA
+import Computational.Proofs.ReductionDsl.SM.RedPRNG
+import Computational.Proofs.ReductionDsl.PureAuxMacroLift
+public section
 
 set_option autoImplicit false
 
@@ -67,41 +75,13 @@ open Computational.Proofs.ReductionDsl.Fig8Atomic (dhSchemeFb atomicShortPubB
 section ExtraCKAAdv
 variable {Pt KR RSt SS RS M E : Type}
 
-theorem ckaAdvantage_redCKAAuth_dhSchemeFb_eq [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    {K : Type} [SampleableType KR] [SampleableType K] [DecidableEq M] [DecidableEq E] [Inhabited E]
-    (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt K)
-    (fs : FSAEADScheme K SS RS (Header Pt) M E) (lam : Pt) (Δcka tStar qep : ℕ)
-    (tL : Option ℕ) (t : ℕ)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt RSt SS RS M (BitVec 256) E) :
-    CryptoGames.CKA.advantage (dhSchemeFb Dh) Δcka tStar
-      (redCKAAuth (dhSchemeFb Dh) prng fs lam Δcka qep tL t A) =
-    CryptoGames.CKA.advantage (dhScheme Dh) Δcka tStar
-      (redCKAAuth (dhScheme Dh) prng fs lam Δcka qep tL t A) := by
-  rw [CryptoGames.CKA.advantage_eq_boolDist, CryptoGames.CKA.advantage_eq_boolDist,
-    ckaBranch_redCKAAuth_dhSchemeFb_eq Dh prng fs lam Δcka tStar qep tL t true A,
-    ckaBranch_redCKAAuth_dhSchemeFb_eq Dh prng fs lam Δcka tStar qep tL t false A]
-
-theorem ckaAdvantage_redCKAPriv_dhSchemeFb_eq [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    {K : Type} [SampleableType KR] [SampleableType K] [DecidableEq M] [DecidableEq E] [Inhabited E]
-    (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt K)
-    (fs : FSAEADScheme K SS RS (Header Pt) M E) (lam : Pt) (Δcka tStar qep : ℕ)
-    (tL : Option ℕ) (i : ℕ)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt RSt SS RS M (BitVec 256) E) :
-    CryptoGames.CKA.advantage (dhSchemeFb Dh) Δcka tStar
-      (redCKAPriv (dhSchemeFb Dh) prng fs lam Δcka qep tL i A) =
-    CryptoGames.CKA.advantage (dhScheme Dh) Δcka tStar
-      (redCKAPriv (dhScheme Dh) prng fs lam Δcka qep tL i A) := by
-  rw [CryptoGames.CKA.advantage_eq_boolDist, CryptoGames.CKA.advantage_eq_boolDist,
-    ckaBranch_redCKAPriv_dhSchemeFb_eq Dh prng fs lam Δcka tStar qep tL i true A,
-    ckaBranch_redCKAPriv_dhSchemeFb_eq Dh prng fs lam Δcka tStar qep tL i false A]
-
 end ExtraCKAAdv
 
 /-! ## FS-AEAD scheme swap -/
 
 section FsAtomicBSwap
 
-def SkippedLenLe {CK MK : Type} (v : CryptoGames.FSAEAD.RatchetReceiverState CK MK) : Prop :=
+@[expose] def SkippedLenLe {CK MK : Type} (v : CryptoGames.FSAEAD.RatchetReceiverState CK MK) : Prop :=
   v.skippedKeys.length ≤ v.lastIndex
 
 lemma skippedLenLe_init {CK MK AD M C : Type}
@@ -642,7 +622,7 @@ theorem runPRNG_fsAtomicB_eq_lFS
         hVRHk hB0 hA' hSendOk es₀ hInv₀ hVR₀)
 
 
-def OptSkippedLenLe {K MK : Type} : Option (CryptoGames.FSAEAD.RatchetReceiverState K MK) → Prop
+@[expose] def OptSkippedLenLe {K MK : Type} : Option (CryptoGames.FSAEAD.RatchetReceiverState K MK) → Prop
   | none => True
   | some v => SkippedLenLe v
 
@@ -1464,145 +1444,6 @@ lemma implE_hooksFS_fsClamp_fsAtomicB_eq
   · change (corrE _ mo.policy P).run es = (corrE _ mo.policy P).run es
     unfold corrE hooksFS; rfl
 
-lemma simulateQ_implE_fsClamp_fsAtomicB_eq
-    {KC Γ CCoins Pt I KR RSt α : Type} [DecidableEq Pt] [DecidableEq I]
-    [SampleableType CCoins] [SampleableType I]
-    (cka : CKAScheme KC Γ CCoins Pt I) (prng : PRFPRNG KR RSt I (BitVec 256))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (L B B0 B_q q Δcka qep : ℕ) (mo : Mode) (j : ℕ)
-    (hB : (B_q + 1) * (maxForwardJumps + 1) ≤ B)
-    (hB0 : (B_q + 1) * (maxForwardJumps + 1) ≤ B0)
-    {oa : OracleComp (unifSpec + CryptoGames.SM.spec
-      (PartyState Γ Pt RSt (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-        (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256)))
-      (LibsignalMsgPublicPart × Plain ℓ) CCoins
-      (Header Pt × (ℕ × LibsignalCiphertextWithSalt32))) α}
-    (hoa : oa.IsQueryBoundP
-      (ReductionDsl.isGameQuery (G := CryptoGames.SM.spec
-        (PartyState Γ Pt RSt (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-          (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256)))
-        (LibsignalMsgPublicPart × Plain ℓ) CCoins
-        (Header Pt × (ℕ × LibsignalCiphertextWithSalt32)))) q)
-    (hSendOk : oa.IsQueryBoundP
-      (fun t => CryptoGames.LibsignalSM.Proofs.SessionShort.badSendMsg
-        (St := PartyState Γ Pt RSt (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-          (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256)))
-        (Coins := CCoins) (C := Header Pt × (ℕ × LibsignalCiphertextWithSalt32))
-        (fun m => atomicShortPubB m.1) t = true) 0)
-    (es : EState (VP Γ Pt RSt (Option (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256)))
-      (Option (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))))
-      (LibsignalMsgPublicPart × Plain ℓ)
-      (Header Pt × (ℕ × LibsignalCiphertextWithSalt32))
-      (FSState Pt RSt (BitVec 256) I (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-        (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))
-        (ℕ × LibsignalCiphertextWithSalt32)))
-    (st : CryptoGames.FSAEAD.State (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-      (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))
-      (Header Pt) (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32))
-    (hInv : SMEngineInv L B_q q es.g)
-    (hVR : SMVRInv (FSVROkStep maxForwardJumps) B_q q es.g)
-    (hLen : SMVRInv (fun _ => OptSkippedLenLe) B_q q es.g)
-    (hExt : FSVROkStep maxForwardJumps (B_q - q) (es.h.ext.map Prod.snd))
-    (hExtLen : OptSkippedLenLe (es.h.ext.map Prod.snd))
-    (hSt : RSReach maxForwardJumps (B_q - q) st.receiverState)
-    (hStLen : SkippedLenLe st.receiverState) :
-    (simulateQ (fsFullImpl (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps))
-      ((simulateQ (implE (hooksFS cka prng (fsClamp B (fsAtomicB C ℓ encT idOf B0)) Δcka mo j)
-        (2 + Δcka) qep maxForwardJumps mo.cfg mo.policy) oa).run es)).run st =
-    (simulateQ (fsFullImpl (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps))
-      ((simulateQ (implE (hooksFS cka prng
-        (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) Δcka mo j)
-        (2 + Δcka) qep maxForwardJumps mo.cfg mo.policy) oa).run es)).run st := by
-  let ae := (lAead C protoSignalCodec ℓ encT idOf).movePubPartToAD (lPubOf protoSignalCodec)
-  let G := lChainPRG C.F
-  induction oa using OracleComp.inductionOn generalizing q es st with
-  | pure _ => simp only [simulateQ_pure, StateT.run_pure]
-  | query_bind qy mx ih =>
-    rw [isQueryBoundP_query_bind_iff] at hoa
-    rcases hoa with ⟨hq0, hmx⟩
-    obtain ⟨hBad, hSendMx⟩ := badSendMsg_query_bind_step (fun m => atomicShortPubB m.1) qy mx hSendOk
-    rw [simulateQ_query_bind, simulateQ_query_bind, StateT.run_bind, StateT.run_bind,
-      simulateQ_bind, simulateQ_bind, StateT.run_bind, StateT.run_bind]
-    have hLift : ∀ {M' : Type → Type} [Monad M'] {σ' α' : Type} (m : StateT σ' M' α') (s : σ'),
-        (liftM m : StateT σ' M' α').run s = m.run s := fun _ _ => rfl
-    rw [hLift, hLift]
-    simp only [OracleQuery.input_query, OracleQuery.cont_query]
-    rcases qy with n | t_sm
-    · simp only [ReductionDsl.isGameQuery, ↓reduceIte] at hmx
-      have hInl1 :
-          (implE (hooksFS cka prng (fsClamp B (fsAtomicB C ℓ encT idOf B0)) Δcka mo j)
-              (2 + Δcka) qep maxForwardJumps mo.cfg mo.policy (.inl n)).run es =
-            (coinsE n).run es := rfl
-      have hInl2 :
-          (implE (hooksFS cka prng (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) Δcka mo j)
-              (2 + Δcka) qep maxForwardJumps mo.cfg mo.policy (.inl n)).run es =
-            (coinsE n).run es := rfl
-      rw [hInl1, hInl2]
-      refine OracleComp.bind_congr_of_forall_mem_support _ fun ⟨⟨u, es'⟩, st'⟩ hmem => ?_
-      have hmem1 := fst_mem_support_of_mem_support_simulateQ_run _ _ st hmem
-      simp only [coinsE, StateT.run_lift, mem_support_bind_iff, support_pure,
-        Set.mem_singleton_iff, Prod.mk.injEq] at hmem1
-      obtain ⟨_, _, _, rfl⟩ := hmem1
-      have hQbCoins := CryptoGames.SM.Construction.ReductionsQueries.qb_coinsE
-        (CryptoGames.SM.Construction.ReductionsQueries.hQu_QFSDec (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-          (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256)) Pt
-          (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)) n es'
-      have hSt' : RSReach maxForwardJumps (B_q - q) st'.receiverState := by
-        simpa using receiverState_reach_of_isDecQuery_bound ae G maxForwardJumps
-          hQbCoins st hSt ((u, es'), st') hmem
-      have hStLen' : SkippedLenLe st'.receiverState :=
-        fsFullImpl_skippedLenLe ae G maxForwardJumps ((coinsE n).run es') st hStLen
-          ((u, es'), st') hmem
-      exact ih u q (hmx u) (hSendMx u) es' st' hInv hVR hLen hExt hExtLen hSt' hStLen'
-    · simp only [ReductionDsl.isGameQuery, ↓reduceIte] at hq0 hmx
-      have hqp : 0 < q := hq0.resolve_left (by decide)
-      obtain ⟨q', rfl⟩ : ∃ q', q = q' + 1 := ⟨q - 1, by omega⟩
-      have hStep1 := implE_hooksFS_fsClamp_fsAtomicB_eq cka prng C ℓ encT idOf
-        B B0 B_q q' Δcka qep mo j hB0 es t_sm hBad hVR hLen hExt hExtLen
-      have hStep2 :
-          (implE (hooksFS cka prng
-              (fsClamp B (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)) Δcka mo j)
-              (2 + Δcka) qep maxForwardJumps mo.cfg mo.policy (.inr t_sm)).run es =
-            (implE (hooksFS cka prng
-              (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) Δcka mo j)
-              (2 + Δcka) qep maxForwardJumps mo.cfg mo.policy (.inr t_sm)).run es :=
-        implE_fsClamp_eq cka prng ae G maxForwardJumps B B_q q' Δcka qep mo j hB es t_sm hVR hExt
-      rw [hStep1, hStep2]
-      refine OracleComp.bind_congr_of_forall_mem_support _ fun ⟨⟨u, es'⟩, st'⟩ hmem => ?_
-      have hmem1 := fst_mem_support_of_mem_support_simulateQ_run _ _ st hmem
-      have hInv' := implE_inv
-        (hooksFS cka prng (CryptoGames.FSAEAD.fromAEADPRG ae G maxForwardJumps) Δcka mo j)
-        mo.cfg mo.policy es t_sm hInv (u, es') hmem1
-      have hVR' := implE_vrInv
-        (hooksFS cka prng (CryptoGames.FSAEAD.fromAEADPRG ae G maxForwardJumps) Δcka mo j)
-        (hooksFS_vrInv_fromAEADPRG cka prng ae G maxForwardJumps Δcka mo j)
-        mo.cfg mo.policy es t_sm hInv hVR (u, es') hmem1
-      have hLen' := implE_vrInv
-        (hooksFS cka prng (CryptoGames.FSAEAD.fromAEADPRG ae G maxForwardJumps) Δcka mo j)
-        (hooksFS_vrInv_skippedLenLe cka prng ae G maxForwardJumps Δcka mo j)
-        mo.cfg mo.policy es t_sm hInv hLen (u, es') hmem1
-      have hBq : B_q - (q' + 1) + 1 ≤ B_q - q' := by have := hInv.1; omega
-      have hExt' := (implE_ext_snd_fromAEADPRG cka prng ae G maxForwardJumps (B_q - (q' + 1))
-        Δcka qep mo j es t_sm st (fun P _ _ hv => hVR P _ _ hv) hExt hSt
-        ((u, es'), st') hmem).mono hBq
-      have hExtLen' := implE_hooksFS_ext_skippedLenLe cka prng ae G maxForwardJumps
-        (B_q - (q' + 1)) Δcka qep mo j es t_sm st (fun P _ _ hv => hVR P _ _ hv)
-        hExtLen hStLen ((u, es'), st') hmem
-      have hQbStep := CryptoGames.SM.Construction.ReductionsQueries.qb_implE_inr_one
-        (CryptoGames.SM.Construction.ReductionsQueries.hQu_QFSDec (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-          (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256)) Pt
-          (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32))
-        (CryptoGames.SM.Construction.ReductionsQueries.hQt_QFSDec _ _ Pt _ _)
-        (CryptoGames.SM.Construction.ReductionsQueries.hQch_QFSDec _ _ Pt _ _)
-        (CryptoGames.SM.Construction.ReductionsQueries.hQcs_QFSDec _ _ Pt _ _)
-        (CryptoGames.SM.Construction.ReductionsQueries.hQcr_QFSDec _ _ Pt _ _)
-        cka prng (CryptoGames.FSAEAD.fromAEADPRG ae G maxForwardJumps) Δcka qep mo j t_sm es
-      have hSt' := (receiverState_reach_of_isDecQuery_bound ae G maxForwardJumps hQbStep st hSt
-        ((u, es'), st') hmem).mono hBq
-      have hStLen' := fsFullImpl_skippedLenLe ae G maxForwardJumps _ st hStLen ((u, es'), st') hmem
-      exact ih u q' (by simpa using hmx u) (hSendMx u) es' st'
-        hInv' hVR' hLen' hExt' hExtLen' hSt' hStLen'
-
 
 lemma initFSRaw_skippedLenLe
     {KC Γ CCoins T I KR RSt K MK M C : Type} [DecidableEq I]
@@ -1628,80 +1469,6 @@ lemma initFSRaw_skippedLenLe
     · simp [ht0] at hv
   · cases hv
 
-theorem simulateQ_runFS_fsClamp_fsAtomicB_eq_lFS
-    {KC Γ CCoins Pt I KR RSt : Type} [DecidableEq Pt] [DecidableEq I]
-    [SampleableType KR] [SampleableType KC] [SampleableType CCoins] [SampleableType I]
-    (cka : CKAScheme KC Γ CCoins Pt I) (prng : PRFPRNG KR RSt I (BitVec 256))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (B B0 B_q Δcka qep : ℕ) (lam : I) (mo : Mode) (j : ℕ) (b : Bool)
-    (hB : (B_q + 1) * (maxForwardJumps + 1) ≤ B)
-    (hB0 : (B_q + 1) * (maxForwardJumps + 1) ≤ B0)
-    (A : SchemeAdversary Γ Pt RSt
-      (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-      (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) CCoins
-      (ℕ × LibsignalCiphertextWithSalt32))
-    (qAdv : ℕ) (hA : CryptoGames.SM.MakesAtMostQueries A qAdv) (hqB : qAdv ≤ B_q)
-    (hSendOk : CryptoGames.LibsignalSM.Proofs.SessionShort.SendMsgsOk (fun m => atomicShortPubB m.1) A)
-    (st₀ : CryptoGames.FSAEAD.State (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-      (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))
-      (Header Pt) (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32))
-    (hSt₀ : RSReach maxForwardJumps 0 st₀.receiverState)
-    (hStLen₀ : SkippedLenLe st₀.receiverState) :
-    (simulateQ (fsFullImpl (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps))
-      (runFS cka prng (fsClamp B (fsAtomicB C ℓ encT idOf B0)) lam Δcka qep mo j b A)).run st₀ =
-    (simulateQ (fsFullImpl (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps))
-      (runFS cka prng (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-        lam Δcka qep mo j b A)).run st₀ := by
-  let ae := (lAead C protoSignalCodec ℓ encT idOf).movePubPartToAD (lPubOf protoSignalCodec)
-  let G := lChainPRG C.F
-  have hA' : A.IsQueryBoundP
-      (ReductionDsl.isGameQuery (G := CryptoGames.SM.spec
-        (PartyState Γ Pt RSt (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-          (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256)))
-        (LibsignalMsgPublicPart × Plain ℓ) CCoins
-        (Header Pt × (ℕ × LibsignalCiphertextWithSalt32)))) qAdv := by
-    refine hA.of_imp fun x hx => ?_
-    rcases x with _ | _ <;> simp_all [ReductionDsl.isGameQuery]
-  rw [runFS_eq_bind_initFSRaw, runFS_eq_bind_initFSRaw]
-  have hInitEq :
-      initFSRaw cka prng (fsClamp B (fsAtomicB C ℓ encT idOf B0)) lam mo j b =
-        initFSRaw cka prng (CryptoGames.FSAEAD.fromAEADPRG ae G maxForwardJumps) lam mo j b := by
-    unfold initFSRaw fsClamp fsAtomicB; rfl
-  have hInitEq2 :
-      initFSRaw cka prng (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) lam mo j b =
-        initFSRaw cka prng (CryptoGames.FSAEAD.fromAEADPRG ae G maxForwardJumps) lam mo j b := by
-    unfold initFSRaw lFS; rfl
-  rw [hInitEq, hInitEq2, simulateQ_bind, simulateQ_bind, StateT.run_bind, StateT.run_bind]
-  refine OracleComp.bind_congr_of_forall_mem_support _ fun ⟨es₀, st₁⟩ hmem₀ => ?_
-  have hes₀ := fst_mem_support_of_mem_support_simulateQ_run _ _ st₀ hmem₀
-  have hB1 : B_q + 1 ≤ B_q + 1 := le_rfl
-  have hBB : B_q * B_q ≤ (B_q + 1) * (B_q + 1) :=
-    Nat.mul_le_mul (Nat.le_succ _) (Nat.le_succ _)
-  have ⟨hInv₀, _⟩ := initFSRaw_inv cka prng (CryptoGames.FSAEAD.fromAEADPRG ae G maxForwardJumps) lam mo j b
-    hqB hB1 hBB es₀ hes₀
-  have ⟨hVR₀, hext₀⟩ := initFSRaw_vrInv_fromAEADPRG cka prng ae G maxForwardJumps lam mo j b
-    B_q qAdv es₀ hes₀
-  have hLen₀ := initFSRaw_skippedLenLe cka prng ae G maxForwardJumps lam mo j b B_q qAdv es₀ hes₀
-  have hExt₀ : FSVROkStep maxForwardJumps (B_q - qAdv) (es₀.h.ext.map Prod.snd) := by
-    simp [hext₀, FSVROkStep]
-  have hExtLen₀ : OptSkippedLenLe (es₀.h.ext.map Prod.snd) := by simp [hext₀, OptSkippedLenLe]
-  have hSt₁ : RSReach maxForwardJumps (B_q - qAdv) st₁.receiverState :=
-    (receiverState_reach_of_isDecQuery_bound ae G maxForwardJumps
-      (isQueryBoundP_initFSRaw_dec cka prng (CryptoGames.FSAEAD.fromAEADPRG ae G maxForwardJumps) lam mo j b)
-      st₀ hSt₀ (es₀, st₁) hmem₀).mono (Nat.zero_le _)
-  have hStLen₁ : SkippedLenLe st₁.receiverState :=
-    fsFullImpl_skippedLenLe ae G maxForwardJumps
-      (initFSRaw cka prng (CryptoGames.FSAEAD.fromAEADPRG ae G maxForwardJumps) lam mo j b) st₀ hStLen₀
-      (es₀, st₁) hmem₀
-  rw [simulateQ_bind, simulateQ_bind, StateT.run_bind, StateT.run_bind]
-  have hSim := simulateQ_implE_fsClamp_fsAtomicB_eq cka prng C ℓ encT idOf
-    (B_q + 1) B B0 B_q qAdv Δcka qep mo j hB hB0 hA' hSendOk es₀ st₁
-    hInv₀.sm hVR₀ hLen₀ hExt₀ hExtLen₀ hSt₁ hStLen₁
-  have hms1 : (fsClamp B (fsAtomicB C ℓ encT idOf B0)).maxSkip = maxForwardJumps := rfl
-  have hms2 : (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps).maxSkip = maxForwardJumps := rfl
-  rw [hms1, hms2, hSim]
-
 end FsAtomicBSwap
 
 /-! ## Combined CKA and FS-AEAD scheme swap -/
@@ -1709,57 +1476,6 @@ end FsAtomicBSwap
 section CombinedAtomicSwap
 
 variable {Pt KR RSt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] [SampleableType KR]
-
-theorem ckaBranch_redCKAAuth_atomic_eq
-    (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt (BitVec 256))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (B0 B_q Δcka tStar qep : ℕ) (tL : Option ℕ) (t : ℕ) (b : Bool)
-    (hB0 : (B_q + 1) * (maxForwardJumps + 1) ≤ B0)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt RSt
-      (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-      (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256)
-      (ℕ × LibsignalCiphertextWithSalt32))
-    (qAdv : ℕ) (hA : CryptoGames.SM.MakesAtMostQueries A qAdv) (hqB : qAdv ≤ B_q)
-    (hSendOk : CryptoGames.LibsignalSM.Proofs.SessionShort.SendMsgsOk (fun m => atomicShortPubB m.1) A) :
-    CryptoGames.CKA.branch (dhSchemeFb Dh) Δcka tStar b
-      (redCKAAuth (dhSchemeFb Dh) prng (fsAtomicB C ℓ encT idOf B0) lam Δcka qep tL t A) =
-    CryptoGames.CKA.branch (dhScheme Dh) Δcka tStar b
-      (redCKAAuth (dhScheme Dh) prng (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-        lam Δcka qep tL t A) := by
-  have hFs :
-      redCKAAuth (dhSchemeFb Dh) prng (fsAtomicB C ℓ encT idOf B0) lam Δcka qep tL t A =
-        redCKAAuth (dhSchemeFb Dh) prng (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-          lam Δcka qep tL t A := by
-    unfold redCKAAuth
-    rw [runCKA_fsAtomicB_eq_lFS (dhSchemeFb Dh) prng C ℓ encT idOf lam B0 B_q Δcka qep
-      ⟨true, tL, t⟩ false hB0 A qAdv hA hqB hSendOk]
-  rw [hFs]
-  exact ckaBranch_redCKAAuth_dhSchemeFb_eq Dh prng
-    (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) lam Δcka tStar qep tL t b A
-
-theorem ckaAdvantage_redCKAAuth_atomic_eq
-    (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt (BitVec 256))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (B0 B_q Δcka tStar qep : ℕ) (tL : Option ℕ) (t : ℕ)
-    (hB0 : (B_q + 1) * (maxForwardJumps + 1) ≤ B0)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt RSt
-      (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-      (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256)
-      (ℕ × LibsignalCiphertextWithSalt32))
-    (qAdv : ℕ) (hA : CryptoGames.SM.MakesAtMostQueries A qAdv) (hqB : qAdv ≤ B_q)
-    (hSendOk : CryptoGames.LibsignalSM.Proofs.SessionShort.SendMsgsOk (fun m => atomicShortPubB m.1) A) :
-    CryptoGames.CKA.advantage (dhSchemeFb Dh) Δcka tStar
-      (redCKAAuth (dhSchemeFb Dh) prng (fsAtomicB C ℓ encT idOf B0) lam Δcka qep tL t A) =
-    CryptoGames.CKA.advantage (dhScheme Dh) Δcka tStar
-      (redCKAAuth (dhScheme Dh) prng (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-        lam Δcka qep tL t A) := by
-  rw [CryptoGames.CKA.advantage_eq_boolDist, CryptoGames.CKA.advantage_eq_boolDist,
-    ckaBranch_redCKAAuth_atomic_eq Dh prng C ℓ encT idOf lam B0 B_q Δcka tStar qep
-      tL t true hB0 A qAdv hA hqB hSendOk,
-    ckaBranch_redCKAAuth_atomic_eq Dh prng C ℓ encT idOf lam B0 B_q Δcka tStar qep
-      tL t false hB0 A qAdv hA hqB hSendOk]
 
 theorem ckaBranch_redCKAPriv_atomic_eq
     (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt (BitVec 256))
@@ -1790,71 +1506,7 @@ theorem ckaBranch_redCKAPriv_atomic_eq
   exact ckaBranch_redCKAPriv_dhSchemeFb_eq Dh prng
     (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) lam Δcka tStar qep tL i b A
 
-theorem ckaAdvantage_redCKAPriv_atomic_eq
-    (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt (BitVec 256))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (B0 B_q Δcka tStar qep : ℕ) (tL : Option ℕ) (i : ℕ)
-    (hB0 : (B_q + 1) * (maxForwardJumps + 1) ≤ B0)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt RSt
-      (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-      (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256)
-      (ℕ × LibsignalCiphertextWithSalt32))
-    (qAdv : ℕ) (hA : CryptoGames.SM.MakesAtMostQueries A qAdv) (hqB : qAdv ≤ B_q)
-    (hSendOk : CryptoGames.LibsignalSM.Proofs.SessionShort.SendMsgsOk (fun m => atomicShortPubB m.1) A) :
-    CryptoGames.CKA.advantage (dhSchemeFb Dh) Δcka tStar
-      (redCKAPriv (dhSchemeFb Dh) prng (fsAtomicB C ℓ encT idOf B0) lam Δcka qep tL i A) =
-    CryptoGames.CKA.advantage (dhScheme Dh) Δcka tStar
-      (redCKAPriv (dhScheme Dh) prng (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-        lam Δcka qep tL i A) := by
-  rw [CryptoGames.CKA.advantage_eq_boolDist, CryptoGames.CKA.advantage_eq_boolDist,
-    ckaBranch_redCKAPriv_atomic_eq Dh prng C ℓ encT idOf lam B0 B_q Δcka tStar qep
-      tL i true hB0 A qAdv hA hqB hSendOk,
-    ckaBranch_redCKAPriv_atomic_eq Dh prng C ℓ encT idOf lam B0 B_q Δcka tStar qep
-      tL i false hB0 A qAdv hA hqB hSendOk]
 
-
-omit [SampleableType Pt] in
-theorem redPRNGAuth_atomic_eq
-    (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt (BitVec 256))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (B0 B_q Δcka qep : ℕ) (tL : Option ℕ) (t : ℕ)
-    (hB0 : (B_q + 1) * (maxForwardJumps + 1) ≤ B0)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt RSt
-      (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-      (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256)
-      (ℕ × LibsignalCiphertextWithSalt32))
-    (qAdv : ℕ) (hA : CryptoGames.SM.MakesAtMostQueries A qAdv) (hqB : qAdv ≤ B_q)
-    (hSendOk : CryptoGames.LibsignalSM.Proofs.SessionShort.SendMsgsOk (fun m => atomicShortPubB m.1) A) :
-    redPRNGAuth (dhSchemeFb Dh) prng (fsAtomicB C ℓ encT idOf B0) lam Δcka qep tL t A =
-      redPRNGAuth (dhScheme Dh) prng (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-        lam Δcka qep tL t A := by
-  unfold redPRNGAuth
-  rw [runPRNG_dhSchemeFb_eq Dh prng (fsAtomicB C ℓ encT idOf B0) lam Δcka qep
-    ⟨true, tL, t⟩ false A,
-    runPRNG_fsAtomicB_eq_lFS (dhScheme Dh) prng C ℓ encT idOf lam B0 B_q Δcka qep
-      ⟨true, tL, t⟩ false hB0 A qAdv hA hqB hSendOk]
-
-
-theorem prngAdvantage_redPRNGAuth_atomic_eq
-    (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt (BitVec 256))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (B0 B_q Δcka qep : ℕ) (tL : Option ℕ) (t : ℕ)
-    (hB0 : (B_q + 1) * (maxForwardJumps + 1) ≤ B0)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt RSt
-      (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-      (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256)
-      (ℕ × LibsignalCiphertextWithSalt32))
-    (qAdv : ℕ) (hA : CryptoGames.SM.MakesAtMostQueries A qAdv) (hqB : qAdv ≤ B_q)
-    (hSendOk : CryptoGames.LibsignalSM.Proofs.SessionShort.SendMsgsOk (fun m => atomicShortPubB m.1) A) :
-    CryptoGames.PRFPRNG.advantage prng
-      (redPRNGAuth (dhSchemeFb Dh) prng (fsAtomicB C ℓ encT idOf B0) lam Δcka qep tL t A) =
-    CryptoGames.PRFPRNG.advantage prng
-      (redPRNGAuth (dhScheme Dh) prng (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-        lam Δcka qep tL t A) := by
-  rw [redPRNGAuth_atomic_eq Dh prng C ℓ encT idOf lam B0 B_q Δcka qep tL t hB0 A qAdv hA hqB hSendOk]
 
 omit [SampleableType Pt] in
 theorem redPRNGPriv_atomic_eq
@@ -1878,187 +1530,6 @@ theorem redPRNGPriv_atomic_eq
     runPRNG_fsAtomicB_eq_lFS (dhScheme Dh) prng C ℓ encT idOf lam B0 B_q Δcka qep
       ⟨false, tL, i⟩ b hB0 A qAdv hA hqB hSendOk]
 
-
-theorem prngAdvantage_redPRNGPriv_atomic_eq
-    (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt (BitVec 256))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (B0 B_q Δcka qep : ℕ) (tL : Option ℕ) (i : ℕ)
-    (hB0 : (B_q + 1) * (maxForwardJumps + 1) ≤ B0)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt RSt
-      (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-      (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256)
-      (ℕ × LibsignalCiphertextWithSalt32))
-    (qAdv : ℕ) (hA : CryptoGames.SM.MakesAtMostQueries A qAdv) (hqB : qAdv ≤ B_q)
-    (hSendOk : CryptoGames.LibsignalSM.Proofs.SessionShort.SendMsgsOk (fun m => atomicShortPubB m.1) A) :
-    CryptoGames.PRFPRNG.advantage prng
-      (redPRNGPriv (dhSchemeFb Dh) prng (fsAtomicB C ℓ encT idOf B0) lam Δcka qep tL i A) =
-    CryptoGames.PRFPRNG.advantage prng
-      (redPRNGPriv (dhScheme Dh) prng (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-        lam Δcka qep tL i A) := by
-  rw [redPRNGPriv_atomic_eq Dh prng C ℓ encT idOf lam B0 B_q Δcka qep tL i hB0 A qAdv hA hqB hSendOk]
-
-theorem fsaeadGame_redFSAuth_atomic_eq
-    (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt (BitVec 256))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (B B0 B_q Δcka qep : ℕ) (j : ℕ) (tL : Option ℕ) (t : ℕ)
-    (hB : (B_q + 1) * (maxForwardJumps + 1) ≤ B)
-    (hB0 : (B_q + 1) * (maxForwardJumps + 1) ≤ B0)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt RSt
-      (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-      (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256)
-      (ℕ × LibsignalCiphertextWithSalt32))
-    (qAdv : ℕ) (hA : CryptoGames.SM.MakesAtMostQueries A qAdv) (hqB : qAdv ≤ B_q)
-    (hSendOk : CryptoGames.LibsignalSM.Proofs.SessionShort.SendMsgsOk (fun m => atomicShortPubB m.1) A) :
-    CryptoGames.FSAEAD.game (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-      (redFSAuth (dhSchemeFb Dh) prng (fsClamp B (fsAtomicB C ℓ encT idOf B0))
-        lam Δcka qep j tL t A) =
-    CryptoGames.FSAEAD.game (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-      (redFSAuth (dhScheme Dh) prng (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-        lam Δcka qep j tL t A) := by
-  let ae := (lAead C protoSignalCodec ℓ encT idOf).movePubPartToAD (lPubOf protoSignalCodec)
-  let G := lChainPRG C.F
-  unfold CryptoGames.FSAEAD.game redFSAuth
-  refine bind_congr fun b => bind_congr fun k => ?_
-  rw [runFS_dhSchemeFb_eq Dh prng (fsClamp B (fsAtomicB C ℓ encT idOf B0))
-    lam Δcka qep ⟨true, tL, t⟩ j false A]
-  simp only [simulateQ_bind, StateT.run_bind]
-  rw [simulateQ_runFS_fsClamp_fsAtomicB_eq_lFS (dhScheme Dh) prng C ℓ encT idOf
-    B B0 B_q Δcka qep lam ⟨true, tL, t⟩ j false hB hB0 A qAdv hA hqB hSendOk
-    (CryptoGames.FSAEAD.initState (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) k b)
-    (CryptoGames.SM.Engine.RSReach.init ae G maxForwardJumps k) (skippedLenLe_init ae G maxForwardJumps k)]
-
-theorem fsaeadAdvantage_redFSAuth_atomic_eq
-    (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt (BitVec 256))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (B B0 B_q Δcka qep : ℕ) (j : ℕ) (tL : Option ℕ) (t : ℕ)
-    (hB : (B_q + 1) * (maxForwardJumps + 1) ≤ B)
-    (hB0 : (B_q + 1) * (maxForwardJumps + 1) ≤ B0)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt RSt
-      (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-      (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256)
-      (ℕ × LibsignalCiphertextWithSalt32))
-    (qAdv : ℕ) (hA : CryptoGames.SM.MakesAtMostQueries A qAdv) (hqB : qAdv ≤ B_q)
-    (hSendOk : CryptoGames.LibsignalSM.Proofs.SessionShort.SendMsgsOk (fun m => atomicShortPubB m.1) A) :
-    CryptoGames.FSAEAD.advantage (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-      (redFSAuth (dhSchemeFb Dh) prng (fsClamp B (fsAtomicB C ℓ encT idOf B0))
-        lam Δcka qep j tL t A) =
-    CryptoGames.FSAEAD.advantage (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-      (redFSAuth (dhScheme Dh) prng (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-        lam Δcka qep j tL t A) := by
-  simp only [CryptoGames.FSAEAD.advantage,
-    fsaeadGame_redFSAuth_atomic_eq Dh prng C ℓ encT idOf lam B B0 B_q Δcka qep j tL t
-      hB hB0 A qAdv hA hqB hSendOk]
-
-theorem fsaeadGame_redFSPriv_atomic_eq
-    (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt (BitVec 256))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (B B0 B_q Δcka qep : ℕ) (tL : Option ℕ) (t : ℕ)
-    (hB : (B_q + 1) * (maxForwardJumps + 1) ≤ B)
-    (hB0 : (B_q + 1) * (maxForwardJumps + 1) ≤ B0)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt RSt
-      (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-      (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256)
-      (ℕ × LibsignalCiphertextWithSalt32))
-    (qAdv : ℕ) (hA : CryptoGames.SM.MakesAtMostQueries A qAdv) (hqB : qAdv ≤ B_q)
-    (hSendOk : CryptoGames.LibsignalSM.Proofs.SessionShort.SendMsgsOk (fun m => atomicShortPubB m.1) A) :
-    CryptoGames.FSAEAD.game (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-      (redFSPriv (dhSchemeFb Dh) prng (fsClamp B (fsAtomicB C ℓ encT idOf B0))
-        lam Δcka qep tL t A) =
-    CryptoGames.FSAEAD.game (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-      (redFSPriv (dhScheme Dh) prng (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-        lam Δcka qep tL t A) := by
-  let ae := (lAead C protoSignalCodec ℓ encT idOf).movePubPartToAD (lPubOf protoSignalCodec)
-  let G := lChainPRG C.F
-  unfold CryptoGames.FSAEAD.game redFSPriv
-  refine bind_congr fun b => bind_congr fun k => ?_
-  rw [runFS_dhSchemeFb_eq Dh prng (fsClamp B (fsAtomicB C ℓ encT idOf B0))
-    lam Δcka qep ⟨false, tL, t⟩ 0 false A]
-  simp only [simulateQ_bind, StateT.run_bind]
-  rw [simulateQ_runFS_fsClamp_fsAtomicB_eq_lFS (dhScheme Dh) prng C ℓ encT idOf
-    B B0 B_q Δcka qep lam ⟨false, tL, t⟩ 0 false hB hB0 A qAdv hA hqB hSendOk
-    (CryptoGames.FSAEAD.initState (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) k b)
-    (CryptoGames.SM.Engine.RSReach.init ae G maxForwardJumps k) (skippedLenLe_init ae G maxForwardJumps k)]
-
-theorem fsaeadAdvantage_redFSPriv_atomic_eq
-    (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt (BitVec 256))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (B B0 B_q Δcka qep : ℕ) (tL : Option ℕ) (t : ℕ)
-    (hB : (B_q + 1) * (maxForwardJumps + 1) ≤ B)
-    (hB0 : (B_q + 1) * (maxForwardJumps + 1) ≤ B0)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt RSt
-      (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-      (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256)
-      (ℕ × LibsignalCiphertextWithSalt32))
-    (qAdv : ℕ) (hA : CryptoGames.SM.MakesAtMostQueries A qAdv) (hqB : qAdv ≤ B_q)
-    (hSendOk : CryptoGames.LibsignalSM.Proofs.SessionShort.SendMsgsOk (fun m => atomicShortPubB m.1) A) :
-    CryptoGames.FSAEAD.advantage (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-      (redFSPriv (dhSchemeFb Dh) prng (fsClamp B (fsAtomicB C ℓ encT idOf B0))
-        lam Δcka qep tL t A) =
-    CryptoGames.FSAEAD.advantage (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-      (redFSPriv (dhScheme Dh) prng (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-        lam Δcka qep tL t A) := by
-  simp only [CryptoGames.FSAEAD.advantage,
-    fsaeadGame_redFSPriv_atomic_eq Dh prng C ℓ encT idOf lam B B0 B_q Δcka qep tL t
-      hB hB0 A qAdv hA hqB hSendOk]
-
-theorem fsaeadGame_redFSPrivCoin_atomic_eq
-    (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt (BitVec 256))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (B B0 B_q Δcka qep : ℕ) (tL : Option ℕ) (t : ℕ)
-    (hB : (B_q + 1) * (maxForwardJumps + 1) ≤ B)
-    (hB0 : (B_q + 1) * (maxForwardJumps + 1) ≤ B0)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt RSt
-      (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-      (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256)
-      (ℕ × LibsignalCiphertextWithSalt32))
-    (qAdv : ℕ) (hA : CryptoGames.SM.MakesAtMostQueries A qAdv) (hqB : qAdv ≤ B_q)
-    (hSendOk : CryptoGames.LibsignalSM.Proofs.SessionShort.SendMsgsOk (fun m => atomicShortPubB m.1) A) :
-    CryptoGames.FSAEAD.game (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-      (redFSPrivCoin (dhSchemeFb Dh) prng (fsClamp B (fsAtomicB C ℓ encT idOf B0))
-        lam Δcka qep tL t A) =
-    CryptoGames.FSAEAD.game (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-      (redFSPrivCoin (dhScheme Dh) prng (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-        lam Δcka qep tL t A) := by
-  let ae := (lAead C protoSignalCodec ℓ encT idOf).movePubPartToAD (lPubOf protoSignalCodec)
-  let G := lChainPRG C.F
-  unfold CryptoGames.FSAEAD.game redFSPrivCoin
-  refine bind_congr fun b => bind_congr fun k => ?_
-  rw [runFS_dhSchemeFb_eq Dh prng (fsClamp B (fsAtomicB C ℓ encT idOf B0))
-    lam Δcka qep ⟨false, tL, t⟩ 0 false A]
-  simp only [simulateQ_bind, StateT.run_bind]
-  rw [simulateQ_runFS_fsClamp_fsAtomicB_eq_lFS (dhScheme Dh) prng C ℓ encT idOf
-    B B0 B_q Δcka qep lam ⟨false, tL, t⟩ 0 false hB hB0 A qAdv hA hqB hSendOk
-    (CryptoGames.FSAEAD.initState (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps) k b)
-    (CryptoGames.SM.Engine.RSReach.init ae G maxForwardJumps k) (skippedLenLe_init ae G maxForwardJumps k)]
-
-theorem fsaeadAdvantage_redFSPrivCoin_atomic_eq
-    (Dh : DHFun (BitVec 256) Pt) (prng : PRFPRNG KR RSt Pt (BitVec 256))
-    (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (lam : Pt) (B B0 B_q Δcka qep : ℕ) (tL : Option ℕ) (t : ℕ)
-    (hB : (B_q + 1) * (maxForwardJumps + 1) ≤ B)
-    (hB0 : (B_q + 1) * (maxForwardJumps + 1) ≤ B0)
-    (A : SchemeAdversary (CryptoGames.CKA.DDH.State (BitVec 256) Pt) Pt RSt
-      (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
-      (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))
-      (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256)
-      (ℕ × LibsignalCiphertextWithSalt32))
-    (qAdv : ℕ) (hA : CryptoGames.SM.MakesAtMostQueries A qAdv) (hqB : qAdv ≤ B_q)
-    (hSendOk : CryptoGames.LibsignalSM.Proofs.SessionShort.SendMsgsOk (fun m => atomicShortPubB m.1) A) :
-    CryptoGames.FSAEAD.advantage (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-      (redFSPrivCoin (dhSchemeFb Dh) prng (fsClamp B (fsAtomicB C ℓ encT idOf B0))
-        lam Δcka qep tL t A) =
-    CryptoGames.FSAEAD.advantage (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-      (redFSPrivCoin (dhScheme Dh) prng (lFS C protoSignalCodec ℓ encT idOf maxForwardJumps)
-        lam Δcka qep tL t A) := by
-  simp only [CryptoGames.FSAEAD.advantage,
-    fsaeadGame_redFSPrivCoin_atomic_eq Dh prng C ℓ encT idOf lam B B0 B_q Δcka qep tL t
-      hB hB0 A qAdv hA hqB hSendOk]
 
 end CombinedAtomicSwap
 

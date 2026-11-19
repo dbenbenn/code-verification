@@ -9,24 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsPlacedInst
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1SampledClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt2SampledClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedEkReceivedCt1SampledClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedEkSentCt1ReceivedClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderReceivedClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderSentClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysUnsampledClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedNoHeaderReceivedClPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsPlacedInst -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1SampledClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt2SampledClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedEkReceivedCt1SampledClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedEkSentCt1ReceivedClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderReceivedClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderSentClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysUnsampledClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedNoHeaderReceivedClPlaced
 import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB
 import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.BytesMergeCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Varint.VarintCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergePart2CodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Placed Chunked Message-Merge Instantiations
@@ -36,7 +41,7 @@ Code-and-rodata-loaded (`withLsCodeRoLoaded lsmpl`) own-block contracts for the 
 with `blkPC_298`-rebased caller corollaries for `V1State::merge`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
@@ -416,224 +421,5 @@ theorem cliChunkedEkReceivedCt1SampledMerge_310_cl [LibsignalPlacement] (W : Cli
     (lift_cro_of_own hBytes) (lift_cro_of_own hAuth) (lift_cro_of_own hPolyEnc))
 
 /-! ### 2. `blkPC_298` (`V1State::merge`) Caller Corollaries -/
-
-theorem cliChunkedKeysUnsampledMerge_at_298 [LibsignalPlacement] (W : CliHooks)
-    {ext : String → Option (State → State)} [CliSpqrExt W ext]
-    (hFrom : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 261 (Rust.withPanics ext))
-      (lsmpl.base 261) (withLsCodeLoaded lsmpl (decodeErrorFromSpec A0)))
-    (hPush : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext))
-      (lsmpl.base 257) (withLsCodeLoaded lsmpl (decodeErrorPushSpec A0)))
-    (hVarint : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 291 (Rust.withPanics ext))
-      (lsmpl.base 291) (withLsCodeLoaded lsmpl (decodeVarint2Spec A0)))
-    (hSkip : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 263 (Rust.withPanics ext))
-      (lsmpl.base 263) (withLsCodeLoaded lsmpl (skipField3Spec A0)))
-    (hAuth : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 295 (Rust.withPanics ext))
-      (lsmpl.base 295) (withLsCodeRoLoaded lsmpl (authMergeSpec A0))) :
-    subroutine_ok ((blkPC_298).rebase (blkPl_298).base (Rust.withPanics ext))
-      (lsmpl.base 305)
-      (withLsCodeRoLoaded lsmpl (chunkedKeysUnsampledMergeSpec A0)) :=
-  lift_cro_of_own (cliChunkedKeysUnsampledMerge_305_cl W hFrom hPush hVarint hSkip hAuth)
-
-theorem cliChunkedKeysSampledMerge_at_298 [LibsignalPlacement] (W : CliHooks)
-    {ext : String → Option (State → State)} [CliSpqrExt W ext]
-    (hFrom : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 261 (Rust.withPanics ext))
-      (lsmpl.base 261) (withLsCodeLoaded lsmpl (decodeErrorFromSpec A0)))
-    (hPush : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext))
-      (lsmpl.base 257) (withLsCodeLoaded lsmpl (decodeErrorPushSpec A0)))
-    (hVarint : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 291 (Rust.withPanics ext))
-      (lsmpl.base 291) (withLsCodeLoaded lsmpl (decodeVarint2Spec A0)))
-    (hSkip : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 263 (Rust.withPanics ext))
-      (lsmpl.base 263) (withLsCodeLoaded lsmpl (skipField3Spec A0)))
-    (hBytes : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 290 (Rust.withPanics ext))
-      (lsmpl.base 290) (withLsCodeRoLoaded lsmpl (bytesMerge3RawSpec A0)))
-    (hAuth : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 295 (Rust.withPanics ext))
-      (lsmpl.base 295) (withLsCodeRoLoaded lsmpl (authMergeSpec A0)))
-    (hPolyEnc : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 297 (Rust.withPanics ext))
-      (lsmpl.base 297) (withLsCodeRoLoaded lsmpl (polyEncoderMergeSpec A0))) :
-    subroutine_ok ((blkPC_298).rebase (blkPl_298).base (Rust.withPanics ext))
-      (lsmpl.base 304)
-      (withLsCodeRoLoaded lsmpl (chunkedKeysSampledMergeSpec A0)) :=
-  lift_cro_of_own (cliChunkedKeysSampledMerge_304_cl W hFrom hPush hVarint hSkip hBytes hAuth hPolyEnc)
-
-theorem cliChunkedHeaderSentMerge_at_298 [LibsignalPlacement] (W : CliHooks)
-    {ext : String → Option (State → State)} [CliSpqrExt W ext]
-    (hFrom : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 261 (Rust.withPanics ext))
-      (lsmpl.base 261) (withLsCodeLoaded lsmpl (decodeErrorFromSpec A0)))
-    (hPush : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext))
-      (lsmpl.base 257) (withLsCodeLoaded lsmpl (decodeErrorPushSpec A0)))
-    (hVarint : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 291 (Rust.withPanics ext))
-      (lsmpl.base 291) (withLsCodeLoaded lsmpl (decodeVarint2Spec A0)))
-    (hSkip : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 263 (Rust.withPanics ext))
-      (lsmpl.base 263) (withLsCodeLoaded lsmpl (skipField3Spec A0)))
-    (hBytes : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 290 (Rust.withPanics ext))
-      (lsmpl.base 290) (withLsCodeRoLoaded lsmpl (bytesMerge3RawSpec A0)))
-    (hAuth : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 295 (Rust.withPanics ext))
-      (lsmpl.base 295) (withLsCodeRoLoaded lsmpl (authMergeSpec A0)))
-    (hPolyEnc : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 297 (Rust.withPanics ext))
-      (lsmpl.base 297) (withLsCodeRoLoaded lsmpl (polyEncoderMergeSpec A0)))
-    (hPolyDec : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 296 (Rust.withPanics ext))
-      (lsmpl.base 296) (withLsCodeRoLoaded lsmpl (polyDecoderMergeSpec A0))) :
-    subroutine_ok ((blkPC_298).rebase (blkPl_298).base (Rust.withPanics ext))
-      (lsmpl.base 302)
-      (withLsCodeRoLoaded lsmpl (chunkedHeaderSentMergeSpec A0)) :=
-  lift_cro_of_own (cliChunkedHeaderSentMerge_302_cl W hFrom hPush hVarint hSkip hBytes hAuth hPolyEnc hPolyDec)
-
-theorem cliChunkedCt1ReceivedMerge_at_298 [LibsignalPlacement] (W : CliHooks)
-    {ext : String → Option (State → State)} [CliSpqrExt W ext]
-    (hFrom : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 261 (Rust.withPanics ext))
-      (lsmpl.base 261) (withLsCodeLoaded lsmpl (decodeErrorFromSpec A0)))
-    (hPush : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext))
-      (lsmpl.base 257) (withLsCodeLoaded lsmpl (decodeErrorPushSpec A0)))
-    (hVarint : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 291 (Rust.withPanics ext))
-      (lsmpl.base 291) (withLsCodeLoaded lsmpl (decodeVarint2Spec A0)))
-    (hSkip : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 263 (Rust.withPanics ext))
-      (lsmpl.base 263) (withLsCodeLoaded lsmpl (skipField3Spec A0)))
-    (hUc311 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 311 (Rust.withPanics ext))
-      (lsmpl.base 311) (withLsCodeRoLoaded lsmpl (unchunkedEkSentCt1ReceivedMergeSpec A0)))
-    (hPolyEnc : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 297 (Rust.withPanics ext))
-      (lsmpl.base 297) (withLsCodeRoLoaded lsmpl (polyEncoderMergeSpec A0))) :
-    subroutine_ok ((blkPC_298).rebase (blkPl_298).base (Rust.withPanics ext))
-      (lsmpl.base 303)
-      (withLsCodeRoLoaded lsmpl (chunkedCt1ReceivedMergeSpec A0)) :=
-  lift_cro_of_own (cliChunkedCt1ReceivedMerge_303_cl W hFrom hPush hVarint hSkip hUc311 hPolyEnc)
-
-theorem cliChunkedEkSentCt1ReceivedMerge_at_298 [LibsignalPlacement] (W : CliHooks)
-    {ext : String → Option (State → State)} [CliSpqrExt W ext]
-    (hFrom : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 261 (Rust.withPanics ext))
-      (lsmpl.base 261) (withLsCodeLoaded lsmpl (decodeErrorFromSpec A0)))
-    (hPush : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext))
-      (lsmpl.base 257) (withLsCodeLoaded lsmpl (decodeErrorPushSpec A0)))
-    (hVarint : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 291 (Rust.withPanics ext))
-      (lsmpl.base 291) (withLsCodeLoaded lsmpl (decodeVarint2Spec A0)))
-    (hSkip : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 263 (Rust.withPanics ext))
-      (lsmpl.base 263) (withLsCodeLoaded lsmpl (skipField3Spec A0)))
-    (hUc311 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 311 (Rust.withPanics ext))
-      (lsmpl.base 311) (withLsCodeRoLoaded lsmpl (unchunkedEkSentCt1ReceivedMergeSpec A0)))
-    (hPolyDec : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 296 (Rust.withPanics ext))
-      (lsmpl.base 296) (withLsCodeRoLoaded lsmpl (polyDecoderMergeSpec A0))) :
-    subroutine_ok ((blkPC_298).rebase (blkPl_298).base (Rust.withPanics ext))
-      (lsmpl.base 309)
-      (withLsCodeRoLoaded lsmpl (chunkedEkSentCt1ReceivedMergeSpec A0)) :=
-  lift_cro_of_own (cliChunkedEkSentCt1ReceivedMerge_309_cl W hFrom hPush hVarint hSkip hUc311 hPolyDec)
-
-theorem cliChunkedNoHeaderReceivedMerge_at_298 [LibsignalPlacement] (W : CliHooks)
-    {ext : String → Option (State → State)} [CliSpqrExt W ext]
-    (hFrom : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 261 (Rust.withPanics ext))
-      (lsmpl.base 261) (withLsCodeLoaded lsmpl (decodeErrorFromSpec A0)))
-    (hPush : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext))
-      (lsmpl.base 257) (withLsCodeLoaded lsmpl (decodeErrorPushSpec A0)))
-    (hVarint : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 291 (Rust.withPanics ext))
-      (lsmpl.base 291) (withLsCodeLoaded lsmpl (decodeVarint2Spec A0)))
-    (hSkip : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 263 (Rust.withPanics ext))
-      (lsmpl.base 263) (withLsCodeLoaded lsmpl (skipField3Spec A0)))
-    (hAuth : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 295 (Rust.withPanics ext))
-      (lsmpl.base 295) (withLsCodeRoLoaded lsmpl (authMergeSpec A0)))
-    (hPolyDec : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 296 (Rust.withPanics ext))
-      (lsmpl.base 296) (withLsCodeRoLoaded lsmpl (polyDecoderMergeSpec A0))) :
-    subroutine_ok ((blkPC_298).rebase (blkPl_298).base (Rust.withPanics ext))
-      (lsmpl.base 308)
-      (withLsCodeRoLoaded lsmpl (chunkedNoHeaderReceivedMergeSpec A0)) :=
-  lift_cro_of_own (cliChunkedNoHeaderReceivedMerge_308_cl W hFrom hPush hVarint hSkip hAuth hPolyDec)
-
-theorem cliChunkedHeaderReceivedMerge_at_298 [LibsignalPlacement] (W : CliHooks)
-    {ext : String → Option (State → State)} [CliSpqrExt W ext]
-    (hFrom : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 261 (Rust.withPanics ext))
-      (lsmpl.base 261) (withLsCodeLoaded lsmpl (decodeErrorFromSpec A0)))
-    (hPush : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext))
-      (lsmpl.base 257) (withLsCodeLoaded lsmpl (decodeErrorPushSpec A0)))
-    (hVarint : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 291 (Rust.withPanics ext))
-      (lsmpl.base 291) (withLsCodeLoaded lsmpl (decodeVarint2Spec A0)))
-    (hSkip : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 263 (Rust.withPanics ext))
-      (lsmpl.base 263) (withLsCodeLoaded lsmpl (skipField3Spec A0)))
-    (hBytes : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 290 (Rust.withPanics ext))
-      (lsmpl.base 290) (withLsCodeRoLoaded lsmpl (bytesMerge3RawSpec A0)))
-    (hAuth : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 295 (Rust.withPanics ext))
-      (lsmpl.base 295) (withLsCodeRoLoaded lsmpl (authMergeSpec A0)))
-    (hPolyDec : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 296 (Rust.withPanics ext))
-      (lsmpl.base 296) (withLsCodeRoLoaded lsmpl (polyDecoderMergeSpec A0))) :
-    subroutine_ok ((blkPC_298).rebase (blkPl_298).base (Rust.withPanics ext))
-      (lsmpl.base 306)
-      (withLsCodeRoLoaded lsmpl (chunkedHeaderReceivedMergeSpec A0)) :=
-  lift_cro_of_own (cliChunkedHeaderReceivedMerge_306_cl W hFrom hPush hVarint hSkip hBytes hAuth hPolyDec)
-
-theorem cliChunkedCt1SampledMerge_at_298 [LibsignalPlacement] (W : CliHooks)
-    {ext : String → Option (State → State)} [CliSpqrExt W ext]
-    (hFrom : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 261 (Rust.withPanics ext))
-      (lsmpl.base 261) (withLsCodeLoaded lsmpl (decodeErrorFromSpec A0)))
-    (hPush : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext))
-      (lsmpl.base 257) (withLsCodeLoaded lsmpl (decodeErrorPushSpec A0)))
-    (hVarint : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 291 (Rust.withPanics ext))
-      (lsmpl.base 291) (withLsCodeLoaded lsmpl (decodeVarint2Spec A0)))
-    (hSkip : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 263 (Rust.withPanics ext))
-      (lsmpl.base 263) (withLsCodeLoaded lsmpl (skipField3Spec A0)))
-    (hUc312 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 312 (Rust.withPanics ext))
-      (lsmpl.base 312) (withLsCodeRoLoaded lsmpl (unchunkedCt1SentMergeSpec A0)))
-    (hPolyEnc : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 297 (Rust.withPanics ext))
-      (lsmpl.base 297) (withLsCodeRoLoaded lsmpl (polyEncoderMergeSpec A0)))
-    (hPolyDec : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 296 (Rust.withPanics ext))
-      (lsmpl.base 296) (withLsCodeRoLoaded lsmpl (polyDecoderMergeSpec A0))) :
-    subroutine_ok ((blkPC_298).rebase (blkPl_298).base (Rust.withPanics ext))
-      (lsmpl.base 300)
-      (withLsCodeRoLoaded lsmpl (chunkedCt1SampledMergeSpec A0)) :=
-  lift_cro_of_own (cliChunkedCt1SampledMerge_300_cl W hFrom hPush hVarint hSkip hUc312 hPolyEnc hPolyDec)
-
-theorem cliChunkedEkReceivedCt1SampledMerge_at_298 [LibsignalPlacement] (W : CliHooks)
-    {ext : String → Option (State → State)} [CliSpqrExt W ext]
-    (hFrom : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 261 (Rust.withPanics ext))
-      (lsmpl.base 261) (withLsCodeLoaded lsmpl (decodeErrorFromSpec A0)))
-    (hPush : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext))
-      (lsmpl.base 257) (withLsCodeLoaded lsmpl (decodeErrorPushSpec A0)))
-    (hVarint : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 291 (Rust.withPanics ext))
-      (lsmpl.base 291) (withLsCodeLoaded lsmpl (decodeVarint2Spec A0)))
-    (hSkip : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 263 (Rust.withPanics ext))
-      (lsmpl.base 263) (withLsCodeLoaded lsmpl (skipField3Spec A0)))
-    (hBytes : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 290 (Rust.withPanics ext))
-      (lsmpl.base 290) (withLsCodeRoLoaded lsmpl (bytesMerge3RawSpec A0)))
-    (hAuth : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 295 (Rust.withPanics ext))
-      (lsmpl.base 295) (withLsCodeRoLoaded lsmpl (authMergeSpec A0)))
-    (hPolyEnc : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 297 (Rust.withPanics ext))
-      (lsmpl.base 297) (withLsCodeRoLoaded lsmpl (polyEncoderMergeSpec A0))) :
-    subroutine_ok ((blkPC_298).rebase (blkPl_298).base (Rust.withPanics ext))
-      (lsmpl.base 310)
-      (withLsCodeRoLoaded lsmpl (chunkedEkReceivedCt1SampledMergeSpec A0)) :=
-  lift_cro_of_own (cliChunkedEkReceivedCt1SampledMerge_310_cl W hFrom hPush hVarint hSkip hBytes hAuth hPolyEnc)
-
-theorem cliChunkedCt1AcknowledgedMerge_at_298 [LibsignalPlacement] (W : CliHooks)
-    {ext : String → Option (State → State)} [CliSpqrExt W ext]
-    (hFrom : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 261 (Rust.withPanics ext))
-      (lsmpl.base 261) (withLsCodeLoaded lsmpl (decodeErrorFromSpec A0)))
-    (hPush : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext))
-      (lsmpl.base 257) (withLsCodeLoaded lsmpl (decodeErrorPushSpec A0)))
-    (hVarint : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 291 (Rust.withPanics ext))
-      (lsmpl.base 291) (withLsCodeLoaded lsmpl (decodeVarint2Spec A0)))
-    (hSkip : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 263 (Rust.withPanics ext))
-      (lsmpl.base 263) (withLsCodeLoaded lsmpl (skipField3Spec A0)))
-    (hUc312 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 312 (Rust.withPanics ext))
-      (lsmpl.base 312) (withLsCodeRoLoaded lsmpl (unchunkedCt1SentMergeSpec A0)))
-    (hPolyDec : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 296 (Rust.withPanics ext))
-      (lsmpl.base 296) (withLsCodeRoLoaded lsmpl (polyDecoderMergeSpec A0))) :
-    subroutine_ok ((blkPC_298).rebase (blkPl_298).base (Rust.withPanics ext))
-      (lsmpl.base 307)
-      (withLsCodeRoLoaded lsmpl (chunkedCt1AcknowledgedMergeSpec A0)) :=
-  lift_cro_of_own (cliChunkedCt1AcknowledgedMerge_307_cl W hFrom hPush hVarint hSkip hUc312 hPolyDec)
-
-theorem cliChunkedCt2SampledMerge_at_298 [LibsignalPlacement] (W : CliHooks)
-    {ext : String → Option (State → State)} [CliSpqrExt W ext]
-    (hFrom : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 261 (Rust.withPanics ext))
-      (lsmpl.base 261) (withLsCodeLoaded lsmpl (decodeErrorFromSpec A0)))
-    (hPush : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext))
-      (lsmpl.base 257) (withLsCodeLoaded lsmpl (decodeErrorPushSpec A0)))
-    (hVarint : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 291 (Rust.withPanics ext))
-      (lsmpl.base 291) (withLsCodeLoaded lsmpl (decodeVarint2Spec A0)))
-    (hSkip : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 263 (Rust.withPanics ext))
-      (lsmpl.base 263) (withLsCodeLoaded lsmpl (skipField3Spec A0)))
-    (hAuth : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 295 (Rust.withPanics ext))
-      (lsmpl.base 295) (withLsCodeRoLoaded lsmpl (authMergeSpec A0)))
-    (hPolyEnc : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 297 (Rust.withPanics ext))
-      (lsmpl.base 297) (withLsCodeRoLoaded lsmpl (polyEncoderMergeSpec A0))) :
-    subroutine_ok ((blkPC_298).rebase (blkPl_298).base (Rust.withPanics ext))
-      (lsmpl.base 301)
-      (withLsCodeRoLoaded lsmpl (chunkedCt2SampledMergeSpec A0)) :=
-  lift_cro_of_own (cliChunkedCt2SampledMerge_301_cl W hFrom hPush hVarint hSkip hAuth hPolyEnc)
 
 end LibsignalBinary.Proofs.SignalSession.Cli.SpqrChunkedMergePlacedInst

@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7d
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7d -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Unchunked.FromPbBase
-import LibsignalBinary.Proofs.SpqrV1.Layout.Stubs
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Epilogue
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # SPQR V1 `<States>::from_pb`: Variant 7 (`Ct1Sampled`, niche variant) — Part E
@@ -24,7 +24,7 @@ import ProofLib.SepLogic.WPp
 for Variant 7.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.FromPb
 
@@ -47,101 +47,13 @@ set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
-attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff libsignalSessionCode
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   extractLsb'_0_64_append extractLsb'_64_64_append
 attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero noneCap_add_two_beq_zero
-attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  statesFromPb_fnOff
-  stubOff_rust_no_alloc_shim
-  stubOff_rust_alloc
-  stubOff_rust_dealloc
-  stubOff_memcpy
-  stubOff_handle_error
+
 
 /-! ## 1. Unaligned Copy & Stack Layout Helpers -/
-
-/-- Entry block `+1056 -> +3480` when `s.receivingEk` is `none` or has `ptsNeeded = 576`,
-    additionally recording preservation of `x23` and `x25`. -/
-theorem v7_entry_1056_to_3480_full
-    {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (s0 s1 : State) (out pbA c1 w0 cap_dec x23_val x25_val : BitVec 64)
-    (optDecPb : Option PolynomialDecoder) (Frame : SepProp)
-    (hcap_dec : v7_optDecoderCapProp cap_dec (optDecPb.map pbToProtoPolyDecoder))
-    (hpts : v7_receivingEkPtsOk optDecPb)
-    (hpc1 : s1.pc = (tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 1056#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64)
-    (hx1_1 : s1.readReg64 .x1 = c1)
-    (hx9_1 : s1.readReg64 .x9 = w0)
-    (hx19_1 : s1.readReg64 .x19 = out)
-    (hx23_1 : s1.readReg64 .x23 = x23_val)
-    (hx25_1 : s1.readReg64 .x25 = x25_val)
-    (hx26_1 : s1.readReg64 .x26 = s0.readReg64 .x0)
-    (hx27_1 : s1.readReg64 .x27 = pbA)
-    (htr1 : TraceCalleeSaved s1 s0) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 3480#64) s1
-      (((pbA + 184#64) ↦₆₄ cap_dec) ∗
-        v7_optProtoPolyDecoderTail A (pbA + 184#64) cap_dec (optDecPb.map pbToProtoPolyDecoder) ∗
-        Frame)
-      (fun sm Pm =>
-        (Pm ⊢
-          ((pbA + 184#64) ↦₆₄ cap_dec) ∗
-          v7_optProtoPolyDecoderTail A (pbA + 184#64) cap_dec (optDecPb.map pbToProtoPolyDecoder) ∗
-          Frame) ∧
-        sm.sp = s0.sp - 2400#64 ∧
-        sm.readReg64 .x1 = c1 ∧
-        sm.readReg64 .x9 = w0 ∧
-        sm.readReg64 .x19 = out ∧
-        sm.readReg64 .x22 = cap_dec ∧
-        sm.readReg64 .x23 = x23_val ∧
-        sm.readReg64 .x25 = x25_val ∧
-        sm.readReg64 .x26 = s0.readReg64 .x0 ∧
-        sm.readReg64 .x27 = pbA ∧
-        TraceCalleeSaved sm s0) := by
-  cases optDecPb with
-  | none =>
-    simp only [Option.map_none, v7_optDecoderCapProp] at hcap_dec
-    subst hcap_dec
-    states_from_pb_fetches_range b (Rust.withPanics ext) 1056 12
-    dsimp only [tripleRatchetProgAtExt, statesFromPbName, Option.map_none, noneCap,
-      BitVec.ofNat_eq_ofNat] at hpc1 ⊢
-    generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-      "<spqr::v1::chunked::states::States>::from_pb" = entry
-    examples_hide_fetches
-    wp_steps
-    refine EncoderFromPb.align_pre (Entails.of_eq (by ac_rfl)) ?_
-    wp_done
-  | some d =>
-    simp only [Option.map_some, v7_optDecoderCapProp] at hcap_dec
-    unfold v7_receivingEkPtsOk at hpts
-    have hd_pts : (pbToProtoPolyDecoder d).ptsNeeded = 576#32 := by
-      change d.ptsNeeded = 576#32
-      exact beq_iff_eq.mp hpts
-    have hne := v4_ptsCap_add_one_ne_zero hcap_dec
-    refine SepWP.weaken_pre
-      (sepConj_mono_right (sepConj_mono_left
-        (v7_optProtoPolyDecoderTail_expose_pts A pbA cap_dec (pbToProtoPolyDecoder d)))) ?_
-    rw [hd_pts]
-    states_from_pb_fetches_range b (Rust.withPanics ext) 1056 24
-    dsimp only [tripleRatchetProgAtExt, statesFromPbName, Option.map_some,
-      BitVec.ofNat_eq_ofNat] at hpc1 ⊢
-    generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-      "<spqr::v1::chunked::states::States>::from_pb" = entry
-    examples_hide_fetches
-    wp_steps
-    refine EncoderFromPb.align_pre ?_ ?_
-    · have hun := v7_optProtoPolyDecoderTail_unexpose_pts A pbA cap_dec (pbToProtoPolyDecoder d)
-      rw [hd_pts] at hun
-      refine Entails.trans
-        (Entails.of_eq (show _ =
-          ((pbA + 184#64) ↦₆₄ cap_dec) ∗
-          (((pbA + 208#64) ↦₃₂ 576#32) ∗
-           v7_optProtoPolyDecoderTailWithoutPts A (pbA + 184#64) cap_dec (pbToProtoPolyDecoder d)) ∗
-          Frame by ac_rfl)) ?_
-      exact sepConj_mono_right (sepConj_mono_left hun)
-    · wp_done
 
 theorem v7_byte_pointsTo64_eq_pointsTo64_byte (a w : BitVec 64) (b : BitVec 8) :
     (a ↦₆₄ w) ∗ ((a + 8#64) ↦₈ b) =
@@ -174,8 +86,6 @@ theorem v7_triple64_to_byte_qword_tail7 (a w8 w16 w24 : BitVec 64) :
       v7_byte_pointsTo64_eq_pointsTo64_byte a w8 (EncoderFromPb.loByte w16),
       sepConj_assoc (a ↦₈ EncoderFromPb.loByte w8),
       sepConj_assoc (a ↦₈ EncoderFromPb.loByte w8), hq]
-
-
 
 theorem v7_byte_qword_mem7_to_triple64 (a w8 w16 w24 : BitVec 64) :
     (a ↦₈ EncoderFromPb.loByte w8) ∗
@@ -217,12 +127,12 @@ theorem v7_byte_qword_mem7_to_triple64 (a w8 w16 w24 : BitVec 64) :
   exact Entails.refl _
 
 /-- Pure condition on the exposed `cap` word at `d` of `optProtoPolynomialEncoderAt A d m`. -/
-def v7_optEncoderCapProp (cap : BitVec 64) : Option ProtoPolynomialEncoder → Prop
+@[expose] def v7_optEncoderCapProp (cap : BitVec 64) : Option ProtoPolynomialEncoder → Prop
   | none => cap = noneCap
   | some _ => cap.toNat < 2 ^ 63
 
 /-- Remainder of `optProtoPolynomialEncoderAt A d m` after splitting out `d ↦₆₄ cap`. -/
-def v7_optProtoPolyEncoderTail (A : RustAlloc) (d cap : BitVec 64)
+@[expose] def v7_optProtoPolyEncoderTail (A : RustAlloc) (d cap : BitVec 64)
     (m : Option ProtoPolynomialEncoder) : SepProp :=
   match m with
   | none => ⌜cap = noneCap⌝ ∗ memRegion (d + 8#64) 48
@@ -300,7 +210,7 @@ theorem v7_stackAt_ct1Sent_to_encoderFromPbStack (fsp : BitVec 64) :
 
 /-! ## 2. Word-Bundle Unpack/Pack for `ProtoUnchunkedCt1Sent` (`128`B) and `ProtoPolynomialEncoder` (`56`B) -/
 
-def v7_vecU8Heap (A : RustAlloc) (bs : List (BitVec 8)) (cap ptr len : BitVec 64) : SepProp :=
+@[expose] def v7_vecU8Heap (A : RustAlloc) (bs : List (BitVec 8)) (cap ptr len : BitVec 64) : SepProp :=
   ⌜len = BitVec.ofNat 64 bs.length ∧ cap.toNat < 2 ^ 63⌝ ∗
   vecU8Payload A cap ptr bs
 
@@ -333,7 +243,7 @@ theorem v7_vecU8_pack (A : RustAlloc) (a : BitVec 64) (bs : List (BitVec 8))
   apply Entails.pure_left; rintro ⟨rfl, _⟩
   exact vecU8_of_header_payload A a cap ptr bs
 
-def v7_optProtoAuthHeap (A : RustAlloc) :
+@[expose] def v7_optProtoAuthHeap (A : RustAlloc) :
     Option ProtoAuthenticator →
     BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → SepProp
   | none, w0, _, _, _, _, _ => ⌜w0 = noneCap⌝
@@ -422,7 +332,7 @@ theorem v7_optProtoAuthAt_pack (A : RustAlloc) (a : BitVec 64)
     refine Entails.trans (Entails.of_eq (by ac_rfl)) hpack
 
 /-- 15 64-bit words at `a + 8..a + 128` (`120` bytes) of `ProtoUnchunkedCt1Sent`. -/
-def v7_ucTailWordsAt
+@[expose] def v7_ucTailWordsAt
     (a w8 w16 w24 w32 w40 w48 w56 w64 w72 w80 w88 w96 w104 w112 w120 : BitVec 64) : SepProp :=
   ((a + 8#64) ↦₆₄ w8) ∗ ((a + 16#64) ↦₆₄ w16) ∗
   ((a + 24#64) ↦₆₄ w24) ∗ ((a + 32#64) ↦₆₄ w32) ∗ ((a + 40#64) ↦₆₄ w40) ∗
@@ -455,7 +365,7 @@ theorem v7_ucWordsAt_entails_128
     collapse_step (Drop.pointsTo64_entails_memRegion _ _) <|
     Drop.pointsTo64_entails_memRegion _ _
 
-def v7_ucTailHeap (A : RustAlloc) (w0 : BitVec 64) (u : V1State.Unchunked.Ct1Sent)
+@[expose] def v7_ucTailHeap (A : RustAlloc) (w0 : BitVec 64) (u : V1State.Unchunked.Ct1Sent)
     (w8 w16 w24 w32 w40 w48 w56 w64 w72 w80 w88 w96 w104 w112 w120 : BitVec 64) : SepProp :=
   ⌜w16 = BitVec.ofNat 64 u.hdr.length ∧ w120 = u.epoch⌝ ∗
   vecU8Payload A w0 w8 u.hdr ∗
@@ -540,7 +450,7 @@ theorem v7_ucAt_pack (A : RustAlloc) (a w0 : BitVec 64) (u : V1State.Unchunked.C
       (sepConj_mono hes (sepConj_mono hct1 (sepConj_mono_left hauth)))))) ?_
   exact Entails.of_eq (by ac_rfl)
 
-def v7_u32Pad4Prop (w : BitVec 64) (lo32 : BitVec 32) : Prop :=
+@[expose] def v7_u32Pad4Prop (w : BitVec 64) (lo32 : BitVec 32) : Prop :=
   ∃ bs : List (BitVec 8), bs.length = 4 ∧ unpack32 lo32 ++ bs = unpack64 w
 
 theorem v7_u32_pad4_to_u64 (a : BitVec 64) (lo32 : BitVec 32) :
@@ -572,7 +482,7 @@ theorem v7_u64_to_u32_pad4 (a : BitVec 64) (w : BitVec 64) (lo32 : BitVec 32)
   exact sepConj_mono_right (hbs ▸ ProofLib.pointsToBytes_entails_memRegion (a + 4#64) bs)
 
 /-- 6 64-bit words at `d + 8..d + 56` (`48` bytes) of `ProtoPolynomialEncoder`. -/
-def v7_encTailWordsAt (d w8 w16 w24 w32 w40 w48 : BitVec 64) : SepProp :=
+@[expose] def v7_encTailWordsAt (d w8 w16 w24 w32 w40 w48 : BitVec 64) : SepProp :=
   ((d + 8#64) ↦₆₄ w8) ∗ ((d + 16#64) ↦₆₄ w16) ∗
   ((d + 24#64) ↦₆₄ w24) ∗ ((d + 32#64) ↦₆₄ w32) ∗ ((d + 40#64) ↦₆₄ w40) ∗
   ((d + 48#64) ↦₆₄ w48)
@@ -589,7 +499,7 @@ theorem v7_encWordsAt_entails_56 (d w0 w8 w16 w24 w32 w40 w48 : BitVec 64) :
     collapse_step (Drop.pointsTo64_entails_memRegion _ _) <|
     Drop.pointsTo64_entails_memRegion _ _
 
-def v7_encTailHeap (A : RustAlloc) (cap : BitVec 64) (pb : ProtoPolynomialEncoder)
+@[expose] def v7_encTailHeap (A : RustAlloc) (cap : BitVec 64) (pb : ProtoPolynomialEncoder)
     (w8 w16 w24 w32 w40 w48 : BitVec 64) : SepProp :=
   ⌜cap.toNat < 2 ^ 63 ∧ w16 = BitVec.ofNat 64 pb.pts.length ∧
     w40 = BitVec.ofNat 64 pb.polys.length ∧ v7_u32Pad4Prop w48 pb.idx⌝ ∗
@@ -672,7 +582,7 @@ theorem v7_encAt_pack (A : RustAlloc) (d cap : BitVec 64) (pb : ProtoPolynomialE
   simp only [BitVec.add_assoc, BitVec.reduceAdd]
   exact Entails.of_eq (by ac_rfl)
 
-def v7_u32PairProp (w : BitVec 64) (lo32 hi32 : BitVec 32) : Prop :=
+@[expose] def v7_u32PairProp (w : BitVec 64) (lo32 hi32 : BitVec 32) : Prop :=
   unpack32 lo32 ++ unpack32 hi32 = unpack64 w
 
 theorem v7_u32_pair_to_u64 (a : BitVec 64) (lo32 hi32 : BitVec 32) :
@@ -701,7 +611,7 @@ theorem v7_u64_to_u32_pair (a : BitVec 64) (w : BitVec 64) (lo32 hi32 : BitVec 3
       ← ProofLib.pointsTo32_eq_pointsToBytes (a + 4#64) hi32]
   exact Entails.refl _
 
-def v7_u8Pad7Prop (w : BitVec 64) (b0 : BitVec 8) : Prop :=
+@[expose] def v7_u8Pad7Prop (w : BitVec 64) (b0 : BitVec 8) : Prop :=
   ∃ bs : List (BitVec 8), bs.length = 7 ∧ b0 :: bs = unpack64 w
 
 theorem v7_u8_pad7_to_u64 (a : BitVec 64) (b0 : BitVec 8) :
@@ -727,7 +637,7 @@ theorem v7_u64_to_u8_pad7 (a : BitVec 64) (w : BitVec 64) (b0 : BitVec 8)
   exact sepConj_mono_right (hbs ▸ ProofLib.pointsToBytes_entails_memRegion (a + 1#64) bs)
 
 /-- 4 64-bit words at `d + 8..d + 40` (`32` bytes) of `ProtoPolynomialDecoder`. -/
-def v7_decTailWordsAt (d w8 w16 w24 w32 : BitVec 64) : SepProp :=
+@[expose] def v7_decTailWordsAt (d w8 w16 w24 w32 : BitVec 64) : SepProp :=
   ((d + 8#64) ↦₆₄ w8) ∗ ((d + 16#64) ↦₆₄ w16) ∗
   ((d + 24#64) ↦₆₄ w24) ∗ ((d + 32#64) ↦₆₄ w32)
 
@@ -741,7 +651,7 @@ theorem v7_decWordsAt_entails_40 (d w0 w8 w16 w24 w32 : BitVec 64) :
     collapse_step (Drop.pointsTo64_entails_memRegion _ _) <|
     Drop.pointsTo64_entails_memRegion _ _
 
-def v7_decTailHeap (A : RustAlloc) (cap : BitVec 64) (pb : ProtoPolynomialDecoder)
+@[expose] def v7_decTailHeap (A : RustAlloc) (cap : BitVec 64) (pb : ProtoPolynomialDecoder)
     (w8 w16 w24 w32 : BitVec 64) : SepProp :=
   ⌜pb.pts.length ≤ cap.toNat ∧ cap.toNat * 24 < 2 ^ 63 ∧ w8 ≠ 0 ∧
     w16 = BitVec.ofNat 64 pb.pts.length ∧

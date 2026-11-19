@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalPublicApiRepr
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropPreKeyMsg.Helpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropPreKeyMsg.Helpers
 import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
 
 /-!
 # Drop Glue Contract for `PreKeySignalMessage`
@@ -20,7 +21,7 @@ Defines `dropPreKeyMsgSpec` and lifts the exact-stack proof `dropPreKeyMsgExact_
 stack budgets `32 + extHookStack ≤ stk ≤ 2 ^ 64`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,47 +41,10 @@ structure DropPreKeyMsgGhost where
   g : PreKeyMsgGhost
   m : PreKeySignalMessage
 
-def dropPreKeyMsgSpec (A : RustAlloc) (stk : Nat) : Spec DropPreKeyMsgGhost where
+@[expose] def dropPreKeyMsgSpec (A : RustAlloc) (stk : Nat) : Spec DropPreKeyMsgGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗ preKeyMsgAt A x.g x.a x.m ∗ A.pool ∗ stackAt s.sp stk
   post := fun x s0 sf =>
     ⌜sf.trace = s0.trace⌝ ∗ memRegion x.a 248 ∗ A.pool ∗ stackAt s0.sp stk
-
-theorem cliDropPreKeyMsg_ok {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)} (hA : AllocContractsX img A ext)
-    (stk : Nat) (hstk : 32 + extHookStack ≤ stk) (hstk64 : stk ≤ 2 ^ 64) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr cliDropPreKeyMsgName)
-      ((dropPreKeyMsgSpec A stk).inImage img) := by
-  refine DropPreKeyMsgHelpers.subroutine_ok_map_frame_weaken
-    (fun x : DropPreKeyMsgGhost => (x.a, x.g, x.m))
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - (32 + extHookStack)))
-    (DropPreKeyMsgHelpers.dropPreKeyMsgExact_ok hA) ?_ ?_ ?_ ?_
-  · intro x s0
-    dsimp only [Spec.inImage, dropPreKeyMsgSpec, DropPreKeyMsgHelpers.dropPreKeyMsgExactSpec]
-    have hsplit : stackAt s0.sp stk =
-        memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - (32 + extHookStack)) ∗
-          stackAt s0.sp (32 + extHookStack) := by
-      have h := ProofLib.stackAt_split_bottom s0.sp (32 + extHookStack) (stk - (32 + extHookStack)) (by omega)
-      rwa [Nat.add_sub_of_le hstk] at h
-    rw [hsplit]
-    exact Entails.of_eq (by ac_rfl)
-  · intro x s0 sf
-    dsimp only [Spec.inImage, dropPreKeyMsgSpec, DropPreKeyMsgHelpers.dropPreKeyMsgExactSpec]
-    have hsplit : stackAt s0.sp stk =
-        memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - (32 + extHookStack)) ∗
-          stackAt s0.sp (32 + extHookStack) := by
-      have h := ProofLib.stackAt_split_bottom s0.sp (32 + extHookStack) (stk - (32 + extHookStack)) (by omega)
-      rwa [Nat.add_sub_of_le hstk] at h
-    rw [hsplit]
-    exact Entails.of_eq (by ac_rfl)
-  · intro _ _ _
-    dsimp only [Spec.inImage]
-    exact Entails.pure_left False.elim
-  · intros; rfl
-
-example : libsignalSessionCode.fnOff cliDropPreKeyMsgName =
-    num% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::PreKeySignalMessage>") :=
-  ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::protocol::PreKeySignalMessage>"
 
 end CryptoVerification.SignalSession.Cli.RunProofs

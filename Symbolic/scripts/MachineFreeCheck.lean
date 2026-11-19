@@ -444,14 +444,25 @@ def isModDenied (pats : Array DenyPattern) (m? : Option Name) : Bool :=
       pats.any (fun p => p.matchesMod ms)
 
 /-- True on forbidden projections, recursors, and auxiliaries of inert environment types (`Oracle`,
-`Timespec`, `AuxvConfig`, `ProcessInit`, and unsigned `ProcessInputs` fields). Only the type
-constructors, `.mk`, and `ProcessInputs.{files,dirs,stdin}` are permitted. -/
+`Timespec`, `MremapRefusal`, `SchedAffinityResult`, `AuxvConfig`, `ProcessInit`, and unsigned
+`ProcessInputs` fields). Only the type constructors, `.mk` / data constructors, and
+`ProcessInputs.{files,dirs,stdin}` are permitted. -/
 def isForbiddenInertConst (c : Name) : Bool :=
   let u := (Lean.privateToUserName? c).getD c
   if (`Arm64.Oracle).isPrefixOf u then
     u != `Arm64.Oracle && u != `Arm64.Oracle.mk
   else if (`Arm64.Timespec).isPrefixOf u then
     u != `Arm64.Timespec && u != `Arm64.Timespec.mk
+  else if (`Arm64.MremapRefusal).isPrefixOf u then
+    u != `Arm64.MremapRefusal &&
+    u != `Arm64.MremapRefusal.enomem &&
+    u != `Arm64.MremapRefusal.efault
+  else if (`Arm64.SchedAffinityResult).isPrefixOf u then
+    u != `Arm64.SchedAffinityResult &&
+    u != `Arm64.SchedAffinityResult.singleCpu0 &&
+    u != `Arm64.SchedAffinityResult.hostMask &&
+    u != `Arm64.SchedAffinityResult.refuseEnomem &&
+    u != `Arm64.SchedAffinityResult.refuseEperm
   else if (`Arm64.Process.AuxvConfig).isPrefixOf u then
     u != `Arm64.Process.AuxvConfig && u != `Arm64.Process.AuxvConfig.mk
   else if (`Arm64.Process.ProcessInit).isPrefixOf u then

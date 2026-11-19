@@ -21,7 +21,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.Pure
 under `spqrV1SessionUniformCoins` (`spqrV1Send_pqRatchet_len_le`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.V1
 
@@ -89,13 +89,6 @@ theorem spqrV1Send_msg_len_le (F : ShaCompress) (K : MlKem) (st tape : List (Bit
               obtain ⟨index, hidx⟩ := sendAfterStates_msg_eq _ _ _ _ _ _ hs
               rw [hidx]
               exact message_serialize_length_le _ index
-
-/-- Every PQ ratchet message returned by `(spqrV1SessionUniformCoins F K).send` has length `≤ 2 ^ 30` bytes. -/
-theorem spqrV1Send_pqRatchet_len_le (F : ShaCompress) (K : MlKem) (st : List (BitVec 8))
-    (r : BitVec 512) (pq' : List (BitVec 8)) (key : Salt) (pm : List (BitVec 8))
-    (h : (spqrV1SessionUniformCoins F K).send st r = some (pq', key, pm)) : pm.length ≤ 2 ^ 30 := by
-  have := spqrV1Send_msg_len_le F K st (coinBytes r) pq' key pm h
-  omega
 
 
 end CryptoVerification.E2E.V1

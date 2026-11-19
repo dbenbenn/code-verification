@@ -9,12 +9,15 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatements
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatements
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalShortDefs
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound
-public import Computational.Proofs.ReductionDsl.MacroLift
-public import Computational.Proofs.ReductionDsl.AtomicTablesHonest
-public import Computational.Proofs.ReductionDsl.SM.DeliverForge
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound
+public import Computational.Proofs.ReductionDsl.MacroLift -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.SM.DeliverForge
+public import Computational.Proofs.ReductionDsl.Size -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.Engine -- proof-setup: allow-public-import
 
 /-!
 # Atomic `ReductionDsl` compilation for ACD19 Figure 8 reductions
@@ -24,7 +27,7 @@ Compiles the Figure 8 secure-messaging reductions (and `DeliverForge` variants) 
 measures and atomic primitive step costs, guarded at `ℓ < 10 ^ 6` via `MacroLift.guardRed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -295,7 +298,7 @@ end ValueRoundtrips
 
 section PureCompiler
 
-def callPureMacroAux {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂) (auxT : Ty S₂)
+@[expose] def callPureMacroAux {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂) (auxT : Ty S₂)
     (Γ : List (Ty S₁)) {O₂ : Ops S₂} {a b : Ty S₂} (e : Expr O₂ [a, auxT] b) :
     Expr O₂ (a :: mapCtx f auxT Γ) b :=
   Expr.renameM
@@ -343,7 +346,7 @@ structure PureBundle (S₁ S₂ : Sig) (O₁ : Ops S₁) (O₂ : Ops S₂)
 variable {S₁ S₂ : Sig} {O₁ : Ops S₁} {O₂ : Ops S₂}
   {ι : Type} {T : OracleSpec ι} {I₁ : Iface S₁ T} {I₂ : Iface S₂ T} {auxT : Ty S₂}
 
-def compilePureExpr (M : PureBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) :
+@[expose] def compilePureExpr (M : PureBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) :
     {Γ : List (Ty S₁)} → {t : Ty S₁} →
       Expr O₁ Γ t → Expr O₂ (mapCtx M.fSort auxT Γ) (mapTy M.fSort t)
   | _, _, .var v => .var (mapVarAux M.fSort auxT v)
@@ -389,7 +392,7 @@ def compilePureExpr (M : PureBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) :
   | _, _, .tset m i a =>
     .tset (compilePureExpr M m) (compilePureExpr M i) (compilePureExpr M a)
 
-def compilePureComp (M : PureBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) :
+@[expose] def compilePureComp (M : PureBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) :
     {Γ : List (Ty S₁)} → {t : Ty S₁} →
       Comp O₁ I₁ Γ t → Comp O₂ I₂ (mapCtx M.fSort auxT Γ) (mapTy M.fSort t)
   | _, _, .ret e => .ret (compilePureExpr M e)
@@ -412,16 +415,16 @@ def compilePureComp (M : PureBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) :
   | _, _, .foldM K l z f =>
     .foldM K (compilePureExpr M l) (compilePureExpr M z) (compilePureComp M f)
 
-def opExcess (M : PureBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) (o : O₁.Op) : ℕ :=
+@[expose] def opExcess (M : PureBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) (o : O₁.Op) : ℕ :=
   ((M.opMacro o).cost + 1) - O₁.cost o
 
-def sampExcess (M : PureBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) (s : I₁.smp.Samp) : ℕ :=
+@[expose] def sampExcess (M : PureBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) (s : I₁.smp.Samp) : ℕ :=
   ((M.sampMacro s).cost + 2) - I₁.smp.sCost s
 
-def queryExcess (M : PureBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) (g : I₁.Tag) : ℕ :=
+@[expose] def queryExcess (M : PureBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) (g : I₁.Tag) : ℕ :=
   ((M.queryMacro g).cost + 2) - I₁.qCost g
 
-def exprExcess (M : PureBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) :
+@[expose] def exprExcess (M : PureBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) :
     {Γ : List (Ty S₁)} → {t : Ty S₁} → Expr O₁ Γ t → ℕ
   | _, _, .var _ | _, _, .unit | _, _, .bool _ | _, _, .nat _ | _, _, .none | _, _, .nil => 0
   | _, _, .add a b | _, _, .sub a b | _, _, .lt a b | _, _, .eqN a b | _, _, .and a b
@@ -1577,7 +1580,7 @@ theorem computeMac_length (F : ShaCompress) (idS idR : IdentityKey) (macKey : Bi
   simp [u8Vec, vecU8, fitVec, v.toList_length]
 
 /-- Predicate ensuring `AtomicSymOp.signalMsgEncode` runs without output clamping. -/
-@[reducible] def atomicShortPubB (p : LibsignalMsgPublicPart) : Bool :=
+@[expose, reducible] def atomicShortPubB (p : LibsignalMsgPublicPart) : Bool :=
   decide (p.pqmsg.length ≤ 96) && p.addrs.all fun a => decide (a.length ≤ 128)
 
 theorem atomicShortPubB_imp_shortB {p : LibsignalMsgPublicPart}
@@ -1645,7 +1648,7 @@ theorem addressCheckPasses_self (x : Option (List (BitVec 8))) :
   | none => rfl
   | some a => simp [addressCheckPasses]
 
-def aeadAtomicEnc {Pt : Type} (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey)
+@[expose] def aeadAtomicEnc {Pt : Type} (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey)
     (idOf : Party → IdentityKey) (seed : BitVec 256)
     (a : (ℕ × CryptoGames.SM.Construction.Header Pt) × LibsignalMsgPublicPart) (m : Plain ℓ) :
     LibsignalCiphertextWithSalt32 :=
@@ -1658,7 +1661,7 @@ def aeadAtomicEnc {Pt : Type} (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey)
       (32 * (2 * (ℓ / 32) + 24))
   ((raw.take (raw.length - 8), bytesToWordLE 64 ((raw.drop (raw.length - 8)).take 8)), a.2.salt)
 
-def aeadAtomic {Pt : Type} (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey)
+@[expose] def aeadAtomic {Pt : Type} (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey)
     (idOf : Party → IdentityKey) :
     AEADScheme (BitVec 256) ((ℕ × CryptoGames.SM.Construction.Header Pt) × LibsignalMsgPublicPart)
       (Plain ℓ) LibsignalCiphertextWithSalt32 where
@@ -1728,7 +1731,7 @@ theorem aeadAtomic_enc_eq {Pt : Type} (C : Crypto) (ℓ : ℕ) (encT : Pt → Pu
   dsimp only [mac, computeMac, hmacScheme, ser, ct0]
   rw [aesCbcEncrypt_eq_cbcPkcs7, bytesToWordLE64_eq_bytesToWord64LE, hids]
 
-def fsAtomic {Pt : Type} (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey)
+@[expose] def fsAtomic {Pt : Type} (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey)
     (idOf : Party → IdentityKey) :
     FSAEADScheme (BitVec 256) (RatchetSenderState (BitVec 256))
       (RatchetReceiverState (BitVec 256) (BitVec 256))
@@ -1737,7 +1740,7 @@ def fsAtomic {Pt : Type} (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey)
   fromAEADPRG ((aeadAtomic C ℓ encT idOf).movePubPartToAD (lPubOf protoSignalCodec))
     (lChainPRG C.F) maxForwardJumps
 
-def fsAtomicB {Pt : Type} (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey)
+@[expose] def fsAtomicB {Pt : Type} (C : Crypto) (ℓ : ℕ) (encT : Pt → PublicKey)
     (idOf : Party → IdentityKey) (B : ℕ) :
     FSAEADScheme (BitVec 256) (RatchetSenderState (BitVec 256))
       (RatchetReceiverState (BitVec 256) (BitVec 256))
@@ -1788,7 +1791,7 @@ theorem skipKeys_length {CK MK : Type} (G : ℕ → PRGScheme CK (CK × MK)) :
     simp only [skipKeys, skipKeys_length G n, List.length_cons]
     omega
 
-def RSReachB {CK MK : Type} (maxSkip k : ℕ) (v : RatchetReceiverState CK MK) : Prop :=
+@[expose] def RSReachB {CK MK : Type} (maxSkip k : ℕ) (v : RatchetReceiverState CK MK) : Prop :=
   CryptoGames.SM.Engine.RSReach maxSkip k v ∧ v.skippedKeys.length ≤ v.lastIndex
 
 theorem RSReachB.init {CK MK AD M C : Type}
@@ -1838,7 +1841,7 @@ theorem RSReachB.receive_fromAEADPRG {CK MK AD M C : Type}
       exact Nat.le_trans (List.length_filter_le _ _) hv.2
 
 /-- `Dh.base`-fallback variant of `CKA.dhScheme` agreeing on ping-pong reachable states without `0 : Pt`. -/
-def dhSchemeFb {Sc Pt : Type} (D : DHFun Sc Pt) :
+@[expose] def dhSchemeFb {Sc Pt : Type} (D : DHFun Sc Pt) :
     CKAScheme Sc (CryptoGames.CKA.DDH.State Sc Pt) Sc Pt Pt where
   initA x₀ := .pub (D.dh x₀ D.base)
   initB x₀ := .exp x₀
@@ -1876,18 +1879,18 @@ variable (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero Pt]
 local notation "O" => atomicFig8Ops ℓ Pt C Dh encPt encT lam
 local notation "S" => atomicSig ℓ Pt
 
-def opPure {Γ : List (Ty S)} (o : AtomicPureOp) (a : Expr O Γ (o.dom ℓ Pt)) :
+@[expose] def opPure {Γ : List (Ty S)} (o : AtomicPureOp) (a : Expr O Γ (o.dom ℓ Pt)) :
     Expr O Γ (o.cod ℓ Pt) :=
   @Expr.op S O Γ (Sum.inl (Sum.inl o)) a
 
-def opPtEncPk {Γ : List (Ty S)} (a : Expr O Γ PtT) : Expr O Γ PK :=
+@[expose] def opPtEncPk {Γ : List (Ty S)} (a : Expr O Γ PtT) : Expr O Γ PK :=
   @Expr.op S O Γ (Sum.inl (Sum.inr (Sum.inl AtomicPtEncOp.ptEncPk))) a
 
-def opSym {Γ : List (Ty S)} (o : AtomicSymOp) (a : Expr O Γ (o.dom ℓ Pt)) :
+@[expose] def opSym {Γ : List (Ty S)} (o : AtomicSymOp) (a : Expr O Γ (o.dom ℓ Pt)) :
     Expr O Γ (o.cod ℓ Pt) :=
   @Expr.op S O Γ (Sum.inl (Sum.inr (Sum.inr o))) a
 
-def opGrp {Γ : List (Ty S)} (o : AtomicGroupOp) (a : Expr O Γ (o.dom ℓ Pt)) :
+@[expose] def opGrp {Γ : List (Ty S)} (o : AtomicGroupOp) (a : Expr O Γ (o.dom ℓ Pt)) :
     Expr O Γ (o.cod ℓ Pt) :=
   @Expr.op S O Γ (Sum.inr o) a
 
@@ -1942,7 +1945,7 @@ private theorem toU8_length (bs : List (BitVec 8)) : (toU8 bs).length = bs.lengt
 private theorem vecU8_length32 (v : List.Vector (BitVec 8) 32) : (vecU8 v).length = 32 := by
   simp [vecU8, toU8_length, v.toList_length]
 
-def pkLitExpr {Γ : List (Ty S)} (pk : PublicKey) : Expr O Γ PK :=
+@[expose] def pkLitExpr {Γ : List (Ty S)} (pk : PublicKey) : Expr O Γ PK :=
   opPure ℓ Pt C Dh encPt encT lam .pkOfPbytes
     (opPure ℓ Pt C Dh encPt encT lam (.pbytesLit 32 (vecU8 pk.bytes)) .unit)
 
@@ -1959,7 +1962,7 @@ theorem pkLitExpr_cost {Γ : List (Ty S)} (pk : PublicKey) :
     (pkLitExpr ℓ Pt C Dh encPt encT lam (Γ := Γ) pk).size = 35 := by
   simp [pkLitExpr, AtomicPureOp.opSize, Expr.size, vecU8_length32]
 
-def idKeyLitExpr {Γ : List (Ty S)} (ik : IdentityKey) : Expr O Γ IdKey :=
+@[expose] def idKeyLitExpr {Γ : List (Ty S)} (ik : IdentityKey) : Expr O Γ IdKey :=
   opPure ℓ Pt C Dh encPt encT lam .idKeyOfPbytes
     (opPure ℓ Pt C Dh encPt encT lam (.pbytesLit 32 (vecU8 ik.publicKey.bytes)) .unit)
 
@@ -1976,7 +1979,7 @@ theorem idKeyLitExpr_cost {Γ : List (Ty S)} (ik : IdentityKey) :
     (idKeyLitExpr ℓ Pt C Dh encPt encT lam (Γ := Γ) ik).size = 35 := by
   simp [idKeyLitExpr, AtomicPureOp.opSize, Expr.size, vecU8_length32]
 
-def optBytesEqExpr {Γ : List (Ty S)} (x y : Expr O Γ (.opt (B 32))) : Expr O Γ .bool :=
+@[expose] def optBytesEqExpr {Γ : List (Ty S)} (x y : Expr O Γ (.opt (B 32))) : Expr O Γ .bool :=
   .caseOpt x
     (.caseOpt y (.bool true) (.bool false))
     (.caseOpt (Expr.renameM (Δ := B 32 :: Γ) (fun ⦃_⦄ v => Var.succ v) y) (.bool false)
@@ -2008,7 +2011,7 @@ theorem optBytesEqExpr_size {Γ : List (Ty S)} (x y : Expr O Γ (.opt (B 32))) :
   simp only [optBytesEqExpr, opPure_size, AtomicPureOp.opSize, Expr.size, Expr.renameM_size]
   omega
 
-def optPtEqExpr {Γ : List (Ty S)} (x y : Expr O Γ (.opt PtT)) : Expr O Γ .bool :=
+@[expose] def optPtEqExpr {Γ : List (Ty S)} (x y : Expr O Γ (.opt PtT)) : Expr O Γ .bool :=
   .caseOpt x
     (.caseOpt y (.bool true) (.bool false))
     (.caseOpt (Expr.renameM (Δ := PtT :: Γ) (fun ⦃_⦄ v => Var.succ v) y) (.bool false)
@@ -2039,7 +2042,7 @@ theorem optPtEqExpr_size {Γ : List (Ty S)} (x y : Expr O Γ (.opt PtT)) :
   simp only [optPtEqExpr, opGrp_size, Expr.size, Expr.renameM_size]
   omega
 
-def lPubOfExpr {Γ : List (Ty S)} (cV : Expr O Γ wireSaltCtT) : Expr O Γ (.opt lpubT) :=
+@[expose] def lPubOfExpr {Γ : List (Ty S)} (cV : Expr O Γ wireSaltCtT) : Expr O Γ (.opt lpubT) :=
   .letE cV
     (.caseOpt
       (opPure ℓ Pt C Dh encPt encT lam .signalMsgParse
@@ -2082,7 +2085,7 @@ theorem lPubOfExpr_size {Γ : List (Ty S)} (cV : Expr O Γ wireSaltCtT) :
   simp only [lPubOfExpr, opPure_size, AtomicPureOp.opSize, List.length_replicate, Expr.size]
   omega
 
-def chainGenExpr {Γ : List (Ty S)} (ck : Expr O Γ BV256) : Expr O Γ (.prod BV256 BV256) :=
+@[expose] def chainGenExpr {Γ : List (Ty S)} (ck : Expr O Γ BV256) : Expr O Γ (.prod BV256 BV256) :=
   .letE ck
     (.pair
       (opSym ℓ Pt C Dh encPt encT lam (.hmacSha256Op 1)
@@ -2110,7 +2113,7 @@ theorem chainGenExpr_size {Γ : List (Ty S)} (ck : Expr O Γ BV256) :
     Expr.size]
   omega
 
-def aeadEncExpr :
+@[expose] def aeadEncExpr :
     Expr O [.prod BV256 (.prod (.prod (.prod .nat fig8HdrT) lpubT) PlainT), .prod IdKey IdKey]
       wireSaltCtT :=
   let argT : Ty S := .prod BV256 (.prod (.prod (.prod .nat fig8HdrT) lpubT) PlainT)
@@ -2236,7 +2239,7 @@ private theorem verifyMacWithAddresses_append_tag (F : ShaCompress)
       toLEBytes 8 tag at hw
     rwa [toLEBytes8_bytesToWordLE64 _ hcmlen] at hw
 
-def aeadDecExpr :
+@[expose] def aeadDecExpr :
     Expr O [.prod BV256 (.prod (.prod (.prod .nat fig8HdrT) lpubT) wireSaltCtT), .prod IdKey IdKey]
       (.opt PlainT) :=
   let argT : Ty S := .prod BV256 (.prod (.prod (.prod .nat fig8HdrT) lpubT) wireSaltCtT)
@@ -2549,7 +2552,7 @@ theorem aeadDecExpr_size :
   have hb2 : bits 2 ≤ 2 := by decide
   omega
 
-def appAux {Γ : List (Ty S)} {a b : Ty S} (f : Expr O [a, .prod IdKey IdKey] b)
+@[expose] def appAux {Γ : List (Ty S)} {a b : Ty S} (f : Expr O [a, .prod IdKey IdKey] b)
     (arg : Expr O Γ a) (vAux : Var Γ (.prod IdKey IdKey)) : Expr O Γ b :=
   .letE arg
     (Expr.renameM
@@ -2582,7 +2585,7 @@ theorem appAux_eval {Γ : List (Ty S)} {a b : Ty S} (f : Expr O [a, .prod IdKey 
     (appAux ℓ Pt C Dh encPt encT lam f arg vAux).size = arg.size + f.size + 1 := by
   simp [appAux, Expr.size]
 
-def unitsPowExpr : ℕ → {Γ : List (Ty S)} → Expr O Γ (.list .unit)
+@[expose] def unitsPowExpr : ℕ → {Γ : List (Ty S)} → Expr O Γ (.list .unit)
   | 0, _ => .cons .unit .nil
   | k + 1, _ => .letE (unitsPowExpr k) (.appendL (2 ^ (k + 1)) (.var .zero) (.var .zero))
 
@@ -2680,7 +2683,7 @@ private theorem bits_le_succ (n : ℕ) : bits n ≤ n + 1 := by
   have := two_mul_bits_le_add_two n
   omega
 
-def fsInitSendExpr : Expr O [BV256, .prod IdKey IdKey] fsSendStT :=
+@[expose] def fsInitSendExpr : Expr O [BV256, .prod IdKey IdKey] fsSendStT :=
   .pair (.var .zero) (.nat 0)
 
 @[simp] theorem fsInitSendExpr_eval (idOf : Party → IdentityKey) (B : ℕ) (k : BitVec 256) :
@@ -2691,7 +2694,7 @@ theorem fsInitSendExpr_cost : (fsInitSendExpr ℓ Pt C Dh encPt encT lam).cost =
 
 theorem fsInitSendExpr_size : (fsInitSendExpr ℓ Pt C Dh encPt encT lam).size = 3 := rfl
 
-def fsInitRecvExpr : Expr O [BV256, .prod IdKey IdKey] fsRecvStT :=
+@[expose] def fsInitRecvExpr : Expr O [BV256, .prod IdKey IdKey] fsRecvStT :=
   .pair (.var .zero) (.pair (.nat 0) .nil)
 
 @[simp] theorem fsInitRecvExpr_eval (idOf : Party → IdentityKey) (B : ℕ) (k : BitVec 256) :
@@ -2702,7 +2705,7 @@ theorem fsInitRecvExpr_cost : (fsInitRecvExpr ℓ Pt C Dh encPt encT lam).cost =
 
 theorem fsInitRecvExpr_size : (fsInitRecvExpr ℓ Pt C Dh encPt encT lam).size = 5 := rfl
 
-def fsSendExpr :
+@[expose] def fsSendExpr :
     Expr O [.prod fsSendStT (.prod fig8HdrT (.prod lpubT PlainT)), .prod IdKey IdKey]
       (.prod fsSendStT lctT) :=
   .letE (chainGenExpr ℓ Pt C Dh encPt encT lam (.fst (.fst (.var .zero))))
@@ -2762,7 +2765,7 @@ private theorem fromAEADPRG_movePubPartToAD_receive_none {CK MK AD Pub M C : Typ
     · simp [hnone]
   · simp [hnone]
 
-def fsRecvExpr (B0 B : ℕ) :
+@[expose] def fsRecvExpr (B0 B : ℕ) :
     Expr O [.prod fsRecvStT (.prod fig8HdrT lctT), .prod IdKey IdKey]
       (.opt (.prod fsRecvStT (.prod .nat (.prod lpubT PlainT)))) :=
   let inT : Ty S := .prod fsRecvStT (.prod fig8HdrT lctT)
@@ -3174,7 +3177,7 @@ theorem fsRecvExpr_size (B0 B : ℕ) :
   generalize bits B = bB
   omega
 
-def ckaInitAExpr : Expr O [BV256, .prod IdKey IdKey] ckaStT :=
+@[expose] def ckaInitAExpr : Expr O [BV256, .prod IdKey IdKey] ckaStT :=
   .inl (opGrp ℓ Pt C Dh encPt encT lam .ptDh
     (.pair (.var .zero) (opGrp ℓ Pt C Dh encPt encT lam .ptBase .unit)))
 
@@ -3188,7 +3191,7 @@ theorem ckaInitAExpr_cost : (ckaInitAExpr ℓ Pt C Dh encPt encT lam).cost ≤ 1
 theorem ckaInitAExpr_size : (ckaInitAExpr ℓ Pt C Dh encPt encT lam).size ≤ 10 := by
   simp only [ckaInitAExpr, opGrp_size, Expr.size]; omega
 
-def ckaInitBExpr : Expr O [BV256, .prod IdKey IdKey] ckaStT :=
+@[expose] def ckaInitBExpr : Expr O [BV256, .prod IdKey IdKey] ckaStT :=
   .inr (.var .zero)
 
 @[simp] theorem ckaInitBExpr_eval (idOf : Party → IdentityKey) (kc : BitVec 256) :
@@ -3199,7 +3202,7 @@ theorem ckaInitBExpr_cost : (ckaInitBExpr ℓ Pt C Dh encPt encT lam).cost = 2 :
 
 theorem ckaInitBExpr_size : (ckaInitBExpr ℓ Pt C Dh encPt encT lam).size = 2 := rfl
 
-def ckaSendExpr :
+@[expose] def ckaSendExpr :
     Expr O [.prod ckaStT BV256, .prod IdKey IdKey] (.prod ckaStT (.prod PtT PtT)) :=
   .caseSum (.fst (.var .zero))
     (let x1 : Expr O [PtT, .prod ckaStT BV256, .prod IdKey IdKey] BV256 := .snd (.var (.succ .zero))
@@ -3226,7 +3229,7 @@ theorem ckaSendExpr_cost : (ckaSendExpr ℓ Pt C Dh encPt encT lam).cost ≤ 55 
 theorem ckaSendExpr_size : (ckaSendExpr ℓ Pt C Dh encPt encT lam).size ≤ 40 := by
   simp only [ckaSendExpr, opGrp_size, Expr.size]; omega
 
-def ckaRecvExpr :
+@[expose] def ckaRecvExpr :
     Expr O [.prod ckaStT PtT, .prod IdKey IdKey] (.prod ckaStT PtT) :=
   .caseSum (.fst (.var .zero))
     (let t1 : Expr O [PtT, .prod ckaStT PtT, .prod IdKey IdKey] PtT := .snd (.var (.succ .zero))
@@ -3255,7 +3258,7 @@ private theorem hkdfExtract_length (F : ShaCompress) (salt : CryptoGames.HKDF.Sa
   unfold hkdfExtract hmacWith
   cases salt <;> exact sha256With_length F _
 
-def prngInitExpr : Expr O [BV256, .prod IdKey IdKey] BV256 := .var .zero
+@[expose] def prngInitExpr : Expr O [BV256, .prod IdKey IdKey] BV256 := .var .zero
 
 @[simp] theorem prngInitExpr_eval (idOf : Party → IdentityKey) (kr : BitVec 256) :
     (prngInitExpr ℓ Pt C Dh encPt encT lam).eval (.cons kr (.cons (idOf .A, idOf .B) .nil)) =
@@ -3265,7 +3268,7 @@ theorem prngInitExpr_cost : (prngInitExpr ℓ Pt C Dh encPt encT lam).cost = 1 :
 
 theorem prngInitExpr_size : (prngInitExpr ℓ Pt C Dh encPt encT lam).size = 1 := rfl
 
-def prngUpExpr : Expr O [.prod BV256 PtT, .prod IdKey IdKey] (.prod BV256 BV256) :=
+@[expose] def prngUpExpr : Expr O [.prod BV256 PtT, .prod IdKey IdKey] (.prod BV256 BV256) :=
   opGrp ℓ Pt C Dh encPt encT lam .rootExpandPrg
     (opGrp ℓ Pt C Dh encPt encT lam .extractPrfTag (.var .zero))
 
@@ -3282,7 +3285,7 @@ theorem prngUpExpr_cost : (prngUpExpr ℓ Pt C Dh encPt encT lam).cost ≤ 25 :=
 theorem prngUpExpr_size : (prngUpExpr ℓ Pt C Dh encPt encT lam).size ≤ 10 := by
   simp only [prngUpExpr, opGrp_size, Expr.size]; omega
 
-def lamIExpr : Expr O [.unit, .prod IdKey IdKey] PtT :=
+@[expose] def lamIExpr : Expr O [.unit, .prod IdKey IdKey] PtT :=
   opGrp ℓ Pt C Dh encPt encT lam .ptLam .unit
 
 @[simp] theorem lamIExpr_eval (idOf : Party → IdentityKey) :
@@ -3292,7 +3295,7 @@ theorem lamIExpr_cost : (lamIExpr ℓ Pt C Dh encPt encT lam).cost = 2 := rfl
 
 theorem lamIExpr_size : (lamIExpr ℓ Pt C Dh encPt encT lam).size = 2 := rfl
 
-def defaultEExpr : Expr O [.unit, .prod IdKey IdKey] lctT :=
+@[expose] def defaultEExpr : Expr O [.unit, .prod IdKey IdKey] lctT :=
   .pair (.nat 0)
     (.pair
       (.pair (opPure ℓ Pt C Dh encPt encT lam (.bytesLit 32 []) .unit)
@@ -3317,7 +3320,7 @@ theorem defaultEExpr_size : (defaultEExpr ℓ Pt C Dh encPt encT lam).size ≤ 5
   simp only [defaultEExpr, opPure_size, AtomicPureOp.opSize, List.length_nil, Expr.size, hb0]
   omega
 
-def eqPtExpr : Expr O [.prod PtT PtT, .prod IdKey IdKey] .bool :=
+@[expose] def eqPtExpr : Expr O [.prod PtT PtT, .prod IdKey IdKey] .bool :=
   opGrp ℓ Pt C Dh encPt encT lam .ptEq (.var .zero)
 
 @[simp] theorem eqPtExpr_eval (idOf : Party → IdentityKey) (a b : Pt) :
@@ -3333,7 +3336,7 @@ private theorem salt32V_inj {s1 s2 : List.Vector (BitVec 8) 32} (h : salt32V s1 
   have := congrArg salt32OfV h
   rwa [salt32OfV_salt32V, salt32OfV_salt32V] at this
 
-def eqMExpr :
+@[expose] def eqMExpr :
     Expr O [.prod (.prod lpubT PlainT) (.prod lpubT PlainT), .prod IdKey IdKey] .bool :=
   let m1 := Expr.fst (.var .zero)
   let m2 := Expr.snd (.var .zero)
@@ -3383,7 +3386,7 @@ theorem eqMExpr_size :
   simp only [eqMExpr, opPure_size, AtomicPureOp.opSize, Expr.size] at hopt ⊢
   omega
 
-def lctEqBody {Γ : List (Ty S)} (c1 c2 : Expr O Γ lctT) : Expr O Γ .bool :=
+@[expose] def lctEqBody {Γ : List (Ty S)} (c1 c2 : Expr O Γ lctT) : Expr O Γ .bool :=
   .and (.eqN (.fst c1) (.fst c2))
     (.and (opPure ℓ Pt C Dh encPt encT lam (.bytesEq 32 32)
         (.pair (.fst (.fst (.snd c1))) (.fst (.fst (.snd c2)))))
@@ -3414,7 +3417,7 @@ theorem lctEqBody_size {Γ : List (Ty S)} (c1 c2 : Expr O Γ lctT) :
   simp only [lctEqBody, opPure_size, AtomicPureOp.opSize, Expr.size]
   omega
 
-def eqEExpr : Expr O [.prod lctT lctT, .prod IdKey IdKey] .bool :=
+@[expose] def eqEExpr : Expr O [.prod lctT lctT, .prod IdKey IdKey] .bool :=
   lctEqBody ℓ Pt C Dh encPt encT lam (.fst (.var .zero)) (.snd (.var .zero))
 
 @[simp] theorem eqEExpr_eval (idOf : Party → IdentityKey)
@@ -3436,7 +3439,7 @@ theorem eqEExpr_size : (eqEExpr ℓ Pt C Dh encPt encT lam).size ≤ 60 := by
   simp only [eqEExpr, Expr.size] at h ⊢
   omega
 
-def smEqCtExpr : Expr O [.prod fig8CtT fig8CtT, .prod IdKey IdKey] .bool :=
+@[expose] def smEqCtExpr : Expr O [.prod fig8CtT fig8CtT, .prod IdKey IdKey] .bool :=
   let c1 := Expr.fst (.var .zero)
   let c2 := Expr.snd (.var .zero)
   .and (.eqN (.fst (.fst c1)) (.fst (.fst c2)))
@@ -3493,7 +3496,7 @@ theorem smEqCtExpr_size : (smEqCtExpr ℓ Pt C Dh encPt encT lam).size ≤ 120 :
   simp only [smEqCtExpr, Expr.size] at h1 h2 ⊢
   omega
 
-def smBlankExpr : Expr O [.prod lpubT PlainT, .prod IdKey IdKey] (.prod lpubT PlainT) :=
+@[expose] def smBlankExpr : Expr O [.prod lpubT PlainT, .prod IdKey IdKey] (.prod lpubT PlainT) :=
   .pair (.fst (.var .zero)) (opPure ℓ Pt C Dh encPt encT lam .plainDefault .unit)
 
 @[simp] theorem smBlankExpr_eval (idOf : Party → IdentityKey)

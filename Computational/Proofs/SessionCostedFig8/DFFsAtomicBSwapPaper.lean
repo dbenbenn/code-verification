@@ -9,12 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SessionCostedFig8
-public import Computational.Proofs.SessionCostedFig8.BundlesEval
-public import Computational.Proofs.SessionCostedFig8.FsAtomicBSwap
-public import Computational.Proofs.HeadlineV1.DeliverForgePaperChallSim
-public import Computational.Proofs.HeadlineV1.DeliverForgePaperShiftedReds2
-public import Computational.Proofs.SessionCostedFig8.DFFsAtomicBSwapShifted
+public import Computational.Proofs.SessionCostedFig8 -- proof-setup: allow-public-import
+import Computational.Proofs.SessionCostedFig8.BundlesEval
+import Computational.Proofs.SessionCostedFig8.FsAtomicBSwap
+public import Computational.Proofs.HeadlineV1.DeliverForgePaperChallSim -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.DeliverForgePaperShiftedReds2 -- proof-setup: allow-public-import
+import Computational.Proofs.SessionCostedFig8.DFFsAtomicBSwapShifted
+public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperCKA -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperFS -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperPRNG -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux
+import Computational.Proofs.Fig8SchemeBridge
 
 /-!
 # Atomic Compiler, `FsAtomicBSwap`, and `FsOk` Bridges for Paper `DeliverForge` Reductions
@@ -44,7 +49,7 @@ open CryptoVerification.LibsignalSession.Fig8SchemeBridge (AllPartiesInv CkaStat
 open CryptoVerification.LibsignalSession.HeadlineV1 (EqualPubChallsDF GuardedSMDFShort SendMsgsOkDF badSendMsgDF challSimDF'Paper_equalPub challSimDF'Paper_guardedSMDFShort challSimDF'Paper_queries challSimDF'Paper_sendOk guardedFSInjectShort_redFSAuthDFPaper safePost_redFSAuthDFPaper_restricted safePost_redFSAuthDFPaper_short)
 open ReductionDsl (CostedReduction ckaTargetIface fsaeadHeaderIface prngTargetIface)
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.SessionCostedFig8.DFFsAtomicBSwapPaper
 
@@ -76,7 +81,7 @@ variable {KC Γ CCoins T I KR RSt K SS RS M E : Type}
   {sampCCoins : ProbComp CCoins} {sampI : ProbComp I} {sampK : ProbComp K}
 
 /-- 3-way case-split `B_cka` paper reduction program (`ShiftedDir2Paper` / `ShiftedPaper` / `Paper`). -/
-def redCKAAuthDFCasePaperProg (L B qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
+@[expose] def redCKAAuthDFCasePaperProg (L B qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction
       (CryptoGames.CKA.ckaOps ckaInitA ckaInitB ckaSend ckaReceive prngInit prngUp
         fsInitSender fsInitReceiver fsSend fsReceive eqT eqI eqM eqE lam defaultE)
@@ -106,7 +111,7 @@ def redCKAAuthDFCasePaperProg (L B qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ
       (sampI := sampI) (sampK := sampK) L B 1 qep maxSkip tL t
 
 /-- 3-way case-split `B_prng` paper reduction program (`ShiftedDir2Paper` / `ShiftedPaper` / `Paper`). -/
-def redPRNGAuthDFCasePaperProg (L B qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
+@[expose] def redPRNGAuthDFCasePaperProg (L B qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction
       (CryptoGames.PRFPRNG.prngOps ckaInitA ckaInitB ckaSend ckaReceive prngInit prngUp
         fsInitSender fsInitReceiver fsSend fsReceive eqT eqI eqM eqE lam defaultE)
@@ -136,7 +141,7 @@ def redPRNGAuthDFCasePaperProg (L B qep maxSkip : ℕ) (tL : Option ℕ) (t : �
       (sampI := sampI) (sampK := sampK) L B 1 qep maxSkip tL t
 
 /-- 3-way case-split `B_fs` paper reduction program (`ShiftedDir2Paper` / `ShiftedPaper` / `Paper`). -/
-def redFSAuthDFCasePaperProg (L B qep maxSkip j : ℕ) (tL : Option ℕ) (t : ℕ) :
+@[expose] def redFSAuthDFCasePaperProg (L B qep maxSkip j : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction
       (CryptoGames.PRFPRNG.prngOps ckaInitA ckaInitB ckaSend ckaReceive prngInit prngUp
         fsInitSender fsInitReceiver fsSend fsReceive eqT eqI eqM eqE lam defaultE)

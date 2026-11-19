@@ -11,30 +11,36 @@ module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefs
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
 public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit
-public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
+import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit
+import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
 public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightBranches
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightHelpers
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightSpec
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
-public import LibsignalBinary.Proofs.PeakBudget.W2Seg4CmkSeeds738
-public import LibsignalBinary.Proofs.PeakBudget.W4ArchiveCancelPeak
+public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightBranches -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightHelpers
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightSpec
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
+public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W2Seg4CmkSeeds738 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W4ArchiveCancelPeak -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterStageHelpers
-public import LibsignalBinary.Proofs.PeakBudget.W4TryDecryptPqPeak
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.PeakBudget.W4OuterStageHelpers
+import LibsignalBinary.Proofs.PeakBudget.W4TryDecryptPqPeak
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget
+import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvRaw
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Seed.Defs
+import LibsignalBinary.Proofs.PeakBudget.W4InnerPeakSpec
 
 /-!
 # Tight `fineCostModel` Leaf, Fresh-Bob `prev1`, & Zero-Skip `try_decrypt` Helpers
@@ -49,7 +55,7 @@ Auxiliary tight `fineCostModel` lemmas for `W4OuterTightSpec`:
    bounds.
 -/
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
 
@@ -117,6 +123,8 @@ open LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps (ValidEncoderPts640)
 open LibsignalBinary.Proofs.PeakBudget.SpqrTightCapsAux
   (StatesPtsBoundedAt ValidPqPtsAt ValidV1PtsAt statesPtsBoundedAt_of_from_pb
    statesPtsBoundedAt_of_recv validV1PtsAt_states_into_pb)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
+  (phaseCreditSpec_msgDeserErrEnv_320)
 open LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
   (SessionCloneDom ghostCloneValid_of_sessionGhostValid
    segCloneMaxReq_le_of_dom segCloneTightCum_fine_keys_le_of_dom serialize_dom_phaseCredit_tight
@@ -151,7 +159,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (SegCloneEnv)
 
 /-- Pure `Nat` mirror of `optLargeCost fineCostModel` (`0` for `req ≤ 135,167`, `req + 8,195`
 otherwise), avoiding `AllocCostModel` reduction overhead in kernel `(by decide)`. -/
-def fineOptLarge (req : Nat) : Nat :=
+@[expose] def fineOptLarge (req : Nat) : Nat :=
   if req ≤ 135167 then 0 else req + 8195
 
 theorem optLargeCost_fine_eq (req : Nat) :
@@ -662,7 +670,7 @@ theorem w4SessStorePrev1Step_freshBob_fine_phaseCredit
 
 /-- Fresh-responder / `0`-skip invariant for `<spqr::chain::Chain>::recv_key`: on the first
 handshake message (`index ≤ ctr + 1`), `keyAdvanceLoop` performs `0` skipped-key iterations. -/
-def ChainRecvKeyZeroSkip (x : ChainRecvKeyGhost) : Prop :=
+@[expose] def ChainRecvKeyZeroSkip (x : ChainRecvKeyGhost) : Prop :=
   ∀ epochIndex (h : epochIndex < x.self.links.length),
     x.index.toNat ≤ (x.self.links[epochIndex]'h).recv.ctr.toNat + 1
 
@@ -983,10 +991,14 @@ theorem spqrRecvOrderingEqual_zeroSkip_phaseCreditSpec_tight
   have hAfterMd := phaseCreditSpec_or_freeOnly_fine
     (phaseCreditSpec_seq_zero_left_fine hFrom hAfterFrom)
   have hFull := phaseCreditSpec_seq_freeOnly_left_fine hAfterMd
+  have hMdErr := phaseCreditSpec_seq_freeOnly_right_fine (Nat.le_refl 0) phaseCreditSpec_msgDeserErrEnv_320
   unfold SpqrRecvEqualTightEnv
-  exact hFull.mono
-    (by simp only [Nat.add_assoc]; exact Nat.le_refl _)
-    (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _)
+  exact (hMdErr.or hFull).mono
+    (Nat.max_le.mpr ⟨by omega, by simp only [Nat.add_assoc]; exact Nat.le_refl _⟩)
+    (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩)
+    (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩)
+    (Nat.max_le.mpr ⟨Nat.le_trans (Nat.le_trans (by decide : 320 ≤ 286196) (Nat.le_max_left _ _))
+      (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_max_right _ _)), Nat.le_refl _⟩)
 
 private theorem validV1PtsAt640_local {stBytes : Bytes} {pre_pb : PqRatchetState}
     {pb : V1State} (hPts : ValidEncoderPts640 stBytes)

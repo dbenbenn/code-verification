@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EpochEncodedLenPlaced
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EpochEncodedLenBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EpochEncodedLenPlaced
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EpochEncodedLenBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.FetchPlaced -- proof-setup: allow-public-import
 
 /-!
 # `VmPreserved` Placed Proofs for `Epoch::encoded_len` (Blocks `478` and `399`)
@@ -19,7 +20,7 @@ Lifts `[LibsignalPlacement]` `Epoch::encoded_len` contracts to `VmPreserved` on 
 (`[local#3]`) and `399` (`[local#2]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,30 +40,30 @@ open LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EpochEncodedLenBudget
    EpochEncodedLenLocal2PinnedPlacedOkExt EpochEncodedLenLocal2PlacedOkExt
    EpochEncodedLenLocal2PinnedPlacedOk EpochEncodedLenLocal2PlacedOk)
 
-def EpochEncodedLenLocal1PinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EpochEncodedLenLocal1PinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_478 H) (blkPl_478).base (epochEncodedLenPinnedSpec A)
 
-def EpochEncodedLenLocal1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EpochEncodedLenLocal1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_478 H) (blkPl_478).base (epochEncodedLenSpec A)
 
-def EpochEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EpochEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_478 (Rust.withPanics ext)) (blkPl_478).base
     (epochEncodedLenPinnedSpec A)
 
-def EpochEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EpochEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_478 (Rust.withPanics ext)) (blkPl_478).base
     (epochEncodedLenSpec A)
 
-def EpochEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def EpochEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_478 (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_478).base (epochEncodedLenPinnedSpec A)
 
-def EpochEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def EpochEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_478 (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_478).base (epochEncodedLenSpec A)

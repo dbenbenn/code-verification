@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.States2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.States2Budget
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
@@ -26,6 +26,7 @@ import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Drop.States2BudgetAux -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Relocatable Prologue & Drop Tail for `spqr::recv`
@@ -35,7 +36,7 @@ Shared `FreeOnlyEvs` drop/dealloc contract bundle (`SpqrRecvDropContractsBudget`
 `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -50,8 +51,7 @@ open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification
   (LibsignalCodeLoaded LibsignalPlacement lsmpl lsρ sepWP_seq_lscl withLsCodeLoaded withMemEq)
 open CryptoVerification.LibsignalSpqrV1
-  (MsgPreamble PqRatchetState SpqrRecvModel decodeVarint decodeVarintLoop msgPreamble
-   recvResultExactKeyAt)
+  (MsgPreamble PqRatchetState SpqrRecvModel decodeVarint decodeVarintLoop msgPreamble)
 open CryptoVerification.LibsignalTripleRatchet (VecArg spqrRecvStack)
 open CryptoVerification.LibsignalTripleRatchet.InImage.SpqrRecvEmpty
   (csel_rest1_min_10 msg_cons_cons_of_len_ge_two msg_expose_byte msg_expose_hdr
@@ -82,6 +82,7 @@ open LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget
 open LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget
   (dropOptProtoInnerStatePlacedSpec dropProtoPqRatchetStatePlacedSpec)
 open LibsignalBinary.Proofs.SpqrV1.Drop.States2Budget (dropChunkedStatesLocal2PlacedSpec)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag (recvResultExactKeyDispAt)
 open LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget (SpqrBoundedEvs)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
   (PreamblePlacedErrTail PreamblePlacedOkTail SpqrRecvEnv spqrRecvPlacedPost0
@@ -107,7 +108,7 @@ theorem SpqrRecvEnv.append_freeOnly {st msg : VecArg} {evs0 evs_d : List AllocEv
 
 /-- Simplified `__rust_dealloc` budget contract retaining `AllocCallPreserved` and deterministic
     `rustDeallocEvents size align` cost update. -/
-def deallocFreeOnlySpec (MC : AllocCostModel) (A : RustCliAllocBudget MC)
+@[expose] def deallocFreeOnlySpec (MC : AllocCostModel) (A : RustCliAllocBudget MC)
     (lim : BudgetLimits) : Spec (BitVec 64 × Nat × Nat × MC.σ) where
   pre := (rustCliDeallocBudgetSpec MC A lim).pre
   post := fun (_, size, align, st) s0 sf =>
@@ -523,7 +524,7 @@ theorem step_drop_pre_952_placed_ofEnv {MC : AllocCostModel} {F : ShaCompress}
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs0 st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       memRegion (s0.sp - 4992#64) 48 ∗
@@ -546,7 +547,7 @@ theorem step_drop_pre_952_placed_ofEnv {MC : AllocCostModel} {F : ShaCompress}
   refine seq_free_lscl hcl (mid := (blkPl_329).base + 1020#64)
     (P_evs := fun evs_2 sm =>
       spqrRecvRoPlacedAt ∗ st.at A.repAlloc ∗ msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs_2 st0) sm ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       memRegion (s0.sp - 4992#64) 128 ∗
@@ -595,7 +596,7 @@ theorem step_drop_pre_952_placed_ofEnv {MC : AllocCostModel} {F : ShaCompress}
       refine seq_free (mid := (blkPl_329).base + 1000#64)
         (P_evs := fun evs_2a sm =>
           spqrRecvRoPlacedAt ∗ st.at A.repAlloc ∗ msg.at A.repAlloc ∗
-          recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+          recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
           A.pool lim (MC.stepEvents evs_2a st0) sm ∗
           stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
           memRegion (s0.sp - 4992#64) 48 ∗
@@ -744,7 +745,7 @@ theorem step_drop_pre_952_placed_ofEnv {MC : AllocCostModel} {F : ShaCompress}
         spqrRecvRoPlacedAt ∗
         st.at A.repAlloc ∗
         msg.at A.repAlloc ∗
-        recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+        recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
         A.pool lim (MC.stepEvents evs_tot st0) sm ∗
         stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
         memRegion (s0.sp - 4992#64) 0x1320 ∗
@@ -832,7 +833,7 @@ theorem step_drop_pre_952_placed {MC : AllocCostModel} {F : ShaCompress}
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs0 st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       memRegion (s0.sp - 4992#64) 48 ∗

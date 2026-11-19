@@ -10,42 +10,55 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
-public import LibsignalBinary.Proofs.PeakBudget.CliKitEnvFitsExact
-public import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
-public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal
-public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.MainEntryBudgetFitsCapReal
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemExact
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemSlots
-public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3
-public import LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmLoopCredit
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromCredit
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromHelpers
-public import LibsignalBinary.Proofs.PeakBudget.WireTryFromHelpers
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInst
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.AllPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssemblyPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+public import LibsignalBinary.Proofs.PeakBudget.CliKitEnvFitsExact -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
+import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
+import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
+import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
+import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
+import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal
+import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
+import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+import LibsignalBinary.Proofs.PeakBudget.MainEntryBudgetFitsCapReal
+import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemExact
+import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
+import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemSlots
+import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3
+import LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.WirePksmLoopCredit
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromCredit
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromHelpers
+import LibsignalBinary.Proofs.PeakBudget.WireTryFromHelpers
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInst -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.AllPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssemblyPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+import LibsignalBinary.Proofs.PeakBudget.WireFieldDomainCaps
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptPlaced
 
 /-!
 # Slot-Parametric D3 `pqD3ScopedRun` `MainEntryBudgetFitsCapOf` Closure
@@ -57,14 +70,13 @@ Whole-`main` `FitsEnv` and `MainEntryBudgetFitsCapOf` closures on `pqD3ScopedRun
 caller-supplied `Nat` cumulative, peak, request, and group bounds checked via `d3SlotMainFitsOneGiBOf`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace LibsignalBinary.Proofs.PeakBudget.D3MainEntryBudgetFitsCapDom0
 
-open Arm64.Obj (Image)
 open Arm64.Process (bytesOfString)
 open CryptoGames.LibsignalSession (PublicKey SignalMessage)
 open CryptoGames.LibsignalSessionApi (PreKeySignalMessage)
@@ -183,7 +195,7 @@ theorem boundedReadFileEnv_of_readFileRuleEnvFixed_cliIo
   · exact boundedReadFileEnv_overCapSchedule
 
 /-- Address-normalized wire slice projection of `W8bAssemblyPlacedBudget.PksmTryFromEnv`. -/
-def PksmTryFromWireSliceEnv (rest : List (BitVec 8)) : List AllocEvent → Prop :=
+@[expose] def PksmTryFromWireSliceEnv (rest : List (BitVec 8)) : List AllocEvent → Prop :=
   PksmTryFromEnv ⟨0#64, rest, 0#64⟩
 
 private theorem d3z_freeOnlyEvs_nil : FreeOnlyEvs [] := by
@@ -545,12 +557,12 @@ theorem pksmTryFromWireSlice_fine_groupSpec {rest : List (BitVec 8)}
 /-- Slot-parametric D3 `CliRunCalleeEnvs` bundle using `PksmTryFromWireSliceEnv` on `pksmEnv`,
 `mkBinaryKitRealCalleeEnvsSlotOf EncSlot DecSigSlot` on `initEnv` / `encEnv` / `decSigEnv`, and
 parametric `decPkEnv`. -/
-noncomputable def mkD3BinaryKitCalleeEnvsSlotOf [LibsignalPlacement]
+def mkD3BinaryKitCalleeEnvsSlotOf [LibsignalPlacement]
     (EncSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (decPkEnv : RunCall → List AllocEvent → Prop) (g : RunCall) : CliRunCalleeEnvs :=
   { mkBinaryKitRealCalleeEnvsSlotOf EncSlot DecSigSlot img S X W g with
     pksmEnv := PksmTryFromWireSliceEnv
@@ -558,7 +570,7 @@ noncomputable def mkD3BinaryKitCalleeEnvsSlotOf [LibsignalPlacement]
 
 /-- Parametric D3 whole-`main` `Δcum` from custom slot caps (`PksmTryFromWireSliceEnv` +
 `w3InitExact*`). -/
-def d3SlotMainCumOf (encCum decSigCum decPkCum : Nat) : Nat :=
+@[expose] def d3SlotMainCumOf (encCum decSigCum decPkCum : Nat) : Nat :=
   let runCum := cliRunBinary1MiBCustomPksmCum
     (pksmSliceCum msgCapBytes) w3InitExactCum encCum decSigCum decPkCum
   123250 + m3PhaseDeltaCum_tight + runCum +
@@ -573,7 +585,7 @@ def d3SlotMainLiveOf (encLive decSigLive decPkLive : Nat) : Nat :=
       (pksmSliceLive msgCapBytes) w3InitExactLive encLive decSigLive decPkLive)
 
 /-- Parametric D3 whole-`main` `Δpeak` keeping `decSigLive` and `decPkLive` independent of `Peak`. -/
-def d3SlotMainPeakGenOf
+@[expose] def d3SlotMainPeakGenOf
     (encLive encPeak decSigLive decSigPeak decPkLive decPkPeak : Nat) : Nat :=
   cliMainTightPeakOf
     (cliRun1MiBCustomPksmLive
@@ -583,14 +595,14 @@ def d3SlotMainPeakGenOf
       w3InitExactPeak encLive encPeak decSigPeak decPkPeak)
 
 /-- Parametric D3 whole-`main` `maxReq` from custom slot caps. -/
-def d3SlotMainReqOf (encMaxReq decSigMaxReq decPkMaxReq : Nat) : Nat :=
+@[expose] def d3SlotMainReqOf (encMaxReq decSigMaxReq decPkMaxReq : Nat) : Nat :=
   max (max (16 * 2048) 16384)
     (cliMainTightReqOf
       (cliRunBinary1MiBCustomPksmMaxReq
         (pksmSliceMaxReq msgCapBytes) w3InitExactMaxReq encMaxReq decSigMaxReq decPkMaxReq))
 
 /-- Parametric D3 whole-`main` scaled group count `grpS` from custom slot caps. -/
-def d3SlotMainGrpSOf (encGrpS decSigGrpS decPkGrpS : Nat) : Nat :=
+@[expose] def d3SlotMainGrpSOf (encGrpS decSigGrpS decPkGrpS : Nat) : Nat :=
   let runGrpS := cliRunOpenedCustomPksmGrpS msgCapBytes
     (pksmTryFromCapDeltaGrpS msgCapBytes) w3InitExactGrpS encGrpS decSigGrpS decPkGrpS +
     27 * FineScale
@@ -598,7 +610,7 @@ def d3SlotMainGrpSOf (encGrpS decSigGrpS decPkGrpS : Nat) : Nat :=
     cliMaxDirtyEntries * (12 * FineScale) + 3 * FineScale
 
 /-- Decidable arithmetic predicate for D3 whole-`main` `1 GiB` physical RAM and `2 ^ 48` VA closure at `(enc*, decSig*, decPk*)`. -/
-def d3SlotMainFitsOneGiBOf
+@[expose] def d3SlotMainFitsOneGiBOf
     (encCum encLive encPeak encMaxReq encGrpS
      decSigCum decSigLive decSigPeak decSigMaxReq decSigGrpS
      decPkCum decPkLive decPkPeak decPkMaxReq decPkGrpS : Nat) : Prop :=
@@ -666,7 +678,7 @@ private theorem d3z_slotInit_credit [LibsignalPlacement]
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall)
     (hi_g : CliPqOrD3RecvInputs ⟨W.C, W.Q⟩ g.i)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
@@ -687,7 +699,7 @@ private theorem d3z_slotInit_groups [LibsignalPlacement]
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall)
     (hi_g : CliPqOrD3RecvInputs ⟨W.C, W.Q⟩ g.i)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
@@ -711,7 +723,7 @@ private def d3z_d3SlotCalleeFineSpecs [LibsignalPlacement]
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {decPkEnv : RunCall → List AllocEvent → Prop}
     {g : RunCall}
     (Senc : SingleSlotFineSpec
@@ -770,7 +782,7 @@ private theorem d3z_d3SlotCalleeFineSpecs_bounds [LibsignalPlacement]
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {decPkEnv : RunCall → List AllocEvent → Prop}
     {g : RunCall}
     (Senc : SingleSlotFineSpec
@@ -875,7 +887,7 @@ theorem realCliMainD3RecvSlot_fitsEnv_of_caps [LibsignalPlacement]
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (decPkEnv : RunCall → List AllocEvent → Prop)
     {encCum encLive encPeak encMaxReq encGrpS
      decSigCum decSigLive decSigPeak decSigMaxReq decSigGrpS
@@ -1116,7 +1128,7 @@ private theorem d3z_w2_decSigSlot_sub_d3SlotOf [LibsignalPlacement] {M : AllocCo
       RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (decPkEnv : RunCall → List AllocEvent → Prop)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     (g : RunCall) (meG : AddrGhost) (peerV : AddrV) (rest : List (BitVec 8)) (m : SignalMessage)
@@ -1152,7 +1164,7 @@ theorem mainEntryBudgetFitsCapOf_pqD3Recv_slot_of_caps [LibsignalPlacement]
       RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     (DecPkSlotEnv : DecPkGhost → List AllocEvent → Prop)
     (encCum encLive encPeak encMaxReq encGrpS
@@ -1441,7 +1453,7 @@ theorem mainEntryBudgetFitsCapOf_pqD3Recv_dom0 [LibsignalPlacement]
       RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     (DecPkSlotEnv : DecPkGhost → List AllocEvent → Prop)
     (w4Cum w4Live w4Peak w4MaxReq w4GrpS : Nat)
@@ -1533,7 +1545,7 @@ theorem mainEntryBudgetFitsCapOf_pqD3Recv_dom0_of_singleSlot [LibsignalPlacement
       RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     (DecPkSlotEnv : DecPkGhost → List AllocEvent → Prop)
     (w4Cum w4Live w4Peak w4MaxReq w4GrpS : Nat)

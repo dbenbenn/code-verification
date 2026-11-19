@@ -9,18 +9,19 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.World.HeldRecPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewWire
-public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyPromModel
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptBinPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptHypsPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieNormPure
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.World.HeldRecPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewWire -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyPromModel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptBinPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptHypsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieNormPure -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.OooRpkPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSpqrPureA
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyPromAccept
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.TRREF.EncodeRecordPqInj
+import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure
 
 /-!
 # Pre-Key Parser, Matching, and Session-Record Lemmas
@@ -31,7 +32,7 @@ for matching pre-key decryption (`pqRecvMatchingFieldsModel_accept_eval`), and p
 stripping lemmas for `noMatchRecordBytes`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

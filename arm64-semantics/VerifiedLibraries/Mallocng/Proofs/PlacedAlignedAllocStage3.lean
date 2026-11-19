@@ -628,7 +628,7 @@ private theorem alignedAlloc_reframe_deltaPos_ok [MallocngMultiPlacement]
 
 /-! ## Unified Reframe Stage -/
 
-private theorem sbfm_idx_add1 {idx : Nat} (hIdx31 : idx ≤ 31) :
+theorem sbfm_idx_add1 {idx : Nat} (hIdx31 : idx ≤ 31) :
     (BitVec.setWidth 64 (BitVec.ofNat 32 idx + 1#32) &&& 0xffffffff#64 |||
       (if (BitVec.ofNat 32 idx + 1#32)[31] = true then 0xffffffffffffffff#64 else 0#64) &&&
         0xffffffff00000000#64) =
@@ -641,7 +641,8 @@ private theorem sbfm_idx_add1 {idx : Nat} (hIdx31 : idx ≤ 31) :
   rw [hb31]; revert hlt; bv_robdd
 
 set_option maxHeartbeats 400000 in
-theorem alignedAlloc_reframe_ok [MallocngMultiPlacement] {prog : Program}
+/-- Unified `+0x1b4` → `ret` stage with explicit reframed `st2 = mkAlignedReframedSt ...`. -/
+theorem alignedAlloc_reframe_st_ok [MallocngMultiPlacement] {ro : Bool} {prog : Program}
     {b : BitVec 64} (hb : BlkBase 12 b) (hprog : prog = mallocngBlockProg mmpl 12 msvc)
     {B : GhostName → BitVec 64 → Nat → Nat → SepProp} (hB : ∀ γ p n a, MallocngTightBlock γ p n a ⊢ B γ p n a)
     (γ : GhostName) {tp brkStart align len : BitVec 64} {bud : MallocngBudget}
@@ -674,14 +675,20 @@ theorem alignedAlloc_reframe_ok [MallocngMultiPlacement] {prog : Program}
     let b1 := mallocngAllocBudget true eff bud
     let b2 := mallocngAlignedBudget true align.toNat len.toNat bud
     SepWP prog (s0.readReg64 .lr) s4
-      (MallocngRoTablesA maddrs ∗ MallocngCoreStA γ maddrs brkStart s4.brk b1.liveCost b1.peakCost st ∗
-       MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ mallocngIface.Block γ p eff ∗
+      (MallocngRoTablesA maddrs ∗ MallocngCoreStModeA ro γ maddrs brkStart s4.brk b1.liveCost b1.peakCost st ∗
+       MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ MallocngBlockToken γ p eff ∗
        stackFrameAt (sp0 - 32#64) 704 ∗ AlignedSpillSlots sp0 s0)
       (fun sf Pf =>
-        (∃ new_p : BitVec 64, sf.readReg64 .x0 = new_p ∧
+        (∃ (new_p : BitVec 64) (bv : BitVec 64 → BitVec 8),
+          let st2 := mkAlignedReframedSt st g idx p new_p align.toNat len.toNat bv
+          sf.readReg64 .x0 = new_p ∧
+          new_p = p + ((0#64 - p) &&&
+            ((if ConditionHolds .CS (subsPState64 align 16#64) then align else 16#64) - 1#64)) ∧
+          dynamicRootRegions st2 = dynamicRootRegions st ∧
+          MallocngCountIvsWF b2 (dynamicRootRegions st) st2 ∧
           (MallocngTokBlock (B γ)).pureWf new_p (len.toNat, max align.toNat 16) ∧
-          (Pf ⊢ stackFrameAt sp0 736 ∗
-            MallocngCoreImpl γ maddrs brkStart sf.brk b2 (dynamicRootRegions st) ∗
+          (Pf ⊢ stackFrameAt sp0 736 ∗ MallocngRoTablesA maddrs ∗
+            MallocngCoreStModeA ro γ maddrs brkStart sf.brk b2.liveCost b2.peakCost st2 ∗
             MallocngRuntime maddrs tp ∗
             (MallocngTokBlock (B γ)).interp new_p (len.toNat, max align.toNat 16))) ∧
         VerifiedLibraries.mallocngLib.CodeLoaded mmpl sf.mem ∧ sf.mem.perm = s4.mem.perm ∧
@@ -717,16 +724,16 @@ theorem alignedAlloc_reframe_ok [MallocngMultiPlacement] {prog : Program}
     MallocngRoTablesA maddrs ∗ MallocngLiveAuth γ st.liveMap ∗ MallocngBlockToken γ p eff ∗
     (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗ (maddrs.lock ↦₃₂ 0#32) ∗
     (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-    ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+    MallocngAuxvPtrCell ro maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
     ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
     MappedSet st.masterDom (OwnedMappedByte st) ∗
     MallocngRuntime maddrs tp ∗ stackFrameAt (sp0 - 32#64) 704
   have hPreRearr :
-      (MallocngRoTablesA maddrs ∗ MallocngCoreStA γ maddrs brkStart s4.brk b1.liveCost b1.peakCost st ∗
-        MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ mallocngIface.Block γ p eff ∗
+      (MallocngRoTablesA maddrs ∗ MallocngCoreStModeA ro γ maddrs brkStart s4.brk b1.liveCost b1.peakCost st ∗
+        MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ MallocngBlockToken γ p eff ∗
         stackFrameAt (sp0 - 32#64) 704 ∗ AlignedSpillSlots sp0 s0) ⊢
       (ByteMap st.masterDom (alignedSlotKeep st p eff) bv0 ∗ AlignedSpillSlots sp0 s0 ∗ Rest) := by
-    dsimp only [MallocngCoreStA, MallocngCoreStInflightA, mallocngIface, Rest, bv0]
+    dsimp only [MallocngCoreStModeA, MallocngCoreStInflightModeA, Rest, bv0]
     rw [pure_sepConj_of_true hwf, ← hAbsEq]; sep_frame
   refine SepWP.weaken_pre hPreRearr ?_
   have hSlotEndEq : g.mem + 16#64 +
@@ -774,7 +781,8 @@ theorem alignedAlloc_reframe_ok [MallocngMultiPlacement] {prog : Program}
     dsimp only [eff]; unfold mallocngAlignedEffSize; split <;> omega
   have _hCostLe : max eff MallocngMinBlockCost ≤ max len.toNat MallocngMinBlockCost + (max align.toNat 16 - 16) := by
     rw [hEffEq]; generalize MallocngMinBlockCost = c; omega
-  have hFinish := alignedAlloc_reframe_finish (A := maddrs) (brkStart := brkStart) (brk := sf.brk)
+  let st2 := mkAlignedReframedSt st g idx p new_p align.toNat len.toNat bv
+  obtain ⟨hDynEq, hCnt2, hFinish⟩ := alignedAlloc_reframe_finish_st (ro := ro) (A := maddrs) (brkStart := brkStart) (brk := sf.brk)
     (b1 := b1) (b2 := b2) γ (hbrk_f ▸ hwf) hCnt hg hIdx hSlot hOff255 hSc24_26 hSc63
     hAlignOk hAlignMax hNoOvf rfl
     (by simp only [b1, b2, mallocngAllocBudget, mallocngAlignedBudget, ↓reduceIte]; omega)
@@ -782,19 +790,85 @@ theorem alignedAlloc_reframe_ok [MallocngMultiPlacement] {prog : Program}
     (by simp only [b1, b2, mallocngAllocBudget, mallocngAlignedBudget, ↓reduceIte]; omega)
     rfl (Nat.le_refl _) hOut hHdr3 hHdrOff hTrl1 hTrl5
   refine sepWP_bupd_pre
-    (Q := stackFrameAt sp0 736 ∗ MallocngCoreImpl γ maddrs brkStart sf.brk b2 (dynamicRootRegions st) ∗
+    (Q := stackFrameAt sp0 736 ∗ MallocngRoTablesA maddrs ∗
+      MallocngCoreStModeA ro γ maddrs brkStart sf.brk b2.liveCost b2.peakCost st2 ∗
       MallocngRuntime maddrs tp ∗ (MallocngTokBlock (B γ)).interp new_p (len.toNat, max align.toNat 16)) ?_ ?_
   · refine Entails.trans ?_
       (Entails.trans (sepConj_mono_left hFinish)
         (Entails.trans (bupd_frame_r _ (MallocngRuntime maddrs tp ∗ stackFrameAt sp0 736)) (bupd_mono ?_)))
     · have hStk := spillSlots_repack_736 sp0 s0
       dsimp only [Rest]; refine Entails.trans ?_ (sepConj_mono_right (sepConj_mono_right hStk)); sep_frame
-    · refine Entails.trans (sepConj_mono_left (sepConj_mono_right (sepConj_mono_left
-        (hB γ new_p len.toNat (max align.toNat 16))))) ?_
+    · refine Entails.trans (sepConj_mono_left (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left
+        (hB γ new_p len.toNat (max align.toNat 16)))))) ?_
       dsimp only [MallocngTokBlock]; sep_frame
   · have _h2_48 : (2 : Nat) ^ 48 < 2 ^ 64 := by omega
     refine SepWP.done hpc_f hrun_f
-      ⟨⟨new_p, hx0_f, ⟨hBlkNew.1, hAlignDvd, by have := hBlkNew.2.2.1; omega⟩, Entails.refl _⟩,
+      ⟨⟨new_p, bv, hx0_f, rfl, hDynEq, hCnt2,
+        ⟨hBlkNew.1, hAlignDvd, by have := hBlkNew.2.2.1; omega⟩, Entails.refl _⟩,
        hcl_f, hperm_f, hbrk_f, hproc_f, hsp_f, hcs_f⟩
+
+set_option maxHeartbeats 400000 in
+/-- Unified `+0x1b4` → `ret` stage combining `delta = 0` and `delta > 0` with `alignedAlloc_reframe_finish`. -/
+theorem alignedAlloc_reframe_ok [MallocngMultiPlacement] {ro : Bool} {prog : Program}
+    {b : BitVec 64} (hb : BlkBase 12 b) (hprog : prog = mallocngBlockProg mmpl 12 msvc)
+    {B : GhostName → BitVec 64 → Nat → Nat → SepProp} (hB : ∀ γ p n a, MallocngTightBlock γ p n a ⊢ B γ p n a)
+    (γ : GhostName) {tp brkStart align len : BitVec 64} {bud : MallocngBudget}
+    {st : MallocngSt} {s0 s4 : State}
+    (hwf : MallocngWF maddrs.base brkStart s4.brk
+      (mallocngAllocBudget true (mallocngAlignedEffSize align.toNat len.toNat) bud).liveCost
+      (mallocngAllocBudget true (mallocngAlignedEffSize align.toNat len.toNat) bud).peakCost st)
+    (hCnt : MallocngCountIvsWF
+      (mallocngAllocBudget true (mallocngAlignedEffSize align.toNat len.toNat) bud)
+      (dynamicRootRegions st) st)
+    {g : GroupDesc} (hg : g ∈ st.groups) {idx : Nat} (hIdx : idx < g.slots.length)
+    {p : BitVec 64} {bs : List (BitVec 8)}
+    (hBsLen : bs.length = mallocngAlignedEffSize align.toNat len.toNat)
+    (hSlot : g.slots[idx]'hIdx = .liveUser p (mallocngAlignedEffSize align.toNat len.toNat)
+      (max (mallocngAlignedEffSize align.toNat len.toNat) MallocngMinBlockCost))
+    (hOff255 : p.toNat - (g.slotStart idx).toNat ≤ 255 * 16)
+    (hSc24_26 : 24 ≤ g.sc ∧ g.sc ≤ 26 → nominalSlotCap 23 < mallocngAlignedEffSize align.toNat len.toNat)
+    (hSc63 : g.sc = 63 → g.maplen * 4096 ≤ mallocngAlignedEffSize align.toNat len.toNat + 4115)
+    (hAlignOk : alignedAllocAlignOk align = true) (hAlignMax : align.toNat ≤ MaxAlignedAllocAlign)
+    (hNoOvf : len.toNat + align.toNat < 2 ^ 64)
+    {sp0 : BitVec 64} {oom : State → SepProp}
+    (hpc : s4.pc = b + 0x1b4#64) (hrun : s4.status = .Running)
+    (hcl : VerifiedLibraries.mallocngLib.CodeLoaded mmpl s4.mem)
+    (hsp : s4.sp = sp0 - 32#64) (hsp0 : s0.sp = sp0) (hspAl0 : s0.spAligned = true)
+    (hx0 : s4.readReg64 .x0 = p) (hx2 : s4.readReg64 .x2 = (BitVec.ofNat 32 idx).zeroExtend 64)
+    (hx4 : s4.readReg64 .x4 = BitVec.ofNat 64 g.stride) (hx6 : s4.readReg64 .x6 = g.mem)
+    (hx19 : s4.readReg64 .x19 = if ConditionHolds .CS (subsPState64 align 16#64) then align else 16#64)
+    (hx20 : s4.readReg64 .x20 = len) (hcs21_28 : CalleeSaved21_28 s0 s4) :
+    let eff := mallocngAlignedEffSize align.toNat len.toNat
+    let b1 := mallocngAllocBudget true eff bud
+    let b2 := mallocngAlignedBudget true align.toNat len.toNat bud
+    SepWP prog (s0.readReg64 .lr) s4
+      (MallocngRoTablesA maddrs ∗ MallocngCoreStModeA ro γ maddrs brkStart s4.brk b1.liveCost b1.peakCost st ∗
+       MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ MallocngBlockToken γ p eff ∗
+       stackFrameAt (sp0 - 32#64) 704 ∗ AlignedSpillSlots sp0 s0)
+      (fun sf Pf =>
+        (∃ new_p : BitVec 64, sf.readReg64 .x0 = new_p ∧
+          (MallocngTokBlock (B γ)).pureWf new_p (len.toNat, max align.toNat 16) ∧
+          (Pf ⊢ stackFrameAt sp0 736 ∗
+            (mallocngModeIface ro).MallocngCore γ maddrs brkStart sf.brk b2 (dynamicRootRegions st) ∗
+            MallocngRuntime maddrs tp ∗
+            (MallocngTokBlock (B γ)).interp new_p (len.toNat, max align.toNat 16))) ∧
+        VerifiedLibraries.mallocngLib.CodeLoaded mmpl sf.mem ∧ sf.mem.perm = s4.mem.perm ∧
+        sf.brk = s4.brk ∧ MallocngProcPreserved s4 sf ∧ sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf) oom := by
+  intro eff b1 b2
+  refine SepWP.mono
+    (alignedAlloc_reframe_st_ok (ro := ro) (tp := tp) hb hprog hB γ hwf hCnt hg hIdx hBsLen hSlot hOff255
+      hSc24_26 hSc63 hAlignOk hAlignMax hNoOvf hpc hrun hcl hsp hsp0 hspAl0 hx0 hx2 hx4 hx6 hx19 hx20 hcs21_28) ?_
+  rintro sf Pf _ _ ⟨⟨new_p, bv, hx0_f, _, _, hCnt2, hPureWf, hPf⟩, hRest⟩
+  refine ⟨⟨new_p, hx0_f, hPureWf, Entails.trans hPf ?_⟩, hRest⟩
+  rw [mallocngModeIface_core_eq]
+  refine Entails.trans (Entails.of_eq (by
+    generalize (MallocngRoTablesA maddrs) = PRo
+    generalize (MallocngRuntime maddrs tp) = PRt
+    ac_rfl : _ = stackFrameAt sp0 736 ∗ (MallocngRoTablesA maddrs ∗
+      MallocngCoreStModeA ro γ maddrs brkStart sf.brk b2.liveCost b2.peakCost
+        (mkAlignedReframedSt st g idx p new_p align.toNat len.toNat bv)) ∗
+      MallocngRuntime maddrs tp ∗ (MallocngTokBlock (B γ)).interp new_p (len.toNat, max align.toNat 16))) ?_
+  exact sepConj_mono_right (sepConj_mono_left (sepConj_mono_right
+    (Entails.sepExists_right _ (Entails.of_eq (pure_sepConj_of_true hCnt2 _).symm))))
 
 end VerifiedLibraries.Mallocng.Proofs

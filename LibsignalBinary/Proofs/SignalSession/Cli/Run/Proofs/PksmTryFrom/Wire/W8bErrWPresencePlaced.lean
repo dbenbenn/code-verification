@@ -9,14 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bErrWPresence
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bErrWSharedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bPostLoopPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailBWPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bErrWPresence
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bErrWSharedPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bPostLoopPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailBWPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailCleanup
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPost
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ParseLemmas
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bErrWShared
 
 /-!
 # Relocatable `[LibsignalPlacement]` Missing-Field Error Continuations (`PreKeyPresenceErrWPlaced`)
@@ -25,7 +27,7 @@ Proves `preKeyPresenceErrW_placed_proof` (`+0x460 → +0x5e0` / `+0x61c` / `+0x6
 on `preKeyPlacedProg H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -82,7 +84,7 @@ private theorem w8b_pl_wirePreKeyAt_bk_some_eq (A : RustAlloc) (g : WirePreKeyGh
   rw [hbk]
   rfl
 
-def w8bBkNoneRestPlaced [LibsignalPlacement] (s0 : State)
+@[expose] def w8bBkNoneRestPlaced [LibsignalPlacement] (s0 : State)
     (sp' sret ptr kyberPtr kyberLen bkPtr bkLen ikCap ikPtr ikLen msgCap msgPtr msgLen : BitVec 64)
     (regTag regVal opkTag opkVal spkTag spkVal kpkTag kpkVal : BitVec 32)
     (bytes : List (BitVec 8)) : SepProp :=
@@ -152,7 +154,7 @@ theorem w8bBkNone_placed_pack [LibsignalPlacement] {A : RustAlloc} {s0 : State}
         (sepConj_mono_left (sepConj_mono_right (sepConj_mono h48 (sepConj_mono_left h80))))))) ?_
   apply entails_of_eq; ac_rfl
 
-def w8bBkSomePresRestPlaced [LibsignalPlacement] (s0 : State)
+@[expose] def w8bBkSomePresRestPlaced [LibsignalPlacement] (s0 : State)
     (sp' sret ptr msgLen kyberLen ikLen bkLen : BitVec 64)
     (regTag regVal opkTag opkVal spkVal kpkTag kpkVal : BitVec 32)
     (bytes : List (BitVec 8)) : SepProp :=

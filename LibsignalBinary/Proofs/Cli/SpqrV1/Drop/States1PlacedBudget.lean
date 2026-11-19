@@ -9,12 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1PlacedBudgetAux
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1PlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WP.Apply
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.PolyDecoderPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.PolyEncoderPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.UnchunkedPlacedBudget
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Chunked `States` Drop Glue (Block `443`, Top-Level)
@@ -24,7 +30,7 @@ Assembles the 11-variant relocatable contracts (`drop_chunked_states_local1_plac
 on Block `443` (`lsProg_443 H`) under `RustCliAllocBudget M` and `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -256,7 +262,7 @@ theorem drop_chunked_states_local1_placed_cl
 /-! ## 2. `LibsignalRoLoaded` Jump-Table-Discharged Contracts (`ro_*` / `*_ro_*`) -/
 
 /-- Jump-table-free budget-threaded specification for `States` drop glue (`Block 443`). -/
-def dropChunkedStatesLocal1CleanPlacedSpec [LibsignalPlacement]
+@[expose] def dropChunkedStatesLocal1CleanPlacedSpec [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress) :
     Spec (DropChunkedStatesGhost F × M.σ) where
   pre := fun (x, st) s =>

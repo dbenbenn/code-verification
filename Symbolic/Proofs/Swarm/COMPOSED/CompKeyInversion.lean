@@ -20,7 +20,7 @@ and atomic exposure set, and reduces `AliceInitiatorSecrecyQuery` and `BobRespon
 in the composed model to invariant contracts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

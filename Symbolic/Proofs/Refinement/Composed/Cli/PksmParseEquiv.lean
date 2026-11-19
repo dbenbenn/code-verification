@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
-public import Symbolic.Proofs.Refinement.EncodeWithCovered
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model -- proof-setup: allow-public-import
+import Symbolic.Proofs.Refinement.EncodeWithCovered
 public import Symbolic.Specifications.Refinement.TraceExplanation
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.Ok -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.Ok -- shake: keep
 
 /-!
 # Equivalence of `Pksm.pksmParse` and `parsePreKey`
@@ -23,7 +23,7 @@ the joint behavior of `Pksm.pksmParse` and `parsePreKey` on every byte list via
 `PreKeyFieldsAgree`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,7 +41,7 @@ open DY.Libsignal.Composed.Refinement
 /-! ## Protobuf decoder equivalence -/
 
 /-- Converts `ProtoPreKeySignalMessage` to `PreKeyProto`. -/
-def protoToPreKeyMsg (m : ProtoPreKeySignalMessage) : PreKeyProto where
+@[expose] def protoToPreKeyMsg (m : ProtoPreKeySignalMessage) : PreKeyProto where
   registrationId := m.registrationId
   preKeyId := m.preKeyId
   signedPreKeyId := m.signedPreKeyId

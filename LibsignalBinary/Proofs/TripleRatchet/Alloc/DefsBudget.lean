@@ -10,13 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.OptImageHelper
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.Common.InImageLift
+import ProofLib.SepLogic.WP
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 public import LibsignalBinary.Heap.IfaceBudgetBase
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.HookTrace
 import LibsignalBinary.Proofs.TripleRatchet.Hooks
 
@@ -29,28 +29,18 @@ allocator event envelopes, and `AllocContractsBudget{,X}` hypothesis bundles for
 `ChainKey::to_pb`, `PublicKey::serialize`, and `PrivateKey::derive_public_key_bytes`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
 
+open CryptoVerification.LibsignalTripleRatchet (VecArg extHookStack hookMemcpy_region_trace_ok hookMemcpy_trace_ok hookMemmove_trace_ok hookMemset_region_trace_ok hookMemset_trace_ok pubFromSecretHook sessionShim_hookOk trTrapExterns tripleRatchetExterns tripleRatchetExterns_abs withPanics_trTrap_ne)
+
 open Arm64 ProofLib
 open CryptoGames.LibsignalSession (ChainKey Crypto PublicKey PubKeyFn)
-open CryptoVerification (libsignalSessionCode)
 open CryptoVerification.RustHeap (allocHookStack vecHeader vecU8At)
 open CryptoVerification.LibsignalSessionRepr (chainKeyBytes optChainKeyAt)
-open CryptoVerification.InImageLift (subroutine_ok_inImage_of_subroutine_ok)
-open CryptoVerification.LibsignalTripleRatchet (
-  VecArg allocName deallocName extHookStack
-  hookMemcpy_region_trace_ok hookMemcpy_trace_ok hookMemmove_trace_ok
-  hookMemset_region_trace_ok hookMemset_trace_ok
-  memcpyName memmoveName memsetName pubFromSecretHook pubFromSecretName
-  reallocName sessionShim_hookOk shimName sub_ok_at_of_fnAddr subroutine_ok_kit_of_trTrap
-  trTrapExterns trTrapProgAt trapsOnly_trTrap_kit tripleRatchetExterns
-  tripleRatchetExterns_abs tripleRatchetProgAt tripleRatchetProgAtExt
-  withPanics_trTrap_ne withStack
-)
 open LibsignalBinary.Heap (
   AllocCostModel AllocEvent BudgetLimits FitsEnv FitsEvents RustCliAllocBudget RustLayoutOk
   VmPreserved rustAllocEvents rustCliAllocBudgetSpecBase rustCliAllocNoOomSpecBase
@@ -120,7 +110,6 @@ abbrev DerivePublicKeyBytesCall :=
 abbrev memRegion_eight := @CryptoVerification.LibsignalTripleRatchet.memRegion_eight
 abbrev memRegion_cells := @CryptoVerification.LibsignalTripleRatchet.memRegion_cells
 abbrev stackAt_split_cells := @CryptoVerification.LibsignalTripleRatchet.stackAt_split_cells
-abbrev ImgCallInv := CryptoVerification.LibsignalTripleRatchet.ImgCallInv
 abbrev panic_at_handle_error_norm_ext :=
   @CryptoVerification.LibsignalTripleRatchet.panic_at_handle_error_norm_ext
 abbrev panic_at_handle_error_norm_trap :=
@@ -133,11 +122,11 @@ abbrev panic_at_handle_error_norm :=
 /-- Exact allocator event list of `RawVecInner::finish_grow`:
 `rustAllocEvents (new * stride) align` when `cap = 0`, else
 `rustReallocEvents (cap * stride) (new * stride) align`. -/
-def finishGrowEvents (cap new align stride : Nat) : List AllocEvent :=
+@[expose] def finishGrowEvents (cap new align stride : Nat) : List AllocEvent :=
   if cap = 0 then rustAllocEvents (new * stride) align
   else rustReallocEvents (cap * stride) (new * stride) align
 
-def FinishGrowEnv (x : FinishGrowCall) (evs : List AllocEvent) : Prop :=
+@[expose] def FinishGrowEnv (x : FinishGrowCall) (evs : List AllocEvent) : Prop :=
   evs = finishGrowEvents x.cap.toNat x.new.toNat x.align.toNat x.stride.toNat
 
 theorem fitsEnv_finishGrow_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
@@ -147,12 +136,12 @@ theorem fitsEnv_finishGrow_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M
   FitsEnv.eq_iff
 
 /-- Exact allocator event list of `RawVecInner::reserve::do_reserve_and_handle` on a `Vec<u8>`. -/
-def doReserveEvents (x : DoReserveCall) : List AllocEvent :=
+@[expose] def doReserveEvents (x : DoReserveCall) : List AllocEvent :=
   let newCap := reserveCap x.cap.toNat x.bs.length x.additional
   if x.cap = 0#64 then rustAllocEvents newCap 1
   else rustReallocEvents x.cap.toNat newCap 1
 
-def DoReserveEnv (x : DoReserveCall) (evs : List AllocEvent) : Prop :=
+@[expose] def DoReserveEnv (x : DoReserveCall) (evs : List AllocEvent) : Prop :=
   evs = doReserveEvents x
 
 theorem fitsEnv_doReserve_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
@@ -181,12 +170,12 @@ theorem finishGrowEvents_doReserve_eq (x : DoReserveCall)
 /-- Exact allocator event list of `<Vec<u8>>::into_boxed_slice`:
 `[]` when `cap ≤ bytes.length`, `rustDeallocEvents cap 1` when `cap > bytes.length` and `bytes = []`,
 else `rustReallocEvents cap bytes.length 1`. -/
-def intoBoxedSliceEvents (x : VecArg) : List AllocEvent :=
+@[expose] def intoBoxedSliceEvents (x : VecArg) : List AllocEvent :=
   if x.cap.toNat ≤ x.bytes.length then []
   else if x.bytes = [] then rustDeallocEvents x.cap.toNat 1
   else rustReallocEvents x.cap.toNat x.bytes.length 1
 
-def IntoBoxedSliceEnv (x : VecArg) (evs : List AllocEvent) : Prop :=
+@[expose] def IntoBoxedSliceEnv (x : VecArg) (evs : List AllocEvent) : Prop :=
   evs = intoBoxedSliceEvents x
 
 theorem fitsEnv_intoBoxedSlice_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
@@ -196,10 +185,10 @@ theorem fitsEnv_intoBoxedSlice_iff {M : AllocCostModel} {lim : BudgetLimits} {st
 
 /-- Exact allocator event list of `<Box<[u8]>>::try_clone_from_ref_in`:
 `[]` when `bs = []`, else `rustAllocEvents bs.length 1`. -/
-def tryCloneFromRefEvents (x : TryCloneSliceCall) : List AllocEvent :=
+@[expose] def tryCloneFromRefEvents (x : TryCloneSliceCall) : List AllocEvent :=
   if x.bs = [] then [] else rustAllocEvents x.bs.length 1
 
-def TryCloneFromRefEnv (x : TryCloneSliceCall) (evs : List AllocEvent) : Prop :=
+@[expose] def TryCloneFromRefEnv (x : TryCloneSliceCall) (evs : List AllocEvent) : Prop :=
   evs = tryCloneFromRefEvents x
 
 theorem fitsEnv_tryCloneFromRef_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
@@ -208,10 +197,10 @@ theorem fitsEnv_tryCloneFromRef_iff {M : AllocCostModel} {lim : BudgetLimits} {s
   FitsEnv.eq_iff
 
 /-- Exact allocator event list of `ChainKey::to_pb` (`__rust_alloc(32, 1)`). -/
-def chainKeyToPbEvents : List AllocEvent :=
+@[expose] def chainKeyToPbEvents : List AllocEvent :=
   rustAllocEvents 32 1
 
-def ChainKeyToPbEnv (evs : List AllocEvent) : Prop :=
+@[expose] def ChainKeyToPbEnv (evs : List AllocEvent) : Prop :=
   evs = chainKeyToPbEvents
 
 theorem fitsEnv_chainKeyToPb_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :
@@ -219,10 +208,10 @@ theorem fitsEnv_chainKeyToPb_iff {M : AllocCostModel} {lim : BudgetLimits} {st :
   FitsEnv.eq_iff
 
 /-- Exact allocator event list of `PublicKey::serialize` (`__rust_alloc(33, 1)`). -/
-def publicKeySerializeEvents : List AllocEvent :=
+@[expose] def publicKeySerializeEvents : List AllocEvent :=
   rustAllocEvents 33 1
 
-def PublicKeySerializeEnv (evs : List AllocEvent) : Prop :=
+@[expose] def PublicKeySerializeEnv (evs : List AllocEvent) : Prop :=
   evs = publicKeySerializeEvents
 
 theorem fitsEnv_publicKeySerialize_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :
@@ -235,7 +224,7 @@ theorem fitsEnv_publicKeySerialize_iff {M : AllocCostModel} {lim : BudgetLimits}
 (`= finishGrowSpec M A lim` at `allocHookStack`, `= finishGrowSpecX M A lim` at `extHookStack`).
 Under `FitsEnv M lim st (FinishGrowEnv x)`, `__rust_alloc` / `__rust_realloc` succeeds with a
 non-null pointer (`tag = 0#64`, `onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def finishGrowSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrowSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FinishGrowCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.cap ∧ s.readReg64 .x2 = x.ptr ∧
@@ -276,7 +265,7 @@ abbrev finishGrowBudgetSpecX := @finishGrowSpecX
 (`= doReserveRawSpec M A lim` at `finishGrowStack`, `= doReserveRawSpecX M A lim` at
 `finishGrowStackX`). `onPanic = ⌜False⌝` and `onOom = ⌜False⌝` under
 `FitsEnv M lim st (DoReserveEnv x)`. -/
-def doReserveRawSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def doReserveRawSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (fgStack : Nat) : Spec (DoReserveCall × M.σ) where
   pre := fun (x, st) s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional
@@ -300,7 +289,7 @@ def doReserveRawSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-- Stack-parameterized budget contract of `do_reserve_and_handle` on a `Vec<u8>` (`vecU8At`)
 (`= doReserveSpec M A lim` at `finishGrowStack`, `= doReserveSpecX M A lim` at `finishGrowStackX`). -/
-def doReserveSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def doReserveSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (fgStack : Nat) : Spec (DoReserveCall × M.σ) where
   pre := fun (x, st) s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional
@@ -343,7 +332,7 @@ abbrev doReserveBudgetSpecX := @doReserveSpecX
 (`= intoBoxedSliceSpec M A lim` at `allocHookStack`, `= intoBoxedSliceSpecX M A lim` at
 `extHookStack`). `onPanic = ⌜False⌝` and `onOom = ⌜False⌝` under
 `FitsEnv M lim st (IntoBoxedSliceEnv x)`. -/
-def intoBoxedSliceSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def intoBoxedSliceSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (VecArg × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.v ∧ FitsEnv M lim st (IntoBoxedSliceEnv x)⌝ ∗
@@ -372,7 +361,7 @@ abbrev intoBoxedSliceBudgetSpecX := @intoBoxedSliceSpecX
 (`= tryCloneFromRefSpec M A lim` at `allocHookStack`, `= tryCloneFromRefSpecX M A lim` at
 `extHookStack`). Under `FitsEnv M lim st (TryCloneFromRefEnv x)`, returns a non-null `Box<[u8]>`
 in `(x0, x1)` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def tryCloneFromRefSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def tryCloneFromRefSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (TryCloneSliceCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.src ∧ (s.readReg64 .x1).toNat = x.bs.length ∧
@@ -401,7 +390,7 @@ abbrev tryCloneFromRefBudgetSpecX := @tryCloneFromRefSpecX
 /-- Stack-parameterized budget contract of `ChainKey::to_pb`
 (`= chainKeyToPbSpec M A lim` at `allocHookStack`, `= chainKeyToPbSpecX M A lim` at
 `extHookStack`). `onPanic = ⌜False⌝` and `onOom = ⌜False⌝` under `FitsEnv M lim st ChainKeyToPbEnv`. -/
-def chainKeyToPbSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def chainKeyToPbSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (ChainKeyToPbCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.ret ∧
@@ -431,7 +420,7 @@ abbrev chainKeyToPbBudgetSpecX := @chainKeyToPbSpecX
 (`= publicKeySerializeSpec M A lim` at `allocHookStack`, `= publicKeySerializeSpecX M A lim` at
 `extHookStack`). `onPanic = ⌜False⌝` and `onOom = ⌜False⌝` under
 `FitsEnv M lim st PublicKeySerializeEnv`. -/
-def publicKeySerializeSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def publicKeySerializeSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (PublicKeySerializeCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.self ∧ FitsEnv M lim st PublicKeySerializeEnv⌝ ∗
@@ -457,7 +446,7 @@ abbrev publicKeySerializeBudgetSpecX := @publicKeySerializeSpecX
 
 /-- `VmPreserved`-strengthened counterpart of `derivePublicKeyBytesSpec` (single pure conjunct in
 `post` so `wp_call` extracts both `sf.trace = s0.trace` and `VmPreserved s0 sf`). -/
-def derivePublicKeyBytesBudgetSpec (pubKey : PubKeyFn) : Spec DerivePublicKeyBytesCall where
+@[expose] def derivePublicKeyBytesBudgetSpec (pubKey : PubKeyFn) : Spec DerivePublicKeyBytesCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.secret ∧ s.readReg64 .x8 = x.out⌝ ∗
     (x.secret ↦ₛ x.sec.toList) ∗ memRegion x.out 32
@@ -466,7 +455,7 @@ def derivePublicKeyBytesBudgetSpec (pubKey : PubKeyFn) : Spec DerivePublicKeyByt
     (x.secret ↦ₛ x.sec.toList) ∗ (x.out ↦ₛ (pubKey x.sec).toList)
 
 /-- Stack-parameterized `VmPreserved`-strengthened counterpart of `derivePublicKeyBytesStackSpec`. -/
-def derivePublicKeyBytesStackBudgetSpec (pubKey : PubKeyFn) (hookStack : Nat := 0) :
+@[expose] def derivePublicKeyBytesStackBudgetSpec (pubKey : PubKeyFn) (hookStack : Nat := 0) :
     Spec DerivePublicKeyBytesCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.secret ∧ s.readReg64 .x8 = x.out⌝ ∗
@@ -531,7 +520,7 @@ theorem sessionMemsetBudget_hookOk (hookStack : Nat := 4096) (hstack : 0 < hookS
   hookOk_withVmPreserved (hookMemset_trace_ok hookStack hstack) vmPreserved_hookMemset
 
 /-- `VmPreserved`-strengthened no-op shim spec (`wp_call`-friendly single `⌜...⌝` postcondition). -/
-def noAllocShimBudgetSpec : Spec Unit where
+@[expose] def noAllocShimBudgetSpec : Spec Unit where
   pre := fun _ _ => emp
   post := fun _ s0 sf => ⌜sf.trace = s0.trace ∧ VmPreserved s0 sf⌝
 
@@ -554,7 +543,7 @@ theorem noAllocShim_hookOk : HookOk hookNoop noAllocShimBudgetSpec := by
 
 /-- `VmPreserved`-strengthened frameless `memcpy` spec (`wp_call`-friendly single `⌜...⌝`
 postcondition). -/
-def framelessMemcpyBudgetSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def framelessMemcpyBudgetSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ (s0.readReg64 .x2).toNat = bs.length⌝ ∗
       memRegion dst bs.length ∗ (src ↦ₛ bs)
@@ -653,14 +642,14 @@ theorem subroutine_ok_framelessMemcpy_of_sessionMemcpyRegionBudget {P : Program}
     exact ⟨⟨hq.2.1.1, hq.2.1.2, hq.1⟩, hq.2.2⟩
 
 /-- Stack-equipped `VmPreserved` no-op shim spec at `extHookStack`. -/
-def session2ShimBudgetSpecX : Spec Unit where
+@[expose] def session2ShimBudgetSpecX : Spec Unit where
   pre := fun _ s => stackAt s.sp extHookStack
   post := fun _ s0 sf => ⌜sf.trace = s0.trace ∧ VmPreserved s0 sf⌝ ∗ stackAt s0.sp extHookStack
 
 abbrev session2ShimSpecX : Spec Unit := session2ShimBudgetSpecX
 
 /-- Stack-equipped `VmPreserved` `memcpy` spec at `extHookStack`. -/
-def session2MemcpyBudgetSpecX : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def session2MemcpyBudgetSpecX : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ (s0.readReg64 .x2).toNat = bs.length⌝ ∗
       memRegion dst bs.length ∗ (src ↦ₛ bs) ∗ stackAt s0.sp extHookStack
@@ -672,40 +661,6 @@ abbrev session2MemcpySpecX : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
   session2MemcpyBudgetSpecX
 
 /-! ## `AllocContractsBudget` & `AllocContractsXBudget` -/
-
-/-- Budget-threaded hypothesis bundle for the Rust allocator (`alloc`, `dealloc`, `realloc`),
-no-alloc shim (`shim`), and `memcpy` / `memmove` / `memset` on `tripleRatchetProgAtExt b ext`. -/
-structure AllocContractsBudget (b : BitVec 64) (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop where
-  alloc :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr allocName) (rustCliAllocBudgetSpecBase M A lim false)
-  dealloc :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr deallocName) (rustCliDeallocBudgetSpecBase M A lim)
-  realloc :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr reallocName) (rustCliReallocBudgetSpecBase M A lim)
-  shim :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr shimName) sessionShimBudgetSpec
-  session_memcpy : ∀ (hookStack : Nat),
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr memcpyName) (sessionMemcpyBudgetSpec hookStack)
-  session_memcpy_region :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr memcpyName) sessionMemcpyRegionBudgetSpec
-  session_memmove : ∀ (hookStack : Nat),
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr memmoveName) (sessionMemmoveBudgetSpec hookStack)
-  session_memset : ∀ (hookStack : Nat), 0 < hookStack →
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr memsetName) (sessionMemsetBudgetSpec hookStack)
-  session_memset_region :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr memsetName) sessionMemsetRegionBudgetSpec
-
-abbrev AllocContracts := @AllocContractsBudget
 
 /-- `AllocHooksBudget` lifts through `Rust.withPanics (trTrapExterns C abs)`. -/
 theorem allocHooksBudget_tripleRatchetExterns_trap (C : Crypto) (M : AllocCostModel)
@@ -749,669 +704,13 @@ namespace AllocContractsBudget
 variable {b : BitVec 64} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
   {ext : String → Option (State → State)}
 
-theorem allocNoOom (hA : AllocContractsBudget b M A lim ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr allocName) (rustCliAllocNoOomSpecBase M A lim false) :=
-  subroutine_ok_allocNoOom_of_budgetBase hA.alloc
-
-theorem deallocNoOom (hA : AllocContractsBudget b M A lim ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr deallocName) (rustCliDeallocNoOomSpecBase M A lim) :=
-  hA.dealloc
-
-theorem reallocNoOom (hA : AllocContractsBudget b M A lim ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr reallocName) (rustCliReallocNoOomSpecBase M A lim) :=
-  subroutine_ok_reallocNoOom_of_budgetBase hA.realloc
-
-theorem alloc_ok_at (hA : AllocContractsBudget b M A lim ext) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff allocName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliAllocBudgetSpecBase M A lim false) :=
-  sub_ok_at_of_fnAddr hA.alloc name k hk
-
-theorem allocNoOom_ok_at (hA : AllocContractsBudget b M A lim ext) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff allocName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliAllocNoOomSpecBase M A lim false) :=
-  sub_ok_at_of_fnAddr hA.allocNoOom name k hk
-
-theorem dealloc_ok_at (hA : AllocContractsBudget b M A lim ext) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff deallocName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliDeallocBudgetSpecBase M A lim) :=
-  sub_ok_at_of_fnAddr hA.dealloc name k hk
-
-theorem realloc_ok_at (hA : AllocContractsBudget b M A lim ext) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff reallocName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliReallocBudgetSpecBase M A lim) :=
-  sub_ok_at_of_fnAddr hA.realloc name k hk
-
-theorem reallocNoOom_ok_at (hA : AllocContractsBudget b M A lim ext) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff reallocName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliReallocNoOomSpecBase M A lim) :=
-  sub_ok_at_of_fnAddr hA.reallocNoOom name k hk
-
-theorem shim_ok_at (hA : AllocContractsBudget b M A lim ext) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff shimName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      noAllocShimBudgetSpec :=
-  sub_ok_at_of_fnAddr (subroutine_ok_noAllocShim_of_sessionShimBudget hA.shim) name k hk
-
-theorem session_shim_ok_at (hA : AllocContractsBudget b M A lim ext) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff shimName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      sessionShimBudgetSpec :=
-  sub_ok_at_of_fnAddr hA.shim name k hk
-
-theorem session_memcpy_ok_at (hA : AllocContractsBudget b M A lim ext) (name : String) (k : Nat)
-    (hookStack : Nat := 4096)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff memcpyName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (sessionMemcpyBudgetSpec hookStack) :=
-  sub_ok_at_of_fnAddr (hA.session_memcpy hookStack) name k hk
-
-theorem session_memcpy_region_ok_at (hA : AllocContractsBudget b M A lim ext)
-    (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff memcpyName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      framelessMemcpyBudgetSpec :=
-  sub_ok_at_of_fnAddr
-    (subroutine_ok_framelessMemcpy_of_sessionMemcpyRegionBudget hA.session_memcpy_region) name k hk
-
-theorem session_memmove_ok_at (hA : AllocContractsBudget b M A lim ext) (name : String) (k : Nat)
-    (hookStack : Nat := 4096)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff memmoveName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (sessionMemmoveBudgetSpec hookStack) :=
-  sub_ok_at_of_fnAddr (hA.session_memmove hookStack) name k hk
-
-theorem session_memset_ok_at (hA : AllocContractsBudget b M A lim ext) (name : String) (k : Nat)
-    (hookStack : Nat := 4096) (hstack : 0 < hookStack := by decide)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff memsetName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (sessionMemsetBudgetSpec hookStack) :=
-  sub_ok_at_of_fnAddr (hA.session_memset hookStack hstack) name k hk
-
-theorem session_memset_region_ok_at (hA : AllocContractsBudget b M A lim ext)
-    (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff memsetName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      sessionMemsetRegionBudgetSpec :=
-  sub_ok_at_of_fnAddr hA.session_memset_region name k hk
-
-theorem of_tripleRatchetProgAt_trap (b : BitVec 64) (C : Crypto) (M : AllocCostModel)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (abs : String → Option (State → State))
-    (hA : AllocHooksBudgetBase M A lim abs) :
-    AllocContractsBudget b M A lim (trTrapExterns C abs) := by
-  have hAt := allocHooksBudget_tripleRatchetExterns_trap C M A lim abs hA
-  have hzero : ∀ sym,
-      (trTrapProgAt b C abs).fnAddr sym + BitVec.ofNat 64 0 =
-        (trTrapProgAt b C abs).fnAddr sym := fun _ => by simp
-  refine
-    { alloc := ?_
-      dealloc := ?_
-      realloc := ?_
-      shim := ?_
-      session_memcpy := fun hookStack => ?_
-      session_memcpy_region := ?_
-      session_memmove := fun hookStack => ?_
-      session_memset := fun hookStack hstack => ?_
-      session_memset_region := ?_ }
-  · rw [← hzero allocName]
-    exact hook_ok_at (name := allocName) (hname := allocName)
-      rfl (Nat.add_zero _) (by simp only [arm64_norm]) (fun _ => by simp only [arm64_norm])
-      (by dsimp [allocName]; simp [Rust.isPanicSymbol])
-      (by simpa [HookSat, allocName, Rust.withPanics, Rust.isPanicSymbol] using hAt.alloc)
-  · rw [← hzero deallocName]
-    exact hook_ok_at (name := deallocName) (hname := deallocName)
-      rfl (Nat.add_zero _) (by simp only [arm64_norm]) (fun _ => by simp only [arm64_norm])
-      (by dsimp [deallocName]; simp [Rust.isPanicSymbol])
-      (by simpa [HookSat, deallocName, Rust.withPanics, Rust.isPanicSymbol] using hAt.dealloc)
-  · rw [← hzero reallocName]
-    exact hook_ok_at (name := reallocName) (hname := reallocName)
-      rfl (Nat.add_zero _) (by simp only [arm64_norm]) (fun _ => by simp only [arm64_norm])
-      (by dsimp [reallocName]; simp [Rust.isPanicSymbol])
-      (by simpa [HookSat, reallocName, Rust.withPanics, Rust.isPanicSymbol] using hAt.realloc)
-  · rw [← hzero shimName]
-    exact hook_ok_at (name := shimName) (hname := shimName)
-      rfl (Nat.add_zero _) (by simp only [arm64_norm]) (fun _ => by simp only [arm64_norm])
-      (by dsimp [shimName]; simp [Rust.isPanicSymbol]) ⟨hookNoop, rfl, sessionShimBudget_hookOk⟩
-  · rw [← hzero memcpyName]
-    exact hook_ok_at (name := memcpyName) (hname := memcpyName)
-      rfl (Nat.add_zero _) (by simp only [arm64_norm]) (fun _ => by simp only [arm64_norm])
-      (by dsimp [memcpyName]; simp [Rust.isPanicSymbol])
-      ⟨hookMemcpy, rfl, sessionMemcpyBudget_hookOk hookStack⟩
-  · rw [← hzero memcpyName]
-    exact hook_ok_at (name := memcpyName) (hname := memcpyName)
-      rfl (Nat.add_zero _) (by simp only [arm64_norm]) (fun _ => by simp only [arm64_norm])
-      (by dsimp [memcpyName]; simp [Rust.isPanicSymbol])
-      ⟨hookMemcpy, rfl, sessionMemcpyRegionBudget_hookOk⟩
-  · rw [← hzero memmoveName]
-    exact hook_ok_at (name := memmoveName) (hname := memmoveName)
-      rfl (Nat.add_zero _) (by simp only [arm64_norm]) (fun _ => by simp only [arm64_norm])
-      (by dsimp [memmoveName]; simp [Rust.isPanicSymbol])
-      ⟨hookMemmove, rfl, sessionMemmoveBudget_hookOk hookStack⟩
-  · rw [← hzero memsetName]
-    exact hook_ok_at (name := memsetName) (hname := memsetName)
-      rfl (Nat.add_zero _) (by simp only [arm64_norm]) (fun _ => by simp only [arm64_norm])
-      (by dsimp [memsetName]; simp [Rust.isPanicSymbol])
-      ⟨hookMemset, rfl, sessionMemsetBudget_hookOk hookStack hstack⟩
-  · rw [← hzero memsetName]
-    exact hook_ok_at (name := memsetName) (hname := memsetName)
-      rfl (Nat.add_zero _) (by simp only [arm64_norm]) (fun _ => by simp only [arm64_norm])
-      (by dsimp [memsetName]; simp [Rust.isPanicSymbol])
-      ⟨hookMemset, rfl, sessionMemsetRegionBudget_hookOk⟩
-
-theorem of_tripleRatchetProgAt (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (abs : String → Option (State → State)) (hA : AllocHooksBudgetBase M A lim abs) :
-    AllocContractsBudget b M A lim (tripleRatchetExterns C ctl abs) := by
-  have hT := of_tripleRatchetProgAt_trap b C M A lim abs hA
-  have hkit := trapsOnly_trTrap_kit b C ctl abs
-  exact
-    { alloc := hkit.fnAddr allocName ▸ subroutine_ok_kit_of_trTrap hT.alloc
-      dealloc := hkit.fnAddr deallocName ▸ subroutine_ok_kit_of_trTrap hT.dealloc
-      realloc := hkit.fnAddr reallocName ▸ subroutine_ok_kit_of_trTrap hT.realloc
-      shim := hkit.fnAddr shimName ▸ subroutine_ok_kit_of_trTrap hT.shim
-      session_memcpy := fun hs =>
-        hkit.fnAddr memcpyName ▸ subroutine_ok_kit_of_trTrap (hT.session_memcpy hs)
-      session_memcpy_region :=
-        hkit.fnAddr memcpyName ▸ subroutine_ok_kit_of_trTrap hT.session_memcpy_region
-      session_memmove := fun hs =>
-        hkit.fnAddr memmoveName ▸ subroutine_ok_kit_of_trTrap (hT.session_memmove hs)
-      session_memset := fun hs hpos =>
-        hkit.fnAddr memsetName ▸ subroutine_ok_kit_of_trTrap (hT.session_memset hs hpos)
-      session_memset_region :=
-        hkit.fnAddr memsetName ▸ subroutine_ok_kit_of_trTrap hT.session_memset_region }
-
 end AllocContractsBudget
 
-/-- Refinement-compatible budget-threaded allocator + `mem*` + `shim` contract bundle on
-`tripleRatchetProgAtExt img.base ext`: all fields carry `.inImage img` and `extHookStack`. -/
-structure AllocContractsXBudget (img : Obj.Image) (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop where
-  alloc :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr allocName)
-      ((rustCliAllocBudgetSpecWithStackBase M A lim false extHookStack).inImage img)
-  dealloc :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr deallocName)
-      ((rustCliDeallocBudgetExternSpecWithStackBase M A lim extHookStack).inImage img)
-  realloc :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr reallocName)
-      ((rustCliReallocBudgetExternSpecWithStackBase M A lim extHookStack).inImage img)
-  shim : ∀ (hookStack : Nat), extHookStack ≤ hookStack → hookStack ≤ 2 ^ 64 →
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr shimName)
-      ((withStack sessionShimBudgetSpec hookStack).inImage img)
-  session_memcpy : ∀ (hookStack : Nat), extHookStack ≤ hookStack → hookStack ≤ 2 ^ 64 →
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr memcpyName)
-      ((sessionMemcpyBudgetSpec hookStack).inImage img)
-  session_memcpy_region : ∀ (hookStack : Nat), extHookStack ≤ hookStack → hookStack ≤ 2 ^ 64 →
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr memcpyName)
-      ((withStack sessionMemcpyRegionBudgetSpec hookStack).inImage img)
-  session_memmove : ∀ (hookStack : Nat), extHookStack ≤ hookStack → hookStack ≤ 2 ^ 64 →
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr memmoveName)
-      ((sessionMemmoveBudgetSpec hookStack).inImage img)
-  session_memset : ∀ (hookStack : Nat), extHookStack ≤ hookStack → hookStack ≤ 2 ^ 64 →
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr memsetName)
-      ((sessionMemsetBudgetSpec hookStack).inImage img)
-  session_memset_region : ∀ (hookStack : Nat), extHookStack ≤ hookStack → hookStack ≤ 2 ^ 64 →
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr memsetName)
-      ((withStack sessionMemsetRegionBudgetSpec hookStack).inImage img)
-
-abbrev AllocContractsX := @AllocContractsXBudget
-
 namespace AllocContractsXBudget
-
-variable {img : Obj.Image} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-  {ext : String → Option (State → State)}
-
-theorem alloc_ok_at (hA : AllocContractsXBudget img M A lim ext) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff allocName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((rustCliAllocBudgetSpecWithStackBase M A lim false extHookStack).inImage img) :=
-  sub_ok_at_of_fnAddr hA.alloc name k hk
-
-theorem dealloc_ok_at (hA : AllocContractsXBudget img M A lim ext) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff deallocName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((rustCliDeallocBudgetExternSpecWithStackBase M A lim extHookStack).inImage img) :=
-  sub_ok_at_of_fnAddr hA.dealloc name k hk
-
-theorem realloc_ok_at (hA : AllocContractsXBudget img M A lim ext) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff reallocName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((rustCliReallocBudgetExternSpecWithStackBase M A lim extHookStack).inImage img) :=
-  sub_ok_at_of_fnAddr hA.realloc name k hk
-
-theorem shim_ok_at (hA : AllocContractsXBudget img M A lim ext) (name : String) (k : Nat)
-    (hookStack : Nat := extHookStack)
-    (hstack : extHookStack ≤ hookStack := by decide)
-    (hstack_le : hookStack ≤ 2 ^ 64 := by decide)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff shimName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((withStack sessionShimBudgetSpec hookStack).inImage img) :=
-  sub_ok_at_of_fnAddr (hA.shim hookStack hstack hstack_le) name k hk
-
-theorem session_shim_ok_at (hA : AllocContractsXBudget img M A lim ext) (name : String) (k : Nat)
-    (hookStack : Nat := extHookStack)
-    (hstack : extHookStack ≤ hookStack := by decide)
-    (hstack_le : hookStack ≤ 2 ^ 64 := by decide)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff shimName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((withStack sessionShimBudgetSpec hookStack).inImage img) :=
-  sub_ok_at_of_fnAddr (hA.shim hookStack hstack hstack_le) name k hk
-
-theorem session_memcpy_ok_at (hA : AllocContractsXBudget img M A lim ext)
-    (name : String) (k : Nat)
-    (hookStack : Nat := extHookStack)
-    (hstack : extHookStack ≤ hookStack := by decide)
-    (hstack_le : hookStack ≤ 2 ^ 64 := by decide)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff memcpyName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((sessionMemcpyBudgetSpec hookStack).inImage img) :=
-  sub_ok_at_of_fnAddr (hA.session_memcpy hookStack hstack hstack_le) name k hk
-
-theorem session_memcpy_region_ok_at (hA : AllocContractsXBudget img M A lim ext)
-    (name : String) (k : Nat)
-    (hookStack : Nat := extHookStack)
-    (hstack : extHookStack ≤ hookStack := by decide)
-    (hstack_le : hookStack ≤ 2 ^ 64 := by decide)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff memcpyName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((withStack sessionMemcpyRegionBudgetSpec hookStack).inImage img) :=
-  sub_ok_at_of_fnAddr (hA.session_memcpy_region hookStack hstack hstack_le) name k hk
-
-theorem session_memmove_ok_at (hA : AllocContractsXBudget img M A lim ext)
-    (name : String) (k : Nat)
-    (hookStack : Nat := extHookStack)
-    (hstack : extHookStack ≤ hookStack := by decide)
-    (hstack_le : hookStack ≤ 2 ^ 64 := by decide)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff memmoveName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((sessionMemmoveBudgetSpec hookStack).inImage img) :=
-  sub_ok_at_of_fnAddr (hA.session_memmove hookStack hstack hstack_le) name k hk
-
-theorem session_memset_ok_at (hA : AllocContractsXBudget img M A lim ext)
-    (name : String) (k : Nat)
-    (hookStack : Nat := extHookStack)
-    (hstack : extHookStack ≤ hookStack := by decide)
-    (hstack_le : hookStack ≤ 2 ^ 64 := by decide)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff memsetName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((sessionMemsetBudgetSpec hookStack).inImage img) :=
-  sub_ok_at_of_fnAddr (hA.session_memset hookStack hstack hstack_le) name k hk
-
-theorem session_memset_region_ok_at (hA : AllocContractsXBudget img M A lim ext)
-    (name : String) (k : Nat)
-    (hookStack : Nat := extHookStack)
-    (hstack : extHookStack ≤ hookStack := by decide)
-    (hstack_le : hookStack ≤ 2 ^ 64 := by decide)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff memsetName := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((withStack sessionMemsetRegionBudgetSpec hookStack).inImage img) :=
-  sub_ok_at_of_fnAddr (hA.session_memset_region hookStack hstack hstack_le) name k hk
-
-theorem of_AllocContracts (img : Obj.Image)
-    (hA : AllocContractsBudget img.base M A lim ext) :
-    AllocContractsXBudget img M A lim ext where
-  alloc := subroutine_ok_inImage_of_subroutine_ok img
-    (subroutine_ok_rustCliAllocBudget_withStackBase (by decide) (by decide) hA.alloc)
-  dealloc := subroutine_ok_inImage_of_subroutine_ok img
-    (subroutine_ok_rustCliDeallocBudget_externWithStackBase (by decide) (by decide) hA.dealloc)
-  realloc := subroutine_ok_inImage_of_subroutine_ok img
-    (subroutine_ok_rustCliReallocBudget_externWithStackBase (by decide) (by decide) hA.realloc)
-  shim := fun hs _ _ => subroutine_ok_inImage_of_subroutine_ok img
-    (CryptoVerification.LibsignalTripleRatchet.subroutine_ok_withStack_of_subroutine_ok hA.shim hs)
-  session_memcpy := fun hs _ _ => subroutine_ok_inImage_of_subroutine_ok img (hA.session_memcpy hs)
-  session_memcpy_region := fun hs _ _ => subroutine_ok_inImage_of_subroutine_ok img
-    (CryptoVerification.LibsignalTripleRatchet.subroutine_ok_withStack_of_subroutine_ok
-      hA.session_memcpy_region hs)
-  session_memmove := fun hs _ _ =>
-    subroutine_ok_inImage_of_subroutine_ok img (hA.session_memmove hs)
-  session_memset := fun hs hge _ =>
-    subroutine_ok_inImage_of_subroutine_ok img
-      (hA.session_memset hs (Nat.lt_of_lt_of_le (by decide : 0 < extHookStack) hge))
-  session_memset_region := fun hs _ _ => subroutine_ok_inImage_of_subroutine_ok img
-    (CryptoVerification.LibsignalTripleRatchet.subroutine_ok_withStack_of_subroutine_ok
-      hA.session_memset_region hs)
 
 end AllocContractsXBudget
 
 /-! ## Call-Site `_ok_at` Helpers Mirroring `Alloc.Defs` -/
-
-theorem shim_ok_at2_ext {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (hA : AllocContractsBudget b M A lim ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_no_alloc_shim_is_unstable_v2" := by
-        simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k) noAllocShimBudgetSpec :=
-  hA.shim_ok_at name k hk
-
-theorem noAllocShim_ok_at_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_no_alloc_shim_is_unstable_v2" := by
-        simp only [arm64_norm]) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) noAllocShimBudgetSpec :=
-  hook_ok_at (hname := "__rustc::__rust_no_alloc_shim_is_unstable_v2") rfl hk
-    (by simp only [arm64_norm])
-    (fun _ => by simp only [arm64_norm]) (by simp [Rust.isPanicSymbol])
-    ⟨hookNoop, rfl, noAllocShim_hookOk⟩
-
-theorem noAllocShim_ok_at {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_no_alloc_shim_is_unstable_v2" := by
-        simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) noAllocShimBudgetSpec := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr name]
-  exact subroutine_ok_kit_of_trTrap (noAllocShim_ok_at_trap (b := b) (C := C) (abs := abs) hk)
-
-theorem memcpy_ok_at2_ext {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (hA : AllocContractsBudget b M A lim ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "memcpy" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k) framelessMemcpyBudgetSpec :=
-  hA.session_memcpy_region_ok_at name k hk
-
-theorem framelessMemcpy_ok_at_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "memcpy" := by simp only [arm64_norm]) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) framelessMemcpyBudgetSpec :=
-  hook_ok_at (hname := "memcpy") rfl hk
-    (by simp only [arm64_norm])
-    (fun _ => by simp only [arm64_norm]) (by simp [Rust.isPanicSymbol])
-    ⟨hookMemcpy, rfl, framelessMemcpy_hookOk⟩
-
-theorem framelessMemcpy_ok_at {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "memcpy" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      framelessMemcpyBudgetSpec := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr name]
-  exact subroutine_ok_kit_of_trTrap (framelessMemcpy_ok_at_trap (b := b) (C := C) (abs := abs) hk)
-
-theorem alloc_ok_at_norm_ext {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (hA : AllocContractsBudget b M A lim ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliAllocBudgetSpecBase M A lim false) :=
-  hA.alloc_ok_at name k hk
-
-theorem allocNoOom_ok_at_norm_ext {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hA : AllocContractsBudget b M A lim ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliAllocNoOomSpecBase M A lim false) :=
-  hA.allocNoOom_ok_at name k hk
-
-theorem alloc_ok_at_norm_trap {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {C : Crypto} {abs : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim abs) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by simp only [arm64_norm]) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliAllocBudgetSpecBase M A lim false) :=
-  alloc_ok_at_norm_ext (AllocContractsBudget.of_tripleRatchetProgAt_trap b C M A lim abs hA) hk
-
-theorem alloc_ok_at_norm {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {C : Crypto} {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim abs) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliAllocBudgetSpecBase M A lim false) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr name]
-  exact subroutine_ok_kit_of_trTrap (alloc_ok_at_norm_trap (b := b) (C := C) hA hk)
-
-theorem dealloc_ok_at_norm_ext {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (hA : AllocContractsBudget b M A lim ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_dealloc" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliDeallocBudgetSpecBase M A lim) :=
-  hA.dealloc_ok_at name k hk
-
-theorem dealloc_ok_at_norm_trap {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {C : Crypto} {abs : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim abs) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_dealloc" := by simp only [arm64_norm]) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliDeallocBudgetSpecBase M A lim) :=
-  dealloc_ok_at_norm_ext (AllocContractsBudget.of_tripleRatchetProgAt_trap b C M A lim abs hA) hk
-
-theorem dealloc_ok_at_norm {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {C : Crypto} {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim abs) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_dealloc" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliDeallocBudgetSpecBase M A lim) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr name]
-  exact subroutine_ok_kit_of_trTrap (dealloc_ok_at_norm_trap (b := b) (C := C) hA hk)
-
-theorem realloc_ok_at_norm_ext {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (hA : AllocContractsBudget b M A lim ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_realloc" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliReallocBudgetSpecBase M A lim) :=
-  hA.realloc_ok_at name k hk
-
-theorem reallocNoOom_ok_at_norm_ext {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hA : AllocContractsBudget b M A lim ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_realloc" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliReallocNoOomSpecBase M A lim) :=
-  hA.reallocNoOom_ok_at name k hk
-
-theorem realloc_ok_at_norm_trap {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {C : Crypto} {abs : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim abs) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_realloc" := by simp only [arm64_norm]) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliReallocBudgetSpecBase M A lim) :=
-  realloc_ok_at_norm_ext (AllocContractsBudget.of_tripleRatchetProgAt_trap b C M A lim abs hA) hk
-
-theorem realloc_ok_at_norm {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {C : Crypto} {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim abs) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_realloc" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliReallocBudgetSpecBase M A lim) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr name]
-  exact subroutine_ok_kit_of_trTrap (realloc_ok_at_norm_trap (b := b) (C := C) hA hk)
-
-theorem shim_ok_at2_ext_x {img : Obj.Image} {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {ext : String → Option (State → State)}
-    (hA : AllocContractsXBudget img M A lim ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_no_alloc_shim_is_unstable_v2" := by
-        simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      (session2ShimBudgetSpecX.inImage img) := by
-  have h := hA.shim_ok_at name k extHookStack (by decide) (by decide) hk
-  refine subroutine_ok_mono h (fun _ R s0 hpre => ?_) (fun _ R s0 sf hpost => ?_)
-  · dsimp only [Spec.inImage, withStack, sessionShimBudgetSpec,
-      CryptoVerification.LibsignalTripleRatchet.sessionShimSpec, session2ShimBudgetSpecX] at hpre ⊢
-    simpa only [emp_sepConj, sepConj_assoc] using hpre
-  · dsimp only [Spec.inImage, withStack, sessionShimBudgetSpec,
-      CryptoVerification.LibsignalTripleRatchet.sessionShimSpec, session2ShimBudgetSpecX] at hpost ⊢
-    rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj, satisfies_pure_sepConj] at hpost
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hpost.2.1, hpost.1⟩, hpost.2.2⟩
-
-theorem memcpy_ok_at2_ext_x {img : Obj.Image} {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {ext : String → Option (State → State)}
-    (hA : AllocContractsXBudget img M A lim ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "memcpy" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      (session2MemcpyBudgetSpecX.inImage img) := by
-  have h := hA.session_memcpy_region_ok_at name k extHookStack (by decide) (by decide) hk
-  refine subroutine_ok_mono h (fun x R s0 hpre => ?_) (fun x R s0 sf hpost => ?_)
-  · dsimp only [Spec.inImage, withStack, sessionMemcpyRegionBudgetSpec,
-      CryptoVerification.LibsignalTripleRatchet.sessionMemcpyRegionSpec, memcpyRegionSpec,
-      session2MemcpyBudgetSpecX] at hpre ⊢
-    simpa only [sepConj_assoc] using hpre
-  · rcases x with ⟨dst, src, bs⟩
-    dsimp only [Spec.inImage, withStack, sessionMemcpyRegionBudgetSpec,
-      CryptoVerification.LibsignalTripleRatchet.sessionMemcpyRegionSpec,
-      session2MemcpyBudgetSpecX] at hpost ⊢
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    exact ⟨⟨hpost.2.1.1, hpost.2.1.2, hpost.1⟩, hpost.2.2⟩
-
-theorem alloc_ok_at_norm_ext_x {img : Obj.Image} {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {ext : String → Option (State → State)}
-    (hA : AllocContractsXBudget img M A lim ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((rustCliAllocBudgetSpecWithStackBase M A lim false extHookStack).inImage img) :=
-  hA.alloc_ok_at name k hk
-
-theorem dealloc_ok_at_norm_ext_x {img : Obj.Image} {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {ext : String → Option (State → State)}
-    (hA : AllocContractsXBudget img M A lim ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_dealloc" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((rustCliDeallocBudgetExternSpecWithStackBase M A lim extHookStack).inImage img) :=
-  hA.dealloc_ok_at name k hk
-
-theorem realloc_ok_at_norm_ext_x {img : Obj.Image} {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {ext : String → Option (State → State)}
-    (hA : AllocContractsXBudget img M A lim ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_realloc" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((rustCliReallocBudgetExternSpecWithStackBase M A lim extHookStack).inImage img) :=
-  hA.realloc_ok_at name k hk
-
-theorem pubFromSecret_ok_at_of_contract {α : Type} {b : BitVec 64}
-    {H : String → Option (State → State)} {spec : Spec α}
-    (hpub : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr pubFromSecretName) spec)
-    {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff pubFromSecretName := by simp only [arm64_norm]) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr name + BitVec.ofNat 64 k) spec :=
-  CryptoVerification.LibsignalTripleRatchet.pubFromSecret_ok_at_of_contract hpub hk
-
-theorem pubFromSecret_ok_at_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff pubFromSecretName := by simp only [arm64_norm]) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k)
-      (derivePublicKeyBytesBudgetSpec C.pubKey) :=
-  hook_ok_at (hname := pubFromSecretName) rfl hk (by simp only [arm64_norm])
-    (fun _ => by simp only [arm64_norm]) (by dsimp [pubFromSecretName]; simp [Rust.isPanicSymbol])
-    ⟨pubFromSecretHook C.pubKey, rfl, pubFromSecret_hookOk C.pubKey⟩
-
-theorem pubFromSecret_ok_at {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff pubFromSecretName := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      (derivePublicKeyBytesBudgetSpec C.pubKey) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr name]
-  exact subroutine_ok_kit_of_trTrap (pubFromSecret_ok_at_trap (b := b) (C := C) (abs := abs) hk)
 
 theorem derivePublicKeyBytesStack_of_spec {P : Program} {addr : BitVec 64}
     {pubKey : PubKeyFn} (hookStack : Nat)

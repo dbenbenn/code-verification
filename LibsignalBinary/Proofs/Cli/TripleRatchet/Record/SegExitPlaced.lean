@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Record.SegExit
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced
+public import LibsignalBinary.Proofs.TripleRatchet.Record.SegExit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable CLI `SegExit` (`segExit_placed_ok`)
@@ -21,7 +22,7 @@ Proves the `[LibsignalPlacement]` exit jump-table drop loop and `errs` buffer de
 (`+0x1e8c → +0x1f50`) on CLI Block `463`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

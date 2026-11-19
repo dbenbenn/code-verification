@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.Steps
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.FinalPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.Steps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.FinalPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -21,6 +21,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.ProofPlaced
 import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable V1 Path Step Lemmas for `spqr::initial_state`
@@ -29,7 +30,7 @@ Segment steppers and full `.v1` body composition (`initial_state_v1_body_placed`
 `spqr::initial_state` (Block `327`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -55,7 +56,7 @@ set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [local wp_norm] csel_maxJump_eq csel_maxOoo_eq
 attribute [local arm64_norm] bv_sub_add_lit
 
@@ -695,7 +696,7 @@ theorem call_dropPqRatchetState_placed [LibsignalPlacement]
 
 /-! ## 6. Full V1 Path Composition (`+0 -> ret`) on `Block 327` -/
 
-def InitialStateV1PlacedPost [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def InitialStateV1PlacedPost [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (s0 : State) (x : InitialStateGhost) : State → SepProp → Prop :=
   fun sf Pf =>
     (Pf ⊢

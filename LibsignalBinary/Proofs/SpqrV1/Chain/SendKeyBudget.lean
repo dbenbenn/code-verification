@@ -9,21 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKey
-public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyPopBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget
+import LibsignalBinary.Proofs.SpqrV1.Chain.SendKey
+public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpersBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyPopBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyPop -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Proof of `<spqr::chain::Chain>::send_key` (Block `367`)
@@ -33,7 +35,7 @@ Proves the `RustCliAllocBudget`-threaded `[LibsignalPlacement]` contract
 `chainSendKeySpecX hkdf M A lim`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -199,7 +201,7 @@ theorem SepWP.conseq_entails_vm {prog : Program} {target : BitVec 64} {s : State
     exact Entails.trans (sepConj_mono hent (hF_vm sm hvm)) (hpost sm)
   · rw [satisfies_pure_sepConj] at hfalse; exact False.elim hfalse.1
 
-def from436Pre0 (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def from436Pre0 (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st_cur : M.σ) (s0 s : State) (x : ChainSendKeyGhost)
     (self' : Chain) (ctr' : BitVec 32) (outKey : Bytes)
     (l0 l1 l2 q0 q1 q2 q3 : BitVec 64) : SepProp :=
@@ -213,7 +215,7 @@ def from436Pre0 (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLim
   calleeSavedSendKeyAt s0 ∗
   A.pool lim st_cur s
 
-def from380Pre0 (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def from380Pre0 (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st_cur : M.σ) (s0 s : State) (x : ChainSendKeyGhost)
     (sendEpoch1 head1 : BitVec 64) (epochs2 : List ChainEpochGhost) (links2 : List ChainEpoch)
     (l0 l1 l2 q0 q1 q2 q3 : BitVec 64) : SepProp :=

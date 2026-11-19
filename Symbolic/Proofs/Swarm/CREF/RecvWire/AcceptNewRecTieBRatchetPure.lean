@@ -12,11 +12,11 @@ module
 import Batteries.Data.UInt
 import DY.Actions.ProtocolEvent
 import DY.Trace.Basic
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecBasePure
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptSplitPure
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1LeavesPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecBasePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptSplitPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1LeavesPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Spqr
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepRatchetDHProvPure
@@ -36,6 +36,8 @@ import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- shake: keep
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Trace.Basic
+public import Symbolic.Proofs.Swarm.CREF.CBad -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 
 /-!
 # Block-Level DH-Ratchet Whisper Decrypt Tie
@@ -44,7 +46,7 @@ Proves `PureTRRecordStateInv` and `TRNsBound` preservation across an accepting D
 `Move.decrypt` block (`rcvAccBlk body [.rng rngBytes] r`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false

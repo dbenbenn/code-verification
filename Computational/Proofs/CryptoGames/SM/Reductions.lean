@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Engine
-public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.Theorem8And12Statements
+public import Computational.Proofs.CryptoGames.SM.Engine -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.Theorem8And12Statements -- proof-setup: allow-public-import
 public import Computational.Proofs.CryptoGames.CKA.CKAProofDefs
 public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRNG.PRNGProofDefs
 
@@ -24,7 +24,7 @@ the root chain (`redPRNGAuth`, `redPRNGPriv`; DEV-SM24), and FS-AEAD session sec
 `SM/Engine.lean`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -39,17 +39,17 @@ variable {KC Γ CCoins T I : Type} {KR Sig K : Type} {SS RS M E : Type}
   [SampleableType KR] [SampleableType KC] [SampleableType CCoins] [SampleableType I]
   [SampleableType K]
 
-def sampleT {ι : Type} {tspec : OracleSpec.{0, 0} ι} (α : Type) [SampleableType α] :
+@[expose] def sampleT {ι : Type} {tspec : OracleSpec.{0, 0} ι} (α : Type) [SampleableType α] :
     TComp tspec α :=
   (liftM ($ᵗ α : ProbComp α) : TComp tspec α)
 
-def mkParties {Γv Sv SSv RSv : Type} (γA γB : Γv) (σ : Sv) (ssB : SSv) (rsA : RSv) :
+@[expose] def mkParties {Γv Sv SSv RSv : Type} (γA γB : Γv) (σ : Sv) (ssB : SSv) (rsA : RSv) :
     PartyState Γv T Sv SSv RSv × PartyState Γv T Sv SSv RSv :=
   ({ id := .A, root := σ, vS := none, vR := fun t => if t = 0 then some rsA else none, γ := γA,
      curCkaMsg := none, tcur := 0 },
    { id := .B, root := σ, vS := some ssB, vR := fun _ => none, γ := γB, curCkaMsg := none, tcur := 0 })
 
-def realParty {Γv Sv SSv RSv : Type} (vp : PartyState Γv T Sv SSv RSv) (γ : Γ) (σ : Sig)
+@[expose] def realParty {Γv Sv SSv RSv : Type} (vp : PartyState Γv T Sv SSv RSv) (γ : Γ) (σ : Sig)
     (vS : Option SS) (vR : ℕ → Option RS) : PartyState Γ T Sig SS RS :=
   { id := vp.id, root := σ, vS, vR, γ, curCkaMsg := vp.curCkaMsg, tcur := vp.tcur }
 
@@ -60,11 +60,11 @@ structure Mode where
   tL : Option ℕ
   tStar : ℕ
 
-def Mode.policy (mo : Mode) : Policy := ⟨mo.auth, mo.tL, mo.tStar⟩
+@[expose] def Mode.policy (mo : Mode) : Policy := ⟨mo.auth, mo.tL, mo.tStar⟩
 
-def Mode.cfg (mo : Mode) : Config M := if mo.auth then Config.auth mo.tStar else Config.priv mo.tStar
+@[expose] def Mode.cfg (mo : Mode) : Config M := if mo.auth then Config.auth mo.tStar else Config.priv mo.tStar
 
-def Mode.tH (mo : Mode) : ℕ := healEpoch mo.tL
+@[expose] def Mode.tH (mo : Mode) : ℕ := healEpoch mo.tL
 
 /-! ### `redCKA` -/
 
@@ -80,12 +80,12 @@ structure CKAState (T I : Type) where
 local notation "CSpec" => CKA.spec Γ CCoins T I
 local notation "CHM" => HM CSpec (CKAState T I)
 
-def liftC {α : Type} (x : CKA.AdversaryComp Γ CCoins T I α) : CHM α := StateT.lift x
+@[expose] def liftC {α : Type} (x : CKA.AdversaryComp Γ CCoins T I α) : CHM α := StateT.lift x
 
-def cacheC (t : ℕ) (x : T × I) : CHM Unit :=
+@[expose] def cacheC (t : ℕ) (x : T × I) : CHM Unit :=
   modify fun s => { s with cache := Function.update s.cache t (some x) }
 
-def hooksCKA : Hooks CSpec (CKAState T I) Γ T Sig SS RS M E CCoins (Option Γ) Sig SS RS where
+@[expose] def hooksCKA : Hooks CSpec (CKAState T I) Γ T Sig SS RS M E CCoins (Option Γ) Sig SS RS where
   startSend _ P t γv σ r := do
     match γv with
     | some γ =>
@@ -148,7 +148,7 @@ def hooksCKA : Hooks CSpec (CKAState T I) Γ T Sig SS RS M E CCoins (Option Γ) 
     | none => return none
     | some γ => return some (realParty vp γ vp.root vp.vS vp.vR)
 
-def initCKA : CHM (Option (PartyState (Option Γ) T Sig SS RS × PartyState (Option Γ) T Sig SS RS)) :=
+@[expose] def initCKA : CHM (Option (PartyState (Option Γ) T Sig SS RS × PartyState (Option Γ) T Sig SS RS)) :=
   do
   let kr ← StateT.lift (sampleT KR)
   let out := prng.up (prng.init kr) lam
@@ -159,7 +159,7 @@ def initCKA : CHM (Option (PartyState (Option Γ) T Sig SS RS × PartyState (Opt
     | some _ => pure (none, none)
   return some (mkParties γA γB out.1 (fs.initSender out.2) (fs.initReceiver out.2))
 
-def runCKA (b : Bool) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
+@[expose] def runCKA (b : Bool) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
     CKA.AdversaryComp Γ CCoins T I
       (Option (Bool × EState (PartyState (Option Γ) T Sig SS RS) M (Header T × E)
         (CKAState T I))) :=
@@ -167,7 +167,7 @@ def runCKA (b : Bool) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
     (initCKA cka prng fs lam mo) {} b A
 
 /-- CKA authenticity reduction (`B1` of ACD19 Lemma 9). -/
-def redCKAAuth (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
+@[expose] def redCKAAuth (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
     CKA.Adversary Γ CCoins T I :=
   show CKA.AdversaryComp Γ CCoins T I Bool from do
   match ← runCKA cka prng fs lam Δcka qep ⟨true, tL, t⟩ false A with
@@ -175,7 +175,7 @@ def redCKAAuth (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M
   | some (_, es) => return authOut (2 + Δcka) ⟨true, tL, t⟩ es
 
 /-- CKA privacy reduction (`B1` of ACD19 Lemma 13). -/
-def redCKAPriv (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
+@[expose] def redCKAPriv (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
     CKA.Adversary Γ CCoins T I :=
   show CKA.AdversaryComp Γ CCoins T I Bool from do
   let b ← sampleT Bool
@@ -199,9 +199,9 @@ structure PRNGState (T Sig K : Type) where
 local notation "PSpec" => PRFPRNG.spec Sig I K
 local notation "PHM" => HM PSpec (PRNGState T Sig K)
 
-def liftP {α : Type} (x : PRFPRNG.AdversaryComp Sig I K α) : PHM α := StateT.lift x
+@[expose] def liftP {α : Type} (x : PRFPRNG.AdversaryComp Sig I K α) : PHM α := StateT.lift x
 
-def processCorr (Ik : Option I) : PHM (Option (Option Sig × K)) := do
+@[expose] def processCorr (Ik : Option I) : PHM (Option (Option Sig × K)) := do
   match ← liftP (PRFPRNG.processQuery Ik) with
   | none => return none
   | some k =>
@@ -212,7 +212,7 @@ def processCorr (Ik : Option I) : PHM (Option (Option Sig × K)) := do
 /-- **DEV-SM24 (formalization): Lemma 14 asks `chall-prf`.** Root-RNG step of epoch `t` in
 `redPRNG`, querying `chall-prf(I_{t*})` at epoch `t*` for both authenticity and privacy (since
 epochs `> t*` are simulated locally, matching ACD19's `chall-prng` hop). -/
-def rootPRNG (t : ℕ) (Ik : I) (σv : Option Sig) : PHM (Option (Option Sig × K)) := do
+@[expose] def rootPRNG (t : ℕ) (Ik : I) (σv : Option Sig) : PHM (Option (Option Sig × K)) := do
   if mo.tStar < t then
     match σv with
     | some σ =>
@@ -241,7 +241,7 @@ def rootPRNG (t : ℕ) (Ik : I) (σv : Option Sig) : PHM (Option (Option Sig × 
     | none => return none
     | some k => return some (none, k)
 
-def hooksPRNG : Hooks PSpec (PRNGState T Sig K) Γ T Sig SS RS M E CCoins Γ (Option Sig) SS RS where
+@[expose] def hooksPRNG : Hooks PSpec (PRNGState T Sig K) Γ T Sig SS RS M E CCoins Γ (Option Sig) SS RS where
   startSend _ _ t γ σv r := do
     let coins ← match r with
       | some c => pure c
@@ -273,7 +273,7 @@ def hooksPRNG : Hooks PSpec (PRNGState T Sig K) Γ T Sig SS RS M E CCoins Γ (Op
     | none => return none
     | some σ => return some (realParty vp vp.γ σ vp.vS vp.vR)
 
-def initPRNG : PHM (Option (PartyState Γ T (Option Sig) SS RS × PartyState Γ T (Option Sig) SS RS)) :=
+@[expose] def initPRNG : PHM (Option (PartyState Γ T (Option Sig) SS RS × PartyState Γ T (Option Sig) SS RS)) :=
   do
   let kc ← StateT.lift (sampleT KC)
   match ← rootPRNG prng mo 0 lam none with
@@ -281,7 +281,7 @@ def initPRNG : PHM (Option (PartyState Γ T (Option Sig) SS RS × PartyState Γ 
   | some (σ, k) =>
     return some (mkParties (cka.initA kc) (cka.initB kc) σ (fs.initSender k) (fs.initReceiver k))
 
-def runPRNG (b : Bool) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
+@[expose] def runPRNG (b : Bool) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
     PRFPRNG.AdversaryComp Sig I K
       (Option (Bool × EState (PartyState Γ T (Option Sig) SS RS) M (Header T × E)
         (PRNGState T Sig K))) :=
@@ -289,7 +289,7 @@ def runPRNG (b : Bool) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
     (initPRNG cka prng fs lam mo) {} b A
 
 /-- PRF-PRNG authenticity reduction (`B2` of ACD19 Lemma 10). -/
-def redPRNGAuth (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
+@[expose] def redPRNGAuth (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
     PRFPRNG.Adversary Sig I K :=
   show PRFPRNG.AdversaryComp Sig I K Bool from do
   match ← runPRNG cka prng fs lam Δcka qep ⟨true, tL, t⟩ false A with
@@ -297,7 +297,7 @@ def redPRNGAuth (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS 
   | some (_, es) => return authOut (2 + Δcka) ⟨true, tL, t⟩ es
 
 /-- PRF-PRNG privacy reduction (`B2` of ACD19 Lemma 14; DEV-SM24). -/
-def redPRNGPriv (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
+@[expose] def redPRNGPriv (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
     PRFPRNG.Adversary Sig I K :=
   show PRFPRNG.AdversaryComp Sig I K Bool from do
   let b ← sampleT Bool
@@ -328,9 +328,9 @@ structure FSState (T Sig K I SS RS E : Type) where
 local notation "FSpec" => FSAEAD.spec SS RS (Header T) M E
 local notation "FHM" => HM FSpec (FSState T Sig K I SS RS E)
 
-def liftF {α : Type} (x : FSAEAD.AdversaryComp SS RS (Header T) M E α) : FHM α := StateT.lift x
+@[expose] def liftF {α : Type} (x : FSAEAD.AdversaryComp SS RS (Header T) M E α) : FHM α := StateT.lift x
 
-def lookupF (Ik : I) : FHM K := do
+@[expose] def lookupF (Ik : I) : FHM K := do
   match (← get).table.lookup Ik with
   | some k => return k
   | none =>
@@ -338,7 +338,7 @@ def lookupF (Ik : I) : FHM K := do
     modify fun s => { s with table := (Ik, k) :: s.table }
     return k
 
-def isExt (Ik : I) : FHM Bool := do
+@[expose] def isExt (Ik : I) : FHM Bool := do
   let s ← get
   if Ik ∈ s.sessions then return s.sessions.idxOf Ik == j
   else
@@ -346,7 +346,7 @@ def isExt (Ik : I) : FHM Bool := do
     return s.sessions.length == j
 
 /-- Idealized root-RNG step of epoch `t` in hybrid `H2`, returning `(σ', k, sid)`. -/
-def rootFS (t : ℕ) (Ik : I) (σ : Sig) : FHM (Sig × K × Option I) := do
+@[expose] def rootFS (t : ℕ) (Ik : I) (σ : Sig) : FHM (Sig × K × Option I) := do
   if mo.tStar < t then
     let p := prng.up σ Ik
     return (p.1, p.2, none)
@@ -366,12 +366,12 @@ def rootFS (t : ℕ) (Ik : I) (σ : Sig) : FHM (Sig × K × Option I) := do
     let p := prng.up σ Ik
     return (p.1, p.2, none)
 
-def extOf (sid : Option I) : FHM Bool :=
+@[expose] def extOf (sid : Option I) : FHM Bool :=
   match sid with
   | none => pure false
   | some Ik => isExt j Ik
 
-def hooksFS : Hooks FSpec (FSState T Sig K I SS RS E) Γ T Sig SS RS M E CCoins Γ Sig
+@[expose] def hooksFS : Hooks FSpec (FSState T Sig K I SS RS E) Γ T Sig SS RS M E CCoins Γ Sig
     (Option SS) (Option RS) where
   startSend _ _ t γ σ r := do
     let coins ← match r with
@@ -497,7 +497,7 @@ def hooksFS : Hooks FSpec (FSState T Sig K I SS RS E) Γ T Sig SS RS M E CCoins 
           | none => none
         return some (realParty vp vp.γ vp.root vS vR)
 
-def initFS : FHM (Option (PartyState Γ T Sig (Option SS) (Option RS) ×
+@[expose] def initFS : FHM (Option (PartyState Γ T Sig (Option SS) (Option RS) ×
     PartyState Γ T Sig (Option SS) (Option RS))) := do
   let kr ← StateT.lift (sampleT KR)
   let kc ← StateT.lift (sampleT KC)
@@ -506,7 +506,7 @@ def initFS : FHM (Option (PartyState Γ T Sig (Option SS) (Option RS) ×
   return some (mkParties (cka.initA kc) (cka.initB kc) σ
     (if ext then none else some (fs.initSender k)) (if ext then none else some (fs.initReceiver k)))
 
-def runFS (b : Bool) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
+@[expose] def runFS (b : Bool) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
     FSAEAD.AdversaryComp SS RS (Header T) M E
       (Option (Bool × EState (PartyState Γ T Sig (Option SS) (Option RS)) M (Header T × E)
         (FSState T Sig K I SS RS E))) :=
@@ -514,14 +514,14 @@ def runFS (b : Bool) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
     (initFS cka prng fs lam mo j) {} b A
 
 /-- FS-AEAD authenticity reduction (`B3` of ACD19 Lemma 11) attacking session `j`. -/
-def redFSAuth (j : ℕ) (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
+@[expose] def redFSAuth (j : ℕ) (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
     FSAEAD.Adversary SS RS (Header T) M E :=
   show FSAEAD.AdversaryComp SS RS (Header T) M E Bool from do
   let _ ← runFS cka prng fs lam Δcka qep ⟨true, tL, t⟩ j false A
   sampleT Bool
 
 /-- FS-AEAD privacy reduction (`B3` of ACD19 Lemma 15; DEV-SM25). -/
-def redFSPriv (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
+@[expose] def redFSPriv (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
     FSAEAD.Adversary SS RS (Header T) M E :=
   show FSAEAD.AdversaryComp SS RS (Header T) M E Bool from do
   match ← runFS cka prng fs lam Δcka qep ⟨false, tL, t⟩ 0 false A with
@@ -530,7 +530,7 @@ def redFSPriv (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M 
 
 /-- Variant of `redFSPriv` outputting a uniform coin, whose advantage equals the FS-AEAD
 forgery-win probability (DEV-SM25). -/
-def redFSPrivCoin (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
+@[expose] def redFSPrivCoin (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
     FSAEAD.Adversary SS RS (Header T) M E :=
   show FSAEAD.AdversaryComp SS RS (Header T) M E Bool from do
   let _ ← runFS cka prng fs lam Δcka qep ⟨false, tL, t⟩ 0 false A

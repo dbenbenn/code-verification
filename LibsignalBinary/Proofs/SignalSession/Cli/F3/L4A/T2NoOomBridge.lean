@@ -10,6 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # `¬ CliReachesOOMPlaced` Step-Safety and 6-Clause Totality Bridge
@@ -19,7 +20,7 @@ strict 2-placement PQXDH correctness (`CliSpecPqxdh` and `CliSpecPqxdhNoMatch`) 
 step safety (`oom := fun _ => False`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -28,10 +29,10 @@ namespace LibsignalBinary.Proofs.SignalSession.Cli.F3.L4A.T2NoOomBridge
 open Arm64 Arm64.Obj Arm64.Process
 open CryptoVerification.E2E (UnreachedPqxdhPrimitives wirePrekey wireWhisper)
 open CryptoVerification.SignalSession
-  (CliHooks CliPqxdhInputs CliReachesOOMPlaced CliSpecPqxdh CliSpecPqxdhNoMatch Inputs Outcome
-   PqSessionMatches maxPlaintextBytes stdinCapBytes)
-open CryptoVerification.SignalSession.Placed
-  (CliRunsToPlaced cliRunPlacedSig)
+  (CliHooks CliPqxdhInputs CliSpecPqxdh CliSpecPqxdhNoMatch Inputs Outcome PqSessionMatches
+  maxPlaintextBytes stdinCapBytes)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (CliReachesOOMPlaced)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (CliRunsToPlaced cliRunPlacedSig)
 
 /-- Step-safety refutation: if `Placed.CliRunsToPlaced mpl mmpl elf W i o` holds, then
 `ProcessRunsTo`'s step-safety clause (`oom := fun _ => False`) refutes `s.status = .OutOfMemory`

@@ -9,22 +9,23 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SpqrDesc
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SpqrDesc
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Defs
 import Computational.Proofs.E2E.Dsl.SmReachInvParty
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.GhostStep
+public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost -- proof-setup: allow-public-import
 
 /-!
 # Atomic `mkPub`, Wire Parsing, and Curve Helpers for `SimFig8`
 
 Defines and verifies `mkPubAtomicC`, `parseRecvAtomicC`, `toWireAtomicE`, and curve/point
-admissibility helpers over `atomicSessionOps`, with static query, cost, and `descBits` bounds.
--/
+admissibility helpers over `atomicSessionOps`, with static query, cost, and `descBits` bounds.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
 open OracleSpec OracleComp
 open ReductionDsl (Sig Ty Var Env Ops Iface Expr Comp bits
@@ -93,7 +94,7 @@ variable {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
 local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
-def effSaltE {Γ : List (Ty ASig)} (s : Expr AOps Γ (.opt BV256)) : Expr AOps Γ BV256 :=
+@[expose] def effSaltE {Γ : List (Ty ASig)} (s : Expr AOps Γ (.opt BV256)) : Expr AOps Γ BV256 :=
   .caseOpt s (sOpPure (.bv256Lit 0) .unit) .v0
 
 @[simp] theorem effSaltE_eval {Γ : List (Ty ASig)} (s : Expr AOps Γ (.opt BV256)) (ρ : Env Γ) :
@@ -109,7 +110,7 @@ theorem effSaltE_cost {Γ : List (Ty ASig)} (s : Expr AOps Γ (.opt BV256)) :
   have : (AtomicPureOp.bv256Lit 0).cost ℓ = 2 := rfl
   omega
 
-def optBytesLitE {Γ : List (Ty ASig)} : Option Bytes → Expr AOps Γ (.opt (B 32))
+@[expose] def optBytesLitE {Γ : List (Ty ASig)} : Option Bytes → Expr AOps Γ (.opt (B 32))
   | none => .none
   | some v => .some (sOpPure (.bytesLit 32 v) .unit)
 
@@ -131,7 +132,7 @@ theorem optBytesLitE_cost {Γ : List (Ty ASig)} (a : Option Bytes) (n : ℕ)
     omega
 
 /-- Atomic SPQR send step assembling `LibsignalMsgPublicPart` from `(pq, (r, (pn, addrs)))`. -/
-def mkPubAtomicC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T) {Γ : List (Ty ASig)}
+@[expose] def mkPubAtomicC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T) {Γ : List (Ty ASig)}
     (inpE : Expr AOps Γ (.prod (B 32) (.prod BV512 (.prod U32 (.opt (B 32)))))) :
     Comp AOps I' Γ (.opt (.prod (B 32) (lpubT (ℓ := ℓ) (Pt := Pt)))) :=
   .bind (.ret inpE)
@@ -213,14 +214,14 @@ local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
 /-- Output type `(pq', (min (ctr + 1) B, (rk, (decT rk, (ctr + 1, lct)))))` of `parseRecvAtomicC`. -/
-@[reducible] def parseOutT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def parseOutT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (B 32) (.prod .nat (.prod PK (.prod (.opt PtT) (.prod .nat (wireSaltCtT (ℓ := ℓ) (Pt := Pt))))))
 
 def parseOutV (x : Bytes × (ℕ × (PublicKey × (Option Pt × (ℕ × LibsignalCiphertextWithSalt32))))) :
     (parseOutT ℓ Pt).denote :=
   (x.1, (x.2.1, (x.2.2.1, (x.2.2.2.1, (x.2.2.2.2.1, wireSaltCtV (ℓ := ℓ) (Pt := Pt) x.2.2.2.2.2)))))
 
-def addrCheckE (idA idB : IdentityKey) {Γ : List (Ty ASig)}
+@[expose] def addrCheckE (idA idB : IdentityKey) {Γ : List (Ty ASig)}
     (qB : Expr AOps Γ .bool) (addrs : Expr AOps Γ (.opt (B 32))) : Expr AOps Γ .bool :=
   .letE (.pair addrs (.ite qB (optBytesLitE (paramsV1 C K idA idB).addrAB)
       (optBytesLitE (paramsV1 C K idA idB).addrBA)))
@@ -260,7 +261,7 @@ theorem addrCheckE_cost (idA idB : IdentityKey) {Γ : List (Ty ASig)}
   simp only [Expr.cost, cost_sOpPure, heq, Expr.v0, Expr.v1]
   omega
 
-def parseBodyE (Bc : ℕ) {Γ : List (Ty ASig)} :
+@[expose] def parseBodyE (Bc : ℕ) {Γ : List (Ty ASig)} :
     Expr AOps
       ((.prod (B 32) (.opt BV256)) :: (.opt (.prod (B 32) (.opt BV256))) ::
         (signalParsedT (ℓ := ℓ) (Pt := Pt)) :: (.prod .bool (.prod (B 32) (B 32))) :: Γ)
@@ -301,7 +302,7 @@ theorem parseBodyE_cost (Bc : ℕ) {Γ : List (Ty ASig)} :
   omega
 
 /-- Atomic wire parsing and SPQR receive computation implementing `simParseRecvC` on `(qB, (pq, w))`. -/
-def parseRecvAtomicC (idA idB : IdentityKey) (Bc : ℕ) {ι : Type} {T : OracleSpec ι}
+@[expose] def parseRecvAtomicC (idA idB : IdentityKey) (Bc : ℕ) {ι : Type} {T : OracleSpec ι}
     (I' : Iface ASig T) {Γ : List (Ty ASig)}
     (inpE : Expr AOps Γ (.prod .bool (.prod (B 32) (B 32)))) :
     Comp AOps I' Γ (.opt (parseOutT ℓ Pt)) :=
@@ -440,7 +441,7 @@ variable {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
 local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
-def toWireAtomicE {Γ : List (Ty ASig)}
+@[expose] def toWireAtomicE {Γ : List (Ty ASig)}
     (cE : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt))) : Expr AOps Γ (B 32) :=
   eLet (.fst (.snd (.snd cE)))
     (sOpPure .bytesAppend8 (.pair (.fst .v0) (sOpPure .u64LeBytes (.snd .v0))))
@@ -466,7 +467,7 @@ theorem toWireAtomicE_cost {Γ : List (Ty ASig)}
   simp only [cost_eLet, Expr.cost, cost_sOpPure, AtomicPureOp.cost, Expr.v0]
   omega
 
-def ratchetKeyAdmissibleAtomicE {Γ : List (Ty ASig)}
+@[expose] def ratchetKeyAdmissibleAtomicE {Γ : List (Ty ASig)}
     (wE : Expr AOps Γ (B 32)) : Expr AOps Γ .bool :=
   sOpCurve .checkRatchetKeyOnCurve wE
 
@@ -484,7 +485,7 @@ theorem ratchetKeyAdmissibleAtomicE_cost {Γ : List (Ty ASig)}
   simp only [cost_sOpCurve, atomicCurveCheckOps]
   omega
 
-def isZeroPtOptAtomicE {Γ : List (Ty ASig)}
+@[expose] def isZeroPtOptAtomicE {Γ : List (Ty ASig)}
     (tOptE : Expr AOps Γ (.opt PtT)) : Expr AOps Γ .bool :=
   .caseOpt tOptE (.bool false) (sOpGrp .ptIsZero .v0)
 

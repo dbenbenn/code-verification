@@ -9,13 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.ChainClone4PlacedMid
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.ChainClone4PlacedMid
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.Defs
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.Clone
+import LibsignalBinary.Proofs.Common.HookTrace
 
 /-!
 # Relocatable `[LibsignalPlacement]` `Chain::clone` (Block `524`)
@@ -25,7 +31,7 @@ Verifies `<session_structure::Chain as Clone>::clone` (218 instructions, `blkPC_
 under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.Cli.LibsignalE2E.Pqxdh.Reloc.ChainClone4
 

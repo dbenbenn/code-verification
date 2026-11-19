@@ -14,6 +14,7 @@ public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.MatchDefs
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `VmPreserved`-Augmented `promote_matching_session` Miss Contracts
@@ -22,7 +23,7 @@ Wraps the raw and record-level relocatable `[LibsignalPlacement]` miss contracts
 `StoreKit.Over.MatchDefs` with `VmPreserved s0 sf` (`0` allocations).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -70,57 +71,57 @@ private theorem subroutine_ok_vmPreserved_refine_frame {α β : Type}
 
 /-! ## 1. `VmPreserved`-Augmented Raw & Record-Level Specifications -/
 
-def promoteMatchingSessionVerMissRawSpec : Spec PromoteVerMissRawGhost :=
+@[expose] def promoteMatchingSessionVerMissRawSpec : Spec PromoteVerMissRawGhost :=
   withVmPreserved
     CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.promoteMatchingSessionVerMissRawSpec
 
-def promoteMatchingSessionLenMissRawSpec : Spec PromoteLenMissRawGhost :=
+@[expose] def promoteMatchingSessionLenMissRawSpec : Spec PromoteLenMissRawGhost :=
   withVmPreserved
     CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.promoteMatchingSessionLenMissRawSpec
 
-def promoteMatchingSessionKeyMissRawSpec : Spec PromoteKeyMissRawGhost :=
+@[expose] def promoteMatchingSessionKeyMissRawSpec : Spec PromoteKeyMissRawGhost :=
   withVmPreserved
     CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.promoteMatchingSessionKeyMissRawSpec
 
-def promoteMatchingSessionMissSpec (A : RustAlloc) : Spec PromoteMissGhost :=
+@[expose] def promoteMatchingSessionMissSpec (A : RustAlloc) : Spec PromoteMissGhost :=
   withVmPreserved
     (CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.promoteMatchingSessionMissSpec A)
 
-def promoteMatchingSessionRecordOverSpec (A : RustAlloc) :
+@[expose] def promoteMatchingSessionRecordOverSpec (A : RustAlloc) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × SessionGhost × Session (List (BitVec 8)) ×
       BitVec 8 × BitVec 64 × BitVec 64 × List (BitVec 8)) :=
   withVmPreserved
     (CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.promoteMatchingSessionRecordOverSpec A)
 
-def promoteMatchingSessionVerMissRawSpecExt : Spec PromoteVerMissRawGhost :=
+@[expose] def promoteMatchingSessionVerMissRawSpecExt : Spec PromoteVerMissRawGhost :=
   withVmPreserved
     CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.promoteMatchingSessionVerMissRawSpecExt
 
-def promoteMatchingSessionLenMissRawSpecExt : Spec PromoteLenMissRawGhost :=
+@[expose] def promoteMatchingSessionLenMissRawSpecExt : Spec PromoteLenMissRawGhost :=
   withVmPreserved
     CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.promoteMatchingSessionLenMissRawSpecExt
 
-def promoteMatchingSessionKeyMissRawSpecExt : Spec PromoteKeyMissRawGhost :=
+@[expose] def promoteMatchingSessionKeyMissRawSpecExt : Spec PromoteKeyMissRawGhost :=
   withVmPreserved
     CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.promoteMatchingSessionKeyMissRawSpecExt
 
-def promoteMatchingSessionMissSpecExt (A : RustAlloc) : Spec PromoteMissGhost :=
+@[expose] def promoteMatchingSessionMissSpecExt (A : RustAlloc) : Spec PromoteMissGhost :=
   withVmPreserved
     (CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.promoteMatchingSessionMissSpecExt A)
 
-def promoteMatchingSessionRecordOverSpecExt (A : RustAlloc) :
+@[expose] def promoteMatchingSessionRecordOverSpecExt (A : RustAlloc) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × SessionGhost × Session (List (BitVec 8)) ×
       BitVec 8 × BitVec 64 × BitVec 64 × List (BitVec 8)) :=
   withVmPreserved
     (CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.promoteMatchingSessionRecordOverSpecExt A)
 
-def promoteMatchingSessionRecordOverMatchStackSpecExt (A : RustAlloc) :
+@[expose] def promoteMatchingSessionRecordOverMatchStackSpecExt (A : RustAlloc) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × SessionGhost × Session (List (BitVec 8)) ×
       BitVec 8 × BitVec 64 × BitVec 64 × List (BitVec 8)) :=
   withVmPreserved
     (CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.promoteMatchingSessionRecordOverMatchStackSpecExt A)
 
-def promoteMatchingSessionMissMatchStackSpecExt (A : RustAlloc) : Spec PromoteMissGhost :=
+@[expose] def promoteMatchingSessionMissMatchStackSpecExt (A : RustAlloc) : Spec PromoteMissGhost :=
   withVmPreserved
     (CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.promoteMatchingSessionMissMatchStackSpecExt A)
 

@@ -9,12 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipField.BranchesXBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipField.StartGroupXBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldLemmasBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSliceBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipField.BranchesXBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipField.StartGroupXBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldLemmasBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSliceBudget
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipField.BranchesXBudgetAux
 
 /-!
 # Budget-Threaded Verification of `prost::encoding::skip_field::<&mut &[u8]> [local#1]`
@@ -23,7 +29,7 @@ Induction over nesting depth combining all wire-type branch lemmas into the relo
 `skipField_placed_ok_x` contract for `prost::encoding::skip_field` (block 1).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

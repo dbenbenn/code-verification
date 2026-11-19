@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym -- shake: keep -- proof-setup: allow-public-import
+meta import GeneratedLean.LibsignalSessionPlacedObjShard1
 
 /-!
 # Relocatable Per-Block Fetches for `TripleRatchet/OutgoingRatchet`
@@ -24,7 +25,7 @@ Per-block `gen_block_Sym` instruction fetch lemmas for `OutgoingTripleRatchet::f
 `drop_glue::<SignalProtocolError>`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

@@ -22,7 +22,7 @@ field (`encSession_eq_genFieldsQ`, `encodeRecord_eq_recFieldsQ`, `recFieldsQ_ok`
 `ssgqAfter_recFieldsQ`, and `encodeRecord_length_ltQ`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,16 +35,14 @@ open CryptoVerification.E2E.RecordX
 open CryptoVerification.E2E.Record.L1GX
 open Symbolic.Swarm.TRREF.B3Defs
 
-theorem L1_B3DeserQ_Fields : True := trivial
-
 /-! ## Projection to `clearPqSession` and `clearPqRecord` -/
 
 /-- Clear `pqRatchetState` so the session lies in `L1GX`'s `DeserializeScopeP`. -/
-def clearPqSession (s : Session (List (BitVec 8))) : Session (List (BitVec 8)) :=
+@[expose] def clearPqSession (s : Session (List (BitVec 8))) : Session (List (BitVec 8)) :=
   { s with state := { s.state with pqRatchetState := [] } }
 
 /-- Clear `pqRatchetState` on the current session of a `SessionRecord`. -/
-def clearPqRecord (r : SessionRecord (List (BitVec 8))) : SessionRecord (List (BitVec 8)) :=
+@[expose] def clearPqRecord (r : SessionRecord (List (BitVec 8))) : SessionRecord (List (BitVec 8)) :=
   ⟨r.currentSession.map clearPqSession⟩
 
 @[simp] theorem toSSGQ_ssgxOf_clearPqSession (s : Session (List (BitVec 8)))
@@ -188,12 +186,6 @@ theorem foldl_apply_pq_of_noPq (v : SSGX) (xs : List GenFieldX)
     | pq _ => cases hnpq
     | _ => rfl
 
-theorem recFieldsX_of_some {r : SessionRecord (List (BitVec 8))} {s : Session (List (BitVec 8))}
-    (hs : r.currentSession = some s) :
-    recFieldsX r = genFieldsX s := by
-  unfold recFieldsX
-  rw [hs]
-
 theorem recFieldsQ_of_some {r : SessionRecord (List (BitVec 8))} {s : Session (List (BitVec 8))}
     (hs : r.currentSession = some s) :
     recFieldsQ r = genFieldsQ s := by
@@ -295,17 +287,6 @@ theorem ssgqAfter_recFieldsQ {Q : List (BitVec 8) → Prop}
   split_ifs with hpq
   · simp [ssgqOf_eq_toSSGQ, hpq]
   · simp [SSGQ.apply, ssgqOf_eq_toSSGQ, SSGX.toSSGQ, ExtraG.toExtraGQ]
-
-/-- Before the optional final tag-15 field, `ssgqAfter r k` has `ext.pq = []`. -/
-theorem ssgqAfter_pq_empty_of_lt {Q : List (BitVec 8) → Prop}
-    (r : SessionRecord (List (BitVec 8))) (_hr : DeserializeScopeP_Q Q r)
-    {s : Session (List (BitVec 8))} (hs : r.currentSession = some s)
-    {k : Nat} (hk : k ≤ (genFieldsX (clearPqSession s)).length) :
-    (ssgqAfter r k).ext.pq = [] := by
-  have hk' : k ≤ (recFieldsX (clearPqRecord r)).length := by
-    rwa [recFieldsX_clearPqRecord_of_some hs]
-  rw [ssgqAfter_eq_toSSGQ_clearPq_of_le hs hk']
-  rfl
 
 /-! ## Encoded record length bounds (`encodeRecord_length_ltQ`) -/
 

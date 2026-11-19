@@ -19,20 +19,21 @@ public import LibsignalBinary.Heap.Fine.RustEntriesFine
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.InitStack
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.MuslStart
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.IfaceBudgetBase
 
 /-!
 # ELF Startup Bridge to `fineCostModel`
 
-Bridges initial ELF memory (`ElfImage.loadState` on `cliProcessInputs`, `cliTokenPatchPlaced`, and
-`musl` `_start → main` startup) to `MallocngInitResources` and `mallocngBudgetPool_of_init`,
+Bridges initial ELF memory (`ElfImage.loadState` on `cliProcessInputs` and
+`musl` `_start → main` startup) to `MallocngInitResources` / `MallocngInitResourcesRo` and `mallocngBudgetPool_of_init`,
 producing the initial `fineCostModel` budget pool token at `main` entry parametrically over
 `CliElfMallocngLayout`.
 -/
 
 set_option autoImplicit false
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 
@@ -65,20 +66,10 @@ theorem elfStaticIvs_length (elf : ElfImage) (inputs : ProcessInputs) :
     (elfStaticIvs elf inputs).length = elf.segments.length + 1 := by
   simp [elfStaticIvs]
 
-theorem cliElfStaticIvs_length (elf : ElfImage) :
-    (cliElfStaticIvs elf).length = elf.segments.length + 1 := by
-  simp [cliElfStaticIvs]
-
 theorem elfStaticIvs_sum (elf : ElfImage) (inputs : ProcessInputs) :
     ((elfStaticIvs elf inputs).map Prod.snd).sum =
       inputs.init.stackSize + (elf.segments.map (fun r => r.bytes.length)).sum := by
   simp [elfStaticIvs, List.map_map, Function.comp_def]
-
-theorem cliElfStaticIvs_sum (elf : ElfImage) :
-    ((cliElfStaticIvs elf).map Prod.snd).sum =
-      CryptoVerification.SignalSession.InitStack.cliStackSize +
-        (elf.segments.map (fun r => r.bytes.length)).sum := by
-  simp [cliElfStaticIvs, List.map_map, Function.comp_def]
 
 /-- Derive `MMAP_MIN_ADDR ≤ elf.brkStart.toNat` from any `PT_LOAD` segment `r ∈ elf.segments`
     placed at or above `MMAP_MIN_ADDR` (`65536`). -/
@@ -103,40 +94,6 @@ theorem mallocngBrkStartWf_of_elf {elf : ElfImage}
   have hmod : elf.brkStart.toNat % PAGE_SIZE = 0 := hwf.1.2
   exact ⟨hmin, hmod, hhi⟩
 
-/-- Byte writes (`Memory.write8` / `Memory.writeBytes`) preserve normalized page permissions
-    `Memory.perm` everywhere. -/
-theorem write8_perm (m : Memory) (addr : BitVec 64) (val : BitVec 8) (a : BitVec 64) :
-    (m.write8 addr val).perm a = m.perm a := by
-  unfold Memory.perm Memory.write8 Memory.rawPerm
-  by_cases h : a = addr
-  · subst h
-    simp only [↓reduceIte]
-    cases m.cells a with
-    | none => rfl
-    | some cell =>
-      rcases cell with ⟨optP, b⟩
-      cases optP with
-      | none => rfl
-      | some p => rfl
-  · simp [h]
-
-theorem writeBytes_perm (m : Memory) (base : BitVec 64) (bs : List (BitVec 8)) (a : BitVec 64) :
-    (m.writeBytes base bs).perm a = m.perm a := by
-  induction bs generalizing m base with
-  | nil => rfl
-  | cons b rest ih =>
-    simp only [Memory.writeBytes]
-    rw [ih, write8_perm]
-
-/-- `Placed.cliTokenPatchPlaced` preserves `VmPreserved` (`brkStart`, `brk`, `tpidrEl0`,
-    `physMemAvail`, and `mem.perm`). -/
-theorem vmPreserved_cliTokenPatchPlaced (mpl : Obj.MultiPlacement) (s : State) :
-    VmPreserved s (CryptoVerification.SignalSession.Placed.cliTokenPatchPlaced mpl s) := by
-  refine ⟨⟨rfl, rfl, rfl⟩, rfl, fun a => ?_, fun _ _ _ => rfl⟩
-  unfold CryptoVerification.SignalSession.Placed.cliTokenPatchPlaced State.setMem
-  dsimp only
-  rw [writeBytes_perm, writeBytes_perm]
-
 /-- Startup virtual/physical memory preservation from ELF `loadState` `s0` to `main` entry `sm`:
     preserves `brkStart`, `brk`, `physMemAvail`, and `mem.perm`, while allowing `_start` /
     `__init_tp` to initialize `tpidrEl0` from `0` to `tp`. -/
@@ -145,23 +102,6 @@ def StartupVmPreserved (s0 sm : State) : Prop :=
   sm.brk = s0.brk ∧
   sm.physMemAvail = s0.physMemAvail ∧
   ∀ a : BitVec 64, sm.mem.perm a = s0.mem.perm a
-
-theorem StartupVmPreserved.refl (s : State) : StartupVmPreserved s s :=
-  ⟨rfl, rfl, rfl, fun _ => rfl⟩
-
-theorem StartupVmPreserved.trans {s0 s1 s2 : State}
-    (h01 : StartupVmPreserved s0 s1) (h12 : StartupVmPreserved s1 s2) :
-    StartupVmPreserved s0 s2 :=
-  ⟨h12.1.trans h01.1, h12.2.1.trans h01.2.1, h12.2.2.1.trans h01.2.2.1,
-    fun a => (h12.2.2.2 a).trans (h01.2.2.2 a)⟩
-
-theorem StartupVmPreserved.of_vmPreserved {s0 sm : State} (h : VmPreserved s0 sm) :
-    StartupVmPreserved s0 sm :=
-  ⟨h.1.1, h.1.2.1, h.2.1, h.perm_eq⟩
-
-theorem startupVmPreserved_cliTokenPatchPlaced (mpl : Obj.MultiPlacement) (s : State) :
-    StartupVmPreserved s (CryptoVerification.SignalSession.Placed.cliTokenPatchPlaced mpl s) :=
-  StartupVmPreserved.of_vmPreserved (vmPreserved_cliTokenPatchPlaced mpl s)
 
 theorem mallocngBudgetPoolInv_of_startupVmPreserved {lim : BudgetLimits}
     {staticIvs ivs : List (BitVec 64 × Nat)} {s0 sm : State}
@@ -444,207 +384,6 @@ theorem elfLoadState_poolInv {elf : ElfImage} {inputs : ProcessInputs}
 
 /-! ## Linux Auxiliary Vector (`MallocngAuxvAt`) -/
 
-/-- The 15 auxiliary-vector entries preceding `AT_RANDOM` (`25#64`) in `buildInitialStack` /
-    `InitStack.auxWords` / `MuslStart.StartProc`. -/
-def cliAuxvPreEntries
-    (ph pg ab af ae uid euid gid egid plat hw clk sec : BitVec 64) :
-    List (BitVec 64 × BitVec 64) :=
-  [ (3#64, ph), (4#64, 56#64), (5#64, 11#64), (6#64, pg), (7#64, ab)
-  , (8#64, af), (9#64, ae), (11#64, uid), (12#64, euid), (13#64, gid)
-  , (14#64, egid), (15#64, plat), (16#64, hw), (17#64, clk), (23#64, sec) ]
-
-/-- The 2 auxiliary-vector entries between `AT_RANDOM` (`25#64`) and `AT_NULL` (`0#64`) in
-    `buildInitialStack` / `InitStack.auxWords` / `MuslStart.StartProc`. -/
-def cliAuxvSufEntries (hw2 ex : BitVec 64) : List (BitVec 64 × BitVec 64) :=
-  [ (26#64, hw2), (31#64, ex) ]
-
-private theorem cliAuxvPreEntries_tags_ok
-    (ph pg ab af ae uid euid gid egid plat hw clk sec : BitVec 64) :
-    ∀ e ∈ cliAuxvPreEntries ph pg ab af ae uid euid gid egid plat hw clk sec,
-      e.1 ≠ 0#64 ∧ e.1 ≠ 25#64 := by
-  intro e he
-  simp only [cliAuxvPreEntries, List.mem_cons, List.not_mem_nil, or_false] at he
-  rcases he with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-    rfl | rfl | rfl | rfl | rfl <;> (dsimp only; exact ⟨by decide, by decide⟩)
-
-private theorem cliAuxvSufEntries_tags_ok (hw2 ex : BitVec 64) :
-    ∀ e ∈ cliAuxvSufEntries hw2 ex, e.1 ≠ 0#64 ∧ e.1 ≠ 25#64 := by
-  intro e he
-  simp only [cliAuxvSufEntries, List.mem_cons, List.not_mem_nil, or_false] at he
-  rcases he with rfl | rfl <;> (dsimp only; exact ⟨by decide, by decide⟩)
-
-/-- Raw byte length of the upper initial-stack string block for `processInputs strs [] [] []`
-    (`"aarch64\0"` + NUL-terminated `strs` + empty `execfn` `"\0"` + 8-byte sentinel). -/
-def cliStackUpperRawLen (strs : List (List (BitVec 8))) : Nat :=
-  8 + (strs.map fun s => s.length + 1).sum + 1 + 8
-
-/-- Start offset (`AT_RANDOM` address) of the upper initial-stack info block for `strs`. -/
-def cliStackInfoBase (strs : List (List (BitVec 8))) : Nat :=
-  defaultStackTop.toNat - (16 + alignUp16 (cliStackUpperRawLen strs))
-
-/-- `AT_PLATFORM` C-string address in the initial stack for `strs`. -/
-def cliStackPlatformAddr (strs : List (List (BitVec 8))) : BitVec 64 :=
-  BitVec.ofNat 64 (cliStackInfoBase strs) +
-    BitVec.ofNat 64 (16 + (alignUp16 (cliStackUpperRawLen strs) - cliStackUpperRawLen strs))
-
-/-- `AT_EXECFN` C-string address in the initial stack for `strs`. -/
-def cliStackExecfnAddr (strs : List (List (BitVec 8))) : BitVec 64 :=
-  cliStackPlatformAddr strs + 8#64 + BitVec.ofNat 64 (strs.flatMap (· ++ [0#8])).length
-
-/-- Env-terminator `0#64` followed by the 19-pair (38-word) auxiliary vector built by
-    `buildInitialStack` for `processInputs strs [] [] []`. -/
-def cliStackAuxWords (elf : ElfImage) (strs : List (List (BitVec 8))) : List (BitVec 64) :=
-  let prePairs : List (BitVec 64 × BitVec 64) :=
-    [ (3#64, elf.phdrVaddr)
-    , (4#64, BitVec.ofNat 64 elf.phent)
-    , (5#64, BitVec.ofNat 64 elf.phnum)
-    , (6#64, BitVec.ofNat 64 Obj.pageSize)
-    , (7#64, 0#64)
-    , (8#64, 0#64)
-    , (9#64, elf.entry)
-    , (11#64, 1000#64)
-    , (12#64, 1000#64)
-    , (13#64, 1000#64)
-    , (14#64, 1000#64)
-    , (15#64, cliStackPlatformAddr strs)
-    , (16#64, 0x3#64)
-    , (17#64, 100#64)
-    , (23#64, 0#64) ]
-  0#64 ::
-    ((prePairs ++ [(25#64, BitVec.ofNat 64 (cliStackInfoBase strs))] ++
-        cliAuxvSufEntries 0#64 (cliStackExecfnAddr strs) ++ [(0#64, 0#64)]).flatMap
-      fun (t, v) => [t, v])
-
-/-- Initial process stack words (`argc`, `argv[0]`, `envp[0] = NULL`, and the 18 auxiliary-vector
-    pairs + `AT_NULL` tag word at `envp + 8#64`) read by `musl` startup. -/
-def cliMuslStartProc
-    (sp envp p ph pg ab af ae uid gid plat hw clk rnd hw2 ex : BitVec 64)
-    (a32 ah32 : BitVec 32) : SepProp :=
-  (sp ↦₃₂ a32) ∗ ((sp + 4#64) ↦₃₂ ah32) ∗ ((sp + 8#64) ↦₆₄ p) ∗ (envp ↦₆₄ 0#64) ∗
-    ((envp + 8#64) ↦₆₄*
-      (((cliAuxvPreEntries ph pg ab af ae uid uid gid gid plat hw clk 0#64 ++
-          [(25#64, rnd)] ++ cliAuxvSufEntries hw2 ex).flatMap fun (t, v) => [t, v]) ++
-        [0#64]))
-
-/-- The 38-word auxiliary vector `(cliStackAuxWords elf strs).tail` (when `elf.phent = 56`,
-    which holds on every `WellFormed` `ElfImage`) together with the 8-byte `AT_RANDOM` secret slice
-    at `cliStackInfoBase strs + 8` entails `MallocngAuxvAt auxvPtr`. -/
-theorem mallocngAuxvAt_of_auxWords (elf : ElfImage) (strs : List (List (BitVec 8)))
-    (auxvPtr : BitVec 64) (secretBytes : List (BitVec 8))
-    (hphent : elf.phent = 56)
-    (hauxvHi : auxvPtr.toNat + 304 ≤ 2 ^ 48)
-    (hrandHi : (BitVec.ofNat 64 (cliStackInfoBase strs)).toNat + 16 ≤ 2 ^ 48)
-    (hsecLen : secretBytes.length = 8) :
-    ((auxvPtr ↦₆₄* (cliStackAuxWords elf strs).tail) ∗
-      ((BitVec.ofNat 64 (cliStackInfoBase strs) + 8#64) ↦ₛ secretBytes)) ⊢
-      MallocngAuxvAt auxvPtr := by
-  let randPtr := BitVec.ofNat 64 (cliStackInfoBase strs)
-  let pre : List (BitVec 64 × BitVec 64) :=
-    [ (3#64, elf.phdrVaddr)
-    , (4#64, 56#64)
-    , (5#64, BitVec.ofNat 64 elf.phnum)
-    , (6#64, BitVec.ofNat 64 Obj.pageSize)
-    , (7#64, 0#64)
-    , (8#64, 0#64)
-    , (9#64, elf.entry)
-    , (11#64, 1000#64)
-    , (12#64, 1000#64)
-    , (13#64, 1000#64)
-    , (14#64, 1000#64)
-    , (15#64, cliStackPlatformAddr strs)
-    , (16#64, 0x3#64)
-    , (17#64, 100#64)
-    , (23#64, 0#64) ]
-  let suf := cliAuxvSufEntries 0#64 (cliStackExecfnAddr strs)
-  have hPreOk : ∀ e ∈ pre, e.1 ≠ 0#64 ∧ e.1 ≠ 25#64 := by
-    intro e he
-    simp only [pre, List.mem_cons, List.not_mem_nil, or_false] at he
-    rcases he with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-      rfl | rfl | rfl | rfl | rfl <;> (dsimp only; exact ⟨by decide, by decide⟩)
-  have hPure :
-      (∀ e ∈ pre, e.1 ≠ 0#64 ∧ e.1 ≠ 25#64) ∧
-      (∀ e ∈ suf, e.1 ≠ 0#64 ∧ e.1 ≠ 25#64) ∧
-      pre.length + suf.length ≤ 64 ∧
-      auxvPtr.toNat + 16 * (pre.length + suf.length + 2) ≤ 2 ^ 48 ∧
-      randPtr.toNat + 16 ≤ 2 ^ 48 ∧
-      secretBytes.length = 8 := by
-    refine ⟨hPreOk, cliAuxvSufEntries_tags_ok _ _, ?_, ?_, hrandHi, hsecLen⟩
-    · simp [pre, suf, cliAuxvSufEntries]
-    · simpa [pre, suf, cliAuxvSufEntries] using hauxvHi
-  have hWordsEq :
-      (cliStackAuxWords elf strs).tail =
-        ((pre ++ [(25#64, randPtr)] ++ suf ++ [(0#64, 0#64)]).flatMap fun (t, v) => [t, v]) := by
-    unfold cliStackAuxWords pre suf cliAuxvSufEntries randPtr
-    rw [hphent]
-    rfl
-  unfold MallocngAuxvAt
-  refine Entails.trans ?_ (Entails.sepExists_intro pre)
-  refine Entails.trans ?_ (Entails.sepExists_intro suf)
-  refine Entails.trans ?_ (Entails.sepExists_intro randPtr)
-  refine Entails.trans ?_ (Entails.sepExists_intro 0#64)
-  refine Entails.trans ?_ (Entails.sepExists_intro secretBytes)
-  refine Entails.pure_right hPure ?_
-  rw [hWordsEq]
-  exact Entails.refl _
-
-/-- Extract `MallocngAuxvAt (envp + 8#64)` directly from `cliMuslStartProc`, the `AT_NULL` value
-    word `(envp + 304#64) ↦₆₄ nullVal`, and the 8-byte `AT_RANDOM` secret slice
-    `(rnd + 8#64) ↦ₛ secretBytes`. -/
-theorem mallocngAuxvAt_of_startProc
-    (sp envp p ph pg ab af ae uid gid plat hw clk rnd hw2 ex nullVal : BitVec 64)
-    (a32 ah32 : BitVec 32) (secretBytes : List (BitVec 8))
-    (hauxvHi : (envp + 8#64).toNat + 304 ≤ 2 ^ 48)
-    (hrandHi : rnd.toNat + 16 ≤ 2 ^ 48)
-    (hsecLen : secretBytes.length = 8) :
-    (cliMuslStartProc
-        sp envp p ph pg ab af ae uid gid plat hw clk rnd hw2 ex a32 ah32 ∗
-      ((envp + 304#64) ↦₆₄ nullVal) ∗
-      ((rnd + 8#64) ↦ₛ secretBytes)) ⊢
-      (sp ↦₃₂ a32) ∗ ((sp + 4#64) ↦₃₂ ah32) ∗ ((sp + 8#64) ↦₆₄ p) ∗ (envp ↦₆₄ 0#64) ∗
-        MallocngAuxvAt (envp + 8#64) := by
-  let pre := cliAuxvPreEntries ph pg ab af ae uid uid gid gid plat hw clk 0#64
-  let suf := cliAuxvSufEntries hw2 ex
-  have hPure :
-      (∀ e ∈ pre, e.1 ≠ 0#64 ∧ e.1 ≠ 25#64) ∧
-      (∀ e ∈ suf, e.1 ≠ 0#64 ∧ e.1 ≠ 25#64) ∧
-      pre.length + suf.length ≤ 64 ∧
-      (envp + 8#64).toNat + 16 * (pre.length + suf.length + 2) ≤ 2 ^ 48 ∧
-      rnd.toNat + 16 ≤ 2 ^ 48 ∧
-      secretBytes.length = 8 := by
-    refine ⟨cliAuxvPreEntries_tags_ok ph pg ab af ae uid uid gid gid plat hw clk 0#64,
-      cliAuxvSufEntries_tags_ok hw2 ex, ?_, ?_, hrandHi, hsecLen⟩
-    · simp [pre, suf, cliAuxvPreEntries, cliAuxvSufEntries]
-    · simpa [pre, suf, cliAuxvPreEntries, cliAuxvSufEntries] using hauxvHi
-  have hAuxv :
-      (((envp + 8#64) ↦₆₄*
-          ((pre ++ [(25#64, rnd)] ++ suf ++ [(0#64, nullVal)]).flatMap fun (t, v) => [t, v])) ∗
-        ((rnd + 8#64) ↦ₛ secretBytes)) ⊢
-      MallocngAuxvAt (envp + 8#64) := by
-    unfold MallocngAuxvAt
-    refine Entails.trans ?_ (Entails.sepExists_intro pre)
-    refine Entails.trans ?_ (Entails.sepExists_intro suf)
-    refine Entails.trans ?_ (Entails.sepExists_intro rnd)
-    refine Entails.trans ?_ (Entails.sepExists_intro nullVal)
-    refine Entails.trans ?_ (Entails.sepExists_intro secretBytes)
-    exact Entails.pure_right hPure (Entails.refl _)
-  have hExpand :
-      (cliMuslStartProc
-          sp envp p ph pg ab af ae uid gid plat hw clk rnd hw2 ex a32 ah32 ∗
-        ((envp + 304#64) ↦₆₄ nullVal) ∗
-        ((rnd + 8#64) ↦ₛ secretBytes)) =
-      ((sp ↦₃₂ a32) ∗ ((sp + 4#64) ↦₃₂ ah32) ∗ ((sp + 8#64) ↦₆₄ p) ∗ (envp ↦₆₄ 0#64) ∗
-        (((envp + 8#64) ↦₆₄*
-            ((pre ++ [(25#64, rnd)] ++ suf ++ [(0#64, nullVal)]).flatMap fun (t, v) => [t, v])) ∗
-          ((rnd + 8#64) ↦ₛ secretBytes))) := by
-    unfold cliMuslStartProc pre suf
-      cliAuxvPreEntries cliAuxvSufEntries
-    simp only [List.cons_append, List.nil_append, List.flatMap_cons,
-      List.flatMap_nil, pointsToWords64_cons, pointsToWords64_nil, sepConj_emp,
-      BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-  rw [hExpand]
-  exact sepConj_mono_right
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right hAuxv)))
-
 /-! ## `CliElfMallocngLayout`, `MallocngInitResources`, and Pool Initialization -/
 
 /-- Parametric ELF layout and budget-fit hypotheses (`brkStart`, segment count, and segment byte
@@ -657,16 +396,6 @@ structure CliElfMallocngLayout (elf : ElfImage) (lim : BudgetLimits) : Prop wher
       CryptoVerification.SignalSession.InitStack.cliStackSize +
         (elf.segments.map (fun r => r.bytes.length)).sum ≤ lim.staticBytes
   physCap_le : lim.enforced = true → lim.physCap ≤ 2 ^ 30
-
-/-- Unenforced `zeroBudgetLimits` satisfies `CliElfMallocngLayout` for any ELF with
-    `MMAP_MIN_ADDR ≤ elf.brkStart.toNat`. -/
-theorem CliElfMallocngLayout.zero {elf : ElfImage}
-    (hmin : MMAP_MIN_ADDR ≤ elf.brkStart.toNat) :
-    CliElfMallocngLayout elf zeroBudgetLimits where
-  brkStart_min := hmin
-  staticCount_le h := by cases h
-  staticBytes_le h := by cases h
-  physCap_le h := by cases h
 
 /-- Construct `CliElfMallocngLayout` from any `PT_LOAD` segment `r ∈ elf.segments` placed at or
     above `MMAP_MIN_ADDR` (`65536`). -/
@@ -683,17 +412,6 @@ theorem CliElfMallocngLayout.of_segment {elf : ElfImage} {lim : BudgetLimits}
   staticCount_le := hcnt
   staticBytes_le := hbytes
   physCap_le := hphys
-
-/-- Initial `.rodata` and zeroed `.bss` satisfaction `s0.mem ⊨ mallocngLib.dataInit mpl` from
-    `MultiPlacedLib.InElf` on any loaded ELF containing `VerifiedLibraries.mallocngLib`. -/
-theorem mallocngDataInit_of_inElf {elf : ElfImage} {mpl : Obj.MultiPlacement}
-    {inputs : ProcessInputs} {s0 : State}
-    (hpl : VerifiedLibraries.mallocngLib.Placeable mpl)
-    (hin : VerifiedLibraries.mallocngLib.InElf elf mpl)
-    (hdisj : VerifiedLibraries.mallocngLib.DataDisjoint mpl)
-    (hload : elf.loadState inputs = .ok s0) :
-    s0.mem ⊨ VerifiedLibraries.mallocngLib.dataInit mpl :=
-  VerifiedLibraries.mallocngLib.satisfies_dataInit_of_inElf hpl hin hload (by decide) hdisj
 
 /-- Bundled post-`__init_libc` / `main`-entry `mallocng` initialization resources and VM budget
     invariants at state `s0`, placement `mpl`, budget limits `lim`, static interval cover
@@ -714,58 +432,6 @@ structure MallocngInitResources
           (((mallocngAddrsOfPlacement mpl).libc + 8#64) ↦₆₄ auxvPtr) ∗
           MallocngAuxvAt auxvPtr ∗ R
 
-/-- Project `MallocngInitResources` to `MallocngStartupResources (mallocngAddrsOfPlacement mpl) s0.tpidrEl0 ∗ R`. -/
-theorem MallocngInitResources.satisfies_startupResources
-    {mpl : Obj.MultiPlacement} {lim : BudgetLimits}
-    {staticIvs : List (BitVec 64 × Nat)} {R : SepProp} {s0 : State}
-    (h : MallocngInitResources mpl lim staticIvs R s0) :
-    s0.mem ⊨ MallocngStartupResources (mallocngAddrsOfPlacement mpl) s0.tpidrEl0 ∗ R := by
-  obtain ⟨auxvPtr, hsat⟩ := h.startup
-  let A := mallocngAddrsOfPlacement mpl
-  refine Satisfies.mono ?_ hsat
-  rw [mallocngLib_dataInit_eq mpl]
-  change
-    ((MallocngRoTablesAt A ∗
-      (A.ctx ↦ₛ List.replicate 928 0#8) ∗
-      (A.lock ↦₃₂ 0#32) ∗
-      (A.replaced ↦₃₂ 0#32) ∗
-      (A.aaReplaced ↦₃₂ 0#32)) ∗
-     MallocngRuntime A s0.tpidrEl0 ∗
-     ((A.libc + 8#64) ↦₆₄ auxvPtr) ∗
-     MallocngAuxvAt auxvPtr ∗ R) ⊢
-    MallocngStartupResources A s0.tpidrEl0 ∗ R
-  have hAssoc :
-      ((MallocngRoTablesAt A ∗
-        (A.ctx ↦ₛ List.replicate 928 0#8) ∗
-        (A.lock ↦₃₂ 0#32) ∗
-        (A.replaced ↦₃₂ 0#32) ∗
-        (A.aaReplaced ↦₃₂ 0#32)) ∗
-       MallocngRuntime A s0.tpidrEl0 ∗
-       ((A.libc + 8#64) ↦₆₄ auxvPtr) ∗
-       MallocngAuxvAt auxvPtr ∗ R) =
-      ((MallocngRoTablesAt A ∗
-        (A.ctx ↦ₛ List.replicate 928 0#8) ∗
-        (A.lock ↦₃₂ 0#32) ∗
-        (A.replaced ↦₃₂ 0#32) ∗
-        (A.aaReplaced ↦₃₂ 0#32) ∗
-        MallocngRuntime A s0.tpidrEl0 ∗
-        ((A.libc + 8#64) ↦₆₄ auxvPtr) ∗
-        MallocngAuxvAt auxvPtr) ∗ R) := by ac_rfl
-  rw [hAssoc]
-  refine sepConj_mono_left ?_
-  unfold MallocngStartupResources
-  exact Entails.sepExists_intro
-    (P := fun auxvPtr =>
-      MallocngRoTablesAt A ∗
-        (A.ctx ↦ₛ List.replicate 928 0#8) ∗
-        (A.lock ↦₃₂ 0#32) ∗
-        (A.replaced ↦₃₂ 0#32) ∗
-        (A.aaReplaced ↦₃₂ 0#32) ∗
-        MallocngRuntime A s0.tpidrEl0 ∗
-        ((A.libc + 8#64) ↦₆₄ auxvPtr) ∗
-        MallocngAuxvAt auxvPtr)
-    auxvPtr
-
 /-- Assemble `MallocngInitResources` at `main` entry (or any post-startup state satisfying
     `StartupVmPreserved sLoad s0`) from `elf.loadState (cliProcessInputs i) = .ok sLoad` and
     `CliElfMallocngLayout elf lim`. -/
@@ -784,7 +450,7 @@ theorem cliElf_mallocngInitResources
         MallocngAuxvAt auxvPtr ∗ R) :
     MallocngInitResources mpl lim (cliElfStaticIvs elf) R s0 := by
   obtain ⟨hwf, hbsLoad, hbrkLoad, _, _, _, hb, _, _⟩ := elfLoadState_fields hLoad
-  have hinit : (cliProcessInputs i).init = { stackSize := 8388608 } := rfl
+  have hinit : (cliProcessInputs i).init = { auxv := { hwcap := 0x1b#64 }, stackSize := 8388608 } := rfl
   have htopLt : (cliProcessInputs i).init.stackTop.toNat < 2 ^ 64 := by
     rw [hinit]; decide
   have htopLe : (cliProcessInputs i).init.stackTop.toNat ≤ Arm64.USER_VA_LIMIT := by
@@ -871,6 +537,163 @@ theorem cliElf_fineBudgetPool_and_entries_of_init
       RustCliAllocBudgetEntriesBase fineCostModel A P thunkAddrs := by
   obtain ⟨γ, hPool⟩ :=
     cliElf_fineBudgetPool_of_init hLayout hLoad hVm htpLo htpHi hmem
+  exact ⟨γ, hPool,
+    fineRustCliAllocBudgetEntries_thunks hP γ s0.tpidrEl0 s0.brkStart hThunks hShims hMemcpy⟩
+
+/-! ## Read-Only (`auxv`) Startup Initialization (`*_ro`) -/
+
+/-- Read-only-`auxv` counterpart of `MallocngInitResources`: takes already-frozen
+    `(((mallocngAddrsOfPlacement mpl).libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗ MallocngAuxvRoAt auxvPtr`
+    so callers can duplicate `.ro` `auxv` access (e.g. for `getauxval` CPU probes) in `R`. -/
+structure MallocngInitResourcesRo
+    (mpl : Obj.MultiPlacement) (lim : BudgetLimits)
+    (staticIvs : List (BitVec 64 × Nat)) (R : SepProp) (s0 : State) : Prop where
+  tp_lo : 0xa4 ≤ s0.tpidrEl0.toNat
+  tp_hi : s0.tpidrEl0.toNat ≤ 2 ^ 48
+  brk_eq : s0.brk = s0.brkStart
+  brkStart_wf : MallocngBrkStartWf s0.brkStart
+  poolInv : mallocngBudgetPoolInv lim staticIvs [] s0
+  startup :
+    ∃ auxvPtr : BitVec 64,
+      s0.mem ⊨
+        VerifiedLibraries.mallocngLib.dataInit mpl ∗
+          MallocngRuntime (mallocngAddrsOfPlacement mpl) s0.tpidrEl0 ∗
+          (((mallocngAddrsOfPlacement mpl).libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+          MallocngAuxvRoAt auxvPtr ∗ R
+
+/-- Assemble `MallocngInitResourcesRo` at `main` entry (or any post-startup state satisfying
+    `StartupVmPreserved sLoad s0`) from already-frozen `.ro` `__libc.auxv` and `MallocngAuxvRoAt`. -/
+theorem cliElf_mallocngInitResources_ro
+    {elf : ElfImage} {mpl : Obj.MultiPlacement} {lim : BudgetLimits}
+    {i : Inputs} {sLoad s0 : State} {auxvPtr : BitVec 64} {R : SepProp}
+    (hLayout : CliElfMallocngLayout elf lim)
+    (hLoad : elf.loadState (cliProcessInputs i) = .ok sLoad)
+    (hVm : StartupVmPreserved sLoad s0)
+    (htpLo : 0xa4 ≤ s0.tpidrEl0.toNat)
+    (htpHi : s0.tpidrEl0.toNat ≤ 2 ^ 48)
+    (hmem : s0.mem ⊨
+      VerifiedLibraries.mallocngLib.dataInit mpl ∗
+        MallocngRuntime (mallocngAddrsOfPlacement mpl) s0.tpidrEl0 ∗
+        (((mallocngAddrsOfPlacement mpl).libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+        MallocngAuxvRoAt auxvPtr ∗ R) :
+    MallocngInitResourcesRo mpl lim (cliElfStaticIvs elf) R s0 := by
+  obtain ⟨hwf, hbsLoad, hbrkLoad, _, _, _, hb, _, _⟩ := elfLoadState_fields hLoad
+  have hinit : (cliProcessInputs i).init = { auxv := { hwcap := 0x1b#64 }, stackSize := 8388608 } := rfl
+  have htopLt : (cliProcessInputs i).init.stackTop.toNat < 2 ^ 64 := by
+    rw [hinit]; decide
+  have htopLe : (cliProcessInputs i).init.stackTop.toNat ≤ Arm64.USER_VA_LIMIT := by
+    rw [hinit]; decide
+  obtain ⟨hbrkLeSb, _⟩ := buildInitialStack_sub_stack hb htopLt
+  have hsbLe48 :
+      (cliProcessInputs i).init.stackTop.toNat - (cliProcessInputs i).init.stackSize ≤ 2 ^ 48 := by
+    rw [hinit]; decide
+  have hBrkWfElf : MallocngBrkStartWf elf.brkStart :=
+    mallocngBrkStartWf_of_elf hwf hLayout.brkStart_min (Nat.le_trans hbrkLeSb hsbLe48)
+  have hInvLoad : mallocngBudgetPoolInv lim (cliElfStaticIvs elf) [] sLoad := by
+    rw [← elfStaticIvs_cliProcessInputs elf i]
+    exact elfLoadState_poolInv hLoad htopLe hLayout.staticCount_le hLayout.staticBytes_le
+      hLayout.physCap_le
+  have hbs0 : s0.brkStart = elf.brkStart := hVm.1.trans hbsLoad
+  have hbrk0 : s0.brk = s0.brkStart := (hVm.2.1.trans hbrkLoad).trans hbs0.symm
+  refine
+    { tp_lo := htpLo
+      tp_hi := htpHi
+      brk_eq := hbrk0
+      brkStart_wf := hbs0 ▸ hBrkWfElf
+      poolInv := mallocngBudgetPoolInv_of_startupVmPreserved hVm hInvLoad
+      startup := ⟨auxvPtr, hmem⟩ }
+
+/-- Eliminate `MallocngInitResourcesRo` via `fineHeap_init_ro` into the initial `fineCostModel`
+    budget pool token `(fineRustCliAllocBudget γ mpl s0.tpidrEl0 s0.brkStart).pool lim fineCostModel.init s0`. -/
+theorem fineBudgetPool_of_initResources_ro
+    {mpl : Obj.MultiPlacement} {lim : BudgetLimits}
+    {staticIvs : List (BitVec 64 × Nat)} {R : SepProp} {s0 : State}
+    (hInit : MallocngInitResourcesRo mpl lim staticIvs R s0) :
+    ∃ γ : GhostName,
+      let A := fineRustCliAllocBudget γ mpl s0.tpidrEl0 s0.brkStart
+      s0.mem ⊨ A.pool lim fineCostModel.init s0 ∗ R := by
+  obtain ⟨auxvPtr, hmem⟩ := hInit.startup
+  obtain ⟨γ, hsat1⟩ := fineHeap_init_ro mpl s0.tpidrEl0 s0.brkStart auxvPtr R s0.mem
+    hInit.tp_lo hInit.tp_hi hInit.brkStart_wf hmem
+  rw [satisfies_bupd] at hsat1
+  refine ⟨γ, ?_⟩
+  refine Satisfies.mono (sepConj_mono_left ?_) hsat1
+  change FineHeapImpl γ (mallocngAddrsOfPlacement mpl) s0.tpidrEl0 s0.brkStart s0.brkStart
+      fineCostModel.init [] ⊢
+    mallocngBudgetPool fineCostModel fineCostModelIface γ mpl s0.tpidrEl0 s0.brkStart lim
+      fineCostModel.init s0
+  unfold mallocngBudgetPool mallocngBudgetPoolAt MallocngModelEnv
+  rw [hInit.brk_eq]
+  refine Entails.trans ?_
+    (@Entails.sepExists_intro (List (BitVec 64 × Nat))
+      (fun stIvs => ∃∗ ivs : List (BitVec 64 × Nat),
+        ⌜mallocngBudgetPoolInv lim stIvs ivs s0⌝ ∗
+        (⌜s0.tpidrEl0 = s0.tpidrEl0 ∧ s0.brkStart = s0.brkStart⌝ ∗
+          fineCostModelIface.HeapM γ (mallocngAddrsOfPlacement mpl) s0.tpidrEl0 s0.brkStart
+            s0.brkStart fineCostModel.init ivs))
+      staticIvs)
+  refine Entails.trans ?_
+    (@Entails.sepExists_intro (List (BitVec 64 × Nat))
+      (fun ivs =>
+        ⌜mallocngBudgetPoolInv lim staticIvs ivs s0⌝ ∗
+        (⌜s0.tpidrEl0 = s0.tpidrEl0 ∧ s0.brkStart = s0.brkStart⌝ ∗
+          fineCostModelIface.HeapM γ (mallocngAddrsOfPlacement mpl) s0.tpidrEl0 s0.brkStart
+            s0.brkStart fineCostModel.init ivs))
+      [])
+  exact Entails.pure_right hInit.poolInv
+    (Entails.pure_right ⟨rfl, rfl⟩
+      (Entails.refl (FineHeapImpl γ (mallocngAddrsOfPlacement mpl) s0.tpidrEl0 s0.brkStart
+        s0.brkStart fineCostModel.init [])))
+
+/-- Produce the initial `A.pool lim fineCostModel.init s0` token at `main` entry from already-frozen
+    `.ro` `__libc.auxv` and `MallocngAuxvRoAt`. -/
+theorem cliElf_fineBudgetPool_of_init_ro
+    {elf : ElfImage} {mpl : Obj.MultiPlacement} {lim : BudgetLimits}
+    {i : Inputs} {sLoad s0 : State} {auxvPtr : BitVec 64} {R : SepProp}
+    (hLayout : CliElfMallocngLayout elf lim)
+    (hLoad : elf.loadState (cliProcessInputs i) = .ok sLoad)
+    (hVm : StartupVmPreserved sLoad s0)
+    (htpLo : 0xa4 ≤ s0.tpidrEl0.toNat)
+    (htpHi : s0.tpidrEl0.toNat ≤ 2 ^ 48)
+    (hmem : s0.mem ⊨
+      VerifiedLibraries.mallocngLib.dataInit mpl ∗
+        MallocngRuntime (mallocngAddrsOfPlacement mpl) s0.tpidrEl0 ∗
+        (((mallocngAddrsOfPlacement mpl).libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+        MallocngAuxvRoAt auxvPtr ∗ R) :
+    ∃ γ : GhostName,
+      let A := fineRustCliAllocBudget γ mpl s0.tpidrEl0 s0.brkStart
+      s0.mem ⊨ A.pool lim fineCostModel.init s0 ∗ R :=
+  fineBudgetPool_of_initResources_ro
+    (cliElf_mallocngInitResources_ro hLayout hLoad hVm htpLo htpHi hmem)
+
+/-- Combined `main`-entry initializer pairing `cliElf_fineBudgetPool_of_init_ro` with
+    `RustCliAllocBudgetEntries fineCostModel A P thunkAddrs` (`__rust_{alloc,dealloc,realloc}`
+    1-instruction `B`-thunks). -/
+theorem cliElf_fineBudgetPool_and_entries_of_init_ro
+    {P : Program} {elf : ElfImage} {mpl : Obj.MultiPlacement} {lim : BudgetLimits}
+    {thunkAddrs rdlAddrs : RustAllocAddrs} {memcpyAddr : BitVec 64}
+    {i : Inputs} {sLoad s0 : State} {auxvPtr : BitVec 64} {R : SepProp}
+    (hP : ProgContainsMallocng P mpl)
+    (hThunks : VerifiedLibraries.RustStd.RustStdThunkCode P thunkAddrs.toRustStd rdlAddrs.toRustStd)
+    (hShims : VerifiedLibraries.RustStd.RustStdRdlShimCode P rdlAddrs.toRustStd
+      (mallocngPlacedCAddrs mpl) memcpyAddr)
+    (hMemcpy : subroutine_ok P memcpyAddr allocMemcpyVmSpec)
+    (hLayout : CliElfMallocngLayout elf lim)
+    (hLoad : elf.loadState (cliProcessInputs i) = .ok sLoad)
+    (hVm : StartupVmPreserved sLoad s0)
+    (htpLo : 0xa4 ≤ s0.tpidrEl0.toNat)
+    (htpHi : s0.tpidrEl0.toNat ≤ 2 ^ 48)
+    (hmem : s0.mem ⊨
+      VerifiedLibraries.mallocngLib.dataInit mpl ∗
+        MallocngRuntime (mallocngAddrsOfPlacement mpl) s0.tpidrEl0 ∗
+        (((mallocngAddrsOfPlacement mpl).libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+        MallocngAuxvRoAt auxvPtr ∗ R) :
+    ∃ γ : GhostName,
+      let A := fineRustCliAllocBudget γ mpl s0.tpidrEl0 s0.brkStart
+      (s0.mem ⊨ A.pool lim fineCostModel.init s0 ∗ R) ∧
+      RustCliAllocBudgetEntriesBase fineCostModel A P thunkAddrs := by
+  obtain ⟨γ, hPool⟩ :=
+    cliElf_fineBudgetPool_of_init_ro hLayout hLoad hVm htpLo htpHi hmem
   exact ⟨γ, hPool,
     fineRustCliAllocBudgetEntries_thunks hP γ s0.tpidrEl0 s0.brkStart hThunks hShims hMemcpy⟩
 

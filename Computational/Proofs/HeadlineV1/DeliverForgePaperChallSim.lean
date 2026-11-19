@@ -9,12 +9,49 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.DeliverForgePaperShiftedReds
-public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperSim
+public import Computational.Proofs.HeadlineV1.DeliverForgePaperShiftedReds -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperSim -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.StateNorm
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.QueryTracking.SubSpec
 import Computational.Proofs.ReductionDsl.Fig8SourceCosts
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalShortDefs
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.SessionShort.FSAEADRed -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.SendShortC -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatementsShort
+import Mathlib.Algebra.BigOperators.Group.Finset.Defs
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Data.Finset.Defs
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.Integral.Lebesgue.Add
+import Mathlib.Order.Disjoint
+import Mathlib.Order.SetNotation
+import Mathlib.Tactic.Attr.Register
+import PolyFun.Control.Monad.Support
+import Std.Tactic.BVDecide.Normalize.BitVec
+import Std.Tactic.BVDecide.Normalize.Bool
+import Std.Tactic.BVDecide.Normalize.Prop
+import ToMathlib.Control.StateT
+import VCVio.CryptoFoundations.SecExp
+import VCVio.CryptoFoundations.SecExp.Measure
+import VCVio.EvalDist.Defs.Measure.Core
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Bool
+import VCVio.EvalDist.ProbabilityBounds
+import VCVio.EvalDist.ProbabilityNotation
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.EvalDist.Measure
+import VCVio.OracleComp.OracleSpec
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.QueryTracking.QueryBound.Simulation
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.Basic
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Relational.SimulateQ.UntilBad
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Paper-Semantics Challenge Simulator Cost Bounds and Shortness Bridges
@@ -23,7 +60,7 @@ Cost and query bounds for `challSimDF'PaperProg`, and restricted-query and short
 postcondition bridges (`SafePost`) for `redFSAuthDFPaper` and `redFSAuthDFShiftedPaperGen`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -1081,7 +1118,7 @@ local notation "E₀" => ℕ × LibsignalCiphertextWithSalt32
 
 /-- Response invariant requiring every `transmit` or `chall` ciphertext `c` to satisfy
 `c.2.2.1.1.length + 8 < 2 ^ 32`. -/
-def smDFRespShort {St Msg Coins T : Type} :
+@[expose] def smDFRespShort {St Msg Coins T : Type} :
     (t : (unifSpec + DeliverForge.specDF St Msg Coins (Header T × E₀)).Domain) →
     (unifSpec + DeliverForge.specDF St Msg Coins (Header T × E₀)).Range t → Prop
   | .inr (.inl o), r =>
@@ -1091,7 +1128,7 @@ def smDFRespShort {St Msg Coins T : Type} :
 
 /-- Predicate for `deliver`, `inject`, or `deliverForge` queries carrying a wire payload of length
 at least `2 ^ 32`. -/
-def smDFRecvLong {St Msg Coins T : Type} :
+@[expose] def smDFRecvLong {St Msg Coins T : Type} :
     (unifSpec + DeliverForge.specDF St Msg Coins (Header T × E₀)).Domain → Prop
   | .inr (.inl o) =>
       SessionShort.SimAndSM.smRecvLong (St := St) (Msg := Msg) (Coins := Coins) (T := T)
@@ -1109,7 +1146,7 @@ instance instDecidablePredSmDFRecvLong {St Msg Coins T : Type} :
 
 /-- Invariant that under `smDFRespShort`, `A` never queries `deliver`, `inject`, or `deliverForge`
 on a wire payload of length at least `2 ^ 32`. -/
-def GuardedSMDFShort {St Msg Coins T : Type}
+@[expose] def GuardedSMDFShort {St Msg Coins T : Type}
     (A : DeliverForge.AdversaryDF St Msg Coins (Header T × E₀)) : Prop :=
   GuardedSafePost smDFRespShort smDFRecvLong (fun _ => True) A
 

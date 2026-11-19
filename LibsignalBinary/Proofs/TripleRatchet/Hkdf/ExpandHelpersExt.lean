@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExtractCommon
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExtractCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import ProofLib.SepLogic.HeapIntro
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Extended-Stack Frame and State Helpers for `expand_multi_info`
@@ -23,7 +23,7 @@ Defines `S2FrameRO`, the read-only `memcpy` step bridge `memcpyRO_subroutine_run
 the `extHookStack` state invariants `ExpandFrameX`, `ExpandPreX`, and `ExpandCommonX`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -64,11 +64,6 @@ abbrev memcpyROLocalSpec (hookStack : Nat := extHookStack) :
     ⌜sf.readReg64 .x0 = dst ∧ sf.trace = s0.trace⌝ ∗
       (dst ↦ₛ bs) ∗ (src ↦ᵣ bs) ∗ stackAt s0.sp hookStack
 
-/-- Stacked read-only `memcpy` contract on `tripleRatchetProgAtExt img.base ext`. -/
-abbrev MemcpyROContract (img : Obj.Image) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext) (img.base + bv% (ls_off% "memcpy"))
-    ((memcpyROLocalSpec extHookStack).inImage img)
-
 attribute [scoped simp, local arm64_norm]
   MemWidth.bytes SimdMemSize.bytes
   Memory.read8_write64_base_off_disjoint
@@ -78,17 +73,8 @@ attribute [scoped simp, local arm64_norm]
   bv32_zero_add bv8_zero_add
   t1_length t2_length t3_length
 
-theorem trExt_fnAddr_expandMultiInfo (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr expandMultiInfoName =
-      b + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info") := by
-  unfold tripleRatchetProgAtExt expandMultiInfoName
-  rw [Program.fnAddr_rebase,
-    (ls_lemma% fnOff "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info")]
-
-/-! ## `S2FrameRO` and Read-Only `memcpy` Bridge -/
-
 /-- Permission-weakening-aware frame relation with a read-only source region `(roBase, roLen)`. -/
-def S2FrameRO (roBase : BitVec 64) (roLen : ℕ) (m₁ m₂ : Memory)
+@[expose] def S2FrameRO (roBase : BitVec 64) (roLen : ℕ) (m₁ m₂ : Memory)
     (regs : List (BitVec 64 × ℕ)) : Prop :=
   (∀ a, (m₁.perm a).r = true → m₁.isLazyFree a = false →
     (∀ r ∈ regs, OutsideRegion r.1 r.2 a) → m₂.read8 a = m₁.read8 a) ∧
@@ -597,169 +583,9 @@ theorem isBlock_two_rw_one_ro_s2frameRO {P1 P1' P2 P3 R1 R2 R3 : SepProp}
             obtain ⟨-, hp', hlf'⟩ := hmc.1 a _ hca
             exact ⟨hp', hlf'⟩
 
-/-- Turn `MemcpyROContract img ext` into a `RunsToE` transition on `tripleRatchetProgAtExt`
-for a read-only source buffer `(src, bs.length)`. -/
-theorem memcpyRO_subroutine_runsTo {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (hRO : MemcpyROContract img ext)
-    {s : State} {dst src : BitVec 64} {bs : List (BitVec 8)}
-    (hfrz : img.FrozenLoaded s)
-    (hsym : s.symtab = img.symtab)
-    (hpc : s.pc = img.base + bv% (ls_off% "memcpy"))
-    (hstat : s.status = .Running)
-    (hx0 : s.readReg64 .x0 = dst)
-    (hx1 : s.readReg64 .x1 = src)
-    (hx2 : (s.readReg64 .x2).toNat = bs.length)
-    (hlen_le : bs.length ≤ 64)
-    (hbs_mem : s.mem.readBytes src bs.length = bs)
-    (hrw_dst : RW s.mem dst bs.length)
-    (hread_src : s.mem.Readable src bs.length)
-    (hrw_stk : RW s.mem (s.sp - BitVec.ofNat 64 extHookStack) extHookStack)
-    (hd_dst_stk : DisjointRegions dst bs.length (s.sp - BitVec.ofNat 64 extHookStack) extHookStack)
-    (hout_src_dst : ∀ a, InRegion src bs.length a → OutsideRegion dst bs.length a)
-    (hout_src_stk : ∀ a, InRegion src bs.length a → OutsideRegion (s.sp - BitVec.ofNat 64 extHookStack) extHookStack a)
-    (hsp_al : (s.sp &&& 15#64) = 0#64) :
-    RunsToE (tripleRatchetProgAtExt img.base ext) s (fun s' =>
-      s'.pc = s.readReg64 .lr ∧
-      s'.status = .Running ∧
-      CallingConventionPreserved s s' ∧
-      s'.readReg64 .x0 = dst ∧
-      s'.mem.readBytes dst bs.length = bs ∧
-      s'.mem.readBytes src bs.length = bs ∧
-      S2FrameRO src bs.length s.mem s'.mem
-        [(dst, bs.length), (s.sp - BitVec.ofNat 64 extHookStack, extHookStack)]) := by
-  intro hL
-  let xg : BitVec 64 × BitVec 64 × List (BitVec 8) := (dst, src, bs)
-  let P1 : SepProp := memRegion dst bs.length
-  let P2 : SepProp := (src ↦ᵣ bs)
-  let P3 : SepProp := stackAt s.sp extHookStack
-  let P : SepProp := P1 ∗ P2 ∗ P3
-  have hb1 : IsBlock P1 dst bs.length (fun _ => True) := IsBlock.memRegion dst bs.length
-  have hb2 : IsBlockRO P2 src bs.length (fun m => m.readBytes src bs.length = bs) :=
-    IsBlockRO.pointsToBytesRO src bs (by omega)
-  have hb3 : IsBlock P3 (s.sp - BitVec.ofNat 64 extHookStack) extHookStack (fun _ => True) :=
-    IsBlock.memRegion (s.sp - BitVec.ofNat 64 extHookStack) extHookStack
-  have hsatP : s.mem ⊨ P :=
-    satisfies_two_rw_one_ro hb1 hb2 hb3 trivial hbs_mem trivial
-      hrw_dst hread_src hrw_stk hd_dst_stk (by decide) hout_src_dst hout_src_stk
-  obtain ⟨hP, hpP, hmP⟩ := Satisfies.elim hsatP
-  let hc : Heap := fullComplementHeap hP s.mem
-  let R : SepProp := ⟨fun h => h = hc⟩
-  have hsatPR : s.mem ⊨ P ∗ R :=
-    Satisfies.sepConj_intro (disjoint_fullComplementHeap hP s.mem) hpP rfl
-      (Heap.Matches.union hmP (matches_fullComplementHeap hP s.mem))
-  have hpre_sat : s.mem ⊨ ((memcpyROLocalSpec extHookStack).inImage img).pre xg s ∗ R := by
-    dsimp only [Spec.inImage, memcpyROLocalSpec, xg]
-    rw [sepConj_assoc, satisfies_pure_sepConj, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hfrz, hsym⟩, ⟨hx0, hx1, hx2, by omega⟩, ?_⟩
-    dsimp only [P, P1, P2, P3] at hsatPR
-    ac_nf at hsatPR ⊢
-  have hsp_aligned : s.spAligned = true := by
-    simpa [State.spAligned] using hsp_al
-  have hcall := subroutine_ok_apply_full (oom := fun _ => False) hRO xg R hpc hstat hpre_sat hsp_aligned
-    (by intro _ _ hp
-        dsimp only [Spec.inImage, memcpyROLocalSpec] at hp
-        rw [satisfies_pure_sepConj] at hp; exact hp.1)
-    (by intro _ _ _ he
-        dsimp only [Spec.inImage, memcpyROLocalSpec] at he
-        rw [satisfies_pure_sepConj] at he; exact he.1)
-    (by intro _ _ ho
-        dsimp only [Spec.inImage, memcpyROLocalSpec] at ho
-        rw [satisfies_pure_sepConj] at ho; exact ho.1) hL
-  rcases hcall with ⟨s', hsteps, ⟨hpc', hstat', hpost_sat, hcc⟩ | ⟨_, hoom⟩⟩
-  swap; · exact False.elim hoom
-  dsimp only [Spec.inImage, memcpyROLocalSpec, xg] at hpost_sat
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpost_sat
-  rcases hpost_sat with ⟨⟨hx0', htr⟩, hpost_mem⟩
-  let P1' : SepProp := (dst ↦ₛ bs)
-  have hb1' : IsBlock P1' dst bs.length
-      (fun m => bs.length ≤ 2 ^ 64 ∧ m.readBytes dst bs.length = bs) :=
-    IsBlock.pointsToBytes dst bs
-  have hpost_1 : s'.mem ⊨ P1' ∗ (P2 ∗ (P3 ∗ R)) := by dsimp only [P1', P2, P3]; ac_nf at hpost_mem ⊢
-  have hpost_2 : s'.mem ⊨ P2 ∗ (P1' ∗ (P3 ∗ R)) := by ac_nf at hpost_1 ⊢
-  have hpost_3 : s'.mem ⊨ P3 ∗ (P1' ∗ (P2 ∗ R)) := by ac_nf at hpost_1 ⊢
-  have hpost_R : s'.mem ⊨ R ∗ (P1' ∗ (P2 ∗ P3)) := by ac_nf at hpost_1 ⊢
-  have hdst_s' : s'.mem.readBytes dst bs.length = bs := (hb1'.read hpost_1).2
-  have hsrc_s' : s'.mem.readBytes src bs.length = bs := hb2.read hpost_2
-  have hmc_full : hc.Matches s'.mem := by
-    obtain ⟨hc', _, _, hR_hc', _, hmatch⟩ := Satisfies.sepConj_elim hpost_R
-    cases hR_hc'
-    exact Heap.Matches.of_union_left hmatch
-  have hframe : S2FrameRO src bs.length s.mem s'.mem
-      [(dst, bs.length), (s.sp - BitVec.ofNat 64 extHookStack, extHookStack)] :=
-    isBlock_two_rw_one_ro_s2frameRO hb1 hb1' hb2 hb3 hpP hmP
-      hpost_1 hpost_2 hpost_3 (by omega) (hsrc_s'.trans hbs_mem.symm) hmc_full
-  exact ⟨s', hsteps, ⟨htr, hcc.2.2.2.2.2.2.2.2.2.2.2.2⟩,
-    ⟨hpc', hstat', hcc, hx0', hdst_s', hsrc_s', hframe⟩,
-    hsteps.codeLoaded hL⟩
-
-/-! ## Extended-Stack Frame and `HmacSt` Helpers -/
-
 /-- Extended stack frame of `expand_multi_info` at `17024` B. -/
 abbrev ExpandFrameX (infoPtr : BitVec 64) (infoLen okmLen : ℕ) (s₀ : State) (m : Memory) : Prop :=
   S2FrameRO infoPtr infoLen s₀.mem m [(s₀.readReg64 .x2, okmLen), (s₀.sp - 17024#64, 17024)]
-
-/-- Bundled preconditions of `expandMultiInfoSpecExt` at entry state `s₀`. -/
-structure ExpandPreX (img : Obj.Image) (F : ShaState → List (BitVec 8) → ShaState)
-    (prk info : List (BitVec 8)) (infoPtr : BitVec 64) (okmLen : ℕ) (s₀ : State) : Prop where
-  frozen        : img.FrozenLoaded s₀
-  symtab_eq     : s₀.symtab = img.symtab
-  pc_eq         : s₀.pc = img.base + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info")
-  status        : s₀.status = .Running
-  x3_eq         : s₀.readReg64 .x3 = BitVec.ofNat 64 okmLen
-  prk_le        : prk.length ≤ 64
-  info_lt       : info.length < 23
-  okm_len       : okmLen = 64 ∨ okmLen = 80
-  hmac_st       : HmacSt s₀.mem (s₀.readReg64 .x0) F prk []
-  info_ptr      : s₀.mem.read64 (s₀.readReg64 .x1) = infoPtr
-  info_len      : s₀.mem.read64 (s₀.readReg64 .x1 + 8#64) = BitVec.ofNat 64 info.length
-  info_bytes    : s₀.mem.readBytes infoPtr info.length = info
-  read_info     : s₀.mem.Readable infoPtr info.length
-  read_x0       : s₀.mem.Readable (s₀.readReg64 .x0) 0x90
-  read_x1       : s₀.mem.Readable (s₀.readReg64 .x1) 16
-  rw_x2         : RW s₀.mem (s₀.readReg64 .x2) okmLen
-  rw_stack      : RW s₀.mem (s₀.sp - 17024#64) 17024
-  disj_x2_stack : DisjointRegions (s₀.readReg64 .x2) okmLen (s₀.sp - 17024#64) 17024
-  disj_x0_stack : DisjointRegions (s₀.readReg64 .x0) 0x90 (s₀.sp - 17024#64) 17024
-  disj_x0_x2    : DisjointRegions (s₀.readReg64 .x0) 0x90 (s₀.readReg64 .x2) okmLen
-  disj_x1_stack : DisjointRegions (s₀.readReg64 .x1) 16 (s₀.sp - 17024#64) 17024
-  disj_x1_x2    : DisjointRegions (s₀.readReg64 .x1) 16 (s₀.readReg64 .x2) okmLen
-  out_info_stk  : ∀ a, InRegion infoPtr info.length a → OutsideRegion (s₀.sp - 17024#64) 17024 a
-  out_info_x2   : ∀ a, InRegion infoPtr info.length a → OutsideRegion (s₀.readReg64 .x2) okmLen a
-  sp_aligned    : (s₀.sp &&& 15#64) = 0#64
-
-theorem ExpandPreX.toExpandPre {img : Obj.Image} {F : ShaState → List (BitVec 8) → ShaState}
-    {prk info : List (BitVec 8)} {infoPtr : BitVec 64} {okmLen : ℕ} {s₀ : State}
-    (hpre : ExpandPreX img F prk info infoPtr okmLen s₀) :
-    ExpandPre img.base F prk info infoPtr okmLen s₀ :=
-  have hsub640 : 0 < 640 ∧ ((s₀.sp - 640#64) - (s₀.sp - 17024#64)).toNat + 640 ≤ 17024 := by
-    have heq : (s₀.sp - 640#64) - (s₀.sp - 17024#64) = 16384#64 := by bv_lin
-    rw [heq]; decide
-  { pc_eq         := hpre.pc_eq
-    status        := hpre.status
-    x3_eq         := hpre.x3_eq
-    prk_le        := hpre.prk_le
-    info_lt       := hpre.info_lt
-    okm_len       := hpre.okm_len
-    hmac_st       := hpre.hmac_st
-    info_ptr      := hpre.info_ptr
-    info_len      := hpre.info_len
-    info_bytes    := hpre.info_bytes
-    read_x0       := hpre.read_x0
-    read_x1       := hpre.read_x1
-    rw_x2         := hpre.rw_x2
-    rw_stack      := hpre.rw_stack.sub hsub640.2
-    disj_x2_stack := hpre.disj_x2_stack.sub_right _ hsub640
-    disj_x0_stack := hpre.disj_x0_stack.sub_right _ hsub640
-    disj_x0_x2    := hpre.disj_x0_x2
-    disj_x1_stack := hpre.disj_x1_stack.sub_right _ hsub640
-    disj_x1_x2    := hpre.disj_x1_x2
-    out_info_stk  := fun a ha => by
-      have hout := hpre.out_info_stk a ha
-      simp only [OutsideRegion] at hout ⊢
-      bv_omega
-    out_info_x2   := hpre.out_info_x2
-    sp_aligned    := hpre.sp_aligned }
 
 /-- Common state invariant across cuts of `expand_multi_info` at `17024` B stack. -/
 structure ExpandCommonX (infoPtr : BitVec 64) (infoLen okmLen : ℕ) (s₀ s : State) : Prop where
@@ -773,50 +599,6 @@ structure ExpandCommonX (infoPtr : BitVec 64) (infoLen okmLen : ℕ) (s₀ s : S
   saved  : ExpandSaved s₀ s.mem
   frame  : ExpandFrameX infoPtr infoLen okmLen s₀ s.mem
 
-theorem ExpandFrameX.rw_stkX {img : Obj.Image} {F : ShaState → List (BitVec 8) → ShaState}
-    {prk info : List (BitVec 8)} {infoPtr : BitVec 64} {okmLen : ℕ} {s₀ : State} {m : Memory}
-    (hpre : ExpandPreX img F prk info infoPtr okmLen s₀)
-    (hf : ExpandFrameX infoPtr info.length okmLen s₀ m) :
-    m.RW (s₀.sp - 17024#64) 17024 :=
-  hf.rw_of_rw _ _ hpre.out_info_stk hpre.rw_stack
-
-theorem ExpandFrameX.rw_esp {img : Obj.Image} {F : ShaState → List (BitVec 8) → ShaState}
-    {prk info : List (BitVec 8)} {infoPtr : BitVec 64} {okmLen : ℕ} {s₀ : State} {m : Memory}
-    (hpre : ExpandPreX img F prk info infoPtr okmLen s₀)
-    (hf : ExpandFrameX infoPtr info.length okmLen s₀ m) :
-    m.RW (esp s₀) 496 := by
-  have hrw := ExpandFrameX.rw_stkX hpre hf
-  unfold esp
-  exact hrw.sub (by bv_omega)
-
-theorem ExpandFrameX.rw_x2 {img : Obj.Image} {F : ShaState → List (BitVec 8) → ShaState}
-    {prk info : List (BitVec 8)} {infoPtr : BitVec 64} {okmLen : ℕ} {s₀ : State} {m : Memory}
-    (hpre : ExpandPreX img F prk info infoPtr okmLen s₀)
-    (hf : ExpandFrameX infoPtr info.length okmLen s₀ m) :
-    m.RW (s₀.readReg64 .x2) okmLen :=
-  hf.rw_of_rw _ _ hpre.out_info_x2 hpre.rw_x2
-
-theorem ExpandFrameX.readable_info {img : Obj.Image} {F : ShaState → List (BitVec 8) → ShaState}
-    {prk info : List (BitVec 8)} {infoPtr : BitVec 64} {okmLen : ℕ} {s₀ : State} {m : Memory}
-    (hpre : ExpandPreX img F prk info infoPtr okmLen s₀)
-    (hf : ExpandFrameX infoPtr info.length okmLen s₀ m) :
-    m.Readable infoPtr info.length :=
-  hf.readable_of_readable _ _ hpre.read_info
-
-theorem ExpandFrameX.readable_x0 {img : Obj.Image} {F : ShaState → List (BitVec 8) → ShaState}
-    {prk info : List (BitVec 8)} {infoPtr : BitVec 64} {okmLen : ℕ} {s₀ : State} {m : Memory}
-    (hpre : ExpandPreX img F prk info infoPtr okmLen s₀)
-    (hf : ExpandFrameX infoPtr info.length okmLen s₀ m) :
-    m.Readable (s₀.readReg64 .x0) 0x90 :=
-  hf.readable_of_readable _ _ hpre.read_x0
-
-theorem ExpandFrameX.readable_x1 {img : Obj.Image} {F : ShaState → List (BitVec 8) → ShaState}
-    {prk info : List (BitVec 8)} {infoPtr : BitVec 64} {okmLen : ℕ} {s₀ : State} {m : Memory}
-    (hpre : ExpandPreX img F prk info infoPtr okmLen s₀)
-    (hf : ExpandFrameX infoPtr info.length okmLen s₀ m) :
-    m.Readable (s₀.readReg64 .x1) 16 :=
-  hf.readable_of_readable _ _ hpre.read_x1
-
 theorem readable_sub {m : Memory} {a : BitVec 64} {n : ℕ} (hr : m.Readable a n)
     {b : BitVec 64} {k : ℕ} (hsub : (b - a).toNat + k ≤ n) :
     m.Readable b k := by
@@ -824,79 +606,6 @@ theorem readable_sub {m : Memory} {a : BitVec 64} {n : ℕ} (hr : m.Readable a n
   apply hr x
   simp only [InRegion] at hx ⊢
   bv_omega
-
-theorem ExpandFrameX.hmac_x0 {img : Obj.Image} {F : ShaState → List (BitVec 8) → ShaState}
-    {prk info : List (BitVec 8)} {infoPtr : BitVec 64} {okmLen : ℕ} {s₀ : State} {m : Memory}
-    (hpre : ExpandPreX img F prk info infoPtr okmLen s₀)
-    (hf : ExpandFrameX infoPtr info.length okmLen s₀ m) :
-    HmacSt m (s₀.readReg64 .x0) F prk [] := by
-  have hd : ∀ r ∈ [(s₀.readReg64 .x2, okmLen), (s₀.sp - 17024#64, 17024)],
-      DisjointRegions r.1 r.2 (s₀.readReg64 .x0) 0x90 := by
-    intro r hr
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-    rcases hr with rfl | rfl
-    · exact hpre.disj_x0_x2.symm
-    · exact hpre.disj_x0_stack.symm
-  rcases hpre.hmac_st with ⟨hlen, _, hpos, hin, hcnt1, hout, hcnt2⟩
-  refine ⟨hlen, rfl, ?_, ?_, ?_, ?_, ?_⟩
-  · have hrx0 := hpre.read_x0 (s₀.readReg64 .x0 + 0x3f#64) (by unfold InRegion; bv_omega)
-    refine (hf.1 _ hrx0.1 hrx0.2 (fun r hr => ?_)).trans hpos
-    exact (hd r hr).outside (by unfold InRegion; bv_omega) (by decide)
-  · refine (hf.readBytes_eq_of_readable (readable_sub hpre.read_x0 (by bv_omega))
-      (fun r hr => ?_) (by decide)).trans hin
-    exact (hd r hr).sub_right (s₀.readReg64 .x0 + 0x40#64) ⟨by decide, by bv_omega⟩
-  · refine (hf.read64_eq_of_readable (readable_sub hpre.read_x0 (by bv_omega))
-      (fun r hr => ?_)).trans hcnt1
-    exact (hd r hr).sub_right (s₀.readReg64 .x0 + 0x60#64) ⟨by decide, by bv_omega⟩
-  · refine (hf.readBytes_eq_of_readable (readable_sub hpre.read_x0 (by bv_omega))
-      (fun r hr => ?_) (by decide)).trans hout
-    exact (hd r hr).sub_right (s₀.readReg64 .x0 + 0x68#64) ⟨by decide, by bv_omega⟩
-  · refine (hf.read64_eq_of_readable (readable_sub hpre.read_x0 (by bv_omega))
-      (fun r hr => ?_)).trans hcnt2
-    exact (hd r hr).sub_right (s₀.readReg64 .x0 + 0x88#64) ⟨by decide, by bv_omega⟩
-
-theorem ExpandFrameX.info_ptr_eq {img : Obj.Image} {F : ShaState → List (BitVec 8) → ShaState}
-    {prk info : List (BitVec 8)} {infoPtr : BitVec 64} {okmLen : ℕ} {s₀ : State} {m : Memory}
-    (hpre : ExpandPreX img F prk info infoPtr okmLen s₀)
-    (hf : ExpandFrameX infoPtr info.length okmLen s₀ m) :
-    m.read64 (s₀.readReg64 .x1) = infoPtr := by
-  rw [hf.read64_eq_of_readable (readable_sub hpre.read_x1 (by bv_omega))]
-  · exact hpre.info_ptr
-  · intro r hr
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-    rcases hr with rfl | rfl
-    · exact hpre.disj_x1_x2.symm.sub_right _ ⟨by decide, by bv_omega⟩
-    · exact hpre.disj_x1_stack.symm.sub_right _ ⟨by decide, by bv_omega⟩
-
-theorem ExpandFrameX.info_len_eq {img : Obj.Image} {F : ShaState → List (BitVec 8) → ShaState}
-    {prk info : List (BitVec 8)} {infoPtr : BitVec 64} {okmLen : ℕ} {s₀ : State} {m : Memory}
-    (hpre : ExpandPreX img F prk info infoPtr okmLen s₀)
-    (hf : ExpandFrameX infoPtr info.length okmLen s₀ m) :
-    m.read64 (s₀.readReg64 .x1 + 8#64) = BitVec.ofNat 64 info.length := by
-  rw [hf.read64_eq_of_readable (readable_sub hpre.read_x1 (by bv_omega))]
-  · exact hpre.info_len
-  · intro r hr
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-    rcases hr with rfl | rfl
-    · exact hpre.disj_x1_x2.symm.sub_right _ ⟨by decide, by bv_omega⟩
-    · exact hpre.disj_x1_stack.symm.sub_right _ ⟨by decide, by bv_omega⟩
-
-theorem ExpandFrameX.info_bytes_eq {img : Obj.Image} {F : ShaState → List (BitVec 8) → ShaState}
-    {prk info : List (BitVec 8)} {infoPtr : BitVec 64} {okmLen : ℕ} {s₀ : State} {m : Memory}
-    (hpre : ExpandPreX img F prk info infoPtr okmLen s₀)
-    (hf : ExpandFrameX infoPtr info.length okmLen s₀ m) :
-    m.readBytes infoPtr info.length = info := by
-  refine (List.ext_getElem (by simp) fun i h1 h2 => ?_).trans hpre.info_bytes
-  rw [Bytes.readBytes_getElem _ _ _ i h1, Bytes.readBytes_getElem _ _ _ i h2]
-  have hi : i < info.length := by simpa using h1
-  have hin : InRegion infoPtr info.length (infoPtr + BitVec.ofNat 64 i) :=
-    inRegion_base_add infoPtr info.length i hi (by have := hpre.info_lt; omega)
-  have hrinfo := hpre.read_info _ hin
-  refine hf.1 _ hrinfo.1 hrinfo.2 (fun r hr => ?_)
-  simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-  rcases hr with rfl | rfl
-  · exact hpre.out_info_x2 _ hin
-  · exact hpre.out_info_stk _ hin
 
 theorem ExpandFrameX.of_agreesOutside_esp {infoPtr : BitVec 64} {infoLen okmLen : ℕ}
     {s₀ : State} {m m' : Memory} {off : BitVec 64} {sz : ℕ}
@@ -950,24 +659,6 @@ theorem ExpandCommonX.of_agreesOutside_low32 {infoPtr : BitVec 64} {infoLen okmL
   exact ⟨hstat, hsp, hx29, hx27, hx20, hm8, hm16,
     ExpandSaved.of_agreesOutside_low hc.saved hA ⟨h2, h3⟩,
     ExpandFrameX.of_agreesOutside_esp hc.frame hA (by omega)⟩
-
-theorem fin_side_conditions_x {img : Obj.Image} {C : Crypto}
-    {prk info : List (BitVec 8)} {infoPtr : BitVec 64} {okmLen : ℕ} {s₀ s : State}
-    (hpre : ExpandPreX img C.F prk info infoPtr okmLen s₀)
-    (hf : ExpandFrameX infoPtr info.length okmLen s₀ s.mem) :
-    RW s.mem (esp s₀ + 208#64) 32 ∧
-    RW s.mem (esp s₀ + 240#64) 0x90 ∧
-    RW s.mem (esp s₀ - 16528#64) 16528 ∧
-    DisjointRegions (esp s₀ + 208#64) 32 (esp s₀ + 240#64) 0x90 ∧
-    DisjointRegions (esp s₀ + 208#64) 32 (esp s₀ - 16528#64) 16528 ∧
-    DisjointRegions (esp s₀ + 240#64) 0x90 (esp s₀ - 16528#64) 16528 := by
-  have hrw_stack : s.mem.RW (s₀.sp - 17024#64) 17024 := ExpandFrameX.rw_stkX hpre hf
-  have hrw_esp : s.mem.RW (esp s₀) 496 := ExpandFrameX.rw_esp hpre hf
-  refine ⟨hrw_esp.sub (by bv_omega), hrw_esp.sub (by bv_omega),
-    hrw_stack.sub (by unfold esp; bv_omega),
-    by unfold DisjointRegions; bv_omega,
-    by unfold DisjointRegions esp at *; bv_omega,
-    by unfold DisjointRegions esp at *; bv_omega⟩
 
 theorem ExpandSaved_of_s2frame_disj {s₀ : State} {m m' : Memory} {regs : List (BitVec 64 × ℕ)}
     (hs : ExpandSaved s₀ m) (hrw_esp : m.RW (esp s₀) 496)
@@ -1025,178 +716,5 @@ theorem ExpandSaved_of_s2frameRO_disj {roBase : BitVec 64} {roLen : ℕ}
       m472 := (h_saved_eq 472#64 (by decide)).trans h9
       m480 := (h_saved_eq 480#64 (by decide)).trans h10
       m488 := (h_saved_eq 488#64 (by decide)).trans h11 }
-
-theorem ExpandFrameX.of_fin_frame_x {infoPtr : BitVec 64} {infoLen okmLen : ℕ}
-    {s₀ : State} {m m' : Memory}
-    (hf : ExpandFrameX infoPtr infoLen okmLen s₀ m)
-    (hfr : S2Frame m m' [(esp s₀ + 208#64, 32), (esp s₀ + 240#64, 0x90), (esp s₀ - 16528#64, 16528)]) :
-    ExpandFrameX infoPtr infoLen okmLen s₀ m' := by
-  refine hf.trans ((S2FrameRO.of_s2frame hfr).mono fun a ha => ?_)
-  intro r hr
-  have hstack := ha (s₀.sp - 17024#64, 17024) (by simp)
-  simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-  rcases hr with rfl | rfl | rfl <;> (unfold OutsideRegion esp at *; bv_omega)
-
-theorem ExpandCommonX.of_fin_frame_x {img : Obj.Image} {F : ShaState → List (BitVec 8) → ShaState}
-    {prk info : List (BitVec 8)} {infoPtr : BitVec 64} {okmLen : ℕ} {s₀ s s' : State}
-    (hpre : ExpandPreX img F prk info infoPtr okmLen s₀)
-    (hc : ExpandCommonX infoPtr info.length okmLen s₀ s)
-    (hstat : s'.status = .Running)
-    (hcc : CallingConventionPreserved s s')
-    (hfr : S2Frame s.mem s'.mem
-      [(esp s₀ + 208#64, 32), (esp s₀ + 240#64, 0x90), (esp s₀ - 16528#64, 16528)]) :
-    ExpandCommonX infoPtr info.length okmLen s₀ s' := by
-  have hrw_esp : s.mem.RW (esp s₀) 496 := ExpandFrameX.rw_esp hpre hc.frame
-  have hd_low : ∀ r ∈ [(esp s₀ + 208#64, (32 : ℕ)), (esp s₀ + 240#64, 0x90), (esp s₀ - 16528#64, 16528)],
-      DisjointRegions r.1 r.2 (esp s₀) 32 := by
-    intro r hr
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-    rcases hr with rfl | rfl | rfl <;> (unfold DisjointRegions esp; bv_omega)
-  have hd_saved : ∀ r ∈ [(esp s₀ + 208#64, (32 : ℕ)), (esp s₀ + 240#64, 0x90), (esp s₀ - 16528#64, 16528)],
-      DisjointRegions r.1 r.2 (esp s₀ + 400#64) 96 := by
-    intro r hr
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-    rcases hr with rfl | rfl | rfl <;> (unfold DisjointRegions esp; bv_omega)
-  have hm8 : s'.mem.read64 (esp s₀ + 8#64) = s₀.readReg64 .x1 := by
-    rw [hfr.read64_eq (hrw_esp.sub (by bv_omega))
-      (fun r hr => (hd_low r hr).sub_right (esp s₀ + 8#64) ⟨by decide, by bv_omega⟩)]
-    exact hc.m8_eq
-  have hm16 : s'.mem.read64 (esp s₀ + 16#64) = esp s₀ + 32#64 := by
-    rw [hfr.read64_eq (hrw_esp.sub (by bv_omega))
-      (fun r hr => (hd_low r hr).sub_right (esp s₀ + 16#64) ⟨by decide, by bv_omega⟩)]
-    exact hc.m16_eq
-  exact
-    ⟨hstat,
-     (Extract.CallingConventionPreserved.sp_eq hcc).trans hc.sp_eq,
-     (Extract.CallingConventionPreserved.x29 hcc).trans hc.x29_eq,
-     (Extract.CallingConventionPreserved.x27 hcc).trans hc.x27_eq,
-     (Extract.CallingConventionPreserved.x20 hcc).trans hc.x20_eq,
-     hm8, hm16,
-     ExpandSaved_of_s2frame_disj hc.saved hrw_esp hfr hd_saved,
-     ExpandFrameX.of_fin_frame_x hc.frame hfr⟩
-
-theorem ExpandFrameX.of_memcpyRO_frame {infoPtr : BitVec 64} {infoLen okmLen : ℕ}
-    {s₀ : State} {m m' : Memory} {off : BitVec 64}
-    (hf : ExpandFrameX infoPtr infoLen okmLen s₀ m)
-    (hoff : off.toNat + infoLen ≤ 496)
-    (hfr : S2FrameRO infoPtr infoLen m m'
-      [(esp s₀ + off, infoLen), (esp s₀ - BitVec.ofNat 64 extHookStack, extHookStack)]) :
-    ExpandFrameX infoPtr infoLen okmLen s₀ m' := by
-  refine hf.trans (hfr.mono fun a ha => ?_)
-  intro r hr
-  have hstack := ha (s₀.sp - 17024#64, 17024) (by simp)
-  simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-  rcases hr with rfl | rfl
-  · unfold OutsideRegion esp at *; bv_omega
-  · change OutsideRegion (esp s₀ - 16384#64) 16384 a
-    unfold OutsideRegion esp at *; bv_omega
-
-theorem ExpandCommonX.of_memcpyRO_frame {img : Obj.Image} {F : ShaState → List (BitVec 8) → ShaState}
-    {prk info : List (BitVec 8)} {infoPtr : BitVec 64} {okmLen : ℕ} {s₀ s s' : State} {off : BitVec 64}
-    (hpre : ExpandPreX img F prk info infoPtr okmLen s₀)
-    (hc : ExpandCommonX infoPtr info.length okmLen s₀ s)
-    (hoff : 32 ≤ off.toNat ∧ off.toNat + info.length ≤ 300)
-    (hstat : s'.status = .Running)
-    (hcc : CallingConventionPreserved s s')
-    (hfr : S2FrameRO infoPtr info.length s.mem s'.mem
-      [(esp s₀ + off, info.length), (esp s₀ - BitVec.ofNat 64 extHookStack, extHookStack)]) :
-    ExpandCommonX infoPtr info.length okmLen s₀ s' := by
-  have hrw_esp : s.mem.RW (esp s₀) 496 := ExpandFrameX.rw_esp hpre hc.frame
-  have hd_low : ∀ r ∈ [(esp s₀ + off, info.length), (esp s₀ - BitVec.ofNat 64 extHookStack, extHookStack)],
-      DisjointRegions r.1 r.2 (esp s₀) 32 := by
-    intro r hr
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-    rcases hr with rfl | rfl
-    · unfold DisjointRegions; bv_omega
-    · change DisjointRegions (esp s₀ - 16384#64) 16384 (esp s₀) 32
-      unfold DisjointRegions; bv_omega
-  have hd_saved : ∀ r ∈ [(esp s₀ + off, info.length), (esp s₀ - BitVec.ofNat 64 extHookStack, extHookStack)],
-      DisjointRegions r.1 r.2 (esp s₀ + 400#64) 96 := by
-    intro r hr
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-    rcases hr with rfl | rfl
-    · unfold DisjointRegions; bv_omega
-    · change DisjointRegions (esp s₀ - 16384#64) 16384 (esp s₀ + 400#64) 96
-      unfold DisjointRegions; bv_omega
-  have hm8 : s'.mem.read64 (esp s₀ + 8#64) = s₀.readReg64 .x1 := by
-    rw [hfr.read64_eq (hrw_esp.sub (by bv_omega))
-      (fun r hr => (hd_low r hr).sub_right (esp s₀ + 8#64) ⟨by decide, by bv_omega⟩)]
-    exact hc.m8_eq
-  have hm16 : s'.mem.read64 (esp s₀ + 16#64) = esp s₀ + 32#64 := by
-    rw [hfr.read64_eq (hrw_esp.sub (by bv_omega))
-      (fun r hr => (hd_low r hr).sub_right (esp s₀ + 16#64) ⟨by decide, by bv_omega⟩)]
-    exact hc.m16_eq
-  exact
-    ⟨hstat,
-     (Extract.CallingConventionPreserved.sp_eq hcc).trans hc.sp_eq,
-     (Extract.CallingConventionPreserved.x29 hcc).trans hc.x29_eq,
-     (Extract.CallingConventionPreserved.x27 hcc).trans hc.x27_eq,
-     (Extract.CallingConventionPreserved.x20 hcc).trans hc.x20_eq,
-     hm8, hm16,
-     ExpandSaved_of_s2frameRO_disj hc.saved hrw_esp hfr hd_saved,
-     ExpandFrameX.of_memcpyRO_frame hc.frame (by omega) hfr⟩
-
-theorem ExpandFrameX.of_memcpy_x2_frame {infoPtr : BitVec 64} {infoLen okmLen : ℕ}
-    {s₀ : State} {m m' : Memory} {off : BitVec 64} {sz : ℕ}
-    (hf : ExpandFrameX infoPtr infoLen okmLen s₀ m)
-    (hoff : off.toNat + sz ≤ okmLen)
-    (hfr : S2Frame m m'
-      [(s₀.readReg64 .x2 + off, sz), (esp s₀ - BitVec.ofNat 64 extHookStack, extHookStack)]) :
-    ExpandFrameX infoPtr infoLen okmLen s₀ m' := by
-  refine hf.trans ((S2FrameRO.of_s2frame hfr).mono fun a ha => ?_)
-  intro r hr
-  have hx2 := ha (s₀.readReg64 .x2, okmLen) (by simp)
-  have hstack := ha (s₀.sp - 17024#64, 17024) (by simp)
-  simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-  rcases hr with rfl | rfl
-  · simp only [OutsideRegion] at hx2 ⊢; bv_omega
-  · change OutsideRegion (esp s₀ - 16384#64) 16384 a
-    unfold OutsideRegion esp at *; bv_omega
-
-theorem ExpandCommonX.of_memcpy_x2_frame {img : Obj.Image} {F : ShaState → List (BitVec 8) → ShaState}
-    {prk info : List (BitVec 8)} {infoPtr : BitVec 64} {okmLen : ℕ} {s₀ s s' : State}
-    {off : BitVec 64} {sz : ℕ}
-    (hpre : ExpandPreX img F prk info infoPtr okmLen s₀)
-    (hc : ExpandCommonX infoPtr info.length okmLen s₀ s)
-    (hoff : 0 < sz ∧ off.toNat + sz ≤ okmLen)
-    (hstat : s'.status = .Running)
-    (hcc : CallingConventionPreserved s s')
-    (hfr : S2Frame s.mem s'.mem
-      [(s₀.readReg64 .x2 + off, sz), (esp s₀ - BitVec.ofNat 64 extHookStack, extHookStack)]) :
-    ExpandCommonX infoPtr info.length okmLen s₀ s' := by
-  have hrw_esp : s.mem.RW (esp s₀) 496 := ExpandFrameX.rw_esp hpre hc.frame
-  have hd_x2_esp : DisjointRegions (s₀.readReg64 .x2 + off) sz (esp s₀) 496 := by
-    have hd1 := hpre.disj_x2_stack.sub_left (s₀.readReg64 .x2 + off)
-      ⟨hoff.1, by have := hoff.2; have := hpre.okm_len; bv_omega⟩
-    unfold esp
-    exact hd1.sub_right (s₀.sp - 496#64) ⟨by decide, by bv_omega⟩
-  have hd_esp : ∀ r ∈ [(s₀.readReg64 .x2 + off, sz), (esp s₀ - BitVec.ofNat 64 extHookStack, extHookStack)],
-      DisjointRegions r.1 r.2 (esp s₀) 496 := by
-    intro r hr
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-    rcases hr with rfl | rfl
-    · exact hd_x2_esp
-    · change DisjointRegions (esp s₀ - 16384#64) 16384 (esp s₀) 496
-      unfold DisjointRegions; bv_omega
-  have hd_saved : ∀ r ∈ [(s₀.readReg64 .x2 + off, sz), (esp s₀ - BitVec.ofNat 64 extHookStack, extHookStack)],
-      DisjointRegions r.1 r.2 (esp s₀ + 400#64) 96 :=
-    fun r hr => (hd_esp r hr).sub_right (esp s₀ + 400#64) ⟨by decide, by bv_omega⟩
-  have hm8 : s'.mem.read64 (esp s₀ + 8#64) = s₀.readReg64 .x1 := by
-    rw [hfr.read64_eq (hrw_esp.sub (by bv_omega))
-      (fun r hr => (hd_esp r hr).sub_right (esp s₀ + 8#64) ⟨by decide, by bv_omega⟩)]
-    exact hc.m8_eq
-  have hm16 : s'.mem.read64 (esp s₀ + 16#64) = esp s₀ + 32#64 := by
-    rw [hfr.read64_eq (hrw_esp.sub (by bv_omega))
-      (fun r hr => (hd_esp r hr).sub_right (esp s₀ + 16#64) ⟨by decide, by bv_omega⟩)]
-    exact hc.m16_eq
-  exact
-    ⟨hstat,
-     (Extract.CallingConventionPreserved.sp_eq hcc).trans hc.sp_eq,
-     (Extract.CallingConventionPreserved.x29 hcc).trans hc.x29_eq,
-     (Extract.CallingConventionPreserved.x27 hcc).trans hc.x27_eq,
-     (Extract.CallingConventionPreserved.x20 hcc).trans hc.x20_eq,
-     hm8, hm16,
-     ExpandSaved_of_s2frame_disj hc.saved hrw_esp hfr hd_saved,
-     ExpandFrameX.of_memcpy_x2_frame hc.frame hoff.2 hfr⟩
 
 end CryptoVerification.LibsignalTripleRatchet.HkdfExt.ExpandExt

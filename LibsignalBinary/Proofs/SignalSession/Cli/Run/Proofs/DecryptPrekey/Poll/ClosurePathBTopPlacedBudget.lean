@@ -11,16 +11,40 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4SpatialPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePanicPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBTopPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CoinsBridgePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4SpatialPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePanicPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBTopPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CoinsBridgePlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegs
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureSpeOwned
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3Stmt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4StoreSession -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.WritePaths -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrusted -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathB
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBTop
+public import ProofLib.Placed.OpcodeExclusion
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Trap.SameAccount
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureExitPlaced
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` Poll Matched-Session Stage P4 Continuation
@@ -30,7 +54,7 @@ Provides budget-threaded filesystem helpers, common exit stack recombination, ti
 `closure_pathB_p4_cont_placed` (plus `LibsignalFrozen` variants).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -621,153 +645,5 @@ theorem closure_pathB_p4_cont_placed [LibsignalPlacement]
   · exact (not_satisfies_false_sepConj hoom).elim
 
 /-! ## `LibsignalFrozen` Variants -/
-
-set_option maxHeartbeats 800000 in
-theorem closure_pathB_p4_cont_frozen_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
-    (hP4 : StageP4MatchedPlacedStmt)
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop)
-    (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (hReadFile : subroutine_ok (dpPollProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-      (lsρ lsReadFileSym)
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim B.readFile ReadEnv))
-    (hDeser : subroutine_ok (dpPollProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))) (lsmpl.base 46)
-      (sessDeserializeSpecPlaced Slots.scopeKit A lim DeserEnv))
-    (hS : S.decryptPrekey = decPkDef X ⟨W.C, W.Q⟩ Scope)
-    (stk' : Nat) (hneed : dpPollNeed B ≤ stk') (hstk63 : stk' ≤ 2 ^ 63)
-    (y : DpPollGhostStateBudget (dpSlotPollKStatePlaced A lim DecPkEnv B S))
-    (kitEnv : SessionStoreBudgetEnv
-      (cliPollSessKitPlaced A.repAlloc y.g.F Slots.scopeKit y.g.peer (cliKitStk B)))
-    (ikitEnv : IdentityStoreBudgetEnv
-      (cliPollIdKitPlaced A.repAlloc y.g.F y.g.peer (cliKitStk B)))
-    (sess : Session (List (BitVec 8)))
-    (evs_pre : List AllocEvent)
-    (s0 s2 s' : State)
-    (rngPtr whisperMsgPtr ptCap ptPtr : BitVec 64) (whisperG : SignalMessageGhost)
-    (preKeyMsgRem P_s' R : SepProp)
-    (opkHi kyberPreKeyId signedPreKeyId : BitVec 32)
-    (g : RecordGhost) (recG G₁ G' : SessionGhost)
-    (pt : List (BitVec 8))
-    (hfPeer : Slots.FilesOkPeer Scope y.g.F y.g.peer.val)
-    (hdecOk : DecPkOk₀ ⟨W.C, W.Q⟩ Scope y.g.F y.g.peer.val y.g.me.val y.g.msg)
-    (hIn : Slots.scopeIn ⟨some sess⟩)
-    (hloadS : Slots.loadRec Scope y.g.F y.g.peer.val = .ok (some ⟨some sess⟩))
-    (htrusted : StoresGhost.opened.identity.trusted cliIo.rd y.g.F y.g.peer.val
-      y.g.msg.identityKey = .ok true)
-    (hMatch : SessMatchesPm sess y.g.msg)
-    (hrem : sess.state.remoteIdentity = some y.g.msg.identityKey)
-    (hex : SessionExtraRel recG sess)
-    (hfits_p4 : FitsEnv M lim (M.stepEvents evs_pre y.st)
-      (StageP4MatchedEnv
-        (cliPollSessKitPlaced A.repAlloc y.g.F Slots.scopeKit y.g.peer (cliKitStk B)) kitEnv
-        (cliPollIdKitPlaced A.repAlloc y.g.F y.g.peer (cliKitStk B)) ikitEnv
-        StoresGhost.opened.sessions StoresGhost.opened.identity
-        y.g.peer.val y.g.msg.identityKey
-        { sess with
-          state := (genP3S5Model W.C W.Q.K y.g.peer y.g.me y.g.msg.message y.g.coins sess.state).2
-          pendingPreKey := none
-          pendingKyberPreKey := none }))
-    (hevs_ok : ∀ evs_p4,
-      StageP4MatchedStoreStepEnv
-        (cliPollSessKitPlaced A.repAlloc y.g.F Slots.scopeKit y.g.peer (cliKitStk B)) kitEnv
-        (cliPollIdKitPlaced A.repAlloc y.g.F y.g.peer (cliKitStk B)) ikitEnv
-        StoresGhost.opened.sessions StoresGhost.opened.identity
-        y.g.peer.val y.g.msg.identityKey
-        { sess with
-          state := (genP3S5Model W.C W.Q.K y.g.peer y.g.me y.g.msg.message y.g.coins sess.state).2
-          pendingPreKey := none
-          pendingKyberPreKey := none } evs_p4 →
-      DecPkEnv y.g (evs_pre ++ evs_p4))
-    (hmsg_fold :
-      signalMessageAt A.repAlloc whisperG whisperMsgPtr y.g.msg.message ∗
-        ((y.g.msgA + 0xc8#64) ↦ₛ y.g.msg.identityKey.publicKey.bytes.toList) ∗
-        preKeyMsgRem ⊢
-      preKeyMsgAt A.repAlloc y.g.msgG y.g.msgA y.g.msg)
-    (hs2_files : s2.fs.files = y.g.F)
-    (htr20 : s2.trace = s0.trace)
-    (hs2_sp : s2.sp = s0.sp - 0xcd0#64)
-    (hsp_sub : dpClosSubStack B ≤ (s0.sp - 0xcd0#64).toNat)
-    (hsp_align2 : (s2.sp &&& 15#64 == 0#64) = true)
-    (hver : sess.state.version = y.g.msg.message.messageVersion.zeroExtend 32)
-    (hcl : CryptoVerification.LibsignalTripleRatchet.Record.CloneRel recG G₁)
-    (hdec_rel : G₁.AfterTryDecrypt true G')
-    (hok : (genP3S5Model W.C W.Q.K y.g.peer y.g.me y.g.msg.message y.g.coins sess.state).1 = .ok pt)
-    (hpt_le : pt.length ≤ ptCap.toNat)
-    (hpt_lt : ptCap.toNat < 2 ^ 63)
-    (hpt_ne : ptPtr ≠ 0#64)
-    (hsteps2' : Steps (dpPollProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))) s2 s')
-    (hpc' : s'.pc = dpPollEntryPlaced + 0x34dc#64)
-    (hrun' : s'.status = .Running)
-    (hs'_sp : s'.sp = s2.sp)
-    (htr' : s'.trace = s0.trace)
-    (hvregs' : calleeSavedVRegs s' = calleeSavedVRegs s0)
-    (hx19' : s'.readReg64 .x19 = y.fut)
-    (hx24' : s'.readReg64 .x24 = s2.sp + 0x370#64)
-    (hx25' : s'.readReg64 .x25 = s2.sp + 0x210#64)
-    (hx26' : s'.readReg64 .x26 = y.out)
-    (hx27' : s'.readReg64 .x27 = y.cx)
-    (hx28' : s'.readReg64 .x28 = 0xfffffffffffffffe#64)
-    (hro' : StoreKit.LibsignalCodeRoLoaded lsmpl s'.mem)
-    (hent_s' : P_s' ⊢
-      stageP3DispatchOkMidPrevEmpty_placed A lim (M.stepEvents evs_pre y.st) s0 s2 s' y.fut y.out 8#64
-        ptCap ptPtr g pt 0#8 G'
-        (genP3S5Model W.C W.Q.K y.g.peer y.g.me y.g.msg.message y.g.coins sess.state).2 ∗
-      genP3S5PostFrame_placed A.repAlloc s2.sp y.fut y.cx y.g.peerA y.g.meA whisperMsgPtr
-        (y.g.msg.message.messageVersion.zeroExtend 32) y.g.peer y.g.me whisperG y.g.msg.message
-        (coinsAfterPlaced y.g.coinsP y.g.coins
-          (decryptDraws W.C sess.state y.g.msg.message.senderRatchetKey y.g.coins))) :
-    let prog := dpPollProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))
-    let K := dpSlotPollKStatePlaced A lim DecPkEnv B S
-    let sp := s0.sp - 0xcd0#64
-    let σ := cliKitStk B
-    let pid := pmPreKeyId y.g.msg
-    let sid := y.g.msg.signedPreKeyId
-    let kid := pmKyberId y.g.msg
-    let kbk := y.g.msg.baseKey
-    let kit := cliPollSessKitPlaced A.repAlloc y.g.F Slots.scopeKit y.g.peer σ
-    let ikit := cliPollIdKitPlaced A.repAlloc y.g.F y.g.peer σ
-    let pkKit := cliPollPkKitPlaced A.repAlloc y.g.F pid σ
-    let spkKit := cliPollSpkKitPlaced A.repAlloc y.g.F sid σ
-    let kpkKit := cliPollKpkKitPlaced A.repAlloc y.g.F kid sid kbk σ
-    let Fr_tail : SepProp :=
-      pkKit.storeAt (y.g.stores + 0xc8#64) StoresGhost.opened.oneTime ∗
-      spkKit.storeAt (y.g.stores + 0x50#64) StoresGhost.opened.signed ∗
-      kpkKit.storeAt (y.g.stores + 0x78#64) StoresGhost.opened.kyber ∗
-      dirAt A.repAlloc (y.g.stores + 0x118#64) StoresGhost.opened.pub ∗
-      memRegion (s0.sp - BitVec.ofNat 64 stk') (stk' - dpPollNeed B) ∗
-      memRegion y.cx 32
-    SepWPp prog (s0.readReg64 .x30) s'
-      (P_s' ∗
-        stageP3CoroFrameAt y.fut y.g.msgA y.g.peerA y.g.meA
-          (y.g.stores + 0xf0#64) (lsρ cliSessionVtSym) y.g.stores (lsρ cliIdentityVtSym)
-          (y.g.stores + 0xc8#64) (lsρ cliPreKeyVtSym) (y.g.stores + 0x50#64) (lsρ cliSignedPreKeyVtSym)
-          (y.g.stores + 0x78#64) (lsρ cliKyberPreKeyVtSym) rngPtr
-          (((y.fut + 0x298#64) ↦₃₂ 2#32) ∗ ((y.fut + 0x29c#64) ↦₃₂ opkHi))
-          (((y.fut + 0x2a0#64) ↦₃₂ kyberPreKeyId) ∗
-            ((y.fut + 0x2a4#64) ↦₃₂ signedPreKeyId) ∗
-            memRegion (y.fut + 0x2a8#64) 4) ∗
-        stageP3StackFrameAt sp (y.g.msgA + 0xc8#64) y.g.peerA ∗
-        ((y.g.msgA + 0xc8#64) ↦ₛ y.g.msg.identityKey.publicKey.bytes.toList) ∗
-        preKeyMsgRem ∗
-        ikit.identityAt y.g.stores StoresGhost.opened.identity ∗
-        kit.storeAt (y.g.stores + 0xf0#64) StoresGhost.opened.sessions ∗
-        memRegion (sp - BitVec.ofNat 64 (dpClosSubStack B)) (dpClosSubStack B - rootStack))
-      (fun sf P_f =>
-        (Steps prog s0 sf → (sf.mem ⊨ P_f ∗ (Fr_tail ∗ R)) →
-          (sf.mem ⊨ (CryptoVerification.LibsignalTripleRatchet.withLsFrozen lsmpl (dpPollSpecStateBudget K stk')).post y s0 sf ∗ R)) ∧
-        sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
-      (genP3S5ModelPanicProp W.C W.Q.K y.g.peer y.g.me sess.state y.g.msg.message
-        (y.g.msg.message.messageVersion.zeroExtend 32) y.g.coins s0) := by
-  exact closure_pathB_p4_cont_placed hP4 mmpl gh W X B S Scope hh hReadFile hDeser hS stk' hneed hstk63
-    y kitEnv ikitEnv sess evs_pre s0 s2 s' rngPtr whisperMsgPtr ptCap ptPtr whisperG preKeyMsgRem P_s' R
-    opkHi kyberPreKeyId signedPreKeyId g recG G₁ G' pt hfPeer hdecOk hIn hloadS htrusted hMatch hrem hex
-    hfits_p4 hevs_ok hmsg_fold hs2_files htr20 hs2_sp hsp_sub hsp_align2 hver hcl hdec_rel hok
-    hpt_le hpt_lt hpt_ne hsteps2' hpc' hrun' hs'_sp htr' hvregs'
-    hx19' hx24' hx25' hx26' hx27' hx28' hro' hent_s'
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBTopPlacedBudget

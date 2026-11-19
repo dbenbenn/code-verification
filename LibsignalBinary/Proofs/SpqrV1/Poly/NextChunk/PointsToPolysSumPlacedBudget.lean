@@ -9,17 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSum1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSumPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSumPlacedBudgetAux2
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSum1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSumPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSumPlacedBudgetAux2
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackLoopPlaced
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackLoop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSumMult1Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Budget-Threaded `Poly::lagrange_sum` Loop
@@ -29,7 +35,7 @@ Relocatable `[LibsignalPlacement]` verification of `Poly::lagrange_sum` (`+2608 
 `BudgetLimits`, and `LagrangeSumStepEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -52,7 +58,7 @@ open CryptoVerification.SpqrV1.Poly.NextChunk
    lagrangeSumFoldPoly_cons_pl lagrangeSumFoldPoly_nil_left_pl lagrangeSumFoldPoly_pl
    lagrangeSum_eq_foldPoly_pl memRegion24_off_eq_polyHeader_pl
    memRegion_112_fold_sum_pl memRegion_112_split_sum_pl multAssign_length_pl
-   parallelMult_length_pl polyListOf_cons_fbl
+   onceScratch416 parallelMult_length_pl polyListOf_cons_fbl
    sepWPp_seq_lscl_fb shiftSlotsRawAt_pl shiftTablePadAt_pl
    stackAt_lagrangePrepare_split_alloc)
 open LibsignalBinary.Heap
@@ -201,7 +207,7 @@ theorem lagrangeSumStepFirst_placed_sepWPp [LibsignalPlacement]
          ((fsp + 664#64) ↦₆₄ accPtr) ∗
          ((fsp + 672#64) ↦₆₄ BitVec.ofNat 64 n) ∗
          tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-         stackAt fsp allocHookStack ∗ Frame)
+         onceScratch416 fsp ∗ stackAt fsp allocHookStack ∗ Frame)
         Q Q_panic) :
     SepWPp ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
       (s0.readReg64 (Reg.gpr 30#5)) s
@@ -218,7 +224,7 @@ theorem lagrangeSumStepFirst_placed_sepWPp [LibsignalPlacement]
        ((fsp + 664#64) ↦₆₄ accPtr) ∗
        ((fsp + 672#64) ↦₆₄ 0#64) ∗
        tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-       stackAt fsp allocHookStack ∗ Frame)
+       onceScratch416 fsp ∗ stackAt fsp allocHookStack ∗ Frame)
       Q Q_panic := by
   have hcs_ne : poly.coefficients ≠ [] := List.ne_nil_of_length_pos (by omega)
   refine SepWPp.weaken_pre (Entails.of_eq (by sep_ac_rfl))
@@ -231,7 +237,7 @@ theorem lagrangeSumStepFirst_placed_sepWPp [LibsignalPlacement]
        shiftSlotsRawAt_pl fsp ∗
        ((fsp + 656#64) ↦₆₄ BitVec.ofNat 64 n) ∗
        ((fsp + 664#64) ↦₆₄ accPtr) ∗ ((fsp + 672#64) ↦₆₄ 0#64) ∗
-       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ Frame) _R
+       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ onceScratch416 fsp ∗ Frame) _R
       hpc hrun hsp htrace hx21 hx24 hx25 hx26 hx27 hx28 hx29 hfit ?_)
   intro s1 clonePtr hcl1 hclone_ne hpc1 hrun1 hsp1 htr1 hvregs1
     hx20_1 hx21_1 hx22_1 hx24_1 hx25_1 hx26_1 hx27_1 hx28_1 hx29_1
@@ -240,7 +246,7 @@ theorem lagrangeSumStepFirst_placed_sepWPp [LibsignalPlacement]
   refine SepWP.weaken_pre (Entails.of_eq (by sep_ac_rfl))
     (parallelMult_placed_sepWP
       (M := M) (A := A) (lim := lim) (st := M.stepEvents (lagrangeSumCloneEvents n) st)
-      poly.coefficients hcs_ne (by omega) pt.y.value
+      hA.once_ok poly.coefficients hcs_ne (by omega) pt.y.value
       s1 hcl1 fsp clonePtr basisPtr (BitVec.ofNat 64 n) ptVecPtr v27 u112 u136 hfsp_align
       (A.live clonePtr (2 * n) 2 ∗ memRegion accPtr (2 * n) ∗
        polyOf A.repAlloc (basisPtr + BitVec.ofNat 64 (24 * 0)) poly ∗
@@ -249,8 +255,8 @@ theorem lagrangeSumStepFirst_placed_sepWPp [LibsignalPlacement]
        ((fsp + 128#64) ↦₆₄ BitVec.ofNat 64 (2 * n)) ∗
        ((fsp + 656#64) ↦₆₄ BitVec.ofNat 64 n) ∗
        ((fsp + 664#64) ↦₆₄ accPtr) ∗ ((fsp + 672#64) ↦₆₄ 0#64) ∗
-       stackAt fsp allocHookStack ∗ Frame)
-      hpc1 hrun1 hsp1 (by rw [hx20_1, hplen]) hx21_1 hx22_1 hx24_1 hx25_1 hx26_1 hx27_1 hx28_1 ?_)
+       Frame)
+      hpc1 hrun1 hsp1 (by rw [hx20_1, hplen]) hx21_1 hx22_1 hx24_1 hx25_1 hx26_1 hx27_1 hx28_1 hx29_1 ?_)
   intro s2 hcl2 hpc2 hrun2 hsp2 htr2 hvregs2 hx20_2 hx22_2 hx24_2 hx25_2 hx26_2 hx27_2 hx28_2 hx29_2
   simp only [sepExists_sepConj_left, sepExists_sepConj_right]
   apply SepWP.exists_elim; intro u112'
@@ -272,7 +278,7 @@ theorem lagrangeSumStepFirst_placed_sepWPp [LibsignalPlacement]
        ((fsp + 80#64) ↦₆₄ ptVecPtr) ∗ ((fsp + 96#64) ↦₆₄ BitVec.ofNat 64 n) ∗
        ((fsp + 112#64) ↦₆₄ u112') ∗ ((fsp + 120#64) ↦₆₄ BitVec.ofNat 64 0) ∗
        ((fsp + 136#64) ↦₆₄ u136') ∗ shiftSlotsRawAt_pl fsp ∗
-       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ stackAt fsp allocHookStack ∗ Frame)
+       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ onceScratch416 fsp ∗ stackAt fsp allocHookStack ∗ Frame)
       hpc2 hrun2 hsp2 hx22_2 ?_)
   intro s3 hpc3 hrun3 hsp3 htr3 hvregs3 hx1_3 hx22_3 hx24_3 hx25_3 hx26_3 hx27_3 hx28_3 hx29_3
   apply SepWP.done hpc3 hrun3
@@ -290,7 +296,7 @@ theorem lagrangeSumStepFirst_placed_sepWPp [LibsignalPlacement]
        shiftSlotsRawAt_pl fsp ∗
        ((fsp + 656#64) ↦₆₄ BitVec.ofNat 64 n) ∗
        ((fsp + 664#64) ↦₆₄ accPtr) ∗ ((fsp + 672#64) ↦₆₄ BitVec.ofNat 64 n) ∗
-       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ Frame)
+       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ onceScratch416 fsp ∗ Frame)
       hpc3 hrun3 hsp3 hx1_3 hx22_3 (by rw [hx25_3, hx25_2]) ?_)
   intro s4 _hcl4_inner hpc4 hrun4 hsp4 htr4 hvregs4 hx21_4 hx24_4 hx25_4 hx26_4 hx27_4 hx28_4 hx29_4
   apply SepWP.done hpc4 hrun4
@@ -312,7 +318,7 @@ theorem lagrangeSumStepFirst_placed_sepWPp [LibsignalPlacement]
       (by rw [hx26_4, hx26_3, hx26_2])
       (by rw [hx27_4, hx27_3, hx27_2])
       (by rw [hx28_4, hx28_3, hx28_2])
-      (by rw [hx29_4, hx29_3, hx29_2, hx29_1]))
+      (by rw [hx29_4, hx29_3, hx29_2]))
 
 /-- Budget-threaded iteration `i > 0` of `Poly::lagrange_sum` (`+2668 -> +2668 / +3908`). -/
 theorem lagrangeSumStepNext_placed_sepWPp [LibsignalPlacement]
@@ -366,7 +372,7 @@ theorem lagrangeSumStepNext_placed_sepWPp [LibsignalPlacement]
          ((fsp + 664#64) ↦₆₄ accPtr) ∗
          ((fsp + 672#64) ↦₆₄ BitVec.ofNat 64 n) ∗
          tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-         stackAt fsp allocHookStack ∗ Frame)
+         onceScratch416 fsp ∗ stackAt fsp allocHookStack ∗ Frame)
         Q Q_panic) :
     SepWPp ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
       (s0.readReg64 (Reg.gpr 30#5)) s
@@ -383,7 +389,7 @@ theorem lagrangeSumStepNext_placed_sepWPp [LibsignalPlacement]
        ((fsp + 664#64) ↦₆₄ accPtr) ∗
        ((fsp + 672#64) ↦₆₄ BitVec.ofNat 64 n) ∗
        tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-       stackAt fsp allocHookStack ∗ Frame)
+       onceScratch416 fsp ∗ stackAt fsp allocHookStack ∗ Frame)
       Q Q_panic := by
   have hcs_ne : poly.coefficients ≠ [] := List.ne_nil_of_length_pos (by omega)
   refine SepWPp.weaken_pre (Entails.of_eq (by sep_ac_rfl))
@@ -396,7 +402,7 @@ theorem lagrangeSumStepNext_placed_sepWPp [LibsignalPlacement]
        shiftSlotsRawAt_pl fsp ∗
        ((fsp + 656#64) ↦₆₄ BitVec.ofNat 64 n) ∗
        ((fsp + 664#64) ↦₆₄ accPtr) ∗ ((fsp + 672#64) ↦₆₄ BitVec.ofNat 64 n) ∗
-       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ Frame) _R
+       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ onceScratch416 fsp ∗ Frame) _R
       hpc hrun hsp htrace hx21 hx24 hx25 hx26 hx27 hx28 hx29 hfit ?_)
   intro s1 clonePtr hcl1 hclone_ne hpc1 hrun1 hsp1 htr1 hvregs1
     hx20_1 hx21_1 hx22_1 hx24_1 hx25_1 hx26_1 hx27_1 hx28_1 hx29_1
@@ -405,7 +411,7 @@ theorem lagrangeSumStepNext_placed_sepWPp [LibsignalPlacement]
   refine SepWP.weaken_pre (Entails.of_eq (by sep_ac_rfl))
     (parallelMult_placed_sepWP
       (M := M) (A := A) (lim := lim) (st := M.stepEvents (lagrangeSumCloneEvents n) st)
-      poly.coefficients hcs_ne (by omega) pt.y.value
+      hA.once_ok poly.coefficients hcs_ne (by omega) pt.y.value
       s1 hcl1 fsp clonePtr basisPtr (BitVec.ofNat 64 n) ptVecPtr v27 u112 u136 hfsp_align
       (A.live clonePtr (2 * n) 2 ∗ gf16SliceAt accPtr acc.coefficients ∗
        polyOf A.repAlloc (basisPtr + BitVec.ofNat 64 (24 * i)) poly ∗
@@ -414,8 +420,8 @@ theorem lagrangeSumStepNext_placed_sepWPp [LibsignalPlacement]
        ((fsp + 128#64) ↦₆₄ BitVec.ofNat 64 (2 * n)) ∗
        ((fsp + 656#64) ↦₆₄ BitVec.ofNat 64 n) ∗
        ((fsp + 664#64) ↦₆₄ accPtr) ∗ ((fsp + 672#64) ↦₆₄ BitVec.ofNat 64 n) ∗
-       stackAt fsp allocHookStack ∗ Frame)
-      hpc1 hrun1 hsp1 (by rw [hx20_1, hplen]) hx21_1 hx22_1 hx24_1 hx25_1 hx26_1 hx27_1 hx28_1 ?_)
+       Frame)
+      hpc1 hrun1 hsp1 (by rw [hx20_1, hplen]) hx21_1 hx22_1 hx24_1 hx25_1 hx26_1 hx27_1 hx28_1 hx29_1 ?_)
   intro s2 hcl2 hpc2 hrun2 hsp2 htr2 hvregs2 hx20_2 hx22_2 hx24_2 hx25_2 hx26_2 hx27_2 hx28_2 hx29_2
   simp only [sepExists_sepConj_left, sepExists_sepConj_right]
   apply SepWP.exists_elim; intro u112'
@@ -437,7 +443,7 @@ theorem lagrangeSumStepNext_placed_sepWPp [LibsignalPlacement]
        ((fsp + 80#64) ↦₆₄ ptVecPtr) ∗ ((fsp + 96#64) ↦₆₄ BitVec.ofNat 64 n) ∗
        ((fsp + 112#64) ↦₆₄ u112') ∗ ((fsp + 120#64) ↦₆₄ BitVec.ofNat 64 i) ∗
        ((fsp + 136#64) ↦₆₄ u136') ∗ shiftSlotsRawAt_pl fsp ∗
-       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ stackAt fsp allocHookStack ∗ Frame)
+       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ onceScratch416 fsp ∗ stackAt fsp allocHookStack ∗ Frame)
       hpc2 hrun2 hsp2 hx22_2 ?_)
   intro s3 hpc3 hrun3 hsp3 htr3 hvregs3 hx1_3 hx22_3 hx24_3 hx25_3 hx26_3 hx27_3 hx28_3 hx29_3
   apply SepWP.done hpc3 hrun3
@@ -455,7 +461,7 @@ theorem lagrangeSumStepNext_placed_sepWPp [LibsignalPlacement]
        shiftSlotsRawAt_pl fsp ∗
        ((fsp + 656#64) ↦₆₄ BitVec.ofNat 64 n) ∗
        ((fsp + 664#64) ↦₆₄ accPtr) ∗ ((fsp + 672#64) ↦₆₄ BitVec.ofNat 64 n) ∗
-       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ Frame)
+       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ onceScratch416 fsp ∗ Frame)
       hpc3 hrun3 hsp3 hx1_3 hx22_3 (by rw [hx25_3, hx25_2]) ?_)
   intro s4 _hcl4_inner hpc4 hrun4 hsp4 htr4 hvregs4 hx21_4 hx24_4 hx25_4 hx26_4 hx27_4 hx28_4 hx29_4
   apply SepWP.done hpc4 hrun4
@@ -477,7 +483,7 @@ theorem lagrangeSumStepNext_placed_sepWPp [LibsignalPlacement]
       (by rw [hx26_4, hx26_3, hx26_2])
       (by rw [hx27_4, hx27_3, hx27_2])
       (by rw [hx28_4, hx28_3, hx28_2])
-      (by rw [hx29_4, hx29_3, hx29_2, hx29_1]))
+      (by rw [hx29_4, hx29_3, hx29_2]))
 
 /-- Budget-threaded inductive tail loop of `Poly::lagrange_sum` for `i ≥ 1` (`+2668 -> +3908`). -/
 theorem lagrangeSumTailLoop_placed_sepWPp [LibsignalPlacement]
@@ -529,7 +535,7 @@ theorem lagrangeSumTailLoop_placed_sepWPp [LibsignalPlacement]
            ((fsp + 664#64) ↦₆₄ accPtr) ∗
            ((fsp + 672#64) ↦₆₄ BitVec.ofNat 64 n) ∗
            tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-           stackAt fsp allocHookStack ∗ Frame)
+           onceScratch416 fsp ∗ stackAt fsp allocHookStack ∗ Frame)
           Q Q_panic),
       SepWPp ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
         (s0.readReg64 (Reg.gpr 30#5)) s
@@ -546,7 +552,7 @@ theorem lagrangeSumTailLoop_placed_sepWPp [LibsignalPlacement]
          ((fsp + 664#64) ↦₆₄ accPtr) ∗
          ((fsp + 672#64) ↦₆₄ BitVec.ofNat 64 n) ∗
          tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-         stackAt fsp allocHookStack ∗ Frame)
+         onceScratch416 fsp ∗ stackAt fsp allocHookStack ∗ Frame)
         Q Q_panic
   | [], _, _, _, _, _, hne, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ =>
     absurd rfl hne
@@ -696,7 +702,7 @@ theorem lagrangeSumLoop_placed_sepWPp [LibsignalPlacement]
          ((fsp + 664#64) ↦₆₄ accPtr) ∗
          ((fsp + 672#64) ↦₆₄ BitVec.ofNat 64 n) ∗
          tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-         stackAt fsp allocHookStack ∗ Frame)
+         onceScratch416 fsp ∗ stackAt fsp allocHookStack ∗ Frame)
         Q Q_panic) :
     SepWPp ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
       (s0.readReg64 (Reg.gpr 30#5)) s
@@ -713,7 +719,7 @@ theorem lagrangeSumLoop_placed_sepWPp [LibsignalPlacement]
        ((fsp + 656#64) ↦₆₄ u656) ∗ ((fsp + 664#64) ↦₆₄ u664) ∗
        ((fsp + 672#64) ↦₆₄ u672) ∗
        tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-       stackAt fsp allocHookStack ∗ Frame)
+       onceScratch416 fsp ∗ stackAt fsp allocHookStack ∗ Frame)
       Q Q_panic := by
   rcases pts with _ | ⟨pt0, ptsTail⟩
   · contradiction
@@ -761,7 +767,7 @@ theorem lagrangeSumLoop_placed_sepWPp [LibsignalPlacement]
            ((fsp + 112#64) ↦₆₄ u112) ∗ ((fsp + 120#64) ↦₆₄ u120) ∗
            ((fsp + 128#64) ↦₆₄ u128) ∗ ((fsp + 136#64) ↦₆₄ u136) ∗
            shiftSlotsRawAt_pl fsp ∗ tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-           stackAt fsp allocHookStack ∗ Frame)
+           onceScratch416 fsp ∗ stackAt fsp allocHookStack ∗ Frame)
           hpc hrun hsp hx0 hx20 hx24 hx25 hx26 hx27 hx28 hx29 ?_)
       intro s1 hpc1 hrun1 hsp1 htr1 hvregs1 hx21_1 hx24_1 hx25_1 hx26_1 hx27_1 hx28_1 hx29_1
       apply SepWP.done hpc1 hrun1
@@ -901,7 +907,7 @@ theorem lagrangeSumAndFree_gen_placed_sepWPp [LibsignalPlacement]
          ((fsp + 664#64) ↦₆₄ u664') ∗
          ((fsp + 672#64) ↦₆₄ u672') ∗
          tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-         stackAt fsp lagrangePrepareStack ∗ Frame)
+         onceScratch416 fsp ∗ stackAt fsp lagrangePrepareStack ∗ Frame)
         Q Q_panic) :
     SepWPp ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
       (s0.readReg64 (Reg.gpr 30#5)) s
@@ -919,7 +925,7 @@ theorem lagrangeSumAndFree_gen_placed_sepWPp [LibsignalPlacement]
        ((fsp + 648#64) ↦₆₄ u648) ∗
        memRegion (fsp + 656#64) 24 ∗
        tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-       stackAt fsp lagrangePrepareStack ∗ Frame)
+       onceScratch416 fsp ∗ stackAt fsp lagrangePrepareStack ∗ Frame)
       Q Q_panic := by
   have hn_pos : 0 < pts.length := List.length_pos_iff.mpr hpts_ne
   have hpolys_ne : polys ≠ [] := List.ne_nil_of_length_pos (by omega)
@@ -938,7 +944,7 @@ theorem lagrangeSumAndFree_gen_placed_sepWPp [LibsignalPlacement]
        ((fsp + 640#64) ↦₆₄ u640) ∗ ((fsp + 648#64) ↦₆₄ u648) ∗
        (∃∗ u16' : BitVec 64, ∃∗ u8' : BitVec 64, ∃∗ u0' : BitVec 64,
          ((fsp + 656#64) ↦₆₄ u0') ∗ ((fsp + 664#64) ↦₆₄ u8') ∗ ((fsp + 672#64) ↦₆₄ u16')) ∗
-       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
+       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ onceScratch416 fsp ∗
        (stackAt fsp allocHookStack ∗
         memRegion (fsp - BitVec.ofNat 64 lagrangePrepareStack)
           (lagrangePrepareStack - allocHookStack)) ∗ Frame) by sep_ac_rfl))
@@ -983,7 +989,7 @@ theorem lagrangeSumAndFree_gen_placed_sepWPp [LibsignalPlacement]
        ((fsp + 112#64) ↦₆₄ u112') ∗ ((fsp + 120#64) ↦₆₄ u120') ∗
        ((fsp + 128#64) ↦₆₄ u128') ∗ ((fsp + 136#64) ↦₆₄ u136') ∗
        shiftSlotsRawAt_pl fsp ∗ shiftTablePadAt_pl fsp ∗
-       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
+       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ onceScratch416 fsp ∗
        memRegion (fsp - BitVec.ofNat 64 lagrangePrepareStack)
          (lagrangePrepareStack - allocHookStack) ∗ Frame)
       hpc1 hrun1 hsp1 hx24_1 hx25_1 hx26_1 hx27_1 hx28_1 hx29_1 ?_)
@@ -1022,7 +1028,7 @@ theorem lagrangeSumAndFree_gen_placed_sepWPp [LibsignalPlacement]
        ((fsp + 640#64) ↦₆₄ accPtr) ∗ ((fsp + 648#64) ↦₆₄ BitVec.ofNat 64 pts.length) ∗
        ((fsp + 656#64) ↦₆₄ BitVec.ofNat 64 pts.length) ∗
        ((fsp + 664#64) ↦₆₄ accPtr) ∗ ((fsp + 672#64) ↦₆₄ BitVec.ofNat 64 pts.length) ∗
-       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
+       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ onceScratch416 fsp ∗
        (stackAt fsp allocHookStack ∗
         memRegion (fsp - BitVec.ofNat 64 lagrangePrepareStack)
           (lagrangePrepareStack - allocHookStack)) ∗ Frame) by sep_ac_rfl)) ?_

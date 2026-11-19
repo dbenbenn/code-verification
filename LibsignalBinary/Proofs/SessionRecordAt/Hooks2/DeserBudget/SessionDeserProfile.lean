@@ -9,12 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserializeBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DefsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel
+import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserializeBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Fields
 import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Fields
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.Potential
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
 
 /-!
 # `DeserBoundedTotalEvs` Allocation Profile for `sessDeserEvents`
@@ -24,7 +32,7 @@ profiles directly on `sessDeserEvents r` from `DeserializeScopeP_Q NonEmptyV1Q r
 together with `2 MiB` corollaries and `CliPqxdhInputs` → `FilesOkPeer` domain-chain bridges.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -1446,7 +1454,7 @@ theorem filesOkPeer_mono {S₁ S₂ : SessionRecord (List (BitVec 8)) → Prop}
     {F : FsFiles} {peer : AddrVal}
     (h : FilesOkPeer S₁ F peer) (himp : ∀ r, S₁ r → S₂ r) :
     FilesOkPeer S₂ F peer := by
-  refine ⟨h.nameLt, h.textLt, h.sessPathOk, h.idPathOk, h.sessPathLt, h.idPathLt, ?_, h.idGet⟩
+  refine ⟨h.nameLt, h.textLt, h.sessPathOk, h.idPathOk, h.sessPathLt, h.idPathLt, ?_, h.idGet, h.nameLe40⟩
   obtain ⟨bs, hget, hwf⟩ := h.sessGet
   refine ⟨bs, hget, ?_⟩
   rcases hwf with rfl | ⟨r, hbs, hr⟩

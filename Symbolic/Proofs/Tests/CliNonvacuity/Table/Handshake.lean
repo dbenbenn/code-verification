@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.Table.HsCertFalse
-public import Symbolic.Proofs.Tests.CliNonvacuity.Table.HsCertTrue
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.HsCertFalse -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.HsCertTrue -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeSteps -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Defs
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.HsTables -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,7 +36,7 @@ theorem hsTable_sound (withOpk : Bool) :
   | false => HsCertFalse.hsFalse_sound
   | true => HsCertTrue.hsTrue_sound
 
-noncomputable def hsGamma (withOpk : Bool) : DY.Bytes → HwBytes :=
+@[expose] def hsGamma (withOpk : Bool) : DY.Bytes → HwBytes :=
   if withOpk then HsCertTrue.hsTrueGamma else HsCertFalse.hsFalseGamma
 
 theorem gamma_comp_eq_hsGamma (withOpk : Bool) :

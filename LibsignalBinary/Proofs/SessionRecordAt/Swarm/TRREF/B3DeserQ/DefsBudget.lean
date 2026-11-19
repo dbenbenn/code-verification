@@ -9,10 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DefsBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsXBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DefsBudget
 public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Defs
-public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Fields
+import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Fields
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable `Q`-Scope `SessionRecord::deserialize` Definitions
@@ -23,7 +32,7 @@ budget-threaded `[LibsignalPlacement]` contracts and loop invariants (`mergeFiel
 for `SessionStructure::merge_field` (Block `15`) and `SessionRecord::deserialize` (Block `46`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -72,11 +81,11 @@ open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsXBudget (
 /-! ## Input-bounded allocation envelopes -/
 
 /-- Total allocation envelope of `SessionStructure::merge_field` on a `Q`-scope field `x`. -/
-def MergeFieldQEnv (x : MergeFieldQGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def MergeFieldQEnv (x : MergeFieldQGhost) (evs : List AllocEvent) : Prop :=
   BoundedRustEvs (8 * x.fld.enc.length) (256 * (x.fld.enc.length + 16)) evs
 
 /-- Prefix allocation envelope after `k` outer fields of `Q`-scope `SessionRecord::deserialize` on `r`. -/
-def DeserPrefixQEnv (r : SessionRecord (List (BitVec 8))) (k : Nat)
+@[expose] def DeserPrefixQEnv (r : SessionRecord (List (BitVec 8))) (k : Nat)
     (evs : List AllocEvent) : Prop :=
   BoundedRustEvs (8 * (((recFieldsQ r).take k).flatMap GenFieldQ.enc).length + 32)
     (256 * ((encodeRecord r).length + 16)) evs
@@ -89,33 +98,11 @@ theorem recFieldsQ_flatMap_length_le_encodeRecord {Q : List (BitVec 8) → Prop}
   rw [List.length_append, List.length_append] at heq
   omega
 
-/-- At `k = 0`, any `BoundedRustEvs 32 0 evs` satisfies `DeserPrefixQEnv r 0 evs`. -/
-theorem deserPrefixQEnv_zero (r : SessionRecord (List (BitVec 8))) {evs : List AllocEvent}
-    (h : BoundedRustEvs 32 0 evs) : DeserPrefixQEnv r 0 evs := by
-  unfold DeserPrefixQEnv
-  simp only [List.take_zero, List.flatMap_nil, List.length_nil, Nat.mul_zero, Nat.zero_add]
-  exact BoundedRustEvs.mono (Nat.le_refl _) (Nat.zero_le _) h
-
-/-- At `k = (recFieldsQ x.r).length` plus `BoundedRustEvs 32 r₂ evs₂`, `evs₁ ++ evs₂` satisfies
-`DeserializeGenEnv x` (`= RecordDeserializeEnv (encodeRecord x.r)`). -/
-theorem deserPrefixQEnv_at_length {Q : List (BitVec 8) → Prop}
-    {x : DeserializeGenGhost} (hr : DeserializeScopeP_Q Q x.r)
-    {evs₁ evs₂ : List AllocEvent} {r₂ : Nat}
-    (h1 : DeserPrefixQEnv x.r (recFieldsQ x.r).length evs₁)
-    (h2 : BoundedRustEvs 32 r₂ evs₂)
-    (hr2 : r₂ ≤ 256 * ((encodeRecord x.r).length + 16)) :
-    DeserializeGenEnv x (evs₁ ++ evs₂) := by
-  unfold DeserPrefixQEnv at h1
-  rw [List.take_length] at h1
-  have hle := recFieldsQ_flatMap_length_le_encodeRecord x.r hr
-  exact BoundedRustEvs.mono (by omega)
-    (Nat.max_le.mpr ⟨Nat.le_refl _, hr2⟩) (BoundedRustEvs.append h1 h2)
-
 /-! ## Relocatable `[LibsignalPlacement]` budget-threaded contracts and loop invariants -/
 
 /-- Image-free budget-threaded contract of `SessionStructure::merge_field` (block `15`) on one
 `GenFieldQ` restricted by `P`, at `mergeFieldStackX` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def mergeFieldQRawSpecW (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def mergeFieldQRawSpecW (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (P : GenFieldQ → Prop) : Spec (MergeFieldQGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ss ∧ (s.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 x.fld.tag ∧
@@ -141,7 +128,7 @@ abbrev mergeFieldQPlacedSpecW [LibsignalPlacement] (M : AllocCostModel)
   withLsCodeRoLoaded lsmpl (mergeFieldQRawSpecW M A lim P)
 
 /-- Relocatable budget-threaded `SessionStructure::merge_field` (block `15`) contract on `lsProg_15 H`. -/
-def MergeFieldQPlacedOkW [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def MergeFieldQPlacedOkW [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks)
     (P : GenFieldQ → Prop) : Prop :=
   subroutine_ok (lsProg_15 H) (blkPl_15).base (mergeFieldQPlacedSpecW M A lim P)
@@ -181,7 +168,7 @@ theorem mergeFieldQPlacedOkW_or [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Raw loop-exit postcondition of `Q`-scope `SessionRecord::deserialize` before lifting
 `deserOutRecordQA` to `sessionRecordAt`. -/
-def deserOutRawQBudget (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def deserOutRawQBudget (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : DeserializeGenGhost) (st : M.σ) (s0 sf : State) : SepProp :=
   ∃∗ evs : List AllocEvent,
     ⌜sf.trace = s0.trace ∧ DeserializeGenEnv x evs⌝ ∗
@@ -191,7 +178,7 @@ def deserOutRawQBudget (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Bu
 
 /-- Image-free budget-threaded contract of `SessionRecord::deserialize` (block `46`) on
 `DeserializeScopeP_Q NonEmptyV1Q` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-noncomputable def deserializeQRawSpecW (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def deserializeQRawSpecW (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DeserializeGenGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.p ∧
@@ -209,20 +196,20 @@ noncomputable def deserializeQRawSpecW (M : AllocCostModel) (A : RustCliAllocBud
 
 /-- Relocatable `[LibsignalPlacement]` budget-threaded contract of `SessionRecord::deserialize`
 (block `46`) on `DeserializeScopeP_Q NonEmptyV1Q`, carrying `LibsignalCodeRoLoaded lsmpl`. -/
-noncomputable abbrev deserializeQPlacedSpecW [LibsignalPlacement] (M : AllocCostModel)
+abbrev deserializeQPlacedSpecW [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (DeserializeGenGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl (deserializeQRawSpecW M A lim)
 
 /-- Image-free exact budget-threaded contract of `SessionRecord::deserialize` (block `46`) on
 `DeserializeScopeP_Q NonEmptyV1Q` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-noncomputable def deserializeQExactRawSpecW (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def deserializeQExactRawSpecW (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DeserializeGenGhost × M.σ) where
   pre := (deserializeQRawSpecW M A lim).pre
   post := fun (x, st) s0 sf => deserOutRawQBudget M A lim x st s0 sf
 
 /-- Relocatable `[LibsignalPlacement]` exact budget-threaded contract of `SessionRecord::deserialize`
 (block `46`) on `DeserializeScopeP_Q NonEmptyV1Q`, carrying `LibsignalCodeRoLoaded lsmpl`. -/
-noncomputable abbrev deserializeQExactPlacedSpecW [LibsignalPlacement] (M : AllocCostModel)
+abbrev deserializeQExactPlacedSpecW [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (DeserializeGenGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl (deserializeQExactRawSpecW M A lim)
 
@@ -233,7 +220,7 @@ abbrev DeserStepQPlacedW [LibsignalPlacement] (M : AllocCostModel)
   SegStepG (lsProg_46 H) (deserializeQPlacedSpecW M A lim) (x, st) R s0 s Q
 
 /-- Raw return state of relocatable budget-threaded `Q`-scope deserialize on `lsProg_46 H`. -/
-def DeserRetQPlaced [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def DeserRetQPlaced [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : DeserializeGenGhost) (st : M.σ) (R : SepProp) (s0 sf : State) : Prop :=
   Returned s0 sf ∧ CallingConventionPreserved s0 sf ∧
@@ -242,7 +229,7 @@ def DeserRetQPlaced [LibsignalPlacement] (M : AllocCostModel)
 /-- Loop invariant at `(blkPl_46).base + 0x254` after `k` fields of `recFieldsQ x.r` under
 `[LibsignalPlacement]`, threading `FitsEnv M lim st (DeserializeGenEnv x)` and
 `DeserPrefixQEnv x.r k evs`. -/
-def DeserLoopQPlacedW [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def DeserLoopQPlacedW [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : DeserializeGenGhost) (st : M.σ) (R : SepProp) (s0 : State) (k : Nat) (s : State) : Prop :=
   s.pc = deserPlacedPC 0x254#64 ∧ s.status = .Running ∧

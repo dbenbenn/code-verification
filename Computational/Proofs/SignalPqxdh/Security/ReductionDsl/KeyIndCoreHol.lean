@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreSim
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Potential
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreSim -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Potential -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 
 /-!
@@ -19,7 +19,7 @@ import VCVio.EvalDist.Monad.Basic
 Proves that one shallow `pqxdhKeyIndImplPrim` query grows every state list by at most one entry.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 open SignalPqxdh SignalPqxdh.Security

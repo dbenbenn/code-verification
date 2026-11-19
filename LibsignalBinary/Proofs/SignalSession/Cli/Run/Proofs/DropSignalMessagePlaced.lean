@@ -9,12 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSignalMessage
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainCodeSym
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSignalMessage -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSignalMessage.Helpers
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton
 
 /-!
 # Relocatable Drop Glue Proof for `SignalMessage`
@@ -23,7 +29,7 @@ Proves `dropSignalMessageSpecPlaced` for `core::ptr::drop_glue::<SignalMessage>`
 `[LibsignalPlacement]` and transfers it to caller blocks `i < 619`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -41,7 +47,7 @@ open CryptoVerification.SignalSession.Cli.Main.Placed (lsProg_617 instIsLsBlockP
 open CryptoVerification.SignalSession.Cli.MainHops
 
 /-- Relocatable `[LibsignalPlacement]` specification for `drop_glue::<SignalMessage>`. -/
-def dropSignalMessageSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
+@[expose] def dropSignalMessageSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
     Spec DropSignalMessageGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl (dropSignalMessageSpec A stk)
 

@@ -9,18 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommit433PlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommitClStep12PlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommitClStep3PlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommitClStep4PlacedBudget
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommit433PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommitClStep12PlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommitClStep3PlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommitClStep4PlacedBudget
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitEvict
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep12
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep5
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.ConsumeMessageKey.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommit433PlacedBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMain
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMainBudgetStep5
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Cross-Block Budget-Threaded CLI S3 Commit Seam (`+0x8ac → +0x3e4`)
@@ -30,7 +37,7 @@ Composes the `withLsCodeLoaded` step proofs (`DhCommitClStep12PlacedBudget`,
 `CliS3CommitSeamPinnedPlaced` parametric in `DhCommitBlockVmWp`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

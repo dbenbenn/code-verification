@@ -9,10 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseStepsBPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseStepsBPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import ProofLib
+public import ProofLib.FsTrace
+public import ProofLib.GenPlacedFetches
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WP.Apply
+public import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
 
 /-!
 # Placed Stage P4 Over-Path Top-Level Composition
@@ -21,11 +30,9 @@ Re-exports the `[LibsignalPlacement]` top-level Stage P4 (`+0x34dc → x30`) the
 `SessionRecord` with one archived previous session.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 
@@ -40,9 +47,4 @@ open CryptoVerification.CliHandshake.RespClosurePlaced
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits
 
-theorem sepConj_assoc5_prev1_placed [LibsignalPlacement] (A B C D E : SepProp) :
-    (A ∗ B ∗ C ∗ D) ∗ E = A ∗ B ∗ C ∗ D ∗ E := by
-  ac_rfl
-
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
-end

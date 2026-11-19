@@ -16,22 +16,22 @@ Deterministic `spqr-vectors` traces covering out-of-order key storage, swap-remo
 `KeyHistory::gc`, large-jump clearing, and multi-epoch `Chain::send_key` / `Chain::recv_key`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Vectors.Chain
 
-def hexNibble (c : Char) : BitVec 8 :=
+@[expose] def hexNibble (c : Char) : BitVec 8 :=
   let v := c.val.toBitVec.truncate 8
   if v ≥ 0x30#8 && v ≤ 0x39#8 then v - 0x30#8
   else if v ≥ 0x61#8 && v ≤ 0x66#8 then v - 0x61#8 + 10#8
   else if v ≥ 0x41#8 && v ≤ 0x46#8 then v - 0x41#8 + 10#8
   else 0#8
 
-def unhexChars : List Char → List (BitVec 8)
+@[expose] def unhexChars : List Char → List (BitVec 8)
   | a :: b :: rest => ((hexNibble a <<< 4) ||| hexNibble b) :: unhexChars rest
   | _ => []
 
-def unhex (s : String) : List (BitVec 8) :=
+@[expose] def unhex (s : String) : List (BitVec 8) :=
   unhexChars s.toList
 
 def unhexArray (s : String) : Array (BitVec 8) :=
@@ -65,10 +65,10 @@ structure ChainStepVec where
   deriving DecidableEq, Repr
 
 /-- Initial 32-byte key for `cedGcTrace` (`max_jump = 25`, `max_ooo_keys = 10`, `trim_size = 12`). -/
-def cedInitKey : List (BitVec 8) := unhex "385553aa23a24b14d8bbc2dff606277f444e049797ae7e0404e3a9ba0ecef2fb"
+@[expose] def cedInitKey : List (BitVec 8) := unhex "385553aa23a24b14d8bbc2dff606277f444e049797ae7e0404e3a9ba0ecef2fb"
 
 /-- Step-by-step `ChainEpochDirection` + `KeyHistory` trace exercising out-of-order lookup, swap-remove, `KeyHistory::gc`, `KeyTrimmed`, `KeyAlreadyRequested`, `KeyJump`, and large-jump clear. -/
-def cedGcTrace : List CedStepVec := [
+@[expose] def cedGcTrace : List CedStepVec := [
   { op := "next_key", arg := 0x00000001#32, result := .okIdxKey 0x00000001#32 (unhex "72f70889d87d2b441cc65fec8a15bcc409f0d68aff24aee6448ea3cf5df8be3e"), ctrAfter := 0x00000001#32, nextAfter := unhex "af8b079a8a9d3cd900355e36cafdac2350e1f668dc8e212e30204dca9315ef30", prevDataAfter := unhex "" },
   { op := "key", arg := 0x00000002#32, result := .okKey (unhex "42b58c9d41cccb2a280a830611a7e672b44ba6ff7655c9abda9e7ee63ad1b048"), ctrAfter := 0x00000002#32, nextAfter := unhex "e0adca8983759eb682e731771082a0b9331428ebc4f7d5d27aa57d660df71688", prevDataAfter := unhex "" },
   { op := "key", arg := 0x00000009#32, result := .okKey (unhex "910178c4139ca5b33627efc61696cc7e5a879b592780235fd9f1c2646c9cf2b4"), ctrAfter := 0x00000009#32, nextAfter := unhex "8bc9f8addac93298dd0e8558218b89abe557e9406f093cf11816e40b98c64e27", prevDataAfter := unhex "00000003c2b5a6db5ad8c08174c40f30e60663729db1d6cc6850605d9e3268d9a8043f9f0000000459a95e8792e1f7dd16095918c4c46854570d84606cc965975b6ff369f513f1ae0000000559b54f4293664b1e72dd469655734d60ad80de4ce79fb073794b897726c776e500000006d5f83ee08b5776358a2a5df3cb9c4a0e23c42e40948ce1f11aa64dc96553a2cc00000007584ad3feabc36e1acb38c241e6758e6ce1f8f2e1f8f39750dd5cd63ee76079780000000834621ec8536cca3f68032315dd4a90aef07b58903f7f8330b522ab6ac6a0ebd7" },
@@ -90,16 +90,16 @@ def cedGcTrace : List CedStepVec := [
 ]
 
 /-- Initial 32-byte key for `aliceChainTrace` and `bobChainTrace` (`max_jump = 15`, `max_ooo_keys = 6`). -/
-def chainInitKey : List (BitVec 8) := unhex "904a64524ce3c873b94a11402512c7694e72deaed1ab837a08622c46ab5f17ce"
+@[expose] def chainInitKey : List (BitVec 8) := unhex "904a64524ce3c873b94a11402512c7694e72deaed1ab837a08622c46ab5f17ce"
 
 /-- Initial serialized `Chain` protobuf for Alice (`Direction::A2B`). -/
-def aliceChainInitPb : List (BitVec 8) := unhex "1a480a221220db8a6452a32a4ce9f9511f4a569456698280f663101d5078129bb04744cef1a71222122062b3ebfb2b06e123d526497142df4185a6eabf5d6159b4c8a244b72a375fe3ce2220a03a14fec1dfe99829088eced6de284f11194c9b43dcf744ae85255bccf4d4063204080f1006"
+@[expose] def aliceChainInitPb : List (BitVec 8) := unhex "1a480a221220db8a6452a32a4ce9f9511f4a569456698280f663101d5078129bb04744cef1a71222122062b3ebfb2b06e123d526497142df4185a6eabf5d6159b4c8a244b72a375fe3ce2220a03a14fec1dfe99829088eced6de284f11194c9b43dcf744ae85255bccf4d4063204080f1006"
 
 /-- Initial serialized `Chain` protobuf for Bob (`Direction::B2A`). -/
-def bobChainInitPb : List (BitVec 8) := unhex "08011a480a22122062b3ebfb2b06e123d526497142df4185a6eabf5d6159b4c8a244b72a375fe3ce12221220db8a6452a32a4ce9f9511f4a569456698280f663101d5078129bb04744cef1a72220a03a14fec1dfe99829088eced6de284f11194c9b43dcf744ae85255bccf4d4063204080f1006"
+@[expose] def bobChainInitPb : List (BitVec 8) := unhex "08011a480a22122062b3ebfb2b06e123d526497142df4185a6eabf5d6159b4c8a244b72a375fe3ce12221220db8a6452a32a4ce9f9511f4a569456698280f663101d5078129bb04744cef1a72220a03a14fec1dfe99829088eced6de284f11194c9b43dcf744ae85255bccf4d4063204080f1006"
 
 /-- Multi-epoch `Chain` trace for Alice (`Direction::A2B`). -/
-def aliceChainTrace : List ChainStepVec := [
+@[expose] def aliceChainTrace : List ChainStepVec := [
   { op := "recv_key", epoch := 0x0000000000000000#64, indexOrSecret := unhex "", indexArg := 0x00000000#32, result := .okKey (unhex ""), chainPbAfter := unhex "1a480a221220db8a6452a32a4ce9f9511f4a569456698280f663101d5078129bb04744cef1a71222122062b3ebfb2b06e123d526497142df4185a6eabf5d6159b4c8a244b72a375fe3ce2220a03a14fec1dfe99829088eced6de284f11194c9b43dcf744ae85255bccf4d4063204080f1006" },
   { op := "send_key", epoch := 0x0000000000000000#64, indexOrSecret := unhex "", indexArg := 0x00000001#32, result := .okIdxKey 0x00000001#32 (unhex "318d59f156bf42402ba1a2c62d659e16e2fec15f746d722191285abe91fa12c4"), chainPbAfter := unhex "1a4a0a240801122015207ba1ebed1d809fe2b3c81dfdd2745f9b5272265165142c25d42f3ac9adda1222122062b3ebfb2b06e123d526497142df4185a6eabf5d6159b4c8a244b72a375fe3ce2220a03a14fec1dfe99829088eced6de284f11194c9b43dcf744ae85255bccf4d4063204080f1006" },
   { op := "send_key", epoch := 0x0000000000000000#64, indexOrSecret := unhex "", indexArg := 0x00000002#32, result := .okIdxKey 0x00000002#32 (unhex "14f7e6af37ee7a30341a7b14dbbfee9b54af251e2a1fbc963272558408de2562"), chainPbAfter := unhex "1a4a0a24080212203a176d8f42730e45b3189e002bfac5432c4fa4697c3f362388e83940143b41c11222122062b3ebfb2b06e123d526497142df4185a6eabf5d6159b4c8a244b72a375fe3ce2220a03a14fec1dfe99829088eced6de284f11194c9b43dcf744ae85255bccf4d4063204080f1006" },
@@ -128,7 +128,7 @@ def aliceChainTrace : List ChainStepVec := [
 ]
 
 /-- Multi-epoch `Chain` trace for Bob (`Direction::B2A`). -/
-def bobChainTrace : List ChainStepVec := [
+@[expose] def bobChainTrace : List ChainStepVec := [
   { op := "recv_key", epoch := 0x0000000000000000#64, indexOrSecret := unhex "", indexArg := 0x00000003#32, result := .okKey (unhex "568b96834256766d5853f18e02753400b4de55a43484af2c59911f1aa7b3bc0a"), chainPbAfter := unhex "08011a94010a22122062b3ebfb2b06e123d526497142df4185a6eabf5d6159b4c8a244b72a375fe3ce126e080312201f6b7f79d90fe0280da88f277c97c5ff328f0e611066c1c19cb2ae0bece6d5fb1a4800000001318d59f156bf42402ba1a2c62d659e16e2fec15f746d722191285abe91fa12c40000000214f7e6af37ee7a30341a7b14dbbfee9b54af251e2a1fbc963272558408de25622220a03a14fec1dfe99829088eced6de284f11194c9b43dcf744ae85255bccf4d4063204080f1006" },
   { op := "recv_key", epoch := 0x0000000000000000#64, indexOrSecret := unhex "", indexArg := 0x00000001#32, result := .okKey (unhex "318d59f156bf42402ba1a2c62d659e16e2fec15f746d722191285abe91fa12c4"), chainPbAfter := unhex "08011a700a22122062b3ebfb2b06e123d526497142df4185a6eabf5d6159b4c8a244b72a375fe3ce124a080312201f6b7f79d90fe0280da88f277c97c5ff328f0e611066c1c19cb2ae0bece6d5fb1a240000000214f7e6af37ee7a30341a7b14dbbfee9b54af251e2a1fbc963272558408de25622220a03a14fec1dfe99829088eced6de284f11194c9b43dcf744ae85255bccf4d4063204080f1006" },
   { op := "recv_key", epoch := 0x0000000000000000#64, indexOrSecret := unhex "", indexArg := 0x00000002#32, result := .okKey (unhex "14f7e6af37ee7a30341a7b14dbbfee9b54af251e2a1fbc963272558408de2562"), chainPbAfter := unhex "08011a4a0a22122062b3ebfb2b06e123d526497142df4185a6eabf5d6159b4c8a244b72a375fe3ce1224080312201f6b7f79d90fe0280da88f277c97c5ff328f0e611066c1c19cb2ae0bece6d5fb2220a03a14fec1dfe99829088eced6de284f11194c9b43dcf744ae85255bccf4d4063204080f1006" },

@@ -9,17 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSaveAux
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSaveAux -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 import LibsignalBinary.Proofs.TripleRatchet.InImage.DecodeErrorPush.Push
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
-import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageDecrypt.Pf.SegStore
 
@@ -41,12 +43,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## 1. Decode lemmas for D9 (`+0x2428..+0x24d4` = `0x3c8d0..0x3c97c`) -/
 
-gen_decodes libsignalSessionCode_tree segStoreTailBin [(ls_off% "session_message_decrypt_signal" + 9172) → (ls_off% "session_message_decrypt_signal" + 9176), (ls_off% "session_message_decrypt_signal" + 9256) → (ls_off% "session_message_decrypt_signal" + 9308),
-    (ls_off% "session_message_decrypt_signal" + 9356) → (ls_off% "session_message_decrypt_signal" + 9424)]
-
-/-! ## 2. Stack Splits & Repack Helpers -/
-
-def storeCallStack {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b) : Nat :=
+@[expose] def storeCallStack {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b) : Nat :=
   max kit.storeShimStack (max kit.storePollStack allocHookStack)
 
 theorem storeShimStack_le_storeCall {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b) :
@@ -129,16 +126,6 @@ theorem stack_wsCalleeV_storeSeg {A : RustAlloc} {b : BitVec 64}
     unfold wsCalleeStackV; omega
   exact stack_wsCalleeV_sub sp hle hn
 
-def storePollOutRel (b o2 o3 o4 o5 : BitVec 64) (o1 : BitVec 32) :
-    Except Unit Unit → Prop
-  | .ok () => True
-  | .error () =>
-    o1 = (b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}"))).extractLsb' 0 32 ∧
-    o2 = 10#32 ++ (b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}"))).extractLsb' 32 32 ∧
-    o3 = 0x100000000#64 ∧
-    o4 = (b + bv% (ls_xref% (ls_off% "<libsignal_protocol::fingerprint::ScannableFingerprint>::serialize" + 620) (ls_off% "<libsignal_protocol::fingerprint::ScannableFingerprint>::serialize" + 624) + 16)).extractLsb' 0 32 ++ 0#32 ∧
-    o5.extractLsb' 0 32 = (b + bv% (ls_xref% (ls_off% "<libsignal_protocol::fingerprint::ScannableFingerprint>::serialize" + 620) (ls_off% "<libsignal_protocol::fingerprint::ScannableFingerprint>::serialize" + 624) + 16)).extractLsb' 32 32
-
 private theorem stack_seg_shim (sp : BitVec 64) :
     stackAt sp storeSegStack =
       memRegion (sp - BitVec.ofNat 64 storeSegStack) (storeSegStack - storeSessionShimStack) ∗
@@ -200,7 +187,7 @@ theorem header3_repack_290 (sp w1 w2 w3 : BitVec 64) :
   have h := header3_repack (sp + 0x290#64) w1 w2 w3
   simp only [BitVec.add_assoc, BitVec.reduceAdd] at h; exact h
 
-def vecU8BufPure (A : RustAlloc) (cap ptr : BitVec 64) (pt : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8BufPure (A : RustAlloc) (cap ptr : BitVec 64) (pt : List (BitVec 8)) : SepProp :=
   ⌜pt.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ pt) ∗
@@ -221,7 +208,7 @@ theorem cap_add_one_beq_zero_eq_false_shared_lb {cap : BitVec 64} (h : cap.toNat
   rw [BitVec.toNat_add, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)] at ht
   change cap.toNat + 1 = 0 at ht; omega
 
-def vecGhostTailAt_shared_lb (A : RustAlloc) (g : VecGhost) (v : BitVec 64) : SepProp :=
+@[expose] def vecGhostTailAt_shared_lb (A : RustAlloc) (g : VecGhost) (v : BitVec 64) : SepProp :=
   ((v + 8#64) ↦₆₄ g.ptr) ∗ ((v + 16#64) ↦₆₄ BitVec.ofNat 64 g.bytes.length) ∗
   (if g.cap = 0 then emp
    else A.live g.ptr g.cap.toNat 1 ∗ (g.ptr ↦ₛ g.bytes) ∗
@@ -233,7 +220,7 @@ theorem vecGhostAt_unfold_cap_shared_lb (A : RustAlloc) (g : VecGhost) (v : BitV
       (v ↦₆₄ g.cap) ∗ vecGhostTailAt_shared_lb A g v := by
   simp only [vecGhostAt, vecU8At, vecHeader, vecGhostTailAt_shared_lb]; ac_rfl
 
-def sessionStateAfterLocalIk_shared_lb (A : RustAlloc) (ss : BitVec 64)
+@[expose] def sessionStateAfterLocalIk_shared_lb (A : RustAlloc) (ss : BitVec 64)
     (G : SessionGhost) (st : SessionState (List (BitVec 8))) : SepProp :=
   ⌜PublicKey.deserialize G.localIk.bytes = Except.ok st.localIdentity.publicKey ∧
     (match st.remoteIdentity with
@@ -260,7 +247,7 @@ theorem sessionStateAt_unfold_cap_shared_lb (A : RustAlloc) (ss : BitVec 64)
       sessionStateAfterLocalIk_shared_lb A ss G st := by
   unfold sessionStateAt sessionStateAfterLocalIk_shared_lb; rw [vecGhostAt_unfold_cap_shared_lb]; ac_rfl
 
-def dropSessionStructureLocal2HeadSpec_shared_lb (A : RustAlloc) : Spec FromRecordCallees.DropSessionStructureGhost where
+@[expose] def dropSessionStructureLocal2HeadSpec_shared_lb (A : RustAlloc) : Spec FromRecordCallees.DropSessionStructureGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ x.G.localIk.bytes.length ≤ x.G.localIk.cap.toNat ∧
       x.G.localIk.cap.toNat < 2 ^ 63 ∧ x.G.localIk.ptr ≠ 0⌝ ∗
@@ -268,18 +255,6 @@ def dropSessionStructureLocal2HeadSpec_shared_lb (A : RustAlloc) : Spec FromReco
       sessionStateAfterLocalIk_shared_lb A x.ss x.G x.st ∗ A.pool ∗ stackAt s.sp FromRecordCallees.dropSessionStructureLocal2Stack
   post := fun x s0 sf =>
     ⌜sf.trace = s0.trace⌝ ∗ memRegion x.ss 344 ∗ A.pool ∗ stackAt s0.sp FromRecordCallees.dropSessionStructureLocal2Stack
-
-private theorem drop_session_structure_local2_head_ok {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (hdrop2 : FromRecordCallees.DropSessionStructureLocal2Ok b C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr FromRecordCallees.dropSessionStructureLocal2Name)
-      (dropSessionStructureLocal2HeadSpec_shared_lb A) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp =>
-    hdrop2.mono_outcome x R s0 hpc hrun ?_ hsp fun _ hout => hout
-  simp only [FromRecordCallees.dropSessionStructureLocal2Spec, dropSessionStructureLocal2HeadSpec_shared_lb,
-    sessionStateAt_unfold_cap_shared_lb, sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-  exact ⟨hpre.1.1, hpre.1.2, hpre.2⟩
 
 theorem prevCap_ubfm_eq_shared_lb {cap : BitVec 64} (h : cap.toNat * 24 < 2 ^ 63) :
     ((cap + cap <<< 1) <<< 3).toNat = cap.toNat * 24 := by
@@ -480,111 +455,6 @@ theorem vecU8_290_expose (A : RustAlloc) (sp : BitVec 64) (pt : List (BitVec 8))
 
 /-! ## 3b. D9 tails (`segStore_tail_ok`, `segStore_tail_err`) and `E₀` `storeCallSeg_ok_prime_pf` -/
 
-theorem segStore_tail_ok {A : RustAlloc} {b : BitVec 64} {C : Crypto}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (hA : AllocHooks A abs) (hdrop2 : FromRecordCallees.DropSessionStructureLocal2Ok b C A ctl abs)
-    {s : State} {R : SepProp} {prevCap prevPtr : BitVec 64} {G : SessionGhost}
-    {st : SessionState (List (BitVec 8))} {v1 : BitVec 32} {v2 v3 : BitVec 64} {v4 : BitVec 32}
-    {s0_580 s1_588 : BitVec 64} {s2_lo s2_hi : BitVec 32} {s3_598 : BitVec 64} {s4_5a0 : BitVec 32}
-    {t0_300 t1_308 t2_310 t3_318 : BitVec 64} {t4_320 : BitVec 32}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr decWithStoresName + 0x2428#64)
-    (hrun : s.status = .Running) (hsp_align : (s.sp &&& 15#64 == 0#64) = true)
-    (hx28 : s.readReg64 .x28 = pollTag (.ok ())) (hx26 : s.readReg64 .x26 = s.sp + 0xa0#64)
-    (hx22 : s.readReg64 .x22 = s.sp + 0x294#64) (hprev_lt : prevCap.toNat * 24 < 2 ^ 63)
-    (_hprev_ptr : prevPtr ≠ 0) :
-    SepWP (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr decWithStoresName + 0x24d4#64) s
-      (((s.sp + 0x120#64) ↦₆₄ prevCap) ∗ ((s.sp + 0x128#64) ↦₆₄ prevPtr) ∗ ((s.sp + 0x130#64) ↦₆₄ 0#64) ∗
-        (if prevCap = 0#64 then emp else A.live prevPtr (prevCap.toNat * 24) 8 ∗ memRegion prevPtr (prevCap.toNat * 24)) ∗
-        sessionStateAt A (s.sp + 0x138#64) G st ∗
-        ((s.sp + 0x290#64) ↦₃₂ v1) ∗ ((s.sp + 0x294#64) ↦₆₄ v2) ∗ ((s.sp + 0x29c#64) ↦₆₄ v3) ∗ ((s.sp + 0x2a4#64) ↦₃₂ v4) ∗
-        ((s.sp + 0x300#64) ↦₆₄ t0_300) ∗ ((s.sp + 0x308#64) ↦₆₄ t1_308) ∗ ((s.sp + 0x310#64) ↦₆₄ t2_310) ∗
-        ((s.sp + 0x318#64) ↦₆₄ t3_318) ∗ ((s.sp + 0x320#64) ↦₃₂ t4_320) ∗
-        ((s.sp + 0x580#64) ↦₆₄ s0_580) ∗ ((s.sp + 0x588#64) ↦₆₄ s1_588) ∗ ((s.sp + 0x590#64) ↦₃₂ s2_lo) ∗
-        ((s.sp + 0x594#64) ↦₃₂ s2_hi) ∗ ((s.sp + 0x598#64) ↦₆₄ s3_598) ∗ ((s.sp + 0x5a0#64) ↦₃₂ s4_5a0) ∗
-        A.pool ∗ stackAt s.sp storeSegStack)
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) →
-        (sf.mem ⊨ (((s.sp + 0x120#64) ↦₆₄ prevCap) ∗ ((s.sp + 0x128#64) ↦₆₄ prevPtr) ∗
-          ((s.sp + 0x130#64) ↦₆₄ 0#64) ∗ memRegion (s.sp + 0x138#64) 344 ∗
-          ((s.sp + 0x290#64) ↦₃₂ v1) ∗ ((s.sp + 0x294#64) ↦₆₄ v2) ∗ ((s.sp + 0x29c#64) ↦₆₄ v3) ∗ ((s.sp + 0x2a4#64) ↦₃₂ v4) ∗
-          ((s.sp + 0x300#64) ↦₆₄ v2) ∗ ((s.sp + 0x308#64) ↦₆₄ v3) ∗ ((s.sp + 0x310#64) ↦₆₄ (s2_hi ++ v4)) ∗
-          ((s.sp + 0x318#64) ↦₆₄ s3_598) ∗ ((s.sp + 0x320#64) ↦₃₂ s4_5a0) ∗
-          ((s.sp + 0x580#64) ↦₆₄ v2) ∗ ((s.sp + 0x588#64) ↦₆₄ v3) ∗ ((s.sp + 0x590#64) ↦₆₄ (s2_hi ++ v4)) ∗
-          ((s.sp + 0x598#64) ↦₆₄ s3_598) ∗ ((s.sp + 0x5a0#64) ↦₃₂ s4_5a0) ∗
-          A.pool ∗ stackAt s.sp storeSegStack) ∗ R) ∧
-        sf.sp = s.sp ∧ sf.trace = s.trace ∧ sf.readReg64 .x28 = okTagVec ∧
-        sf.readReg64 .x20 = (v1 >>> 8#32).zeroExtend 64 ∧ sf.readReg64 .x21 = v1.zeroExtend 64 ∧
-        sf.readReg64 .x27 = s.readReg64 .x27 ∧ sf.readReg64 .x29 = s.readReg64 .x29 ∧
-        calleeSavedVRegs sf = calleeSavedVRegs s) := by
-  have hfn : libsignalSessionCode.fnOff decWithStoresName = num% (ls_off% "session_message_decrypt_signal") := by simp only [decWithStoresName, arm64_norm]
-  have hfn2 : libsignalSessionCode.fnOff FromRecordCallees.dropSessionStructureLocal2Name = num% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#2]") := by
-    simp only [FromRecordCallees.dropSessionStructureLocal2Name, arm64_norm]
-  have hdrop := drop_session_structure_local2_head_ok hdrop2
-  have hrel : (tripleRatchetProgAt b C ctl abs).fnAddr FromRecordCallees.dropSessionStructureLocal2Name =
-      (tripleRatchetProgAt b C ctl abs).fnAddr decWithStoresName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#2]") - (ls_off% "session_message_decrypt_signal")) := by
-    simp only [tripleRatchetProgAt, Program.fnAddr_rebase, hfn, hfn2, BitVec.add_assoc]; rfl
-  rw [hrel] at hdrop; clear hrel
-  have hdealloc := dealloc_ok_at_norm (b := b) (C := C) (ctl := ctl)
-    (name := decWithStoresName) (k := num% (ls_off% "__rustc::__rust_dealloc" - ls_off% "session_message_decrypt_signal")) hA
-  code_fetches_range CryptoVerification.libsignalSessionCode segStoreTailBin b (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn (num% (ls_off% "session_message_decrypt_signal")) 0x2428 0x38
-  code_fetches_range CryptoVerification.libsignalSessionCode segStoreTailBin b (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn (num% (ls_off% "session_message_decrypt_signal")) 0x249c 0x38
-  dsimp only [tripleRatchetProgAt] at hpc hdrop hdealloc ⊢
-  generalize (libsignalSessionCode.rebase b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr decWithStoresName = entry at *
-  examples_hide_fetches; simp only [pollTag] at hx28
-  wp_simp_pre [sessionStateAt_unfold_cap_shared_lb, sepConj_assoc, sepConj_pure_left_comm]
-  apply SepWP.pure_elim; rintro ⟨hlik_len, hlik_cap, hlik_ptr⟩
-  have hcmn : (G.localIk.cap + 1#64 == 0#64) = false := cap_add_one_beq_zero_eq_false_shared_lb hlik_cap
-  apply SepWP.fold (Entails.of_eq (stack_seg_dropLocal2 s.sp)) (by sep_focus)
-  wp_steps
-  wp_apply
-  apply SepWP.fold (Entails.of_eq (stack_seg_dropLocal2 s.sp).symm) (by sep_focus)
-  apply SepWP.fold (Entails.of_eq (pointsTo64_append32 s2_hi v4 (s.sp + 0x590#64)).symm) (by sep_focus)
-  wp_steps
-  by_cases hcap : prevCap = 0#64
-  · subst hcap; simp only [beq_self_eq_true, ↓reduceIte, emp_sepConj]; wp_steps; wp_done
-  · have hcap_beq : (prevCap == 0#64) = false := beq_eq_false_iff_ne.mpr hcap
-    simp only [hcap_beq, hcap, ↓reduceIte, Bool.false_eq_true]
-    apply SepWP.fold (Entails.of_eq (stack_seg_alloc s.sp)) (by sep_focus)
-    wp_steps
-    have hmul := prevCap_ubfm_eq_shared_lb hprev_lt
-    wp_apply
-    simp only [hsp_sf] at hsp_sf_1 ⊢
-    apply SepWP.fold (Entails.of_eq (stack_seg_alloc s.sp).symm) (by sep_focus)
-    wp_steps; wp_done
-
-theorem segStore_tail_err {b : BitVec 64} {C : Crypto}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    {s : State} {R : SepProp} {o1 : BitVec 32} {o2 o3 o4 o5 : BitVec 64} {o6 : BitVec 32}
-    {s0_580 s1_588 s2_590 s3_598 : BitVec 64} {s4_5a0 : BitVec 32}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr decWithStoresName + 0x2428#64)
-    (hrun : s.status = .Running) (hsp_align : (s.sp &&& 15#64 == 0#64) = true)
-    (hx28 : s.readReg64 .x28 = pollTag (.error ())) (hx21 : s.readReg64 .x21 = o1.zeroExtend 64) :
-    SepWP (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr decWithStoresName + 0x2294#64) s
-      (((s.sp + 0x550#64) ↦₆₄ o2) ∗ ((s.sp + 0x558#64) ↦₆₄ o3) ∗ ((s.sp + 0x560#64) ↦₆₄ o4) ∗
-        ((s.sp + 0x568#64) ↦₆₄ o5) ∗ ((s.sp + 0x570#64) ↦₃₂ o6) ∗
-        ((s.sp + 0x580#64) ↦₆₄ s0_580) ∗ ((s.sp + 0x588#64) ↦₆₄ s1_588) ∗ ((s.sp + 0x590#64) ↦₆₄ s2_590) ∗
-        ((s.sp + 0x598#64) ↦₆₄ s3_598) ∗ ((s.sp + 0x5a0#64) ↦₃₂ s4_5a0))
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) →
-        (sf.mem ⊨ (((s.sp + 0x550#64) ↦₆₄ o2) ∗ ((s.sp + 0x558#64) ↦₆₄ o3) ∗
-          ((s.sp + 0x560#64) ↦₆₄ o4) ∗ ((s.sp + 0x568#64) ↦₆₄ o5) ∗ ((s.sp + 0x570#64) ↦₃₂ o6) ∗
-          ((s.sp + 0x580#64) ↦₆₄ o2) ∗ ((s.sp + 0x588#64) ↦₆₄ o3) ∗ ((s.sp + 0x590#64) ↦₆₄ o4) ∗
-          ((s.sp + 0x598#64) ↦₆₄ o5) ∗ ((s.sp + 0x5a0#64) ↦₃₂ o6)) ∗ R) ∧
-        sf.sp = s.sp ∧ sf.trace = s.trace ∧ sf.readReg64 .x28 = 0x800000000000001A#64 ∧
-        sf.readReg64 .x20 = (o1 >>> 8#32).zeroExtend 64 ∧ sf.readReg64 .x21 = o1.zeroExtend 64 ∧
-        sf.readReg64 .x26 = s.readReg64 .x26 ∧ sf.readReg64 .x27 = s.readReg64 .x27 ∧
-        sf.readReg64 .x29 = s.readReg64 .x29 ∧ calleeSavedVRegs sf = calleeSavedVRegs s) := by
-  have hfn : libsignalSessionCode.fnOff decWithStoresName = num% (ls_off% "session_message_decrypt_signal") := by simp only [decWithStoresName, arm64_norm]
-  code_fetches_range CryptoVerification.libsignalSessionCode segStoreTailBin b (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn (num% (ls_off% "session_message_decrypt_signal")) 0x2428 8
-  code_fetches_range CryptoVerification.libsignalSessionCode segStoreTailBin b (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn (num% (ls_off% "session_message_decrypt_signal")) 0x248c 16
-  code_fetches_range CryptoVerification.libsignalSessionCode segStoreTailBin b (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn (num% (ls_off% "session_message_decrypt_signal")) 0x23d4 8
-  code_fetches_range CryptoVerification.libsignalSessionCode segSaveBin b (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn (num% (ls_off% "session_message_decrypt_signal")) 0x21a0 16
-  dsimp only [tripleRatchetProgAt] at hpc ⊢
-  generalize (libsignalSessionCode.rebase b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr decWithStoresName = entry at *
-  examples_hide_fetches; simp only [pollTag] at hx28; wp_steps; wp_done
-
-/-! ## Relocatable `[LibsignalPlacement]` Proofs -/
-
 section Placed
 
 open CryptoVerification.LibsignalPublicApi.Placed
@@ -696,7 +566,7 @@ theorem segStore_tail_placed_err [LibsignalPlacement] {H : LibsignalHooks}
   wp_steps
   wp_done
 
-def wsStoreFixedEnvPlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def wsStoreFixedEnvPlaced [LibsignalPlacement] (A : RustAlloc)
     (kit : SessionStoreSpec A 0#64) (x : DecryptGhost) (s0 : State)
     (sp : BitVec 64) (st : kit.StoreState) : SepProp :=
   ((sp + 0xe8#64) ↦₆₄ x.remA) ∗ ((sp + 0xf8#64) ↦₆₄ s0.readReg64 .x3) ∗
@@ -709,7 +579,7 @@ def wsStoreFixedEnvPlaced [LibsignalPlacement] (A : RustAlloc)
   protocolAddressAt A x.rem x.remA ∗ kit.storeAt (s0.readReg64 .x3) st ∗
   A.pool ∗ stackAt sp (storeCallStack kit)
 
-def wsStoreFixedRestPlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def wsStoreFixedRestPlaced [LibsignalPlacement] (A : RustAlloc)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (s0 : State) (sp : BitVec 64) (ist : ikit.IdState) : SepProp :=
   wsSavedRegs s0.sp s0 ∗ ((sp + 0x108#64) ↦₆₄ s0.readReg64 .x5) ∗
@@ -782,7 +652,7 @@ theorem wsFixed_wsEnv_store_join_placed [LibsignalPlacement] (A : RustAlloc)
   unfold wsEnvPlaced
   exact Entails.of_eq (by ac_rfl)
 
-def wsStoreCallPrePlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def wsStoreCallPrePlaced [LibsignalPlacement] (A : RustAlloc)
     (kit : SessionStoreSpec A 0#64) (x : DecryptGhost) (s0 : State)
     (sp r26 : BitVec 64) (g : RecordGhost) (rec' : SessionRecord (List (BitVec 8)))
     (st : kit.StoreState) (c0 c1 d0 d1 d2 d3 : BitVec 64) (d5 : BitVec 32) : SepProp :=
@@ -800,7 +670,7 @@ def wsStoreCallPrePlaced [LibsignalPlacement] (A : RustAlloc)
   sessionRecordAt A (r26 + 0x80#64) g rec' ∗ kit.storeAt (s0.readReg64 .x3) st ∗
   A.pool ∗ stackAt sp (storeCallStack kit)
 
-def wsStoreFramePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def wsStoreFramePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (ans : StoreAnswers (List (BitVec 8)) Unit)
     (s0 : State) (sp : BitVec 64) (ist : ikit.IdState) (pt : List (BitVec 8)) : SepProp :=
@@ -862,7 +732,7 @@ theorem storeCall_entails_storeCallPre_placed [LibsignalPlacement] (C : Crypto) 
   simp only [BitVec.add_assoc, BitVec.reduceAdd]
   exact Entails.of_eq (by ac_rfl)
 
-def wsStoreCallPostSpatialPlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def wsStoreCallPostSpatialPlaced [LibsignalPlacement] (A : RustAlloc)
     (kit : SessionStoreSpec A 0#64) (x : DecryptGhost) (s0 : State)
     (sp r26 : BitVec 64) (g : RecordGhost) (rec' : SessionRecord (List (BitVec 8)))
     (st : kit.StoreState) (ans_store : Except Unit Unit)
@@ -885,7 +755,7 @@ def wsStoreCallPostSpatialPlaced [LibsignalPlacement] (A : RustAlloc)
   (if ans_store.isOk then emp else (strPtr ↦ᵣ storeHookStr)) ∗
   A.pool ∗ stackAt sp (storeCallStack kit)
 
-def wsStorePostCommonRestPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def wsStorePostCommonRestPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (ans : StoreAnswers (List (BitVec 8)) Unit)
     (s0 : State) (sp : BitVec 64) (st : kit.StoreState) (ist : ikit.IdState)
@@ -1005,7 +875,7 @@ theorem storePostCommon_err_entails_placed [LibsignalPlacement] (C : Crypto) (A 
   rw [memRegion_300_280_store_split]
   exact Entails.of_eq (by ac_rfl)
 
-def wsStoreTailOkPre_placed (A : RustAlloc) (sp prevCap prevPtr : BitVec 64)
+@[expose] def wsStoreTailOkPre_placed (A : RustAlloc) (sp prevCap prevPtr : BitVec 64)
     (G : SessionGhost) (st : SessionState (List (BitVec 8)))
     (v1 : BitVec 32) (v2 v3 : BitVec 64) (v4 : BitVec 32)
     (s0_580 s1_588 : BitVec 64) (s2_lo s2_hi : BitVec 32) (s3_598 : BitVec 64) (s4_5a0 : BitVec 32)
@@ -1021,7 +891,7 @@ def wsStoreTailOkPre_placed (A : RustAlloc) (sp prevCap prevPtr : BitVec 64)
   ((sp + 0x594#64) ↦₃₂ s2_hi) ∗ ((sp + 0x598#64) ↦₆₄ s3_598) ∗ ((sp + 0x5a0#64) ↦₃₂ s4_5a0) ∗
   A.pool ∗ stackAt sp storeSegStack
 
-def wsStoreTailOkPost_placed (A : RustAlloc) (sp prevCap prevPtr : BitVec 64)
+@[expose] def wsStoreTailOkPost_placed (A : RustAlloc) (sp prevCap prevPtr : BitVec 64)
     (v1 : BitVec 32) (v2 v3 : BitVec 64) (v4 : BitVec 32)
     (s2_hi : BitVec 32) (s3_598 : BitVec 64) (s4_5a0 : BitVec 32) : SepProp :=
   ((sp + 0x120#64) ↦₆₄ prevCap) ∗ ((sp + 0x128#64) ↦₆₄ prevPtr) ∗ ((sp + 0x130#64) ↦₆₄ 0#64) ∗
@@ -1032,7 +902,7 @@ def wsStoreTailOkPost_placed (A : RustAlloc) (sp prevCap prevPtr : BitVec 64)
   ((sp + 0x580#64) ↦₆₄ v2) ∗ ((sp + 0x588#64) ↦₆₄ v3) ∗ ((sp + 0x590#64) ↦₆₄ (s2_hi ++ v4)) ∗
   ((sp + 0x598#64) ↦₆₄ s3_598) ∗ ((sp + 0x5a0#64) ↦₃₂ s4_5a0) ∗ A.pool ∗ stackAt sp storeSegStack
 
-def wsStoreTailOkFramePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def wsStoreTailOkFramePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (ans : StoreAnswers (List (BitVec 8)) Unit)
     (s0 : State) (sp cap ptr : BitVec 64) (st : kit.StoreState) (ist : ikit.IdState)

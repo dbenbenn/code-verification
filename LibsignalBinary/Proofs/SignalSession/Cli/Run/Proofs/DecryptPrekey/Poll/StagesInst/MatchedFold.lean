@@ -9,9 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedPre
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedPre -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Bridge
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Poll Path B Stage P2 Exit and Continuation Folds
@@ -21,7 +24,7 @@ postcondition of `StageP2MatchedFramedCliStmt`) and `matched_match_fold` (foldin
 `stageP2MatchedMatchPre` into `genP3Pre` and Stage P3 coroutine/stack frames).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -376,134 +379,5 @@ theorem stack_mismatch_fold (s0 : State) (sp fut cx out
       (sepConj_mono hb8 (pts64_mr (pts64_mr (pts64_mr
         (sepConj_mono_left h234))))))))))) ?_
   sep_frame
-
-theorem matched_mismatch_fold_ext {A : RustAlloc} {B : RunBudgets} {S : RunSem}
-    (img : Obj.Image) (y : DpPollGhostState (dpSlotPollKState A img B S))
-    (s0 : State) (sp rngPtr : BitVec 64) (u_b8 : BitVec 32) (w : MatchedEntryWords) :
-    stageP2MatchedMismatchPost A img s0 sp y.fut y.out y.g.msgA y.g.peerA y.g.meA
-      y.g.stores (idVt img) (y.g.stores + 0xc8#64) (oneTimeVt img)
-      (y.g.stores + 0x78#64) (kyberVt img)
-      y.g.peerA (y.g.msgA + 0xc8#64)
-      w.u_80 w.u_88 w.u_90 (y.fut + 0x390#64)
-      w.u_298 w.u_2a0 w.u_3a0 w.u_3b0 w.u_3b8 w.u_3c0 w.u_3c8 w.u_3d0 w.u_3d8
-      w.u_2a8 u_b8 y.g.msg.messageVersion y.g.msg.message.messageVersion w.b_3ac
-      y.g.msg.baseKey y.g.msg.identityKey
-      (matchedInnerFrameExt img y rngPtr sp) ⊢
-      dpFutDoneAt y.fut ∗
-      memRegion sp 3280 ∗
-      apiDecResultAt A y.out
-        (.error (.protocol (.invalidMessage .preKey .badCiphertext))) ∗
-      preKeyMsgAt A y.g.msgG y.g.msgA y.g.msg ∗
-      protocolAddressAt A y.g.peer y.g.peerA ∗
-      protocolAddressAt A y.g.me y.g.meA ∗
-      coinsInstalled img y.g.coinsP y.g.coins ∗
-      TokenInit img ∗
-      logOff img ∗
-      A.pool ∗
-      stackAt sp rootStack := by
-  dsimp only [stageP2MatchedMismatchPost, matchedInnerFrameExt]
-  have hcoro := coro_mismatch_fold y.fut y.g.msgA y.g.peerA y.g.meA
-    (y.g.stores + 0xf0#64) (sessVt img) y.g.stores (idVt img)
-    (y.g.stores + 0xc8#64) (oneTimeVt img) (y.g.stores + 0x50#64) (signedVt img)
-    (y.g.stores + 0x78#64) (kyberVt img) rngPtr w.u_298 w.u_2a0 w.u_2a8
-  have hstk := stack_mismatch_fold s0 sp y.fut y.cx y.out
-    w.u_80 w.u_88 w.u_90 (y.fut + 0x390#64)
-    w.u_3a0 w.u_3b0 w.u_3b8 w.u_3c0 w.u_3c8 w.u_3d0 w.u_3d8 u_b8 w.b_3ac
-  rw [preKeyMsgAt_eq_base_idKey_sep, signalMessageAt_eq_ver_sep, preKeyMsgRemBaseIdKeyAt_eq_ver_sep]
-  refine Entails.trans (show _ ⊢
-    (processPrekeyActive10At y.fut y.g.msgA y.g.peerA y.g.meA
-        y.g.stores (idVt img) (y.g.stores + 0xc8#64) (oneTimeVt img)
-        (y.g.stores + 0x78#64) (kyberVt img) ∗
-      decryptPrekeyCoroInitAt y.fut y.g.msgA y.g.peerA y.g.meA
-        (y.g.stores + 0xf0#64) (sessVt img) y.g.stores (idVt img)
-        (y.g.stores + 0xc8#64) (oneTimeVt img) (y.g.stores + 0x50#64) (signedVt img)
-        (y.g.stores + 0x78#64) (kyberVt img) rngPtr ∗
-      ((y.fut + 0x70#64) ↦₆₄ y.g.msgA) ∗ ((y.fut + 0x78#64) ↦₆₄ y.g.peerA) ∗
-      ((y.fut + 0x80#64) ↦₆₄ y.g.meA) ∗
-      coroCopyTail11At y.fut (y.g.stores + 0xf0#64) (sessVt img) y.g.stores (idVt img)
-        (y.g.stores + 0xc8#64) (oneTimeVt img) (y.g.stores + 0x50#64) (signedVt img)
-        (y.g.stores + 0x78#64) (kyberVt img) rngPtr ∗
-      memRegion (y.fut + 0xe0#64) 368 ∗ cells (y.fut + 0x250#64) 6 ∗ memRegion (y.fut + 0x280#64) 24 ∗
-      ((y.fut + 0x298#64) ↦₆₄ w.u_298) ∗ ((y.fut + 0x2a0#64) ↦₆₄ w.u_2a0) ∗
-      ((y.fut + 0x2a8#64) ↦₃₂ w.u_2a8) ∗
-      memRegion (y.fut + 0x2ac#64) 8 ∗ memRegion (y.fut + 0x2b4#64) 12 ∗
-      ((y.fut + 0x2c0#64) ↦₈ 1#8) ∗
-      ((y.fut + 0x330#64) ↦₆₄ y.g.peerA) ∗ ((y.fut + 0x388#64) ↦₆₄ (y.g.msgA + 0xc8#64)) ∗
-      processPrekeyInnerRem23At y.fut y.g.msgA y.g.peerA y.g.meA
-        y.g.stores (idVt img) (y.g.stores + 0xc8#64) (oneTimeVt img)
-        (y.g.stores + 0x50#64) (signedVt img) (y.g.stores + 0x78#64) (kyberVt img) ∗
-      processPrekeyPostTrustAt y.fut y.g.msgA y.g.peerA y.g.meA
-        y.g.stores (idVt img) (y.g.stores + 0xc8#64) (oneTimeVt img)
-        (y.g.stores + 0x50#64) (signedVt img) (y.g.stores + 0x78#64) (kyberVt img) ∗
-      ((y.fut + 0x390#64) ↦₈ 1#8) ∗ cells (y.fut + 0x398#64) 2 ∗
-      ((y.fut + 0x4f1#64) ↦₈ 0#8) ∗ ((y.fut + 0x4f2#64) ↦₈ 1#8) ∗
-      memRegion (y.fut + 0x2c1#64) 7 ∗ memRegion (y.fut + 0x391#64) 7 ∗
-      memRegion (y.fut + 0x3a8#64) 80 ∗ memRegion (y.fut + 0x488#64) 8 ∗
-      memRegion (y.fut + 0x4b0#64) 65 ∗ memRegion (y.fut + 0x4f3#64) 5 ∗
-      memRegion (y.fut + 0x4f8#64) 736) ∗
-    ((sp ↦₆₄ 0#64) ∗ memRegion (sp + 0x8#64) 120 ∗
-      ((sp + 0x80#64) ↦₆₄ w.u_80) ∗ ((sp + 0x88#64) ↦₆₄ w.u_88) ∗ ((sp + 0x90#64) ↦₆₄ w.u_90) ∗
-      ((sp + 0x98#64) ↦₆₄ (y.fut + 0x398#64)) ∗ ((sp + 0xa0#64) ↦₆₄ (y.fut + 0x4f2#64)) ∗
-      ((sp + 0xa8#64) ↦₆₄ 3#64) ∗ ((sp + 0xb0#64) ↦₆₄ (y.fut + 0x390#64)) ∗
-      ((sp + 0xb8#64) ↦₃₂ u_b8) ∗ memRegion (sp + 0xbc#64) 4 ∗
-      ((sp + 0xc0#64) ↦₆₄ y.cx) ∗ ((sp + 0xc8#64) ↦₆₄ y.out) ∗ ((sp + 0xd0#64) ↦₆₄ 70#64) ∗
-      memRegion (sp + 0xd8#64) 348 ∗
-      memRegion (sp + 0x250#64) 20 ∗ memRegion (sp + 0x270#64) 48 ∗
-      memRegion (sp + 0x2b0#64) 36 ∗ memRegion (sp + 0x2e0#64) 36 ∗
-      memRegion (sp + 0x310#64) 36 ∗ memRegion (sp + 0x340#64) 36 ∗
-      memRegion (sp + 0x370#64) 36 ∗
-      ((sp + 0x3a0#64) ↦₆₄ w.u_3a0) ∗ ((sp + 0x3ac#64) ↦₈ w.b_3ac) ∗
-      ((sp + 0x3b0#64) ↦₆₄ w.u_3b0) ∗ ((sp + 0x3b8#64) ↦₆₄ w.u_3b8) ∗ ((sp + 0x3c0#64) ↦₆₄ w.u_3c0) ∗
-      ((sp + 0x3c8#64) ↦₆₄ w.u_3c8) ∗ ((sp + 0x3d0#64) ↦₆₄ w.u_3d0) ∗ ((sp + 0x3d8#64) ↦₆₄ w.u_3d8) ∗
-      spMidGapsAt sp ∗
-      memRegion (sp + 0x3e0#64) 34 ∗ memRegion (sp + 0x402#64) 70 ∗
-      memRegion (sp + 0x448#64) 240 ∗ memRegion (sp + 0x538#64) 24 ∗
-      memRegion (sp + 0x550#64) 976 ∗ memRegion (sp + 0x920#64) 6 ∗ memRegion (sp + 0x926#64) 10 ∗
-      memRegion (sp + 0x930#64) 96 ∗ memRegion (sp + 0x990#64) 256 ∗
-      memRegion (sp + 0xa90#64) 48 ∗ memRegion (sp + 0xac0#64) 296 ∗ memRegion (sp + 0xbe8#64) 136 ∗
-      decryptPrekeySavedRegsAt (sp + 0xcd0#64) s0) ∗
-    (apiDecResultAt A y.out
-        (.error (.protocol (.invalidMessage .preKey .badCiphertext))) ∗
-      ((y.g.msgA + 0x70#64) ↦₈ y.g.msg.message.messageVersion) ∗
-      signalMessageRestVerAt A y.g.msgG.msg y.g.msgA y.g.msg.message ∗
-      ((y.g.msgA + 0xa8#64) ↦ₛ y.g.msg.baseKey.bytes.toList) ∗
-      ((y.g.msgA + 0xc8#64) ↦ₛ y.g.msg.identityKey.publicKey.bytes.toList) ∗
-      ((y.g.msgA + 0xf0#64) ↦₈ y.g.msg.messageVersion) ∗
-      preKeyMsgRemMatchedAt A y.g.msgG y.g.msgA y.g.msg ∗
-      protocolAddressAt A y.g.peer y.g.peerA ∗
-      protocolAddressAt A y.g.me y.g.meA ∗
-      coinsInstalled img y.g.coinsP y.g.coins ∗
-      TokenInit img ∗
-      logOff img ∗
-      A.pool ∗
-      stackAt sp rootStack) by sep_frame) ?_
-  refine Entails.trans (sepConj_mono hcoro (sepConj_mono_left hstk)) ?_
-  sep_frame
-
-theorem matched_mismatch_fold {B : RunBudgets} {S : RunSem}
-    (img : Obj.Image) (y : DpPollGhostState (dpSlotPollKState E2E.HooksE.A0 img B S))
-    (s0 : State) (sp rngPtr : BitVec 64) (u_b8 : BitVec 32) (w : MatchedEntryWords) :
-    stageP2MatchedMismatchPost E2E.HooksE.A0 img s0 sp y.fut y.out y.g.msgA y.g.peerA y.g.meA
-      y.g.stores (idVt img) (y.g.stores + 0xc8#64) (oneTimeVt img)
-      (y.g.stores + 0x78#64) (kyberVt img)
-      y.g.peerA (y.g.msgA + 0xc8#64)
-      w.u_80 w.u_88 w.u_90 (y.fut + 0x390#64)
-      w.u_298 w.u_2a0 w.u_3a0 w.u_3b0 w.u_3b8 w.u_3c0 w.u_3c8 w.u_3d0 w.u_3d8
-      w.u_2a8 u_b8 y.g.msg.messageVersion y.g.msg.message.messageVersion w.b_3ac
-      y.g.msg.baseKey y.g.msg.identityKey
-      (matchedInnerFrame img y rngPtr sp) ⊢
-      dpFutDoneAt y.fut ∗
-      memRegion sp 3280 ∗
-      apiDecResultAt E2E.HooksE.A0 y.out
-        (.error (.protocol (.invalidMessage .preKey .badCiphertext))) ∗
-      preKeyMsgAt E2E.HooksE.A0 y.g.msgG y.g.msgA y.g.msg ∗
-      protocolAddressAt E2E.HooksE.A0 y.g.peer y.g.peerA ∗
-      protocolAddressAt E2E.HooksE.A0 y.g.me y.g.meA ∗
-      coinsInstalled img y.g.coinsP y.g.coins ∗
-      TokenInit img ∗
-      logOff img ∗
-      E2E.HooksE.A0.pool ∗
-      stackAt sp rootStack :=
-  matched_mismatch_fold_ext img y s0 sp rngPtr u_b8 w
 
 end CryptoVerification.SignalSession.Cli.RunProofs.Poll

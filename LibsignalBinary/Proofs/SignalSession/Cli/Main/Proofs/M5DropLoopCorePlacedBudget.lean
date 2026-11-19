@@ -9,13 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropLoopCorePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPanicsPlacedBudget
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPanicsPlaced -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropLoopCorePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPanicsPlacedBudget
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPanicsPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FramePlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropCodePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPanicsPlaced
 
 /-!
 # Budget-Threaded `(String, Vec<u8>)` Entry Drop Loops for `main` Hop M5 (Block `617`)
@@ -24,7 +35,7 @@ Budget-threaded verification of the generic 14-instruction `(String, Vec<u8>)` s
 Block `617`, advancing `A.pool` by `FreeOnlyEvs` with zero `FitsEnv` preconditions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false

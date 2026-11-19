@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesEncodedLen
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesEncodedLen -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesEncodePlaced
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase
 import ProofLib.SepLogic.WPp
@@ -23,7 +23,7 @@ Proves `Option<VersionNegotiation>`, `Option<Chain>`, and `Option<pq_ratchet_sta
 encoded-length computation and output `Vec::with_capacity` allocation (`+4288..+4996`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,7 +57,7 @@ set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false
 set_option linter.unusedSectionVars false
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero spqrSendPlacedEntry
   EncodedLen.zeroExtend64_beq_zero32
   EncodedLen.ofNat_countLeadingZeros_64 EncodedLen.ofNat_countLeadingZeros_32

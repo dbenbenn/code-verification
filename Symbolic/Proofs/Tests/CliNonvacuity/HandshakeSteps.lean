@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeModel
-public import Symbolic.Proofs.Tests.Nonvacuity
+public import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeModel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.Nonvacuity -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Bytes.Basic
 import DY.Trace.Basic
@@ -45,7 +45,7 @@ Constructs the 2-step prefix (`msPrefix2`) and 3-step full run (`msOf`), the pre
 entry lists (`visPrefix2Comp`, `visOfComp`), `mySemComp`, `GhostWF`, and `ModelRunWF`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -98,7 +98,7 @@ open Symbolic.Proofs.Tests.Shared.Composed.Runs
 open Symbolic.Proofs.Tests.CliNonvacuity.Defs
   (modelRunWF_of_append ghostWF_of_append)
 open Symbolic.Proofs.Tests.CliNonvacuity.Witness
-  (myParams myInterp freshBytes pt0 myKyberPubBytes mkRecords mkRecords_wf
+  (myParams myInterp mySigBytes freshBytes pt0 myKyberPubBytes mkRecords mkRecords_wf
    mkRecords_opaqueBytes_6 padSendCoins padCompSemOf mySem mySem_compat)
 open Symbolic.Proofs.Tests.CliNonvacuity.HandshakeModel
   (tsM0 tsC0 cSend0 mkRecords_opaque5 mkRecords_opaque7)
@@ -170,21 +170,21 @@ private theorem beqBareOpt_false :
 
 /-! ## Concrete `Step` Sequences, `Ghost`, and `GhostAndSemMatchSetup` -/
 
-def m0Of (withOpk : Bool) : Step :=
+@[expose] def m0Of (withOpk : Bool) : Step :=
   .aliceStart "alice" "bob" 4 6 (if withOpk then bhOpk else bh1)
 
-def m1Of (withOpk : Bool) : Step :=
+@[expose] def m1Of (withOpk : Bool) : Step :=
   if withOpk then .messageEncrypt "alice" 34 32 37
   else .messageEncrypt "alice" 30 32 33
 
-def m2Of (withOpk : Bool) : Step :=
+@[expose] def m2Of (withOpk : Bool) : Step :=
   if withOpk then .bobStart "bob" "alice" khOpk 1 mhOpk 37 1
   else .bobStart "bob" "alice" kh1 1 mh1 33 1
 
-def msPrefix2 (withOpk : Bool) : List Step := [m0Of withOpk, m1Of withOpk]
-def msOf (withOpk : Bool) : List Step := [m0Of withOpk, m1Of withOpk, m2Of withOpk]
+@[expose] def msPrefix2 (withOpk : Bool) : List Step := [m0Of withOpk, m1Of withOpk]
+@[expose] def msOf (withOpk : Bool) : List Step := [m0Of withOpk, m1Of withOpk, m2Of withOpk]
 
-def ghostOf (withOpk : Bool) : Ghost where
+@[expose] def ghostOf (withOpk : Bool) : Ghost where
   σ := fun ts len =>
     if len == 32 then
       if ts == tsM0 withOpk then pt0
@@ -199,7 +199,7 @@ theorem ghostOf_compat (withOpk : Bool) :
   rw [b1_setupRandomsAt_eq (mkRecords withOpk) (mkRecords_wf withOpk).1]
   cases withOpk <;> decide
 
-def mySemComp (withOpk : Bool) : OpaqueSymbolSemantics where
+@[expose] def mySemComp (withOpk : Bool) : OpaqueSymbolSemantics where
   init := spqrInitOf myInterp
   chainKey := spqrChainKeyOf myInterp
   sendState := fun st c => spqrSendStateOf myInterp st (padSendCoins c)
@@ -211,7 +211,7 @@ def mySemComp (withOpk : Bool) : OpaqueSymbolSemantics where
     if sk = freshBytes 16 64 then myKyberPubBytes else 0xFF#8 :: sk
   kemDecap := fun _ ct => (kyberDecapsBytes myInterp (mkRecords withOpk) ct).getD []
   vk := fun sk => pubBytes myInterp (clamp sk)
-  sign := fun _ _ _ => List.replicate 64 0#8
+  sign := fun _ _ _ => mySigBytes
 
 theorem mySem_eq_comp (withOpk : Bool) : mySem withOpk = mySemComp withOpk := by
   have h5 := mkRecords_opaque5 withOpk
@@ -512,7 +512,7 @@ theorem runTrace_msOf_true :
   dsimp only [msOf, runSteps]
   rw [m0_next_true, m1_next_true, m2_next_true]
 
-def visStep (s : Step) (tr tr' : ExecTrace) (wrapped : Bool) : List VisEntry :=
+@[expose] def visStep (s : Step) (tr tr' : ExecTrace) (wrapped : Bool) : List VisEntry :=
   (match s with
     | .aliceStart _ _ _ _ h => aliceVis tr tr' h
     | .bobStart b _ kh _ mh _ _ => bobVis tr tr' mh (bobOpkPk b kh tr)
@@ -521,7 +521,7 @@ def visStep (s : Step) (tr tr' : ExecTrace) (wrapped : Bool) : List VisEntry :=
     | _ => []) ++
   exposures tr tr'
 
-def visEncStep (tr tr' : ExecTrace) (ek ct : DY.Bytes) : List VisEntry :=
+@[expose] def visEncStep (tr tr' : ExecTrace) (ek ct : DY.Bytes) : List VisEntry :=
   (encDraws (newRandoms tr tr') ++
     match lastSent tr tr' with
     | some w => [⟨.send, [ek, ct, w], .preKeySend, none⟩]
@@ -796,22 +796,22 @@ theorem vis_m2_true (w : Bool) :
     stepView (m2Of true) t6Opk w = visStep (m2Of true) t6Opk t7Opk true :=
   stepView_eq_visStep m2_ok_true m2_next_true trivial
 
-def vis1Comp (withOpk : Bool) : List VisEntry :=
+@[expose] def vis1Comp (withOpk : Bool) : List VisEntry :=
   if withOpk then visStep (m0Of true) t4Opk t5Opk false
   else visStep (m0Of false) t4 t5 false
 
-def vis2Comp (withOpk : Bool) : List VisEntry :=
+@[expose] def vis2Comp (withOpk : Bool) : List VisEntry :=
   if withOpk then visEncStep t5Opk t6Opk oOpk.ek oOpk.ct
   else visEncStep t5 t6 o1.ek o1.ct
 
-def vis3Comp (withOpk : Bool) : List VisEntry :=
+@[expose] def vis3Comp (withOpk : Bool) : List VisEntry :=
   if withOpk then visStep (m2Of true) t6Opk t7Opk true
   else visStep (m2Of false) t6 tHandshakeNoOpk true
 
-def visPrefix2Comp (withOpk : Bool) : List VisEntry :=
+@[expose] def visPrefix2Comp (withOpk : Bool) : List VisEntry :=
   vis1Comp withOpk ++ vis2Comp withOpk
 
-def visOfComp (withOpk : Bool) : List VisEntry :=
+@[expose] def visOfComp (withOpk : Bool) : List VisEntry :=
   visPrefix2Comp withOpk ++ vis3Comp withOpk
 
 theorem modelRunWF_msOf (withOpk : Bool) : ModelRunWF (mkRecords withOpk) (msOf withOpk) := by

@@ -12,7 +12,7 @@ module
 public import Arm64
 public import ProofLib.Invariant
 public import ProofLib.Exec
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 public import ProofLib.Simulation
 public import ProofLib.VCGen
 

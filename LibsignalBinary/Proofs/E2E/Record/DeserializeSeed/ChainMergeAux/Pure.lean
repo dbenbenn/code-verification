@@ -19,7 +19,7 @@ Establishes structural invariants (`SeedChainShape`), varint/field equivalence l
 byte-length bounds (`< 128` bytes) for seed `ChainV` values decoded by `message::merge<Chain>`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.DeserializeSeed
 
@@ -33,7 +33,7 @@ open CryptoVerification.E2E.Record
 /-! ## Seed Chain Shape -/
 
 /-- Structural invariants of any `ChainV` appearing in `seedFields f` under `SeedOk f`. -/
-def SeedChainShape (c : ChainV) : Prop :=
+@[expose] def SeedChainShape (c : ChainV) : Prop :=
   ∃ (srk priv : List (BitVec 8)) (i : BitVec 32) (k : List (BitVec 8)),
     c = ⟨srk, priv, some (i, k)⟩ ∧
     srk.length = 33 ∧ (priv = [] ∨ priv.length = 32) ∧ k.length = 32

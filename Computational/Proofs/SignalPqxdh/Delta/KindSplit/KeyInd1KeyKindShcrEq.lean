@@ -55,10 +55,6 @@ open Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndCore
 
 namespace Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindShcrEq
 
-theorem pqxdhKeyInd1KeyKindCostedSims_shcr_eq (S : Setup) :
-    (pqxdhKeyInd1KeyKindCostedSims S).shcr = shcrKeyInd1KeyKindAtomicProg S :=
-  rfl
-
 private theorem isQueryBoundP_of_imp {ι₀ : Type} {spec : OracleSpec ι₀} {α : Type}
     {oa : OracleComp spec α} {p p₀ : ι₀ → Prop}
     [DecidablePred p] [DecidablePred p₀]

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2Placed
@@ -31,7 +31,7 @@ Relocatable `[LibsignalPlacement]` composition of Path 5b (`ack = false`) and Pa
 (`ack = true`) from `+11496` to `s0.x30`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

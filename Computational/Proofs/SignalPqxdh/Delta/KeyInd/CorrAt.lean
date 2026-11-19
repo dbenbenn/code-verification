@@ -20,7 +20,7 @@ Proves `kiCorrAt` (`KICorrAtStmt`, DEV-PQ21), reducing each flat index of the KE
 event in `runKeyIndShCrSim` to the single-key experiment `kemCorrExpProb`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -585,68 +585,7 @@ theorem badKemCorrProbGenericAt_le_kemCorr {S : Setup} {Base ι : Type}
       dsimp only
       rw [OracleComp.evalDist_bind_const]
 
-theorem badKemCorrProbKeyIndAt_le_kemCorrProb (S : Setup) (P : Primitives)
-    (idx : Nat) (A : KeyIndAdversary S) :
-    (𝒟[runKeyIndShCrSim S P A >>= fun x =>
-        pure (hasBadKemCorrRecordsAt S P idx x.2.2.initKemRecs x.2.2.recvKemRecs)]
-      {true}).toReal ≤
-      (𝒟[kemCorrExpProb P (fun pk sk =>
-          Prod.fst <$> shcrChoosePkKeyIndAt S P (idx / S.N_send_tot) (idx % S.N_send_tot) A pk sk)]
-        {true}).toReal := by
-  unfold shcrChoosePkKeyIndAt
-  have hEq :
-      (runKeyIndShCrSim S P A >>= fun x =>
-        pure (hasBadKemCorrRecordsAt S P idx x.2.2.initKemRecs x.2.2.recvKemRecs)) =
-      (($ᵗ Bool >>= fun secb => pure (KeyIndState.empty S secb)) >>= fun b0 =>
-        (simulateQ ((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-          (StateT (KeyIndShCrState S) ProbComp) +
-            pqxdhKeyIndShCrCachedImpl false S P) A.run).run { base := b0 } >>= fun x =>
-        pure (hasBadKemCorrRecordsAt S P idx x.2.initKemRecs x.2.recvKemRecs)) := by
-    unfold runKeyIndShCrSim
-    simp only [bind_assoc, pure_bind]
-    refine bind_congr (fun secb => ?_)
-    have hSim := CommutesRel.simulateQ_add_unif (cacheShCrAdvKeys S P)
-      (pqxdhKeyIndShCrCachedImpl false S P) (pqxdhKeyIndShCrImpl false S P)
-      (pqxdhKeyIndShCrCachedImpl_false_commutes_cache S P)
-      A.run { base := KeyIndState.empty S secb }
-    unfold CommutesRel at hSim
-    have hInit : cacheShCrAdvKeys S P { base := KeyIndState.empty S secb } =
-        { base := KeyIndState.empty S secb } := rfl
-    rw [hInit] at hSim
-    rw [hSim, bind_map_left]
-    rfl
-  rw [hEq]
-  refine ENNReal.toReal_mono (measure_ne_top _ _) ?_
-  exact badKemCorrProbGenericAt_le_kemCorr P
-    ($ᵗ Bool >>= fun secb => pure (KeyIndState.empty S secb))
-    KeyIndState.spkBundles
-    (pqxdhKeyIndShCrCachedImpl false S P)
-    (pqxdhKeyIndShCrCachedImpl true S P)
-    (tryPauseKeyIndQuery S P)
-    idx
-    (by
-      intro b0 hb0
-      simp only [MonadAttach.mem_support_bind, support_pure, Set.mem_singleton_iff] at hb0
-      rcases hb0 with ⟨secb, _, rfl⟩
-      rfl)
-    (pqxdhKeyIndShCrCachedImpl_clearFalse S P)
-    (pqxdhKeyIndShCrCachedImpl_afterGen S P (idx / S.N_send_tot))
-    (pqxdhKeyIndShCrCachedImpl_beforeGen S P (idx / S.N_send_tot))
-    (pqxdhKeyIndShCrCachedImpl_validStep S P (idx / S.N_send_tot))
-    (pqxdhKeyIndShCrCachedImpl_sendStep S P)
-    (pqxdhKeyIndShCrCachedImpl_pauseNone S P (idx % S.N_send_tot))
-    (pqxdhKeyIndShCrCachedImpl_pauseSome S P (idx / S.N_send_tot) (idx % S.N_send_tot))
-    A.run
-
 end KICorrAt
-
-/-- Reduces each flat index of the KEM correctness bad event in `runKeyIndShCrSim` to
-`kemCorrExpProb`. -/
-theorem kiCorrAt (S : Setup) : KICorrAtStmt S := by
-  intro P _hP A idx _hIdx
-  exact ⟨fun pk sk =>
-      Prod.fst <$> shcrChoosePkKeyIndAt S P (idx / S.N_send_tot) (idx % S.N_send_tot) A pk sk,
-    KICorrAt.badKemCorrProbKeyIndAt_le_kemCorrProb S P idx A⟩
 
 end Proofs.SignalPqxdh.Security.PqxdhDelta
 

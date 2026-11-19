@@ -338,7 +338,7 @@ def allTestedCleanKeyInd {S : Setup} (P : Primitives) (st : KeyIndState S) : Boo
     !r.tested || isKeyIndRespStillFresh P true st.principals st.spkBundles st.sessions r)
 
 /-- Fixed-bit branch of `pqxdhKeyInd1KeyExpForHandshake`. -/
-private noncomputable def keyIndHandshakeBranch (S : Setup) (P : Primitives)
+private def keyIndHandshakeBranch (S : Setup) (P : Primitives)
     (ki : QueryImpl (keyIndSpec S) (StateT (KeyIndState S) ProbComp))
     (A : KeyIndAdversary S) (secb : Bool) : ProbComp Bool := do
   let initSt := KeyIndState.empty S secb

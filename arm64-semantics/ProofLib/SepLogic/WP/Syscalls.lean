@@ -452,11 +452,11 @@ theorem SepWP.step_svc_openat_file_ro {prog : Program} {target_pc : BitVec 64}
   rw [hflags, hcs]
   dsimp only
   have hnc : (0#32 &&& O_CREAT_W32 != 0#32) = false := rfl
-  rw [hres, hsanc]
+  rw [hres, halloc, hsanc]
   dsimp only
   rw [hnc, Bool.false_and, hlast, hntrail]
   simp only [Bool.false_eq_true, ↓reduceIte]
-  rw [hge, halloc]
+  rw [hge]
   change SepWP prog target_pc
     (((s.setFs ((s.fs.setEntry (normalizePath path) (some (.file fileBytes))).setFd fd
       (some { path := path, accMode := .rdonly }))).writeReg64 .x0 fd).setPC (s.pc + 4#64))

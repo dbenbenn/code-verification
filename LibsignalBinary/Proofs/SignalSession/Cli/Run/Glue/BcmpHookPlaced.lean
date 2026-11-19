@@ -9,21 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHook
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTraced
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHook -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTraced -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.Apply
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 
 /-!
 # Placed `bcmp`, `cliExternsPlaced`, and `cliGhostExterns` Helpers
 
-Lookup lemmas for the 39-entry `cliHookTablePlaced mmpl W` extern map (`cliExternsPlaced`), `HookSat`
+Lookup lemmas for the `cliHookTablePlaced mmpl W` extern map (`cliExternsPlaced`), `HookSat`
 and block-level `subroutine_ok` proofs for `"bcmp"`, and the `CliGhostHooks` / `cliGhostExterns`
 ghost-hook overlay for allocator, `<String as Clone>::clone`, `read_file`, and `read_stdin` symbols.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -33,13 +36,32 @@ set_option maxRecDepth 200000
 abbrev CryptoVerification.SignalSession.lsStringCloneSym : String :=
   "_RNvXs4_NtCs69KKACWg7bl_5alloc6stringNtB5_6StringNtNtCskxtBwYRO61I_4core5clone5Clone5clone"
 
-/-- Symbol name for `memset` (de-hooked from `cliHookTablePlaced` on the 37-row table; overlaid
-    via `CliGhostHooks.memset`). -/
+/-- Symbol name for `memset` (verified directly and overlaid via `CliGhostHooks.memset`). -/
 abbrev CryptoVerification.SignalSession.lsMemsetSym : String := "memset"
 
-/-- Symbol name for `memcpy` (de-hooked from `cliHookTablePlaced` on the 37-row table; overlaid
-    via `CliGhostHooks.memcpy`). -/
+/-- Symbol name for `memcpy` (verified directly and overlaid via `CliGhostHooks.memcpy`). -/
 abbrev CryptoVerification.SignalSession.lsMemcpySym : String := "memcpy"
+
+/-- Mangled symbol for `<MontgomeryPoint>::to_edwards` (first of the 9 Curve25519-Dalek and
+    ML-KEM-768 `pk1`/`pk2` functions verified directly and overlaid via `CliGhostHooks.extra`). -/
+abbrev CryptoVerification.SignalSession.lsToEdwardsSym : String :=
+  "_RNvMs5_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryNtB5_15MontgomeryPoint10to_edwards"
+abbrev CryptoVerification.SignalSession.lsCompressSym : String :=
+  "_RNvMsg_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint8compress"
+abbrev CryptoVerification.SignalSession.lsEdNegSym : String :=
+  "_RNvXso_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPointNtNtNtCskxtBwYRO61I_4core3ops5arith3Neg3neg"
+abbrev CryptoVerification.SignalSession.lsTorsionFreeSym : String :=
+  "_RNvMsx_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint15is_torsion_free"
+abbrev CryptoVerification.SignalSession.lsDsmbSym : String :=
+  "_RNvMsw_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint35vartime_double_scalar_mul_basepoint"
+abbrev CryptoVerification.SignalSession.lsScalarModSym : String :=
+  "_RNvMNtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB2_6Scalar20from_bytes_mod_order"
+abbrev CryptoVerification.SignalSession.lsScalarWideSym : String :=
+  "_RNvMNtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB2_6Scalar25from_bytes_mod_order_wide"
+abbrev CryptoVerification.SignalSession.lsMlkemPk1Sym : String :=
+  "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes3pk1"
+abbrev CryptoVerification.SignalSession.lsMlkemPk2Sym : String :=
+  "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes3pk2"
 
 namespace CryptoVerification.SignalSession.Cli.RunGlue
 
@@ -48,55 +70,18 @@ open CryptoVerification
 open CryptoVerification.SignalSession
 open CryptoVerification.SignalSession.Cli
 
-/-- The `27` mangled symbol names of `cliHookTablePlaced mmpl W` (independent of `mmpl` and `W`). -/
-def cliHookNamesPlaced : List String :=
-  ["_RNvNtCsbvWyylYiyxg_4sha26sha51211compress512",
-   "_RNvMs5_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryNtB5_15MontgomeryPoint10to_edwards",
-   "_RNvMsg_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint8compress",
-   "_RNvXso_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPointNtNtNtCskxtBwYRO61I_4core3ops5arith3Neg3neg",
-   "_RNvMsx_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint15is_torsion_free",
-   "_RNvMsw_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint35vartime_double_scalar_mul_basepoint",
-   "_RNvMNtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB2_6Scalar20from_bytes_mod_order",
-   "_RNvMNtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB2_6Scalar25from_bytes_mod_order_wide",
-   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11encapsulate",
-   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11decapsulate",
-   "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes9from_seed",
-   "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes3pk1",
-   "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes3pk2",
-   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate1",
-   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate2",
-   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental26decapsulate_compressed_key",
-   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes",
-   "_RNvCs65XVORQObL2_12libcrux_hmac4hmac",
-   lsWriteFileSym,
-   lsWriteStdoutSym,
-   lsFmtWriteSym,
-   lsFormatInnerSym,
-   lsCompress256Sym,
-   lsAesEncSym,
-   lsAesDecSym,
-   lsPubFromSecretSym,
-   lsDiffieHellmanSym]
+/-- The `0` mangled symbol names of `cliHookTablePlaced mmpl W` on the 0-hook stock ELF. -/
+@[expose] def cliHookNamesPlaced : List String := []
 
 theorem cliHookNamesPlaced_eq (mmpl : Obj.MultiPlacement) (W : CliHooks) :
-    (cliHookTablePlaced mmpl W).map Prod.fst = cliHookNamesPlaced := rfl
+    (LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.cliHookTablePlaced mmpl W).map Prod.fst = cliHookNamesPlaced := rfl
 
 theorem cliHookNamesPlaced_nodup : cliHookNamesPlaced.Nodup := by
   unfold cliHookNamesPlaced
   decide
 
 theorem cliHookNamesPlaced_notPanic :
-    cliHookNamesPlaced.all (fun n => !isCliPanicSymbolPlaced n) = true := by
-  rw [List.all_eq_true]
-  intro n hn
-  simp only [cliHookNamesPlaced, lsWriteFileSym, lsWriteStdoutSym,
-    lsFmtWriteSym, lsFormatInnerSym, lsCompress256Sym,
-    lsAesEncSym, lsAesDecSym, lsPubFromSecretSym, lsDiffieHellmanSym,
-    List.mem_cons, List.not_mem_nil, or_false] at hn
-  rcases hn with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-    rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-    rfl | rfl | rfl <;>
-  simp [isCliPanicSymbolPlaced, cliPanicSymbolsPlaced, Rust.isPanicSymbol]
+    cliHookNamesPlaced.all (fun n => !isCliPanicSymbolPlaced n) = true := rfl
 
 private theorem lookup_of_mem_nodup_placed {α : Type} :
     ∀ (L : List (String × α)) (n : String) (v : α),
@@ -126,7 +111,7 @@ private theorem lookup_of_not_mem_placed {α : Type} :
 /-- Every `(n, h)` row of `cliHookTablePlaced mmpl W` resolves to `some h` in `cliExternsPlaced mmpl W`. -/
 theorem cliExternsPlaced_row (mmpl : Obj.MultiPlacement) (W : CliHooks)
     {n : String} {h : State → State}
-    (hm : (n, h) ∈ cliHookTablePlaced mmpl W) : cliExternsPlaced mmpl W n = some h := by
+    (hm : (n, h) ∈ LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.cliHookTablePlaced mmpl W) : cliExternsPlaced mmpl W n = some h := by
   have hn : n ∈ cliHookNamesPlaced := by
     rw [← cliHookNamesPlaced_eq mmpl W]
     exact List.mem_map.mpr ⟨(n, h), hm, rfl⟩
@@ -146,9 +131,9 @@ theorem cliExternsPlaced_none (mmpl : Obj.MultiPlacement) (W : CliHooks) {n : St
   simp only [hp, Bool.false_eq_true, ↓reduceIte]
   exact lookup_of_not_mem_placed _ n (by rw [cliHookNamesPlaced_eq mmpl W]; exact hn)
 
-/-- Every symbol in `cliPanicSymbolsPlaced` maps to `some Rust.panicked` in `cliExternsPlaced mmpl W`. -/
+/-- Every symbol in `cliCratePanicSyms` maps to `some Rust.panicked` in `cliExternsPlaced mmpl W`. -/
 theorem cliExternsPlaced_panic_of_mem (mmpl : Obj.MultiPlacement) (W : CliHooks) {n : String}
-    (hn : n ∈ cliPanicSymbolsPlaced) : cliExternsPlaced mmpl W n = some Rust.panicked := by
+    (hn : n ∈ cliCratePanicSyms) : cliExternsPlaced mmpl W n = some Rust.panicked := by
   simp [cliExternsPlaced, isCliPanicSymbolPlaced, hn]
 
 /-- `cliExternsPlaced mmpl W` is already closed under `Rust.withPanics`. -/
@@ -163,22 +148,52 @@ theorem withPanics_cliExternsPlaced (mmpl : Obj.MultiPlacement) (W : CliHooks) :
 
 /-! ## Ghost-Hook Overlay (`CliGhostHooks` & `cliGhostExterns`) -/
 
-/-- Type alias for the generic Cutover-2 ghost hook association list. -/
+/-- Type alias for the generic ghost hook association list. -/
 abbrev ExtraGhostTable : Type := List (String × (State → State))
 
-/-- The 10 named `CliGhostHooks` dispatch symbols (5 F3 alloc + 3 F3 optional + Stage A
-    `lsMemsetSym` / `lsMemcpySym`). -/
-def cliNamedGhostSyms : List String :=
+/-- The 10 named `CliGhostHooks` dispatch symbols (5 allocator hooks, `String::clone`,
+    `read_file`, `read_stdin`, `memset`, and `memcpy`). -/
+@[expose] def cliNamedGhostSyms : List String :=
   [lsRustAllocSymCli, lsRustDeallocSymCli, lsRustReallocSymCli,
    lsRustAllocZeroedSymCli, lsRustNoAllocShimSymCli,
    lsStringCloneSym, lsReadFileSym, lsReadStdinSym,
    lsMemsetSym, lsMemcpySym]
 
-/-- The 10 Cutover-2 symbols eligible for `CliGhostHooks.extra` dispatch. -/
-def cliExtraGhostSyms : List String :=
+abbrev _root_.CryptoVerification.SignalSession.lsCompress512Sym : String :=
+  "_RNvNtCsbvWyylYiyxg_4sha26sha51211compress512"
+abbrev _root_.CryptoVerification.SignalSession.lsKemEncapsSym : String :=
+  "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11encapsulate"
+abbrev _root_.CryptoVerification.SignalSession.lsKemDecapsSym : String :=
+  "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11decapsulate"
+abbrev _root_.CryptoVerification.SignalSession.lsMlkemFromSeedSym : String :=
+  "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes9from_seed"
+abbrev _root_.CryptoVerification.SignalSession.lsMlkemEncaps1Sym : String :=
+  "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate1"
+abbrev _root_.CryptoVerification.SignalSession.lsMlkemEncaps2Sym : String :=
+  "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate2"
+abbrev _root_.CryptoVerification.SignalSession.lsMlkemDecapsSym : String :=
+  "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental26decapsulate_compressed_key"
+abbrev _root_.CryptoVerification.SignalSession.lsMlkemValidatePkSym : String :=
+  "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes"
+
+/-- Mangled symbol for `std::sys::sync::once::futex::Once::call` (in `cliExtraGhostSyms`). -/
+abbrev _root_.CryptoVerification.SignalSession.lsSpqrOnceCallSym : String :=
+  "_RNvMs0_NtNtNtNtCsfr5T3GFabw_3std3sys4sync4once5futexNtB5_4Once4call"
+
+@[expose] def cliExtraGhostSyms : List String :=
   ["memmove", "bcmp", "strlen",
    lsMemrchrSym, lsFromUtf8Sym, lsDurationSinceSym, lsTimeAddSym,
-   lsBlackBoxSym, lsStaticSecretDropSym, lsSharedSecretDropSym]
+   lsBlackBoxSym, lsStaticSecretDropSym, lsSharedSecretDropSym,
+   lsToEdwardsSym, lsCompressSym, lsEdNegSym, lsTorsionFreeSym,
+   lsDsmbSym, lsScalarModSym, lsScalarWideSym, lsMlkemPk1Sym, lsMlkemPk2Sym,
+   lsCompress256Sym, lsLibcruxHmacSym,
+   lsAesEncSym, lsAesDecSym,
+   lsCompress512Sym,
+   lsKemEncapsSym, lsKemDecapsSym,
+   lsMlkemFromSeedSym, lsMlkemEncaps1Sym, lsMlkemEncaps2Sym, lsMlkemDecapsSym, lsMlkemValidatePkSym,
+   lsWriteFileSym, lsWriteStdoutSym, lsFmtWriteSym, lsFormatInnerSym,
+   lsPubFromSecretSym, lsDiffieHellmanSym,
+   lsSpqrOnceCallSym]
 
 theorem cliExtraGhostSyms_disjoint_named :
     (cliExtraGhostSyms.all fun s => !(cliNamedGhostSyms.contains s)) = true := by
@@ -219,14 +234,12 @@ theorem named_eq_false_of_extra_contains {sym : String}
     beq_eq_false_iff_ne.mpr h7, beq_eq_false_iff_ne.mpr h8,
     beq_eq_false_iff_ne.mpr h9, beq_eq_false_iff_ne.mpr h10⟩
 
-/-- Ghost-hook functions for the 5 bump-allocator symbols removed in F3 (`lsRustNoAllocShimSymCli`,
+/-- Ghost-hook overlay table: the 5 allocator symbols (`lsRustNoAllocShimSymCli`,
     `lsRustAllocSymCli`, `lsRustDeallocSymCli`, `lsRustReallocSymCli`, `lsRustAllocZeroedSymCli`),
-    plus an optional ghost hook for `lsStringCloneSym` (when replaying Block `623` or
-    `stringCloneHookMallocng` via `HookSat`) and optional `HookFsTraced IsFsC`-bundled ghost hooks
-    for `lsReadFileSym` and `lsReadStdinSym` (replaying Blocks `618` / `620` via `GhostExternReplays`),
-    plus optional ghost-hook slots `memset` and `memcpy` (default `none`; wired into
-    `cliGhostExterns` dispatch in `#1255` Stage A / WP6c), and a generic `extra` association-list
-    slot (default `[]`; `#1255` Cutover-2 extra ghost hooks). -/
+    optional `lsStringCloneSym` (replaying Block `623` or `stringCloneHookMallocng` via `HookSat`),
+    optional `HookFsTraced IsFsC`-bundled `lsReadFileSym` and `lsReadStdinSym` (replaying Blocks
+    `618` / `620` via `GhostExternReplays`), optional `memset` and `memcpy` slots (default `none`),
+    and the generic `extra` association-list slot (default `[]`). -/
 structure CliGhostHooks where
   alloc : State → State
   dealloc : State → State
@@ -240,8 +253,8 @@ structure CliGhostHooks where
   memcpy : Option (State → State) := none
   extra : List (String × (State → State)) := []
 
-/-- Pre-2B 10-way named-slot dispatch of `cliGhostExterns` (without `extra`). -/
-def cliGhostExternsNamed (g : CliGhostHooks)
+/-- 10-way named-slot dispatch of `cliGhostExterns` (without `extra`). -/
+@[expose] def cliGhostExternsNamed (g : CliGhostHooks)
     (baseExt : String → Option (State → State)) (sym : String) :
     Option (State → State) :=
   if sym == lsRustAllocSymCli then some g.alloc
@@ -262,7 +275,7 @@ def cliGhostExternsNamed (g : CliGhostHooks)
   else baseExt sym
 
 /-- Full 10-named + domain-guarded `extra` extern dispatcher. -/
-def cliGhostExternsWithExtra (g : CliGhostHooks) (extra : ExtraGhostTable)
+@[expose] def cliGhostExternsWithExtra (g : CliGhostHooks) (extra : ExtraGhostTable)
     (baseExt : String → Option (State → State)) (sym : String) :
     Option (State → State) :=
   if sym == lsRustAllocSymCli then some g.alloc
@@ -321,8 +334,8 @@ theorem cliGhostExternsWithExtra_other (g : CliGhostHooks) (extra : ExtraGhostTa
     · simp only [↓reduceIte, hLookN]
 
 /-- Overlays `g : CliGhostHooks` onto a base extern map `baseExt : LibsignalHooks`
-    (10 named ghost slots + domain-guarded Cutover-2 `g.extra` table). -/
-def cliGhostExterns (g : CliGhostHooks) (baseExt : LibsignalHooks) : LibsignalHooks :=
+    (10 named ghost slots plus the domain-guarded `g.extra` table). -/
+@[expose] def cliGhostExterns (g : CliGhostHooks) (baseExt : LibsignalHooks) : LibsignalHooks :=
   cliGhostExternsWithExtra g g.extra baseExt
 
 /-- Definitional bridge `cliGhostExterns g = cliGhostExternsWithExtra g g.extra`. -/
@@ -335,6 +348,15 @@ theorem cliGhostExterns_eq_withExtra (g : CliGhostHooks) :
     (hDom : cliExtraGhostSyms.contains sym = true := by decide) :
     cliGhostExterns g baseExt sym = some f :=
   cliGhostExternsWithExtra_extra_some g g.extra baseExt hLook hDom
+
+theorem cliGhostExterns_congr_extra (g₁ g₂ : CliGhostHooks) (baseExt : LibsignalHooks)
+    {sym : String} (hextra : g₁.extra = g₂.extra := by rfl)
+    (hDom : cliExtraGhostSyms.contains sym = true := by decide) :
+    cliGhostExterns g₁ baseExt sym = cliGhostExterns g₂ baseExt sym := by
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10⟩ := named_eq_false_of_extra_contains hDom
+  unfold cliGhostExterns cliGhostExternsWithExtra
+  simp only [h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, hDom, hextra, Bool.false_eq_true,
+    ↓reduceIte]
 
 @[simp] theorem cliGhostExterns_alloc (g : CliGhostHooks) (baseExt : LibsignalHooks) :
     cliGhostExterns g baseExt lsRustAllocSymCli = some g.alloc := by
@@ -534,11 +556,11 @@ theorem cliGhostExterns_other (g : CliGhostHooks) (baseExt : LibsignalHooks) {sy
 
 /-- `ext`-parametric `lsReadFileSym` hook overlay (`rfl`-equal to
     `ReadFileBudgetPlaced.withReadFileHook`). -/
-def withReadFileHook (rfh : State → State) (ext : LibsignalHooks) : LibsignalHooks :=
+@[expose] def withReadFileHook (rfh : State → State) (ext : LibsignalHooks) : LibsignalHooks :=
   fun s => if s == lsReadFileSym then some rfh else ext s
 
 /-- `ext`-parametric `lsReadStdinSym` hook overlay. -/
-def withReadStdinHook (rsh : State → State) (ext : LibsignalHooks) : LibsignalHooks :=
+@[expose] def withReadStdinHook (rsh : State → State) (ext : LibsignalHooks) : LibsignalHooks :=
   fun s => if s == lsReadStdinSym then some rsh else ext s
 
 theorem withReadFileHook_cliGhostExterns (g : CliGhostHooks) (baseExt : LibsignalHooks)
@@ -592,12 +614,26 @@ private theorem extra_isPanicSymbol_false :
   intro s hs
   simp only [cliExtraGhostSyms, lsMemrchrSym, lsFromUtf8Sym, lsDurationSinceSym, lsTimeAddSym,
     lsBlackBoxSym, lsStaticSecretDropSym, lsSharedSecretDropSym,
+    lsToEdwardsSym, lsCompressSym, lsEdNegSym, lsTorsionFreeSym,
+    lsDsmbSym, lsScalarModSym, lsScalarWideSym, lsMlkemPk1Sym, lsMlkemPk2Sym,
+    lsCompress256Sym, lsLibcruxHmacSym, lsAesEncSym, lsAesDecSym,
+    lsCompress512Sym, lsKemEncapsSym, lsKemDecapsSym,
+    lsMlkemFromSeedSym, lsMlkemEncaps1Sym, lsMlkemEncaps2Sym, lsMlkemDecapsSym,
+    lsMlkemValidatePkSym, lsWriteFileSym, lsWriteStdoutSym, lsFmtWriteSym, lsFormatInnerSym,
+    lsPubFromSecretSym, lsDiffieHellmanSym, lsSpqrOnceCallSym,
     List.mem_cons, List.not_mem_nil, or_false] at hs
-  rcases hs with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
+  rcases hs with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
+    rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
+    rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
+    rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
     simp [Rust.isPanicSymbol]
 
+private theorem extra_disjoint_panic :
+    (cliExtraGhostSyms.all fun s => !(cliCratePanicSyms.contains s)) = true := by
+  decide
+
 theorem cliGhostExterns_panic_of_mem (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    {n : String} (hn : n ∈ cliPanicSymbolsPlaced) :
+    {n : String} (hn : n ∈ cliCratePanicSyms) :
     cliGhostExterns g (cliExternsPlaced mmpl W) n = some Rust.panicked := by
   have h1 : n ≠ lsRustAllocSymCli := by intro he; subst he; exact nomatch hn
   have h2 : n ≠ lsRustDeallocSymCli := by intro he; subst he; exact nomatch hn
@@ -612,11 +648,9 @@ theorem cliGhostExterns_panic_of_mem (mmpl : Obj.MultiPlacement) (g : CliGhostHo
   have hExtra : cliExtraGhostSyms.contains n = false := by
     cases hc : cliExtraGhostSyms.contains n
     · rfl
-    · have hm := List.contains_iff_mem.mp hc
-      dsimp only [cliExtraGhostSyms] at hm
-      simp only [List.mem_cons, List.not_mem_nil, or_false] at hm
-      rcases hm with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
-        exact nomatch hn
+    · have hall := List.all_eq_true.mp extra_disjoint_panic n (List.contains_iff_mem.mp hc)
+      have hpc : cliCratePanicSyms.contains n = true := List.contains_iff_mem.mpr hn
+      rw [hpc] at hall; cases hall
   rw [cliGhostExterns_other g _ h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 (Or.inl hExtra)]
   exact cliExternsPlaced_panic_of_mem mmpl W hn
 

@@ -11,6 +11,7 @@ module
 
 public import ProofLib.Placed.Multi
 public meta import Lean.Elab.Term
+meta import Arm64.Trusted.Surface.IncludeBytes
 
 /-!
 # Split Kernel Verification for Multi-Block Placement
@@ -777,6 +778,9 @@ partial def listLitLen (e : Expr) (acc : Nat := 0) : MetaM Nat := do
   let e ← unfoldConsts e
   match e.getAppFnArgs with
   | (``List.cons, #[_, _, t]) => listLitLen t (acc + 1)
+  | (``Arm64.IncludeBytes.cons16, args) =>
+    if args.size == 17 then listLitLen args[16]! (acc + 16)
+    else throwError "seg_lens%: unexpected IncludeBytes.cons16 arity: {e}"
   | (``List.nil, #[_]) => pure acc
   | (``List.flatten, #[_, ls]) => do
     let mut n := acc

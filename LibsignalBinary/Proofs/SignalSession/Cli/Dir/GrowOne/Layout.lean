@@ -13,7 +13,7 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import LibsignalBinary.Proofs.Common.InImageKit
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -114,7 +114,7 @@ private theorem pull_fg1_post (O1 O2 O3 P L B M A S R : SepProp) :
     (O1 ∗ O2 ∗ O3 ∗ (P ∗ L ∗ B ∗ M) ∗ A ∗ S) ∗ R =
       P ∗ ((L ∗ B ∗ M ∗ A ∗ S ∗ O1 ∗ O2 ∗ O3) ∗ R) := by ac_rfl
 
-def finishGrowZeroCellsSpec (A : RustAlloc) : Spec FGCellsGhost where
+@[expose] def finishGrowZeroCellsSpec (A : RustAlloc) : Spec FGCellsGhost where
   pre := fun (out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
       s.readReg64 .x3 = new ∧ s.readReg64 .x4 = align ∧ s.readReg64 .x5 = stride ∧
@@ -133,55 +133,7 @@ def finishGrowZeroCellsSpec (A : RustAlloc) : Spec FGCellsGhost where
       A.pool ∗ stackAt fsp finishGrowStackX ∗
       (out ↦₆₄ tag) ∗ ((out + 8#64) ↦₆₄ p') ∗ ((out + 16#64) ↦₆₄ o2')
 
-theorem finish_grow_zero_cells_ok_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hFG : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr cliFinishGrowName)
-      ((finishGrowSpecX A).inImage img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr cliFinishGrowName)
-      ((finishGrowZeroCellsSpec A).inImage img) := by
-  refine subroutine_ok_outcome_intro fun ⟨out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp⟩ R s0 hpc hrun hpre hsp => ?_
-  change s0.mem ⊨ (⌜ImgCallInv img s0⌝ ∗ (finishGrowZeroCellsSpec A).pre
-    (out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp) s0) ∗ R at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, hpre⟩
-  simp only [finishGrowZeroCellsSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx2, hx3, hx4, hx5, hfsp, hcap0, hbs, hle, hpos, hstr, hlay⟩, hmem⟩
-  subst hfsp; subst hcap0; subst hbs
-  let hcall : FinishGrowCall := ⟨out, 0#64, ptr, new, align, stride, []⟩
-  have hpre0 : s0.mem ⊨ (finishGrowSpecX A).pre hcall s0 ∗ R := by
-    simp only [finishGrowSpecX, hcall, FinishGrowCall.oldBuf, ite_true,
-      memRegion_24_cells, emp_sepConj, sepExists_sepConj_left, sepExists_sepConj_right,
-      satisfies_sepExists]
-    refine ⟨o2, o1, o0, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1, hx2, hx3, hx4, hx5, fun _ => trivial, Nat.zero_le _, hle, hpos, hstr, hlay⟩,
-      by simpa only [sepConj_assoc] using hmem⟩
-  have hpre' := satisfies_inImage_pre hinv hpre0
-  refine hFG.mono_outcome hcall R s0 hpc hrun hpre' hsp ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    simp only [Spec.inImage, finishGrowSpecX, finishGrowZeroCellsSpec, hcall, FinishGrowCall.oldBuf,
-      ite_true, pointsToBytes_nil, List.length_nil,
-      BitVec.add_zero, Nat.sub_zero, emp_sepConj, sepConj_emp,
-      sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-    rcases hq with ⟨tag, p', hq⟩
-    refine ⟨tag, p', BitVec.ofNat 64 (new.toNat * stride.toNat), ?_⟩
-    by_cases htag : tag = 1#64
-    · simp only [htag, ite_true] at hq ⊢
-      rw [pull_fg0_err, satisfies_pure_sepConj] at hq
-      rw [sepConj_assoc, satisfies_pure_sepConj]
-      exact ⟨hq.1.2, hq.2⟩
-    · simp only [htag, ite_false] at hq ⊢
-      rw [pull_fg0_ok, satisfies_pure_sepConj] at hq
-      rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-      exact ⟨hq.1, by simpa only [sepConj_assoc] using hq.2⟩
-  · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hq⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨hoom, hq⟩))
-
-def finishGrowNeCellsSpec (A : RustAlloc) : Spec FGCellsGhost where
+@[expose] def finishGrowNeCellsSpec (A : RustAlloc) : Spec FGCellsGhost where
   pre := fun (out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
       s.readReg64 .x3 = new ∧ s.readReg64 .x4 = align ∧ s.readReg64 .x5 = stride ∧
@@ -204,53 +156,7 @@ def finishGrowNeCellsSpec (A : RustAlloc) : Spec FGCellsGhost where
       A.pool ∗ stackAt fsp finishGrowStackX ∗
       (out ↦₆₄ tag) ∗ ((out + 8#64) ↦₆₄ p') ∗ ((out + 16#64) ↦₆₄ o2')
 
-theorem finish_grow_ne_cells_ok_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hFG : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr cliFinishGrowName)
-      ((finishGrowSpecX A).inImage img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr cliFinishGrowName)
-      ((finishGrowNeCellsSpec A).inImage img) := by
-  refine subroutine_ok_outcome_intro fun ⟨out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp⟩ R s0 hpc hrun hpre hsp => ?_
-  change s0.mem ⊨ (⌜ImgCallInv img s0⌝ ∗ (finishGrowNeCellsSpec A).pre
-    (out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp) s0) ∗ R at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, hpre⟩
-  simp only [finishGrowNeCellsSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx2, hx3, hx4, hx5, hfsp, hcap, hbs, hle, hpos, hstr, hlay⟩, hmem⟩
-  subst hfsp
-  let hcall : FinishGrowCall := ⟨out, cap, ptr, new, align, stride, bs⟩
-  have hpre0 : s0.mem ⊨ (finishGrowSpecX A).pre hcall s0 ∗ R := by
-    simp only [finishGrowSpecX, hcall, FinishGrowCall.oldBuf, hcap, ite_false,
-      memRegion_24_cells, sepExists_sepConj_left, sepExists_sepConj_right,
-      satisfies_sepExists]
-    refine ⟨o2, o1, o0, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1, hx2, hx3, hx4, hx5, False.elim, hbs, hle, hpos, hstr, hlay⟩,
-      by simpa only [sepConj_assoc] using hmem⟩
-  have hpre' := satisfies_inImage_pre hinv hpre0
-  refine hFG.mono_outcome hcall R s0 hpc hrun hpre' hsp ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    simp only [Spec.inImage, finishGrowSpecX, finishGrowNeCellsSpec, hcall, FinishGrowCall.oldBuf,
-      hcap, ite_false, sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-    rcases hq with ⟨tag, p', hq⟩
-    refine ⟨tag, p', BitVec.ofNat 64 (new.toNat * stride.toNat), ?_⟩
-    by_cases htag : tag = 1#64
-    · simp only [htag, ite_true] at hq ⊢
-      rw [pull_fg1_post, satisfies_pure_sepConj] at hq
-      rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-      exact ⟨hq.1.2, by simpa only [sepConj_assoc] using hq.2⟩
-    · simp only [htag, ite_false] at hq ⊢
-      rw [pull_fg1_post, satisfies_pure_sepConj] at hq
-      rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-      exact ⟨hq.1, by simpa only [sepConj_assoc] using hq.2⟩
-  · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hq⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨hoom, hq⟩))
-
-def growOneDirBytesInnerSpec (A : RustAlloc) : Spec CliGrowBytesGhost where
+@[expose] def growOneDirBytesInnerSpec (A : RustAlloc) : Spec CliGrowBytesGhost where
   pre := fun (v, cap, ptr, bs) s =>
     ⌜s.readReg64 .x0 = v ∧ bs.length ≤ cap.toNat * 48 ∧ ptr ≠ 0#64 ∧
       max (2 * cap.toNat) 4 * 48 + 8 ≤ 2 ^ 63⌝ ∗
@@ -347,200 +253,5 @@ private theorem arrayAt_dirEntry_reloc (A : RustAlloc) :
       exact sepConj_mono (hr1 b) (hr2 (b + 48#64))
     · rw [pointsToBytes_append, hl1]
       exact Entails.of_eq (by ac_rfl)
-
-theorem growOneDir_of_bytes {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {stk : Nat}
-    (hbs_ok : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr growOneDirName)
-      ((growOneDirBytesInnerSpec A).inImage img))
-    (hstk : 0x40 + finishGrowStackX ≤ stk) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr growOneDirName)
-      (growOneDirSpec A img stk) := by
-  refine subroutine_ok_outcome_intro fun ⟨v, cap, ptr, xs⟩ R s0 hpc hrun hpre hsp => ?_
-  change s0.mem ⊨ (⌜ImgCallInv img s0⌝ ∗
-    (⌜s0.readReg64 .x0 = v ∧ cap.toNat < 2 ^ 32⌝ ∗
-      vecAt A 48 8 (dirEntryAt A) v cap ptr xs ∗ stackAt s0.sp stk ∗ A.pool)) ∗ R at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, hpre⟩
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hcap32⟩, hmem⟩
-  dsimp only [vecAt, vecHeader, vecBuf] at hmem
-  have hmem_p : s0.mem ⊨
-      ⌜xs.length ≤ cap.toNat ∧ cap.toNat * 48 < 2 ^ 63 ∧ ptr ≠ 0#64⌝ ∗
-      ((v ↦₆₄ cap) ∗ ((v + 8#64) ↦₆₄ ptr) ∗
-        ((v + 16#64) ↦₆₄ BitVec.ofNat 64 xs.length) ∗
-        (if cap = 0#64 then emp
-         else A.live ptr (cap.toNat * 48) 8 ∗
-           arrayAt (dirEntryAt A) 48 ptr xs ∗
-           memRegion (ptr + BitVec.ofNat 64 (xs.length * 48))
-             ((cap.toNat - xs.length) * 48)) ∗
-        stackAt s0.sp stk ∗ A.pool ∗ R) := by
-    convert hmem using 1; ac_rfl
-  rw [satisfies_pure_sepConj] at hmem_p
-  rcases hmem_p with ⟨⟨hxs_le, _, hptr_ne⟩, hmem_s⟩
-  have hstk_hi : stk ≤ 2 ^ 64 := by
-    refine memRegion_bound_of_pointsTo64 (m := s0.mem) (b := s0.sp - BitVec.ofNat 64 stk) (a := v) (v := cap)
-      (R := ((v + 8#64) ↦₆₄ ptr) ∗ ((v + 16#64) ↦₆₄ BitVec.ofNat 64 xs.length) ∗
-        (if cap = 0#64 then emp
-         else A.live ptr (cap.toNat * 48) 8 ∗
-           arrayAt (dirEntryAt A) 48 ptr xs ∗
-           memRegion (ptr + BitVec.ofNat 64 (xs.length * 48))
-             ((cap.toNat - xs.length) * 48)) ∗
-        A.pool ∗ R) ?_
-    dsimp only [stackAt] at hmem_s
-    convert hmem_s using 1; ac_rfl
-  rw [stackAt_split_stk s0.sp hstk hstk_hi] at hmem_s
-  let stkRem := memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - cliGrowOneStack)
-  let newCap := max (2 * cap.toNat) 4
-  have hmax_eq : max (2 * cap.toNat) 4 = newCap := rfl
-  have hbound : newCap * 48 + 8 ≤ 2 ^ 63 := by dsimp [newCap]; omega
-  have hnew_toNat : (BitVec.ofNat 64 newCap).toNat = newCap := by
-    rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by dsimp [newCap]; omega)]
-  have hnew_ne : BitVec.ofNat 64 newCap ≠ 0 := by
-    intro heq
-    have ht := congrArg BitVec.toNat heq
-    rw [hnew_toNat] at ht
-    change newCap = 0 at ht
-    dsimp [newCap] at ht; omega
-  by_cases hcap0 : cap = 0#64
-  · subst hcap0
-    have hxs0 : xs = [] :=
-      List.eq_nil_of_length_eq_zero (by simpa using hxs_le)
-    subst hxs0
-    simp only [ite_true] at hmem_s
-    let F_extra := ((v + 16#64) ↦₆₄ BitVec.ofNat 64 0) ∗ stkRem
-    have hpre0 : s0.mem ⊨ (growOneDirBytesInnerSpec A).pre (v, 0#64, ptr, []) s0 ∗ (F_extra ∗ R) := by
-      simp only [growOneDirBytesInnerSpec, ite_true, emp_sepConj, sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨⟨hx0, Nat.zero_le _, hptr_ne, hbound⟩, ?_⟩
-      convert hmem_s using 1
-      dsimp [F_extra, stkRem]
-      ac_rfl
-    have hpre' := satisfies_inImage_pre hinv hpre0
-    refine hbs_ok.mono_outcome (v, 0#64, ptr, []) (F_extra ∗ R) s0 hpc hrun hpre' hsp ?_
-    rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩)
-    · refine Or.inl ⟨hret, hcc, ?_⟩
-      dsimp only [Spec.inImage, growOneDirBytesInnerSpec, growOneDirSpec] at hq ⊢
-      rw [sepConj_assoc, satisfies_pure_sepConj] at hq
-      rcases hq with ⟨htrace, hq⟩
-      simp only [sepExists_sepConj_left, satisfies_sepExists] at hq
-      rcases hq with ⟨p', hq⟩
-      rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hq
-      rcases hq with ⟨⟨hp', _⟩, hmemf⟩
-      rw [sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨htrace, ?_⟩
-      simp only [sepExists_sepConj_left, satisfies_sepExists]
-      refine ⟨p', ?_⟩
-      dsimp only [vecAt, vecHeader, vecBuf, List.length_nil]
-      rw [hmax_eq] at hmemf ⊢
-      simp only [hnew_ne, ite_false, hnew_toNat, Nat.sub_zero, Nat.zero_mul,
-        pointsToBytes_nil, emp_sepConj, BitVec.add_zero] at hmemf ⊢
-      have harray0 : arrayAt (dirEntryAt A) 48 p' [] = emp := rfl
-      rw [harray0, emp_sepConj]
-      have hpost_p : sf.mem ⊨
-          ⌜0 ≤ newCap ∧ newCap * 48 < 2 ^ 63 ∧ p' ≠ 0#64⌝ ∗
-          (((v ↦₆₄ BitVec.ofNat 64 newCap) ∗ ((v + 8#64) ↦₆₄ p') ∗
-            ((v + 16#64) ↦₆₄ BitVec.ofNat 64 0) ∗
-            (A.live p' (newCap * 48) 8 ∗ memRegion p' (newCap * 48)) ∗
-            (stkRem ∗ stackAt s0.sp cliGrowOneStack) ∗ A.pool) ∗ R) := by
-        rw [satisfies_pure_sepConj]
-        refine ⟨⟨Nat.zero_le _, by omega, hp'⟩, ?_⟩
-        convert hmemf using 1
-        dsimp [F_extra, stkRem]
-        ac_rfl
-      rw [← stackAt_split_stk s0.sp hstk hstk_hi] at hpost_p
-      convert hpost_p using 1; ac_rfl
-    · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
-      dsimp only [Spec.inImage, growOneDirBytesInnerSpec, growOneDirSpec] at hq ⊢
-      exact allowPanic_frame id (by rwa [sepConj_assoc])
-    · exact (allowPanic_not_exited hq).elim
-    · dsimp only [Spec.inImage] at hq
-      exact (not_satisfies_false_sepConj hq).elim
-  · simp only [hcap0, ite_false] at hmem_s
-    have hsplit : s0.mem ⊨
-        (∃∗ bs : List (BitVec 8), ∃∗ H : SepProp,
-          ⌜bs.length = xs.length * 48 ∧
-            ∀ b : BitVec 64, (b ↦ₛ bs) ∗ H ⊢ arrayAt (dirEntryAt A) 48 b xs⌝ ∗
-          (ptr ↦ₛ bs) ∗ H) ∗
-        ((v ↦₆₄ cap) ∗ ((v + 8#64) ↦₆₄ ptr) ∗
-          ((v + 16#64) ↦₆₄ BitVec.ofNat 64 xs.length) ∗
-          A.live ptr (cap.toNat * 48) 8 ∗
-          memRegion (ptr + BitVec.ofNat 64 (xs.length * 48))
-            ((cap.toNat - xs.length) * 48) ∗
-          (stkRem ∗ stackAt s0.sp cliGrowOneStack) ∗ A.pool ∗ R) := by
-      refine Satisfies.mono (sepConj_mono_left (arrayAt_dirEntry_reloc A xs ptr)) ?_
-      dsimp only [stkRem]
-      convert hmem_s using 1; ac_rfl
-    rw [sepExists_sepConj_left, satisfies_sepExists] at hsplit
-    rcases hsplit with ⟨bs, hsplit⟩
-    rw [sepExists_sepConj_left, satisfies_sepExists] at hsplit
-    rcases hsplit with ⟨H, hsplit⟩
-    rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hsplit
-    rcases hsplit with ⟨⟨hbs_len, hrec⟩, hsplit⟩
-    let F_extra := ((v + 16#64) ↦₆₄ BitVec.ofNat 64 xs.length) ∗ H ∗ stkRem
-    have hbs_le : bs.length ≤ cap.toNat * 48 := by rw [hbs_len]; omega
-    have hmr_old :
-        memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat * 48 - bs.length) =
-        memRegion (ptr + BitVec.ofNat 64 (xs.length * 48)) ((cap.toNat - xs.length) * 48) := by
-      rw [hbs_len, Nat.sub_mul]
-    have hpre0 : s0.mem ⊨ (growOneDirBytesInnerSpec A).pre (v, cap, ptr, bs) s0 ∗ (F_extra ∗ R) := by
-      simp only [growOneDirBytesInnerSpec, hcap0, ite_false, sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨⟨hx0, hbs_le, hptr_ne, hbound⟩, ?_⟩
-      rw [hmr_old]
-      convert hsplit using 1
-      dsimp [F_extra, stkRem]
-      ac_rfl
-    have hpre' := satisfies_inImage_pre hinv hpre0
-    refine hbs_ok.mono_outcome (v, cap, ptr, bs) (F_extra ∗ R) s0 hpc hrun hpre' hsp ?_
-    rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩)
-    · refine Or.inl ⟨hret, hcc, ?_⟩
-      dsimp only [Spec.inImage, growOneDirBytesInnerSpec, growOneDirSpec] at hq ⊢
-      rw [sepConj_assoc, satisfies_pure_sepConj] at hq
-      rcases hq with ⟨htrace, hq⟩
-      simp only [sepExists_sepConj_left, satisfies_sepExists] at hq
-      rcases hq with ⟨p', hq⟩
-      rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hq
-      rcases hq with ⟨⟨hp', _⟩, hmemf⟩
-      rw [sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨htrace, ?_⟩
-      simp only [sepExists_sepConj_left, satisfies_sepExists]
-      refine ⟨p', ?_⟩
-      dsimp only [vecAt, vecHeader, vecBuf]
-      rw [hmax_eq] at hmemf ⊢
-      simp only [hnew_ne, ite_false, hnew_toNat]
-      have hmr_new :
-          memRegion (p' + BitVec.ofNat 64 bs.length) (newCap * 48 - bs.length) =
-          memRegion (p' + BitVec.ofNat 64 (xs.length * 48)) ((newCap - xs.length) * 48) := by
-        rw [hbs_len, Nat.sub_mul]
-      have hreasm : sf.mem ⊨
-          arrayAt (dirEntryAt A) 48 p' xs ∗
-          (((v ↦₆₄ BitVec.ofNat 64 newCap) ∗ ((v + 8#64) ↦₆₄ p') ∗
-            ((v + 16#64) ↦₆₄ BitVec.ofNat 64 xs.length) ∗
-            A.live p' (newCap * 48) 8 ∗
-            memRegion (p' + BitVec.ofNat 64 (xs.length * 48)) ((newCap - xs.length) * 48) ∗
-            (stkRem ∗ stackAt s0.sp cliGrowOneStack) ∗ A.pool) ∗ R) := by
-        refine Satisfies.mono (sepConj_mono_left (hrec p')) ?_
-        rw [hmr_new] at hmemf
-        convert hmemf using 1
-        dsimp [F_extra, stkRem]
-        ac_rfl
-      rw [← stackAt_split_stk s0.sp hstk hstk_hi] at hreasm
-      have hpost_p : sf.mem ⊨
-          ⌜xs.length ≤ newCap ∧ newCap * 48 < 2 ^ 63 ∧ p' ≠ 0#64⌝ ∗
-          (((v ↦₆₄ BitVec.ofNat 64 newCap) ∗ ((v + 8#64) ↦₆₄ p') ∗
-            ((v + 16#64) ↦₆₄ BitVec.ofNat 64 xs.length) ∗
-            (A.live p' (newCap * 48) 8 ∗ arrayAt (dirEntryAt A) 48 p' xs ∗
-              memRegion (p' + BitVec.ofNat 64 (xs.length * 48)) ((newCap - xs.length) * 48)) ∗
-            stackAt s0.sp stk ∗ A.pool) ∗ R) := by
-        rw [satisfies_pure_sepConj]
-        refine ⟨⟨by dsimp [newCap]; omega, by omega, hp'⟩, ?_⟩
-        convert hreasm using 1; ac_rfl
-      convert hpost_p using 1; ac_rfl
-    · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
-      dsimp only [Spec.inImage, growOneDirBytesInnerSpec, growOneDirSpec] at hq ⊢
-      exact allowPanic_frame id (by rwa [sepConj_assoc])
-    · exact (allowPanic_not_exited hq).elim
-    · dsimp only [Spec.inImage] at hq
-      exact (not_satisfies_false_sepConj hq).elim
 
 end CryptoVerification.SignalSession.Cli.GrowOne.Helpers

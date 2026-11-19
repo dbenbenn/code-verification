@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHop
-public import Computational.Proofs.SignalPqxdh.Security.SigHop1Key
+public import Computational.Proofs.SignalPqxdh.Security.RoKemHop -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.SigHop1Key
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.Constructions.SampleableType.Measure
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeySigKem -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.SigHop1KeyA -- proof-setup: allow-public-import
 
 /-!
 # One-Key `KeyInd` Hop `G2 -> G3` (`KemShCr`) and Combined `G0 -> G3` Bound
@@ -22,7 +24,7 @@ one-key random-oracle handshake game `pqxdhKeyIndImpl1KeyRo`, and combines it wi
 `G0 → G2` bound to obtain `keyInd1Key_hop_G0_G3_le`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,12 +39,12 @@ namespace Proofs.SignalPqxdh.Security
 
 /-- One-key `KeyIndShCrState` oracle implementation delegating `.initPrin` to `pqxdhKeyIndImpl1KeyRo`
     and all other queries to `pqxdhKeyIndShCrImpl`. -/
-def pqxdhKeyInd1KeyShCrImpl (checkG2 : Bool) (S : Setup) (P : Primitives) :
+@[expose] def pqxdhKeyInd1KeyShCrImpl (checkG2 : Bool) (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndShCrState S) ProbComp)
   | .initPrin u => liftKeyIndShCrBase (pqxdhKeyIndImpl1KeyRo S P (.initPrin u))
   | q           => pqxdhKeyIndShCrImpl checkG2 S P q
 
-def pqxdhKeyInd1KeyShCrCachedImpl (checkG2 : Bool) (S : Setup) (P : Primitives) :
+@[expose] def pqxdhKeyInd1KeyShCrCachedImpl (checkG2 : Bool) (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndShCrState S) ProbComp)
   | .initPrin u => liftKeyIndShCrBase (pqxdhKeyIndImpl1KeyRo S P (.initPrin u))
   | q           => pqxdhKeyIndShCrCachedImpl checkG2 S P q
@@ -145,7 +147,7 @@ theorem pqxdhKeyInd1KeyShCrCachedImpl_false_commutes_cache (S : Setup) (P : Prim
 
 /-! ## Per-step `KemShCr` reduction obligations -/
 
-noncomputable def tryPauseKeyInd1KeyQuery (S : Setup) (P : Primitives)
+@[expose] def tryPauseKeyInd1KeyQuery (S : Setup) (P : Primitives)
     (sIdx : Nat) (gq : KeyIndQuery S)
     (cont : (keyIndSpec S).Range gq → OracleComp (unifSpec + keyIndSpec S) Bool)
     (hst : KeyIndShCrState S) : Option (PausedShCrKem S (KeyIndState S)) :=
@@ -162,13 +164,13 @@ noncomputable def tryPauseKeyInd1KeyQuery (S : Setup) (P : Primitives)
       (finishKeyIndBase S P (.sendNoOPK u i) bundle) sIdx cont hst
   | _, _ => none
 
-noncomputable def shcrChoosePkKeyInd1KeyAt (S : Setup) (P : Primitives)
+@[expose] def shcrChoosePkKeyInd1KeyAt (S : Setup) (P : Primitives)
     (bIdx sIdx : Nat) (A : KeyIndAdversary S) :
     Bytes → Bytes → ProbComp (Bytes × (Bytes → Bytes → ProbComp Bytes)) :=
   shcrChoosePkGenericAt P ($ᵗ Bool >>= fun secb => pure (KeyIndState.empty S secb))
     (pqxdhKeyInd1KeyShCrCachedImpl true S P) (tryPauseKeyInd1KeyQuery S P) bIdx sIdx A.run
 
-noncomputable def runKeyInd1KeyShCrSim (S : Setup) (P : Primitives)
+@[expose] def runKeyInd1KeyShCrSim (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ProbComp (Bool × Bool × KeyIndShCrState S) := do
   let secb ← $ᵗ Bool
   let initSt : KeyIndShCrState S := { base := KeyIndState.empty S secb }
@@ -177,7 +179,7 @@ noncomputable def runKeyInd1KeyShCrSim (S : Setup) (P : Primitives)
   let (b', finalHst) ← (simulateQ impl A.run).run initSt
   return (secb, b', finalHst)
 
-noncomputable def badKemShCrProbKeyInd1KeyAt (S : Setup) (P : Primitives)
+@[expose] noncomputable def badKemShCrProbKeyInd1KeyAt (S : Setup) (P : Primitives)
     (idx : Nat) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[runKeyInd1KeyShCrSim S P A >>= fun (_, _, finalHst) =>
     pure (hasBadKemShCrRecordsAt S P idx finalHst.initKemRecs finalHst.recvKemRecs)] {true}).toReal
@@ -576,19 +578,19 @@ theorem map_base_fullKeyInd1KeyShCrImpl_false (S : Setup) (P : Primitives)
   | inr kq =>
     exact map_base_pqxdhKeyInd1KeyShCrImpl_false S P kq hst
 
-noncomputable def badKemShCrProbKeyInd1Key (S : Setup) (P : Primitives)
+@[expose] noncomputable def badKemShCrProbKeyInd1Key (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ℝ :=
   (𝒟[runKeyInd1KeyShCrSim S P A >>= fun (_, _, finalHst) =>
     pure (hasBadKemShCrRecords S P finalHst.initKemRecs finalHst.recvKemRecs)] {true}).toReal
 
-noncomputable abbrev keyInd1KeyExpG2_5 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+abbrev keyInd1KeyExpG2_5 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool :=
   _root_.SignalPqxdh.Security.keyInd1KeyExpG2_1 S P A
 
 noncomputable abbrev keyInd1KeyAdvG2_5 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   _root_.SignalPqxdh.Security.keyInd1KeyAdvG2_1 S P A
 
-noncomputable def keyInd1KeyExpG2_5ShCr (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+def keyInd1KeyExpG2_5ShCr (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool := do
   let (secb, b', finalHst) ← runKeyInd1KeyShCrSim S P A
   let finalSt := finalHst.base
@@ -603,7 +605,7 @@ noncomputable def keyInd1KeyAdvG2_5ShCr (S : Setup) (P : Primitives) (A : KeyInd
   (𝒟[keyInd1KeyExpG2_5ShCr S P A].boolBias).toReal
 
 /-- One-key `G3` hybrid game adding `hasBadKemShCrRecords` to the `G2_5` abort condition. -/
-noncomputable def keyInd1KeyExpG3 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+@[expose] def keyInd1KeyExpG3 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool := do
   let (secb, b', finalHst) ← runKeyInd1KeyShCrSim S P A
   let finalSt := finalHst.base
@@ -615,7 +617,7 @@ noncomputable def keyInd1KeyExpG3 (S : Setup) (P : Primitives) (A : KeyIndAdvers
   else
     return (b' == secb)
 
-noncomputable def keyInd1KeyAdvG3 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
+@[expose] noncomputable def keyInd1KeyAdvG3 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[keyInd1KeyExpG3 S P A].boolBias).toReal
 
 theorem keyInd1Key_hop_badKemShCr_le_prob (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
@@ -766,7 +768,7 @@ theorem simulateQ_pqxdhKeyIndShCrPrimImpl1Key (embedTarget : Bool) (S : Setup) (
   | revealSpkSk u j =>
     exact simulateQ_pqxdhKeyIndShCrPrimImpl embedTarget S P hP (.revealSpkSk u j) hst hV
 
-noncomputable def PausedShCrData.toPaused1Key {S : Setup} (P : Primitives)
+@[expose] def PausedShCrData.toPaused1Key {S : Setup} (P : Primitives)
     (d : PausedShCrData S) : PausedShCrKem S (KeyIndState S) where
   bundle := d.bundle
   resume := fun ss kemCt =>
@@ -1017,7 +1019,7 @@ theorem simulateQ_resumePausedKeyInd1KeyPrim (S : Setup) (P : Primitives)
   rw [hRecy] at hRecz
   omega
 
-def shcrReductionKeyInd1KeyAt (S : Setup) (b : QueryBudget) (idx : ℕ)
+@[expose] def shcrReductionKeyInd1KeyAt (S : Setup) (b : QueryBudget) (idx : ℕ)
     (A : KeyIndAdversary S) : KemShCrAdv where
   State := ShCrFinishState S
   choosePk := choosePkKeyInd1KeyPrimAt S b (idx / S.N_send_tot) (idx % S.N_send_tot) A

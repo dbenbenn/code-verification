@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridgeAux
-public import Symbolic.Proofs.SR.SendSpecWPure
-public import Symbolic.Proofs.Hooks2.BridgeXPure
-public import Symbolic.Proofs.Refinement.RecordBytesBridge
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
+public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridgeAux -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SR.SendSpecWPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Hooks2.BridgeXPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhCorrectModelProofDefs
 
 /-!
@@ -25,7 +25,7 @@ equates `encodeRecordUnderExtras` with `recordBytes`, and bridges `PEParams` enc
 decryption primitives to `ExternInterpretation` via `ModelHookBridge`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -102,7 +102,7 @@ theorem recordCanonical_Q_of_wfPq {W : PEParams} {st : PqParty}
 
 /-- Converts a `Session HwBytes` (including any `pendingPreKey` and `pendingKyberPreKey` payloads)
 into a `DY.Libsignal.Rust.RecordRec` with `previous = []`. -/
-def sessionToRecordRecPending (s : Session HwBytes) : DY.Libsignal.Rust.RecordRec where
+@[expose] def sessionToRecordRecPending (s : Session HwBytes) : DY.Libsignal.Rust.RecordRec where
   current :=
     { Swarm.Phase0WholeFunctionBridge.sessionToSessionRec s with
       pendingPreKey := s.pendingPreKey.map fun p =>
@@ -360,7 +360,7 @@ structure ModelHookBridge (interp : ExternInterpretation) (W : PEParams) : Prop 
   spqrModel : pqxdhSpqrModel W = spqrModelOf interp
 
 /-- Pure `Spqr` record induced by `spqrModelOf interp`. -/
-def pureSpqrOf (interp : ExternInterpretation) : Spqr HwBytes HwBytes :=
+@[expose] def pureSpqrOf (interp : ExternInterpretation) : Spqr HwBytes HwBytes :=
   let M := spqrModelOf interp
   ⟨fun _ _ => [], M.send, M.recv, M.sendPanics, M.recvPanics⟩
 
@@ -425,7 +425,7 @@ theorem messageEncrypt_eq_messageEncryptW_of_bridge
     simp only [hsend, hpan]
 
 /-- Predicate characterizing when `tryDecryptWithState` draws fresh DH ratchet coins. -/
-def drawsCoins {PQ : Type} (C : Crypto) (st : SessionState PQ) (their : PublicKey) : Bool :=
+@[expose] def drawsCoins {PQ : Type} (C : Crypto) (st : SessionState PQ) (their : PublicKey) : Bool :=
   st.remoteIdentity.isSome &&
     match RatchetState.findReceiverChainKey
         ⟨st.rootKey, st.senderChain, st.receiverChains, st.previousCounter, maxForwardJumps⟩

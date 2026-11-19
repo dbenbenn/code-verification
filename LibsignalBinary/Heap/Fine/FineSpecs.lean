@@ -20,7 +20,7 @@ internal `__libc_malloc_impl` / `default_malloc` callback contracts, and placed 
 specifications (`malloc`, `free`, `calloc`, `realloc`, `aligned_alloc`, `posix_memalign`).
 -/
 
-@[expose] public noncomputable section
+@[expose] public section
 
 set_option autoImplicit false
 
@@ -45,14 +45,6 @@ def FineStepOomCond (svc : State → State) (stepBytes : Nat) (s0 sf : State) : 
       sz ≤ stepBytes ∧
       MallocngNoGapOrPhys sf sz)
 
-theorem FineStepOomCond.mono {svc : State → State} {b1 b2 : Nat} {s0 sf : State}
-    (hb : b1 ≤ b2) (h : FineStepOomCond svc b1 s0 sf) :
-    FineStepOomCond svc b2 s0 sf := by
-  obtain ⟨hfs, htr, hsig, hd, hgap⟩ := h
-  refine ⟨hfs, htr, hsig, MallocngMappedDelta.mono (Nat.le_refl 16) hb hd, fun hsan => ?_⟩
-  obtain ⟨sz, hlo, hmod, hhi, hng⟩ := hgap hsan
-  exact ⟨sz, hlo, hmod, Nat.le_trans hhi hb, hng⟩
-
 theorem fineStepOomCond_of_placed {svc : State → State}
     {maxIvs maxBytes stepBytes : Nat} {s0 sf : State}
     (hi : maxIvs ≤ 16) (hb : maxBytes ≤ stepBytes)
@@ -63,22 +55,15 @@ theorem fineStepOomCond_of_placed {svc : State → State}
   obtain ⟨sz, hlo, hmod, hhi, hng⟩ := hgap hsan
   exact ⟨sz, hlo, hmod, by omega, hng⟩
 
-theorem fineStepOomCond_of_oomCond {svc : State → State} {req peakCount stepBytes : Nat}
-    {s0 sf : State}
-    (hb : MallocngStepBound req peakCount ≤ stepBytes)
-    (h : MallocngOomCond svc req peakCount s0 sf) :
-    FineStepOomCond svc stepBytes s0 sf :=
-  FineStepOomCond.mono hb h
-
 /-- State-indexed `mallocng` environment over `FineHeapImpl`. -/
-noncomputable def FineEnv
+def FineEnv
     (γ : GhostName) (A : MallocngAddrs) (tp brkStart : BitVec 64)
     (b : FineBudget) (ivs : List (BitVec 64 × Nat)) (s : State) : SepProp :=
   ⌜s.tpidrEl0 = tp ∧ s.brkStart = brkStart⌝ ∗
     FineHeapImpl γ A tp brkStart s.brk b ivs
 
 /-- Post-call state-indexed `mallocng` environment over `FineHeapImpl`. -/
-noncomputable def FinePostEnv
+def FinePostEnv
     (γ : GhostName) (A : MallocngAddrs) (tp brkStart : BitVec 64)
     (bf : FineBudget) (ivs0 : List (BitVec 64 × Nat)) (s0 sf : State) : SepProp :=
   ∃∗ ivsf : List (BitVec 64 × Nat),
@@ -166,9 +151,9 @@ def MallocImplFineRawRel (base brkStart : BitVec 64)
 
 /-- Raw budget-uncommitted `__libc_malloc_impl(req)` (`blk09`, `704` B stack) contract over `FineEnv`:
     returns `st0, alignMap0, st', g', idx, bCoarse` satisfying `MallocImplFineRawRel` together with
-    `ghostMapAuth (fineAlignGam γ) alignMap0`, `MallocngCoreStA (fineBaseGam γ) ... st'`,
+    `ghostMapAuth (fineAlignGam γ) alignMap0`, `MallocngCoreStModeA true (fineBaseGam γ) ... st'`,
     `(p ↦ₛ bs)`, and `MallocngBlockToken (fineBaseGam γ) p req`. -/
-noncomputable def libcMallocImplFineRawSpec [MallocngMultiPlacement]
+def libcMallocImplFineRawSpec [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart : BitVec 64) (b : FineBudget)
     (ivs0 : List (BitVec 64 × Nat)) (req : Nat) : Spec Unit :=
   let ok := decide (req ≤ MallocngMaxAllocSize)
@@ -202,7 +187,7 @@ noncomputable def libcMallocImplFineRawSpec [MallocngMultiPlacement]
            (g'.isMmapped = true → bs = List.replicate req 0#8)⌝ ∗
           MallocngRoTablesA maddrs ∗
           ghostMapAuth (fineAlignGam γ) alignMap0 ∗
-          MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk
+          MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk
             bCoarse.liveCost bCoarse.peakCost st' ∗
           MallocngRuntime maddrs tp ∗
           (p ↦ₛ bs) ∗
@@ -222,7 +207,7 @@ def LibcMallocImplFineRawStmt : Prop :=
 
 /-- Committed `align = 16` (`FineBudget.stepAlloc req b`) contract for `__libc_malloc_impl` (`blk09`)
     and `default_malloc` (`blk04`), retaining the `st'` witness for `calloc`'s `isMmapped` fast path. -/
-noncomputable def libcMallocImplFineSpec [MallocngMultiPlacement]
+def libcMallocImplFineSpec [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart : BitVec 64) (b : FineBudget)
     (ivs0 : List (BitVec 64 × Nat)) (req : Nat) : Spec Unit :=
   let ok := decide (req ≤ MallocngMaxAllocSize)

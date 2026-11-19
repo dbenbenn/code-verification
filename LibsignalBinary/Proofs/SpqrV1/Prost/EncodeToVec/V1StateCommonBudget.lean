@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommon
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1StateBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1StateBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.SepLogic.WPp
 
@@ -25,7 +25,7 @@ specifications (`leafEncLen16Spec`, `leafEncLen48Spec`, `etvPoly{Encoder,Decoder
 specifications, and generic `Program` call wrappers at `s.sp = sp - 144#64`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -59,12 +59,12 @@ open CryptoVerification.SpqrV1.Prost.EncodeToVec
 /-! ## 1. `VmPreserved` 0-Allocation `encoded_len` Specs & Generic `{prog}` Call Wrappers -/
 
 /-- `VmPreserved`-strengthened 16-byte stack `encoded_len` specification (`0` allocations). -/
-def leafEncLen16Spec {G M : Type} (reprAt : G → BitVec 64 → M → SepProp)
+@[expose] def leafEncLen16Spec {G M : Type} (reprAt : G → BitVec 64 → M → SepProp)
     (encLen : M → Nat) : Spec (PinnedEncLenGhost G M) :=
   withVmPreserved (CryptoVerification.SpqrV1.Prost.EncodeToVec.leafEncLen16Spec reprAt encLen)
 
 /-- `VmPreserved`-strengthened 48-byte stack `encoded_len` specification (`0` allocations). -/
-def leafEncLen48Spec {G M : Type} (reprAt : G → BitVec 64 → M → SepProp)
+@[expose] def leafEncLen48Spec {G M : Type} (reprAt : G → BitVec 64 → M → SepProp)
     (encLen : M → Nat) : Spec (PinnedEncLenGhost G M) :=
   withVmPreserved (CryptoVerification.SpqrV1.Prost.EncodeToVec.leafEncLen48Spec reprAt encLen)
 
@@ -256,7 +256,7 @@ theorem step_etv_chunked_encLen48_call_prog {resStack : Nat} (hres : resStack + 
 
 /-- Exact-capacity 0-allocation (`VmPreserved`) contract for `encode<PolynomialEncoder>` at
 `s.sp = sp - 144#64` (no `A.pool` needed; callers pass `A.repAlloc` and frame `A.pool lim st`). -/
-def etvPolyEncoderExactSpecOf (resStack : Nat) (A : RustAlloc) :
+@[expose] def etvPolyEncoderExactSpecOf (resStack : Nat) (A : RustAlloc) :
     Spec EtvPolyEncoderGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.encA ∧
@@ -272,7 +272,7 @@ def etvPolyEncoderExactSpecOf (resStack : Nat) (A : RustAlloc) :
 
 /-- Exact-capacity 0-allocation (`VmPreserved`) contract for `encode<PolynomialDecoder>` at
 `s.sp = sp - 144#64` (no `A.pool` needed). -/
-def etvPolyDecoderExactSpecOf (resStack : Nat) (A : RustAlloc) :
+@[expose] def etvPolyDecoderExactSpecOf (resStack : Nat) (A : RustAlloc) :
     Spec EtvPolyDecoderGhost where
   pre := fun x s =>
     ⌜s.readReg32 .x0 = x.tag ∧
@@ -289,7 +289,7 @@ def etvPolyDecoderExactSpecOf (resStack : Nat) (A : RustAlloc) :
 
 /-- Exact-capacity 0-allocation (`VmPreserved`) contract for `encode<EkSentCt1Received>` at
 `s.sp = sp - 144#64` (no `A.pool` needed). -/
-def etvEkSentCt1ReceivedEncodeExactSpecOf (resStack : Nat) (A : RustAlloc) :
+@[expose] def etvEkSentCt1ReceivedEncodeExactSpecOf (resStack : Nat) (A : RustAlloc) :
     Spec (EtvUnchunkedMsgEncodeGhost Unchunked4PBGhost V1State.Unchunked.EkSentCt1Received) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.msgA ∧
@@ -307,7 +307,7 @@ def etvEkSentCt1ReceivedEncodeExactSpecOf (resStack : Nat) (A : RustAlloc) :
 
 /-- Exact-capacity 0-allocation (`VmPreserved`) contract for `encode<Ct1Sent>` at
 `s.sp = sp - 144#64` (no `A.pool` needed). -/
-def etvCt1SentEncodeExactSpecOf (resStack : Nat) (A : RustAlloc) :
+@[expose] def etvCt1SentEncodeExactSpecOf (resStack : Nat) (A : RustAlloc) :
     Spec (EtvUnchunkedMsgEncodeGhost Unchunked5PBGhost V1State.Unchunked.Ct1Sent) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.msgA ∧
@@ -324,7 +324,7 @@ def etvCt1SentEncodeExactSpecOf (resStack : Nat) (A : RustAlloc) :
       stackAt s0.sp (encodeToVecCalleeStackOf resStack)
 
 /-- General budget-threaded contract for `encode<EkSentCt1Received>` (`VecU8EncodeEnv`). -/
-def etvEkSentCt1ReceivedEncodeSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def etvEkSentCt1ReceivedEncodeSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EtvUnchunkedMsgEncodeGhost Unchunked4PBGhost V1State.Unchunked.EkSentCt1Received × M.σ) where
   pre := fun (x, st) s =>
@@ -351,7 +351,7 @@ def etvEkSentCt1ReceivedEncodeSpecOf (resStack : Nat) {M : AllocCostModel}
       stackAt s0.sp (encodeToVecCalleeStackOf resStack)
 
 /-- General budget-threaded contract for `encode<Ct1Sent>` (`VecU8EncodeEnv`). -/
-def etvCt1SentEncodeSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def etvCt1SentEncodeSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EtvUnchunkedMsgEncodeGhost Unchunked5PBGhost V1State.Unchunked.Ct1Sent × M.σ) where
   pre := fun (x, st) s =>

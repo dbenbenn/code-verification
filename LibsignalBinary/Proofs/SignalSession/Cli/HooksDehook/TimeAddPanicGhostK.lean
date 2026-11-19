@@ -10,7 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.TimeAddPanicGhost -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.Ghost617Transfer -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StripRunPanicExterns -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookOn
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<SystemTime as Add<Duration>>::add` `WithLsRet` / `WithAlloc` Suite & `W`-Independent `StepsVisitedIn` Replay (`HooksDehook.TimeAddPanicGhostK`)
@@ -134,18 +142,6 @@ theorem timeAddGhostHook_timeAddSpec_withAlloc_ok {lrOk : BitVec 64 → Prop}
   exact hookOk_withAlloc_of_withVmPreserved A lim
     (timeAddGhostHook_timeAddBudgetSpec_ok hpl hsvc_real hreal_no hpan_sub hpan_real hlr_ne_stub)
 
-theorem timeAddGhostHook_timeAddBudgetSpec_withAlloc_ok {lrOk : BitVec 64 → Prop}
-    (hlr_ne_stub : ∀ lr : BitVec 64, lrOk lr → lr ≠ timeAddExpectFailedStubPc timeMpl)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
-    HookOk (timeAddGhostHook lrOk keep P_real timeMpl externs)
-      (withLrGuard lrOk (withAlloc (M := M) A lim timeAddBudgetSpec)) := by
-  rw [withLrGuard_withAlloc]
-  change HookOk (timeAddGhostHook lrOk keep P_real timeMpl externs)
-    (withAlloc (M := M) A lim
-      (withVmPreserved (withLrGuard lrOk CryptoVerification.LibsignalPublicApi.timeAddSpec)))
-  exact hookOk_withAlloc_withVmPreserved A lim
-    (timeAddGhostHook_timeAddBudgetSpec_ok hpl hsvc_real hreal_no hpan_sub hpan_real hlr_ne_stub)
-
 section LsRetConsumerSuite
 
 variable [LibsignalPlacement]
@@ -153,149 +149,9 @@ variable (hlr_ne_stub : ∀ lr : BitVec 64, LsRetAddr624 lr → lr ≠ timeAddEx
 
 include hlr_ne_stub
 
-theorem timeAddGhostHookLsRet_master_ok :
-    HookOk (timeAddGhostHookLsRet keep P_real timeMpl externs)
-      (withLsRet (masterTimeAddSpec extHookStack)) :=
-  timeAddGhostHook_master_ok hpl hsvc_real hreal_no hpan_sub hpan_real hlr_ne_stub
-
-theorem timeAddGhostHookLsRet_timeAddSpec_keepsFs_ok :
-    HookOk (timeAddGhostHookLsRet keep P_real timeMpl externs)
-      (withLsRet (keepsFs CryptoVerification.LibsignalPublicApi.timeAddSpec)) :=
-  timeAddGhostHook_timeAddSpec_keepsFs_ok hpl hsvc_real hreal_no hpan_sub hpan_real hlr_ne_stub
-
-theorem timeAddGhostHookLsRet_timeAddSpec_ok :
-    HookOk (timeAddGhostHookLsRet keep P_real timeMpl externs)
-      (withLsRet CryptoVerification.LibsignalPublicApi.timeAddSpec) :=
-  timeAddGhostHook_timeAddSpec_ok hpl hsvc_real hreal_no hpan_sub hpan_real hlr_ne_stub
-
-theorem timeAddGhostHookLsRet_e2eTimeAddSpec_ok :
-    HookOk (timeAddGhostHookLsRet keep P_real timeMpl externs)
-      (withLsRet CryptoVerification.E2E.HooksE.timeAddSpec) :=
-  timeAddGhostHook_e2eTimeAddSpec_ok hpl hsvc_real hreal_no hpan_sub hpan_real hlr_ne_stub
-
-theorem timeAddGhostHookLsRet_timeAddBudgetSpec_ok :
-    HookOk (timeAddGhostHookLsRet keep P_real timeMpl externs)
-      (withLsRet timeAddBudgetSpec) :=
-  timeAddGhostHook_timeAddBudgetSpec_ok hpl hsvc_real hreal_no hpan_sub hpan_real hlr_ne_stub
-
-theorem timeAddGhostHookLsRet_timeAddBudgetSpec_keepsFs_ok :
-    HookOk (timeAddGhostHookLsRet keep P_real timeMpl externs)
-      (withLsRet (keepsFs timeAddBudgetSpec)) :=
-  timeAddGhostHook_timeAddBudgetSpec_keepsFs_ok hpl hsvc_real hreal_no hpan_sub hpan_real hlr_ne_stub
-
-theorem timeAddGhostHookLsRet_timeAddSpec_withAlloc_ok
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
-    HookOk (timeAddGhostHookLsRet keep P_real timeMpl externs)
-      (withLsRet (withAlloc (M := M) A lim CryptoVerification.LibsignalPublicApi.timeAddSpec)) :=
-  timeAddGhostHook_timeAddSpec_withAlloc_ok hpl hsvc_real hreal_no hpan_sub hpan_real hlr_ne_stub A lim
-
-theorem timeAddGhostHookLsRet_timeAddBudgetSpec_withAlloc_ok
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
-    HookOk (timeAddGhostHookLsRet keep P_real timeMpl externs)
-      (withLsRet (withAlloc (M := M) A lim timeAddBudgetSpec)) :=
-  timeAddGhostHook_timeAddBudgetSpec_withAlloc_ok
-    hpl hsvc_real hreal_no hpan_sub hpan_real hlr_ne_stub A lim
-
 end LsRetConsumerSuite
 
 end FixedRealSuite
-
-/-- Memory-guarded Arm-2 replay (`GhostExternReplaysOn` shape) for `timeAddGhostHook` via §3
-    `ghostExternReplaysOn_of_linkedCallHook_panicExterns`. -/
-theorem timeAddGhostHook_replaysOn
-    {InvMem : Memory → Prop} {lrOk : BitVec 64 → Prop} {keep : BitVec 64 → Bool}
-    {P_real : Program} {stubPc : BitVec 64} {timeMpl : MultiPlacement}
-    {externs : String → Option (State → State)}
-    (hpl : timeMultiLib.Placeable timeMpl)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hpan_sub : externs rustTimeExpectFailedSym = some Rust.panicked)
-    (hpan_real : P_real.externAt? (timeAddExpectFailedStubPc timeMpl) = some Rust.panicked)
-    (hlr_ne_stub : ∀ lr : BitVec 64, lrOk lr → lr ≠ timeAddExpectFailedStubPc timeMpl)
-    (hreal_stub_none : P_real.externAt? stubPc = none)
-    (hStub : StubReachesTargetOn InvMem P_real stubPc (timeMultiLib.fnAddr timeMpl timeAddSym))
-    (hInvLoaded : ∀ m : Memory, ExecFrozen m → InvMem m →
-      (timeAddBlk2Prog timeMpl externs).CodeLoaded (stripExecOutside keep m))
-    (hInvKf : ∀ m m' : Memory, InvMem m → m.KeepsFrozen m' → InvMem m') :
-    P_real.externAt? stubPc = none ∧
-    ∀ u : State, u.pc = stubPc → u.status = .Running →
-      (∀ msg, (timeAddGhostHook lrOk keep P_real timeMpl externs u).status ≠ .Exception msg) →
-      ExecFrozen u.mem → keep (u.readReg64 .lr) = false → InvMem u.mem →
-      Steps P_real u (timeAddGhostHook lrOk keep P_real timeMpl externs u) ∧
-      ExecFrozen (timeAddGhostHook lrOk keep P_real timeMpl externs u).mem ∧
-      InvMem (timeAddGhostHook lrOk keep P_real timeMpl externs u).mem :=
-  ghostExternReplaysOn_of_linkedCallHook_panicExterns
-    hsvc_real (timeAddBlk2Prog_svc timeMpl externs) hreal_no
-    (timeAddBlk2Prog_panicExterns hpan_sub hpan_real)
-    (fun _ _ s0 hpre pc e he => by
-      dsimp only [withLrGuard, withPreGuard] at hpre
-      rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-      exact timeAddBlk2Prog_hlr_ne (hlr_ne_stub (s0.readReg64 .lr) hpre.1) pc e he)
-    hreal_stub_none hStub hInvLoaded hInvKf
-    (timeAddBlk2Prog_withLrGuard_masterTimeAddSpec_ok lrOk hpl hpan_sub)
-    (specStripSInvariant_withLrGuard_masterTimeAdd keep lrOk extHookStack)
-    (specPreservesFsTrace_withLrGuard_masterTimeAdd lrOk extHookStack)
-    (withLrGuard_masterTimeAdd_pre_setPC lrOk extHookStack)
-    (withLrGuard_masterTimeAdd_outcome_setPC lrOk extHookStack)
-
-/-- Zero-`keep(u.lr)` Arm-2 replay for `timeAddGhostHook` deriving `keep (u.lr) = false` from `noException`. -/
-theorem timeAddGhostHook_replaysOn_of_lrKeep
-    {InvMem : Memory → Prop} {lrOk : BitVec 64 → Prop} {keep : BitVec 64 → Bool}
-    {P_real : Program} {stubPc : BitVec 64} {timeMpl : MultiPlacement}
-    {externs : String → Option (State → State)}
-    (hpl : timeMultiLib.Placeable timeMpl)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hpan_sub : externs rustTimeExpectFailedSym = some Rust.panicked)
-    (hpan_real : P_real.externAt? (timeAddExpectFailedStubPc timeMpl) = some Rust.panicked)
-    (hlr_keep : ∀ lr : BitVec 64, lrOk lr → keep lr = false)
-    (hlr_ne_stub : ∀ lr : BitVec 64, lrOk lr → lr ≠ timeAddExpectFailedStubPc timeMpl)
-    (hreal_stub_none : P_real.externAt? stubPc = none)
-    (hStub : StubReachesTargetOn InvMem P_real stubPc (timeMultiLib.fnAddr timeMpl timeAddSym))
-    (hInvLoaded : ∀ m : Memory, ExecFrozen m → InvMem m →
-      (timeAddBlk2Prog timeMpl externs).CodeLoaded (stripExecOutside keep m))
-    (hInvKf : ∀ m m' : Memory, InvMem m → m.KeepsFrozen m' → InvMem m') :
-    P_real.externAt? stubPc = none ∧
-    ∀ u : State, u.pc = stubPc → u.status = .Running →
-      (∀ msg, (timeAddGhostHook lrOk keep P_real timeMpl externs u).status ≠ .Exception msg) →
-      ExecFrozen u.mem → InvMem u.mem →
-      Steps P_real u (timeAddGhostHook lrOk keep P_real timeMpl externs u) ∧
-      ExecFrozen (timeAddGhostHook lrOk keep P_real timeMpl externs u).mem ∧
-      InvMem (timeAddGhostHook lrOk keep P_real timeMpl externs u).mem := by
-  have hbase := timeAddGhostHook_replaysOn
-    hpl hsvc_real hreal_no hpan_sub hpan_real hlr_ne_stub hreal_stub_none hStub hInvLoaded hInvKf
-  exact ⟨hbase.1, fun u hpc hrun hnoex hfr hinv =>
-    hbase.2 u hpc hrun hnoex hfr
-      (hlr_keep (u.readReg64 .lr) (timeAddGhostHook_lrOk_of_noException hnoex)) hinv⟩
-
-/-- `[LibsignalPlacement]` `LsRetAddr624` (`withLsRet`) specialization of
-    `timeAddGhostHook_replaysOn_of_lrKeep`. -/
-theorem timeAddGhostHookLsRet_replaysOn [LibsignalPlacement]
-    {InvMem : Memory → Prop} {keep : BitVec 64 → Bool}
-    {P_real : Program} {stubPc : BitVec 64} {timeMpl : MultiPlacement}
-    {externs : String → Option (State → State)}
-    (hpl : timeMultiLib.Placeable timeMpl)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hpan_sub : externs rustTimeExpectFailedSym = some Rust.panicked)
-    (hpan_real : P_real.externAt? (timeAddExpectFailedStubPc timeMpl) = some Rust.panicked)
-    (hlr_keep : ∀ lr : BitVec 64, LsRetAddr624 lr → keep lr = false)
-    (hlr_ne_stub : ∀ lr : BitVec 64, LsRetAddr624 lr → lr ≠ timeAddExpectFailedStubPc timeMpl)
-    (hreal_stub_none : P_real.externAt? stubPc = none)
-    (hStub : StubReachesTargetOn InvMem P_real stubPc (timeMultiLib.fnAddr timeMpl timeAddSym))
-    (hInvLoaded : ∀ m : Memory, ExecFrozen m → InvMem m →
-      (timeAddBlk2Prog timeMpl externs).CodeLoaded (stripExecOutside keep m))
-    (hInvKf : ∀ m m' : Memory, InvMem m → m.KeepsFrozen m' → InvMem m') :
-    P_real.externAt? stubPc = none ∧
-    ∀ u : State, u.pc = stubPc → u.status = .Running →
-      (∀ msg, (timeAddGhostHookLsRet keep P_real timeMpl externs u).status ≠ .Exception msg) →
-      ExecFrozen u.mem → InvMem u.mem →
-      Steps P_real u (timeAddGhostHookLsRet keep P_real timeMpl externs u) ∧
-      ExecFrozen (timeAddGhostHookLsRet keep P_real timeMpl externs u).mem ∧
-      InvMem (timeAddGhostHookLsRet keep P_real timeMpl externs u).mem :=
-  timeAddGhostHook_replaysOn_of_lrKeep
-    hpl hsvc_real hreal_no hpan_sub hpan_real hlr_keep hlr_ne_stub hreal_stub_none hStub
-    hInvLoaded hInvKf
 
 /-! ## 2. `W`-Independent `timeAddGhostHookExternOnly` & `WithLsRet` / `WithAlloc` `HookOk` Suite -/
 
@@ -372,26 +228,6 @@ theorem timeAddGhostHookExternOnly_vmPreserved {lrOk : BitVec 64 → Prop}
       exact timeAddBlk2Prog_externAt_none_of_keep hkeep_stub pc hk)
     hpan_sub (externOnly_timeAdd_hpan_real hpan_sub) hlr_ne_stub s0
 
-theorem timeAddGhostHookExternOnly_master_ok {lrOk : BitVec 64 → Prop}
-    (hlr_ne_stub : ∀ lr : BitVec 64, lrOk lr → lr ≠ timeAddExpectFailedStubPc timeMpl) :
-    HookOk (timeAddGhostHookExternOnly lrOk keep timeMpl externs)
-      (withLrGuard lrOk (masterTimeAddSpec extHookStack)) :=
-  timeAddGhostHook_master_ok hpl (externOnlyStdProg_svc _)
-    (fun pc hk => by
-      rw [externOnlyStdProg_externAt]
-      exact timeAddBlk2Prog_externAt_none_of_keep hkeep_stub pc hk)
-    hpan_sub (externOnly_timeAdd_hpan_real hpan_sub) hlr_ne_stub
-
-theorem timeAddGhostHookExternOnly_timeAddSpec_keepsFs_ok {lrOk : BitVec 64 → Prop}
-    (hlr_ne_stub : ∀ lr : BitVec 64, lrOk lr → lr ≠ timeAddExpectFailedStubPc timeMpl) :
-    HookOk (timeAddGhostHookExternOnly lrOk keep timeMpl externs)
-      (withLrGuard lrOk (keepsFs CryptoVerification.LibsignalPublicApi.timeAddSpec)) :=
-  timeAddGhostHook_timeAddSpec_keepsFs_ok hpl (externOnlyStdProg_svc _)
-    (fun pc hk => by
-      rw [externOnlyStdProg_externAt]
-      exact timeAddBlk2Prog_externAt_none_of_keep hkeep_stub pc hk)
-    hpan_sub (externOnly_timeAdd_hpan_real hpan_sub) hlr_ne_stub
-
 theorem timeAddGhostHookExternOnly_timeAddSpec_ok {lrOk : BitVec 64 → Prop}
     (hlr_ne_stub : ∀ lr : BitVec 64, lrOk lr → lr ≠ timeAddExpectFailedStubPc timeMpl) :
     HookOk (timeAddGhostHookExternOnly lrOk keep timeMpl externs)
@@ -422,16 +258,6 @@ theorem timeAddGhostHookExternOnly_timeAddBudgetSpec_ok {lrOk : BitVec 64 → Pr
       exact timeAddBlk2Prog_externAt_none_of_keep hkeep_stub pc hk)
     hpan_sub (externOnly_timeAdd_hpan_real hpan_sub) hlr_ne_stub
 
-theorem timeAddGhostHookExternOnly_timeAddBudgetSpec_keepsFs_ok {lrOk : BitVec 64 → Prop}
-    (hlr_ne_stub : ∀ lr : BitVec 64, lrOk lr → lr ≠ timeAddExpectFailedStubPc timeMpl) :
-    HookOk (timeAddGhostHookExternOnly lrOk keep timeMpl externs)
-      (withLrGuard lrOk (keepsFs timeAddBudgetSpec)) :=
-  timeAddGhostHook_timeAddBudgetSpec_keepsFs_ok hpl (externOnlyStdProg_svc _)
-    (fun pc hk => by
-      rw [externOnlyStdProg_externAt]
-      exact timeAddBlk2Prog_externAt_none_of_keep hkeep_stub pc hk)
-    hpan_sub (externOnly_timeAdd_hpan_real hpan_sub) hlr_ne_stub
-
 theorem timeAddGhostHookExternOnly_timeAddSpec_withAlloc_ok {lrOk : BitVec 64 → Prop}
     (hlr_ne_stub : ∀ lr : BitVec 64, lrOk lr → lr ≠ timeAddExpectFailedStubPc timeMpl)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
@@ -443,33 +269,12 @@ theorem timeAddGhostHookExternOnly_timeAddSpec_withAlloc_ok {lrOk : BitVec 64 �
       exact timeAddBlk2Prog_externAt_none_of_keep hkeep_stub pc hk)
     hpan_sub (externOnly_timeAdd_hpan_real hpan_sub) hlr_ne_stub A lim
 
-theorem timeAddGhostHookExternOnly_timeAddBudgetSpec_withAlloc_ok {lrOk : BitVec 64 → Prop}
-    (hlr_ne_stub : ∀ lr : BitVec 64, lrOk lr → lr ≠ timeAddExpectFailedStubPc timeMpl)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
-    HookOk (timeAddGhostHookExternOnly lrOk keep timeMpl externs)
-      (withLrGuard lrOk (withAlloc (M := M) A lim timeAddBudgetSpec)) :=
-  timeAddGhostHook_timeAddBudgetSpec_withAlloc_ok hpl (externOnlyStdProg_svc _)
-    (fun pc hk => by
-      rw [externOnlyStdProg_externAt]
-      exact timeAddBlk2Prog_externAt_none_of_keep hkeep_stub pc hk)
-    hpan_sub (externOnly_timeAdd_hpan_real hpan_sub) hlr_ne_stub A lim
-
 section ExternOnlyLsRetSuite
 
 variable [LibsignalPlacement]
 variable (hlr_ne_stub : ∀ lr : BitVec 64, LsRetAddr624 lr → lr ≠ timeAddExpectFailedStubPc timeMpl)
 
 include hlr_ne_stub
-
-theorem timeAddGhostHookExternOnlyLsRet_master_ok :
-    HookOk (timeAddGhostHookExternOnlyLsRet keep timeMpl externs)
-      (withLsRet (masterTimeAddSpec extHookStack)) :=
-  timeAddGhostHookExternOnly_master_ok hpl hkeep_stub hpan_sub hlr_ne_stub
-
-theorem timeAddGhostHookExternOnlyLsRet_timeAddSpec_keepsFs_ok :
-    HookOk (timeAddGhostHookExternOnlyLsRet keep timeMpl externs)
-      (withLsRet (keepsFs CryptoVerification.LibsignalPublicApi.timeAddSpec)) :=
-  timeAddGhostHookExternOnly_timeAddSpec_keepsFs_ok hpl hkeep_stub hpan_sub hlr_ne_stub
 
 theorem timeAddGhostHookExternOnlyLsRet_timeAddSpec_ok :
     HookOk (timeAddGhostHookExternOnlyLsRet keep timeMpl externs)
@@ -486,77 +291,17 @@ theorem timeAddGhostHookExternOnlyLsRet_timeAddBudgetSpec_ok :
       (withLsRet timeAddBudgetSpec) :=
   timeAddGhostHookExternOnly_timeAddBudgetSpec_ok hpl hkeep_stub hpan_sub hlr_ne_stub
 
-theorem timeAddGhostHookExternOnlyLsRet_timeAddBudgetSpec_keepsFs_ok :
-    HookOk (timeAddGhostHookExternOnlyLsRet keep timeMpl externs)
-      (withLsRet (keepsFs timeAddBudgetSpec)) :=
-  timeAddGhostHookExternOnly_timeAddBudgetSpec_keepsFs_ok hpl hkeep_stub hpan_sub hlr_ne_stub
-
 theorem timeAddGhostHookExternOnlyLsRet_timeAddSpec_withAlloc_ok
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     HookOk (timeAddGhostHookExternOnlyLsRet keep timeMpl externs)
       (withLsRet (withAlloc (M := M) A lim CryptoVerification.LibsignalPublicApi.timeAddSpec)) :=
   timeAddGhostHookExternOnly_timeAddSpec_withAlloc_ok hpl hkeep_stub hpan_sub hlr_ne_stub A lim
 
-theorem timeAddGhostHookExternOnlyLsRet_timeAddBudgetSpec_withAlloc_ok
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
-    HookOk (timeAddGhostHookExternOnlyLsRet keep timeMpl externs)
-      (withLsRet (withAlloc (M := M) A lim timeAddBudgetSpec)) :=
-  timeAddGhostHookExternOnly_timeAddBudgetSpec_withAlloc_ok
-    hpl hkeep_stub hpan_sub hlr_ne_stub A lim
-
 end ExternOnlyLsRetSuite
 
 end ExternOnlyHookOkSuite
 
 /-! ## 3. Stock-Safe `StepsVisitedIn` Replays of `timeAddGhostHookExternOnly` onto `P_real` -/
-
-/-- Stock-safe `StepsVisitedIn` replay of `timeAddGhostHookExternOnly` onto an arbitrary linked
-    program `P_real` (fixing `f` before `∀ W`; `hStub` runs directly on `P_real`, never on the
-    `code := []` carrier `externOnlyStdProg`). -/
-theorem timeAddGhostHookExternOnly_replaysOn
-    {InvMem : Memory → Prop} {lrOk : BitVec 64 → Prop} {keep : BitVec 64 → Bool}
-    {P_real : Program} {stubPc : BitVec 64} {timeMpl : MultiPlacement}
-    {externs : String → Option (State → State)}
-    (hpl : timeMultiLib.Placeable timeMpl)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hpan_sub : externs rustTimeExpectFailedSym = some Rust.panicked)
-    (hpan_real : P_real.externAt? (timeAddExpectFailedStubPc timeMpl) = some Rust.panicked)
-    (hlr_ne_stub : ∀ lr : BitVec 64, lrOk lr → lr ≠ timeAddExpectFailedStubPc timeMpl)
-    (hreal_stub_none : P_real.externAt? stubPc = none)
-    (hStub : StubReachesTargetOn InvMem P_real stubPc (timeMultiLib.fnAddr timeMpl timeAddSym))
-    (hInvLoaded : ∀ m : Memory, ExecFrozen m → InvMem m →
-      (timeAddBlk2Prog timeMpl externs).CodeLoaded (stripExecOutside keep m))
-    (hInvKf : ∀ m m' : Memory, InvMem m → m.KeepsFrozen m' → InvMem m') :
-    P_real.externAt? stubPc = none ∧
-    ∀ u : State, u.pc = stubPc → u.status = .Running →
-      (∀ msg, (timeAddGhostHookExternOnly lrOk keep timeMpl externs u).status ≠ .Exception msg) →
-      ExecFrozen u.mem → keep (u.readReg64 .lr) = false → InvMem u.mem →
-      Steps P_real u (timeAddGhostHookExternOnly lrOk keep timeMpl externs u) ∧
-      ExecFrozen (timeAddGhostHookExternOnly lrOk keep timeMpl externs u).mem ∧
-      InvMem (timeAddGhostHookExternOnly lrOk keep timeMpl externs u).mem ∧
-      (timeAddGhostHookExternOnly lrOk keep timeMpl externs u).fs = u.fs := by
-  have hkeep_stub : keep (timeAddExpectFailedStubPc timeMpl) = false := by
-    cases hk : keep (timeAddExpectFailedStubPc timeMpl)
-    · rfl
-    · have hnone := hreal_no _ hk
-      rw [hpan_real] at hnone
-      cases hnone
-  exact ghostExternReplaysOn_externOnly_visitedIn_panicExterns
-    hsvc_real (timeAddBlk2Prog_svc timeMpl externs)
-    (timeAddBlk2Prog_externAt_none_of_keep hkeep_stub)
-    hreal_no
-    (timeAddBlk2Prog_panicExterns hpan_sub hpan_real)
-    hreal_stub_none hStub hInvLoaded hInvKf
-    (timeAddBlk2Prog_withLrGuard_masterTimeAddSpec_ok lrOk hpl hpan_sub)
-    (specStripSInvariant_withLrGuard_masterTimeAdd keep lrOk extHookStack)
-    (specPreservesFsTrace_withLrGuard_masterTimeAdd lrOk extHookStack)
-    (withLrGuard_masterTimeAdd_pre_setPC lrOk extHookStack)
-    (withLrGuard_masterTimeAdd_outcome_setPC lrOk extHookStack)
-    (fun u _ _ hnoex _ _ _ pc e he =>
-      timeAddBlk2Prog_hlr_ne
-        (hlr_ne_stub (u.readReg64 .lr) (timeAddGhostHookExternOnly_lrOk_of_noException hnoex))
-        pc e he)
 
 /-- Zero-`keep(u.lr)` `StepsVisitedIn` replay of `timeAddGhostHookExternOnly` onto `P_real`,
     discharging `keep (u.readReg64 .lr) = false` via `hlr_keep` + `noException`. -/
@@ -636,39 +381,5 @@ theorem timeAddGhostHookExternOnlyLsRet_replaysOn [LibsignalPlacement]
   timeAddGhostHookExternOnly_replaysOn_of_lrKeep
     hpl hsvc_real hreal_no hpan_sub hpan_real hlr_keep hlr_ne_stub hreal_stub_none hStub
     hInvLoaded hInvKf
-
-/-- Single-stub `GhostExternReplaysS keep_any (fun u => InvMem u.mem) P_ghost P_real` packager
-    (polymorphic in outer `keep_any`) for `timeAddGhostHookExternOnlyLsRet`. -/
-theorem timeAddGhostHookExternOnlyLsRet_replaysS [LibsignalPlacement]
-    (keep_any : BitVec 64 → Bool)
-    {InvMem : Memory → Prop} {keep : BitVec 64 → Bool}
-    {P_ghost P_real : Program} {stubPc : BitVec 64} {timeMpl : MultiPlacement}
-    {externs : String → Option (State → State)}
-    (hghost_stub : P_ghost.externAt? stubPc =
-      some (timeAddGhostHookExternOnlyLsRet keep timeMpl externs))
-    (hother : ∀ pc, pc ≠ stubPc → P_ghost.externAt? pc = P_real.externAt? pc)
-    (hreal_fr : ∀ pc f, P_real.externAt? pc = some f →
-      ∀ u : State, u.status = .Running → ExecFrozen u.mem → ExecFrozen (f u).mem)
-    (hpl : timeMultiLib.Placeable timeMpl)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hpan_sub : externs rustTimeExpectFailedSym = some Rust.panicked)
-    (hpan_real : P_real.externAt? (timeAddExpectFailedStubPc timeMpl) = some Rust.panicked)
-    (hlr_keep : ∀ lr : BitVec 64, LsRetAddr624 lr → keep lr = false)
-    (hlr_ne_stub : ∀ lr : BitVec 64, LsRetAddr624 lr → lr ≠ timeAddExpectFailedStubPc timeMpl)
-    (hreal_stub_none : P_real.externAt? stubPc = none)
-    (hStub : StubReachesTargetOn InvMem P_real stubPc (timeMultiLib.fnAddr timeMpl timeAddSym))
-    (hInvLoaded : ∀ m : Memory, ExecFrozen m → InvMem m →
-      (timeAddBlk2Prog timeMpl externs).CodeLoaded (stripExecOutside keep m))
-    (hInvKf : ∀ m m' : Memory, InvMem m → m.KeepsFrozen m' → InvMem m') :
-    GhostExternReplaysS keep_any (fun u => InvMem u.mem) P_ghost P_real := by
-  have hRep := timeAddGhostHookExternOnlyLsRet_replaysOn
-    hpl hsvc_real hreal_no hpan_sub hpan_real hlr_keep hlr_ne_stub hreal_stub_none hStub
-    hInvLoaded hInvKf
-  exact ghostExternReplaysS_of_single_stub hghost_stub hother
-    (fun pc f hr u hrun hkf hfr hinv => ⟨hreal_fr pc f hr u hrun hfr, hInvKf u.mem _ hinv hkf⟩)
-    ⟨hRep.1, fun u hpc hrun hnoex hfr _ hinv =>
-      let ⟨hs, hfr', hinv', _⟩ := hRep.2 u hpc hrun hnoex hfr hinv
-      ⟨hs, hfr', hinv'⟩⟩
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.TimeAddPanicGhostK

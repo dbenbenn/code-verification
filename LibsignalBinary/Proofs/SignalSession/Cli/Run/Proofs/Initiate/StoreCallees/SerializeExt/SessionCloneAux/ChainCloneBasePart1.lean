@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.SerializeExt.SessionCloneAux.ChainCloneFetch
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.SerializeExt.SessionCloneAux.ChainCloneFetch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.SerializeExt.Defs
 public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.Defs
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +38,7 @@ set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
-def protoChainAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 64) : SepProp :=
+@[expose] def protoChainAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 64) : SepProp :=
   ⌜PublicKey.deserialize gc.1.srk.bytes = .ok gc.2.senderRatchetKey ∧
     gc.2.messageKeys.length ≤ maxMessageKeys ∧
     gc.1.keys.length = gc.2.messageKeys.length⌝ ∗
@@ -47,7 +48,7 @@ def protoChainAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 
     (gc.1.keys.zip gc.2.messageKeys) ∗
   optChainKeyAt A gc.1.ck gc.2.chainKey (a + 72#64)
 
-def protoChainCloneSpec (A : RustAlloc) : Spec ChainCloneGhost where
+@[expose] def protoChainCloneSpec (A : RustAlloc) : Spec ChainCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src⌝ ∗
       memRegion x.dst 104 ∗ protoChainAt A x.gc x.src ∗ A.pool ∗ stackAt s.sp chainCloneStackX
@@ -60,11 +61,7 @@ def protoChainCloneSpec (A : RustAlloc) : Spec ChainCloneGhost where
       protoChainAt A x.gc x.src ∗ A.pool ∗ stackAt s0.sp chainCloneStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def ProtoChainCloneLocal1Ok (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext) ((tripleRatchetProgAtExt img.base ext).fnAddr chainCloneLocal1Name)
-    ((protoChainCloneSpec A).inImage img)
-
-def chainCloneSpecX (A : RustAlloc) : Spec ChainCloneGhost where
+@[expose] def chainCloneSpecX (A : RustAlloc) : Spec ChainCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src⌝ ∗
       memRegion x.dst 104 ∗ chainAt A x.gc x.src ∗ A.pool ∗ stackAt s.sp chainCloneStackX
@@ -77,7 +74,7 @@ def chainCloneSpecX (A : RustAlloc) : Spec ChainCloneGhost where
       chainAt A x.gc x.src ∗ A.pool ∗ stackAt s0.sp chainCloneStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def senderChainCloneSpecX (A : RustAlloc) : Spec SenderChainCloneGhost where
+@[expose] def senderChainCloneSpecX (A : RustAlloc) : Spec SenderChainCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src⌝ ∗
       memRegion x.dst 104 ∗ optSenderChainAt A x.src (some x.g) (some x.sc) ∗
@@ -90,16 +87,6 @@ def senderChainCloneSpecX (A : RustAlloc) : Spec SenderChainCloneGhost where
       optSenderChainAt A x.src (some x.g) (some x.sc) ∗
       A.pool ∗ stackAt s0.sp chainCloneStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-def ChainCloneLocal1Ok (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext) ((tripleRatchetProgAtExt img.base ext).fnAddr chainCloneLocal1Name)
-    ((chainCloneSpecX A).inImage img)
-
-def SenderChainCloneLocal1Ok (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext) ((tripleRatchetProgAtExt img.base ext).fnAddr chainCloneLocal1Name)
-    ((senderChainCloneSpecX A).inImage img)
-
-/-! ## Stack Frame Decomposition and Address Normalization for `Chain::clone [local#1]` -/
 
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
@@ -440,7 +427,7 @@ theorem vecU8Buf_pos_eq (A : RustAlloc) (ptr' : BitVec 64) (bs : List (BitVec 8)
 
 /-- Invariant for the cloned `Option<chain::ChainKey>` buffer in registers `(x25, x28, w27)`
 before it is written to the destination `Chain` at offset `+72`. -/
-def clonedOptChainKeyBuf (A : RustAlloc) (ckPin' : VecPin)
+@[expose] def clonedOptChainKeyBuf (A : RustAlloc) (ckPin' : VecPin)
     (x25 x28 : BitVec 64) (w27 : BitVec 32) : Option ChainKey → SepProp
   | none => ⌜x25 = optChainKeyNone⌝
   | some ck =>
@@ -515,7 +502,7 @@ theorem fold_optChainKeyAt (A : RustAlloc) (ckPin' : VecPin)
     exact Entails.refl _
 
 /-- Untouched parts of a source `chain::MessageKey` at `a` during the `MessageKey` clone loop. -/
-def messageKeySourceFrame (A : RustAlloc) (gk : MessageKeyGhost)
+@[expose] def messageKeySourceFrame (A : RustAlloc) (gk : MessageKeyGhost)
     (mkg : MessageKeyGenerator) (a : BitVec 64) : SepProp :=
   (a ↦₆₄ gk.cipher.cap) ∗ ((a + 8#64) ↦₆₄ gk.cipher.ptr) ∗ vecU8Buf A gk.cipher.cap gk.cipher.ptr [] ∗
   ((a + 24#64) ↦₆₄ gk.mac.cap) ∗ ((a + 32#64) ↦₆₄ gk.mac.ptr) ∗ vecU8Buf A gk.mac.cap gk.mac.ptr [] ∗

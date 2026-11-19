@@ -10,25 +10,38 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Auth.FromPbBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6dPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6fPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Auth.FromPbBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6dPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6fPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6a
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6a -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6b
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6c
-import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6d
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6d -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6e
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6f
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1Placed
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6aPlaced
 
 /-!
 # Auxiliary Exit and Staging Lemmas for `Variant6fPlacedBudget`
@@ -38,7 +51,7 @@ Defines `V6hrAuthCloneEnv` and lifts the Variant 6 (`HeaderReceived`, Block `333
 (`+10000 -> ret`) to `VmPreserved` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -107,7 +120,7 @@ attribute [local simp, local arm64_norm, local wp_norm]
 /-- Exact allocator event envelope of Variant 6's `ProtoAuthenticator` buffer clone + input cleanup
     phase (`+3760 -> +9936`): clones `rootKey` then `macKey`, followed by `FreeOnlyEvs` cleanup of
     the input `ProtoAuthenticator` buffers. -/
-def V6hrAuthCloneEnv (rootKey macKey : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def V6hrAuthCloneEnv (rootKey macKey : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   ∃ evs_free : List AllocEvent,
     FreeOnlyEvs evs_free ∧
     evs = authKeyCloneEvents rootKey ++ authKeyCloneEvents macKey ++ evs_free

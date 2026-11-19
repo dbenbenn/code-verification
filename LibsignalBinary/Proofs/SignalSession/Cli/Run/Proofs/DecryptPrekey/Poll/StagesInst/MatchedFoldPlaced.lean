@@ -9,11 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedFold
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedPrePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedFold
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedPrePlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymE
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable `[LibsignalPlacement]` Poll Path B Stage P2 Exit Fold
@@ -22,7 +30,7 @@ Defines `stageP2MatchedMismatchPostPlaced` and proves `matched_mismatch_fold_pla
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -61,7 +69,7 @@ set_option linter.unusedSimpArgs false
 
 /-- Placed spatial postcondition at `s0.readReg64.x30` on the remote-identity mismatch exit
 (`sess.state.remoteIdentity ≠ some remIdKey`) of `stageP2_matched_ok_framed_placed`. -/
-def stageP2MatchedMismatchPostPlaced (A : RustAlloc) [LibsignalPlacement]
+@[expose] def stageP2MatchedMismatchPostPlaced (A : RustAlloc) [LibsignalPlacement]
     (s0 : State)
     (sp coroPtr outPtr msgPtr remoteAddrPtr localAddrPtr
       idStorePtr idStoreVt preKeyStorePtr preKeyStoreVt

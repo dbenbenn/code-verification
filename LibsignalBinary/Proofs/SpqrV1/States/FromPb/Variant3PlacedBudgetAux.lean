@@ -9,17 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3bPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3cPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3dPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.FromPbBaseBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3Placed
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3bPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3cPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3dPlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.FromPbBaseBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3
@@ -29,6 +29,15 @@ import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeBase
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3bPlaced
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Variant 3 (`Ct1Received`) Envelopes and `+860` Continuation
@@ -37,7 +46,7 @@ Pure Block-`333` segment lifts (`+692`, `+784`, `+860`), allocator event envelop
 post-`<EkSentCt1Received>::from_pb` continuation (`+860 -> ret`) under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -577,7 +586,7 @@ theorem v3cr_post_uc_860_ok_some_placed_budget [LibsignalPlacement]
 
 /-- Exact allocation-prefix envelope for Variant 3 (`InnerState.ct1Received`, `+692`) of
     `<spqr::v1::chunked::states::States>::from_pb`. -/
-def Ct1ReceivedFromPbAllocEnv (F : ShaCompress)
+@[expose] def Ct1ReceivedFromPbAllocEnv (F : ShaCompress)
     (s : CryptoVerification.LibsignalSpqrV1.V1State.Chunked.Ct1Received) (evs : List AllocEvent) : Prop :=
   match s.uc with
   | none => evs = []
@@ -597,7 +606,7 @@ def Ct1ReceivedFromPbAllocEnv (F : ShaCompress)
 
 /-- Complete allocator event envelope for Variant 3 (`InnerState.ct1Received`, `+692`) of
     `<spqr::v1::chunked::states::States>::from_pb`, including `FreeOnlyEvs` drops. -/
-def Ct1ReceivedFromPbEnv (F : ShaCompress)
+@[expose] def Ct1ReceivedFromPbEnv (F : ShaCompress)
     (s : CryptoVerification.LibsignalSpqrV1.V1State.Chunked.Ct1Received) (evs : List AllocEvent) : Prop :=
   match s.uc with
   | none => FreeOnlyEvs evs
@@ -616,7 +625,7 @@ def Ct1ReceivedFromPbEnv (F : ShaCompress)
           evs = ekSentCt1ReceivedFromPbAllocEvents F u ++ evs_uf ++ evs_enc
 
 /-- Tail `FitsEnv` precondition at `+860` after `<EkSentCt1Received>::from_pb` returns. -/
-def Ct1ReceivedTailFits (M : AllocCostModel) (lim : BudgetLimits) (st : M.σ)
+@[expose] def Ct1ReceivedTailFits (M : AllocCostModel) (lim : BudgetLimits) (st : M.σ)
     (F : ShaCompress) (u : CryptoVerification.LibsignalSpqrV1.V1State.Unchunked.EkSentCt1Received)
     (optEnc : Option PolynomialEncoder) : Prop :=
   match ekSentCt1ReceivedFromPb (spqrAuthApi F) u with
@@ -627,7 +636,7 @@ def Ct1ReceivedTailFits (M : AllocCostModel) (lim : BudgetLimits) (st : M.σ)
     | some pbEnc => FitsEnv M lim st (EncoderFromPbAllocEnv (pbToProtoPolyEncoder pbEnc))
 
 /-- Tail postcondition envelope from `+860` to `s0.x30`. -/
-def Ct1ReceivedTailEnv (F : ShaCompress) (u : CryptoVerification.LibsignalSpqrV1.V1State.Unchunked.EkSentCt1Received)
+@[expose] def Ct1ReceivedTailEnv (F : ShaCompress) (u : CryptoVerification.LibsignalSpqrV1.V1State.Unchunked.EkSentCt1Received)
     (optEnc : Option PolynomialEncoder) (evs : List AllocEvent) : Prop :=
   match ekSentCt1ReceivedFromPb (spqrAuthApi F) u with
   | .error _ => FreeOnlyEvs evs

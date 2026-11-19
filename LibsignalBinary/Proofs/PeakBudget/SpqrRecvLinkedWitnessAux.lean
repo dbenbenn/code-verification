@@ -9,8 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedEnv
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.FinalPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedEnv -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.FinalPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.FinalPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightSpec
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet4PlacedBudget
 
 /-!
 # Branch-Budget and Linked-Envelope Closure Helpers for `spqr::recv`
@@ -20,7 +25,7 @@ Discharges the 27 branch budget (`FitsEnv`) and envelope-closure obligations of
 `SpqrRecvTightLinkedEnv`, together with codec and `<States>::recv` specializations.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -70,6 +75,7 @@ open LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget (InitInnerEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.FinalPlacedBudget
   (SpqrRecvBranchHyps fitsEnv_step_of_extend fitsEnv_step_of_prefix)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet4PlacedBudgetAux (v1ChainAfterKeyEvents)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (MsgDeserErrEnv)
 
 /-! ## Default Ghost Witnesses and `v1ChainAfterKey` Helpers -/
 
@@ -480,6 +486,26 @@ theorem spqrRecvBranchHyps_tightLinked {MC : AllocCostModel}
     refine seqEnv_assoc (hDecPost evs_dec hpost_dec) (Or.inr ⟨hdec, Or.inl ⟨hvn, rfl, Or.inr ?_⟩⟩)
     refine seqEnv_assoc hinit_env ?_
     exact seqEnv_assoc hcf_env (Or.inr ⟨hcf, SeqEnv.append hinto_env hd⟩)
+  v1_fit_md := by
+    intro _pre pre_pb pb evs_dec _err _hpre hdec hinner _heq _hmin _hmd_err hpost_dec
+    obtain ⟨xAdd, xRk, hLink⟩ := exists_ghosts_spqrRecvGhostLink F K st.bytes defaultMessage
+    refine fitsEnv_step_of_prefix
+      (hfit pre_pb default pb (defaultStates F) defaultMessage (defaultV1Recv F)
+        defaultInitInnerGhost defaultChainNewGhost xAdd xRk (defaultStatesIntoPbGhost F)
+        defaultChainIntoPbCall) ?_
+    intro evs_md hmde
+    refine ⟨Or.inr ?_, hLink⟩
+    refine seqEnv_assoc (hDecPost evs_dec hpost_dec) (Or.inr ⟨hdec, Or.inr (Or.inr ⟨hinner, ?_⟩)⟩)
+    exact Or.inl (seqEnv_assoc hmde FreeOnlyEvs.nil)
+  v1_env_md_err := by
+    intro _pre pre_pb pb evs_dec evs_md evs_d _err
+      _hpre hdec hinner _heq _hmin _hmd_err hpost_dec hmde hd
+    obtain ⟨xAdd, xRk, hLink⟩ := exists_ghosts_spqrRecvGhostLink F K st.bytes defaultMessage
+    refine hEnv pre_pb default pb (defaultStates F) defaultMessage (defaultV1Recv F)
+      defaultInitInnerGhost defaultChainNewGhost xAdd xRk (defaultStatesIntoPbGhost F)
+      defaultChainIntoPbCall _ ⟨Or.inr ?_, hLink⟩
+    refine seqEnv_assoc (hDecPost evs_dec hpost_dec) (Or.inr ⟨hdec, Or.inr (Or.inr ⟨hinner, ?_⟩)⟩)
+    exact Or.inl (SeqEnv.append hmde hd)
   v1_fit_fpb := by
     intro _pre pre_pb pb evs_dec evs_md _hpre hdec hinner _heq _hmin hpost_dec hmd
     obtain ⟨xAdd, xRk, hLink⟩ := exists_ghosts_spqrRecvGhostLink F K st.bytes defaultMessage
@@ -490,7 +516,7 @@ theorem spqrRecvBranchHyps_tightLinked {MC : AllocCostModel}
     intro evs_fpb hfpb
     refine ⟨Or.inr ?_, hLink⟩
     refine seqEnv_assoc (hDecPost evs_dec hpost_dec) (Or.inr ⟨hdec, Or.inr (Or.inr ⟨hinner, ?_⟩)⟩)
-    exact SeqEnv.append hmd (Or.inr (seqEnv_assoc (hFromPb pb evs_fpb hfpb) (Or.inl FreeOnlyEvs.nil)))
+    exact Or.inr (SeqEnv.append hmd (Or.inr (seqEnv_assoc (hFromPb pb evs_fpb hfpb) (Or.inl FreeOnlyEvs.nil))))
   v1_env_fpb_err := by
     intro _pre pre_pb pb evs_dec evs_md evs_fpb evs_d
       _hpre hdec hinner _heq _hmin hpost_dec hmd hfpb hd
@@ -499,7 +525,7 @@ theorem spqrRecvBranchHyps_tightLinked {MC : AllocCostModel}
       defaultInitInnerGhost defaultChainNewGhost xAdd xRk (defaultStatesIntoPbGhost F)
       defaultChainIntoPbCall _ ⟨Or.inr ?_, hLink⟩
     refine seqEnv_assoc (hDecPost evs_dec hpost_dec) (Or.inr ⟨hdec, Or.inr (Or.inr ⟨hinner, ?_⟩)⟩)
-    exact seqEnv_assoc hmd (Or.inr (SeqEnv.append (hFromPb pb evs_fpb hfpb) (Or.inl hd)))
+    exact Or.inr (seqEnv_assoc hmd (Or.inr (SeqEnv.append (hFromPb pb evs_fpb hfpb) (Or.inl hd))))
   v1_fit_rcv := by
     intro _pre pre_pb pb sckaMsg st0 evs_dec evs_md evs_fpb
       _hpre hdec hinner _heq _hmin _hmsg hfrom hpost_dec hmd hfpb
@@ -511,7 +537,7 @@ theorem spqrRecvBranchHyps_tightLinked {MC : AllocCostModel}
     intro evs_rcv hrcv
     refine ⟨Or.inr ?_, hLink⟩
     refine seqEnv_assoc (hDecPost evs_dec hpost_dec) (Or.inr ⟨hdec, Or.inr (Or.inr ⟨hinner, ?_⟩)⟩)
-    refine seqEnv_assoc hmd (Or.inr ?_)
+    refine Or.inr (seqEnv_assoc hmd (Or.inr ?_))
     exact SeqEnv.append (hFromPb pb evs_fpb hfpb)
       (Or.inr ⟨hfrom, seqEnv_assoc (hRecv st0 sckaMsg evs_rcv hrcv) (Or.inl FreeOnlyEvs.nil)⟩)
   v1_env_rcv_err := by
@@ -522,7 +548,7 @@ theorem spqrRecvBranchHyps_tightLinked {MC : AllocCostModel}
       defaultInitInnerGhost defaultChainNewGhost xAdd xRk (defaultStatesIntoPbGhost F)
       defaultChainIntoPbCall _ ⟨Or.inr ?_, hLink⟩
     refine seqEnv_assoc (hDecPost evs_dec hpost_dec) (Or.inr ⟨hdec, Or.inr (Or.inr ⟨hinner, ?_⟩)⟩)
-    refine seqEnv_assoc hmd (Or.inr ?_)
+    refine Or.inr (seqEnv_assoc hmd (Or.inr ?_))
     exact seqEnv_assoc (hFromPb pb evs_fpb hfpb)
       (Or.inr ⟨hfrom, SeqEnv.append (hRecv st0 sckaMsg evs_rcv hrcv) (Or.inl hd)⟩)
   v1_fit_cf := by
@@ -536,7 +562,7 @@ theorem spqrRecvBranchHyps_tightLinked {MC : AllocCostModel}
     intro evs_cf hcf_alloc
     refine ⟨Or.inr ?_, hLink⟩
     refine seqEnv_assoc (hDecPost evs_dec hpost_dec) (Or.inr ⟨hdec, Or.inr (Or.inr ⟨hinner, ?_⟩)⟩)
-    refine seqEnv_assoc hmd (Or.inr ?_)
+    refine Or.inr (seqEnv_assoc hmd (Or.inr ?_))
     refine seqEnv_assoc (hFromPb pb evs_fpb hfpb) (Or.inr ⟨hfrom, ?_⟩)
     exact SeqEnv.append (hRecv st0 sckaMsg evs_rcv hrcv) (Or.inr ⟨hrecv, rfl,
       seqEnv_assoc (chainFromAllocEnv_imp_chainFromEnv hcf_alloc) (Or.inl FreeOnlyEvs.nil)⟩)
@@ -552,7 +578,7 @@ theorem spqrRecvBranchHyps_tightLinked {MC : AllocCostModel}
       defaultInitInnerGhost defaultChainNewGhost xAdd xRk xSInto defaultChainIntoPbCall _
       ⟨Or.inr ?_, hLink⟩
     refine seqEnv_assoc (hDecPost evs_dec hpost_dec) (Or.inr ⟨hdec, Or.inr (Or.inr ⟨hinner, ?_⟩)⟩)
-    refine seqEnv_assoc hmd (Or.inr ?_)
+    refine Or.inr (seqEnv_assoc hmd (Or.inr ?_))
     refine seqEnv_assoc (hFromPb pb evs_fpb hfpb) (Or.inr ⟨hfrom, ?_⟩)
     exact seqEnv_assoc (hRecv st0 sckaMsg evs_rcv hrcv)
       (Or.inr ⟨hrecv, rfl, SeqEnv.append hcf_env (Or.inl hd)⟩)
@@ -579,7 +605,7 @@ theorem spqrRecvBranchHyps_tightLinked {MC : AllocCostModel}
       exact hadd_env
     refine ⟨Or.inr ?_, hLink⟩
     refine seqEnv_assoc (hDecPost evs_dec hpost_dec) (Or.inr ⟨hdec, Or.inr (Or.inr ⟨hinner, ?_⟩)⟩)
-    refine seqEnv_assoc hmd (Or.inr ?_)
+    refine Or.inr (seqEnv_assoc hmd (Or.inr ?_))
     refine seqEnv_assoc (hFromPb pb evs_fpb hfpb) (Or.inr ⟨hfrom, ?_⟩)
     refine seqEnv_assoc (hRecv st0 sckaMsg evs_rcv hrcv) (Or.inr ⟨hrecv, rfl, ?_⟩)
     exact SeqEnv.append hcf_env
@@ -609,7 +635,7 @@ theorem spqrRecvBranchHyps_tightLinked {MC : AllocCostModel}
     intro evs_rk hrk_env
     refine ⟨Or.inr ?_, hLink⟩
     refine seqEnv_assoc (hDecPost evs_dec hpost_dec) (Or.inr ⟨hdec, Or.inr (Or.inr ⟨hinner, ?_⟩)⟩)
-    refine seqEnv_assoc hmd (Or.inr ?_)
+    refine Or.inr (seqEnv_assoc hmd (Or.inr ?_))
     refine seqEnv_assoc (hFromPb pb evs_fpb hfpb) (Or.inr ⟨hfrom, ?_⟩)
     refine seqEnv_assoc (hRecv st0 sckaMsg evs_rcv hrcv) (Or.inr ⟨hrecv, rfl, ?_⟩)
     refine seqEnv_assoc hcf_env (Or.inr ⟨hAddRaw, hRkRaw, ?_⟩)
@@ -637,7 +663,7 @@ theorem spqrRecvBranchHyps_tightLinked {MC : AllocCostModel}
       defaultInitInnerGhost defaultChainNewGhost xAdd xRk xSInto defaultChainIntoPbCall _
       ⟨Or.inr ?_, hLink⟩
     refine seqEnv_assoc (hDecPost evs_dec hpost_dec) (Or.inr ⟨hdec, Or.inr (Or.inr ⟨hinner, ?_⟩)⟩)
-    refine seqEnv_assoc hmd (Or.inr ?_)
+    refine Or.inr (seqEnv_assoc hmd (Or.inr ?_))
     refine seqEnv_assoc (hFromPb pb evs_fpb hfpb) (Or.inr ⟨hfrom, ?_⟩)
     refine seqEnv_assoc (hRecv st0 sckaMsg evs_rcv hrcv) (Or.inr ⟨hrecv, rfl, ?_⟩)
     refine seqEnv_assoc hcf_env (Or.inr ⟨hAddRaw, hRkRaw, ?_⟩)
@@ -673,7 +699,7 @@ theorem spqrRecvBranchHyps_tightLinked {MC : AllocCostModel}
     intro evs_sip hsip
     refine ⟨evs_cip ++ pqRatchetStateEncodeToVecEvents stOut, Or.inr ?_, hLink⟩
     refine seqEnv_assoc (hDecPost evs_dec hpost_dec) (Or.inr ⟨hdec, Or.inr (Or.inr ⟨hinner, ?_⟩)⟩)
-    refine seqEnv_assoc hmd (Or.inr ?_)
+    refine Or.inr (seqEnv_assoc hmd (Or.inr ?_))
     refine seqEnv_assoc (hFromPb pb evs_fpb hfpb) (Or.inr ⟨hfrom, ?_⟩)
     refine seqEnv_assoc (hRecv st0 sckaMsg evs_rcv hrcv) (Or.inr ⟨hrecv, rfl, ?_⟩)
     refine seqEnv_assoc hcf_env (Or.inr ⟨hAddRaw, hRkRaw, ?_⟩)
@@ -710,7 +736,7 @@ theorem spqrRecvBranchHyps_tightLinked {MC : AllocCostModel}
     intro evs_cip hcip_alloc
     refine ⟨pqRatchetStateEncodeToVecEvents stOut, Or.inr ?_, hLink⟩
     refine seqEnv_assoc (hDecPost evs_dec hpost_dec) (Or.inr ⟨hdec, Or.inr (Or.inr ⟨hinner, ?_⟩)⟩)
-    refine seqEnv_assoc hmd (Or.inr ?_)
+    refine Or.inr (seqEnv_assoc hmd (Or.inr ?_))
     refine seqEnv_assoc (hFromPb pb evs_fpb hfpb) (Or.inr ⟨hfrom, ?_⟩)
     refine seqEnv_assoc (hRecv st0 sckaMsg evs_rcv hrcv) (Or.inr ⟨hrecv, rfl, ?_⟩)
     refine seqEnv_assoc hcf_env (Or.inr ⟨hAddRaw, hRkRaw, ?_⟩)
@@ -747,7 +773,7 @@ theorem spqrRecvBranchHyps_tightLinked {MC : AllocCostModel}
     intro evs_enc henc
     refine ⟨Or.inr ?_, hLink⟩
     refine seqEnv_assoc (hDecPost evs_dec hpost_dec) (Or.inr ⟨hdec, Or.inr (Or.inr ⟨hinner, ?_⟩)⟩)
-    refine seqEnv_assoc hmd (Or.inr ?_)
+    refine Or.inr (seqEnv_assoc hmd (Or.inr ?_))
     refine seqEnv_assoc (hFromPb pb evs_fpb hfpb) (Or.inr ⟨hfrom, ?_⟩)
     refine seqEnv_assoc (hRecv st0 sckaMsg evs_rcv hrcv) (Or.inr ⟨hrecv, rfl, ?_⟩)
     refine seqEnv_assoc hcf_env (Or.inr ⟨hAddRaw, hRkRaw, ?_⟩)
@@ -781,7 +807,7 @@ theorem spqrRecvBranchHyps_tightLinked {MC : AllocCostModel}
       defaultInitInnerGhost defaultChainNewGhost xAdd xRk xSInto xCInto _
       ⟨Or.inr ?_, hLink⟩
     refine seqEnv_assoc (hDecPost evs_dec hpost_dec) (Or.inr ⟨hdec, Or.inr (Or.inr ⟨hinner, ?_⟩)⟩)
-    refine seqEnv_assoc hmd (Or.inr ?_)
+    refine Or.inr (seqEnv_assoc hmd (Or.inr ?_))
     refine seqEnv_assoc (hFromPb pb evs_fpb hfpb) (Or.inr ⟨hfrom, ?_⟩)
     refine seqEnv_assoc (hRecv st0 sckaMsg evs_rcv hrcv) (Or.inr ⟨hrecv, rfl, ?_⟩)
     refine seqEnv_assoc hcf_env (Or.inr ⟨hAddRaw, hRkRaw, ?_⟩)

@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.BugInjection.NonVacuity.CliSatisfiable
-public import Symbolic.Proofs.Tests.Refinement.Cli.Cheval26.Fixture
+public import Symbolic.Proofs.Tests.Refinement.Cli.Cheval26.Fixture -- proof-setup: allow-public-import
 
 /-!
 # Non-Vacuity Witness Payloads, Wire Parses, and `CoinSplit`
@@ -21,7 +21,7 @@ verifies the wire-format parses, and proves `CoinSplit chevalCliTrace cwTrace` a
 `CallsMatchSchedules chevalCalls cwWho cwOk`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,34 +47,34 @@ abbrev cwTrace : List MachineEvent := Fixture.trace
 abbrev cwWho : List Participant := Fixture.who
 abbrev cwOk : Nat → Bool := Fixture.ok
 
-def evBytes : MachineEvent → HwBytes
+@[expose] def evBytes : MachineEvent → HwBytes
   | .recv b | .send b | .pt b | .accept b | .rng b | .leak b => b
 
-def traceAt : List MachineEvent → Nat → HwBytes
+@[expose] def traceAt : List MachineEvent → Nat → HwBytes
   | e :: _, 0 => evBytes e
   | _ :: tl, n + 1 => traceAt tl n
   | [], _ => []
 
-def traceEv (i : Nat) : HwBytes := traceAt cwTrace i
+@[expose] def traceEv (i : Nat) : HwBytes := traceAt cwTrace i
 
-def blob0 : HwBytes := traceEv 0
-def rngPieces0 : List HwBytes := ((cwTrace.drop 1).take 34).map evBytes
-def coins0 : HwBytes := rngPieces0.flatten
-def pt1 : HwBytes := traceEv 35
-def coins1 : HwBytes := traceEv 36
-def c1Out : HwBytes := traceEv 37
-def coins2 : HwBytes := traceEv 39
-def pt3 : HwBytes := traceEv 41
-def coins3 : HwBytes := List.replicate 64 0#8
-def c3Out : HwBytes := traceEv 42
-def rngPieces4 : List HwBytes := ((cwTrace.drop 44).take 34).map evBytes
-def coins4 : HwBytes := rngPieces4.flatten
-def pt5 : HwBytes := traceEv 78
-def coins5 : HwBytes := traceEv 79
-def c5Out : HwBytes := traceEv 80
-def c6In : HwBytes := traceEv 81
-def coins6 : HwBytes := traceEv 82
-def pt6Out : HwBytes := traceEv 83
+@[expose] def blob0 : HwBytes := traceEv 0
+@[expose] def rngPieces0 : List HwBytes := ((cwTrace.drop 1).take 34).map evBytes
+@[expose] def coins0 : HwBytes := rngPieces0.flatten
+@[expose] def pt1 : HwBytes := traceEv 35
+@[expose] def coins1 : HwBytes := traceEv 36
+@[expose] def c1Out : HwBytes := traceEv 37
+@[expose] def coins2 : HwBytes := traceEv 39
+@[expose] def pt3 : HwBytes := traceEv 41
+@[expose] def coins3 : HwBytes := List.replicate 64 0#8
+@[expose] def c3Out : HwBytes := traceEv 42
+@[expose] def rngPieces4 : List HwBytes := ((cwTrace.drop 44).take 34).map evBytes
+@[expose] def coins4 : HwBytes := rngPieces4.flatten
+@[expose] def pt5 : HwBytes := traceEv 78
+@[expose] def coins5 : HwBytes := traceEv 79
+@[expose] def c5Out : HwBytes := traceEv 80
+@[expose] def c6In : HwBytes := traceEv 81
+@[expose] def coins6 : HwBytes := traceEv 82
+@[expose] def pt6Out : HwBytes := traceEv 83
 
 section FastHex
 open Lean Meta Elab Command
@@ -289,19 +289,19 @@ def_fast_trace_ev c3Out_val : c3Out := 42
 def_fast_trace_ev c5Out_val : c5Out := 80
 def_fast_trace_ev c6In_val : c6In := 81
 
-def s1 : HwBytes := slice c1Out 75 143
-def s3 : HwBytes := slice c3Out 75 143
-def s5 : HwBytes := slice c5Out 75 143
-def pkSpk : HwBytes := slice blob0 47 32
-def pkBob : HwBytes := slice blob0 1781 32
-def c6BaseKey : HwBytes := slice c6In 4 33
+@[expose] def s1 : HwBytes := slice c1Out 75 143
+@[expose] def s3 : HwBytes := slice c3Out 75 143
+@[expose] def s5 : HwBytes := slice c5Out 75 143
+@[expose] def pkSpk : HwBytes := slice blob0 47 32
+@[expose] def pkBob : HwBytes := slice blob0 1781 32
+@[expose] def c6BaseKey : HwBytes := slice c6In 4 33
 
-def chevalPubKey (s : HwBytes) : HwBytes :=
+@[expose] def chevalPubKey (s : HwBytes) : HwBytes :=
   if s = clamp cwSetup.spk then pkSpk
   else if s = clamp cwSetup.bobId then pkBob
   else toyPubKey
 
-def chevalInterp : ExternInterpretation := fun symbol arguments =>
+@[expose] def chevalInterp : ExternInterpretation := fun symbol arguments =>
   if symbol = x25519PublicKeySymbol then
     match arguments with | [s] => some (chevalPubKey s) | _ => none
   else if symbol = x25519AgreementSymbol then
@@ -310,7 +310,7 @@ def chevalInterp : ExternInterpretation := fun symbol arguments =>
     match arguments with | [text, _, _] => some text | _ => none
   else none
 
-def chevalRecords : ProtocolSetup := cwSetup.compRecords
+@[expose] def chevalRecords : ProtocolSetup := cwSetup.compRecords
 
 private theorem length_slice_of_le {l : HwBytes} {off len : Nat} (h : off + len ≤ l.length) :
     (slice l off len).length = len := by
@@ -402,12 +402,18 @@ theorem chevalInterp_pubCanonical : X25519PubCanonical chevalInterp := fun s => 
   simp [chevalInterp_publicKey, chevalPubKey_lt_p25519]
 
 theorem chevalInterp_torsionShiftsRejected : X25519TorsionShiftsRejected chevalInterp := by
-  intro _ _ _ _ _ _ ⟨_, _, hto, _⟩
-  have h1 : DY.Libsignal.PQXDH.Refinement.toEdwardsSymbol ≠ x25519PublicKeySymbol := by decide
-  have h2 : DY.Libsignal.PQXDH.Refinement.toEdwardsSymbol ≠ x25519AgreementSymbol := by decide
-  have h3 : DY.Libsignal.PQXDH.Refinement.toEdwardsSymbol ≠ aesCbcEncryptSymbol := by decide
-  have h4 : DY.Libsignal.PQXDH.Refinement.toEdwardsSymbol ≠ aesCbcDecryptSymbol := by decide
-  simp [chevalInterp, h1, h2, h3, h4] at hto
+  intro pk t pk' _ hu hne _
+  have h1 : x25519TorsionSymbol ≠ x25519PublicKeySymbol := by decide
+  have h2 : x25519TorsionSymbol ≠ x25519AgreementSymbol := by decide
+  have h3 : x25519TorsionSymbol ≠ aesCbcEncryptSymbol := by decide
+  have h4 : x25519TorsionSymbol ≠ aesCbcDecryptSymbol := by decide
+  have hnone : ∀ args, chevalInterp x25519TorsionSymbol args = none := fun _ => by
+    simp [chevalInterp, h1, h2, h3, h4]
+  have ht : torsionShift chevalInterp ((chevalInterp x25519PublicKeySymbol [pk]).getD []) t =
+      (chevalInterp x25519PublicKeySymbol [pk]).getD [] := by
+    unfold torsionShift; split <;> [rfl; simp [hnone]]
+  rw [ht] at hu
+  exact absurd hu hne
 
 theorem chevalInterp_contractsHold : ExternContractsHoldCli chevalInterp :=
   ⟨chevalInterp_cryptoEquationsHold, chevalInterp_pubCanonical, chevalInterp_torsionShiftsRejected⟩
@@ -434,7 +440,10 @@ theorem chevalRecords_opaque :
 theorem chevalRecords_secrets :
     secretBytes chevalRecords 1 = cwSetup.bobId ∧
     secretBytes chevalRecords 2 = cwSetup.spk := by
-  have hR := compRecords_randomsAt cwSetup
+  have hR : DY.Libsignal.Composed.Refinement.setupRandomsAt cwSetup.compRecords =
+      [(0, 32), (5, 32), (10, 32), (11, 64), (16, 64), (17, 64)] := by
+    have hw : cwSetup.withOpk = false := rfl
+    simpa [hw] using compRecords_randomsAt cwSetup
   constructor <;>
     (rw [chevalRecords, secretBytes, hR]; simp [PQXDHSpqrSetup.compRecords, PQXDHSpqrSetup.fresh])
 
@@ -443,7 +452,10 @@ theorem chevalRecords_wf : ProtocolSetupWF chevalRecords := by
     Fixture.nonvacuous
   obtain ⟨ha, hb, hs, hnd⟩ := cwSetup_small
   obtain ⟨o5, o6, o7⟩ := chevalRecords_opaque
-  have hR := compRecords_randomsAt cwSetup
+  have hR : DY.Libsignal.Composed.Refinement.setupRandomsAt cwSetup.compRecords =
+      [(0, 32), (5, 32), (10, 32), (11, 64), (16, 64), (17, 64)] := by
+    have hw : cwSetup.withOpk = false := rfl
+    simpa [hw] using compRecords_randomsAt cwSetup
   refine ⟨compRecords_ne cwSetup, ?_, ?_,
     by dsimp only [DY.Libsignal.Composed.Refinement.ProtocolSetup.spkSigTerm] at hss ⊢; rw [o5, ← ho5]; exact hss,
     by dsimp only [DY.Libsignal.Composed.Refinement.ProtocolSetup.pqpkPubTerm] at hk ⊢; rw [o6, ← ho6]; exact hk,
@@ -457,7 +469,7 @@ theorem chevalRecords_wf : ProtocolSetupWF chevalRecords := by
 
 /-! ## Bundle Blob, Canonical Pre-Key Messages, and Wire Parses -/
 
-def cwBundle : PublicBundle where
+@[expose] def cwBundle : PublicBundle where
   registrationId := cwSetup.regIdB
   identityKey := ecKey pkBob
   signedId := cwSetup.spkId
@@ -537,7 +549,7 @@ theorem c6In_ne_c1Out : c6In ≠ c1Out := by
 
 /-- The 19-event CLI-granularity trace of the 7 calls (each run emits a single `.rng` of its
 `coins` file). -/
-def chevalCliTrace : List MachineEvent :=
+@[expose] def chevalCliTrace : List MachineEvent :=
   [.recv blob0, .rng coins0,
    .pt pt1, .rng coins1, .send c1Out,
    .recv c1Out, .rng coins2, .accept pt1,
@@ -546,7 +558,7 @@ def chevalCliTrace : List MachineEvent :=
    .pt pt5, .rng coins5, .send c5Out,
    .recv c6In, .rng coins6, .accept pt6Out]
 
-def chevalCalls : List (Participant × Bool) :=
+@[expose] def chevalCalls : List (Participant × Bool) :=
   [("alice", true), ("alice", true), ("bob", true), ("alice", true),
    ("alice", true), ("alice", true), ("bob", true)]
 

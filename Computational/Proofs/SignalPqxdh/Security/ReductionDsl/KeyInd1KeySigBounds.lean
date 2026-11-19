@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigProg
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigProg -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhProofsBase
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKemProofs
-public import Computational.Proofs.ReductionDsl.Soundness
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKemProofs
+import Computational.Proofs.ReductionDsl.Soundness
 import Computational.Proofs.ReductionDsl.Size
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKem -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Potential -- proof-setup: allow-public-import
 
 /-!
 # Cost and Query Bounds for `sigKeyInd1KeyProg`
@@ -22,7 +24,7 @@ import Computational.Proofs.ReductionDsl.Size
 guarantees for `sigKeyInd1KeyProg` and `sigKeyInd1KeyDslProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -272,23 +274,6 @@ theorem delegateFgC_sigQueries (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
     (delegateFgC S K (Δ := Δ) s q).queries SignalPqxdh.LegacyCosted.chalIfaceSigQueryWeight SignalPqxdh.LegacyCosted.samplerZeroQueryWeight = 0 := by
   simp [delegateFgC, Comp.queries]
 
-theorem sig1KeyHandleC_sigQueries (S : Setup) (K : Nat) :
-    (sig1KeyHandleC S K).queries SignalPqxdh.LegacyCosted.chalIfaceSigQueryWeight SignalPqxdh.LegacyCosted.samplerZeroQueryWeight = 2 := by
-  simp [sig1KeyHandleC, sig1KeyPreDispatchC_sigQueries, delegateFgC_sigQueries, Comp.queries]
-
-theorem sigKeyInd1KeyProg_totalSigQueries (S : Setup) (K q : Nat) :
-    (sigKeyInd1KeyProg S K).totalQueries SignalPqxdh.LegacyCosted.chalIfaceSigQueryWeight SignalPqxdh.LegacyCosted.samplerZeroQueryWeight q =
-      2 * q := by
-  dsimp only [CostedReduction.totalQueries, sigKeyInd1KeyProg, keyIndCodec]
-  rw [sig1KeyHandleC_sigQueries]
-  simp only [bindV_queries, s1Prim_sigQueries, Comp.queries]
-  ring
-
-theorem sigKeyInd1KeyDslProg_sigQueries_le (S : Setup) (b : QueryBudget) :
-    (sigKeyInd1KeyDslProg S b).totalQueries
-      SignalPqxdh.LegacyCosted.chalIfaceSigQueryWeight SignalPqxdh.LegacyCosted.samplerZeroQueryWeight b.q_total ≤ 2 * b.q_total := by
-  rw [sigKeyInd1KeyDslProg, sigKeyInd1KeyProg_totalSigQueries]
-
 theorem sig1KeyPreDispatchC_ddhQueries (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] (s : Var Γ₁ sig1KeyStTy) (q : Var Γ₂ keyIndQueryTy) :
     (sig1KeyPreDispatchC S K (Δ := Δ) s q).queries SignalPqxdh.LegacyCosted.chalIfaceDdhQueryWeight SignalPqxdh.LegacyCosted.samplerZeroQueryWeight =
@@ -363,15 +348,6 @@ theorem sigKeyInd1KeyProg_totalDdhQueries (S : Setup) (K q : Nat) :
   simp only [bindV_queries, s1Prim_ddhQueries, Comp.queries]
   ring
 
-theorem sigKeyInd1KeyDslProg_ddhQueries_le (S : Setup) (b : QueryBudget) :
-    (sigKeyInd1KeyDslProg S b).totalQueries
-      SignalPqxdh.LegacyCosted.chalIfaceDdhQueryWeight SignalPqxdh.LegacyCosted.samplerZeroQueryWeight b.q_total ≤
-      4 * b.q_total ^ 2 + b.q_total + S.N_dh + S.N_sess_tot := by
-  rw [sigKeyInd1KeyDslProg, sigKeyInd1KeyProg_totalDdhQueries]
-  refine le_trans ?_ (fgKeyIndGapDhProg_totalChalQueries_le S b)
-  rw [fgKeyIndGapDhProg_totalChalQueries_eq]
-  omega
-
 theorem extract1KeyC_primUB (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] (s : Var Γ₁ sig1KeyStTy) (bu : Var Γ₂ preKeyBundleTy) :
     (extract1KeyC S K (Δ := Δ) s bu).queriesUB SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight SignalPqxdh.LegacyCosted.samplerZeroQueryWeight =
@@ -410,29 +386,6 @@ theorem sig1KeyHandleC_primQueries_le (S : Setup) (K : Nat) :
   have h1 := Nat.min_le_right K S.N_dh
   have h2 := Nat.min_le_right K S.N_sess_tot
   omega
-
-theorem sigKeyInd1KeyProg_totalPrimQueries_poly_le (S : Setup) (K q : Nat) :
-    (sigKeyInd1KeyProg S K).totalQueries SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight SignalPqxdh.LegacyCosted.samplerZeroQueryWeight q ≤
-      q * (160 + 76 * S.N_dh + 16 * S.N_sess_tot) := by
-  have hInit : (sigKeyInd1KeyProg S K).init.queries
-      SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight SignalPqxdh.LegacyCosted.samplerZeroQueryWeight = 0 := by
-    simp [sigKeyInd1KeyProg, sIndex, sBool, Comp.queries]
-  have hFin : (sigKeyInd1KeyProg S K).finish.queries
-      SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight SignalPqxdh.LegacyCosted.samplerZeroQueryWeight = 0 := by
-    simp [sigKeyInd1KeyProg, Comp.queries]
-  have hH := Nat.mul_le_mul_left q (sig1KeyHandleC_primQueries_le S K)
-  dsimp only [CostedReduction.totalQueries]
-  rw [hInit, hFin]
-  change 0 + q * (sig1KeyHandleC S K).queries SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight SignalPqxdh.LegacyCosted.samplerZeroQueryWeight +
-    0 ≤ _
-  omega
-
-theorem sigKeyInd1KeyDslProg_primQueries_le (S : Setup) (b : QueryBudget) :
-    (sigKeyInd1KeyDslProg S b).totalQueries
-      SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight SignalPqxdh.LegacyCosted.samplerZeroQueryWeight b.q_total ≤ primQueryBudget S b := by
-  have hp := sigKeyInd1KeyProg_totalPrimQueries_poly_le S b.q_total b.q_total
-  unfold sigKeyInd1KeyDslProg primQueryBudget
-  nlinarith
 
 end
 
@@ -509,18 +462,6 @@ private theorem s1_gdhHandle2_cost_le_min (S : Setup) (K : Nat) :
     ↓reduceIte, Bool.false_eq_true]
   linarith
 
-private theorem delegateFgC_cost_le_min (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] (s : Var Γ₁ sig1KeyStTy) (q : Var Γ₂ keyIndQueryTy) :
-    (delegateFgC S K (Δ := Δ) s q).cost ≤
-      28015 * K + 27165 * min K S.N_dh + 14742 * min K S.N_sess_tot + 15 * bits S.N_dh + 61200 := by
-  have hH := s1_gdhHandle2_cost_le_min S K
-  have hLit : (litB (Γ := Δ) 32 []).cost ≤ 40 := by
-    simp [litB, Expr.cost, pqxdhOps, pqBytesOps, Ops.sum]
-  simp only [delegateFgC, pa2Zero, pa2Mk, s1Fg, s1Target, s1Pk, s1Budget, s1Forgery,
-    s1Mk, s1Upd, letV, bindV, liftGdhToSigDdh_cost, Comp.rename_cost,
-    v, Comp.cost, Expr.cost, bits_1]
-  omega
-
 theorem delegateFgC_cost_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] (s : Var Γ₁ sig1KeyStTy) (q : Var Γ₂ keyIndQueryTy) :
     (delegateFgC S K (Δ := Δ) s q).cost ≤
@@ -591,90 +532,6 @@ theorem sigKeyInd1KeyDslProg_totalCost_le_stepCostBudget (S : Setup) (b : QueryB
   unfold sigKeyInd1KeyDslProg _root_.SignalPqxdh.LegacyCosted.stepCostBudget
   nlinarith
 
-private theorem sigKeyInd1KeyProg_init_cost_le_tight (S : Setup) (K : Nat) :
-    (sigKeyInd1KeyProg S K).init.cost ≤ 2 * bits S.N_dh + 100 := by
-  refine le_trans (sigKeyInd1KeyProg S K).init.cost_le_costUB ?_
-  have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
-  have bId : bits S.N_id ≤ bits S.N_dh := bits_mono (by omega)
-  have bSpk : bits (min K (min S.N_spk_tot S.N_recv)) ≤ bits S.N_dh :=
-    (bits_mono ((Nat.min_le_right _ _).trans (Nat.min_le_left _ _))).trans (bits_mono (by omega))
-  dsimp only [sigKeyInd1KeyProg]
-  simp only [s1Mk, emptySimE, smMk, emptyStE, stMk,
-    bindV_costUB, s1Prim_costUB, sIndex_costUB, sBool_costUB, v_costUB,
-    Comp.costUB, Expr.costUB]
-  omega
-
-private theorem sig1KeyPreDispatchC_cost_le_min (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] (s : Var Γ₁ sig1KeyStTy) (q : Var Γ₂ keyIndQueryTy) :
-    (sig1KeyPreDispatchC S K (Δ := Δ) s q).cost ≤ 412 * min K S.N_dh + 6612 * K + 26000 := by
-  refine le_trans (sig1KeyPreDispatchC S K (Δ := Δ) s q).cost_le_costUB ?_
-  simp only [sig1KeyPreDispatchC, sig1KeyInitPrinB, sig1KeyTargetGenSpkB,
-    sig1KeyInitiateCheckC, extract1KeyC,
-    s1Fg, s1Target, s1Pk, s1Budget, s1Forgery, s1Base, s1Mk, s1Upd,
-    smBase_costUB, smFgL_costUB, smRaw_costUB, smLog_costUB, smPows_costUB, smMk, smUpd,
-    stPrin, stSpks, stOpks, stSess, stResps, stUsedO, stUsedN, stKyb, stRo, stAdv, stMk, stUpd,
-    peIkAPk, peMk, sbSpkPk, sbPqspkPk, sbMk,
-    buIkB, buSpkB, buSpkSig, buPqspkB, buPqspkSig, buMk,
-    rNone, rInitPrin, rBundle, isSomeE, natEq, nat2Eq,
-    encEC_costUB, encKEM_costUB, widenEC_costUB,
-    letV_costUB, bindV_costUB, caseOptV_costUB, caseSumV_costUB,
-    s1Prim_costUB, honestPeerC_costUB, qSigVerify_costUB, qSigDdhSign_costUB,
-    sBytes32_costUB, sRandom64_costUB, qX25519Base_costUB, qKemKeyGen_costUB,
-    eCaseOpt_costUB, eAny_costUB, eFind_costUB, eqB_costUB, litB_costUB, u32OfNat_costUB,
-    v_costUB, Comp.costUB, Expr.costUB, List.length_nil, PNat.val_ofNat, bits_0, bits_1]
-  omega
-
-private theorem sig1KeyHandleC_cost_le_min (S : Setup) (K : Nat) :
-    (sig1KeyHandleC S K).cost ≤
-      34627 * K + 27612 * min K S.N_dh + 14742 * min K S.N_sess_tot + 15 * bits S.N_dh + 87300 := by
-  have hPre := sig1KeyPreDispatchC_cost_le_min S K
-    (Γ₁ := [sig1KeyStTy, keyIndQueryTy]) (Γ₂ := [sig1KeyStTy, keyIndQueryTy])
-    (Δ := [sig1KeyStTy, keyIndQueryTy]) .zero (.succ .zero)
-  have hDel := delegateFgC_cost_le_min S K
-    (Γ₁ := [sig1KeyStTy, keyIndQueryTy]) (Γ₂ := [sig1KeyStTy, keyIndQueryTy])
-    (Δ := .unit :: (.sum S1RS .unit) :: [sig1KeyStTy, keyIndQueryTy]) .zero (.succ .zero)
-  simp only [sig1KeyHandleC, bindV, caseSumV, v, Comp.cost, Expr.cost]
-  omega
-
-private theorem sigKeyInd1KeyProg_totalCost_poly_le_min (S : Setup) (K q : Nat) :
-    (sigKeyInd1KeyProg S K).totalCost q ≤
-      q * (34627 * K + 27612 * min K S.N_dh + 14742 * min K S.N_sess_tot + 15 * bits S.N_dh + 87332) +
-        2 * bits S.N_dh + 1800 := by
-  have hI := sigKeyInd1KeyProg_init_cost_le_tight S K
-  have hH := sig1KeyHandleC_cost_le_min S K
-  have hF := sigKeyInd1KeyProg_finish_cost_le S K
-  have hmax : max 1 ((sig1KeyHandleC S K).cost + 32) ≤
-      34627 * K + 27612 * min K S.N_dh + 14742 * min K S.N_sess_tot + 15 * bits S.N_dh + 87332 := by
-    omega
-  have hq := Nat.mul_le_mul_left q hmax
-  change (sigKeyInd1KeyProg S K).init.cost + q * max 1 ((sig1KeyHandleC S K).cost + 32) +
-    (sigKeyInd1KeyProg S K).finish.cost ≤ _
-  linarith
-
-theorem sigKeyInd1KeyDslProg_totalCost_le_securityStepCostBudget (S : Setup) (b : QueryBudget) :
-    (sigKeyInd1KeyDslProg S b).totalCost b.q_total ≤
-      _root_.SignalPqxdh.Security.stepCostBudget S b := by
-  have hp := sigKeyInd1KeyProg_totalCost_poly_le_min S b.q_total b.q_total
-  have hbits : bits S.N_dh = Nat.log 2 S.N_dh + 1 := rfl
-  unfold sigKeyInd1KeyDslProg
-  refine hp.trans ?_
-  rw [hbits]
-  dsimp only [_root_.SignalPqxdh.Security.stepCostBudget]
-  set q := b.q_total
-  set md := min b.q_total S.N_dh
-  set ms := min b.q_total S.N_sess_tot
-  set ld := Nat.log 2 S.N_dh
-  set ls := Nat.log 2 S.N_sess_tot
-  have hdiff :
-      2 ^ 16 * (q + 1) * (q + 1) + 2 ^ 15 * (q + 1) * (md + ms) +
-        2 ^ 10 * (q + 1) * (ld + ls) + 2 ^ 11 * md ^ 2 + 2 ^ 8 * md * ms =
-      (q * (34627 * q + 27612 * md + 14742 * ms + 15 * (ld + 1) + 87332) +
-        2 * (ld + 1) + 1800) +
-      (30909 * q ^ 2 + 43725 * q + 63734 + 5156 * q * md + 32768 * md +
-        18026 * q * ms + 32768 * ms + 1009 * q * ld + 1022 * ld +
-        1024 * q * ls + 1024 * ls + 2048 * md ^ 2 + 256 * md * ms) := by ring
-  omega
-
 /-! ## Semantic query bounds -/
 
 section SemanticSigBound
@@ -683,7 +540,7 @@ set_option allowUnsafeReducibility true
 attribute [local implicit_reducible] pqChalIface pqPrimIface sigAndDdhOracle pqSamplers
 attribute [local simp] Expr.eval Env.get Ext.step_wk Ext.refl_wk
 
-@[reducible] def isSigChal1KeyQ : (PrimBaseSpec + sigAndDdhSpec).Domain → Prop :=
+@[expose, reducible] def isSigChal1KeyQ : (PrimBaseSpec + sigAndDdhSpec).Domain → Prop :=
   fun q => isSigChalQuery q = true
 
 instance : DecidablePred isSigChal1KeyQ :=
@@ -755,7 +612,7 @@ theorem potC_s1_bind1 (m : ℕ+) {Γ : List PT} {τ₂ : PT} {Pot : τ₂.denote
     _ k env hk (by simpa [qSigDdhSign_sigQueries] using hmn)
 
 /-- Potential of a `sig1KeyStTy` state: twice its remaining signing budget `st.2.2.2.1`. -/
-def sigPot1Key (st : sig1KeyStTy.denote) : ℕ := 2 * st.2.2.2.1
+@[expose] def sigPot1Key (st : sig1KeyStTy.denote) : ℕ := 2 * st.2.2.2.1
 
 def prePot1Key (m : ℕ) : (S1RS.denote ⊕ Unit) → ℕ
   | .inl r => sigPot1Key r.2
@@ -932,27 +789,5 @@ theorem sigKeyInd1KeyProg_ddhBounded (S : Setup) (K q : Nat)
       (fun q => isDdhChalQuery q = true) 0
     rw [isQueryBoundP_query_iff]
     simp [isDdhChalQuery]
-
-theorem sigKeyInd1KeyProg_primBounded (S : Setup) (K q : Nat)
-    (A : Unit → OracleComp (unifSpec + keyIndSpec S) Bool)
-    (hA : ∀ a, (A a).IsQueryBoundP (_root_.ReductionDsl.isGameQuery (G := keyIndSpec S)) q)
-    (pk : Bytes) :
-    ((sigKeyInd1KeyProg S K).eval A pk).IsQueryBoundP
-      (fun q => isPrimQuery q = true)
-      ((sigKeyInd1KeyProg S K).totalQueries SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight SignalPqxdh.LegacyCosted.samplerZeroQueryWeight q) := by
-  refine CostedReduction.queryBound_eval (sigKeyInd1KeyProg S K)
-    (fun q => isPrimQuery q = true) SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight SignalPqxdh.LegacyCosted.samplerZeroQueryWeight
-    ?_ ?_ A q hA pk
-  · intro g x hx
-    rcases g with t | c
-    · simp [SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight]
-    · simp [pqSigAndDdhIface, pqChalIface, isPrimQuery] at hx
-  · intro n
-    change IsQueryBoundP
-      (liftM (OracleSpec.query (spec := PrimBaseSpec + sigAndDdhSpec) (.inl (.inl n))) :
-        OracleComp (PrimBaseSpec + sigAndDdhSpec) _)
-      (fun q => isPrimQuery q = true) 0
-    rw [isQueryBoundP_query_iff]
-    simp [isPrimQuery]
 
 end SignalPqxdh.Security.ReductionDsl.KeyInd

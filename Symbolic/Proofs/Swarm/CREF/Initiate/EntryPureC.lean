@@ -17,8 +17,8 @@ import DY.Actions.Random
 import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecordsBridgePure
-public import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecordsBridgePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Initiate.PostTrace
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
@@ -40,7 +40,7 @@ maintains `IniFrame` and `SetupIni` across non-setup moves to pin Alice's identi
 index `4` and Bob's `IdentityRegistered` event at index `6`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

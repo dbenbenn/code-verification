@@ -18,7 +18,7 @@ Defines `LeakableSecret` and `Cli.KeyInDirs`, characterizing secrets held across
 session records and setup DH and Kyber keys at a `CliTurn`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,7 +30,7 @@ open DY.Libsignal.Rust (recordBytes KeyInRecord)
 
 /-- Holds when `k` is Bob's Kyber pre-key secret, an active setup DH secret, or a secret stored in
 either party's current session record. -/
-def LeakableSecret (r : ProtocolSetup) (records : Participant → Option HwBytes) (opkUsed : Bool)
+@[expose] def LeakableSecret (r : ProtocolSetup) (records : Participant → Option HwBytes) (opkUsed : Bool)
     (k : HwBytes) : Prop :=
   k = r.kyberSecB ∨ Cli.SetupDHSecret r (opkUsed = false) k ∨
     ∃ p rec, records p = some (recordBytes rec) ∧ KeyInRecord rec k
@@ -43,7 +43,7 @@ open DY.Libsignal (HwBytes)
 open DY.Libsignal.Composed.Refinement (ProtocolSetup LeakableSecret)
 
 /-- Specialization of `LeakableSecret` to `t.records r` and `t.opkUsed r`. -/
-def KeyInDirs (r : ProtocolSetup) (t : CliTurn) (k : HwBytes) : Prop :=
+@[expose] def KeyInDirs (r : ProtocolSetup) (t : CliTurn) (k : HwBytes) : Prop :=
   LeakableSecret r (t.records r) (t.opkUsed r) k
 
 end DY.Libsignal.Composed.Refinement.Cli

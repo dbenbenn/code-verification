@@ -9,19 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrowBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrowBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.Alloc.Fetch
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
@@ -34,7 +33,7 @@ blocks 320 (`[local#7]`, generic `(stride, align)`), 157 (`[local#2]`, `stride =
 218 (`[local#4]`, `stride = 1`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -115,12 +114,12 @@ abbrev doReserveSpecX := @LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.
 /-! ## Stride-Generic and 32B-Frame Budget Specs -/
 
 /-- Deterministic allocator events of `do_reserve_and_handle` for `(stride, align)`. -/
-def doReserveStrideEvents (x : DoReserveStrideCall) : List AllocEvent :=
+@[expose] def doReserveStrideEvents (x : DoReserveStrideCall) : List AllocEvent :=
   let newCap := reserveCapStride x.stride.toNat x.cap.toNat x.len x.additional
   if x.cap = 0#64 then rustAllocEvents (newCap * x.stride.toNat) x.align.toNat
   else rustReallocEvents (x.cap.toNat * x.stride.toNat) (newCap * x.stride.toNat) x.align.toNat
 
-def DoReserveStrideEnv (x : DoReserveStrideCall) (evs : List AllocEvent) : Prop :=
+@[expose] def DoReserveStrideEnv (x : DoReserveStrideCall) (evs : List AllocEvent) : Prop :=
   evs = doReserveStrideEvents x
 
 theorem fitsEnv_doReserveStride_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
@@ -140,7 +139,7 @@ theorem doReserveStrideEvents_eq_finishGrowEvents (x : DoReserveStrideCall) :
     simp only [hcap, hcap_nat, ↓reduceIte]
 
 /-- Budget contract of `do_reserve_and_handle [local#7]` parameterized by callee `hookStack`. -/
-def doReserveStrideRawSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def doReserveStrideRawSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (DoReserveStrideCall × M.σ) where
   pre := fun (x, st) s =>
     let newCap := reserveCapStride x.stride.toNat x.cap.toNat x.len x.additional
@@ -178,7 +177,7 @@ abbrev doReserveStrideRawSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
   doReserveStrideRawSpecWithStack M A lim extHookStack
 
 /-- Budget contract of `do_reserve_and_handle [local#2, 4]` (`stride = 1, align = 1`, 32B callee frame). -/
-def doReserve1Raw32SpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def doReserve1Raw32SpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (DoReserveCall × M.σ) where
   pre := fun (x, st) s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional
@@ -202,7 +201,7 @@ def doReserve1Raw32SpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     stackAt s0.sp ((hookStack + 32) + 64)
 
 /-- Budget contract of `do_reserve_and_handle [local#2, 4]` framed to `(hookStack + 48) + 64`. -/
-def doReserve1RawSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def doReserve1RawSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (DoReserveCall × M.σ) where
   pre := fun (x, st) s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional
@@ -247,7 +246,7 @@ abbrev FG8Ghost (σ : Type) :=
   BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × List (BitVec 8) ×
     BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × σ
 
-def finishGrow8ZeroCellsSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow8ZeroCellsSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FG8Ghost M.σ) where
   pre := fun (out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp, st) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
@@ -298,7 +297,7 @@ theorem finish_grow_8_zero_cells_of_spec {M : AllocCostModel} {A : RustCliAllocB
       pointsToBytes_nil, List.length_nil, BitVec.add_zero, Nat.sub_zero, emp_sepConj] using hq
   · exact Or.inr hfail
 
-def finishGrow8NeCellsSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow8NeCellsSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FG8Ghost M.σ) where
   pre := fun (out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp, st) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
@@ -359,7 +358,7 @@ abbrev FG24Ghost (σ : Type) :=
   BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × List (BitVec 8) ×
     BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × σ
 
-def finishGrow24ZeroCellsSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow24ZeroCellsSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FG24Ghost M.σ) where
   pre := fun (out, cap, ptr, new, bs, o0, o1, o2, fsp, st) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
@@ -406,7 +405,7 @@ theorem finish_grow_24_zero_cells_of_spec {M : AllocCostModel} {A : RustCliAlloc
       pointsToBytes_nil, List.length_nil, BitVec.add_zero, Nat.sub_zero, emp_sepConj] using hq
   · exact Or.inr hfail
 
-def finishGrow24NeCellsSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow24NeCellsSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FG24Ghost M.σ) where
   pre := fun (out, cap, ptr, new, bs, o0, o1, o2, fsp, st) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧

@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Composition.StatementModel
-public import Computational.Proofs.E2E.Dsl.AtomicLift
-public import Computational.Proofs.E2E.Dsl.M4ConcreteWitness
+public import Computational.Proofs.E2E.Dsl.AtomicLiftDefs
+public import Computational.Proofs.E2E.Dsl.M4ConcreteWitness -- proof-setup: allow-public-import
 
 import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore
 import Computational.Proofs.LibsignalCli.CliPqPrefixBridge
@@ -25,6 +25,50 @@ import Computational.Proofs.E2E.Dsl.PrefixRedHaltedEval
 import Computational.Proofs.SpecLemmas.Session.KemFailTrackEpochClamp
 import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveLengths
 import Computational.Proofs.E2E.Dsl.PrefixRedHaltedByKind
+public import Computational.Proofs.E2E.Dsl.M4ReductionsIface -- proof-setup: allow-public-import
+import Computational.Proofs.LibsignalCli.GenericGameModel
+import Computational.Proofs.LibsignalCli.KeyInd1RealRedsCosted
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.E2E.Dsl.HaltedStartSessionSim
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge
+import Computational.Proofs.GameHop.Advantage
+import Computational.Proofs.GameHop.GlobalHybrid
+import Computational.Proofs.ReductionDsl.MacroLift
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.SignalPqxdh.Security.SigHop1Key
+import Mathlib.Algebra.BigOperators.Group.Finset.Defs
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Data.Finset.Defs
+import Mathlib.Data.List.Dedup
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.Integral.Lebesgue.Add
+import Mathlib.Order.Disjoint
+import Mathlib.Order.SetNotation
+import Mathlib.Tactic.Ring
+import PolyFun.Control.Monad.Support
+import Std.Tactic.BVDecide.Normalize.BitVec
+import Std.Tactic.BVDecide.Normalize.Prop
+import ToMathlib.Control.StateT
+import VCVio.CryptoFoundations.SecExp
+import VCVio.CryptoFoundations.SecExp.Measure
+import VCVio.EvalDist.Defs.Measure.Core
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Basic
+import VCVio.EvalDist.Monad.Bool
+import VCVio.EvalDist.ProbabilityBounds
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.Measure
+import VCVio.OracleComp.OracleSpec
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.QueryTracking.SubSpec
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.Basic
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Relational.SimulateQ.UntilBad
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Atomic Multi-Session Composition Reduction Witness
@@ -34,7 +78,7 @@ Lifts `concreteCompositionRedsClamped` onto `ReductionDsl.atomicE2EOps` and
 per-instance query bounds, target-game advantage inequalities, and `ModelSecure` (`modelSecure_atomic`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,7 +100,7 @@ open CryptoVerification.E2E (Bytes bhTargetGameSpec
   ModelAdversaryPerInstanceBounded ModelSecure)
 open CryptoVerification.E2E.Costed (gRedBounded_of_bounds)
 open _root_.ReductionDsl (atomicE2EOps_sizeHonest atomicBaseSamplers_sizeHonest)
-open Computational.Proofs.E2E.Dsl.AtomicLift (ιSort toDen toVal toAtomicVal castDen_self
+open Computational.Proofs.E2E.Dsl.AtomicLiftDefs (ιSort toDen toVal toAtomicVal castDen_self
   e2eOpsHom keyIndTargetIfaceHom sessionTargetIfaceHom targetGameCodecHom
   mapCostedReduction mapCostedReduction_totalCost mapCostedReduction_size
   mapCostedReduction_totalQueries mapCostedReduction_eval mapCostedReduction_gRedCostByKind
@@ -74,7 +118,7 @@ open Computational.Proofs.E2E.Dsl.M4ConcreteWitness (kindStartStepClampedC kindH
 
 /-- Lift an honest composition reduction bundle onto `ReductionDsl.atomicE2EOps` and
 `ReductionDsl.atomicBaseSamplers`. -/
-def liftCompositionReds {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
+@[expose] def liftCompositionReds {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
     {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem} {qep : ℕ}
     {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     (R : CompositionCostedReductionsHonest S ℓ P C K qep decT encT) :
@@ -93,7 +137,7 @@ def liftCompositionReds {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
       rfl
       (R.prefixRed k)
 
-def concreteCompositionRedsAtomic (S : SignalPqxdh.Setup) {Pt : Type} (ℓ : ℕ)
+@[expose] def concreteCompositionRedsAtomic (S : SignalPqxdh.Setup) {Pt : Type} (ℓ : ℕ)
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (b : SignalPqxdh.QueryBudget) (qStart qDR : ℕ) :
@@ -101,7 +145,7 @@ def concreteCompositionRedsAtomic (S : SignalPqxdh.Setup) {Pt : Type} (ℓ : ℕ
   liftCompositionReds (concreteCompositionReds S ℓ P C K qep decT encT b qStart qDR)
 
 /-- Clamped multi-session composition reduction bundle over `atomicE2EOps` at online-clamped budget. -/
-def concreteCompositionRedsAtomicV2 (S : SignalPqxdh.Setup) {Pt : Type} (ℓ : ℕ)
+@[expose] def concreteCompositionRedsAtomicV2 (S : SignalPqxdh.Setup) {Pt : Type} (ℓ : ℕ)
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (b : SignalPqxdh.QueryBudget) (qStart qDR _qInst : ℕ) :
@@ -109,7 +153,7 @@ def concreteCompositionRedsAtomicV2 (S : SignalPqxdh.Setup) {Pt : Type} (ℓ : �
   liftCompositionReds (concreteCompositionRedsClamped S ℓ P C K qep decT encT
     { b with q_total := min b.q_on b.q_total } qStart qDR _qInst)
 
-def concreteCompositionFamilyAtomic (S : SignalPqxdh.Setup) {Pt : Type} (ℓ : ℕ)
+@[expose] def concreteCompositionFamilyAtomic (S : SignalPqxdh.Setup) {Pt : Type} (ℓ : ℕ)
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
     CompositionCostedReductionFamily S ℓ P C K qep decT encT :=
@@ -215,7 +259,7 @@ theorem liftCompositionReds_prefixRed_totalQueries {S : SignalPqxdh.Setup} {Pt :
     (fun _ => rfl) (fun _ => rfl) (R.prefixRed k) q
 
 /-- Map a Stage-1 `(ctx, Mid)` output of `R.prefixRed k` to `(liftCompositionReds R).prefixRed k`. -/
-def mapPrefixOut {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
+@[expose] def mapPrefixOut {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
     {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem} {qep : ℕ}
     {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     (R : CompositionCostedReductionsHonest S ℓ P C K qep decT encT) (k : ℕ)
@@ -229,7 +273,7 @@ def mapPrefixOut {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
         ((liftCompositionReds R).prefixRed k).σ.denote
         (ReductionDsl.prefixCtxT (ℓ := ℓ) (Pt := Pt)).denote :=
   (cm.1,
-   Computational.Proofs.E2E.Dsl.AtomicLift.mapMid
+   Computational.Proofs.E2E.Dsl.AtomicLiftDefs.mapMid
      (toAtomicVal ℓ Pt (R.prefixRed k).π)
      (toAtomicVal ℓ Pt (R.prefixRed k).σ)
      (fun c => toAtomicVal ℓ Pt (CryptoVerification.E2E.Costed.prefixCtxT (ℓ := ℓ)) c)
@@ -946,12 +990,6 @@ private theorem pqxdhKeyIndImpl1KeyReal_bundles_le {S : SignalPqxdh.Setup} {ℓ 
 private theorem simulateQ_query_raw {ι : Type} {ospec : OracleSpec ι} {m : Type → Type} [Monad m] [LawfulMonad m]
     (so : QueryImpl ospec m) (t : ospec.Domain) : simulateQ so (query (spec := ospec) t) = so t := by
   change simulateQ so (liftM (OracleSpec.query t)) = so t; simp
-
-private theorem stateT_run_map {σ : Type} {m : Type → Type} [Monad m] [LawfulMonad m]
-    {α β : Type} (f : α → β) (u : StateT σ m α) (s : σ) :
-    (f <$> u).run s = Prod.map f id <$> u.run s := by
-  change (u.run s >>= fun p => pure (f p.1, p.2)) = Prod.map f id <$> u.run s
-  rw [map_eq_bind_pure_comp]; rfl
 
 private theorem run_simulateQ_query_bind' {ι : Type} {spec : OracleSpec ι}
     {M : Type → Type} [Monad M] [LawfulMonad M] {σ α : Type}
@@ -1968,7 +2006,7 @@ open Computational.Proofs.E2E.Dsl.FreshnessSim (finishPrefixClampedC eval_finish
 open Computational.Proofs.E2E.Dsl.PrefixRedsHonest (e2eGameRespEnc)
 open Computational.Proofs.E2E.Dsl.M4ReductionsIface (e2eTargetGameCodec
   BhTargetAdvPerInstanceBounded bhCtlUnStart)
-open Computational.Proofs.E2E.Dsl.AtomicLift (ιSort toDen toVal toAtomicVal
+open Computational.Proofs.E2E.Dsl.AtomicLiftDefs (ιSort toDen toVal toAtomicVal
   e2eOpsHom sessionTargetIfaceHom targetGameCodecHom
   mapEnv mapExpr_eval mapComp_eval mapComp_queries mapTwoStageCostedReduction
   mapTwoStageCostedReduction_stage1Queries
@@ -2220,10 +2258,6 @@ private theorem clampedPrefixInv_of_any_tracks {S : SignalPqxdh.Setup} {ℓ : �
   have heq : tracks = List.replicate σ.insts.length () := unit_list_eq_replicate tracks h.base.tracks_len
   unfold ClampedPrefixInv
   rwa [← heq]
-
-private theorem clampedPausedInv_iff {S : SignalPqxdh.Setup} {ℓ : ℕ}
-    {k : ℕ} {σ : BHE2EDrvState S ℓ} {tracks : List Unit} :
-    HaltedPausedInv k (σ, tracks) ↔ ClampedPausedInv k σ := Iff.rfl
 
 private theorem compositionLocalStart_preserves_clamped {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (bMode? : Option Bool)
@@ -2883,15 +2917,15 @@ private theorem toAtomicVal_e2eGameRespEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} {
     (r : BHTargetResp ℓ) :
     toAtomicVal ℓ Pt (e2eGameRT ℓ) (e2eGameRespEnc r) =
       atomicGameRespEnc (S := S) (Pt := Pt) r := by
-  refine (AtomicLift.castDen_toVal_ιSort_eq_cast ℓ Pt (e2eGameRT ℓ) rfl rfl
+  refine (AtomicLiftDefs.castDen_toVal_ιSort_eq_cast ℓ Pt (e2eGameRT ℓ) rfl rfl
     (e2eGameRespEnc r)).trans ?_
   rcases r with (kr | idx?) | ⟨ct?, rr?, gs?⟩
-  · exact congrArg Sum.inl (congrArg Sum.inl (AtomicLift.atomic_keyIndRenc_eq ℓ Pt kr).symm)
+  · exact congrArg Sum.inl (congrArg Sum.inl (AtomicLiftDefs.atomic_keyIndRenc_eq ℓ Pt kr).symm)
   · rfl
   · rcases rr? with _ | rr
     · rfl
     · simp only [e2eGameRespEnc, atomicGameRespEnc, packSmRespEnc, packAtomicSmRespEnc,
-        AtomicLift.atomic_recvResultEnc_eq, Option.map_some]
+        AtomicLiftDefs.atomic_recvResultEnc_eq, Option.map_some]
       rfl
 
 private theorem prefixRedClamped_stage1_queries {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
@@ -2963,12 +2997,12 @@ private theorem toVal_e2eTargetGameCodec_qenc {S : SignalPqxdh.Setup} {ℓ : ℕ
     toVal (S₁ := e2eSig ℓ) (S₂ := atomicSig ℓ Pt) ιSort (toDen ℓ Pt) (e2eGameQT S ℓ)
         ((e2eTargetGameCodec S ℓ).qenc t) =
       (CryptoVerification.E2E.e2eTargetGameCodec S ℓ Pt).qenc t := by
-  refine (AtomicLift.castDen_toVal_ιSort_eq_cast ℓ Pt (e2eGameQT S ℓ) rfl rfl
+  refine (AtomicLiftDefs.castDen_toVal_ιSort_eq_cast ℓ Pt (e2eGameQT S ℓ) rfl rfl
     ((e2eTargetGameCodec S ℓ).qenc t)).trans ?_
   rcases t with (kq | cq) | ⟨i, sq⟩
-  · exact congrArg Sum.inl (congrArg Sum.inl (AtomicLift.atomic_keyIndQenc_eq ℓ Pt kq).symm)
-  · exact congrArg Sum.inl (congrArg Sum.inr (AtomicLift.atomic_sidV_eq ℓ Pt _).symm)
-  · exact congrArg Sum.inr (congrArg (Prod.mk i) (AtomicLift.atomic_smQenc_eq ℓ Pt sq).symm)
+  · exact congrArg Sum.inl (congrArg Sum.inl (AtomicLiftDefs.atomic_keyIndQenc_eq ℓ Pt kq).symm)
+  · exact congrArg Sum.inl (congrArg Sum.inr (AtomicLiftDefs.atomic_sidV_eq ℓ Pt _).symm)
+  · exact congrArg Sum.inr (congrArg (Prod.mk i) (AtomicLiftDefs.atomic_smQenc_eq ℓ Pt sq).symm)
 
 private def prefixRedClamped_twoStageSimSpecInst {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
     {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
@@ -3011,7 +3045,7 @@ private def prefixRedClamped_twoStageSimSpecInst {ℓ : ℕ} {S : SignalPqxdh.Se
       intro _ _ _ _ σ_out _ b_out
       have hm := mapComp_eval H (sessionTargetIfaceHom ℓ Pt)
         R₀.chDone (.cons (e2eDrvStateEnc σ_out) (.cons b_out .nil))
-      dsimp only [mapTwoStageCostedReduction, AtomicLift.castComp, R₀, prefixRedClamped,
+      dsimp only [mapTwoStageCostedReduction, AtomicLiftDefs.castComp, R₀, prefixRedClamped,
         bhPrefixRedWith, mapEnv] at hm ⊢
       have hb : toVal H.fSort H.toDen .bool b_out = b_out := rfl
       rw [hb] at hm
@@ -3020,7 +3054,7 @@ private def prefixRedClamped_twoStageSimSpecInst {ℓ : ℕ} {S : SignalPqxdh.Se
       intro _ _ _ _ σ_p _ _ p flip
       have hm := mapComp_eval H (sessionTargetIfaceHom ℓ Pt)
         R₀.resume (.cons (e2eDrvStateEnc σ_p) (.cons p (.cons flip .nil)))
-      dsimp only [mapTwoStageCostedReduction, AtomicLift.castCompCtx, R₀, prefixRedClamped,
+      dsimp only [mapTwoStageCostedReduction, AtomicLiftDefs.castCompCtx, R₀, prefixRedClamped,
         bhPrefixRedWith, mapEnv] at hm ⊢
       have hp : toVal H.fSort H.toDen (.opt .nat) p = p := by cases p <;> rfl
       have hfl : toVal H.fSort H.toDen .bool flip = flip := rfl
@@ -3045,7 +3079,7 @@ private def prefixRedClamped_twoStageSimSpecInst {ℓ : ℕ} {S : SignalPqxdh.Se
       intro qKiDone qSendDone qStartDone qSessDone σ hInv t hBud
       have hm := mapComp_eval H (sessionTargetIfaceHom ℓ Pt)
         R₀.handlePre (.cons (e2eDrvStateEnc σ) (.cons ((e2eTargetGameCodec S ℓ).qenc t) .nil))
-      dsimp only [mapTwoStageCostedReduction, AtomicLift.castCompCtx, mapEnv] at hm ⊢
+      dsimp only [mapTwoStageCostedReduction, AtomicLiftDefs.castCompCtx, mapEnv] at hm ⊢
       have hq : toVal H.fSort H.toDen (e2eGameQT S ℓ)
           ((e2eTargetGameCodec S ℓ).qenc t) =
           (CryptoVerification.E2E.e2eTargetGameCodec S ℓ Pt).qenc t :=
@@ -3111,7 +3145,7 @@ private def prefixRedClamped_twoStageSimSpecInst {ℓ : ℕ} {S : SignalPqxdh.Se
       intro qKiDone qSendDone qStartDone qSessDone σ hInv hPaused t _hBud
       have hm := mapComp_eval H (sessionTargetIfaceHom ℓ Pt)
         R₀.handlePost (.cons (e2eDrvStateEnc σ) (.cons ((e2eTargetGameCodec S ℓ).qenc t) .nil))
-      dsimp only [mapTwoStageCostedReduction, AtomicLift.castCompCtx, mapEnv] at hm ⊢
+      dsimp only [mapTwoStageCostedReduction, AtomicLiftDefs.castCompCtx, mapEnv] at hm ⊢
       have hq : toVal H.fSort H.toDen (e2eGameQT S ℓ)
           ((e2eTargetGameCodec S ℓ).qenc t) =
           (CryptoVerification.E2E.e2eTargetGameCodec S ℓ Pt).qenc t :=
@@ -3179,7 +3213,7 @@ private def prefixRedClamped_twoStageSimSpecInst {ℓ : ℕ} {S : SignalPqxdh.Se
       intro _ _ _ _ σ_out hInv b_out flip
       have hm := mapComp_eval H (sessionTargetIfaceHom ℓ Pt)
         R₀.finish (.cons (e2eDrvStateEnc σ_out) (.cons b_out (.cons flip .nil)))
-      dsimp only [mapTwoStageCostedReduction, AtomicLift.castCompCtx, R₀, prefixRedClamped,
+      dsimp only [mapTwoStageCostedReduction, AtomicLiftDefs.castCompCtx, R₀, prefixRedClamped,
         bhPrefixRedWith, mapEnv] at hm ⊢
       have hb1 : toVal H.fSort H.toDen .bool b_out = b_out := rfl
       have hb2 : toVal H.fSort H.toDen .bool flip = flip := rfl
@@ -3416,7 +3450,7 @@ private theorem prefixSpec_stepPre_roQuery {ℓ : ℕ} {S : SignalPqxdh.Setup} {
     have hm := mapComp_eval H (sessionTargetIfaceHom ℓ Pt)
       R₀.handlePre (.cons (e2eDrvStateEnc σ) (.cons ((e2eTargetGameCodec S ℓ).qenc t) .nil))
     dsimp only [spec, prefixRedClamped_twoStageSimSpecInst, mapTwoStageCostedReduction,
-      AtomicLift.castCompCtx, mapEnv] at hm ⊢
+      AtomicLiftDefs.castCompCtx, mapEnv] at hm ⊢
     have hq : toVal H.fSort H.toDen (e2eGameQT S ℓ) ((e2eTargetGameCodec S ℓ).qenc t) =
         (CryptoVerification.E2E.e2eTargetGameCodec S ℓ Pt).qenc t :=
       toVal_e2eTargetGameCodec_qenc t
@@ -3487,7 +3521,7 @@ private theorem prefixSpec_stepPost_roQuery {ℓ : ℕ} {S : SignalPqxdh.Setup} 
     have hm := mapComp_eval H (sessionTargetIfaceHom ℓ Pt)
       R₀.handlePost (.cons (e2eDrvStateEnc σ) (.cons ((e2eTargetGameCodec S ℓ).qenc t) .nil))
     dsimp only [spec, prefixRedClamped_twoStageSimSpecInst, mapTwoStageCostedReduction,
-      AtomicLift.castCompCtx, mapEnv] at hm ⊢
+      AtomicLiftDefs.castCompCtx, mapEnv] at hm ⊢
     have hq : toVal H.fSort H.toDen (e2eGameQT S ℓ) ((e2eTargetGameCodec S ℓ).qenc t) =
         (CryptoVerification.E2E.e2eTargetGameCodec S ℓ Pt).qenc t :=
       toVal_e2eTargetGameCodec_qenc t

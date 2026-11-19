@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.CoreBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.LoopBudgetSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.CoreBudget
+import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.LoopBudgetSat
 import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.DuplicatedMessageReturnBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -18,6 +18,14 @@ import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 import ProofLib.RegChain
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.ConsumeCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Core
+import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.DuplicatedMessageReturn
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # `HookSat` Sibling of `TakePathProofs.CoreBudget` (`SegS1` Top-Level Glue)

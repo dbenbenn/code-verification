@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem1Reductions
+public import Computational.Proofs.CryptoGames.SM.Theorem1Reductions -- proof-setup: allow-public-import
 import VCVio.CryptoFoundations.SecExp.Measure
 import VCVio.OracleComp.QueryTracking.QueryBound.Simulation
 public import Computational.Proofs.CryptoGames.SM.GameProofDefs
@@ -21,7 +21,7 @@ public import Computational.Proofs.CryptoGames.SM.GameProofDefs
 underlying adversary, along with `b`-erasure lemmas for the final hybrid `H3,qep+1`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -171,7 +171,7 @@ section H3Final
 
 variable {Key St Msg Coins C : Type}
 
-def withBFalse (s : GameState St Msg C) : GameState St Msg C :=
+@[expose] def withBFalse (s : GameState St Msg C) : GameState St Msg C :=
   { s with b := false }
 
 lemma withBFalse_st (s : GameState St Msg C) : (withBFalse s).st = s.st := rfl

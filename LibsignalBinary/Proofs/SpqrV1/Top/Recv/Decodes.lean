@@ -9,18 +9,9 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
 import ProofLib.SepLogic.WPp
-
-/-!
-# Instruction Decode Tree for `spqr::recv`
-
-Pre-generated instruction decode lemmas and range-fetch macro for `spqr::recv`
-(`0x5462c..0x55208`, 759 instructions).
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.Recv
 
@@ -32,19 +23,6 @@ set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
 abbrev spqrRecvFnName : String := "spqr::recv"
-
-@[simp, arm64_norm]
-theorem spqrRecv_fnOff_0x5462c :
-    libsignalSessionCode.fnOff spqrRecvFnName = 0x4f234 :=
-  ls_lemma% fnOff "spqr::recv"
-
-gen_decodes libsignalSessionCode_tree spqrRecvFullBin [0x4f234 → 0x4fe10]
-
-/-- Add instruction-fetch hypotheses for a byte range `[k0, k0 + len)` inside `spqr::recv`
-    (`0x5462c..0x55208`). -/
-macro "spqr_recv_fetches_range " b:term:max H:term:max k0:num len:num : tactic =>
-  `(tactic| code_fetches_range CryptoVerification.libsignalSessionCode spqrRecvFullBin
-      $b $H spqrRecv_fnOff_0x5462c 0x4f234 $k0 $len)
 
 end CryptoVerification.SpqrV1.Top.Recv
 

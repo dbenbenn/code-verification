@@ -9,11 +9,16 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatementDefs
-public import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj
+public import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj -- proof-setup: allow-public-import
 public import Symbolic.Proofs.SpecLemmas.LeakableSecretProofDefs
 import Symbolic.Proofs.Swarm.CREF.Prelude
+import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
+import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSession
+import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApi
+import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
+import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
 
 /-!
 # Stripping Previous Sessions from Held Records
@@ -23,7 +28,7 @@ records, and proves that stripping preserves `LeakableSecret` and turns `PureCRe
 `TR.PureTRRecordStateInv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,34 +39,42 @@ namespace Symbolic.Swarm.CREF.CliPure
 cref_open
 open CryptoProofLib.Refinement (ExternInterpretation)
 
-open Classical in
-/-- Record bytes with previous sessions dropped (`recordBytes { rr with previous := [] }`). -/
-noncomputable def pureStripBytes (b : HwBytes) : HwBytes :=
-  if h : ∃ rr : RecordRec, b = recordBytes rr then
-    recordBytes { Classical.choose h with previous := [] }
-  else b
+/-- Record bytes with previous sessions dropped (`recordBytes { rr with previous := [] }`),
+returning `b` unchanged outside the image of `recordBytes`. -/
+@[expose] def pureStripBytes (b : HwBytes) : HwBytes :=
+  match DY.Libsignal.Rust.decodeRecordBytes? b with
+  | some rr => recordBytes { rr with previous := [] }
+  | none => b
 
 /-- Record table with every record's previous sessions dropped. -/
-noncomputable def pureStripPrev (records : Participant → Option HwBytes) :
+@[expose] def pureStripPrev (records : Participant → Option HwBytes) :
     Participant → Option HwBytes :=
   fun p => (records p).map pureStripBytes
 
-theorem recordBytes_normPending_pureHeldRec (rr : RecordRec) :
-    recordBytes (TR.normPending rr) = recordBytes rr := by
-  obtain ⟨⟨_, _, _, _, _, _, _, pp, pk, _, _, _, _⟩, _⟩ := rr
-  cases pp <;> cases pk <;> simp [recordBytes, TR.normPending, TR.normPendingS]
-
 theorem pureStripBytes_recordBytes (rr : RecordRec) :
     pureStripBytes (recordBytes rr) = recordBytes { rr with previous := [] } := by
-  unfold pureStripBytes
+  rw [pureStripBytes, DY.Libsignal.Rust.decodeRecordBytes?_recordBytes]
+  obtain ⟨⟨_, _, _, _, _, _, _, pp, pk, _, _, _, _⟩, _⟩ := rr
+  cases pp <;> cases pk <;> simp [recordBytes, DY.Libsignal.Rust.DecodeRecord.normPending]
+
+/-- Outside the image of `recordBytes`, `pureStripBytes` returns `b` unchanged (proved without `Classical.choose`). -/
+theorem pureStripBytes_of_not_mem {b : HwBytes} (h : ¬ ∃ rr : RecordRec, b = recordBytes rr) :
+    pureStripBytes b = b := by
+  rw [pureStripBytes, (TR.decodeRecordBytes?_eq_none_iff b).mpr h]
+
+open Classical in
+/-- `pureStripBytes` agrees pointwise with the `Classical.choose` definition. -/
+theorem pureStripBytes_eq_classical (b : HwBytes) :
+    pureStripBytes b =
+      if h : ∃ rr : RecordRec, b = recordBytes rr then
+        recordBytes { Classical.choose h with previous := [] }
+      else b := by
   split
-  next h =>
-    have hn := TR.recordBytes_injective (Classical.choose_spec h).symm
-    have key : ∀ x : RecordRec, recordBytes { x with previous := [] } =
-        recordBytes { TR.normPending x with previous := [] } := fun x =>
-      (recordBytes_normPending_pureHeldRec { x with previous := [] }).symm
-    rw [key (Classical.choose h), hn, ← key rr]
-  next h => exact absurd ⟨rr, rfl⟩ h
+  · next h =>
+    calc pureStripBytes b
+        = pureStripBytes (recordBytes (Classical.choose h)) := congrArg _ (Classical.choose_spec h)
+      _ = _ := pureStripBytes_recordBytes _
+  · next h => exact pureStripBytes_of_not_mem h
 
 theorem pureStripBytes_of_prev_nil {rr : RecordRec} (h : rr.previous = []) :
     pureStripBytes (recordBytes rr) = recordBytes rr := by
@@ -89,17 +102,13 @@ private theorem recKey_pureStripPrev_iff (records : Participant → Option HwByt
     · rw [hrp] at hp; cases hp
     · rw [hrp, Option.map_some] at hp
       have hb := Option.some.inj hp
-      by_cases hex : ∃ rr : RecordRec, b = recordBytes rr
-      · obtain ⟨rr, rfl⟩ := hex
-        rw [pureStripBytes_recordBytes] at hb
-        exact ⟨p, rr, hrp, (keyInRecord_pureStripPrev rr k).1
-          (TR.keyInRecord_of_recordBytes_eq hb.symm hk)⟩
-      · have hfix : pureStripBytes b = b := by
-          unfold pureStripBytes
-          split
-          next h => exact absurd h hex
-          next => rfl
-        rw [hfix] at hb
+      cases hdec : DY.Libsignal.Rust.decodeRecordBytes? b with
+      | some rr =>
+        rw [pureStripBytes, hdec] at hb
+        exact ⟨p, rr, hrp.trans (congrArg some (DY.Libsignal.Rust.decodeRecordBytes?_sound hdec)),
+          (keyInRecord_pureStripPrev rr k).1 (TR.keyInRecord_of_recordBytes_eq hb.symm hk)⟩
+      | none =>
+        rw [pureStripBytes, hdec] at hb
         exact ⟨p, rec, hrp.trans (congrArg some hb), hk⟩
   · rintro ⟨p, rec, hp, hk⟩
     refine ⟨p, { rec with previous := [] }, ?_, (keyInRecord_pureStripPrev rec k).2 hk⟩
@@ -181,5 +190,33 @@ theorem trRecordStateInv_pureStripPrev {interp : ExternInterpretation}
     obtain ⟨hp, -, hrec⟩ := hrecs p b hrp
     exact trInv_one_of_pureCRecRel hZ hp (pureCRecRel_stripBytes_of_pureCRecRelH hrec) p c
       (by simp only [↓reduceIte]; exact hpc)
+
+section ConstructiveEvalSanityCheck
+
+private def sampleSessionRec : SessionRec :=
+  { sessionVersion := 4#32
+    localIdentityPublic := [1#8, 2#8]
+    remoteIdentityPublic := [3#8, 4#8]
+    rootKey := [5#8]
+    previousCounter := 0#32
+    senderChain := none
+    receiverChains := []
+    pendingPreKey := some ([1#8], [2#8])
+    pendingKyberPreKey := none
+    remoteRegistrationId := 7#32
+    localRegistrationId := 8#32
+    aliceBaseKey := [9#8]
+    pqRatchetState := [42#8, 99#8] }
+
+-- `with_unfolding_all` unseals `WireFormat.paddedVarint` (`termination_by`) so `rfl` reduces to `@Eq.refl`.
+example : Symbolic.Swarm.CREF.pqStateOf
+    (recordBytes { current := sampleSessionRec, previous := [[10#8, 11#8]] }) =
+    [42#8, 99#8] := by with_unfolding_all rfl
+
+example : pureStripBytes
+    (recordBytes { current := sampleSessionRec, previous := [[10#8, 11#8]] }) =
+    recordBytes { current := sampleSessionRec, previous := [] } := by with_unfolding_all rfl
+
+end ConstructiveEvalSanityCheck
 
 end Symbolic.Swarm.CREF.CliPure

@@ -10,19 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.SignalSession.CliProcess
-public import LibsignalBinary.Proofs.SpecLemmas.FsFold
+public import LibsignalBinary.Proofs.SpecLemmas.FsFold -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.RunProofDefs
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Run
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliProcessFixed
-
-/-!
-# File-System Extensionality Under Visible Paths
-
-Canonical `FsPath` round-trip lemmas and exact `initFsState` / `cliRunAbortOnPanic` extensionality
-under `InputsEquivRaw` and `FilesVisibleRaw`.
--/
-
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,26 +22,15 @@ namespace LibsignalBinary.Proofs.SignalSession.Cli.Parity
 open Arm64 Arm64.Process
 open CryptoVerification.SignalSession
 
-def FilesVisibleRaw (files : List (String × List (BitVec 8))) : Prop :=
+@[expose] def FilesVisibleRaw (files : List (String × List (BitVec 8))) : Prop :=
   ∀ f ∈ files, Arm64.normalizePath f.1 ≠ [] ∧
     Arm64.normalizePath f.1 ∉ stdioPaths.map Arm64.normalizePath
 
-def InputsEquivRaw (i i' : Inputs) : Prop :=
+@[expose] def InputsEquivRaw (i i' : Inputs) : Prop :=
   i.argv = i'.argv ∧ i.dirs = i'.dirs ∧ i.stdin = i'.stdin ∧
     ∀ p, filesOf i.files p = filesOf i'.files p
 
-theorem cliRunSig_eq_none_of_loadState_error {elf : ElfImage} {W : CliHooks} {i : Inputs}
-    {msg : String} (herr : elf.loadState (cliProcessInputs i) = .error msg) :
-    cliRunAbortOnPanic elf W i = none := by
-  unfold cliRunAbortOnPanic
-  split
-  · rename_i hex
-    rcases hex with ⟨_, s0, hload, _⟩
-    rw [herr] at hload
-    cases hload
-  · rfl
-
-def LoadableFile (f : String × List (BitVec 8)) : Prop :=
+@[expose] def LoadableFile (f : String × List (BitVec 8)) : Prop :=
   LoadablePath f.1 ∧ f.2.length ≤ MAX_LFS_FILESIZE
 
 theorem loadState_error_of_not_loadable_files {elf : ElfImage} {i : Inputs}
@@ -497,26 +477,10 @@ theorem loadState_eq_of_inputsEquiv_of_visible_of_loadable (elf : ElfImage) {i i
   unfold ElfImage.loadState
   rw [hany, hany', hdirs_eq, hstack, hfs]; rfl
 
-/-- Visibility- and loadability-guarded file-extensionality predicate satisfied by `cliRunAbortOnPanic elf W`. -/
-def FilesExtVisibleRaw (run : CliRun) : Prop :=
+/-- Visibility- and loadability-guarded file-extensionality predicate. -/
+@[expose] def FilesExtVisibleRaw (run : CliRun) : Prop :=
   ∀ i i' : Inputs, InputsEquivRaw i i' → FilesVisibleRaw i.files → FilesVisibleRaw i'.files →
     (∀ f ∈ i'.files, LoadableFile f) → run i = none ∨ run i = run i'
-
-theorem filesExtVisible_cliRunSig (elf : ElfImage) (W : CliHooks) :
-    FilesExtVisibleRaw (cliRunAbortOnPanic elf W) := fun i i' heq hvis hvis' hload' => by
-  by_cases hload : ∀ f ∈ i.files, LoadableFile f
-  · right; have hls := loadState_eq_of_inputsEquiv_of_visible_of_loadable elf heq hvis hvis' hload hload'
-    unfold cliRunAbortOnPanic CliRunsTo; rw [hls]
-  · obtain ⟨_, herr⟩ := loadState_error_of_not_loadable_files (elf := elf) hload
-    exact Or.inl (cliRunSig_eq_none_of_loadState_error herr)
-
-theorem cliRunSig_some_of_inputsEquiv {elf : ElfImage} {W : CliHooks} {i i' : Inputs} {o : Outcome}
-    (heq : InputsEquivRaw i i') (hvis : FilesVisibleRaw i.files) (hvis' : FilesVisibleRaw i'.files)
-    (hload' : ∀ f ∈ i'.files, LoadableFile f) (hr : cliRunAbortOnPanic elf W i = some o) :
-    cliRunAbortOnPanic elf W i' = some o := by
-  rcases filesExtVisible_cliRunSig elf W i i' heq hvis hvis' hload' with hnone | hsame
-  · rw [hr] at hnone; cases hnone
-  · exact hsame.symm.trans hr
 
 theorem normalizePath_head_slash (dir rest : String)
     (hno : '/' ∉ dir.toList) (hne : (!dir.isEmpty && dir != ".") = true) :

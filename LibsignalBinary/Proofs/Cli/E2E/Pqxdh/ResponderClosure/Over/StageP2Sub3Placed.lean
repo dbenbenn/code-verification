@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrA
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrB
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrC
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub2bPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrA
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrB
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrC
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub2bPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Defs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
 
 /-!
 # Placed Stage P2 Over-Path Pure Callee Stack Bounds
@@ -23,11 +25,9 @@ Lifts the stack-budget inequalities bounding `p2PromoteMissStack`, `p2PromoteSta
 `dropSessionStructureLocal2Stack` by `stageP2OverPureAndErrStack` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 
@@ -44,17 +44,4 @@ open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.OverP2
 
-theorem p2_over_promoteMiss_le_overPure_placed [LibsignalPlacement] :
-    p2PromoteMissStack ≤ stageP2OverPureAndErrStack :=
-  p2_over_promoteMiss_le_overPure
-
-theorem p2_over_promoteOver_le_overPure_placed [LibsignalPlacement] :
-    p2PromoteStackX ≤ stageP2OverPureAndErrStack :=
-  p2_over_promoteOver_le_overPure
-
-theorem p2_over_dropSS3_le_overPure_placed [LibsignalPlacement] :
-    dropSessionStructureLocal2Stack ≤ stageP2OverPureAndErrStack :=
-  p2_over_dropSS3_le_overPure
-
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
-end

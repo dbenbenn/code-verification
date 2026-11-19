@@ -14,11 +14,12 @@ public import ProofLib.Process.FsLemmas
 public import VerifiedLibraries.Musl.Proofs.MemcpySym
 public import VerifiedLibraries.RustStd.Spec.IoCommon
 public import VerifiedLibraries.RustStd.Proofs.CoreIo
-public import LibsignalBinary.Proofs.SignalSession.CliIo.Sym
-public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslOpenDeterministic
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadLoopCommon
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileSteps
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadStdinProof
+public import LibsignalBinary.Proofs.SignalSession.CliIo.Sym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.CliIo.MuslOpenDeterministic
+public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadLoopCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileSteps
+import LibsignalBinary.Proofs.SignalSession.CliIo.ReadStdinProof
+public import ProofLib.Hoare.LibcHooks
 
 /-!
 # Pre-`open` Path Validation and Scalar NUL-Scan Step Lemmas
@@ -31,7 +32,7 @@ Proves the pre-`open` segment (`+0x00 .. +0x84`) of `signal_session_io::read_fil
    otherwise reaches `+0x84` (`bl open`) with `cstrBytes (cPathOf pathBytes)` at `s0.sp - 8320#64`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

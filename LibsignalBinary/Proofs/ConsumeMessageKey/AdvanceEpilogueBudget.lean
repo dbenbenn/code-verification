@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogue
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget
+import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogue
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.FindIndexCodeSym
@@ -22,6 +22,7 @@ import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WP.FrameAuto
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FrameAndKeyBytes -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Epilogue of `RatchetState::consume_message_key`
@@ -30,7 +31,7 @@ Proves `AdvanceEpiloguePlacedSpec` and `AdvanceEpiloguePlacedRoSpec` (Block 24) 
 `RustCliAllocBudget M` and `SeamBudget`, ruling out allocator OOM on both 32-byte allocations.
 -/
 
-@[expose] public section
+public section
 
 set_option maxRecDepth 200000
 set_option autoImplicit false
@@ -151,14 +152,14 @@ private theorem consumeMessageKeyResultAt_atState {M : AllocCostModel} (A : Rust
     consumeMessageKeyResultAt (A.atState lim st s) = consumeMessageKeyResultAt A.repAlloc :=
   rfl
 
-def advanceEpilogueBudgetPost [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def advanceEpilogueBudgetPost [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : ConsumeMessageKeyGhost) (st_init : M.σ) (R : SepProp) (s0 sf : State) (P_f : SepProp) : Prop :=
   ((sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (cmkPlacedSpec F A lim).post (x, st_init) s0 sf ∗ R)) ∧
     sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf
 
-def advanceEpilogueBudgetPanic [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def advanceEpilogueBudgetPanic [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : ConsumeMessageKeyGhost) (st_init : M.σ) (R : SepProp) (s0 sf : State) (P_f : SepProp) : Prop :=

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.RemoveBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.RemoveBudget
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -17,7 +17,13 @@ import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 import ProofLib.RegChain
+import ProofLib.Sep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.ConsumeCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Common -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Remove
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # `HookSat` Sibling of `RemoveBudget` (`SegS1`, Block `24`, `+1508 .. +1916`)
@@ -409,91 +415,5 @@ theorem cmk_remove_0x5e4_placed_wp_sat [LibsignalPlacement] {M : AllocCostModel}
       (sepConj_mono (remove_final_stack_entails_memRegion_384 s0.sp
         gks[p].1.seed.cap gks[p].1.seed.ptr gks[p].1.seed.ptr)
         (sepConj_mono_right (sepConj_mono_right hof_rem)))))
-
-theorem cmk_remove_0x5e4_placed_wp_unbounded_sat [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)} (hA : CmkAllocHooks A lim H)
-    (hmemmove_sat : HookSat H cmkMemmoveSym (sessionMemmoveBudgetSpec allocHookStack))
-    (mkCap mkPtr chAddr ret : BitVec 64)
-    (gks : List (MessageKeyGhost × MessageKeyGenerator))
-    (p : Nat) (hp : p < gks.length)
-    (st : M.σ) (s0 s : State)
-    (hpc : s.pc = (blkPl_24).base + 1508#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 480#64)
-    (hsp_align : s.spAligned = true)
-    (hx2 : s.readReg64 .x2 = BitVec.ofNat 64 ((gks.length - 1 - p) * 104))
-    (hx8 : s.readReg64 .x8 = mkPtr + BitVec.ofNat 64 (p * 104) + 56#64)
-    (hx19 : s.readReg64 .x19 = chAddr)
-    (hx22 : s.readReg64 .x22 = ret)
-    (hx24 : s.readReg64 .x24 = BitVec.ofNat 64 gks.length)
-    (hx29 : s.readReg64 .x29 = s0.sp - 96#64) :
-    SepWP ((blkPC_24).rebase (blkPl_24).base H) ((blkPl_24).base + 1916#64) s
-      (A.pool lim st s ∗
-       stackAt (s0.sp - 480#64) allocHookStack ∗
-       memRegion (s0.sp - 480#64) 384 ∗
-       memRegion ret 88 ∗
-       ((chAddr + 64#64) ↦₆₄ BitVec.ofNat 64 gks.length) ∗
-       vecBuf A.repAlloc 104 8 (messageKeyAt A.repAlloc) mkCap mkPtr gks)
-      (fun s1 P1 =>
-        s1.sp = s0.sp - 480#64 ∧
-        s1.spAligned = true ∧
-        s1.readReg64 .x29 = s0.sp - 96#64 ∧
-        (s1.trace = s.trace ∧ calleeSavedVRegs s1 = calleeSavedVRegs s) ∧
-        ∃ evs : List AllocEvent,
-          FreeOnlyEvs evs ∧
-          (P1 ⊢
-            A.pool lim (M.stepEvents evs st) s1 ∗
-            stackAt (s0.sp - 480#64) allocHookStack ∗
-            memRegion (s0.sp - 480#64) 384 ∗
-            consumeMessageKeyResultAt A.repAlloc ret (.ok gks[p].2) ∗
-            ((chAddr + 64#64) ↦₆₄ BitVec.ofNat 64 (gks.length - 1)) ∗
-            vecBuf A.repAlloc 104 8 (messageKeyAt A.repAlloc) mkCap mkPtr (gks.eraseIdx p))) :=
-  cmk_remove_0x5e4_placed_wp_sat hA
-    (hookSat_sessionMemmoveBoundedBudget_of_unbounded allocHookStack hmemmove_sat)
-    mkCap mkPtr chAddr ret gks p hp st s0 s hpc hrun hsp hsp_align hx2 hx8 hx19 hx22 hx24 hx29
-
-theorem cmk_remove_0x5e4_placed_wp_of_exact [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)} (hA : CmkAllocHooks A lim H)
-    (hmemmove_eq : H cmkMemmoveSym = some hookMemmove)
-    (mkCap mkPtr chAddr ret : BitVec 64)
-    (gks : List (MessageKeyGhost × MessageKeyGenerator))
-    (p : Nat) (hp : p < gks.length)
-    (st : M.σ) (s0 s : State)
-    (hpc : s.pc = (blkPl_24).base + 1508#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 480#64)
-    (hsp_align : s.spAligned = true)
-    (hx2 : s.readReg64 .x2 = BitVec.ofNat 64 ((gks.length - 1 - p) * 104))
-    (hx8 : s.readReg64 .x8 = mkPtr + BitVec.ofNat 64 (p * 104) + 56#64)
-    (hx19 : s.readReg64 .x19 = chAddr)
-    (hx22 : s.readReg64 .x22 = ret)
-    (hx24 : s.readReg64 .x24 = BitVec.ofNat 64 gks.length)
-    (hx29 : s.readReg64 .x29 = s0.sp - 96#64) :
-    SepWP ((blkPC_24).rebase (blkPl_24).base H) ((blkPl_24).base + 1916#64) s
-      (A.pool lim st s ∗
-       stackAt (s0.sp - 480#64) allocHookStack ∗
-       memRegion (s0.sp - 480#64) 384 ∗
-       memRegion ret 88 ∗
-       ((chAddr + 64#64) ↦₆₄ BitVec.ofNat 64 gks.length) ∗
-       vecBuf A.repAlloc 104 8 (messageKeyAt A.repAlloc) mkCap mkPtr gks)
-      (fun s1 P1 =>
-        s1.sp = s0.sp - 480#64 ∧
-        s1.spAligned = true ∧
-        s1.readReg64 .x29 = s0.sp - 96#64 ∧
-        (s1.trace = s.trace ∧ calleeSavedVRegs s1 = calleeSavedVRegs s) ∧
-        ∃ evs : List AllocEvent,
-          FreeOnlyEvs evs ∧
-          (P1 ⊢
-            A.pool lim (M.stepEvents evs st) s1 ∗
-            stackAt (s0.sp - 480#64) allocHookStack ∗
-            memRegion (s0.sp - 480#64) 384 ∗
-            consumeMessageKeyResultAt A.repAlloc ret (.ok gks[p].2) ∗
-            ((chAddr + 64#64) ↦₆₄ BitVec.ofNat 64 (gks.length - 1)) ∗
-            vecBuf A.repAlloc 104 8 (messageKeyAt A.repAlloc) mkCap mkPtr (gks.eraseIdx p))) :=
-  cmk_remove_0x5e4_placed_wp_sat hA
-    (hookSat_sessionMemmoveBoundedBudget_of_exact allocHookStack hmemmove_eq)
-    mkCap mkPtr chAddr ret gks p hp st s0 s hpc hrun hsp hsp_align hx2 hx8 hx19 hx22 hx24 hx29
 
 end LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.RemoveBudgetSat

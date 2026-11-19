@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesChunkedBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesChunkedHeaderSent
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesChunkedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesChunkedHeaderSent
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesPolyBudget
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked59_71Budget
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93Budget
@@ -25,7 +25,7 @@ Block-subset `CallPinnedEncLenAtF` bridges and `[LibsignalPlacement]` `subroutin
 `V1State.Chunked.HeaderSent::encoded_len` (Blocks `188`, `414`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -210,15 +210,6 @@ theorem chunkedCt1SampledEncodedLen_local1_pinned_placed_ok_hooks [inst : Libsig
       (subroutine_ok_of_withVmPreserved
         (polynomialDecoderEncodedLen_local1_pinned_placed_ok_hooks A (hooksException H)))
 
-theorem chunkedCt1SampledEncodedLen_local1_placed_ok_hooks [LibsignalPlacement]
-    (A : RustAlloc) (H : String → Option (State → State)) :
-    subroutine_ok ((blkPC_179).rebase (blkPl_179).base H)
-      (blkPl_179).base
-      (withLsCodeLoaded lsmpl
-        (LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1Budget.chunkedCt1SampledEncodedLenSpec A)) :=
-  chunkedCt1SampledEncodedLen_lscl_ok_of_pinned
-    (chunkedCt1SampledEncodedLen_local1_pinned_placed_ok_hooks A H)
-
 theorem chunkedCt1SampledEncodedLen_local1_pinned_placed_ok_ext [LibsignalPlacement]
     (A : RustAlloc) (ext : String → Option (State → State)) :
     ChunkedCt1SampledEncodedLenLocal1PinnedPlacedOkExt A ext :=
@@ -262,15 +253,6 @@ theorem chunkedCt1SampledEncodedLen_local2_pinned_placed_ok_hooks [inst : Libsig
       (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) (by decide)
       (subroutine_ok_of_withVmPreserved
         (polynomialDecoderEncodedLen_local2_pinned_placed_ok_hooks A (hooksException H)))
-
-theorem chunkedCt1SampledEncodedLen_local2_placed_ok_hooks [LibsignalPlacement]
-    (A : RustAlloc) (H : String → Option (State → State)) :
-    subroutine_ok ((blkPC_407).rebase (blkPl_407).base H)
-      (blkPl_407).base
-      (withLsCodeLoaded lsmpl
-        (LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1Budget.chunkedCt1SampledEncodedLenSpec A)) :=
-  chunkedCt1SampledEncodedLen_lscl_ok_of_pinned
-    (chunkedCt1SampledEncodedLen_local2_pinned_placed_ok_hooks A H)
 
 theorem chunkedCt1SampledEncodedLen_local2_pinned_placed_ok_ext [LibsignalPlacement]
     (A : RustAlloc) (ext : String → Option (State → State)) :
@@ -346,39 +328,39 @@ theorem chunkedHeaderSentEncodedLen_lscl_ok_of_pinned {prog : Program} {entry : 
   · exact Or.inr (Or.inl hpan)
   · exact Or.inr (Or.inr hex)
 
-def ChunkedHeaderSentEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChunkedHeaderSentEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_188).rebase (blkPl_188).base (Rust.withPanics ext))
     (blkPl_188).base (withLsCodeLoaded lsmpl (chunkedHeaderSentEncodedLenPinnedSpec A))
 
-def ChunkedHeaderSentEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChunkedHeaderSentEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_188).rebase (blkPl_188).base (Rust.withPanics ext))
     (blkPl_188).base (withLsCodeLoaded lsmpl (chunkedHeaderSentEncodedLenSpec A))
 
-def ChunkedHeaderSentEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto)
+@[expose] def ChunkedHeaderSentEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto)
     (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   ChunkedHeaderSentEncodedLenLocal1PinnedPlacedOkExt A (tripleRatchetExterns C ctl abs)
 
-def ChunkedHeaderSentEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto)
+@[expose] def ChunkedHeaderSentEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto)
     (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   ChunkedHeaderSentEncodedLenLocal1PlacedOkExt A (tripleRatchetExterns C ctl abs)
 
-def ChunkedHeaderSentEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChunkedHeaderSentEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_414).rebase (blkPl_414).base (Rust.withPanics ext))
     (blkPl_414).base (withLsCodeLoaded lsmpl (chunkedHeaderSentEncodedLenPinnedSpec A))
 
-def ChunkedHeaderSentEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChunkedHeaderSentEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_414).rebase (blkPl_414).base (Rust.withPanics ext))
     (blkPl_414).base (withLsCodeLoaded lsmpl (chunkedHeaderSentEncodedLenSpec A))
 
-def ChunkedHeaderSentEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto)
+@[expose] def ChunkedHeaderSentEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto)
     (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   ChunkedHeaderSentEncodedLenLocal2PinnedPlacedOkExt A (tripleRatchetExterns C ctl abs)
 
-def ChunkedHeaderSentEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto)
+@[expose] def ChunkedHeaderSentEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto)
     (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   ChunkedHeaderSentEncodedLenLocal2PlacedOkExt A (tripleRatchetExterns C ctl abs)
 
@@ -404,13 +386,6 @@ theorem chunkedHeaderSentEncodedLen_local1_pinned_placed_ok_hooks [inst : Libsig
       (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) (by decide)
       (subroutine_ok_of_withVmPreserved
         (polynomialDecoderEncodedLen_local1_pinned_placed_ok_hooks A (hooksException H)))
-
-theorem chunkedHeaderSentEncodedLen_local1_placed_ok_hooks [LibsignalPlacement]
-    (A : RustAlloc) (H : String → Option (State → State)) :
-    subroutine_ok ((blkPC_188).rebase (blkPl_188).base H)
-      (blkPl_188).base (withLsCodeLoaded lsmpl (chunkedHeaderSentEncodedLenSpec A)) :=
-  chunkedHeaderSentEncodedLen_lscl_ok_of_pinned
-    (chunkedHeaderSentEncodedLen_local1_pinned_placed_ok_hooks A H)
 
 theorem chunkedHeaderSentEncodedLen_local1_pinned_placed_ok_ext [LibsignalPlacement]
     (A : RustAlloc) (ext : String → Option (State → State)) :
@@ -455,13 +430,6 @@ theorem chunkedHeaderSentEncodedLen_local2_pinned_placed_ok_hooks [inst : Libsig
       (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) (by decide)
       (subroutine_ok_of_withVmPreserved
         (polynomialDecoderEncodedLen_local2_pinned_placed_ok_hooks A (hooksException H)))
-
-theorem chunkedHeaderSentEncodedLen_local2_placed_ok_hooks [LibsignalPlacement]
-    (A : RustAlloc) (H : String → Option (State → State)) :
-    subroutine_ok ((blkPC_414).rebase (blkPl_414).base H)
-      (blkPl_414).base (withLsCodeLoaded lsmpl (chunkedHeaderSentEncodedLenSpec A)) :=
-  chunkedHeaderSentEncodedLen_lscl_ok_of_pinned
-    (chunkedHeaderSentEncodedLen_local2_pinned_placed_ok_hooks A H)
 
 theorem chunkedHeaderSentEncodedLen_local2_pinned_placed_ok_ext [LibsignalPlacement]
     (A : RustAlloc) (ext : String → Option (State → State)) :

@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
-public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewModel
 import Symbolic.Proofs.Swarm.CREF.Prelude
-public import Symbolic.Proofs.Refinement.LemmasPure -- shake: keep
+import Symbolic.Proofs.Refinement.LemmasPure -- shake: keep
 
 /-!
 # PQXDH Handshake `acceptKeys` Bridges
@@ -24,7 +24,7 @@ Connects an accepting `SignalPqxdh.Model.acceptKeys` evaluation under `ModelAgre
 and byte-level `TR.pqxdhKdfBytes` key derivation.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -84,7 +84,7 @@ theorem rpkNew_acceptKeys_baseKey_ok
     ((p.baseKey.take 33).drop 1).length = 32 ∧
       DY.X25519.leValue (((p.baseKey.take 33).drop 1).map BitVec.toNat) < DY.X25519.p25519 ∧
       DY.X25519.isLowOrderKey (((p.baseKey.take 33).drop 1).map BitVec.toNat) = false ∧
-      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree interp ((p.baseKey.take 33).drop 1) := by
+      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree ((p.baseKey.take 33).drop 1) := by
   obtain ⟨hcanon, hdh2_ne⟩ := rpkNew_acceptKeys_some_guards hacc
   rw [hbk_take]
   dsimp only [List.drop]
@@ -128,7 +128,7 @@ theorem rpkNew_acceptKeys_baseKey_ok_of_idPriv
     ((p.baseKey.take 33).drop 1).length = 32 ∧
       DY.X25519.leValue (((p.baseKey.take 33).drop 1).map BitVec.toNat) < DY.X25519.p25519 ∧
       DY.X25519.isLowOrderKey (((p.baseKey.take 33).drop 1).map BitVec.toNat) = false ∧
-      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree interp ((p.baseKey.take 33).drop 1) := by
+      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree ((p.baseKey.take 33).drop 1) := by
   have hsk1_len : (secretBytes r 1).length = 32 := (secretBytes_length_bob hwf).2.1
   have hdh2 : ofU8 ((modelPrims X P).x25519
       (acceptInput P me k m).ikBSk (acceptInput P me k m).hdr.ekAPk) =

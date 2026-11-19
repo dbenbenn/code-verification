@@ -9,9 +9,20 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix
-public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
+import Batteries.Lean.Except
+import Lean.Elab.SyntheticMVars
+import Lean.Exception
+import Lean.Meta.Reduce
+import Mathlib.Data.Nat.Notation
+import Mathlib.Data.Vector.Basic
+import VCVio.CryptoFoundations.HardnessAssumptions.DiffieHellman
+import VCVio.CryptoFoundations.PRG
+import VCVio.OracleComp.Constructions.SampleableType.Basic
+import VCVio.OracleComp.QueryTracking.QueryBound.Basic
+import VCVio.OracleComp.SimSemantics.Append.Core
 
 /-!
 # Clean Explanations, Read-Collision Preservation, and Whisper Step Assembly
@@ -21,7 +32,7 @@ proves preservation of `¬ ReadCollision` across non-decrypt and decrypt blocks,
 clean whisper reselection and step assembly (`cBad_whisper_reselect_ef`, `cBadStep_whisper_c13`).
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -64,7 +75,7 @@ theorem cleanBy_prefix {interpretation : ExternInterpretation} {r : ProtocolSetu
 
 /-- Network message term read by a `decrypt` or `decryptSkipped` move on `tr`, or `none` for all
 other moves. -/
-def rcvMoveTerm (tr : ExecTrace) (m : Move) : Option DY.Bytes :=
+@[expose] def rcvMoveTerm (tr : ExecTrace) (m : Move) : Option DY.Bytes :=
   m.decryptMsgIdx?.bind tr.getMessageSentAt
 
 @[scoped simp] theorem rcvMoveTerm_decrypt (tr : ExecTrace) (me : Participant)
@@ -321,7 +332,7 @@ theorem cBad_whisper_reselect_ef {interpretation : ExternInterpretation} {r : Pr
       fun hc => hnc (Or.inl hc), ⟨fun hrs => hnc (Or.inr hrs), hac⟩⟩
 
 /-- Moves that read a received network or prekey message (`decrypt`, `decryptSkipped`, `bobStart`). -/
-def isReadMove : Move → Bool
+@[expose] def isReadMove : Move → Bool
   | .decrypt .. => true
   | .decryptSkipped .. => true
   | .bobStart .. => true
@@ -357,7 +368,7 @@ theorem cleanBy_snoc_decrypt {interpretation : ExternInterpretation} {r : Protoc
 
 /-- Existence of an accepting block `pre ++ m :: post` extending `(g₀, ms₀)` to explain
 `acc ++ .recv wire :: τ₂` where `m` is the unique read move and its read term avoids `RecvCollision`. -/
-def CBadBridgeHyp (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def CBadBridgeHyp (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool) (g₀ : Ghost) (ms₀ : List Move)
     (acc : List MachineEvent) (wire b : HwBytes) (τ₂ : List MachineEvent) : Prop :=
   ∃ (pre post : List Move) (m : Move) (t : DY.Bytes),
@@ -405,7 +416,7 @@ theorem cBadStep_whisper_before_c13 {interpretation : ExternInterpretation} {r :
 /-- Hypothesis that any `CleanBy` explanation `(g, ms)` with a non-colliding, `RecvExcuseFree`
 representation of `b` admits a ghost `g₁` agreeing with `g` below `(runTraceMoves r ms).length`
 that remains `CleanBy` on `acc` and satisfies `CBadBridgeHyp` on `mid ++ [.accept pt]`. -/
-def CBadG2Hyp (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def CBadG2Hyp (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool)
     (acc mid : List MachineEvent) (pt : HwBytes) (tag : BitVec 8) (body b : HwBytes) : Prop :=
   (∀ e ∈ mid, ∀ x, e ≠ .recv x) →

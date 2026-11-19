@@ -25,7 +25,7 @@ parent-group validation, zeroing `[g.mem]`, recursive `bl nontrivial_free`, and 
 -/
 
 set_option maxHeartbeats 800000 in
-theorem sepWP_nf_retire_nested [MallocngMultiPlacement]
+theorem sepWP_nf_retire_nested [MallocngMultiPlacement] {ro : Bool}
     {b : BitVec 64} (hb : BlkBase 5 b) {k fuel' : Nat} (hFuel : fuel' + 1 ≤ 6)
     {γ : GhostName} {brkStart : BitVec 64} {bud : MallocngBudget}
     {st : MallocngSt} {g : GroupDesc} {idx : Nat}
@@ -47,12 +47,12 @@ theorem sepWP_nf_retire_nested [MallocngMultiPlacement]
     (hRec : ∀ (st1 : MallocngSt) (pg1 : GroupDesc) (pIdx : Nat),
       groupNestBound pg1 ≤ fuel' → EmptyGroupKeepWf st1 → FullQueueKeepWf st1 →
       subroutine_ok (blkPC_b05.rebase b (fun _ => none)) b
-        (nontrivialFreeFuelPlainSpec (k + 1) fuel' γ brkStart bud st1 pg1 pIdx)) :
+        (nontrivialFreeFuelPlainSpec (k + 1) fuel' γ brkStart bud st1 pg1 pIdx ro)) :
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       ((maddrs.ctx ↦ₛ { st.ctx with active := active1, usageByClass := usage1 }.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) bvDeq ∗
-       NfAllFreeFrame (fuel' + 1) γ st s0)
-      (NfFuelPost k (fuel' + 1) γ brkStart bud st s0) (fun _ => ⌜False⌝) := by
+       NfAllFreeFrame (fuel' + 1) γ st s0 ro)
+      (NfFuelPost (ro := ro) k (fuel' + 1) γ brkStart bud st s0) (fun _ => ⌜False⌝) := by
   have _ := hb
   let gZero : GroupDesc := { g with prev := 0#64, next := 0#64 }
   let keepAfterMeta : BitVec 64 → Prop := fun a => OwnedRwByte st a ∧ ¬ InRegion g.metaPtr 40 a
@@ -395,10 +395,10 @@ theorem sepWP_nf_retire_nested [MallocngMultiPlacement]
                           ((maddrs.ctx ↦ₛ cDeq.toBytes) ∗
                            ((g.metaPtr ↦ₛ gZero.metaBytes) ∗ ByteMap st.masterDom keepAfterMeta bvDeq) ∗
                            (stackFrameAt (s0.sp - 32#64) (32 * (fuel' + 1)) ∗ nfStackSaved s0.sp s0 ∗
-                            MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ∗
+                            MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ro ∗
                             ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
                             MappedSet st.masterDom (OwnedMappedByte st)))
-                          (NfFuelPost k (fuel' + 1) γ brkStart bud st s0) (fun _ => ⌜False⌝) := by
+                          (NfFuelPost (ro := ro) k (fuel' + 1) γ brkStart bud st s0) (fun _ => ⌜False⌝) := by
                       intro sF hpcF hrunF hx0F hx1F hx3F hx19F hx20F hspF hProcF hbrkF hpermF hcsF
                       rw [hFocusGMem]
                       apply step_str64_fast (b + 0x3fc#64) (b + 0x400#64) g.mem 0#64
@@ -456,23 +456,24 @@ theorem sepWP_nf_retire_nested [MallocngMultiPlacement]
                               st2.metaAreas = st1.metaAreas ∧
                               totalLiveCount st2 ≤ totalLiveCount st1 ∧
                               (dynamicRootRegions st2).length ≤ (dynamicRootRegions st1).length ∧
-                              Cost.GroupsGrpMono st1.groups st2.groups⌝ ∗
-                            (MallocngCoreStInflightA (k + 1) γ maddrs brkStart s0.brk bud.liveCost bud.peakCost st2 ∗
+                              Cost.GroupsGrpMono st1.groups st2.groups ∧
+                              Cost.Fine.GroupsFreeMono st1.groups st2.groups⌝ ∗
+                            (MallocngCoreStInflightModeA ro (k + 1) γ maddrs brkStart s0.brk bud.liveCost bud.peakCost st2 ∗
                              stackFrameAt (s0.sp - 32#64) (32 * (fuel' + 1)) ∗ MallocngRoTablesA maddrs ∗
                              NfRetSep st1 st2 (sfR.readReg64 .x0) (sfR.readReg64 .x1) ∗
                              (g.metaPtr ↦ₛ gZero.metaBytes) ∗ nfStackSaved s0.sp s0 ∗ R_sat) := by
                           refine Satisfies.mono ?_ hmSat
                           simp only [arm64_norm, hspF, hbrkF]
                           refine Entails.pure_left fun hP2 => Entails.pure_right ?_ ?_
-                          · obtain ⟨⟨p1, p2, p3, p4, p5, p6, p7⟩, hb2, _, hp2, hr2, hma2, hc2, hd2, hg2⟩ := hP2
+                          · obtain ⟨⟨p1, p2, p3, p4, p5, p6, p7⟩, hb2, _, hp2, hr2, hma2, hc2, hd2, hg2, hfr2⟩ := hP2
                             exact ⟨⟨by simpa [arm64_norm] using p1, by simpa [arm64_norm] using p2,
                                     by simpa [arm64_norm] using p3, by simpa [arm64_norm] using p4,
                                     by simpa [arm64_norm] using p5, by simpa [arm64_norm] using p6,
                                     by simpa [arm64_norm] using p7⟩,
-                                   hb2, hp2, hr2, hma2, hc2, hd2, hg2⟩
+                                   hb2, hp2, hr2, hma2, hc2, hd2, hg2, hfr2⟩
                           · sep_frame
                         rw [satisfies_pure_sepConj] at hmPure
-                        obtain ⟨⟨hProc2, hBrk2, hPerm2, hRes2, hMa2, hCnt2, hDynLen2, hGrp2⟩, hmCore2⟩ := hmPure
+                        obtain ⟨⟨hProc2, hBrk2, hPerm2, hRes2, hMa2, hCnt2, hDynLen2, hGrp2, hFree2⟩, hmCore2⟩ := hmPure
                         rw [coreStInflightA_eq_nfParts, sepConj_assoc, satisfies_pure_sepConj] at hmCore2
                         have hWf2 := hmCore2.1
                         have hx19R : sfR.readReg64 .x19 = gZero.metaPtr :=
@@ -511,6 +512,10 @@ theorem sepWP_nf_retire_nested [MallocngMultiPlacement]
                             (by rw [hDyn1] at hDynLen2; exact hDynLen2)
                             ((Cost.DequeueOutcome.groupsGrpMono hDeq).trans
                               ((Cost.groupsGrpMono_replaceGroupByMeta (g1 := pg1) hPgDeq pg0.metaPtr rfl rfl).trans hGrp2))
+                            ((Cost.DequeueOutcome.groupsFreeMono hDeq).trans
+                              ((Cost.groupsFreeMono_replaceGroupByMeta (g1 := pg1) hPgDeq pg0.metaPtr
+                                rfl rfl rfl rfl rfl
+                                (Cost.Fine.SlotUserSub.set_nonUser _ _ _ (fun _ _ _ h => nomatch h))).trans hFree2))
                         · have hRetEq :
                               NfRetSep st1 st2 (sfR.readReg64 (.gpr 0#5)) (sfR.readReg64 (.gpr 1#5)) =
                               NfRetSep st st2 (sfR.readReg64 (.gpr 0#5)) (sfR.readReg64 (.gpr 1#5)) :=

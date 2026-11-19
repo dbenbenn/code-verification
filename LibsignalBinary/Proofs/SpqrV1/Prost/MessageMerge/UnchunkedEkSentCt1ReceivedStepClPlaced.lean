@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedEkSentCt1ReceivedStep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedEkSentCt1ReceivedStep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirection
@@ -23,7 +23,7 @@ Code-loaded (`withLsCodeRoLoaded lsmpl`) `[LibsignalPlacement]` exit and per-fie
 `prost::encoding::message::merge::<unchunked::EkSentCt1Received, &mut &[u8]>` (Block `311`).
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedEkSentCt1ReceivedStepClPlaced
@@ -53,7 +53,7 @@ set_option linter.unusedSimpArgs false
 
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero_u bv64_add_zero_u unchunkedEkSentCt1ReceivedMerge_fnOff
+attribute [local simp, local arm64_norm] bv64_sub_zero_u bv64_add_zero_u
 
 theorem ekSent_from_err_exit_cl_placed [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}

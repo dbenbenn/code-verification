@@ -19,7 +19,7 @@ Registers the `dsl_cost` `simp` attribute for `ReductionDsl` cost and query uppe
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.GameHop.ReductionDsl.CostAttr
 

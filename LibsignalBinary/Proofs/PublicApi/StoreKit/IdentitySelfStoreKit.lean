@@ -9,16 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKit
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKit
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StoreEmpty
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StoreEmpty
 public import LibsignalBinary.Proofs.E2E.InMem.IdentityKeyStoreImpl.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.InMem.IdentityKeyStoreImpl.Skeleton
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Self-Identity Store Kit (`IdentitySelfStoreSpec`, `IdentitySelfStoreKitOkI`)
@@ -34,7 +35,7 @@ Parameterized over an existing `ikit : IdentityStoreSpec A b` so self-identity a
 operations share `ikit.id_vt`, `ikit.IdState`, `ikit.identityAt`, and `ikit.envOk`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -123,7 +124,7 @@ structure IdentitySelfStoreSpec {A : RustAlloc} {b : BitVec 64}
   `RecordCodecsBinary.identityKeyPairResultAt A out (.ok kp)`);
 * `.error e`: byte `1#8` at `out`, 7 bytes of padding at `out + 1`, the 48-byte
   `speErrAt skit.kpErr (out + 8) e`, and 16 bytes of trailing padding at `out + 0x38`. -/
-def kpPollOutAt {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
+@[expose] def kpPollOutAt {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
     (skit : IdentitySelfStoreSpec ikit) (out : BitVec 64) :
     Except skit.KpErr IdentityKeyPair → SepProp
   | .ok kp =>
@@ -140,7 +141,7 @@ def kpPollOutAt {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
 * `.ok reg`: word `0xFFFFFFFFFFFFFFFE#64` (`-2`) at `out`, 32-bit registration ID `reg` at
   `out + 8`, and 36 bytes of trailing uninspected payload/padding at `out + 0xc`;
 * `.error e`: the 48-byte `SignalProtocolError` `speErrAt skit.regIdErr out e`. -/
-def regIdPollOutAt {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
+@[expose] def regIdPollOutAt {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
     (skit : IdentitySelfStoreSpec ikit) (out : BitVec 64) :
     Except skit.RegIdErr (BitVec 32) → SepProp
   | .ok reg =>
@@ -153,7 +154,7 @@ def regIdPollOutAt {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b
 /-- Generic `get_identity_key_pair` shim spec parameterized by `skit : IdentitySelfStoreSpec ikit`.
 Takes `self` in `x0` and returns `(box, b + skit.kpFutVtOff)` in `(x0, x1)` with `box ≠ 0#64` and
 8-aligned. -/
-def kitKpShimSpec {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
+@[expose] def kitKpShimSpec {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
     (skit : IdentitySelfStoreSpec ikit) : Spec (BitVec 64) where
   pre := fun self s =>
     ⌜s.readReg64 .x0 = self⌝ ∗ A.pool ∗ stackAt s.sp skit.kpShimStack
@@ -168,7 +169,7 @@ def kitKpShimSpec {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
 /-- Generic `get_local_registration_id` shim spec parameterized by
 `skit : IdentitySelfStoreSpec ikit`. Takes `self` in `x0` and returns
 `(box, b + skit.regIdFutVtOff)` in `(x0, x1)` with `box ≠ 0#64` and 8-aligned. -/
-def kitRegIdShimSpec {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
+@[expose] def kitRegIdShimSpec {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
     (skit : IdentitySelfStoreSpec ikit) : Spec (BitVec 64) where
   pre := fun self s =>
     ⌜s.readReg64 .x0 = self⌝ ∗ A.pool ∗ stackAt s.sp skit.regIdShimStack
@@ -183,7 +184,7 @@ def kitRegIdShimSpec {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A
 /-- Generic `get_identity_key_pair` poll spec parameterized by `skit : IdentitySelfStoreSpec ikit`.
 Ghost state `(fut, out, self, ist0)`: reads `ikit.identityAt self ist0` without modifying `ist0`
 and writes `kpPollOutAt skit out ans` (`72` bytes). -/
-def kitKpPollSpec {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
+@[expose] def kitKpPollSpec {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
     (skit : IdentitySelfStoreSpec ikit) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × ikit.IdState) where
   pre := fun (fut, out, self, ist0) s =>
@@ -205,7 +206,7 @@ def kitKpPollSpec {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
 `skit : IdentitySelfStoreSpec ikit`. Ghost state `(fut, out, self, ist0)`: reads
 `ikit.identityAt self ist0` without modifying `ist0` and writes `regIdPollOutAt skit out ans`
 (`48` bytes). -/
-def kitRegIdPollSpec {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
+@[expose] def kitRegIdPollSpec {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
     (skit : IdentitySelfStoreSpec ikit) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × ikit.IdState) where
   pre := fun (fut, out, self, ist0) s =>
@@ -237,164 +238,24 @@ abbrev kitRegIdPollSpecE {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSp
 
 /-! ### In-Image Poll Contracts (`logOff img` and `.inImage img`) -/
 
-/-- The `get_identity_key_pair` poll contract of an in-image identity store: `kitKpPollSpecE`
-plus `logOff img`, under the image invariant. -/
-abbrev kitKpPollSpecI {A : RustAlloc} {b : BitVec 64} (img : Obj.Image)
-    {ikit : IdentityStoreSpec A b} (skit : IdentitySelfStoreSpec ikit) :
-    Spec (BitVec 64 × BitVec 64 × BitVec 64 × ikit.IdState) :=
-  (withLogOff (kitKpPollSpecE skit) img).inImage img
-
-/-- The `get_local_registration_id` poll contract of an in-image identity store:
-`kitRegIdPollSpecE` plus `logOff img`, under the image invariant. -/
-abbrev kitRegIdPollSpecI {A : RustAlloc} {b : BitVec 64} (img : Obj.Image)
-    {ikit : IdentityStoreSpec A b} (skit : IdentitySelfStoreSpec ikit) :
-    Spec (BitVec 64 × BitVec 64 × BitVec 64 × ikit.IdState) :=
-  (withLogOff (kitRegIdPollSpecE skit) img).inImage img
-
 /-- The self-identity methods' own trace events contain no file-system event (`FsCtx`'s `Q`). -/
-def IdentitySelfStoreSpec.Quiet {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
+@[expose] def IdentitySelfStoreSpec.Quiet {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
     (skit : IdentitySelfStoreSpec ikit) : Prop :=
   (∀ ans, NoFsEv (skit.kpEvs ans)) ∧
     (∀ ans, NoFsEv (skit.regIdEvs ans))
 
 /-! ## Vtable and Code Bundles -/
 
-/-- Read-only `.rodata` vtable slots required by `skit : IdentitySelfStoreSpec ikit` under
-`img.FrozenLoaded`. -/
-structure IdentitySelfVtablesOk {A : RustAlloc} (img : Obj.Image)
-    (ikit : IdentityStoreSpec A img.base)
-    (skit : IdentitySelfStoreSpec ikit) : Prop where
-  kpSlot : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((ikit.id_vt + 0x18#64) ↦₆₄ᵣ (img.base + skit.kpShimOff)) ∗ P
-  regIdSlot : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((ikit.id_vt + 0x20#64) ↦₆₄ᵣ (img.base + skit.regIdShimOff)) ∗ P
-  kpFutDrop : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + skit.kpFutVtOff) ↦₆₄ᵣ (img.base + skit.kpFutDropOff)) ∗ P
-  kpFutSize : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + skit.kpFutVtOff + 8#64) ↦₆₄ᵣ BitVec.ofNat 64 skit.kpBoxSize) ∗ P
-  kpFutAlign : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + skit.kpFutVtOff + 0x10#64) ↦₆₄ᵣ 8#64) ∗ P
-  kpFutPoll : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + skit.kpFutVtOff + 0x18#64) ↦₆₄ᵣ (img.base + skit.kpPollOff)) ∗ P
-  regIdFutDrop : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + skit.regIdFutVtOff) ↦₆₄ᵣ (img.base + skit.regIdFutDropOff)) ∗ P
-  regIdFutSize : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + skit.regIdFutVtOff + 8#64) ↦₆₄ᵣ BitVec.ofNat 64 skit.regIdBoxSize) ∗ P
-  regIdFutAlign : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + skit.regIdFutVtOff + 0x10#64) ↦₆₄ᵣ 8#64) ∗ P
-  regIdFutPoll : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + skit.regIdFutVtOff + 0x18#64) ↦₆₄ᵣ (img.base + skit.regIdPollOff)) ∗ P
-
-/-- Code-contract bundle for `skit : IdentitySelfStoreSpec ikit` at `tripleRatchetProgAtExt b ext`
-(without `img.FrozenLoaded` or `logOff img`). -/
-structure IdentitySelfStoreKitOk {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
-    (skit : IdentitySelfStoreSpec ikit)
-    (ext : String → Option (State → State)) : Prop where
-  kpShim : subroutine_ok (tripleRatchetProgAtExt b ext) (b + skit.kpShimOff)
-    (kitKpShimSpec skit)
-  kpPoll : subroutine_ok (tripleRatchetProgAtExt b ext) (b + skit.kpPollOff)
-    (kitKpPollSpecE skit)
-  kpFutDrop : subroutine_ok (tripleRatchetProgAtExt b ext) (b + skit.kpFutDropOff)
-    futDropSpec
-  regIdShim : subroutine_ok (tripleRatchetProgAtExt b ext) (b + skit.regIdShimOff)
-    (kitRegIdShimSpec skit)
-  regIdPoll : subroutine_ok (tripleRatchetProgAtExt b ext) (b + skit.regIdPollOff)
-    (kitRegIdPollSpecE skit)
-  regIdFutDrop : subroutine_ok (tripleRatchetProgAtExt b ext) (b + skit.regIdFutDropOff)
-    futDropSpec
-
-/-- The `IdentitySelfStoreKitOkI` bundle used by Stage P2 of `decrypt_prekey`, stated at
-`tripleRatchetProgAtExt b ext`: the shim and poll contracts assume `.inImage img`, and both polls
-also require and preserve `logOff img` (`kitKpPollSpecI` / `kitRegIdPollSpecI`). -/
-structure IdentitySelfStoreKitOkI {A : RustAlloc} {b : BitVec 64} (img : Obj.Image)
-    (ikit : IdentityStoreSpec A b) (skit : IdentitySelfStoreSpec ikit)
-    (ext : String → Option (State → State)) : Prop where
-  kpShim : subroutine_ok (tripleRatchetProgAtExt b ext) (b + skit.kpShimOff)
-    ((kitKpShimSpec skit).inImage img)
-  kpPoll : subroutine_ok (tripleRatchetProgAtExt b ext) (b + skit.kpPollOff)
-    (kitKpPollSpecI img skit)
-  kpFutDrop : subroutine_ok (tripleRatchetProgAtExt b ext) (b + skit.kpFutDropOff)
-    futDropSpec
-  regIdShim : subroutine_ok (tripleRatchetProgAtExt b ext) (b + skit.regIdShimOff)
-    ((kitRegIdShimSpec skit).inImage img)
-  regIdPoll : subroutine_ok (tripleRatchetProgAtExt b ext) (b + skit.regIdPollOff)
-    (kitRegIdPollSpecI img skit)
-  regIdFutDrop : subroutine_ok (tripleRatchetProgAtExt b ext) (b + skit.regIdFutDropOff)
-    futDropSpec
-
-/-- A self-identity store that assumes nothing about `img` gives `IdentitySelfStoreKitOkI`. -/
-theorem IdentitySelfStoreKitOk.toI {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
-    {skit : IdentitySelfStoreSpec ikit} {ext : String → Option (State → State)} {img : Obj.Image}
-    (h : IdentitySelfStoreKitOk skit ext) :
-    IdentitySelfStoreKitOkI img ikit skit ext where
-  kpShim := subroutine_ok_inImage_of_subroutine_ok img h.kpShim
-  kpPoll := subroutine_ok_inImage_of_subroutine_ok img
-    (subroutine_ok_withLogOff img h.kpPoll fun _ _ _ => by
-      dsimp only [kitKpPollSpecE, withEnvPre, kitKpPollSpec]
-      rw [sepConj_assoc]; exact sepConj_mono_right (entails_anyHeap _))
-  kpFutDrop := h.kpFutDrop
-  regIdShim := subroutine_ok_inImage_of_subroutine_ok img h.regIdShim
-  regIdPoll := subroutine_ok_inImage_of_subroutine_ok img
-    (subroutine_ok_withLogOff img h.regIdPoll fun _ _ _ => by
-      dsimp only [kitRegIdPollSpecE, withEnvPre, kitRegIdPollSpec]
-      rw [sepConj_assoc]; exact sepConj_mono_right (entails_anyHeap _))
-  regIdFutDrop := h.regIdFutDrop
-
-/-- Definitional equality `tripleRatchetProgAt b C ctl abs =
-tripleRatchetProgAtExt b (tripleRatchetExterns C ctl abs)`. -/
-theorem tripleRatchetProgAt_eq_ext (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    tripleRatchetProgAt b C ctl abs =
-      tripleRatchetProgAtExt b (tripleRatchetExterns C ctl abs) := rfl
-
-theorem IdentitySelfStoreKitOk.ofProgAt {A : RustAlloc} {b : BitVec 64}
-    {ikit : IdentityStoreSpec A b} {skit : IdentitySelfStoreSpec ikit}
-    {C : Crypto} {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (kpShim : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + skit.kpShimOff)
-      (kitKpShimSpec skit))
-    (kpPoll : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + skit.kpPollOff)
-      (kitKpPollSpecE skit))
-    (kpFutDrop : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + skit.kpFutDropOff)
-      futDropSpec)
-    (regIdShim : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + skit.regIdShimOff)
-      (kitRegIdShimSpec skit))
-    (regIdPoll : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + skit.regIdPollOff)
-      (kitRegIdPollSpecE skit))
-    (regIdFutDrop : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + skit.regIdFutDropOff)
-      futDropSpec) :
-    IdentitySelfStoreKitOk skit (tripleRatchetExterns C ctl abs) :=
-  ⟨kpShim, kpPoll, kpFutDrop, regIdShim, regIdPoll, regIdFutDrop⟩
-
-theorem IdentitySelfStoreKitOkI.ofProgAt {A : RustAlloc} {b : BitVec 64}
-    {img : Obj.Image} {ikit : IdentityStoreSpec A b} {skit : IdentitySelfStoreSpec ikit}
-    {C : Crypto} {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (kpShim : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + skit.kpShimOff)
-      ((kitKpShimSpec skit).inImage img))
-    (kpPoll : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + skit.kpPollOff)
-      (kitKpPollSpecI img skit))
-    (kpFutDrop : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + skit.kpFutDropOff)
-      futDropSpec)
-    (regIdShim : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + skit.regIdShimOff)
-      ((kitRegIdShimSpec skit).inImage img))
-    (regIdPoll : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + skit.regIdPollOff)
-      (kitRegIdPollSpecI img skit))
-    (regIdFutDrop : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + skit.regIdFutDropOff)
-      futDropSpec) :
-    IdentitySelfStoreKitOkI img ikit skit (tripleRatchetExterns C ctl abs) :=
-  ⟨kpShim, kpPoll, kpFutDrop, regIdShim, regIdPoll, regIdFutDrop⟩
-
-/-! ## In-Memory Non-Vacuity Witness -/
-
 /-- Own-identity memory layout (`self + 0x30..0x70` key pair and `self + 0x70` `u32`
 registration ID) of `InMemIdentityKeyStore`. -/
-def inMemSelfIdentityAt (self : BitVec 64) (st : IdentityKeyPair × BitVec 32) : SepProp :=
+@[expose] def inMemSelfIdentityAt (self : BitVec 64) (st : IdentityKeyPair × BitVec 32) : SepProp :=
   ((self + 0x30#64) ↦ₛ st.1.identityKey.publicKey.bytes.toList) ∗
     ((self + 0x50#64) ↦ₛ st.1.privateKey.bytes.toList) ∗
     ((self + 0x70#64) ↦₃₂ st.2)
 
 /-- Local witness `IdentityStoreSpec` owning `InMemIdentityKeyStore`'s self key pair and local
 registration ID cells. -/
-def inMemSelfIdentityStoreSpec (A : RustAlloc) (b : BitVec 64) : IdentityStoreSpec A b :=
+@[expose] def inMemSelfIdentityStoreSpec (A : RustAlloc) (b : BitVec 64) : IdentityStoreSpec A b :=
   { hookIdentityStoreSpec A b with
     IdState := IdentityKeyPair × BitVec 32
     identityAt := inMemSelfIdentityAt
@@ -402,115 +263,6 @@ def inMemSelfIdentityStoreSpec (A : RustAlloc) (b : BitVec 64) : IdentityStoreSp
     saveUpdate := fun st _ _ _ => st
     trustRel := fun _ _ _ _ _ => True
     saveRel := fun _ _ _ _ => True }
-
-/-- `SpeErrSpec` matching the callback `SignalProtocolError` layout on `InMemIdentityKeyStore`'s
-unreachable self-identity `Err` branch, parameterized by trailing uninitialized word `w`. -/
-def inMemSelfSpeErrSpec (b : BitVec 64) : SpeErrSpec (BitVec 64) where
-  w0 := fun _ => 0x800000000000001A#64
-  w1 := fun _ =>
-    b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}"))
-  w2 := fun _ => 10#64
-  w3 := fun _ => 1#64
-  w4 := fun _ =>
-    b + bv% (ls_xref% (ls_off% "<libsignal_protocol::fingerprint::ScannableFingerprint>::serialize" + 620) (ls_off% "<libsignal_protocol::fingerprint::ScannableFingerprint>::serialize" + 624) + 16)
-  w5 := id
-  heap := fun _ =>
-    (b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}"))) ↦ᵣ
-      storeHookStr
-  w0_ne_err := fun _ => by decide
-  w0_ne_ok := fun _ => by decide
-  w0_ne_pending := fun _ => by decide
-
-/-- Non-vacuity witness `IdentitySelfStoreSpec` for `InMemIdentityKeyStore`. -/
-def inMemIdentitySelfStoreSpec (A : RustAlloc) (b : BitVec 64) :
-    IdentitySelfStoreSpec (inMemSelfIdentityStoreSpec A b) where
-  KpErr := BitVec 64
-  RegIdErr := BitVec 64
-  kpErr := inMemSelfSpeErrSpec b
-  regIdErr := inMemSelfSpeErrSpec b
-  kpRel := fun st ans => ans = .ok st.1
-  regIdRel := fun st ans => ans = .ok st.2
-  kpEvs := fun _ => []
-  regIdEvs := fun _ => []
-  kpShimOff := bv% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair")
-  kpFutVtOff := bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}") - 24)
-  kpPollOff := bv% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}")
-  kpFutDropOff := CryptoVerification.E2E.InMem.IdentityKeyStoreImpl.inMemFutDropOff
-  regIdShimOff := bv% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id")
-  regIdFutVtOff := bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}") - 24)
-  regIdPollOff := bv% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}")
-  regIdFutDropOff := CryptoVerification.E2E.InMem.IdentityKeyStoreImpl.inMemFutDropOff
-  kpBoxSize := 16
-  regIdBoxSize := 16
-  kpShimStack := CryptoVerification.E2E.Pqxdh.ResponderClosure.inMemId16ShimStack
-  kpPollStack := 0
-  regIdShimStack := CryptoVerification.E2E.Pqxdh.ResponderClosure.inMemId16ShimStack
-  regIdPollStack := 0
-  kpBoxAt := CryptoVerification.E2E.Pqxdh.ResponderClosure.inMemId16BoxAt
-  regIdBoxAt := CryptoVerification.E2E.Pqxdh.ResponderClosure.inMemId16BoxAt
-  kpBoxAt_memRegion := CryptoVerification.E2E.Pqxdh.ResponderClosure.inMemId16BoxAt_memRegion
-  regIdBoxAt_memRegion := CryptoVerification.E2E.Pqxdh.ResponderClosure.inMemId16BoxAt_memRegion
-  kpBoxSize_ne_zero := by decide
-  regIdBoxSize_ne_zero := by decide
-  kpBoxSize_lt := by decide
-  regIdBoxSize_lt := by decide
-  kpFutDrop_ne_zero := fun hb h => by
-    rw [show b = 0#64 - CryptoVerification.E2E.InMem.IdentityKeyStoreImpl.inMemFutDropOff by
-      rw [← h, BitVec.add_sub_cancel]] at hb
-    exact absurd hb (by decide)
-  regIdFutDrop_ne_zero := fun hb h => by
-    rw [show b = 0#64 - CryptoVerification.E2E.InMem.IdentityKeyStoreImpl.inMemFutDropOff by
-      rw [← h, BitVec.add_sub_cancel]] at hb
-    exact absurd hb (by decide)
-
-theorem inMemIdentitySelfStoreSpec_quiet {A : RustAlloc} {b : BitVec 64} :
-    (inMemIdentitySelfStoreSpec A b).Quiet :=
-  ⟨fun _ => by simp [inMemIdentitySelfStoreSpec, NoFsEv],
-    fun _ => by simp [inMemIdentitySelfStoreSpec, NoFsEv]⟩
-
-theorem inMemSelf_kpRel_error_iff {A : RustAlloc} {b : BitVec 64}
-    {st : (inMemSelfIdentityStoreSpec A b).IdState}
-    {e : (inMemIdentitySelfStoreSpec A b).KpErr} :
-    (inMemIdentitySelfStoreSpec A b).kpRel st (.error e) ↔ False := by
-  simp [inMemIdentitySelfStoreSpec]
-
-theorem inMemSelf_regIdRel_error_iff {A : RustAlloc} {b : BitVec 64}
-    {st : (inMemSelfIdentityStoreSpec A b).IdState}
-    {e : (inMemIdentitySelfStoreSpec A b).RegIdErr} :
-    (inMemIdentitySelfStoreSpec A b).regIdRel st (.error e) ↔ False := by
-  simp [inMemIdentitySelfStoreSpec]
-
-private theorem inMemSelfSpeErrAt_eq (b p : BitVec 64) :
-    SepProp.sepExists (fun w => speErrAt (inMemSelfSpeErrSpec b) p w) =
-      (p ↦₆₄ 0x800000000000001A#64) ∗
-        ((p + 0x08#64) ↦₆₄ (b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}")))) ∗
-        errTailAt b p ∗ memRegion (p + 0x28#64) 8 := by
-  rw [ProofLib.memRegion_eight (p + 0x28#64)]
-  dsimp only [speErrAt, speWordsAt, inMemSelfSpeErrSpec, id, errTailAt]
-  simp only [ProofLib.sepExists_sepConj_right]
-  exact congrArg SepProp.sepExists (funext fun _ => by ac_rfl)
-
-/-- Existential quantification over `inMemSelfSpeErrSpec b` matches the 64-byte error payload of
-`get_identity_key_pair`. -/
-theorem inMemSelf_kpErr_layout (b out : BitVec 64) :
-    (∃∗ w, speErrAt (inMemSelfSpeErrSpec b) (out + 8#64) w) ∗ memRegion (out + 0x38#64) 16 =
-      ((out + 8#64) ↦₆₄ 0x800000000000001A#64) ∗
-        ((out + 0x10#64) ↦₆₄ (b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}")))) ∗
-        errTailAt b (out + 8#64) ∗ memRegion (out + 0x30#64) 24 := by
-  rw [inMemSelfSpeErrAt_eq b (out + 8#64),
-    show (24 : Nat) = 8 + 16 from rfl,
-    ProofLib.memRegion_split (out + 0x30#64) 8 16 (by decide)]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd]
-  ac_rfl
-
-/-- Existential quantification over `inMemSelfSpeErrSpec b` matches the 48-byte error payload of
-`get_local_registration_id`. -/
-theorem inMemSelf_regIdErr_layout (b out : BitVec 64) :
-    (∃∗ w, speErrAt (inMemSelfSpeErrSpec b) out w) =
-      (out ↦₆₄ 0x800000000000001A#64) ∗
-        ((out + 8#64) ↦₆₄ (b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}")))) ∗
-        errTailAt b out ∗ memRegion (out + 0x28#64) 8 :=
-  inMemSelfSpeErrAt_eq b out
 
 section InMemWitness
 
@@ -567,172 +319,12 @@ private theorem stackAt_inMemSelfShim (sp : BitVec 64) :
       stackAt (sp - 32#64) allocHookStack ∗ cells (sp - 32#64) 4 :=
   ProofLib.stackAt_split_cells sp allocHookStack 4 (by decide)
 
-private theorem fnAddr_progAt_inMemSelf {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (Arm64.State → Arm64.State)} {name : String} {off : Nat}
-    (h : libsignalSessionCode.fnOff name = off) :
-    (tripleRatchetProgAt b C ctl abs).fnAddr name = b + BitVec.ofNat 64 off := by
-  simp only [tripleRatchetProgAt, Program.fnAddr_rebase, h]
-
 private theorem sepWPp_pure_mid_inMemSelf {prog : Program} {ret : BitVec 64} {s : Arm64.State}
     {P1 P2 P3 : SepProp} {φ : Prop} {Q Qp : Arm64.State → SepProp → Prop}
     (h : φ → SepWPp prog ret s (P1 ∗ P2 ∗ P3) Q Qp) :
     SepWPp prog ret s (P1 ∗ P2 ∗ ⌜φ⌝ ∗ P3) Q Qp := by
   rw [show P1 ∗ P2 ∗ ⌜φ⌝ ∗ P3 = ⌜φ⌝ ∗ P1 ∗ P2 ∗ P3 by ac_rfl]
   exact SepWPp.pure_elim h
-
-private theorem idKp_shim_adrp_inMemSelf {b : BitVec 64}
-    {H : String → Option (Arm64.State → Arm64.State)} (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr getIdentityKeyPairShimName + 36#64) &&&
-      0xfffffffffffff000#64) =
-      b + bv% (page% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair" + 36)) := by
-  rw [Program.fnAddr_rebase,
-    (ls_lemma% fnOff "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair"),
-    BitVec.add_assoc, ProofLib.ObjectLoad.adrp_page_of_aligned hb]
-  rfl
-
-private theorem regId_shim_adrp_inMemSelf {b : BitVec 64}
-    {H : String → Option (Arm64.State → Arm64.State)} (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr getLocalRegistrationIdShimName + 36#64) &&&
-      0xfffffffffffff000#64) =
-      b + bv% (page% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id" + 36)) := by
-  rw [Program.fnAddr_rebase,
-    (ls_lemma% fnOff "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id"),
-    BitVec.add_assoc, ProofLib.ObjectLoad.adrp_page_of_aligned hb]
-  rfl
-
-set_option maxHeartbeats 1200000 in
-private theorem inMemKpShim_ok {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64} {abs : String → Option (Arm64.State → Arm64.State)}
-    (hA : AllocHooks A abs) (hb : b &&& 0xfff#64 = 0#64) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      (b + (inMemIdentitySelfStoreSpec A b).kpShimOff)
-      (kitKpShimSpec (inMemIdentitySelfStoreSpec A b)) := by
-  have hfn : libsignalSessionCode.fnOff getIdentityKeyPairShimName =
-      num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair") :=
-    getIdentityKeyPairShim_fnOff
-  change subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    (b + BitVec.ofNat 64 (num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair")))
-    (kitKpShimSpec (inMemIdentitySelfStoreSpec A b))
-  rw [← fnAddr_progAt_inMemSelf (b := b) (C := C) (ctl := ctl) (abs := abs) hfn]
-  simp only [kitKpShimSpec, inMemIdentitySelfStoreSpec, inMemId16BoxAt, inMemId16ShimStack,
-    stackAt_inMemSelfShim]
-  cells_unfold
-  have hshim := noAllocShim_ok_at (b := b) (C := C) (ctl := ctl) (abs := abs)
-    (name := getIdentityKeyPairShimName)
-    (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair"))
-  have halloc := alloc_ok_at_norm (b := b) (C := C) (ctl := ctl)
-    (name := getIdentityKeyPairShimName)
-    (k := num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair")) hA
-  have hpanic : (tripleRatchetProgAt b C ctl abs).externAt?
-      ((tripleRatchetProgAt b C ctl abs).fnAddr getIdentityKeyPairShimName + BitVec.ofNat 64
-        (num% (ls_off% "alloc::alloc::handle_alloc_error" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair"))) =
-      some Rust.panicked :=
-    panic_at_panicSymbol (hname := "alloc::alloc::handle_alloc_error") hfn
-      (show (num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair")) +
-          num% (ls_off% "alloc::alloc::handle_alloc_error" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair") =
-        libsignalSessionCode.fnOff "alloc::alloc::handle_alloc_error" by simp only [arm64_norm])
-      (by simp only [arm64_norm])
-      (fun _ => by simp only [arm64_norm]) (by simp [Rust.isPanicSymbol])
-  code_fetches CryptoVerification.libsignalSessionCode storeEmpty b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn
-    (num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair")) 76
-  wpp_init self s0
-  have hadrp := idKp_shim_adrp_inMemSelf (H := Rust.withPanics (tripleRatchetExterns C ctl abs)) hb
-  examples_generalize_entry
-  examples_hide_fetches
-  have hpow8 : ∃ k, 8 = 2 ^ k := ⟨3, rfl⟩
-  have hlay : LayoutOk 16 8 := ⟨by decide, hpow8, by decide⟩
-  apply SepWPp.of_sepWP (mid := entry + bv% (32))
-  wp_steps
-  wp_call hshim ()
-  wp_steps
-  wp_call halloc (16, 8)
-  apply SepWP.done (by simp_all) (by simp_all)
-  by_cases hoom : sf_1.readReg64 (Reg.gpr 0#5) = 0
-  · simp only [hoom, ite_true, sepConj_assoc]
-    refine sepWPp_pure_mid_inMemSelf fun htrace => ?_
-    apply SepWPp.of_sepWP
-      (mid := entry + bv% (ls_off% "alloc::alloc::handle_alloc_error" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair"))
-    wp_steps
-    apply SepWP.done (by simp_all) (by simp_all)
-    refine SepWPp.panic (by simp_all) (by simp_all) fun hm => ?_
-    simpa only [sepConj_assoc] using
-      allowPanic_panicked (allocFailedIn_of_eq (by simp_all [Rust.panicked])) hm
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom
-    simp only [hoom, ite_false, memRegion_16_inMemSelf, sepExists_sepConj_left,
-      sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun b0 => SepWPp.exists_elim fun u0 => ?_
-    refine sepWPp_pure_mid_inMemSelf fun ⟨hmod, htrace⟩ => ?_
-    apply SepWPp.of_sepWP_ret
-    wp_steps
-    wp_done
-
-set_option maxHeartbeats 1200000 in
-private theorem inMemRegIdShim_ok {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64} {abs : String → Option (Arm64.State → Arm64.State)}
-    (hA : AllocHooks A abs) (hb : b &&& 0xfff#64 = 0#64) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      (b + (inMemIdentitySelfStoreSpec A b).regIdShimOff)
-      (kitRegIdShimSpec (inMemIdentitySelfStoreSpec A b)) := by
-  have hfn : libsignalSessionCode.fnOff getLocalRegistrationIdShimName =
-      num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id") :=
-    getLocalRegistrationIdShim_fnOff
-  change subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    (b + BitVec.ofNat 64 (num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id")))
-    (kitRegIdShimSpec (inMemIdentitySelfStoreSpec A b))
-  rw [← fnAddr_progAt_inMemSelf (b := b) (C := C) (ctl := ctl) (abs := abs) hfn]
-  simp only [kitRegIdShimSpec, inMemIdentitySelfStoreSpec, inMemId16BoxAt, inMemId16ShimStack,
-    stackAt_inMemSelfShim]
-  cells_unfold
-  have hshim := noAllocShim_ok_at (b := b) (C := C) (ctl := ctl) (abs := abs)
-    (name := getLocalRegistrationIdShimName)
-    (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id"))
-  have halloc := alloc_ok_at_norm (b := b) (C := C) (ctl := ctl)
-    (name := getLocalRegistrationIdShimName)
-    (k := num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id")) hA
-  have hpanic : (tripleRatchetProgAt b C ctl abs).externAt?
-      ((tripleRatchetProgAt b C ctl abs).fnAddr getLocalRegistrationIdShimName + BitVec.ofNat 64
-        (num% (ls_off% "alloc::alloc::handle_alloc_error" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id"))) =
-      some Rust.panicked :=
-    panic_at_panicSymbol (hname := "alloc::alloc::handle_alloc_error") hfn
-      (show (num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id")) +
-          num% (ls_off% "alloc::alloc::handle_alloc_error" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id") =
-        libsignalSessionCode.fnOff "alloc::alloc::handle_alloc_error" by simp only [arm64_norm])
-      (by simp only [arm64_norm])
-      (fun _ => by simp only [arm64_norm]) (by simp [Rust.isPanicSymbol])
-  code_fetches CryptoVerification.libsignalSessionCode storeEmpty b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn
-    (num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id")) 76
-  wpp_init self s0
-  have hadrp := regId_shim_adrp_inMemSelf (H := Rust.withPanics (tripleRatchetExterns C ctl abs)) hb
-  examples_generalize_entry
-  examples_hide_fetches
-  have hpow8 : ∃ k, 8 = 2 ^ k := ⟨3, rfl⟩
-  have hlay : LayoutOk 16 8 := ⟨by decide, hpow8, by decide⟩
-  apply SepWPp.of_sepWP (mid := entry + bv% (32))
-  wp_steps
-  wp_call hshim ()
-  wp_steps
-  wp_call halloc (16, 8)
-  apply SepWP.done (by simp_all) (by simp_all)
-  by_cases hoom : sf_1.readReg64 (Reg.gpr 0#5) = 0
-  · simp only [hoom, ite_true, sepConj_assoc]
-    refine sepWPp_pure_mid_inMemSelf fun htrace => ?_
-    apply SepWPp.of_sepWP
-      (mid := entry + bv% (ls_off% "alloc::alloc::handle_alloc_error" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id"))
-    wp_steps
-    apply SepWP.done (by simp_all) (by simp_all)
-    refine SepWPp.panic (by simp_all) (by simp_all) fun hm => ?_
-    simpa only [sepConj_assoc] using
-      allowPanic_panicked (allocFailedIn_of_eq (by simp_all [Rust.panicked])) hm
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom
-    simp only [hoom, ite_false, memRegion_16_inMemSelf, sepExists_sepConj_left,
-      sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun b0 => SepWPp.exists_elim fun u0 => ?_
-    refine sepWPp_pure_mid_inMemSelf fun ⟨hmod, htrace⟩ => ?_
-    apply SepWPp.of_sepWP_ret
-    wp_steps
-    wp_done
 
 private theorem pointsToBytes_len32_words4 {bs : List (BitVec 8)} (h : bs.length = 32) :
     ∃ (w0 w1 w2 w3 : BitVec 64), ∀ a : BitVec 64,
@@ -793,136 +385,7 @@ private theorem memRegion48_split_regIdPoll (out : BitVec 64) :
       ProofLib.memRegion_four (out + 8#64)]
   simp only [sepExists_sepConj_left, sepExists_sepConj_right, BitVec.add_assoc, BitVec.reduceAdd]
 
-private theorem inMemKpPoll_ok {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64} {abs : String → Option (Arm64.State → Arm64.State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      (b + (inMemIdentitySelfStoreSpec A b).kpPollOff)
-      (kitKpPollSpecE (inMemIdentitySelfStoreSpec A b)) := by
-  refine subroutine_ok_outcome_intro ?_
-  intro ⟨fut, out, self, kp, reg⟩ R s0 hpc hrun hp hsp
-  obtain ⟨ik0, ik1, ik2, ik3, hikPub⟩ :=
-    pointsToBytes_len32_words4 (List.Vector.toList_length kp.identityKey.publicKey.bytes)
-  obtain ⟨ik4, ik5, ik6, ik7, hikPriv⟩ :=
-    pointsToBytes_len32_words4 (List.Vector.toList_length kp.privateKey.bytes)
-  dsimp only [kitKpPollSpecE, withEnvPre, kitKpPollSpec, inMemIdentitySelfStoreSpec,
-    inMemSelfIdentityStoreSpec, inMemSelfIdentityAt, inMemId16BoxAt] at hp
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hp
-  rcases hp with ⟨_, hp⟩
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hp
-  rcases hp with ⟨⟨hx0, hx8⟩, hp⟩
-  rw [hikPub (self + 0x30#64), hikPriv (self + 0x50#64), memRegion72_split_kpPoll out] at hp
-  simp only [BitVec.add_assoc, BitVec.reduceAdd,
-    sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists, sepConj_assoc] at hp
-  rcases hp with ⟨u0, u1, u2, u3, u4, u5, u6, u7, b0, hp⟩
-  let g : GetIdentityKeyPairPollGhost :=
-    { futPtr := fut, sret := out, self := self,
-      ik0 := ik0, ik1 := ik1, ik2 := ik2, ik3 := ik3,
-      ik4 := ik4, ik5 := ik5, ik6 := ik6, ik7 := ik7,
-      b_sret0 := b0, u0 := u0, u1 := u1, u2 := u2, u3 := u3,
-      u4 := u4, u5 := u5, u6 := u6, u7 := u7 }
-  let R' : SepProp :=
-    memRegion (fut + 9#64) 7 ∗ ((self + 0x70#64) ↦₃₂ reg) ∗
-      memRegion (out + 0x41#64) 7 ∗ A.pool ∗ stackAt s0.sp 0 ∗ R
-  have hp' : s0.mem ⊨ getIdentityKeyPairPollSpec.pre g s0 ∗ R' := by
-    dsimp only [getIdentityKeyPairPollSpec, g, R']
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx8⟩, ?_⟩
-    exact Satisfies.congr_prop (by ac_rfl) hp
-  refine ((getIdentityKeyPairPoll_ok (b := b) (C := C) (ctl := ctl) (abs := abs)).to_outcome
-      g R' s0 hpc hrun hp' hsp).mono_outcome fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨_, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [getIdentityKeyPairPollSpec, g, R'] at hq
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq
-    rcases hq with ⟨htrace, hq⟩
-    have hpubSelf := hikPub (self + 0x30#64)
-    have hprivSelf := hikPriv (self + 0x50#64)
-    have hpubOut := hikPub (out + 1#64)
-    have hprivOut := hikPriv (out + 0x21#64)
-    simp only [BitVec.add_assoc, BitVec.reduceAdd] at hpubSelf hprivSelf hpubOut hprivOut
-    dsimp only [kitKpPollSpecE, withEnvPre, kitKpPollSpec, inMemIdentitySelfStoreSpec,
-      inMemSelfIdentityStoreSpec, inMemSelfIdentityAt, inMemId16BoxAt]
-    apply Satisfies.mono (sepConj_mono_left (Entails.sepExists_intro (.ok kp)))
-    dsimp only [kpPollOutAt]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨rfl, htrace.trans (List.append_nil _).symm⟩, ?_⟩
-    rw [hpubSelf, hprivSelf, hpubOut, hprivOut]
-    exact Satisfies.congr_prop (by ac_rfl) hq
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-
-private theorem inMemRegIdPoll_ok {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64} {abs : String → Option (Arm64.State → Arm64.State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      (b + (inMemIdentitySelfStoreSpec A b).regIdPollOff)
-      (kitRegIdPollSpecE (inMemIdentitySelfStoreSpec A b)) := by
-  refine subroutine_ok_outcome_intro ?_
-  intro ⟨fut, out, self, kp, reg⟩ R s0 hpc hrun hp hsp
-  dsimp only [kitRegIdPollSpecE, withEnvPre, kitRegIdPollSpec, inMemIdentitySelfStoreSpec,
-    inMemSelfIdentityStoreSpec, inMemSelfIdentityAt, inMemId16BoxAt] at hp
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hp
-  rcases hp with ⟨_, hp⟩
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hp
-  rcases hp with ⟨⟨hx0, hx8⟩, hp⟩
-  rw [memRegion48_split_regIdPoll out] at hp
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists, sepConj_assoc] at hp
-  rcases hp with ⟨u8, u0, hp⟩
-  let g : GetLocalRegIdPollGhost :=
-    { futPtr := fut, sret := out, self := self, regId := reg, u_sret0 := u0, u_sret8 := u8 }
-  let R' : SepProp :=
-    memRegion (fut + 9#64) 7 ∗
-      ((self + 0x30#64) ↦ₛ kp.identityKey.publicKey.bytes.toList) ∗
-      ((self + 0x50#64) ↦ₛ kp.privateKey.bytes.toList) ∗
-      memRegion (out + 0xc#64) 36 ∗ A.pool ∗ stackAt s0.sp 0 ∗ R
-  have hp' : s0.mem ⊨ getLocalRegIdPollSpec.pre g s0 ∗ R' := by
-    dsimp only [getLocalRegIdPollSpec, g, R']
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx8⟩, ?_⟩
-    exact Satisfies.congr_prop (by ac_rfl) hp
-  refine ((getLocalRegIdPoll_ok (b := b) (C := C) (ctl := ctl) (abs := abs)).to_outcome
-      g R' s0 hpc hrun hp' hsp).mono_outcome fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨_, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [getLocalRegIdPollSpec, g, R'] at hq
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq
-    rcases hq with ⟨htrace, hq⟩
-    dsimp only [kitRegIdPollSpecE, withEnvPre, kitRegIdPollSpec, inMemIdentitySelfStoreSpec,
-      inMemSelfIdentityStoreSpec, inMemSelfIdentityAt, inMemId16BoxAt]
-    apply Satisfies.mono (sepConj_mono_left (Entails.sepExists_intro (.ok reg)))
-    dsimp only [regIdPollOutAt]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨rfl, htrace.trans (List.append_nil _).symm⟩, ?_⟩
-    exact Satisfies.congr_prop (by ac_rfl) hq
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-
 end InMemWitness
-
-/-- Non-vacuity witness: `inMemIdentitySelfStoreSpec A b` satisfies `IdentitySelfStoreKitOk` at
-`ext := tripleRatchetExterns C ctl abs`. -/
-theorem inMemIdentitySelfStoreSpec_ok {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (hA : AllocHooks A abs) (hb : b &&& 0xfff#64 = 0#64) :
-    IdentitySelfStoreKitOk (inMemIdentitySelfStoreSpec A b)
-      (tripleRatchetExterns C ctl abs) :=
-  IdentitySelfStoreKitOk.ofProgAt
-    (inMemKpShim_ok hA hb)
-    inMemKpPoll_ok
-    CryptoVerification.E2E.InMem.IdentityKeyStoreImpl.futDrop_ok
-    (inMemRegIdShim_ok hA hb)
-    inMemRegIdPoll_ok
-    CryptoVerification.E2E.InMem.IdentityKeyStoreImpl.futDrop_ok
-
-/-- Non-vacuity witness: `inMemIdentitySelfStoreSpec A b` satisfies `IdentitySelfStoreKitOkI` at
-`ext := tripleRatchetExterns C ctl abs` via `.toI`. -/
-theorem inMemIdentitySelfStoreSpec_okI {A : RustAlloc} {b : BitVec 64}
-    {img : Obj.Image} {C : Crypto} {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (hA : AllocHooks A abs) (hb : b &&& 0xfff#64 = 0#64) :
-    IdentitySelfStoreKitOkI img (inMemSelfIdentityStoreSpec A b)
-      (inMemIdentitySelfStoreSpec A b) (tripleRatchetExterns C ctl abs) :=
-  (inMemIdentitySelfStoreSpec_ok hA hb).toI
 
 end CryptoVerification.LibsignalPublicApi.StoreKit.IdentitySelf
 
@@ -934,18 +397,6 @@ export IdentitySelf
    kitKpShimSpec kitRegIdShimSpec
    kitKpPollSpec kitRegIdPollSpec
    kitKpPollSpecE kitRegIdPollSpecE
-   kitKpPollSpecI kitRegIdPollSpecI
-   IdentitySelfVtablesOk
-   IdentitySelfStoreKitOk IdentitySelfStoreKitOkI
-   IdentitySelfStoreKitOk.toI
-   tripleRatchetProgAt_eq_ext
-   IdentitySelfStoreKitOk.ofProgAt
-   IdentitySelfStoreKitOkI.ofProgAt
-   inMemSelfIdentityAt inMemSelfIdentityStoreSpec
-   inMemSelfSpeErrSpec inMemIdentitySelfStoreSpec
-   inMemIdentitySelfStoreSpec_quiet
-   inMemSelf_kpRel_error_iff inMemSelf_regIdRel_error_iff
-   inMemSelf_kpErr_layout inMemSelf_regIdErr_layout
-   inMemIdentitySelfStoreSpec_ok inMemIdentitySelfStoreSpec_okI)
+   inMemSelfIdentityAt inMemSelfIdentityStoreSpec)
 
 end CryptoVerification.LibsignalPublicApi.StoreKit

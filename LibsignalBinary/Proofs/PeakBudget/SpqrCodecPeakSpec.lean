@@ -9,13 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.SpqrLeafCodecCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrPolyBounds
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCapsAux
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps
+public import LibsignalBinary.Proofs.PeakBudget.SpqrLeafCodecCredit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrPolyBounds -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCapsAux -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Peak Live-Heap Interface for SPQR V1 Codecs, `initial_state`, and Polynomials
@@ -25,7 +29,7 @@ Re-exports `SpqrPolyBounds`, `SpqrBoundedCredit`, and `SpqrLeafCodecCredit`, and
 (`StatesFromPbBoundedEnv`, `StatesFromPbTightEnv`) `PhaseCreditSpec` bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -111,19 +115,19 @@ abbrev lagrangePrepare_phaseCreditSpec := @SpqrLeafCodecCredit.lagrangePrepare_p
 /-- Slice-linear total-request bounded envelope for `spqr::decode_state` on an input slice of
 length `bsLen` (`≤ 2 MiB`): linear total bytes (`8 * bsLen + 16384`), linear fresh small allocs
 (`2 * bsLen + 64`), and logarithmic `Vec` doubling reallocs (`≤ 128`). -/
-def DecodeStateBoundedEnv (bsLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def DecodeStateBoundedEnv (bsLen : Nat) (evs : List AllocEvent) : Prop :=
   SpqrBoundedTotalEvs (2 * bsLen + 64) 128 (8 * bsLen + 16384) (2 * bsLen + 4096) evs
 
-def decodeStateDeltaCum (bsLen : Nat) : Nat :=
+@[expose] def decodeStateDeltaCum (bsLen : Nat) : Nat :=
   77 * (8 * bsLen + 16384) + 188 * (2 * bsLen + 64) + 9539 * 128
 
-def decodeStateDeltaLive (bsLen : Nat) : Nat :=
+@[expose] def decodeStateDeltaLive (bsLen : Nat) : Nat :=
   2 * (8 * bsLen + 16384)
 
-def decodeStateDeltaPeak (bsLen : Nat) : Nat :=
+@[expose] def decodeStateDeltaPeak (bsLen : Nat) : Nat :=
   2 * (8 * bsLen + 16384)
 
-def decodeStateMaxReq (bsLen : Nat) : Nat :=
+@[expose] def decodeStateMaxReq (bsLen : Nat) : Nat :=
   2 * bsLen + 4096
 
 theorem decodeState_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
@@ -136,10 +140,10 @@ theorem decodeState_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M
 
 /-- Linear-realloc generalization of `DecodeStateBoundedEnv` (`maxReallocs = bsLen / 18 + 128`)
 accommodating repeated inner `Vec` growth across wire sub-messages of length `≥ 18` B. -/
-def DecodeStateLinearBoundedEnv (bsLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def DecodeStateLinearBoundedEnv (bsLen : Nat) (evs : List AllocEvent) : Prop :=
   SpqrBoundedTotalEvs (2 * bsLen + 64) (bsLen / 18 + 128) (8 * bsLen + 16384) (2 * bsLen + 4096) evs
 
-def decodeStateLinearDeltaCum (bsLen : Nat) : Nat :=
+@[expose] def decodeStateLinearDeltaCum (bsLen : Nat) : Nat :=
   77 * (8 * bsLen + 16384) + 188 * (2 * bsLen + 64) + 9539 * (bsLen / 18 + 128)
 
 theorem decodeStateLinearBoundedEnv_of_boundedEnv {bsLen : Nat} {evs : List AllocEvent}
@@ -157,21 +161,21 @@ theorem decodeStateLinear_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCr
     (2 * bsLen + 64) (bsLen / 18 + 128) (8 * bsLen + 16384) (2 * bsLen + 4096)
 
 /-- Bounded envelope for `<States>::from_pb` (`Block 333`) parameterized by `pb : V1State`. -/
-def StatesFromPbBoundedEnv (pb : V1State) (evs : List AllocEvent) : Prop :=
+@[expose] def StatesFromPbBoundedEnv (pb : V1State) (evs : List AllocEvent) : Prop :=
   let raw := rawV1State pb
   SpqrBoundedTotalEvs (raw + 64) 64 (4 * raw + 16384) (2 * raw + 4096) evs
 
-def statesFromPbDeltaCum (pb : V1State) : Nat :=
+@[expose] def statesFromPbDeltaCum (pb : V1State) : Nat :=
   let raw := rawV1State pb
   77 * (4 * raw + 16384) + 188 * (raw + 64) + 9539 * 64
 
-def statesFromPbDeltaLive (pb : V1State) : Nat :=
+@[expose] def statesFromPbDeltaLive (pb : V1State) : Nat :=
   2 * (4 * rawV1State pb + 16384)
 
-def statesFromPbDeltaPeak (pb : V1State) : Nat :=
+@[expose] def statesFromPbDeltaPeak (pb : V1State) : Nat :=
   2 * (4 * rawV1State pb + 16384)
 
-def statesFromPbMaxReq (pb : V1State) : Nat :=
+@[expose] def statesFromPbMaxReq (pb : V1State) : Nat :=
   2 * rawV1State pb + 4096
 
 theorem statesFromPb_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
@@ -209,23 +213,16 @@ abbrev decoderIntoPbAllocEnv_tight :=
 abbrev decoderIntoPbEnv_tight :=
   @SpqrBoundedCredit.decoderIntoPbEnv_tight
 
-/-- Under `ValidChainParamsPB p` (`trimSize ≤ 2,201`), each serialized `KeyHistory.prev` buffer has
-capacity `36 * p.trimSize ≤ 79,236` B (`< smallMaxReq fineCostModel = 135,167` B). -/
-theorem prev_cap_le_79236_of_validChainParamsPB {p : ChainParamsPB} (h : ValidChainParamsPB p) :
-    36 * p.trimSize ≤ 79236 := by
-  have ht := validChainParamsPB_trimSize_le h
-  omega
-
 /-- Tight `spqr::decode_state` envelope under `PeerSpqrTightValid640` (`ValidV1PtsAt 640`,
 `ValidChainParamsPB`, and `StatesDecPtsNeededBound`): `≤ 83` non-free small-class ops,
 `cumSmall ≤ 1,307,216` B, `Δlive = 0`, `Δpeak = 0`, and `maxReq = 79,236` B. -/
-def DecodeStateTightEnv (evs : List AllocEvent) : Prop :=
+@[expose] def DecodeStateTightEnv (evs : List AllocEvent) : Prop :=
   SpqrTightEvs 83 1307216 79236 evs
 
-def decodeStateTightDeltaCum : Nat := 1307216
-def decodeStateTightDeltaLive : Nat := 0
-def decodeStateTightDeltaPeak : Nat := 0
-def decodeStateTightMaxReq : Nat := 79236
+@[expose] def decodeStateTightDeltaCum : Nat := 1307216
+@[expose] def decodeStateTightDeltaLive : Nat := 0
+@[expose] def decodeStateTightDeltaPeak : Nat := 0
+@[expose] def decodeStateTightMaxReq : Nat := 79236
 
 theorem decodeStateTightEnv_nonFreeCount_le {evs : List AllocEvent}
     (h : DecodeStateTightEnv evs) :
@@ -237,13 +234,6 @@ theorem decodeStateTightEnv_nonFreeCount_le_128 {evs : List AllocEvent}
     nonFreeCount evs ≤ 128 :=
   Nat.le_trans h.1 (by decide)
 
-theorem decodeState_phaseCreditSpec_tight {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hT : SpqrTightHyps M) :
-    PhaseCreditSpec M DecodeStateTightEnv
-      decodeStateTightDeltaCum decodeStateTightDeltaLive
-      decodeStateTightDeltaPeak decodeStateTightMaxReq :=
-  spqrTightEvs_phaseCreditSpec hM hT 83 1307216 (Nat.le_refl 79236)
-
 theorem decodeState_fine_phaseCreditSpec_tight :
     PhaseCreditSpec fineCostModel DecodeStateTightEnv
       decodeStateTightDeltaCum decodeStateTightDeltaLive
@@ -253,13 +243,13 @@ theorem decodeState_fine_phaseCreditSpec_tight :
 /-- Tight `<States>::from_pb` (`Block 333`) envelope under `ValidV1PtsAt 640` and
 `StatesDecPtsNeededBound`: `≤ 56` small allocations, `cumSmall ≤ 359,623` B, `Δlive = 0`,
 `Δpeak = 0`, and `maxReq = 2,560` B. -/
-def StatesFromPbTightEnv (evs : List AllocEvent) : Prop :=
+@[expose] def StatesFromPbTightEnv (evs : List AllocEvent) : Prop :=
   SpqrTightEvs 56 359623 2560 evs
 
-def statesFromPbTightDeltaCum : Nat := 359623
-def statesFromPbTightDeltaLive : Nat := 0
-def statesFromPbTightDeltaPeak : Nat := 0
-def statesFromPbTightMaxReq : Nat := 2560
+@[expose] def statesFromPbTightDeltaCum : Nat := 359623
+@[expose] def statesFromPbTightDeltaLive : Nat := 0
+@[expose] def statesFromPbTightDeltaPeak : Nat := 0
+@[expose] def statesFromPbTightMaxReq : Nat := 2560
 
 theorem statesFromPbTightEnv_nonFreeCount_le {evs : List AllocEvent}
     (h : StatesFromPbTightEnv evs) :
@@ -275,13 +265,6 @@ theorem statesIntoPbTightEnv_nonFreeCount_le_128 {evs : List AllocEvent}
     (h : StatesIntoPbTightEnv evs) :
     nonFreeCount evs ≤ 128 :=
   Nat.le_trans h.1 (by decide)
-
-theorem statesFromPb_phaseCreditSpec_tight {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hT : SpqrTightHyps M) :
-    PhaseCreditSpec M StatesFromPbTightEnv
-      statesFromPbTightDeltaCum statesFromPbTightDeltaLive
-      statesFromPbTightDeltaPeak statesFromPbTightMaxReq :=
-  spqrTightEvs_phaseCreditSpec hM hT 56 359623 (by decide)
 
 theorem statesFromPb_fine_phaseCreditSpec_tight :
     PhaseCreditSpec fineCostModel StatesFromPbTightEnv

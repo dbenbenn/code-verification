@@ -10,27 +10,27 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoop
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateProof
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateProofClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1BudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Loop
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbChunked
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbState
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Varint
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoop
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateProof
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateProofClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1BudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
+import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Loop
+import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbChunked
+import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbState
+import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Varint
+import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
@@ -41,6 +41,13 @@ import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
+public meta import Lean.Elab.Tactic
+public meta import ProofLib
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
 # Guarded-Tight Shared Definitions and Canonical Loop Helpers for `V1State::merge` (Block `298`)
@@ -51,7 +58,7 @@ helpers, canonical protobuf roundtrip and 1-byte tag-key split lemmas across all
 arms, and Block `298` prologue, epilogue, and jump-table dispatch steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -153,7 +160,7 @@ structure E2mDomFit (M : AllocCostModel) (lim : BudgetLimits) (maxOps : Nat)
 /-- Canonical-domain-only `Spec` for `Block 298`: requires `E2mDomFit M lim maxOps x st` in `pre`
 and shares the exact `post` / `onPanic` / `onExit` / `onOom` of
 `v1StateMergePlacedSpecOfEnv A lim (tlb_V1StateMergeGuardedEnvOf maxOps) (tlb_V1StateMergeGuardedEnvOf maxOps)`. -/
-def e2mDomSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def e2mDomSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat) :
     Spec (V1StateMergeGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -758,7 +765,7 @@ theorem e2m_decode_key_jump_arm_placed [LibsignalPlacement] {M : AllocCostModel}
      by simp only [arm64_norm, hx29_m]⟩ hinv'
 
 /-- Bundled canonical continuation hypothesis at loop header `+216` (`m = default`, `cur = pb.encodeRaw ++ rest`). -/
-def E2mAt216Hyp [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def E2mAt216Hyp [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (H : String → Option (State → State)) : Prop :=
   ∀ (x : V1StateMergeGhost) (st0 : M.σ) (R : SepProp) (s0 s : State)

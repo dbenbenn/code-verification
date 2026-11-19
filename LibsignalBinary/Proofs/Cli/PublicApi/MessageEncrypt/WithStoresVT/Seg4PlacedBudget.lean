@@ -9,22 +9,31 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegIdentityPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSignalEncPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
-public meta import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget -- shake: keep
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleeProofs.UnackItemsBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegIdentity
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalEnc
-public import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegIdentityPlacedBudget
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSignalEncPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
+public meta import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleeProofs.UnackItemsBudget
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegIdentity
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalEnc
+import LibsignalBinary.Proofs.Common.SharedHelpers
 public import ProofLib.RegChain
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSignalMemPlacedBudget
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFrom
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalFrame
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Budget-Threaded Relocatable `WithStoresVT` (Part 4): `SegIdentity` and `SegSignal` Prefix
@@ -36,7 +45,7 @@ Defines the frame-generalised `VT` budget contracts (`withStoresEncBudgetSpecVT`
 (`lsProg_464 Hk`) under `RustCliAllocBudget M` and `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -92,7 +101,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Relocatable `withStoresEncBudgetSpecV` with `64 ≤ x.rest.length` and `F` (e.g. `TokenInit img`)
 framed in `pre` and `post`. -/
-def withStoresEncBudgetSpecVT [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def withStoresEncBudgetSpecVT [LibsignalPlacement] {M : AllocCostModel}
     (F : SepProp)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
@@ -111,7 +120,7 @@ def withStoresEncBudgetSpecVT [LibsignalPlacement] {M : AllocCostModel}
       F ∗ base.post (x, st_init) s0 sf }
 
 /-- Relocatable budget-threaded `OTR::encrypt` spec for `(pqrState, rest)` satisfying `Q`, with `F` framed. -/
-def otrEncryptBudgetSpecQF [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def otrEncryptBudgetSpecQF [LibsignalPlacement] {M : AllocCostModel}
     (Q : List (BitVec 8) → List (BitVec 8) → Prop) (F : SepProp)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv) :
@@ -126,7 +135,7 @@ def otrEncryptBudgetSpecQF [LibsignalPlacement] {M : AllocCostModel}
         (otrEncryptPlacedSpecQF Q F C (A.atState lim (M.stepEvents evs st) sf) ctl parse S).post x s0 sf }
 
 /-- Relocatable budget-threaded `OTR::encrypt` spec at `Q := (pq.length < 2^32 ∧ 64 ≤ rest.length)` with `F` framed. -/
-def otrEncryptBudgetSpecQT [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def otrEncryptBudgetSpecQT [LibsignalPlacement] {M : AllocCostModel}
     (F : SepProp) (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv) :
     Spec (OtrEncryptGhost × M.σ) :=
@@ -704,7 +713,7 @@ end SegIdentity
 section SegSignal
 
 /-- Segment continuation wrapper for `withStoresEncBudgetSpecVT F0` on `lsProg_464 H`. -/
-def h45_SegExitVTPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def h45_SegExitVTPlaced [LibsignalPlacement] {M : AllocCostModel}
     (F0 : SepProp)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)

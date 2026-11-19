@@ -9,13 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCSBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCSBudget
 import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.Encode1PlacedBudget
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93PlacedBudget
 import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2BasePlacedBudget
 import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2PlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EpochEncodedLen -- shake: keep
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
+public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedBase
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedBaseStagesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCS -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Base Definitions and Callee Bridges for Unchunked Encoders
@@ -25,7 +36,7 @@ callee bridges for CLI Blocks `458` (`EkSentCt1Received::encode`) and `459` (`Ct
 under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -74,90 +85,90 @@ open LibsignalBinary.Proofs.Cli.SpqrV1.Auth.Encode1PlacedBudget
 
 /-! ## 1. Placed Budget Contract Predicates for Blocks `458` & `459` -/
 
-def EkSentCt1ReceivedEncode1PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EkSentCt1ReceivedEncode1PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_458 H) (blkPl_458).base
     (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodePinnedSpecS A lim))
 
-def EkSentCt1ReceivedEncode1PlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EkSentCt1ReceivedEncode1PlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_458 H) (blkPl_458).base
     (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodeSpecS A lim))
 
-def EkSentCt1ReceivedEncode1PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EkSentCt1ReceivedEncode1PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_458 H) (blkPl_458).base
     (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodePinnedSpecXS A lim))
 
-def EkSentCt1ReceivedEncode1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EkSentCt1ReceivedEncode1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_458 H) (blkPl_458).base
     (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodeSpecXS A lim))
 
-def EkSentCt1ReceivedEncode1PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EkSentCt1ReceivedEncode1PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   EkSentCt1ReceivedEncode1PinnedPlacedOk A lim (Rust.withPanics ext)
 
-def EkSentCt1ReceivedEncode1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EkSentCt1ReceivedEncode1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   EkSentCt1ReceivedEncode1PlacedOk A lim (Rust.withPanics ext)
 
-def EkSentCt1ReceivedEncode1PinnedPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EkSentCt1ReceivedEncode1PinnedPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   EkSentCt1ReceivedEncode1PinnedPlacedOkX A lim (Rust.withPanics ext)
 
-def EkSentCt1ReceivedEncode1PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EkSentCt1ReceivedEncode1PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   EkSentCt1ReceivedEncode1PlacedOkX A lim (Rust.withPanics ext)
 
-def Ct1SentEncode1PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Ct1SentEncode1PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_459 H) (blkPl_459).base
     (withLsCodeLoaded lsmpl (ct1SentEncodePinnedSpecS A lim))
 
-def Ct1SentEncode1PlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Ct1SentEncode1PlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_459 H) (blkPl_459).base
     (withLsCodeLoaded lsmpl (ct1SentEncodeSpecS A lim))
 
-def Ct1SentEncode1PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Ct1SentEncode1PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_459 H) (blkPl_459).base
     (withLsCodeLoaded lsmpl (ct1SentEncodePinnedSpecXS A lim))
 
-def Ct1SentEncode1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Ct1SentEncode1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_459 H) (blkPl_459).base
     (withLsCodeLoaded lsmpl (ct1SentEncodeSpecXS A lim))
 
-def Ct1SentEncode1PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Ct1SentEncode1PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   Ct1SentEncode1PinnedPlacedOk A lim (Rust.withPanics ext)
 
-def Ct1SentEncode1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Ct1SentEncode1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   Ct1SentEncode1PlacedOk A lim (Rust.withPanics ext)
 
-def Ct1SentEncode1PinnedPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Ct1SentEncode1PinnedPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   Ct1SentEncode1PinnedPlacedOkX A lim (Rust.withPanics ext)
 
-def Ct1SentEncode1PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Ct1SentEncode1PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   Ct1SentEncode1PlacedOkX A lim (Rust.withPanics ext)

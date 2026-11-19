@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem1Reductions
+public import Computational.Proofs.CryptoGames.SM.Theorem1Reductions -- proof-setup: allow-public-import
 
 /-!
 # Privacy reduction with a blanking map (`privRedB`)
@@ -17,7 +17,7 @@ public import Computational.Proofs.CryptoGames.SM.Theorem1Reductions
 **Checked by Lean.** Adapts ACD19's hybrid privacy reduction `Thm1.privRed` (`B3,i`) to messages with a public component (DEV-LS13) via a blanking map `blank : Msg → Msg` that preserves the public part so equal-public-part FS-AEAD bounds apply.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -37,13 +37,13 @@ section Sim
 variable (Δ qep : ℕ) (challMsg : ℕ → Option (Msg → Msg)) (real : Option (ℕ × (Msg → Msg)))
 
 /-- Sends a challenge in epoch `t` via `chall (blank mb) mb` when `real = some (t, blank)`, or via `transmit` otherwise. -/
-def simSend (P : Party) (t : ℕ) (mb : Msg) (r : Option Coins) : Comp (Option C) :=
+@[expose] def simSend (P : Party) (t : ℕ) (mb : Msg) (r : Option Coins) : Comp (Option C) :=
   match real with
   | some (i, blank) =>
     if t = i then challQuery P (blank mb) mb r else transmitQuery P (((challMsg t).map (· mb)).getD mb) r
   | none => transmitQuery P (((challMsg t).map (· mb)).getD mb) r
 
-def simTransmit : QueryImpl ((Party × Msg × Option Coins) →ₒ Option C) RedM :=
+@[expose] def simTransmit : QueryImpl ((Party × Msg × Option Coins) →ₒ Option C) RedM :=
   fun ⟨P, m, r⟩ => do
     let s ← get
     let res ← StateT.lift (transmitQuery (St := St) P m r)
@@ -52,7 +52,7 @@ def simTransmit : QueryImpl ((Party × Msg × Option Coins) →ₒ Option C) Red
     | _, _ => pure ()
     return res
 
-def simChall : QueryImpl ((Party × Msg × Msg × Option Coins) →ₒ Option C) RedM :=
+@[expose] def simChall : QueryImpl ((Party × Msg × Msg × Option Coins) →ₒ Option C) RedM :=
   fun ⟨P, m₀, m₁, r⟩ => do
     let s ← get
     match s.epMgmt Δ qep P r.isSome with
@@ -67,7 +67,7 @@ def simChall : QueryImpl ((Party × Msg × Msg × Option Coins) →ₒ Option C)
         set (s₁.record Δ P () ⟨⟨P, s₁.epoch P, s₁.idx P + 1⟩, mb, c⟩ true)
         return some c
 
-def simDeliver : QueryImpl ((Party × C) →ₒ Option (RecvResult Msg)) RedM :=
+@[expose] def simDeliver : QueryImpl ((Party × C) →ₒ Option (RecvResult Msg)) RedM :=
   fun ⟨P, c⟩ => do
     let s ← get
     let res ← StateT.lift (deliverQuery (St := St) (Coins := Coins) P c)
@@ -77,7 +77,7 @@ def simDeliver : QueryImpl ((Party × C) →ₒ Option (RecvResult Msg)) RedM :=
       return some (.accepted t' i' (if s.chall.contains r.pos then none else m))
     | _, _ => return res
 
-def simInject : QueryImpl ((Party × C) →ₒ Option (RecvResult Msg)) RedM :=
+@[expose] def simInject : QueryImpl ((Party × C) →ₒ Option (RecvResult Msg)) RedM :=
   fun ⟨P, c⟩ => do
     let s ← get
     let res ← StateT.lift (injectQuery (St := St) (Coins := Coins) P c)
@@ -86,16 +86,16 @@ def simInject : QueryImpl ((Party × C) →ₒ Option (RecvResult Msg)) RedM :=
     | _ => pure ()
     return res
 
-def simCorr : QueryImpl (Party →ₒ Option St) RedM := fun P => do
+@[expose] def simCorr : QueryImpl (Party →ₒ Option St) RedM := fun P => do
   let s ← get
   let res ← StateT.lift (corrQuery (Msg := Msg) (Coins := Coins) (C := C) P)
   if res.isSome then set (s.afterCorr P)
   return res
 
-def simCoins : QueryImpl unifSpec RedM := fun n =>
+@[expose] def simCoins : QueryImpl unifSpec RedM := fun n =>
   StateT.lift (query (spec := unifSpec + spec St Msg Coins C) (.inl n))
 
-def simOracles : QueryImpl (spec St Msg Coins C) RedM :=
+@[expose] def simOracles : QueryImpl (spec St Msg Coins C) RedM :=
   let i₁ : QueryImpl ((Party × Msg × Option Coins) →ₒ Option C) RedM := simTransmit Δ qep
   let i₂ : QueryImpl ((Party × Msg × Msg × Option Coins) →ₒ Option C) RedM :=
     simChall Δ qep challMsg real
@@ -104,12 +104,12 @@ def simOracles : QueryImpl (spec St Msg Coins C) RedM :=
   let i₅ : QueryImpl (Party →ₒ Option St) RedM := simCorr
   HAdd.hAdd (HAdd.hAdd (HAdd.hAdd (HAdd.hAdd i₁ i₂) i₃) i₄) i₅
 
-def simImpl : QueryImpl (unifSpec + spec St Msg Coins C) RedM :=
+@[expose] def simImpl : QueryImpl (unifSpec + spec St Msg Coins C) RedM :=
   let c : QueryImpl unifSpec RedM := simCoins
   let o : QueryImpl (spec St Msg Coins C) RedM := simOracles Δ qep challMsg real
   HAdd.hAdd c o
 
-def simRun (A : Adversary St Msg Coins C) : Comp (Bool × Bool) := do
+@[expose] def simRun (A : Adversary St Msg Coins C) : Comp (Bool × Bool) := do
   let b ← (liftM ($ᵗ Bool : ProbComp Bool) : Comp Bool)
   let b' ← (simulateQ (simImpl Δ qep challMsg real) A).run'
     ({ st := fun _ => (), b } : Thm1.Mirror Msg C)
@@ -118,7 +118,7 @@ def simRun (A : Adversary St Msg Coins C) : Comp (Bool × Bool) := do
 end Sim
 
 /-- Blanking-map privacy reduction `B3,i` (DEV-LS13, DEV-SM19): challenges `(blank m_b, m_b)` in epoch `i` and encrypts `blank m_b` in epochs `< i`. -/
-def privRedB (Δ qep i : ℕ) (blank : Msg → Msg) (A : Adversary St Msg Coins C) :
+@[expose] def privRedB (Δ qep i : ℕ) (blank : Msg → Msg) (A : Adversary St Msg Coins C) :
     Adversary St Msg Coins C :=
   show AdversaryComp St Msg Coins C Bool from do
   let (b, b') ← simRun Δ qep (fun t => if t < i then some blank else none) (some (i, blank)) A

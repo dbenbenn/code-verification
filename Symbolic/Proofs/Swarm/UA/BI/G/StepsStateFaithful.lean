@@ -19,7 +19,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 import Mathlib.Tactic.Push
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.DYBridge.DY.ALaCarte.Basic
@@ -41,7 +41,7 @@ snapshot is current on `runTrace r ss` preserves `StepsStateFaithful` for an arb
 (including break and invert steps).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

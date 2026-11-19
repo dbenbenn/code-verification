@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.By2SupplyBPureA
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.By2SupplyBPureA -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.BobStartRun
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
@@ -20,6 +20,8 @@ import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
 import Symbolic.Proofs.Swarm.CREF.TR.G1.SkippedPkLineage
 import Symbolic.Proofs.Swarm.CREF.TROpen
 import Symbolic.Proofs.Swarm.TRREF.B3DefsPure -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecTieSeedShapePure -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR2
 
 /-!
 # Ratchet-Key Alias Discharger for Whisper Receive
@@ -28,7 +30,7 @@ Proves the `SignedPrekeyPublished` owner invariant `SpkOwnerBob`, deduces that e
 `TRState` belongs to `r.alice` or `r.bob`, and discharges `A2bSeedRkAliasRes` (`a2b_hrkAlias`).
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

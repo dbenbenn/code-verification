@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
 import LibsignalBinary.Specifications.AsmConstants
 
@@ -21,7 +21,7 @@ and proves cell-packing and 48-byte word-for-word `speAt` copy lemmas (`pksm0c_s
 `errCopy48_entails_pksmErrE`) across all error exits.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -41,7 +41,7 @@ open CryptoVerification.SignalSession.Cli
 /-- Exact 248-byte `Err(e)` result layout at `r` for `PreKeySignalMessage::try_from`:
 niche `errTag` at `r`, 48-byte `speAt A fn (r + 8) e`, and 192 unspecified trailing bytes at
 `r + 56`. -/
-def pksmErrE (A : RustAlloc) (fn : List (BitVec 8)) (r : BitVec 64)
+@[expose] def pksmErrE (A : RustAlloc) (fn : List (BitVec 8)) (r : BitVec 64)
     (e : SignalProtocolError) : SepProp :=
   (r ↦₆₄ errTag) ∗ speAt A fn (r + 8#64) e ∗ memRegion (r + 56#64) 192
 
@@ -116,9 +116,6 @@ private theorem pksm0c_word_pair32 (a : BitVec 64) (i c : BitVec 32) :
       ∃∗ w : BitVec 64, (a ↦₆₄ w) ∗ ⌜w = c ++ i⌝ := by
   rw [pointsTo32_merge64 a i c]
   exact pksm0c_word_exact a (c ++ i)
-
-private theorem pksm0c_zext8_truncate8 (b : BitVec 8) :
-    (b.zeroExtend 64).truncate 8 = b := by bv_bits
 
 private theorem pksm0c_memRegion_words2 (a w0 w1 : BitVec 64) :
     (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) ⊢ memRegion a 16 := by
@@ -207,22 +204,6 @@ theorem errCells_legacyVersion (A : RustAlloc) (fn : List (BitVec 8)) (r : BitVe
   simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
   exact Entails.refl _
 
-/-- Word-form companion of `errCells_legacyVersion` when `r + 16` holds a 64-bit word `w` with low
-byte `v`. -/
-theorem pksm0c_errCells_legacyVersion_word (A : RustAlloc) (fn : List (BitVec 8))
-    (r w : BitVec 64) (v : BitVec 8) (hv : w.truncate 8 = v) :
-    (r ↦₆₄ errTag) ∗ ((r + 8#64) ↦₆₄ speWord 4) ∗ ((r + 16#64) ↦₆₄ w) ∗
-      memRegion (r + 24#64) 224 ⊢
-      pksmErrE A fn r (.legacyCiphertextVersion v) := by
-  refine Entails.trans
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left
-      (pksm0c_pointsTo64_to_byte_memRegion7 (r + 16#64) w v hv)))) ?_
-  refine Entails.trans ?_ (errCells_legacyVersion A fn r v)
-  rw [show (231 : Nat) = 7 + 224 by decide,
-    ProofLib.memRegion_split (r + 17#64) 7 224 (by decide)]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-  exact Entails.refl _
-
 /-- `speWord 5` at `r + 8` and version byte `v` at `r + 16` (`strb`) pack into
 `pksmErrE A fn r (.unrecognizedCiphertextVersion v)`. -/
 theorem errCells_unrecognizedVersion (A : RustAlloc) (fn : List (BitVec 8)) (r : BitVec 64)
@@ -233,22 +214,6 @@ theorem errCells_unrecognizedVersion (A : RustAlloc) (fn : List (BitVec 8)) (r :
   unfold pksmErrE speAt
   rw [show (231 : Nat) = 39 + 192 by decide,
     ProofLib.memRegion_split (r + 17#64) 39 192 (by decide)]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-  exact Entails.refl _
-
-/-- Word-form companion of `errCells_unrecognizedVersion` when `r + 16` holds a 64-bit word `w`
-with low byte `v`. -/
-theorem pksm0c_errCells_unrecognizedVersion_word (A : RustAlloc) (fn : List (BitVec 8))
-    (r w : BitVec 64) (v : BitVec 8) (hv : w.truncate 8 = v) :
-    (r ↦₆₄ errTag) ∗ ((r + 8#64) ↦₆₄ speWord 5) ∗ ((r + 16#64) ↦₆₄ w) ∗
-      memRegion (r + 24#64) 224 ⊢
-      pksmErrE A fn r (.unrecognizedCiphertextVersion v) := by
-  refine Entails.trans
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left
-      (pksm0c_pointsTo64_to_byte_memRegion7 (r + 16#64) w v hv)))) ?_
-  refine Entails.trans ?_ (errCells_unrecognizedVersion A fn r v)
-  rw [show (231 : Nat) = 7 + 224 by decide,
-    ProofLib.memRegion_split (r + 17#64) 7 224 (by decide)]
   simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
   exact Entails.refl _
 
@@ -290,15 +255,6 @@ theorem pksm0c_errCells_badKeyType_word (A : RustAlloc) (fn : List (BitVec 8)) (
     ProofLib.memRegion_split (r + 17#64) 7 224 (by decide)]
   simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
   exact Entails.refl _
-
-/-- `speWord 8` at `r + 8` and `t.zeroExtend 64` at `r + 16` pack into
-`pksmErrE A fn r (.badKeyType t)`. -/
-theorem errCells_badKeyType (A : RustAlloc) (fn : List (BitVec 8)) (r : BitVec 64)
-    (t : BitVec 8) :
-    (r ↦₆₄ errTag) ∗ ((r + 8#64) ↦₆₄ speWord 8) ∗ ((r + 16#64) ↦₆₄ t.zeroExtend 64) ∗
-      memRegion (r + 24#64) 224 ⊢
-      pksmErrE A fn r (.badKeyType t) :=
-  pksm0c_errCells_badKeyType_word A fn r (t.zeroExtend 64) t (pksm0c_zext8_truncate8 t)
 
 /-- `speWord 9` at `r + 8` and `BitVec.ofNat 64 n` at `r + 16` pack into
 `pksmErrE A fn r (.badKeyLength n)`. -/
@@ -367,7 +323,7 @@ theorem pksm0c_errCells_invalidMessage_preKey_words (A : RustAlloc) (fn : List (
 
 /-! ## 4. General 48-Byte `speAt` Word-for-Word Copy Helpers () -/
 
-def pksm0c_vecTail (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) :
+@[expose] def pksm0c_vecTail (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) :
     SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
@@ -375,13 +331,13 @@ def pksm0c_vecTail (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) 
        memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length))
 
 /-- The 6 contiguous 64-bit words of a 48-byte `SignalProtocolError` slot at `a`. -/
-def pksm0c_speWords6At (a w0 w1 w2 w3 w4 w5 : BitVec 64) : SepProp :=
+@[expose] def pksm0c_speWords6At (a w0 w1 w2 w3 w4 w5 : BitVec 64) : SepProp :=
   (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) ∗ ((a + 16#64) ↦₆₄ w2) ∗
     ((a + 24#64) ↦₆₄ w3) ∗ ((a + 32#64) ↦₆₄ w4) ∗ ((a + 40#64) ↦₆₄ w5)
 
 /-- Address-independent heap/rodata/pure invariant of `speAt A fn a e` once its 6 inline words
 `(w0 .. w5)` at `a .. a + 40` are detached. Covers all 13 `SignalProtocolError` constructors. -/
-def pksm0c_speDetached (A : RustAlloc) (fn : List (BitVec 8))
+@[expose] def pksm0c_speDetached (A : RustAlloc) (fn : List (BitVec 8))
     (w0 w1 w2 w3 w4 w5 : BitVec 64) : SignalProtocolError → SepProp
   | .invalidState =>
     ∃∗ bs : List (BitVec 8),
@@ -1029,38 +985,5 @@ theorem errCopy48_entails_pksmErrE (A : RustAlloc) (fn : List (BitVec 8))
       memRegion (r + 56#64) 192)
     (by apply Entails.of_eq; ac_rfl) ?_
   exact sepConj_mono_right (sepConj_mono_left hre)
-
-/-- When `∀ b, (b ↦₆₄ ew0) ∗ ((b + 8) ↦₆₄ ew1) ∗ memRegion (b + 16) 32 ⊢ speAt A fn b e`,
-the 6 copied words at `r + 8 .. r + 48` directly entail `pksmErrE A fn r e`. -/
-theorem pksm0c_errCopy48_words2_entails_pksmErrE (A : RustAlloc) (fn : List (BitVec 8))
-    (r ew0 ew1 ew2 ew3 ew4 ew5 : BitVec 64) (e : SignalProtocolError)
-    (hpack : ∀ b : BitVec 64,
-      (b ↦₆₄ ew0) ∗ ((b + 8#64) ↦₆₄ ew1) ∗ memRegion (b + 16#64) 32 ⊢ speAt A fn b e) :
-    (r ↦₆₄ errTag) ∗
-      ((r + 8#64) ↦₆₄ ew0) ∗ ((r + 16#64) ↦₆₄ ew1) ∗ ((r + 24#64) ↦₆₄ ew2) ∗
-      ((r + 32#64) ↦₆₄ ew3) ∗ ((r + 40#64) ↦₆₄ ew4) ∗ ((r + 48#64) ↦₆₄ ew5) ∗
-      memRegion (r + 56#64) 192 ⊢
-      pksmErrE A fn r e := by
-  unfold pksmErrE
-  have hm32 :
-      ((r + 24#64) ↦₆₄ ew2) ∗ ((r + 32#64) ↦₆₄ ew3) ∗
-      ((r + 40#64) ↦₆₄ ew4) ∗ ((r + 48#64) ↦₆₄ ew5) ⊢
-      memRegion (r + 24#64) 32 := by
-    simpa only [BitVec.add_assoc, BitVec.reduceAdd] using
-      pksm0c_memRegion_words4 (r + 24#64) ew2 ew3 ew4 ew5
-  have hspe :
-      ((r + 8#64) ↦₆₄ ew0) ∗ ((r + 16#64) ↦₆₄ ew1) ∗ ((r + 24#64) ↦₆₄ ew2) ∗
-      ((r + 32#64) ↦₆₄ ew3) ∗ ((r + 40#64) ↦₆₄ ew4) ∗ ((r + 48#64) ↦₆₄ ew5) ⊢
-      speAt A fn (r + 8#64) e := by
-    refine Entails.trans
-      (sepConj_mono_right (sepConj_mono_right hm32)) ?_
-    simpa only [BitVec.add_assoc, BitVec.reduceAdd] using hpack (r + 8#64)
-  refine Entails.trans
-    (Q := (r ↦₆₄ errTag) ∗
-      (((r + 8#64) ↦₆₄ ew0) ∗ ((r + 16#64) ↦₆₄ ew1) ∗ ((r + 24#64) ↦₆₄ ew2) ∗
-        ((r + 32#64) ↦₆₄ ew3) ∗ ((r + 40#64) ↦₆₄ ew4) ∗ ((r + 48#64) ↦₆₄ ew5)) ∗
-      memRegion (r + 56#64) 192)
-    (by apply Entails.of_eq; ac_rfl) ?_
-  exact sepConj_mono_right (sepConj_mono_left hspe)
 
 end CryptoVerification.SignalSession.Cli.RunProofs.PksmWire

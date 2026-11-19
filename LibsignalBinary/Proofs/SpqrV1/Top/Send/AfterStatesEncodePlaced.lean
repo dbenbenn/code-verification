@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesEncode
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesEncode -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ChainEncodedLenBase
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable `spqr::send`: `Message::serialize`, `States::into_pb`, and `VersionNegotiation` Length
@@ -24,7 +25,7 @@ assembly (`+4000..+4364`), and inlined `Option<VersionNegotiation>::encoded_len`
 in `spqr::send::<HookRng>` (Block `124`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -59,7 +60,7 @@ open CryptoVerification.SpqrV1.Top.Send.Placed
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
   EncodedLen.zeroExtend64_beq_zero32

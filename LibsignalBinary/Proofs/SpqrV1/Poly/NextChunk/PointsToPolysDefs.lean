@@ -9,11 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Rodata
-public import LibsignalBinary.Proofs.SpqrV1.Poly.Repr
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Rodata -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.Repr -- proof-setup: allow-public-import
 public import ProofLib.SepLogic.Bytes
 import ProofLib.VCGen
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Pure -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Pure -- shake: keep
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk`: `points_to_polys` Pure and Representation Helpers
@@ -24,7 +30,7 @@ Byte-slice bridges for `polysToBytes`, `gf16SliceAt`, and `polyOf`, together wit
 slicing and NEON word-splitting lemmas for `COMPLETE_POINTS_POLYS_{5,30,34,36}`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.NextChunk
 
@@ -207,19 +213,20 @@ theorem polyOf_of_pointsToBytes_off (A : RustAlloc) (base off0 off8 off16 ptr : 
 
 /-! ## 4. `COMPLETE_POINTS_POLYS_5` Exact Value and `.rodata` Slicing -/
 
-def cp5Polys : List (PolyConst 5) :=
+@[expose] def cp5Polys : List (PolyConst 5) :=
   [ { coefficients := [⟨0x0001#16⟩, ⟨0xb405#16⟩, ⟨0x9605#16⟩, ⟨0x7803#16⟩, ⟨0x5a02#16⟩] }
   , { coefficients := [⟨0x0000#16⟩, ⟨0x5003#16⟩, ⟨0xc007#16⟩, ⟨0x7803#16⟩, ⟨0xe806#16⟩] }
   , { coefficients := [⟨0x0000#16⟩, ⟨0xf006#16⟩, ⟨0x1400#16⟩, ⟨0x7803#16⟩, ⟨0x9c05#16⟩] }
   , { coefficients := [⟨0x0000#16⟩, ⟨0x9b68#16⟩, ⟨0xf006#16⟩, ⟨0x7803#16⟩, ⟨0x136d#16⟩] }
   , { coefficients := [⟨0x0000#16⟩, ⟨0x8f68#16⟩, ⟨0xb204#16⟩, ⟨0x0000#16⟩, ⟨0x3d6c#16⟩] } ]
 
-def cp5BytesLit : List (BitVec 8) :=
+@[expose] def cp5BytesLit : List (BitVec 8) :=
   polysToBytes (constPolysToPolys cp5Polys)
 
+set_option maxRecDepth 16384 in
 theorem completePointsPolys5_eq :
     COMPLETE_POINTS_POLYS_5 = .ok cp5Polys := by
-  decide +kernel
+  rfl
 
 theorem completePointsPolys5Bytes_eq_lit :
     completePointsPolys5Bytes = cp5BytesLit := by
@@ -227,26 +234,24 @@ theorem completePointsPolys5Bytes_eq_lit :
   rw [completePointsPolys5_eq]
 
 /-- The unread bytes of `COMPLETE_POINTS_POLYS_5` in `.rodata` (offsets `8..10`, `18..20`, `28..30`, `38..50`). -/
-def completePointsPolys5RestAt (b : BitVec 64) : SepProp :=
-  ((b + bv% (ls_bytes% "010005b405960378025a0000" + 8)) ↦ᵣ (completePointsPolys5Bytes.drop 8).take 2) ∗
-  ((b + bv% (ls_bytes% "010005b405960378025a0000" + 18)) ↦ᵣ (completePointsPolys5Bytes.drop 18).take 2) ∗
-  ((b + bv% (ls_bytes% "010005b405960378025a0000" + 28)) ↦ᵣ (completePointsPolys5Bytes.drop 28).take 2) ∗
-  ((b + bv% (ls_bytes% "010005b405960378025a0000" + 38)) ↦ᵣ completePointsPolys5Bytes.drop 38)
+@[expose] def completePointsPolys5RestAt (b : BitVec 64) : SepProp :=
+  ((b + bv% (602410 + 8)) ↦ᵣ (completePointsPolys5Bytes.drop 8).take 2) ∗
+  ((b + bv% (602410 + 18)) ↦ᵣ (completePointsPolys5Bytes.drop 18).take 2) ∗
+  ((b + bv% (602410 + 28)) ↦ᵣ (completePointsPolys5Bytes.drop 28).take 2) ∗
+  ((b + bv% (602410 + 38)) ↦ᵣ completePointsPolys5Bytes.drop 38)
 
 theorem completePointsPolys5At_split (b : BitVec 64) :
     completePointsPolys5At b =
-      ((b + bv% (ls_bytes% "010005b405960378025a0000")) ↦₆₄ᵣ 0x78039605b4050001#64) ∗
-      ((b + bv% (ls_bytes% "010005b405960378025a0000" + 10)) ↦₆₄ᵣ 0x7803c00750030000#64) ∗
-      ((b + bv% (ls_bytes% "010005b405960378025a0000" + 20)) ↦₆₄ᵣ 0x78031400f0060000#64) ∗
-      ((b + bv% (ls_bytes% "010005b405960378025a0000" + 30)) ↦₆₄ᵣ 0x7803f0069b680000#64) ∗
+      ((b + bv% 602410) ↦₆₄ᵣ 0x78039605b4050001#64) ∗
+      ((b + bv% (602410 + 10)) ↦₆₄ᵣ 0x7803c00750030000#64) ∗
+      ((b + bv% (602410 + 20)) ↦₆₄ᵣ 0x78031400f0060000#64) ∗
+      ((b + bv% (602410 + 30)) ↦₆₄ᵣ 0x7803f0069b680000#64) ∗
       completePointsPolys5RestAt b := by
   unfold completePointsPolys5At completePointsPolys5RestAt
-  have hbase : b + bv% (ls_xref% 0x65758 0x6575c) = b + bv% (ls_bytes% "010005b405960378025a0000") := rfl
-  rw [hbase]
   have hlen : completePointsPolys5Bytes.length = 50 := completePointsPolys5Bytes_length
-  have hw0 : ((b + bv% (ls_bytes% "010005b405960378025a0000")) ↦ᵣ completePointsPolys5Bytes.take 8) =
-      ((b + bv% (ls_bytes% "010005b405960378025a0000")) ↦₆₄ᵣ 0x78039605b4050001#64) := by
-    have h := pointsToBytesRO_take8_eq_pointsTo64RO (b + bv% (ls_bytes% "010005b405960378025a0000")) completePointsPolys5Bytes 0 (by omega)
+  have hw0 : ((b + bv% 602410) ↦ᵣ completePointsPolys5Bytes.take 8) =
+      ((b + bv% 602410) ↦₆₄ᵣ 0x78039605b4050001#64) := by
+    have h := pointsToBytesRO_take8_eq_pointsTo64RO (b + bv% 602410) completePointsPolys5Bytes 0 (by omega)
     rw [List.drop_zero] at h
     have hp : pack64 (cp5BytesLit.getD 0 0#8) (cp5BytesLit.getD 1 0#8)
         (cp5BytesLit.getD 2 0#8) (cp5BytesLit.getD 3 0#8)
@@ -254,37 +259,37 @@ theorem completePointsPolys5At_split (b : BitVec 64) :
         (cp5BytesLit.getD 6 0#8) (cp5BytesLit.getD 7 0#8) = 0x78039605b4050001#64 := by
       decide +kernel
     rw [h, completePointsPolys5Bytes_eq_lit, hp]
-  have hw1 : ((b + bv% (ls_bytes% "010005b405960378025a0000" + 10)) ↦ᵣ (completePointsPolys5Bytes.drop 10).take 8) =
-      ((b + bv% (ls_bytes% "010005b405960378025a0000" + 10)) ↦₆₄ᵣ 0x7803c00750030000#64) := by
-    have h := pointsToBytesRO_take8_eq_pointsTo64RO (b + bv% (ls_bytes% "010005b405960378025a0000" + 10)) completePointsPolys5Bytes 10 (by omega)
+  have hw1 : ((b + bv% (602410 + 10)) ↦ᵣ (completePointsPolys5Bytes.drop 10).take 8) =
+      ((b + bv% (602410 + 10)) ↦₆₄ᵣ 0x7803c00750030000#64) := by
+    have h := pointsToBytesRO_take8_eq_pointsTo64RO (b + bv% (602410 + 10)) completePointsPolys5Bytes 10 (by omega)
     have hp : pack64 (cp5BytesLit.getD 10 0#8) (cp5BytesLit.getD 11 0#8)
         (cp5BytesLit.getD 12 0#8) (cp5BytesLit.getD 13 0#8)
         (cp5BytesLit.getD 14 0#8) (cp5BytesLit.getD 15 0#8)
         (cp5BytesLit.getD 16 0#8) (cp5BytesLit.getD 17 0#8) = 0x7803c00750030000#64 := by
       decide +kernel
     rw [h, completePointsPolys5Bytes_eq_lit, hp]
-  have hw2 : ((b + bv% (ls_bytes% "010005b405960378025a0000" + 20)) ↦ᵣ (completePointsPolys5Bytes.drop 20).take 8) =
-      ((b + bv% (ls_bytes% "010005b405960378025a0000" + 20)) ↦₆₄ᵣ 0x78031400f0060000#64) := by
-    have h := pointsToBytesRO_take8_eq_pointsTo64RO (b + bv% (ls_bytes% "010005b405960378025a0000" + 20)) completePointsPolys5Bytes 20 (by omega)
+  have hw2 : ((b + bv% (602410 + 20)) ↦ᵣ (completePointsPolys5Bytes.drop 20).take 8) =
+      ((b + bv% (602410 + 20)) ↦₆₄ᵣ 0x78031400f0060000#64) := by
+    have h := pointsToBytesRO_take8_eq_pointsTo64RO (b + bv% (602410 + 20)) completePointsPolys5Bytes 20 (by omega)
     have hp : pack64 (cp5BytesLit.getD 20 0#8) (cp5BytesLit.getD 21 0#8)
         (cp5BytesLit.getD 22 0#8) (cp5BytesLit.getD 23 0#8)
         (cp5BytesLit.getD 24 0#8) (cp5BytesLit.getD 25 0#8)
         (cp5BytesLit.getD 26 0#8) (cp5BytesLit.getD 27 0#8) = 0x78031400f0060000#64 := by
       decide +kernel
     rw [h, completePointsPolys5Bytes_eq_lit, hp]
-  have hw3 : ((b + bv% (ls_bytes% "010005b405960378025a0000" + 30)) ↦ᵣ (completePointsPolys5Bytes.drop 30).take 8) =
-      ((b + bv% (ls_bytes% "010005b405960378025a0000" + 30)) ↦₆₄ᵣ 0x7803f0069b680000#64) := by
-    have h := pointsToBytesRO_take8_eq_pointsTo64RO (b + bv% (ls_bytes% "010005b405960378025a0000" + 30)) completePointsPolys5Bytes 30 (by omega)
+  have hw3 : ((b + bv% (602410 + 30)) ↦ᵣ (completePointsPolys5Bytes.drop 30).take 8) =
+      ((b + bv% (602410 + 30)) ↦₆₄ᵣ 0x7803f0069b680000#64) := by
+    have h := pointsToBytesRO_take8_eq_pointsTo64RO (b + bv% (602410 + 30)) completePointsPolys5Bytes 30 (by omega)
     have hp : pack64 (cp5BytesLit.getD 30 0#8) (cp5BytesLit.getD 31 0#8)
         (cp5BytesLit.getD 32 0#8) (cp5BytesLit.getD 33 0#8)
         (cp5BytesLit.getD 34 0#8) (cp5BytesLit.getD 35 0#8)
         (cp5BytesLit.getD 36 0#8) (cp5BytesLit.getD 37 0#8) = 0x7803f0069b680000#64 := by
       decide +kernel
     rw [h, completePointsPolys5Bytes_eq_lit, hp]
-  have hs0 := pointsToBytesRO_split3 (b + bv% (ls_bytes% "010005b405960378025a0000")) completePointsPolys5Bytes 8 2 (by omega)
-  have hs1 := pointsToBytesRO_split3 (b + bv% (ls_bytes% "010005b405960378025a0000" + 10)) (completePointsPolys5Bytes.drop 10) 8 2 (by simp [hlen])
-  have hs2 := pointsToBytesRO_split3 (b + bv% (ls_bytes% "010005b405960378025a0000" + 20)) (completePointsPolys5Bytes.drop 20) 8 2 (by simp [hlen])
-  have hs3 := pointsToBytesRO_split3 (b + bv% (ls_bytes% "010005b405960378025a0000" + 30)) (completePointsPolys5Bytes.drop 30) 8 0 (by simp [hlen])
+  have hs0 := pointsToBytesRO_split3 (b + bv% 602410) completePointsPolys5Bytes 8 2 (by omega)
+  have hs1 := pointsToBytesRO_split3 (b + bv% (602410 + 10)) (completePointsPolys5Bytes.drop 10) 8 2 (by simp [hlen])
+  have hs2 := pointsToBytesRO_split3 (b + bv% (602410 + 20)) (completePointsPolys5Bytes.drop 20) 8 2 (by simp [hlen])
+  have hs3 := pointsToBytesRO_split3 (b + bv% (602410 + 30)) (completePointsPolys5Bytes.drop 30) 8 0 (by simp [hlen])
   simp only [BitVec.add_assoc, BitVec.reduceAdd,
     List.drop_drop, Nat.reduceAdd, List.take_zero, pointsToBytesRO_nil, emp_sepConj] at hs0 hs1 hs2 hs3
   rw [hs0, hs1, hs2, hs3, hw0, hw1, hw2, hw3]

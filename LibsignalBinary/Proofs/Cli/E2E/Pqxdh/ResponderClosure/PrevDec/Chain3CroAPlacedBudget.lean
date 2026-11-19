@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroAPlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.BytesMerge6PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroAPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.BytesMerge6PlacedBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -20,6 +20,18 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.ChainMergeAux.PrologueSenderRatchetKey
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.Code
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.CodePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.EntryPlaced
+import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.ChainDefs
+public import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipField.BranchesXBudgetAux
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergePlaced
 
 /-!
 # Budget-Threaded `VerNe.Chain3` (Block `516`) Part A under `LibsignalCodeRoLoaded`
@@ -29,7 +41,7 @@ slice (`chain3Entry_cro_placed_ok`) for `message::merge<Chain> [local#4]` (Block
 `StoreKit.LibsignalCodeRoLoaded`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -175,14 +187,14 @@ theorem chain3CalleesCro_of_hooks [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded loop invariant of `message::merge<Chain> [local#4]` augmented with
 `LibsignalCodeRoLoaded lsmpl`. -/
-def Chain3LoopCroPlacedAtW [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def Chain3LoopCroPlacedAtW [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : LibsignalHooks)
     (x : ChainMergeGenGhost) (st : M.σ) (R : SepProp)
     (s0 : State) (k : Nat) (s : State) : Prop :=
   LibsignalCodeRoLoaded lsmpl s.mem ∧
     Chain3LoopPlacedAtW M A lim ext x st R s0 k s
 
-def Chain3EntryCroStmt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def Chain3EntryCroStmt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : LibsignalHooks) : Prop :=
   Chain3CalleesCroPlacedW M A lim ext →
   ∀ (x : ChainMergeGenGhost) (st : M.σ) (R : SepProp) (s0 : State),
@@ -191,7 +203,7 @@ def Chain3EntryCroStmt [LibsignalPlacement] (M : AllocCostModel)
     s0.spAligned = true →
     Chain3StepPlacedAtW M A lim ext x st R s0 s0 (Chain3LoopCroPlacedAtW M A lim ext x st R s0 0)
 
-def Chain3SrkCroStmt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def Chain3SrkCroStmt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : LibsignalHooks) : Prop :=
   Chain3CalleesCroPlacedW M A lim ext →
   ∀ (x : ChainMergeGenGhost) (st : M.σ) (R : SepProp)
@@ -201,7 +213,7 @@ def Chain3SrkCroStmt [LibsignalPlacement] (M : AllocCostModel)
     Chain3StepPlacedAtW M A lim ext x st R s0 s
       (Chain3LoopCroPlacedAtW M A lim ext x st R s0 (k + 1))
 
-def Chain3ChainKeyCroStmt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def Chain3ChainKeyCroStmt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : LibsignalHooks) : Prop :=
   Chain3CalleesCroPlacedW M A lim ext →
   ∀ (x : ChainMergeGenGhost) (st : M.σ) (R : SepProp)
@@ -211,7 +223,7 @@ def Chain3ChainKeyCroStmt [LibsignalPlacement] (M : AllocCostModel)
     Chain3StepPlacedAtW M A lim ext x st R s0 s
       (Chain3LoopCroPlacedAtW M A lim ext x st R s0 (k + 1))
 
-def Chain3MessageKeysCroStmt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def Chain3MessageKeysCroStmt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : LibsignalHooks) : Prop :=
   Chain3CalleesCroPlacedW M A lim ext →
   ∀ (x : ChainMergeGenGhost) (st : M.σ) (R : SepProp)

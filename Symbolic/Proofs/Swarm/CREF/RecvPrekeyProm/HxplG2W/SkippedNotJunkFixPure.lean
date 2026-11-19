@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong
-public import Symbolic.Proofs.Swarm.CREF.TR.SkippedVarFresh
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.SkippedVarFresh -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TROpen
 
@@ -21,7 +21,7 @@ Defines `SkippedFreshAliasExclB` and auxiliary congruence/inversion lemmas for `
 `SkippedVarConcl`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -75,7 +75,7 @@ theorem snjf_skippedVarConcl_congr_ik
 
 /-- Excludes a fresh DH-ratchet alias `pk` whose skipped message key comes from a responder's
 initial receive chain with `msg₀.counter < c_src.index`. -/
-def SkippedFreshAliasExclB
+@[expose] def SkippedFreshAliasExclB
     (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (ms₁ : List Move) (_τ₁ : List MachineEvent) : Prop :=
   ∀ (p : Participant) (stateIdx₀ : Nat) (body : HwBytes) (m : SignalMessage) (st₀ st_prov : TRState)

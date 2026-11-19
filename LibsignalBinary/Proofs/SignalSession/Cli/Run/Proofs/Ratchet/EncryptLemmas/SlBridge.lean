@@ -9,12 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.StoreDet
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOk
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seams
-public import LibsignalBinary.Proofs.SignalSession.Cli.Fs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.StoreDet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOk -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOk -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seams -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Fs
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SpeOwnedBridges
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Separation-Logic, Stack-Budget, and Trace Bridges for `encrypt`
@@ -23,7 +26,7 @@ Connects the outer `encSlotSpec` framing (`storesAt`, `coinsInstalled`, `encResA
 the inner `withStoresEncSpecV` contract and CLI store kits `w1SessKit` and `w1IdKit`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -47,20 +50,20 @@ open CryptoVerification.LibsignalPublicApi.StoreKit.Identity
 
 /-! ## CLI store kits and stack budget bound -/
 
-abbrev w1SessKit (B : RunBudgets) (img : Obj.Image) (F : FsFiles) (peer : AddrGhost) :
-    SessionStoreSpec E2E.HooksE.A0 img.base :=
-  cliSessionStoreSpec E2E.HooksE.A0 img.base cliIo.rd F cliWrOk Slots.scopeKit peer
+abbrev w1SessKit (B : RunBudgets) (_img : Unit) (F : FsFiles) (peer : AddrGhost) :
+    SessionStoreSpec E2E.HooksE.A0 0#64 :=
+  cliSessionStoreSpec E2E.HooksE.A0 0#64 cliIo.rd F cliWrOk Slots.scopeKit peer
     SessKit.loadShimNeed (SessKit.loadPollNeed B.readFile)
     SessKit.storeShimNeed SessKit.storePollNeedX
 
-abbrev w1IdKit (B : RunBudgets) (img : Obj.Image) (F : FsFiles) (peer : AddrGhost) :
-    IdentityStoreSpec E2E.HooksE.A0 img.base :=
-  cliIdentityStoreSpec E2E.HooksE.A0 img.base cliIo.rd F cliWrOk peer
+abbrev w1IdKit (B : RunBudgets) (_img : Unit) (F : FsFiles) (peer : AddrGhost) :
+    IdentityStoreSpec E2E.HooksE.A0 0#64 :=
+  cliIdentityStoreSpec E2E.HooksE.A0 0#64 cliIo.rd F cliWrOk peer
     IdKit.trustShimNeed (IdKit.trustPollNeed B.readFile)
     IdKit.saveShimNeed (IdKit.savePollNeed B.readFile)
 
 /-- The inner `withStoresEncStackV` stack requirement of `w1SessKit` and `w1IdKit` fits within `w1EncryptNeed B = 2^20 + B.readFile`. -/
-theorem w1_innerStack_le_need (B : RunBudgets) (img : Obj.Image) (F : FsFiles) (peer : AddrGhost) :
+theorem w1_innerStack_le_need (B : RunBudgets) (img : Unit) (F : FsFiles) (peer : AddrGhost) :
     withStoresEncStackV (w1SessKit B img F peer) (w1IdKit B img F peer) ≤ w1EncryptNeed B := by
   have hdg : RunBudgets.dirGetNeed ⟨B.readFile⟩ ≤ 2 ^ 19 + B.readFile := by
     simp only [RunBudgets.dirGetNeed]
@@ -98,7 +101,7 @@ theorem w1_innerStack_le_need (B : RunBudgets) (img : Obj.Image) (F : FsFiles) (
 
 /-- The five `Dir`s of `Stores` untouched by `encrypt`: `signed` (`+0x50`), `kyber.oneTime` (`+0x78`),
 `kyber.lastResort` (`+0xa0`), `oneTime` (`+0xc8`), and `pub` (`+0x118`). -/
-def w1UnusedDirsAt (A : RustAlloc) (a : BitVec 64) (g : StoresGhost) : SepProp :=
+@[expose] def w1UnusedDirsAt (A : RustAlloc) (a : BitVec 64) (g : StoresGhost) : SepProp :=
   dirAt A (a + 0x50#64) g.signed ∗
     dirAt A (a + 0x78#64) g.kyber.oneTime ∗
     dirAt A (a + 0xa0#64) g.kyber.lastResort ∗
@@ -120,7 +123,7 @@ theorem cliIdInv_opened_wrOk {Scope : SessionRecord (List (BitVec 8)) → Prop} 
   exact ⟨hbase.nameLt, hbase.pathLt, ⟨hok.idPathOk, hok.idPathLt⟩, hbase.getOk, hbase.changedLt⟩
 
 theorem storesAt_opened_to_kits {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    (B : RunBudgets) (img : Obj.Image) (F : FsFiles) (peer : AddrGhost) (a : BitVec 64)
+    (B : RunBudgets) (img : Unit) (F : FsFiles) (peer : AddrGhost) (a : BitVec 64)
     (hsub : ∀ r, Scope r → Slots.scopeIn r)
     (hok : Slots.FilesOkPeer Scope F peer.val) :
     storesAt E2E.HooksE.A0 a StoresGhost.opened ⊢
@@ -134,7 +137,7 @@ theorem storesAt_opened_to_kits {Scope : SessionRecord (List (BitVec 8)) → Pro
   rw [pure_sepConj_of_true hsInv, pure_sepConj_of_true hiInv]
   exact Entails.of_eq (by ac_rfl)
 
-theorem kits_to_storesAt (B : RunBudgets) (img : Obj.Image) (F : FsFiles) (peer : AddrGhost)
+theorem kits_to_storesAt (B : RunBudgets) (img : Unit) (F : FsFiles) (peer : AddrGhost)
     (a : BitVec 64) (sess : DirGhost) (idg : IdGhost) :
     (w1SessKit B img F peer).storeAt (a + 0xf0#64) sess ∗
       (w1IdKit B img F peer).identityAt a idg ∗
@@ -197,27 +200,27 @@ theorem slotTrace_of_fsInv_trace_eq {s0 sf : State}
 
 /-! ## Allocator-parametric generalization -/
 
-abbrev w1SessKitExt (A : RustAlloc) (B : RunBudgets) (img : Obj.Image) (F : FsFiles)
-    (peer : AddrGhost) : SessionStoreSpec A img.base :=
-  cliSessionStoreSpec A img.base cliIo.rd F cliWrOk Slots.scopeKit peer
+abbrev w1SessKitExt (A : RustAlloc) (B : RunBudgets) (_img : Unit) (F : FsFiles)
+    (peer : AddrGhost) : SessionStoreSpec A 0#64 :=
+  cliSessionStoreSpec A 0#64 cliIo.rd F cliWrOk Slots.scopeKit peer
     SessKit.loadShimNeed (SessKit.loadPollNeed B.readFile)
     SessKit.storeShimNeed SessKit.storePollNeedX
 
-abbrev w1IdKitExt (A : RustAlloc) (B : RunBudgets) (img : Obj.Image) (F : FsFiles)
-    (peer : AddrGhost) : IdentityStoreSpec A img.base :=
-  cliIdentityStoreSpec A img.base cliIo.rd F cliWrOk peer
+abbrev w1IdKitExt (A : RustAlloc) (B : RunBudgets) (_img : Unit) (F : FsFiles)
+    (peer : AddrGhost) : IdentityStoreSpec A 0#64 :=
+  cliIdentityStoreSpec A 0#64 cliIo.rd F cliWrOk peer
     IdKit.trustShimNeed (IdKit.trustPollNeed B.readFile)
     IdKit.saveShimNeed (IdKit.savePollNeed B.readFile)
 
-theorem w1SessKitExt_A0 (B : RunBudgets) (img : Obj.Image) (F : FsFiles) (peer : AddrGhost) :
+theorem w1SessKitExt_A0 (B : RunBudgets) (img : Unit) (F : FsFiles) (peer : AddrGhost) :
     w1SessKitExt E2E.HooksE.A0 B img F peer = w1SessKit B img F peer :=
   rfl
 
-theorem w1IdKitExt_A0 (B : RunBudgets) (img : Obj.Image) (F : FsFiles) (peer : AddrGhost) :
+theorem w1IdKitExt_A0 (B : RunBudgets) (img : Unit) (F : FsFiles) (peer : AddrGhost) :
     w1IdKitExt E2E.HooksE.A0 B img F peer = w1IdKit B img F peer :=
   rfl
 
-theorem w1_innerStack_le_need_ext (A : RustAlloc) (B : RunBudgets) (img : Obj.Image)
+theorem w1_innerStack_le_need_ext (A : RustAlloc) (B : RunBudgets) (img : Unit)
     (F : FsFiles) (peer : AddrGhost) :
     withStoresEncStackV (w1SessKitExt A B img F peer) (w1IdKitExt A B img F peer) ≤
       w1EncryptNeed B := by
@@ -226,7 +229,7 @@ theorem w1_innerStack_le_need_ext (A : RustAlloc) (B : RunBudgets) (img : Obj.Im
     cliSessionStoreSpec, cliIdentityStoreSpec] using h
 
 theorem storesAt_opened_to_kits_ext {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    (A : RustAlloc) (B : RunBudgets) (img : Obj.Image) (F : FsFiles) (peer : AddrGhost)
+    (A : RustAlloc) (B : RunBudgets) (img : Unit) (F : FsFiles) (peer : AddrGhost)
     (a : BitVec 64)
     (hsub : ∀ r, Scope r → Slots.scopeIn r)
     (hok : Slots.FilesOkPeer Scope F peer.val) :
@@ -241,7 +244,7 @@ theorem storesAt_opened_to_kits_ext {Scope : SessionRecord (List (BitVec 8)) →
   rw [pure_sepConj_of_true hsInv, pure_sepConj_of_true hiInv]
   exact Entails.of_eq (by ac_rfl)
 
-theorem kits_to_storesAt_ext (A : RustAlloc) (B : RunBudgets) (img : Obj.Image) (F : FsFiles)
+theorem kits_to_storesAt_ext (A : RustAlloc) (B : RunBudgets) (img : Unit) (F : FsFiles)
     (peer : AddrGhost) (a : BitVec 64) (sess : DirGhost) (idg : IdGhost) :
     (w1SessKitExt A B img F peer).storeAt (a + 0xf0#64) sess ∗
       (w1IdKitExt A B img F peer).identityAt a idg ∗
@@ -270,19 +273,5 @@ theorem kits_to_storesAt_ext (A : RustAlloc) (B : RunBudgets) (img : Obj.Image) 
             dirAt A (a + 0x118#64) StoresGhost.opened.pub)) := by ac_rfl
   rw [hperm]
   exact Entails.pure_left fun _ => Entails.pure_left fun _ => Entails.refl _
-
-/-- Every session in `Slots.scopeKit` has `p.timestamp = 0` on any pending pre-key
-(`SessionScopeP`), discharging `EncEnvT_ext.scopeTsZero`. -/
-theorem w1_scopeKit_pendingPreKey_ts_zero {A : RustAlloc} {B : RunBudgets} {img : Obj.Image}
-    {F : FsFiles} {peer : AddrGhost} {st0 : (w1SessKitExt A B img F peer).StoreState}
-    {rem : AddrVal} (r : SessionRecord (List (BitVec 8))) (s : Session (List (BitVec 8)))
-    (p : PendingPreKey)
-    (hsc : (w1SessKitExt A B img F peer).ScopeAt Slots.scopeKit st0 rem r)
-    (hs : r.currentSession = some s)
-    (hp : s.pendingPreKey = some p) :
-    p.timestamp = 0 := by
-  obtain ⟨s', hs', hsp⟩ := hsc.1.2
-  cases hs.symm.trans hs'
-  exact hsp.2.1 p hp
 
 end CryptoVerification.SignalSession.Cli.RunProofs.EncryptLemmas

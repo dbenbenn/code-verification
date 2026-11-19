@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Construction
-public import Computational.Proofs.ReductionDsl.SM.GameCosted
-public import Computational.Proofs.GameHop.CompDedup
-public import Computational.Proofs.CryptoGames.SM.Reductions
-public import Computational.Proofs.SpecLemmas.Reductions.ReductionDsl.Core
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.CKA.CostedTables
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRNG.CostedTables
+public import Computational.Proofs.ReductionDsl.SM.GameCosted -- proof-setup: allow-public-import
+import Computational.Proofs.GameHop.CompDedup
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.ReductionDsl.Core -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.CKA.CostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRNG.CostedTables -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Size
 import Computational.Proofs.ReductionDsl.Notation
 
@@ -27,7 +27,7 @@ together with size-honesty of the CKA and PRNG operator/sampler tables, step-lev
 simulation evaluation agreement, and preservation of `SMEngineInv` and `SMVRInv`.
 -/
 
-@[expose] public section
+public section
 
 open ReductionDsl OracleSpec OracleComp
 open Computational.Proofs.GameHop.CompDedup
@@ -184,7 +184,7 @@ local notation "rrTy" => ckaRrTy KC Γ CCoins T I KR RSt K SS RS M E
 section StateRepr
 
 /-- Virtual party-state type in `ckaSig`: `(id, root, vS, vR, γ, curCkaMsg, tcur)`. -/
-@[reducible] def vpTy (γvT svT ssvT vrT : Ty S) : Ty S :=
+@[expose, reducible] def vpTy (γvT svT ssvT vrT : Ty S) : Ty S :=
   .prod .bool
     (.prod svT
       (.prod (.opt ssvT)
@@ -192,46 +192,46 @@ section StateRepr
           (.prod γvT
             (.prod (.opt (.base .t)) .nat)))))
 
-def vpEnc {γvT svT ssvT vrT : Ty S} {RSv : Type}
+@[expose] def vpEnc {γvT svT ssvT vrT : Ty S} {RSv : Type}
     (vrEnc : (ℕ → Option RSv) → vrT.denote)
     (p : VP γvT.denote T svT.denote ssvT.denote RSv) :
     (vpTy (KC := KC) (Γ := Γ) (CCoins := CCoins) (I := I) (KR := KR) (RSt := RSt)
       (K := K) (SS := SS) (RS := RS) (M := M) (E := E) γvT svT ssvT vrT).denote :=
   (partyEnc p.id, p.root, p.vS, vrEnc p.vR, p.γ, p.curCkaMsg, p.tcur)
 
-def vpId
+@[expose] def vpId
     {O' : Ops S} {γvT svT ssvT vrT : Ty S} {Γ'}
     (s : Expr O' Γ' (vpTy γvT svT ssvT vrT)) : Expr O' Γ' .bool := .fst s
-def vpRoot
+@[expose] def vpRoot
     {O' : Ops S} {γvT svT ssvT vrT : Ty S} {Γ'}
     (s : Expr O' Γ' (vpTy γvT svT ssvT vrT)) : Expr O' Γ' svT := .fst (.snd s)
-def vpVS
+@[expose] def vpVS
     {O' : Ops S} {γvT svT ssvT vrT : Ty S} {Γ'}
     (s : Expr O' Γ' (vpTy γvT svT ssvT vrT)) : Expr O' Γ' (.opt ssvT) := .fst (.snd (.snd s))
-def vpVR
+@[expose] def vpVR
     {O' : Ops S} {γvT svT ssvT vrT : Ty S} {Γ'}
     (s : Expr O' Γ' (vpTy γvT svT ssvT vrT)) : Expr O' Γ' vrT := .fst (.snd (.snd (.snd s)))
-def vpΓ
+@[expose] def vpΓ
     {O' : Ops S} {γvT svT ssvT vrT : Ty S} {Γ'}
     (s : Expr O' Γ' (vpTy γvT svT ssvT vrT)) : Expr O' Γ' γvT :=
   .fst (.snd (.snd (.snd (.snd s))))
-def vpTcur
+@[expose] def vpTcur
     {O' : Ops S} {γvT svT ssvT vrT : Ty S} {Γ'}
     (s : Expr O' Γ' (vpTy γvT svT ssvT vrT)) : Expr O' Γ' (.opt (.base .t)) :=
   .fst (.snd (.snd (.snd (.snd (.snd s)))))
-def vpTcurNat
+@[expose] def vpTcurNat
     {O' : Ops S} {γvT svT ssvT vrT : Ty S} {Γ'}
     (s : Expr O' Γ' (vpTy γvT svT ssvT vrT)) : Expr O' Γ' .nat :=
   .snd (.snd (.snd (.snd (.snd (.snd s)))))
 
-def vpMk
+@[expose] def vpMk
     {O' : Ops S} {γvT svT ssvT vrT : Ty S} {Γ'}
     (id : Expr O' Γ' .bool) (root : Expr O' Γ' svT) (vS : Expr O' Γ' (.opt ssvT))
     (vR : Expr O' Γ' vrT) (γ : Expr O' Γ' γvT) (curCkaMsg : Expr O' Γ' (.opt (.base .t)))
     (tcur : Expr O' Γ' .nat) : Expr O' Γ' (vpTy γvT svT ssvT vrT) :=
   .pair id (.pair root (.pair vS (.pair vR (.pair γ (.pair curCkaMsg tcur)))))
 
-def vpSetVS
+@[expose] def vpSetVS
     {O' : Ops S} {γvT svT ssvT vrT : Ty S} {Γ'}
     (s : Expr O' Γ' (vpTy γvT svT ssvT vrT)) (vS : Expr O' Γ' (.opt ssvT)) :
     Expr O' Γ' (vpTy γvT svT ssvT vrT) :=
@@ -239,7 +239,7 @@ def vpSetVS
     letE (raw s, raw vS) (fun (s0, vS0) =>
       vpMk (vpId s0) (vpRoot s0) vS0 (vpVR s0) (vpΓ s0) (vpTcur s0) (vpTcurNat s0))
 
-def vpSetVR
+@[expose] def vpSetVR
     {O' : Ops S} {γvT svT ssvT vrT : Ty S} {Γ'}
     (s : Expr O' Γ' (vpTy γvT svT ssvT vrT)) (vR : Expr O' Γ' vrT) :
     Expr O' Γ' (vpTy γvT svT ssvT vrT) :=
@@ -247,7 +247,7 @@ def vpSetVR
     letE (raw s, raw vR) (fun (s0, vR0) =>
       vpMk (vpId s0) (vpRoot s0) (vpVS s0) vR0 (vpΓ s0) (vpTcur s0) (vpTcurNat s0))
 
-def vpSetΓ
+@[expose] def vpSetΓ
     {O' : Ops S} {γvT svT ssvT vrT : Ty S} {Γ'}
     (s : Expr O' Γ' (vpTy γvT svT ssvT vrT)) (γ : Expr O' Γ' γvT) :
     Expr O' Γ' (vpTy γvT svT ssvT vrT) :=
@@ -255,20 +255,20 @@ def vpSetΓ
     letE (raw s, raw γ) (fun (s0, γ0) =>
       vpMk (vpId s0) (vpRoot s0) (vpVS s0) (vpVR s0) γ0 (vpTcur s0) (vpTcurNat s0))
 
-@[reducible] def cRecTy : Ty S := .prod posTy (.prod (.base .msg) hdrCtTy)
+@[expose, reducible] def cRecTy : Ty S := .prod posTy (.prod (.base .msg) hdrCtTy)
 
-def cRecEnc (r : Record M (Header T × E)) : (Bool × ℕ × ℕ) × M × (Header T × E) :=
+@[expose] def cRecEnc (r : Record M (Header T × E)) : (Bool × ℕ × ℕ) × M × (Header T × E) :=
   (posEnc r.pos, r.msg, r.ct)
 
-def cRecPos
+@[expose] def cRecPos
     {O' : Ops S} {Γ'} (r : Expr O' Γ' cRecTy) : Expr O' Γ' posTy := .fst r
-def cRecMsg
+@[expose] def cRecMsg
     {O' : Ops S} {Γ'} (r : Expr O' Γ' cRecTy) : Expr O' Γ' (.base .msg) := .fst (.snd r)
-def cRecCt
+@[expose] def cRecCt
     {O' : Ops S} {Γ'} (r : Expr O' Γ' cRecTy) : Expr O' Γ' hdrCtTy := .snd (.snd r)
 
 /-- Virtual `GameState VPt M (Header T × E)` (`Ctx`) as a `ReductionDsl` type in `ckaSig`. -/
-@[reducible] def cGsTy (vpT : Ty S) : Ty S :=
+@[expose, reducible] def cGsTy (vpT : Ty S) : Ty S :=
   .prod (.prod vpT vpT)
     (.prod .bool
       (.prod .bool
@@ -282,7 +282,7 @@ def cRecCt
                       (.prod (.list .nat)
                         (.list (.prod .bool .nat))))))))))))
 
-def cGsEnc {vpT : Ty S} {VPt : Type} (vpEncFn : VPt → vpT.denote)
+@[expose] def cGsEnc {vpT : Ty S} {VPt : Type} (vpEncFn : VPt → vpT.denote)
     (s : GameState VPt M (Header T × E)) :
     (@cGsTy KC Γ CCoins T I KR RSt K SS RS M E vpT).denote :=
   ((vpEncFn (s.st .A), vpEncFn (s.st .B)),
@@ -299,53 +299,53 @@ def cGsEnc {vpT : Ty S} {VPt : Type} (vpEncFn : VPt → vpT.denote)
             (s.leaks,
              s.corrs.map (fun pe => (partyEnc pe.1, pe.2)))))))))))))
 
-def cGsSt
+@[expose] def cGsSt
     {O' : Ops S} {vpT : Ty S} {Γ'} (s : Expr O' Γ' (cGsTy vpT)) :
     Expr O' Γ' (.prod vpT vpT) := .fst s
-def cGsB
+@[expose] def cGsB
     {O' : Ops S} {vpT : Ty S} {Γ'} (s : Expr O' Γ' (cGsTy vpT)) : Expr O' Γ' .bool :=
   .fst (.snd s)
-def cGsWin
+@[expose] def cGsWin
     {O' : Ops S} {vpT : Ty S} {Γ'} (s : Expr O' Γ' (cGsTy vpT)) : Expr O' Γ' .bool :=
   .fst (.snd (.snd s))
-def cGsEpoch
+@[expose] def cGsEpoch
     {O' : Ops S} {vpT : Ty S} {Γ'} (s : Expr O' Γ' (cGsTy vpT)) :
     Expr O' Γ' (.prod .nat .nat) :=
   .fst (.snd (.snd (.snd s)))
-def cGsIdx
+@[expose] def cGsIdx
     {O' : Ops S} {vpT : Ty S} {Γ'} (s : Expr O' Γ' (cGsTy vpT)) :
     Expr O' Γ' (.prod .nat .nat) :=
   .fst (.snd (.snd (.snd (.snd s))))
-def cGsTL
+@[expose] def cGsTL
     {O' : Ops S} {vpT : Ty S} {Γ'} (s : Expr O' Γ' (cGsTy vpT)) :
     Expr O' Γ' (.opt .nat) :=
   .fst (.snd (.snd (.snd (.snd (.snd s)))))
-def cGsTrans
+@[expose] def cGsTrans
     {O' : Ops S} {vpT : Ty S} {Γ'} (s : Expr O' Γ' (cGsTy vpT)) :
     Expr O' Γ' (.list cRecTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd s))))))
-def cGsChall
+@[expose] def cGsChall
     {O' : Ops S} {vpT : Ty S} {Γ'} (s : Expr O' Γ' (cGsTy vpT)) :
     Expr O' Γ' (.list posTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))
-def cGsComp
+@[expose] def cGsComp
     {O' : Ops S} {vpT : Ty S} {Γ'} (s : Expr O' Γ' (cGsTy vpT)) :
     Expr O' Γ' (.prod (.tbl (.tbl .bool)) (.tbl (.tbl .bool))) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))
-def cGsMaxAcc
+@[expose] def cGsMaxAcc
     {O' : Ops S} {vpT : Ty S} {Γ'} (s : Expr O' Γ' (cGsTy vpT)) :
     Expr O' Γ' (.prod (.tbl .nat) (.tbl .nat)) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))))
-def cGsLeaks
+@[expose] def cGsLeaks
     {O' : Ops S} {vpT : Ty S} {Γ'} (s : Expr O' Γ' (cGsTy vpT)) :
     Expr O' Γ' (.list .nat) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))))
-def cGsCorrs
+@[expose] def cGsCorrs
     {O' : Ops S} {vpT : Ty S} {Γ'} (s : Expr O' Γ' (cGsTy vpT)) :
     Expr O' Γ' (.list (.prod .bool .nat)) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))))
 
-def cGsMk
+@[expose] def cGsMk
     {O' : Ops S} {vpT : Ty S} {Γ'}
     (st : Expr O' Γ' (.prod vpT vpT))
     (b win : Expr O' Γ' .bool)
@@ -369,7 +369,7 @@ def cGsMk
                     (.pair maxAcc
                       (.pair leaks corrs))))))))))
 
-def cGsSetWin
+@[expose] def cGsSetWin
     {O' : Ops S} {vpT : Ty S} {Γ'}
     (s : Expr O' Γ' (cGsTy vpT)) (w : Expr O' Γ' .bool) : Expr O' Γ' (cGsTy vpT) :=
   rdslExpr =>
@@ -377,7 +377,7 @@ def cGsSetWin
       cGsMk (cGsSt s0) (cGsB s0) w0 (cGsEpoch s0) (cGsIdx s0) (cGsTL s0)
         (cGsTrans s0) (cGsChall s0) (cGsComp s0) (cGsMaxAcc s0) (cGsLeaks s0) (cGsCorrs s0))
 
-def cGsSetStP
+@[expose] def cGsSetStP
     {O' : Ops S} {vpT : Ty S} {Γ'}
     (s : Expr O' Γ' (cGsTy vpT)) (p : Expr O' Γ' .bool) (st' : Expr O' Γ' vpT) :
     Expr O' Γ' (cGsTy vpT) :=
@@ -386,7 +386,7 @@ def cGsSetStP
       cGsMk (pSet (cGsSt s0) p0 st0) (cGsB s0) (cGsWin s0) (cGsEpoch s0) (cGsIdx s0) (cGsTL s0)
         (cGsTrans s0) (cGsChall s0) (cGsComp s0) (cGsMaxAcc s0) (cGsLeaks s0) (cGsCorrs s0))
 
-def cGsInitE
+@[expose] def cGsInitE
     {O' : Ops S} {vpT : Ty S} {Γ'}
     (vA vB : Expr O' Γ' vpT) (b : Expr O' Γ' .bool) : Expr O' Γ' (cGsTy vpT) :=
   cGsMk (.pair vA vB) b (.bool false)
@@ -396,25 +396,25 @@ def cGsInitE
     (.pair (.tconst (.nat 0)) (.tconst (.nat 0))) .nil .nil
 
 /-- Engine state `EState` encoded in `ckaSig` as `(g, (h, abort))`. -/
-@[reducible] def esTy (vpT hsT : Ty S) : Ty S :=
+@[expose, reducible] def esTy (vpT hsT : Ty S) : Ty S :=
   .prod (cGsTy vpT) (.prod hsT .bool)
 
-def esEnc {vpT hsT : Ty S} {VPt HS : Type}
+@[expose] def esEnc {vpT hsT : Ty S} {VPt HS : Type}
     (vpEncFn : VPt → vpT.denote) (hsEncFn : HS → hsT.denote)
     (es : EState VPt M (Header T × E) HS) :
     (@esTy KC Γ CCoins T I KR RSt K SS RS M E vpT hsT).denote :=
   (cGsEnc vpEncFn es.g, hsEncFn es.h, es.abort)
 
-def esG
+@[expose] def esG
     {O' : Ops S} {vpT hsT : Ty S} {Γ'} (es : Expr O' Γ' (esTy vpT hsT)) :
     Expr O' Γ' (cGsTy vpT) := .fst es
-def esH
+@[expose] def esH
     {O' : Ops S} {vpT hsT : Ty S} {Γ'} (es : Expr O' Γ' (esTy vpT hsT)) :
     Expr O' Γ' hsT := .fst (.snd es)
-def esAbort
+@[expose] def esAbort
     {O' : Ops S} {vpT hsT : Ty S} {Γ'} (es : Expr O' Γ' (esTy vpT hsT)) :
     Expr O' Γ' .bool := .snd (.snd es)
-def esMk
+@[expose] def esMk
     {O' : Ops S} {vpT hsT : Ty S} {Γ'}
     (g : Expr O' Γ' (cGsTy vpT)) (h : Expr O' Γ' hsT) (abort : Expr O' Γ' .bool) :
     Expr O' Γ' (esTy vpT hsT) :=
@@ -448,7 +448,7 @@ local notation "OO" =>
   ckaOps ckaInitA ckaInitB ckaSend ckaReceive prngInit prngUp
     fsInitSender fsInitReceiver fsSend fsReceive eqT eqI eqM eqE lam defaultE
 
-def optNatLit
+@[expose] def optNatLit
     {S' : Sig} {O' : Ops S'} {Γ'} : Option ℕ → Expr O' Γ' (.opt .nat)
   | none => .none
   | some n => .some (.nat n)
@@ -457,7 +457,7 @@ def optNatLit
     (optNatLit (O' := O') o).eval ρ = o := by
   cases o <;> rfl
 
-def optTEqE {Γ'} (a b : Expr OO Γ' (.opt (.base .t))) : Expr OO Γ' .bool :=
+@[expose] def optTEqE {Γ'} (a b : Expr OO Γ' (.opt (.base .t))) : Expr OO Γ' .bool :=
   rdslExpr =>
     letE (raw a, raw b) (fun (x, y) =>
       match x with
@@ -470,7 +470,7 @@ def optTEqE {Γ'} (a b : Expr OO Γ' (.opt (.base .t))) : Expr OO Γ' .bool :=
         | none => false
         | some yv => Expr.op (O := OO) CKAOp.eqT (xv, yv))
 
-def hdrCtEqE {Γ'} (c₁ c₂ : Expr OO Γ' hdrCtTy) : Expr OO Γ' .bool :=
+@[expose] def hdrCtEqE {Γ'} (c₁ c₂ : Expr OO Γ' hdrCtTy) : Expr OO Γ' .bool :=
   rdslExpr =>
     letE (raw c₁, raw c₂) (fun (a, b) =>
       ((a.1.1 == b.1.1) && optTEqE a.1.2 b.1.2) &&
@@ -496,21 +496,21 @@ theorem hdrCtEqE_eval [DecidableEq T] [DecidableEq E] {Γ'}
   by_cases ht : t₁ = t₂ <;> cases o₁ <;> cases o₂ <;> by_cases he : e₁ = e₂ <;>
     simp [ht, he, BEq.beq]
 
-def cSafeChE
+@[expose] def cSafeChE
     {O' : Ops S} {vpT : Ty S} {Γ'} (Δ : ℕ) (s : Expr O' Γ' (cGsTy vpT))
     (p : Expr O' Γ' .bool) : Expr O' Γ' .bool :=
   rdslExpr =>
     letE (raw s, raw p) (fun (s0, p0) =>
       healedByE (cGsTL s0) (raw Δ) (pGet (cGsEpoch s0) p0))
 
-def cSafeInjE
+@[expose] def cSafeInjE
     {O' : Ops S} {vpT : Ty S} {Γ'} (Δ : ℕ) (s : Expr O' Γ' (cGsTy vpT)) :
     Expr O' Γ' .bool :=
   rdslExpr =>
     letE (raw s) (fun s0 =>
       healedByE (cGsTL s0) (raw Δ) (minN (cGsEpoch s0).1 (cGsEpoch s0).2))
 
-def cLeakE
+@[expose] def cLeakE
     {O' : Ops S} {vpT : Ty S} {Γ'} (s : Expr O' Γ' (cGsTy vpT))
     (l : Expr O' Γ' .nat) : Expr O' Γ' (cGsTy vpT) :=
   rdslExpr =>
@@ -520,7 +520,7 @@ def cLeakE
         (some m) (cGsTrans s0) (cGsChall s0) (cGsComp s0) (cGsMaxAcc s0)
         (m :: cGsLeaks s0) (cGsCorrs s0))
 
-def cEpMgmtE
+@[expose] def cEpMgmtE
     {O' : Ops S} {vpT : Ty S} {Γ'} (Δ qep : ℕ) (s : Expr O' Γ' (cGsTy vpT))
     (p : Expr O' Γ' .bool) (bad : Expr O' Γ' .bool) : Expr O' Γ' (.opt (cGsTy vpT)) :=
   rdslExpr =>
@@ -541,7 +541,7 @@ def cEpMgmtE
       else
         if nat qep < epP then none else some s0)
 
-def cCompSetE
+@[expose] def cCompSetE
     {O' : Ops S} {Γ'}
     (m : Expr O' Γ' (.prod (.tbl (.tbl .bool)) (.tbl (.tbl .bool))))
     (pos : Expr O' Γ' posTy) (val : Expr O' Γ' .bool) :
@@ -554,21 +554,21 @@ def cCompSetE
      let row := .tget sub (posEpoch pos0)
      pSet m0 (posSender pos0) (.tset sub (posEpoch pos0) (.tset row (posIdx pos0) val0)))
 
-def cCompInsertE
+@[expose] def cCompInsertE
     {O' : Ops S} {Γ'}
     (m : Expr O' Γ' (.prod (.tbl (.tbl .bool)) (.tbl (.tbl .bool))))
     (pos : Expr O' Γ' posTy) :
     Expr O' Γ' (.prod (.tbl (.tbl .bool)) (.tbl (.tbl .bool))) :=
   cCompSetE m pos (.bool true)
 
-def cCompDeleteE
+@[expose] def cCompDeleteE
     {O' : Ops S} {Γ'}
     (m : Expr O' Γ' (.prod (.tbl (.tbl .bool)) (.tbl (.tbl .bool))))
     (pos : Expr O' Γ' posTy) :
     Expr O' Γ' (.prod (.tbl (.tbl .bool)) (.tbl (.tbl .bool))) :=
   cCompSetE m pos (.bool false)
 
-def cCompContainsE
+@[expose] def cCompContainsE
     {O' : Ops S} {vpT : Ty S} {Γ'} (_L : ℕ) (s : Expr O' Γ' (cGsTy vpT))
     (pos : Expr O' Γ' posTy) : Expr O' Γ' .bool :=
   .letE (.pair s pos)
@@ -576,7 +576,7 @@ def cCompContainsE
      let pos0 : Expr O' _ posTy := .snd .v0
      .tget (.tget (pGet (cGsComp s0) (posSender pos0)) (posEpoch pos0)) (posIdx pos0))
 
-def cRecordE
+@[expose] def cRecordE
     {O' : Ops S} {vpT : Ty S} {Γ'} (_L Δ : ℕ) (s : Expr O' Γ' (cGsTy vpT))
     (p : Expr O' Γ' .bool) (st' : Expr O' Γ' vpT) (r : Expr O' Γ' cRecTy)
     (isChall : Expr O' Γ' .bool) : Expr O' Γ' (cGsTy vpT) :=
@@ -593,14 +593,14 @@ def cRecordE
         (if cSafeChE (raw Δ) s0 p0 then cGsComp s0 else cCompInsertE (cGsComp s0) pos)
         (cGsMaxAcc s0) (cGsLeaks s0) (cGsCorrs s0))
 
-def cInTransitE {vpT : Ty S} {Γ'} (L : ℕ) (s : Expr OO Γ' (cGsTy vpT))
+@[expose] def cInTransitE {vpT : Ty S} {Γ'} (L : ℕ) (s : Expr OO Γ' (cGsTy vpT))
     (qParty : Expr OO Γ' .bool) (c : Expr OO Γ' hdrCtTy) : Expr OO Γ' (.opt cRecTy) :=
   rdslExpr =>
     letE (raw s, raw qParty, raw c) (fun (s0, q0, c0) =>
       findB L (cGsTrans s0) (fun r0 =>
         boolEq (posSender (cRecPos r0)) q0 && hdrCtEqE (cRecCt r0) c0))
 
-def cDeleteE
+@[expose] def cDeleteE
     {O' : Ops S} {vpT : Ty S} {Γ'} (L : ℕ) (s : Expr O' Γ' (cGsTy vpT))
     (pos : Expr O' Γ' posTy) : Expr O' Γ' (cGsTy vpT) :=
   rdslExpr =>
@@ -615,7 +615,7 @@ def cDeleteE
       cGsMk (cGsSt s0) (cGsB s0) (cGsWin s0) (cGsEpoch s0) (cGsIdx s0) (cGsTL s0)
         trans' chall' comp' (cGsMaxAcc s0) (cGsLeaks s0) (cGsCorrs s0))
 
-def cAcceptE
+@[expose] def cAcceptE
     {O' : Ops S} {vpT : Ty S} {Γ'} (L : ℕ) (s : Expr O' Γ' (cGsTy vpT))
     (p : Expr O' Γ' .bool) (st' : Expr O' Γ' vpT) (pos : Expr O' Γ' posTy) :
     Expr O' Γ' (cGsTy vpT) :=
@@ -632,14 +632,14 @@ def cAcceptE
           (maxN (maxAccGet (cGsMaxAcc s1) p0 pEpoch) pIdx))
         (cGsLeaks s1) (cGsCorrs s1))
 
-def cChallContainsE
+@[expose] def cChallContainsE
     {O' : Ops S} {vpT : Ty S} {Γ'} (L : ℕ) (s : Expr O' Γ' (cGsTy vpT))
     (pos : Expr O' Γ' posTy) : Expr O' Γ' .bool :=
   rdslExpr =>
     letE (raw s, raw pos) (fun (s0, pos0) =>
       anyB L (cGsChall s0) (fun x => posEq x pos0))
 
-def cMustBeCorrectE
+@[expose] def cMustBeCorrectE
     {O' : Ops S} {vpT : Ty S} {Γ'} (L maxSkip : ℕ)
     (s : Expr O' Γ' (cGsTy vpT)) (p : Expr O' Γ' .bool) (r : Expr O' Γ' cRecTy) :
     Expr O' Γ' .bool :=
@@ -650,7 +650,7 @@ def cMustBeCorrectE
         leN (posIdx pos)
           ((maxAccGet (cGsMaxAcc s0) p0 (posEpoch pos) + nat maxSkip) + 1))
 
-def cTrivialE
+@[expose] def cTrivialE
     {O' : Ops S} {vpT : Ty S} {Γ'} (L Δ : ℕ) (s : Expr O' Γ' (cGsTy vpT))
     (pos : Expr O' Γ' posTy) : Expr O' Γ' .bool :=
   rdslExpr =>
@@ -659,7 +659,7 @@ def cTrivialE
         (!(anyB L (cGsTrans s0) (fun r0 => posEq (cRecPos r0) pos0)) &&
           !(healedByE (cGsTL s0) (raw Δ) (posEpoch pos0))))
 
-def cCorrAllowedE
+@[expose] def cCorrAllowedE
     {O' : Ops S} {vpT : Ty S} {Γ'} (L : ℕ) (s : Expr O' Γ' (cGsTy vpT))
     (p : Expr O' Γ' .bool) : Expr O' Γ' .bool :=
   rdslExpr =>
@@ -669,7 +669,7 @@ def cCorrAllowedE
           boolEq (posSender (cRecPos r0)) (otherE p0) &&
             !(cCompContainsE (raw L) s0 (cRecPos r0)))))
 
-def cAfterCorrE
+@[expose] def cAfterCorrE
     {O' : Ops S} {vpT : Ty S} {Γ'} (L : ℕ) (s : Expr O' Γ' (cGsTy vpT))
     (p : Expr O' Γ' .bool) : Expr O' Γ' (cGsTy vpT) :=
   rdslExpr =>
@@ -687,7 +687,7 @@ def cAfterCorrE
         (cGsTrans s2) (cGsChall s2) (cGsComp s2) (cGsMaxAcc s2) (cGsLeaks s2)
         ((p0, pGet (cGsEpoch s0) p0) :: cGsCorrs s2))
 
-def cCanonE
+@[expose] def cCanonE
     {O' : Ops S} {vpT : Ty S} {Γ'} (L : ℕ) (tStar : Expr O' Γ' .nat)
     (s : Expr O' Γ' (cGsTy vpT)) : Expr O' Γ' (.opt .nat) :=
   rdslExpr =>
@@ -700,7 +700,7 @@ def cCanonE
         else
           acc))
 
-def cAuthOKE
+@[expose] def cAuthOKE
     {O' : Ops S} {vpT : Ty S} {Γ'} (L Δ : ℕ) (tLStar : Expr O' Γ' (.opt .nat))
     (tStar : Expr O' Γ' .nat) (s : Expr O' Γ' (cGsTy vpT)) : Expr O' Γ' .bool :=
   rdslExpr =>
@@ -713,7 +713,7 @@ def cAuthOKE
       ((validGuessE (raw Δ) tL0 t0 && optNatEqE (cCanonE (raw L) t0 s0) tL0) && leaksOK) &&
         corrsOK)
 
-def leakDoomE
+@[expose] def leakDoomE
     {O' : Ops S} {vpT : Ty S} {Γ'} (L : ℕ) (π : Policy)
     (g g' : Expr O' Γ' (cGsTy vpT)) : Expr O' Γ' .bool :=
   rdslExpr =>
@@ -726,7 +726,7 @@ def leakDoomE
           (pGet (cGsEpoch g0) (bool (partyEnc (Party.senderOf π.tStar))) < nat π.tStar)
       orE ev1 ev2)
 
-def corrDoomE
+@[expose] def corrDoomE
     {O' : Ops S} {vpT : Ty S} {Γ'} (π : Policy)
     (g : Expr O' Γ' (cGsTy vpT)) (p : Expr O' Γ' .bool) : Expr O' Γ' .bool :=
   rdslExpr =>
@@ -738,7 +738,7 @@ def corrDoomE
       boolEq p0 (bool (partyEnc (Party.receiverOf π.tStar))) &&
         raw (if π.auth then authBr else privBr))
 
-def authOutE
+@[expose] def authOutE
     {O' : Ops S} {vpT hsT : Ty S} {Γ'} (L Δ : ℕ) (π : Policy)
     (es : Expr O' Γ' (esTy vpT hsT)) : Expr O' Γ' .bool :=
   rdslExpr =>
@@ -746,7 +746,7 @@ def authOutE
       (!(esAbort es0) && cGsWin (esG es0)) &&
         cAuthOKE (raw L) (raw Δ) (optNatLit (raw π.tL)) (nat π.tStar) (esG es0))
 
-def privValidE
+@[expose] def privValidE
     {O' : Ops S} {vpT hsT : Ty S} {Γ'} (L Δ : ℕ) (π : Policy)
     (es : Expr O' Γ' (esTy vpT hsT)) : Expr O' Γ' .bool :=
   rdslExpr =>
@@ -754,7 +754,7 @@ def privValidE
       (!(esAbort es0) && validGuessE (raw Δ) (optNatLit (raw π.tL)) (nat π.tStar)) &&
         optNatEqE (cCanonE (raw L) (nat π.tStar) (esG es0)) (optNatLit (raw π.tL)))
 
-def privOutC
+@[expose] def privOutC
     {O' : Ops S} {ι : Type} {TSpec : OracleSpec ι} {I' : Iface S TSpec}
     {vpT hsT : Ty S} (L Δ : ℕ) (π : Policy)
     (drawBit : ∀ {Γ''}, Comp O' I' Γ'' .bool)
@@ -858,7 +858,7 @@ theorem cEpMgmtE_eval {O' : Ops S} {Γ'} (Δ qep : ℕ) (s : Expr O' Γ' (cGsTy 
     rw [hlt2]
     by_cases h2 : qep < st.epoch P <;> simp [ρ₁, h2, Expr.eval, Expr.v0]
 
-def compTblEnc (l : List Pos) : (ℕ → ℕ → Bool) × (ℕ → ℕ → Bool) :=
+@[expose] def compTblEnc (l : List Pos) : (ℕ → ℕ → Bool) × (ℕ → ℕ → Bool) :=
   ((fun ep idx => l.contains ⟨.A, ep, idx⟩),
    (fun ep idx => l.contains ⟨.B, ep, idx⟩))
 
@@ -1330,33 +1330,33 @@ end Bookkeeping
 
 section Handlers
 
-@[reducible] def vpTblTy {γvT svT ssvT rsvT : Ty S} : Ty S :=
+@[expose, reducible] def vpTblTy {γvT svT ssvT rsvT : Ty S} : Ty S :=
   vpTy γvT svT ssvT (.tbl (.opt rsvT))
 
-def vpTblEnc {γvT svT ssvT rsvT : Ty S}
+@[expose] def vpTblEnc {γvT svT ssvT rsvT : Ty S}
     (p : VP γvT.denote T svT.denote ssvT.denote rsvT.denote) :
     (@vpTblTy KC Γ CCoins T I KR RSt K SS RS M E γvT svT ssvT rsvT).denote :=
   vpEnc (vrT := .tbl (.opt rsvT)) id p
 
-def esSetG
+@[expose] def esSetG
     {O' : Ops S} {vpT hsT : Ty S} {Γ'} (es : Expr O' Γ' (esTy vpT hsT))
     (g : Expr O' Γ' (cGsTy vpT)) : Expr O' Γ' (esTy vpT hsT) :=
   rdslExpr =>
     letE (raw es, raw g) (fun (es0, g0) => esMk g0 (esH es0) (esAbort es0))
 
-def esSetH
+@[expose] def esSetH
     {O' : Ops S} {vpT hsT : Ty S} {Γ'} (es : Expr O' Γ' (esTy vpT hsT))
     (h : Expr O' Γ' hsT) : Expr O' Γ' (esTy vpT hsT) :=
   rdslExpr =>
     letE (raw es, raw h) (fun (es0, h0) => esMk (esG es0) h0 (esAbort es0))
 
-def esSetAbort
+@[expose] def esSetAbort
     {O' : Ops S} {vpT hsT : Ty S} {Γ'} (es : Expr O' Γ' (esTy vpT hsT))
     (abort : Expr O' Γ' .bool) : Expr O' Γ' (esTy vpT hsT) :=
   rdslExpr =>
     letE (raw es, raw abort) (fun (es0, ab0) => esMk (esG es0) (esH es0) ab0)
 
-def mkPartiesE
+@[expose] def mkPartiesE
     {O' : Ops S} {γvT svT ssvT rsvT : Ty S} {Γ'}
     (γA γB : Expr O' Γ' γvT) (σ : Expr O' Γ' svT) (ssB : Expr O' Γ' ssvT)
     (rsA : Expr O' Γ' rsvT) :
@@ -1368,7 +1368,7 @@ def mkPartiesE
       (vpMk (bool (partyEnc .A)) σ0 none (tset (tconst none) 0 (some rsA0)) γA0 none 0,
        vpMk (bool (partyEnc .B)) σ0 (some ssB0) (tconst none) γB0 none 0))
 
-def realPartyE
+@[expose] def realPartyE
     {O' : Ops S} {γvT svT ssvT vrT : Ty S} {Γ'}
     (vp : Expr O' Γ' (vpTy γvT svT ssvT vrT))
     (γ : Expr O' Γ' (.base .γ)) (σ : Expr O' Γ' (.base .sig))
@@ -1442,7 +1442,7 @@ structure ConfigEC (O' : Ops S) where
   challMsgE : ∀ {Γ'}, Expr O' Γ' .nat → Expr O' Γ' .bool →
     Expr O' Γ' (.base .msg) → Expr O' Γ' (.base .msg) → Expr O' Γ' (.base .msg)
 
-def modeCfgEC
+@[expose] def modeCfgEC
     (O' : Ops S) (mo : Mode) : ConfigEC O' where
   deliverWin := false
   injectFullE e := if mo.auth then .eqN e (.nat mo.tStar) else .bool false
@@ -1471,7 +1471,7 @@ local notation "OO" =>
   ckaOps ckaInitA ckaInitB ckaSend ckaReceive prngInit prngUp
     fsInitSender fsInitReceiver fsSend fsReceive eqT eqI eqM eqE lam defaultE
 
-def vSendStep1C
+@[expose] def vSendStep1C
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -1494,7 +1494,7 @@ def vSendStep1C
     else
       return (some s0, h0)
 
-def vSendC
+@[expose] def vSendC
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -1527,7 +1527,7 @@ def vSendC
         | some (v', ct) =>
           return (some (vpSetVS s1 (some v'), hdr, ct), h2)
 
-def vRecvStep1C
+@[expose] def vRecvStep1C
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -1559,7 +1559,7 @@ def vRecvStep1C
     else
       return (some (some s0), h0)
 
-def vRecvC
+@[expose] def vRecvC
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -1600,7 +1600,7 @@ def vRecvC
                 let s2 := vpSetVR s1 (tset (vpVR s1) t0 (some v'))
                 return (some (some (s2, t0, idx, mOut)), h2)
 
-def commitEC
+@[expose] def commitEC
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT) (L : ℕ)
@@ -1622,7 +1622,7 @@ def commitEC
     | some new' =>
       return (some (cGsSetStP s1 p0 new'), esMk (esG es0) h' (esAbort es0))
 
-def transmitEC
+@[expose] def transmitEC
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -1652,7 +1652,7 @@ def transmitEC
             let g' := cRecordE (raw L) (raw Δ) s1 p0 st' recE false
             return (some ct, esMk g' h' (esAbort es0))
 
-def challEC
+@[expose] def challEC
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -1686,7 +1686,7 @@ def challEC
             let g' := cRecordE (raw L) (raw Δ) s1 p0 st' recE true
             return (some ct, esMk g' h' (esAbort es0))
 
-def deliverEC
+@[expose] def deliverEC
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -1731,7 +1731,7 @@ def deliverEC
               let mOut := if cChallContainsE (raw L) s0 rPos then none else some m'
               return (some (inr (t', i', mOut)), esSetG es_acc gFinal)
 
-def injectEC
+@[expose] def injectEC
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -1775,7 +1775,7 @@ def injectEC
               let g' := if cfg.injectFullE t' then cGsSetWin s0 true else s0
               return (some (inl ()), esSetG es' g')
 
-def corrEC
+@[expose] def corrEC
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -1811,7 +1811,7 @@ local macro_rules
   | `(rdsl_pat| .corrupt $p:term) => `(rdsl_pat| .inr $p)
 
 /-- Combined five-oracle costed dispatcher for `Engine.implE`. -/
-def implEC
+@[expose] def implEC
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -2225,7 +2225,7 @@ structure HooksCAgrees {ι : Type} {TSpec : OracleSpec.{0, 0} ι}
     (hkC.reveal hE ctxE pE vpE).eval ρ =
       Prod.map (Option.map ckaPsEnc) hsEncFn <$> (hk.reveal ctx P vp).run h
 
-def vSendStep1 {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {γV σV ssV rsV HS : Type}
+@[expose] def vSendStep1 {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {γV σV ssV rsV HS : Type}
     (hk : Hooks TSpec HS Γ T RSt SS RS M E CCoins γV σV ssV rsV)
     (ctx : Ctx γV T σV ssV rsV M E) (P : Party)
     (s : VP γV T σV ssV rsV) (r : Option CCoins) :
@@ -2238,7 +2238,7 @@ def vSendStep1 {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {γV σV ssV rsV HS : 
                           vS := some ss })
   else pure (some s)
 
-def vRecvStep1 {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {γV σV ssV rsV HS : Type}
+@[expose] def vRecvStep1 {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {γV σV ssV rsV HS : Type}
     (hk : Hooks TSpec HS Γ T RSt SS RS M E CCoins γV σV ssV rsV)
     (ctx : Ctx γV T σV ssV rsV M E) (P : Party)
     (s : VP γV T σV ssV rsV) (c : Header T × E) :
@@ -4085,7 +4085,7 @@ theorem implE_inv [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
 /-! ### Receiver-state reachability (`RSReach` and `SMVRInv`) -/
 
 /-- Reachability bound on `FSAEAD.fromAEADPRG` receiver states after at most `k` `receive` calls. -/
-def RSReach {CK MK : Type} (maxSkip k : ℕ) (v : FSAEAD.RatchetReceiverState CK MK) : Prop :=
+@[expose] def RSReach {CK MK : Type} (maxSkip k : ℕ) (v : FSAEAD.RatchetReceiverState CK MK) : Prop :=
   v.lastIndex ≤ k * (maxSkip + 1) ∧ ∀ kv ∈ v.skippedKeys, kv.1 ≤ v.lastIndex
 
 theorem RSReach.init {CK MK AD M C : Type}
@@ -4190,7 +4190,7 @@ structure HooksVRInv {ι : Type} {TSpec : OracleSpec.{0, 0} ι}
     ∀ new', res.1 = some new' → new'.vR = new.vR
 
 /-- Virtual-party receiver-table invariant with `q` remaining adversary queries out of `B`. -/
-def SMVRInv {γV σV ssV rsV : Type}
+@[expose] def SMVRInv {γV σV ssV rsV : Type}
     (VROkStep : ℕ → rsV → Prop) (B q : ℕ)
     (s : Ctx γV T σV ssV rsV M E) : Prop :=
   ∀ (P : Party) (t : ℕ) (v : rsV), (s.st P).vR t = some v → VROkStep (B - q) v

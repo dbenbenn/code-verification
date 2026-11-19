@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBase
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBase
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
 import ProofLib.SepLogic.WPp
@@ -29,7 +29,7 @@ Defines budget-threaded placed contract propositions (`EncodeEpochDirection1*Pla
 `VmPreserved`-threaded basic-block step lemmas on CLI Block `457` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -113,51 +113,51 @@ private theorem sepWP_done_vm_placed {prog : Program} {target_pc : BitVec 64} {s
 
 /-! ## 1. Budget-Threaded Placed Contract Propositions (Block `457`) -/
 
-def EncodeEpochDirection1PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection1PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_457 H) (blkPl_457).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionPinnedSpec A lim))
 
-def EncodeEpochDirection1PlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection1PlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_457 H) (blkPl_457).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionSpec A lim))
 
-def EncodeEpochDirection1PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection1PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_457 H) (blkPl_457).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionPinnedSpecX A lim))
 
-def EncodeEpochDirection1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_457 H) (blkPl_457).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionSpecX A lim))
 
-def EncodeEpochDirection1PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection1PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   EncodeEpochDirection1PinnedPlacedOk A lim (Rust.withPanics ext)
 
-def EncodeEpochDirection1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   EncodeEpochDirection1PlacedOk A lim (Rust.withPanics ext)
 
-def EncodeEpochDirection1PinnedPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection1PinnedPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   EncodeEpochDirection1PinnedPlacedOkX A lim (Rust.withPanics ext)
 
-def EncodeEpochDirection1PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeEpochDirection1PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   EncodeEpochDirection1PlacedOkX A lim (Rust.withPanics ext)
 
-def EncodeEpochDirection1PinnedExactPlacedOk [LibsignalPlacement] (resStack : Nat) (A : RustAlloc)
+@[expose] def EncodeEpochDirection1PinnedExactPlacedOk [LibsignalPlacement] (resStack : Nat) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_457 H) (blkPl_457).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionPinnedExactVmSpecOf resStack A))

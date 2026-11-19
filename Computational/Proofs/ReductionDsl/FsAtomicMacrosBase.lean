@@ -11,15 +11,16 @@ module
 
 public import Computational.Specifications.Reductions.ReductionDsl.AtomicOps
 public import Computational.Specifications.Reductions.ReductionDsl.TargetCodecs
-public import Computational.Proofs.ReductionDsl.AtomicTablesHonest -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
 public import Computational.Proofs.ReductionDsl.MacroLift -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.FSAEAD.PubCosted -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.FSAEAD.HybridCosted -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.FSAEAD.SaltWireCosted -- proof-setup: allow-public-import
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.FSAEAD.PubCosted
+import Computational.Proofs.ReductionDsl.FSAEAD.HybridCosted
+import Computational.Proofs.ReductionDsl.FSAEAD.SaltWireCosted
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound
 import Computational.Proofs.ReductionDsl.PubRed
 import Computational.Proofs.ReductionDsl.FSAEAD.SaltWire
 import Computational.Proofs.GameHop.StateSim
+import Computational.Proofs.GameHop.Rnd
 
 
 /-! # Base codecs, `CoinSimEquiv`, and `PureMacroBundle` definitions -/

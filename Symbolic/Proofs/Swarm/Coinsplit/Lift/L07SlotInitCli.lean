@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.UA.Defs
-public import Symbolic.Proofs.Swarm.CREF.Initiate.EntryPure
+import Symbolic.Proofs.Swarm.UA.Defs
+public import Symbolic.Proofs.Swarm.CREF.Initiate.EntryPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.Composed.Cli.ParD3ModelV2SlotsBase
 import Symbolic.Proofs.Refinement.Composed.Cli.Transfer
 import Symbolic.Proofs.Swarm.CREF.Cli.ModelRel
@@ -24,6 +24,15 @@ import Symbolic.Proofs.Swarm.CREF.Initiate.ModelPure
 import Symbolic.Proofs.Swarm.CREF.ModelSplit
 import Symbolic.Proofs.Swarm.CREF.Xpl.InvCommon
 import Symbolic.Proofs.Swarm.Coinsplit.Slots.S2InitCut
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSession
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionSM
+public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhCorrectModel
+public import LibsignalBinary.Specifications.SignalSession.PqDir
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
+public import Symbolic.Proofs.Swarm.CREF.Initiate.InitOk35Pure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Initiate.PostBridgePure -- proof-setup: allow-public-import
 
 /-!
 # Cut-Polymorphic `init` Slot Refinement
@@ -32,7 +41,7 @@ Proves `SlotInitCliSpec`, lifting `slot_init_d7_pqModelRel` from single-cut `Cli
 cut-polymorphic `CliLiveAtCli`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -296,7 +305,7 @@ private theorem inputsEquiv_pqInitInputsF {c : CliCall} {P : PEParams} {st : PqP
     rw [hcomb, filesOf_append_of_regular (regularFileList_encodeDir P st) hextra_reg p]
 
 /-- Binary witness for a CLI `init` call, covering exit-1 rejection and exit-0 bundle acceptance. -/
-def SlotInitWitness (interp' : ExternInterpretation) (r : ProtocolSetup)
+@[expose] def SlotInitWitness (interp' : ExternInterpretation) (r : ProtocolSetup)
     (t_clean t_clean' : CliTurn) (c : CliCall) (code : Nat) (out : HwBytes) : Prop :=
   (code = 1 ∧ out = [] ∧ t_clean' = t_clean ∧ t_clean.records r r.alice = none) ∨
   (code = 0 ∧ out = [] ∧

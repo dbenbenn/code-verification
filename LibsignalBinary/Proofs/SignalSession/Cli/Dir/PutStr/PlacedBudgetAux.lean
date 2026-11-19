@@ -9,21 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PureBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PureBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Envelopes and Exit Branches for `Dir::put::<&str>` (Block 543)
@@ -32,7 +38,7 @@ Defines `DirPutStrEnv`, budget-threaded callee and `SepWPp` combinators, and the
 cache-miss exit branches (`+164`, `+188`, `+244`) on Block 543.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -111,7 +117,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 - when `name = []`, no `to_owned` allocation occurs (`DirPutTailEnv dir name`);
 - when `name ≠ []`, `to_owned` allocates `rustAllocEvents name.length 1` followed by
   `DirPutTailEnv dir name`. -/
-def DirPutStrEnv (dir : DirGhost) (name _bytes : List (BitVec 8))
+@[expose] def DirPutStrEnv (dir : DirGhost) (name _bytes : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   if name = [] then
     DirPutTailEnv dir name evs
@@ -138,7 +144,7 @@ theorem dirPutStrEnv_of_nonempty {dir : DirGhost} {name bytes : List (BitVec 8)}
 /-! ## 2. Budget-Threaded Callee Bridges & `SepWPp` Combinators -/
 
 /-- Stack-equipped `VmPreserved` shim contract matching `session2ShimSpecX`. -/
-def session2ShimBudgetSpecX : Spec Unit where
+@[expose] def session2ShimBudgetSpecX : Spec Unit where
   pre := fun _ s0 => ⌜True⌝ ∗ stackAt s0.sp extHookStack
   post := fun _ s0 sf => ⌜sf.trace = s0.trace ∧ VmPreserved s0 sf⌝ ∗ stackAt s0.sp extHookStack
 

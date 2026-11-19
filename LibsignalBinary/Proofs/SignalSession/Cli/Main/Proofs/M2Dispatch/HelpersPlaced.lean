@@ -9,11 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2IfacePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.Helpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2IfacePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.Helpers
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable Call and Frame Helpers for `main_m2` Dispatch
@@ -22,7 +28,7 @@ Provides `.keepsFs` callee corollaries from `MainCalleesBlk617` and the `main_ca
 combinator preserving `InMainPlaced` and `sf.fs = s.fs` on Block `617`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false

@@ -10,9 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.InMem.SipHashBin.Specs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
-import LibsignalBinary.Proofs.E2E.InMem.SipHashBin.Decodes
 import LibsignalBinary.Proofs.E2E.InMem.SipHashBin.RoundLemmas
 import LibsignalBinary.Proofs.E2E.InMem.SipHashModel.Lemmas
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
@@ -26,7 +24,7 @@ Proves `sipWrite36_ok`: `<Hasher<Sip13Rounds> as Hasher>::write` on a 36-byte sl
 matching `SipHasher13.write`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.InMem.SipHashBin
 
@@ -118,33 +116,5 @@ end Write36
 open Write36
 
 attribute [local irreducible] Program.fnOff
-
-set_option maxHeartbeats 1600000 in
-/-- `SipHasher13::write` on a 36-byte slice with `ntail = 0` satisfies `sipWrite36Spec`. -/
-theorem sipWrite36_ok (b : BitVec 64) (ext : HookMap) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr sipWriteName)
-      sipWrite36Spec := by
-  simp only [sipWrite36Spec]
-  have hfn : libsignalSessionCode.fnOff sipWriteName = num% (ls_off% "<core::hash::sip::Hasher<core::hash::sip::Sip13Rounds> as core::hash::Hasher>::write") :=
-    (ls_lemma% fnOff "<core::hash::sip::Hasher<core::hash::sip::Sip13Rounds> as core::hash::Hasher>::write")
-  code_fetches CryptoVerification.libsignalSessionCode libsignalSessionBin b ext hfn (num% (ls_off% "<core::hash::sip::Hasher<core::hash::sip::Sip13Rounds> as core::hash::Hasher>::write")) 488
-  clear hfn
-  dsimp only [RebasedProg, sipWriteName, BitVec.ofNat_eq_ofNat] at ⊢
-  generalize_entry (libsignalSessionCode.rebase b ext).fnAddr
-    "<core::hash::sip::Hasher<core::hash::sip::Sip13Rounds> as core::hash::Hasher>::write" = entry
-  generalize_entry (libsignalSessionCode.rebase b ext) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  wp_init x s0
-  examples_hide_fetches
-  obtain ⟨hAddr, msgPtr, hasher, msg⟩ := x
-  dsimp only at *
-  rw [sipHasher13At_write36 hAddr hasher msg h_4 h_5 h,
-      pointsToBytes_36_split msgPtr msg h_4]
-  unfold sipHasher13At sipStateAt
-  rw [h_5]
-  wp_steps
-  dsimp only [compressBv]
-  wp_done
 
 end CryptoVerification.E2E.InMem.SipHashBin

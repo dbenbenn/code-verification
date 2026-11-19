@@ -11,7 +11,7 @@ module
 
 public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Defs
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepCorrSend
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepCorrSend -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepDeliver
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Coupling
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Sync
@@ -25,7 +25,7 @@ decision-C invariant `SimInvCX` (`closeByStateC_transmit_step`, `closeByStateC_c
 `closeByStateC_corr_step`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -751,7 +751,7 @@ theorem closeByStateC_chall_step {α : Type} (P : Params PQ PQC) (Inv : ℕ → 
             (fun rq => by rw [c7_cxSend_base]; exact (hpres rq).2.2.1)
             (fun rq => ih (fS rq).1 (fR rq).2 (sC' rq) (res rq).2.2 false ec' winBefore epExp (hinvCX' rq))
 
-def c8_simCorrPureC (P : Params PQ PQC) {ℓ : ℕ} (Dh : DHFun (BitVec 256) Pt)
+@[expose] def c8_simCorrPureC (P : Params PQ PQC) {ℓ : ℕ} (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (Q : Party)
     (x : JointC PQ Pt ℓ) :
     Option (GhostState PQ) × JointC PQ Pt ℓ :=

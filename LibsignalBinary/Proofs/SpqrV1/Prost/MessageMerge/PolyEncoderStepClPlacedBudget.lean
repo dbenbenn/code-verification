@@ -9,9 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderBudgetSteps
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderBudgetSteps
+public import LibsignalBinary.Heap.GrowOneSpecs
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParams -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Code-Loaded Placed Exit & Tag-Step Budget Lemmas for `PolynomialEncoder::merge` (Block `297`)
@@ -20,7 +31,7 @@ Exports the `withLsCodeRoLoaded` `[LibsignalPlacement]` shared-exit, unknown-tag
 (`tag1`–`tag3`) budget step lemmas for `PolynomialEncoder::merge` on Block `297`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -215,51 +226,6 @@ theorem polyEncoder_tag1_step_cl_placed [LibsignalPlacement] {M : AllocCostModel
       (WppBudgetPanic (polyEncoderMergeSpec A lim) (x, st0) R s0) :=
   polyEncoder_tag1_step_cro hFromCall hPushCall hVarintCall
 
-/-- Code-loaded placed shared element-copy join block at `+0x188` (`(blkPl_297).base + 392#64`)
-for tag 2 (`pts : Vec<Vec<u8>>`). -/
-theorem polyEncoder_tag2_copy_step_cl_placed [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {x : PolyEncoderMergeGhost} {st0 st_next : M.σ} {R : SepProp}
-    {s0 : State} {m : PolynomialEncoder} {s : State}
-    {v rest' : List (BitVec 8)} {limit : Nat} {v_stk0 cap' ptr' cap_e ptr_e : BitVec 64} :
-    (s0.sp &&& 15#64 == 0#64) = true →
-    m.pts.length < cap'.toNat → cap'.toNat * 24 < 2 ^ 63 → ptr' ≠ 0 →
-    (∀ (s' : State),
-      s'.pc = (blkPl_297).base + 164#64 →
-      s'.status = .Running → s'.sp = s0.sp - 160#64 → s'.trace = s0.trace →
-      s'.readReg64 (Reg.gpr 19#5) = x.bufRef → s'.readReg64 (Reg.gpr 20#5) = x.msgPtr →
-      s'.readReg64 (Reg.gpr 21#5) = x.slot → s'.readReg64 (Reg.gpr 22#5) = BitVec.ofNat 64 limit →
-      s'.readReg64 (Reg.gpr 23#5) = 1#64 → s'.readReg64 (Reg.gpr 24#5) = 24#64 →
-      PolyCalleeSaved s0 s' → LibsignalCodeRoLoaded lsmpl s'.mem →
-      SepWPp ((blkPC_297).rebase (blkPl_297).base H) (s0.readReg64 Reg.lr) s'
-        (polyEncoderLoopPre A lim st_next s0 s' x.msgPtr x.bufRef x.slot x.ptr
-          { m with pts := m.pts ++ [v] } x.bs rest')
-        (WppPost (polyEncoderMergeSpec A lim) (x, st0) R s0)
-        (WppBudgetPanic (polyEncoderMergeSpec A lim) (x, st0) R s0)) →
-    s.pc = (blkPl_297).base + 392#64 →
-    s.status = .Running → s.sp = s0.sp - 160#64 → s.trace = s0.trace →
-    s.readReg64 (Reg.gpr 19#5) = x.bufRef → s.readReg64 (Reg.gpr 20#5) = x.msgPtr →
-    s.readReg64 (Reg.gpr 21#5) = x.slot → s.readReg64 (Reg.gpr 22#5) = BitVec.ofNat 64 limit →
-    s.readReg64 (Reg.gpr 23#5) = 1#64 → s.readReg64 (Reg.gpr 24#5) = 24#64 →
-    s.readReg64 (Reg.gpr 25#5) = BitVec.ofNat 64 m.pts.length →
-    PolyCalleeSaved s0 s → LibsignalCodeRoLoaded lsmpl s.mem →
-    SepWPp ((blkPC_297).rebase (blkPl_297).base H) (s0.readReg64 Reg.lr) s
-      (((s0.sp - 160#64) ↦₆₄ v_stk0) ∗ vecU8At A.repAlloc (s0.sp - 152#64) cap_e ptr_e v ∗
-        (x.msgPtr ↦₆₄ cap') ∗ ((x.msgPtr + 8#64) ↦₆₄ ptr') ∗
-        ((x.msgPtr + 16#64) ↦₆₄ BitVec.ofNat 64 m.pts.length) ∗
-        A.repAlloc.live ptr' (cap'.toNat * 24) 8 ∗
-        arrayAt (fun bs addr => vecU8 A.repAlloc addr bs) 24 ptr' m.pts ∗
-        memRegion (ptr' + BitVec.ofNat 64 (m.pts.length * 24)) ((cap'.toNat - m.pts.length) * 24) ∗
-        vecVecU8At A.repAlloc (x.msgPtr + protoPolynomialEncoderPolysOff) m.polys ∗
-        ((x.msgPtr + protoPolynomialEncoderIdxOff) ↦₃₂ m.idx) ∗
-        memRegion (x.msgPtr + protoPolynomialEncoderPadOff) protoPolynomialEncoderPadSize ∗
-        stackAt (s0.sp - 160#64) polyBelowStack ∗ memRegion (s0.sp - 128#64) 48 ∗
-        polySavedRegsAny s0.sp s0 ∗ (x.bufRef ↦₆₄ x.slot) ∗
-        sliceCursorAfter x.slot x.ptr x.bs rest' ∗ A.pool lim st_next s)
-      (WppPost (polyEncoderMergeSpec A lim) (x, st0) R s0)
-      (WppBudgetPanic (polyEncoderMergeSpec A lim) (x, st0) R s0) :=
-  polyEncoder_tag2_copy_step_cro
-
 /-- Code-loaded placed budget step lemma for tag 2 (`pts : Vec<Vec<u8>>` at `msgPtr`) at `+0x150`
 (`(blkPl_297).base + 336#64`). -/
 theorem polyEncoder_tag2_step_cl_placed [LibsignalPlacement] {M : AllocCostModel}
@@ -313,51 +279,6 @@ theorem polyEncoder_tag2_step_cl_placed [LibsignalPlacement] {M : AllocCostModel
       (WppPost (polyEncoderMergeSpec A lim) (x, st0) R s0)
       (WppBudgetPanic (polyEncoderMergeSpec A lim) (x, st0) R s0) :=
   polyEncoder_tag2_step_cro hFromCall hPushCall hBytesCall hGrowCall
-
-/-- Code-loaded placed shared element-copy join block at `+0x128` (`(blkPl_297).base + 296#64`)
-for tag 3 (`polys : Vec<Vec<u8>>`). -/
-theorem polyEncoder_tag3_copy_step_cl_placed [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {x : PolyEncoderMergeGhost} {st0 st_next : M.σ} {R : SepProp}
-    {s0 : State} {m : PolynomialEncoder} {s : State}
-    {v rest' : List (BitVec 8)} {limit : Nat} {v_stk0 cap' ptr' cap_e ptr_e : BitVec 64} :
-    (s0.sp &&& 15#64 == 0#64) = true →
-    m.polys.length < cap'.toNat → cap'.toNat * 24 < 2 ^ 63 → ptr' ≠ 0 →
-    (∀ (s' : State),
-      s'.pc = (blkPl_297).base + 164#64 →
-      s'.status = .Running → s'.sp = s0.sp - 160#64 → s'.trace = s0.trace →
-      s'.readReg64 (Reg.gpr 19#5) = x.bufRef → s'.readReg64 (Reg.gpr 20#5) = x.msgPtr →
-      s'.readReg64 (Reg.gpr 21#5) = x.slot → s'.readReg64 (Reg.gpr 22#5) = BitVec.ofNat 64 limit →
-      s'.readReg64 (Reg.gpr 23#5) = 1#64 → s'.readReg64 (Reg.gpr 24#5) = 24#64 →
-      PolyCalleeSaved s0 s' → LibsignalCodeRoLoaded lsmpl s'.mem →
-      SepWPp ((blkPC_297).rebase (blkPl_297).base H) (s0.readReg64 Reg.lr) s'
-        (polyEncoderLoopPre A lim st_next s0 s' x.msgPtr x.bufRef x.slot x.ptr
-          { m with polys := m.polys ++ [v] } x.bs rest')
-        (WppPost (polyEncoderMergeSpec A lim) (x, st0) R s0)
-        (WppBudgetPanic (polyEncoderMergeSpec A lim) (x, st0) R s0)) →
-    s.pc = (blkPl_297).base + 296#64 →
-    s.status = .Running → s.sp = s0.sp - 160#64 → s.trace = s0.trace →
-    s.readReg64 (Reg.gpr 19#5) = x.bufRef → s.readReg64 (Reg.gpr 20#5) = x.msgPtr →
-    s.readReg64 (Reg.gpr 21#5) = x.slot → s.readReg64 (Reg.gpr 22#5) = BitVec.ofNat 64 limit →
-    s.readReg64 (Reg.gpr 23#5) = 1#64 → s.readReg64 (Reg.gpr 24#5) = 24#64 →
-    s.readReg64 (Reg.gpr 25#5) = BitVec.ofNat 64 m.polys.length →
-    PolyCalleeSaved s0 s → LibsignalCodeRoLoaded lsmpl s.mem →
-    SepWPp ((blkPC_297).rebase (blkPl_297).base H) (s0.readReg64 Reg.lr) s
-      (((s0.sp - 160#64) ↦₆₄ v_stk0) ∗ vecU8At A.repAlloc (s0.sp - 152#64) cap_e ptr_e v ∗
-        vecVecU8At A.repAlloc x.msgPtr m.pts ∗
-        ((x.msgPtr + 24#64) ↦₆₄ cap') ∗ ((x.msgPtr + 32#64) ↦₆₄ ptr') ∗
-        ((x.msgPtr + 40#64) ↦₆₄ BitVec.ofNat 64 m.polys.length) ∗
-        A.repAlloc.live ptr' (cap'.toNat * 24) 8 ∗
-        arrayAt (fun bs addr => vecU8 A.repAlloc addr bs) 24 ptr' m.polys ∗
-        memRegion (ptr' + BitVec.ofNat 64 (m.polys.length * 24)) ((cap'.toNat - m.polys.length) * 24) ∗
-        ((x.msgPtr + protoPolynomialEncoderIdxOff) ↦₃₂ m.idx) ∗
-        memRegion (x.msgPtr + protoPolynomialEncoderPadOff) protoPolynomialEncoderPadSize ∗
-        stackAt (s0.sp - 160#64) polyBelowStack ∗ memRegion (s0.sp - 128#64) 48 ∗
-        polySavedRegsAny s0.sp s0 ∗ (x.bufRef ↦₆₄ x.slot) ∗
-        sliceCursorAfter x.slot x.ptr x.bs rest' ∗ A.pool lim st_next s)
-      (WppPost (polyEncoderMergeSpec A lim) (x, st0) R s0)
-      (WppBudgetPanic (polyEncoderMergeSpec A lim) (x, st0) R s0) :=
-  polyEncoder_tag3_copy_step_cro
 
 /-- Code-loaded placed budget step lemma for tag 3 (`polys : Vec<Vec<u8>>` at `msgPtr + 24#64`) at
 `+0x0f0` (`(blkPl_297).base + 240#64`). -/

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.InImage.DecodeErrorPush.Push
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::add_chunk`: Relocatable Loop Proofs
@@ -21,7 +21,7 @@ Relocatable `[LibsignalPlacement]` proofs of the inner binary-search loop (`+260
 `memmove` insertion, and `RawVec<Pt>::grow_one` calls on Block `419`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.AddChunk
 
@@ -37,7 +37,6 @@ set_option linter.unusedSimpArgs false
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓] (ls_stub% "memmove")
 
 /-! ## Placed Inner Binary Search Loop (`+260 -> +296`) -/
 

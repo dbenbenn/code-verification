@@ -11,14 +11,13 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverPollAuxPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverPollPlacedBudget
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverPollAuxPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverPollPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegs
 import LibsignalBinary.Proofs.Common.SharedHelpers
-meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4SpatialPlaced
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4SpatialPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudgetAux
@@ -34,6 +33,21 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.Cl
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.BodyPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverStage4PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverAux2Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4Spatial
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage1InstPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TopPlacedBudget
 
 /-!
 # `OverD3` Poll Producer Extracting `SessionGhostValid` from Memory
@@ -44,7 +58,7 @@ Extracts `SessionGhostValid` on the initial recipient session `pathAInitSession`
 without external `SessionGhostValid` hypotheses.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -250,7 +264,7 @@ private theorem h7pb_sessionGhostValid_of_overGenP3Pre [LibsignalPlacement]
 /-! ## 1b. Fixed-`B` and `verNeEnv`-Parametric Stage Specializations -/
 
 /-- `StageP2OverQpanCliD3FrozenAtPlacedBudgetStmt` specialized to a single `(B : RunBudgets)`. -/
-def H7pbStageP2OverQpanCliD3FrozenAtBPlacedBudgetStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def H7pbStageP2OverQpanCliD3FrozenAtBPlacedBudgetStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (X : UnreachedPqxdhPrimitives) (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks)
     (W : CliHooks) (B : RunBudgets)
@@ -387,7 +401,34 @@ theorem h7pb_stageP2OverQpanCliD3FrozenAtB_of_forall [LibsignalPlacement] {M : A
 
 /-- `StageP3Prev1D3AtFrozenPlacedStmt` at `OverPrevEncOK`, generalized from `VerNeTopEnv` to
 `verNeEnv` and specialized to `(mmpl, gh, W)`. -/
-def H7pbStageP3Prev1D3OfVerNeAtFrozenPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+private theorem h7pb_byteArray_loop_len (bs : ByteArray) (i : Nat) (acc : List UInt8)
+    (hi : i ≤ bs.size) :
+    (ByteArray.toList.loop bs i acc).length = acc.length + (bs.size - i) := by
+  unfold ByteArray.toList.loop
+  split
+  · rw [h7pb_byteArray_loop_len bs (i + 1) _ (by omega)]; simp; omega
+  · simp; omega
+termination_by bs.size - i
+decreasing_by
+  have : i < bs.size := ‹_›; omega
+
+private theorem h7pb_peer_name_len_le_40 {W : CryptoVerification.E2E.PEParams}
+    {Scope : CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8)) → Prop}
+    {F : CryptoVerification.LibsignalPublicApi.StoreKit.FsFiles}
+    {peer me : CryptoVerification.LibsignalTripleRatchetRepr.AddrGhost} {pm}
+    (hd : CryptoVerification.SignalSession.Cli.RunProofs.DecPkOk₀ W Scope F peer.val me.val pm) :
+    peer.name.bytes.length ≤ 40 := by
+  obtain ⟨P, hp, _⟩ := hd.party
+  change peer.val.name.length ≤ 40
+  rw [congrArg CryptoVerification.LibsignalPublicApiRepr.AddrVal.name hp]
+  dsimp only [CryptoVerification.SignalSession.Cli.RunRefine.addrValE]
+  unfold CryptoVerification.SignalSession.Cli.utf8 ByteArray.toList
+  rw [List.length_map, h7pb_byteArray_loop_len _ 0 [] (Nat.zero_le _),
+    String.toUTF8_eq_toByteArray]
+  simp only [List.length_nil, Nat.zero_add, Nat.sub_zero, String.size_toByteArray]
+  cases P <;> decide
+
+@[expose] def H7pbStageP3Prev1D3OfVerNeAtFrozenPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (tdEnv : CliHooks → TryDecryptEnvArgs → List AllocEvent → Prop)
     (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
@@ -424,6 +465,7 @@ def H7pbStageP3Prev1D3OfVerNeAtFrozenPlacedStmt [LibsignalPlacement] {M : AllocC
       SeedsLen32 st →
       st.receiverChains.length < 2 ^ 32 →
       st.pqRatchetState.length < 2 ^ 32 →
+      rem.name.bytes.length ≤ 40 →
       LibsignalFrozen lsmpl s.mem →
       s.pc = dpPollEntryPlaced + 0x1778#64 →
       s.status = .Running →
@@ -523,7 +565,7 @@ def H7pbStageP3Prev1D3OfVerNeAtFrozenPlacedStmt [LibsignalPlacement] {M : AllocC
         (genP3S5ModelPanicProp W.C W.Q.K rem loc st msg msgVer rest s0)
 
 /-- `StageP3Prev1D3FrozenPlacedStmt` with `VerNeTopEnv` generalized to `verNeEnv`. -/
-def H7pbStageP3Prev1D3OfVerNeFrozenPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def H7pbStageP3Prev1D3OfVerNeFrozenPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (tdEnv : CliHooks → TryDecryptEnvArgs → List AllocEvent → Prop)
     (verNeEnv : List (BitVec 8) → List AllocEvent → Prop) : Prop :=
@@ -538,7 +580,7 @@ theorem h7pb_stageP3Prev1D3OfVerNe_top_iff [LibsignalPlacement] {M : AllocCostMo
   Iff.rfl
 
 /-- `StageP4Prev1VRegsAtPlacedStmt` specialized to a single `(B : RunBudgets)`. -/
-def H7pbStageP4Prev1VRegsAtBPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def H7pbStageP4Prev1VRegsAtBPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     (B : RunBudgets)
@@ -827,7 +869,7 @@ private theorem h7pb_closure_pathCOver_p4_d3_cont_at_b_placedBudget [LibsignalPl
       LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget.RunHooksPlaced
         A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
     ⟨hh.alloc, hh.allocFs, hh.panics, hh.memcpyRO, hh.bcmp, hh.fs, hh.utf8, hh.memrchr,
-      hh.codecHooks, hh.allocZeroed, hh.stringClone, hh.formatInner, hh.blackBox⟩
+      hh.codecHooks, hh.allocZeroed, hh.stringClone, hh.formatInner, hh.fmtWrite, hh.blackBox⟩
   have hf' : s'.fs.files = y.g.F :=
     (cliFiles_eq_of_trace_eq_placed hh hsteps2' (htr'.trans htr2.symm)).trans hfiles2
   have hsub64 : dpClosSubStack B ≤ 2 ^ 64 := by
@@ -965,8 +1007,12 @@ private theorem h7pb_closure_pathCOver_p4_d3_cont_at_b_placedBudget [LibsignalPl
   have hrecOk : ops.RecPrev1Ok G' ses' enc := by
     refine ⟨canonSession_of_sessionStateAt_extraRel hex' hm_sess, ?_⟩
     have hlen := encodeRecordPrev1_pathCOver_lt_32 hd0 hr_in hcur hver hok
-    dsimp only at hlen
-    rwa [hst'_eq] at hlen
+    change (encodeRecordPrev1
+      { pathAInitSession ⟨W.C, W.Q⟩ meE k m dk with
+        state := (genP3S5Model W.C W.Q.K y.g.peer y.g.me y.g.msg.message y.g.coins st0).2
+        pendingPreKey := none, pendingKyberPreKey := none } enc).length < 2 ^ 32 at hlen
+    rw [hst'_eq] at hlen
+    exact hlen
   have hwp4 := hP4 y.g.F y.g.peer pid m.kpkId m.spkId y.g.msg.baseKey st_pre hh_p4
     s0 s'
     y.fut y.cx y.g.msgA y.out y.g.peerA (y.g.msgA + 0xc8#64)
@@ -1741,6 +1787,7 @@ private theorem h7pb_closure_pathCOver_d3_ofVerNe_at_b_full_placedBudget_ok [Lib
       (hFits3 evs_p2 m i k kp reg dk recG whisperG hevs2 hpk hmsg_i hi hk hkp hreg hacc hex hsgv0)
       (by decide) hcap_nz hprevOK hver4
       (Or.inr (distinctSid_of_decPkOk hd0)) hSeeds hRC hPqLt
+      (h7pb_peer_name_len_le_40 hd0)
       hfroz2 hpc2 hrun2 hsp_align2 (hs2_sp ▸ hroot)
       (x29_eq_sp_add_c70_over_d3_placed hx29_2 hs2_sp) htr20 hvregs2 ?_ ?_ ?_
     · intro G₁ G' evs_p3 pt ptCap ptPtr s' P_s' hver hcl hdec_rel hevs3 hok
@@ -2056,7 +2103,7 @@ private theorem h7pb_closure_pathCOver_d3_at_full_placedBudget_ok [LibsignalPlac
 
 /-- Local copy of `DecPkD3ValidOverOfEnv'` (definitionally equal to
 `H7OverD3SlotDom0BridgePostBob.DecPkD3ValidOverOfEnv'`), avoiding a circular import. -/
-def H7pbDecPkD3ValidOverOfEnv' [LibsignalPlacement] (A : RustAlloc)
+@[expose] def H7pbDecPkD3ValidOverOfEnv' [LibsignalPlacement] (A : RustAlloc)
     (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
     (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
@@ -2226,7 +2273,7 @@ theorem h7pb_decPk_d3_validOver_poll_ofVerNe_at_b_at_full_placedBudget' [Libsign
           A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
       ⟨hh.alloc, hh.allocFs, hh.panics, hh.memcpyRO, hh.bcmp, hh.fs,
        hh.utf8, hh.memrchr, hh.codecHooks, hh.allocZeroed, hh.stringClone, hh.formatInner,
-       hh.blackBox⟩
+       hh.fmtWrite, hh.blackBox⟩
     let σ := cliKitStk B
     let pid := pmPreKeyId y.g.msg
     let sid := y.g.msg.signedPreKeyId

@@ -9,12 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Common.SharedHelpers
 public import LibsignalBinary.Proofs.SignalSession.Coins.Defs
-public import LibsignalBinary.Proofs.SignalSession.Coins.CoinsCodeSym
+public import LibsignalBinary.Proofs.SignalSession.Coins.CoinsCodeSym -- proof-setup: allow-public-import
 public import ProofLib.SepLogic.WP.Apply
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
 /-!
 # Relocatable Proof of `signal_session_coins_fill`
@@ -24,7 +27,7 @@ Defines relocatable coins-tape predicates (`coinsAtPlaced`, `coinsAfterPlaced`) 
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -63,7 +66,7 @@ abbrev coinsAfterPlaced [LibsignalPlacement] (cur : BitVec 64) (rest : List (Bit
 /-- Spec of `signal_session_coins_fill` (Block `618`) from `coinsAfterPlaced cur rest 0`:
 fill `dst[0, len)` with the next `min len rest.length` tape bytes, then zeros; advance the tape.
 `stk` free stack bytes below entry `sp` (`0x50 ≤ stk`) are lent and returned. -/
-def coinsFillSpecPlaced [LibsignalPlacement] (stk : Nat) :
+@[expose] def coinsFillSpecPlaced [LibsignalPlacement] (stk : Nat) :
     Spec (BitVec 64 × Nat × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, len, cur, rest) s =>
     ⌜s.readReg64 .x0 = dst ∧ (s.readReg64 .x1).toNat = len⌝ ∗
@@ -74,7 +77,7 @@ def coinsFillSpecPlaced [LibsignalPlacement] (stk : Nat) :
       coinsAfterPlaced cur rest (min len rest.length) ∗ stackAt s0.sp stk
 
 /-- `coinsFillSpecPlaced` with the tape ghost `(cur, rest)` fixed (ghost: `(dst, len)`). -/
-def coinsFillAtSpecPlaced [LibsignalPlacement] (stk : Nat) (cur : BitVec 64)
+@[expose] def coinsFillAtSpecPlaced [LibsignalPlacement] (stk : Nat) (cur : BitVec 64)
     (rest : List (BitVec 8)) : Spec (BitVec 64 × Nat) where
   pre := fun (dst, len) s =>
     ⌜s.readReg64 .x0 = dst ∧ (s.readReg64 .x1).toNat = len⌝ ∗

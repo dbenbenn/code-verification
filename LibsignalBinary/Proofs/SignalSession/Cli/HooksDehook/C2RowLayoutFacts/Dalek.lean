@@ -14,6 +14,10 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxGhost
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.SharedSecretDropGhostReplays -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StaticSecretDropGhostReplays -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Cutover-2 (`C2`) `.text.lib2` Dalek Entry-Guard Discharges (`C2RowLayoutFacts.Dalek`)
@@ -65,7 +69,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StaticSecretDropGhostR
    staticSecretDropGhost)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts
   (C2ExternTableFacts f3Lib2EntryGuard_of_startupLr f3Lib2_dehookedSym_in_keepLib2Text
-   f3StartupLrVal keepLib2Text)
+   f3StartupLrVal isLinkedPanicAddr isLinkedPanicAddr_false_of_mid keepLib2Text)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen
   (c2BlackBoxAddr c2Lib2DehookedSyms c2Lib2TextHi c2Lib2TextLo c2SharedSecretDropAddr
    c2StaticSecretDropAddr)
@@ -80,18 +84,6 @@ structure C2DalekResolveFacts (mpl : Obj.MultiPlacement) : Prop where
     libsignalSessionLib.resolve mpl lsSharedSecretDropSym = c2SharedSecretDropAddr
   staticSecretDrop_eq :
     libsignalSessionLib.resolve mpl lsStaticSecretDropSym = c2StaticSecretDropAddr
-
-theorem lsBlackBoxSym_mem_c2Lib2DehookedSyms :
-    lsBlackBoxSym ∈ c2Lib2DehookedSyms :=
-  decide_eq_true_eq.mp (by rfl_kernel)
-
-theorem lsSharedSecretDropSym_mem_c2Lib2DehookedSyms :
-    lsSharedSecretDropSym ∈ c2Lib2DehookedSyms :=
-  decide_eq_true_eq.mp (by rfl_kernel)
-
-theorem lsStaticSecretDropSym_mem_c2Lib2DehookedSyms :
-    lsStaticSecretDropSym ∈ c2Lib2DehookedSyms :=
-  decide_eq_true_eq.mp (by rfl_kernel)
 
 /-! ## 2. Per-Row Hull Inclusion `keepR_<row> mpl pc = true → keepLib2Text pc = true` -/
 
@@ -160,149 +152,35 @@ theorem keepR_staticSecretDrop_sub_keepLib2Text {mpl : Obj.MultiPlacement}
   rw [hRes] at h
   exact keepStaticSecretDrop_c2_sub_keepLib2Text h
 
+private theorem noPanic_of_mid_sub_lt {base pc : BitVec 64} {len : Nat}
+    (hsub : (pc - base).toNat < len)
+    (hlo : 0x47ac2c ≤ base.toNat)
+    (hhi : base.toNat + len ≤ 0x4cb070) :
+    isLinkedPanicAddr pc = false := by
+  generalize hd : pc - base = d at hsub
+  have hpc_eq : pc = base + d := by subst hd; bv_omega
+  have htoNat : pc.toNat = base.toNat + d.toNat := by
+    rw [hpc_eq, BitVec.toNat_add, Nat.mod_eq_of_lt (by omega)]
+  exact isLinkedPanicAddr_false_of_mid (by omega) (by omega)
+
+theorem keepR_blackBox_noPanic {mpl : Obj.MultiPlacement}
+    (hRes : libsignalSessionLib.resolve mpl lsBlackBoxSym = c2BlackBoxAddr)
+    (pc : BitVec 64) (h : keepR_blackBox mpl pc = true) :
+    isLinkedPanicAddr pc = false := by
+  dsimp only [keepR_blackBox] at h
+  rw [hRes, keepBlackBox_iff] at h
+  exact noPanic_of_mid_sub_lt h (by decide) (by decide)
+
+theorem keepR_staticSecretDrop_noPanic {mpl : Obj.MultiPlacement}
+    (hRes : libsignalSessionLib.resolve mpl lsStaticSecretDropSym = c2StaticSecretDropAddr)
+    (pc : BitVec 64) (h : keepR_staticSecretDrop mpl pc = true) :
+    isLinkedPanicAddr pc = false := by
+  dsimp only [keepR_staticSecretDrop] at h
+  rw [hRes, keepStaticSecretDrop_iff] at h
+  exact noPanic_of_mid_sub_lt h (by decide) (by decide)
+
 /-! ## 3. Per-Row Entry Guards (`blackBoxEntryGuard`, `sharedSecretDropEntryGuard`, `staticSecretDropEntryGuard`) -/
 
-/-- `blackBoxEntryGuard mpl s0` from `C2ExternTableFacts` + `resolve = c2BlackBoxAddr` + startup `lr`,
-    routing directly through `Lib2LayoutFacts.f3Lib2EntryGuard_of_startupLr`. -/
-theorem f3BlackBoxEntryGuard_of_startupLr {mpl : Obj.MultiPlacement}
-    (hExt : C2ExternTableFacts mpl)
-    (hRes : libsignalSessionLib.resolve mpl lsBlackBoxSym = c2BlackBoxAddr)
-    {s0 : State} (hlr : s0.readReg64 .lr = f3StartupLrVal) :
-    blackBoxEntryGuard mpl s0 :=
-  (blackBoxEntryGuard_iff mpl s0).mpr
-    (f3Lib2EntryGuard_of_startupLr hlr
-      (f3Lib2_dehookedSym_in_keepLib2Text hExt lsBlackBoxSym_mem_c2Lib2DehookedSyms)
-      (keepR_blackBox_sub_keepLib2Text hRes))
-
-/-- `sharedSecretDropEntryGuard mpl s0` from `C2ExternTableFacts` + `resolve = c2SharedSecretDropAddr`
-    + startup `lr`, routing directly through `Lib2LayoutFacts.f3Lib2EntryGuard_of_startupLr`. -/
-theorem f3SharedSecretDropEntryGuard_of_startupLr {mpl : Obj.MultiPlacement}
-    (hExt : C2ExternTableFacts mpl)
-    (hRes : libsignalSessionLib.resolve mpl lsSharedSecretDropSym = c2SharedSecretDropAddr)
-    {s0 : State} (hlr : s0.readReg64 .lr = f3StartupLrVal) :
-    sharedSecretDropEntryGuard mpl s0 :=
-  (sharedSecretDropEntryGuard_iff mpl s0).mpr
-    (f3Lib2EntryGuard_of_startupLr hlr
-      (f3Lib2_dehookedSym_in_keepLib2Text hExt lsSharedSecretDropSym_mem_c2Lib2DehookedSyms)
-      (keepR_sharedSecretDrop_sub_keepLib2Text hRes))
-
-/-- `staticSecretDropEntryGuard mpl s0` from `C2ExternTableFacts` + `resolve = c2StaticSecretDropAddr`
-    + startup `lr`, routing directly through `Lib2LayoutFacts.f3Lib2EntryGuard_of_startupLr`. -/
-theorem f3StaticSecretDropEntryGuard_of_startupLr {mpl : Obj.MultiPlacement}
-    (hExt : C2ExternTableFacts mpl)
-    (hRes : libsignalSessionLib.resolve mpl lsStaticSecretDropSym = c2StaticSecretDropAddr)
-    {s0 : State} (hlr : s0.readReg64 .lr = f3StartupLrVal) :
-    staticSecretDropEntryGuard mpl s0 :=
-  (staticSecretDropEntryGuard_iff mpl s0).mpr
-    (f3Lib2EntryGuard_of_startupLr hlr
-      (f3Lib2_dehookedSym_in_keepLib2Text hExt lsStaticSecretDropSym_mem_c2Lib2DehookedSyms)
-      (keepR_staticSecretDrop_sub_keepLib2Text hRes))
-
-/-- `C2ExternTableFacts`-free companion for `blackBoxEntryGuard mpl s0` (`keepLib2Text` on entry
-    discharged directly from `hRes`). -/
-theorem c2BlackBoxEntryGuard_of_resolve {mpl : Obj.MultiPlacement}
-    (hRes : libsignalSessionLib.resolve mpl lsBlackBoxSym = c2BlackBoxAddr)
-    {s0 : State} (hlr : s0.readReg64 .lr = f3StartupLrVal) :
-    blackBoxEntryGuard mpl s0 := by
-  have hsym : keepLib2Text (libsignalSessionLib.resolve mpl lsBlackBoxSym) = true := by
-    rw [hRes]; exact decide_eq_true_eq.mp (by rfl_kernel)
-  exact (blackBoxEntryGuard_iff mpl s0).mpr
-    (f3Lib2EntryGuard_of_startupLr hlr hsym (keepR_blackBox_sub_keepLib2Text hRes))
-
-/-- `C2ExternTableFacts`-free companion for `sharedSecretDropEntryGuard mpl s0`. -/
-theorem c2SharedSecretDropEntryGuard_of_resolve {mpl : Obj.MultiPlacement}
-    (hRes : libsignalSessionLib.resolve mpl lsSharedSecretDropSym = c2SharedSecretDropAddr)
-    {s0 : State} (hlr : s0.readReg64 .lr = f3StartupLrVal) :
-    sharedSecretDropEntryGuard mpl s0 := by
-  have hsym : keepLib2Text (libsignalSessionLib.resolve mpl lsSharedSecretDropSym) = true := by
-    rw [hRes]; exact decide_eq_true_eq.mp (by rfl_kernel)
-  exact (sharedSecretDropEntryGuard_iff mpl s0).mpr
-    (f3Lib2EntryGuard_of_startupLr hlr hsym (keepR_sharedSecretDrop_sub_keepLib2Text hRes))
-
-/-- `C2ExternTableFacts`-free companion for `staticSecretDropEntryGuard mpl s0`. -/
-theorem c2StaticSecretDropEntryGuard_of_resolve {mpl : Obj.MultiPlacement}
-    (hRes : libsignalSessionLib.resolve mpl lsStaticSecretDropSym = c2StaticSecretDropAddr)
-    {s0 : State} (hlr : s0.readReg64 .lr = f3StartupLrVal) :
-    staticSecretDropEntryGuard mpl s0 := by
-  have hsym : keepLib2Text (libsignalSessionLib.resolve mpl lsStaticSecretDropSym) = true := by
-    rw [hRes]; exact decide_eq_true_eq.mp (by rfl_kernel)
-  exact (staticSecretDropEntryGuard_iff mpl s0).mpr
-    (f3Lib2EntryGuard_of_startupLr hlr hsym (keepR_staticSecretDrop_sub_keepLib2Text hRes))
-
-/-- `StdMainEntryLr f3StdLayout s0` bundle yielding all 3 Dalek entry guards simultaneously. -/
-theorem f3DalekEntryGuards_of_stdMainEntryLr {mpl : Obj.MultiPlacement}
-    (hExt : C2ExternTableFacts mpl)
-    (hDalek : C2DalekResolveFacts mpl)
-    {s0 : State} (hlr : StdMainEntryLr f3StdLayout s0) :
-    blackBoxEntryGuard mpl s0 ∧
-      sharedSecretDropEntryGuard mpl s0 ∧
-      staticSecretDropEntryGuard mpl s0 :=
-  ⟨f3BlackBoxEntryGuard_of_startupLr hExt hDalek.blackBox_eq hlr,
-   f3SharedSecretDropEntryGuard_of_startupLr hExt hDalek.sharedSecretDrop_eq hlr,
-   f3StaticSecretDropEntryGuard_of_startupLr hExt hDalek.staticSecretDrop_eq hlr⟩
-
 /-! ## 4. Direct Instantiations of `extraEntryGuard_*_arm` & `extraEntryGuard_singleton_*` -/
-
-theorem c2_extraEntryGuard_blackBox_arm {mpl : Obj.MultiPlacement}
-    {guardOf : String → State → Prop} {s0 : State}
-    (hExt : C2ExternTableFacts mpl)
-    (hRes : libsignalSessionLib.resolve mpl lsBlackBoxSym = c2BlackBoxAddr)
-    (hlr : StdMainEntryLr f3StdLayout s0)
-    (hGuardEq : guardOf lsBlackBoxSym s0 ↔ blackBoxEntryGuard mpl s0) :
-    guardOf lsBlackBoxSym s0 :=
-  extraEntryGuard_blackBox_arm hGuardEq (f3BlackBoxEntryGuard_of_startupLr hExt hRes hlr)
-
-theorem c2_extraEntryGuard_sharedSecretDrop_arm {mpl : Obj.MultiPlacement}
-    {guardOf : String → State → Prop} {s0 : State}
-    (hExt : C2ExternTableFacts mpl)
-    (hRes : libsignalSessionLib.resolve mpl lsSharedSecretDropSym = c2SharedSecretDropAddr)
-    (hlr : StdMainEntryLr f3StdLayout s0)
-    (hGuardEq : guardOf lsSharedSecretDropSym s0 ↔ sharedSecretDropEntryGuard mpl s0) :
-    guardOf lsSharedSecretDropSym s0 :=
-  extraEntryGuard_sharedSecretDrop_arm hGuardEq
-    (f3SharedSecretDropEntryGuard_of_startupLr hExt hRes hlr)
-
-theorem c2_extraEntryGuard_staticSecretDrop_arm {mpl : Obj.MultiPlacement}
-    {guardOf : String → State → Prop} {s0 : State}
-    (hExt : C2ExternTableFacts mpl)
-    (hRes : libsignalSessionLib.resolve mpl lsStaticSecretDropSym = c2StaticSecretDropAddr)
-    (hlr : StdMainEntryLr f3StdLayout s0)
-    (hGuardEq : guardOf lsStaticSecretDropSym s0 ↔ staticSecretDropEntryGuard mpl s0) :
-    guardOf lsStaticSecretDropSym s0 :=
-  extraEntryGuard_staticSecretDrop_arm hGuardEq
-    (f3StaticSecretDropEntryGuard_of_startupLr hExt hRes hlr)
-
-theorem c2_extraEntryGuard_singleton_blackBox {mpl mmpl : Obj.MultiPlacement}
-    {guardOf : String → State → Prop} {g : CliGhostHooks} {s0 : State}
-    (hExt : C2ExternTableFacts mpl)
-    (hRes : libsignalSessionLib.resolve mpl lsBlackBoxSym = c2BlackBoxAddr)
-    (hlr : StdMainEntryLr f3StdLayout s0)
-    (hg : g.extra = [(lsBlackBoxSym, blackBoxGhost mpl mmpl)])
-    (hGuardEq : guardOf lsBlackBoxSym s0 ↔ blackBoxEntryGuard mpl s0) :
-    ExtraEntryGuard guardOf g s0 :=
-  extraEntryGuard_singleton_blackBox hg hGuardEq
-    (f3BlackBoxEntryGuard_of_startupLr hExt hRes hlr)
-
-theorem c2_extraEntryGuard_singleton_sharedSecretDrop {mpl mmpl : Obj.MultiPlacement}
-    {guardOf : String → State → Prop} {g : CliGhostHooks} {s0 : State}
-    (hExt : C2ExternTableFacts mpl)
-    (hRes : libsignalSessionLib.resolve mpl lsSharedSecretDropSym = c2SharedSecretDropAddr)
-    (hlr : StdMainEntryLr f3StdLayout s0)
-    (hg : g.extra = [(lsSharedSecretDropSym, sharedSecretDropGhost mpl mmpl)])
-    (hGuardEq : guardOf lsSharedSecretDropSym s0 ↔ sharedSecretDropEntryGuard mpl s0) :
-    ExtraEntryGuard guardOf g s0 :=
-  extraEntryGuard_singleton_sharedSecretDrop hg hGuardEq
-    (f3SharedSecretDropEntryGuard_of_startupLr hExt hRes hlr)
-
-theorem c2_extraEntryGuard_singleton_staticSecretDrop {mpl mmpl : Obj.MultiPlacement}
-    {guardOf : String → State → Prop} {g : CliGhostHooks} {s0 : State}
-    (hExt : C2ExternTableFacts mpl)
-    (hRes : libsignalSessionLib.resolve mpl lsStaticSecretDropSym = c2StaticSecretDropAddr)
-    (hlr : StdMainEntryLr f3StdLayout s0)
-    (hg : g.extra = [(lsStaticSecretDropSym, staticSecretDropGhost mpl mmpl)])
-    (hGuardEq : guardOf lsStaticSecretDropSym s0 ↔ staticSecretDropEntryGuard mpl s0) :
-    ExtraEntryGuard guardOf g s0 :=
-  extraEntryGuard_singleton_staticSecretDrop hg hGuardEq
-    (f3StaticSecretDropEntryGuard_of_startupLr hExt hRes hlr)
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.Dalek

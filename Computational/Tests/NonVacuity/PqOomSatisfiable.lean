@@ -10,6 +10,8 @@ limitations under the License.
 module
 
 public import Computational.Specifications.LibsignalCli.StatementPqElf
+public import Computational.Proofs.LibsignalCli.StatementPqSecure
+public import Computational.Proofs.SpecLemmas.Game.StatementBinaryHarnessCore
 import Computational.Tests.NonVacuity.PqHeadlineSatisfiable
 
 @[expose] public section
@@ -37,15 +39,17 @@ open CryptoVerification.SignalSession
 open CryptoVerification.E2E
   (Bytes UnreachedPqxdhPrimitives PEParams MlKemEncaps1SucceedsOn64ByteHeaderAndSeeds modelPrims DhKerUniform
    CliGameAdversary CliGameAdversaryPerInstanceBounded
-   CliPqxdhExcusedAbort CliPqxdhAdvantage CliPqxdhFlagProb CliKemFailProb CliPqxdhSecurityFor
+   CliPqxdhExcusedAbort CliPqxdhAdvantage CliPqxdhFlagProb CliKemFailProb CliPqxdhSecurityForAbstract
    cli_pq_headline_hypotheses_jointly_satisfiable)
 
-/-- Excused-abort (`some exc`) specialization of `CliPqxdhSecurityFor`. -/
+/-- Excused-abort (`some exc`) specialization of `CliPqxdhSecurityForAbstract`. -/
 abbrev CliPqxdhRunSecureUpToExcusedAbortTest {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (S : SignalPqxdh.Setup) (ℓ : ℕ) : Prop :=
-  CliPqxdhSecurityFor (Pt := Pt) S ℓ fun Bound =>
+  CliPqxdhSecurityForAbstract (Pt := Pt) S ℓ fun Bound =>
     ∀ (exc : Inputs → Prop) (run : CliRun) (X : UnreachedPqxdhPrimitives) (W : PEParams)
-      (_hCli : CliSpecPqxdhOrExcusedAbort exc run X W),
+      (_hCli : CliSpecPqxdhOrExcusedAbort exc run X W)
+      (_hK_tot : MlKemEncaps1SucceedsOn64ByteHeaderAndSeeds W.Q.K)
+      (_hD : ∀ k x, W.C.D k (W.C.E k x) = x),
       Bound run X W (some exc)
 
 private theorem outcomeUpTo_of_eq {exc : Inputs → Prop} {run : CliRun} {i : Inputs} {e : Outcome}
@@ -163,8 +167,8 @@ theorem libsignalCliPqSecureOom_instantiable
   let _ : Zero Pt := zPt
   let _ : SampleableType Pt := sPt
   rcases hSec Pt with ⟨L_cli, RK, D, R_e2e, _, _, _, _, hMain⟩
-  rcases hMain exc run X W hCli hK_tot hP δ_kem hKemBin Dh encPt encT decT qep hℓ'
-      hDh hX hdec hdum hz hD hkerAll b qStart qs hq32 δ hδ A hA
+  rcases hMain exc run X W hCli hK_tot hD hP δ_kem hKemBin Dh encPt encT decT qep hℓ'
+      hDh hX hdec hdum hz hkerAll b qStart qs hq32 δ hδ A hA
     with ⟨_, _, hBound1, _⟩
   exact ⟨Pt, dPt, zPt, sPt, exc, run, X, W, δ_kem, qep, decT, encT, A, _, _, hBound1⟩
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Specifications.SignalSession.PqStatement
+public import LibsignalBinary.Proofs.SignalSession.PqStatement
 import LibsignalBinary.Proofs.SignalSession.Closure.Version
 
 /-!
@@ -20,7 +20,7 @@ Proves `PqCliSteadyRefinesSM W`: once `pendingPreKey` is cleared, `pqSendModel` 
 with `sendModelPq` and `recvModelPq` when `st.trusts k = true`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

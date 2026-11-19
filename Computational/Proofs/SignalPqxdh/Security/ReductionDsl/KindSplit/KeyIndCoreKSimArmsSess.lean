@@ -12,8 +12,8 @@ module
 public import Computational.Specifications.Pqxdh.Security.Headline
 public import Computational.Specifications.Pqxdh.Security.CostedBudgets
 public import Computational.Proofs.ReductionDsl.StepSimTwoStage -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindProgs -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs
+import Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindProgs
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndCoreKSimBase -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndCoreKSimArms -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndCoreKSimHelpers

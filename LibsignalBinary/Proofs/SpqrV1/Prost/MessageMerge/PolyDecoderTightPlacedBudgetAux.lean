@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoderBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoderBudget
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
@@ -20,8 +20,13 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncodedLenBase
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirection
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoderBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Defs
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Canonical-Domain Tight Budget Proof of `PolynomialDecoder::merge` (Block `296`)
@@ -32,7 +37,7 @@ zero-initial-capacity `tlb_polyDecoderZeroCapAt` (`pts.cap = 0#64`) within
 from `mergeMessage` success on canonical wire inputs (`pts.length ≤ 16`, slice lengths `≤ 2,560`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -139,10 +144,10 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 
 /-! ## 1. Doubling Capacity Invariant, Prefix Lemma, & Callee `SpqrTightEvs` Envelopes -/
 
-def e2p_ValidPolyVecCap (cap : Nat) : Prop :=
+@[expose] def e2p_ValidPolyVecCap (cap : Nat) : Prop :=
   cap = 0 ∨ cap = 4 ∨ cap = 8 ∨ 16 ≤ cap
 
-def e2p_polyGrowRemOps (cap : Nat) : Nat :=
+@[expose] def e2p_polyGrowRemOps (cap : Nat) : Nat :=
   if 16 ≤ cap then 0
   else if 8 ≤ cap then 1
   else if 4 ≤ cap then 2
@@ -401,7 +406,7 @@ private theorem e2p_pinned_entails_unpinned (A : RustAlloc) (g : ProtoPolynomial
   rw [protoPolynomialDecoderAt_eq_exists_pinned]
   exact Entails.sepExists_right g (Entails.refl _)
 
-def e2p_polyDecoderPinnedLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def e2p_polyDecoderPinnedLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s0 s : State) (g : ProtoPolynomialDecoderGhost)
     (msgPtr bufRef slot ptr : BitVec 64)
     (m : PolynomialDecoder) (bs cur : List (BitVec 8)) : SepProp :=

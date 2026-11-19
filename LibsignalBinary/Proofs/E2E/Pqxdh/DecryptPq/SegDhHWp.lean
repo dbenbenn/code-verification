@@ -22,7 +22,7 @@ Trace-invariance and `calleeSavedVRegs` preservation lemmas across GPR/SIMD regi
 the basic-block `SepWP` proofs of `S3CommitSpec`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegBH
 

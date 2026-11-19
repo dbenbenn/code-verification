@@ -9,15 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.DrSessionSim -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.DrSessionSim
 public import Computational.Proofs.E2E.Dsl.HaltedDrSessionLifter -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.HaltedDrTrackerDsl -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.LocalSessionStep -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.LocalSessionStep
+import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge
 public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore -- proof-setup: allow-public-import
-public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge
 public import Computational.Specifications.Reductions.ReductionDsl.AtomicOps
 public import Computational.Specifications.Reductions.ReductionDsl.TargetCodecs
+public import Computational.Proofs.E2E.Dsl.M3Interfaces -- proof-setup: allow-public-import
 
 /-!
 # Single-Argument `e2eOps` to `atomicE2EOps` Lifters
@@ -147,28 +148,6 @@ theorem liftVal_smQenc_eq {ℓ : ℕ} {Pt : Type}
   · rfl
   · rfl
   · rfl
-
-theorem liftVal_smRenc_eq {ℓ : ℕ} {Pt : Type}
-    (sq : (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Domain)
-    (r : (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Range sq) :
-    liftVal (Pt := Pt)
-        (Computational.Proofs.E2E.Dsl.M2Interfaces.smRenc
-          (stT := CryptoVerification.E2E.Costed.GhostStT (ℓ := ℓ)) id sq r) =
-      packAtomicSmRespEnc (Pt := Pt) (CryptoVerification.E2E.bhPackSmResp sq r) := by
-  rcases sq with (((_ | _) | _) | _) | _
-  · cases r <;> rfl
-  · cases r <;> rfl
-  · rcases r with _ | rr
-    · rfl
-    · rcases rr with _ | ⟨t, i, m?⟩
-      · rfl
-      · cases m? <;> rfl
-  · rcases r with _ | rr
-    · rfl
-    · rcases rr with _ | ⟨t, i, m?⟩
-      · rfl
-      · cases m? <;> rfl
-  · cases r <;> rfl
 
 @[simp] theorem renExpr_size {S₀ : Sig} {O : Ops S₀} {Γ : List (Ty S₀)} {t : Ty S₀}
     (e : Expr O Γ t) :

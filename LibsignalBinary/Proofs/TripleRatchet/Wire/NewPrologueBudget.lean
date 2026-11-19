@@ -12,13 +12,14 @@ module
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologue
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologueBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologue -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologueBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `<SignalMessage>::new` Segment 1 (`+0x000 .. +0x100`)
@@ -28,7 +29,7 @@ Re-exports `NewPrologueBudgetAux` (`+0x000 → +0x07c / +0x0f0`) and proves relo
 into temporary `Vec<u8>` buffers (`+0x07c → +0x100`) on Block `63`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -395,69 +396,6 @@ theorem new_ct_copy_wpp_placed [LibsignalPlacement] {M : AllocCostModel}
     h_shim h_alloc h_mc x sp0 rkPtr w400 hct_bound hfit s hpc hrun hsp hsp_align
     hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx27 hx28 hx29
 
-theorem new_ct_copy_wpp_placed_x [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {st : M.σ}
-    {H : LibsignalHooks} {Qp : State → SepProp → Prop}
-    (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
-    (h_alloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (h_mc : HookSat H lsMemcpySym framelessMemcpyBudgetSpec)
-    (x : SignalMessageNewGhost) (sp0 rkPtr w400 : BitVec 64)
-    (hct_bound : x.ciphertext.length ≤ 2 ^ 32)
-    (hfit : FitsEvents M lim st (newCtCopyEvents x))
-    (s : State)
-    (hpc : s.pc =
-      (if BitVec.ofNat 64 x.ciphertext.length = 0#64 then
-        (blkPl_63).base + 240#64
-       else
-        (blkPl_63).base + 124#64))
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 416#64)
-    (hsp_align : s.spAligned = true)
-    (hx19 : s.readReg64 .x19 = BitVec.ofNat 64 x.ciphertext.length)
-    (hx20 : s.readReg64 .x20 = x.senderRatchetKeyA)
-    (hx21 : s.readReg64 .x21 = 33#64)
-    (hx22 : s.readReg64 .x22 = x.previousCounter.zeroExtend 64)
-    (hx23 : s.readReg64 .x23 = x.counter.zeroExtend 64)
-    (hx24 : s.readReg64 .x24 = x.ret)
-    (hx25 : s.readReg64 .x25 = x.ciphertextA)
-    (hx27 : s.readReg64 .x27 = BitVec.ofNat 64 x.pqRatchet.length)
-    (hx28 : s.readReg64 .x28 = rkPtr)
-    (hx29 : s.readReg64 .x29 = sp0 - 96#64) :
-    SepWPp ((blkPC_63).rebase (blkPl_63).base H)
-      (if BitVec.ofNat 64 x.pqRatchet.length = 0#64 then
-        (blkPl_63).base + 252#64
-       else
-        (blkPl_63).base + 168#64)
-      s
-      (((sp0 - 400#64) ↦₆₄ w400) ∗
-       (x.ciphertextA ↦ₛ x.ciphertext) ∗
-       A.pool lim st s ∗ stackAt (sp0 - 416#64) computeMacStackX)
-      (fun sm Pm =>
-        (sm.sp = sp0 - 416#64 ∧
-         sm.spAligned = true ∧
-         sm.readReg64 .x19 = BitVec.ofNat 64 x.ciphertext.length ∧
-         sm.readReg64 .x20 = x.senderRatchetKeyA ∧
-         sm.readReg64 .x21 = 33#64 ∧
-         sm.readReg64 .x22 = x.previousCounter.zeroExtend 64 ∧
-         sm.readReg64 .x23 = x.counter.zeroExtend 64 ∧
-         sm.readReg64 .x24 = x.ret ∧
-         sm.readReg64 .x25 = x.ciphertextA ∧
-         sm.readReg64 .x27 = BitVec.ofNat 64 x.pqRatchet.length ∧
-         sm.readReg64 .x28 = rkPtr ∧
-         sm.readReg64 .x29 = sp0 - 96#64 ∧
-         TraceVRegsEq sm s) ∧
-        (Pm ⊢
-          ((sp0 - 400#64) ↦₆₄ x.ciphertextA) ∗
-          (x.ciphertextA ↦ₛ x.ciphertext) ∗
-          signalMessageNew_vecU8Buf A.repAlloc (BitVec.ofNat 64 x.ciphertext.length)
-            (sm.readReg64 .x26) x.ciphertext ∗
-          A.pool lim (M.stepEvents (newCtCopyEvents x) st) sm ∗
-          stackAt (sp0 - 416#64) computeMacStackX))
-      Qp :=
-  new_ct_copy_wpp_placed_at (cmStack := computeMacStackX) (by decide) (by decide)
-    h_shim h_alloc h_mc x sp0 rkPtr w400 hct_bound hfit s hpc hrun hsp hsp_align
-    hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx27 hx28 hx29
-
 /-! ## `pq_ratchet` copy (`+0x0a8 / +0x0fc → +0x100`) -/
 
 theorem new_pq_copy_wpp_placed_at [LibsignalPlacement] {M : AllocCostModel}
@@ -710,65 +648,6 @@ theorem new_pq_copy_wpp_placed [LibsignalPlacement] {M : AllocCostModel}
           stackAt (sp0 - 416#64) computeMacStack))
       Qp :=
   new_pq_copy_wpp_placed_at (cmStack := computeMacStack) (by decide) (by decide)
-    h_shim h_alloc h_mc x sp0 rkPtr ctCopyPtr hpq_bound hfit s hpc hrun hsp hsp_align
-    hx19 hx20 hx21 hx22 hx23 hx24 hx26 hx27 hx28 hx29
-
-theorem new_pq_copy_wpp_placed_x [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {st : M.σ}
-    {H : LibsignalHooks} {Qp : State → SepProp → Prop}
-    (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
-    (h_alloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (h_mc : HookSat H lsMemcpySym framelessMemcpyBudgetSpec)
-    (x : SignalMessageNewGhost) (sp0 rkPtr ctCopyPtr : BitVec 64)
-    (hpq_bound : x.pqRatchet.length < 2 ^ 32)
-    (hfit : FitsEvents M lim st (newPqCopyEvents x))
-    (s : State)
-    (hpc : s.pc =
-      (if BitVec.ofNat 64 x.pqRatchet.length = 0#64 then
-        (blkPl_63).base + 252#64
-       else
-        (blkPl_63).base + 168#64))
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 416#64)
-    (hsp_align : s.spAligned = true)
-    (hx19 : s.readReg64 .x19 = BitVec.ofNat 64 x.ciphertext.length)
-    (hx20 : s.readReg64 .x20 = x.senderRatchetKeyA)
-    (hx21 : s.readReg64 .x21 = 33#64)
-    (hx22 : s.readReg64 .x22 = x.previousCounter.zeroExtend 64)
-    (hx23 : s.readReg64 .x23 = x.counter.zeroExtend 64)
-    (hx24 : s.readReg64 .x24 = x.ret)
-    (hx26 : s.readReg64 .x26 = ctCopyPtr)
-    (hx27 : s.readReg64 .x27 = BitVec.ofNat 64 x.pqRatchet.length)
-    (hx28 : s.readReg64 .x28 = rkPtr)
-    (hx29 : s.readReg64 .x29 = sp0 - 96#64) :
-    SepWPp ((blkPC_63).rebase (blkPl_63).base H)
-      ((blkPl_63).base + 256#64)
-      s
-      (((sp0 - 328#64) ↦₆₄ x.pqRatchetA) ∗
-       (x.pqRatchetA ↦ₛ x.pqRatchet) ∗
-       A.pool lim st s ∗ stackAt (sp0 - 416#64) computeMacStackX)
-      (fun sm Pm =>
-        (sm.sp = sp0 - 416#64 ∧
-         sm.spAligned = true ∧
-         sm.readReg64 .x19 = BitVec.ofNat 64 x.ciphertext.length ∧
-         sm.readReg64 .x20 = x.senderRatchetKeyA ∧
-         sm.readReg64 .x21 = 33#64 ∧
-         sm.readReg64 .x22 = x.previousCounter.zeroExtend 64 ∧
-         sm.readReg64 .x23 = x.counter.zeroExtend 64 ∧
-         sm.readReg64 .x24 = x.ret ∧
-         sm.readReg64 .x26 = ctCopyPtr ∧
-         sm.readReg64 .x27 = BitVec.ofNat 64 x.pqRatchet.length ∧
-         sm.readReg64 .x28 = rkPtr ∧
-         sm.readReg64 .x29 = sp0 - 96#64 ∧
-         TraceVRegsEq sm s) ∧
-        (Pm ⊢
-          ((sp0 - 328#64) ↦₆₄ x.pqRatchetA) ∗
-          (x.pqRatchetA ↦ₛ x.pqRatchet) ∗
-          optPqBuf A.repAlloc (sm.readReg64 .x9) (sm.readReg64 .x25) x.pqRatchet ∗
-          A.pool lim (M.stepEvents (newPqCopyEvents x) st) sm ∗
-          stackAt (sp0 - 416#64) computeMacStackX))
-      Qp :=
-  new_pq_copy_wpp_placed_at (cmStack := computeMacStackX) (by decide) (by decide)
     h_shim h_alloc h_mc x sp0 rkPtr ctCopyPtr hpq_bound hfit s hpc hrun hsp hsp_align
     hx19 hx20 hx21 hx22 hx23 hx24 hx26 hx27 hx28 hx29
 

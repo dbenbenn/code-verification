@@ -15,8 +15,13 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostRep
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ZeroizeCode -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ZeroizeGhost -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ZeroizeLrTrap -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.SharedSecretDropLrTrap -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.SharedSecretDropLrTrap
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Card CC-DALEK — `lsSharedSecretDropSym` Row Consumer Spec & Generic-`InvS` Ghost Replay (`HooksDehook.SharedSecretDropGhostReplays`)
@@ -212,33 +217,6 @@ theorem sharedSecretDropSubProg_codeLoaded_stripExecOutside
   sharedSecretDropHull_codeLoaded_stripExecOutside
     (fun _ hoff => keepR_sharedSecretDrop_of_code_offset mpl hoff) hL
 
-/-- Reverse `CodeLoaded` projection from `stripExecOutside (keepR_sharedSecretDrop mpl) mem` back
-    to `mem`. -/
-theorem sharedSecretDropSubProg_codeLoaded_of_stripExecOutside
-    {mpl : Obj.MultiPlacement} {mem : Memory}
-    (hL : (sharedSecretDropSubProg mpl).CodeLoaded
-      (stripExecOutside (keepR_sharedSecretDrop mpl) mem)) :
-    (sharedSecretDropSubProg mpl).CodeLoaded mem := by
-  refine Program.CodeLoaded.intro hL.aligned hL.no_wrap fun i hi => ?_
-  have hk : keepR_sharedSecretDrop mpl
-      ((sharedSecretDropSubProg mpl).base + BitVec.ofNat 64 i) = true :=
-    keepR_sharedSecretDrop_of_code_offset mpl hi
-  have hbyte := hL.byte_eq i hi
-  have hperm := hL.perm_eq i hi
-  have hlf := hL.isLazyFree_eq i hi
-  rw [ProofLib.strip_read8] at hbyte
-  rw [ProofLib.strip_perm_of_keep hk] at hperm
-  rw [ProofLib.strip_isLazyFree] at hlf
-  exact ⟨hbyte, hperm, hlf⟩
-
-theorem sharedSecretDropSubProg_codeLoaded_stripExecOutside_iff
-    {mpl : Obj.MultiPlacement} {mem : Memory} :
-    (sharedSecretDropSubProg mpl).CodeLoaded
-      (stripExecOutside (keepR_sharedSecretDrop mpl) mem) ↔
-      (sharedSecretDropSubProg mpl).CodeLoaded mem :=
-  ⟨sharedSecretDropSubProg_codeLoaded_of_stripExecOutside,
-   sharedSecretDropSubProg_codeLoaded_stripExecOutside⟩
-
 /-- `W`-independent ghost hook for `lsSharedSecretDropSym`
     (`CliGhostHooks.extra` entry `(lsSharedSecretDropSym, sharedSecretDropGhost mpl mmpl)`). -/
 @[expose] noncomputable def sharedSecretDropGhost (mpl _mmpl : Obj.MultiPlacement) :
@@ -329,13 +307,6 @@ theorem sharedSecretDropGhost_preserves_execFrozen (mpl mmpl : Obj.MultiPlacemen
     {u : State} (hfr : ExecFrozen u.mem) :
     ExecFrozen (sharedSecretDropGhost mpl mmpl u).mem :=
   f3EmptyZeroizeGhostHook_preserves_execFrozen (keepR_sharedSecretDrop mpl)
-    (sharedSecretDropSubProg mpl)
-    (sharedSecretDropHullBase mpl + sharedSecretDropEntryOff) hfr
-
-theorem sharedSecretDropGhostK_preserves_execFrozen (mpl mmpl : Obj.MultiPlacement)
-    {u : State} (hfr : ExecFrozen u.mem) :
-    ExecFrozen (sharedSecretDropGhostK mpl mmpl u).mem :=
-  f3EmptyZeroizeGhostHookK_preserves_execFrozen (keepR_sharedSecretDrop mpl)
     (sharedSecretDropSubProg mpl)
     (sharedSecretDropHullBase mpl + sharedSecretDropEntryOff) hfr
 
@@ -457,170 +428,6 @@ theorem sharedSecretDropGhost_rowReplayOn
       setPC_eq_self_of_pc_eq (hpc.trans (sharedSecretDropHullBase_add_entryOff mpl).symm)
     rw [hSetPC] at hStepsSetPC
     exact ⟨hStepsSetPC, hfr_fu, hInvKeep u (sharedSecretDropGhost mpl mmpl u) hInvU hkf hfs_fu⟩
-
-/-- `C4` interior-stub signature wrapper for `sharedSecretDropGhost_rowReplayOn` (accepting split
-    `hRealNone` at `stubPc` + `hInteriorGhost` with the `Or.inr` `TrapHook` interior-stub disjunct
-    on `pc ≠ resolve mpl lsSharedSecretDropSym`). -/
-theorem sharedSecretDropGhost_rowReplayOn_of_interior
-    (mpl mmpl : Obj.MultiPlacement)
-    (InvS : State → Prop)
-    (EG : CliHooks → String → Option (State → State))
-    (hCL : ∀ u : State, InvS u → (sharedSecretDropSubProg mpl).CodeLoaded u.mem)
-    (hInvKeep : ∀ u v : State, InvS u → u.mem.KeepsFrozen v.mem → v.fs = u.fs → InvS v)
-    (hGhostAt : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl EG 617 W).externAt?
-        (libsignalSessionLib.resolve mpl lsSharedSecretDropSym) =
-        some (sharedSecretDropGhost mpl mmpl))
-    (hRealNone : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt?
-        (libsignalSessionLib.resolve mpl lsSharedSecretDropSym) = none)
-    (hInteriorGhost : ∀ (W : CliHooks) (pc : BitVec 64),
-      keepR_sharedSecretDrop mpl pc = true →
-      pc ≠ libsignalSessionLib.resolve mpl lsSharedSecretDropSym →
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none ∧
-      ((cliProgExtPlacedAt mpl EG 617 W).externAt? pc = none ∨
-        ∃ gStub, (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = some gStub ∧
-          ∀ L : BitVec 64, keepR_sharedSecretDrop mpl L = true → TrapHook L gStub)) :
-    GhostRowReplayOn mpl mmpl InvS EG lsSharedSecretDropSym
-      (sharedSecretDropEntryGuard mpl) (sharedSecretDropGhost mpl mmpl) where
-  preserves_execFrozen := fun u _ _ hfr =>
-    ⟨sharedSecretDropGhost_preserves_execFrozen mpl mmpl hfr,
-     sharedSecretDropGhost_fs mpl mmpl u⟩
-  replay_at_stub := by
-    intro W s0 sf _ _ _ hEntry hRetPc hNoExSf hNotHaltSf
-    have hRealHullNoExt : ∀ {pc : BitVec 64},
-        keepR_sharedSecretDrop mpl pc = true →
-        (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none := by
-      intro pc hk
-      by_cases hEq : pc = libsignalSessionLib.resolve mpl lsSharedSecretDropSym
-      · rw [hEq]; exact hRealNone W
-      · exact (hInteriorGhost W pc hk hEq).1
-    have hRegExt : ∀ pc : BitVec 64,
-        keepSharedSecretDropHull (sharedSecretDropHullBase mpl) pc = true →
-        (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = none ∨
-          ∃ f, (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = some f ∧
-            ∀ L, keepSharedSecretDropHull (sharedSecretDropHullBase mpl) L = true →
-              TrapHook L f := by
-      intro pc hk
-      by_cases hEq : pc = libsignalSessionLib.resolve mpl lsSharedSecretDropSym
-      · rw [hEq]
-        exact Or.inr ⟨sharedSecretDropGhost mpl mmpl, hGhostAt W, fun L hL =>
-          trapHook_f3EmptySharedSecretDropGhostHook_of_cover
-            (sharedSecretDropSubProg mpl) (fun _ h => h) hL⟩
-      · rcases (hInteriorGhost W pc hk hEq).2 with hNone | ⟨gStub, hSome, hTrap⟩
-        · exact Or.inl hNone
-        · exact Or.inr ⟨gStub, hSome, hTrap⟩
-    right
-    refine ⟨hRealNone W, ?_⟩
-    intro u _ hStepsAfter hpc hrun hnoex hkf hfr hInvU
-    have hCodeU : (sharedSecretDropSubProg mpl).CodeLoaded u.mem := hCL u hInvU
-    have hLrOut : keepR_sharedSecretDrop mpl (u.readReg64 .lr) = false :=
-      sharedSecretDropHull_keepLr_false_after_hook_of_codeLoaded_u
-        (P_ghost := cliProgExtPlacedAt mpl EG 617 W)
-        (P_sub := sharedSecretDropSubProg mpl)
-        (m := sharedSecretDropHullBase mpl)
-        (f_stub := sharedSecretDropGhost mpl mmpl)
-        (sharedSecretDropSubProg_hasWords mpl)
-        hRegExt
-        (fun _ hL => trapHook_f3EmptySharedSecretDropGhostHook_of_cover
-          (sharedSecretDropSubProg mpl) (fun _ h => h) hL)
-        hEntry.1
-        hRetPc
-        hNoExSf
-        hNotHaltSf
-        u
-        hCodeU
-        hStepsAfter
-        hrun
-        hkf
-    have hCodeStrip :
-        (sharedSecretDropSubProg mpl).CodeLoaded
-          (stripExecOutside (keepR_sharedSecretDrop mpl) u.mem) :=
-      sharedSecretDropSubProg_codeLoaded_stripExecOutside hCodeU
-    obtain ⟨hvis, hfr_fu, hfs_fu⟩ :=
-      f3EmptySharedSecretDropGhostHook_visitedIn
-        (keep := keepR_sharedSecretDrop mpl)
-        (P_sub := sharedSecretDropSubProg mpl)
-        (m := sharedSecretDropHullBase mpl)
-        (sharedSecretDropSubProg_svc mpl)
-        (sharedSecretDropSubProg_externAt_none mpl)
-        (sharedSecretDropSubProg_hasWords mpl)
-        hrun
-        hnoex
-        hfr
-        hLrOut
-        hCodeStrip
-    have hStepsSetPC :
-        Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-          (u.setPC (sharedSecretDropHullBase mpl + sharedSecretDropEntryOff))
-          (sharedSecretDropGhost mpl mmpl u) :=
-      h2fsgen_steps_lift_of_visitedIn_noExtern
-        (D := keepR_sharedSecretDrop mpl)
-        (P1 := emptyStdProg)
-        (P2 := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-        (emptyStdProg_svc.trans (realProg617_svc mpl mmpl W).symm)
-        (fun pc _ => emptyStdProg_externAt pc)
-        (fun _ hk => hRealHullNoExt hk)
-        hvis
-    have hSetPC : u.setPC (sharedSecretDropHullBase mpl + sharedSecretDropEntryOff) = u :=
-      setPC_eq_self_of_pc_eq (hpc.trans (sharedSecretDropHullBase_add_entryOff mpl).symm)
-    rw [hSetPC] at hStepsSetPC
-    exact ⟨hStepsSetPC, hfr_fu, hInvKeep u (sharedSecretDropGhost mpl mmpl u) hInvU hkf hfs_fu⟩
-
-/-- `K`-narrowed `sharedSecretDropGhostK` companion `GhostRowReplayOn`
-    (`entryGuard := fun _ => True`; spare only per N2). -/
-theorem sharedSecretDropGhostK_rowReplayOn
-    (mpl mmpl : Obj.MultiPlacement)
-    (InvS : State → Prop)
-    (EG : CliHooks → String → Option (State → State))
-    (hCL : ∀ u : State, InvS u → (sharedSecretDropSubProg mpl).CodeLoaded u.mem)
-    (hInvKeep : ∀ u v : State, InvS u → u.mem.KeepsFrozen v.mem → v.fs = u.fs → InvS v)
-    (hRealHullNoExt : ∀ (W : CliHooks) {pc : BitVec 64},
-      keepR_sharedSecretDrop mpl pc = true →
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none) :
-    GhostRowReplayOn mpl mmpl InvS EG lsSharedSecretDropSym
-      (fun _ => True) (sharedSecretDropGhostK mpl mmpl) where
-  preserves_execFrozen := fun u _ _ hfr =>
-    ⟨sharedSecretDropGhostK_preserves_execFrozen mpl mmpl hfr,
-     f3EmptyZeroizeGhostHookK_fs (keepR_sharedSecretDrop mpl) (sharedSecretDropSubProg mpl)
-       (sharedSecretDropHullBase mpl + sharedSecretDropEntryOff) u⟩
-  replay_at_stub := by
-    intro W _ _ _ _ _ _ _ _ _
-    right
-    refine ⟨hRealHullNoExt W (keepR_sharedSecretDrop_entry mpl), ?_⟩
-    intro u _ _ hpc hrun hnoex hkf hfr hInvU
-    have hCodeStrip :
-        (sharedSecretDropSubProg mpl).CodeLoaded
-          (stripExecOutside (keepR_sharedSecretDrop mpl) u.mem) :=
-      sharedSecretDropSubProg_codeLoaded_stripExecOutside (hCL u hInvU)
-    obtain ⟨hvis, hfr_fu, hfs_fu⟩ :=
-      f3EmptySharedSecretDropGhostHookK_visitedIn
-        (keep := keepR_sharedSecretDrop mpl)
-        (P_sub := sharedSecretDropSubProg mpl)
-        (m := sharedSecretDropHullBase mpl)
-        (sharedSecretDropSubProg_svc mpl)
-        (sharedSecretDropSubProg_externAt_none mpl)
-        (sharedSecretDropSubProg_hasWords mpl)
-        hrun
-        hnoex
-        hfr
-        hCodeStrip
-    have hStepsSetPC :
-        Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-          (u.setPC (sharedSecretDropHullBase mpl + sharedSecretDropEntryOff))
-          (sharedSecretDropGhostK mpl mmpl u) :=
-      h2fsgen_steps_lift_of_visitedIn_noExtern
-        (D := keepR_sharedSecretDrop mpl)
-        (P1 := emptyStdProg)
-        (P2 := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-        (emptyStdProg_svc.trans (realProg617_svc mpl mmpl W).symm)
-        (fun pc _ => emptyStdProg_externAt pc)
-        (fun _ hk => hRealHullNoExt W hk)
-        hvis
-    have hSetPC : u.setPC (sharedSecretDropHullBase mpl + sharedSecretDropEntryOff) = u :=
-      setPC_eq_self_of_pc_eq (hpc.trans (sharedSecretDropHullBase_add_entryOff mpl).symm)
-    rw [hSetPC] at hStepsSetPC
-    exact ⟨hStepsSetPC, hfr_fu, hInvKeep u (sharedSecretDropGhostK mpl mmpl u) hInvU hkf hfs_fu⟩
 
 /-- Guard-strengthening adapter on `GhostRowReplayOn`. -/
 theorem ghostRowReplayOn_of_guard_imp

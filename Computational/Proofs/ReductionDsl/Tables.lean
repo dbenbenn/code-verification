@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Reductions.ReductionDsl.Samplers
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.FSAEAD.CostedTables
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRG.CostedTables
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.OTCCA.CostedTables
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRF.CostedTables
+import Computational.Proofs.SpecLemmas.Reductions.Primitives.FSAEAD.CostedTables
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRG.CostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.OTCCA.CostedTables -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRF.CostedTables
 import Computational.Proofs.ReductionDsl.Size
 
 /-!
@@ -23,7 +23,7 @@ Proves `OpsSizeHonest` and `SampSizeHonest` for `unifSamplers`, `unifSamplers0`,
 `otccaOps`, and `idealSamplers`.
 -/
 
-@[expose] public section
+public section
 
 namespace ReductionDsl
 

@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepSend
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepCorr
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvSame
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvNewCost
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvNew
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepSend
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepCorr
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvSame
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvNewCost -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvNew
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvNewSkip
 
 /-!
 # Concrete Atomic Step Program for `simFig8`
@@ -23,7 +24,7 @@ Packages the single-query atomic step computation matching `simFig8OracleSan`
 at `(L, B, T, Kc, Bsk) = (q, 2 ^ 32 + q + 2, 50000 * q, 25001 * q + 25000, 25000 * q)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -70,7 +71,7 @@ open Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvNew
   (simFig8RecvNewSpec_of_fwd recvHookOfBranchesC_eval
    simFig8OracleSan_deliver_eq simFig8OracleSan_inject_eq)
 
-noncomputable section
+section
 
 section Helpers
 
@@ -369,25 +370,6 @@ private theorem stepDispatchC_run_ij {ℓ : ℕ} {Pt : Type} [SampleableType Pt]
   simp only [Comp.eval, Expr.eval, Expr.v0, Expr.v1, Env.get,
     map_eq_bind_pure_comp, bind_assoc, pure_bind, Function.comp_def, Prod.map, id_eq]
 
-/-- Single-invocation concrete atomic `SimFig8` step `Comp`. -/
-def simFig8RawStepC {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (ℓ : ℕ) (C : Crypto) (K : MlKem) (idA idB : IdentityKey) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
-    (lam : Pt) (qep q : ℕ) :
-    Comp (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (fig8SmIface ℓ Pt)
-      [simFullT ℓ Pt, smQT (ℓ := ℓ) (Pt := Pt)]
-      (.prod (smRT (ℓ := ℓ) (Pt := Pt) GhostStT) (simFullT ℓ Pt)) :=
-  let sendSpec := simFig8SendStepSpec (Pt := Pt) ℓ C K idA idB Dh encPt encT decT lam qep q
-  let corrC := simFig8StepCorrC (ℓ := ℓ) (Pt := Pt) (C := C) (K := K) (Dh := Dh)
-    (encPt := encPt) (encT := encT) (decT := decT) (lam := lam) idA idB q
-  let fwdSpec := simFig8FwdHookSpec (Pt := Pt) ℓ C K idA idB Dh encPt encT decT lam qep q
-  let sameSpec := simFig8RecvSameSpec (Pt := Pt) ℓ C K idA idB Dh encPt encT decT lam qep q
-  let newSpec := simFig8RecvNewSpec_of_fwd C K Dh encPt encT decT lam
-    idA idB qep q fwdSpec.comp fwdSpec.hq fwdSpec.hcost fwdSpec.hdesc fwdSpec.heval
-  let recvHookC := recvHookOfBranchesC (C := C) (K := K) (Dh := Dh) (encPt := encPt)
-    (encT := encT) (decT := decT) (lam := lam) idA idB q sameSpec.comp newSpec.comp
-  stepDispatchC sendSpec.step corrC recvHookC
-
 end Helpers
 
 /-- Specification record for the concrete single-query `SimFig8` step `Comp` matching
@@ -444,11 +426,11 @@ private theorem step_descBits_arith {q qep dTot dS dC dR dN dSm : ℕ}
   have hbq1 : bits (q + 1) ≤ bits (2 * q + 2) := bits_mono_le (by omega)
   omega
 
-theorem simFig8RawStepSpec_nonempty {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[nospecialize] def simFig8RawStepSpec {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (ℓ : ℕ) (C : Crypto) (K : MlKem) (idA idB : IdentityKey) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (lam : Pt) (qep q : ℕ) :
-    Nonempty (SimFig8RawStepSpec Pt ℓ C K idA idB Dh encPt encT decT lam qep q) := by
+    SimFig8RawStepSpec Pt ℓ C K idA idB Dh encPt encT decT lam qep q :=
   let sendSpec := simFig8SendStepSpec (Pt := Pt) ℓ C K idA idB Dh encPt encT decT lam qep q
   let fwdSpec := simFig8FwdHookSpec (Pt := Pt) ℓ C K idA idB Dh encPt encT decT lam qep q
   let sameSpec := simFig8RecvSameSpec (Pt := Pt) ℓ C K idA idB Dh encPt encT decT lam qep q
@@ -459,8 +441,7 @@ theorem simFig8RawStepSpec_nonempty {Pt : Type} [DecidableEq Pt] [Zero Pt] [Samp
     (encPt := encPt) (encT := encT) (decT := decT) (lam := lam) idA idB q
   let cRecv := recvHookOfBranchesC (C := C) (K := K) (Dh := Dh) (encPt := encPt)
     (encT := encT) (decT := decT) (lam := lam) idA idB q sameSpec.comp newSpec.comp
-  refine ⟨{
-    step := stepDispatchC cSend cCorr cRecv
+  { step := stepDispatchC cSend cCorr cRecv
     hstep_q := step_queries_arith
       (stepDispatchC_queries cSend cCorr cRecv (fun _ => 1) (fun _ => 0))
       sendSpec.hstep_q
@@ -485,46 +466,45 @@ theorem simFig8RawStepSpec_nonempty {Pt : Type} [DecidableEq Pt] [Zero Pt] [Samp
       (recvHookOfBranchesC_descBits_le C K Dh encPt encT decT lam idA idB q
         sameSpec.comp newSpec.comp (fun _ => 8) (fun _ => 8))
       (newSpec.hdesc hℓ) (sameSpec.hdesc hℓ)
-    hstep := ?_
-  }⟩
-  intro hℓ t s_raw hbnd hextra
-  have hrecv : ∀ (Q : Party) (w : Bytes) (isDel : Bool),
-      (Prod.map (Option.map recvResultDec) simFullDec <$>
-        cRecv.eval (.cons (s_raw, (partyToBool Q, (w, isDel))) .nil)) =
-      (Prod.map id Prod.fst <$>
-        semRecvHookS (paramsV1 C K idA idB) Dh encPt encT decT lam (50000 * q) (25001 * q + 25000)
-          (fig8IdSemHook (PQC := BitVec 512) none)
-          qep (2 ^ 32 + q + 2) (simFullDec s_raw) () Q w isDel) := by
-    intro Q w isDel
-    have hs : s_raw = simFullEnc (simFullDec s_raw) := (simFullEnc_simFullDec s_raw).symm
-    conv_lhs => rw [hs]
-    exact recvHookOfBranchesC_eval C K Dh encPt encT decT lam idA idB
-      q qep (2 ^ 32 + q + 2) (50000 * q) (25001 * q + 25000)
-      sameSpec.comp newSpec.comp
-      (fun sC₀ Q₀ w₀ isDel₀ pq'₀ i₀ pk₀ T?₀ lct₀ honestC₀ ci₀ hb₀ hs₀ => by
-        rw [sameSpec.heval hℓ sC₀ Q₀ w₀ isDel₀ pq'₀ i₀ pk₀ T?₀ lct₀ honestC₀ ci₀ hb₀ hs₀]
-        dsimp only [semRecvSameBranch]
-        split_ifs
-        · simp only [map_pure, Prod.map, id_eq]
-        · rfl)
-      (newSpec.heval hℓ)
-      (simFullDec s_raw) Q w isDel hbnd hextra
-  rcases t with (((⟨P, m, r⟩ | ⟨P, m₀, m₁, r⟩) | ⟨P, w⟩) | ⟨P, w⟩) | P
-  · rw [stepDispatchC_run_tr]
-    exact sendSpec.hstep_tr hℓ P m r s_raw hbnd hextra
-  · rw [stepDispatchC_run_ch]
-    exact sendSpec.hstep_ch hℓ P m₀ m₁ r s_raw hbnd hextra
-  · rw [stepDispatchC_run_dl, hrecv P w true, ← simFig8OracleSan_deliver_eq]
-  · rw [stepDispatchC_run_ij, hrecv P w false, ← simFig8OracleSan_inject_eq]
-  · rw [stepDispatchC_run_cr]
-    exact simFig8StepCorrC_run idA idB qep q hℓ P s_raw hbnd hextra
+    hstep := by
+      intro hℓ t s_raw hbnd hextra
+      have hrecv : ∀ (Q : Party) (w : Bytes) (isDel : Bool),
+          (Prod.map (Option.map recvResultDec) simFullDec <$>
+            cRecv.eval (.cons (s_raw, (partyToBool Q, (w, isDel))) .nil)) =
+          (Prod.map id Prod.fst <$>
+            semRecvHookS (paramsV1 C K idA idB) Dh encPt encT decT lam (50000 * q) (25001 * q + 25000)
+              (fig8IdSemHook (PQC := BitVec 512) none)
+              qep (2 ^ 32 + q + 2) (simFullDec s_raw) () Q w isDel) := by
+        intro Q w isDel
+        have hs : s_raw = simFullEnc (simFullDec s_raw) := (simFullEnc_simFullDec s_raw).symm
+        conv_lhs => rw [hs]
+        exact recvHookOfBranchesC_eval C K Dh encPt encT decT lam idA idB
+          q qep (2 ^ 32 + q + 2) (50000 * q) (25001 * q + 25000)
+          sameSpec.comp newSpec.comp
+          (fun sC₀ Q₀ w₀ isDel₀ pq'₀ i₀ pk₀ T?₀ lct₀ honestC₀ ci₀ hb₀ hs₀ => by
+            rw [sameSpec.heval hℓ sC₀ Q₀ w₀ isDel₀ pq'₀ i₀ pk₀ T?₀ lct₀ honestC₀ ci₀ hb₀ hs₀]
+            dsimp only [semRecvSameBranch]
+            split_ifs
+            · simp only [map_pure, Prod.map, id_eq]
+            · rfl)
+          (newSpec.heval hℓ)
+          (simFullDec s_raw) Q w isDel hbnd hextra
+      rcases t with (((⟨P, m, r⟩ | ⟨P, m₀, m₁, r⟩) | ⟨P, w⟩) | ⟨P, w⟩) | P
+      · rw [stepDispatchC_run_tr]
+        exact sendSpec.hstep_tr hℓ P m r s_raw hbnd hextra
+      · rw [stepDispatchC_run_ch]
+        exact sendSpec.hstep_ch hℓ P m₀ m₁ r s_raw hbnd hextra
+      · rw [stepDispatchC_run_dl, hrecv P w true, ← simFig8OracleSan_deliver_eq]
+      · rw [stepDispatchC_run_ij, hrecv P w false, ← simFig8OracleSan_inject_eq]
+      · rw [stepDispatchC_run_cr]
+        exact simFig8StepCorrC_run idA idB qep q hℓ P s_raw hbnd hextra }
 
-def simFig8RawStepSpec {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+theorem simFig8RawStepSpec_nonempty {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (ℓ : ℕ) (C : Crypto) (K : MlKem) (idA idB : IdentityKey) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (lam : Pt) (qep q : ℕ) :
-    SimFig8RawStepSpec Pt ℓ C K idA idB Dh encPt encT decT lam qep q :=
-  Classical.choice (simFig8RawStepSpec_nonempty ℓ C K idA idB Dh encPt encT decT lam qep q)
+    Nonempty (SimFig8RawStepSpec Pt ℓ C K idA idB Dh encPt encT decT lam qep q) :=
+  ⟨simFig8RawStepSpec ℓ C K idA idB Dh encPt encT decT lam qep q⟩
 
 end
 

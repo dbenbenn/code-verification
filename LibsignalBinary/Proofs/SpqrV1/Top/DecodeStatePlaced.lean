@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.InnerReloc
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.InnerReloc -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.OuterLoopPlaced
 
@@ -23,7 +23,7 @@ matching `Drop.optProtoInnerStateAt` and `Prost.MessageMerge.v1StateMergePlacedS
 `spqr_decode_state_placed_ok` and `spqr_decode_state_placed_ok_x` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -53,7 +53,7 @@ set_option maxHeartbeats 400000
 set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 
 /-! ## 1. Canonical Representation Bridges for `Drop` & `MessageMerge` Specifications on `Block 325` -/
 

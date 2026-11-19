@@ -20,7 +20,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementWeak.Inj
 Shared `SimInvC` and `SimInvCX` lemmas for the `RefinementC` inject subcases (`KnownChain`, `NewChainUnamb`, `AmbInWinFalse`, `AmbFindSome`), adapting the weak-refinement inject helpers without salt binding.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

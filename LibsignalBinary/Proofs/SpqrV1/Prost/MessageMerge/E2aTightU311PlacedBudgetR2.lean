@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ProofBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ProofBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -29,6 +28,13 @@ import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedEkSentCt1ReceivedStepClPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefs
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedEkSentCt1ReceivedStepBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Guarded-Tight Placed Budget Proofs for `Unchunked.EkSentCt1Received::merge` & `Unchunked.Ct1Sent::merge` (Blocks `311`–`312`)
@@ -40,7 +46,7 @@ and `ct1`) and `tlb_UcCt1SentMergePlacedTightOkOf` on Block `312` within
 `hdr`, `es`, and `ct1`) under zero-initial-capacity guards on canonical wire inputs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -183,16 +189,16 @@ private theorem e2u311_ls_subroutine_ok_cro_of_blockProgram_ext [LibsignalPlacem
 /-! ## 2. Per-Field Bound Predicates & Parametric Canonical Domains -/
 
 /-- Explicit per-field length bounds for `ProtoAuthenticator`. -/
-def e2u311_ValidAuthPBOf (maxRoot maxMac : Nat) (m : ProtoAuthenticator) : Prop :=
+@[expose] def e2u311_ValidAuthPBOf (maxRoot maxMac : Nat) (m : ProtoAuthenticator) : Prop :=
   m.rootKey.length ≤ maxRoot ∧ m.macKey.length ≤ maxMac
 
 /-- Explicit per-field length bounds for `Option ProtoAuthenticator`. -/
-def e2u311_ValidOptAuthPBOf (maxRoot maxMac : Nat) (a : Option ProtoAuthenticator) : Prop :=
+@[expose] def e2u311_ValidOptAuthPBOf (maxRoot maxMac : Nat) (a : Option ProtoAuthenticator) : Prop :=
   ∀ v, a = some v → e2u311_ValidAuthPBOf maxRoot maxMac v
 
 /-- Per-field length bounds for `V1State.Unchunked.EkSentCt1Received` (Block `311`),
 definitionally equal to `tlb_ValidUcEkSentCt1ReceivedPB` at `(32, 32, 2400, 960)`. -/
-def e2u311_ValidUcEkSentCt1ReceivedPBOf (maxRoot maxMac maxDk maxCt1 : Nat)
+@[expose] def e2u311_ValidUcEkSentCt1ReceivedPBOf (maxRoot maxMac maxDk maxCt1 : Nat)
     (m : V1State.Unchunked.EkSentCt1Received) : Prop :=
   e2u311_ValidOptAuthPBOf maxRoot maxMac m.auth ∧
   m.dk.length ≤ maxDk ∧
@@ -200,7 +206,7 @@ def e2u311_ValidUcEkSentCt1ReceivedPBOf (maxRoot maxMac maxDk maxCt1 : Nat)
 
 /-- Per-field length bounds for `V1State.Unchunked.Ct1Sent` (Block `312`),
 definitionally equal to `tlb_ValidUcCt1SentPB` at `(32, 32, 64, 2080, 960)`. -/
-def e2u311_ValidUcCt1SentPBOf (maxRoot maxMac maxHdr maxEs maxCt1 : Nat)
+@[expose] def e2u311_ValidUcCt1SentPBOf (maxRoot maxMac maxHdr maxEs maxCt1 : Nat)
     (m : V1State.Unchunked.Ct1Sent) : Prop :=
   e2u311_ValidOptAuthPBOf maxRoot maxMac m.auth ∧
   m.hdr.length ≤ maxHdr ∧
@@ -208,20 +214,20 @@ def e2u311_ValidUcCt1SentPBOf (maxRoot maxMac maxHdr maxEs maxCt1 : Nat)
   m.ct1.length ≤ maxCt1
 
 /-- Parametric canonical domain for `ProtoAuthenticator::merge` (Block `295`). -/
-def e2u311_AuthDomOf (maxRoot maxMac : Nat) (x : AuthMergeGhost) : Prop :=
+@[expose] def e2u311_AuthDomOf (maxRoot maxMac : Nat) (x : AuthMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, e2u311_ValidAuthPBOf maxRoot maxMac pb ∧
       x.bs = tlb_lenPrefixed (ProtoAuthenticator.encodeRaw pb) rest
 
 /-- Parametric canonical domain for `Unchunked.EkSentCt1Received::merge` (Block `311`). -/
-def e2u311_UcEkSentCt1ReceivedDomOf (maxRoot maxMac maxDk maxCt1 : Nat)
+@[expose] def e2u311_UcEkSentCt1ReceivedDomOf (maxRoot maxMac maxDk maxCt1 : Nat)
     (x : UnchunkedEkSentCt1ReceivedMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, e2u311_ValidUcEkSentCt1ReceivedPBOf maxRoot maxMac maxDk maxCt1 pb ∧
       x.bs = tlb_lenPrefixed (V1State.Unchunked.EkSentCt1Received.encodeRaw pb) rest
 
 /-- Parametric canonical domain for `Unchunked.Ct1Sent::merge` (Block `312`). -/
-def e2u311_UcCt1SentDomOf (maxRoot maxMac maxHdr maxEs maxCt1 : Nat)
+@[expose] def e2u311_UcCt1SentDomOf (maxRoot maxMac maxHdr maxEs maxCt1 : Nat)
     (x : UnchunkedCt1SentMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, e2u311_ValidUcCt1SentPBOf maxRoot maxMac maxHdr maxEs maxCt1 pb ∧
@@ -328,7 +334,7 @@ theorem e2u311_default_ct1Sent_entails_zeroCap (A : RustAlloc) (a : BitVec 64) :
 
 /-- Domain-parameterized zero-cap-on-`Dom` contract for `ProtoAuthenticator::merge` (Block `295`);
 definitionally `tlb_authMergeTightSpecOfEnv` when `Dom = tlb_AuthDom`. -/
-noncomputable def e2u311_authMergeTightSpecDomOf {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] noncomputable def e2u311_authMergeTightSpecDomOf {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (Dom : AuthMergeGhost → Prop)
     (PreEnv PostEnv : AuthMergeGhost → List AllocEvent → Prop) :
     Spec (AuthMergeGhost × M.σ) where
@@ -348,7 +354,7 @@ noncomputable def e2u311_authMergeTightSpecDomOf {M : AllocCostModel} (A : RustC
 /-- Domain-parameterized zero-cap-on-`Dom` contract for `Unchunked.EkSentCt1Received::merge`
 (Block `311`); definitionally `tlb_ucEkSentCt1ReceivedMergeTightSpecOfEnv` when
 `Dom = tlb_UcEkSentCt1ReceivedDom`. -/
-noncomputable def e2u311_ucEkSentCt1ReceivedMergeTightSpecDomOf {M : AllocCostModel}
+@[expose] noncomputable def e2u311_ucEkSentCt1ReceivedMergeTightSpecDomOf {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Dom : UnchunkedEkSentCt1ReceivedMergeGhost → Prop)
     (PreEnv PostEnv : UnchunkedEkSentCt1ReceivedMergeGhost → List AllocEvent → Prop) :
@@ -368,7 +374,7 @@ noncomputable def e2u311_ucEkSentCt1ReceivedMergeTightSpecDomOf {M : AllocCostMo
 
 /-- Domain-parameterized zero-cap-on-`Dom` contract for `Unchunked.Ct1Sent::merge` (Block `312`);
 definitionally `tlb_ucCt1SentMergeTightSpecOfEnv` when `Dom = tlb_UcCt1SentDom`. -/
-noncomputable def e2u311_ucCt1SentMergeTightSpecDomOf {M : AllocCostModel}
+@[expose] noncomputable def e2u311_ucCt1SentMergeTightSpecDomOf {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Dom : UnchunkedCt1SentMergeGhost → Prop)
     (PreEnv PostEnv : UnchunkedCt1SentMergeGhost → List AllocEvent → Prop) :
@@ -1084,7 +1090,7 @@ private theorem e2u311_ekSentDomLoopPre_transport {M : AllocCostModel}
   unfold e2u311_ekSentDomLoopPre
   rw [e2u311_tightPoolAt_transport A lim st o c r hvm]
 
-private noncomputable def e2u311_ekSentDomOwnSpec {M : AllocCostModel}
+private def e2u311_ekSentDomOwnSpec {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Dom : UnchunkedEkSentCt1ReceivedMergeGhost → Prop)
     (maxOps cumCap maxReq : Nat) :
@@ -2381,7 +2387,7 @@ private theorem e2u311_ct1SentDomLoopPre_transport {M : AllocCostModel}
   unfold e2u311_ct1SentDomLoopPre
   rw [e2u311_tightPoolAt_transport A lim st o c r hvm]
 
-private noncomputable def e2u311_ct1SentDomOwnSpec {M : AllocCostModel}
+private def e2u311_ct1SentDomOwnSpec {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Dom : UnchunkedCt1SentMergeGhost → Prop)
     (maxOps cumCap maxReq : Nat) :

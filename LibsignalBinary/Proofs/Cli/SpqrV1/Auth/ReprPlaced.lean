@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.Repr
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.Repr -- proof-setup: allow-public-import
 public import Aesop.BuiltinRules
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
+meta import GeneratedLean.LibsignalSessionPlacedObjShard23
 
 /-!
 # Relocatable Per-Block Fetches for `Authenticator::encode [local#3]` (Block `454`)
@@ -25,7 +26,7 @@ Generates per-block instruction decode and entry-address theorems under `[Libsig
 Block `454` (`prost::encoding::message::encode::<Authenticator, Vec<u8>> [local#3]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -45,9 +46,6 @@ namespace CryptoVerification.Cli.SpqrV1.Auth
 open Arm64 Arm64.Obj ProofLib CryptoVerification
 
 abbrev authEncodeLocal1BlkIdx : Nat := 454
-
-abbrev cliAuthPanicRoSym : String :=
-  "libsignal_cli_ratchet:.rodata..Lanon.165"
 
 @[simp, arm64_norm, wp_norm]
 theorem authEncodeLocal1_fnAddr (pl : MultiPlacement) :

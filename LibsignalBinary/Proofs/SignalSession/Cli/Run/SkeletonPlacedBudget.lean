@@ -10,29 +10,38 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Reserve11PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.TryAllocateIn3PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Concat2PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropPreKeyMsgPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSignalMessagePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwnedPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStoresPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFromPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostRkSomeBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Reserve11PlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.TryAllocateIn3PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Concat2PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropPreKeyMsgPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSignalMessagePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwnedPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStoresPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFromPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostRkSomeBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStoresPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyDecode
+public import ProofLib.Placed.OpcodeExclusion
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
 /-!
 # Budget-Threaded Callee Slots and Hook Bundles for `signal_session::run` (Placed)
@@ -42,7 +51,7 @@ Budget-pool counterparts of `RunHooksPlaced`, `RunCalleesEnvs`, `RunCalleesPlace
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -65,8 +74,8 @@ open CryptoVerification.LibsignalTripleRatchetRepr (uuidTryParse)
 open CryptoVerification.RecordCodecs.Placed (blkPC_18 blkPl_18 instIsLsBlockProg_18)
 open CryptoVerification.RecordCodecsBinary.IdentityKeyDecode (identityKey_decode_placed_ok)
 open CryptoVerification.SignalSession
-  (CliHooks cliExternsPlaced lsBlackBoxSym lsFormatInnerSym lsFromUtf8Sym lsMemrchrSym lsReadFileSym
-   lsRustAllocZeroedSymCli lsStringCloneSym)
+  (CliHooks cliExternsPlaced lsBlackBoxSym lsFmtWriteSym lsFormatInnerSym lsFromUtf8Sym lsMemrchrSym
+   lsReadFileSym lsRustAllocZeroedSymCli lsStringCloneSym)
 open CryptoVerification.SignalSession.Cli (DirGhost cliBcmpSpec)
 open CryptoVerification.SignalSession.Cli.MainHops (cliIo cliWrOk fromUtf8AsciiSpec memrchrSpec)
 open CryptoVerification.SignalSession.Cli.Placed
@@ -85,10 +94,12 @@ open CryptoVerification.SpqrV1.Alloc (sessionMemcpyRegionROSpec)
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FreeOnlyEvs RustCliAllocBudget rustCliAllocBudgetSpec)
 open LibsignalBinary.Heap.RustStdAllocBudgetBridge (stringCloneBudgetSpec)
-open LibsignalBinary.Heap.SpecBudget (formatInnerBudgetSpec withVmPreserved)
+open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
 open LibsignalBinary.Proofs.RecordCodecs.DepsBudget (CodecHooksPlaced identityKeyDecodeRawSpec)
 open LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
   (PathEnv path_placed_caller_ok_of_deps)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs
+  (fmtWriteProtoAddrCliLsSpec formatInnerCallCliLsSpec)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
   (hookSat_withLsRet withLsRet)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget (addressSpec)
@@ -147,7 +158,8 @@ structure RunHooksPlaced [LibsignalPlacement] {M : AllocCostModel}
   codecHooks : CodecHooksPlaced M A lim ext
   allocZeroed : HookSat ext lsRustAllocZeroedSymCli (rustCliAllocBudgetSpec M A lim true)
   stringClone : HookSat ext lsStringCloneSym (stringCloneBudgetSpec M A lim)
-  formatInner : HookSat ext lsFormatInnerSym (formatInnerBudgetSpec M A lim)
+  formatInner : HookSat ext lsFormatInnerSym (formatInnerCallCliLsSpec M A lim)
+  fmtWrite : HookSat ext lsFmtWriteSym (fmtWriteProtoAddrCliLsSpec M A lim)
   blackBox : HookSat ext lsBlackBoxSym
     LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat.blackBoxSpecSat
 
@@ -449,7 +461,9 @@ theorem RunHooksPlaced.of_ghost [LibsignalPlacement]
     (hStrClone : HookSat (cliGhostExterns g baseExt) lsStringCloneSym
       (stringCloneBudgetSpec M A lim))
     (hFmt : HookSat (cliGhostExterns g baseExt) lsFormatInnerSym
-      (formatInnerBudgetSpec M A lim)) :
+      (formatInnerCallCliLsSpec M A lim))
+    (hFmtWrite : HookSat (cliGhostExterns g baseExt) lsFmtWriteSym
+      (fmtWriteProtoAddrCliLsSpec M A lim)) :
     RunHooksPlaced A lim (cliGhostExterns g baseExt) where
   alloc := allocContractsXCliPlaced_of_ghost mmpl W baseExt g hBase hG.toCliGhostAllocHooks
   allocFs := allocContractsFsPlaced_of_ghost mmpl W baseExt g hBase hG.toCliGhostAllocHooks
@@ -463,10 +477,11 @@ theorem RunHooksPlaced.of_ghost [LibsignalPlacement]
   allocZeroed := ⟨g.allocZeroed, cliGhostExterns_allocZeroed g baseExt, hG.allocZeroed⟩
   stringClone := hStrClone
   formatInner := hFmt
+  fmtWrite := hFmtWrite
   blackBox := cliGhostExterns_blackBoxSat_budget_sat g baseExt hG.extraOk
 
 /-- Constructs `RunHooksPlaced A lim (cliGhostExterns g (cliExternsPlaced mmpl W))` from
-`CliGhostSpqrAllocHooks` and `HookSat` witnesses for `String::clone` and `format_inner`. -/
+`CliGhostSpqrAllocHooks` and `HookSat` witnesses for `String::clone`, `format_inner`, and `fmt::write`. -/
 theorem RunHooksPlaced.of_hooks [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -475,10 +490,12 @@ theorem RunHooksPlaced.of_hooks [LibsignalPlacement]
     (hStrClone : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsStringCloneSym
       (stringCloneBudgetSpec M A lim))
     (hFmtInner : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFormatInnerSym
-      (formatInnerBudgetSpec M A lim)) :
+      (formatInnerCallCliLsSpec M A lim))
+    (hFmtWrite : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFmtWriteSym
+      (fmtWriteProtoAddrCliLsSpec M A lim)) :
     RunHooksPlaced A lim (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
   RunHooksPlaced.of_ghost mmpl W (cliExternsPlaced mmpl W) g
     (cliExternsPlaced_baseHelperRows mmpl W) (fsTHooks_cliExternsPlaced mmpl W)
-    hG hStrFsT hStrClone hFmtInner
+    hG hStrFsT hStrClone hFmtInner hFmtWrite
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget

@@ -10,14 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.CliC.SpqrV1.Varint.DecodeVarint2Placed
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA
+import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSliceBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Proof of `CliC` `decode_varint [local#5]`
@@ -26,7 +31,7 @@ Proves `withLsCodeLoaded lsmpl (decodeVarint2Spec A lim)` and
 `withLsCodeLoaded lsmpl (decodeVarint2SpecX A lim)` on Block `559` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

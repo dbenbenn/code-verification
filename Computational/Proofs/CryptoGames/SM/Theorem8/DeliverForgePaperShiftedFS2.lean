@@ -9,8 +9,47 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedFS
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedFS -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.StateNorm
+import Computational.Proofs.CryptoGames.FSAEAD.Lazy
+import Mathlib.Algebra.BigOperators.Group.Finset.Defs
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Data.FinEnum
+import Mathlib.Data.Finset.Defs
+import Mathlib.Data.Fintype.BigOperators
+import Mathlib.Data.List.Dedup
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.Integral.Lebesgue.Add
+import Mathlib.Order.Disjoint
+import Mathlib.Order.SetNotation
+import Mathlib.Tactic.Attr.Register
+import PolyFun.Control.Monad.Support
+import Std.Tactic.BVDecide.Normalize.BitVec
+import Std.Tactic.BVDecide.Normalize.Bool
+import Std.Tactic.BVDecide.Normalize.Prop
+import ToMathlib.Control.StateT
+import VCVio.CryptoFoundations.SecExp
+import VCVio.CryptoFoundations.SecExp.Measure
+import VCVio.EvalDist.Defs.Measure.Core
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Basic
+import VCVio.EvalDist.Monad.Bool
+import VCVio.EvalDist.ProbabilityBounds
+import VCVio.EvalDist.ProbabilityNotation
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.EvalDist.Measure
+import VCVio.OracleComp.OracleSpec
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.QueryTracking.QueryBound.Simulation
+import VCVio.OracleComp.QueryTracking.SubSpec
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.Basic
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Relational.SimulateQ.UntilBad
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Shifted-Paper Lemma 11 at `Δ = 2`, Part 1
@@ -19,7 +58,7 @@ First half of `lemma11_df_shifted_dir2_paper`: couples `redPRNGAuthDFShiftedDir2
 with `localAuthDFShiftedDir2Paper`, indexes sessions over `j < q`, and sets up the fixed-key game.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory CryptoGames.Lazy
 
@@ -60,7 +99,7 @@ abbrev implEDFShiftedB1 {tspec : OracleSpec.{0, 0} ι} {HS Γv Sv SSv RSv : Type
       (EM tspec Γv T Sv SSv RSv M E HS) := deliverForgeEB1 hk qep tStar cfg
   HAdd.hAdd i₀ (HAdd.hAdd i₁ i₂)
 
-def stepPDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def stepPDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep l : ℕ) (mo : Mode)
     (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     (esP : EStateP Γ T Sig SS RS M E K) (sp : PRFPRNG.GameState Sig I K) :
@@ -70,7 +109,7 @@ def stepPDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG K
     ((implEDFShiftedB1 l (hooksPRNG cka prng fs mo) (2 + Δcka) qep fs.maxSkip mo.tStar
       (moAuth mo).cfg (moAuth mo).policy q).run esP)).run sp
 
-def stepLDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def stepLDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep l : ℕ) (mo : Mode)
     (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     (esL : EStateL Γ T Sig SS RS M E K I) :
@@ -79,7 +118,7 @@ def stepLDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG K
     ((implEDFShiftedB1 l (hooksLocal cka prng fs mo) (2 + Δcka) qep fs.maxSkip mo.tStar
       (moAuth mo).cfg (moAuth mo).policy q).run esL)
 
-def runPDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def runPDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep l : ℕ) (mo : Mode)
     (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
     (esP : EStateP Γ T Sig SS RS M E K) (sp : PRFPRNG.GameState Sig I K) : ProbComp Bool := do
@@ -88,7 +127,7 @@ def runPDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR
       (moAuth mo).cfg (moAuth mo).policy) oa).run esP)).run sp
   pure (authOut (2 + Δcka) (moAuth mo).policy r.1.2)
 
-def runLocDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def runLocDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep l : ℕ) (mo : Mode)
     (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
     (esL : EStateL Γ T Sig SS RS M E K I) : ProbComp Bool := do
@@ -97,7 +136,7 @@ def runLocDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG 
       (moAuth mo).cfg (moAuth mo).policy) oa).run esL)
   pure (authOut (2 + Δcka) (moAuth mo).policy r.2)
 
-def runLocAtDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def runLocAtDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep l : ℕ) (mo : Mode) (j : ℕ)
     (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
     (esL : EStateL Γ T Sig SS RS M E K I) : ProbComp Bool := do
@@ -106,7 +145,7 @@ def runLocAtDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRN
       (moAuth mo).cfg (moAuth mo).policy) oa).run esL)
   pure (authOut (2 + Δcka) (moAuth mo).policy r.2 && (r.2.h.lastIdx == some j))
 
-def localAuthDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def localAuthDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep l : ℕ) (tL : Option ℕ) (t : ℕ)
     (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) : ProbComp Bool := do
   let mo : Mode := ⟨false, tL, t⟩
@@ -118,7 +157,7 @@ def localAuthDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPR
       { st := fun P => match P with | .A => vA | .B => vB, b := false }
     runLocDFShiftedDir2Paper cka prng fs Δcka qep l mo A { g, h }
 
-def localAuthAtDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def localAuthAtDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep j l : ℕ) (tL : Option ℕ) (t : ℕ)
     (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) : ProbComp Bool := do
   let mo : Mode := ⟨false, tL, t⟩
@@ -130,7 +169,7 @@ def localAuthAtDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRF
       { st := fun P => match P with | .A => vA | .B => vB, b := false }
     runLocAtDFShiftedDir2Paper cka prng fs Δcka qep l mo j A { g, h }
 
-def stepLFixedDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def stepLFixedDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep l : ℕ) (mo : Mode) (j : ℕ) (k_fs : K)
     (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     (esL : EStateL Γ T Sig SS RS M E K I) :
@@ -139,7 +178,7 @@ def stepLFixedDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFP
     ((implEDFShiftedB1 l (hooksLocalFixed cka prng fs mo j k_fs)
       (2 + Δcka) qep fs.maxSkip mo.tStar (moAuth mo).cfg (moAuth mo).policy q).run esL)
 
-def runLocAtFixedDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def runLocAtFixedDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep l : ℕ) (mo : Mode) (j : ℕ) (k_fs : K)
     (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
     (esL : EStateL Γ T Sig SS RS M E K I) : ProbComp Bool := do
@@ -148,7 +187,7 @@ def runLocAtFixedDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : P
       (2 + Δcka) qep fs.maxSkip mo.tStar (moAuth mo).cfg (moAuth mo).policy) oa).run esL)
   pure (authOut (2 + Δcka) (moAuth mo).policy r.2 && (r.2.h.lastIdx == some j))
 
-def localAuthAtFixedDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def localAuthAtFixedDFShiftedDir2Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep j l : ℕ) (k_fs : K)
     (tL : Option ℕ) (t : ℕ) (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) : ProbComp Bool := do
   let mo : Mode := ⟨false, tL, t⟩

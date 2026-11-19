@@ -22,18 +22,30 @@ public import LibsignalBinary.Heap.MallocngBridgeBudget
 public import LibsignalBinary.Heap.MallocngRustBudget
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
-public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetHelpers
-public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.F3ReadFileGhostHook
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadStdinBudgetPlaced
+import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetHelpers
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlacedSat -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHonestSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHonestSpecsHook -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooksPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.F3ReadFileGhostHook -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadStdinBudgetPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.E2E.HooksE.Common
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooksPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
 /-!
 # `(γ, tp)`-Independent `mallocng` Ghost Hooks and `f3CliGhostHooksFixed`
@@ -45,7 +57,7 @@ into the 8-field `f3CliGhostHooksFixed : CliGhostHooks` bundle satisfying `∀ �
 `CliGhostHooksFs`, `FsTHooks`, and `GhostExternReplaysS`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -60,9 +72,8 @@ open Arm64.Obj hiding bytesAt
 open ProofLib hiding MallocngMinBlockCost mallocngSizeClassUnits mallocngRoTablesBytes
   MallocngAddrs MallocngIface
 open CryptoVerification (
-  IsLsBlockProg LibsignalHooks LibsignalPlacement libsignalMutatedBlocks libsignalSessionExterns
-  ls_hook_ok_ultra_of_mem lsmpl lsρ
-)
+  IsLsBlockProg LibsignalHooks LibsignalPlacement libsignalHookedExterns libsignalMutatedBlocks
+  ls_hook_ok_ultra_of_mem lsmpl lsρ)
 open CryptoVerification.LibsignalPublicApi.StoreKit (
   FsFiles subroutine_ok_rocl_of_plain withLsRoCl
 )
@@ -88,7 +99,7 @@ open CryptoVerification.SignalSession (
 open CryptoVerification.SignalSession.Cli (getResultAt ioVecAt)
 open CryptoVerification.SignalSession.Cli.Main.Placed (lsProg_617 instIsLsBlockProg_617)
 open CryptoVerification.SignalSession.Cli.MainHops (
-  ReadStdinGhost cliExternsPlaced_writeFile cliExternsPlaced_writeStdout cliIo cliWrOk hookNoop_fs
+  ReadStdinGhost cliIo cliWrOk hookNoop_fs
 )
 open CryptoVerification.SignalSession.Cli.RunGlue (
   CliGhostHooks CliGhostHooksFs ExtraGhostTable FsTHooks IsFsC cliExtraGhostSyms cliGhostExterns
@@ -127,7 +138,7 @@ open LibsignalBinary.Heap.SpecBudget (allocBytes1Events rustAllocZeroedBudgetSpe
 open LibsignalBinary.Heap.Fine (fineCostModel fineCostModelIface fineCostModelSound)
 open LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase (
   CodeBlocksPermRX CodeBlocksPermRXMem
-  allocCallPreserved_of_mallocngProcPreserved allocCallPreserved_refl allocCallPreserved_trans
+  aesStorageCell allocCallPreserved_of_mallocngProcPreserved allocCallPreserved_refl allocCallPreserved_trans
   cc_retHook_setMem_sameRegs callocHookBridgeSpec fineHookRustCliAllocBudget freeHookBridgeSpec
   hook_oom_false mallocHookBridgeSpec mallocngHook mallocngHookBudgetPool
   mallocngHookBudgetPool_transport mallocngHookRustCliAllocBudget
@@ -181,6 +192,14 @@ open LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced (
   MainIoOfPlaced ReadStdinBoundedEnv readStdinBoundedEnv_of_hook_gt readStdinBoundedEnv_of_hook_le
   readStdinSpecOfPlaced
 )
+open LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlacedSat (MainIoOfPlacedSat)
+open LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHonestSpecs (
+  writeFileSpecPlacedSat writeFileStackFloor_le_extHookStack
+  writeStdoutSpecPlacedSat writeStdoutStackFloor_le_extHookStack
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHonestSpecsHook (
+  hookSat_writeFileSpecPlacedSat_of_hook hookSat_writeStdoutSpecPlacedSat_of_hook
+)
 open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget (
   AllocContractsFsPlaced AllocContractsXCliPlaced readFileSpecPlaced
 )
@@ -204,7 +223,7 @@ private theorem ite_neg {α : Type _} {c : Prop} [Decidable c] (hnc : ¬ c) {t e
     exact False.elim (hnc hc)
   · rfl
 
-def reallocHookBridgeSpec (M : AllocCostModel) (I : MallocngCostModelIface M)
+@[expose] def reallocHookBridgeSpec (M : AllocCostModel) (I : MallocngCostModelIface M)
     (γ : GhostName) (mpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
     (lim : BudgetLimits) :
     Spec (BitVec 64 × BitVec 64 × Nat × Nat × List (BitVec 8) × BitVec 64 × M.σ) where
@@ -269,7 +288,8 @@ theorem realloc_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIface M
   rw [hpreEq, satisfies_pure_sepConj] at hpre
   obtain ⟨⟨hx0, hx1, hsp, hpNe, hp16, hpFit, hbsLe⟩, hpre⟩ := hpre
   obtain ⟨staticIvs, ivs0, hrx0, hInv0, hIvsLen, hIvsSum, hpreEnv⟩ := unpackHookBudgetPool hS hpre
-  refine ⟨(p, newSize, sp, some (oldSize, align, bs), tp, brkStart, st, ivs0), R, ?_, ?_, ?_⟩
+  refine ⟨(p, newSize, sp, some (oldSize, align, bs), tp, brkStart, st, ivs0),
+    aesStorageCell brkStart ∗ R, ?_, ?_, ?_⟩
   · dsimp only [mallocngModelReallocSpec, ToBaseSpec.toSpec, MallocngModelInitBlock]
     have hx0' : s0'.readReg64 .x0 = p := by
       simpa [s0', multiCodeROHookEntry_readReg64 _ _ _ _ _ .x0] using hx0
@@ -293,22 +313,22 @@ theorem realloc_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIface M
     obtain ⟨hOomCond, hCodeRest⟩ := hoomSat
     have hR_exit :
         (multiCodeROHookExit VerifiedLibraries.mallocngLib mpl i s0 sf').mem ⊨ R := by
-      have hs0_codeR : s0.mem ⊨ VerifiedLibraries.mallocngLib.codeRO mpl ∗ R := by
+      have hs0_codeR : s0.mem ⊨ VerifiedLibraries.mallocngLib.codeRO mpl ∗ (aesStorageCell brkStart ∗ R) := by
         have h1 : s0.mem ⊨
             MallocngModelEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st ivs0 s0 ∗
               (I.BlockM γ p oldSize (max align 16) ∗
                 (p ↦ₛ bs) ∗
                 memRegion (p + BitVec.ofNat 64 bs.length) (oldSize - bs.length) ∗
                 stackFrameAt sp mallocngStackBytes) ∗
-              (VerifiedLibraries.mallocngLib.codeRO mpl ∗ R) :=
+              (VerifiedLibraries.mallocngLib.codeRO mpl ∗ (aesStorageCell brkStart ∗ R)) :=
           Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpreEnv
         exact Satisfies.of_sep_right (Satisfies.of_sep_right h1)
       have hsf_codeR :
           (multiCodeROHookExit VerifiedLibraries.mallocngLib mpl i s0 sf').mem ⊨
-            VerifiedLibraries.mallocngLib.codeRO mpl ∗ R := by
+            VerifiedLibraries.mallocngLib.codeRO mpl ∗ (aesStorageCell brkStart ∗ R) := by
         simpa only [multiCodeROHookExit_mem] using
           satisfies_restoreMultiCodeMem hPl hkf' hs0_codeR hCodeRest
-      exact Satisfies.of_sep_right hsf_codeR
+      exact Satisfies.of_sep_right (Satisfies.of_sep_right hsf_codeR)
     have hOomPres := oomCond_to_oomPreserved_hookExit hOomCond
     have hNotFit : ¬ FitsEvent M lim st (.realloc align oldSize newSize.toNat) := by
       rintro ⟨hMax, hFitStep⟩
@@ -342,7 +362,8 @@ theorem realloc_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIface M
       have hpostReord : sf.mem ⊨
           (VerifiedLibraries.mallocngLib.codeRO mpl ∗
             MallocngModelPostEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart
-              (M.step (.realloc align oldSize newSize.toNat) st) ivs0 s0' sf') ∗
+              (M.step (.realloc align oldSize newSize.toNat) st) ivs0 s0' sf' ∗
+            aesStorageCell brkStart) ∗
             (I.BlockM γ (sf.readReg64 .x0) newSize.toNat (max align 16) ∗
               (sf.readReg64 .x0 ↦ₛ keptBs) ∗
               memRegion (sf.readReg64 .x0 + BitVec.ofNat 64 keptBs.length)
@@ -396,10 +417,11 @@ theorem realloc_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIface M
                   (⌜sf'.readReg64 (.gpr 0#5) = 0#64⌝ ∗
                     (MallocngModelPostEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st ivs0
                         s0' sf' ∗
-                      (stackFrameAt sp mallocngStackBytes ∗ R)))))) =
+                      (stackFrameAt sp mallocngStackBytes ∗ (aesStorageCell brkStart ∗ R))))))) =
           ⌜sf'.readReg64 (.gpr 0#5) = 0#64⌝ ∗
             ((VerifiedLibraries.mallocngLib.codeRO mpl ∗
-              MallocngModelPostEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st ivs0 s0' sf') ∗
+              MallocngModelPostEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st ivs0 s0' sf' ∗
+              aesStorageCell brkStart) ∗
               (I.BlockM γ p oldSize (max align 16) ∗
                 (p ↦ₛ bs) ∗
                 memRegion (p + BitVec.ofNat 64 bs.length) (oldSize - bs.length) ∗
@@ -430,7 +452,7 @@ theorem realloc_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIface M
       rw [satisfies_pure_sepConj]
       exact ⟨hnull, hpost1⟩
 
-def alignedAllocHookBridgeSpec (M : AllocCostModel) (I : MallocngCostModelIface M)
+@[expose] def alignedAllocHookBridgeSpec (M : AllocCostModel) (I : MallocngCostModelIface M)
     (γ : GhostName) (mpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
     (lim : BudgetLimits) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × M.σ) where
@@ -472,7 +494,7 @@ theorem alignedAlloc_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIf
   rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpre
   obtain ⟨⟨hx0, hx1, hsp, halMax⟩, hpre⟩ := hpre
   obtain ⟨staticIvs, ivs0, hrx0, hInv0, hIvsLen, hIvsSum, hpreEnv⟩ := unpackHookBudgetPool hS hpre
-  refine ⟨(align, len, sp, tp, brkStart, st, ivs0), R, ?_, ?_, ?_⟩
+  refine ⟨(align, len, sp, tp, brkStart, st, ivs0), aesStorageCell brkStart ∗ R, ?_, ?_, ?_⟩
   · dsimp only [mallocngModelAlignedAllocSpec, ToBaseSpec.toSpec]
     have hx0' : s0'.readReg64 .x0 = align := by
       simpa [s0', multiCodeROHookEntry_readReg64 _ _ _ _ _ .x0] using hx0
@@ -496,19 +518,19 @@ theorem alignedAlloc_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIf
     obtain ⟨hOomCond, hCodeRest⟩ := hoomSat
     have hR_exit :
         (multiCodeROHookExit VerifiedLibraries.mallocngLib mpl i s0 sf').mem ⊨ R := by
-      have hs0_codeR : s0.mem ⊨ VerifiedLibraries.mallocngLib.codeRO mpl ∗ R := by
+      have hs0_codeR : s0.mem ⊨ VerifiedLibraries.mallocngLib.codeRO mpl ∗ (aesStorageCell brkStart ∗ R) := by
         have h1 : s0.mem ⊨
             MallocngModelEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st ivs0 s0 ∗
               stackFrameAt sp mallocngStackBytes ∗
-              (VerifiedLibraries.mallocngLib.codeRO mpl ∗ R) :=
+              (VerifiedLibraries.mallocngLib.codeRO mpl ∗ (aesStorageCell brkStart ∗ R)) :=
           Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpreEnv
         exact Satisfies.of_sep_right (Satisfies.of_sep_right h1)
       have hsf_codeR :
           (multiCodeROHookExit VerifiedLibraries.mallocngLib mpl i s0 sf').mem ⊨
-            VerifiedLibraries.mallocngLib.codeRO mpl ∗ R := by
+            VerifiedLibraries.mallocngLib.codeRO mpl ∗ (aesStorageCell brkStart ∗ R) := by
         simpa only [multiCodeROHookExit_mem] using
           satisfies_restoreMultiCodeMem hPl hkf' hs0_codeR hCodeRest
-      exact Satisfies.of_sep_right hsf_codeR
+      exact Satisfies.of_sep_right (Satisfies.of_sep_right hsf_codeR)
     have hOomPres := oomCond_to_oomPreserved_hookExit hOomCond
     have hNotFit :
         ¬ (alignedAllocAlignOk align = true ∧
@@ -542,7 +564,8 @@ theorem alignedAlloc_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIf
       have hpostReord : sf.mem ⊨
           (VerifiedLibraries.mallocngLib.codeRO mpl ∗
             MallocngModelPostEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart
-              (M.step (.aligned align.toNat len.toNat) st) ivs0 s0' sf') ∗
+              (M.step (.aligned align.toNat len.toNat) st) ivs0 s0' sf' ∗
+            aesStorageCell brkStart) ∗
             (I.BlockM γ (sf.readReg64 .x0) len.toNat (max align.toNat 16) ∗
               memRegion (sf.readReg64 .x0) len.toNat ∗
               stackFrameAt sp mallocngStackBytes ∗ R) :=
@@ -585,7 +608,8 @@ theorem alignedAlloc_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIf
         allocCallPreserved_of_mallocngProcPreserved (procPreserved_hookExit hacc.1)
       have hpostReord : sf.mem ⊨
           (VerifiedLibraries.mallocngLib.codeRO mpl ∗
-            MallocngModelPostEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st ivs0 s0' sf') ∗
+            MallocngModelPostEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st ivs0 s0' sf' ∗
+            aesStorageCell brkStart) ∗
             (stackFrameAt sp mallocngStackBytes ∗ R) :=
         Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpost
       have hpost1 := Satisfies.mono (sepConj_mono_left hPack) hpostReord
@@ -730,12 +754,12 @@ private theorem nullAllowed_of_alignedAllocOk_false {size align : Nat} {sizeBv :
   split at hNotEff <;> omega
 
 /-- `(γ, tp)`-independent `mallocng` fallback for `__rust_dealloc`. -/
-noncomputable def f3DeallocFallbackRaw (mpl : Obj.MultiPlacement) (s0 : State) : State :=
+@[expose] noncomputable def f3DeallocFallbackRaw (mpl : Obj.MultiPlacement) (s0 : State) : State :=
   let s1 := mallocngHook mpl "free" s0
   if s1.status != .Running then s1
   else retHook (fun st => st.setMem s1.mem) (restoreCallerRegs s0 s1)
 
-noncomputable def f3DeallocFallback (mpl : Obj.MultiPlacement) : State → State :=
+@[expose] noncomputable def f3DeallocFallback (mpl : Obj.MultiPlacement) : State → State :=
   keepFsTrace (f3DeallocFallbackRaw mpl)
 
 theorem f3DeallocFallback_fs (mpl : Obj.MultiPlacement) (s : State) :
@@ -830,7 +854,7 @@ theorem f3DeallocFallback_ok {M : AllocCostModel} {I : MallocngCostModelIface M}
 
 /-- `(γ, tp)`-independent `mallocng` fallback for `__rust_alloc` (`zeroed = false`) and
     `__rust_alloc_zeroed` (`zeroed = true`). -/
-noncomputable def f3AllocFallbackRaw (mpl : Obj.MultiPlacement) (zeroed : Bool)
+@[expose] noncomputable def f3AllocFallbackRaw (mpl : Obj.MultiPlacement) (zeroed : Bool)
     (s0 : State) : State :=
   let sizeBv := s0.readReg64 .x0
   let alignBv := s0.readReg64 .x1
@@ -855,7 +879,7 @@ noncomputable def f3AllocFallbackRaw (mpl : Obj.MultiPlacement) (zeroed : Bool)
         else s1.mem
       retHook (fun st => (st.setMem mOut).writeReg64 .x0 p) (restoreCallerRegs s0 s1)
 
-noncomputable def f3AllocFallback (mpl : Obj.MultiPlacement) (zeroed : Bool) : State → State :=
+@[expose] noncomputable def f3AllocFallback (mpl : Obj.MultiPlacement) (zeroed : Bool) : State → State :=
   keepFsTrace (f3AllocFallbackRaw mpl zeroed)
 
 theorem f3AllocFallback_fs (mpl : Obj.MultiPlacement) (zeroed : Bool) (s : State) :
@@ -1360,7 +1384,7 @@ theorem f3AllocFallback_ok {M : AllocCostModel} {I : MallocngCostModelIface M}
       exact ⟨⟨fun h => hNotFit ⟨heffOk, h.1⟩, hOomPres⟩, Satisfies.of_sep_right hRSat⟩
 
 /-- `(γ, tp)`-independent `mallocng` fallback for `__rust_realloc`. -/
-noncomputable def f3ReallocFallbackRaw (mpl : Obj.MultiPlacement) (s0 : State) : State :=
+@[expose] noncomputable def f3ReallocFallbackRaw (mpl : Obj.MultiPlacement) (s0 : State) : State :=
   let p := s0.readReg64 .x0
   let old := (s0.readReg64 .x1).toNat
   let align := (s0.readReg64 .x2).toNat
@@ -1392,7 +1416,7 @@ noncomputable def f3ReallocFallbackRaw (mpl : Obj.MultiPlacement) (s0 : State) :
         else
           retHook (fun st => (st.setMem s2.mem).writeReg64 .x0 q) (restoreCallerRegs s0 s2)
 
-noncomputable def f3ReallocFallback (mpl : Obj.MultiPlacement) : State → State :=
+@[expose] noncomputable def f3ReallocFallback (mpl : Obj.MultiPlacement) : State → State :=
   keepFsTrace (f3ReallocFallbackRaw mpl)
 
 theorem f3ReallocFallback_fs (mpl : Obj.MultiPlacement) (s : State) :
@@ -1908,7 +1932,7 @@ theorem f3ReallocFallback_ok {M : AllocCostModel} {I : MallocngCostModelIface M}
       exact ⟨⟨fun h => hNotFit ⟨heffOk, h.1⟩, hOomPres⟩, Satisfies.of_sep_right hRSat⟩
 
 /-- `(γ, tp)`-independent `mallocng` fallback for `<String as Clone>::clone`. -/
-noncomputable def f3StringCloneFallback (mpl : Obj.MultiPlacement) : State → State :=
+@[expose] noncomputable def f3StringCloneFallback (mpl : Obj.MultiPlacement) : State → State :=
   keepFsTrace (stringCloneHookMallocng mpl)
 
 theorem f3StringCloneFallback_fs (mpl : Obj.MultiPlacement) (s : State) :
@@ -2209,7 +2233,7 @@ private theorem write_ioVecErr_local {m : Memory} {ret : BitVec 64} {Frame : Sep
     (satisfies_write64_of_pointsTo64 0xFFFFFFFFFFFFFFFF#64 hmem0')
 
 /-- `(γ, tp)`-independent `mallocng` fallback for `signal_session_io::read_stdin` (`ReadStdinBoundedEnv`). -/
-noncomputable def f3ReadStdinFallbackRaw (mmpl : Obj.MultiPlacement) (s0 : State) : State :=
+@[expose] noncomputable def f3ReadStdinFallbackRaw (mmpl : Obj.MultiPlacement) (s0 : State) : State :=
   match cliIo.stdin s0.fs with
   | none => s0
   | some bs =>
@@ -2227,7 +2251,7 @@ noncomputable def f3ReadStdinFallbackRaw (mmpl : Obj.MultiPlacement) (s0 : State
       retHook (fun s => s.setMem (s.mem.write64 (s.readReg64 .x8) 0xFFFFFFFFFFFFFFFF#64)) s0
 
 /-- Closed `(γ, tp)`-independent `read_stdin` fallback wrapped with `keepFsTrace`. -/
-noncomputable def f3ReadStdinFallback (mmpl : Obj.MultiPlacement) : State → State :=
+@[expose] noncomputable def f3ReadStdinFallback (mmpl : Obj.MultiPlacement) : State → State :=
   keepFsTrace (f3ReadStdinFallbackRaw mmpl)
 
 @[simp]
@@ -2447,7 +2471,7 @@ theorem f3ReadStdinFallback_ok_bounded [LibsignalPlacement]
   exact ⟨hkf, hsym, hout⟩
 
 /-- `(γ, tp)`-existentialized active precondition for `f3ReadStdinGhostHook` at `ReadStdinBoundedEnv`. -/
-def ActiveF3ReadStdinPre [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ActiveF3ReadStdinPre [LibsignalPlacement] {M : AllocCostModel}
     (AOf : GhostName → BitVec 64 → RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) (s0 : State) : Prop :=
   s0.status = .Running ∧ s0.spAligned = true ∧
@@ -2490,7 +2514,7 @@ private theorem outcome_bounded_of_compiled [LibsignalPlacement] {M : AllocCostM
   · exact False.elim (not_satisfies_false_sepConj ho)
 
 /-- `(γ, tp)`-independent linked ghost hook for `signal_session_io::read_stdin` (`ReadStdinBoundedEnv`). -/
-noncomputable def f3ReadStdinGhostHook [LibsignalPlacement] {M : AllocCostModel}
+@[expose] noncomputable def f3ReadStdinGhostHook [LibsignalPlacement] {M : AllocCostModel}
     (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entry_io : BitVec 64)
     (AOf : GhostName → BitVec 64 → RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat)
@@ -2520,7 +2544,7 @@ theorem f3ReadStdinGhostHook_fsT [LibsignalPlacement] {M : AllocCostModel}
     · exact keepFilesTrace_fsT fallback s0
   · exact FsTraced.of_eq rfl rfl
 
-noncomputable def f3ReadStdinGhostHookSub [LibsignalPlacement] {M : AllocCostModel}
+@[expose] noncomputable def f3ReadStdinGhostHookSub [LibsignalPlacement] {M : AllocCostModel}
     (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entry_io : BitVec 64)
     (AOf : GhostName → BitVec 64 → RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat)
@@ -2529,7 +2553,7 @@ noncomputable def f3ReadStdinGhostHookSub [LibsignalPlacement] {M : AllocCostMod
   ⟨f3ReadStdinGhostHook keep P_real P_sub entry_io AOf lim stk fallback,
    f3ReadStdinGhostHook_fsT keep P_real P_sub entry_io AOf lim stk fallback⟩
 
-noncomputable def f3ReadStdinGhostHookFine [LibsignalPlacement]
+@[expose] noncomputable def f3ReadStdinGhostHookFine [LibsignalPlacement]
     (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entry_io : BitVec 64)
     (mmpl : Obj.MultiPlacement) (brkStart : BitVec 64)
     (lim : BudgetLimits) (stk : Nat) : State → State :=
@@ -2537,7 +2561,7 @@ noncomputable def f3ReadStdinGhostHookFine [LibsignalPlacement]
     (fun γ tp => fineHookRustCliAllocBudget γ mmpl tp brkStart)
     lim stk (f3ReadStdinFallback mmpl)
 
-noncomputable def f3ReadStdinGhostHookFineSub [LibsignalPlacement]
+@[expose] noncomputable def f3ReadStdinGhostHookFineSub [LibsignalPlacement]
     (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entry_io : BitVec 64)
     (mmpl : Obj.MultiPlacement) (brkStart : BitVec 64)
     (lim : BudgetLimits) (stk : Nat) :
@@ -2639,7 +2663,7 @@ theorem f3ReadStdinGhostHook_steps_of_call [LibsignalPlacement] {M : AllocCostMo
 
 /-- `(γ, tp)`-existentialized active precondition for `f3LinkedCallHook`: holds at `s0` whenever
 there exist `γ : GhostName`, `tp : BitVec 64`, `x`, and `R` satisfying `(specOf γ tp).pre x s0 ∗ R`. -/
-def ActiveF3CallPre {α : Type} (specOf : GhostName → BitVec 64 → Spec α) (s0 : State) : Prop :=
+@[expose] def ActiveF3CallPre {α : Type} (specOf : GhostName → BitVec 64 → Spec α) (s0 : State) : Prop :=
   s0.status = .Running ∧ s0.spAligned = true ∧
     ∃ (γ : GhostName) (tp : BitVec 64) (x : α) (R : SepProp),
       s0.mem ⊨ (specOf γ tp).pre x s0 ∗ R
@@ -2647,7 +2671,7 @@ def ActiveF3CallPre {α : Type} (specOf : GhostName → BitVec 64 → Spec α) (
 /-- `(γ, tp)`-independent linked ghost-call hook: returns the deterministic first-stop state of
 `P_real` from `s0.setPC entryTarget` under `ActiveF3CallPre` and `ActiveRealRun`, delegates to
 `keepFsTrace fallback s0` outside `ActiveRealRun`, and sets `.Exception` outside `ActiveF3CallPre`. -/
-noncomputable def f3LinkedCallHook {α : Type}
+@[expose] noncomputable def f3LinkedCallHook {α : Type}
     (keep : BitVec 64 → Bool) (P_real P_sub : Program)
     (entryTarget : BitVec 64) (specOf : GhostName → BitVec 64 → Spec α)
     (fallback : State → State) (s0 : State) : State :=
@@ -2987,7 +3011,7 @@ theorem f3ReadFileFixedGhostHookFine_steps_of_call
 
 /-! ### Closed `(γ, tp)`-Independent Allocator and `stringClone` Ghost Hooks -/
 
-noncomputable def f3AllocGhostHookFine [LibsignalPlacement]
+@[expose] noncomputable def f3AllocGhostHookFine [LibsignalPlacement]
     (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entryTarget : BitVec 64)
     (mmpl : Obj.MultiPlacement) (brkStart : BitVec 64) (lim : BudgetLimits) : State → State :=
   f3LinkedCallHook keep P_real P_sub entryTarget
@@ -2995,7 +3019,7 @@ noncomputable def f3AllocGhostHookFine [LibsignalPlacement]
       (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim false)
     (f3AllocFallback mmpl false)
 
-noncomputable def f3DeallocGhostHookFine [LibsignalPlacement]
+@[expose] noncomputable def f3DeallocGhostHookFine [LibsignalPlacement]
     (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entryTarget : BitVec 64)
     (mmpl : Obj.MultiPlacement) (brkStart : BitVec 64) (lim : BudgetLimits) : State → State :=
   f3LinkedCallHook keep P_real P_sub entryTarget
@@ -3003,7 +3027,7 @@ noncomputable def f3DeallocGhostHookFine [LibsignalPlacement]
       (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim)
     (f3DeallocFallback mmpl)
 
-noncomputable def f3ReallocGhostHookFine [LibsignalPlacement]
+@[expose] noncomputable def f3ReallocGhostHookFine [LibsignalPlacement]
     (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entryTarget : BitVec 64)
     (mmpl : Obj.MultiPlacement) (brkStart : BitVec 64) (lim : BudgetLimits) : State → State :=
   f3LinkedCallHook keep P_real P_sub entryTarget
@@ -3011,7 +3035,7 @@ noncomputable def f3ReallocGhostHookFine [LibsignalPlacement]
       (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim)
     (f3ReallocFallback mmpl)
 
-noncomputable def f3AllocZeroedGhostHookFine [LibsignalPlacement]
+@[expose] noncomputable def f3AllocZeroedGhostHookFine [LibsignalPlacement]
     (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entryTarget : BitVec 64)
     (mmpl : Obj.MultiPlacement) (brkStart : BitVec 64) (lim : BudgetLimits) : State → State :=
   f3LinkedCallHook keep P_real P_sub entryTarget
@@ -3019,7 +3043,7 @@ noncomputable def f3AllocZeroedGhostHookFine [LibsignalPlacement]
       (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim true)
     (f3AllocFallback mmpl true)
 
-noncomputable def f3StringCloneGhostHookFine [LibsignalPlacement]
+@[expose] noncomputable def f3StringCloneGhostHookFine [LibsignalPlacement]
     (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entryTarget : BitVec 64)
     (mmpl : Obj.MultiPlacement) (brkStart : BitVec 64) (lim : BudgetLimits) : State → State :=
   f3LinkedCallHook keep P_real P_sub entryTarget
@@ -3500,7 +3524,7 @@ structure F3GhostEntryTargets where
 /-- `(γ, tp)`-independent 8-field `CliGhostHooks` bundle populating all five Rust allocator
 symbols, `stringClone`, `readFile` (`f3ReadFileFixedGhostHookFineSub`), and `readStdin`
 (`f3ReadStdinGhostHookFineSub`). -/
-noncomputable def f3CliGhostHooksFixed [LibsignalPlacement]
+@[expose] noncomputable def f3CliGhostHooksFixed [LibsignalPlacement]
     (keep : BitVec 64 → Bool) (P_real P_sub : Program)
     (T : F3GhostEntryTargets)
     (mmpl : Obj.MultiPlacement) (brkStart : BitVec 64)
@@ -3617,7 +3641,13 @@ theorem cliGhostSpqrAllocHooks_f3CliGhostHooksFixed [LibsignalPlacement]
     (hMemcpyExact : ∀ f, fMemcpy = some f → HookExactMemcpy f)
     (hMemsetAcp : ∀ f, fMemset = some f →
       ∀ s : State, (f s).sigActions = s.sigActions ∧ (f s).oracle = s.oracle)
-    (hExtraOk : ExtraFullListSpecOk extra) :
+    (hExtraOk : ExtraFullListSpecOk extra)
+    (hOnceCall : ∃ f, extra.lookup CryptoVerification.SignalSession.lsSpqrOnceCallSym = some f ∧
+      HookOk f CryptoVerification.SpqrV1.GF.Mul2U16.spqrOnceCallGhostSpec)
+    (hOnceUnique : ∀ e ∈ CryptoVerification.libsignalSessionExterns,
+      CryptoVerification.lsρ e =
+        CryptoVerification.lsρ CryptoVerification.SpqrV1.GF.Mul2U16.spqrOnceCallSym →
+      e = CryptoVerification.SpqrV1.GF.Mul2U16.spqrOnceCallSym) :
     CliGhostSpqrAllocHooks fineCostModel (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim
       (f3CliGhostHooksFixed keep P_real P_sub T mmpl brkStart lim stk fMemset fMemcpy extra) where
   alloc := f3AllocGhostHookFine_ok hsvc_real hsvc_sub hreal_no hsub_no hPl hKeepMallocng γ tp hAlloc
@@ -3639,6 +3669,8 @@ theorem cliGhostSpqrAllocHooks_f3CliGhostHooksFixed [LibsignalPlacement]
     f3AllocZeroedGhostHookFine_ok hsvc_real hsvc_sub hreal_no hsub_no hPl hKeepMallocng γ tp hAllocZeroed
   allocZeroed_fs := f3AllocZeroedGhostHookFine_fs keep P_real P_sub T.allocZeroed mmpl brkStart lim
   allocZeroed_fsT := f3AllocZeroedGhostHookFine_fsT keep P_real P_sub T.allocZeroed mmpl brkStart lim
+  onceCall := hOnceCall
+  onceCall_unique := hOnceUnique
 
 theorem cliGhostAllocHooks_f3CliGhostHooksFixed [LibsignalPlacement]
     {keep : BitVec 64 → Bool} {P_real P_sub : Program}
@@ -3989,12 +4021,62 @@ theorem publicApiDecHooksPlaced_f3CliGhostHooksFixed [LibsignalPlacement]
 
 private theorem ls_hook_617_rocl_ok [LibsignalPlacement] {α : Type} {H : LibsignalHooks}
     {sym : String} {spec : Spec α} (hsat : HookSat H sym spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide) :
+    (hmem : sym ∈ libsignalHookedExterns := by decide) :
     subroutine_ok (lsProg_617 H) (lsρ sym) (withLsRoCl lsmpl spec) :=
   subroutine_ok_rocl_of_plain <|
     ls_hook_ok_ultra_of_mem (prog := lsProg_617 H) (i := 617) hsat hmem
 
-/-- Block-`617` `MainIoOfPlaced` on `cliGhostExterns (f3CliGhostHooksFixed ...) (cliExternsPlaced mmpl W)`
+/-- Legacy Block-`617` `MainIoOfPlaced` on
+`cliGhostExterns (f3CliGhostHooksFixed ...) (cliExternsPlaced mmpl W)`
+at `(ReadStdinBoundedEnv, ReadFileRuleEnvFixed cliIo.rd)`. -/
+theorem mainIoOfPlaced_f3CliGhostHooksFixed_legacy [LibsignalPlacement]
+    {keep : BitVec 64 → Bool} {P_real P_sub : Program}
+    {T : F3GhostEntryTargets}
+    (mmpl : Obj.MultiPlacement) (W : CliHooks) {brkStart : BitVec 64}
+    {lim : BudgetLimits} {stk : Nat}
+    {fMemset fMemcpy : Option (State → State)}
+    {extra : ExtraGhostTable}
+    (hsvc_real : P_real.svc = Syscall.standard)
+    (hsvc_sub : P_sub.svc = Syscall.standard)
+    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
+    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
+    (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl)
+    (hKeepMallocng : ∀ a : BitVec 64,
+      (VerifiedLibraries.mallocngLib.findCodeBlock mmpl a).isSome = true → keep a = true)
+    (hstk : extHookStack ≤ stk)
+    (hReadFileCond : ∀ γ tp, subroutine_ok P_sub T.readFile
+      (readFileAnyBudgetCondSpec (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim extHookStack))
+    (hReadStdinCond : ∀ γ tp, subroutine_ok P_sub T.readStdin
+      (readStdinBudgetCondSpec (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim extHookStack))
+    (hWriteFile :
+      cliGhostExterns
+        (f3CliGhostHooksFixed keep P_real P_sub T mmpl brkStart lim stk fMemset fMemcpy extra)
+        (cliExternsPlaced mmpl W) lsWriteFileSym = some writeFileHook)
+    (hWriteStdout :
+      cliGhostExterns
+        (f3CliGhostHooksFixed keep P_real P_sub T mmpl brkStart lim stk fMemset fMemcpy extra)
+        (cliExternsPlaced mmpl W) lsWriteStdoutSym = some writeStdoutHook)
+    (γ : GhostName) (tp : BitVec 64) :
+    MainIoOfPlaced (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim
+      (cliGhostExterns
+        (f3CliGhostHooksFixed keep P_real P_sub T mmpl brkStart lim stk fMemset fMemcpy extra)
+        (cliExternsPlaced mmpl W))
+      cliIo stk ReadStdinBoundedEnv (ReadFileRuleEnvFixed cliIo.rd) where
+  readStdin := ls_hook_617_rocl_ok
+    ⟨f3ReadStdinGhostHookFine keep P_real P_sub T.readStdin mmpl brkStart lim stk,
+     cliGhostExterns_readStdin_some _ _ rfl,
+     f3ReadStdinGhostHookFine_ok_bounded hsvc_real hsvc_sub hreal_no hsub_no
+       hPl hKeepMallocng hstk hReadStdinCond γ tp⟩
+  readFile := ls_hook_617_rocl_ok
+    ⟨f3ReadFileFixedGhostHookFine keep P_real P_sub T.readFile mmpl brkStart lim stk,
+     cliGhostExterns_readFile_some _ _ rfl,
+     f3ReadFileFixedGhostHookFine_ok_lit hsvc_real hsvc_sub hreal_no hsub_no
+       hPl hKeepMallocng hstk hReadFileCond γ tp⟩
+  writeFile := ls_hook_617_rocl_ok ⟨writeFileHook, hWriteFile, writeFileHook_ok_placed _ lim stk⟩
+  writeStdout := ls_hook_617_rocl_ok
+    ⟨writeStdoutHook, hWriteStdout, writeStdoutHook_ok_placed _ lim stk⟩
+
+/-- Block-`617` `MainIoOfPlacedSat` on `cliGhostExterns (f3CliGhostHooksFixed ...) (cliExternsPlaced mmpl W)`
 at `(ReadStdinBoundedEnv, ReadFileRuleEnvFixed cliIo.rd)`. -/
 theorem mainIoOfPlaced_f3CliGhostHooksFixed [LibsignalPlacement]
     {keep : BitVec 64 → Bool} {P_real P_sub : Program}
@@ -4015,8 +4097,24 @@ theorem mainIoOfPlaced_f3CliGhostHooksFixed [LibsignalPlacement]
       (readFileAnyBudgetCondSpec (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim extHookStack))
     (hReadStdinCond : ∀ γ tp, subroutine_ok P_sub T.readStdin
       (readStdinBudgetCondSpec (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim extHookStack))
-    (γ : GhostName) (tp : BitVec 64) :
-    MainIoOfPlaced (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim
+    (γ : GhostName) (tp : BitVec 64)
+    (hWriteFile : HookSat
+      (cliGhostExterns
+        (f3CliGhostHooksFixed keep P_real P_sub T mmpl brkStart lim stk fMemset fMemcpy extra)
+        (cliExternsPlaced mmpl W))
+      lsWriteFileSym
+      (HooksDehook.WithLsRet.withLsRet
+        (writeFileSpecPlacedSat cliIo
+          (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim stk)))
+    (hWriteStdout : HookSat
+      (cliGhostExterns
+        (f3CliGhostHooksFixed keep P_real P_sub T mmpl brkStart lim stk fMemset fMemcpy extra)
+        (cliExternsPlaced mmpl W))
+      lsWriteStdoutSym
+      (HooksDehook.WithLsRet.withLsRet
+        (writeStdoutSpecPlacedSat
+          (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim stk))) :
+    MainIoOfPlacedSat (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim
       (cliGhostExterns
         (f3CliGhostHooksFixed keep P_real P_sub T mmpl brkStart lim stk fMemset fMemcpy extra)
         (cliExternsPlaced mmpl W))
@@ -4031,18 +4129,10 @@ theorem mainIoOfPlaced_f3CliGhostHooksFixed [LibsignalPlacement]
      cliGhostExterns_readFile_some _ _ rfl,
      f3ReadFileFixedGhostHookFine_ok_lit hsvc_real hsvc_sub hreal_no hsub_no
        hPl hKeepMallocng hstk hReadFileCond γ tp⟩
-  writeFile := ls_hook_617_rocl_ok
-    ⟨writeFileHook,
-     (cliGhostExterns_other _ _
-       (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)).trans
-       (cliExternsPlaced_writeFile mmpl W),
-     writeFileHook_ok_placed _ lim stk⟩
-  writeStdout := ls_hook_617_rocl_ok
-    ⟨writeStdoutHook,
-     (cliGhostExterns_other _ _
-       (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)).trans
-       (cliExternsPlaced_writeStdout mmpl W),
-     writeStdoutHook_ok_placed _ lim stk⟩
+  writeFile := ls_hook_617_rocl_ok hWriteFile
+  writeStdout := ls_hook_617_rocl_ok hWriteStdout
+  hWriteFileStack := Nat.le_trans writeFileStackFloor_le_extHookStack hstk
+  hWriteStdoutStack := Nat.le_trans writeStdoutStackFloor_le_extHookStack hstk
 
 theorem hReadFixed_of_f3CliGhostHooksFixed [LibsignalPlacement]
     {keep : BitVec 64 → Bool} {P_real P_sub : Program}

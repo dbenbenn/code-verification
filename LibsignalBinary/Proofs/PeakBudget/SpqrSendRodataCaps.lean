@@ -9,11 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightHelpers
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCapsAux
+public import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightHelpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCapsAux -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Defs
-public import LibsignalBinary.Proofs.SpqrV1Sync.ErasureDefs
+import LibsignalBinary.Proofs.SpqrV1Sync.ErasureDefs
+public import LibsignalBinary.Proofs.E2E.HooksE.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Model -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlBridge -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps
 
 /-!
 # `.rodata` Encoder and CLI Send Domain Bridges for `spqr::send`
@@ -24,13 +33,12 @@ inputs (`CliPqxdhInputs`, `w1SessKit.ScopeAt`) to the `.rodata` encoder validity
 `spqr::send` trace envelopes.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.PeakBudget.SpqrSendRodataCaps
 
-open Arm64.Obj (Image)
 open Arm64.Process (bytesOfString)
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoGames.LibsignalSessionApi (Session SessionRecord)
@@ -64,9 +72,7 @@ open LibsignalBinary.Proofs.PeakBudget.SpqrSendTightBuckets
    nonFreeCount_seqEnv_le smallAllocCost_le_143484_of_le_135167)
 open LibsignalBinary.Proofs.PeakBudget.SpqrSendTightHelpers
   (EncRodataValid StatesRodataValid isRodataPtLen)
-open LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
-  (PeerSpqrTightValid640 ValidChainParams ValidEncoderPts640
-   peerSpqrTightValid640_of_cliPqInputs_send peerSpqrTightValidAt_of_w1ScopeAt)
+open LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps (PeerSpqrTightValid640 ValidChainParams ValidEncoderPts640 peerSpqrTightValid640_of_cliPqInputs_send)
 open LibsignalBinary.Proofs.PeakBudget.SpqrTightCapsAux (StatesPtsBoundedAt ValidV1PtsAt)
 open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit (HasFineReallocCredit)
 open LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget (PqRatchetStateEncodeToVecEnv)
@@ -132,21 +138,6 @@ theorem statesRodataValid_of_bOk {F : ShaCompress}
 
 /-! ## CLI `send` Session-Store Bridge and Domain Bundles -/
 
-/-- Extracts `ValidEncoderPts640 otrPqr ∧ ValidChainParams otrPqr ∧ otrPqr.length < 2 ^ 31` from `CliPqxdhInputs` on `.send peer` and `w1SessKit.ScopeAt`.
--/
-theorem cliSend_peerSpqrTightValid640 {B : RunBudgets} {img : Image}
-    {W : PEParams} {i : Inputs} {peer : AddrV} {peerG : AddrGhost}
-    {r : SessionRecord (List (BitVec 8))} {sess : Session (List (BitVec 8))}
-    {otrPqr : List (BitVec 8)}
-    (hi : CliPqxdhInputs W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.send peer))
-    (hScAt : (w1SessKit B img (runFiles i) peerG).ScopeAt scopeKit
-      StoresGhost.opened.sessions (addrValOf peer) r)
-    (hcur : r.currentSession = some sess)
-    (hpqr : otrPqr = sess.state.pqRatchetState) :
-    ValidEncoderPts640 otrPqr ∧ ValidChainParams otrPqr ∧ otrPqr.length < 2 ^ 31 :=
-  peerSpqrTightValidAt_of_w1ScopeAt hScAt hcur hpqr
-    (peerSpqrTightValid640_of_cliPqInputs_send hi hparse)
 
 /-- Domain invariant bundle for `spqr::send` at `links ≤ 4` and `postSt ≤ 286,196` bytes. -/
 structure SpqrSendTightDomain (F : ShaCompress)
@@ -212,7 +203,7 @@ theorem SpqrSendTightDomain.to707 {F : ShaCompress}
 /-! ## Tight `PqRatchetState::encode_to_vec` and 10-Stage `spqr::send` Envelopes -/
 
 /-- Large-class (`135,167 < req ≤ maxLen`) envelope for `PqRatchetState::encode_to_vec`. -/
-def PqEncodeLargeTightEnv (maxLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def PqEncodeLargeTightEnv (maxLen : Nat) (evs : List AllocEvent) : Prop :=
   nonFreeCount evs ≤ 1 ∧
   ∀ ev ∈ evs,
     (∀ r, ev = .alloc r → 135167 < r ∧ r ≤ maxLen) ∧
@@ -220,7 +211,7 @@ def PqEncodeLargeTightEnv (maxLen : Nat) (evs : List AllocEvent) : Prop :=
     (∀ al o n, ev ≠ .realloc al o n)
 
 /-- Combined small-or-large (`0 ≤ req ≤ maxLen`) envelope for `PqRatchetState::encode_to_vec`. -/
-def PqEncodeCapTightEnv (maxLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def PqEncodeCapTightEnv (maxLen : Nat) (evs : List AllocEvent) : Prop :=
   FineSmallEvs 1 143484 (min maxLen 135167) evs ∨ PqEncodeLargeTightEnv maxLen evs
 
 private theorem stepEvents_pqEncodeLarge_model_le {M : AllocCostModel} [HasFineReallocCredit M]
@@ -383,7 +374,7 @@ theorem pqRatchetStateEncodeToVecEnv_to_capTight {st : PqRatchetState} {maxLen :
 `decode_state`, `States::from_pb`, `States::send`, `chain_from`, optional `Chain::add_epoch` and
 `Chain::send_key`, `Chain::into_pb`, `Message::serialize`, `States::into_pb`, and
 `PqRatchetState::encode_to_vec` with `FreeOnlyEvs` teardown exits. -/
-def SpqrSendPartsTightGenEnv
+@[expose] def SpqrSendPartsTightGenEnv
     (Edec Efrom Esend Ecfrom Eadd Esk Ecinto Emsg Esinto Epq : List AllocEvent → Prop)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨

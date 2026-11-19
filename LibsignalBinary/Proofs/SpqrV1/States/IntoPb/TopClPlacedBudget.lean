@@ -9,24 +9,49 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.NoHeaderReceivedClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part2ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3bClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4bClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4cClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4dClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5eClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopClPlaced
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.NoHeaderReceivedClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part2ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3bClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4bClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4cClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4dClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5eClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopClPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part2Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3bBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4aBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4bBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4cBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4dBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part2PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3bPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5bPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5ePlacedBudget
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`): Top-Level `withLsCodeLoaded` `RustCliAllocBudget` Proof
@@ -37,7 +62,7 @@ under `[LibsignalPlacement]` and `RustCliAllocBudget M` with `withLsCodeLoaded` 
 `withLsCodeRoLoaded` contracts on `(blkPC_334).rebase` and `libsignalSessionLib.blockProgram lsmpl 334`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -48,7 +73,7 @@ namespace LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopClPlacedBudget
 open Arm64 Arm64.Obj ProofLib
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification
-  (IsLsBlockProg LibsignalPlacement libsignalSessionCode libsignalSessionLib
+  (IsLsBlockProg LibsignalPlacement libsignalSessionLib
    lsmpl lsρ withLsCodeLoaded)
 open CryptoVerification.LibsignalPublicApi.StoreKit
   (extract_withLsCodeRoLoaded withLsCodeRoLoaded)
@@ -96,13 +121,13 @@ open LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5eClPlacedBudget
   (Ct1SampledEnv ct1SampledEnv_of_parts states_into_pb_ct1Sampled_of_env_cl_placed)
 open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget (sessionMemcpyRegionBudgetSpec)
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 
 /-! ## 1. Exact Per-Variant Event Envelope & Non-Vacuity Witnesses -/
 
 /-- Exact binary allocation event envelope for `<spqr::v1::chunked::states::States>::into_pb`
     (Block `334`), dispatching to the tight arm envelope of each of the 11 `States` variants. -/
-def StatesIntoPbVariantExactEnv {F : ShaCompress}
+@[expose] def StatesIntoPbVariantExactEnv {F : ShaCompress}
     (st : States spqrPolyApi (spqrAuthApi F)) : List AllocEvent → Prop :=
   match st with
   | .keysUnsampled _ => KeysUnsampledEnv
@@ -118,7 +143,7 @@ def StatesIntoPbVariantExactEnv {F : ShaCompress}
   | .ct2Sampled s => Ct2SampledEnv s
 
 /-- Exact ghost-indexed allocation event envelope for `<States>::into_pb` (Block `334`). -/
-def StatesIntoPbExactEnv {F : ShaCompress}
+@[expose] def StatesIntoPbExactEnv {F : ShaCompress}
     (x : StatesIntoPbGhost F) : List AllocEvent → Prop :=
   StatesIntoPbVariantExactEnv x.st
 
@@ -201,7 +226,7 @@ abbrev statesIntoPbExactPlacedRoFreeSpecX (M : AllocCostModel)
 
 /-- `<States>::into_pb` (Block `334`) meets `withLsCodeLoaded lsmpl` of
     `statesIntoPbPlacedSpecOfEnv M A lim F Env` on `(blkPC_334).rebase`. -/
-def StatesIntoPbPlacedOkExtOfEnv [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def StatesIntoPbPlacedOkExtOfEnv [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : StatesIntoPbGhost F → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=
@@ -211,7 +236,7 @@ def StatesIntoPbPlacedOkExtOfEnv [LibsignalPlacement] (M : AllocCostModel)
 
 /-- `<States>::into_pb` (Block `334`) meets `withLsCodeRoLoaded lsmpl` of
     `statesIntoPbPlacedRoFreeSpecXOfEnv M A lim F Env` on `(blkPC_334).rebase`. -/
-def StatesIntoPbPlacedRoFreeOkXOfEnv [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def StatesIntoPbPlacedRoFreeOkXOfEnv [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : StatesIntoPbGhost F → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=
@@ -221,7 +246,7 @@ def StatesIntoPbPlacedRoFreeOkXOfEnv [LibsignalPlacement] (M : AllocCostModel)
 
 /-- `<States>::into_pb` (Block `334`) meets `withLsCodeLoaded lsmpl` of
     `statesIntoPbPlacedSpecXOfEnv M A lim F Env` on `libsignalSessionLib.blockProgram lsmpl 334`. -/
-def StatesIntoPbPlacedOkXOfEnv [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def StatesIntoPbPlacedOkXOfEnv [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : StatesIntoPbGhost F → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag2
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag24ClPlaced
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
@@ -23,7 +23,7 @@ Verifies tag arm 2 (`KeysSampled`, entry `+564`, non-inplace `+1568`) under `[Li
 with `withLsCl`-wrapped cross-block drops (`282`, `267`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -10,14 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Fine.PoolNeedLocks
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainOkComposePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainOkComposePlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.LitsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainOk -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.ParseArgsShape
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Placed Budgeted `main` Hop Composition with Read-Only `argv` and `NeedLocks`
@@ -27,7 +32,7 @@ Composes the Block-`617` `main` hop continuations (`step1`..`step6`) into
 retaining `((libcAddr + 3#64) ↦₈ 0#8)` (`__libc.need_locks = 0`) at `main` return.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -37,8 +42,8 @@ namespace LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib
 open CryptoVerification
-  (IsLsBlockProg LibsignalHooks LibsignalPlacement LibsignalRoLoaded libsignalMutatedBlocks
-   libsignalSessionExterns lsmpl)
+  (ExternsDistinctOnHooked IsLsBlockProg LibsignalHooks LibsignalPlacement
+   LibsignalRoLoaded libsignalMutatedBlocks lsmpl)
 open CryptoVerification.LibsignalTripleRatchetRepr (uuidTryParse)
 open CryptoVerification.RustHeap (allocFailedIn)
 open CryptoVerification.SignalSession (CliHooks Inputs libsignalSessionLib stdinCapBytes)
@@ -68,12 +73,12 @@ open VerifiedLibraries.Mallocng (mallocngAddrsOfPlacement)
 /-! ## Read-only pointer-indexed `argv` predicates -/
 
 /-- Read-only pointer-indexed C `argv` table at `a`. -/
-def argvAtROP : BitVec 64 → List (BitVec 64 × List (BitVec 8)) → SepProp
+@[expose] def argvAtROP : BitVec 64 → List (BitVec 64 × List (BitVec 8)) → SepProp
   | a, [] => a ↦₆₄ᵣ 0#64
   | a, (p, s) :: rest => (a ↦₆₄ᵣ p) ∗ cStrAtRO p s ∗ argvAtROP (a + 8#64) rest
 
 /-- Prefix of `argvAtROP` without the trailing NUL pointer slot. -/
-def argvAtROPPrefix : BitVec 64 → List (BitVec 64 × List (BitVec 8)) → SepProp
+@[expose] def argvAtROPPrefix : BitVec 64 → List (BitVec 64 × List (BitVec 8)) → SepProp
   | _, [] => emp
   | a, (p, s) :: ps => (a ↦₆₄ᵣ p) ∗ cStrAtRO p s ∗ argvAtROPPrefix (a + 8#64) ps
 
@@ -825,11 +830,11 @@ theorem b2_main_ok_tight_needLocks_placed [LibsignalPlacement] {CodeOk : Memory 
 
 /-- Construct a `LibsignalPlacement` instance with `lsmpl = mpl` from block placeability and
 distinct externs. -/
-@[instance_reducible]
+@[expose, instance_reducible]
 def libsignalPlacementOf (mpl : Obj.MultiPlacement)
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext : (libsignalSessionExterns.map mpl.ρ).Nodup) : LibsignalPlacement where
+    (hext : ExternsDistinctOnHooked mpl.ρ) : LibsignalPlacement where
   mpl := mpl
   block_placeable := hblk
   externsDistinct := hext

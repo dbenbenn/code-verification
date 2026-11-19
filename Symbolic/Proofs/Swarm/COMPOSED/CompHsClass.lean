@@ -26,7 +26,7 @@ Proves trace-entry disjointness and owner uniqueness for prekey records (`SPKAt.
 unobservability of Alice's KEM encapsulation coins (`not_pub_coins`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

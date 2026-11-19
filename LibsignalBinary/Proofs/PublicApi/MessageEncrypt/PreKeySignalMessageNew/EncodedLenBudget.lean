@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.SplitBudget
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.SplitBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.EncodedLenPfBudget
 
 /-!
@@ -20,7 +20,7 @@ Relocatable `[LibsignalPlacement]` wrapper establishing `SplitBudget.preKeyMsgEn
 (block `119`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

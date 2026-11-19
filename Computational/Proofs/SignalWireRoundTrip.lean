@@ -10,9 +10,10 @@ limitations under the License.
 module
 
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalRefinesDefs
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip
+public import Computational.Proofs.CryptoGames.SM.BucketAuthBridge -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.CryptoGames.SM.LibsignalGame
-public import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
+import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
 import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatements
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 
@@ -21,12 +22,11 @@ import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 
 **Checked by Lean.** Proves the restricted round trip `SignalRoundTripShort protoSignalCodec` and
 32-bit wire-length bound `SignalEncodeFits32 protoSignalCodec` (DEV-LS21), and instantiates
-`Refine.libsignal_refines` at `protoSignalCodec`.
--/
-
-@[expose] public section
+`Refine.libsignal_refines` at `protoSignalCodec`.-/
 
 namespace CryptoVerification.LibsignalSession
+public section
+
 
 open CryptoVerification.LibsignalProtoCodec
 
@@ -180,7 +180,7 @@ section Ideal
 instance encodableBitVec (n : ℕ) : Encodable (BitVec n) :=
   Encodable.ofEquiv (Fin (2 ^ n)) ⟨BitVec.toFin, BitVec.ofFin, fun _ => rfl, fun _ => rfl⟩
 
-def protoEquivProd : ProtoSignalMessage ≃
+@[expose] def protoEquivProd : ProtoSignalMessage ≃
     Option (List (BitVec 8)) × Option (BitVec 32) × Option (BitVec 32) ×
       Option (List (BitVec 8)) × Option (List (BitVec 8)) × Option (List (BitVec 8)) where
   toFun m := (m.ratchetKey, m.counter, m.previousCounter, m.ciphertext, m.pqRatchet, m.addresses)
@@ -213,11 +213,40 @@ theorem libsignal_refines_proto {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt] [S
   Refine.libsignal_refines P ℓ Dh encPt encT decT hX hdec
     (by rw [hP]; exact signalRoundTripShort_proto) hL (by rw [hP]; exact signalEncodeFits32_proto) hinj hdum hz hS idOf hid lam qep q hq32 δ hδ
 
+/-- Stage-2 `canon`-bucket refinement at prost's codec, lifting `Refine.libsignal_refines_bucket`. -/
+theorem libsignal_refines_proto_bucket {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    [Inhabited PQ] [SampleableType PQC] (P : Params PQ PQC) (hP : P.codec = protoSignalCodec)
+    (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+    (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
+    (hX : X25519RealizesDh P.C Dh encPt encT) (hdec : ∀ T, decT (encT T) = some T)
+    (hL : LengthsOk P ℓ)
+    (hinj : Function.Injective encT) (hdum : ∀ T, encT T ≠ dummyKey) (hz : ∀ x, Dh.dh x 0 = 0)
+    (hS : Corr.SpqrOffCorrect P.spqr) (idOf : Party → IdentityKey)
+    (hid : idOf .A = P.idA ∧ idOf .B = P.idB) (lam : Pt) (qep q : ℕ) (hq32 : q < 2 ^ 32) (δ : ℝ≥0∞)
+    (hδ : ∀ Q : Pt, 𝒟[($ᵗ BitVec 256 : ProbComp (BitVec 256))] {x | Dh.dh x Dh.base = Q} ≤ δ) :
+    ∀ A : LibAdv PQ PQC ℓ, SM.MakesAtMostQueries A q →
+      SM.hybridAdvantageR (libsignalSessionScheme P ℓ encPt lam) (2 + 1) qep
+          (configR1OnCurve (ratchetKeyAdmissible P.codec decT encT)) A ≤
+        SM.hybridAdvantage (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) (2 + 1) (qep + 1)
+            SM.Config.h1 (Refine.sim P ℓ Dh encT decT qep A)
+          + 2 * ∑ tL ∈ SM.admissibleLastLeakGuesses (2 + 1) ((qep + 1) + 1),
+              CryptoGames.SM.BucketAuthBridge.bucketAuthAdvantage
+                (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) (2 + 1) (qep + 1) tL
+                (SM.Thm1.challSim (2 + 1) (qep + 1) (Refine.sim P ℓ Dh encT decT qep A))
+          + 2 * LibsignalSim.forgedEpochStartSpuriousStepTerm P.C.F encPt Dh q
+          + 2 * LibsignalSim.spuriousStepTerm P.C.F encPt Dh q qep
+          + 2 * LibsignalSim.epoch0Term P ℓ encPt lam (ratchetKeyAdmissible P.codec decT encT) qep q A
+          + 2 * ((qep + 2) * (q + qep + 2) * δ) :=
+  Refine.libsignal_refines_bucket P ℓ Dh encPt encT decT hX hdec
+    (by rw [hP]; exact signalRoundTripShort_proto) hL (by rw [hP]; exact signalEncodeFits32_proto) hinj hdum hz hS idOf hid lam qep q hq32 δ hδ
+
 /-- SPQR switched off: empty state, empty messages, no salt. -/
-def spqrOff : Spqr Unit Unit :=
+@[expose] def spqrOff : Spqr Unit Unit :=
   ⟨fun _ _ => (), fun _ _ => some ((), none, []), fun _ _ => .ok ((), none), fun _ _ => false,
     fun _ _ => false⟩
 
 end LibsignalSM
+
+end
 
 end CryptoVerification.LibsignalSession

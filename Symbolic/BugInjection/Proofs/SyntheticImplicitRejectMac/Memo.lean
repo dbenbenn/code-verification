@@ -63,12 +63,6 @@ theorem spqrHeaded_litOf (bs : HwBytes) : spqrHeaded (litOf bs) = false := by
 
 theorem zeros8_len : zeros8.length = 8 := by decide
 
-private theorem msg38IrFast_len : msg38IrFast.length < 2 ^ 63 := by decide +kernel
-
-theorem msg38_ir_len : msg38_ir.length < 2 ^ 63 := by
-  rw [msg38_ir_eq_fast]
-  exact msg38IrFast_len
-
 def xIrMsg (tr₂ : ExecTrace) (stA : DY.Libsignal.TripleRatchet.TRState) (cl pq : Nat) : DY.Bytes :=
   DY.Concat.concat (CompPrefixInvEnc.encWire tr₂ stA cl pq) (litOf zeros8)
 
@@ -150,7 +144,7 @@ private theorem checkOuter_ir_fast :
   decide +kernel
 
 theorem outer_ir {r : Records} {p : PreKeyFields}
-    (hfits : compFits Witnesses.Cheval26SmallSubgroupHighBitComp.setup compI0 r)
+    (hfits : SetupMatches Witnesses.Cheval26SmallSubgroupHighBitComp.setup compI0 r)
     (hp : parsePreKeyWire msg38_ir = some p) :
     CompRPreKeyWire.PreKeyOuterMatches compI0 r msg38_ir p := by
   refine CompFitsNames.preKeyOuterMatches_of_check hfits hp ?_
@@ -494,7 +488,7 @@ private theorem restFnEntry_rv38HB_split {blk₁ : List MachineEvent}
         (CompC3RestFn38HBA.lookupShape S g (CompC3RestFn38HB.allTerms38 tr₁ tr₂ r.bob o cl))
         CompC3RestFn38HBA.Rv38HB S g y) := by
   intro tr₁ o m₀ tr₂ pq stA ms ms' x₀ hc hmr hvis hpre hmid hpost hm₀ memo preMemo newMemo
-  have hfits : compFits Witnesses.Cheval26SmallSubgroupHighBitComp.setup compI0 r :=
+  have hfits : SetupMatches Witnesses.Cheval26SmallSubgroupHighBitComp.setup compI0 r :=
     CompFitsNames.compFits_base hfitsP
   have hNe : r.alice ≠ r.bob := hfits.1.1
   have hA : r.alice = "alice" := CompFitsNames.compFits_alice hfitsP

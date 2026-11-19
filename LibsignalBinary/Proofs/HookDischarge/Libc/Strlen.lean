@@ -14,9 +14,12 @@ public import VerifiedLibraries.Musl.Proofs.MemOps
 public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Common -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.HookDischarge.RustStd.Common -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
 public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Byte-Exact `strlen` Hook Discharge (`LibsignalBinary.Proofs.HookDischarge.Libc.Strlen`)

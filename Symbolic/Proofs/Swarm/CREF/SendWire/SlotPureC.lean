@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.SendWire.PendingPure
-public import Symbolic.Proofs.Swarm.CREF.SendWire.SlotPureA
+public import Symbolic.Proofs.Swarm.CREF.SendWire.PendingPure -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.SendWire.SlotPureA
 import Symbolic.Proofs.Swarm.CREF.Initiate.TransferPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.SendPA
@@ -31,7 +31,7 @@ Defines `SndPendingRetOut` and proves `matchedPrefix_snoc_encrypt_wrap`,
 pending-prekey sends.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

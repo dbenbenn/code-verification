@@ -18,9 +18,12 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.Crypto
 import Computational.Proofs.E2E.ComposedBinaryLinkV1
 import Computational.Proofs.SpecLemmas.Assumptions.KemCorrect
 import Computational.Tests.NonVacuity.KeyInd1KeyRoNonVac
+import LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Math.Edwards
+import LibsignalBinary.Proofs.HookDischarge.CryptoAes.Aes256Roundtrip
 import LibsignalBinary.Proofs.SignalSession.PqModelRun
 import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhModelLink
 import LibsignalBinary.Proofs.SpecLemmas.SignalPqxdh.Model
+import Mathlib.Algebra.Field.ZMod
 import ToMathlib.MeasureTheory.DiscreteInstances
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.Constructions.SampleableType.Measure
@@ -34,9 +37,10 @@ Joint satisfiability witness for `SessionSecure`, `LibsignalCliPqSecure`, and th
 specialization of `CliPqxdhSecurityFor` over the Curve25519 subgroup of prime order
 `l25519 = 2 ^ 252 + 27742317777372353535851937790883648493`. The carrier
 `Pt25519 := Fin (halfL25519 + 1)` of size `(l25519 + 1) / 2 > 2 ^ 251` represents `0` together
-with the `(l25519 - 1) / 2` x-only `{±P}` pairs, with basepoint `base25519 = 9`. RFC 7748 clamped
-scalars act injectively on `Pt25519` via `absZMod (c * Q)`, which gives `DhKerUniform dh25519` and
-the point-fiber bound `δ = (1 : ℝ≥0∞) / 2 ^ 250`.
+with the `(l25519 - 1) / 2` x-only `{±[q]B}` pairs on Curve25519, with basepoint `base25519 = 1`
+(Montgomery coordinate `u = 9`). RFC 7748 clamped scalars act injectively on `Pt25519` via
+`absZMod (c * Q)`, which embeds equivariantly into `dh255` (`ModelPrimsWitness255`) and gives
+`DhKerUniform dh25519` and the point-fiber bound `δ = (1 : ℝ≥0∞) / 2 ^ 250`.
 -/
 
 public section
@@ -52,13 +56,28 @@ open CryptoGames CryptoGames.LibsignalSM Ratchet LibsignalInst LibsignalSession 
   CryptoVerification.SignalSession CryptoGames.LibsignalSM.Proofs.Correctness
 open Computational.Proofs.SignalPqxdh.XeddsaRom.PrimeL25519
 open Computational.Tests.XeddsaRomNonVac
-open SpecTests.SignalPqxdh (cwfC cwfC_clamp cwfC_word_eq uniform256_map_bool_le
-  cwfPrimitives cwfPrimitives_kem_coll_bound fitBytes_length)
-open _root_.SignalPqxdh (fitBytes word256ToBytes clampScalar25519 sampleScalar32 sampleBytes32
-  sampleKemKeyGen isCanonicalRef xeddsaVerifyRef isValidDhTripleRef)
+open SpecTests.SignalPqxdh (cwfC cwfC_clamp cwfC_word_eq)
+open _root_.SignalPqxdh (word256ToBytes clampScalar25519)
+open VerifiedLibraries.Common (
+  edOrderL fpInv recoverXEven EdPoint edZero edBasepoint edOnCurve edNeg edSmul
+)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.CurveSpecs (montToEdwards)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4RefBridge (
+  montLiftEd edSmul_edNeg
+)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Math.Edwards (
+  edOnCurve_edBasepoint edOnCurve_edNeg edNatSmul edOnCurve_edNatSmul
+  edNatSmul_edZero edNatSmul_one edNatSmul_mul edSmul_eq_edNatSmul
+  edSmul_edOrderL_edBasepoint edOrderL_lt_two_pow_256
+)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Math.Birational (
+  edToMontU edToMontU_lt edToMontU_edBasepoint edBasepoint_ne_edZero
+)
+
+attribute [local irreducible] fpInv recoverXEven montLiftEd montToEdwards edSmul
 
 /-- Prime-order x-only subgroup carrier for Curve25519 (`0` for the identity and `1 .. halfL25519`
-for the `(l25519 - 1) / 2` non-identity `{±P}` pairs in `ZMod l25519`). -/
+for the `(l25519 - 1) / 2` non-identity `{±[q]B}` pairs on Curve25519). -/
 abbrev Pt25519 : Type := Fin (halfL25519 + 1)
 
 theorem two_pow_251_lt_card_pt25519 : 2 ^ 251 < Fintype.card Pt25519 := by
@@ -66,9 +85,9 @@ theorem two_pow_251_lt_card_pt25519 : 2 ^ 251 < Fintype.card Pt25519 := by
   unfold halfL25519 l25519
   decide
 
-/-- Curve25519 Montgomery basepoint `u = 9` in `Pt25519`. -/
+/-- Generator `[1]B` (Montgomery `u = 9`) in `Pt25519`. -/
 def base25519 : Pt25519 :=
-  ⟨9, by unfold halfL25519 l25519; decide⟩
+  ⟨1, by unfold halfL25519 l25519; decide⟩
 
 private theorem pt25519_val_le_half (Q : Pt25519) : Q.val ≤ halfL25519 :=
   Nat.lt_succ_iff.mp Q.isLt
@@ -91,16 +110,83 @@ private theorem pt25519_cast_ne_zero {Q : Pt25519} (hQ : Q ≠ 0) :
   rw [ZMod.val_natCast_of_lt (pt25519_val_lt_l25519 Q), ZMod.val_zero] at hval
   exact hQ (Fin.ext (by simpa using hval))
 
-/-- 32-byte little-endian encoding of `Q : Pt25519`. -/
+/-- Embeds `Q : Pt25519` into `BitVec 255` via `0` at `0` and the Curve25519 Montgomery
+`u`-coordinate `edToMontU ([Q.val] edBasepoint)` for `Q ≠ 0`. -/
+def ptToBv255 (Q : Pt25519) : BitVec 255 :=
+  if Q.val == 0 then 0#255
+  else BitVec.ofNat 255 (edToMontU (edNatSmul Q.val edBasepoint))
+
+/-- 32-byte little-endian Curve25519 Montgomery encoding of `Q : Pt25519`. -/
 def encPt25519 (Q : Pt25519) : List (BitVec 8) :=
-  ofU8 (bytesOfNatLE 32 Q.val)
+  encPt255 (ptToBv255 Q)
 
-def encT25519 (Q : Pt25519) : PublicKey := ⟨vec32 (encPt25519 Q)⟩
+def encT25519 (Q : Pt25519) : PublicKey :=
+  encT255 (ptToBv255 Q)
 
-/-- Partial inverse of `encT25519` accepting encodings below `halfL25519 + 1`. -/
+private def findPt25519From (f : Pt25519 → PublicKey) (pk : PublicKey) (cur fuel : ℕ) :
+    Option Pt25519 :=
+  match fuel with
+  | 0 => none
+  | fuel' + 1 =>
+    if h : cur < halfL25519 + 1 then
+      let Q : Pt25519 := ⟨cur, h⟩
+      if f Q == pk then some Q else findPt25519From f pk (cur + 1) fuel'
+    else none
+
+/-- Constructive bounded search inverting an injective `Pt25519 → PublicKey` encoding.
+Scans `Pt25519 = Fin (halfL25519 + 1)` (`≈ 2 ^ 251` values) upward from `0`; computable, though
+practical to evaluate only on small exponents (infeasible to exhaust on arbitrary keys). -/
+def findPt25519 (f : Pt25519 → PublicKey) (pk : PublicKey) : Option Pt25519 :=
+  findPt25519From f pk 0 (halfL25519 + 1)
+
+private theorem findPt25519From_sound {f : Pt25519 → PublicKey} {pk : PublicKey} :
+    ∀ {cur fuel : ℕ} {Q : Pt25519}, findPt25519From f pk cur fuel = some Q → f Q = pk
+  | _, 0, _, h => by cases h
+  | cur, fuel' + 1, Q, h => by
+    unfold findPt25519From at h
+    split at h
+    · next hcur =>
+      dsimp only at h
+      cases heq : f ⟨cur, hcur⟩ == pk
+      · rw [heq] at h
+        simp only [Bool.false_eq_true, ↓reduceIte] at h
+        exact findPt25519From_sound h
+      · rw [heq] at h
+        simp only [↓reduceIte, Option.some.injEq] at h
+        exact h ▸ beq_iff_eq.mp heq
+    · cases h
+
+private theorem findPt25519From_apply {f : Pt25519 → PublicKey} (hf : Function.Injective f)
+    (Q : Pt25519) :
+    ∀ (cur fuel : ℕ), cur ≤ Q.val → Q.val < cur + fuel →
+      findPt25519From f (f Q) cur fuel = some Q
+  | _, 0, _, hlt => by omega
+  | cur, fuel' + 1, hge, hlt => by
+    have hcur : cur < halfL25519 + 1 := lt_of_le_of_lt hge Q.isLt
+    simp only [findPt25519From, hcur, ↓reduceDIte]
+    cases heq : f ⟨cur, hcur⟩ == f Q
+    · simp only [Bool.false_eq_true, ↓reduceIte]
+      have hne : cur ≠ Q.val := fun hc => by
+        have h : (f ⟨cur, hcur⟩ == f Q) = true := beq_iff_eq.mpr (by subst hc; rfl)
+        rw [heq] at h; cases h
+      exact findPt25519From_apply hf Q (cur + 1) fuel' (by omega) (by omega)
+    · simp only [↓reduceIte]
+      exact congrArg some (hf (beq_iff_eq.mp heq))
+
+theorem findPt25519_apply {f : Pt25519 → PublicKey} (hf : Function.Injective f) (Q : Pt25519) :
+    findPt25519 f (f Q) = some Q :=
+  findPt25519From_apply hf Q 0 (halfL25519 + 1) (Nat.zero_le _) (by simpa using Q.isLt)
+
+/-- Exact characterization of `findPt25519` for injective `f`. -/
+theorem findPt25519_eq_some_iff {f : Pt25519 → PublicKey} (hf : Function.Injective f)
+    (pk : PublicKey) (Q : Pt25519) :
+    findPt25519 f pk = some Q ↔ f Q = pk :=
+  ⟨findPt25519From_sound, fun h => h ▸ findPt25519_apply hf Q⟩
+
+/-- Left inverse of `encT25519` on `PublicKey` via `findPt25519` (computable, though practical to
+evaluate only on small `Pt25519` exponents since `halfL25519 + 1 ≈ 2 ^ 251`). -/
 def decT25519 (pk : PublicKey) : Option Pt25519 :=
-  let n := natOfBytesLE (vecU8 pk.1)
-  if h : n < halfL25519 + 1 then some ⟨n, h⟩ else none
+  findPt25519 encT25519 pk
 
 /-- Clamped x-only prime-subgroup DH action on `Pt25519` over `ZMod l25519`. -/
 def dh25519 : DHFun (BitVec 256) Pt25519 where
@@ -109,78 +195,137 @@ def dh25519 : DHFun (BitVec 256) Pt25519 where
     ⟨absZMod (clampedScalarZMod (word256ToBytes k) * (Q.val : ZMod l25519)),
      Nat.lt_succ_of_le (absZMod_le_half _)⟩
 
-private theorem toU8_encPt25519_eq_encodeMontZMod (Q : Pt25519) :
-    toU8 (encPt25519 Q) = encodeMontZMod (Q.val : ZMod l25519) := by
-  rw [encPt25519, toU8_ofU8, encodeMontZMod, absZMod_pt25519_cast]
+private theorem if_false_eq_19 {α : Sort _} {p : Prop} [Decidable p] (h : ¬ p) (a b : α) :
+    (if p then a else b) = b := by simp [h]
 
-private theorem encPt25519_length (Q : Pt25519) : (encPt25519 Q).length = 32 := by
-  simp [encPt25519, bytesOfNatLE_length]
+private theorem p25519_lt_two_pow_255_19 : VerifiedLibraries.Common.p25519 < 2 ^ 255 := by
+  unfold VerifiedLibraries.Common.p25519; decide
 
-private theorem encPt25519_zero : encPt25519 0 = List.replicate 32 0#8 := by
-  unfold encPt25519
-  rw [Fin.val_zero, bytesOfNatLE_zero]
-  rfl
+private theorem zmod_val_lt_two_pow_256_19 (z : ZMod l25519) : z.val < 2 ^ 256 := by
+  have hl : l25519 < 2 ^ 256 := by unfold l25519; decide
+  exact lt_trans z.val_lt hl
 
-private theorem encPt25519_base : encPt25519 dh25519.base = x25519Base := by
-  change ofU8 (bytesOfNatLE 32 9) = x25519Base
-  decide
+private theorem edNatSmul_edOrderL_edBasepoint : edNatSmul edOrderL edBasepoint = edZero := by
+  rw [← edSmul_eq_edNatSmul edOrderL_lt_two_pow_256 edOnCurve_edBasepoint]
+  exact edSmul_edOrderL_edBasepoint
+
+private theorem edNatSmul_edOrderL_edNatSmul_edBasepoint (n : Nat) :
+    edNatSmul edOrderL (edNatSmul n edBasepoint) = edZero := by
+  rw [← edNatSmul_mul edOrderL n edOnCurve_edBasepoint, Nat.mul_comm,
+    edNatSmul_mul n edOrderL edOnCurve_edBasepoint, edNatSmul_edOrderL_edBasepoint,
+    edNatSmul_edZero]
+
+private theorem edNatSmul_pt25519_ne_edZero {Q : Pt25519} (hQ : Q ≠ 0) :
+    edNatSmul Q.val edBasepoint ≠ edZero := by
+  have hval : Q.val = (Q.val : ZMod l25519).val :=
+    (ZMod.val_natCast_of_lt (pt25519_val_lt_l25519 Q)).symm
+  rw [hval]
+  exact edNatSmul_ne_edZero_of_zmod_ne_zero edOnCurve_edBasepoint edBasepoint_ne_edZero
+    edNatSmul_edOrderL_edBasepoint (pt25519_cast_ne_zero hQ)
 
 private theorem base25519_ne_zero : dh25519.base ≠ 0 := by
   intro h
   have hv := congrArg Fin.val h
   rw [Fin.val_zero] at hv
-  exact absurd hv (by decide : (9 : ℕ) ≠ 0)
+  exact absurd hv (by decide : (1 : ℕ) ≠ 0)
 
 private theorem baseZMod_ne_zero : (dh25519.base.val : ZMod l25519) ≠ 0 :=
   pt25519_cast_ne_zero base25519_ne_zero
 
-private theorem toU8_x25519Base_eq_encodeMontZMod_base :
-    toU8 x25519Base = encodeMontZMod (dh25519.base.val : ZMod l25519) := by
-  rw [← encPt25519_base, toU8_encPt25519_eq_encodeMontZMod]
+private theorem ptToBv255_zero : ptToBv255 0 = 0#255 := rfl
 
-private theorem vecU8_encT25519 (Q : Pt25519) :
-    vecU8 (encT25519 Q).1 = bytesOfNatLE 32 Q.val := by
-  simp [encT25519, vecU8, vec32, encPt25519, toU8_ofU8]
+private theorem ptToBv255_of_ne_zero {Q : Pt25519} (hQ : Q ≠ 0) :
+    ptToBv255 Q = BitVec.ofNat 255 (edToMontU (edNatSmul Q.val edBasepoint)) := by
+  have hne : (Q.val == 0) = false := beq_eq_false_iff_ne.mpr fun h0 => hQ (Fin.ext h0)
+  unfold ptToBv255
+  exact if_false_eq_19 (by rw [hne]; decide) _ _
 
-private theorem natOfBytesLE_vecU8_encT25519 (Q : Pt25519) :
-    natOfBytesLE (vecU8 (encT25519 Q).1) = Q.val := by
-  rw [vecU8_encT25519, natOfBytesLE_bytesOfNatLE]
-  exact Nat.mod_eq_of_lt (lt_trans (pt25519_val_lt_two_pow_252 Q) (by decide))
+private theorem ptToBv255_base : ptToBv255 dh25519.base = dh255.base := by
+  rw [ptToBv255_of_ne_zero base25519_ne_zero, dh255_base_eq]
+  change BitVec.ofNat 255 (edToMontU (edNatSmul 1 edBasepoint)) = 9#255
+  rw [edNatSmul_one edOnCurve_edBasepoint, edToMontU_edBasepoint]
 
-theorem decT25519_encT25519 (Q : Pt25519) : decT25519 (encT25519 Q) = some Q := by
-  unfold decT25519
-  dsimp only
-  simp [natOfBytesLE_vecU8_encT25519, Q.isLt]
+private theorem ptToBv255_ne_zero {Q : Pt25519} (hQ : Q ≠ 0) : ptToBv255 Q ≠ 0 := by
+  intro h0
+  rw [ptToBv255_of_ne_zero hQ] at h0
+  rcases liftCanon255_ofNat_edToMontU (edOnCurve_edNatSmul Q.val edOnCurve_edBasepoint)
+    (edNatSmul_pt25519_ne_edZero hQ) (edNatSmul_edOrderL_edNatSmul_edBasepoint Q.val)
+    with ⟨P, hP, _⟩
+  rw [h0, liftCanon255_zero] at hP
+  cases hP
 
-theorem encT25519_inj : Function.Injective encT25519 := by
-  intro a b h
-  exact Option.some.inj ((decT25519_encT25519 a).symm.trans (by rw [h, decT25519_encT25519]))
+private theorem ptToBv255_inj : Function.Injective ptToBv255 := by
+  intro Q1 Q2 h
+  by_cases h1 : Q1 = 0
+  · subst h1
+    by_cases h2 : Q2 = 0
+    · exact h2.symm
+    · exact absurd h.symm (ptToBv255_ne_zero h2)
+  · by_cases h2 : Q2 = 0
+    · subst h2
+      exact absurd h (ptToBv255_ne_zero h1)
+    · rw [ptToBv255_of_ne_zero h1, ptToBv255_of_ne_zero h2] at h
+      have hu1 : edToMontU (edNatSmul Q1.val edBasepoint) < 2 ^ 255 :=
+        lt_trans (edToMontU_lt _) p25519_lt_two_pow_255_19
+      have hu2 : edToMontU (edNatSmul Q2.val edBasepoint) < 2 ^ 255 :=
+        lt_trans (edToMontU_lt _) p25519_lt_two_pow_255_19
+      have hu_eq : edToMontU (edNatSmul Q1.val edBasepoint) =
+          edToMontU (edNatSmul Q2.val edBasepoint) := by
+        have ht := congrArg BitVec.toNat h
+        rwa [BitVec.toNat_ofNat, BitVec.toNat_ofNat,
+          Nat.mod_eq_of_lt hu1, Nat.mod_eq_of_lt hu2] at ht
+      have hv1 : Q1.val = (Q1.val : ZMod l25519).val :=
+        (ZMod.val_natCast_of_lt (pt25519_val_lt_l25519 Q1)).symm
+      have hv2 : Q2.val = (Q2.val : ZMod l25519).val :=
+        (ZMod.val_natCast_of_lt (pt25519_val_lt_l25519 Q2)).symm
+      have hu_zmod : edToMontU (edNatSmul (Q1.val : ZMod l25519).val edBasepoint) =
+          edToMontU (edNatSmul (Q2.val : ZMod l25519).val edBasepoint) :=
+        (congrArg (fun n => edToMontU (edNatSmul n edBasepoint)) hv1.symm).trans
+          (hu_eq.trans (congrArg (fun n => edToMontU (edNatSmul n edBasepoint)) hv2))
+      have hpm := (edToMontU_edNatSmul_eq_iff edOnCurve_edBasepoint edBasepoint_ne_edZero
+        edNatSmul_edOrderL_edBasepoint (pt25519_cast_ne_zero h1) (pt25519_cast_ne_zero h2)).mp
+        hu_zmod
+      have habs := (absZMod_eq_iff _ _).mpr hpm
+      rw [absZMod_pt25519_cast, absZMod_pt25519_cast] at habs
+      exact Fin.ext habs
 
-theorem encPt25519_inj : Function.Injective encPt25519 := by
-  intro a b h
-  exact encT25519_inj (by simp only [encT25519, h])
+theorem encPt25519_inj : Function.Injective encPt25519 :=
+  encPt255_inj.comp ptToBv255_inj
 
-theorem encT25519_ne_dummyKey (Q : Pt25519) : encT25519 Q ≠ dummyKey := by
-  intro h
-  have h1 := congrArg (fun pk : PublicKey => decide (natOfBytesLE (vecU8 pk.1) < 2 ^ 252)) h
-  rw [natOfBytesLE_vecU8_encT25519, decide_eq_true (pt25519_val_lt_two_pow_252 Q)] at h1
-  have h2 : decide (natOfBytesLE (vecU8 dummyKey.1) < 2 ^ 252) = false := by decide
-  rw [h2] at h1
-  exact Bool.noConfusion h1
+theorem encT25519_inj : Function.Injective encT25519 :=
+  encT255_inj.comp ptToBv255_inj
 
-private theorem x25519ZMod_len (a u : List UInt8) : (x25519ZMod a u).length = 32 :=
-  encodeMontZMod_len _
+theorem decT25519_encT25519 (Q : Pt25519) : decT25519 (encT25519 Q) = some Q :=
+  findPt25519_apply encT25519_inj Q
 
-private theorem toU8_encPt25519_dh25519 (k : BitVec 256) (Q : Pt25519) :
-    toU8 (encPt25519 (dh25519.dh k Q)) =
-      x25519ZMod (word256ToBytes k) (toU8 (encPt25519 Q)) := by
-  rw [toU8_encPt25519_eq_encodeMontZMod Q, x25519ZMod_encodeMontZMod]
-  simp only [encPt25519, dh25519, toU8_ofU8, encodeMontZMod]
+open Classical in
+/-- `decT25519` agrees pointwise with the `Exists.choose` definition. -/
+theorem decT25519_eq_classical :
+    decT25519 = fun pk : PublicKey =>
+      if h : ∃ Q : Pt25519, encT25519 Q = pk then some h.choose else none := by
+  funext pk
+  split_ifs with h
+  · exact (findPt25519_eq_some_iff encT25519_inj pk h.choose).mpr h.choose_spec
+  · cases hd : decT25519 pk with
+    | none => rfl
+    | some Q =>
+      exact absurd ⟨Q, (findPt25519_eq_some_iff encT25519_inj pk Q).mp hd⟩ h
 
-private theorem encPt25519_dh25519 (k : BitVec 256) (Q : Pt25519) :
-    encPt25519 (dh25519.dh k Q) =
-      ofU8 (x25519ZMod (word256ToBytes k) (toU8 (encPt25519 Q))) := by
-  rw [← ofU8_toU8 (encPt25519 (dh25519.dh k Q)), toU8_encPt25519_dh25519]
+theorem encT25519_ne_dummyKey (Q : Pt25519) : encT25519 Q ≠ dummyKey :=
+  encT255_ne_dummyKey (ptToBv255 Q)
+
+private theorem encPt25519_length (Q : Pt25519) : (encPt25519 Q).length = 32 :=
+  encPt255_length (ptToBv255 Q)
+
+private theorem encPt25519_zero : encPt25519 0 = List.replicate 32 0#8 := by
+  unfold encPt25519
+  rw [ptToBv255_zero]
+  exact encPt255_zero
+
+private theorem encPt25519_base : encPt25519 dh25519.base = x25519Base := by
+  unfold encPt25519
+  rw [ptToBv255_base]
+  exact encPt255_base
 
 private theorem dh25519_dh_val (k : BitVec 256) (Q : Pt25519) :
     (dh25519.dh k Q).val =
@@ -203,19 +348,69 @@ theorem dh25519_ne_zero (k : BitVec 256) (Q : Pt25519) (hQ : Q ≠ 0) :
   have hmul := (absZMod_eq_zero_iff _).mp hval
   exact mul_ne_zero (clampedScalarZMod_ne_zero (word256ToBytes k)) (pt25519_cast_ne_zero hQ) hmul
 
+private theorem ptToBv255_dh25519 (k : BitVec 256) (Q : Pt25519) :
+    ptToBv255 (dh25519.dh k Q) = dh255.dh k (ptToBv255 Q) := by
+  by_cases hQ : Q = 0
+  · subst hQ
+    rw [dh25519_zero, ptToBv255_zero]
+    exact (dh255_zero k).symm
+  · have hdh_ne : dh25519.dh k Q ≠ 0 := dh25519_ne_zero k Q hQ
+    let c := clampedScalarZMod (word256ToBytes k)
+    let z : ZMod l25519 := c * (Q.val : ZMod l25519)
+    have hz_ne : z ≠ 0 := mul_ne_zero (clampedScalarZMod_ne_zero _) (pt25519_cast_ne_zero hQ)
+    let Qd := dh25519.dh k Q
+    have hQd_ne : Qd ≠ 0 := hdh_ne
+    have habs_Qd : absZMod (Qd.val : ZMod l25519) = absZMod z :=
+      (absZMod_pt25519_cast Qd).trans (dh25519_dh_val k Q)
+    have hQd_pm : (Qd.val : ZMod l25519) = z ∨ (Qd.val : ZMod l25519) = -z :=
+      (absZMod_eq_iff _ _).mp habs_Qd
+    have hQd_val : Qd.val = (Qd.val : ZMod l25519).val :=
+      (ZMod.val_natCast_of_lt (pt25519_val_lt_l25519 Qd)).symm
+    have hlhs_u : edToMontU (edNatSmul Qd.val edBasepoint) =
+        edToMontU (edNatSmul z.val edBasepoint) :=
+      (congrArg (fun n => edToMontU (edNatSmul n edBasepoint)) hQd_val).trans
+        ((edToMontU_edNatSmul_eq_iff edOnCurve_edBasepoint edBasepoint_ne_edZero
+          edNatSmul_edOrderL_edBasepoint (pt25519_cast_ne_zero hQd_ne) hz_ne).mpr hQd_pm)
+    have hlhs : ptToBv255 Qd = BitVec.ofNat 255 (edToMontU (edNatSmul z.val edBasepoint)) :=
+      (ptToBv255_of_ne_zero hQd_ne).trans (congrArg (BitVec.ofNat 255) hlhs_u)
+    have hR_on := edOnCurve_edNatSmul Q.val edOnCurve_edBasepoint
+    have hR_ne := edNatSmul_pt25519_ne_edZero hQ
+    have hR_L := edNatSmul_edOrderL_edNatSmul_edBasepoint Q.val
+    rcases liftCanon255_ofNat_edToMontU hR_on hR_ne hR_L with ⟨P, hP, hpm⟩
+    have hQ_val : Q.val = (Q.val : ZMod l25519).val :=
+      (ZMod.val_natCast_of_lt (pt25519_val_lt_l25519 Q)).symm
+    have hrhs1 : dh255.dh k (ptToBv255 Q) =
+        BitVec.ofNat 255 (edToMontU (edNatSmul c.val P)) :=
+      (congrArg (dh255.dh k) (ptToBv255_of_ne_zero hQ)).trans (dh255_of_liftCanon (k := k) hP)
+    have hrhs_u : edToMontU (edNatSmul c.val P) = edToMontU (edNatSmul z.val edBasepoint) := by
+      have hmul_u : edToMontU (edNatSmul c.val (edNatSmul Q.val edBasepoint)) =
+          edToMontU (edNatSmul z.val edBasepoint) :=
+        (congrArg (fun n => edToMontU (edNatSmul c.val (edNatSmul n edBasepoint))) hQ_val).trans
+          (congrArg edToMontU (edNatSmul_zmod_mul edOnCurve_edBasepoint
+            edNatSmul_edOrderL_edBasepoint c (Q.val : ZMod l25519))).symm
+      rcases hpm with rfl | rfl
+      · exact hmul_u
+      · have hneg : edNatSmul c.val (edNeg (edNatSmul Q.val edBasepoint)) =
+            edNeg (edNatSmul c.val (edNatSmul Q.val edBasepoint)) := by
+          rw [← edSmul_eq_edNatSmul (zmod_val_lt_two_pow_256_19 c) (edOnCurve_edNeg hR_on),
+            edSmul_edNeg (zmod_val_lt_two_pow_256_19 c) hR_on,
+            edSmul_eq_edNatSmul (zmod_val_lt_two_pow_256_19 c) hR_on]
+        exact (congrArg edToMontU hneg).trans
+          ((edToMontU_edNeg (edOnCurve_edNatSmul c.val hR_on)).trans hmul_u)
+    exact hlhs.trans ((congrArg (BitVec.ofNat 255) hrhs_u.symm).trans hrhs1.symm)
+
 theorem dh25519_commutes : dh25519.Commutes := by
   intro a b
-  have h : toU8 (encPt25519 (dh25519.dh a (dh25519.dh b dh25519.base))) =
-      toU8 (encPt25519 (dh25519.dh b (dh25519.dh a dh25519.base))) := by
-    rw [toU8_encPt25519_dh25519, toU8_encPt25519_dh25519,
-        toU8_encPt25519_dh25519, toU8_encPt25519_dh25519,
-        toU8_encPt25519_eq_encodeMontZMod,
-        x25519ZMod_encodeMontZMod, x25519ZMod_encodeMontZMod,
-        x25519ZMod_encodeMontZMod, x25519ZMod_encodeMontZMod,
-        mul_left_comm]
-  apply encPt25519_inj
-  have h1 := congrArg ofU8 h
-  rwa [ofU8_toU8, ofU8_toU8] at h1
+  apply ptToBv255_inj
+  have h1 : ptToBv255 (dh25519.dh a (dh25519.dh b dh25519.base)) =
+      dh255.dh a (dh255.dh b dh255.base) :=
+    (ptToBv255_dh25519 a _).trans (congrArg (dh255.dh a)
+      ((ptToBv255_dh25519 b _).trans (congrArg (dh255.dh b) ptToBv255_base)))
+  have h2 : ptToBv255 (dh25519.dh b (dh25519.dh a dh25519.base)) =
+      dh255.dh b (dh255.dh a dh255.base) :=
+    (ptToBv255_dh25519 b _).trans (congrArg (dh255.dh b)
+      ((ptToBv255_dh25519 a _).trans (congrArg (dh255.dh a) ptToBv255_base)))
+  exact h1.trans ((dh255_commutes a b).trans h2.symm)
 
 theorem dh25519_dh_inj (a : BitVec 256) : Function.Injective (dh25519.dh a) := by
   intro Q Q' h
@@ -324,48 +519,21 @@ theorem dh25519_base_fiber_prob_le (Q : Pt25519) :
       rw [one_div, show (2 : ℝ≥0∞) ^ 256 = 2 ^ 250 * 2 ^ 6 by rw [← pow_add],
           ENNReal.inv_mul_cancel_left (by simp) (by simp)]
 
-/-- `Crypto` hooks backed by `x25519ZMod` over `ZMod l25519`. -/
-def c25519 : Crypto where
-  F := fun st _ => st
-  E := fun _ b => b
-  D := fun _ b => b
-  X := fun s u => u8Vec 32 (x25519ZMod (vecU8 s) (vecU8 u))
-  pubKey := fun s => u8Vec 32 (x25519ZMod (vecU8 s) (toU8 x25519Base))
+/-- `Crypto` witness backed by Curve25519 scalar multiplication (`c255`), FIPS 180-4 SHA-256
+(`sha256Compress`), and FIPS 197 AES-256 (`aes256Enc`, `aes256Dec`). -/
+@[expose] def c25519 : Crypto :=
+  { c255 with
+    F := sha256Compress
+    E := CryptoGames.AES256.aes256Enc
+    D := CryptoGames.AES256.aes256Dec }
 
-/-- `PqxdhPrims` witness over `ZMod l25519` with canonical Montgomery check `isCanonMont32`. -/
-def Q25519 : PqxdhPrims :=
-  { Q255 with
-    montToEd := fun u s =>
-      if s == 0#8 && isCanonMont32 (vecU8 u) then
-        some (List.Vector.replicate 160 0#8)
-      else none }
+/-- 4-field `PqxdhPrims` witness (`Q255`). -/
+abbrev Q25519 : PqxdhPrims := Q255
 
-def W25519 : PEParams := ⟨c25519, Q25519⟩
+@[expose] def W25519 : PEParams := ⟨c25519, Q25519⟩
 
-/-- Pre-DDH `UnreachedPqxdhPrimitives` witness over `ZMod l25519` (`pow8 = pow8ZMod`). -/
-def X25519_pre : UnreachedPqxdhPrimitives :=
-  { X255_pre with
-    sigPkGen := fun a => vecU8 (c25519.pubKey (Ratchet.clampScalar (u8Vec 32 a)))
-    pow8 := pow8ZMod }
-
-/-- `UnreachedPqxdhPrimitives` witness with `isValidDhTriple` pinned to `isValidDhTripleRef`. -/
-noncomputable def X25519 : UnreachedPqxdhPrimitives :=
-  { X25519_pre with
-    isValidDhTriple := fun A B Z =>
-      @decide (isValidDhTripleRef (modelPrims X25519_pre W25519) A B Z)
-        (Classical.propDecidable _) }
-
-private theorem fitBytesRef32_of_len {pk : List UInt8} (hpk : pk.length = 32) :
-    _root_.SignalPqxdh.fitBytesRef 32 pk = pk := by
-  simp [_root_.SignalPqxdh.fitBytesRef, hpk]
-
-private theorem vecU8_vec32_of_len (bs : List (BitVec 8)) (h : bs.length = 32) :
-    vecU8 (vec32 bs) = toU8 bs := by
-  simp [vecU8, vec32, h]
-
-private theorem vecU8_vec32_keyToBytes32_25519 (k : BitVec 256) :
-    vecU8 (vec32 (HMAC.keyToBytes32 k)) = word256ToBytes k := by
-  rw [vecU8_vec32_of_len _ (length_keyToBytes32 k), ← word256ToBytes_eq_toU8_keyToBytes32]
+/-- `UnreachedPqxdhPrimitives` witness (`X255`). -/
+abbrev X25519 : UnreachedPqxdhPrimitives := X255
 
 private theorem word256ToBytes_clamp256_25519 (k : BitVec 256) :
     word256ToBytes (clamp256 k) = clampScalar25519 (word256ToBytes k) := by
@@ -389,215 +557,142 @@ theorem libX25519Rel_c25519 : X25519RealizesDh c25519 dh25519 encPt25519 encT255
       pubKey_hook := fun k => ?_
       dh_clamp := fun k Q => ?_
       dh_ne_zero := dh25519_ne_zero }
-  · dsimp only [c25519]
-    rw [vecU8_vec32_keyToBytes32_25519, vecU8_vec32_of_len _ (encPt25519_length Q),
-        ← ofU8_fitBytesRef_eq_u8Vec_toList, fitBytesRef32_of_len (x25519ZMod_len _ _),
-        encPt25519_dh25519]
-  · dsimp only [c25519]
-    rw [vecU8_vec32_keyToBytes32_25519, ← ofU8_fitBytesRef_eq_u8Vec_toList,
-        fitBytesRef32_of_len (x25519ZMod_len _ _), encPt25519_dh25519, encPt25519_base]
+  · exact (libX25519Rel_c255.1.hook k (ptToBv255 Q)).trans
+      (congrArg encPt255 (ptToBv255_dh25519 k Q).symm)
+  · exact (libX25519Rel_c255.1.pubKey_hook k).trans
+      ((congrArg (fun b => encPt255 (dh255.dh k b)) ptToBv255_base.symm).trans
+        (congrArg encPt255 (ptToBv255_dh25519 k dh25519.base).symm))
   · apply Fin.ext
     dsimp only [dh25519]
     rw [word256ToBytes_clamp256_25519, clampedScalarZMod_clamp]
 
-private theorem vecU8_clampScalar_u8Vec_25519 (a : List UInt8) :
-    vecU8 (Ratchet.clampScalar (u8Vec 32 a)) = clampScalar25519 a := by
-  rw [← u8Vec_clampScalar25519,
-      vecU8_u8Vec_of_length _ (_root_.SignalPqxdh.clampScalar25519_length a)]
+private theorem isCanonicalRef_congr_fields {P₁ P₂ : SignalPqxdh.Primitives}
+    (hm : P₁.montToEd = P₂.montToEd) (ht : P₁.isTorsionFree = P₂.isTorsionFree)
+    (pk : List UInt8) :
+    SignalPqxdh.isCanonicalRef P₁ pk = SignalPqxdh.isCanonicalRef P₂ pk := by
+  unfold SignalPqxdh.isCanonicalRef
+  rw [hm, ht]
 
-private theorem modelPrims_X25519_x25519Base (a : List UInt8) :
-    (modelPrims X25519 W25519).x25519Base a =
-      encodeMontZMod (clampedScalarZMod a * (dh25519.base.val : ZMod l25519)) := by
-  dsimp only [modelPrims, blockLevelPrims, W25519, c25519]
-  rw [vecU8_u8Vec_of_length _ (x25519ZMod_len _ _), vecU8_clampScalar_u8Vec_25519,
-      toU8_x25519Base_eq_encodeMontZMod_base, x25519ZMod_encodeMontZMod, clampedScalarZMod_clamp]
+private theorem sha512Ref_congr_fields {P₁ P₂ : SignalPqxdh.Primitives}
+    (hc : P₁.sha512Compress = P₂.sha512Compress) :
+    SignalPqxdh.sha512Ref P₁ = SignalPqxdh.sha512Ref P₂ := by
+  funext msg
+  unfold SignalPqxdh.sha512Ref
+  have hstep : SignalPqxdh.sha512Step P₁ = SignalPqxdh.sha512Step P₂ := by
+    funext s b; unfold SignalPqxdh.sha512Step; rw [hc]
+  rw [hstep]
 
-private theorem modelPrims_X25519_x25519 (a pk : List UInt8) (hpk : pk.length = 32) :
-    (modelPrims X25519 W25519).x25519 a pk =
-      encodeMontZMod (clampedScalarZMod a * decodeMont32 pk) := by
-  dsimp only [modelPrims, blockLevelPrims, W25519, c25519]
-  rw [vecU8_u8Vec_of_length _ (x25519ZMod_len _ _), vecU8_clampScalar_u8Vec_25519,
-      vecU8_u8Vec_of_length pk hpk]
-  unfold x25519ZMod
-  rw [fitBytesRef32_of_len hpk, clampedScalarZMod_clamp]
+private theorem xeddsaVerifyRef_congr_fields {P₁ P₂ : SignalPqxdh.Primitives}
+    (hm : P₁.montToEd = P₂.montToEd) (hc : P₁.compress = P₂.compress)
+    (hn : P₁.edNeg = P₂.edNeg) (hsw : P₁.scalarFromWide = P₂.scalarFromWide)
+    (hs5 : P₁.sha512 = P₂.sha512) (hsm : P₁.scalarFromBytesModOrder = P₂.scalarFromBytesModOrder)
+    (hd : P₁.doubleScalarMulBasepoint = P₂.doubleScalarMulBasepoint)
+    (pk m sig : List UInt8) :
+    SignalPqxdh.xeddsaVerifyRef P₁ pk m sig = SignalPqxdh.xeddsaVerifyRef P₂ pk m sig := by
+  unfold SignalPqxdh.xeddsaVerifyRef
+  rw [hm, hc, hn, hsw, hs5, hsm, hd]
 
-private theorem modelPrims_X25519_isCanonical (pk : List UInt8) :
-    (modelPrims X25519 W25519).isCanonical pk = isCanonMont32 pk := by
-  dsimp only [modelPrims, blockLevelPrims, W25519, Q25519, Q255, isCanonicalRef]
-  by_cases hc : isCanonMont32 pk = true
-  · obtain ⟨hlen, _, hle⟩ := isCanonMont32_spec.mp hc
-    have hlt252 : natOfBytesLE pk < 2 ^ 252 := lt_of_le_of_lt hle halfL25519_lt_two_pow_252
-    obtain ⟨h80, hr⟩ := scalarIsInRange_of_lt_two_pow_252 hlt252
-    rw [hc, hlen, h80, hr, vecU8_u8Vec_of_length pk hlen, hc]
-    rfl
-  · have hfalse : isCanonMont32 pk = false := Bool.eq_false_iff.mpr hc
-    by_cases hlen : pk.length = 32
-    · rw [hfalse, vecU8_u8Vec_of_length pk hlen, hfalse]
-      split <;> rfl
-    · have hlenB : (pk.length == 32) = false := beq_eq_false_iff_ne.mpr hlen
-      simp [hfalse, hlenB]
+private theorem isValidDhTripleRef_congr_fields {P₁ P₂ : SignalPqxdh.Primitives}
+    (hc : P₁.isCanonical = P₂.isCanonical) (hp : P₁.pow8 = P₂.pow8)
+    (hb : P₁.x25519Base = P₂.x25519Base) (hx : P₁.x25519 = P₂.x25519)
+    (A B Z : List UInt8) :
+    SignalPqxdh.isValidDhTripleRef P₁ A B Z ↔ SignalPqxdh.isValidDhTripleRef P₂ A B Z := by
+  unfold SignalPqxdh.isValidDhTripleRef SignalPqxdh.onCurveKey
+  rw [hc, hp, hb, hx]
 
-theorem modelPrims_X25519_sig_corr (sk msg r : List UInt8) :
-    (modelPrims X25519 W25519).sigVerify (X25519.sigPkGen sk) msg (X25519.sigSign sk msg r) =
-      true := by
-  have hpk : X25519.sigPkGen sk =
-      encodeMontZMod (clampedScalarZMod sk * (dh25519.base.val : ZMod l25519)) :=
-    modelPrims_X25519_x25519Base sk
-  have hcan : isCanonMont32 (X25519.sigPkGen sk) = true := by
-    rw [hpk, isCanonMont32_encodeMontZMod_iff]
-    exact mul_ne_zero (clampedScalarZMod_ne_zero sk) baseZMod_ne_zero
-  have hlen : (X25519.sigPkGen sk).length = 32 := (isCanonMont32_spec.mp hcan).1
-  rw [modelPrims_sigVerify_eq_ref]
-  have hsig : X25519.sigSign sk msg r = List.replicate 64 0 := rfl
-  rw [hsig]
-  unfold xeddsaVerifyRef
-  have hcond : ((X25519.sigPkGen sk).length == 32 &&
-      (List.replicate 64 (0 : UInt8)).length == 64 &&
-      (((List.replicate 64 (0 : UInt8)).getD 63 0 &&& 0x60) == 0)) = true := by
-    rw [hlen]; decide
-  rw [hcond]
-  dsimp only [modelPrims, blockLevelPrims, W25519, Q25519, Q255]
-  have hs0 : (((List.replicate 64 (0 : UInt8)).getD 63 0 &&& 0x80) >>> 7).toBitVec == 0#8 := by
-    decide
-  rw [vecU8_u8Vec_of_length _ hlen, hcan, hs0]
-  decide
+private theorem sampleKemKeyGen_congr_fields {P₁ P₂ : SignalPqxdh.Primitives}
+    (hk : P₁.kemKeyGen = P₂.kemKeyGen) :
+    SignalPqxdh.sampleKemKeyGen P₁ = SignalPqxdh.sampleKemKeyGen P₂ := by
+  unfold SignalPqxdh.sampleKemKeyGen
+  rw [hk]
 
-private theorem modelPrims_X25519_ec_coll_bound (targetPk : List UInt8) :
-    (𝒟[do
-        let sk ← sampleScalar32
-        pure (X25519.pow8 ((modelPrims X25519 W25519).x25519Base sk) ==
-          X25519.pow8 targetPk)] {true}).toReal
-      ≤ 1 / (2 : ℝ) ^ 250 := by
-  have hy : ∃ y : ZMod l25519, pow8ZMod targetPk = encodeMontZMod y := by
-    unfold pow8ZMod
-    by_cases hlen : targetPk.length == 32
-    · exact ⟨decodeMont32 targetPk, by simp [hlen]⟩
-    · exact ⟨0, by simp [hlen, encodeMontZMod_zero]⟩
-  obtain ⟨y, hy_eq⟩ := hy
-  let Qt : Pt25519 := ⟨absZMod y, Nat.lt_succ_of_le (absZMod_le_half y)⟩
-  have hQt : pow8ZMod targetPk = encodeMontZMod (Qt.val : ZMod l25519) := by
-    rw [hy_eq, encodeMontZMod, encodeMontZMod, absZMod_pt25519_cast]
-  have hc : ∀ sk, X25519.pow8 ((modelPrims X25519 W25519).x25519Base sk) =
-      encodeMontZMod (clampedScalarZMod sk * (dh25519.base.val : ZMod l25519)) := fun sk => by
-    change pow8ZMod ((modelPrims X25519 W25519).x25519Base sk) = _
-    rw [modelPrims_X25519_x25519Base, pow8ZMod_encodeMontZMod]
-  have hp8 : X25519.pow8 targetPk = pow8ZMod targetPk := rfl
-  let f : BitVec 256 → Bool := fun w =>
-    encodeMontZMod (clampedScalarZMod (word256ToBytes w) * (dh25519.base.val : ZMod l25519)) ==
-      pow8ZMod targetPk
-  have hexpr :
-      (do
-        let sk ← sampleScalar32
-        pure (X25519.pow8 ((modelPrims X25519 W25519).x25519Base sk) ==
-          X25519.pow8 targetPk)) =
-      (f <$> ($ᵗ BitVec 256)) := by
-    simp only [hc, hp8, sampleScalar32, sampleBytes32, bind_pure_comp, Functor.map_map]
-    rfl
-  rw [hexpr]
-  refine le_trans (uniform256_map_bool_le f 64 ?_) (by norm_num)
-  refine le_trans (Finset.card_le_card ?_) (dh25519_base_fiber_card Qt)
-  intro w hw
-  have hw_eq :
-      encodeMontZMod (clampedScalarZMod (word256ToBytes w) * (dh25519.base.val : ZMod l25519)) =
-        encodeMontZMod (Qt.val : ZMod l25519) := by
-    have hb : f w = true := (Finset.mem_filter.mp hw).2
-    dsimp only [f] at hb
-    rw [hQt] at hb
-    exact beq_iff_eq.mp hb
-  have habs :
-      absZMod (clampedScalarZMod (word256ToBytes w) * (dh25519.base.val : ZMod l25519)) =
-        Qt.val := by
-    have hnat := congrArg natOfBytesLE hw_eq
-    rwa [natOfBytesLE_encodeMontZMod, natOfBytesLE_encodeMontZMod, absZMod_pt25519_cast] at hnat
-  have hdh : dh25519.dh w dh25519.base = Qt := by
-    apply Fin.ext
-    rw [dh25519_dh_val]
-    exact habs
-  exact Finset.mem_filter.mpr ⟨Finset.mem_univ w, hdh⟩
+private theorem mp25519_x25519 :
+    (modelPrims X25519 W25519).x25519 = (modelPrims X255 W255).x25519 := rfl
+
+private theorem mp25519_x25519Base :
+    (modelPrims X25519 W25519).x25519Base = (modelPrims X255 W255).x25519Base := rfl
+
+private theorem mp25519_pow8 :
+    (modelPrims X25519 W25519).pow8 = (modelPrims X255 W255).pow8 := rfl
+
+private theorem mp25519_kemKeyGen :
+    (modelPrims X25519 W25519).kemKeyGen = (modelPrims X255 W255).kemKeyGen := rfl
+
+private theorem mp25519_isCanonical :
+    (modelPrims X25519 W25519).isCanonical = (modelPrims X255 W255).isCanonical := by
+  funext pk
+  exact isCanonicalRef_congr_fields (P₁ := { blockLevelPrims X25519 W25519 with
+      sha512 := SignalPqxdh.sha512Ref (blockLevelPrims X25519 W25519) })
+    (P₂ := { blockLevelPrims X255 W255 with
+      sha512 := SignalPqxdh.sha512Ref (blockLevelPrims X255 W255) }) rfl rfl pk
+
+private theorem mp25519_sha512 :
+    SignalPqxdh.sha512Ref (blockLevelPrims X25519 W25519) =
+      SignalPqxdh.sha512Ref (blockLevelPrims X255 W255) :=
+  sha512Ref_congr_fields rfl
+
+private theorem mp25519_sigVerify (pk m sig : List UInt8) :
+    (modelPrims X25519 W25519).sigVerify pk m sig =
+      (modelPrims X255 W255).sigVerify pk m sig :=
+  xeddsaVerifyRef_congr_fields
+    (P₁ := { blockLevelPrims X25519 W25519 with
+      sha512 := SignalPqxdh.sha512Ref (blockLevelPrims X25519 W25519) })
+    (P₂ := { blockLevelPrims X255 W255 with
+      sha512 := SignalPqxdh.sha512Ref (blockLevelPrims X255 W255) })
+    rfl rfl rfl rfl mp25519_sha512 rfl rfl pk m sig
 
 theorem modelPrims_X25519_cryptoAssumptions : ModelPrimsCryptoAssumptions X25519 W25519 where
-  x25519_zero_iff := fun a1 a2 pk _ _ hpk => by
-    rw [modelPrims_X25519_x25519 a1 pk hpk, modelPrims_X25519_x25519 a2 pk hpk,
-        encodeMontZMod_eq_zero_iff, encodeMontZMod_eq_zero_iff,
-        mul_eq_zero_iff_left (clampedScalarZMod_ne_zero a1),
-        mul_eq_zero_iff_left (clampedScalarZMod_ne_zero a2)]
-  canon_base := fun e _ => by
-    rw [modelPrims_X25519_isCanonical, modelPrims_X25519_x25519Base,
-        isCanonMont32_encodeMontZMod_iff]
-    exact mul_ne_zero (clampedScalarZMod_ne_zero e) baseZMod_ne_zero
-  canon_x25519 := fun a pk _ hcan => by
-    rw [modelPrims_X25519_isCanonical] at hcan ⊢
-    obtain ⟨hpk, hpos, hle⟩ := isCanonMont32_spec.mp hcan
-    have hdec_ne : decodeMont32 pk ≠ 0 := by
-      unfold decodeMont32
-      simp only [hcan, ↓reduceIte]
-      intro h0
-      have hv := congrArg ZMod.val h0
-      have hlt_l : natOfBytesLE pk < l25519 :=
-        lt_trans (lt_of_le_of_lt hle halfL25519_lt_two_pow_252) two_pow_252_lt_l25519
-      rw [ZMod.val_natCast_of_lt hlt_l, ZMod.val_zero] at hv
-      omega
-    rw [modelPrims_X25519_x25519 a pk hpk, isCanonMont32_encodeMontZMod_iff]
-    exact mul_ne_zero (clampedScalarZMod_ne_zero a) hdec_ne
-  pow8_idemp := pow8ZMod_idemp
-  isValidDhTriple_eq_ref := fun A B Z => by
-    dsimp only [X25519]
-    exact @decide_eq_true_iff _ (Classical.propDecidable _)
-  x25519_pow8_congr := fun a pk1 pk2 _ h1 h2 hpow => by
-    rw [modelPrims_X25519_x25519 a pk1 h1, modelPrims_X25519_x25519 a pk2 h2]
-    change pow8ZMod pk1 = pow8ZMod pk2 at hpow
-    unfold pow8ZMod at hpow
-    simp only [h1, h2, beq_self_eq_true, ↓reduceIte] at hpow
-    rcases (encodeMontZMod_eq_iff _ _).mp hpow with hd | hd
-    · rw [hd]
-    · rw [hd, mul_neg, encodeMontZMod_neg]
-  x25519_congr_of_base_eq := fun a1 a2 pk _ _ hcan hbase => by
-    rw [modelPrims_X25519_isCanonical] at hcan
-    have hpk := (isCanonMont32_spec.mp hcan).1
-    rw [modelPrims_X25519_x25519Base, modelPrims_X25519_x25519Base] at hbase
-    rw [modelPrims_X25519_x25519 a1 pk hpk, modelPrims_X25519_x25519 a2 pk hpk]
-    rcases (encodeMontZMod_eq_iff _ _).mp hbase with hm | hm
-    · rw [mul_right_cancel₀ baseZMod_ne_zero hm]
-    · rw [← neg_mul] at hm
-      rw [mul_right_cancel₀ baseZMod_ne_zero hm, neg_mul, encodeMontZMod_neg]
-  canon_pow8_inj := fun pk1 pk2 h1 h2 hpow => by
-    rw [modelPrims_X25519_isCanonical] at h1 h2
-    change pow8ZMod pk1 = pow8ZMod pk2 at hpow
-    rwa [pow8ZMod_of_isCanonMont32 h1, pow8ZMod_of_isCanonMont32 h2] at hpow
-  pow8_len := fun p => by
-    change (pow8ZMod p).length = 32
-    unfold pow8ZMod
-    split
-    · exact encodeMontZMod_len _
-    · simp
-  ec_coll_bound := modelPrims_X25519_ec_coll_bound
-  x25519_inj_pow8 := fun a pk1 pk2 _ h1 h2 hx => by
-    rw [modelPrims_X25519_x25519 a pk1 h1, modelPrims_X25519_x25519 a pk2 h2] at hx
-    change pow8ZMod pk1 = pow8ZMod pk2
-    unfold pow8ZMod
-    simp only [h1, h2, beq_self_eq_true, ↓reduceIte]
-    apply (encodeMontZMod_eq_iff _ _).mpr
-    rcases (encodeMontZMod_eq_iff _ _).mp hx with hm | hm
-    · exact Or.inl (mul_left_cancel₀ (clampedScalarZMod_ne_zero a) hm)
-    · rw [← mul_neg] at hm
-      exact Or.inr (mul_left_cancel₀ (clampedScalarZMod_ne_zero a) hm)
-  pow8_base_len := fun p e _ hpow => by
-    change pow8ZMod p = pow8ZMod ((modelPrims X25519 W25519).x25519Base e) at hpow
-    rw [modelPrims_X25519_x25519Base, pow8ZMod_encodeMontZMod] at hpow
-    by_contra hne
-    have hp : pow8ZMod p = List.replicate 32 0 := by simp [pow8ZMod, hne]
-    rw [hp] at hpow
-    exact mul_ne_zero (clampedScalarZMod_ne_zero e) baseZMod_ne_zero
-      ((encodeMontZMod_eq_zero_iff _).mp hpow.symm)
-  sigPkGen_eq_x25519Base := rfl
-  scalarMul_len := fun _ _ => by simp [X25519, X25519_pre, X255_pre]
-  scalarAdd_len := fun _ _ => by simp [X25519, X25519_pre, X255_pre]
-  kemKeyGen_len := fun seed => ⟨fitBytes_length 1568 (seed.take 32), fitBytes_length 3168 seed⟩
-  sig_corr := modelPrims_X25519_sig_corr
-  kem_coll_bound := cwfPrimitives_kem_coll_bound
+  x25519_zero_iff := fun a1 a2 pk h1 h2 hpk => by
+    rw [mp25519_x25519]
+    exact modelPrims_X255_cryptoAssumptions.x25519_zero_iff a1 a2 pk h1 h2 hpk
+  canon_base := fun e he => by
+    rw [mp25519_isCanonical, mp25519_x25519Base]
+    exact modelPrims_X255_cryptoAssumptions.canon_base e he
+  canon_x25519 := fun a pk ha hcan => by
+    rw [mp25519_isCanonical] at hcan ⊢
+    rw [mp25519_x25519]
+    exact modelPrims_X255_cryptoAssumptions.canon_x25519 a pk ha hcan
+  pow8_idemp := modelPrims_X255_cryptoAssumptions.pow8_idemp
+  isValidDhTriple_eq_ref := fun A B Z =>
+    (modelPrims_X255_cryptoAssumptions.isValidDhTriple_eq_ref A B Z).trans
+      (isValidDhTripleRef_congr_fields mp25519_isCanonical mp25519_pow8
+        mp25519_x25519Base mp25519_x25519 A B Z).symm
+  x25519_pow8_congr := fun a pk1 pk2 ha h1 h2 hp => by
+    rw [mp25519_x25519]
+    exact modelPrims_X255_cryptoAssumptions.x25519_pow8_congr a pk1 pk2 ha h1 h2 hp
+  x25519_congr_of_base_eq := fun a1 a2 pk h1 h2 hcan hb => by
+    rw [mp25519_isCanonical] at hcan
+    rw [mp25519_x25519Base] at hb
+    rw [mp25519_x25519]
+    exact modelPrims_X255_cryptoAssumptions.x25519_congr_of_base_eq a1 a2 pk h1 h2 hcan hb
+  canon_pow8_inj := fun pk1 pk2 h1 h2 hp => by
+    rw [mp25519_isCanonical] at h1 h2
+    exact modelPrims_X255_cryptoAssumptions.canon_pow8_inj pk1 pk2 h1 h2 hp
+  pow8_len := modelPrims_X255_cryptoAssumptions.pow8_len
+  ec_coll_bound := fun targetPk => by
+    rw [mp25519_x25519Base]
+    exact modelPrims_X255_cryptoAssumptions.ec_coll_bound targetPk
+  x25519_inj_pow8 := fun a pk1 pk2 ha h1 h2 hx => by
+    rw [mp25519_x25519] at hx
+    exact modelPrims_X255_cryptoAssumptions.x25519_inj_pow8 a pk1 pk2 ha h1 h2 hx
+  pow8_base_len := fun p e he hp => by
+    rw [mp25519_x25519Base] at hp
+    exact modelPrims_X255_cryptoAssumptions.pow8_base_len p e he hp
+  sigPkGen_eq_x25519Base := by
+    rw [mp25519_x25519Base]
+    exact modelPrims_X255_cryptoAssumptions.sigPkGen_eq_x25519Base
+  scalarMul_len := modelPrims_X255_cryptoAssumptions.scalarMul_len
+  scalarAdd_len := modelPrims_X255_cryptoAssumptions.scalarAdd_len
+  kemKeyGen_len := modelPrims_X255_cryptoAssumptions.kemKeyGen_len
+  sig_corr := fun sk msg r => by
+    rw [mp25519_sigVerify]
+    exact modelPrims_X255_cryptoAssumptions.sig_corr sk msg r
+  kem_coll_bound := fun targetPk => by
+    rw [sampleKemKeyGen_congr_fields mp25519_kemKeyGen]
+    exact modelPrims_X255_cryptoAssumptions.kem_coll_bound targetPk
 
 private theorem c25519_D_E (k : BitVec 256) (x : BitVec 128) : c25519.D k (c25519.E k x) = x :=
-  rfl
+  LibsignalBinary.Proofs.HookDischarge.CryptoAes.Aes256Roundtrip.aes256Dec_aes256Enc k x
 
 private theorem encaps1Total_K255 : Encaps1Total K255 :=
   fun _ _ _ => rfl
@@ -782,6 +877,56 @@ theorem cli_pq_headline_hypotheses_satisfiable_prime_order_concrete :
   exact ⟨S0, 32, Pt, dPt, zPt, fPt, sPt, run, X, W, Dh, encPt, encT, decT, qep,
     b, qStart, qs, A, by decide, by decide, by decide, by decide, hRest⟩
 
+/-- Joint satisfiability of the prime-order `CliPqxdhElfSecurePlaced` primitive hypotheses with
+`W.C.F = sha256Compress`, `W.C.E = CryptoGames.AES256.aes256Enc`, and
+`W.C.D = CryptoGames.AES256.aes256Dec`. -/
+theorem cli_pq_elf_placed_hypotheses_satisfiable_prime_order
+    (S : SignalPqxdh.Setup) (ℓ : ℕ) (hℓ : ℓ < 10 ^ 6) :
+    ∃ (Pt : Type) (_ : DecidableEq Pt) (zPt : Zero Pt) (fPt : Fintype Pt) (sPt : SampleableType Pt)
+      (W : CliHooks) (X : UnreachedPqxdhPrimitives)
+      (Dh : DHFun (BitVec 256) Pt)
+      (encPt : Pt → CryptoVerification.E2E.Bytes) (encT : Pt → PublicKey)
+      (decT : PublicKey → Option Pt)
+      (_qep : ℕ) (b : SignalPqxdh.QueryBudget) (qStart : ℕ) (qs : ℕ → ℕ)
+      (A : CliGameAdversary S ℓ (BitVec 512)),
+      letI : Zero Pt := zPt; letI : Fintype Pt := fPt; letI : SampleableType Pt := sPt
+      let Wp : PEParams := ⟨W.C, W.Q⟩
+      2 ^ 251 < Fintype.card Pt ∧
+      0 < qStart ∧
+      0 < qs 0 ∧
+      W.C.F = sha256Compress ∧
+      W.C.E = CryptoGames.AES256.aes256Enc ∧
+      W.C.D = CryptoGames.AES256.aes256Dec ∧
+      MlKemEncaps1SucceedsOn64ByteHeaderAndSeeds Wp.Q.K ∧
+      SignalPqxdh.CryptoWellFormedPrimitivesδ (modelPrims X Wp) ∧
+      SignalPqxdh.KemDeltaCorrect (modelPrims X Wp) 0 ∧
+      ℓ < 10 ^ 6 ∧
+      Dh.Commutes ∧
+      X25519RealizesDh Wp.C Dh encPt encT ∧
+      (∀ T, decT (encT T) = some T) ∧
+      Function.Injective encT ∧
+      (∀ T, encT T ≠ dummyKey) ∧
+      (∀ x, Dh.dh x 0 = 0) ∧
+      (∀ k x, Wp.C.D k (Wp.C.E k x) = x) ∧
+      DhKerUniform Dh ∧
+      (∀ k < qStart, 2 * (qs k + 1) + 25002 < 2 ^ 32) ∧
+      (∀ Q : Pt,
+        𝒟[($ᵗ BitVec 256 : ProbComp (BitVec 256))] {x | Dh.dh x Dh.base = Q} ≤
+          (1 : ℝ≥0∞) / 2 ^ 250) ∧
+      CliGameAdversaryPerInstanceBounded A b qStart qs := by
+  let b1 : SignalPqxdh.QueryBudget := ⟨1, 0, 1, 0⟩
+  let A0 : CliGameAdversary S ℓ (BitVec 512) := cliRoCoinDrAdv S ℓ (BitVec 512)
+  refine ⟨Pt25519, inferInstance, inferInstance, inferInstance, inferInstance,
+    ⟨W25519.C, W25519.Q⟩, X25519, dh25519, encPt25519, encT25519, decT25519,
+    1, b1, 1, fun _ => 1, A0, ?_⟩
+  exact ⟨two_pow_251_lt_card_pt25519, by decide, by decide, rfl, rfl, rfl,
+    bhEncaps1Total_W25519, modelPrims_X25519_cwfδ, modelPrims_X25519_kemCorrectWith_zero, hℓ,
+    dh25519_commutes, libX25519Rel_c25519, decT25519_encT25519, encT25519_inj,
+    encT25519_ne_dummyKey, dh25519_zero, c25519_D_E, dh25519_kerUniform,
+    fun _ _ => show 2 * (1 + 1) + 25002 < 2 ^ 32 by decide,
+    dh25519_base_fiber_prob_le,
+    cliRoCoinDrAdv_bounded S ℓ (BitVec 512)⟩
+
 /-- Instantiates both advantage bounds of `LibsignalCliPqSecure (Pt := Pt25519) S ℓ` with the
 prime-order witness at `δ = (1 : ℝ≥0∞) / 2 ^ 250`. -/
 theorem libsignalCliPqSecure_prime_order_instantiable
@@ -815,10 +960,10 @@ theorem libsignalCliPqSecure_prime_order_instantiable
   have hA0 : CliGameAdversaryPerInstanceBounded A0 b1 1 (fun _ => 1) :=
     ⟨⟨trivial, trivial, trivial, trivial, trivial, trivial, trivial⟩, trivial, fun _ _ => trivial⟩
   rcases hMain (pqModelRun X25519 W25519) X25519 W25519 (cliSpecPq_pqModelRun X25519 W25519)
-      bhEncaps1Total_W25519 modelPrims_X25519_cwfδ 0 modelPrims_X25519_kemCorrectWith_zero
+      bhEncaps1Total_W25519 c25519_D_E modelPrims_X25519_cwfδ 0 modelPrims_X25519_kemCorrectWith_zero
       dh25519 encPt25519 encT25519 decT25519 1 hℓ
       dh25519_commutes libX25519Rel_c25519 decT25519_encT25519 encT25519_ne_dummyKey
-      dh25519_zero c25519_D_E dh25519_kerUniform
+      dh25519_zero dh25519_kerUniform
       b1 1 (fun _ => 1) (fun _ _ => show 2 * (1 + 1) + 25002 < 2 ^ 32 by decide)
       ((1 : ℝ≥0∞) / 2 ^ 250) dh25519_base_fiber_prob_le A0 hA0
     with ⟨hK, _, hBound1, hBound2⟩
@@ -902,5 +1047,8 @@ info: 'CryptoVerification.E2E.pqOom_hypotheses_satisfiable_prime_order' depends 
 -/
 #guard_msgs in
 #print axioms pqOom_hypotheses_satisfiable_prime_order
+
+/-- Sanity check: `decT25519` computes constructively on the identity encoding `encT25519 0`. -/
+example : decT25519 (encT25519 0) = some 0 := by with_unfolding_all rfl
 
 end CryptoVerification.E2E

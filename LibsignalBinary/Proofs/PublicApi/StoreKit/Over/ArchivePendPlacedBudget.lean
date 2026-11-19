@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveAuxBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePendPlaced
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveAuxBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePendPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
@@ -19,6 +18,8 @@ meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyNoneX
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodySomeX
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePend -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Entry Prefix and Pending-Key Clearing
@@ -28,7 +29,7 @@ for `archive_current_state_inner` on Block `51` (`lsProg_51 H`) from entry throu
 deallocations (`FreeOnlyEvs`), `NoOom` `__rust_alloc`, and pre-reserved 0-allocation `encode_raw`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -148,7 +149,7 @@ attribute [local arm64_norm] bv_sub_add_lit_local BitVec.toNat_zero
 
 /-- Budget-threaded spatial state right after `bl __rust_no_alloc_shim_is_unstable_v2` in
     `archive_current_state_inner`. -/
-def archiveMidShimPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def archiveMidShimPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) (sf s0 : State)
     (recPtr prevCap prevPtr : BitVec 64)
     (G : SessionGhost) (sess : Session (List (BitVec 8)))
@@ -180,7 +181,7 @@ def archiveMidShimPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : Bud
     Fprev
 
 /-- Budget-threaded spatial state right after `bl encode_raw` in `archive_current_state_inner`. -/
-def archiveMidRawPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def archiveMidRawPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) (sf s0 : State)
     (recPtr prevCap prevPtr : BitVec 64)
     (G : SessionGhost) (sess : Session (List (BitVec 8)))

@@ -9,21 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2BasePlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint4BasePlaced
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBaseBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2BasePlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2Placed
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint4BasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBaseBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MessageEncodeCodeSym
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable Verification of `encode_varint::<Vec<u8>> [local#4]` (Block `451`)
@@ -32,7 +33,7 @@ Threads `RustCliAllocBudget` and `VmPreserved` through continuation-byte stages 
 top-level contracts for `encode_varint::<Vec<u8>> [local#4]` (Block `451`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

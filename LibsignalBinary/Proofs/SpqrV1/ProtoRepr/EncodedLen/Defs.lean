@@ -21,7 +21,7 @@ Parametric and concrete separation-logic representation predicates, pure `encode
 the 10 `V1State.Unchunked.*` protobuf structs (`59`-, `71`-, `82`-, and `93`-instruction groups).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ProtoRepr
 
@@ -68,7 +68,7 @@ macro "epochEncLen_cc_close" : tactic => `(tactic| (
     arm64_norm, *]
   done))
 
-def vecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
@@ -183,7 +183,7 @@ theorem cmp_ls_false_of_lt {vlen tot : Nat} (hlt : vlen < tot) (htot : tot < 2 ^
     simpa [BitVec.sub_add_cancel] using this
   exact ⟨h1, h2, h3, beq_eq_false_iff_ne.mpr hsub, beq_eq_false_iff_ne.mpr hne⟩
 
-def EpochEncLenCalleeSaved (s0 s : State) : Prop :=
+@[expose] def EpochEncLenCalleeSaved (s0 s : State) : Prop :=
   s.readReg64 .x19 = s0.readReg64 .x19 ∧
   s.readReg64 .x20 = s0.readReg64 .x20 ∧
   s.readReg64 .x21 = s0.readReg64 .x21 ∧
@@ -218,13 +218,13 @@ open EncodedLen
 /-- Pinned `Option<spqr::proto::pq_ratchet::Authenticator>` at `a` (`48` bytes = `0x30`, align `8`):
     * `none`: `(a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 40` (`root_key.cap = 0xFFFFFFFFFFFFFFFF#64` niche)
     * `some auth`: `authenticatorPBPinnedAt A g a auth` -/
-def optAuthenticatorPBPinnedAt (A : RustAlloc) (g : AuthenticatorPBGhost) (a : BitVec 64) :
+@[expose] def optAuthenticatorPBPinnedAt (A : RustAlloc) (g : AuthenticatorPBGhost) (a : BitVec 64) :
     Option AuthenticatorPB → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 40
   | some auth => authenticatorPBPinnedAt A g a auth
 
 /-- Unpinned `Option<spqr::proto::pq_ratchet::Authenticator>` at `a` (`48` bytes = `0x30`, align `8`). -/
-def optAuthenticatorPBAt (A : RustAlloc) (a : BitVec 64) : Option AuthenticatorPB → SepProp
+@[expose] def optAuthenticatorPBAt (A : RustAlloc) (a : BitVec 64) : Option AuthenticatorPB → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 40
   | some auth => authenticatorPBAt A a auth
 
@@ -246,12 +246,12 @@ theorem optAuthenticatorPBAt_eq_exists_pinned (A : RustAlloc) (a : BitVec 64)
     exact authenticatorPBAt_eq_exists_pinned A a auth
 
 /-- First 64-bit word of `optAuthenticatorPBPinnedAt`: `noneCap` when `none`, `g.rootKey.cap` when `some`. -/
-def optAuthCap (g : AuthenticatorPBGhost) : Option AuthenticatorPB → BitVec 64
+@[expose] def optAuthCap (g : AuthenticatorPBGhost) : Option AuthenticatorPB → BitVec 64
   | none => noneCap
   | some _ => g.rootKey.cap
 
 /-- Remaining 40 bytes + heap buffers of `optAuthenticatorPBPinnedAt`. -/
-def optAuthPayload (A : RustAlloc) (g : AuthenticatorPBGhost) (p : BitVec 64) :
+@[expose] def optAuthPayload (A : RustAlloc) (g : AuthenticatorPBGhost) (p : BitVec 64) :
     Option AuthenticatorPB → SepProp
   | none => memRegion (p + 8#64) 40
   | some auth =>
@@ -272,7 +272,7 @@ theorem optAuthenticatorPBPinnedAt_eq (A : RustAlloc) (g : AuthenticatorPBGhost)
       optAuthPayload, vecU8At_eq_header_sep_buf, vecHeader, sepConj_assoc, arm64_norm]
 
 /-- Bounds extracted from `optAuthPayload` in memory. -/
-def OptAuthBounds (g : AuthenticatorPBGhost) (opt : Option AuthenticatorPB) : Prop :=
+@[expose] def OptAuthBounds (g : AuthenticatorPBGhost) (opt : Option AuthenticatorPB) : Prop :=
   (optAuthCap g opt + 1#64 == 0#64) = !opt.isSome ∧
   (optAuthCap g opt + 1#64 != 0#64) = opt.isSome ∧
   ∀ auth, opt = some auth →
@@ -318,7 +318,7 @@ theorem optAuthPayload_bounds {A : RustAlloc} {g : AuthenticatorPBGhost} {p : Bi
     exact ⟨hr_lt, hm_lt, hr_z.1, hr_z.2, hm_z.1, hm_z.2⟩
 
 /-- Bounds extracted from a `vecU8Buf A pin.cap pin.ptr bs` in memory. -/
-def VecU8FieldBounds (bs : List (BitVec 8)) : Prop :=
+@[expose] def VecU8FieldBounds (bs : List (BitVec 8)) : Prop :=
   bs.length < 2 ^ 63 ∧
   (BitVec.ofNat 64 bs.length == 0#64) = bs.isEmpty ∧
   (BitVec.ofNat 64 bs.length != 0#64) = !bs.isEmpty
@@ -334,7 +334,7 @@ theorem vecU8Buf_fieldBounds {A : RustAlloc} {cap ptr : BitVec 64} {bs : List (B
 /-- Encoded length of an optional nested `ProtoAuthenticator` message field with a 1-byte tag:
     `0` when `none`, else `1 + varintLen (BitVec.ofNat 64 inner) + inner` where
     `inner = authenticatorPBEncodedLen auth`. -/
-def optAuthenticatorPBFieldEncodedLen : Option AuthenticatorPB → Nat
+@[expose] def optAuthenticatorPBFieldEncodedLen : Option AuthenticatorPB → Nat
   | none => 0
   | some auth =>
     let inner := authenticatorPBEncodedLen auth
@@ -386,13 +386,13 @@ abbrev Unchunked2PBGhost := AuthenticatorPBGhost
 /-- Parametric pinned layout for the 59-insn `Unchunked` group (`56` bytes = `0x38`, align `8`):
     * `a + 0x00`: `auth: Option<ProtoAuthenticator>` (tag 2, 48B)
     * `a + 0x30`: `epoch: u64` (tag 1, 8B) -/
-def unchunked2PinnedAt (A : RustAlloc) (g : Unchunked2PBGhost) (a : BitVec 64)
+@[expose] def unchunked2PinnedAt (A : RustAlloc) (g : Unchunked2PBGhost) (a : BitVec 64)
     (epoch : BitVec 64) (auth : Option AuthenticatorPB) : SepProp :=
   optAuthenticatorPBPinnedAt A g a auth ∗
     ((a + 0x30#64) ↦₆₄ epoch)
 
 /-- Parametric unpinned layout for the 59-insn `Unchunked` group (`56` bytes = `0x38`, align `8`). -/
-def unchunked2At (A : RustAlloc) (a : BitVec 64)
+@[expose] def unchunked2At (A : RustAlloc) (a : BitVec 64)
     (epoch : BitVec 64) (auth : Option AuthenticatorPB) : SepProp :=
   optAuthenticatorPBAt A a auth ∗
     ((a + 0x30#64) ↦₆₄ epoch)
@@ -404,7 +404,7 @@ theorem unchunked2At_eq_exists_pinned (A : RustAlloc) (a : BitVec 64)
   simp only [unchunked2At, unchunked2PinnedAt, optAuthenticatorPBAt_eq_exists_pinned,
     sepExists_sepConj_left]
 
-def unchunked2Unpacked (A : RustAlloc) (g : Unchunked2PBGhost) (a : BitVec 64)
+@[expose] def unchunked2Unpacked (A : RustAlloc) (g : Unchunked2PBGhost) (a : BitVec 64)
     (epoch : BitVec 64) (auth : Option AuthenticatorPB) : SepProp :=
   (a ↦₆₄ optAuthCap g auth) ∗ optAuthPayload A g a auth ∗
     ((a + 48#64) ↦₆₄ epoch)
@@ -427,14 +427,14 @@ structure Unchunked3PBGhost where
     * `a + 0x00`: `f3: Vec<u8>` (tag 3, 24B)
     * `a + 0x18`: `auth: Option<ProtoAuthenticator>` (tag 2, 48B)
     * `a + 0x48`: `epoch: u64` (tag 1, 8B) -/
-def unchunked3PinnedAt (A : RustAlloc) (g : Unchunked3PBGhost) (a : BitVec 64)
+@[expose] def unchunked3PinnedAt (A : RustAlloc) (g : Unchunked3PBGhost) (a : BitVec 64)
     (epoch : BitVec 64) (auth : Option AuthenticatorPB) (f3 : List (BitVec 8)) : SepProp :=
   vecU8At A a g.f3.cap g.f3.ptr f3 ∗
     optAuthenticatorPBPinnedAt A g.auth (a + 0x18#64) auth ∗
     ((a + 0x48#64) ↦₆₄ epoch)
 
 /-- Parametric unpinned layout for the 71-insn `Unchunked` group (`80` bytes = `0x50`, align `8`). -/
-def unchunked3At (A : RustAlloc) (a : BitVec 64)
+@[expose] def unchunked3At (A : RustAlloc) (a : BitVec 64)
     (epoch : BitVec 64) (auth : Option AuthenticatorPB) (f3 : List (BitVec 8)) : SepProp :=
   rustBytesVecAt A a f3 ∗
     optAuthenticatorPBAt A (a + 0x18#64) auth ∗
@@ -452,7 +452,7 @@ theorem unchunked3At_eq_exists_pinned (A : RustAlloc) (a : BitVec 64)
   · exact Entails.sepExists_elim fun ⟨gf3, ga⟩ =>
       Entails.sepExists_right ga (Entails.sepExists_right gf3 (Entails.refl _))
 
-def unchunked3Unpacked (A : RustAlloc) (g : Unchunked3PBGhost) (a : BitVec 64)
+@[expose] def unchunked3Unpacked (A : RustAlloc) (g : Unchunked3PBGhost) (a : BitVec 64)
     (epoch : BitVec 64) (auth : Option AuthenticatorPB) (f3 : List (BitVec 8)) : SepProp :=
   (a ↦₆₄ g.f3.cap) ∗ ((a + 8#64) ↦₆₄ g.f3.ptr) ∗ ((a + 16#64) ↦₆₄ BitVec.ofNat 64 f3.length) ∗
     vecU8Buf A g.f3.cap g.f3.ptr f3 ∗
@@ -480,7 +480,7 @@ structure Unchunked4PBGhost where
     * `a + 0x18`: `f4: Vec<u8>` (tag 4, 24B)
     * `a + 0x30`: `auth: Option<ProtoAuthenticator>` (tag 2, 48B)
     * `a + 0x60`: `epoch: u64` (tag 1, 8B) -/
-def unchunked4PinnedAt (A : RustAlloc) (g : Unchunked4PBGhost) (a : BitVec 64)
+@[expose] def unchunked4PinnedAt (A : RustAlloc) (g : Unchunked4PBGhost) (a : BitVec 64)
     (epoch : BitVec 64) (auth : Option AuthenticatorPB)
     (f3 f4 : List (BitVec 8)) : SepProp :=
   vecU8At A a g.f3.cap g.f3.ptr f3 ∗
@@ -489,7 +489,7 @@ def unchunked4PinnedAt (A : RustAlloc) (g : Unchunked4PBGhost) (a : BitVec 64)
     ((a + 0x60#64) ↦₆₄ epoch)
 
 /-- Parametric unpinned layout for the 82-insn `Unchunked` group (`104` bytes = `0x68`, align `8`). -/
-def unchunked4At (A : RustAlloc) (a : BitVec 64)
+@[expose] def unchunked4At (A : RustAlloc) (a : BitVec 64)
     (epoch : BitVec 64) (auth : Option AuthenticatorPB)
     (f3 f4 : List (BitVec 8)) : SepProp :=
   rustBytesVecAt A a f3 ∗
@@ -509,7 +509,7 @@ theorem unchunked4At_eq_exists_pinned (A : RustAlloc) (a : BitVec 64)
   · exact Entails.sepExists_elim fun ⟨gf3, gf4, ga⟩ =>
       Entails.sepExists_right ga (Entails.sepExists_right gf4 (Entails.sepExists_right gf3 (Entails.refl _)))
 
-def unchunked4Unpacked (A : RustAlloc) (g : Unchunked4PBGhost) (a : BitVec 64)
+@[expose] def unchunked4Unpacked (A : RustAlloc) (g : Unchunked4PBGhost) (a : BitVec 64)
     (epoch : BitVec 64) (auth : Option AuthenticatorPB) (f3 f4 : List (BitVec 8)) : SepProp :=
   (a ↦₆₄ g.f3.cap) ∗ ((a + 8#64) ↦₆₄ g.f3.ptr) ∗ ((a + 16#64) ↦₆₄ BitVec.ofNat 64 f3.length) ∗
     vecU8Buf A g.f3.cap g.f3.ptr f3 ∗
@@ -544,7 +544,7 @@ structure Unchunked5PBGhost where
     * `a + 0x30`: `f5: Vec<u8>` (tag 5, 24B)
     * `a + 0x48`: `auth: Option<ProtoAuthenticator>` (tag 2, 48B)
     * `a + 0x78`: `epoch: u64` (tag 1, 8B) -/
-def unchunked5PinnedAt (A : RustAlloc) (g : Unchunked5PBGhost) (a : BitVec 64)
+@[expose] def unchunked5PinnedAt (A : RustAlloc) (g : Unchunked5PBGhost) (a : BitVec 64)
     (epoch : BitVec 64) (auth : Option AuthenticatorPB)
     (f3 f4 f5 : List (BitVec 8)) : SepProp :=
   vecU8At A a g.f3.cap g.f3.ptr f3 ∗
@@ -554,7 +554,7 @@ def unchunked5PinnedAt (A : RustAlloc) (g : Unchunked5PBGhost) (a : BitVec 64)
     ((a + 0x78#64) ↦₆₄ epoch)
 
 /-- Parametric unpinned layout for the 93-insn `Unchunked` group (`128` bytes = `0x80`, align `8`). -/
-def unchunked5At (A : RustAlloc) (a : BitVec 64)
+@[expose] def unchunked5At (A : RustAlloc) (a : BitVec 64)
     (epoch : BitVec 64) (auth : Option AuthenticatorPB)
     (f3 f4 f5 : List (BitVec 8)) : SepProp :=
   rustBytesVecAt A a f3 ∗
@@ -577,7 +577,7 @@ theorem unchunked5At_eq_exists_pinned (A : RustAlloc) (a : BitVec 64)
       Entails.sepExists_right ga (Entails.sepExists_right gf5
         (Entails.sepExists_right gf4 (Entails.sepExists_right gf3 (Entails.refl _))))
 
-def unchunked5Unpacked (A : RustAlloc) (g : Unchunked5PBGhost) (a : BitVec 64)
+@[expose] def unchunked5Unpacked (A : RustAlloc) (g : Unchunked5PBGhost) (a : BitVec 64)
     (epoch : BitVec 64) (auth : Option AuthenticatorPB)
     (f3 f4 f5 : List (BitVec 8)) : SepProp :=
   (a ↦₆₄ g.f3.cap) ∗ ((a + 8#64) ↦₆₄ g.f3.ptr) ∗ ((a + 16#64) ↦₆₄ BitVec.ofNat 64 f3.length) ∗
@@ -602,134 +602,134 @@ theorem unchunked5PinnedAt_eq_unpacked (A : RustAlloc) (g : Unchunked5PBGhost) (
 
 /-! ## 3. Concrete Representation Predicates for all 10 `V1State.Unchunked.*` Structs -/
 
-def keysUnsampledPBPinnedAt (A : RustAlloc) (g : Unchunked2PBGhost) (a : BitVec 64)
+@[expose] def keysUnsampledPBPinnedAt (A : RustAlloc) (g : Unchunked2PBGhost) (a : BitVec 64)
     (m : V1State.Unchunked.KeysUnsampled) : SepProp :=
   unchunked2PinnedAt A g a m.epoch m.auth
 
-def keysUnsampledPBAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def keysUnsampledPBAt (A : RustAlloc) (a : BitVec 64)
     (m : V1State.Unchunked.KeysUnsampled) : SepProp :=
   unchunked2At A a m.epoch m.auth
 
-def noHeaderReceivedPBPinnedAt (A : RustAlloc) (g : Unchunked2PBGhost) (a : BitVec 64)
+@[expose] def noHeaderReceivedPBPinnedAt (A : RustAlloc) (g : Unchunked2PBGhost) (a : BitVec 64)
     (m : V1State.Unchunked.NoHeaderReceived) : SepProp :=
   unchunked2PinnedAt A g a m.epoch m.auth
 
-def noHeaderReceivedPBAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def noHeaderReceivedPBAt (A : RustAlloc) (a : BitVec 64)
     (m : V1State.Unchunked.NoHeaderReceived) : SepProp :=
   unchunked2At A a m.epoch m.auth
 
-def ct2SentPBPinnedAt (A : RustAlloc) (g : Unchunked2PBGhost) (a : BitVec 64)
+@[expose] def ct2SentPBPinnedAt (A : RustAlloc) (g : Unchunked2PBGhost) (a : BitVec 64)
     (m : V1State.Unchunked.Ct2Sent) : SepProp :=
   unchunked2PinnedAt A g a m.epoch m.auth
 
-def ct2SentPBAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def ct2SentPBAt (A : RustAlloc) (a : BitVec 64)
     (m : V1State.Unchunked.Ct2Sent) : SepProp :=
   unchunked2At A a m.epoch m.auth
 
-def ekSentPBPinnedAt (A : RustAlloc) (g : Unchunked3PBGhost) (a : BitVec 64)
+@[expose] def ekSentPBPinnedAt (A : RustAlloc) (g : Unchunked3PBGhost) (a : BitVec 64)
     (m : V1State.Unchunked.EkSent) : SepProp :=
   unchunked3PinnedAt A g a m.epoch m.auth m.dk
 
-def ekSentPBAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def ekSentPBAt (A : RustAlloc) (a : BitVec 64)
     (m : V1State.Unchunked.EkSent) : SepProp :=
   unchunked3At A a m.epoch m.auth m.dk
 
-def headerReceivedPBPinnedAt (A : RustAlloc) (g : Unchunked3PBGhost) (a : BitVec 64)
+@[expose] def headerReceivedPBPinnedAt (A : RustAlloc) (g : Unchunked3PBGhost) (a : BitVec 64)
     (m : V1State.Unchunked.HeaderReceived) : SepProp :=
   unchunked3PinnedAt A g a m.epoch m.auth m.hdr
 
-def headerReceivedPBAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def headerReceivedPBAt (A : RustAlloc) (a : BitVec 64)
     (m : V1State.Unchunked.HeaderReceived) : SepProp :=
   unchunked3At A a m.epoch m.auth m.hdr
 
-def headerSentPBPinnedAt (A : RustAlloc) (g : Unchunked4PBGhost) (a : BitVec 64)
+@[expose] def headerSentPBPinnedAt (A : RustAlloc) (g : Unchunked4PBGhost) (a : BitVec 64)
     (m : V1State.Unchunked.HeaderSent) : SepProp :=
   unchunked4PinnedAt A g a m.epoch m.auth m.ek m.dk
 
-def headerSentPBAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def headerSentPBAt (A : RustAlloc) (a : BitVec 64)
     (m : V1State.Unchunked.HeaderSent) : SepProp :=
   unchunked4At A a m.epoch m.auth m.ek m.dk
 
-def ekSentCt1ReceivedPBPinnedAt (A : RustAlloc) (g : Unchunked4PBGhost) (a : BitVec 64)
+@[expose] def ekSentCt1ReceivedPBPinnedAt (A : RustAlloc) (g : Unchunked4PBGhost) (a : BitVec 64)
     (m : V1State.Unchunked.EkSentCt1Received) : SepProp :=
   unchunked4PinnedAt A g a m.epoch m.auth m.dk m.ct1
 
-def ekSentCt1ReceivedPBAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def ekSentCt1ReceivedPBAt (A : RustAlloc) (a : BitVec 64)
     (m : V1State.Unchunked.EkSentCt1Received) : SepProp :=
   unchunked4At A a m.epoch m.auth m.dk m.ct1
 
-def ekReceivedPBPinnedAt (A : RustAlloc) (g : Unchunked4PBGhost) (a : BitVec 64)
+@[expose] def ekReceivedPBPinnedAt (A : RustAlloc) (g : Unchunked4PBGhost) (a : BitVec 64)
     (m : V1State.Unchunked.EkReceived) : SepProp :=
   unchunked4PinnedAt A g a m.epoch m.auth m.hdr m.ek
 
-def ekReceivedPBAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def ekReceivedPBAt (A : RustAlloc) (a : BitVec 64)
     (m : V1State.Unchunked.EkReceived) : SepProp :=
   unchunked4At A a m.epoch m.auth m.hdr m.ek
 
-def ct1SentPBPinnedAt (A : RustAlloc) (g : Unchunked5PBGhost) (a : BitVec 64)
+@[expose] def ct1SentPBPinnedAt (A : RustAlloc) (g : Unchunked5PBGhost) (a : BitVec 64)
     (m : V1State.Unchunked.Ct1Sent) : SepProp :=
   unchunked5PinnedAt A g a m.epoch m.auth m.hdr m.es m.ct1
 
-def ct1SentPBAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def ct1SentPBAt (A : RustAlloc) (a : BitVec 64)
     (m : V1State.Unchunked.Ct1Sent) : SepProp :=
   unchunked5At A a m.epoch m.auth m.hdr m.es m.ct1
 
-def ct1SentEkReceivedPBPinnedAt (A : RustAlloc) (g : Unchunked5PBGhost) (a : BitVec 64)
+@[expose] def ct1SentEkReceivedPBPinnedAt (A : RustAlloc) (g : Unchunked5PBGhost) (a : BitVec 64)
     (m : V1State.Unchunked.Ct1SentEkReceived) : SepProp :=
   unchunked5PinnedAt A g a m.epoch m.auth m.es m.ek m.ct1
 
-def ct1SentEkReceivedPBAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def ct1SentEkReceivedPBAt (A : RustAlloc) (a : BitVec 64)
     (m : V1State.Unchunked.Ct1SentEkReceived) : SepProp :=
   unchunked5At A a m.epoch m.auth m.es m.ek m.ct1
 
 /-! ## 4. Pure `encodedLen` Models & `LibsignalSpqrV1.Proto` Bridge Theorems -/
 
-def unchunked2EncodedLen (epoch : BitVec 64) (auth : Option AuthenticatorPB) : Nat :=
+@[expose] def unchunked2EncodedLen (epoch : BitVec 64) (auth : Option AuthenticatorPB) : Nat :=
   u64VarintFieldEncodedLen epoch + optAuthenticatorPBFieldEncodedLen auth
 
-def unchunked3EncodedLen (epoch : BitVec 64) (auth : Option AuthenticatorPB)
+@[expose] def unchunked3EncodedLen (epoch : BitVec 64) (auth : Option AuthenticatorPB)
     (f3 : List (BitVec 8)) : Nat :=
   u64VarintFieldEncodedLen epoch + optAuthenticatorPBFieldEncodedLen auth +
     bytesFieldEncodedLen f3
 
-def unchunked4EncodedLen (epoch : BitVec 64) (auth : Option AuthenticatorPB)
+@[expose] def unchunked4EncodedLen (epoch : BitVec 64) (auth : Option AuthenticatorPB)
     (f3 f4 : List (BitVec 8)) : Nat :=
   u64VarintFieldEncodedLen epoch + optAuthenticatorPBFieldEncodedLen auth +
     bytesFieldEncodedLen f3 + bytesFieldEncodedLen f4
 
-def unchunked5EncodedLen (epoch : BitVec 64) (auth : Option AuthenticatorPB)
+@[expose] def unchunked5EncodedLen (epoch : BitVec 64) (auth : Option AuthenticatorPB)
     (f3 f4 f5 : List (BitVec 8)) : Nat :=
   u64VarintFieldEncodedLen epoch + optAuthenticatorPBFieldEncodedLen auth +
     bytesFieldEncodedLen f3 + bytesFieldEncodedLen f4 + bytesFieldEncodedLen f5
 
-def keysUnsampledPBEncodedLen (m : V1State.Unchunked.KeysUnsampled) : Nat :=
+@[expose] def keysUnsampledPBEncodedLen (m : V1State.Unchunked.KeysUnsampled) : Nat :=
   unchunked2EncodedLen m.epoch m.auth
 
-def noHeaderReceivedPBEncodedLen (m : V1State.Unchunked.NoHeaderReceived) : Nat :=
+@[expose] def noHeaderReceivedPBEncodedLen (m : V1State.Unchunked.NoHeaderReceived) : Nat :=
   unchunked2EncodedLen m.epoch m.auth
 
-def ct2SentPBEncodedLen (m : V1State.Unchunked.Ct2Sent) : Nat :=
+@[expose] def ct2SentPBEncodedLen (m : V1State.Unchunked.Ct2Sent) : Nat :=
   unchunked2EncodedLen m.epoch m.auth
 
-def ekSentPBEncodedLen (m : V1State.Unchunked.EkSent) : Nat :=
+@[expose] def ekSentPBEncodedLen (m : V1State.Unchunked.EkSent) : Nat :=
   unchunked3EncodedLen m.epoch m.auth m.dk
 
-def headerReceivedPBEncodedLen (m : V1State.Unchunked.HeaderReceived) : Nat :=
+@[expose] def headerReceivedPBEncodedLen (m : V1State.Unchunked.HeaderReceived) : Nat :=
   unchunked3EncodedLen m.epoch m.auth m.hdr
 
-def headerSentPBEncodedLen (m : V1State.Unchunked.HeaderSent) : Nat :=
+@[expose] def headerSentPBEncodedLen (m : V1State.Unchunked.HeaderSent) : Nat :=
   unchunked4EncodedLen m.epoch m.auth m.ek m.dk
 
-def ekSentCt1ReceivedPBEncodedLen (m : V1State.Unchunked.EkSentCt1Received) : Nat :=
+@[expose] def ekSentCt1ReceivedPBEncodedLen (m : V1State.Unchunked.EkSentCt1Received) : Nat :=
   unchunked4EncodedLen m.epoch m.auth m.dk m.ct1
 
 def ekReceivedPBEncodedLen (m : V1State.Unchunked.EkReceived) : Nat :=
   unchunked4EncodedLen m.epoch m.auth m.hdr m.ek
 
-def ct1SentPBEncodedLen (m : V1State.Unchunked.Ct1Sent) : Nat :=
+@[expose] def ct1SentPBEncodedLen (m : V1State.Unchunked.Ct1Sent) : Nat :=
   unchunked5EncodedLen m.epoch m.auth m.hdr m.es m.ct1
 
-def ct1SentEkReceivedPBEncodedLen (m : V1State.Unchunked.Ct1SentEkReceived) : Nat :=
+@[expose] def ct1SentEkReceivedPBEncodedLen (m : V1State.Unchunked.Ct1SentEkReceived) : Nat :=
   unchunked5EncodedLen m.epoch m.auth m.es m.ek m.ct1
 
 theorem keysUnsampledPBEncodedLen_eq_proto (m : V1State.Unchunked.KeysUnsampled) :
@@ -881,7 +881,7 @@ abbrev ct1SentEkReceivedEncodedLenLocal2Name : String :=
 abbrev Unchunked2EncodedLenPinnedGhost := BitVec 64 × Unchunked2PBGhost × BitVec 64 × Option AuthenticatorPB
 abbrev Unchunked2EncodedLenGhost := BitVec 64 × BitVec 64 × Option AuthenticatorPB
 
-def unchunked2EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked2EncodedLenPinnedGhost where
+@[expose] def unchunked2EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked2EncodedLenPinnedGhost where
   pre := fun ⟨a, g, epoch, auth⟩ s =>
     ⌜s.readReg64 .x0 = a ∧ unchunked2EncodedLen epoch auth < 2 ^ 64⌝ ∗
       unchunked2PinnedAt A g a epoch auth ∗ stackAt s.sp unchunkedEncodedLenStack
@@ -889,7 +889,7 @@ def unchunked2EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked2EncodedLenPi
     ⌜sf.readReg64 .x0 = BitVec.ofNat 64 (unchunked2EncodedLen epoch auth) ∧ sf.trace = s0.trace⌝ ∗
       unchunked2PinnedAt A g a epoch auth ∗ stackAt s0.sp unchunkedEncodedLenStack
 
-def unchunked2EncodedLenSpec (A : RustAlloc) : Spec Unchunked2EncodedLenGhost where
+@[expose] def unchunked2EncodedLenSpec (A : RustAlloc) : Spec Unchunked2EncodedLenGhost where
   pre := fun ⟨a, epoch, auth⟩ s =>
     ⌜s.readReg64 .x0 = a ∧ unchunked2EncodedLen epoch auth < 2 ^ 64⌝ ∗
       unchunked2At A a epoch auth ∗ stackAt s.sp unchunkedEncodedLenStack
@@ -902,7 +902,7 @@ abbrev Unchunked3EncodedLenPinnedGhost :=
 abbrev Unchunked3EncodedLenGhost :=
   BitVec 64 × BitVec 64 × Option AuthenticatorPB × List (BitVec 8)
 
-def unchunked3EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked3EncodedLenPinnedGhost where
+@[expose] def unchunked3EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked3EncodedLenPinnedGhost where
   pre := fun ⟨a, g, epoch, auth, f3⟩ s =>
     ⌜s.readReg64 .x0 = a ∧ unchunked3EncodedLen epoch auth f3 < 2 ^ 64⌝ ∗
       unchunked3PinnedAt A g a epoch auth f3 ∗ stackAt s.sp unchunkedEncodedLenStack
@@ -910,7 +910,7 @@ def unchunked3EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked3EncodedLenPi
     ⌜sf.readReg64 .x0 = BitVec.ofNat 64 (unchunked3EncodedLen epoch auth f3) ∧ sf.trace = s0.trace⌝ ∗
       unchunked3PinnedAt A g a epoch auth f3 ∗ stackAt s0.sp unchunkedEncodedLenStack
 
-def unchunked3EncodedLenSpec (A : RustAlloc) : Spec Unchunked3EncodedLenGhost where
+@[expose] def unchunked3EncodedLenSpec (A : RustAlloc) : Spec Unchunked3EncodedLenGhost where
   pre := fun ⟨a, epoch, auth, f3⟩ s =>
     ⌜s.readReg64 .x0 = a ∧ unchunked3EncodedLen epoch auth f3 < 2 ^ 64⌝ ∗
       unchunked3At A a epoch auth f3 ∗ stackAt s.sp unchunkedEncodedLenStack
@@ -923,7 +923,7 @@ abbrev Unchunked4EncodedLenPinnedGhost :=
 abbrev Unchunked4EncodedLenGhost :=
   BitVec 64 × BitVec 64 × Option AuthenticatorPB × List (BitVec 8) × List (BitVec 8)
 
-def unchunked4EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked4EncodedLenPinnedGhost where
+@[expose] def unchunked4EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked4EncodedLenPinnedGhost where
   pre := fun ⟨a, g, epoch, auth, f3, f4⟩ s =>
     ⌜s.readReg64 .x0 = a ∧ unchunked4EncodedLen epoch auth f3 f4 < 2 ^ 64⌝ ∗
       unchunked4PinnedAt A g a epoch auth f3 f4 ∗ stackAt s.sp unchunkedEncodedLenStack
@@ -931,7 +931,7 @@ def unchunked4EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked4EncodedLenPi
     ⌜sf.readReg64 .x0 = BitVec.ofNat 64 (unchunked4EncodedLen epoch auth f3 f4) ∧ sf.trace = s0.trace⌝ ∗
       unchunked4PinnedAt A g a epoch auth f3 f4 ∗ stackAt s0.sp unchunkedEncodedLenStack
 
-def unchunked4EncodedLenSpec (A : RustAlloc) : Spec Unchunked4EncodedLenGhost where
+@[expose] def unchunked4EncodedLenSpec (A : RustAlloc) : Spec Unchunked4EncodedLenGhost where
   pre := fun ⟨a, epoch, auth, f3, f4⟩ s =>
     ⌜s.readReg64 .x0 = a ∧ unchunked4EncodedLen epoch auth f3 f4 < 2 ^ 64⌝ ∗
       unchunked4At A a epoch auth f3 f4 ∗ stackAt s.sp unchunkedEncodedLenStack
@@ -944,7 +944,7 @@ abbrev Unchunked5EncodedLenPinnedGhost :=
 abbrev Unchunked5EncodedLenGhost :=
   BitVec 64 × BitVec 64 × Option AuthenticatorPB × List (BitVec 8) × List (BitVec 8) × List (BitVec 8)
 
-def unchunked5EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked5EncodedLenPinnedGhost where
+@[expose] def unchunked5EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked5EncodedLenPinnedGhost where
   pre := fun ⟨a, g, epoch, auth, f3, f4, f5⟩ s =>
     ⌜s.readReg64 .x0 = a ∧ unchunked5EncodedLen epoch auth f3 f4 f5 < 2 ^ 64⌝ ∗
       unchunked5PinnedAt A g a epoch auth f3 f4 f5 ∗ stackAt s.sp unchunkedEncodedLenStack
@@ -952,7 +952,7 @@ def unchunked5EncodedLenPinnedSpec (A : RustAlloc) : Spec Unchunked5EncodedLenPi
     ⌜sf.readReg64 .x0 = BitVec.ofNat 64 (unchunked5EncodedLen epoch auth f3 f4 f5) ∧ sf.trace = s0.trace⌝ ∗
       unchunked5PinnedAt A g a epoch auth f3 f4 f5 ∗ stackAt s0.sp unchunkedEncodedLenStack
 
-def unchunked5EncodedLenSpec (A : RustAlloc) : Spec Unchunked5EncodedLenGhost where
+@[expose] def unchunked5EncodedLenSpec (A : RustAlloc) : Spec Unchunked5EncodedLenGhost where
   pre := fun ⟨a, epoch, auth, f3, f4, f5⟩ s =>
     ⌜s.readReg64 .x0 = a ∧ unchunked5EncodedLen epoch auth f3 f4 f5 < 2 ^ 64⌝ ∗
       unchunked5At A a epoch auth f3 f4 f5 ∗ stackAt s.sp unchunkedEncodedLenStack
@@ -974,99 +974,99 @@ structure UnpinnedEncLenGhost (M : Type) where
 abbrev KeysUnsampledEncodedLenPinnedGhost := PinnedEncLenGhost Unchunked2PBGhost V1State.Unchunked.KeysUnsampled
 abbrev KeysUnsampledEncodedLenGhost := UnpinnedEncLenGhost V1State.Unchunked.KeysUnsampled
 
-def keysUnsampledEncodedLenPinnedSpec (A : RustAlloc) : Spec KeysUnsampledEncodedLenPinnedGhost where
+@[expose] def keysUnsampledEncodedLenPinnedSpec (A : RustAlloc) : Spec KeysUnsampledEncodedLenPinnedGhost where
   pre := fun x s => (unchunked2EncodedLenPinnedSpec A).pre ⟨x.a, x.g, x.m.epoch, x.m.auth⟩ s
   post := fun x s0 sf => (unchunked2EncodedLenPinnedSpec A).post ⟨x.a, x.g, x.m.epoch, x.m.auth⟩ s0 sf
 
-def keysUnsampledEncodedLenSpec (A : RustAlloc) : Spec KeysUnsampledEncodedLenGhost where
+@[expose] def keysUnsampledEncodedLenSpec (A : RustAlloc) : Spec KeysUnsampledEncodedLenGhost where
   pre := fun x s => (unchunked2EncodedLenSpec A).pre ⟨x.a, x.m.epoch, x.m.auth⟩ s
   post := fun x s0 sf => (unchunked2EncodedLenSpec A).post ⟨x.a, x.m.epoch, x.m.auth⟩ s0 sf
 
 abbrev NoHeaderReceivedEncodedLenPinnedGhost := PinnedEncLenGhost Unchunked2PBGhost V1State.Unchunked.NoHeaderReceived
 abbrev NoHeaderReceivedEncodedLenGhost := UnpinnedEncLenGhost V1State.Unchunked.NoHeaderReceived
 
-def noHeaderReceivedEncodedLenPinnedSpec (A : RustAlloc) : Spec NoHeaderReceivedEncodedLenPinnedGhost where
+@[expose] def noHeaderReceivedEncodedLenPinnedSpec (A : RustAlloc) : Spec NoHeaderReceivedEncodedLenPinnedGhost where
   pre := fun x s => (unchunked2EncodedLenPinnedSpec A).pre ⟨x.a, x.g, x.m.epoch, x.m.auth⟩ s
   post := fun x s0 sf => (unchunked2EncodedLenPinnedSpec A).post ⟨x.a, x.g, x.m.epoch, x.m.auth⟩ s0 sf
 
-def noHeaderReceivedEncodedLenSpec (A : RustAlloc) : Spec NoHeaderReceivedEncodedLenGhost where
+@[expose] def noHeaderReceivedEncodedLenSpec (A : RustAlloc) : Spec NoHeaderReceivedEncodedLenGhost where
   pre := fun x s => (unchunked2EncodedLenSpec A).pre ⟨x.a, x.m.epoch, x.m.auth⟩ s
   post := fun x s0 sf => (unchunked2EncodedLenSpec A).post ⟨x.a, x.m.epoch, x.m.auth⟩ s0 sf
 
 abbrev Ct2SentEncodedLenPinnedGhost := PinnedEncLenGhost Unchunked2PBGhost V1State.Unchunked.Ct2Sent
 abbrev Ct2SentEncodedLenGhost := UnpinnedEncLenGhost V1State.Unchunked.Ct2Sent
 
-def ct2SentEncodedLenPinnedSpec (A : RustAlloc) : Spec Ct2SentEncodedLenPinnedGhost where
+@[expose] def ct2SentEncodedLenPinnedSpec (A : RustAlloc) : Spec Ct2SentEncodedLenPinnedGhost where
   pre := fun x s => (unchunked2EncodedLenPinnedSpec A).pre ⟨x.a, x.g, x.m.epoch, x.m.auth⟩ s
   post := fun x s0 sf => (unchunked2EncodedLenPinnedSpec A).post ⟨x.a, x.g, x.m.epoch, x.m.auth⟩ s0 sf
 
-def ct2SentEncodedLenSpec (A : RustAlloc) : Spec Ct2SentEncodedLenGhost where
+@[expose] def ct2SentEncodedLenSpec (A : RustAlloc) : Spec Ct2SentEncodedLenGhost where
   pre := fun x s => (unchunked2EncodedLenSpec A).pre ⟨x.a, x.m.epoch, x.m.auth⟩ s
   post := fun x s0 sf => (unchunked2EncodedLenSpec A).post ⟨x.a, x.m.epoch, x.m.auth⟩ s0 sf
 
 abbrev EkSentEncodedLenPinnedGhost := PinnedEncLenGhost Unchunked3PBGhost V1State.Unchunked.EkSent
 abbrev EkSentEncodedLenGhost := UnpinnedEncLenGhost V1State.Unchunked.EkSent
 
-def ekSentEncodedLenPinnedSpec (A : RustAlloc) : Spec EkSentEncodedLenPinnedGhost where
+@[expose] def ekSentEncodedLenPinnedSpec (A : RustAlloc) : Spec EkSentEncodedLenPinnedGhost where
   pre := fun x s => (unchunked3EncodedLenPinnedSpec A).pre ⟨x.a, x.g, x.m.epoch, x.m.auth, x.m.dk⟩ s
   post := fun x s0 sf => (unchunked3EncodedLenPinnedSpec A).post ⟨x.a, x.g, x.m.epoch, x.m.auth, x.m.dk⟩ s0 sf
 
-def ekSentEncodedLenSpec (A : RustAlloc) : Spec EkSentEncodedLenGhost where
+@[expose] def ekSentEncodedLenSpec (A : RustAlloc) : Spec EkSentEncodedLenGhost where
   pre := fun x s => (unchunked3EncodedLenSpec A).pre ⟨x.a, x.m.epoch, x.m.auth, x.m.dk⟩ s
   post := fun x s0 sf => (unchunked3EncodedLenSpec A).post ⟨x.a, x.m.epoch, x.m.auth, x.m.dk⟩ s0 sf
 
 abbrev HeaderReceivedEncodedLenPinnedGhost := PinnedEncLenGhost Unchunked3PBGhost V1State.Unchunked.HeaderReceived
 abbrev HeaderReceivedEncodedLenGhost := UnpinnedEncLenGhost V1State.Unchunked.HeaderReceived
 
-def headerReceivedEncodedLenPinnedSpec (A : RustAlloc) : Spec HeaderReceivedEncodedLenPinnedGhost where
+@[expose] def headerReceivedEncodedLenPinnedSpec (A : RustAlloc) : Spec HeaderReceivedEncodedLenPinnedGhost where
   pre := fun x s => (unchunked3EncodedLenPinnedSpec A).pre ⟨x.a, x.g, x.m.epoch, x.m.auth, x.m.hdr⟩ s
   post := fun x s0 sf => (unchunked3EncodedLenPinnedSpec A).post ⟨x.a, x.g, x.m.epoch, x.m.auth, x.m.hdr⟩ s0 sf
 
-def headerReceivedEncodedLenSpec (A : RustAlloc) : Spec HeaderReceivedEncodedLenGhost where
+@[expose] def headerReceivedEncodedLenSpec (A : RustAlloc) : Spec HeaderReceivedEncodedLenGhost where
   pre := fun x s => (unchunked3EncodedLenSpec A).pre ⟨x.a, x.m.epoch, x.m.auth, x.m.hdr⟩ s
   post := fun x s0 sf => (unchunked3EncodedLenSpec A).post ⟨x.a, x.m.epoch, x.m.auth, x.m.hdr⟩ s0 sf
 
 abbrev HeaderSentEncodedLenPinnedGhost := PinnedEncLenGhost Unchunked4PBGhost V1State.Unchunked.HeaderSent
 abbrev HeaderSentEncodedLenGhost := UnpinnedEncLenGhost V1State.Unchunked.HeaderSent
 
-def headerSentEncodedLenPinnedSpec (A : RustAlloc) : Spec HeaderSentEncodedLenPinnedGhost where
+@[expose] def headerSentEncodedLenPinnedSpec (A : RustAlloc) : Spec HeaderSentEncodedLenPinnedGhost where
   pre := fun x s => (unchunked4EncodedLenPinnedSpec A).pre ⟨x.a, x.g, x.m.epoch, x.m.auth, x.m.ek, x.m.dk⟩ s
   post := fun x s0 sf => (unchunked4EncodedLenPinnedSpec A).post ⟨x.a, x.g, x.m.epoch, x.m.auth, x.m.ek, x.m.dk⟩ s0 sf
 
-def headerSentEncodedLenSpec (A : RustAlloc) : Spec HeaderSentEncodedLenGhost where
+@[expose] def headerSentEncodedLenSpec (A : RustAlloc) : Spec HeaderSentEncodedLenGhost where
   pre := fun x s => (unchunked4EncodedLenSpec A).pre ⟨x.a, x.m.epoch, x.m.auth, x.m.ek, x.m.dk⟩ s
   post := fun x s0 sf => (unchunked4EncodedLenSpec A).post ⟨x.a, x.m.epoch, x.m.auth, x.m.ek, x.m.dk⟩ s0 sf
 
 abbrev EkSentCt1ReceivedEncodedLenPinnedGhost := PinnedEncLenGhost Unchunked4PBGhost V1State.Unchunked.EkSentCt1Received
 abbrev EkSentCt1ReceivedEncodedLenGhost := UnpinnedEncLenGhost V1State.Unchunked.EkSentCt1Received
 
-def ekSentCt1ReceivedEncodedLenPinnedSpec (A : RustAlloc) : Spec EkSentCt1ReceivedEncodedLenPinnedGhost where
+@[expose] def ekSentCt1ReceivedEncodedLenPinnedSpec (A : RustAlloc) : Spec EkSentCt1ReceivedEncodedLenPinnedGhost where
   pre := fun x s => (unchunked4EncodedLenPinnedSpec A).pre ⟨x.a, x.g, x.m.epoch, x.m.auth, x.m.dk, x.m.ct1⟩ s
   post := fun x s0 sf => (unchunked4EncodedLenPinnedSpec A).post ⟨x.a, x.g, x.m.epoch, x.m.auth, x.m.dk, x.m.ct1⟩ s0 sf
 
-def ekSentCt1ReceivedEncodedLenSpec (A : RustAlloc) : Spec EkSentCt1ReceivedEncodedLenGhost where
+@[expose] def ekSentCt1ReceivedEncodedLenSpec (A : RustAlloc) : Spec EkSentCt1ReceivedEncodedLenGhost where
   pre := fun x s => (unchunked4EncodedLenSpec A).pre ⟨x.a, x.m.epoch, x.m.auth, x.m.dk, x.m.ct1⟩ s
   post := fun x s0 sf => (unchunked4EncodedLenSpec A).post ⟨x.a, x.m.epoch, x.m.auth, x.m.dk, x.m.ct1⟩ s0 sf
 
 abbrev Ct1SentEncodedLenPinnedGhost := PinnedEncLenGhost Unchunked5PBGhost V1State.Unchunked.Ct1Sent
 abbrev Ct1SentEncodedLenGhost := UnpinnedEncLenGhost V1State.Unchunked.Ct1Sent
 
-def ct1SentEncodedLenPinnedSpec (A : RustAlloc) : Spec Ct1SentEncodedLenPinnedGhost where
+@[expose] def ct1SentEncodedLenPinnedSpec (A : RustAlloc) : Spec Ct1SentEncodedLenPinnedGhost where
   pre := fun x s => (unchunked5EncodedLenPinnedSpec A).pre ⟨x.a, x.g, x.m.epoch, x.m.auth, x.m.hdr, x.m.es, x.m.ct1⟩ s
   post := fun x s0 sf => (unchunked5EncodedLenPinnedSpec A).post ⟨x.a, x.g, x.m.epoch, x.m.auth, x.m.hdr, x.m.es, x.m.ct1⟩ s0 sf
 
-def ct1SentEncodedLenSpec (A : RustAlloc) : Spec Ct1SentEncodedLenGhost where
+@[expose] def ct1SentEncodedLenSpec (A : RustAlloc) : Spec Ct1SentEncodedLenGhost where
   pre := fun x s => (unchunked5EncodedLenSpec A).pre ⟨x.a, x.m.epoch, x.m.auth, x.m.hdr, x.m.es, x.m.ct1⟩ s
   post := fun x s0 sf => (unchunked5EncodedLenSpec A).post ⟨x.a, x.m.epoch, x.m.auth, x.m.hdr, x.m.es, x.m.ct1⟩ s0 sf
 
 abbrev Ct1SentEkReceivedEncodedLenPinnedGhost := PinnedEncLenGhost Unchunked5PBGhost V1State.Unchunked.Ct1SentEkReceived
 abbrev Ct1SentEkReceivedEncodedLenGhost := UnpinnedEncLenGhost V1State.Unchunked.Ct1SentEkReceived
 
-def ct1SentEkReceivedEncodedLenPinnedSpec (A : RustAlloc) : Spec Ct1SentEkReceivedEncodedLenPinnedGhost where
+@[expose] def ct1SentEkReceivedEncodedLenPinnedSpec (A : RustAlloc) : Spec Ct1SentEkReceivedEncodedLenPinnedGhost where
   pre := fun x s => (unchunked5EncodedLenPinnedSpec A).pre ⟨x.a, x.g, x.m.epoch, x.m.auth, x.m.es, x.m.ek, x.m.ct1⟩ s
   post := fun x s0 sf => (unchunked5EncodedLenPinnedSpec A).post ⟨x.a, x.g, x.m.epoch, x.m.auth, x.m.es, x.m.ek, x.m.ct1⟩ s0 sf
 
-def ct1SentEkReceivedEncodedLenSpec (A : RustAlloc) : Spec Ct1SentEkReceivedEncodedLenGhost where
+@[expose] def ct1SentEkReceivedEncodedLenSpec (A : RustAlloc) : Spec Ct1SentEkReceivedEncodedLenGhost where
   pre := fun x s => (unchunked5EncodedLenSpec A).pre ⟨x.a, x.m.epoch, x.m.auth, x.m.es, x.m.ek, x.m.ct1⟩ s
   post := fun x s0 sf => (unchunked5EncodedLenSpec A).post ⟨x.a, x.m.epoch, x.m.auth, x.m.es, x.m.ek, x.m.ct1⟩ s0 sf
 

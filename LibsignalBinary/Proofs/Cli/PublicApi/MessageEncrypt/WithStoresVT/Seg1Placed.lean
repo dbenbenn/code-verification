@@ -10,17 +10,25 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegIdentityPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustPlaced
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegIdentityPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustPlaced
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Hooks
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Statements
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustStepsPlaced
+public import ProofLib.RegChain
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,11 +45,11 @@ open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalPublicApiRepr CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.LibsignalPublicApi CryptoVerification.LibsignalPublicApi.StoreKit
-open CryptoVerification.LibsignalSpqrV1 (TokenInit)
+
 
 /-- Relocatable `withStoresEncPlacedSpecV` with `64 ≤ x.rest.length` and `F` (e.g. `TokenInit img`)
 framed in `pre` and `post`. -/
-def withStoresEncPlacedSpecVT [LibsignalPlacement] {A : RustAlloc}
+@[expose] def withStoresEncPlacedSpecVT [LibsignalPlacement] {A : RustAlloc}
     (F : SepProp)
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
@@ -56,7 +64,7 @@ def withStoresEncPlacedSpecVT [LibsignalPlacement] {A : RustAlloc}
       F ∗ base.post x s0 sf }
 
 /-- Relocatable `OTR::encrypt::<Coins>` spec at `Q := (pq.length < 2^32 ∧ 64 ≤ rest.length)` with `F` framed. -/
-def otrEncryptPlacedSpecQT [LibsignalPlacement] (F : SepProp) (C : Crypto) (A : RustAlloc)
+@[expose] def otrEncryptPlacedSpecQT [LibsignalPlacement] (F : SepProp) (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel) : Spec OtrEncryptGhost :=
   otrEncryptPlacedSpecQF (fun pq rest => pq.length < 2 ^ 32 ∧ 64 ≤ rest.length)
     F C A ctl parse S
@@ -146,7 +154,7 @@ theorem h45_otrEncryptPlacedOkQ_false [LibsignalPlacement] {C : Crypto} {A : Rus
   rw [sepConj_assoc, satisfies_pure_sepConj] at hp
   exact False.elim hp.1
 
-@[reducible] def h45_kitF_placed {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b) :
+@[expose, reducible] def h45_kitF_placed {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b) :
     SessionStoreSpec A b :=
   { kit with addrOk := fun _ => False }
 
@@ -326,7 +334,7 @@ theorem h45_subroutineOutcome_vt_of_v_placed [LibsignalPlacement] {A : RustAlloc
     rw [satisfies_pure_sepConj] at honoom
     exact False.elim honoom.1
 
-def h45_ScopeNone_placed (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] def h45_ScopeNone_placed (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (r : SessionRecord (List (BitVec 8))) : Prop :=
   Scope r ∧ r.currentSession = none
 
@@ -358,7 +366,7 @@ theorem h45_envNone_placed [LibsignalPlacement] {F : SepProp} {C : Crypto} {A : 
     scopeQ := fun _ _ h hs => by rw [h.1.2] at hs; cases hs
     recOk := fun h => by have hnone := h.2.1.1.2; rw [h.1] at hnone; cases hnone }
 
-@[reducible] def h45_kitL_placed {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b) :
+@[expose, reducible] def h45_kitL_placed {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b) :
     SessionStoreSpec A b :=
   { kit with addrOk := fun _ => False, loadRel := fun _ _ _ => False }
 

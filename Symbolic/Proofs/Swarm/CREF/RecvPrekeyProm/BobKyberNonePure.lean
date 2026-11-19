@@ -9,11 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
-public import Symbolic.Proofs.Refinement.RecordBytesBridge
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.P3Reach
 import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApi
+public import Symbolic.Proofs.SpecLemmas.CliPureBytes -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
 
 /-!
 # `PureBobKyberNone` Record-Encoding Bridge and `hp3_of_bobKyberNone`
@@ -24,7 +27,7 @@ Proves `recordBytes (sessionToRecordRecPending s) = encodeRecord ⟨some s⟩` u
 `TR.StateRel`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -41,7 +44,7 @@ open CryptoProofLib.Refinement (ExternInterpretation)
 
 /-- Converts a `Session HwBytes` (including `pendingPreKey` and `pendingKyberPreKey` payloads) into
 a `RecordRec` with `previous = []`. -/
-def sessionToRecordRecPending (s : Session HwBytes) : RecordRec where
+@[expose] def sessionToRecordRecPending (s : Session HwBytes) : RecordRec where
   current :=
     { Swarm.Phase0WholeFunctionBridge.sessionToSessionRec s with
       pendingPreKey := s.pendingPreKey.map fun p => (encPendingPreKey p, [])

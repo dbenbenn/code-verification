@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SlotsZ6FramePure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SlotsZ6FramePure -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -35,7 +35,7 @@ Proves `SkippedKeySrcLt (runTraceMoves r₀ ms)` across all composed protocol mo
 and derives premise-free `SkippedInstallByteFresh` and `RecvRkNotLowAll` step lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.ChainClone3.ChainCloneFetch
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.ChainClone3.ChainCloneFetch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import ProofLib.SepLogic.WPp
@@ -22,7 +22,7 @@ Stack-frame decomposition, address normalization, and separation-logic invariant
 `<session_structure::Chain as Clone>::clone [local#3]` (`0x766c8`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.ChainClone3
 
@@ -36,7 +36,7 @@ set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
-def protoChainAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 64) : SepProp :=
+@[expose] def protoChainAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 64) : SepProp :=
   ⌜PublicKey.deserialize gc.1.srk.bytes = .ok gc.2.senderRatchetKey ∧
     gc.2.messageKeys.length ≤ maxMessageKeys ∧
     gc.1.keys.length = gc.2.messageKeys.length⌝ ∗
@@ -46,7 +46,7 @@ def protoChainAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 
     (gc.1.keys.zip gc.2.messageKeys) ∗
   optChainKeyAt A gc.1.ck gc.2.chainKey (a + 72#64)
 
-def protoChainCloneSpec (A : RustAlloc) : Spec ChainCloneGhost where
+@[expose] def protoChainCloneSpec (A : RustAlloc) : Spec ChainCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src⌝ ∗
       memRegion x.dst 104 ∗ protoChainAt A x.gc x.src ∗ A.pool ∗ stackAt s.sp chainCloneStack
@@ -58,26 +58,6 @@ def protoChainCloneSpec (A : RustAlloc) : Spec ChainCloneGhost where
         protoChainAt A (g', x.gc.2) x.dst) ∗
       protoChainAt A x.gc x.src ∗ A.pool ∗ stackAt s0.sp chainCloneStack
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-def ProtoChainClone3Ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr chainClone3Name)
-    (protoChainCloneSpec A)
-
-def ChainClone3Ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr chainClone3Name)
-    (chainCloneSpec A)
-
-def SenderChainClone3Ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr chainClone3Name)
-    (senderChainCloneSpec A)
-
-/-! ## 2. Stack Frame Decomposition and Address Normalization for `Chain::clone [local#2]` -/
 
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
@@ -420,7 +400,7 @@ theorem vecU8Buf_pos_eq (A : RustAlloc) (ptr' : BitVec 64) (bs : List (BitVec 8)
 
 /-- Invariant for the cloned `Option<chain::ChainKey>` buffer in registers `(x25, x28, w27)`
 before it is written to the destination `Chain` at offset `+72`. -/
-def clonedOptChainKeyBuf (A : RustAlloc) (ckPin' : VecPin)
+@[expose] def clonedOptChainKeyBuf (A : RustAlloc) (ckPin' : VecPin)
     (x25 x28 : BitVec 64) (w27 : BitVec 32) : Option ChainKey → SepProp
   | none => ⌜x25 = optChainKeyNone⌝
   | some ck =>
@@ -495,7 +475,7 @@ theorem fold_optChainKeyAt (A : RustAlloc) (ckPin' : VecPin)
     exact Entails.refl _
 
 /-- Untouched parts of a source `chain::MessageKey` at `a` during the `MessageKey` clone loop. -/
-def messageKeySourceFrame (A : RustAlloc) (gk : MessageKeyGhost)
+@[expose] def messageKeySourceFrame (A : RustAlloc) (gk : MessageKeyGhost)
     (mkg : MessageKeyGenerator) (a : BitVec 64) : SepProp :=
   (a ↦₆₄ gk.cipher.cap) ∗ ((a + 8#64) ↦₆₄ gk.cipher.ptr) ∗
     vecU8Buf A gk.cipher.cap gk.cipher.ptr [] ∗
@@ -618,7 +598,7 @@ theorem messageKeyAt_eq_source (A : RustAlloc) (gk : MessageKeyGhost)
     rw [hpure_comm]
     exact Entails.pure_right ⟨hlen, hlt, hptr⟩ (Entails.refl _)
 
-def clonedMessageKeyGhost (seedLen seedPtr' : BitVec 64) : MessageKeyGhost :=
+@[expose] def clonedMessageKeyGhost (seedLen seedPtr' : BitVec 64) : MessageKeyGhost :=
   { cipher := ⟨0#64, 1#64⟩
     mac    := ⟨0#64, 1#64⟩
     iv     := ⟨0#64, 1#64⟩
@@ -699,7 +679,7 @@ theorem fold_cloned_messageKeyAt (A : RustAlloc) (mkg : MessageKeyGenerator)
       ac_rfl
     rw [hcomm]; exact Entails.refl _
 
-def clonedChainGhost (gc : ChainGhost × ReceiverChain)
+@[expose] def clonedChainGhost (gc : ChainGhost × ReceiverChain)
     (srkPtr' privPtr' mkCap' mkPtr' : BitVec 64)
     (keys' : List MessageKeyGhost) (ckPin' : VecPin) : ChainGhost :=
   { srk   := ⟨BitVec.ofNat 64 gc.1.srk.bytes.length, srkPtr', gc.1.srk.bytes⟩
@@ -804,7 +784,7 @@ theorem fold_chainAt_dst (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
 
 /-- Callee-saved register save area `[s0.sp - 96#64 .. s0.sp - 8#64]` plus the two stack slots
 `[s0.sp - 120#64 .. s0.sp - 108#64]` that are only referenced in dead code paths. -/
-def savedRegsOnStack (s0 : State) : SepProp :=
+@[expose] def savedRegsOnStack (s0 : State) : SepProp :=
   ((s0.sp - 96#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5)) ∗
   ((s0.sp - 88#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5)) ∗
   ((s0.sp - 80#64) ↦₆₄ s0.readReg64 (Reg.gpr 28#5)) ∗
@@ -822,7 +802,7 @@ def savedRegsOnStack (s0 : State) : SepProp :=
   (∃∗ w12b : BitVec 32, (s0.sp - 108#64) ↦₃₂ w12b)
 
 /-- The 8 spill slots `[sp - 208#64 .. sp - 152#64]` when existentially quantified. -/
-def spillSlotsExist (sp : BitVec 64) : SepProp :=
+@[expose] def spillSlotsExist (sp : BitVec 64) : SepProp :=
   (∃∗ v0 : BitVec 64, (sp - 208#64) ↦₆₄ v0) ∗
   (∃∗ w1a : BitVec 32, (sp - 200#64) ↦₃₂ w1a) ∗
   (∃∗ w1b : BitVec 32, (sp - 196#64) ↦₃₂ w1b) ∗

@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
@@ -28,7 +28,7 @@ entry/continuation bundles, `SpqrMergeLoopEnv` combinators, `deallocFreeOnlySpec
 tails (`+2680`, `+2692`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -607,7 +607,7 @@ theorem tag_ok_env_of_free {restLen rest'Len bsLen subCap outerCap : Nat}
   ((hevs₁.mono (Nat.le_refl _) hrest hsub).append (spqrMergeLoopEnv_of_freeOnly hevs₂)).mono_fuel (by omega)
 
 /-- Deallocation contract specialized to `FreeOnlyEvs`-compatible `rustDeallocEvents` for tag error cleanup. -/
-def deallocFreeOnlySpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def deallocFreeOnlySpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BitVec 64 × Nat × Nat × M.σ) where
   pre := (rustCliDeallocBudgetSpec M A lim).pre
   post := fun (_, size, align, st) s0 sf =>

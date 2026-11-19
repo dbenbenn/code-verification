@@ -13,7 +13,7 @@ public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepDeliver
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.Base
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.HelpersC
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv -- shake: keep
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv -- shake: keep
 
 /-!
 # Deliver step of the C coupling: known chain, case-3a resync reject
@@ -21,7 +21,7 @@ public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC
 Closes the known-chain case-3a resync `deliver` step when Fig. 8 rejects `c'`.
 -/
 
-@[expose] public section
+public section
 
 
 open OracleComp OracleSpec ENNReal MeasureTheory

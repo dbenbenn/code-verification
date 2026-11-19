@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.ProofPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3
@@ -21,6 +21,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3d
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3dPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4cPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 3 (`Ct1Received`, `+692`)
@@ -29,7 +30,7 @@ Relocatable Block-`333` top-level composition and `subroutine_ok` contract for
 `InnerState.ct1Received`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

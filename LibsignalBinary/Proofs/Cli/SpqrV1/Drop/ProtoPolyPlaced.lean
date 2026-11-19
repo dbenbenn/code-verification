@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPoly
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.DecodesPlaced
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPoly -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.DecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable `Option<proto::pq_ratchet::PolynomialEncoder>` Drop Glue (Block `435`)
@@ -24,7 +25,7 @@ Proves `drop_glue_opt_proto_poly_encoder_placed_ok` and `drop_opt_proto_poly_enc
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

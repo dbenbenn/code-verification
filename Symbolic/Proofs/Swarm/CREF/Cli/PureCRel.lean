@@ -9,11 +9,16 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RelPure
-public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
-public import Symbolic.Proofs.Swarm.CREF.TR.SendsFitRun
-public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKey
+public import Symbolic.Proofs.Swarm.CREF.RelPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.SendsFitRun -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKey -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
+public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSession
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApi
 
 /-!
 # Machine-Free Composed Refinement Relation
@@ -22,7 +27,7 @@ Defines the hardware-independent session-record, history, and trace invariant `P
 for the CLI composed refinement proof.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +41,7 @@ open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 
 /-- Hardware-independent counterpart of `AliceInitPending` for an unacknowledged initiator pre-key
 session. -/
-def PureAliceInitPending (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PureAliceInitPending (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (ms : List Move) (rec : HwBytes) : Prop :=
   ∃ (sess : Session (List (BitVec 8))) (sc : SenderChain) (remote : IdentityKey)
     (items : PendingPreKey) (kpk : PendingKyberPreKey) (st : TripleRatchet.TRState)
@@ -74,7 +79,7 @@ def PureAliceInitPending (interpretation : ExternInterpretation) (r : ProtocolSe
       (recR.current.receiverChains.map ChainRec.senderRatchetKey).Nodup
 
 /-- Every `RecordRec` encoding of Bob's stored session record has `pendingKyberPreKey = none`. -/
-def PureBobKyberNone (r : ProtocolSetup) (records : Participant → Option HwBytes) : Prop :=
+@[expose] def PureBobKyberNone (r : ProtocolSetup) (records : Participant → Option HwBytes) : Prop :=
   ∀ rr : RecordRec, records r.bob = some (recordBytes rr) →
     rr.current.pendingKyberPreKey = none
 
@@ -86,7 +91,7 @@ structure TR.PureTRSlots where
   tok : Unit → Prop
 
 /-- Hardware-independent Triple Ratchet session-record invariant over `TR.PureTRSlots`. -/
-def TR.PureTRRecordStateInv (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def TR.PureTRRecordStateInv (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (Z : TR.PureTRSlots) (g : Ghost) (ms : List Move)
     (records : Participant → Option HwBytes) : Prop :=
   ∀ p b, records p = some b →
@@ -114,14 +119,14 @@ def TR.PureTRRecordStateInv (interpretation : ExternInterpretation) (r₀ : Prot
         (∀ c ∈ rec.current.receiverChains, (c.messageKeys.map Prod.fst).Nodup) ∧
         ∀ c ∈ rec.current.receiverChains, ∀ k ∈ c.messageKeys, ∃ ck, c.chainKey = some ck ∧ k.1 < ck.1)
 
-def pureTrSlots (r : ProtocolSetup) : TR.PureTRSlots where
+@[expose] def pureTrSlots (r : ProtocolSetup) : TR.PureTRSlots where
   canon := TR.PureTRRecordCanon r
   recvSim := fun _ _ => True
   tok := fun _ => True
 
 /-- Active-session record relation: either steady-state `PureTRRecordStateInv` or Alice's pending
 pre-key session. -/
-def PureCRecRel (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PureCRecRel (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (ms : List Move) (p : Participant) (b : HwBytes) : Prop :=
   TR.PureTRRecordStateInv interp r S (pureTrSlots r) g ms
       (fun q => if q = p then some b else none) ∨
@@ -129,17 +134,17 @@ def PureCRecRel (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueS
 
 /-- Archived-session record relation: non-empty `previous` sessions with a valid active `current`
 session. -/
-def PureCPrevRel (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PureCPrevRel (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (ms : List Move) (p : Participant) (b : HwBytes) : Prop :=
   ∃ rr : RecordRec, b = recordBytes rr ∧ rr.previous ≠ [] ∧
     PureCRecRel interp r S g ms p (recordBytes { rr with previous := [] })
 
-def PureCRecRelH (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PureCRecRelH (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (ms : List Move) (p : Participant) (b : HwBytes) : Prop :=
   PureCRecRel interp r S g ms p b ∨ PureCPrevRel interp r S g ms p b
 
 /-- Per-explanation invariant combining `PureCRecRelH`, `CBook`, `CHist`, and `RoleSnapshots`. -/
-def PureCRelAt (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def PureCRelAt (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ms : List Move) (records : Participant → Option HwBytes)
     (sent accepted : List HwBytes) (acc : List MachineEvent) : Prop :=
   (∀ p b, records p = some b → (p = r.alice ∨ p = r.bob) ∧ b ≠ [] ∧

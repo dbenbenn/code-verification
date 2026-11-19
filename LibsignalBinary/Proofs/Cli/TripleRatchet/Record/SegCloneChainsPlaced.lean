@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneChains
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneBasePlaced
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneChains
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneBasePlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 import ProofLib.RegChain
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneAssemble
 
 /-!
 # Relocatable CLI `SegClone` Sub-Segments 5–7
@@ -23,7 +25,7 @@ Proves the `[LibsignalPlacement]` `receiver_chains` clone loop, `pending_pre_key
 `pending_kyber_pre_key` cloning on CLI Block `463`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

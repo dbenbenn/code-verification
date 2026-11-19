@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1Sync.RunTight
-public import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSpqrWindowHonest
+public import LibsignalBinary.Proofs.SpqrV1Sync.RunTight -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSpqrWindowHonest -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Varint
 import LibsignalBinary.Proofs.SpqrV1Sync.TopSize
 import ProofLib.BV.WidthNorm
@@ -25,7 +25,7 @@ executions of `spqrGame (spqrV1SessionUniformCoins F K)` never set `win` (`goodR
 that honest FIFO schedules are accepted with the sender's salt (`fifoRun_accepted`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.TopLog
 
@@ -74,12 +74,6 @@ theorem spqrPos_serialize {P : PolyApi} (m : Message P) (idx : BitVec 32) (hE : 
     injection hpre with hv hep hix hrem
     subst hep hix
     rfl
-
-theorem spqrPos_msgSerialize (F : ShaCompress) (K : MlKem) (m : (spqrDeps F K).MessageV1)
-    (idx : BitVec 32) (hE : (spqrDeps F K).msgEpoch m ≠ 0#64) :
-    spqrPos ((spqrDeps F K).msgSerialize m idx) =
-      some (((spqrDeps F K).msgEpoch m).toNat, idx.toNat) := by
-  exact spqrPos_serialize m idx hE
 
 abbrev posList (ms : List (List (BitVec 8))) : List (ℕ × ℕ) := ms.filterMap spqrPos
 
@@ -153,49 +147,6 @@ theorem spqrWindowOk_iff {log : SpqrLog} {sE : ℕ} {sC : ℕ → ℕ} {R : ℕ 
       rintro rfl
       exact h6 (elw_sup_mem_of_pos (R (E - 1)) h2)
     exact ⟨⟨⟨⟨⟨by omega, h2⟩, h3⟩, h4⟩, h5⟩, h6⟩
-
-theorem recvKey_ok_of_window (F : ShaCompress) (authKey : Bytes) (dir : Direction)
-    (secret : ℕ → Bytes) (sendCtr : ℕ → ℕ) (recvSet : ℕ → Finset ℕ) (ch : Chain)
-    (hch : ChainOk F authKey dir secret sendCtr recvSet ch) (log : SpqrLog) (sC : ℕ → ℕ)
-    (hlog : LogAgree log ch.sendEpoch.toNat sC recvSet) (m : List (BitVec 8)) (e : Epoch)
-    (idx : BitVec 32) (hpos : spqrPos m = some (e.toNat + 1, idx.toNat))
-    (hwin : spqrWindowOk log m = true) (hhi : e.toNat ≤ ch.currentEpoch.toNat)
-    (hb : idx.toNat + 2000 ≤ 2 ^ 32) (hR : (recvSet e.toNat).sup id + 2000 ≤ 2 ^ 32) :
-    ∃ ch', ch.recvKey (spqrHkdfWith F) e idx =
-        .ok (ch', keyAt F (seedAt F authKey secret dir.switch e.toNat) (idx.toNat - 1)) ∧
-      ch'.currentEpoch = ch.currentEpoch ∧ ch'.sendEpoch = ch.sendEpoch ∧
-      ChainOk F authKey dir secret sendCtr
-        (Function.update recvSet e.toNat (insert idx.toNat (recvSet e.toNat))) ch' := by
-  have hiff := (spqrWindowOk_iff hlog m (e.toNat + 1) idx.toNat hpos (by omega)).mp hwin
-  simp only [Nat.add_sub_cancel] at hiff
-  rcases hiff with ⟨hlo, hidx, hnew, hjump, htrim⟩
-  have h := recvKey_ok F authKey dir secret sendCtr recvSet ch hch e idx.toNat hlo hhi hidx hnew hjump htrim hb hR
-  simpa only [BitVec.ofNat_toNat, BitVec.setWidth_eq] using h
-
-theorem recvKey_err_of_window (F : ShaCompress) (authKey : Bytes) (dir : Direction)
-    (secret : ℕ → Bytes) (sendCtr : ℕ → ℕ) (recvSet : ℕ → Finset ℕ) (ch : Chain)
-    (hch : ChainOk F authKey dir secret sendCtr recvSet ch) (log : SpqrLog) (sC : ℕ → ℕ)
-    (hlog : LogAgree log ch.sendEpoch.toNat sC recvSet) (m : List (BitVec 8)) (e : Epoch)
-    (idx : BitVec 32) (hpos : spqrPos m = some (e.toNat + 1, idx.toNat)) (hidx : 1 ≤ idx.toNat)
-    (hwin : spqrWindowOk log m = false) :
-    ∀ r, ch.recvKey (spqrHkdfWith F) e idx ≠ .ok r := by
-  have hiff := spqrWindowOk_iff hlog m (e.toNat + 1) idx.toNat hpos (by omega)
-  simp only [hwin, Bool.false_eq_true, Nat.add_sub_cancel, false_iff] at hiff
-  have hout : e.toNat + 1 < ch.sendEpoch.toNat ∨ ch.currentEpoch.toNat < e.toNat ∨
-      idx.toNat ∈ recvSet e.toNat ∨
-      ((recvSet e.toNat).sup id < idx.toNat ∧ 25000 < idx.toNat - (recvSet e.toNat).sup id) ∨
-      (idx.toNat < (recvSet e.toNat).sup id ∧ idx.toNat + 2000 < (recvSet e.toNat).sup id) := by
-    by_cases h1 : ch.sendEpoch.toNat - 1 ≤ e.toNat
-    · by_cases h3 : idx.toNat ∈ recvSet e.toNat
-      · exact .inr (.inr (.inl h3))
-      · by_cases h4 : (recvSet e.toNat).sup id < idx.toNat → idx.toNat - (recvSet e.toNat).sup id ≤ 25000
-        · have h5 : ¬ (idx.toNat < (recvSet e.toNat).sup id → (recvSet e.toNat).sup id ≤ idx.toNat + 2000) :=
-            fun h5 => hiff ⟨h1, hidx, h3, h4, h5⟩
-          exact .inr (.inr (.inr (.inr (by omega))))
-        · exact .inr (.inr (.inr (.inl (by omega))))
-    · exact .inl (by omega)
-  have h := recvKey_err F authKey dir secret sendCtr recvSet ch hch e idx.toNat hidx idx.isLt hout
-  simpa only [BitVec.ofNat_toNat, BitVec.setWidth_eq] using h
 
 private theorem els_foldl_max_init {α : Type} (f : α → ℕ) (xs : List α) (a : ℕ) :
     xs.foldl (fun m p => max m (f p)) a = max a (xs.foldl (fun m p => max m (f p)) 0) := by
@@ -329,11 +280,11 @@ open CryptoVerification.SpqrV1Sync.InSync (St Msg Seed)
 open CryptoVerification.SpqrV1Sync.TopSync (PartyTop chainCur)
 open CryptoGames.LibsignalSM.Corr (SpqrGameState spqrSendStep spqrDeliverStep spqrDir)
 
-def braidParty : CryptoGames.Party → Braid.Party
+@[expose] def braidParty : CryptoGames.Party → Braid.Party
   | .A => .a
   | .B => .b
 
-def partyDir (P : CryptoGames.Party) : Direction :=
+@[expose] def partyDir (P : CryptoGames.Party) : Direction :=
   Direction.ofSpqrDirection (spqrDir P)
 
 theorem partyDir_other (P : CryptoGames.Party) : partyDir P.other = (partyDir P).switch := by
@@ -354,7 +305,7 @@ structure Ghost (F : ShaCompress) where
 
 abbrev authOf (k : BitVec 256) : Bytes := CryptoGames.HMAC.keyToBytes32 k
 
-def initGhost (F : ShaCompress) (k : BitVec 256) (stA stB : St F) : Ghost F where
+@[expose] def initGhost (F : ShaCompress) (k : BitVec 256) (stA stB : St F) : Ghost F where
   e := 1#64
   auth := Authenticator.new F (authOf k) 1#64
   c := .init
@@ -366,7 +317,7 @@ def initGhost (F : ShaCompress) (k : BitVec 256) (stA stB : St F) : Ghost F wher
   recvSet := fun _ _ => ∅
 
 /-- Ghost transition for a successful `send` by `P` with coins `r`. -/
-noncomputable def ghostSend (F : ShaCompress) (K : MlKem) (g : Ghost F) (P : CryptoGames.Party)
+@[expose] def ghostSend (F : ShaCompress) (K : MlKem) (g : Ghost F) (P : CryptoGames.Party)
     (r : BitVec 512) : Ghost F :=
   match (g.st P).send K (coinBytes r) with
   | .ok (out, _) =>
@@ -384,7 +335,7 @@ noncomputable def ghostSend (F : ShaCompress) (K : MlKem) (g : Ghost F) (P : Cry
   | .error _ => g
 
 /-- Ghost transition for a committed, accepted delivery of send `j` to `P`. -/
-noncomputable def ghostDeliver (F : ShaCompress) (K : MlKem) (g : Ghost F) (P : CryptoGames.Party)
+@[expose] def ghostDeliver (F : ShaCompress) (K : MlKem) (g : Ghost F) (P : CryptoGames.Party)
     (j : ℕ) : Ghost F :=
   match g.sentB[j]? with
   | none => g
@@ -408,7 +359,7 @@ noncomputable def ghostDeliver (F : ShaCompress) (K : MlKem) (g : Ghost F) (P : 
     | .error _ => g
 
 /-- Per-party invariant combining `PartyTop` and `LogAgree` against `g`. -/
-def PartyOk (F : ShaCompress) (K : MlKem) (k : BitVec 256) (s : SpqrGameState (List (BitVec 8)))
+@[expose] def PartyOk (F : ShaCompress) (K : MlKem) (k : BitVec 256) (s : SpqrGameState (List (BitVec 8)))
     (g : Ghost F) (P : CryptoGames.Party) : Prop :=
   ∃ sE, PartyTop F K (authOf k) (partyDir P) g.secret (g.st P) sE (g.sendCtr P) (g.recvSet P)
       (s.st P).1 ∧
@@ -436,7 +387,7 @@ structure TopInv (F : ShaCompress) (K : MlKem) (k : BitVec 256)
   hwin : s.win = false
 
 /-- KEM correctness event on the encapsulation coins drawn by `P` during a send step. -/
-def KemGood (F : ShaCompress) (K : MlKem) (g : Ghost F) (P : CryptoGames.Party) (r : BitVec 512) :
+@[expose] def KemGood (F : ShaCompress) (K : MlKem) (g : Ghost F) (P : CryptoGames.Party) (r : BitVec 512) :
     Prop :=
   ekSide g.e ≠ braidParty P → ∀ (s : Seed) (r' : EncRand), DrawsEnc F g.c (g.st P) s →
     r'.toList = (coinBytes r).take 32 → KemOk K s r'
@@ -1219,69 +1170,6 @@ theorem deliver_inWindow (F : ShaCompress) (K : MlKem) (k : BitVec 256) (q : ℕ
     · rw [Function.update_of_ne hQ] at hp
       exact h.hdeliv Q p hp
 
-theorem deliver_outWindow (F : ShaCompress) (K : MlKem) (k : BitVec 256)
-    (s : SpqrGameState (List (BitVec 8))) (g : Ghost F) (h : TopInv F K k s g)
-    (P Q : CryptoGames.Party) (j : ℕ) (msg : List (BitVec 8)) (salt : CryptoGames.HKDF.Salt)
-    (hj : s.sent[j]? = some (Q, msg, salt)) (hout : spqrWindowOk (s.st P).2 msg = false) :
-    ∀ r, (spqrV1SessionUniformCoins F K).withLog.recv (s.st P) msg ≠ .ok r := by
-  obtain ⟨m, i, _, hmsg, _, hE1, hpay, hi1, _, _⟩ := h.hsent j Q msg salt hj
-  have he_ne : m.epoch ≠ 0#64 := by
-    intro h0
-    have : m.epoch.toNat = 0 := congrArg BitVec.toNat h0
-    omega
-  obtain ⟨rem, hpre, _⟩ := TopSync.msg_roundtrip F K m i he_ne hpay
-  have hpos : spqrPos msg = some (m.epoch.toNat, i.toNat) := by
-    rw [hmsg]
-    exact spqrPos_serialize m i he_ne
-  obtain ⟨sE, hpt, hla⟩ := h.hparty P
-  have hiff := spqrWindowOk_iff hla msg m.epoch.toNat i.toNat hpos hE1
-  simp only [hout, Bool.false_eq_true, false_iff] at hiff
-  have hout' : m.epoch.toNat < sE ∨
-      i.toNat ∈ g.recvSet P (m.epoch.toNat - 1) ∨
-      ((g.recvSet P (m.epoch.toNat - 1)).sup id < i.toNat ∧
-        25000 < i.toNat - (g.recvSet P (m.epoch.toNat - 1)).sup id) ∨
-      (i.toNat < (g.recvSet P (m.epoch.toNat - 1)).sup id ∧
-        i.toNat + 2000 < (g.recvSet P (m.epoch.toNat - 1)).sup id) := by
-    by_cases h1 : sE - 1 ≤ m.epoch.toNat - 1
-    · by_cases h3 : i.toNat ∈ g.recvSet P (m.epoch.toNat - 1)
-      · exact .inr (.inl h3)
-      · by_cases h4 : (g.recvSet P (m.epoch.toNat - 1)).sup id < i.toNat →
-            i.toNat - (g.recvSet P (m.epoch.toNat - 1)).sup id ≤ 25000
-        · have h5 : ¬ (i.toNat < (g.recvSet P (m.epoch.toNat - 1)).sup id →
-              (g.recvSet P (m.epoch.toNat - 1)).sup id ≤ i.toNat + 2000) :=
-            fun h5 => hiff ⟨h1, hi1, h3, h4, h5⟩
-          exact .inr (.inr (.inr (by omega)))
-        · exact .inr (.inr (.inl (by omega)))
-    · exact .inl (by omega)
-  have herr := TopSync.top_recv_err F K (authOf k) (partyDir P) g.secret (g.st P) sE
-    (g.sendCtr P) (g.recvSet P) (s.st P).1 hpt (h.hsize P) msg
-    { version := 1#8, epoch := m.epoch, index := i, remaining := rem }
-    (hmsg ▸ hpre) rfl hE1 hi1 hout'
-  intro r hok
-  dsimp [CryptoGames.LibsignalSession.Spqr.withLog, spqrV1SessionUniformCoins] at hok
-  cases hrecv : (spqrV1 F K).recv (s.st P).1 msg with
-  | error e =>
-    rw [hrecv] at hok
-    cases hok
-  | ok x =>
-    exact herr x hrecv
-
-/-- Hypothesis that out-of-window honest messages fail cleanly with `.err` rather than panicking. -/
-def OutWindowNoPanicStmt (F : ShaCompress) (K : MlKem) : Prop :=
-  ∀ (k : BitVec 256) (q : ℕ), q + 2000 ≤ 2 ^ 32 →
-  ∀ (s : SpqrGameState (List (BitVec 8))) (g : Ghost F), TopInv F K k s g → s.sent.length ≤ q →
-  ∀ (P : CryptoGames.Party) (j : ℕ) (msg : List (BitVec 8)) (salt : CryptoGames.HKDF.Salt),
-    s.sent[j]? = some (P.other, msg, salt) → spqrWindowOk (s.st P).2 msg = false →
-    ∃ e, LibsignalSpqrV1.recv (spqrDeps F K) (spqrHkdfWith F) (s.st P).1 msg = .error (.err e)
-
-private theorem tl_recvPanics_eq_false_of_err (F : ShaCompress) (K : MlKem)
-    (st : List (BitVec 8) × SpqrLog) (msg : List (BitVec 8))
-    (h : ∃ e, LibsignalSpqrV1.recv (spqrDeps F K) (spqrHkdfWith F) st.1 msg = .error (.err e)) :
-    (spqrV1SessionUniformCoins F K).withLog.recvPanics st msg = false := by
-  obtain ⟨e, he⟩ := h
-  simp only [CryptoGames.LibsignalSession.Spqr.withLog, spqrV1SessionUniformCoins, spqrV1_eq, toSpqrModel,
-    recvPanicsB, he]
-
 private theorem tl_recvPanics_eq_false_of_ok (F : ShaCompress) (K : MlKem)
     (st : List (BitVec 8) × SpqrLog) (msg : List (BitVec 8)) (st' : List (BitVec 8) × SpqrLog)
     (salt : CryptoGames.HKDF.Salt)
@@ -1296,143 +1184,24 @@ private theorem tl_recvPanics_eq_false_of_ok (F : ShaCompress) (K : MlKem)
     | err e => rfl
     | panic p => rw [hr] at h; cases h
 
-theorem topInv_deliver (F : ShaCompress) (K : MlKem) (hout : OutWindowNoPanicStmt F K)
-    (k : BitVec 256) (q : ℕ)
-    (hq : q + 2000 ≤ 2 ^ 32) (s : SpqrGameState (List (BitVec 8))) (g : Ghost F)
-    (h : TopInv F K k s g) (hlen : s.sent.length ≤ q) (P : CryptoGames.Party) (j : ℕ)
-    (commit : Bool) :
-    TopInv F K k (spqrDeliverStep (spqrV1SessionUniformCoins F K) s P j commit).2
-      (if (spqrDeliverStep (spqrV1SessionUniformCoins F K) s P j commit).2.st P ≠ s.st P
-        then ghostDeliver F K g P j else g) := by
-  have hwin := h.hwin
-  have hs_win : { s with win := false } = s := by
-    cases s; simp_all
-  unfold spqrDeliverStep
-  rw [hwin]
-  simp only [Bool.false_eq_true, ↓reduceIte]
-  cases hj : s.sent[j]? with
-  | none =>
-    simp only [ne_eq, not_true_eq_false, ↓reduceIte]
-    exact h
-  | some val =>
-    rcases val with ⟨Q, msg, salt⟩
-    by_cases hQ : Q = P.other
-    · subst hQ
-      simp only [ne_eq, not_true_eq_false, ↓reduceIte]
-      cases hinW : spqrWindowOk (s.st P).2 msg with
-      | false =>
-        have hnpR : (spqrV1SessionUniformCoins F K).withLog.recvPanics (s.st P) msg = false :=
-          tl_recvPanics_eq_false_of_err F K (s.st P) msg
-            (hout k q hq s g h hlen P j msg salt hj hinW)
-        simp only [hnpR, Bool.false_eq_true, ↓reduceIte]
-        have hnoOk := deliver_outWindow F K k s g h P P.other j msg salt hj hinW
-        cases hrecv : (spqrV1SessionUniformCoins F K).withLog.recv (s.st P) msg with
-        | ok r => exact False.elim (hnoOk r hrecv)
-        | error e =>
-          simp only [hs_win, not_true_eq_false, ↓reduceIte]
-          exact h
-      | true =>
-        obtain ⟨st', hrecv, hne, hinv'⟩ :=
-          deliver_inWindow F K k q hq s g h hlen P j msg salt hj hinW
-        have hnpR : (spqrV1SessionUniformCoins F K).withLog.recvPanics (s.st P) msg = false :=
-          tl_recvPanics_eq_false_of_ok F K (s.st P) msg st' salt hrecv
-        simp only [hnpR, Bool.false_eq_true, ↓reduceIte]
-        rw [hrecv]
-        simp only [not_true_eq_false, decide_false]
-        cases commit with
-        | false =>
-          simp only [Bool.false_eq_true, ↓reduceIte, hs_win, not_true_eq_false]
-          exact h
-        | true =>
-          have hs'_win :
-              { s with st := Function.update s.st P st', win := false } =
-                { s with st := Function.update s.st P st' } := by
-            cases s; simp_all
-          simp only [↓reduceIte, hs'_win, Function.update_self, hne]
-          exact hinv'
-    · simp only [ne_eq, hQ, not_false_eq_true, ↓reduceIte, not_true_eq_false]
-      exact h
-
-private theorem fgr_send_sent_length_le {PQ PQC : Type}
-    (S : CryptoGames.LibsignalSession.Spqr PQ PQC) (s : SpqrGameState PQ)
-    (P : CryptoGames.Party) (r : PQC) :
-    s.sent.length ≤ (spqrSendStep S s P r).2.sent.length := by
-  unfold spqrSendStep
-  split
-  · exact le_rfl
-  · split
-    · exact le_rfl
-    · split
-      · exact le_rfl
-      · simp
-
-private theorem fgr_deliver_sent_eq {PQ PQC : Type}
-    (S : CryptoGames.LibsignalSession.Spqr PQ PQC) (s : SpqrGameState PQ)
-    (P : CryptoGames.Party) (j : ℕ) (commit : Bool) :
-    (spqrDeliverStep S s P j commit).2.sent = s.sent := by
-  unfold spqrDeliverStep
-  split
-  · rfl
-  · split
-    · rfl
-    · split
-      · rfl
-      · split
-        · rfl
-        · split
-          · rfl
-          · split <;> rfl
-
-private theorem fgr_goodRun_topInv (F : ShaCompress) (K : MlKem) (hout : OutWindowNoPanicStmt F K)
-    (k : BitVec 256) (q : ℕ)
-    (hq : q + 2000 ≤ 2 ^ 32) {s : SpqrGameState (List (BitVec 8))} {g : Ghost F}
-    (hr : GoodRun F K k s g) (hlen : s.sent.length ≤ q) :
-    TopInv F K k s g := by
-  induction hr with
-  | init stA stB hA hB =>
-    exact topInv_init F K k stA stB hA hB
-  | @send s g _ P r hkem ih =>
-    have hs : s.sent.length ≤ q :=
-      le_trans (fgr_send_sent_length_le (spqrV1SessionUniformCoins F K) s P r) hlen
-    have hinv := ih hs
-    obtain ⟨heq, hinv'⟩ := topInv_send F K k q hq s g hinv hs P r hkem
-    simpa only [heq, ↓reduceIte] using hinv'
-  | @deliver s g _ P j commit ih =>
-    have hs : s.sent.length ≤ q := by
-      rwa [fgr_deliver_sent_eq (spqrV1SessionUniformCoins F K) s P j commit] at hlen
-    exact topInv_deliver F K hout k q hq s g (ih hs) hs P j commit
-
-/-- Every `GoodRun` with at most `q` sends (`q + 2000 ≤ 2 ^ 32`) keeps `s.win = false`. -/
-theorem goodRun_win_false (F : ShaCompress) (K : MlKem) (hout : OutWindowNoPanicStmt F K)
-    (k : BitVec 256) (q : ℕ)
-    (hq : q + 2000 ≤ 2 ^ 32) (s : SpqrGameState (List (BitVec 8))) (g : Ghost F)
-    (hr : GoodRun F K k s g) (hlen : s.sent.length ≤ q) : s.win = false :=
-  (fgr_goodRun_topInv F K hout k q hq hr hlen).hwin
-
-theorem goodRun_topInv (F : ShaCompress) (K : MlKem) (hout : OutWindowNoPanicStmt F K)
-    (k : BitVec 256) (q : ℕ)
-    (hq : q + 2000 ≤ 2 ^ 32) (s : SpqrGameState (List (BitVec 8))) (g : Ghost F)
-    (hr : GoodRun F K k s g) (hlen : s.sent.length ≤ q) : TopInv F K k s g :=
-  fgr_goodRun_topInv F K hout k q hq hr hlen
-
 /-! ## Honest FIFO schedules -/
 
 open CryptoGames.LibsignalSpqrWindowHonest (SimState honestMsg spqrPos_honestMsg
   honest_fifo_in_window)
 
-def sendIdx (sent : List (CryptoGames.Party × List (BitVec 8) × CryptoGames.HKDF.Salt))
+@[expose] def sendIdx (sent : List (CryptoGames.Party × List (BitVec 8) × CryptoGames.HKDF.Salt))
     (Q : CryptoGames.Party) : List ℕ :=
   (List.range sent.length).filter fun j => decide ((sent[j]?.map Prod.fst) = some Q)
 
 /-- Index in `s.sent` of the oldest undelivered message from `P.other` to `P`. -/
-def fifoNext (s : SpqrGameState (List (BitVec 8))) (P : CryptoGames.Party) : Option ℕ :=
+@[expose] def fifoNext (s : SpqrGameState (List (BitVec 8))) (P : CryptoGames.Party) : Option ℕ :=
   (sendIdx s.sent P.other)[(s.st P).2.recvd.length]?
 
 def pendingPos (s : SpqrGameState (List (BitVec 8))) (Q : CryptoGames.Party) : List (ℕ × ℕ) :=
   ((sendIdx s.sent Q).drop (s.st Q.other).2.recvd.length).filterMap fun j =>
     s.sent[j]?.bind fun p => spqrPos p.2.1
 
-def maxRecvEpoch (log : SpqrLog) : ℕ :=
+@[expose] def maxRecvEpoch (log : SpqrLog) : ℕ :=
   (posList log.recvd).foldl (fun m p => max m p.1) 0
 
 /-- `GoodRun` executions whose deliveries follow per-direction FIFO order without drops or replays. -/
@@ -1454,14 +1223,6 @@ inductive FifoRun (F : ShaCompress) (K : MlKem) (k : BitVec 256) :
       FifoRun F K k (spqrDeliverStep (spqrV1SessionUniformCoins F K) s P j true).2
         (if (spqrDeliverStep (spqrV1SessionUniformCoins F K) s P j true).2.st P ≠ s.st P
           then ghostDeliver F K g P j else g)
-
-theorem FifoRun.goodRun {F : ShaCompress} {K : MlKem} {k : BitVec 256}
-    {s : SpqrGameState (List (BitVec 8))} {g : Ghost F} (hr : FifoRun F K k s g) :
-    GoodRun F K k s g := by
-  induction hr with
-  | init stA stB hA hB => exact .init stA stB hA hB
-  | send _ P r hkem ih => exact .send ih P r hkem
-  | deliver _ P j _ ih => exact .deliver ih P j true
 
 /-- Simulation relation coupling `(s, g)` to `LibsignalSpqrWindowHonest.SimState` on header
 positions. -/
@@ -1601,25 +1362,6 @@ theorem spqrSendStep_succ {PQ PQC : Type} (S : CryptoGames.LibsignalSession.Spqr
         obtain ⟨st', salt, msg⟩ := x
         refine ⟨st', salt, msg, rfl, ?_⟩
         simp [CryptoGames.LibsignalSession.Spqr.withLog, hs, hp]
-
-theorem spqrSendStep_sent_length {PQ PQC : Type} (S : CryptoGames.LibsignalSession.Spqr PQ PQC)
-    (s : SpqrGameState PQ) (P : CryptoGames.Party) (r : PQC) :
-    s.sent.length ≤ (spqrSendStep S s P r).2.sent.length := by
-  unfold spqrSendStep
-  split
-  · exact le_rfl
-  · split
-    · exact le_rfl
-    · split
-      · exact le_rfl
-      · simp
-
-theorem spqrDeliverStep_sent {PQ PQC : Type} (S : CryptoGames.LibsignalSession.Spqr PQ PQC)
-    (s : SpqrGameState PQ) (P : CryptoGames.Party) (j : ℕ) (commit : Bool) :
-    (spqrDeliverStep S s P j commit).2.sent = s.sent := by
-  unfold spqrDeliverStep
-  repeat' split
-  all_goals rfl
 
 theorem spqrDeliverStep_accept {PQ PQC : Type} (S : CryptoGames.LibsignalSession.Spqr PQ PQC)
     (s : SpqrGameState PQ) (P : CryptoGames.Party) (j : ℕ) (msg : List (BitVec 8))
@@ -2090,55 +1832,5 @@ theorem fifoAll_deliver (F : ShaCompress) (K : MlKem) (k : BitVec 256) (q : ℕ)
       · simp only [Function.update_of_ne hQ]
         exact hsim.hmaxRecv Q
     · exact hsim.hhonest
-
-theorem fifoRun_fifoAll (F : ShaCompress) (K : MlKem) (k : BitVec 256) (q : ℕ)
-    (hq : q + 2000 ≤ 2 ^ 32) (s : SpqrGameState (List (BitVec 8))) (g : Ghost F)
-    (hr : FifoRun F K k s g) (hlen : s.sent.length ≤ q) : FifoAll F K k s g := by
-  revert hlen
-  induction hr with
-  | init stA stB hA hB => intro _; exact fifoAll_init F K k stA stB hA hB
-  | @send s g _ P r hkem ih =>
-    intro hlen
-    have hle := spqrSendStep_sent_length (spqrV1SessionUniformCoins F K) s P r
-    obtain ⟨hsucc, hnew⟩ :=
-      fifoAll_send F K k q hq s g (ih (le_trans hle hlen)) (le_trans hle hlen) P r hkem
-    rw [ite_eq_left_of_eq_true _ _ (eq_true hsucc)]
-    exact hnew
-  | @deliver s g _ P j hj ih =>
-    intro hlen
-    have hsent := spqrDeliverStep_sent (spqrV1SessionUniformCoins F K) s P j true
-    have hlen0 : s.sent.length ≤ q := by rw [← hsent]; exact hlen
-    obtain ⟨hne, hnew⟩ := fifoAll_deliver F K k q hq s g (ih hlen0) hlen0 P j hj
-    rw [ite_eq_left_of_eq_true _ _ (eq_true hne)]
-    exact hnew
-
-/-- Every `FifoRun` with at most `q` sends (`q + 2000 ≤ 2 ^ 32`) keeps `s.win = false` and accepts
-each next FIFO delivery with the sender's salt. -/
-theorem fifoRun_accepted (F : ShaCompress) (K : MlKem) (k : BitVec 256) (q : ℕ)
-    (hq : q + 2000 ≤ 2 ^ 32) (s : SpqrGameState (List (BitVec 8))) (g : Ghost F)
-    (hr : FifoRun F K k s g) (hlen : s.sent.length ≤ q) :
-    s.win = false ∧
-      ∀ P j, fifoNext s P = some j →
-        ∃ msg salt st', s.sent[j]? = some (P.other, msg, salt) ∧
-          spqrWindowOk (s.st P).2 msg = true ∧
-          (spqrV1SessionUniformCoins F K).withLog.recv (s.st P) msg = .ok (st', salt) ∧
-          spqrDeliverStep (spqrV1SessionUniformCoins F K) s P j true =
-            (some salt, { s with st := Function.update s.st P st' }) := by
-  have hfa := fifoRun_fifoAll F K k q hq s g hr hlen
-  refine ⟨hfa.htop.hwin, fun P j hj => ?_⟩
-  obtain ⟨msg, salt, hjs, hwin⟩ := fifo_window F K k s g hfa (by omega) P j hj
-  obtain ⟨st', hrecv, -, -⟩ :=
-    deliver_inWindow F K k q hq s g hfa.htop hlen P j msg salt hjs hwin
-  exact ⟨msg, salt, st', hjs, hwin, hrecv,
-    spqrDeliverStep_accept _ s P j msg salt st' hfa.htop.hwin hjs hrecv
-      (tl_recvPanics_eq_false_of_ok F K (s.st P) msg st' salt hrecv)⟩
-
-/-- Every `KemGood` send step from a `FifoRun` with at most `q` sends appends to `s.sent`. -/
-theorem fifoRun_send_ok (F : ShaCompress) (K : MlKem) (k : BitVec 256) (q : ℕ)
-    (hq : q + 2000 ≤ 2 ^ 32) (s : SpqrGameState (List (BitVec 8))) (g : Ghost F)
-    (hr : FifoRun F K k s g) (hlen : s.sent.length ≤ q) (P : CryptoGames.Party) (r : BitVec 512)
-    (hkem : KemGood F K g P r) :
-    (spqrSendStep (spqrV1SessionUniformCoins F K) s P r).2.sent.length = s.sent.length + 1 := by
-  exact (fifoAll_send F K k q hq s g (fifoRun_fifoAll F K k q hq s g hr hlen) hlen P r hkem).1
 
 end CryptoVerification.SpqrV1Sync.TopLog

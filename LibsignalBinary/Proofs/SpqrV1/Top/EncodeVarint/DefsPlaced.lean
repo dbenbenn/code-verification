@@ -10,17 +10,17 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneRustAllocPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneRustAllocPlaced
 public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBase
-import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
 # Relocatable Intermediate Specification for `spqr::encode_varint` (Block `326`, 164 insns)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +37,7 @@ open CryptoVerification.SpqrV1.Alloc
 
 /-- Wrap `spec`'s precondition with `⌜StepInvPlaced s0 s⌝` on the left so placed
 `SepWPp.call_cs_placed` steps can discharge `LibsignalCodeLoaded` from `hcl0 : LibsignalCodeLoaded lsmpl s0.mem`. -/
-def withEncStepInvPlaced {α : Type} (s0 : State) (spec : Spec α) : Spec α :=
+@[expose] def withEncStepInvPlaced {α : Type} (s0 : State) (spec : Spec α) : Spec α :=
   { spec with pre := fun x s => ⌜StepInvPlaced s0 s⌝ ∗ spec.pre x s }
 
 theorem subroutine_ok_withEncStepInvPlaced_of_lscl [LibsignalPlacement] {α : Type}
@@ -55,7 +55,7 @@ theorem subroutine_ok_withEncStepInvPlaced_of_lscl [LibsignalPlacement] {α : Ty
 
 /-- Relocatable callee-saved registers (`x26..x28`, `calleeSavedVRegs`) + `StepInvPlaced`
 across `spqr::encode_varint`. -/
-def SpqrEncVarintCalleeSavedPlaced (s0 s : State) : Prop :=
+@[expose] def SpqrEncVarintCalleeSavedPlaced (s0 s : State) : Prop :=
   s.readReg64 .x26 = s0.readReg64 .x26 ∧
   s.readReg64 .x27 = s0.readReg64 .x27 ∧
   s.readReg64 .x28 = s0.readReg64 .x28 ∧
@@ -78,20 +78,16 @@ theorem SpqrEncVarintCalleeSavedPlaced.of_calleeSavedPreserved {s1 s2 : State}
   ⟨h.2.2.2.2.2.2.2.1, h.2.2.2.2.2.2.2.2.1, h.2.2.2.2.2.2.2.2.2.1,
    h.2.2.2.2.2.2.2.2.2.2.2, hinv⟩
 
-/-- Mangled symbol name for `<alloc::raw_vec::RawVec<u8>>::grow_one` (Block `619`). -/
-abbrev spqrGrowOneU8Sym : String :=
-  "_RNvMs4_NtCs69KKACWg7bl_5alloc7raw_vecINtB5_6RawVechE8grow_oneB7_"
-
 /-- `<alloc::raw_vec::RawVec<u8>>::grow_one` (Block `619`) meets
 `withLsCodeLoaded lsmpl (growOneU8Spec A)` on `(blkPC_326).rebase (blkPl_326).base (Rust.withPanics ext)`. -/
-def GrowOneU8PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def GrowOneU8PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_326).rebase (blkPl_326).base (Rust.withPanics ext))
     (lsmpl.base 619)
     (withLsCodeLoaded lsmpl (growOneU8Spec A))
 
 /-- Step-invariant-wrapped `<alloc::raw_vec::RawVec<u8>>::grow_one` (Block `619`) contract anchored at `s0`. -/
-def GrowOneU8StepOkExt [LibsignalPlacement] (s0 : State) (A : RustAlloc)
+@[expose] def GrowOneU8StepOkExt [LibsignalPlacement] (s0 : State) (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_326).rebase (blkPl_326).base (Rust.withPanics ext))
     (lsmpl.base 619)
@@ -115,7 +111,7 @@ theorem growOneU8_placed_ok_ext [LibsignalPlacement] (A : RustAlloc)
 
 /-- `spqr::encode_varint` (Block `326`) meets `withLsCodeLoaded lsmpl (spqrEncodeVarintSpecX A)` on
 `(blkPC_326).rebase (blkPl_326).base (Rust.withPanics ext)`. -/
-def SpqrEncodeVarintPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def SpqrEncodeVarintPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_326).rebase (blkPl_326).base (Rust.withPanics ext))
     (blkPl_326).base
@@ -123,7 +119,7 @@ def SpqrEncodeVarintPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
 
 /-- `spqr::encode_varint` (Block `326`) meets `withLsCodeLoaded lsmpl (spqrEncodeVarintSpecX A)` on
 `libsignalSessionLib.blockProgram lsmpl 326 (Rust.withPanics ext)`. -/
-def SpqrEncodeVarintPlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def SpqrEncodeVarintPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 326 (Rust.withPanics ext))
     (lsmpl.base 326)

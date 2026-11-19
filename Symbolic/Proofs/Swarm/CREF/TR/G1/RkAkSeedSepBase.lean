@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSkelLocal
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSkelLocal -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.OneSidedPeel
+import Symbolic.Proofs.Swarm.Leaves.IC13_Stage1Kyber
+import Symbolic.Proofs.Swarm.CREF.Stage1Kyber
 
 /-!
 # Alice Handshake Key-Bundle Twins
@@ -22,7 +24,7 @@ satisfying `AliceKemLen32`, two `AliceDone` key bundles whose root keys or chain
 `gamma'` shapes have equal root keys or chain keys unless their memo windows satisfy `KemSlotAlias`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,12 +47,12 @@ attribute [local instance 2000]
 variable (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
 
 /-- `keys` is the key bundle of a logged `AliceDone` event. -/
-def AliceDoneKeys (T : ExecTrace) (keys : HandshakeKeys) : Prop :=
+@[expose] def AliceDoneKeys (T : ExecTrace) (keys : HandshakeKeys) : Prop :=
   ∃ a b ikA ikB spk pqpk opk ek ct j,
     T.EventLoggedAt (PQXDHEvent.AliceDone a b ikA ikB spk pqpk opk ek ct keys) j
 
 /-- `keys` is the key bundle of a logged `BobDone` event. -/
-def BobDoneKeys (T : ExecTrace) (keys : HandshakeKeys) : Prop :=
+@[expose] def BobDoneKeys (T : ExecTrace) (keys : HandshakeKeys) : Prop :=
   ∃ b a ikB ikA spk pqpk opk ek ct j,
     T.EventLoggedAt (PQXDHEvent.BobDone b a ikB ikA spk pqpk opk ek ct keys) j
 

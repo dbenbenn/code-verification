@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternal -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Relocatable Contract Definition for `<Message>::deserialize`
@@ -19,7 +21,7 @@ Defines the allocation-budget `MessageDeserializePlacedOkX` predicate for
 `<spqr::v1::chunked::states::Message>::deserialize` (Block `351`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +38,7 @@ open CryptoVerification.SpqrV1.Top.Placed (blkPC_351 blkPl_351)
 
 /-- Relocatable budget-threaded `subroutine_ok` contract for
     `<spqr::v1::chunked::states::Message>::deserialize` (`Block 351`). -/
-def MessageDeserializePlacedOkX [LibsignalPlacement] (P_poly : PolyApi)
+@[expose] def MessageDeserializePlacedOkX [LibsignalPlacement] (P_poly : PolyApi)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_351).rebase (blkPl_351).base (Rust.withPanics ext))

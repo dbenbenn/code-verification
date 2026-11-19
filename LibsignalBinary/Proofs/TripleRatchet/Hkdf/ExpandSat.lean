@@ -11,19 +11,20 @@ module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Expand -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.FinalizeFixedSat -- proof-setup: allow-public-import
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.FinalizeFixedSat
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandBlock1
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandLoop
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandSegsSat
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExtractSegs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `HookSat` Relocatable Verification of `expand_multi_info`
 
-Establishes `ExpandMultiInfoPlacedOk` for `GenericHkdf<Hmac<Sha256>>::expand_multi_info`
-under `[HkdfPlacedHooksSat C.F H]`.
+Establishes `ExpandMultiInfoPlacedOkSat` for `GenericHkdf<Hmac<Sha256>>::expand_multi_info`
+under `[HkdfPlacedHooksExactSat C.F H]` with `816`-B `expandMultiInfoStackSat`
+(`640 + 176` B `compress256` slack).
 -/
 
 public section
@@ -46,9 +47,9 @@ open CryptoVerification
    lsmpl withLsCodeLoaded)
 open CryptoVerification.LibsignalAesCbc.Run.Bytes (readBytes_8_eq)
 open CryptoVerification.LibsignalTripleRatchet
-  (CalleeSaved CallingConventionPreserved_of_calleeSaved ExpandMultiInfoPlacedOk
+  (CalleeSaved CallingConventionPreserved_of_calleeSaved
    Frame HmacSt RW RunsTo RunsTo.lsProg_svc TraceEq blkPC_53 blkPl_53 expPlacedFakeB
-   expPlacedFakeB_off_0 expandMultiInfoSpec finPlacedFakeB hmacCoreAt isBlock_hmacCoreAt
+   expPlacedFakeB_off_0 finPlacedFakeB hmacCoreAt isBlock_hmacCoreAt
    length_hmacWith ro_outside_rw_shared_lb)
 open CryptoVerification.LibsignalTripleRatchet.Expand
   (ExpandCommon ExpandFrame ExpandPost ExpandPre ExpandSaved StateDone
@@ -56,15 +57,15 @@ open CryptoVerification.LibsignalTripleRatchet.Expand
    esp esp_aligned fin_side_conditions hkdfExpand_64_eq hkdfExpand_80_eq
    t1 t1_length t2 t2_length t3 t3_length)
 open CryptoVerification.LibsignalTripleRatchet.Extract (RunsTo.toE RunsToE S2Frame)
-open CryptoVerification.LibsignalTripleRatchet.FinalizeFixedProof (FinPre)
-open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat (HkdfPlacedHooksExactSat)
+open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat
+  (HkdfPlacedHooksExactSat expandMultiInfoSpecSat)
 open LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandSegsSat
-  (epilogue_raw_placed_runsTo_sat iter_a1_placed_runsTo_sat iter_a2_placed_runsTo_sat
-   iter_b_placed_runsTo_sat iter_c_placed_runsTo_sat iter_d_continue_placed_runsTo_sat
-   iter_d_done_placed_runsTo_sat seg0_placed_runsTo_sat seg1_placed_runsTo_sat
-   seg2a_placed_runsTo_sat seg2b_placed_runsTo_sat seg3_placed_runsTo_sat)
+  (ExpandPreSat ExpandPreSat.of_816 epilogue_raw_placed_runsTo_sat iter_a1_placed_runsTo_sat
+   iter_a2_placed_runsTo_sat iter_b_placed_runsTo_sat iter_c_placed_runsTo_sat
+   iter_d_continue_placed_runsTo_sat iter_d_done_placed_runsTo_sat seg0_placed_runsTo_sat
+   seg1_placed_runsTo_sat seg2a_placed_runsTo_sat seg2b_placed_runsTo_sat seg3_placed_runsTo_sat)
 open LibsignalBinary.Proofs.TripleRatchet.Hkdf.FinalizeFixedSat
-  (FinPostSat finalize_fixed_placed_runsTo_of_other_block_sat)
+  (FinPostSat FinPreSat FinPreSat.of_320 finalize_fixed_placed_runsTo_of_other_block_sat)
 
 attribute [local arm64_norm] MemWidth.bytes SimdMemSize.bytes
 
@@ -73,12 +74,23 @@ attribute [local arm64_norm] MemWidth.bytes SimdMemSize.bytes
 @[local simp]
 private theorem esp_setMem (s₀ : State) (m : Memory) : esp (s₀.setMem m) = esp s₀ := rfl
 
-abbrev ExpandFrameS2 (okmLen : ℕ) (s₀ : State) (m : Memory) : Prop :=
-  S2Frame s₀.mem m [(s₀.readReg64 .x2, okmLen), (s₀.sp - 640#64, 640)]
+public abbrev ExpandFrameS2 (okmLen : ℕ) (s₀ : State) (m : Memory) : Prop :=
+  S2Frame s₀.mem m [(s₀.readReg64 .x2, okmLen), (s₀.sp - 816#64, 816)]
+
+private theorem s2Frame_of_expandFrame {okmLen : ℕ} {s₀ : State} {m m' : Memory}
+    (hf : ExpandFrame okmLen (s₀.setMem m) m') :
+    S2Frame m m' [(s₀.readReg64 .x2, okmLen), (s₀.sp - 816#64, 816)] := by
+  refine (S2Frame.of_frame hf).mono fun a ha r hr => ?_
+  simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
+  rcases hr with rfl | rfl
+  · exact ha (s₀.readReg64 .x2, okmLen) (by simp)
+  · have ha816 := ha (s₀.sp - 816#64, 816) (by simp)
+    change OutsideRegion (s₀.sp - 640#64) 640 a
+    unfold OutsideRegion at ha816 ⊢; bv_omega
 
 private structure ExpandPreBase [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
     (prk info : List (BitVec 8)) (infoPtr : BitVec 64) (okmLen : ℕ) (s₀ : State) : Prop where
-  pre       : ExpandPre expPlacedFakeB F prk info infoPtr okmLen s₀
+  pre       : ExpandPreSat expPlacedFakeB F prk info infoPtr okmLen s₀
   read_info : s₀.mem.Readable infoPtr info.length
 
 private theorem s2_readBytes_eq_of_readable {m₁ m₂ : Memory} {regs : List (BitVec 64 × ℕ)}
@@ -111,12 +123,12 @@ private theorem ExpandPreBase.at_mem [LibsignalPlacement] {F : ShaState → List
     {prk info : List (BitVec 8)} {infoPtr : BitVec 64} {okmLen : ℕ} {s₀ : State}
     (hb : ExpandPreBase F prk info infoPtr okmLen s₀)
     (m : Memory) (hf : ExpandFrameS2 okmLen s₀ m) :
-    ExpandPre expPlacedFakeB F prk info infoPtr okmLen (s₀.setMem m) := by
+    ExpandPreSat expPlacedFakeB F prk info infoPtr okmLen (s₀.setMem m) := by
   have hout_pair {p : BitVec 64} {n : ℕ}
       (ho_x2 : ∀ a, InRegion p n a → OutsideRegion (s₀.readReg64 .x2) okmLen a)
-      (ho_stk : ∀ a, InRegion p n a → OutsideRegion (s₀.sp - 640#64) 640 a) :
+      (ho_stk : ∀ a, InRegion p n a → OutsideRegion (s₀.sp - 816#64) 816 a) :
       ∀ a, InRegion p n a →
-        ∀ r ∈ [(s₀.readReg64 .x2, okmLen), (s₀.sp - 640#64, 640)], OutsideRegion r.1 r.2 a := by
+        ∀ r ∈ [(s₀.readReg64 .x2, okmLen), (s₀.sp - 816#64, 816)], OutsideRegion r.1 r.2 a := by
     intro a ha r hr
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
     rcases hr with rfl | rfl
@@ -125,7 +137,7 @@ private theorem ExpandPreBase.at_mem [LibsignalPlacement] {F : ShaState → List
   have hhmac_m : HmacSt m (s₀.readReg64 .x0) F prk [] := by
     have hout_x0 := hout_pair
       (fun a ha => hb.pre.disj_x0_x2.symm.outside ha (by decide))
-      (fun a ha => hb.pre.disj_x0_stack.symm.outside ha (by decide))
+      (fun a ha => hb.pre.disj_x0_stk816.symm.outside ha (by decide))
     rcases hb.pre.hmac_st with ⟨hlen, _, hpos, hin, hcnt1, hout, hcnt2⟩
     refine ⟨hlen, rfl, ?_, ?_, ?_, ?_, ?_⟩
     · have ha : InRegion (s₀.readReg64 .x0) 0x90 (s₀.readReg64 .x0 + 0x3f#64) := by
@@ -150,37 +162,37 @@ private theorem ExpandPreBase.at_mem [LibsignalPlacement] {F : ShaState → List
       unfold InRegion at ha ⊢; bv_omega
   have hout_x1 := hout_pair
     (fun a ha => hb.pre.disj_x1_x2.symm.outside ha (by decide))
-    (fun a ha => hb.pre.disj_x1_stack.symm.outside ha (by decide))
-  exact
-    { pc_eq         := hb.pre.pc_eq
-      status        := hb.pre.status
-      x3_eq         := hb.pre.x3_eq
-      prk_le        := hb.pre.prk_le
-      info_lt       := hb.pre.info_lt
-      okm_len       := hb.pre.okm_len
-      hmac_st       := hhmac_m
-      info_ptr      := show m.read64 (s₀.readReg64 .x1) = infoPtr from
-        (s2_read64_eq_of_readable hf
-          (readable_sub hb.pre.read_x1 (fun a ha => by unfold InRegion at ha ⊢; bv_omega))
-          (fun a ha => hout_x1 a (by unfold InRegion at ha ⊢; bv_omega))).trans hb.pre.info_ptr
-      info_len      := show m.read64 (s₀.readReg64 .x1 + 8#64) = BitVec.ofNat 64 info.length from
-        (s2_read64_eq_of_readable hf
-          (readable_sub hb.pre.read_x1 (fun a ha => by unfold InRegion at ha ⊢; bv_omega))
-          (fun a ha => hout_x1 a (by unfold InRegion at ha ⊢; bv_omega))).trans hb.pre.info_len
-      info_bytes    := (s2_readBytes_eq_of_readable hf (by have := hb.pre.info_lt; omega)
-        hb.read_info (hout_pair hb.pre.out_info_x2 hb.pre.out_info_stk)).trans hb.pre.info_bytes
-      read_x0       := fun a ha => let ⟨hr, hlf⟩ := hb.pre.read_x0 a ha; hf.2.2 a hr hlf
-      read_x1       := fun a ha => let ⟨hr, hlf⟩ := hb.pre.read_x1 a ha; hf.2.2 a hr hlf
-      rw_x2         := hf.rw_of_rw (s₀.readReg64 .x2) okmLen hb.pre.rw_x2
-      rw_stack      := hf.rw_of_rw (s₀.sp - 640#64) 640 hb.pre.rw_stack
-      disj_x2_stack := hb.pre.disj_x2_stack
-      disj_x0_stack := hb.pre.disj_x0_stack
-      disj_x0_x2    := hb.pre.disj_x0_x2
-      disj_x1_stack := hb.pre.disj_x1_stack
-      disj_x1_x2    := hb.pre.disj_x1_x2
-      out_info_stk  := hb.pre.out_info_stk
-      out_info_x2   := hb.pre.out_info_x2
-      sp_aligned    := hb.pre.sp_aligned }
+    (fun a ha => hb.pre.disj_x1_stk816.symm.outside ha (by decide))
+  exact ExpandPreSat.of_816
+    hb.pre.pc_eq
+    hb.pre.status
+    hb.pre.x3_eq
+    hb.pre.prk_le
+    hb.pre.info_lt
+    hb.pre.okm_len
+    hhmac_m
+    (show m.read64 (s₀.readReg64 .x1) = infoPtr from
+      (s2_read64_eq_of_readable hf
+        (readable_sub hb.pre.read_x1 (fun a ha => by unfold InRegion at ha ⊢; bv_omega))
+        (fun a ha => hout_x1 a (by unfold InRegion at ha ⊢; bv_omega))).trans hb.pre.info_ptr)
+    (show m.read64 (s₀.readReg64 .x1 + 8#64) = BitVec.ofNat 64 info.length from
+      (s2_read64_eq_of_readable hf
+        (readable_sub hb.pre.read_x1 (fun a ha => by unfold InRegion at ha ⊢; bv_omega))
+        (fun a ha => hout_x1 a (by unfold InRegion at ha ⊢; bv_omega))).trans hb.pre.info_len)
+    ((s2_readBytes_eq_of_readable hf (by have := hb.pre.info_lt; omega)
+      hb.read_info (hout_pair hb.pre.out_info_x2 hb.pre.out_info_stk816)).trans hb.pre.info_bytes)
+    (fun a ha => let ⟨hr, hlf⟩ := hb.pre.read_x0 a ha; hf.2.2 a hr hlf)
+    (fun a ha => let ⟨hr, hlf⟩ := hb.pre.read_x1 a ha; hf.2.2 a hr hlf)
+    (hf.rw_of_rw (s₀.readReg64 .x2) okmLen hb.pre.rw_x2)
+    (hf.rw_of_rw (s₀.sp - 816#64) 816 hb.pre.rw_stk816)
+    hb.pre.disj_x2_stk816
+    hb.pre.disj_x0_stk816
+    hb.pre.disj_x0_x2
+    hb.pre.disj_x1_stk816
+    hb.pre.disj_x1_x2
+    hb.pre.out_info_stk816
+    hb.pre.out_info_x2
+    hb.pre.sp_aligned
 
 private theorem expandCommon_reset_of_fin [LibsignalPlacement]
     {F : ShaState → List (BitVec 8) → ShaState} {prk info : List (BitVec 8)}
@@ -190,15 +202,16 @@ private theorem expandCommon_reset_of_fin [LibsignalPlacement]
     (hc : ExpandCommon okmLen (s₀.setMem m_ref) s)
     (hstat : s'.status = .Running)
     (hcs : CalleeSaved s s')
-    (hfr : S2Frame s.mem s'.mem [(esp s₀ + 208#64, 32), (esp s₀ + 240#64, 0x90), (esp s₀ - 144#64, 144)]) :
+    (hfr : S2Frame s.mem s'.mem [(esp s₀ + 208#64, 32), (esp s₀ + 240#64, 0x90), (esp s₀ - 320#64, 320)]) :
     ExpandFrameS2 okmLen s₀ s'.mem ∧ ExpandCommon okmLen (s₀.setMem s'.mem) s' := by
   have hpre_ref := hb.at_mem m_ref hf_ref
   have hrw_esp : s.mem.RW (esp s₀) 496 :=
-    ExpandFrame.rw_esp (s₀ := s₀.setMem m_ref) hpre_ref hc.frame
-  have hf_s : ExpandFrameS2 okmLen s₀ s.mem := hf_ref.trans (S2Frame.of_frame hc.frame)
+    ExpandFrame.rw_esp (s₀ := s₀.setMem m_ref) hpre_ref.toExpandPre hc.frame
+  have hf_s : ExpandFrameS2 okmLen s₀ s.mem :=
+    hf_ref.trans (s2Frame_of_expandFrame hc.frame)
   have hf_s' : ExpandFrameS2 okmLen s₀ s'.mem := by
     refine hf_s.trans (hfr.mono fun a ha r hr => ?_)
-    have hstk := ha (s₀.sp - 640#64, 640) (by simp)
+    have hstk := ha (s₀.sp - 816#64, 816) (by simp)
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
     rcases hr with rfl | rfl | rfl <;> (unfold OutsideRegion esp at *; bv_omega)
   have h_eq_off (off : BitVec 64)
@@ -251,21 +264,27 @@ private theorem fin1_placed_runsTo_sat {prk info : List (BitVec 8)} {infoPtr : B
       ∃ m_ref', ExpandFrameS2 okmLen s₀ m_ref' ∧
         StateX2r expPlacedFakeB C.F prk info okmLen (s₀.setMem m_ref') s' := by
   have hpre_ref := hb.at_mem m_ref hf_ref
-  rcases fin_side_conditions (s₀ := s₀.setMem m_ref) hpre_ref hx.common.frame with
-    ⟨hrw_x0, hrw_x1, hrw_sp, hd_x0_x1, hd_x0_sp, hd_x1_sp⟩
-  have hfin_pre : FinPre finPlacedFakeB C.F prk (info ++ [1#8]) s :=
-    { pc_eq := by rw [CryptoVerification.LibsignalTripleRatchet.finPlacedFakeB_off_0]; exact hx.pc_eq
-      status := hx.common.status
-      key_le := hb.pre.prk_le
-      msg_lt := by have := hb.pre.info_lt; simp; omega
-      hmac_st := by rw [hx.x1_eq, esp_setMem]; exact hx.hmac_240
-      rw_out := by rw [hx.x0_eq]; exact hrw_x0
-      rw_hm := by rw [hx.x1_eq]; exact hrw_x1
-      rw_fsp := by rw [hx.common.sp_eq]; exact hrw_sp
-      disj_out_hm := by rw [hx.x0_eq, hx.x1_eq]; exact hd_x0_x1
-      disj_out_fsp := by rw [hx.x0_eq, hx.common.sp_eq]; exact hd_x0_sp
-      disj_hm_fsp := by rw [hx.x1_eq, hx.common.sp_eq]; exact hd_x1_sp
-      sp_aligned := by rw [hx.common.sp_eq, esp_setMem]; exact esp_aligned hb.pre.sp_aligned }
+  rcases fin_side_conditions (s₀ := s₀.setMem m_ref) hpre_ref.toExpandPre hx.common.frame with
+    ⟨hrw_x0, hrw_x1, _, hd_x0_x1, _, _⟩
+  have hrw_stk320 : s.mem.RW (s.sp - 320#64) 320 := by
+    have hrw816 : s.mem.RW (s₀.sp - 816#64) 816 :=
+      (S2Frame.of_frame hx.common.frame).rw_of_rw (s₀.sp - 816#64) 816 hpre_ref.rw_stk816
+    rw [hx.common.sp_eq, esp_setMem]
+    exact hrw816.sub (by unfold esp; bv_omega)
+  have hfin_pre : FinPreSat finPlacedFakeB C.F prk (info ++ [1#8]) s :=
+    FinPreSat.of_320
+      (by rw [CryptoVerification.LibsignalTripleRatchet.finPlacedFakeB_off_0]; exact hx.pc_eq)
+      hx.common.status
+      hb.pre.prk_le
+      (by have := hb.pre.info_lt; simp; omega)
+      (by rw [hx.x1_eq, esp_setMem]; exact hx.hmac_240)
+      (by rw [hx.x0_eq]; exact hrw_x0)
+      (by rw [hx.x1_eq]; exact hrw_x1)
+      hrw_stk320
+      (by rw [hx.x0_eq, hx.x1_eq]; exact hd_x0_x1)
+      (by rw [hx.x0_eq, hx.common.sp_eq, esp_setMem]; unfold DisjointRegions esp; bv_omega)
+      (by rw [hx.x1_eq, hx.common.sp_eq, esp_setMem]; unfold DisjointRegions esp; bv_omega)
+      (by rw [hx.common.sp_eq, esp_setMem]; exact esp_aligned hb.pre.sp_aligned)
   refine (finalize_fixed_placed_runsTo_of_other_block_sat (C := C) (H := H)
     hcl hfin_pre).mono fun s' ⟨hpc', hrun', hcs, ht1, hfr⟩ => ?_
   rw [hx.lr_eq] at hpc'
@@ -291,24 +310,30 @@ private theorem iter_fin_placed_runsTo_sat {prk info tPrev okmSoFar : List (BitV
         StateLoopFin expPlacedFakeB C.F prk info tPrev okmSoFar okmLen i rem dstOff
           (s₀.setMem m_ref') s' := by
   have hpre_ref := hb.at_mem m_ref hf_ref
-  rcases fin_side_conditions (s₀ := s₀.setMem m_ref) hpre_ref hx.common.frame with
-    ⟨hrw_x0, hrw_x1, hrw_sp, hd_x0_x1, hd_x0_sp, hd_x1_sp⟩
+  rcases fin_side_conditions (s₀ := s₀.setMem m_ref) hpre_ref.toExpandPre hx.common.frame with
+    ⟨hrw_x0, hrw_x1, _, hd_x0_x1, _, _⟩
   have hrw_x2 : s.mem.RW (s₀.readReg64 .x2) okmLen :=
-    ExpandFrame.rw_x2 (s₀ := s₀.setMem m_ref) hpre_ref hx.common.frame
-  have hfin_pre : FinPre finPlacedFakeB C.F prk
+    ExpandFrame.rw_x2 (s₀ := s₀.setMem m_ref) hpre_ref.toExpandPre hx.common.frame
+  have hrw_stk320 : s.mem.RW (s.sp - 320#64) 320 := by
+    have hrw816 : s.mem.RW (s₀.sp - 816#64) 816 :=
+      (S2Frame.of_frame hx.common.frame).rw_of_rw (s₀.sp - 816#64) 816 hpre_ref.rw_stk816
+    rw [hx.common.sp_eq, esp_setMem]
+    exact hrw816.sub (by unfold esp; bv_omega)
+  have hfin_pre : FinPreSat finPlacedFakeB C.F prk
       (tPrev ++ info ++ [BitVec.ofNat 8 (i + 1)]) s :=
-    { pc_eq := by rw [CryptoVerification.LibsignalTripleRatchet.finPlacedFakeB_off_0]; exact hx.pc_eq
-      status := hx.common.status
-      key_le := hb.pre.prk_le
-      msg_lt := by have := hb.pre.info_lt; simp [ht_len]; omega
-      hmac_st := by rw [hx.x1_eq, esp_setMem]; exact hx.hmac_240
-      rw_out := by rw [hx.x0_eq]; exact hrw_x0
-      rw_hm := by rw [hx.x1_eq]; exact hrw_x1
-      rw_fsp := by rw [hx.common.sp_eq]; exact hrw_sp
-      disj_out_hm := by rw [hx.x0_eq, hx.x1_eq]; exact hd_x0_x1
-      disj_out_fsp := by rw [hx.x0_eq, hx.common.sp_eq]; exact hd_x0_sp
-      disj_hm_fsp := by rw [hx.x1_eq, hx.common.sp_eq]; exact hd_x1_sp
-      sp_aligned := by rw [hx.common.sp_eq, esp_setMem]; exact esp_aligned hb.pre.sp_aligned }
+    FinPreSat.of_320
+      (by rw [CryptoVerification.LibsignalTripleRatchet.finPlacedFakeB_off_0]; exact hx.pc_eq)
+      hx.common.status
+      hb.pre.prk_le
+      (by have := hb.pre.info_lt; simp [ht_len]; omega)
+      (by rw [hx.x1_eq, esp_setMem]; exact hx.hmac_240)
+      (by rw [hx.x0_eq]; exact hrw_x0)
+      (by rw [hx.x1_eq]; exact hrw_x1)
+      hrw_stk320
+      (by rw [hx.x0_eq, hx.x1_eq]; exact hd_x0_x1)
+      (by rw [hx.x0_eq, hx.common.sp_eq, esp_setMem]; unfold DisjointRegions esp; bv_omega)
+      (by rw [hx.x1_eq, hx.common.sp_eq, esp_setMem]; unfold DisjointRegions esp; bv_omega)
+      (by rw [hx.common.sp_eq, esp_setMem]; exact esp_aligned hb.pre.sp_aligned)
   refine (finalize_fixed_placed_runsTo_of_other_block_sat (C := C) (H := H)
     hcl hfin_pre).mono fun s' ⟨hpc', hrun', hcs, hout, hfr⟩ => ?_
   rw [hx.lr_eq] at hpc'
@@ -318,18 +343,12 @@ private theorem iter_fin_placed_runsTo_sat {prk info tPrev okmSoFar : List (BitV
     by_cases h0 : dstOff = 0
     · subst h0; exact hx.okm_pre
     · have hokm_len := hb.pre.okm_len
+      have hd_x2 := hb.pre.disj_x2_stk816
       refine (hfr.readBytes_eq (hrw_x2.sub (by bv_omega)) (fun r hr => ?_) (by omega)).trans hx.okm_pre
       simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-      rcases hr with rfl | rfl | rfl <;> dsimp only
-      · exact (hb.pre.disj_x2_stack.symm.sub_left (esp s₀ + 208#64)
-          ⟨by decide, by unfold esp; bv_omega⟩).sub_right (s₀.readReg64 .x2)
-          ⟨by omega, by bv_omega⟩
-      · exact (hb.pre.disj_x2_stack.symm.sub_left (esp s₀ + 240#64)
-          ⟨by decide, by unfold esp; bv_omega⟩).sub_right (s₀.readReg64 .x2)
-          ⟨by omega, by bv_omega⟩
-      · exact (hb.pre.disj_x2_stack.symm.sub_left (esp s₀ - 144#64)
-          ⟨by decide, by unfold esp; bv_omega⟩).sub_right (s₀.readReg64 .x2)
-          ⟨by omega, by bv_omega⟩
+      rcases hr with rfl | rfl | rfl <;> dsimp only <;>
+        (rcases hokm_len with hlen | hlen <;>
+          (rw [hlen] at hd_x2 hdst; unfold DisjointRegions at hd_x2 ⊢; try unfold esp at *; bv_omega))
   obtain ⟨hf_s', hc'⟩ := expandCommon_reset_of_fin hb hf_ref hx.common hrun' hcs hfr
   exact ⟨s'.mem, hf_s', ⟨by rw [hpc']; simp only [arm64_norm], hc',
     (CalleeSaved.x19 hcs).trans hx.x19_eq,
@@ -356,7 +375,7 @@ private theorem iter_to_fin_placed_runsToE_sat {prk info tPrev okmSoFar : List (
       ∃ m_ref', ExpandFrameS2 okmLen s₀ m_ref' ∧
         StateLoopFin expPlacedFakeB C.F prk info tPrev okmSoFar okmLen i rem dstOff
           (s₀.setMem m_ref') s' := by
-  have hpre_ref := hb.at_mem m_ref hf_ref
+  have hpre_ref := (hb.at_mem m_ref hf_ref).toExpandPre
   have hrd_ref : (s₀.setMem m_ref).mem.Readable infoPtr info.length :=
     fun a ha => let ⟨hr, hlf⟩ := hb.read_info a ha; hf_ref.2.2 a hr hlf
   have h_pre : RunsTo ((blkPC_53).rebase (blkPl_53).base H) s
@@ -380,9 +399,9 @@ private theorem epilogue_placed_runsTo_sat {prk info : List (BitVec 8)} {infoPtr
       CalleeSaved s₀ sf ∧
       sf.mem.readBytes (s₀.readReg64 .x2) okmLen = hkdfExpand C.F prk info okmLen ∧
       ExpandFrameS2 okmLen s₀ sf.mem := by
-  refine (epilogue_raw_placed_runsTo_sat (C := C) (H := H) (hb.at_mem m_ref hf_ref) hx).mono
+  refine (epilogue_raw_placed_runsTo_sat (C := C) (H := H) (hb.at_mem m_ref hf_ref).toExpandPre hx).mono
     fun sf ⟨hpc, hrun, hcs, hokm, hfr⟩ => ?_
-  exact ⟨hpc, hrun, ⟨hcs.1, hcs.2⟩, hokm, hf_ref.trans (S2Frame.of_frame hfr)⟩
+  exact ⟨hpc, hrun, ⟨hcs.1, hcs.2⟩, hokm, hf_ref.trans (s2Frame_of_expandFrame hfr)⟩
 
 private theorem expand_multi_info_placed_runsToE_sat {prk info : List (BitVec 8)}
     {infoPtr : BitVec 64} {okmLen : ℕ} {s₀ : State}
@@ -396,7 +415,7 @@ private theorem expand_multi_info_placed_runsToE_sat {prk info : List (BitVec 8)
       ExpandFrameS2 okmLen s₀ sf.mem := by
   have hs_id : s₀.setMem s₀.mem = s₀ := by cases s₀; rfl
   have hf₀ : ExpandFrameS2 okmLen s₀ s₀.mem := S2Frame.refl s₀.mem _
-  have hpre₀ := hb.at_mem s₀.mem hf₀
+  have hpre₀ := (hb.at_mem s₀.mem hf₀).toExpandPre
   have h_to_fin1 : RunsToE ((blkPC_53).rebase (blkPl_53).base H) s₀
       (StateX2Placed C.F prk info okmLen (s₀.setMem s₀.mem)) := by
     conv => arg 2; rw [← hs_id]
@@ -407,7 +426,7 @@ private theorem expand_multi_info_placed_runsToE_sat {prk info : List (BitVec 8)
   have h_after_fin1 := RunsToE.trans_full h_to_fin1 fun s4 hs4 hkf4 _ =>
     RunsTo.toE (fin1_placed_runsTo_sat (C := C) (H := H) (hcl₀.of_keepsFrozen hkf4) hb hf₀ hs4)
   have h_loop := h_after_fin1.trans fun s5 ⟨m1, hf1, hs5⟩ =>
-    RunsTo.toE ((seg3_placed_runsTo_sat (C := C) (H := H) (hb.at_mem m1 hf1) hs5).mono
+    RunsTo.toE ((seg3_placed_runsTo_sat (C := C) (H := H) (hb.at_mem m1 hf1).toExpandPre hs5).mono
       fun s6 hs6 => Exists.intro m1 (And.intro hf1 hs6))
   refine RunsToE.trans_full h_loop fun s6 ⟨m1, hf1, hs6⟩ hkf6 _ => ?_
   rcases hb.pre.okm_len with rfl | rfl
@@ -418,14 +437,14 @@ private theorem expand_multi_info_placed_runsToE_sat {prk info : List (BitVec 8)
         hkdfExpand C.F prk info 64 := by
       rw [show hmacWith C.F prk (t1 C.F prk info ++ info ++ [2#8]) = t2 C.F prk info from rfl,
           List.take_of_length_le (by rw [t2_length]), hkdfExpand_64_eq]
-    exact RunsTo.toE ((iter_d_done_placed_runsTo_sat (C := C) (H := H) (hb.at_mem m2 hf2)
+    exact RunsTo.toE ((iter_d_done_placed_runsTo_sat (C := C) (H := H) (hb.at_mem m2 hf2).toExpandPre
       (Or.inl rfl) (Or.inl rfl) rfl hokm64 hs7).trans fun s8 hs8 =>
       epilogue_placed_runsTo_sat (C := C) (H := H) hb hf2 hs8)
   · have hfin2 := iter_to_fin_placed_runsToE_sat (C := C) (H := H) hcl₀ hkf6 hb hf1
       (t1_length C.F prk info) (Or.inl rfl) (Or.inr (Or.inl rfl)) (by decide) hs6
     have hloop3 := hfin2.trans fun s7 ⟨m2, hf2, hs7⟩ =>
       RunsTo.toE ((iter_d_continue_placed_runsTo_sat (C := C) (H := H) (tNext := t2 C.F prk info)
-        (hb.at_mem m2 hf2) rfl (by decide) rfl hs7).mono fun s8 hs8 =>
+        (hb.at_mem m2 hf2).toExpandPre rfl (by decide) rfl hs7).mono fun s8 hs8 =>
         Exists.intro m2 (And.intro hf2 hs8))
     have hfin3 := RunsToE.trans_full hloop3 fun s8 ⟨m2, hf2, hs8⟩ hkf8 _ =>
       iter_to_fin_placed_runsToE_sat (C := C) (H := H) hcl₀ (Memory.KeepsFrozen.trans hkf6 hkf8) hb hf2
@@ -436,7 +455,7 @@ private theorem expand_multi_info_placed_runsToE_sat {prk info : List (BitVec 8)
         hkdfExpand C.F prk info 80 := by
       rw [show hmacWith C.F prk (t2 C.F prk info ++ info ++ [3#8]) = t3 C.F prk info from rfl,
           hkdfExpand_80_eq]
-    exact RunsTo.toE ((iter_d_done_placed_runsTo_sat (C := C) (H := H) (hb.at_mem m3 hf3)
+    exact RunsTo.toE ((iter_d_done_placed_runsTo_sat (C := C) (H := H) (hb.at_mem m3 hf3).toExpandPre
       (Or.inr rfl) (Or.inr rfl) rfl hokm80 hs9).trans fun s10 hs10 =>
       epilogue_placed_runsTo_sat (C := C) (H := H) hb hf3 hs10)
 
@@ -444,20 +463,25 @@ end PlacedSat
 
 /-! ## Separation-Logic Contract -/
 
-theorem expand_multi_info_placed_ok_sat [LibsignalPlacement] (C : Crypto)
+/-- `816`-B stack `HookSat` separation-logic contract for `expand_multi_info` (Block `53`). -/
+public abbrev ExpandMultiInfoPlacedOkSat [LibsignalPlacement] (C : Crypto) (H : LibsignalHooks) : Prop :=
+  subroutine_ok ((blkPC_53).rebase (blkPl_53).base H) (blkPl_53).base
+    (withLsCodeLoaded lsmpl (expandMultiInfoSpecSat C.F))
+
+public theorem expand_multi_info_placed_ok_sat [LibsignalPlacement] (C : Crypto)
     (H : LibsignalHooks) [HkdfPlacedHooksExactSat C.F H] :
-    ExpandMultiInfoPlacedOk C H := by
-  unfold ExpandMultiInfoPlacedOk
+    ExpandMultiInfoPlacedOkSat C H := by
+  unfold ExpandMultiInfoPlacedOkSat
   refine subroutine_ok_intro fun x R s0 hpc hrun hpre_cl hsp => ?_
   obtain ⟨hcl, hpre⟩ := extract_withLsCodeLoaded hpre_cl
-  dsimp only [expandMultiInfoSpec] at hpre
+  dsimp only [expandMultiInfoSpecSat] at hpre
   rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨⟨hx0, hx1, hx2, hx3, hprk_le, hinfo_lt, hokm_len⟩, hsep⟩
   change s0.mem ⊨
     (hmacCoreAt C.F x.hkdfA x.prk [] ∗
       (x.infoHdrA ↦₆₄ x.infoA) ∗ ((x.infoHdrA + 8#64) ↦₆₄ BitVec.ofNat 64 x.info.length) ∗
       (x.infoA ↦ᵣ x.info) ∗ memRegion x.okmA x.okmLen ∗
-      memRegion (s0.sp - 640#64) 640) ∗ R at hsep
+      memRegion (s0.sp - 816#64) 816) ∗ R at hsep
   have hb_hm := isBlock_hmacCoreAt C.F x.hkdfA x.prk [] (by decide)
   have hb_hdr0 := IsBlock.pointsTo64 x.infoHdrA x.infoA
   have hb_hdr8 := IsBlock.pointsTo64 (x.infoHdrA + 8#64) (BitVec.ofNat 64 x.info.length)
@@ -468,35 +492,35 @@ theorem expand_multi_info_placed_ok_sat [LibsignalPlacement] (C : Crypto)
     hb_hdr0.sepConj hb_hdr8 rfl (by decide)
   have hro_info := IsBlockRO.pointsToBytesRO x.infoA x.info (by omega)
   have hb_okm := IsBlock.memRegion x.okmA x.okmLen
-  have hb_stk := IsBlock.memRegion (s0.sp - 640#64) 640
+  have hb_stk := IsBlock.memRegion (s0.sp - 816#64) 816
   let R_inv : SepProp :=
     hmacCoreAt C.F x.hkdfA x.prk [] ∗
       ((x.infoHdrA ↦₆₄ x.infoA) ∗ ((x.infoHdrA + 8#64) ↦₆₄ BitVec.ofNat 64 x.info.length)) ∗
       (x.infoA ↦ᵣ x.info) ∗ R
-  have hsep_okm_stk : s0.mem ⊨ memRegion x.okmA x.okmLen ∗ (memRegion (s0.sp - 640#64) 640 ∗ R_inv) := by
+  have hsep_okm_stk : s0.mem ⊨ memRegion x.okmA x.okmLen ∗ (memRegion (s0.sp - 816#64) 816 ∗ R_inv) := by
     dsimp only [R_inv]; ac_nf at hsep ⊢
-  have hsep_stk : s0.mem ⊨ memRegion (s0.sp - 640#64) 640 ∗ (memRegion x.okmA x.okmLen ∗ R_inv) := by
+  have hsep_stk : s0.mem ⊨ memRegion (s0.sp - 816#64) 816 ∗ (memRegion x.okmA x.okmLen ∗ R_inv) := by
     dsimp only [R_inv]; ac_nf at hsep ⊢
   have hsep_hm_stk : s0.mem ⊨ hmacCoreAt C.F x.hkdfA x.prk [] ∗
-      (memRegion (s0.sp - 640#64) 640 ∗
+      (memRegion (s0.sp - 816#64) 816 ∗
         (((x.infoHdrA ↦₆₄ x.infoA) ∗ ((x.infoHdrA + 8#64) ↦₆₄ BitVec.ofNat 64 x.info.length)) ∗
           ((x.infoA ↦ᵣ x.info) ∗ (memRegion x.okmA x.okmLen ∗ R)))) := by
     ac_nf at hsep ⊢
   have hsep_hm_okm : s0.mem ⊨ hmacCoreAt C.F x.hkdfA x.prk [] ∗
       (memRegion x.okmA x.okmLen ∗
         (((x.infoHdrA ↦₆₄ x.infoA) ∗ ((x.infoHdrA + 8#64) ↦₆₄ BitVec.ofNat 64 x.info.length)) ∗
-          ((x.infoA ↦ᵣ x.info) ∗ (memRegion (s0.sp - 640#64) 640 ∗ R)))) := by
+          ((x.infoA ↦ᵣ x.info) ∗ (memRegion (s0.sp - 816#64) 816 ∗ R)))) := by
     ac_nf at hsep ⊢
   have hsep_hdr_stk : s0.mem ⊨ ((x.infoHdrA ↦₆₄ x.infoA) ∗ ((x.infoHdrA + 8#64) ↦₆₄ BitVec.ofNat 64 x.info.length)) ∗
-      (memRegion (s0.sp - 640#64) 640 ∗
+      (memRegion (s0.sp - 816#64) 816 ∗
         (hmacCoreAt C.F x.hkdfA x.prk [] ∗ ((x.infoA ↦ᵣ x.info) ∗ (memRegion x.okmA x.okmLen ∗ R)))) := by
     ac_nf at hsep ⊢
   have hsep_hdr_okm : s0.mem ⊨ ((x.infoHdrA ↦₆₄ x.infoA) ∗ ((x.infoHdrA + 8#64) ↦₆₄ BitVec.ofNat 64 x.info.length)) ∗
       (memRegion x.okmA x.okmLen ∗
-        (hmacCoreAt C.F x.hkdfA x.prk [] ∗ ((x.infoA ↦ᵣ x.info) ∗ (memRegion (s0.sp - 640#64) 640 ∗ R)))) := by
+        (hmacCoreAt C.F x.hkdfA x.prk [] ∗ ((x.infoA ↦ᵣ x.info) ∗ (memRegion (s0.sp - 816#64) 816 ∗ R)))) := by
     ac_nf at hsep ⊢
   have hsep_info_stk : s0.mem ⊨ (x.infoA ↦ᵣ x.info) ∗
-      (memRegion (s0.sp - 640#64) 640 ∗
+      (memRegion (s0.sp - 816#64) 816 ∗
         (hmacCoreAt C.F x.hkdfA x.prk [] ∗
           (((x.infoHdrA ↦₆₄ x.infoA) ∗ ((x.infoHdrA + 8#64) ↦₆₄ BitVec.ofNat 64 x.info.length)) ∗
             (memRegion x.okmA x.okmLen ∗ R)))) := by
@@ -505,33 +529,30 @@ theorem expand_multi_info_placed_ok_sat [LibsignalPlacement] (C : Crypto)
       (memRegion x.okmA x.okmLen ∗
         (hmacCoreAt C.F x.hkdfA x.prk [] ∗
           (((x.infoHdrA ↦₆₄ x.infoA) ∗ ((x.infoHdrA + 8#64) ↦₆₄ BitVec.ofNat 64 x.info.length)) ∗
-            (memRegion (s0.sp - 640#64) 640 ∗ R)))) := by
+            (memRegion (s0.sp - 816#64) 816 ∗ R)))) := by
     ac_nf at hsep ⊢
   have hokm_le : x.okmLen ≤ 2 ^ 64 := by omega
   have hokm_pos : 0 < x.okmLen := by omega
-  have h_exp_pre : ExpandPre expPlacedFakeB C.F x.prk x.info x.infoA x.okmLen s0 :=
-    { pc_eq := by rw [expPlacedFakeB_off_0]; exact hpc
-      status := hrun
-      x3_eq := hx3
-      prk_le := hprk_le
-      info_lt := hinfo_lt
-      okm_len := hokm_len
-      hmac_st := by rw [hx0]; exact hb_hm.read hsep_hm_stk
-      info_ptr := by rw [hx1]; exact (hb_hdr.read hsep_hdr_stk).1
-      info_len := by rw [hx1]; exact (hb_hdr.read hsep_hdr_stk).2
-      info_bytes := hro_info.read hsep_info_stk
-      read_x0 := by rw [hx0]; exact Memory.RW.readable (fun a ha => hb_hm.permNoLazy_rw hsep_hm_stk ha)
-      read_x1 := by rw [hx1]; exact Memory.RW.readable (fun a ha => hb_hdr.permNoLazy_rw hsep_hdr_stk ha)
-      rw_x2 := by rw [hx2]; exact fun a ha => hb_okm.permNoLazy_rw hsep_okm_stk ha
-      rw_stack := fun a ha => hb_stk.permNoLazy_rw hsep_stk ha
-      disj_x2_stack := by rw [hx2]; exact hb_okm.disjoint hb_stk hokm_pos (by decide) hsep_okm_stk
-      disj_x0_stack := by rw [hx0]; exact hb_hm.disjoint hb_stk (by decide) (by decide) hsep_hm_stk
-      disj_x0_x2 := by rw [hx0, hx2]; exact hb_hm.disjoint hb_okm (by decide) hokm_pos hsep_hm_okm
-      disj_x1_stack := by rw [hx1]; exact hb_hdr.disjoint hb_stk (by decide) (by decide) hsep_hdr_stk
-      disj_x1_x2 := by rw [hx1, hx2]; exact hb_hdr.disjoint hb_okm (by decide) hokm_pos hsep_hdr_okm
-      out_info_stk := ro_outside_rw_shared_lb hro_info hb_stk hsep_info_stk
-      out_info_x2 := by rw [hx2]; exact ro_outside_rw_shared_lb hro_info hb_okm hsep_info_okm
-      sp_aligned := by simpa [State.spAligned] using hsp }
+  have h_exp_pre : ExpandPreSat expPlacedFakeB C.F x.prk x.info x.infoA x.okmLen s0 :=
+    ExpandPreSat.of_816
+      (by rw [expPlacedFakeB_off_0]; exact hpc)
+      hrun hx3 hprk_le hinfo_lt hokm_len
+      (by rw [hx0]; exact hb_hm.read hsep_hm_stk)
+      (by rw [hx1]; exact (hb_hdr.read hsep_hdr_stk).1)
+      (by rw [hx1]; exact (hb_hdr.read hsep_hdr_stk).2)
+      (hro_info.read hsep_info_stk)
+      (by rw [hx0]; exact Memory.RW.readable (fun a ha => hb_hm.permNoLazy_rw hsep_hm_stk ha))
+      (by rw [hx1]; exact Memory.RW.readable (fun a ha => hb_hdr.permNoLazy_rw hsep_hdr_stk ha))
+      (by rw [hx2]; exact fun a ha => hb_okm.permNoLazy_rw hsep_okm_stk ha)
+      (fun a ha => hb_stk.permNoLazy_rw hsep_stk ha)
+      (by rw [hx2]; exact hb_okm.disjoint hb_stk hokm_pos (by decide) hsep_okm_stk)
+      (by rw [hx0]; exact hb_hm.disjoint hb_stk (by decide) (by decide) hsep_hm_stk)
+      (by rw [hx0, hx2]; exact hb_hm.disjoint hb_okm (by decide) hokm_pos hsep_hm_okm)
+      (by rw [hx1]; exact hb_hdr.disjoint hb_stk (by decide) (by decide) hsep_hdr_stk)
+      (by rw [hx1, hx2]; exact hb_hdr.disjoint hb_okm (by decide) hokm_pos hsep_hdr_okm)
+      (ro_outside_rw_shared_lb hro_info hb_stk hsep_info_stk)
+      (by rw [hx2]; exact ro_outside_rw_shared_lb hro_info hb_okm hsep_info_okm)
+      (by simpa [State.spAligned] using hsp)
   have hb_base : ExpandPreBase C.F x.prk x.info x.infoA x.okmLen s0 :=
     { pre := h_exp_pre
       read_info := fun a ha => ⟨hro_info.perm_r hsep_info_stk ha, hro_info.isLazyFree_false hsep_info_stk ha⟩ }
@@ -539,7 +560,7 @@ theorem expand_multi_info_placed_ok_sat [LibsignalPlacement] (C : Crypto)
     fun sf hpost hkf_sf _ htr => ?_
   rcases hpost with ⟨hpc_sf, hstat_sf, hcallee, hokm_sf, hframe_sf⟩
   refine ⟨hpc_sf, hstat_sf, ?_, CallingConventionPreserved_of_calleeSaved hcallee⟩
-  dsimp only [withLsCodeLoaded, expandMultiInfoSpec]
+  dsimp only [withLsCodeLoaded, expandMultiInfoSpecSat]
   rw [sepConj_assoc, satisfies_pure_sepConj]
   refine ⟨htr.1, ?_⟩
   unfold ExpandFrameS2 at hframe_sf
@@ -552,15 +573,20 @@ theorem expand_multi_info_placed_ok_sat [LibsignalPlacement] (C : Crypto)
       simp [t1_length, t2_length, t3_length]
   have hb_okm' := IsBlock.pointsToBytes_len (a := x.okmA) h_exp_len
   have hpost_sep : sf.mem ⊨ (x.okmA ↦ₛ hkdfExpand C.F x.prk x.info x.okmLen) ∗
-      (memRegion (s0.sp - 640#64) 640 ∗ R_inv) :=
+      (memRegion (s0.sp - 816#64) 816 ∗ R_inv) :=
     S2Frame.update_two_blocks hb_okm hb_okm' hb_stk hb_stk hsep_okm_stk hframe_sf
       ⟨by rw [h_exp_len]; exact hokm_le, by rwa [h_exp_len]⟩ trivial
   change sf.mem ⊨
     (hmacCoreAt C.F x.hkdfA x.prk [] ∗
       (x.infoHdrA ↦₆₄ x.infoA) ∗ ((x.infoHdrA + 8#64) ↦₆₄ BitVec.ofNat 64 x.info.length) ∗
       (x.infoA ↦ᵣ x.info) ∗ (x.okmA ↦ₛ hkdfExpand C.F x.prk x.info x.okmLen) ∗
-      memRegion (s0.sp - 640#64) 640) ∗ R
+      memRegion (s0.sp - 816#64) 816) ∗ R
   dsimp only [R_inv] at hpost_sep
   ac_nf at hpost_sep ⊢
+
+public theorem expand_multi_info_placed_ok_withLsCodeLoaded_sat [LibsignalPlacement] (C : Crypto)
+    (H : LibsignalHooks) [HkdfPlacedHooksExactSat C.F H] :
+    ExpandMultiInfoPlacedOkSat C H :=
+  expand_multi_info_placed_ok_sat C H
 
 end LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandSat

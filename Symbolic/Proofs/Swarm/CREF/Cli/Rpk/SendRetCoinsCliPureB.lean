@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Sem
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SendRetCoinsCliPureA
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SendRetCoinsCliPureA -- proof-setup: allow-public-import
 import Init.Data.String
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
@@ -19,11 +19,14 @@ import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.Proofs.Refinement.ExecBridgeSendCtOS
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
-public import Symbolic.Proofs.Refinement.LemmasPure -- shake: keep
+import Symbolic.Proofs.Refinement.LemmasPure -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- shake: keep
 import Symbolic.Proofs.Swarm.TRREF.B3DefsPure -- shake: keep
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

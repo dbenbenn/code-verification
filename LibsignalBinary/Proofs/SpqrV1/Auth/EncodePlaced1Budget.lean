@@ -9,27 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
-public import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Auth.Encode1
-public import LibsignalBinary.Proofs.SpqrV1.Auth.Encode1Budget
-public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2BaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
+public import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.Encode1 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Auth.Encode1Budget
+public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2BaseBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2Budget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable Proof of `encode<Authenticator> [local#1]` (Block 151)
@@ -39,7 +39,7 @@ shared `VmPreserved` placed step lemmas for blocks 151 and 314, and top-level
 `RustCliAllocBudget M` contracts for `encode<Authenticator> [local#1]` (block 151).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -615,7 +615,7 @@ theorem encode_varint2_det_placed_ok_x [LibsignalPlacement] {M : AllocCostModel}
 /-! ## Shared `VmPreserved` Placed Step Lemmas (Blocks 151 and 314) -/
 
 /-- Program-and-placement predicate for block 151 (`[local#1]`) or block 314 (`[local#2]`). -/
-def IsAuthEncodePlacedProg [LibsignalPlacement] (prog : Program) (pl : Placement) : Prop :=
+@[expose] def IsAuthEncodePlacedProg [LibsignalPlacement] (prog : Program) (pl : Placement) : Prop :=
   (∃ H, prog = lsProg_151 H ∧ pl = blkPl_151) ∨
   (∃ H, prog = lsProg_314 H ∧ pl = blkPl_314)
 

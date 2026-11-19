@@ -11,7 +11,7 @@ module
 
 public import VerifiedLibraries.Musl.Proofs.SyscallProof
 public import ProofLib
-public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslDirReadClose
+import LibsignalBinary.Proofs.SignalSession.CliIo.MuslDirReadClose
 
 /-!
 # Placement-Generic `musl` `read` Contract for `stdin` and `.localFile ∨ .stdio`
@@ -23,7 +23,7 @@ Extends `VerifiedLibraries.Musl.SyscallProof` over `muslSysPlacedLib` with:
    reading `(s0.fs.stdin.drop desc.offset).take count.toNat` into `buf` and advancing `desc.offset`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -115,7 +115,7 @@ private theorem muslSccpReadFileOrStdio_blk_ok [MuslSysPlacement] :
 
 /-- Contract for `ssize_t read(int fd, void *buf, size_t count)` (`blk06`, `32`-byte stack frame)
     on an open readable `.localFile` or `.stdio` descriptor (`fd < 2 ^ 31`, `count < 2 ^ 63`). -/
-def muslReadFileOrStdio32Spec :
+@[expose] def muslReadFileOrStdio32Spec :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × FdEntry × List (BitVec 8)) where
   pre := fun (fd, buf, count, desc, oldBuf) s0 =>
     ⌜(s0.readReg32 .x0).zeroExtend 64 = fd ∧
@@ -190,18 +190,11 @@ theorem muslReadFileOrStdio32_block_ok [MuslSysPlacement] :
   · unfold CalleeSavedPreserved
     refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> simp [wp_norm, arm64_norm, *]
 
-theorem muslReadFileOrStdio32_ok [MuslSysPlacement] {P : Program}
-    (hext : ∀ pc, P.externAt? pc = none) (hsvc : P.svc = Syscall.standard) :
-    subroutine_ok P (muslSysPlacedLib.fnAddr muslSysMpl "read")
-      (muslSysPlacedLib.withCodeLoaded muslSysMpl muslReadFileOrStdio32Spec) :=
-  muslSysPlacedLib.subroutine_ok_of_block (j := 6) (by decide) muslReadFileOrStdio32_block_ok
-    hext hsvc
-
 /-! ## 3. Concrete `stdin` (`fd = 0`) Specialization (`muslReadStdin32_block_ok` / `muslReadStdin32_ok`) -/
 
 /-- Contract for `ssize_t read(0, void *buf, size_t count)` (`blk06`, `32`-byte stack frame)
     on an open readable `.stdio` `stdin` descriptor (`fd = 0`, `count < 2 ^ 63`). -/
-def muslReadStdin32Spec : Spec (BitVec 64 × BitVec 64 × FdEntry × List (BitVec 8)) where
+@[expose] def muslReadStdin32Spec : Spec (BitVec 64 × BitVec 64 × FdEntry × List (BitVec 8)) where
   pre := fun (buf, count, desc, oldBuf) s0 =>
     ⌜s0.readReg32 .x0 = 0#32 ∧
       s0.readReg64 .x1 = buf ∧
@@ -251,12 +244,6 @@ theorem muslReadStdin32_block_ok [MuslSysPlacement] :
     · exact Or.inr (Or.inl ⟨hp_st, hq⟩)
     · exact Or.inr (Or.inr (Or.inl ⟨code, hex_st, hq⟩))
     · exact Or.inr (Or.inr (Or.inr ⟨ho_st, hq⟩))
-
-theorem muslReadStdin32_ok [MuslSysPlacement] {P : Program}
-    (hext : ∀ pc, P.externAt? pc = none) (hsvc : P.svc = Syscall.standard) :
-    subroutine_ok P (muslSysPlacedLib.fnAddr muslSysMpl "read")
-      (muslSysPlacedLib.withCodeLoaded muslSysMpl muslReadStdin32Spec) :=
-  muslSysPlacedLib.subroutine_ok_of_block (j := 6) (by decide) muslReadStdin32_block_ok hext hsvc
 
 theorem sp_sub_4224_va_bound {sp : BitVec 64} {want : Nat}
     (hlo : 4224 ≤ sp.toNat) (hhi : sp.toNat ≤ Arm64.USER_VA_LIMIT) (hw : want ≤ 4096) :

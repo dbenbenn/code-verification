@@ -9,7 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
 
 /-!
 # Budget-Threaded Relocatable Specifications & Prologue/Epilogue Re-Exports
@@ -18,7 +21,7 @@ Re-exports the `[LibsignalPlacement]` budget-threaded specifications, hook bundl
 prologue/epilogue/`None`-variant theorems, and exit `SepWP -> SepWPp` adapters from `DefsBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

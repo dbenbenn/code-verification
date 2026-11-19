@@ -9,10 +9,21 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdPre
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3b
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdPre
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3b -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
 
 /-!
 # Pre-sampled latched `.g3` oracle for one-key `Auth` Case A (`DH1`)
@@ -22,7 +33,7 @@ import VCVio.OracleComp.EvalDist.Measure
 scalar preserves the output distribution of `runAuthFgLatchedSim1Key`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,7 +44,7 @@ open Proofs.SignalPqxdh.Security.FgGapDh
 
 namespace Proofs.SignalPqxdh.Security
 
-noncomputable def fgPreAuthInitPrin1Key (prinFlag : Bool) (prinIdx : ℕ) (optPrinSk : Option Bytes)
+@[expose] def fgPreAuthInitPrin1Key (prinFlag : Bool) (prinIdx : ℕ) (optPrinSk : Option Bytes)
     (S : Setup) (P : Primitives) (u : Fin S.N_id) :
     StateT (AuthState S) ProbComp AuthResponse := do
   let st ← get
@@ -58,7 +69,7 @@ theorem fgPreAuthInitPrin1Key_none_eq (prinFlag : Bool) (prinIdx : ℕ) (S : Set
     fgPreAuthInitPrin1Key prinFlag prinIdx none S P u = pqxdhAuthImpl1Key S P (.initPrin u) := rfl
 
 /-- One-key pre-sampled latched `.g3` `Auth` oracle. -/
-noncomputable def pqxdhAuthFgLatchedPreImpl1Key (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
+@[expose] def pqxdhAuthFgLatchedPreImpl1Key (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (optUsk optVsk : Option Bytes) (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthFgCutoffState S) ProbComp)
   | .initPrin u => liftAuthFgBase (fgPreAuthInitPrin1Key useDh1 targetIdx optUsk S P u)

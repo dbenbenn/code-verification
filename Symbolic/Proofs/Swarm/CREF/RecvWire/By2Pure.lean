@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecTieSeedShapePure
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptSplitPure
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.RcvByPureA
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecTieSeedShapePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptSplitPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.RcvByPureA -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SkippedKeyRunInvPure
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
@@ -32,6 +32,9 @@ import Symbolic.Proofs.Swarm.CREF.TR.MessageKeyCurrentInv
 import Symbolic.Proofs.Swarm.CREF.TR.PureRecvStepBridge
 import Symbolic.Proofs.Swarm.CREF.Xpl.RatchetHit
 import Symbolic.Proofs.Swarm.TRREF.HooksOKXTRPure
+public import Symbolic.Proofs.Swarm.CREF.TR.SlotsZ6Pure -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials
+import Symbolic.Proofs.Swarm.CREF.Stage1Trials
 
 /-!
 # Per-Move `SkippedInstallByteFresh` and Seed-Exclusion Dischargers for Whisper Receive
@@ -40,7 +43,7 @@ Proves `SkippedInstallByteFresh` preservation across whisper receive moves under
 `PureRcvAcceptCall`, along with `RcvCurrentRead`, `A2bCrossSeedExcl`, and `A2bSeedShapeEqRes`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false

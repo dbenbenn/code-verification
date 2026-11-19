@@ -9,16 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledBudgetSteps
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB304Common
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB304UcPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledBudgetSteps
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB304Common
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB304UcPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
+import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
@@ -44,6 +43,10 @@ import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Guarded-Tight Placed Budget Proof for `Chunked.KeysSampled::merge` (Block `304`)
@@ -54,7 +57,7 @@ inlined `Unchunked.HeaderSent` `42,108` B + `PolynomialEncoder` `342,615` B) on 
 `tlb_ChunkedKeysSampledDom` inputs, falling back to `ChunkedKeysSampledMergeEnv` outside the domain.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -268,7 +271,7 @@ private theorem e2b304_default_polyEncoder_entails_zeroCap (A : RustAlloc) (p : 
   exact Entails.trans (Entails.of_eq (by sep_ac_rfl))
     (sepConj_mono h1 (sepConj_mono h2 (Entails.refl _)))
 
-private noncomputable def e2b304_domSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+private def e2b304_domSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (maxOps : Nat) : Spec (ChunkedKeysSampledMergeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜tlb_ChunkedKeysSampledDom x⌝ ∗

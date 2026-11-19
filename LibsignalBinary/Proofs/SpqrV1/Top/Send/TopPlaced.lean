@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.FinalPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChainPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.TopRegionsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.FinalPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChainPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.TopRegionsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.Pure
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendDispatchPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.Top
@@ -29,7 +29,7 @@ and Phases 3–4 (`TopPhase3Placed.lean`) to verify `spqr::send::<libsignal_sess
 against `spqrSendPlacedSpecT64` (`DEV-SPQR5`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -74,7 +74,7 @@ open CryptoVerification.SpqrV1.Poly.NextChunk
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 
 /-- Additional hook and callee contracts used by relocatable Phase 2 (`States::send`) and Phase 3
     (`drop_in_place::<chunked::States>`) alongside `SpqrSendPlacedContracts`. -/
@@ -591,7 +591,7 @@ theorem step_send_active_of_le_64_placed
     exact ⟨hp.symm, htr_p⟩
 
 /-- Relocatable active Phase 2 + Phase 3 continuation obligation under `DEV-SPQR5` (`64 ≤ x.rest.length`). -/
-def SpqrSendActiveContinuationPanic64Placed
+@[expose] def SpqrSendActiveContinuationPanic64Placed
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (K : MlKem)
     (ext : String → Option (State → State)) : Prop :=
   ∀ (x : SendCall) (s0 : State) (R : SepProp),
@@ -660,7 +660,7 @@ theorem spqrSendActiveContinuation_placed_ok
     hx19 hx20 hx21 hx23 hx24 hx25 hx26 hx28 hvregsf
 
 /-- Relocatable `[LibsignalPlacement]` contract for `spqr::send::<HookRng>` (`Block 124`). -/
-def spqrSendPlacedSpec (A : RustAlloc) (ctl : BitVec 64) (S : SpqrModel) : Spec SendCall :=
+@[expose] def spqrSendPlacedSpec (A : RustAlloc) (ctl : BitVec 64) (S : SpqrModel) : Spec SendCall :=
   withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.st.v⌝ ∗
@@ -678,7 +678,7 @@ def spqrSendPlacedSpec (A : RustAlloc) (ctl : BitVec 64) (S : SpqrModel) : Spec 
 
 /-- `spqrSendPlacedSpec` with `GF.Mul2U16.tokenInitPlacedAt` and the `DEV-SPQR5`
     (`x.st.bytes.length < 2 ^ 32 ∧ 64 ≤ x.rest.length`) precondition conjunct. -/
-def spqrSendPlacedSpecT64 (A : RustAlloc) (ctl : BitVec 64) (S : SpqrModel) :
+@[expose] def spqrSendPlacedSpecT64 (A : RustAlloc) (ctl : BitVec 64) (S : SpqrModel) :
     Spec SendCall where
   pre x s :=
     ⌜x.st.bytes.length < 2 ^ 32 ∧ 64 ≤ x.rest.length⌝ ∗

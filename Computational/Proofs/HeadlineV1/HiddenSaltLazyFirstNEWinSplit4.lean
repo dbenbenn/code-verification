@@ -9,31 +9,65 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEWinSplit3
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.StateInv
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEWinSplit3 -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.StateInv -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.Crypto
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.HelpersC
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.KnownSeedEval
 import Computational.Proofs.CryptoGames.SM.Theorem7Proof
 import ProofLib.SepLogic.WP.StepsCore
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatementsShort
+import Mathlib.Algebra.BigOperators.Group.Finset.Defs
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Data.Finset.Defs
+import Mathlib.Data.List.Dedup
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.Integral.Lebesgue.Add
+import Mathlib.Order.Disjoint
+import Mathlib.Order.SetNotation
+import Mathlib.Tactic.Attr.Register
+import PolyFun.Control.Monad.Support
+import Std.Tactic.BVDecide.Normalize.BitVec
+import Std.Tactic.BVDecide.Normalize.Bool
+import Std.Tactic.BVDecide.Normalize.Prop
+import ToMathlib.Control.StateT
+import VCVio.CryptoFoundations.SecExp
+import VCVio.CryptoFoundations.SecExp.Measure
+import VCVio.EvalDist.Defs.Measure.Core
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Basic
+import VCVio.EvalDist.Monad.Bool
+import VCVio.EvalDist.ProbabilityBounds
+import VCVio.EvalDist.ProbabilityNotation
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.EvalDist.Measure
+import VCVio.OracleComp.OracleSpec
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.QueryTracking.QueryBound.Simulation
+import VCVio.OracleComp.QueryTracking.SubSpec
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.Basic
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Relational.SimulateQ.UntilBad
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Lazy Corruption-Window Extraction
 
 Derives the deliver-time corruption window and `DeliverHcasesAtExt` from a set probe flag under
-`SimInvCXLazy`, `SnapSync`, and `CorrsKeptRecvInv`, without `SnapsInv` or strict `SimInvCX`.
--/
+`SimInvCXLazy`, `SnapSync`, and `CorrsKeptRecvInv`, without `SnapsInv` or strict `SimInvCX`.-/
 
-@[expose] public section
+namespace CryptoVerification.LibsignalSession.HeadlineV1
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec ENNReal MeasureTheory
 
-namespace CryptoVerification.LibsignalSession.HeadlineV1
 
 open CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1SessionUniformCoins)
 open CryptoVerification.SpqrV1Sync.SendTotal (Encaps1Total TopState)
@@ -1002,5 +1036,6 @@ theorem corrsSnapIdxInv_record_of_epMgmt {PQ St Msg C : Type}
     · subst hRP; rw [Function.update_self]; exact hrec_idx
     · rw [Function.update_of_ne hRP]
 
-end CryptoVerification.LibsignalSession.HeadlineV1
 end
+
+end CryptoVerification.LibsignalSession.HeadlineV1

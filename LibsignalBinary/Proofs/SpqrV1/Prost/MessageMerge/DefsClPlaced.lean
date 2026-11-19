@@ -9,9 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Defs
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Defs
+import LibsignalBinary.Proofs.Placed.GenLsBlock
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+public import ProofLib.GenPlacedFetches
 
 /-!
 # `LibsignalCodeLoaded` Threading Combinators for `Prost.MessageMerge`
@@ -20,7 +23,7 @@ import ProofLib.SepLogic.WPp
 together with monotonicity lifting to `withLsCodeRoLoaded`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -86,7 +89,7 @@ def lsclProp (pl : Obj.MultiPlacement) (s : State) : SepProp :=
   ⌜LibsignalCodeLoaded pl s.mem⌝
 
 /-- Variant of `withLsCodeLoaded` that wraps `LibsignalCodeLoaded pl s.mem` in `lsclProp` for `wpp_init`. -/
-def withLsclProp {α : Type} (pl : Obj.MultiPlacement) (spec : Spec α) : Spec α where
+@[expose] def withLsclProp {α : Type} (pl : Obj.MultiPlacement) (spec : Spec α) : Spec α where
   pre := fun x s => lsclProp pl s ∗ spec.pre x s
   post := spec.post
   onExit := spec.onExit

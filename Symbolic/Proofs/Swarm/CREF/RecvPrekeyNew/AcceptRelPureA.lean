@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.QuietTransferPure
-public import Symbolic.Proofs.Swarm.CREF.Xpl.InvRpk
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.QuietTransferPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Xpl.InvRpk -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -35,6 +35,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
 
 /-!
 # Block Shape, `TRNsBound`, and Frame Lemmas for Pre-Key Accept
@@ -44,7 +45,7 @@ preservation across `bobStart` (`rpkA2_nsBound`), and `PureCRecRel` frame preser
 participants other than Bob (`rpkA2_frame`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

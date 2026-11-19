@@ -498,6 +498,439 @@ def MallocngAuxvState (γ : GhostName) (auxvPtr : BitVec 64)
         fun (t, v) => [t, v])) ∗
     ((randPtr + 8#64) ↦₆₄ sec)
 
+/-- Read-only (`.ro`) counterpart of `MallocngAuxvAt`: duplicable ELF auxiliary vector table at
+    `auxvPtr` containing `AT_RANDOM` (`25#64`) before `AT_NULL` (`0#64`) and the 8-byte random
+    secret slice at `randPtr + 8#64`. -/
+def MallocngAuxvRoAt (auxvPtr : BitVec 64) : SepProp :=
+  ∃∗ preEntries : List (BitVec 64 × BitVec 64),
+  ∃∗ sufEntries : List (BitVec 64 × BitVec 64),
+  ∃∗ randPtr : BitVec 64,
+  ∃∗ nullVal : BitVec 64,
+  ∃∗ secretBytes : List (BitVec 8),
+    ⌜(∀ e ∈ preEntries, e.1 ≠ 0#64 ∧ e.1 ≠ 25#64) ∧
+     (∀ e ∈ sufEntries, e.1 ≠ 0#64 ∧ e.1 ≠ 25#64) ∧
+     preEntries.length + sufEntries.length ≤ 64 ∧
+     auxvPtr.toNat + 16 * (preEntries.length + sufEntries.length + 2) ≤ 2 ^ 48 ∧
+     randPtr.toNat + 16 ≤ 2 ^ 48 ∧
+     secretBytes.length = 8⌝ ∗
+    (auxvPtr ↦₆₄ᵣ*
+      ((preEntries ++ [(25#64, randPtr)] ++ sufEntries ++ [(0#64, nullVal)]).flatMap
+        fun (t, v) => [t, v])) ∗
+    ((randPtr + 8#64) ↦ᵣ secretBytes)
+
+/-- Duplicable read-only `__libc.auxv` pointer and `auxv` table bundle at placement `A`. -/
+def MallocngLibcAuxvRoAt (A : MallocngAddrs) : SepProp :=
+  ∃∗ auxvPtr : BitVec 64, ((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗ MallocngAuxvRoAt auxvPtr
+
+/-- Mode-parameterized `__libc.auxv` pointer cell: `.ro` when `ro = true`, `.rw` when `ro = false`. -/
+def MallocngAuxvPtrCell (ro : Bool) (libc auxvPtr : BitVec 64) : SepProp :=
+  if ro then (libc + 8#64) ↦₆₄ᵣ auxvPtr else (libc + 8#64) ↦₆₄ auxvPtr
+
+/-- Mode-parameterized `auxv` table assertion: `MallocngAuxvRoAt` when `ro = true`,
+    `MallocngAuxvState` when `ro = false`. -/
+def MallocngAuxvStateRo (ro : Bool) (γ : GhostName) (auxvPtr : BitVec 64)
+    (snap : Option MallocngAuxvSnap) : SepProp :=
+  if ro then MallocngAuxvRoAt auxvPtr else MallocngAuxvState γ auxvPtr snap
+
+private theorem pointsToBytes_freeze_ro_aux (a : BitVec 64) (bs : List (BitVec 8)) :
+    (a ↦ₛ bs) ⊢ |==> (a ↦ᵣ bs) := by
+  induction bs generalizing a with
+  | nil =>
+    rw [pointsToBytes_nil, pointsToBytesRO_nil]
+    exact bupd_intro _
+  | cons b bs ih =>
+    rw [pointsToBytes_cons, pointsToBytesRO_cons]
+    exact bupd_sep (pointsTo8_freeze_ro a b) (ih (a + 1#64))
+
+private theorem pointsToWords64_freeze_ro_aux (a : BitVec 64) (ws : List (BitVec 64)) :
+    (a ↦₆₄* ws) ⊢ |==> (a ↦₆₄ᵣ* ws) := by
+  induction ws generalizing a with
+  | nil =>
+    rw [pointsToWords64_nil, pointsToWords64RO_nil]
+    exact bupd_intro _
+  | cons w ws ih =>
+    rw [pointsToWords64_cons, pointsToWords64RO_cons]
+    exact bupd_sep (pointsTo64_freeze_ro a w) (ih (a + 8#64))
+
+/-- Freeze a read-write `MallocngAuxvAt` table into its duplicable `.ro` counterpart. -/
+theorem mallocngAuxvAt_freeze_ro (auxvPtr : BitVec 64) :
+    MallocngAuxvAt auxvPtr ⊢ |==> MallocngAuxvRoAt auxvPtr := by
+  unfold MallocngAuxvAt MallocngAuxvRoAt
+  refine Entails.sepExists_elim fun pre => Entails.sepExists_elim fun suf =>
+    Entails.sepExists_elim fun randPtr => Entails.sepExists_elim fun nullVal =>
+      Entails.sepExists_elim fun secretBytes => Entails.pure_left fun hwf => ?_
+  refine Entails.trans
+    (bupd_sep (pointsToWords64_freeze_ro_aux _ _) (pointsToBytes_freeze_ro_aux _ _))
+    (bupd_mono ?_)
+  exact Entails.sepExists_right pre (Entails.sepExists_right suf
+    (Entails.sepExists_right randPtr (Entails.sepExists_right nullVal
+      (Entails.sepExists_right secretBytes (Entails.pure_right hwf (Entails.refl _))))))
+
+/-- Freeze both `__libc.auxv` and `MallocngAuxvAt` into the duplicable `MallocngLibcAuxvRoAt`. -/
+theorem mallocngLibcAuxv_freeze_ro (A : MallocngAddrs) (auxvPtr : BitVec 64) :
+    ((A.libc + 8#64) ↦₆₄ auxvPtr) ∗ MallocngAuxvAt auxvPtr ⊢ |==> MallocngLibcAuxvRoAt A := by
+  unfold MallocngLibcAuxvRoAt
+  refine Entails.trans
+    (bupd_sep (pointsTo64_freeze_ro (A.libc + 8#64) auxvPtr) (mallocngAuxvAt_freeze_ro auxvPtr))
+    (bupd_mono (Entails.sepExists_right auxvPtr (Entails.refl _)))
+
+private theorem pointsTo8RO_agree_entails (a : BitVec 64) (b₁ b₂ : BitVec 8) :
+    (a ↦₈ᵣ b₁) ∗ (a ↦₈ᵣ b₂) ⊢ ⌜b₁ = b₂⌝ ∗ (a ↦₈ᵣ b₁) := by
+  refine Entails.trans (Entails.extract_heap_fact (φ := b₁ = b₂) fun h hh => ?_) ?_
+  · have h1 := ownsCell_sepConj_left (ownsCell_pointsTo8RO a b₁) h hh
+    have h2 := ownsCell_sepConj_right (ownsCell_pointsTo8RO a b₂) h hh
+    rw [h1, Option.some.injEq, HeapCell.ro.injEq] at h2
+    exact h2
+  · refine Entails.pure_left fun hEq => ?_
+    subst hEq
+    rw [pointsTo8RO_dup]
+    exact Entails.pure_right rfl (Entails.refl _)
+
+private theorem pointsToBytesRO_agree_entails (a : BitVec 64) (bs₁ bs₂ : List (BitVec 8))
+    (hlen : bs₁.length = bs₂.length) :
+    (a ↦ᵣ bs₁) ∗ (a ↦ᵣ bs₂) ⊢ ⌜bs₁ = bs₂⌝ ∗ (a ↦ᵣ bs₁) := by
+  induction bs₁ generalizing a bs₂ with
+  | nil =>
+    cases bs₂ with
+    | nil =>
+      rw [pointsToBytesRO_nil, emp_sepConj, pure_sepConj_of_true rfl]
+      exact Entails.refl _
+    | cons _ _ => simp at hlen
+  | cons b₁ tl₁ ih =>
+    cases bs₂ with
+    | nil => simp at hlen
+    | cons b₂ tl₂ =>
+      simp only [List.length_cons, Nat.add_right_cancel_iff] at hlen
+      rw [pointsToBytesRO_cons, pointsToBytesRO_cons]
+      have hSwap :
+          (((a ↦₈ᵣ b₁) ∗ ((a + 1#64) ↦ᵣ tl₁)) ∗ ((a ↦₈ᵣ b₂) ∗ ((a + 1#64) ↦ᵣ tl₂))) =
+          (((a ↦₈ᵣ b₁) ∗ (a ↦₈ᵣ b₂)) ∗ (((a + 1#64) ↦ᵣ tl₁) ∗ ((a + 1#64) ↦ᵣ tl₂))) := by ac_rfl
+      rw [hSwap]
+      refine Entails.trans (sepConj_mono (pointsTo8RO_agree_entails a b₁ b₂) (ih (a + 1#64) tl₂ hlen)) ?_
+      rw [sepConj_assoc, sepConj_comm (a ↦₈ᵣ b₁), sepConj_assoc]
+      refine Entails.pure_left fun hb => Entails.pure_left fun htl => ?_
+      subst hb; subst htl
+      refine Entails.pure_right rfl ?_
+      rw [sepConj_comm]
+      exact Entails.refl _
+
+private theorem unpack64_inj_aux {v₁ v₂ : BitVec 64} (h : unpack64 v₁ = unpack64 v₂) : v₁ = v₂ := by
+  simp only [unpack64, List.cons.injEq, and_true] at h
+  obtain ⟨h0, h1, h2, h3, h4, h5, h6, h7⟩ := h
+  apply BitVec.eq_of_getLsbD_eq
+  intro i hi
+  have hmod : i % 8 < 8 := Nat.mod_lt i (by decide)
+  have hEqBit : ∀ (s : Nat), v₁.extractLsb' s 8 = v₂.extractLsb' s 8 →
+      s + (i % 8) = i → v₁.getLsbD i = v₂.getLsbD i := by
+    intro s hs hsum
+    have := congrArg (fun x => x.getLsbD (i % 8)) hs
+    simp only [BitVec.getLsbD_extractLsb', hmod, decide_true, Bool.true_and, hsum] at this
+    exact this
+  have : i / 8 = 0 ∨ i / 8 = 1 ∨ i / 8 = 2 ∨ i / 8 = 3 ∨
+         i / 8 = 4 ∨ i / 8 = 5 ∨ i / 8 = 6 ∨ i / 8 = 7 := by omega
+  rcases this with hd | hd | hd | hd | hd | hd | hd | hd
+  · exact hEqBit 0 h0 (by omega)
+  · exact hEqBit 8 h1 (by omega)
+  · exact hEqBit 16 h2 (by omega)
+  · exact hEqBit 24 h3 (by omega)
+  · exact hEqBit 32 h4 (by omega)
+  · exact hEqBit 40 h5 (by omega)
+  · exact hEqBit 48 h6 (by omega)
+  · exact hEqBit 56 h7 (by omega)
+
+private theorem pointsTo64RO_agree_entails (a v₁ v₂ : BitVec 64) :
+    (a ↦₆₄ᵣ v₁) ∗ (a ↦₆₄ᵣ v₂) ⊢ ⌜v₁ = v₂⌝ ∗ (a ↦₆₄ᵣ v₁) := by
+  rw [pointsTo64RO_eq_pointsToBytesRO, pointsTo64RO_eq_pointsToBytesRO]
+  refine Entails.trans (pointsToBytesRO_agree_entails a (unpack64 v₁) (unpack64 v₂) (by simp)) ?_
+  refine Entails.pure_left fun hEq => ?_
+  exact Entails.pure_right (unpack64_inj_aux hEq) (Entails.refl _)
+
+private theorem pointsToWords64RO_prefix_agree (a : BitVec 64) (ws₁ ws₂ : List (BitVec 64)) :
+    (a ↦₆₄ᵣ* ws₁) ∗ (a ↦₆₄ᵣ* ws₂) ⊢
+      ⌜∀ i, i < ws₁.length → i < ws₂.length → ws₁[i]? = ws₂[i]?⌝ ∗
+      ((a ↦₆₄ᵣ* ws₁) ∗ (a ↦₆₄ᵣ* ws₂)) := by
+  induction ws₁ generalizing a ws₂ with
+  | nil =>
+    exact Entails.pure_right (fun _ hi _ => absurd hi (Nat.not_lt_zero _)) (Entails.refl _)
+  | cons w₁ rest₁ ih =>
+    cases ws₂ with
+    | nil =>
+      exact Entails.pure_right (fun _ _ hi => absurd hi (Nat.not_lt_zero _)) (Entails.refl _)
+    | cons w₂ rest₂ =>
+      rw [pointsToWords64RO_cons, pointsToWords64RO_cons]
+      have hSwap :
+          (((a ↦₆₄ᵣ w₁) ∗ ((a + 8#64) ↦₆₄ᵣ* rest₁)) ∗ ((a ↦₆₄ᵣ w₂) ∗ ((a + 8#64) ↦₆₄ᵣ* rest₂))) =
+          (((a ↦₆₄ᵣ w₁) ∗ (a ↦₆₄ᵣ w₂)) ∗ (((a + 8#64) ↦₆₄ᵣ* rest₁) ∗ ((a + 8#64) ↦₆₄ᵣ* rest₂))) := by
+        ac_rfl
+      rw [hSwap]
+      refine Entails.trans (sepConj_mono (pointsTo64RO_agree_entails a w₁ w₂) (ih (a + 8#64) rest₂)) ?_
+      rw [sepConj_assoc, sepConj_comm (a ↦₆₄ᵣ w₁), sepConj_assoc]
+      refine Entails.pure_left fun hw => Entails.pure_left fun hrest => ?_
+      subst hw
+      refine Entails.pure_right (fun i hi1 hi2 => ?_) ?_
+      · cases i with
+        | zero => rfl
+        | succ j =>
+          simp only [List.length_cons, Nat.succ_lt_succ_iff] at hi1 hi2
+          simpa using hrest j hi1 hi2
+      · refine Entails.of_eq ?_
+        conv => lhs; rw [← pointsTo64RO_dup a w₁]
+        ac_rfl
+
+private theorem flatMap_pair_getElem? (L : List (BitVec 64 × BitVec 64)) (k : Nat)
+    (hk : k < L.length) :
+    (L.flatMap fun (t, v) => [t, v])[2 * k]? = some (L[k]'hk).1 ∧
+    (L.flatMap fun (t, v) => [t, v])[2 * k + 1]? = some (L[k]'hk).2 := by
+  induction L generalizing k with
+  | nil => simp at hk
+  | cons hd tl ih =>
+    rcases hd with ⟨t, v⟩
+    cases k with
+    | zero => simp
+    | succ j =>
+      simp only [List.length_cons, Nat.succ_lt_succ_iff] at hk
+      have h1 : 2 * (j + 1) = (2 * j) + 2 := by omega
+      have h2 : 2 * (j + 1) + 1 = (2 * j + 1) + 2 := by omega
+      simpa [List.flatMap_cons, h1, h2] using ih j hk
+
+private theorem flatMap_pair_length (L : List (BitVec 64 × BitVec 64)) :
+    (L.flatMap fun (t, v) => [t, v]).length = 2 * L.length := by
+  induction L with
+  | nil => rfl
+  | cons _ tl ih => simp [List.flatMap_cons, ih]; omega
+
+private theorem auxv_entries_eq_of_prefix_agree
+    {pre₁ suf₁ pre₂ suf₂ : List (BitVec 64 × BitVec 64)}
+    {rand₁ null₁ rand₂ null₂ : BitVec 64}
+    (hPre₁ : ∀ e ∈ pre₁, e.1 ≠ 0#64 ∧ e.1 ≠ 25#64)
+    (hSuf₁ : ∀ e ∈ suf₁, e.1 ≠ 0#64 ∧ e.1 ≠ 25#64)
+    (hPre₂ : ∀ e ∈ pre₂, e.1 ≠ 0#64 ∧ e.1 ≠ 25#64)
+    (hSuf₂ : ∀ e ∈ suf₂, e.1 ≠ 0#64 ∧ e.1 ≠ 25#64)
+    (hAgree : ∀ i,
+      i < ((pre₁ ++ [(25#64, rand₁)] ++ suf₁ ++ [(0#64, null₁)]).flatMap fun (t, v) => [t, v]).length →
+      i < ((pre₂ ++ [(25#64, rand₂)] ++ suf₂ ++ [(0#64, null₂)]).flatMap fun (t, v) => [t, v]).length →
+      ((pre₁ ++ [(25#64, rand₁)] ++ suf₁ ++ [(0#64, null₁)]).flatMap fun (t, v) => [t, v])[i]? =
+      ((pre₂ ++ [(25#64, rand₂)] ++ suf₂ ++ [(0#64, null₂)]).flatMap fun (t, v) => [t, v])[i]?) :
+    pre₁ = pre₂ ∧ rand₁ = rand₂ ∧ suf₁ = suf₂ ∧ null₁ = null₂ := by
+  let L₁ := pre₁ ++ [(25#64, rand₁)] ++ suf₁ ++ [(0#64, null₁)]
+  let L₂ := pre₂ ++ [(25#64, rand₂)] ++ suf₂ ++ [(0#64, null₂)]
+  have hPairAgree : ∀ k, (hk1 : k < L₁.length) → (hk2 : k < L₂.length) → L₁[k]'hk1 = L₂[k]'hk2 := by
+    intro k hk1 hk2
+    have hLen1 : (L₁.flatMap fun (t, v) => [t, v]).length = 2 * L₁.length := flatMap_pair_length L₁
+    have hLen2 : (L₂.flatMap fun (t, v) => [t, v]).length = 2 * L₂.length := flatMap_pair_length L₂
+    have hk1' : 2 * k < (L₁.flatMap fun (t, v) => [t, v]).length := by omega
+    have hk2' : 2 * k < (L₂.flatMap fun (t, v) => [t, v]).length := by omega
+    have hk1'' : 2 * k + 1 < (L₁.flatMap fun (t, v) => [t, v]).length := by omega
+    have hk2'' : 2 * k + 1 < (L₂.flatMap fun (t, v) => [t, v]).length := by omega
+    have h0 := hAgree (2 * k) hk1' hk2'
+    have h1 := hAgree (2 * k + 1) hk1'' hk2''
+    have ⟨h0a, h1a⟩ := flatMap_pair_getElem? L₁ k hk1
+    have ⟨h0b, h1b⟩ := flatMap_pair_getElem? L₂ k hk2
+    dsimp only [L₁, L₂] at h0a h1a h0b h1b
+    rw [h0a, h0b, Option.some.injEq] at h0
+    rw [h1a, h1b, Option.some.injEq] at h1
+    exact Prod.ext h0 h1
+  have hNonZeroPrefix : ∀ (pre suf : List (BitVec 64 × BitVec 64)) (rand : BitVec 64)
+      (_ : ∀ e ∈ pre, e.1 ≠ 0#64 ∧ e.1 ≠ 25#64) (_ : ∀ e ∈ suf, e.1 ≠ 0#64 ∧ e.1 ≠ 25#64),
+      ∀ e ∈ pre ++ [(25#64, rand)] ++ suf, e.1 ≠ 0#64 := by
+    intro pre suf rand hp hs e he
+    simp only [List.mem_append, List.mem_singleton] at he
+    rcases he with (h | rfl) | h
+    · exact (hp e h).1
+    · intro hc; dsimp only at hc; exact absurd hc (by decide)
+    · exact (hs e h).1
+  have hLastTag : ∀ (pre suf : List (BitVec 64 × BitVec 64)) (rand nv : BitVec 64),
+      let L := pre ++ [(25#64, rand)] ++ suf ++ [(0#64, nv)]
+      ∀ (h : L.length - 1 < L.length), (L[L.length - 1]'h) = (0#64, nv) := by
+    intro pre suf rand nv L h
+    dsimp only [L]
+    rw [List.getElem_append_right (by simp)]
+    simp
+  have hLenEq : L₁.length = L₂.length := by
+    rcases Nat.lt_trichotomy L₁.length L₂.length with hLt | hEq | hGt
+    · exfalso
+      have hk1 : L₁.length - 1 < L₁.length := by simp [L₁]
+      have hk2 : L₁.length - 1 < L₂.length := by omega
+      have hEq := hPairAgree (L₁.length - 1) hk1 hk2
+      have h1 := hLastTag pre₁ suf₁ rand₁ null₁ hk1
+      rw [h1] at hEq
+      have hInPref : L₂[L₁.length - 1]'hk2 ∈ pre₂ ++ [(25#64, rand₂)] ++ suf₂ := by
+        have hLtP : L₁.length - 1 < (pre₂ ++ [(25#64, rand₂)] ++ suf₂).length := by
+          simp [L₂] at hLt ⊢; omega
+        have hGet : L₂[L₁.length - 1]'hk2 = (pre₂ ++ [(25#64, rand₂)] ++ suf₂)[L₁.length - 1]'hLtP := by
+          dsimp only [L₂]; exact List.getElem_append_left hLtP
+        rw [hGet]; exact List.getElem_mem hLtP
+      have hNe0 := hNonZeroPrefix pre₂ suf₂ rand₂ hPre₂ hSuf₂ _ hInPref
+      rw [← hEq] at hNe0; exact hNe0 rfl
+    · exact hEq
+    · exfalso
+      have hk2 : L₂.length - 1 < L₂.length := by simp [L₂]
+      have hk1 : L₂.length - 1 < L₁.length := by omega
+      have hEq := hPairAgree (L₂.length - 1) hk1 hk2
+      have h2 := hLastTag pre₂ suf₂ rand₂ null₂ hk2
+      rw [h2] at hEq
+      have hInPref : L₁[L₂.length - 1]'hk1 ∈ pre₁ ++ [(25#64, rand₁)] ++ suf₁ := by
+        have hLtP : L₂.length - 1 < (pre₁ ++ [(25#64, rand₁)] ++ suf₁).length := by
+          simp [L₁] at hGt ⊢; omega
+        have hGet : L₁[L₂.length - 1]'hk1 = (pre₁ ++ [(25#64, rand₁)] ++ suf₁)[L₂.length - 1]'hLtP := by
+          dsimp only [L₁]; exact List.getElem_append_left hLtP
+        rw [hGet]; exact List.getElem_mem hLtP
+      have hNe0 := hNonZeroPrefix pre₁ suf₁ rand₁ hPre₁ hSuf₁ _ hInPref
+      rw [hEq] at hNe0; exact hNe0 rfl
+  have hLEq : L₁ = L₂ := List.ext_getElem hLenEq (fun i hi1 hi2 => hPairAgree i hi1 hi2)
+  have hSplitNull := List.append_inj_left' hLEq (by simp)
+  have hNullPair := List.append_inj_right' hLEq (by simp)
+  have hNullEq : null₁ = null₂ := by
+    have := List.cons.inj hNullPair
+    exact (Prod.mk.inj this.1).2
+  have hPreLenEq : pre₁.length = pre₂.length := by
+    rcases Nat.lt_trichotomy pre₁.length pre₂.length with hLt | hEq | hGt
+    · exfalso
+      have hMem : (25#64, rand₁) ∈ pre₂ := by
+        have hk1 : pre₁.length < (pre₁ ++ [(25#64, rand₁)] ++ suf₁).length := by simp
+        have hk2 : pre₁.length < (pre₂ ++ [(25#64, rand₂)] ++ suf₂).length := by
+          rw [← hSplitNull]; exact hk1
+        have hGetEq : (pre₁ ++ [(25#64, rand₁)] ++ suf₁)[pre₁.length]'hk1 =
+            (pre₂ ++ [(25#64, rand₂)] ++ suf₂)[pre₁.length]'hk2 := by
+          simp only [hSplitNull]
+        have hLhs : (pre₁ ++ [(25#64, rand₁)] ++ suf₁)[pre₁.length]'hk1 = (25#64, rand₁) := by
+          simp [List.append_assoc]
+        have hRhs : (pre₂ ++ [(25#64, rand₂)] ++ suf₂)[pre₁.length]'hk2 = pre₂[pre₁.length]'hLt := by
+          simp [List.append_assoc, List.getElem_append_left hLt]
+        rw [hLhs, hRhs] at hGetEq
+        rw [hGetEq]; exact List.getElem_mem hLt
+      exact (hPre₂ _ hMem).2 rfl
+    · exact hEq
+    · exfalso
+      have hMem : (25#64, rand₂) ∈ pre₁ := by
+        have hk2 : pre₂.length < (pre₂ ++ [(25#64, rand₂)] ++ suf₂).length := by simp
+        have hk1 : pre₂.length < (pre₁ ++ [(25#64, rand₁)] ++ suf₁).length := by
+          rw [hSplitNull]; exact hk2
+        have hGetEq : (pre₁ ++ [(25#64, rand₁)] ++ suf₁)[pre₂.length]'hk1 =
+            (pre₂ ++ [(25#64, rand₂)] ++ suf₂)[pre₂.length]'hk2 := by
+          simp only [hSplitNull]
+        have hRhs : (pre₂ ++ [(25#64, rand₂)] ++ suf₂)[pre₂.length]'hk2 = (25#64, rand₂) := by
+          simp [List.append_assoc]
+        have hLhs : (pre₁ ++ [(25#64, rand₁)] ++ suf₁)[pre₂.length]'hk1 = pre₁[pre₂.length]'hGt := by
+          simp [List.append_assoc, List.getElem_append_left hGt]
+        rw [hLhs, hRhs] at hGetEq
+        rw [← hGetEq]; exact List.getElem_mem hGt
+      exact (hPre₁ _ hMem).2 rfl
+  rw [List.append_assoc, List.append_assoc] at hSplitNull
+  have hPreEq := List.append_inj_left hSplitNull hPreLenEq
+  have hTailEq := List.append_inj_right hSplitNull hPreLenEq
+  simp only [List.cons_append, List.nil_append, List.cons.injEq, Prod.mk.injEq] at hTailEq
+  exact ⟨hPreEq, hTailEq.1.2, hTailEq.2, hNullEq⟩
+
+/-- `MallocngAuxvRoAt` is duplicable (`P ∗ P = P`). -/
+theorem mallocngAuxvRoAt_dup (auxvPtr : BitVec 64) :
+    (MallocngAuxvRoAt auxvPtr ∗ MallocngAuxvRoAt auxvPtr) = MallocngAuxvRoAt auxvPtr := by
+  apply SepProp.eq_of_entails
+  · unfold MallocngAuxvRoAt
+    simp only [sepExists_sepConj_left, sepExists_sepConj_right]
+    refine Entails.sepExists_elim fun pre₁ => Entails.sepExists_elim fun suf₁ =>
+      Entails.sepExists_elim fun rand₁ => Entails.sepExists_elim fun null₁ =>
+        Entails.sepExists_elim fun sec₁ =>
+          Entails.sepExists_elim fun pre₂ => Entails.sepExists_elim fun suf₂ =>
+            Entails.sepExists_elim fun rand₂ => Entails.sepExists_elim fun null₂ =>
+              Entails.sepExists_elim fun sec₂ => ?_
+    rw [sepConj_assoc]
+    refine Entails.pure_left fun hwf₁ => ?_
+    rw [sepConj_comm _ (⌜_⌝ ∗ _), sepConj_assoc]
+    refine Entails.pure_left fun hwf₂ => ?_
+    let ws₁ := (pre₁ ++ [(25#64, rand₁)] ++ suf₁ ++ [(0#64, null₁)]).flatMap fun (t, v) => [t, v]
+    let ws₂ := (pre₂ ++ [(25#64, rand₂)] ++ suf₂ ++ [(0#64, null₂)]).flatMap fun (t, v) => [t, v]
+    have hSwap :
+        (((auxvPtr ↦₆₄ᵣ* ws₁) ∗ ((rand₁ + 8#64) ↦ᵣ sec₁)) ∗
+         ((auxvPtr ↦₆₄ᵣ* ws₂) ∗ ((rand₂ + 8#64) ↦ᵣ sec₂))) =
+        (((auxvPtr ↦₆₄ᵣ* ws₁) ∗ (auxvPtr ↦₆₄ᵣ* ws₂)) ∗
+         (((rand₁ + 8#64) ↦ᵣ sec₁) ∗ ((rand₂ + 8#64) ↦ᵣ sec₂))) := by ac_rfl
+    change (((auxvPtr ↦₆₄ᵣ* ws₁) ∗ ((rand₁ + 8#64) ↦ᵣ sec₁)) ∗
+            ((auxvPtr ↦₆₄ᵣ* ws₂) ∗ ((rand₂ + 8#64) ↦ᵣ sec₂))) ⊢ _
+    rw [hSwap]
+    refine Entails.trans (sepConj_mono_left (pointsToWords64RO_prefix_agree auxvPtr ws₁ ws₂)) ?_
+    rw [sepConj_assoc]
+    refine Entails.pure_left fun hAgree => ?_
+    obtain ⟨hPreEq, hRandEq, hSufEq, hNullEq⟩ :=
+      auxv_entries_eq_of_prefix_agree hwf₂.1 hwf₂.2.1 hwf₁.1 hwf₁.2.1 hAgree
+    subst hPreEq; subst hRandEq; subst hSufEq; subst hNullEq
+    have hWsEq : ws₂ = ws₁ := rfl
+    rw [hWsEq, pointsToWords64RO_dup]
+    refine Entails.trans (sepConj_mono_right
+      (pointsToBytesRO_agree_entails (rand₁ + 8#64) sec₁ sec₂ (by omega))) ?_
+    rw [sepConj_comm (auxvPtr ↦₆₄ᵣ* ws₁), sepConj_assoc]
+    refine Entails.pure_left fun hSecEq => ?_
+    subst hSecEq
+    rw [sepConj_comm]
+    exact Entails.sepExists_right pre₁ (Entails.sepExists_right suf₁
+      (Entails.sepExists_right rand₁ (Entails.sepExists_right null₁
+        (Entails.sepExists_right sec₁ (Entails.pure_right hwf₂ (Entails.refl _))))))
+  · unfold MallocngAuxvRoAt
+    refine Entails.sepExists_elim fun pre => Entails.sepExists_elim fun suf =>
+      Entails.sepExists_elim fun randPtr => Entails.sepExists_elim fun nullVal =>
+        Entails.sepExists_elim fun sec => Entails.pure_left fun hwf => ?_
+    let ws := (pre ++ [(25#64, randPtr)] ++ suf ++ [(0#64, nullVal)]).flatMap fun (t, v) => [t, v]
+    have hDup :
+        ((auxvPtr ↦₆₄ᵣ* ws) ∗ ((randPtr + 8#64) ↦ᵣ sec)) =
+        (((auxvPtr ↦₆₄ᵣ* ws) ∗ ((randPtr + 8#64) ↦ᵣ sec)) ∗
+         ((auxvPtr ↦₆₄ᵣ* ws) ∗ ((randPtr + 8#64) ↦ᵣ sec))) := by
+      conv => lhs; rw [← pointsToWords64RO_dup auxvPtr ws, ← pointsToBytesRO_dup (randPtr + 8#64) sec]
+      ac_rfl
+    change ((auxvPtr ↦₆₄ᵣ* ws) ∗ ((randPtr + 8#64) ↦ᵣ sec)) ⊢ _
+    rw [hDup]
+    have hOne :
+        ((auxvPtr ↦₆₄ᵣ* ws) ∗ ((randPtr + 8#64) ↦ᵣ sec)) ⊢
+        (∃∗ preEntries : List (BitVec 64 × BitVec 64),
+         ∃∗ sufEntries : List (BitVec 64 × BitVec 64),
+         ∃∗ randPtr : BitVec 64,
+         ∃∗ nullVal : BitVec 64,
+         ∃∗ secretBytes : List (BitVec 8),
+           ⌜(∀ e ∈ preEntries, e.1 ≠ 0#64 ∧ e.1 ≠ 25#64) ∧
+            (∀ e ∈ sufEntries, e.1 ≠ 0#64 ∧ e.1 ≠ 25#64) ∧
+            preEntries.length + sufEntries.length ≤ 64 ∧
+            auxvPtr.toNat + 16 * (preEntries.length + sufEntries.length + 2) ≤ 2 ^ 48 ∧
+            randPtr.toNat + 16 ≤ 2 ^ 48 ∧
+            secretBytes.length = 8⌝ ∗
+           (auxvPtr ↦₆₄ᵣ*
+             ((preEntries ++ [(25#64, randPtr)] ++ sufEntries ++ [(0#64, nullVal)]).flatMap
+               fun (t, v) => [t, v])) ∗
+           ((randPtr + 8#64) ↦ᵣ secretBytes)) :=
+      Entails.sepExists_right pre (Entails.sepExists_right suf
+        (Entails.sepExists_right randPtr (Entails.sepExists_right nullVal
+          (Entails.sepExists_right sec (Entails.pure_right hwf (Entails.refl _))))))
+    exact sepConj_mono hOne hOne
+
+/-- `MallocngLibcAuxvRoAt` is duplicable (`P ∗ P = P`). -/
+theorem mallocngLibcAuxvRoAt_dup (A : MallocngAddrs) :
+    (MallocngLibcAuxvRoAt A ∗ MallocngLibcAuxvRoAt A) = MallocngLibcAuxvRoAt A := by
+  apply SepProp.eq_of_entails
+  · unfold MallocngLibcAuxvRoAt
+    simp only [sepExists_sepConj_left, sepExists_sepConj_right]
+    refine Entails.sepExists_elim fun p₁ => Entails.sepExists_elim fun p₂ => ?_
+    have hSwap :
+        ((((A.libc + 8#64) ↦₆₄ᵣ p₂) ∗ MallocngAuxvRoAt p₂) ∗
+         (((A.libc + 8#64) ↦₆₄ᵣ p₁) ∗ MallocngAuxvRoAt p₁)) =
+        ((((A.libc + 8#64) ↦₆₄ᵣ p₁) ∗ ((A.libc + 8#64) ↦₆₄ᵣ p₂)) ∗
+         (MallocngAuxvRoAt p₁ ∗ MallocngAuxvRoAt p₂)) := by ac_rfl
+    rw [hSwap]
+    refine Entails.trans (sepConj_mono_left (pointsTo64RO_agree_entails (A.libc + 8#64) p₁ p₂)) ?_
+    rw [sepConj_assoc]
+    refine Entails.pure_left fun hEq => ?_
+    subst hEq
+    rw [mallocngAuxvRoAt_dup]
+    exact Entails.sepExists_right p₁ (Entails.refl _)
+  · unfold MallocngLibcAuxvRoAt
+    refine Entails.sepExists_elim fun p => ?_
+    have hDup :
+        (((A.libc + 8#64) ↦₆₄ᵣ p) ∗ MallocngAuxvRoAt p) =
+        ((((A.libc + 8#64) ↦₆₄ᵣ p) ∗ MallocngAuxvRoAt p) ∗
+         (((A.libc + 8#64) ↦₆₄ᵣ p) ∗ MallocngAuxvRoAt p)) := by
+      conv => lhs; rw [← pointsTo64RO_dup (A.libc + 8#64) p, ← mallocngAuxvRoAt_dup p]
+      ac_rfl
+    rw [hDup]
+    exact sepConj_mono (Entails.sepExists_right p (Entails.refl _))
+      (Entails.sepExists_right p (Entails.refl _))
+
 theorem BoundedFootprint_mallocngLiveAuth (γ : GhostName) (L : MallocngLiveMap) :
     SepProp.BoundedFootprint (MallocngLiveAuth γ L) 0 :=
   BoundedFootprint_ghostMapAuth (liveGhost γ) L.enc
@@ -523,6 +956,50 @@ def MallocngCoreStInflightA (inflight : Nat) (γ : GhostName)
 
 abbrev MallocngCoreStA := MallocngCoreStInflightA 0
 
+/-- Mode-parameterized core state (`ro = false` is definitionally `MallocngCoreStInflightA`;
+    `ro = true` holds `.ro` `__libc.auxv` and `MallocngAuxvRoAt`). -/
+def MallocngCoreStInflightModeA (ro : Bool) (inflight : Nat) (γ : GhostName)
+    (A : MallocngAddrs) (brkStart brk : BitVec 64) (liveCost peakCost : Nat) (st : MallocngSt) : SepProp :=
+  ⌜MallocngWFInflight inflight A.base brkStart brk liveCost peakCost st⌝ ∗
+  MallocngLiveAuth γ st.liveMap ∗
+  (A.ctx ↦ₛ st.ctx.toBytes) ∗
+  (A.lock ↦₃₂ 0#32) ∗
+  (A.replaced ↦₃₂ 0#32) ∗
+  (A.aaReplaced ↦₃₂ 0#32) ∗
+  MallocngAuxvPtrCell ro A.libc st.auxvPtr ∗
+  MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
+  ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
+  ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
+  MappedSet st.masterDom (OwnedMappedByte st)
+
+abbrev MallocngCoreStModeA (ro : Bool) := MallocngCoreStInflightModeA ro 0
+
+theorem MallocngCoreStInflightModeA_false (inflight : Nat) (γ : GhostName)
+    (A : MallocngAddrs) (brkStart brk : BitVec 64) (liveCost peakCost : Nat) (st : MallocngSt) :
+    MallocngCoreStInflightModeA false inflight γ A brkStart brk liveCost peakCost st =
+      MallocngCoreStInflightA inflight γ A brkStart brk liveCost peakCost st :=
+  rfl
+
+theorem MallocngCoreStModeA_false (γ : GhostName)
+    (A : MallocngAddrs) (brkStart brk : BitVec 64) (liveCost peakCost : Nat) (st : MallocngSt) :
+    MallocngCoreStModeA false γ A brkStart brk liveCost peakCost st =
+      MallocngCoreStA γ A brkStart brk liveCost peakCost st :=
+  rfl
+
+/-- Allocator core state excluding the `__libc.auxv` pointer and `auxv` table (all RW/ghost). -/
+def MallocngCoreStNoAuxvA (γ : GhostName)
+    (A : MallocngAddrs) (brkStart brk : BitVec 64) (liveCost peakCost : Nat) (st : MallocngSt) :
+    SepProp :=
+  ⌜MallocngWFInflight 0 A.base brkStart brk liveCost peakCost st⌝ ∗
+  MallocngLiveAuth γ st.liveMap ∗
+  (A.ctx ↦ₛ st.ctx.toBytes) ∗
+  (A.lock ↦₃₂ 0#32) ∗
+  (A.replaced ↦₃₂ 0#32) ∗
+  (A.aaReplaced ↦₃₂ 0#32) ∗
+  ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
+  ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
+  MappedSet st.masterDom (OwnedMappedByte st)
+
 abbrev MallocngRoTablesA (A : MallocngAddrs) : SepProp :=
   MallocngRoTablesAt A
 
@@ -541,6 +1018,21 @@ abbrev MallocngRoTablesA (A : MallocngAddrs) : SepProp :=
     (b : MallocngBudget) (ivs : List (BitVec 64 × Nat)) : SepProp :=
   MallocngCoreImpl γ A brkStart brk b ivs ∗ MallocngRuntime A tp
 
+/-- Allocator-private separation-logic invariant with read-only (`.ro`) `__libc.auxv` and `auxv`. -/
+@[irreducible] def MallocngCoreRoImpl
+    (γ : GhostName) (A : MallocngAddrs) (brkStart brk : BitVec 64)
+    (b : MallocngBudget) (ivs : List (BitVec 64 × Nat)) : SepProp :=
+  MallocngRoTablesA A ∗
+  ∃∗ st : MallocngSt,
+    ⌜MallocngCountIvsWF b ivs st⌝ ∗
+    MallocngCoreStModeA true γ A brkStart brk b.liveCost b.peakCost st
+
+/-- Allocator and runtime separation-logic invariant with read-only (`.ro`) `auxv`. -/
+@[irreducible] def MallocngHeapRoImpl
+    (γ : GhostName) (A : MallocngAddrs) (tp brkStart brk : BitVec 64)
+    (b : MallocngBudget) (ivs : List (BitVec 64 × Nat)) : SepProp :=
+  MallocngCoreRoImpl γ A brkStart brk b ivs ∗ MallocngRuntime A tp
+
 theorem MallocngCoreImpl_eq (γ : GhostName) (A : MallocngAddrs) (brkStart brk : BitVec 64)
     (b : MallocngBudget) (ivs : List (BitVec 64 × Nat)) :
     MallocngCoreImpl γ A brkStart brk b ivs =
@@ -558,12 +1050,66 @@ theorem MallocngHeapImpl_eq (γ : GhostName) (A : MallocngAddrs) (tp brkStart br
   unfold MallocngHeapImpl
   rfl
 
+theorem MallocngCoreRoImpl_eq (γ : GhostName) (A : MallocngAddrs) (brkStart brk : BitVec 64)
+    (b : MallocngBudget) (ivs : List (BitVec 64 × Nat)) :
+    MallocngCoreRoImpl γ A brkStart brk b ivs =
+      (MallocngRoTablesA A ∗
+       ∃∗ st : MallocngSt,
+         ⌜MallocngCountIvsWF b ivs st⌝ ∗
+         MallocngCoreStModeA true γ A brkStart brk b.liveCost b.peakCost st) := by
+  unfold MallocngCoreRoImpl
+  rfl
+
+theorem MallocngHeapRoImpl_eq (γ : GhostName) (A : MallocngAddrs) (tp brkStart brk : BitVec 64)
+    (b : MallocngBudget) (ivs : List (BitVec 64 × Nat)) :
+    MallocngHeapRoImpl γ A tp brkStart brk b ivs =
+      (MallocngCoreRoImpl γ A brkStart brk b ivs ∗ MallocngRuntime A tp) := by
+  unfold MallocngHeapRoImpl
+  rfl
+
 /-- Concrete `MallocngIface` witness for `musl` v1.2.5 `mallocng`. -/
 def mallocngIface : MallocngIface where
   MallocngHeap := MallocngHeapImpl
   MallocngCore := MallocngCoreImpl
   Block        := MallocngBlockToken
   block_noWrap := mallocngBlock_noWrap
+
+/-- Concrete `MallocngIface` witness with duplicable read-only (`.ro`) `__libc.auxv` and `auxv`. -/
+def mallocngRoIface : MallocngIface where
+  MallocngHeap := MallocngHeapRoImpl
+  MallocngCore := MallocngCoreRoImpl
+  Block        := MallocngBlockToken
+  block_noWrap := mallocngBlock_noWrap
+
+/-- Mode-parameterized `MallocngIface` (`false` = RW `mallocngIface`, `true` = RO `mallocngRoIface`). -/
+def mallocngModeIface : Bool → MallocngIface
+  | false => mallocngIface
+  | true  => mallocngRoIface
+
+theorem mallocngModeIface_core_eq (ro : Bool)
+    (γ : GhostName) (A : MallocngAddrs) (brkStart brk : BitVec 64)
+    (b : MallocngBudget) (ivs : List (BitVec 64 × Nat)) :
+    (mallocngModeIface ro).MallocngCore γ A brkStart brk b ivs =
+      (MallocngRoTablesA A ∗
+       ∃∗ st : MallocngSt,
+         ⌜MallocngCountIvsWF b ivs st⌝ ∗
+         MallocngCoreStModeA ro γ A brkStart brk b.liveCost b.peakCost st) := by
+  cases ro
+  · exact MallocngCoreImpl_eq γ A brkStart brk b ivs
+  · exact MallocngCoreRoImpl_eq γ A brkStart brk b ivs
+
+theorem mallocngModeIface_heap_eq (ro : Bool)
+    (γ : GhostName) (A : MallocngAddrs) (tp brkStart brk : BitVec 64)
+    (b : MallocngBudget) (ivs : List (BitVec 64 × Nat)) :
+    (mallocngModeIface ro).MallocngHeap γ A tp brkStart brk b ivs =
+      ((mallocngModeIface ro).MallocngCore γ A brkStart brk b ivs ∗ MallocngRuntime A tp) := by
+  cases ro
+  · exact MallocngHeapImpl_eq γ A tp brkStart brk b ivs
+  · exact MallocngHeapRoImpl_eq γ A tp brkStart brk b ivs
+
+theorem mallocngModeIface_block_eq (ro : Bool) :
+    (mallocngModeIface ro).Block = MallocngBlockToken := by
+  cases ro <;> rfl
 
 /-! ## `MallocngIfaceFacts` Structural and Startup Laws -/
 
@@ -1124,5 +1670,437 @@ theorem mallocngCore_teardown_auxv
       (Entails.of_eq (by dsimp only [R_dead, ws, snap]; ac_rfl)) ?_
     exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
       (Entails.sepExists_intro (P := fun R => R) R_dead)))
+
+/-! ## Read-Only (`mallocngRoIface`) Structural, Splitting, and Startup Laws -/
+
+private theorem noRO_mallocngCoreStNoAuxvA (γ : GhostName) (A : MallocngAddrs)
+    (brkStart brk : BitVec 64) (liveCost peakCost : Nat) (st : MallocngSt) :
+    SepProp.NoRO (MallocngCoreStNoAuxvA γ A brkStart brk liveCost peakCost st) := by
+  unfold MallocngCoreStNoAuxvA
+  exact SepProp.NoRO.sepConj (SepProp.NoRO.pure _)
+    (SepProp.NoRO.sepConj (noRO_mallocngLiveAuth _ _)
+      (SepProp.NoRO.sepConj (SepProp.NoRO.pointsToBytes _ _)
+        (SepProp.NoRO.sepConj (SepProp.NoRO.pointsTo32 _ _)
+          (SepProp.NoRO.sepConj (SepProp.NoRO.pointsTo32 _ _)
+            (SepProp.NoRO.sepConj (SepProp.NoRO.pointsTo32 _ _)
+              (SepProp.NoRO.sepConj (ByteMap_noRO _ _ _)
+                (SepProp.NoRO.sepConj (ProtNoneByteMap_noRO _ _ _)
+                  (MappedSet_noRO _ _))))))))
+
+private theorem mallocngWFInflight_with_auxvPtr {inflight : Nat} {base brkStart brk : BitVec 64}
+    {liveCost peakCost : Nat} {st : MallocngSt} {p : BitVec 64} :
+    MallocngWFInflight inflight base brkStart brk liveCost peakCost { st with auxvPtr := p } =
+      MallocngWFInflight inflight base brkStart brk liveCost peakCost st := by
+  have hRw : OwnedRwByte { st with auxvPtr := p } = OwnedRwByte st := by
+    funext a; rfl
+  have hPn : OwnedProtNoneByte { st with auxvPtr := p } = OwnedProtNoneByte st := by
+    funext a; rfl
+  have hMp : OwnedMappedByte { st with auxvPtr := p } = OwnedMappedByte st := by
+    funext a; rfl
+  have hDyn : dynamicRootRegions { st with auxvPtr := p } = dynamicRootRegions st := rfl
+  apply propext
+  constructor
+  · intro h
+    exact {
+      base_wf := h.base_wf
+      brk_bounds := h.brk_bounds
+      ctx_lens := h.ctx_lens
+      initDone_wf := h.initDone_wf
+      initZero_wf := h.initZero_wf
+      bounces_wf := h.bounces_wf
+      usage_wf := h.usage_wf
+      brk_mode_wf := h.brk_mode_wf
+      metaAreas_wf := h.metaAreas_wf
+      guard_avail_wf := h.guard_avail_wf
+      inflight_wf := h.inflight_wf
+      free_bump_metas_wf := h.free_bump_metas_wf
+      groups_nodup := h.groups_nodup
+      groups_wf := h.groups_wf
+      regions_disjoint := h.regions_disjoint
+      active_wf := h.active_wf
+      liveMap_wf := h.liveMap_wf
+      live_le_peak := h.live_le_peak
+      effCost_le_live := h.effCost_le_live
+      meta_pages_bound := h.meta_pages_bound
+      empty_groups_bound := h.empty_groups_bound
+      masterDom_wf := by simpa only [hRw, hPn, hMp, hDyn] using h.masterDom_wf
+    }
+  · intro h
+    exact {
+      base_wf := h.base_wf
+      brk_bounds := h.brk_bounds
+      ctx_lens := h.ctx_lens
+      initDone_wf := h.initDone_wf
+      initZero_wf := h.initZero_wf
+      bounces_wf := h.bounces_wf
+      usage_wf := h.usage_wf
+      brk_mode_wf := h.brk_mode_wf
+      metaAreas_wf := h.metaAreas_wf
+      guard_avail_wf := h.guard_avail_wf
+      inflight_wf := h.inflight_wf
+      free_bump_metas_wf := h.free_bump_metas_wf
+      groups_nodup := h.groups_nodup
+      groups_wf := h.groups_wf
+      regions_disjoint := h.regions_disjoint
+      active_wf := h.active_wf
+      liveMap_wf := h.liveMap_wf
+      live_le_peak := h.live_le_peak
+      effCost_le_live := h.effCost_le_live
+      meta_pages_bound := h.meta_pages_bound
+      empty_groups_bound := h.empty_groups_bound
+      masterDom_wf := by simpa only [hRw, hPn, hMp, hDyn] using h.masterDom_wf
+    }
+
+/-- Factoring equivalence for `MallocngCoreRoImpl`: separates the duplicable RO tables and RO
+    `__libc.auxv`/`auxv` bundle outside the `∃∗ st` quantifier. -/
+theorem mallocngCoreRo_factor
+    (γ : GhostName) (A : MallocngAddrs) (brkStart brk : BitVec 64)
+    (b : MallocngBudget) (ivs : List (BitVec 64 × Nat)) :
+    MallocngCoreRoImpl γ A brkStart brk b ivs =
+      ((MallocngRoTablesA A ∗ MallocngLibcAuxvRoAt A) ∗
+       (∃∗ st : MallocngSt,
+         ⌜MallocngCountIvsWF b ivs st⌝ ∗
+         MallocngCoreStNoAuxvA γ A brkStart brk b.liveCost b.peakCost st)) := by
+  rw [MallocngCoreRoImpl_eq]
+  apply SepProp.eq_of_entails
+  · rw [sepExists_sepConj_right]
+    refine Entails.sepExists_elim fun st => ?_
+    unfold MallocngCoreStModeA MallocngCoreStInflightModeA MallocngAuxvPtrCell MallocngAuxvStateRo
+      MallocngCoreStNoAuxvA MallocngLibcAuxvRoAt
+    simp only [↓reduceIte]
+    refine Entails.trans
+      (Entails.of_eq (show _ =
+        (MallocngRoTablesA A ∗ (((A.libc + 8#64) ↦₆₄ᵣ st.auxvPtr) ∗ MallocngAuxvRoAt st.auxvPtr)) ∗
+        (⌜MallocngCountIvsWF b ivs st⌝ ∗
+         ⌜MallocngWFInflight 0 A.base brkStart brk b.liveCost b.peakCost st⌝ ∗
+         MallocngLiveAuth γ st.liveMap ∗
+         (A.ctx ↦ₛ st.ctx.toBytes) ∗
+         (A.lock ↦₃₂ 0#32) ∗
+         (A.replaced ↦₃₂ 0#32) ∗
+         (A.aaReplaced ↦₃₂ 0#32) ∗
+         ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
+         ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
+         MappedSet st.masterDom (OwnedMappedByte st)) by ac_rfl))
+      ?_
+    refine sepConj_mono (sepConj_mono_right (Entails.sepExists_right st.auxvPtr (Entails.refl _))) ?_
+    exact Entails.sepExists_right st (Entails.refl _)
+  · unfold MallocngLibcAuxvRoAt
+    rw [sepExists_sepConj_right]
+    refine Entails.sepExists_elim fun st => ?_
+    rw [sepExists_sepConj_right, sepExists_sepConj_left]
+    refine Entails.sepExists_elim fun auxvPtr => ?_
+    let st' : MallocngSt := { st with auxvPtr := auxvPtr }
+    have hCountEq : MallocngCountIvsWF b ivs st' = MallocngCountIvsWF b ivs st := rfl
+    have hWfEq : MallocngWFInflight 0 A.base brkStart brk b.liveCost b.peakCost st' =
+        MallocngWFInflight 0 A.base brkStart brk b.liveCost b.peakCost st :=
+      mallocngWFInflight_with_auxvPtr
+    have hBM : ByteMap st.masterDom (OwnedRwByte st') st.byteVal =
+        ByteMap st.masterDom (OwnedRwByte st) st.byteVal := rfl
+    have hPN : ProtNoneByteMap st.masterDom (OwnedProtNoneByte st') st.byteVal =
+        ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal := rfl
+    have hMS : MappedSet st.masterDom (OwnedMappedByte st') =
+        MappedSet st.masterDom (OwnedMappedByte st) := rfl
+    have hStep :
+        ((MallocngRoTablesA A ∗ (((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗ MallocngAuxvRoAt auxvPtr)) ∗
+         ⌜MallocngCountIvsWF b ivs st⌝ ∗
+         MallocngCoreStNoAuxvA γ A brkStart brk b.liveCost b.peakCost st) =
+        (MallocngRoTablesA A ∗
+         (⌜MallocngCountIvsWF b ivs st'⌝ ∗
+          MallocngCoreStModeA true γ A brkStart brk b.liveCost b.peakCost st')) := by
+      unfold MallocngCoreStModeA MallocngCoreStInflightModeA MallocngAuxvPtrCell MallocngAuxvStateRo
+        MallocngCoreStNoAuxvA
+      simp only [↓reduceIte]
+      have hPtr : st'.auxvPtr = auxvPtr := rfl
+      have hMap : st'.liveMap = st.liveMap := rfl
+      have hCtx : st'.ctx = st.ctx := rfl
+      have hDom : st'.masterDom = st.masterDom := rfl
+      have hBv : st'.byteVal = st.byteVal := rfl
+      rw [hCountEq, hWfEq, hPtr, hMap, hCtx, hDom, hBv, hBM, hPN, hMS]
+      ac_rfl
+    rw [hStep]
+    exact sepConj_mono_right (Entails.sepExists_right st' (Entails.refl _))
+
+theorem mallocngHeapRo_split_runtime
+    (γ : GhostName) (A : MallocngAddrs) (tp brkStart brk : BitVec 64)
+    (b : MallocngBudget) (ivs : List (BitVec 64 × Nat)) :
+    mallocngRoIface.MallocngHeap γ A tp brkStart brk b ivs =
+      (mallocngRoIface.MallocngCore γ A brkStart brk b ivs ∗ MallocngRuntime A tp) :=
+  MallocngHeapRoImpl_eq γ A tp brkStart brk b ivs
+
+theorem mallocngHeapRo_roSplit
+    (γ : GhostName) (A : MallocngAddrs) (tp brkStart brk : BitVec 64)
+    (b : MallocngBudget) (ivs : List (BitVec 64 × Nat)) :
+    ∃ Ro Rw : SepProp,
+      mallocngRoIface.MallocngHeap γ A tp brkStart brk b ivs = (Ro ∗ Rw) ∧
+      (Ro ∗ Ro) = Ro ∧
+      ∀ (h : Heap) (a : BitVec 64) (v : BitVec 8), SepProp.Holds Rw h → h a ≠ some (.ro v) := by
+  refine ⟨MallocngRoTablesA A ∗ MallocngLibcAuxvRoAt A,
+    (∃∗ st : MallocngSt,
+      ⌜MallocngCountIvsWF b ivs st⌝ ∗
+      MallocngCoreStNoAuxvA γ A brkStart brk b.liveCost b.peakCost st) ∗
+      MallocngRuntime A tp,
+    ?_, sepConj_dup (mallocngRoTablesAt_dup A) (mallocngLibcAuxvRoAt_dup A), ?_⟩
+  · show MallocngHeapRoImpl γ A tp brkStart brk b ivs = _
+    rw [MallocngHeapRoImpl_eq, mallocngCoreRo_factor, sepConj_assoc]
+  · exact SepProp.NoRO.sepConj
+      (SepProp.NoRO.sepExists fun st =>
+        SepProp.NoRO.sepConj (SepProp.NoRO.pure _)
+          (noRO_mallocngCoreStNoAuxvA γ A brkStart brk b.liveCost b.peakCost st))
+      (noRO_mallocngRuntime A tp)
+
+theorem mallocngRoStartup_packA (γ : GhostName) (A : MallocngAddrs) (tp brkStart auxvPtr : BitVec 64)
+    (hBrkWf : MallocngBrkStartWf brkStart) :
+    MallocngLiveAuth γ .empty ∗
+    MallocngRoTablesAt A ∗
+    (A.ctx ↦ₛ List.replicate 928 0#8) ∗
+    (A.lock ↦₃₂ 0#32) ∗
+    (A.replaced ↦₃₂ 0#32) ∗
+    (A.aaReplaced ↦₃₂ 0#32) ∗
+    MallocngRuntime A tp ∗
+    ((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+    MallocngAuxvRoAt auxvPtr ⊢
+      mallocngRoIface.MallocngHeap γ A tp brkStart brkStart mallocngZeroBudget [] := by
+  show _ ⊢ MallocngHeapRoImpl γ A tp brkStart brkStart mallocngZeroBudget []
+  rw [MallocngHeapRoImpl_eq, MallocngCoreRoImpl_eq]
+  let st0 := emptyMallocngSt auxvPtr
+  have hWf : MallocngWF A.base brkStart brkStart 0 0 st0 :=
+    emptyMallocngSt_wf auxvPtr hBrkWf
+  have hCountIvs : MallocngCountIvsWF mallocngZeroBudget [] st0 :=
+    emptyMallocngSt_countIvs_wf auxvPtr
+  have hStep1 :
+      MallocngLiveAuth γ .empty ∗
+      MallocngRoTablesA A ∗
+      (A.ctx ↦ₛ st0.ctx.toBytes) ∗
+      (A.lock ↦₃₂ 0#32) ∗
+      (A.replaced ↦₃₂ 0#32) ∗
+      (A.aaReplaced ↦₃₂ 0#32) ∗
+      MallocngRuntime A tp ∗
+      ((A.libc + 8#64) ↦₆₄ᵣ st0.auxvPtr) ∗
+      MallocngAuxvRoAt st0.auxvPtr ⊢
+      (MallocngRoTablesA A ∗
+        (⌜MallocngCountIvsWF mallocngZeroBudget [] st0⌝ ∗
+          MallocngCoreStModeA true γ A brkStart brkStart 0 0 st0)) ∗ MallocngRuntime A tp := by
+    rw [pure_sepConj_of_true hCountIvs]
+    unfold MallocngCoreStModeA MallocngCoreStInflightModeA MallocngAuxvPtrCell MallocngAuxvStateRo
+      ByteMap ProtNoneByteMap MappedSet SetSep
+    simp only [↓reduceIte]
+    rw [pure_sepConj_of_true hWf]
+    have hDom : st0.masterDom = [] := rfl
+    have hMap : st0.liveMap = .empty := rfl
+    rw [hDom, hMap]
+    simp only [BigSep_nil, sepConj_emp]
+    exact Entails.of_eq (by ac_rfl)
+  have hEqLhs :
+      (MallocngLiveAuth γ .empty ∗
+       MallocngRoTablesAt A ∗
+       (A.ctx ↦ₛ List.replicate 928 0#8) ∗
+       (A.lock ↦₃₂ 0#32) ∗
+       (A.replaced ↦₃₂ 0#32) ∗
+       (A.aaReplaced ↦₃₂ 0#32) ∗
+       MallocngRuntime A tp ∗
+       ((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+       MallocngAuxvRoAt auxvPtr) =
+      (MallocngLiveAuth γ .empty ∗
+       MallocngRoTablesA A ∗
+       (A.ctx ↦ₛ st0.ctx.toBytes) ∗
+       (A.lock ↦₃₂ 0#32) ∗
+       (A.replaced ↦₃₂ 0#32) ∗
+       (A.aaReplaced ↦₃₂ 0#32) ∗
+       MallocngRuntime A tp ∗
+       ((A.libc + 8#64) ↦₆₄ᵣ st0.auxvPtr) ∗
+       MallocngAuxvRoAt st0.auxvPtr) := by
+    simp only [MallocngRoTablesA, st0, emptyMallocngSt, emptyCtxFields_toBytes]
+  rw [hEqLhs]
+  refine Entails.trans hStep1 ?_
+  exact sepConj_mono_left (sepConj_mono_right
+    (Entails.sepExists_intro
+      (P := fun st =>
+        ⌜MallocngCountIvsWF mallocngZeroBudget [] st⌝ ∗
+        MallocngCoreStModeA true γ A brkStart brkStart 0 0 st)
+      st0))
+
+private theorem ghostLive_init_empty :
+    emp ⊢ |==> (∃∗ γ : GhostName, MallocngLiveAuth γ .empty) := by
+  have h1 : emp ⊢ |==> (∃∗ γ1 : GhostName, ghostMapAuth γ1 (fun _ : BitVec 64 => (none : Option Nat))) :=
+    ghostMap_init (fun _ => none)
+  refine Entails.trans h1 (bupd_mono ?_)
+  refine Entails.sepExists_elim fun γ1 => ?_
+  have hLive : liveGhost (natPair γ1 0) = γ1 := by simp [liveGhost, natUnpair_natPair]
+  refine Entails.trans ?_
+    (Entails.sepExists_intro (P := fun γ => MallocngLiveAuth γ .empty) (natPair γ1 0))
+  unfold MallocngLiveAuth
+  rw [hLive]
+  exact Entails.refl _
+
+/-- Direct RO startup resource packing from already-frozen `__libc.auxv` and `MallocngAuxvRoAt`. -/
+theorem mallocngRoInit_resources_ro
+    (A : MallocngAddrs) (tp brkStart auxvPtr : BitVec 64)
+    (hBrkWf : MallocngBrkStartWf brkStart) :
+    MallocngRoTablesAt A ∗
+    (A.ctx ↦ₛ List.replicate 928 0#8) ∗
+    (A.lock ↦₃₂ 0#32) ∗
+    (A.replaced ↦₃₂ 0#32) ∗
+    (A.aaReplaced ↦₃₂ 0#32) ∗
+    MallocngRuntime A tp ∗
+    ((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+    MallocngAuxvRoAt auxvPtr ⊢
+      |==> (∃∗ γ : GhostName,
+        mallocngRoIface.MallocngHeap γ A tp brkStart brkStart mallocngZeroBudget []) := by
+  let body :=
+    MallocngRoTablesAt A ∗
+    (A.ctx ↦ₛ List.replicate 928 0#8) ∗
+    (A.lock ↦₃₂ 0#32) ∗
+    (A.replaced ↦₃₂ 0#32) ∗
+    (A.aaReplaced ↦₃₂ 0#32) ∗
+    MallocngRuntime A tp ∗
+    ((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+    MallocngAuxvRoAt auxvPtr
+  have h1 : body ⊢ (|==> (∃∗ γ : GhostName, MallocngLiveAuth γ .empty)) ∗ body := by
+    conv => lhs; rw [← emp_sepConj body]
+    exact sepConj_mono_left ghostLive_init_empty
+  refine Entails.trans (Entails.trans h1 (bupd_frame_r _ _)) (bupd_mono ?_)
+  rw [sepExists_sepConj_left]
+  refine Entails.sepExists_mono fun γ => ?_
+  exact mallocngRoStartup_packA γ A tp brkStart auxvPtr hBrkWf
+
+/-- Backwards-compatible startup resource initialization for `mallocngRoIface` from RW
+    `MallocngStartupResources` by freezing `__libc.auxv` and `MallocngAuxvAt` to `.ro`. -/
+theorem mallocngRoInit_resources
+    (A : MallocngAddrs) (tp brkStart : BitVec 64)
+    (_hTpGe : 0xa4 ≤ tp.toNat)
+    (_hTpLe : tp.toNat ≤ 2 ^ 48)
+    (hBrkWf : MallocngBrkStartWf brkStart) :
+    MallocngStartupResources A tp ⊢
+      |==> (∃∗ γ : GhostName,
+        mallocngRoIface.MallocngHeap γ A tp brkStart brkStart mallocngZeroBudget []) := by
+  unfold MallocngStartupResources
+  refine Entails.sepExists_elim fun auxvPtr => ?_
+  have hFreeze :
+      (MallocngRoTablesAt A ∗
+       (A.ctx ↦ₛ List.replicate 928 0#8) ∗
+       (A.lock ↦₃₂ 0#32) ∗
+       (A.replaced ↦₃₂ 0#32) ∗
+       (A.aaReplaced ↦₃₂ 0#32) ∗
+       MallocngRuntime A tp ∗
+       ((A.libc + 8#64) ↦₆₄ auxvPtr) ∗
+       MallocngAuxvAt auxvPtr) ⊢
+      |==> (MallocngRoTablesAt A ∗
+       (A.ctx ↦ₛ List.replicate 928 0#8) ∗
+       (A.lock ↦₃₂ 0#32) ∗
+       (A.replaced ↦₃₂ 0#32) ∗
+       (A.aaReplaced ↦₃₂ 0#32) ∗
+       MallocngRuntime A tp ∗
+       ((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+       MallocngAuxvRoAt auxvPtr) := by
+    refine Entails.trans (Q :=
+        (MallocngRoTablesAt A ∗
+         (A.ctx ↦ₛ List.replicate 928 0#8) ∗
+         (A.lock ↦₃₂ 0#32) ∗
+         (A.replaced ↦₃₂ 0#32) ∗
+         (A.aaReplaced ↦₃₂ 0#32) ∗
+         MallocngRuntime A tp) ∗
+        (|==> (((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗ MallocngAuxvRoAt auxvPtr))) ?_ ?_
+    · refine Entails.trans (Entails.of_eq (by ac_rfl))
+        (sepConj_mono_right
+          (bupd_sep (pointsTo64_freeze_ro (A.libc + 8#64) auxvPtr) (mallocngAuxvAt_freeze_ro auxvPtr)))
+    · refine Entails.trans (bupd_frame_l _ _) (bupd_mono ?_)
+      exact Entails.of_eq (by ac_rfl)
+  exact Entails.trans hFreeze
+    (Entails.trans (bupd_mono (mallocngRoInit_resources_ro A tp brkStart auxvPtr hBrkWf)) (bupd_trans _))
+
+/-- Direct RO startup initialization for `mallocngRoIface` from already-frozen
+    `((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗ MallocngAuxvRoAt auxvPtr`. -/
+theorem mallocngRoInit_ro
+    (mpl : Obj.MultiPlacement) (tp brkStart auxvPtr : BitVec 64) (R : SepProp) (m : Memory)
+    (_hTpGe : 0xa4 ≤ tp.toNat)
+    (_hTpLe : tp.toNat ≤ 2 ^ 48)
+    (hBrkWf : MallocngBrkStartWf brkStart)
+    (hSat : m ⊨
+      VerifiedLibraries.mallocngLib.dataInit mpl ∗
+      MallocngRuntime (mallocngAddrsOfPlacement mpl) tp ∗
+      (((mallocngAddrsOfPlacement mpl).libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+      MallocngAuxvRoAt auxvPtr ∗ R) :
+    ∃ γ : GhostName,
+      m ⊨ |==> (mallocngRoIface.MallocngHeap γ (mallocngAddrsOfPlacement mpl) tp brkStart brkStart
+        mallocngZeroBudget [] ∗ R) := by
+  let A := mallocngAddrsOfPlacement mpl
+  have hPrep :
+      (VerifiedLibraries.mallocngLib.dataInit mpl ∗
+       MallocngRuntime A tp ∗
+       ((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+       MallocngAuxvRoAt auxvPtr ∗ R) ⊢
+      (MallocngRoTablesAt A ∗
+       (A.ctx ↦ₛ List.replicate 928 0#8) ∗
+       (A.lock ↦₃₂ 0#32) ∗
+       (A.replaced ↦₃₂ 0#32) ∗
+       (A.aaReplaced ↦₃₂ 0#32) ∗
+       MallocngRuntime A tp ∗
+       ((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+       MallocngAuxvRoAt auxvPtr) ∗ R := by
+    rw [mallocngLib_dataInit_eq mpl]
+    exact Entails.of_eq (by ac_rfl)
+  have hSatPrep := Satisfies.of_entails hSat hPrep
+  have hInit :=
+    Satisfies.of_bupd_frame_left
+      (mallocngRoInit_resources_ro A tp brkStart auxvPtr hBrkWf)
+      hSatPrep
+  rw [sepExists_sepConj_left, satisfies_sepExists] at hInit
+  obtain ⟨γ, hγ⟩ := hInit
+  refine ⟨γ, ?_⟩
+  rw [satisfies_bupd]
+  exact hγ
+
+/-- Backwards-compatible RW startup initialization (`mallocngInitStmt mallocngRoIface`) by
+    freezing `__libc.auxv` and `MallocngAuxvAt` to `.ro`. -/
+theorem mallocngRoInit_ok : mallocngInitStmt mallocngRoIface := by
+  intro mpl tp brkStart auxvPtr R m A hTpGe hTpLe hBrkWf hSat
+  have hStartup :
+      (VerifiedLibraries.mallocngLib.dataInit mpl ∗
+       MallocngRuntime A tp ∗
+       ((A.libc + 8#64) ↦₆₄ auxvPtr) ∗
+       MallocngAuxvAt auxvPtr ∗ R) ⊢
+      MallocngStartupResources A tp ∗ R := by
+    rw [mallocngLib_dataInit_eq mpl]
+    have hAssoc :
+        ((MallocngRoTablesAt A ∗
+          (A.ctx ↦ₛ List.replicate 928 0#8) ∗
+          (A.lock ↦₃₂ 0#32) ∗
+          (A.replaced ↦₃₂ 0#32) ∗
+          (A.aaReplaced ↦₃₂ 0#32)) ∗
+         MallocngRuntime A tp ∗
+         ((A.libc + 8#64) ↦₆₄ auxvPtr) ∗
+         MallocngAuxvAt auxvPtr ∗ R) =
+        ((MallocngRoTablesAt A ∗
+          (A.ctx ↦ₛ List.replicate 928 0#8) ∗
+          (A.lock ↦₃₂ 0#32) ∗
+          (A.replaced ↦₃₂ 0#32) ∗
+          (A.aaReplaced ↦₃₂ 0#32) ∗
+          MallocngRuntime A tp ∗
+          ((A.libc + 8#64) ↦₆₄ auxvPtr) ∗
+          MallocngAuxvAt auxvPtr) ∗ R) := by ac_rfl
+    rw [hAssoc]
+    refine sepConj_mono_left ?_
+    unfold MallocngStartupResources
+    exact Entails.sepExists_intro
+      (P := fun av =>
+        MallocngRoTablesAt A ∗
+        (A.ctx ↦ₛ List.replicate 928 0#8) ∗
+        (A.lock ↦₃₂ 0#32) ∗
+        (A.replaced ↦₃₂ 0#32) ∗
+        (A.aaReplaced ↦₃₂ 0#32) ∗
+        MallocngRuntime A tp ∗
+        ((A.libc + 8#64) ↦₆₄ av) ∗
+        MallocngAuxvAt av)
+      auxvPtr
+  have hSatStartup := Satisfies.of_entails hSat hStartup
+  have hInit :=
+    Satisfies.of_bupd_frame_left
+      (mallocngRoInit_resources A tp brkStart hTpGe hTpLe hBrkWf)
+      hSatStartup
+  rw [sepExists_sepConj_left, satisfies_sepExists] at hInit
+  obtain ⟨γ, hγ⟩ := hInit
+  refine ⟨γ, ?_⟩
+  rw [satisfies_bupd]
+  exact hγ
 
 end VerifiedLibraries.Mallocng.Proofs

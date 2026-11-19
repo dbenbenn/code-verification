@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpqrV1Sync.SendTotalExtras
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TightSize
+public import Computational.Proofs.SpqrV1Sync.SendTotalExtras -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TightSize -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopSend
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopRecv
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopRecvEqual
@@ -28,7 +28,7 @@ under initialization, send, and receive, and bounding every reachable serialized
 `286,196` bytes (`topStateTight_length_le`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -52,7 +52,7 @@ structure TopStateTightW (F : ShaCompress) (K : MlKem) (bytes : Bytes) (w : TopW
   hphi : phiB w.st ≤ w.sendEp + 1
   hsmall : RecvSmallTight w.chE
 
-def TopStateTight (F : ShaCompress) (K : MlKem) (bytes : Bytes) : Prop :=
+@[expose] def TopStateTight (F : ShaCompress) (K : MlKem) (bytes : Bytes) : Prop :=
   ∃ w : TopWitness F, TopStateTightW F K bytes w
 
 theorem TopStateTightW.toTopStateW {F : ShaCompress} {K : MlKem} {bytes : Bytes}

@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.Split
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.Split -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Seam Decomposition for `PreKeySignalMessage::new`
@@ -22,7 +22,7 @@ states `SeamA_placed`, `SeamB_placed`, and `PreKeyMsgSegExit_placed` on block `4
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -43,7 +43,7 @@ open CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeySignalMessageNew
 open LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget
   (preKeyMsgNewRawPrologueEvents preKeyMsgNewSpec)
 
-def preKeyMsgEncodedLenSpec (A : RustAlloc) : Spec PreKeyMsgEncodedLenGhost :=
+@[expose] def preKeyMsgEncodedLenSpec (A : RustAlloc) : Spec PreKeyMsgEncodedLenGhost :=
   withVmPreserved
     (CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeySignalMessageNew.Split.preKeyMsgEncodedLenSpec A)
 
@@ -51,15 +51,9 @@ abbrev PreKeyMsgEncodedLenPlacedOk [LibsignalPlacement]
     (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_119 H) (blkPl_119).base (preKeyMsgEncodedLenSpec A)
 
-theorem PreKeyMsgEncodedLenPlacedOk.toUnbudgeted [LibsignalPlacement]
-    {A : RustAlloc} {H : LibsignalHooks} (h : PreKeyMsgEncodedLenPlacedOk A H) :
-    CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeySignalMessageNew.Split.PreKeyMsgEncodedLenPlacedOk
-      A H :=
-  subroutine_ok_of_withVmPreserved h
-
 /-- Budget-threaded Seam (a) state on block `41`, advancing cost-model state `st` by
 `preKeyMsgNewRawPrologueEvents` (no heap allocations occur after `SeamA`). -/
-def SeamA_placed [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def SeamA_placed [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (x : PreKeyMsgNewCall) (st : M.σ)
     (g : PreKeyMsgFrameGhost) (R : SepProp) (s0 s : State) : Prop :=
   ∃ evs : List AllocEvent,
@@ -69,7 +63,7 @@ def SeamA_placed [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudg
       (A.atState lim (M.stepEvents evs st) s) x g R s0 s
 
 /-- Budget-threaded Seam (b) state on block `41` at `M.stepEvents evs st`. -/
-def SeamB_placed [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def SeamB_placed [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (x : PreKeyMsgNewCall) (st : M.σ)
     (g : PreKeyMsgFrameGhost) (R : SepProp) (s0 s : State) : Prop :=
   ∃ evs : List AllocEvent,
@@ -79,7 +73,7 @@ def SeamB_placed [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudg
       (A.atState lim (M.stepEvents evs st) s) x g R s0 s
 
 /-- Budget-threaded segment-exit relation on `lsProg_41 H`. -/
-def PreKeyMsgSegExit_placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def PreKeyMsgSegExit_placed [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks)
     (x : PreKeyMsgNewCall) (st : M.σ) (R : SepProp) (s0 s : State) (next : State → Prop) : Prop :=
   (lsProg_41 H).CodeLoaded s.mem →

@@ -13,11 +13,11 @@
     "Proven.Handshake.session_independence",
     "Proven.Handshake.hndl_resistance",
     "Proven.RefinementPreservation.comp_refinement_preservation_cli",
-    "Proven.Refinement.comp_refines_cli_placed",
-    "Proven.Security.signal_session_secure_placed",
-    "Proven.Security.libsignal_cli_elf_linked_in",
-    "Proven.Security.libsignal_cli_elf_mallocng_linked_in",
-    "Proven.Security.libsignal_cli_labels_from_objects"
+    "Proven.Refinement.comp_refines_cli",
+    "Proven.Refinement.real_prims_admissible",
+    "Proven.Refinement.comp_refines_cli_real",
+    "Proven.Security.signal_session_secure",
+    "Proven.Security.signal_session_secure_real"
   ],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"],
   "enable_nanoda": false

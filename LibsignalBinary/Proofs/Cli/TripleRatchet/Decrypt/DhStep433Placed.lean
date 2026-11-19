@@ -9,13 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommit433Placed
-public import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommit433Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBlocks
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepRecvChain
 import ProofLib.RegChain
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepMain -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepTightTargets -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStep
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.ProtoExt
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.Apply
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
 
 /-!
 # Relocatable Segment S3 (`DhStep`) on Block `433`
@@ -24,7 +31,7 @@ Proves the relocatable `[LibsignalPlacement]` tight-panic segment S3 seam (`S3Ti
 `try_decrypt_with_state::<Coins>` (block `433`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -52,6 +59,8 @@ open CryptoVerification.Cli.CoinsTape
 open CryptoVerification.Cli.LibsignalTripleRatchet.Decrypt
 open CryptoVerification.Cli.LibsignalTripleRatchet.Decrypt.DhCommit
 open CryptoVerification.SignalSession.Coins
+open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624 lsRetAddr624_base_add)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 
 theorem cliTryDecryptCommonHeapPlaced_split_tape [LibsignalPlacement]
     (A : RustAlloc) (ctl : BitVec 64) (x : TryDecryptGhost) (d : Nat) (s0 : State) :
@@ -67,8 +76,35 @@ theorem cliTryDecryptCommonHeapPlaced_split_tape [LibsignalPlacement]
   unfold cliTryDecryptCommonHeapPlaced cliTapeAfter
   ac_rfl
 
+theorem stackAt_subStack_1904 (sp : BitVec 64) :
+    stackAt sp tryDecryptSubStack =
+      (stackAt sp 1904 ∗ stackAt (sp - 1904#64) (tryDecryptSubStack - 1904)) := by
+  have heq : tryDecryptSubStack = 1904 + (tryDecryptSubStack - 1904) := by decide
+  have hhi : 1904 + (tryDecryptSubStack - 1904) ≤ 2 ^ 64 := by decide
+  conv => lhs; rw [heq]
+  rw [stackAt_eq_stackFrameAt sp (1904 + (tryDecryptSubStack - 1904)) hhi,
+      stackFrameAt_split sp 1904 (tryDecryptSubStack - 1904) hhi,
+      ← stackAt_eq_stackFrameAt sp 1904 (by decide),
+      ← stackAt_eq_stackFrameAt (sp - 1904#64) (tryDecryptSubStack - 1904) (by decide)]
+
+theorem cliTryDecryptCommonHeapPlaced_split_stack1904 [LibsignalPlacement]
+    (A : RustAlloc) (ctl : BitVec 64) (x : TryDecryptGhost) (d : Nat) (s0 : State) :
+    cliTryDecryptCommonHeapPlaced A ctl x d s0 =
+      (stackAt (s0.sp - 1504#64) 1904 ∗
+       (protocolAddressAt A x.rem x.remA ∗
+        protocolAddressAt A x.loc x.locA ∗
+        signalMessageAt A x.msgG x.msgA x.msg ∗
+        cliTapeAfter ctl x.cur x.rest d ∗
+        FromRecordCallees.lsLogOff ∗
+        stackAt (s0.sp - 1504#64 - 1904#64) (tryDecryptSubStack - 1904) ∗
+        tryDecryptSavedRegs s0.sp s0 ∗
+        A.pool)) := by
+  unfold cliTryDecryptCommonHeapPlaced
+  rw [stackAt_subStack_1904 (s0.sp - 1504#64)]
+  ac_rfl
+
 /-- CLI relocatable intermediate state at `entry + 1804#64` (`+0x70c`) after `RootKey::create_chain` #1 succeeds. -/
-def CliDhStepAfterRecvChainStatePlaced [LibsignalPlacement] (entry : BitVec 64)
+@[expose] def CliDhStepAfterRecvChainStatePlaced [LibsignalPlacement] (entry : BitVec 64)
     (A : RustAlloc) (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
     (rk1 : RootKey) (rck : ChainKey) (R : SepProp) (s0 s : State) : Prop :=
@@ -523,7 +559,9 @@ theorem dhStep_recv_create_chain_placed_cli [LibsignalPlacement]
 private theorem dhStep_step_7a8_to_7b4_cl_placed [LibsignalPlacement]
     {prog : Program} {entry rngFillEntry : BitVec 64} {C : Crypto}
     (hwp : DhStepBlockWp prog entry rngFillEntry)
-    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeLoaded lsmpl (derivePublicKeyBytesSpec C.pubKey)))
+    (hdpk : subroutine_ok prog (lsmpl.base 200)
+      (withLsCodeLoaded lsmpl (withLsRet (derivePublicKeyBytesStackSpec C.pubKey 1904))))
+    (hlr624 : LsRetAddr624 (entry + 1972#64))
     (sec : List.Vector (BitVec 8) 32) (Rest : SepProp) (s0 s : State)
     (hpc : s.pc = entry + 1960#64) (hmeta : tryDecryptMidMetaPlaced s0 s)
     (hx0 : s.readReg64 .x0 = s0.sp - 1504#64 + 0x500#64)
@@ -531,13 +569,14 @@ private theorem dhStep_step_7a8_to_7b4_cl_placed [LibsignalPlacement]
     (hx23 : s.readReg64 .x23 = s0.sp - 1504#64 + 0x500#64)
     (hx25 : s.readReg64 .x25 = s0.sp - 1504#64 + 0x190#64)
     (hmem : s.mem ⊨ ((s0.sp - 1504#64 + 0x190#64) ↦ₛ sec.toList) ∗
-      memRegion (s0.sp - 1504#64 + 0x400#64) 32 ∗ memRegion (s0.sp - 1504#64 + 0x500#64) 32 ∗ Rest)
+      memRegion (s0.sp - 1504#64 + 0x400#64) 32 ∗ memRegion (s0.sp - 1504#64 + 0x500#64) 32 ∗
+      stackAt (s0.sp - 1504#64) 1904 ∗ Rest)
     (hcode : prog.CodeLoaded s.mem) :
     let sp := s0.sp - 1504#64
     ∃ s', Steps prog s s' ∧ s'.pc = entry + 1972#64 ∧ tryDecryptMidMetaPlaced s0 s' ∧
       CalleeSavedPreserved s s' ∧
       (s'.mem ⊨ memRegion (sp + 0x190#64) 32 ∗ ((sp + 0x400#64) ↦ₛ (C.pubKey sec).toList) ∗
-        ((sp + 0x500#64) ↦ₛ sec.toList) ∗ Rest) := by
+        ((sp + 0x500#64) ↦ₛ sec.toList) ∗ stackAt sp 1904 ∗ Rest) := by
   obtain ⟨hrun, hsp, hsp0_al, hsp_al, hx29, htrace, hcl, hvregs⟩ := hmeta
   set sp := s0.sp - 1504#64; have hsec_len : sec.toList.length = 32 := sec.2
   obtain ⟨p0, hp0⟩ : ∃ v, DhStep.pack64 (sec.toList.take 8) = v := ⟨_, rfl⟩
@@ -561,7 +600,7 @@ private theorem dhStep_step_7a8_to_7b4_cl_placed [LibsignalPlacement]
        ((sp + 0x190#64 + 16#64) ↦₆₄ p2) ∗ ((sp + 0x190#64 + 24#64) ↦₆₄ p3) ∗
        ((sp + 0x500#64) ↦₆₄ u0) ∗ ((sp + 0x500#64 + 8#64) ↦₆₄ u1) ∗
        ((sp + 0x500#64 + 16#64) ↦₆₄ u2) ∗ ((sp + 0x500#64 + 24#64) ↦₆₄ u3)) ∗
-      (memRegion (sp + 0x400#64) 32 ∗ Rest) :=
+      (memRegion (sp + 0x400#64) 32 ∗ stackAt sp 1904 ∗ Rest) :=
     Eq.mp (congrArg (s.mem ⊨ ·) (by dsimp only [sp]; ac_rfl)) hmem
   obtain ⟨sc, hsteps1, hout1⟩ := hwp1.elim hmem_in hcode
   obtain ⟨hpcc, hrunc, P_c, hmem_c, hsp_c, hx0_c, hx8_c, hx30_c, hcs_c, htrace_c, hent_c⟩ :=
@@ -571,23 +610,28 @@ private theorem dhStep_step_7a8_to_7b4_cl_placed [LibsignalPlacement]
   have hmem_c1 : sc.mem ⊨
       (((sp + 0x190#64) ↦₆₄ p0) ∗ ((sp + 0x190#64 + 8#64) ↦₆₄ p1) ∗
        ((sp + 0x190#64 + 16#64) ↦₆₄ p2) ∗ ((sp + 0x190#64 + 24#64) ↦₆₄ p3)) ∗
-      (((sp + 0x500#64) ↦ₛ sec.toList) ∗ memRegion (sp + 0x400#64) 32 ∗ Rest) := by
+      (((sp + 0x500#64) ↦ₛ sec.toList) ∗ memRegion (sp + 0x400#64) 32 ∗ stackAt sp 1904 ∗ Rest) := by
     rw [h500_fold]; exact Eq.mp (congrArg (sc.mem ⊨ ·) (by dsimp only [sp]; ac_rfl)) (hent_c sc.mem _ hmem_c)
   have hmem_c2 := Satisfies.mono (sepConj_mono_left (DhStep.fold_32_four_64 (sp + 0x190#64) p0 p1 p2 p3)) hmem_c1
+  have hlr_c : LsRetAddr624 (sc.readReg64 .lr) := by
+    change LsRetAddr624 (sc.readReg64 .x30)
+    rwa [hx30_c]
   let dpkG : DerivePublicKeyBytesCall := { secret := sp + 0x500#64, sec := sec, out := sp + 0x400#64 }
-  have hpre_dpk : sc.mem ⊨ (withLsCodeLoaded lsmpl (derivePublicKeyBytesSpec C.pubKey)).pre dpkG sc ∗
+  have hpre_dpk : sc.mem ⊨ (withLsCodeLoaded lsmpl (withLsRet (derivePublicKeyBytesStackSpec C.pubKey 1904))).pre dpkG sc ∗
       (memRegion (sp + 0x190#64) 32 ∗ Rest) := by
     dsimp only [withLsCodeLoaded]
     rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
     refine ⟨hcl.1.of_keepsFrozen hsteps1.keepsFrozen, ?_⟩
-    dsimp only [derivePublicKeyBytesSpec, dpkG]
+    dsimp only [withLsRet, derivePublicKeyBytesStackSpec, dpkG]
+    rw [hsp_c]
     simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0_c, hx8_c⟩, Eq.mp (congrArg (sc.mem ⊨ ·) (by dsimp only [sp]; ac_rfl)) hmem_c2⟩
+    exact ⟨hlr_c, ⟨hx0_c, hx8_c⟩, Eq.mp (congrArg (sc.mem ⊨ ·) (by dsimp only [sp]; ac_rfl)) hmem_c2⟩
   obtain ⟨s', hsteps2, ⟨hret', hpres', hpost'⟩ | ⟨_, hpost'⟩ | ⟨_, -, hpost'⟩ | ⟨_, hpost'⟩⟩ :=
     subroutine_ok_apply_outcome hdpk dpkG (memRegion (sp + 0x190#64) 32 ∗ Rest) hpcc hrunc hpre_dpk hsp_al_c
       (hsteps1.codeLoaded hcode)
   · have hsteps12 := Steps.trans hsteps1 hsteps2
-    dsimp only [withLsCodeLoaded, derivePublicKeyBytesSpec, dpkG] at hpost'
+    dsimp only [withLsCodeLoaded, withLsRet, derivePublicKeyBytesStackSpec, dpkG] at hpost'
+    rw [hsp_c] at hpost'
     simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost'
     rcases hpost' with ⟨htrace_s', hpost'⟩
     have hcs' : CalleeSavedPreserved s s' := CalleeSavedPreserved.trans hcs_c hpres'.2
@@ -596,14 +640,16 @@ private theorem dhStep_step_7a8_to_7b4_cl_placed [LibsignalPlacement]
       ⟨hret'.2.2, hpres'.1.trans hsp_c, hsp0_al, hsp_al', by reg_chain, htrace_s'.trans htrace_c,
        hcl.of_keepsFrozen hsteps12.keepsFrozen, by reg_chain⟩,
       hcs', Eq.mp (congrArg (s'.mem ⊨ ·) (by dsimp only [sp]; ac_rfl)) hpost'⟩
-  · dsimp only [withLsCodeLoaded, derivePublicKeyBytesSpec] at hpost'; rw [satisfies_pure_sepConj] at hpost'; exact False.elim hpost'.1
-  · dsimp only [withLsCodeLoaded, derivePublicKeyBytesSpec] at hpost'; rw [satisfies_pure_sepConj] at hpost'; exact False.elim hpost'.1
-  · dsimp only [withLsCodeLoaded, derivePublicKeyBytesSpec] at hpost'; rw [satisfies_pure_sepConj] at hpost'; exact False.elim hpost'.1
+  · dsimp only [withLsCodeLoaded, withLsRet, derivePublicKeyBytesStackSpec] at hpost'; rw [satisfies_pure_sepConj] at hpost'; exact False.elim hpost'.1
+  · dsimp only [withLsCodeLoaded, withLsRet, derivePublicKeyBytesStackSpec] at hpost'; rw [satisfies_pure_sepConj] at hpost'; exact False.elim hpost'.1
+  · dsimp only [withLsCodeLoaded, withLsRet, derivePublicKeyBytesStackSpec] at hpost'; rw [satisfies_pure_sepConj] at hpost'; exact False.elim hpost'.1
 
 theorem dhStep_after_cc1_to_cc2_call_placed_cli [LibsignalPlacement]
     {prog : Program} {entry rngFillEntry : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
     (hwp : DhStepBlockWp prog entry rngFillEntry)
-    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeLoaded lsmpl (derivePublicKeyBytesSpec C.pubKey)))
+    (hdpk : subroutine_ok prog (lsmpl.base 200)
+      (withLsCodeLoaded lsmpl (withLsRet (derivePublicKeyBytesStackSpec C.pubKey 1904))))
+    (hlr624 : LsRetAddr624 (entry + 1972#64))
     (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (rk1 : RootKey) (rck : ChainKey) (R : SepProp) (s0 s : State)
     (hrng : subroutine_ok prog rngFillEntry (withLsCodeLoaded lsmpl (coinsFillAtSpecPlaced tryDecryptSubStack x.cur x.rest)))
@@ -672,14 +718,17 @@ theorem dhStep_after_cc1_to_cc2_call_placed_cli [LibsignalPlacement]
   have hx23_3' : s3.readReg64 .x23 = sp + 0x500#64 := hx23_3.trans hx23_2
   have hx25_3' : s3.readReg64 .x25 = sp + 0x190#64 := hx25_3.trans hx25_2
   have hmem3_in : s3.mem ⊨ ((sp + 0x190#64) ↦ₛ newSenderKey.privateKey.bytes.toList) ∗
-      memRegion (sp + 0x400#64) 32 ∗ memRegion (sp + 0x500#64) 32 ∗
+      memRegion (sp + 0x400#64) 32 ∗ memRegion (sp + 0x500#64) 32 ∗ stackAt (s0.sp - 1504#64) 1904 ∗
       (memRegion (sp + 0x420#64) 32 ∗ memRegion (sp + 0x440#64) 0x60 ∗ memRegion (sp + 0x520#64) 0x60 ∗
        memRegion sp 0x10 ∗ ((sp + 0x10#64) ↦ₛ ((chainKeyBytes rck).drop 16).take 4) ∗
        memRegion (sp + 0x14#64) 8 ∗ ((sp + 0x1c#64) ↦₃₂ msgW) ∗ memRegion (sp + 0x1b0#64) 0x220 ∗
        ((sp + 0x3d0#64) ↦ₛ chainKeyBytes rck) ∗ memRegion (sp + 0x3f4#64) 12 ∗
        ((sp + 0x4a0#64) ↦ₛ keyToBytes32 rk1) ∗ ((sp + 0x4c0#64) ↦ₛ (chainKeyBytes rck).drop 20) ∗
        ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes rck).take 16) ∗ memRegion (sp + 0x4e0#64) 0x20 ∗ BaseRest ∗
-       cliTryDecryptCommonHeapPlaced A ctl x draws s0 ∗ R) := by
+       (protocolAddressAt A x.rem x.remA ∗ protocolAddressAt A x.loc x.locA ∗
+        signalMessageAt A x.msgG x.msgA x.msg ∗ cliTapeAfter ctl x.cur x.rest draws ∗
+        FromRecordCallees.lsLogOff ∗ stackAt (s0.sp - 1504#64 - 1904#64) (tryDecryptSubStack - 1904) ∗
+        tryDecryptSavedRegs s0.sp s0 ∗ A.pool) ∗ R) := by
     have h400 := split_400_500_for_keygen sp
     have hmem3' : s3.mem ⊨ (memRegion (sp + 0x400#64) 0xa0 ∗ memRegion (sp + 0x500#64) 0x80) ∗
         (((sp + 0x190#64) ↦ₛ newSenderKey.privateKey.bytes.toList) ∗
@@ -690,9 +739,10 @@ theorem dhStep_after_cc1_to_cc2_call_placed_cli [LibsignalPlacement]
          ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes rck).take 16) ∗ memRegion (sp + 0x4e0#64) 0x20 ∗ BaseRest ∗
          cliTryDecryptCommonHeapPlaced A ctl x draws s0 ∗ R) :=
       Eq.mp (congrArg (s3.mem ⊨ ·) (by dsimp only [newSenderKey, KeyPair.generate, sp]; ac_rfl)) hmem3
-    rw [h400] at hmem3'; exact Eq.mp (congrArg (s3.mem ⊨ ·) (by ac_rfl)) hmem3'
+    rw [h400, cliTryDecryptCommonHeapPlaced_split_stack1904 A ctl x draws s0] at hmem3'
+    exact Eq.mp (congrArg (s3.mem ⊨ ·) (by ac_rfl)) hmem3'
   obtain ⟨s4, hsteps4, hpc4, hmeta4, hcs4, hmem4⟩ :=
-    dhStep_step_7a8_to_7b4_cl_placed hwp hdpk newSenderKey.privateKey.bytes _ s0 s3 hpc3 hmeta3 hx0_3 hx8_3 hx23_3' hx25_3' hmem3_in (hsteps123.codeLoaded hcode)
+    dhStep_step_7a8_to_7b4_cl_placed hwp hdpk hlr624 newSenderKey.privateKey.bytes _ s0 s3 hpc3 hmeta3 hx0_3 hx8_3 hx23_3' hx25_3' hmem3_in (hsteps123.codeLoaded hcode)
   have hsteps1234 := Steps.trans hsteps123 hsteps4
   have hmem4_in : s4.mem ⊨ memRegion (sp + 0x420#64) 32 ∗ ((sp + 0x500#64) ↦ₛ newSenderKey.privateKey.bytes.toList) ∗
       (memRegion (sp + 0x190#64) 32 ∗ ((sp + 0x400#64) ↦ₛ newSenderKey.publicKey.bytes.toList) ∗
@@ -702,8 +752,9 @@ theorem dhStep_after_cc1_to_cc2_call_placed_cli [LibsignalPlacement]
        ((sp + 0x3d0#64) ↦ₛ chainKeyBytes rck) ∗ memRegion (sp + 0x3f4#64) 12 ∗
        ((sp + 0x4a0#64) ↦ₛ keyToBytes32 rk1) ∗ ((sp + 0x4c0#64) ↦ₛ (chainKeyBytes rck).drop 20) ∗
        ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes rck).take 16) ∗ memRegion (sp + 0x4e0#64) 0x20 ∗ BaseRest ∗
-       cliTryDecryptCommonHeapPlaced A ctl x draws s0 ∗ R) :=
-    Eq.mp (congrArg (s4.mem ⊨ ·) (by dsimp only [newSenderKey, KeyPair.generate, sp]; ac_rfl)) hmem4
+       cliTryDecryptCommonHeapPlaced A ctl x draws s0 ∗ R) := by
+    rw [cliTryDecryptCommonHeapPlaced_split_stack1904 A ctl x draws s0]
+    exact Eq.mp (congrArg (s4.mem ⊨ ·) (by dsimp only [newSenderKey, KeyPair.generate, sp]; ac_rfl)) hmem4
   obtain ⟨s5, hsteps5, hpc5, hmeta5, hx0_5, hx1_5, hx2_5, hx8_5, hx30_5, hcs5, hmem5⟩ :=
     dhStep_step_7b4_to_7d4_placed hwp hsd x.msgA newSenderKey.privateKey.bytes _ s0 s4 hpc4 hmeta4
       (by reg_chain) (by reg_chain) (by reg_chain) (by reg_chain) hmem4_in (hsteps1234.codeLoaded hcode)
@@ -727,7 +778,9 @@ theorem dhStep_keygen_and_send_create_chain_placed_cli [LibsignalPlacement]
     {prog : Program} {entry rngFillEntry : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64} {S : SpqrModel}
     (hwp : DhStepBlockWp prog entry rngFillEntry)
     (hcc : subroutine_ok prog (lsmpl.base 40) (createChainSpec C A))
-    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeLoaded lsmpl (derivePublicKeyBytesSpec C.pubKey)))
+    (hdpk : subroutine_ok prog (lsmpl.base 200)
+      (withLsCodeLoaded lsmpl (withLsRet (derivePublicKeyBytesStackSpec C.pubKey 1904))))
+    (hlr624 : LsRetAddr624 (entry + 1972#64))
     (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (rk1 : RootKey) (rck : ChainKey) (R : SepProp) (s0 s : State)
     (hrng : subroutine_ok prog rngFillEntry (withLsCodeLoaded lsmpl (coinsFillAtSpecPlaced tryDecryptSubStack x.cur x.rest)))
@@ -750,7 +803,7 @@ theorem dhStep_keygen_and_send_create_chain_placed_cli [LibsignalPlacement]
   set newSenderKey := KeyPair.generate C (coinsOf x.rest)
   obtain ⟨s5, hsteps5, hpc5, hmeta5, hx0_5, hx1_5, hx2_5, hx8_5, hx19_5, hx20_5, hx21_5,
     hx22_5, hx23_5, hx25_5, hx26_5, hx27_5, hx28_5, hx30_5, msgW, hmsgW, hmem5⟩ :=
-    dhStep_after_cc1_to_cc2_call_placed_cli hwp hdpk x trG tr st1 rk1 rck R s0 s hrng hsd hafter hcode
+    dhStep_after_cc1_to_cc2_call_placed_cli hwp hdpk hlr624 x trG tr st1 rk1 rck R s0 s hrng hsd hafter hcode
   obtain ⟨hrun5, hsp5, hsp0_al, hsp_al5, hx29_5, htrace5, hcl5, hvregs5⟩ := hmeta5
   let ccG2 : CreateChainGhost :=
     { rkA := sp + 0x4a0#64, rk := rk1, theirA := x.msgA + 56#64, their := x.msg.senderRatchetKey,
@@ -932,7 +985,9 @@ theorem dhStep_keygen_and_send_create_chain_placed_cli [LibsignalPlacement]
 theorem s3_placed_okT_cli [LibsignalPlacement] {prog : Program} {entry rngFillEntry : BitVec 64}
     (hwp : DhStepBlockWp prog entry rngFillEntry) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (S : SpqrModel)
     (hcc : subroutine_ok prog (lsmpl.base 40) (createChainSpec C A))
-    (hdpk : subroutine_ok prog (lsmpl.base 200) (withLsCodeLoaded lsmpl (derivePublicKeyBytesSpec C.pubKey)))
+    (hdpk : subroutine_ok prog (lsmpl.base 200)
+      (withLsCodeLoaded lsmpl (withLsRet (derivePublicKeyBytesStackSpec C.pubKey 1904))))
+    (hlr624 : LsRetAddr624 (entry + 1972#64))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok prog rngFillEntry (withLsCodeLoaded lsmpl (coinsFillAtSpecPlaced tryDecryptSubStack cur rest)))
     (hsd : subroutine_ok prog (lsmpl.ρ "_RNvXsa_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecretNtNtNtCskxtBwYRO61I_4core3ops4drop4Drop4drop") zeroizeSecretSpec)
@@ -962,7 +1017,7 @@ theorem s3_placed_okT_cli [LibsignalPlacement] {prog : Program} {entry rngFillEn
       rw [decryptDraws_of_cc1_ok C x.st st1 tr x.msg.senderRatchetKey x.rest sc rk1 rck hfrom hfind hsc hcc1]
       obtain ⟨s1, hsteps1, hafter | ⟨hpan1, hq1⟩⟩ := hstep1
       · have hstep2 := dhStep_keygen_and_send_create_chain_placed_cli (S := P3kR1bd.spqrNoPanic)
-          hwp hcc hdpk x trG tr st1 rk1 rck R s0 s1 (hrng x.cur x.rest hx_rest) hsd hrk2_ne hafter (hsteps1.codeLoaded hcode)
+          hwp hcc hdpk hlr624 x trG tr st1 rk1 rck R s0 s1 (hrng x.cur x.rest hx_rest) hsd hrk2_ne hafter (hsteps1.codeLoaded hcode)
         dsimp only at hstep2
         cases hcc2 : rootCreateChain C rk1 x.msg.senderRatchetKey (KeyPair.generate C (coinsOf x.rest)).privateKey with
         | error e =>
@@ -996,7 +1051,7 @@ theorem dhStep_433_placed_okT [LibsignalPlacement] (H : String → Option (State
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (S : SpqrModel)
     (hcc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 40) (createChainSpec C A))
     (hdpk : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 200)
-      (withLsCodeLoaded lsmpl (derivePublicKeyBytesSpec C.pubKey)))
+      (withLsCodeLoaded lsmpl (withLsRet (derivePublicKeyBytesStackSpec C.pubKey 1904))))
     (hrng : ∀ cur rest, rest.length < 2 ^ 63 →
       subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 618)
         (withLsCodeLoaded lsmpl (coinsFillAtSpecPlaced tryDecryptSubStack cur rest)))
@@ -1018,7 +1073,9 @@ theorem dhStep_433_placed_okT [LibsignalPlacement] (H : String → Option (State
     (hMemmove : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.ρ "memmove") (sessionMemmoveSpec dropChainStack))
     (hPanic : ((blkPC_434).rebase (blkPl_434).base H).externAt? (lsmpl.ρ "_RNvNtCs69KKACWg7bl_5alloc7raw_vec12handle_error") = some Rust.panicked) :
     S3TightSeamPlaced ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 434) C A ctl uuidTryParse S :=
-  s3_placed_okT_cli (dhStepBlockWp_549 H) C A ctl S hcc hdpk hrng hsd
+  s3_placed_okT_cli (dhStepBlockWp_549 H) C A ctl S hcc hdpk
+    (lsRetAddr624_base_add 434 1972#64 (by decide) (by decide))
+    hrng hsd
     (s3_commit_433_placed_ok H C A ctl P3kR1bd.spqrNoPanic
       hPkSer hToPb hGrowOne hDropChain hShim hAlloc hDealloc hMemcpy hMemmove hPanic)
 

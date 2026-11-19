@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SpecLemmas.CliPureBytes
+public import Symbolic.Proofs.SpecLemmas.CliPureBytes -- proof-setup: allow-public-import
 
 /-!
 # Double-Ratchet Record Encoding Size Bounds
@@ -19,7 +19,7 @@ the post-quantum ratchet state field, proves `drLen s ≤ DRMAX` (`600000`) unde
 derives absolute and single-step growth bounds for `encodeRecord`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -201,7 +201,7 @@ theorem encSenderChain_length_le (c : SenderChain) : (encSenderChain c).length �
   omega
 
 /-- Byte length of fields 1 to 7 of `encSession` (the double-ratchet state). -/
-def drLen (s : Session (List (BitVec 8))) : Nat :=
+@[expose] def drLen (s : Session (List (BitVec 8))) : Nat :=
   (uint32Field 1 s.state.sessionVersion).length +
   (bytesField 2 s.state.localIdentity.serialize).length +
   (bytesField 3 ((s.state.remoteIdentity.map IdentityKey.serialize).getD [])).length +
@@ -212,7 +212,7 @@ def drLen (s : Session (List (BitVec 8))) : Nat :=
 
 /-- Byte length of fields 9, 10, 11, 13, and 14 of `encSession` (session metadata and pending
 pre-keys). -/
-def extLen (s : Session (List (BitVec 8))) : Nat :=
+@[expose] def extLen (s : Session (List (BitVec 8))) : Nat :=
   (msgField 9 (s.pendingPreKey.map encPendingPreKey)).length +
   (uint32Field 10 s.remoteRegistrationId).length +
   (uint32Field 11 s.localRegistrationId).length +
@@ -245,7 +245,7 @@ theorem bytesField_length_ge (tag : Nat) (b : List (BitVec 8)) : b.length ≤ (b
 
 /-- Double-ratchet caps bounding `drLen`: at most `maxReceiverChains` (5) receiver chains, at most
 `maxMessageKeys` (2000) skipped keys per chain, and 32-byte seeds. -/
-def DRCaps (s : Session (List (BitVec 8))) : Prop :=
+@[expose] def DRCaps (s : Session (List (BitVec 8))) : Prop :=
   s.state.receiverChains.length ≤ maxReceiverChains ∧
     ∀ c ∈ s.state.receiverChains,
       c.messageKeys.length ≤ maxMessageKeys ∧ ∀ mk ∈ c.messageKeys, mk.seed.length = 32

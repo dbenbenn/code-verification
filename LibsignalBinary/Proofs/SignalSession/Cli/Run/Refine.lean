@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bundle
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bundle
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Spec
 
 /-!
 # Outcome Refinement of `runAns` Against `CliSpecPqxdh` and `CliSpecE`
@@ -20,7 +22,7 @@ Proves that on every domain input of `CliSpecPqxdh` (`init`, `send`, whisper `re
 protocol model whenever `S` satisfies the per-slot agreement predicates (`Refine/Spec.lean`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

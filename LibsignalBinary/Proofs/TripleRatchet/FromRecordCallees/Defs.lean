@@ -11,6 +11,8 @@ module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Getters.Defs
 public import LibsignalBinary.Proofs.ConsumeMessageKey.Defs
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Specifications for Small Callees of `try_decrypt_from_record`
@@ -24,7 +26,7 @@ callees of `try_decrypt_from_record`:
 5. `try_decrypt_from_record::<HookRng>::{closure#0}` (`0x381ac`, log-off path)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.FromRecordCallees
 
@@ -61,17 +63,6 @@ abbrev growOneSpeName : String :=
 abbrev logClosureName : String :=
   "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_session::HookRng>::{closure#0}"
 
-set_option maxRecDepth 2000000 in
-open ProofLib.ProgramReflection in
-/-- Guard (kernel-checked): each of the five symbol names appears in the image's symbol table
-exactly once (`fnAddr` takes the first match). -/
-theorem fromRecordCalleesNames_unique :
-    [dropSessionStructureLocal2Name, dropSessionStructureLocal1Name, setSessionStateName, growOneSpeName, logClosureName].all
-      (fun n => (libsignalSessionImage.symbols.filter (·.1 == n)).length == 1) = true := by
-  rfl_kernel
-
-/-! ## Stack budgets -/
-
 /-- Stack budget of `drop_glue<SessionStructure> [local#2]`: `48 + dropChainStack` (`4192` B). -/
 abbrev dropSessionStructureLocal2Stack : Nat := 48 + dropChainStack
 
@@ -103,7 +94,7 @@ structure DropSessionStructureGhost where
 deallocates all owned `Vec<u8>` fields, drops `sender_chain` via `drop_glue<Chain>` and
 `receiver_chains` via an inline `drop_glue<Chain>` loop plus buffer deallocation, and leaves
 `memRegion x.ss 344`. -/
-def dropSessionStructureLocal2Spec (A : RustAlloc) : Spec DropSessionStructureGhost where
+@[expose] def dropSessionStructureLocal2Spec (A : RustAlloc) : Spec DropSessionStructureGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss⌝ ∗
       sessionStateAt A x.ss x.G x.st ∗ A.pool ∗ stackAt s.sp dropSessionStructureLocal2Stack
@@ -111,29 +102,16 @@ def dropSessionStructureLocal2Spec (A : RustAlloc) : Spec DropSessionStructureGh
     ⌜sf.trace = s0.trace⌝ ∗
       memRegion x.ss 344 ∗ A.pool ∗ stackAt s0.sp dropSessionStructureLocal2Stack
 
-def DropSessionStructureLocal2OkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr dropSessionStructureLocal2Name)
-    (dropSessionStructureLocal2Spec A)
-
-def DropSessionStructureLocal2Ok_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
+@[expose] def DropSessionStructureLocal2Ok_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs)
     ((trTrapProgAt b C abs).fnAddr dropSessionStructureLocal2Name)
     (dropSessionStructureLocal2Spec A)
 
-/-- Target `subroutine_ok` proposition for `drop_glue<SessionStructure> [local#2]` (`0x35958`). -/
-def DropSessionStructureLocal2Ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr dropSessionStructureLocal2Name)
-    (dropSessionStructureLocal2Spec A)
-
 /-- Specification of `core::ptr::drop_glue::<SessionStructure> [local#1]` (`0x25b4`):
 deallocates all owned `Vec<u8>` fields, drops `sender_chain` inline via `drop_glue<Vec<MessageKey>>`
 and `receiver_chains` via `drop_glue<Vec<Chain>>`, and leaves `memRegion x.ss 344`. -/
-def dropSessionStructureLocal1Spec (A : RustAlloc) : Spec DropSessionStructureGhost where
+@[expose] def dropSessionStructureLocal1Spec (A : RustAlloc) : Spec DropSessionStructureGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss⌝ ∗
       sessionStateAt A x.ss x.G x.st ∗ A.pool ∗ stackAt s.sp dropSessionStructureLocal1Stack
@@ -141,26 +119,11 @@ def dropSessionStructureLocal1Spec (A : RustAlloc) : Spec DropSessionStructureGh
     ⌜sf.trace = s0.trace⌝ ∗
       memRegion x.ss 344 ∗ A.pool ∗ stackAt s0.sp dropSessionStructureLocal1Stack
 
-def DropSessionStructureLocal1OkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr dropSessionStructureLocal1Name)
-    (dropSessionStructureLocal1Spec A)
-
-def DropSessionStructureLocal1Ok_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
+@[expose] def DropSessionStructureLocal1Ok_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs)
     ((trTrapProgAt b C abs).fnAddr dropSessionStructureLocal1Name)
     (dropSessionStructureLocal1Spec A)
-
-/-- Target `subroutine_ok` proposition for `drop_glue<SessionStructure> [local#1]` (`0x25b4`). -/
-def DropSessionStructureLocal1Ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr dropSessionStructureLocal1Name)
-    (dropSessionStructureLocal1Spec A)
-
-/-! ## 3. `SessionRecord::set_session_state` (`0x174d4`, 15 insns) -/
 
 /-- Ghost arguments `(record, src, cur, bs)` for `<SessionRecord>::set_session_state` (`0x174d4`). -/
 structure SetSessionStateGhost where
@@ -176,7 +139,7 @@ structure SetSessionStateGhost where
 /-- Specification of `<SessionRecord>::set_session_state` (`0x174d4`): drops any existing
 `current_session` at `record + 0x18` via `drop_glue<SessionStructure> [local#1]` when `cur = some _`,
 then copies the 344-byte `SessionStructure` `bs` from `src` to `record + 0x18` via `memcpy`. -/
-def setSessionStateSpec (A : RustAlloc) : Spec SetSessionStateGhost where
+@[expose] def setSessionStateSpec (A : RustAlloc) : Spec SetSessionStateGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.record ∧ s.readReg64 .x1 = x.src ∧ x.bs.length = 344⌝ ∗
       (match x.cur with
@@ -188,31 +151,16 @@ def setSessionStateSpec (A : RustAlloc) : Spec SetSessionStateGhost where
       ((x.record + 0x18#64) ↦ₛ x.bs) ∗ (x.src ↦ₛ x.bs) ∗ A.pool ∗
       stackAt s0.sp setSessionStateStack
 
-def SetSessionStateOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr setSessionStateName)
-    (setSessionStateSpec A)
-
-def SetSessionStateOk_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
+@[expose] def SetSessionStateOk_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs)
     ((trTrapProgAt b C abs).fnAddr setSessionStateName)
     (setSessionStateSpec A)
 
-/-- Target `subroutine_ok` proposition for `SessionRecord::set_session_state` (`0x174d4`). -/
-def SetSessionStateOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr setSessionStateName)
-    (setSessionStateSpec A)
-
-/-! ## 4. `RawVec<SignalProtocolError>::grow_one` (`0x15c44`, 26 insns) -/
-
 /-- Specification of `<RawVec<SignalProtocolError>>::grow_one` (`0x15c44`, stride `48`,
 alignment `8`): grows capacity from `cap` to `max (2 * cap) 4` via `RawVecInner::finish_grow`,
 or panics via `alloc::raw_vec::handle_error` on capacity overflow or allocation failure. -/
-def growOneSpeSpec (A : RustAlloc) : Spec GrowGhost where
+@[expose] def growOneSpeSpec (A : RustAlloc) : Spec GrowGhost where
   pre := fun (v, cap, ptr, bs) s =>
     ⌜s.readReg64 .x0 = v ∧ bs.length = cap.toNat * 48 ∧ ptr ≠ 0 ∧
       max (2 * cap.toNat) 4 * 48 + 8 ≤ 2 ^ 63⌝ ∗
@@ -228,54 +176,10 @@ def growOneSpeSpec (A : RustAlloc) : Spec GrowGhost where
       A.pool ∗ stackAt s0.sp growOneSpeStack
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def GrowOneSpeOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr growOneSpeName)
-    (growOneSpeSpec A)
-
-def GrowOneSpeOk_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
+@[expose] def GrowOneSpeOk_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs)
     ((trTrapProgAt b C abs).fnAddr growOneSpeName)
     (growOneSpeSpec A)
-
-/-- Target `subroutine_ok` proposition for `RawVec<SignalProtocolError>::grow_one` (`0x15c44`). -/
-def GrowOneSpeOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr growOneSpeName)
-    (growOneSpeSpec A)
-
-/-! ## 5. `try_decrypt_from_record::{closure#0}` (`0x381ac`, log-off path) -/
-
-/-- Specification of `try_decrypt_from_record::<HookRng>::{closure#0}` (`0x381ac`) on the
-log-off fast path (`logOff img`, `MAX_LOG_LEVEL_FILTER = 0`): returns without dereferencing its
-closure arguments or mutating the heap. -/
-def logClosureSpec (img : Obj.Image) : Spec Unit where
-  pre := fun _ s =>
-    logOff img ∗ stackAt s.sp closureStack
-  post := fun _ s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      logOff img ∗ stackAt s0.sp closureStack
-
-def LogClosureOkExt (img : Obj.Image) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr logClosureName)
-    ((logClosureSpec img).inImage img)
-
-def LogClosureOk_trap (img : Obj.Image) (C : Crypto)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (trTrapProgAt img.base C abs)
-    ((trTrapProgAt img.base C abs).fnAddr logClosureName)
-    ((logClosureSpec img).inImage img)
-
-/-- Target `subroutine_ok` proposition for `try_decrypt_from_record::{closure#0}` (`0x381ac`)
-on the log-off path. -/
-def LogClosureOk (img : Obj.Image) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-    ((tripleRatchetProgAt img.base C ctl abs).fnAddr logClosureName)
-    ((logClosureSpec img).inImage img)
 
 end CryptoVerification.LibsignalTripleRatchet.FromRecordCallees

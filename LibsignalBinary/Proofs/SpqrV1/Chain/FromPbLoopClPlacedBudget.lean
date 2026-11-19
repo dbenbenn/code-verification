@@ -10,24 +10,34 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbJoinBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbJoinClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbJoinClPlacedBudgetAux1
-public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbLoop
-public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbLoopBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbLoopClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbJoinBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbJoinClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbJoinClPlacedBudgetAux1
+public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbLoop -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbLoopBudget
+import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbLoopClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.StdStartup.MemOps
+public import VerifiedLibraries.RustStd.Proofs.ExecSegSym
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Code-Loaded Loop Error Cleanup Proofs for `Chain::from_pb` (Block `364`)
@@ -37,7 +47,7 @@ Budget-threaded, code-loaded `[LibsignalPlacement]` loop error-cleanup lemmas (`
 `RustCliAllocBudget M`, threading `LibsignalCodeLoaded lsmpl` into `fromPb_join_err_cl_placed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 800000

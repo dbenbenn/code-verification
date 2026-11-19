@@ -10,13 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FramePlaced
 
 /-!
 # Budget-Threaded Relocatable `main_ret` Epilogue (`M+0xb80 .. M+0xba0`, Block `617`)
@@ -26,7 +29,7 @@ Verifies `main`'s shared return epilogue (`M+0xb80 .. M+0xba0`) on Block `617` u
 and providing `ExitKPoolPlaced` and `NeedLocks` return projections.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -55,7 +58,7 @@ attribute [-arm64_norm]
 /-- Pool-retaining early-return continuation from `M+0xb80` under `[LibsignalPlacement]` and
 `RustCliAllocBudget M`, keeping `(A.atState lim st s).pool = A.pool lim st s` intact so
 `main_ret_placed_needLocks_proof` can project `((libcAddr + 3#64) ↦₈ 0#8)` (`NeedLocks`). -/
-def ExitKPoolPlaced [LibsignalPlacement] {M : AllocCostModel} (CodeOk : Memory → Prop)
+@[expose] def ExitKPoolPlaced [LibsignalPlacement] {M : AllocCostModel} (CodeOk : Memory → Prop)
     (H : LibsignalHooks) (A : RustCliAllocBudget M) (lim : BudgetLimits) (s0 : State) (stk : Nat)
     (G : Nat → State → Prop) (Q Qp : State → SepProp → Prop) : Prop :=
   ∀ (s : State) (st : M.σ) (code : Nat), AtRetPlaced CodeOk s0 s code → G code s →
@@ -171,28 +174,6 @@ theorem main_ret_placed_proof [LibsignalPlacement] {CodeOk : Memory → Prop}
   refine ⟨hsp, hcs, hx0, htr, hfs, hvm, ?_⟩
   rw [RustCliAllocBudget.atState_pool, ← A.pool_of_vmPreserved hvm] at hmem
   exact hmem
-
-/-- Variant of `main_ret_placed_proof` absorbing `A.pool lim st sf` into `anyHeap` so the memory
-postcondition matches `SpecsPlacedBudget.mainSpecPlaced` / `mainSpecTightPlaced`
-(`stackAt s0.sp stk ∗ anyHeap`). -/
-theorem main_ret_placed_anyHeap_proof [LibsignalPlacement] {CodeOk : Memory → Prop}
-    {H : LibsignalHooks} {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {st : M.σ}
-    {s0 s : State} {stk code : Nat} {Qp : State → SepProp → Prop}
-    (hstk : mainFrameSize ≤ stk) (hs : AtRetPlaced CodeOk s0 s code) :
-    ProofLib.SepWPp (mProgPlaced H) (s0.readReg64 .lr) s (retMem (A.atState lim st s) s0 stk)
-      (fun sf Pf => sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧
-        (sf.readReg64 .x0).setWidth 32 = BitVec.ofNat 32 code ∧ sf.trace = s.trace ∧
-        sf.fs = s.fs ∧ VmPreserved s sf ∧
-        (Pf ⊢ stackAt s0.sp stk ∗ anyHeap))
-      Qp (mainOom s0) := by
-  intro R hm hL
-  rcases main_ret_placed_proof (A := A) (lim := lim) (st := st) hstk hs R hm hL with
-    ⟨sf, hsteps, ⟨hpc, hrun, Pf, hPf, hsp, hcs, hx0, htr, hfs, hvm, hmem⟩ | hpan | hoom⟩
-  · refine ⟨sf, hsteps, Or.inl ⟨hpc, hrun, Pf, hPf, hsp, hcs, hx0, htr, hfs, hvm, ?_⟩⟩
-    exact Entails.trans hmem (sepConj_mono_right (entails_anyHeap _))
-  · exact ⟨sf, hsteps, Or.inr (Or.inl hpan)⟩
-  · exact ⟨sf, hsteps, Or.inr (Or.inr hoom)⟩
 
 /-- `NeedLocks` corollary of `main_ret_placed_proof`: given any pool-to-`NeedLocks` projection
 `hneed : ∀ st' sf, A.pool lim st' sf ⊢ ((libcAddr + 3#64) ↦₈ 0#8) ∗ anyHeap` (for instance

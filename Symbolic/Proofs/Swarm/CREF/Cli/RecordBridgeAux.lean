@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.SignalSession.PqDir
-public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.TR.PureSessionBounds
 
 /-!
@@ -21,7 +21,7 @@ relates `encodeRecordUnderExtras` to `Record.encodeRecord`, and proves the struc
 `ReachPqInvPure` across `ReachablePqxdhSession` transitions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -88,7 +88,7 @@ attribute [local simp] mut_exec_onRatchet
 /-! ## `pqSession` and Record Encoding -/
 
 /-- View of a `(RecordExtras, GhostState HwBytes)` pair from `PqParty.session` as a `Session HwBytes`. -/
-def pqSession (x : RecordExtras) (g : GhostState HwBytes) : Session HwBytes where
+@[expose] def pqSession (x : RecordExtras) (g : GhostState HwBytes) : Session HwBytes where
   state := g.session
   pendingPreKey := if g.session.pendingPreKey then some x.pending else none
   pendingKyberPreKey := if g.session.pendingPreKey then x.kyber else none
@@ -205,7 +205,7 @@ private theorem sessionVersion_tryDecryptFromRecord_eq {PQC : Type}
           rfl
 
 /-- Structural invariant on `(x, g)` preserved by all `ReachablePqxdhSession` transitions. -/
-def ReachPqInvPure (W : PEParams) (me : LocalIdentity) (x : RecordExtras) (g : GhostState HwBytes) : Prop :=
+@[expose] def ReachPqInvPure (W : PEParams) (me : LocalIdentity) (x : RecordExtras) (g : GhostState HwBytes) : Prop :=
   g.session.sessionVersion = 4#32 ∧
     SeedsLen32 g.session ∧
     g.session.receiverChains.length ≤ maxReceiverChains ∧

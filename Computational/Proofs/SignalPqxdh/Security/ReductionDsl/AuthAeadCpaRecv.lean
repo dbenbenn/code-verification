@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpa
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfSharedEval
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpa -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfSharedEval -- proof-setup: allow-public-import
 import Computational.Proofs.GameHop.ReductionDsl.PeelSim
 import VCVio.EvalDist.Monad.Basic
 
@@ -21,7 +21,7 @@ Proves evaluation equivalence (`cpaRecvC_slot_eval_opk`, `cpaRecvC_slot_eval_noo
 `cpaRecvC` and `stepAuthCpaNonSendPrim`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -10,16 +10,18 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.CalleeProofs.KyberMapPlaced
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.CalleeProofs.KyberMapPlaced
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 meta import ProofLib.SepLogic.WP.Apply -- shake: keep
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Relocatable CLI `kyberMap` Proof
@@ -28,7 +30,7 @@ Proves `subroutine_ok (lsProg_430 H) (blkPl_430).base (CalleesBudget.kyberMapSpe
 under `[LibsignalPlacement]` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

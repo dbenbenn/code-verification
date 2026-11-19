@@ -74,25 +74,39 @@ theorem mallocngSvcValid_standard : MallocngSvcValid Syscall.standard := by
     intro hz; rw [hz] at holdPos; contradiction
   have hnewNe : s.readReg64 Reg.x2 ≠ 0#64 := by
     intro hz; rw [hz] at hnewPos; contradiction
-  cases hmf : s.oracle.mremapFail s.oracleIdx with
-  | true =>
-    exact Or.inl (execMremap_enomem_of_fail s hflags' hal holdNe hnewNe hnewMax hfit hperm hanon (Or.inl hmf))
-  | false =>
-    cases hsan : sanitizeMmapAddr
-        (s.mem.unmapNonFrozen (s.readReg64 Reg.x0) (pageAlignUp (s.readReg64 Reg.x1).toNat))
-        (s.oracle.mmap s.oracleIdx)
-        (pageAlignUp (s.readReg64 Reg.x2).toNat) with
+  by_cases hnewLim : (s.readReg64 Reg.x2).toNat ≤ USER_VA_LIMIT
+  · cases hmf : s.oracle.mremapRefusal s.oracleIdx with
+    | some r =>
+      cases r with
+      | enomem =>
+        refine Or.inl ⟨12, by decide, by decide, Or.inr ?_⟩
+        simpa [ENOMEM] using
+          execMremap_enomem_of_fail s hflags' hal holdNe hnewNe hnewLim hfit hperm hanon (Or.inl hmf)
+      | efault =>
+        refine Or.inl ⟨14, by decide, by decide, Or.inr ?_⟩
+        have heq : EFAULT_RET = -BitVec.ofNat 64 14 := by decide
+        simpa [heq] using
+          execMremap_efault_of_refusal s (Or.inr hflags') hal holdNe hnewNe hnewLim hfit hperm hanon hmf
     | none =>
-      exact Or.inl (execMremap_enomem_of_fail s hflags' hal holdNe hnewNe hnewMax hfit hperm hanon (Or.inr hsan))
-    | some newBase =>
-      obtain ⟨hne, hnbAl, hnbFit, hnbMap⟩ := sanitizeMmapAddr_spec hsan
-      by_cases hphys : pageAlignUp (s.readReg64 Reg.x2).toNat ≤
-          s.physMemAvail + pageAlignUp (s.readReg64 Reg.x1).toNat
-      · refine Or.inr (Or.inr ⟨newBase, hne, hnbAl, hnbFit, hnbMap, ?_⟩)
-        rw [mallocngRemapRw_eq_remapRw]
-        exact execMremap_ok s hflags' hal holdNe hnewNe hnewMax hfit hperm hanon hmf hsan hphys
-      · refine Or.inr (Or.inl ⟨by omega, ?_⟩)
-        exact execMremap_oom s hflags' hal holdNe hnewNe hnewMax hfit hperm hanon hmf hsan (by omega)
+      cases hsan : sanitizeMmapAddr
+          (s.mem.unmapNonFrozen (s.readReg64 Reg.x0) (pageAlignUp (s.readReg64 Reg.x1).toNat))
+          (s.oracle.mmap s.oracleIdx)
+          (pageAlignUp (s.readReg64 Reg.x2).toNat) with
+      | none =>
+        refine Or.inl ⟨12, by decide, by decide, Or.inr ?_⟩
+        simpa [ENOMEM] using
+          execMremap_enomem_of_fail s hflags' hal holdNe hnewNe hnewLim hfit hperm hanon (Or.inr ⟨hmf, hsan⟩)
+      | some newBase =>
+        obtain ⟨hne, hnbAl, hnbFit, hnbMap⟩ := sanitizeMmapAddr_spec hsan
+        by_cases hphys : pageAlignUp (s.readReg64 Reg.x2).toNat ≤
+            s.physMemAvail + pageAlignUp (s.readReg64 Reg.x1).toNat
+        · refine Or.inr (Or.inr ⟨newBase, hne, hnbAl, hnbFit, hnbMap, ?_⟩)
+          rw [mallocngRemapRw_eq_remapRw]
+          exact execMremap_ok s hflags' hal holdNe hnewNe hnewLim hfit hperm hanon hmf hsan hphys
+        · refine Or.inr (Or.inl ⟨by omega, ?_⟩)
+          exact execMremap_oom s hflags' hal holdNe hnewNe hnewLim hfit hperm hanon hmf hsan (by omega)
+  · refine Or.inl ⟨22, by decide, by decide, Or.inl ?_⟩
+    simpa [EINVAL] using execMremap_einval_of_newLen_gt s (Or.inr hflags') hnewLim
 
 theorem oomCond_imp_preserved {svc : State → State} {req peak : Nat} {s0 sf : State}
     (h : MallocngOomCond svc req peak s0 sf) :

@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
+public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Size
 public import Computational.Proofs.CryptoGames.SM.GameProofDefs
-public import Computational.Proofs.GameHop.CompDedup
+public import Computational.Proofs.GameHop.CompDedup -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Notation
+public import Computational.Proofs.CryptoGames.SM.PartyProofDefs
 
 /-!
 # Costed SM game state, bookkeeping, and oracle handlers
@@ -23,7 +24,7 @@ Encodes `SM.Record` and `SM.GameState`, pure bookkeeping predicates, and the `SM
 evaluation agreement, and static query bounds.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames.SM
 
@@ -47,12 +48,12 @@ variable {Key St St₂ Msg Coins RCoins C : Type}
 local notation "S" => smSig Key St St₂ Msg Coins RCoins C
 
 /-- `SM.Record Msg C` as a `ReductionDsl` type: `(pos, (msg, ct))`. -/
-@[reducible] def recTy : Ty S := .prod posTy (.prod (.base .msg) (.base .ct))
+@[expose, reducible] def recTy : Ty S := .prod posTy (.prod (.base .msg) (.base .ct))
 
-def recEnc (r : Record Msg C) : (Bool × ℕ × ℕ) × Msg × C :=
+@[expose] def recEnc (r : Record Msg C) : (Bool × ℕ × ℕ) × Msg × C :=
   (posEnc r.pos, r.msg, r.ct)
 
-def recDec (v : (Bool × ℕ × ℕ) × Msg × C) : Record Msg C :=
+@[expose] def recDec (v : (Bool × ℕ × ℕ) × Msg × C) : Record Msg C :=
   ⟨posDec v.1, v.2.1, v.2.2⟩
 
 @[simp] theorem recDec_recEnc (r : Record Msg C) : recDec (recEnc r) = r := by
@@ -62,7 +63,7 @@ def recDec (v : (Bool × ℕ × ℕ) × Msg × C) : Record Msg C :=
   rcases v with ⟨p, m, c⟩; simp [recEnc, recDec]
 
 /-- `SM.GameState St Msg C` encoded in `smSig` as `(st, b, win, epoch, idx, tL, trans, chall, comp, maxAcc, leaks, corrs)`. -/
-@[reducible] def gsTy : Ty S :=
+@[expose, reducible] def gsTy : Ty S :=
   .prod (.prod (.base .st) (.base .st))
     (.prod .bool
       (.prod .bool
@@ -76,7 +77,7 @@ def recDec (v : (Bool × ℕ × ℕ) × Msg × C) : Record Msg C :=
                       (.prod (.list .nat)
                         (.list (.prod .bool .nat))))))))))))
 
-def gsEnc (s : GameState St Msg C) : (@gsTy Key St St₂ Msg Coins RCoins C).denote :=
+@[expose] def gsEnc (s : GameState St Msg C) : (@gsTy Key St St₂ Msg Coins RCoins C).denote :=
   ((s.st .A, s.st .B),
    (s.b,
     (s.win,
@@ -90,7 +91,7 @@ def gsEnc (s : GameState St Msg C) : (@gsTy Key St St₂ Msg Coins RCoins C).den
             (s.leaks,
              s.corrs.map (fun pe => (partyEnc pe.1, pe.2)))))))))))))
 
-def gsDec (v : (@gsTy Key St St₂ Msg Coins RCoins C).denote) : GameState St Msg C :=
+@[expose] def gsDec (v : (@gsTy Key St St₂ Msg Coins RCoins C).denote) : GameState St Msg C :=
   let (stAB, (b, (win, (epAB, (idxAB, (tL, (trs, (chall, (comp, (maAB, (leaks, corrs))))))))))) := v
   { st := fun | .A => stAB.1 | .B => stAB.2
     epoch := fun | .A => epAB.1 | .B => epAB.2
@@ -113,50 +114,50 @@ variable {Key St St₂ Msg Coins RCoins C : Type}
 
 local notation "S" => smSig Key St St₂ Msg Coins RCoins C
 
-def recPos
+@[expose] def recPos
     {O' : Ops S} {Γ} (r : Expr O' Γ recTy) : Expr O' Γ posTy := .fst r
-def recCt
+@[expose] def recCt
     {O' : Ops S} {Γ} (r : Expr O' Γ recTy) : Expr O' Γ (.base .ct) := .snd (.snd r)
 
-def gsSt
+@[expose] def gsSt
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) :
     Expr O' Γ (.prod (.base .st) (.base .st)) := .fst s
-def gsB
+@[expose] def gsB
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) : Expr O' Γ .bool :=
   .fst (.snd s)
-def gsWin
+@[expose] def gsWin
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) : Expr O' Γ .bool :=
   .fst (.snd (.snd s))
-def gsEpoch
+@[expose] def gsEpoch
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) : Expr O' Γ (.prod .nat .nat) :=
   .fst (.snd (.snd (.snd s)))
-def gsIdx
+@[expose] def gsIdx
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) : Expr O' Γ (.prod .nat .nat) :=
   .fst (.snd (.snd (.snd (.snd s))))
-def gsTL
+@[expose] def gsTL
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) : Expr O' Γ (.opt .nat) :=
   .fst (.snd (.snd (.snd (.snd (.snd s)))))
-def gsTrans
+@[expose] def gsTrans
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) : Expr O' Γ (.list recTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd s))))))
-def gsChall
+@[expose] def gsChall
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) : Expr O' Γ (.list posTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))
-def gsComp
+@[expose] def gsComp
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) : Expr O' Γ (.list posTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))
-def gsMaxAcc
+@[expose] def gsMaxAcc
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) :
     Expr O' Γ (.prod (.tbl .nat) (.tbl .nat)) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))))
-def gsLeaks
+@[expose] def gsLeaks
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) : Expr O' Γ (.list .nat) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))))
-def gsCorrs
+@[expose] def gsCorrs
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) : Expr O' Γ (.list (.prod .bool .nat)) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))))
 
-def gsMk
+@[expose] def gsMk
     {O' : Ops S} {Γ}
     (st : Expr O' Γ (.prod (.base .st) (.base .st)))
     (b win : Expr O' Γ .bool)
@@ -179,7 +180,7 @@ def gsMk
                     (.pair maxAcc
                       (.pair leaks corrs))))))))))
 
-def gsSetWin
+@[expose] def gsSetWin
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) (w : Expr O' Γ .bool) : Expr O' Γ gsTy :=
   .letE (.pair s w)
     (let s0 : Expr O' _ gsTy := .fst .v0
@@ -207,20 +208,20 @@ variable {Key St St₂ Msg Coins RCoins C : Type}
 local notation "S" => smSig Key St St₂ Msg Coins RCoins C
 local notation "OO" => smOps init send receive eqMsg eqCt blank injOK stOK φ
 
-def safeChE
+@[expose] def safeChE
     {O' : Ops S} {Γ} (Δ : ℕ) (s : Expr O' Γ gsTy) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   rdslExpr =>
     letE (s, p) fun (s0, p0) =>
       healedByE (gsTL s0) Δ (pGet (gsEpoch s0) p0)
 
-def safeInjE
+@[expose] def safeInjE
     {O' : Ops S} {Γ} (Δ : ℕ) (s : Expr O' Γ gsTy) : Expr O' Γ .bool :=
   rdslExpr =>
     letE s fun s0 =>
       healedByE (gsTL s0) Δ (minN (gsEpoch s0).1 (gsEpoch s0).2)
 
-def leakE
+@[expose] def leakE
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) (l : Expr O' Γ .nat) : Expr O' Γ gsTy :=
   rdslExpr =>
     letE (s, l) fun (s0, l0) =>
@@ -229,7 +230,7 @@ def leakE
         (some m) (gsTrans s0) (gsChall s0) (gsComp s0) (gsMaxAcc s0)
         (cons m (gsLeaks s0)) (gsCorrs s0)
 
-def epMgmtE
+@[expose] def epMgmtE
     {O' : Ops S} {Γ} (Δ qep : ℕ) (s : Expr O' Γ gsTy) (p : Expr O' Γ .bool)
     (bad : Expr O' Γ .bool) : Expr O' Γ (.opt gsTy) :=
   rdslExpr =>
@@ -252,7 +253,7 @@ def epMgmtE
       else
         some s0
 
-def recordE
+@[expose] def recordE
     {O' : Ops S} {Γ} (Δ : ℕ) (s : Expr O' Γ gsTy) (p : Expr O' Γ .bool)
     (st' : Expr O' Γ (.base .st)) (r : Expr O' Γ recTy) (isChall : Expr O' Γ .bool) :
     Expr O' Γ gsTy :=
@@ -269,7 +270,7 @@ def recordE
         (if safeChE Δ s0 p0 then gsComp s0 else cons pos (gsComp s0))
         (gsMaxAcc s0) (gsLeaks s0) (gsCorrs s0)
 
-def inTransitE {Γ} (K : ℕ) (s : Expr OO Γ gsTy) (qParty : Expr OO Γ .bool)
+@[expose] def inTransitE {Γ} (K : ℕ) (s : Expr OO Γ gsTy) (qParty : Expr OO Γ .bool)
     (c : Expr OO Γ (.base .ct)) : Expr OO Γ (.opt recTy) :=
   rdslExpr =>
     letE (s, (qParty, c)) fun (s0, (qp0, c0)) =>
@@ -277,7 +278,7 @@ def inTransitE {Γ} (K : ℕ) (s : Expr OO Γ gsTy) (qParty : Expr OO Γ .bool)
         boolEq (posSender (recPos recElem)) qp0 &&
           Expr.op (O := OO) SMOp.eqCt (recCt recElem, c0)
 
-def deleteE
+@[expose] def deleteE
     {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ gsTy) (pos : Expr O' Γ posTy) :
     Expr O' Γ gsTy :=
   rdslExpr =>
@@ -291,7 +292,7 @@ def deleteE
       gsMk (gsSt s0) (gsB s0) (gsWin s0) (gsEpoch s0) (gsIdx s0) (gsTL s0)
         trans' chall' comp' (gsMaxAcc s0) (gsLeaks s0) (gsCorrs s0)
 
-def acceptE
+@[expose] def acceptE
     {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ gsTy) (p : Expr O' Γ .bool)
     (st' : Expr O' Γ (.base .st)) (pos : Expr O' Γ posTy) : Expr O' Γ gsTy :=
   rdslExpr =>
@@ -307,21 +308,21 @@ def acceptE
           (maxN (maxAccGet (gsMaxAcc s1) p0 pEpoch) pIdx))
         (gsLeaks s1) (gsCorrs s1)
 
-def compContainsE
+@[expose] def compContainsE
     {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ gsTy) (pos : Expr O' Γ posTy) :
     Expr O' Γ .bool :=
   rdslExpr =>
     letE (s, pos) fun (s0, pos0) =>
       anyB K (gsComp s0) fun posElem => posEq posElem pos0
 
-def challContainsE
+@[expose] def challContainsE
     {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ gsTy) (pos : Expr O' Γ posTy) :
     Expr O' Γ .bool :=
   rdslExpr =>
     letE (s, pos) fun (s0, pos0) =>
       anyB K (gsChall s0) fun posElem => posEq posElem pos0
 
-def trivialE
+@[expose] def trivialE
     {O' : Ops S} {Γ} (K Δ : ℕ) (s : Expr O' Γ gsTy) (pos : Expr O' Γ posTy) :
     Expr O' Γ .bool :=
   rdslExpr =>
@@ -330,7 +331,7 @@ def trivialE
         ((!(anyB K (gsTrans s0) fun recElem => posEq (recPos recElem) pos0)) &&
           !(healedByE (gsTL s0) Δ (posEpoch pos0)))
 
-def corrAllowedE
+@[expose] def corrAllowedE
     {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ gsTy) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   rdslExpr =>
@@ -340,7 +341,7 @@ def corrAllowedE
           boolEq (posSender (recPos recElem)) (otherE p0) &&
             !(compContainsE K s0 (recPos recElem)))
 
-def afterCorrE
+@[expose] def afterCorrE
     {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ gsTy) (p : Expr O' Γ .bool) :
     Expr O' Γ gsTy :=
   rdslExpr =>
@@ -358,44 +359,44 @@ def afterCorrE
         (gsTrans s2) (gsChall s2) (gsComp s2) (gsMaxAcc s2) (gsLeaks s2)
         (cons (p0, pGet (gsEpoch s0) p0) (gsCorrs s2))
 
-def inWindowE
+@[expose] def inWindowE
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) (p : Expr O' Γ .bool) : Expr O' Γ .bool :=
   rdslExpr =>
     letE (s, p) fun (s0, p0) =>
       !(sendsInE p0 (pGet (gsEpoch s0) p0))
 
-def noBobEpoch0E
+@[expose] def noBobEpoch0E
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   rdslExpr =>
     letE (s, p) fun (s0, p0) =>
       !(p0 && (gsEpoch s0).2 == 0)
 
-def noSpkCorrE
+@[expose] def noSpkCorrE
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   rdslExpr =>
     letE (s, p) fun (s0, p0) =>
       !((!p0) && (gsEpoch s0).1 < 10)
 
-def noCorrB0E
+@[expose] def noCorrB0E
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   noBobEpoch0E s p
 
-def noCorrBWinE
+@[expose] def noCorrBWinE
     {O' : Ops S} {Γ} (s : Expr O' Γ gsTy) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   rdslExpr =>
     letE (s, p) fun (s0, p0) =>
       !(p0 && (gsEpoch s0).1 < 10)
 
-def validGuessE
+@[expose] def validGuessE
     {S' : Sig} {O' : Ops S'} {Γ} (Δ : ℕ) (tLStar : Expr O' Γ (.opt .nat))
     (tStar : Expr O' Γ .nat) : Expr O' Γ .bool :=
   healedByE tLStar Δ tStar
 
-def optNatEqE
+@[expose] def optNatEqE
     {S' : Sig} {O' : Ops S'} {Γ} (a b : Expr O' Γ (.opt .nat)) : Expr O' Γ .bool :=
   rdslExpr =>
     letE (a, b) fun (a0, b0) =>
@@ -443,7 +444,7 @@ structure ConfigRC (O' : Ops S) where
   useInjOK : Bool := false
 
 /-- `ConfigRC` instance corresponding to `E2E.configRefuseEarlyBobCorr`. -/
-def ConfigRC.spkS
+@[expose] def ConfigRC.spkS
     (O' : Ops S) : ConfigRC O' :=
   { deliverWin := false
     r1 := true
@@ -452,17 +453,17 @@ def ConfigRC.spkS
     corrOKE := fun s p =>
       .and (.and (noSpkCorrE s p) (noCorrB0E s p)) (noCorrBWinE s p) }
 
-def ConfigRC.injOKE (cfg : ConfigRC OO) {Γ} (c : Expr OO Γ (.base .ct)) : Expr OO Γ .bool :=
+@[expose] def ConfigRC.injOKE (cfg : ConfigRC OO) {Γ} (c : Expr OO Γ (.base .ct)) : Expr OO Γ .bool :=
   if cfg.useInjOK then Expr.op (O := OO) SMOp.injOK c else .bool true
 
-def ConfigRC.challMsgE (cfg : ConfigRC OO) {Γ} (ep : Expr OO Γ .nat) (b : Expr OO Γ .bool)
+@[expose] def ConfigRC.challMsgE (cfg : ConfigRC OO) {Γ} (ep : Expr OO Γ .nat) (b : Expr OO Γ .bool)
     (m₀ m₁ : Expr OO Γ (.base .msg)) : Expr OO Γ (.base .msg) :=
   let mb : Expr OO Γ (.base .msg) := .ite b m₁ m₀
   match cfg.challBlankBefore with
   | none => mb
   | some i => .ite (.lt ep (.nat i)) (Expr.op (O := OO) SMOp.blank mb) mb
 
-def samIfNecC
+@[expose] def samIfNecC
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (drawCoins : ∀ {Γ}, Comp OO I Γ (.opt (.base .coins)))
     {Γ} (optR : Expr OO Γ (.opt (.base .coins))) :
@@ -477,7 +478,7 @@ def samIfNecC
     | some r =>
       return (some (r, true))
 
-def transmitRC
+@[expose] def transmitRC
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (Δ qep : ℕ) (cfg : ConfigRC OO)
     (drawCoins : ∀ {Γ}, Comp OO I Γ (.opt (.base .coins)))
@@ -503,7 +504,7 @@ def transmitRC
             let rec_ := (pos, (m0, c))
             return (some c, recordE Δ s1 p0 st' rec_ false)
 
-def challRC
+@[expose] def challRC
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (Δ qep : ℕ) (cfg : ConfigRC OO)
     (drawCoins : ∀ {Γ}, Comp OO I Γ (.opt (.base .coins)))
@@ -535,7 +536,7 @@ def challRC
               let rec_ := (pos, (m, c))
               return (some c, recordE Δ s1 p0 st' rec_ true)
 
-def corrRC
+@[expose] def corrRC
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (K : ℕ) (cfg : ConfigRC OO)
     {Γ} (s : Expr OO Γ gsTy) (p : Expr OO Γ .bool) :

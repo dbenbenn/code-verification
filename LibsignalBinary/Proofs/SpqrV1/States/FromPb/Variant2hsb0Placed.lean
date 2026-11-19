@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsa
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsa -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch0Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch2Placed
@@ -22,6 +22,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsb0
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4Placed
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 2 (`HeaderSent`, `+508`) — Part B0
@@ -30,7 +31,7 @@ Relocatable Block-`333` shared error epilogues (`+4392`, `+4396`), bad-`ptsNeede
 (`+604..+688`), and `Unchunked::EkSent` validation error cleanup (`+4660..+4748`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

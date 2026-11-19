@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Shared.Composed.HonestSession
+public import Symbolic.Proofs.Tests.Shared.Composed.HonestSession -- proof-setup: allow-public-import
 import Init.Data.String.Defs
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
@@ -57,7 +57,7 @@ message 0 before Alice's identity key is compromised and Bob accepts, so Bob's h
 excused while Alice's earlier handshake is unexcused.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

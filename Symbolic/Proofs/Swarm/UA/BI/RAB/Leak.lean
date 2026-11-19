@@ -34,6 +34,10 @@ import Symbolic.DYBridge.DY.Actions.Network
 import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+public import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
+public import Symbolic.Proofs.Swarm.UA.Defs
+import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
 
 /-!
 # Key-Leak Environment Steps
@@ -44,7 +48,7 @@ steps, while session-state leaks use `XlateInvSpecB` and `cliLiveAt_of_cut` to l
 live model state.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

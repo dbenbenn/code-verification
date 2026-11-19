@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SessionCostedDF
-public import Computational.Proofs.ReductionDsl.Fig8Atomic
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimC
-public import Computational.Proofs.SpecLemmas.Session.StatementComposed
-public import Computational.Proofs.E2E.SignedSession
+public import Computational.Proofs.SessionCostedDF -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.Fig8Atomic
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimC
+public import Computational.Proofs.SpecLemmas.Session.StatementComposed -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.SignedSession
+import Computational.Proofs.CryptoGames.SM.BucketAuthBridge
 import Computational.Proofs.E2E.ComposedPrefixHelpers
 import Computational.Proofs.E2E.HeadlineSpkSession
 import Computational.Proofs.CryptoGames.CKA.DHProof
@@ -25,6 +26,20 @@ import Computational.Proofs.E2E.SignedCoin
 import Computational.Proofs.E2E.SignedFig8
 import Computational.Proofs.E2E.SignedThm1
 import Computational.Proofs.E2E.SignedThm8
+import Computational.Proofs.E2E.Fig8Stage2MixHelpers
+import Computational.Proofs.SessionCostedDFStage2Auth
+import Computational.Proofs.SessionCostedDFStage2Priv
+import Computational.Proofs.SessionCostedFig8.BundlesEval
+import Computational.Proofs.SessionCostedFig8.BucketCKAEval
+import Computational.Proofs.SessionCostedFig8.BucketCKASwap
+import Computational.Proofs.SessionCostedFig8.BucketPRNGSwap
+import Computational.Proofs.SessionCostedFig8.BucketFSAuthBridge
+import Computational.Proofs.SessionCostedFig8.QuerySubsumes
+import Computational.Proofs.SessionCostedFig8.RedFSUniSafePost
+import Computational.Proofs.CryptoGames.SM.Theorem8.Stage2Bucket
+import Computational.Proofs.CryptoGames.SM.Theorem8.BucketPRNGAuth
+import Computational.Proofs.HeadlineV1.SignedRefineC
+import Computational.Proofs.Fig8SchemeBridge
 
 /-!
 # Composed PQXDH + Double Ratchet Security with SPQR V1
@@ -36,15 +51,14 @@ and assembles the mixture bounds for `ComposedSecurePrefixMixV1`.
 **DEV-C5 (formalization): Bounded-query prefix-step hybrids and mixture reductions.**
 `ComposedSecurePrefixMixV1` bounds the `qStart`-step prefix hybrid via prefix-step mixture
 reductions over `support (composedPrefixWithSpqr ...)`, avoiding the `N_spk_tot * N_send_tot`
-slot-hybrid multiplicity.
--/
+slot-hybrid multiplicity.-/
 
-@[expose] public section
+namespace CryptoVerification.E2E
+public section
 
 open scoped ENNReal BigOperators
 open ReductionDsl OracleComp OracleSpec MeasureTheory
 
-namespace CryptoVerification.E2E
 
 open CryptoGames CryptoGames.LibsignalSM CryptoGames.LibsignalSM.Inst CryptoGames.LibsignalSM.Proofs
   Ratchet LibsignalInst LibsignalSession
@@ -59,7 +73,7 @@ local instance instInhabitedOfZeroHeadlineComposed {Pt : Type} [Zero Pt] : Inhab
 
 /-- Semantic evaluation agreement of `Rspk` with `spkLeakRed`, `spkLeakRedU`, `hop2PrgRedK`, and
 `hop2PrfRedK` on `paramsV1 C K idA idB`. -/
-def SpkCostedEvalAgrees {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def SpkCostedEvalAgrees {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (C : Crypto) (K : LibsignalSpqrV1.MlKem) (idA idB : IdentityKey) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt)
@@ -82,7 +96,7 @@ def SpkCostedEvalAgrees {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType P
 
 /-- Semantic evaluation agreement of `Rspk` with target reductions `(spkLeakT, spkLeakUT, hop2PrgT,
 hop2PrfT)`. -/
-def SpkCostedEvalAgreesGen {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def SpkCostedEvalAgreesGen {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (C : Crypto) (K : LibsignalSpqrV1.MlKem) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt)
@@ -128,7 +142,7 @@ theorem spkCostedEvalAgrees_iff_gen {Pt : Type} [DecidableEq Pt] [Zero Pt] [Samp
 
 /-- Semantic evaluation agreement of `R.uniformStartRed` and `R.epoch0Red` with `(uniformStartT,
 epoch0T)`. -/
-def UniformEpoch0CostedEvalAgreesGen {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def UniformEpoch0CostedEvalAgreesGen {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (C : Crypto) (K : LibsignalSpqrV1.MlKem) (idA idB : IdentityKey) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt) (q : ℕ)
@@ -144,7 +158,7 @@ def UniformEpoch0CostedEvalAgreesGen {Pt : Type} [DecidableEq Pt] [Zero Pt] [Sam
 
 /-- Existential `SessionCostedReductions` witness satisfying `sessionCostedReductionsBounded`,
 `SpkCostedEvalAgrees`, and `hiddenSaltTerm ≤ hiddenSaltBoundV1` for `qep ≤ q + 4`. -/
-def HiddenSaltBoundV1HoldsEx {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def HiddenSaltBoundV1HoldsEx {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (ℓ : ℕ) : Prop :=
   ∀ (C : Crypto) (K : LibsignalSpqrV1.MlKem) (idA idB : IdentityKey)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
@@ -203,7 +217,7 @@ theorem evalDist_mixHiddenSaltGen_le_v1_of_support
 
 /-- Semantic evaluation contract for `R.simFig8` against a Figure-8 simulator `simT` and win-event
 game `winT`. -/
-def SimFig8CostedEvalAgreesGen {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def SimFig8CostedEvalAgreesGen {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (Z : Crypto) (K : LibsignalSpqrV1.MlKem) (idA idB : IdentityKey) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt)
@@ -228,6 +242,15 @@ def SimFig8CostedEvalAgreesGen {Pt : Type} [DecidableEq Pt] [Zero Pt] [Sampleabl
       let (_, s) ← SM.run smFig8 3 (qep + 1) SM.Config.h1 b simAdv
       return s.win)
 
+private theorem evalDist_bind_apply_le_sum_hc {α κ : Type} (oa : ProbComp α) (f : α → ProbComp Bool)
+    (u : Finset κ) (g : κ → α → ProbComp Bool)
+    (H : ∀ a, 𝒟[f a] {true} ≤ ∑ k ∈ u, 𝒟[g k a] {true}) :
+    𝒟[oa >>= f] {true} ≤ ∑ k ∈ u, 𝒟[oa >>= g k] {true} := by
+  simpa using evalDist_bind_apply_le_sum_sum oa f ({()} : Finset Unit) (fun _ => u) (fun _ => g)
+    (fun a => by simpa using H a)
+
+/-- Generic mixture Fig. 8 Stage-2 bucketed authenticity sum on `(R o).simFig8.eval` bounded above
+by `fig8MixShortAuthV1` evaluated on `R`. -/
 theorem fig8MixAuth_of_simFig8_le_fig8MixShortAuthV1
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] {α : Type}
     (Z : Crypto) (K : LibsignalSpqrV1.MlKem)
@@ -248,98 +271,159 @@ theorem fig8MixAuth_of_simFig8_le_fig8MixShortAuthV1
       (v1SessionReds ℓ Z K (ida o) (idb o) Dh encPt encT decT lam qep q).fs) :
     letI : MeasurableSpace α := ⊤
     let simAdv : α → Fig8Adv Pt ℓ := fun o => (R o).simFig8.eval (fun _ => A o) ()
-    2 * ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) t,
-      (CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
-          (advAvg oa fun o => redCKAAuth (dhScheme Dh) (rootPRNG Z.F encPt)
-            (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000) lam 1 (qep + 1) tL t
-            (Thm1.challSim (2 + 1) (qep + 1) (simAdv o)))
-        + PRFPRNG.advantage (rootPRNG Z.F encPt)
-          (advAvg oa fun o => redPRNGAuth (dhScheme Dh) (rootPRNG Z.F encPt)
-            (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000) lam 1 (qep + 1) tL t
-            (Thm1.challSim (2 + 1) (qep + 1) (simAdv o)))
-        + ∫⁻ o, ∑ j ∈ Finset.range q,
-            FSAEAD.advantage (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000)
-              (redFSAuth (dhScheme Dh) (rootPRNG Z.F encPt)
-                (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000) lam 1 (qep + 1) j
-                tL t (Thm1.challSim (2 + 1) (qep + 1) (simAdv o))) ∂𝒟[oa]) ≤
+    (hDh : Dh.Commutes) →
+    2 * ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) ((qep + 1) + 1),
+      𝒟[oa >>= fun o =>
+        _root_.CryptoGames.SM.BucketAuthBridge.bucketAuthGame
+          (lFig8 Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000 lam)
+          (2 + 1) (qep + 1) tL
+          (Thm1.challSim (2 + 1) (qep + 1) (simAdv o))] {true} ≤
       fig8MixShortAuthV1 Z K ℓ Dh encPt encT decT lam qep q oa ida idb R A := by
+  intro simAdv hDh
   let _ : MeasurableSpace α := ⊤
-  have _ : DiscreteMeasurableSpace α := ⟨fun _ => trivial⟩
-  let simAdv : α → Fig8Adv Pt ℓ := fun o => (R o).simFig8.eval (fun _ => A o) ()
-  have hChall : ∀ o,
-      ((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-        lam (qep + 1) q).challSim.eval (fun _ => simAdv o) ()) =
-      SM.Thm1.challSim (2 + 1) (qep + 1) (simAdv o) := fun o =>
-    fig8RedsInst_challSim_eval Dh encPt Z protoSignalCodec ℓ hℓ encT (idsOf (ida o) (idb o))
-      lam (qep + 1) q (simAdv o) (hqSim o)
-  have hqChall : ∀ o,
-      SM.MakesAtMostQueries (SM.Thm1.challSim (2 + 1) (qep + 1) (simAdv o)) q := fun o =>
-    SM.Thm1.challSim_queries (2 + 1) (qep + 1) (simAdv o) q (hqSim o)
-  have hshChall : ∀ o, SessionShort.SendMsgsOk
-      (fun m : LibsignalMsgPublicPart × CBC.Plain ℓ => atomicShortPubB m.1)
-      (SM.Thm1.challSim (2 + 1) (qep + 1) (simAdv o)) := fun o =>
+  let idOf : α → Party → IdentityKey := fun o => idsOf (ida o) (idb o)
+  let B0 : ℕ := (q + 1) * (maxForwardJumps + 1)
+  let B : α → Fig8Adv Pt ℓ := fun o => Thm1.challSim (2 + 1) (qep + 1) (simAdv o)
+  have hChallField : ∀ o, (R o).fig8.challSim =
+      (Computational.Proofs.SessionCostedFig8.Bundles.fig8RedsInst Dh encPt Z protoSignalCodec ℓ
+        encT (idOf o) lam (qep + 1) q).challSim := fun o => by
+    rw [hfig8 o]; rfl
+  have hCKAField : ∀ o, (R o).fig8.redCKAAuth =
+      (Computational.Proofs.SessionCostedFig8.Bundles.fig8RedsInst Dh encPt Z protoSignalCodec ℓ
+        encT (idOf o) lam (qep + 1) q).redCKAAuth := fun o => by
+    rw [hfig8 o]; rfl
+  have hFsInst : ∀ o, (R o).fs =
+      fsCostedRedsInst Z protoSignalCodec ℓ encT (idOf o) (min (2 * q) (q + 2)) := fun o => by
+    rw [hfs o]; rfl
+  have hChallEq : ∀ o,
+      (R o).fig8.challSim.eval (fun _ => (R o).simFig8.eval (fun _ => A o) ()) () = B o := fun o => by
+    rw [hChallField o]
+    exact Computational.Proofs.SessionCostedFig8.BundlesEval.fig8RedsInst_challSim_eval
+      Dh encPt Z protoSignalCodec ℓ hℓ encT (idOf o) lam (qep + 1) q (simAdv o) (hqSim o)
+  have hqB : ∀ o, SM.MakesAtMostQueries (B o) q := fun o =>
+    Thm1.challSim_queries (2 + 1) (qep + 1) (simAdv o) q (hqSim o)
+  have heqB : ∀ o, SM.EqualPubChalls (fun m : LibsignalMsgPublicPart × CBC.Plain ℓ => m.1) (B o) :=
+    fun o => CryptoGames.LibsignalSM.Proofs.RestrictedReds.challSim_equalPub (2 + 1) (qep + 1)
+      (fun m : LibsignalMsgPublicPart × CBC.Plain ℓ => m.1) (simAdv o)
+  have hshB0 : ∀ o, SessionShort.SendMsgsOk
+      (fun m : LibsignalMsgPublicPart × CBC.Plain ℓ => atomicShortPubB m.1) (B o) := fun o =>
     SessionShort.challSim_sendOk (2 + 1) (qep + 1)
       (fun m : LibsignalMsgPublicPart × CBC.Plain ℓ => atomicShortPubB m.1) (simAdv o) (hshSim o)
-  have hAuthOk := fun o =>
-    (fig8RedsInst_fsOk_and_encAtomicShort Dh encPt Z protoSignalCodec rfl ℓ hℓ encT
-      (idsOf (ida o) (idb o)) lam (qep + 1) q (simAdv o) (hqSim o) (hshSim o) (hgSim o)).1
-  unfold fig8MixShortAuthV1
-  simp only [hfig8, hfs, v1SessionReds_fig8, v1SessionReds_fs]
-  gcongr with t _ tL _
-  · have hEq :
-        (prefixAdvAvg oa fun o =>
-          ((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-            lam (qep + 1) q).redCKAAuth tL t).eval
-            (fun _ => ((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-              lam (qep + 1) q).challSim.eval (fun _ => simAdv o) ())) ()) =
-        (advAvg oa fun o =>
-          ((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-            lam (qep + 1) q).redCKAAuth tL t).eval
-            (fun _ => SM.Thm1.challSim (2 + 1) (qep + 1) (simAdv o)) ()) := by
-      unfold prefixAdvAvg advAvg
-      exact congrArg _ (funext fun o => by rw [hChall o])
-    exact le_of_eq ((fig8RedsInst_redCKAAuth_advAvg_advantage Dh encPt Z protoSignalCodec rfl ℓ hℓ
-      encT oa (fun o => idsOf (ida o) (idb o)) lam (qep + 1) q (healEpoch tL) tL t
-      _ hqChall hshChall).symm.trans
-      (congrArg (CKA.advantage (dhScheme Dh) 1 (healEpoch tL)) hEq.symm))
-  · have hEq :
-        (prefixAdvAvg oa fun o =>
-          ((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-            lam (qep + 1) q).redPRNGAuth tL t).eval
-            (fun _ => ((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-              lam (qep + 1) q).challSim.eval (fun _ => simAdv o) ())) ()) =
-        (advAvg oa fun o =>
-          ((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-            lam (qep + 1) q).redPRNGAuth tL t).eval
-            (fun _ => SM.Thm1.challSim (2 + 1) (qep + 1) (simAdv o)) ()) := by
-      unfold prefixAdvAvg advAvg
-      exact congrArg _ (funext fun o => by rw [hChall o])
-    exact le_of_eq ((fig8RedsInst_redPRNGAuth_advAvg_advantage Dh encPt Z protoSignalCodec rfl ℓ hℓ
-      encT oa (fun o => idsOf (ida o) (idb o)) lam (qep + 1) q tL t _ hqChall hshChall).symm.trans
-      (congrArg (PRFPRNG.advantage (rootPRNG Z.F encPt)) hEq.symm))
-  · rw [lintegral_finsetSum (Finset.range q) (fun _ _ => Measurable.of_discrete)]
-    gcongr with j _
-    have hbias := fig8RedsInst_redFSAuth_mix_boolBias Dh encPt Z protoSignalCodec rfl ℓ hℓ encT
-      oa (fun o => idsOf (ida o) (idb o)) lam (qep + 1) q j tL t _ hqChall hshChall
-    have hGame :
-        (oa >>= fun o => FSAEAD.game (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) maxForwardJumps)
-          (((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-            lam (qep + 1) q).redFSAuth j tL t).eval
-            (fun _ => SM.Thm1.challSim (2 + 1) (qep + 1) (simAdv o)) ())) =
-        (oa >>= fun o => FSAEAD.game (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000)
-          (((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-            lam (qep + 1) q).redFSAuth j tL t).eval
-            (fun _ => ((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-              lam (qep + 1) q).challSim.eval (fun _ => simAdv o) ())) ())) :=
-      bind_congr fun o => by rw [hChall o]; rfl
-    change (∫⁻ o, FSAEAD.advantage (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) maxForwardJumps)
-      (redFSAuth (dhScheme Dh) (rootPRNG Z.F encPt)
-        (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) maxForwardJumps) lam 1 (qep + 1) j
-        tL t (Thm1.challSim (2 + 1) (qep + 1) (simAdv o))) ∂𝒟[oa]) ≤ _
-    rw [hbias, hGame, fsShortBoundMixWith_inst_eq Z ℓ encT oa (fun o => idsOf (ida o) (idb o))
-      (min (2 * q) (q + 2)) q hℓ hinj _ (fun o => (hAuthOk o j tL t).1.1) (fun o => (hAuthOk o j tL t).2)]
-    exact lFS_bound_mix_of_fsOk_v1 Z hD ℓ (by omega) encT hinj hdum oa
-      (fun o => idsOf (ida o) (idb o)) _ (min (2 * q) (q + 2)) q (by omega) (fun o => (hAuthOk o j tL t).1)
+  have hshB : ∀ o, SessionShort.FSAEADRed.SendMsgsOk
+      (fun m : LibsignalMsgPublicPart × CBC.Plain ℓ => atomicShortPubB m.1) (B o) := fun o =>
+    CryptoGames.LibsignalSM.Proofs.QueryBounds.isQueryBoundP_congr
+      (by rintro (_ | ((((_ | _) | _) | _) | _)) <;> rfl) (hshB0 o)
+  have hgB : ∀ o, SessionShort.GuardedSMShort (B o) := fun o =>
+    SessionShort.challSim_guardedSMShort (2 + 1) (qep + 1) (simAdv o) (hgSim o)
+  refine Computational.Proofs.E2E.Fig8Stage2MixHelpers.fig8MixAuth_le_fig8MixShortAuthV1_of_fig8Eval
+    Z K Dh hDh encPt encT decT lam qep q oa ida idb R A ?_ ?_ ?_ ?_
+  · -- Hop 1 (`h9`): `bucketAuthAdvantage ≤ CKA.branch ... false (redCKAAuthBucket ...)`
+    intro tL _ o
+    exact CryptoGames.SM.Construction.lemma9_bucket_at (dhScheme Dh) (rootPRNG Z.F encPt)
+      (lFS Z protoSignalCodec ℓ encT (idOf o) 25000) lam 1 (qep + 1)
+      (CryptoGames.CKA.dhScheme_correct Dh hDh) tL (B o)
+  · -- Hop 2a (`hCKAAuth`): `redCKAAuth.eval = redCKAAuthBucket` under `CKA.advantage ... (prefixAdvAvg oa ...)`
+    intro tL _
+    simp only [hChallEq]
+    change CKA.advantage (dhScheme Dh) 1 (healEpoch tL) (advAvg oa _) =
+      CKA.advantage (dhScheme Dh) 1 (healEpoch tL) (advAvg oa _)
+    simp only [hCKAField]
+    rw [Computational.Proofs.SessionCostedFig8.QuerySubsumes.ckaAdvantage_advAvg_congr
+      (dhScheme Dh) 1 (healEpoch tL) oa fun o =>
+        Computational.Proofs.SessionCostedFig8.BundlesEval.fig8RedsInst_redCKAAuth_coinSimEquiv
+          Dh encPt Z protoSignalCodec ℓ hℓ encT (idOf o) lam (qep + 1) q tL (B o)]
+    rw [CKA.advantage_eq_boolDist, CKA.advantage_eq_boolDist,
+      ckaBranch_avg, ckaBranch_avg, ckaBranch_avg, ckaBranch_avg]
+    have hBr : ∀ b,
+        (oa >>= fun o => CKA.branch (dhScheme Dh) 1 (healEpoch tL) b
+          ((CryptoGames.SM.Construction.redCKAAuthBucketProg (q + 1) B0 1 (qep + 1)
+              maxForwardJumps tL :
+            ReductionDsl.CostedReduction
+              (Computational.Proofs.SessionCostedFig8.Bundles.fig8CkaOpsShallow ℓ Pt Z Dh encPt encT
+                (idOf o) lam B0)
+              (CKA.ckaIface (BitVec 256) (CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
+                (BitVec 256) (BitVec 256) (BitVec 256)
+                (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
+                (LibsignalMsgPublicPart × CBC.Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)
+                ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ Pt) ($ᵗ (BitVec 256)))
+              _ _ .unit .unit .bool .bool).eval (fun _ => B o) ())) =
+        (oa >>= fun o => CKA.branch (dhScheme Dh) 1 (healEpoch tL) b
+          (_root_.Computational.Proofs.CryptoGames.SM.Theorem8.BucketPRNGAuth.redCKAAuthBucket
+            (dhScheme Dh) (rootPRNG Z.F encPt)
+            (lFS Z protoSignalCodec ℓ encT (idOf o) maxForwardJumps)
+            lam 1 (qep + 1) tL (B o))) :=
+      fun b => bind_congr fun o => by
+        rw [Computational.Proofs.SessionCostedFig8.BucketCKAEval.redCKAAuthBucketProg_eval_atomic
+          Dh encPt Z ℓ encT (idOf o) lam (qep + 1) q tL (B o) (hqB o),
+          ← _root_.CryptoVerification.LibsignalSession.Fig8SchemeBridge.ckaBranch_dhSchemeFb_eq]
+        exact Computational.Proofs.SessionCostedFig8.BucketCKASwap.ckaBranch_redCKAAuthBucket_atomic_eq
+          Dh (rootPRNG Z.F encPt) Z ℓ encT (idOf o) lam B0 q 1 (healEpoch tL) (qep + 1) tL b
+          (Nat.le_refl _) (B o) q (hqB o) (Nat.le_refl q) (hshB0 o)
+    rw [hBr true, hBr false]; rfl
+  · -- Hop 2b (`hPRNGAuth`): `redPRNGAuthBucketHybrid ≤ redPRNGAuth.eval` (with equality)
+    intro tL _ t _
+    simp only [hChallEq]
+    refine le_of_eq ?_
+    symm
+    change PRFPRNG.advantage (rootPRNG Z.F encPt) (advAvg oa _) =
+      PRFPRNG.advantage (rootPRNG Z.F encPt) (advAvg oa _)
+    have hPRNGCoin : ∀ o,
+        Computational.Proofs.ReductionDsl.PureAuxMacroLift.CoinSimEquiv _
+          (((R o).fig8.redPRNGAuth tL t).eval (fun _ => B o) ())
+          ((_root_.Computational.Proofs.CryptoGames.SM.Theorem8.BucketPRNGAuthDefs.redPRNGAuthBucketHybridProg
+              (q + 1) B0 1 (qep + 1) maxForwardJumps tL t :
+            ReductionDsl.CostedReduction
+              (Computational.Proofs.SessionCostedFig8.Bundles.fig8CkaOpsShallow ℓ Pt Z Dh encPt encT
+                (idOf o) lam B0)
+              (PRFPRNG.prngIface (BitVec 256) (CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
+                (BitVec 256) (BitVec 256) (BitVec 256)
+                (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
+                (LibsignalMsgPublicPart × CBC.Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)
+                ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ Pt) ($ᵗ (BitVec 256)))
+              _ _ .unit .unit .bool .bool).eval (fun _ => B o) ()) := fun o => by
+      rw [hfig8 o]
+      exact Computational.Proofs.SessionCostedFig8.BundlesEval.compilePrngAtomic_coinSimEquiv
+        ℓ Pt Z Dh encPt encT (idOf o) lam hℓ B0 _ (B o)
+    rw [Computational.Proofs.SessionCostedFig8.QuerySubsumes.prngAdvantage_advAvg_congr
+      (rootPRNG Z.F encPt) oa hPRNGCoin]
+    rw [PRFPRNG.advantage_eq_boolDist, PRFPRNG.advantage_eq_boolDist,
+      prngBranch_avg, prngBranch_avg, prngBranch_avg, prngBranch_avg]
+    have hBr : ∀ b,
+        (oa >>= fun o => PRFPRNG.branch (rootPRNG Z.F encPt) b
+          ((_root_.Computational.Proofs.CryptoGames.SM.Theorem8.BucketPRNGAuthDefs.redPRNGAuthBucketHybridProg
+              (q + 1) B0 1 (qep + 1) maxForwardJumps tL t :
+            ReductionDsl.CostedReduction
+              (Computational.Proofs.SessionCostedFig8.Bundles.fig8CkaOpsShallow ℓ Pt Z Dh encPt encT
+                (idOf o) lam B0)
+              (PRFPRNG.prngIface (BitVec 256) (CKA.DDH.State (BitVec 256) Pt) (BitVec 256) Pt Pt
+                (BitVec 256) (BitVec 256) (BitVec 256)
+                (RatchetSenderState (BitVec 256)) (RatchetReceiverState (BitVec 256) (BitVec 256))
+                (LibsignalMsgPublicPart × CBC.Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)
+                ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ (BitVec 256)) ($ᵗ Pt) ($ᵗ (BitVec 256)))
+              _ _ .unit .unit .bool .bool).eval (fun _ => B o) ())) =
+        (oa >>= fun o => PRFPRNG.branch (rootPRNG Z.F encPt) b
+          (_root_.Computational.Proofs.CryptoGames.SM.Theorem8.BucketPRNGAuthDefs.redPRNGAuthBucketHybrid
+            (dhScheme Dh) (rootPRNG Z.F encPt)
+            (lFS Z protoSignalCodec ℓ encT (idOf o) maxForwardJumps)
+            lam 1 (qep + 1) tL t (B o))) :=
+      fun b => bind_congr fun o => by
+        rw [Computational.Proofs.SessionCostedFig8.BucketPRNGSwap.redPRNGAuthBucketHybridProg_branch_eval_atomic
+          Dh encPt Z ℓ encT (idOf o) lam (qep + 1) q tL t (B o) (hqB o) b,
+          Computational.Proofs.SessionCostedFig8.BucketPRNGSwap.redPRNGAuthBucketHybrid_atomic_eq
+            Dh (rootPRNG Z.F encPt) Z ℓ encT (idOf o) lam B0 q 1 (qep + 1) tL t
+            (Nat.le_refl _) (B o) q (hqB o) (Nat.le_refl q) (hshB0 o)]
+    rw [hBr true, hBr false]; rfl
+  · -- Hop 3 (`hFSAuth`): 4-branch multi-session FS-AEAD + MAC bound at `qR = min (2 * q) (q + 2)`
+    intro tL _
+    exact Computational.Proofs.SessionCostedDFStage2Auth.localAuthBucketMix_par_le_sum_fsAeadAuthMixtureCompBound
+      Z hD hℓ Dh hDh encPt encT hinj hdum oa idOf lam (qep + 1) q hq32
+      (fun o => (R o).fs) hFsInst tL B hqB heqB hshB hgB
+      (fun stage la j t o =>
+        ((R o).fig8.redFSAuth stage la j tL t).eval
+          (fun _ => (R o).fig8.challSim.eval (fun _ => simAdv o) ()) ())
+      (fun j t _ _ _ stage la o => by
+        rw [hChallEq o, hfig8 o]
+        rfl)
 
 theorem fig8MixPriv_of_simFig8_le_fig8MixShortPrivV1
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] {α : Type}
@@ -361,123 +445,90 @@ theorem fig8MixPriv_of_simFig8_le_fig8MixShortPrivV1
       (v1SessionReds ℓ Z K (ida o) (idb o) Dh encPt encT decT lam qep q).fs) :
     letI : MeasurableSpace α := ⊤
     let simAdv : α → Fig8Adv Pt ℓ := fun o => (R o).simFig8.eval (fun _ => A o) ()
-    2 * ∑ i ∈ Finset.range ((qep + 1) + 1), ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) i,
-      (2 * CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
-          (advAvg oa fun o => redCKAPriv (dhScheme Dh) (rootPRNG Z.F encPt)
-            (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000) lam 1 (qep + 1) tL i
-            (ThmB.privRedB (2 + 1) (qep + 1) i (lBlank ℓ) (simAdv o)))
-        + 2 * PRFPRNG.advantage (rootPRNG Z.F encPt)
-          (advAvg oa fun o => redPRNGPriv (dhScheme Dh) (rootPRNG Z.F encPt)
-            (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000) lam 1 (qep + 1) tL i
-            (ThmB.privRedB (2 + 1) (qep + 1) i (lBlank ℓ) (simAdv o)))
-        + 𝒟[oa >>= fun o =>
-            FSAEAD.game (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000)
-              (redFSPriv (dhScheme Dh) (rootPRNG Z.F encPt)
-                (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000) lam 1 (qep + 1) tL i
-                (ThmB.privRedB (2 + 1) (qep + 1) i (lBlank ℓ) (simAdv o)))].boolBias
-        + 2 * ∫⁻ o,
-            FSAEAD.advantage (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000)
-              (redFSPrivCoin (dhScheme Dh) (rootPRNG Z.F encPt)
-                (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000) lam 1 (qep + 1) tL i
-                (ThmB.privRedB (2 + 1) (qep + 1) i (lBlank ℓ) (simAdv o))) ∂𝒟[oa]) ≤
+    (hDh : Dh.Commutes) →
+    (∀ o ∈ support oa,
+      SM.EqualPubChalls (fun m : LibsignalMsgPublicPart × CBC.Plain ℓ => m.1) (simAdv o)) →
+    𝒟[oa >>= fun o => SM.game (lFig8 Dh encPt Z protoSignalCodec ℓ encT
+        (idsOf (ida o) (idb o)) 25000 lam) (2 + 1) (qep + 1) SM.Config.h2 (simAdv o)].boolBias ≤
       fig8MixShortPrivV1 Z K ℓ Dh encPt encT decT lam qep q oa ida idb R A := by
+  intro simAdv hDh heqSim
   let _ : MeasurableSpace α := ⊤
-  let simAdv : α → Fig8Adv Pt ℓ := fun o => (R o).simFig8.eval (fun _ => A o) ()
-  have hPriv : ∀ o i,
-      (((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-        lam (qep + 1) q).privRedB i).eval (fun _ => simAdv o) ()) =
-      SM.ThmB.privRedB (2 + 1) (qep + 1) i (lBlank ℓ) (simAdv o) := fun o i =>
-    fig8RedsInst_privRedB_eval Dh encPt Z protoSignalCodec ℓ hℓ encT (idsOf (ida o) (idb o))
-      lam (qep + 1) q i (simAdv o) (hqSim o)
-  have hqPriv : ∀ i o,
-      SM.MakesAtMostQueries (SM.ThmB.privRedB (2 + 1) (qep + 1) i (lBlank ℓ) (simAdv o)) q :=
-    fun i o => PrivRedQueries.privRedB_queries (2 + 1) (qep + 1) i (lBlank ℓ) (simAdv o) q (hqSim o)
+  let idOf : α → Party → IdentityKey := fun o => idsOf (ida o) (idb o)
+  let Rfig8 : ∀ o, Fig8CostedReds Dh encPt Z protoSignalCodec ℓ encT (idOf o) lam :=
+    fun o => Computational.Proofs.SessionCostedFig8.Bundles.fig8RedsInst Dh encPt Z
+      protoSignalCodec ℓ encT (idOf o) lam (qep + 1) q
+  have hPrivBField : ∀ o, (R o).fig8.privRedB = (Rfig8 o).privRedB := fun o => by rw [hfig8 o]; rfl
+  have hCKAPrivField : ∀ o, (R o).fig8.redCKAPriv = (Rfig8 o).redCKAPriv := fun o => by rw [hfig8 o]; rfl
+  have hCKAPrivUField : ∀ o, (R o).fig8.redCKAPrivU = (Rfig8 o).redCKAPrivU := fun o => by rw [hfig8 o]; rfl
+  have hPRNGPrivField : ∀ o, (R o).fig8.redPRNGPriv = (Rfig8 o).redPRNGPriv := fun o => by rw [hfig8 o]; rfl
+  have hFSPrivField : ∀ o, (R o).fig8.redFSPriv = (Rfig8 o).redFSPriv := fun o => by rw [hfig8 o]; rfl
+  have hFSPrivCoinField : ∀ o, (R o).fig8.redFSPrivCoin = (Rfig8 o).redFSPrivCoin := fun o => by rw [hfig8 o]; rfl
+  have hFsInst : ∀ o, (R o).fs =
+      fsCostedRedsInst Z protoSignalCodec ℓ encT (idOf o) (min (2 * q) (q + 2)) :=
+    fun o => by rw [hfs o]; rfl
+  let privAdv : ℕ → α → Fig8Adv Pt ℓ := fun i o =>
+    ThmB.privRedB (2 + 1) (qep + 1) i (lBlank ℓ) ((R o).simFig8.eval (fun _ => A o) ())
+  have hPrivEq : ∀ i o,
+      ((R o).fig8.privRedB i).eval (fun _ => (R o).simFig8.eval (fun _ => A o) ()) () = privAdv i o :=
+    fun i o => by
+      rw [hPrivBField o]
+      exact Computational.Proofs.SessionCostedFig8.BundlesEval.fig8RedsInst_privRedB_eval
+        Dh encPt Z protoSignalCodec ℓ hℓ encT (idOf o) lam (qep + 1) q i (simAdv o) (hqSim o)
+  have hqPriv : ∀ i o, SM.MakesAtMostQueries (privAdv i o) q := fun i o =>
+    CryptoGames.LibsignalSM.Proofs.PrivRedQueries.privRedB_queries
+      (2 + 1) (qep + 1) i (lBlank ℓ) (simAdv o) q (hqSim o)
   have hshPriv : ∀ i o, SessionShort.SendMsgsOk
-      (fun m : LibsignalMsgPublicPart × CBC.Plain ℓ => atomicShortPubB m.1)
-      (SM.ThmB.privRedB (2 + 1) (qep + 1) i (lBlank ℓ) (simAdv o)) := fun i o =>
-    SessionShort.privRedB_sendOk (2 + 1) (qep + 1) i
-      (fun m : LibsignalMsgPublicPart × CBC.Plain ℓ => atomicShortPubB m.1)
-      (lBlank ℓ) (fun _ => rfl) (simAdv o) (hshSim o)
-  have hPrivOk := fun o =>
-    (fig8RedsInst_fsOk_and_encAtomicShort Dh encPt Z protoSignalCodec rfl ℓ hℓ encT
-      (idsOf (ida o) (idb o)) lam (qep + 1) q (simAdv o) (hqSim o) (hshSim o) (hgSim o)).2
-  unfold fig8MixShortPrivV1
-  simp only [hfig8, hfs, v1SessionReds_fig8, v1SessionReds_fs]
-  gcongr with i _ tL _
-  · have hEq :
-        (prefixAdvAvg oa fun o =>
-          ((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-            lam (qep + 1) q).redCKAPriv tL i).eval
-            (fun _ => (((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-              lam (qep + 1) q).privRedB i).eval (fun _ => simAdv o) ())) ()) =
-        (advAvg oa fun o =>
-          ((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-            lam (qep + 1) q).redCKAPriv tL i).eval
-            (fun _ => SM.ThmB.privRedB (2 + 1) (qep + 1) i (lBlank ℓ) (simAdv o)) ()) := by
-      unfold prefixAdvAvg advAvg
-      exact congrArg _ (funext fun o => by rw [hPriv o i])
-    exact le_of_eq ((fig8RedsInst_redCKAPriv_advAvg_advantage Dh encPt Z protoSignalCodec rfl ℓ hℓ
-      encT oa (fun o => idsOf (ida o) (idb o)) lam (qep + 1) q (healEpoch tL) tL i
-      _ (hqPriv i) (hshPriv i)).symm.trans
-      (congrArg (CKA.advantage (dhScheme Dh) 1 (healEpoch tL)) hEq.symm))
-  · have hEq :
-        (prefixAdvAvg oa fun o =>
-          ((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-            lam (qep + 1) q).redPRNGPriv tL i).eval
-            (fun _ => (((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-              lam (qep + 1) q).privRedB i).eval (fun _ => simAdv o) ())) ()) =
-        (advAvg oa fun o =>
-          ((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-            lam (qep + 1) q).redPRNGPriv tL i).eval
-            (fun _ => SM.ThmB.privRedB (2 + 1) (qep + 1) i (lBlank ℓ) (simAdv o)) ()) := by
-      unfold prefixAdvAvg advAvg
-      exact congrArg _ (funext fun o => by rw [hPriv o i])
-    exact le_of_eq ((fig8RedsInst_redPRNGPriv_advAvg_advantage Dh encPt Z protoSignalCodec rfl ℓ hℓ
-      encT oa (fun o => idsOf (ida o) (idb o)) lam (qep + 1) q tL i
-      _ (hqPriv i) (hshPriv i)).symm.trans
-      (congrArg (PRFPRNG.advantage (rootPRNG Z.F encPt)) hEq.symm))
-  · have heq := (fig8RedsInst_redFSPriv_mix_evalDistEq Dh encPt Z protoSignalCodec rfl ℓ hℓ encT
-      oa (fun o => idsOf (ida o) (idb o)) lam (qep + 1) q tL i _ (hqPriv i) (hshPriv i)).evalDist_eq
-    have hGame :
-        (oa >>= fun o => FSAEAD.game (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) maxForwardJumps)
-          (((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-            lam (qep + 1) q).redFSPriv tL i).eval
-            (fun _ => SM.ThmB.privRedB (2 + 1) (qep + 1) i (lBlank ℓ) (simAdv o)) ())) =
-        (oa >>= fun o => FSAEAD.game (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000)
-          (((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-            lam (qep + 1) q).redFSPriv tL i).eval
-            (fun _ => (((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-              lam (qep + 1) q).privRedB i).eval (fun _ => simAdv o) ())) ())) :=
-      bind_congr fun o => by rw [hPriv o i]; rfl
-    change 𝒟[oa >>= fun o => FSAEAD.game (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) maxForwardJumps)
-      (redFSPriv (dhScheme Dh) (rootPRNG Z.F encPt)
-        (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) maxForwardJumps) lam 1 (qep + 1) tL i
-        (ThmB.privRedB (2 + 1) (qep + 1) i (lBlank ℓ) (simAdv o)))].boolBias ≤ _
-    rw [← heq, hGame, fsShortBoundMixWith_inst_eq Z ℓ encT oa (fun o => idsOf (ida o) (idb o))
-      (min (2 * q) (q + 2)) q hℓ hinj _ (fun o => ((hPrivOk o i).1 tL).1.1) (fun o => ((hPrivOk o i).1 tL).2)]
-    exact lFS_bound_mix_of_fsOk_v1 Z hD ℓ (by omega) encT hinj hdum oa
-      (fun o => idsOf (ida o) (idb o)) _ (min (2 * q) (q + 2)) q (by omega) (fun o => ((hPrivOk o i).1 tL).1)
-  · have hbias := fig8RedsInst_redFSPrivCoin_mix_boolBias Dh encPt Z protoSignalCodec rfl ℓ hℓ
-      encT oa (fun o => idsOf (ida o) (idb o)) lam (qep + 1) q tL i _ (hqPriv i) (hshPriv i)
-    have hGame :
-        (oa >>= fun o => FSAEAD.game (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) maxForwardJumps)
-          (((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-            lam (qep + 1) q).redFSPrivCoin tL i).eval
-            (fun _ => SM.ThmB.privRedB (2 + 1) (qep + 1) i (lBlank ℓ) (simAdv o)) ())) =
-        (oa >>= fun o => FSAEAD.game (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000)
-          (((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-            lam (qep + 1) q).redFSPrivCoin tL i).eval
-            (fun _ => (((fig8RedsInst Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o))
-              lam (qep + 1) q).privRedB i).eval (fun _ => simAdv o) ())) ())) :=
-      bind_congr fun o => by rw [hPriv o i]; rfl
-    change (∫⁻ o, FSAEAD.advantage (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) maxForwardJumps)
-      (redFSPrivCoin (dhScheme Dh) (rootPRNG Z.F encPt)
-        (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) maxForwardJumps) lam 1 (qep + 1) tL i
-        (ThmB.privRedB (2 + 1) (qep + 1) i (lBlank ℓ) (simAdv o))) ∂𝒟[oa]) ≤ _
-    rw [hbias, hGame, fsShortBoundMixWith_inst_eq Z ℓ encT oa (fun o => idsOf (ida o) (idb o))
-      (min (2 * q) (q + 2)) q hℓ hinj _ (fun o => ((hPrivOk o i).2 tL).1.1) (fun o => ((hPrivOk o i).2 tL).2)]
-    exact lFS_bound_mix_of_fsOk_v1 Z hD ℓ (by omega) encT hinj hdum oa
-      (fun o => idsOf (ida o) (idb o)) _ (min (2 * q) (q + 2)) q (by omega) (fun o => ((hPrivOk o i).2 tL).1)
+      (fun m : LibsignalMsgPublicPart × CBC.Plain ℓ => atomicShortPubB m.1) (privAdv i o) :=
+    fun i o =>
+      SessionShort.privRedB_sendOk (2 + 1) (qep + 1) i
+        (fun m : LibsignalMsgPublicPart × CBC.Plain ℓ => atomicShortPubB m.1)
+        (lBlank ℓ) (fun _ => rfl) (simAdv o) (hshSim o)
+  refine Computational.Proofs.E2E.Fig8Stage2MixHelpers.fig8MixPriv_le_fig8MixShortPrivV1_of_fig8Eval
+    Z K hD hℓ Dh hDh encPt encT decT hinj hdum lam qep q hq32 oa ida idb R A hFsInst heqSim
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_
+  · intro i _ tL _
+    simp only [hPrivEq i, hCKAPrivField]
+    change CKA.advantage (dhScheme Dh) 1 (healEpoch tL) (advAvg oa _) =
+      CKA.advantage (dhScheme Dh) 1 (healEpoch tL) (advAvg oa _)
+    exact _root_.CryptoVerification.LibsignalSession.fig8RedsInst_redCKAPriv_advAvg_advantage
+      Dh encPt Z protoSignalCodec rfl ℓ hℓ encT oa idOf lam (qep + 1) q (healEpoch tL) tL i
+      (privAdv i) (hqPriv i) (hshPriv i)
+  · intro i _ tL _
+    simp only [hPrivEq i, hCKAPrivUField]
+    change CKA.advantage (dhScheme Dh) 1 (healEpoch tL) (advAvg oa _) =
+      CKA.advantage (dhScheme Dh) 1 (healEpoch tL) (advAvg oa _)
+    exact Computational.Proofs.SessionCostedDFStage2Priv.fig8RedsInst_redCKAPrivU_semantic_advAvg_advantage
+      Dh encPt Z protoSignalCodec rfl ℓ hℓ encT oa idOf lam (qep + 1) q (healEpoch tL) tL i
+      (privAdv i) (hqPriv i) (hshPriv i)
+  · intro i _ tL _
+    simp only [hPrivEq i, hPRNGPrivField]
+    change PRFPRNG.advantage (rootPRNG Z.F encPt) (advAvg oa _) =
+      PRFPRNG.advantage (rootPRNG Z.F encPt) (advAvg oa _)
+    exact _root_.CryptoVerification.LibsignalSession.fig8RedsInst_redPRNGPriv_advAvg_advantage
+      Dh encPt Z protoSignalCodec rfl ℓ hℓ encT oa idOf lam (qep + 1) q tL i
+      (privAdv i) (hqPriv i) (hshPriv i)
+  · intro i _
+    refine EvalDistEq.rfl.bind fun o => ?_
+    rw [hPrivEq i o, hFSPrivField o]
+    exact Computational.Proofs.SessionCostedDFStage2Priv.fig8RedsInst_redFSPriv_semantic_game_evalDistEq
+      Dh encPt Z protoSignalCodec rfl ℓ hℓ encT (idOf o) lam (qep + 1) q i
+      (privAdv i o) (hqPriv i o) (hshPriv i o)
+  · intro i _ o
+    rw [hFSPrivField o, hPrivBField o]
+    exact (Computational.Proofs.SessionCostedFig8.RedFSUniSafePost.fig8RedsInst_priv_fsOk_min_and_encAtomicShort
+      Dh encPt Z protoSignalCodec rfl ℓ hℓ encT (idOf o) lam (qep + 1) q i
+      (simAdv o) (hqSim o) (hshSim o) (hgSim o)).1
+  · intro i _
+    refine EvalDistEq.rfl.bind fun o => ?_
+    rw [hPrivEq i o, hFSPrivCoinField o]
+    exact Computational.Proofs.SessionCostedDFStage2Priv.fig8RedsInst_redFSPrivCoin_semantic_game_evalDistEq
+      Dh encPt Z protoSignalCodec rfl ℓ hℓ encT (idOf o) lam (qep + 1) q i
+      (privAdv i o) (hqPriv i o) (hshPriv i o)
+  · intro i _ o
+    rw [hFSPrivCoinField o, hPrivBField o]
+    exact (Computational.Proofs.SessionCostedFig8.RedFSUniSafePost.fig8RedsInst_priv_fsOk_min_and_encAtomicShort
+      Dh encPt Z protoSignalCodec rfl ℓ hℓ encT (idOf o) lam (qep + 1) q i
+      (simAdv o) (hqSim o) (hshSim o) (hgSim o)).2
 
 theorem boolBias_mixFig8_of_simFig8_le_fig8MixShortV1
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] {α : Type}
@@ -511,18 +562,20 @@ theorem boolBias_mixFig8_of_simFig8_le_fig8MixShortV1
         (idsOf (ida o) (idb o)) 25000 lam) 3 (qep + 1) SM.Config.h1 (simAdv o)) :=
     bind_congr fun o => (hS o).2.2.2.2.1.symm
   rw [hGame]
-  have h6 := theorem6_h1_blank_mix (dhScheme Dh) (rootPRNG Z.F encPt)
-    (fun o => lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000) lam 1 (qep + 1)
-    (dhScheme_correct Dh hDh) (fun m : LibsignalMsgPublicPart × CBC.Plain ℓ => m.1) (lBlank ℓ)
-    (fun _ _ h => by simp [lBlank, h]) oa simAdv
-    (fun o => (hS o).2.1) q (fun o => (hS o).1)
-  exact h6.trans (add_le_add
-    (fig8MixAuth_of_simFig8_le_fig8MixShortAuthV1 Z K hD hℓ Dh encPt encT decT hinj hdum lam qep q
-      hq32 oa ida idb R A (fun o => (hS o).1) (fun o => (hS o).2.2.1) (fun o => (hS o).2.2.2.1)
-      hfig8 hfs)
-    (fig8MixPriv_of_simFig8_le_fig8MixShortPrivV1 Z K hD hℓ Dh encPt encT decT hinj hdum lam qep q
-      hq32 oa ida idb R A (fun o => (hS o).1) (fun o => (hS o).2.2.1) (fun o => (hS o).2.2.2.1)
-      hfig8 hfs))
+  have h17 := _root_.CryptoGames.SM.BucketAuthBridge.lemma17_bucket_mix
+    (fun o => lFig8 Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000 lam)
+    (2 + 1) (qep + 1) (by omega) oa simAdv
+  calc _ ≤ _ := h17
+    _ ≤ fig8MixShortPrivV1 Z K ℓ Dh encPt encT decT lam qep q oa ida idb R A +
+        fig8MixShortAuthV1 Z K ℓ Dh encPt encT decT lam qep q oa ida idb R A :=
+      add_le_add
+        (fig8MixPriv_of_simFig8_le_fig8MixShortPrivV1 Z K hD hℓ Dh encPt encT decT hinj hdum lam qep q
+          hq32 oa ida idb R A (fun o => (hS o).1) (fun o => (hS o).2.2.1) (fun o => (hS o).2.2.2.1)
+          hfig8 hfs hDh (fun o _ => (hS o).2.1))
+        (fig8MixAuth_of_simFig8_le_fig8MixShortAuthV1 Z K hD hℓ Dh encPt encT decT hinj hdum lam qep q
+          hq32 oa ida idb R A (fun o => (hS o).1) (fun o => (hS o).2.2.1) (fun o => (hS o).2.2.2.1)
+          hfig8 hfs hDh)
+    _ = _ := add_comm _ _
 
 theorem evalDist_mixWin_of_simFig8_le_fig8MixShortAuthV1
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] {α : Type}
@@ -549,42 +602,21 @@ theorem evalDist_mixWin_of_simFig8_le_fig8MixShortAuthV1
   have hS := fun o => hSim o hℓ (A o) (hq o)
   have hWin :
       𝒟[oa >>= fun o => winT o (A o)] {true} ≤
-        ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) t,
-          𝒟[oa >>= fun o => authGame (lFig8 Dh encPt Z protoSignalCodec ℓ encT
-            (idsOf (ida o) (idb o)) 25000 lam) (2 + 1) (qep + 1) tL t
-            (Thm1.challSim (2 + 1) (qep + 1) (simAdv o))] {true} :=
-    evalDist_bind_apply_le_sum_sum oa _ _ _ _ fun o => by
+        ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) ((qep + 1) + 1),
+          𝒟[oa >>= fun o =>
+            _root_.CryptoGames.SM.BucketAuthBridge.bucketAuthGame
+              (lFig8 Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000 lam)
+              (2 + 1) (qep + 1) tL
+              (Thm1.challSim (2 + 1) (qep + 1) (simAdv o))] {true} :=
+    evalDist_bind_apply_le_sum_hc oa _ _ _ fun o => by
       rw [(hS o).2.2.2.2.2]
-      exact Proofs.Refinement.run_win_prob_le_auth
+      exact _root_.CryptoGames.SM.BucketAuthBridge.run_win_prob_le_bucketAuth
         (lFig8 Dh encPt Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000 lam)
         (2 + 1) (qep + 1) (by omega) (simAdv o)
-  have h8 :
-      2 * (∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) t,
-          𝒟[oa >>= fun o => authGame (lFig8 Dh encPt Z protoSignalCodec ℓ encT
-            (idsOf (ida o) (idb o)) 25000 lam) (2 + 1) (qep + 1) tL t
-            (Thm1.challSim (2 + 1) (qep + 1) (simAdv o))] {true}) ≤
-        2 * ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) t,
-          (CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
-              (advAvg oa fun o => redCKAAuth (dhScheme Dh) (rootPRNG Z.F encPt)
-                (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000) lam 1 (qep + 1) tL t
-                (Thm1.challSim (2 + 1) (qep + 1) (simAdv o)))
-            + PRFPRNG.advantage (rootPRNG Z.F encPt)
-              (advAvg oa fun o => redPRNGAuth (dhScheme Dh) (rootPRNG Z.F encPt)
-                (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000) lam 1 (qep + 1) tL t
-                (Thm1.challSim (2 + 1) (qep + 1) (simAdv o)))
-            + ∫⁻ o, ∑ j ∈ Finset.range q,
-                FSAEAD.advantage (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000)
-                  (redFSAuth (dhScheme Dh) (rootPRNG Z.F encPt)
-                    (lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000) lam 1 (qep + 1) j
-                    tL t (Thm1.challSim (2 + 1) (qep + 1) (simAdv o))) ∂𝒟[oa]) := by
-    gcongr with t _ tL _
-    exact theorem8_mix (dhScheme Dh) (rootPRNG Z.F encPt)
-      (fun o => lFS Z protoSignalCodec ℓ encT (idsOf (ida o) (idb o)) 25000) lam 1 (qep + 1)
-      (dhScheme_correct Dh hDh) tL t q oa _ fun o => Thm1.challSim_queries _ _ _ q (hS o).1
-  exact (mul_le_mul_right hWin 2).trans (h8.trans
+  exact (mul_le_mul_right hWin 2).trans
     (fig8MixAuth_of_simFig8_le_fig8MixShortAuthV1 Z K hD hℓ Dh encPt encT decT hinj hdum lam qep q
       hq32 oa ida idb R A (fun o => (hS o).1) (fun o => (hS o).2.2.1) (fun o => (hS o).2.2.2.1)
-      hfig8 hfs))
+      hfig8 hfs hDh)
 
 /-- Bounds the `boolBias` of `oa >>= gameU` by `uniformStartMixtureBound` across Uniform-Start,
 Figure-8, epoch-0, and hidden-salt hops. -/
@@ -707,5 +739,7 @@ theorem boolBias_mixUGen_le_uTermShortMix
   rw [hg, uTermShortMixV1_congr_of_support Z K ℓ Dh encPt encT decT lam qep q δ oa ida idb R _ _
     hsup] at hle
   exact hle
+
+end
 
 end CryptoVerification.E2E

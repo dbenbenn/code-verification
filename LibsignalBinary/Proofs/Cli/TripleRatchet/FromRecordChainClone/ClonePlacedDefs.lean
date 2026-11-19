@@ -9,14 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.Clone
-public import LibsignalBinary.Proofs.Common.HookTrace
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.Clone
+import LibsignalBinary.Proofs.Common.HookTrace
+import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import all Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.Defs
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
 
 /-!
 # Shared Definitions and Helpers for Relocatable `Chain::clone`
@@ -25,7 +29,7 @@ Defines the internal `protoChainAt` / `protoChainCloneSpec` contract, stack spil
 separation-logic helpers shared across the relocatable `Chain::clone` proofs.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordChainCloneDefs
 
@@ -55,7 +59,7 @@ attribute [local wp_norm]
   calleeSavedVRegs_writeReg calleeSavedVRegs_writeVReg128_ite calleeSavedVRegs_writeVReg64_ite
   calleeSavedVRegs_writeVReg32_ite isCalleeSavedVReg updateCalleeSavedVRegs
 
-def protoChainAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 64) : SepProp :=
+@[expose] def protoChainAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 64) : SepProp :=
   ⌜PublicKey.deserialize gc.1.srk.bytes = .ok gc.2.senderRatchetKey ∧
     gc.2.messageKeys.length ≤ maxMessageKeys ∧
     gc.1.keys.length = gc.2.messageKeys.length⌝ ∗
@@ -65,7 +69,7 @@ def protoChainAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 
     (gc.1.keys.zip gc.2.messageKeys) ∗
   optChainKeyAt A gc.1.ck gc.2.chainKey (a + 72#64)
 
-def protoChainCloneSpec (A : RustAlloc) : Spec ChainCloneGhost where
+@[expose] def protoChainCloneSpec (A : RustAlloc) : Spec ChainCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src⌝ ∗
       memRegion x.dst 104 ∗ protoChainAt A x.gc x.src ∗ A.pool ∗ stackAt s.sp chainCloneStack
@@ -303,7 +307,7 @@ theorem vecU8Buf_pos_eq (A : RustAlloc) (ptr' : BitVec 64) (bs : List (BitVec 8)
     simp only [hne0, ↓reduceIte, htoNat, Nat.sub_self, ProofLib.memRegion_zero, sepConj_emp]
     exact Entails.refl _
 
-def clonedOptChainKeyBuf (A : RustAlloc) (ckPin' : VecPin)
+@[expose] def clonedOptChainKeyBuf (A : RustAlloc) (ckPin' : VecPin)
     (x25 x28 : BitVec 64) (w27 : BitVec 32) : Option ChainKey → SepProp
   | none => ⌜x25 = optChainKeyNone⌝
   | some ck =>
@@ -378,7 +382,7 @@ theorem fold_optChainKeyAt (A : RustAlloc) (ckPin' : VecPin)
     exact Entails.refl _
 
 /-- Untouched parts of a source `chain::MessageKey` at `a` during the `MessageKey` clone loop. -/
-def messageKeySourceFrame (A : RustAlloc) (gk : MessageKeyGhost)
+@[expose] def messageKeySourceFrame (A : RustAlloc) (gk : MessageKeyGhost)
     (mkg : MessageKeyGenerator) (a : BitVec 64) : SepProp :=
   (a ↦₆₄ gk.cipher.cap) ∗ ((a + 8#64) ↦₆₄ gk.cipher.ptr) ∗ vecU8Buf A gk.cipher.cap gk.cipher.ptr [] ∗
   ((a + 24#64) ↦₆₄ gk.mac.cap) ∗ ((a + 32#64) ↦₆₄ gk.mac.ptr) ∗ vecU8Buf A gk.mac.cap gk.mac.ptr [] ∗
@@ -499,7 +503,7 @@ theorem messageKeyAt_eq_source (A : RustAlloc) (gk : MessageKeyGhost)
     rw [hpure_comm]
     exact Entails.pure_right ⟨hlen, hlt, hptr⟩ (Entails.refl _)
 
-def clonedMessageKeyGhost (seedLen seedPtr' : BitVec 64) : MessageKeyGhost :=
+@[expose] def clonedMessageKeyGhost (seedLen seedPtr' : BitVec 64) : MessageKeyGhost :=
   { cipher := ⟨0#64, 1#64⟩
     mac    := ⟨0#64, 1#64⟩
     iv     := ⟨0#64, 1#64⟩
@@ -579,7 +583,7 @@ theorem fold_cloned_messageKeyAt (A : RustAlloc) (mkg : MessageKeyGenerator)
       ac_rfl
     rw [hcomm]; exact Entails.refl _
 
-def clonedChainGhost (gc : ChainGhost × ReceiverChain)
+@[expose] def clonedChainGhost (gc : ChainGhost × ReceiverChain)
     (srkPtr' privPtr' mkCap' mkPtr' : BitVec 64)
     (keys' : List MessageKeyGhost) (ckPin' : VecPin) : ChainGhost :=
   { srk   := ⟨BitVec.ofNat 64 gc.1.srk.bytes.length, srkPtr', gc.1.srk.bytes⟩
@@ -680,7 +684,7 @@ theorem fold_chainAt_dst (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
   have hck := fold_optChainKeyAt A ckPin' x25 x28 w27 gc.2.chainKey (dst + 72#64)
   rwa [hd80, hd88, hd96, hd100] at hck
 
-def savedRegsOnStack (s0 : State) : SepProp :=
+@[expose] def savedRegsOnStack (s0 : State) : SepProp :=
   ((s0.sp - 96#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5)) ∗
   ((s0.sp - 88#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5)) ∗
   ((s0.sp - 80#64) ↦₆₄ s0.readReg64 (Reg.gpr 28#5)) ∗
@@ -698,7 +702,7 @@ def savedRegsOnStack (s0 : State) : SepProp :=
   (∃∗ w12b : BitVec 32, (s0.sp - 108#64) ↦₃₂ w12b)
 
 /-- The 8 spill slots `[sp - 208#64 .. sp - 152#64]` when existentially quantified. -/
-def spillSlotsExist (sp : BitVec 64) : SepProp :=
+@[expose] def spillSlotsExist (sp : BitVec 64) : SepProp :=
   (∃∗ v0 : BitVec 64, (sp - 208#64) ↦₆₄ v0) ∗
   (∃∗ w1a : BitVec 32, (sp - 200#64) ↦₃₂ w1a) ∗
   (∃∗ w1b : BitVec 32, (sp - 196#64) ↦₃₂ w1b) ∗
@@ -1098,12 +1102,12 @@ theorem epilogue_post_entails (A : RustAlloc) (x : ChainCloneGhost) (s0 sf : Sta
   exact sepConj_mono hg' (sepConj_mono_right (sepConj_mono_right hst))
 
 /-- No-op shim spec that records trace preservation. -/
-def sessionShimSpec : Spec Unit where
+@[expose] def sessionShimSpec : Spec Unit where
   pre := fun _ _ => emp
   post := fun _ s0 sf => ⌜sf.trace = s0.trace⌝
 
 /-- Region `memcpy` spec that records trace preservation. -/
-def sessionMemcpySpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def sessionMemcpySpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧
      s0.readReg64 .x1 = src ∧
@@ -1321,7 +1325,7 @@ theorem vecBuf_mk_pos_eq (A : RustAlloc) (mkPtr' : BitVec 64)
       ProofLib.memRegion_zero, sepConj_emp, hmul_comm]
     exact Entails.refl _
 
-def chainMkSourceFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
+@[expose] def chainMkSourceFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     (a : BitVec 64) : SepProp :=
   vecGhostAt A gc.1.srk a ∗
   vecGhostAt A gc.1.priv (a + 24#64) ∗
@@ -1466,7 +1470,7 @@ theorem spillSlotsExist_eq_struct (sp : BitVec 64) :
       (sepConj_mono (Entails.sepExists_right s.v6 (Entails.refl _))
       (Entails.sepExists_right s.v7 (Entails.refl _)))))))))
 
-def savedRegsCore (s0 : State) : SepProp :=
+@[expose] def savedRegsCore (s0 : State) : SepProp :=
   ((s0.sp - 96#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5)) ∗
   ((s0.sp - 88#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5)) ∗
   ((s0.sp - 80#64) ↦₆₄ s0.readReg64 (Reg.gpr 28#5)) ∗
@@ -1552,7 +1556,7 @@ theorem toNat_mul_104 {n : Nat} (hmax : n ≤ maxMessageKeys) :
     (BitVec.ofNat 64 (104 * n)).toNat = 104 * n := by
   rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by unfold maxMessageKeys at hmax; omega)]
 
-def chainMkLenFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
+@[expose] def chainMkLenFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     (a : BitVec 64) : SepProp :=
   vecGhostAt A gc.1.srk a ∗
   vecGhostAt A gc.1.priv (a + 24#64) ∗
@@ -1581,7 +1585,7 @@ theorem chainAt_eq_mk_len (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
   · apply Entails.pure_right ⟨hsrk, hmax, hklen⟩
     exact Entails.of_eq (by ac_rfl)
 
-def chainCkSomeFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
+@[expose] def chainCkSomeFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     (a : BitVec 64) : SepProp :=
   vecGhostAt A gc.1.srk a ∗
   vecGhostAt A gc.1.priv (a + 24#64) ∗
@@ -1699,7 +1703,7 @@ theorem cap_add_one_beq_zero_false {cap : BitVec 64} (h : cap.toNat < 2 ^ 63) :
   simp only [BitVec.toNat_add, BitVec.toNat_ofNat] at h1
   omega
 
-def chainCkNoneCapFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
+@[expose] def chainCkNoneCapFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     (a : BitVec 64) : SepProp :=
   vecGhostAt A gc.1.srk a ∗
   vecGhostAt A gc.1.priv (a + 24#64) ∗
@@ -1725,7 +1729,7 @@ theorem chainAt_eq_ck_none_cap (A : RustAlloc) (gc : ChainGhost × ReceiverChain
   · apply Entails.pure_right ⟨hsrk, hmax, hklen⟩
     exact Entails.of_eq (by ac_rfl)
 
-def chainCkSomeCapFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
+@[expose] def chainCkSomeCapFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     (ck : ChainKey) (a : BitVec 64) : SepProp :=
   ⌜32 ≤ gc.1.ck.cap.toNat ∧ gc.1.ck.ptr ≠ 0⌝ ∗
   ((a + 64#64) ↦₆₄ BitVec.ofNat 64 gc.2.messageKeys.length) ∗
@@ -1820,7 +1824,7 @@ theorem chainAt_eq_ck_some_cap (A : RustAlloc) (gc : ChainGhost × ReceiverChain
     apply Entails.pure_left; rintro ⟨hle, hptr⟩
     exact Entails.pure_right ⟨hle, hlt, hptr⟩ (Entails.refl _)
 
-def chainPrivLenFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
+@[expose] def chainPrivLenFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     (a : BitVec 64) : SepProp :=
   vecGhostAt A gc.1.srk a ∗
   ((a + 24#64) ↦₆₄ gc.1.priv.cap) ∗
@@ -1849,7 +1853,7 @@ theorem chainAt_eq_priv_len (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
   · apply Entails.pure_right ⟨hsrk, hmax, hklen⟩
     exact Entails.of_eq (by ac_rfl)
 
-def chainPrivPosFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
+@[expose] def chainPrivPosFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     (a : BitVec 64) : SepProp :=
   vecGhostAt A gc.1.srk a ∗
   ((a + 24#64) ↦₆₄ gc.1.priv.cap) ∗
@@ -1966,7 +1970,7 @@ theorem chainAt_eq_pure_sep (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
   · apply Entails.pure_left; intro _
     exact Entails.refl _
 
-def chainSrkPosFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
+@[expose] def chainSrkPosFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     (a : BitVec 64) : SepProp :=
   (a ↦₆₄ gc.1.srk.cap) ∗
   A.live gc.1.srk.ptr gc.1.srk.cap.toNat 1 ∗
@@ -2003,7 +2007,7 @@ theorem chainAt_eq_srk_pos (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     apply Entails.pure_right ⟨hle, hlt, hptr⟩
     exact Entails.of_eq (by ac_rfl)
 
-def deadStackSlots (sp : BitVec 64) : SepProp :=
+@[expose] def deadStackSlots (sp : BitVec 64) : SepProp :=
   (∃∗ v11 : BitVec 64, (sp - 120#64) ↦₆₄ v11) ∗
   (∃∗ w12a : BitVec 32, (sp - 112#64) ↦₃₂ w12a) ∗
   (∃∗ w12b : BitVec 32, (sp - 108#64) ↦₃₂ w12b)

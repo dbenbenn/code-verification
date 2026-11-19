@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvSameCost
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvSameKept
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvSameCost -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvSameKept
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling -- proof-setup: allow-public-import
 
 /-!
 # Existing-Epoch Receive Branch for the Atomic `simFig8` Step
@@ -20,7 +21,7 @@ the existing-chain receive branch (`SimFig8RecvSameSpec`), and the parameterized
 `recvHookOfNewAtomicC`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -70,7 +71,7 @@ open Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling (SanSnapExt
 
 /-- Semantic existing-epoch (`findIdx? = some ci`) sub-branch of `semRecvHookS` with
 `fig8IdSemHook none` (projecting away the `Unit` extra state). -/
-def semRecvSameBranch {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] {ℓ : ℕ}
+@[expose] def semRecvSameBranch {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] {ℓ : ℕ}
     (C : Crypto) (K : MlKem) (idA idB : IdentityKey) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (lam : Pt)
     (qep B T Kc : ℕ)
@@ -95,7 +96,7 @@ def semRecvSameBranch {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
 
 /-- Semantic new-epoch (`findIdx? = none`) sub-branch of `semRecvHookS` with
 `fig8IdSemHook none` (projecting away the `Unit` extra state). -/
-def semRecvNewBranch {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] {ℓ : ℕ}
+@[expose] def semRecvNewBranch {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] {ℓ : ℕ}
     (C : Crypto) (K : MlKem) (idA idB : IdentityKey) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (lam : Pt)
     (qep B T Kc : ℕ)
@@ -134,8 +135,6 @@ def semRecvNewBranch {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] 
         Prod.map id Prod.fst <$>
           semFwdHookS P Dh encPt encT lam T Kc (fig8IdSemHook (PQC := BitVec 512) none)
             qep B sCAmb () Q w isDel none pk pq' honestC (mkC (sC.base.mir.epoch Q + 1) (some T₀))
-
-noncomputable section
 
 section EvalTheorems
 
@@ -694,166 +693,6 @@ theorem recvSameBranchAtomicC_eval (idA idB : IdentityKey) (L qep B_cap T Kc : �
     · rfl
     · by_cases hs : c.2.2.2 = lct.2.2 <;> simp only [c', hs, ↓reduceIte]
 
-/-- `.eval` correctness of the parameterized full receive handler `recvHookOfNewAtomicC` against
-`semRecvHookS` (`fig8IdSemHook none`). -/
-theorem recvHookOfNewAtomicC_eval (idA idB : IdentityKey) (L qep B_cap T Kc : ℕ)
-    {Γ : List (Ty (atomicSig ℓ Pt))}
-    (sCE : Expr (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) Γ (simFullT ℓ Pt))
-    (qBE : Expr (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) Γ .bool)
-    (wE : Expr (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) Γ (B 32))
-    (isDelE : Expr (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) Γ .bool)
-    (newBranchC : Comp (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (fig8SmIface ℓ Pt)
-      (recvNewSiteCtx ℓ Pt (.prod (simFullT ℓ Pt) (.prod .bool (.prod (B 32) .bool)) :: Γ))
-      (recvOutT ℓ Pt))
-    (hnew : ∀ (ρ' : Env (recvNewSiteCtx ℓ Pt
-        (.prod (simFullT ℓ Pt) (.prod .bool (.prod (B 32) .bool)) :: Γ)))
-        (sC₀ : LibsignalToModularSchemeSimState Bytes Pt ℓ)
-        (Q₀ : Party) (w₀ : Bytes) (isDel₀ : Bool)
-        (pq'₀ : Bytes) (i₀ : ℕ) (pk₀ : PublicKey) (T?₀ : Option Pt)
-        (lct₀ : ℕ × LibsignalCiphertextWithSalt32) (honestC₀ : Option (SimFig8C Pt)),
-      ρ'.get .zero =
-        (simFullEnc sC₀, (partyToBool Q₀, (w₀, (isDel₀,
-          (parseOutV (pq'₀, (i₀, (pk₀, (T?₀, lct₀)))), honestC₀.map fig8CtV))))) →
-      SimCStateBounded L sC₀ →
-      SanSnapExtra C K sC₀ →
-      (Prod.map (Option.map recvResultDec) simFullDec <$> newBranchC.eval ρ') =
-        semRecvNewBranch C K idA idB Dh encPt encT lam qep B_cap T Kc
-          sC₀ Q₀ w₀ isDel₀ pq'₀ i₀ pk₀ T?₀ lct₀ honestC₀)
-    (ρ : Env Γ)
-    (sC : LibsignalToModularSchemeSimState Bytes Pt ℓ)
-    (Q : Party) (w : Bytes) (isDel : Bool)
-    (hsC : sCE.eval ρ = simFullEnc sC)
-    (hqB : qBE.eval ρ = partyToBool Q)
-    (hw : wE.eval ρ = w)
-    (hisDel : isDelE.eval ρ = isDel)
-    (hbnd : SimCStateBounded L sC)
-    (hextra : SanSnapExtra C K sC) :
-    (Prod.map (Option.map recvResultDec) simFullDec <$>
-      (recvHookOfNewAtomicC (Pt := Pt) (ℓ := ℓ) (C := C) (K := K) (Dh := Dh)
-        (encPt := encPt) (encT := encT) (decT := decT) (lam := lam)
-        idA idB L qep B_cap T Kc sCE qBE wE isDelE newBranchC).eval ρ) =
-    (Prod.map id Prod.fst <$>
-      semRecvHookS (paramsV1 C K idA idB) Dh encPt encT decT lam T Kc
-        (fig8IdSemHook (PQC := BitVec 512) none)
-        qep B_cap sC () Q w isDel) := by
-  unfold recvHookOfNewAtomicC semRecvHookS
-  have hpair :
-      (ReductionDsl.Expr.pair sCE (.pair qBE (.pair wE isDelE))).eval ρ =
-      (simFullEnc sC, (partyToBool Q, (w, isDel))) := by
-    simp [ReductionDsl.Expr.eval, hsC, hqB, hw, hisDel]
-  rw [eval_bind_ret, hpair, eval_ite]
-  set v0 : (ReductionDsl.Ty.prod (simFullT ℓ Pt) (.prod .bool (.prod (B 32) .bool))).denote :=
-    (simFullEnc sC, (partyToBool Q, (w, isDel)))
-  set ρ0 := ReductionDsl.Env.cons (t := .prod (simFullT ℓ Pt) (.prod .bool (.prod (B 32) .bool))) v0 ρ
-  have href := recvRefuseE_eval (C := C) (K := K) (Dh := Dh) (encPt := encPt)
-    (encT := encT) (decT := decT) (lam := lam) L
-    (.fst .v0) (.fst (.snd .v0)) (.fst (.snd (.snd .v0))) (.snd (.snd (.snd .v0)))
-    ρ0 sC Q w isDel rfl rfl rfl rfl hbnd.base.trans_le
-  have hcodec : (paramsV1 C K idA idB).codec = protoSignalCodec := rfl
-  rw [href, hcodec]
-  set refuse := sC.base.stopped || sC.base.mir.win ||
-    (isDel && (sC.base.mir.inTransit Q.other w).isNone) ||
-    (!isDel && ((sC.base.mir.inTransit Q.other w).isSome || !(sC.base.mir.safeInj 3) ||
-      !(ratchetKeyAdmissible protoSignalCodec decT encT w)))
-  by_cases hrefB : refuse = true
-  · simp only [hrefB, ↓reduceIte, map_pure]
-    exact eval_ret_none (.fst .v0) ρ0 sC rfl
-  · simp only [hrefB, Bool.false_eq_true, ↓reduceIte]
-    rw [eval_bind]
-    have hpq_ab :
-        (ssPq (scBase (O' := atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (.fst .v0))).eval ρ0 =
-        (sC.base.pq .A, sC.base.pq .B) := rfl
-    have hqEnc0 :
-        (ReductionDsl.Expr.fst (.snd (ReductionDsl.Expr.v0 (O := atomicSessionOps ℓ Pt C K Dh encPt encT decT lam)))).eval ρ0 =
-        partyEnc Q := partyToBool_eq_partyEnc Q
-    have hpqGet :
-        (pGet (ssPq (scBase (O' := atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (.fst .v0)))
-          (.fst (.snd .v0))).eval ρ0 = sC.base.pq Q :=
-      pGet_eval (ssPq (scBase (.fst .v0))) (.fst (.snd .v0)) ρ0 sC.base.pq Q hpq_ab hqEnc0
-    have hparse := parseRecvAtomicC_eval (C := C) (K := K) (Dh := Dh) (encPt := encPt)
-      (encT := encT) (decT := decT) (lam := lam) (fig8SmIface ℓ Pt) idA idB (2 ^ 32)
-      (.fst (.snd .v0)) (pGet (ssPq (scBase (.fst .v0))) (.fst (.snd .v0)))
-      (.fst (.snd (.snd .v0))) ρ0 (partyEnc Q) (sC.base.pq Q) w
-      hqEnc0 hpqGet rfl (hextra.1 Q)
-    rw [hparse]
-    rcases hp : simParseRecvC (paramsV1 C K idA idB) decT (2 ^ 32) (partyEnc Q) (sC.base.pq Q) w
-      with _ | ⟨pq', i, pk, T?, lct⟩
-    · rw [Option.map_none, pure_bind, eval_caseOpt_v0_none, map_pure]
-      exact eval_ret_rejected (.fst .v1) (ReductionDsl.Env.cons (t := .opt (parseOutT ℓ Pt)) none ρ0) sC rfl
-    · rw [Option.map_some, pure_bind, eval_caseOpt_v0_some]
-      let pv := parseOutV (ℓ := ℓ) (Pt := Pt) (pq', (i, (pk, (T?, lct))))
-      let ρ2 := ReductionDsl.Env.cons (t := parseOutT ℓ Pt) pv
-        (ReductionDsl.Env.cons (t := .opt (parseOutT ℓ Pt)) (some pv) ρ0)
-      have hhon := honestFindE_eval (C := C) (K := K) (Dh := Dh) (encPt := encPt)
-        (encT := encT) (decT := decT) (lam := lam) L
-        (.fst .v2) (.fst (.snd .v2)) (.fst (.snd (.snd .v2)))
-        ρ2 sC Q w rfl rfl rfl hbnd.base.honest_le
-      rw [eval_bind_ret, hhon, eval_caseOpt]
-      let honestC := (sC.base.honest.find? fun wc =>
-        wc.1 == w && CryptoGames.Party.senderOf wc.2.1.1 == Q.other).map (·.2)
-      let ρ3 := ReductionDsl.Env.cons (t := .opt (fig8CtT (ℓ := ℓ) (Pt := Pt))) (honestC.map fig8CtV) ρ2
-      have hch_ab3 :
-          (ssChains (scBase (O' := atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (.fst .v3))).eval ρ3 =
-          ((sC.base.chains .A).map ghostChainEnc, (sC.base.chains .B).map ghostChainEnc) := rfl
-      have hqEnc3 :
-          (ReductionDsl.Expr.fst (.snd (ReductionDsl.Expr.v3 (O := atomicSessionOps ℓ Pt C K Dh encPt encT decT lam)))).eval ρ3 =
-          partyEnc Q := partyToBool_eq_partyEnc Q
-      have hpGet3 :
-          (pGet (ssChains (scBase (O' := atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (.fst .v3)))
-            (.fst (.snd .v3))).eval ρ3 = (sC.base.chains Q).map ghostChainEnc :=
-        pGet_eval (ssChains (scBase (.fst .v3))) (.fst (.snd .v3)) ρ3
-          (fun R => (sC.base.chains R).map ghostChainEnc) Q hch_ab3 hqEnc3
-      have hfci := eval_findChainIdxE (C := C) (K := K) (Dh := Dh) (encPt := encPt)
-        (encT := encT) (decT := decT) (lam := lam)
-        (pGet (ssChains (scBase (.fst .v3))) (.fst (.snd .v3))) (poPk .v1)
-        ρ3 (sC.base.chains Q) hpGet3 (hextra.2.1 Q).1
-      rw [hfci]
-      have hpk3 :
-          (some ((poPk (O' := atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) .v1).eval ρ3) :
-            Option PublicKey) = some pk := rfl
-      rw [hpk3]
-      rcases hci : (sC.base.chains Q).findIdx? (fun g => g.key == some pk) with _ | ci
-      · simp only [hci]
-        rw [eval_bind_ret]
-        refine Trans.trans (hnew _ sC Q w isDel pq' i pk T? lct honestC rfl hbnd hextra) ?_
-        unfold semRecvNewBranch
-        dsimp only [honestC]
-        by_cases h1 : (((sC.base.honest.find? fun wc =>
-              wc.1 == w && CryptoGames.Party.senderOf wc.2.1.1 == Q.other).map (·.2) |>.map
-              fun c => decide (c.1.1 ≠ sC.base.mir.epoch Q + 1)) == some true &&
-            ((sC.base.honest.find? fun wc =>
-              wc.1 == w && CryptoGames.Party.senderOf wc.2.1.1 == Q.other).map (·.2) |>.map
-              fun c => decide (c.2.2.2 = lct.2.2)) == some true) = true
-        · simp only [h1, ↓reduceIte, map_pure]; rfl
-        · simp only [h1, Bool.false_eq_true, ↓reduceIte]
-          by_cases h2 : (T? == some 0) = true
-          · simp only [h2, ↓reduceIte, map_pure]; rfl
-          · simp only [h2, Bool.false_eq_true, ↓reduceIte]
-            by_cases h3 : (inReceiveOnlyEpoch sC.base.mir Q || decide (25000 < i - 1) || decide (2 ^ 32 ≤ i)) = true
-            · simp only [h3, ↓reduceIte, map_pure]; rfl
-            · simp only [h3, Bool.false_eq_true, ↓reduceIte]
-              rcases T? with _ | T₀
-              · simp only [map_pure]; rfl
-              · by_cases h4 : (((sC.base.honest.find? fun wc =>
-                    wc.1 == w && CryptoGames.Party.senderOf wc.2.1.1 == Q.other).map (·.2) |>.map
-                    fun c => decide (c.1.1 ≠ sC.base.mir.epoch Q + 1)) == some true) = true
-                · simp only [h4, ↓reduceIte]
-                · simp only [h4, Bool.false_eq_true, ↓reduceIte]
-                  rcases (sC.base.honest.find? fun wc =>
-                    wc.1 == w && CryptoGames.Party.senderOf wc.2.1.1 == Q.other) with _ | wc <;> rfl
-      · simp only [hci]
-        refine Trans.trans
-          (recvSameBranchAtomicC_eval (Dh := Dh) (encPt := encPt) (encT := encT) (decT := decT)
-            (lam := lam) idA idB L qep B_cap T Kc _ _
-            sC Q w isDel pq' i pk T? lct honestC ci rfl hbnd hextra) ?_
-        unfold semRecvSameBranch
-        dsimp only [honestC]
-        by_cases hrej : ((sC.base.chains Q).getD ci ⟨none, 0, 0, []⟩).rejects i = true
-        · simp only [hrej, ↓reduceIte, map_pure]; rfl
-        · simp only [hrej, Bool.false_eq_true, ↓reduceIte]
-          rcases (sC.base.honest.find? fun wc =>
-            wc.1 == w && CryptoGames.Party.senderOf wc.2.1.1 == Q.other) with _ | wc <;> rfl
-
 omit [SampleableType Pt] in
 theorem simFig8OracleSan_deliver_eq (idA idB : IdentityKey) (qep B_cap T Kc Bsk : ℕ)
     (Q : Party) (w : Bytes) (s_raw : (simFullT ℓ Pt).denote) :
@@ -1004,7 +843,5 @@ def simFig8RecvSameSpec {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType P
   heval _ sC Q w isDel pq' i pk T? lct honestC ci hbnd hextra :=
     recvSameBranchAtomicC_eval idA idB q qep (2 ^ 32 + q + 2) (50000 * q) (25001 * q + 25000) .v0 _
       sC Q w isDel pq' i pk T? lct honestC ci rfl hbnd hextra
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvSame

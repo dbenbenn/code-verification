@@ -10,6 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.UA.BI.RAB.Defs
+public import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge -- proof-setup: allow-public-import
 
 /-!
 # Parameter-Override Invariance of Explanations and Collisions
@@ -19,7 +20,7 @@ unchanged when `interp` is replaced by `interpOfParams interp P`, because both p
 `ExternInterpretation` only through fields preserved by `interpOfParams`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

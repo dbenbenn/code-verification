@@ -12,7 +12,7 @@ module
 public import Computational.Specifications.Pqxdh.Security.Auth.Headline
 public import Computational.Proofs.ReductionDsl.StepSimTwoStage -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.AtomicLift -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyShCrEval -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyShCrEval
 public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKArms -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKSimBase -- proof-setup: allow-public-import
@@ -59,10 +59,6 @@ open Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKS
   (shcrAuth1KeyKindProg_twoStageForgetSim)
 
 namespace Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindShcrEq
-
-theorem shcrOldAtomicProg_def_eq (S : Setup) (b : QueryBudget) :
-    shcrOldAtomicProg S b = liftAuth2Stage tlAuthPrim S (shcrAuth1KeyDslProg S b) :=
-  rfl
 
 /-- Reference `KemShCrAdv` induced by `shcrOldAtomicProg S b`. -/
 @[expose] def shcrOldAtomicAdv (S : Setup) (b : QueryBudget)
@@ -184,43 +180,6 @@ theorem kemShCrExp_auth_eq_of_twoStageForgetSim
       let ct' ← eval2Sim (ss, ct)
       return (decide (Prim.kemDecaps sk ct' = some ss) && decide (ct' ≠ ct ∨ pk' ≠ pk) &&
               decide (ct'.length = kyberCtLen ∧ pk'.length = kyberPkLen)))
-
-theorem kemShCr_auth_eq_of_twoStageForgetSim
-    (Prim : Primitives) (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forgetπ : (R_new.shcr b).π.denote → (shcrOldAtomicProg S b).π.denote}
-    {forgetσ : (R_new.shcr b).σ.denote → (shcrOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.shcr b).σ.denote → Prop}
-    {InvPause : (Fin m → Nat) → (R_new.shcr b).π.denote → (R_new.shcr b).σ.denote → Prop}
-    (hSim : ∀ pksk : ((.prod (PB 1568) (PB 3168)) : Ty pqAtomicSig).denote,
-      TwoStageForgetSim (R_new.shcr b) (shcrOldAtomicProg S b)
-        forgetπ forgetσ P B pksk Inv InvPause)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    KemShCr Prim (R_new.eval.shcr b A) = KemShCr Prim (shcrOldAtomicAdv S b A) := by
-  unfold KemShCr
-  rw [kemShCrExp_auth_eq_of_twoStageForgetSim Prim S b R_new hSim A hA]
-
-theorem shcr_le_of_twoStageForgetSim
-    (Prim : Primitives) (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forgetπ : (R_new.shcr b).π.denote → (shcrOldAtomicProg S b).π.denote}
-    {forgetσ : (R_new.shcr b).σ.denote → (shcrOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.shcr b).σ.denote → Prop}
-    {InvPause : (Fin m → Nat) → (R_new.shcr b).π.denote → (R_new.shcr b).σ.denote → Prop}
-    (hSim : ∀ pksk : ((.prod (PB 1568) (PB 3168)) : Ty pqAtomicSig).denote,
-      TwoStageForgetSim (R_new.shcr b) (shcrOldAtomicProg S b)
-        forgetπ forgetσ P B pksk Inv InvPause)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    KemShCr Prim (shcrReductionAuth1Key S b A) ≤ KemShCr Prim (R_new.eval.shcr b A) := by
-  rw [kemShCr_auth_eq_of_twoStageForgetSim Prim S b R_new hSim A hA,
-    shcrOldAtomicAdv_kemShCr_eq Prim S b A]
-
-theorem pqxdhAuth1KeyKind_shcr_eq (S : Setup) (b : QueryBudget) :
-    (pqxdhAuth1KeyKindCostedSims S).shcr b = shcrAuth1KeyKindProg S b := rfl
 
 theorem kemShCrExp_pqxdhAuth1KeyKind_eq
     (Prim : Primitives) (S : Setup) (b : QueryBudget)

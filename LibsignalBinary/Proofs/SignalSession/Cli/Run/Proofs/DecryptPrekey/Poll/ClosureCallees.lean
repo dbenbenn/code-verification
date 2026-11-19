@@ -9,27 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.DefsP
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropSessionStructure3
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.DefsP
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropSessionStructure3 -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.Defs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Steps
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StoresAt
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Steps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StoresAt -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3Ext
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3Ext
 import LibsignalBinary.Proofs.E2E.Pqxdh.TopLevel.SessionRecvPrekeyClosureCommon
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureDefs
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.TrapBridge
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkCli
 
 /-!
-# Pure and Crypto Callee Discharges for `cliDpPollName`
+# Pure and Stack-Frame Callee Helpers for `cliDpPollName`
 
-Discharges the pure, allocator, clone, drop, Bob-session-init, stack-frame arithmetic, and
-filesystem invariant obligations on `tripleRatchetProgAtExt img.base (cliExterns W)` from
-`Obj.Loads libsignalSessionImage img` and `RunHooks img E2E.HooksE.A0 (cliExterns W)`.
+Provides `cliExterns_blackBox`, stack-frame arithmetic bounds, and `subroutine_ok_of_sepWPp_steps`
+for `cliDpPollName` proofs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,40 +58,6 @@ attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_add_neg96_eq_hsp_592
 
 /-! ## 2. `AllocContracts`, `ChainClone3`, `SenderChainClone3`, & `DropSessionStructure3` from `RunHooks` -/
-
-theorem cliAllocContracts {img : Obj.Image} {W : CliHooks}
-    (hh : RunHooks img E2E.HooksE.A0 (cliExterns W)) :
-    AllocContracts img.base E2E.HooksE.A0 (cliExterns W) :=
-  hh.allocContracts
-
-theorem cliAllocContractsX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hh : RunHooksExt img A ext) :
-    CryptoVerification.LibsignalTripleRatchet.AllocContractsX img A ext :=
-  hh.alloc
-
-theorem cliChainClone3_ok {img : Obj.Image} {W : CliHooks}
-    (hh : RunHooks img E2E.HooksE.A0 (cliExterns W)) :
-    ChainClone3OkExt img.base E2E.HooksE.A0 (cliExterns W) :=
-  chainClone3_ok_ext hh.allocContracts
-
-theorem cliSenderChainClone3_ok {img : Obj.Image} {W : CliHooks}
-    (hh : RunHooks img E2E.HooksE.A0 (cliExterns W)) :
-    SenderChainClone3OkExt img.base E2E.HooksE.A0 (cliExterns W) :=
-  senderChainClone3_ok_ext hh.allocContracts
-
-theorem cliDropSessionStructure3_ok {img : Obj.Image} {W : CliHooks}
-    (hh : RunHooks img E2E.HooksE.A0 (cliExterns W)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base (cliExterns W))
-      ((tripleRatchetProgAtExt img.base (cliExterns W)).fnAddr
-        CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees.dropSessionStructure3Name)
-      (CryptoVerification.LibsignalTripleRatchet.FromRecordCallees.dropSessionStructureLocal2Spec
-        E2E.HooksE.A0) :=
-  drop_session_structure3_ok_ext hh.allocContracts
-
-theorem cliBase_aligned {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img) :
-    (img.base &&& 0xfff#64) = 0#64 :=
-  base_aligned himg
 
 theorem cliExterns_blackBox (W : CliHooks) :
     Rust.withPanics (cliExterns W) "subtle::black_box::<u8>" =
@@ -154,78 +121,6 @@ theorem stageP1CallStack_le_subStack {A : RustAlloc} (b : BitVec 64)
   Nat.le_trans (Nat.le_max_left _ _) (stageP1UntrustedCallStack_le_subStack b F0 Scope peer B)
 
 /-! ## 4. Filesystem Invariant (`FsAt` & `TraceFsSound`) Helpers -/
-
-theorem cliFsAt_of_files_eq {img : Obj.Image} {W : CliHooks} {envOk : FsFiles → Prop} {Q : Prop}
-    {F0 : FsFiles} {s : State}
-    (hh : RunHooks img E2E.HooksE.A0 (cliExterns W))
-    (hQ : Q) (henv : envOk F0) (hf : s.fs.files = F0) :
-    FsAt envOk Q (tripleRatchetProgAtExt img.base (cliExterns W)) s :=
-  .inr ⟨hQ, hh.fs, hf ▸ henv⟩
-
-theorem cliFiles_eq_of_trace_eq {img : Obj.Image} {W : CliHooks} {s0 sf : State}
-    (hh : RunHooks img E2E.HooksE.A0 (cliExterns W))
-    (hst : Steps (tripleRatchetProgAtExt img.base (cliExterns W)) s0 sf)
-    (htr : sf.trace = s0.trace) :
-    sf.fs.files = s0.fs.files :=
-  hh.fs.files_eq hst (evs := []) (by rw [htr, List.append_nil]) NoFsEv.nil
-
-theorem cliSlotTraceFT_of_trace_eq {img : Obj.Image} {W : CliHooks} {s0 sf : State}
-    (hh : RunHooks img E2E.HooksE.A0 (cliExterns W))
-    (hst : Steps (tripleRatchetProgAtExt img.base (cliExterns W)) s0 sf)
-    (htr : sf.trace = s0.trace) :
-    slotTraceFT s0.fs s0.trace sf.fs sf.trace :=
-  ⟨htr ▸ List.prefix_refl s0.trace,
-   cliFiles_eq_of_trace_eq hh hst htr,
-   congrArg (ProcessOutcome.traceStreamBytes .stdout) htr⟩
-
-theorem cliFsAt_of_files_eq_ext {img : Obj.Image} {ext : String → Option (State → State)}
-    {envOk : FsFiles → Prop} {Q : Prop} {F0 : FsFiles} {s : State}
-    (hfs : TraceFsSound (tripleRatchetProgAtExt img.base ext))
-    (hQ : Q) (henv : envOk F0) (hf : s.fs.files = F0) :
-    FsAt envOk Q (tripleRatchetProgAtExt img.base ext) s :=
-  .inr ⟨hQ, hfs, hf ▸ henv⟩
-
-theorem cliFiles_eq_of_trace_eq_ext {img : Obj.Image} {ext : String → Option (State → State)}
-    {s0 sf : State}
-    (hfs : TraceFsSound (tripleRatchetProgAtExt img.base ext))
-    (hst : Steps (tripleRatchetProgAtExt img.base ext) s0 sf)
-    (htr : sf.trace = s0.trace) :
-    sf.fs.files = s0.fs.files :=
-  hfs.files_eq hst (evs := []) (by rw [htr, List.append_nil]) NoFsEv.nil
-
-theorem cliSlotTraceFT_of_trace_eq_ext {img : Obj.Image} {ext : String → Option (State → State)}
-    {s0 sf : State}
-    (hfs : TraceFsSound (tripleRatchetProgAtExt img.base ext))
-    (hst : Steps (tripleRatchetProgAtExt img.base ext) s0 sf)
-    (htr : sf.trace = s0.trace) :
-    slotTraceFT s0.fs s0.trace sf.fs sf.trace :=
-  ⟨htr ▸ List.prefix_refl s0.trace,
-   cliFiles_eq_of_trace_eq_ext hfs hst htr,
-   congrArg (ProcessOutcome.traceStreamBytes .stdout) htr⟩
-
-theorem cliFsAt_of_runHooksExt {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {envOk : FsFiles → Prop} {Q : Prop}
-    {F0 : FsFiles} {s : State}
-    (hh : RunHooksExt img A ext)
-    (hQ : Q) (henv : envOk F0) (hf : s.fs.files = F0) :
-    FsAt envOk Q (tripleRatchetProgAtExt img.base ext) s :=
-  cliFsAt_of_files_eq_ext hh.fs hQ henv hf
-
-theorem cliFiles_eq_of_runHooksExt {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {s0 sf : State}
-    (hh : RunHooksExt img A ext)
-    (hst : Steps (tripleRatchetProgAtExt img.base ext) s0 sf)
-    (htr : sf.trace = s0.trace) :
-    sf.fs.files = s0.fs.files :=
-  cliFiles_eq_of_trace_eq_ext hh.fs hst htr
-
-theorem cliSlotTraceFT_of_runHooksExt {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {s0 sf : State}
-    (hh : RunHooksExt img A ext)
-    (hst : Steps (tripleRatchetProgAtExt img.base ext) s0 sf)
-    (htr : sf.trace = s0.trace) :
-    slotTraceFT s0.fs s0.trace sf.fs sf.trace :=
-  cliSlotTraceFT_of_trace_eq_ext hh.fs hst htr
 
 /-- `subroutine_ok` from `SepWPp` at entry, additionally exposing `Steps prog s0 sf` to the
 return and panic postcondition obligations (used to discharge `TraceFsSound.files_eq`). -/

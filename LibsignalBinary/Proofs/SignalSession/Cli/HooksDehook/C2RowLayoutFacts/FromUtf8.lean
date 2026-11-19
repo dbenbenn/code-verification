@@ -13,6 +13,10 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8Ghost
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts -- proof-setup: allow-public-import
 import ProofLib.ProgramReflection
 meta import ProofLib.ProgramReflection
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Generic & Cutover-2 (`C2`) `Placeable`, `GhostRowSpecOk`, `RoDataAt`, & Entry-Guard Glue for `core::str::converts::from_utf8` (`C2RowLayoutFacts.FromUtf8`)
@@ -30,7 +34,7 @@ literals:
    from 4-byte alignment, 64-bit no-wrap, and `ADRP`/`ADR` range without unfolding `fromUtf8Block.code`
    at consumer call sites. When `tbl` lies within `±1 MiB` of `fnBase + 24`, `Placeable` holds
    simultaneously for **every** linker relaxation predicate `relax1 : Nat → Bool` (including the
-   default `fun _ => false` matching the unrelaxed `ADRP + ADD` pair in C2 ELF `50066cbd`).
+   default `fun _ => false` matching the unrelaxed `ADRP + ADD` pair in the stock ELF).
 2. **Concrete C2 `Placeable` & polymorphic-`[LibsignalPlacement]` `GhostRowSpecOk` instances
    (`c2_fromUtf8Block_placeable`, `c2_fromUtf8Block_placeable_unrelaxed`,
    `c2_fromUtf8Ghost_rowSpecOk`, `c2_fromUtf8MplGhost_rowSpecOk`,
@@ -70,7 +74,8 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8GhostReplays
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics (F3CodeInv)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts
   (C2ExternTableFacts C2RoSliceFacts c2CorePlacedData1 f3CodeInv_roDataAt_fromUtf8Table
-   f3Lib2EntryGuard_of_startupLr f3Lib2_dehookedSym_in_keepLib2Text f3StartupLrVal keepLib2Text)
+   f3Lib2EntryGuard_of_startupLr f3Lib2_dehookedSym_in_keepLib2Text f3StartupLrVal
+   isLinkedPanicAddr isLinkedPanicAddr_false_of_mid keepLib2Text)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen
   (c2FromUtf8Addr c2FromUtf8TableAddr c2Lib2DehookedSyms c2Lib2TextHi c2Lib2TextLo)
 
@@ -243,12 +248,6 @@ theorem fromUtf8Block_placeable_of_check_allRelax {fnBase tbl : BitVec 64}
   simp only [Bool.and_eq_true, Bool.or_eq_true, Bool.not_true, Bool.false_or] at h ⊢
   exact ⟨h.1, Or.inr h.2⟩
 
-/-- Unrelaxed (`relax1 = fun _ => false`) specialization requiring only `±4 GiB` `ADRP` range. -/
-theorem fromUtf8Block_placeable_unrelaxed_of_check {fnBase tbl : BitVec 64}
-    (h : checkFromUtf8Placeable fnBase tbl false = true) :
-    fromUtf8Block.Placeable (fromUtf8Placement fnBase tbl) :=
-  fromUtf8Block_placeable_of_check (relax1 := fun _ => false) h
-
 /-- `MultiPlacedLib.resolve`-indexed bridge: reduces `fromUtf8Placement (lib.resolve mpl sym) tbl relax1`
     to `checkFromUtf8Placeable fnBase tbl true = true` along `lib.resolve mpl sym = fnBase`. -/
 theorem fromUtf8Block_placeable_of_resolve_eq
@@ -261,23 +260,11 @@ theorem fromUtf8Block_placeable_of_resolve_eq
   rw [hRes]
   exact fromUtf8Block_placeable_of_check_allRelax h relax1
 
-/-- Direct wrapper around engine `CodeBlock.checkPlaceable` for `fromUtf8Placement`. -/
-theorem fromUtf8Block_placeable_of_checkPlaceable {fnBase tbl : BitVec 64}
-    {relax1 : Nat → Bool}
-    (h : fromUtf8Block.checkPlaceable (fromUtf8Placement fnBase tbl relax1) = true) :
-    fromUtf8Block.Placeable (fromUtf8Placement fnBase tbl relax1) :=
-  CodeBlock.placeable_of_checkPlaceable h
-
 /-! ## 3. Concrete Cutover-2 (`C2`) `Placeable` & `GhostRowSpecOk` Discharges -/
 
 theorem c2_checkFromUtf8Placeable_ok :
     checkFromUtf8Placeable c2FromUtf8Addr c2FromUtf8TableAddr true = true := by
   decide +kernel
-
-/-- Concrete C2 `Placeable` at `(c2FromUtf8Addr, c2FromUtf8TableAddr)` for any `relax1`. -/
-theorem c2_fromUtf8Block_placeable_at_c2Addr {relax1 : Nat → Bool} :
-    fromUtf8Block.Placeable (fromUtf8Placement c2FromUtf8Addr c2FromUtf8TableAddr relax1) :=
-  fromUtf8Block_placeable_of_check_allRelax c2_checkFromUtf8Placeable_ok relax1
 
 /-- **Primary C2 `Placeable` discharge (`GK §19(d)` item 1):** for `mpl` tied to
     `libsignalSessionLib.LinkedAt cliElfBytes mpl` resolving `lsFromUtf8Sym` to `c2FromUtf8Addr`
@@ -301,40 +288,6 @@ theorem c2_fromUtf8Block_placeable_unrelaxed
     (hRes : libsignalSessionLib.resolve mpl lsFromUtf8Sym = c2FromUtf8Addr) :
     fromUtf8Block.Placeable (fromUtf8MplPlacement mpl c2FromUtf8TableAddr) :=
   c2_fromUtf8Block_placeable hLs hRes
-
-/-- `FromUtf8RowSpec` at the C2 placement under `LinkedAt cliElfBytes mpl` + `hRes`. -/
-theorem c2_fromUtf8Ghost_fromUtf8RowSpec
-    {mpl : Obj.MultiPlacement} {relax1 : Nat → Bool}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hRes : libsignalSessionLib.resolve mpl lsFromUtf8Sym = c2FromUtf8Addr) :
-    FromUtf8RowSpec (fromUtf8Ghost (fromUtf8MplPlacement mpl c2FromUtf8TableAddr relax1)) :=
-  fromUtf8Ghost_fromUtf8RowSpec (c2_fromUtf8Block_placeable hLs hRes)
-
-/-- Polymorphic-`[LibsignalPlacement]` `GhostRowSpecOk` for `fromUtf8Ghost` at C2. -/
-theorem c2_fromUtf8Ghost_rowSpecOk [LibsignalPlacement]
-    {mpl : Obj.MultiPlacement} {relax1 : Nat → Bool}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hRes : libsignalSessionLib.resolve mpl lsFromUtf8Sym = c2FromUtf8Addr) :
-    GhostRowSpecOk lsFromUtf8Sym
-      (fromUtf8Ghost (fromUtf8MplPlacement mpl c2FromUtf8TableAddr relax1)) :=
-  fromUtf8Ghost_rowSpecOk (c2_fromUtf8Block_placeable hLs hRes)
-
-/-- Polymorphic-`[LibsignalPlacement]` `GhostRowSpecOk` for `fromUtf8MplGhost` at C2. -/
-theorem c2_fromUtf8MplGhost_rowSpecOk [LibsignalPlacement]
-    {mpl mmpl : Obj.MultiPlacement} {relax1 : Nat → Bool}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hRes : libsignalSessionLib.resolve mpl lsFromUtf8Sym = c2FromUtf8Addr) :
-    GhostRowSpecOk lsFromUtf8Sym (fromUtf8MplGhost mpl mmpl c2FromUtf8TableAddr relax1) :=
-  fromUtf8MplGhost_rowSpecOk mpl mmpl c2FromUtf8TableAddr relax1
-    (c2_fromUtf8Block_placeable hLs hRes)
-
-/-- Default-`relax1` (`fun _ => false`) spelling of `c2_fromUtf8MplGhost_rowSpecOk`. -/
-theorem c2_fromUtf8MplGhost_rowSpecOk_unrelaxed [LibsignalPlacement]
-    {mpl mmpl : Obj.MultiPlacement}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hRes : libsignalSessionLib.resolve mpl lsFromUtf8Sym = c2FromUtf8Addr) :
-    GhostRowSpecOk lsFromUtf8Sym (fromUtf8MplGhost mpl mmpl c2FromUtf8TableAddr) :=
-  c2_fromUtf8MplGhost_rowSpecOk hLs hRes
 
 /-! ## 4. C2 `.rodata` (`UTF8_CHAR_WIDTH`) & `.text.lib2` Hull / Entry-Guard Bridges -/
 
@@ -406,6 +359,25 @@ theorem keepR_fromUtf8Mpl_sub_keepLib2Text {mpl : Obj.MultiPlacement}
   dsimp only [keepR_fromUtf8Mpl] at h
   rw [hRes] at h
   exact keepFromUtf8Block_c2_sub_keepLib2Text h
+
+theorem keepR_fromUtf8Mpl_noPanic {mpl : Obj.MultiPlacement}
+    (hRes : libsignalSessionLib.resolve mpl lsFromUtf8Sym = c2FromUtf8Addr)
+    (pc : BitVec 64) (h : keepR_fromUtf8Mpl mpl pc = true) :
+    isLinkedPanicAddr pc = false := by
+  dsimp only [keepR_fromUtf8Mpl] at h
+  rw [hRes, keepFromUtf8Block_iff] at h
+  have hlo : 0x47ac2c ≤ c2FromUtf8Addr.toNat := by decide
+  have hhi : c2FromUtf8Addr.toNat + fromUtf8Block.code.length ≤ 0x4cb070 := by
+    rw [fromUtf8Block_code_length]; decide
+  generalize hd : pc - c2FromUtf8Addr = d at h
+  have hlen_eq :
+      LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8LrTrap.fromUtf8ByteLen =
+        fromUtf8Block.code.length := by
+    rfl_kernel
+  have hpc_eq : pc = c2FromUtf8Addr + d := by subst hd; bv_omega
+  have htoNat : pc.toNat = c2FromUtf8Addr.toNat + d.toNat := by
+    rw [hpc_eq, BitVec.toNat_add, Nat.mod_eq_of_lt (by omega)]
+  exact isLinkedPanicAddr_false_of_mid (by omega) (by omega)
 
 /-- `fromUtf8EntryGuard mpl s0` from `LinkedAt cliElfBytes mpl` + `C2ExternTableFacts` + `hRes` +
     startup `lr`. -/

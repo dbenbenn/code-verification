@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.E2E.HooksE.Common
-public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.DefsBudget
+public import LibsignalBinary.Proofs.E2E.HooksE.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `E2E.HooksE` Shared Contracts
@@ -20,7 +21,7 @@ public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.DefsBudget
 `E2E.HooksE.Common`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,11 +46,11 @@ export LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.DefsBudget
   (rustAllocNWSpec rustAllocNoOomNWSpec hookOk_rustAllocSpec_of_NW hookSat_rustAllocSpec_of_NW)
 
 /-- `bcmp(a = x0, b = x1, n = x2) -> w0` contract with `sf.vregs = s0.vregs` and `VmPreserved`. -/
-def bcmpVregsSpec : Spec BcmpCall :=
+@[expose] def bcmpVregsSpec : Spec BcmpCall :=
   withVmPreserved CryptoVerification.E2E.HooksE.bcmpVregsSpec
 
 /-- `bcmp(a = x0, b = x1, n = x2) -> w0` contract without `vregs` preservation, with `VmPreserved`. -/
-def e2eBcmpSpec : Spec BcmpCall :=
+@[expose] def e2eBcmpSpec : Spec BcmpCall :=
   withVmPreserved CryptoVerification.E2E.HooksE.e2eBcmpSpec
 
 theorem hookOk_bcmpSpec_of_vregs {h : State → State}
@@ -67,11 +68,11 @@ theorem hookOk_bcmpSpec_of_vregs {h : State → State}
   · exact Or.inr hrest
 
 /-- `hashmap_random_keys` contract with `VmPreserved` (`0` allocations). -/
-def randomKeysSpec : Spec Unit :=
+@[expose] def randomKeysSpec : Spec Unit :=
   withVmPreserved CryptoVerification.E2E.HooksE.randomKeysSpec
 
 /-- `hashmap_random_keys` contract preserving `tpidrEl0`, wrapped with `VmPreserved`. -/
-def randomKeysTpidrSpec : Spec Unit :=
+@[expose] def randomKeysTpidrSpec : Spec Unit :=
   withVmPreserved CryptoVerification.E2E.HooksE.randomKeysTpidrSpec
 
 theorem hookOk_randomKeysSpec_of_tpidr {h : State → State}

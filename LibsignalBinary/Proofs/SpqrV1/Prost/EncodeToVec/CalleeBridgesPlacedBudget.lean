@@ -9,22 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ChainEncodedLenBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.EncodedLenCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EpochEncodedLenBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4Budget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ChainEncodedLenBudget
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.EncodedLenCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EpochEncodedLenBudget
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4Budget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `PqRatchetState::encode_to_vec` (Block `426`): Budget-Threaded Placed Callee Bridges
@@ -34,7 +35,7 @@ Cross-block `[LibsignalPlacement]` transfer lemmas (`withStepInv` and `withStepI
 bridges into Block `426`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -125,45 +126,7 @@ theorem etv_subroutine_ok_placed_of_lscl [LibsignalPlacement] {α : Type}
   subroutine_ok_withStepInv_lscl hcl0
     (ls_subroutine_ok_of_block hcallee (by decide) hj hj_unmut)
 
-/-- Transfer a plain block `j` `subroutine_ok` into `withStepInvVm s0 spec` on `Block 426`. -/
-theorem etv_subroutine_ok_vm_placed_of_plain [LibsignalPlacement] {α : Type}
-    {calleeProg : Program} {j : Nat} {H : LibsignalHooks}
-    [hcallee_prog : IsLsBlockProg calleeProg j H]
-    {spec : Spec α} {s0 : State}
-    (hcl0 : LibsignalCodeLoaded lsmpl s0.mem)
-    (hcallee : subroutine_ok calleeProg (lsmpl.base j) spec)
-    (hj : j < 619 := by decide)
-    (hj_unmut : (j ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok ((blkPC_426).rebase (blkPl_426).base H) (lsmpl.base j)
-      (withStepInvVm s0 spec) :=
-  subroutine_ok_withStepInvVm_lscl hcl0
-    (ls_subroutine_ok_of_block (subroutine_ok_withLsCodeLoaded_of_plain hcallee)
-      (by decide) hj hj_unmut)
-
-/-- Transfer a `withLsCodeLoaded lsmpl spec` block `j` `subroutine_ok` into `withStepInvVm s0 spec`
-on `Block 426`. -/
-theorem etv_subroutine_ok_vm_placed_of_lscl [LibsignalPlacement] {α : Type}
-    {calleeProg : Program} {j : Nat} {H : LibsignalHooks}
-    [hcallee_prog : IsLsBlockProg calleeProg j H]
-    {spec : Spec α} {s0 : State}
-    (hcl0 : LibsignalCodeLoaded lsmpl s0.mem)
-    (hcallee : subroutine_ok calleeProg (lsmpl.base j) (withLsCodeLoaded lsmpl spec))
-    (hj : j < 619 := by decide)
-    (hj_unmut : (j ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok ((blkPC_426).rebase (blkPl_426).base H) (lsmpl.base j)
-      (withStepInvVm s0 spec) :=
-  subroutine_ok_withStepInvVm_lscl hcl0
-    (ls_subroutine_ok_of_block hcallee (by decide) hj hj_unmut)
-
 /-! ## 2. Placed `encoded_len` Callee Bridges (`VmPreserved`) -/
-
-theorem etv_chainEncodedLen_placed_ok_hooks [LibsignalPlacement] (A : RustAlloc)
-    (H : String → Option (State → State)) (s0 : State)
-    (hcl0 : LibsignalCodeLoaded lsmpl s0.mem) :
-    subroutine_ok ((blkPC_426).rebase (blkPl_426).base H)
-      (lsmpl.base 406)
-      (withStepInv s0 (chainEncodedLenPinnedSpec A)) :=
-  etv_subroutine_ok_placed_of_lscl hcl0 (chainEncodedLen_local2_pinned_placed_ok_hooks A H)
 
 theorem etv_chainEncodedLen_placed_ok [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) (s0 : State)
@@ -172,16 +135,6 @@ theorem etv_chainEncodedLen_placed_ok [LibsignalPlacement] (A : RustAlloc)
       (lsmpl.base 406)
       (withStepInv s0 (chainEncodedLenPinnedSpec A)) :=
   etv_subroutine_ok_placed_of_lscl hcl0 (chainEncodedLen_local2_pinned_placed_ok_ext A ext)
-
-theorem etv_v1StateEncodedLen_placed_ok_hooks [LibsignalPlacement] (A : RustAlloc)
-    (H : String → Option (State → State)) (s0 : State)
-    (hcl0 : LibsignalCodeLoaded lsmpl s0.mem)
-    (hv1 : subroutine_ok ((blkPC_405).rebase (blkPl_405).base H) (blkPl_405).base
-      (withLsCodeLoaded lsmpl (v1StateEncodedLenRoPinnedSpec A (lsρ v1StateJtSymLocal2)))) :
-    subroutine_ok ((blkPC_426).rebase (blkPl_426).base H)
-      (lsmpl.base 405)
-      (withStepInv s0 (v1StateEncodedLenRoPinnedSpec A (lsρ v1StateJtSymLocal2))) :=
-  etv_subroutine_ok_placed_of_lscl hcl0 hv1
 
 theorem etv_v1StateEncodedLen_placed_ok [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) (s0 : State)
@@ -294,17 +247,6 @@ theorem etv_shim_placed_ok [LibsignalPlacement] {resStack : Nat}
   · exact (not_satisfies_false_sepConj hex).elim
   · exact (not_satisfies_false_sepConj hoom).elim
 
-theorem etv_shim_placed_ok_of_vm [LibsignalPlacement] {resStack : Nat}
-    {H : String → Option (State → State)}
-    (hshim_sat : HookSat H spqrRustNoAllocShimSym rustAllocShimVmSpec)
-    (s0 : State) :
-    subroutine_ok ((blkPC_426).rebase (blkPl_426).base H)
-      ((blkPl_426).ρ spqrRustNoAllocShimSym)
-      (withStepInv s0 (shimStackSpecOf resStack)) := by
-  rw [ls_blockPlacement_ρ]
-  exact subroutine_ok_withStepInv s0
-    (subroutine_ok_shimStackSpecOf_of_rustAllocShimVm resStack (ls_hook_ok_of_mem hshim_sat))
-
 theorem stackAt_callee_eq_allocHook_placed {resStack : Nat}
     (hlow : allocHookStack ≤ encodeToVecCalleeStackOf resStack)
     (hhigh : encodeToVecCalleeStackOf resStack < 2 ^ 64)
@@ -330,21 +272,6 @@ theorem etv_rustAlloc_placed_ok [LibsignalPlacement] {resStack : Nat}
     (subroutine_ok_rustAllocStackSpecOf_of_budget hlow (Nat.le_of_lt hhigh)
       (ls_hook_ok_of_mem halloc_sat))
 
-theorem etv_rustAlloc_placed_ok_of_noOom [LibsignalPlacement] {resStack : Nat}
-    (hlow : allocHookStack ≤ encodeToVecCalleeStackOf resStack)
-    (hhigh : encodeToVecCalleeStackOf resStack < 2 ^ 64)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (halloc_sat : HookSat H spqrRustAllocSym (rustCliAllocNoOomSpec M A lim false))
-    (s0 : State) :
-    subroutine_ok ((blkPC_426).rebase (blkPl_426).base H)
-      ((blkPl_426).ρ spqrRustAllocSym)
-      (withStepInv s0 (rustAllocStackSpecOf resStack A lim)) := by
-  rw [ls_blockPlacement_ρ]
-  exact subroutine_ok_withStepInv s0
-    (subroutine_ok_rustAllocStackSpecOf_of_noOom hlow (Nat.le_of_lt hhigh)
-      (ls_hook_ok_of_mem halloc_sat))
-
 theorem etv_memcpy_placed_ok [LibsignalPlacement]
     {H : String → Option (State → State)}
     (hmc_sat : HookSat H lsMemcpySym sessionMemcpyRegionBudgetSpec) :
@@ -353,15 +280,6 @@ theorem etv_memcpy_placed_ok [LibsignalPlacement]
       etvMemcpyRegionSpec := by
   rw [ls_blockPlacement_ρ]
   exact ls_hook_ok_of_mem hmc_sat
-
-theorem etv_memcpy_placed_ok_of_allocVm [LibsignalPlacement]
-    {H : String → Option (State → State)}
-    (hmc_sat : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    subroutine_ok ((blkPC_426).rebase (blkPl_426).base H)
-      ((blkPl_426).ρ "memcpy")
-      etvMemcpyRegionSpec := by
-  rw [ls_blockPlacement_ρ]
-  exact subroutine_ok_sessionMemcpyRegionBudget_of_allocMemcpyVm (ls_hook_ok_of_mem hmc_sat)
 
 /-! ## 4. Placed `encode_varint [local#4]` (`Block 292`) & Leaf `encoded_len` Bridges -/
 

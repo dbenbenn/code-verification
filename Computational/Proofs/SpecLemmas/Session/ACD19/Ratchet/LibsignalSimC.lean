@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimShallow
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimShallow -- proof-setup: allow-public-import
 public import Computational.Proofs.CryptoGames.SM.GameProofDefs
 
 /-!
@@ -24,7 +24,7 @@ by tracking post-corruption Fig. 8 states and pre-corruption snapshot seeds (`DE
 evicted salt mismatches (`DEV-LS11`, `DEV-AEAD3`, `DEV-LS31`), and rejecting SPQR receive panics.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -40,9 +40,9 @@ structure Kept (Pt : Type) where
   full : Option (Fig8St Pt)
   rs : ℕ → Option (FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))
 
-def Kept.unknown {Pt : Type} : Kept Pt := ⟨none, fun _ => none⟩
+@[expose] def Kept.unknown {Pt : Type} : Kept Pt := ⟨none, fun _ => none⟩
 
-def Kept.ofSt {Pt : Type} (st : Fig8St Pt) : Kept Pt := ⟨some st, st.vR⟩
+@[expose] def Kept.ofSt {Pt : Type} (st : Fig8St Pt) : Kept Pt := ⟨some st, st.vR⟩
 
 /-- State of `libsignalToModularSchemeSim`: base simulator state plus tracked Fig. 8 states, sender
 sessions, and corruption snapshots (`DEV-LS37`). -/
@@ -57,7 +57,7 @@ structure Hook (Pt : Type) (ℓ : ℕ) (M : Type → Type) where
   lift : {α : Type} → Fig8Comp Pt ℓ α → M α
   probe : Party → Fig8C Pt → M Unit
 
-def idHook {Pt : Type} {ℓ : ℕ} : Hook Pt ℓ (Fig8Comp Pt ℓ) := ⟨fun x => x, fun _ _ => pure ()⟩
+@[expose] def idHook {Pt : Type} {ℓ : ℕ} : Hook Pt ℓ (Fig8Comp Pt ℓ) := ⟨fun x => x, fun _ _ => pure ()⟩
 
 variable {PQ PQC Pt : Type} [Inhabited PQ] [DecidableEq Pt] [Zero Pt] [SampleableType PQC] {ℓ : ℕ}
 
@@ -72,7 +72,7 @@ variable (P : Params PQ PQC) (encT : Pt → PublicKey) (decT : PublicKey → Opt
 /-! ## Tracked Fig. 8 state and seed prediction -/
 
 /-- Advance `Kept` across a party send, dropping `full` when a new sending epoch starts. -/
-def Kept.send (k : Kept Pt) : Kept Pt :=
+@[expose] def Kept.send (k : Kept Pt) : Kept Pt :=
   match k.full with
   | none => k
   | some st =>
@@ -80,7 +80,7 @@ def Kept.send (k : Kept Pt) : Kept Pt :=
     else { k with full := some (fig.send st (⟨0, [], effectiveHkdfSalt32 none, none⟩, default) 0).1 }
 
 /-- Advance `Kept` after Fig. 8 accepts `c`. -/
-def Kept.recv (c : Fig8C Pt) (k : Kept Pt) : Kept Pt :=
+@[expose] def Kept.recv (c : Fig8C Pt) (k : Kept Pt) : Kept Pt :=
   match k.full with
   | some st =>
     match fig.receive st c with
@@ -91,28 +91,28 @@ def Kept.recv (c : Fig8C Pt) (k : Kept Pt) : Kept Pt :=
     { k with rs := Function.update k.rs c.1.1 v' }
 
 /-- Predict Fig. 8's `receive` of `c` from `Kept`, returning `none` when undetermined. -/
-def Kept.eval (c : Fig8C Pt) (k : Kept Pt) : Option (Option (ℕ × ℕ × (LibsignalMsgPublicPart × Plain ℓ))) :=
+@[expose] def Kept.eval (c : Fig8C Pt) (k : Kept Pt) : Option (Option (ℕ × ℕ × (LibsignalMsgPublicPart × Plain ℓ))) :=
   match k.full with
   | some st => some ((fig.receive st c).map (·.2))
   | none => (k.rs c.1.1).map fun v => (fs.receive v c.1 c.2).map fun x => (c.1.1, x.2.1, x.2.2)
 
 /-- Predict the receiver's `receive` of `c'` from the sender session recorded for `c`. -/
-def sentEval (sent : List (Fig8C Pt × FSAEAD.RatchetSenderState (BitVec 256))) (c c' : Fig8C Pt) :
+@[expose] def sentEval (sent : List (Fig8C Pt × FSAEAD.RatchetSenderState (BitVec 256))) (c c' : Fig8C Pt) :
     Option (Option (ℕ × ℕ × (LibsignalMsgPublicPart × Plain ℓ))) :=
   (sent.find? fun e => decide (e.1 = c)).map fun e =>
     (fs.receive ⟨e.2.chainKey, e.2.lastIndex, []⟩ c'.1 c'.2).map fun x => (c'.1.1, x.2.1, x.2.2)
 
-def predictReceive (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (Q : Party) (c c' : Fig8C Pt) :
+@[expose] def predictReceive (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (Q : Party) (c c' : Fig8C Pt) :
     Option (Option (ℕ × ℕ × (LibsignalMsgPublicPart × Plain ℓ))) :=
   match Kept.eval (fig := fig) (fs := fs) c' (sC.kept Q) with
   | some r => some r
   | none => sentEval (fs := fs) sC.sent c c'
 
-def chainKeyAfter (F : ShaCompress) : ℕ → BitVec 256 → BitVec 256
+@[expose] def chainKeyAfter (F : ShaCompress) : ℕ → BitVec 256 → BitVec 256
   | 0, k => k
   | n + 1, k => chainKeyAfter F n (bytesToKey32 (Ratchet.chainHmac F k Ratchet.chainKeySeed))
 
-def chainSeedAt (F : ShaCompress) (ck : LibsignalSession.ChainKey) (counter : BitVec 32) :
+@[expose] def chainSeedAt (F : ShaCompress) (ck : LibsignalSession.ChainKey) (counter : BitVec 32) :
     Option (List (BitVec 8)) :=
   if counter.toNat < ck.index.toNat then none
   else some (Ratchet.chainHmac F (chainKeyAfter F (counter.toNat - ck.index.toNat) ck.key)
@@ -120,7 +120,7 @@ def chainSeedAt (F : ShaCompress) (ck : LibsignalSession.ChainKey) (counter : Bi
 
 /-- Derive the message-key seed of wire `w` for receiver `Q` from corruption snapshots `snaps`
 (`DEV-LS37`). -/
-def snapshotMessageKeySeed {PQ PQC : Type} (P : Params PQ PQC) (snaps : List (Party × ℕ × GhostState PQ))
+@[expose] def snapshotMessageKeySeed {PQ PQC : Type} (P : Params PQ PQC) (snaps : List (Party × ℕ × GhostState PQ))
     (Q : Party) (t : ℕ) (w : List (BitVec 8)) : Option (List (BitVec 8)) :=
   match SignalMessage.tryFrom P.codec w with
   | .error _ => none
@@ -168,7 +168,7 @@ def snapshotMessageKeySeed {PQ PQC : Type} (P : Params PQ PQC) (snaps : List (Pa
         else none
     k1 <|> k3 <|> k2 <|> k4
 
-def decryptWithKnownSeed {PQ PQC : Type} (P : Params PQ PQC) (Q : Party) (w : List (BitVec 8))
+@[expose] def decryptWithKnownSeed {PQ PQC : Type} (P : Params PQ PQC) (Q : Party) (w : List (BitVec 8))
     (salt : HKDF.Salt) (seed : List (BitVec 8)) : Option (List (BitVec 8)) :=
   let idOf : Party → IdentityKey := fun R => if R == Party.A then P.idA else P.idB
   match SignalMessage.tryFrom P.codec w with
@@ -179,7 +179,7 @@ def decryptWithKnownSeed {PQ PQC : Type} (P : Params PQ PQC) (Q : Party) (w : Li
       none
     else aesCbcDecrypt P.C.D mk.1.1 mk.1.2 msg.ciphertext
 
-def kDecryptFig8 {PQ PQC : Type} (P : Params PQ PQC) (ℓ : ℕ) (Q : Party)
+@[expose] def kDecryptFig8 {PQ PQC : Type} (P : Params PQ PQC) (ℓ : ℕ) (Q : Party)
     (w : List (BitVec 8)) (c' : Fig8C Pt) (seed : List (BitVec 8)) :
     Option (ℕ × ℕ × (LibsignalMsgPublicPart × Plain ℓ)) :=
   match lPubOf P.codec c'.2.2, decryptWithKnownSeed P Q w (some c'.2.2.2) seed with
@@ -188,7 +188,7 @@ def kDecryptFig8 {PQ PQC : Type} (P : Params PQ PQC) (ℓ : ℕ) (Q : Party)
 
 /-- **DEV-LS37 (formalization): pre-corruption snapshot seed evaluation.** Extends `predictReceive`
 with message-key seed recovery from `sC.snaps`. -/
-def predictReceiveWithSnapshots {PQ PQC : Type} (P : Params PQ PQC) (sC : LibsignalToModularSchemeSimState PQ Pt ℓ)
+@[expose] def predictReceiveWithSnapshots {PQ PQC : Type} (P : Params PQ PQC) (sC : LibsignalToModularSchemeSimState PQ Pt ℓ)
     (Q : Party) (w : List (BitVec 8)) (c c' : Fig8C Pt) :
     Option (Option (ℕ × ℕ × (LibsignalMsgPublicPart × Plain ℓ))) :=
   (predictReceive (fig := fig) (fs := fs) sC Q c c').orElse fun _ =>
@@ -200,14 +200,14 @@ variable {M : Type → Type} [Monad M] (H : Hook Pt ℓ M)
 
 local notation "SimCM" => StateT (LibsignalToModularSchemeSimState PQ Pt ℓ) M
 
-def runOnBaseState {α : Type} (x : StateT (SimState PQ Pt ℓ) (Fig8Comp Pt ℓ) α) : SimCM α := fun sC => do
+@[expose] def runOnBaseState {α : Type} (x : StateT (SimState PQ Pt ℓ) (Fig8Comp Pt ℓ) α) : SimCM α := fun sC => do
   let (a, s') ← H.lift (x.run sC.base)
   return (a, { sC with base := s' })
 
-def liftC {α : Type} (x : Fig8Comp Pt ℓ α) : SimCM α := StateT.lift (H.lift x)
+@[expose] def liftC {α : Type} (x : Fig8Comp Pt ℓ α) : SimCM α := StateT.lift (H.lift x)
 
 /-- Simulated `transmit` and `chall` oracle, recording known sender sessions and updating `kept`. -/
-def simSendC (Q : Party) (m₀ : Plain ℓ) (chal : Option (Plain ℓ)) (r : Option PQC) :
+@[expose] def simSendC (Q : Party) (m₀ : Plain ℓ) (chal : Option (Plain ℓ)) (r : Option PQC) :
     SimCM (Option (List (BitVec 8))) := do
   let res ← runOnBaseState H (simSend (P := P) (qep := qep) Q m₀ chal r)
   match res with
@@ -224,7 +224,7 @@ def simSendC (Q : Party) (m₀ : Plain ℓ) (chal : Option (Plain ℓ)) (r : Opt
     set { sC with kept := Function.update sC.kept Q (Kept.send (fig := fig) (sC.kept Q)), sent }
     return some w
 
-def fwdAnswerC (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (ci? : Option ℕ) (T : PublicKey)
+@[expose] def fwdAnswerC (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (ci? : Option ℕ) (T : PublicKey)
     (pq' : PQ) (c' : Fig8C Pt) : SimCM (Option (RecvResult (Plain ℓ))) := do
   let res ← runOnBaseState H (fwd Q c')
   match res with
@@ -235,7 +235,7 @@ def fwdAnswerC (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (ci? : Option �
 
 /-- Resynchronize Fig. 8 via `deliver` of the honest record `c` when case-3a acceptance of `c'` is
 determined. -/
-def resyncC (Q : Party) (w : List (BitVec 8)) (ci? : Option ℕ) (T : PublicKey) (pq' : PQ)
+@[expose] def resyncC (Q : Party) (w : List (BitVec 8)) (ci? : Option ℕ) (T : PublicKey) (pq' : PQ)
     (c : Fig8C Pt) (r : Option (ℕ × ℕ × (LibsignalMsgPublicPart × Plain ℓ))) :
     SimCM (Option (RecvResult (Plain ℓ))) := do
   match r with
@@ -249,7 +249,7 @@ def resyncC (Q : Party) (w : List (BitVec 8)) (ci? : Option ℕ) (T : PublicKey)
     | _ => return some .rejected
 
 /-- Forward `c'`, resynchronizing or probing on salt-mismatched deliveries under `¬safe-inj`. -/
-def fwdC (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (ci? : Option ℕ) (T : PublicKey)
+@[expose] def fwdC (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (ci? : Option ℕ) (T : PublicKey)
     (pq' : PQ) (honestC : Option (Fig8C Pt)) (c' : Fig8C Pt) :
     SimCM (Option (RecvResult (Plain ℓ))) := do
   let sC ← get
@@ -266,7 +266,7 @@ def fwdC (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (ci? : Option ℕ) (T 
 
 /-- Forward an evicted honest wire with a mismatched salt as a new ratchet key, or probe under
 `¬safe-inj`. -/
-def fwdEvictC (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (T : PublicKey) (pq' : PQ)
+@[expose] def fwdEvictC (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (T : PublicKey) (pq' : PQ)
     (c' : Fig8C Pt) : SimCM (Option (RecvResult (Plain ℓ))) := do
   let sC ← get
   if isDel && !(sC.base.mir.safeInj 3) then
@@ -275,7 +275,7 @@ def fwdEvictC (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (T : PublicKey) (
   else fwdAnswerC (qep := qep) (fig := fig) (fs := fs) (H := H) Q w isDel none T pq' c'
 
 /-- Simulated `deliver` (`isDel = true`) and `inject` (`isDel = false`) oracle. -/
-def simRecvC (Q : Party) (w : List (BitVec 8)) (isDel : Bool) :
+@[expose] def simRecvC (Q : Party) (w : List (BitVec 8)) (isDel : Bool) :
     SimCM (Option (RecvResult (Plain ℓ))) := do
   let s := (← get).base
   if s.mir.win then return none
@@ -326,7 +326,7 @@ def simRecvC (Q : Party) (w : List (BitVec 8)) (isDel : Bool) :
               h.senderRatchetKey pq' honestC (mkC (s.mir.epoch Q + 1) (some T))
 
 /-- Simulated `corr` oracle, recording the party's Fig. 8 state in `kept` and snapshot in `snaps`. -/
-def simCorrC (Dh : DHFun (BitVec 256) Pt) (Q : Party) : SimCM (Option (GhostState PQ)) := do
+@[expose] def simCorrC (Dh : DHFun (BitVec 256) Pt) (Q : Party) : SimCM (Option (GhostState PQ)) := do
   let sC ← get
   let s := sC.base
   if s.mir.win || !(s.mir.corrAllowed Q) || inReceiveOnlyEpoch s.mir Q || !(noAliceCorrWhileAliceBelowEpoch10 s.mir Q) then return none
@@ -346,12 +346,12 @@ def simCorrC (Dh : DHFun (BitVec 256) Pt) (Q : Party) : SimCM (Option (GhostStat
                   snaps := (Q, s.mir.epoch Q, g) :: sC.snaps }
     return some g
 
-def guardC {α : Type} (x : SimCM (Option α)) : SimCM (Option α) := do
+@[expose] def guardC {α : Type} (x : SimCM (Option α)) : SimCM (Option α) := do
   if (← get).base.stopped then return none
   x
 
 /-- Query implementation for `libsignalToModularSchemeSim`. -/
-def simImplC (Dh : DHFun (BitVec 256) Pt) :
+@[expose] def simImplC (Dh : DHFun (BitVec 256) Pt) :
     QueryImpl (unifSpec + SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))) SimCM :=
   let c : QueryImpl unifSpec SimCM := fun n =>
     liftC H (query (spec := unifSpec + SM.spec (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
@@ -370,11 +370,11 @@ def simImplC (Dh : DHFun (BitVec 256) Pt) :
     fun Q => guardC (simCorrC (P := P) (encT := encT) (H := H) Dh Q)
   HAdd.hAdd c (HAdd.hAdd (HAdd.hAdd (HAdd.hAdd (HAdd.hAdd i₁ i₂) i₃) i₄) i₅)
 
-def initSimC (pqA pqB : PQ) : LibsignalToModularSchemeSimState PQ Pt ℓ :=
+@[expose] def initSimC (pqA pqB : PQ) : LibsignalToModularSchemeSimState PQ Pt ℓ :=
   { base := initSim pqA pqB, kept := fun _ => Kept.unknown, sent := [], snaps := [] }
 
 /-- Run adversary `A` against `simImplC` with hook `H`. -/
-def simRunCWith (Dh : DHFun (BitVec 256) Pt)
+@[expose] def simRunCWith (Dh : DHFun (BitVec 256) Pt)
     (A : SM.Adversary (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))) : M Bool := do
   let pqrKey ← H.lift (liftM ($ᵗ BitVec 256 : ProbComp (BitVec 256)) : Fig8Comp Pt ℓ (BitVec 256))
   (simulateQ (simImplC (P := P) (encT := encT) (decT := decT) (qep := qep) (fig := fig) (fs := fs)
@@ -386,7 +386,7 @@ end Impl
 /-! ## Simulator and hidden-salt probe game -/
 
 /-- The decision-C simulator `simRunCWith idHook` against `lFig8` with `maxSkip = 25000`. -/
-def runLibsignalToModularSchemeSim (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+@[expose] def runLibsignalToModularSchemeSim (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt)
     (qep : ℕ) (A : SM.Adversary (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))) :
     Fig8Comp Pt ℓ Bool :=
@@ -414,7 +414,7 @@ variable {PQ PQC Pt : Type} [Inhabited PQ] [DecidableEq Pt] [Zero Pt] [Sampleabl
 abbrev ProbeM (Pt : Type) (ℓ : ℕ) :=
   StateT (GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt) × Bool) ProbComp
 
-def fig8ImplH1
+@[expose] def fig8ImplH1
     (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
     (qepF : ℕ) :
     QueryImpl (unifSpec + SM.spec (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
@@ -424,7 +424,7 @@ def fig8ImplH1
     + oracleImpl fig (2 + 1) qepF Config.h1
 
 /-- Hook running Fig. 8 `H1` oracles and setting the probe flag when `fig.receive` accepts `c'`. -/
-def probeHook
+@[expose] def probeHook
     (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
     (qepF : ℕ) : Hook Pt ℓ (ProbeM Pt ℓ) where
   lift x := fun gh => do
@@ -434,7 +434,7 @@ def probeHook
 
 /-- Probe game running `simRunCWith probeHook` in Fig. 8's `H1` game and returning whether an
 undetermined salt-mismatched delivery would be accepted. -/
-def hiddenSaltGame (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def hiddenSaltGame (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ)
     (A : SM.Adversary (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))) : ProbComp Bool := do
@@ -448,7 +448,7 @@ def hiddenSaltGame (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
 
 /-- **DEV-LS36 (formalization): without SPQR salt binding the refinement has a hidden-salt term.**
 Probability that `hiddenSaltGame` sets its probe flag (`DEV-LS37`). -/
-noncomputable def hiddenSaltTerm (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] noncomputable def hiddenSaltTerm (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ)
     (A : SM.Adversary (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))) : ℝ≥0∞ :=

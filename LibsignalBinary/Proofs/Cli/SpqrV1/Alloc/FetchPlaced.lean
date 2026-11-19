@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard24
+meta import GeneratedLean.LibsignalSessionPlacedObjShard25
 
 /-!
 # Relocatable Per-Block Fetches for CLI SPQR V1 `RawVecInner` Helpers (Blocks `465`, `460`)
@@ -20,7 +22,7 @@ Generates per-block instruction decode and entry-address theorems under `[Libsig
 Block `465` (`finish_grow [local#8]`) and Block `460` (`do_reserve_and_handle [local#7]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

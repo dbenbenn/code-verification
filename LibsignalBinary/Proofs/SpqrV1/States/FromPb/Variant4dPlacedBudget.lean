@@ -9,19 +9,35 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DecoderFromPbClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4c0PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4cPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4dPlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DecoderFromPbClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4c0PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4cPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4dPlacedBudgetAux
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4
-import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4b
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4b -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4c
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4d
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4aPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4aPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4dPlaced
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Budget-Threaded Variant 4 (`EkSentCt1Received`) — Part D
@@ -30,7 +46,7 @@ Relocatable Block-`333` early `ptsNeeded ≠ 80` error path and `+2228` / `+2308
 continuations for `InnerState.ekSentCt1Received` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -1039,59 +1055,5 @@ theorem v4d_ekSent_2308_ok_some_to_ret_placed [LibsignalPlacement]
   v4d_ekSent_2308_ok_some_to_ret_of_placedHooks_placed hA.toPlacedBudget hdec st
     s0 s3 out pbA d0 d8 d16 d32 d24 d28 uc d hcl3 hfits
     hsp0_align hpc3 hrun3 hsp3 hx19_3 hx20_3 hx23_3 hx24_3 hx28_3 htr3
-
-theorem v4d_ekSent_2308_ok_some_to_ret_sepWPp_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    {Qp : State → SepProp → Prop}
-    (hA : FromPbAllocHooksPlacedBudget M A lim ext)
-    (hdec : DefsBudget.DecoderFromPbPlacedOkExt M A lim ext) (st : M.σ)
-    (s0 s3 : State) (out pbA d0 d8 d16 d32 : BitVec 64) (d24 d28 : BitVec 32)
-    (uc : EkSentCt1Received (spqrAuthApi F))
-    (d : PolynomialDecoder)
-    (hcl3 : LibsignalCodeLoaded lsmpl s3.mem)
-    (hfits : FitsEnv M lim st (FromPbDecAllocEnv (pbToProtoPolyDecoder d)))
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc3 : s3.pc = lsmpl.base 333 + 2308#64)
-    (hrun3 : s3.status = .Running)
-    (hsp3 : s3.sp = s0.sp - 2400#64)
-    (hx19_3 : s3.readReg64 .x19 = out)
-    (hx20_3 : s3.readReg64 .x20 = d16)
-    (hx23_3 : s3.readReg64 .x23 = d24.zeroExtend 64)
-    (hx24_3 : s3.readReg64 .x24 = d8)
-    (hx28_3 : s3.readReg64 .x28 = d0)
-    (htr3 : TraceCalleeSaved s3 s0) :
-    SepWPp (lsProg_333 (Rust.withPanics ext)) (s0.readReg64 .x30) s3
-      (ekSentCt1ReceivedResultAt A.repAlloc (F := F) ((s0.sp - 2400#64) + 1888#64) (.ok uc) ∗
-        memRegion (s0.sp - 2400#64) 224 ∗
-        memRegion ((s0.sp - 2400#64) + 236#64) 1652 ∗
-        (((s0.sp - 2400#64) + 224#64) ↦₆₄ d32) ∗
-        (((s0.sp - 2400#64) + 232#64) ↦₃₂ d28) ∗
-        memRegion ((s0.sp - 2400#64) + 1992#64) 312 ∗
-        v4b_optProtoPolyDecoderHeap A.repAlloc (some (pbToProtoPolyDecoder d)) d0 d8 d16 d24 d28 d32 ∗
-        stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        statesFromPbSavedCells s0 ∗
-        memRegion out chunkedStatesSize ∗
-        A.pool lim st s3 ∗
-        memRegion pbA optProtoInnerStateSize ∗
-        statesFromPbJumpTablePlacedAt)
-      (fun sf Pf =>
-        ∃ evs : List AllocEvent,
-          FromPbDecEnv (pbToProtoPolyDecoder d) evs ∧
-          (Pf ⊢
-            resultChunkedStatesAt A.repAlloc (F := F) out
-              (match decoderFromPbResult (pbToProtoPolyDecoder d) with
-               | .error _ => .error (.err .stateDecode)
-               | .ok dec => .ok (.ekSentCt1Received { uc := uc, receiving_ct2 := dec })) ∗
-            memRegion pbA optProtoInnerStateSize ∗
-            statesFromPbJumpTablePlacedAt ∗
-            A.pool lim (M.stepEvents evs st) sf ∗
-            stackAt s0.sp statesFromPbStack) ∧
-          sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace)
-      Qp :=
-  SepWPp.of_sepWP_ret
-    (v4d_ekSent_2308_ok_some_to_ret_of_placedHooks_placed hA hdec st
-      s0 s3 out pbA d0 d8 d16 d32 d24 d28 uc d hcl3 hfits
-      hsp0_align hpc3 hrun3 hsp3 hx19_3 hx20_3 hx23_3 hx24_3 hx28_3 htr3)
 
 end LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4dPlacedBudget

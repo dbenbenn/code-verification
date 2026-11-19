@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
+public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.ALaCarte.Basic
@@ -46,7 +46,7 @@ Establishes `TracefulLt` across all composed protocol transitions and proves
 timestamps strictly below `ts`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -66,7 +66,7 @@ open DY.Libsignal.PQXDH (PQXDHState PQXDHEvent KeyKind BundleHandles BobKeyHandl
 
 /-! ## `TracefulLt` combinators and primitive steps -/
 
-def TracefulLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat)
+@[expose] def TracefulLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat)
     {α : Type} (Q : α → Prop) (x : Traceful α) : Prop :=
   ∀ tr : ExecTrace, (x.run tr).2.val.length ≤ ts → TraceEntriesLt i S g ts tr →
     TraceEntriesLt i S g ts (x.run tr).2.val ∧ ∀ a, (x.run tr).1 = some a → Q a
@@ -402,7 +402,7 @@ theorem TracefulLt.logCEvent {i : ExternInterpretation} {S : OpaqueSymbolSemanti
 
 /-! ## Triple Ratchet helpers and transitions -/
 
-def TRSignalMsgStampsLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat)
+@[expose] def TRSignalMsgStampsLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat)
     (msg : TRSignalMsg) : Prop :=
   StampsLt i S g ts msg.wire ∧ StampsLt i S g ts msg.mac ∧
   StampsLt i S g ts msg.ratchetKey ∧ StampsLt i S g ts msg.ciphertext ∧
@@ -441,7 +441,7 @@ theorem TracefulLt.receiveSignalMsg {i : ExternInterpretation} {S : OpaqueSymbol
       TracefulLt.pure (stampsLt_parseTrSignalMsg ht hp)
   · exact TracefulLt.failure
 
-def ChainStampsLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat) (c : RecvChain) : Prop :=
+@[expose] def ChainStampsLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat) (c : RecvChain) : Prop :=
   StampsLt i S g ts c.ratchetKey ∧ StampsLt i S g ts c.chainKey
 
 theorem stampsLt_findRecvChain {i : ExternInterpretation} {S : OpaqueSymbolSemantics} {g : Ghost} {ts : Nat}
@@ -826,7 +826,7 @@ theorem stampsLt_bobAgreement {i : ExternInterpretation} {S : OpaqueSymbolSemant
       (stampsLt_agree hikA hspkSk) (stampsLt_agree hek hikB) (stampsLt_agree hek hspkSk)
       hdh4 (stampsLt_kemDecap hdec hct))
 
-def AliceHandshakeOk (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat)
+@[expose] def AliceHandshakeOk (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat)
     (o : AliceHandshakeOut) : Prop :=
   StampsLt i S g ts o.ikA ∧
   StampsLt i S g ts o.ikB ∧
@@ -898,7 +898,7 @@ theorem TracefulLt.aliceStart {i : ExternInterpretation} {S : OpaqueSymbolSemant
   rcases List.mem_singleton.mp hmem with rfl
   exact ⟨hspk, hck⟩
 
-def BobHandshakeOk (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat)
+@[expose] def BobHandshakeOk (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat)
     (o : BobHandshakeOut) : Prop :=
   StampsLt i S g ts o.ikA ∧
   StampsLt i S g ts o.ikB ∧

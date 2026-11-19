@@ -9,13 +9,41 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.TopDispatch
-public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.SendWhisperSlot
+import Symbolic.Proofs.Swarm.CREF.Cli.TopDispatch
+import Symbolic.Proofs.Swarm.CREF.Cli.Slots.SendWhisperSlot
 import Symbolic.Proofs.Swarm.CREF.Cli.DirStepAux
 import Symbolic.Proofs.Swarm.CREF.Cli.DirStepBridge
 import Symbolic.Proofs.Swarm.CREF.Cli.ModelRel
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.SendSlot
 import Symbolic.Proofs.Swarm.CREF.Prelude
+public import LibsignalBinary.Specifications.CryptoGames.Party
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionSM
+public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhCorrectModel
+public import LibsignalBinary.Specifications.SignalSession.PqDir
+public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CBadG2Pure
+import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecordsBridgePure
+import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SkippedKeyNoNewPure
+import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SkippedKeyRunInvPure
+import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SlotsZ6FramePure
+import Symbolic.Proofs.Swarm.CREF.Cli.World.InitPure
+import Symbolic.Proofs.Swarm.CREF.Cli.World.RelCliPure
+import Symbolic.Proofs.Swarm.CREF.Cli.World.TopPure
+import Symbolic.Proofs.Swarm.CREF.Cli.World.TurnPure
+import Symbolic.Proofs.Swarm.CREF.Initiate.TransferPure
+import Symbolic.Proofs.Swarm.CREF.SendWire.PendingPure
+import Symbolic.Proofs.Swarm.CREF.SendWire.PendingPureA
+import Symbolic.Proofs.Swarm.CREF.SendWire.RecvSimV3SendPure
+import Symbolic.Proofs.Swarm.CREF.SendWire.SlotPure
+import Symbolic.Proofs.Swarm.CREF.SendWire.SlotPureA
+import Symbolic.Proofs.Swarm.CREF.SendWire.SlotPureB
+import Symbolic.Proofs.Swarm.CREF.SendWire.SlotPureC
+import Symbolic.Proofs.Swarm.CREF.SendWire.WhisperPure
+import Symbolic.Proofs.Swarm.CREF.SendWire.WhisperPureA
+import Symbolic.Proofs.Swarm.CREF.TR.PureSessionBounds
+import Symbolic.Proofs.Swarm.CREF.TR.SendRetCoinsCliPure
+import Symbolic.Proofs.Swarm.CREF.TR.SendRetCoinsCliPureA
+import Symbolic.Proofs.Swarm.CREF.TR.SendRetCoinsCliPureB
 
 /-!
 # Session-Encoding and `opkUsed` Helpers for `pqSendModel`
@@ -24,7 +52,7 @@ Extracts post-state `oneTime` preservation and session encoding from an accepted
 step, and shows that `CliTurn.opkUsed` depends on `PqBobInv` only through `oneTime`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

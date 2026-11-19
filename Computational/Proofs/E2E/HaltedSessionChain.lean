@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.HaltedSessionCore
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Epoch0Events
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.HiddenSaltBound
-public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge
+public import Computational.Proofs.E2E.HaltedSessionCore -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Epoch0Events
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.HiddenSaltBound -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge -- proof-setup: allow-public-import
 import Computational.Proofs.HeadlineV1.SendShortC
 import Computational.Proofs.SignalWireRoundTrip
 import ProofLib.Lemmas
@@ -25,7 +25,7 @@ Proves the parametric tracker-halted epoch-0 bound (`eps0_ideal_genHalted_le`,
 and `Refinement.KemFailTrackState` via the tracker isomorphism `kemBridgeToSimSession`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -699,31 +699,6 @@ theorem evalDist_mixEps0GenHalted_le_of_rtHyp {α : Type}
     eps0_ideal_genHalted_le initTrRest ht (paramsIdsWithSpqr Z spqr (ida o) (idb o)) ℓ Dh encPt
       encT decT hX hdec hinj hdum (hrt o) qep q (A o) (hq o)
 
-omit [DecidableEq Pt] [SampleableType Pt] in
-theorem evalDist_mixEps0GenHalted_le_v1 {α : Type}
-    (initTrRest : (BitVec 256 × BitVec 256 × BitVec 256) → Tr)
-    (ht : HaltedTracker Tr (BitVec 512) Bytes)
-    (Z : Crypto) (K : MlKem) {ℓ : ℕ} (hℓ : ℓ < 10 ^ 6)
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
-    (decT : PublicKey → Option Pt) (hX : X25519RealizesDh Z Dh encPt encT)
-    (hdec : ∀ T, decT (encT T) = some T) (hinj : Function.Injective encT)
-    (hdum : ∀ T, encT T ≠ dummyKey) (lam : Pt) (qep q : ℕ)
-    (oa : ProbComp α) (ida idb : α → IdentityKey)
-    (A : α → Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
-    (hq : ∀ o, MakesAtMostQueries (A o) q) :
-    𝒟[oa >>= fun o => eps0EventGenHalted (fun k => initTrRest k.2) ht
-        (paramsV1 Z K (ida o) (idb o)) ℓ encPt lam
-        (ratchetKeyAdmissible protoSignalCodec decT encT) qep (A o)] {true} ≤
-      (rootKdfAsPrg Z.F (encPt lam)).prgAdvantage
-          (prgAvg oa fun o => epoch0DistinguisherGenHalted initTrRest ht
-            (paramsV1 Z K (ida o) (idb o)) ℓ
-            (ratchetKeyAdmissible protoSignalCodec decT encT) qep (A o))
-        + q * eps0IdealUnit Z.F :=
-  evalDist_mixEps0GenHalted_le_of_rtHyp initTrRest ht Z (spqrV1SessionUniformCoins Z.F K) Dh encPt
-    encT decT hX hdec hinj hdum lam qep q oa ida idb
-    (fun o => ⟨signalRoundTripShort_proto, lengthsOk_paramsIdsWithSpqr_v1 Z K (ida o) (idb o) ℓ hℓ,
-      signalEncodeFits32_proto⟩) A hq
-
 end Epoch0GenHalted
 
 /-! ## `KemFailSessionTrack` specializations and tracker isomorphism -/
@@ -731,7 +706,7 @@ end Epoch0GenHalted
 section KemFailTrackSpecializations
 
 /-- `HaltedTracker` instance for `KemFailTrackBridge.KemFailSessionTrack F C`. -/
-def kemBridgeTracker (F : ShaCompress) (K : MlKem) {C : Type} [DecidableEq C] :
+@[expose] def kemBridgeTracker (F : ShaCompress) (K : MlKem) {C : Type} [DecidableEq C] :
     HaltedTracker (KemFailSessionTrack F C) (BitVec 512) C :=
   mkStepDeliverTracker (stepKemFailSend F K) (fun tr' => tr'.cand.isSome)
     (fun tr tr' => { tr with cand := tr'.cand }) (stepKemFailDeliver F K)
@@ -778,7 +753,7 @@ abbrev pqrOfSessionU (k : KeyU) : BitVec 256 := k.2.2.2
 abbrev pqrOfEpoch0Keys := libsignalSessionPqrOf
 
 /-- Online `KemFailSessionTrack`-halted uniform-start PRG distinguisher on `(rk0, ck0)`. -/
-def uniformStartDistinguisherTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
+@[expose] def uniformStartDistinguisherTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
     (cfg : ConfigR (GhostState Bytes) (Plain ℓ) Bytes) (qep : ℕ)
     (A : Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) :
     PRGScheme.PRGAdversary (RootKey × BitVec 256) := fun rc => do
@@ -789,7 +764,7 @@ def uniformStartDistinguisherTrackHalted (P : Params Bytes (BitVec 512)) (K : Ml
   return (b == b' || s.win)
 
 /-- Online `KemFailSessionTrack`-halted `eps0Event` in `libsignalSessionScheme`. -/
-def eps0EventTrackHalted {Pt : Type} (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
+@[expose] def eps0EventTrackHalted {Pt : Type} (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
     (encPt : Pt → Bytes) (lam : Pt) (onImage : Bytes → Bool) (qep : ℕ)
     (A : LibAdv Bytes (BitVec 512) ℓ) : ProbComp Bool := do
   let b ← ($ᵗ Bool : ProbComp Bool)
@@ -799,7 +774,7 @@ def eps0EventTrackHalted {Pt : Type} (P : Params Bytes (BitVec 512)) (K : MlKem)
   return (decide (0 < s.maxAcc .A 0) || s.win) && !(s.corrs.contains (.B, 0))
 
 /-- Online `KemFailSessionTrack`-halted `epoch0Distinguisher` on `(rk0, ck0)`. -/
-def epoch0DistinguisherTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
+@[expose] def epoch0DistinguisherTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
     (onImage : Bytes → Bool) (qep : ℕ)
     (A : Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) :
     PRGScheme.PRGAdversary (RootKey × BitVec 256) := fun rc => do
@@ -847,28 +822,6 @@ theorem epoch0DistinguisherTrackHalted_eq_genHalted
     libsignalSessionPqrOf
   simp only [runRTrackHalted_eq_genHalted]
 
-theorem runRTrackHalted_withNoCorrB0_eq {Key St Msg RCoins C : Type}
-    [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType RCoins]
-    (pqrOf : Key → BitVec 256) (F : ShaCompress) (K : MlKem)
-    (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C)
-    (hsendOK : cfg.sendOK = noBobSendInEpoch0 := by rfl)
-    (b : Bool) (A : Adversary St Msg (BitVec 512) C) :
-    runRTrackHalted pqrOf F K sm Δ qep (withNoCorrB0 cfg) b A =
-      runRTrackHalted pqrOf F K sm Δ qep cfg b A.refuseCorrB0 := by
-  rw [runRTrackHalted_eq_genHalted, runRTrackHalted_eq_genHalted]
-  exact runRGenHalted_withNoCorrB0_eq _ (kemBridgeTracker F K) sm Δ qep cfg hsendOK b A
-
-theorem gameRTrackHalted_withNoCorrB0_eq {Key St Msg RCoins C : Type}
-    [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType RCoins]
-    (pqrOf : Key → BitVec 256) (F : ShaCompress) (K : MlKem)
-    (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C)
-    (hsendOK : cfg.sendOK = noBobSendInEpoch0 := by rfl)
-    (A : Adversary St Msg (BitVec 512) C) :
-    gameRTrackHalted pqrOf F K sm Δ qep (withNoCorrB0 cfg) A =
-      gameRTrackHalted pqrOf F K sm Δ qep cfg A.refuseCorrB0 := by
-  rw [gameRTrackHalted_eq_genHalted, gameRTrackHalted_eq_genHalted]
-  exact gameRGenHalted_withNoCorrB0_eq _ (kemBridgeTracker F K) sm Δ qep cfg hsendOK A
-
 /-- Tracker-halted U-mixture hop (`paramsIdsWithSpqr`). -/
 theorem boolBias_mixUTrackHaltedWithSpqr_le {Pt α : Type}
     (Z : Crypto) (K : MlKem) (spqr : Spqr Bytes (BitVec 512)) {ℓ : ℕ}
@@ -893,57 +846,6 @@ theorem boolBias_mixUTrackHaltedWithSpqr_le {Pt α : Type}
   exact boolBias_mixUGenHaltedWithSpqr_le
     (fun rest => (initKemFailTrack Z.F rest.2.2, ([] : List (Bytes × Party))))
     (kemBridgeTracker Z.F K) Z spqr encPt lam encT decT qep oa ida idb A
-
-theorem boolBias_mixUTrackHalted_le_v1 {Pt α : Type}
-    (Z : Crypto) (K : MlKem) {ℓ : ℕ}
-    (encPt : Pt → Bytes) (lam : Pt) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
-    (qep : ℕ) (oa : ProbComp α) (ida idb : α → IdentityKey)
-    (A : α → Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) :
-    (𝒟[oa >>= fun o =>
-        Prod.fst <$> gameRTrackHalted pqrOfSessionU Z.F K
-          (sessionSchemeU (paramsV1 Z K (ida o) (idb o)) ℓ) 3 qep
-          (configRefuseEarlyBobCorr decT encT) (A o)]).boolBias ≤
-      (𝒟[oa >>= fun o =>
-          Prod.fst <$> gameRTrackHalted libsignalSessionPqrOf Z.F K
-            (libsignalSessionScheme (paramsV1 Z K (ida o) (idb o)) ℓ encPt lam) 3 qep
-            (configR1OnCurve (ratchetKeyAdmissible protoSignalCodec decT encT))
-            (A o).refuseCorrB0]).boolBias
-        + 2 * (rootKdfAsPrg Z.F (encPt lam)).prgAdvantage
-          (prgAvg oa fun o => uniformStartDistinguisherTrackHalted
-            (paramsV1 Z K (ida o) (idb o)) K ℓ
-            (configR1OnCurve (ratchetKeyAdmissible protoSignalCodec decT encT)) qep
-            (A o).refuseCorrB0) :=
-  boolBias_mixUTrackHaltedWithSpqr_le Z K (spqrV1SessionUniformCoins Z.F K) encPt lam encT decT
-    qep oa ida idb A
-
-theorem evalDist_eps0EventTrackHalted_eq_prgReal {Pt : Type}
-    (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
-    (encPt : Pt → Bytes) (lam : Pt) (onImage : Bytes → Bool) (qep : ℕ)
-    (A : LibAdv Bytes (BitVec 512) ℓ) :
-    𝒟[eps0EventTrackHalted P K ℓ encPt lam onImage qep A] =
-      𝒟[(rootKdfAsPrg P.C.F (encPt lam)).prgRealExperiment
-        (epoch0DistinguisherTrackHalted P K ℓ onImage qep A)] := by
-  rw [eps0EventTrackHalted_eq_genHalted, epoch0DistinguisherTrackHalted_eq_genHalted]
-  exact evalDist_eps0EventGenHalted_eq_prgReal
-    (fun rest => (initKemFailTrack P.C.F rest.2.2, ([] : List (Bytes × Party))))
-    (kemBridgeTracker P.C.F K) P ℓ encPt lam onImage qep A
-
-theorem eps0_ideal_trackHalted_le {Pt : Type} [Zero Pt]
-    (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
-    (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
-    (hX : X25519RealizesDh P.C Dh encPt encT) (hdec : ∀ T, decT (encT T) = some T)
-    (hinj : Function.Injective encT) (hdum : ∀ T, encT T ≠ dummyKey)
-    (hrt : RtHyp P ℓ) (qep q : ℕ)
-    (A : LibAdv Bytes (BitVec 512) ℓ) (hq : MakesAtMostQueries A q) :
-    𝒟[PRGScheme.prgIdealExperiment
-        (epoch0DistinguisherTrackHalted P K ℓ
-          (ratchetKeyAdmissible P.codec decT encT) qep A)] {true} ≤
-      q * eps0IdealUnit P.C.F := by
-  rw [epoch0DistinguisherTrackHalted_eq_genHalted]
-  exact eps0_ideal_genHalted_le
-    (fun rest => (initKemFailTrack P.C.F rest.2.2, ([] : List (Bytes × Party))))
-    (kemBridgeTracker P.C.F K) P ℓ Dh encPt encT decT hX hdec hinj hdum hrt qep q A hq
 
 /-- Tracker-halted mixture epoch-0 bound (`paramsIdsWithSpqr`, given `RtHyp`). -/
 theorem evalDist_mixEps0TrackHalted_le_of_rtHyp {Pt α : Type} [Zero Pt]
@@ -998,13 +900,7 @@ theorem evalDist_mixEps0TrackHalted_le_v1 {Pt α : Type} [Zero Pt]
 abbrev SimKemSessionTrack (F : ShaCompress) (C : Type) : Type :=
   CryptoGames.LibsignalSM.Proofs.Refinement.KemFailTrackState F × List (C × Party)
 
-def kemSimTracker (F : ShaCompress) (K : MlKem) {C : Type} [DecidableEq C] :
-    HaltedTracker (SimKemSessionTrack F C) (BitVec 512) C :=
-  mkStepDeliverTracker (CryptoGames.LibsignalSM.Proofs.Refinement.stepKemFailSend F K)
-    (fun tr' => tr'.cand.isSome) (fun tr tr' => { tr with cand := tr'.cand })
-    (CryptoGames.LibsignalSM.Proofs.Refinement.stepKemFailDeliver F K)
-
-def kemBridgeToSim {F : ShaCompress} (tr : KemFailTrackState F) :
+@[expose] def kemBridgeToSim {F : ShaCompress} (tr : KemFailTrackState F) :
     CryptoGames.LibsignalSM.Proofs.Refinement.KemFailTrackState F :=
   ⟨tr.e, tr.auth, tr.c, tr.st, tr.sentB, tr.sendCtr, tr.cand⟩
 
@@ -1052,59 +948,6 @@ theorem kemBridgeToSim_stepDeliver (F : ShaCompress) (K : MlKem)
       by_cases hm : m = noneMsg (e + 1#64)
       · simp only [hm, ↓reduceIte]; cases c <;> rfl
       · simp only [hm, ↓reduceIte]
-
-theorem kemBridgeToSimSession_hom (F : ShaCompress) (K : MlKem) {C : Type} [DecidableEq C] :
-    HaltedTrackerHom (kemBridgeTracker F K (C := C)) (kemSimTracker F K (C := C))
-      kemBridgeToSimSession := by
-  refine ⟨fun ⟨tr, hw⟩ P coins => ?_, fun ⟨tr, hw⟩ P coins w => ?_, fun ⟨tr, hw⟩ Q w => ?_⟩
-  · unfold kemBridgeTracker kemSimTracker mkStepDeliverTracker kemBridgeToSimSession
-    dsimp only []
-    have hcand : (CryptoGames.LibsignalSM.Proofs.Refinement.stepKemFailSend F K
-        (kemBridgeToSim tr) P coins).cand = (stepKemFailSend F K tr P coins).cand := by
-      rw [← kemBridgeToSim_stepSend]; rfl
-    simp only [hcand]
-    by_cases hb : (stepKemFailSend F K tr P coins).cand.isSome = true <;>
-      simp [hb, kemBridgeToSim]
-  · unfold kemBridgeTracker kemSimTracker mkStepDeliverTracker kemBridgeToSimSession
-    dsimp only []
-    rw [kemBridgeToSim_stepSend]
-  · unfold kemBridgeTracker kemSimTracker mkStepDeliverTracker kemBridgeToSimSession
-    dsimp only []
-    cases hw.reverse.findIdx? (fun wp => wp.1 == w && wp.2 == Q.other) with
-    | none => rfl
-    | some j => dsimp only []; rw [kemBridgeToSim_stepDeliver]
-
-/-- Exact equality between `uniformStartDistinguisherTrackHalted` (`KemFailTrackBridge`) and the
-`Refinement.KemFailTrackState` variant (`HaltedUniformEpoch0Prog`). -/
-theorem uniformStartDistinguisherTrackHalted_eq_sim
-    (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
-    (cfg : ConfigR (GhostState Bytes) (Plain ℓ) Bytes) (qep : ℕ)
-    (A : Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) :
-    uniformStartDistinguisherTrackHalted P K ℓ cfg qep A =
-      uniformStartDistinguisherGenHalted
-        (fun rest =>
-          (CryptoGames.LibsignalSM.Proofs.Refinement.initKemFailTrack P.C.F rest.2.2,
-            ([] : List (Bytes × Party))))
-        (kemSimTracker P.C.F K) P ℓ cfg qep A := by
-  rw [uniformStartDistinguisherTrackHalted_eq_genHalted]
-  exact uniformStartDistinguisherGenHalted_eq_of_hom (fun _ => rfl)
-    (kemBridgeToSimSession_hom P.C.F K) P ℓ cfg qep A
-
-/-- Exact equality between `epoch0DistinguisherTrackHalted` (`KemFailTrackBridge`) and the
-`Refinement.KemFailTrackState` variant (`HaltedEpoch0Prog`). -/
-theorem epoch0DistinguisherTrackHalted_eq_sim
-    (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
-    (onImage : Bytes → Bool) (qep : ℕ)
-    (A : Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) :
-    epoch0DistinguisherTrackHalted P K ℓ onImage qep A =
-      epoch0DistinguisherGenHalted
-        (fun rest =>
-          (CryptoGames.LibsignalSM.Proofs.Refinement.initKemFailTrack P.C.F rest.2.2,
-            ([] : List (Bytes × Party))))
-        (kemSimTracker P.C.F K) P ℓ onImage qep A := by
-  rw [epoch0DistinguisherTrackHalted_eq_genHalted]
-  exact epoch0DistinguisherGenHalted_eq_of_hom (fun _ => rfl)
-    (kemBridgeToSimSession_hom P.C.F K) P ℓ onImage qep A
 
 end KemFailTrackSpecializations
 

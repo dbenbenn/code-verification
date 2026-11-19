@@ -59,10 +59,6 @@ theorem syscall_standard_fcntl {s : State} (hx8 : (s.readReg64 Reg.x8 == 25#64) 
     Syscall.standard s = execFcntl s := by
   unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
 
-theorem syscall_standard_ioctl {s : State} (hx8 : (s.readReg64 Reg.x8 == 29#64) = true) :
-    Syscall.standard s = execIoctl s := by
-  unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
-
 theorem syscall_standard_openat {s : State} (hx8 : (s.readReg64 Reg.x8 == 56#64) = true) :
     Syscall.standard s = execOpenat s := by
   unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
@@ -71,32 +67,8 @@ theorem syscall_standard_close {s : State} (hx8 : (s.readReg64 Reg.x8 == 57#64) 
     Syscall.standard s = execClose s := by
   unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
 
-theorem syscall_standard_lseek {s : State} (hx8 : (s.readReg64 Reg.x8 == 62#64) = true) :
-    Syscall.standard s = execLseek s := by
-  unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
-
 theorem syscall_standard_read {s : State} (hx8 : (s.readReg64 Reg.x8 == 63#64) = true) :
     Syscall.standard s = execRead s := by
-  unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
-
-theorem syscall_standard_write {s : State} (hx8 : (s.readReg64 Reg.x8 == 64#64) = true) :
-    Syscall.standard s = execWrite s := by
-  unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
-
-theorem syscall_standard_readv {s : State} (hx8 : (s.readReg64 Reg.x8 == 65#64) = true) :
-    Syscall.standard s = execReadv s := by
-  unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
-
-theorem syscall_standard_writev {s : State} (hx8 : (s.readReg64 Reg.x8 == 66#64) = true) :
-    Syscall.standard s = execWritev s := by
-  unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
-
-theorem syscall_standard_pread64 {s : State} (hx8 : (s.readReg64 Reg.x8 == 67#64) = true) :
-    Syscall.standard s = execPread64 s := by
-  unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
-
-theorem syscall_standard_ppoll {s : State} (hx8 : (s.readReg64 Reg.x8 == 73#64) = true) :
-    Syscall.standard s = execPpoll s := by
   unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
 
 theorem syscall_standard_fstat {s : State} (hx8 : (s.readReg64 Reg.x8 == 80#64) = true) :
@@ -113,34 +85,6 @@ theorem syscall_standard_exitGroup {s : State} (hx8 : (s.readReg64 Reg.x8 == 94#
 
 theorem syscall_standard_setTidAddress {s : State} (hx8 : (s.readReg64 Reg.x8 == 96#64) = true) :
     Syscall.standard s = execSetTidAddress s := by
-  unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
-
-theorem syscall_standard_clockGettime {s : State} (hx8 : (s.readReg64 Reg.x8 == 113#64) = true) :
-    Syscall.standard s = execClockGettime s := by
-  unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
-
-theorem syscall_standard_schedGetaffinity {s : State} (hx8 : (s.readReg64 Reg.x8 == 123#64) = true) :
-    Syscall.standard s = execSchedGetaffinity s := by
-  unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
-
-theorem syscall_standard_sigaltstack {s : State} (hx8 : (s.readReg64 Reg.x8 == 132#64) = true) :
-    Syscall.standard s = execSigaltstack s := by
-  unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
-
-theorem syscall_standard_rtSigaction {s : State} (hx8 : (s.readReg64 Reg.x8 == 134#64) = true) :
-    Syscall.standard s = execRtSigaction s := by
-  unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
-
-theorem syscall_standard_rtSigprocmask {s : State} (hx8 : (s.readReg64 Reg.x8 == 135#64) = true) :
-    Syscall.standard s = execRtSigprocmask s := by
-  unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
-
-theorem syscall_standard_getpid {s : State} (hx8 : (s.readReg64 Reg.x8 == 172#64) = true) :
-    Syscall.standard s = execGetpid s := by
-  unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
-
-theorem syscall_standard_gettid {s : State} (hx8 : (s.readReg64 Reg.x8 == 178#64) = true) :
-    Syscall.standard s = execGetpid s := by
   unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
 
 theorem syscall_standard_brk {s : State} (hx8 : (s.readReg64 Reg.x8 == 214#64) = true) :
@@ -161,14 +105,6 @@ theorem syscall_standard_mmap {s : State} (hx8 : (s.readReg64 Reg.x8 == 222#64) 
 
 theorem syscall_standard_mprotect {s : State} (hx8 : (s.readReg64 Reg.x8 == 226#64) = true) :
     Syscall.standard s = execMprotect s := by
-  unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
-
-theorem syscall_standard_madvise {s : State} (hx8 : (s.readReg64 Reg.x8 == 233#64) = true) :
-    Syscall.standard s = execMadvise s := by
-  unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
-
-theorem syscall_standard_getrandom {s : State} (hx8 : (s.readReg64 Reg.x8 == 278#64) = true) :
-    Syscall.standard s = execGetrandom s := by
   unfold Syscall.standard Syscall.dispatch; rw [eq_of_beq hx8]; rfl
 
 private theorem findUnmappedAreaLoop_bound (m : Memory) (size : Nat) :
@@ -272,17 +208,6 @@ theorem heapIntervalsAgree_mapZero_of_bound {ivs : List (Nat × Nat)} {m : Memor
       unfold Memory.mapZero; dsimp only; rw [hdec]; rfl
     rw [perm_eq_of_cells_eq hcells]
 
-theorem heapIntervalsAgree_unmapWritable_of_bound {ivs : List (Nat × Nat)} {m : Memory}
-    (h : HeapIntervalsAgree ivs m) {base : BitVec 64} {len : Nat}
-    (hb : base.toNat + len ≤ 2 ^ 60) :
-    HeapIntervalsAgree ivs (m.unmapWritable base len) :=
-  heapIntervalsAgree_of_mapped_eq_above h fun a ha => by
-    have hdec : decide ((a - base).toNat < len) = false :=
-      decide_eq_false (not_sub_lt_of_above hb ha)
-    have hcells : (m.unmapWritable base len).cells a = m.cells a := by
-      unfold Memory.unmapWritable; dsimp only; rw [hdec]; rfl
-    rw [perm_eq_of_cells_eq hcells]
-
 theorem heapIntervalsAgree_unmapNonFrozen_of_bound {ivs : List (Nat × Nat)} {m : Memory}
     (h : HeapIntervalsAgree ivs m) {base : BitVec 64} {len : Nat}
     (hb : base.toNat + len ≤ 2 ^ 60) :
@@ -308,28 +233,6 @@ theorem heapIntervalsAgree_remapRw_of_bound {ivs : List (Nat × Nat)} {m : Memor
       · have h2 : ¬ ((a - newBase).toNat < newSize) := not_sub_lt_of_above hnew ha
         have h3 : ¬ ((a - oldBase).toNat < oldSize) := not_sub_lt_of_above hold ha
         simp only [Bool.eq_false_iff.mpr h1, Bool.false_eq_true, h2, h3, ↓reduceIte]
-    rw [perm_eq_of_cells_eq hcells]
-
-theorem heapIntervalsAgree_zeroNonFrozen_of_bound {ivs : List (Nat × Nat)} {m : Memory}
-    (h : HeapIntervalsAgree ivs m) {base : BitVec 64} {len : Nat}
-    (hb : base.toNat + len ≤ 2 ^ 60) :
-    HeapIntervalsAgree ivs (m.zeroNonFrozen base len) :=
-  heapIntervalsAgree_of_mapped_eq_above h fun a ha => by
-    have hdec : decide ((a - base).toNat < len) = false :=
-      decide_eq_false (not_sub_lt_of_above hb ha)
-    have hcells : (m.zeroNonFrozen base len).cells a = m.cells a := by
-      unfold Memory.zeroNonFrozen; dsimp only; rw [hdec]; rfl
-    rw [perm_eq_of_cells_eq hcells]
-
-theorem heapIntervalsAgree_madvFreeNonFrozen_of_bound {ivs : List (Nat × Nat)} {m : Memory}
-    (h : HeapIntervalsAgree ivs m) {base : BitVec 64} {len : Nat}
-    (hb : base.toNat + len ≤ 2 ^ 60) :
-    HeapIntervalsAgree ivs (m.madvFreeNonFrozen base len) :=
-  heapIntervalsAgree_of_mapped_eq_above h fun a ha => by
-    have hdec : decide ((a - base).toNat < len) = false :=
-      decide_eq_false (not_sub_lt_of_above hb ha)
-    have hcells : (m.madvFreeNonFrozen base len).cells a = m.cells a := by
-      unfold Memory.madvFreeNonFrozen; dsimp only; rw [hdec]; rfl
     rw [perm_eq_of_cells_eq hcells]
 
 private theorem user_va_limit_le_heap : USER_VA_LIMIT ≤ 2 ^ 60 := by decide
@@ -410,58 +313,57 @@ private theorem fastOpenatPure_agrees {ffs : FastFs} {sfs : FsState} (hfs : ffs.
     set hasCloexec := (flags &&& O_CLOEXEC_W32) != 0#32
     cases resolveCwdPath dfd rawPath with
     | trap msg => exact rfl
-    | errno err => exact rfl
+    | errno err =>
+      dsimp only
+      rw [fastAllocFd_eq hfs]
+      cases sfs.allocFd <;> exact rfl
     | ok segs =>
       dsimp only
-      rw [fastStrictAncestorWalkErrno?_eq hfs rawPath]
-      cases strictAncestorWalkErrno? sfs rawPath with
-      | some err => exact rfl
-      | none =>
+      rw [fastAllocFd_eq hfs]
+      cases sfs.allocFd with
+      | none => exact rfl
+      | some fd =>
         dsimp only
-        set isTrailDir := trailingDir rawPath
-        set isTrailNormSlash := trailingNormSlash rawPath
-        by_cases hct : (hasCreat && isTrailNormSlash) = true
-        · simp only [hct, ↓reduceIte, OpenVerdictAgrees]
-        · simp only [Bool.eq_false_iff.mpr hct, Bool.false_eq_true, ↓reduceIte]
-          by_cases hnm : (((splitSlash rawPath).filter (!·.isEmpty)).getLast?.any (·.length > NAME_MAX)) = true
-          · simp only [hnm, ↓reduceIte, OpenVerdictAgrees]
-          · simp only [Bool.eq_false_iff.mpr hnm, Bool.false_eq_true, ↓reduceIte]
-            rw [FastFs.getEntry_eq hfs segs, fastAllocFd_eq hfs]
-            cases sfs.getEntry segs with
-            | some e =>
-              cases e with
-              | dir =>
-                dsimp only
-                by_cases hd1 : (hasCreat && hasExcl && !isTrailNormSlash) = true
-                · simp only [hd1, ↓reduceIte, OpenVerdictAgrees]
-                · simp only [Bool.eq_false_iff.mpr hd1, Bool.false_eq_true, ↓reduceIte]
-                  by_cases hd2 : (acc != .rdonly || hasTrunc || hasCreat) = true
-                  · simp only [hd2, ↓reduceIte, OpenVerdictAgrees]
-                  · simp only [Bool.eq_false_iff.mpr hd2, Bool.false_eq_true, ↓reduceIte]
-                    cases sfs.allocFd with
-                    | none => exact rfl
-                    | some fd => exact ⟨rfl, FastFs.setFd_agrees hfs fd _, rfl⟩
-              | file oldBytes =>
-                dsimp only
-                by_cases hf2 : (isTrailDir || hasDir) = true
-                · simp only [hf2, ↓reduceIte, OpenVerdictAgrees]
-                · simp only [Bool.eq_false_iff.mpr hf2, Bool.false_eq_true, ↓reduceIte]
-                  by_cases hf3 : (hasCreat && hasExcl) = true
-                  · simp only [hf3, ↓reduceIte, OpenVerdictAgrees]
-                  · simp only [Bool.eq_false_iff.mpr hf3, Bool.false_eq_true, ↓reduceIte]
-                    cases sfs.allocFd with
-                    | none => exact rfl
-                    | some fd =>
-                      exact ⟨rfl, FastFs.setFd_agrees (FastFs.setEntry_agrees hfs segs _) fd _, rfl⟩
-            | none =>
-              dsimp only
-              by_cases hn1 : (!hasCreat) = true
-              · simp only [hn1, ↓reduceIte, OpenVerdictAgrees]
-              · simp only [Bool.eq_false_iff.mpr hn1, Bool.false_eq_true, ↓reduceIte]
-                cases sfs.allocFd with
-                | none => exact rfl
-                | some fd =>
+        rw [fastStrictAncestorWalkErrno?_eq hfs rawPath]
+        cases strictAncestorWalkErrno? sfs rawPath with
+        | some err => exact rfl
+        | none =>
+          dsimp only
+          set isTrailDir := trailingDir rawPath
+          set isTrailNormSlash := trailingNormSlash rawPath
+          by_cases hct : (hasCreat && isTrailNormSlash) = true
+          · simp only [hct, ↓reduceIte, OpenVerdictAgrees]
+          · simp only [Bool.eq_false_iff.mpr hct, Bool.false_eq_true, ↓reduceIte]
+            by_cases hnm : (((splitSlash rawPath).filter (!·.isEmpty)).getLast?.any (·.length > NAME_MAX)) = true
+            · simp only [hnm, ↓reduceIte, OpenVerdictAgrees]
+            · simp only [Bool.eq_false_iff.mpr hnm, Bool.false_eq_true, ↓reduceIte]
+              rw [FastFs.getEntry_eq hfs segs]
+              cases sfs.getEntry segs with
+              | some e =>
+                cases e with
+                | dir =>
                   dsimp only
+                  by_cases hd1 : (hasCreat && hasExcl && !isTrailNormSlash) = true
+                  · simp only [hd1, ↓reduceIte, OpenVerdictAgrees]
+                  · simp only [Bool.eq_false_iff.mpr hd1, Bool.false_eq_true, ↓reduceIte]
+                    by_cases hd2 : (acc != .rdonly || hasTrunc || hasCreat) = true
+                    · simp only [hd2, ↓reduceIte, OpenVerdictAgrees]
+                    · simp only [Bool.eq_false_iff.mpr hd2, Bool.false_eq_true, ↓reduceIte]
+                      exact ⟨rfl, FastFs.setFd_agrees hfs fd _, rfl⟩
+                | file oldBytes =>
+                  dsimp only
+                  by_cases hf2 : (isTrailDir || hasDir) = true
+                  · simp only [hf2, ↓reduceIte, OpenVerdictAgrees]
+                  · simp only [Bool.eq_false_iff.mpr hf2, Bool.false_eq_true, ↓reduceIte]
+                    by_cases hf3 : (hasCreat && hasExcl) = true
+                    · simp only [hf3, ↓reduceIte, OpenVerdictAgrees]
+                    · simp only [Bool.eq_false_iff.mpr hf3, Bool.false_eq_true, ↓reduceIte]
+                      exact ⟨rfl, FastFs.setFd_agrees (FastFs.setEntry_agrees hfs segs _) fd _, rfl⟩
+              | none =>
+                dsimp only
+                by_cases hn1 : (!hasCreat) = true
+                · simp only [hn1, ↓reduceIte, OpenVerdictAgrees]
+                · simp only [Bool.eq_false_iff.mpr hn1, Bool.false_eq_true, ↓reduceIte]
                   by_cases hmd : ((mode &&& O_CREAT_OWNER_RW_MASK) != O_CREAT_OWNER_RW_MASK) = true
                   · simp only [hmd, ↓reduceIte, OpenVerdictAgrees]
                   · simp only [Bool.eq_false_iff.mpr hmd, Bool.false_eq_true, ↓reduceIte]
@@ -522,8 +424,16 @@ theorem fastExecOpenat_sound {fs fs' : FastState} {s : State}
     cases hcs : readCString s.mem (s.readReg64 Reg.x1) with
     | trap _ => rw [hcs] at h; nomatch h
     | errno err =>
-      rw [hcs] at h; injection h with h; subst h
-      exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 (-err))
+      rw [hcs, fastAllocFd_eq hag.fs] at h
+      cases hal : s.fs.allocFd with
+      | none =>
+        rw [hal] at h; dsimp only at h ⊢
+        injection h with h; subst h
+        exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 (-EMFILE))
+      | some fd =>
+        rw [hal] at h; dsimp only at h ⊢
+        injection h with h; subst h
+        exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 (-err))
     | ok rawPath =>
       rw [hcs] at h
       exact fastApplyOpenVerdict_agrees hag (fastOpenatPure_agrees hag.fs _ _ _ _) h
@@ -597,8 +507,13 @@ theorem fastExecRead_sound {fs fs' : FastState} {s : State}
             exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 EFAULT_RET)
           · simp only [decide_eq_false h2, Bool.false_eq_true, ↓reduceIte] at h
             simp only [h2, ↓reduceIte]
-            injection h with h; subst h
-            exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 (-EISDIR))
+            by_cases hlfs : decide (desc.offset + count.toNat > MAX_LFS_FILESIZE) = true
+            · simp only [hlfs, ↓reduceIte] at h ⊢
+              injection h with h; subst h
+              exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 (-EINVAL))
+            · simp only [Bool.eq_false_iff.mpr hlfs, Bool.false_eq_true, ↓reduceIte] at h ⊢
+              injection h with h; subst h
+              exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 (-EISDIR))
       · simp only [Bool.eq_false_iff.mpr hdir, Bool.false_eq_true, ↓reduceIte] at h ⊢
         by_cases hk : (!(desc.kind == .localFile || desc.kind == .stdio)) = true
         · simp only [hk, ↓reduceIte] at h; nomatch h
@@ -671,7 +586,7 @@ theorem fastExecFstat_sound {fs fs' : FastState} {s : State}
       · rename_i hcw; simp only [hcw, Bool.false_eq_true, ↓reduceIte]
         injection h with h; subst h
         set statbuf := s.readReg64 Reg.x1
-        set bs := encodeLinuxStat ((s.fs.files desc.path).getD (.file []))
+        set bs := encodeLinuxStat (if desc.kind == .localDir then .dir else (s.fs.files desc.path).getD (.file []))
         have h1 := FastState.setMem_agrees hag (FastMem.writeBytes_agrees hag.mem statbuf bs)
           (HeapIntervalsAgree.of_perm_eq hag.heapIvs (perm_writeBytes_eq s.mem statbuf bs))
         exact FastState.advancePC_agrees (FastState.writeReg64_agrees h1 Reg.x0 0#64)
@@ -701,66 +616,76 @@ theorem fastExecBrk_sound {fs fs' : FastState} {s : State}
   · simp only [Bool.eq_false_iff.mpr hc, Bool.false_eq_true, ↓reduceIte] at h ⊢
     set oldPage := Arm64.pageAlignUp s.brk.toNat
     set newPage := Arm64.pageAlignUp addr.toNat
-    by_cases hle : newPage ≤ oldPage
-    · simp only [decide_eq_true hle, ↓reduceIte] at h
-      simp only [hle, ↓reduceIte]
-      rw [FastMem.allPerm_eq hag.mem, FastMem.countRw_eq hag.mem] at h
-      set shrinkBytes := oldPage - newPage
-      by_cases hm : (!s.mem.allPerm (·.mapped) (BitVec.ofNat 64 newPage) shrinkBytes) = true
-      · simp only [hm, ↓reduceIte] at h ⊢
-        injection h with h; subst h
-        exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 s.brk)
-      · simp only [Bool.eq_false_iff.mpr hm, Bool.false_eq_true, ↓reduceIte] at h ⊢
-        by_cases hold_lim : oldPage ≤ USER_VA_LIMIT
-        · simp only [decide_eq_true hold_lim, Bool.not_true, Bool.false_eq_true, ↓reduceIte] at h
+    by_cases heq : (newPage == oldPage) = true
+    · simp only [heq, ↓reduceIte] at h ⊢
+      injection h with h; subst h
+      exact FastState.advancePC_agrees
+        (FastState.writeReg64_agrees (fastSetBrk_agrees hag addr) Reg.x0 addr)
+    · simp only [Bool.eq_false_iff.mpr heq, Bool.false_eq_true, ↓reduceIte] at h ⊢
+      by_cases hlt : newPage < oldPage
+      · simp only [decide_eq_true hlt, ↓reduceIte] at h
+        simp only [hlt, ↓reduceIte]
+        rw [FastMem.canMap_eq hag.mem, FastMem.allPerm_eq hag.mem, FastMem.countRw_eq hag.mem] at h
+        set shrinkBase := BitVec.ofNat 64 newPage
+        set shrinkBytes := oldPage - newPage
+        by_cases hcm : s.mem.canMap shrinkBase shrinkBytes = true
+        · simp only [hcm, ↓reduceIte] at h ⊢
           injection h with h; subst h
-          have huva : USER_VA_LIMIT ≤ 2 ^ 60 := user_va_limit_le_heap
-          have hnp_lt : newPage < 2 ^ 64 := by
-            have : USER_VA_LIMIT = 2 ^ 48 := rfl
-            omega
-          have hbnd : (BitVec.ofNat 64 newPage).toNat + shrinkBytes ≤ 2 ^ 60 := by
-            rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt hnp_lt]
-            omega
-          have hbrk := fastSetBrk_agrees hag addr
-          have hm' := FastState.setMem_agrees hbrk
-            (FastMem.unmapWritable_agrees hag.mem (BitVec.ofNat 64 newPage) shrinkBytes)
-            (heapIntervalsAgree_unmapWritable_of_bound hbrk.heapIvs hbnd)
-          exact FastState.advancePC_agrees
-            (FastState.writeReg64_agrees (fastSetPhysMemAvail_agrees hm' _) Reg.x0 addr)
-        · simp only [decide_eq_false hold_lim, Bool.not_false, ↓reduceIte] at h
-          nomatch h
-    · simp only [decide_eq_false hle, Bool.false_eq_true, ↓reduceIte] at h
-      simp only [hle, ↓reduceIte]
-      rw [FastMem.canMap_eq hag.mem] at h
-      set growBytes := newPage - oldPage
-      by_cases hg1 : ((!decide (newPage + BRK_GUARD_GAP ≤ USER_VA_LIMIT)) ||
-          (!s.mem.canMap (BitVec.ofNat 64 oldPage) (growBytes + BRK_GUARD_GAP))) = true
-      · simp only [hg1, ↓reduceIte] at h ⊢
-        injection h with h; subst h
-        exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 s.brk)
-      · simp only [Bool.eq_false_iff.mpr hg1, Bool.false_eq_true, ↓reduceIte] at h ⊢
-        have hnp_lim : newPage + BRK_GUARD_GAP ≤ USER_VA_LIMIT := by
-          by_contra hgt
-          exact hg1 (by simp only [decide_eq_false hgt, Bool.not_false, Bool.true_or])
-        by_cases hoom : (!decide (growBytes ≤ s.physMemAvail)) = true
-        · simp only [hoom, ↓reduceIte] at h ⊢
+          exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 s.brk)
+        · simp only [Bool.eq_false_iff.mpr hcm, Bool.false_eq_true, ↓reduceIte] at h ⊢
+          by_cases hfr : (!s.mem.allPerm (fun p => !p.frozen) shrinkBase shrinkBytes) = true
+          · simp only [hfr, ↓reduceIte] at h; nomatch h
+          · simp only [Bool.eq_false_iff.mpr hfr, Bool.false_eq_true, ↓reduceIte] at h ⊢
+            by_cases hold_lim : oldPage ≤ USER_VA_LIMIT
+            · simp only [decide_eq_true hold_lim, Bool.not_true, Bool.false_eq_true, ↓reduceIte] at h
+              injection h with h; subst h
+              have huva : USER_VA_LIMIT ≤ 2 ^ 60 := user_va_limit_le_heap
+              have hnp_lt : newPage < 2 ^ 64 := by
+                have : USER_VA_LIMIT = 2 ^ 48 := rfl
+                omega
+              have hbnd : shrinkBase.toNat + shrinkBytes ≤ 2 ^ 60 := by
+                rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt hnp_lt]
+                omega
+              have hbrk := fastSetBrk_agrees hag addr
+              have hm' := FastState.setMem_agrees hbrk
+                (FastMem.unmapNonFrozen_agrees hag.mem shrinkBase shrinkBytes)
+                (heapIntervalsAgree_unmapNonFrozen_of_bound hbrk.heapIvs hbnd)
+              exact FastState.advancePC_agrees
+                (FastState.writeReg64_agrees (fastSetPhysMemAvail_agrees hm' _) Reg.x0 addr)
+            · simp only [decide_eq_false hold_lim, Bool.not_false, ↓reduceIte] at h
+              nomatch h
+      · simp only [decide_eq_false hlt, Bool.false_eq_true, ↓reduceIte] at h
+        simp only [hlt, ↓reduceIte]
+        rw [FastMem.canMap_eq hag.mem] at h
+        set growBytes := newPage - oldPage
+        by_cases hg1 : ((!decide (newPage + BRK_GUARD_GAP ≤ USER_VA_LIMIT)) ||
+            (!s.mem.canMap (BitVec.ofNat 64 oldPage) (growBytes + BRK_GUARD_GAP))) = true
+        · simp only [hg1, ↓reduceIte] at h ⊢
           injection h with h; subst h
-          exact FastState.setStatus_agrees hag .OutOfMemory
-        · simp only [Bool.eq_false_iff.mpr hoom, Bool.false_eq_true, ↓reduceIte] at h ⊢
-          injection h with h; subst h
-          have huva : USER_VA_LIMIT ≤ 2 ^ 60 := user_va_limit_le_heap
-          have hop_lt : oldPage < 2 ^ 64 := by
-            have : USER_VA_LIMIT = 2 ^ 48 := rfl
-            omega
-          have hbnd : (BitVec.ofNat 64 oldPage).toNat + growBytes ≤ 2 ^ 60 := by
-            rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt hop_lt]
-            omega
-          have hbrk := fastSetBrk_agrees hag addr
-          have hm' := FastState.setMem_agrees hbrk
-            (FastMem.mapZero_agrees hag.mem (BitVec.ofNat 64 oldPage) growBytes)
-            (heapIntervalsAgree_mapZero_of_bound hbrk.heapIvs hbnd)
-          exact FastState.advancePC_agrees
-            (FastState.writeReg64_agrees (fastSetPhysMemAvail_agrees hm' _) Reg.x0 addr)
+          exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 s.brk)
+        · simp only [Bool.eq_false_iff.mpr hg1, Bool.false_eq_true, ↓reduceIte] at h ⊢
+          have hnp_lim : newPage + BRK_GUARD_GAP ≤ USER_VA_LIMIT := by
+            by_contra hgt
+            exact hg1 (by simp only [decide_eq_false hgt, Bool.not_false, Bool.true_or])
+          by_cases hoom : (!decide (growBytes ≤ s.physMemAvail)) = true
+          · simp only [hoom, ↓reduceIte] at h ⊢
+            injection h with h; subst h
+            exact FastState.setStatus_agrees hag .OutOfMemory
+          · simp only [Bool.eq_false_iff.mpr hoom, Bool.false_eq_true, ↓reduceIte] at h ⊢
+            injection h with h; subst h
+            have huva : USER_VA_LIMIT ≤ 2 ^ 60 := user_va_limit_le_heap
+            have hop_lt : oldPage < 2 ^ 64 := by
+              have : USER_VA_LIMIT = 2 ^ 48 := rfl
+              omega
+            have hbnd : (BitVec.ofNat 64 oldPage).toNat + growBytes ≤ 2 ^ 60 := by
+              rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt hop_lt]
+              omega
+            have hbrk := fastSetBrk_agrees hag addr
+            have hm' := FastState.setMem_agrees hbrk
+              (FastMem.mapZero_agrees hag.mem (BitVec.ofNat 64 oldPage) growBytes)
+              (heapIntervalsAgree_mapZero_of_bound hbrk.heapIvs hbnd)
+            exact FastState.advancePC_agrees
+              (FastState.writeReg64_agrees (fastSetPhysMemAvail_agrees hm' _) Reg.x0 addr)
 
 theorem fastExecMunmap_sound {fs fs' : FastState} {s : State}
     (hag : fs.Agrees s) (h : fastExecMunmap fs = some fs') :
@@ -768,7 +693,7 @@ theorem fastExecMunmap_sound {fs fs' : FastState} {s : State}
   unfold fastExecMunmap at h
   unfold execMunmap
   rw [FastState.readReg64_eq hag Reg.x0, FastState.readReg64_eq hag Reg.x1, hag.physMemAvail] at h
-  set addr := s.readReg64 Reg.x0
+  set addr := untaggedAddr (s.readReg64 Reg.x0)
   set len := (s.readReg64 Reg.x1).toNat
   by_cases hc : (addr.toNat % PAGE_SIZE != 0 || len == 0 || !decide (addr.toNat + pageAlignUp len ≤ 2 ^ 48)) = true
   · simp only [hc, ↓reduceIte] at h ⊢
@@ -798,79 +723,86 @@ theorem fastExecMremap_sound {fs fs' : FastState} {s : State}
   rw [FastState.readReg64_eq hag Reg.x0, FastState.readReg64_eq hag Reg.x1,
       FastState.readReg64_eq hag Reg.x2, FastState.readReg64_eq hag Reg.x3,
       hag.oracle, hag.oracleIdx, hag.physMemAvail] at h
-  set oldAddr := s.readReg64 Reg.x0
+  set oldAddr := untaggedAddr (s.readReg64 Reg.x0)
   set oldLen := (s.readReg64 Reg.x1).toNat
   set newLen := (s.readReg64 Reg.x2).toNat
   set flags := s.readReg64 Reg.x3
   by_cases hf1 : (flags != MREMAP_MAYMOVE) = true
   · simp only [hf1, ↓reduceIte] at h; nomatch h
-  · simp only [Bool.eq_false_iff.mpr hf1, Bool.false_eq_true, ↓reduceIte] at h ⊢
+  · have hfl_eq : flags = MREMAP_MAYMOVE := bne_eq_false_iff_eq.mp (Bool.eq_false_iff.mpr hf1)
+    have hf0 : (flags == 0#64) = false := by rw [hfl_eq]; decide
+    simp only [Bool.eq_false_iff.mpr hf1, Bool.and_false, hf0, Bool.false_eq_true, ↓reduceIte] at h ⊢
     by_cases hf2 : (oldAddr.toNat % PAGE_SIZE != 0 || newLen == 0 ||
-        !decide (newLen ≤ 2 ^ 64 - PAGE_SIZE)) = true
+        !decide (newLen ≤ USER_VA_LIMIT)) = true
     · simp only [hf2, ↓reduceIte] at h ⊢
       injection h with h; subst h
       exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 (-EINVAL))
     · simp only [Bool.eq_false_iff.mpr hf2, Bool.false_eq_true, ↓reduceIte] at h ⊢
-      by_cases hf3 : (oldLen == 0) = true
+      by_cases hf3 : (oldLen == 0 || !decide (oldLen ≤ 2 ^ 64 - PAGE_SIZE)) = true
       · simp only [hf3, ↓reduceIte] at h; nomatch h
       · simp only [Bool.eq_false_iff.mpr hf3, Bool.false_eq_true, ↓reduceIte] at h ⊢
-        set oldAligned := Arm64.pageAlignUp oldLen
-        set newAligned := Arm64.pageAlignUp newLen
-        by_cases hf4 : (!decide (oldAddr.toNat + oldAligned ≤ USER_VA_LIMIT)) = true
-        · simp only [hf4, ↓reduceIte] at h ⊢
+        by_cases hf_eno : (s.oracle.mremapRefusal s.oracleIdx == some .enomem) = true
+        · simp only [hf_eno, ↓reduceIte] at h ⊢
           injection h with h; subst h
-          exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 (-EINVAL))
-        · simp only [Bool.eq_false_iff.mpr hf4, Bool.false_eq_true, ↓reduceIte] at h ⊢
-          have hold_lim : oldAddr.toNat + oldAligned ≤ USER_VA_LIMIT := by
-            by_contra hgt
-            exact hf4 (by simp only [decide_eq_false hgt, Bool.not_false])
-          rw [FastMem.allPerm_eq hag.mem, FastMem.canMap_eq hag.mem,
-              FastMem.allPerm_eq hag.mem, FastMem.allAnon_eq hag.mem] at h
-          by_cases hf5 : (!s.mem.allPerm (fun p => !p.frozen) oldAddr oldAligned) = true
-          · simp only [hf5, ↓reduceIte] at h; nomatch h
-          · simp only [Bool.eq_false_iff.mpr hf5, Bool.false_eq_true, ↓reduceIte] at h ⊢
-            by_cases hf6 : s.mem.canMap oldAddr oldAligned = true
-            · simp only [hf6, ↓reduceIte] at h ⊢
-              injection h with h; subst h
-              exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 EFAULT_RET)
-            · simp only [Bool.eq_false_iff.mpr hf6, Bool.false_eq_true, ↓reduceIte] at h ⊢
-              by_cases hf7 : (!s.mem.allPerm (· == some Perm.rw) oldAddr oldAligned) = true
-              · simp only [hf7, ↓reduceIte] at h; nomatch h
-              · simp only [Bool.eq_false_iff.mpr hf7, Bool.false_eq_true, ↓reduceIte] at h ⊢
-                by_cases hf8 : (!s.mem.allAnon oldAddr oldAligned) = true
-                · simp only [hf8, ↓reduceIte] at h; nomatch h
-                · simp only [Bool.eq_false_iff.mpr hf8, Bool.false_eq_true, ↓reduceIte] at h ⊢
-                  by_cases hf9 : s.oracle.mremapFail s.oracleIdx = true
-                  · simp only [hf9, ↓reduceIte] at h ⊢
-                    injection h with h; subst h
-                    exact FastState.advancePC_agrees
-                      (FastState.writeReg64_agrees (fastNextOracle_agrees hag) Reg.x0 (-ENOMEM))
-                  · simp only [Bool.eq_false_iff.mpr hf9, Bool.false_eq_true, ↓reduceIte] at h ⊢
-                    have hunm_ag := FastMem.unmapNonFrozen_agrees hag.mem oldAddr oldAligned
-                    rw [sanitizeMmapAddrFast_eq hunm_ag] at h
-                    cases hsan : sanitizeMmapAddr (s.mem.unmapNonFrozen oldAddr oldAligned)
-                        (s.oracle.mmap s.oracleIdx) newAligned with
-                    | none =>
-                      rw [hsan] at h
+          exact FastState.advancePC_agrees
+            (FastState.writeReg64_agrees (fastNextOracle_agrees hag) Reg.x0 (-ENOMEM))
+        · simp only [Bool.eq_false_iff.mpr hf_eno, Bool.false_eq_true, ↓reduceIte] at h ⊢
+          set oldAligned := Arm64.pageAlignUp oldLen
+          set newAligned := Arm64.pageAlignUp newLen
+          by_cases hf4 : (!decide (oldAddr.toNat + oldAligned ≤ USER_VA_LIMIT)) = true
+          · simp only [hf4, ↓reduceIte] at h; nomatch h
+          · simp only [Bool.eq_false_iff.mpr hf4, Bool.false_eq_true, ↓reduceIte] at h ⊢
+            have hold_lim : oldAddr.toNat + oldAligned ≤ USER_VA_LIMIT := by
+              by_contra hgt
+              exact hf4 (by simp only [decide_eq_false hgt, Bool.not_false])
+            rw [FastMem.allPerm_eq hag.mem, FastMem.canMap_eq hag.mem,
+                FastMem.allPerm_eq hag.mem, FastMem.allAnon_eq hag.mem] at h
+            by_cases hf5 : (!s.mem.allPerm (fun p => !p.frozen) oldAddr oldAligned) = true
+            · simp only [hf5, ↓reduceIte] at h; nomatch h
+            · simp only [Bool.eq_false_iff.mpr hf5, Bool.false_eq_true, ↓reduceIte] at h ⊢
+              by_cases hf6 : s.mem.canMap oldAddr oldAligned = true
+              · simp only [hf6, ↓reduceIte] at h ⊢
+                injection h with h; subst h
+                exact FastState.advancePC_agrees
+                  (FastState.writeReg64_agrees (fastNextOracle_agrees hag) Reg.x0 EFAULT_RET)
+              · simp only [Bool.eq_false_iff.mpr hf6, Bool.false_eq_true, ↓reduceIte] at h ⊢
+                by_cases hf7 : (!s.mem.allPerm (· == some Perm.rw) oldAddr oldAligned) = true
+                · simp only [hf7, ↓reduceIte] at h; nomatch h
+                · simp only [Bool.eq_false_iff.mpr hf7, Bool.false_eq_true, ↓reduceIte] at h ⊢
+                  by_cases hf8 : (!s.mem.allAnon oldAddr oldAligned) = true
+                  · simp only [hf8, ↓reduceIte] at h; nomatch h
+                  · simp only [Bool.eq_false_iff.mpr hf8, Bool.false_eq_true, ↓reduceIte] at h ⊢
+                    by_cases hf9 : (s.oracle.mremapRefusal s.oracleIdx == some .efault) = true
+                    · simp only [hf9, ↓reduceIte] at h ⊢
                       injection h with h; subst h
                       exact FastState.advancePC_agrees
-                        (FastState.writeReg64_agrees (fastNextOracle_agrees hag) Reg.x0 (-ENOMEM))
-                    | some newBase =>
-                      rw [hsan] at h
-                      by_cases hoom : (!decide (newAligned ≤ s.physMemAvail + oldAligned)) = true
-                      · simp only [hoom, ↓reduceIte] at h ⊢
+                        (FastState.writeReg64_agrees (fastNextOracle_agrees hag) Reg.x0 EFAULT_RET)
+                    · simp only [Bool.eq_false_iff.mpr hf9, Bool.false_eq_true, ↓reduceIte] at h ⊢
+                      have hunm_ag := FastMem.unmapNonFrozen_agrees hag.mem oldAddr oldAligned
+                      rw [sanitizeMmapAddrFast_eq hunm_ag] at h
+                      cases hsan : sanitizeMmapAddr (s.mem.unmapNonFrozen oldAddr oldAligned)
+                          (s.oracle.mmap s.oracleIdx) newAligned with
+                      | none =>
+                        rw [hsan] at h
                         injection h with h; subst h
-                        exact FastState.setStatus_agrees hag .OutOfMemory
-                      · simp only [Bool.eq_false_iff.mpr hoom, Bool.false_eq_true, ↓reduceIte] at h ⊢
-                        injection h with h; subst h
-                        have huva : USER_VA_LIMIT ≤ 2 ^ 60 := user_va_limit_le_heap
-                        have hnew_lim := sanitizeMmapAddr_bound hsan
-                        have hm' := FastState.setMem_agrees hag
-                          (FastMem.remapRw_agrees hag.mem oldAddr oldAligned newBase newAligned)
-                          (heapIntervalsAgree_remapRw_of_bound hag.heapIvs (by omega) (by omega))
                         exact FastState.advancePC_agrees
-                          (FastState.writeReg64_agrees
-                            (fastNextOracle_agrees (fastSetPhysMemAvail_agrees hm' _)) Reg.x0 newBase)
+                          (FastState.writeReg64_agrees (fastNextOracle_agrees hag) Reg.x0 (-ENOMEM))
+                      | some newBase =>
+                        rw [hsan] at h
+                        by_cases hoom : (!decide (newAligned ≤ s.physMemAvail + oldAligned)) = true
+                        · simp only [hoom, ↓reduceIte] at h ⊢
+                          injection h with h; subst h
+                          exact FastState.setStatus_agrees hag .OutOfMemory
+                        · simp only [Bool.eq_false_iff.mpr hoom, Bool.false_eq_true, ↓reduceIte] at h ⊢
+                          injection h with h; subst h
+                          have huva : USER_VA_LIMIT ≤ 2 ^ 60 := user_va_limit_le_heap
+                          have hnew_lim := sanitizeMmapAddr_bound hsan
+                          have hm' := FastState.setMem_agrees hag
+                            (FastMem.remapRw_agrees hag.mem oldAddr oldAligned newBase newAligned)
+                            (heapIntervalsAgree_remapRw_of_bound hag.heapIvs (by omega) (by omega))
+                          exact FastState.advancePC_agrees
+                            (FastState.writeReg64_agrees
+                              (fastNextOracle_agrees (fastSetPhysMemAvail_agrees hm' _)) Reg.x0 newBase)
 
 theorem fastExecMmap_sound {fs fs' : FastState} {s : State}
     (hag : fs.Agrees s) (h : fastExecMmap fs = some fs') :
@@ -973,7 +905,7 @@ theorem fastExecMprotect_sound {fs fs' : FastState} {s : State}
   unfold execMprotect
   rw [FastState.readReg64_eq hag Reg.x0, FastState.readReg64_eq hag Reg.x1,
       FastState.readReg64_eq hag Reg.x2, hag.physMemAvail] at h
-  set addr := s.readReg64 Reg.x0
+  set addr := untaggedAddr (s.readReg64 Reg.x0)
   set len := (s.readReg64 Reg.x1).toNat
   set prot := s.readReg64 Reg.x2
   by_cases hf1 : (prot != MMAP_PROT_NONE && prot != MMAP_PROT_RW) = true
@@ -984,47 +916,53 @@ theorem fastExecMprotect_sound {fs fs' : FastState} {s : State}
       injection h with h; subst h
       exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 (-EINVAL))
     · simp only [Bool.eq_false_iff.mpr hf2, Bool.false_eq_true, ↓reduceIte] at h ⊢
-      by_cases hf3 : (!decide (addr.toNat + pageAlignUp len ≤ 2 ^ 48)) = true
-      · simp only [hf3, ↓reduceIte] at h; nomatch h
+      by_cases hf3 : (len == 0) = true
+      · simp only [hf3, ↓reduceIte] at h ⊢
+        injection h with h; subst h
+        exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 0#64)
       · simp only [Bool.eq_false_iff.mpr hf3, Bool.false_eq_true, ↓reduceIte] at h ⊢
-        by_cases hf4 : (len == 0) = true
-        · simp only [hf4, ↓reduceIte] at h ⊢
+        by_cases hwrap : (!decide (len ≤ 2 ^ 64 - PAGE_SIZE) ||
+            !decide (addr.toNat + pageAlignUp len < 2 ^ 64)) = true
+        · simp only [hwrap, ↓reduceIte] at h ⊢
           injection h with h; subst h
-          exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 0#64)
-        · simp only [Bool.eq_false_iff.mpr hf4, Bool.false_eq_true, ↓reduceIte] at h ⊢
-          rw [FastMem.allPerm_eq hag.mem, FastMem.allPerm_eq hag.mem,
-              FastMem.canMap_eq hag.mem, FastMem.countRw_eq hag.mem] at h
-          by_cases hf5 : (!s.mem.allPerm (fun p => !p.frozen) addr (pageAlignUp len)) = true
-          · simp only [hf5, ↓reduceIte] at h; nomatch h
-          · simp only [Bool.eq_false_iff.mpr hf5, Bool.false_eq_true, ↓reduceIte] at h ⊢
-            by_cases hf6 : (!s.mem.allPerm (·.mapped) addr (pageAlignUp len)) = true
-            · simp only [hf6, ↓reduceIte] at h ⊢
-              by_cases hcm : s.mem.canMap addr (pageAlignUp len) = true
-              · simp only [hcm, ↓reduceIte] at h ⊢
-                injection h with h; subst h
-                exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 (-ENOMEM))
-              · simp only [Bool.eq_false_iff.mpr hcm, Bool.false_eq_true, ↓reduceIte] at h
-                nomatch h
-            · simp only [Bool.eq_false_iff.mpr hf6, Bool.false_eq_true, ↓reduceIte] at h ⊢
-              by_cases hprot0 : (prot == MMAP_PROT_NONE) = true
-              · simp only [hprot0, ↓reduceIte] at h ⊢
-                injection h with h; subst h
-                have hm' := FastState.setMem_agrees hag
-                  (FastMem.setPermNonFrozen_agrees hag.mem addr (pageAlignUp len) Perm.protNone)
-                  (heapIntervalsAgree_setPermNonFrozen hag.heapIvs addr (pageAlignUp len) Perm.protNone)
-                exact FastState.advancePC_agrees (FastState.writeReg64_agrees hm' Reg.x0 0#64)
-              · simp only [Bool.eq_false_iff.mpr hprot0, Bool.false_eq_true, ↓reduceIte] at h ⊢
-                by_cases hoom : (!decide (pageAlignUp len - s.mem.countRw addr (pageAlignUp len) ≤ s.physMemAvail)) = true
-                · simp only [hoom, ↓reduceIte] at h ⊢
+          exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 (-ENOMEM))
+        · simp only [Bool.eq_false_iff.mpr hwrap, Bool.false_eq_true, ↓reduceIte] at h ⊢
+          by_cases hf4 : (!decide (addr.toNat + pageAlignUp len ≤ 2 ^ 48)) = true
+          · simp only [hf4, ↓reduceIte] at h; nomatch h
+          · simp only [Bool.eq_false_iff.mpr hf4, Bool.false_eq_true, ↓reduceIte] at h ⊢
+            rw [FastMem.allPerm_eq hag.mem, FastMem.allPerm_eq hag.mem,
+                FastMem.canMap_eq hag.mem, FastMem.countRw_eq hag.mem] at h
+            by_cases hf5 : (!s.mem.allPerm (fun p => !p.frozen) addr (pageAlignUp len)) = true
+            · simp only [hf5, ↓reduceIte] at h; nomatch h
+            · simp only [Bool.eq_false_iff.mpr hf5, Bool.false_eq_true, ↓reduceIte] at h ⊢
+              by_cases hf6 : (!s.mem.allPerm (·.mapped) addr (pageAlignUp len)) = true
+              · simp only [hf6, ↓reduceIte] at h ⊢
+                by_cases hcm : s.mem.canMap addr (pageAlignUp len) = true
+                · simp only [hcm, ↓reduceIte] at h ⊢
                   injection h with h; subst h
-                  exact FastState.setStatus_agrees hag .OutOfMemory
-                · simp only [Bool.eq_false_iff.mpr hoom, Bool.false_eq_true, ↓reduceIte] at h ⊢
+                  exact FastState.advancePC_agrees (FastState.writeReg64_agrees hag Reg.x0 (-ENOMEM))
+                · simp only [Bool.eq_false_iff.mpr hcm, Bool.false_eq_true, ↓reduceIte] at h
+                  nomatch h
+              · simp only [Bool.eq_false_iff.mpr hf6, Bool.false_eq_true, ↓reduceIte] at h ⊢
+                by_cases hprot0 : (prot == MMAP_PROT_NONE) = true
+                · simp only [hprot0, ↓reduceIte] at h ⊢
                   injection h with h; subst h
                   have hm' := FastState.setMem_agrees hag
-                    (FastMem.setPermNonFrozen_agrees hag.mem addr (pageAlignUp len) Perm.rw)
-                    (heapIntervalsAgree_setPermNonFrozen hag.heapIvs addr (pageAlignUp len) Perm.rw)
-                  exact FastState.advancePC_agrees
-                    (FastState.writeReg64_agrees (fastSetPhysMemAvail_agrees hm' _) Reg.x0 0#64)
+                    (FastMem.setPermNonFrozen_agrees hag.mem addr (pageAlignUp len) Perm.protNone)
+                    (heapIntervalsAgree_setPermNonFrozen hag.heapIvs addr (pageAlignUp len) Perm.protNone)
+                  exact FastState.advancePC_agrees (FastState.writeReg64_agrees hm' Reg.x0 0#64)
+                · simp only [Bool.eq_false_iff.mpr hprot0, Bool.false_eq_true, ↓reduceIte] at h ⊢
+                  by_cases hoom : (!decide (pageAlignUp len - s.mem.countRw addr (pageAlignUp len) ≤ s.physMemAvail)) = true
+                  · simp only [hoom, ↓reduceIte] at h ⊢
+                    injection h with h; subst h
+                    exact FastState.setStatus_agrees hag .OutOfMemory
+                  · simp only [Bool.eq_false_iff.mpr hoom, Bool.false_eq_true, ↓reduceIte] at h ⊢
+                    injection h with h; subst h
+                    have hm' := FastState.setMem_agrees hag
+                      (FastMem.setPermNonFrozen_agrees hag.mem addr (pageAlignUp len) Perm.rw)
+                      (heapIntervalsAgree_setPermNonFrozen hag.heapIvs addr (pageAlignUp len) Perm.rw)
+                    exact FastState.advancePC_agrees
+                      (FastState.writeReg64_agrees (fastSetPhysMemAvail_agrees hm' _) Reg.x0 0#64)
 
 theorem fastExecSyscallPlaced_agrees
     {fs fs' : FastState} {s : Arm64.State}

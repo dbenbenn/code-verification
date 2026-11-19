@@ -20,7 +20,7 @@ Reachable-invariant hypotheses on SPQR (`SpqrWeakCorrect`: send totality and sal
 weakening `Corr.SpqrOffCorrect` (DEV-LS24) for the H1 session refinement.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames
 namespace LibsignalSM.Corr
@@ -37,17 +37,17 @@ structure SpqrInvClosed (S : Spqr PQ PQC) (Inv : PQ → Prop) : Prop where
 
 /-- `S.send` succeeds on every `Inv`-state and coin value (needed for adapter send recording,
 DEV-LS17, under adversary-chosen coins, DEV-LS1, and 64-byte SPQR tapes, DEV-SPQR5). -/
-def SpqrSendTotalOn (S : Spqr PQ PQC) (Inv : PQ → Prop) : Prop :=
+@[expose] def SpqrSendTotalOn (S : Spqr PQ PQC) (Inv : PQ → Prop) : Prop :=
   ∀ st r, Inv st → (S.send st r).isSome
 
 /-- Any `Inv`-state accepting an honest message produced from an `Inv`-state returns the sender's
 salt. -/
-def SpqrSaltBindingOn (S : Spqr PQ PQC) (Inv : PQ → Prop) : Prop :=
+@[expose] def SpqrSaltBindingOn (S : Spqr PQ PQC) (Inv : PQ → Prop) : Prop :=
   ∀ st r st' salt msg, Inv st → S.send st r = some (st', salt, msg) →
     ∀ st₂ st₂' salt₂, Inv st₂ → S.recv st₂ msg = .ok (st₂', salt₂) → salt₂ = salt
 
 /-- Existence of a closed invariant `Inv` satisfying `SpqrSendTotalOn` and `SpqrSaltBindingOn`. -/
-def SpqrWeakCorrect (S : Spqr PQ PQC) : Prop :=
+@[expose] def SpqrWeakCorrect (S : Spqr PQ PQC) : Prop :=
   ∃ Inv : PQ → Prop, SpqrInvClosed S Inv ∧ SpqrSendTotalOn S Inv ∧ SpqrSaltBindingOn S Inv
 
 end LibsignalSM.Corr

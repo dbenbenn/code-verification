@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.SessionStepsAux
-public import Symbolic.Proofs.Tests.CliNonvacuity.SessionDag
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionStepsAux -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionDag -- proof-setup: allow-public-import
 import all DY.Bytes.Basic
 import all DY.ALaCarte.Basic
 import all DY.ALaCarte.DecidableEq
@@ -48,6 +48,9 @@ import all Init.Data.String.Defs
 import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
 import Symbolic.Proofs.Tests.CliNonvacuity.Table.Checkers
 import Symbolic.Proofs.Tests.CliNonvacuity.Table.Cli
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionCliModel04 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionCliModel58 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionTraces -- proof-setup: allow-public-import
 
 /-!
 # `Explains` and Representation Witnesses Across Session Prefixes
@@ -58,7 +61,7 @@ Provides a table-backed `Bool` checker for `BytesMatchEntry` across all 60 `VisE
 `(msExposed, visAt 11, evsExposed)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -311,19 +314,19 @@ private theorem forall₂_bytesMatchEntry_of_bool {interp : ExternInterpretation
 
 /-! ## Symbolic Terms, Fast Evaluators, and Representation Witnesses -/
 
-def ekTerm : DY.Bytes := (t5.getMessageSentAt 25).getD (randTerm 0 0)
-def ctTerm : DY.Bytes := (t5.getMessageSentAt 26).getD (randTerm 0 0)
-def msg0Term : DY.Bytes := (t6.getMessageSentAt 37).getD (randTerm 0 0)
-def msg1Term : DY.Bytes := (t7.getMessageSentAt 44).getD (randTerm 0 0)
-def msgReply0Term : DY.Bytes := (t10.getMessageSentAt 64).getD (randTerm 0 0)
-def msg2Term : DY.Bytes := (t14.getMessageSentAt 82).getD (randTerm 0 0)
-def x3Rep : PreKeyRep := ⟨ekTerm, ctTerm, msg0Term⟩
-def x4Rep : PreKeyRep := ⟨ekTerm, ctTerm, msg1Term⟩
+@[expose] def ekTerm : DY.Bytes := (t5.getMessageSentAt 25).getD (randTerm 0 0)
+@[expose] def ctTerm : DY.Bytes := (t5.getMessageSentAt 26).getD (randTerm 0 0)
+@[expose] def msg0Term : DY.Bytes := (t6.getMessageSentAt 37).getD (randTerm 0 0)
+@[expose] def msg1Term : DY.Bytes := (t7.getMessageSentAt 44).getD (randTerm 0 0)
+@[expose] def msgReply0Term : DY.Bytes := (t10.getMessageSentAt 64).getD (randTerm 0 0)
+@[expose] def msg2Term : DY.Bytes := (t14.getMessageSentAt 82).getD (randTerm 0 0)
+@[expose] def x3Rep : PreKeyRep := ⟨ekTerm, ctTerm, msg0Term⟩
+@[expose] def x4Rep : PreKeyRep := ⟨ekTerm, ctTerm, msg1Term⟩
 
-def msg0Sig : TRSignalMsg := encSig stA0 coins0 key0 m0
-def msg1Sig : TRSignalMsg := encSig stA1 coins1 key1 m1
-def msgReply0Sig : TRSignalMsg := encSig stB2 coins2 key2 m2
-def msg2Sig : TRSignalMsg := encSig stA4 coins3 key3 m3
+@[expose] def msg0Sig : TRSignalMsg := encSig stA0 coins0 key0 m0
+@[expose] def msg1Sig : TRSignalMsg := encSig stA1 coins1 key1 m1
+@[expose] def msgReply0Sig : TRSignalMsg := encSig stB2 coins2 key2 m2
+@[expose] def msg2Sig : TRSignalMsg := encSig stA4 coins3 key3 m3
 
 theorem parse_msg0Term : parseTrSignalMsg msg0Term = some msg0Sig :=
   parse_encMsg stA0 coins0 key0 m0
@@ -335,7 +338,7 @@ theorem parse_msg2Term : parseTrSignalMsg msg2Term = some msg2Sig :=
   parse_encMsg stA4 coins3 key3 m3
 
 unseal DY.Bytes in
-noncomputable def kemDecapFast (sk cipher : DY.Bytes) : Option DY.Bytes :=
+@[expose] def kemDecapFast (sk cipher : DY.Bytes) : Option DY.Bytes :=
   match cipher.view? DY.PQKem.Encap.SubF with
   | some { pk, entropy } =>
     match pk.view? DY.PQKem.Pk.SubF with
@@ -361,7 +364,7 @@ theorem kemDecap_eq_fast : (@DY.PQKem.kemDecap DY.Bytes _) = kemDecapFast := by
       | isTrue h => simp [h]
 
 unseal DY.Bytes in
-noncomputable def symDecFast (key iv ct : DY.Bytes) : Option DY.Bytes :=
+@[expose] def symDecFast (key iv ct : DY.Bytes) : Option DY.Bytes :=
   match ct.view? DY.SymEnc.Enc.SubF with
   | some { key := key', iv := iv', msg } =>
     if @decide (key = key') (decEqBytesFast key key') &&
@@ -382,7 +385,7 @@ theorem symDec_eq_fast : (@DY.SymEnc.symDec DY.Bytes _) = symDecFast := by
       | isFalse hiv => simp [hk, hiv]
       | isTrue hiv => simp [hk, hiv]
 
-noncomputable def decEqSessionInfoFast :
+def decEqSessionInfoFast :
     DecidableEq (@DY.Libsignal.TripleRatchet.SessionInfo
       (@DY.Libsignal.Composed.HasExecBytes.toTRExecBytes DY.Libsignal.Composed.instHasExecBytes)) :=
   fun a b =>

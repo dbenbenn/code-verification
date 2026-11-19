@@ -9,17 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.DefsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.LoopError
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.DefsBudget
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.LoopError
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.Decode
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBody
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostCleanup
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.Defs
 
 /-!
 # Budget-Threaded `IdentityKeyPair::try_from` Error Cleanup and Convergence
@@ -28,7 +29,7 @@ import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 (`+616 .. +684` → `+812`) on Block `84`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -141,7 +142,7 @@ private theorem readReg_setPState_lhb (s : State) (ps : PState) (w : RegWidth) (
 
 end LoopHelpersStateSimp
 
-def ikpExitMemPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ikpExitMemPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (fuel maxLen : Nat)
     (sp' ret ptr : BitVec 64) (bs : List (BitVec 8))
     (out : Except SignalProtocolError IdentityKeyPair) (sf : State) : SepProp :=
@@ -150,7 +151,7 @@ def ikpExitMemPlaced [LibsignalPlacement] {M : AllocCostModel}
     (∃∗ evs : List AllocEvent, ⌜IkpSubEnv fuel maxLen evs⌝ ∗ A.pool lim (M.stepEvents evs st) sf) ∗
     stackAt sp' (skipFieldStackX 100)
 
-def ikpExitPostPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ikpExitPostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (fuel maxLen : Nat)
     (s0 : State) (sp' ret ptr : BitVec 64) (bs : List (BitVec 8))
     (out : Except SignalProtocolError IdentityKeyPair) (sf : State) (Pf : SepProp) : Prop :=
@@ -530,7 +531,7 @@ theorem decodeErr_616_placed_wp [LibsignalPlacement] {M : AllocCostModel}
     refine Entails.trans (sepConj_mono_left (sepConj_mono_right (sepConj_mono_left hev_lift))) ?_
     apply entails_of_eq; ac_rfl
 
-def ikpLoopCommonPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ikpLoopCommonPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (sp' ret : BitVec 64)
     (len : Nat) (m : IdentityKeyPairStructure) (s : State) : SepProp :=
   memRegion sp' 32 ∗ ikpStructLoopOf A.repAlloc (sp' + 48#64) len m ∗

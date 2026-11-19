@@ -10,20 +10,23 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4Defs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StepsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StoreStepsPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP1
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StepsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StoreStepsPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP1
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Bin.Hooks
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Matched-Session Stage P4: Spatial Bundles and Outcome
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -51,7 +54,7 @@ open CryptoVerification.SignalSession
 
 /-- Shared spatial resources across `P4.1` (`save_identity`) and `P4.4` (`store_session`) on
 matched-session Stage P4 (`opkIdIsSome = 2#32`) under `[LibsignalPlacement]`. -/
-def stageP4MatchedSharedPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
+@[expose] def stageP4MatchedSharedPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (ikit : IdentityStoreSpec A b)
     (s0 s : State)
     (coroPtr msgPtr remoteAddrPtr remoteIkPtr sessionStorePtr idStorePtr
@@ -98,7 +101,7 @@ def stageP4MatchedSharedPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 
 
 /-- Spatial precondition at `+0x34dc` for matched-session Stage P4 under
 `[LibsignalPlacement]`. -/
-def stageP4MatchedPrePlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
+@[expose] def stageP4MatchedPrePlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (ikit : IdentityStoreSpec A b)
     (s0 s : State)
     (coroPtr msgPtr outPtr remoteAddrPtr remoteIkPtr sessionStorePtr idStorePtr
@@ -124,7 +127,7 @@ def stageP4MatchedPrePlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
 
 /-- Spatial postcondition at `s0.readReg64 .x30` for matched-session Stage P4 under
 `[LibsignalPlacement]`. -/
-def stageP4MatchedExitAtPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
+@[expose] def stageP4MatchedExitAtPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (ikit : IdentityStoreSpec A b)
     (s0 s : State)
     (coroPtr msgPtr remoteAddrPtr remoteIkPtr sessionStorePtr idStorePtr

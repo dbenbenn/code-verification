@@ -18,6 +18,7 @@ meta import LibsignalBinary.Proofs.Placed.GenLsBlock -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym
 import ProofLib.SepLogic.WP.Apply
 meta import ProofLib.SepLogic.WP.Apply -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `HookSat`-backed `black_box` Sibling of `ConsumeMessageKey/FindIndexProofs/Loop`

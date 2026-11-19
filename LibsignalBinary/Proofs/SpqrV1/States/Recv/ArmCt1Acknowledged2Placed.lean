@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged2
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymBasePlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymBasePlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged1
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkReceivedCt1SampledPlaced
@@ -28,7 +29,7 @@ Relocatable `[LibsignalPlacement]` proofs for the shared tail (`+4924 -> +18996`
 and Branch C `recv_ek_chunk` call (`lsmpl.base 349`), error path, and `.stillReceiving` path.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -103,12 +104,10 @@ theorem ct1Ack_step_4924_18996_placed [LibsignalPlacement]
         sm.readReg64 .x28 = sp.b1.w5 ∧ sm.readReg64 .x29 = s.readReg64 .x29 ∧
         sm.readReg64 .x30 = sp.b0.w5 ∧ TraceCalleeSaved sm s) := by
   subst hsp
-  states_recv_fetches_range (blkPl_332).base (Rust.withPanics ext) 4924 132
   rw [lsmpl_base_332_eq] at hpc ⊢
   dsimp only [lsProg_332, noneCap, BitVec.ofNat_eq_ofNat] at hpc ⊢
   generalize_entry ((blkPC_332).rebase (blkPl_332).base (Rust.withPanics ext)).fnAddr
     "<spqr::v1::chunked::states::States>::recv" = entry
-  examples_hide_fetches
   wp_simp_pre [sendEkSpillsAt, ct1AckSpills4924, words10At, noneCap, bv_add_lit_add_lit_recv, Nat.reduceAdd, sepConj_assoc]
   wp_steps
   simp only [sendEkSpillsAt, ct1AckSpills4924, words10At, noneCap, bv_add_lit_add_lit_recv, Nat.reduceAdd, sepConj_assoc]
@@ -146,12 +145,10 @@ theorem ct1Ack_step_4516_4924_placed [LibsignalPlacement]
         sm.readReg64 .x26 = w.b0.w5 ∧ sm.readReg64 .x29 = s.readReg64 .x29 ∧
         sm.readReg64 .x30 = w.b5.w9 ∧ TraceCalleeSaved sm s) := by
   subst hsp hx20
-  states_recv_fetches_range (blkPl_332).base (Rust.withPanics ext) 4516 408
   rw [lsmpl_base_332_eq] at hpc ⊢
   dsimp only [lsProg_332, BitVec.ofNat_eq_ofNat] at hpc ⊢
   generalize_entry ((blkPC_332).rebase (blkPl_332).base (Rust.withPanics ext)).fnAddr
     "<spqr::v1::chunked::states::States>::recv" = entry
-  examples_hide_fetches
   wp_simp_pre [words66At, sendEkSpillsAt, ct1AckSpills4516, words10At, pointsTo128,
     bv_add_lit_add_lit_recv, Nat.reduceAdd, sepConj_assoc]
   wp_steps
@@ -314,12 +311,10 @@ theorem ct1Ack_step_4448_call_placed [LibsignalPlacement]
         sm.readReg64 .x30 = lsmpl.base 332 + 4468#64 ∧
         TraceCalleeSaved sm s) := by
   subst hsp hx2 hx20 hx24
-  states_recv_fetches_range (blkPl_332).base (Rust.withPanics ext) 4448 20
   rw [lsmpl_base_332_eq] at hpc ⊢
   dsimp only [lsProg_332, BitVec.ofNat_eq_ofNat] at hpc ⊢
   generalize_entry ((blkPC_332).rebase (blkPl_332).base (Rust.withPanics ext)).fnAddr
     "<spqr::v1::chunked::states::States>::recv" = entry
-  examples_hide_fetches
   wp_steps
   dsimp only [blkPl_332, Obj.MultiPlacedLib.blockPlacement]
   wp_done
@@ -417,12 +412,11 @@ theorem ct1Ack_step_4468_err_19324_placed [LibsignalPlacement]
           (out ↦₆₄ noneCap) ∗ ((out + 8#64) ↦₆₄ w1) ∗ ((out + 16#64) ↦₆₄ w2) ∗ ((out + 24#64) ↦₆₄ w3) ∗ Frame) ∧
         sm.sp = fsp ∧ sm.readReg64 .x29 = s.readReg64 .x29 ∧ TraceCalleeSaved sm s) := by
   subst hsp hx19
-  states_recv_fetches_range (blkPl_332).base (Rust.withPanics ext) 4468 48
   rw [lsmpl_base_332_eq] at hpc ⊢
   dsimp only [lsProg_332, noneCap, BitVec.ofNat_eq_ofNat] at hpc ⊢
   generalize_entry ((blkPC_332).rebase (blkPl_332).base (Rust.withPanics ext)).fnAddr
     "<spqr::v1::chunked::states::States>::recv" = entry
-  examples_hide_fetches; wp_simp_pre [sepConj_assoc]; wp_steps; wp_done
+  wp_simp_pre [sepConj_assoc]; wp_steps; wp_done
 
 theorem ct1Ack_err_4468_ret_placed [LibsignalPlacement]
     {A : RustAlloc} {F : ShaCompress} {ext : String → Option (State → State)}
@@ -547,14 +541,10 @@ theorem ct1Ack_step_4468_still_4924_placed [LibsignalPlacement]
   have hne2 : (w.b0.w0 + 2#64 != 0#64) = true := by simp [bne, hcmn2]
   have hcmn1 := ct1Ack_cap_add_one_beq_zero_false hcap
   have hne1 : (w.b0.w0 + 1#64 != 0#64) = true := by simp [bne, hcmn1]
-  states_recv_fetches_range (blkPl_332).base (Rust.withPanics ext) 4468 28
-  states_recv_fetches_range (blkPl_332).base (Rust.withPanics ext) 13292 676
-  states_recv_fetches_range (blkPl_332).base (Rust.withPanics ext) 4920 4
   rw [lsmpl_base_332_eq] at hpc ⊢
   dsimp only [lsProg_332, BitVec.ofNat_eq_ofNat] at hpc ⊢
   generalize_entry ((blkPC_332).rebase (blkPl_332).base (Rust.withPanics ext)).fnAddr
     "<spqr::v1::chunked::states::States>::recv" = entry
-  examples_hide_fetches
   wp_simp_pre [words66At, sendEkSpillsAt, ct1AckSpillsStill4924, words10At, pointsTo128,
     bv_add_lit_add_lit_recv, Nat.reduceAdd, sepConj_assoc]
   wp_steps 256

@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieNormPure
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieNormPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptBinPure
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptRecSizePure
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
 
 /-!
 # Record Canonicality of Bob's Post-Handshake Session
@@ -21,7 +22,7 @@ Proves `PureTRRecordCanon` for the serialized session record `sm.state` returned
 `session_recv_prekey` call.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

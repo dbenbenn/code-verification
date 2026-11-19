@@ -10,15 +10,20 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemrchrCode -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookLs -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhost -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookLs
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhost
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
 public import LibsignalBinary.Heap.Fine.SpecBudgetHelpersFine
 public import LibsignalBinary.Heap.IfaceBudget
 import ProofLib.Process.OracleEq
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Ghost `memrchr` Hook & Consumer `HookOk` Suite (`HooksDehook.MemrchrGhost`)
@@ -180,16 +185,6 @@ noncomputable abbrev memrchrGhostPureLs [LibsignalPlacement]
     (keepR : BitVec 64 → Bool) (P_real : Program) (entry : BitVec 64) : State → State :=
   memrchrGhostFnLs keepR P_real (pureWordsProg entry coreMemrchrWords) entry
 
-/-- Concrete `P_sub := pureWordsProg entry coreMemrchrWords` specialization of `memrchrGhostFn`. -/
-noncomputable abbrev memrchrGhostPure
-    (keepR : BitVec 64 → Bool) (P_real : Program) (entry : BitVec 64) : State → State :=
-  memrchrGhostFn keepR P_real (pureWordsProg entry coreMemrchrWords) entry
-
-/-- Concrete `P_sub := pureWordsProg entry coreMemrchrWords` specialization of `memrchrGhostFnK`. -/
-noncomputable abbrev memrchrGhostPureK
-    (keepR : BitVec 64 → Bool) (P_real : Program) (entry : BitVec 64) : State → State :=
-  memrchrGhostFnK keepR P_real (pureWordsProg entry coreMemrchrWords) entry
-
 /-! ## 2. `SpecStripSInvariant`, `SpecPreservesFsTrace`, `setPC` Invariance & Fallback Lemmas -/
 
 theorem specStripSInvariant_masterMemrchrLs [LibsignalPlacement] (keepR : BitVec 64 → Bool) :
@@ -322,21 +317,6 @@ theorem memrchrGhostFnK_fs
     (keepR : BitVec 64 → Bool) (P_real P_sub : Program) (entry : BitVec 64) (s0 : State) :
     (memrchrGhostFnK keepR P_real P_sub entry s0).fs = s0.fs :=
   linkedCallHook_fs keepR P_real P_sub entry (memrchrSpecK keepR masterMemrchrSpec) memrchrHook s0
-
-theorem memrchrGhostFnLs_fsT [LibsignalPlacement]
-    (keepR : BitVec 64 → Bool) (P_real P_sub : Program) (entry : BitVec 64) :
-    HookFsTraced IsFsC (memrchrGhostFnLs keepR P_real P_sub entry) :=
-  linkedCallHook_fsT keepR P_real P_sub entry (withLsRet masterMemrchrSpec) memrchrHook
-
-theorem memrchrGhostFn_fsT
-    (keepR : BitVec 64 → Bool) (P_real P_sub : Program) (entry : BitVec 64) :
-    HookFsTraced IsFsC (memrchrGhostFn keepR P_real P_sub entry) :=
-  linkedCallHook_fsT keepR P_real P_sub entry masterMemrchrSpec memrchrHook
-
-theorem memrchrGhostFnK_fsT
-    (keepR : BitVec 64 → Bool) (P_real P_sub : Program) (entry : BitVec 64) :
-    HookFsTraced IsFsC (memrchrGhostFnK keepR P_real P_sub entry) :=
-  linkedCallHook_fsT keepR P_real P_sub entry (memrchrSpecK keepR masterMemrchrSpec) memrchrHook
 
 /-- Route `β′` master `HookOk` of `memrchrGhostFnLs` for `withLsRet masterMemrchrSpec` over any
     hook-free `P_sub` holding `coreMemrchrWords` (`65` w / `260` B) at `entry`. -/
@@ -1013,62 +993,5 @@ theorem hookOk_withLsRet_memrchrROVm_of_master [LibsignalPlacement] {f : State �
   hookOk_withVmPreserved (hookOk_withLsRet_memrchrRO_of_master hh stk hlo hhi) hvm
 
 /-! ## 6. Concrete `pureWordsProg` Specializations (`P_sub` Hypotheses Discharged Unconditionally) -/
-
-theorem memrchrGhostPureLs_masterLs_ok [LibsignalPlacement]
-    {keepR : BitVec 64 → Bool} {P_real : Program} (entry : BitVec 64)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keepR pc = true → P_real.externAt? pc = none) :
-    HookOk (memrchrGhostPureLs keepR P_real entry) (withLsRet masterMemrchrSpec) :=
-  memrchrGhostFnLs_masterLs_ok hsvc_real rfl hreal_no
-    (pureWordsProg_externAt_none entry coreMemrchrWords)
-    (pureWordsProg_memrchr_hasWords entry)
-
-theorem memrchrGhostPure_master_ok
-    {keepR : BitVec 64 → Bool} {P_real : Program} (entry : BitVec 64)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keepR pc = true → P_real.externAt? pc = none) :
-    HookOk (memrchrGhostPure keepR P_real entry) masterMemrchrSpec :=
-  memrchrGhostFn_master_ok hsvc_real rfl hreal_no
-    (pureWordsProg_externAt_none entry coreMemrchrWords)
-    (pureWordsProg_memrchr_hasWords entry)
-
-theorem memrchrGhostPureK_masterK_ok
-    {keepR : BitVec 64 → Bool} {P_real : Program} (entry : BitVec 64)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keepR pc = true → P_real.externAt? pc = none) :
-    HookOk (memrchrGhostPureK keepR P_real entry) (memrchrSpecK keepR masterMemrchrSpec) :=
-  memrchrGhostFnK_masterK_ok hsvc_real rfl hreal_no
-    (pureWordsProg_externAt_none entry coreMemrchrWords)
-    (pureWordsProg_memrchr_hasWords entry)
-
-theorem memrchrGhostPureLs_vmPreserved [LibsignalPlacement]
-    {keepR : BitVec 64 → Bool} {P_real : Program} (entry : BitVec 64)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keepR pc = true → P_real.externAt? pc = none)
-    (s0 : State) :
-    VmPreserved s0 (memrchrGhostPureLs keepR P_real entry s0) :=
-  memrchrGhostFnLs_vmPreserved hsvc_real rfl hreal_no
-    (pureWordsProg_externAt_none entry coreMemrchrWords)
-    (pureWordsProg_memrchr_hasWords entry) s0
-
-theorem memrchrGhostPure_vmPreserved
-    {keepR : BitVec 64 → Bool} {P_real : Program} (entry : BitVec 64)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keepR pc = true → P_real.externAt? pc = none)
-    (s0 : State) :
-    VmPreserved s0 (memrchrGhostPure keepR P_real entry s0) :=
-  memrchrGhostFn_vmPreserved hsvc_real rfl hreal_no
-    (pureWordsProg_externAt_none entry coreMemrchrWords)
-    (pureWordsProg_memrchr_hasWords entry) s0
-
-theorem memrchrGhostPureK_vmPreserved
-    {keepR : BitVec 64 → Bool} {P_real : Program} (entry : BitVec 64)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keepR pc = true → P_real.externAt? pc = none)
-    (s0 : State) :
-    VmPreserved s0 (memrchrGhostPureK keepR P_real entry s0) :=
-  memrchrGhostFnK_vmPreserved hsvc_real rfl hreal_no
-    (pureWordsProg_externAt_none entry coreMemrchrWords)
-    (pureWordsProg_memrchr_hasWords entry) s0
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemrchrGhost

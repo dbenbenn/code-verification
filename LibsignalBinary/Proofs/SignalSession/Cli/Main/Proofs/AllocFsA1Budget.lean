@@ -10,16 +10,18 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.E2E.HooksE.CommonBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.E2E.HooksE.CommonBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRun
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Allocator and Memory Hook Bridges for `main`
@@ -29,7 +31,7 @@ import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRun
 source), `memmove`, and `memset` on `cliExterns W` and `cliExternsWith ext` (`CliExternsBudgetOk`).
 -/
 
-@[expose] public section
+public section
 
 set_option linter.dupNamespace false
 set_option autoImplicit false
@@ -47,8 +49,7 @@ open CryptoVerification.LibsignalTripleRatchet
    sessionMemcpyRegionSpec sessionMemcpySpec sessionMemmoveSpec sessionMemsetRegionSpec
    sessionMemsetSpec sessionShimSpec shimName withStack)
 open CryptoVerification.RustHeap (allocHookStack)
-open CryptoVerification.SignalSession
-  (CliHooks cliExterns cliExternsWith cliExterns_row readStdinName writeFileName writeStdoutName)
+open CryptoVerification.SignalSession (CliHooks cliExterns cliExterns_row readStdinName writeFileName writeStdoutName)
 open CryptoVerification.SignalSession.CliExt
   (ioNames memHookStack memcpyROSpec memcpySpec memmoveSpec memsetSpec shimSpec)
 open CryptoVerification.SignalSession.Cli.MainHops
@@ -111,17 +112,6 @@ theorem cli_hookSat_memcpy_region_ro_vm (W : CliHooks) :
   ⟨hookMemcpy, cliExterns_row W (memcpy_row W), hookMemcpy_region_ro_vm_ok⟩
 
 /-! ## `VmPreserved` `HookOk` Lifts from `CliExt` Specs -/
-
-theorem hookSat_cliExternsWith_map {α β : Type}
-    {ext : String → Option (State → State)} {name : String}
-    {s₁ : Spec α} {s₂ : Spec β}
-    (hnp : isImagePanicSymbol name = false)
-    (hsat : HookSat ext name s₁)
-    (hmap : ∀ f, ext name = some f → HookOk f s₁ → HookOk f s₂) :
-    HookSat (cliExternsWith ext) name s₂ := by
-  obtain ⟨f, hf, hok⟩ := hsat
-  refine ⟨f, ?_, hmap f hf hok⟩
-  simp [cliExternsWith, hnp, hf]
 
 private theorem hookOk_conseq {α β : Type} {f : State → State} {spec₁ : Spec α} {spec₂ : Spec β}
     (hh : HookOk f spec₁)
@@ -420,245 +410,5 @@ theorem shim_notAlloc : shimName ∉ cliAllocNames := by decide
 theorem memcpy_notAlloc : memcpyName ∉ cliAllocNames := by decide
 theorem memmove_notAlloc : memmoveName ∉ cliAllocNames := by decide
 theorem memset_notAlloc : memsetName ∉ cliAllocNames := by decide
-
-section ExternsOk
-
-variable {P : PEParams} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-  {ext : String → Option (State → State)}
-
-theorem alloc_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext) :
-    HookSat (cliExternsWith ext) allocName (rustAllocSpecWithStack M A lim false extHookStack) :=
-  hookSat_cliExternsWith_map alloc_nonPanicE hOk.alloc.alloc fun _ _ h =>
-    hookOk_rustAllocWithStack (stk := extHookStack) h allocHookStack_le_extHookStack extHookStack_le
-
-theorem alloc_keepsFs_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext) :
-    HookSat (cliExternsWith ext) allocName
-      (rustAllocSpecWithStack M A lim false extHookStack).keepsFs :=
-  hookSat_cliExternsWith_map alloc_nonPanicE hOk.alloc.alloc fun f hf h =>
-    (hookOk_rustAllocWithStack (stk := extHookStack) h allocHookStack_le_extHookStack
-      extHookStack_le).keepsFs (hOk.fsKept _ f hf alloc_notIo)
-
-theorem dealloc_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext) :
-    HookSat (cliExternsWith ext) deallocName
-      (rustDeallocExternSpecWithStack M A lim extHookStack) :=
-  hookSat_cliExternsWith_map dealloc_nonPanicE hOk.alloc.dealloc fun _ _ h =>
-    hookOk_rustDeallocExternWithStack (stk := extHookStack) h allocHookStack_le_extHookStack
-      extHookStack_le
-
-theorem dealloc_keepsFs_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext) :
-    HookSat (cliExternsWith ext) deallocName
-      (rustDeallocExternSpecWithStack M A lim extHookStack).keepsFs :=
-  hookSat_cliExternsWith_map dealloc_nonPanicE hOk.alloc.dealloc fun f hf h =>
-    (hookOk_rustDeallocExternWithStack (stk := extHookStack) h allocHookStack_le_extHookStack
-      extHookStack_le).keepsFs (hOk.fsKept _ f hf dealloc_notIo)
-
-theorem realloc_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext) :
-    HookSat (cliExternsWith ext) reallocName
-      (rustReallocExternSpecWithStack M A lim extHookStack) :=
-  hookSat_cliExternsWith_map realloc_nonPanicE hOk.alloc.realloc fun _ _ h =>
-    hookOk_rustReallocExternWithStack (stk := extHookStack) h allocHookStack_le_extHookStack
-      extHookStack_le
-
-theorem realloc_keepsFs_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext) :
-    HookSat (cliExternsWith ext) reallocName
-      (rustReallocExternSpecWithStack M A lim extHookStack).keepsFs :=
-  hookSat_cliExternsWith_map realloc_nonPanicE hOk.alloc.realloc fun f hf h =>
-    (hookOk_rustReallocExternWithStack (stk := extHookStack) h allocHookStack_le_extHookStack
-      extHookStack_le).keepsFs (hOk.fsKept _ f hf realloc_notIo)
-
-theorem shim_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext) (stk : Nat) :
-    HookSat (cliExternsWith ext) shimName (withStack sessionShimBudgetSpec stk) :=
-  hookSat_cliExternsWith_map shim_nonPanicE hOk.shim fun f hf h =>
-    hookOk_withStack (hookOk_shim_of_cliExt h (hOk.vmKept _ f hf shim_notAlloc)) stk
-
-theorem shim_keepsFs_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext) (stk : Nat) :
-    HookSat (cliExternsWith ext) shimName (withStack sessionShimBudgetSpec stk).keepsFs :=
-  hookSat_cliExternsWith_map shim_nonPanicE hOk.shim fun f hf h =>
-    (hookOk_withStack (hookOk_shim_of_cliExt h (hOk.vmKept _ f hf shim_notAlloc)) stk).keepsFs
-      (hOk.fsKept _ f hf shim_notIo)
-
-theorem memcpy_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memcpyName (withVmPreserved (libcMemcpySpec stk)) :=
-  hookSat_cliExternsWith_map memcpy_nonPanicE hOk.memcpy fun f hf h =>
-    hookOk_libcMemcpy_of_cliExt h (hOk.vmKept _ f hf memcpy_notAlloc) stk hle hmax
-
-theorem memcpy_keepsFs_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memcpyName (withVmPreserved (libcMemcpySpec stk)).keepsFs :=
-  hookSat_cliExternsWith_map memcpy_nonPanicE hOk.memcpy fun f hf h =>
-    (hookOk_libcMemcpy_of_cliExt h (hOk.vmKept _ f hf memcpy_notAlloc) stk hle hmax).keepsFs
-      (hOk.fsKept _ f hf memcpy_notIo)
-
-theorem sessionMemcpy_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memcpyName (sessionMemcpyBudgetSpec stk) :=
-  hookSat_cliExternsWith_map memcpy_nonPanicE hOk.memcpy fun f hf h =>
-    hookOk_sessionMemcpy_of_cliExt h (hOk.vmKept _ f hf memcpy_notAlloc) stk hle hmax
-
-theorem sessionMemcpy_keepsFs_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memcpyName (sessionMemcpyBudgetSpec stk).keepsFs :=
-  hookSat_cliExternsWith_map memcpy_nonPanicE hOk.memcpy fun f hf h =>
-    (hookOk_sessionMemcpy_of_cliExt h (hOk.vmKept _ f hf memcpy_notAlloc) stk hle hmax).keepsFs
-      (hOk.fsKept _ f hf memcpy_notIo)
-
-theorem memcpyRegion_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memcpyName (withStack (withVmPreserved memcpyRegionSpec) stk) :=
-  hookSat_cliExternsWith_map memcpy_nonPanicE hOk.memcpy fun f hf h =>
-    hookOk_memcpyRegion_of_cliExt h (hOk.vmKept _ f hf memcpy_notAlloc) stk hle hmax
-
-theorem memcpyRegion_keepsFs_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memcpyName
-      (withStack (withVmPreserved memcpyRegionSpec) stk).keepsFs :=
-  hookSat_cliExternsWith_map memcpy_nonPanicE hOk.memcpy fun f hf h =>
-    (hookOk_memcpyRegion_of_cliExt h (hOk.vmKept _ f hf memcpy_notAlloc) stk hle hmax).keepsFs
-      (hOk.fsKept _ f hf memcpy_notIo)
-
-theorem sessionMemcpyRegion_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memcpyName (withStack sessionMemcpyRegionBudgetSpec stk) :=
-  hookSat_cliExternsWith_map memcpy_nonPanicE hOk.memcpy fun f hf h =>
-    hookOk_sessionMemcpyRegion_of_cliExt h (hOk.vmKept _ f hf memcpy_notAlloc) stk hle hmax
-
-theorem sessionMemcpyRegion_keepsFs_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memcpyName
-      (withStack sessionMemcpyRegionBudgetSpec stk).keepsFs :=
-  hookSat_cliExternsWith_map memcpy_nonPanicE hOk.memcpy fun f hf h =>
-    (hookOk_sessionMemcpyRegion_of_cliExt h (hOk.vmKept _ f hf memcpy_notAlloc) stk hle hmax).keepsFs
-      (hOk.fsKept _ f hf memcpy_notIo)
-
-theorem memmove_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memmoveName (withVmPreserved (libcMemmoveSpec stk)) :=
-  hookSat_cliExternsWith_map memmove_nonPanicE hOk.memmove fun f hf h =>
-    hookOk_libcMemmove_of_cliExt h (hOk.vmKept _ f hf memmove_notAlloc) stk hle hmax
-
-theorem memmove_keepsFs_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memmoveName (withVmPreserved (libcMemmoveSpec stk)).keepsFs :=
-  hookSat_cliExternsWith_map memmove_nonPanicE hOk.memmove fun f hf h =>
-    (hookOk_libcMemmove_of_cliExt h (hOk.vmKept _ f hf memmove_notAlloc) stk hle hmax).keepsFs
-      (hOk.fsKept _ f hf memmove_notIo)
-
-theorem sessionMemmove_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memmoveName (sessionMemmoveBudgetSpec stk) :=
-  hookSat_cliExternsWith_map memmove_nonPanicE hOk.memmove fun f hf h =>
-    hookOk_sessionMemmove_of_cliExt h (hOk.vmKept _ f hf memmove_notAlloc) stk hle hmax
-
-theorem sessionMemmove_keepsFs_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memmoveName (sessionMemmoveBudgetSpec stk).keepsFs :=
-  hookSat_cliExternsWith_map memmove_nonPanicE hOk.memmove fun f hf h =>
-    (hookOk_sessionMemmove_of_cliExt h (hOk.vmKept _ f hf memmove_notAlloc) stk hle hmax).keepsFs
-      (hOk.fsKept _ f hf memmove_notIo)
-
-theorem memset_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memsetName (withVmPreserved (libcMemsetSpec stk)) :=
-  hookSat_cliExternsWith_map memset_nonPanicE hOk.memset fun f hf h =>
-    hookOk_libcMemset_of_cliExt h (hOk.vmKept _ f hf memset_notAlloc) stk hle hmax
-
-theorem memset_keepsFs_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memsetName (withVmPreserved (libcMemsetSpec stk)).keepsFs :=
-  hookSat_cliExternsWith_map memset_nonPanicE hOk.memset fun f hf h =>
-    (hookOk_libcMemset_of_cliExt h (hOk.vmKept _ f hf memset_notAlloc) stk hle hmax).keepsFs
-      (hOk.fsKept _ f hf memset_notIo)
-
-theorem sessionMemset_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memsetName (sessionMemsetBudgetSpec stk) :=
-  hookSat_cliExternsWith_map memset_nonPanicE hOk.memset fun f hf h =>
-    hookOk_sessionMemset_of_cliExt h (hOk.vmKept _ f hf memset_notAlloc) stk hle hmax
-
-theorem sessionMemset_keepsFs_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memsetName (sessionMemsetBudgetSpec stk).keepsFs :=
-  hookSat_cliExternsWith_map memset_nonPanicE hOk.memset fun f hf h =>
-    (hookOk_sessionMemset_of_cliExt h (hOk.vmKept _ f hf memset_notAlloc) stk hle hmax).keepsFs
-      (hOk.fsKept _ f hf memset_notIo)
-
-theorem memsetRegion_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memsetName (withStack (withVmPreserved memsetRegionSpec) stk) :=
-  hookSat_cliExternsWith_map memset_nonPanicE hOk.memset fun f hf h =>
-    hookOk_memsetRegion_of_cliExt h (hOk.vmKept _ f hf memset_notAlloc) stk hle hmax
-
-theorem memsetRegion_keepsFs_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memsetName
-      (withStack (withVmPreserved memsetRegionSpec) stk).keepsFs :=
-  hookSat_cliExternsWith_map memset_nonPanicE hOk.memset fun f hf h =>
-    (hookOk_memsetRegion_of_cliExt h (hOk.vmKept _ f hf memset_notAlloc) stk hle hmax).keepsFs
-      (hOk.fsKept _ f hf memset_notIo)
-
-theorem sessionMemsetRegion_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memsetName (withStack sessionMemsetRegionBudgetSpec stk) :=
-  hookSat_cliExternsWith_map memset_nonPanicE hOk.memset fun f hf h =>
-    hookOk_sessionMemsetRegion_of_cliExt h (hOk.vmKept _ f hf memset_notAlloc) stk hle hmax
-
-theorem sessionMemsetRegion_keepsFs_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memsetName
-      (withStack sessionMemsetRegionBudgetSpec stk).keepsFs :=
-  hookSat_cliExternsWith_map memset_nonPanicE hOk.memset fun f hf h =>
-    (hookOk_sessionMemsetRegion_of_cliExt h (hOk.vmKept _ f hf memset_notAlloc) stk hle hmax).keepsFs
-      (hOk.fsKept _ f hf memset_notIo)
-
-theorem sessionMemcpyRegionRO_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : memHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memcpyName
-      (withStack (withVmPreserved sessionMemcpyRegionROSpec) stk) :=
-  hookSat_cliExternsWith_map memcpy_nonPanicE hOk.memcpyRO fun f hf h =>
-    hookOk_sessionMemcpyRegionRO_of_cliExt h (hOk.vmKept _ f hf memcpy_notAlloc) stk hle hmax
-
-theorem sessionMemcpyRegionRO_keepsFs_hookSat_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : extHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memcpyName
-      (withStack (withVmPreserved sessionMemcpyRegionROSpec) stk).keepsFs :=
-  hookSat_cliExternsWith_map memcpy_nonPanicE hOk.memcpyRO fun f hf h =>
-    (hookOk_sessionMemcpyRegionRO_of_cliExt h (hOk.vmKept _ f hf memcpy_notAlloc) stk
-      (memHookStack_le_of_ext hle) hmax).keepsFs (hOk.fsKept _ f hf memcpy_notIo)
-
-/-- `HookSat` for `withVmPreserved (sessionMemcpyRegionROSpecWithStack stk)` on `cliExternsWith ext`
-(`memHookStack ≤ stk ≤ 2 ^ 64`) from `CliExternsBudgetOk`. -/
-theorem memcpyRegionRO_withStack_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext)
-    (stk : Nat) (hle : memHookStack ≤ stk) (hmax : stk ≤ 2 ^ 64) :
-    HookSat (cliExternsWith ext) memcpyName
-      (withVmPreserved (sessionMemcpyRegionROSpecWithStack stk)) :=
-  hookSat_cliExternsWith_map memcpy_nonPanicE hOk.memcpyRO fun f hf hh =>
-    hookOk_withVmPreserved
-      (hookOk_conseq (hookOk_sessionMemcpyRegionRO_plain_of_cliExt hh stk hle hmax)
-        fun ⟨dst, src, bs⟩ R s0 hpre =>
-          ⟨(dst, src, bs), emp,
-            by
-              dsimp only [withStack, sessionMemcpyRegionROSpecWithStack,
-                sessionMemcpyRegionROSpec] at hpre ⊢
-              simp only [emp_sepConj]
-              exact Eq.mp (by sep_ac_rfl) hpre,
-            fun sf hpost => by
-              dsimp only [withStack, sessionMemcpyRegionROSpecWithStack,
-                sessionMemcpyRegionROSpec] at hpost ⊢
-              simp only [emp_sepConj] at hpost
-              exact Eq.mp (by sep_ac_rfl) hpost⟩)
-      (hOk.vmKept _ f hf memcpy_notAlloc)
-
-theorem memcpyRegionRO_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext) :
-    HookSat (cliExternsWith ext) memcpyName
-      (withVmPreserved (sessionMemcpyRegionROSpecWithStack memHookStack)) :=
-  memcpyRegionRO_withStack_of_externsOk hOk memHookStack (Nat.le_refl _) (by decide)
-
-theorem memcpyRegionRO_X_of_externsOk [LibsignalPlacement] (hOk : CliExternsBudgetOk P M A lim ext) :
-    HookSat (cliExternsWith ext) memcpyName
-      (withVmPreserved sessionMemcpyRegionROSpecX) :=
-  memcpyRegionRO_withStack_of_externsOk hOk extHookStack (by decide) extHookStack_le
-
-end ExternsOk
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Budget

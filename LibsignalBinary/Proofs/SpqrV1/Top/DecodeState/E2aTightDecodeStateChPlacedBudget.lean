@@ -9,23 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.E2aTightBytesZeroAux
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochLoopClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainLoopClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainPushClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.E2aTightChainParamsClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.E2aTightBytesZeroAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochLoopClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainLoopClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainPushClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.E2aTightChainParamsClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonClPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.E2aTightDecodeStateChPlacedBudgetAux
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Canonical Guarded-Tight `ChainPB` Outer Field-2 Verification (`Block 325`)
@@ -35,7 +40,7 @@ Defines canonical validity predicates (`e2a_ValidEpochDirPB`, `e2a_ValidChainEpo
 steps `+116 -> +1576` under `SpqrTightEvs 21 561525 79236` while preserving `x27 = 8#64`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -76,22 +81,22 @@ open LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlacedBudget
 
 /-! ## 1. Canonical Validity Predicates & Block-299 Seam (`E2aEpochDirCanonicalOk`) -/
 
-def e2a_ValidEpochDirPB (maxPrev : Nat) (m : EpochDirectionPB) : Prop :=
+@[expose] def e2a_ValidEpochDirPB (maxPrev : Nat) (m : EpochDirectionPB) : Prop :=
   m.next.length ≤ 32 ∧ m.prev.length ≤ maxPrev
 
-def e2a_ValidChainEpochPB (m : ChainEpochPB) : Prop :=
+@[expose] def e2a_ValidChainEpochPB (m : ChainEpochPB) : Prop :=
   (∀ d, m.send = some d → e2a_ValidEpochDirPB 0 d) ∧
   (∀ d, m.recv = some d → e2a_ValidEpochDirPB 79236 d)
 
-def e2a_ValidChainPB (m : ChainPB) : Prop :=
+@[expose] def e2a_ValidChainPB (m : ChainPB) : Prop :=
   m.links.length ≤ 3 ∧ m.nextRoot.length ≤ 32 ∧ ∀ ep ∈ m.links, e2a_ValidChainEpochPB ep
 
-def e2a_epochDirectionZeroCapAt (A : RustAlloc) (a : BitVec 64) (d : EpochDirectionPB) : SepProp :=
+@[expose] def e2a_epochDirectionZeroCapAt (A : RustAlloc) (a : BitVec 64) (d : EpochDirectionPB) : SepProp :=
   (∃∗ p1 : BitVec 64, vecU8At A a 0#64 p1 d.next) ∗
   (∃∗ p2 : BitVec 64, vecU8At A (a + 0x18#64) 0#64 p2 d.prev) ∗
   ((a + 0x30#64) ↦₃₂ d.ctr) ∗ memRegion (a + 0x34#64) 4
 
-def E2aEpochDirCanonicalOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def E2aEpochDirCanonicalOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   ∀ (maxPrev ops cum maxReq : Nat),
     ((maxPrev = 0 ∧ ops = 2 ∧ cum = 1476 ∧ maxReq = 32) ∨

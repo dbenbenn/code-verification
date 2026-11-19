@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrLoop
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrLoop -- proof-setup: allow-public-import
 public import Computational.Proofs.SpecLemmas.Pqxdh.Security.BoundProofDefs
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrStep
 import Computational.Proofs.SignalPqxdh.Security.SigHopA
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # `shcrReductionAuthProg` Experiment Equality
@@ -24,7 +25,7 @@ proves that its `KemShCr` advantage matches the shallow reduction `shcrReduction
 intermediate `RedProg2` runner `shcrAuthMidAdv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,7 +41,7 @@ attribute [implicit_reducible] authCodec shcrReductionAuthProg
 
 /-- The `KemShCr` adversary obtained by running `shcrReductionAuthProg` with capacity and fuel
     `b.q_total`. -/
-def shcrAuthDslAdv (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : KemShCrAdv where
+@[expose] def shcrAuthDslAdv (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : KemShCrAdv where
   State := Mid (authSpec S) Bool
     (shcrReductionAuthProg S b.q_total b.q_total).π.denote
     (shcrReductionAuthProg S b.q_total b.q_total).σ.denote
@@ -54,7 +55,7 @@ def shcrAuthDslAdv (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : KemShCr
 abbrev MidSt (S : Setup) :=
   Bytes × Bytes × Nat × RedProg2State (authSpec S) Bool (PauseMid S) (AuthShCrState S)
 
-def chOf {S : Setup} (pk : Bytes) :
+@[expose] def chOf {S : Setup} (pk : Bytes) :
     RedProg2State (authSpec S) Bool (PauseMid S) (AuthShCrState S) → Bytes
   | .done _ _ => pk
   | .paused _ d _ _ => d.2.1.pqspkB
@@ -65,7 +66,7 @@ abbrev postImpl (S : Setup) (q : AuthQuery S) (s : AuthShCrState S) :
 
 /-- Intermediate `KemShCr` adversary running the shallow reduction under generic `RedProg2`
     runners. -/
-def shcrAuthMidAdv (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : KemShCrAdv where
+@[expose] def shcrAuthMidAdv (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : KemShCrAdv where
   State := MidSt S
   choosePk pk sk :=
     if S.N_spk_tot * S.N_send_tot = 0 then (do
@@ -91,7 +92,7 @@ def shcrAuthMidAdv (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : KemShCr
       extractCollidingKemCtPrim b.q_total pk sk d.2.1.pqspkB ct ss y.2.recvKemRecs
   q_prim := primQueryBudget S b
 
-def Fcore {S : Setup} : MidSt S → AuthShCrFinishState S
+@[expose] def Fcore {S : Setup} : MidSt S → AuthShCrFinishState S
   | (pk, sk, _, r) => (pk, sk, chOf pk r, Gsh S (none, r))
 
 private theorem evalDist_sampleIndexRange_bind_true {N : ℕ} (hN : 0 < N) (g : ℕ → ProbComp Bool) :
@@ -239,33 +240,6 @@ theorem kemShCr_eq_of_choosePk_spk_send (P : Primitives) (S : Setup)
     exact evalDist_sampleIndexRange_mul_true hPosSpk
       (fun uIdx jIdx => sampleIndexRange S.N_send_tot >>= fun sIdx => f (uIdx * S.N_recv + jIdx) sIdx)
 
-theorem midAdv_kemShCrExp_eq_core (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : AuthAdversary S) :
-    KemShCr P (shcrReductionAuthCore S b A) = KemShCr P (shcrAuthMidAdv S b A) := by
-  refine kemShCr_eq_of_choosePk_spk_send P S (shcrReductionAuthCore S b A) (shcrAuthMidAdv S b A)
-    Fcore (fun bIdx sIdx pk sk => do
-      let secb ← embedUnif ($ᵗ Bool)
-      let r ← stepUntilPauseFuel false (stepMid S sIdx) A.run b.q_total
-        (initSh S secb bIdx pk sk)
-      pure (chOf pk r.2, (pk, sk, sIdx, r.2))) ?_ ?_ ?_
-  · intro pk sk
-    simp only [shcrReductionAuthCore, choosePkAuthPrimAt, map_eq_bind_pure_comp,
-      bind_assoc, Function.comp_def, pure_bind]
-    refine bind_congr fun idx => bind_congr fun secb => ?_
-    rw [stepUntilShCr_eq]
-    simp only [map_eq_bind_pure_comp, bind_assoc, Function.comp_def, pure_bind]
-    refine bind_congr fun r => ?_
-    rcases r with ⟨c, _ | _⟩ <;> rfl
-  · intro pk sk
-    rfl
-  · rintro ⟨pk, sk, sIdx, r⟩ ss ct
-    rcases r with ⟨a, h⟩ | ⟨q, d, h, c⟩
-    · simp [shcrReductionAuthCore, shcrAuthMidAdv, Fcore, Gsh, findCollisionAuthPrim, chOf]
-    · simp only [shcrReductionAuthCore, shcrAuthMidAdv, Fcore, Gsh, findCollisionAuthPrim,
-        resumePausedAuthPrim, toPaused, chOf, bind_assoc]
-      refine bind_congr fun x => ?_
-      rw [runWithFuelShCr_eq]
-
 theorem stepMid_inv (S : Setup) (pk sk : Bytes) (n sIdx : Nat) (q : AuthQuery S)
     (h : AuthShCrState S) (hI : ShInv pk sk n h) :
     HoldsOnLeaves (PreStepInvC (ShInv pk sk) (fun d : PauseMid S => d.2.1.pqspkB) n)
@@ -343,12 +317,12 @@ theorem postStep_eq (S : Setup) (K n : Nat) (q : AuthQuery S) (h : AuthShCrState
   rw [hr]
 
 /-- Mid-level invariant on reduction states. -/
-def MidInv {S : Setup} (K : Nat) : MidSt S → Prop
+@[expose] def MidInv {S : Setup} (K : Nat) : MidSt S → Prop
   | (pk, sk, _, .done _ h) => ShInv pk sk K h
   | (pk, sk, _, .paused _ _ h c) => ∃ n r, ShInv pk sk n h ∧ n + 1 + r ≤ K ∧
       ∀ x, IsQueryBoundP (c x) (fun q : ℕ ⊕ AuthQuery S => q.isRight = true) r
 
-def Fdsl (S : Setup) (b : QueryBudget) (A : AuthAdversary S) :
+@[expose] def Fdsl (S : Setup) (b : QueryBudget) (A : AuthAdversary S) :
     MidSt S → (shcrAuthDslAdv S b A).State
   | (pk, _, sIdx, .done a h) => .done a (shcrStToVal sIdx pk h)
   | (pk, _, sIdx, .paused q d h k) =>
@@ -465,29 +439,5 @@ theorem dslAdv_kemShCrExp_eq_mid (P : Primitives) (S : Setup) (b : QueryBudget)
           (c x.1) rr (hc x.1) b.q_total (n + 1) x.2 hx (by omega)).1.bind_congr _ _ fun y hy => ?_
         dsimp only [Prod.map, id]
         rw [shcrFinish_eval S b.q_total b.q_total _ y.2 sIdx d.2.1.pqspkB ss ct, hy.tpk, hy.tsk]
-
-/-- `shcrAuthDslAdv` and the shallow `shcrReductionAuth` have equal `KemShCr` advantage. -/
-theorem shcrAuthDslAdv_kemShCr_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    KemShCr P (shcrAuthDslAdv S b A.1) = KemShCr P (shcrReductionAuth S b A) := by
-  have hA : IsQueryBoundP A.1.run (fun q : ℕ ⊕ AuthQuery S => q.isRight = true) b.q_total := by
-    have h := SignalPqxdh.QueryBounded.auth_total A.2
-    convert h using 1; funext q; cases q <;> rfl
-  have hDslMid : KemShCr P (shcrAuthDslAdv S b A.1) = KemShCr P (shcrAuthMidAdv S b A.1) := by
-    unfold KemShCr
-    rw [dslAdv_kemShCrExp_eq_mid P S b A.1 hA]
-  rw [hDslMid, ← midAdv_kemShCrExp_eq_core]
-  rfl
-
-theorem shcrAuthDslAdv_kemShCrExp_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    𝒟[kemShCrExp P (shcrAuthDslAdv S b A.1)] {true} =
-      𝒟[kemShCrExp P (shcrReductionAuth S b A)] {true} :=
-  shcrAuthDslAdv_kemShCr_eq P S b A
-
-theorem shcrAuthDslAdv_kemShCrReal_eq (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    KemShCrReal P (shcrAuthDslAdv S b A.1) = KemShCrReal P (shcrReductionAuth S b A) :=
-  congrArg ENNReal.toReal (shcrAuthDslAdv_kemShCr_eq P S b A)
 
 end SignalPqxdh.Security.ReductionDsl.AuthHs

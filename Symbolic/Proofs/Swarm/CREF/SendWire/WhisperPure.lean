@@ -19,10 +19,10 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
-public import Symbolic.Proofs.Swarm.CREF.SendWire.Ghosts
-public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
-public import Symbolic.Proofs.Swarm.CREF.XplSnapshot
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.SendWire.Ghosts -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.XplSnapshot -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyMono
 import Symbolic.Proofs.Swarm.CREF.CBadG2.Stamps
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CBadG2Pure
@@ -48,6 +48,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- proof-setup: allow-public-import
 
 /-!
 # Whisper `SendWire` Ghost Transport, Frame, and `Clean` Step Lemmas
@@ -57,7 +58,7 @@ cross-party `PureCRecRel` framing (`snd_frame_other`), and `Clean` step lemmas (
 `clean_sendPendingGhost`, `snd_clean_snoc`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

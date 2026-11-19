@@ -14,9 +14,9 @@ import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
 public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
 import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopPlacedBudgetFd -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3MatchingPathBKitsPlacedBudgetFd -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3MatchingPathBKitsPlacedBudgetFd
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.DecPkPollKitsSelfPlacedBudgetFd
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.DecPkPollKitsStage4PlacedBudgetFd
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlacedBudget
@@ -26,11 +26,11 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.DecPkPollKitsFdsP
 import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced
 import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KitCodecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1KitsPlacedBudgetAux -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1KitsPlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.DropSpeWordPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.LayoutBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPollPlacedBudget
@@ -43,6 +43,17 @@ import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # `hRead`-Free 6-Kit CLI `decrypt_prekey` Poll Bundle from Block-`589` `dirGetSpecPlaced`
@@ -145,7 +156,7 @@ private theorem toSkeletonRunHooks [LibsignalPlacement] {M : AllocCostModel}
   { alloc := hh.alloc, allocFs := hh.allocFs, panics := hh.panics, memcpyRO := hh.memcpyRO,
     bcmp := hh.bcmp, fs := hh.fs, utf8 := hh.utf8, memrchr := hh.memrchr,
     codecHooks := hh.codecHooks, allocZeroed := hh.allocZeroed, stringClone := hh.stringClone,
-    formatInner := hh.formatInner, blackBox := hh.blackBox }
+    formatInner := hh.formatInner, fmtWrite := hh.fmtWrite, blackBox := hh.blackBox }
 
 /-! ## 1. Shims (`606`, `608`, `611`) -/
 
@@ -804,7 +815,7 @@ theorem cliDecPkPollKitsPlacedOk_of_dirGet [LibsignalPlacement] {M : AllocCostMo
       memcpyRO := hh.memcpyRO, bcmp := hh.bcmp, fs := hh.fs,
       utf8 := hh.utf8, memrchr := hh.memrchr, codecHooks := hh.codecHooks,
       allocZeroed := hh.allocZeroed, stringClone := hh.stringClone,
-      formatInner := hh.formatInner, blackBox := hh.blackBox }
+      formatInner := hh.formatInner, fmtWrite := hh.fmtWrite, blackBox := hh.blackBox }
   { sessOk := fun _ _ =>
       cliPollSess_kitPlacedOkSE_untrusted_of_dirGet mmpl gh W hDropNz hh hGet hDeser
     idOk := fun _ _ =>

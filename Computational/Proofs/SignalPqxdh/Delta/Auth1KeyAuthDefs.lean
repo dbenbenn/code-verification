@@ -10,27 +10,27 @@ limitations under the License.
 module
 
 public import Computational.Proofs.SignalPqxdh.Delta.KeyIndDefs
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c3
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c4
-public import Computational.Proofs.SignalPqxdh.Security.AuthAssembly
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmac
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c3 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c4
+import Computational.Proofs.SignalPqxdh.Security.AuthAssembly
+import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmac
 public import Computational.Proofs.SignalPqxdh.Delta.AuthDefs
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2b
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC3b
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6b
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c4
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c5
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthHopInterface
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopB1
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2b
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC3b
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6b
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c1 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c3
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c4 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c5
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopB1 -- proof-setup: allow-public-import
 
 /-!
 # One-key authentication δ hop statements
@@ -39,7 +39,7 @@ One-key counterparts of the `Delta/AuthDefs.lean` hop statements and union bound
 single-scalar identity oracle `pqxdhAuthImpl1KeyG`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -54,7 +54,7 @@ namespace Proofs.SignalPqxdh.Security.PqxdhDelta
 
 /-- One-key `.recvOPK` step coupling on `AuthSendLatchedState` under `CryptoWellFormedPrimitivesδ`
 with bad event `badSendδ`. -/
-def AuthRecvOPKδStmt1Key (S : Setup) : Prop :=
+@[expose] def AuthRecvOPKδStmt1Key (S : Setup) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (maxRo : ℕ) (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) (msg : PreKeyMsg)
       (s35 s3 : AuthSendLatchedState S),
@@ -74,7 +74,7 @@ def AuthRecvOPKδStmt1Key (S : Setup) : Prop :=
 
 /-- One-key `.recvNoOPK` step coupling on `AuthSendLatchedState` under
 `CryptoWellFormedPrimitivesδ` with bad event `badSendδ`. -/
-def AuthRecvNoOPKδStmt1Key (S : Setup) : Prop :=
+@[expose] def AuthRecvNoOPKδStmt1Key (S : Setup) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (maxRo : ℕ) (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk) (msg : PreKeyMsg)
       (s35 s3 : AuthSendLatchedState S),
@@ -93,14 +93,14 @@ def AuthRecvNoOPKδStmt1Key (S : Setup) : Prop :=
         ((pqxdhAuthSendLatchedStageImpl1Key .g3 S P (.recvNoOPK k j l msg)).run s3)
 
 /-- Monotonicity of `hasBadAuthKemCorr` along one-key `.g3` send-latched steps. -/
-def AuthCorrMonoStmt1Key (S : Setup) : Prop :=
+@[expose] def AuthCorrMonoStmt1Key (S : Setup) : Prop :=
   ∀ (P : Primitives) (q : AuthQuery S) (s : AuthSendLatchedState S),
     hasBadAuthKemCorr P s.hyb = true →
     ∀ y ∈ support ((pqxdhAuthSendLatchedStageImpl1Key .g3 S P q).run s),
       hasBadAuthKemCorr P y.2.hyb = true
 
 /-- One-key `G3 → G3.5` cutoff bound with the `hasBadAuthKemCorr` bad-event term. -/
-def AuthCutoffδStmt1Key (S : Setup) : Prop :=
+@[expose] def AuthCutoffδStmt1Key (S : Setup) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b),
       |authFixedAdvG3_1Key S P A.1 - authFixedAdvG3_5_1Key S P A.1| ≤
@@ -112,12 +112,12 @@ def AuthCutoffδStmt1Key (S : Setup) : Prop :=
 
 /-- Derivation of `AuthCutoffδStmt1Key` from the `.recvOPK`/`.recvNoOPK` couplings and bad-event
 monotonicity. -/
-def AuthCutoffGlueStmt1Key (S : Setup) : Prop :=
+@[expose] def AuthCutoffGlueStmt1Key (S : Setup) : Prop :=
   AuthRecvOPKδStmt1Key S → AuthRecvNoOPKδStmt1Key S → AuthCorrMonoStmt1Key S → AuthCutoffδStmt1Key S
 
 /-- Transfer of `hasBadAuthKemCorr` in `runAuthSendLatchedSim1Key .g3` to `hasBadKemCorrRecords` in
 `runAuthShCrSim1Key`. -/
-def AuthCorrTransferStmt1Key (S : Setup) : Prop :=
+@[expose] def AuthCorrTransferStmt1Key (S : Setup) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b),
       (𝒟[runAuthSendLatchedSim1Key .g3 S P A.1 >>= fun x =>
@@ -127,7 +127,7 @@ def AuthCorrTransferStmt1Key (S : Setup) : Prop :=
 
 /-- Per-index reduction from the KEM correctness bad event in `runAuthShCrSim1Key` to
 `kemCorrExpProb`. -/
-def AuthCorrAtStmt1Key (S : Setup) : Prop :=
+@[expose] def AuthCorrAtStmt1Key (S : Setup) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (A : AuthAdversary S) (idx : ℕ), idx < S.N_spk_tot * S.N_send_tot →
       ∃ choosePk : Bytes → Bytes → ProbComp Bytes,

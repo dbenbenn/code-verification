@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem1.Lemma17Aux
+public import Computational.Proofs.CryptoGames.SM.Theorem1.Lemma17Aux -- proof-setup: allow-public-import
 import VCVio.OracleComp.EvalDist.Measure
 
 /-!
@@ -20,7 +20,7 @@ to `Config.h2` costs twice the authenticity advantages of `challSim A` summed ov
 guesses `(t*_L, t*)` (`DEV-SM9`, `DEV-SM19`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -137,7 +137,7 @@ theorem simulateQ_fullImpl_liftM_run {α : Type} (cfg : Config Msg)
 
 /-! ### `CloseBySum` combinators -/
 
-def CloseBySum (c1 c2 : ProbComp Bool) (cAuth : ℕ → Option ℕ → ProbComp Bool) : Prop :=
+@[expose] def CloseBySum (c1 c2 : ProbComp Bool) (cAuth : ℕ → Option ℕ → ProbComp Bool) : Prop :=
   ∀ ev : Set Bool,
     𝒟[c1] ev ≤ 𝒟[c2] ev +
       ∑ t ∈ Finset.range (qep + 2), ∑ tL ∈ admissibleLastLeakGuesses Δ t, 𝒟[cAuth t tL] {true} ∧
@@ -220,7 +220,7 @@ theorem epMgmt_win {s s₁ : GameState St Msg C} {P : Party} {fresh : Bool}
   rcases h1 : P.sendsIn (s.epoch P + 1) <;> rcases h2 : decide (qep < s.epoch P) <;>
     rcases h3 : s.safeCh Δ P <;> rcases fresh <;> simp_all [GameState.leak] <;> rw [← hep.2]
 
-def samCoins (r_opt : Option Coins) : ProbComp Coins :=
+@[expose] def samCoins (r_opt : Option Coins) : ProbComp Coins :=
   match r_opt with
   | none => $ᵗ Coins
   | some c => pure c

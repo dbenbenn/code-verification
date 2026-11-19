@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public meta import Lean -- shake: keep
-public import Computational.Proofs.SpecLemmas.Reductions.ReductionDsl.Core
+import Computational.Proofs.SpecLemmas.Reductions.ReductionDsl.Core
 
 /-!
 # Syntactic Sugar for `ReductionDsl`
@@ -21,7 +21,7 @@ and `ReductionDsl.Expr` ASTs with `do` notation, named lexical binders and tuple
 macro-expansion time directly into raw `ReductionDsl` constructors.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -397,6 +397,7 @@ meta partial def compileMatch {α : Type} [Inhabited α] (ref : Syntax) (ctx : C
     let ctx' ← pushBinderPat ctxLeaf leafPat
     expandPlain ctx' rhs
 
+set_option maxHeartbeats 400000 in
 meta partial def expandExprSyntax?
     (rec : Ctx → TSyntax `term → MacroM (TSyntax `term))
     (ctx : Ctx) (s : TSyntax `term) : MacroM (Option (TSyntax `term)) := do

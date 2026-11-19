@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Proof
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1Placed
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Relocatable Dispatch & Variant Composition (Block `333`)
@@ -24,7 +25,7 @@ and `.rodata` jump table to `statesFromPbVariantPlacedSpec`, proves Variant 0 (`
 reduces `StatesFromPbPlacedOk*` to per-variant contracts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -144,7 +145,7 @@ theorem sfpProof_sepWPp_of_states_body_cl_placed [LibsignalPlacement]
 
 /-- Canonical post-dispatch `SepWPp` obligation at offset `off` in Block `333` for a
     `V1State.InnerState` variant `st`. -/
-def StatesFromPbVariantStepPlaced [LibsignalPlacement]
+@[expose] def StatesFromPbVariantStepPlaced [LibsignalPlacement]
     (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State))
     (st : V1State.InnerState) (off : BitVec 64) : Prop :=

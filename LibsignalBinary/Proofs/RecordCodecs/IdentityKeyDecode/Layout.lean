@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
-public import LibsignalBinary.Specifications.RecordCodecsBinary
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsBinary
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom
 
 /-!
@@ -20,7 +20,7 @@ Model case splits, 96-byte stack frame (`sub sp, sp, #0x60`) decomposition, and 
 repacking from `pkTryFromResultAt` (`40` B) into `identityKeyDecodeResultAt` (`48` B).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -204,7 +204,7 @@ theorem pkTryFrom_sp_88_badLen (sp : BitVec 64) (n : Nat) :
 
 /-! ## 3. Key chunks (`Ok` path) -/
 
-def ikKeyChunks (a : BitVec 64)
+@[expose] def ikKeyChunks (a : BitVec 64)
     (b0 b1 b2 b3 b4 b5 b6 : BitVec 8)
     (v7 : BitVec 16) (v9 : BitVec 32) (v13 : BitVec 16)
     (v15 v23 : BitVec 64) (v31 : BitVec 8) : SepProp :=

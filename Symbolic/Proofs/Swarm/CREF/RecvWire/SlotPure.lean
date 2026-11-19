@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptSplitPure
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.RcvByPureA
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.SlotG2HelpersPure
+import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptSplitPure
+import Symbolic.Proofs.Swarm.CREF.RecvWire.RcvByPureA
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.SlotG2HelpersPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.ModelSplit
 import Symbolic.Proofs.Swarm.CREF.Opk
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -22,6 +22,7 @@ import Symbolic.Proofs.Swarm.CREF.RecvWire.SlotG2Pure
 import Symbolic.Proofs.Swarm.CREF.TR.RecvRep
 import Symbolic.Proofs.Swarm.CREF.Xpl.PrefixReach
 import Symbolic.Proofs.Swarm.Leaves.IC12_Stage1MatchedPrefixPure
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 
 /-!
 # Whisper Receive Byte-Chain Reselection Entry
@@ -30,7 +31,7 @@ Re-exports the Whisper receive pure surface and proves `slot_reselect_pure`, dis
 `RcvByteChainReselectAt` at every clean explanation.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

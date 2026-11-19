@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import Mathlib.Data.List.Forall2
-import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
 
 /-!
@@ -21,7 +21,7 @@ Proves that extending a `Move` list extends `runTraceMoves` and preserves attack
 earlier trace entries, and splits `Forall₂ (EventMatchesEntry ...)` across `runVis r (ms₀ ++ ms₁)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

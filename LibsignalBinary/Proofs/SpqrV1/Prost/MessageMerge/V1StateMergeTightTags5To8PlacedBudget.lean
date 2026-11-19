@@ -9,31 +9,35 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateMergeTightDefs
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1BudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag5
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag5ClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag5ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag7
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag7ClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag8
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag8BudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag8ClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTags5To6
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTags5To6ClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTags5To6ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1BudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag5
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag5ClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag5ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag7
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag7ClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag8
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag8BudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag8ClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTags5To6
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTags5To6ClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTags5To6ClPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Defs
+import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbChunked
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
 # Guarded-Tight Canonical Arm Proofs for `V1State::merge` (Block `298`): Tags 5–8
@@ -43,7 +47,7 @@ Canonical `tlb_V1StateMergeDom` arm proofs from loop header `+216` to return for
 Block `306`), and 8 (`Ct1Sampled`, Block `300`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

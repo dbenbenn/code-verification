@@ -9,21 +9,32 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyDecode
-public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEq
-public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Identity
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Defs
+import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsBinary
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyDecode
+import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEq
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat -- proof-setup: allow-public-import
 public meta import ProofLib
-public meta import LibsignalBinary.Proofs.Common.InImageKit
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+public meta import LibsignalBinary.Proofs.Common.InImageKit -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- proof-setup: allow-public-import
 public meta import Lean
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.RecordCodecs.RoundTrip
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import all Init.Data.String.Defs
+public import LibsignalBinary.Proofs.RecordCodecs.Deps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.Callees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.Sym
+public import ProofLib.SepLogic.WP.Apply
+public import LibsignalBinary.Proofs.Common.InImageKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable Symbolic Execution of `is_trusted_identity::{closure#0}`
@@ -32,7 +43,7 @@ Proves `cliIdTrustPollInnerSpecPlaced` and outer `idTrustPoll_placed_of_inner` o
 under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -243,7 +254,7 @@ theorem dirGet_cells_placed_ok [LibsignalPlacement] {prog : Program} {A : RustAl
   · dsimp only [dirGetSpecPlaced, StoreKit.withLsCodeRoLoaded] at hq
     exact (not_satisfies_false_sepConj hq).elim
 
-def ikDecodeCellsSpecPlaced [LibsignalPlacement] (calleeStk : Nat) :
+@[expose] def ikDecodeCellsSpecPlaced [LibsignalPlacement] (calleeStk : Nat) :
     Spec IkDecodeCellsGhost where
   pre := fun (bytesA, bytes, ret, ik, fsp) s =>
     ⌜s.readReg64 .x0 = bytesA ∧ (s.readReg64 .x1).toNat = bytes.length ∧
@@ -453,7 +464,7 @@ theorem pkEq_cells_placed_ok_16 [LibsignalPlacement] {prog : Program} {calleeStk
 
 /-! ## 2. Inner Spec & Outer Wrapper (`idTrustPoll_placed_of_inner`) -/
 
-def cliIdTrustPollInnerSpecPlaced [LibsignalPlacement] (rd : ReadRule)
+@[expose] def cliIdTrustPollInnerSpecPlaced [LibsignalPlacement] (rd : ReadRule)
     (pathOk : List (BitVec 8) → Prop) (A : RustAlloc) (calleeStk : Nat) : Spec IdPollGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.call.fut ∧ s.readReg64 .x8 = x.call.out ∧
@@ -601,7 +612,7 @@ private theorem close_panic_subgoal_p {s0 s_call sf : State} {F R : SepProp}
     (htr : s_call.trace = s0.trace)
     (hm : sf.mem ⊨ ((⌜allocFailedIn s_call sf ∧ s_call.trace <+: sf.trace⌝ ∗ anyHeap) ∗ F) ∗ R) :
     sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R := by
-  refine allowPanic_frame ?_ (by rwa [sepConj_assoc] at hm)
+  refine allowPanic_frame (F := F) ?_ (by simpa only [sepConj_assoc] using hm)
   rintro ⟨hfail, hpref⟩
   unfold allocFailedIn at hfail ⊢
   rw [htr] at hfail hpref

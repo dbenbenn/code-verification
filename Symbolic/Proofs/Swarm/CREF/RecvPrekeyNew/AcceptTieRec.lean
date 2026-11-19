@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTie
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTie -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
@@ -24,7 +24,7 @@ and defines `RpkRecRel` packaging `TR.StateRel`, skipped-key freshness, and rece
 invariants for an encoded `RecordRec`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,7 +56,7 @@ theorem rpkR_final_current {r : ProtocolSetup} {ms : List Move} {b a : Participa
 
 /-- Per-record relation between an encoded `RecordRec` `bytes` and `TRState` `st` on `tr`:
 `TR.StateRel`, logged and unused skipped message keys, and `Nodup` receiver chains. -/
-def RpkRecRel (interpretation : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def RpkRecRel (interpretation : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
     (tr : ExecTrace) (p : Participant) (st : TRState) (bytes : HwBytes) : Prop :=
   ∃ rec : RecordRec,
     bytes = recordBytes rec ∧

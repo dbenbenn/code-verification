@@ -15,6 +15,15 @@ import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
 import Mathlib.Tactic.Linarith
 import Mathlib.Tactic.Ring
+public import Computational.Proofs.ReductionDsl.FSAEAD.SaltWireCosted -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.FSAEAD.SaltWire
+import Computational.Proofs.ReductionDsl.FsAtomicMacrosBase
+import Computational.Proofs.ReductionDsl.FsAtomicMacrosCost
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.PubRed
+import Computational.Proofs.SessionCostedBase
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
+import Computational.Specifications.Session.ACD19.Ratchet.LibsignalBound
 
 
 /-! # Shared cost and size helpers for `FsAtomicBounds` -/

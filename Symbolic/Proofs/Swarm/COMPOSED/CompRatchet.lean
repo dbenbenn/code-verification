@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompLineage
+public import Symbolic.Proofs.Swarm.COMPOSED.CompLineage -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
@@ -38,7 +38,7 @@ Aggregates session-origin, key-schedule, DH-ratchet share randomness, and depth-
 compromise bridges for Triple Ratchet transitions within `DY.Libsignal.Composed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -59,7 +59,7 @@ move-level decrypt witness to `ModelAcceptsTermAfterAttackerSendsClassical` on e
 extending rejected runs on exit `1`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

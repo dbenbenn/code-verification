@@ -9,7 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.MainHaltedPrefixFactor
+public import Computational.Proofs.LibsignalCli.MainHaltedPrefixFactor -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.ComposedPrefixHelpers
+import Computational.Proofs.LibsignalCli.MainHaltedPrefixEndpoints
 
 /-!
 # Session-Tracked Stage-2 `bhPlugExtSessionTracked` Commutation
@@ -19,7 +21,7 @@ commutes Stage 2 (`eval2`) of `bhPrefixRedWithSessionTracked` under `implExtSess
 the plugged lazy driver on `bhPlugExtSessionTracked`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -533,7 +535,7 @@ theorem bhPrefixPlugInv_init {S : SignalPqxdh.Setup} {ℓ : ℕ}
 
 /-! ## Stage-1 support invariants -/
 
-def BHMidStage1PropsSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} (k q : ℕ) :
+@[expose] def BHMidStage1PropsSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} (k q : ℕ) :
     Mid (bhTargetGameSpec S ℓ (BitVec 512)) Bool (Option ℕ)
       (BHE2EDrvState S ℓ × List τ) BHPrefixCtx → Prop
   | .done _ σH' => σH'.1.paused = false
@@ -542,7 +544,7 @@ def BHMidStage1PropsSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : �
     (∀ v, (cont v).IsQueryBoundP (isGameQuery (G := bhTargetGameSpec S ℓ (BitVec 512))) q)
 
 /-- Pair-level Stage-1 output invariant for `bhPrefixRedWithSessionTracked.eval1`. -/
-def BHMidEval1PropsSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} (k qTot : ℕ)
+@[expose] def BHMidEval1PropsSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} (k qTot : ℕ)
     (o : BHPrefixCtx × Mid (bhTargetGameSpec S ℓ (BitVec 512)) Bool (Option ℕ)
       (BHE2EDrvState S ℓ × List τ) BHPrefixCtx) : Prop :=
   match o.2 with

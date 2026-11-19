@@ -9,14 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKyberc
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKyberWPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKyberc
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKyberWPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPost
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBoxes
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.Deps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.CalleesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrAt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.OkBridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.OkBridgePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKyber -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKyberPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKyberb
 
 /-!
 # Relocatable `[LibsignalPlacement]` Missing-Kyber v4 Error and Full Kyber `Ok` Dispatch
@@ -25,7 +34,7 @@ Proves `kyber_neither_v4_err_placed_wpE` (`+0x6c8 → +0xa24` / `+0xa80`) and
 `w5b_kyber_ok_placed_wpW` (`+0x684 → +0x830`) on `preKeyPlacedProg H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -190,15 +199,15 @@ theorem kyber_neither_v4_err_placed_wpE [LibsignalPlacement] {A : RustAlloc}
       w5bc_exists_pre fun w5 => w5bc_exists_pre fun w4 =>
       w5bc_exists_pre fun w3 => w5bc_exists_pre fun w2 =>
       w5bc_exists_pre fun w1 => w5bc_exists_pre fun w0 => ?_
-    let roBase := lsmpl.ρ "libsignal_protocol:.rodata..Lanon.565"
+    let roBase := lsmpl.ρ "libsignal_protocol:.rodata..Lanon.572"
     refine w5bc_of_sepWP_pk keepsFrozenInv_codeRoLoaded hcl2' (mid := (blkPl_111).base + 2504#64) ?_
-    refine SepWP.rodata64_intro (w5bw_rodata_ro8_at0 hcl2' "libsignal_protocol:.rodata..Lanon.565" 54) rfl ?_
-    refine SepWP.rodata64_intro (w5bw_rodata_ro8_at hcl2' "libsignal_protocol:.rodata..Lanon.565" 54 8) rfl ?_
-    refine SepWP.rodata64_intro (w5bw_rodata_ro8_at hcl2' "libsignal_protocol:.rodata..Lanon.565" 54 16) rfl ?_
-    refine SepWP.rodata64_intro (w5bw_rodata_ro8_at hcl2' "libsignal_protocol:.rodata..Lanon.565" 54 24) rfl ?_
-    refine SepWP.rodata64_intro (w5bw_rodata_ro8_at hcl2' "libsignal_protocol:.rodata..Lanon.565" 54 32) rfl ?_
-    refine SepWP.rodata64_intro (w5bw_rodata_ro8_at hcl2' "libsignal_protocol:.rodata..Lanon.565" 54 40) rfl ?_
-    refine SepWP.rodata64_intro (w5bw_rodata_ro8_at hcl2' "libsignal_protocol:.rodata..Lanon.565" 54 46) rfl ?_
+    refine SepWP.rodata64_intro (w5bw_rodata_ro8_at0 hcl2' "libsignal_protocol:.rodata..Lanon.572" 54) rfl ?_
+    refine SepWP.rodata64_intro (w5bw_rodata_ro8_at hcl2' "libsignal_protocol:.rodata..Lanon.572" 54 8) rfl ?_
+    refine SepWP.rodata64_intro (w5bw_rodata_ro8_at hcl2' "libsignal_protocol:.rodata..Lanon.572" 54 16) rfl ?_
+    refine SepWP.rodata64_intro (w5bw_rodata_ro8_at hcl2' "libsignal_protocol:.rodata..Lanon.572" 54 24) rfl ?_
+    refine SepWP.rodata64_intro (w5bw_rodata_ro8_at hcl2' "libsignal_protocol:.rodata..Lanon.572" 54 32) rfl ?_
+    refine SepWP.rodata64_intro (w5bw_rodata_ro8_at hcl2' "libsignal_protocol:.rodata..Lanon.572" 54 40) rfl ?_
+    refine SepWP.rodata64_intro (w5bw_rodata_ro8_at hcl2' "libsignal_protocol:.rodata..Lanon.572" 54 46) rfl ?_
     wp_steps
     refine w5bc_done (by simp [arm64_norm]) (by simp [hrun2, arm64_norm]) fun hcl3 => ?_
     have hshift := shift_window_40_to_46 (s2.readReg64 .x0) (s2.mem.read64 (roBase + 40#64))

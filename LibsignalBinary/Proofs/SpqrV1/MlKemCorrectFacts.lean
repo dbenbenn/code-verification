@@ -37,13 +37,14 @@ Establishes triviality at `δ = 1`, monotonicity in `δ`, and non-vacuity at `δ
 `MlKem.ideal`) for the ML-KEM correctness hypothesis `MlKem.CorrectWith` (`DEV-SPQR6`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace CryptoVerification.LibsignalSpqrV1
 
 open OracleComp ENNReal
+
 /-- `CorrectWith K 1` holds for every `K`: a probability is at most `1`. -/
 theorem MlKem.correctWith_one (K : MlKem) : K.CorrectWith 1 := by
   unfold MlKem.CorrectWith
@@ -56,7 +57,7 @@ theorem MlKem.CorrectWith.mono {K : MlKem} {δ δ' : ℝ≥0∞} (h : K.CorrectW
 
 /-- An idealized ML-KEM: all keys, ciphertexts and secrets are zero, so decapsulation always
 returns the encapsulated secret. Used only to show that `CorrectWith K 0` is satisfiable. -/
-def MlKem.ideal : MlKem where
+@[expose] def MlKem.ideal : MlKem where
   keyPair _ := List.Vector.replicate 2400 0
   encaps1 _ _ := some (List.Vector.replicate 960 0, List.Vector.replicate 2080 0,
     List.Vector.replicate 32 0)
@@ -163,13 +164,5 @@ theorem MlKem.ideal_honestFail (seed : List.Vector (BitVec 8) 64)
   unfold MlKem.honestExchangeFails
   simp only [ideal_generate, ideal_encaps1, ideal_ek_matches, Bool.not_true, Bool.false_eq_true,
     ↓reduceIte, ideal_encaps2, ideal_decaps, ne_eq, not_true_eq_false, decide_false]
-
-/-- Non-vacuity: `CorrectWith` is satisfiable with `δ = 0`. -/
-theorem MlKem.correctWith_ideal : MlKem.ideal.CorrectWith 0 := by
-  unfold MlKem.CorrectWith
-  simp only [MlKem.ideal_honestFail]
-  rw [OracleComp.evalDist_bind_const, OracleComp.evalDist_bind_const]
-  rw [LawfulPureEvalDistSemantics.denote_pure]
-  simp
 
 end CryptoVerification.LibsignalSpqrV1

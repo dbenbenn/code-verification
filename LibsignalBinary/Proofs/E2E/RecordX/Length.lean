@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.RecordX.BridgeCommon
+public import LibsignalBinary.Proofs.E2E.RecordX.BridgeCommon -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Epochs
 import LibsignalBinary.Proofs.E2E.Reach.BundleCommon
 
@@ -21,7 +21,7 @@ every reachable session-model state `g` whenever `aliceBaseKey` and any pending 
 have length `< 2 ^ 16` (in particular under `FixedIdRecordExtras`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.RecordX
 
@@ -190,20 +190,5 @@ theorem reach_encodeRecordX_length_lt_21 (Z : EParams) (E : Party → RecordExtr
   have heq := encStateX_length (E g.party) (seedRecordExtras g.party) g.session
   have hx := extraLen_le (E g.party) g.session.pendingPreKey (ha g.party) (hk g.party)
   omega
-
-/-- `< 2 ^ 32` specialization of `reach_encodeRecordX_length_lt_21`. -/
-theorem reach_encodeRecordX_length_lt (Z : EParams) (E : Party → RecordExtras)
-    (ha : ∀ P, (E P).aliceBaseKey.length < 2 ^ 16)
-    (hk : ∀ P k, (E P).kyber = some k → k.ciphertext.length < 2 ^ 16)
-    {g : GhostState Bytes} (hg : Reach Z.params g) :
-    (encodeRecordUnderExtras E g).length < 2 ^ 32 :=
-  Nat.lt_trans (reach_encodeRecordX_length_lt_21 Z E ha hk hg) (by decide)
-
-/-- `< 2 ^ 32` encoded record length bound on reachable states under `FixedIdRecordExtras`. -/
-theorem reach_encodeRecordX_length_lt_of_lite (Z : EParams) (E : Party → RecordExtras)
-    (hE : ∀ P, FixedIdRecordExtras (E P)) {g : GhostState Bytes} (hg : Reach Z.params g) :
-    (encodeRecordUnderExtras E g).length < 2 ^ 32 :=
-  reach_encodeRecordX_length_lt Z E (fun P => (hE P).2.2.2.2.2.2)
-    (fun P k hk => ((hE P).2.2.2.2.2.1 k hk).2) hg
 
 end CryptoVerification.E2E.RecordX

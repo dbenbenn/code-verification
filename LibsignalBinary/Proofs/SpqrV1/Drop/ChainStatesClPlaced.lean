@@ -9,16 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChain
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Drop.States2
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChain -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Drop.States2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-import GeneratedLean.LibsignalSessionObj
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpoch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Code-Loaded `[LibsignalPlacement]` Drop Glue for Chains and `States`
@@ -31,7 +33,7 @@ Proves `withLsCodeLoaded lsmpl` subroutine contracts from `rustDeallocSpec A` fo
 - Block `273`: `core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#2]`
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

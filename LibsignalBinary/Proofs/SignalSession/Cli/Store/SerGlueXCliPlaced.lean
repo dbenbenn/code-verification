@@ -9,12 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Hooks
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable `SessionRecord::serialize` Glue at `cliGhostExterns`
@@ -23,7 +27,7 @@ Instantiates `SerContractsXPlaced` and `serializeCanonSpecX` on Block `52` at
 `cliGhostExterns g (cliExternsPlaced mmpl W)` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

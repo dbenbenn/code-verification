@@ -9,11 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.OneKeyVtables
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.OneKeyStore
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.OneKeyVtables -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.OneKeyStore -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
-import LibsignalBinary.Proofs.RoDataReloc
+import ProofLib.SepLogic.WP
+public import ProofLib
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Vtable Bundles and `OneKeyStore` Error-Path Closures for `message_decrypt_prekey::{closure#0}`
@@ -23,7 +26,7 @@ error-path contracts for the `OneKeyStore` prekey poll closures (`0x75b08`, `0x7
 and callee-saved GPR preservation helpers across `message_decrypt_prekey::{closure#0}` stages.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -44,208 +47,6 @@ set_option linter.unusedSimpArgs false
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_stub% "memcpy")
-
-/-! ## 1. `.rodata` `"decryption failed"` Intro & `.data.rel.ro` Vtable Bundle -/
-
-set_option maxRecDepth 2000000 in
-theorem rodata_0x7daa0_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + bv% (ls_reloc% 0x77cc - 16)) ↦₆₄ᵣ 32#64) ∗ P :=
-  rodata64_intro_atP himg hF (off := num% (ls_reloc% 0x77cc - 16)) (val := 32#64)
-    (by decide) (by decide) (by rfl_kernel) (by rfl_kernel) (by rfl_kernel) hP
-
-set_option maxRecDepth 2000000 in
-theorem rodata_0x7daa8_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + bv% (ls_reloc% 0x77cc - 8)) ↦₆₄ᵣ 8#64) ∗ P :=
-  rodata64_intro_atP himg hF (off := num% (ls_reloc% 0x77cc - 8)) (val := 8#64)
-    (by decide) (by decide) (by rfl_kernel) (by rfl_kernel) (by rfl_kernel) hP
-
-set_option maxRecDepth 2000000 in
-theorem rodata_0x7dac0_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + bv% (ls_reloc% 0x79c4 - 16)) ↦₆₄ᵣ 32#64) ∗ P :=
-  rodata64_intro_atP himg hF (off := num% (ls_reloc% 0x79c4 - 16)) (val := 32#64)
-    (by decide) (by decide) (by rfl_kernel) (by rfl_kernel) (by rfl_kernel) hP
-
-set_option maxRecDepth 2000000 in
-theorem rodata_0x7dac8_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + bv% (ls_reloc% 0x79c4 - 8)) ↦₆₄ᵣ 8#64) ∗ P :=
-  rodata64_intro_atP himg hF (off := num% (ls_reloc% 0x79c4 - 8)) (val := 8#64)
-    (by decide) (by decide) (by rfl_kernel) (by rfl_kernel) (by rfl_kernel) hP
-
-set_option maxRecDepth 2000000 in
-theorem rodata_0x7dae0_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + bv% (ls_reloc% 0x7b34 - 16)) ↦₆₄ᵣ 16#64) ∗ P :=
-  rodata64_intro_atP himg hF (off := num% (ls_reloc% 0x7b34 - 16)) (val := 16#64)
-    (by decide) (by decide) (by rfl_kernel) (by rfl_kernel) (by rfl_kernel) hP
-
-set_option maxRecDepth 2000000 in
-theorem rodata_0x7dae8_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + bv% (ls_reloc% 0x7b34 - 8)) ↦₆₄ᵣ 8#64) ∗ P :=
-  rodata64_intro_atP himg hF (off := num% (ls_reloc% 0x7b34 - 8)) (val := 8#64)
-    (by decide) (by decide) (by rfl_kernel) (by rfl_kernel) (by rfl_kernel) hP
-
-set_option maxRecDepth 2000000 in
-theorem rodata_0x7db00_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + bv% (ls_reloc% 0x7b7c - 16)) ↦₆₄ᵣ 16#64) ∗ P :=
-  rodata64_intro_atP himg hF (off := num% (ls_reloc% 0x7b7c - 16)) (val := 16#64)
-    (by decide) (by decide) (by rfl_kernel) (by rfl_kernel) (by rfl_kernel) hP
-
-set_option maxRecDepth 2000000 in
-theorem rodata_0x7db08_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + bv% (ls_reloc% 0x7b7c - 8)) ↦₆₄ᵣ 8#64) ∗ P :=
-  rodata64_intro_atP himg hF (off := num% (ls_reloc% 0x7b7c - 8)) (val := 8#64)
-    (by decide) (by decide) (by rfl_kernel) (by rfl_kernel) (by rfl_kernel) hP
-
-set_option maxRecDepth 2000000 in
-theorem rodata_0x7deb0_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + bv% (ls_reloc% 0x8ce4 - 16)) ↦₆₄ᵣ 24#64) ∗ P :=
-  rodata64_intro_atP himg hF (off := num% (ls_reloc% 0x8ce4 - 16)) (val := 24#64)
-    (by decide) (by decide) (by rfl_kernel) (by rfl_kernel) (by rfl_kernel) hP
-
-set_option maxRecDepth 2000000 in
-theorem rodata_0x7deb8_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + bv% (ls_reloc% 0x8ce4 - 8)) ↦₆₄ᵣ 8#64) ∗ P :=
-  rodata64_intro_atP himg hF (off := num% (ls_reloc% 0x8ce4 - 8)) (val := 8#64)
-    (by decide) (by decide) (by rfl_kernel) (by rfl_kernel) (by rfl_kernel) hP
-
-set_option maxRecDepth 2000000 in
-theorem rodata_0x7ded0_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + bv% (ls_reloc% 0x8ee4 - 16)) ↦₆₄ᵣ 32#64) ∗ P :=
-  rodata64_intro_atP himg hF (off := num% (ls_reloc% 0x8ee4 - 16)) (val := 32#64)
-    (by decide) (by decide) (by rfl_kernel) (by rfl_kernel) (by rfl_kernel) hP
-
-set_option maxRecDepth 2000000 in
-theorem rodata_0x7ded8_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + bv% (ls_reloc% 0x8ee4 - 8)) ↦₆₄ᵣ 8#64) ∗ P :=
-  rodata64_intro_atP himg hF (off := num% (ls_reloc% 0x8ee4 - 8)) (val := 8#64)
-    (by decide) (by decide) (by rfl_kernel) (by rfl_kernel) (by rfl_kernel) hP
-
-set_option maxRecDepth 2000000 in
-theorem futVtableAt_0x7da98_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ futVtableAtP (img.base + bv% (ls_reloc% 0x77cc - 24)) (img.base + 0x01fe4#64) 32#64 8#64
-      (img.base + 0x077cc#64) ∗ P := by
-  unfold futVtableAtP
-  rw [sepConj_assoc, sepConj_assoc, sepConj_assoc,
-      show (img.base + bv% (ls_reloc% 0x77cc - 24)) + 0x08#64 = img.base + bv% (ls_reloc% 0x77cc - 16) by bv_omega,
-      show (img.base + bv% (ls_reloc% 0x77cc - 24)) + 0x10#64 = img.base + bv% (ls_reloc% 0x77cc - 8) by bv_omega,
-      show (img.base + bv% (ls_reloc% 0x77cc - 24)) + 0x18#64 = img.base + bv% (ls_reloc% 0x77cc) by bv_omega]
-  refine CryptoProofLib.RoDataReloc.Satisfies.of_reloc64 himg hF (off := num% (ls_reloc% 0x77cc - 24))
-    (target := 0x01fe4)
-    (by decide) (by rfl_kernel) (by rfl_kernel) ?_
-  refine rodata_0x7daa0_intro himg hF ?_
-  refine rodata_0x7daa8_intro himg hF ?_
-  exact CryptoProofLib.RoDataReloc.Satisfies.of_reloc64 himg hF (off := num% (ls_reloc% 0x77cc)) (target := 0x077cc)
-    (by decide) (by rfl_kernel) (by rfl_kernel) hP
-
-set_option maxRecDepth 2000000 in
-theorem futVtableAt_0x7dab8_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ futVtableAtP (img.base + bv% (ls_reloc% 0x79c4 - 24)) (img.base + 0x01fe4#64) 32#64 8#64
-      (img.base + 0x079c4#64) ∗ P := by
-  unfold futVtableAtP
-  rw [sepConj_assoc, sepConj_assoc, sepConj_assoc,
-      show (img.base + bv% (ls_reloc% 0x79c4 - 24)) + 0x08#64 = img.base + bv% (ls_reloc% 0x79c4 - 16) by bv_omega,
-      show (img.base + bv% (ls_reloc% 0x79c4 - 24)) + 0x10#64 = img.base + bv% (ls_reloc% 0x79c4 - 8) by bv_omega,
-      show (img.base + bv% (ls_reloc% 0x79c4 - 24)) + 0x18#64 = img.base + bv% (ls_reloc% 0x79c4) by bv_omega]
-  refine CryptoProofLib.RoDataReloc.Satisfies.of_reloc64 himg hF (off := num% (ls_reloc% 0x79c4 - 24))
-    (target := 0x01fe4)
-    (by decide) (by rfl_kernel) (by rfl_kernel) ?_
-  refine rodata_0x7dac0_intro himg hF ?_
-  refine rodata_0x7dac8_intro himg hF ?_
-  exact CryptoProofLib.RoDataReloc.Satisfies.of_reloc64 himg hF (off := num% (ls_reloc% 0x79c4)) (target := 0x079c4)
-    (by decide) (by rfl_kernel) (by rfl_kernel) hP
-
-set_option maxRecDepth 2000000 in
-theorem futVtableAt_0x7dad8_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ futVtableAtP (img.base + bv% (ls_reloc% 0x7b34 - 24)) (img.base + 0x01fe4#64) 16#64 8#64
-      (img.base + 0x07b34#64) ∗ P := by
-  unfold futVtableAtP
-  rw [sepConj_assoc, sepConj_assoc, sepConj_assoc,
-      show (img.base + bv% (ls_reloc% 0x7b34 - 24)) + 0x08#64 = img.base + bv% (ls_reloc% 0x7b34 - 16) by bv_omega,
-      show (img.base + bv% (ls_reloc% 0x7b34 - 24)) + 0x10#64 = img.base + bv% (ls_reloc% 0x7b34 - 8) by bv_omega,
-      show (img.base + bv% (ls_reloc% 0x7b34 - 24)) + 0x18#64 = img.base + bv% (ls_reloc% 0x7b34) by bv_omega]
-  refine CryptoProofLib.RoDataReloc.Satisfies.of_reloc64 himg hF (off := num% (ls_reloc% 0x7b34 - 24))
-    (target := 0x01fe4)
-    (by decide) (by rfl_kernel) (by rfl_kernel) ?_
-  refine rodata_0x7dae0_intro himg hF ?_
-  refine rodata_0x7dae8_intro himg hF ?_
-  exact CryptoProofLib.RoDataReloc.Satisfies.of_reloc64 himg hF (off := num% (ls_reloc% 0x7b34)) (target := 0x07b34)
-    (by decide) (by rfl_kernel) (by rfl_kernel) hP
-
-set_option maxRecDepth 2000000 in
-theorem futVtableAt_0x7daf8_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ futVtableAtP (img.base + bv% (ls_reloc% 0x7b7c - 24)) (img.base + 0x01fe4#64) 16#64 8#64
-      (img.base + 0x07b7c#64) ∗ P := by
-  unfold futVtableAtP
-  rw [sepConj_assoc, sepConj_assoc, sepConj_assoc,
-      show (img.base + bv% (ls_reloc% 0x7b7c - 24)) + 0x08#64 = img.base + bv% (ls_reloc% 0x7b7c - 16) by bv_omega,
-      show (img.base + bv% (ls_reloc% 0x7b7c - 24)) + 0x10#64 = img.base + bv% (ls_reloc% 0x7b7c - 8) by bv_omega,
-      show (img.base + bv% (ls_reloc% 0x7b7c - 24)) + 0x18#64 = img.base + bv% (ls_reloc% 0x7b7c) by bv_omega]
-  refine CryptoProofLib.RoDataReloc.Satisfies.of_reloc64 himg hF (off := num% (ls_reloc% 0x7b7c - 24))
-    (target := 0x01fe4)
-    (by decide) (by rfl_kernel) (by rfl_kernel) ?_
-  refine rodata_0x7db00_intro himg hF ?_
-  refine rodata_0x7db08_intro himg hF ?_
-  exact CryptoProofLib.RoDataReloc.Satisfies.of_reloc64 himg hF (off := num% (ls_reloc% 0x7b7c)) (target := 0x07b7c)
-    (by decide) (by rfl_kernel) (by rfl_kernel) hP
-
-set_option maxRecDepth 2000000 in
-theorem futVtableAt_0x7dea8_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ futVtableAtP (img.base + bv% (ls_reloc% 0x8ce4 - 24)) (img.base + 0x01fe4#64) 24#64 8#64
-      (img.base + 0x08ce4#64) ∗ P := by
-  unfold futVtableAtP
-  rw [sepConj_assoc, sepConj_assoc, sepConj_assoc,
-      show (img.base + bv% (ls_reloc% 0x8ce4 - 24)) + 0x08#64 = img.base + bv% (ls_reloc% 0x8ce4 - 16) by bv_omega,
-      show (img.base + bv% (ls_reloc% 0x8ce4 - 24)) + 0x10#64 = img.base + bv% (ls_reloc% 0x8ce4 - 8) by bv_omega,
-      show (img.base + bv% (ls_reloc% 0x8ce4 - 24)) + 0x18#64 = img.base + bv% (ls_reloc% 0x8ce4) by bv_omega]
-  refine CryptoProofLib.RoDataReloc.Satisfies.of_reloc64 himg hF (off := num% (ls_reloc% 0x8ce4 - 24))
-    (target := 0x01fe4)
-    (by decide) (by rfl_kernel) (by rfl_kernel) ?_
-  refine rodata_0x7deb0_intro himg hF ?_
-  refine rodata_0x7deb8_intro himg hF ?_
-  exact CryptoProofLib.RoDataReloc.Satisfies.of_reloc64 himg hF (off := num% (ls_reloc% 0x8ce4)) (target := 0x08ce4)
-    (by decide) (by rfl_kernel) (by rfl_kernel) hP
-
-set_option maxRecDepth 2000000 in
-theorem futVtableAt_0x7dec8_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ futVtableAtP (img.base + bv% (ls_reloc% 0x8ee4 - 24)) (img.base + 0x01fe4#64) 32#64 8#64
-      (img.base + 0x08ee4#64) ∗ P := by
-  unfold futVtableAtP
-  rw [sepConj_assoc, sepConj_assoc, sepConj_assoc,
-      show (img.base + bv% (ls_reloc% 0x8ee4 - 24)) + 0x08#64 = img.base + bv% (ls_reloc% 0x8ee4 - 16) by bv_omega,
-      show (img.base + bv% (ls_reloc% 0x8ee4 - 24)) + 0x10#64 = img.base + bv% (ls_reloc% 0x8ee4 - 8) by bv_omega,
-      show (img.base + bv% (ls_reloc% 0x8ee4 - 24)) + 0x18#64 = img.base + bv% (ls_reloc% 0x8ee4) by bv_omega]
-  refine CryptoProofLib.RoDataReloc.Satisfies.of_reloc64 himg hF (off := num% (ls_reloc% 0x8ee4 - 24))
-    (target := 0x01fe4)
-    (by decide) (by rfl_kernel) (by rfl_kernel) ?_
-  refine rodata_0x7ded0_intro himg hF ?_
-  refine rodata_0x7ded8_intro himg hF ?_
-  exact CryptoProofLib.RoDataReloc.Satisfies.of_reloc64 himg hF (off := num% (ls_reloc% 0x8ee4)) (target := 0x08ee4)
-    (by decide) (by rfl_kernel) (by rfl_kernel) hP
-
-/-! ## 2. Error-Path `OneKeyStore` Poll Closures (`0x75b08`, `0x75c04`, `0x75d9c`) -/
-
 theorem cond_ne_subs32_of_ne {a b : BitVec 32} (h : a ≠ b) :
     ConditionHolds .NE (subsPState32 a b) = true := by
   rw [conditionHolds_ne_subsPState32, bne_iff_ne]
@@ -322,7 +123,7 @@ structure GetSpkClosureErrArgs where
 /-- Error-path contract for `<OneKeyStore as SignedPreKeyStore>::get_signed_pre_key::{closure#0}`
 (`0x75b08`) when `storeId ≠ reqId`: writes `(-1, 0x800000000000000e#64)` (`InvalidSignedPreKeyId`)
 at `retPtr + 0x0..0x10`, marks `[boxPtr + 0xc] = 1#8`, and returns without heap allocation. -/
-def oneKeyGetSpkClosureErrSpec : Spec GetSpkClosureErrArgs where
+@[expose] def oneKeyGetSpkClosureErrSpec : Spec GetSpkClosureErrArgs where
   pre := fun x s =>
     ⌜x.storeId ≠ x.reqId ∧
       s.readReg64 .x0 = x.boxPtr ∧
@@ -354,7 +155,7 @@ def oneKeyGetSpkClosureErrSpec : Spec GetSpkClosureErrArgs where
 /-- Error-path contract for `<OneKeyStore as KyberPreKeyStore>::get_kyber_pre_key::{closure#0}`
 (`0x75c04`) when `storeId ≠ reqId`: writes `(-1, 0x800000000000000f#64)` (`InvalidKyberPreKeyId`)
 at `retPtr + 0x0..0x10`, marks `[boxPtr + 0xc] = 1#8`, and returns without heap allocation. -/
-def oneKeyGetKyberClosureErrSpec : Spec GetSpkClosureErrArgs where
+@[expose] def oneKeyGetKyberClosureErrSpec : Spec GetSpkClosureErrArgs where
   pre := fun x s =>
     ⌜x.storeId ≠ x.reqId ∧
       s.readReg64 .x0 = x.boxPtr ∧
@@ -401,7 +202,7 @@ structure GetPreKeyClosureErrArgs where
 /-- Error-path contract for `<OneKeyStore as PreKeyStore>::get_pre_key::{closure#0}` (`0x75d9c`)
 when `k.opk = none` (`opkPubCap = 0xffffffffffffffff#64`): writes `(-1, 0x800000000000000d#64)`
 (`InvalidPreKeyId`) at `retPtr + 0x0..0x10`, marks `[boxPtr + 0xc] = 1#8`, and returns. -/
-def oneKeyGetPreKeyClosureNoneErrSpec : Spec GetPreKeyClosureErrArgs where
+@[expose] def oneKeyGetPreKeyClosureNoneErrSpec : Spec GetPreKeyClosureErrArgs where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.boxPtr ∧
       s.readReg64 .x8 = x.retPtr⌝ ∗
@@ -433,7 +234,7 @@ def oneKeyGetPreKeyClosureNoneErrSpec : Spec GetPreKeyClosureErrArgs where
 /-- Error-path contract for `<OneKeyStore as PreKeyStore>::get_pre_key::{closure#0}` (`0x75d9c`)
 when `opkPubCap ≠ 0xffffffffffffffff#64 ∧ storeId ≠ reqId`: writes `(-1, 0x800000000000000d#64)`
 (`InvalidPreKeyId`) at `retPtr + 0x0..0x10`, marks `[boxPtr + 0xc] = 1#8`, and returns. -/
-def oneKeyGetPreKeyClosureMismatchErrSpec : Spec GetPreKeyClosureErrArgs where
+@[expose] def oneKeyGetPreKeyClosureMismatchErrSpec : Spec GetPreKeyClosureErrArgs where
   pre := fun x s =>
     ⌜x.opkPubCap ≠ 0xffffffffffffffff#64 ∧
       x.storeId ≠ x.reqId ∧
@@ -481,29 +282,9 @@ theorem cond_ne_subs32_4_of_ne {v : BitVec 32} (h : v ≠ 4#32) :
   rw [conditionHolds_ne_subsPState32, bne_iff_ne]
   exact Ne.symm h
 
-theorem adrp_logLevel_0x3080 {b entry : BitVec 64}
-    (hb : b &&& 0xfff#64 = 0#64) (he : entry = b + 0x7200c#64) :
-    ((entry + 12416#64 &&& 18446744073709547520#64) + bv% (page% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) - 0x75000) = b + bv% (page% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256))) ∧
-    (((0x7200c#64 + (b + 0x3080#64)) &&& 0xfffffffffffff000#64) + bv% (page% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) - 0x75000) = b + bv% (page% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256))) := by
-  subst he
-  constructor
-  · have hp : ((b + 0x7200c#64 + 12416#64) &&& 18446744073709547520#64) = b + 0x75000#64 := by
-      rw [BitVec.add_assoc, ProofLib.ObjectLoad.adrp_page_of_aligned hb]
-      rfl
-    rw [hp]
-    bv_omega
-  · have hp : ((0x7200c#64 + (b + 0x3080#64)) &&& 0xfffffffffffff000#64) = b + 0x75000#64 := by
-      rw [show 0x7200c#64 + (b + 0x3080#64) = b + (0x7200c#64 + 0x3080#64) by bv_omega,
-          ProofLib.ObjectLoad.adrp_page_of_aligned hb]
-      rfl
-    rw [hp]
-    bv_omega
-
-/-! ## 3. Callee-Saved GPR Preservation Helpers -/
-
 /-- Callee-saved GPR preservation (`x19`–`x29`) across `decryptPrekeyClosure` stages,
 with a 12th `True` conjunct matching the shape of `CalleeSavedPreserved`. -/
-def ClosureCalleeSaved (s0 sf : State) : Prop :=
+@[expose] def ClosureCalleeSaved (s0 sf : State) : Prop :=
   sf.readReg64 .x19 = s0.readReg64 .x19 ∧
   sf.readReg64 .x20 = s0.readReg64 .x20 ∧
   sf.readReg64 .x21 = s0.readReg64 .x21 ∧

@@ -9,13 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.JPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.JPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Arm `J` Specification
@@ -24,7 +28,7 @@ Defines the budget-threaded postcondition `runJoinPostPlaced` (over `FreeOnlyEvs
 `RunHopJoinPlaced` on Block `579` under `[LibsignalPlacement]` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,7 +50,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget (RunHooksPlaced)
 
 /-- Budget-threaded postcondition of Arm `J` (`FreeOnlyEvs`, advancing `A.pool lim st` to `A.pool lim (M.stepEvents evs st)`). -/
-def runJoinPostPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def runJoinPostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (g : RunCall) (st : M.σ) (resStack : Nat) (s0 sf : State) (Pf : SepProp) : Prop :=
   CodeOk sf.mem ∧ sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧
@@ -81,7 +85,7 @@ theorem runPostPlaced_of_joinPost [LibsignalPlacement] {M : AllocCostModel}
   exact ⟨hc, hsp, hcs, htr, hstP, evs₁ ++ evs₂, a', hEnv evs₂ hevs₂, hne, heq, hent⟩
 
 /-- Budget-threaded relocatable Arm `J` contract from `AtJoinPlaced` or `AtRejectPlaced` to `runJoinPostPlaced` with `Qo = ⌜False⌝`. -/
-def RunHopJoinPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopJoinPlaced [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (sEnvs : RunSlotEnvs) (H : LibsignalHooks) (B : RunBudgets) (S : RunSem)
     (needs : RunNeeds) (resStack : Nat) : Prop :=

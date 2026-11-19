@@ -9,6 +9,13 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops.Common
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops.Local1
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops.Local2
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops.Common
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops.Local1
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops.Local2
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp

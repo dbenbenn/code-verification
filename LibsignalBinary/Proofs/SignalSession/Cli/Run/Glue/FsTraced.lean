@@ -9,18 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 /-!
 # Filesystem Trace Soundness (`TraceFsSound`) for the CLI Extern Table
 
-Proves `TraceFsSound` at `cliExterns W` and under `CliExternsOk` (`traceFsSound_cli`,
-`traceFsSound_cliExternsWith`), along with non-I/O `State.fs` preservation (`FsKept`):
+Proves `TraceFsSound` at `cliExterns W` and under `CliExternsOk` (`traceFsSound_cli`), along with
+non-I/O `State.fs` preservation (`FsKept`):
 1. Every row of `cliHookTable W` and `Rust.panicked` satisfies `HookFsTraced IsFsC`
    (`IsFsC := TraceEvent.isFsChange`), modifying `fs.files` only when appending `fileChanged p`.
 2. Every `IsFsC` event is non-quiet (`¬ QuietEv`), so `Steps.files_eq_of_noFs` yields
@@ -31,13 +34,16 @@ namespace CryptoVerification.SignalSession.Cli.RunGlue
 
 open Arm64 ProofLib
 open CryptoVerification.LibsignalPublicApi.StoreKit
+open LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy
+  (toEdwardsHook compressHook edNegHook torsionFreeHook dsmbHook scalarModHook scalarWideHook
+   mlkemPk1Hook mlkemPk2Hook pqxdhHookTable spqrHookTable)
 
 set_option linter.unusedSimpArgs false
 
 /-! ## Events -/
 
 /-- The engine's file-change events (`TraceEvent.isFsChange`) as a predicate. -/
-def IsFsC (e : TraceEvent) : Prop := e.isFsChange = true
+@[expose] def IsFsC (e : TraceEvent) : Prop := e.isFsChange = true
 
 /-- An `isFsChange` event (bytes written to a file descriptor, `fileChanged`) is not quiet. -/
 theorem isFsC_not_quiet (e : TraceEvent) (h : IsFsC e) : ¬ QuietEv e := by
@@ -201,34 +207,34 @@ theorem compress512Hook_fsT (F512 : E2E.Sha512State → List (BitVec 8) → E2E.
 
 theorem toEdwardsHook_fsT
     (montToEd : List.Vector (BitVec 8) 32 → BitVec 8 → Option (List.Vector (BitVec 8) 160)) :
-    HookFsTraced IsFsC (E2E.toEdwardsHook montToEd) := by
-  intro s; unfold E2E.toEdwardsHook; fsT_close
+    HookFsTraced IsFsC (toEdwardsHook montToEd) := by
+  intro s; unfold toEdwardsHook; fsT_close
 
 theorem compressHook_fsT (compress : List.Vector (BitVec 8) 160 → List.Vector (BitVec 8) 32) :
-    HookFsTraced IsFsC (E2E.compressHook compress) := by
-  intro s; unfold E2E.compressHook; fsT_close
+    HookFsTraced IsFsC (compressHook compress) := by
+  intro s; unfold compressHook; fsT_close
 
 theorem edNegHook_fsT (edNeg : List.Vector (BitVec 8) 160 → List.Vector (BitVec 8) 160) :
-    HookFsTraced IsFsC (E2E.edNegHook edNeg) := by
-  intro s; unfold E2E.edNegHook; fsT_close
+    HookFsTraced IsFsC (edNegHook edNeg) := by
+  intro s; unfold edNegHook; fsT_close
 
 theorem torsionFreeHook_fsT (isTorsionFree : List.Vector (BitVec 8) 160 → Bool) :
-    HookFsTraced IsFsC (E2E.torsionFreeHook isTorsionFree) := by
-  intro s; unfold E2E.torsionFreeHook; fsT_close
+    HookFsTraced IsFsC (torsionFreeHook isTorsionFree) := by
+  intro s; unfold torsionFreeHook; fsT_close
 
 theorem dsmbHook_fsT (dsmb : List.Vector (BitVec 8) 32 → List.Vector (BitVec 8) 160 →
     List.Vector (BitVec 8) 32 → List.Vector (BitVec 8) 160) :
-    HookFsTraced IsFsC (E2E.dsmbHook dsmb) := by
-  intro s; unfold E2E.dsmbHook; fsT_close
+    HookFsTraced IsFsC (dsmbHook dsmb) := by
+  intro s; unfold dsmbHook; fsT_close
 
 theorem scalarModHook_fsT (scalarMod : List.Vector (BitVec 8) 32 → List.Vector (BitVec 8) 32) :
-    HookFsTraced IsFsC (E2E.scalarModHook scalarMod) := by
-  intro s; unfold E2E.scalarModHook; fsT_close
+    HookFsTraced IsFsC (scalarModHook scalarMod) := by
+  intro s; unfold scalarModHook; fsT_close
 
 theorem scalarWideHook_fsT
     (scalarWide : List.Vector (BitVec 8) 64 → List.Vector (BitVec 8) 32) :
-    HookFsTraced IsFsC (E2E.scalarWideHook scalarWide) := by
-  intro s; unfold E2E.scalarWideHook; fsT_close
+    HookFsTraced IsFsC (scalarWideHook scalarWide) := by
+  intro s; unfold scalarWideHook; fsT_close
 
 theorem kemEncapsHook_fsT (encaps : List.Vector (BitVec 8) 1568 →
     List.Vector (BitVec 8) 32 → List.Vector (BitVec 8) 1568 × List.Vector (BitVec 8) 32) :
@@ -243,9 +249,9 @@ theorem kemDecapsHook_fsT (decaps : List.Vector (BitVec 8) 3168 →
 theorem mlkemFromSeedHook_fsT (K : LibsignalSpqrV1.MlKem) :
     HookFsTraced IsFsC (E2E.mlkemFromSeedHook K) := fun _ => FsTraced.of_eq rfl rfl
 
-theorem mlkemPk1Hook_fsT : HookFsTraced IsFsC E2E.mlkemPk1Hook := fun _ => FsTraced.of_eq rfl rfl
+theorem mlkemPk1Hook_fsT : HookFsTraced IsFsC mlkemPk1Hook := fun _ => FsTraced.of_eq rfl rfl
 
-theorem mlkemPk2Hook_fsT : HookFsTraced IsFsC E2E.mlkemPk2Hook := fun _ => FsTraced.of_eq rfl rfl
+theorem mlkemPk2Hook_fsT : HookFsTraced IsFsC mlkemPk2Hook := fun _ => FsTraced.of_eq rfl rfl
 
 theorem mlkemEncaps1Hook_fsT (K : LibsignalSpqrV1.MlKem) :
     HookFsTraced IsFsC (E2E.mlkemEncaps1Hook K) := by
@@ -278,7 +284,7 @@ theorem libcruxHmacHook_fsT
 
 /-- Every row of `cliHookTable W` satisfies `HookFsTraced IsFsC`. -/
 theorem cliHookTable_fsT (W : CliHooks) : ∀ p ∈ cliHookTable W, HookFsTraced IsFsC p.2 := by
-  simp only [cliHookTable, E2E.pqxdhHookTable, E2E.spqrHookTable, List.cons_append,
+  simp only [cliHookTable, pqxdhHookTable, spqrHookTable, List.cons_append,
     List.nil_append, List.forall_mem_cons, List.not_mem_nil, false_implies, implies_true,
     and_true, compress512Hook_fsT, toEdwardsHook_fsT, compressHook_fsT, edNegHook_fsT,
     torsionFreeHook_fsT, dsmbHook_fsT, scalarModHook_fsT, scalarWideHook_fsT,
@@ -294,7 +300,7 @@ theorem cliHookTable_fsT (W : CliHooks) : ∀ p ∈ cliHookTable W, HookFsTraced
     diffieHellmanHook_fsT, zeroizeSecretHook_fsT]
 
 /-- Every hook of the table `X` is `HookFsTraced IsFsC`. -/
-def FsTHooks (X : String → Option (State → State)) : Prop :=
+@[expose] def FsTHooks (X : String → Option (State → State)) : Prop :=
   ∀ n f, X n = some f → HookFsTraced IsFsC f
 
 theorem fsTHooks_none : FsTHooks fun _ => none := by
@@ -372,21 +378,6 @@ theorem traceFsSound_of_fsTHooks {P : Program} (hX : FsTHooks P.externs)
   TraceFsSound.of_isFs isFsC_not_quiet fun _ _ hst =>
     Steps.files_eq_of_noFs (fun _ h => h) (fun _ _ h => fsT_externAt hX hO h) hst hsvc
 
-/-- `TraceFsSound` at `cliExterns W` for arbitrary base address `b`. -/
-theorem traceFsSound_cli (W : CliHooks) (b : BitVec 64) :
-    TraceFsSound (LibsignalTripleRatchet.tripleRatchetProgAtExt b (cliExterns W)) :=
-  traceFsSound_of_fsTHooks (fsTHooks_withPanics (fsTHooks_cliExterns W)) fsTHooks_none
-
-/-- `TraceFsSound` for `mProg img (cliExterns W)`. -/
-theorem traceFsSound_mProg (W : CliHooks) (img : Obj.Image) :
-    TraceFsSound (MainHops.mProg img (cliExterns W)) :=
-  traceFsSound_cli W img.base
-
-/-- `TraceFsSound` for `cliProg W`. -/
-theorem traceFsSound_cliProg (W : CliHooks) :
-    TraceFsSound (CryptoVerification.SignalSession.cliProg W) :=
-  traceFsSound_of_fsTHooks (fsTHooks_cliExterns W) fsTHooks_none
-
 /-! ## Contract-backed `TraceFsSound` (`CliExternsOk.fsTraced`) -/
 
 /-- `CliExternsOk.fsTraced` is definitionally `FsTHooks ext`. -/
@@ -400,84 +391,14 @@ theorem fsTHooks_of_externsOk {P : E2E.PEParams} {A : RustHeap.RustAlloc}
     FsTHooks ext :=
   hOk.fsTraced
 
-/-- Every hook of `cliExternsWith ext` is `HookFsTraced IsFsC`. -/
-theorem fsTHooks_cliExternsWith {P : E2E.PEParams} {A : RustHeap.RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) :
-    FsTHooks (cliExternsWith ext) :=
-  fsTHooks_withCliPanics hOk.fsTraced
-
-/-- `abortOnPanic` preserves `HookFsTraced IsFsC` (it only maps `.Panicked` status to
-`.Signaled 6`, leaving `trace` and `fs` untouched). -/
-theorem abortOnPanic_fsT {f : State → State} (hf : HookFsTraced IsFsC f) :
-    HookFsTraced IsFsC (abortOnPanic f) := by
-  intro s
-  unfold abortOnPanic
-  dsimp only
-  split
-  · rcases hf s with ⟨δ, htr, hfs⟩
-    exact ⟨δ, htr, hfs⟩
-  · exact hf s
-
-/-- Every hook of `cliExternsSigWith ext` is `HookFsTraced IsFsC`. -/
-theorem fsTHooks_cliExternsSigWith {P : E2E.PEParams} {A : RustHeap.RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) :
-    FsTHooks (cliExternsSigWith ext) := by
-  intro n g hg
-  simp only [cliExternsSigWith, Option.map_eq_some_iff] at hg
-  obtain ⟨f, hf, rfl⟩ := hg
-  exact abortOnPanic_fsT (fsTHooks_cliExternsWith hOk n f hf)
-
-/-- `TraceFsSound (tripleRatchetProgAtExt b ext)` from `hOk.fsTraced`. -/
-theorem traceFsSound_of_ok {P : E2E.PEParams} {A : RustHeap.RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) (b : BitVec 64) :
-    TraceFsSound (LibsignalTripleRatchet.tripleRatchetProgAtExt b ext) :=
-  traceFsSound_of_fsTHooks (fsTHooks_withPanics hOk.fsTraced) fsTHooks_none
-
-/-- `TraceFsSound` at `cliExternsWith ext` from `hOk.fsTraced`. -/
-theorem traceFsSound_cliExternsWith {P : E2E.PEParams} {A : RustHeap.RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) (b : BitVec 64) :
-    TraceFsSound (LibsignalTripleRatchet.tripleRatchetProgAtExt b (cliExternsWith ext)) :=
-  traceFsSound_of_fsTHooks (fsTHooks_withPanics (fsTHooks_cliExternsWith hOk)) fsTHooks_none
-
-theorem traceFsSound_of_externsOk {P : E2E.PEParams} {A : RustHeap.RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) (b : BitVec 64) :
-    TraceFsSound (LibsignalTripleRatchet.tripleRatchetProgAtExt b (cliExternsWith ext)) :=
-  traceFsSound_cliExternsWith hOk b
-
-/-- `TraceFsSound` for `MainHops.mProg img (cliExternsWith ext)`. -/
-theorem traceFsSound_mProg_cliExternsWith {P : E2E.PEParams} {A : RustHeap.RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) (img : Obj.Image) :
-    TraceFsSound (MainHops.mProg img (cliExternsWith ext)) :=
-  traceFsSound_cliExternsWith hOk img.base
-
-/-- `TraceFsSound` for `libsignalSessionImage.toProgram.rebase cliBase (cliExternsWith ext)`. -/
-theorem traceFsSound_cliProgWith {P : E2E.PEParams} {A : RustHeap.RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) :
-    TraceFsSound (libsignalSessionImage.toProgram.rebase cliBase (cliExternsWith ext)) :=
-  traceFsSound_of_fsTHooks (fsTHooks_cliExternsWith hOk) fsTHooks_none
-
-/-- `TraceFsSound` for `cliProgAbortOnPanicUnderExterns ext`. -/
-theorem traceFsSound_cliProgSigWith {P : E2E.PEParams} {A : RustHeap.RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) :
-    TraceFsSound (cliProgAbortOnPanicUnderExterns ext) :=
-  traceFsSound_of_fsTHooks (fsTHooks_cliExternsSigWith hOk) fsTHooks_none
-
 /-! ## Contract-backed `fsKept` (`CliExternsOk.fsKept`) -/
 
 /-- Every non-I/O hook in `X` leaves the entire `State.fs` unchanged. -/
-def FsKept (X : String → Option (State → State)) : Prop :=
+@[expose] def FsKept (X : String → Option (State → State)) : Prop :=
   ∀ n f, X n = some f → n ∉ CliExt.ioNames → ∀ s, (f s).fs = s.fs
 
 /-- `Rust.panicked` leaves `State.fs` unchanged. -/
 theorem panicked_fs : ∀ s, (Rust.panicked s).fs = s.fs := fun _ => rfl
-
-/-- `abortOnPanic` preserves `fs` invariance. -/
-theorem abortOnPanic_fs {f : State → State} (hf : ∀ s, (f s).fs = s.fs) :
-    ∀ s : State, (abortOnPanic f s).fs = s.fs := by
-  intro s
-  unfold abortOnPanic
-  dsimp only
-  split <;> exact hf s
 
 /-- `CliExternsOk.fsKept` is definitionally `FsKept ext`. -/
 theorem fsKept_of_ok {P : E2E.PEParams} {A : RustHeap.RustAlloc}
@@ -515,21 +436,6 @@ theorem fsKept_withPanics {X : String → Option (State → State)} (hX : FsKept
     exact panicked_fs s
   · exact hX n f h hn s
 
-/-- Every non-I/O hook of `cliExternsWith ext` leaves `State.fs` unchanged. -/
-theorem fsKept_cliExternsWith {P : E2E.PEParams} {A : RustHeap.RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) :
-    FsKept (cliExternsWith ext) :=
-  fsKept_withCliPanics hOk.fsKept
-
-/-- Every non-I/O hook of `cliExternsSigWith ext` leaves `State.fs` unchanged. -/
-theorem fsKept_cliExternsSigWith {P : E2E.PEParams} {A : RustHeap.RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) :
-    FsKept (cliExternsSigWith ext) := by
-  intro n g hg hn s
-  simp only [cliExternsSigWith, Option.map_eq_some_iff] at hg
-  obtain ⟨f, hf, rfl⟩ := hg
-  exact abortOnPanic_fs (fsKept_cliExternsWith hOk n f hf hn) s
-
 /-- Upgrade `HookSat X n spec` to `HookSat X n spec.keepsFs` for any `n ∉ CliExt.ioNames` under `FsKept X`. -/
 theorem hookSat_keepsFs_of_fsKept {α : Type} {X : String → Option (State → State)}
     (hFs : FsKept X) {n : String} {spec : Spec α} (hn : n ∉ CliExt.ioNames)
@@ -553,14 +459,5 @@ theorem hookSat_keepsFs_ext {α : Type} {P : E2E.PEParams} {A : RustHeap.RustAll
     {n : String} {spec : Spec α} (hn : n ∉ CliExt.ioNames) (hsat : HookSat ext n spec) :
     HookSat ext n spec.keepsFs :=
   hookSat_keepsFs_of_fsKept hOk.fsKept hn hsat
-
-/-- Upgrade `HookSat (cliExternsWith ext) n spec` to `HookSat (cliExternsWith ext) n spec.keepsFs`
-for `n ∉ CliExt.ioNames`. -/
-theorem hookSat_keepsFs_cliExternsWith {α : Type} {P : E2E.PEParams} {A : RustHeap.RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext)
-    {n : String} {spec : Spec α} (hn : n ∉ CliExt.ioNames)
-    (hsat : HookSat (cliExternsWith ext) n spec) :
-    HookSat (cliExternsWith ext) n spec.keepsFs :=
-  hookSat_keepsFs_of_fsKept (fsKept_cliExternsWith hOk) hn hsat
 
 end CryptoVerification.SignalSession.Cli.RunGlue

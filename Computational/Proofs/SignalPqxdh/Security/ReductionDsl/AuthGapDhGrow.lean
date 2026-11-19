@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake -- proof-setup: allow-public-import
 
 /-!
 # One-step growth bounds for the shallow `Auth` Gap-DH simulator
@@ -18,7 +18,7 @@ Proves that one step of `fgAuthStep` or `fgAuthStepHalt` grows each tracked stat
 `respRecs` by at most one entry.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -28,7 +28,7 @@ open SignalPqxdh SignalPqxdh.Security
 open OracleSpec OracleComp
 
 /-- Every tracked list of the state grows by at most one entry. -/
-def AGrow {S : Setup} (st st' : FgAuthSimState S) : Prop :=
+@[expose] def AGrow {S : Setup} (st st' : FgAuthSimState S) : Prop :=
   st'.base.principals.length ≤ st.base.principals.length + 1 ∧
   st'.base.spkBundles.length ≤ st.base.spkBundles.length + 1 ∧
   st'.base.opkEntries.length ≤ st.base.opkEntries.length + 1 ∧
@@ -43,7 +43,7 @@ def AGrow {S : Setup} (st st' : FgAuthSimState S) : Prop :=
   st'.rawRoCache.length ≤ st.rawRoCache.length + 1 ∧
   st'.advKeyPows.length ≤ st.advKeyPows.length + 1
 
-def AllOut {ι : Type} {spec : OracleSpec.{0, 0} ι} {α : Type} (mx : OracleComp spec α)
+@[expose] def AllOut {ι : Type} {spec : OracleSpec.{0, 0} ι} {α : Type} (mx : OracleComp spec α)
     (P : α → Prop) : Prop :=
   ∀ x ∈ support mx, P x
 

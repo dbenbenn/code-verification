@@ -9,13 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.DoReservePlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1
+import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.DoReservePlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1
 public import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdrBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
 
 /-!
 # Budget-Threaded Relocatable Scaffolding for `.keysUnsampled` Arm (Block `427`)
@@ -24,7 +38,7 @@ Provides budget-threaded `[LibsignalPlacement]` callee contracts for `<Authentic
 (Block `342`) and `do_reserve_and_handle [local#7]` (Block `460`) on `spqrSendPlacedProg ext`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -164,21 +178,6 @@ theorem spqrSend_realloc_ok_placed
     subroutine_ok (spqrSendPlacedProg ext) (lsρ spqrRustReallocSym)
       (rustCliReallocBudgetSpec M A lim) :=
   spqr_hook_ok_of_mem hA.realloc
-
-theorem spqrSend_reallocNoOom_ok_placed
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : AllocContractsPlaced M A lim ext) :
-    subroutine_ok (spqrSendPlacedProg ext) (lsρ spqrRustReallocSym)
-      (rustCliReallocNoOomSpec M A lim) :=
-  subroutine_ok_reallocNoOom_of_budget (spqrSend_realloc_ok_placed hA)
-
-theorem spqrSend_memset_region_ok_placed
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : AllocContractsPlaced M A lim ext) :
-    subroutine_ok (spqrSendPlacedProg ext) (lsρ memsetName) sessionMemsetRegionBudgetSpec :=
-  spqr_hook_ok_of_mem hA.session_memset_region
 
 /-- Run a non-panicking `SepWP` segment to `mid`, propagating `LibsignalCodeRoLoaded lsmpl`
     to a non-panicking `SepWP` continuation. -/
@@ -541,7 +540,7 @@ export CryptoVerification.Cli.SpqrV1.Top.Send
 
 /-- `<spqr::authenticator::Authenticator>::mac_hdr` (Block `342`) meets
     `withLsCodeRoLoaded lsmpl (authMacHdrPinnedSpec F M A lim)` on `spqrSendPlacedProg ext`. -/
-def AuthMacHdrPinnedPlacedOkX (F : ShaCompress) (M : AllocCostModel)
+@[expose] def AuthMacHdrPinnedPlacedOkX (F : ShaCompress) (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 342)
@@ -549,14 +548,14 @@ def AuthMacHdrPinnedPlacedOkX (F : ShaCompress) (M : AllocCostModel)
 
 /-- `alloc::raw_vec::RawVecInner<A>::do_reserve_and_handle [local#7]` (Block `460`) meets
     `withLsCodeRoLoaded lsmpl (doReserve1Raw32Spec M A lim)` on `spqrSendPlacedProg ext`. -/
-def DoReserve2PlacedOkX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def DoReserve2PlacedOkX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 460)
     (withLsCodeRoLoaded lsmpl (doReserve1Raw32Spec M A lim))
 
 /-- `alloc::raw_vec::RawVecInner<A>::do_reserve_and_handle [local#7]` (Block `460`) meets
     `withLsCodeRoLoaded lsmpl (doReserve1Raw32SpecX M A lim)` on `spqrSendPlacedProg ext`. -/
-def DoReserve2PlacedOkXX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def DoReserve2PlacedOkXX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 460)
     (withLsCodeRoLoaded lsmpl (doReserve1Raw32SpecX M A lim))
@@ -570,18 +569,6 @@ theorem doReserve2_placed_ok_ext_x {M : AllocCostModel} {A : RustCliAllocBudget 
         (lsmpl.base 460) (withLsCodeRoLoaded lsmpl (doReserve1Raw32Spec M A lim)) :=
     subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
       (do_reserve_2_raw32_placed_ok (M := M) (A := A) (lim := lim) (H := Rust.withPanics ext)
-        hA.handle_error hA.noAllocShim hA.alloc hA.realloc)
-  exact keys_ls_subroutine_ok_of_block_cro (callerProg := spqrSendPlacedProg ext) hraw
-
-theorem doReserve2_placed_ok_ext_xx {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {ext : String → Option (State → State)}
-    (hA : AllocContractsPlaced M A lim ext) :
-    DoReserve2PlacedOkXX M A lim ext := by
-  have hraw :
-      subroutine_ok ((blkPC_460).rebase (blkPl_460).base (Rust.withPanics ext))
-        (lsmpl.base 460) (withLsCodeRoLoaded lsmpl (doReserve1Raw32SpecX M A lim)) :=
-    subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
-      (do_reserve_2_raw32_placed_ok_x (M := M) (A := A) (lim := lim) (H := Rust.withPanics ext)
         hA.handle_error hA.noAllocShim hA.alloc hA.realloc)
   exact keys_ls_subroutine_ok_of_block_cro (callerProg := spqrSendPlacedProg ext) hraw
 

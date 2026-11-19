@@ -10,15 +10,18 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChain
-public import LibsignalBinary.Proofs.SpqrV1.Drop.DecodesBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChain -- proof-setup: allow-public-import
+import LibsignalBinary.Heap.IfaceBudget
+import LibsignalBinary.Heap.IfaceBudgetBase
+import LibsignalBinary.Proofs.SpqrV1.Drop.Decodes
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Drop Glue for `proto::pq_ratchet::chain::Epoch`, `Chain`, and `Option<Chain>`
@@ -28,7 +31,7 @@ Defines budget-threaded specifications (`dropProtoEpochSliceSpec`, `dropProtoSpq
 `[LibsignalPlacement]` contracts for Blocks `288`, `136`, and `266`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -76,7 +79,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Budget-Threaded Specifications -/
 
-def dropProtoEpochSliceSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropProtoEpochSliceSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DropProtoEpochSliceGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ptr ∧ s.readReg64 .x1 = BitVec.ofNat 64 x.eps.length ∧
@@ -89,7 +92,7 @@ def dropProtoEpochSliceSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
       memRegion x.ptr (x.eps.length * chainEpochPBSize) ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp dropStack32
 
-def dropProtoSpqrChainSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropProtoSpqrChainSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DropProtoSpqrChainGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a ∧ LsRetAddr624 (s.readReg64 .lr)⌝ ∗
@@ -101,7 +104,7 @@ def dropProtoSpqrChainSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCl
       memRegion x.a chainPBSize ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp dropStack48
 
-def dropOptProtoSpqrChainSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropOptProtoSpqrChainSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DropOptProtoSpqrChainGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a ∧ LsRetAddr624 (s.readReg64 .lr)⌝ ∗

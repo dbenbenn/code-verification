@@ -23,7 +23,7 @@ Proves that `Proto.mergeFieldsLoop` recovers `p` from `ChainParamsPB.encodeRaw p
 `1 ≤ depth'`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

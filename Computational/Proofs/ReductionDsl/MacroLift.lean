@@ -10,7 +10,8 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Reductions.ReductionDsl.Core
-public import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+public import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds -- proof-setup: allow-public-import
+public import Computational.Specifications.Session.ACD19.Ratchet.LibsignalBound
 
 /-!
 # Monadic Macro Compiler for `ReductionDsl`
@@ -19,10 +20,9 @@ Compiles `ReductionDsl` expressions, computations, and one- or two-stage `Costed
 from an abstract operation table `O₁` and interface `I₁` into target tables `O₂` and `I₂`,
 threading a read-only auxiliary context `aux : auxT.denote`. Establishes query, static cost, AST
 size, and `OracleComp` evaluation bounds, together with length-guarded `GRedBounded` and
-`GTwoStageBounded` wrappers (`guardRed`, `guardTwoStageRed`).
--/
+`GTwoStageBounded` wrappers (`guardRed`, `guardTwoStageRed`).-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,7 +32,7 @@ namespace ReductionDsl
 
 open OracleSpec OracleComp
 
-def liftRen {S : Sig} {Γ Δ : List (Ty S)} (ξ : ∀ ⦃u⦄, Var Γ u → Var Δ u) {a : Ty S} :
+@[expose] def liftRen {S : Sig} {Γ Δ : List (Ty S)} (ξ : ∀ ⦃u⦄, Var Γ u → Var Δ u) {a : Ty S} :
     ∀ ⦃u⦄, Var (a :: Γ) u → Var (a :: Δ) u
   | _, .zero => .zero
   | _, .succ v => .succ (ξ v)
@@ -46,7 +46,7 @@ theorem get_liftRen {S : Sig} {Γ Δ : List (Ty S)} {ξ : ∀ ⦃u⦄, Var Γ u 
   | zero => rfl
   | succ v => exact hξ v
 
-def Expr.renameM {S : Sig} {O : Ops S} {Γ Δ : List (Ty S)}
+@[expose] def Expr.renameM {S : Sig} {O : Ops S} {Γ Δ : List (Ty S)}
     (ξ : ∀ ⦃u⦄, Var Γ u → Var Δ u) {t : Ty S} : Expr O Γ t → Expr O Δ t
   | .var v => .var (ξ v)
   | .unit => .unit
@@ -112,7 +112,7 @@ theorem Expr.one_le_size {S : Sig} {O : Ops S} {Γ : List (Ty S)} {t : Ty S}
   induction e generalizing Δ <;> simp only [Expr.renameM, Expr.size, *]
 
 /-- Bit-length-independent AST node count (every constructor and literal counts `1`). -/
-@[simp] def Expr.nodes {S : Sig} {O : Ops S} : {Γ : List (Ty S)} → {t : Ty S} → Expr O Γ t → ℕ
+@[expose, simp] def Expr.nodes {S : Sig} {O : Ops S} : {Γ : List (Ty S)} → {t : Ty S} → Expr O Γ t → ℕ
   | _, _, .var _ | _, _, .unit | _, _, .bool _ | _, _, .nat _ | _, _, .none | _, _, .nil => 1
   | _, _, .add a b | _, _, .sub a b | _, _, .lt a b | _, _, .eqN a b
   | _, _, .and a b | _, _, .pair a b | _, _, .cons a b | _, _, .take a b
@@ -188,7 +188,7 @@ theorem Expr.renameM_eval {S : Sig} {O : Ops S} {Γ Δ : List (Ty S)}
   | tset _ _ _ ih1 ih2 ih3 =>
     simp only [Expr.renameM, Expr.eval, ih1 hξ, ih2 hξ, ih3 hξ]
 
-def Comp.renameM {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
+@[expose] def Comp.renameM {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     {Γ Δ : List (Ty S)} (ξ : ∀ ⦃u⦄, Var Γ u → Var Δ u) {t : Ty S} :
     Comp O I Γ t → Comp O I Δ t
   | .ret e => .ret (Expr.renameM ξ e)
@@ -221,7 +221,7 @@ def Comp.renameM {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Ifac
     (Comp.renameM ξ c).size = c.size := by
   induction c generalizing Δ <;> simp only [Comp.renameM, Comp.size, Expr.renameM_size, *]
 
-@[simp] def Comp.nodes {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T} :
+@[expose, simp] def Comp.nodes {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T} :
     {Γ : List (Ty S)} → {t : Ty S} → Comp O I Γ t → ℕ
   | _, _, .ret e | _, _, .sample _ e | _, _, .query _ e => e.nodes + 1
   | _, _, .bind c k => c.nodes + k.nodes + 1
@@ -238,7 +238,7 @@ def Comp.renameM {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Ifac
     (Comp.renameM ξ c).nodes = c.nodes := by
   induction c generalizing Δ <;> simp only [Comp.renameM, Comp.nodes, Expr.renameM_nodes, *]
 
-@[simp] def CostedReduction.nodes {S : Sig} {O : Ops S} {ι κ : Type}
+@[expose, simp] def CostedReduction.nodes {S : Sig} {O : Ops S} {ι κ : Type}
     {T : OracleSpec ι} {I : Iface S T} {G : OracleSpec κ}
     {C : GameCodec S G} {rIn aIn aOut out : Ty S}
     (R : CostedReduction O I G C rIn aIn aOut out) : ℕ :=
@@ -340,11 +340,11 @@ theorem Comp.renameM_eval {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι}
     simp only [Comp.renameM, Comp.eval, Expr.renameM_eval l hξ, Expr.renameM_eval z hξ]
     exact foldML_congr (fun x acc => ihf (get_liftRen (get_liftRen hξ acc) x)) _ _
 
-@[reducible] def Comp.wk1 {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
+@[expose, reducible] def Comp.wk1 {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     {Γ : List (Ty S)} {a t : Ty S} (c : Comp O I Γ t) : Comp O I (a :: Γ) t :=
   Comp.renameM (fun ⦃_⦄ v => .succ v) c
 
-@[reducible] def Comp.wk2 {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
+@[expose, reducible] def Comp.wk2 {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     {Γ : List (Ty S)} {a b t : Ty S} (c : Comp O I Γ t) : Comp O I (a :: b :: Γ) t :=
   Comp.renameM (fun ⦃_⦄ v => .succ (.succ v)) c
 
@@ -353,57 +353,11 @@ theorem Comp.wk1_eval {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I :
     (Comp.wk1 c).eval (.cons x ρ) = c.eval ρ :=
   Comp.renameM_eval c (fun ⦃_⦄ _ => rfl)
 
-theorem Comp.wk2_eval {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
-    {Γ : List (Ty S)} {a b t : Ty S} (c : Comp O I Γ t)
-    (x : a.denote) (y : b.denote) (ρ : Env Γ) :
-    (Comp.wk2 c).eval (.cons x (.cons y ρ)) = c.eval ρ :=
-  Comp.renameM_eval c (fun ⦃_⦄ _ => rfl)
-
-theorem Comp.renameM_liftRen_wk1_eval {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι}
-    {I : Iface S T} {Γ : List (Ty S)} {a b t : Ty S}
-    (c : Comp O I (a :: Γ) t) (x : a.denote) (y : b.denote) (ρ : Env Γ) :
-    (Comp.renameM (liftRen (fun ⦃_⦄ v => .succ v)) c).eval (.cons x (.cons y ρ)) =
-      c.eval (.cons x ρ) :=
-  Comp.renameM_eval c fun ⦃_⦄ v => by cases v <;> rfl
-
-theorem Comp.renameM_liftRen_wk2_eval {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι}
-    {I : Iface S T} {Γ : List (Ty S)} {a b d t : Ty S}
-    (c : Comp O I (a :: Γ) t) (x : a.denote) (y : b.denote) (z : d.denote) (ρ : Env Γ) :
-    (Comp.renameM (liftRen (fun ⦃_⦄ v => .succ (.succ v))) c).eval
-        (.cons x (.cons y (.cons z ρ))) =
-      c.eval (.cons x ρ) :=
-  Comp.renameM_eval c fun ⦃_⦄ v => by cases v <;> rfl
-
-theorem Comp.renameM_liftRen2_wk2_eval {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι}
-    {I : Iface S T} {Γ : List (Ty S)} {a b c d t : Ty S}
-    (e : Comp O I (a :: b :: Γ) t)
-    (x : a.denote) (y : b.denote) (z₁ : c.denote) (z₂ : d.denote) (ρ : Env Γ) :
-    (Comp.renameM (liftRen (liftRen (fun ⦃_⦄ v => .succ (.succ v)))) e).eval
-        (.cons x (.cons y (.cons z₁ (.cons z₂ ρ)))) =
-      e.eval (.cons x (.cons y ρ)) :=
-  Comp.renameM_eval e fun ⦃_⦄ v => by
-    cases v with
-    | zero => rfl
-    | succ w => cases w <;> rfl
-
-theorem Comp.renameM_liftRen2_wk3_eval {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι}
-    {I : Iface S T} {Γ : List (Ty S)} {a b c d g t : Ty S}
-    (e : Comp O I (a :: b :: Γ) t)
-    (x : a.denote) (y : b.denote) (z₁ : c.denote) (z₂ : d.denote) (z₃ : g.denote)
-    (ρ : Env Γ) :
-    (Comp.renameM (liftRen (liftRen (fun ⦃_⦄ v => .succ (.succ (.succ v))))) e).eval
-        (.cons x (.cons y (.cons z₁ (.cons z₂ (.cons z₃ ρ))))) =
-      e.eval (.cons x (.cons y ρ)) :=
-  Comp.renameM_eval e fun ⦃_⦄ v => by
-    cases v with
-    | zero => rfl
-    | succ w => cases w <;> rfl
-
-@[reducible] def Expr.wkClosed {S : Sig} {O : Ops S} {Γ : List (Ty S)} {t : Ty S}
+@[expose, reducible] def Expr.wkClosed {S : Sig} {O : Ops S} {Γ : List (Ty S)} {t : Ty S}
     (e : Expr O [] t) : Expr O Γ t :=
   Expr.renameM (fun ⦃_⦄ v => by cases v) e
 
-@[reducible] def Expr.wkTop1 {S : Sig} {O : Ops S} {Γ : List (Ty S)} {a t : Ty S}
+@[expose, reducible] def Expr.wkTop1 {S : Sig} {O : Ops S} {Γ : List (Ty S)} {a t : Ty S}
     (e : Expr O [a] t) : Expr O (a :: Γ) t :=
   Expr.renameM (fun ⦃_⦄ v => match v with | .zero => .zero | .succ w => nomatch w) e
 
@@ -412,7 +366,7 @@ theorem Expr.wkTop1_eval {S : Sig} {O : Ops S} {Γ : List (Ty S)} {a t : Ty S}
     (Expr.wkTop1 e).eval (.cons x ρ) = e.eval (.cons x .nil) :=
   Expr.renameM_eval e fun ⦃_⦄ v => by cases v with | zero => rfl | succ w => nomatch w
 
-@[reducible] def Comp.wkTop2 {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
+@[expose, reducible] def Comp.wkTop2 {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     {Γ : List (Ty S)} {a b t : Ty S} (c : Comp O I [a, b] t) :
     Comp O I (a :: b :: Γ) t :=
   Comp.renameM
@@ -433,7 +387,7 @@ theorem Comp.wkTop2_eval {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {
       | zero => rfl
       | succ u => nomatch u
 
-@[reducible] def Comp.wkTop3 {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
+@[expose, reducible] def Comp.wkTop3 {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     {Γ : List (Ty S)} {a b d t : Ty S} (c : Comp O I [a, b, d] t) :
     Comp O I (a :: b :: d :: Γ) t :=
   Comp.renameM
@@ -459,7 +413,7 @@ theorem Comp.wkTop3_eval {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {
         | zero => rfl
         | succ q => nomatch q
 
-@[reducible] def Comp.wkTop4 {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
+@[expose, reducible] def Comp.wkTop4 {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     {Γ : List (Ty S)} {a b d g t : Ty S} (c : Comp O I [a, b, d, g] t) :
     Comp O I (a :: b :: d :: g :: Γ) t :=
   Comp.renameM
@@ -495,14 +449,14 @@ namespace Computational.Proofs.ReductionDsl.MacroLift
 
 open OracleSpec OracleComp
 open _root_.ReductionDsl
-open CryptoVerification.LibsignalSession (GRedBounded GTwoStageBounded evalTwoStage1)
-open CryptoVerification.E2E.Costed (gRedBounded_of_bounds)
+open _root_.CryptoVerification.LibsignalSession (GRedBounded GTwoStageBounded evalTwoStage1)
+open _root_.CryptoVerification.E2E.Costed (gRedBounded_of_bounds)
 
 /-! ## Sort-to-type substitution and auxiliary-rooted environments -/
 
 section Subst
 
-@[reducible] def mapTy {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂) : Ty S₁ → Ty S₂
+@[expose, reducible] def mapTy {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂) : Ty S₁ → Ty S₂
   | .base b => f b
   | .unit => .unit
   | .bool => .bool
@@ -513,7 +467,7 @@ section Subst
   | .list t => .list (mapTy f t)
   | .tbl t => .tbl (mapTy f t)
 
-def toVal {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂)
+@[expose] def toVal {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂)
     (toDen : (b : S₁.Base) → S₁.den b → (f b).denote) :
     (t : Ty S₁) → t.denote → (mapTy f t).denote
   | .base b, x => toDen b x
@@ -527,22 +481,22 @@ def toVal {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂)
   | .tbl t, m => fun i => toVal f toDen t (m i)
 
 /-- Translated context `Γ.map (mapTy f) ++ [auxT]`, definitionally commuting with `cons`. -/
-@[reducible] def mapCtx {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂) (auxT : Ty S₂) :
+@[expose, reducible] def mapCtx {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂) (auxT : Ty S₂) :
     List (Ty S₁) → List (Ty S₂)
   | [] => [auxT]
   | t :: Γ => mapTy f t :: mapCtx f auxT Γ
 
-def mapVarAux {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂) (auxT : Ty S₂) :
+@[expose] def mapVarAux {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂) (auxT : Ty S₂) :
     {Γ : List (Ty S₁)} → {t : Ty S₁} → Var Γ t → Var (mapCtx f auxT Γ) (mapTy f t)
   | _, _, .zero => .zero
   | _, _, .succ v => .succ (mapVarAux f auxT v)
 
-def auxVar {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂) (auxT : Ty S₂) :
+@[expose] def auxVar {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂) (auxT : Ty S₂) :
     (Γ : List (Ty S₁)) → Var (mapCtx f auxT Γ) auxT
   | [] => .zero
   | _ :: Γ => .succ (auxVar f auxT Γ)
 
-def mapEnvAux {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂) {auxT : Ty S₂}
+@[expose] def mapEnvAux {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂) {auxT : Ty S₂}
     (toDen : (b : S₁.Base) → S₁.den b → (f b).denote) (aux : auxT.denote) :
     {Γ : List (Ty S₁)} → Env Γ → Env (mapCtx f auxT Γ)
   | _, .nil => .cons aux .nil
@@ -565,7 +519,7 @@ theorem get_auxVar {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂) {auxT : Ty S₂
   | _, .nil => rfl
   | _, .cons _ ρ => get_auxVar f toDen aux ρ
 
-def callMacroAux {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂) (auxT : Ty S₂)
+@[expose] def callMacroAux {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂) (auxT : Ty S₂)
     (Γ : List (Ty S₁)) {O₂ : Ops S₂} {ι : Type} {T : OracleSpec ι} {I₂ : Iface S₂ T}
     {a b : Ty S₂} (c : Comp O₂ I₂ [a, auxT] b) :
     Comp O₂ I₂ (a :: mapCtx f auxT Γ) b :=
@@ -630,7 +584,7 @@ section Compile
 variable {S₁ S₂ : Sig} {O₁ : Ops S₁} {O₂ : Ops S₂}
   {ι : Type} {T : OracleSpec ι} {I₁ : Iface S₁ T} {I₂ : Iface S₂ T} {auxT : Ty S₂}
 
-def compileExpr (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) :
+@[expose] def compileExpr (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) :
     {Γ : List (Ty S₁)} → {t : Ty S₁} →
       Expr O₁ Γ t → Comp O₂ I₂ (mapCtx M.fSort auxT Γ) (mapTy M.fSort t)
   | _, _, .var v => .ret (.var (mapVarAux M.fSort auxT v))
@@ -717,7 +671,7 @@ def compileExpr (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) :
         (.bind ((compileExpr M a).wk2)
           (.ret (.tset (.var (.succ (.succ .zero))) (.var (.succ .zero)) (.var .zero)))))
 
-def compileComp (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) :
+@[expose] def compileComp (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) :
     {Γ : List (Ty S₁)} → {t : Ty S₁} →
       Comp O₁ I₁ Γ t → Comp O₂ I₂ (mapCtx M.fSort auxT Γ) (mapTy M.fSort t)
   | _, _, .ret e => compileExpr M e
@@ -846,468 +800,7 @@ theorem compileComp_queries_le (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ au
       compileExpr_queries M w₂ ws₂ hOpQ z, Comp.renameM_queries, zero_add]
     exact Nat.mul_le_mul_left K ihf
 
-theorem compileExpr_cost_le (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    (C_m : ℕ) (hCm : 10 ≤ C_m)
-    (hOpC : ∀ o, (M.opMacro o).cost + 1 ≤ C_m * O₁.cost o)
-    {Γ : List (Ty S₁)} {t : Ty S₁} (e : Expr O₁ Γ t) :
-    (compileExpr M e).cost ≤ C_m * e.cost := by
-  induction e with
-  | var _ | unit | bool _ =>
-    simp only [compileExpr, Comp.cost, Expr.cost]; omega
-  | nat n =>
-    have hb := CryptoVerification.E2E.Costed.Expr.one_le_cost (.nat n : Expr O₁ [] .nat)
-    simp only [compileExpr, Comp.cost, Expr.cost] at hb ⊢
-    nlinarith
-  | none | nil =>
-    simp only [compileExpr, Comp.cost, Expr.cost]; omega
-  | add a b iha ihb | sub a b iha ihb | lt a b iha ihb | eqN a b iha ihb
-  | and a b iha ihb | pair a b iha ihb | cons a b iha ihb | take a b iha ihb =>
-    simp only [compileExpr, Comp.wk1, Comp.renameM_cost, Comp.cost, Expr.cost]
-    nlinarith
-  | mulK k a iha | divK k a iha | modK k a iha =>
-    have hbk := CryptoVerification.E2E.Costed.Expr.one_le_cost (.nat k : Expr O₁ [] .nat)
-    simp only [Expr.cost] at hbk
-    simp only [compileExpr, Comp.cost, Expr.cost]
-    nlinarith
-  | not a iha | fst a iha | snd a iha | inl a iha | inr a iha
-  | some a iha | len a iha | tconst a iha =>
-    simp only [compileExpr, Comp.cost, Expr.cost]
-    nlinarith
-  | ite c a b ihc iha ihb =>
-    have hmax : max (compileExpr M a).cost (compileExpr M b).cost ≤ C_m * max a.cost b.cost := by
-      rcases le_total a.cost b.cost with h | h
-      · rw [max_eq_right h]; exact max_le (iha.trans (Nat.mul_le_mul_left C_m h)) ihb
-      · rw [max_eq_left h]; exact max_le iha (ihb.trans (Nat.mul_le_mul_left C_m h))
-    simp only [compileExpr, Comp.wk1, Comp.renameM_cost, Comp.cost, Expr.cost]
-    nlinarith
-  | caseOpt e n s ihe ihn ihs =>
-    have hmax : max (compileExpr M n).cost (compileExpr M s).cost ≤ C_m * max n.cost s.cost := by
-      rcases le_total n.cost s.cost with h | h
-      · rw [max_eq_right h]; exact max_le (ihn.trans (Nat.mul_le_mul_left C_m h)) ihs
-      · rw [max_eq_left h]; exact max_le ihn (ihs.trans (Nat.mul_le_mul_left C_m h))
-    simp only [compileExpr, Comp.wk1, Comp.renameM_cost, Comp.cost, Expr.cost]
-    nlinarith
-  | caseSum e l r ihe ihl ihr =>
-    have hmax : max (compileExpr M l).cost (compileExpr M r).cost ≤ C_m * max l.cost r.cost := by
-      rcases le_total l.cost r.cost with h | h
-      · rw [max_eq_right h]; exact max_le (ihl.trans (Nat.mul_le_mul_left C_m h)) ihr
-      · rw [max_eq_left h]; exact max_le ihl (ihr.trans (Nat.mul_le_mul_left C_m h))
-    simp only [compileExpr, Comp.renameM_cost, Comp.cost, Expr.cost]
-    nlinarith
-  | letE e b ihe ihb =>
-    simp only [compileExpr, Comp.cost, Expr.cost]
-    nlinarith
-  | op o a iha =>
-    have ho := hOpC o
-    simp only [compileExpr, callMacroAux_cost, Comp.cost, Expr.cost]
-    nlinarith
-  | appendL K a b iha ihb =>
-    simp only [compileExpr, Comp.wk1, Comp.renameM_cost, Comp.cost, Expr.cost]
-    nlinarith
-  | findB K l p ihl ihp | anyB K l p ihl ihp | mapB K l p ihl ihp =>
-    have hmul : K * ((compileExpr M p).cost + 1) ≤ K * (C_m * (p.cost + 1)) :=
-      Nat.mul_le_mul_left K (by nlinarith)
-    simp only [compileExpr, Comp.renameM_cost, Comp.cost, Expr.cost]
-    nlinarith
-  | foldrB K l z f ihl ihz ihf =>
-    have hf1 := CryptoVerification.E2E.Costed.Expr.one_le_cost f
-    have hmul : K * ((compileExpr M f).cost + 7) ≤ K * (C_m * (f.cost + 1)) :=
-      Nat.mul_le_mul_left K (by nlinarith)
-    simp only [compileExpr, Comp.wk2, Comp.renameM_cost, Comp.cost, Expr.cost]
-    nlinarith
-  | tget m i ihm ihi =>
-    simp only [compileExpr, Comp.wk1, Comp.renameM_cost, Comp.cost, Expr.cost]
-    nlinarith
-  | tset m i a ihm ihi iha =>
-    simp only [compileExpr, Comp.wk1, Comp.wk2, Comp.renameM_cost, Comp.cost, Expr.cost]
-    nlinarith
-
-theorem compileComp_cost_le (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    (C_0 : ℕ) (hC0 : 32 ≤ C_0)
-    (hOpC : ∀ o, (M.opMacro o).cost + 1 ≤ C_0 * O₁.cost o)
-    (hSampC : ∀ s, (M.sampMacro s).cost + 1 ≤ C_0 * max 1 (I₁.smp.sCost s))
-    (hQueryC : ∀ g, (M.queryMacro g).cost + 1 ≤ C_0 * max 1 (I₁.qCost g))
-    {Γ : List (Ty S₁)} {t : Ty S₁} (c : Comp O₁ I₁ Γ t) :
-    (compileComp M c).cost ≤ (2 * C_0) * c.cost := by
-  have hC010 : 10 ≤ C_0 := by omega
-  let C_m := 2 * C_0
-  change (compileComp M c).cost ≤ C_m * c.cost
-  have hCm : C_m = 2 * C_0 := rfl
-  induction c with
-  | ret e =>
-    have he := compileExpr_cost_le M C_0 hC010 hOpC e
-    simp only [compileComp, Comp.cost]
-    nlinarith
-  | bind c k ihc ihk =>
-    simp only [compileComp, Comp.cost]
-    nlinarith
-  | ite b c d ihc ihd =>
-    have hb := compileExpr_cost_le M C_0 hC010 hOpC b
-    have hmax : max (compileComp M c).cost (compileComp M d).cost ≤ C_m * max c.cost d.cost := by
-      rcases le_total c.cost d.cost with h | h
-      · rw [max_eq_right h]; exact max_le (ihc.trans (Nat.mul_le_mul_left C_m h)) ihd
-      · rw [max_eq_left h]; exact max_le ihc (ihd.trans (Nat.mul_le_mul_left C_m h))
-    simp only [compileComp, Comp.wk1, Comp.renameM_cost, Comp.cost, Expr.cost]
-    nlinarith
-  | caseOpt e n s ihn ihs =>
-    have he := compileExpr_cost_le M C_0 hC010 hOpC e
-    have hmax : max (compileComp M n).cost (compileComp M s).cost ≤ C_m * max n.cost s.cost := by
-      rcases le_total n.cost s.cost with h | h
-      · rw [max_eq_right h]; exact max_le (ihn.trans (Nat.mul_le_mul_left C_m h)) ihs
-      · rw [max_eq_left h]; exact max_le ihn (ihs.trans (Nat.mul_le_mul_left C_m h))
-    simp only [compileComp, Comp.wk1, Comp.renameM_cost, Comp.cost, Expr.cost]
-    nlinarith
-  | caseSum e l r ihl ihr =>
-    have he := compileExpr_cost_le M C_0 hC010 hOpC e
-    have hmax : max (compileComp M l).cost (compileComp M r).cost ≤ C_m * max l.cost r.cost := by
-      rcases le_total l.cost r.cost with h | h
-      · rw [max_eq_right h]; exact max_le (ihl.trans (Nat.mul_le_mul_left C_m h)) ihr
-      · rw [max_eq_left h]; exact max_le ihl (ihr.trans (Nat.mul_le_mul_left C_m h))
-    simp only [compileComp, Comp.renameM_cost, Comp.cost, Expr.cost]
-    nlinarith
-  | sample s e =>
-    have he := compileExpr_cost_le M C_0 hC010 hOpC e
-    have he1 := CryptoVerification.E2E.Costed.Expr.one_le_cost e
-    have hs := hSampC s
-    simp only [compileComp, callMacroAux_cost, Comp.cost]
-    rcases Nat.eq_zero_or_pos (I₁.smp.sCost s) with h0 | hpos
-    · rw [h0] at hs ⊢; simp at hs; nlinarith
-    · rw [max_eq_right hpos] at hs; nlinarith
-  | query g e =>
-    have he := compileExpr_cost_le M C_0 hC010 hOpC e
-    have he1 := CryptoVerification.E2E.Costed.Expr.one_le_cost e
-    have hg := hQueryC g
-    simp only [compileComp, callMacroAux_cost, Comp.cost]
-    rcases Nat.eq_zero_or_pos (I₁.qCost g) with h0 | hpos
-    · rw [h0] at hg ⊢; simp at hg; nlinarith
-    · rw [max_eq_right hpos] at hg; nlinarith
-  | iter n e body ihb =>
-    have he := compileExpr_cost_le M C_0 hC010 hOpC e
-    have hmul : n * ((compileComp M body).cost + 1) ≤ n * (C_m * (body.cost + 1)) :=
-      Nat.mul_le_mul_left n (by nlinarith)
-    simp only [compileComp, Comp.renameM_cost, Comp.cost, Expr.cost]
-    nlinarith
-  | findM K l p ihp | anyM K l p ihp | mapM K l p ihp =>
-    have hl := compileExpr_cost_le M C_0 hC010 hOpC l
-    have hmul : K * ((compileComp M p).cost + 1) ≤ K * (C_m * (p.cost + 1)) :=
-      Nat.mul_le_mul_left K (by nlinarith)
-    simp only [compileComp, Comp.renameM_cost, Comp.cost, Expr.cost]
-    nlinarith
-  | consumeFirstM K l p mk ihp =>
-    have hl := compileExpr_cost_le M C_0 hC010 hOpC l
-    have hl1 := CryptoVerification.E2E.Costed.Expr.one_le_cost l
-    have hmk := compileExpr_cost_le M C_0 hC010 hOpC mk
-    have hmk1 := CryptoVerification.E2E.Costed.Expr.one_le_cost mk
-    simp only [compileComp, Comp.renameM_cost, Comp.cost, Expr.cost, Nat.reduceAdd]
-    have hstep :
-        2 + max 7 ((compileComp M p).cost +
-          (1 + max ((compileExpr M mk).cost + 7 + 1) 7 + 1) + 1) + 1 + 1 ≤
-          (compileComp M p).cost + (compileExpr M mk).cost + 16 := by omega
-    have hmul1 := Nat.mul_le_mul_left K hstep
-    have hmul2 :
-        K * ((compileComp M p).cost + (compileExpr M mk).cost + 16) + K * 5 ≤
-          K * (C_m * (p.cost + mk.cost + 1)) := by
-      rw [← Nat.left_distrib]
-      exact Nat.mul_le_mul_left K (by nlinarith)
-    nlinarith
-  | foldM K l z f ihf =>
-    have hl := compileExpr_cost_le M C_0 hC010 hOpC l
-    have hz := compileExpr_cost_le M C_0 hC010 hOpC z
-    have hmul : K * ((compileComp M f).cost + 1) ≤ K * (C_m * (f.cost + 1)) :=
-      Nat.mul_le_mul_left K (by nlinarith)
-    simp only [compileComp, Comp.wk1, Comp.renameM_cost, Comp.cost, Expr.cost]
-    nlinarith
-
-theorem compileExpr_size_le (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    (C_m : ℕ) (hCm : 16 ≤ C_m)
-    (hOpS : ∀ o, (M.opMacro o).size + 1 ≤ C_m)
-    {Γ : List (Ty S₁)} {t : Ty S₁} (e : Expr O₁ Γ t) :
-    (compileExpr M e).size ≤ C_m * e.size := by
-  induction e with
-  | var _ | unit | bool _ | none | nil =>
-    simp only [compileExpr, Comp.size, Expr.size]; omega
-  | nat n =>
-    have hb := ReductionDsl.one_le_bits n
-    simp only [compileExpr, Comp.size, Expr.size]
-    nlinarith
-  | add a b iha ihb | sub a b iha ihb | lt a b iha ihb | eqN a b iha ihb
-  | and a b iha ihb | pair a b iha ihb | cons a b iha ihb | take a b iha ihb =>
-    simp only [compileExpr, Comp.wk1, Comp.renameM_size, Comp.size, Expr.size]
-    nlinarith
-  | mulK k a iha | divK k a iha | modK k a iha =>
-    have hbk := ReductionDsl.one_le_bits k
-    simp only [compileExpr, Comp.size, Expr.size]
-    nlinarith
-  | not a iha | fst a iha | snd a iha | inl a iha | inr a iha
-  | some a iha | len a iha | tconst a iha =>
-    simp only [compileExpr, Comp.size, Expr.size]
-    nlinarith
-  | ite c a b ihc iha ihb =>
-    simp only [compileExpr, Comp.wk1, Comp.renameM_size, Comp.size, Expr.size]
-    nlinarith
-  | caseOpt e n s ihe ihn ihs =>
-    simp only [compileExpr, Comp.wk1, Comp.renameM_size, Comp.size, Expr.size]
-    nlinarith
-  | caseSum e l r ihe ihl ihr =>
-    simp only [compileExpr, Comp.renameM_size, Comp.size, Expr.size]
-    nlinarith
-  | letE e b ihe ihb =>
-    simp only [compileExpr, Comp.size, Expr.size]
-    nlinarith
-  | op o a iha =>
-    have ho := hOpS o
-    simp only [compileExpr, callMacroAux_size, Comp.size, Expr.size]
-    nlinarith
-  | appendL K a b iha ihb =>
-    have hbK := ReductionDsl.one_le_bits K
-    simp only [compileExpr, Comp.wk1, Comp.renameM_size, Comp.size, Expr.size]
-    nlinarith
-  | findB K l p ihl ihp | anyB K l p ihl ihp | mapB K l p ihl ihp =>
-    have hbK := ReductionDsl.one_le_bits K
-    simp only [compileExpr, Comp.renameM_size, Comp.size, Expr.size]
-    nlinarith
-  | foldrB K l z f ihl ihz ihf =>
-    have hbK := ReductionDsl.one_le_bits K
-    simp only [compileExpr, Comp.wk2, Comp.renameM_size, Comp.size, Expr.size]
-    nlinarith
-  | tget m i ihm ihi =>
-    simp only [compileExpr, Comp.wk1, Comp.renameM_size, Comp.size, Expr.size]
-    nlinarith
-  | tset m i a ihm ihi iha =>
-    simp only [compileExpr, Comp.wk1, Comp.wk2, Comp.renameM_size, Comp.size, Expr.size]
-    nlinarith
-
-theorem compileComp_size_le (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    (C_0 : ℕ) (hC0 : 32 ≤ C_0)
-    (hOpS : ∀ o, (M.opMacro o).size + 1 ≤ C_0)
-    (hSampS : ∀ s, (M.sampMacro s).size + 1 ≤ C_0)
-    (hQueryS : ∀ g, (M.queryMacro g).size + 1 ≤ C_0)
-    {Γ : List (Ty S₁)} {t : Ty S₁} (c : Comp O₁ I₁ Γ t) :
-    (compileComp M c).size ≤ (2 * C_0) * c.size := by
-  have hC016 : 16 ≤ C_0 := by omega
-  let C_m := 2 * C_0
-  change (compileComp M c).size ≤ C_m * c.size
-  have hCm : C_m = 2 * C_0 := rfl
-  induction c with
-  | ret e =>
-    have he := compileExpr_size_le M C_0 hC016 hOpS e
-    simp only [compileComp, Comp.size]
-    nlinarith
-  | bind c k ihc ihk =>
-    simp only [compileComp, Comp.size]
-    nlinarith
-  | ite b c d ihc ihd =>
-    have hb := compileExpr_size_le M C_0 hC016 hOpS b
-    simp only [compileComp, Comp.wk1, Comp.renameM_size, Comp.size, Expr.size]
-    nlinarith
-  | caseOpt e n s ihn ihs =>
-    have he := compileExpr_size_le M C_0 hC016 hOpS e
-    simp only [compileComp, Comp.wk1, Comp.renameM_size, Comp.size, Expr.size]
-    nlinarith
-  | caseSum e l r ihl ihr =>
-    have he := compileExpr_size_le M C_0 hC016 hOpS e
-    simp only [compileComp, Comp.renameM_size, Comp.size, Expr.size]
-    nlinarith
-  | sample s e =>
-    have he := compileExpr_size_le M C_0 hC016 hOpS e
-    have hs := hSampS s
-    simp only [compileComp, callMacroAux_size, Comp.size]
-    nlinarith
-  | query g e =>
-    have he := compileExpr_size_le M C_0 hC016 hOpS e
-    have hg := hQueryS g
-    simp only [compileComp, callMacroAux_size, Comp.size]
-    nlinarith
-  | iter n e body ihb =>
-    have he := compileExpr_size_le M C_0 hC016 hOpS e
-    simp only [compileComp, Comp.renameM_size, Comp.size, Expr.size]
-    nlinarith
-  | findM K l p ihp | anyM K l p ihp | mapM K l p ihp =>
-    have hl := compileExpr_size_le M C_0 hC016 hOpS l
-    simp only [compileComp, Comp.renameM_size, Comp.size, Expr.size]
-    nlinarith
-  | consumeFirstM K l p mk ihp =>
-    have hl := compileExpr_size_le M C_0 hC016 hOpS l
-    have hmk := compileExpr_size_le M C_0 hC016 hOpS mk
-    have hbK := ReductionDsl.one_le_bits K
-    simp only [compileComp, Comp.renameM_size, Comp.size, Expr.size, Nat.reduceAdd]
-    nlinarith
-  | foldM K l z f ihf =>
-    have hl := compileExpr_size_le M C_0 hC016 hOpS l
-    have hz := compileExpr_size_le M C_0 hC016 hOpS z
-    simp only [compileComp, Comp.wk1, Comp.renameM_size, Comp.size, Expr.size]
-    nlinarith
-
 /-! ### Evaluation agreement -/
-
-private theorem findML_pure_map {m : Type → Type} [Monad m] [LawfulMonad m]
-    {α β : Type} (g : α → β) (p : α → Bool) (q : β → m Bool)
-    (hq : ∀ x, q (g x) = pure (p x)) :
-    ∀ xs : List α, findML q (xs.map g) = pure ((xs.find? p).map g)
-  | [] => rfl
-  | x :: xs => by
-    simp only [List.map_cons, findML, hq x, pure_bind, List.find?_cons]
-    cases p x with
-    | false => exact findML_pure_map g p q hq xs
-    | true => rfl
-
-private theorem anyML_pure_map {m : Type → Type} [Monad m] [LawfulMonad m]
-    {α β : Type} (g : α → β) (p : α → Bool) (q : β → m Bool)
-    (hq : ∀ x, q (g x) = pure (p x)) :
-    ∀ xs : List α, anyML q (xs.map g) = pure (xs.any p)
-  | [] => rfl
-  | x :: xs => by
-    simp only [List.map_cons, anyML, hq x, pure_bind, List.any_cons]
-    cases p x with
-    | false => exact anyML_pure_map g p q hq xs
-    | true => rfl
-
-private theorem mapML_pure_map {m : Type → Type} [Monad m] [LawfulMonad m]
-    {α₁ α₂ β₁ β₂ : Type} (g : α₁ → α₂) (h : β₁ → β₂)
-    (f₁ : α₁ → β₁) (f₂ : α₂ → m β₂)
-    (hf : ∀ x, f₂ (g x) = pure (h (f₁ x))) :
-    ∀ xs : List α₁, mapML f₂ (xs.map g) = pure ((xs.map f₁).map h)
-  | [] => rfl
-  | x :: xs => by
-    simp only [List.map_cons, mapML, hf x, mapML_pure_map g h f₁ f₂ hf xs, pure_bind]
-
-private theorem foldML_rev {m : Type → Type} [Monad m] [LawfulMonad m] {α : Type} :
-    ∀ (acc xs : List α), foldML (fun x l => (pure (x :: l) : m (List α))) acc xs =
-      pure (xs.reverse ++ acc)
-  | acc, [] => by simp [foldML]
-  | acc, x :: xs => by
-    simp only [foldML, pure_bind, foldML_rev (x :: acc) xs, List.reverse_cons, List.append_assoc,
-      List.singleton_append]
-
-private theorem foldML_pure_foldl {m : Type → Type} [Monad m] [LawfulMonad m]
-    {α₁ α₂ β₁ β₂ : Type} (g : α₁ → α₂) (h : β₁ → β₂)
-    (f₁ : α₁ → β₁ → β₁) (f₂ : α₂ → β₂ → m β₂)
-    (hf : ∀ x b, f₂ (g x) (h b) = pure (h (f₁ x b))) :
-    ∀ (b : β₁) (xs : List α₁),
-      foldML f₂ (h b) (xs.map g) = pure (h (xs.foldl (fun acc x => f₁ x acc) b))
-  | b, [] => rfl
-  | b, x :: xs => by
-    simp only [List.map_cons, List.foldl_cons, foldML, hf x b, pure_bind]
-    exact foldML_pure_foldl g h f₁ f₂ hf (f₁ x b) xs
-
-private theorem list_map_take {α β : Type} (g : α → β) (n : ℕ) (xs : List α) :
-    (xs.map g).take n = (xs.take n).map g := by
-  rw [List.map_take]
-
-theorem compileExpr_eval (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    (toDen : (b : S₁.Base) → S₁.den b → (M.fSort b).denote) (aux : auxT.denote)
-    (hOpE : ∀ o x,
-      (M.opMacro o).eval (.cons (toVal M.fSort toDen (O₁.dom o) x) (.cons aux .nil)) =
-        pure (toVal M.fSort toDen (O₁.cod o) (O₁.eval o x)))
-    {Γ : List (Ty S₁)} {t : Ty S₁} (e : Expr O₁ Γ t) (ρ : Env Γ) :
-    (compileExpr M e).eval (mapEnvAux M.fSort toDen aux ρ) =
-      pure (toVal M.fSort toDen t (e.eval ρ)) := by
-  induction e with
-  | var v =>
-    simp [compileExpr, Comp.eval, Expr.eval, get_mapEnvAux]
-  | unit | bool _ | nat _ | none | nil => rfl
-  | add a b iha ihb | sub a b iha ihb | lt a b iha ihb | eqN a b iha ihb
-  | and a b iha ihb | pair a b iha ihb | cons a b iha ihb =>
-    simp only [compileExpr, Comp.eval, iha ρ, pure_bind]
-    rw [Comp.wk1_eval, ihb ρ]
-    simp [Expr.eval, Env.get, toVal]
-  | take n l ihn ihl =>
-    simp only [compileExpr, Comp.eval, ihn ρ, pure_bind]
-    rw [Comp.wk1_eval, ihl ρ]
-    simp [Expr.eval, Env.get, toVal, List.map_take]
-  | appendL K a b iha ihb =>
-    simp only [compileExpr, Comp.eval, iha ρ, pure_bind]
-    rw [Comp.wk1_eval, ihb ρ]
-    simp [Expr.eval, Env.get, toVal, ← List.map_append, List.map_take]
-  | mulK k a iha | divK k a iha | modK k a iha | not a iha | fst a iha | snd a iha
-  | inl a iha | inr a iha | some a iha | len a iha | tconst a iha =>
-    simp [compileExpr, Comp.eval, iha ρ, Expr.eval, Env.get, toVal]
-  | ite c a b ihc iha ihb =>
-    simp only [compileExpr, Comp.eval, ihc ρ, pure_bind, Expr.eval, Env.get, toVal]
-    split_ifs
-    · rw [Comp.wk1_eval]; exact iha ρ
-    · rw [Comp.wk1_eval]; exact ihb ρ
-  | caseOpt e n s ihe ihn ihs =>
-    simp only [compileExpr, Comp.eval, ihe ρ, pure_bind, Expr.eval, Env.get, toVal]
-    cases e.eval ρ with
-    | none =>
-      simp only [Option.map_none]
-      rw [Comp.wk1_eval]; exact ihn ρ
-    | some x =>
-      simp only [Option.map_some]
-      rw [Comp.renameM_liftRen_wk1_eval]
-      exact ihs (.cons x ρ)
-  | caseSum e l r ihe ihl ihr =>
-    simp only [compileExpr, Comp.eval, ihe ρ, pure_bind, Expr.eval, Env.get, toVal]
-    cases e.eval ρ with
-    | inl x =>
-      simp only [Sum.map_inl]
-      rw [Comp.renameM_liftRen_wk1_eval]
-      exact ihl (.cons x ρ)
-    | inr y =>
-      simp only [Sum.map_inr]
-      rw [Comp.renameM_liftRen_wk1_eval]
-      exact ihr (.cons y ρ)
-  | letE e b ihe ihb =>
-    simp only [compileExpr, Comp.eval, ihe ρ, pure_bind, Expr.eval]
-    exact ihb (.cons (e.eval ρ) ρ)
-  | op o a iha =>
-    simp only [compileExpr, Comp.eval, iha ρ, pure_bind, Expr.eval]
-    rw [callMacroAux_eval M.fSort toDen aux ρ (M.opMacro o)]
-    exact hOpE o (a.eval ρ)
-  | findB K l p ihl ihp =>
-    simp only [compileExpr, Comp.eval, ihl ρ, pure_bind, Expr.eval, Env.get, toVal,
-      list_map_take]
-    refine findML_pure_map (toVal M.fSort toDen _) (fun x => p.eval (.cons x ρ)) _ (fun x => ?_)
-      ((l.eval ρ).take K)
-    rw [Comp.renameM_liftRen_wk1_eval]
-    exact ihp (.cons x ρ)
-  | anyB K l p ihl ihp =>
-    simp only [compileExpr, Comp.eval, ihl ρ, pure_bind, Expr.eval, Env.get, toVal,
-      list_map_take]
-    refine anyML_pure_map (toVal M.fSort toDen _) (fun x => p.eval (.cons x ρ)) _ (fun x => ?_)
-      ((l.eval ρ).take K)
-    rw [Comp.renameM_liftRen_wk1_eval]
-    exact ihp (.cons x ρ)
-  | mapB K l f ihl ihf =>
-    simp only [compileExpr, Comp.eval, ihl ρ, pure_bind, Expr.eval, Env.get, toVal,
-      list_map_take]
-    refine mapML_pure_map (toVal M.fSort toDen _) (toVal M.fSort toDen _)
-      (fun x => f.eval (.cons x ρ)) _ (fun x => ?_) ((l.eval ρ).take K)
-    rw [Comp.renameM_liftRen_wk1_eval]
-    exact ihf (.cons x ρ)
-  | foldrB K l z f ihl ihz ihf =>
-    simp only [compileExpr, Comp.eval, ihl ρ, pure_bind, Expr.eval, Env.get, toVal,
-      list_map_take]
-    have hrev :
-        foldML (fun x acc => (pure (x :: acc) : OracleComp T _)) []
-          (((l.eval ρ).take K).map (toVal M.fSort toDen _)) =
-          pure ((((l.eval ρ).take K).reverse).map (toVal M.fSort toDen _)) := by
-      rw [foldML_rev, List.append_nil, List.map_reverse]
-    rw [hrev, pure_bind, Comp.wk2_eval, ihz ρ, pure_bind]
-    have htake :
-        ((((l.eval ρ).take K).reverse).map (toVal M.fSort toDen _)).take K =
-          (((l.eval ρ).take K).reverse).map (toVal M.fSort toDen _) := by
-      apply List.take_of_length_le
-      simp [List.length_take]
-    simp only [htake]
-    rw [foldML_pure_foldl (toVal M.fSort toDen _) (toVal M.fSort toDen _)
-      (fun x acc => f.eval (.cons x (.cons acc ρ))) _ (fun x acc => ?_)
-      (z.eval ρ) (((l.eval ρ).take K).reverse)]
-    · rw [List.foldl_reverse]
-    · rw [Comp.renameM_liftRen2_wk3_eval]
-      exact ihf (.cons x (.cons acc ρ))
-  | tget m i ihm ihi =>
-    simp only [compileExpr, Comp.eval, ihm ρ, pure_bind]
-    rw [Comp.wk1_eval, ihi ρ]
-    simp [Expr.eval, Env.get, toVal]
-  | tset m i a ihm ihi iha =>
-    simp only [compileExpr, Comp.eval, ihm ρ, pure_bind]
-    rw [Comp.wk1_eval, ihi ρ, pure_bind]
-    rw [Comp.wk2_eval, iha ρ, pure_bind]
-    simp only [Expr.eval, Env.get, toVal]
-    congr 1; funext j
-    split_ifs <;> rfl
 
 private theorem iterM_map_hom {m : Type → Type} [Monad m] [LawfulMonad m]
     {α β : Type} (g : α → β) (f₁ : α → m α) (f₂ : β → m β)
@@ -1364,255 +857,6 @@ private theorem foldML_map_hom {m : Type → Type} [Monad m] [LawfulMonad m]
     simp only [List.map_cons, foldML, hf x b, bind_map_left, map_bind]
     exact bind_congr fun b' => foldML_map_hom g h f₁ f₂ hf b' xs
 
-private def cfStep {m : Type → Type} [Monad m] {α : Type}
-    (p : α → m Bool) (mk : α → m α) (x : α) (acc : Bool × List α) : m (Bool × List α) :=
-  if acc.1 then pure (true, x :: acc.2)
-  else do
-    let b ← p x
-    if b then do
-      let x' ← mk x
-      pure (true, x' :: acc.2)
-    else pure (false, x :: acc.2)
-
-private theorem foldML_cfStep_true {m : Type → Type} [Monad m] [LawfulMonad m] {α : Type}
-    (p : α → m Bool) (mk : α → m α) :
-    ∀ (pfx : List α) (xs : List α),
-      foldML (cfStep p mk) (true, pfx) xs = pure (true, xs.reverse ++ pfx)
-  | pfx, [] => by simp [foldML]
-  | pfx, x :: xs => by
-    simp only [foldML, cfStep, ↓reduceIte, pure_bind, foldML_cfStep_true p mk (x :: pfx) xs,
-      List.reverse_cons, List.append_assoc, List.singleton_append]
-
-private theorem foldML_cfStep_false {m : Type → Type} [Monad m] [LawfulMonad m]
-    {α₁ α₂ : Type} (g : α₁ → α₂)
-    (p₁ : α₁ → m Bool) (p₂ : α₂ → m Bool)
-    (mk₁ : α₁ → α₁) (mk₂ : α₂ → m α₂)
-    (hp : ∀ x, p₂ (g x) = p₁ x)
-    (hm : ∀ x, mk₂ (g x) = pure (g (mk₁ x))) :
-    ∀ (pfx : List α₂) (xs : List α₁),
-      (foldML (cfStep p₂ mk₂) (false, pfx) (xs.map g) >>= fun st =>
-        pure (st.1, st.2.reverse)) =
-        (fun r => (r.1, pfx.reverse ++ r.2.map g)) <$> consumeFirstML p₁ mk₁ xs
-  | pfx, [] => by simp [foldML, consumeFirstML]
-  | pfx, x :: xs => by
-    simp only [List.map_cons, foldML, cfStep, Bool.false_eq_true, ↓reduceIte, hp x,
-      consumeFirstML, bind_assoc, map_bind]
-    refine bind_congr fun b => ?_
-    cases b with
-    | true =>
-      simp only [↓reduceIte, hm x, pure_bind, foldML_cfStep_true, map_pure]
-      congr 1; ext <;> simp [List.reverse_append]
-    | false =>
-      simp only [Bool.false_eq_true, ↓reduceIte, pure_bind,
-        foldML_cfStep_false g p₁ p₂ mk₁ mk₂ hp hm (g x :: pfx) xs, map_eq_bind_pure_comp,
-        Function.comp_def, bind_assoc]
-      refine bind_congr fun r => ?_
-      simp [List.append_assoc]
-
-private theorem foldML_cfStep_len {α : Type}
-    (p : α → OracleComp T Bool) (mk : α → OracleComp T α) (xs : List α) :
-    ∀ (b : Bool) (pfx : List α),
-      ∀ st ∈ support (foldML (cfStep p mk) (b, pfx) xs),
-        st.2.length = xs.length + pfx.length := by
-  induction xs with
-  | nil =>
-    intro b pfx st hst
-    simp only [foldML, support_pure, Set.mem_singleton_iff] at hst
-    subst hst; simp
-  | cons x xs ih =>
-    intro b pfx st hst
-    simp only [foldML, cfStep, mem_support_bind_iff] at hst
-    rcases hst with ⟨st₁, hst₁, hst⟩
-    cases b with
-    | true =>
-      simp only [↓reduceIte, support_pure, Set.mem_singleton_iff] at hst₁
-      subst hst₁
-      have h := ih true (x :: pfx) st hst
-      simp only [List.length_cons] at h ⊢; omega
-    | false =>
-      simp only [Bool.false_eq_true, ↓reduceIte, mem_support_bind_iff] at hst₁
-      rcases hst₁ with ⟨bv, -, hst₁⟩
-      cases bv with
-      | true =>
-        simp only [↓reduceIte, mem_support_bind_iff, support_pure, Set.mem_singleton_iff] at hst₁
-        rcases hst₁ with ⟨x', -, rfl⟩
-        have h := ih true (x' :: pfx) st hst
-        simp only [List.length_cons] at h ⊢; omega
-      | false =>
-        simp only [Bool.false_eq_true, ↓reduceIte, support_pure, Set.mem_singleton_iff] at hst₁
-        subst hst₁
-        have h := ih false (x :: pfx) st hst
-        simp only [List.length_cons] at h ⊢; omega
-
-theorem compileComp_eval (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    (toDen : (b : S₁.Base) → S₁.den b → (M.fSort b).denote) (aux : auxT.denote)
-    (hOpE : ∀ o x,
-      (M.opMacro o).eval (.cons (toVal M.fSort toDen (O₁.dom o) x) (.cons aux .nil)) =
-        pure (toVal M.fSort toDen (O₁.cod o) (O₁.eval o x)))
-    (hSampE : ∀ s x,
-      (M.sampMacro s).eval (.cons (toVal M.fSort toDen (I₁.smp.sDom s) x) (.cons aux .nil)) =
-        toVal M.fSort toDen (I₁.smp.sTy s) <$> I₁.liftP (I₁.smp.samp s x))
-    (hQueryE : ∀ g x,
-      (M.queryMacro g).eval (.cons (toVal M.fSort toDen (I₁.dom g) x) (.cons aux .nil)) =
-        toVal M.fSort toDen (I₁.cod g) <$>
-          (I₁.dec g x <$> (liftM (T.query (I₁.enc g x)) : OracleComp T _)))
-    {Γ : List (Ty S₁)} {t : Ty S₁} (c : Comp O₁ I₁ Γ t) (ρ : Env Γ) :
-    (compileComp M c).eval (mapEnvAux M.fSort toDen aux ρ) =
-      toVal M.fSort toDen t <$> c.eval ρ := by
-  induction c with
-  | ret e =>
-    simp [compileComp, Comp.eval, compileExpr_eval M toDen aux hOpE e ρ]
-  | bind c k ihc ihk =>
-    simp only [compileComp, Comp.eval, ihc ρ, bind_map_left, map_bind]
-    exact bind_congr fun x => ihk (.cons x ρ)
-  | ite b c d ihc ihd =>
-    simp only [compileComp, Comp.eval, compileExpr_eval M toDen aux hOpE b ρ,
-      pure_bind, Expr.eval, Env.get, toVal]
-    split_ifs
-    · rw [Comp.wk1_eval]; exact ihc ρ
-    · rw [Comp.wk1_eval]; exact ihd ρ
-  | caseOpt e n s ihn ihs =>
-    simp only [compileComp, Comp.eval, compileExpr_eval M toDen aux hOpE e ρ,
-      pure_bind, Expr.eval, Env.get, toVal]
-    cases e.eval ρ with
-    | none =>
-      simp only [Option.map_none]
-      rw [Comp.wk1_eval]; exact ihn ρ
-    | some x =>
-      simp only [Option.map_some]
-      rw [Comp.renameM_liftRen_wk1_eval]
-      exact ihs (.cons x ρ)
-  | caseSum e l r ihl ihr =>
-    simp only [compileComp, Comp.eval, compileExpr_eval M toDen aux hOpE e ρ,
-      pure_bind, Expr.eval, Env.get, toVal]
-    cases e.eval ρ with
-    | inl x =>
-      simp only [Sum.map_inl]
-      rw [Comp.renameM_liftRen_wk1_eval]
-      exact ihl (.cons x ρ)
-    | inr y =>
-      simp only [Sum.map_inr]
-      rw [Comp.renameM_liftRen_wk1_eval]
-      exact ihr (.cons y ρ)
-  | sample s e =>
-    simp only [compileComp, Comp.eval, compileExpr_eval M toDen aux hOpE e ρ, pure_bind]
-    rw [callMacroAux_eval M.fSort toDen aux ρ (M.sampMacro s)]
-    exact hSampE s (e.eval ρ)
-  | query g e =>
-    simp only [compileComp, Comp.eval, compileExpr_eval M toDen aux hOpE e ρ, pure_bind]
-    rw [callMacroAux_eval M.fSort toDen aux ρ (M.queryMacro g)]
-    exact hQueryE g (e.eval ρ)
-  | iter n e body ihb =>
-    simp only [compileComp, Comp.eval, compileExpr_eval M toDen aux hOpE e ρ,
-      pure_bind, Expr.eval, Env.get]
-    refine iterM_map_hom (toVal M.fSort toDen _) (fun a => body.eval (.cons a ρ)) _ (fun a => ?_)
-      n (e.eval ρ)
-    rw [Comp.renameM_liftRen_wk1_eval]
-    exact ihb (.cons a ρ)
-  | findM K l p ihp =>
-    simp only [compileComp, Comp.eval, compileExpr_eval M toDen aux hOpE l ρ,
-      pure_bind, Expr.eval, Env.get, toVal, list_map_take]
-    refine findML_map_hom (toVal M.fSort toDen _) (fun x => p.eval (.cons x ρ)) _ (fun x => ?_)
-      ((l.eval ρ).take K)
-    rw [Comp.renameM_liftRen_wk1_eval]
-    exact (ihp (.cons x ρ)).trans (id_map _)
-  | anyM K l p ihp =>
-    simp only [compileComp, Comp.eval, compileExpr_eval M toDen aux hOpE l ρ,
-      pure_bind, Expr.eval, Env.get, toVal, list_map_take]
-    change _ = id <$> _
-    rw [id_map]
-    refine anyML_map_hom (toVal M.fSort toDen _) (fun x => p.eval (.cons x ρ)) _ (fun x => ?_)
-      ((l.eval ρ).take K)
-    rw [Comp.renameM_liftRen_wk1_eval]
-    exact (ihp (.cons x ρ)).trans (id_map _)
-  | mapM K l f ihf =>
-    simp only [compileComp, Comp.eval, compileExpr_eval M toDen aux hOpE l ρ,
-      pure_bind, Expr.eval, Env.get, toVal, list_map_take]
-    refine mapML_map_hom (toVal M.fSort toDen _) (toVal M.fSort toDen _)
-      (fun x => f.eval (.cons x ρ)) _ (fun x => ?_) ((l.eval ρ).take K)
-    rw [Comp.renameM_liftRen_wk1_eval]
-    exact ihf (.cons x ρ)
-  | @consumeFirstM _ elemT K l p mk ihp =>
-    simp only [compileComp, Comp.eval, compileExpr_eval M toDen aux hOpE l ρ,
-      pure_bind, Expr.eval, Env.get, toVal, list_map_take]
-    set xs := (l.eval ρ).take K
-    let p₂ := fun (y : (mapTy M.fSort elemT).denote) =>
-      ((compileComp M p).renameM (liftRen (fun ⦃_⦄ v => .succ (.succ v)))).eval
-        (Env.cons y
-          (Env.cons (t := .prod .bool (.list (mapTy M.fSort elemT))) (false, [])
-            (Env.cons (t := .list (mapTy M.fSort elemT)) ((l.eval ρ).map (toVal M.fSort toDen elemT))
-              (mapEnvAux M.fSort toDen aux ρ))))
-    refine Eq.trans
-      (congrArg (fun m => m >>= _)
-        (foldML_congr
-          (g := cfStep p₂
-            (fun z => (compileExpr M mk).eval (.cons z (mapEnvAux M.fSort toDen aux ρ))))
-          (fun y acc => ?_) (false, []) (xs.map (toVal M.fSort toDen elemT))))
-      ?_
-    · unfold cfStep
-      split_ifs with hacc
-      · rfl
-      · have hp' :
-            ((compileComp M p).renameM (liftRen (fun ⦃_⦄ v => .succ (.succ v)))).eval
-              (Env.cons y
-                (Env.cons (t := .prod .bool (.list (mapTy M.fSort elemT))) acc
-                  (Env.cons (t := .list (mapTy M.fSort elemT)) ((l.eval ρ).map (toVal M.fSort toDen elemT))
-                    (mapEnvAux M.fSort toDen aux ρ)))) = p₂ y := by
-          dsimp only [p₂]
-          rw [Comp.renameM_liftRen_wk2_eval, Comp.renameM_liftRen_wk2_eval]
-        rw [hp']
-        refine bind_congr fun b => ?_
-        split_ifs with hb
-        · exact congrArg (· >>= fun x => pure (true, x :: acc.2))
-            (Comp.renameM_eval (compileExpr M mk) fun ⦃_⦄ v => by
-              cases v with
-              | zero => rfl
-              | succ v => rfl)
-        · rfl
-    · have hrev_bind :
-          (foldML (cfStep p₂
-            (fun z => (compileExpr M mk).eval (.cons z (mapEnvAux M.fSort toDen aux ρ))))
-            (false, []) (xs.map (toVal M.fSort toDen elemT)) >>= fun st =>
-            foldML (fun x l => pure (x :: l)) [] (st.2.take K) >>= fun outL =>
-              pure (st.1, outL)) =
-          (foldML (cfStep p₂
-            (fun z => (compileExpr M mk).eval (.cons z (mapEnvAux M.fSort toDen aux ρ))))
-            (false, []) (xs.map (toVal M.fSort toDen elemT)) >>= fun st =>
-            pure (st.1, st.2.reverse)) := by
-        refine OracleComp.bind_congr_of_forall_mem_support _ fun st hst => ?_
-        have hlen := foldML_cfStep_len (T := T) p₂
-          (fun z => (compileExpr M mk).eval (.cons z (mapEnvAux M.fSort toDen aux ρ)))
-          (xs.map (toVal M.fSort toDen elemT)) false [] st hst
-        have htk : st.2.take K = st.2 := by
-          apply List.take_of_length_le
-          have hxs : xs.length ≤ K := List.length_take_le K (l.eval ρ)
-          simp only [List.length_map, List.length_nil, add_zero] at hlen
-          omega
-        rw [htk, foldML_rev, List.append_nil, pure_bind]
-      rw [hrev_bind]
-      have hp_hom : ∀ x, p₂ (toVal M.fSort toDen elemT x) = p.eval (.cons x ρ) := by
-        intro x
-        dsimp only [p₂]
-        rw [Comp.renameM_liftRen_wk2_eval]
-        exact (ihp (.cons x ρ)).trans (id_map _)
-      have hmk_hom : ∀ x,
-          (compileExpr M mk).eval
-            (.cons (toVal M.fSort toDen elemT x) (mapEnvAux M.fSort toDen aux ρ)) =
-            pure (toVal M.fSort toDen elemT (mk.eval (.cons x ρ))) :=
-        fun x => compileExpr_eval M toDen aux hOpE mk (.cons x ρ)
-      rw [foldML_cfStep_false (toVal M.fSort toDen elemT) _ p₂
-        (fun x => mk.eval (.cons x ρ)) _ hp_hom hmk_hom [] xs]
-      simp
-  | foldM K l z f ihf =>
-    simp only [compileComp, Comp.eval, compileExpr_eval M toDen aux hOpE l ρ,
-      pure_bind, Expr.eval, Env.get, toVal, list_map_take]
-    rw [Comp.wk1_eval, compileExpr_eval M toDen aux hOpE z ρ, pure_bind]
-    refine foldML_map_hom (toVal M.fSort toDen _) (toVal M.fSort toDen _)
-      (fun x acc => f.eval (.cons x (.cons acc ρ))) _ (fun x acc => ?_)
-      (z.eval ρ) ((l.eval ρ).take K)
-    rw [Comp.renameM_liftRen2_wk2_eval]
-    exact ihf (.cons x (.cons acc ρ))
-
 end Compile
 
 /-! ## Reduction compiler and length-guarded wrappers -/
@@ -1634,134 +878,6 @@ structure RedAdapters (fSort : S₁.Base → Ty S₂) (O₂ : Ops S₂)
   adaptR : Expr O₂ [mapTy fSort C₁.R] C₂.R
   adaptAOut : Expr O₂ [aOut₂] (mapTy fSort aOut₁)
   adaptOut : Expr O₂ [mapTy fSort out₁] out₂
-
-/-- Compile `R : CostedReduction O₁ I₁ G C₁ rIn₁ aIn₁ aOut₁ out₁` into
-`CostedReduction O₂ I₂ G C₂ rIn₂ aIn₂ aOut₂ out₂` with state `.prod (mapTy M.fSort R.σ) auxT`. -/
-def compileRed (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    {rIn₁ aIn₁ aOut₁ out₁ : Ty S₁} {rIn₂ aIn₂ aOut₂ out₂ : Ty S₂}
-    (A : RedAdapters M.fSort O₂ C₁ C₂ auxT rIn₁ aIn₁ aOut₁ out₁ rIn₂ aIn₂ aOut₂ out₂)
-    (R : CostedReduction O₁ I₁ G C₁ rIn₁ aIn₁ aOut₁ out₁) :
-    CostedReduction O₂ I₂ G C₂ rIn₂ aIn₂ aOut₂ out₂ where
-  σ := .prod (mapTy M.fSort R.σ) auxT
-  init :=
-    .bind (.ret A.splitIn)
-      (.bind (.ret (.snd (.var .zero)))
-        (.bind (.ret (.fst (.var (.succ .zero))))
-          (.bind
-            (Comp.wkTop2 (compileComp M R.init))
-            (.ret
-              (.pair
-                (.letE (.fst (.var .zero)) (Expr.wkTop1 A.adaptAIn))
-                (.pair (.snd (.var .zero)) (.var (.succ (.succ .zero)))))))))
-  handle :=
-    .bind (.ret (.snd (.var .zero)))
-      (.bind
-        (.ret (.letE (.var (.succ (.succ .zero))) (Expr.wkTop1 A.adaptQ)))
-        (.bind (.ret (.fst (.var (.succ (.succ .zero)))))
-          (.bind
-            (Comp.wkTop3 (compileComp M R.handle))
-            (.ret
-              (.pair
-                (.letE (.fst (.var .zero)) (Expr.wkTop1 A.adaptR))
-                (.pair (.snd (.var .zero)) (.var (.succ (.succ (.succ .zero))))))))))
-  finish :=
-    .bind (.ret (.snd (.var .zero)))
-      (.bind
-        (.ret (.letE (.var (.succ (.succ .zero))) (Expr.wkTop1 A.adaptAOut)))
-        (.bind (.ret (.fst (.var (.succ (.succ .zero)))))
-          (.bind
-            (Comp.wkTop3 (compileComp M R.finish))
-            (.ret
-              (.letE (.var .zero) (Expr.wkTop1 A.adaptOut))))))
-
-theorem compileRed_totalQueries_le (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    {rIn₁ aIn₁ aOut₁ out₁ : Ty S₁} {rIn₂ aIn₂ aOut₂ out₂ : Ty S₂}
-    (A : RedAdapters M.fSort O₂ C₁ C₂ auxT rIn₁ aIn₁ aOut₁ out₁ rIn₂ aIn₂ aOut₂ out₂)
-    (R : CostedReduction O₁ I₁ G C₁ rIn₁ aIn₁ aOut₁ out₁)
-    (w₁ : I₁.Tag → ℕ) (ws₁ : I₁.smp.Samp → ℕ)
-    (w₂ : I₂.Tag → ℕ) (ws₂ : I₂.smp.Samp → ℕ)
-    (hOpQ : ∀ o, (M.opMacro o).queries w₂ ws₂ = 0)
-    (hSampQ : ∀ s, (M.sampMacro s).queries w₂ ws₂ ≤ ws₁ s)
-    (hQueryQ : ∀ g, (M.queryMacro g).queries w₂ ws₂ ≤ w₁ g)
-    (q : ℕ) :
-    (compileRed M A R).totalQueries w₂ ws₂ q ≤ R.totalQueries w₁ ws₁ q := by
-  have hi := compileComp_queries_le M w₁ ws₁ w₂ ws₂ hOpQ hSampQ hQueryQ R.init
-  have hh := compileComp_queries_le M w₁ ws₁ w₂ ws₂ hOpQ hSampQ hQueryQ R.handle
-  have hf := compileComp_queries_le M w₁ ws₁ w₂ ws₂ hOpQ hSampQ hQueryQ R.finish
-  have hmul : q * (compileComp M R.handle).queries w₂ ws₂ ≤ q * R.handle.queries w₁ ws₁ :=
-    Nat.mul_le_mul_left q hh
-  simp only [CostedReduction.totalQueries, compileRed, Comp.queries, Comp.renameM_queries,
-    zero_add, add_zero]
-  omega
-
-theorem compileRed_totalCost_le (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    {rIn₁ aIn₁ aOut₁ out₁ : Ty S₁} {rIn₂ aIn₂ aOut₂ out₂ : Ty S₂}
-    (A : RedAdapters M.fSort O₂ C₁ C₂ auxT rIn₁ aIn₁ aOut₁ out₁ rIn₂ aIn₂ aOut₂ out₂)
-    (R : CostedReduction O₁ I₁ G C₁ rIn₁ aIn₁ aOut₁ out₁)
-    (C_0 : ℕ) (hC0 : 32 ≤ C_0)
-    (hOpC : ∀ o, (M.opMacro o).cost + 1 ≤ C_0 * O₁.cost o)
-    (hSampC : ∀ s, (M.sampMacro s).cost + 1 ≤ C_0 * max 1 (I₁.smp.sCost s))
-    (hQueryC : ∀ g, (M.queryMacro g).cost + 1 ≤ C_0 * max 1 (I₁.qCost g))
-    (q : ℕ) :
-    (compileRed M A R).totalCost q ≤
-      (2 * C_0) * R.init.cost + A.splitIn.cost + A.adaptAIn.cost + 24 +
-      q * max I₂.uCost
-        ((2 * C_0) * R.handle.cost + A.adaptQ.cost + A.adaptR.cost + C₂.codecCost + 28) +
-      ((2 * C_0) * R.finish.cost + A.adaptAOut.cost + A.adaptOut.cost + 22) := by
-  have hi := compileComp_cost_le M C_0 hC0 hOpC hSampC hQueryC R.init
-  have hh := compileComp_cost_le M C_0 hC0 hOpC hSampC hQueryC R.handle
-  have hf := compileComp_cost_le M C_0 hC0 hOpC hSampC hQueryC R.finish
-  have hinit :
-      (compileRed M A R).init.cost ≤ (2 * C_0) * R.init.cost + A.splitIn.cost + A.adaptAIn.cost + 24 := by
-    simp only [compileRed, Comp.cost, Comp.renameM_cost, Expr.renameM_cost, Expr.cost]
-    omega
-  have hhandle :
-      (compileRed M A R).handle.cost ≤ (2 * C_0) * R.handle.cost + A.adaptQ.cost + A.adaptR.cost + 28 := by
-    simp only [compileRed, Comp.cost, Comp.renameM_cost, Expr.renameM_cost, Expr.cost]
-    omega
-  have hfinish :
-      (compileRed M A R).finish.cost ≤ (2 * C_0) * R.finish.cost + A.adaptAOut.cost + A.adaptOut.cost + 22 := by
-    simp only [compileRed, Comp.cost, Comp.renameM_cost, Expr.renameM_cost, Expr.cost]
-    omega
-  have hmax :
-      max I₂.uCost ((compileRed M A R).handle.cost + C₂.codecCost) ≤
-      max I₂.uCost ((2 * C_0) * R.handle.cost + A.adaptQ.cost + A.adaptR.cost + C₂.codecCost + 28) :=
-    max_le_max le_rfl (by omega)
-  have hmul := Nat.mul_le_mul_left q hmax
-  dsimp only [CostedReduction.totalCost]
-  omega
-
-theorem compileRed_size_le (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    {rIn₁ aIn₁ aOut₁ out₁ : Ty S₁} {rIn₂ aIn₂ aOut₂ out₂ : Ty S₂}
-    (A : RedAdapters M.fSort O₂ C₁ C₂ auxT rIn₁ aIn₁ aOut₁ out₁ rIn₂ aIn₂ aOut₂ out₂)
-    (R : CostedReduction O₁ I₁ G C₁ rIn₁ aIn₁ aOut₁ out₁)
-    (C_0 : ℕ) (hC0 : 32 ≤ C_0)
-    (hOpS : ∀ o, (M.opMacro o).size + 1 ≤ C_0)
-    (hSampS : ∀ s, (M.sampMacro s).size + 1 ≤ C_0)
-    (hQueryS : ∀ g, (M.queryMacro g).size + 1 ≤ C_0) :
-    (compileRed M A R).size ≤
-      (2 * C_0) * R.size + A.splitIn.size + A.adaptAIn.size +
-      A.adaptQ.size + A.adaptR.size + A.adaptAOut.size + A.adaptOut.size + 74 := by
-  have hi := compileComp_size_le M C_0 hC0 hOpS hSampS hQueryS R.init
-  have hh := compileComp_size_le M C_0 hC0 hOpS hSampS hQueryS R.handle
-  have hf := compileComp_size_le M C_0 hC0 hOpS hSampS hQueryS R.finish
-  have hinit :
-      (compileRed M A R).init.size ≤
-        (2 * C_0) * R.init.size + A.splitIn.size + A.adaptAIn.size + 24 := by
-    simp only [compileRed, Comp.size, Comp.renameM_size, Expr.renameM_size, Expr.size]
-    omega
-  have hhandle :
-      (compileRed M A R).handle.size ≤
-        (2 * C_0) * R.handle.size + A.adaptQ.size + A.adaptR.size + 28 := by
-    simp only [compileRed, Comp.size, Comp.renameM_size, Expr.renameM_size, Expr.size]
-    omega
-  have hfinish :
-      (compileRed M A R).finish.size ≤
-        (2 * C_0) * R.finish.size + A.adaptAOut.size + A.adaptOut.size + 22 := by
-    simp only [compileRed, Comp.size, Comp.renameM_size, Expr.renameM_size, Expr.size]
-    omega
-  dsimp only [CostedReduction.size]
-  nlinarith
 
 private theorem simulateQ_state_hom
     {σ₁ σ₂ : Type} (proj : σ₁ → σ₂)
@@ -1785,127 +901,7 @@ private theorem simulateQ_state_hom
     rw [hStep q s₁, bind_map_left, map_bind]
     exact bind_congr fun p => ih p.1 p.2
 
-theorem compileRed_eval (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    {rIn₁ aIn₁ aOut₁ out₁ : Ty S₁} {rIn₂ aIn₂ aOut₂ out₂ : Ty S₂}
-    (Ad : RedAdapters M.fSort O₂ C₁ C₂ auxT rIn₁ aIn₁ aOut₁ out₁ rIn₂ aIn₂ aOut₂ out₂)
-    (R : CostedReduction O₁ I₁ G C₁ rIn₁ aIn₁ aOut₁ out₁)
-    (toDen : (b : S₁.Base) → S₁.den b → (M.fSort b).denote)
-    (x₂ : rIn₂.denote) (x₁ : rIn₁.denote) (aux : auxT.denote)
-    (hSplit : Ad.splitIn.eval (.cons x₂ .nil) = (toVal M.fSort toDen rIn₁ x₁, aux))
-    (hFwdU : ∀ n, I₂.fwdU n = I₁.fwdU n)
-    (hOpE : ∀ o z,
-      (M.opMacro o).eval (.cons (toVal M.fSort toDen (O₁.dom o) z) (.cons aux .nil)) =
-        pure (toVal M.fSort toDen (O₁.cod o) (O₁.eval o z)))
-    (hSampE : ∀ s z,
-      (M.sampMacro s).eval (.cons (toVal M.fSort toDen (I₁.smp.sDom s) z) (.cons aux .nil)) =
-        toVal M.fSort toDen (I₁.smp.sTy s) <$> I₁.liftP (I₁.smp.samp s z))
-    (hQueryE : ∀ g z,
-      (M.queryMacro g).eval (.cons (toVal M.fSort toDen (I₁.dom g) z) (.cons aux .nil)) =
-        toVal M.fSort toDen (I₁.cod g) <$>
-          (I₁.dec g z <$> (liftM (T.query (I₁.enc g z)) : OracleComp T _)))
-    (hQ : ∀ t : κ,
-      Ad.adaptQ.eval (.cons (C₂.qenc t) .nil) = toVal M.fSort toDen C₁.Q (C₁.qenc t))
-    (hR : ∀ (t : κ) (r₁ : C₁.R.denote),
-      C₂.rdec t (Ad.adaptR.eval (.cons (toVal M.fSort toDen C₁.R r₁) .nil)) = C₁.rdec t r₁)
-    (adv₁ : aIn₁.denote → OracleComp (unifSpec + G) aOut₁.denote)
-    (adv₂ : aIn₂.denote → OracleComp (unifSpec + G) aOut₂.denote)
-    (toOut : aOut₁.denote → aOut₂.denote)
-    (hAdv : ∀ a₁ : aIn₁.denote,
-      adv₂ (Ad.adaptAIn.eval (.cons (toVal M.fSort toDen aIn₁ a₁) .nil)) = toOut <$> adv₁ a₁)
-    (hAOut : ∀ b₁ : aOut₁.denote,
-      Ad.adaptAOut.eval (.cons (toOut b₁) .nil) = toVal M.fSort toDen aOut₁ b₁)
-    {outEq : out₁.denote → out₂.denote}
-    (hOut : ∀ y₁ : out₁.denote,
-      Ad.adaptOut.eval (.cons (toVal M.fSort toDen out₁ y₁) .nil) = outEq y₁) :
-    (compileRed M Ad R).eval adv₂ x₂ = outEq <$> R.eval adv₁ x₁ := by
-  let mkSt : R.σ.denote → (compileRed M Ad R).σ.denote :=
-    fun s => (toVal M.fSort toDen R.σ s, aux)
-  have hInit :
-      (compileRed M Ad R).init.eval (.cons x₂ .nil) =
-        (fun (p : (aIn₁.prod R.σ).denote) =>
-          ((Ad.adaptAIn.eval (.cons (toVal M.fSort toDen aIn₁ p.1) .nil),
-            mkSt p.2) : (aIn₂.prod (compileRed M Ad R).σ).denote)) <$>
-          R.init.eval (.cons x₁ .nil) := by
-    simp only [compileRed, Comp.eval, pure_bind, Expr.eval, Env.get, hSplit]
-    rw [Comp.wkTop2_eval]
-    change (do
-      let x ← (compileComp M R.init).eval (mapEnvAux M.fSort toDen aux (.cons x₁ .nil))
-      _) = _
-    rw [compileComp_eval M toDen aux hOpE hSampE hQueryE R.init (.cons x₁ .nil),
-      bind_map_left]
-    simp only [map_eq_bind_pure_comp, Function.comp_def]
-    refine bind_congr fun p => ?_
-    congr 1; congr 1
-    dsimp only [toVal]
-    exact Expr.wkTop1_eval Ad.adaptAIn _ _
-  have hStep :
-      ∀ (q : (unifSpec + G).Domain) (s₁ : R.σ.denote),
-        ((compileRed M Ad R).impl q).run (mkSt s₁) =
-          Prod.map id mkSt <$> (R.impl q).run s₁ := by
-    intro q s₁
-    rcases q with n | t
-    · change
-        (StateT.lift (I₂.fwdU n)).run (mkSt s₁) =
-          Prod.map id mkSt <$> (StateT.lift (I₁.fwdU n)).run s₁
-      rw [StateT.run_lift, StateT.run_lift, hFwdU n]
-      simp only [map_eq_bind_pure_comp, Function.comp_def, bind_assoc, pure_bind, Prod.map, id_eq]
-    · simp only [CostedReduction.impl, handlerImpl, StateT.run_mk, compileRed,
-        Comp.eval, pure_bind, Expr.eval, Env.get, mkSt]
-      have hq' :
-          (Expr.wkTop1 Ad.adaptQ).eval
-            (Env.cons (C₂.qenc t)
-              (Env.cons aux
-                (Env.cons (t := .prod (mapTy M.fSort R.σ) auxT)
-                  (toVal M.fSort toDen R.σ s₁, aux) (Env.cons (C₂.qenc t) Env.nil)))) =
-            toVal M.fSort toDen C₁.Q (C₁.qenc t) := by
-        rw [Expr.wkTop1_eval]
-        exact hQ t
-      rw [hq', Comp.wkTop3_eval]
-      have hm :
-          Env.cons (toVal M.fSort toDen R.σ s₁)
-            (Env.cons (toVal M.fSort toDen C₁.Q (C₁.qenc t)) (Env.cons aux Env.nil)) =
-            mapEnvAux M.fSort toDen aux (.cons s₁ (.cons (C₁.qenc t) .nil)) := rfl
-      dsimp only [compileRed, Ty.denote]
-      rw [hm, compileComp_eval M toDen aux hOpE hSampE hQueryE R.handle
-        (.cons s₁ (.cons (C₁.qenc t) .nil)), bind_map_left, bind_assoc, map_bind]
-      refine OracleComp.bind_congr' rfl fun p => ?_
-      simp only [pure_bind, map_pure, Prod.map, id_eq, toVal]
-      congr 1; congr 1
-      rw [Expr.wkTop1_eval]
-      exact hR t p.1
-  unfold CostedReduction.eval
-  rw [hInit, bind_map_left, map_bind]
-  refine OracleComp.bind_congr' rfl fun p => ?_
-  rcases p with ⟨a₁, s₁⟩
-  dsimp only
-  rw [hAdv a₁, simulateQ_map, StateT.run_map,
-    simulateQ_state_hom mkSt hStep (adv₁ a₁) s₁]
-  simp only [bind_map_left, map_bind, Prod.map, id_eq]
-  refine OracleComp.bind_congr' rfl fun p' => ?_
-  rcases p' with ⟨b₁, s₁'⟩
-  dsimp only
-  simp only [compileRed, Comp.eval, pure_bind, Expr.eval, Env.get, mkSt]
-  have hb' :
-      (Expr.wkTop1 Ad.adaptAOut).eval
-        (Env.cons (toOut b₁)
-          (Env.cons aux
-            (Env.cons (t := .prod (mapTy M.fSort R.σ) auxT)
-              (toVal M.fSort toDen R.σ s₁', aux) (Env.cons (toOut b₁) Env.nil)))) =
-        toVal M.fSort toDen aOut₁ b₁ := by
-    rw [Expr.wkTop1_eval]
-    exact hAOut b₁
-  rw [hb', Comp.wkTop3_eval]
-  have hm' :
-      Env.cons (toVal M.fSort toDen R.σ s₁')
-        (Env.cons (toVal M.fSort toDen aOut₁ b₁) (Env.cons aux Env.nil)) =
-        mapEnvAux M.fSort toDen aux (.cons s₁' (.cons b₁ .nil)) := rfl
-  rw [hm', compileComp_eval M toDen aux hOpE hSampE hQueryE R.finish (.cons s₁' (.cons b₁ .nil)),
-    bind_map_left, map_eq_bind_pure_comp, Function.comp_def]
-  refine OracleComp.bind_congr' rfl fun y₁ => ?_
-  congr 1
-  rw [Expr.wkTop1_eval, hOut y₁]
-
-def dummyRed {S : Sig} {O : Ops S} {ι κ : Type} {T : OracleSpec ι} {I : Iface S T}
+@[expose] def dummyRed {S : Sig} {O : Ops S} {ι κ : Type} {T : OracleSpec ι} {I : Iface S T}
     {G : OracleSpec κ} {C : GameCodec S G} {rIn aIn aOut out : Ty S}
     (dfltAIn : Expr O [] aIn) (dfltR : Expr O [] C.R) (dfltOut : Expr O [] out) :
     CostedReduction O I G C rIn aIn aOut out where
@@ -1937,7 +933,7 @@ theorem dummyRed_size {S : Sig} {O : Ops S} {ι κ : Type} {T : OracleSpec ι}
   simp [CostedReduction.size, dummyRed, Expr.wkClosed, Comp.size, Expr.size]
 
 /-- Guard `realR` behind proposition `P` (`[Decidable P]`), falling back to `dummyRed` when `¬ P`. -/
-def guardRed (P : Prop) [Decidable P]
+@[expose] def guardRed (P : Prop) [Decidable P]
     {S : Sig} {O : Ops S} {ι κ : Type} {T : OracleSpec ι} {I : Iface S T}
     {G : OracleSpec κ} {C : GameCodec S G} {rIn aIn aOut out : Ty S}
     (realR : CostedReduction O I G C rIn aIn aOut out)
@@ -2127,7 +1123,7 @@ structure TwoStageRedAdapters (fSort : S₁.Base → Ty S₂) (O₂ : Ops S₂)
 /-- Compile `R : TwoStageCostedReduction O₁ I₁ G C₁ rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁` into
 `TwoStageCostedReduction O₂ I₂ G C₂ rIn₂ aIn₂ aOut₂ ch₂ rIn2₂ out₂` with state
 `.prod (mapTy M.fSort R.σ) auxT` and pause payload `mapTy M.fSort R.π`. -/
-def compileTwoStageRed (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
+@[expose] def compileTwoStageRed (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
     {rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁ : Ty S₁}
     {rIn₂ aIn₂ aOut₂ ch₂ rIn2₂ out₂ : Ty S₂}
     (A : TwoStageRedAdapters M.fSort O₂ C₁ C₂ auxT
@@ -2243,553 +1239,7 @@ theorem compileTwoStageRed_totalQueries_le (M : MacroBundle S₁ S₂ O₁ O₂ 
     Comp.renameM_queries, zero_add, add_zero]
   omega
 
-theorem compileTwoStageRed_totalCost_le (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    {rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁ : Ty S₁}
-    {rIn₂ aIn₂ aOut₂ ch₂ rIn2₂ out₂ : Ty S₂}
-    (A : TwoStageRedAdapters M.fSort O₂ C₁ C₂ auxT
-      rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁ rIn₂ aIn₂ aOut₂ ch₂ rIn2₂ out₂)
-    (R : TwoStageCostedReduction O₁ I₁ G C₁ rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁)
-    (C_0 : ℕ) (hC0 : 32 ≤ C_0)
-    (hOpC : ∀ o, (M.opMacro o).cost + 1 ≤ C_0 * O₁.cost o)
-    (hSampC : ∀ s, (M.sampMacro s).cost + 1 ≤ C_0 * max 1 (I₁.smp.sCost s))
-    (hQueryC : ∀ g, (M.queryMacro g).cost + 1 ≤ C_0 * max 1 (I₁.qCost g))
-    (q : ℕ) :
-    (compileTwoStageRed M A R).totalCost q ≤
-      (2 * C_0) * R.init.cost + A.splitIn.cost + A.adaptAIn.cost + 24 +
-      q * max I₂.uCost
-        ((2 * C_0) * max R.handlePre.cost R.handlePost.cost +
-          A.adaptQ.cost + A.adaptR.cost + A.adaptCh.cost + C₂.codecCost + 32) +
-      ((2 * C_0) * max R.chDone.cost R.resume.cost +
-        A.adaptAOut.cost + A.adaptCh.cost + A.adaptRIn2.cost + A.adaptR.cost + 32) +
-      ((2 * C_0) * R.finish.cost +
-        A.adaptRIn2.cost + A.adaptAOut.cost + A.adaptOut.cost + 28) := by
-  have hi := compileComp_cost_le M C_0 hC0 hOpC hSampC hQueryC R.init
-  have hpre := compileComp_cost_le M C_0 hC0 hOpC hSampC hQueryC R.handlePre
-  have hpost := compileComp_cost_le M C_0 hC0 hOpC hSampC hQueryC R.handlePost
-  have hch := compileComp_cost_le M C_0 hC0 hOpC hSampC hQueryC R.chDone
-  have hres := compileComp_cost_le M C_0 hC0 hOpC hSampC hQueryC R.resume
-  have hf := compileComp_cost_le M C_0 hC0 hOpC hSampC hQueryC R.finish
-  have hinit :
-      (compileTwoStageRed M A R).init.cost ≤
-        (2 * C_0) * R.init.cost + A.splitIn.cost + A.adaptAIn.cost + 24 := by
-    simp only [compileTwoStageRed, Comp.cost, Comp.renameM_cost, Expr.renameM_cost, Expr.cost]
-    omega
-  have hhandlePre :
-      (compileTwoStageRed M A R).handlePre.cost ≤
-        (2 * C_0) * R.handlePre.cost + A.adaptQ.cost + A.adaptR.cost + A.adaptCh.cost + 32 := by
-    simp only [compileTwoStageRed, Comp.cost, Comp.renameM_cost, Expr.renameM_cost, Expr.cost]
-    omega
-  have hhandlePost :
-      (compileTwoStageRed M A R).handlePost.cost ≤
-        (2 * C_0) * R.handlePost.cost + A.adaptQ.cost + A.adaptR.cost + 28 := by
-    simp only [compileTwoStageRed, Comp.cost, Comp.renameM_cost, Expr.renameM_cost, Expr.cost]
-    omega
-  have hchDone :
-      (compileTwoStageRed M A R).chDone.cost ≤
-        (2 * C_0) * R.chDone.cost + A.adaptAOut.cost + A.adaptCh.cost + 22 := by
-    simp only [compileTwoStageRed, Comp.cost, Comp.renameM_cost, Expr.renameM_cost, Expr.cost]
-    omega
-  have hresume :
-      (compileTwoStageRed M A R).resume.cost ≤
-        (2 * C_0) * R.resume.cost + A.adaptRIn2.cost + A.adaptR.cost + 28 := by
-    simp only [compileTwoStageRed, Comp.cost, Comp.renameM_cost, Expr.renameM_cost, Expr.cost]
-    omega
-  have hfinish :
-      (compileTwoStageRed M A R).finish.cost ≤
-        (2 * C_0) * R.finish.cost + A.adaptRIn2.cost + A.adaptAOut.cost + A.adaptOut.cost + 28 := by
-    simp only [compileTwoStageRed, Comp.cost, Comp.renameM_cost, Expr.renameM_cost, Expr.cost]
-    omega
-  have hpre_le : (2 * C_0) * R.handlePre.cost ≤
-      (2 * C_0) * max R.handlePre.cost R.handlePost.cost :=
-    Nat.mul_le_mul_left _ (le_max_left _ _)
-  have hpost_le : (2 * C_0) * R.handlePost.cost ≤
-      (2 * C_0) * max R.handlePre.cost R.handlePost.cost :=
-    Nat.mul_le_mul_left _ (le_max_right _ _)
-  have hch_le : (2 * C_0) * R.chDone.cost ≤ (2 * C_0) * max R.chDone.cost R.resume.cost :=
-    Nat.mul_le_mul_left _ (le_max_left _ _)
-  have hres_le : (2 * C_0) * R.resume.cost ≤ (2 * C_0) * max R.chDone.cost R.resume.cost :=
-    Nat.mul_le_mul_left _ (le_max_right _ _)
-  have hmaxH :
-      max I₂.uCost
-        (max (compileTwoStageRed M A R).handlePre.cost
-          (compileTwoStageRed M A R).handlePost.cost + C₂.codecCost) ≤
-      max I₂.uCost
-        ((2 * C_0) * max R.handlePre.cost R.handlePost.cost +
-          A.adaptQ.cost + A.adaptR.cost + A.adaptCh.cost + C₂.codecCost + 32) :=
-    max_le_max le_rfl (by omega)
-  have hmul := Nat.mul_le_mul_left q hmaxH
-  dsimp only [TwoStageCostedReduction.totalCost]
-  omega
-
-theorem compileTwoStageRed_size_le (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    {rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁ : Ty S₁}
-    {rIn₂ aIn₂ aOut₂ ch₂ rIn2₂ out₂ : Ty S₂}
-    (A : TwoStageRedAdapters M.fSort O₂ C₁ C₂ auxT
-      rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁ rIn₂ aIn₂ aOut₂ ch₂ rIn2₂ out₂)
-    (R : TwoStageCostedReduction O₁ I₁ G C₁ rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁)
-    (C_0 : ℕ) (hC0 : 32 ≤ C_0)
-    (hOpS : ∀ o, (M.opMacro o).size + 1 ≤ C_0)
-    (hSampS : ∀ s, (M.sampMacro s).size + 1 ≤ C_0)
-    (hQueryS : ∀ g, (M.queryMacro g).size + 1 ≤ C_0) :
-    (compileTwoStageRed M A R).size ≤
-      (2 * C_0) * R.size + A.splitIn.size + A.adaptAIn.size +
-      2 * A.adaptQ.size + 3 * A.adaptR.size + 2 * A.adaptAOut.size +
-      2 * A.adaptCh.size + 2 * A.adaptRIn2.size + A.adaptOut.size + 200 := by
-  have hi := compileComp_size_le M C_0 hC0 hOpS hSampS hQueryS R.init
-  have hpre := compileComp_size_le M C_0 hC0 hOpS hSampS hQueryS R.handlePre
-  have hch := compileComp_size_le M C_0 hC0 hOpS hSampS hQueryS R.chDone
-  have hres := compileComp_size_le M C_0 hC0 hOpS hSampS hQueryS R.resume
-  have hpost := compileComp_size_le M C_0 hC0 hOpS hSampS hQueryS R.handlePost
-  have hf := compileComp_size_le M C_0 hC0 hOpS hSampS hQueryS R.finish
-  have hinit :
-      (compileTwoStageRed M A R).init.size ≤
-        (2 * C_0) * R.init.size + A.splitIn.size + A.adaptAIn.size + 24 := by
-    simp only [compileTwoStageRed, Comp.size, Comp.renameM_size, Expr.renameM_size, Expr.size]
-    omega
-  have hhandlePre :
-      (compileTwoStageRed M A R).handlePre.size ≤
-        (2 * C_0) * R.handlePre.size + A.adaptQ.size + A.adaptR.size + A.adaptCh.size + 58 := by
-    simp only [compileTwoStageRed, Comp.size, Comp.renameM_size, Expr.renameM_size, Expr.size]
-    omega
-  have hchDone :
-      (compileTwoStageRed M A R).chDone.size ≤
-        (2 * C_0) * R.chDone.size + A.adaptAOut.size + A.adaptCh.size + 22 := by
-    simp only [compileTwoStageRed, Comp.size, Comp.renameM_size, Expr.renameM_size, Expr.size]
-    omega
-  have hresume :
-      (compileTwoStageRed M A R).resume.size ≤
-        (2 * C_0) * R.resume.size + A.adaptRIn2.size + A.adaptR.size + 38 := by
-    simp only [compileTwoStageRed, Comp.size, Comp.renameM_size, Expr.renameM_size, Expr.size]
-    omega
-  have hhandlePost :
-      (compileTwoStageRed M A R).handlePost.size ≤
-        (2 * C_0) * R.handlePost.size + A.adaptQ.size + A.adaptR.size + 28 := by
-    simp only [compileTwoStageRed, Comp.size, Comp.renameM_size, Expr.renameM_size, Expr.size]
-    omega
-  have hfinish :
-      (compileTwoStageRed M A R).finish.size ≤
-        (2 * C_0) * R.finish.size + A.adaptRIn2.size + A.adaptAOut.size + A.adaptOut.size + 28 := by
-    simp only [compileTwoStageRed, Comp.size, Comp.renameM_size, Expr.renameM_size, Expr.size]
-    omega
-  have hdist :
-      (2 * C_0) * R.init.size + (2 * C_0) * R.handlePre.size + (2 * C_0) * R.chDone.size +
-        (2 * C_0) * R.resume.size + (2 * C_0) * R.handlePost.size + (2 * C_0) * R.finish.size =
-        (2 * C_0) * R.size := by
-    dsimp only [TwoStageCostedReduction.size]; ring
-  dsimp only [TwoStageCostedReduction.size] at hdist ⊢
-  omega
-
-def compileTwoStageMid (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    {rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁ : Ty S₁}
-    {rIn₂ aIn₂ aOut₂ ch₂ rIn2₂ out₂ : Ty S₂}
-    (Ad : TwoStageRedAdapters M.fSort O₂ C₁ C₂ auxT
-      rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁ rIn₂ aIn₂ aOut₂ ch₂ rIn2₂ out₂)
-    (R : TwoStageCostedReduction O₁ I₁ G C₁ rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁)
-    (toDen : (b : S₁.Base) → S₁.den b → (M.fSort b).denote) (aux : auxT.denote)
-    {α₁ α₂ : Type} (fα : α₁ → α₂) (fch : ch₁.denote → ch₂.denote) :
-    Mid G α₁ R.π.denote R.σ.denote ch₁.denote →
-      Mid G α₂ (compileTwoStageRed M Ad R).π.denote
-        (compileTwoStageRed M Ad R).σ.denote ch₂.denote
-  | .done a s =>
-    .done (fα a) ((toVal M.fSort toDen R.σ s, aux) : (compileTwoStageRed M Ad R).σ.denote)
-  | .paused t c p s k =>
-    .paused t (fch c)
-      (toVal M.fSort toDen R.π p : (compileTwoStageRed M Ad R).π.denote)
-      ((toVal M.fSort toDen R.σ s, aux) : (compileTwoStageRed M Ad R).σ.denote)
-      (fun r => fα <$> k r)
-
-private theorem runFuel_state_hom {α₁ α₂ : Type} (fα : α₁ → α₂)
-    {σ₁ : Ty S₁} {σ₂ : Ty S₂} (proj : σ₁.denote → σ₂.denote)
-    {h₁ : Comp O₁ I₁ [σ₁, C₁.Q] (.prod C₁.R σ₁)}
-    {h₂ : Comp O₂ I₂ [σ₂, C₂.Q] (.prod C₂.R σ₂)}
-    (hFwdU : ∀ n, I₂.fwdU n = I₁.fwdU n)
-    (hStep : ∀ (t : κ) (s₁ : σ₁.denote),
-      (do let p ← h₂.eval (.cons (proj s₁) (.cons (C₂.qenc t) .nil))
-          pure (C₂.rdec t p.1, p.2)) =
-        Prod.map id proj <$>
-          (do let p ← h₁.eval (.cons s₁ (.cons (C₁.qenc t) .nil))
-              pure (C₁.rdec t p.1, p.2)))
-    (dflt₁ : α₁) (oa : OracleComp (unifSpec + G) α₁) :
-    ∀ (fuel : ℕ) (s₁ : σ₁.denote),
-      runFuel (C := C₂) h₂ (fα dflt₁) (fα <$> oa) fuel (proj s₁) =
-        Prod.map fα proj <$> runFuel (C := C₁) h₁ dflt₁ oa fuel s₁ := by
-  induction oa using OracleComp.inductionOn with
-  | pure x =>
-    intro fuel s₁
-    simp [runFuel, construct_pure, Prod.map]
-  | query_bind q mx ih =>
-    intro fuel s₁
-    rcases q with n | t
-    · simp only [map_bind, runFuel, construct_query_bind]
-      rw [hFwdU n]
-      exact bind_congr fun u => ih u fuel s₁
-    · cases fuel with
-      | zero => simp [runFuel, construct_query_bind, Prod.map]
-      | succ f =>
-        rw [map_bind]
-        simp only [runFuel, construct_query_bind]
-        change
-          (do let p ← h₂.eval (.cons (proj s₁) (.cons (C₂.qenc t) .nil))
-              runFuel (C := C₂) h₂ (fα dflt₁) (fα <$> mx (C₂.rdec t p.1)) f p.2) =
-          Prod.map fα proj <$>
-            (do let p ← h₁.eval (.cons s₁ (.cons (C₁.qenc t) .nil))
-                runFuel (C := C₁) h₁ dflt₁ (mx (C₁.rdec t p.1)) f p.2)
-        have hLHS :
-            (do let p ← h₂.eval (.cons (proj s₁) (.cons (C₂.qenc t) .nil))
-                runFuel (C := C₂) h₂ (fα dflt₁) (fα <$> mx (C₂.rdec t p.1)) f p.2) =
-            ((do let p ← h₂.eval (.cons (proj s₁) (.cons (C₂.qenc t) .nil))
-                 pure (C₂.rdec t p.1, p.2)) >>= fun rs =>
-              runFuel (C := C₂) h₂ (fα dflt₁) (fα <$> mx rs.1) f rs.2) := by
-          simp
-        have hRHS :
-            (do let p ← h₁.eval (.cons s₁ (.cons (C₁.qenc t) .nil))
-                runFuel (C := C₁) h₁ dflt₁ (mx (C₁.rdec t p.1)) f p.2) =
-            ((do let p ← h₁.eval (.cons s₁ (.cons (C₁.qenc t) .nil))
-                 pure (C₁.rdec t p.1, p.2)) >>= fun rs =>
-              runFuel (C := C₁) h₁ dflt₁ (mx rs.1) f rs.2) := by
-          simp
-        rw [hLHS, hRHS, hStep t s₁, bind_map_left, map_bind]
-        refine bind_congr fun rs => ?_
-        simp only [Prod.map, id_eq]
-        exact ih rs.1 f rs.2
-
-private theorem compileTwoStageRed_run1 (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    {rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁ : Ty S₁}
-    {rIn₂ aIn₂ aOut₂ ch₂ rIn2₂ out₂ : Ty S₂}
-    (Ad : TwoStageRedAdapters M.fSort O₂ C₁ C₂ auxT
-      rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁ rIn₂ aIn₂ aOut₂ ch₂ rIn2₂ out₂)
-    (R : TwoStageCostedReduction O₁ I₁ G C₁ rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁)
-    (toDen : (b : S₁.Base) → S₁.den b → (M.fSort b).denote) (aux : auxT.denote)
-    (hFwdU : ∀ n, I₂.fwdU n = I₁.fwdU n)
-    (hOpE : ∀ o z,
-      (M.opMacro o).eval (.cons (toVal M.fSort toDen (O₁.dom o) z) (.cons aux .nil)) =
-        pure (toVal M.fSort toDen (O₁.cod o) (O₁.eval o z)))
-    (hSampE : ∀ s z,
-      (M.sampMacro s).eval (.cons (toVal M.fSort toDen (I₁.smp.sDom s) z) (.cons aux .nil)) =
-        toVal M.fSort toDen (I₁.smp.sTy s) <$> I₁.liftP (I₁.smp.samp s z))
-    (hQueryE : ∀ g z,
-      (M.queryMacro g).eval (.cons (toVal M.fSort toDen (I₁.dom g) z) (.cons aux .nil)) =
-        toVal M.fSort toDen (I₁.cod g) <$>
-          (I₁.dec g z <$> (liftM (T.query (I₁.enc g z)) : OracleComp T _)))
-    (hQ : ∀ t : κ,
-      Ad.adaptQ.eval (.cons (C₂.qenc t) .nil) = toVal M.fSort toDen C₁.Q (C₁.qenc t))
-    (hR : ∀ (t : κ) (r₁ : C₁.R.denote),
-      C₂.rdec t (Ad.adaptR.eval (.cons (toVal M.fSort toDen C₁.R r₁) .nil)) = C₁.rdec t r₁)
-    {chEq : ch₁.denote → ch₂.denote}
-    (hCh : ∀ c₁ : ch₁.denote,
-      Ad.adaptCh.eval (.cons (toVal M.fSort toDen ch₁ c₁) .nil) = chEq c₁)
-    {α₁ α₂ : Type} (toOut : α₁ → α₂)
-    (dflt₁ : α₁) (oa : OracleComp (unifSpec + G) α₁) :
-    ∀ (fuel : ℕ) (s₁ : R.σ.denote),
-      (compileTwoStageRed M Ad R).run1 (toOut dflt₁) (toOut <$> oa) fuel
-        ((toVal M.fSort toDen R.σ s₁, aux) : (compileTwoStageRed M Ad R).σ.denote) =
-        compileTwoStageMid M Ad R toDen aux toOut chEq <$> R.run1 dflt₁ oa fuel s₁ := by
-  let mkSt : R.σ.denote → (compileTwoStageRed M Ad R).σ.denote :=
-    fun s => (toVal M.fSort toDen R.σ s, aux)
-  let mkPi : R.π.denote → (compileTwoStageRed M Ad R).π.denote :=
-    toVal M.fSort toDen R.π
-  have hHandlePre : ∀ (t : κ) (s₁ : R.σ.denote),
-      (compileTwoStageRed M Ad R).handlePre.eval (.cons (mkSt s₁) (.cons (C₂.qenc t) .nil)) =
-        (fun res : (Ty.sum (.prod C₁.R R.σ) (.prod ch₁ (.prod R.π R.σ))).denote =>
-          match res with
-          | .inl (v₁, s₁') =>
-            .inl (Ad.adaptR.eval (.cons (toVal M.fSort toDen C₁.R v₁) .nil), mkSt s₁')
-          | .inr (c₁, p₁, s₁') =>
-            .inr (chEq c₁, mkPi p₁, mkSt s₁')) <$>
-          R.handlePre.eval (.cons s₁ (.cons (C₁.qenc t) .nil)) := by
-    intro t s₁
-    simp only [compileTwoStageRed, Comp.eval, pure_bind, Expr.eval, Env.get, mkSt, mkPi]
-    have hq' :
-        (Expr.wkTop1 Ad.adaptQ).eval
-          (Env.cons (C₂.qenc t)
-            (Env.cons aux
-              (Env.cons (t := .prod (mapTy M.fSort R.σ) auxT)
-                (toVal M.fSort toDen R.σ s₁, aux) (Env.cons (C₂.qenc t) Env.nil)))) =
-          toVal M.fSort toDen C₁.Q (C₁.qenc t) := by
-      rw [Expr.wkTop1_eval]; exact hQ t
-    rw [hq', Comp.wkTop3_eval]
-    have hm :
-        Env.cons (toVal M.fSort toDen R.σ s₁)
-          (Env.cons (toVal M.fSort toDen C₁.Q (C₁.qenc t)) (Env.cons aux Env.nil)) =
-          mapEnvAux M.fSort toDen aux (.cons s₁ (.cons (C₁.qenc t) .nil)) := rfl
-    dsimp only [Ty.denote]
-    rw [hm, compileComp_eval M toDen aux hOpE hSampE hQueryE R.handlePre
-      (.cons s₁ (.cons (C₁.qenc t) .nil)), bind_map_left, map_eq_bind_pure_comp,
-      Function.comp_def]
-    refine OracleComp.bind_congr' rfl fun res => ?_
-    rcases res with ⟨v₁, s₁'⟩ | ⟨c₁, p₁, s₁'⟩
-    · simp only [toVal, Sum.map_inl, Expr.wkTop1_eval]
-    · simp only [toVal, Sum.map_inr, Expr.wkTop1_eval, hCh c₁]
-  induction oa using OracleComp.inductionOn with
-  | pure x =>
-    intro fuel s₁
-    simp [TwoStageCostedReduction.run1, construct_pure, compileTwoStageMid]
-  | query_bind q mx ih =>
-    intro fuel s₁
-    rcases q with n | t
-    · simp only [map_bind, TwoStageCostedReduction.run1, construct_query_bind]
-      rw [hFwdU n]
-      exact bind_congr fun u => ih u fuel s₁
-    · cases fuel with
-      | zero => simp [TwoStageCostedReduction.run1, construct_query_bind, compileTwoStageMid]
-      | succ f =>
-        rw [map_bind]
-        simp only [TwoStageCostedReduction.run1, construct_query_bind]
-        rw [hHandlePre t s₁, bind_map_left, map_bind]
-        refine bind_congr fun res => ?_
-        rcases res with ⟨v₁, s₁'⟩ | ⟨c₁, p₁, s₁'⟩
-        · dsimp only
-          rw [hR t v₁]
-          exact ih (C₁.rdec t v₁) f s₁'
-        · simp [compileTwoStageMid, mkSt, mkPi]
-
-private theorem compileTwoStageRed_eval1 (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    {rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁ : Ty S₁}
-    {rIn₂ aIn₂ aOut₂ ch₂ rIn2₂ out₂ : Ty S₂}
-    (Ad : TwoStageRedAdapters M.fSort O₂ C₁ C₂ auxT
-      rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁ rIn₂ aIn₂ aOut₂ ch₂ rIn2₂ out₂)
-    (R : TwoStageCostedReduction O₁ I₁ G C₁ rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁)
-    (toDen : (b : S₁.Base) → S₁.den b → (M.fSort b).denote)
-    (x₂ : rIn₂.denote) (x₁ : rIn₁.denote) (aux : auxT.denote)
-    (hSplit : Ad.splitIn.eval (.cons x₂ .nil) = (toVal M.fSort toDen rIn₁ x₁, aux))
-    (hFwdU : ∀ n, I₂.fwdU n = I₁.fwdU n)
-    (hOpE : ∀ o z,
-      (M.opMacro o).eval (.cons (toVal M.fSort toDen (O₁.dom o) z) (.cons aux .nil)) =
-        pure (toVal M.fSort toDen (O₁.cod o) (O₁.eval o z)))
-    (hSampE : ∀ s z,
-      (M.sampMacro s).eval (.cons (toVal M.fSort toDen (I₁.smp.sDom s) z) (.cons aux .nil)) =
-        toVal M.fSort toDen (I₁.smp.sTy s) <$> I₁.liftP (I₁.smp.samp s z))
-    (hQueryE : ∀ g z,
-      (M.queryMacro g).eval (.cons (toVal M.fSort toDen (I₁.dom g) z) (.cons aux .nil)) =
-        toVal M.fSort toDen (I₁.cod g) <$>
-          (I₁.dec g z <$> (liftM (T.query (I₁.enc g z)) : OracleComp T _)))
-    (hQ : ∀ t : κ,
-      Ad.adaptQ.eval (.cons (C₂.qenc t) .nil) = toVal M.fSort toDen C₁.Q (C₁.qenc t))
-    (hR : ∀ (t : κ) (r₁ : C₁.R.denote),
-      C₂.rdec t (Ad.adaptR.eval (.cons (toVal M.fSort toDen C₁.R r₁) .nil)) = C₁.rdec t r₁)
-    (adv₁ : aIn₁.denote → OracleComp (unifSpec + G) aOut₁.denote)
-    (adv₂ : aIn₂.denote → OracleComp (unifSpec + G) aOut₂.denote)
-    (toOut : aOut₁.denote → aOut₂.denote)
-    (hAdv : ∀ a₁ : aIn₁.denote,
-      adv₂ (Ad.adaptAIn.eval (.cons (toVal M.fSort toDen aIn₁ a₁) .nil)) = toOut <$> adv₁ a₁)
-    (hAOut : ∀ b₁ : aOut₁.denote,
-      Ad.adaptAOut.eval (.cons (toOut b₁) .nil) = toVal M.fSort toDen aOut₁ b₁)
-    {chEq : ch₁.denote → ch₂.denote}
-    (hCh : ∀ c₁ : ch₁.denote,
-      Ad.adaptCh.eval (.cons (toVal M.fSort toDen ch₁ c₁) .nil) = chEq c₁)
-    (fuel : ℕ) (dflt₁ : aOut₁.denote) :
-    (compileTwoStageRed M Ad R).eval1 adv₂ x₂ fuel (toOut dflt₁) =
-      Prod.map chEq (compileTwoStageMid M Ad R toDen aux toOut chEq) <$>
-        R.eval1 adv₁ x₁ fuel dflt₁ := by
-  let mkSt : R.σ.denote → (compileTwoStageRed M Ad R).σ.denote :=
-    fun s => (toVal M.fSort toDen R.σ s, aux)
-  have hInit :
-      (compileTwoStageRed M Ad R).init.eval (.cons x₂ .nil) =
-        (fun (p : (aIn₁.prod R.σ).denote) =>
-          ((Ad.adaptAIn.eval (.cons (toVal M.fSort toDen aIn₁ p.1) .nil),
-            mkSt p.2) : (aIn₂.prod (compileTwoStageRed M Ad R).σ).denote)) <$>
-          R.init.eval (.cons x₁ .nil) := by
-    simp only [compileTwoStageRed, Comp.eval, pure_bind, Expr.eval, Env.get, hSplit]
-    rw [Comp.wkTop2_eval]
-    change (do
-      let x ← (compileComp M R.init).eval (mapEnvAux M.fSort toDen aux (.cons x₁ .nil))
-      _) = _
-    rw [compileComp_eval M toDen aux hOpE hSampE hQueryE R.init (.cons x₁ .nil),
-      bind_map_left]
-    simp only [map_eq_bind_pure_comp, Function.comp_def]
-    refine bind_congr fun p => ?_
-    congr 1; congr 1
-    dsimp only [toVal]
-    exact Expr.wkTop1_eval Ad.adaptAIn _ _
-  unfold TwoStageCostedReduction.eval1
-  rw [hInit, bind_map_left, map_bind]
-  refine bind_congr fun ⟨a₁, s₁⟩ => ?_
-  dsimp only [mkSt]
-  rw [hAdv a₁, compileTwoStageRed_run1 M Ad R toDen aux hFwdU hOpE hSampE hQueryE hQ hR hCh
-    toOut dflt₁ (adv₁ a₁) fuel s₁, bind_map_left, map_bind]
-  refine bind_congr fun m₁ => ?_
-  cases m₁ with
-  | done b₁ s₁' =>
-    dsimp only [compileTwoStageMid]
-    simp only [compileTwoStageRed, Comp.eval, pure_bind, Expr.eval, Env.get,
-      Expr.wkTop1_eval, hAOut b₁, Comp.wkTop3_eval]
-    have hm' :
-        Env.cons (toVal M.fSort toDen R.σ s₁')
-          (Env.cons (toVal M.fSort toDen aOut₁ b₁) (Env.cons aux Env.nil)) =
-          mapEnvAux M.fSort toDen aux (.cons s₁' (.cons b₁ .nil)) := rfl
-    rw [hm', compileComp_eval M toDen aux hOpE hSampE hQueryE R.chDone
-      (.cons s₁' (.cons b₁ .nil)), bind_map_left, bind_assoc, map_bind]
-    refine OracleComp.bind_congr' rfl fun c₁ => ?_
-    simp only [pure_bind, map_pure, hCh c₁, Prod.map, compileTwoStageMid]
-    rfl
-  | paused t c₁ p₁ s₁' k =>
-    simp [compileTwoStageMid, Prod.map]
-
-private theorem compileTwoStageRed_eval2 (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    {rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁ : Ty S₁}
-    {rIn₂ aIn₂ aOut₂ ch₂ rIn2₂ out₂ : Ty S₂}
-    (Ad : TwoStageRedAdapters M.fSort O₂ C₁ C₂ auxT
-      rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁ rIn₂ aIn₂ aOut₂ ch₂ rIn2₂ out₂)
-    (R : TwoStageCostedReduction O₁ I₁ G C₁ rIn₁ aIn₁ aOut₁ ch₁ rIn2₁ out₁)
-    (toDen : (b : S₁.Base) → S₁.den b → (M.fSort b).denote) (aux : auxT.denote)
-    (hFwdU : ∀ n, I₂.fwdU n = I₁.fwdU n)
-    (hOpE : ∀ o z,
-      (M.opMacro o).eval (.cons (toVal M.fSort toDen (O₁.dom o) z) (.cons aux .nil)) =
-        pure (toVal M.fSort toDen (O₁.cod o) (O₁.eval o z)))
-    (hSampE : ∀ s z,
-      (M.sampMacro s).eval (.cons (toVal M.fSort toDen (I₁.smp.sDom s) z) (.cons aux .nil)) =
-        toVal M.fSort toDen (I₁.smp.sTy s) <$> I₁.liftP (I₁.smp.samp s z))
-    (hQueryE : ∀ g z,
-      (M.queryMacro g).eval (.cons (toVal M.fSort toDen (I₁.dom g) z) (.cons aux .nil)) =
-        toVal M.fSort toDen (I₁.cod g) <$>
-          (I₁.dec g z <$> (liftM (T.query (I₁.enc g z)) : OracleComp T _)))
-    (hQ : ∀ t : κ,
-      Ad.adaptQ.eval (.cons (C₂.qenc t) .nil) = toVal M.fSort toDen C₁.Q (C₁.qenc t))
-    (hR : ∀ (t : κ) (r₁ : C₁.R.denote),
-      C₂.rdec t (Ad.adaptR.eval (.cons (toVal M.fSort toDen C₁.R r₁) .nil)) = C₁.rdec t r₁)
-    (toOut : aOut₁.denote → aOut₂.denote)
-    (hAOut : ∀ b₁ : aOut₁.denote,
-      Ad.adaptAOut.eval (.cons (toOut b₁) .nil) = toVal M.fSort toDen aOut₁ b₁)
-    {chEq : ch₁.denote → ch₂.denote}
-    (y₂ : rIn2₂.denote) (y₁ : rIn2₁.denote)
-    (hRIn2 : Ad.adaptRIn2.eval (.cons y₂ .nil) = toVal M.fSort toDen rIn2₁ y₁)
-    {outEq : out₁.denote → out₂.denote}
-    (hOut : ∀ z₁ : out₁.denote,
-      Ad.adaptOut.eval (.cons (toVal M.fSort toDen out₁ z₁) .nil) = outEq z₁)
-    (m₁ : Mid G aOut₁.denote R.π.denote R.σ.denote ch₁.denote)
-    (fuel : ℕ) (dflt₁ : aOut₁.denote) :
-    (compileTwoStageRed M Ad R).eval2
-        (compileTwoStageMid M Ad R toDen aux toOut chEq m₁) y₂ fuel (toOut dflt₁) =
-      outEq <$> R.eval2 m₁ y₁ fuel dflt₁ := by
-  let mkSt : R.σ.denote → (compileTwoStageRed M Ad R).σ.denote :=
-    fun s => (toVal M.fSort toDen R.σ s, aux)
-  let mkPi : R.π.denote → (compileTwoStageRed M Ad R).π.denote :=
-    toVal M.fSort toDen R.π
-  have hFin : ∀ (b₁ : aOut₁.denote) (s₁ : R.σ.denote),
-      (compileTwoStageRed M Ad R).finish.eval
-        (.cons (mkSt s₁) (.cons (toOut b₁) (.cons y₂ .nil))) =
-        outEq <$> R.finish.eval (.cons s₁ (.cons b₁ (.cons y₁ .nil))) := by
-    intro b₁ s₁
-    simp only [compileTwoStageRed, Comp.eval, pure_bind, Expr.eval, Env.get, mkSt,
-      Expr.wkTop1_eval, hRIn2, hAOut b₁, Comp.wkTop4_eval]
-    have hm' :
-        Env.cons (toVal M.fSort toDen R.σ s₁)
-          (Env.cons (toVal M.fSort toDen aOut₁ b₁)
-            (Env.cons (toVal M.fSort toDen rIn2₁ y₁) (Env.cons aux Env.nil))) =
-          mapEnvAux M.fSort toDen aux (.cons s₁ (.cons b₁ (.cons y₁ .nil))) := rfl
-    rw [hm', compileComp_eval M toDen aux hOpE hSampE hQueryE R.finish
-      (.cons s₁ (.cons b₁ (.cons y₁ .nil))), bind_map_left, map_eq_bind_pure_comp,
-      Function.comp_def]
-    refine OracleComp.bind_congr' rfl fun z₁ => ?_
-    simp [hOut z₁]
-  unfold TwoStageCostedReduction.eval2
-  cases m₁ with
-  | done b₁ s₁ =>
-    simp only [compileTwoStageMid, pure_bind]
-    exact hFin b₁ s₁
-  | paused t c₁ p₁ s₁ k =>
-    simp only [compileTwoStageMid]
-    have hRes :
-        (compileTwoStageRed M Ad R).resume.eval
-          (.cons (mkSt s₁) (.cons (mkPi p₁) (.cons y₂ .nil))) =
-          (fun p : (C₁.R.prod R.σ).denote =>
-            (Ad.adaptR.eval (.cons (toVal M.fSort toDen C₁.R p.1) .nil), mkSt p.2)) <$>
-            R.resume.eval (.cons s₁ (.cons p₁ (.cons y₁ .nil))) := by
-      simp only [compileTwoStageRed, Comp.eval, pure_bind, Expr.eval, Env.get, mkSt, mkPi,
-        Expr.wkTop1_eval, hRIn2, Comp.wkTop4_eval]
-      have hm' :
-          Env.cons (toVal M.fSort toDen R.σ s₁)
-            (Env.cons (toVal M.fSort toDen R.π p₁)
-              (Env.cons (toVal M.fSort toDen rIn2₁ y₁) (Env.cons aux Env.nil))) =
-            mapEnvAux M.fSort toDen aux (.cons s₁ (.cons p₁ (.cons y₁ .nil))) := rfl
-      rw [hm', compileComp_eval M toDen aux hOpE hSampE hQueryE R.resume
-        (.cons s₁ (.cons p₁ (.cons y₁ .nil))), bind_map_left, map_eq_bind_pure_comp,
-        Function.comp_def]
-      refine OracleComp.bind_congr' rfl fun ⟨v₁, s₁'⟩ => ?_
-      simp [toVal]
-    have hPostStep : ∀ (t' : κ) (st₁ : R.σ.denote),
-        (do let p ← (compileTwoStageRed M Ad R).handlePost.eval
-              (.cons (mkSt st₁) (.cons (C₂.qenc t') .nil))
-            pure (C₂.rdec t' p.1, p.2)) =
-          Prod.map id mkSt <$>
-            (do let p ← R.handlePost.eval (.cons st₁ (.cons (C₁.qenc t') .nil))
-                pure (C₁.rdec t' p.1, p.2)) := by
-      intro t' st₁
-      simp only [compileTwoStageRed, Comp.eval, pure_bind, Expr.eval, Env.get, mkSt,
-        Expr.wkTop1_eval, hQ t', Comp.wkTop3_eval]
-      have hm' :
-          Env.cons (toVal M.fSort toDen R.σ st₁)
-            (Env.cons (toVal M.fSort toDen C₁.Q (C₁.qenc t')) (Env.cons aux Env.nil)) =
-            mapEnvAux M.fSort toDen aux (.cons st₁ (.cons (C₁.qenc t') .nil)) := rfl
-      dsimp only [Ty.denote]
-      rw [hm', compileComp_eval M toDen aux hOpE hSampE hQueryE R.handlePost
-        (.cons st₁ (.cons (C₁.qenc t') .nil)), bind_map_left, bind_assoc, map_bind]
-      refine bind_congr fun ⟨v₁, st₁'⟩ => ?_
-      simp [toVal, hR t' v₁, Prod.map]
-    change
-      (do
-        let (v, s') ← (compileTwoStageRed M Ad R).resume.eval
-          (.cons (mkSt s₁) (.cons (mkPi p₁) (.cons y₂ .nil)))
-        let (b, s) ← runFuel (compileTwoStageRed M Ad R).handlePost (toOut dflt₁)
-          (toOut <$> k (C₂.rdec t v)) fuel s'
-        (compileTwoStageRed M Ad R).finish.eval (.cons s (.cons b (.cons y₂ .nil)))) = _
-    rw [hRes, bind_map_left, map_bind]
-    refine bind_congr fun ⟨v₁, s₁'⟩ => ?_
-    dsimp only
-    rw [hR t v₁, runFuel_state_hom toOut mkSt hFwdU hPostStep dflt₁ (k (C₁.rdec t v₁)) fuel s₁',
-      bind_map_left, map_bind]
-    refine bind_congr fun ⟨b₁, s₁''⟩ => ?_
-    dsimp only [Prod.map]
-    exact hFin b₁ s₁''
-
-theorem compileTwoStageRed_evalTwoStage1 (M : MacroBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    {rIn₁ aIn₁ aOut₁ out₁ : Ty S₁}
-    {rIn₂ aIn₂ aOut₂ out₂ : Ty S₂}
-    (Ad : TwoStageRedAdapters M.fSort O₂ C₁ C₂ auxT
-      rIn₁ aIn₁ aOut₁ .unit .unit out₁ rIn₂ aIn₂ aOut₂ .unit .unit out₂)
-    (R : TwoStageCostedReduction O₁ I₁ G C₁ rIn₁ aIn₁ aOut₁ .unit .unit out₁)
-    (toDen : (b : S₁.Base) → S₁.den b → (M.fSort b).denote)
-    (x₂ : rIn₂.denote) (x₁ : rIn₁.denote) (aux : auxT.denote)
-    (hSplit : Ad.splitIn.eval (.cons x₂ .nil) = (toVal M.fSort toDen rIn₁ x₁, aux))
-    (hFwdU : ∀ n, I₂.fwdU n = I₁.fwdU n)
-    (hOpE : ∀ o z,
-      (M.opMacro o).eval (.cons (toVal M.fSort toDen (O₁.dom o) z) (.cons aux .nil)) =
-        pure (toVal M.fSort toDen (O₁.cod o) (O₁.eval o z)))
-    (hSampE : ∀ s z,
-      (M.sampMacro s).eval (.cons (toVal M.fSort toDen (I₁.smp.sDom s) z) (.cons aux .nil)) =
-        toVal M.fSort toDen (I₁.smp.sTy s) <$> I₁.liftP (I₁.smp.samp s z))
-    (hQueryE : ∀ g z,
-      (M.queryMacro g).eval (.cons (toVal M.fSort toDen (I₁.dom g) z) (.cons aux .nil)) =
-        toVal M.fSort toDen (I₁.cod g) <$>
-          (I₁.dec g z <$> (liftM (T.query (I₁.enc g z)) : OracleComp T _)))
-    (hQ : ∀ t : κ,
-      Ad.adaptQ.eval (.cons (C₂.qenc t) .nil) = toVal M.fSort toDen C₁.Q (C₁.qenc t))
-    (hR : ∀ (t : κ) (r₁ : C₁.R.denote),
-      C₂.rdec t (Ad.adaptR.eval (.cons (toVal M.fSort toDen C₁.R r₁) .nil)) = C₁.rdec t r₁)
-    (adv₁ : aIn₁.denote → OracleComp (unifSpec + G) aOut₁.denote)
-    (adv₂ : aIn₂.denote → OracleComp (unifSpec + G) aOut₂.denote)
-    (toOut : aOut₁.denote → aOut₂.denote)
-    (hAdv : ∀ a₁ : aIn₁.denote,
-      adv₂ (Ad.adaptAIn.eval (.cons (toVal M.fSort toDen aIn₁ a₁) .nil)) = toOut <$> adv₁ a₁)
-    (hAOut : ∀ b₁ : aOut₁.denote,
-      Ad.adaptAOut.eval (.cons (toOut b₁) .nil) = toVal M.fSort toDen aOut₁ b₁)
-    {outEq : out₁.denote → out₂.denote}
-    (hOut : ∀ z₁ : out₁.denote,
-      Ad.adaptOut.eval (.cons (toVal M.fSort toDen out₁ z₁) .nil) = outEq z₁)
-    (fuel : ℕ) (dflt₁ : aOut₁.denote) :
-    evalTwoStage1 (compileTwoStageRed M Ad R) fuel (toOut dflt₁) adv₂ x₂ =
-      outEq <$> evalTwoStage1 R fuel dflt₁ adv₁ x₁ := by
-  unfold evalTwoStage1
-  have hCh : ∀ c₁ : Ty.denote (S := S₁) .unit,
-      Ad.adaptCh.eval (.cons (toVal M.fSort toDen .unit c₁) .nil) = () := fun _ => rfl
-  have hRIn2 : Ad.adaptRIn2.eval (.cons () .nil) = toVal M.fSort toDen .unit () := rfl
-  rw [compileTwoStageRed_eval1 M Ad R toDen x₂ x₁ aux hSplit hFwdU hOpE hSampE hQueryE hQ hR
-    adv₁ adv₂ toOut hAdv hAOut hCh fuel dflt₁, bind_map_left, map_bind]
-  refine bind_congr fun ⟨_, m₁⟩ => ?_
-  exact compileTwoStageRed_eval2 M Ad R toDen aux hFwdU hOpE hSampE hQueryE hQ hR toOut hAOut
-    () () hRIn2 hOut m₁ fuel dflt₁
-
-def dummyTwoStageRed {S : Sig} {O : Ops S} {ι κ : Type} {T : OracleSpec ι} {I : Iface S T}
+@[expose] def dummyTwoStageRed {S : Sig} {O : Ops S} {ι κ : Type} {T : OracleSpec ι} {I : Iface S T}
     {G : OracleSpec κ} {C : GameCodec S G} {rIn aIn aOut ch rIn2 out : Ty S}
     (dfltAIn : Expr O [] aIn) (dfltR : Expr O [] C.R)
     (dfltCh : Expr O [] ch) (dfltOut : Expr O [] out) :
@@ -2838,7 +1288,7 @@ theorem dummyTwoStageRed_size {S : Sig} {O : Ops S} {ι κ : Type} {T : OracleSp
 
 /-- Guard `realR` behind proposition `P` (`[Decidable P]`), falling back to `dummyTwoStageRed`
 when `¬ P`. -/
-def guardTwoStageRed (P : Prop) [Decidable P]
+@[expose] def guardTwoStageRed (P : Prop) [Decidable P]
     {S : Sig} {O : Ops S} {ι κ : Type} {T : OracleSpec ι} {I : Iface S T}
     {G : OracleSpec κ} {C : GameCodec S G} {rIn aIn aOut ch rIn2 out : Ty S}
     (realR : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out)
@@ -2942,22 +1392,6 @@ def retagExpr {S : Sig} {O₀ O₁ : Ops S}
   | _, _, .tget m i => .tget (retagExpr fOp hDom hCod m) (retagExpr fOp hDom hCod i)
   | _, _, .tset m i a =>
     .tset (retagExpr fOp hDom hCod m) (retagExpr fOp hDom hCod i) (retagExpr fOp hDom hCod a)
-
-private theorem cast_expr_size {S : Sig} {O : Ops S} {Γ : List (Ty S)} {t u : Ty S}
-    (h : t = u) (e : Expr O Γ t) : (h ▸ e).size = e.size := by
-  cases h; rfl
-
-theorem retagExpr_size {S : Sig} {O₀ O₁ : Ops S}
-    (fOp : O₀.Op → O₁.Op)
-    (hDom : ∀ o, O₀.dom o = O₁.dom (fOp o))
-    (hCod : ∀ o, O₀.cod o = O₁.cod (fOp o))
-    (hOpSize : ∀ o, O₁.opSize (fOp o) = O₀.opSize o)
-    {Γ : List (Ty S)} {t : Ty S} (e : Expr O₀ Γ t) :
-    (retagExpr fOp hDom hCod e).size = e.size := by
-  induction e with
-  | op o a iha =>
-    simp only [retagExpr, cast_expr_size, Expr.size, iha, hOpSize o]
-  | _ => simp only [retagExpr, Expr.size, *]
 
 end RetagOps
 

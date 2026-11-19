@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHmac
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHmac -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.SigHopA
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead -- proof-setup: allow-public-import
 
 /-!
 # PQXDH authentication: query bounds of `prfHmacOfMu`
@@ -19,7 +20,7 @@ Proves that `prfHmacOfMu B` makes at most `B.q_dec + 1` `PrfHmac` oracle queries
 `B.q_prim + B.q_enc + B.q_dec` primitive queries whenever `B` is bounded.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,7 +34,7 @@ open RoKem
 /-! ## Runner -/
 
 /-- `prfHmacOfMuRunAt` generalized to an arbitrary computation and initial state. -/
-def prfMuRun (j : ℕ) {α : Type} (mx : OracleComp AeadMuIntSimSpec α) (st : PrfHmacMuState) :
+@[expose] def prfMuRun (j : ℕ) {α : Type} (mx : OracleComp AeadMuIntSimSpec α) (st : PrfHmacMuState) :
     OracleComp PrfHmacSimSpec (α × PrfHmacMuState) :=
   OracleComp.construct
     (C := fun _ => PrfHmacMuState → OracleComp PrfHmacSimSpec (α × PrfHmacMuState))

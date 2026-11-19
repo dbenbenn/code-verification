@@ -9,11 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5aPresenceB
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailBPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5aPresenceB
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailBPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromLoop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPost -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedA -- proof-setup: allow-public-import
+public import ProofLib.FsTrace
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.Defs
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
 
 /-!
 # Relocatable `[LibsignalPlacement]` Presence-Failure Join Frames and Segment `+0x460 → +0x57c`
@@ -23,7 +33,7 @@ Defines `[LibsignalPlacement]` `PresenceErrTailStatePlaced` and `BkNoneJoinFrame
 `post_seg1a_f90_to_0ac_placed_wp` (`+0x460 → +0x57c`) on `preKeyPlacedProg H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -59,7 +69,7 @@ attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_add_neg96_eq_hsp_592
 
 /-- `[LibsignalPlacement]` counterpart of `PresenceErrTailState`. -/
-def PresenceErrTailStatePlaced [LibsignalPlacement] (s0 : State)
+@[expose] def PresenceErrTailStatePlaced [LibsignalPlacement] (s0 : State)
     (sp' sret len ptr0 kyberCap kyberPtr ikCap msgCap x24 : BitVec 64) (vb : BitVec 8)
     (sf : State) : Prop :=
   PostEpilogueStatePlaced s0 sp' sf ∧
@@ -70,7 +80,7 @@ def PresenceErrTailStatePlaced [LibsignalPlacement] (s0 : State)
   sf.readReg64 .x21 = ptr0 ∧ sf.readReg64 .x20 = len ∧ sf.readReg64 .x19 = sret
 
 /-- `[LibsignalPlacement]` Join frame at `+0x5e0` (`1504`, `m.baseKey = none`). -/
-def BkNoneJoinFramePlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def BkNoneJoinFramePlaced [LibsignalPlacement] (A : RustAlloc)
     (s0 s2 : State) : Prop :=
   s2.pc = (blkPl_111).base + 1504#64 ∧
   s2.status = .Running ∧

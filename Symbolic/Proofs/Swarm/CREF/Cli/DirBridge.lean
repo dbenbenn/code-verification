@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge
+public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge -- proof-setup: allow-public-import
 
 /-!
 # PQXDH Directory Provisioning and Clear-Session Bridges
@@ -18,7 +18,7 @@ Establishes `PqDirInv` for provisioned directories (`initPqParty`, `pqDirInv_ini
 preservation under session clearing (`pqPartyInv_clear_same`, `pqDirInv_clear`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +37,7 @@ open Symbolic.Swarm.TRREF.SpqrSemOf (bytesToVec)
 /-! ## Initial directory provisioning -/
 
 /-- Initial `PqParty` state provisioned by `initDirs interp r p`. -/
-def initPqParty (interp : ExternInterpretation) (r : ProtocolSetup) (p : Participant) : PqParty :=
+@[expose] def initPqParty (interp : ExternInterpretation) (r : ProtocolSetup) (p : Participant) : PqParty :=
   { party := partyOf r p
     me := ⟨bytesToVec 32 (idSecret r p), regIdOf r p⟩
     peerId := some ⟨⟨bytesToVec 32 (pubBytes interp (peerIdSecret r p))⟩⟩

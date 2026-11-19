@@ -10,11 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PlacedDefsBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.CommonPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.ProtocolErrCommonPlaced
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PlacedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.CommonPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.ProtocolErrCommonPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Budget-Threaded Relocatable `T5` Protocol-Error Tail Bridges
@@ -23,7 +25,7 @@ Provides `seamBudget_step_freeOnly`, `encTail_placed_run`, `segExit_placed_of_ru
 `encTail_placed_run_withEncCommon` on Block `198` (`lsProg_198 Hk`) for `T5` error-staging tails.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

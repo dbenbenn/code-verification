@@ -9,16 +9,67 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatchBudget
-public meta import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatchBudget -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Record.SegExit
-import LibsignalBinary.Proofs.Common.SharedHelpers
-meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatchBudget
+public meta import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatchBudget -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegExit
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Record.FetchTail
+import ProofLib.Sep
+meta import Lean
 import ProofLib.SepLogic.WP.Apply
-import ProofLib.SepLogic.WPp
+public import ProofLib.SepLogic.WPp
 meta import ProofLib.ProgramReflection -- shake: keep
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.Multi
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.StepsProcess
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Mallocng.Spec.Top
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatch
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Exit Jump-Table Segment (`SegExitBudget`)
@@ -27,7 +78,7 @@ Relocatable `RustCliAllocBudget` / `SeamBudget` verification of the `errs` drop 
 deallocation (`+0x1e8c → +0x1f50`, block 197).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -68,7 +119,6 @@ open CryptoVerification.LibsignalTripleRatchet.Record (
   iscmk_entails_40_shared_lb invalidMessageStrAt_entails_vecU8_shared_lb
   spe_str_after_weaken_shared_lb spe_noop_after_weaken_shared_lb
   spe_unit_pre_weaken_shared_lb
-  frame_high_entails_0x920_shared_lb
 )
 open LibsignalBinary.Heap (
   AllocEvent AllocCostModel BudgetLimits RustCliAllocBudget
@@ -91,6 +141,14 @@ set_option maxHeartbeats 400000
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
+run_meta do
+  let env ← Lean.getEnv
+  for (h, ks) in #[(``RustAlloc.live, #[1]), (``stackAt, #[0]), (``protocolAddressAt, #[2]), (``signalMessageAt, #[2]), (``recErrAt, #[1]), (``recFramePlaced, #[2]), (``RustCliAllocBudget.pool, #[1])] do
+    let n := Lean.mkPrivateName env (((ks.foldl Lean.Name.mkNum ProofLib.Sep.sepKeyMarker).str "_TARGET_") ++ h)
+    unless env.contains n do
+      Lean.withExporting (isExporting := false) do
+        Lean.addDecl <| .defnDecl { name := n, levelParams := [], type := .const ``Unit [], value := .const ``Unit.unit [], hints := .abbrev, safety := .safe }
+
 /-! ## `speAt` exposure and frame helpers -/
 
 private theorem stackAt_root_split_alloc (sp : BitVec 64) :
@@ -104,24 +162,9 @@ private theorem sepWP_false_elim {prog : Program} {target_pc : BitVec 64} {s : S
     SepWP prog target_pc s (P ∗ ⌜False⌝ ∗ Q) post := by
   unfold SepWP
   intro R hm
-  have heq : (P ∗ ⌜False⌝ ∗ Q) ∗ R = ⌜False⌝ ∗ (P ∗ Q ∗ R) := by sep_ac_rfl
-  rw [heq, satisfies_pure_sepConj] at hm
-  exact False.elim hm.1
-
-private theorem frame_low_entails_0xa0 (sp : BitVec 64) (w80 w88 w90 : BitVec 64) (w9c : BitVec 32) :
-    memRegion sp 0x80 ∗ ((sp + 0x80#64) ↦₆₄ w80) ∗ ((sp + 0x88#64) ↦₆₄ w88) ∗
-      ((sp + 0x90#64) ↦₆₄ w90) ∗ memRegion (sp + 0x98#64) 4 ∗ ((sp + 0x9c#64) ↦₃₂ w9c) ⊢
-      memRegion sp 0xa0 := by
-  rw [show (0xa0 : Nat) = 0x80 + 32 from rfl, memRegion_split sp 0x80 32 (by decide),
-      show (32 : Nat) = 8 + 24 from rfl, memRegion_split (sp + BitVec.ofNat 64 0x80) 8 24 (by decide),
-      show (24 : Nat) = 8 + 16 from rfl, memRegion_split (sp + BitVec.ofNat 64 0x80 + BitVec.ofNat 64 8) 8 16 (by decide),
-      show (16 : Nat) = 8 + 8 from rfl, memRegion_split (sp + BitVec.ofNat 64 0x80 + BitVec.ofNat 64 8 + BitVec.ofNat 64 8) 8 8 (by decide),
-      show (8 : Nat) = 4 + 4 from rfl, memRegion_split (sp + BitVec.ofNat 64 0x80 + BitVec.ofNat 64 8 + BitVec.ofNat 64 8 + BitVec.ofNat 64 8) 4 4 (by decide)]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd]
-  exact sepConj_mono_right (sepConj_mono (pointsTo64_entails_memRegion _ _)
-    (sepConj_mono (pointsTo64_entails_memRegion _ _)
-      (sepConj_mono (pointsTo64_entails_memRegion _ _)
-        (sepConj_mono_right (pointsTo32_entails_memRegion _ _)))))
+  have hm' : s.mem ⊨ ⌜False⌝ ∗ (P ∗ Q ∗ R) := Satisfies.mono (by bi_entail) hm
+  rw [satisfies_pure_sepConj] at hm'
+  exact False.elim hm'.1
 
 private theorem vecU8At_entails_dealloc (A : RustAlloc) (a : BitVec 64) (cap ptr : BitVec 64)
     (bs : List (BitVec 8)) :
@@ -157,19 +200,13 @@ private theorem vecU8_at_8_expose (A : RustAlloc) (a : BitVec 64) (bs : List (Bi
         ((a + 8#64) ↦₆₄ cap) ∗ ((a + 16#64) ↦₆₄ ptr) ∗ memRegion (a + 24#64) 24 ∗
         (if cap == 0#64 then emp else A.live ptr cap.toNat 1 ∗ memRegion ptr cap.toNat) := by
   unfold vecU8
-  rw [sepExists_sepConj_left]
+  simp only [sepExists_sepConj_left]
   apply Entails.sepExists_elim; intro cap
-  rw [sepExists_sepConj_left]
   apply Entails.sepExists_elim; intro ptr
   refine Entails.sepExists_right cap (Entails.sepExists_right ptr ?_)
   refine Entails.trans (sepConj_mono_left (vecU8At_entails_dealloc A (a + 8#64) cap ptr bs)) ?_
-  have h16 : a + 8#64 + 8#64 = a + 16#64 := by bv_omega
-  have h24 : a + 8#64 + 16#64 = a + 24#64 := by bv_omega
-  have hm : memRegion (a + 24#64) 24 = memRegion (a + 24#64) 8 ∗ memRegion (a + 32#64) 16 := by
-    rw [show (24 : Nat) = 8 + 16 from rfl, memRegion_split (a + 24#64) 8 16 (by decide),
-        show a + 24#64 + 8#64 = a + 32#64 by bv_omega]
-  rw [h16, h24, hm]
-  exact Entails.of_eq (by sep_ac_rfl)
+  generalize (if cap == 0#64 then emp else A.live ptr cap.toNat 1 ∗ memRegion ptr cap.toNat) = D
+  sep_interval
 
 private theorem speAt_invalidState_expose (A : RustAlloc) (fnName : List (BitVec 8))
     (a : BitVec 64) :
@@ -231,7 +268,8 @@ private theorem spe_str_pre_weaken (A : RustAlloc)
   apply SatEntails_shared_lb.sepExists_elim; intro cap
   apply SatEntails_shared_lb.sepExists_elim; intro ptr
   refine SatEntails_shared_lb.sepExists_right cap (SatEntails_shared_lb.sepExists_right ptr ?_)
-  exact SatEntails_shared_lb.of_eq (by sep_ac_rfl)
+  generalize (if cap == 0#64 then emp else A.live ptr cap.toNat 1 ∗ memRegion ptr cap.toNat) = D
+  exact SatEntails_shared_lb.of_entails (by bi_entail)
 
 private def recFramePlacedRest [LibsignalPlacement] (A : RustAlloc) (x : RecordDecryptGhost)
     (sp : BitVec 64) : SepProp :=
@@ -250,13 +288,15 @@ private def recFramePlacedRest [LibsignalPlacement] (A : RustAlloc) (x : RecordD
   signalMessageAt A x.msgG x.msgA x.msg ∗ lsLogOff ∗
   memRegion (sp - BitVec.ofNat 64 rootStack) (rootStack - allocHookStack)
 
+register_sep_key recFramePlacedRest [2]
+
 private theorem recFramePlaced_split_rep [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (x : RecordDecryptGhost) (sp : BitVec 64) :
     recFramePlaced A.repAlloc x sp =
       recFramePlacedRest A.repAlloc x sp ∗ stackAt sp allocHookStack := by
   unfold recFramePlaced recFramePlacedRest
   rw [stackAt_root_split_alloc sp, RustCliAllocBudget.repAlloc_pool, sepConj_emp]
-  sep_ac_rfl
+  exact Entails.antisymm (by bi_entail) (by bi_entail)
 
 private theorem recPostPlaced_of_frame_aux [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} (st' : M.σ)
@@ -273,35 +313,13 @@ private theorem recPostPlaced_of_frame_aux [LibsignalPlacement] {M : AllocCostMo
       protocolAddressAt A.repAlloc x.rem x.remA ∗ protocolAddressAt A.repAlloc x.loc x.locA ∗
       signalMessageAt A.repAlloc x.msgG x.msgA x.msg ∗
       tape ∗ lsLogOff ∗ stackAt s0.sp rootStack ∗ A.pool lim st' sf ∗ R := by
-  have hm_rearr : sf.mem ⊨
-      (memRegion s0.sp 0x80 ∗ ((s0.sp + 0x80#64) ↦₆₄ x.sret) ∗ ((s0.sp + 0x88#64) ↦₆₄ x.locA) ∗
-        ((s0.sp + 0x90#64) ↦₆₄ x.msgA) ∗ memRegion (s0.sp + 0x98#64) 4 ∗
-        ((s0.sp + 0x9c#64) ↦₃₂ x.msg.messageVersion.setWidth 32)) ∗
-      ((memRegion (s0.sp + 0x4e0#64) 0xd0 ∗ ((s0.sp + 0x5b0#64) ↦₆₄ x.remA) ∗
-        memRegion (s0.sp + 0x5b8#64) 4 ∗ ((s0.sp + 0x5bc#64) ↦₈ msgTypeByte .whisper) ∗
-        memRegion (s0.sp + 0x5bd#64) 3 ∗ ((s0.sp + 0x5c0#64) ↦₆₄ (s0.sp + 0x5bc#64)) ∗
-        ((s0.sp + 0x5c8#64) ↦₆₄ x.msgA) ∗ ((s0.sp + 0x5d0#64) ↦₆₄ (s0.sp + 0x5b0#64)) ∗
-        ((s0.sp + 0x5d8#64) ↦₆₄ w_cap) ∗ ((s0.sp + 0x5d8#64 + 8#64) ↦₆₄ w_ptr) ∗
-        ((s0.sp + 0x5d8#64 + 16#64) ↦₆₄ w_len) ∗ memRegion (s0.sp + 0x5f0#64) 0x6b0 ∗
-        memRegion (s0.sp + 0xca0#64) 344 ∗ memRegion (s0.sp + 0xdf8#64) 8) ∗
-       (((s0.sp + 0xe0#64) ↦₆₄ x.msgA) ∗ ((s0.sp + 0xf0#64) ↦₆₄ x.locA) ∗
-        ((s0.sp + 0x128#64) ↦₆₄ x.prevPtr) ∗ ((s0.sp + 0x130#64) ↦₆₄ 0#64) ∗ S_sess ∗ resSlot ∗
-        protocolAddressAt A.repAlloc x.rem x.remA ∗ protocolAddressAt A.repAlloc x.loc x.locA ∗
-        signalMessageAt A.repAlloc x.msgG x.msgA x.msg ∗ tape ∗ lsLogOff ∗
-        stackAt s0.sp rootStack ∗ A.pool lim st' sf ∗ R)) := by
-    dsimp only [recFramePlaced] at hm
-    rw [RustCliAllocBudget.repAlloc_pool, sepConj_emp] at hm
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hm
-  clear hm
-  have hm_fold := Satisfies.mono
-    (sepConj_mono (frame_low_entails_0xa0 s0.sp x.sret x.locA x.msgA _)
-      (sepConj_mono_left (frame_high_entails_0x920_shared_lb s0.sp x.remA (msgTypeByte .whisper)
-        (s0.sp + 0x5bc#64) x.msgA (s0.sp + 0x5b0#64) w_cap w_ptr w_len))) hm_rearr
-  exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hm_fold
+  dsimp only [recFramePlaced] at hm
+  rw [RustCliAllocBudget.repAlloc_pool, sepConj_emp] at hm
+  exact Satisfies.mono (by sep_interval) hm
 
 /-! ## Budget-threaded single-element drop and `segExit_placed_ok` -/
 
-local macro "seg_exit_noop_placed_b " s0:ident r:term:max i:num w:term:max off:term:max he:term:max : tactic =>
+local macro "seg_exit_noop_placed_b " _s0:ident r:term:max i:num w:term:max off:term:max he:term:max : tactic =>
   `(tactic| (
     refine SepWP_weaken_pre_sat_shared_lb
       (spe_unit_pre_weaken_shared_lb _ _ $r $i $w rfl
@@ -315,11 +333,10 @@ local macro "seg_exit_noop_placed_b " s0:ident r:term:max i:num w:term:max off:t
         by simp only [wp_norm, arm64_norm, *], by simp only [wp_norm, arm64_norm, *],
         by simp only [wp_norm, arm64_norm, *], by simp only [wp_norm, arm64_norm, *],
         by simp only [wp_norm, arm64_norm, *], by simp only [wp_norm, arm64_norm, *]⟩
-    rw [show ($s0:ident).sp + 0x5d8#64 + 8#64 = ($s0:ident).sp + 1504#64 by bv_omega,
-      show ($s0:ident).sp + 0x5d8#64 + 16#64 = ($s0:ident).sp + 1512#64 by bv_omega]
-    exact Entails.of_eq (by sep_ac_rfl)))
+    rw [AllocCostModel.stepEvents_nil]
+    bi_entail))
 
-local macro "seg_exit_str_placed_b " s:ident hsp:ident s0:ident _st:ident r:term:max i:num w:term:max off:term:max he:term:max : tactic =>
+local macro "seg_exit_str_placed_b " s:ident hsp:ident _s0:ident _st:ident r:term:max i:num w:term:max off:term:max he:term:max : tactic =>
   `(tactic| (
     refine SepWP_weaken_pre_sat_shared_lb
       (spe_str_pre_weaken _ _ $r $i $w rfl
@@ -335,9 +352,8 @@ local macro "seg_exit_str_placed_b " s:ident hsp:ident s0:ident _st:ident r:term
           by simp only [wp_norm, arm64_norm, *], by simp only [wp_norm, arm64_norm, *],
           by simp only [wp_norm, arm64_norm, *], by simp only [wp_norm, arm64_norm, *],
           by simp only [wp_norm, arm64_norm, *], by simp only [wp_norm, arm64_norm, *]⟩
-      rw [show ($s0:ident).sp + 0x5d8#64 + 8#64 = ($s0:ident).sp + 1504#64 by bv_omega,
-        show ($s0:ident).sp + 0x5d8#64 + 16#64 = ($s0:ident).sp + 1512#64 by bv_omega]
-      exact Entails.of_eq (by sep_ac_rfl)
+      rw [AllocCostModel.stepEvents_nil]
+      bi_entail
     · have hcap_beq : (cap == 0#64) = false := beq_eq_false_iff_ne.mpr hcap
       simp only [hcap_beq, Bool.false_eq_true, ↓reduceIte, RustCliAllocBudget.repAlloc_live_norm]
       wp_steps_sync_197 (lsmpl.ρ lsRustDeallocSym)
@@ -352,9 +368,8 @@ local macro "seg_exit_str_placed_b " s:ident hsp:ident s0:ident _st:ident r:term
           by simp only [wp_norm, arm64_norm, *], by simp only [wp_norm, arm64_norm, *],
           by simp only [wp_norm, arm64_norm, *], by simp only [wp_norm, arm64_norm, *],
           by simp only [wp_norm, arm64_norm, *], by simp only [wp_norm, arm64_norm, *]⟩
-      rw [$hsp:ident, show ($s0:ident).sp + 0x5d8#64 + 8#64 = ($s0:ident).sp + 1504#64 by bv_omega,
-        show ($s0:ident).sp + 0x5d8#64 + 16#64 = ($s0:ident).sp + 1512#64 by bv_omega]
-      exact Entails.of_eq (by sep_ac_rfl)))
+      rw [$hsp:ident]
+      bi_entail))
 
 private def segExitDropPost [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
@@ -418,6 +433,7 @@ private theorem segExit_drop_invalidMessage_placed [LibsignalPlacement] {M : All
   seg_exit_str_placed_b s hsp s0 st (.spe (.invalidMessage t r)) 24 0x8000000000000018#64 39#64
     (by simpa only [recErrAt] using speAt_invalidMessage_expose A.repAlloc (utf8 "decrypt") p t r)
 
+set_option maxHeartbeats 800000 in
 private theorem segExit_drop_one_placed [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {H : String → Option (State → State)}
@@ -539,7 +555,7 @@ private theorem segExit_main_placed [LibsignalPlacement] {M : AllocCostModel}
          memRegion (s0.sp + 0xca0#64) 344 ∗
          S_sess ∗ resSlot ∗ tape ∗ R) := by
       dsimp only [errsAt] at hmem
-      exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmem
+      exact Satisfies.mono (by bi_entail) hmem
     clear hmem
     have hwp_nil : SepWP ((blkPC_197).rebase (blkPl_197).base H)
         ((blkPl_197).base + 8016#64) s
@@ -555,7 +571,7 @@ private theorem segExit_main_placed [LibsignalPlacement] {M : AllocCostModel}
           calleeSavedVRegs sf = calleeSavedVRegs s0) := by
       wp_steps_sync_197 ((blkPl_197).base + 8016#64)
       exact SepWP.done (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *])
-        ⟨Entails.of_eq (by sep_ac_rfl),
+        ⟨by bi_entail,
           by simp only [wp_norm, arm64_norm, *], by simp only [wp_norm, arm64_norm, *],
           by simp only [wp_norm, arm64_norm, *], by simp only [wp_norm, arm64_norm, *],
           by simp only [wp_norm, arm64_norm, *], by simp only [wp_norm, arm64_norm, *],
@@ -568,7 +584,7 @@ private theorem segExit_main_placed [LibsignalPlacement] {M : AllocCostModel}
     refine ⟨sf, [], hsteps, FreeOnlyEvs.nil, hpc_sf, hrun_sf, hvregs_sf,
       ⟨hno_pan, htr_sf, hsp_sf, hx29_sf, hx27_sf, hx26_sf, hx28_sf⟩, ?_⟩
     apply recPostPlaced_of_frame_aux st x S_sess resSlot tape R s0 sf 0#64 8#64 0#64
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmf'
+    exact Satisfies.mono (by bi_entail) hmf'
   · dsimp only [errsAt] at hmem
     simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hmem
     obtain ⟨p, hmem⟩ := hmem
@@ -583,8 +599,8 @@ private theorem segExit_main_placed [LibsignalPlacement] {M : AllocCostModel}
          (((s0.sp + 0x5d8#64) ↦₆₄ 4#64) ∗ A.live p 192 8 ∗ memRegion (p + 48#64) 144 ∗
           recFramePlacedRest A.repAlloc x s0.sp ∗
           memRegion (s0.sp + 0xca0#64) 344 ∗
-          S_sess ∗ resSlot ∗ tape ∗ R)) := by
-      exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmem_ro
+          S_sess ∗ resSlot ∗ tape ∗ R)) :=
+      Satisfies.mono (by bi_entail) hmem_ro
     clear hmem_ro
     rw [satisfies_pure_sepConj] at hmem_p
     obtain ⟨_hp, hmem_drop⟩ := hmem_p
@@ -597,17 +613,14 @@ private theorem segExit_main_placed [LibsignalPlacement] {M : AllocCostModel}
     have hvregs_sm : calleeSavedVRegs sm = calleeSavedVRegs s0 := hvregs_sm0.trans hvregs
     have hmm' := Satisfies.mono (sepConj_mono_left hent_m) hmm
     clear hmm hent_m
-    have h192 : memRegion p 192 = memRegion p 48 ∗ memRegion (p + 48#64) 144 := by
-      simpa using memRegion_split p 48 144 (by decide)
     have hmm_dealloc : sm.mem ⊨
         (((s0.sp + 0x5d8#64) ↦₆₄ 4#64) ∗ A.live p 192 8 ∗ memRegion p 192 ∗
          stackAt s0.sp allocHookStack ∗ A.pool lim (M.stepEvents evs1 st) sm) ∗
         (((s0.sp + 0x5d8#64 + 8#64) ↦₆₄ p) ∗ ((s0.sp + 0x5d8#64 + 16#64) ↦₆₄ 1#64) ∗
          recFramePlacedRest A.repAlloc x s0.sp ∗
          memRegion (s0.sp + 0xca0#64) 344 ∗
-         S_sess ∗ resSlot ∗ tape ∗ R) := by
-      rw [h192]
-      exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmm'
+         S_sess ∗ resSlot ∗ tape ∗ R) :=
+      Satisfies.mono (by sep_interval) hmm'
     clear hmm'
     have hsp_sm0 : sm.sp = s0.sp := hsp_sm.trans hsp
     have hwp_dealloc : SepWP ((blkPC_197).rebase (blkPl_197).base H)
@@ -632,7 +645,7 @@ private theorem segExit_main_placed [LibsignalPlacement] {M : AllocCostModel}
           by simp only [wp_norm, arm64_norm, *], by simp only [wp_norm, arm64_norm, *],
           by simp only [wp_norm, arm64_norm, *]⟩
       rw [hsp_sm0]
-      exact Entails.of_eq (by sep_ac_rfl)
+      bi_entail
     rcases hwp_dealloc.elim hmm_dealloc (hsteps1.codeLoaded hL) with
       ⟨sf, hsteps2, ⟨hpc_sf, hrun_sf, Pf, hmf, hent_f, hsp_sf, htr_sf,
         hx26_sf, hx27_sf, hx28_sf, hx29_sf, hvregs_sf⟩ | ⟨_, hoom⟩⟩
@@ -646,12 +659,12 @@ private theorem segExit_main_placed [LibsignalPlacement] {M : AllocCostModel}
       ⟨hno_pan, htr_sf, hsp_sf, hx29_sf, hx27_sf, hx26_sf, hx28_sf⟩, ?_⟩
     apply recPostPlaced_of_frame_aux _ x S_sess resSlot tape R s0 sf 4#64 p 1#64
     rw [recFramePlaced_split_rep A x s0.sp]
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmf'
+    exact Satisfies.mono (by bi_entail) hmf'
   · dsimp only [errsAt] at hmem
     have hfalse : s.mem ⊨ ⌜False⌝ ∗
         (recFramePlaced A.repAlloc x s0.sp ∗ A.pool lim st s ∗ S_sess ∗ resSlot ∗
-         memRegion (s0.sp + 0xca0#64) 344 ∗ tape ∗ R) := by
-      exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmem
+         memRegion (s0.sp + 0xca0#64) 344 ∗ tape ∗ R) :=
+      Satisfies.mono (by bi_entail) hmem
     rw [satisfies_pure_sepConj] at hfalse
     exact False.elim hfalse.1
 

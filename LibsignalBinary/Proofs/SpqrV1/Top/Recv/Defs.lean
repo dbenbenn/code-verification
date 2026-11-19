@@ -14,8 +14,8 @@ public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.Defs
 public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
 public import LibsignalBinary.Proofs.SpqrV1.States.Recv.Defs
 public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpers
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpers
+public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpers -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.Defs
 public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Specs
 public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeBase
@@ -31,7 +31,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeStep
 for `spqr::recv` (`0x5462c`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.Recv
 
@@ -65,73 +65,7 @@ set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
-/-! ## 1. Read-Only `.rodata` Bundle and Callee Contract Bundle (`SpqrRecvContracts`) -/
-
-/-- Read-only `.rodata` + `MAX_LOG_LEVEL_FILTER` + `TOKEN` bundle used across `spqr::recv` (`0x5462c`)
-    and its callees (`spqr::decode_state`, `States::from_pb`, `States::recv`, `States::into_pb`,
-    and `drop_glue::<PqRatchetState>`):
-    - `Prost.MessageMerge.v1StateJumpTablesAt b` (used by `spqr::decode_state`),
-    - `statesFromPbJumpTableAt b` (used by `States::from_pb`),
-    - `statesRecvRoAt b` (includes `statesRecvJumpTableAt b`, `unchunkedSendCt2RoAt b` with
-    `(b + 0xaa080#64) ↦₆₄ 0#64` for `logOff`, `tokenInitAt b`, and `reduceTableAt b`),
-    - `statesIntoPbJumpTableAt b` (used by `States::into_pb`),
-    - `dropOptProtoInnerStateJumpTableAt b` (used by `drop_glue::<PqRatchetState>`). -/
-def spqrRecvRoAt (b : BitVec 64) : SepProp :=
-  Prost.MessageMerge.v1StateJumpTablesAt b ∗
-  statesFromPbJumpTableAt b ∗
-  statesRecvRoAt b ∗
-  statesIntoPbJumpTableAt b
-
-/-- Bundle of callee `subroutine_ok` contracts and image/allocator hypotheses for `spqr::recv`
-    (`0x5462c..0x55208`, 759 instructions). All drop-glue callees (`0x4c060`, `0x4c0d4`,
-    `0x4c3a0`, `0x4c460`, `0x4c5d8`, `0x4cfa8`) are already unconditionally proved in
-    `LibsignalBinary.Proofs.SpqrV1.Drop.*` from `hA.dealloc`. -/
-structure SpqrRecvContracts (H_inner : V1InnerHeapPred) (img : Obj.Image) (A : RustAlloc)
-    (F : ShaCompress) (K : MlKem)
-    (ext : String → Option (State → State)) : Prop where
-  base_aligned : img.base &&& 0xfff#64 = 0#64
-  himg : Obj.Loads libsignalSessionImage img
-  hA : AllocContracts img.base A ext
-  decodeState_ok : DecodeStateOkX H_inner img A ext
-  initInner_ok : InitInnerOkX img A F ext
-  chainFrom_ok : ChainFromOkX img (spqrHkdfWith F) A ext
-  chainFromPb_ok : ChainFromPbOkX img A ext
-  chainNew_ok : ChainNewOkX img (spqrHkdfWith F) A ext
-  chainAddEpoch_ok : ChainAddEpochOkX img (spqrHkdfWith F) A ext
-  chainRecvKey_ok : ChainRecvKeyOkX img (spqrHkdfWith F) A ext
-  chainIntoPb_ok : ChainIntoPbOkX img A ext
-  messageDeserialize_ok : MessageDeserializeOkX spqrPolyApi img A ext
-  statesFromPb_ok : StatesFromPbOkX img A F ext
-  statesRecv_ok : StatesRecvOkX img A F K ext
-  statesIntoPb_ok : StatesIntoPbOkX img A F ext
-  encodeToVec_ok : PqRatchetStateEncodeToVecOkX img A ext
-  /-- Representation equivalence between `DecodeState.optProtoInnerStateAt H_inner A a opt` and
-      `Drop.optProtoInnerStateAt A a opt` (used by `States::from_pb`, `States::into_pb`,
-      `spqr::init_inner`, and `drop_glue`; discharged by
-      `optProtoInnerStateAt_canonical_eq_drop` when `H_inner = canonicalV1InnerHeap`). -/
-  h_inner_eq : ∀ a opt, DecodeState.optProtoInnerStateAt H_inner A a opt = Drop.optProtoInnerStateAt A a opt
-
-/-!
-## 2. Stack Frame Layout (`0x1380 = 4992` bytes)
-
-Stack slots of `spqr::recv` (`fsp = s0.sp - 4992#64`, `x29 = s0.sp - 96#64 = fsp + 0x1320#64`):
-* `fsp + 0x000 .. fsp + 0x160` (`352`B): `pre_pb : PqRatchetState` (`spqr::decode_state` output).
-* `fsp + 0x160 .. fsp + 0x2c0` (`352`B): `state_pb : PqRatchetState` (active state on V1 path).
-* `fsp + 0x2c0 .. fsp + 0x318` (`88`B): `Chain` slot 1 (V0 chain-ratchet path).
-* `fsp + 0x318 .. fsp + 0x370` (`88`B): `Chain` slot 2 (`init_inner` / `chain_from` path).
-* `fsp + 0x370 .. fsp + 0x3d0` (`96`B): `scka_msg : Message` (`48`B at `+0x370`) and scratch (`+0x3a0..+0x3d0`).
-* `fsp + 0x3d0 .. fsp + 0x770` (`928`B): `st1 : States` (`V1Recv.state` moved from `States::recv`).
-* `fsp + 0x770 .. fsp + 0x790` (`32`B): scratch (`q0, x8`).
-* `fsp + 0x790 .. fsp + 0xb50` (`960`B): shared sret buffer (`decode_state`, `Chain::from_pb`,
-  `Chain::recv_key`, `init_inner`, `Message::deserialize`, `States::recv`, `chain_from`,
-  `EpochSecret`, and `PqRatchetState` for `encode_to_vec` / `drop_glue`).
-* `fsp + 0xb50 .. fsp + 0xef8` (`936`B): shared sret buffer (`chain_from`, `States::from_pb`,
-  `States::into_pb`, `encode_to_vec` `Vec<u8>` sret, `Chain::new`).
-* `fsp + 0xef8 .. fsp + 0x1298` (`928`B): `st0 : States` (`States::from_pb` output moved for `States::recv`).
-* `fsp + 0x1298 .. fsp + 0x12f0` (`x29 - 0x88 .. x29 - 0x30`, `88`B): `chain : Chain` on V1 path.
-* `fsp + 0x12f0 .. fsp + 0x1320` (`x29 - 0x30 .. x29`, `48`B): scratch.
-* `fsp + 0x1320 .. fsp + 0x1380` (`s0.sp - 96 .. s0.sp`, `96`B): saved registers `x29..x19`.
--/
+/-! ## 1. Callee Contract Bundle (`SpqrRecvContracts`) -/
 
 /-- Own stack frame of `spqr::recv` (`0x5462c`): `0x60 + 0x1000 + 0x320 = 0x1380 = 4992` bytes
     (`s0.sp - 4992#64`). -/
@@ -144,7 +78,7 @@ theorem spqrRecvStack_eq : spqrRecvStack = spqrRecvCalleeStackX + spqrRecvOwnFra
 
 /-- Saved callee-saved registers at `[sp + 0x1320 .. sp + 0x1380)` (`sp = s0.sp - 0x1380`, `12`
     words = `96` bytes). -/
-def spqrRecvSavedRegs (sp : BitVec 64) (s0 : State) : SepProp :=
+@[expose] def spqrRecvSavedRegs (sp : BitVec 64) (s0 : State) : SepProp :=
   ((sp + 0x1320#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((sp + 0x1328#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((sp + 0x1330#64) ↦₆₄ s0.readReg64 .x28) ∗

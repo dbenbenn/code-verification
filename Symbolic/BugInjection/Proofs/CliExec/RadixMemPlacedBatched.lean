@@ -58,27 +58,6 @@ theorem btSet_btSet_same {α : Type} :
     cases hk2 : Nat.beq (Nat.mod k 2) 0 <;>
       simp [mkBranchL_eq, mkBranchR_eq, btSet, hk2, btSet_btSet_same d]
 
-theorem btSet_of_btGet_eq_some {α : Type} :
-    ∀ (d : Nat) (tr : BinTree α) (k : Nat) (v : α),
-      btGet d tr k = some v → btSet d tr k v = tr
-  | _, .empty, _, _, h => by simp at h
-  | d, .twig kj u, k, v, h => by
-    rw [btGet_twig] at h
-    cases hk : Nat.beq k kj
-    · simp [hk] at h
-    · simp only [hk, ↓reduceIte, Option.some.injEq] at h
-      have heq : k = kj := Nat.beq_eq.mp hk
-      subst heq h
-      cases d <;> simp [btSet, mkTwig_eq, Nat.beq_refl]
-  | 0, .branch _ _, _, _, h => by simp [btGet] at h
-  | d + 1, .branch lo hi, k, v, h => by
-    dsimp only [btGet, btSet] at h ⊢
-    cases hk2 : Nat.beq (Nat.mod k 2) 0
-    · simp only [hk2, Bool.false_eq_true, ↓reduceIte] at h ⊢
-      rw [mkBranchR_eq, btSet_of_btGet_eq_some d hi (Nat.div k 2) v h]
-    · simp only [hk2, ↓reduceIte] at h ⊢
-      rw [mkBranchL_eq, btSet_of_btGet_eq_some d lo (Nat.div k 2) v h]
-
 theorem btDel_btSet_of_btGet_eq_some {α : Type} :
     ∀ (d : Nat) (tr : BinTree α) (k : Nat) (v0 v1 : α),
       btGet d tr k = some v0 → btDel d (btSet d tr k v1) k = btDel d tr k
@@ -1331,33 +1310,6 @@ private theorem setCellsAt_cons (lines : BinTree Line64) {addr : Nat} (had : add
   unfold setCellsAt
   have hblt : Nat.blt addr (2 ^ 64) = true := Nat.blt_eq.mpr had
   simp only [hblt, ↓reduceIte]
-
-private theorem buildMapCells_irrel_mem (lines1 lines2 : BinTree Line64) (sb1 top1 sb2 top2 : Nat) :
-    ∀ (rem curHi1 curHi2 : Nat) (curLine1 curLine2 : Option Line64) (addr : Nat),
-      curLine1 = btGet 58 lines1 curHi1 →
-      curLine2 = btGet 58 lines2 curHi2 →
-      (∀ h : Nat, addr / 64 ≤ h → btGet 58 lines1 h = btGet 58 lines2 h) →
-      FastMem.buildMapCells ⟨lines1, sb1, top1⟩ true Perm.rw curHi1 curLine1 addr rem =
-        FastMem.buildMapCells ⟨lines2, sb2, top2⟩ true Perm.rw curHi2 curLine2 addr rem
-  | 0, _, _, _, _, _, _, _, _ => rfl
-  | rem + 1, curHi1, curHi2, curLine1, curLine2, addr, hc1, hc2, hge => by
-    rw [buildMapCells_mapZero_succ, buildMapCells_mapZero_succ]
-    dsimp only
-    have hl1 : (if addr / 64 == curHi1 then curLine1 else btGet 58 lines1 (addr / 64)) =
-        btGet 58 lines1 (addr / 64) := by
-      split
-      · rename_i heq; rw [hc1, beq_iff_eq.mp heq]
-      · rfl
-    have hl2 : (if addr / 64 == curHi2 then curLine2 else btGet 58 lines2 (addr / 64)) =
-        btGet 58 lines2 (addr / 64) := by
-      split
-      · rename_i heq; rw [hc2, beq_iff_eq.mp heq]
-      · rfl
-    rw [hl1, hl2, hge (addr / 64) (Nat.le_refl _)]
-    congr 1
-    exact buildMapCells_irrel_mem lines1 lines2 sb1 top1 sb2 top2 rem
-      (addr / 64) (addr / 64) _ _ (addr + 1) (hge (addr / 64) (Nat.le_refl _)).symm rfl
-      (fun h hh => hge h (by omega))
 
 private theorem flushAndSetCells_mapZero_slice (fm : FastMem) :
     ∀ (k : Nat) (lines : BinTree Line64) (hi addr : Nat) (lnOpt : Option Line64)

@@ -10,11 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysPlacedSym
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
-import LibsignalBinary.Proofs.FnOffEq
-import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysPlacedSym -- proof-setup: allow-public-import
+import ProofLib.Sep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.CodeLayout -- proof-setup: allow-public-import
 
 /-!
 # Shared Epilogue, Stack Recombination, and Relocation Helpers for `ChainLookup`
@@ -24,7 +23,7 @@ relocation combinators (`RelocBytes`, `speAt`, `speBodyAt`), and `SepWP` framing
 `S0`–`S2` and `ErrTail`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Decrypt.ChainLookup
 
@@ -43,41 +42,6 @@ set_option maxHeartbeats 400000
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
-open Lean Elab Tactic in
-/-- `code_fetches_from <code> <decPrefix> b H hfn off k0 len` adds `<code>_fetch_fnAddr`
-    hypotheses for the instructions `k = k0, k0 + 4, …, k0 + len - 4` of the function at offset
-    `off` (`hfn : <code>.fnOff name = off`), using `<decPrefix>_decode_0x<off+k>`. -/
-elab "code_fetches_from " codeId:ident decPrefix:ident b:term:max H:term:max hfn:term:max
-    off:term:max k0:num len:num : tactic => do
-  let off ← CryptoVerification.CodeLayout.evalNat off "fetches"
-  let k0 := k0.getNat
-  let len := len.getNat
-  let codeBase := codeId.getId.eraseMacroScopes
-  let decBase := decPrefix.getId.eraseMacroScopes
-  let fetchEntry := mkIdent (codeBase.appendAfter "_fetch_fnAddr_entry")
-  let fetchAdd := mkIdent (codeBase.appendAfter "_fetch_fnAddr")
-  for i in [0:len / 4] do
-    let k := k0 + 4 * i
-    let dec := mkIdent (decBase.appendAfter s!"_decode_0x{String.ofList (Nat.toDigits 16 (off + k))}")
-    let kq := Syntax.mkNumLit (toString k)
-    if k == 0 then
-      evalTactic (← `(tactic|
-        have := $fetchEntry (b := $b) (H := $H) $hfn (by decide) $dec))
-    else
-      evalTactic (← `(tactic|
-        have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
-
-/-- Fetch hypotheses for `try_decrypt_with_state::<HookRng>` (`0x3439c`), from fn-relative offset
-`k0`, `len` bytes. -/
-macro "dec_fetches " b:term:max H:term:max hfn:term:max k0:num len:num : tactic =>
-  `(tactic| code_fetches_from CryptoVerification.libsignalSessionCode
-    CryptoVerification.LibsignalTripleRatchet.libsignalTripleRatchetBin $b (Rust.withPanics $H) $hfn (num% (ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>")) $k0 $len)
-
-theorem tryDecryptEntry_eq_fnAddr {img : Obj.Image} {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    tryDecryptEntry img = (tripleRatchetProgAtExt img.base ext).fnAddr tryDecryptName :=
-  entryOf_eq_tripleRatchetProgAtExt ext himg tryDecryptName
-
 /-! ## Shared Stack Recombination and Return Epilogue (`+0x394 .. +0x3b0`) -/
 
 /-- Recombine `stackAt (sp0 - 1504#64) tryDecryptSubStack ∗ memRegion (sp0 - 1504#64) 1408 ∗
@@ -85,63 +49,9 @@ tryDecryptSavedRegs sp0 s0` into `stackAt sp0 rootStack` (`303104` bytes). -/
 theorem tryDecryptStack_recombine (sp0 : BitVec 64) (s0 : State) :
     (stackAt (sp0 - 1504#64) tryDecryptSubStack ∗
       memRegion (sp0 - 1504#64) 1408 ∗ tryDecryptSavedRegs sp0 s0) ⊢ stackAt sp0 rootStack := by
-  unfold tryDecryptSavedRegs stackAt tryDecryptSubStack tryDecryptFrameSize rootStack
-  have h12 :
-      (((sp0 - 96#64) ↦₆₄ s0.readReg64 .x29) ∗ ((sp0 - 88#64) ↦₆₄ s0.readReg64 .x30) ∗
-       ((sp0 - 80#64) ↦₆₄ s0.readReg64 .x28) ∗ ((sp0 - 72#64) ↦₆₄ s0.readReg64 .x27) ∗
-       ((sp0 - 64#64) ↦₆₄ s0.readReg64 .x26) ∗ ((sp0 - 56#64) ↦₆₄ s0.readReg64 .x25) ∗
-       ((sp0 - 48#64) ↦₆₄ s0.readReg64 .x24) ∗ ((sp0 - 40#64) ↦₆₄ s0.readReg64 .x23) ∗
-       ((sp0 - 32#64) ↦₆₄ s0.readReg64 .x22) ∗ ((sp0 - 24#64) ↦₆₄ s0.readReg64 .x21) ∗
-       ((sp0 - 16#64) ↦₆₄ s0.readReg64 .x20) ∗ ((sp0 - 8#64) ↦₆₄ s0.readReg64 .x19)) ⊢
-      memRegion (sp0 - 96#64) 96 := by
-    refine Entails.trans (sepConj_mono (pointsTo64_entails_memRegion _ _)
-      (sepConj_mono (pointsTo64_entails_memRegion _ _) (sepConj_mono (pointsTo64_entails_memRegion _ _)
-      (sepConj_mono (pointsTo64_entails_memRegion _ _) (sepConj_mono (pointsTo64_entails_memRegion _ _)
-      (sepConj_mono (pointsTo64_entails_memRegion _ _) (sepConj_mono (pointsTo64_entails_memRegion _ _)
-      (sepConj_mono (pointsTo64_entails_memRegion _ _) (sepConj_mono (pointsTo64_entails_memRegion _ _)
-      (sepConj_mono (pointsTo64_entails_memRegion _ _) (sepConj_mono (pointsTo64_entails_memRegion _ _)
-        (pointsTo64_entails_memRegion _ _)))))))))))) ?_
-    rw [show sp0 - 8#64 = (sp0 - 16#64) + 8#64 by bv_omega, ← memRegion_split (sp0 - 16#64) 8 8 (by decide),
-        show sp0 - 16#64 = (sp0 - 24#64) + 8#64 by bv_omega, ← memRegion_split (sp0 - 24#64) 8 16 (by decide),
-        show sp0 - 24#64 = (sp0 - 32#64) + 8#64 by bv_omega, ← memRegion_split (sp0 - 32#64) 8 24 (by decide),
-        show sp0 - 32#64 = (sp0 - 40#64) + 8#64 by bv_omega, ← memRegion_split (sp0 - 40#64) 8 32 (by decide),
-        show sp0 - 40#64 = (sp0 - 48#64) + 8#64 by bv_omega, ← memRegion_split (sp0 - 48#64) 8 40 (by decide),
-        show sp0 - 48#64 = (sp0 - 56#64) + 8#64 by bv_omega, ← memRegion_split (sp0 - 56#64) 8 48 (by decide),
-        show sp0 - 56#64 = (sp0 - 64#64) + 8#64 by bv_omega, ← memRegion_split (sp0 - 64#64) 8 56 (by decide),
-        show sp0 - 64#64 = (sp0 - 72#64) + 8#64 by bv_omega, ← memRegion_split (sp0 - 72#64) 8 64 (by decide),
-        show sp0 - 72#64 = (sp0 - 80#64) + 8#64 by bv_omega, ← memRegion_split (sp0 - 80#64) 8 72 (by decide),
-        show sp0 - 80#64 = (sp0 - 88#64) + 8#64 by bv_omega, ← memRegion_split (sp0 - 88#64) 8 80 (by decide),
-        show sp0 - 88#64 = (sp0 - 96#64) + 8#64 by bv_omega, ← memRegion_split (sp0 - 96#64) 8 88 (by decide)]
-    exact Entails.refl _
-  refine Entails.trans (sepConj_mono_right (sepConj_mono_right h12)) ?_
-  change memRegion (sp0 - 1504#64 - 260640#64) 260640 ∗
-      (memRegion (sp0 - 1504#64) 1408 ∗ memRegion (sp0 - 96#64) 96) ⊢ memRegion (sp0 - 262144#64) 262144
-  rw [show sp0 - 96#64 = (sp0 - 1504#64) + 1408#64 by bv_omega, ← memRegion_split (sp0 - 1504#64) 1408 96 (by decide),
-      show (sp0 - 1504#64) - 260640#64 = sp0 - 262144#64 by bv_omega,
-      show sp0 - 1504#64 = (sp0 - 262144#64) + 260640#64 by bv_omega,
-      ← memRegion_split (sp0 - 262144#64) 260640 1504 (by decide)]
-  exact Entails.refl _
-
-/-- Shared return epilogue (`+0x394 .. +0x3b0`, `retEpiloguePC` to `s0.readReg64 .x30`). -/
-theorem tryDecrypt_epilogue_394_wp {b : BitVec 64} {ext : String → Option (State → State)}
-    (s0 s : State) (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr tryDecryptName + 0x394#64)
-    (hrun : s.status = .Running) (hsp : s.sp = s0.sp - 1504#64) (hs0_align : s0.spAligned = true)
-    (_hsp_align : s.spAligned = true) (htrace : s.trace = s0.trace)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0) :
-    SepWP (tripleRatchetProgAtExt b ext) (s0.readReg64 .x30) s
-      (stackAt (s0.sp - 1504#64) tryDecryptSubStack ∗
-        memRegion (s0.sp - 1504#64) 1408 ∗ tryDecryptSavedRegs s0.sp s0)
-      (fun sf P_f => sf.sp = s0.sp ∧ sf.trace = s0.trace ∧
-        CalleeSavedPreserved s0 sf ∧ (P_f ⊢ stackAt s0.sp rootStack)) := by
-  unfold tryDecryptSavedRegs
-  have hfn := (ls_lemma% fnOff "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>")
-  dec_fetches b ext hfn 0x394 32
-  generalize_entry (tripleRatchetProgAtExt b ext).fnAddr tryDecryptName = entry
-  examples_hide_fetches; wp_steps
-  refine SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) ?_
-  refine ⟨by simp_all [arm64_norm], by simp_all [arm64_norm], ?_, ?_⟩
-  · simp (config := { decide := true }) only [Arm64.CalleeSavedPreserved, arm64_norm, *]
-  · exact tryDecryptStack_recombine s0.sp s0
+  simp only [tryDecryptSavedRegs, stackAt, tryDecryptSubStack, tryDecryptFrameSize, rootStack,
+    Nat.reducePow, Nat.reduceSub]
+  sep_interval
 
 theorem sepWP_to_reaches_pc {prog : Program} {target_pc : BitVec 64} {s : State}
     {P R : SepProp} {post : State → SepProp → Prop}
@@ -151,127 +61,12 @@ theorem sepWP_to_reaches_pc {prog : Program} {target_pc : BitVec 64} {s : State}
   · exact ⟨sf, hst, Or.inl hok⟩
   · exact (not_satisfies_false_sepConj hfalse).elim
 
-theorem reaches_epilogue_to_outcome {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (x : TryDecryptGhost) (G' : SessionGhost) (R : SepProp) (s0 s : State)
-    (hnpan : (x.model C S uuidTryParse).1 ≠ .error .panic)
-    (hG' : x.G.AfterTryDecrypt (x.model C S uuidTryParse).1.toBool G')
-    (hreach : reaches_pc (tripleRatchetProgAtExt img.base ext) (retEpiloguePC img) s
-      (fun s1 => tryDecryptMidMeta img s0 s1 ∧
-        (s1.mem ⊨ sessionStateAt A x.ss G' (x.model C S uuidTryParse).2 ∗
-          vecResultAt A x.ret (x.model C S uuidTryParse).1 ∗ memRegion (s0.sp - 1504#64) 1408 ∗
-          tryDecryptCommonHeap A ctl img x (decryptDraws C x.st x.msg.senderRatchetKey x.rest) s0 ∗ R))) :
-    reaches_outcome (tripleRatchetProgAtExt img.base ext)
-      (tryDecryptSpec C A ctl uuidTryParse S img) x R s0 s := by
-  have hentry := tryDecryptEntry_eq_fnAddr (ext := ext) himg
-  have hcomb : reaches_pc (tripleRatchetProgAtExt img.base ext) (s0.readReg64 .x30) s
-      (fun sf => sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧
-        (sf.mem ⊨ (tryDecryptSpec C A ctl uuidTryParse S img).post x s0 sf ∗ R)) := by
-    refine reaches_pc_seq hreach ?_
-    intro s1 hpc1 _ ⟨⟨hrun1, hsp1, hs0_align, hsp_align1, _, htrace1, _, _, hvregs1⟩, hm1⟩
-    dsimp only [retEpiloguePC] at hpc1; rw [hentry] at hpc1; unfold tryDecryptCommonHeap at hm1
-    have hm1_re : s1.mem ⊨
-        (stackAt (s0.sp - 1504#64) tryDecryptSubStack ∗
-          memRegion (s0.sp - 1504#64) 1408 ∗ tryDecryptSavedRegs s0.sp s0) ∗
-        (sessionStateAt A x.ss G' (x.model C S uuidTryParse).2 ∗
-         vecResultAt A x.ret (x.model C S uuidTryParse).1 ∗ protocolAddressAt A x.rem x.remA ∗
-         protocolAddressAt A x.loc x.locA ∗ signalMessageAt A x.msgG x.msgA x.msg ∗
-         tapeAfter ctl x.cur x.rest (decryptDraws C x.st x.msg.senderRatchetKey x.rest) ∗
-         logOff img ∗ A.pool ∗ R) := by convert hm1 using 1; ac_rfl
-    refine reaches_pc_mono (sepWP_to_reaches_pc
-      (tryDecrypt_epilogue_394_wp s0 s1 hpc1 hrun1 hsp1 hs0_align hsp_align1 htrace1 hvregs1) hm1_re) ?_
-    intro sf _ _ ⟨P_f, hm_sf, hsp_sf, htrace_sf, hcc_sf, hP_f⟩
-    refine ⟨hsp_sf, hcc_sf, ?_⟩
-    have hm2 := Satisfies.mono (sepConj_mono_left hP_f) hm_sf
-    simp only [tryDecryptSpec, Spec.inImage]
-    have hm3 : sf.mem ⊨
-        sessionStateAt A x.ss G' (x.model C S uuidTryParse).2 ∗
-        (vecResultAt A x.ret (x.model C S uuidTryParse).1 ∗ protocolAddressAt A x.rem x.remA ∗
-         protocolAddressAt A x.loc x.locA ∗ signalMessageAt A x.msgG x.msgA x.msg ∗
-         tapeAfter ctl x.cur x.rest (decryptDraws C x.st x.msg.senderRatchetKey x.rest) ∗
-         logOff img ∗ stackAt s0.sp rootStack ∗ A.pool ∗ R) := by convert hm2 using 1; ac_rfl
-    have hent :
-        sessionStateAt A x.ss G' (x.model C S uuidTryParse).2 ⊢
-          ⌜(x.model C S uuidTryParse).1 ≠ .error .panic ∧ sf.trace = s0.trace⌝ ∗
-            (∃∗ G'' : SessionGhost, ⌜x.G.AfterTryDecrypt (x.model C S uuidTryParse).1.toBool G''⌝ ∗
-              sessionStateAt A x.ss G'' (x.model C S uuidTryParse).2) :=
-      Entails.pure_right ⟨hnpan, htrace_sf⟩
-        (Entails.trans (Entails.pure_right hG' (Entails.refl _))
-          (Entails.sepExists_intro (P := fun G'' => ⌜x.G.AfterTryDecrypt (x.model C S uuidTryParse).1.toBool G''⌝ ∗
-            sessionStateAt A x.ss G'' (x.model C S uuidTryParse).2) G'))
-    have hm4 := Satisfies.mono (sepConj_mono_left hent) hm3
-    convert hm4 using 1; ac_rfl
-  refine reaches_outcome.of_codeLoaded fun hL => ?_
-  obtain ⟨sf, hsteps, ⟨hpc_sf, hrun_sf, hsp_sf, hcc_sf, hpost_sf⟩ | ⟨_, hfalse⟩⟩ := hcomb hL
-  · exact reaches_outcome_steps hsteps
-      (reaches_outcome.of_outcome (Or.inl ⟨⟨hpc_sf, hsp_sf, hrun_sf⟩, ⟨hsp_sf, hcc_sf⟩, hpost_sf⟩))
-  · exact hfalse.elim
-
-theorem reaches_epilogue_to_outcome_fn {img : Obj.Image} {C : Crypto}
-    {decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8))}
-    {A : RustAlloc} {ctl : BitVec 64} {S : SpqrModel} {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (x : TryDecryptGhost) (G' : SessionGhost) (R : SepProp) (s0 s : State)
-    (hnpan : (x.modelFn C decFn S uuidTryParse).1 ≠ .error .panic)
-    (hG' : x.G.AfterTryDecrypt (x.modelFn C decFn S uuidTryParse).1.toBool G')
-    (hreach : reaches_pc (tripleRatchetProgAtExt img.base ext) (retEpiloguePC img) s
-      (fun s1 => tryDecryptMidMeta img s0 s1 ∧
-        (s1.mem ⊨ sessionStateAt A x.ss G' (x.modelFn C decFn S uuidTryParse).2 ∗
-          decResultFnAt A x.ret (x.modelFn C decFn S uuidTryParse).1 ∗ memRegion (s0.sp - 1504#64) 1408 ∗
-          tryDecryptCommonHeap A ctl img x (decryptDraws C x.st x.msg.senderRatchetKey x.rest) s0 ∗ R))) :
-    reaches_outcome (tripleRatchetProgAtExt img.base ext)
-      (tryDecryptFnSpec C decFn A ctl uuidTryParse S img) x R s0 s := by
-  have hentry := tryDecryptEntry_eq_fnAddr (ext := ext) himg
-  have hcomb : reaches_pc (tripleRatchetProgAtExt img.base ext) (s0.readReg64 .x30) s
-      (fun sf => sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧
-        (sf.mem ⊨ (tryDecryptFnSpec C decFn A ctl uuidTryParse S img).post x s0 sf ∗ R)) := by
-    refine reaches_pc_seq hreach ?_
-    intro s1 hpc1 _ ⟨⟨hrun1, hsp1, hs0_align, hsp_align1, _, htrace1, _, _, hvregs1⟩, hm1⟩
-    dsimp only [retEpiloguePC] at hpc1; rw [hentry] at hpc1; unfold tryDecryptCommonHeap at hm1
-    have hm1_re : s1.mem ⊨
-        (stackAt (s0.sp - 1504#64) tryDecryptSubStack ∗
-          memRegion (s0.sp - 1504#64) 1408 ∗ tryDecryptSavedRegs s0.sp s0) ∗
-        (sessionStateAt A x.ss G' (x.modelFn C decFn S uuidTryParse).2 ∗
-         decResultFnAt A x.ret (x.modelFn C decFn S uuidTryParse).1 ∗ protocolAddressAt A x.rem x.remA ∗
-         protocolAddressAt A x.loc x.locA ∗ signalMessageAt A x.msgG x.msgA x.msg ∗
-         tapeAfter ctl x.cur x.rest (decryptDraws C x.st x.msg.senderRatchetKey x.rest) ∗
-         logOff img ∗ A.pool ∗ R) := by convert hm1 using 1; ac_rfl
-    refine reaches_pc_mono (sepWP_to_reaches_pc
-      (tryDecrypt_epilogue_394_wp s0 s1 hpc1 hrun1 hsp1 hs0_align hsp_align1 htrace1 hvregs1) hm1_re) ?_
-    intro sf _ _ ⟨P_f, hm_sf, hsp_sf, htrace_sf, hcc_sf, hP_f⟩
-    refine ⟨hsp_sf, hcc_sf, ?_⟩
-    have hm2 := Satisfies.mono (sepConj_mono_left hP_f) hm_sf
-    simp only [tryDecryptFnSpec, Spec.inImage]
-    have hm3 : sf.mem ⊨
-        sessionStateAt A x.ss G' (x.modelFn C decFn S uuidTryParse).2 ∗
-        (decResultFnAt A x.ret (x.modelFn C decFn S uuidTryParse).1 ∗ protocolAddressAt A x.rem x.remA ∗
-         protocolAddressAt A x.loc x.locA ∗ signalMessageAt A x.msgG x.msgA x.msg ∗
-         tapeAfter ctl x.cur x.rest (decryptDraws C x.st x.msg.senderRatchetKey x.rest) ∗
-         logOff img ∗ stackAt s0.sp rootStack ∗ A.pool ∗ R) := by convert hm2 using 1; ac_rfl
-    have hent :
-        sessionStateAt A x.ss G' (x.modelFn C decFn S uuidTryParse).2 ⊢
-          ⌜(x.modelFn C decFn S uuidTryParse).1 ≠ .error .panic ∧ sf.trace = s0.trace⌝ ∗
-            (∃∗ G'' : SessionGhost, ⌜x.G.AfterTryDecrypt (x.modelFn C decFn S uuidTryParse).1.toBool G''⌝ ∗
-              sessionStateAt A x.ss G'' (x.modelFn C decFn S uuidTryParse).2) :=
-      Entails.pure_right ⟨hnpan, htrace_sf⟩
-        (Entails.trans (Entails.pure_right hG' (Entails.refl _))
-          (Entails.sepExists_intro (P := fun G'' => ⌜x.G.AfterTryDecrypt (x.modelFn C decFn S uuidTryParse).1.toBool G''⌝ ∗
-            sessionStateAt A x.ss G'' (x.modelFn C decFn S uuidTryParse).2) G'))
-    have hm4 := Satisfies.mono (sepConj_mono_left hent) hm3
-    convert hm4 using 1; ac_rfl
-  refine reaches_outcome.of_codeLoaded fun hL => ?_
-  obtain ⟨sf, hsteps, ⟨hpc_sf, hrun_sf, hsp_sf, hcc_sf, hpost_sf⟩ | ⟨_, hfalse⟩⟩ := hcomb hL
-  · exact reaches_outcome_steps hsteps
-      (reaches_outcome.of_outcome (Or.inl ⟨⟨hpc_sf, hsp_sf, hrun_sf⟩, ⟨hsp_sf, hcc_sf⟩, hpost_sf⟩))
-  · exact hfalse.elim
-
 theorem decRel_afterTrFrom (G : SessionGhost) : G.AfterTryDecrypt false G.afterTrFrom :=
   ⟨⟨rfl, rfl, rfl, rfl⟩, rfl, rfl, rfl, rfl⟩
 
 /-! ## `RelocBytes`: Byte-Slice and Word-Array Relocation Combinators -/
 
-def RelocBytes (n : Nat) (P : BitVec 64 → SepProp) : Prop :=
+@[expose] def RelocBytes (n : Nat) (P : BitVec 64 → SepProp) : Prop :=
   ∀ (p : BitVec 64) (R : SepProp) (m : Memory), (m ⊨ P p ∗ R) →
     ∃ (bs : List (BitVec 8)) (H : SepProp),
       bs.length = n ∧ (m ⊨ ((p ↦ₛ bs) ∗ H) ∗ R) ∧ (∀ q : BitVec 64, (q ↦ₛ bs) ∗ H ⊢ P q)
@@ -389,18 +184,12 @@ theorem relocBytes_speBodyAt (A : RustAlloc) (fnName : List (BitVec 8))
 
 /-! ## `speAt` and `speBodyAt` 5-Word Relocation -/
 
-def words5At (a w0 w1 w2 w3 w4 : BitVec 64) : SepProp :=
+@[expose] def words5At (a w0 w1 w2 w3 w4 : BitVec 64) : SepProp :=
   (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) ∗ ((a + 16#64) ↦₆₄ w2) ∗ ((a + 24#64) ↦₆₄ w3) ∗ ((a + 32#64) ↦₆₄ w4)
 
 theorem words5At_entails_memRegion (a w0 w1 w2 w3 w4 : BitVec 64) :
     words5At a w0 w1 w2 w3 w4 ⊢ memRegion a 40 := by
-  unfold words5At
-  refine Entails.trans (sepConj_mono (pointsTo64_entails_memRegion _ _) (sepConj_mono (pointsTo64_entails_memRegion _ _)
-    (sepConj_mono (pointsTo64_entails_memRegion _ _) (sepConj_mono (pointsTo64_entails_memRegion _ _) (pointsTo64_entails_memRegion _ _))))) ?_
-  rw [show a + 32#64 = (a + 24#64) + 8#64 by bv_omega, ← memRegion_split (a + 24#64) 8 8 (by decide),
-      show a + 24#64 = (a + 16#64) + 8#64 by bv_omega, ← memRegion_split (a + 16#64) 8 16 (by decide),
-      show a + 16#64 = (a + 8#64) + 8#64 by bv_omega, ← memRegion_split (a + 8#64) 8 24 (by decide),
-      ← memRegion_split a 8 32 (by decide)]; exact Entails.refl _
+  sep_interval
 
 theorem exists_words5_of_length_40 {bs : List (BitVec 8)} (h : bs.length = 40) :
     ∃ w0 w1 w2 w3 w4 : BitVec 64, ∀ a : BitVec 64, (a ↦ₛ bs) = words5At a w0 w1 w2 w3 w4 := by
@@ -456,34 +245,10 @@ theorem exists_words3_of_memRegion_24 {a : BitVec 64} {R : SepProp} {m : Memory}
   rw [(List.take_append_drop 16 bs).symm, pointsToBytes_append, h0, hp0 a, ht2, ← pointsTo64_eq_pointsToBytes] at hm
   convert hm using 1; ac_rfl
 
-/-- The state invariant carried inside `SepWP` proofs (`tryDecryptMidMeta` without `img.CallInv`,
-which `reaches_pc_callInv` preserves automatically at the `reaches_pc` level). -/
-def tryDecryptWPInv (s0 s : State) : Prop :=
+/-- State invariant carried inside `SepWP` proofs (`tryDecryptMidMeta_placed` without code-loadedness). -/
+@[expose] def tryDecryptWPInv (s0 s : State) : Prop :=
   s.status = .Running ∧ s.sp = s0.sp - 1504#64 ∧ s0.spAligned = true ∧ s.spAligned = true ∧
   s.readReg64 .x29 = s0.sp - 96#64 ∧ (s.trace = s0.trace ∧ calleeSavedVRegs s = calleeSavedVRegs s0)
-
-theorem tryDecryptMidMeta.to_wpInv {img : Obj.Image} {s0 s : State}
-    (h : tryDecryptMidMeta img s0 s) : tryDecryptWPInv s0 s := by
-  rcases h with ⟨h1, h2, h3, h4, h5, h6, _, _, h9⟩; exact ⟨h1, h2, h3, h4, h5, ⟨h6, h9⟩⟩
-
-theorem reaches_pc_callInv {prog : Program} {img : Obj.Image} {t : BitVec 64} {s : State}
-    {Q oom : State → Prop} (hinv : img.FrozenLoaded s ∧ s.symtab = img.symtab)
-    (h : reaches_pc prog t s Q oom) :
-    reaches_pc prog t s (fun sf => Q sf ∧ img.FrozenLoaded sf ∧ sf.symtab = img.symtab) oom := by
-  intro hL; obtain ⟨sf, hst, ⟨hpc, hrun, hq⟩ | hoom⟩ := h hL
-  · exact ⟨sf, hst, Or.inl ⟨hpc, hrun, hq, hinv.1.of_keepsFrozen hst.keepsFrozen, hst.symtab_eq.trans hinv.2⟩⟩
-  · exact ⟨sf, hst, Or.inr hoom⟩
-
-theorem sepWP_to_reaches_pc_midMeta {prog : Program} {img : Obj.Image} {target_pc : BitVec 64}
-    {s0 s : State} {P R : SepProp} {post : State → SepProp → Prop}
-    (hmeta : tryDecryptMidMeta img s0 s)
-    (hwp : SepWP prog target_pc s P (fun sf P_f => post sf P_f ∧ tryDecryptWPInv s0 sf))
-    (hm : s.mem ⊨ P ∗ R) :
-    reaches_pc prog target_pc s (fun sf => ∃ P_f, sf.mem ⊨ P_f ∗ R ∧ post sf P_f ∧ tryDecryptMidMeta img s0 sf) := by
-  have hinv : img.FrozenLoaded s ∧ s.symtab = img.symtab := ⟨hmeta.2.2.2.2.2.2.1, hmeta.2.2.2.2.2.2.2.1⟩
-  refine reaches_pc_mono (reaches_pc_callInv hinv (sepWP_to_reaches_pc hwp hm)) ?_
-  intro sf _ _ ⟨⟨P_f, hm_f, hpost_f, ⟨h1, h2, h3, h4, h5, ⟨h6, h9⟩⟩⟩, h7, h8⟩
-  exact ⟨P_f, hm_f, hpost_f, ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9⟩⟩
 
 /-! ## `SepWP` Framing and Composition Combinators -/
 
@@ -531,12 +296,6 @@ elab "sep_ac_rfl" : tactic =>
     unless (← getGoals).isEmpty do
       withReducible do evalTactic (← `(tactic| ac_rfl))
 
-theorem fnAddr_tryDecrypt_add_eq {b : BitVec 64} {ext : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff tryDecryptName + k = libsignalSessionCode.fnOff name := by fnoff_eq) :
-    (tripleRatchetProgAtExt b ext).fnAddr tryDecryptName + BitVec.ofNat 64 k =
-      (tripleRatchetProgAtExt b ext).fnAddr name := by
-  simp only [Program.fnAddr_rebase, BitVec.add_assoc, ← BitVec.ofNat_add, hk]
-
 theorem stackAt_sub (sp : BitVec 64) (k n : Nat) (hkn : k ≤ n) (hn : n ≤ 2 ^ 64) :
     stackAt sp n = stackAt sp k ∗ memRegion (sp - BitVec.ofNat 64 n) (n - k) := by
   unfold stackAt
@@ -560,13 +319,6 @@ theorem SepWP.rw_pre {prog : Program} {target : BitVec 64} {s : State}
     {P P' : SepProp} {Q : State → SepProp → Prop}
     (hP : P = P') (h : SepWP prog target s P' Q) : SepWP prog target s P Q := hP ▸ h
 
-theorem fnAddr_tryDecrypt_rel64 {b : BitVec 64} {ext : String → Option (State → State)}
-    {callee : String} {off' : Nat} {d : BitVec 64}
-    (hfn' : libsignalSessionCode.fnOff callee = off')
-    (hd : (bv% (ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>") : BitVec 64) + d = BitVec.ofNat 64 off') :
-    (tripleRatchetProgAtExt b ext).fnAddr callee = (tripleRatchetProgAtExt b ext).fnAddr tryDecryptName + d := by
-  rw [Program.fnAddr_rebase, Program.fnAddr_rebase, (ls_lemma% fnOff "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"), hfn', BitVec.add_assoc, hd]
-
 theorem exists_word32_of_length_4 {bs : List (BitVec 8)} (h : bs.length = 4) :
     ∃ w : BitVec 32, ∀ a : BitVec 64, (a ↦ₛ bs) = (a ↦₃₂ w) := by
   refine ⟨pack32 (bs.getD 0 0#8) (bs.getD 1 0#8) (bs.getD 2 0#8) (bs.getD 3 0#8), fun a => ?_⟩
@@ -576,41 +328,6 @@ theorem exists_word32_of_length_4 {bs : List (BitVec 8)} (h : bs.length = 4) :
 theorem exists_words16_of_length_16 {bs : List (BitVec 8)} (h : bs.length = 16) :
     ∃ w0 w1 : BitVec 64, ∀ a : BitVec 64, (a ↦ₛ bs) = (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) := by
   obtain ⟨w0, w1, _, hp⟩ := exists_unpack64_of_length_16 h; exact ⟨w0, w1, hp⟩
-
-theorem reaches_pc_seq_callInv {prog : Program} {img : Obj.Image} {mid t : BitVec 64}
-    {s : State} {Q post : State → Prop} (hinv : img.FrozenLoaded s ∧ s.symtab = img.symtab)
-    (h1 : reaches_pc prog mid s Q)
-    (h2 : ∀ sm, sm.pc = mid → sm.status = .Running → Q sm →
-      (img.FrozenLoaded sm ∧ sm.symtab = img.symtab) → reaches_pc prog t sm post) :
-    reaches_pc prog t s post :=
-  reaches_pc_seq (reaches_pc_callInv hinv h1) fun sm hpc hrun ⟨hq, h1, h2'⟩ => h2 sm hpc hrun hq ⟨h1, h2'⟩
-
-theorem reaches_pc_call_inImage {α : Type} {prog : Program} {img : Obj.Image}
-    {callee ret_pc exit_pc : BitVec 64} {spec : Spec α}
-    (h_callee : subroutine_ok prog callee (spec.inImage img)) (x : α) (R : SepProp)
-    {s_call : State} {post : State → Prop}
-    (h_pc : s_call.pc = callee) (h_run : s_call.status = .Running)
-    (h_lr : s_call.readReg64 Reg.lr = ret_pc)
-    (h_inv : img.FrozenLoaded s_call ∧ s_call.symtab = img.symtab)
-    (h_pre : s_call.mem ⊨ spec.pre x s_call ∗ R)
-    (h_cont : ∀ s_ret : State,
-      s_ret.pc = ret_pc → s_ret.status = .Running → s_ret.sp = s_call.sp →
-      CalleeSavedPreserved s_call s_ret → (img.FrozenLoaded s_ret ∧ s_ret.symtab = img.symtab) →
-      (s_ret.mem ⊨ spec.post x s_call s_ret ∗ R) → reaches_pc prog exit_pc s_ret post)
-    (h_sp_align : s_call.spAligned = true)
-    (h_no_panic : ∀ sf, sf.status = .Panicked → ¬(sf.mem ⊨ spec.onPanic x s_call sf ∗ R) := by
-      intro _ _ hp; exact not_satisfies_false_sepConj hp)
-    (h_no_exit : ∀ code sf, sf.status = .Exited code → ¬(sf.mem ⊨ spec.onExit x code s_call sf ∗ R) := by
-      intro _ _ _ he; exact not_satisfies_false_sepConj he)
-    (h_no_oom : ∀ sf, sf.status = .OutOfMemory → ¬(sf.mem ⊨ spec.onOom x s_call sf ∗ R) := by
-      intro _ _ ho; exact not_satisfies_false_sepConj ho) :
-    reaches_pc prog exit_pc s_call post := by
-  have h_pre_in : s_call.mem ⊨ (spec.inImage img).pre x s_call ∗ R := by
-    simp only [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj]; exact ⟨h_inv, h_pre⟩
-  have h_reach := subroutine_ok_apply_full h_callee x R h_pc h_run h_pre_in h_sp_align h_no_panic h_no_exit h_no_oom
-  rw [h_lr] at h_reach
-  refine reaches_pc_seq (reaches_pc_callInv h_inv h_reach) fun s_ret h_ret_pc h_ret_run ⟨⟨h_post, h_sp, h_cs⟩, h1, h2⟩ =>
-    h_cont s_ret h_ret_pc h_ret_run h_sp h_cs ⟨h1, h2⟩ h_post
 
 theorem exists_word32_of_memRegion_4 {a : BitVec 64} {R : SepProp} {m : Memory}
     (hm : m ⊨ memRegion a 4 ∗ R) : ∃ w : BitVec 32, m ⊨ (a ↦₃₂ w) ∗ R := by
@@ -624,33 +341,16 @@ theorem exists_word64_of_memRegion_8 {a : BitVec 64} {R : SepProp} {m : Memory}
   rcases hm with ⟨bs, hm⟩; rw [sepConj_assoc, satisfies_pure_sepConj] at hm; rcases hm with ⟨hlen, hm⟩
   obtain ⟨w, hw⟩ := exists_unpack64_of_length_8 hlen; exact ⟨w, by rwa [pointsTo64_eq_pointsToBytes, ← hw]⟩
 
-theorem tryDecryptWPInv.to_midMeta {img : Obj.Image} {s0 sf : State}
-    (hwp : tryDecryptWPInv s0 sf) (hinv : img.FrozenLoaded sf ∧ sf.symtab = img.symtab) :
-    tryDecryptMidMeta img s0 sf :=
-  ⟨hwp.1, hwp.2.1, hwp.2.2.1, hwp.2.2.2.1, hwp.2.2.2.2.1, hwp.2.2.2.2.2.1, hinv.1, hinv.2, hwp.2.2.2.2.2.2⟩
-
-theorem sepWP_to_reaches_pc_with_midMeta {prog : Program} {img : Obj.Image}
-    {target : BitVec 64} {s0 s : State} {P R : SepProp}
-    {post : State → SepProp → Prop} {Q : State → Prop}
-    (hmeta : tryDecryptMidMeta img s0 s) (hwp : SepWP prog target s P post) (hm : s.mem ⊨ P ∗ R)
-    (hcont : ∀ sf P_f, sf.pc = target → post sf P_f →
-      (img.FrozenLoaded sf ∧ sf.symtab = img.symtab) → (sf.mem ⊨ P_f ∗ R) → Q sf) :
-    reaches_pc prog target s Q := by
-  have hinv : img.FrozenLoaded s ∧ s.symtab = img.symtab := ⟨hmeta.2.2.2.2.2.2.1, hmeta.2.2.2.2.2.2.2.1⟩
-  refine reaches_pc_mono (reaches_pc_callInv hinv (sepWP_to_reaches_pc hwp hm)) ?_
-  intro sf hpc _ ⟨⟨P_f, hm_f, hpost_f⟩, h7, h8⟩; exact hcont sf P_f hpc hpost_f ⟨h7, h8⟩ hm_f
-
-
-def words4At (a w0 w1 w2 w3 : BitVec 64) : SepProp :=
+@[expose] def words4At (a w0 w1 w2 w3 : BitVec 64) : SepProp :=
   (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) ∗ ((a + 16#64) ↦₆₄ w2) ∗ ((a + 24#64) ↦₆₄ w3)
 
-def words8At (a w0 w1 w2 w3 w4 w5 w6 w7 : BitVec 64) : SepProp :=
+@[expose] def words8At (a w0 w1 w2 w3 w4 w5 w6 w7 : BitVec 64) : SepProp :=
   words4At a w0 w1 w2 w3 ∗ words4At (a + 32#64) w4 w5 w6 w7
 
-def words16At (a w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 : BitVec 64) : SepProp :=
+@[expose] def words16At (a w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 : BitVec 64) : SepProp :=
   words8At a w0 w1 w2 w3 w4 w5 w6 w7 ∗ words8At (a + 64#64) w8 w9 w10 w11 w12 w13 w14 w15
 
-def words32At (a w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15
+@[expose] def words32At (a w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15
     w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 w29 w30 w31 : BitVec 64) : SepProp :=
   words16At a w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 ∗
   words16At (a + 128#64) w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 w29 w30 w31
@@ -702,39 +402,21 @@ theorem exists_word8_of_memRegion_1 {a : BitVec 64} {R : SepProp} {m : Memory}
 
 theorem words4At_entails_memRegion (a w0 w1 w2 w3 : BitVec 64) :
     words4At a w0 w1 w2 w3 ⊢ memRegion a 32 := by
-  unfold words4At
-  refine Entails.trans (sepConj_mono (pointsTo64_entails_memRegion a w0)
-    (sepConj_mono (pointsTo64_entails_memRegion (a + 8#64) w1)
-      (sepConj_mono (pointsTo64_entails_memRegion (a + 16#64) w2)
-        (pointsTo64_entails_memRegion (a + 24#64) w3)))) ?_
-  rw [show a + 24#64 = (a + 16#64) + 8#64 by bv_omega, ← memRegion_split (a + 16#64) 8 8 (by decide),
-      show a + 16#64 = (a + 8#64) + 8#64 by bv_omega, ← memRegion_split (a + 8#64) 8 16 (by decide),
-      ← memRegion_split a 8 24 (by decide)]
-  exact Entails.refl _
+  sep_interval
 
 theorem words8At_entails_memRegion (a w0 w1 w2 w3 w4 w5 w6 w7 : BitVec 64) :
     words8At a w0 w1 w2 w3 w4 w5 w6 w7 ⊢ memRegion a 64 := by
-  unfold words8At
-  refine Entails.trans (sepConj_mono (words4At_entails_memRegion a w0 w1 w2 w3)
-    (words4At_entails_memRegion (a + 32#64) w4 w5 w6 w7)) ?_
-  rw [← memRegion_split a 32 32 (by decide)]; exact Entails.refl _
+  sep_interval
 
 theorem words16At_entails_memRegion (a w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 : BitVec 64) :
     words16At a w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 ⊢ memRegion a 128 := by
-  unfold words16At
-  refine Entails.trans (sepConj_mono (words8At_entails_memRegion a w0 w1 w2 w3 w4 w5 w6 w7)
-    (words8At_entails_memRegion (a + 64#64) w8 w9 w10 w11 w12 w13 w14 w15)) ?_
-  rw [← memRegion_split a 64 64 (by decide)]; exact Entails.refl _
+  sep_interval
 
 theorem words32At_entails_memRegion (a w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15
     w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 w29 w30 w31 : BitVec 64) :
     words32At a w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15
       w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 w29 w30 w31 ⊢ memRegion a 256 := by
-  unfold words32At
-  refine Entails.trans (sepConj_mono
-    (words16At_entails_memRegion a w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15)
-    (words16At_entails_memRegion (a + 128#64) w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 w29 w30 w31)) ?_
-  rw [← memRegion_split a 128 128 (by decide)]; exact Entails.refl _
+  sep_interval
 
 theorem exists_words5_of_memRegion_40 {a : BitVec 64} {R : SepProp} {m : Memory}
     (hm : m ⊨ memRegion a 40 ∗ R) : ∃ r0 r1 r2 r3 r4 : BitVec 64, m ⊨ words5At a r0 r1 r2 r3 r4 ∗ R := by
@@ -768,82 +450,21 @@ theorem stackAt_dropChainStackX_sub (sp : BitVec 64) :
     stackAt sp dropChainStackX = stackAt sp extHookStack ∗ memRegion (sp - 16432#64) 48 := by
   simpa [dropChainStackX, extHookStack] using stackAt_sub sp extHookStack dropChainStackX (by decide) (by decide)
 
-theorem SepWP.bind_framed_callInv {prog : Program} {img : Obj.Image} {mid_pc target_pc : BitVec 64}
-    {s : State} {P1 F P : SepProp} {Q1 Q2 : State → SepProp → Prop}
-    (hinv : img.FrozenLoaded s ∧ s.symtab = img.symtab)
-    (h1 : SepWP prog mid_pc s P1 Q1) (hP : P = P1 ∗ F)
-    (h2 : ∀ s1 P1', Q1 s1 P1' → s1.pc = mid_pc →
-      (img.FrozenLoaded s1 ∧ s1.symtab = img.symtab) → SepWP prog target_pc s1 (P1' ∗ F) Q2) :
-    SepWP prog target_pc s P Q2 := by
-  unfold SepWP at *; intro R hm hL; rw [hP, sepConj_assoc] at hm
-  obtain ⟨s1, hst1, ⟨hpc1, _, ⟨P1', hm1, hQ1⟩, h1', h2'⟩ | ⟨_, hfalse⟩⟩ :=
-    reaches_pc_callInv hinv (h1 (F ∗ R) hm) hL
-  · rw [← sepConj_assoc] at hm1
-    obtain ⟨sf, hst2, hout⟩ := h2 s1 P1' hQ1 hpc1 ⟨h1', h2'⟩ R hm1 (hst1.codeLoaded hL)
-    exact ⟨sf, hst1.trans hst2, hout⟩
-  · exact (not_satisfies_false_sepConj hfalse).elim
-
-@[wp_norm] theorem frozenLoaded_writeReg64 (img : Obj.Image) (s : State) (r : Reg) (v : BitVec 64) :
-    img.FrozenLoaded (s.writeReg64 r v) ↔ img.FrozenLoaded s := by
-  have hmem : (s.writeReg64 r v).mem = s.mem := by cases s; cases r <;> rfl
-  rw [Obj.Image.frozenLoaded_iff, Obj.Image.frozenLoaded_iff, hmem]
-
-@[wp_norm] theorem frozenLoaded_setPC (img : Obj.Image) (s : State) (pc : BitVec 64) :
-    img.FrozenLoaded (s.setPC pc) ↔ img.FrozenLoaded s := by
-  have hmem : (s.setPC pc).mem = s.mem := by cases s; rfl
-  rw [Obj.Image.frozenLoaded_iff, Obj.Image.frozenLoaded_iff, hmem]
-
-@[wp_norm] theorem frozenLoaded_setPState (img : Obj.Image) (s : State) (ps : PState) :
-    img.FrozenLoaded (s.setPState ps) ↔ img.FrozenLoaded s := by
-  have hmem : (s.setPState ps).mem = s.mem := by cases s; rfl
-  rw [Obj.Image.frozenLoaded_iff, Obj.Image.frozenLoaded_iff, hmem]
-
-@[wp_norm] theorem symtab_writeReg64 (s : State) (r : Reg) (v : BitVec 64) :
-    (s.writeReg64 r v).symtab = s.symtab := by cases s; cases r <;> rfl
-@[wp_norm] theorem symtab_setPC (s : State) (pc : BitVec 64) :
-    (s.setPC pc).symtab = s.symtab := by cases s; rfl
-@[wp_norm] theorem symtab_setPState (s : State) (ps : PState) :
-    (s.setPState ps).symtab = s.symtab := by cases s; rfl
 @[wp_norm] theorem exists_two_pow_one : (∃ k : Nat, 1 = 2 ^ k) ↔ True := iff_true_intro ⟨0, rfl⟩
 @[wp_norm] theorem exists_two_pow_eight : (∃ k : Nat, 8 = 2 ^ k) ↔ True := iff_true_intro ⟨3, rfl⟩
 
-namespace ChainLookupFacts
+/-! ## Relocatable `[LibsignalPlacement]` Definitions & Epilogue (Block `131`) -/
 
-theorem tryDecrypt_dealloc_ok {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr tryDecryptName + BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_dealloc" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))) (rustDeallocSpec A) :=
-  hA.dealloc_ok_at tryDecryptName (num% (ls_off% "__rustc::__rust_dealloc" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-    (by fnoff_eq)
-
-theorem tryDecrypt_dealloc_ok_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hA : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr tryDecryptName + BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_dealloc" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>")))
-      ((rustDeallocExternSpecWithStack A extHookStack).inImage img) :=
-  hA.dealloc_ok_at tryDecryptName (num% (ls_off% "__rustc::__rust_dealloc" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-    (by fnoff_eq)
-
-end ChainLookupFacts
-
-/-! ## Relocatable `[LibsignalPlacement]` Definitions & Epilogue (Block `130`) -/
-
-open CryptoVerification.LibsignalSession
-
-def tryDecryptDummyImg [LibsignalPlacement] : Obj.Image :=
-  { (default : Obj.Image) with base := lsLogFilterAddr - logFilterAddr { (default : Obj.Image) with base := 0 } }
+/-- Unit token for relocatable `logOff` and `tryDecryptCommonHeap` under `[LibsignalPlacement]`. -/
+@[expose] def tryDecryptDummyImg : Unit := ()
 
 @[simp, arm64_norm, wp_norm]
 theorem logFilterAddr_tryDecryptDummyImg [LibsignalPlacement] :
-    logFilterAddr tryDecryptDummyImg = lsLogFilterAddr := by
-  simp only [tryDecryptDummyImg, logFilterAddr]; bv_omega
+    CryptoVerification.LibsignalSession.logFilterAddr tryDecryptDummyImg = lsLogFilterAddr := rfl
 
 @[simp, arm64_norm, wp_norm]
 theorem logOff_tryDecryptDummyImg [LibsignalPlacement] :
-    logOff tryDecryptDummyImg = (lsLogFilterAddr ↦₆₄ 0#64) := by
-  simp only [logOff, logFilterAddr_tryDecryptDummyImg]
+    logOff tryDecryptDummyImg = (lsLogFilterAddr ↦₆₄ 0#64) := rfl
 
 abbrev tryDecryptEntry_placed [LibsignalPlacement] : BitVec 64 := (blkPl_131).base
 abbrev segLoadRatchetPC_placed [LibsignalPlacement] : BitVec 64 := tryDecryptEntry_placed + 0x1d8#64
@@ -854,7 +475,7 @@ abbrev errTailPC_placed [LibsignalPlacement] : BitVec 64 := tryDecryptEntry_plac
 abbrev errDropChainLoopPC_placed [LibsignalPlacement] : BitVec 64 := tryDecryptEntry_placed + 0x33c#64
 abbrev retEpiloguePC_placed [LibsignalPlacement] : BitVec 64 := tryDecryptEntry_placed + 0x394#64
 
-def tryDecryptMidMeta_placed [LibsignalPlacement] (s0 s : State) : Prop :=
+@[expose] def tryDecryptMidMeta_placed [LibsignalPlacement] (s0 s : State) : Prop :=
   s.status = .Running ∧ s.sp = s0.sp - 1504#64 ∧ s0.spAligned = true ∧ s.spAligned = true ∧
   s.readReg64 .x29 = s0.sp - 96#64 ∧ s.trace = s0.trace ∧
   LibsignalCodeLoaded lsmpl s.mem ∧ calleeSavedVRegs s = calleeSavedVRegs s0
@@ -968,10 +589,10 @@ theorem reaches_epilogue_to_outcome_placed [LibsignalPlacement] {C : Crypto} {A 
           tryDecryptCommonHeap A ctl tryDecryptDummyImg x
             (decryptDraws C x.st x.msg.senderRatchetKey x.rest) s0 ∗ R))) :
     reaches_outcome ((blkPC_131).rebase (blkPl_131).base H)
-      (tryDecryptSpec C A ctl uuidTryParse S tryDecryptDummyImg) x R s0 s := by
+      (tryDecryptRawSpecPlaced C A ctl uuidTryParse S) x R s0 s := by
   have hcomb : reaches_pc ((blkPC_131).rebase (blkPl_131).base H) (s0.readReg64 .x30) s
       (fun sf => sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧
-        (sf.mem ⊨ (tryDecryptSpec C A ctl uuidTryParse S tryDecryptDummyImg).post x s0 sf ∗ R)) := by
+        (sf.mem ⊨ (tryDecryptRawSpecPlaced C A ctl uuidTryParse S).post x s0 sf ∗ R)) := by
     refine reaches_pc_seq hreach ?_
     intro s1 hpc1 _ ⟨⟨hrun1, hsp1, hs0_align, hsp_align1, _, htrace1, _, hvregs1⟩, hm1⟩
     unfold tryDecryptCommonHeap at hm1
@@ -988,7 +609,7 @@ theorem reaches_epilogue_to_outcome_placed [LibsignalPlacement] {C : Crypto} {A 
     intro sf _ _ ⟨P_f, hm_sf, hsp_sf, htrace_sf, hcc_sf, hP_f⟩
     refine ⟨hsp_sf, hcc_sf, ?_⟩
     have hm2 := Satisfies.mono (sepConj_mono_left hP_f) hm_sf
-    simp only [tryDecryptSpec, Spec.inImage]
+    dsimp only [tryDecryptRawSpecPlaced]
     have hm3 : sf.mem ⊨
         sessionStateAt A x.ss G' (x.model C S uuidTryParse).2 ∗
         (vecResultAt A x.ret (x.model C S uuidTryParse).1 ∗ protocolAddressAt A x.rem x.remA ∗
@@ -1025,10 +646,10 @@ theorem reaches_epilogue_to_outcome_fn_placed [LibsignalPlacement] {C : Crypto}
           tryDecryptCommonHeap A ctl tryDecryptDummyImg x
             (decryptDraws C x.st x.msg.senderRatchetKey x.rest) s0 ∗ R))) :
     reaches_outcome ((blkPC_131).rebase (blkPl_131).base H)
-      (tryDecryptFnSpec C decFn A ctl uuidTryParse S tryDecryptDummyImg) x R s0 s := by
+      (tryDecryptFnRawSpecPlaced C decFn A ctl uuidTryParse S) x R s0 s := by
   have hcomb : reaches_pc ((blkPC_131).rebase (blkPl_131).base H) (s0.readReg64 .x30) s
       (fun sf => sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧
-        (sf.mem ⊨ (tryDecryptFnSpec C decFn A ctl uuidTryParse S tryDecryptDummyImg).post x s0 sf ∗ R)) := by
+        (sf.mem ⊨ (tryDecryptFnRawSpecPlaced C decFn A ctl uuidTryParse S).post x s0 sf ∗ R)) := by
     refine reaches_pc_seq hreach ?_
     intro s1 hpc1 _ ⟨⟨hrun1, hsp1, hs0_align, hsp_align1, _, htrace1, _, hvregs1⟩, hm1⟩
     unfold tryDecryptCommonHeap at hm1
@@ -1045,7 +666,7 @@ theorem reaches_epilogue_to_outcome_fn_placed [LibsignalPlacement] {C : Crypto}
     intro sf _ _ ⟨P_f, hm_sf, hsp_sf, htrace_sf, hcc_sf, hP_f⟩
     refine ⟨hsp_sf, hcc_sf, ?_⟩
     have hm2 := Satisfies.mono (sepConj_mono_left hP_f) hm_sf
-    simp only [tryDecryptFnSpec, Spec.inImage]
+    dsimp only [tryDecryptFnRawSpecPlaced]
     have hm3 : sf.mem ⊨
         sessionStateAt A x.ss G' (x.modelFn C decFn S uuidTryParse).2 ∗
         (decResultFnAt A x.ret (x.modelFn C decFn S uuidTryParse).1 ∗ protocolAddressAt A x.rem x.remA ∗
@@ -1083,7 +704,7 @@ theorem SepWP.bind_framed_lscl {prog : Program} {pl : Obj.MultiPlacement} {mid_p
     exact ⟨sf, hst1.trans hst2, hout⟩
   · exact (not_satisfies_false_sepConj hfalse).elim
 
-def ErrTailState_placed [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def ErrTailState_placed [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (e : SignalProtocolError) (draws : Nat)
     (R : SepProp) (s0 s : State) : Prop :=
@@ -1095,7 +716,7 @@ def ErrTailState_placed [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     speBodyAt A (utf8 "decrypt") (sp + 0x168#64) e ∗ memRegion (sp + 0x190#64) 0x3f0 ∗
     tryDecryptCommonHeap A ctl tryDecryptDummyImg x draws s0 ∗ R)
 
-def ErrTailStateX_placed [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def ErrTailStateX_placed [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (e : SignalProtocolError) (draws : Nat)
     (R : SepProp) (s0 s : State) : Prop :=
@@ -1116,7 +737,7 @@ theorem ErrTailState_placed.toX [LibsignalPlacement] {A : RustAlloc} {ctl : BitV
     ErrTailStateX_placed A ctl x trG tr st1 e draws R s0 s :=
   ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1, true, nofun, h.2.2.2.2.1, h.2.2.2.2.2⟩
 
-def LoadRatchetState_placed [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def LoadRatchetState_placed [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (x : TryDecryptGhost) (R : SepProp) (s0 s : State) : Prop :=
   let sp := s0.sp - 1504#64
   s.pc = segLoadRatchetPC_placed ∧ tryDecryptMidMeta_placed s0 s ∧
@@ -1128,7 +749,7 @@ def LoadRatchetState_placed [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 6
     ((sp + 0x30#64) ↦₆₄ x.remA) ∗ memRegion (sp + 0x38#64) 0x548 ∗
     tryDecryptCommonHeap A ctl tryDecryptDummyImg x 0 s0 ∗ R)
 
-def FindChainState_placed [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def FindChainState_placed [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (R : SepProp) (s0 s : State) : Prop :=
   let sp := s0.sp - 1504#64
@@ -1143,7 +764,7 @@ def FindChainState_placed [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     ((sp + 0x28#64) ↦₃₂ x.msg.counter) ∗ memRegion (sp + 0x2c#64) 4 ∗ ((sp + 0x30#64) ↦₆₄ x.remA) ∗
     memRegion (sp + 0x140#64) 0x440 ∗ tryDecryptCommonHeap A ctl tryDecryptDummyImg x 0 s0 ∗ R)
 
-def DhStepState_placed [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def DhStepState_placed [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (R : SepProp) (s0 s : State) : Prop :=
   let sp := s0.sp - 1504#64
@@ -1157,7 +778,7 @@ def DhStepState_placed [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     ((sp + 0x28#64) ↦₃₂ x.msg.counter) ∗ memRegion (sp + 0x2c#64) 4 ∗ ((sp + 0x30#64) ↦₆₄ x.remA) ∗
     memRegion (sp + 0x140#64) 0x440 ∗ tryDecryptCommonHeap A ctl tryDecryptDummyImg x 0 s0 ∗ R)
 
-def ConsumeMsgKeyState_placed [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def ConsumeMsgKeyState_placed [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (ck : ChainKey) (draws : Nat)
     (R : SepProp) (s0 s : State) : Prop :=
@@ -1173,7 +794,7 @@ def ConsumeMsgKeyState_placed [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec
     ((sp + 0x2c0#64) ↦ₛ (chainKeyBytes ck).take 20) ∗ memRegion (sp + 0x2d4#64) 0x2ac ∗
     tryDecryptCommonHeap A ctl tryDecryptDummyImg x draws s0 ∗ R)
 
-def tryDecryptRawSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def tryDecryptRawSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.ss ∧ s.readReg64 .x2 = x.remA ∧
@@ -1185,21 +806,21 @@ def tryDecryptRawSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : B
     protocolAddressAt A x.loc x.locA ∗ signalMessageAt A x.msgG x.msgA x.msg ∗
     memRegion x.ret 48 ∗ tapeAt ctl x.cur x.rest ∗ logOff tryDecryptDummyImg ∗
     stackAt s.sp rootStack ∗ A.pool
-  post := (tryDecryptSpec C A ctl uuidParse S tryDecryptDummyImg).post
-  onPanic := (tryDecryptSpec C A ctl uuidParse S tryDecryptDummyImg).onPanic
+  post := (tryDecryptRawSpecPlaced C A ctl uuidParse S).post
+  onPanic := (tryDecryptRawSpecPlaced C A ctl uuidParse S).onPanic
 
-def tryDecryptPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def tryDecryptPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost :=
   withLsCodeLoaded lsmpl (tryDecryptRawSpec C A ctl uuidParse S)
 
-def tryDecryptFnRawSpec [LibsignalPlacement] (C : Crypto)
+@[expose] def tryDecryptFnRawSpec [LibsignalPlacement] (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
     (A : RustAlloc) (ctl : BitVec 64) (uuidParse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost where
   pre := (tryDecryptRawSpec C A ctl uuidParse S).pre
-  post := (tryDecryptFnSpec C decFn A ctl uuidParse S tryDecryptDummyImg).post
-  onPanic := (tryDecryptFnSpec C decFn A ctl uuidParse S tryDecryptDummyImg).onPanic
+  post := (tryDecryptFnRawSpecPlaced C decFn A ctl uuidParse S).post
+  onPanic := (tryDecryptFnRawSpecPlaced C decFn A ctl uuidParse S).onPanic
 
-def tryDecryptFnPlacedSpec [LibsignalPlacement] (C : Crypto)
+@[expose] def tryDecryptFnPlacedSpec [LibsignalPlacement] (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
     (A : RustAlloc) (ctl : BitVec 64) (uuidParse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost :=
   withLsCodeLoaded lsmpl (tryDecryptFnRawSpec C decFn A ctl uuidParse S)

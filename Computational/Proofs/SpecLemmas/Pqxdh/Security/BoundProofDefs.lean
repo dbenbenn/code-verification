@@ -25,7 +25,7 @@ Real-valued (`ℝ`) projections of the `ℝ≥0∞` PQXDH advantage predicates a
 together with `ENNReal.ofReal` bridge, comparison, and monotonicity lemmas for game-hop proofs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 namespace SignalPqxdh
@@ -34,7 +34,7 @@ open scoped ENNReal
 open OracleComp OracleSpec MeasureTheory
 
 /-- Reference deployment-scale replication parameters for numerical bound evaluation. -/
-def deploymentSetup : Setup :=
+@[expose] def deploymentSetup : Setup :=
   { N_id          := 2 ^ 20
     N_recv        := 32
     N_opk         := 32
@@ -42,42 +42,42 @@ def deploymentSetup : Setup :=
     N_send_opk    := 512
     N_send_no_opk := 512 }
 
-noncomputable def GapDhWithSignReal (P : Primitives)
+@[expose] noncomputable def GapDhWithSignReal (P : Primitives)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool) (pow8 : Bytes → Bytes)
     (A : GapDhWithSignAdv) : ℝ :=
   (GapDhWithSign P isValidDhTriple pow8 A).toReal
 
-noncomputable def KemShCrReal (P : Primitives) (A : KemShCrAdv) : ℝ :=
+@[expose] noncomputable def KemShCrReal (P : Primitives) (A : KemShCrAdv) : ℝ :=
   (KemShCr P A).toReal
 
-noncomputable def GapSigEufCmaReal (P : Primitives)
+@[expose] noncomputable def GapSigEufCmaReal (P : Primitives)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool) (A : GapSigEufCmaAdv) : ℝ :=
   (GapSigEufCma P isValidDhTriple A).toReal
 
-noncomputable def KeyInd1KeyRoAdvantageReal (S : Setup) (P : Primitives)
+@[expose] noncomputable def KeyInd1KeyRoAdvantageReal (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ℝ :=
   (KeyInd1KeyRoAdvantage S P A).toReal
 
-noncomputable def AeadIndCpaReal (P : Primitives) (A : AeadIndCpaAdv) : ℝ :=
+@[expose] noncomputable def AeadIndCpaReal (P : Primitives) (A : AeadIndCpaAdv) : ℝ :=
   (AeadIndCpa P A).toReal
 
-noncomputable def PrfHmacReal (P : Primitives) (A : PrfHmacAdv) : ℝ :=
+@[expose] noncomputable def PrfHmacReal (P : Primitives) (A : PrfHmacAdv) : ℝ :=
   (PrfHmac P A).toReal
 
-noncomputable def PrfChainKeyReal (P : Primitives) (A : PrfCkAdv) : ℝ :=
+@[expose] noncomputable def PrfChainKeyReal (P : Primitives) (A : PrfCkAdv) : ℝ :=
   (PrfChainKey P A).toReal
 
-noncomputable def PrfMsgKeysReal (P : Primitives) (A : PrfMsgKeysAdv) : ℝ :=
+@[expose] noncomputable def PrfMsgKeysReal (P : Primitives) (A : PrfMsgKeysAdv) : ℝ :=
   (PrfMsgKeys P A).toReal
 
-noncomputable def AuthAdvantageReal (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
+@[expose] noncomputable def AuthAdvantageReal (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
   (AuthAdvantage S P A).toReal
 
-noncomputable def Auth1KeyAdvantageReal (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
+@[expose] noncomputable def Auth1KeyAdvantageReal (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
   (Auth1KeyAdvantage S P A).toReal
 
 /-- Real-valued KEM δ-correctness predicate. -/
-def KemDeltaCorrectReal (P : Primitives) (δ : ℝ) : Prop :=
+@[expose] def KemDeltaCorrectReal (P : Primitives) (δ : ℝ) : Prop :=
   (𝒟[do
     let seed ← sampleRandom64
     let r ← sampleCoins32
@@ -116,10 +116,6 @@ theorem PrfChainKey_ne_top (P : Primitives) (A : PrfCkAdv) :
 
 theorem PrfMsgKeys_ne_top (P : Primitives) (A : PrfMsgKeysAdv) :
     PrfMsgKeys P A ≠ ⊤ :=
-  Measure.boolBias_ne_top _
-
-theorem AuthAdvantage_ne_top (S : Setup) (P : Primitives) (A : AuthAdversary S) :
-    AuthAdvantage S P A ≠ ⊤ :=
   Measure.boolBias_ne_top _
 
 theorem Auth1KeyAdvantage_ne_top (S : Setup) (P : Primitives) (A : AuthAdversary S) :
@@ -170,7 +166,7 @@ theorem KemDeltaCorrect.min_one_real {P : Primitives} {δ : ℝ≥0∞} (hδ : K
   exact (ENNReal.toReal_le_toReal (measure_ne_top _ {true}) htop).mpr hmin
 
 /-- Real-valued closed-form PQXDH `KeyInd` bound matching `pqxdhKeyIndBound`. -/
-noncomputable def pqxdhKeyIndBoundReal
+@[expose] noncomputable def pqxdhKeyIndBoundReal
     (S : Setup)
     (epsSig epsKemShCr epsGapDh : ℝ) : ℝ :=
   (S.N_id : ℝ) * epsSig +
@@ -200,62 +196,11 @@ theorem pqxdhKeyIndBound_ec_coll_le_old (S : Setup) :
   rw [pow_succ' 2 250, div_mul_eq_div_div]
   exact div_le_div_of_nonneg_right (by linarith) (by positivity)
 
-theorem pqxdhKeyIndBound_kem_coll_le_old (S : Setup) :
-    ((S.N_spk_tot * (S.N_spk_tot - 1) : ℕ) : ℝ) / (2 : ℝ) ^ 256 ≤
-      ((S.N_spk_tot : ℝ) ^ 2) / (2 : ℝ) ^ 256 := by
-  have hSpkNat : S.N_spk_tot * (S.N_spk_tot - 1) ≤ S.N_spk_tot ^ 2 := by
-    rw [sq]; exact Nat.mul_le_mul_left _ (Nat.sub_le _ 1)
-  have hSpkReal : ((S.N_spk_tot * (S.N_spk_tot - 1) : ℕ) : ℝ) ≤ (S.N_spk_tot : ℝ) ^ 2 := by
-    exact_mod_cast hSpkNat
-  exact div_le_div_of_nonneg_right hSpkReal (by positivity)
-
-theorem pqxdhKeyIndBound_le_old_dh4 (S : Setup) (epsSig epsKemShCr epsGapDh : ℝ)
-    (hGdh : 0 ≤ epsGapDh) :
-    pqxdhKeyIndBoundReal S epsSig epsKemShCr epsGapDh ≤
-      (S.N_id : ℝ) * epsSig +
-      ((S.N_dh * (S.N_dh - 1) + S.N_send_tot * (S.N_send_tot - 1) : ℕ) : ℝ) / (2 : ℝ) ^ 251 +
-      (S.N_spk_tot : ℝ) * (S.N_send_tot : ℝ) * epsKemShCr +
-      ((S.N_spk_tot * (S.N_spk_tot - 1) : ℕ) : ℝ) / (2 : ℝ) ^ 256 +
-      2 * ((S.N_spk_tot : ℝ) * ((S.N_id : ℝ) + (S.N_send_tot : ℝ)) +
-        (S.N_id : ℝ) * (S.N_send_tot : ℝ) +
-        (S.N_opk_tot : ℝ) * (S.N_send_tot : ℝ)) * epsGapDh := by
-  unfold pqxdhKeyIndBoundReal
-  have hSend : (S.N_send_opk_tot : ℝ) ≤ (S.N_send_tot : ℝ) := by
-    exact_mod_cast (Nat.le_add_right S.N_send_opk_tot S.N_send_no_opk_tot :
-      S.N_send_opk_tot ≤ S.N_send_tot)
-  have hOpk : (0 : ℝ) ≤ (S.N_opk_tot : ℝ) := Nat.cast_nonneg _
-  have hTerm5 :
-      2 * ((S.N_spk_tot : ℝ) * ((S.N_id : ℝ) + (S.N_send_tot : ℝ)) +
-        (S.N_id : ℝ) * (S.N_send_tot : ℝ) +
-        (S.N_opk_tot : ℝ) * (S.N_send_opk_tot : ℝ)) * epsGapDh ≤
-      2 * ((S.N_spk_tot : ℝ) * ((S.N_id : ℝ) + (S.N_send_tot : ℝ)) +
-        (S.N_id : ℝ) * (S.N_send_tot : ℝ) +
-        (S.N_opk_tot : ℝ) * (S.N_send_tot : ℝ)) * epsGapDh := by
-    nlinarith [mul_nonneg (mul_nonneg hOpk (sub_nonneg.mpr hSend)) hGdh]
-  exact add_le_add le_rfl hTerm5
-
-theorem pqxdhKeyIndBound_le_old (S : Setup) (epsSig epsKemShCr epsGapDh : ℝ)
-    (hGdh : 0 ≤ epsGapDh) :
-    pqxdhKeyIndBoundReal S epsSig epsKemShCr epsGapDh ≤
-      (S.N_id : ℝ) * epsSig +
-      ((S.N_dh : ℝ) ^ 2) / (2 : ℝ) ^ 250 +
-      (S.N_spk_tot : ℝ) * (S.N_send_tot : ℝ) * epsKemShCr +
-      ((S.N_spk_tot : ℝ) ^ 2) / (2 : ℝ) ^ 256 +
-      2 * ((S.N_spk_tot : ℝ) * ((S.N_id : ℝ) + (S.N_send_tot : ℝ)) +
-        (S.N_id : ℝ) * (S.N_send_tot : ℝ) +
-        (S.N_opk_tot : ℝ) * (S.N_send_tot : ℝ)) * epsGapDh := by
-  refine (pqxdhKeyIndBound_le_old_dh4 S epsSig epsKemShCr epsGapDh hGdh).trans ?_
-  exact add_le_add
-    (add_le_add
-      (add_le_add (add_le_add le_rfl (pqxdhKeyIndBound_ec_coll_le_old S)) le_rfl)
-      (pqxdhKeyIndBound_kem_coll_le_old S))
-    le_rfl
-
-noncomputable def rootKdfRoTermReal (S : Setup) (q_roRoot : ℕ) : ℝ :=
+@[expose] noncomputable def rootKdfRoTermReal (S : Setup) (q_roRoot : ℕ) : ℝ :=
   2 * (S.N_sess_tot : ℝ) * ((q_roRoot : ℝ) + (S.N_sess_tot : ℝ)) / (2 : ℝ) ^ 256
 
 /-- Real-valued closed-form PQXDH `Auth` bound matching `pqxdhAuthBound`. -/
-noncomputable def pqxdhAuthBoundReal
+@[expose] noncomputable def pqxdhAuthBoundReal
     (S : Setup) (q_roRoot : ℕ)
     (epsSig epsKemShCr epsGapDh
      epsPrfCk epsPrfMsgKeys epsAeadCpa epsPrfHmac : ℝ) : ℝ :=
@@ -370,7 +315,7 @@ theorem ofReal_pqxdhAuthBoundReal (S : Setup) (q_roRoot : ℕ)
     hc6R, hc6E, ofReal_natCast_mul_toReal (2 * S.N_send_tot) he6]
 
 /-- Real-valued activity-bounded PQXDH `KeyInd` bound matching `pqxdhKeyIndBoundActive`. -/
-noncomputable def pqxdhKeyIndBoundActiveReal
+@[expose] noncomputable def pqxdhKeyIndBoundActiveReal
     (S : Setup) (q_on : Nat)
     (epsSig epsKemShCr epsGapDh : ℝ) : ℝ :=
   let n_id := activeIdCount S q_on
@@ -442,16 +387,16 @@ namespace SignalPqxdh.Security
 open scoped ENNReal
 open SignalPqxdh
 
-noncomputable def kemDecapsFailureTermReal (S : Setup) (δ : ℝ) : ℝ :=
+@[expose] def kemDecapsFailureTermReal (S : Setup) (δ : ℝ) : ℝ :=
   2 * (S.N_send_tot : ℝ) * (S.N_spk_tot : ℝ) * δ
 
 /-- Real-valued δ-correctness `KeyInd` bound matching `pqxdhKeyIndAdvantageBoundδ`. -/
-noncomputable def pqxdhKeyIndAdvantageBoundδReal (S : Setup) (δ : ℝ)
+@[expose] noncomputable def pqxdhKeyIndAdvantageBoundδReal (S : Setup) (δ : ℝ)
     (epsSig epsKemShCr epsGapDh : ℝ) : ℝ :=
   pqxdhKeyIndBoundReal S epsSig epsKemShCr epsGapDh + kemDecapsFailureTermReal S δ
 
 /-- Real-valued δ-correctness `Auth` bound matching `pqxdhAuthAdvantageBoundδ`. -/
-noncomputable def pqxdhAuthAdvantageBoundδReal (S : Setup) (q_roRoot : ℕ) (δ : ℝ)
+@[expose] noncomputable def pqxdhAuthAdvantageBoundδReal (S : Setup) (q_roRoot : ℕ) (δ : ℝ)
     (epsSig epsKemShCr epsGapDh epsPrfCk epsPrfMsgKeys epsAeadCpa epsPrfHmac : ℝ) : ℝ :=
   pqxdhAuthBoundReal S q_roRoot epsSig epsKemShCr epsGapDh epsPrfCk epsPrfMsgKeys epsAeadCpa
       epsPrfHmac +
@@ -516,7 +461,7 @@ theorem pqxdhAuthAdvantageBoundδ_mono_δ {S : Setup} {q_roRoot : ℕ}
   exact kemDecapsFailureTerm_mono h
 
 /-- Real-valued activity-bounded δ-correctness `KeyInd` bound matching `pqxdhKeyIndAdvantageBoundActiveδ`. -/
-noncomputable def pqxdhKeyIndAdvantageBoundActiveδReal (S : Setup) (q_on : Nat) (δ : ℝ)
+@[expose] noncomputable def pqxdhKeyIndAdvantageBoundActiveδReal (S : Setup) (q_on : Nat) (δ : ℝ)
     (epsSig epsKemShCr epsGapDh : ℝ) : ℝ :=
   pqxdhKeyIndBoundActiveReal S q_on epsSig epsKemShCr epsGapDh + kemDecapsFailureTermReal S δ
 

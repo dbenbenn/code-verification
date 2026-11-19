@@ -11,13 +11,13 @@ module
 
 public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.Core
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.Core -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib.SepLogic.WP -- shake: keep
 public meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.InImage.DecodeStateEmpty.Proof
+import LibsignalBinary.Proofs.TripleRatchet.InImage.DecodeStateEmpty.Proof
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
 
@@ -29,7 +29,7 @@ Relocatable `RustCliAllocBudget`-threaded verification of `spqr::decode_state` (
 `onPanic` while preserving `S.sendPanics`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -103,7 +103,7 @@ local elab_rules : tactic
 /-! ## `VmPreserved` `spqr::decode_state` (block 325) and `memcpyPcsBudgetSpec` -/
 
 /-- `decodeStateEmptySpec A` strengthened with `VmPreserved s0 sf`. -/
-def decodeStateEmptyBudgetSpec (A : RustAlloc) :=
+@[expose] def decodeStateEmptyBudgetSpec (A : RustAlloc) :=
   withVmPreserved (decodeStateEmptySpec A)
 
 section DecodeStateEmptyVm
@@ -133,7 +133,7 @@ theorem decodeStateEmpty_vm_placed_ok [LibsignalPlacement] (A : RustAlloc)
 end DecodeStateEmptyVm
 
 /-- `memcpyPcsSpec` strengthened with `VmPreserved s0 sf`. -/
-def memcpyPcsBudgetSpec : Spec (BitVec 64 × BitVec 64 × BitVec 64) :=
+@[expose] def memcpyPcsBudgetSpec : Spec (BitVec 64 × BitVec 64 × BitVec 64) :=
   withVmPreserved memcpyPcsSpec
 
 theorem memcpyPcsBudget_of_sessionMemcpyRegion {prog : Program} {entry : BitVec 64}
@@ -192,7 +192,7 @@ theorem memcpyPcsBudget_of_sessionMemcpyRegion {prog : Program} {entry : BitVec 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` contract for `spqr::send::<HookRng>`
 (Block `124`), parameterized by allocation envelope `E` (`allocFailedIn` dropped from `onPanic`;
 genuine model panic `S.sendPanics` preserved). -/
-def spqrSendPlacedSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def spqrSendPlacedSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     (E : SendCall → List AllocEvent → Prop := fun _ evs => evs = []) :
     Spec (SendCall × M.σ) where
@@ -213,7 +213,7 @@ def spqrSendPlacedSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAll
     ⌜S.sendPanics x.st.bytes x.rest ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Empty-state specialization (`x.st.bytes = []`, `evs = []`, `0` `FitsEnv` needed). -/
-def spqrSendEmptyPlacedSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def spqrSendEmptyPlacedSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel) :
     Spec (SendCall × M.σ) where
   pre := fun (x, stB) s =>
@@ -262,7 +262,6 @@ theorem spqrSendEmpty_placed_ok_of_memcpy [LibsignalPlacement] {M : AllocCostMod
     refine SepWP.done (by wp_norm_lhs) (by wp_norm_lhs) ⟨by wp_norm_lhs, fun hvm1 hcl_call => ?_⟩
     refine SepWP.transport_budgetPool hvm1 (hnext := ?_)
     wp_apply
-    try (refine SepWP.focus_pure (by sep_focus) fun _hvm_dec => ?_)
     refine SepWP.transport_budgetPool ‹VmPreserved _ _› (hnext := ?_)
     wp_simp_pre only [decodeEmpty_split, sepExists_sepConj_left, sepExists_sepConj_right,
       sepConj_assoc]
@@ -275,7 +274,6 @@ theorem spqrSendEmpty_placed_ok_of_memcpy [LibsignalPlacement] {M : AllocCostMod
       refine SepWP.done (by wp_norm_lhs) (by wp_norm_lhs) ⟨by wp_norm_lhs, fun hvm2 => ?_⟩
       refine SepWP.transport_budgetPool hvm2 (hnext := ?_)
       wp_apply
-      try (refine SepWP.focus_pure (by sep_focus) fun _hvm_mc => ?_)
       refine SepWP.transport_budgetPool ‹VmPreserved _ _› (hnext := ?_)
       wp_simp_pre only [ret_split ret, sepExists_sepConj_left, sepExists_sepConj_right]
       apply SepWP.exists_elim; intro r6

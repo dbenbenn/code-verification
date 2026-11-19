@@ -15,15 +15,26 @@ public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetFd
 public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HInit.CliInitSlotOkPlacedAt -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
 public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFdsStrClone
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecPlacedBudgetFd
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudgetFd -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrInitialStatePlacedInstBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrInitialStatePlacedInstBudget
 
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePollPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSaveShimPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustShimPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadShimPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreShimPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpers
 
 /-!
 # Pre-`FdsGe3Closed` `initiate` Slot Producer
@@ -41,8 +52,6 @@ set_option linter.dupNamespace false
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.F3.HInit.CliInitSlotOkPlacedAtFd
 
-noncomputable section
-
 open Arm64 Arm64.Obj Arm64.Process ProofLib ProofLib.SepLogic SepProp
 open CryptoVerification (IsLsBlockProg LibsignalHooks LibsignalPlacement lsmpl)
 open CryptoVerification.E2E (PreKeyBundleFields UnreachedPqxdhPrimitives modelPrims)
@@ -52,7 +61,7 @@ open CryptoVerification.LibsignalSpqrV1 (Params)
 open CryptoVerification.LibsignalTripleRatchet (extHookStack publicKeySerializeStackX)
 open CryptoVerification.RecordCodecs (IdentityKeyPair)
 open CryptoVerification.SignalSession
-  (CliHooks cliExternsPlaced lsFormatInnerSym lsReadFileSym lsStringCloneSym)
+  (CliHooks cliExternsPlaced lsFmtWriteSym lsFormatInnerSym lsReadFileSym lsStringCloneSym)
 open CryptoVerification.SignalSession.Cli (DirGhost ReadRule cliBcmpName cliBcmpSpec)
 open CryptoVerification.SignalSession.Cli.KitInst
   (rodata_cliIdentity_kpSlot_placed rodata_cliIdentity_regIdSlot_placed
@@ -76,7 +85,7 @@ open CryptoVerification.SignalSession.Cli.Store.PlacedCommon (satisfies_lscro_pr
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FitsEnv RustCliAllocBudget)
 open LibsignalBinary.Heap.RustStdAllocBudgetBridge (stringCloneBudgetSpec)
-open LibsignalBinary.Heap.SpecBudget (formatInnerBudgetSpec withVmPreserved)
+open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
 open LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a (DirGetEnv)
 open LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetFd
   (dirGet_placed_caller_ok_of_deps_fd)
@@ -96,6 +105,8 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds
   (cliGhostSpqrAllocHooks_withFds withFds withFds_pool_enforced withFds_repAlloc)
 open LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFdsStrClone
   (hookSat_stringCloneBudget_withFds_of_enforced)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs
+  (fmtWriteProtoAddrCliLsSpec formatInnerCallCliLsSpec)
 open LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
   (SessKitHooksPlaced cliAddrText_placed_ok cliGrowOneDir_placed_ok)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetAux
@@ -375,16 +386,24 @@ theorem cliInitSlotOkPlacedAt_preFd_of_seams [LibsignalPlacement] {M : AllocCost
     {InitEnv : InitGhost → List AllocEvent → Prop}
     (mmpl : Obj.MultiPlacement) (gh' : CliGhostHooks) (W : CliHooks)
     (X : UnreachedPqxdhPrimitives)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref := by rfl)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef := by rfl)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec := by rfl)
     (hGSpqr : CliGhostSpqrAllocHooks M A lim gh')
     (hStrFsT : ∀ f, gh'.stringClone = some f → HookFsTraced IsFsC f)
     (hStrClone0 : HookSat (cliGhostExterns gh' (cliExternsPlaced mmpl W)) lsStringCloneSym
       (stringCloneBudgetSpec M A lim))
     (hStrCloneFd : HookSat (cliGhostExterns gh' (cliExternsPlaced mmpl W)) lsStringCloneSym
       (withFdsGe3Closed (stringCloneBudgetSpec M A lim)))
-    (hFmt0 : HookSat (cliGhostExterns gh' (cliExternsPlaced mmpl W)) lsFormatInnerSym
-      (formatInnerBudgetSpec M A lim))
-    (hFmt' : HookSat (cliGhostExterns gh' (cliExternsPlaced mmpl W)) lsFormatInnerSym
-      (formatInnerBudgetSpec M (withFds A) lim))
+    (hFmtCall0 : HookSat (cliGhostExterns gh' (cliExternsPlaced mmpl W)) lsFormatInnerSym
+      (formatInnerCallCliLsSpec M A lim))
+    (hFmtWrite0 : HookSat (cliGhostExterns gh' (cliExternsPlaced mmpl W)) lsFmtWriteSym
+      (fmtWriteProtoAddrCliLsSpec M A lim))
+    (hFmtCall' : HookSat (cliGhostExterns gh' (cliExternsPlaced mmpl W)) lsFormatInnerSym
+      (formatInnerCallCliLsSpec M (withFds A) lim))
+    (hFmtWrite' : HookSat (cliGhostExterns gh' (cliExternsPlaced mmpl W)) lsFmtWriteSym
+      (fmtWriteProtoAddrCliLsSpec M (withFds A) lim))
     (hReadSatFd : HookSat (cliGhostExterns gh' (cliExternsPlaced mmpl W)) lsReadFileSym
       (withLsRetAddr624AndFds
         (readFileSpecPlaced cliIo.rd cliWrOk A lim cliRunBudgets.readFile ReadEnv)))
@@ -421,13 +440,13 @@ theorem cliInitSlotOkPlacedAt_preFd_of_seams [LibsignalPlacement] {M : AllocCost
   let hStrClone' := hookSat_stringCloneBudget_withFds_of_enforced henf hStrCloneFd
   let hh0 :=
     LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget.RunHooksPlaced.of_hooks
-      mmpl gh' W hGSpqr hStrFsT hStrClone0 hFmt0
+      mmpl gh' W hGSpqr hStrFsT hStrClone0 hFmtCall0 hFmtWrite0
   let hh' :=
     LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget.RunHooksPlaced.of_hooks
-      mmpl gh' W hAlloc' hStrFsT hStrClone' hFmt'
+      mmpl gh' W hAlloc' hStrFsT hStrClone' hFmtCall' hFmtWrite'
   let hh3' :=
     LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget.RunHooksPlaced.of_hooks
-      mmpl gh' W hAlloc' hStrFsT hStrClone' hFmt'
+      mmpl gh' W hAlloc' hStrFsT hStrClone' hFmtCall' hF hX hPub hEnc
   have hExist' :=
     w3Exist_withFds_placed_ok_of_hooks_fd mmpl gh' W A lim henf ReadEnv hh0 hh' hh3' hReadSatFd
   have hLocal' : ∀ {stk : Nat}, cliInitiateNeed cliRunBudgets ≤ stk → stk ≤ 2 ^ 63 →
@@ -440,7 +459,5 @@ theorem cliInitSlotOkPlacedAt_preFd_of_seams [LibsignalPlacement] {M : AllocCost
       (fun S _ => stage3PlacedOk_okEvents (withFds A) lim InitStateEnv InitEnv mmpl gh' W X
         cliRunBudgets S)
       hghNoAlloc hFits)
-
-end
 
 end LibsignalBinary.Proofs.SignalSession.Cli.F3.HInit.CliInitSlotOkPlacedAtFd

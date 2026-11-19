@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommon
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommon -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhasePlaced
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked1
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked1Placed
@@ -19,6 +19,7 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked2
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonPlaced
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ProtoReprCodeSym
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable `[LibsignalPlacement]` Phase 2c (Part 2): `V1State::encode_raw` Variants `idx = 0, 2, 5` (`Block 426`)
@@ -27,7 +28,7 @@ Proves `[LibsignalPlacement]` symbolic execution of the `V1State.InnerState` bra
 (`.keysUnsampled`), `idx = 2` (`.headerSent`), and `idx = 5` (`.noHeaderReceived`) in `Block 426`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.EncodeToVec
 
@@ -44,7 +45,7 @@ set_option maxHeartbeats 400000
 set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero EncodedLen.zeroExtend64_beq_zero32
   EncodedLen.ofNat_countLeadingZeros_64 EncodedLen.ofNat_countLeadingZeros_32
   ProofLib.truncate32_ofNat64 EncodedLen.hwVarintLen_eq_ofNat_varintLen_norm

@@ -63,7 +63,7 @@ theorem ProcessFieldsPreserved.trans {s0 s1 s2 : State}
    fun a => (h12.2.2.2.2.2.2.2 a).trans (h01.2.2.2.2.2.2.2 a)⟩
 
 private def projSB (s : State) :=
-  (s.sigActions, s.brk, s.brkStart, s.physMemAvail, s.oracleIdx, s.sigAltStack)
+  (s.sigActions, s.brk, s.brkStart, s.physMemAvail, s.oracleIdx, s.sigAltStack, s.sigMask, s.sigPending)
 private theorem projSB_adv (s : State) : projSB s.advancePC = projSB s := by cases s; rfl
 private theorem projSB_pc (s : State) (p : BitVec 64) : projSB (s.setPC p) = projSB s := by cases s; rfl
 private theorem projSB_w64 (s : State) (r : Reg) (v : BitVec 64) : projSB (s.writeReg64 r v) = projSB s := by
@@ -147,7 +147,15 @@ theorem execInst_brk_oracle_of_not_isSvc0 {inst : Instr} (h : inst.isSvc0 = fals
 
 theorem execInst_sigAltStack_of_not_isSvc0 {inst : Instr} (h : inst.isSvc0 = false) (s : State) :
     (execInst inst s).sigAltStack = s.sigAltStack :=
-  congrArg (fun p => p.2.2.2.2.2) (execInst_projSB_of_not_isSvc0 h s)
+  congrArg (fun p => p.2.2.2.2.2.1) (execInst_projSB_of_not_isSvc0 h s)
+
+theorem execInst_sigMask_of_not_isSvc0 {inst : Instr} (h : inst.isSvc0 = false) (s : State) :
+    (execInst inst s).sigMask = s.sigMask :=
+  congrArg (fun p => p.2.2.2.2.2.2.1) (execInst_projSB_of_not_isSvc0 h s)
+
+theorem execInst_sigPending_of_not_isSvc0 {inst : Instr} (h : inst.isSvc0 = false) (s : State) :
+    (execInst inst s).sigPending = s.sigPending :=
+  congrArg (fun p => p.2.2.2.2.2.2.2) (execInst_projSB_of_not_isSvc0 h s)
 
 theorem execInst_preserves_processFields {inst : Instr}
     (hsvc : inst.isSvc = false) (hmsr : inst.isMsrTpidrEl0 = false) (s : State) :
@@ -194,10 +202,11 @@ protected theorem execInst_nonSyscallPreserved_of_not_isSvc0 {inst : Instr}
     (tpidrEl0 : BitVec 64) (fpsr : BitVec 32) (brkStart brk : BitVec 64) (fs : FsState)
     (oracle : Oracle) (oracleIdx : Nat) (exclFails : List Bool) (trace : List TraceEvent)
     (status : ExecStatus) (symtab : String → String → Option (BitVec 64))
-    (sigActions : BitVec 32 → SigAction) (sigAltStack : SigAltStack) (physMemAvail : Nat) :
+    (sigActions : BitVec 32 → SigAction) (sigAltStack : SigAltStack)
+    (sigMask sigPending : BitVec 64) (physMemAvail : Nat) :
     ProofLib.NonSyscallPreserved s0
       (State.mk regs vregs sp pc pstate mem tpidrEl0 fpsr brkStart brk fs oracle oracleIdx
-        exclFails trace status symtab sigActions sigAltStack physMemAvail) ↔
+        exclFails trace status symtab sigActions sigAltStack sigMask sigPending physMemAvail) ↔
       (trace = s0.trace ∧ mem.perm = s0.mem.perm ∧ brk = s0.brk ∧
        brkStart = s0.brkStart ∧ physMemAvail = s0.physMemAvail ∧
        (oracleIdx = s0.oracleIdx ∧ ∀ a, s0.mem.isLazyFree a = false → mem.isLazyFree a = false) ∧
@@ -720,10 +729,12 @@ private theorem ss_st (p : BitVec 64 → Bool) (s : State) : (stripS p s).status
 private theorem ss_sym (p : BitVec 64 → Bool) (s : State) : (stripS p s).symtab = s.symtab := by cases s; rfl
 private theorem ss_sig (p : BitVec 64 → Bool) (s : State) : (stripS p s).sigActions = s.sigActions := by cases s; rfl
 private theorem ss_sas (p : BitVec 64 → Bool) (s : State) : (stripS p s).sigAltStack = s.sigAltStack := by cases s; rfl
+private theorem ss_sm (p : BitVec 64 → Bool) (s : State) : (stripS p s).sigMask = s.sigMask := by cases s; rfl
+private theorem ss_spnd (p : BitVec 64 → Bool) (s : State) : (stripS p s).sigPending = s.sigPending := by cases s; rfl
 private theorem ss_pma (p : BitVec 64 → Bool) (s : State) : (stripS p s).physMemAvail = s.physMemAvail := by cases s; rfl
-private theorem ss_mk (p : BitVec 64 → Bool) {rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas pma} :
-    State.mk rg vr sp pc ps (stripExecOutside p m) tp fp bs b fs o oi ef tr st sym sig sas pma =
-      stripS p (State.mk rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas pma) := rfl
+private theorem ss_mk (p : BitVec 64 → Bool) {rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas sm spnd pma} :
+    State.mk rg vr sp pc ps (stripExecOutside p m) tp fp bs b fs o oi ef tr st sym sig sas sm spnd pma =
+      stripS p (State.mk rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas sm spnd pma) := rfl
 
 set_option linter.unusedSimpArgs false in
 set_option maxHeartbeats 400000 in
@@ -744,21 +755,21 @@ theorem execInst_stripS {inst : Instr} (h : inst.isSvc0 = false) (keep : BitVec 
          split <;> simp only [ss_wv128, ss_adv, ss_ass])
     · dsimp only [execInst, execInstWithSvc]
       simp only [hop, Bool.false_eq_true, ↓reduceIte, ss_rv128, ss_regs, ss_vregs, ss_sp, ss_pc, ss_ps,
-        ss_mem, ss_tp, ss_fp, ss_bs, ss_brk, ss_fs, ss_orc, ss_oi, ss_ef, ss_tr, ss_st, ss_sym, ss_sig, ss_sas, ss_pma,
+        ss_mem, ss_tp, ss_fp, ss_bs, ss_brk, ss_fs, ss_orc, ss_oi, ss_ef, ss_tr, ss_st, ss_sym, ss_sig, ss_sas, ss_sm, ss_spnd, ss_pma,
         ss_mk, ss_adv, ss_wv128, ss_sst, ss_wst, ss_as, ss_ass, ss_ite]
   case st1SinglePost q rm opcode sBit size rn vt =>
     dsimp only [execInst, execInstWithSvc]
     by_cases h0 : opcode.extractLsb' 1 2 == 0#2 <;> by_cases h1 : opcode.extractLsb' 1 2 == 1#2 <;>
       by_cases hs0 : size.extractLsb' 0 1 == 0#1 <;>
       simp only [h0, h1, hs0, Bool.false_eq_true, ↓reduceIte, ss_mem, ss_regs, ss_vregs, ss_sp, ss_pc,
-        ss_ps, ss_tp, ss_fp, ss_bs, ss_brk, ss_fs, ss_orc, ss_oi, ss_ef, ss_tr, ss_st, ss_sym, ss_sig, ss_sas, ss_pma,
+        ss_ps, ss_tp, ss_fp, ss_bs, ss_brk, ss_fs, ss_orc, ss_oi, ss_ef, ss_tr, ss_st, ss_sym, ss_sig, ss_sas, ss_sm, ss_spnd, ss_pma,
         ss_mk, ss_r64, ss_rv128, ss_csp, strip_canWrite, strip_write8, strip_write16, strip_write32,
         strip_write64, ss_smem, ss_w64, ss_adv, ss_sst, ss_ite]
   case simdLdStMulti isLoad q size selem rn postIdx rm vt =>
     dsimp only [execInst, execInstWithSvc]
     by_cases hbad : (size == 3#2 && !q || !(selem == 2 || selem == 3 || selem == 4)) = true
     · simp only [hbad, ↓reduceIte, ss_regs, ss_vregs, ss_sp, ss_pc, ss_ps, ss_mem, ss_tp, ss_fp,
-        ss_bs, ss_brk, ss_fs, ss_orc, ss_oi, ss_ef, ss_tr, ss_st, ss_sym, ss_sig, ss_sas, ss_pma, ss_mk, ss_wst]
+        ss_bs, ss_brk, ss_fs, ss_orc, ss_oi, ss_ef, ss_tr, ss_st, ss_sym, ss_sig, ss_sas, ss_sm, ss_spnd, ss_pma, ss_mk, ss_wst]
     · by_cases h3 : selem ≥ 3 <;> by_cases h4 : selem ≥ 4 <;>
         simp only [hbad, h3, h4, Bool.false_eq_true, ↓reduceIte, ss_r64, ss_rv128_eta, ss_mem, ss_csp,
           strip_canRead, strip_canWrite, strip_readSimdSized, strip_simdStoreRegs,
@@ -782,7 +793,7 @@ theorem execInst_stripS {inst : Instr} (h : inst.isSvc0 = false) (keep : BitVec 
   all_goals
     dsimp only [execInst, execInstWithSvc, execLdrLit, execLdp, execStp, evalAddrMode]
     simp only [ss_mem, ss_regs, ss_vregs, ss_bs, ss_brk, ss_fs, ss_orc, ss_oi, ss_ef, ss_tr, ss_st,
-      ss_sym, ss_sig, ss_sas, ss_pma, ss_mk, ss_r64, ss_r32, ss_rr, ss_rv128, ss_rv128_eta, ss_rv64, ss_rv32,
+      ss_sym, ss_sig, ss_sas, ss_sm, ss_spnd, ss_pma, ss_mk, ss_r64, ss_r32, ss_rr, ss_rv128, ss_rv128_eta, ss_rv64, ss_rv32,
       ss_pc, ss_sp, ss_ps, ss_fp, ss_tp, ss_ewf, ss_csp, ss_casp, ss_eam,
       strip_canRead, strip_canWrite, strip_readSized, strip_readSimdSized,
       strip_write8, strip_write16, strip_write32, strip_write64, strip_writeSized, strip_writeSimdSized,

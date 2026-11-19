@@ -32,7 +32,7 @@ For the list of supported instruction families and how atomics, barriers, hints 
 | `c_type_spec` semantic C type judgements (namespace `Arm64.CType`: `SemType`, modes `Own`/`ShrRef`/`MutRef`/`UninitSlot`/`OutPtr`/`Val`, tagged `caveat`s, `OptOwn`, `CStr`, `ShrSlice8`); lowers to `c_spec` + `<spec>.cTypeInfo` (guide: `docs/dev/c-type-specs.md`) | [`Surface/CType.lean`](Surface/CType.lean) |
 | Elaboration-time hex instruction-word parsers & `Program.ofHex` (`hex_words%`, `elabHexWordsStrLit`, `parseHexWords`) | [`Surface/HexCode.lean`](Surface/HexCode.lean) |
 | Compile-time ASCII byte and character literals (`ascii!"..." : List (BitVec 8)`, `asciic!"x" : BitVec 8`, `asciiCode!"x" : Nat`) | [`Surface/Ascii.lean`](Surface/Ascii.lean) |
-| `include_bytes%` elaborator used by generated `*Obj.lean` files (not re-exported by `Arm64`) | [`Surface/IncludeBytes.lean`](Surface/IncludeBytes.lean) |
+| `include_bytes%` elaborator used by generated `*PlacedObj.lean` / `*ExtractedObj.lean` files (not re-exported by `Arm64`) | [`Surface/IncludeBytes.lean`](Surface/IncludeBytes.lean) |
 | `file_bytes% "path" sha256 "<hex>"` SHA-256-pinned file-byte elaborator (re-exported by `Arm64.Trusted.Process`) | [`Surface/FileBytes.lean`](Surface/FileBytes.lean) |
 
 The instruction **encoder** and the decode/encode round-trip proof are deliberately *not* here: they live in [`Arm64/Testing/Arm64EncoderDecoder/`](../Testing/README.md), because specs only decode.

@@ -11,18 +11,16 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrowBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowAmortized
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrowBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowAmortized -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.Alloc.Fetch
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
 
@@ -34,7 +32,7 @@ Proves `RustCliAllocBudget M` `[LibsignalPlacement]` contracts for block 260
 (`<alloc::raw_vec::RawVec<(&str, &str)>>::grow_one`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -96,11 +94,11 @@ private theorem stackAt_growOneStrPair_gen (sp : BitVec 64) {hookStack : Nat}
   ProofLib.stackAt_split_cells sp ((hookStack + 32) + 64) 2 hhook
 
 /-- Deterministic allocator events of `grow_amortized` (`stride = 32, align = 8`). -/
-def growAmortizedEvents (cap : BitVec 64) : List AllocEvent :=
+@[expose] def growAmortizedEvents (cap : BitVec 64) : List AllocEvent :=
   if cap = 0#64 then rustAllocEvents ((newCap32 cap).toNat * 32) 8
   else rustReallocEvents (cap.toNat * 32) ((newCap32 cap).toNat * 32) 8
 
-def GrowAmortizedEnv (cap : BitVec 64) (evs : List AllocEvent) : Prop :=
+@[expose] def GrowAmortizedEnv (cap : BitVec 64) (evs : List AllocEvent) : Prop :=
   evs = growAmortizedEvents cap
 
 theorem fitsEnv_growAmortized_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
@@ -138,7 +136,7 @@ abbrev FG7Ghost (σ : Type) :=
   BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × List (BitVec 8) ×
     BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × σ
 
-def finishGrow7ZeroCellsSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow7ZeroCellsSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FG7Ghost M.σ) where
   pre := fun (out, cap, ptr, new, bs, o0, o1, o2, fsp, st) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
@@ -186,7 +184,7 @@ theorem finish_grow_7_zero_cells_of_spec {M : AllocCostModel} {A : RustCliAllocB
       pointsToBytes_nil, List.length_nil, BitVec.add_zero, Nat.sub_zero, emp_sepConj] using hq
   · exact Or.inr hfail
 
-def finishGrow7NeCellsSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow7NeCellsSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FG7Ghost M.σ) where
   pre := fun (out, cap, ptr, new, bs, o0, o1, o2, fsp, st) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
@@ -240,7 +238,7 @@ theorem finish_grow_7_ne_cells_of_spec {M : AllocCostModel} {A : RustCliAllocBud
 /-! ## Budget Contracts -/
 
 /-- Budget contract of `grow_amortized` preserving an initialized byte prefix `x.bs`. -/
-def growAmortizedBsSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def growAmortizedBsSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (GrowAmortizedCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.v ∧ s.readReg64 .x1 = x.cap ∧
@@ -267,7 +265,7 @@ abbrev growAmortizedBsSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
   growAmortizedBsSpecWithStack M A lim extHookStack
 
 /-- Budget contract of `grow_amortized` on an uninitialized buffer (`bs = []`). -/
-def growAmortizedSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def growAmortizedSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) :
     Spec ((BitVec 64 × BitVec 64 × BitVec 64) × M.σ) where
   pre := fun ((v, cap, ptr), st) s =>
@@ -296,7 +294,7 @@ abbrev growAmortizedSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
   growAmortizedSpecWithStack M A lim extHookStack
 
 /-- Budget contract of `RawVec<(&str, &str)>::grow_one` preserving an initialized byte prefix `x.bs`. -/
-def growOneStrPairBsSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def growOneStrPairBsSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (GrowAmortizedCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.v ∧ x.bs.length ≤ x.cap.toNat * 32 ∧
@@ -322,7 +320,7 @@ abbrev growOneStrPairBsSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
   growOneStrPairBsSpecWithStack M A lim extHookStack
 
 /-- Budget contract of `RawVec<(&str, &str)>::grow_one` on an uninitialized buffer (`bs = []`). -/
-def growOneStrPairSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def growOneStrPairSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) :
     Spec ((BitVec 64 × BitVec 64 × BitVec 64) × M.σ) where
   pre := fun ((v, cap, ptr), st) s =>

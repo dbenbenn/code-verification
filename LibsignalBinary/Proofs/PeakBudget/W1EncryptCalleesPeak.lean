@@ -9,12 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
-public import LibsignalBinary.Proofs.PeakBudget.W1EncryptSegments
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W1EncryptSegments -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromHelpers
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromHelpers
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # W1 `message_encrypt` Callee and CLI Store-Kit Instantiations
@@ -25,7 +28,7 @@ Black-box callee instantiations for W1 `message_encrypt`, parametric in `(M : Al
 `is_trusted_identity`, `save_identity`), and `ScopeAt` SPQR domain-cap bridges.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,11 +53,8 @@ open LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
   (SignalMessageNewEnv SignalMessageNewGhost)
 open LibsignalBinary.Proofs.PeakBudget.SeqCreditKit (ModelHyps PhaseCreditSpec)
 open LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps (ValidEncoderPts)
-open LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
-  (PeerSpqrTightValid640 PeerSpqrTightValidAt ValidChainParams ValidEncoderPts640
-   ValidEncoderPtsAt peerSpqrTightValidAt_of_w1ScopeAt)
-open LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-  (DirDomainCaps PeerSpqrValid peerSpqrValid_of_scopeAt)
+open LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps (PeerSpqrTightValid640 PeerSpqrTightValidAt ValidChainParams ValidEncoderPts640 ValidEncoderPtsAt)
+open LibsignalBinary.Proofs.PeakBudget.CliDomainCaps (DirDomainCaps PeerSpqrValid)
 open LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromHelpers
   (tryCloneLargeDelta tryCloneSmallDelta)
 open LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
@@ -89,30 +89,30 @@ theorem otrEncryptWithSigNew_creditSpec {M : AllocCostModel} [HasFineReallocCred
     (hSend : PhaseCreditSpec M E_send c_s l_s p_s r_s) :
     let ctLen := (ptextLen / 16 + 1) * 16
     PhaseCreditSpec M (OtrEncryptStepEnv E_send ptextLen (SignalMessageNewEnv parse sigGhost))
-      (c_s + (2 * 32 + 9539) + (2 * ctLen + 9539) + signalMessageNewDeltaCum parse sigGhost)
-      (l_s + (32 + 8195) + (ctLen + 8195) + signalMessageNewDeltaLive parse sigGhost)
-      (max p_s (l_s + (32 + 8195) + (ctLen + 8195) + signalMessageNewDeltaPeak parse sigGhost))
-      (max r_s (max 32 (max ctLen (signalMessageNewMaxReq parse sigGhost)))) :=
+      (c_s + max 30537 ((2 * 32 + 9539) + (2 * ctLen + 9539) + signalMessageNewDeltaCum parse sigGhost))
+      (l_s + max 25545 ((32 + 8195) + (ctLen + 8195) + signalMessageNewDeltaLive parse sigGhost))
+      (max p_s (l_s + max 25545 ((32 + 8195) + (ctLen + 8195) + signalMessageNewDeltaPeak parse sigGhost)))
+      (max r_s (max 320 (max ctLen (signalMessageNewMaxReq parse sigGhost)))) :=
   otrEncryptStep_creditSpec hM hSend (signalMessageNew_phaseCredit hM parse sigGhost)
 
-/-- Small-regime (`32 ≤ smallMaxReq M`) `OtrEncryptStepEnv` + `SignalMessage::new` bound. -/
+/-- Small-regime (`320 ≤ smallMaxReq M`) `OtrEncryptStepEnv` + `SignalMessage::new` bound. -/
 theorem otrEncryptWithSigNew_creditSpec_small32 {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hle32 : 32 ≤ HasFineReallocCredit.smallMaxReq M)
+    (hM : ModelHyps M) (hle320 : 320 ≤ HasFineReallocCredit.smallMaxReq M)
     (parse : UuidParser) (sigGhost : SignalMessageNewGhost)
     {E_send : List AllocEvent → Prop} {ptextLen : Nat}
     {c_s l_s p_s r_s : Nat}
     (hSend : PhaseCreditSpec M E_send c_s l_s p_s r_s) :
     let ctLen := (ptextLen / 16 + 1) * 16
     PhaseCreditSpec M (OtrEncryptStepEnv E_send ptextLen (SignalMessageNewEnv parse sigGhost))
-      (c_s + (2 * 32 + 9539) + (2 * ctLen + 9539) + signalMessageNewDeltaCum parse sigGhost)
+      (c_s + max 30537 ((2 * 32 + 9539) + (2 * ctLen + 9539) + signalMessageNewDeltaCum parse sigGhost))
       (l_s + (ctLen + 8195) + signalMessageNewDeltaLive parse sigGhost)
       (max p_s (l_s + (ctLen + 8195) + signalMessageNewDeltaPeak parse sigGhost))
-      (max r_s (max 32 (max ctLen (signalMessageNewMaxReq parse sigGhost)))) :=
-  otrEncryptStep_creditSpec_small32 hM hle32 hSend (signalMessageNew_phaseCredit hM parse sigGhost)
+      (max r_s (max 320 (max ctLen (signalMessageNewMaxReq parse sigGhost)))) :=
+  otrEncryptStep_creditSpec_small32 hM hle320 hSend (signalMessageNew_phaseCredit hM parse sigGhost)
 
 /-- Witness-independent cap wrapper for `otrEncryptWithSigNew_creditSpec_small32`. -/
 theorem otrEncryptWithSigNew_capped_small32 {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hle32 : 32 ≤ HasFineReallocCredit.smallMaxReq M)
+    (hM : ModelHyps M) (hle320 : 320 ≤ HasFineReallocCredit.smallMaxReq M)
     (parse : UuidParser) (sigGhost : SignalMessageNewGhost)
     {E_send : List AllocEvent → Prop} {ptextLen : Nat}
     {c_s l_s p_s r_s c_n l_n p_n r_n : Nat}
@@ -123,13 +123,26 @@ theorem otrEncryptWithSigNew_capped_small32 {M : AllocCostModel} [HasFineRealloc
     (hReq : signalMessageNewMaxReq parse sigGhost ≤ r_n) :
     let ctLen := (ptextLen / 16 + 1) * 16
     PhaseCreditSpec M (OtrEncryptStepEnv E_send ptextLen (SignalMessageNewEnv parse sigGhost))
-      (c_s + (2 * 32 + 9539) + (2 * ctLen + 9539) + c_n)
+      (c_s + max 30537 ((2 * 32 + 9539) + (2 * ctLen + 9539) + c_n))
       (l_s + (ctLen + 8195) + l_n)
       (max p_s (l_s + (ctLen + 8195) + p_n))
-      (max r_s (max 32 (max ctLen r_n))) := by
+      (max r_s (max 320 (max ctLen r_n))) := by
   intro ctLen
-  exact (otrEncryptWithSigNew_creditSpec_small32 hM hle32 parse sigGhost hSend).mono
-    (by omega) (by omega) (by omega) (by omega)
+  exact (otrEncryptWithSigNew_creditSpec_small32 hM hle320 parse sigGhost hSend).mono
+    (Nat.add_le_add_left (Nat.max_le.mpr
+      ⟨Nat.le_max_left _ _,
+       Nat.le_trans (Nat.add_le_add_left hCum _) (Nat.le_max_right _ _)⟩) c_s)
+    (Nat.add_le_add_left hLive _)
+    (Nat.max_le.mpr
+      ⟨Nat.le_max_left _ _,
+       Nat.le_trans (Nat.add_le_add_left hPeak _) (Nat.le_max_right _ _)⟩)
+    (Nat.max_le.mpr ⟨Nat.le_max_left _ _,
+      Nat.le_trans
+        (Nat.max_le.mpr ⟨Nat.le_max_left _ _,
+          Nat.le_trans
+            (Nat.max_le.mpr ⟨Nat.le_max_left _ _, Nat.le_trans hReq (Nat.le_max_right _ _)⟩)
+            (Nat.le_max_right _ _)⟩)
+        (Nat.le_max_right _ _)⟩)
 
 /-! ## 2. `FromKeySegEnv` and `PreKeySignalMessage::new` -/
 
@@ -328,40 +341,26 @@ theorem fromSessionState_pqrState {s taken : SessionState (List (BitVec 8))}
       Except.ok.injEq, Prod.mk.injEq] at h
   exact (congrArg OutgoingTripleRatchet.pqrState h.1).symm
 
-/-- Transfers `PeerSpqrValid F rem` across `OutgoingTripleRatchet.fromSessionState` at any `w1SessKit.ScopeAt` record.
--/
-theorem peerSpqrValid_of_fromSessionState {B : RunBudgets} {img : Arm64.Obj.Image}
-    {F : FsFiles} {peer : AddrGhost} {rem : AddrVal}
-    {r : SessionRecord (List (BitVec 8))} {sess : Session (List (BitVec 8))}
-    {otr : OutgoingTripleRatchet (List (BitVec 8))} {taken : SessionState (List (BitVec 8))}
-    (hScAt : (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions rem r)
-    (hcur : r.currentSession = some sess)
-    (hfrom : execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken))
-    (hValid : PeerSpqrValid F rem) :
-    ValidEncoderPts otr.pqrState ∧ otr.pqrState.length < 2 ^ 31 :=
-  peerSpqrValid_of_scopeAt hScAt hcur (fromSessionState_pqrState hfrom) hValid
-
-/-! ## 5. Tight `smallAllocCost` and `PeerSpqrTightValid640` Instantiations -/
 
 /-- Tight `OtrEncryptStepEnv` + `SignalMessage::new` bound using `smallAllocCost M 32` and `tryCloneSmallDelta` / `tryCloneLargeDelta`.
 -/
 theorem otrEncryptWithSigNew_creditSpec_tight {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hle32 : 32 ≤ HasFineReallocCredit.smallMaxReq M)
+    (hM : ModelHyps M) (hle320 : 320 ≤ HasFineReallocCredit.smallMaxReq M)
     (parse : UuidParser) (sigGhost : SignalMessageNewGhost)
     {E_send : List AllocEvent → Prop} {ptextLen : Nat}
     {c_s l_s p_s r_s : Nat}
     (hSend : PhaseCreditSpec M E_send c_s l_s p_s r_s) :
     let ctLen := (ptextLen / 16 + 1) * 16
     PhaseCreditSpec M (OtrEncryptStepEnv E_send ptextLen (SignalMessageNewEnv parse sigGhost))
-      (c_s + HasFineReallocCredit.smallAllocCost M 32 + tryCloneSmallDelta M ctLen +
-        signalMessageNewDeltaCum parse sigGhost)
+      (c_s + max 30537 (HasFineReallocCredit.smallAllocCost M 32 + tryCloneSmallDelta M ctLen +
+        signalMessageNewDeltaCum parse sigGhost))
       (l_s + tryCloneLargeDelta M ctLen + signalMessageNewDeltaLive parse sigGhost)
       (max p_s (l_s + tryCloneLargeDelta M ctLen + signalMessageNewDeltaPeak parse sigGhost))
-      (max r_s (max 32 (max ctLen (signalMessageNewMaxReq parse sigGhost)))) :=
-  otrEncryptStep_creditSpec_tight hM hle32 hSend (signalMessageNew_phaseCredit hM parse sigGhost)
+      (max r_s (max 320 (max ctLen (signalMessageNewMaxReq parse sigGhost)))) :=
+  otrEncryptStep_creditSpec_tight hM hle320 hSend (signalMessageNew_phaseCredit hM parse sigGhost)
 
 theorem otrEncryptWithSigNew_capped_tight {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hle32 : 32 ≤ HasFineReallocCredit.smallMaxReq M)
+    (hM : ModelHyps M) (hle320 : 320 ≤ HasFineReallocCredit.smallMaxReq M)
     (parse : UuidParser) (sigGhost : SignalMessageNewGhost)
     {E_send : List AllocEvent → Prop} {ptextLen : Nat}
     {c_s l_s p_s r_s c_n l_n p_n r_n : Nat}
@@ -372,11 +371,11 @@ theorem otrEncryptWithSigNew_capped_tight {M : AllocCostModel} [HasFineReallocCr
     (hReq : signalMessageNewMaxReq parse sigGhost ≤ r_n) :
     let ctLen := (ptextLen / 16 + 1) * 16
     PhaseCreditSpec M (OtrEncryptStepEnv E_send ptextLen (SignalMessageNewEnv parse sigGhost))
-      (c_s + HasFineReallocCredit.smallAllocCost M 32 + tryCloneSmallDelta M ctLen + c_n)
+      (c_s + max 30537 (HasFineReallocCredit.smallAllocCost M 32 + tryCloneSmallDelta M ctLen + c_n))
       (l_s + tryCloneLargeDelta M ctLen + l_n)
       (max p_s (l_s + tryCloneLargeDelta M ctLen + p_n))
-      (max r_s (max 32 (max ctLen r_n))) :=
-  otrEncryptStep_creditSpec_tight hM hle32 hSend
+      (max r_s (max 320 (max ctLen r_n))) :=
+  otrEncryptStep_creditSpec_tight hM hle320 hSend
     ((signalMessageNew_phaseCredit hM parse sigGhost).mono hCum hLive hPeak hReq)
 
 /-- Tight `FromKeySegEnv` + `PreKeySignalMessage::new` bound under exact Kyber ciphertext length `kyberLen ≤ smallMaxReq M`.
@@ -471,31 +470,5 @@ theorem cliSmallStoreStep_creditSpec_tight {M : AllocCostModel} [HasFineReallocC
   boxPollDrop_creditSpec_tight hM hle40
     (smallStorePoll_phaseCredit hM hdc hdir hname hcap)
 
-/-- Transfers `PeerSpqrTightValidAt K F rem` across `OutgoingTripleRatchet.fromSessionState` at any `w1SessKit.ScopeAt` record.
--/
-theorem peerSpqrTightValidAt_of_fromSessionState {B : RunBudgets} {img : Arm64.Obj.Image}
-    {F : FsFiles} {peer : AddrGhost} {rem : AddrVal}
-    {r : SessionRecord (List (BitVec 8))} {sess : Session (List (BitVec 8))}
-    {otr : OutgoingTripleRatchet (List (BitVec 8))} {taken : SessionState (List (BitVec 8))}
-    {K : Nat}
-    (hScAt : (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions rem r)
-    (hcur : r.currentSession = some sess)
-    (hfrom : execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken))
-    (hValid : PeerSpqrTightValidAt K F rem) :
-    ValidEncoderPtsAt K otr.pqrState ∧ ValidChainParams otr.pqrState ∧
-      otr.pqrState.length < 2 ^ 31 :=
-  peerSpqrTightValidAt_of_w1ScopeAt hScAt hcur (fromSessionState_pqrState hfrom) hValid
-
-theorem peerSpqrTightValid640_of_fromSessionState {B : RunBudgets} {img : Arm64.Obj.Image}
-    {F : FsFiles} {peer : AddrGhost} {rem : AddrVal}
-    {r : SessionRecord (List (BitVec 8))} {sess : Session (List (BitVec 8))}
-    {otr : OutgoingTripleRatchet (List (BitVec 8))} {taken : SessionState (List (BitVec 8))}
-    (hScAt : (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions rem r)
-    (hcur : r.currentSession = some sess)
-    (hfrom : execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken))
-    (hValid : PeerSpqrTightValid640 F rem) :
-    ValidEncoderPts640 otr.pqrState ∧ ValidChainParams otr.pqrState ∧
-      otr.pqrState.length < 2 ^ 31 :=
-  peerSpqrTightValidAt_of_fromSessionState hScAt hcur hfrom hValid
 
 end LibsignalBinary.Proofs.PeakBudget.W1EncryptCalleesPeak

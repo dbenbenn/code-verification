@@ -31,6 +31,10 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1
 import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StrlenCode
 import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8SingleBlockRO
 import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8SingleBlockRW
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Region-Local `core::str::converts::from_utf8` Code Verification & Master Spec (`HooksDehook.FromUtf8Code`)
@@ -637,7 +641,7 @@ theorem keepFsTrace_realFromUtf8Fallback_masterK_ok (keep : BitVec 64 → Bool) 
   exact realFromUtf8Fallback_masterFromUtf8K_ok keep
 
 /-- Fixed `W`-independent instance of today's idealized `fromUtf8Hook` (for F3 `W`-free witness). -/
-@[expose] noncomputable def defaultFromUtf8Hook : State → State :=
+@[expose] def defaultFromUtf8Hook : State → State :=
   fromUtf8Hook (fun _ => (0#64, 0#16))
 
 /-- Generic `W`-free soundness of `fromUtf8Hook err` on RW `MainHops.fromUtf8AsciiSpec stk` for
@@ -753,12 +757,6 @@ theorem specSimulates_fromUtf8SpecK (keep : BitVec 64 → Bool) {α β : Type}
   refine ⟨x, R₁, ?_, hm⟩
   rw [sepConj_assoc, satisfies_pure_sepConj]
   exact ⟨hlr, hpre₁⟩
-
-/-- Any `SpecSimulates` lifts to `.inImage img`. -/
-theorem specSimulates_inImage {α : Type} (spec : Spec α) (img : Obj.Image) :
-    SpecSimulates spec (spec.inImage img) :=
-  LibsignalBinary.Proofs.HookDischarge.RustStd.DurationSinceBoundedVm.specSimulates_inImage
-    img spec
 
 private theorem bytesAt_lt_two_pow_64_of_sep_region24 {m : Memory} {ro : Bool} {p r : BitVec 64}
     {bs : List (BitVec 8)} {R : SepProp}

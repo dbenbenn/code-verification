@@ -10,19 +10,67 @@ limitations under the License.
 module
 
 public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedBase
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanSem -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanSem
 import Computational.Proofs.E2E.Dsl.SpqrSimChain
+import Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitness
+import Computational.Proofs.ReductionDsl.PubRed
+import Computational.Proofs.CryptoGames.FSAEAD.HybridLazy
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5On
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Start
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.SaltHopKeyed
+import Computational.Proofs.CryptoGames.SM.BucketAuthBridge
+import Computational.Proofs.E2E.RefuseCorrB0Core
+import Computational.Proofs.E2E.Relabel.GameEq
+import Computational.Proofs.E2E.SessionAuthLazy
+import Computational.Proofs.E2E.SessionAuthMac
+import Computational.Proofs.E2E.SessionAuthRouter
+import Computational.Proofs.E2E.SessionAuthWire
+import Computational.Proofs.E2E.SessionAuthWireEnd
+import Computational.Proofs.E2E.SessionAuthWireQueries
+import Computational.Proofs.E2E.SpkHop1A
+import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepRecvFwdSkip
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SpqrDesc
+import Computational.Proofs.HeadlineV1.CouplingV1
+import Computational.Proofs.HeadlineV1.SignedRefineC
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.FSAEAD.SaltWire
+import Computational.Proofs.ReductionDsl.Fig8ExcessCosts
+import Computational.Proofs.ReductionDsl.Fig8SourceCosts
+import Computational.Proofs.ReductionDsl.FsAtomicBoundsBase
+import Computational.Proofs.ReductionDsl.FsAtomicMacrosBase
+import Computational.Proofs.ReductionDsl.FsAtomicOps
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.PureAuxMacroLift
+import Computational.Proofs.SessionCostedFig8.Bundles
+import Computational.Proofs.SessionCostedFig8.BundlesAuxSize
+import Computational.Proofs.SessionCostedFig8.BundlesMultiFsBase
+import Computational.Proofs.SessionCostedFig8.ProgSizeBounds
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
+import Mathlib.Data.Nat.Pairing
+import ToMathlib.Control.StateT
+import ToMathlib.MeasureTheory.Measure.Bool
+import VCVio.CryptoFoundations.SecExp
+import VCVio.EvalDist.EvalDistEq
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.EvalDist.Measure
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.QueryTracking.QueryBound.Simulation
+import VCVio.OracleComp.QueryTracking.SubSpec
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Operational `.eval` Proofs for `SimDeliverForgeHalted`
 
 Proves forward-encoding `.eval` agreement (`dfHaltedEnc`) for the braid send step, all five `SM`
-query branches of `dfStepHaltedC`, and `simDeliverForgeInitHaltedC`.
--/
+query branches of `dfStepHaltedC`, and `simDeliverForgeInitHaltedC`.-/
 
 public section
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
 namespace Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedEval
 
@@ -33,26 +81,26 @@ open _root_.ReductionDsl (Sig Ops Iface Ty Expr Comp Env Var
   fig8StT fig8StV fig8StOfV fsSendStV fsSendStOfV fig8CtT fig8CtV fig8CtOfV
   partyToBool boolToParty recvResultT recvResultEnc recvResultDec smRrEnc smRrDec)
 open _root_.CryptoGames (Party)
-open CryptoGames.Ratchet (keyToBytesVec32)
-open CryptoGames.CBC (Plain)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.SM (GameState RecvResult partyEnc partyDec pGet pSet sendsInE sendsInE_eval
+open _root_.CryptoGames.Ratchet (keyToBytesVec32)
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.SM (GameState RecvResult partyEnc partyDec pGet pSet sendsInE sendsInE_eval
   noBobSendInEpoch0 posTy posEnc posDec)
-open CryptoGames.SM.Construction.DeliverForge
+open _root_.CryptoGames.SM.Construction.DeliverForge
   (AdversaryCompDF specDF transmitQueryDF challQueryDF)
-open CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart lFig8)
-open CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
-open CryptoGames.Ratchet.LibsignalSim
+open _root_.CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart lFig8)
+open _root_.CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
+open _root_.CryptoGames.Ratchet.LibsignalSim
   (Fig8St Fig8C kemTrackEnc mkPub toWire SimCStateBounded SimKemFailTrack SimBraidSt simStepKemFailSend
    deliverForgeSemHook scPostSendPure semSendHook)
-open CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState Kept initSimC)
-open CryptoGames.LibsignalSession
+open _root_.CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState Kept initSimC)
+open _root_.CryptoGames.LibsignalSession
   (Crypto ShaCompress IdentityKey PublicKey GhostState)
-open CryptoGames.LibsignalSM.Proofs.Refinement
+open _root_.CryptoGames.LibsignalSM.Proofs.Refinement
   (KemFailTrackState stepKemFailSend stepKemFailDeliver)
-open CryptoVerification.LibsignalSpqrV1 (MlKem V1State coinBytes coinBytes_length spqrV1SessionUniformCoins)
-open CryptoVerification.SpqrV1Sync.SendTotal (BOkTight)
-open CryptoVerification.E2E (Bytes paramsV1)
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem V1State coinBytes coinBytes_length spqrV1SessionUniformCoins)
+open _root_.CryptoVerification.SpqrV1Sync.SendTotal (BOkTight)
+open _root_.CryptoVerification.E2E (Bytes paramsV1)
 open Computational.Proofs.ReductionDsl.Fig8Atomic (salt32V_salt32OfV)
 open Computational.Proofs.Game.PromotedCostedReds.SimFig8State
   (sOpSpqr eval_eLet mWin mEpoch mIdx mSafeChE mSafeChE_eval mEpMgmtE mEpMgmtE_eval
@@ -98,8 +146,6 @@ open Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedBase
    dfSendArgTH dfRecvArgTH classifySmQEH dfStepHaltedC
    semSendTrackHalted simDeliverForgeOracleSanQTrackHalted)
 
-noncomputable section
-
 @[expose] def dfHaltedEnc {ℓ : ℕ} {Pt : Type} {F : ShaCompress}
     (st : (LibsignalToModularSchemeSimState Bytes Pt ℓ × List (Fig8C Pt)) ×
       KemFailTrackState F) :
@@ -119,7 +165,7 @@ private theorem fig8CtV_fig8CtOfV {ℓ : ℕ} {Pt : Type}
     fig8CtV (ℓ := ℓ) (Pt := Pt) (fig8CtOfV v) = v := by
   rcases v with ⟨h, n, ws, sv⟩
   simp [fig8CtV, fig8CtOfV, _root_.ReductionDsl.lctV, _root_.ReductionDsl.lctOfV,
-    _root_.ReductionDsl.wireSaltCtV, _root_.ReductionDsl.wireSaltCtOfV, salt32V_salt32OfV]
+    _root_.ReductionDsl.wireSaltCtV, _root_.ReductionDsl.wireSaltCtOfV]
 
 private theorem fig8StV_fig8StOfV {ℓ : ℕ} {Pt : Type}
     (v : (fig8StT (ℓ := ℓ) (Pt := Pt)).denote) :
@@ -1136,7 +1182,5 @@ theorem dfSendStepHaltedC_eval
     rfl
 
 end SendStepEval
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedEval

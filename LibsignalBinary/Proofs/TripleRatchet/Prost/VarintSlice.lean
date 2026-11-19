@@ -9,26 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DropDecodeError
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.DropDecodeError -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.InImage.DecodeErrorFrom.Core
-import LibsignalBinary.Proofs.TripleRatchet.InImage.Prost
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
+import LibsignalBinary.Proofs.TripleRatchet.TrapRng
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-
-/-!
-# Verification of `prost::encoding::varint::decode_varint_slice`
-
-Proves that `prost::encoding::varint::decode_varint_slice` (`0x23008`) satisfies
-`decodeVarintSliceSpec` and `decodeVarintSliceSpecX`, both in-image and under `[LibsignalPlacement]`.
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Prost
 
@@ -44,17 +36,6 @@ attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Call-site lemma for the in-image `<DecodeError as From<DecodeErrorKind>>::from` -/
-
-theorem decodeErrorFrom_ok_at {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hFrom : AllocHooks A abs)
-    {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = libsignalSessionCode.fnOff decodeErrorFromName) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) (decodeErrorFromSpec A) := by
-  have h := LibsignalTripleRatchet.decodeErrorFrom_ok b C A ctl abs hFrom
-  rwa [← Program.fnAddr_rel rfl rfl (hfn ▸ hk)]
 
 theorem allocFailedIn_trans {s0 sm sf : State} (htr : sm.trace = s0.trace)
     (h : allocFailedIn sm sf ∧ sm.trace <+: sf.trace) :
@@ -384,25 +365,25 @@ theorem decodeVarint_eq_none_of_pre {bs : List (BitVec 8)}
 
 /-! ## `decodeVarint` accumulator and `varintSliceResultAt` unfolding lemmas -/
 
-def vAcc1 (b0 : BitVec 8) : BitVec 64 :=
+@[expose] def vAcc1 (b0 : BitVec 8) : BitVec 64 :=
   0#64 ||| ((b0 &&& 0x7F#8).zeroExtend 64 <<< 0)
-def vAcc2 (b0 b1 : BitVec 8) : BitVec 64 :=
+@[expose] def vAcc2 (b0 b1 : BitVec 8) : BitVec 64 :=
   vAcc1 b0 ||| ((b1 &&& 0x7F#8).zeroExtend 64 <<< 7)
-def vAcc3 (b0 b1 b2 : BitVec 8) : BitVec 64 :=
+@[expose] def vAcc3 (b0 b1 b2 : BitVec 8) : BitVec 64 :=
   vAcc2 b0 b1 ||| ((b2 &&& 0x7F#8).zeroExtend 64 <<< 14)
-def vAcc4 (b0 b1 b2 b3 : BitVec 8) : BitVec 64 :=
+@[expose] def vAcc4 (b0 b1 b2 b3 : BitVec 8) : BitVec 64 :=
   vAcc3 b0 b1 b2 ||| ((b3 &&& 0x7F#8).zeroExtend 64 <<< 21)
-def vAcc5 (b0 b1 b2 b3 b4 : BitVec 8) : BitVec 64 :=
+@[expose] def vAcc5 (b0 b1 b2 b3 b4 : BitVec 8) : BitVec 64 :=
   vAcc4 b0 b1 b2 b3 ||| ((b4 &&& 0x7F#8).zeroExtend 64 <<< 28)
-def vAcc6 (b0 b1 b2 b3 b4 b5 : BitVec 8) : BitVec 64 :=
+@[expose] def vAcc6 (b0 b1 b2 b3 b4 b5 : BitVec 8) : BitVec 64 :=
   vAcc5 b0 b1 b2 b3 b4 ||| ((b5 &&& 0x7F#8).zeroExtend 64 <<< 35)
-def vAcc7 (b0 b1 b2 b3 b4 b5 b6 : BitVec 8) : BitVec 64 :=
+@[expose] def vAcc7 (b0 b1 b2 b3 b4 b5 b6 : BitVec 8) : BitVec 64 :=
   vAcc6 b0 b1 b2 b3 b4 b5 ||| ((b6 &&& 0x7F#8).zeroExtend 64 <<< 42)
-def vAcc8 (b0 b1 b2 b3 b4 b5 b6 b7 : BitVec 8) : BitVec 64 :=
+@[expose] def vAcc8 (b0 b1 b2 b3 b4 b5 b6 b7 : BitVec 8) : BitVec 64 :=
   vAcc7 b0 b1 b2 b3 b4 b5 b6 ||| ((b7 &&& 0x7F#8).zeroExtend 64 <<< 49)
-def vAcc9 (b0 b1 b2 b3 b4 b5 b6 b7 b8 : BitVec 8) : BitVec 64 :=
+@[expose] def vAcc9 (b0 b1 b2 b3 b4 b5 b6 b7 b8 : BitVec 8) : BitVec 64 :=
   vAcc8 b0 b1 b2 b3 b4 b5 b6 b7 ||| ((b8 &&& 0x7F#8).zeroExtend 64 <<< 56)
-def vAcc10 (b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 : BitVec 8) : BitVec 64 :=
+@[expose] def vAcc10 (b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 : BitVec 8) : BitVec 64 :=
   vAcc9 b0 b1 b2 b3 b4 b5 b6 b7 b8 ||| ((b9 &&& 0x7F#8).zeroExtend 64 <<< 63)
 
 theorem varintSliceResultAt_1 (A : RustAlloc) (ret : BitVec 64)
@@ -736,7 +717,7 @@ macro "wp_reach" : tactic =>
 
 /-- Stack-parameterized `decodeVarintSliceSpec` (`= decodeVarintSliceSpec A` at `decodeErrorHookStack`,
 `= decodeVarintSliceSpecX A` at `decodeErrorHookStackX`, `= decodeVarintSliceSpecW A` at `decodeErrorHookStackW`). -/
-def decodeVarintSliceSpecGen (A : RustAlloc) (errStack : Nat) : Spec DecodeVarintSliceGhost where
+@[expose] def decodeVarintSliceSpecGen (A : RustAlloc) (errStack : Nat) : Spec DecodeVarintSliceGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.ptr ∧
       (s.readReg64 .x2).toNat = x.bs.length ∧ x.bs.length < 2 ^ 63 ∧ VarintSlicePre x.bs⌝ ∗
@@ -749,322 +730,7 @@ def decodeVarintSliceSpecGen (A : RustAlloc) (errStack : Nat) : Spec DecodeVarin
 section
 attribute [local irreducible] _root_.Arm64.Program.fnOff
 
-set_option maxHeartbeats 8000000 in
-theorem decodeVarintSlice_ok_of_hooks_gen {oimg : Option Obj.Image} {b : BitVec 64} {A : RustAlloc}
-    {H : String → Option (State → State)} {errStack : Nat} (herr : 0x50 + errStack ≤ 2 ^ 64)
-    (hFromCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr decodeVarintSliceName + bv% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" - ls_off% "prost::encoding::varint::decode_varint_slice"))
-      (specWithOptInv oimg (decodeErrorFromSpecWithStack A errStack))) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr decodeVarintSliceName)
-      (specWithOptInv oimg (decodeVarintSliceSpecGen A errStack)) := by
-  have hfn := (ls_lemma% fnOff "prost::encoding::varint::decode_varint_slice")
-  tripleRatchet_fetches b H hfn (num% (ls_off% "prost::encoding::varint::decode_varint_slice")) 704
-  clear hfn
-  dsimp only [decodeVarintSliceName] at hFromCall ⊢
-  generalize_entry (libsignalSessionCode.rebase b H).fnAddr
-    "prost::encoding::varint::decode_varint_slice" = entry
-  generalize_entry (libsignalSessionCode.rebase b H) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  conv =>
-    arg 3; arg 2
-    unfold decodeVarintSliceSpecGen
-    simp only [memRegion_24_cells, stackAt_decodeVarintSliceGen herr, sepExists_sepConj_left,
-      sepExists_sepConj_right]
-  wpp_init_optImage x s0 hinv0
-  obtain ⟨ret, ptr, bs⟩ := x
-  dsimp only at *
-  have hx2 : s0.readReg64 (Reg.gpr 2#5) = BitVec.ofNat 64 bs.length := eq_ofNat_of_toNat_eq h_3
-  obtain ⟨b0, bs1, rfl⟩ := exists_cons_of_all_gt (pre := []) h (by simp) (by rintro _ ⟨⟩)
-  apply SepWPp.of_sepWP_optImage (mid := entry + bv% (16)) hinv0
-  wp_steps
-  wp_reach
-  intro hinv1
-  suffices hjoin :
-      OptCallInv oimg (((((s0.writeReg64 Reg.sp (s0.sp - 80#64)).writeReg64 (Reg.gpr 29#5) (s0.sp - 16#64)).writeReg64
-          (Reg.gpr 8#5) (BitVec.signExtend 64 b0)).setPState
-        (subsPState64 (BitVec.ofNat 64 (b0 :: bs1).length) 11#64)).setPC (entry + bv% (36)) |>.setMem m) →
-      SepWPp prog (s0.readReg64 Reg.lr)
-      (((((s0.writeReg64 Reg.sp (s0.sp - 80#64)).writeReg64 (Reg.gpr 29#5) (s0.sp - 16#64)).writeReg64
-          (Reg.gpr 8#5) (BitVec.signExtend 64 b0)).setPState
-        (subsPState64 (BitVec.ofNat 64 (b0 :: bs1).length) 11#64)).setPC (entry + bv% (36)) |>.setMem m)
-      (ret ↦₆₄ v_stk_6 ∗ (ret + 8#64) ↦₆₄ v_stk_5 ∗ (ret + 16#64) ↦₆₄ v_stk_4 ∗
-        (ptr ↦₈ b0 ∗ (ptr + 1#64) ↦ₛ bs1) ∗ A.pool ∗
-        stackAt (s0.sp - 80#64) errStack ∗ memRegion (s0.sp - 80#64) 8 ∗
-        memRegion (s0.sp - 56#64) 40 ∗ (s0.sp - 72#64) ↦₆₄ v_stk_3 ∗
-        (s0.sp - 64#64) ↦₆₄ v_stk_2 ∗ (s0.sp - 16#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5) ∗
-        (s0.sp - 8#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5))
-      (fun sf P_f =>
-        (sf.mem ⊨ P_f ∗ R →
-            sf.mem ⊨
-              (∃∗ x, ∃∗ x_1, ∃∗ x_2, ∃∗ x_3,
-                ⌜sf.trace = s0.trace⌝ ∗
-                  varintSliceResultAt A ret (b0 :: bs1) (decodeVarint (b0 :: bs1)) ∗
-                  ptr ↦ₛ (b0 :: bs1) ∗ A.pool ∗
-                  stackAt (s0.sp - 80#64) errStack ∗ memRegion (s0.sp - 80#64) 8 ∗
-                  memRegion (s0.sp - 56#64) 40 ∗ (s0.sp - 72#64) ↦₆₄ x_3 ∗
-                  (s0.sp - 64#64) ↦₆₄ x_2 ∗ (s0.sp - 16#64) ↦₆₄ x_1 ∗ (s0.sp - 8#64) ↦₆₄ x) ∗ R) ∧
-          sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
-      (fun sf P_f => sf.mem ⊨ P_f ∗ R → sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R) by
-    by_cases h11 : 11 ≤ (b0 :: bs1).length
-    · have hule11 := ule_11_of_ge h11 h_4
-      apply SepWPp.of_sepWP_optImage (mid := entry + bv% (36)) hinv1
-      conv => arg 4; rw [pointsToBytes_cons]
-      wp_steps
-      wp_reach
-      exact hjoin
-    · rcases h with h11' | ⟨hne, hlast⟩
-      · exact (h11 h11').elim
-      · have hule11 := ule_11_of_lt h11 h_4
-        have hbit_last := VarintSliceBits.getLsbD_7_beq_of_le hlast
-        apply SepWPp.of_sepWP_optImage (mid := entry + bv% (32)) hinv1
-        conv => arg 4; rw [pointsToBytes_split_last ptr (b0 :: bs1) hne h_4]
-        wp_steps
-        conv => arg 4; rw [← pointsToBytes_split_last ptr (b0 :: bs1) hne h_4, pointsToBytes_cons]
-        wp_reach
-        intro hinv2
-        apply SepWPp.of_sepWP_optImage (mid := entry + bv% (36)) hinv2
-        wp_steps
-        wp_reach
-        exact hjoin
-  intro hinv_join
-  by_cases hnone : decodeVarint (b0 :: bs1) = none
-  · obtain ⟨b0', b1, b2, b3, b4, b5, b6, b7, b8, b9, rest, heq,
-      hb0, hb1, hb2, hb3, hb4, hb5, hb6, hb7, hb8, hb9⟩ := decodeVarint_eq_none_of_pre h hnone
-    cases heq
-    simp only [hnone, varintSliceResultAt]
-    have hbit0 := VarintSliceBits.signExtend64_getLsbD_63_beq_of_gt hb0
-    have hbit1 := VarintSliceBits.getLsbD_7_beq_of_gt hb1
-    have hbit2 := VarintSliceBits.getLsbD_7_beq_of_gt hb2
-    have hbit3 := VarintSliceBits.getLsbD_7_beq_of_gt hb3
-    have hbit4 := VarintSliceBits.getLsbD_7_beq_of_gt hb4
-    have hbit5 := VarintSliceBits.getLsbD_7_beq_of_gt hb5
-    have hbit6 := VarintSliceBits.getLsbD_7_beq_of_gt hb6
-    have hbit7 := VarintSliceBits.getLsbD_7_beq_of_gt hb7
-    have hbit8 := VarintSliceBits.signExtend64_getLsbD_63_beq_of_gt hb8
-    have hovf2 := ovf_byte2 hb0 hb1
-    have hovf3 := ovf_byte3 hb0 hb1 hb2
-    have hovf4 := VarintSliceBits.ovf_byte4_zext hb0 hb1 hb2 hb3
-    have hovf6 := ovf_byte6 hb4 hb5
-    have hovf7 := ovf_byte7 hb4 hb5 hb6
-    have hovf8 := VarintSliceBits.ovf_byte8_zext hb4 hb5 hb6 hb7
-    have hb9_ule := byte9_ule_of_ge hb9
-    apply SepWPp.of_sepWP_optImage (mid := entry + bv% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" - ls_off% "prost::encoding::varint::decode_varint_slice")) hinv_join
-    conv => arg 4; simp only [pointsToBytes_cons]
-    wp_steps
-    wp_reach
-    intro hinv_call
-    refine SepWPp.call_frame_optImage (oimg := oimg) (spec := decodeErrorFromSpecWithStack A errStack)
-      (x := (s0.sp - 64#64, 0x8000000000000001#64))
-      (ret_pc := entry + bv% (592)) hFromCall hinv_call
-      (by simp only [arm64_norm]) (by simp only [arm64_norm, hrun])
-      (by simp only [State.spAligned, arm64_norm]; exact hsp_align)
-      (by simp only [arm64_norm])
-      (by simp only [decodeErrorFromSpecWithStack, arm64_norm]; rfl)
-      (⟨rfl, by decide⟩ : s0.sp - 64#64 = s0.sp - 64#64 ∧ KindNoHeap 0x8000000000000001#64)
-      (by sep_focus)
-      (fun _ _ _ _ hex => allowPanic_not_exited hex)
-      (fun sf _ hpan => allowPanic_frame (allocFailedIn_trans (by simp only [arm64_norm])) hpan) ?_
-    intro sm hpcm hrunm hspm hcsm _
-    simp only [CalleeSavedPreserved, arm64_norm] at hcsm
-    apply SepWPp.of_sepWP_ret
-    conv => arg 4; simp only [decodeErrorFromSpecWithStack, memRegion_48_split, sepExists_sepConj_left, sepExists_sepConj_right, arm64_norm]
-    apply SepWP.exists_elim; intro v_err
-    wp_steps
-    apply SepWP.fold (pointsTo64_entails_memRegion8 (ret + 16#64) _) (by sep_focus)
-    apply SepWP.done
-    · simp only [arm64_norm]
-    · simp only [arm64_norm, hrunm]
-    · rcases hcsm with ⟨hx19, hx20, hx21, hx22, hx23, hx24, hx25, hx26, hx27, hx28, hfp, hvregs⟩
-      refine ⟨?_, by simp only [arm64_norm], ?_⟩
-      · intro hm_final
-        simp only [sepExists_sepConj_left, sepExists_sepConj_right, arm64_norm] at hm_final ⊢
-        rcases hm_final with ⟨⟨hx0_ne, htr⟩, hm_final⟩
-        refine ⟨s0.readReg64 (Reg.gpr 30#5), s0.readReg64 (Reg.gpr 29#5), v_err, ret, sm.readReg64 (Reg.gpr 0#5), ⟨htr, hx0_ne⟩, ?_⟩
-        arm64_sep_close
-      · simp only [CalleeSavedPreserved, arm64_norm, hx19, hx20, hx21, hx22, hx23, hx24, hx25, hx26, hx27, hx28, hvregs]
-  · apply SepWPp.of_sepWP_ret
-    by_cases hb0 : b0 ≤ 0x7f#8
-    · have hbit0 := VarintSliceBits.signExtend64_getLsbD_63_beq_of_le hb0
-      rw [varintSliceResultAt_1 A ret b0 bs1 hb0]
-      wp_steps
-      wp_ret8_bv_bits ret (vAcc1 b0)
-      conv => arg 4; simp only [← pointsToBytes_cons]
-      wp_done
-    · have hbit0 := VarintSliceBits.signExtend64_getLsbD_63_beq_of_gt hb0
-      obtain ⟨b1, bs2, rfl⟩ := exists_cons_of_all_gt (pre := [b0]) h (by simp)
-        (by simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq, hb0, not_false_eq_true])
-      conv => arg 4; rw [pointsToBytes_cons]
-      wp_steps 7
-      by_cases hb1 : b1 ≤ 0x7f#8
-      · have hbit1 := VarintSliceBits.getLsbD_7_beq_of_le hb1
-        rw [varintSliceResultAt_2 A ret b0 b1 bs2 hb0 hb1]
-        wp_steps
-        wp_ret8_bv_bits ret (vAcc2 b0 b1)
-        conv => arg 4; simp only [← pointsToBytes_cons]
-        wp_done
-      · have hbit1 := VarintSliceBits.getLsbD_7_beq_of_gt hb1
-        have hovf2 := ovf_byte2 hb0 hb1
-        obtain ⟨b2, bs3, rfl⟩ := exists_cons_of_all_gt (pre := [b0, b1]) h (by simp)
-          (by simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq,
-            hb0, hb1, not_false_eq_true, and_self])
-        conv => arg 4; rw [pointsToBytes_cons]
-        wp_steps 7
-        by_cases hb2 : b2 ≤ 0x7f#8
-        · have hbit2 := VarintSliceBits.getLsbD_7_beq_of_le hb2
-          rw [varintSliceResultAt_3 A ret b0 b1 b2 bs3 hb0 hb1 hb2]
-          wp_steps
-          wp_ret8_bv_bits ret (vAcc3 b0 b1 b2)
-          conv => arg 4; simp only [← pointsToBytes_cons]
-          wp_done
-        · have hbit2 := VarintSliceBits.getLsbD_7_beq_of_gt hb2
-          have hovf3 := ovf_byte3 hb0 hb1 hb2
-          obtain ⟨b3, bs4, rfl⟩ := exists_cons_of_all_gt (pre := [b0, b1, b2]) h (by simp)
-            (by simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq,
-              hb0, hb1, hb2, not_false_eq_true, and_self])
-          conv => arg 4; rw [pointsToBytes_cons]
-          wp_steps 7
-          by_cases hb3 : b3 ≤ 0x7f#8
-          · have hbit3 := VarintSliceBits.getLsbD_7_beq_of_le hb3
-            rw [varintSliceResultAt_4 A ret b0 b1 b2 b3 bs4 hb0 hb1 hb2 hb3]
-            wp_steps
-            wp_ret8_bv_bits ret (vAcc4 b0 b1 b2 b3)
-            conv => arg 4; simp only [← pointsToBytes_cons]
-            wp_done
-          · have hbit3 := VarintSliceBits.getLsbD_7_beq_of_gt hb3
-            have hovf4 := VarintSliceBits.ovf_byte4_zext hb0 hb1 hb2 hb3
-            obtain ⟨b4, bs5, rfl⟩ := exists_cons_of_all_gt (pre := [b0, b1, b2, b3]) h (by simp)
-              (by simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq,
-                hb0, hb1, hb2, hb3, not_false_eq_true, and_self])
-            conv => arg 4; rw [pointsToBytes_cons]
-            wp_steps 7
-            by_cases hb4 : b4 ≤ 0x7f#8
-            · have hbit4 := VarintSliceBits.getLsbD_7_beq_of_le hb4
-              rw [varintSliceResultAt_5 A ret b0 b1 b2 b3 b4 bs5 hb0 hb1 hb2 hb3 hb4]
-              wp_steps
-              wp_ret8_bv_bits ret (vAcc5 b0 b1 b2 b3 b4)
-              conv => arg 4; simp only [← pointsToBytes_cons]
-              wp_done
-            · have hbit4 := VarintSliceBits.getLsbD_7_beq_of_gt hb4
-              obtain ⟨b5, bs6, rfl⟩ := exists_cons_of_all_gt (pre := [b0, b1, b2, b3, b4]) h (by simp)
-                (by simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq,
-                  hb0, hb1, hb2, hb3, hb4, not_false_eq_true, and_self])
-              conv => arg 4; rw [pointsToBytes_cons]
-              wp_steps 5
-              by_cases hb5 : b5 ≤ 0x7f#8
-              · have hbit5 := VarintSliceBits.getLsbD_7_beq_of_le hb5
-                rw [varintSliceResultAt_6 A ret b0 b1 b2 b3 b4 b5 bs6 hb0 hb1 hb2 hb3 hb4 hb5]
-                wp_steps
-                wp_ret8_bv_bits ret (vAcc6 b0 b1 b2 b3 b4 b5)
-                conv => arg 4; simp only [← pointsToBytes_cons]
-                wp_done
-              · have hbit5 := VarintSliceBits.getLsbD_7_beq_of_gt hb5
-                have hovf6 := ovf_byte6 hb4 hb5
-                obtain ⟨b6, bs7, rfl⟩ := exists_cons_of_all_gt (pre := [b0, b1, b2, b3, b4, b5]) h
-                  (by simp) (by simp only [List.mem_cons, List.not_mem_nil, or_false,
-                    forall_eq_or_imp, forall_eq, hb0, hb1, hb2, hb3, hb4, hb5, not_false_eq_true,
-                    and_self])
-                conv => arg 4; rw [pointsToBytes_cons]
-                wp_steps 7
-                by_cases hb6 : b6 ≤ 0x7f#8
-                · have hbit6 := VarintSliceBits.getLsbD_7_beq_of_le hb6
-                  rw [varintSliceResultAt_7 A ret b0 b1 b2 b3 b4 b5 b6 bs7 hb0 hb1 hb2 hb3 hb4 hb5 hb6]
-                  wp_steps
-                  wp_ret8_bv_bits ret (vAcc7 b0 b1 b2 b3 b4 b5 b6)
-                  conv => arg 4; simp only [← pointsToBytes_cons]
-                  wp_done
-                · have hbit6 := VarintSliceBits.getLsbD_7_beq_of_gt hb6
-                  have hovf7 := ovf_byte7 hb4 hb5 hb6
-                  obtain ⟨b7, bs8, rfl⟩ := exists_cons_of_all_gt
-                    (pre := [b0, b1, b2, b3, b4, b5, b6]) h (by simp)
-                    (by simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
-                      forall_eq, hb0, hb1, hb2, hb3, hb4, hb5, hb6, not_false_eq_true, and_self])
-                  conv => arg 4; rw [pointsToBytes_cons]
-                  wp_steps 7
-                  by_cases hb7 : b7 ≤ 0x7f#8
-                  · have hbit7 := VarintSliceBits.getLsbD_7_beq_of_le hb7
-                    rw [varintSliceResultAt_8 A ret b0 b1 b2 b3 b4 b5 b6 b7 bs8
-                      hb0 hb1 hb2 hb3 hb4 hb5 hb6 hb7]
-                    wp_steps
-                    wp_ret8_bv_bits ret (vAcc8 b0 b1 b2 b3 b4 b5 b6 b7)
-                    conv => arg 4; simp only [← pointsToBytes_cons]
-                    wp_done
-                  · have hbit7 := VarintSliceBits.getLsbD_7_beq_of_gt hb7
-                    have hovf8 := VarintSliceBits.ovf_byte8_zext hb4 hb5 hb6 hb7
-                    obtain ⟨b8, bs9, rfl⟩ := exists_cons_of_all_gt
-                      (pre := [b0, b1, b2, b3, b4, b5, b6, b7]) h (by simp)
-                      (by simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
-                        forall_eq, hb0, hb1, hb2, hb3, hb4, hb5, hb6, hb7, not_false_eq_true,
-                        and_self])
-                    conv => arg 4; rw [pointsToBytes_cons]
-                    wp_steps 7
-                    by_cases hb8 : b8 ≤ 0x7f#8
-                    · have hbit8 := VarintSliceBits.signExtend64_getLsbD_63_beq_of_le hb8
-                      rw [varintSliceResultAt_9 A ret b0 b1 b2 b3 b4 b5 b6 b7 b8 bs9
-                        hb0 hb1 hb2 hb3 hb4 hb5 hb6 hb7 hb8]
-                      wp_steps
-                      wp_ret8_bv_bits ret (vAcc9 b0 b1 b2 b3 b4 b5 b6 b7 b8)
-                      conv => arg 4; simp only [← pointsToBytes_cons]
-                      wp_done
-                    · have hbit8 := VarintSliceBits.signExtend64_getLsbD_63_beq_of_gt hb8
-                      obtain ⟨b9, bs10, rfl⟩ := exists_cons_of_all_gt
-                        (pre := [b0, b1, b2, b3, b4, b5, b6, b7, b8]) h (by simp)
-                        (by simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
-                          forall_eq, hb0, hb1, hb2, hb3, hb4, hb5, hb6, hb7, hb8, not_false_eq_true,
-                          and_self])
-                      have hb9 : ¬ 2#8 ≤ b9 := by
-                        intro hge
-                        apply hnone
-                        rw [decodeVarint]; iterate 10 rw [decodeVarintAux]
-                        by_cases hb9_le : b9 ≤ 0x7f#8 <;>
-                          simp [toNat_le_0x7f_iff, two_le_toNat_iff, hb0, hb1, hb2, hb3, hb4, hb5,
-                            hb6, hb7, hb8, hb9_le, hge]
-                      have hb9_ule := byte9_ule_of_lt hb9
-                      have hovf10 := ovf_byte10 hb0 hb1 hb2 hb3 hb4 hb5 hb6 hb7 hb8 hb9
-                      conv => arg 4; rw [pointsToBytes_cons]
-                      rw [varintSliceResultAt_10 A ret b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 bs10
-                        hb0 hb1 hb2 hb3 hb4 hb5 hb6 hb7 hb8 hb9]
-                      wp_steps
-                      wp_ret8_bv_bits ret (vAcc10 b0 b1 b2 b3 b4 b5 b6 b7 b8 b9)
-                      conv => arg 4; simp only [← pointsToBytes_cons]
-                      wp_done
-
 end
-
-theorem decodeVarintSlice_ok_of_contract {b : BitVec 64} {A : RustAlloc}
-    {H : String → Option (State → State)}
-    (hFromCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr decodeVarintSliceName + bv% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" - ls_off% "prost::encoding::varint::decode_varint_slice"))
-      (decodeErrorFromSpec A)) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr decodeVarintSliceName)
-      (decodeVarintSliceSpec A) :=
-  subroutine_ok_of_optNone
-    (decodeVarintSlice_ok_of_hooks_gen (oimg := none) (errStack := decodeErrorHookStack) (by decide)
-      (subroutine_ok_to_optNone hFromCall))
-
-theorem decodeVarintSlice_ok_ext {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel} {ext : String → Option (State → State)}
-    (hC : Stage2Contracts b C A ctl uuidTryParse S ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr decodeVarintSliceName)
-      (decodeVarintSliceSpec A) :=
-  decodeVarintSlice_ok_of_contract
-    (hC.decode_error_from_ok_at decodeVarintSliceName (num% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" - ls_off% "prost::encoding::varint::decode_varint_slice"))
-      (by fnoff_eq))
-
-theorem decodeVarintSlice_ok {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hFrom : AllocHooks A abs) :
-    DecodeVarintSliceOk b C A ctl abs :=
-  decodeVarintSlice_ok_of_contract
-    (decodeErrorFrom_ok_at (b := b) (C := C) (ctl := ctl)
-      hFrom (ls_lemma% fnOff "prost::encoding::varint::decode_varint_slice")
-      (k := num% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" - ls_off% "prost::encoding::varint::decode_varint_slice"))
-      (by decide))
-
-/-! ## Extended-stack variant (`decodeVarintSliceSpecX`) -/
 
 theorem stackAt_decodeVarintSliceX (sp : BitVec 64) :
     stackAt sp decodeVarintSliceStackX =
@@ -1075,29 +741,6 @@ theorem stackAt_decodeVarintSliceX (sp : BitVec 64) :
           ((sp - 72#64) ↦₆₄ v9) ∗ ((sp - 64#64) ↦₆₄ v8) ∗
           ((sp - 16#64) ↦₆₄ v2) ∗ ((sp - 8#64) ↦₆₄ v1)) :=
   stackAt_decodeVarintSliceGen (errStack := decodeErrorHookStackX) (by decide) sp
-
-theorem decodeVarintSlice_ok_of_contract_x {img : Obj.Image} {A : RustAlloc}
-    {H : String → Option (State → State)}
-    (hFromCall0 : subroutine_ok (libsignalSessionCode.rebase img.base H)
-      ((libsignalSessionCode.rebase img.base H).fnAddr decodeVarintSliceName + bv% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" - ls_off% "prost::encoding::varint::decode_varint_slice"))
-      ((decodeErrorFromSpecWithStack A decodeErrorHookStackX).inImage img)) :
-    subroutine_ok (libsignalSessionCode.rebase img.base H)
-      ((libsignalSessionCode.rebase img.base H).fnAddr decodeVarintSliceName)
-      ((decodeVarintSliceSpecX A).inImage img) :=
-  decodeVarintSlice_ok_of_hooks_gen (oimg := some img) (errStack := decodeErrorHookStackX)
-    (by decide) hFromCall0
-
-theorem decodeVarintSlice_ok_ext_x {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {encFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → List (BitVec 8)}
-    {decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8))}
-    {ext : String → Option (State → State)}
-    (hC : Stage2ContractsX img C A encFn decFn ext) :
-    DecodeVarintSliceOkExtX img A ext :=
-  decodeVarintSlice_ok_of_contract_x
-    (hC.decode_error_from_ok_at decodeVarintSliceName (num% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" - ls_off% "prost::encoding::varint::decode_varint_slice"))
-      (by fnoff_eq))
-
-/-! ## Relocatable per-block proofs (blocks 261 and 76) -/
 
 open CryptoVerification.LibsignalSession
 
@@ -1579,5 +1222,4 @@ theorem decode_varint_slice_placed_ok_x [LibsignalPlacement] {A : RustAlloc}
     (decode_error_from_placed_ok_x hshim halloc hpanic)
 
 end CryptoVerification.LibsignalTripleRatchet.Prost
-
 

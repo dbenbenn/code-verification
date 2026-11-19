@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SpkLeakRedModel
-public import Computational.Proofs.SpecLemmas.Reductions.E2E.CostedTables
-public import Computational.Proofs.ReductionDsl.Soundness
+public import Computational.Proofs.E2E.SpkLeakRedModel -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.Reductions.E2E.CostedTables
+import Computational.Proofs.ReductionDsl.Soundness
 public import Computational.Specifications.Session.StatementSpkModel
 import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.ReductionDsl.Notation
 import Computational.Proofs.ReductionDsl.Size
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRF.CostedTables -- proof-setup: allow-public-import
 
 /-!
 # Costed `spkLeakRedU` Reduction
@@ -25,7 +26,7 @@ reduction `spkLeakRedU`, and proves its evaluation agreement, query, cost, size,
 bounds.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Costed
 
@@ -40,7 +41,7 @@ variable {Pt : Type}
 
 /-- Costed hop-3 wrapper reduction `spkLeakRedU` that samples a uniform `BitVec 256` scalar for the
 inner PRF reduction and forwards PRF oracle queries unchanged. -/
-def spkLeakRedUProg :
+@[expose] def spkLeakRedUProg :
     CostedReduction
       (prfConstantInputOps (S := prfSig Pt (BitVec 256)) (.base .inp) Empty.elim)
       ((prfIface (S := prfSig Pt (BitVec 256)) (.base .inp) (.base .tag)).withSamp
@@ -153,36 +154,5 @@ theorem spkLeakRedUProg_totalCost (q : ℕ) :
   simp [CostedReduction.totalCost, spkLeakRedUProg, prfCodec, prfIface, Iface.withSamp, Samplers.sum,
     unifSamplers, Comp.cost, Expr.cost, Expr.v0, Expr.v1]
   omega
-
-theorem spkLeakRedUProg_size :
-    (spkLeakRedUProg (Pt := Pt)).size = 16 := by
-  simp [CostedReduction.size, spkLeakRedUProg, Comp.size, Expr.size, Expr.v0, Expr.v1]
-
-theorem spkLeakRedUProg_size_le :
-    (spkLeakRedUProg (Pt := Pt)).size ≤ reductionSizeBudget := by
-  rw [spkLeakRedUProg_size]
-  simp only [reductionSizeBudget]
-  omega
-
-theorem spkLeakRedUProg_queries (q : ℕ) :
-    (spkLeakRedUProg (Pt := Pt)).totalQueries (fun _ => 1) (fun _ => 0) q = q := by
-  simp [CostedReduction.totalQueries, spkLeakRedUProg, Comp.queries]
-
-theorem spkLeakRedUProg_totalCost_le_budget (q : ℕ) :
-    (spkLeakRedUProg (Pt := Pt)).totalCost (q + 1) ≤ spkLeakRedUBudget q := by
-  rw [spkLeakRedUProg_totalCost]
-  unfold spkLeakRedUBudget
-  omega
-
-/-- `spkLeakRedUProg` satisfies `GRedBounded` at query bound `q + 1` and cost budget
-`spkLeakRedUBudget q`. -/
-theorem spkLeakRedUProg_gRedBounded_tight (q : ℕ) :
-    CryptoVerification.LibsignalSession.GRedBounded (spkLeakRedUProg (Pt := Pt))
-      (fun _ => 1) (fun _ => 0) (q + 1) (q + 1) (spkLeakRedUBudget q) := by
-  refine gRedBounded_of_bounds_const _ (fun _ => 1) (fun _ => 0) (q + 1) (q + 1)
-    (spkLeakRedUBudget q) (spkLeakRedUProg_totalCost_le_budget q) spkLeakRedUProg_size_le ?_
-    spkLeakRedUOps_sizeHonest
-    (SampSizeHonest.sum SampSizeHonest.empty spkLeakRedUSamp_sizeHonest)
-  rw [spkLeakRedUProg_queries]
 
 end CryptoVerification.E2E.Costed

@@ -12,6 +12,8 @@ module
 public import Computational.Proofs.ReductionDsl.SM.RedPRNGPotOK -- proof-setup: allow-public-import
 public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperPRNG -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Notation
+public import Computational.Proofs.ReductionDsl.SM.DeliverForge -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperCKA -- proof-setup: allow-public-import
 
 /-!
 # Potential-Based PRF-PRNG Query Bounds for `DeliverForge`

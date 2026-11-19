@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.SpecPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.LoadRec
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.SpecPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.LoadRec
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable Store Determinism for `decrypt_signal`
@@ -22,7 +24,7 @@ import Arm64.Trusted.Spec.SepLogic
 `decModel_det` lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -66,6 +68,7 @@ theorem filesOkPeer_mono_placed {S1 S2 : SessionRecord (List (BitVec 8)) → Pro
   idPathLt := h.idPathLt
   sessGet := let ⟨bs, hget, hwf⟩ := h.sessGet; ⟨bs, hget, sessFileWf_mono_placed hsub hwf⟩
   idGet := h.idGet
+  nameLe40 := h.nameLe40
 
 theorem cliSessInv_opened_wrOk_placed {Scope S2 : SessionRecord (List (BitVec 8)) → Prop}
     (hsub : ∀ r, Scope r → S2 r) {F : FsFiles} {peer : AddrGhost}

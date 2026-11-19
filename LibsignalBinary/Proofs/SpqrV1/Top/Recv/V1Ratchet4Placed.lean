@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet4
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1Placed
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet4 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
@@ -29,7 +29,7 @@ Relocatable symbolic execution of `spqr::chain_from`, `<Chain>::add_epoch`, and 
 (`+1856..+2024 -> +2664`) in `spqr::recv` (Block `329`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.Recv
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndGapDh
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndGapDh -- proof-setup: allow-public-import
 public import Computational.Specifications.Assumptions.KeyInd1KeyRo
 
 /-!
@@ -22,7 +22,7 @@ point `U` and sign pre-key bundles via the challenger signing oracle, while DDH 
 random-oracle consistency across `DH1`–`DH4`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,7 +38,7 @@ open FgGapDh FgGapDh.Ik FgGapDh.Opk
 abbrev GdhSignSimSpec : OracleSpec.{0, 0} ((ℕ ⊕ PrimQuery) ⊕ (SigQuery ⊕ DdhQuery)) :=
   PrimBaseSpec + sigAndDdhSpec
 
-def liftGdhToSign {α : Type} (mx : OracleComp GdhSimSpec α) :
+@[expose] def liftGdhToSign {α : Type} (mx : OracleComp GdhSimSpec α) :
     OracleComp GdhSignSimSpec α :=
   OracleComp.construct
     (C := fun _ => OracleComp GdhSignSimSpec α)
@@ -51,13 +51,13 @@ def liftGdhToSign {α : Type} (mx : OracleComp GdhSimSpec α) :
         liftM (OracleSpec.query (spec := GdhSignSimSpec) (Sum.inr (Sum.inr dq))) >>= r)
     mx
 
-def unifGdhSign {α : Type} (mx : ProbComp α) : OracleComp GdhSignSimSpec α :=
+@[expose] def unifGdhSign {α : Type} (mx : ProbComp α) : OracleComp GdhSignSimSpec α :=
   liftGdhToSign (unifGdh mx)
 
-def primGdhSignQ (op : PrimQuery) : OracleComp GdhSignSimSpec (primSpec.Range op) :=
+@[expose] def primGdhSignQ (op : PrimQuery) : OracleComp GdhSignSimSpec (primSpec.Range op) :=
   query (spec := GdhSignSimSpec) (Sum.inl (Sum.inr op))
 
-def sigChalQ (msg : Bytes) : OracleComp GdhSignSimSpec Bytes :=
+@[expose] def sigChalQ (msg : Bytes) : OracleComp GdhSignSimSpec Bytes :=
   query (spec := GdhSignSimSpec) (Sum.inr (Sum.inl (.sign msg)))
 
 def ddhGdhSignQ (X Y Z : Bytes) : OracleComp GdhSignSimSpec Bool :=
@@ -68,10 +68,10 @@ structure FgKeyInd1KeySimState (S : Setup) where
   sim       : FgKeyIndSimState S
   sigBudget : ℕ
 
-def FgKeyInd1KeySimState.empty (S : Setup) (secb : Bool) : FgKeyInd1KeySimState S :=
+@[expose] def FgKeyInd1KeySimState.empty (S : Setup) (secb : Bool) : FgKeyInd1KeySimState S :=
   { sim := FgKeyIndSimState.empty S secb, sigBudget := min S.N_spk_tot S.N_recv }
 
-def liftSimStep1Key {S : Setup}
+@[expose] def liftSimStep1Key {S : Setup}
     (f : FgKeyIndSimState S → OracleComp GdhSimSpec (KeyIndResponse × FgKeyIndSimState S))
     (st : FgKeyInd1KeySimState S) :
     OracleComp GdhSignSimSpec (KeyIndResponse × FgKeyInd1KeySimState S) := do
@@ -79,7 +79,7 @@ def liftSimStep1Key {S : Setup}
   return (resp, { st with sim := sim' })
 
 /-- One-key `.initPrin` handler, embedding `Up` on the target principal when `prinFlag` holds. -/
-def fgInitPrin1KeyGdh {S : Setup} (prinFlag : Bool) (prinIdx : ℕ) (Up : Bytes)
+@[expose] def fgInitPrin1KeyGdh {S : Setup} (prinFlag : Bool) (prinIdx : ℕ) (Up : Bytes)
     (u : Fin S.N_id) (st : FgKeyInd1KeySimState S) :
     OracleComp GdhSignSimSpec (KeyIndResponse × FgKeyInd1KeySimState S) := do
   if st.sim.base.principals.any (fun (idx, _) => idx == u.val) then
@@ -100,7 +100,7 @@ def fgInitPrin1KeyGdh {S : Setup} (prinFlag : Bool) (prinIdx : ℕ) (Up : Bytes)
   return (.initPrinResp ikPk ikPk, { st with sim := { st.sim with base := base' } })
 
 /-- One-key `.genSPK` handler, signing target-principal bundles via `sigChalQ` within `sigBudget`. -/
-def fgGenSPK1KeyGdh (prinFlag : Bool) (prinIdx : ℕ)
+@[expose] def fgGenSPK1KeyGdh (prinFlag : Bool) (prinIdx : ℕ)
     (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ) (S : Setup) (maxLen : ℕ)
     (U V : Bytes) (u : Fin S.N_id) (j : Fin S.N_recv)
     (st : FgKeyInd1KeySimState S) :
@@ -147,7 +147,7 @@ def fgGenSPK1KeyGdh (prinFlag : Bool) (prinIdx : ℕ)
     liftSimStep1Key (fgKeyIndStep useDh1 targetIdx targetSpkIdx S maxLen U V (.genSPK u j)) st
 
 /-- Per-query step for `Case A` (`DH1`, `useDh1 = true`) and `Case C` (`DH3`, `useDh1 = false`). -/
-def fgKeyInd1KeyStep (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ) (S : Setup) (maxLen : ℕ)
+@[expose] def fgKeyInd1KeyStep (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ) (S : Setup) (maxLen : ℕ)
     (U V : Bytes) (q : KeyIndQuery S) (st : FgKeyInd1KeySimState S) :
     OracleComp GdhSignSimSpec (KeyIndResponse × FgKeyInd1KeySimState S) :=
   match q with
@@ -156,7 +156,7 @@ def fgKeyInd1KeyStep (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ) (S : Setup) 
   | q => liftSimStep1Key (fgKeyIndStep useDh1 targetIdx targetSpkIdx S maxLen U V q) st
 
 /-- Per-query step for `Case B` (`DH2`), embedding `U` in responder `IK_B` and `V` in `EK_A`. -/
-def fgKeyInd1KeyStepIk (targetIdx targetPrinIdx : ℕ) (S : Setup) (maxLen : ℕ)
+@[expose] def fgKeyInd1KeyStepIk (targetIdx targetPrinIdx : ℕ) (S : Setup) (maxLen : ℕ)
     (U V : Bytes) (q : KeyIndQuery S) (st : FgKeyInd1KeySimState S) :
     OracleComp GdhSignSimSpec (KeyIndResponse × FgKeyInd1KeySimState S) :=
   match q with
@@ -166,7 +166,7 @@ def fgKeyInd1KeyStepIk (targetIdx targetPrinIdx : ℕ) (S : Setup) (maxLen : ℕ
   | q => liftSimStep1Key (fgKeyIndStep false targetIdx (FgGapDh.Ik.noSpkIdx S) S maxLen V U q) st
 
 /-- Per-query step for `Case D` (`DH4`), embedding `U` in `EK_A` and `V` in `OPK_B`. -/
-def fgKeyInd1KeyStepOpk (targetIdx targetOpkIdx : ℕ) (S : Setup) (maxLen : ℕ)
+@[expose] def fgKeyInd1KeyStepOpk (targetIdx targetOpkIdx : ℕ) (S : Setup) (maxLen : ℕ)
     (U V : Bytes) (q : KeyIndQuery S) (st : FgKeyInd1KeySimState S) :
     OracleComp GdhSignSimSpec (KeyIndResponse × FgKeyInd1KeySimState S) :=
   match q with
@@ -175,7 +175,7 @@ def fgKeyInd1KeyStepOpk (targetIdx targetOpkIdx : ℕ) (S : Setup) (maxLen : ℕ
     fgGenSPK1KeyGdh false S.N_id false targetIdx (FgGapDh.Opk.noSpkIdx S) S maxLen U V u j st
   | q => liftSimStep1Key (fgKeyIndStepOpk targetIdx targetOpkIdx S maxLen U V q) st
 
-def runWithGdhSignStep {ιI : Type}
+@[expose] def runWithGdhSignStep {ιI : Type}
     {GSpec : OracleSpec.{0, 0} ιI} {St α : Type}
     (step : (q : ιI) → St → OracleComp GdhSignSimSpec (GSpec.Range q × St))
     (mx : OracleComp (unifSpec + GSpec) α) (st : St) :
@@ -193,7 +193,7 @@ def runWithGdhSignStep {ιI : Type}
         r p.1 p.2)
     mx st
 
-def fgKeyInd1KeyGapDhRunAt (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
+@[expose] def fgKeyInd1KeyGapDhRunAt (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b)
     (U V : Bytes) : OracleComp GdhSignSimSpec Bytes := do
   let secb ← unifGdhSign ($ᵗ Bool)
@@ -202,7 +202,7 @@ def fgKeyInd1KeyGapDhRunAt (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (fgKeyInd1KeyStep useDh1 targetIdx targetSpkIdx S b.q_total U V) A.1.run initSt
   liftGdhToSign (extractCdhFromSimState S useDh1 b.q_total U V finalSt.sim)
 
-def fgKeyInd1KeyGapDhRunAtIk (targetIdx targetPrinIdx : ℕ)
+@[expose] def fgKeyInd1KeyGapDhRunAtIk (targetIdx targetPrinIdx : ℕ)
     (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b)
     (U V : Bytes) : OracleComp GdhSignSimSpec Bytes := do
   let secb ← unifGdhSign ($ᵗ Bool)
@@ -211,7 +211,7 @@ def fgKeyInd1KeyGapDhRunAtIk (targetIdx targetPrinIdx : ℕ)
     (fgKeyInd1KeyStepIk targetIdx targetPrinIdx S b.q_total U V) A.1.run initSt
   liftGdhToSign (extractCdh2FromAdvRoLog b.q_total V U finalSt.sim.advRoLog)
 
-def fgKeyInd1KeyGapDhRunAtOpk (targetIdx targetOpkIdx : ℕ)
+@[expose] def fgKeyInd1KeyGapDhRunAtOpk (targetIdx targetOpkIdx : ℕ)
     (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b)
     (U V : Bytes) : OracleComp GdhSignSimSpec Bytes := do
   let secb ← unifGdhSign ($ᵗ Bool)
@@ -220,21 +220,21 @@ def fgKeyInd1KeyGapDhRunAtOpk (targetIdx targetOpkIdx : ℕ)
     (fgKeyInd1KeyStepOpk targetIdx targetOpkIdx S b.q_total U V) A.1.run initSt
   liftGdhToSign (extractCdh4FromAdvRoLog b.q_total U V finalSt.sim.advRoLog)
 
-def fgKeyInd1KeyGapDhAdvAt (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
+@[expose] def fgKeyInd1KeyGapDhAdvAt (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) : GapDhWithSignAdv where
   run U V := fgKeyInd1KeyGapDhRunAt useDh1 targetIdx targetSpkIdx S b A U V
   q_ddh  := 4 * b.q_total ^ 2 + b.q_total + S.N_dh + S.N_sess_tot
   q_sig  := 2 * min S.N_spk_tot S.N_recv
   q_prim := b.q_total * (S.N_dh * 24 + S.N_sess_tot * 8 + 18) + (S.N_dh * 3 + S.N_sess_tot)
 
-def fgKeyInd1KeyGapDhAdvAtIk (targetIdx targetPrinIdx : ℕ)
+@[expose] def fgKeyInd1KeyGapDhAdvAtIk (targetIdx targetPrinIdx : ℕ)
     (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) : GapDhWithSignAdv where
   run U V := fgKeyInd1KeyGapDhRunAtIk targetIdx targetPrinIdx S b A U V
   q_ddh  := 4 * b.q_total ^ 2 + b.q_total + S.N_dh + S.N_sess_tot
   q_sig  := 2 * min S.N_spk_tot S.N_recv
   q_prim := b.q_total * (S.N_dh * 24 + S.N_sess_tot * 8 + 18) + (S.N_dh * 3 + S.N_sess_tot)
 
-def fgKeyInd1KeyGapDhAdvAtOpk (targetIdx targetOpkIdx : ℕ)
+@[expose] def fgKeyInd1KeyGapDhAdvAtOpk (targetIdx targetOpkIdx : ℕ)
     (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) : GapDhWithSignAdv where
   run U V := fgKeyInd1KeyGapDhRunAtOpk targetIdx targetOpkIdx S b A U V
   q_ddh  := 4 * b.q_total ^ 2 + b.q_total + S.N_dh + S.N_sess_tot
@@ -242,7 +242,7 @@ def fgKeyInd1KeyGapDhAdvAtOpk (targetIdx targetOpkIdx : ℕ)
   q_prim := b.q_total * (S.N_dh * 24 + S.N_sess_tot * 8 + 18) + (S.N_dh * 3 + S.N_sess_tot)
 
 /-- Dispatch a flat index `idx < fgTotalIndexCount S` to the `DH1`, `DH3`, `DH2`, or `DH4` leg. -/
-def fgKeyInd1KeyGapDhRunAtFlat (idx : ℕ) (S : Setup) (b : QueryBudget)
+@[expose] def fgKeyInd1KeyGapDhRunAtFlat (idx : ℕ) (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (KeyIndAdversary S) b) (U V : Bytes) : OracleComp GdhSignSimSpec Bytes :=
   let nA := S.N_id * S.N_spk_tot
   let nC := S.N_send_tot * S.N_spk_tot
@@ -259,7 +259,7 @@ def fgKeyInd1KeyGapDhRunAtFlat (idx : ℕ) (S : Setup) (b : QueryBudget)
     let r := idx - (nA + nC + nB)
     fgKeyInd1KeyGapDhRunAtOpk (r / S.N_opk_tot) (r % S.N_opk_tot) S b A U V
 
-def fgKeyInd1KeyGapDhAdvAtFlat (idx : ℕ) (S : Setup) (b : QueryBudget)
+@[expose] def fgKeyInd1KeyGapDhAdvAtFlat (idx : ℕ) (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (KeyIndAdversary S) b) : GapDhWithSignAdv where
   run U V := fgKeyInd1KeyGapDhRunAtFlat idx S b A U V
   q_ddh  := 4 * b.q_total ^ 2 + b.q_total + S.N_dh + S.N_sess_tot
@@ -267,7 +267,7 @@ def fgKeyInd1KeyGapDhAdvAtFlat (idx : ℕ) (S : Setup) (b : QueryBudget)
   q_prim := b.q_total * (S.N_dh * 24 + S.N_sess_tot * 8 + 18) + (S.N_dh * 3 + S.N_sess_tot)
 
 /-- Unified four-leg `GapDhWithSignAdv` simulator for one-key `KeyInd`. -/
-def fgKeyInd1KeyGapDhAdv4 (S : Setup) (b : QueryBudget)
+@[expose] def fgKeyInd1KeyGapDhAdv4 (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (KeyIndAdversary S) b) : GapDhWithSignAdv where
   run U V := do
     let idx ← unifGdhSign (FgGapDh.sampleIndexRange (fgTotalIndexCount S))

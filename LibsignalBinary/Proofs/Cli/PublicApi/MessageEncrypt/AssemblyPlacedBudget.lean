@@ -10,21 +10,27 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.AssemblyPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegLoadDispatchSomePlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegIdentityPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSignalPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyBodyPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSavePlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegApplyStorePlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFinishPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleeProofs.UnackItemsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.AssemblyPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegLoadDispatchSomePlacedBudget
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegIdentityPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSignalPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyBodyPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSavePlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegApplyStorePlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFinishPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleeProofs.UnackItemsBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Relocatable CLI `MessageEncrypt` Assembly
@@ -33,7 +39,7 @@ Composes the nine budget-threaded `[LibsignalPlacement]` segments on `lsProg_464
 into `withStores_placed_okV` and `withStores_placed_okV_fs` for `withStoresEncBudgetSpecV`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -290,23 +296,5 @@ theorem withStores_placed_okV_fs
         (withStoresEncBudgetSpecV A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl uuidTryParse S sendEnv encRecord)
         fun s => kit.envOk s.fs.files ∧ ikit.envOk s.fs.files) :=
   withStores_placed_ok_of_segsV_fs hEnv encSegsV_placed_ok hKitFs
-
-/-- Construct `EncCalleesBudget` from `timeAddVm` and `hotrEnc` by discharging `remoteIk` and `unack`. -/
-theorem encCalleesBudget_of_otrEnc
-    {Q : List (BitVec 8) → Prop} {parse : UuidParser}
-    (htimeAddVm : HookSat H CryptoVerification.Cli.LibsignalPublicApi.MessageEncrypt.lsTimeAddSym
-      (LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet.withLsRet timeAddBudgetSpec))
-    (hotrEnc : subroutine_ok (lsProg_464 H)
-      (libsignalSessionLib.fnAddr lsmpl CryptoVerification.Cli.LibsignalTripleRatchet.otrEncryptName)
-      (CryptoVerification.LibsignalPublicApi.StoreKit.withLsRoCl lsmpl
-        (otrEncryptBudgetSpecQ Q C A lim ctl parse S sendEnv))) :
-    EncCalleesBudget Q C A lim ctl parse S sendEnv H where
-  remoteIk :=
-    CryptoVerification.LibsignalPublicApi.StoreKit.ls_subroutine_ok_rocl_of_cl (callerProg := lsProg_464 H)
-      (remote_identity_key_placed_ok A.repAlloc H)
-  otrEnc := hotrEnc
-  unack :=
-    CryptoVerification.LibsignalPublicApi.StoreKit.ls_subroutine_ok_rocl_of_cl (callerProg := lsProg_464 H)
-      (unackItems_ls_placed_ok htimeAddVm)
 
 end LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.AssemblyPlacedBudget

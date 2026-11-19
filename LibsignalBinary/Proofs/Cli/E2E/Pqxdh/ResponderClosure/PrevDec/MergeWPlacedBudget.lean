@@ -11,17 +11,22 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWDefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWDefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWPlaced
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefsPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWDefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWPlaced
+import LibsignalBinary.Proofs.Placed.GenLsBlock
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeW
 
 /-!
 # Budget-Threaded Relocatable Handshake `bytes::merge [local#5]` W-Mode Bridges
@@ -32,7 +37,7 @@ Defines the unified outer (`bytesMerge3Stack`) budget-threaded specification
 caller lifts on Block `514`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -76,7 +81,7 @@ export LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWDefsP
 /-- Unified outer (`bytesMerge3Stack`) budget-threaded specification supporting both
 `BytesMergeCapOk` (`< 2 ^ 63`) and unconstrained-capacity `< 2 ^ 62` (`W`), with `onPanic = ⌜False⌝`
 and `onOom = ⌜False⌝`. -/
-def bytesMerge3RawSpecBoth {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def bytesMerge3RawSpecBoth {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BytesMergeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
@@ -256,7 +261,7 @@ theorem bytes_merge_6_w_cl_of_both [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Relocatable `[LibsignalPlacement]` budget-threaded W-contract for `bytes::merge [local#5]`
 (Block `514`) on `lsProg_518 ext`. -/
-def BytesMerge6Placed514OkExtW [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def BytesMerge6Placed514OkExtW [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 514)

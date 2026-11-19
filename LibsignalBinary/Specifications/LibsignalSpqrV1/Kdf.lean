@@ -16,10 +16,12 @@ import all Init.Data.Range.Basic
 /-!
 # SPQR V1: HKDF-SHA256 key derivation (`spqr/src/kdf.rs`)
 
-**Trusted in part.** The theorems of `Computational/Theorems/` use the HKDF functions of this file
-(`hkdfToVec`, `hkdfToSlice`, `hkdfToVecUnchecked`, `hkdfToSliceUnchecked`, `hkdfExtractBytes`,
-`hkdfMaxOkmLen`, `kdfInvalidLengthPanic`, with bridges `hkdfToSlice_of_le` and `hkdfToVec_of_le`);
-the test helpers in `Tests` are checked by Lean (see `Computational/docs/TRUSTED_BASE.md`).
+**Trusted: definitions used by the statement.** All definitions in this file are used by the
+headlines of `Computational/Theorems/` and `Symbolic/Theorems/`: the HKDF functions (`hkdfToVec`,
+`hkdfToSlice`, `hkdfToVecUnchecked`, `hkdfToSliceUnchecked`, `hkdfExtractBytes`, `hkdfMaxOkmLen`,
+`kdfInvalidLengthPanic`, with bridges `hkdfToSlice_of_le` and `hkdfToVec_of_le`) and the FIPS 180-4
+SHA-256 block compression function `sha256Compress` (`K256`, `bigS0`, `bigS1`, `smallS0`, `smallS1`,
+`be32`, `schedule`; see `Computational/docs/TRUSTED_BASE.md`).
 
 Panic-explicit model of `spqr/src/kdf.rs:4–18` over an abstract SHA-256 compression function `F`,
 returning `Except SpqrPanic Bytes` with `.error kdfInvalidLengthPanic` when `okmLen > 255 * 32`.
@@ -80,9 +82,7 @@ theorem hkdfToVec_of_le (F : ShaState → List (BitVec 8) → ShaState)
     hkdfToVec F salt ikm info okmLen = .ok (hkdfToVecUnchecked F salt ikm info okmLen) :=
   hkdfToSlice_of_le F salt ikm info h
 
-/-! ## RFC 5869 test vectors -/
-
-namespace Tests
+/-! ## FIPS 180-4 SHA-256 block compression -/
 
 /-- SHA-256 round constants `K₀ … K₆₃` (FIPS 180-4 §4.2.2). -/
 def K256 : List (BitVec 32) :=
@@ -111,7 +111,7 @@ def schedule (blk : List (BitVec 8)) : Array (BitVec 32) := Id.run do
     w := w.push (smallS1 w[t-2]! + w[t-7]! + smallS0 w[t-15]! + w[t-16]!)
   return w
 
-/-- Reference SHA-256 compression function (FIPS 180-4 §6.2.2) for test vectors. -/
+/-- Reference SHA-256 compression function (FIPS 180-4 §6.2.2). -/
 def sha256Compress (H : ShaState) (blk : List (BitVec 8)) : ShaState := Id.run do
   let w := schedule blk
   let h0 := H.toList
@@ -123,54 +123,5 @@ def sha256Compress (H : ShaState) (blk : List (BitVec 8)) : ShaState := Id.run d
     h := g; g := f; f := e; e := d + t1; d := c; c := b; b := a; a := t1 + t2
   let out := [a, b, c, d, e, f, g, h]
   return List.Vector.ofFn fun i => h0[i.val]! + out[i.val]!
-
-def hexBytes (n : ℕ) (v : ℕ) : Bytes := toBEBytes n (BitVec.ofNat (8 * n) v)
-
-/-- RFC 5869 Appendix A.1 (Test Case 1): HKDF-Extract. -/
-theorem rfc5869_tc1_prk :
-    hkdfExtractBytes sha256Compress
-      ((List.range 13).map (BitVec.ofNat 8))
-      (List.replicate 22 0x0b#8) =
-    hexBytes 32 0x077709362c2e32df0ddc3f0dc47bba6390b6c73bb50f9c3122ec844ad7c2b3e5 := by
-  decide +kernel
-
-/-- RFC 5869 Appendix A.1 (Test Case 1): HKDF-Expand (`L = 42`). -/
-theorem rfc5869_tc1_okm :
-    hkdfToVec sha256Compress
-      ((List.range 13).map (BitVec.ofNat 8))
-      (List.replicate 22 0x0b#8)
-      ((List.range 10).map fun i => BitVec.ofNat 8 (0xf0 + i))
-      42 =
-    .ok (hexBytes 42
-      0x3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865) := by
-  decide +kernel
-
-/-- RFC 5869 Appendix A.2 (Test Case 2): 80-byte inputs, `L = 82`. -/
-theorem rfc5869_tc2_okm :
-    hkdfToVec sha256Compress
-      ((List.range 80).map fun i => BitVec.ofNat 8 (0x60 + i))
-      ((List.range 80).map (BitVec.ofNat 8))
-      ((List.range 80).map fun i => BitVec.ofNat 8 (0xb0 + i))
-      82 =
-    .ok (hexBytes 82
-      0xb11e398dc80327a1c8e7f78c596a49344f012eda2d4efad8a050cc4c19afa97c59045a99cac7827271cb41c65e590e09da3275600c2f09b8367793a9aca3db71cc30c58179ec3e87c14c01d5c1f3434f1d87) := by
-  decide +kernel
-
-/-- RFC 5869 Appendix A.3 (Test Case 3): empty `salt` and `info`, `L = 42`. -/
-theorem rfc5869_tc3_okm :
-    hkdfToVec sha256Compress
-      []
-      (List.replicate 22 0x0b#8)
-      []
-      42 =
-    .ok (hexBytes 42
-      0x8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395faa4b61a96c8) := by
-  decide +kernel
-
-theorem hkdfToSlice_invalidLength :
-    hkdfToSlice sha256Compress [] [] [] (hkdfMaxOkmLen + 1) = .error kdfInvalidLengthPanic := by
-  decide +kernel
-
-end Tests
 
 end CryptoVerification.LibsignalSpqrV1

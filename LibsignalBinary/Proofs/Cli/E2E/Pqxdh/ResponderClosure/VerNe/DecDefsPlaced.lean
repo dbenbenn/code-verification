@@ -10,9 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DecDefs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DefsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
 
 /-!
 # Relocatable Inlined `SessionStructure::decode` Seam
@@ -21,7 +22,7 @@ Relocatable (`[LibsignalPlacement]`) seam statement for the inlined `SessionStru
 segment (`(blkPl_518).base + 0x1ee8 → (blkPl_518).base + 0x2620`) on `lsProg_518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +40,7 @@ open Symbolic.Swarm.TRREF.B3DeserQ (prostSSGQAt ssgqOf)
 
 /-- Relocatable inlined `SessionStructure::decode` seam
 (`(blkPl_518).base + 0x1ee8 → (blkPl_518).base + 0x2620`) on `lsProg_518 ext`. -/
-def OverPrevDecodeCliPlacedStmtGen [LibsignalPlacement] (trackVRegs : Bool) : Prop :=
+@[expose] def OverPrevDecodeCliPlacedStmtGen [LibsignalPlacement] (trackVRegs : Bool) : Prop :=
   ∀ (ext : String → Option (State → State)),
     ∀ (s0 s : State) (prevCap prevPtr : BitVec 64) (enc : List (BitVec 8))
       (sess : Session (List (BitVec 8))),
@@ -87,21 +88,5 @@ def OverPrevDecodeCliPlacedStmtGen [LibsignalPlacement] (trackVRegs : Bool) : Pr
 
 abbrev OverPrevDecodeCliPlacedStmt [LibsignalPlacement] : Prop :=
   OverPrevDecodeCliPlacedStmtGen true
-
-abbrev OverPrevDecodeCliGPRPlacedStmt [LibsignalPlacement] : Prop :=
-  OverPrevDecodeCliPlacedStmtGen false
-
-theorem overPrevDecodeCliGPR_placed_of_vregs [LibsignalPlacement]
-    (h : OverPrevDecodeCliPlacedStmt) : OverPrevDecodeCliGPRPlacedStmt := by
-  intro ext s0 s prevCap prevPtr enc sess henc hQ hver4 hpp hkpk
-    hCL hpc hrun hsp_align hsp_le htr hx21 hx24 hx25 hx27 hx29
-  have hwp := h ext s0 s prevCap prevPtr enc sess henc hQ hver4 hpp hkpk
-    hCL hpc hrun hsp_align hsp_le htr hx21 hx24 hx25 hx27 hx29
-  intro R hm hL
-  obtain ⟨sf, hsteps, ⟨hpc', hrun', P_f, hmf, hP, hsp', htr', hx19', hx20', hx21', hx24', hx25',
-    hx27', hx29', _, hCLf⟩ | hpan⟩ := hwp R hm hL
-  · exact ⟨sf, hsteps, Or.inl ⟨hpc', hrun', P_f, hmf, hP, hsp', htr', hx19', hx20', hx21', hx24',
-      hx25', hx27', hx29', trivial, hCLf⟩⟩
-  · exact ⟨sf, hsteps, Or.inr hpan⟩
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.VerNe

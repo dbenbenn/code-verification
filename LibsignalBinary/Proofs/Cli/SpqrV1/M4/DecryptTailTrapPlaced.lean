@@ -9,17 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecrypt
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchet
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlaced
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecrypt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchet -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefs
-import LibsignalBinary.Proofs.Cli.ShardFill.TryDecryptStateRatchetCoins
-import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.AuthDecryptDefs
-import LibsignalBinary.Proofs.Common.CallInv
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Defs
+import LibsignalBinary.Proofs.TripleRatchet.TrapRng
+import LibsignalBinary.Proofs.TripleRatchet.InImage.SpqrRecvEmpty.Defs
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Getters.Defs
+import LibsignalBinary.Proofs.Cli.Specifications.LibsignalTripleRatchet
+import ProofLib.SepLogic.CodeLookup
+import ProofLib.VCGen
+import ProofLib
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
+public import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
 # Relocatable Segments 8 & 9 (`AesDecrypt` and `ApplyRatchet`) on CLI Block `433`
@@ -29,7 +38,7 @@ and `S9SeamPlaced` (`ApplyRatchetStatePlaced` to `cliTryDecryptSpecPlaced` outco
 under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -11,16 +11,17 @@ module
 
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Chain
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Proto
-public import LibsignalBinary.Proofs.SpqrV1.Vectors.Authenticator
-public import LibsignalBinary.Proofs.SpqrV1.Vectors.Chain
-public import LibsignalBinary.Proofs.SpqrV1.Vectors.Polynomial
-public import LibsignalBinary.Proofs.SpqrV1.Vectors.Protocol
+public import LibsignalBinary.Proofs.SpqrV1.Vectors.Authenticator -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Vectors.Chain -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Vectors.Polynomial -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Vectors.Protocol
 public meta import LibsignalBinary.Specifications.LibsignalSpqrV1.Chain
 public meta import LibsignalBinary.Specifications.LibsignalSpqrV1.Proto
-public meta import LibsignalBinary.Proofs.SpqrV1.Vectors.Authenticator
-public meta import LibsignalBinary.Proofs.SpqrV1.Vectors.Chain
-public meta import LibsignalBinary.Proofs.SpqrV1.Vectors.Polynomial
-public meta import LibsignalBinary.Proofs.SpqrV1.Vectors.Protocol
+public meta import LibsignalBinary.Proofs.SpqrV1.Vectors.Authenticator -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SpqrV1.Vectors.Chain -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SpqrV1.Vectors.Polynomial -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SpqrV1.Vectors.Protocol -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Vectors.Protocol2 -- proof-setup: allow-public-import
 
 /-!
 # Differential Vector Checks for `Proto.lean`
@@ -30,7 +31,7 @@ Checks the `prost` protobuf codec in `Proto.lean` against all protobuf vectors i
 `Vectors/Protocol.lean`, together with adversarial wire-format edge cases.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Vectors.ProtoCheck
 
@@ -69,10 +70,6 @@ def checkChainVectors : Bool :=
   (Vectors.Chain.bobChainTrace.all fun s => checkChainBlob s.chainPbAfter)
 
 #guard checkChainVectors
-theorem checkChainInitPb_ok :
-    (checkChainBlob Vectors.Chain.aliceChainInitPb && checkChainBlob Vectors.Chain.bobChainInitPb) = true := by
-  decide +kernel
-
 /-! ## `PolynomialEncoder` and `PolynomialDecoder` Vectors -/
 
 /-- Check `pointsEncoderPb`, `polysEncoderPb`, and all scenario `midDecoderPb` in a `PolyMsgTestVec`. -/
@@ -201,6 +198,4 @@ def checkAdversarialProto : Bool :=
   Proto.decodeState [0x0a#8, 0x05#8, 0x01#8, 0x02#8] == .error .bufferUnderflow
 
 #guard checkAdversarialProto
-theorem checkAdversarialProto_ok : checkAdversarialProto = true := by decide +kernel
-
 end CryptoVerification.SpqrV1.Vectors.ProtoCheck

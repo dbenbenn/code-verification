@@ -1,0 +1,38 @@
+--- a/rust/protocol/src/double_ratchet.rs
++++ b/rust/protocol/src/double_ratchet.rs
+@@ -285,21 +285,8 @@ impl RatchetState {
+         let (new_root_key, receiver_chain_key) =
+             current_root_key.create_chain(their_ephemeral, &sender_private_key)?;
+ 
+-        // Sending half-step: new_root_key + DH(new_ephemeral, their_ephemeral)
+-        let new_sender_key = KeyPair::generate(csprng);
+-        let (final_root_key, sender_chain_key) =
+-            new_root_key.create_chain(their_ephemeral, &new_sender_key.private_key)?;
+-
+-        // Record the previous sender chain counter before we replace it.
+-        let current_index = self
+-            .sender_chain
+-            .as_ref()
+-            .expect("checked above")
+-            .chain_key
+-            .index();
+-        self.previous_counter = current_index.saturating_sub(1);
+-
+-        self.root_key = final_root_key;
++        let _ = csprng;
++        self.root_key = new_root_key;
+ 
+         self.receiver_chains.push(session_structure::Chain {
+             sender_ratchet_key: their_ephemeral.serialize().to_vec(),
+@@ -311,11 +298,6 @@ impl RatchetState {
+             self.receiver_chains.remove(0);
+         }
+ 
+-        self.sender_chain = Some(SenderChain {
+-            ratchet_key: new_sender_key,
+-            chain_key: sender_chain_key,
+-        });
+-
+         Ok(receiver_chain_key)
+     }
+ 

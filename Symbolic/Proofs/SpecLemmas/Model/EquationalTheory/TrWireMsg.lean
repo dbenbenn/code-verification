@@ -12,7 +12,7 @@ module
 public import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
 public import DY.Bytes.AttackerKnowledgeTheorem
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

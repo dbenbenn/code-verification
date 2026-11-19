@@ -9,26 +9,41 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
-public import LibsignalBinary.Proofs.PeakBudget.CliKitW1W2ExactSlotSpecR2
-public import LibsignalBinary.Proofs.PeakBudget.CliKitW2RecvExactAuxR2Race
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
-public import LibsignalBinary.Proofs.PeakBudget.GateM2rGStatesRecvTwins
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemExact
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemSlots
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.PeakBudget.W4PathCVerNeWideDefs
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0StageAux
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0TdAux
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkSlot
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTightCredit
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomMainFitsReduce
+import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
+import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+public import LibsignalBinary.Proofs.PeakBudget.CliKitW1W2ExactSlotSpecR2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliKitW2RecvExactAuxR2Race
+import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
+import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
+import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
+import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
+import LibsignalBinary.Proofs.PeakBudget.GateM2rGStatesRecvTwins
+import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemExact
+import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
+import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemSlots
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+import LibsignalBinary.Proofs.PeakBudget.W4PathCVerNeWideDefs
+public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0StageAux
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0TdAux
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkSlot
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTightCredit
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomMainFitsReduce -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.WireFieldDomainCaps
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptPlaced
 
 /-!
 # `DecPkSlot`-Parametric `FitsEnv` Reducers and Post-Bob `prev1` Caps
@@ -40,14 +55,13 @@ bridges, unconditional W2 (`decryptSignal`) slot budget witnesses, and `1 GiB` R
 `2 ^ 48` VA checks for the sum-form post-Bob `prev1` (`Dom0'`) W4 budget caps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole2FitsEnvParts
 
-open Arm64.Obj (Image)
 open Arm64.Process (bytesOfString)
 open CryptoGames.LibsignalSessionApi (PreKeySignalMessage)
 open CryptoVerification (LibsignalPlacement)
@@ -278,9 +292,9 @@ theorem fits2_w2DecSigExact_groupSpec [LibsignalPlacement] (W : CliHooks) :
 /-! ## `DecPkSlot`-Parametric Callee, `run`, and `main` Envelopes -/
 
 /-- `DecPkSlot`-parametric 4-slot `CliRunCalleeEnvs` bundle using `cliEncryptBinaryKitSlotEnvExact` and `cliDecryptSignalBinaryKitSlotEnvExact`. -/
-noncomputable abbrev fits2_mkBinaryKitRealCalleeEnvsDecPk [LibsignalPlacement]
+abbrev fits2_mkBinaryKitRealCalleeEnvsDecPk [LibsignalPlacement]
     (DecPkSlot : DecPkGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) : CliRunCalleeEnvs :=
   mfr_mkFourSlotCalleeEnvs
     (fun g' => (mkBinaryKitRealCalleeEnvsFixed img S X W g').initEnv)
@@ -289,24 +303,24 @@ noncomputable abbrev fits2_mkBinaryKitRealCalleeEnvsDecPk [LibsignalPlacement]
     DecPkSlot g
 
 /-- Whole-`signal_session::run` binary-kit allocator trace predicate parametric in `DecPkSlot`. -/
-noncomputable abbrev fits2_realCliRunBinaryKitEnvOfDecPk [LibsignalPlacement]
+abbrev fits2_realCliRunBinaryKitEnvOfDecPk [LibsignalPlacement]
     (DecPkSlot : DecPkGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) : List AllocEvent → Prop :=
   CliRunBinaryEnv cliIo.rd (fits2_mkBinaryKitRealCalleeEnvsDecPk DecPkSlot img S X W g)
     sessionCapBytes g
 
 /-- Whole-`main` binary-kit allocator trace predicate parametric in `DecPkSlot`. -/
-noncomputable abbrev fits2_realCliMainBinaryKitEnvOfDecPk [LibsignalPlacement]
+abbrev fits2_realCliMainBinaryKitEnvOfDecPk [LibsignalPlacement]
     (DecPkSlot : DecPkGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (i : Inputs) : List AllocEvent → Prop :=
   RealCliMainBinaryEnvOf (fits2_mkBinaryKitRealCalleeEnvsDecPk DecPkSlot img S X W) i
 
 /-! ## Curried W4 Slot Obligations and Post-Bob `prev1` Caps -/
 
 /-- Curried W4 (`decryptPrekey`) `PhaseCreditSpec` obligation on `DecPkSlot` under `CliPqxdhInputs` and `3#8 :: rest` prekey parse reachability. -/
-def fits2_w4DecPk_phaseCredit_Stmt (W : CliHooks)
+@[expose] def fits2_w4DecPk_phaseCredit_Stmt (W : CliHooks)
     (DecPkSlot : DecPkGhost → List AllocEvent → Prop)
     (w4Cum w4Live w4Peak w4MaxReq : Nat) : Prop :=
   ∀ (g : RunCall) (peerV meV : AddrV) (rest : List (BitVec 8))
@@ -322,7 +336,7 @@ def fits2_w4DecPk_phaseCredit_Stmt (W : CliHooks)
       w4Cum w4Live w4Peak w4MaxReq
 
 /-- Curried W4 (`decryptPrekey`) `PhaseGroupSpec` obligation on `DecPkSlot` under `CliPqxdhInputs` and `3#8 :: rest` prekey parse reachability. -/
-def fits2_w4DecPk_groupSpec_Stmt (W : CliHooks)
+@[expose] def fits2_w4DecPk_groupSpec_Stmt (W : CliHooks)
     (DecPkSlot : DecPkGhost → List AllocEvent → Prop)
     (w4GrpS : Nat) : Prop :=
   ∀ (g : RunCall) (peerV meV : AddrV) (rest : List (BitVec 8))
@@ -338,7 +352,7 @@ def fits2_w4DecPk_groupSpec_Stmt (W : CliHooks)
       w4GrpS
 
 /-- `DecPkSlot`-parametric call-site allocator-envelope inclusion predicate. -/
-def fits2_w4DecPk_slotSub_Stmt (W : CliHooks)
+@[expose] def fits2_w4DecPk_slotSub_Stmt (W : CliHooks)
     (DecPkSlot W4TargetSlot : DecPkGhost → List AllocEvent → Prop) : Prop :=
   ∀ (g : RunCall) (peerV meV : AddrV) (rest : List (BitVec 8))
     (pm : PreKeySignalMessage) (evs : List AllocEvent),
@@ -353,13 +367,13 @@ def fits2_w4DecPk_slotSub_Stmt (W : CliHooks)
     W4TargetSlot (r3bDecPkGhost g meV peerV pm) evs
 
 /-- Baseline `Dom0` W4 allocator budget constants (`cum`, `live`, `peak`, `maxReq`, and `grpS` at `@83`/`@109`/`@128`). -/
-def fits2_zbDom0Cum : Nat := 138754427
-def fits2_zbDom0Live : Nat := 29203219
-def fits2_zbDom0Peak : Nat := 29203219
-def fits2_zbDom0MaxReq : Nat := 4194368
-def fits2_zbDom0GrpS83 : Nat := 2696470354
-def fits2_zbDom0GrpS109 : Nat := 2703750926
-def fits2_zbDom0GrpS128 : Nat := 2709071344
+@[expose] def fits2_zbDom0Cum : Nat := 138934769
+@[expose] def fits2_zbDom0Live : Nat := 29203219
+@[expose] def fits2_zbDom0Peak : Nat := 29203219
+@[expose] def fits2_zbDom0MaxReq : Nat := 4194368
+@[expose] def fits2_zbDom0GrpS83 : Nat := 2700009298
+@[expose] def fits2_zbDom0GrpS109 : Nat := 2707289870
+@[expose] def fits2_zbDom0GrpS128 : Nat := 2712610288
 
 theorem fits2_zbDom0_fits_oneGiB_83 :
     mfr_slotMainFitsOneGiBOf
@@ -383,18 +397,18 @@ theorem fits2_zbDom0_fits_oneGiB_128 :
   decide
 
 /-- Sum-form post-Bob `prev1` (`Dom0'`) W4 allocator budget caps:
-`cum = 140,230,427` B, `live = peak = 29,726,017` B, `maxReq = 4,194,368` B, and
+`cum = 140,410,769` B, `live = peak = 29,726,017` B, `maxReq = 4,194,368` B, and
 `grpS` specialized at `@83`, `@109`, and `@128`. -/
-def fits2_zbDom0PrimeCum : Nat := 140230427
-def fits2_zbDom0PrimeLive : Nat := 29726017
-def fits2_zbDom0PrimePeak : Nat := 29726017
-def fits2_zbDom0PrimeMaxReq : Nat := 4194368
-def fits2_zbDom0PrimeGrpSOf (maxOps : Nat) : Nat :=
+@[expose] def fits2_zbDom0PrimeCum : Nat := 140410769
+@[expose] def fits2_zbDom0PrimeLive : Nat := 29726017
+@[expose] def fits2_zbDom0PrimePeak : Nat := 29726017
+@[expose] def fits2_zbDom0PrimeMaxReq : Nat := 4194368
+@[expose] def fits2_zbDom0PrimeGrpSOf (maxOps : Nat) : Nat :=
   LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0StageAux.w4CmkDom0GrpSOf maxOps +
     (3 * FineScale + chainCloneDomFineGrpS)
-def fits2_zbDom0PrimeGrpS83 : Nat := 2730214888
-def fits2_zbDom0PrimeGrpS109 : Nat := 2737495460
-def fits2_zbDom0PrimeGrpS128 : Nat := 2742815878
+@[expose] def fits2_zbDom0PrimeGrpS83 : Nat := 2733753832
+@[expose] def fits2_zbDom0PrimeGrpS109 : Nat := 2741034404
+@[expose] def fits2_zbDom0PrimeGrpS128 : Nat := 2746354822
 
 theorem fits2_zbDom0PrimeGrpSOf_83_eq :
     fits2_zbDom0PrimeGrpSOf 83 = fits2_zbDom0PrimeGrpS83 := by decide
@@ -435,7 +449,7 @@ theorem fits2_zbDom0Prime_fits_oneGiB_128 :
 /-- Reduces whole-`main` `FitsEnv` on `fits2_realCliMainBinaryKitEnvOfDecPk` to W1, W2, and `DecPkSlot` W4 credit/group bounds. -/
 theorem fits2_realCliMainBinaryKitEnvOfDecPk_fitsEnv_of_parts [LibsignalPlacement]
     (DecPkSlot : DecPkGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (i : Inputs) (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ i)
     (hW1Credit : ckx2_w1EncExact_phaseCredit_Stmt W)
     (hW1Grp : ckx2_w1EncExact_groupSpec_Stmt W)
@@ -501,7 +515,7 @@ theorem fits2_realCliMainBinaryKitEnvOfDecPk_fitsEnv_of_parts [LibsignalPlacemen
 /-- Specializes `fits2_realCliMainBinaryKitEnvOfDecPk_fitsEnv_of_parts` by discharging W2 internally, leaving W1 and `DecPkSlot` W4. -/
 theorem fits2_realCliMainBinaryKitEnvOfDecPk_fitsEnv_of_w1_and_w4 [LibsignalPlacement]
     (DecPkSlot : DecPkGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (i : Inputs) (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ i)
     (hW1Credit : ckx2_w1EncExact_phaseCredit_Stmt W)
     (hW1Grp : ckx2_w1EncExact_groupSpec_Stmt W)
@@ -524,7 +538,7 @@ theorem fits2_realCliMainBinaryKitEnvOfDecPk_fitsEnv_of_w1_and_w4 [LibsignalPlac
 /-- Composes `fits2_realCliMainBinaryKitEnvOfDecPk_fitsEnv_of_w1_and_w4` with a call-site envelope inclusion `fits2_w4DecPk_slotSub_Stmt`. -/
 theorem fits2_realCliMainBinaryKitEnvOfDecPk_fitsEnv_of_w1_and_slotSub [LibsignalPlacement]
     (DecPkSlot : DecPkGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (i : Inputs) (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ i)
     (hW1Credit : ckx2_w1EncExact_phaseCredit_Stmt W)
     (hW1Grp : ckx2_w1EncExact_groupSpec_Stmt W)
@@ -706,7 +720,7 @@ theorem fits2_runEnvDecPk_sub_runBinaryKitEnvOfDecPk [LibsignalPlacement]
     {M : AllocCostModel}
     {FallbackEnv : PksmGhost → List AllocEvent → Prop}
     (DecPkSlot : DecPkGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     {g : RunCall}
     (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)

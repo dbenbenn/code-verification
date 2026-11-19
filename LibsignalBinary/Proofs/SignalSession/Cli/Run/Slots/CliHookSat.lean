@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1
-public import LibsignalBinary.Proofs.E2E.Pqxdh.TopLevel.SessionInitiatePostCommon
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1Common
-public import LibsignalBinary.Proofs.SpqrV1.Auth.New
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.FinalizeFixed
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.TopLevel.SessionInitiatePostCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.New -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.FinalizeFixed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.HooksE.TripleRatchetHooksCommon
 import LibsignalBinary.Proofs.E2E.HooksE.WrapperHooksCommon
 import LibsignalBinary.Proofs.E2E.Pqxdh.SpqrHooksPCommon
@@ -22,7 +22,7 @@ import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRun
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOk
 import LibsignalBinary.Proofs.TripleRatchet.Hooks
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,6 +36,13 @@ open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalPubli
 open CryptoVerification.LibsignalSession CryptoVerification.LibsignalSpqrV1
 open CryptoVerification.SignalSession CryptoVerification.SignalSession.Cli
 open CryptoVerification.SignalSession.Cli.MainHops
+open LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy
+  (compress512Name toEdwardsName compressName edNegName torsionFreeName dsmbName
+   scalarModName scalarWideName kemEncapsName kemDecapsName
+   toEdwardsHook compressHook edNegHook torsionFreeHook dsmbHook scalarModHook scalarWideHook
+   mlkemPk1Hook mlkemPk2Hook
+   legacyMontToEd legacyCompress legacyEdNeg legacyIsTorsionFree legacyDsmb
+   legacyScalarMod legacyScalarWide eqEdZero eqEdZero_eq unpackEdBytes)
 /-!
 # `cliHookTable` Hook Satisfaction Contracts
 
@@ -63,39 +70,39 @@ theorem aesEnc_row (W : CliHooks) : (aesEncName, E2E.aesEncHook0 W.C.E) ∈ cliH
 theorem aesDec_row (W : CliHooks) : (aesDecName, E2E.aesDecHook0 W.C.D) ∈ cliHookTable W :=
   List.mem_append_right _ (List.mem_of_getElem? (i := 23) rfl)
 theorem compress512_row (W : CliHooks) :
-    (E2E.compress512Name, E2E.compress512Hook W.Q.F512) ∈ cliHookTable W :=
+    (compress512Name, E2E.compress512Hook W.Q.F512) ∈ cliHookTable W :=
   List.mem_append_left _ (List.mem_of_getElem? (i := 0) rfl)
 theorem toEdwards_row (W : CliHooks) :
-    (E2E.toEdwardsName, E2E.toEdwardsHook W.Q.montToEd) ∈ cliHookTable W :=
+    (toEdwardsName, toEdwardsHook legacyMontToEd) ∈ cliHookTable W :=
   List.mem_append_left _ (List.mem_of_getElem? (i := 1) rfl)
 theorem compress_row (W : CliHooks) :
-    (E2E.compressName, E2E.compressHook W.Q.compress) ∈ cliHookTable W :=
+    (compressName, compressHook legacyCompress) ∈ cliHookTable W :=
   List.mem_append_left _ (List.mem_of_getElem? (i := 2) rfl)
-theorem edNeg_row (W : CliHooks) : (E2E.edNegName, E2E.edNegHook W.Q.edNeg) ∈ cliHookTable W :=
+theorem edNeg_row (W : CliHooks) : (edNegName, edNegHook legacyEdNeg) ∈ cliHookTable W :=
   List.mem_append_left _ (List.mem_of_getElem? (i := 3) rfl)
 theorem torsionFree_row (W : CliHooks) :
-    (E2E.torsionFreeName, E2E.torsionFreeHook W.Q.isTorsionFree) ∈ cliHookTable W :=
+    (torsionFreeName, torsionFreeHook legacyIsTorsionFree) ∈ cliHookTable W :=
   List.mem_append_left _ (List.mem_of_getElem? (i := 4) rfl)
-theorem dsmb_row (W : CliHooks) : (E2E.dsmbName, E2E.dsmbHook W.Q.dsmb) ∈ cliHookTable W :=
+theorem dsmb_row (W : CliHooks) : (dsmbName, dsmbHook legacyDsmb) ∈ cliHookTable W :=
   List.mem_append_left _ (List.mem_of_getElem? (i := 5) rfl)
 theorem scalarMod_row (W : CliHooks) :
-    (E2E.scalarModName, E2E.scalarModHook W.Q.scalarMod) ∈ cliHookTable W :=
+    (scalarModName, scalarModHook legacyScalarMod) ∈ cliHookTable W :=
   List.mem_append_left _ (List.mem_of_getElem? (i := 6) rfl)
 theorem scalarWide_row (W : CliHooks) :
-    (E2E.scalarWideName, E2E.scalarWideHook W.Q.scalarWide) ∈ cliHookTable W :=
+    (scalarWideName, scalarWideHook legacyScalarWide) ∈ cliHookTable W :=
   List.mem_append_left _ (List.mem_of_getElem? (i := 7) rfl)
 theorem kemEncaps_row (W : CliHooks) :
-    (E2E.kemEncapsName, E2E.kemEncapsHook W.Q.encaps) ∈ cliHookTable W :=
+    (kemEncapsName, E2E.kemEncapsHook W.Q.encaps) ∈ cliHookTable W :=
   List.mem_append_left _ (List.mem_of_getElem? (i := 8) rfl)
 theorem kemDecaps_row (W : CliHooks) :
-    (E2E.kemDecapsName, E2E.kemDecapsHook W.Q.decaps) ∈ cliHookTable W :=
+    (kemDecapsName, E2E.kemDecapsHook W.Q.decaps) ∈ cliHookTable W :=
   List.mem_append_left _ (List.mem_of_getElem? (i := 9) rfl)
 theorem mlkemFromSeed_row (W : CliHooks) :
     (mlkemFromSeedName, E2E.mlkemFromSeedHook W.Q.K) ∈ cliHookTable W :=
   List.mem_append_left _ (List.mem_of_getElem? (i := 10) rfl)
-theorem mlkemPk1_row (W : CliHooks) : (mlkemPk1Name, E2E.mlkemPk1Hook) ∈ cliHookTable W :=
+theorem mlkemPk1_row (W : CliHooks) : (mlkemPk1Name, mlkemPk1Hook) ∈ cliHookTable W :=
   List.mem_append_left _ (List.mem_of_getElem? (i := 11) rfl)
-theorem mlkemPk2_row (W : CliHooks) : (mlkemPk2Name, E2E.mlkemPk2Hook) ∈ cliHookTable W :=
+theorem mlkemPk2_row (W : CliHooks) : (mlkemPk2Name, mlkemPk2Hook) ∈ cliHookTable W :=
   List.mem_append_left _ (List.mem_of_getElem? (i := 12) rfl)
 theorem mlkemEncaps1_row (W : CliHooks) :
     (mlkemEncaps1Name, E2E.mlkemEncaps1Hook W.Q.K) ∈ cliHookTable W :=
@@ -201,26 +208,6 @@ theorem cliExterns_spqrHooks (W : CliHooks) :
    ⟨_, cliExterns_row W (mlkemValidatePk_row W), E2E.Pqxdh.mlkemValidatePkHook_ok W.Q.K⟩,
    ⟨_, cliExterns_row W (libcruxHmac_row W), E2E.Pqxdh.libcruxHmacHook_ok W.C.F⟩⟩
 
-theorem allocContracts_cli_of_hooks (W : CliHooks) (img : Obj.Image) {A : RustAlloc}
-    (hA : CliAllocHooks A) : AllocContracts img.base A (cliExterns W) where
-  alloc := alloc_stub_ok W img hA.alloc
-  dealloc := dealloc_stub_ok W img hA.dealloc
-  realloc := realloc_stub_ok W img hA.realloc
-  shim := shim_stub_ok W img sessionShim_hookOk
-  memcpy stk := memcpy_stub_ok W img (hookMemcpy_ok stk)
-  session_memcpy stk := memcpy_stub_ok W img (hookMemcpy_trace_ok stk)
-  memcpy_region := memcpy_stub_ok W img hookMemcpy_region_ok
-  session_memcpy_region := memcpy_stub_ok W img hookMemcpy_region_trace_ok
-  memmove stk := memmove_stub_ok W img (hookMemmove_ok stk)
-  session_memmove stk := memmove_stub_ok W img (hookMemmove_trace_ok stk)
-  memset stk hpos := memset_stub_ok W img (hookMemset_ok stk hpos)
-  session_memset stk hpos := memset_stub_ok W img (hookMemset_trace_ok stk hpos)
-  memset_region := memset_stub_ok W img hookMemset_region_ok
-  session_memset_region := memset_stub_ok W img hookMemset_region_trace_ok
-
-theorem allocContracts_cli (W : CliHooks) (img : Obj.Image) :
-    AllocContracts img.base E2E.HooksE.A0 (cliExterns W) :=
-  allocContracts_cli_of_hooks W img cliAllocHooks_A0
 private theorem hookMemset_eq_memsetHook : hookMemset = LibsignalAesCbc.memsetHook :=
   funext fun s =>
     congrArg
@@ -262,30 +249,6 @@ theorem cliExterns_sessionExterns_le (W : CliHooks) :
       split at h
       · exact h
       · cases h
-
-theorem hkdfToSliceSpqr_cli {img : Obj.Image} (W : CliHooks)
-    (himg : Obj.Loads libsignalSessionImage img) :
-    SpqrV1.Kdf.HkdfToSliceSpqrOkX img (spqrHkdfWith W.C.F) (cliExterns W) :=
-  SpqrV1.Kdf.HkdfToSliceProof.hkdf_to_slice_spqr_ok_ext img W.C himg
-    (cliExterns_sessionExterns_le W)
-
-theorem authNewOkX_cli_of_hooks {img : Obj.Image} {A : RustAlloc} (W : CliHooks)
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hA : AllocContracts img.base A (cliExterns W))
-    (hZero : HookSat (cliExterns W) allocZeroedName (rustAllocZeroedSpec A)) :
-    SpqrV1.Auth.AuthNewOkX img W.C.F A (cliExterns W) := by
-  have hhkdf := hkdfToSliceSpqr_cli W himg
-  have hRO := cliExterns_memcpyRegionRO W
-  have hAX := AllocContractsX.of_AllocContracts hA
-  exact SpqrV1.Auth.authNew_ok_of_hook_x himg
-    (SpqrV1.Auth.authUpdate_ok_of_hook_x himg (SpqrV1.Alloc.slice_concat_2_ok_x hA hRO)
-      hhkdf hAX hZero)
-    hAX hZero
-
-theorem authNewOkX_cli {img : Obj.Image} (W : CliHooks)
-    (himg : Obj.Loads libsignalSessionImage img) :
-    SpqrV1.Auth.AuthNewOkX img W.C.F E2E.HooksE.A0 (cliExterns W) :=
-  authNewOkX_cli_of_hooks W himg (allocContracts_cli W img) (cliExterns_allocZeroed W)
 
 /-! ## 3. `PqxdhHookContracts` and Kyber KEM hooks -/
 
@@ -362,14 +325,19 @@ theorem cryptoLeafHook_ok_std3 {inLen outLen : Nat} (hout_le : outLen ≤ 2 ^ 64
     dsimp only [outBv] at hw
     ac_nf at hw ⊢
 
-theorem dsmbHook_ok_std3 (X : UnreachedPqxdhPrimitives) (P0 : PEParams) {img : Obj.Image} :
-    HookOk (dsmbHook P0.Q.dsmb) (Shared.dalekDoubleMulStubSpec (modelPrims X P0) img) := by
+attribute [local irreducible] VerifiedLibraries.Common.edSmul VerifiedLibraries.Common.fpInv
+  VerifiedLibraries.Common.recoverXEven SignalPqxdh.montLiftEd
+  LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.legacyDsmb
+  LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.legacyIsTorsionFree
+
+theorem dsmbHook_ok_std3 (X : UnreachedPqxdhPrimitives) (P0 : PEParams) :
+    HookOk (dsmbHook legacyDsmb) (Shared.dalekDoubleMulStubSpec (modelPrims X P0)) := by
   change HookOk
     (retHook (fun s => s.setMem (s.mem.writeBytes (s.readReg64 .x8)
-      (P0.Q.dsmb (readVecN s.mem (s.readReg64 .x0) 32)
+      (legacyDsmb (readVecN s.mem (s.readReg64 .x0) 32)
         (readVecN s.mem (s.readReg64 .x1) 160)
         (readVecN s.mem (s.readReg64 .x2) 32)).toList)))
-    (Shared.dalekDoubleMulStubSpec (modelPrims X P0) img)
+    (Shared.dalekDoubleMulStubSpec (modelPrims X P0))
   refine retHook_ok
     fun ⟨hBytes, negABytes, sBytes, hPtr, negAPtr, sPtr, outPtr⟩ R s0 hrun hpre _ => ?_
   simp only [Shared.dalekDoubleMulStubSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
@@ -388,9 +356,9 @@ theorem dsmbHook_ok_std3 (X : UnreachedPqxdhPrimitives) (P0 : PEParams) {img : O
     ac_nf at hmem ⊢
   have hs : readVecN s0.mem sPtr 32 = u8Vec 32 sBytes :=
     readVecN_of_pointsToBytes_std3 hs_len hmem_s
-  let outBv := (P0.Q.dsmb (u8Vec 32 hBytes) (u8Vec 160 negABytes) (u8Vec 32 sBytes)).toList
+  let outBv := (legacyDsmb (u8Vec 32 hBytes) (u8Vec 160 negABytes) (u8Vec 32 sBytes)).toList
   have hout_len : outBv.length = 160 :=
-    (P0.Q.dsmb (u8Vec 32 hBytes) (u8Vec 160 negABytes) (u8Vec 32 sBytes)).toList_length
+    (legacyDsmb (u8Vec 32 hBytes) (u8Vec 160 negABytes) (u8Vec 32 sBytes)).toList_length
   have hmem_out : s0.mem ⊨ memRegion outPtr outBv.length ∗
       ((hPtr ↦ₛ Shared.bytesToBv8 hBytes) ∗ (negAPtr ↦ₛ Shared.bytesToBv8 negABytes) ∗
        (sPtr ↦ₛ Shared.bytesToBv8 sBytes) ∗ stackAt s0.sp Shared.pqxdhHookStack ∗ R) := by
@@ -401,21 +369,54 @@ theorem dsmbHook_ok_std3 (X : UnreachedPqxdhPrimitives) (P0 : PEParams) {img : O
   · rw [hx0, hx1, hx2, hx8, hh, ha, hs]
     exact keepsFrozen_writeBytes_of_memRegion outBv hlen hmem_out
   · dsimp only [Shared.dalekDoubleMulStubSpec, retHook, State.setMem]
-    have hdsmb : (modelPrims X P0).doubleScalarMulBasepoint hBytes negABytes sBytes =
-        vecU8 (P0.Q.dsmb (u8Vec 32 hBytes) (u8Vec 160 negABytes) (u8Vec 32 sBytes)) := rfl
+    have hdsmb : (modelPrims X P0).doubleScalarMulBasepointBytes hBytes negABytes sBytes =
+        vecU8 (legacyDsmb (u8Vec 32 hBytes) (u8Vec 160 negABytes) (u8Vec 32 sBytes)) := by
+      unfold legacyDsmb; rfl
     simp only [State.trace_setPC, hx0, hx1, hx2, hx8, hh, ha, hs, hdsmb, fitBv8_vecU8_eq,
       sepConj_assoc, satisfies_pure_sepConj, true_and]
     have hw := satisfies_writeBytes outBv hlen hmem_out
     dsimp only [outBv] at hw
     ac_nf at hw ⊢
 
-theorem torsionFreeHook_ok_std3 (X : UnreachedPqxdhPrimitives) (P0 : PEParams) {img : Obj.Image} :
-    HookOk (torsionFreeHook P0.Q.isTorsionFree)
-      (Shared.cryptoBoolRegStubSpec (modelPrims X P0).isTorsionFree 160 img) := by
+private theorem setWidth32_ite_64 (b : Bool) :
+    ((if b then 1#64 else 0#64 : BitVec 64)).setWidth 32 = (if b then 1#32 else 0#32) := by
+  cases b <;> rfl
+
+private theorem upd_outer_isTorsionFree (B1 : SignalPqxdh.Primitives)
+    (sv ic h96 rcc cks ckn dmk ae ad) (Q : VerifiedLibraries.Common.EdPoint) :
+    ({ B1 with sigVerify := sv, isCanonical := ic, hkdfDerive96 := h96, rootCreateChain := rcc,
+               chainKdfSeed := cks, chainKdfNext := ckn, deriveMsgKeys := dmk,
+               aeadEnc := ae, aeadDec := ad } : SignalPqxdh.Primitives).isTorsionFree Q =
+      B1.isTorsionFree Q := rfl
+
+private theorem upd_sha512_isTorsionFree (B : SignalPqxdh.Primitives)
+    (s : List UInt8 → List UInt8) (Q : VerifiedLibraries.Common.EdPoint) :
+    ({ B with sha512 := s } : SignalPqxdh.Primitives).isTorsionFree Q = B.isTorsionFree Q := rfl
+
+private theorem prims_mk_isTorsionFree (f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 f15 f16
+    f17 f18 f19 f20 f21 f22 f23 f24 f25 f26 f27 f28 f29 f30 f31 f32 f33 f34)
+    (Q : VerifiedLibraries.Common.EdPoint) :
+    (SignalPqxdh.Primitives.mk f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 f15 f16 f17 f18
+      f19 f20 f21 f22 f23 f24 f25 f26 f27 f28 f29 f30 f31 f32 f33 f34).isTorsionFree Q =
+      f13 Q := rfl
+
+private theorem eqEdZero_eq_true_iff (Q : VerifiedLibraries.Common.EdPoint) :
+    eqEdZero Q = true ↔ Q = VerifiedLibraries.Common.edZero := by
+  rw [eqEdZero_eq, beq_iff_eq]
+
+private theorem beq_edZero_congr (inst : BEq VerifiedLibraries.Common.EdPoint)
+    [law : @LawfulBEq VerifiedLibraries.Common.EdPoint inst]
+    (Q : VerifiedLibraries.Common.EdPoint) :
+    @BEq.beq _ inst Q VerifiedLibraries.Common.edZero = eqEdZero Q :=
+  Bool.eq_iff_iff.mpr ((@beq_iff_eq _ inst law).trans (eqEdZero_eq_true_iff Q).symm)
+
+theorem torsionFreeHook_ok_std3 (X : UnreachedPqxdhPrimitives) (P0 : PEParams) :
+    HookOk (torsionFreeHook legacyIsTorsionFree)
+      (Shared.cryptoBoolRegStubSpec (modelPrims X P0).isTorsionFreeBytes 160) := by
   change HookOk
     (retHook (fun s => s.writeReg64 .x0
-      (if P0.Q.isTorsionFree (readVecN s.mem (s.readReg64 .x0) 160) then 1#64 else 0#64)))
-    (Shared.cryptoBoolRegStubSpec (modelPrims X P0).isTorsionFree 160 img)
+      (if legacyIsTorsionFree (readVecN s.mem (s.readReg64 .x0) 160) then 1#64 else 0#64)))
+    (Shared.cryptoBoolRegStubSpec (modelPrims X P0).isTorsionFreeBytes 160)
   refine retHook_ok fun ⟨inPtr, inBytes⟩ R s0 hrun hpre _ => ?_
   simp only [Shared.cryptoBoolRegStubSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨⟨hx0, hin_len⟩, hmem⟩
@@ -424,27 +425,34 @@ theorem torsionFreeHook_ok_std3 (X : UnreachedPqxdhPrimitives) (P0 : PEParams) {
   refine ⟨Memory.KeepsFrozen.refl s0.mem, rfl, hrun,
     ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, ?_⟩
   dsimp only [Shared.cryptoBoolRegStubSpec, retHook]
-  have htf : (modelPrims X P0).isTorsionFree inBytes = P0.Q.isTorsionFree (u8Vec 160 inBytes) := rfl
+  have htf : (modelPrims X P0).isTorsionFreeBytes inBytes =
+      legacyIsTorsionFree (u8Vec 160 inBytes) := by
+    rw [SignalPqxdh.Primitives.isTorsionFreeBytes.eq_1, unpackEdBytes.eq_1,
+        CryptoVerification.E2E.modelPrims.eq_1, upd_outer_isTorsionFree,
+        upd_sha512_isTorsionFree, CryptoVerification.E2E.blockLevelPrims.eq_1,
+        prims_mk_isTorsionFree]
+    unfold legacyIsTorsionFree
+    exact beq_edZero_congr _ _
   rw [sepConj_assoc, satisfies_pure_sepConj]
   refine ⟨⟨rfl, ?_⟩, ?_⟩
-  · rw [hx0, hvec, htf,
-      CryptoVerification.LibsignalSession.NonVacuityWitness.readReg64_setPC_writeReg64_x0]
-    cases P0.Q.isTorsionFree (u8Vec 160 inBytes) <;> rfl
-  · change s0.mem ⊨ _
-    ac_nf at hmem ⊢
+  · rw [hx0, hvec,
+      CryptoVerification.LibsignalSession.NonVacuityWitness.readReg64_setPC_writeReg64_x0,
+      setWidth32_ite_64]
+    exact congrArg (fun b => if b then 1#32 else 0#32) htf.symm
+  · exact Satisfies.mono (by sep_entail) hmem
 
-theorem toEdwardsHook_ok_std3 (X : UnreachedPqxdhPrimitives) (P0 : PEParams) {img : Obj.Image} :
-    HookOk (toEdwardsHook P0.Q.montToEd)
-      (Shared.dalekMontToEdStubSpec (modelPrims X P0) img) := by
+theorem toEdwardsHook_ok_std3 (X : UnreachedPqxdhPrimitives) (P0 : PEParams) :
+    HookOk (toEdwardsHook legacyMontToEd)
+      (Shared.dalekMontToEdStubSpec (modelPrims X P0)) := by
   change HookOk
     (retHook (fun s =>
       let r := s.readReg64 .x8
-      let m := match P0.Q.montToEd (readVecN s.mem (s.readReg64 .x0) 32)
+      let m := match legacyMontToEd (readVecN s.mem (s.readReg64 .x0) 32)
           ((s.readReg64 .x1).setWidth 8 &&& 1#8) with
         | some p => (s.mem.write64 r 1#64).writeBytes (r + 8#64) p.toList
         | none => s.mem.write64 r 0#64
       s.setMem m))
-    (Shared.dalekMontToEdStubSpec (modelPrims X P0) img)
+    (Shared.dalekMontToEdStubSpec (modelPrims X P0))
   refine retHook_ok fun ⟨inBytes, signBit, inPtr, outPtr⟩ R s0 hrun hpre _ => ?_
   simp only [Shared.dalekMontToEdStubSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨⟨hx0, hx1, hx8, hin_len⟩, hmem⟩
@@ -466,11 +474,12 @@ theorem toEdwardsHook_ok_std3 (X : UnreachedPqxdhPrimitives) (P0 : PEParams) {im
   have hc0 : s0.mem ⊨ (outPtr ↦₆₄ w0) ∗
       (memRegion (outPtr + 8#64) 160 ∗ (inPtr ↦ₛ Shared.bytesToBv8 inBytes) ∗
        stackAt s0.sp Shared.pqxdhHookStack ∗ R) := by ac_nf at hcells ⊢
-  have hmte : (modelPrims X P0).montToEd inBytes (signBit &&& 1) =
-      (P0.Q.montToEd (u8Vec 32 inBytes) (signBit.toBitVec &&& 1#8)).map E2E.vecU8 := by
-    dsimp only [modelPrims, blockLevelPrims]
+  have hmte : (modelPrims X P0).montToEdBytes inBytes (signBit &&& 1) =
+      (legacyMontToEd (u8Vec 32 inBytes) (signBit.toBitVec &&& 1#8)).map E2E.vecU8 := by
+    dsimp only [SignalPqxdh.Primitives.montToEdBytes, modelPrims, blockLevelPrims, legacyMontToEd]
     rw [hsb1]
-  cases hres : P0.Q.montToEd (u8Vec 32 inBytes) (signBit.toBitVec &&& 1#8) with
+    cases SignalPqxdh.montLiftEd (u8Vec 32 inBytes).toList (signBit.toBitVec &&& 1#8) <;> rfl
+  cases hres : legacyMontToEd (u8Vec 32 inBytes) (signBit.toBitVec &&& 1#8) with
   | none =>
     have hkf := E2E.HooksE.HooksOkAux.keepsFrozen_write64_of_pointsTo64 0#64 hc0
     have hw := E2E.HooksE.HooksOkAux.satisfies_write64_of_pointsTo64 0#64 hc0
@@ -651,10 +660,10 @@ private theorem foldl_sha512Step_modelPrims_std3 (X : UnreachedPqxdhPrimitives) 
         Shared.fitBytes_of_length_eq (sha512StateBytesBE_len_std3 _)]
     rw [hstep, ih]
 
-theorem compress512Hook_ok_std3 (X : UnreachedPqxdhPrimitives) (P0 : PEParams) {img : Obj.Image} :
+theorem compress512Hook_ok_std3 (X : UnreachedPqxdhPrimitives) (P0 : PEParams) :
     HookOk (compress512Hook P0.Q.F512)
       (Shared.compressInPlaceStubSpec
-        (Shared.sha512CompressOutBytes (modelPrims X P0)) 64 128 img) := by
+        (Shared.sha512CompressOutBytes (modelPrims X P0)) 64 128) := by
   change HookOk
     (retHook (fun s =>
       let st := readSha512State s.mem (s.readReg64 .x0)
@@ -662,7 +671,7 @@ theorem compress512Hook_ok_std3 (X : UnreachedPqxdhPrimitives) (P0 : PEParams) {
       s.setMem (s.mem.writeBytes (s.readReg64 .x0)
         (sha512StateBytesLE ((chunks128 bs).foldl P0.Q.F512 st)))))
     (Shared.compressInPlaceStubSpec
-      (Shared.sha512CompressOutBytes (modelPrims X P0)) 64 128 img)
+      (Shared.sha512CompressOutBytes (modelPrims X P0)) 64 128)
   refine retHook_ok
     fun ⟨statePtr, stateBytes, blocksPtr, blockBytes, nBlocks⟩ R s0 hrun hpre _ => ?_
   simp only [Shared.compressInPlaceStubSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
@@ -717,35 +726,6 @@ theorem compress512Hook_ok_std3 (X : UnreachedPqxdhPrimitives) (P0 : PEParams) {
     simp only [State.trace_setPC, hx0, hx1, hx2_nat, hblk_read, hout_eq,
       sepConj_assoc, satisfies_pure_sepConj, true_and]
     exact satisfies_writeBytes outBv hlen64 hmem_reg
-
-/-- `PqxdhHookContracts (modelPrims X ⟨W.C, W.Q⟩) A img (cliExterns W)` on `cliExterns W`. -/
-theorem cliExterns_pqxdhHookContracts (W : CliHooks) (X : E2E.UnreachedPqxdhPrimitives) {A : RustAlloc}
-    (img : Obj.Image) :
-    Shared.PqxdhHookContracts (modelPrims X ⟨W.C, W.Q⟩) A img (cliExterns W) where
-  dalekMontToEd :=
-    ⟨toEdwardsHook W.Q.montToEd, cliExterns_row W (toEdwards_row W),
-      toEdwardsHook_ok_std3 X ⟨W.C, W.Q⟩⟩
-  dalekTorsionFree :=
-    ⟨torsionFreeHook W.Q.isTorsionFree, cliExterns_row W (torsionFree_row W),
-      torsionFreeHook_ok_std3 X ⟨W.C, W.Q⟩⟩
-  sha512Compress :=
-    ⟨compress512Hook W.Q.F512, cliExterns_row W (compress512_row W),
-      compress512Hook_ok_std3 X ⟨W.C, W.Q⟩⟩
-  dalekScalarWide :=
-    ⟨scalarWideHook W.Q.scalarWide, cliExterns_row W (scalarWide_row W),
-      cryptoLeafHook_ok_std3 (by decide) W.Q.scalarWide⟩
-  dalekScalarMod :=
-    ⟨scalarModHook W.Q.scalarMod, cliExterns_row W (scalarMod_row W),
-      cryptoLeafHook_ok_std3 (by decide) W.Q.scalarMod⟩
-  dalekCompress :=
-    ⟨compressHook W.Q.compress, cliExterns_row W (compress_row W),
-      cryptoLeafHook_ok_std3 (by decide) W.Q.compress⟩
-  dalekEdNeg :=
-    ⟨edNegHook W.Q.edNeg, cliExterns_row W (edNeg_row W),
-      cryptoLeafHook_ok_std3 (by decide) W.Q.edNeg⟩
-  dalekDoubleMul :=
-    ⟨dsmbHook W.Q.dsmb, cliExterns_row W (dsmb_row W),
-      dsmbHook_ok_std3 X ⟨W.C, W.Q⟩⟩
 
 theorem kemEncapsHook_ok_std3 (X : UnreachedPqxdhPrimitives) (P0 : PEParams) :
     HookOk (kemEncapsHook P0.Q.encaps)
@@ -907,7 +887,7 @@ private theorem satisfies_write32_of_pointsTo32 {m : Memory} {a : BitVec 64} {v�
 
 /-- Stack-parameterized `UNIX_EPOCH` `duration_since` contract: `self` has `tv_sec = 0` (`u64` @0),
 `tv_nsec = 0` (`u32` @8), arbitrary 4-byte padding @12, and `earlier` has `x1 = 0 ∧ w2 = 0`. -/
-def durationSinceEpochAtSpec (stk : Nat) : Spec (BitVec 64 × BitVec 64) where
+@[expose] def durationSinceEpochAtSpec (stk : Nat) : Spec (BitVec 64 × BitVec 64) where
   pre := fun (p, ret) s =>
     ⌜s.readReg64 .x0 = p ∧ s.readReg64 .x8 = ret ∧
       s.readReg64 .x1 = 0#64 ∧ (s.readReg64 .x2).setWidth 32 = 0#32⌝ ∗
@@ -920,11 +900,11 @@ def durationSinceEpochAtSpec (stk : Nat) : Spec (BitVec 64 × BitVec 64) where
         (ret ↦₆₄ w0) ∗ ((ret + 8#64) ↦₆₄ 0#64) ∗ ((ret + 16#64) ↦₆₄ w2))) ∗
       stackAt s0.sp stk
 
-def durationSinceEpochSpec : Spec (BitVec 64 × BitVec 64) := durationSinceEpochAtSpec extHookStack
-def durationSinceEpochAllocSpec : Spec (BitVec 64 × BitVec 64) :=
+@[expose] def durationSinceEpochSpec : Spec (BitVec 64 × BitVec 64) := durationSinceEpochAtSpec extHookStack
+@[expose] def durationSinceEpochAllocSpec : Spec (BitVec 64 × BitVec 64) :=
   durationSinceEpochAtSpec allocHookStack
 
-def durationSinceBoundedSpec : Spec (BitVec 64 × BitVec 64) where
+@[expose] def durationSinceBoundedSpec : Spec (BitVec 64 × BitVec 64) where
   pre := fun (p, ret) s =>
     ⌜s.readReg64 .x0 = p ∧ s.readReg64 .x8 = ret ∧
       ((s.readReg64 .x2).setWidth 32).toNat < 1000000000⌝ ∗

@@ -9,20 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym130
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym433
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DeriveKeys
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym130 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym433 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DeriveKeys
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.KeyDeriveBase
 import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatchBudget
+import ProofLib.Sep
 import ProofLib.SepLogic.Entry
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatch
 
 /-!
 # Budget-Threaded Segment S6 (`DeriveKeys`) Proofs for `try_decrypt_with_state`
@@ -32,7 +34,7 @@ Proves the relocatable `[LibsignalPlacement]` Segment S6 seam theorems (`deriveK
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -166,6 +168,22 @@ theorem s6FreeOnlyEnv_inhabited (mkg : MessageKeyGenerator) :
 
 /-! ## 2. Stack-Parametric Segment S6 Proofs (`blkPC_131` & `blkPC_434`) -/
 
+private theorem s6_pre_sp0 (sp : BitVec 64) :
+    memRegion sp 16 = memRegion sp 8 ∗ cells (sp + 8#64) 1 := by
+  sep_interval_eq
+
+private theorem s6_pre_sp320 (sp : BitVec 64) :
+    memRegion (sp + 320#64) 784 =
+      memRegion (sp + 320#64) 80 ∗ cells (sp + 400#64) 11 ∗ memRegion (sp + 488#64) 376 ∗
+      cells (sp + 864#64) 3 ∗ memRegion (sp + 888#64) 216 := by
+  sep_interval_eq
+
+private theorem s6_pre_sp1116 (sp : BitVec 64) :
+    memRegion (sp + 1116#64) 164 =
+      (∃∗ v : BitVec 32, (sp + 1116#64) ↦₃₂ v) ∗ cells (sp + 1120#64) 6 ∗
+      memRegion (sp + 1168#64) 112 := by
+  rw [← memRegion_four]; sep_interval_eq
+
 private theorem deriveKeys_159_placed_ok_withStack [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (H : String → Option (State → State))
@@ -263,54 +281,11 @@ private theorem deriveKeys_159_placed_ok_withStack [LibsignalPlacement] {M : All
       wp_conv_pre =>
         simp only [sepConj_assoc]
         unfold vecU8At vecHeader
-        rw [memRegion_split sp 8 8 (by decide),
-          mr_cut_add sp 320 80 704 (by decide),
-          mr_cut_add sp 400 8 696 (by decide),
-          mr_cut_add sp 408 8 688 (by decide),
-          mr_cut_add sp 416 8 680 (by decide),
-          mr_cut_add sp 424 8 672 (by decide),
-          mr_cut_add sp 432 8 664 (by decide),
-          mr_cut_add sp 440 8 656 (by decide),
-          mr_cut_add sp 448 8 648 (by decide),
-          mr_cut_add sp 456 8 640 (by decide),
-          mr_cut_add sp 464 8 632 (by decide),
-          mr_cut_add sp 472 8 624 (by decide),
-          mr_cut_add sp 480 8 616 (by decide),
-          mr_cut_add sp 488 376 240 (by decide),
-          mr_cut_add sp 864 8 232 (by decide),
-          mr_cut_add sp 872 8 224 (by decide),
-          mr_cut_add sp 880 8 216 (by decide),
-          mr_cut_add sp 1116 4 160 (by decide),
-          mr_cut_add sp 1120 8 152 (by decide),
-          mr_cut_add sp 1128 8 144 (by decide),
-          mr_cut_add sp 1136 8 136 (by decide),
-          mr_cut_add sp 1144 8 128 (by decide),
-          mr_cut_add sp 1152 8 120 (by decide),
-          mr_cut_add sp 1160 8 112 (by decide)]
-        simp only [Nat.reduceAdd, BitVec.ofNat_eq_ofNat, BitVec.add_assoc, BitVec.reduceAdd,
-          memRegion_eight (sp + 8#64),
-          memRegion_eight (sp + 400#64),
-          memRegion_eight (sp + 408#64),
-          memRegion_eight (sp + 416#64),
-          memRegion_eight (sp + 424#64),
-          memRegion_eight (sp + 432#64),
-          memRegion_eight (sp + 440#64),
-          memRegion_eight (sp + 448#64),
-          memRegion_eight (sp + 456#64),
-          memRegion_eight (sp + 464#64),
-          memRegion_eight (sp + 472#64),
-          memRegion_eight (sp + 480#64),
-          memRegion_eight (sp + 864#64),
-          memRegion_eight (sp + 872#64),
-          memRegion_eight (sp + 880#64),
-          memRegion_four (sp + 1116#64),
-          memRegion_eight (sp + 1120#64),
-          memRegion_eight (sp + 1128#64),
-          memRegion_eight (sp + 1136#64),
-          memRegion_eight (sp + 1144#64),
-          memRegion_eight (sp + 1152#64),
-          memRegion_eight (sp + 1160#64),
+        rw [s6_pre_sp0 sp, s6_pre_sp320 sp, s6_pre_sp1116 sp]
+        simp only [cells_succ, cells_zero, sepConj_emp, sepExists_sepConj_left,
+          sepExists_sepConj_right, BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc,
           CryptoVerification.LibsignalTripleRatchet.Decrypt.KeyDerive.pointsTo64_split32 (sp + 400#64)]
+      wp_pull_exists
       refine SepWP.focus_weaken (optKeyAt_split A.repAlloc (sp + 1304#64) pqrKey) (by sep_focus) ?_
       wp_pull_exists
       wp_focus_pure
@@ -322,44 +297,6 @@ private theorem deriveKeys_159_placed_ok_withStack [LibsignalPlacement] {M : All
       refine SepWP.focus_weaken (optKeyAt_fold A.repAlloc (sp + 864#64) _ _ _ pqrKey) (by sep_focus) ?_
       refine SepWP.focus_weaken (mkgAt_fold A.repAlloc (sp + 400#64) seedCap seedPtr _ _ mkg hseed)
         (by sep_focus) ?_
-      have hm16 : memRegion (sp + 16#64) 12 = memRegion (sp + 16#64) 8 ∗ memRegion (sp + 24#64) 4 := by
-        simpa using mr_cut_add sp 16 8 4 (by decide)
-      have hm440 : memRegion (sp + 440#64) 424 =
-          memRegion (sp + 440#64) 8 ∗ (memRegion (sp + 448#64) 8 ∗ (memRegion (sp + 456#64) 8 ∗
-          (memRegion (sp + 464#64) 8 ∗ (memRegion (sp + 472#64) 8 ∗ (memRegion (sp + 480#64) 8 ∗
-          memRegion (sp + 488#64) 376))))) := by
-        rw [mr_cut_add sp 440 8 416 (by decide),
-          mr_cut_add sp 448 8 408 (by decide),
-          mr_cut_add sp 456 8 400 (by decide),
-          mr_cut_add sp 464 8 392 (by decide),
-          mr_cut_add sp 472 8 384 (by decide),
-          mr_cut_add sp 480 8 376 (by decide)]
-      have hm1104 : memRegion (sp + 1104#64) 176 =
-          memRegion (sp + 1104#64) 8 ∗ (memRegion (sp + 1112#64) 8 ∗ (memRegion (sp + 1120#64) 8 ∗
-          (memRegion (sp + 1128#64) 8 ∗ (memRegion (sp + 1136#64) 8 ∗ (memRegion (sp + 1144#64) 8 ∗
-          (memRegion (sp + 1152#64) 8 ∗ (memRegion (sp + 1160#64) 8 ∗ memRegion (sp + 1168#64) 112))))))) := by
-        rw [mr_cut_add sp 1104 8 168 (by decide),
-          mr_cut_add sp 1112 8 160 (by decide),
-          mr_cut_add sp 1120 8 152 (by decide),
-          mr_cut_add sp 1128 8 144 (by decide),
-          mr_cut_add sp 1136 8 136 (by decide),
-          mr_cut_add sp 1144 8 128 (by decide),
-          mr_cut_add sp 1152 8 120 (by decide),
-          mr_cut_add sp 1160 8 112 (by decide)]
-      have hm1280 : memRegion (sp + 1280#64) 84 =
-          memRegion (sp + 1280#64) 8 ∗ (memRegion (sp + 1288#64) 8 ∗ (memRegion (sp + 1296#64) 8 ∗
-          (memRegion (sp + 1304#64) 8 ∗ (memRegion (sp + 1312#64) 8 ∗ (memRegion (sp + 1320#64) 8 ∗
-          memRegion (sp + 1328#64) 36))))) := by
-        rw [mr_cut_add sp 1280 8 76 (by decide),
-          mr_cut_add sp 1288 8 68 (by decide),
-          mr_cut_add sp 1296 8 60 (by decide),
-          mr_cut_add sp 1304 8 52 (by decide),
-          mr_cut_add sp 1312 8 44 (by decide),
-          mr_cut_add sp 1320 8 36 (by decide)]
-      have hm1328 : memRegion (sp + 1328#64) 80 =
-          memRegion (sp + 1328#64) 36 ∗ memRegion (sp + 1364#64) 44 := by
-        simpa using mr_cut_add sp 1328 36 44 (by decide)
-      rw [hm16, hm440, hm1104, hm1280, hm1328]
       refine SepWP.done (by wp_norm_lhs) (by wp_norm_lhs) ⟨by simp only [wp_norm, arm64_norm], ?_⟩
       intro hvm hm_out
       rw [← A.pool_of_vmPreserved hvm] at hm_out
@@ -382,7 +319,7 @@ private theorem deriveKeys_159_placed_ok_withStack [LibsignalPlacement] {M : All
         by simp only [State.spAligned, wp_norm, arm64_norm, *],
         by simp only [wp_norm, arm64_norm, *],
         by simp only [wp_norm, arm64_norm, *]⟩, ?_⟩
-      arm64_sep_close
+      exact Satisfies.mono (by sep_interval) hm_out
       )
     · intro sm hpcm hrunm ⟨hcl_code, hcl_ro⟩ hReg
       rcases hReg with ⟨hnp1, hnp2, hnp3, hx0m, hx1m, hx8m, hlrm,
@@ -391,15 +328,6 @@ private theorem deriveKeys_159_placed_ok_withStack [LibsignalPlacement] {M : All
       wp_call hgen (⟨sp + 400#64, mkg, sp + 864#64, pqrKey, sp + 1280#64⟩, st)
       have hevs_gen : GenerateKeysEnv ⟨sp + 400#64, mkg, sp + 864#64, pqrKey, sp + 1280#64⟩ w := hpost
       have htrace_f : sf.trace = sm.trace := by assumption
-      have hm320 : memRegion (sp + 320#64) 960 =
-          memRegion (sp + 320#64) 80 ∗ (memRegion (sp + 400#64) 40 ∗
-          (memRegion (sp + 440#64) 424 ∗ (memRegion (sp + 864#64) 24 ∗
-          (memRegion (sp + 888#64) 216 ∗ memRegion (sp + 1104#64) 176)))) := by
-        rw [mr_cut_add sp 320 80 880 (by decide),
-          mr_cut_add sp 400 40 840 (by decide),
-          mr_cut_add sp 440 424 416 (by decide),
-          mr_cut_add sp 864 24 392 (by decide),
-          mr_cut_add sp 888 216 176 (by decide)]
       refine SepWP.done (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *]) ?_
       intro hcl_sf sf_mem
       have hsp_sf : sf.sp = sp := by simp only [wp_norm, arm64_norm, *]
@@ -427,16 +355,16 @@ private theorem deriveKeys_159_placed_ok_withStack [LibsignalPlacement] {M : All
             by rw [hsp_def]; exact hsp_sf,
             hsp0_al',
             by simp only [State.spAligned, wp_norm, arm64_norm, *],
-            by change _ = s0.sp - 96#64; rw [hsp29_eq]; simp only [wp_norm, arm64_norm, *],
+            by rw [hsp29_eq]; simp only [wp_norm, arm64_norm, *],
             by simp only [wp_norm, arm64_norm, *],
             hcl_sf,
             by simp only [wp_norm, arm64_norm, *]⟩
         · rw [hsp_def, sessionStateAt_atState, trAt_atState, RustCliAllocBudget.atState_live,
             protocolAddressAt_atState, protocolAddressAt_atState, signalMessageAt_atState,
             logOff_tryDecryptPlacedImg, RustCliAllocBudget.atState_pool, hstack_sub sp,
-            show BitVec.ofNat 64 tryDecryptSubStack = 260640#64 by rfl, hm320]
+            show BitVec.ofNat 64 tryDecryptSubStack = 260640#64 by rfl]
           rw [hspm] at sf_mem
-          exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) sf_mem
+          exact Satisfies.mono (by sep_interval) sf_mem
   intro hL
   rcases hreach hL with ⟨sf, hsteps, ⟨hpc_sf, hrun_sf, evs, hevs, _hmeta_core, hvmac⟩ | ⟨hpan_sf, hoom⟩⟩
   · exact ⟨sf, hsteps, Or.inl ⟨hpc_sf, hrun_sf, evs, hevs, hvmac⟩⟩
@@ -539,54 +467,11 @@ private theorem deriveKeys_549_placed_ok_withStack [LibsignalPlacement] {M : All
       wp_conv_pre =>
         simp only [sepConj_assoc]
         unfold vecU8At vecHeader
-        rw [memRegion_split sp 8 8 (by decide),
-          mr_cut_add sp 320 80 704 (by decide),
-          mr_cut_add sp 400 8 696 (by decide),
-          mr_cut_add sp 408 8 688 (by decide),
-          mr_cut_add sp 416 8 680 (by decide),
-          mr_cut_add sp 424 8 672 (by decide),
-          mr_cut_add sp 432 8 664 (by decide),
-          mr_cut_add sp 440 8 656 (by decide),
-          mr_cut_add sp 448 8 648 (by decide),
-          mr_cut_add sp 456 8 640 (by decide),
-          mr_cut_add sp 464 8 632 (by decide),
-          mr_cut_add sp 472 8 624 (by decide),
-          mr_cut_add sp 480 8 616 (by decide),
-          mr_cut_add sp 488 376 240 (by decide),
-          mr_cut_add sp 864 8 232 (by decide),
-          mr_cut_add sp 872 8 224 (by decide),
-          mr_cut_add sp 880 8 216 (by decide),
-          mr_cut_add sp 1116 4 160 (by decide),
-          mr_cut_add sp 1120 8 152 (by decide),
-          mr_cut_add sp 1128 8 144 (by decide),
-          mr_cut_add sp 1136 8 136 (by decide),
-          mr_cut_add sp 1144 8 128 (by decide),
-          mr_cut_add sp 1152 8 120 (by decide),
-          mr_cut_add sp 1160 8 112 (by decide)]
-        simp only [Nat.reduceAdd, BitVec.ofNat_eq_ofNat, BitVec.add_assoc, BitVec.reduceAdd,
-          memRegion_eight (sp + 8#64),
-          memRegion_eight (sp + 400#64),
-          memRegion_eight (sp + 408#64),
-          memRegion_eight (sp + 416#64),
-          memRegion_eight (sp + 424#64),
-          memRegion_eight (sp + 432#64),
-          memRegion_eight (sp + 440#64),
-          memRegion_eight (sp + 448#64),
-          memRegion_eight (sp + 456#64),
-          memRegion_eight (sp + 464#64),
-          memRegion_eight (sp + 472#64),
-          memRegion_eight (sp + 480#64),
-          memRegion_eight (sp + 864#64),
-          memRegion_eight (sp + 872#64),
-          memRegion_eight (sp + 880#64),
-          memRegion_four (sp + 1116#64),
-          memRegion_eight (sp + 1120#64),
-          memRegion_eight (sp + 1128#64),
-          memRegion_eight (sp + 1136#64),
-          memRegion_eight (sp + 1144#64),
-          memRegion_eight (sp + 1152#64),
-          memRegion_eight (sp + 1160#64),
+        rw [s6_pre_sp0 sp, s6_pre_sp320 sp, s6_pre_sp1116 sp]
+        simp only [cells_succ, cells_zero, sepConj_emp, sepExists_sepConj_left,
+          sepExists_sepConj_right, BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc,
           CryptoVerification.LibsignalTripleRatchet.Decrypt.KeyDerive.pointsTo64_split32 (sp + 400#64)]
+      wp_pull_exists
       refine SepWP.focus_weaken (optKeyAt_split A.repAlloc (sp + 1304#64) pqrKey) (by sep_focus) ?_
       wp_pull_exists
       wp_focus_pure
@@ -598,44 +483,6 @@ private theorem deriveKeys_549_placed_ok_withStack [LibsignalPlacement] {M : All
       refine SepWP.focus_weaken (optKeyAt_fold A.repAlloc (sp + 864#64) _ _ _ pqrKey) (by sep_focus) ?_
       refine SepWP.focus_weaken (mkgAt_fold A.repAlloc (sp + 400#64) seedCap seedPtr _ _ mkg hseed)
         (by sep_focus) ?_
-      have hm16 : memRegion (sp + 16#64) 12 = memRegion (sp + 16#64) 8 ∗ memRegion (sp + 24#64) 4 := by
-        simpa using mr_cut_add sp 16 8 4 (by decide)
-      have hm440 : memRegion (sp + 440#64) 424 =
-          memRegion (sp + 440#64) 8 ∗ (memRegion (sp + 448#64) 8 ∗ (memRegion (sp + 456#64) 8 ∗
-          (memRegion (sp + 464#64) 8 ∗ (memRegion (sp + 472#64) 8 ∗ (memRegion (sp + 480#64) 8 ∗
-          memRegion (sp + 488#64) 376))))) := by
-        rw [mr_cut_add sp 440 8 416 (by decide),
-          mr_cut_add sp 448 8 408 (by decide),
-          mr_cut_add sp 456 8 400 (by decide),
-          mr_cut_add sp 464 8 392 (by decide),
-          mr_cut_add sp 472 8 384 (by decide),
-          mr_cut_add sp 480 8 376 (by decide)]
-      have hm1104 : memRegion (sp + 1104#64) 176 =
-          memRegion (sp + 1104#64) 8 ∗ (memRegion (sp + 1112#64) 8 ∗ (memRegion (sp + 1120#64) 8 ∗
-          (memRegion (sp + 1128#64) 8 ∗ (memRegion (sp + 1136#64) 8 ∗ (memRegion (sp + 1144#64) 8 ∗
-          (memRegion (sp + 1152#64) 8 ∗ (memRegion (sp + 1160#64) 8 ∗ memRegion (sp + 1168#64) 112))))))) := by
-        rw [mr_cut_add sp 1104 8 168 (by decide),
-          mr_cut_add sp 1112 8 160 (by decide),
-          mr_cut_add sp 1120 8 152 (by decide),
-          mr_cut_add sp 1128 8 144 (by decide),
-          mr_cut_add sp 1136 8 136 (by decide),
-          mr_cut_add sp 1144 8 128 (by decide),
-          mr_cut_add sp 1152 8 120 (by decide),
-          mr_cut_add sp 1160 8 112 (by decide)]
-      have hm1280 : memRegion (sp + 1280#64) 84 =
-          memRegion (sp + 1280#64) 8 ∗ (memRegion (sp + 1288#64) 8 ∗ (memRegion (sp + 1296#64) 8 ∗
-          (memRegion (sp + 1304#64) 8 ∗ (memRegion (sp + 1312#64) 8 ∗ (memRegion (sp + 1320#64) 8 ∗
-          memRegion (sp + 1328#64) 36))))) := by
-        rw [mr_cut_add sp 1280 8 76 (by decide),
-          mr_cut_add sp 1288 8 68 (by decide),
-          mr_cut_add sp 1296 8 60 (by decide),
-          mr_cut_add sp 1304 8 52 (by decide),
-          mr_cut_add sp 1312 8 44 (by decide),
-          mr_cut_add sp 1320 8 36 (by decide)]
-      have hm1328 : memRegion (sp + 1328#64) 80 =
-          memRegion (sp + 1328#64) 36 ∗ memRegion (sp + 1364#64) 44 := by
-        simpa using mr_cut_add sp 1328 36 44 (by decide)
-      rw [hm16, hm440, hm1104, hm1280, hm1328]
       refine SepWP.done (by wp_norm_lhs) (by wp_norm_lhs) ⟨by simp only [wp_norm, arm64_norm], ?_⟩
       intro hvm hm_out
       rw [← A.pool_of_vmPreserved hvm] at hm_out
@@ -658,7 +505,7 @@ private theorem deriveKeys_549_placed_ok_withStack [LibsignalPlacement] {M : All
         by simp only [State.spAligned, wp_norm, arm64_norm, *],
         by simp only [wp_norm, arm64_norm, *],
         by simp only [wp_norm, arm64_norm, *]⟩, ?_⟩
-      arm64_sep_close
+      exact Satisfies.mono (by sep_interval) hm_out
       )
     · intro sm hpcm hrunm ⟨hcl_code, hcl_ro⟩ hReg
       rcases hReg with ⟨hnp1, hnp2, hnp3, hx0m, hx1m, hx8m, hlrm,
@@ -667,15 +514,6 @@ private theorem deriveKeys_549_placed_ok_withStack [LibsignalPlacement] {M : All
       wp_call hgen (⟨sp + 400#64, mkg, sp + 864#64, pqrKey, sp + 1280#64⟩, st)
       have hevs_gen : GenerateKeysEnv ⟨sp + 400#64, mkg, sp + 864#64, pqrKey, sp + 1280#64⟩ w := hpost
       have htrace_f : sf.trace = sm.trace := by assumption
-      have hm320 : memRegion (sp + 320#64) 960 =
-          memRegion (sp + 320#64) 80 ∗ (memRegion (sp + 400#64) 40 ∗
-          (memRegion (sp + 440#64) 424 ∗ (memRegion (sp + 864#64) 24 ∗
-          (memRegion (sp + 888#64) 216 ∗ memRegion (sp + 1104#64) 176)))) := by
-        rw [mr_cut_add sp 320 80 880 (by decide),
-          mr_cut_add sp 400 40 840 (by decide),
-          mr_cut_add sp 440 424 416 (by decide),
-          mr_cut_add sp 864 24 392 (by decide),
-          mr_cut_add sp 888 216 176 (by decide)]
       refine SepWP.done (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *]) ?_
       intro hcl_sf sf_mem
       have hsp_sf : sf.sp = sp := by simp only [wp_norm, arm64_norm, *]
@@ -703,16 +541,16 @@ private theorem deriveKeys_549_placed_ok_withStack [LibsignalPlacement] {M : All
             by rw [hsp_def]; exact hsp_sf,
             hsp0_al',
             by simp only [State.spAligned, wp_norm, arm64_norm, *],
-            by change _ = s0.sp - 96#64; rw [hsp29_eq]; simp only [wp_norm, arm64_norm, *],
+            by rw [hsp29_eq]; simp only [wp_norm, arm64_norm, *],
             by simp only [wp_norm, arm64_norm, *],
             hcl_sf,
             by simp only [wp_norm, arm64_norm, *]⟩
         · rw [hsp_def, sessionStateAt_atState, trAt_atState, RustCliAllocBudget.atState_live,
             protocolAddressAt_atState, protocolAddressAt_atState, signalMessageAt_atState,
             logOff_tryDecryptPlacedImg, RustCliAllocBudget.atState_pool, hstack_sub sp,
-            show BitVec.ofNat 64 tryDecryptSubStack = 260640#64 by rfl, hm320]
+            show BitVec.ofNat 64 tryDecryptSubStack = 260640#64 by rfl]
           rw [hspm] at sf_mem
-          exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) sf_mem
+          exact Satisfies.mono (by sep_interval) sf_mem
   intro hL
   rcases hreach hL with ⟨sf, hsteps, ⟨hpc_sf, hrun_sf, evs, hevs, _hmeta_core, hvmac⟩ | ⟨hpan_sf, hoom⟩⟩
   · exact ⟨sf, hsteps, Or.inl ⟨hpc_sf, hrun_sf, evs, hevs, hvmac⟩⟩

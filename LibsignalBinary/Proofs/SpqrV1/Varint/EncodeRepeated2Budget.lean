@@ -9,16 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeated2
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedPlacedCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4Budget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeated2
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedPlacedCommonBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4Budget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedPlacedCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable `prost::encoding::bytes::encode_repeated [local#2]`
@@ -27,7 +32,7 @@ Proves `[LibsignalPlacement]` `RustCliAllocBudget`-threaded contracts (`encodeRe
 `encodeRepeatedSpec`, `encodeRepeatedSpecX`) for `encode_repeated::<Vec<u8>, Vec<u8>> [local#2]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

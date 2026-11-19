@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompClosed
+public import Symbolic.Proofs.Swarm.COMPOSED.CompClosed -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.Bytes.AttackerKnowledge
 import DY.Misc.Fixpoint
@@ -35,7 +35,7 @@ import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
 import Symbolic.Specifications.Model.EquationalTheory.X25519
 import Symbolic.Specifications.Model.EquationalTheory.Kem
 import Symbolic.Specifications.Model.EquationalTheory.Spqr
-public import Symbolic.Proofs.Swarm.COMPOSED.CompPresTRExp
+public import Symbolic.Proofs.Swarm.COMPOSED.CompPresTRExp -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Spqr
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.TrWireMsg
 import Symbolic.Proofs.Swarm.COMPOSED.CompPubInv
@@ -68,7 +68,7 @@ closure `CompTightClosed` refining `CompTrClosed` with invertible `dhPk` and `ke
 and proves `CompTightClosed.of_attackerKnows` over `DY.Libsignal.Composed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -87,7 +87,7 @@ open Symbolic.Swarm.COMPOSED.CompTermAlgebra
 open Symbolic.Swarm.COMPOSED.CompKeyInversion
 
 /-- Syntactic shape of keys exposed by Triple Ratchet `exposeKey` and `exposeSkipped` transitions. -/
-def IsScheduleKey (k : Bytes) : Prop :=
+@[expose] def IsScheduleKey (k : Bytes) : Prop :=
   (∃ r p sk, k = (createChain r p sk).1) ∨
   (∃ r p sk, k = (createChain r p sk).2) ∨
   (∃ ikm, k = (pqxdhKdf ikm).ck) ∨

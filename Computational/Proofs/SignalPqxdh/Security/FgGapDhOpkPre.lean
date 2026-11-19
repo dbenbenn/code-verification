@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhD
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk -- shake: keep
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk -- shake: keep
 
 /-!
 # Case D (`DH4`) pre-sampled `KeyInd` implementation
@@ -24,7 +24,7 @@ secret of OPK slot `oIdx`, together with the pre-sampling equivalence
 `evalDist_runKeyIndFgSim_eq_preSample_dh4`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +39,7 @@ namespace Proofs.SignalPqxdh.Security.FgGapDh.Opk
 
 open Proofs.SignalPqxdh.Security.FgGapDh
 
-def OpkKeysMono {S : Setup} (st st' : KeyIndState S) : Prop :=
+@[expose] def OpkKeysMono {S : Setup} (st st' : KeyIndState S) : Prop :=
   ∀ key : ℕ × ℕ × ℕ, st.opkEntries.any (fun (k, _) => k == key) = true →
     st'.opkEntries.any (fun (k, _) => k == key) = true
 
@@ -69,7 +69,7 @@ theorem pqxdhKeyIndFgPreImpl_opkMono {S : Setup} (useDh1 : Bool)
   dsimp only [Function.comp_apply] at hk ⊢
   split_ifs <;> exact hk
 
-noncomputable def fgPreGenOPK (targetOpkIdx : ℕ) (optVsk : Option Bytes)
+@[expose] def fgPreGenOPK (targetOpkIdx : ℕ) (optVsk : Option Bytes)
     (S : Setup) (P : Primitives) (u : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) :
     StateT (KeyIndState S) ProbComp KeyIndResponse := do
   let st ← get
@@ -85,7 +85,7 @@ noncomputable def fgPreGenOPK (targetOpkIdx : ℕ) (optVsk : Option Bytes)
 
 /-- Case D pre-sampled implementation: `uSk` as the ephemeral secret of initiator slot
     `targetIdx`, `vSk` as the OPK secret of OPK slot `targetOpkIdx`. -/
-noncomputable def pqxdhKeyIndFgPreImplOpk (targetIdx targetOpkIdx : ℕ)
+@[expose] def pqxdhKeyIndFgPreImplOpk (targetIdx targetOpkIdx : ℕ)
     (optUsk optVsk : Option Bytes) (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndFgCutoffState S) ProbComp)
   | .genOPK u j o => liftFgBase (fgPreGenOPK targetOpkIdx optVsk S P u j o)
@@ -98,7 +98,7 @@ theorem pqxdhKeyIndFgPreImplOpk_none_eq {S : Setup} (targetIdx targetOpkIdx : �
   funext q
   cases q <;> rfl
 
-def hasFiredOpk (S : Setup) (oIdx : ℕ) (hst : KeyIndFgCutoffState S) : Prop :=
+@[expose] def hasFiredOpk (S : Setup) (oIdx : ℕ) (hst : KeyIndFgCutoffState S) : Prop :=
   ∃ (u₀ : Fin S.N_id) (j₀ : Fin S.N_recv) (o₀ : Fin S.N_opk),
     opkFlatIdx S u₀ j₀ o₀ = oIdx ∧
     hst.base.opkEntries.any (fun (k, _) => k == (u₀.val, j₀.val, o₀.val)) = true

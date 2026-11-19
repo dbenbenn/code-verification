@@ -9,7 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.OptImageHelper
+public import LibsignalBinary.Proofs.Common.InImageLift -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 
 /-!
@@ -21,7 +22,7 @@ to `Alloc.Defs`'s base contracts at `allocHookStack` (`finishGrowStack`) and `*S
 `AllocContractsX` (`oimg = some img`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,12 +34,12 @@ open CryptoVerification.LibsignalTripleRatchetRepr
 open CryptoVerification.InImageLift
 
 /-- Stack-equipped no-op shim spec at `hookStack` (`= session2ShimSpecX` at `extHookStack`). -/
-def shimSpecWithStack (hookStack : Nat) : Spec Unit where
+@[expose] def shimSpecWithStack (hookStack : Nat) : Spec Unit where
   pre := fun _ s => stackAt s.sp hookStack
   post := fun _ s0 sf => ⌜sf.trace = s0.trace⌝ ∗ stackAt s0.sp hookStack
 
 /-- Stack-equipped `memcpy` spec at `hookStack` (`= session2MemcpySpecX` at `extHookStack`). -/
-def memcpySpecWithStack (hookStack : Nat) : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def memcpySpecWithStack (hookStack : Nat) : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ (s0.readReg64 .x2).toNat = bs.length⌝ ∗
       memRegion dst bs.length ∗ (src ↦ₛ bs) ∗ stackAt s0.sp hookStack
@@ -47,7 +48,7 @@ def memcpySpecWithStack (hookStack : Nat) : Spec (BitVec 64 × BitVec 64 × List
       stackAt s0.sp hookStack
 
 /-- Stack-parameterized `finishGrowSpec` (`= finishGrowSpec A` at `allocHookStack`, `= finishGrowSpecX A` at `extHookStack`). -/
-def finishGrowSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec FinishGrowCall where
+@[expose] def finishGrowSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec FinishGrowCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.cap ∧ s.readReg64 .x2 = x.ptr ∧
       s.readReg64 .x3 = x.new ∧ s.readReg64 .x4 = x.align ∧ s.readReg64 .x5 = x.stride ∧
@@ -69,7 +70,7 @@ def finishGrowSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec FinishGrowC
       A.pool ∗ stackAt s0.sp (hookStack + 48)
 
 /-- Stack-parameterized `doReserveRawSpec` (`= doReserveRawSpec A` at `finishGrowStack`, `= doReserveRawSpecX A` at `finishGrowStackX`). -/
-def doReserveRawSpecWithStack (A : RustAlloc) (fgStack : Nat) : Spec DoReserveCall where
+@[expose] def doReserveRawSpecWithStack (A : RustAlloc) (fgStack : Nat) : Spec DoReserveCall where
   pre := fun x s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional
     ⌜s.readReg64 .x0 = x.v ∧ (s.readReg64 .x1).toNat = x.bs.length ∧
@@ -91,7 +92,7 @@ def doReserveRawSpecWithStack (A : RustAlloc) (fgStack : Nat) : Spec DoReserveCa
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Stack-parameterized `doReserveSpec` (`= doReserveSpec A` at `finishGrowStack`, `= doReserveSpecX A` at `finishGrowStackX`). -/
-def doReserveSpecWithStack (A : RustAlloc) (fgStack : Nat) : Spec DoReserveCall where
+@[expose] def doReserveSpecWithStack (A : RustAlloc) (fgStack : Nat) : Spec DoReserveCall where
   pre := fun x s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional
     ⌜s.readReg64 .x0 = x.v ∧ (s.readReg64 .x1).toNat = x.bs.length ∧
@@ -106,7 +107,7 @@ def doReserveSpecWithStack (A : RustAlloc) (fgStack : Nat) : Spec DoReserveCall 
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Stack-parameterized `intoBoxedSliceSpec` (`= intoBoxedSliceSpec A` at `allocHookStack`, `= intoBoxedSliceSpecX A` at `extHookStack`). -/
-def intoBoxedSliceSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec VecArg where
+@[expose] def intoBoxedSliceSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec VecArg where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.v⌝ ∗ x.at A ∗ A.pool ∗ stackAt s.sp (hookStack + 32)
   post := fun x s0 sf =>
@@ -116,7 +117,7 @@ def intoBoxedSliceSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec VecArg 
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Stack-parameterized `tryCloneFromRefSpec` (`= tryCloneFromRefSpec A` at `allocHookStack`, `= tryCloneFromRefSpecX A` at `extHookStack`). -/
-def tryCloneFromRefSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec TryCloneSliceCall where
+@[expose] def tryCloneFromRefSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec TryCloneSliceCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.src ∧ (s.readReg64 .x1).toNat = x.bs.length ∧
       x.bs.length + 1 ≤ 2 ^ 63⌝ ∗
@@ -130,7 +131,7 @@ def tryCloneFromRefSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec TryClo
     A.pool ∗ stackAt s0.sp (hookStack + 48)
 
 /-- Stack-parameterized `chainKeyToPbSpec` (`= chainKeyToPbSpec A` at `allocHookStack`, `= chainKeyToPbSpecX A` at `extHookStack`). -/
-def chainKeyToPbSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec ChainKeyToPbCall where
+@[expose] def chainKeyToPbSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec ChainKeyToPbCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.ret⌝ ∗
     (x.self ↦ₛ chainKeyBytes x.ck) ∗ memRegion x.ret 32 ∗ A.pool ∗
@@ -142,7 +143,7 @@ def chainKeyToPbSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec ChainKeyT
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Stack-parameterized `publicKeySerializeSpec` (`= publicKeySerializeSpec A` at `allocHookStack`, `= publicKeySerializeSpecX A` at `extHookStack`). -/
-def publicKeySerializeSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec PublicKeySerializeCall where
+@[expose] def publicKeySerializeSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec PublicKeySerializeCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.self⌝ ∗ (x.self ↦ₛ x.pk.bytes.toList) ∗ A.pool ∗
     stackAt s.sp (hookStack + 32)
@@ -153,111 +154,5 @@ def publicKeySerializeSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec Pub
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-! ## Individual Hook Adapters (`oimg = none` from `AllocContracts`, `oimg = some img` from `AllocContractsX`) -/
-
-theorem shim_opt_of_base {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hA : AllocContracts b A ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_no_alloc_shim_is_unstable_v2" := by
-        simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (specWithOptInv none (shimSpecWithStack allocHookStack)) := by
-  apply subroutine_ok_to_optNone
-  have h := subroutine_ok_withStack_of_subroutine_ok (hA.shim_ok_at name k hk) allocHookStack
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hal => ?_
-  have hpre' : s0.mem ⊨ (withStack sessionShimSpec allocHookStack).pre x s0 ∗ R := by
-    dsimp only [withStack, sessionShimSpec, shimSpecWithStack] at hpre ⊢
-    simpa only [emp_sepConj, sepConj_assoc] using hpre
-  exact h.mono_outcome x R s0 hpc hrun hpre' hal fun _ hout => hout
-
-theorem shim_opt_of_x {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hA : AllocContractsX img A ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_no_alloc_shim_is_unstable_v2" := by
-        simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      (specWithOptInv (some img) (shimSpecWithStack extHookStack)) :=
-  shim_ok_at2_ext_x hA hk
-
-theorem memcpy_opt_of_base {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hA : AllocContracts b A ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "memcpy" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (specWithOptInv none (memcpySpecWithStack allocHookStack)) := by
-  apply subroutine_ok_to_optNone
-  have h := subroutine_ok_withStack_of_subroutine_ok (hA.session_memcpy_region_ok_at name k hk) allocHookStack
-  refine subroutine_ok_mono h (fun x R s0 hpre => ?_) (fun x R s0 sf hpost => ?_)
-  · dsimp only [withStack, sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpecWithStack] at hpre ⊢
-    simpa only [sepConj_assoc] using hpre
-  · dsimp only [withStack, sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpecWithStack] at hpost ⊢
-    simpa only [sepConj_assoc] using hpost
-
-theorem memcpy_opt_of_x {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hA : AllocContractsX img A ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "memcpy" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      (specWithOptInv (some img) (memcpySpecWithStack extHookStack)) :=
-  memcpy_ok_at2_ext_x hA hk
-
-theorem alloc_opt_of_base {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hA : AllocContracts b A ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (specWithOptInv none (rustAllocSpecWithStack A allocHookStack)) :=
-  subroutine_ok_to_optNone (alloc_ok_at_norm_ext hA hk)
-
-theorem alloc_opt_of_x {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hA : AllocContractsX img A ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      (specWithOptInv (some img) (rustAllocSpecWithStack A extHookStack)) :=
-  alloc_ok_at_norm_ext_x hA hk
-
-theorem dealloc_opt_of_base {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hA : AllocContracts b A ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_dealloc" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (specWithOptInv none (rustDeallocExternSpecWithStack A allocHookStack)) :=
-  subroutine_ok_to_optNone
-    (rustDeallocExternWithStack_of_rustDealloc (dealloc_ok_at_norm_ext hA hk) (by decide) (by decide))
-
-theorem dealloc_opt_of_x {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hA : AllocContractsX img A ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_dealloc" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      (specWithOptInv (some img) (rustDeallocExternSpecWithStack A extHookStack)) :=
-  dealloc_ok_at_norm_ext_x hA hk
-
-theorem realloc_opt_of_base {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hA : AllocContracts b A ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_realloc" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (specWithOptInv none (rustReallocExternSpecWithStack A allocHookStack)) :=
-  subroutine_ok_to_optNone
-    (rustReallocExternWithStack_of_rustRealloc (realloc_ok_at_norm_ext hA hk) (by decide) (by decide))
-
-theorem realloc_opt_of_x {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hA : AllocContractsX img A ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_realloc" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      (specWithOptInv (some img) (rustReallocExternSpecWithStack A extHookStack)) :=
-  realloc_ok_at_norm_ext_x hA hk
 
 end CryptoVerification.LibsignalTripleRatchet

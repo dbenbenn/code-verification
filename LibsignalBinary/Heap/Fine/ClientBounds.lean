@@ -38,14 +38,6 @@ open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
     HasFineReallocCredit.smallMaxReq fineCostModel = 135167 :=
   rfl
 
-theorem le_smallMaxReq_106496 :
-    106496 ≤ HasFineReallocCredit.smallMaxReq fineCostModel := by
-  decide
-
-theorem le_smallMaxReq_131072 :
-    131072 ≤ HasFineReallocCredit.smallMaxReq fineCostModel := by
-  decide
-
 @[scoped simp] theorem fineCostModel_largeMetaCost_eq :
     HasFineReallocCredit.largeMetaCost fineCostModel = 122 :=
   rfl
@@ -209,21 +201,6 @@ theorem smallAllocCost_pos_le_78_mul_add {req : Nat} (hpos : 0 < req) :
     unfold MmapThresholdReq at hle
     omega
 
-theorem smallAllocCost_pos_le_79_mul_add {req : Nat} (hpos : 0 < req) :
-    HasFineReallocCredit.smallAllocCost fineCostModel req ≤ 79 * req + 109 := by
-  change fineSmallAllocCost req ≤ 79 * req + 109
-  unfold fineSmallAllocCost
-  by_cases hle : req ≤ MmapThresholdReq
-  · simp only [hle, ↓reduceIte]
-    obtain ⟨hsc, hrmin⟩ := reqMinOfClass_le_of_le_mmap hle
-    have hcell := List.all_eq_true.mp checkClassAffineBounds_true _ (List.mem_range.mpr hsc)
-    have hb := (of_decide_eq_true hcell).2.2.2.2.2.2
-    unfold classAllocWt at hb
-    omega
-  · simp only [hle, ↓reduceIte, declCost63]
-    unfold MmapThresholdReq at hle
-    omega
-
 private def checkSmallBuckets : Bool :=
   (List.range 7).all fun u =>
     let aWt := classAllocWt (sizeToClassUnits u)
@@ -361,66 +338,6 @@ private theorem extractReallocPoint {req expected : Nat}
     HasFineReallocCredit.smallReallocCost fineCostModel 106496 = 131194 :=
   extractReallocPoint (by decide)
 
-@[scoped simp] theorem smallAllocCost_8 :
-    HasFineReallocCredit.smallAllocCost fineCostModel 8 = 188 :=
-  extractAllocPoint (by decide)
-
-@[scoped simp] theorem smallReallocCost_16 :
-    HasFineReallocCredit.smallReallocCost fineCostModel 16 = 8333 :=
-  extractReallocPoint (by decide)
-
-@[scoped simp] theorem smallReallocCost_32 :
-    HasFineReallocCredit.smallReallocCost fineCostModel 32 = 8349 :=
-  extractReallocPoint (by decide)
-
-@[scoped simp] theorem smallReallocCost_64 :
-    HasFineReallocCredit.smallReallocCost fineCostModel 64 = 8381 :=
-  extractReallocPoint (by decide)
-
-@[scoped simp] theorem smallReallocCost_128 :
-    HasFineReallocCredit.smallReallocCost fineCostModel 128 = 9789 :=
-  extractReallocPoint (by decide)
-
-@[scoped simp] theorem smallReallocCost_256 :
-    HasFineReallocCredit.smallReallocCost fineCostModel 256 = 8637 :=
-  extractReallocPoint (by decide)
-
-@[scoped simp] theorem smallReallocCost_512 :
-    HasFineReallocCredit.smallReallocCost fineCostModel 512 = 8829 :=
-  extractReallocPoint (by decide)
-
-@[scoped simp] theorem smallReallocCost_1024 :
-    HasFineReallocCredit.smallReallocCost fineCostModel 1024 = 9341 :=
-  extractReallocPoint (by decide)
-
-@[scoped simp] theorem smallReallocCost_2048 :
-    HasFineReallocCredit.smallReallocCost fineCostModel 2048 = 10365 :=
-  extractReallocPoint (by decide)
-
-@[scoped simp] theorem smallReallocCost_4096 :
-    HasFineReallocCredit.smallReallocCost fineCostModel 4096 = 12413 :=
-  extractReallocPoint (by decide)
-
-@[scoped simp] theorem smallReallocCost_8192 :
-    HasFineReallocCredit.smallReallocCost fineCostModel 8192 = 16509 :=
-  extractReallocPoint (by decide)
-
-@[scoped simp] theorem smallReallocCost_16384 :
-    HasFineReallocCredit.smallReallocCost fineCostModel 16384 = 24701 :=
-  extractReallocPoint (by decide)
-
-@[scoped simp] theorem smallReallocCost_32768 :
-    HasFineReallocCredit.smallReallocCost fineCostModel 32768 = 41085 :=
-  extractReallocPoint (by decide)
-
-@[scoped simp] theorem smallReallocCost_65536 :
-    HasFineReallocCredit.smallReallocCost fineCostModel 65536 = 77946 :=
-  extractReallocPoint (by decide)
-
-@[scoped simp] theorem smallReallocCost_131072 :
-    HasFineReallocCredit.smallReallocCost fineCostModel 131072 = 139389 :=
-  extractReallocPoint (by decide)
-
 /-- Per-step `cumSmall` charge of one `RawVec<104>::grow_one` step (`0 → 4` or `cap → 2 * cap`,
 stride `104`, align `8`). -/
 def fineVec104StepCumCost (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
@@ -443,11 +360,6 @@ def fineVec104CumOfCap (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat)
 termination_by cap
 decreasing_by omega
 
-@[scoped simp] theorem fineVec104CumOfCap_zero (M : AllocCostModel) [HasFineReallocCredit M] :
-    fineVec104CumOfCap M 0 = 0 := by
-  unfold fineVec104CumOfCap
-  rfl
-
 theorem fineVec104CumOfCap_four (M : AllocCostModel) [HasFineReallocCredit M] :
     fineVec104CumOfCap M 4 = fineVec104StepCumCost M 0 := by
   unfold fineVec104CumOfCap
@@ -461,20 +373,6 @@ theorem fineVec104CumOfCap_two_mul (M : AllocCostModel) [HasFineReallocCredit M]
   have h2 : ¬ (2 * cap < 8) := by omega
   have hdiv : (2 * cap) / 2 = cap := by omega
   simp only [h1, h2, hdiv, ↓reduceIte]
-
-theorem fineVec104CumOfCap_pow2_mono (M : AllocCostModel) [HasFineReallocCredit M]
-    {i j : Nat} (hij : i ≤ j) :
-    fineVec104CumOfCap M (4 * 2 ^ i) ≤ fineVec104CumOfCap M (4 * 2 ^ j) := by
-  induction hij with
-  | refl => exact Nat.le_refl _
-  | step _ ih =>
-    rename_i k _
-    have hge : 4 ≤ 4 * 2 ^ k := by
-      have hk : 1 ≤ 2 ^ k := Nat.one_le_two_pow
-      omega
-    have heq : 4 * 2 ^ (k + 1) = 2 * (4 * 2 ^ k) := by rw [Nat.pow_succ]; omega
-    rw [heq, fineVec104CumOfCap_two_mul M hge]
-    omega
 
 private theorem fineVec104StepCumCost_small {cap : Nat} (hne : cap ≠ 0)
     (hle : 2 * cap * 104 ≤ 135167) :
@@ -536,188 +434,6 @@ theorem fineVec104CumOfCap_pow2_ge_8 {j : Nat} (hj : 8 ≤ j) :
     have heq : 4 * 2 ^ (k + 1) = 2 * (4 * 2 ^ k) := by rw [Nat.pow_succ]; omega
     rw [heq, fineVec104CumOfCap_two_mul _ (by omega), ih,
       fineVec104StepCumCost_large_of_ge_1024 hge1024]
-    omega
-
-@[scoped simp] theorem fineVec104CumOfCap_2pow20 :
-    fineVec104CumOfCap fineCostModel (2 ^ 20) = 305881 := by
-  have h := fineVec104CumOfCap_pow2_ge_8 (j := 18) (by decide)
-  simpa using h
-
-theorem fineVec104CumOfCap_le_304661 {cap : Nat}
-    (hpow : cap = 0 ∨ ∃ j, cap = 4 * 2 ^ j) (hle : cap ≤ 1024) :
-    fineVec104CumOfCap fineCostModel cap ≤ 304661 := by
-  rcases hpow with rfl | ⟨j, rfl⟩
-  · simp
-  · have hj : j ≤ 8 := by
-      by_contra hgt
-      have h9 : 9 ≤ j := by omega
-      have hp : 2 ^ 9 ≤ 2 ^ j := Nat.pow_le_pow_right (by decide) h9
-      omega
-    exact Nat.le_trans (fineVec104CumOfCap_pow2_mono fineCostModel hj)
-      (Nat.le_of_eq fineVec104CumOfCap_1024)
-
-theorem fineVec104CumOfCap_le_305881 {cap : Nat}
-    (hpow : cap = 0 ∨ ∃ j, cap = 4 * 2 ^ j) (hle : cap ≤ 2 ^ 20) :
-    fineVec104CumOfCap fineCostModel cap ≤ 305881 := by
-  rcases hpow with rfl | ⟨j, rfl⟩
-  · simp
-  · have hj : j ≤ 18 := by
-      by_contra hgt
-      have h19 : 19 ≤ j := by omega
-      have hp : 2 ^ 19 ≤ 2 ^ j := Nat.pow_le_pow_right (by decide) h19
-      omega
-    have hmono := fineVec104CumOfCap_pow2_mono fineCostModel hj
-    have heq18 := fineVec104CumOfCap_pow2_ge_8 (j := 18) (by decide)
-    omega
-
-/-- Per-step `cumSmall` charge of one `RawVec<u8>::grow_one` step (`0 → 8` or `cap → 2 * cap`,
-stride `1`, align `1`). -/
-def fineVecU8StepCumCost (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
-  if cap = 0 then
-    if 8 ≤ HasFineReallocCredit.smallMaxReq M then
-      HasFineReallocCredit.smallAllocCost M 8
-    else
-      HasFineReallocCredit.largeMetaCost M
-  else
-    if 2 * cap ≤ HasFineReallocCredit.smallMaxReq M then
-      HasFineReallocCredit.smallReallocCost M (2 * cap)
-    else
-      HasFineReallocCredit.largeMetaCost M
-
-/-- Cumulative `cumSmall` upper bound along the `Vec<u8>` / `String` doubling chain
-`0 → 8 → 16 → 32 → … → cap`. -/
-def fineVecU8DoublingCumOfCap (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
-  if cap < 8 then 0
-  else if cap < 16 then fineVecU8StepCumCost M 0
-  else fineVecU8DoublingCumOfCap M (cap / 2) + fineVecU8StepCumCost M (cap / 2)
-termination_by cap
-decreasing_by omega
-
-@[scoped simp] theorem fineVecU8DoublingCumOfCap_zero (M : AllocCostModel) [HasFineReallocCredit M] :
-    fineVecU8DoublingCumOfCap M 0 = 0 := by
-  unfold fineVecU8DoublingCumOfCap
-  rfl
-
-theorem fineVecU8DoublingCumOfCap_eight (M : AllocCostModel) [HasFineReallocCredit M] :
-    fineVecU8DoublingCumOfCap M 8 = fineVecU8StepCumCost M 0 := by
-  unfold fineVecU8DoublingCumOfCap
-  rfl
-
-theorem fineVecU8DoublingCumOfCap_two_mul (M : AllocCostModel) [HasFineReallocCredit M]
-    {cap : Nat} (hcap : 8 ≤ cap) :
-    fineVecU8DoublingCumOfCap M (2 * cap) =
-      fineVecU8DoublingCumOfCap M cap + fineVecU8StepCumCost M cap := by
-  conv_lhs => unfold fineVecU8DoublingCumOfCap
-  have h1 : ¬ (2 * cap < 8) := by omega
-  have h2 : ¬ (2 * cap < 16) := by omega
-  have hdiv : (2 * cap) / 2 = cap := by omega
-  simp only [h1, h2, hdiv, ↓reduceIte]
-
-theorem fineVecU8DoublingCumOfCap_pow2_mono (M : AllocCostModel) [HasFineReallocCredit M]
-    {i j : Nat} (hij : i ≤ j) :
-    fineVecU8DoublingCumOfCap M (8 * 2 ^ i) ≤ fineVecU8DoublingCumOfCap M (8 * 2 ^ j) := by
-  induction hij with
-  | refl => exact Nat.le_refl _
-  | step _ ih =>
-    rename_i k _
-    have hge : 8 ≤ 8 * 2 ^ k := by
-      have hk : 1 ≤ 2 ^ k := Nat.one_le_two_pow
-      omega
-    have heq : 8 * 2 ^ (k + 1) = 2 * (8 * 2 ^ k) := by rw [Nat.pow_succ]; omega
-    rw [heq, fineVecU8DoublingCumOfCap_two_mul M hge]
-    omega
-
-private theorem fineVecU8StepCumCost_small {cap : Nat} (hne : cap ≠ 0)
-    (hle : 2 * cap ≤ 135167) :
-    fineVecU8StepCumCost fineCostModel cap =
-      HasFineReallocCredit.smallReallocCost fineCostModel (2 * cap) := by
-  unfold fineVecU8StepCumCost
-  simp only [hne, fineCostModel_smallMaxReq_eq, hle, ↓reduceIte]
-
-theorem fineVecU8StepCumCost_large_of_ge_131072 {cap : Nat} (hge : 131072 ≤ cap) :
-    fineVecU8StepCumCost fineCostModel cap = 122 := by
-  have hne : cap ≠ 0 := by omega
-  have hgt : ¬ (2 * cap ≤ 135167) := by omega
-  unfold fineVecU8StepCumCost
-  simp only [hne, fineCostModel_smallMaxReq_eq, hgt, fineCostModel_largeMetaCost_eq, ↓reduceIte]
-
-@[scoped simp] theorem fineVecU8DoublingCumOfCap_8 :
-    fineVecU8DoublingCumOfCap fineCostModel 8 = 188 := by
-  rw [fineVecU8DoublingCumOfCap_eight]
-  unfold fineVecU8StepCumCost
-  have hle : 8 ≤ 135167 := by decide
-  simp only [fineCostModel_smallMaxReq_eq, hle, ↓reduceIte, smallAllocCost_8]
-
-@[scoped simp] theorem fineVecU8DoublingCumOfCap_131072 :
-    fineVecU8DoublingCumOfCap fineCostModel 131072 = 384255 := by
-  have h16 : fineVecU8DoublingCumOfCap fineCostModel 16 = 8521 := by
-    rw [show (16 : Nat) = 2 * 8 from rfl, fineVecU8DoublingCumOfCap_two_mul _ (by decide),
-      fineVecU8DoublingCumOfCap_8, fineVecU8StepCumCost_small (by decide) (by decide), smallReallocCost_16]
-  have h32 : fineVecU8DoublingCumOfCap fineCostModel 32 = 16870 := by
-    rw [show (32 : Nat) = 2 * 16 from rfl, fineVecU8DoublingCumOfCap_two_mul _ (by decide),
-      h16, fineVecU8StepCumCost_small (by decide) (by decide), smallReallocCost_32]
-  have h64 : fineVecU8DoublingCumOfCap fineCostModel 64 = 25251 := by
-    rw [show (64 : Nat) = 2 * 32 from rfl, fineVecU8DoublingCumOfCap_two_mul _ (by decide),
-      h32, fineVecU8StepCumCost_small (by decide) (by decide), smallReallocCost_64]
-  have h128 : fineVecU8DoublingCumOfCap fineCostModel 128 = 35040 := by
-    rw [show (128 : Nat) = 2 * 64 from rfl, fineVecU8DoublingCumOfCap_two_mul _ (by decide),
-      h64, fineVecU8StepCumCost_small (by decide) (by decide), smallReallocCost_128]
-  have h256 : fineVecU8DoublingCumOfCap fineCostModel 256 = 43677 := by
-    rw [show (256 : Nat) = 2 * 128 from rfl, fineVecU8DoublingCumOfCap_two_mul _ (by decide),
-      h128, fineVecU8StepCumCost_small (by decide) (by decide), smallReallocCost_256]
-  have h512 : fineVecU8DoublingCumOfCap fineCostModel 512 = 52506 := by
-    rw [show (512 : Nat) = 2 * 256 from rfl, fineVecU8DoublingCumOfCap_two_mul _ (by decide),
-      h256, fineVecU8StepCumCost_small (by decide) (by decide), smallReallocCost_512]
-  have h1024 : fineVecU8DoublingCumOfCap fineCostModel 1024 = 61847 := by
-    rw [show (1024 : Nat) = 2 * 512 from rfl, fineVecU8DoublingCumOfCap_two_mul _ (by decide),
-      h512, fineVecU8StepCumCost_small (by decide) (by decide), smallReallocCost_1024]
-  have h2048 : fineVecU8DoublingCumOfCap fineCostModel 2048 = 72212 := by
-    rw [show (2048 : Nat) = 2 * 1024 from rfl, fineVecU8DoublingCumOfCap_two_mul _ (by decide),
-      h1024, fineVecU8StepCumCost_small (by decide) (by decide), smallReallocCost_2048]
-  have h4096 : fineVecU8DoublingCumOfCap fineCostModel 4096 = 84625 := by
-    rw [show (4096 : Nat) = 2 * 2048 from rfl, fineVecU8DoublingCumOfCap_two_mul _ (by decide),
-      h2048, fineVecU8StepCumCost_small (by decide) (by decide), smallReallocCost_4096]
-  have h8192 : fineVecU8DoublingCumOfCap fineCostModel 8192 = 101134 := by
-    rw [show (8192 : Nat) = 2 * 4096 from rfl, fineVecU8DoublingCumOfCap_two_mul _ (by decide),
-      h4096, fineVecU8StepCumCost_small (by decide) (by decide), smallReallocCost_8192]
-  have h16384 : fineVecU8DoublingCumOfCap fineCostModel 16384 = 125835 := by
-    rw [show (16384 : Nat) = 2 * 8192 from rfl, fineVecU8DoublingCumOfCap_two_mul _ (by decide),
-      h8192, fineVecU8StepCumCost_small (by decide) (by decide), smallReallocCost_16384]
-  have h32768 : fineVecU8DoublingCumOfCap fineCostModel 32768 = 166920 := by
-    rw [show (32768 : Nat) = 2 * 16384 from rfl, fineVecU8DoublingCumOfCap_two_mul _ (by decide),
-      h16384, fineVecU8StepCumCost_small (by decide) (by decide), smallReallocCost_32768]
-  have h65536 : fineVecU8DoublingCumOfCap fineCostModel 65536 = 244866 := by
-    rw [show (65536 : Nat) = 2 * 32768 from rfl, fineVecU8DoublingCumOfCap_two_mul _ (by decide),
-      h32768, fineVecU8StepCumCost_small (by decide) (by decide), smallReallocCost_65536]
-  rw [show (131072 : Nat) = 2 * 65536 from rfl, fineVecU8DoublingCumOfCap_two_mul _ (by decide),
-    h65536, fineVecU8StepCumCost_small (by decide) (by decide), smallReallocCost_131072]
-
-theorem fineVecU8DoublingCumOfCap_pow2_ge_14 {j : Nat} (hj : 14 ≤ j) :
-    fineVecU8DoublingCumOfCap fineCostModel (8 * 2 ^ j) = 384255 + 122 * (j - 14) := by
-  induction hj with
-  | refl =>
-    exact fineVecU8DoublingCumOfCap_131072
-  | @step k hle ih =>
-    have hk : 14 ≤ k := hle
-    have hk_pow : 2 ^ 14 ≤ 2 ^ k := Nat.pow_le_pow_right (by decide : 0 < 2) hk
-    have hge : 131072 ≤ 8 * 2 ^ k := by omega
-    have heq : 8 * 2 ^ (k + 1) = 2 * (8 * 2 ^ k) := by rw [Nat.pow_succ]; omega
-    rw [heq, fineVecU8DoublingCumOfCap_two_mul _ (by omega), ih,
-      fineVecU8StepCumCost_large_of_ge_131072 hge]
-    omega
-
-theorem fineVecU8DoublingCumOfCap_le_385109 {cap : Nat}
-    (hpow : cap = 0 ∨ ∃ j, cap = 8 * 2 ^ j) (hle : cap ≤ 2 ^ 24) :
-    fineVecU8DoublingCumOfCap fineCostModel cap ≤ 385109 := by
-  rcases hpow with rfl | ⟨j, rfl⟩
-  · simp
-  · have hj : j ≤ 21 := by
-      by_contra hgt
-      have h22 : 22 ≤ j := by omega
-      have hp : 2 ^ 22 ≤ 2 ^ j := Nat.pow_le_pow_right (by decide) h22
-      omega
-    have hmono := fineVecU8DoublingCumOfCap_pow2_mono fineCostModel hj
-    have heq21 := fineVecU8DoublingCumOfCap_pow2_ge_14 (j := 21) (by decide)
     omega
 
 /-! ## Dynamic-Interval, Step-Reserve, and `FitsStep` Bridges -/
@@ -797,14 +513,6 @@ theorem fineStepReserve_le_of_cumSmall {ev : AllocEvent} {b : fineCostModel.σ}
   rw [fineCostModel_stepReserve_eq]
   exact FineStepBound_mono hreq hal (fineMaxMetaAreas_le_of_cumSmall hcum)
 
-theorem fineStepReserve_le_of_cumSmall_align16 {ev : AllocEvent} {b : fineCostModel.σ}
-    {maxReq cumB : Nat}
-    (hreq : eventStepReq ev ≤ maxReq)
-    (hal : eventStepAlign ev ≤ 16)
-    (hcum : HasFineReallocCredit.cumSmall (M := fineCostModel) b ≤ cumB) :
-    fineCostModel.stepReserve ev b ≤ fineStepReserveOfCum maxReq 16 cumB :=
-  fineStepReserve_le_of_cumSmall hreq (by omega) hcum
-
 /-- Specialization of `fitsStep_of_fine_bounds` to `fineCostModel`, discharging `maxDynIvs` via
 `fineDynIvsOfCum cumB`. -/
 theorem fitsStep_fineCostModel_of_bounds
@@ -821,30 +529,6 @@ theorem fitsStep_fineCostModel_of_bounds
     (fineMaxDynIvs_le_of_cumSmall hcum) hcum hlive hpeak
     (by simpa only [fineCostModel_baseFine_eq] using hram)
     (by simpa only [fineCostModel_baseFine_eq] using hva)
-
-/-- Single-event `FitsEvent fineCostModel lim b ev` criterion from `(maxReq, maxAlign, cumB, peakB)`. -/
-theorem fitsEvent_fineCostModel_of_bounds
-    {lim : BudgetLimits} {b : fineCostModel.σ} {ev : AllocEvent}
-    {maxReq maxAlign cumB peakB : Nat}
-    (hwf : ev.withinMaxAlloc)
-    (hreq : eventStepReq ev ≤ maxReq)
-    (hal : max (eventStepAlign ev) 16 ≤ max maxAlign 16)
-    (henf : lim.enforced = true)
-    (hcum : HasFineReallocCredit.cumSmall (M := fineCostModel) b ≤ cumB)
-    (hlive : HasFineReallocCredit.liveLarge (M := fineCostModel) b ≤ peakB)
-    (hpeak : HasFineReallocCredit.peakLarge (M := fineCostModel) b ≤ peakB)
-    (hram : lim.staticBytes + (18686152 + cumB + peakB) +
-      2 * fineStepReserveOfCum maxReq maxAlign cumB ≤ lim.physCap)
-    (hva : MMAP_MIN_ADDR + lim.staticBytes + (18686152 + cumB + peakB) +
-      fineStepReserveOfCum maxReq maxAlign cumB +
-      (lim.staticCount + fineDynIvsOfCum cumB + 16) *
-        (fineStepReserveOfCum maxReq maxAlign cumB + PAGE_SIZE) +
-      fineStepReserveOfCum maxReq maxAlign cumB ≤ 2 ^ 48) :
-    FitsEvent fineCostModel lim b ev :=
-  ⟨hwf, FitsStep.mono
-    (fitsStep_fineCostModel_of_bounds henf hcum hlive hpeak hram hva)
-    (fineStepReserve_le_of_cumSmall hreq hal hcum)
-    (Nat.le_refl _) (Nat.le_refl _)⟩
 
 /-- Whole-trace `FitsTrace fineCostModel` criterion at `fineCostModel.evalLog fullLog`. -/
 theorem fitsTrace_fineCostModel_of_bounds

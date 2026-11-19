@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1Sync.ChainSync
+public import LibsignalBinary.Proofs.SpqrV1Sync.ChainSync -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Init
-public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncEpoch
+public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncEpoch -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Msg
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbState
 import LibsignalBinary.Proofs.SpqrV1Sync.InSyncParty
@@ -34,7 +34,7 @@ invariant (`ChainSync.ChainOk`) to characterize a party's serialized `PqRatchetS
   fits in `< 2 ^ 64` bytes (`TopSize.partyTop_length_lt`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.TopSync
 
@@ -49,32 +49,32 @@ open CryptoGames.HKDF (Salt)
 
 /-- Whether a braid state has already emitted the `EpochSecret` of its current braid epoch
 (the four CT-side states after `.headerReceived`). -/
-def keyedB {F : ShaCompress} : St F → Bool
+@[expose] def keyedB {F : ShaCompress} : St F → Bool
   | .ct1Sampled _ | .ekReceivedCt1Sampled _ | .ct1Acknowledged _ | .ct2Sampled _ => true
   | _ => false
 
 /-- Chain epoch reached by an honest party in braid state `st`. -/
-def chainCur {F : ShaCompress} (st : St F) : ℕ :=
+@[expose] def chainCur {F : ShaCompress} (st : St F) : ℕ :=
   st.epoch.toNat - 1 + (if keyedB st then 1 else 0)
 
 /-! ## Serialized top-level state -/
 
 /-- `PqRatchetStatePB` record assembled from braid state `st`, `vn?`, and optional `Chain`. -/
-def topPb {F : ShaCompress} (st : St F) (vn? : Option VersionNegotiationPB) (ch? : Option Chain) :
+@[expose] def topPb {F : ShaCompress} (st : St F) (vn? : Option VersionNegotiationPB) (ch? : Option Chain) :
     PqRatchetStatePB V1State :=
   { inner := some st.into_pb, versionNegotiation := vn?, chain := ch?.map Chain.intoPb }
 
-def topBytes (F : ShaCompress) (K : MlKem) (st : St F) (vn? : Option VersionNegotiationPB)
+@[expose] def topBytes (F : ShaCompress) (K : MlKem) (st : St F) (vn? : Option VersionNegotiationPB)
     (ch? : Option Chain) : Bytes :=
   (spqrDeps F K).encodeState (topPb st vn? ch?)
 
 /-- Initial `VersionNegotiationPB` stored by `Top.initialState` (`Version.v1`, `dparams`). -/
-def vnOf (dir : Direction) (authKey : Bytes) : VersionNegotiationPB :=
+@[expose] def vnOf (dir : Direction) (authKey : Bytes) : VersionNegotiationPB :=
   { authKey := authKey, direction := dir.toI32, minVersion := Version.v1.toI32,
     chainParams := some dparams }
 
 /-- Decodes the braid `States` component from serialized `PqRatchetState` bytes. -/
-def braidOf (F : ShaCompress) (K : MlKem) (bytes : Bytes) : Option (St F) :=
+@[expose] def braidOf (F : ShaCompress) (K : MlKem) (bytes : Bytes) : Option (St F) :=
   match LibsignalSpqrV1.decodeState (spqrDeps F K) bytes with
   | .ok pb =>
     match pb.inner with
@@ -86,12 +86,12 @@ def braidOf (F : ShaCompress) (K : MlKem) (bytes : Bytes) : Option (St F) :=
   | .error _ => none
 
 /-- Initial braid state for direction `dir` (`init_a` for `.a2b`, `init_b` for `.b2a`). -/
-def initStates (F : ShaCompress) (authKey : Bytes) : Direction → Except StatesPanic (St F)
+@[expose] def initStates (F : ShaCompress) (authKey : Bytes) : Direction → Except StatesPanic (St F)
   | .a2b => States.init_a spqrPolyApi (spqrAuthApi F) authKey
   | .b2a => States.init_b spqrPolyApi (spqrAuthApi F) authKey
 
 /-- Every link's send-direction `KeyHistory` is empty (`next_key` never records skipped keys). -/
-def SendPrevNil (ch : Chain) : Prop :=
+@[expose] def SendPrevNil (ch : Chain) : Prop :=
   ∀ l ∈ ch.links, l.send.prev.data = []
 
 /-- Witnessed top-level state invariant joining `topBytes`, `ChainOk`, `chainCur`, and
@@ -114,7 +114,7 @@ structure PartyTopW (F : ShaCompress) (K : MlKem) (authKey : Bytes) (dir : Direc
   hsendPrev : SendPrevNil chE
 
 /-- Existentially quantified top-level honest-party state invariant. -/
-def PartyTop (F : ShaCompress) (K : MlKem) (authKey : Bytes) (dir : Direction)
+@[expose] def PartyTop (F : ShaCompress) (K : MlKem) (authKey : Bytes) (dir : Direction)
     (secret : ℕ → Bytes) (st : St F) (sendEp : ℕ) (sendCtr : ℕ → ℕ) (recvSet : ℕ → Finset ℕ)
     (bytes : Bytes) : Prop :=
   ∃ vn? ch? chE, PartyTopW F K authKey dir secret st sendEp sendCtr recvSet bytes vn? ch? chE
@@ -135,16 +135,6 @@ theorem braidOf_topBytes (F : ShaCompress) (K : MlKem) (st : St F)
   unfold braidOf
   rw [decodeState_topBytes F K st vn? ch? hsize]
   simp only [topPb, hcodec]
-
-theorem partyTop_braidOf (F : ShaCompress) (K : MlKem) (authKey : Bytes) (dir : Direction)
-    (secret : ℕ → Bytes) (st : St F) (sendEp : ℕ) (sendCtr : ℕ → ℕ) (recvSet : ℕ → Finset ℕ)
-    (bytes : Bytes) (h : PartyTop F K authKey dir secret st sendEp sendCtr recvSet bytes)
-    (hsize : bytes.length < 2 ^ 64)
-    (hcodec : States.from_pb spqrPolyApi (spqrAuthApi F) st.into_pb = .ok st) :
-    braidOf F K bytes = some st := by
-  obtain ⟨vn?, ch?, chE, hw⟩ := h
-  rw [hw.hbytes] at hsize ⊢
-  exact braidOf_topBytes F K st vn? ch? hsize hcodec
 
 private theorem dch_fromI32_toI32 (dir : Direction) :
     Direction.fromI32? dir.toI32 = some dir := by
@@ -1185,10 +1175,6 @@ theorem epoch_sub_one_le_chainCur {F : ShaCompress} (st : St F) :
     st.epoch.toNat - 1 ≤ chainCur st := by
   unfold chainCur; omega
 
-theorem chainCur_le {F : ShaCompress} (st : St F) (hep : 1 ≤ st.epoch.toNat) :
-    chainCur st ≤ st.epoch.toNat := by
-  unfold chainCur; split <;> omega
-
 theorem partyTop_epoch_pos {F : ShaCompress} {K : MlKem} {authKey : Bytes} {dir : Direction}
     {secret : ℕ → Bytes} {st : St F} {sendEp : ℕ} {sendCtr : ℕ → ℕ} {recvSet : ℕ → Finset ℕ}
     {bytes : Bytes} (h : PartyTop F K authKey dir secret st sendEp sendCtr recvSet bytes) :
@@ -1196,15 +1182,6 @@ theorem partyTop_epoch_pos {F : ShaCompress} {K : MlKem} {authKey : Bytes} {dir 
   obtain ⟨vn?, ch?, chE, hw⟩ := h
   have := hw.hsendLe
   omega
-
-theorem partyTop_sendEp_le {F : ShaCompress} {K : MlKem} {authKey : Bytes} {dir : Direction}
-    {secret : ℕ → Bytes} {st : St F} {sendEp : ℕ} {sendCtr : ℕ → ℕ} {recvSet : ℕ → Finset ℕ}
-    {bytes : Bytes} (h : PartyTop F K authKey dir secret st sendEp sendCtr recvSet bytes) :
-    sendEp ≤ chainCur st := by
-  obtain ⟨vn?, ch?, chE, hw⟩ := h
-  have := hw.hok.hsend_le
-  rw [hw.hcur, hw.hsendEp] at this
-  exact this
 
 /-- `PartyTop` depends on the ghost `secret` schedule only up to `chainCur st`. -/
 theorem partyTop_congr {F : ShaCompress} {K : MlKem} {authKey : Bytes} {dir : Direction}
@@ -1317,7 +1294,7 @@ theorem send_topBytes (F : ShaCompress) (K : MlKem) (st st' : St F)
   simp only [topPb, spqrDeps, hcodec, liftStatesResult, h]
 
 /-- The `Ordering.equal` v1 message-handling branch of `Top.recv`. -/
-def recvEqual (F : ShaCompress) (K : MlKem) (st : St F) (vn? : Option VersionNegotiationPB)
+@[expose] def recvEqual (F : ShaCompress) (K : MlKem) (st : St F) (vn? : Option VersionNegotiationPB)
     (ch? : Option Chain) (pre : MsgPreamble) : SpqrApiResult Recv := do
   let sckaMsg ← (spqrDeps F K).msgDeserialize pre.epoch pre.remaining
   let st0 ← (spqrDeps F K).statesFromPb st.into_pb

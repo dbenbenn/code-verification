@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Layout
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Layout -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Stack Budget Constants for `main`
@@ -23,7 +24,7 @@ Concrete stack-budget witnesses discharging `hstk` and `hstk64` for `main_ok`:
   1,248 B frame for `run` and in-image callees (which require at most `16,560` B).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SignalSession.Cli.MainHops
 
@@ -37,14 +38,6 @@ abbrev cliHookStack : Nat := extHookStack
 
 /-- Stack budget below `main`'s 1,248 B frame for `run` and in-image callees. -/
 abbrev cliResStack : Nat := cliMainStk - mainFrameSize
-
-theorem cliMainStk_eq : cliMainStk = 8371776 := rfl
-
-theorem mainFrameSize_eq : mainFrameSize = 1248 := rfl
-
-theorem cliHookStack_eq : cliHookStack = 16384 := rfl
-
-theorem cliResStack_eq : cliResStack = 8370528 := rfl
 
 theorem cli_hstk :
     mainFrameSize + max (max extHookStack cliHookStack) cliResStack ≤ cliMainStk := by

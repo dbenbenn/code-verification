@@ -9,20 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.ProofBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.KeysSampledRecvCt1Chunk
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.KeysSampledRecvCt1ChunkPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvNextEpochBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderBudgetAux
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.ProofBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.KeysSampledRecvCt1Chunk
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.KeysSampledRecvCt1ChunkPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvNextEpochBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderBudgetAux
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoder
@@ -31,6 +31,9 @@ import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
 
 /-!
 # `<spqr::v1::chunked::send_ek::KeysSampled>::recv_ct1_chunk` (Block `370`, `RustCliAllocBudget` Core Proof)
@@ -40,7 +43,7 @@ Relocatable `[LibsignalPlacement]` framed call helpers and verification of
 in two-envelope, single-envelope, and canonical forms.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -230,63 +233,6 @@ theorem call_addChunk_cl_budget [LibsignalPlacement]
     exact sepWP_congr_pre (by sep_ac_rfl)
       (hnext sf evs1 hpc_sf hrun_sf (hsp_sf.trans hsp) hcs_sf (htr.trans htrace)
         hevs1 hsorted' hcl_sf)
-
-theorem call_addChunk_next_budget
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {prog : Program} {entry ret_pc next_pc : BitVec 64}
-    (hcall : subroutine_ok prog entry (addChunkSpec M A lim))
-    (decA chunkA : BitVec 64) (dec : PolyDecoder) (chunk : Chunk) (st : M.σ)
-    (hsorted : PolyDecoderStrictSorted dec)
-    (hfit : FitsEnv M lim st (AddChunkEnv ⟨decA, chunkA, dec, chunk⟩))
-    {s0 s : State} {sp_call : BitVec 64} {P Frame R : SepProp}
-    {post : State → SepProp → Prop}
-    (hpc : s.pc = entry) (hrun : s.status = .Running)
-    (hsp : s.sp = sp_call) (hsp_align : (sp_call &&& 15#64 == 0#64) = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc) (htrace : s.trace = s0.trace)
-    (hx0 : s.readReg64 .x0 = decA)
-    (hx1 : s.readReg64 .x1 = chunkA)
-    (hsplit : P = (polyDecoderAt A.repAlloc decA dec ∗ chunkAt chunkA chunk ∗
-      A.pool lim st s ∗ stackAt sp_call addChunkStack) ∗ Frame)
-    (hnext : ∀ (sf : State) (evs1 : List AllocEvent),
-      sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = sp_call → CalleeSavedPreserved s sf → sf.trace = s0.trace →
-      AddChunkEnv ⟨decA, chunkA, dec, chunk⟩ evs1 →
-      PolyDecoderStrictSorted (addChunkTotal dec chunk) →
-      SepWP prog next_pc sf
-        ((polyDecoderAt A.repAlloc decA (addChunkTotal dec chunk) ∗ chunkAt chunkA chunk ∗
-          A.pool lim (M.stepEvents evs1 st) sf ∗ stackAt sp_call addChunkStack) ∗ Frame)
-        (fun sm Pm =>
-          SepWPp prog (s0.readReg64 Reg.lr) sm Pm post
-            (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (⌜False⌝ : SepProp) ∗ R)))) :
-    SepWP prog entry s P
-      (fun sm Pm =>
-        SepWPp prog (s0.readReg64 Reg.lr) sm Pm post
-          (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (⌜False⌝ : SepProp) ∗ R))) := by
-  apply SepWP.done hpc hrun
-  refine SepWPp.call hcall (x := (⟨decA, chunkA, dec, chunk⟩, st)) (F := Frame)
-    hpc hrun (by rw [State.spAligned, hsp]; exact hsp_align) hlr ?_
-    (fun _ _ _ _ h => by
-      dsimp only [addChunkSpec] at h
-      exact not_satisfies_false_sepConj h)
-    (fun _ _ hmem => by
-      dsimp only [addChunkSpec] at hmem
-      exact False.elim (not_satisfies_false_sepConj (by simpa only [sepConj_assoc] using hmem)))
-    (fun sf hpc_sf hrun_sf hsp_sf hcs_sf => ?_)
-  · intro R' hm
-    rw [hsplit] at hm
-    dsimp only [addChunkSpec]
-    rw [hsp]
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hm ⊢
-    exact ⟨⟨hx0, hx1, hsorted, hfit⟩, hm⟩
-  · dsimp only [addChunkSpec]
-    rw [hsp]
-    apply SepWPp.of_sepWP (mid := next_pc)
-    rw [sepExists_sepConj_left]
-    wp_pull_exists; rename_i evs1
-    refine SepWP.pure_elim fun ⟨htr, _, hevs1, hsorted'⟩ => ?_
-    exact sepWP_congr_pre (by sep_ac_rfl)
-      (hnext sf evs1 hpc_sf hrun_sf (hsp_sf.trans hsp) hcs_sf (htr.trans htrace)
-        hevs1 hsorted')
 
 theorem call_encodeBytesX_lscl_budget [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}

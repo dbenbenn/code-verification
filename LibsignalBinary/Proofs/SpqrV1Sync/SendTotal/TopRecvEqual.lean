@@ -19,7 +19,7 @@ preserves `TopAdvW` across braid state updates, optional epoch secret derivation
 `Chain.recvKey`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 

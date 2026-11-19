@@ -10,13 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemrchrCode -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemrchrGhost -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemrchrCode
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemrchrGhost
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemrchrGhostK -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemrchrGhostReplaysOn -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.TrapSafeWords -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemrchrGhostReplaysOn
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.TrapSafeWords
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Card `CC-R0` (Row 1) — `memrchr` Route-`R0` `GhostRowReplayOn` (`HooksDehook.MemrchrExtraReplays`)
@@ -167,25 +173,6 @@ theorem memrchrSubProg_codeLoaded_stripExecOutside {mpl : Obj.MultiPlacement} {m
     (memrchrSubProg mpl).CodeLoaded (stripExecOutside (keepR_memrchr mpl) mem) :=
   codeLoaded_stripExecOutside_of_keep (fun _ hoff => keepR_memrchr_of_code_offset mpl hoff) hL
 
-theorem memrchrSubProg_codeLoaded_of_stripExecOutside {mpl : Obj.MultiPlacement} {mem : Memory}
-    (hL : (memrchrSubProg mpl).CodeLoaded (stripExecOutside (keepR_memrchr mpl) mem)) :
-    (memrchrSubProg mpl).CodeLoaded mem := by
-  refine Program.CodeLoaded.intro hL.aligned hL.no_wrap fun i hi => ?_
-  have hk : keepR_memrchr mpl ((memrchrSubProg mpl).base + BitVec.ofNat 64 i) = true :=
-    keepR_memrchr_of_code_offset mpl hi
-  have hbyte := hL.byte_eq i hi
-  have hperm := hL.perm_eq i hi
-  have hlf := hL.isLazyFree_eq i hi
-  rw [ProofLib.strip_read8] at hbyte
-  rw [ProofLib.strip_perm_of_keep hk] at hperm
-  rw [ProofLib.strip_isLazyFree] at hlf
-  exact ⟨hbyte, hperm, hlf⟩
-
-theorem memrchrSubProg_codeLoaded_stripExecOutside_iff {mpl : Obj.MultiPlacement} {mem : Memory} :
-    (memrchrSubProg mpl).CodeLoaded (stripExecOutside (keepR_memrchr mpl) mem) ↔
-      (memrchrSubProg mpl).CodeLoaded mem :=
-  ⟨memrchrSubProg_codeLoaded_of_stripExecOutside, memrchrSubProg_codeLoaded_stripExecOutside⟩
-
 /-- Route-`R0` (`withLsRet`) `W`-independent ghost hook for `lsMemrchrSym`. -/
 @[expose] noncomputable def memrchrGhost [LibsignalPlacement]
     (mpl _mmpl : Obj.MultiPlacement) : State → State :=
@@ -225,72 +212,12 @@ theorem memrchrGhost_mainHopsMemrchr_ok [LibsignalPlacement]
   f3PureMemrchrGhostHookLs_mainHopsMemrchr_ok (keepR_memrchr mpl)
     (libsignalSessionLib.resolve mpl lsMemrchrSym) stk hlo hhi
 
-theorem memrchrGhost_mainHopsMemrchr_withVmPreserved_ok [LibsignalPlacement]
-    (mpl mmpl : Obj.MultiPlacement) (stk : Nat)
-    (hlo : 16 ≤ stk) (hhi : stk ≤ 2 ^ 64) :
-    HookOk (memrchrGhost mpl mmpl) (withVmPreserved (withLsRet (memrchrSpec stk))) :=
-  hookOk_withVmPreserved (memrchrGhost_mainHopsMemrchr_ok mpl mmpl stk hlo hhi)
-    (memrchrGhost_vmPreserved mpl mmpl)
-
-theorem memrchrGhost_mainHopsMemrchr_withAlloc_ls_ok [LibsignalPlacement]
-    (mpl mmpl : Obj.MultiPlacement) {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (stk : Nat) (hlo : 16 ≤ stk) (hhi : stk ≤ 2 ^ 64) :
-    HookOk (memrchrGhost mpl mmpl) (withAlloc A lim (withLsRet (memrchrSpec stk))) :=
-  hookOk_withAlloc_of_withVmPreserved A lim
-    (memrchrGhost_mainHopsMemrchr_withVmPreserved_ok mpl mmpl stk hlo hhi)
-
-theorem memrchrGhost_mainHopsMemrchr_budget_ok [LibsignalPlacement]
-    (mpl mmpl : Obj.MultiPlacement) (stk : Nat)
-    (hlo : 16 ≤ stk) (hhi : stk ≤ 2 ^ 64) :
-    HookOk (memrchrGhost mpl mmpl) (withLsRet (withVmPreserved (memrchrSpec stk))) :=
-  f3PureMemrchrGhostHookLs_mainHopsMemrchr_budget_ok (keepR_memrchr mpl)
-    (libsignalSessionLib.resolve mpl lsMemrchrSym) stk hlo hhi
-
-theorem memrchrGhost_mainHopsMemrchr_withAlloc_ok [LibsignalPlacement]
-    (mpl mmpl : Obj.MultiPlacement) {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (stk : Nat) (hlo : 16 ≤ stk) (hhi : stk ≤ 2 ^ 64) :
-    HookOk (memrchrGhost mpl mmpl) (withLsRet (withAlloc A lim (memrchrSpec stk))) := by
-  rw [withLsRet_withAlloc]
-  exact memrchrGhost_mainHopsMemrchr_withAlloc_ls_ok mpl mmpl A lim stk hlo hhi
-
 theorem memrchrGhost_memrchrRO_ok [LibsignalPlacement]
     (mpl mmpl : Obj.MultiPlacement) (stk : Nat)
     (hlo : 16 ≤ stk) (hhi : stk ≤ 2 ^ 64) :
     HookOk (memrchrGhost mpl mmpl) (withLsRet (memrchrSpecRO stk)) :=
   f3PureMemrchrGhostHookLs_memrchrRO_ok (keepR_memrchr mpl)
     (libsignalSessionLib.resolve mpl lsMemrchrSym) stk hlo hhi
-
-theorem memrchrGhost_memrchrRO_withVmPreserved_ok [LibsignalPlacement]
-    (mpl mmpl : Obj.MultiPlacement) (stk : Nat)
-    (hlo : 16 ≤ stk) (hhi : stk ≤ 2 ^ 64) :
-    HookOk (memrchrGhost mpl mmpl) (withVmPreserved (withLsRet (memrchrSpecRO stk))) :=
-  hookOk_withVmPreserved (memrchrGhost_memrchrRO_ok mpl mmpl stk hlo hhi)
-    (memrchrGhost_vmPreserved mpl mmpl)
-
-theorem memrchrGhost_memrchrRO_withAlloc_ls_ok [LibsignalPlacement]
-    (mpl mmpl : Obj.MultiPlacement) {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (stk : Nat) (hlo : 16 ≤ stk) (hhi : stk ≤ 2 ^ 64) :
-    HookOk (memrchrGhost mpl mmpl) (withAlloc A lim (withLsRet (memrchrSpecRO stk))) :=
-  hookOk_withAlloc_of_withVmPreserved A lim
-    (memrchrGhost_memrchrRO_withVmPreserved_ok mpl mmpl stk hlo hhi)
-
-theorem memrchrGhost_memrchrRO_budget_ok [LibsignalPlacement]
-    (mpl mmpl : Obj.MultiPlacement) (stk : Nat)
-    (hlo : 16 ≤ stk) (hhi : stk ≤ 2 ^ 64) :
-    HookOk (memrchrGhost mpl mmpl) (withLsRet (withVmPreserved (memrchrSpecRO stk))) :=
-  f3PureMemrchrGhostHookLs_memrchrRO_budget_ok (keepR_memrchr mpl)
-    (libsignalSessionLib.resolve mpl lsMemrchrSym) stk hlo hhi
-
-theorem memrchrGhost_memrchrRO_withAlloc_ok [LibsignalPlacement]
-    (mpl mmpl : Obj.MultiPlacement) {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (stk : Nat) (hlo : 16 ≤ stk) (hhi : stk ≤ 2 ^ 64) :
-    HookOk (memrchrGhost mpl mmpl) (withLsRet (withAlloc A lim (memrchrSpecRO stk))) := by
-  rw [withLsRet_withAlloc]
-  exact memrchrGhost_memrchrRO_withAlloc_ls_ok mpl mmpl A lim stk hlo hhi
 
 /-! ## 3. `ExecFrozen` Preservation & Generic-`InvS` `GhostRowReplayOn` -/
 
@@ -330,14 +257,6 @@ theorem memrchrGhost_preserves_execFrozen [LibsignalPlacement] (mpl mmpl : Obj.M
     ExecFrozen (memrchrGhost mpl mmpl u).mem := by
   unfold memrchrGhost f3PureMemrchrGhostHookLs
   rw [f3EmptyMemrchrGhostHookLs_eq]
-  exact linkedCallHook_preserves_execFrozen
-    (fun s hs => by rw [memrchrHook_mem]; exact hs) hfr
-
-theorem memrchrGhostK_preserves_execFrozen (mpl mmpl : Obj.MultiPlacement)
-    {u : State} (hfr : ExecFrozen u.mem) :
-    ExecFrozen (memrchrGhostK mpl mmpl u).mem := by
-  unfold memrchrGhostK f3PureMemrchrGhostHookK
-  rw [f3EmptyMemrchrGhostHookK_eq]
   exact linkedCallHook_preserves_execFrozen
     (fun s hs => by rw [memrchrHook_mem]; exact hs) hfr
 
@@ -412,58 +331,6 @@ theorem memrchrGhost_rowReplayOn [LibsignalPlacement]
         hvis
     rw [setPC_eq_self_of_pc_eq hpc] at hStepsSetPC
     exact ⟨hStepsSetPC, hfr_fu, hInvKeep u (memrchrGhost mpl mmpl u) hInvU hkf hfs_fu⟩
-
-/-- Spare `K`-narrowed (`memrchrGhostK`) `GhostRowReplayOn` companion (`entryGuard := fun _ => True`,
-    zero `hKeep` premise; spare only per `REV-PILOT` N2). -/
-theorem memrchrGhostK_rowReplayOn
-    (mpl mmpl : Obj.MultiPlacement)
-    (InvS : State → Prop)
-    (EG : CliHooks → String → Option (State → State))
-    (hCL : ∀ u : State, InvS u → (memrchrSubProg mpl).CodeLoaded u.mem)
-    (hInvKeep : ∀ u v : State, InvS u → u.mem.KeepsFrozen v.mem → v.fs = u.fs → InvS v)
-    (hRealHullNoExt : ∀ (W : CliHooks) {pc : BitVec 64},
-      keepR_memrchr mpl pc = true →
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none) :
-    GhostRowReplayOn mpl mmpl InvS EG lsMemrchrSym (fun _ => True)
-      (memrchrGhostK mpl mmpl) where
-  preserves_execFrozen := fun u _ _ hfr =>
-    ⟨memrchrGhostK_preserves_execFrozen mpl mmpl hfr,
-     f3EmptyMemrchrGhostHookK_fs (keepR_memrchr mpl) (memrchrSubProg mpl)
-       (libsignalSessionLib.resolve mpl lsMemrchrSym) u⟩
-  replay_at_stub := by
-    intro W _ _ _ _ _ _ _ _ _
-    right
-    refine ⟨hRealHullNoExt W (keepR_memrchr_entry mpl), ?_⟩
-    intro u _ _ hpc hrun hnoex hkf hfr hInvU
-    have hCodeStrip :
-        (memrchrSubProg mpl).CodeLoaded (stripExecOutside (keepR_memrchr mpl) u.mem) :=
-      memrchrSubProg_codeLoaded_stripExecOutside (hCL u hInvU)
-    obtain ⟨_, _, hfr_fu, hfs_fu, hvis⟩ :=
-      f3EmptyMemrchrGhostHookK_visitedIn
-        (keepR := keepR_memrchr mpl)
-        (P_sub := memrchrSubProg mpl)
-        (entryTarget := libsignalSessionLib.resolve mpl lsMemrchrSym)
-        (memrchrSubProg_svc mpl)
-        (memrchrSubProg_externAt_none mpl)
-        (memrchrSubProg_hasWords mpl)
-        hrun
-        hnoex
-        hfr
-        hCodeStrip
-    have hStepsSetPC :
-        Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-          (u.setPC (libsignalSessionLib.resolve mpl lsMemrchrSym))
-          (memrchrGhostK mpl mmpl u) :=
-      h2fsgen_steps_lift_of_visitedIn_noExtern
-        (D := keepR_memrchr mpl)
-        (P1 := emptyStdProg)
-        (P2 := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-        (emptyStdProg_svc.trans (realProg617_svc mpl mmpl W).symm)
-        (fun pc _ => emptyStdProg_externAt pc)
-        (fun _ hk => hRealHullNoExt W hk)
-        hvis
-    rw [setPC_eq_self_of_pc_eq hpc] at hStepsSetPC
-    exact ⟨hStepsSetPC, hfr_fu, hInvKeep u (memrchrGhostK mpl mmpl u) hInvU hkf hfs_fu⟩
 
 /-! ## 4. `MemrchrRowSpec`, `GhostRowSpecOk`, `GhostRowOk` & `ExtraEntryGuard` Helpers -/
 

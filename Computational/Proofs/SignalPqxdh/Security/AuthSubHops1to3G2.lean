@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.CollisionsC
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
 import VCVio.EvalDist.Monad.Basic
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option maxHeartbeats 400000
 open scoped ENNReal BigOperators
@@ -23,7 +23,7 @@ open SignalPqxdh SignalPqxdh.Security
 open _root_.Proofs.SignalPqxdh.Security
 open _root_.Proofs.SignalPqxdh.Security.FgGapDh
 namespace SignalPqxdh.Security.AuthSubHops1to3
-def setSlotRkIdealSession {S : Setup} (idx : Nat) (rkStar : Bytes)
+@[expose] def setSlotRkIdealSession {S : Setup} (idx : Nat) (rkStar : Bytes)
     (s : IdealAuthSession S) : IdealAuthSession S :=
   if sessionSlotIndex s.sid == idx then
     { s with drKey := { s.drKey with rootKey := rkStar } }
@@ -73,7 +73,7 @@ theorem find?_matchIdealAuthHandshake_map_setSlotRkIdealSession {S : Setup} (P :
     split
     · rfl
     · exact ih
-def withRkAuth {S : Setup} (idx : Nat) (rkStar : Bytes) (c : List ((Bytes × Bytes) × (Bytes ×
+@[expose] def withRkAuth {S : Setup} (idx : Nat) (rkStar : Bytes) (c : List ((Bytes × Bytes) × (Bytes ×
     Bytes)))
     (hst : AuthHybridStateFixed S) : AuthHybridStateFixed S :=
   { hst with
@@ -108,7 +108,7 @@ structure AuthRkStateWf {S : Setup} (P : Primitives) (hst : AuthHybridStateFixed
     sendSlotIndex? s.sid = some (sessionSlotIndex s.sid) ∧
     s.ikAPk ∈ hst.toAuthHybridState.base.principals.map (fun (_, e) => e.ikAPk) ∧
     P.isCanonical s.ekAPk = true
-def SlotSessionCacheInv {S : Setup} (P : Primitives) (rkStar : Bytes)
+@[expose] def SlotSessionCacheInv {S : Setup} (P : Primitives) (rkStar : Bytes)
     (c5 : List ((Bytes × Bytes) × (Bytes × Bytes)))
     (hst6 : AuthHybridStateFixed S) (s : IdealAuthSession S) : Prop :=
   (∃ ephASk : Bytes, s.ephAPk = P.x25519Base ephASk ∧ ∀ dh : Bytes,
@@ -119,7 +119,7 @@ def SlotSessionCacheInv {S : Setup} (P : Primitives) (rkStar : Bytes)
   (∃ k j bEntry, ((k, j), bEntry) ∈ hst6.toAuthHybridState.base.spkBundles ∧
     bEntry.pqspkPk = s.peerPqspkPk ∧
     (k, UInt32.ofNat j, UInt32.ofNat j, s.ekAPk) ∈ hst6.toAuthHybridState.base.seenKyberBaseKeys)
-def AgreeOffRkAuth {S : Setup} (P : Primitives) (rkStar : Bytes) (idx : Nat)
+@[expose] def AgreeOffRkAuth {S : Setup} (P : Primitives) (rkStar : Bytes) (idx : Nat)
     (s5 s6 : AuthHybridStateFixed S) : Prop :=
   ∃ c5 : List ((Bytes × Bytes) × (Bytes × Bytes)), s5 = withRkAuth idx rkStar c5 s6 ∧
     cacheHasRk rkStar s6.toAuthHybridState.base.rootRoCache = false ∧
@@ -920,16 +920,16 @@ theorem relProbUpToBad_authRkSendWith {S : Setup} (P : Primitives)
                       hCacheInv hUniq (Or.inr hNotIdeal) hFilter' hNoRk6' hEqImp hFindEq
 abbrev AuthRkTrackedState (S : Setup) :=
   AuthHybridStateFixed S × List ((Bytes × Bytes) × (Bytes × Bytes))
-def badRkTracked {S : Setup} (rkStar : Bytes) (st : AuthRkTrackedState S) : Bool :=
+@[expose] def badRkTracked {S : Setup} (rkStar : Bytes) (st : AuthRkTrackedState S) : Bool :=
   cacheHasRk rkStar st.1.toAuthHybridState.base.rootRoCache || cacheHasRk rkStar st.2
-def AgreeOffRkAuthTracked {S : Setup} (P : Primitives) (rkStar : Bytes) (idx : Nat)
+@[expose] def AgreeOffRkAuthTracked {S : Setup} (P : Primitives) (rkStar : Bytes) (idx : Nat)
     (s5 s6 : AuthRkTrackedState S) : Prop :=
   AgreeOffRkAuth P rkStar idx s5.1 s6.1 ∧ cacheHasRk rkStar s6.2 = false
 theorem AgreeOffRkAuthTracked.not_bad {S : Setup} {P : Primitives} {rkStar : Bytes} {idx : Nat}
     {s5 s6 : AuthRkTrackedState S} (h : AgreeOffRkAuthTracked P rkStar idx s5 s6) :
     badRkTracked rkStar s6 = false := by
   unfold badRkTracked; rw [h.1.noRk6, h.2]; rfl
-def newRootRoEntry (c' c : List ((Bytes × Bytes) × (Bytes × Bytes)))
+@[expose] def newRootRoEntry (c' c : List ((Bytes × Bytes) × (Bytes × Bytes)))
     (extra : List ((Bytes × Bytes) × (Bytes × Bytes))) :
     List ((Bytes × Bytes) × (Bytes × Bytes)) :=
   if c'.length > c.length then
@@ -970,7 +970,7 @@ theorem newRootRoEntry_length (c' c extra : List ((Bytes × Bytes) × (Bytes × 
   · unfold newRootRoEntry
     simp only [List.length_cons, gt_iff_lt, Nat.lt_succ_self, ↓reduceIte]
     omega
-def finishAuthRecvRkTracked {S : Setup} (P : Primitives) (msg : PreKeyMsg) (prep : PreparedAuthRecv
+@[expose] def finishAuthRecvRkTracked {S : Setup} (P : Primitives) (msg : PreKeyMsg) (prep : PreparedAuthRecv
     S)
     (drKey : DRKey) (rk1 ck1_0 : Bytes)
     (roCache' : List (Bytes × DRKey))
@@ -1631,7 +1631,7 @@ theorem not_phaseB_of_matchedSess {S : Setup} (P : Primitives) (hP : CryptoWellF
     hMemB hMemB0 (by dsimp only; rw [hPqB, hPq0])
   rcases Prod.mk.inj (Prod.mk.inj hPairEq).1 with ⟨rfl, rfl⟩; rw [hPqId, hSpkId, hEkEq] at hNotMemK
   exact hNotMemK hMemK0
-def authRkRecvTracked (S : Setup) (P : Primitives)
+@[expose] def authRkRecvTracked (S : Setup) (P : Primitives)
     (sampRkAt : Nat → ProbComp Bytes) (useIdealRkAt : Nat → Bool)
     (msg : PreKeyMsg) (prep? : Option (PreparedAuthRecv S))
     (stT : AuthRkTrackedState S) : ProbComp (AuthResponse × AuthRkTrackedState S) := do

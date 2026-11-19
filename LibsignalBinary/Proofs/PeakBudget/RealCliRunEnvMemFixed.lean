@@ -10,19 +10,35 @@ limitations under the License.
 module
 
 public import Arm64.Trusted.Spec.Hoare
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudgetAux
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
-public import LibsignalBinary.Proofs.PeakBudget.RealCliDecPkLinked
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMem
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemSlots
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudgetAux
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
+import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
+public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
+public import LibsignalBinary.Proofs.PeakBudget.RealCliDecPkLinked -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMem
+public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemSlots -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.WireFieldDomainCaps
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.E2E.Seed.Defs
+import LibsignalBinary.Proofs.PeakBudget.W4InnerPeakSpec
 
 /-!
 # Over-Cap `ReadFileRuleEnvFixed` Store-Kit and Whole-`run` Envelope Bridges
@@ -34,7 +50,7 @@ Establishes `ReadFileRuleEnvFixed` monotonicity and non-`OverCapFile` collapse u
 and proves whole-`run` `RunEnv` inclusion into `realCliRunBinaryKitEnvOfFixed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -42,7 +58,6 @@ set_option maxRecDepth 200000
 namespace LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
 
 open Arm64 (FsPath FsState normalizePath splitSlash subroutine_ok)
-open Arm64.Obj (Image)
 open Arm64.Process (ProcessInputs bytesOfString initFsState)
 open CryptoGames.HMAC (keyToBytes32)
 open CryptoGames.LibsignalSession
@@ -776,7 +791,7 @@ theorem not_overCapFile_runFiles_bundle_opk {P : PEParams} {i : Inputs}
 
 /-- Binary-kit `SessionStoreBudgetEnv` for `w1SessKitPlaced A B F0 peer` at
 `ReadFileRuleEnvFixed cliIo.rd`. -/
-noncomputable abbrev w1BinarySessKitPlacedBudgetFixed [LibsignalPlacement]
+abbrev w1BinarySessKitPlacedBudgetFixed [LibsignalPlacement]
     (A : RustAlloc) (B : RunBudgets) (F0 : FsFiles) (peer : AddrGhost) :
     SessionStoreBudgetEnv (w1SessKitPlaced A B F0 peer) :=
   cliSessionKitBudgetEnv A cliIo.rd F0 cliWrOk scopeKit peer
@@ -791,7 +806,7 @@ noncomputable abbrev w1BinarySessKitPlacedBudgetFixed [LibsignalPlacement]
 
 /-- Binary-kit `IdentityStoreBudgetEnv` for `w1IdKitPlaced A B F0 peer` at
 `ReadFileRuleEnvFixed cliIo.rd`. -/
-noncomputable abbrev w1BinaryIdKitPlacedBudgetFixed [LibsignalPlacement]
+abbrev w1BinaryIdKitPlacedBudgetFixed [LibsignalPlacement]
     (A : RustAlloc) (B : RunBudgets) (F0 : FsFiles) (peer : AddrGhost) :
     IdentityStoreBudgetEnv (w1IdKitPlaced A B F0 peer) :=
   cliIdentityKitDefaultBudgetEnv A cliIo.rd F0 cliWrOk peer
@@ -801,14 +816,14 @@ noncomputable abbrev w1BinaryIdKitPlacedBudgetFixed [LibsignalPlacement]
 
 /-- Binary-kit `SessionStoreBudgetEnv` for `decSessKitPlaced A F0 peer B` at
 `ReadFileRuleEnvFixed cliIo.rd`. -/
-noncomputable abbrev decBinarySessKitPlacedBudgetFixed [LibsignalPlacement]
+abbrev decBinarySessKitPlacedBudgetFixed [LibsignalPlacement]
     (A : RustAlloc) (B : RunBudgets) (F0 : FsFiles) (peer : AddrGhost) :
     SessionStoreBudgetEnv (decSessKitPlaced A F0 peer B) :=
   w1BinarySessKitPlacedBudgetFixed A B F0 peer
 
 /-- Binary-kit `IdentityStoreBudgetEnv` for `decIdKitPlaced A F0 peer B` at
 `ReadFileRuleEnvFixed cliIo.rd`. -/
-noncomputable abbrev decBinaryIdKitPlacedBudgetFixed [LibsignalPlacement]
+abbrev decBinaryIdKitPlacedBudgetFixed [LibsignalPlacement]
     (A : RustAlloc) (B : RunBudgets) (F0 : FsFiles) (peer : AddrGhost) :
     IdentityStoreBudgetEnv (decIdKitPlaced A F0 peer B) :=
   w1BinaryIdKitPlacedBudgetFixed A B F0 peer
@@ -1117,14 +1132,14 @@ theorem cliDecryptSignalSlotEnv_fixed_eq_plain [LibsignalPlacement] {M : AllocCo
 
 /-- Binary-kit `mark_kyber_pre_key_used` boxed step (`32` B box + `CliKpkMarkPollEnv`) at
 `DirGetEnv PathEnv (ReadFileRuleEnvFixed rd) rd` (admitting over-cap `baseKeysFile` reads). -/
-def W4BinaryKpkMarkStepEnvFixed (rd : ReadRule) (files : FsFiles)
+@[expose] def W4BinaryKpkMarkStepEnvFixed (rd : ReadRule) (files : FsFiles)
     (kpkId spkId : BitVec 32) (baseKey : PublicKey) : List AllocEvent → Prop :=
   W4BoxedStoreStepEnv 32
     (CliKpkMarkPollEnv rd DecimalEnv (DirGetEnv PathEnv (ReadFileRuleEnvFixed rd) rd) DirPutEnv
       files ⟨0#64, 0#64, 0#64, 0#64, kpkId, spkId, baseKey, StoresGhost.opened.kyber⟩)
 
 /-- Binary-kit Stage P4 Path A (`0`-prev) envelope at `W4BinaryKpkMarkStepEnvFixed`. -/
-def W4BinaryStageP4PathAWideEnvFixed (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
+@[expose] def W4BinaryStageP4PathAWideEnvFixed (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
     (peer : AddrGhost) (remoteIdKey : IdentityKey)
     (kpkId spkId opkId : BitVec 32) (baseKey : PublicKey)
     (g_out0 : RecordGhost) (r_out0 : SessionRecord (List (BitVec 8)))
@@ -1135,7 +1150,7 @@ def W4BinaryStageP4PathAWideEnvFixed (hasOpk : Bool) (rd : ReadRule) (files : Fs
         (SeqEnv (OptStageEnv (W4BinarySessStoreStepEnv peer g_out0 r_out0)) FreeOnlyEvs))) evs
 
 /-- Binary-kit Stage P4 Path C (`prev1`) envelope at `W4BinaryKpkMarkStepEnvFixed`. -/
-def W4BinaryStageP4PathCWideEnvFixed (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
+@[expose] def W4BinaryStageP4PathCWideEnvFixed (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
     (peer : AddrGhost) (remoteIdKey : IdentityKey)
     (kpkId spkId opkId : BitVec 32) (baseKey : PublicKey)
     (G_out1 : SessionGhost) (sess_out1 : Session (List (BitVec 8))) (enc_prev1 : List (BitVec 8))
@@ -1148,7 +1163,7 @@ def W4BinaryStageP4PathCWideEnvFixed (hasOpk : Bool) (rd : ReadRule) (files : Fs
 
 /-- Binary-kit Path A (`0`-prev) Stages P1–P4 envelope over `W4BinaryRecvPrekeyParams` at
 `W4BinaryStageP4PathAWideEnvFixed`. -/
-def W4BinaryRecvPrekeyPathAWideEnvFixed (w : W4BinaryRecvPrekeyParams)
+@[expose] def W4BinaryRecvPrekeyPathAWideEnvFixed (w : W4BinaryRecvPrekeyParams)
     (evs : List AllocEvent) : Prop :=
   SeqEnv (W4BinaryStageP1OkEnv w.base.rd w.base.files w.base.peer w.remoteIdKey)
     (SeqEnv
@@ -1163,7 +1178,7 @@ def W4BinaryRecvPrekeyPathAWideEnvFixed (w : W4BinaryRecvPrekeyParams)
 
 /-- Binary-kit Path C (`prev1`) Stages P1–P4 envelope over `W4BinaryRecvPrekeyParams` at
 `W4BinaryStageP4PathCWideEnvFixed`. -/
-def W4BinaryRecvPrekeyPathCWideEnvFixed (w : W4BinaryRecvPrekeyParams)
+@[expose] def W4BinaryRecvPrekeyPathCWideEnvFixed (w : W4BinaryRecvPrekeyParams)
     (evs : List AllocEvent) : Prop :=
   let P := mkW4RecvPrekeyWideSlotParams w.base
   SeqEnv (W4BinaryStageP1OkEnv w.base.rd w.base.files w.base.peer w.remoteIdKey)
@@ -1181,7 +1196,7 @@ def W4BinaryRecvPrekeyPathCWideEnvFixed (w : W4BinaryRecvPrekeyParams)
 
 /-- Four-arm binary-kit W4 (`recv-prekey`) slot envelope over `W4BinaryRecvPrekeyParams` at
 `W4BinaryKpkMarkStepEnvFixed` on Paths A and C (`PathBWide` has no `kpkMark`). -/
-def W4BinaryRecvPrekeyWideSlotEnvFixed (w : W4BinaryRecvPrekeyParams)
+@[expose] def W4BinaryRecvPrekeyWideSlotEnvFixed (w : W4BinaryRecvPrekeyParams)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
   SeqEnv
@@ -1195,8 +1210,8 @@ def W4BinaryRecvPrekeyWideSlotEnvFixed (w : W4BinaryRecvPrekeyParams)
 /-- Mode-dispatched `CliRunCalleeEnvs` bundle coinciding definitionally (`rfl`) with
 `mkBinaryKitRealCalleeEnvs` on `initEnv`, `encEnv`, `decSigEnv`, and `pksmEnv`, and widening
 `decPkEnv` to `W4BinaryRecvPrekeyWideSlotEnvFixed` (`kpkMark` over-cap `baseKeysFile` arm). -/
-def mkBinaryKitRealCalleeEnvsFixed [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+@[expose] def mkBinaryKitRealCalleeEnvsFixed [LibsignalPlacement]
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) : CliRunCalleeEnvs :=
   { mkBinaryKitRealCalleeEnvs img S X W g with
     decPkEnv := match g.c with
@@ -1208,13 +1223,13 @@ def mkBinaryKitRealCalleeEnvsFixed [LibsignalPlacement]
 /-- Whole-`signal_session::run` binary-kit allocator trace predicate at
 `mkBinaryKitRealCalleeEnvsFixed`. -/
 abbrev realCliRunBinaryKitEnvOfFixed [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) : List AllocEvent → Prop :=
   CliRunBinaryEnv cliIo.rd (mkBinaryKitRealCalleeEnvsFixed img S X W g) sessionCapBytes g
 
 /-- Whole-`main` binary-kit allocator trace predicate at `mkBinaryKitRealCalleeEnvsFixed`. -/
 abbrev realCliMainBinaryKitEnvOfFixed [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (i : Inputs) : List AllocEvent → Prop :=
   RealCliMainBinaryEnvOf (mkBinaryKitRealCalleeEnvsFixed img S X W) i
 
@@ -1321,7 +1336,7 @@ theorem w4BinaryRecvPrekeyWideSlotEnv_sub_fixed (w : W4BinaryRecvPrekeyParams)
 
 /-- Binary-kit W3 (`init`) slot envelope at `ReadFileRuleEnvFixed cliIo.rd`
 (`W3InitiateFullEnvWide`). -/
-def W3InitBinaryKitSlotEnvFixed (w : W3BinaryInitParams) (evs : List AllocEvent) : Prop :=
+@[expose] def W3InitBinaryKitSlotEnvFixed (w : W3BinaryInitParams) (evs : List AllocEvent) : Prop :=
   W3InitiateFullEnvWide
     (W3BoxedStoreStepEnv 32
       (cliIdentityKitTrustPollEnv
@@ -1364,7 +1379,7 @@ def W3InitBinaryKitSlotEnvFixed (w : W3BinaryInitParams) (evs : List AllocEvent)
 
 /-- `W3` (`init`) `InitGhost` slot envelope at `ReadFileRuleEnvFixed cliIo.rd`
 (`RecordAliceInitiatedAnyCkBounds`). -/
-def realCliInitBinarySlotEnvFixed (W : CliHooks) (x : InitGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def realCliInitBinarySlotEnvFixed (W : CliHooks) (x : InitGhost) (evs : List AllocEvent) : Prop :=
   ∃ w : W3BinaryInitParams,
     w.x = x ∧
     w.F = W.C.F ∧
@@ -1390,46 +1405,46 @@ theorem w3InitBinaryKitSlotEnvFixed_eq_plain {P : PEParams} {i : Inputs}
 /-- W4 binary-kit step envelopes with `ReadFileRuleEnvFixed rd` on all store-kit `Dir::get` calls
 (matching Block-`579` / `DecPkD2cSlotOkLinked` instantiated at `ReadEnv := ReadFileRuleEnvFixed cliIo.rd`
 before `CliPqxdhInputs` collapses the non-`kpkMark` steps). -/
-def W4BinarySessLoadStepEnvAllFixed (rd : ReadRule) (files : FsFiles) (peer : AddrGhost) :
+@[expose] def W4BinarySessLoadStepEnvAllFixed (rd : ReadRule) (files : FsFiles) (peer : AddrGhost) :
     List AllocEvent → Prop :=
   W4BoxedStoreStepEnv 24
     (cliSessionKitLoadPollEnv rd scopeKit (AddrTextValEnv DecimalEnv)
       (DirGetEnv PathEnv (ReadFileRuleEnvFixed rd) rd) (ofBytesEnv RecordDeserializeCancelEnv)
       files StoresGhost.opened.sessions peer.val)
 
-def W4BinaryIdTrustStepEnvAllFixed (rd : ReadRule) (files : FsFiles) (peer : AddrGhost)
+@[expose] def W4BinaryIdTrustStepEnvAllFixed (rd : ReadRule) (files : FsFiles) (peer : AddrGhost)
     (remoteIdKey : IdentityKey) : List AllocEvent → Prop :=
   W4BoxedStoreStepEnv 32
     (cliIdentityKitTrustPollEnv (DirGetEnv PathEnv (ReadFileRuleEnvFixed rd) rd)
       files StoresGhost.opened.identity peer.val remoteIdKey .receiving)
 
-def W4BinaryIdSaveStepEnvAllFixed (rd : ReadRule) (files : FsFiles) (peer : AddrGhost)
+@[expose] def W4BinaryIdSaveStepEnvAllFixed (rd : ReadRule) (files : FsFiles) (peer : AddrGhost)
     (remoteIdKey : IdentityKey) : List AllocEvent → Prop :=
   W4BoxedStoreStepEnv 32
     (cliIdentityKitSavePollEnv rd (DirGetEnv PathEnv (ReadFileRuleEnvFixed rd) rd)
       DirPutStrEnv files StoresGhost.opened.identity peer.val remoteIdKey)
 
-def W4BinarySpkGetStepEnvAllFixed (rd : ReadRule) (files : FsFiles) (spkId : BitVec 32) :
+@[expose] def W4BinarySpkGetStepEnvAllFixed (rd : ReadRule) (files : FsFiles) (spkId : BitVec 32) :
     List AllocEvent → Prop :=
   W4BoxedStoreStepEnv 16
     (CliSpkGetPollEnv DecimalEnv
       (fun d k => DirGetEnv PathEnv (ReadFileRuleEnvFixed rd) rd files d (keyName k))
       CliSpkDecodeEnv rd files ⟨0#64, 0#64, 0#64, spkId, StoresGhost.opened.signed⟩)
 
-def W4BinaryKpkGetStepEnvAllFixed (rd : ReadRule) (files : FsFiles) (kpkId : BitVec 32) :
+@[expose] def W4BinaryKpkGetStepEnvAllFixed (rd : ReadRule) (files : FsFiles) (kpkId : BitVec 32) :
     List AllocEvent → Prop :=
   W4BoxedStoreStepEnv 16
     (CliKpkGetPollEnv DecimalEnv
       (fun d k => DirGetEnv PathEnv (ReadFileRuleEnvFixed rd) rd files d (keyName k))
       CliSpkDecodeEnv rd files ⟨0#64, 0#64, 0#64, kpkId, StoresGhost.opened.kyber⟩)
 
-def W4BinaryPkGetStepEnvAllFixed (rd : ReadRule) (files : FsFiles) (opkId : BitVec 32) :
+@[expose] def W4BinaryPkGetStepEnvAllFixed (rd : ReadRule) (files : FsFiles) (opkId : BitVec 32) :
     List AllocEvent → Prop :=
   W4BoxedStoreStepEnv 16
     (CliPkGetPollEnv DecimalEnv (DirGetEnv PathEnv (ReadFileRuleEnvFixed rd) rd files)
       CliPkDecodeEnv rd files ⟨0#64, 0#64, 0#64, opkId, StoresGhost.opened.oneTime⟩)
 
-def W4BinarySelfKpStepEnvAllFixed (rd : ReadRule) (files : FsFiles) : List AllocEvent → Prop :=
+@[expose] def W4BinarySelfKpStepEnvAllFixed (rd : ReadRule) (files : FsFiles) : List AllocEvent → Prop :=
   CliRealBinaryKitEnvs.W4OptBoxedStoreStepEnv 16
     (SeqEnv (DirGetEnv PathEnv (ReadFileRuleEnvFixed rd) rd files
         StoresGhost.opened.identity.own (utf8 "identity-key-pair"))
@@ -1439,7 +1454,7 @@ def W4BinarySelfKpStepEnvAllFixed (rd : ReadRule) (files : FsFiles) : List Alloc
 
 abbrev W4BinarySelfKpStepOptEnvAllFixed := W4BinarySelfKpStepEnvAllFixed
 
-def W4BinarySelfRegIdStepEnvAllFixed (rd : ReadRule) (files : FsFiles) : List AllocEvent → Prop :=
+@[expose] def W4BinarySelfRegIdStepEnvAllFixed (rd : ReadRule) (files : FsFiles) : List AllocEvent → Prop :=
   W4BoxedStoreStepEnv 16
     (SeqEnv (DirGetEnv PathEnv (ReadFileRuleEnvFixed rd) rd files
         StoresGhost.opened.identity.own (utf8 "registration-id"))
@@ -1448,24 +1463,24 @@ def W4BinarySelfRegIdStepEnvAllFixed (rd : ReadRule) (files : FsFiles) : List Al
           (StoresGhost.opened.identity.own.get rd files (utf8 "registration-id")))
         FreeOnlyEvs))
 
-def W4BinaryPkRemoveStepEnvAllFixed (rd : ReadRule) (files : FsFiles) (opkId : BitVec 32) :
+@[expose] def W4BinaryPkRemoveStepEnvAllFixed (rd : ReadRule) (files : FsFiles) (opkId : BitVec 32) :
     List AllocEvent → Prop :=
   W4BoxedStoreStepEnv 16
     (CliPkRemovePollEnv rd DecimalEnv (DirGetEnv PathEnv (ReadFileRuleEnvFixed rd) rd) DirPutEnv
       files ⟨0#64, 0#64, 0#64, opkId, StoresGhost.opened.oneTime⟩)
 
-def W4BinaryStageP1OkEnvAllFixed (rd : ReadRule) (files : FsFiles) (peer : AddrGhost)
+@[expose] def W4BinaryStageP1OkEnvAllFixed (rd : ReadRule) (files : FsFiles) (peer : AddrGhost)
     (remoteIdKey : IdentityKey) (evs : List AllocEvent) : Prop :=
   SeqEnv (W4BinarySessLoadStepEnvAllFixed rd files peer)
     (OptStageEnv (W4BinaryIdTrustStepEnvAllFixed rd files peer remoteIdKey)) evs
 
-def W4BinaryStageP1UntrustedEnvAllFixed (rd : ReadRule) (files : FsFiles) (peer : AddrGhost)
+@[expose] def W4BinaryStageP1UntrustedEnvAllFixed (rd : ReadRule) (files : FsFiles) (peer : AddrGhost)
     (remoteIdKey : IdentityKey) (evs : List AllocEvent) : Prop :=
   SeqEnv (W4BinarySessLoadStepEnvAllFixed rd files peer)
     (SeqEnv (W4BinaryIdTrustStepEnvAllFixed rd files peer remoteIdKey)
       (SeqEnv (StringCloneEnv peer.name) FreeOnlyEvs)) evs
 
-def W4BinaryStageP2PathAWideEnvAllFixed (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
+@[expose] def W4BinaryStageP2PathAWideEnvAllFixed (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
     (spkId kpkId opkId : BitVec 32)
     (F : ShaCompress) (x_res : DoReserveCall) (x_spqr : InitialStateGhost)
     (evs : List AllocEvent) : Prop :=
@@ -1480,7 +1495,7 @@ def W4BinaryStageP2PathAWideEnvAllFixed (hasOpk : Bool) (rd : ReadRule) (files :
                   (SeqEnv (OptStageEnv (W4BinarySelfRegIdStepEnvAllFixed rd files))
                     W4ErrTailWideEnv)))))))) evs
 
-def W4BinaryStageP2PathCWideEnvAllFixed {α : Type}
+@[expose] def W4BinaryStageP2PathCWideEnvAllFixed {α : Type}
     (G_cur : SessionGhost) (st_cur : SessionState (List (BitVec 8)))
     (CurTrialFailEnv : List AllocEvent → Prop)
     (DecEnv TrialEnv DropEnv : α → List AllocEvent → Prop) (xs : List α)
@@ -1506,13 +1521,13 @@ def W4BinaryStageP2PathCWideEnvAllFixed {α : Type}
                         (SeqEnv (OptStageEnv (W4BinaryPromoteArchiveEnv g_arch r_arch))
                           W4ErrTailWideEnv))))))))))) evs
 
-def W4BinaryStageP4MatchedWideEnvAllFixed (rd : ReadRule) (files : FsFiles) (peer : AddrGhost)
+@[expose] def W4BinaryStageP4MatchedWideEnvAllFixed (rd : ReadRule) (files : FsFiles) (peer : AddrGhost)
     (remoteIdKey : IdentityKey) (g_out0 : RecordGhost) (r_out0 : SessionRecord (List (BitVec 8)))
     (evs : List AllocEvent) : Prop :=
   SeqEnv (OptStageEnv (W4BinaryIdSaveStepEnvAllFixed rd files peer remoteIdKey))
     (SeqEnv (OptStageEnv (W4BinarySessStoreStepEnv peer g_out0 r_out0)) FreeOnlyEvs) evs
 
-def W4BinaryStageP4PathAWideEnvAllFixed (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
+@[expose] def W4BinaryStageP4PathAWideEnvAllFixed (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
     (peer : AddrGhost) (remoteIdKey : IdentityKey)
     (kpkId spkId opkId : BitVec 32) (baseKey : PublicKey)
     (g_out0 : RecordGhost) (r_out0 : SessionRecord (List (BitVec 8)))
@@ -1522,7 +1537,7 @@ def W4BinaryStageP4PathAWideEnvAllFixed (hasOpk : Bool) (rd : ReadRule) (files :
       (SeqEnv (OptStageEnv (if hasOpk then W4BinaryPkRemoveStepEnvAllFixed rd files opkId else (· = [])))
         (SeqEnv (OptStageEnv (W4BinarySessStoreStepEnv peer g_out0 r_out0)) FreeOnlyEvs))) evs
 
-def W4BinaryStageP4PathCWideEnvAllFixed (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
+@[expose] def W4BinaryStageP4PathCWideEnvAllFixed (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
     (peer : AddrGhost) (remoteIdKey : IdentityKey)
     (kpkId spkId opkId : BitVec 32) (baseKey : PublicKey)
     (G_out1 : SessionGhost) (sess_out1 : Session (List (BitVec 8))) (enc_prev1 : List (BitVec 8))
@@ -1536,7 +1551,7 @@ def W4BinaryStageP4PathCWideEnvAllFixed (hasOpk : Bool) (rd : ReadRule) (files :
 /-- Complete 4-arm W4 (`recv-prekey`) slot envelope with `ReadFileRuleEnvFixed` on all store-kit
 `Dir::get` steps; under `CliPqxdhInputs P i` (`w.base.files = runFiles i`, `w.base.rd = cliIo.rd`),
 collapses to `W4BinaryRecvPrekeyWideSlotEnvFixed w`. -/
-def W4BinaryRecvPrekeyWideSlotEnvAllFixed (w : W4BinaryRecvPrekeyParams)
+@[expose] def W4BinaryRecvPrekeyWideSlotEnvAllFixed (w : W4BinaryRecvPrekeyParams)
     (evs : List AllocEvent) : Prop :=
   let P := mkW4RecvPrekeyWideSlotParams w.base
   FreeOnlyEvs evs ∨
@@ -1725,7 +1740,7 @@ theorem realCliDecPkBinaryWideSlotEnvFixed_ghost_congr [LibsignalPlacement]
 `w1BinaryIdKitPlacedBudgetFixed`, `decBinarySessKitPlacedBudgetFixed`,
 `decBinaryIdKitPlacedBudgetFixed`, `SpqrSendTightCapEnv`, `W2RealTdEnv W.C.F W.Q.K`, and
 caller-supplied `InitEnv` / `DecPkEnv`. -/
-noncomputable def binaryKitRunSlotEnvsFixed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def binaryKitRunSlotEnvsFixed [LibsignalPlacement] {M : AllocCostModel}
     (W : CliHooks) (A : RustCliAllocBudget M) (B : RunBudgets := cliRunBudgets)
     (InitEnv : InitGhost → List AllocEvent → Prop)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) : RunSlotEnvs where
@@ -1812,7 +1827,7 @@ private theorem init2Env_fixed_eq_plain {P : PEParams} {g : RunCall} (hi : CliPq
 /-- `W4` (`recv-prekey`, `hrecvP_slot`) containment from `realCliDecPkBinaryWideSlotEnvFixed` into
 `(mkBinaryKitRealCalleeEnvsFixed img S X W g).decPkEnv` under `CliPqxdhInputs ⟨W.C, W.Q⟩ g.i`. -/
 theorem w4_realCliDecPkBinaryWideSlotEnvFixed_sub_binaryKitFixed [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) (meV : AddrV) (peerV : AddrV)
     (rest : List (BitVec 8)) (pm : PreKeySignalMessage)
     (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)
@@ -1856,7 +1871,7 @@ theorem w4_realCliDecPkBinaryWideSlotEnvFixed_sub_binaryKitFixed [LibsignalPlace
 automatically and taking `hinit3`, `hrecvP_pksm`, and `hrecvP_slot` for `W3`, `PKSM`, and `W4`. -/
 theorem runEnvFixed_sub_realCliRunBinaryKitEnvOfFixed_of_slots [LibsignalPlacement]
     {M : AllocCostModel}
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     {InitEnv : InitGhost → List AllocEvent → Prop}
     {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
@@ -1931,7 +1946,7 @@ theorem runEnvFixed_sub_realCliRunBinaryKitEnvOfFixed_of_slots [LibsignalPlaceme
 `PksmTryFromEnv` reducing to `PksmCanonSliceEnv x.bytes` on canonical outer `PreKeyMessageFields`. -/
 theorem runEnvFixed_sub_realCliRunBinaryKitEnvOfFixed [LibsignalPlacement] {M : AllocCostModel}
     {PksmTryFromEnv : PksmGhost → List AllocEvent → Prop}
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     {g : RunCall}
     (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)
@@ -1971,7 +1986,7 @@ theorem runEnvFixed_sub_realCliRunBinaryKitEnvOfFixed [LibsignalPlacement] {M : 
 theorem runEnvFixed_sub_realCliRunBinaryKitEnvOfFixed_canonOrFallback [LibsignalPlacement]
     {M : AllocCostModel}
     {FallbackEnv : PksmGhost → List AllocEvent → Prop}
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     {g : RunCall}
     (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)
@@ -2006,7 +2021,7 @@ theorem runEnvFixed_sub_realCliRunBinaryKitEnvOfFixed_canonOrFallback [Libsignal
 `CliPqxdhInputs ⟨W.C, W.Q⟩ g.i`. -/
 theorem runEnvFixed_sub_realCliRunBinaryKitEnvOfFixed_canonSlice [LibsignalPlacement]
     {M : AllocCostModel}
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     {g : RunCall}
     (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)

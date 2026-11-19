@@ -11,7 +11,7 @@ module
 
 public import LibsignalBinary.Proofs.SpqrV1.Top.Send.Defs
 public import LibsignalBinary.Proofs.SignalSession.Coins.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.InnerReloc
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.InnerReloc -- proof-setup: allow-public-import
 
 /-!
 # Relocatable Seam Specifications for `spqr::send::<signal_session_ratchet::Coins>` (Block `427`)
@@ -20,7 +20,7 @@ Defines `[LibsignalPlacement]` coins-tape predicates, public Block `427` top-lev
 and peer `blockProgram` callee seam specifications consumed by `spqr::send`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -72,13 +72,13 @@ abbrev coinsLeftPlaced [LibsignalPlacement] : BitVec 64 := lsρ coinsLeftSym
 /-- Relocatable CLI coins tape predicate with phantom `_ctl` parameter matching `tapeAt`.
     Defined as a `semireducible` `def` (not `abbrev`) so `SepProp` framing keeps it opaque while
     reducing by `rfl` to `Cli.CoinsTape.cliTapeAt` / `SignalSession.Coins.coinsAtPlaced`. -/
-def spqrCoinsAtPlaced [LibsignalPlacement] (_ctl : BitVec 64) (cur : BitVec 64)
+@[expose] def spqrCoinsAtPlaced [LibsignalPlacement] (_ctl : BitVec 64) (cur : BitVec 64)
     (rest : List (BitVec 8)) : SepProp :=
   tapeAt2 coinsNextPlaced coinsLeftPlaced cur rest
 
 /-- Relocatable CLI coins tape predicate after `k` draws, matching `tapeAfter` and reducing by
     `rfl` to `Cli.CoinsTape.cliTapeAfter` / `SignalSession.Coins.coinsAfterPlaced`. -/
-def spqrCoinsAfterPlaced [LibsignalPlacement] (_ctl : BitVec 64) (cur : BitVec 64)
+@[expose] def spqrCoinsAfterPlaced [LibsignalPlacement] (_ctl : BitVec 64) (cur : BitVec 64)
     (rest : List (BitVec 8)) (k : Nat) : SepProp :=
   tapeAfter2 coinsNextPlaced coinsLeftPlaced cur rest k
 
@@ -88,12 +88,6 @@ theorem spqrCoinsAtPlaced_eq_pure_sep_after_zero [LibsignalPlacement] (ctl cur :
   unfold spqrCoinsAtPlaced spqrCoinsAfterPlaced tapeAt2
   rw [tapeAfter2_zero_eq]
 
-theorem spqrCoinsAfterPlaced_zero_entails_at [LibsignalPlacement] (ctl cur : BitVec 64)
-    {rest : List (BitVec 8)} (hrest : rest.length < 2 ^ 63) :
-    spqrCoinsAfterPlaced ctl cur rest 0 ⊢ spqrCoinsAtPlaced ctl cur rest := by
-  rw [spqrCoinsAtPlaced_eq_pure_sep_after_zero]
-  exact Entails.pure_right hrest (Entails.refl _)
-
 theorem spqrCoinsAtPlaced_entails_after_zero [LibsignalPlacement] (ctl cur : BitVec 64)
     (rest : List (BitVec 8)) :
     spqrCoinsAtPlaced ctl cur rest ⊢ spqrCoinsAfterPlaced ctl cur rest 0 := by
@@ -102,7 +96,7 @@ theorem spqrCoinsAtPlaced_entails_after_zero [LibsignalPlacement] (ctl cur : Bit
 
 /-- Relocatable specification of `signal_session_coins_fill` (Block `618`), definitionally `rfl`-equal
     to `SignalSession.Coins.coinsFillSpecPlaced`. -/
-def spqrCoinsFillSpecPlaced [LibsignalPlacement] (stk : Nat) :
+@[expose] def spqrCoinsFillSpecPlaced [LibsignalPlacement] (stk : Nat) :
     Spec (BitVec 64 × Nat × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, len, cur, rest) s =>
     ⌜s.readReg64 .x0 = dst ∧ (s.readReg64 .x1).toNat = len⌝ ∗
@@ -113,7 +107,7 @@ def spqrCoinsFillSpecPlaced [LibsignalPlacement] (stk : Nat) :
       spqrCoinsAfterPlaced 0#64 cur rest (min len rest.length) ∗ stackAt s0.sp stk
 
 /-- `spqrCoinsFillSpecPlaced` with fixed tape ghost `(cur, rest)`. -/
-def spqrCoinsFillAtSpecPlaced [LibsignalPlacement] (stk : Nat) (cur : BitVec 64)
+@[expose] def spqrCoinsFillAtSpecPlaced [LibsignalPlacement] (stk : Nat) (cur : BitVec 64)
     (rest : List (BitVec 8)) : Spec (BitVec 64 × Nat) where
   pre := fun (dst, len) s =>
     ⌜s.readReg64 .x0 = dst ∧ (s.readReg64 .x1).toNat = len⌝ ∗
@@ -149,7 +143,7 @@ theorem spqrCoinsFillAtPlaced_of_after0_cro [LibsignalPlacement] {P : Program} {
 /-- Relocatable `[LibsignalPlacement]` contract for `spqr::send::<signal_session_ratchet::Coins>`
     (Block `427`), definitionally `rfl`-equal to
     `CryptoVerification.Cli.LibsignalTripleRatchet.SpqrSendEmpty.spqrSendCoinsPlacedSpec`. -/
-def spqrSendCoinsPlacedSpec [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def spqrSendCoinsPlacedSpec [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (S : SpqrModel) : Spec SendCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.st.v⌝ ∗ x.st.at A ∗ memRegion x.ret 72 ∗
@@ -167,7 +161,7 @@ def spqrSendCoinsPlacedSpec [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 6
 /-- Image-free `[LibsignalPlacement]` inner `Spec` of `spqrSendSpecT` for `<Coins>` (Block `427`)
     with `tokenInitPlacedAt` framed and `st.bytes.length < 2 ^ 32`, `64 ≤ rest.length`.
     Definitionally `rfl`-equal to `CryptoVerification.SignalSession.Cli.spqrSendCoinsPlacedSpecT`. -/
-def spqrSendCoinsPlacedSpecT [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def spqrSendCoinsPlacedSpecT [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (S : SpqrModel) : Spec SendCall :=
   { spqrSendCoinsPlacedSpec A ctl S with
     pre := fun x s =>
@@ -181,7 +175,7 @@ def spqrSendCoinsPlacedSpecT [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 
 /-! ## 3. `SepWPpLS` & Cross-Block `withLsCodeRoLoaded` Transfer Combinators -/
 
 /-- Relocatable `SepWPp` enriched with `LibsignalCodeRoLoaded lsmpl s.mem`, preserved across `Steps`. -/
-def SepWPpLS [LibsignalPlacement] (prog : Program) (ret : BitVec 64) (s : State) (P : SepProp)
+@[expose] def SepWPpLS [LibsignalPlacement] (prog : Program) (ret : BitVec 64) (s : State) (P : SepProp)
     (Q Q_err : State → SepProp → Prop) : Prop :=
   LibsignalCodeRoLoaded lsmpl s.mem → SepWPp prog ret s P Q Q_err
 
@@ -243,17 +237,17 @@ theorem ls_subroutine_ok_to_blockProgram [LibsignalPlacement] {α : Type}
 /-! ## 4. Peer Callee Specifications -/
 
 /-- Relocatable `.rodata` jump table for `<States>::from_pb` (Block `333`). -/
-def statesFromPbJumpTablePlacedAt [LibsignalPlacement] : SepProp :=
+@[expose] def statesFromPbJumpTablePlacedAt [LibsignalPlacement] : SepProp :=
   (lsρ "spqr:.rodata.<spqr::v1::chunked::states::States>::from_pb") ↦ᵣ
     States.FromPb.statesFromPbJumpTableBytes
 
 /-- Relocatable `.rodata` jump table for `<States>::into_pb` (Block `334`). -/
-def statesIntoPbJumpTablePlacedAt [LibsignalPlacement] : SepProp :=
+@[expose] def statesIntoPbJumpTablePlacedAt [LibsignalPlacement] : SepProp :=
   (lsρ "spqr:.rodata.<spqr::v1::chunked::states::States>::into_pb") ↦ᵣ
     States.IntoPb.statesIntoPbJumpTableBytes
 
 /-- Relocatable specification for `spqr::decode_state` (Block `325`). -/
-def decodeStatePlacedSpecX [LibsignalPlacement] (H_inner : V1InnerHeapPred) (A : RustAlloc) :
+@[expose] def decodeStatePlacedSpecX [LibsignalPlacement] (H_inner : V1InnerHeapPred) (A : RustAlloc) :
     Spec DecodeStateGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.outPtr ∧
@@ -272,7 +266,7 @@ def decodeStatePlacedSpecX [LibsignalPlacement] (H_inner : V1InnerHeapPred) (A :
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Relocatable specification for `<States>::from_pb` (Block `333`). -/
-def statesFromPbPlacedSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
+@[expose] def statesFromPbPlacedSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
     Spec StatesFromPbGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.pbA ∧ v1StatePtsBound x.pb⌝ ∗
@@ -289,7 +283,7 @@ def statesFromPbPlacedSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompres
   onPanic := fun _ s0 sf => statesFromPbOnPanic s0 sf
 
 /-- Relocatable specification for `<States>::into_pb` (Block `334`). -/
-def statesIntoPbPlacedSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
+@[expose] def statesIntoPbPlacedSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
     Spec (StatesIntoPbGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.stA⌝ ∗
@@ -306,7 +300,7 @@ def statesIntoPbPlacedSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompres
   onPanic := fun _ s0 sf => statesIntoPbOnPanic s0 sf
 
 /-- Relocatable specification of `<EkReceivedCt1Sampled>::send_ct1_chunk` (Block `344`). -/
-def ekReceivedCt1SampledSendCt1ChunkPlacedSpec [LibsignalPlacement]
+@[expose] def ekReceivedCt1SampledSendCt1ChunkPlacedSpec [LibsignalPlacement]
     (A : RustAlloc) (F : ShaCompress) :
     Spec (EkReceivedCt1SampledSendCt1ChunkGhost F) where
   pre := fun x s =>
@@ -328,7 +322,7 @@ def ekReceivedCt1SampledSendCt1ChunkPlacedSpec [LibsignalPlacement]
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Relocatable specification of `<Ct2Sampled>::send_ct2_chunk` (Block `354`). -/
-def ct2SampledSendCt2ChunkPlacedSpec [LibsignalPlacement]
+@[expose] def ct2SampledSendCt2ChunkPlacedSpec [LibsignalPlacement]
     (A : RustAlloc) (F : ShaCompress) :
     Spec (Ct2SampledSendCt2ChunkGhost F) where
   pre := fun x s =>
@@ -350,7 +344,7 @@ def ct2SampledSendCt2ChunkPlacedSpec [LibsignalPlacement]
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Relocatable specification of `<HeaderSent>::send_ek_chunk` (Block `336`). -/
-def headerSentSendEkChunkPlacedSpec [LibsignalPlacement]
+@[expose] def headerSentSendEkChunkPlacedSpec [LibsignalPlacement]
     (A : RustAlloc) (F : ShaCompress) :
     Spec (HeaderSentSendEkChunkGhost F) where
   pre := fun x s =>
@@ -372,7 +366,7 @@ def headerSentSendEkChunkPlacedSpec [LibsignalPlacement]
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Relocatable specification of `<Ct1Received>::send_ek_chunk` (Block `345`). -/
-def ct1ReceivedSendEkChunkPlacedSpec [LibsignalPlacement]
+@[expose] def ct1ReceivedSendEkChunkPlacedSpec [LibsignalPlacement]
     (A : RustAlloc) (F : ShaCompress) :
     Spec (Ct1ReceivedSendEkChunkGhost F) where
   pre := fun x s =>
@@ -394,7 +388,7 @@ def ct1ReceivedSendEkChunkPlacedSpec [LibsignalPlacement]
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Relocatable specification of `<Ct1Sampled>::send_ct1_chunk` (Block `335`). -/
-def ct1SampledSendCt1ChunkPlacedSpec [LibsignalPlacement]
+@[expose] def ct1SampledSendCt1ChunkPlacedSpec [LibsignalPlacement]
     (A : RustAlloc) (F : ShaCompress) :
     Spec (Ct1SampledSendCt1ChunkGhost F) where
   pre := fun x s =>

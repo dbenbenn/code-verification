@@ -9,9 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledUcBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledUcBudget
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBase
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledUcBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledUcBudgetSteps
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Code-Loaded Placed Budget Inner `Unchunked.HeaderSent` Lemmas for `Chunked.KeysSampled::merge` (Block `304`)
@@ -20,7 +33,7 @@ Re-exports the `withLsCodeRoLoaded lsmpl` budget-threaded inner `Unchunked.Heade
 decode-error exit lemmas for `Chunked.KeysSampled::merge` on Block `304`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,28 +70,6 @@ open LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit (Wpp
 open LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget (bytesMerge3RawBudgetSpec)
 open LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget (decodeVarint2Spec)
 open LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget (skipField3Spec)
-
-theorem chunkedKeysSampled_ret_err_exit_cl_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    {x : ChunkedKeysSampledMergeGhost} {st : M.σ} {R : SepProp} {s0 : State}
-    {m : V1State.Chunked.KeysSampled} {s : State} {err : BitVec 64} {n f : Nat}
-    (hnone : (mergeMessage
-      V1State.Chunked.KeysSampled.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 99).toOption = none)
-    (hf : f ≤ 6 * x.bs.length + 12)
-    (hn : n ≤ 3) (herr : err ≠ 0#64) (hsp_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = (blkPl_304).base + 128#64)
-    (hrun : s.status = .Running) (hsp : s.sp = s0.sp - 128#64)
-    (htr : s.trace = s0.trace) (hx0 : s.readReg64 (Reg.gpr 0#5) = err)
-    (hcs : ChunkedInl10CalleeSaved s0 s) :
-    SepWPpLscro lsmpl ((blkPC_304).rebase (blkPl_304).base H) (s0.readReg64 Reg.lr) s
-      (decodeErrorAtStackLen A.repAlloc err n ∗ stackAt (s0.sp - 128#64) chunkedInlBelowStack ∗
-        memRegion (s0.sp - 128#64) 48 ∗
-        chunkedKeysSampledErrFrame A lim st f (keysSampledPolyCapBound x)
-          s0 s x.msgPtr x.bufRef x.slot x.ptr m x.bs)
-      (WppPost (chunkedKeysSampledMergeSpec A lim) (x, st) R s0) (WppPanicFalse R) :=
-  @chunkedKeysSampled_ret_err_exit_placed _ M A lim H x st R s0 m s err n f
-    hnone hf hn herr hsp_align hpc hrun hsp htr hx0 hcs
 
 theorem chunkedKeysSampled_from_err_exit_cl_placed [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}

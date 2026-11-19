@@ -12,36 +12,36 @@ module
 public import Arm64.Trusted.Spec.Hoare
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TopPlacedBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0TdAux
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkSlot
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3MatchingPathBMainPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3MatchingPathBPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3MatchingPathBPollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3MatchingPathBAuxPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureEntryPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBMainPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBTopPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedInstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage1InstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.PollStmtPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SlotPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.WrapperStatePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TopPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0TdAux
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkSlot
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3MatchingPathBMainPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3MatchingPathBPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3MatchingPathBPollPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3MatchingPathBAuxPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureEntryPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBMainPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBTopPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedInstPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage1InstPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.PollStmtPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SlotPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.WrapperStatePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4
@@ -63,6 +63,27 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.Cl
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathB
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathB
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBMain
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlacedBudget
+import LibsignalBinary.Proofs.E2E.Seed.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDet
 
 /-!
 # `SeqFree` and `SessionGhostValid`-Strengthened Matching-Session Path-B Slot Closure
@@ -72,7 +93,7 @@ counterpart `decPkPathBSlotOk_gvSeqFree_of_readEnv_placedBudget` on Path-B slot 
 `DecPkD3MatchingPathBGvSeqFreeOfReadEnv` into `realCliDecPkBinaryWideSlotEnvCmkDom0FixedOf`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -223,6 +244,32 @@ open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
 open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget (sessionShimBudgetSpec)
 open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (TryDecryptEnvArgs)
 
+private theorem e2c_byteArray_loop_len (bs : ByteArray) (i : Nat) (acc : List UInt8)
+    (hi : i ≤ bs.size) :
+    (ByteArray.toList.loop bs i acc).length = acc.length + (bs.size - i) := by
+  unfold ByteArray.toList.loop
+  split
+  · rw [e2c_byteArray_loop_len bs (i + 1) _ (by omega)]; simp; omega
+  · simp; omega
+termination_by bs.size - i
+decreasing_by
+  have : i < bs.size := ‹_›; omega
+
+private theorem e2c_peer_name_len_le_40 {W : CryptoVerification.E2E.PEParams}
+    {Scope : SessionRecord (List (BitVec 8)) → Prop}
+    {F : FsFiles} {peer me : AddrGhost} {pm}
+    (hd : DecPkOkPathB W Scope F peer.val me.val pm) :
+    peer.name.bytes.length ≤ 40 := by
+  obtain ⟨P, hp, _⟩ := hd.party
+  change peer.val.name.length ≤ 40
+  rw [congrArg AddrVal.name hp]
+  dsimp only [CryptoVerification.SignalSession.Cli.RunRefine.addrValE]
+  unfold CryptoVerification.SignalSession.Cli.utf8 ByteArray.toList
+  rw [List.length_map, e2c_byteArray_loop_len _ 0 [] (Nat.zero_le _),
+    String.toUTF8_eq_toByteArray]
+  simp only [List.length_nil, Nat.zero_add, Nat.sub_zero, String.size_toByteArray]
+  cases P <;> decide
+
 /-! ## 1. `SeqFree` `ReadEnv`-Parametric Path-B Envelope and Slot `520` Theorem -/
 
 /-- `SeqFree` `ReadEnv`-parametric CLI specialization of `DecPkD3MatchingPathBEnv` wired to
@@ -273,7 +320,7 @@ theorem decPkPathBSlotOk_seqFree_of_readEnv_placedBudget [LibsignalPlacement]
 
 /-- `SessionGhostValid`-strengthened counterpart of `MatchingPathBMainEnv`, recording
 `SessionGhostValid recG sess` alongside `SessionExtraRel recG sess` at the `recG` binder. -/
-def MatchingPathBGvMainEnv [LibsignalPlacement] (A_r : RustAlloc)
+@[expose] def MatchingPathBGvMainEnv [LibsignalPlacement] (A_r : RustAlloc)
     (W : CliHooks) (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (kitEnv4 : ∀ F0 peer, SessionStoreBudgetEnv
@@ -1130,6 +1177,7 @@ private theorem e2c_decPk_matchingPathB_main_gv_placedBudget [LibsignalPlacement
       g recG sess.state y.g.peer y.g.me y.g.msgG.msg y.g.msg.message F_p3 _
       (hfits_p3 hrem_eq evs_p2 recG hevs_p2 hex hgv)
       (by decide) (Or.inr (distinctSid_of_decPkOkPathB hdecOk)) hSeeds hRC hPqLt
+      (e2c_peer_name_len_le_40 hdecOk)
       hro2 hpc2 hrun2 hsp_align2 (hs2_sp ▸ hroot) htr20 hvregs2 ?_ ?_ ?_
     · intro G₁ G' evs_p3 pt ptCap ptPtr s' P_s' hver hcl hdec_rel hevs_p3 hok hpt_le hpt_lt hpt_ne
         hsteps2' hpc' hrun' hs'_sp htr' hvregs' hx19' hx24' hx25' hx26' hx27' hx28'
@@ -1933,7 +1981,7 @@ private theorem e2c_closure_trusted_pathB_of_matched_placedBudget [LibsignalPlac
 
 /-- `SessionGhostValid`-strengthened counterpart of `MatchingPathBPollEnv`, routing the trusted
 branch through `MatchingPathBGvMainEnv`. -/
-def MatchingPathBGvPollEnv [LibsignalPlacement] (A_r : RustAlloc)
+@[expose] def MatchingPathBGvPollEnv [LibsignalPlacement] (A_r : RustAlloc)
     (W : CliHooks) (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -2021,7 +2069,7 @@ private theorem e2c_decPk_matchingPathB_poll_gv_placedBudget [LibsignalPlacement
     have hh_st := runHooks_to_stages hh
     have hne_false :
         CryptoVerification.SignalSession.Cli.StoresGhost.opened.identity.trusted cliIo.rd y.g.F y.g.peer.val y.g.msg.identityKey ≠ .ok false := by
-      rw [htrusted]; decide
+      rw [htrusted]; nofun
     have hfits_seq : FitsEnv M lim y.st
         (SeqEnv
           (StageP1OkEnv
@@ -2069,7 +2117,7 @@ private theorem e2c_toSkeletonRunHooks [LibsignalPlacement] {M : AllocCostModel}
   { alloc := hh.alloc, allocFs := hh.allocFs, panics := hh.panics, memcpyRO := hh.memcpyRO,
     bcmp := hh.bcmp, fs := hh.fs, utf8 := hh.utf8, memrchr := hh.memrchr,
     codecHooks := hh.codecHooks, allocZeroed := hh.allocZeroed, stringClone := hh.stringClone,
-    formatInner := hh.formatInner, blackBox := hh.blackBox }
+    formatInner := hh.formatInner, fmtWrite := hh.fmtWrite, blackBox := hh.blackBox }
 
 private theorem e2c_withPanics_cliGhostExterns_eq (mmpl : Obj.MultiPlacement)
     (gh : CliGhostHooks) (W : CliHooks) :
@@ -2078,7 +2126,7 @@ private theorem e2c_withPanics_cliGhostExterns_eq (mmpl : Obj.MultiPlacement)
   withPanics_cliGhostExterns mmpl gh W
 
 /-- Parametric `SessionGhostValid`-strengthened Path-B `decrypt_prekey` slot envelope. -/
-def DecPkD3MatchingPathBGvEnv [LibsignalPlacement] (A : RustAlloc)
+@[expose] def DecPkD3MatchingPathBGvEnv [LibsignalPlacement] (A : RustAlloc)
     (W : CliHooks) (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)

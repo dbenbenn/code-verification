@@ -9,21 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailFromSessionStateErr
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CommonPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.TailFromSessionStateErrPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.TailDropRecordStepsPlacedBudget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailFromSessionStateErr
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CommonPlacedBudget
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.TailFromSessionStateErrPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.TailDropRecordStepsPlacedBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 public import ProofLib.SepLogic.WP.Apply
 public meta import ProofLib.SepLogic.WP -- shake: keep
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Budget-Threaded Relocatable T1 `from_session_state` Error Tail (`+0x49c..+0x564`)
@@ -32,7 +37,7 @@ Proves `fromSessionStateErr_placed_sepWP` and `tailFromSessionStateErr_placed_ok
 (`lsProg_464 Hk`) under `RustCliAllocBudget M` and `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -480,75 +485,6 @@ theorem tailFromSessionStateErr_placed_ok [LibsignalPlacement]
     SegExitBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl uuidTryParse S sendEnv encRecord Hk
       x st_init R0 s0 s (fun _ => False) :=
   tailFromSessionStateErr_placed_ok_of_dropSs env.toEncEnvBudget env.calleesFull.dropSs
-    x st_init st R0 s0 s answers e w0 w1 w2 w3 w4 w5 H g rec hm hst hs
-
-theorem tailFromSessionStateErrPlaced_ok_of_dropSs [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop} {Q : List (BitVec 8) → Prop}
-    {C : Crypto} {ctl : BitVec 64}
-    {S : SpqrModel} {sendEnv : SpqrSendBudgetEnv}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {Hk : LibsignalHooks}
-    {kit : SessionStoreSpec A.repAlloc 0#64}
-    {kitEnv : LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget.SessionStoreBudgetEnv kit}
-    {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A.repAlloc 0#64}
-    {ikitEnv : LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget.IdentityStoreBudgetEnv ikit}
-    {ist0 : ikit.IdState}
-    (envB : EncEnvBudget A lim kit (toTempTwinsKitEnv kitEnv) st0 ikit (toTempTwinsIkitEnv ikitEnv) ist0
-      Scope Q C ctl uuidTryParse S sendEnv encRecord Hk)
-    (hdrop : subroutine_ok (lsProg_464 Hk) (lsmpl.base 442)
-      (StoreKit.withLsRoCl lsmpl (dropSessionStructureLocal2BudgetSpec M A lim)))
-    (x : WithStoresEncGhost) (st_init st : M.σ) (R0 : SepProp) (s0 s : State)
-    (answers : StoreAnswers (List (BitVec 8)) Unit) (e : ApiError AddrVal Unit)
-    (w0 w1 w2 w3 w4 w5 : BitVec 64) (H : SepProp) (g : RecordGhost)
-    (rec : SessionRecord (List (BitVec 8)))
-    (hm : TailModel kit st0 ikit ist0 C S uuidTryParse encRecord x answers (.error e) s0 s)
-    (hst : SpeStaged A.repAlloc x.ret e [w0, w1, w2, w3, w4, w5] H)
-    (hs : EncTailVPlaced A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl uuidTryParse S sendEnv
-      x st_init st answers (encEntryPlaced + 0x49c#64)
-      (fun sp s => s.readReg64 .x21 = sp + 0x580#64 ∧ s.readReg64 .x25 = sp + 0x580#64 ∧
-        s.readReg64 .x26 = sp + 0x9d0#64 ∧ s.readReg64 .x28 = sp + 0x4a0#64)
-      (fun sp => curScratch sp ∗ sessionRecordAt A.repAlloc (sp + 0x110#64) g rec ∗
-        memRegion (sp + 0x280#64) 0x1ea ∗ pollWith sp 0x588 [w0, w1, w2, w3, w4, w5] ∗ H)
-      R0 s0 s) :
-    SegExitPlaced A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl uuidTryParse S sendEnv encRecord Hk
-      x st_init R0 s0 s (fun _ => False) :=
-  tailFromSessionStateErr_placed_ok_of_dropSs envB hdrop
-    x st_init st R0 s0 s answers e w0 w1 w2 w3 w4 w5 H g rec hm hst hs
-
-theorem tailFromSessionStateErrPlaced_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop} {Q : List (BitVec 8) → Prop}
-    {C : Crypto} {ctl : BitVec 64}
-    {S : SpqrModel} {sendEnv : SpqrSendBudgetEnv}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {Hk : LibsignalHooks}
-    {kit : SessionStoreSpec A.repAlloc 0#64}
-    {kitEnv : LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget.SessionStoreBudgetEnv kit}
-    {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A.repAlloc 0#64}
-    {ikitEnv : LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget.IdentityStoreBudgetEnv ikit}
-    {ist0 : ikit.IdState}
-    (env : EncEnvPlaced A lim kit kitEnv st0 ikit ikitEnv ist0 Scope Q C ctl uuidTryParse S sendEnv encRecord Hk)
-    (envB : EncEnvBudget A lim kit (toTempTwinsKitEnv kitEnv) st0 ikit (toTempTwinsIkitEnv ikitEnv) ist0
-      Scope Q C ctl uuidTryParse S sendEnv encRecord Hk)
-    (x : WithStoresEncGhost) (st_init st : M.σ) (R0 : SepProp) (s0 s : State)
-    (answers : StoreAnswers (List (BitVec 8)) Unit) (e : ApiError AddrVal Unit)
-    (w0 w1 w2 w3 w4 w5 : BitVec 64) (H : SepProp) (g : RecordGhost)
-    (rec : SessionRecord (List (BitVec 8)))
-    (hm : TailModel kit st0 ikit ist0 C S uuidTryParse encRecord x answers (.error e) s0 s)
-    (hst : SpeStaged A.repAlloc x.ret e [w0, w1, w2, w3, w4, w5] H)
-    (hs : EncTailVPlaced A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl uuidTryParse S sendEnv
-      x st_init st answers (encEntryPlaced + 0x49c#64)
-      (fun sp s => s.readReg64 .x21 = sp + 0x580#64 ∧ s.readReg64 .x25 = sp + 0x580#64 ∧
-        s.readReg64 .x26 = sp + 0x9d0#64 ∧ s.readReg64 .x28 = sp + 0x4a0#64)
-      (fun sp => curScratch sp ∗ sessionRecordAt A.repAlloc (sp + 0x110#64) g rec ∗
-        memRegion (sp + 0x280#64) 0x1ea ∗ pollWith sp 0x588 [w0, w1, w2, w3, w4, w5] ∗ H)
-      R0 s0 s) :
-    SegExitPlaced A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl uuidTryParse S sendEnv encRecord Hk
-      x st_init R0 s0 s (fun _ => False) :=
-  tailFromSessionStateErrPlaced_ok_of_dropSs envB env.callees.toTempTwinsFull.dropSs
     x st_init st R0 s0 s answers e w0 w1 w2 w3 w4 w5 H g rec hm hst hs
 
 end LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.TailFromSessionStateErrPlacedBudget

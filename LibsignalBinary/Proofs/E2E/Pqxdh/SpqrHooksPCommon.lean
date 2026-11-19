@@ -10,9 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhHooksCommon
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy
 import ProofLib.SepLogic.WP.Structural
-public import LibsignalBinary.Proofs.E2E.HooksE.Common
+public import LibsignalBinary.Proofs.E2E.HooksE.Common -- proof-setup: allow-public-import
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Auth
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # E2E SPQR V1 Hook Satisfaction
@@ -21,7 +23,7 @@ Proves `HookOk` for the eight SPQR V1 concrete hooks in `PqxdhHooks.lean` and as
 `spqrHooks_of_env_pqxdh : SpqrHooks C (HooksE.allocModelE env) Q.K (absP C Q env)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -37,6 +39,7 @@ open CryptoVerification.LibsignalSession.NonVacuityWitness
 open CryptoVerification.LibsignalSpqrV1
 open CryptoVerification.E2E CryptoVerification.E2E.HooksE
 open CryptoVerification.E2E.HooksE.HooksOkAux
+open LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy (mlkemPk1Hook mlkemPk2Hook)
 
 /-! ## Memory Read Helper for `readVecN` -/
 
@@ -326,7 +329,7 @@ theorem libcruxHmacHook_ok (F : ShaState → List (BitVec 8) → ShaState) :
       change writeVecHeader ((s0.mem.mapFresh p tag.length Perm.rw).writeBytes p tag)
         x.ret (BitVec.ofNat 64 tag.length) p (BitVec.ofNat 64 tag.length) ⊨
         (x.keyA ↦ₛ x.key) ∗ ((x.dataA ↦ₛ x.data) ∗
-          (vecU8 A0 x.ret tag ∗ (stackAt s0.sp extHookStack ∗ R)))
+          (CryptoVerification.RustHeap.vecU8 A0 x.ret tag ∗ (stackAt s0.sp extHookStack ∗ R)))
       ac_nf at hvec ⊢
   · simp only [hlen, ↓reduceIte]
     refine ⟨Memory.KeepsFrozen.refl s0.mem, rfl, Or.inr (Or.inl ⟨rfl, ?_⟩)⟩

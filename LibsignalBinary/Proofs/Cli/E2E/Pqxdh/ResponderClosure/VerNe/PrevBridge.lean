@@ -11,6 +11,7 @@ module
 
 public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Defs
 import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.ReprMove
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Archived Session Predicates and `previous_sessions` Bridges
@@ -20,7 +21,7 @@ entailments turning a decoded `prostSSGQAt` into a `SessionStructure` drop preco
 (`prevDec_dropPreA`), and `Vec<Vec<u8>>` layout helpers (`prevVecAt`, `hdrP_coro_344_entails_368`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,7 +41,7 @@ open Symbolic.Swarm.TRREF.B3DeserQ (prostSSGQAt ssgqOf prostSSGQ_reprA prostSSGQ
 
 /-- The archived bytes `enc` are the encoding of `sess` in `DeserializeScopeP_Q NonEmptyV1Q`,
 with `session_version = 4` and no pending pre-keys. -/
-def OverPrevEncOKAt (enc : List (BitVec 8)) (sess : Session (List (BitVec 8))) : Prop :=
+@[expose] def OverPrevEncOKAt (enc : List (BitVec 8)) (sess : Session (List (BitVec 8))) : Prop :=
   enc = CryptoVerification.E2E.Record.encSession sess ∧
     Symbolic.Swarm.TRREF.B3Defs.DeserializeScopeP_Q Symbolic.Swarm.TRREF.B3Defs.NonEmptyV1Q
       ⟨some sess⟩ ∧
@@ -48,7 +49,7 @@ def OverPrevEncOKAt (enc : List (BitVec 8)) (sess : Session (List (BitVec 8))) :
     sess.pendingPreKey = none ∧ sess.pendingKyberPreKey = none
 
 /-- The archived previous session `enc` is the encoding of a canonical v4 session with no pending pre-keys. -/
-def OverPrevEncOK (enc : List (BitVec 8)) : Prop :=
+@[expose] def OverPrevEncOK (enc : List (BitVec 8)) : Prop :=
   ∃ sess : Session (List (BitVec 8)),
     enc = CryptoVerification.E2E.Record.encSession sess ∧
     Symbolic.Swarm.TRREF.B3Defs.DeserializeScopeP_Q Symbolic.Swarm.TRREF.B3Defs.NonEmptyV1Q

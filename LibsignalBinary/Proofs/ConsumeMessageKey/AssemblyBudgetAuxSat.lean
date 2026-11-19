@@ -9,14 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudgetAux -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.DefsSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudgetAux
+import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.DefsSat
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyExactCore -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import ProofLib.SepLogic.HeapIntro
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExtractCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.FinalizeFixedSegsExt -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `HookSat`-Compatible `VmPreserved` Lifting Helpers
@@ -325,6 +329,48 @@ private theorem ldrToAddWord_top6 (w : BitVec 32) :
   intro h; have hb := congrArg (fun v => v.getLsbD 26) h
   simp [ldrToAddWord] at hb
 
+private theorem nopWord_not_isMsr :
+    Arm64.isMsrTpidrEl0Word nopWord = false := rfl
+
+private theorem patchGotOrTlsIeRelaxed_not_isMsr (w : BitVec 32) (place target : BitVec 64)
+    {k : RelocKind} (hisgot : k.isGotOrTlsIe = true) :
+    Arm64.isMsrTpidrEl0Word (CodeBlock.patchGotOrTlsIeRelaxed w place target k) = false := by
+  cases hk : k
+  all_goals rw [hk] at hisgot; try contradiction
+  · exact nopWord_not_isMsr
+  · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 0 (ldrToAddWord_top6 _) _)
+  · exact tlsieMovzWord_not_isMsr _ _
+  · exact tlsieMovkWord_not_isMsr _ _
+
+private theorem patchRelocWord_not_isMsr {w : BitVec 32} {r : RelocEntry}
+    (hksafe : VerifiedLibraries.RustStd.relocKindSafeNoSvc0 r.kind = true)
+    (hw_off : VerifiedLibraries.RustStd.checkRelocWordNoSvc0 w r = true)
+    (place target : BitVec 64) :
+    Arm64.isMsrTpidrEl0Word (patchRelocWord r.kind w place target) = false := by
+  unfold VerifiedLibraries.RustStd.checkRelocWordNoSvc0 at hw_off
+  cases hk : r.kind
+  all_goals rw [hk] at hksafe; try contradiction
+  all_goals rw [hk] at hw_off; simp only [isTlsdescKind, isAdrpRelocKind, Bool.false_or,
+    Bool.true_or, Bool.not_true, Bool.not_false, Bool.and_true, Bool.and_eq_true,
+    bne_iff_ne, beq_iff_eq] at hw_off
+  · exact not_isMsrTpidrEl0Word_of_top6 (branchWord_top6 hw_off _ _)
+  · exact not_isMsrTpidrEl0Word_of_top6 (branchWord_top6 hw_off _ _)
+  · exact adrpWord_not_isMsr hw_off.2 _ _
+  · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 0 hw_off _)
+  · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 0 hw_off _)
+  · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 1 hw_off _)
+  · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 2 hw_off _)
+  · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 3 hw_off _)
+  · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 4 hw_off _)
+  · exact adrpWord_not_isMsr hw_off.2 _ _
+  · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 3 hw_off _)
+  · exact adrpWord_not_isMsr hw_off.2 _ _
+  · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 3 hw_off _)
+  · exact tlsdescAdrPage21Word_not_isMsr _
+  · exact tlsdescLd64Lo12Word_not_isMsr _
+  · exact nopWord_not_isMsr
+  · exact nopWord_not_isMsr
+
 private theorem patchedWord_not_isMsrTpidrEl0 {blk : CodeBlock} (pl : Placement)
     (hchk : checkBlockNoMsrTpidrEl0 blk = true) {off : Nat}
     (hal : off % 4 = 0) (hlen : off + 4 ≤ blk.code.length) :
@@ -338,16 +384,18 @@ private theorem patchedWord_not_isMsrTpidrEl0 {blk : CodeBlock} (pl : Placement)
     | none => !Arm64.isMsrTpidrEl0Word (blk.wordAt off)
     | some r => VerifiedLibraries.RustStd.checkRelocWordNoSvc0 (blk.wordAt off) r) = true at hw_off
   unfold CodeBlock.patchedWord
+  dsimp only
+  obtain ⟨w, hw_eq⟩ : ∃ w, blk.wordAt off = w := ⟨_, rfl⟩
+  rw [hw_eq] at hw_off ⊢
   cases hr : blk.relocAt? off with
   | none =>
     rw [hr] at hw_off
-    cases h : Arm64.isMsrTpidrEl0Word (blk.wordAt off) <;> simp_all
+    cases h : Arm64.isMsrTpidrEl0Word w <;> simp_all
   | some r =>
     dsimp only; rw [hr] at hw_off; dsimp only at hw_off
-    have hrmem : r ∈ blk.relocs := List.mem_of_find?_eq_some hr
-    have hksafe := hrelocs r hrmem
+    have hksafe := hrelocs r (List.mem_of_find?_eq_some hr)
     split
-    · decide
+    · exact nopWord_not_isMsr
     · split
       · exact adrWord_not_isMsr _ _ _
       · split
@@ -355,36 +403,8 @@ private theorem patchedWord_not_isMsrTpidrEl0 {blk : CodeBlock} (pl : Placement)
         · split
           · rename_i _ _ _ hgot
             simp only [Bool.and_eq_true] at hgot
-            have hisgot : r.kind.isGotOrTlsIe = true := hgot.1.1
-            cases hk : r.kind
-            all_goals rw [hk] at hisgot; try contradiction
-            · simp [CodeBlock.patchGotOrTlsIeRelaxed, nopWord, Arm64.isMsrTpidrEl0Word]
-            · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 0 (ldrToAddWord_top6 _) _)
-            · exact tlsieMovzWord_not_isMsr _ _
-            · exact tlsieMovkWord_not_isMsr _ _
-          · unfold VerifiedLibraries.RustStd.checkRelocWordNoSvc0 at hw_off
-            cases hk : r.kind
-            all_goals rw [hk] at hksafe; try contradiction
-            all_goals rw [hk] at hw_off; simp only [isTlsdescKind, isAdrpRelocKind, Bool.false_or,
-              Bool.true_or, Bool.not_true, Bool.not_false, Bool.and_true, Bool.and_eq_true,
-              bne_iff_ne, beq_iff_eq] at hw_off
-            · exact not_isMsrTpidrEl0Word_of_top6 (branchWord_top6 hw_off _ _)
-            · exact not_isMsrTpidrEl0Word_of_top6 (branchWord_top6 hw_off _ _)
-            · exact adrpWord_not_isMsr hw_off.2 _ _
-            · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 0 hw_off _)
-            · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 0 hw_off _)
-            · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 1 hw_off _)
-            · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 2 hw_off _)
-            · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 3 hw_off _)
-            · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 4 hw_off _)
-            · exact adrpWord_not_isMsr hw_off.2 _ _
-            · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 3 hw_off _)
-            · exact adrpWord_not_isMsr hw_off.2 _ _
-            · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 3 hw_off _)
-            · exact tlsdescAdrPage21Word_not_isMsr _
-            · exact tlsdescLd64Lo12Word_not_isMsr _
-            · simp [patchRelocWord, nopWord, Arm64.isMsrTpidrEl0Word]
-            · simp [patchRelocWord, nopWord, Arm64.isMsrTpidrEl0Word]
+            exact patchGotOrTlsIeRelaxed_not_isMsr _ _ _ hgot.1.1
+          · exact patchRelocWord_not_isMsr hksafe hw_off _ _
 
 private theorem bytesAllWords_of_drop4 {pw : BitVec 32 → Bool} :
     ∀ (n : Nat) (bs : List (BitVec 8)), bs.length = 4 * n →
@@ -432,7 +452,7 @@ theorem blockProgram_allInstrs_not_isMsrTpidrEl0 (lib : MultiPlacedLib) (mpl : M
 /-! ## `memset`-Free `VmPreserved` Block Lifting -/
 
 /-- Hook table keeping `memcpyHook` and `compress256Hook F` while trapping all other hooks in `H`. -/
-def hmacNoMemsetExcHooks (F : ShaState → List (BitVec 8) → ShaState) (H : LibsignalHooks) :
+@[expose] def hmacNoMemsetExcHooks (F : ShaState → List (BitVec 8) → ShaState) (H : LibsignalHooks) :
     LibsignalHooks :=
   fun n =>
     if n = lsMemcpySym then some memcpyHook
@@ -442,11 +462,6 @@ def hmacNoMemsetExcHooks (F : ShaState → List (BitVec 8) → ShaState) (H : Li
 theorem hmacNoMemsetExcHooks_memcpy (F : ShaState → List (BitVec 8) → ShaState) (H : LibsignalHooks) :
     hmacNoMemsetExcHooks F H lsMemcpySym = some memcpyHook := by
   simp [hmacNoMemsetExcHooks]
-
-theorem hmacNoMemsetExcHooks_compress (F : ShaState → List (BitVec 8) → ShaState) (H : LibsignalHooks) :
-    hmacNoMemsetExcHooks F H lsCompress256Sym = some (compress256Hook F) := by
-  have hne : lsCompress256Sym ≠ lsMemcpySym := by decide
-  simp [hmacNoMemsetExcHooks, hne]
 
 private theorem stripExecOutside_writeBytes (p : BitVec 64 → Bool) :
     ∀ (m : Memory) (a : BitVec 64) (bs : List (BitVec 8)),
@@ -648,178 +663,6 @@ private theorem step_P_exec_eq {P : Program} {s1 s2 : State} {inst : Instr}
   | extern_fault _ he _ =>
     rw [heP_none] at he; cases he
 
-private theorem steps_hmacNoMemsetExc_lift_strip
-    (lib : MultiPlacedLib) (pl : MultiPlacement) (i : Nat)
-    {F : ShaState → List (BitVec 8) → ShaState} {H : LibsignalHooks}
-    (h_mc : H lsMemcpySym = some memcpyHook)
-    (h_c256 : H lsCompress256Sym = some (compress256Hook F))
-    (hall_svc : (lib.blockProgram pl i (hmacNoMemsetExcHooks F H)).allInstrs
-      (fun ins => !ins.isSvc0) = true)
-    (hall_msr : (lib.blockProgram pl i (hmacNoMemsetExcHooks F H)).allInstrs
-      (fun ins => !ins.isMsrTpidrEl0) = true)
-    {s1' sf' : State}
-    (hsteps : Steps (lib.blockProgram pl i (hmacNoMemsetExcHooks F H)) s1' sf')
-    (hrun_f : sf'.status = .Running) :
-    let Q := lib.blockProgram pl i (hmacNoMemsetExcHooks F H)
-    let P := lib.blockProgram pl i H
-    ∀ (s1 sfP : State),
-      s1' = ProofLib.stripS (ProofLib.progKeep Q) s1 →
-      Q.CodeLoaded s1.mem →
-      Steps P s1 sfP →
-      sfP.status = .Running →
-      ∃ sf : State,
-        Steps P s1 sf ∧
-        VmPreserved s1 sf ∧
-        (sf' = ProofLib.stripS (ProofLib.progKeep Q) sf ∨ sf = sfP) := by
-  intro Q P
-  induction hsteps with
-  | refl =>
-    intro s1 _ hs1 _ _ _
-    exact ⟨s1, .refl s1, VmPreserved.refl s1, Or.inl hs1⟩
-  | @step sa' sb' sc' h1 hrest ih =>
-    intro s1 sfP hsa hL1 hstepsP hrun_sfP
-    cases hstepsP with
-    | refl =>
-      exact ⟨s1, .refl s1, VmPreserved.refl s1, Or.inr rfl⟩
-    | @step _ s2P _ h1_P hrest_P =>
-      have hr2P : s2P.status = .Running := steps_start_running hrest_P hrun_sfP
-      have hrb' : sb'.status = .Running := steps_start_running hrest hrun_f
-      subst hsa
-      cases h1 with
-      | halt_unmapped _ _ _ => cases s1; cases hrb'
-      | extern_fault _ _ _ => cases s1; cases hrb'
-      | extern hr1' he _ _ =>
-        have hr1 : s1.status = .Running := by cases s1; exact hr1'
-        have hpc_eq : (ProofLib.stripS (ProofLib.progKeep Q) s1).pc = s1.pc := by cases s1; rfl
-        rw [hpc_eq] at he
-        rcases blockProgram_hmacNoMemsetExcHooks_externAt?_cases h_mc h_c256 he with
-          htrap | ⟨hf_which, heP⟩
-        · rw [htrap] at hrb'; cases hrb'
-        · obtain ⟨hs2P, hkf1, hsym1⟩ := step_P_extern_eq h1_P hr2P heP
-          rw [hs2P] at hrest_P
-          have hstepP := Step.extern hr1 heP hkf1 hsym1
-          rcases hf_which with rfl | rfl
-          · obtain ⟨sf, hsteps_rest, hvm_rest, hor⟩ :=
-              ih hrun_f (memcpyHook s1) sfP (stripS_memcpyHook (ProofLib.progKeep Q) s1)
-                (hL1.of_keepsFrozen hkf1) hrest_P hrun_sfP
-            exact ⟨sf, .step hstepP hsteps_rest, (vmPreserved_memcpyHook s1).trans hvm_rest, hor⟩
-          · obtain ⟨sf, hsteps_rest, hvm_rest, hor⟩ :=
-              ih hrun_f (compress256Hook F s1) sfP
-                (stripS_compress256Hook F (ProofLib.progKeep Q) s1)
-                (hL1.of_keepsFrozen hkf1) hrest_P hrun_sfP
-            exact ⟨sf, .step hstepP hsteps_rest,
-              (vmPreserved_compress256Hook F s1).trans hvm_rest, hor⟩
-      | @exec inst hr1' hfe' =>
-        have hr1 : s1.status = .Running := by cases s1; exact hr1'
-        have hL1' : Q.CodeLoaded (ProofLib.stripS (ProofLib.progKeep Q) s1).mem :=
-          strip_codeLoaded_of_keep hL1
-        have hexec' : Q.ExecOnlyIn (ProofLib.stripS (ProofLib.progKeep Q) s1).mem :=
-          strip_execOnlyIn_of_keep Q s1.mem
-        have hnsvc0 : inst.isSvc0 = false := by
-          simpa using Program.fetchMem_of_allInstrs hall_svc hL1' hexec' _ inst hfe'
-        have hnmsr : inst.isMsrTpidrEl0 = false := by
-          simpa using Program.fetchMem_of_allInstrs hall_msr hL1' hexec' _ inst hfe'
-        have hfe_P : P.fetchMem s1.mem s1.pc = some inst := by
-          have hpc_eq : (ProofLib.stripS (ProofLib.progKeep Q) s1).pc = s1.pc := by cases s1; rfl
-          have hmem_eq : (ProofLib.stripS (ProofLib.progKeep Q) s1).mem =
-              ProofLib.stripExecOutside (ProofLib.progKeep Q) s1.mem := by cases s1; rfl
-          rw [hpc_eq, hmem_eq] at hfe'
-          unfold Program.fetchMem at hfe' ⊢
-          have his : (Q.externAt? s1.pc).isSome = (P.externAt? s1.pc).isSome :=
-            blockProgram_hmacNoMemsetExcHooks_externAt?_isSome lib pl i h_mc h_c256 s1.pc
-          rw [his] at hfe'
-          cases heP : (P.externAt? s1.pc).isSome
-          · simp only [heP, Bool.false_eq_true, ↓reduceIte] at hfe' ⊢
-            by_cases hal_pc : s1.pc.toNat % 4 = 0
-            · simp only [hal_pc, ne_eq, not_true_eq_false, ↓reduceIte] at hfe' ⊢
-              split at hfe'
-              · contradiction
-              · rename_i hce'
-                have hce : s1.mem.canExec s1.pc 4 = true := by
-                  simp only [Bool.not_eq_true', Bool.not_eq_false] at hce'
-                  unfold Memory.canExec at hce' ⊢
-                  rw [Memory.allPerm_iff] at hce' ⊢
-                  intro k hk
-                  have hxk := hce' k hk
-                  rwa [ProofLib.strip_perm_of_keep (ProofLib.strip_perm_x_imp hxk).2] at hxk
-                have hr32 : (ProofLib.stripExecOutside (ProofLib.progKeep Q) s1.mem).read32 s1.pc =
-                    s1.mem.read32 s1.pc := by
-                  simp [Memory.read32, ProofLib.strip_read8]
-                rw [hr32] at hfe'
-                simp only [hce, Bool.not_true, Bool.false_eq_true, ↓reduceIte]
-                exact hfe'
-            · simp only [hal_pc, ne_eq, not_false_eq_true, ↓reduceIte] at hfe'
-              contradiction
-          · simp only [heP, ↓reduceIte] at hfe'
-            contradiction
-        have hev_Q : Q.evalInst inst (ProofLib.stripS (ProofLib.progKeep Q) s1) =
-            ProofLib.stripS (ProofLib.progKeep Q) (execInst inst s1) := by
-          rw [Arm64.evalInst_eq_execInst_of_not_isSvc0 hnsvc0, ProofLib.execInst_stripS hnsvc0]
-        have hs2P := step_P_exec_eq h1_P hfe_P hnsvc0
-        rw [hs2P] at hrest_P
-        have hstep_P : Step P s1 (execInst inst s1) := by
-          have := Step.exec (prog := P) hr1 hfe_P
-          rwa [Arm64.evalInst_eq_execInst_of_not_isSvc0 hnsvc0] at this
-        have hLQ_next : Q.CodeLoaded (execInst inst s1).mem := hstep_P.codeLoaded hL1
-        obtain ⟨sf, hsteps_rest, hvm_rest, hor⟩ :=
-          ih hrun_f (execInst inst s1) sfP hev_Q hLQ_next hrest_P hrun_sfP
-        have hnsp1 := ProofLib.execInst_nonSyscallPreserved_of_not_isSvc0 hnsvc0 s1
-        have htp1 := Arm64.execInst_tpidrEl0_of_not_isMsrTpidrEl0 hnmsr s1
-        exact ⟨sf, .step hstep_P hsteps_rest, (hnsp1.toVmPreserved htp1).trans hvm_rest, hor⟩
-
-/-- Lift a `memset`-free `RunsTo` segment on block `i` to `Steps` and `VmPreserved`. -/
-theorem runsTo_block_lift_vm_no_memset [LibsignalPlacement] {blkLib : PlacedLib}
-    {i : Nat} {F : ShaState → List (BitVec 8) → ShaState} {H : LibsignalHooks}
-    (h_mc : H lsMemcpySym = some memcpyHook)
-    (h_c256 : H lsCompress256Sym = some (compress256Hook F))
-    (hlib : blkLib = libsignalSessionLib.blockLib i)
-    (hchk_svc : VerifiedLibraries.RustStd.checkBlockNoSvc0 blkLib.text = true := by rfl)
-    (hchk_msr : checkBlockNoMsrTpidrEl0 blkLib.text = true := by rfl)
-    {s : State} {PostP PostQ : State → Prop}
-    (hL : (libsignalSessionLib.blockProgram lsmpl i H).CodeLoaded s.mem)
-    (hrunsP : RunsTo (libsignalSessionLib.blockProgram lsmpl i H) s PostP)
-    (hrunsQ : RunsTo (libsignalSessionLib.blockProgram lsmpl i (hmacNoMemsetExcHooks F H))
-      (ProofLib.stripS (ProofLib.progKeep
-        (libsignalSessionLib.blockProgram lsmpl i (hmacNoMemsetExcHooks F H))) s) PostQ)
-    (hPostP_run : ∀ s', PostP s' → s'.status = .Running)
-    (hPostQ_run : ∀ s', PostQ s' → s'.status = .Running) :
-    let Q := libsignalSessionLib.blockProgram lsmpl i (hmacNoMemsetExcHooks F H)
-    ∃ sf : State,
-      Steps (libsignalSessionLib.blockProgram lsmpl i H) s sf ∧
-      VmPreserved s sf ∧
-      sf.trace = s.trace ∧
-      calleeSavedVRegs sf = calleeSavedVRegs s ∧
-      (PostQ (ProofLib.stripS (ProofLib.progKeep Q) sf) ∨ PostP sf) := by
-  subst hlib
-  intro Q
-  have hall0 := blockProgram_rebase_allInstrs_not_isSvc0 libsignalSessionLib lsmpl i hchk_svc
-  have hall_svc : Q.allInstrs (fun ins => !ins.isSvc0) = true := hall0
-  have hall_msr : Q.allInstrs (fun ins => !ins.isMsrTpidrEl0) = true :=
-    blockProgram_allInstrs_not_isMsrTpidrEl0 libsignalSessionLib lsmpl i
-      (hmacNoMemsetExcHooks F H) hchk_msr
-  have hLQ : Q.CodeLoaded s.mem := hL.of_base_code rfl rfl
-  have hLQ_strip : Q.CodeLoaded (ProofLib.stripS (ProofLib.progKeep Q) s).mem := by
-    have hm : (ProofLib.stripS (ProofLib.progKeep Q) s).mem =
-        ProofLib.stripExecOutside (ProofLib.progKeep Q) s.mem := by cases s; rfl
-    rw [hm]; exact strip_codeLoaded_of_keep hLQ
-  obtain ⟨sfP, hstepsP, htrP, hvregsP, hPostP, _⟩ := hrunsP hL
-  obtain ⟨sf', hstepsQ, htr', hvregs', hPost', _⟩ := hrunsQ hLQ_strip
-  obtain ⟨sf, hsteps_out, hvm, hsf_eq | rfl⟩ :=
-    steps_hmacNoMemsetExc_lift_strip libsignalSessionLib lsmpl i h_mc h_c256 hall_svc hall_msr
-      hstepsQ (hPostQ_run sf' hPost') s sfP rfl hLQ hstepsP (hPostP_run sfP hPostP)
-  · have htr : sf.trace = s.trace := by
-      have h1 : sf'.trace = sf.trace := by rw [hsf_eq]; cases sf; rfl
-      have h2 : (ProofLib.stripS (ProofLib.progKeep Q) s).trace = s.trace := by cases s; rfl
-      exact h1.symm.trans (htr'.trans h2)
-    have hvregs : calleeSavedVRegs sf = calleeSavedVRegs s := by
-      have h1 : calleeSavedVRegs sf' = calleeSavedVRegs sf := by
-        rw [hsf_eq]; cases sf; rfl
-      have h2 : calleeSavedVRegs (ProofLib.stripS (ProofLib.progKeep Q) s) = calleeSavedVRegs s := by
-        cases s; rfl
-      exact h1.symm.trans (hvregs'.trans h2)
-    exact ⟨sf, hsteps_out, hvm, htr, hvregs, Or.inl (hsf_eq ▸ hPost')⟩
-  · exact ⟨sf, hsteps_out, hvm, htrP, hvregsP, Or.inr hPostP⟩
-
 /-! ## 4. `HookSatExactMemcpy` Single-Step & `compress256`-Only Block `VmPreserved` Lifting -/
 
 private theorem vmPreserved_applyMemcpyClobber_writeBytes (s : State) (dst lr : BitVec 64)
@@ -877,7 +720,7 @@ theorem placed_memcpy_budget_steps_sat_exact [LibsignalPlacement] {prog : Progra
 /-- `compress256`-only exception-trap hook map: keeps `compress256Hook F`, mapping all other
 present hooks in `H` (including both `lsMemsetSym` and `lsMemcpySym`) to an exception trap so
 `memset`- and `memcpy`-free segments lift without equality assumptions on either symbol. -/
-def hmacCompressOnlyExcHooks (F : ShaState → List (BitVec 8) → ShaState) (H : LibsignalHooks) :
+@[expose] def hmacCompressOnlyExcHooks (F : ShaState → List (BitVec 8) → ShaState) (H : LibsignalHooks) :
     LibsignalHooks :=
   fun n =>
     if n = lsCompress256Sym then some (compress256Hook F)
@@ -964,172 +807,5 @@ private theorem blockProgram_hmacCompressOnlyExcHooks_externAt?_cases
     intro l; induction l with | nil => rfl | cons _ _ ih => exact ih
   simp only [ite_self, hnone, Option.or_none] at h ⊢
   exact findSome?_hmacCompressOnlyExcHooks_cases h_c256 _ h
-
-private theorem steps_hmacCompressOnlyExc_lift_strip
-    (lib : MultiPlacedLib) (pl : MultiPlacement) (i : Nat)
-    {F : ShaState → List (BitVec 8) → ShaState} {H : LibsignalHooks}
-    (h_c256 : H lsCompress256Sym = some (compress256Hook F))
-    (hall_svc : (lib.blockProgram pl i (hmacCompressOnlyExcHooks F H)).allInstrs
-      (fun ins => !ins.isSvc0) = true)
-    (hall_msr : (lib.blockProgram pl i (hmacCompressOnlyExcHooks F H)).allInstrs
-      (fun ins => !ins.isMsrTpidrEl0) = true)
-    {s1' sf' : State}
-    (hsteps : Steps (lib.blockProgram pl i (hmacCompressOnlyExcHooks F H)) s1' sf')
-    (hrun_f : sf'.status = .Running) :
-    let Q := lib.blockProgram pl i (hmacCompressOnlyExcHooks F H)
-    let P := lib.blockProgram pl i H
-    ∀ (s1 sfP : State),
-      s1' = ProofLib.stripS (ProofLib.progKeep Q) s1 →
-      Q.CodeLoaded s1.mem →
-      Steps P s1 sfP →
-      sfP.status = .Running →
-      ∃ sf : State,
-        Steps P s1 sf ∧
-        VmPreserved s1 sf ∧
-        (sf' = ProofLib.stripS (ProofLib.progKeep Q) sf ∨ sf = sfP) := by
-  intro Q P
-  induction hsteps with
-  | refl =>
-    intro s1 _ hs1 _ _ _
-    exact ⟨s1, .refl s1, VmPreserved.refl s1, Or.inl hs1⟩
-  | @step sa' sb' sc' h1 hrest ih =>
-    intro s1 sfP hsa hL1 hstepsP hrun_sfP
-    cases hstepsP with
-    | refl =>
-      exact ⟨s1, .refl s1, VmPreserved.refl s1, Or.inr rfl⟩
-    | @step _ s2P _ h1_P hrest_P =>
-      have hr2P : s2P.status = .Running := steps_start_running hrest_P hrun_sfP
-      have hrb' : sb'.status = .Running := steps_start_running hrest hrun_f
-      subst hsa
-      cases h1 with
-      | halt_unmapped _ _ _ => cases s1; cases hrb'
-      | extern_fault _ _ _ => cases s1; cases hrb'
-      | extern hr1' he _ _ =>
-        have hr1 : s1.status = .Running := by cases s1; exact hr1'
-        have hpc_eq : (ProofLib.stripS (ProofLib.progKeep Q) s1).pc = s1.pc := by cases s1; rfl
-        rw [hpc_eq] at he
-        rcases blockProgram_hmacCompressOnlyExcHooks_externAt?_cases h_c256 he with
-          htrap | ⟨rfl, heP⟩
-        · rw [htrap] at hrb'; cases hrb'
-        · obtain ⟨hs2P, hkf1, hsym1⟩ := step_P_extern_eq h1_P hr2P heP
-          rw [hs2P] at hrest_P
-          have hstepP := Step.extern hr1 heP hkf1 hsym1
-          obtain ⟨sf, hsteps_rest, hvm_rest, hor⟩ :=
-            ih hrun_f (compress256Hook F s1) sfP
-              (stripS_compress256Hook F (ProofLib.progKeep Q) s1)
-              (hL1.of_keepsFrozen hkf1) hrest_P hrun_sfP
-          exact ⟨sf, .step hstepP hsteps_rest,
-            (vmPreserved_compress256Hook F s1).trans hvm_rest, hor⟩
-      | @exec inst hr1' hfe' =>
-        have hr1 : s1.status = .Running := by cases s1; exact hr1'
-        have hL1' : Q.CodeLoaded (ProofLib.stripS (ProofLib.progKeep Q) s1).mem :=
-          strip_codeLoaded_of_keep hL1
-        have hexec' : Q.ExecOnlyIn (ProofLib.stripS (ProofLib.progKeep Q) s1).mem :=
-          strip_execOnlyIn_of_keep Q s1.mem
-        have hnsvc0 : inst.isSvc0 = false := by
-          simpa using Program.fetchMem_of_allInstrs hall_svc hL1' hexec' _ inst hfe'
-        have hnmsr : inst.isMsrTpidrEl0 = false := by
-          simpa using Program.fetchMem_of_allInstrs hall_msr hL1' hexec' _ inst hfe'
-        have hfe_P : P.fetchMem s1.mem s1.pc = some inst := by
-          have hpc_eq : (ProofLib.stripS (ProofLib.progKeep Q) s1).pc = s1.pc := by cases s1; rfl
-          have hmem_eq : (ProofLib.stripS (ProofLib.progKeep Q) s1).mem =
-              ProofLib.stripExecOutside (ProofLib.progKeep Q) s1.mem := by cases s1; rfl
-          rw [hpc_eq, hmem_eq] at hfe'
-          unfold Program.fetchMem at hfe' ⊢
-          have his : (Q.externAt? s1.pc).isSome = (P.externAt? s1.pc).isSome :=
-            blockProgram_hmacCompressOnlyExcHooks_externAt?_isSome lib pl i h_c256 s1.pc
-          rw [his] at hfe'
-          cases heP : (P.externAt? s1.pc).isSome
-          · simp only [heP, Bool.false_eq_true, ↓reduceIte] at hfe' ⊢
-            by_cases hal_pc : s1.pc.toNat % 4 = 0
-            · simp only [hal_pc, ne_eq, not_true_eq_false, ↓reduceIte] at hfe' ⊢
-              split at hfe'
-              · contradiction
-              · rename_i hce'
-                have hce : s1.mem.canExec s1.pc 4 = true := by
-                  simp only [Bool.not_eq_true', Bool.not_eq_false] at hce'
-                  unfold Memory.canExec at hce' ⊢
-                  rw [Memory.allPerm_iff] at hce' ⊢
-                  intro k hk
-                  have hxk := hce' k hk
-                  rwa [ProofLib.strip_perm_of_keep (ProofLib.strip_perm_x_imp hxk).2] at hxk
-                have hr32 : (ProofLib.stripExecOutside (ProofLib.progKeep Q) s1.mem).read32 s1.pc =
-                    s1.mem.read32 s1.pc := by
-                  simp [Memory.read32, ProofLib.strip_read8]
-                rw [hr32] at hfe'
-                simp only [hce, Bool.not_true, Bool.false_eq_true, ↓reduceIte]
-                exact hfe'
-            · simp only [hal_pc, ne_eq, not_false_eq_true, ↓reduceIte] at hfe'
-              contradiction
-          · simp only [heP, ↓reduceIte] at hfe'
-            contradiction
-        have hev_Q : Q.evalInst inst (ProofLib.stripS (ProofLib.progKeep Q) s1) =
-            ProofLib.stripS (ProofLib.progKeep Q) (execInst inst s1) := by
-          rw [Arm64.evalInst_eq_execInst_of_not_isSvc0 hnsvc0, ProofLib.execInst_stripS hnsvc0]
-        have hs2P := step_P_exec_eq h1_P hfe_P hnsvc0
-        rw [hs2P] at hrest_P
-        have hstep_P : Step P s1 (execInst inst s1) := by
-          have := Step.exec (prog := P) hr1 hfe_P
-          rwa [Arm64.evalInst_eq_execInst_of_not_isSvc0 hnsvc0] at this
-        have hLQ_next : Q.CodeLoaded (execInst inst s1).mem := hstep_P.codeLoaded hL1
-        obtain ⟨sf, hsteps_rest, hvm_rest, hor⟩ :=
-          ih hrun_f (execInst inst s1) sfP hev_Q hLQ_next hrest_P hrun_sfP
-        have hnsp1 := ProofLib.execInst_nonSyscallPreserved_of_not_isSvc0 hnsvc0 s1
-        have htp1 := Arm64.execInst_tpidrEl0_of_not_isMsrTpidrEl0 hnmsr s1
-        exact ⟨sf, .step hstep_P hsteps_rest, (hnsp1.toVmPreserved htp1).trans hvm_rest, hor⟩
-
-/-- `memset`- and `memcpy`-free sibling of `runsTo_block_lift_vm_no_memset`: lifts any `RunsTo`
-segment on `libsignalSessionLib.blockProgram lsmpl i H` that invokes at most `compress256` to
-`Steps` + `VmPreserved`, with **no** hypothesis on `H lsMemsetSym` or `H lsMemcpySym`. -/
-theorem runsTo_block_lift_vm_compress_only [LibsignalPlacement] {blkLib : PlacedLib}
-    {i : Nat} {F : ShaState → List (BitVec 8) → ShaState} {H : LibsignalHooks}
-    (h_c256 : H lsCompress256Sym = some (compress256Hook F))
-    (hlib : blkLib = libsignalSessionLib.blockLib i)
-    (hchk_svc : VerifiedLibraries.RustStd.checkBlockNoSvc0 blkLib.text = true := by rfl)
-    (hchk_msr : checkBlockNoMsrTpidrEl0 blkLib.text = true := by rfl)
-    {s : State} {PostP PostQ : State → Prop}
-    (hL : (libsignalSessionLib.blockProgram lsmpl i H).CodeLoaded s.mem)
-    (hrunsP : RunsTo (libsignalSessionLib.blockProgram lsmpl i H) s PostP)
-    (hrunsQ : RunsTo (libsignalSessionLib.blockProgram lsmpl i (hmacCompressOnlyExcHooks F H))
-      (ProofLib.stripS (ProofLib.progKeep
-        (libsignalSessionLib.blockProgram lsmpl i (hmacCompressOnlyExcHooks F H))) s) PostQ)
-    (hPostP_run : ∀ s', PostP s' → s'.status = .Running)
-    (hPostQ_run : ∀ s', PostQ s' → s'.status = .Running) :
-    let Q := libsignalSessionLib.blockProgram lsmpl i (hmacCompressOnlyExcHooks F H)
-    ∃ sf : State,
-      Steps (libsignalSessionLib.blockProgram lsmpl i H) s sf ∧
-      VmPreserved s sf ∧
-      sf.trace = s.trace ∧
-      calleeSavedVRegs sf = calleeSavedVRegs s ∧
-      (PostQ (ProofLib.stripS (ProofLib.progKeep Q) sf) ∨ PostP sf) := by
-  subst hlib
-  intro Q
-  have hall0 := blockProgram_rebase_allInstrs_not_isSvc0 libsignalSessionLib lsmpl i hchk_svc
-  have hall_svc : Q.allInstrs (fun ins => !ins.isSvc0) = true := hall0
-  have hall_msr : Q.allInstrs (fun ins => !ins.isMsrTpidrEl0) = true :=
-    blockProgram_allInstrs_not_isMsrTpidrEl0 libsignalSessionLib lsmpl i
-      (hmacCompressOnlyExcHooks F H) hchk_msr
-  have hLQ : Q.CodeLoaded s.mem := hL.of_base_code rfl rfl
-  have hLQ_strip : Q.CodeLoaded (ProofLib.stripS (ProofLib.progKeep Q) s).mem := by
-    have hm : (ProofLib.stripS (ProofLib.progKeep Q) s).mem =
-        ProofLib.stripExecOutside (ProofLib.progKeep Q) s.mem := by cases s; rfl
-    rw [hm]; exact strip_codeLoaded_of_keep hLQ
-  obtain ⟨sfP, hstepsP, htrP, hvregsP, hPostP, _⟩ := hrunsP hL
-  obtain ⟨sf', hstepsQ, htr', hvregs', hPost', _⟩ := hrunsQ hLQ_strip
-  obtain ⟨sf, hsteps_out, hvm, hsf_eq | rfl⟩ :=
-    steps_hmacCompressOnlyExc_lift_strip libsignalSessionLib lsmpl i h_c256 hall_svc hall_msr
-      hstepsQ (hPostQ_run sf' hPost') s sfP rfl hLQ hstepsP (hPostP_run sfP hPostP)
-  · have htr : sf.trace = s.trace := by
-      have h1 : sf'.trace = sf.trace := by rw [hsf_eq]; cases sf; rfl
-      have h2 : (ProofLib.stripS (ProofLib.progKeep Q) s).trace = s.trace := by cases s; rfl
-      exact h1.symm.trans (htr'.trans h2)
-    have hvregs : calleeSavedVRegs sf = calleeSavedVRegs s := by
-      have h1 : calleeSavedVRegs sf' = calleeSavedVRegs sf := by
-        rw [hsf_eq]; cases sf; rfl
-      have h2 : calleeSavedVRegs (ProofLib.stripS (ProofLib.progKeep Q) s) = calleeSavedVRegs s := by
-        cases s; rfl
-      exact h1.symm.trans (hvregs'.trans h2)
-    exact ⟨sf, hsteps_out, hvm, htr, hvregs, Or.inl (hsf_eq ▸ hPost')⟩
-  · exact ⟨sf, hsteps_out, hvm, htrP, hvregsP, Or.inr hPostP⟩
 
 end LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudgetAuxSat

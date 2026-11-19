@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
 import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Part1cPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Part2Placed
@@ -19,6 +19,9 @@ import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Part3Placed
 import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Part3cPlaced
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOk
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 
 /-!
 # `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`): Top-Level Relocatable Verification
@@ -27,7 +30,7 @@ Composes all relocatable `[LibsignalPlacement]` segments of `<EkSentCt1Received>
 (Block `350`, `514` instructions) to prove `RecvCt2ChunkPlacedOkExt` and `RecvCt2ChunkPlacedOkX`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

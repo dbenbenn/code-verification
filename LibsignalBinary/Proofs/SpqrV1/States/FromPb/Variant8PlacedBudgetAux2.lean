@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8PlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8PlacedBudgetAux -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch0Placed
@@ -22,6 +22,26 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8b
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8a -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8aPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8cPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8cPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8dPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8bPlacedBudget
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8Placed
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8aPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8bPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8cPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8dPlaced
 
 /-!
 # Mid-Stage Continuations (`+1984` and `+10836`) for `Variant8PlacedBudget`
@@ -30,7 +50,7 @@ Proves the budget-threaded Variant 8 (`InnerState.ekReceivedCt1Sampled`, Block `
 from `+10836` (`+10836 -> s0.x30`) and `+1984` (`+1984 -> s0.x30`) under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

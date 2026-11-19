@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.DecInterface
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.DecInterface -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.Defs
 import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.MergeSenderChainAux.Fetch
 
@@ -20,7 +20,7 @@ Separation-logic splitting and framing identities for `prostSSGQAt` (`overDecCha
 `overDecChainFrameExt`) around the tag-6 `message::merge<Chain> [local#5]` call at `ss + 0x90`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +39,7 @@ open Symbolic.Swarm.TRREF.B3DeserQ (SSGQ GenFieldQ prostSSGQAt ExtraGQ)
 
 /-- `prostSSGQAt A ss v` without the `sender_chain` match (`ss + 0x90`), the other fields in the
 same order. -/
-def overDecChainRest (A : RustAlloc) (ss : BitVec 64) (v : SSGQ) : SepProp :=
+@[expose] def overDecChainRest (A : RustAlloc) (ss : BitVec 64) (v : SSGQ) : SepProp :=
   vecU8 A ss v.base.lik ∗ vecU8 A (ss + 0x18#64) v.base.rik ∗ vecU8 A (ss + 0x30#64) v.base.root ∗
     vecOf A 104 8 (fun c a => prostChainGAt A a c) (ss + 0x48#64) v.base.recv ∗
     vecU8 A (ss + 0x60#64) v.ext.abk ∗ vecU8 A (ss + 0x78#64) v.ext.pq ∗
@@ -74,14 +74,14 @@ theorem overDecChain_split_some (A : RustAlloc) (ss : BitVec 64) (v : SSGQ) (c :
 
 /-- Everything the tag-6 `merge<Chain>` call does not touch at allocator `A` (note `A.pool` is
 passed into `chainMerge3SpecAtWExt A` rather than framed out). -/
-def overDecChainFrameExt (A : RustAlloc) (g : OverDecG) (pfx : List (BitVec 8))
+@[expose] def overDecChainFrameExt (A : RustAlloc) (g : OverDecG) (pfx : List (BitVec 8))
     (v : SSGQ) : SepProp :=
   overPrevElemRestExt A g.prevCap g.prevPtr g.encCap g.encPtr g.enc ∗ (g.encPtr ↦ₛ pfx) ∗
     overDecChainRest A (g.q + 0x930#64) v ∗ memRegion (g.q + 0xa88#64) 8 ∗
     memRegion (g.q + 0xa90#64) 344 ∗ memRegion (g.q + 0xbf0#64) 128 ∗
     memRegion (g.q - 65536#64) (65536 - chainMerge3StackX)
 
-def overDecChainFrame (g : OverDecG) (pfx : List (BitVec 8)) (v : SSGQ) : SepProp :=
+@[expose] def overDecChainFrame (g : OverDecG) (pfx : List (BitVec 8)) (v : SSGQ) : SepProp :=
   overPrevElemRest g.prevCap g.prevPtr g.encCap g.encPtr g.enc ∗ (g.encPtr ↦ₛ pfx) ∗
     overDecChainRest A0 (g.q + 0x930#64) v ∗ memRegion (g.q + 0xa88#64) 8 ∗
     memRegion (g.q + 0xa90#64) 344 ∗ memRegion (g.q + 0xbf0#64) 128 ∗

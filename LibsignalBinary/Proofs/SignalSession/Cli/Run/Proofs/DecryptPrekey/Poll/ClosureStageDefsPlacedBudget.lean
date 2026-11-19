@@ -12,12 +12,19 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegTrustAux
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageDefsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegTrustAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageDefsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Steps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyBase
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureVtablesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` Poll Stage P1 Interfaces
@@ -27,7 +34,7 @@ Defines Stage P1 allocation envelopes (`StageP1OkEnv`, `StageP1UntrustedEnv`) an
 on `dpPollProgPlaced ext` at `dpPollEntryPlaced` (`lsmpl.base 518`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -69,7 +76,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget (AllocContractsX
 
 /-- Stage P1 trusted-path (`is_trusted_identity =.ok true`) allocation envelope:
 `load_session` step followed by `is_trusted_identity` step. -/
-def StageP1OkEnv {A : RustAlloc}
+@[expose] def StageP1OkEnv {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist : ikit.IdState)
     (peer : AddrVal) (remoteIdKey : IdentityKey) : List AllocEvent → Prop :=
@@ -78,7 +85,7 @@ def StageP1OkEnv {A : RustAlloc}
 
 /-- Stage P1 untrusted-path (`is_trusted_identity =.ok false`) allocation envelope:
 `load_session` step, `is_trusted_identity` step, `String::clone` of `peer.name`, and record drop. -/
-def StageP1UntrustedEnv {A : RustAlloc}
+@[expose] def StageP1UntrustedEnv {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist : ikit.IdState)
     (peer : AddrGhost) (remoteIdKey : IdentityKey) : List AllocEvent → Prop :=
@@ -87,7 +94,7 @@ def StageP1UntrustedEnv {A : RustAlloc}
       (SeqEnv (StringCloneEnv peer.name) FreeOnlyEvs))
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` counterpart of `StageP1OkPlacedStmt`. -/
-def StageP1OkPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP1OkPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ext : String → Option (State → State)}
     {Scope : SessionRecord (List (BitVec 8)) → Prop}
@@ -232,7 +239,7 @@ def StageP1OkPlacedStmt [LibsignalPlacement] : Prop :=
         (fun _ _ => False)
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` counterpart of `StageP1UntrustedPlacedStmt`. -/
-def StageP1UntrustedPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP1UntrustedPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ext : String → Option (State → State)}
     {Scope : SessionRecord (List (BitVec 8)) → Prop}

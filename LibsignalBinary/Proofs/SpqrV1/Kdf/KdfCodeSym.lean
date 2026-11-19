@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard19
+meta import GeneratedLean.LibsignalSessionPlacedObjShard20
 
 /-!
 # Relocatable Per-Block Fetches for SPQR KDF
@@ -21,7 +23,7 @@ Symbolic per-block fetch definitions for `hkdf_to_vec` (Block `378`), `hkdf_to_s
 `Hmac<Sha256>::new_from_slice` (Block `402`), and `Hmac<Sha256>::finalize_fixed` (Block `425`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

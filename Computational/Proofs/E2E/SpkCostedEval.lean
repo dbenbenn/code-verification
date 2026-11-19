@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.SpkHop2Red
-public import Computational.Proofs.ReductionDsl.SpkLeakRedU
+public import Computational.Proofs.ReductionDsl.SpkHop2Red -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SpkLeakRedU -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.CryptoGames.SM.Game
-public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
-public import Computational.Proofs.ReductionDsl.Soundness
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Bridge
 import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 
@@ -26,7 +26,7 @@ Proves the reachable-state `GhostBounded` invariant for `sessionSchemeU`, `spkOr
 bounds.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Costed
 
@@ -48,10 +48,10 @@ set_option linter.unusedSectionVars false
 
 /-- A `GhostState` has `GhostBounded E` when its current epoch and all stored receiver-chain
 epochs are at most `E`. -/
-def GhostBounded (E : ℕ) (g : GhostState Bytes) : Prop :=
+@[expose] def GhostBounded (E : ℕ) (g : GhostState Bytes) : Prop :=
   g.epoch ≤ E ∧ ∀ e ∈ g.chainEpochs, e ≤ E
 
-def StateGhostBounded {ℓ : ℕ} (E : ℕ)
+@[expose] def StateGhostBounded {ℓ : ℕ} (E : ℕ)
     (st : SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes) : Prop :=
   ∀ Q, GhostBounded E (st.st Q)
 
@@ -990,7 +990,7 @@ private theorem map_canonComp_corrR {St Msg C : Type}
   · simp only [StateT.run_bind, StateT.run_set, pure_bind, StateT.run_pure, map_pure, Prod.map]
     rw [canonComp_afterCorr]
 
-def spkOracleImplDedup :
+@[expose] def spkOracleImplDedup :
     QueryImpl (unifSpec + SM.spec (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes)
       (StateT (SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes)
         (OracleComp (unifSpec + prfSpec Pt (BitVec 256))))
@@ -2137,7 +2137,7 @@ private theorem hop2Recv_run_eq_map (h : Hop2Hyb Pt) (g : GhostState Bytes) (c :
           fun gs => ?_⟩
         simp [StateT.run_bind, StateT.run_get, StateT.run_pure, hidx, hneed]
 
-def hop2ImplDedup (h : Hop2Hyb Pt) :
+@[expose] def hop2ImplDedup (h : Hop2Hyb Pt) :
     QueryImpl (unifSpec + SM.spec (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes) (Hop2M Pt ℓ)
   | .inl u => StateT.lift (query (spec := unifSpec + prfSpec Pt (BitVec 256)) (.inl u))
   | .inr (.inl (.inl (.inl (.inl y)))) =>

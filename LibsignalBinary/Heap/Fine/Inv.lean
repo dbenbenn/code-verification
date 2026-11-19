@@ -328,108 +328,6 @@ theorem fineLiveBytes_free_le (al n : Nat) (b : FineBudget) :
   simp only [fineLiveBytes, FineBudget.step, FineBudget.stepFree]
   split <;> simp <;> omega
 
-private theorem fineMaxMetaAreas_step_add_le {b b' : FineBudget}
-    (hGS : b'.cumSmallGroupsS ≤ b.cumSmallGroupsS + 3 * FineScale)
-    (hPC : finePeak63Count b' ≤ finePeak63Count b + 1) :
-    fineMaxMetaAreas b' ≤ fineMaxMetaAreas b + 1 := by
-  have hS : 0 < FineScale := by decide
-  have hDivG :
-      (b'.cumSmallGroupsS + FineScale - 1) / FineScale ≤
-        (b.cumSmallGroupsS + FineScale - 1) / FineScale + 3 := by
-    have hLe : b'.cumSmallGroupsS + FineScale - 1 ≤
-        (b.cumSmallGroupsS + FineScale - 1) + 3 * FineScale := by
-      unfold FineScale at hGS ⊢; omega
-    have hD := Nat.div_le_div_right (c := FineScale) hLe
-    rw [Nat.add_mul_div_right _ _ hS] at hD
-    exact hD
-  have hMG : fineMaxGroups b' ≤ fineMaxGroups b + 4 := by
-    unfold fineMaxGroups; omega
-  unfold fineMaxMetaAreas
-  have hDM : (7 + fineMaxGroups b') / 101 ≤ (7 + fineMaxGroups b + 101) / 101 :=
-    Nat.div_le_div_right (by omega)
-  rw [Nat.add_div_right _ (by decide : 0 < 101)] at hDM
-  omega
-
-private theorem fineFootprint_step_le_arith
-    (base sb sb' p63 p63' m m' req align eff pg : Nat)
-    (hM : m' ≤ m + 1)
-    (hEff : eff = req + (max align 16 - 16))
-    (hPageGe : req + (max align 16 - 16) + 8192 ≤ pg)
-    (hSum : sb' + p63' ≤ sb + p63 + (eff + 131072)) :
-    base + sb' + p63' + 4096 * (3 * m' + 2) ≤
-      (base + sb + p63 + 4096 * (3 * m + 2)) +
-        (pg + 20 * 1024 * 1024 + 131072 * m) := by
-  have hPageEff : eff + 8192 ≤ pg := hEff ▸ hPageGe
-  have hC : 131072 + 12288 ≤ 8192 + 20 * 1024 * 1024 := by decide
-  have hM3 : 3 * m' + 2 ≤ (3 * m + 2) + 3 := by omega
-  have hM4096 : 4096 * (3 * m' + 2) ≤ 4096 * (3 * m + 2) + 12288 := by
-    calc 4096 * (3 * m' + 2)
-      _ ≤ 4096 * ((3 * m + 2) + 3) := Nat.mul_le_mul_left 4096 hM3
-      _ = 4096 * (3 * m + 2) + 12288 := by rw [Nat.mul_add]
-  have hMid : eff + (131072 + 12288) ≤ pg + 20 * 1024 * 1024 + 131072 * m := by
-    calc eff + (131072 + 12288)
-      _ ≤ eff + (8192 + 20 * 1024 * 1024) := Nat.add_le_add_left hC eff
-      _ = (eff + 8192) + 20 * 1024 * 1024 := (Nat.add_assoc eff 8192 _).symm
-      _ ≤ pg + 20 * 1024 * 1024 := Nat.add_le_add_right hPageEff _
-      _ ≤ pg + 20 * 1024 * 1024 + 131072 * m := Nat.le_add_right _ _
-  calc base + sb' + p63' + 4096 * (3 * m' + 2)
-    _ = base + (sb' + p63') + 4096 * (3 * m' + 2) := by rw [Nat.add_assoc base sb' p63']
-    _ ≤ base + (sb + p63 + (eff + 131072)) + (4096 * (3 * m + 2) + 12288) :=
-        Nat.add_le_add (Nat.add_le_add_left hSum base) hM4096
-    _ = (base + sb + p63 + 4096 * (3 * m + 2)) + (eff + (131072 + 12288)) := by
-        generalize 4096 * (3 * m + 2) = gm
-        generalize (131072 : Nat) = c1
-        generalize (12288 : Nat) = c2
-        ac_rfl
-    _ ≤ (base + sb + p63 + 4096 * (3 * m + 2)) + (pg + 20 * 1024 * 1024 + 131072 * m) :=
-        Nat.add_le_add_left hMid _
-
-private theorem fineFootprint_step_le_aux {b b' : FineBudget} {req align eff : Nat}
-    (hM : fineMaxMetaAreas b' ≤ fineMaxMetaAreas b + 1)
-    (hEff : eff = req + (max align 16 - 16))
-    (hSum : b'.cumSmallBytes + finePeak63Bytes b' ≤
-      b.cumSmallBytes + finePeak63Bytes b + (eff + 131072)) :
-    fineFootprint b' ≤ fineFootprint b + FineStepBound req align (fineMaxMetaAreas b) :=
-  fineFootprint_step_le_arith BaseRootFine b.cumSmallBytes b'.cumSmallBytes
-    (finePeak63Bytes b) (finePeak63Bytes b') (fineMaxMetaAreas b) (fineMaxMetaAreas b')
-    req align eff (pageAlignUp (req + (max align 16 - 16) + 8192))
-    hM hEff (pageAlignUp_le _) hSum
-
-theorem fineFootprint_step_le (ev : FineEvent) (b : FineBudget) :
-    fineFootprint (FineBudget.step ev b) ≤ fineFootprint b + fineStepReserve ev b := by
-  cases ev with
-  | free align req =>
-    have ⟨hSB, hGS, hPB, hPC⟩ := stepFree_peaks_eq align req b
-    have hEq : fineFootprint (FineBudget.step (.free align req) b) = fineFootprint b := by
-      simp only [FineBudget.step, fineFootprint, fineMaxMetaAreas, fineMaxGroups, hSB, hGS, hPB, hPC]
-    omega
-  | alloc req =>
-    have h := stepAligned_bounds 16 req b
-    have hEff16 : mallocngAlignedEffSize 16 req = req := by
-      unfold mallocngAlignedEffSize; simp
-    refine fineFootprint_step_le_aux (eff := req)
-      (fineMaxMetaAreas_step_add_le h.2.2.2.2.2.1 h.2.2.2.2.2.2)
-      (by simp) ?_
-    simpa only [FineBudget.step, FineBudget.stepAlloc, hEff16] using h.2.2.2.2.1
-  | aligned align req =>
-    have h := stepAligned_bounds align req b
-    refine fineFootprint_step_le_aux
-      (fineMaxMetaAreas_step_add_le h.2.2.2.2.2.1 h.2.2.2.2.2.2)
-      (by unfold mallocngAlignedEffSize; by_cases ha : align ≤ 16 <;> simp [ha] <;> omega)
-      h.2.2.2.2.1
-  | realloc align oldSz newSz =>
-    have hAdd := stepReallocAdd_bounds align newSz b
-    have ⟨hSB, hGS, hPB, hPC⟩ :=
-      stepFree_peaks_eq align oldSz (FineBudget.stepReallocAdd align newSz b)
-    refine fineFootprint_step_le_aux (eff := mallocngAlignedEffSize align newSz)
-      (fineMaxMetaAreas_step_add_le
-        (b := b) (b' := FineBudget.step (.realloc align oldSz newSz) b)
-        (by simp only [FineBudget.step, FineBudget.stepRealloc, hGS]; exact hAdd.2.2.2.2.2.1)
-        (by simp only [FineBudget.step, FineBudget.stepRealloc, hPC]; exact hAdd.2.2.2.2.2.2))
-      (by unfold mallocngAlignedEffSize; by_cases ha : align ≤ 16 <;> simp [ha] <;> omega) ?_
-    simp only [FineBudget.step, FineBudget.stepRealloc, hSB, hPB]
-    exact hAdd.2.2.2.2.1
-
 /-! ## Per-Size-Class Group Projections and `GroupsSubGeometry` -/
 
 def allGroups (st : MallocngSt) (sc : Nat) : List GroupDesc :=
@@ -869,18 +767,18 @@ def FineBlock (γ : GhostName) (p : BitVec 64) (n effAlign : Nat) : SepProp :=
   MallocngBlockToken (fineBaseGam γ) p n ∗
   ghostMapElem (fineAlignGam γ) p effAlign
 
-/-- Exclusive non-RO body of `FineCoreImpl` at `inflight` bound. -/
-noncomputable def FineCoreStInflightA (inflight : Nat) (γ : GhostName)
+/-- Exclusive non-RO body of `FineCoreImpl` at `inflight` bound (using duplicable `.ro` `auxv`). -/
+def FineCoreStInflightA (inflight : Nat) (γ : GhostName)
     (A : MallocngAddrs) (brkStart brk : BitVec 64)
     (b : FineBudget) (ivs : List (BitVec 64 × Nat))
     (alignMap : BitVec 64 → Option Nat)
     (liveCost peakCost : Nat) (st : MallocngSt) : SepProp :=
   ⌜MallocngFineInv inflight b ivs alignMap st⌝ ∗
   ghostMapAuth (fineAlignGam γ) alignMap ∗
-  MallocngCoreStInflightA inflight (fineBaseGam γ) A brkStart brk liveCost peakCost st
+  MallocngCoreStInflightModeA true inflight (fineBaseGam γ) A brkStart brk liveCost peakCost st
 
 /-- Sealed allocator-private invariant `CoreM` for the fine `mallocng` cost model. -/
-@[irreducible] noncomputable def FineCoreImpl
+@[irreducible] def FineCoreImpl
     (γ : GhostName) (A : MallocngAddrs) (brkStart brk : BitVec 64)
     (b : FineBudget) (ivs : List (BitVec 64 × Nat)) : SepProp :=
   MallocngRoTablesA A ∗
@@ -891,7 +789,7 @@ noncomputable def FineCoreStInflightA (inflight : Nat) (γ : GhostName)
     FineCoreStInflightA 0 γ A brkStart brk b ivs alignMap liveCost peakCost st
 
 /-- Sealed full heap + runtime invariant `HeapM` for the fine `mallocng` cost model. -/
-@[irreducible] noncomputable def FineHeapImpl
+@[irreducible] def FineHeapImpl
     (γ : GhostName) (A : MallocngAddrs) (tp brkStart brk : BitVec 64)
     (b : FineBudget) (ivs : List (BitVec 64 × Nat)) : SepProp :=
   FineCoreImpl γ A brkStart brk b ivs ∗ MallocngRuntime A tp

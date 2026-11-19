@@ -10,8 +10,10 @@ limitations under the License.
 module
 
 public import Computational.Proofs.Game.PromotedCostedReds.HaltedSpkHop2Step -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg
 public import Computational.Proofs.E2E.HaltedSpkDefs
 import Computational.Proofs.Game.PromotedCostedReds.KemFailTrackDsl
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto
 
 /-!
 # Evaluation and Invariant Preservation for Tracker-Halted Hop-2 Step Handler

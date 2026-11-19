@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwned
-public import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwned -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -67,7 +69,7 @@ theorem subroutine_ok_of_pure_pre {α : Type} {prog : Program} {entry : BitVec 6
       exact ⟨hP, hpre⟩
     exact subroutine_ok.mono_outcome h x R s0 hpc hrun hp' hsp fun _ hout => hout
 
-def SatEntails (P Q : SepProp) : Prop :=
+@[expose] def SatEntails (P Q : SepProp) : Prop :=
   ∀ (m : Memory) (R : SepProp), (m ⊨ P ∗ R) → (m ⊨ Q ∗ R)
 
 theorem SatEntails.refl (P : SepProp) : SatEntails P P :=
@@ -131,114 +133,6 @@ theorem weaken_pre_sat {prog : Program} {target_pc : BitVec 64} {s : State}
   unfold SepWP at h ⊢
   intro R hm
   exact h R (himp s.mem R hm)
-
-private theorem rodata_cliSpeJumpTable_eq :
-    (libsignalSessionImage.data.drop
-      (num% (ls_xref%
-        (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 40)
-        (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 44) -
-        ls_field% dataOff))).take 28 = speJumpTable := by
-  rfl_kernel
-
-private theorem rodata_speJumpTable_intro {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img)
-    {m : Memory} {P : SepProp} (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + bv% (ls_xref%
-      (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 40)
-      (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 44))) ↦ᵣ
-        speJumpTable) ∗ P := by
-  have h := ProofLib.Satisfies.of_rodata_loads himg
-    (secOff := num% (ls_xref%
-      (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 40)
-      (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 44)))
-    (secLen := 28)
-    (dataOff := num% (ls_field% dataOff))
-    rfl (List.mem_of_elem_eq_true (by rfl_kernel)) (by decide) (by decide)
-    (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel) hro hP
-  rwa [rodata_cliSpeJumpTable_eq] at h
-
-theorem intro_rodata_speJumpTable {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img)
-    {prog : Program} {target_pc : BitVec 64} {s : State} {P : SepProp}
-    {post : State → SepProp → Prop}
-    (hro : img.RoDataLoaded s.mem)
-    (h : SepWP prog target_pc s
-      (((img.base + bv% (ls_xref%
-        (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 40)
-        (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 44))) ↦ᵣ
-          speJumpTable) ∗ P) post) :
-    SepWP prog target_pc s P post := by
-  unfold SepWP at h ⊢
-  intro R hm
-  have hR := h R
-  rw [sepConj_assoc] at hR
-  exact hR (rodata_speJumpTable_intro himg hro hm)
-
-theorem speJumpTable_byte (base : BitVec 64) (i : Nat) (off : BitVec 64) (b : BitVec 8)
-    (hoff : bv% (ls_xref%
-      (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 40)
-      (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 44)) +
-        BitVec.ofNat 64 i = off)
-    (heq : speJumpTable = speJumpTable.take i ++ (b :: speJumpTable.drop (i + 1)))
-    (hlen : (speJumpTable.take i).length = i) :
-    SatEntails
-      ((base + bv% (ls_xref%
-        (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 40)
-        (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 44))) ↦ᵣ
-          speJumpTable)
-      ((base + off) ↦₈ᵣ b) := by
-  have h :
-      ((base + bv% (ls_xref%
-        (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 40)
-        (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 44))) ↦ᵣ
-          speJumpTable) =
-      ((base + bv% (ls_xref%
-        (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 40)
-        (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 44))) ↦ᵣ
-          speJumpTable.take i) ∗
-        ((((base + bv% (ls_xref%
-          (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 40)
-          (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 44))) +
-            BitVec.ofNat 64 i) ↦₈ᵣ b) ∗
-         (((base + bv% (ls_xref%
-          (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 40)
-          (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 44))) +
-            BitVec.ofNat 64 i + 1#64) ↦ᵣ speJumpTable.drop (i + 1))) := by
-    conv_lhs => rw [heq]
-    rw [pointsToBytesRO_append, pointsToBytesRO_cons, hlen]
-  rw [h, BitVec.add_assoc base (bv% (ls_xref%
-    (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 40)
-    (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 44)))
-    (BitVec.ofNat 64 i), hoff]
-  exact SatEntails.trans (SatEntails.drop_left _ _) (SatEntails.drop_right _ _)
-
-theorem speJumpTable_adrp_eq {base addr : BitVec 64}
-    (hb : base &&& 0xfff#64 = 0#64)
-    (he : addr = base + bv% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]")) :
-    (addr + bv% 40 &&& bv% (2 ^ 64 - 4096)) =
-      base + bv% (page% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 40)) := by
-  subst he
-  have hadd :
-      base + bv% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]") + bv% 40 =
-      base + bv% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 40) := by
-    rw [BitVec.add_assoc]; rfl
-  rw [hadd, adrp_page_of_aligned hb]
-  rfl
-
-theorem seq_callInv {prog : Program} {img : Obj.Image} {mid_pc target_pc : BitVec 64}
-    {s : State} {P : SepProp} {post : State → SepProp → Prop}
-    (hfrozen : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h1 : SepWP prog mid_pc s P (fun sm P_m =>
-      img.FrozenLoaded sm → sm.symtab = img.symtab → SepWP prog target_pc sm P_m post)) :
-    SepWP prog target_pc s P post := by
-  unfold SepWP reaches_pc at h1 ⊢
-  intro R hm hL
-  obtain ⟨sm, hsteps1, ⟨_, _, P_m, hm_m, h2⟩ | ⟨hoom1, hfalse1⟩⟩ := h1 R hm hL
-  · have hfrozen_m : img.FrozenLoaded sm := hfrozen.of_keepsFrozen hsteps1.keepsFrozen
-    have hsym_m : sm.symtab = img.symtab := hsteps1.symtab_eq.trans hsym
-    obtain ⟨sf, hsteps2, hout2⟩ := h2 hfrozen_m hsym_m R hm_m (hsteps1.codeLoaded hL)
-    exact ⟨sf, Steps.trans hsteps1 hsteps2, hout2⟩
-  · exact ⟨sm, hsteps1, Or.inr ⟨hoom1, hfalse1⟩⟩
 
 theorem spe_word8_40_entails_48 (a : BitVec 64) (w : BitVec 64) :
     (a ↦₆₄ w) ∗ memRegion (a + 8#64) 40 ⊢ memRegion a 48 := by
@@ -397,20 +291,20 @@ theorem vecU8_at_8_exposeX (A : RustAlloc) (a : BitVec 64) (bs : List (BitVec 8)
   rw [h16, h24, hm]
   exact Entails.of_eq (by ac_rfl)
 
-def dropSpePlainSpecX (A : RustAlloc) : Spec (BitVec 64 × Nat) where
+@[expose] def dropSpePlainSpecX (A : RustAlloc) : Spec (BitVec 64 × Nat) where
   pre := fun ⟨a, i⟩ s =>
     ⌜s.readReg64 .x0 = a⌝ ∗ (a ↦₆₄ speWord i) ∗ memRegion (a + 8#64) 40 ∗ A.pool ∗
       stackAt s.sp dropSpeStackX
   post := fun ⟨a, _⟩ s0 sf =>
     ⌜sf.trace = s0.trace⌝ ∗ memRegion a 48 ∗ A.pool ∗ stackAt s0.sp dropSpeStackX
 
-def dropSpeWithStrSpecX (A : RustAlloc) : Spec (BitVec 64 × { i : Nat // StrSpeTag i }) where
+@[expose] def dropSpeWithStrSpecX (A : RustAlloc) : Spec (BitVec 64 × { i : Nat // StrSpeTag i }) where
   pre := fun ⟨a, ⟨i, hi⟩⟩ s =>
     ⌜s.readReg64 .x0 = a⌝ ∗ speOwnedAt A a (.withString i hi) ∗ A.pool ∗ stackAt s.sp dropSpeStackX
   post := fun ⟨a, _⟩ s0 sf =>
     ⌜sf.trace = s0.trace⌝ ∗ memRegion a 48 ∗ A.pool ∗ stackAt s0.sp dropSpeStackX
 
-def dropSpeSnfSpecX (A : RustAlloc) : Spec (BitVec 64 × AddrVal × String) where
+@[expose] def dropSpeSnfSpecX (A : RustAlloc) : Spec (BitVec 64 × AddrVal × String) where
   pre := fun ⟨a, addr, op⟩ s =>
     ⌜s.readReg64 .x0 = a⌝ ∗ speOwnedAt A a (.sessionNotFound addr op) ∗ A.pool ∗
       stackAt s.sp dropSpeStackX

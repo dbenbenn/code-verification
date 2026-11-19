@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Record.Serialization.ChainLenBudget
@@ -20,6 +20,8 @@ import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionLenAux.StepsChains
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionLenAux.StepsBackBudget
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Budget-threaded `<SessionStructure as prost::Message>::encoded_len`
@@ -28,7 +30,7 @@ Relocatable `[LibsignalPlacement]` proofs for `SessionStructure::encoded_len` (b
 `DefsBudget.sessionLenSpec`, threading `VmPreserved`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

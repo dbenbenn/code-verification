@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthGames
+public import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthGames -- proof-setup: allow-public-import
 public import Computational.Specifications.Pqxdh.Security.HeadlineDelta
 public import Computational.Proofs.SpecLemmas.Pqxdh.Security.BoundProofDefs
 
@@ -22,7 +22,7 @@ first-message `Auth` (`pqxdhAuthExp`) games with `ReductionDsl` challenger inter
 No theorem of `Computational/Theorems/` imports this file; see `Computational/docs/TRUSTED_BASE.md`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +36,7 @@ open OracleSpec OracleComp
 local notation "PT" => Ty pqAtomicSig
 
 /-- Handshake challenger interface on `PrimBaseSpec + C.spec`. -/
-@[reducible] def pqChalIface (C : ChallengerOracle) : Iface pqAtomicSig (PrimBaseSpec + C.spec) where
+@[expose, reducible] def pqChalIface (C : ChallengerOracle) : Iface pqAtomicSig (PrimBaseSpec + C.spec) where
   fwdU n := query (spec := PrimBaseSpec + C.spec) (.inl (.inl n))
   uCost := 1
   Tag := PTag ⊕ C.Tag
@@ -48,7 +48,7 @@ local notation "PT" => Ty pqAtomicSig
   smp := pqAtomicSamplers
 
 /-- EUF-CMA signing challenger oracle on messages of byte width `m`. -/
-def eufCmaSignOracle : ChallengerOracle where
+@[expose] def eufCmaSignOracle : ChallengerOracle where
   ι := SigQuery
   spec := sigOracleSpec
   Tag := ℕ+
@@ -59,7 +59,7 @@ def eufCmaSignOracle : ChallengerOracle where
   qCost := fun m => 65 + m.val
 
 /-- DDH challenger oracle on triples of 32-byte points. -/
-def gapDhDdhOracle : ChallengerOracle where
+@[expose] def gapDhDdhOracle : ChallengerOracle where
   ι := DdhQuery
   spec := gapDhOracleSpec
   Tag := Unit
@@ -84,7 +84,7 @@ open SignalPqxdh
 open _root_.ReductionDsl (Ty CostedReduction TwoStageCostedReduction Mid)
 open SignalPqxdh.Costed
 
-def chalIfaceChalQueryWeight {PrimTag ChalTag : Type} : PrimTag ⊕ ChalTag → ℕ
+@[expose] def chalIfaceChalQueryWeight {PrimTag ChalTag : Type} : PrimTag ⊕ ChalTag → ℕ
   | .inl _ => 0
   | .inr _ => 1
 
@@ -98,7 +98,7 @@ structure KeyInd2KeyCostedReductionFamily (S : Setup) where
   gdh  : QueryBudget → CostedReduction pqAtomicOps pqGapDhIface (keyIndSpec S) (pqKeyIndCodec S)
            (.prod (PB 32) (PB 32)) .unit .bool (PB 32)
 
-def KeyInd2KeyCostedReductionFamily.eval {S : Setup} (R : KeyInd2KeyCostedReductionFamily S) :
+@[expose] def KeyInd2KeyCostedReductionFamily.eval {S : Setup} (R : KeyInd2KeyCostedReductionFamily S) :
     KeyInd2KeyReductionFamily S where
   sig b A :=
     { run := fun pk => (R.sig b).eval (fun _ => A.1.run) pk
@@ -155,7 +155,7 @@ structure AuthCostedReductionFamily (S : Setup) where
   int  : QueryBudget → CostedReduction pqAtomicOps pqPrfHmacIface (authSpec S) (authCodec S)
            .unit .unit .bool .bool
 
-def AuthCostedReductionFamily.eval {S : Setup} (R : AuthCostedReductionFamily S) : AuthReductionFamily S where
+@[expose] def AuthCostedReductionFamily.eval {S : Setup} (R : AuthCostedReductionFamily S) : AuthReductionFamily S where
   sig b A :=
     { run := fun pk => (R.sig b).eval (fun _ => A.1.run) pk
       q_sig := 2 * S.N_spk_tot
@@ -230,7 +230,7 @@ structure AuthCostedReductionBounds (S : Setup) (R : AuthCostedReductionFamily S
   int_blocks      : ∀ (b : QueryBudget) (ℓ : Nat), GRedBlockBounded S b ℓ (R.int b)
 
 /-- Standalone two-key `KeyInd` advantage bound under a δ-correct KEM for reduction family `R`. -/
-def Pqxdh2KeyKeyIndReductionBoundδ (S : Setup) (R : KeyInd2KeyReductionFamily S) : Prop :=
+@[expose] def Pqxdh2KeyKeyIndReductionBoundδ (S : Setup) (R : KeyInd2KeyReductionFamily S) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (δ : ℝ), KemDeltaCorrectReal P δ →
     ∀ (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b),
@@ -241,7 +241,7 @@ def Pqxdh2KeyKeyIndReductionBoundδ (S : Setup) (R : KeyInd2KeyReductionFamily S
           (GapDH P P.isValidDhTriple P.pow8 (R.gdh b A))
 
 /-- Authentication advantage bound under a δ-correct KEM for reduction family `R`. -/
-def PqxdhAuthReductionBoundδ (S : Setup) (R : AuthReductionFamily S) : Prop :=
+@[expose] def PqxdhAuthReductionBoundδ (S : Setup) (R : AuthReductionFamily S) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (δ : ℝ), KemDeltaCorrectReal P δ →
     ∀ (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b),
@@ -272,7 +272,7 @@ def Pqxdh2KeySecureδ (S : Setup) : Prop :=
   PqxdhAuthSecureδ S
 
 /-- Standalone two-key δ-headline statement: correctness and two-key security across all setups. -/
-def Pqxdh2KeyCorrectAndSecureδ : Prop :=
+@[expose] def Pqxdh2KeyCorrectAndSecureδ : Prop :=
   (∀ (P : Primitives), WellFormedPrimitivesδ P → PqxdhCorrect P) ∧
   (∀ (S : Setup), Pqxdh2KeySecureδ S)
 

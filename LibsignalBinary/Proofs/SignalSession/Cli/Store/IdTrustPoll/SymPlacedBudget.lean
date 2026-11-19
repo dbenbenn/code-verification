@@ -9,19 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.CalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.CalleesBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.RecordCodecs.RoundTrip
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.Sym
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable Symbolic Execution of `is_trusted_identity::{closure#0}`
@@ -30,7 +39,7 @@ Defines `CliIdTrustPollEnv` and proves budget-threaded `cliIdTrustPollInnerSpecP
 Block `566` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -118,7 +127,7 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 
 /-- Allocator event envelope of `is_trusted_identity::{closure#0}`: `Dir::get` followed by
 optional `Vec<u8>` buffer deallocation (`FreeOnlyEvs`). -/
-def CliIdTrustPollEnv
+@[expose] def CliIdTrustPollEnv
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (F0 : FsFiles) (x : IdPollGhost) : List AllocEvent → Prop :=
   SeqEnv (GetEnv F0 x.peers x.call.call.addr.name.bytes) FreeOnlyEvs
@@ -148,7 +157,7 @@ theorem CliIdTrustPollEnv.of_get_freeOnly
 /-! ## 1. Placed Callee Cell Wrappers -/
 
 /-- File-system-aware `Dir::get` cell wrapper at `calleeStk` matching `SpecsPlacedBudget.dirGetSpecPlaced`. -/
-def dirGetCellsPlacedSpec {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def dirGetCellsPlacedSpec {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (calleeStk : Nat) : Spec (DirGetCellsGhost × M.σ) where
@@ -215,7 +224,7 @@ theorem dirGet_cells_placed_ok [LibsignalPlacement] {prog : Program} {M : AllocC
   · dsimp only [dirGetSpecPlaced, withLsCodeRoLoaded] at hq
     exact (not_satisfies_false_sepConj hq).elim
 
-def ikDecodeCellsSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ikDecodeCellsSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (calleeStk : Nat) :
     Spec (IkDecodeCellsGhost × M.σ) where
   pre := fun ((bytesA, bytes, ret, ik, fsp), st) s =>
@@ -355,7 +364,7 @@ theorem deallocVecBuf_placed_ok [LibsignalPlacement] {prog : Program} {i : Nat}
       withLsCodeRoLoaded] at hq
     exact (not_satisfies_false_sepConj hq).elim
 
-def pkEqCellsSpecPlaced {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def pkEqCellsSpecPlaced {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (calleeStk : Nat) : Spec (PkEqCellsGhost × M.σ) where
   pre := fun ((p1, ik1, p2, ik2, fsp), st) s =>
     ⌜s.readReg64 .x0 = p1 ∧ s.readReg64 .x1 = p2 ∧ s.sp = fsp⌝ ∗
@@ -468,7 +477,7 @@ theorem pkEq_cells_placed_ok_16 [LibsignalPlacement] {prog : Program} {M : Alloc
 
 /-! ## 2. Inner Spec & Outer Wrapper (`idTrustPoll_placed_of_inner`) -/
 
-def cliIdTrustPollInnerSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
+@[expose] def cliIdTrustPollInnerSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
     (pathOk : List (BitVec 8) → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (TrustEnv : FsFiles → IdPollGhost → List AllocEvent → Prop)
     (calleeStk : Nat) : Spec (IdPollGhost × M.σ) where

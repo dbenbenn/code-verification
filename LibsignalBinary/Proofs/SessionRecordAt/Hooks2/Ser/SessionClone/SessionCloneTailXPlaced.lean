@@ -10,13 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.BaseX
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneBaseX
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.BaseX -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneBaseX -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.EpilogueReassemblyX
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.KyberBaseKeyPqStateXPlaced
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ReceiverChainsPendingPreKeyX
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +39,8 @@ open CryptoVerification.E2E.Record.Placed
 open CryptoVerification.LibsignalProtoCodec CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalTripleRatchet.FromRecordChainClone
 open CryptoVerification.LibsignalTripleRatchet.RawByteMove
-open CryptoVerification.LibsignalTripleRatchet.ChainCloneLocal1
+open CryptoVerification.LibsignalTripleRatchet.ChainCloneLocal1 (chainCloneStackX)
+
 open CryptoVerification.LibsignalTripleRatchet.Record.SegCloneSteps
 open CryptoVerification.E2E.Record.Serialization
 open Proofs.libsignal

@@ -19,7 +19,7 @@ Bundles the call parameters of `compute_mac` (`MacEnv`) and defines its pure HMA
 chaining states, padded messages, and 9-byte output predicate (`resultOk`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification
 namespace LibsignalHmac
@@ -87,7 +87,7 @@ abbrev outerMsg : List (BitVec 8) := e.opadKey ++ e.innerHash F
 
 /-- The 9 result bytes of a `compute_mac` call: `1 ‖ hmacSha256Trunc8 …` (`Some`), or just the tag byte `0`
 (`None`, the 8 payload bytes unspecified) if the key does not have 32 bytes. -/
-def resultOk (m : Memory) : Prop :=
+@[expose] def resultOk (m : Memory) : Prop :=
   if e.vkey.length = 32 then
     m.read8 e.out = 1#8 ∧
       m.readBytes (e.out + 1#64) 8 = hmacSha256Trunc8 F e.vkey (e.vsik.toList ++ e.vrik.toList ++ e.vmsg)

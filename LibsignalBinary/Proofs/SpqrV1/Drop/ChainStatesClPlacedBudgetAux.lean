@@ -10,22 +10,27 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2BudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudgetAux
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2BudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudgetAux
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-import GeneratedLean.LibsignalSessionObj
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpoch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2Budget
 
 /-!
 # Budget-Threaded Code-Loaded Drop Glue for Chains (`266, 269, 287`) and `Ct1Sent` (`279`)
@@ -34,7 +39,7 @@ Proves `withLsCodeLoaded lsmpl` subroutine contracts under `RustCliAllocBudget M
 for Blocks `279`, `287`, `266`, and `269` from `rustCliDeallocBudgetSpec M A lim`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

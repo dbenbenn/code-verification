@@ -9,12 +9,61 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
-public import LibsignalBinary.Proofs.Placed.BridgeReloc
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.Shims
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
+public import LibsignalBinary.Proofs.Placed.BridgeReloc -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.Shims
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.PublicApi.StoreSession.StoreCallSite -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymE -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityVtables -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.Defs
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkShims.Common -- proof-setup: allow-public-import
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.StepsProcess
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Musl.Spec
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
 
 /-!
 # Relocatable `[LibsignalPlacement]` `IdentityFiles` Shims and Vtable Dispatch
@@ -24,12 +73,10 @@ Proves `futDrop` (`cliIdFutDropName`), stack lifting for `idOwnShimSpecPlaced`, 
 `.data.rel.ro` vtable dispatch lemmas for the CLI identity/session trait and future vtables.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.StoreCalleesProofs
 
@@ -86,10 +133,6 @@ theorem idOwnShim_lift_stk_placed [LibsignalPlacement] {prog : Program} {entry :
     exact (not_satisfies_false_sepConj hoom).elim
 
 /-! ## 2. Block Lookup Check for `futDrop` & Store Callbacks -/
-
-theorem cliIdFutDrop_fnAddr_placed [LibsignalPlacement] :
-    libsignalSessionLib.fnAddr lsmpl KitInst.cliIdFutDropName = lsmpl.base 547 := by
-  exact ls_fnAddr_text (by decide +kernel)
 
 theorem futDrop_block_placed_ok [LibsignalPlacement] (H : LibsignalHooks) :
     subroutine_ok (lsProg_547 H) (blkPl_547).base futDropSpec := by
@@ -232,7 +275,7 @@ theorem idRegIdShim_fixed_placed_ok [LibsignalPlacement] {A : RustAlloc}
 
 /-! ## 5. `.data.rel.ro` Future Vtable Dispatch Lemmas under `LibsignalRoLoaded lsmpl` -/
 
-abbrev storeVtChecksBool : Bool :=
+noncomputable abbrev storeVtChecksBool : Bool :=
   (fastLookupBlockSym KitInst.cliIdFutDropName == some (547, 0)) &&
   (fastLookupBlockSym idTrustPollName == some (566, 0)) &&
   (fastLookupBlockSym sessLoadPollName == some (569, 0)) &&

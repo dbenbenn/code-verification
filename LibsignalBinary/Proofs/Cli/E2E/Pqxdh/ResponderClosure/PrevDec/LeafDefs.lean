@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafVarint -- shake: keep
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafReserve -- shake: keep
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DoReserve10
 import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneX -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,11 +42,6 @@ open Proofs.libsignal.Stage1X
 abbrev skipField6Name : String :=
   "prost::encoding::skip_field::<&mut &[u8]> [local#5]"
 
-theorem skipField6_fnOff :
-    libsignalSessionCode.fnOff skipField6Name =
-      num% (ls_off% "prost::encoding::skip_field::<&mut &[u8]> [local#5]") :=
-  (ls_lemma% fnOff "prost::encoding::skip_field::<&mut &[u8]> [local#5]")
-
 /-- `<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::chain::MessageKey>>::grow_one`
 (26 instructions, shared at the same offset as `growOneChainName`). -/
 abbrev growOneMessageKeyName : String :=
@@ -59,7 +54,7 @@ abbrev skipField3Stack (depth : Nat) : Nat :=
 
 /-- Contract of `prost::encoding::skip_field::<&mut &[u8]>` in terms of
 `LibsignalProtoCodec.skipField` under Regime A (`skipField3Stack`). -/
-def skipField3Spec (A : RustAlloc) : Spec SkipFieldGhost where
+@[expose] def skipField3Spec (A : RustAlloc) : Spec SkipFieldGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       (s.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 x.tag ∧ x.tag < 2 ^ 32 ∧
@@ -80,7 +75,7 @@ def skipField3Spec (A : RustAlloc) : Spec SkipFieldGhost where
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Case-restricted specification for `skip_field` at fixed recursion budget `depth`. -/
-def skipField3SpecAt (A : RustAlloc) (depth : Nat) (P : SkipFieldGhost → Prop) :
+@[expose] def skipField3SpecAt (A : RustAlloc) (depth : Nat) (P : SkipFieldGhost → Prop) :
     Spec SkipFieldGhost where
   pre := fun x s =>
     ⌜P x ∧ x.depth = depth ∧
@@ -219,49 +214,6 @@ theorem skipBelow3_err_entails (sp : BitVec 64) (depth : Nat) (hdepth : depth < 
       skipBelow3 sp depth :=
   Entails.of_eq (skipBelow3_err sp depth hdepth).symm
 
-theorem subroutine_ok_skipField3_or {A : RustAlloc} {img : Obj.Image} {prog : Program} {entry : BitVec 64}
-    {depth : Nat} {P Q : SkipFieldGhost → Prop}
-    (h1 : subroutine_ok prog entry ((skipField3SpecAt A depth P).inImage img))
-    (h2 : subroutine_ok prog entry ((skipField3SpecAt A depth Q).inImage img)) :
-    subroutine_ok prog entry ((skipField3SpecAt A depth (fun x => P x ∨ Q x)).inImage img) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  simp only [Spec.inImage, skipField3SpecAt, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre.2.1.1 with hP | hQ
-  · refine h1.mono_outcome x R s0 hpc hrun ?_ hsp fun _ hout => hout
-    simp only [Spec.inImage, skipField3SpecAt, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hpre.1, ⟨hP, hpre.2.1.2⟩, hpre.2.2⟩
-  · refine h2.mono_outcome x R s0 hpc hrun ?_ hsp fun _ hout => hout
-    simp only [Spec.inImage, skipField3SpecAt, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hpre.1, ⟨hQ, hpre.2.1.2⟩, hpre.2.2⟩
-
-theorem subroutine_ok_skipField3_imp {A : RustAlloc} {img : Obj.Image} {prog : Program} {entry : BitVec 64}
-    {depth : Nat} {P Q : SkipFieldGhost → Prop}
-    (himp : ∀ x, P x → Q x)
-    (h : subroutine_ok prog entry ((skipField3SpecAt A depth Q).inImage img)) :
-    subroutine_ok prog entry ((skipField3SpecAt A depth P).inImage img) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  simp only [Spec.inImage, skipField3SpecAt, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  refine h.mono_outcome x R s0 hpc hrun ?_ hsp fun _ hout => hout
-  simp only [Spec.inImage, skipField3SpecAt, sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨hpre.1, ⟨himp x hpre.2.1.1, hpre.2.1.2⟩, hpre.2.2⟩
-
-theorem skipField3SpecAt_reaches_outcome_eq (prog : Program) (img : Obj.Image) (A : RustAlloc)
-    (P : SkipFieldGhost → Prop) (x : SkipFieldGhost) (R : SepProp) (s0 : State) :
-    reaches_outcome prog ((skipField3SpecAt A x.depth P).inImage img) x R s0 s0 =
-      reaches_outcome prog ((skipField3Spec A).inImage img) x R s0 s0 :=
-  reaches_outcome_eq_of_parts_eq (fun _ => rfl) (fun _ => rfl) (fun _ _ => rfl) (fun _ => rfl)
-
-theorem subroutine_ok_skipField3Spec_of_at_depth {prog : Program} {entry : BitVec 64} {img : Obj.Image} {A : RustAlloc}
-    (h : ∀ depth, depth < 2 ^ 32 → subroutine_ok prog entry ((skipField3SpecAt A depth (fun _ => True)).inImage img)) :
-    subroutine_ok prog entry ((skipField3Spec A).inImage img) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  have hpre' := hpre
-  simp only [Spec.inImage, skipField3Spec, sepConj_assoc, satisfies_pure_sepConj] at hpre'
-  have hdepth : x.depth < 2 ^ 32 := hpre'.2.1.2.2.2.2.2.1
-  refine (h x.depth hdepth).mono_outcome x R s0 hpc hrun ?_ hsp fun _ hout => hout
-  simp only [Spec.inImage, skipField3SpecAt, sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨hpre'.1, ⟨trivial, trivial, hpre'.2.1⟩, hpre'.2.2⟩
-
 abbrev HighCalleeSaved3 (s0 s : State) : Prop :=
   s.readReg64 (Reg.gpr 22#5) = s0.readReg64 (Reg.gpr 22#5) ∧
   s.readReg64 (Reg.gpr 23#5) = s0.readReg64 (Reg.gpr 23#5) ∧
@@ -285,45 +237,5 @@ abbrev skipGroupLoopPre3 (A : RustAlloc) (s0 : State) (d : Nat)
     ((s0.sp - 16#64) ↦₆₄ s0.readReg64 (Reg.gpr 20#5)) ∗
     ((s0.sp - 8#64) ↦₆₄ s0.readReg64 (Reg.gpr 19#5)) ∗
     skipBelow3 s0.sp (d + 1)
-
-/-- Contract statement for `skip_field::<&mut &[u8]> [local#6]` under Regime-A. -/
-def SkipField6OkExtX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr skipField6Name)
-    ((skipField3Spec A).inImage img)
-
-/-- Contract statement for `RawVec<MessageKey>::grow_one` under Regime-A
-(`growOneChainSpecX A = growOne104SpecX A`, stride 104, align 8). -/
-def GrowOneMessageKeyOkExtX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr growOneMessageKeyName)
-    ((growOneChainSpecX A).inImage img)
-
-/-- `growOneMessageKeyName` and `growOneChainName` resolve to the exact same symbol offset in
-`libsignalSessionCode`. -/
-theorem growOneMessageKey_fnOff_eq_chain :
-    libsignalSessionCode.fnOff growOneMessageKeyName =
-      libsignalSessionCode.fnOff growOneChainName := by
-  have h1 := (ls_lemma% fnOff "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::chain::MessageKey>>::grow_one")
-  have h2 := (ls_lemma% fnOff "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one")
-  rw [h1, h2]
-
-theorem growOneMessageKey_fnAddr_eq_chain (b : BitVec 64)
-    (H : String → Option (State → State)) :
-    (libsignalSessionCode.rebase b H).fnAddr growOneMessageKeyName =
-      (libsignalSessionCode.rebase b H).fnAddr growOneChainName := by
-  rw [Program.fnAddr_rebase, Program.fnAddr_rebase, growOneMessageKey_fnOff_eq_chain]
-
-/-- `RawVec<MessageKey>::grow_one` meets `(growOneChainSpecX A).inImage img`
-under `Proofs.libsignal.Stage1X.AllocContractsX img A ext`, by reusing `growOneChain_ok_x`. -/
-theorem growOneMessageKey_ok_ext_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hA : Proofs.libsignal.Stage1X.AllocContractsX img A ext) :
-    GrowOneMessageKeyOkExtX img A ext := by
-  unfold GrowOneMessageKeyOkExtX tripleRatchetProgAtExt
-  rw [growOneMessageKey_fnAddr_eq_chain]
-  exact Proofs.libsignal.Stage1X.growOneChain_ok_x hA
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec

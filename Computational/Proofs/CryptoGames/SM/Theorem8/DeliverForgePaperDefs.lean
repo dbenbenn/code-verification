@@ -9,7 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForge
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForge -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.SM.Reductions
 
 /-!
 # `DeliverForgePaper` Game and Engine
@@ -18,7 +19,7 @@ public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForge
 simulators where party corruption uses ACD19 Fig. 2's `corrAllowedPaper` guard.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -33,25 +34,25 @@ section OraclesDFPaper
 variable {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
 
 /-- Fig. 2 `corr-P` guard from ACD19: allowed while no challenge from `P.other` is in transit. -/
-def _root_.CryptoGames.SM.GameState.corrAllowedPaper {St Msg C : Type}
+@[expose] def _root_.CryptoGames.SM.GameState.corrAllowedPaper {St Msg C : Type}
     (s : GameState St Msg C) (P : Party) : Bool :=
   !(s.chall.any (fun pos => pos.sender == P.other))
 
-def corrImplPaper : QueryImpl (Party →ₒ Option St) (StateT (GameState St Msg C) ProbComp) :=
+@[expose] def corrImplPaper : QueryImpl (Party →ₒ Option St) (StateT (GameState St Msg C) ProbComp) :=
   fun P => do
     let s ← get
     if s.win || !(s.corrAllowedPaper P) then return none
     set (s.afterCorr P)
     return some (s.st P)
 
-def oracleImplPaper (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) [SampleableType Coins]
+@[expose] def oracleImplPaper (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) [SampleableType Coins]
     (cfg : Config Msg) :
     QueryImpl (spec St Msg Coins C) (StateT (GameState St Msg C) ProbComp) :=
   transmitImpl sm Δ qep + challImpl sm Δ qep cfg + deliverImpl sm cfg +
     injectImpl sm Δ qep cfg +
     (DeliverForge.corrImplPaper : QueryImpl _ (StateT (GameState St Msg C) ProbComp))
 
-def oracleImplBaseDFPaper (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) [SampleableType Coins]
+@[expose] def oracleImplBaseDFPaper (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) [SampleableType Coins]
     (sameHdr : C → C → Bool) (cfg : Config Msg) :
     QueryImpl (specDF St Msg Coins C) (StateT (GameState St Msg C) ProbComp) :=
   oracleImplPaper sm Δ qep cfg + deliverForgeBaseImpl sm Δ qep sameHdr cfg
@@ -75,7 +76,7 @@ variable {ι : Type} {tspec : OracleSpec.{0, 0} ι}
 local notation "EMt" => EM tspec Γv T Sv SSv RSv M E HS
 
 /-- Engine `corr-P` handler using `corrAllowedPaper`. -/
-def corrEPaper (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv) (π : Policy) :
+@[expose] def corrEPaper (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv) (π : Policy) :
     QueryImpl (Party →ₒ Option (PartyState Γ T Sig SS RS)) EMt := fun P => do
   let es ← get
   if es.abort || es.g.win || !(es.g.corrAllowedPaper P) then return none
@@ -91,7 +92,7 @@ def corrEPaper (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv) (�
     modify fun es => { es with g := s₁ }
     return some st
 
-def implEDFPaper (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
+@[expose] def implEDFPaper (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ qep maxSkip : ℕ) (cfg : Config M) (π : Policy) :
     QueryImpl (unifSpec + specDF (PartyState Γ T Sig SS RS) M CCoins (Header T × E)) EMt :=
   let i₀ : QueryImpl unifSpec EMt := coinsE
@@ -107,7 +108,7 @@ def implEDFPaper (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     deliverForgeE hk Δ qep cfg
   HAdd.hAdd i₀ (HAdd.hAdd i₁ i₂)
 
-def engRunDFPaper (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
+@[expose] def engRunDFPaper (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ qep maxSkip : ℕ) (cfg : Config M) (π : Policy)
     (init : HM tspec HS (Option (VP Γv T Sv SSv RSv × VP Γv T Sv SSv RSv))) (h₀ : HS)
     (b : Bool) (A : AdversaryDF (PartyState Γ T Sig SS RS) M CCoins (Header T × E)) :
@@ -130,7 +131,7 @@ variable {KC Γ CCoins T I : Type} {KR Sig K : Type} {SS RS M E : Type}
   [SampleableType KR] [SampleableType KC] [SampleableType CCoins] [SampleableType I]
   [SampleableType K]
 
-def authSimDFPaper {ι : Type} {tspec : OracleSpec.{0, 0} ι} {HS Γv Sv SSv RSv : Type}
+@[expose] def authSimDFPaper {ι : Type} {tspec : OracleSpec.{0, 0} ι} {HS Γv Sv SSv RSv : Type}
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep : ℕ)
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (init : HM tspec HS (Option (VP Γv T Sv SSv RSv × VP Γv T Sv SSv RSv))) (h₀ : HS)
@@ -142,7 +143,7 @@ def authSimDFPaper {ι : Type} {tspec : OracleSpec.{0, 0} ι} {HS Γv Sv SSv RSv
     | none => false
     | some (_, es) => authOut (2 + Δcka) π es
 
-def redCKAAuthDFPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def redCKAAuthDFPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep : ℕ)
     (tL : Option ℕ) (tStar : ℕ) (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) :
     CKA.Adversary Γ CCoins T I :=
@@ -150,7 +151,7 @@ def redCKAAuthDFPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig 
   authSimDFPaper fs Δcka qep (hooksCKA cka prng fs Δcka ⟨true, tL, tStar⟩)
     (initCKA cka prng fs lam ⟨true, tL, tStar⟩) {} tL tStar A
 
-def redPRNGAuthDFPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def redPRNGAuthDFPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep : ℕ)
     (tL : Option ℕ) (tStar : ℕ) (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) :
     PRFPRNG.Adversary Sig I K :=
@@ -158,7 +159,7 @@ def redPRNGAuthDFPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig
   authSimDFPaper fs Δcka qep (hooksPRNG cka prng fs ⟨true, tL, tStar⟩)
     (initPRNG cka prng fs lam ⟨true, tL, tStar⟩) {} tL tStar A
 
-def redFSAuthDFPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def redFSAuthDFPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep : ℕ)
     (j : ℕ) (tL : Option ℕ) (tStar : ℕ) (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) :
     FSAEAD.Adversary SS RS (Header T) M E :=
@@ -178,14 +179,14 @@ variable {St Msg Coins C : Type}
 local notation "CompDF" => AdversaryCompDF St Msg Coins C
 local notation "RedMDF" => StateT (Mirror Msg C) (AdversaryCompDF St Msg Coins C)
 
-def simCorrDFPaper : QueryImpl (Party →ₒ Option St) RedMDF := fun P => do
+@[expose] def simCorrDFPaper : QueryImpl (Party →ₒ Option St) RedMDF := fun P => do
   let s ← get
   if !(s.corrAllowedPaper P) then return none
   let res ← StateT.lift (corrQueryDF (Msg := Msg) (Coins := Coins) (C := C) P)
   if res.isSome then set (s.afterCorr P)
   return res
 
-def simOraclesDFPaper [DecidableEq C] (Δ qep : ℕ) : QueryImpl (specDF St Msg Coins C) RedMDF :=
+@[expose] def simOraclesDFPaper [DecidableEq C] (Δ qep : ℕ) : QueryImpl (specDF St Msg Coins C) RedMDF :=
   let i₁ : QueryImpl ((Party × Msg × Option Coins) →ₒ Option C) RedMDF := simTransmitDF Δ qep
   let i₂ : QueryImpl ((Party × Msg × Msg × Option Coins) →ₒ Option C) RedMDF := simChallDF Δ qep
   let i₃ : QueryImpl ((Party × C) →ₒ Option (RecvResult Msg)) RedMDF := simDeliverDF
@@ -194,20 +195,20 @@ def simOraclesDFPaper [DecidableEq C] (Δ qep : ℕ) : QueryImpl (specDF St Msg 
   let i₆ : QueryImpl ((Party × C × C) →ₒ Option (RecvResult Msg)) RedMDF := simDeliverForgeDF
   HAdd.hAdd (HAdd.hAdd (HAdd.hAdd (HAdd.hAdd (HAdd.hAdd i₁ i₂) i₃) i₄) i₅) i₆
 
-def simImplDFPaper [DecidableEq C] (Δ qep : ℕ) :
+@[expose] def simImplDFPaper [DecidableEq C] (Δ qep : ℕ) :
     QueryImpl (unifSpec + specDF St Msg Coins C) RedMDF :=
   let c : QueryImpl unifSpec RedMDF := simCoinsDF
   let o : QueryImpl (specDF St Msg Coins C) RedMDF := simOraclesDFPaper Δ qep
   HAdd.hAdd c o
 
 /-- Authenticity simulator `challSimDF` adapted to `corrAllowedPaper`. -/
-def challSimDFPaper [DecidableEq C] (Δ qep : ℕ) (A : AdversaryDF St Msg Coins C) :
+@[expose] def challSimDFPaper [DecidableEq C] (Δ qep : ℕ) (A : AdversaryDF St Msg Coins C) :
     AdversaryDF St Msg Coins C :=
   show AdversaryCompDF St Msg Coins C Bool from do
   let b ← (liftM ($ᵗ Bool : ProbComp Bool) : AdversaryCompDF St Msg Coins C Bool)
   (simulateQ (simImplDFPaper Δ qep) A).run' ({ st := fun _ => (), b } : Mirror Msg C)
 
-def simTransmitDF'Paper (Δ qep : ℕ) :
+@[expose] def simTransmitDF'Paper (Δ qep : ℕ) :
     QueryImpl ((Party × Msg × Option Coins) →ₒ Option C) RedMDF :=
   fun ⟨P, m, _r⟩ => do
     let s ← get
@@ -217,7 +218,7 @@ def simTransmitDF'Paper (Δ qep : ℕ) :
     | _, _ => pure ()
     return res
 
-def simChallDF'Paper (Δ qep : ℕ) :
+@[expose] def simChallDF'Paper (Δ qep : ℕ) :
     QueryImpl ((Party × Msg × Msg × Option Coins) →ₒ Option C) RedMDF :=
   fun ⟨P, m₀, m₁, _r⟩ => do
     let s ← get
@@ -233,7 +234,7 @@ def simChallDF'Paper (Δ qep : ℕ) :
         set (s₁.record Δ P () ⟨⟨P, s₁.epoch P, s₁.idx P + 1⟩, mb, c⟩ true)
         return some c
 
-def simOraclesDF'Paper [DecidableEq C] (Δ qep : ℕ) : QueryImpl (specDF St Msg Coins C) RedMDF :=
+@[expose] def simOraclesDF'Paper [DecidableEq C] (Δ qep : ℕ) : QueryImpl (specDF St Msg Coins C) RedMDF :=
   let i₁ : QueryImpl ((Party × Msg × Option Coins) →ₒ Option C) RedMDF := simTransmitDF'Paper Δ qep
   let i₂ : QueryImpl ((Party × Msg × Msg × Option Coins) →ₒ Option C) RedMDF :=
     simChallDF'Paper Δ qep
@@ -243,7 +244,7 @@ def simOraclesDF'Paper [DecidableEq C] (Δ qep : ℕ) : QueryImpl (specDF St Msg
   let i₆ : QueryImpl ((Party × C × C) →ₒ Option (RecvResult Msg)) RedMDF := simDeliverForgeDF
   HAdd.hAdd (HAdd.hAdd (HAdd.hAdd (HAdd.hAdd (HAdd.hAdd i₁ i₂) i₃) i₄) i₅) i₆
 
-def simImplDF'Paper [DecidableEq C] (Δ qep : ℕ) :
+@[expose] def simImplDF'Paper [DecidableEq C] (Δ qep : ℕ) :
     QueryImpl (unifSpec + specDF St Msg Coins C) RedMDF :=
   let c : QueryImpl unifSpec RedMDF := simCoinsDF
   let o : QueryImpl (specDF St Msg Coins C) RedMDF := simOraclesDF'Paper Δ qep
@@ -251,7 +252,7 @@ def simImplDF'Paper [DecidableEq C] (Δ qep : ℕ) :
 
 /-- Coin-stripping authenticity simulator under `corrAllowedPaper`, replacing adversary-supplied
 coins on `transmit` and `chall` with `none`. -/
-def challSimDF'Paper [DecidableEq C] (Δ qep : ℕ) (A : AdversaryDF St Msg Coins C) :
+@[expose] def challSimDF'Paper [DecidableEq C] (Δ qep : ℕ) (A : AdversaryDF St Msg Coins C) :
     AdversaryDF St Msg Coins C :=
   show AdversaryCompDF St Msg Coins C Bool from do
   let b ← (liftM ($ᵗ Bool : ProbComp Bool) : AdversaryCompDF St Msg Coins C Bool)
@@ -265,7 +266,7 @@ section GamesDFPaper
 
 variable {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
 
-def runBaseDFPaper (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
+@[expose] def runBaseDFPaper (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
     [SampleableType Key] [SampleableType Coins]
     (sameHdr : C → C → Bool) (cfg : Config Msg) (b : Bool)
     (B : AdversaryDF St Msg Coins C) : ProbComp (Bool × GameState St Msg C) := do
@@ -273,7 +274,7 @@ def runBaseDFPaper (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
   (simulateQ (fullImplBaseDFPaper sm Δ qep sameHdr cfg) B).run (initState sm k b)
 
 /-- Unguessed `DeliverForgePaper` win game returning `s.win` at `Config.h1`. -/
-def forgeGameWinPaper (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
+@[expose] def forgeGameWinPaper (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
     [SampleableType Key] [SampleableType Coins]
     (sameHdr : C → C → Bool) (B : AdversaryDF St Msg Coins C) : ProbComp Bool := do
   let b ← $ᵗ Bool
@@ -281,14 +282,14 @@ def forgeGameWinPaper (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
   return s.win
 
 /-- Guessed `DeliverForgePaper` authenticity game for target `(tLStar, tStar)`. -/
-def forgeGameGuessedPaper (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
+@[expose] def forgeGameGuessedPaper (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
     [SampleableType Key] [SampleableType Coins]
     (sameHdr : C → C → Bool) (tLStar : Option ℕ) (tStar : ℕ)
     (B : AdversaryDF St Msg Coins C) : ProbComp Bool := do
   let (_, s) ← runBaseDFPaper sm Δ qep sameHdr (Config.auth tStar) false B
   return s.win && authLosingConditionsAvoided Δ tLStar tStar s
 
-noncomputable def forgeGuessedAdvantagePaper (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
+@[expose] noncomputable def forgeGuessedAdvantagePaper (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
     [SampleableType Key] [SampleableType Coins]
     (sameHdr : C → C → Bool) (tLStar : Option ℕ) (tStar : ℕ)
     (B : AdversaryDF St Msg Coins C) : ℝ≥0∞ :=

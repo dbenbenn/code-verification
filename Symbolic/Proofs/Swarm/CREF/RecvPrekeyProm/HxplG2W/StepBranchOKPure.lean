@@ -9,11 +9,16 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.IfacePure
-public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame
-public import Symbolic.Proofs.Swarm.CREF.CBadReadableBridge
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.IfacePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.CBadReadableBridge -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TROpen
+public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.CBad -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatementDefs
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2AdapterPure -- proof-setup: allow-public-import
 
 /-!
 # Raw-Witness Branch Obligation and Three-Branch Combiner
@@ -22,7 +27,7 @@ Defines the per-branch obligation `PromRawKnBranchOK` for promote decryption and
 `Skipped`, `NoRatchet`, and `RatchetDH` branches in `prom_hRawKn_of_rawKnBranches`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -44,7 +49,7 @@ open DY.Libsignal.TripleRatchet.Refinement (wireWhisperTag)
 
 /-- Per-branch obligation producing a `RawDecryptMatched` witness together with attacker-known
 `pqSalt` at every clean explanation of an accepting, non-colliding promote call. -/
-def PromRawKnBranchOK (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PromRawKnBranchOK (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool) (sel : PromDecSel) : Prop :=
   ∀ (j : Nat) (e' : PromTurn) (mid acc : List MachineEvent)
     (rec : HwBytes) (tag : BitVec 8) (body : HwBytes) (sm : StateAndMessage) (pf : PreKeyFields)

@@ -8,6 +8,7 @@ limitations under the License.
 -/
 
 import VerifiedLibraries.Mallocng.Proofs.PlacedFreeHelpers6f
+import VerifiedLibraries.Mallocng.Proofs.Cost.Fine.GroupsFreeMono
 
 /-!
 # Group-List Monotonicity for `free`
@@ -55,5 +56,39 @@ theorem DequeueOutcome.groupsGrpMono {st : MallocngSt} {g : GroupDesc}
   GroupsGrpMono.of_subset fun h hh _ _ => by
     obtain ⟨_, h0, hh0, _, _, hMl, hSc, _⟩ := hDeq.each_preserved h hh
     exact ⟨h0, hh0, hSc.symm, hMl ▸ Nat.le_refl _⟩
+
+/-- Fine group-list monotonicity (`Cost.Fine.GroupsFreeMono`) for `replaceGroupByMeta`. -/
+theorem groupsFreeMono_replaceGroupByMeta {gs : List GroupDesc} {g g1 : GroupDesc} (hg : g ∈ gs)
+    (m : BitVec 64) (hMeta : g1.metaPtr = g.metaPtr) (hSc : g1.sc = g.sc) (hCnt : g1.cnt = g.cnt)
+    (hMl : g1.maplen = g.maplen) (hPar : g1.parentMeta = g.parentMeta)
+    (hSl : Fine.SlotUserSub g1.slots g.slots) :
+    Fine.GroupsFreeMono gs (replaceGroupByMeta gs m g1) :=
+  Fine.GroupsFreeMono.map_ite hg m hMeta hSc hCnt hMl hPar hSl
+
+/-- Fine group-list monotonicity (`Cost.Fine.GroupsFreeMono`) for `updateQueuedGroups`. -/
+theorem groupsFreeMono_updateQueuedGroups {gs : List GroupDesc} {g g1 : GroupDesc} (hg : g ∈ gs)
+    (head tailPtr : BitVec 64) (hMeta : g1.metaPtr = g.metaPtr) (hSc : g1.sc = g.sc)
+    (hCnt : g1.cnt = g.cnt) (hMl : g1.maplen = g.maplen) (hPar : g1.parentMeta = g.parentMeta)
+    (hSl : Fine.SlotUserSub g1.slots g.slots) :
+    Fine.GroupsFreeMono gs (updateQueuedGroups gs head tailPtr g1) := by
+  unfold updateQueuedGroups
+  refine Fine.GroupsFreeMono.map_witness _ fun h hh => ?_
+  by_cases hc : (h.metaPtr == g1.metaPtr) = true
+  · simp only [hc, ↓reduceIte]; exact ⟨g, hg, hMeta, hSc, hCnt, hMl, hPar, hSl⟩
+  · simp only [hc, Bool.false_eq_true, ↓reduceIte]
+    exact ⟨h, hh, rfl, rfl, rfl, rfl, rfl, Fine.SlotUserSub.refl h.slots⟩
+
+/-- Fine group-list monotonicity (`Cost.Fine.GroupsFreeMono`) for `DequeueOutcome`. -/
+theorem DequeueOutcome.groupsFreeMono {st : MallocngSt} {g : GroupDesc}
+    {active1 usage1 : List (BitVec 64)} {actLists1 : List (List (BitVec 64))}
+    {gsDeq : List GroupDesc} {bvDeq : BitVec 64 → BitVec 8}
+    (hDeq : DequeueOutcome st g active1 usage1 actLists1 gsDeq bvDeq) :
+    Fine.GroupsFreeMono st.groups gsDeq := by
+  intro h hh
+  obtain ⟨_, h0, hh0, hMeta, _, hMl, hSc, hLast, _, hPar, _, hSLen, _, _, hSP⟩ :=
+    hDeq.each_preserved h hh
+  refine ⟨h0, hh0, hMeta, hSc, ?_, hMl, hPar, ⟨hSLen, fun i hi hi0 p req eff hEq =>
+    ((hSP i hi hi0).2 p req eff).mp hEq⟩⟩
+  simp only [GroupDesc.cnt, hLast]
 
 end VerifiedLibraries.Mallocng.Proofs.Cost

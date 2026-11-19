@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.IntoPbClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.OuterBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.OuterPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.ProofBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.IntoPbClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.OuterBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.OuterPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.ProofBudget
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.GenLsBlock
@@ -23,6 +23,15 @@ import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbClPlaced
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPFrozen
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Outer -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<PolyEncoder>::into_pb` (Block `375`): Budget-Threaded `withLsCodeLoaded` Proof
@@ -31,7 +40,7 @@ Relocatable `[LibsignalPlacement]` verification of `<PolyEncoder>::into_pb` thre
 `RustCliAllocBudget M`, `BudgetLimits`, `FitsEnv`, and `withLsCodeLoaded lsmpl`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

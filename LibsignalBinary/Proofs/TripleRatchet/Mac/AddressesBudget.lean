@@ -12,12 +12,12 @@ module
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.Addresses
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.Addresses -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
@@ -27,7 +27,7 @@ Proves `[LibsignalPlacement]` `RustCliAllocBudget` contracts (`serializeAddresse
 `serializeAddressesSpecX`) for `<SignalMessage>::serialize_addresses`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -190,11 +190,11 @@ private theorem stackAt_parseSid_add_extHook (sp : BitVec 64) :
   sep_ac_rfl
 
 /-- `VmPreserved`-strengthened counterpart of `shimSpecWithStack`. -/
-def shimBudgetSpecWithStack (hookStack : Nat) : Spec Unit :=
+@[expose] def shimBudgetSpecWithStack (hookStack : Nat) : Spec Unit :=
   withVmPreserved (shimSpecWithStack hookStack)
 
 /-- `VmPreserved`-strengthened counterpart of `parseSidCellsSpecAt`. -/
-def parseSidCellsBudgetSpecAt (parse : UuidParser) (callStack : Nat) : Spec ParseSidCellsGhost :=
+@[expose] def parseSidCellsBudgetSpecAt (parse : UuidParser) (callStack : Nat) : Spec ParseSidCellsGhost :=
   withVmPreserved (parseSidCellsSpecAt parse callStack)
 
 theorem shimBudgetWithStack_of_noAllocShim {prog : Program} {addr : BitVec 64} (hookStack : Nat)

@@ -10,15 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Common
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Common -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Hook Helpers for the `consume_message_key` Take Path
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,10 +42,10 @@ open LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget 
   CmkAllocHooks CmkTakeState_placed FindIndexPlacedOk cmkPlacedSpec
 )
 
-def libcMemmoveBudgetSpec : Spec (BitVec 64 × List (BitVec 8) × Nat × Nat × Nat) :=
+@[expose] def libcMemmoveBudgetSpec : Spec (BitVec 64 × List (BitVec 8) × Nat × Nat × Nat) :=
   withVmPreserved libcMemmoveSpec
 
-def TakePathPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def TakePathPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=

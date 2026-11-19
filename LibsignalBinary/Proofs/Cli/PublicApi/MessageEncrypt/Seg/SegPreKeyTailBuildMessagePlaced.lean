@@ -9,12 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyTailDefsPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyTailBuildMessage
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyTailDefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyTailBuildMessage -- proof-setup: allow-public-import
 public import ProofLib.RegChain
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageLengthBound
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyCommonPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyTailSymPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CmDropPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrCommonPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrPreKeyEncryptPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrSignalEncryptPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrStoreHookPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Relocatable `segPreKey` `PreKeySignalMessage::new` and Result Copy (`+0x8c8..+0xa70`)
@@ -24,7 +38,7 @@ Proves `segPreKey_buildMessage_placed_ok` on Block `464` (`lsProg_464 Hk`) under
 at `+0xa70`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +64,7 @@ attribute [local irreducible] Program.fetch Program.externAt? Obj.MultiPlacedLib
 
 /-! ## 1. Placed Frame Unpack and Pack Helpers for E6d, `preKeyMsgNewSpec`, and E6e -/
 
-def encCommonPlacedRest [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def encCommonPlacedRest [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (x : WithStoresEncGhost) (draws : Nat) (s0 : State) : SepProp :=
   (x.ptA ↦ₛ x.ptext) ∗ protocolAddressAt A x.rem x.remA ∗ protocolAddressAt A x.loc x.locA ∗
     nowAt s0.sp x.now ∗ cliTapeAfter ctl x.cur x.rest draws ∗ FromRecordCallees.lsLogOff ∗
@@ -70,7 +84,7 @@ theorem encCommonPlaced_eq_preKeyMsg [LibsignalPlacement] (A : RustAlloc) (ctl :
       preKeyMsgNewStack encSubStack rfl rfl (by decide) (by decide) (by decide)]
   rw [hstk]; sep_ac_rfl
 
-def buildPreKeyMsgRestFramePlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def buildPreKeyMsgRestFramePlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (ctl : BitVec 64) (x : WithStoresEncGhost)
     (sess : Session (List (BitVec 8))) (taken : SessionState (List (BitVec 8)))
@@ -287,7 +301,7 @@ private theorem buildPreKeyMsg_placed_pre_unpack [LibsignalPlacement] {A : RustA
     ikd0, ikd1, ikd2, ikd3, H_sm, H_ky⟩, hw0, hmsg_len, hik, hbk, hpack_sm, hpack_ky, ?_⟩
   exact Eq.mp (congrArg (s.mem ⊨ ·) (by dsimp only [S_sc, W_sm, W_d, F_e6d]; sep_ac_rfl)) hm_ikd
 
-def preKeyMsgCallFramePlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def preKeyMsgCallFramePlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (ctl : BitVec 64) (x : WithStoresEncGhost)
     (sess : Session (List (BitVec 8))) (taken : SessionState (List (BitVec 8)))
@@ -388,7 +402,7 @@ theorem preKeyMsgNew_placed_pre_pack [LibsignalPlacement] {A : RustAlloc}
           (sepConj_mono hw_ret (sepConj_mono hw_8a0 hw_ab4))))) ?_
   exact Entails.of_eq (by sep_ac_rfl)
 
-def cmCopyRestFramePlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def cmCopyRestFramePlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (ctl : BitVec 64) (x : WithStoresEncGhost)
     (sess : Session (List (BitVec 8))) (taken : SessionState (List (BitVec 8)))

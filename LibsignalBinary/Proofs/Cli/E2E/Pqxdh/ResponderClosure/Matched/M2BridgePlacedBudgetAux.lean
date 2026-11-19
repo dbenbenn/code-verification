@@ -11,15 +11,15 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4StoreSession
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4StoreSession -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
@@ -28,6 +28,12 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2a
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP2a -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Envelopes, Spatial Bundles, and Segments for `Matched.M2BridgePlacedBudget`
@@ -37,7 +43,7 @@ spatial bundles (`stageP2Matched0868PrePlaced`, `stageP2Matched094cPostPlaced`),
 helpers, and pool-threaded Block-`518` basic-block segment lemmas for `Matched.M2BridgePlacedBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -51,8 +57,6 @@ attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_add_neg96_eq_hsp_592
 
 namespace LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlacedBudgetAux
-
-noncomputable section
 
 open Arm64 ProofLib ProofLib.ProgramReflection SepProp
 open CryptoGames.HMAC (keyToBytes32)
@@ -138,11 +142,11 @@ local macro "wp_steps_sync_518 " h:term:max mid:term : tactic => `(tactic| (
 
 /-- Exact allocator event trace across `+0x0868 → +0x094c`:
 `<PublicKey>::serialize` (`__rust_alloc(33, 1)`) followed by `__rust_dealloc(serPtr, 33, 1)`. -/
-def stageP2MatchedBridgeEvents : List AllocEvent :=
+@[expose] def stageP2MatchedBridgeEvents : List AllocEvent :=
   publicKeySerializeEvents ++ rustDeallocEvents 33 1
 
 /-- Exact allocator event envelope of `+0x0868 → +0x094c` (`evs = [.alloc 33, .free 1 33]`). -/
-def StageP2MatchedBridgeEnv (evs : List AllocEvent) : Prop :=
+@[expose] def StageP2MatchedBridgeEnv (evs : List AllocEvent) : Prop :=
   evs = stageP2MatchedBridgeEvents
 
 theorem fitsEnv_stageP2MatchedBridge_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :
@@ -156,7 +160,7 @@ theorem fitsEnv_publicKeySerialize_of_bridge {M : AllocCostModel} {lim : BudgetL
   exact ((fitsEvents_append M lim publicKeySerializeEvents (rustDeallocEvents 33 1) st).mp
     (fitsEnv_stageP2MatchedBridge_iff.mp h)).1
 
-def stageP2Matched0868PrePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP2Matched0868PrePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (s : State)
     (sp coroPtr msgPtr : BitVec 64)
     (msgVerByte b_4f1 : BitVec 8)
@@ -173,7 +177,7 @@ def stageP2Matched0868PrePlaced [LibsignalPlacement] {M : AllocCostModel}
   A.pool lim st s ∗
   stackAt sp rootStack
 
-def stageP2Matched094cPostPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP2Matched094cPostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st' : M.σ) (sf : State)
     (sp coroPtr msgPtr remoteAddrPtr localAddrPtr
       idStorePtr idStoreVt preKeyStorePtr preKeyStoreVt
@@ -564,7 +568,5 @@ theorem p2_matched_to_remote_ik_placed_wp [LibsignalPlacement]
     by simp_all [wp_norm, arm64_norm], by simp_all [wp_norm, arm64_norm],
     by simp_all [wp_norm, arm64_norm], by simp_all [wp_norm, arm64_norm],
     by simp_all [wp_norm, arm64_norm]⟩
-
-end
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlacedBudgetAux

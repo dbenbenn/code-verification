@@ -59,10 +59,6 @@ private theorem codeLoaded_at_findCodeBlock {lib : Arm64.Obj.MultiPlacedLib}
   rw [hba] at hrd hperm hlf
   exact ⟨hin, hrd, hperm, hlf⟩
 
-theorem step_deterministic {prog : Arm64.Program} {s s1 s2 : Arm64.State}
-    (h1 : Arm64.Step prog s s1) (h2 : Arm64.Step prog s s2) : s1 = s2 :=
-  Arm64.Step.deterministic h1 h2
-
 theorem stepsUntil_deterministic {prog : Arm64.Program} {stop : Arm64.State → Prop}
     {s0 s1 s2 : Arm64.State}
     (h1 : Arm64.StepsUntil prog stop s0 s1) (hs1 : stop s1)

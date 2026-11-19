@@ -9,15 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.BranchesPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.LayoutPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.SymPlacedBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.BranchesPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.LayoutPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.SymPlacedBudget
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.Branches -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.LayoutPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.BranchesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.Epilogue
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.EpiloguePlacedBudgetFd
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
 
 /-!
 # `FdsGe3Closed`-Threaded Relocatable `Ok(b :: bs)` Branch & Top-Level `load_session::{closure#0}`
@@ -26,7 +39,7 @@ Proves `lpoll_deser_copy_78_placed_fd`, `lpoll_branch_ok_cons_placed_fd`, and
 `sessLoadPoll_placed_ok_fd` against `withFdsGe3Closed (sessLoadPollSpecPlaced …)` on Block `569`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

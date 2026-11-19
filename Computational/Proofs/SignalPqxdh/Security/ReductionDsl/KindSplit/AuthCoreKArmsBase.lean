@@ -8,13 +8,16 @@ limitations under the License.
 -/
 
 module
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreK -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCr -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyShCr -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfCk -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfMk -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyAeadCpa -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfHmac -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreK
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCr
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyShCr
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfCk
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfMk
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyAeadCpa
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfHmac
+public import Computational.Proofs.SignalPqxdh.CostedTablesCompat -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpa -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacDsl -- proof-setup: allow-public-import
 
 /-!
 # Two-Fuel `(K_on, K_ro)` PRF and AEAD Branches

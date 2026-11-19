@@ -9,17 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyBBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyBBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.BaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Placed `SessionRecord::serialize` (`Prev1`) Body Specs and Step Statements
@@ -29,7 +32,7 @@ and step statements (`+444 .. +692`), and lifted `serializeSubStackX` callee con
 `<SessionRecord>::serialize` (block 52).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false
@@ -78,7 +81,7 @@ open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsBudg
 
 /-- Envelope-parameterized budget-threaded body contract for `SessionRecord::serialize` on a
 record with current session `x.sess` (ghost `x.G`) and `previous_sessions = [x.enc]`. -/
-def serializePrev1BodySpecWithEnvX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def serializePrev1BodySpecWithEnvX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (Env : SessionGhost → Session (List (BitVec 8)) → List (BitVec 8) → List AllocEvent → Prop) :
     Spec (SerializePrev1BodyGhost × M.σ) where
@@ -103,14 +106,14 @@ theorem serializePrev1BodySpecWithEnvX_eq (M : AllocCostModel) (A : RustCliAlloc
     serializePrev1BodySpecWithEnvX M A lim SerializePrev1Env = serializePrev1BodySpecX M A lim :=
   rfl
 
-def SerializePrev1BodyPlacedOkWithEnvStmt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def SerializePrev1BodyPlacedOkWithEnvStmt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks)
     (Env : SessionGhost → Session (List (BitVec 8)) → List (BitVec 8) → List AllocEvent → Prop) :
     Prop :=
   subroutine_ok (lsProg_52 H) (blkPl_52).base
     (withLsCodeLoaded lsmpl (serializePrev1BodySpecWithEnvX M A lim Env))
 
-def SerializePrev1BodyPlacedOkStmt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def SerializePrev1BodyPlacedOkStmt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_52 H) (blkPl_52).base
     (withLsCodeLoaded lsmpl (serializePrev1BodySpecX M A lim))
@@ -138,13 +141,13 @@ theorem serializePrev1BodyPlacedOkWithEnvStmt_mono [LibsignalPlacement]
     rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
     exact ⟨⟨hq.1.1, himp x.G x.sess x.enc evs hq.1.2⟩, hq.2⟩
 
-def SerializePrev1PlacedBridgeWithEnvStmt [LibsignalPlacement] : Prop :=
+@[expose] def SerializePrev1PlacedBridgeWithEnvStmt [LibsignalPlacement] : Prop :=
   ∀ (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks)
     (Env : SessionGhost → Session (List (BitVec 8)) → List (BitVec 8) → List AllocEvent → Prop),
     SerializePrev1BodyPlacedOkWithEnvStmt M A lim H Env →
       SerializePrev1PlacedOkWithEnvStmt (lsProg_52 H) M A lim Env
 
-def SerializePrev1PlacedBridgeStmt [LibsignalPlacement] : Prop :=
+@[expose] def SerializePrev1PlacedBridgeStmt [LibsignalPlacement] : Prop :=
   ∀ (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks),
     SerializePrev1BodyPlacedOkStmt M A lim H →
       SerializePrev1PlacedOkStmt (lsProg_52 H) M A lim
@@ -154,7 +157,7 @@ def SerializePrev1PlacedBridgeStmt [LibsignalPlacement] : Prop :=
 /-- Allocation envelope for the field-2 write block (`+444 .. +692`) of
 `SessionRecord::serialize`: empty when `bs.length + (lenField 2 enc).length ≤ cap.toNat`, and
 `EncRawSegEnv bs.length (lenField 2 enc).length` when capacity grows. -/
-def SerField2Env (cap : BitVec 64) (bs enc : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def SerField2Env (cap : BitVec 64) (bs enc : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   if bs.length + (lenField 2 enc).length ≤ cap.toNat then evs = []
   else EncRawSegEnv bs.length (lenField 2 enc).length evs
 
@@ -200,7 +203,7 @@ theorem fitsEnv_serField2_of_encRawSeg {M : AllocCostModel} {lim : BudgetLimits}
 
 /-- Continuation-passing `SepWPpLsCl` contract for the budget-threaded field-2 write block
 (`+444 .. +692`) on `lsProg_52 H`. -/
-def SerField2PlacedStepStmt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def SerField2PlacedStepStmt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   ∀ (sp0 q' cap ptr capE ptrE : BitVec 64) (bs enc : List (BitVec 8)) (st : M.σ)
     {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop},
@@ -232,7 +235,7 @@ def SerField2PlacedStepStmt [LibsignalPlacement] (M : AllocCostModel)
         Q Qp) →
     SepWPpLsCl lsmpl (lsProg_52 H) ret s P Q Qp
 
-def SerField2PlacedStepSepWPStmt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def SerField2PlacedStepSepWPStmt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   ∀ (sp0 q' cap ptr capE ptrE : BitVec 64) (bs enc : List (BitVec 8)) (st : M.σ)
     {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q : State → SepProp → Prop},

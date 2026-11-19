@@ -10,15 +10,18 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.DecodesBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPoly
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Heap.IfaceBudget
+import LibsignalBinary.Heap.IfaceBudgetBase
+import LibsignalBinary.Proofs.SpqrV1.Drop.Decodes
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPoly -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Drop Glue for `proto::PolynomialEncoder` and `Option<PolynomialEncoder>`
@@ -28,7 +31,7 @@ Defines budget-threaded specifications (`dropProtoPolyEncoderSpec`,
 relocatable `[LibsignalPlacement]` contracts for Blocks `271` and `132`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -70,7 +73,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Budget-Threaded Specifications -/
 
-def dropProtoPolyEncoderSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropProtoPolyEncoderSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DropProtoPolyEncoderGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -82,7 +85,7 @@ def dropProtoPolyEncoderSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M)
       memRegion x.a protoPolynomialEncoderSize ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp dropStack48
 
-def dropProtoPolyEncoderSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropProtoPolyEncoderSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DropProtoPolyEncoderGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a ∧ LsRetAddr624 (s.readReg64 .lr)⌝ ∗
@@ -94,7 +97,7 @@ def dropProtoPolyEncoderSpec [LibsignalPlacement] (M : AllocCostModel) (A : Rust
       memRegion x.a protoPolynomialEncoderSize ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp dropStack48
 
-def dropOptProtoPolyEncoderSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropOptProtoPolyEncoderSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DropOptProtoPolyEncoderGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -106,7 +109,7 @@ def dropOptProtoPolyEncoderSpecBase (M : AllocCostModel) (A : RustCliAllocBudget
       memRegion x.a protoPolynomialEncoderSize ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp dropStack64
 
-def dropOptProtoPolyEncoderSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropOptProtoPolyEncoderSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DropOptProtoPolyEncoderGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a ∧ LsRetAddr624 (s.readReg64 .lr)⌝ ∗

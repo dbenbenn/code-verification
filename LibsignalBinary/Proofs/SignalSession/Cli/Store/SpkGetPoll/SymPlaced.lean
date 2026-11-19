@@ -9,10 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.SymPostPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.SymBlocksPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.SymPostPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.SymBlocksPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDeps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Specs
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.Callees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable Symbolic Execution of `get_signed_pre_key::{closure#0}`
@@ -20,7 +33,7 @@ import Arm64.Trusted.Spec.SepLogic
 Proves `spkGetPollInner_placed_ok` on Block `571` (`lsProg_571 H`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

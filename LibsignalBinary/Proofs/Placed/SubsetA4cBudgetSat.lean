@@ -9,13 +9,26 @@ limitations under the License.
 
 module
 
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.Placed.SubsetA4cBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.TopPlacedBudgetSat -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.TopPlacedBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonBudgetSat -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
+import LibsignalBinary.Proofs.Placed.SubsetA4cBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.TopPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.TopPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesTopPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk2PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.TopPlacedBudgetSat
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegsBudget
 
 /-!
 # `HookSat` Sibling of `Placed.SubsetA4cBudget` (`SubsetA4cBudgetSat`)
@@ -41,11 +54,14 @@ open CryptoVerification.LibsignalTripleRatchet (
   memsetName sessionMemcpyRegionSpec sessionMemcpySpec sessionMemmoveSpec
 )
 open CryptoVerification.SpqrV1.Alloc (growOneStack spqrMemmoveSym)
+open CryptoVerification.SpqrV1.GF.Mul2U16 (OnceCallHookOk)
 open CryptoVerification.SpqrV1.States.RecvCt2Chunk (spqrMlkemDecapsSym)
 open CryptoVerification.SpqrV1.Unchunked (spqrLibcruxHmacSym spqrMlkemEncaps2Sym)
 open LibsignalBinary.Heap (AllocCostModel BudgetLimits RustCliAllocBudget allocMemcpyVmSpec)
 open LibsignalBinary.Heap.SpecBudget (libcruxHmacBudgetSpec withVmPreserved)
+open LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase (mlkemDecapsAtSpec)
 open LibsignalBinary.Proofs.HookDischarge.Libc.Memmove (sessionMemmoveBoundedSpec)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux (framelessMemcpyAcpSpec)
 open LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget (withAllocVmPreserved)
 open LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget (AllocContractsPlaced)
@@ -135,13 +151,14 @@ theorem statesPlacedSeams_of_hooks_sat [LibsignalPlacement]
     (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
     (hval_pk : HookSat (Rust.withPanics ext)
       "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes"
-      (withVmPreserved (mlkemValidatePkSpec K)))
+      (withLsRet (withVmPreserved (mlkemValidatePkSpec K))))
     (hencaps2 : HookSat (Rust.withPanics ext) spqrMlkemEncaps2Sym
-      (withVmPreserved (mlkemEncaps2Spec K)))
+      (withLsRet (withVmPreserved (mlkemEncaps2Spec K))))
     (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
     (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym
-      (libcruxHmacBudgetSpec F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec F M A lim)))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     StatesPlacedSeamsOfEnv M A lim F K
       StatesFromPbEnv (StatesRecvExactEnv K)
       HeaderSentSendEkChunkEnv Ct1ReceivedSendEkChunkEnv
@@ -159,6 +176,7 @@ theorem statesPlacedSeams_of_hooks_sat [LibsignalPlacement]
     realloc := hA.realloc
     session_memcpy := fun hookStack => hookSat_sessionMemcpyBudget_of_region_any hookStack hmemcpy_reg
     session_memset_region := hmemset
+    once_ok := hOnce
   }
   let hFromPb : FromPbAllocHooksBudget M A lim ext := {
     panic_ok := hA.handleError
@@ -173,7 +191,7 @@ theorem statesPlacedSeams_of_hooks_sat [LibsignalPlacement]
     statesRecv_ok :=
       states_recv_placed_ok_x_closed_sat hA
         (hookSat_withAllocVmPreserved_memmove_of_zero growOneStack hmemmove0)
-        hmemset hval_pk hencaps2 hdecaps hhmac
+        hmemset hval_pk hencaps2 hdecaps hhmac hOnce
     headerSentSendEkChunk_ok :=
       header_sent_send_ek_chunk_placed_blockProgram_ok_x hAllocPlaced
     ct1ReceivedSendEkChunk_ok :=

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpine
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkHole
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpine -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkHole -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -20,7 +20,6 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-import ProofLib.Lemmas
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.DYBridge.DY.ALaCarte.Basic
@@ -32,6 +31,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeModKem -- proof-setup: allow-public-import
 
 /-!
 # Position-Indexed Honest Spine Core
@@ -41,7 +41,7 @@ hole predicates of `RkHole`, together with positional PQXDH draw-role tags (`IkA
 `OpkAt`, `EkAt`) and the trace-length monad combinators `TracefulR` and `TracefulF`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -61,20 +61,20 @@ open Symbolic.Swarm.CREF.TR.G1.Ik (IkStEntry IkPQStEntry IkPQEvEntry proj_inj_ik
 /-! ## Positional role tags -/
 
 /-- A PQXDH event is logged at position `j` of `T`. -/
-def PQEvAt (T : ExecTrace) (j : Nat) : Prop :=
+@[expose] def PQEvAt (T : ExecTrace) (j : Nat) : Prop :=
   ∃ e : IkPQEvEntry, (T.at? j : Option IkPQEvEntry) = some e
 
 /-- Identity secret drawn at `t` (`registerIdentity`: the next entry is a PQXDH event). -/
-def IkAt (T : ExecTrace) (t : Nat) : Prop := PQEvAt T (t + 1)
+@[expose] def IkAt (T : ExecTrace) (t : Nat) : Prop := PQEvAt T (t + 1)
 
 /-- Signed-prekey secret drawn at `t` (`genSignedPrekey`: a nonce draw, then a PQXDH event). -/
-def SpkAt (T : ExecTrace) (t : Nat) : Prop := ¬ PQEvAt T (t + 1) ∧ PQEvAt T (t + 2)
+@[expose] def SpkAt (T : ExecTrace) (t : Nat) : Prop := ¬ PQEvAt T (t + 1) ∧ PQEvAt T (t + 2)
 
 /-- One-time-prekey secret drawn at `t` (`genOneTimePrekey`: the next entry is a PQXDH event). -/
-def OpkAt (T : ExecTrace) (t : Nat) : Prop := PQEvAt T (t + 1)
+@[expose] def OpkAt (T : ExecTrace) (t : Nat) : Prop := PQEvAt T (t + 1)
 
 /-- Alice's base secret drawn at `t` (`aliceHandshake`/`aliceStart`: two more draws). -/
-def EkAt (T : ExecTrace) (t : Nat) : Prop := ¬ PQEvAt T (t + 1) ∧ ¬ PQEvAt T (t + 2)
+@[expose] def EkAt (T : ExecTrace) (t : Nat) : Prop := ¬ PQEvAt T (t + 1) ∧ ¬ PQEvAt T (t + 2)
 
 theorem ikAt_spkAt_false (T : ExecTrace) : ∀ t, IkAt T t → SpkAt T t → False :=
   fun _ hi hs => hs.1 hi
@@ -113,7 +113,7 @@ theorem topDhSecret_pqxdh {pk' dh2 dh3 ss : DY.Bytes} {dh4 : Option DY.Bytes} {t
 /-! ## Logged handshake IKMs -/
 
 /-- `ikm` is the PQXDH input key material of `keys`, paired with `ct`, with role-`c` DH holes. -/
-def CtKeysIkmR (T : ExecTrace) (c : Bool) (ct : DY.Bytes)
+@[expose] def CtKeysIkmR (T : ExecTrace) (c : Bool) (ct : DY.Bytes)
     (keys : DY.Libsignal.PQXDH.HandshakeKeys) (ikm : DY.Bytes) : Prop :=
   match c with
   | false =>
@@ -126,7 +126,7 @@ def CtKeysIkmR (T : ExecTrace) (c : Bool) (ct : DY.Bytes)
       keys = pqxdhKdf ikm ∧ IkmRoleHoles (IkAt T) (SpkAt T) (OpkAt T) (EkAt T) true a b e' d
 
 /-- `ikm` is an input key material of a role-`c` handshake-completion event. -/
-def DoneIkmRk (T : ExecTrace) (c : Bool) (ev : DY.Libsignal.PQXDH.PQXDHEvent)
+@[expose] def DoneIkmRk (T : ExecTrace) (c : Bool) (ev : DY.Libsignal.PQXDH.PQXDHEvent)
     (ikm : DY.Bytes) : Prop :=
   match c, ev with
   | false, .AliceDone _ _ _ _ _ _ _ _ ct keys => CtKeysIkmR T false ct keys ikm
@@ -134,7 +134,7 @@ def DoneIkmRk (T : ExecTrace) (c : Bool) (ev : DY.Libsignal.PQXDH.PQXDHEvent)
   | _, _ => False
 
 /-- Role-indexed input key materials of handshake-completion events logged in `T`. -/
-def LoggedIkmRk (T : ExecTrace) (c : Bool) (ikm : DY.Bytes) : Prop :=
+@[expose] def LoggedIkmRk (T : ExecTrace) (c : Bool) (ikm : DY.Bytes) : Prop :=
   ∃ ev, LoggedPQEv T ev ∧ DoneIkmRk T c ev ikm
 
 theorem roleHoles_of_ctKeysIkmR {T : ExecTrace} {c : Bool} {ct m : DY.Bytes}
@@ -176,7 +176,7 @@ theorem SpStateRk.mono {B B' : Bool → DY.Bytes → Prop} {j : Nat} {st : TRSta
 
 /-- Stored PQXDH secrets (stored at position `j`): DH secrets are 32-byte draws at a position
 `t < j` carrying the role tag of their kind. -/
-def PQSkAt (T : ExecTrace) (j : Nat) (st : DY.Libsignal.PQXDH.PQXDHState) : Prop :=
+@[expose] def PQSkAt (T : ExecTrace) (j : Nat) (st : DY.Libsignal.PQXDH.PQXDHState) : Prop :=
   match st.kind with
   | .identity => ∃ t, t < j ∧ st.sk = randTerm t 32 ∧ IkAt T t
   | .signedPrekey => ∃ t, t < j ∧ st.sk = randTerm t 32 ∧ SpkAt T t
@@ -192,11 +192,11 @@ theorem PQSkAt.mono {T : ExecTrace} {j j' : Nat} {st : DY.Libsignal.PQXDH.PQXDHS
     | (obtain ⟨t, ht, hsk, hr⟩ := h; exact ⟨t, by omega, hsk, hr⟩)
 
 /-- Per-entry invariant at position `j`, relative to the final trace `T`. -/
-def SpEntryOkR (T : ExecTrace) (j : Nat) (ent : ExecTrace.Entry) : Prop :=
+@[expose] def SpEntryOkR (T : ExecTrace) (j : Nat) (ent : ExecTrace.Entry) : Prop :=
   (∀ e : IkStEntry, TraceEntryHas.proj ent = some e → SpStateRk (LoggedIkmRk T) j e.st.state) ∧
   (∀ e : IkPQStEntry, TraceEntryHas.proj ent = some e → PQSkAt T j e.st.state)
 
-def TraceOkR (T tr : ExecTrace) : Prop :=
+@[expose] def TraceOkR (T tr : ExecTrace) : Prop :=
   ∀ j (hj : j < tr.length), SpEntryOkR T j (tr.at j hj)
 
 theorem traceOkR_nil (T : ExecTrace) : TraceOkR T (DY.Trace.nil : ExecTrace) :=
@@ -249,12 +249,12 @@ theorem not_pqEvAt_of_append {E : Type} [ExecTraceTypes.Has E] {tr T : ExecTrace
 
 /-- Monad combinator for `TraceOkR T`, on runs from a trace of length `n` whose output trace is a
 prefix of `T`; `Q` sees the result and the output trace length. -/
-def TracefulR {α : Type} (T : ExecTrace) (n : Nat) (Q : α → Nat → Prop) (x : Traceful α) : Prop :=
+@[expose] def TracefulR {α : Type} (T : ExecTrace) (n : Nat) (Q : α → Nat → Prop) (x : Traceful α) : Prop :=
   ∀ tr : ExecTrace, tr.length = n → (x.run tr).2.val ≤ T → TraceOkR T tr →
     TraceOkR T (x.run tr).2.val ∧ ∀ a, (x.run tr).1 = some a → Q a (x.run tr).2.val.length
 
 /-- Floor form: `TracefulR T n Q x` for every input length `n ≥ k`. -/
-def TracefulF {α : Type} (T : ExecTrace) (k : Nat) (Q : α → Nat → Prop) (x : Traceful α) : Prop :=
+@[expose] def TracefulF {α : Type} (T : ExecTrace) (k : Nat) (Q : α → Nat → Prop) (x : Traceful α) : Prop :=
   ∀ n, k ≤ n → TracefulR T n Q x
 
 section Combinators

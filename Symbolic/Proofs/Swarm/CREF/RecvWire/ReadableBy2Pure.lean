@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.CBad
-public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame
+import Symbolic.Proofs.Swarm.CREF.CBad
+public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptCollisionPickPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CBadG2Pure
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -22,7 +22,7 @@ Defines the one-step accepting decrypt witness `RecvDecryptRawWitness` and its w
 specialization `RecvWireRawWitness`, and extracts the underlying `MatchedPrefix` witness.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -44,7 +44,7 @@ open CryptoVerification.LibsignalProtoCodec
 open CryptoProofLib.Refinement (ExternInterpretation)
 
 /-- Tag-generic one-step accepting decrypt witness at `(g, ms)` before collision exclusion. -/
-def RecvDecryptRawWitness (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def RecvDecryptRawWitness (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (g : Ghost) (ms : List Move) (acc mid : List MachineEvent)
     (p : Participant) (tag : BitVec 8) (body b pt : HwBytes) : Prop :=
   ∃ (g₁ : Ghost) (stateIdx : Nat) (spqrMsgIdx : UInt32) (pqSalt t_m : DY.Bytes) (m : Move),

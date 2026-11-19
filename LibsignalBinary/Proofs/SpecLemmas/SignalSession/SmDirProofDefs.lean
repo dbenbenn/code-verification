@@ -21,7 +21,7 @@ Defines the reachable classical Double Ratchet (`spqrOffSessionParams`) CLI refi
 predicate `CliSpecE` over `LibsignalBinary.Specifications.SignalSession.SmDir`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 namespace CryptoVerification.SignalSession
@@ -33,7 +33,7 @@ state `g` reachable under `spqrOffSessionParams C` for messages and ciphertexts 
 than `2 ^ 32` bytes (matching `shortCiphertext` in DEV-M1), exiting `2` above
 `stdinCapBytes` (`2 ^ 20`), exiting `1` on `send` above `maxPlaintextBytes` (`10 ^ 6`),
 and matching `observe` otherwise. -/
-def CliSpecE (run : CliRun) (C : Crypto) : Prop :=
+@[expose] def CliSpecE (run : CliRun) (C : Crypto) : Prop :=
   (∀ (g : GhostState Bytes) (m : List (BitVec 8)), Reach (spqrOffSessionParams C) g → m.length < 2 ^ 32 →
     run (smSendInputs g m) =
       if m.length > stdinCapBytes then

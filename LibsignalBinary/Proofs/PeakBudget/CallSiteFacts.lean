@@ -9,9 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.HooksE.Common
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Hops
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
+public import LibsignalBinary.Proofs.E2E.HooksE.Common -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Hops
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel -- proof-setup: allow-public-import
 
 /-!
 # Call-site predicates and wire / address length bounds (`CallSiteFacts`)
@@ -22,7 +27,7 @@ length `≤ 40`, and `SignalMessage.tryFrom` / `Pksm.pksmParse` fields are bound
 slice length.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -52,89 +57,6 @@ open CryptoVerification.SignalSession.Cli.RunProofs.Pksm
   (decodeProto decodeProtoLoop emptyProto mergeProtoField pksmParse)
 
 /-! ## Call-site predicates -/
-
-/-- Facts holding at `R2`'s `signal_session_ratchet::encrypt` call site. -/
-def EncCallSite (img : Obj.Image) (S : RunSem) (g : RunCall) (x : EncGhost) : Prop :=
-  runRel S g.i g.a ∧
-  parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c ∧
-  (∃ peerV ownB meV,
-    g.c = .send peerV ∧
-    StoresGhost.opened.identity.own.get cliIo.rd (runFiles g.i) (utf8 "address") = .ok ownB ∧
-    addrParse uuidTryParse ownB = some meV ∧
-    x.peer.val = addrValOf peerV ∧
-    x.me.val = addrValOf meV ∧
-    x.F = runFiles g.i ∧
-    x.coins = coinsOf g.i ∧
-    x.ptext = g.i.stdin ∧
-    x.ptext.length < 2 ^ 32 ∧
-    x.coins.length < 2 ^ 63 ∧
-    S.filesOk x.F x.peer.val x.me.val ∧
-    S.encOk x.F x.peer.val x.coins) ∧
-  (∃ m0 R0, m0 ⊨ slotFrame A0 img x.toSlotCtx ∗ R0)
-
-/-- Facts holding at `R3a`'s `signal_session_ratchet::decrypt_signal` call site. -/
-def DecSigCallSite (img : Obj.Image) (S : RunSem) (g : RunCall) (x : DecSigGhost) : Prop :=
-  runRel S g.i g.a ∧
-  parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c ∧
-  (∃ peerV rest ownB meV,
-    g.c = .recv peerV ∧
-    g.i.stdin = 2#8 :: rest ∧
-    rest.length < 2 ^ 32 ∧
-    SignalMessage.tryFrom protoSignalCodec rest = .ok x.msg ∧
-    StoresGhost.opened.identity.own.get cliIo.rd (runFiles g.i) (utf8 "address") = .ok ownB ∧
-    addrParse uuidTryParse ownB = some meV ∧
-    x.peer.val = addrValOf peerV ∧
-    x.me.val = addrValOf meV ∧
-    x.F = runFiles g.i ∧
-    x.coins = coinsOf g.i ∧
-    x.coins.length < 2 ^ 63 ∧
-    S.filesOk x.F x.peer.val x.me.val) ∧
-  (∃ m0 R0, m0 ⊨ (slotFrame A0 img x.toSlotCtx ∗ signalMessageAt A0 x.msgG x.msgA x.msg) ∗ R0)
-
-/-- Facts holding at `R1c`'s `signal_session_handshake::initiate` call site. -/
-def InitCallSite (img : Obj.Image) (S : RunSem) (g : RunCall) (x : InitGhost) : Prop :=
-  runRel S g.i g.a ∧
-  parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c ∧
-  (∃ peerV dir ownB meV,
-    g.c = .init peerV dir ∧
-    readBundleV (runFiles g.i) dir peerV.device = some x.bundle ∧
-    StoresGhost.opened.identity.own.get cliIo.rd (runFiles g.i) (utf8 "address") = .ok ownB ∧
-    addrParse uuidTryParse ownB = some meV ∧
-    x.peer.val = addrValOf peerV ∧
-    x.me.val = addrValOf meV ∧
-    x.F = runFiles g.i ∧
-    x.coins = coinsOf g.i ∧
-    x.coins.length < 2 ^ 63 ∧
-    x.bundle.spkSig.length = 64 ∧
-    x.bundle.kpkSig.length = 64 ∧
-    x.bundle.kpk.length = 1568 ∧
-    S.filesOk x.F x.peer.val x.me.val ∧
-    S.initOk x.F x.peer.val x.me.val) ∧
-  (∃ m0 R0, m0 ⊨
-    (slotFrame A0 img x.toSlotCtx ∗
-      cliBundleAt x.bundleA x.bundle x.spkSigPtr x.kpkSigPtr x.kpkPtr) ∗ R0)
-
-/-- Facts holding at `R3b`'s `signal_session_handshake::decrypt_prekey` call site. -/
-def DecPkCallSite (img : Obj.Image) (S : RunSem) (g : RunCall) (x : DecPkGhost) : Prop :=
-  runRel S g.i g.a ∧
-  parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c ∧
-  (∃ peerV rest ownB meV,
-    g.c = .recv peerV ∧
-    g.i.stdin = 3#8 :: rest ∧
-    rest.length < 2 ^ 32 ∧
-    S.pksmParse rest = some x.msg ∧
-    StoresGhost.opened.identity.own.get cliIo.rd (runFiles g.i) (utf8 "address") = .ok ownB ∧
-    addrParse uuidTryParse ownB = some meV ∧
-    x.peer.val = addrValOf peerV ∧
-    x.me.val = addrValOf meV ∧
-    x.F = runFiles g.i ∧
-    x.coins = coinsOf g.i ∧
-    x.coins.length < 2 ^ 63 ∧
-    S.filesOk x.F x.peer.val x.me.val ∧
-    S.decPkOk x.F x.peer.val x.me.val x.msg) ∧
-  (∃ m0 R0, m0 ⊨ (slotFrame A0 img x.toSlotCtx ∗ preKeyMsgAt A0 x.msgG x.msgA x.msg) ∗ R0)
-
-/-! ## Parsed address name length bound (`≤ 40`) -/
 
 theorem tryParseHyphenated_length_eq {u} {bs : List (BitVec 8)}
     (h : tryParseHyphenated uuidTryParse bs = some u) :
@@ -182,7 +104,7 @@ theorem addrParse_name_length_le {bs : List (BitVec 8)} {v : AddrV}
         rw [← hv]
         exact serviceIdParse_length_le hs
 
-def callAddrNameLen : CallV → Nat
+@[expose] def callAddrNameLen : CallV → Nat
   | .keygen me _ => me.name.length
   | .init peer _ => peer.name.length
   | .send peer => peer.name.length
@@ -556,63 +478,5 @@ theorem pksmParse_lengths_le {rest : List (BitVec 8)} {pm : PreKeySignalMessage}
                       exact hfb.2 kpct hkpct
 
 /-! ## Call-site unpackers -/
-
-theorem encCallSite_bounds {img : Obj.Image} {S : RunSem} {g : RunCall} {x : EncGhost}
-    (h : EncCallSite img S g x) :
-    x.peer.val.name.length ≤ 40 ∧ x.me.val.name.length ≤ 40 ∧ x.ptext.length < 2 ^ 32 := by
-  obtain ⟨_, hparse, ⟨peerV, ownB, meV, hc, _, hme, hpeer_eq, hme_eq, _, _, _, hpt, _, _, _⟩, _⟩ := h
-  have hp := parseArgs_peer_name_length_le hparse
-  rw [hc] at hp
-  have hm := addrParse_name_length_le hme
-  rw [hpeer_eq, hme_eq]
-  exact ⟨hp, hm, hpt⟩
-
-theorem decSigCallSite_bounds {img : Obj.Image} {S : RunSem} {g : RunCall} {x : DecSigGhost}
-    (h : DecSigCallSite img S g x) :
-    x.peer.val.name.length ≤ 40 ∧ x.me.val.name.length ≤ 40 ∧
-      x.msg.serialized.length < 2 ^ 32 ∧
-      x.msg.ciphertext.length < 2 ^ 32 ∧
-      x.msg.pqRatchet.length < 2 ^ 32 := by
-  obtain ⟨_, hparse, ⟨peerV, rest, ownB, meV, hc, _, hrest, htry, _, hme,
-    hpeer_eq, hme_eq, _, _, _, _⟩, _⟩ := h
-  have hp := parseArgs_peer_name_length_le hparse
-  rw [hc] at hp
-  have hm := addrParse_name_length_le hme
-  obtain ⟨hser, hct, hpq⟩ := signalMessage_tryFrom_lengths_le htry
-  rw [hpeer_eq, hme_eq, hser]
-  exact ⟨hp, hm, hrest, Nat.lt_of_le_of_lt hct hrest, Nat.lt_of_le_of_lt hpq hrest⟩
-
-theorem initCallSite_bounds {img : Obj.Image} {S : RunSem} {g : RunCall} {x : InitGhost}
-    (h : InitCallSite img S g x) :
-    x.peer.val.name.length ≤ 40 ∧ x.me.val.name.length ≤ 40 := by
-  obtain ⟨_, hparse, ⟨peerV, dir, ownB, meV, hc, _, _, hme, hpeer_eq, hme_eq, _, _, _, _, _, _, _, _⟩,
-    _⟩ := h
-  have hp := parseArgs_peer_name_length_le hparse
-  rw [hc] at hp
-  have hm := addrParse_name_length_le hme
-  rw [hpeer_eq, hme_eq]
-  exact ⟨hp, hm⟩
-
-theorem decPkCallSite_bounds {img : Obj.Image} {S : RunSem} {g : RunCall} {x : DecPkGhost}
-    (h : DecPkCallSite img S g x) (hpksm : S.pksmParse = pksmParse) :
-    x.peer.val.name.length ≤ 40 ∧ x.me.val.name.length ≤ 40 ∧
-      x.msg.serialized.length < 2 ^ 32 ∧
-      x.msg.message.serialized.length < 2 ^ 32 ∧
-      x.msg.message.ciphertext.length < 2 ^ 32 ∧
-      x.msg.message.pqRatchet.length < 2 ^ 32 ∧
-      ∀ ky, x.msg.kyberPayload = some ky → ky.ciphertext.length < 2 ^ 32 := by
-  obtain ⟨_, hparse, ⟨peerV, rest, ownB, meV, hc, _, hrest, htry, _, hme,
-    hpeer_eq, hme_eq, _, _, _, _, _⟩, _⟩ := h
-  rw [hpksm] at htry
-  have hp := parseArgs_peer_name_length_le hparse
-  rw [hc] at hp
-  have hm := addrParse_name_length_le hme
-  obtain ⟨hser, hmser, hmct, hmpq, hky⟩ := pksmParse_lengths_le htry
-  rw [hpeer_eq, hme_eq, hser]
-  exact ⟨hp, hm, hrest,
-    Nat.lt_of_le_of_lt hmser hrest,
-    Nat.lt_of_le_of_lt hmct hrest,
-    Nat.lt_of_le_of_lt hmpq hrest,
-    fun ky h => Nat.lt_of_le_of_lt (hky ky h) hrest⟩
 
 end LibsignalBinary.Proofs.PeakBudget.CallSiteFacts

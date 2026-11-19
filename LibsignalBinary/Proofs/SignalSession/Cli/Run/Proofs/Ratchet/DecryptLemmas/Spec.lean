@@ -9,19 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsVX
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Encrypt
+public import LibsignalBinary.Proofs.SignalSession.Coins.Defs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Defs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Encrypt -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Defs
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
-# Inner Store-Kit Specification for `decrypt_signal`
+# Inner Store-Kit Specification Helpers for `decrypt_signal`
 
-Defines the tight `TokenInit` and `Slots.DistinctSid` store-kit specification
-`withStoresDecSpecVTP`, the concrete CLI session and identity store kits `decSessKit` and
-`decIdKit`, and the `InnerDecryptOk` interface for `signal_session_ratchet::decrypt_signal`.
+Defines the stack budget helper `decNeedAux`, the functional model helpers `decKeyAux` and
+`decDefAux`, and the concrete CLI session and identity store kits `decSessKit` and `decIdKit`
+for `signal_session_ratchet::decrypt_signal`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -47,7 +51,7 @@ open CryptoVerification.SignalSession.Cli.RunProofs
 abbrev decNeedAux (B : RunBudgets) : Nat :=
   2 ^ 20 + B.readFile
 
-noncomputable def decKeyAux (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] noncomputable def decKeyAux (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer me : AddrVal) (msg : SignalMessage) (coins : List (BitVec 8)) :
     Option IdentityKey :=
   match Slots.loadRec Scope F peer with
@@ -59,7 +63,7 @@ noncomputable def decKeyAux (W : PEParams) (Scope : SessionRecord (List (BitVec 
     | .error _ => none
   | _ => none
 
-noncomputable def decDefAux (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] noncomputable def decDefAux (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer me : AddrVal) (msg : SignalMessage) (coins : List (BitVec 8)) :
     SlotAns (List (BitVec 8)) :=
   match LibsignalSessionApi.messageDecryptSignal W.C (pqxdhSpqrModel W).spqr
@@ -80,95 +84,19 @@ theorem decDefAux_eq_model (W : PEParams) (Scope : SessionRecord (List (BitVec 8
       | (.error _, _) => some none :=
   rfl
 
-/-- Tight store-kit contract for `decrypt_signal` threading `TokenInit img` and
-`Slots.DistinctSid`, with `Extra := fun _ _ => False` so panics occur only on model panic or
-allocation failure. -/
-def withStoresDecSpecVTP (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (parse : UuidParser)
-    (S : SpqrModel) (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (img : Obj.Image) (kit : SessionStoreSpec A img.base) (ikit : IdentityStoreSpec A img.base)
-    (st0 : kit.StoreState) (ist0 : ikit.IdState)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop) : Spec DecryptGhost :=
-  let base := CryptoVerification.Cli.LibsignalPublicApi.MessageDecrypt.withStoresDecSpecVX
-    C A ctl parse S encRecord img kit ikit st0 ist0 Scope (fun _ _ => False)
-  { base with
-    pre := fun x s =>
-      ⌜Slots.DistinctSid parse x.loc.name.bytes x.rem.name.bytes⌝ ∗
-        TokenInit img ∗ base.pre x s
-    post := fun x s0 sf =>
-      TokenInit img ∗ base.post x s0 sf }
-
-abbrev decSessKit (img : Obj.Image) (F0 : FsFiles) (peer : AddrGhost) (B : RunBudgets) :
-    SessionStoreSpec E2E.HooksE.A0 img.base :=
-  cliSessionStoreSpec E2E.HooksE.A0 img.base cliIo.rd F0 cliWrOk Slots.scopeKit peer
+set_option linter.unusedVariables false in
+abbrev decSessKit (img : Unit) (F0 : FsFiles) (peer : AddrGhost) (B : RunBudgets) :
+    SessionStoreSpec E2E.HooksE.A0 0#64 :=
+  cliSessionStoreSpec E2E.HooksE.A0 0#64 cliIo.rd F0 cliWrOk Slots.scopeKit peer
     SessKit.loadShimNeed (SessKit.loadPollNeed B.readFile)
     SessKit.storeShimNeed SessKit.storePollNeedX
 
-abbrev decIdKit (img : Obj.Image) (F0 : FsFiles) (peer : AddrGhost) (B : RunBudgets) :
-    IdentityStoreSpec E2E.HooksE.A0 img.base :=
-  cliIdentityStoreSpec E2E.HooksE.A0 img.base cliIo.rd F0 cliWrOk peer
+set_option linter.unusedVariables false in
+abbrev decIdKit (img : Unit) (F0 : FsFiles) (peer : AddrGhost) (B : RunBudgets) :
+    IdentityStoreSpec E2E.HooksE.A0 0#64 :=
+  cliIdentityStoreSpec E2E.HooksE.A0 0#64 cliIo.rd F0 cliWrOk peer
     IdKit.trustShimNeed (IdKit.trustPollNeed B.readFile)
     IdKit.saveShimNeed (IdKit.savePollNeed B.readFile)
-
-/-- Inner store-kit contract for `decrypt_signal` specialized to `decSessKit`, `decIdKit`,
-`StoresGhost.opened`, and `Slots.scopeKit` under `FilesOkPeer Slots.scopeIn`. -/
-def InnerDecryptOk (img : Obj.Image) (W : CliHooks) (B : RunBudgets) : Prop :=
-  ∀ (F0 : FsFiles) (peer : AddrGhost),
-    Slots.FilesOkPeer Slots.scopeIn F0 peer.val →
-    let kit := decSessKit img F0 peer B
-    let ikit := decIdKit img F0 peer B
-    subroutine_ok (tripleRatchetProgAtExt img.base (cliExterns W))
-      (CryptoVerification.Cli.LibsignalPublicApi.MessageDecrypt.wsEntryPC img)
-      (withEnvPre
-        (withStoresDecSpecVTP W.C E2E.HooksE.A0 0#64 uuidTryParse
-          (E2E.pqxdhSpqrModel ⟨W.C, W.Q⟩) E2E.Record.encodeRecord img kit ikit
-          StoresGhost.opened.sessions StoresGhost.opened.identity Slots.scopeKit)
-        fun s => kit.envOk s.fs.files ∧ ikit.envOk s.fs.files)
-
-/-! ## Allocator- and extern-parametric generalization -/
-
-abbrev decSessKitExt (A : RustAlloc) (img : Obj.Image) (F0 : FsFiles) (peer : AddrGhost)
-    (B : RunBudgets) : SessionStoreSpec A img.base :=
-  cliSessionStoreSpec A img.base cliIo.rd F0 cliWrOk Slots.scopeKit peer
-    SessKit.loadShimNeed (SessKit.loadPollNeed B.readFile)
-    SessKit.storeShimNeed SessKit.storePollNeedX
-
-abbrev decIdKitExt (A : RustAlloc) (img : Obj.Image) (F0 : FsFiles) (peer : AddrGhost)
-    (B : RunBudgets) : IdentityStoreSpec A img.base :=
-  cliIdentityStoreSpec A img.base cliIo.rd F0 cliWrOk peer
-    IdKit.trustShimNeed (IdKit.trustPollNeed B.readFile)
-    IdKit.saveShimNeed (IdKit.savePollNeed B.readFile)
-
-theorem decSessKitExt_A0_eq (img : Obj.Image) (F0 : FsFiles) (peer : AddrGhost) (B : RunBudgets) :
-    decSessKitExt E2E.HooksE.A0 img F0 peer B = decSessKit img F0 peer B := rfl
-
-theorem decIdKitExt_A0_eq (img : Obj.Image) (F0 : FsFiles) (peer : AddrGhost) (B : RunBudgets) :
-    decIdKitExt E2E.HooksE.A0 img F0 peer B = decIdKit img F0 peer B := rfl
-
-/-- Generalization of `InnerDecryptOk` over `P : E2E.PEParams`, `A : RustAlloc`, and extern table `ext'`. -/
-def InnerDecryptOkExt (img : Obj.Image) (P : E2E.PEParams) (A : RustAlloc)
-    (ext' : String → Option (State → State)) (B : RunBudgets) : Prop :=
-  ∀ (F0 : FsFiles) (peer : AddrGhost),
-    Slots.FilesOkPeer Slots.scopeIn F0 peer.val →
-    let kit := decSessKitExt A img F0 peer B
-    let ikit := decIdKitExt A img F0 peer B
-    subroutine_ok (tripleRatchetProgAtExt img.base ext')
-      (CryptoVerification.Cli.LibsignalPublicApi.MessageDecrypt.wsEntryPC img)
-      (withEnvPre
-        (withStoresDecSpecVTP P.C A 0#64 uuidTryParse
-          (E2E.pqxdhSpqrModel P) E2E.Record.encodeRecord img kit ikit
-          StoresGhost.opened.sessions StoresGhost.opened.identity Slots.scopeKit)
-        fun s => kit.envOk s.fs.files ∧ ikit.envOk s.fs.files)
-
-abbrev InnerDecryptOkCliExt (img : Obj.Image) (P : E2E.PEParams) (A : RustAlloc)
-    (ext : String → Option (State → State)) (B : RunBudgets) : Prop :=
-  InnerDecryptOkExt img P A (cliExternsWith ext) B
-
-theorem innerDecryptOkExt_cli_eq (img : Obj.Image) (W : CliHooks) (B : RunBudgets) :
-    InnerDecryptOkExt img ⟨W.C, W.Q⟩ E2E.HooksE.A0 (cliExterns W) B = InnerDecryptOk img W B := rfl
-
-theorem innerDecryptOkCliExt_witness_eq (img : Obj.Image) (W : CliHooks) (B : RunBudgets) :
-    InnerDecryptOkCliExt img ⟨W.C, W.Q⟩ E2E.HooksE.A0 (cliHookExterns W) B =
-      InnerDecryptOk img W B := rfl
 
 theorem decNeedAux_extHookStack_eq :
     decNeedAux ⟨extHookStack⟩ = 2 ^ 20 + 16384 := rfl

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedExtPlacedBudgetAux
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedExtPlacedBudgetAux -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import Arm64.Trusted.Spec.Hoare
@@ -20,6 +20,15 @@ import LibsignalBinary.Proofs.E2E.Bin.Hooks
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.PublicApi.StoreKit.RecordMove
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedExtPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1LoadTrustTailsXExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1TrustExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Untrusted
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Stage P1 Untrusted-Identity Error Exit
@@ -28,7 +37,7 @@ Defines `StageP1UntrustedErrEnv` and `StageP1UntrustedFromTrustEnv`, and proves 
 placed untrusted-identity error cleanup (`+0x6e4 → s0.readReg64 .x30`) on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000
@@ -105,12 +114,12 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.add_assoc BitVec.toNat_zero
 
 /-- Allocation envelope for the Stage P1 untrusted-identity error branch (`+0x6e4 → ret`):
     `<String as Clone>::clone` on `g` followed by `FreeOnlyEvs` drops. -/
-def StageP1UntrustedErrEnv (g : VecGhost) : List AllocEvent → Prop :=
+@[expose] def StageP1UntrustedErrEnv (g : VecGhost) : List AllocEvent → Prop :=
   SeqEnv (StringCloneEnv g) FreeOnlyEvs
 
 /-- Allocation envelope for `is_trusted_identity == false` + untrusted-identity error exit
     (`trustShim → +0x6e4 → ret`). -/
-def StageP1UntrustedFromTrustEnv {A : RustAlloc}
+@[expose] def StageP1UntrustedFromTrustEnv {A : RustAlloc}
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (ist : ikit.IdState) (rem : AddrVal) (remoteIdKey : IdentityKey) (g : VecGhost) :
     List AllocEvent → Prop :=

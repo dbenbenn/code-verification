@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard10
+meta import GeneratedLean.LibsignalSessionPlacedObjShard11
 
 /-!
 # Relocatable Per-Block Fetches for `TripleRatchet/InImageCallees`
@@ -22,7 +24,7 @@ callees (`ServiceId::parse_from_service_id_string`, `PrivateKey::serialize`,
 `PublicKey::try_from`, `<ProtocolAddress as Display>::fmt`, and `Uuid::try_parse`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

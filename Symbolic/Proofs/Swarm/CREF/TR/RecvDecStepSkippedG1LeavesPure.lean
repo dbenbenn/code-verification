@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SR.SendSpecWPure
-public import Symbolic.Proofs.Hooks2.BridgeXPure
-public import Symbolic.Proofs.Swarm.CREF.TR.PureRecvEval
-public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
-public import Symbolic.Proofs.RngG.R3ModelInv
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
+public import Symbolic.Proofs.SR.SendSpecWPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Hooks2.BridgeXPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PureRecvEval -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma -- proof-setup: allow-public-import
+public import Symbolic.Proofs.RngG.R3ModelInv -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec -- proof-setup: allow-public-import
 import Batteries.Data.UInt
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -26,7 +26,7 @@ import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
 public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatementDefs
-public import Symbolic.Proofs.Swarm.CREF.TR.SrHonestVer
+public import Symbolic.Proofs.Swarm.CREF.TR.SrHonestVer -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.TrWireMsg
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSpqrHonestPure
@@ -46,6 +46,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
 
 /-!
 # Cached Skipped-Key Decrypt Helpers
@@ -54,7 +55,7 @@ Proves skipped-key extraction, `decSkippedTr` trace preservation, and forged dec
 representation lemmas for the cached skipped-key receive branch.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false

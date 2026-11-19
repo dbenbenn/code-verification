@@ -26,7 +26,7 @@ Proof-side definitions (`lCls` and `libsignalSessionScheme`) extending the speci
 `LibsignalSMInstance`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 namespace CryptoGames
@@ -35,13 +35,13 @@ namespace LibsignalInst
 open HMAC HKDF CBC LibsignalAead SM.Construction CKA LibsignalSession AEADScheme MACScheme
 
 /-- AD class extracting the header epoch `t` (DEV-LS8). -/
-def lCls {Pt : Type} (a : ℕ × (Header Pt × LibsignalMsgPublicPart)) : ℕ := a.2.1.1
+@[expose] def lCls {Pt : Type} (a : ℕ × (Header Pt × LibsignalMsgPublicPart)) : ℕ := a.2.1.1
 
 /-- **DEV-LS26 (formalization): initial keys and epoch 0.** Wraps a libsignal `Params` bundle as an
 `SMSchemeR` initialized from `rootKdf F k_root (encPt lam)` (with PQXDH out of scope), where Alice
 draws her first sending key at initialization and retains a receiver chain for Bob's signed
 pre-key. -/
-def libsignalSessionScheme {PQ PQC Pt : Type} [Inhabited PQ] (P : Params PQ PQC) (ℓ : ℕ)
+@[expose] def libsignalSessionScheme {PQ PQC Pt : Type} [Inhabited PQ] (P : Params PQ PQC) (ℓ : ℕ)
     (encPt : Pt → List (BitVec 8)) (lam : Pt) :
     SMSchemeR (RootKey × BitVec 256 × BitVec 256 × BitVec 256) (GhostState PQ) (Plain ℓ) PQC
       (BitVec 256) (List (BitVec 8)) where

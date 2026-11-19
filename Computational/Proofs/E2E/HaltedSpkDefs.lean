@@ -9,16 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge
-public import Computational.Proofs.E2E.SignedAdv
-public import Computational.Proofs.E2E.SpkLeakRedModel
-public import Computational.Proofs.E2E.SpkHop2Red
+public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SignedAdv -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkLeakRedModel -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkHop2Red -- proof-setup: allow-public-import
 public import Computational.Specifications.Session.StatementIdsModel
 public import Computational.Specifications.Session.StatementSpkModel
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
-public import Computational.Proofs.SignalWireRoundTrip
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
+import Computational.Proofs.SignalWireRoundTrip
 import Computational.Proofs.SpqrV1Sync.SendTotalExtras
 import Mathlib.Tactic.Ring
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip -- proof-setup: allow-public-import
 
 /-!
 # `KemFailSessionTrack`-halted SPK reductions and combinators
@@ -27,7 +28,7 @@ Defines the shallow `KemFailSessionTrack`-halted session reductions, their prefi
 distinguishers, and the support and state-mapping combinators for halted steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -113,7 +114,7 @@ abbrev SpkTrackHaltedM (F : ShaCompress) (Pt : Type) (ℓ : ℕ) : Type → Type
   StateT (GameState (GhostState Bytes) (Plain ℓ) Bytes)
     (StateT (KemFailSessionTrack F Bytes) (OracleComp (unifSpec + prfSpec Pt (BitVec 256))))
 
-def liftSpkGameTrackHaltedM {F : ShaCompress} {α : Type}
+@[expose] def liftSpkGameTrackHaltedM {F : ShaCompress} {α : Type}
     (m : StateT (GameState (GhostState Bytes) (Plain ℓ) Bytes)
       (StateT (KemFailSessionTrack F Bytes) ProbComp) α) :
     SpkTrackHaltedM F Pt ℓ α :=
@@ -122,7 +123,7 @@ def liftSpkGameTrackHaltedM {F : ShaCompress} {α : Type}
       OracleComp (unifSpec + prfSpec Pt (BitVec 256))
         ((α × GameState (GhostState Bytes) (Plain ℓ) Bytes) × KemFailSessionTrack F Bytes))
 
-def liftSpkNoTrackM {F : ShaCompress} {α : Type}
+@[expose] def liftSpkNoTrackM {F : ShaCompress} {α : Type}
     (m : StateT (GameState (GhostState Bytes) (Plain ℓ) Bytes)
       (OracleComp (unifSpec + prfSpec Pt (BitVec 256))) α) :
     SpkTrackHaltedM F Pt ℓ α :=
@@ -130,14 +131,14 @@ def liftSpkNoTrackM {F : ShaCompress} {α : Type}
 
 /-- Pure `KemFailSessionTrack` post-update after a `deliver` query `x = (Q, w)` returning `res`,
 using `tr.2.reverse.findIdx?` computed before `deliver`. -/
-def updateKemFailOnDeliver {Msg C : Type} [DecidableEq C]
+@[expose] def updateKemFailOnDeliver {Msg C : Type} [DecidableEq C]
     (F : ShaCompress) (K : MlKem) (tr : KemFailSessionTrack F C) (x : Party × C)
     (res : Option (RecvResult Msg)) : KemFailSessionTrack F C :=
   match res, tr.2.reverse.findIdx? (fun wp => wp.1 == x.2 && wp.2 == x.1.other) with
   | some (.accepted _ _ _), some j => (stepKemFailDeliver F K tr.1 x.1 j, tr.2)
   | _, _ => tr
 
-def deliverSpkTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
+@[expose] def deliverSpkTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (s : BitVec 256) (x : Party × Bytes) :
     SpkTrackHaltedM P.C.F Pt ℓ (Option (RecvResult (Plain ℓ))) := do
@@ -150,7 +151,7 @@ def deliverSpkTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ
   | _, _ => pure ()
   return res
 
-def spkOracleImplTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
+@[expose] def spkOracleImplTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (qep : ℕ) (s : BitVec 256) :
     QueryImpl (unifSpec + spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
@@ -171,7 +172,7 @@ def spkOracleImplTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : 
     liftSpkNoTrackM (liftSpkGameM (corrR (configRefuseEarlyBobCorr decT encT) x))
 
 /-- `KemFailSessionTrack`-halted PRF reduction for Hops 1 and 3. -/
-def spkLeakRedTrackHalted (K : MlKem) : SpkLeakRed Pt ℓ (BitVec 512) :=
+@[expose] def spkLeakRedTrackHalted (K : MlKem) : SpkLeakRed Pt ℓ (BitVec 512) :=
   fun P Dh _encPt encT decT qep s A =>
     show OracleComp (unifSpec + prfSpec Pt (BitVec 256)) Bool from do
     let b ← (liftM ($ᵗ Bool : ProbComp Bool) :
@@ -196,7 +197,7 @@ abbrev Hop2TrackHaltedM (F : ShaCompress) (Pt : Type) (ℓ : ℕ) : Type → Typ
   StateT (GameState (GhostState Bytes) (Plain ℓ) Bytes × Hop2Aux Pt)
     (StateT (KemFailSessionTrack F Bytes) (Hop2Comp Pt))
 
-def hop2LiftTrackHalted {F : ShaCompress} {α : Type}
+@[expose] def hop2LiftTrackHalted {F : ShaCompress} {α : Type}
     (m : StateT (GameState (GhostState Bytes) (Plain ℓ) Bytes)
       (StateT (KemFailSessionTrack F Bytes) ProbComp) α) :
     Hop2TrackHaltedM F Pt ℓ α :=
@@ -205,11 +206,11 @@ def hop2LiftTrackHalted {F : ShaCompress} {α : Type}
       Hop2Comp Pt ((α × GameState (GhostState Bytes) (Plain ℓ) Bytes) × KemFailSessionTrack F Bytes))
     return ((a, (gs', st.2)), tr')
 
-def liftHop2NoTrackM {F : ShaCompress} {α : Type} (m : Hop2M Pt ℓ α) :
+@[expose] def liftHop2NoTrackM {F : ShaCompress} {α : Type} (m : Hop2M Pt ℓ α) :
     Hop2TrackHaltedM F Pt ℓ α :=
   StateT.mk fun st => StateT.lift (m.run st)
 
-def hop2DeliverTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem)
+@[expose] def hop2DeliverTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem)
     (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (s : BitVec 256) (h : Hop2Hyb Pt) (x : Party × Bytes) :
     Hop2TrackHaltedM P.C.F Pt ℓ (Option (RecvResult (Plain ℓ))) := do
@@ -222,7 +223,7 @@ def hop2DeliverTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem)
   | _, _ => pure ()
   return res
 
-def hop2ImplTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem)
+@[expose] def hop2ImplTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem)
     (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (qep : ℕ) (s : BitVec 256) (h : Hop2Hyb Pt) :
     QueryImpl (unifSpec + spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
@@ -240,7 +241,7 @@ def hop2ImplTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem)
   | .inr (.inr y) => liftHop2NoTrackM (hop2Lift (corrR (configRefuseEarlyBobCorr decT encT) y))
 
 /-- `KemFailSessionTrack`-halted hybrid game `G(k)` for Hop 2. -/
-def hop2GameTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
+@[expose] def hop2GameTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (qep : ℕ) (s : BitVec 256) (h : Hop2Hyb Pt)
     (A : Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) : Hop2Comp Pt Bool := do
@@ -270,7 +271,7 @@ def hop2GameTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
   return fin.2.bad
 
 /-- `KemFailSessionTrack`-halted Hop-2 PRG reduction at hybrid index `k`. -/
-def hop2PrgRedKTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
+@[expose] def hop2PrgRedKTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
     (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256) (k : ℕ)
     (A : Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) :
@@ -284,7 +285,7 @@ def hop2PrgRedKTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : �
   simulateQ impl (hop2GameTrackHalted P K ℓ Dh encT decT qep s ⟨k, rc, step⟩ A)
 
 /-- `KemFailSessionTrack`-halted Hop-2 PRF reduction at hybrid index `k`. -/
-def hop2PrfRedKTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
+@[expose] def hop2PrfRedKTrackHalted (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (qep : ℕ) (s : BitVec 256) (k : ℕ)
     (A : Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) :
@@ -309,7 +310,7 @@ section MixtureDefs
 
 variable {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] {ℓ : ℕ}
 
-def leakAvgTrackHaltedWithSpqr {α : Type} (C : Crypto) (K : MlKem)
+@[expose] def leakAvgTrackHaltedWithSpqr {α : Type} (C : Crypto) (K : MlKem)
     (spqr : Spqr Bytes (BitVec 512)) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ)
     (oa : ProbComp α) (ida idb : α → IdentityKey) (s : α → BitVec 256)
@@ -319,7 +320,7 @@ def leakAvgTrackHaltedWithSpqr {α : Type} (C : Crypto) (K : MlKem)
     spkLeakRedTrackHalted K (paramsIdsWithSpqr C spqr (ida o) (idb o))
       Dh encPt encT decT qep (s o) (A o)
 
-def leakUAvgTrackHaltedWithSpqr {α : Type} (C : Crypto) (K : MlKem)
+@[expose] def leakUAvgTrackHaltedWithSpqr {α : Type} (C : Crypto) (K : MlKem)
     (spqr : Spqr Bytes (BitVec 512)) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ)
     (oa : ProbComp α) (ida idb : α → IdentityKey)
@@ -329,7 +330,7 @@ def leakUAvgTrackHaltedWithSpqr {α : Type} (C : Crypto) (K : MlKem)
     spkLeakRedU (spkLeakRedTrackHalted K)
       (paramsIdsWithSpqr C spqr (ida o) (idb o)) Dh encPt encT decT qep (A o)
 
-def hop2PrgAvgTrackHaltedWithSpqr {α : Type} (C : Crypto) (K : MlKem)
+@[expose] def hop2PrgAvgTrackHaltedWithSpqr {α : Type} (C : Crypto) (K : MlKem)
     (spqr : Spqr Bytes (BitVec 512)) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ)
     (oa : ProbComp α) (ida idb : α → IdentityKey) (s : α → BitVec 256) (k : ℕ)
@@ -339,7 +340,7 @@ def hop2PrgAvgTrackHaltedWithSpqr {α : Type} (C : Crypto) (K : MlKem)
     hop2PrgRedKTrackHalted (paramsIdsWithSpqr C spqr (ida o) (idb o)) K
       ℓ Dh encPt encT decT qep (s o) k (A o)
 
-def hop2PrfAvgTrackHaltedWithSpqr {α : Type} (C : Crypto) (K : MlKem)
+@[expose] def hop2PrfAvgTrackHaltedWithSpqr {α : Type} (C : Crypto) (K : MlKem)
     (spqr : Spqr Bytes (BitVec 512)) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
     (decT : PublicKey → Option Pt) (qep : ℕ) (oa : ProbComp α) (ida idb : α → IdentityKey)
     (s : α → BitVec 256) (k : ℕ)
@@ -350,7 +351,7 @@ def hop2PrfAvgTrackHaltedWithSpqr {α : Type} (C : Crypto) (K : MlKem)
       ℓ Dh encT decT qep (s o) k (A o)
 
 /-- Tracker-halted counterpart of `Signed.hop2TermAvgWithSpqr`. -/
-noncomputable def hop2TermAvgTrackHaltedWithSpqr {α : Type} (C : Crypto) (K : MlKem)
+@[expose] noncomputable def hop2TermAvgTrackHaltedWithSpqr {α : Type} (C : Crypto) (K : MlKem)
     (spqr : Spqr Bytes (BitVec 512)) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep q : ℕ)
     (oa : ProbComp α) (ida idb : α → IdentityKey) (s : α → BitVec 256)

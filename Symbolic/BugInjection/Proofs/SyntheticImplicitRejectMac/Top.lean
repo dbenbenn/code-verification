@@ -12,7 +12,6 @@ module
 public import Symbolic.BugInjection.Proofs.SyntheticImplicitRejectMac.Memo
 public import Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable
 public import Symbolic.BugInjection.Proofs.Common.CoinsFresh
-public import Symbolic.Proofs.SpecLemmas.SecurityBinaryFixed
 
 @[expose] public section
 
@@ -201,7 +200,7 @@ private theorem no_coinSplit_matchedPrefix_ir
 
 theorem spec_half_pinned :
     cliCompShape.SpecHalf
-      (cliCompFitsPinned Witnesses.ImplicitRejectMacCli.setup)
+      (CliSetupMatchesPinned Witnesses.ImplicitRejectMacCli.setup)
       Witnesses.ImplicitRejectMacCli.trace := by
   rw [← cliEventsIR_eq]
   intro (iw : cliCompShape.Interp) (r : Records) hfits
@@ -314,19 +313,23 @@ theorem spec_half_pinned :
           rwa [← hmsg]
         exact ⟨ms', x, htr', hsalts', hpre', hpt', hx', hnbsc⟩
 
-theorem cliCompFitsPinned_satisfiable :
-    ∃ iw r, cliCompFitsPinned Witnesses.ImplicitRejectMacCli.setup iw r :=
-  Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable.cliCompFitsPinned_satisfiable_of_plausible
+theorem cliSetupMatchesPinned_satisfiable :
+    ∃ iw r, CliSetupMatchesPinned Witnesses.ImplicitRejectMacCli.setup iw r :=
+  Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable.cliSetupMatchesPinned_satisfiable_of_plausible
     Witnesses.ImplicitRejectMacCli.setup
     (by decide +kernel)
     (fun _ h => nomatch h)
 
-theorem not_signalSessionSecure_of_implHalf {bytes : List (BitVec 8)}
+theorem not_signalSessionSecurePlaced_of_implHalf {bytes : List (BitVec 8)}
+    {mpl mmpl : Arm64.Obj.MultiPlacement}
+    (hls : CryptoVerification.SignalSession.libsignalSessionLib.LinkedAt bytes mpl)
+    (hmg : VerifiedLibraries.mallocngLib.LinkedAt bytes mmpl)
     (hi : ∀ elf : Arm64.Process.ElfImage, Arm64.Process.ElfImage.parse bytes = .ok elf →
-      cliCompShape.ImplHalf (cliCompFitsPinned Witnesses.ImplicitRejectMacCli.setup) elf
+      (cliCompShapePlaced mpl mmpl).ImplHalf
+        (CliSetupMatchesPinned Witnesses.ImplicitRejectMacCli.setup) elf
         Witnesses.ImplicitRejectMacCli.trace) :
-    ¬ DY.Libsignal.Composed.Security.SignalSessionSecure bytes :=
-  not_signalSessionSecure_of_witness spec_half_pinned hi
+    ¬ DY.Libsignal.Composed.Security.SignalSessionSecurePlaced bytes :=
+  not_signalSessionSecurePlaced_of_witness hls hmg spec_half_pinned hi
     Symbolic.BugInjection.Proofs.Common.CoinsFresh.coinsFresh_implicitRejectMacCli
 
 end Symbolic.BugInjection.Proofs.SyntheticImplicitRejectMac.Top

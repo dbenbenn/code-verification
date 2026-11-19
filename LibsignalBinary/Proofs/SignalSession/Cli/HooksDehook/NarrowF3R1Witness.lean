@@ -9,9 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhostExact -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhostExact
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhostK -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.NarrowMemOpsR1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhostReplaysOn -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # `f3LinkedCallHook` Narrow `rfl` Twins & R1 Witnesses (`HooksDehook.NarrowF3R1Witness`)
@@ -146,11 +155,6 @@ theorem f3EmptyMemsetGhostHookNarrow_execFrozen (mmpl : MultiPlacement) (s : Sta
   rw [f3EmptyMemsetGhostHookNarrow_eq_narrow]
   exact narrowMemsetGhostHook_execFrozen mmpl s hfr
 
-theorem f3EmptyMemsetGhostHookNarrow_master_ok (mmpl : MultiPlacement) :
-    HookOk (f3EmptyMemsetGhostHookNarrow mmpl) masterMemsetSpec := by
-  rw [f3EmptyMemsetGhostHookNarrow_eq_narrow]
-  exact narrowMemsetGhostHook_master_ok mmpl
-
 theorem f3EmptyMemsetGhostHookNarrow_libcMemset_ok (mmpl : MultiPlacement) (stk : Nat := 4096) :
     HookOk (f3EmptyMemsetGhostHookNarrow mmpl) (libcMemsetSpec stk) := by
   rw [f3EmptyMemsetGhostHookNarrow_eq_narrow]
@@ -209,11 +213,6 @@ theorem f3EmptyMemcpyGhostHookNarrow_exact (mmpl : MultiPlacement) :
   f3EmptyMemcpyGhostHook_exact (keepMemcpyBlk20 mmpl) (mallocngBlockProg20_svc_eq mmpl)
     (mallocngBlockProg20_externAt_none mmpl Syscall.standard)
     (mallocngBlockProg20_hasWords mmpl Syscall.standard)
-
-theorem f3EmptyMemcpyGhostHookNarrow_master_ok (mmpl : MultiPlacement) :
-    HookOk (f3EmptyMemcpyGhostHookNarrow mmpl) masterMemcpySpec := by
-  rw [f3EmptyMemcpyGhostHookNarrow_eq_narrow]
-  exact narrowMemcpyGhostHook_master_ok mmpl
 
 theorem f3EmptyMemcpyGhostHookNarrow_libcMemcpy_ok (mmpl : MultiPlacement) (stk : Nat := 4096) :
     HookOk (f3EmptyMemcpyGhostHookNarrow mmpl) (libcMemcpySpec stk) := by

@@ -19,7 +19,7 @@ Kernel-checked (`rfl_kernel`) instruction decode lemmas for
 `<session_structure::Chain as Clone>::clone [local#3]` (`0x766c8`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.ChainClone3
 

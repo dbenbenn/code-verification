@@ -10,15 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbLoop
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbLoop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbLoop
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Epilogue and Loop Proofs for `<spqr::chain::Chain>::into_pb` (Block `365`)
@@ -28,7 +29,7 @@ Threads `RustCliAllocBudget M`, `BudgetLimits`, `VmPreserved`, `AllocCallPreserv
 `<spqr::chain::Chain>::into_pb` (`blkPC_365`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 800000

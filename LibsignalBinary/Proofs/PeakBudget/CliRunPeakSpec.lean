@@ -11,37 +11,41 @@ module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
-public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
-public import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
+import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
+public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
 public import LibsignalBinary.Proofs.PeakBudget.SpqrSendPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
-public import LibsignalBinary.Proofs.PeakBudget.W1EncryptCalleesPeak
-public import LibsignalBinary.Proofs.PeakBudget.W1EncryptPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W1EncryptSlotPeak
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptSlotPeak
-public import LibsignalBinary.Proofs.PeakBudget.W3InitiateEnvBridges
-public import LibsignalBinary.Proofs.PeakBudget.W3InitiatePeakSpec
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W1EncryptCalleesPeak
+import LibsignalBinary.Proofs.PeakBudget.W1EncryptPeakSpec
+public import LibsignalBinary.Proofs.PeakBudget.W1EncryptSlotPeak -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptSlotPeak
+public import LibsignalBinary.Proofs.PeakBudget.W3InitiateEnvBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W3InitiatePeakSpec
 public import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromHelpers
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromPeakSpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentitySpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionSpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromHelpers
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromPeakSpec
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentitySpec
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionSpec
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Whole-`signal_session::run` Live-Heap Peak and Credit Interface
@@ -52,7 +56,7 @@ symbolic and `fineCostModel` `PhaseCreditSpec` / `FitsEnv` bounds, plugs into `C
 and evaluates closed-form `1 MiB` / `2 MiB` constants.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -148,22 +152,16 @@ open LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
   (PeerSpqrTightValid640 PeerSpqrTightValidAt ValidChainParams ValidEncoderPtsAt
    peerSpqrTightValid640_of_cliPqInputs_recv peerSpqrTightValid640_of_cliPqInputs_send
    spqrEncTightPtsCap)
-open LibsignalBinary.Proofs.PeakBudget.W1EncryptCalleesPeak
-  (peerSpqrTightValid640_of_fromSessionState)
-open LibsignalBinary.Proofs.PeakBudget.W1EncryptPeakSpec
-  (OtrEncryptStepEnv WithStoresEncTightEnv w1CliEncryptSlot_withSpqrSendTight640_creditSpec_tight)
-open LibsignalBinary.Proofs.PeakBudget.W1EncryptSlotPeak
-  (otrAfterNone otrAfterSome w1CliEncryptSlot_scopedSend_creditSpec_tight)
+
+open LibsignalBinary.Proofs.PeakBudget.W1EncryptPeakSpec (OtrEncryptStepEnv WithStoresEncTightEnv)
+open LibsignalBinary.Proofs.PeakBudget.W1EncryptSlotPeak (otrAfterNone otrAfterSome)
 open LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds (RecordGhostValid SessionCloneDom)
 open LibsignalBinary.Proofs.PeakBudget.W2DecryptPeakSpec
   (DoublingChainLe W2TryDecryptEnv W2TryDecryptFailEnv w2CmkChainLive w2TryDecryptCum
    w2TryDecryptFail_phaseCreditSpec w2TryDecryptLive w2TryDecryptMaxReq w2TryDecryptPeak
    w2TryDecrypt_phaseCreditSpec)
 open LibsignalBinary.Proofs.PeakBudget.W2DecryptSlotPeak (w2CliDecryptSlot_polls_creditSpec_small)
-open LibsignalBinary.Proofs.PeakBudget.W3InitiateEnvBridges
-  (mkW3InitiateSlotParams recordSerializePeak_eq_zero_of_maxReq_le
-   w3InitiateSlot_at_initCallSite_phaseCredit w3InitiateSlot_at_initCallSite_small_phaseCredit
-   w3InitiateSlot_small_live_le_peak)
+open LibsignalBinary.Proofs.PeakBudget.W3InitiateEnvBridges (mkW3InitiateSlotParams recordSerializePeak_eq_zero_of_maxReq_le w3InitiateSlot_small_live_le_peak)
 open LibsignalBinary.Proofs.PeakBudget.W3InitiatePeakSpec
   (W3InitiateSlotEnv W3InitiateSlotParams w3InitiateSlotDeltaCum w3InitiateSlotDeltaLive
    w3InitiateSlotDeltaPeak w3InitiateSlotMaxReq w3InitiateSlotSmallDeltaLive
@@ -186,7 +184,7 @@ open LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
 open LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget (IdentityStoreBudgetEnv)
 open LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget (SessionStoreBudgetEnv)
 open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit (HasFineReallocCredit)
-open LibsignalBinary.Proofs.PeakBudget.CallSiteFacts (InitCallSite)
+
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget (RunSlotEnvs)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget (RunCalleesEnvs)
 open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget (ReadFileRuleEnv)
@@ -203,7 +201,6 @@ export CliRunArmsPeak (CliRunCalleeEnvs CliRunSlotCalleeSpecs CliRunWrapperEnvs 
 export CliRunArmsPeak (CliRunEnv CliRunOpenedEnv CliRunTightHyps fineCostModel_cliRunTightHyps)
 export CliRunArmsPeak (cliRunOpenedTightDeltaCum cliRunOpenedDeltaLive cliRunOpenedDeltaPeak cliRunOpenedMaxReq)
 export CliRunArmsPeak (cliRunOpened_slots_tight_phaseCredit cliRun_slots_tight_phaseCredit phaseCredit_exists_guarded)
-export W3InitiateEnvBridges (mkW3InitiateSlotParams w3InitiateSlot_at_initCallSite_small_phaseCredit w3InitiateSlot_small_live_le_peak)
 export W4OuterPeakSpec (w4DecryptPrekeySlot_opened_small_phaseCredit w4DecryptPrekeySlot_live_le_peak)
 
 /-! ## 2. `cliIo.rd` File-Cap Bridges & `RunCalleesEnvs` / `RunSlotEnvs` Instantiation -/
@@ -259,7 +256,7 @@ theorem cliIo_rd_runFiles_length_le_of_filesBounded {i : Inputs} {fileCap : Nat}
 
 /-- Canonical `RunCalleesEnvs` (`SkeletonPlacedBudget`) instantiated with `ReadFileRuleEnv`,
 `CliDirGetEnv`, `BundleReadEnv`, `SplitIdEnv`, and `SplitSignedEnv`. -/
-def cliRunCalleesEnvs (rd : ReadRule) : RunCalleesEnvs where
+@[expose] def cliRunCalleesEnvs (rd : ReadRule) : RunCalleesEnvs where
   readFile := ReadFileRuleEnv rd
   dirGet := CliDirGetEnv (ReadFileRuleEnv rd)
   bundleRead := BundleReadEnv rd
@@ -328,59 +325,27 @@ theorem cliRunCallees_splitSigned_phaseCredit {M : AllocCostModel} [HasFineReall
 
 /-! ### 3.1 W3 (`initiate`) at `StoresGhost.opened` -/
 
-def w3CliOpenedCum (fileCap serCum : Nat) : Nat :=
+@[expose] def w3CliOpenedCum (fileCap serCum : Nat) : Nat :=
   w3InitiateSlotDeltaCum fileCap 0 0 serCum
 
-def w3CliOpenedLive (fileCap serLive : Nat) : Nat :=
+@[expose] def w3CliOpenedLive (fileCap serLive : Nat) : Nat :=
   w3InitiateSlotSmallDeltaLive fileCap 0 0 serLive
 
-def w3CliOpenedPeak (fileCap serPeak : Nat) : Nat :=
+@[expose] def w3CliOpenedPeak (fileCap serPeak : Nat) : Nat :=
   w3InitiateSlotSmallDeltaPeak fileCap 0 0 0 serPeak
 
-def w3CliOpenedMaxReq (fileCap serMaxReq : Nat) : Nat :=
+@[expose] def w3CliOpenedMaxReq (fileCap serMaxReq : Nat) : Nat :=
   w3InitiateSlotMaxReq fileCap 0 0 serMaxReq
 
 theorem w3CliOpened_live_le_peak {fileCap serLive serPeak : Nat} (hser : serLive ≤ serPeak) :
     w3CliOpenedLive fileCap serLive ≤ w3CliOpenedPeak fileCap serPeak :=
   w3InitiateSlot_small_live_le_peak hser
 
-/-- Small-regime W3 `PhaseCreditSpec M` at an `InitCallSite` (`StoresGhost.opened`); when
-`recordSerializeMaxReq g_rec r_rec ≤ smallMaxReq M`, `serLive = 0` and `serPeak = 0`. -/
-theorem w3CliOpened_at_initCallSite_smallSer_phaseCredit
-    {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hsmall : 1569 ≤ HasFineReallocCredit.smallMaxReq M)
-    {img : Arm64.Obj.Image} {S : RunSem} {g : RunCall} {x : InitGhost}
-    (hsite : InitCallSite img S g x)
-    {rd : ReadRule} {ownKeyName ownRegName : List (BitVec 8)}
-    {F : ShaCompress} {x_spqr : InitialStateGhost}
-    {g_rec : RecordGhost} {r_rec : SessionRecord (List (BitVec 8))}
-    {fileCap : Nat}
-    (hkeyName : ownKeyName.length ≤ 64)
-    (hregName : ownRegName.length ≤ 64)
-    (hspqrKey : x_spqr.p.authKey.length ≤ 32)
-    (hfileCap : ∀ p bs, rd x.F p = .ok bs → bs.length ≤ fileCap)
-    (hserSmall : recordSerializeMaxReq g_rec r_rec ≤ HasFineReallocCredit.smallMaxReq M) :
-    let P := mkW3InitiateSlotParams rd x ownKeyName ownRegName F x_spqr g_rec r_rec
-    PhaseCreditSpec M (W3InitiateSlotEnv P)
-      (w3CliOpenedCum fileCap (recordSerializeCum g_rec r_rec))
-      (w3CliOpenedLive fileCap 0)
-      (w3CliOpenedPeak fileCap 0)
-      (w3CliOpenedMaxReq fileCap (recordSerializeMaxReq g_rec r_rec)) := by
-  intro P
-  have h := w3InitiateSlot_at_initCallSite_small_phaseCredit
-    (F := F) (g_rec := g_rec) (r_rec := r_rec) hM hsmall hsite
-    hkeyName hregName hspqrKey hfileCap
-  obtain ⟨hp0, ho0⟩ := recordSerializePeak_eq_zero_of_maxReq_le M hserSmall
-  unfold w3CliOpenedCum w3CliOpenedLive w3CliOpenedPeak w3CliOpenedMaxReq
-  rwa [hp0, ho0] at h
-
-/-! ### 3.2 W1 (`encrypt`) at `StoresGhost.opened` -/
-
 /-- Parametric-send W1 (`encrypt`) `Δcum` at `StoresGhost.opened`. -/
-def w1CliOpenedCustomSendCum (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def w1CliOpenedCustomSendCum (M : AllocCostModel) [HasFineReallocCredit M]
     (c_s ptextLen nameCum fileCap deserCum c_sig c_pk c_st : Nat) : Nat :=
   let ctLen := (ptextLen / 16 + 1) * 16
-  let c_otr := c_s + HasFineReallocCredit.smallAllocCost M 32 + tryCloneSmallDelta M ctLen + c_sig
+  let c_otr := c_s + max 30537 (HasFineReallocCredit.smallAllocCost M 32 + tryCloneSmallDelta M ctLen + c_sig)
   let c_ld := sessLoadPollDeltaCum fileCap deserCum
   let c_id := smallStorePollDeltaCum fileCap 0
   let c_ap := HasFineReallocCredit.smallAllocCost M 32 + HasFineReallocCredit.smallAllocCost M 32 + c_st
@@ -390,7 +355,7 @@ def w1CliOpenedCustomSendCum (M : AllocCostModel) [HasFineReallocCredit M]
   (HasFineReallocCredit.smallAllocCost M 24 + c_ld) + max nameCum c_fo
 
 /-- Parametric-send W1 (`encrypt`) `Δlive` at `StoresGhost.opened`. -/
-def w1CliOpenedCustomSendLive (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def w1CliOpenedCustomSendLive (M : AllocCostModel) [HasFineReallocCredit M]
     (l_s ptextLen fileCap deserLive l_sig l_pk l_st : Nat) : Nat :=
   let ctLen := (ptextLen / 16 + 1) * 16
   let l_otr := l_s + tryCloneLargeDelta M ctLen + l_sig
@@ -401,7 +366,7 @@ def w1CliOpenedCustomSendLive (M : AllocCostModel) [HasFineReallocCredit M]
   l_ld + l_fo
 
 /-- Parametric-send W1 (`encrypt`) `Δpeak` at `StoresGhost.opened`. -/
-def w1CliOpenedCustomSendPeak (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def w1CliOpenedCustomSendPeak (M : AllocCostModel) [HasFineReallocCredit M]
     (l_s p_s ptextLen fileCap deserLive deserPeak l_sig p_sig l_pk p_pk p_st : Nat) : Nat :=
   let ctLen := (ptextLen / 16 + 1) * 16
   let l_otr := l_s + tryCloneLargeDelta M ctLen + l_sig
@@ -415,10 +380,10 @@ def w1CliOpenedCustomSendPeak (M : AllocCostModel) [HasFineReallocCredit M]
   max p_ld (l_ld + p_fo)
 
 /-- Parametric-send W1 (`encrypt`) `maxReq` at `StoresGhost.opened`. -/
-def w1CliOpenedCustomSendMaxReq
+@[expose] def w1CliOpenedCustomSendMaxReq
     (r_s ptextLen fileCap deserMaxReq r_sig r_pk r_st : Nat) : Nat :=
   let ctLen := (ptextLen / 16 + 1) * 16
-  let r_otr := max r_s (max 32 (max ctLen r_sig))
+  let r_otr := max r_s (max 320 (max ctLen r_sig))
   let r_ld := sessLoadPollMaxReq fileCap deserMaxReq
   let r_id := smallStorePollMaxReq fileCap 0
   let r_cm := max (max 32 r_id) (max 40 (max (max 32 r_id) (max 32 (max 32 r_st))))
@@ -455,116 +420,6 @@ theorem w1CliOpenedCustomSend_live_le_peak (M : AllocCostModel) [HasFineReallocC
     exact Nat.le_trans (Nat.add_le_add_left hpkcm l_otr) (Nat.le_max_right _ _)
   exact Nat.le_trans (Nat.add_le_add_left hfo l_ld) (Nat.le_max_right p_ld _)
 
-/-- `StoresGhost.opened` wrapper around `w1CliEncryptSlot_scopedSend_creditSpec_tight` parametric in `E_send` and `(c_s, l_s, p_s, r_s)`. -/
-theorem w1CliOpenedCustomSend_phaseCredit
-    {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hle1569 : 1569 ≤ HasFineReallocCredit.smallMaxReq M)
-    (B : RunBudgets) (img : Arm64.Obj.Image) (F : FsFiles) (peer : AddrGhost)
-    (C : Crypto) (S : SpqrModel) (x : WithStoresEncGhost)
-    (DeserEnv : List (BitVec 8) → List AllocEvent → Prop)
-    (peerIdKeyName : List (BitVec 8))
-    (kitEnv : SessionStoreBudgetEnv (w1SessKit B img F peer))
-    (ikitEnv : IdentityStoreBudgetEnv (w1IdKit B img F peer))
-    (E_send : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
-    (SigNoneGuard SigSomeGuard :
-      SessionRecord (List (BitVec 8)) → Session (List (BitVec 8)) →
-      OutgoingTripleRatchet (List (BitVec 8)) → SessionState (List (BitVec 8)) →
-      SignalMessageNewGhost → Prop)
-    (PkCallGuard :
-      SessionRecord (List (BitVec 8)) → Session (List (BitVec 8)) →
-      OutgoingTripleRatchet (List (BitVec 8)) → SessionState (List (BitVec 8)) →
-      PreKeyMsgNewCall → Prop)
-    {nameCum fileCap deserCum deserLive deserPeak deserMaxReq : Nat}
-    {c_s l_s p_s r_s c_sig l_sig p_sig r_sig c_pk l_pk p_pk r_pk c_st l_st p_st r_st : Nat}
-    (hpeer : peer.name.bytes.length ≤ 40)
-    (hremName : x.rem.name.bytes.length ≤ 40)
-    (hNameCum : ∀ n, 0 < n → n ≤ 40 → HasFineReallocCredit.smallAllocCost M n ≤ nameCum)
-    (hidKeyLen : peerIdKeyName.length ≤ 64)
-    (hSessFileCap : ∀ bs,
-      cliIo.rd F (pathOf StoresGhost.opened.sessions.path (addressText peer.val)) = .ok bs →
-      bs.length ≤ fileCap)
-    (hIdFileCap : ∀ bs,
-      cliIo.rd F (pathOf StoresGhost.opened.identity.peers.path peerIdKeyName) = .ok bs →
-      bs.length ≤ fileCap)
-    (hDeser : ∀ bs, bs.length ≤ 2097152 →
-      PhaseCreditSpec M (DeserEnv bs) deserCum deserLive deserPeak deserMaxReq)
-    (hLoadEq : ∀ evs,
-      kitEnv.loadPollEnv StoresGhost.opened.sessions x.rem.val evs →
-      CliSessLoadPollEnv cliIo.rd DeserEnv F StoresGhost.opened.sessions peer evs)
-    (hTrustEq : ∀ k evs,
-      ikitEnv.trustPollEnv StoresGhost.opened.identity x.rem.val k .sending evs →
-      CliSmallStorePollEnv cliIo.rd F StoresGhost.opened.identity.peers peerIdKeyName evs)
-    (hSaveEq : ∀ k evs,
-      ikitEnv.savePollEnv
-        ((w1IdKit B img F peer).trustUpdate StoresGhost.opened.identity x.rem.val k .sending (.ok true))
-        x.rem.val k evs →
-      CliSmallStorePollEnv cliIo.rd F StoresGhost.opened.identity.peers peerIdKeyName evs)
-    (hSend : ∀ r sess otr taken,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      PhaseCreditSpec M (E_send otr.pqrState x.rest) c_s l_s p_s r_s)
-    (hSigNone : ∀ r sess otr taken g, SigNoneGuard r sess otr taken g →
-      signalMessageNewDeltaCum uuidTryParse g ≤ c_sig ∧
-      signalMessageNewDeltaLive uuidTryParse g ≤ l_sig ∧
-      signalMessageNewDeltaPeak uuidTryParse g ≤ p_sig ∧
-      signalMessageNewMaxReq uuidTryParse g ≤ r_sig)
-    (hSigSome : ∀ r sess otr taken g, SigSomeGuard r sess otr taken g →
-      signalMessageNewDeltaCum uuidTryParse g ≤ c_sig ∧
-      signalMessageNewDeltaLive uuidTryParse g ≤ l_sig ∧
-      signalMessageNewDeltaPeak uuidTryParse g ≤ p_sig ∧
-      signalMessageNewMaxReq uuidTryParse g ≤ r_sig)
-    (hPkCap : ∀ r sess otr taken call, PkCallGuard r sess otr taken call →
-      preKeyMsgNewDeltaCum call ≤ c_pk ∧
-      preKeyMsgNewDeltaLive call ≤ l_pk ∧
-      preKeyMsgNewDeltaPeak call ≤ p_pk ∧
-      preKeyMsgNewMaxReq call ≤ r_pk)
-    (hStoreNone : ∀ r sess otr taken k,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      taken.remoteIdentity = some k →
-      PhaseCreditSpec M
-        (kitEnv.storePollEnv StoresGhost.opened.sessions x.rem.val
-          (storedRecord sess (otrAfterNone C S x otr) taken))
-        c_st l_st p_st r_st)
-    (hStoreSome : ∀ r sess otr taken k,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      taken.remoteIdentity = some k →
-      PhaseCreditSpec M
-        (kitEnv.storePollEnv StoresGhost.opened.sessions x.rem.val
-          (storedRecord sess (otrAfterSome C S uuidTryParse x otr) taken))
-        c_st l_st p_st r_st) :
-    PhaseCreditSpec M
-      (WithStoresEncTightEnv scopeKit
-        (w1SessKit B img F peer) kitEnv StoresGhost.opened.sessions
-        (w1IdKit B img F peer) ikitEnv StoresGhost.opened.identity
-        C S uuidTryParse x
-        (fun r sess otr taken =>
-          OtrEncryptStepEnv (E_send otr.pqrState x.rest) x.ptext.length
-            (fun evs => ∃ g, SigNoneGuard r sess otr taken g ∧ SignalMessageNewEnv uuidTryParse g evs))
-        (fun r sess otr taken =>
-          OtrEncryptStepEnv (E_send otr.pqrState x.rest) x.ptext.length
-            (fun evs => ∃ g, SigSomeGuard r sess otr taken g ∧ SignalMessageNewEnv uuidTryParse g evs))
-        (fun r sess otr taken evs =>
-          ∃ call, PkCallGuard r sess otr taken call ∧ PreKeyMsgNewEnv call evs))
-      (w1CliOpenedCustomSendCum M c_s x.ptext.length nameCum fileCap deserCum c_sig c_pk c_st)
-      (w1CliOpenedCustomSendLive M l_s x.ptext.length fileCap deserLive l_sig l_pk l_st)
-      (w1CliOpenedCustomSendPeak M l_s p_s x.ptext.length fileCap deserLive deserPeak
-        l_sig p_sig l_pk p_pk p_st)
-      (w1CliOpenedCustomSendMaxReq r_s x.ptext.length fileCap deserMaxReq r_sig r_pk r_st) := by
-  have h := w1CliEncryptSlot_scopedSend_creditSpec_tight
-    hM hle1569 B img F peer C S x DeserEnv peerIdKeyName kitEnv ikitEnv E_send
-    SigNoneGuard SigSomeGuard PkCallGuard
-    hpeer hremName hNameCum hidKeyLen hSessFileCap hIdFileCap hDeser
-    hLoadEq hTrustEq hSaveEq hSend hSigNone hSigSome hPkCap hStoreNone hStoreSome
-  dsimp only at h
-  unfold w1CliOpenedCustomSendCum w1CliOpenedCustomSendLive
-    w1CliOpenedCustomSendPeak w1CliOpenedCustomSendMaxReq
-  simpa only [Nat.zero_max] using h
-
 /-- `pqCap`-capped W1 (`encrypt`) `Δcum` at `StoresGhost.opened`. -/
 def w1CliOpenedPqCapCum (M : AllocCostModel) [HasFineReallocCredit M]
     (pqCap restLen ptextLen nameCum fileCap deserCum c_sig c_pk c_st : Nat) : Nat :=
@@ -596,118 +451,6 @@ theorem w1CliOpenedPqCap_live_le_peak (M : AllocCostModel) [HasFineReallocCredit
         l_sig p_sig l_pk p_pk p_st :=
   w1CliOpenedCustomSend_live_le_peak M hsig hpk hst
 
-/-- `pqCap`-capped W1 `PhaseCreditSpec M` at `StoresGhost.opened` under `otr.pqrState.length ≤ pqCap`. -/
-theorem w1CliOpenedPqCap_phaseCredit
-    {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hLow : SpqrLowInterceptHyps M)
-    (hle1569 : 1569 ≤ HasFineReallocCredit.smallMaxReq M)
-    (B : RunBudgets) (img : Arm64.Obj.Image) (F : FsFiles) (peer : AddrGhost)
-    (C : Crypto) (S : SpqrModel) (x : WithStoresEncGhost)
-    (DeserEnv : List (BitVec 8) → List AllocEvent → Prop)
-    (peerIdKeyName : List (BitVec 8))
-    (kitEnv : SessionStoreBudgetEnv (w1SessKit B img F peer))
-    (ikitEnv : IdentityStoreBudgetEnv (w1IdKit B img F peer))
-    (SigNoneGuard SigSomeGuard :
-      SessionRecord (List (BitVec 8)) → Session (List (BitVec 8)) →
-      OutgoingTripleRatchet (List (BitVec 8)) → SessionState (List (BitVec 8)) →
-      SignalMessageNewGhost → Prop)
-    (PkCallGuard :
-      SessionRecord (List (BitVec 8)) → Session (List (BitVec 8)) →
-      OutgoingTripleRatchet (List (BitVec 8)) → SessionState (List (BitVec 8)) →
-      PreKeyMsgNewCall → Prop)
-    {pqCap nameCum fileCap deserCum deserLive deserPeak deserMaxReq : Nat}
-    {c_sig l_sig p_sig r_sig c_pk l_pk p_pk r_pk c_st l_st p_st r_st : Nat}
-    (hpeer : peer.name.bytes.length ≤ 40)
-    (hremName : x.rem.name.bytes.length ≤ 40)
-    (hNameCum : ∀ n, 0 < n → n ≤ 40 → HasFineReallocCredit.smallAllocCost M n ≤ nameCum)
-    (hidKeyLen : peerIdKeyName.length ≤ 64)
-    (hValid : PeerSpqrTightValid640 F x.rem.val)
-    (hPqCap : ∀ r sess otr taken,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      otr.pqrState.length ≤ pqCap)
-    (hSessFileCap : ∀ bs,
-      cliIo.rd F (pathOf StoresGhost.opened.sessions.path (addressText peer.val)) = .ok bs →
-      bs.length ≤ fileCap)
-    (hIdFileCap : ∀ bs,
-      cliIo.rd F (pathOf StoresGhost.opened.identity.peers.path peerIdKeyName) = .ok bs →
-      bs.length ≤ fileCap)
-    (hDeser : ∀ bs, bs.length ≤ 2097152 →
-      PhaseCreditSpec M (DeserEnv bs) deserCum deserLive deserPeak deserMaxReq)
-    (hLoadEq : ∀ evs,
-      kitEnv.loadPollEnv StoresGhost.opened.sessions x.rem.val evs →
-      CliSessLoadPollEnv cliIo.rd DeserEnv F StoresGhost.opened.sessions peer evs)
-    (hTrustEq : ∀ k evs,
-      ikitEnv.trustPollEnv StoresGhost.opened.identity x.rem.val k .sending evs →
-      CliSmallStorePollEnv cliIo.rd F StoresGhost.opened.identity.peers peerIdKeyName evs)
-    (hSaveEq : ∀ k evs,
-      ikitEnv.savePollEnv
-        ((w1IdKit B img F peer).trustUpdate StoresGhost.opened.identity x.rem.val k .sending (.ok true))
-        x.rem.val k evs →
-      CliSmallStorePollEnv cliIo.rd F StoresGhost.opened.identity.peers peerIdKeyName evs)
-    (hSigNone : ∀ r sess otr taken g, SigNoneGuard r sess otr taken g →
-      signalMessageNewDeltaCum uuidTryParse g ≤ c_sig ∧
-      signalMessageNewDeltaLive uuidTryParse g ≤ l_sig ∧
-      signalMessageNewDeltaPeak uuidTryParse g ≤ p_sig ∧
-      signalMessageNewMaxReq uuidTryParse g ≤ r_sig)
-    (hSigSome : ∀ r sess otr taken g, SigSomeGuard r sess otr taken g →
-      signalMessageNewDeltaCum uuidTryParse g ≤ c_sig ∧
-      signalMessageNewDeltaLive uuidTryParse g ≤ l_sig ∧
-      signalMessageNewDeltaPeak uuidTryParse g ≤ p_sig ∧
-      signalMessageNewMaxReq uuidTryParse g ≤ r_sig)
-    (hPkCap : ∀ r sess otr taken call, PkCallGuard r sess otr taken call →
-      preKeyMsgNewDeltaCum call ≤ c_pk ∧
-      preKeyMsgNewDeltaLive call ≤ l_pk ∧
-      preKeyMsgNewDeltaPeak call ≤ p_pk ∧
-      preKeyMsgNewMaxReq call ≤ r_pk)
-    (hStoreNone : ∀ r sess otr taken k,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      taken.remoteIdentity = some k →
-      PhaseCreditSpec M
-        (kitEnv.storePollEnv StoresGhost.opened.sessions x.rem.val
-          (storedRecord sess (otrAfterNone C S x otr) taken))
-        c_st l_st p_st r_st)
-    (hStoreSome : ∀ r sess otr taken k,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      taken.remoteIdentity = some k →
-      PhaseCreditSpec M
-        (kitEnv.storePollEnv StoresGhost.opened.sessions x.rem.val
-          (storedRecord sess (otrAfterSome C S uuidTryParse x otr) taken))
-        c_st l_st p_st r_st) :
-    PhaseCreditSpec M
-      (WithStoresEncTightEnv scopeKit
-        (w1SessKit B img F peer) kitEnv StoresGhost.opened.sessions
-        (w1IdKit B img F peer) ikitEnv StoresGhost.opened.identity
-        C S uuidTryParse x
-        (fun r sess otr taken =>
-          OtrEncryptStepEnv (SpqrSendTightEnv otr.pqrState x.rest) x.ptext.length
-            (fun evs => ∃ g, SigNoneGuard r sess otr taken g ∧ SignalMessageNewEnv uuidTryParse g evs))
-        (fun r sess otr taken =>
-          OtrEncryptStepEnv (SpqrSendTightEnv otr.pqrState x.rest) x.ptext.length
-            (fun evs => ∃ g, SigSomeGuard r sess otr taken g ∧ SignalMessageNewEnv uuidTryParse g evs))
-        (fun r sess otr taken evs =>
-          ∃ call, PkCallGuard r sess otr taken call ∧ PreKeyMsgNewEnv call evs))
-      (w1CliOpenedPqCapCum M pqCap x.rest.length x.ptext.length nameCum fileCap deserCum c_sig c_pk c_st)
-      (w1CliOpenedPqCapLive M pqCap x.rest.length x.ptext.length fileCap deserLive l_sig l_pk l_st)
-      (w1CliOpenedPqCapPeak M pqCap x.rest.length x.ptext.length fileCap deserLive deserPeak
-        l_sig p_sig l_pk p_pk p_st)
-      (w1CliOpenedPqCapMaxReq pqCap x.rest.length x.ptext.length fileCap deserMaxReq r_sig r_pk r_st) :=
-  w1CliOpenedCustomSend_phaseCredit
-    hM hle1569 B img F peer C S x DeserEnv peerIdKeyName kitEnv ikitEnv SpqrSendTightEnv
-    SigNoneGuard SigSomeGuard PkCallGuard
-    hpeer hremName hNameCum hidKeyLen hSessFileCap hIdFileCap hDeser
-    hLoadEq hTrustEq hSaveEq
-    (fun r sess otr taken hsc hcur hfrom =>
-      let ⟨hve, _hcp, _hpq⟩ := peerSpqrTightValid640_of_fromSessionState hsc hcur hfrom hValid
-      spqrSend_phaseCreditSpec_tight640 hM hLow hve
-        (hPqCap r sess otr taken hsc hcur hfrom) (Nat.le_refl x.rest.length))
-    hSigNone hSigSome hPkCap hStoreNone hStoreSome
-
 def w1CliOpenedCum (M : AllocCostModel) [HasFineReallocCredit M]
     (restLen ptextLen nameCum fileCap deserCum c_sig c_pk c_st : Nat) : Nat :=
   w1CliOpenedPqCapCum M 2147483647 restLen ptextLen nameCum fileCap deserCum c_sig c_pk c_st
@@ -733,117 +476,7 @@ theorem w1CliOpened_live_le_peak (M : AllocCostModel) [HasFineReallocCredit M]
         l_sig p_sig l_pk p_pk p_st :=
   w1CliOpenedPqCap_live_le_peak M hsig hpk hst
 
-/-- `StoresGhost.opened` wrapper around `w1CliEncryptSlot_withSpqrSendTight640_creditSpec_tight`. -/
-theorem w1CliOpened_phaseCredit
-    {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hLow : SpqrLowInterceptHyps M)
-    (hle1569 : 1569 ≤ HasFineReallocCredit.smallMaxReq M)
-    (B : RunBudgets) (img : Arm64.Obj.Image) (F : FsFiles) (peer : AddrGhost)
-    (C : Crypto) (S : SpqrModel) (x : WithStoresEncGhost)
-    (DeserEnv : List (BitVec 8) → List AllocEvent → Prop)
-    (peerIdKeyName : List (BitVec 8))
-    (kitEnv : SessionStoreBudgetEnv (w1SessKit B img F peer))
-    (ikitEnv : IdentityStoreBudgetEnv (w1IdKit B img F peer))
-    (SigNoneGuard SigSomeGuard :
-      SessionRecord (List (BitVec 8)) → Session (List (BitVec 8)) →
-      OutgoingTripleRatchet (List (BitVec 8)) → SessionState (List (BitVec 8)) →
-      SignalMessageNewGhost → Prop)
-    (PkCallGuard :
-      SessionRecord (List (BitVec 8)) → Session (List (BitVec 8)) →
-      OutgoingTripleRatchet (List (BitVec 8)) → SessionState (List (BitVec 8)) →
-      PreKeyMsgNewCall → Prop)
-    {nameCum fileCap deserCum deserLive deserPeak deserMaxReq : Nat}
-    {c_sig l_sig p_sig r_sig c_pk l_pk p_pk r_pk c_st l_st p_st r_st : Nat}
-    (hpeer : peer.name.bytes.length ≤ 40)
-    (hremName : x.rem.name.bytes.length ≤ 40)
-    (hNameCum : ∀ n, 0 < n → n ≤ 40 → HasFineReallocCredit.smallAllocCost M n ≤ nameCum)
-    (hidKeyLen : peerIdKeyName.length ≤ 64)
-    (hValid : PeerSpqrTightValid640 F x.rem.val)
-    (hSessFileCap : ∀ bs,
-      cliIo.rd F (pathOf StoresGhost.opened.sessions.path (addressText peer.val)) = .ok bs →
-      bs.length ≤ fileCap)
-    (hIdFileCap : ∀ bs,
-      cliIo.rd F (pathOf StoresGhost.opened.identity.peers.path peerIdKeyName) = .ok bs →
-      bs.length ≤ fileCap)
-    (hDeser : ∀ bs, bs.length ≤ 2097152 →
-      PhaseCreditSpec M (DeserEnv bs) deserCum deserLive deserPeak deserMaxReq)
-    (hLoadEq : ∀ evs,
-      kitEnv.loadPollEnv StoresGhost.opened.sessions x.rem.val evs →
-      CliSessLoadPollEnv cliIo.rd DeserEnv F StoresGhost.opened.sessions peer evs)
-    (hTrustEq : ∀ k evs,
-      ikitEnv.trustPollEnv StoresGhost.opened.identity x.rem.val k .sending evs →
-      CliSmallStorePollEnv cliIo.rd F StoresGhost.opened.identity.peers peerIdKeyName evs)
-    (hSaveEq : ∀ k evs,
-      ikitEnv.savePollEnv
-        ((w1IdKit B img F peer).trustUpdate StoresGhost.opened.identity x.rem.val k .sending (.ok true))
-        x.rem.val k evs →
-      CliSmallStorePollEnv cliIo.rd F StoresGhost.opened.identity.peers peerIdKeyName evs)
-    (hSigNone : ∀ r sess otr taken g, SigNoneGuard r sess otr taken g →
-      signalMessageNewDeltaCum uuidTryParse g ≤ c_sig ∧
-      signalMessageNewDeltaLive uuidTryParse g ≤ l_sig ∧
-      signalMessageNewDeltaPeak uuidTryParse g ≤ p_sig ∧
-      signalMessageNewMaxReq uuidTryParse g ≤ r_sig)
-    (hSigSome : ∀ r sess otr taken g, SigSomeGuard r sess otr taken g →
-      signalMessageNewDeltaCum uuidTryParse g ≤ c_sig ∧
-      signalMessageNewDeltaLive uuidTryParse g ≤ l_sig ∧
-      signalMessageNewDeltaPeak uuidTryParse g ≤ p_sig ∧
-      signalMessageNewMaxReq uuidTryParse g ≤ r_sig)
-    (hPkCap : ∀ r sess otr taken call, PkCallGuard r sess otr taken call →
-      preKeyMsgNewDeltaCum call ≤ c_pk ∧
-      preKeyMsgNewDeltaLive call ≤ l_pk ∧
-      preKeyMsgNewDeltaPeak call ≤ p_pk ∧
-      preKeyMsgNewMaxReq call ≤ r_pk)
-    (hStoreNone : ∀ r sess otr taken k,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      taken.remoteIdentity = some k →
-      PhaseCreditSpec M
-        (kitEnv.storePollEnv StoresGhost.opened.sessions x.rem.val
-          (storedRecord sess (otrAfterNone C S x otr) taken))
-        c_st l_st p_st r_st)
-    (hStoreSome : ∀ r sess otr taken k,
-      (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions x.rem.val r →
-      r.currentSession = some sess →
-      execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken) →
-      taken.remoteIdentity = some k →
-      PhaseCreditSpec M
-        (kitEnv.storePollEnv StoresGhost.opened.sessions x.rem.val
-          (storedRecord sess (otrAfterSome C S uuidTryParse x otr) taken))
-        c_st l_st p_st r_st) :
-    PhaseCreditSpec M
-      (WithStoresEncTightEnv scopeKit
-        (w1SessKit B img F peer) kitEnv StoresGhost.opened.sessions
-        (w1IdKit B img F peer) ikitEnv StoresGhost.opened.identity
-        C S uuidTryParse x
-        (fun r sess otr taken =>
-          OtrEncryptStepEnv (SpqrSendTightEnv otr.pqrState x.rest) x.ptext.length
-            (fun evs => ∃ g, SigNoneGuard r sess otr taken g ∧ SignalMessageNewEnv uuidTryParse g evs))
-        (fun r sess otr taken =>
-          OtrEncryptStepEnv (SpqrSendTightEnv otr.pqrState x.rest) x.ptext.length
-            (fun evs => ∃ g, SigSomeGuard r sess otr taken g ∧ SignalMessageNewEnv uuidTryParse g evs))
-        (fun r sess otr taken evs =>
-          ∃ call, PkCallGuard r sess otr taken call ∧ PreKeyMsgNewEnv call evs))
-      (w1CliOpenedCum M x.rest.length x.ptext.length nameCum fileCap deserCum c_sig c_pk c_st)
-      (w1CliOpenedLive M x.rest.length x.ptext.length fileCap deserLive l_sig l_pk l_st)
-      (w1CliOpenedPeak M x.rest.length x.ptext.length fileCap deserLive deserPeak
-        l_sig p_sig l_pk p_pk p_st)
-      (w1CliOpenedMaxReq x.rest.length x.ptext.length fileCap deserMaxReq r_sig r_pk r_st) := by
-  have h := w1CliEncryptSlot_withSpqrSendTight640_creditSpec_tight
-    hM hLow hle1569 B img F peer C S x DeserEnv peerIdKeyName kitEnv ikitEnv
-    SigNoneGuard SigSomeGuard PkCallGuard
-    hpeer hremName hNameCum hidKeyLen hValid hSessFileCap hIdFileCap hDeser
-    hLoadEq hTrustEq hSaveEq hSigNone hSigSome hPkCap hStoreNone hStoreSome
-  dsimp only at h
-  unfold w1CliOpenedCum w1CliOpenedLive w1CliOpenedPeak w1CliOpenedMaxReq
-    w1CliOpenedPqCapCum w1CliOpenedPqCapLive w1CliOpenedPqCapPeak w1CliOpenedPqCapMaxReq
-    w1CliOpenedCustomSendCum w1CliOpenedCustomSendLive
-    w1CliOpenedCustomSendPeak w1CliOpenedCustomSendMaxReq
-  simpa only [Nat.zero_max] using h
-
-/-! ### 3.3 W2 (`decryptSignal`) at `StoresGhost.opened` -/
-
-def w2CliOpenedCum (fileCap idFileCap deserCum c_td : Nat) : Nat :=
+@[expose] def w2CliOpenedCum (fileCap idFileCap deserCum c_td : Nat) : Nat :=
   let pqCap' := fileCap + 1128000
   let encCap' := fileCap + 3225192
   let c_ld := sessLoadPollDeltaCum fileCap deserCum
@@ -857,7 +490,7 @@ def w2CliOpenedCum (fileCap idFileCap deserCum c_td : Nat) : Nat :=
   let c_kr := c_id_step + max c_sc (c_id_step + c_st_step)
   c_ld_step + max (max c_sc 9573) (c_rd + c_kr)
 
-def w2CliOpenedLive (fileCap idFileCap deserLive l_td : Nat) : Nat :=
+@[expose] def w2CliOpenedLive (fileCap idFileCap deserLive l_td : Nat) : Nat :=
   let encCap' := fileCap + 3225192
   let l_ld := sessLoadPollDeltaLive fileCap deserLive
   let l_rd := 1089170 + fileCap + l_td
@@ -866,7 +499,7 @@ def w2CliOpenedLive (fileCap idFileCap deserLive l_td : Nat) : Nat :=
   let l_kr := l_id + (l_id + l_st)
   l_ld + (l_rd + l_kr)
 
-def w2CliOpenedPeak (fileCap idFileCap deserLive deserPeak l_td p_td : Nat) : Nat :=
+@[expose] def w2CliOpenedPeak (fileCap idFileCap deserLive deserPeak l_td p_td : Nat) : Nat :=
   let pqCap' := fileCap + 1128000
   let encCap' := fileCap + 3225192
   let l_ld := sessLoadPollDeltaLive fileCap deserLive
@@ -879,7 +512,7 @@ def w2CliOpenedPeak (fileCap idFileCap deserLive deserPeak l_td p_td : Nat) : Na
   let p_kr := max p_id (l_id + max p_id (l_id + p_st))
   max p_ld (l_ld + max p_rd (l_rd + p_kr))
 
-def w2CliOpenedMaxReq (fileCap idFileCap deserMaxReq r_td : Nat) : Nat :=
+@[expose] def w2CliOpenedMaxReq (fileCap idFileCap deserMaxReq r_td : Nat) : Nat :=
   let pqCap' := fileCap + 1128000
   let encCap' := fileCap + 3225192
   let r_ld := sessLoadPollMaxReq fileCap deserMaxReq
@@ -1235,43 +868,43 @@ theorem cliRunOpened_slots_tight_phaseCredit_customWire
 /-! ## 5. Closed-Form `1 MiB` Profile and Tight SPQR `recv` Constants -/
 
 /-- Tight SPQR `recv` `Δcum` (`23,313,687` B). -/
-def c09bTightSpqrCum : Nat := 23313687
+@[expose] def c09bTightSpqrCum : Nat := 23313687
 
 /-- Tight SPQR `recv` `Δlive` (`294,391` B). -/
-def c09bTightSpqrLive : Nat := 294391
+@[expose] def c09bTightSpqrLive : Nat := 294391
 
 /-- Tight SPQR `recv` `Δpeak` (`294,391` B). -/
-def c09bTightSpqrPeak : Nat := 294391
+@[expose] def c09bTightSpqrPeak : Nat := 294391
 
 /-- Tight SPQR `recv` `maxReq` (`302,480` B). -/
-def c09bTightSpqrMaxReq : Nat := 302480
+@[expose] def c09bTightSpqrMaxReq : Nat := 302480
 
 /-- Unconditional-history SPQR `recv` `Δlive` (`605,066` B). -/
-def c09bTightUncondSpqrLive : Nat := 605066
+@[expose] def c09bTightUncondSpqrLive : Nat := 605066
 
 /-- Unconditional-history SPQR `recv` `Δpeak` (`621,350` B). -/
-def c09bTightUncondSpqrPeak : Nat := 621350
+@[expose] def c09bTightUncondSpqrPeak : Nat := 621350
 
 /-- Prologue `R0` (`StoresGhost.opened`) closed-form `(cum, live, peak, maxReq)` at `1 MiB`
 (`fileCap = sessionCapBytes = 2,097,152` B). -/
-def r0Opened1MiBCum : Nat :=
+@[expose] def r0Opened1MiBCum : Nat :=
   pathDeltaCum 26 7 + tempFilePostCum sessionCapBytes addressTryParseDeltaCum
 
-def r0Opened1MiBLive : Nat :=
+@[expose] def r0Opened1MiBLive : Nat :=
   pathDeltaLive 26 7 + tempFilePostLive addressTryParseDeltaLive
 
-def r0Opened1MiBPeak : Nat :=
+@[expose] def r0Opened1MiBPeak : Nat :=
   max (pathDeltaPeak 26 7)
     (pathDeltaLive 26 7 + tempFilePostPeak sessionCapBytes addressTryParseDeltaPeak)
 
-def r0Opened1MiBMaxReq : Nat :=
+@[expose] def r0Opened1MiBMaxReq : Nat :=
   max (pathMaxReq 26 7) (tempFilePostMaxReq sessionCapBytes addressTryParseMaxReq)
 
 /-- Parametric whole-`run` closed-form `(cum, cumPostC0506t, live, peak, maxReq)` at the canonical
 `1 MiB` domain (`msgCapBytes = 1,048,576`, `sessionCapBytes = 2,097,152`, `maxInitDir = 26`,
 `bundleCap = 1,637`, `wireOutCap = 2,097,152`) on `fineCostModel`, given the four stateful slot
 tuples `(init*, enc*, decSig*, decPk*)`. -/
-def cliRun1MiBSlotCum
+@[expose] def cliRun1MiBSlotCum
     (initCum encCum decSigCum decPkCum : Nat) : Nat :=
   r0Opened1MiBCum +
     max (initArmDeltaCum (pathDeltaCum 26 16) 1637 initCum)
@@ -1288,7 +921,7 @@ def cliRun1MiBSlotCumPostC0506t
         (max (sigSliceTightCum msgCapBytes + decSigCum)
           (pksmSliceFullTightCum msgCapBytes + decPkCum)))
 
-def cliRun1MiBSlotLive
+@[expose] def cliRun1MiBSlotLive
     (initLive encLive decSigLive decPkLive : Nat) : Nat :=
   r0Opened1MiBLive +
     max (initArmDeltaLive (pathDeltaLive 26 16) initLive)
@@ -1296,7 +929,7 @@ def cliRun1MiBSlotLive
         (max (sigSliceLive msgCapBytes + decSigLive)
           (pksmSliceLive msgCapBytes + decPkLive)))
 
-def cliRun1MiBSlotPeak
+@[expose] def cliRun1MiBSlotPeak
     (initPeak encLive encPeak decSigPeak decPkPeak : Nat) : Nat :=
   max r0Opened1MiBPeak
     (r0Opened1MiBLive +
@@ -1305,7 +938,7 @@ def cliRun1MiBSlotPeak
           (max (max (sigSlicePeak msgCapBytes) (sigSliceLive msgCapBytes + decSigPeak))
             (max (pksmSlicePeak msgCapBytes) (pksmSliceLive msgCapBytes + decPkPeak)))))
 
-def cliRun1MiBSlotMaxReq
+@[expose] def cliRun1MiBSlotMaxReq
     (initMaxReq encMaxReq decSigMaxReq decPkMaxReq : Nat) : Nat :=
   max r0Opened1MiBMaxReq
     (max (initArmMaxReq (pathMaxReq 26 16) 1637 initMaxReq)

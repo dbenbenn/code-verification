@@ -12,7 +12,7 @@ module
 public import LibsignalBinary.Heap.IfaceBudgetLemmas -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.SpecBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.SessionRecordCallees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.SessionRecordCallees
 public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.MatchDefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1Steps
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -22,6 +22,8 @@ import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.MatchCalleeBudget
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `HookSat`-Backed `VmPreserved` `StoreKit.Over.MatchCallee` Proofs (`MatchCalleeBudgetSat`)

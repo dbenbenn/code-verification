@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConstPlaced
@@ -19,6 +19,7 @@ import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysDefs
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysInit
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Placed Constant Basis `n = 5` and Loop Exit
@@ -28,7 +29,7 @@ from `completePointsPolys5PlacedAt` and the shared exit block `basis_loop_exit_p
 (`+2456 -> +2608`) for `n ∈ {30, 34, 36}`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

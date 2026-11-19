@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncodedLenBase
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1Placed
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesPoly
 import ProofLib.SepLogic.WPp
 
@@ -23,7 +23,7 @@ Proves `[LibsignalPlacement]` `subroutine_ok` contracts and `MessageEncode` brid
 (`PolynomialEncoder::encoded_len [local#3]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -420,19 +420,19 @@ theorem _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.polynomialDecoderEncodedL
   polynomialDecoderEncodedLen_ok_of_pinned
     (CryptoVerification.Cli.SpqrV1.ProtoRepr.polynomialDecoderEncodedLen_local1_pinned_placed_ok_x A H)
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.PolynomialDecoderEncodedLenLocal1PinnedPlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.PolynomialDecoderEncodedLenLocal1PinnedPlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_493 (Rust.withPanics ext)) (blkPl_493).base (polynomialDecoderEncodedLenPinnedSpec A)
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.PolynomialDecoderEncodedLenLocal1PlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.PolynomialDecoderEncodedLenLocal1PlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_493 (Rust.withPanics ext)) (blkPl_493).base (polynomialDecoderEncodedLenSpec A)
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.PolynomialDecoderEncodedLenLocal1PinnedPlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.PolynomialDecoderEncodedLenLocal1PinnedPlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_493 (Rust.withPanics (tripleRatchetExterns C ctl abs))) (blkPl_493).base (polynomialDecoderEncodedLenPinnedSpec A)
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.PolynomialDecoderEncodedLenLocal1PlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.PolynomialDecoderEncodedLenLocal1PlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_493 (Rust.withPanics (tripleRatchetExterns C ctl abs))) (blkPl_493).base (polynomialDecoderEncodedLenSpec A)
 
@@ -861,19 +861,19 @@ theorem _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.polynomialEncoderEncodedL
   polynomialEncoderEncodedLen_ok_of_pinned
     (CryptoVerification.Cli.SpqrV1.ProtoRepr.polynomialEncoderEncodedLen_local1_pinned_placed_ok_x A H)
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.PolynomialEncoderEncodedLenLocal1PinnedPlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.PolynomialEncoderEncodedLenLocal1PinnedPlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_480 (Rust.withPanics ext)) (blkPl_480).base (polynomialEncoderEncodedLenPinnedSpec A)
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.PolynomialEncoderEncodedLenLocal1PlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.PolynomialEncoderEncodedLenLocal1PlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_480 (Rust.withPanics ext)) (blkPl_480).base (polynomialEncoderEncodedLenSpec A)
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.PolynomialEncoderEncodedLenLocal1PinnedPlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.PolynomialEncoderEncodedLenLocal1PinnedPlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_480 (Rust.withPanics (tripleRatchetExterns C ctl abs))) (blkPl_480).base (polynomialEncoderEncodedLenPinnedSpec A)
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.PolynomialEncoderEncodedLenLocal1PlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.PolynomialEncoderEncodedLenLocal1PlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_480 (Rust.withPanics (tripleRatchetExterns C ctl abs))) (blkPl_480).base (polynomialEncoderEncodedLenSpec A)
 

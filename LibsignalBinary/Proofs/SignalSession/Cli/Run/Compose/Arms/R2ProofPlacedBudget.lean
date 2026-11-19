@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2OkArmsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2ProofPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2ProofPlacedBudgetAux
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2OkArmsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2ProofPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2ProofPlacedBudgetAux
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib -- shake: keep
 public meta import Lean -- shake: keep
 import Arm64.Trusted.Spec.Hoare
@@ -25,13 +25,19 @@ import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Common
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSites
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonCalleesExt
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.Disproof.Basic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2StepsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SpeOwnedBridges
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded `signal_session::run` Placed Send Arm
@@ -41,7 +47,7 @@ Defines the `Send`-arm allocation-event envelope `R2SendEnv` and proves
 (`runProgPlaced H`) under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -156,13 +162,13 @@ private theorem r2pb_seq_step [LibsignalPlacement] {prog : Program} {ret mid : B
   · exact ⟨sm, hsteps, Or.inr h_oom⟩
 
 /-- Canonical frame-address-erased peer `AddrGhost` with `.val = addrValOf peerV`. -/
-def r2PeerGhost0 (peerV : AddrV) : AddrGhost :=
+@[expose] def r2PeerGhost0 (peerV : AddrV) : AddrGhost :=
   ⟨⟨0#64, 0#64, peerV.name⟩, peerV.device⟩
 
 theorem r2PeerGhost0_val (peerV : AddrV) : (r2PeerGhost0 peerV).val = addrValOf peerV := rfl
 
 /-- `EncGhost` passed to `sEnvs.encrypt` at `signal_session::run` frame stack pointer `fsp`. -/
-def r2EncGhost (g : RunCall) (peerG meG : AddrGhost) (fsp : BitVec 64) : EncGhost where
+@[expose] def r2EncGhost (g : RunCall) (peerG meG : AddrGhost) (fsp : BitVec 64) : EncGhost where
   peer := peerG
   peerA := fsp + 0x320#64
   me := meG
@@ -178,7 +184,7 @@ def r2EncGhost (g : RunCall) (peerG meG : AddrGhost) (fsp : BitVec 64) : EncGhos
 /-- Tail allocation-event envelope of Arm `R2` after `wrap_encrypt` returns:
 either `FreeOnlyEvs` (`.error _` drop + address frees) or `cliConcat2Events` on the
 prepend-tagged serialized ciphertext followed by `FreeOnlyEvs` (message drop + address frees). -/
-def R2TailEnv (S : RunSem) (g : RunCall) (meV peerV : AddrV)
+@[expose] def R2TailEnv (S : RunSem) (g : RunCall) (meV peerV : AddrV)
     (evs_tail : List AllocEvent) : Prop :=
   FreeOnlyEvs evs_tail ∨
     match S.encrypt (runFiles g.i) (addrValOf peerV) (addrValOf meV) g.i.stdin (coinsOf g.i) with
@@ -194,7 +200,7 @@ def R2TailEnv (S : RunSem) (g : RunCall) (meV peerV : AddrV)
 
 /-- Allocation-event envelope for Arm `R2` (`Send`): `FreeOnlyEvs` when `me = .none`, else
 `SeqEnv` of `sEnvs.encrypt` and `R2TailEnv`. -/
-def R2SendEnv (sEnvs : RunSlotEnvs) (S : RunSem)
+@[expose] def R2SendEnv (sEnvs : RunSlotEnvs) (S : RunSem)
     (g : RunCall) (me : MeAtDispatch) (peerV : AddrV)
     (evs : List AllocEvent) : Prop :=
   match me with

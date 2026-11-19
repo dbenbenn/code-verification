@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SpkHop1F
+public import Computational.Proofs.E2E.SpkHop1F -- proof-setup: allow-public-import
 
 /-!
 # Hop 2 Window Invariant and Phase 2 Coupling
@@ -18,7 +18,7 @@ Defines the receiver-chain window invariant `Hop2WindowInv`, proves its preserva
 steps, and bounds Phase 2 of the Hop 2 hybrid transition (`evalDist_runHop2_phase2_le_createColl`).
 -/
 
-@[expose] public section
+public section
 
 set_option linter.unusedSectionVars false
 
@@ -77,7 +77,7 @@ structure Hop2WindowCore {ℓ : ℕ} (P : Params Bytes PQC)
   trans_le : ∀ r ∈ s.trans, r.pos.epoch ≤ s.epoch r.pos.sender
   phase : Hop2WindowStateA P s ∨ Hop2WindowStateB P s
 
-def Hop2WindowInv {ℓ : ℕ} (P : Params Bytes PQC)
+@[expose] def Hop2WindowInv {ℓ : ℕ} (P : Params Bytes PQC)
     (s : SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes) : Prop :=
   (∀ e ∈ (s.st .A).chainEpochs, 0 < e) ∨ Hop2WindowCore P s
 

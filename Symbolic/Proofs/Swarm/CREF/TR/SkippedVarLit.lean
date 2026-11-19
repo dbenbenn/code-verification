@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.CanonRep
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.CanonRep -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Bytes.Basic
@@ -24,7 +24,7 @@ Proves that a non-colliding wire representation cannot match the bytes of an ins
 receiver-chain ratchet key when their normalized X25519 base keys differ.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

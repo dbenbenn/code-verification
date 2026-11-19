@@ -9,20 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
 public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit
-public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4InnerPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterHelpers
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterStageHelpers
+import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit
+import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
+import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W4InnerPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W4OuterHelpers
+public import LibsignalBinary.Proofs.PeakBudget.W4OuterStageHelpers -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromPeakSpec
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.W4ArchiveCancelPeak -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W4InitBobPeak -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W4TryDecryptPqPeak -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # W4 Outer `process_prekey` / `decrypt_prekey` Peak Live-Heap Spec
@@ -35,7 +41,7 @@ Stages P1–P4): Stage P1 (`load_session` + `is_trusted_identity`), Stage P2 (`M
 widened envelopes (`W4DecryptPrekeySplitWideSlotEnv`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -114,13 +120,9 @@ export W4OuterStageHelpers
 export W4OuterStageHelpers
   (w4BoxedStepCum w4BoxedStepLive w4BoxedStepPeak w4BoxedStepMaxReq)
 
-abbrev w4StageP1Ok_phaseCredit := @w4StageP1OkCli_phaseCredit
-abbrev w4StageP1Untrusted_phaseCredit := @w4StageP1UntrustedCli_phaseCredit
-abbrev w4StageP1Untrusted_small_phaseCredit := @w4StageP1UntrustedCli_small_phaseCredit
-
 /-- Optional `192`-byte `SignalProtocolError` box allocation + `FreeOnlyEvs` teardown on stage exit.
 -/
-def W4ErrTailEnv (evs : List AllocEvent) : Prop :=
+@[expose] def W4ErrTailEnv (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ SeqEnv (GrowOneSpeEnv 0#64) FreeOnlyEvs evs
 
 theorem w4ErrTail_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
@@ -145,7 +147,7 @@ theorem w4ErrTail_small_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M
 
 /-- Stage P2 Path B (`Matched` existing session) envelope: direct `FreeOnlyEvs` match or `≤ 4` archived-session `PrevDec` + trial iterations followed by optional `PromoteStateArchiveEnv`.
 -/
-def W4StageP2MatchedEnv {α : Type}
+@[expose] def W4StageP2MatchedEnv {α : Type}
     (DecEnv TrialEnv DropEnv : α → List AllocEvent → Prop) (xs : List α)
     (g_arch : RecordGhost) (r_arch : SessionRecord (List (BitVec 8)))
     (VecPushEnv : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
@@ -188,7 +190,7 @@ theorem w4StageP2Matched_phaseCredit {α : Type}
 
 /-- Stage P2 Path A (`0`-prev fresh responder handshake) CLI envelope (`spkGet → kpkGet → opt pkGet → idKp → W4InitBobSpqrEnv → idRegId → W4ErrTailEnv`).
 -/
-def W4StageP2PathACliEnv (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
+@[expose] def W4StageP2PathACliEnv (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
     (spkDir kpkDir opkDir ownDir : DirGhost)
     (spkId kpkId opkId : BitVec 32)
     (ownKeyName ownRegName : List (BitVec 8))
@@ -214,10 +216,6 @@ private theorem p2a_cum_le (a b1 b2 c : Nat) :
 
 private theorem p2a_live_le (a b : Nat) :
     a + (a + (a + (a + (b + a)))) ≤ 5 * a + b := by
-  omega
-
-private theorem p2a_aff_live_le (a b c : Nat) :
-    a + (a + (a + (a + (b + (a + c))))) ≤ 5 * a + b + c := by
   omega
 
 private theorem p2a_bob_maxReq_le (ikmCap : Nat) :
@@ -353,76 +351,8 @@ theorem w4StageP2PathACli_small_phaseCredit {M : AllocCostModel} [HasFineRealloc
     (Nat.le_refl _)
     (p2a_maxReq_le _ _)
 
-/-- Regime-free `PhaseCreditSpec` for `W4StageP2PathACliEnv`. -/
-theorem w4StageP2PathACli_aff_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hasOpk : Bool)
-    {rd : ReadRule} {files : FsFiles}
-    {spkDir kpkDir opkDir ownDir : DirGhost}
-    (spkId kpkId opkId : BitVec 32)
-    {ownKeyName ownRegName : List (BitVec 8)}
-    (F : ShaCompress) {x_res : DoReserveCall} (x_spqr : InitialStateGhost)
-    {ikmCap maxDir maxEntries maxVal fileCap : Nat}
-    (hdcSpk : DirDomainCaps maxDir maxEntries maxVal spkDir)
-    (hdcKpk : DirDomainCaps maxDir maxEntries maxVal kpkDir)
-    (hdcOpk : DirDomainCaps maxDir maxEntries maxVal opkDir)
-    (hdcOwn : DirDomainCaps maxDir maxEntries maxVal ownDir)
-    (hdir : maxDir ≤ 64)
-    (hkeyName : ownKeyName.length ≤ 64)
-    (hregName : ownRegName.length ≤ 64)
-    (hnew : reserveCap x_res.cap.toNat x_res.bs.length x_res.additional ≤ ikmCap)
-    (hspqrKey : x_spqr.p.authKey.length ≤ 32)
-    (hfileCap : ∀ p bs, rd files p = .ok bs → bs.length ≤ fileCap) :
-    let cap := max maxVal fileCap
-    let c16 := w4BoxedStepCum 16 (smallStorePollDeltaCum cap maxEntries)
-    let l16 := w4BoxedStepLive 16 (smallStorePollDeltaLive cap maxEntries)
-    let p16 := w4BoxedStepPeak 16 (smallStorePollDeltaPeak cap maxEntries)
-    let r16 := w4BoxedStepMaxReq 16 (smallStorePollMaxReq cap maxEntries)
-    let lBob := (ikmCap + 8195) + 4 * (33 + 8195) + 9764 + 8387 +
-      w4SpqrInitLive 32 + 6 * (68 + 8195)
-    let pBob := (ikmCap + 8195) + 4 * (33 + 8195) + 9764 + 8387 +
-      max (w4SpqrInitPeak 32) (w4SpqrInitLive 32 + 6 * (68 + 8195))
-    PhaseCreditSpec M
-      (W4StageP2PathACliEnv hasOpk rd files spkDir kpkDir opkDir ownDir spkId kpkId opkId
-        ownKeyName ownRegName F x_res x_spqr)
-      (5 * c16 + w4InitBobOuterCum ikmCap + w4SpqrInitCum 32 + 9923)
-      (5 * l16 + lBob + 8387)
-      (max p16 (l16 + max p16 (l16 + max p16 (l16 + max p16
-        (l16 + max pBob (lBob + max p16 (l16 + 8387)))))))
-      (max r16 (max ikmCap 4224)) := by
-  dsimp only
-  have hSpk := w4KeyIdSmallStoreStep_phaseCredit hM 16 spkId hdcSpk hdir
-    (fun bs hr => hfileCap _ bs hr)
-  have hKpk := w4KeyIdSmallStoreStep_phaseCredit hM 16 kpkId hdcKpk hdir
-    (fun bs hr => hfileCap _ bs hr)
-  have hOptPk := phaseCreditSpec_ite_nil hasOpk fun _ =>
-    w4KeyIdSmallStoreStep_phaseCredit hM 16 opkId hdcOpk hdir (fun bs hr => hfileCap _ bs hr)
-  have hKp := w4SmallStoreStep_phaseCredit hM 16 hdcOwn hdir hkeyName
-    (fun bs hr => hfileCap _ bs hr)
-  have hSpqr := w4SpqrInit32_phaseCredit hM F x_spqr hspqrKey
-  have hBob : PhaseCreditSpec M (W4InitBobSpqrEnv F x_res hasOpk x_spqr)
-      (w4InitBobOuterCum ikmCap + w4SpqrInitCum 32)
-      ((ikmCap + 8195) + 4 * (33 + 8195) + 9764 + 8387 + w4SpqrInitLive 32 + 6 * (68 + 8195))
-      ((ikmCap + 8195) + 4 * (33 + 8195) + 9764 + 8387 +
-        max (w4SpqrInitPeak 32) (w4SpqrInitLive 32 + 6 * (68 + 8195)))
-      (max ikmCap 4224) :=
-    (phaseCredit_w4InitBob_aff hM (hasOpk := hasOpk) hnew hSpqr).mono
-      (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _) (p2a_bob_maxReq_le ikmCap)
-  have hReg := w4SmallStoreStep_phaseCredit hM 16 hdcOwn hdir hregName
-    (fun bs hr => hfileCap _ bs hr)
-  have hTail := w4ErrTail_phaseCredit hM
-  have h67 := hReg.seq hTail
-  have h57 := hBob.seq h67
-  have h47 := hKp.seq h57
-  have h37 := hOptPk.seq h47
-  have h27 := hKpk.seq h37
-  exact (hSpk.seq h27).mono
-    (p2a_cum_le _ _ _ _)
-    (p2a_aff_live_le _ _ _)
-    (Nat.le_refl _)
-    (p2a_maxReq_le _ _)
-
 /-- Stage P2 Path C (`Over` / `prev1` responder handshake) CLI envelope. -/
-def W4StageP2PathCCliEnv {α : Type}
+@[expose] def W4StageP2PathCCliEnv {α : Type}
     (G_cur : SessionGhost) (st_cur : SessionState (List (BitVec 8)))
     (CurTrialFailEnv : List AllocEvent → Prop)
     (DecEnv TrialEnv DropEnv : α → List AllocEvent → Prop) (xs : List α)
@@ -582,7 +512,7 @@ theorem w4StageP2PathCCli_small_phaseCredit {α : Type}
 /-! ## 3. Stage P3 (`try_decrypt_pq` + `W4ErrTailEnv`) and Stage P4 Exports -/
 
 /-- Stage P3 inner `SignalMessage` decryption envelope (`TryDecEnv → W4ErrTailEnv`). -/
-def W4StageP3Env (TryDecEnv : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
+@[expose] def W4StageP3Env (TryDecEnv : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   SeqEnv TryDecEnv W4ErrTailEnv evs
 
 theorem w4StageP3_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
@@ -600,52 +530,6 @@ theorem w4StageP3_small_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M
       (c + 9923) l (max p l) (max r 192) := by
   exact (hTd.seq (w4ErrTail_small_phaseCredit hM hsmall)).mono
     (Nat.le_refl _) (by omega) (by omega) (Nat.le_refl _)
-
-/-- Small-regime Stage P3 bound specialized to `RootBudgetAux.FromS1GenEnv`. -/
-theorem w4StageP3_fromS1Gen_small_phaseCredit
-    {M : AllocCostModel} [HasFineReallocCredit M]
-    {C : Crypto} {parse : UuidParser} {S : SpqrModel}
-    {aesOpt : MessageKeys → SignalMessage → Option (List (BitVec 8))}
-    {s1OkEnv : TryDecryptGhost → List AllocEvent → Prop}
-    {s3Env : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) →
-      List AllocEvent → Prop}
-    {s4Env : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) → ChainKey →
-      List AllocEvent → Prop}
-    {s5Env : TryDecryptGhost → TripleRatchet (List (BitVec 8)) → List AllocEvent → Prop}
-    {s6Env : MessageKeyGenerator → List AllocEvent → Prop}
-    {s7Env : TryDecryptGhost → TripleRatchet (List (BitVec 8)) → MessageKeys →
-      List (BitVec 8) → List AllocEvent → Prop}
-    {s8Env : TryDecryptGhost → MessageKeys → List (BitVec 8) → List AllocEvent → Prop}
-    {s9Env : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) →
-      SessionState (List (BitVec 8)) → List (BitVec 8) → List AllocEvent → Prop}
-    (hM : ModelHyps M) (hsmall : 192 ≤ HasFineReallocCredit.smallMaxReq M)
-    {c1 l1 p1 r1 c3 l3 p3 r3 c4 l4 p4 r4 c5 l5 p5 r5 c6 l6 p6 r6
-     c7 l7 p7 r7 c8 l8 p8 r8 c9 l9 p9 r9 : Nat}
-    {x : TryDecryptGhost}
-    (hS1 : PhaseCreditSpec M (s1OkEnv x) c1 l1 p1 r1)
-    (hS3 : ∀ trG' tr', PhaseCreditSpec M (s3Env x trG' tr') c3 l3 p3 r3)
-    (hS4 : ∀ trG' tr' ck, PhaseCreditSpec M (s4Env x trG' tr' ck) c4 l4 p4 r4)
-    (hS5 : ∀ tr', PhaseCreditSpec M (s5Env x tr') c5 l5 p5 r5)
-    (hS6 : ∀ mkg, PhaseCreditSpec M (s6Env mkg) c6 l6 p6 r6)
-    (hS7 : ∀ tr' mks pqr, PhaseCreditSpec M (s7Env x tr' mks pqr) c7 l7 p7 r7)
-    (hS8 : ∀ mks pqr, PhaseCreditSpec M (s8Env x mks pqr) c8 l8 p8 r8)
-    (hS9 : ∀ trG' tr' st1 pqr, PhaseCreditSpec M (s9Env x trG' tr' st1 pqr) c9 l9 p9 r9) :
-    PhaseCreditSpec M
-      (W4StageP3Env
-        (FromS1GenEnv C parse S aesOpt s1OkEnv s3Env s4Env s5Env s6Env s7Env s8Env s9Env x))
-      ((c1 + (c3 + (c4 + (c5 + (c6 + (c7 + (c8 + c9))))))) + 9923)
-      (l1 + (l3 + (l4 + (l5 + (l6 + (l7 + (l8 + l9)))))))
-      (max
-        (max p1 (l1 + max p3 (l3 + max p4 (l4 + max p5 (l5 +
-          max p6 (l6 + max p7 (l7 + max p8 (l8 + p9))))))))
-        (l1 + (l3 + (l4 + (l5 + (l6 + (l7 + (l8 + l9))))))))
-      (max (max r1 (max r3 (max r4 (max r5 (max r6 (max r7 (max r8 r9))))))) 192) :=
-  w4StageP3_small_phaseCredit hM hsmall
-    (phaseCredit_fromS1GenEnv hM hS1 hS3 hS4 hS5 hS6 hS7 hS8 hS9)
-
-abbrev w4StageP4Matched_phaseCredit := @w4StageP4MatchedCli_phaseCredit
-abbrev w4StageP4PathA_phaseCredit := @w4StageP4PathACli_phaseCredit
-abbrev w4StageP4PathC_phaseCredit := @w4StageP4PathCCli_phaseCredit
 
 /-! ## 4. End-to-End 4-Arm `W4DecryptPrekeySlotEnv` -/
 
@@ -690,7 +574,7 @@ structure W4DecryptPrekeySlotParams (α : Type) where
   enc_prev1 : List (BitVec 8)
 
 /-- Path B (`Matched` session) Stages P1 → P2 → P3 → P4 envelope. -/
-def W4DecryptPrekeyPathBEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
+@[expose] def W4DecryptPrekeyPathBEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
     (evs : List AllocEvent) : Prop :=
   SeqEnv (W4StageP1OkCliEnv P.rd P.DeserEnv P.files P.sessDir P.peersDir P.peer)
     (SeqEnv
@@ -700,7 +584,7 @@ def W4DecryptPrekeyPathBEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
         (W4StageP4MatchedCliEnv P.rd P.files P.peersDir P.sessDir P.peer P.g_out0 P.r_out0))) evs
 
 /-- Path A (`0`-prev fresh responder handshake) Stages P1 → P2 → P3 → P4 envelope. -/
-def W4DecryptPrekeyPathAEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
+@[expose] def W4DecryptPrekeyPathAEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
     (evs : List AllocEvent) : Prop :=
   SeqEnv (W4StageP1OkCliEnv P.rd P.DeserEnv P.files P.sessDir P.peersDir P.peer)
     (SeqEnv
@@ -711,7 +595,7 @@ def W4DecryptPrekeyPathAEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
           P.peer P.kpkMarkName P.opkId P.g_out0 P.r_out0))) evs
 
 /-- Path C (`Over` / `prev1` responder handshake) Stages P1 → P2 → P3 → P4 envelope. -/
-def W4DecryptPrekeyPathCEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
+@[expose] def W4DecryptPrekeyPathCEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
     (evs : List AllocEvent) : Prop :=
   SeqEnv (W4StageP1OkCliEnv P.rd P.DeserEnv P.files P.sessDir P.peersDir P.peer)
     (SeqEnv
@@ -725,7 +609,7 @@ def W4DecryptPrekeyPathCEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
 
 /-- 4-arm W4 `decrypt_prekey` (`process_prekey`) slot envelope (`FreeOnlyEvs | Untrusted | PathB | PathA | PathC` + trailing `FreeOnlyEvs`).
 -/
-def W4DecryptPrekeySlotEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
+@[expose] def W4DecryptPrekeySlotEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
   SeqEnv
@@ -736,7 +620,7 @@ def W4DecryptPrekeySlotEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
       W4DecryptPrekeyPathCEnv P e)
     FreeOnlyEvs evs
 
-def w4DecryptPrekeySlotDeltaCum {α : Type} (P : W4DecryptPrekeySlotParams α)
+@[expose] def w4DecryptPrekeySlotDeltaCum {α : Type} (P : W4DecryptPrekeySlotParams α)
     (cap maxEntries deserCum c_cur c_dec c_tr c_push c_td ikmCap : Nat) : Nat :=
   let cL := w4BoxedStepCum 24 (sessLoadPollDeltaCum cap deserCum)
   let c32 := w4BoxedStepCum 32 (smallStorePollDeltaCum cap maxEntries)
@@ -753,7 +637,7 @@ def w4DecryptPrekeySlotDeltaCum {α : Type} (P : W4DecryptPrekeySlotParams α)
   let cP4 := c32 + c32 + c16 + max cSt0 cSt1
   cP1 + cP2 + cP3 + cP4
 
-def w4DecryptPrekeySlotDeltaLive (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def w4DecryptPrekeySlotDeltaLive (M : AllocCostModel) [HasFineReallocCredit M]
     {α : Type} (P : W4DecryptPrekeySlotParams α)
     (cap maxEntries deserLive l_td : Nat) : Nat :=
   let lL := w4BoxedStepLive 24 (sessLoadPollDeltaLive cap deserLive)
@@ -768,7 +652,7 @@ def w4DecryptPrekeySlotDeltaLive (M : AllocCostModel) [HasFineReallocCredit M]
   let lP4 := l32 + l32 + l16 + max lSt0 lSt1
   lP1 + lP2 + l_td + lP4
 
-def w4DecryptPrekeySlotRawPeak (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def w4DecryptPrekeySlotRawPeak (M : AllocCostModel) [HasFineReallocCredit M]
     {α : Type} (P : W4DecryptPrekeySlotParams α)
     (cap maxEntries deserLive deserPeak p_cur p_dec p_tr l_td p_td : Nat) : Nat :=
   let lL := w4BoxedStepLive 24 (sessLoadPollDeltaLive cap deserLive)
@@ -795,14 +679,14 @@ def w4DecryptPrekeySlotRawPeak (M : AllocCostModel) [HasFineReallocCredit M]
   max pP1 (lP1 + max pP2 (lP2 + max pP3 (l_td + pP4)))
 
 /-- Named `Δpeak` bound for `W4DecryptPrekeySlotEnv P` (`max rawPeak live`). -/
-def w4DecryptPrekeySlotDeltaPeak (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def w4DecryptPrekeySlotDeltaPeak (M : AllocCostModel) [HasFineReallocCredit M]
     {α : Type} (P : W4DecryptPrekeySlotParams α)
     (cap maxEntries deserLive deserPeak p_cur p_dec p_tr l_td p_td : Nat) : Nat :=
   max
     (w4DecryptPrekeySlotRawPeak M P cap maxEntries deserLive deserPeak p_cur p_dec p_tr l_td p_td)
     (w4DecryptPrekeySlotDeltaLive M P cap maxEntries deserLive l_td)
 
-def w4DecryptPrekeySlotMaxReq {α : Type} (P : W4DecryptPrekeySlotParams α)
+@[expose] def w4DecryptPrekeySlotMaxReq {α : Type} (P : W4DecryptPrekeySlotParams α)
     (cap maxEntries deserMaxReq r_cur r_dec r_tr r_push r_td ikmCap : Nat) : Nat :=
   let rL := w4BoxedStepMaxReq 24 (sessLoadPollMaxReq cap deserMaxReq)
   let r32 := w4BoxedStepMaxReq 32 (smallStorePollMaxReq cap maxEntries)
@@ -1493,24 +1377,24 @@ theorem w4DecryptPrekeySlot_opened_small_phaseCredit {α : Type}
 /-! ## 5. Outer `SlotW4` / `R3b` Wire and Slot Composition -/
 
 /-- Outer `R3b` / `SlotW4` envelope (`PksmTryFromBoundedEnv x_pksm → DecPkEnv → FreeOnlyEvs`). -/
-def W4SlotR3bEnv (x_pksm : PksmGhost) (DecPkEnv : List AllocEvent → Prop)
+@[expose] def W4SlotR3bEnv (x_pksm : PksmGhost) (DecPkEnv : List AllocEvent → Prop)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
   SeqEnv (PksmTryFromBoundedEnv x_pksm)
     (fun evs2 => FreeOnlyEvs evs2 ∨ SeqEnv DecPkEnv FreeOnlyEvs evs2) evs
 
-def w4SlotR3bDeltaCum (x_pksm : PksmGhost) (decCum : Nat) : Nat :=
+@[expose] def w4SlotR3bDeltaCum (x_pksm : PksmGhost) (decCum : Nat) : Nat :=
   pksmTryFromDeltaCum x_pksm + decCum
 
-def w4SlotR3bDeltaLive (x_pksm : PksmGhost) (decLive : Nat) : Nat :=
+@[expose] def w4SlotR3bDeltaLive (x_pksm : PksmGhost) (decLive : Nat) : Nat :=
   pksmTryFromDeltaLive x_pksm + decLive
 
-def w4SlotR3bDeltaPeak (x_pksm : PksmGhost) (decLive decPeak : Nat) : Nat :=
+@[expose] def w4SlotR3bDeltaPeak (x_pksm : PksmGhost) (decLive decPeak : Nat) : Nat :=
   max
     (max (pksmTryFromDeltaPeak x_pksm) (pksmTryFromDeltaLive x_pksm + decPeak))
     (w4SlotR3bDeltaLive x_pksm decLive)
 
-def w4SlotR3bMaxReq (x_pksm : PksmGhost) (decMaxReq : Nat) : Nat :=
+@[expose] def w4SlotR3bMaxReq (x_pksm : PksmGhost) (decMaxReq : Nat) : Nat :=
   max (pksmTryFromMaxReq x_pksm) decMaxReq
 
 theorem w4SlotR3b_live_le_peak (x_pksm : PksmGhost) (decLive decPeak : Nat) :
@@ -1583,27 +1467,11 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
 /-! ### 6.1 Optional-Step Combinator (`OptStageEnv`) -/
 
 /-- Optional stage/step wrapper (`FreeOnlyEvs ∨ E`). -/
-def OptStageEnv (E : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
+@[expose] def OptStageEnv (E : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ E evs
 
 theorem optStageEnv_nil (E : List AllocEvent → Prop) : OptStageEnv E [] :=
   Or.inl fun _ h => nomatch h
-
-theorem optStageEnv_of_freeOnly {E : List AllocEvent → Prop} {evs : List AllocEvent}
-    (h : FreeOnlyEvs evs) : OptStageEnv E evs :=
-  Or.inl h
-
-theorem optStageEnv_of_self {E : List AllocEvent → Prop} {evs : List AllocEvent}
-    (h : E evs) : OptStageEnv E evs :=
-  Or.inr h
-
-theorem seqEnv_freeOnly_to_opt {A B : List AllocEvent → Prop} {evs : List AllocEvent}
-    (h : SeqEnv A FreeOnlyEvs evs) : SeqEnv A (OptStageEnv B) evs :=
-  SeqCreditKit.SeqEnv.mono (fun _ ha => ha) (fun _ hf => Or.inl hf) h
-
-theorem seqEnv_freeOnly_to_seq_opt {A B Rest : List AllocEvent → Prop} {evs : List AllocEvent}
-    (h : SeqEnv A FreeOnlyEvs evs) : SeqEnv A (SeqEnv (OptStageEnv B) Rest) evs :=
-  SeqCreditKit.SeqEnv.mono (fun _ ha => ha) (fun _ hf => Or.inl (Or.inl hf)) h
 
 theorem phaseCredit_optStageEnv {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) {E : List AllocEvent → Prop} {c l p r : Nat}
@@ -1618,7 +1486,7 @@ theorem phaseCredit_optStageEnv {M : AllocCostModel} [HasFineReallocCredit M]
 /-! ### 6.2 Widened Error-Return Tail (`W4ErrTailWideEnv`) -/
 
 /-- Widened stage error tail covering `W4ErrTailEnv`, `FromFEnv`, and `FromMEnv`. -/
-def W4ErrTailWideEnv (evs : List AllocEvent) : Prop :=
+@[expose] def W4ErrTailWideEnv (evs : List AllocEvent) : Prop :=
   W4ErrTailEnv evs ∨ FromFEnv evs ∨ FromMEnv evs
 
 theorem w4ErrTailWideEnv_of_w4ErrTailEnv {evs : List AllocEvent}
@@ -1629,14 +1497,6 @@ theorem w4ErrTailWideEnv_of_freeOnly {evs : List AllocEvent}
     (h : FreeOnlyEvs evs) : W4ErrTailWideEnv evs :=
   Or.inl (Or.inl h)
 
-theorem w4ErrTailWideEnv_of_fromFEnv {evs : List AllocEvent}
-    (h : FromFEnv evs) : W4ErrTailWideEnv evs :=
-  Or.inr (Or.inl h)
-
-theorem w4ErrTailWideEnv_of_fromMEnv {evs : List AllocEvent}
-    (h : FromMEnv evs) : W4ErrTailWideEnv evs :=
-  Or.inr (Or.inr h)
-
 theorem w4ErrTailWideEnv_of_fromVPostTdEnv {evs : List AllocEvent}
     (h : FromVPostTdEnv evs) : W4ErrTailWideEnv evs := by
   rcases h with hf | hm
@@ -1644,7 +1504,7 @@ theorem w4ErrTailWideEnv_of_fromVPostTdEnv {evs : List AllocEvent}
   · exact Or.inr (Or.inr hm)
 
 /-- Widened failed cloned-session `try_decrypt_pq` trial on Stage P2 Path C. -/
-def W4TryDecryptCloneFailWideEnv
+@[expose] def W4TryDecryptCloneFailWideEnv
     (CloneEnv TrialFailEnv DropCloneEnv : List AllocEvent → Prop)
     (evs : List AllocEvent) : Prop :=
   SeqEnv
@@ -1660,23 +1520,19 @@ theorem w4TryDecryptCloneFailWideEnv_of_narrow
 /-! ### 6.3 Widened Stage P2 (`Matched`, `PathA`, `PathC`) Envelopes -/
 
 /-- Post-`PublicKey::serialize` optional mismatch/error-string tail on Stage P2 Path B. -/
-def W4StageP2MatchedErrStrEnv (evs : List AllocEvent) : Prop :=
+@[expose] def W4StageP2MatchedErrStrEnv (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
   SeqEnv (· = rustAllocEvents 70 1) FreeOnlyEvs evs ∨
   SeqEnv (· = rustAllocEvents 14 1) FreeOnlyEvs evs
 
 /-- Stage P2 Path B direct-match / mismatch check prefix. -/
-def W4StageP2MatchedCheckEnv (evs : List AllocEvent) : Prop :=
+@[expose] def W4StageP2MatchedCheckEnv (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
   SeqEnv (· = rustAllocEvents 33 1)
     (SeqEnv (· = rustDeallocEvents 33 1) W4StageP2MatchedErrStrEnv) evs
 
 theorem w4StageP2MatchedCheckEnv_nil : W4StageP2MatchedCheckEnv [] :=
   Or.inl fun _ h => nomatch h
-
-theorem w4StageP2MatchedCheckEnv_of_freeOnly {evs : List AllocEvent}
-    (h : FreeOnlyEvs evs) : W4StageP2MatchedCheckEnv evs :=
-  Or.inl h
 
 theorem w4StageP2MatchedCheckEnv_of_bridge33 {evs : List AllocEvent}
     (h : SeqEnv (· = rustAllocEvents 33 1) (SeqEnv (· = rustDeallocEvents 33 1) FreeOnlyEvs) evs) :
@@ -1693,17 +1549,8 @@ theorem w4StageP2MatchedCheckEnv_of_mismatch70 {evs : List AllocEvent}
     (fun _ hd => SeqCreditKit.SeqEnv.mono (fun _ hfree => hfree)
       (fun _ h70 => Or.inr (Or.inl h70)) hd) h)
 
-theorem w4StageP2MatchedCheckEnv_of_err14 {evs : List AllocEvent}
-    (h : SeqEnv (· = rustAllocEvents 33 1)
-      (SeqEnv (· = rustDeallocEvents 33 1)
-        (SeqEnv (· = rustAllocEvents 14 1) FreeOnlyEvs)) evs) :
-    W4StageP2MatchedCheckEnv evs :=
-  Or.inr (SeqCreditKit.SeqEnv.mono (fun _ ha => ha)
-    (fun _ hd => SeqCreditKit.SeqEnv.mono (fun _ hfree => hfree)
-      (fun _ h14 => Or.inr (Or.inr h14)) hd) h)
-
 /-- Widened Stage P2 Path B (`Matched`) envelope. -/
-def W4StageP2MatchedWideEnv {α : Type}
+@[expose] def W4StageP2MatchedWideEnv {α : Type}
     (DecEnv TrialEnv DropEnv : α → List AllocEvent → Prop) (xs : List α)
     (g_arch : RecordGhost) (r_arch : SessionRecord (List (BitVec 8)))
     (VecPushEnv : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
@@ -1718,19 +1565,11 @@ theorem w4StageP2MatchedWideEnv_of_check {α : Type}
     W4StageP2MatchedWideEnv DecEnv TrialEnv DropEnv xs g_arch r_arch VecPushEnv evs :=
   Or.inl h
 
-theorem w4StageP2MatchedWideEnv_of_narrow {α : Type}
-    {DecEnv TrialEnv DropEnv : α → List AllocEvent → Prop} {xs : List α}
-    {g_arch : RecordGhost} {r_arch : SessionRecord (List (BitVec 8))}
-    {VecPushEnv : List AllocEvent → Prop} {evs : List AllocEvent}
-    (h : W4StageP2MatchedEnv DecEnv TrialEnv DropEnv xs g_arch r_arch VecPushEnv evs) :
-    W4StageP2MatchedWideEnv DecEnv TrialEnv DropEnv xs g_arch r_arch VecPushEnv evs :=
-  Or.inr ⟨[], evs, rfl, w4StageP2MatchedCheckEnv_nil, Or.inr h⟩
-
 /-- `9`-allocation responder session-build envelope (`≤ 9` small ops `≤ 68` B + `FreeOnlyEvs`). -/
-def W4BobSessionBuildEnv9 : List AllocEvent → Prop :=
+@[expose] def W4BobSessionBuildEnv9 : List AllocEvent → Prop :=
   SeqEnv (W4InitBobPeak.W4BoundedEvs 9 68) FreeOnlyEvs
 
-def w4InitBobOuterCum9 (ikmCap : Nat) : Nat :=
+@[expose] def w4InitBobOuterCum9 (ikmCap : Nat) : Nat :=
   W4InitBobPeak.w4PqxdhAcceptCum ikmCap + 87075
 
 theorem w4BobSessionBuildEnv_sub_env9 {evs : List AllocEvent}
@@ -1746,14 +1585,9 @@ theorem phaseCredit_w4BobSessionBuild9_small {M : AllocCostModel} [HasFineReallo
     (W4InitBobPeak.phaseCredit_w4BoundedEvs_small hM 9 68 hSmall68)).mono
     (by decide) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 68)
 
-theorem w4InitBobOuterCum_le_9 (ikmCap : Nat) :
-    w4InitBobOuterCum ikmCap ≤ w4InitBobOuterCum9 ikmCap := by
-  unfold w4InitBobOuterCum w4InitBobOuterCum9
-  omega
-
 /-- Widened `initialize_bob_session` envelope over `W4BobSessionBuildEnv9` with early error exit after `W4PqxdhAcceptEnv`.
 -/
-def W4InitBobWideEnv (x_res : DoReserveCall) (hasOpk : Bool)
+@[expose] def W4InitBobWideEnv (x_res : DoReserveCall) (hasOpk : Bool)
     (E_spqrInit : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   SeqEnv (W4PqxdhAcceptEnv x_res hasOpk)
     (OptStageEnv (SeqEnv E_spqrInit (OptStageEnv W4BobSessionBuildEnv9))) evs
@@ -1772,7 +1606,7 @@ theorem w4InitBobWideEnv_of_narrow {x_res : DoReserveCall} {hasOpk : Bool}
         (fun _ hb => Or.inr (w4BobSessionBuildEnv_sub_env9 hb)) hs)) h
 
 /-- Widened `Over`-path responder initialization envelope. -/
-def W4StageP2OverBobWideEnv
+@[expose] def W4StageP2OverBobWideEnv
     (SerializeArchivedEnv VecPushEnv : List AllocEvent → Prop)
     (x_res : DoReserveCall) (hasOpk : Bool)
     (E_spqrInit : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
@@ -1789,7 +1623,7 @@ theorem w4StageP2OverBobWideEnv_of_narrow
     (fun _ hb => Or.inr (w4InitBobWideEnv_of_narrow hb)) h
 
 /-- Widened Stage P2 Path A (`0`-prev) CLI envelope wrapping each step in `OptStageEnv`. -/
-def W4StageP2PathACliWideEnv (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
+@[expose] def W4StageP2PathACliWideEnv (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
     (spkDir kpkDir opkDir ownDir : DirGhost)
     (spkId kpkId opkId : BitVec 32)
     (ownKeyName ownRegName : List (BitVec 8))
@@ -1825,7 +1659,7 @@ theorem w4StageP2PathACliWideEnv_of_narrow
               (fun _ t => Or.inl t) u) w) z) y) x) h
 
 /-- Widened Stage P2 Path C (`Over` / `prev1`) CLI envelope. -/
-def W4StageP2PathCCliWideEnv {α : Type}
+@[expose] def W4StageP2PathCCliWideEnv {α : Type}
     (G_cur : SessionGhost) (st_cur : SessionState (List (BitVec 8)))
     (CurTrialFailEnv : List AllocEvent → Prop)
     (DecEnv TrialEnv DropEnv : α → List AllocEvent → Prop) (xs : List α)
@@ -1888,7 +1722,7 @@ theorem w4StageP2PathCCliWideEnv_of_narrow {α : Type}
 /-! ### 6.4 Widened Stage P3 (`W4StageP3WideEnv`) -/
 
 /-- Widened Stage P3 envelope (`CloneEnv → OptStageEnv TryDecEnv → W4ErrTailWideEnv`). -/
-def W4StageP3WideEnv (CloneEnv TryDecEnv : List AllocEvent → Prop)
+@[expose] def W4StageP3WideEnv (CloneEnv TryDecEnv : List AllocEvent → Prop)
     (evs : List AllocEvent) : Prop :=
   SeqEnv CloneEnv (SeqEnv (OptStageEnv TryDecEnv) W4ErrTailWideEnv) evs
 
@@ -1915,17 +1749,10 @@ theorem w4StageP3WideEnv_of_verNe {CloneEnv TryDecEnv : List AllocEvent → Prop
   SeqCreditKit.SeqEnv.mono (fun _ hc => hc)
     (fun e2 hm => Or.inr ⟨[], e2, rfl, optStageEnv_nil TryDecEnv, Or.inr (Or.inr hm)⟩) h
 
-theorem w4StageP3WideEnv_of_fromF {CloneEnv TryDecEnv : List AllocEvent → Prop}
-    {evs : List AllocEvent}
-    (h : SeqEnv CloneEnv FromFEnv evs) :
-    W4StageP3WideEnv CloneEnv TryDecEnv evs :=
-  SeqCreditKit.SeqEnv.mono (fun _ hc => hc)
-    (fun e2 hf => Or.inr ⟨[], e2, rfl, optStageEnv_nil TryDecEnv, Or.inr (Or.inl hf)⟩) h
-
 /-! ### 6.5 Widened Stage P4 Early-Reject Envelopes -/
 
 /-- Widened Stage P4 Path B (`Matched`) CLI envelope. -/
-def W4StageP4MatchedCliWideEnv (rd : ReadRule) (files : FsFiles)
+@[expose] def W4StageP4MatchedCliWideEnv (rd : ReadRule) (files : FsFiles)
     (peersDir sessDir : DirGhost) (peer : AddrGhost)
     (g_rec : RecordGhost) (r_rec : SessionRecord (List (BitVec 8)))
     (evs : List AllocEvent) : Prop :=
@@ -1940,15 +1767,8 @@ theorem w4StageP4MatchedCliWideEnv_of_narrow
   SeqCreditKit.SeqEnv.mono (fun _ hs => Or.inr hs)
     (fun _ hst => SeqCreditKit.SeqEnv.mono (fun _ x => Or.inr x) (fun _ hf => hf) hst) h
 
-theorem w4StageP4MatchedCliWideEnv_of_saveErr
-    {rd : ReadRule} {files : FsFiles} {peersDir sessDir : DirGhost} {peer : AddrGhost}
-    {g_rec : RecordGhost} {r_rec : SessionRecord (List (BitVec 8))} {evs : List AllocEvent}
-    (h : SeqEnv (W4SmallStoreStepEnv 32 rd files peersDir (addressText peer.val)) FreeOnlyEvs evs) :
-    W4StageP4MatchedCliWideEnv rd files peersDir sessDir peer g_rec r_rec evs :=
-  seqEnv_freeOnly_to_seq_opt (SeqCreditKit.SeqEnv.mono (fun _ hs => Or.inr hs) (fun _ hf => hf) h)
-
 /-- Widened Stage P4 Path A (`0`-prev) CLI envelope. -/
-def W4StageP4PathACliWideEnv (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
+@[expose] def W4StageP4PathACliWideEnv (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
     (peersDir kpkDir opkDir sessDir : DirGhost) (peer : AddrGhost)
     (kpkName : List (BitVec 8)) (opkId : BitVec 32)
     (g_rec : RecordGhost) (r_rec : SessionRecord (List (BitVec 8)))
@@ -1973,46 +1793,8 @@ theorem w4StageP4PathACliWideEnv_of_narrow
       (fun _ y => SeqCreditKit.SeqEnv.mono (fun _ s3 => Or.inr s3)
         (fun _ z => SeqCreditKit.SeqEnv.mono (fun _ s4 => Or.inr s4) (fun _ hf => hf) z) y) x) h
 
-theorem w4StageP4PathACliWideEnv_of_saveErr
-    {hasOpk : Bool} {rd : ReadRule} {files : FsFiles}
-    {peersDir kpkDir opkDir sessDir : DirGhost} {peer : AddrGhost}
-    {kpkName : List (BitVec 8)} {opkId : BitVec 32}
-    {g_rec : RecordGhost} {r_rec : SessionRecord (List (BitVec 8))} {evs : List AllocEvent}
-    (h : SeqEnv (W4SmallStoreStepEnv 32 rd files peersDir (addressText peer.val)) FreeOnlyEvs evs) :
-    W4StageP4PathACliWideEnv hasOpk rd files peersDir kpkDir opkDir sessDir peer
-      kpkName opkId g_rec r_rec evs :=
-  seqEnv_freeOnly_to_seq_opt (SeqCreditKit.SeqEnv.mono (fun _ hs => Or.inr hs) (fun _ hf => hf) h)
-
-theorem w4StageP4PathACliWideEnv_of_markErr
-    {hasOpk : Bool} {rd : ReadRule} {files : FsFiles}
-    {peersDir kpkDir opkDir sessDir : DirGhost} {peer : AddrGhost}
-    {kpkName : List (BitVec 8)} {opkId : BitVec 32}
-    {g_rec : RecordGhost} {r_rec : SessionRecord (List (BitVec 8))} {evs : List AllocEvent}
-    (h : SeqEnv (W4SmallStoreStepEnv 32 rd files peersDir (addressText peer.val))
-      (SeqEnv (W4SmallStoreStepEnv 32 rd files kpkDir kpkName) FreeOnlyEvs) evs) :
-    W4StageP4PathACliWideEnv hasOpk rd files peersDir kpkDir opkDir sessDir peer
-      kpkName opkId g_rec r_rec evs :=
-  SeqCreditKit.SeqEnv.mono (fun _ hs => Or.inr hs)
-    (fun _ hm => seqEnv_freeOnly_to_seq_opt
-      (SeqCreditKit.SeqEnv.mono (fun _ x => Or.inr x) (fun _ hf => hf) hm)) h
-
-theorem w4StageP4PathACliWideEnv_of_removeErr
-    {rd : ReadRule} {files : FsFiles}
-    {peersDir kpkDir opkDir sessDir : DirGhost} {peer : AddrGhost}
-    {kpkName : List (BitVec 8)} {opkId : BitVec 32}
-    {g_rec : RecordGhost} {r_rec : SessionRecord (List (BitVec 8))} {evs : List AllocEvent}
-    (h : SeqEnv (W4SmallStoreStepEnv 32 rd files peersDir (addressText peer.val))
-      (SeqEnv (W4SmallStoreStepEnv 32 rd files kpkDir kpkName)
-        (SeqEnv (W4SmallStoreStepEnv 16 rd files opkDir (keyName opkId)) FreeOnlyEvs)) evs) :
-    W4StageP4PathACliWideEnv true rd files peersDir kpkDir opkDir sessDir peer
-      kpkName opkId g_rec r_rec evs :=
-  SeqCreditKit.SeqEnv.mono (fun _ hs => Or.inr hs)
-    (fun _ hm => SeqCreditKit.SeqEnv.mono (fun _ x => Or.inr x)
-      (fun _ hr => seqEnv_freeOnly_to_seq_opt
-        (SeqCreditKit.SeqEnv.mono (fun _ y => Or.inr y) (fun _ hf => hf) hr)) hm) h
-
 /-- Widened Stage P4 Path C (`prev1`) CLI envelope. -/
-def W4StageP4PathCCliWideEnv (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
+@[expose] def W4StageP4PathCCliWideEnv (hasOpk : Bool) (rd : ReadRule) (files : FsFiles)
     (peersDir kpkDir opkDir sessDir : DirGhost) (peer : AddrGhost)
     (kpkName : List (BitVec 8)) (opkId : BitVec 32)
     (G : SessionGhost) (sess : Session (List (BitVec 8))) (enc : List (BitVec 8))
@@ -2038,51 +1820,10 @@ theorem w4StageP4PathCCliWideEnv_of_narrow
       (fun _ y => SeqCreditKit.SeqEnv.mono (fun _ s3 => Or.inr s3)
         (fun _ z => SeqCreditKit.SeqEnv.mono (fun _ s4 => Or.inr s4) (fun _ hf => hf) z) y) x) h
 
-theorem w4StageP4PathCCliWideEnv_of_saveErr
-    {hasOpk : Bool} {rd : ReadRule} {files : FsFiles}
-    {peersDir kpkDir opkDir sessDir : DirGhost} {peer : AddrGhost}
-    {kpkName : List (BitVec 8)} {opkId : BitVec 32}
-    {G : SessionGhost} {sess : Session (List (BitVec 8))} {enc : List (BitVec 8)}
-    {evs : List AllocEvent}
-    (h : SeqEnv (W4SmallStoreStepEnv 32 rd files peersDir (addressText peer.val)) FreeOnlyEvs evs) :
-    W4StageP4PathCCliWideEnv hasOpk rd files peersDir kpkDir opkDir sessDir peer
-      kpkName opkId G sess enc evs :=
-  seqEnv_freeOnly_to_seq_opt (SeqCreditKit.SeqEnv.mono (fun _ hs => Or.inr hs) (fun _ hf => hf) h)
-
-theorem w4StageP4PathCCliWideEnv_of_markErr
-    {hasOpk : Bool} {rd : ReadRule} {files : FsFiles}
-    {peersDir kpkDir opkDir sessDir : DirGhost} {peer : AddrGhost}
-    {kpkName : List (BitVec 8)} {opkId : BitVec 32}
-    {G : SessionGhost} {sess : Session (List (BitVec 8))} {enc : List (BitVec 8)}
-    {evs : List AllocEvent}
-    (h : SeqEnv (W4SmallStoreStepEnv 32 rd files peersDir (addressText peer.val))
-      (SeqEnv (W4SmallStoreStepEnv 32 rd files kpkDir kpkName) FreeOnlyEvs) evs) :
-    W4StageP4PathCCliWideEnv hasOpk rd files peersDir kpkDir opkDir sessDir peer
-      kpkName opkId G sess enc evs :=
-  SeqCreditKit.SeqEnv.mono (fun _ hs => Or.inr hs)
-    (fun _ hm => seqEnv_freeOnly_to_seq_opt
-      (SeqCreditKit.SeqEnv.mono (fun _ x => Or.inr x) (fun _ hf => hf) hm)) h
-
-theorem w4StageP4PathCCliWideEnv_of_removeErr
-    {rd : ReadRule} {files : FsFiles}
-    {peersDir kpkDir opkDir sessDir : DirGhost} {peer : AddrGhost}
-    {kpkName : List (BitVec 8)} {opkId : BitVec 32}
-    {G : SessionGhost} {sess : Session (List (BitVec 8))} {enc : List (BitVec 8)}
-    {evs : List AllocEvent}
-    (h : SeqEnv (W4SmallStoreStepEnv 32 rd files peersDir (addressText peer.val))
-      (SeqEnv (W4SmallStoreStepEnv 32 rd files kpkDir kpkName)
-        (SeqEnv (W4SmallStoreStepEnv 16 rd files opkDir (keyName opkId)) FreeOnlyEvs)) evs) :
-    W4StageP4PathCCliWideEnv true rd files peersDir kpkDir opkDir sessDir peer
-      kpkName opkId G sess enc evs :=
-  SeqCreditKit.SeqEnv.mono (fun _ hs => Or.inr hs)
-    (fun _ hm => SeqCreditKit.SeqEnv.mono (fun _ x => Or.inr x)
-      (fun _ hr => seqEnv_freeOnly_to_seq_opt
-        (SeqCreditKit.SeqEnv.mono (fun _ y => Or.inr y) (fun _ hf => hf) hr)) hm) h
-
 /-! ### 6.6 Widened 4-Arm `W4DecryptPrekeySplitWideSlotEnv` -/
 
 /-- Widened Path B (`Matched`) Stages P1 → P2 → P3 → P4 envelope parameterized by `CloneB`. -/
-def W4DecryptPrekeyPathBWideEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
+@[expose] def W4DecryptPrekeyPathBWideEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
     (CloneB : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   SeqEnv (W4StageP1OkCliEnv P.rd P.DeserEnv P.files P.sessDir P.peersDir P.peer)
     (SeqEnv
@@ -2096,7 +1837,7 @@ def W4DecryptPrekeyPathBWideEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
 
 /-- Widened Path A (`0`-prev) Stages P1 → P2 → P3 → P4 envelope parameterized by `CloneAC` and `TryDecAC`.
 -/
-def W4DecryptPrekeyPathAWideEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
+@[expose] def W4DecryptPrekeyPathAWideEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
     (CloneAC TryDecAC : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   SeqEnv (W4StageP1OkCliEnv P.rd P.DeserEnv P.files P.sessDir P.peersDir P.peer)
     (SeqEnv
@@ -2110,7 +1851,7 @@ def W4DecryptPrekeyPathAWideEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
 
 /-- Widened Path C (`prev1`) Stages P1 → P2 → P3 → P4 envelope parameterized by `CloneAC` and `TryDecAC`.
 -/
-def W4DecryptPrekeyPathCWideEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
+@[expose] def W4DecryptPrekeyPathCWideEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
     (CloneAC TryDecAC : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   SeqEnv (W4StageP1OkCliEnv P.rd P.DeserEnv P.files P.sessDir P.peersDir P.peer)
     (SeqEnv
@@ -2126,7 +1867,7 @@ def W4DecryptPrekeyPathCWideEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
 
 /-- Widened 4-arm W4 `decrypt_prekey` (`process_prekey`) slot envelope splitting `CloneB` (Path B) and `CloneAC` (Paths A & C).
 -/
-def W4DecryptPrekeySplitWideSlotEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
+@[expose] def W4DecryptPrekeySplitWideSlotEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
     (CloneB CloneAC TryDecAC : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
   SeqEnv
@@ -2140,105 +1881,6 @@ def W4DecryptPrekeySplitWideSlotEnv {α : Type} (P : W4DecryptPrekeySlotParams �
 abbrev W4DecryptPrekeyWideSlotEnv {α : Type} (P : W4DecryptPrekeySlotParams α)
     (CloneB CloneAC : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   W4DecryptPrekeySplitWideSlotEnv P CloneB CloneAC P.TryDecEnv evs
-
-theorem w4DecryptPrekeyPathBWideEnv_of_p2Exit {α : Type} (P : W4DecryptPrekeySlotParams α)
-    (CloneB : List AllocEvent → Prop) {evs : List AllocEvent}
-    (h : SeqEnv (W4StageP1OkCliEnv P.rd P.DeserEnv P.files P.sessDir P.peersDir P.peer)
-      (SeqEnv
-        (W4StageP2MatchedWideEnv P.DecEnv P.TrialEnv P.DropEnv P.archivedTrials
-          P.g_arch P.r_arch P.VecPushEnv)
-        FreeOnlyEvs) evs) :
-    W4DecryptPrekeyPathBWideEnv P CloneB evs :=
-  SeqCreditKit.SeqEnv.mono (fun _ h1 => h1)
-    (fun _ h2 => seqEnv_freeOnly_to_seq_opt
-      (SeqCreditKit.SeqEnv.mono (fun _ hp2 => Or.inr hp2) (fun _ hf => hf) h2)) h
-
-theorem w4DecryptPrekeyPathAWideEnv_of_p2Exit {α : Type} (P : W4DecryptPrekeySlotParams α)
-    (CloneAC TryDecAC : List AllocEvent → Prop) {evs : List AllocEvent}
-    (h : SeqEnv (W4StageP1OkCliEnv P.rd P.DeserEnv P.files P.sessDir P.peersDir P.peer)
-      (SeqEnv
-        (W4StageP2PathACliWideEnv P.hasOpk P.rd P.files P.spkDir P.kpkDir P.opkDir P.ownDir
-          P.spkId P.kpkId P.opkId P.ownKeyName P.ownRegName P.F P.x_res P.x_spqr)
-        FreeOnlyEvs) evs) :
-    W4DecryptPrekeyPathAWideEnv P CloneAC TryDecAC evs :=
-  SeqCreditKit.SeqEnv.mono (fun _ h1 => h1)
-    (fun _ h2 => seqEnv_freeOnly_to_seq_opt
-      (SeqCreditKit.SeqEnv.mono (fun _ hp2 => Or.inr hp2) (fun _ hf => hf) h2)) h
-
-theorem w4DecryptPrekeyPathCWideEnv_of_p2Exit {α : Type} (P : W4DecryptPrekeySlotParams α)
-    (CloneAC TryDecAC : List AllocEvent → Prop) {evs : List AllocEvent}
-    (h : SeqEnv (W4StageP1OkCliEnv P.rd P.DeserEnv P.files P.sessDir P.peersDir P.peer)
-      (SeqEnv
-        (W4StageP2PathCCliWideEnv P.G_cur P.st_cur P.CurTrialFailEnv P.DecEnv P.TrialEnv P.DropEnv
-          P.archivedTrials P.g_arch P.r_arch P.VecPushEnv P.hasOpk P.rd P.files
-          P.spkDir P.kpkDir P.opkDir P.ownDir P.spkId P.kpkId P.opkId
-          P.ownKeyName P.ownRegName P.F P.x_res P.x_spqr)
-        FreeOnlyEvs) evs) :
-    W4DecryptPrekeyPathCWideEnv P CloneAC TryDecAC evs :=
-  SeqCreditKit.SeqEnv.mono (fun _ h1 => h1)
-    (fun _ h2 => seqEnv_freeOnly_to_seq_opt
-      (SeqCreditKit.SeqEnv.mono (fun _ hp2 => Or.inr hp2) (fun _ hf => hf) h2)) h
-
-theorem w4DecryptPrekeyPathBWideEnv_of_p3Exit {α : Type} (P : W4DecryptPrekeySlotParams α)
-    (CloneB : List AllocEvent → Prop) {evs : List AllocEvent}
-    (h : SeqEnv (W4StageP1OkCliEnv P.rd P.DeserEnv P.files P.sessDir P.peersDir P.peer)
-      (SeqEnv
-        (W4StageP2MatchedWideEnv P.DecEnv P.TrialEnv P.DropEnv P.archivedTrials
-          P.g_arch P.r_arch P.VecPushEnv)
-        (SeqEnv (W4StageP3WideEnv CloneB P.TryDecEnv) FreeOnlyEvs)) evs) :
-    W4DecryptPrekeyPathBWideEnv P CloneB evs :=
-  SeqCreditKit.SeqEnv.mono (fun _ h1 => h1)
-    (fun _ h2 => SeqCreditKit.SeqEnv.mono (fun _ hp2 => Or.inr hp2)
-      (fun _ h3 => seqEnv_freeOnly_to_opt
-        (SeqCreditKit.SeqEnv.mono (fun _ hp3 => Or.inr hp3) (fun _ hf => hf) h3)) h2) h
-
-theorem w4DecryptPrekeyPathAWideEnv_of_p3Exit {α : Type} (P : W4DecryptPrekeySlotParams α)
-    (CloneAC TryDecAC : List AllocEvent → Prop) {evs : List AllocEvent}
-    (h : SeqEnv (W4StageP1OkCliEnv P.rd P.DeserEnv P.files P.sessDir P.peersDir P.peer)
-      (SeqEnv
-        (W4StageP2PathACliWideEnv P.hasOpk P.rd P.files P.spkDir P.kpkDir P.opkDir P.ownDir
-          P.spkId P.kpkId P.opkId P.ownKeyName P.ownRegName P.F P.x_res P.x_spqr)
-        (SeqEnv (W4StageP3WideEnv CloneAC TryDecAC) FreeOnlyEvs)) evs) :
-    W4DecryptPrekeyPathAWideEnv P CloneAC TryDecAC evs :=
-  SeqCreditKit.SeqEnv.mono (fun _ h1 => h1)
-    (fun _ h2 => SeqCreditKit.SeqEnv.mono (fun _ hp2 => Or.inr hp2)
-      (fun _ h3 => seqEnv_freeOnly_to_opt
-        (SeqCreditKit.SeqEnv.mono (fun _ hp3 => Or.inr hp3) (fun _ hf => hf) h3)) h2) h
-
-theorem w4DecryptPrekeyPathCWideEnv_of_p3Exit {α : Type} (P : W4DecryptPrekeySlotParams α)
-    (CloneAC TryDecAC : List AllocEvent → Prop) {evs : List AllocEvent}
-    (h : SeqEnv (W4StageP1OkCliEnv P.rd P.DeserEnv P.files P.sessDir P.peersDir P.peer)
-      (SeqEnv
-        (W4StageP2PathCCliWideEnv P.G_cur P.st_cur P.CurTrialFailEnv P.DecEnv P.TrialEnv P.DropEnv
-          P.archivedTrials P.g_arch P.r_arch P.VecPushEnv P.hasOpk P.rd P.files
-          P.spkDir P.kpkDir P.opkDir P.ownDir P.spkId P.kpkId P.opkId
-          P.ownKeyName P.ownRegName P.F P.x_res P.x_spqr)
-        (SeqEnv (W4StageP3WideEnv CloneAC TryDecAC) FreeOnlyEvs)) evs) :
-    W4DecryptPrekeyPathCWideEnv P CloneAC TryDecAC evs :=
-  SeqCreditKit.SeqEnv.mono (fun _ h1 => h1)
-    (fun _ h2 => SeqCreditKit.SeqEnv.mono (fun _ hp2 => Or.inr hp2)
-      (fun _ h3 => seqEnv_freeOnly_to_opt
-        (SeqCreditKit.SeqEnv.mono (fun _ hp3 => Or.inr hp3) (fun _ hf => hf) h3)) h2) h
-
-/-- Allocating non-vacuity witness for `W4DecryptPrekeySplitWideSlotEnv`. -/
-theorem w4DecryptPrekeySplitWideSlotEnv_nonvacuous_alloc {α : Type}
-    (P : W4DecryptPrekeySlotParams α) (CloneB CloneAC TryDecAC : List AllocEvent → Prop)
-    {evs₁ : List AllocEvent}
-    (hP1 : W4StageP1OkCliEnv P.rd P.DeserEnv P.files P.sessDir P.peersDir P.peer evs₁) :
-    ∃ evs : List AllocEvent,
-      evs ≠ [] ∧ (.alloc 33 ∈ evs) ∧
-      W4DecryptPrekeySplitWideSlotEnv P CloneB CloneAC TryDecAC evs := by
-  refine ⟨evs₁ ++ [.alloc 33, .free 1 33], ?_, ?_, ?_⟩
-  · intro hnil
-    have hmem : AllocEvent.alloc 33 ∈ evs₁ ++ [.alloc 33, .free 1 33] :=
-      List.mem_append.mpr (Or.inr List.mem_cons_self)
-    rw [hnil] at hmem
-    nomatch hmem
-  · exact List.mem_append.mpr (Or.inr List.mem_cons_self)
-  · refine Or.inr (Or.inl (Or.inr (Or.inl ?_)))
-    refine Or.inr ⟨evs₁, [.alloc 33, .free 1 33], rfl, hP1, Or.inl (Or.inr ?_)⟩
-    refine w4StageP2MatchedWideEnv_of_check (w4StageP2MatchedCheckEnv_of_bridge33 ?_)
-    exact Or.inr ⟨[.alloc 33], [.free 1 33], rfl, rfl, Or.inl rfl⟩
 
 end WidenedBinaryCompleteEnvelopes
 

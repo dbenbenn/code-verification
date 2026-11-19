@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedBaseBudget
+public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedBaseBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Stage-Sequence Allocator Envelopes for `unchunked` `Message::encode`
@@ -22,7 +23,7 @@ Defines sequential capacity-monotone stage envelopes (`CapAfter`, `StageSeqEnv`,
 and proving spare-capacity bridges to the exact-capacity specifications.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -63,7 +64,7 @@ open LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedBaseBudget
 
 /-- Post-stage capacity relation when appending `add` bytes onto a `Vec<u8>` of length `len` and
 initial capacity `cap`: capacity never decreases, and stays equal to `cap` when `len + add ≤ cap`. -/
-def CapAfter (cap : BitVec 64) (len add : Nat) (cap' : BitVec 64) : Prop :=
+@[expose] def CapAfter (cap : BitVec 64) (len add : Nat) (cap' : BitVec 64) : Prop :=
   cap.toNat ≤ cap'.toNat ∧ (len + add ≤ cap.toNat → cap' = cap)
 
 theorem CapAfter.refl (cap : BitVec 64) (len add : Nat) : CapAfter cap len add cap :=
@@ -72,7 +73,7 @@ theorem CapAfter.refl (cap : BitVec 64) (len add : Nat) : CapAfter cap len add c
 /-- Sequential allocator event envelope for a stage `E` (appending `add` bytes onto a buffer of
 capacity `cap` and length `len`, yielding post-stage capacity `cap'` with `CapAfter cap len add cap'`)
 followed by continuation envelope `K cap'`. -/
-def StageSeqEnv (cap : BitVec 64) (len add : Nat) (E : List AllocEvent → Prop)
+@[expose] def StageSeqEnv (cap : BitVec 64) (len add : Nat) (E : List AllocEvent → Prop)
     (K : BitVec 64 → List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   ∃ evs₁ evs₂ cap', evs = evs₁ ++ evs₂ ∧ E evs₁ ∧ CapAfter cap len add cap' ∧ K cap' evs₂
 
@@ -125,7 +126,7 @@ theorem stageSeqEnv_eq_nil_of_spare {cap : BitVec 64} {len add : Nat}
   rfl
 
 /-- Stage 1 envelope: outer length-delimited message header (`0x0a` + `encode_varint innerLen`). -/
-def hdrFieldEnv (cap : BitVec 64) (len innerLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def hdrFieldEnv (cap : BitVec 64) (len innerLen : Nat) (evs : List AllocEvent) : Prop :=
   evs = pushBytesEvents ((encodeVarint (BitVec.ofNat 64 innerLen)).length + 1) cap.toNat len
 
 theorem hdrFieldEnv_nonempty (cap : BitVec 64) (len innerLen : Nat) :
@@ -141,7 +142,7 @@ theorem hdrFieldEnv_eq_nil_of_spare {cap : BitVec 64} {len innerLen : Nat} {evs 
   exact hev.trans (pushBytesEvents_of_spare _ _ _ (by omega))
 
 /-- Stage 2 envelope: optional `u64` varint field (`tag = 1#32`). -/
-def u64Field1Env (cap : BitVec 64) (len : Nat) (val : BitVec 64) (evs : List AllocEvent) : Prop :=
+@[expose] def u64Field1Env (cap : BitVec 64) (len : Nat) (val : BitVec 64) (evs : List AllocEvent) : Prop :=
   evs = (u64Field1Step cap.toNat len val).2
 
 theorem u64Field1Env_nonempty (cap : BitVec 64) (len : Nat) (val : BitVec 64) :
@@ -155,7 +156,7 @@ theorem u64Field1Env_eq_nil_of_spare {cap : BitVec 64} {len : Nat} {val : BitVec
   rw [hev, u64Field1Step_of_spare h]
 
 /-- Stage 3 envelope: optional `Authenticator` nested message field (`tag = 2#32`). -/
-def optAuthField2Env (cap : BitVec 64) (len : Nat) :
+@[expose] def optAuthField2Env (cap : BitVec 64) (len : Nat) :
     Option AuthenticatorPB → List AllocEvent → Prop
   | none => (· = [])
   | some auth => fun evs =>
@@ -187,7 +188,7 @@ theorem optAuthField2Env_eq_nil_of_spare {cap : BitVec 64} {len : Nat}
 /-- Envelope of an optional `bytes` field with a 1-byte tag (`tag ∈ {3, 4, 5}`):
 either empty (`[]`), or `pushBytesEvents (vlen + 1) cap len` (yielding existential `cap_mid`)
 followed by `(reserveStep cap_mid (len + 1 + vlen) bs.length).2`. -/
-def optBytesField1ByteTagEnv (cap : BitVec 64) (len : Nat) (bs : List (BitVec 8)) :
+@[expose] def optBytesField1ByteTagEnv (cap : BitVec 64) (len : Nat) (bs : List (BitVec 8)) :
     List AllocEvent → Prop :=
   if bs.isEmpty then
     (· = [])
@@ -258,7 +259,7 @@ theorem optBytesField1ByteTagEnv_eq_nil_of_spare {cap : BitVec 64} {len : Nat}
     exact hev
 
 /-- Stage-sequence allocator event envelope of `EkSentCt1Received::encode`. -/
-def EkSentCt1ReceivedEncodeEnvS (x : EkSentCt1ReceivedEncodeGhost) : List AllocEvent → Prop :=
+@[expose] def EkSentCt1ReceivedEncodeEnvS (x : EkSentCt1ReceivedEncodeGhost) : List AllocEvent → Prop :=
   let innerLen := ekSentCt1ReceivedPBEncodedLen x.m
   let l0 := x.bs.length
   let a1 := (msgHeaderBytes innerLen).length
@@ -276,7 +277,7 @@ def EkSentCt1ReceivedEncodeEnvS (x : EkSentCt1ReceivedEncodeGhost) : List AllocE
           optBytesField1ByteTagEnv cap4 l4 x.m.ct1
 
 /-- Stage-sequence allocator event envelope of `Ct1Sent::encode`. -/
-def Ct1SentEncodeEnvS (x : Ct1SentEncodeGhost) : List AllocEvent → Prop :=
+@[expose] def Ct1SentEncodeEnvS (x : Ct1SentEncodeGhost) : List AllocEvent → Prop :=
   let innerLen := ct1SentPBEncodedLen x.m
   let l0 := x.bs.length
   let a1 := (msgHeaderBytes innerLen).length
@@ -469,65 +470,5 @@ abbrev ct1SentEncodeSpecXS {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (Ct1SentEncodeGhost × M.σ) :=
   ct1SentEncodeSpecOfS doReserveStackX A lim
-
-theorem subroutine_ok_ct1SentExact_of_pinnedS {resStack : Nat} {prog : Program}
-    {entry : BitVec 64} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hok : subroutine_ok prog entry (ct1SentEncodePinnedSpecOfS resStack A lim)) :
-    subroutine_ok prog entry (ct1SentEncodeExactSpecOf resStack A lim) := by
-  apply subroutine_ok_outcome_intro
-  intro ⟨x, st⟩ R s0 hpc hrun hpre hsp
-  dsimp only [ct1SentEncodeExactSpecOf] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  obtain ⟨⟨hx0, hx1, hfit⟩, hmem⟩ := hpre
-  have hfits : FitsEnv M lim st (Ct1SentEncodeEnvS (ct1SentPinnedToUnpinned x)) :=
-    fitsEnv_ct1SentEncodeS_of_spare hfit
-  have hpre' : s0.mem ⊨ (ct1SentEncodePinnedSpecOfS resStack A lim).pre (x, st) s0 ∗ R := by
-    dsimp only [ct1SentEncodePinnedSpecOfS, ct1SentEncodePinnedSpecOfEnv]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1, Or.inl hfit, hfits⟩, hmem⟩
-  refine (hok.to_outcome (x, st) R s0 hpc hrun hpre' hsp).mono_outcome ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | hrest)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [ct1SentEncodePinnedSpecOfS, ct1SentEncodePinnedSpecOfEnv] at hq
-    dsimp only [ct1SentEncodeExactSpecOf]
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-    obtain ⟨htr, hq⟩ := hq
-    refine ⟨htr, ?_⟩
-    have hq' : sf.mem ⊨
-        (∃∗ cap' : BitVec 64, ∃∗ ptr' : BitVec 64,
-          ⌜x.cap.toNat ≤ cap'.toNat ∧
-            (x.bs.length + (encodeCt1SentMsg x.m).length ≤ x.cap.toNat →
-              cap' = x.cap ∧ ptr' = x.ptr)⌝ ∗
-          vecU8At A.repAlloc x.v cap' ptr' (x.bs ++ encodeCt1SentMsg x.m)) ∗
-        ((∃∗ evs : List AllocEvent,
-            ⌜Ct1SentEncodeEnvS (ct1SentPinnedToUnpinned x) evs⌝ ∗
-            A.pool lim (M.stepEvents evs st) sf) ∗
-          (ct1SentPBPinnedAt A.repAlloc x.g x.msgA x.m ∗
-            stackAt s0.sp (unchunkedMsgEncodeStackOf resStack) ∗ R)) := by
-      convert hq using 1; sep_ac_rfl
-    rw [sepExists_sepConj_left, satisfies_sepExists] at hq'
-    obtain ⟨cap', hq'⟩ := hq'
-    rw [sepExists_sepConj_left, satisfies_sepExists] at hq'
-    obtain ⟨ptr', hq'⟩ := hq'
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq'
-    obtain ⟨⟨_, hpres⟩, hq'⟩ := hq'
-    obtain ⟨rfl, rfl⟩ := hpres hfit
-    have hq'' : sf.mem ⊨
-        (∃∗ evs : List AllocEvent,
-          ⌜Ct1SentEncodeEnvS (ct1SentPinnedToUnpinned x) evs⌝ ∗
-          A.pool lim (M.stepEvents evs st) sf) ∗
-        (ct1SentPBPinnedAt A.repAlloc x.g x.msgA x.m ∗
-          vecU8At A.repAlloc x.v x.cap x.ptr (x.bs ++ encodeCt1SentMsg x.m) ∗
-          stackAt s0.sp (unchunkedMsgEncodeStackOf resStack) ∗ R) := by
-      convert hq' using 1; sep_ac_rfl
-    rw [sepExists_sepConj_left, satisfies_sepExists] at hq''
-    obtain ⟨evs, hq''⟩ := hq''
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq''
-    obtain ⟨hevs, hq''⟩ := hq''
-    rw [ct1SentEncodeEnvS_eq_nil_of_spare hfit hevs] at hq''
-    dsimp only [AllocCostModel.stepEvents] at hq''
-    convert hq'' using 1; sep_ac_rfl
-  · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-  · exact Or.inr (Or.inr hrest)
 
 end LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedBaseStagesBudget

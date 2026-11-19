@@ -9,12 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.ResponderWireCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.ResponderWireCodeSym -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model -- proof-setup: allow-public-import
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.SepLogic.WP.Apply
+public import VerifiedLibraries.Mallocng.Spec
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W0Spec
 
 /-!
 # Relocatable `PreKeySignalMessage::try_from` Slot Bridge
@@ -24,7 +31,7 @@ Defines `pksmSlotSpecPlaced` and `pksmTryFromSpecPlaced` for
 transfers the contract to any caller block in the session crate.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -39,7 +46,7 @@ open CryptoVerification.LibsignalPublicApi.StoreKit
 
 /-- Relocatable slot specification for `<PreKeySignalMessage as TryFrom<&[u8]>>::try_from`
 (Block `111`), parameterized by `S.pksmParse`. -/
-def pksmSlotSpecPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) : Spec PksmGhost :=
+@[expose] def pksmSlotSpecPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) : Spec PksmGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.ptr ∧ (s.readReg64 .x1).toNat = x.bytes.length ∧
@@ -67,7 +74,7 @@ open CryptoVerification.SignalSession.Cli.RunCompose
 
 /-- Relocatable specification for `<PreKeySignalMessage as TryFrom<&[u8]>>::try_from` (Block `111`)
 instantiated at `Pksm.pksmParse`. -/
-def pksmTryFromSpecPlaced [LibsignalPlacement] (A : RustAlloc) : Spec PksmGhost :=
+@[expose] def pksmTryFromSpecPlaced [LibsignalPlacement] (A : RustAlloc) : Spec PksmGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.ptr ∧ (s.readReg64 .x1).toNat = x.bytes.length ∧

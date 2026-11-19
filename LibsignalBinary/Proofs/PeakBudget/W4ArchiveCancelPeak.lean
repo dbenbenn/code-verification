@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.W4InnerHelpers
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.ChainClone4PlacedMidBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W4InnerHelpers
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.ChainClone4PlacedMidBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # W4 Archive and Clone `sc = 63` Free Cancellation
@@ -24,7 +25,7 @@ binary call order for W4 archive/clone operations: FIFO double-clone cancellatio
 loop (`ArchivedTrialIterEnv`, `1×` peak), and `SessionRecord::promote_state` (`PromoteStateArchiveEnv`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -123,7 +124,7 @@ theorem phaseCredit_serializePrev1Env_seqFree {M : AllocCostModel} [HasFineReall
 /-! ## 2. `Chain::clone` + Trial Body + `ErrTail` Drop Cancellation -/
 
 /-- Allocation trace of `Chain::clone` on `gc`. -/
-def chainCloneFullEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
+@[expose] def chainCloneFullEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
   chainClonePreMkEvents gc ++ chainCloneMkEvents gc.2.messageKeys
 
 /-- Cancels the cloned `Chain`'s `104 * mks.length` `Vec<MessageKey>` buffer across `E_body` and `E_dropChain`, leaving `Δlive = l_b`.
@@ -166,7 +167,7 @@ theorem phaseCredit_chainCloneFull_body_free_cancel {M : AllocCostModel} [HasFin
 /-! ## 3. `≤ 4` Archived-Session Trial-Decrypt Loop -/
 
 /-- Single failed archived-session iteration envelope (`DecEnv x → TrialEnv x → DropEnv x`). -/
-def ArchivedTrialIterEnv {α : Type}
+@[expose] def ArchivedTrialIterEnv {α : Type}
     (DecEnv TrialEnv DropEnv : α → List AllocEvent → Prop) (x : α) :
     List AllocEvent → Prop :=
   ConcatEnv (ConcatEnv (DecEnv x) (TrialEnv x)) (DropEnv x)
@@ -209,7 +210,7 @@ theorem phaseCredit_archivedTrialLoop_le4 {α : Type}
 
 /-- Envelope for `SessionRecord::promote_state` (`SerializeArchivedEnv → VecPushEnv → FreeOnlyEvs`).
 -/
-def PromoteStateArchiveEnv
+@[expose] def PromoteStateArchiveEnv
     (SerializeArchivedEnv VecPushEnv : List AllocEvent → Prop) :
     List AllocEvent → Prop :=
   ConcatEnv (ConcatEnv SerializeArchivedEnv VecPushEnv) FreeOnlyEvs

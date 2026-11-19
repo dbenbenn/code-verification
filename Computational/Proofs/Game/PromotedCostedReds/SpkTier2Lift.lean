@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Reductions.ReductionDsl.TargetCodecs
-public import Computational.Proofs.ReductionDsl.Bridge -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.Bridge
 import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
 
 /-!
 # Symmetric Relational Simulation Bridge

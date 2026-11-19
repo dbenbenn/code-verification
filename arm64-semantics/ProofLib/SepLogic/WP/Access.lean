@@ -19,7 +19,7 @@ public import ProofLib.SepLogic.Frame
 public import ProofLib.Abi.Aapcs
 public import ProofLib.SepLogic
 public import ProofLib.SepLogic.Bytes
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 public import ProofLib.Hoare.Safety
 public import ProofLib.VCGen
 public import ProofLib.LitNorm
@@ -399,49 +399,6 @@ theorem Satisfies.of_holdsBytes_ro {m : Memory} {base : BitVec 64} {bytes : List
     m ⊨ (base ↦ᵣ bytes) ∗ P := by
   obtain ⟨hro, hread⟩ := holdsBytes_ro hbytes
   exact Satisfies.rodata_intro hro hread hlen hP
-
-/-- Introduce a `.rodata` section `((img.base + secOff) ↦ᵣ (li.data.drop (secOff - dataOff)).take secLen)`
-    into `m ⊨ P` directly from `Obj.Loads li img` and `img.RoDataLoaded m`. No `DisjointRegions`
-    side condition is needed because `.rodata` is mapped `Perm.ro` (`w = false`), which is
-    automatically disjoint from all writable heap cells. -/
-theorem Satisfies.of_rodata_loads {li : Arm64.Obj.LinkedImage} {img : Arm64.Obj.Image}
-    {m : Memory} {P : SepProp} (himg : Arm64.Obj.Loads li img)
-    {dataOff : Nat} (hdo : li.dataOff = dataOff := by rfl)
-    {secOff secLen : Nat} (hsec : (secOff, secLen) ∈ li.roData)
-    (hoff : dataOff ≤ secOff := by decide) (hlen : secLen < 2 ^ 32 := by decide)
-    (hdlen : secOff - dataOff + secLen ≤ li.data.length := by decide)
-    (hrel : li.relocs.all
-      (fun r => decide (r.off + r.width ≤ secOff - dataOff ∨ secOff - dataOff + secLen ≤ r.off)) = true := by decide)
-    (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + BitVec.ofNat 64 secOff) ↦ᵣ (li.data.drop (secOff - dataOff)).take secLen) ∗ P := by
-  obtain ⟨hro_mem, hread⟩ := rodata_readBytes_disjoint himg hdo hsec hoff hlen hdlen hrel m hro
-  have htake_len : ((li.data.drop (secOff - dataOff)).take secLen).length = secLen := by
-    rw [List.length_take, List.length_drop]; omega
-  refine Satisfies.rodata_intro ?_ ?_ ?_ hP
-  · rwa [htake_len]
-  · rwa [htake_len]
-  · omega
-
-/-- Introduce a `.rodata` section `((img.base + secOff) ↦ᵣ (li.data.drop (secOff - dataOff)).take secLen)`
-    into the `SepWP` spatial context `P` from `Obj.Loads li img` and `img.RoDataLoaded s.mem`. -/
-theorem SepWP.rodata_intro {li : Arm64.Obj.LinkedImage} {img : Arm64.Obj.Image}
-    {prog : Program} {target_pc : BitVec 64}
-    {s : State} {P : SepProp} {post : State → SepProp → Prop}
-    (himg : Arm64.Obj.Loads li img)
-    {dataOff : Nat} (hdo : li.dataOff = dataOff := by rfl)
-    {secOff secLen : Nat} (hsec : (secOff, secLen) ∈ li.roData)
-    (hoff : dataOff ≤ secOff := by decide) (hlen : secLen < 2 ^ 32 := by decide)
-    (hdlen : secOff - dataOff + secLen ≤ li.data.length := by decide)
-    (hrel : li.relocs.all
-      (fun r => decide (r.off + r.width ≤ secOff - dataOff ∨ secOff - dataOff + secLen ≤ r.off)) = true := by decide)
-    (hro : img.RoDataLoaded s.mem)
-    (h : SepWP prog target_pc s
-      (((img.base + BitVec.ofNat 64 secOff) ↦ᵣ (li.data.drop (secOff - dataOff)).take secLen) ∗ P) post) :
-    SepWP prog target_pc s P post := by
-  intro R hm
-  apply h R
-  rw [sepConj_assoc]
-  exact Satisfies.of_rodata_loads himg hdo hsec hoff hlen hdlen hrel hro hm
 
 /-- Introduce a read-only byte region `(base ↦ᵣ bytes)` into the `SepWP` spatial context `P`
     from `Obj.HoldsBytes s.mem base bytes (fun _ => .ro)`. -/

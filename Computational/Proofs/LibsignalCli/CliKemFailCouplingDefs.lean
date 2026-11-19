@@ -13,7 +13,7 @@ public import Computational.Specifications.Game.StatementPqOomGame
 public import Computational.Specifications.Session.StatementSession
 public import Computational.Specifications.Composition.StatementModel
 public import Computational.Specifications.Assumptions.KeyInd1KeyReal
-public import Computational.Proofs.LibsignalCli.StatementPqSecure
+import Computational.Proofs.LibsignalCli.StatementPqSecure
 public import Computational.Proofs.LibsignalCli.CliPqAdapterDefs
 import VCVio.EvalDist.MeasureTVDist.Event
 import VCVio.EvalDist.ProbabilityBounds
@@ -31,7 +31,7 @@ projected CLI game `cliPqExpProjCoinLogged`, and probability-transfer lemmas for
 and `sendTapesOfInputs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -101,10 +101,6 @@ theorem kemFailBad_mono (K : MlKem) {ts₁ ts₂ : List (List (BitVec 8))}
   rcases h with ⟨t₁, ht₁, t₂, ht₂, hfail⟩
   exact ⟨t₁, hsub ht₁, t₂, hsub ht₂, hfail⟩
 
-theorem kemFailBad_append_of_left (K : MlKem) (ts₁ ts₂ : List (List (BitVec 8)))
-    (h : K.KemFailBad ts₁ = true) : K.KemFailBad (ts₁ ++ ts₂) = true :=
-  kemFailBad_mono K (List.subset_append_left ts₁ ts₂) h
-
 theorem kemFailBad_filter_length_64 (K : MlKem) (ts : List (List (BitVec 8))) :
     K.KemFailBad (ts.filter (·.length == 64)) = K.KemFailBad ts := by
   apply Bool.eq_iff_iff.mpr
@@ -116,14 +112,6 @@ theorem kemFailBad_filter_length_64 (K : MlKem) (ts : List (List (BitVec 8))) :
     obtain ⟨hl₁, hl₂⟩ := length_eq_64_of_tapePairFails K hfail
     exact ⟨t₁, List.mem_filter.mpr ⟨ht₁, by simp [hl₁]⟩,
       t₂, List.mem_filter.mpr ⟨ht₂, by simp [hl₂]⟩, hfail⟩
-
-theorem kemFailBad_append_singleton_of_length_ne_64 (K : MlKem) (ts : List (List (BitVec 8)))
-    (t : List (BitVec 8)) (ht : t.length ≠ 64) :
-    K.KemFailBad (ts ++ [t]) = K.KemFailBad ts := by
-  rw [← kemFailBad_filter_length_64 K (ts ++ [t]), ← kemFailBad_filter_length_64 K ts,
-    List.filter_append]
-  have hnil : ([t].filter (·.length == 64)) = [] := by simp [ht]
-  rw [hnil, List.append_nil]
 
 @[simp]
 theorem cliCoinsTape?_cliPqSendInp (s : CliPartyState) (m : List (BitVec 8)) (rs : BitVec 512) :
@@ -148,7 +136,7 @@ theorem cliCoinsTape?_pqInitInputs (W : PEParams) (st : PqParty) (b : PreKeyBund
   simp [pqInitInputs]
 
 /-- Extracts the 64-byte `coinsFile` tapes from a CLI input log. -/
-def sendTapesOfInputs (w : List Inputs) : List (List (BitVec 8)) :=
+@[expose] def sendTapesOfInputs (w : List Inputs) : List (List (BitVec 8)) :=
   (w.filterMap cliCoinsTape?).filter (·.length == 64)
 
 @[simp]
@@ -200,27 +188,6 @@ theorem boolDist_fst_le_prEvent_of_agree {α : Type} (exp exp₀ : ProbComp (Boo
   exact (measure_absDiff_apply_le_measureETVDist (Prod.fst <$> exp) (Prod.fst <$> exp₀)
     (measurableSet_singleton true)).trans
     (measureETVDist_map_le_prEvent_of_agree exp exp₀ Prod.fst badEv hagree hbad_eq.ge)
-
-/-- Identical-until-bad bound from `CliPqxdhAdvantage` to any experiment agreeing with
-`cliPqxdhExpFlagged` outside `KemFailBad`. -/
-theorem cliPqAdvantage_le_of_kemFailBad_agree (S : SignalPqxdh.Setup) (run : CliRun)
-    (X : UnreachedPqxdhPrimitives) (W : PEParams) (l qep : Nat) {Pt : Type}
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
-    (A : CliGameAdversary S l (BitVec 512))
-    (exp₀ : ProbComp (Bool × List Inputs))
-    (hagree : ∀ p : Bool × List Inputs → Prop,
-      Pr{let z ← cliPqxdhExpFlagged S run X W l qep decT encT A}[
-        p z ∧ ¬ (W.Q.K.KemFailBad (z.2.filterMap cliCoinsTape?) = true)] =
-      Pr{let z ← exp₀}[
-        p z ∧ ¬ (W.Q.K.KemFailBad (z.2.filterMap cliCoinsTape?) = true)]) :
-    CliPqxdhAdvantage S run X W l qep decT encT A ≤
-      𝒟[Prod.fst <$> exp₀].boolBias + 2 * CliKemFailProb S run X W l qep decT encT A := by
-  unfold CliPqxdhAdvantage CliKemFailProb
-  rw [← cli_pq_exp_b_faithful_proof S run X W l qep decT encT A]
-  exact boolBias_le_add_two_mul_of_boolDist_le _ _ _
-    (boolDist_fst_le_prEvent_of_agree
-      (cliPqxdhExpFlagged S run X W l qep decT encT A) exp₀
-      (fun z => W.Q.K.KemFailBad (z.2.filterMap cliCoinsTape?) = true) hagree)
 
 /-- Bounds Boolean distance between `Prod.fst <$> exp` and `expH` from pointwise good-event bounds
 on both outcomes. -/
@@ -374,7 +341,7 @@ theorem kemFailBad_map_coinBytes_mono (K : MlKem) {cs₁ cs₂ : List (BitVec 51
 /-- `WriterT` monad accumulating 512-bit SPQR V1 send coins over `ProbComp`. -/
 abbrev CoinLogM : Type → Type := WriterT (List (BitVec 512)) ProbComp
 
-def bhE2EStepLocalSmCoinLogged {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhE2EStepLocalSmCoinLogged {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (C : Crypto) (K : MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (σ : BHE2EDrvState S ℓ) (i : ℕ)
@@ -441,7 +408,7 @@ def bhE2EStepLocalSmCoinLogged {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
           | _ => runStd q σ
     | _, _ => return ((none, none, none), σ)
 
-def cliE2EDrvImplWithCoinLogged {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def cliE2EDrvImplWithCoinLogged {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : MlKem) (qep : ℕ)
@@ -472,7 +439,7 @@ def cliE2EDrvImplWithCoinLogged {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     return bhUnpackSmResp sq sr
 
 /-- Send-coin-logged E2E model experiment recording every 512-bit coin passed to SPQR V1 `send`. -/
-def cliE2EExpWithKiCoinLogged (secb : Bool) (S : SignalPqxdh.Setup)
+@[expose] def cliE2EExpWithKiCoinLogged (secb : Bool) (S : SignalPqxdh.Setup)
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : MlKem) (ℓ qep : ℕ) {Pt : Type}
@@ -486,7 +453,7 @@ def cliE2EExpWithKiCoinLogged (secb : Bool) (S : SignalPqxdh.Setup)
     if !allTestedSessionsFresh P σ.st then liftM ($ᵗ Bool : ProbComp Bool)
     else return (b' == b || bhE2EDrvWon σ b)
 
-def forgetCoinW {α : Type} (m : CoinLogM α) : ProbComp α :=
+@[expose] def forgetCoinW {α : Type} (m : CoinLogM α) : ProbComp α :=
   Prod.fst <$> m.run
 
 @[simp] theorem forgetCoinW_pure {α : Type} (a : α) :
@@ -514,7 +481,7 @@ def forgetCoinW {α : Type} (m : CoinLogM α) : ProbComp α :=
     forgetCoinW (if c then t else e) = if c then forgetCoinW t else forgetCoinW e := by
   split_ifs <;> rfl
 
-def forgetCoinS1 {σ α : Type} (m : StateT σ CoinLogM α) : StateT σ ProbComp α :=
+@[expose] def forgetCoinS1 {σ α : Type} (m : StateT σ CoinLogM α) : StateT σ ProbComp α :=
   fun s => forgetCoinW (m.run s)
 
 @[simp] theorem forgetCoinS1_run {σ α : Type} (m : StateT σ CoinLogM α) (s : σ) :
@@ -774,7 +741,7 @@ theorem cliE2EExpWithKiCoinLogged_fst (secb : Bool) (S : SignalPqxdh.Setup)
 abbrev BHDrvMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) : Type → Type :=
   StateT (ModelDriverState S ℓ) (StateT (SignalPqxdh.KeyIndState S) CoinLogM)
 
-def cliRunStdSMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
+@[expose] def cliRunStdSMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
     (run : CliRun) (W : PEParams) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (ds : ModelDriverState S ℓ) (i : ℕ) (bi : ModelDriverInstance S ℓ)
@@ -803,7 +770,7 @@ def cliRunStdSMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
                 instMeta := ds.instMeta.set i im' }
   return r
 
-def cliStepLocalSMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
+@[expose] def cliStepLocalSMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
     (run : CliRun) (W : PEParams) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (ds : ModelDriverState S ℓ) (i : ℕ) (bi : ModelDriverInstance S ℓ)
@@ -827,7 +794,7 @@ def cliStepLocalSMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
     else cliRunStdSMCoinLogged S ℓ run W qep decT encT ds i bi im gs (.inl (.inr (.B, c)))
   | q => cliRunStdSMCoinLogged S ℓ run W qep decT encT ds i bi im gs q
 
-def cliDrvSMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
+@[expose] def cliDrvSMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
     (run : CliRun) (W : PEParams) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (ext : QueryImpl (cliGameSmSpec ℓ (BitVec 512)) (BHDrvMCoinLogged S ℓ)) :
@@ -848,7 +815,7 @@ def cliDrvSMCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
         | some gs => cliStepLocalSMCoinLogged S ℓ run W qep decT encT ds i bi im gs q
     | _, _ => return bhSmDefaultWithSpqr q
 
-def cliDrvImplCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
+@[expose] def cliDrvImplCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
     (P : SignalPqxdh.Primitives) (run : CliRun) (W : PEParams) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (ext : QueryImpl (cliGameSmSpec ℓ (BitVec 512)) (BHDrvM S ℓ)) (mode : BHDrvMode S) :
@@ -859,7 +826,7 @@ def cliDrvImplCoinLogged (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
     cliDrvSMCoinLogged S ℓ run W qep decT encT (liftQueryImplStateT2 (n := CoinLogM) ext)
 
 /-- Send-coin-logged counterpart of `cliPqExpProj` over `CoinLogM`. -/
-def cliPqExpProjCoinLogged (S : SignalPqxdh.Setup) (run : CliRun) (X : UnreachedPqxdhPrimitives)
+@[expose] def cliPqExpProjCoinLogged (S : SignalPqxdh.Setup) (run : CliRun) (X : UnreachedPqxdhPrimitives)
     (W : PEParams) (ℓ qep : ℕ) {Pt : Type}
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (A : CliGameAdversary S ℓ (BitVec 512)) : ProbComp (Bool × List (BitVec 512)) :=

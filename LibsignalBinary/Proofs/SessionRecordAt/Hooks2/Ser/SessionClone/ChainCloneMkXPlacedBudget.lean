@@ -9,16 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneBaseXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneEpilogueXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneBaseXBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneEpilogueXBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneMk
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded `Chain::clone [local#1]` `message_keys` Clone Loop (Block `82`)
@@ -28,7 +31,7 @@ and verifies the empty (`+732 → ret`) and non-empty (`+260 → ret`) `message_
 Block `82` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -105,7 +108,7 @@ attribute [local wp_norm]
 /-! ## Stage event suffixes and `chainCloneEvents` decomposition -/
 
 /-- Remaining per-`MessageKey` `seed` allocation events in the `mk_loop` tail `rem`. -/
-def evsMkLoop (rem : List (MessageKeyGhost × MessageKeyGenerator)) : List AllocEvent :=
+@[expose] def evsMkLoop (rem : List (MessageKeyGhost × MessageKeyGenerator)) : List AllocEvent :=
   (rem.map Prod.snd).flatMap (fun mkg => rustAllocEvents mkg.seed.length 1)
 
 theorem evsMkLoop_nil : evsMkLoop [] = [] := rfl
@@ -115,20 +118,20 @@ theorem evsMkLoop_cons (gk : MessageKeyGhost) (mkg : MessageKeyGenerator)
     evsMkLoop ((gk, mkg) :: rem) = rustAllocEvents mkg.seed.length 1 ++ evsMkLoop rem := rfl
 
 /-- Deterministic `AllocEvent` suffix emitted from the `message_keys` stage to return. -/
-def evsFromMks (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
+@[expose] def evsFromMks (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
   if gc.2.messageKeys = [] then []
   else
     rustAllocEvents (104 * gc.2.messageKeys.length) 8 ++
       gc.2.messageKeys.flatMap (fun mkg => rustAllocEvents mkg.seed.length 1)
 
 /-- Deterministic `AllocEvent` suffix emitted from the `chain_key` stage to return. -/
-def evsFromCk (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
+@[expose] def evsFromCk (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
   (match gc.2.chainKey with
    | none => []
    | some _ => rustAllocEvents 32 1) ++ evsFromMks gc
 
 /-- Deterministic `AllocEvent` suffix emitted from the `priv` stage to return. -/
-def evsFromPriv (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
+@[expose] def evsFromPriv (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
   (if gc.1.priv.bytes.length = 0 then []
    else rustAllocEvents gc.1.priv.bytes.length 1) ++ evsFromCk gc
 
@@ -145,23 +148,6 @@ theorem evsFromMks_of_pos {gc : ChainGhost × ReceiverChain}
   have hne : gc.2.messageKeys ≠ [] := List.ne_nil_of_length_pos hpos
   unfold evsFromMks evsMkLoop
   simp only [hne, ↓reduceIte, map_snd_zip_of_length_eq gc.1.keys gc.2.messageKeys hsrc_klen]
-
-abbrev evsMkLoop_x := evsMkLoop
-abbrev evsMkLoop_nil_x := @evsMkLoop_nil
-abbrev evsMkLoop_cons_x := @evsMkLoop_cons
-abbrev evsFromMks_x := evsFromMks
-abbrev evsFromCk_x := evsFromCk
-abbrev evsFromPriv_x := evsFromPriv
-abbrev evsFromMks_of_nil_x := @evsFromMks_of_nil
-abbrev evsFromMks_of_pos_x := @evsFromMks_of_pos
-
-theorem chainCloneEvents_eq_srk_priv (gc : ChainGhost × ReceiverChain) :
-    chainCloneEvents gc =
-      (if gc.1.srk.bytes.length = 0 then [] else rustAllocEvents gc.1.srk.bytes.length 1) ++
-      evsFromPriv gc := by
-  unfold chainCloneEvents evsFromPriv evsFromCk evsFromMks
-  simp only [List.append_assoc]
-  split_ifs <;> rfl
 
 /-! ## Empty `message_keys` fast path (`+732 → ret`) -/
 

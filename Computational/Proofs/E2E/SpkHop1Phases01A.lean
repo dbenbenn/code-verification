@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SpkHop1
+public import Computational.Proofs.E2E.SpkHop1 -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
 
 /-!
@@ -19,7 +19,7 @@ Couples `hop2HybPrf k` and `hop2HybPrg (k + 1)` in Phase 1 while table `k + 1` i
 off-chain before on-chain creation, transitioning to `Hop2Phase2Rel` up to collision cost.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSectionVars false
@@ -124,7 +124,7 @@ theorem hop2Recv_run_of_le_made_none {ℓ : ℕ} (P : Params Bytes PQC)
     hop2Recv_run_of_hop2LazyKey_some P Dh encT decT h g c rc st.2.lazy st
       (t, Dh.dh (st.2.coins g.party) T) msg sc hkey
 
-def hop2CreateOutL (P : Params Bytes PQC) (ℓ : ℕ) (g : GhostState Bytes)
+@[expose] def hop2CreateOutL (P : Params Bytes PQC) (ℓ : ℕ) (g : GhostState Bytes)
     (msg : SignalMessage) (sc : SenderChain) (rc ckR u : BitVec 256) : Hop2Out Pt ℓ :=
   let (rk2, ckS) := Ratchet.rootExpand P.C.F (keyToBytes32 u)
   let prev := if sc.chainKey.index = 0 then 0 else sc.chainKey.index - 1
@@ -144,7 +144,7 @@ def hop2CreateOutL (P : Params Bytes PQC) (ℓ : ℕ) (g : GhostState Bytes)
     some (({ g with session := s_out, epoch := g.epoch + 1, chainEpochs := epochs },
       g.epoch + 1, msg.counter.toNat + 1, padOrTruncatePlain ℓ m), some ⟨none, rc, none⟩)
 
-def hop2CreateOutChain (P : Params Bytes PQC) (ℓ : ℕ) (j : ℕ) (Q_create : Pt)
+@[expose] def hop2CreateOutChain (P : Params Bytes PQC) (ℓ : ℕ) (j : ℕ) (Q_create : Pt)
     (g : GhostState Bytes) (msg : SignalMessage) (sc : SenderChain) (rc ckR ckS : BitVec 256) :
     Hop2Out Pt ℓ :=
   let prev := if sc.chainKey.index = 0 then 0 else sc.chainKey.index - 1
@@ -165,7 +165,7 @@ def hop2CreateOutChain (P : Params Bytes PQC) (ℓ : ℕ) (j : ℕ) (Q_create : 
       g.epoch + 1, msg.counter.toNat + 1, padOrTruncatePlain ℓ m),
       some ⟨some (j + 1), rc, some ((j, Q_create), ckS)⟩)
 
-def hop2SteppedGhost (P : Params Bytes PQC) (g : GhostState Bytes)
+@[expose] def hop2SteppedGhost (P : Params Bytes PQC) (g : GhostState Bytes)
     (s_base : SessionState Bytes) (rc : BitVec 256) (rk2 : Ratchet.RootKey) (ckS : BitVec 256) :
     GhostState Bytes :=
   let epochs := (g.chainEpochs ++ [g.epoch + 1]).drop
@@ -440,7 +440,7 @@ theorem corrR_support_hop2FullInv {ℓ : ℕ} (P : Params Bytes PQC)
     ⟨corrR_support_hop2GameInv P decT encT x st hinv.toHop2GameInv z hz,
      corrR_support_hop2WindowInv P decT encT x st.1 hinv.winInv z hz⟩
 
-def badDeliverRc {ℓ : ℕ} (P : Params Bytes PQC) (st : Hop2State Pt ℓ)
+@[expose] def badDeliverRc {ℓ : ℕ} (P : Params Bytes PQC) (st : Hop2State Pt ℓ)
     (Q : Party) (rc : BitVec 256) : Bool :=
   decide ((st.1.st Q.other).session.receiverChains.length ≤ 5) &&
     hasKeyInChainsBool (KeyPair.generate P.C rc).publicKey
@@ -498,7 +498,7 @@ theorem bind_unif_swap_evalDist_true_le_of_good_rc {α : Type} [SampleableType �
   rw [evalDist_bind_unif_swap ($ᵗ BitVec 256) f, evalDist_bind_unif_swap ($ᵗ BitVec 256) g]
   exact bind_evalDist_true_le_of_good_rc P Dh encPt decT encT hX hdec st Q _ _ d ε hd h
 
-def IsDeliverInTransitOrInjectPost {ℓ : ℕ} (P : Params Bytes PQC) (qep : ℕ) (s : BitVec 256)
+@[expose] def IsDeliverInTransitOrInjectPost {ℓ : ℕ} (P : Params Bytes PQC) (qep : ℕ) (s : BitVec 256)
     (Q : Party) (c : Bytes) (st1 : SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes)
     (post : Hop2Out Pt ℓ → Hop2State Pt ℓ →
         Option (SM.RecvResult (CBC.Plain ℓ)) × Hop2State Pt ℓ) : Prop :=
@@ -516,7 +516,7 @@ theorem IsDeliverInTransitOrInjectPost.toIsDeliverOrInjectPost {ℓ : ℕ} {P : 
   · exact Or.inl ⟨r, rfl⟩
   · exact Or.inr rfl
 
-def IsGoodDeliverOrInjectPost {ℓ : ℕ} (P : Params Bytes PQC)
+@[expose] def IsGoodDeliverOrInjectPost {ℓ : ℕ} (P : Params Bytes PQC)
     (qep : ℕ) (s : BitVec 256) (Q : Party) (c : Bytes) (rc : BitVec 256)
     (st : Hop2State Pt ℓ)
     (post : Hop2Out Pt ℓ → Hop2State Pt ℓ →

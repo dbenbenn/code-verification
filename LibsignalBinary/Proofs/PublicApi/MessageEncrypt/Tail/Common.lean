@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Segs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Segs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.CodeLayout -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Common Tail Definitions and `SepWP` / `SegExit` Bridges for `MessageEncrypt`
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.TailCommon
 
@@ -30,19 +31,6 @@ open CryptoVerification.LibsignalPublicApi.StoreKit
 open CryptoVerification.LibsignalPublicApi.MessageEncrypt
 
 set_option maxRecDepth 200000
-
-/-- `session_message_encrypt_with_stores` (`encryptWithStoresName`) starts at image offset `0x3caf4`
-(= 248564). -/
-theorem libsignalSessionCode_fnOff_sym_3caf4 :
-    libsignalSessionCode.fnOff encryptWithStoresName = num% (ls_off% "session_message_encrypt") :=
-  (ls_lemma% fnOff "session_message_encrypt")
-
-theorem entryOf_encEntry {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (himg : Obj.Loads libsignalSessionImage img) :
-    encEntry img = (tripleRatchetProgAt img.base C ctl abs).fnAddr encryptWithStoresName := by
-  unfold encEntry
-  exact entryOf_eq_tripleRatchetProgAt (C := C) (ctl := ctl) (abs := abs) himg
-    encryptWithStoresName
 
 open Lean Elab Tactic in
 /-- `messageEncrypt_code_fetches_from <code> <decPrefix> b H hfn off k0 len` adds `<code>_fetch_fnAddr`
@@ -68,12 +56,12 @@ elab "messageEncrypt_code_fetches_from " codeId:ident decPrefix:ident b:term:max
       evalTactic (← `(tactic|
         have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
 
-def words64At : BitVec 64 → List (BitVec 64) → SepProp
+@[expose] def words64At : BitVec 64 → List (BitVec 64) → SepProp
   | _, [] => emp
   | a, w :: ws => (a ↦₆₄ w) ∗ words64At (a + 8#64) ws
 
 /-- 48-byte `SignalProtocolError` layout at `a` for an `encrypt` error. -/
-def encErrAt (A : RustAlloc) (a : BitVec 64) : ApiError AddrVal Unit → SepProp
+@[expose] def encErrAt (A : RustAlloc) (a : BitVec 64) : ApiError AddrVal Unit → SepProp
   | .protocol p => speAt A (utf8 "encrypt") a p
   | e => apiErrAt A a e
 
@@ -83,37 +71,37 @@ theorem apiEncResultAt_error (A : RustAlloc) (r : BitVec 64) (e : ApiError AddrV
   cases e <;> rfl
 
 /-- Staged 48-byte `SignalProtocolError`: six 64-bit words `ws` plus owned heap assertions `H`. -/
-def SpeStaged (A : RustAlloc) (ret : BitVec 64) (e : ApiError AddrVal Unit) (ws : List (BitVec 64))
+@[expose] def SpeStaged (A : RustAlloc) (ret : BitVec 64) (e : ApiError AddrVal Unit) (ws : List (BitVec 64))
     (H : SepProp) : Prop :=
   e ≠ .panic ∧ ws.length = 6 ∧ (words64At (ret + 8#64) ws ∗ H ⊢ encErrAt A (ret + 8#64) e)
 
 /-- Staged 248-byte `apiEncResultAt`: four 64-bit header words `ws`, `0xd8` payload bytes `bs`,
 and owned heap assertions `H`. -/
-def ResStaged (A : RustAlloc) (ret : BitVec 64) (res : Except (ApiError AddrVal Unit) CiphertextMessage)
+@[expose] def ResStaged (A : RustAlloc) (ret : BitVec 64) (res : Except (ApiError AddrVal Unit) CiphertextMessage)
     (ws : List (BitVec 64)) (bs : List (BitVec 8)) (H : SepProp) : Prop :=
   res ≠ .error .panic ∧ ws.length = 4 ∧ bs.length = 0xd8 ∧
     (words64At ret ws ∗ ((ret + 0x20#64) ↦ₛ bs) ∗ H ⊢ apiEncResultAt A ret res)
 
 /-- Poll and staging region `sp + 0x46a .. sp + 0xb80` with `ws` exposed at `sp + off`. -/
-def pollWith (sp : BitVec 64) (off : Nat) (ws : List (BitVec 64)) : SepProp :=
+@[expose] def pollWith (sp : BitVec 64) (off : Nat) (ws : List (BitVec 64)) : SepProp :=
   memRegion (sp + 0x46a#64) (off - 0x46a) ∗ words64At (sp + BitVec.ofNat 64 off) ws ∗
     memRegion (sp + BitVec.ofNat 64 (off + 8 * ws.length)) (0xb80 - (off + 8 * ws.length))
 
 /-- `OutgoingTripleRatchet` slot `sp + 0x288 .. sp + 0x350` and its `pqr_state` drop flag at
 `sp + 0x469`. -/
-def otrSlotAt (A : RustAlloc) (sp : BitVec 64) :
+@[expose] def otrSlotAt (A : RustAlloc) (sp : BitVec 64) :
     Option (BitVec 64 × BitVec 64 × OutgoingTripleRatchet (List (BitVec 8))) → SepProp
   | some (pqCap, pqPtr, ot) => otrAt A (sp + 0x288#64) pqCap pqPtr ot ∗ ((sp + 0x469#64) ↦₈ 1#8)
   | none => memRegion (sp + 0x288#64) 200 ∗ ((sp + 0x469#64) ↦₈ 0#8)
 
 /-- Key and `CiphertextMessage` slots `sp + 0x350 .. sp + 0x469`. -/
-def cmSlotAt (A : RustAlloc) (sp : BitVec 64) : Option CiphertextMessage → SepProp
+@[expose] def cmSlotAt (A : RustAlloc) (sp : BitVec 64) : Option CiphertextMessage → SepProp
   | some m => memRegion (sp + 0x350#64) 0x20 ∗ apiEncResultAt A (sp + 0x370#64) (.ok m) ∗
       memRegion (sp + 0x468#64) 1
   | none => memRegion (sp + 0x350#64) 0x119
 
 /-- Stack frame layout at a `T1`-family record-drop entry. -/
-def dropRecordSlots (A : RustAlloc) (sp : BitVec 64) (scratch : BitVec 64 → SepProp) (g : RecordGhost)
+@[expose] def dropRecordSlots (A : RustAlloc) (sp : BitVec 64) (scratch : BitVec 64 → SepProp) (g : RecordGhost)
     (rec : SessionRecord (List (BitVec 8)))
     (ot : Option (BitVec 64 × BitVec 64 × OutgoingTripleRatchet (List (BitVec 8))))
     (cm : Option CiphertextMessage) (poll : SepProp) : SepProp :=
@@ -121,34 +109,12 @@ def dropRecordSlots (A : RustAlloc) (sp : BitVec 64) (scratch : BitVec 64 → Se
     otrSlotAt A sp ot ∗ cmSlotAt A sp cm ∗ poll
 
 /-- Callee-saved register pins at a staged-error tail entry. -/
-def tailRegs (w0 w1 w2 : BitVec 64) (sp : BitVec 64) (s : State) : Prop :=
+@[expose] def tailRegs (w0 w1 w2 : BitVec 64) (sp : BitVec 64) (s : State) : Prop :=
   s.readReg64 .x26 = sp + 0x9d0#64 ∧ s.readReg64 .x28 = sp + 0x4a0#64 ∧ s.readReg64 .x27 = w0 ∧
     s.readReg64 .x21 = w1 ∧ s.readReg64 .x23 = w2
 
-/-- Machine and memory state at an `encrypt` error/result tail entry. -/
-def EncTailV {A : RustAlloc} {img : Obj.Image}
-    (kit : SessionStoreSpec A img.base) (st0 : kit.StoreState)
-    (ikit : IdentityStoreSpec A img.base) (ist0 : ikit.IdState)
-    (C : Crypto) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel)
-    (x : WithStoresEncGhost) (answers : StoreAnswers (List (BitVec 8)) Unit)
-    (pc : BitVec 64) (regs : BitVec 64 → State → Prop) (slots : BitVec 64 → SepProp) (R : SepProp)
-    (s0 s : State) : Prop :=
-  let sp := s0.sp - 0xbe0#64
-  s.pc = pc ∧ encMidMeta img x s0 s ∧ regs sp s ∧ withStoresEncStack ≤ s0.sp.toNat ∧
-    (s.mem ⊨ slots sp ∗ encSpillsAtV kit.ss_vt ikit.id_vt sp x ∗ memRegion x.ret 248 ∗
-      encCommon A ctl img x (x.draws S answers) s0 ∗
-      (encStoreExtra kit (kit.storeFinal st0 answers (x.model C S parse answers).2)
-        ikit (ikit.idFinal ist0 answers (x.model C S parse answers).2) x s0 ∗ R))
-
-abbrev EncTail (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel)
-    (img : Obj.Image) (x : WithStoresEncGhost) (answers : StoreAnswers (List (BitVec 8)) Unit)
-    (pc : BitVec 64) (regs : BitVec 64 → State → Prop) (slots : BitVec 64 → SepProp) (R : SepProp)
-    (s0 s : State) : Prop :=
-  EncTailV (hookSessionStoreSpec A img.base) () (hookIdentityStoreSpec A img.base) ()
-    C ctl parse S x answers pc regs slots R s0 s
-
 /-- Pure model and trace relation at an `encrypt` tail entry. -/
-def TailModel {A : RustAlloc} {b : BitVec 64}
+@[expose] def TailModel {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A b) (ist0 : ikit.IdState)
     (C : Crypto) (S : SpqrModel) (parse : UuidParser)
@@ -162,7 +128,7 @@ def TailModel {A : RustAlloc} {b : BitVec 64}
 
 /-! ## `words64At`, `unpack64List`, and `memRegion` Lemmas -/
 
-def unpack64List : List (BitVec 64) → List (BitVec 8)
+@[expose] def unpack64List : List (BitVec 64) → List (BitVec 8)
   | [] => []
   | w :: ws => unpack64 w ++ unpack64List ws
 
@@ -259,10 +225,6 @@ theorem encSpillsAtV_entails_memRegion (ss_vt id_vt sp : BitVec 64) (x : WithSto
       join 0x58 168 8 (by decide), join 0x58 176 8 (by decide)]
   exact Entails.refl _
 
-theorem encSpillsAt_entails_memRegion (b sp : BitVec 64) (x : WithStoresEncGhost) :
-    encSpillsAt b sp x ⊢ memRegion (sp + 0x58#64) 0xb8 :=
-  encSpillsAtV_entails_memRegion (ssVtable b) (idVtable b) sp x
-
 theorem encSavedRegs_entails_memRegion (sp0 : BitVec 64) (s0 : State) :
     encSavedRegs sp0 s0 ⊢ memRegion (sp0 - 0x60#64) 0x60 := by
   unfold encSavedRegs
@@ -340,33 +302,5 @@ theorem writeResult_frame_entails_stackAtV (ss_vt id_vt : BitVec 64) (x : WithSt
   rw [hstack, hframe, sepConj_comm (stackAt sp encSubStack)]
   simp only [sepConj_assoc]
   exact Entails.refl _
-
-theorem writeResult_frame_entails_stackAt (b : BitVec 64) (x : WithStoresEncGhost) (s0 : State)
-    (bs : List (BitVec 8)) (hbs : bs.length = 0xd8) :
-    let sp := s0.sp - 0xbe0#64
-    memRegion sp 0x58 ∗ encSpillsAt b sp x ∗ memRegion (sp + 0x110#64) 0x390 ∗
-      ((sp + 0x4a0#64) ↦ₛ bs) ∗ memRegion (sp + 0x578#64) 0x608 ∗
-      encSavedRegs s0.sp s0 ∗ stackAt sp encSubStack ⊢
-      stackAt s0.sp withStoresEncStack :=
-  writeResult_frame_entails_stackAtV (ssVtable b) (idVtable b) x s0 bs hbs
-
-theorem segExit_of_sepWP_ret {A : RustAlloc} {img : Obj.Image}
-    {kit : SessionStoreSpec A img.base} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A img.base} {ist0 : ikit.IdState}
-    {C : Crypto} {ctl : BitVec 64} {S : SpqrModel}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {abs : String → Option (State → State)}
-    {x : WithStoresEncGhost} {P R : SepProp} {s0 s : State}
-    (hm : s.mem ⊨ P ∗ R)
-    (hwp : SepWP (tripleRatchetProgAt img.base C ctl abs) (s0.readReg64 .lr) s P
-      (fun sf P_f =>
-        (sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf) ∧
-        (P_f ⊢ (withStoresEncSpecV kit st0 ikit ist0 C ctl uuidTryParse S encRecord).post x s0 sf))) :
-    SegExit kit st0 ikit ist0 C ctl uuidTryParse S encRecord abs x R s0 s (fun _ => False) := by
-  intro hL
-  obtain ⟨sf, hsteps, ⟨hpcf, hrunf, P_f, hmf, ⟨hspf, hcsf⟩, hent⟩ | ⟨_, _hoom⟩⟩ := hwp.elim hm hL
-  rotate_left; · exact (not_satisfies_false_sepConj _hoom).elim
-  refine ⟨sf, hsteps, Or.inr (Or.inl ⟨⟨hpcf, hspf, hrunf⟩, ⟨hspf, hcsf⟩, ?_⟩)⟩
-  exact Satisfies.mono (sepConj_mono_left hent) hmf
 
 end CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.TailCommon

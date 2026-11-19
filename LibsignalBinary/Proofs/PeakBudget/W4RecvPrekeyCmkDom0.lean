@@ -10,49 +10,62 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
-public import LibsignalBinary.Proofs.PeakBudget.CmkLoopAdvanceCredit
-public import LibsignalBinary.Proofs.PeakBudget.GateM2rGStatesRecvTwins
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
-public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvGroupSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightBranches
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightGroupSplit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
-public import LibsignalBinary.Proofs.PeakBudget.W4InitBobPeak
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpec
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
+public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
+import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
+import LibsignalBinary.Proofs.PeakBudget.CmkLoopAdvanceCredit
+import LibsignalBinary.Proofs.PeakBudget.GateM2rGStatesRecvTwins
+import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvGroupSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightBranches
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightGroupSplit
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
+import LibsignalBinary.Proofs.PeakBudget.W4InitBobPeak
+import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpec
 public import LibsignalBinary.Proofs.PeakBudget.W4PathCVerNeWideDefs
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0StageAux
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0TdAux
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkSlot
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyDom0Record
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyDom0Tie
-public import LibsignalBinary.Proofs.PeakBudget.W4SlotGroupSpec
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.LayoutBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.LayoutBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.LayoutPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0StageAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0TdAux
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkSlot
+public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyDom0Record -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyDom0Tie
+import LibsignalBinary.Proofs.PeakBudget.W4SlotGroupSpec
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.LayoutBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.LayoutBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.LayoutPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightSpec
+import LibsignalBinary.Proofs.PeakBudget.W4InnerPeakSpec
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # `StatesRecv`-Parametric `25,000`-Jump `archivedTrials = []` Slot Domain & `SingleSlotFineSpec`
@@ -71,7 +84,7 @@ bounds for `recv-prekey`:
    and `@StatesRecvProtoEnv'` specializations.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -167,13 +180,13 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (SegCloneEnv)
 /-! ## `SR`-Parametric `25,000`-Jump + `VerNe-prev1` Slot Envelopes -/
 
 /-- `SR`-parametric archived-trial run envelope (`SegCloneEnv` → `W4FailedTdCancelCmkSrEnvOf`). -/
-def W4TrialRunWideCmkSrEnvOf (SR : W4StatesRecvEnv) (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
+@[expose] def W4TrialRunWideCmkSrEnvOf (SR : W4StatesRecvEnv) (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (C : Crypto) (K : MlKem) (x : W4ArchivedTrialCmk) (evs : List AllocEvent) : Prop :=
   SeqEnv (SegCloneEnv x.G_tr x.ses_tr.state)
     (W4FailedTdCancelCmkSrEnvOf SR LoopAdvEnv maxOps C K x.fc_tr) evs
 
 /-- `SR`-parametric `W4DecryptPrekeySlotParams` wired to `RecordDeserializeCancelEnv` and `w4c_TryDecryptCliLinkedSrEnvOf`. -/
-def mkW4RecvPrekeyWideCmkSrSlotParamsOf (SR : W4StatesRecvEnv)
+@[expose] def mkW4RecvPrekeyWideCmkSrSlotParamsOf (SR : W4StatesRecvEnv)
     (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (R : W4RecvPrekeyRealParamsCmk) :
     W4DecryptPrekeySlotParams W4ArchivedTrialCmk where
@@ -219,14 +232,14 @@ def mkW4RecvPrekeyWideCmkSrSlotParamsOf (SR : W4StatesRecvEnv)
   enc_prev1 := R.enc_prev1
 
 /-- `SR`-parametric Path A / Path C Stage-P3 `try_decrypt` envelope. -/
-def W4RecvPrekeyTryDecACCmkSrEnvOf (SR : W4StatesRecvEnv)
+@[expose] def W4RecvPrekeyTryDecACCmkSrEnvOf (SR : W4StatesRecvEnv)
     (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (R : W4RecvPrekeyRealParamsCmk) (evs : List AllocEvent) : Prop :=
   if R.isPathAC then w4c_TryDecryptCliLinkedSrEnvOf SR LoopAdvEnv maxOps R.C R.K R.td_AC.a evs
   else False
 
 /-- `SR`-parametric Path B (`Matched`) envelope. -/
-def W4BinaryRecvPrekeyPathBWideCmkSrEnvOf (SR : W4StatesRecvEnv)
+@[expose] def W4BinaryRecvPrekeyPathBWideCmkSrEnvOf (SR : W4StatesRecvEnv)
     (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (w : W4BinaryRecvPrekeyParamsCmk) (evs : List AllocEvent) : Prop :=
   let P := mkW4RecvPrekeyWideCmkSrSlotParamsOf SR LoopAdvEnv maxOps w.base
@@ -241,7 +254,7 @@ def W4BinaryRecvPrekeyPathBWideCmkSrEnvOf (SR : W4StatesRecvEnv)
             w.base.g_out0 w.base.r_out0)))) evs
 
 /-- `SR`-parametric Path A (`0`-prev) `Fixed` envelope. -/
-def W4BinaryRecvPrekeyPathAWideCmkSrEnvFixedOf (SR : W4StatesRecvEnv)
+@[expose] def W4BinaryRecvPrekeyPathAWideCmkSrEnvFixedOf (SR : W4StatesRecvEnv)
     (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (w : W4BinaryRecvPrekeyParamsCmk) (evs : List AllocEvent) : Prop :=
   SeqEnv (W4BinaryStageP1OkEnv w.base.rd w.base.files w.base.peer w.remoteIdKey)
@@ -260,7 +273,7 @@ def W4BinaryRecvPrekeyPathAWideCmkSrEnvFixedOf (SR : W4StatesRecvEnv)
 
 /-- `SR`-parametric Path C (`Over` / `prev1`) `Fixed` envelope with `W4StageP3Prev1WideEnv`
 (`VerNeTightTopEnv`). -/
-def W4BinaryRecvPrekeyPathCWideCmkVerNeSrEnvFixedOf (SR : W4StatesRecvEnv)
+@[expose] def W4BinaryRecvPrekeyPathCWideCmkVerNeSrEnvFixedOf (SR : W4StatesRecvEnv)
     (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (w : W4BinaryRecvPrekeyParamsCmk) (evs : List AllocEvent) : Prop :=
   let P := mkW4RecvPrekeyWideCmkSrSlotParamsOf SR LoopAdvEnv maxOps w.base
@@ -281,7 +294,7 @@ def W4BinaryRecvPrekeyPathCWideCmkVerNeSrEnvFixedOf (SR : W4StatesRecvEnv)
             w.base.G_out1 w.base.sess_out1 w.base.enc_prev1)))) evs
 
 /-- Complete 4-arm `SR`-parametric W4 (`recv-prekey`) `Fixed` slot envelope with `VerNe-prev1`. -/
-def W4BinaryRecvPrekeyWideSlotEnvCmkVerNeSrFixedOf (SR : W4StatesRecvEnv)
+@[expose] def W4BinaryRecvPrekeyWideSlotEnvCmkVerNeSrFixedOf (SR : W4StatesRecvEnv)
     (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (w : W4BinaryRecvPrekeyParamsCmk) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
@@ -294,7 +307,7 @@ def W4BinaryRecvPrekeyWideSlotEnvCmkVerNeSrFixedOf (SR : W4StatesRecvEnv)
     FreeOnlyEvs evs
 
 /-- Complete 4-arm `SR`-parametric W4 (`recv-prekey`) `AllFixed` slot envelope with `VerNe-prev1`. -/
-def W4BinaryRecvPrekeyWideSlotEnvCmkVerNeSrAllFixedOf (SR : W4StatesRecvEnv)
+@[expose] def W4BinaryRecvPrekeyWideSlotEnvCmkVerNeSrAllFixedOf (SR : W4StatesRecvEnv)
     (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (w : W4BinaryRecvPrekeyParamsCmk) (evs : List AllocEvent) : Prop :=
   let P := mkW4RecvPrekeyWideCmkSrSlotParamsOf SR LoopAdvEnv maxOps w.base
@@ -506,7 +519,7 @@ structure W4RecvPrekeyRealDomCmkSrOf (SR : W4StatesRecvEnv)
 /-- Parametric `(SR, LoopAdvEnv, maxOps, smallFileCap, maxCt)` W4 `recv-prekey` `Dom0` predicate:
 `W4RecvPrekeyRealDomCmkSrOf SR LoopAdvEnv maxOps smallFileCap maxCt R ∧ R.archivedTrials = []`
 (`0` `DoublingChainLe`, `rc ≤ 5`, `mk ≤ 2000`, `25,000` forward jumps). -/
-def W4RecvPrekeyCmkDom0Of (SR : W4StatesRecvEnv)
+@[expose] def W4RecvPrekeyCmkDom0Of (SR : W4StatesRecvEnv)
     (LoopAdvEnv : W4LoopAdvEnv) (maxOps smallFileCap maxCt : Nat)
     (R : W4RecvPrekeyRealParamsCmk) : Prop :=
   W4RecvPrekeyRealDomCmkSrOf SR LoopAdvEnv maxOps smallFileCap maxCt R ∧ R.archivedTrials = []
@@ -519,7 +532,7 @@ abbrev W4RecvPrekeyCmkDom0 (SR : W4StatesRecvEnv) (maxOps : Nat)
 
 /-- Call-site domain guard `W4BinaryCallSiteDomCmk` conjoined with `R.archivedTrials = []`
 (independent of `(SR, LoopAdvEnv, maxOps)`). -/
-def W4BinaryCallSiteDomCmk0 (C : Crypto) (K : MlKem)
+@[expose] def W4BinaryCallSiteDomCmk0 (C : Crypto) (K : MlKem)
     (maxCt : Nat) (peerVal : AddrVal) (files : FsFiles) (R : W4RecvPrekeyRealParamsCmk) : Prop :=
   W4BinaryCallSiteDomCmk C K maxCt peerVal files R ∧ R.archivedTrials = []
 
@@ -624,7 +637,7 @@ theorem W4BinaryCallSiteDomCmk0.toCmkDom0Of (SR : W4StatesRecvEnv)
 
 /-- Binary-kit call-dispatched `Dom0` guard on `W4BinaryRecvPrekeyParamsCmk` at
 `(SR, LoopAdvEnv, maxOps)`. -/
-def W4BinaryRecvPrekeyDomCmk0 (SR : W4StatesRecvEnv) (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
+@[expose] def W4BinaryRecvPrekeyDomCmk0 (SR : W4StatesRecvEnv) (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (c : CallV) (i : Inputs) (w : W4BinaryRecvPrekeyParamsCmk) : Prop :=
   ∀ peerAddr, c = .recv peerAddr →
     w.base.peer.val = addrValOf peerAddr ∧
@@ -665,16 +678,6 @@ theorem realCliDecPkBinaryWideSlotEnvCmkDom0FixedOf_ghost_congr [LibsignalPlacem
       realCliDecPkBinaryWideSlotEnvCmkDom0FixedOf SR LoopAdvEnv maxOps X W y := by
   funext evs
   simp only [realCliDecPkBinaryWideSlotEnvCmkDom0FixedOf, hp, hf, hmsg]
-
-theorem realCliDecPkBinaryWideSlotEnvCmkDom0Fixed_ghost_congr [LibsignalPlacement]
-    (SR : W4StatesRecvEnv) (X : UnreachedPqxdhPrimitives) (W : CliHooks) (x y : DecPkGhost)
-    (hp : x.peer.val = y.peer.val) (hm : x.me.val = y.me.val)
-    (hs : x.stores = y.stores) (hcp : x.coinsP = y.coinsP)
-    (hf : x.F = y.F) (hc : x.coins = y.coins) (hmsg : x.msg = y.msg) :
-    realCliDecPkBinaryWideSlotEnvCmkDom0Fixed SR X W x =
-      realCliDecPkBinaryWideSlotEnvCmkDom0Fixed SR X W y :=
-  realCliDecPkBinaryWideSlotEnvCmkDom0FixedOf_ghost_congr
-    SR CmkLoopAdvanceEvs w4c_defaultDecodeMaxOps X W x y hp hm hs hcp hf hc hmsg
 
 /-- `(SR, LoopAdvEnv, maxOps)`-parametric `PeerSpqrStateTight640`-guarded binary-kit W4 `Dom0`
 slot envelope. -/
@@ -721,112 +724,7 @@ theorem realCliDecPkBinaryWideSlotEnvCmkDom0GuardedFixed_ghost_congr [LibsignalP
 
 /-! ## `Dom0` Producer Lifts (`deserializeTie` & `loadRec_decodeTie`) -/
 
-theorem w4RecvPrekeyCmkDom0Of_of_deserializeTie
-    {SR : W4StatesRecvEnv} {LoopAdvEnv : W4LoopAdvEnv} {maxOps smallFileCap maxCt : Nat}
-    {R : W4RecvPrekeyRealParamsCmk} {bs : List (BitVec 8)} {orec : Option RecordStructure}
-    (hDom : W4RecvPrekeyRealDomCmkSrOf SR LoopAdvEnv maxOps smallFileCap maxCt R)
-    (hget : StoresGhost.opened.sessions.get cliIo.rd R.files (addressText R.peer.val) = .ok bs)
-    (hdes : RecordStructure.deserialize bs = .ok orec)
-    (hprev0 : (orec.map (·.previousSessions.length)).getD 0 = 0)
-    (hTie : ∀ bs' orec',
-      StoresGhost.opened.sessions.get cliIo.rd R.files (addressText R.peer.val) = .ok bs' →
-      RecordStructure.deserialize bs' = .ok orec' →
-      R.archivedTrials.length ≤ (orec'.map (·.previousSessions.length)).getD 0) :
-    W4RecvPrekeyCmkDom0Of SR LoopAdvEnv maxOps smallFileCap maxCt R :=
-  ⟨hDom, list_eq_nil_of_deserialize_tie hget hdes hprev0 hTie⟩
-
-theorem w4RecvPrekeyCmkDom0Of_of_loadRec_decodeTie
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {SR : W4StatesRecvEnv} {LoopAdvEnv : W4LoopAdvEnv} {maxOps smallFileCap maxCt : Nat}
-    {R : W4RecvPrekeyRealParamsCmk} {recOpt : Option (SessionRecord (List (BitVec 8)))}
-    (hDom : W4RecvPrekeyRealDomCmkSrOf SR LoopAdvEnv maxOps smallFileCap maxCt R)
-    (hlr : loadRec Scope R.files R.peer.val = .ok recOpt)
-    (hNone : loadRec Scope R.files R.peer.val = .ok none → R.archivedTrials = [])
-    (hTie : ∀ r rec, loadRec Scope R.files R.peer.val = .ok (some r) →
-      RecordStructure.decode (encodeRecord r) = some rec →
-      R.archivedTrials.length ≤ rec.previousSessions.length)
-    (hPrev0 : ∀ r, loadRec Scope R.files R.peer.val = .ok (some r) →
-      ∃ rec, RecordStructure.decode (encodeRecord r) = some rec ∧ rec.previousSessions = []) :
-    W4RecvPrekeyCmkDom0Of SR LoopAdvEnv maxOps smallFileCap maxCt R :=
-  ⟨hDom, list_eq_nil_of_loadRec_decode_tie hlr hNone hTie hPrev0⟩
-
-theorem w4RecvPrekeyCmkDom0Of_of_cliPqOrD3RecvDom_deserializeTie {W : PEParams}
-    {SR : W4StatesRecvEnv} {LoopAdvEnv : W4LoopAdvEnv} {maxOps smallFileCap maxCt : Nat}
-    {i : Inputs} {peer : AddrV} {R : W4RecvPrekeyRealParamsCmk}
-    (hi : CliPqOrD3RecvDom W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.recv peer))
-    (hfiles : R.files = runFiles i) (hpeer : R.peer.val = addrValOf peer)
-    (hDom : W4RecvPrekeyRealDomCmkSrOf SR LoopAdvEnv maxOps smallFileCap maxCt R)
-    (hTie : ∀ bs orec,
-      StoresGhost.opened.sessions.get cliIo.rd R.files (addressText R.peer.val) = .ok bs →
-      RecordStructure.deserialize bs = .ok orec →
-      R.archivedTrials.length ≤ (orec.map (·.previousSessions.length)).getD 0) :
-    W4RecvPrekeyCmkDom0Of SR LoopAdvEnv maxOps smallFileCap maxCt R :=
-  ⟨hDom, list_eq_nil_of_cliPqOrD3RecvDom_deserializeTie hi hparse
-    (fun bs orec hget hdes => hTie bs orec (hfiles.symm ▸ hpeer.symm ▸ hget) hdes)⟩
-
-theorem w4RecvPrekeyCmkDom0Of_of_cliPqOrD3RecvDom_loadRec_decodeTie {W : PEParams}
-    {SR : W4StatesRecvEnv} {LoopAdvEnv : W4LoopAdvEnv} {maxOps smallFileCap maxCt : Nat}
-    {i : Inputs} {peer : AddrV} {R : W4RecvPrekeyRealParamsCmk}
-    (hi : CliPqOrD3RecvDom W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.recv peer))
-    (hfiles : R.files = runFiles i) (hpeer : R.peer.val = addrValOf peer)
-    (hDom : W4RecvPrekeyRealDomCmkSrOf SR LoopAdvEnv maxOps smallFileCap maxCt R)
-    (hNone : loadRec scopeKit R.files R.peer.val = .ok none → R.archivedTrials = [])
-    (hTie : ∀ r rec, loadRec scopeKit R.files R.peer.val = .ok (some r) →
-      RecordStructure.decode (encodeRecord r) = some rec →
-      R.archivedTrials.length ≤ rec.previousSessions.length) :
-    W4RecvPrekeyCmkDom0Of SR LoopAdvEnv maxOps smallFileCap maxCt R :=
-  ⟨hDom, list_eq_nil_of_cliPqOrD3RecvDom_loadRec_decodeTie hi hparse
-    (fun hlr => hNone (hfiles.symm ▸ hpeer.symm ▸ hlr))
-    (fun r rec hlr hdec => hTie r rec (hfiles.symm ▸ hpeer.symm ▸ hlr) hdec)⟩
-
-theorem w4BinaryCallSiteDomCmk0_of_cliPqOrD3RecvDom_deserializeTie {W : PEParams}
-    {C : Crypto} {K : MlKem} {maxCt : Nat}
-    {i : Inputs} {peer : AddrV} {R : W4RecvPrekeyRealParamsCmk}
-    (hi : CliPqOrD3RecvDom W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.recv peer))
-    (hcs : W4BinaryCallSiteDomCmk C K maxCt (addrValOf peer) (runFiles i) R)
-    (hTie : ∀ bs orec,
-      StoresGhost.opened.sessions.get cliIo.rd R.files (addressText R.peer.val) = .ok bs →
-      RecordStructure.deserialize bs = .ok orec →
-      R.archivedTrials.length ≤ (orec.map (·.previousSessions.length)).getD 0) :
-    W4BinaryCallSiteDomCmk0 C K maxCt (addrValOf peer) (runFiles i) R :=
-  ⟨hcs, list_eq_nil_of_cliPqOrD3RecvDom_deserializeTie hi hparse
-    (fun bs orec hget hdes => hTie bs orec (hcs.eq_files.symm ▸ hcs.eq_peerVal.symm ▸ hget) hdes)⟩
-
-theorem w4BinaryCallSiteDomCmk0_of_cliPqOrD3RecvDom_loadRec_decodeTie {W : PEParams}
-    {C : Crypto} {K : MlKem} {maxCt : Nat}
-    {i : Inputs} {peer : AddrV} {R : W4RecvPrekeyRealParamsCmk}
-    (hi : CliPqOrD3RecvDom W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.recv peer))
-    (hcs : W4BinaryCallSiteDomCmk C K maxCt (addrValOf peer) (runFiles i) R)
-    (hNone : loadRec scopeKit R.files R.peer.val = .ok none → R.archivedTrials = [])
-    (hTie : ∀ r rec, loadRec scopeKit R.files R.peer.val = .ok (some r) →
-      RecordStructure.decode (encodeRecord r) = some rec →
-      R.archivedTrials.length ≤ rec.previousSessions.length) :
-    W4BinaryCallSiteDomCmk0 C K maxCt (addrValOf peer) (runFiles i) R :=
-  ⟨hcs, list_eq_nil_of_cliPqOrD3RecvDom_loadRec_decodeTie hi hparse
-    (fun hlr => hNone (hcs.eq_files.symm ▸ hcs.eq_peerVal.symm ▸ hlr))
-    (fun r rec hlr hdec => hTie r rec (hcs.eq_files.symm ▸ hcs.eq_peerVal.symm ▸ hlr) hdec)⟩
-
 /-! ## Non-Vacuity Witness (`evs ≠ []` Path-B Trace) -/
-
-theorem w4BinaryRecvPrekeyWideSlotEnvCmkVerNeSrAllFixed_nonvacuous_alloc
-    (SR : W4StatesRecvEnv) (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
-    (w : W4BinaryRecvPrekeyParamsCmk) :
-    ∃ evs : List AllocEvent,
-      evs ≠ [] ∧ W4BinaryRecvPrekeyWideSlotEnvCmkVerNeSrAllFixedOf SR LoopAdvEnv maxOps w evs :=
-  ⟨rustAllocEvents 24 8, by decide,
-    Or.inr (Or.inl (Or.inl (Or.inl (Or.inl (Or.inr ⟨by decide, rfl⟩)))))⟩
-
-theorem w4BinaryRecvPrekeyCmkDom0_nonvacuous_alloc
-    {SR : W4StatesRecvEnv} {LoopAdvEnv : W4LoopAdvEnv} {maxOps : Nat}
-    {peerAddr : AddrV} {i : Inputs} {w : W4BinaryRecvPrekeyParamsCmk}
-    (_hDom0 : W4BinaryRecvPrekeyDomCmk0 SR LoopAdvEnv maxOps (.recv peerAddr) i w) :
-    ∃ evs : List AllocEvent,
-      evs ≠ [] ∧ W4BinaryRecvPrekeyWideSlotEnvCmkVerNeSrAllFixedOf SR LoopAdvEnv maxOps w evs :=
-  w4BinaryRecvPrekeyWideSlotEnvCmkVerNeSrAllFixed_nonvacuous_alloc SR LoopAdvEnv maxOps w
 
 /-! ## Closed `SingleSlotFineSpec` Constants & Theorems -/
 
@@ -854,9 +752,6 @@ abbrev w4CmkDom0GrpS109 : Nat := W4RecvPrekeyCmkDom0StageAux.w4CmkDom0GrpS109
 /-- Exact closed decimal-literal `grpS` at `maxOps = 128` (`2,709,071,344`). -/
 abbrev w4CmkDom0GrpS128 : Nat := W4RecvPrekeyCmkDom0StageAux.w4CmkDom0GrpS128
 
-/-- Default `maxOps = 109` (`w4c_defaultDecodeMaxOps`) `grpS` (`2,703,750,926`). -/
-abbrev w4CmkDom0GrpS : Nat := w4CmkDom0GrpS109
-
 theorem w4CmkDom0_live_le_peak : w4CmkDom0Live ≤ w4CmkDom0Peak :=
   W4RecvPrekeyCmkDom0StageAux.w4CmkDom0_live_le_peak
 
@@ -873,7 +768,7 @@ theorem w4CmkDom0GrpSOf_128_eq : w4CmkDom0GrpSOf 128 = w4CmkDom0GrpS128 :=
 /-- `SingleSlotFineSpec` on the `CallV`-dispatched `SR`-parametric `Dom0` `recv-prekey`
 binary-kit envelope (with `W4BobSessionBuildEnv9` and `VerNe-prev1` on Path C Stage P3) at
 `(SR, CmkLoopAdvanceEvs, maxOps)`. -/
-def w4BinaryRecvPrekeyCmkDom0Of_singleSlotFineSpec {P : PEParams} {c : CallV} {i : Inputs}
+@[expose] def w4BinaryRecvPrekeyCmkDom0Of_singleSlotFineSpec {P : PEParams} {c : CallV} {i : Inputs}
     (SR : W4StatesRecvEnv) (maxOps : Nat)
     (hSrCred : ∀ F K, StatesRecvTightCreditSpec F (SR F K) 1647247 93776)
     (hSrGrp : ∀ F K, StatesRecvTightGroupSpec F (SR F K) statesRecvTightGroupS_split)
@@ -1132,7 +1027,7 @@ def w4BinaryRecvPrekeyCmkDom0Of_singleSlotFineSpec {P : PEParams} {c : CallV} {i
     | send _ => exact ⟨fun _ {_} h => False.elim h⟩
 
 /-- Default `maxOps = 109` (`w4c_defaultDecodeMaxOps`) `SR`-parametric `SingleSlotFineSpec`. -/
-def w4BinaryRecvPrekeyCmkDom0_singleSlotFineSpec {P : PEParams} {c : CallV} {i : Inputs}
+@[expose] def w4BinaryRecvPrekeyCmkDom0_singleSlotFineSpec {P : PEParams} {c : CallV} {i : Inputs}
     (SR : W4StatesRecvEnv)
     (hSrCred : ∀ F K, StatesRecvTightCreditSpec F (SR F K) 1647247 93776)
     (hSrGrp : ∀ F K, StatesRecvTightGroupSpec F (SR F K) statesRecvTightGroupS_split)
@@ -1207,7 +1102,7 @@ def w4BinaryRecvPrekeyCmkDom0Of_singleSlotFineSpec' {P : PEParams} {c : CallV} {
     w4c_repairedStatesRecv_creditSpec w4c_repairedStatesRecv_split_groupSpec hi
 
 /-- Sealed `@StatesRecvProtoEnv'` default `maxOps = 109` `SingleSlotFineSpec` (`0` `SR` hypotheses). -/
-def w4BinaryRecvPrekeyCmkDom0_singleSlotFineSpec' {P : PEParams} {c : CallV} {i : Inputs}
+@[expose] def w4BinaryRecvPrekeyCmkDom0_singleSlotFineSpec' {P : PEParams} {c : CallV} {i : Inputs}
     (hi : CliPqOrD3RecvDom P i) :
     SingleSlotFineSpec
       (fun evs =>

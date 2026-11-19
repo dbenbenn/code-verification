@@ -21,7 +21,7 @@ public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
 `<MessageKeyGenerator>::generate_keys`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -49,23 +49,23 @@ open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
 
 /-! ## Read-only `ct_eq` with `VmPreserved` -/
 
-noncomputable def ctEqSliceROSpec :
+@[expose] def ctEqSliceROSpec :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) :=
   withVmPreserved CryptoVerification.LibsignalTripleRatchet.ctEqSliceROSpec
 
 /-! ## `<PrivateKey>::calculate_agreement` -/
 
-def calculateAgreementEvents (X : X25519Fn) (x : CalculateAgreementGhost) :
+@[expose] def calculateAgreementEvents (X : X25519Fn) (x : CalculateAgreementGhost) :
     List AllocEvent :=
   match calculateAgreement X x.their x.our with
   | some _ => rustAllocEvents 32 1
   | none => []
 
-def CalculateAgreementEnv (X : X25519Fn) (x : CalculateAgreementGhost)
+@[expose] def CalculateAgreementEnv (X : X25519Fn) (x : CalculateAgreementGhost)
     (evs : List AllocEvent) : Prop :=
   evs = calculateAgreementEvents X x
 
-def calculateAgreementSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def calculateAgreementSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (X : X25519Fn) (totalStack : Nat) :
     Spec (CalculateAgreementGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -92,15 +92,15 @@ abbrev calculateAgreementSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-! ## `<RootKey>::create_chain` -/
 
-def createChainEvents (C : Crypto) (x : CreateChainGhost) : List AllocEvent :=
+@[expose] def createChainEvents (C : Crypto) (x : CreateChainGhost) : List AllocEvent :=
   match calculateAgreement C.X x.their x.our with
   | some _ => rustAllocEvents 32 1 ++ rustDeallocEvents 32 1
   | none => []
 
-def CreateChainEnv (C : Crypto) (x : CreateChainGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def CreateChainEnv (C : Crypto) (x : CreateChainGhost) (evs : List AllocEvent) : Prop :=
   evs = createChainEvents C x
 
-def createChainSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def createChainSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (C : Crypto) (totalStack : Nat) :
     Spec (CreateChainGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -136,7 +136,7 @@ abbrev createChainSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
 2. When `pqrKey = some _`, frees `pqrKey`'s 32-byte `Vec<u8>` buffer (`rustDeallocEvents c₂ 1`,
    `32 ≤ c₂ < 2 ^ 63`); when `pqrKey = none`, either `pqrKey` has no positive-capacity buffer (`[]`)
    or frees a positive-capacity empty `Vec` (`rustDeallocEvents c₂ 1`, `0 < c₂ < 2 ^ 63`). -/
-def GenerateKeysEnv (x : GenerateKeysGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def GenerateKeysEnv (x : GenerateKeysGhost) (evs : List AllocEvent) : Prop :=
   ∃ c₁ : Nat, 32 ≤ c₁ ∧ c₁ < 2 ^ 63 ∧
     match x.pqrKey with
     | some _ =>
@@ -167,7 +167,7 @@ theorem freeOnlyEvs_of_generateKeysEnv {x : GenerateKeysGhost} {evs : List Alloc
   · rcases hpqr with ⟨c₂, _, _, rfl⟩
     exact (FreeOnlyEvs.singleton 1 c₁).append (FreeOnlyEvs.singleton 1 c₂)
 
-def generateKeysSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def generateKeysSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (F : ShaCompress) (totalStack : Nat) :
     Spec (GenerateKeysGhost × M.σ) where
   pre := fun (x, st) s =>

@@ -25,7 +25,7 @@ Proves `closeByStateC_inject_evicted_honest`, closing the inject step when the w
 evicted honest epoch under either a matching salt or a `DEV-LS36` salt mismatch.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

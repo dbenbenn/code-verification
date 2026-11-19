@@ -10,12 +10,27 @@ limitations under the License.
 module
 
 public import Arm64.Trusted.Spec.Hoare
-public import LibsignalBinary.Proofs.PeakBudget.D3MainEntryBudgetFitsCapDom0
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H9PathBAssemblyG2
+public import LibsignalBinary.Proofs.PeakBudget.D3MainEntryBudgetFitsCapDom0 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H9PathBAssemblyG2
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.WritePaths
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchDefs
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3MainLiftGlueF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.MainEntryBudgetFitsCapReal
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Slot `sEnvs` Wiring for `H9PathBAssemblyG2`
@@ -27,7 +42,7 @@ Connects `D3MainEntryBudgetFitsCapDom0` to `H9PathBAssemblyG2` over the `RunSlot
 and `init` frame-pointer invariance internally for `cliRunSemPathB`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -37,7 +52,7 @@ set_option maxRecDepth 200000
 namespace LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H9PathBAssemblyHonestR2
 
 open Arm64 ProofLib SepProp
-open Arm64.Obj (Image MultiPlacement)
+open Arm64.Obj (MultiPlacement)
 open Arm64.Process (bytesOfString)
 open CryptoGames (Party)
 open CryptoGames.LibsignalSession (IdentityKey SessionState SignalMessage)
@@ -45,8 +60,7 @@ open CryptoGames.LibsignalSessionApi (
   PreKeySignalMessage SessionRecord StoreCall fullTrace messageDecryptSignal_trace_prefix
 )
 open CryptoVerification (
-  LibsignalFrozen LibsignalPlacement libsignalMutatedBlocks libsignalSessionExterns
-)
+  ExternsDistinctOnHooked LibsignalFrozen LibsignalPlacement libsignalMutatedBlocks)
 open CryptoVerification.E2E (
   PEParams UnreachedPqxdhPrimitives partyAddressName pqxdhSpqrModel recvPrekeyState wirePrekey
   wireWhisper
@@ -154,7 +168,7 @@ open VerifiedLibraries.Mallocng (mallocngAddrsOfPlacement)
 
 /-- `RunSlotEnvs` bundle over `(EncSlot, DecSigSlot, realCliInitBinarySlotEnvFixed W, DecPkSlotEnv)`,
 definitionally equal to `binaryKitRunSlotEnvsExact` when instantiated in `CliElfLib`. -/
-noncomputable abbrev h9r2_honestD3RunSlotEnvs {M : AllocCostModel}
+abbrev h9r2_honestD3RunSlotEnvs {M : AllocCostModel}
     (EncSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M' : AllocCostModel},
@@ -166,11 +180,11 @@ noncomputable abbrev h9r2_honestD3RunSlotEnvs {M : AllocCostModel}
 
 /-- `(X, W, γ, tp)`-indexed `RunSlotEnvs` family at `fineHookRustCliAllocBudget γ mmpl tp brkStart`
 matching the `sEnvs` parameter shape of `H9PathBAssemblyG2`. -/
-noncomputable abbrev h9r2_honestD3FineSlotEnvs
+abbrev h9r2_honestD3FineSlotEnvs
     {mpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (EncSlot : ∀ [LibsignalPlacement] {M' : AllocCostModel},
       CliHooks → RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ [LibsignalPlacement] {M' : AllocCostModel},
@@ -833,7 +847,7 @@ theorem h9r2_fitsCap_pathB_of_dom0_singleSlot [LibsignalPlacement]
       RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     (DecPkSlotEnv : DecPkGhost → List AllocEvent → Prop)
     (w4Cum w4Live w4Peak w4MaxReq w4GrpS : Nat)
@@ -917,7 +931,7 @@ theorem h9r2_fitsCap_pathB_of_dom0 [LibsignalPlacement]
       RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     (DecPkSlotEnv : DecPkGhost → List AllocEvent → Prop)
     (w4Cum w4Live w4Peak w4MaxReq w4GrpS : Nat)
@@ -1001,7 +1015,7 @@ theorem h9r2_fitsCap_pathB_of_slot_caps [LibsignalPlacement]
       RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     (DecPkSlotEnv : DecPkGhost → List AllocEvent → Prop)
     (encCum encLive encPeak encMaxReq encGrpS : Nat)
@@ -1090,9 +1104,9 @@ theorem h9r2_hfitCap_pathB_of_dom0_singleSlot
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {brkStart : BitVec 64}
-    (img : Image)
+    (img : Unit)
     (EncSlot : ∀ [LibsignalPlacement] {M' : AllocCostModel},
       CliHooks → RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ [LibsignalPlacement] {M' : AllocCostModel},
@@ -1198,9 +1212,9 @@ theorem h9r2_hfitCap_pathB_of_dom0
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {brkStart : BitVec 64}
-    (img : Image)
+    (img : Unit)
     (EncSlot : ∀ [LibsignalPlacement] {M' : AllocCostModel},
       CliHooks → RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ [LibsignalPlacement] {M' : AllocCostModel},
@@ -1307,9 +1321,9 @@ theorem h9r2_hfitCap_pathB_of_slot_caps
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {brkStart : BitVec 64}
-    (img : Image)
+    (img : Unit)
     (EncSlot : ∀ [LibsignalPlacement] {M' : AllocCostModel},
       CliHooks → RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ [LibsignalPlacement] {M' : AllocCostModel},
@@ -1425,12 +1439,12 @@ theorem h9r2_pathB_assembly_honest_of_dom0_singleSlot
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (hFullPl : libsignalSessionLib.Placeable mpl)
     (ghFixed : CliGhostHooks)
     {CodeOk_real : Memory → Prop}
     {libcAddr brkStart : BitVec 64} {hookStack : Nat}
-    (img : Image)
+    (img : Unit)
     (EncSlot : ∀ [LibsignalPlacement] {M' : AllocCostModel},
       CliHooks → RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ [LibsignalPlacement] {M' : AllocCostModel},
@@ -1603,11 +1617,11 @@ theorem h9r2_pathB_assembly_honest_d2cSlots_of_dom0_singleSlot
     (hLs : libsignalSessionLib.LinkedAt elfBytes mpl)
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (ghFixed : CliGhostHooks)
     {CodeOk_real : Memory → Prop}
     {libcAddr brkStart : BitVec 64} {hookStack : Nat}
-    (img : Image)
+    (img : Unit)
     (EncSlot : ∀ [LibsignalPlacement] {M' : AllocCostModel},
       CliHooks → RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ [LibsignalPlacement] {M' : AllocCostModel},
@@ -1780,11 +1794,11 @@ theorem h9r2_pathB_assembly_honest_d2cSlots_of_slot_caps
     (hLs : libsignalSessionLib.LinkedAt elfBytes mpl)
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (ghFixed : CliGhostHooks)
     {CodeOk_real : Memory → Prop}
     {libcAddr brkStart : BitVec 64} {hookStack : Nat}
-    (img : Image)
+    (img : Unit)
     (EncSlot : ∀ [LibsignalPlacement] {M' : AllocCostModel},
       CliHooks → RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ [LibsignalPlacement] {M' : AllocCostModel},

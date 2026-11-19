@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.SpecLemmas.ModelProofDefs
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -44,7 +44,7 @@ stored `TRState` has `myIk` and `peerIk` equal to one of the two setup identity 
 32-byte concretized root and receiver-chain keys.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

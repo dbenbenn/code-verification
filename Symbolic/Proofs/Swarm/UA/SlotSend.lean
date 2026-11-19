@@ -19,7 +19,7 @@ import Symbolic.Proofs.Swarm.UA.XlateInv
 Discharges `UASlotSendSpec` by supplying `XlateInv.xlate_inv` to `SendCore.slot_send_of_xlate`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

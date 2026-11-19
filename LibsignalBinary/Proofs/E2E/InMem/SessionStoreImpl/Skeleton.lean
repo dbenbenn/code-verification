@@ -10,11 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.InMem.SessionStoreImpl.Specs
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKit
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKit -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # In-Memory Session Store Poll Bridge Interface and Future-Drop Proofs
@@ -24,7 +26,7 @@ defines the `SessionRecord`-level poll specifications (`HashbrownBinSessionBridg
 proves the shared no-op future `drop_glue` contracts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,16 +48,6 @@ set_option maxRecDepth 200000
 
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  (ls_lemma% fnOff "core::ptr::drop_glue::<<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity::{closure#0}>")
-  (ls_lemma% fnOff "<libsignal_protocol::storage::inmem::InMemSessionStore as libsignal_protocol::storage::traits::SessionStore>::load_session")
-  (ls_lemma% fnOff "<libsignal_protocol::storage::inmem::InMemSessionStore as libsignal_protocol::storage::traits::SessionStore>::store_session")
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "alloc::alloc::handle_alloc_error")
-
-/-! ## Poll Output Simplification -/
-
 /-- Under `inMemLoadRel`, `ans = .ok (some st0.record)`, eliminating the `.error ()` branch of `loadPollOutAtS`. -/
 theorem loadPollOutAtS_of_inMemLoadRel
     {Scope : SessionRecord (List (BitVec 8)) → Prop}
@@ -82,7 +74,7 @@ theorem storePollOutAt_of_inMemStoreRel
 /-! ## `SessionRecord`-Level Poll Specifications -/
 
 /-- Output layout for `Poll::Ready(Ok(Option<SessionRecord>))` (368 B) at `sret`. -/
-def pollOptSessionRecordAt (A : RustAlloc) (sret : BitVec 64) :
+@[expose] def pollOptSessionRecordAt (A : RustAlloc) (sret : BitVec 64) :
     Option (SessionRecord (List (BitVec 8))) → SepProp
   | none =>
     (sret ↦₆₄ 0xffffffffffffffff#64) ∗ memRegion (sret + 8#64) 360
@@ -121,7 +113,7 @@ structure LoadSessionRecordSingleGhost where
   qG : AddrGhost
 
 /-- Specification of `InMemSessionStore::load_session::{closure#0}` over `sessionRecordBucketEntryAt`. -/
-def loadSessionRecordSingleSpec (A : RustAlloc) : Spec LoadSessionRecordSingleGhost where
+@[expose] def loadSessionRecordSingleSpec (A : RustAlloc) : Spec LoadSessionRecordSingleGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.futPtr ∧ s.readReg64 .x8 = x.sret ∧
       x.k < 4 ∧ x.peerG.name.bytes.length = 36 ∧ x.qG.name.bytes.length = 36 ∧
@@ -162,7 +154,7 @@ structure StoreSessionRecordSingleHitGhost where
   newRecord : SessionRecord (List (BitVec 8))
 
 /-- Specification of `InMemSessionStore::store_session::{closure#0}` over `sessionRecordBucketEntryAt`. -/
-def storeSessionRecordSingleHitSpec (A : RustAlloc) : Spec StoreSessionRecordSingleHitGhost where
+@[expose] def storeSessionRecordSingleHitSpec (A : RustAlloc) : Spec StoreSessionRecordSingleHitGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.futPtr ∧ s.readReg64 .x8 = x.sret ∧
       x.k < 4 ∧ x.peerG.name.bytes.length = 36 ∧
@@ -190,29 +182,6 @@ def storeSessionRecordSingleHitSpec (A : RustAlloc) : Spec StoreSessionRecordSin
       A.pool ∗ stackAt s0.sp inMemStorePollStack
   onPanic := fun _ s0 sf =>
     ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- Interface bundling `load_session` and `store_session` poll closure correctness. -/
-structure HashbrownBinSessionBridge (A : RustAlloc) (b : BitVec 64)
-    (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop where
-  loadSingle_ok :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + inMemLoadPollOff) (loadSessionRecordSingleSpec A)
-  storeSingleHit_ok :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + inMemStorePollOff) (storeSessionRecordSingleHitSpec A)
-
-/-! ## Trivial Future Drop Proofs -/
-
-private theorem fnAddr_tripleRatchetProgAt_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} {name : String} {off : Nat}
-    (h : libsignalSessionCode.fnOff name = off) :
-    (trTrapProgAt b C abs).fnAddr name = b + BitVec.ofNat 64 off := by
-  simp only [trTrapProgAt, Program.fnAddr_rebase, h]
-
-private theorem fnAddr_tripleRatchetProgAt {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {off : Nat}
-    (h : libsignalSessionCode.fnOff name = off) :
-    (tripleRatchetProgAt b C ctl abs).fnAddr name = b + BitVec.ofNat 64 off := by
-  simp only [tripleRatchetProgAt, Program.fnAddr_rebase, h]
 
 private theorem sepWPp_pure_mid {prog : Program} {ret : BitVec 64} {s : State}
     {A B C : SepProp} {φ : Prop} {Q Qp : State → SepProp → Prop}
@@ -253,69 +222,5 @@ private theorem memRegion_32_box (p : BitVec 64) :
     memRegion_split (p + 8#64 + 8#64 + 8#64) 1 7 (by decide),
     memRegion_one, ProofLib.memRegion_eight, ProofLib.memRegion_eight, ProofLib.memRegion_eight]
   simp only [sepExists_sepConj_left, sepExists_sepConj_right, BitVec.add_assoc, BitVec.reduceAdd]
-
-private theorem load_shim_adrp {b : BitVec 64} {H : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr inMemLoadShimName + 40#64) &&&
-      0xfffffffffffff000#64) = b + bv% (page% (ls_off% "<libsignal_protocol::storage::inmem::InMemSignedPreKeyStore as libsignal_protocol::storage::traits::SignedPreKeyStore>::save_signed_pre_key" + 28)) := by
-  rw [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::storage::inmem::InMemSessionStore as libsignal_protocol::storage::traits::SessionStore>::load_session"), BitVec.add_assoc,
-    ProofLib.ObjectLoad.adrp_page_of_aligned hb]
-  rfl
-
-private theorem store_shim_adrp {b : BitVec 64} {H : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr inMemStoreShimName + 52#64) &&&
-      0xfffffffffffff000#64) = b + bv% (page% (ls_off% "<libsignal_protocol::storage::inmem::InMemSignedPreKeyStore as libsignal_protocol::storage::traits::SignedPreKeyStore>::save_signed_pre_key" + 28)) := by
-  rw [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::storage::inmem::InMemSessionStore as libsignal_protocol::storage::traits::SessionStore>::store_session"), BitVec.add_assoc,
-    ProofLib.ObjectLoad.adrp_page_of_aligned hb]
-  rfl
-
-set_option maxRecDepth 2000000 in
-theorem inMemFutDrop_fnAddr_ok_trap {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr inMemFutDropName)
-      futDropSpec := by
-  simp only [futDropSpec]
-  have hfn : libsignalSessionCode.fnOff inMemFutDropName = num% (ls_off% "core::ptr::drop_glue::<<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity::{closure#0}>") := inMemFutDrop_fnOff
-  code_fetches CryptoVerification.libsignalSessionCode sessionStoreBin b
-    (Rust.withPanics (trTrapExterns C abs)) hfn (num% (ls_off% "core::ptr::drop_glue::<<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity::{closure#0}>")) 4
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  wp_steps
-  wp_done
-
-set_option maxRecDepth 2000000 in
-/-- No-op future `drop_glue` satisfies `futDropSpec` at its symbol address. -/
-theorem inMemFutDrop_fnAddr_ok {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr inMemFutDropName)
-      futDropSpec := by
-  rw [← trTrapProgAt_fnAddr_eq b C ctl abs inMemFutDropName]
-  exact subroutine_ok_kit_of_trTrap (inMemFutDrop_fnAddr_ok_trap (b := b) (C := C) (abs := abs))
-
-theorem futDrop_ok_trap {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (trTrapProgAt b C abs)
-      (b + inMemFutDropOff)
-      futDropSpec := by
-  have h := inMemFutDrop_fnAddr_ok_trap (b := b) (C := C) (abs := abs)
-  have hfn : libsignalSessionCode.fnOff inMemFutDropName = num% (ls_off% "core::ptr::drop_glue::<<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity::{closure#0}>") := inMemFutDrop_fnOff
-  rwa [show (trTrapProgAt b C abs).fnAddr inMemFutDropName = b + inMemFutDropOff by
-    simp only [trTrapProgAt, Program.fnAddr_rebase, hfn, inMemFutDropOff]] at h
-
-/-- No-op future `drop_glue` satisfies `futDropSpec` at `b + inMemFutDropOff`. -/
-theorem futDrop_ok {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      (b + inMemFutDropOff)
-      futDropSpec :=
-  subroutine_ok_kit_of_trTrap (futDrop_ok_trap (b := b) (C := C) (abs := abs))
 
 end CryptoVerification.E2E.InMem.SessionStoreImpl

@@ -10,11 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.BodyDefs
-public import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.LoopIter
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.LoopIter -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Fields
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Loop-Iteration Leaf (`deserLoopIterG_ok`) for General `SessionRecord::deserialize`
@@ -23,7 +23,7 @@ Proves `deserLoopIterG_ok` (`+0x254 → +0x254`, `k → k + 1`), decoding one 1-
 invoking `SessionStructure::merge_field` on field `k` of `recFields r`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.DeserLoopIterG
 
@@ -40,7 +40,7 @@ open CryptoVerification.E2E.Record.DeserializeSeed.LoopIterStateSimp
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
-attribute [local irreducible] Program.fetch Program.externAt? sessionImg0
+attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero ofNat_succ_sub_one_loopIter
 
 @[local arm64_norm ↓, local wp_norm ↓]
@@ -91,7 +91,7 @@ private theorem readReg_setMem_setPC_pre_loopIterG (s : State) (pc : BitVec 64) 
 
 /-! ## Pure `GenField`, `recFields`, and `ssgAfter` Helpers -/
 
-def keyByte_loopIterG (fl : GenField) : BitVec 8 :=
+@[expose] def keyByte_loopIterG (fl : GenField) : BitVec 8 :=
   BitVec.ofNat 8 (fl.tag * 8 + if fl.wt = .varint then 0 else 2)
 
 theorem enc_eq_keyByte_cons_loopIterG (fl : GenField) :
@@ -112,12 +112,12 @@ theorem ssgAfter_succ_loopIterG {r : SessionRecord (List (BitVec 8))} {k : Nat}
 
 /-! ## Spatial Cursor and Length Helpers -/
 
-def preBytes_loopIterG (r : SessionRecord (List (BitVec 8))) (k : Nat) : List (BitVec 8) :=
+@[expose] def preBytes_loopIterG (r : SessionRecord (List (BitVec 8))) (k : Nat) : List (BitVec 8) :=
   encodeKey 1 .lengthDelimited ++
     encodeVarint (BitVec.ofNat 64 ((recFields r).flatMap GenField.enc).length) ++
     ((recFields r).take k).flatMap GenField.enc
 
-def curPtr_loopIterG (p : BitVec 64) (r : SessionRecord (List (BitVec 8))) (k : Nat) : BitVec 64 :=
+@[expose] def curPtr_loopIterG (p : BitVec 64) (r : SessionRecord (List (BitVec 8))) (k : Nat) : BitVec 64 :=
   p + BitVec.ofNat 64 (preBytes_loopIterG r k).length
 
 theorem encodeRecord_eq_preBytes_append_loopIterG {r : SessionRecord (List (BitVec 8))}
@@ -276,208 +276,5 @@ theorem tag_ofNat64_beq0_loopIterG (fl : GenField) :
 theorem tag_ofNat64_setWidth32_loopIterG (fl : GenField) :
     (BitVec.ofNat 64 fl.tag).setWidth 32 = BitVec.ofNat 32 fl.tag := by
   cases fl <;> simp [GenField.tag]
-
-theorem step_254_to_2e8_loopIterG (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (L curPtr : BitVec 64) (fl : GenField) (n : Nat) (s : State)
-    {post : State → SepProp → Prop}
-    (hpc : s.pc = deserEntry_loopIter + 596#64)
-    (hrun : s.status = .Running)
-    (hx29 : s.readReg64 .x29 = L + 0x710#64)
-    (hx20 : s.readReg64 .x20 = 0#64)
-    (hx23 : s.readReg64 .x23 = L + 0x408#64)
-    (hn : n < 2 ^ 20)
-    (hnext : ∀ sm : State,
-      sm.pc = deserEntry_loopIter + bv% (2 ^ 64 - 71352) →
-      sm.status = .Running →
-      sm.sp = s.sp →
-      (sm.trace = s.trace ∧ calleeSavedVRegs sm = calleeSavedVRegs s) →
-      sm.readReg64 .lr = deserEntry_loopIter + 748#64 →
-      sm.readReg64 .x0 = L + 0x420#64 →
-      (sm.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 fl.tag →
-      (sm.readReg64 .x2).setWidth 8 = BitVec.ofNat 8 fl.wt.toNat →
-      sm.readReg64 .x3 = L + 0x6e8#64 →
-      (sm.readReg64 .x4).setWidth 32 = 99#32 →
-      sm.readReg64 .x19 = s.readReg64 .x19 →
-      sm.readReg64 .x20 = 0#64 →
-      sm.readReg64 .x23 = L + 0x408#64 →
-      sm.readReg64 .x29 = L + 0x710#64 →
-      post sm (stepPost_loopIter L curPtr (keyByte_loopIterG fl) n)) :
-    SepWP (recordProg C ctl abs) (deserEntry_loopIter + bv% (2 ^ 64 - 71352)) s
-      (stepPre_loopIter L curPtr (keyByte_loopIterG fl) n) post := by
-  have hule := ule_zero_ofNat_succ_loopIterG hn
-  let H := Rust.withPanics (tripleRatchetExterns C ctl abs)
-  diter_fetches sessionImg0.base H
-  change SepWP (libsignalSessionCode.rebase sessionImg0.base H)
-    (deserEntry_loopIter + bv% (2 ^ 64 - 71352)) s
-    (stepPre_loopIter L curPtr (keyByte_loopIterG fl) n) post
-  rw [fnAddr_recDeserialize_eq_deserEntry_loopIter H] at *
-  examples_hide_fetches
-  unfold stepPre_loopIter
-  wp_step; wp_step; wp_step; wp_step; wp_step
-  wp_step; wp_step; wp_step; wp_step; wp_step
-  wp_step; wp_step; wp_step; wp_step; wp_step
-  wp_step; wp_step; wp_step; wp_step; wp_step
-  wp_step; wp_step
-  apply SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-  exact hnext _
-    (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-    (by simp_all [arm64_norm]) ⟨by simp_all [arm64_norm], by simp_all [arm64_norm]⟩
-    (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-    (by simp_all [arm64_norm])
-    (by simp_all [arm64_norm]; cases fl <;> simp [keyByte_loopIterG, GenField.tag, GenField.wt, WireType.toNat])
-    (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-    (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-    (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-
-theorem deserLoopIterG_ok (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (hMF : MergeFieldGenOk C ctl (fun _ => True) abs) (x : DeserializeGenGhost) (R : SepProp)
-    (s0 : State) (k : Nat) (s : State) (hr : DeserializeScope x.r) (hk : k < (recFields x.r).length)
-    (hs : DeserLoopG C ctl x R s0 k s) :
-    DeserStepG C ctl x R s0 s (DeserLoopG C ctl x R s0 (k + 1)) abs := by
-  obtain ⟨hpc, hrun, htr, hsym, hF, hsp, hal, hx29, hx19, hx20, hx23, hmem⟩ := hs
-  let L := deserSpL s0.sp
-  let fl := (recFields x.r)[k]
-  let rest := ((recFields x.r).drop (k + 1)).flatMap GenField.enc
-  let payRest := fl.payload ++ rest
-  let curPtr := curPtr_loopIterG x.p x.r k
-  have hpc_entry : s.pc = deserEntry_loopIter + 596#64 := by
-    rw [hpc, deserPC_eq_deserEntry_loopIter]
-  have hn_lt : payRest.length < 2 ^ 20 := payload_rest_length_lt_loopIterG hr hk
-  set F_loop : SepProp :=
-    (x.p ↦ₛ preBytes_loopIterG x.r k) ∗
-      prostSSGAt A0 (L + 0x420#64) (ssgAfter x.r k) ∗
-      ((curPtr + 1#64) ↦ₛ payRest) ∗
-      deserFixed_loopIter L ∗ deserOutRegion_loopIter x.out ∗
-      deserCalleeUnused_loopIter L ∗ stackAt L mergeFieldStack ∗
-      deserSaved s0 ∗ R
-  have hmem1 : s.mem ⊨ stepPre_loopIter L curPtr (keyByte_loopIterG fl) payRest.length ∗ F_loop := by
-    change s.mem ⊨ deserLocalsG L x.p (encodeRecord x.r) (((recFields x.r).drop k).flatMap GenField.enc)
-        (ssgAfter x.r k) ∗
-      memRegion x.out 368 ∗ stackAt L deserCalleeStack ∗ deserSaved s0 ∗ R at hmem
-    rw [deserLocalsG_decomp_loopIterG, deserOutRegion_eq_loopIter,
-      sliceCursorAfter_split_key_loopIterG L x.p hr hk,
-      stackAt_deserCallee_split_loopIter L, sep_perm1_loopIter] at hmem
-    exact hmem
-  intro hL
-  rcases (step_254_to_2e8_loopIterG C ctl L curPtr fl payRest.length s
-      (post := fun sm Pm =>
-        sm.pc = deserEntry_loopIter + bv% (2 ^ 64 - 71352) ∧
-        sm.status = .Running ∧
-        sm.sp = s.sp ∧
-        (sm.trace = s.trace ∧ calleeSavedVRegs sm = calleeSavedVRegs s) ∧
-        sm.readReg64 .lr = deserEntry_loopIter + 748#64 ∧
-        sm.readReg64 .x0 = L + 0x420#64 ∧
-        (sm.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 fl.tag ∧
-        (sm.readReg64 .x2).setWidth 8 = BitVec.ofNat 8 fl.wt.toNat ∧
-        sm.readReg64 .x3 = L + 0x6e8#64 ∧
-        (sm.readReg64 .x4).setWidth 32 = 99#32 ∧
-        sm.readReg64 .x19 = s.readReg64 .x19 ∧
-        sm.readReg64 .x20 = 0#64 ∧
-        sm.readReg64 .x23 = L + 0x408#64 ∧
-        sm.readReg64 .x29 = L + 0x710#64 ∧
-        Pm = stepPost_loopIter L curPtr (keyByte_loopIterG fl) payRest.length)
-      hpc_entry hrun hx29 hx20 hx23 hn_lt
-      (fun _ h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13 h14 =>
-        ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14, rfl⟩)).elim hmem1 hL with
-    ⟨sm, hsteps1, ⟨-, -, Pm, hmm, hpcm, hrunm, hspm, htrm, hlrm,
-      hx0m, hx1m, hx2m, hx3m, hx4m, hx19m, hx20m, hx23m, hx29m, hPm⟩ | ⟨_, hoom⟩⟩
-  swap; · exact (not_satisfies_false_sepConj hoom).elim
-  subst hPm
-  have hFm : sessionImg0.FrozenLoaded sm := hsteps1.frozenLoaded hF
-  have hsymm : sm.symtab = sessionImg0.symtab := hsteps1.symtab_eq.trans hsym
-  have hLm : (recordProg C ctl abs).CodeLoaded sm.mem := hsteps1.codeLoaded hL
-  have hspm_L : sm.sp = L := hspm.trans hsp
-  have hal_m : sm.spAligned = true := by
-    simp only [State.spAligned] at hal ⊢
-    rwa [hspm]
-  have hcall : subroutine_ok (recordProg C ctl abs)
-      (deserEntry_loopIter + bv% (2 ^ 64 - 71352)) (mergeFieldGenSpec (fun _ => True)) := by
-    rw [mergeField_fnAddr_eq_loopIter C ctl]
-    exact hMF
-  let g : MergeFieldGenGhost :=
-    ⟨L + 0x420#64, ssgAfter x.r k, fl, L + 0x6e8#64, L + 0x3f8#64, curPtr + 1#64, rest⟩
-  set F_mf : SepProp :=
-    (curPtr ↦₈ keyByte_loopIterG fl) ∗
-      (x.p ↦ₛ preBytes_loopIterG x.r k) ∗
-      deserFixed_loopIter L ∗ deserOutRegion_loopIter x.out ∗
-      deserCalleeUnused_loopIter L ∗ deserSaved s0
-  have hok : fl.Ok := recFields_ok x.r hr fl (List.getElem_mem hk)
-  have hfresh : fl.Fresh (ssgAfter x.r k) := recFields_fresh x.r hr k hk
-  have hpay_lt32 : (fl.payload ++ rest).length < 2 ^ 32 :=
-    Nat.lt_trans hn_lt (by decide)
-  have hpre_mf : sm.mem ⊨ (mergeFieldGenSpec (fun _ => True)).pre g sm ∗ (F_mf ∗ R) := by
-    dsimp only [mergeFieldGenSpec, g]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0m, hx1m, hx2m, hx3m, hx4m, trivial, hok, hfresh, hpay_lt32, hFm, hsymm⟩, ?_⟩
-    rw [hspm_L]
-    unfold Prost.sliceCursorAt
-    have ha : L + 0x3f8#64 + 8#64 = L + 0x400#64 := by bv_omega
-    rw [ha]
-    dsimp only [stepPost_loopIter, F_loop] at hmm
-    dsimp only [F_mf]
-    rw [← sep_perm2_loopIter]
-    exact hmm
-  obtain ⟨s2, hsteps2, hout, -⟩ :=
-    hcall.no_fault_before_outcome g (F_mf ∗ R) sm hpcm hrunm hpre_mf hal_m hLm
-  rcases hout with ⟨⟨hpc2, _, hrun2⟩, ⟨hsp2, hcs2⟩, hpost2⟩ | ⟨hpan2, hpost2⟩ | ⟨code, _, hpost2⟩ | ⟨_, hpost2⟩
-  · rw [hlrm] at hpc2
-    dsimp only [mergeFieldGenSpec, g] at hpost2
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost2
-    obtain ⟨⟨htr2, hx0_2⟩, hmem2⟩ := hpost2
-    have hL2 : (recordProg C ctl abs).CodeLoaded s2.mem := hsteps2.codeLoaded hLm
-    rcases (step_2ec_loopIter C ctl s2
-        (P := prostSSGAt A0 (L + 0x420#64) ((ssgAfter x.r k).apply fl) ∗
-          ((L + 0x6e8#64) ↦₆₄ (L + 0x3f8#64)) ∗
-          Prost.sliceCursorAfter (L + 0x3f8#64) (curPtr + 1#64) payRest rest ∗
-          stackAt sm.sp mergeFieldStack)
-        (post := fun sf P_f =>
-          sf.pc = deserEntry_loopIter + 596#64 ∧
-          sf.status = .Running ∧
-          sf.sp = s2.sp ∧
-          (sf.trace = s2.trace ∧ calleeSavedVRegs sf = calleeSavedVRegs s2) ∧
-          sf.readReg64 .x19 = s2.readReg64 .x19 ∧
-          sf.readReg64 .x20 = s2.readReg64 .x20 ∧
-          sf.readReg64 .x23 = s2.readReg64 .x23 ∧
-          sf.readReg64 .x29 = s2.readReg64 .x29 ∧
-          P_f = (prostSSGAt A0 (L + 0x420#64) ((ssgAfter x.r k).apply fl) ∗
-            ((L + 0x6e8#64) ↦₆₄ (L + 0x3f8#64)) ∗
-            Prost.sliceCursorAfter (L + 0x3f8#64) (curPtr + 1#64) payRest rest ∗
-            stackAt sm.sp mergeFieldStack))
-        hpc2 hrun2 hx0_2
-        (fun _ h1 h2 h3 h4 h5 h6 h7 h8 => ⟨h1, h2, h3, h4, h5, h6, h7, h8, rfl⟩)).elim hmem2 hL2 with
-      ⟨sf, hsteps3, ⟨-, -, P_f, hmf, hpcf, hrunf, hspf, htrf,
-        hx19f, hx20f, hx23f, hx29f, hPf⟩ | ⟨_, hoom⟩⟩
-    swap; · exact (not_satisfies_false_sepConj hoom).elim
-    subst hPf
-    have hsteps_all : Steps (recordProg C ctl abs) s sf := (hsteps1.trans hsteps2).trans hsteps3
-    have hsp_sf : sf.sp = L := hspf.trans (hsp2.trans hspm_L)
-    have hsp_s : sf.sp = s.sp := hsp_sf.trans hsp.symm
-    have hal_sf : sf.spAligned = true := by
-      simp only [State.spAligned] at hal ⊢
-      rwa [hsp_s]
-    refine ⟨sf, hsteps_all, Or.inl ?_⟩
-    refine ⟨?_, hrunf, ⟨htrf.1.trans (htr2.trans (htrm.1.trans htr.1)), htrf.2.trans (hcs2.2.2.2.2.2.2.2.2.2.2.2.trans (htrm.2.trans htr.2))⟩, hsteps_all.symtab_eq.trans hsym, hsteps_all.frozenLoaded hF,
-      hsp_sf, hal_sf, by reg_chain, by reg_chain, by reg_chain, by reg_chain, ?_⟩
-    · rw [deserPC_eq_deserEntry_loopIter]; exact hpcf
-    · change sf.mem ⊨ deserLocalsG L x.p (encodeRecord x.r)
-          (((recFields x.r).drop (k + 1)).flatMap GenField.enc) (ssgAfter x.r (k + 1)) ∗
-        memRegion x.out 368 ∗ stackAt L deserCalleeStack ∗ deserSaved s0 ∗ R
-      rw [deserLocalsG_decomp_loopIterG, deserOutRegion_eq_loopIter,
-        ssgAfter_succ_loopIterG hk, ← sliceCursorAfter_unsplit_key_loopIterG L x.p hr hk,
-        stackAt_deserCallee_split_loopIter L, ← sep_perm3_loopIter]
-      rw [hspm_L] at hmf
-      exact hmf
-  · have hsteps_all : Steps (recordProg C ctl abs) s s2 := hsteps1.trans hsteps2
-    refine ⟨s2, hsteps_all, Or.inr ⟨hpan2, ?_⟩⟩
-    dsimp only [mergeFieldGenSpec, deserializeGenSpec, Serialization.allocPanic] at hpost2 ⊢
-    rw [← sepConj_assoc] at hpost2
-    refine allowPanic_frame (fun ⟨ha, hp⟩ => ?_) hpost2
-    rw [allocFailedIn, htrm.1, htr.1] at ha
-    rw [htrm.1, htr.1] at hp
-    exact ⟨ha, hp⟩
-  · exact (not_satisfies_false_sepConj hpost2).elim
-  · exact (not_satisfies_false_sepConj hpost2).elim
 
 end CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.DeserLoopIterG

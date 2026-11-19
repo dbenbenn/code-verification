@@ -22,7 +22,7 @@ Proves `placed_calloc_fine_entry_ok` for multi-block placed `calloc(nmemb, size)
 `FineBudget`, parameterized by `DefaultMallocFineStmt`.
 -/
 
-@[expose] public noncomputable section
+@[expose] public section
 
 set_option autoImplicit false
 
@@ -669,7 +669,7 @@ private theorem pack_calloc_hit_post [MallocngMultiPlacement]
     (hNoOrph : MallocngNoOrphanMappings ivs0 (dynamicRootRegions st') s0.mem sf.mem)
     (htp : sf.tpidrEl0 = tp) (hbrks : sf.brkStart = brkStart) :
     (MallocngRoTablesA maddrs ∗
-     MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ∗
+     MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ∗
      MallocngRuntime maddrs tp ∗
      mallocngIface.Block (fineBaseGam γ) p total ∗
      ghostMapAuth (fineAlignGam γ) alignMap' ∗
@@ -682,16 +682,16 @@ private theorem pack_calloc_hit_post [MallocngMultiPlacement]
     exact Entails.pure_right (Nat.le_refl 16) (Entails.refl _)
   have hInflight :
       (ghostMapAuth (fineAlignGam γ) alignMap' ∗
-       MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st') ⊢
+       MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st') ⊢
       FineCoreStInflightA 0 γ maddrs brkStart sf.brk bf
         (dynamicRootRegions st') alignMap' live' peak' st' := by
-    dsimp only [FineCoreStInflightA, MallocngCoreStA]
+    dsimp only [FineCoreStInflightA, MallocngCoreStModeA]
     exact Entails.pure_right hFineInv (Entails.refl _)
   have hPost := pack_finePostEnv γ tp brkStart bf ivs0 st' alignMap' live' peak'
     s0 sf hNoOrph htp hbrks
   have hRearr :
       (MallocngRoTablesA maddrs ∗
-       MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ∗
+       MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ∗
        MallocngRuntime maddrs tp ∗
        mallocngIface.Block (fineBaseGam γ) p total ∗
        ghostMapAuth (fineAlignGam γ) alignMap' ∗
@@ -699,10 +699,10 @@ private theorem pack_calloc_hit_post [MallocngMultiPlacement]
       ((mallocngIface.Block (fineBaseGam γ) p total ∗ ghostMapElem (fineAlignGam γ) p 16) ∗
        (MallocngRoTablesA maddrs ∗
         (ghostMapAuth (fineAlignGam γ) alignMap' ∗
-         MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st') ∗
+         MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st') ∗
         MallocngRuntime maddrs tp)) := by
     generalize MallocngRoTablesA maddrs = pRo,
-      MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' = pCr,
+      MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' = pCr,
       MallocngRuntime maddrs tp = pRt,
       mallocngIface.Block (fineBaseGam γ) p total = pBt,
       ghostMapAuth (fineAlignGam γ) alignMap' = pGa,
@@ -733,7 +733,7 @@ private theorem calloc_malloc_hit [MallocngMultiPlacement]
     (hcs0m : CalleeSaved21_28 s0 sm) :
     SepWP (blkPC_b02.rebase b (fun _ => none)) (s0.readReg64 .lr) sm
       (MallocngRoTablesA maddrs ∗
-       MallocngCoreStA (fineBaseGam γ) maddrs brkStart sm.brk live' peak' st' ∗
+       MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sm.brk live' peak' st' ∗
        MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗
        mallocngIface.Block (fineBaseGam γ) p total ∗
        ghostMapAuth (fineAlignGam γ) alignMap' ∗
@@ -746,10 +746,10 @@ private theorem calloc_malloc_hit [MallocngMultiPlacement]
         sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf) oom := by
   have _ := hb; have hp_ne : p ≠ 0#64 := hBlkWf.1
   have hPageRep := pageOf_add_lo12Of maddrs.replaced
-  conv => arg 4; arg 2; arg 1; unfold MallocngCoreStA MallocngCoreStInflightA
+  conv => arg 4; arg 2; arg 1; unfold MallocngCoreStModeA MallocngCoreStInflightModeA
   wp_step; wp_step; wp_step; wp_step; wp_step
-  conv => arg 4; arg 2; arg 1; change MallocngCoreStA (fineBaseGam γ) maddrs brkStart sm.brk live' peak' st'
-  have hallz := placed_mallocAllzerop_ok (P := blkPC_b02.rebase b (fun _ => none))
+  conv => arg 4; arg 2; arg 1; change MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sm.brk live' peak' st'
+  have hallz := placed_mallocAllzerop_ok (ro := true) (P := blkPC_b02.rebase b (fun _ => none))
     (fineBaseGam γ) brkStart p bs total (max total MallocngMinBlockCost) live' peak' idx st' g'
     (mallocngIface.Block (fineBaseGam γ) p total) hg' hIdx hSlot
   rw [at_bl_target hb 10 172#64] at hallz; wp_call hallz
@@ -769,13 +769,13 @@ private theorem calloc_malloc_hit [MallocngMultiPlacement]
     ‹sf.readReg64 (.gpr 19#5) = _›.trans (by simpa [arm64_norm] using hx19m)
   have hx20_az : sf.readReg64 .x20 = p := ‹sf.readReg64 (.gpr 20#5) = _›
   let EnvRest := MallocngRoTablesA maddrs ∗
-    MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ∗
+    MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ∗
     MallocngRuntime maddrs tp ∗ mallocngIface.Block (fineBaseGam γ) p total ∗
     ghostMapAuth (fineAlignGam γ) alignMap' ∗ ghostMapElem (fineAlignGam γ) p 16
   cases hMmap : g'.isMmapped
   · simp only [hMmap, Bool.false_eq_true, ↓reduceIte] at hx0_az; wp_step
     have hPreEq : (MallocngRoTablesA maddrs ∗
-        MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ∗
+        MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ∗
         (p ↦ₛ bs) ∗ mallocngIface.Block (fineBaseGam γ) p total ∗
         MallocngRuntime maddrs tp ∗ ghostMapAuth (fineAlignGam γ) alignMap' ∗
         ghostMapElem (fineAlignGam γ) p 16 ∗ callocStackSaved sp0 s0 v2 v3) =
@@ -807,7 +807,7 @@ private theorem calloc_malloc_hit [MallocngMultiPlacement]
     have hRearrEnd :
         ((p ↦ₛ List.replicate total 0#8) ∗
          (MallocngRoTablesA maddrs ∗
-          MallocngCoreStA (fineBaseGam γ) maddrs brkStart s_end.brk live' peak' st' ∗
+          MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart s_end.brk live' peak' st' ∗
           MallocngRuntime maddrs tp ∗ mallocngIface.Block (fineBaseGam γ) p total ∗
           ghostMapAuth (fineAlignGam γ) alignMap' ∗ ghostMapElem (fineAlignGam γ) p 16) ∗
          stackFrameAt sp0 1024) ⊢
@@ -823,7 +823,7 @@ private theorem calloc_malloc_hit [MallocngMultiPlacement]
   · simp only [hMmap, ↓reduceIte] at hx0_az; have hbsZ := hZeroMmap hMmap; subst hbsZ; wp_step
     let EpRest := (p ↦ₛ List.replicate total 0#8) ∗ EnvRest
     have hPreEq : (MallocngRoTablesA maddrs ∗
-        MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ∗
+        MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ∗
         (p ↦ₛ List.replicate total 0#8) ∗ mallocngIface.Block (fineBaseGam γ) p total ∗
         MallocngRuntime maddrs tp ∗ ghostMapAuth (fineAlignGam γ) alignMap' ∗
         ghostMapElem (fineAlignGam γ) p 16 ∗ callocStackSaved sp0 s0 v2 v3) =
@@ -964,13 +964,13 @@ private theorem calloc_no_ovf [MallocngMultiPlacement]
          (stackFrameAt (sp0 - 48#64) 704 ∗ RestStack)) ⊢
         ⌜MallocngFineInv 0 bf (dynamicRootRegions st') alignMap' st'⌝ ∗
         (MallocngRoTablesA maddrs ∗
-         MallocngCoreStA (fineBaseGam γ) maddrs brkStart sm.brk live' peak' st' ∗
+         MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sm.brk live' peak' st' ∗
          MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗
          mallocngIface.Block (fineBaseGam γ) p total ∗
          ghostMapAuth (fineAlignGam γ) alignMap' ∗
          ghostMapElem (fineAlignGam γ) p 16 ∗
          callocStackSaved sp0 s0 v2 v3) := by
-      dsimp only [FineCoreStInflightA, FineBlock, MallocngCoreStA, mallocngIface, callocStackSaved, RestStack, bf, ok, total]
+      dsimp only [FineCoreStInflightA, FineBlock, MallocngCoreStModeA, mallocngIface, callocStackSaved, RestStack, bf, ok, total]
       rw [pure_sepConj_of_true (Nat.le_refl 16)]
       exact Entails.of_eq (by ac_rfl)
     apply SepWP.weaken_pre hUnpackPre

@@ -516,26 +516,6 @@ private theorem countRw_eq_len_of_rw {m : Memory} {addr : BitVec 64} {n : Nat}
   rw [countRw_eq_countPred]
   exact countPred_eq_len_of_true_on addr fun i hi => beq_iff_eq.mpr (h i hi)
 
-private theorem rwBytes_unmapWritable (m : Memory) (base : BitVec 64) (len : Nat)
-    (hb : base.toNat + len ≤ 2 ^ 64) :
-    rwBytes m = rwBytes (m.unmapWritable base len) + m.countRw base len := by
-  have h0 : (m.unmapWritable base len).countRw base len = 0 := by
-    apply countRw_eq_zero_of_not_rw
-    intro i hi
-    rw [Memory.perm_unmapWritable]
-    have hin : (base + BitVec.ofNat 64 i - base).toNat < len := by bv_omega
-    simp only [hin, decide_true, Bool.true_and]
-    intro hcontra
-    by_cases hw : (m.perm (base + BitVec.ofNat 64 i)).w = true
-    · simp only [hw, ↓reduceIte] at hcontra; nomatch hcontra
-    · simp only [Bool.eq_false_iff.mpr hw, Bool.false_eq_true, ↓reduceIte] at hcontra
-      rw [hcontra] at hw; revert hw; decide
-  have hsplit := rwBytes_split_region (m1 := m) (m2 := m.unmapWritable base len) base len hb
-    fun a hout => by
-      rw [Memory.perm_unmapWritable]
-      simp only [hout, decide_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
-  omega
-
 private theorem rwBytes_unmapNonFrozen (m : Memory) (base : BitVec 64) (len : Nat)
     (hb : base.toNat + len ≤ 2 ^ 64) :
     rwBytes m = rwBytes (m.unmapNonFrozen base len) + m.countRw base len := by
@@ -713,66 +693,68 @@ private theorem physPlusRw_st (s : State) (st : ExecStatus) :
     physPlusRw (s.setStatus st) = physPlusRw s := by cases s; rfl
 private theorem physPlusRw_or (s : State) :
     physPlusRw s.nextOracle = physPlusRw s := by cases s; rfl
+private theorem physPlusRw_brk (s : State) (b : BitVec 64) :
+    physPlusRw (s.setBrk b) = physPlusRw s := by cases s; rfl
 
 private theorem physPlusRw_execBrk (s : State) : physPlusRw (execBrk s) = physPlusRw s := by
   dsimp only [execBrk]
   split
   · simp [physPlusRw_adv, physPlusRw_w64]
   · split
-    · split
-      · simp [physPlusRw_adv, physPlusRw_w64]
-      · simp only [physPlusRw_adv, physPlusRw_w64]
-        let oldPage := Arm64.pageAlignUp s.brk.toNat
-        let newPage := Arm64.pageAlignUp (s.readReg64 Reg.x0).toNat
-        change (s.physMemAvail + s.mem.countRw (BitVec.ofNat 64 newPage) (oldPage - newPage)) +
-          rwBytes (s.mem.unmapWritable (BitVec.ofNat 64 newPage) (oldPage - newPage)) =
-          s.physMemAvail + rwBytes s.mem
-        have hold64 : oldPage ≤ 2 ^ 64 := by
-          unfold oldPage Arm64.pageAlignUp PAGE_SIZE
-          have := s.brk.isLt; omega
-        by_cases heq : newPage = oldPage
-        · have hsub : oldPage - newPage = 0 := by omega
-          rw [hsub]
-          have h0 : s.mem.countRw (BitVec.ofNat 64 newPage) 0 = 0 := rfl
-          have hm0 : rwBytes (s.mem.unmapWritable (BitVec.ofNat 64 newPage) 0) = rwBytes s.mem :=
-            rwBytes_congr fun a => by rw [Memory.perm_unmapWritable]; simp
-          omega
-        · have hlt : newPage < 2 ^ 64 := by omega
-          have hb : (BitVec.ofNat 64 newPage).toNat + (oldPage - newPage) ≤ 2 ^ 64 := by
-            have : (BitVec.ofNat 64 newPage).toNat = newPage := Nat.mod_eq_of_lt hlt
-            omega
-          have hrw := rwBytes_unmapWritable s.mem (BitVec.ofNat 64 newPage) (oldPage - newPage) hb
-          omega
-    · split
-      · simp [physPlusRw_adv, physPlusRw_w64]
-      · next hcan_guard =>
+    · simp [physPlusRw_adv, physPlusRw_w64, physPlusRw_brk]
+    · next hne =>
+      split
+      · next hlt =>
         split
-        · simp [physPlusRw_st]
-        · next hphys =>
-          simp only [Bool.not_eq_true, Bool.or_eq_false_iff, Bool.not_eq_false', decide_eq_true_eq,
-            USER_VA_LIMIT, BRK_GUARD_GAP, PAGE_SIZE] at hcan_guard hphys
-          let oldPage := Arm64.pageAlignUp s.brk.toNat
-          let newPage := Arm64.pageAlignUp (s.readReg64 Reg.x0).toNat
-          let growBytes := newPage - oldPage
-          have hold64 : oldPage ≤ 2 ^ 64 := by
-            unfold oldPage Arm64.pageAlignUp PAGE_SIZE
-            have := s.brk.isLt; omega
-          have hnew48 : newPage + 256 * 4096 ≤ 2 ^ 48 := of_decide_eq_true hcan_guard.1
-          have hb : (BitVec.ofNat 64 oldPage).toNat + growBytes ≤ 2 ^ 64 := by
-            have holdLt : oldPage < 2 ^ 64 := by omega
-            have : (BitVec.ofNat 64 oldPage).toNat = oldPage := Nat.mod_eq_of_lt holdLt
+        · simp [physPlusRw_adv, physPlusRw_w64]
+        · split
+          · simp [physPlusRw_st]
+          · simp only [physPlusRw_adv, physPlusRw_w64]
+            let oldPage := Arm64.pageAlignUp s.brk.toNat
+            let newPage := Arm64.pageAlignUp (s.readReg64 Reg.x0).toNat
+            change (s.physMemAvail + s.mem.countRw (BitVec.ofNat 64 newPage) (oldPage - newPage)) +
+              rwBytes (s.mem.unmapNonFrozen (BitVec.ofNat 64 newPage) (oldPage - newPage)) =
+              s.physMemAvail + rwBytes s.mem
+            have hold64 : oldPage ≤ 2 ^ 64 := by
+              unfold oldPage Arm64.pageAlignUp PAGE_SIZE
+              have := s.brk.isLt; omega
+            have hlt' : newPage < oldPage := hlt
+            have hnewLt : newPage < 2 ^ 64 := by omega
+            have hb : (BitVec.ofNat 64 newPage).toNat + (oldPage - newPage) ≤ 2 ^ 64 := by
+              have : (BitVec.ofNat 64 newPage).toNat = newPage := Nat.mod_eq_of_lt hnewLt
+              omega
+            have hrw := rwBytes_unmapNonFrozen s.mem (BitVec.ofNat 64 newPage) (oldPage - newPage) hb
             omega
-          have hcan : s.mem.canMap (BitVec.ofNat 64 oldPage) growBytes = true := by
-            rw [Memory.canMap, Memory.allPerm_iff]
-            intro i hi
-            exact (Memory.allPerm_iff s.mem (fun p => !p.mapped) (BitVec.ofNat 64 oldPage)
-              (growBytes + 256 * 4096)).mp hcan_guard.2 i (by omega)
-          have hrw := rwBytes_mapZero_of_canMap hb hcan
-          simp only [physPlusRw_adv, physPlusRw_w64]
-          change (s.physMemAvail - growBytes) +
-            rwBytes (s.mem.mapZero (BitVec.ofNat 64 oldPage) growBytes) =
-            s.physMemAvail + rwBytes s.mem
-          omega
+      · split
+        · simp [physPlusRw_adv, physPlusRw_w64]
+        · next hcan_guard =>
+          split
+          · simp [physPlusRw_st]
+          · next hphys =>
+            simp only [Bool.not_eq_true, Bool.or_eq_false_iff, Bool.not_eq_false', decide_eq_true_eq,
+              USER_VA_LIMIT, BRK_GUARD_GAP, PAGE_SIZE] at hcan_guard hphys
+            let oldPage := Arm64.pageAlignUp s.brk.toNat
+            let newPage := Arm64.pageAlignUp (s.readReg64 Reg.x0).toNat
+            let growBytes := newPage - oldPage
+            have hold64 : oldPage ≤ 2 ^ 64 := by
+              unfold oldPage Arm64.pageAlignUp PAGE_SIZE
+              have := s.brk.isLt; omega
+            have hnew48 : newPage + 256 * 4096 ≤ 2 ^ 48 := of_decide_eq_true hcan_guard.1
+            have hb : (BitVec.ofNat 64 oldPage).toNat + growBytes ≤ 2 ^ 64 := by
+              have holdLt : oldPage < 2 ^ 64 := by omega
+              have : (BitVec.ofNat 64 oldPage).toNat = oldPage := Nat.mod_eq_of_lt holdLt
+              omega
+            have hcan : s.mem.canMap (BitVec.ofNat 64 oldPage) growBytes = true := by
+              rw [Memory.canMap, Memory.allPerm_iff]
+              intro i hi
+              exact (Memory.allPerm_iff s.mem (fun p => !p.mapped) (BitVec.ofNat 64 oldPage)
+                (growBytes + 256 * 4096)).mp hcan_guard.2 i (by omega)
+            have hrw := rwBytes_mapZero_of_canMap hb hcan
+            simp only [physPlusRw_adv, physPlusRw_w64]
+            change (s.physMemAvail - growBytes) +
+              rwBytes (s.mem.mapZero (BitVec.ofNat 64 oldPage) growBytes) =
+              s.physMemAvail + rwBytes s.mem
+            omega
 
 private theorem physPlusRw_execMunmap (s : State) : physPlusRw (execMunmap s) = physPlusRw s := by
   dsimp only [execMunmap]
@@ -782,61 +764,157 @@ private theorem physPlusRw_execMunmap (s : State) : physPlusRw (execMunmap s) = 
     split
     · simp [physPlusRw_st]
     · simp only [Bool.not_eq_true, Bool.or_eq_false_iff, Bool.not_eq_false', decide_eq_true_eq] at hvalid
-      have hb : (s.readReg64 Reg.x0).toNat + Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat ≤ 2 ^ 64 := by
+      have hb : (untaggedAddr (s.readReg64 Reg.x0)).toNat + Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat ≤ 2 ^ 64 := by
         have := hvalid.2; omega
-      have hrw := rwBytes_unmapNonFrozen s.mem (s.readReg64 Reg.x0)
+      have hrw := rwBytes_unmapNonFrozen s.mem (untaggedAddr (s.readReg64 Reg.x0))
         (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat) hb
       simp only [physPlusRw_adv, physPlusRw_w64]
-      change (s.physMemAvail + s.mem.countRw (s.readReg64 Reg.x0) (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat)) +
-        rwBytes (s.mem.unmapNonFrozen (s.readReg64 Reg.x0) (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat)) =
+      change (s.physMemAvail + s.mem.countRw (untaggedAddr (s.readReg64 Reg.x0)) (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat)) +
+        rwBytes (s.mem.unmapNonFrozen (untaggedAddr (s.readReg64 Reg.x0)) (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat)) =
         s.physMemAvail + rwBytes s.mem
       omega
 
+private theorem canMap_unmapNonFrozen_inPlace_shrink {m : Memory} {oldBase : BitVec 64}
+    {oldSize newSize : Nat}
+    (_holdBound : oldBase.toNat + oldSize ≤ 2 ^ 64)
+    (hfrz : m.allPerm (fun p => !p.frozen) oldBase oldSize = true)
+    (hle : newSize ≤ oldSize) :
+    (m.unmapNonFrozen oldBase oldSize).canMap oldBase newSize = true := by
+  unfold Memory.canMap
+  rw [Memory.allPerm_iff]
+  intro i hi
+  have hi' : i < oldSize := by omega
+  have hnf : (!(m.perm (oldBase + BitVec.ofNat 64 i)).frozen) = true :=
+    (Memory.allPerm_iff m (fun p => !p.frozen) oldBase oldSize).mp hfrz i hi'
+  have hin : (oldBase + BitVec.ofNat 64 i - oldBase).toNat < oldSize := by bv_omega
+  rw [Memory.perm_unmapNonFrozen]
+  simp only [hin, hnf, decide_true, Bool.true_and, ↓reduceIte]
+  rfl
+
+private theorem canMap_unmapNonFrozen_inPlace_grow {m : Memory} {oldBase : BitVec 64}
+    {oldSize newSize : Nat}
+    (_hnewBound : oldBase.toNat + newSize ≤ 2 ^ 64)
+    (hlt : oldSize < newSize)
+    (hfrz : m.allPerm (fun p => !p.frozen) oldBase oldSize = true)
+    (htail : m.canMap (oldBase + BitVec.ofNat 64 oldSize) (newSize - oldSize) = true) :
+    (m.unmapNonFrozen oldBase oldSize).canMap oldBase newSize = true := by
+  unfold Memory.canMap at htail ⊢
+  rw [Memory.allPerm_iff]
+  intro i hi
+  by_cases hio : i < oldSize
+  · have hnf : (!(m.perm (oldBase + BitVec.ofNat 64 i)).frozen) = true :=
+      (Memory.allPerm_iff m (fun p => !p.frozen) oldBase oldSize).mp hfrz i hio
+    have hin : (oldBase + BitVec.ofNat 64 i - oldBase).toNat < oldSize := by bv_omega
+    rw [Memory.perm_unmapNonFrozen]
+    simp only [hin, hnf, decide_true, Bool.true_and, ↓reduceIte]
+    rfl
+  · have hj : i - oldSize < newSize - oldSize := by omega
+    have hadd : oldBase + BitVec.ofNat 64 oldSize + BitVec.ofNat 64 (i - oldSize) =
+        oldBase + BitVec.ofNat 64 i := by bv_omega
+    have hum := (Memory.allPerm_iff m (fun p => !p.mapped)
+      (oldBase + BitVec.ofNat 64 oldSize) (newSize - oldSize)).mp htail (i - oldSize) hj
+    rw [hadd] at hum
+    rw [Memory.perm_unmapNonFrozen]
+    split <;> simp [hum]
+
+private theorem physPlusRw_ite {b : Bool} {s₁ s₂ : State} {v : Nat}
+    (h₁ : b = true → physPlusRw s₁ = v) (h₂ : b = false → physPlusRw s₂ = v) :
+    physPlusRw (if b then s₁ else s₂) = v := by
+  cases b <;> simp [h₁, h₂]
+
 private theorem physPlusRw_execMremap (s : State) : physPlusRw (execMremap s) = physPlusRw s := by
-  dsimp only [execMremap]
-  split
-  · simp [physPlusRw_st]
-  · split
-    · simp [physPlusRw_adv, physPlusRw_w64]
-    · split
-      · simp [physPlusRw_st]
-      · split
-        · simp [physPlusRw_adv, physPlusRw_w64]
-        · next holdLim =>
-          split
-          · simp [physPlusRw_st]
-          · split
-            · simp [physPlusRw_adv, physPlusRw_w64]
-            · split
-              · simp [physPlusRw_st]
-              · next hrw =>
-                split
-                · simp [physPlusRw_st]
-                · next _ =>
-                  split
-                  · simp [physPlusRw_adv, physPlusRw_w64, physPlusRw_or]
-                  · split
-                    · simp [physPlusRw_adv, physPlusRw_w64, physPlusRw_or]
-                    · next newBase hsan =>
-                      split
-                      · simp [physPlusRw_st]
-                      · next hphys =>
-                        simp only [Bool.not_eq_true, Bool.not_eq_false', decide_eq_true_eq, USER_VA_LIMIT]
-                          at holdLim hrw hphys
-                        obtain ⟨_, _, hnbFit, hcan⟩ := sanitizeMmapAddr_spec hsan
-                        simp only [USER_VA_LIMIT] at hnbFit
-                        have holdBound : (s.readReg64 Reg.x0).toNat +
-                            Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat ≤ 2 ^ 64 := by
-                          have := of_decide_eq_true holdLim; omega
-                        have hrw_eq := rwBytes_remapRw holdBound (by omega) hrw hcan
-                        simp only [physPlusRw_adv, physPlusRw_w64, physPlusRw_or]
-                        change (s.physMemAvail + Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat -
-                            Arm64.pageAlignUp (s.readReg64 Reg.x2).toNat) +
-                          rwBytes (s.mem.remapRw (s.readReg64 Reg.x0)
-                            (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat) newBase
-                            (Arm64.pageAlignUp (s.readReg64 Reg.x2).toNat)) =
-                          s.physMemAvail + rwBytes s.mem
-                        omega
+  dsimp (config := { zetaHave := true }) only [execMremap]
+  apply physPlusRw_ite; · intro _; simp [physPlusRw_st]
+  intro _
+  apply physPlusRw_ite; · intro _; simp [physPlusRw_adv, physPlusRw_w64]
+  intro _
+  apply physPlusRw_ite; · intro _; simp [physPlusRw_st]
+  intro _
+  apply physPlusRw_ite; · intro _; simp [physPlusRw_adv, physPlusRw_w64, physPlusRw_or]
+  intro _
+  apply physPlusRw_ite
+  · intro _
+    apply physPlusRw_ite; · intro _; simp [physPlusRw_adv, physPlusRw_w64, physPlusRw_or]
+    intro _
+    apply physPlusRw_ite; · intro _; simp [physPlusRw_adv, physPlusRw_w64, physPlusRw_or]
+    intro _
+    apply physPlusRw_ite <;> (intro _; simp [physPlusRw_adv, physPlusRw_w64, physPlusRw_or])
+  intro holdLim
+  simp only [Bool.not_eq_false', decide_eq_true_eq] at holdLim
+  simp only [USER_VA_LIMIT] at holdLim
+  have holdBound : (untaggedAddr (s.readReg64 Reg.x0)).toNat +
+      Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat ≤ 2 ^ 64 := by omega
+  apply physPlusRw_ite; · intro _; simp [physPlusRw_st]
+  intro hfrz
+  apply physPlusRw_ite; · intro _; simp [physPlusRw_adv, physPlusRw_w64, physPlusRw_or]
+  intro _
+  apply physPlusRw_ite; · intro _; simp [physPlusRw_st]
+  intro hrw
+  apply physPlusRw_ite; · intro _; simp [physPlusRw_st]
+  intro _
+  apply physPlusRw_ite; · intro _; simp [physPlusRw_adv, physPlusRw_w64, physPlusRw_or]
+  intro _
+  apply physPlusRw_ite
+  · intro _
+    apply physPlusRw_ite
+    · intro hle
+      simp only [Bool.not_eq_false', decide_eq_true_eq] at hfrz hrw hle
+      have hcan := canMap_unmapNonFrozen_inPlace_shrink holdBound hfrz hle
+      have hrw_eq := rwBytes_remapRw holdBound (by omega) hrw hcan
+      simp only [physPlusRw_adv, physPlusRw_w64, physPlusRw_or]
+      change (s.physMemAvail + Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat -
+          Arm64.pageAlignUp (s.readReg64 Reg.x2).toNat) +
+        rwBytes (s.mem.remapRw (untaggedAddr (s.readReg64 Reg.x0))
+          (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat) (untaggedAddr (s.readReg64 Reg.x0))
+          (Arm64.pageAlignUp (s.readReg64 Reg.x2).toNat)) =
+        s.physMemAvail + rwBytes s.mem
+      omega
+    · intro hgt
+      apply physPlusRw_ite; · intro _; simp [physPlusRw_adv, physPlusRw_w64, physPlusRw_or]
+      intro hgrowOk
+      apply physPlusRw_ite; · intro _; simp [physPlusRw_st]
+      intro hphys
+      simp only [Bool.or_eq_false_iff, Bool.not_eq_false']
+        at hfrz hrw hgrowOk hphys
+      simp only [decide_eq_true_eq, decide_eq_false_iff_not]
+        at hgt hgrowOk hphys
+      have hgrowLim : (untaggedAddr (s.readReg64 Reg.x0)).toNat +
+          Arm64.pageAlignUp (s.readReg64 Reg.x2).toNat ≤ USER_VA_LIMIT := hgrowOk.1
+      simp only [USER_VA_LIMIT] at hgrowLim
+      have hnewBound : (untaggedAddr (s.readReg64 Reg.x0)).toNat +
+          Arm64.pageAlignUp (s.readReg64 Reg.x2).toNat ≤ 2 ^ 64 := by omega
+      have hcan := canMap_unmapNonFrozen_inPlace_grow hnewBound (by omega) hfrz hgrowOk.2
+      have hrw_eq := rwBytes_remapRw holdBound hnewBound hrw hcan
+      simp only [physPlusRw_adv, physPlusRw_w64, physPlusRw_or]
+      change (s.physMemAvail + Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat -
+          Arm64.pageAlignUp (s.readReg64 Reg.x2).toNat) +
+        rwBytes (s.mem.remapRw (untaggedAddr (s.readReg64 Reg.x0))
+          (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat) (untaggedAddr (s.readReg64 Reg.x0))
+          (Arm64.pageAlignUp (s.readReg64 Reg.x2).toNat)) =
+        s.physMemAvail + rwBytes s.mem
+      omega
+  · intro _
+    cases hsan : sanitizeMmapAddr
+        (s.mem.unmapNonFrozen (untaggedAddr (s.readReg64 Reg.x0)) (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat))
+        (s.oracle.mmap s.oracleIdx) (Arm64.pageAlignUp (s.readReg64 Reg.x2).toNat) with
+    | none => simp [physPlusRw_adv, physPlusRw_w64, physPlusRw_or]
+    | some newBase =>
+      dsimp only
+      apply physPlusRw_ite; · intro _; simp [physPlusRw_st]
+      intro hphys
+      simp only [Bool.not_eq_false'] at hrw hphys
+      simp only [decide_eq_true_eq] at hphys
+      obtain ⟨_, _, hnbFit, hcan⟩ := sanitizeMmapAddr_spec hsan
+      simp only [USER_VA_LIMIT] at hnbFit
+      have hrw_eq := rwBytes_remapRw holdBound (by omega) hrw hcan
+      simp only [physPlusRw_adv, physPlusRw_w64, physPlusRw_or]
+      change (s.physMemAvail + Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat -
+          Arm64.pageAlignUp (s.readReg64 Reg.x2).toNat) +
+        rwBytes (s.mem.remapRw (untaggedAddr (s.readReg64 Reg.x0))
+          (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat) newBase
+          (Arm64.pageAlignUp (s.readReg64 Reg.x2).toNat)) =
+        s.physMemAvail + rwBytes s.mem
+      omega
 
 private theorem physPlusRw_execMmap (s : State) : physPlusRw (execMmap s) = physPlusRw s := by
   dsimp only [execMmap]
@@ -926,42 +1004,46 @@ private theorem physPlusRw_execMprotect (s : State) (hprot : s.readReg64 Reg.x2 
   · split
     · simp [physPlusRw_adv, physPlusRw_w64]
     · split
-      · simp [physPlusRw_st]
-      · next hfit =>
-        simp only [Bool.not_eq_true, Bool.not_eq_false', decide_eq_true_eq] at hfit
-        have hb : (s.readReg64 Reg.x0).toNat + Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat ≤ 2 ^ 64 := by omega
-        split
+      · simp [physPlusRw_adv, physPlusRw_w64]
+      · split
         · simp [physPlusRw_adv, physPlusRw_w64]
         · split
           · simp [physPlusRw_st]
-          · next hnf =>
+          · next hfit =>
+            simp only [Bool.not_eq_true, Bool.not_eq_false', decide_eq_true_eq] at hfit
+            have hb : (untaggedAddr (s.readReg64 Reg.x0)).toNat + Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat ≤ 2 ^ 64 := by
+              omega
             split
-            · split <;> simp [physPlusRw_adv, physPlusRw_w64, physPlusRw_st]
-            · next hmap =>
-              simp only [Bool.not_eq_true, Bool.not_eq_false'] at hnf hmap
+            · simp [physPlusRw_st]
+            · next hnf =>
               split
-              · next hnone =>
-                exact absurd (eq_of_beq hnone) (by rw [hprot]; decide)
-              · split
-                · simp [physPlusRw_st]
-                · next hphys =>
-                  simp only [Bool.not_eq_true, Bool.not_eq_false', decide_eq_true_eq] at hphys
-                  have hrw := rwBytes_setPermNonFrozen_rw hb hnf hmap
-                  have hle := countRw_le_len s.mem (s.readReg64 Reg.x0) (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat)
-                  simp only [physPlusRw_adv, physPlusRw_w64]
-                  change (s.physMemAvail - (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat -
-                      s.mem.countRw (s.readReg64 Reg.x0) (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat))) +
-                    rwBytes (s.mem.setPermNonFrozen (s.readReg64 Reg.x0) (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat) Perm.rw) =
-                    s.physMemAvail + rwBytes s.mem
-                  omega
+              · split <;> simp [physPlusRw_adv, physPlusRw_w64, physPlusRw_st]
+              · next hmap =>
+                simp only [Bool.not_eq_true, Bool.not_eq_false'] at hnf hmap
+                split
+                · next hnone =>
+                  exact absurd (eq_of_beq hnone) (by rw [hprot]; decide)
+                · split
+                  · simp [physPlusRw_st]
+                  · next hphys =>
+                    simp only [Bool.not_eq_true, Bool.not_eq_false', decide_eq_true_eq] at hphys
+                    have hrw := rwBytes_setPermNonFrozen_rw hb hnf hmap
+                    have hle := countRw_le_len s.mem (untaggedAddr (s.readReg64 Reg.x0))
+                      (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat)
+                    simp only [physPlusRw_adv, physPlusRw_w64]
+                    change (s.physMemAvail - (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat -
+                        s.mem.countRw (untaggedAddr (s.readReg64 Reg.x0)) (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat))) +
+                      rwBytes (s.mem.setPermNonFrozen (untaggedAddr (s.readReg64 Reg.x0)) (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat) Perm.rw) =
+                      s.physMemAvail + rwBytes s.mem
+                    omega
 
 private theorem physPlusRw_execMadvise (s : State) : physPlusRw (execMadvise s) = physPlusRw s := by
   dsimp (config := { zetaHave := true }) only [execMadvise]
-  have hzero : physPlusRw (s.setMem (s.mem.zeroNonFrozen (s.readReg64 Reg.x0)
+  have hzero : physPlusRw (s.setMem (s.mem.zeroNonFrozen (untaggedAddr (s.readReg64 Reg.x0))
       (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat))) = physPlusRw s := by
     change s.physMemAvail + rwBytes (s.mem.zeroNonFrozen _ _) = s.physMemAvail + rwBytes s.mem
     rw [rwBytes_congr (Memory.perm_zeroNonFrozen_apply s.mem _ _)]
-  have hmadv : physPlusRw (s.setMem (s.mem.madvFreeNonFrozen (s.readReg64 Reg.x0)
+  have hmadv : physPlusRw (s.setMem (s.mem.madvFreeNonFrozen (untaggedAddr (s.readReg64 Reg.x0))
       (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat))) = physPlusRw s := by
     change s.physMemAvail + rwBytes (s.mem.madvFreeNonFrozen _ _) = s.physMemAvail + rwBytes s.mem
     rw [rwBytes_congr (Memory.perm_madvFreeNonFrozen_apply s.mem _ _)]

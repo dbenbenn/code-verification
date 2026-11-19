@@ -10,8 +10,10 @@ limitations under the License.
 module
 
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfBase
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfCk
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfCost
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfCk -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfCost
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # One-Key `PrfChainKey` `ReductionDsl` Program
@@ -21,7 +23,7 @@ Defines `prfCkRedProg1Key`, obtained from `prfCkRedProg` by replacing `.initPrin
 static cost and query-count bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 16000000
@@ -41,7 +43,7 @@ section PrfCk1KeyBranches
 
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
 
-def authCkStep1KeyC (idx : Var Γ₁ .nat) (chalP : Var Γ₂ (.prod (B 32) (B 32)))
+@[expose] def authCkStep1KeyC (idx : Var Γ₁ .nat) (chalP : Var Γ₂ (.prod (B 32) (B 32)))
     (fhst : Var Γ₃ authHybridStateFixedTy) (q : Var Γ₄ authQueryTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] : Comp pqxdhOps pqPrimIface Δ RSF :=
   caseSumV (v q) (fun u => initPrin1KeyFixedB K fhst u) fun q =>
@@ -59,7 +61,7 @@ def authCkStep1KeyC (idx : Var Γ₁ .nat) (chalP : Var Γ₂ (.prod (B 32) (B 3
 
 end PrfCk1KeyBranches
 
-def prfCkHandle1KeyDsl (S : Setup) (K : Nat) :
+@[expose] def prfCkHandle1KeyDsl (S : Setup) (K : Nat) :
     Comp pqxdhOps pqPrimIface [prfCkStTy, authQueryTy] (.prod authRespTy prfCkStTy) :=
   letV (.var .zero : Expr pqxdhOps [prfCkStTy, authQueryTy] prfCkStTy) fun s =>
   letV (ckSecb (v s)) fun secb =>
@@ -71,7 +73,7 @@ def prfCkHandle1KeyDsl (S : Setup) (K : Nat) :
   .ret (.pair (.fst (v r)) (.pair (v secb) (.pair (v idx) (.pair (v chalP) (.snd (v r))))))
 
 /-- `ReductionDsl` program for `prfCkReductionAuthFixed1Key S b` at list bound `K`. -/
-def prfCkRedProg1Key (S : Setup) (K : Nat) :
+@[expose] def prfCkRedProg1Key (S : Setup) (K : Nat) :
     CostedReduction pqxdhOps pqPrimIface (authSpec S) (authCodec S)
       (.prod (B 32) (B 32)) .unit .bool .bool where
   σ      := prfCkStTy
@@ -207,7 +209,7 @@ theorem prfCkRedProg1Key_eval_eq (b : QueryBudget)
 end PrfCk1KeyEval
 
 /-- `PrfChainKey` adversary obtained by running `prfCkRedProg1Key S b.q_total`. -/
-def prfCkReductionAuthFixed1KeyDslAdv (S : Setup) (b : QueryBudget)
+@[expose] def prfCkReductionAuthFixed1KeyDslAdv (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : PrfCkAdv where
   dist mkSeedChal ck1_1Chal :=
     (prfCkRedProg1Key S b.q_total).eval (fun _ => A.1.run) (mkSeedChal, ck1_1Chal)

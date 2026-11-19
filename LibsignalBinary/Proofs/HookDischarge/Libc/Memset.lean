@@ -10,7 +10,8 @@ limitations under the License.
 module
 
 public import VerifiedLibraries.Musl.Proofs.MemsetProof
-public import LibsignalBinary.Proofs.HookDischarge.Libc.Common
+public import LibsignalBinary.Proofs.HookDischarge.Libc.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
 
 /-!
 # Byte-exact `memset` hook discharge
@@ -24,7 +25,7 @@ clobbers `v0` via `dup v0.16b, w1`, which is permitted under `CallingConventionP
 since `CalleeSavedVRegsPreserved` preserves only `D8..D15`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

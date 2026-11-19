@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep12Budget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep12Budget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitEvict
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep12
 
 /-!
 # Cross-Block Budget-Threaded `DhCommit` Steps 1 and 2 (`+0x8ac → +0xa84`)
@@ -23,7 +25,7 @@ Threads `LibsignalCodeLoaded lsmpl s.mem` through the cross-block `PublicKey::se
 `205`) and `ChainKey::to_pb` (block `22`) calls in `DhCommit` steps 1 and 2.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

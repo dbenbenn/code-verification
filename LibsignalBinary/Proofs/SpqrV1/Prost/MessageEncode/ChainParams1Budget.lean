@@ -9,19 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParams1
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBasePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCSBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeated1Budget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParams1
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBasePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCSBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeated1Budget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2BaseBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Verification of `ChainParams::encode [local#1]` (`Block 150`)
@@ -31,7 +33,7 @@ core theorem `chainParams_core_placed_ok` for Blocks `150` and `313`, and instan
 budget-threaded `[LibsignalPlacement]` contracts for `ChainParams::encode [local#1]` (`Block 150`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -115,10 +117,10 @@ abbrev noAllocCostModel : AllocCostModel where
   stepReserve_mono := fun _ _ _ => Nat.le_refl _; req_le_stepReserve := fun _ _ => Nat.le_succ _
   liveBytes_free_le := fun _ _ _ => Nat.le_refl 0
 
-def zeroEnforcedLimits : BudgetLimits :=
+@[expose] def zeroEnforcedLimits : BudgetLimits :=
   { staticCount := 0, staticBytes := 0, physCap := 0, enforced := true }
 
-def rawVmRecordBudget (A : RustAlloc)
+@[expose] def rawVmRecordBudget (A : RustAlloc)
     (hblk : ∀ p n al, A.live p n al ⊢
       ⌜p ≠ 0#64 ∧ p.toNat % al = 0 ∧ p.toNat + n < 2 ^ 64 ∧ RustLayoutOk n al⌝ ∗ A.live p n al)
     (s0 : State) : RustCliAllocBudget noAllocCostModel where
@@ -270,14 +272,14 @@ theorem extract_vecU8At_bounds {prog : Program} {ret : BitVec 64} {s : State}
 /-! ## 2. Shared Relocatable Steppers for Blocks `150` & `313` -/
 
 /-- Relocatable base program with `varint` callee entry for Blocks `150` and `313`. -/
-def IsCpPlacedBase (P_blk : Program) (pl : Placement) (varint_pc : BitVec 64) : Prop :=
+@[expose] def IsCpPlacedBase (P_blk : Program) (pl : Placement) (varint_pc : BitVec 64) : Prop :=
   (∃ (inst : LibsignalPlacement), P_blk = @blkPC_150 inst ∧ pl = @blkPl_150 inst ∧
     varint_pc = (@blkPl_148 inst).base) ∨
   (∃ (inst : LibsignalPlacement), P_blk = @blkPC_313 inst ∧ pl = @blkPl_313 inst ∧
     varint_pc = (@blkPl_292 inst).base)
 
 /-- Relocatable rebased program with `varint` callee entry for Blocks `150` and `313`. -/
-def IsCpPlacedProg (prog : Program) (pl : Placement) (varint_pc : BitVec 64) : Prop :=
+@[expose] def IsCpPlacedProg (prog : Program) (pl : Placement) (varint_pc : BitVec 64) : Prop :=
   ∃ P_blk H, prog = P_blk.rebase pl.base H ∧ IsCpPlacedBase P_blk pl varint_pc
 
 theorem IsCpPlacedBase.toEncodePlacedBase {P_blk : Program} {pl : Placement} {varint_pc : BitVec 64}
@@ -352,7 +354,7 @@ theorem cpPlaced_fetch_b_varint {P_blk : Program} {pl : Placement} {varint_pc : 
     rwa [heq] at h
 
 /-- Type of the 1-byte capacity reservation stepper at offset `off` (`212 → 228` or `128 → 144`). -/
-def CpReserve1Stepper {M : AllocCostModel} (resStack : Nat) (A : RustCliAllocBudget M)
+@[expose] def CpReserve1Stepper {M : AllocCostModel} (resStack : Nat) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (prog : Program) (pl : Placement) (off retOff : BitVec 64)
     (s0 : State) : Prop :=
   ∀ (v curCap curPtr sp : BitVec 64) (curBs : List (BitVec 8)) (p : ChainParamsPB) (curSt : M.σ),

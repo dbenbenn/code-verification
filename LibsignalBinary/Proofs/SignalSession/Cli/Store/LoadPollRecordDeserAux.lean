@@ -9,9 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
 public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Tight `fineCostModel` Credit and Group Bounds for `cliSessionKitDefaultBudgetEnv`
@@ -21,7 +24,7 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPl
 `SessionKitOkCliPlacedBudget.cliSessionKitDefaultBudgetEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -141,14 +144,6 @@ theorem decimal_device_fine_phaseCredit_tight (device : BitVec 8) :
     unfold DecimalEnv at h
     rw [h, decimalEvents_device_eq device])).mono
     hc (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 8)
-
-/-- Regime-free `PhaseCreditSpec M` for `DecimalEnv (device.zeroExtend 32)`. -/
-theorem decimal_device_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (device : BitVec 8) :
-    PhaseCreditSpec M (DecimalEnv (device.zeroExtend 32))
-      (2 * 8 + 9539) (8 + 8195) (8 + 8195) 8 :=
-  (PhaseCreditSpec.rustAlloc_aff hM (req := 8) (al := 1) (by decide)).of_imp
-    (fun _ h => by unfold DecimalEnv at h; rw [h, decimalEvents_device_eq device])
 
 /-- For `rem.name.length ≤ 40`, `reserveCap rem.name.length rem.name.length 1` already covers
 `(rem.name ++ ['.']).length + (decimalText _).length`, so `addrDecReserveEvents` is `[]`. -/

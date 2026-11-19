@@ -9,11 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5MemPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5MemPlaced
 public meta import Lean
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Common
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Hops -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Iface -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5IfacePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FramePlaced
+public meta import ProofLib
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable Scratch Lenses & Basic-Block / OOM Combinators for `main` Hop M5 (Block `617`)
@@ -23,7 +39,7 @@ tactics, and basic-block / `handle_error` OOM panic combinators on Block `617` u
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -190,7 +206,7 @@ macro "m5_steps_placed" : tactic => `(tactic| m5_steps)
 
 /-- The 10 loop scratch cells inside `locals fsp`: `0x20 .. 0x50`, `0x58 .. 0x60`, and
 `0x458 .. 0x470`. -/
-def m5ScratchPlaced (fsp v20 v28 v30 v38 v40 v48 v58 v458 v460 v468 : BitVec 64) : SepProp :=
+@[expose] def m5ScratchPlaced (fsp v20 v28 v30 v38 v40 v48 v58 v458 v460 v468 : BitVec 64) : SepProp :=
   ((fsp + 0x20#64) ↦₆₄ v20) ∗ ((fsp + 0x28#64) ↦₆₄ v28) ∗ ((fsp + 0x30#64) ↦₆₄ v30) ∗
     ((fsp + 0x38#64) ↦₆₄ v38) ∗ ((fsp + 0x40#64) ↦₆₄ v40) ∗ ((fsp + 0x48#64) ↦₆₄ v48) ∗
     ((fsp + 0x58#64) ↦₆₄ v58) ∗
@@ -210,7 +226,7 @@ def m5WorkCellsPlaced (A : RustAlloc) (fsp outCap outPtr outLen inCap inPtr : Bi
    cell fsp 0x458 v458, cell fsp 0x460 v460, cell fsp 0x468 v468]
 
 /-- Invariant spatial frame of `locals fsp (m5WorkCellsPlaced …)` outside `m5ScratchPlaced`. -/
-def m5WorkRestPlaced (A : RustAlloc) (fsp outCap outPtr outLen inCap inPtr : BitVec 64)
+@[expose] def m5WorkRestPlaced (A : RustAlloc) (fsp outCap outPtr outLen inCap inPtr : BitVec 64)
     (g : StoresGhost) (k : Nat) : SepProp :=
   ((fsp + 0x0#64) ↦₆₄ outLen) ∗ ((fsp + 0x8#64) ↦₆₄ outCap) ∗
     ((fsp + 0x10#64) ↦₆₄ inCap) ∗ ((fsp + 0x18#64) ↦₆₄ outPtr) ∗
@@ -371,7 +387,7 @@ theorem vecBuf_nil_dealloc (A : RustAlloc) (curCap curPtr : BitVec 64) :
     exact Entails.refl _
 
 /-- Invariant spatial frame of `locals fsp (m5LoopCellsPlaced … k)` outside `dirAt A dAddr d`. -/
-def m5DirPopRestPlaced (A : RustAlloc) (fsp outCap outPtr outLen inCap inPtr : BitVec 64)
+@[expose] def m5DirPopRestPlaced (A : RustAlloc) (fsp outCap outPtr outLen inCap inPtr : BitVec 64)
     (g : StoresGhost) (k : Nat) : SepProp :=
   ((fsp + 0x0#64) ↦₆₄ outLen) ∗ ((fsp + 0x8#64) ↦₆₄ outCap) ∗
     ((fsp + 0x10#64) ↦₆₄ inCap) ∗ ((fsp + 0x18#64) ↦₆₄ outPtr) ∗
@@ -408,7 +424,7 @@ theorem locals_m5LoopCellsPlaced_push (A : RustAlloc)
   ac_rfl
 
 /-- Mid-frame after carving the 10 scratch cells (`0x20..0x48`, `0x58`, `0x458..0x468`) out of `m5DirPopRestPlaced`. -/
-def m5DirWorkMidPlaced (A : RustAlloc) (fsp outCap outPtr outLen inCap inPtr : BitVec 64)
+@[expose] def m5DirWorkMidPlaced (A : RustAlloc) (fsp outCap outPtr outLen inCap inPtr : BitVec 64)
     (g : StoresGhost) (k : Nat) : SepProp :=
   ((fsp + 0x0#64) ↦₆₄ outLen) ∗ ((fsp + 0x8#64) ↦₆₄ outCap) ∗
     ((fsp + 0x10#64) ↦₆₄ inCap) ∗ ((fsp + 0x18#64) ↦₆₄ outPtr) ∗

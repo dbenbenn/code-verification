@@ -9,15 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1Remove
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1SaveIdPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyProofPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1Remove
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1SaveIdPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyProofPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4MarkKyber
 import LibsignalBinary.Proofs.E2E.Bin.Hooks
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKey
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.HeapDefs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveIdProof
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4SaveIdPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrAPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34Defs
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 
 /-!
 # Placed Stage P4.3 (`remove_pre_key`) on 1-Element `previous_sessions`
@@ -26,7 +34,7 @@ Proves `[LibsignalPlacement]` Substage P4.3 (`remove_pre_key`) over a 1-element 
 vector `prevVecAt [enc]` on `lsProg_518 ext`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -62,7 +70,7 @@ attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_add_neg96_eq_hsp_592
 
 /-- Spatial resources preserved across placed Substage P4.3 over `prevVecAt [enc]`. -/
-def stageP4RemovePreKeyPrev1SharedPlaced {A : RustAlloc}
+@[expose] def stageP4RemovePreKeyPrev1SharedPlaced {A : RustAlloc}
     (pkKit : PreKeyStoreSpec A 0#64) (s0 s : State) : SepProp :=
   memRegion (s.sp + 0x310#64) 36 ∗
   memRegion (s.sp + 0x370#64) 36 ∗
@@ -72,7 +80,7 @@ def stageP4RemovePreKeyPrev1SharedPlaced {A : RustAlloc}
   stackAt s.sp (removePreKeyCallStack pkKit)
 
 /-- Precondition of placed Substage P4.3 at `0#64 + pkKit.removeShimOff` over `prevVecAt [enc]`. -/
-def stageP4RemovePreKeyPrev1PrePlaced {A : RustAlloc}
+@[expose] def stageP4RemovePreKeyPrev1PrePlaced {A : RustAlloc}
     (pkKit : PreKeyStoreSpec A 0#64) (s0 s : State)
     (coroPtr outPtr preKeyStorePtr prevCap prevPtr ptCap ptPtr : BitVec 64)
     (b_2c0 : BitVec 8) (pt enc : List (BitVec 8))
@@ -93,7 +101,7 @@ def stageP4RemovePreKeyPrev1PrePlaced {A : RustAlloc}
   pkKit.storeAt preKeyStorePtr pst0
 
 /-- Postcondition of placed Substage P4.3 after `Ok(())` and future deallocation (`+0x3cc`). -/
-def stageP4RemovePreKeyPrev1OkPostPlaced {A : RustAlloc}
+@[expose] def stageP4RemovePreKeyPrev1OkPostPlaced {A : RustAlloc}
     (pkKit : PreKeyStoreSpec A 0#64) (s0 s : State)
     (coroPtr outPtr preKeyStorePtr prevCap prevPtr ptCap ptPtr : BitVec 64)
     (opkId : BitVec 32) (b_2c0 : BitVec 8) (pt enc : List (BitVec 8))
@@ -115,7 +123,7 @@ def stageP4RemovePreKeyPrev1OkPostPlaced {A : RustAlloc}
   pkKit.storeAt preKeyStorePtr (pkKit.removeUpdate pst0 opkId (.ok ()))
 
 /-- Postcondition of placed Substage P4.3 on `Err(e)` at `s0.readReg64 .x30`. -/
-def stageP4RemovePreKeyPrev1ErrPostPlaced {A : RustAlloc}
+@[expose] def stageP4RemovePreKeyPrev1ErrPostPlaced {A : RustAlloc}
     (pkKit : PreKeyStoreSpec A 0#64) (s0 s : State)
     (coroPtr outPtr preKeyStorePtr : BitVec 64)
     (opkId : BitVec 32) (pst0 : pkKit.PkState) (e : pkKit.RemoveErr) : SepProp :=

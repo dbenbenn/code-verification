@@ -10,49 +10,61 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyExactCore
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.PureExtraGhosts -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyExactCore -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.PureExtraGhosts
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.SepLogic.HeapIntro
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `cliExternsPlaced` and `cliGhostExterns` Contracts (Placed)
 
-`VmPreserved`-strengthened `HookSat (cliExternsPlaced mmpl W)` contracts for non-allocating rows of
-`cliHookTablePlaced mmpl W`, together with budget-threaded ghost-hook bundles
-(`CliGhostAllocHooks`, `CliGhostSpqrAllocHooks`, and `CliAllocHooks`) over
-`cliGhostExterns g (cliExternsPlaced mmpl W)` under `[LibsignalPlacement]`.
+`VmPreserved`-strengthened `HookSat` contracts for non-allocating ghost-hook rows, together with
+budget-threaded ghost-hook bundles (`CliGhostAllocHooks`, `CliGhostSpqrAllocHooks`, and
+`CliAllocHooks`) over `cliGhostExterns g (cliExternsPlaced mmpl W)` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
 set_option maxRecDepth 200000
 
 open scoped CryptoVerification.RustHeap CryptoVerification.LibsignalTripleRatchet
-open CryptoVerification (LibsignalHooks LibsignalPlacement libsignalSessionExterns lsHandleErrorSym ls_hook_ok_ultra_of_mem lsmpl lsρ)
-open CryptoVerification.LibsignalTripleRatchet (derivePublicKeyBytesSpec diffieHellmanSpec extHookStack framelessMemcpySpec framelessMemcpy_hookOk hookMemcpy_region_trace_ok hookMemcpy_trace_ok hookMemmove_trace_ok hookMemset_region_trace_ok hookMemset_trace_ok memcpyName memmoveName memsetName noAllocShimSpec noAllocShim_hookOk pubFromSecretSpec sessionMemcpyRegionSpec sessionMemcpySpec sessionMemsetRegionSpec sessionMemsetSpec sessionShim_hookOk withStack zeroizeSecretSpec)
+open CryptoVerification (LibsignalHooks LibsignalPlacement libsignalHookedExterns
+  libsignalSessionExterns lsHandleErrorSym ls_hook_ok_ultra_of_mem lsmpl lsρ)
+open CryptoVerification.LibsignalTripleRatchet (derivePublicKeyBytesSpec derivePublicKeyBytesStackSpec diffieHellmanSpec extHookStack framelessMemcpySpec framelessMemcpy_hookOk hookMemcpy_region_trace_ok hookMemcpy_trace_ok hookMemmove_trace_ok hookMemset_region_trace_ok hookMemset_trace_ok memcpyName memmoveName memsetName noAllocShimSpec noAllocShim_hookOk pubFromSecretSpec sessionMemcpyRegionSpec sessionMemcpySpec sessionMemsetRegionSpec sessionMemsetSpec sessionShim_hookOk withStack zeroizeSecretSpec)
 open CryptoVerification.RustHeap (allocHookStack)
-open CryptoVerification.SignalSession (CliHooks cliExternsPlaced cliHookTablePlaced lsBlackBoxSym lsDurationSinceSym lsFromUtf8Sym lsMemcpySym lsMemrchrSym lsMemsetSym lsReadFileSym lsReadStdinSym lsRustAllocSymCli lsRustAllocZeroedSymCli lsRustDeallocSymCli lsRustNoAllocShimSymCli lsRustReallocSymCli lsStringCloneSym lsTimeAddSym lsWriteFileSym lsWriteStdoutSym writeFileHook writeStdoutHook)
+open CryptoVerification.SignalSession (CliHooks cliExternsPlaced lsBlackBoxSym lsDiffieHellmanSym lsDurationSinceSym lsFmtWriteSym lsFormatInnerSym lsFromUtf8Sym lsMemcpySym lsMemrchrSym lsMemsetSym lsPubFromSecretSym lsReadFileSym lsReadStdinSym lsRustAllocSymCli lsRustAllocZeroedSymCli lsRustDeallocSymCli lsRustNoAllocShimSymCli lsRustReallocSymCli lsSpqrOnceCallSym lsStringCloneSym lsTimeAddSym lsWriteFileSym lsWriteStdoutSym writeFileHook writeStdoutHook)
 open CryptoVerification.SignalSession.Cli (cliBcmpSpec)
 open CryptoVerification.SignalSession.Cli.MainHops (allocHook0_fs cliIo deallocHook_fs extHookStack_le fromUtf8AsciiSpec hookMemcpy_fs hookMemmove_fs hookMemset_fs hookNoop_fs hookOk_withStack memrchrSpec pos_of_extHookStack_le reallocHook0_fs strlenSpec)
 open CryptoVerification.SignalSession.Cli.RunGlue (CliGhostHooks IsFsC allocHook0_fsT cliExternsPlaced_row cliExtraGhostSyms cliGhostExterns cliGhostExterns_alloc cliGhostExterns_allocZeroed cliGhostExterns_dealloc cliGhostExterns_memcpy_some cliGhostExterns_memset_some cliGhostExterns_other cliGhostExterns_realloc cliGhostExterns_shim deallocHook_fsT hookMemcpy_fsT hookMemset_fsT hookSat_of_eq reallocHook0_fsT)
-open CryptoVerification.SignalSession.Cli.Slots (cliExternsPlaced_compress256Multi_sat cliExternsPlaced_compress256_sat cliExternsPlaced_derivePublicKeyBytes_sat cliExternsPlaced_diffieHellman_sat cliExternsPlaced_pubFromSecret_sat cliExternsPlaced_writeFile_sat cliExternsPlaced_writeStdout_sat cliGhostExterns_panic_handle_alloc_error cliGhostExterns_panic_handle_error cliGhostExterns_panic_option_expect_failed cliGhostExterns_sat_of_cliExternsPlaced compress256SingleSpec compress256_row_placed diffieHellman_row_placed durationSinceBoundedSpec durationSinceEpochAllocSpec pubFromSecret_row_placed writeFile_row_placed writeStdout_row_placed)
+open CryptoVerification.SignalSession.Cli.Slots (cliGhostExterns_panic_handle_alloc_error cliGhostExterns_panic_handle_error cliGhostExterns_panic_option_expect_failed cliGhostExterns_sat_of_cliExternsPlaced cliWriteFileHook_ok_placed cliWriteStdoutHook_ok_placed compress256SingleSpec durationSinceBoundedSpec durationSinceEpochAllocSpec lsCompress512SymCli lsCompressSymCli lsDsmbSymCli lsEdNegSymCli lsKemDecapsSymCli lsKemEncapsSymCli lsMlkemDecapsSymCli lsMlkemEncaps1SymCli lsMlkemEncaps2SymCli lsMlkemFromSeedSymCli lsMlkemPk1SymCli lsMlkemPk2SymCli lsMlkemValidatePkSymCli lsScalarModSymCli lsScalarWideSymCli lsToEdwardsSymCli lsTorsionFreeSymCli)
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib
+open CryptoGames.LibsignalSession (Crypto)
+open CryptoVerification.E2E (PEParams PqxdhPrims UnreachedPqxdhPrimitives modelPrims u8Vec vecU8)
+open CryptoVerification.E2E.Pqxdh.Shared
+  (compressInPlaceStubSpecPlaced cryptoLeafStubSpec sha512CompressOutBytes)
+open CryptoVerification.LibsignalSpqrV1
+  (MlKem mlkemEncaps2Spec mlkemPk1Spec mlkemPk2Spec mlkemValidatePkSpec)
+open CryptoVerification.SignalSession.CliExt (dhSpec pureByteFunctionSpec)
 open CryptoVerification.SignalSession.Cli.Main.Placed (lsProg_617 instIsLsBlockProg_617)
 open LibsignalBinary.Heap
   (AllocCostModel BudgetLimits RustCliAllocBudget VmPreserved
@@ -60,20 +72,48 @@ open LibsignalBinary.Heap
 open LibsignalBinary.Heap.RustStdAllocBudgetBridge (stringCloneBudgetSpec)
 open LibsignalBinary.Heap.SpecBudget
   (durationSinceEpochBudgetSpec hookSat_withVmPreserved timeAddBudgetSpec withVmPreserved)
+open LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase
+  (kemDecapsAtSpec kemEncapsAtSpec kemEncapsPreservedAtSpec mlkemDecapsAtSpec
+   mlkemEncaps1AtSpec mlkemEncaps2AtSpec mlkemFromSeedAtSpec mlkemValidatePkAtSpec)
+open LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.MlKemCorrectProofs
+  (kyber1024DecapsVec kyber1024EncapsVec)
+open LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.Spec (mlkem768Incremental)
+open LibsignalBinary.Proofs.HookDischarge.CryptoSha512.Compress512 (compress512StackedMasterSpec)
+open LibsignalBinary.Proofs.HookDischarge.CryptoSha512.Sha512Ref (sha512CompressState)
+open LibsignalBinary.Proofs.HookDischarge.CryptoX25519.X25519Ref
+  (x25519PubFromSecretRef x25519Ref)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.ConsumerBridges (dalekEdNegVec)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.DalekPureFallbacks (dalekHookStack)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4Block202
+  (dalekMontToEdExtSpec dalekTorsionFreeExtSpec)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4Block204
+  (dalekCompressExtSpec dalekDsmbExtSpec dalekEdNegExtSpec dalekScalarModExtSpec
+   dalekScalarWideExtSpec edwardsPointNegUnstackedSpec)
+open LibsignalBinary.Proofs.HookDischarge.Libc.Common (keepsFs)
 open LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget (PublicApiDecHooksPlaced)
 open LibsignalBinary.Proofs.RecordCodecs.DepsBudget (CodecHooksPlaced)
 open LibsignalBinary.Proofs.SessionRecordMin.DeserializeBudget (Stage2ContractsMinPlaced)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.EdNegCode (masterEdNegSpec)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyExactCore
   (HookExactMemcpy HookSatExactMemcpy hookMemcpy_exact)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc (withAlloc)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
   (hookOk_withVmPreserved hookOk_rustAllocWithStack hookOk_rustDeallocExternWithStack
    hookOk_rustReallocExternWithStack)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs
-  (ExtraListSpecOk ExtraSpecOk GhostRowSpecOk hookSat_cliGhostExterns_of_extraOk)
+  (ExtraListSpecOk ExtraSpecOk GhostRowSpecOk hookSat_cliGhostExterns_of_extraOk
+   hookSat_cliGhostExterns_of_extra_lookup)
+open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraRowSpecs.CryptoMlKemRowSpecs
+  (kemDecapsTightStack kemEncapsTightStack mlkemDecapsTightStack mlkemEncaps1TightStack
+   mlkemEncaps2TightStack mlkemFromSeedTightStack mlkemHookStack mlkemValidatePkTightStack)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.PureExtraGhosts
-  (pureExtraGhosts pureExtraGhosts_specOk)
+  (pureExtraGhosts pureExtraGhosts_lookup_writeFile pureExtraGhosts_lookup_writeStdout
+   pureExtraGhosts_specOk)
 open LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux (framelessMemcpyAcpSpec)
+open CryptoVerification.SpqrV1.GF.Mul2U16
+  (OnceCallHookOk spqrOnceCallGhostSpec spqrOnceCallSym)
+open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (derivePublicKeyBytesStackBudgetSpec)
 open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat (HkdfPlacedHooksExactSat)
 open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
   (sessionMemcpyBudgetSpec sessionMemcpyRegionBudgetSpec
@@ -91,19 +131,6 @@ private theorem setMem_vm (s : State) {m : Memory} (hp : ∀ a : BitVec 64, m.pe
 private theorem writeBytes_perm_eq (m : Memory) (p : BitVec 64) (bs : List (BitVec 8))
     (a : BitVec 64) : (m.writeBytes p bs).perm a = m.perm a :=
   congrFun (LibsignalBinary.Heap.IfaceBudgetLemmas.perm_writeBytes_norm m p bs) a
-
-private theorem hookSat_cli_vm {α : Type} (mmpl : Obj.MultiPlacement) (W : CliHooks)
-    {sym : String} {f : State → State} {spec : Spec α}
-    (hrow : (sym, f) ∈ cliHookTablePlaced mmpl W)
-    (hsat : HookSat (cliExternsPlaced mmpl W) sym spec)
-    (hvm : ∀ s : State, VmPreserved s (f s)) :
-    HookSat (cliExternsPlaced mmpl W) sym (withVmPreserved spec) := by
-  refine hookSat_withVmPreserved hsat fun g hg s => ?_
-  have hfeq : cliExternsPlaced mmpl W sym = some f := cliExternsPlaced_row mmpl W hrow
-  rw [hfeq] at hg
-  injection hg with hfg
-  subst hfg
-  exact hvm s
 
 private theorem hookNoop_vm (s : State) : VmPreserved s (hookNoop s) :=
   LibsignalBinary.Heap.VmPreserved.refl s
@@ -125,14 +152,6 @@ private theorem compress256Hook_vm (W : CliHooks) (s : State) :
     VmPreserved s (CryptoVerification.LibsignalHmac.compress256Hook W.C.F s) := by
   unfold CryptoVerification.LibsignalHmac.compress256Hook CryptoVerification.LibsignalAesCbc.returnToLinkRegister
   exact setMem_vm s (writeBytes_perm_eq _ _ _)
-
-private theorem pubFromSecretHook_vm (W : CliHooks) (s : State) :
-    VmPreserved s (CryptoVerification.LibsignalTripleRatchet.pubFromSecretHook W.C.pubKey s) :=
-  retHook_vm (setMem_vm s (writeBytes_perm_eq _ _ _))
-
-private theorem diffieHellmanHook_vm (W : CliHooks) (s : State) :
-    VmPreserved s (CryptoVerification.LibsignalTripleRatchet.diffieHellmanHook W.C.X s) :=
-  retHook_vm (setMem_vm s (writeBytes_perm_eq _ _ _))
 
 /-! ## 2. Budget and `VmPreserved` `HookSat` for non-allocating symbols -/
 
@@ -246,32 +265,62 @@ theorem cliGhostExterns_fromUtf8RO_budget_sat [LibsignalPlacement]
         (LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO.fromUtf8AsciiSpecRO stk)) :=
   hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow => hRow.fromUtf8RO_budget_ok stk
 
-theorem cliExternsPlaced_writeFile_vm_sat (mmpl : Obj.MultiPlacement) (W : CliHooks) (stk : Nat) :
-    HookSat (cliExternsPlaced mmpl W) lsWriteFileSym
+theorem cliWriteFileHook_vm_ok_placed (stk : Nat) :
+    HookOk writeFileHook
       (withVmPreserved
         (CryptoVerification.SignalSession.Cli.MainHops.writeFileSpecPlaced cliIo stk)) :=
-  hookSat_cli_vm mmpl W (writeFile_row_placed mmpl W)
-    (cliExternsPlaced_writeFile_sat mmpl W stk) writeFileHook_vm
+  hookOk_withVmPreserved (cliWriteFileHook_ok_placed stk) writeFileHook_vm
 
-theorem cliExternsPlaced_writeStdout_vm_sat (mmpl : Obj.MultiPlacement) (W : CliHooks) (stk : Nat) :
-    HookSat (cliExternsPlaced mmpl W) lsWriteStdoutSym
+theorem cliWriteStdoutHook_vm_ok_placed (stk : Nat) :
+    HookOk writeStdoutHook
       (withVmPreserved
         (CryptoVerification.SignalSession.Cli.MainHops.writeStdoutSpecPlaced stk)) :=
-  hookSat_cli_vm mmpl W (writeStdout_row_placed mmpl W)
-    (cliExternsPlaced_writeStdout_sat mmpl W stk) writeStdoutHook_vm
+  hookOk_withVmPreserved (cliWriteStdoutHook_ok_placed stk) writeStdoutHook_vm
 
-theorem cliExternsPlaced_writeFile_budget_sat {M : AllocCostModel} (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (mmpl : Obj.MultiPlacement) (W : CliHooks) (stk : Nat) :
-    HookSat (cliExternsPlaced mmpl W) lsWriteFileSym
+theorem cliGhostExterns_writeFile_vm_sat (g : CliGhostHooks) (baseExt : LibsignalHooks)
+    {f : State → State} (stk : Nat)
+    (hf : g.extra.lookup lsWriteFileSym = some f)
+    (hok : HookOk f
+      (withVmPreserved
+        (CryptoVerification.SignalSession.Cli.MainHops.writeFileSpecPlaced cliIo stk))) :
+    HookSat (cliGhostExterns g baseExt) lsWriteFileSym
+      (withVmPreserved
+        (CryptoVerification.SignalSession.Cli.MainHops.writeFileSpecPlaced cliIo stk)) :=
+  hookSat_cliGhostExterns_of_extra_lookup g baseExt hf hok
+
+theorem cliGhostExterns_writeFile_hook_vm_sat (g : CliGhostHooks) (baseExt : LibsignalHooks)
+    (stk : Nat) (hf : g.extra.lookup lsWriteFileSym = some writeFileHook) :
+    HookSat (cliGhostExterns g baseExt) lsWriteFileSym
+      (withVmPreserved
+        (CryptoVerification.SignalSession.Cli.MainHops.writeFileSpecPlaced cliIo stk)) :=
+  cliGhostExterns_writeFile_vm_sat g baseExt stk hf (cliWriteFileHook_vm_ok_placed stk)
+
+theorem cliGhostExterns_writeStdout_vm_sat (g : CliGhostHooks) (baseExt : LibsignalHooks)
+    {f : State → State} (stk : Nat)
+    (hf : g.extra.lookup lsWriteStdoutSym = some f)
+    (hok : HookOk f
+      (withVmPreserved
+        (CryptoVerification.SignalSession.Cli.MainHops.writeStdoutSpecPlaced stk))) :
+    HookSat (cliGhostExterns g baseExt) lsWriteStdoutSym
+      (withVmPreserved
+        (CryptoVerification.SignalSession.Cli.MainHops.writeStdoutSpecPlaced stk)) :=
+  hookSat_cliGhostExterns_of_extra_lookup g baseExt hf hok
+
+theorem cliGhostExterns_writeStdout_hook_vm_sat (g : CliGhostHooks) (baseExt : LibsignalHooks)
+    (stk : Nat) (hf : g.extra.lookup lsWriteStdoutSym = some writeStdoutHook) :
+    HookSat (cliGhostExterns g baseExt) lsWriteStdoutSym
+      (withVmPreserved
+        (CryptoVerification.SignalSession.Cli.MainHops.writeStdoutSpecPlaced stk)) :=
+  cliGhostExterns_writeStdout_vm_sat g baseExt stk hf (cliWriteStdoutHook_vm_ok_placed stk)
+
+theorem cliWriteFileHook_budget_ok_placed {M : AllocCostModel} (A : RustCliAllocBudget M)
+    (lim : BudgetLimits) (stk : Nat) :
+    HookOk writeFileHook
       (LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget.writeFileSpecPlaced
         cliIo A lim stk) := by
-  rcases cliExternsPlaced_writeFile_sat mmpl W stk with ⟨f, hf, hok⟩
-  refine ⟨f, hf, fun ⟨x, st⟩ R s0 hrun hpre hsp => ?_⟩
-  have hfeq : cliExternsPlaced mmpl W lsWriteFileSym = some writeFileHook :=
-    cliExternsPlaced_row mmpl W (writeFile_row_placed mmpl W)
-  have hvm : VmPreserved s0 (f s0) := by
-    cases hf.symm.trans hfeq
-    exact writeFileHook_vm s0
+  have hok := cliWriteFileHook_ok_placed stk
+  intro ⟨x, st⟩ R s0 hrun hpre hsp
+  have hvm : VmPreserved s0 (writeFileHook s0) := writeFileHook_vm s0
   dsimp only [LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget.writeFileSpecPlaced] at hpre
   rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨⟨hx0, hx1, hx2, hx3, hlen, hpOk, _⟩, hmem⟩
@@ -289,9 +338,9 @@ theorem cliExternsPlaced_writeFile_budget_sat {M : AllocCostModel} (A : RustCliA
     rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
     rcases hpost with ⟨hres, hrest⟩
     dsimp only [LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget.writeFileSpecPlaced]
-    have hpool : A.pool lim (M.stepEvents [] st) (f s0) = A.pool lim st s0 :=
-      A.pool_transport lim st s0 (f s0) hvm
-    have hrest' : (f s0).mem ⊨
+    have hpool : A.pool lim (M.stepEvents [] st) (writeFileHook s0) = A.pool lim st s0 :=
+      A.pool_transport lim st s0 (writeFileHook s0) hvm
+    have hrest' : (writeFileHook s0).mem ⊨
         ((x.pathA ↦ₛ x.path) ∗ (x.buf ↦ₛ x.bs) ∗ stackAt s0.sp stk ∗ A.pool lim st s0) ∗ R := by
       simpa only [sepConj_assoc] using hrest
     refine Satisfies.mono (sepConj_mono_left
@@ -306,18 +355,14 @@ theorem cliExternsPlaced_writeFile_budget_sat {M : AllocCostModel} (A : RustCliA
   · dsimp only [CryptoVerification.SignalSession.Cli.MainHops.writeFileSpecPlaced] at hoom
     rw [satisfies_pure_sepConj] at hoom; exact False.elim hoom.1
 
-theorem cliExternsPlaced_writeStdout_budget_sat {M : AllocCostModel} (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (mmpl : Obj.MultiPlacement) (W : CliHooks) (stk : Nat) :
-    HookSat (cliExternsPlaced mmpl W) lsWriteStdoutSym
+theorem cliWriteStdoutHook_budget_ok_placed {M : AllocCostModel} (A : RustCliAllocBudget M)
+    (lim : BudgetLimits) (stk : Nat) :
+    HookOk writeStdoutHook
       (LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget.writeStdoutSpecPlaced
         A lim stk) := by
-  rcases cliExternsPlaced_writeStdout_sat mmpl W stk with ⟨f, hf, hok⟩
-  refine ⟨f, hf, fun ⟨x, st⟩ R s0 hrun hpre hsp => ?_⟩
-  have hfeq : cliExternsPlaced mmpl W lsWriteStdoutSym = some writeStdoutHook :=
-    cliExternsPlaced_row mmpl W (writeStdout_row_placed mmpl W)
-  have hvm : VmPreserved s0 (f s0) := by
-    cases hf.symm.trans hfeq
-    exact writeStdoutHook_vm s0
+  have hok := cliWriteStdoutHook_ok_placed stk
+  intro ⟨x, st⟩ R s0 hrun hpre hsp
+  have hvm : VmPreserved s0 (writeStdoutHook s0) := writeStdoutHook_vm s0
   dsimp only [LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget.writeStdoutSpecPlaced] at hpre
   rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨⟨hx0, hx1, _⟩, hmem⟩
@@ -335,9 +380,9 @@ theorem cliExternsPlaced_writeStdout_budget_sat {M : AllocCostModel} (A : RustCl
     rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
     rcases hpost with ⟨hres, hrest⟩
     dsimp only [LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget.writeStdoutSpecPlaced]
-    have hpool : A.pool lim (M.stepEvents [] st) (f s0) = A.pool lim st s0 :=
-      A.pool_transport lim st s0 (f s0) hvm
-    have hrest' : (f s0).mem ⊨
+    have hpool : A.pool lim (M.stepEvents [] st) (writeStdoutHook s0) = A.pool lim st s0 :=
+      A.pool_transport lim st s0 (writeStdoutHook s0) hvm
+    have hrest' : (writeStdoutHook s0).mem ⊨
         ((x.buf ↦ₛ x.bs) ∗ stackAt s0.sp stk ∗ A.pool lim st s0) ∗ R := by
       simpa only [sepConj_assoc] using hrest
     refine Satisfies.mono (sepConj_mono_left
@@ -351,6 +396,51 @@ theorem cliExternsPlaced_writeStdout_budget_sat {M : AllocCostModel} (A : RustCl
     rw [satisfies_pure_sepConj] at he; exact False.elim he.1
   · dsimp only [CryptoVerification.SignalSession.Cli.MainHops.writeStdoutSpecPlaced] at hoom
     rw [satisfies_pure_sepConj] at hoom; exact False.elim hoom.1
+
+theorem cliGhostExterns_writeFile_budget_sat {α : Type} (g : CliGhostHooks)
+    (baseExt : LibsignalHooks) {f : State → State} {spec : Spec α}
+    (hf : g.extra.lookup lsWriteFileSym = some f)
+    (hok : HookOk f spec) :
+    HookSat (cliGhostExterns g baseExt) lsWriteFileSym spec :=
+  hookSat_cliGhostExterns_of_extra_lookup g baseExt hf hok
+
+theorem cliGhostExterns_writeFile_hook_budget_sat {M : AllocCostModel} (A : RustCliAllocBudget M)
+    (lim : BudgetLimits) (g : CliGhostHooks) (baseExt : LibsignalHooks) (stk : Nat)
+    (hf : g.extra.lookup lsWriteFileSym = some writeFileHook) :
+    HookSat (cliGhostExterns g baseExt) lsWriteFileSym
+      (LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget.writeFileSpecPlaced
+        cliIo A lim stk) :=
+  cliGhostExterns_writeFile_budget_sat g baseExt hf (cliWriteFileHook_budget_ok_placed A lim stk)
+
+theorem cliGhostExterns_writeStdout_budget_sat {α : Type} (g : CliGhostHooks)
+    (baseExt : LibsignalHooks) {f : State → State} {spec : Spec α}
+    (hf : g.extra.lookup lsWriteStdoutSym = some f)
+    (hok : HookOk f spec) :
+    HookSat (cliGhostExterns g baseExt) lsWriteStdoutSym spec :=
+  hookSat_cliGhostExterns_of_extra_lookup g baseExt hf hok
+
+theorem cliGhostExterns_writeStdout_hook_budget_sat {M : AllocCostModel} (A : RustCliAllocBudget M)
+    (lim : BudgetLimits) (g : CliGhostHooks) (baseExt : LibsignalHooks) (stk : Nat)
+    (hf : g.extra.lookup lsWriteStdoutSym = some writeStdoutHook) :
+    HookSat (cliGhostExterns g baseExt) lsWriteStdoutSym
+      (LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget.writeStdoutSpecPlaced
+        A lim stk) :=
+  cliGhostExterns_writeStdout_budget_sat g baseExt hf
+    (cliWriteStdoutHook_budget_ok_placed A lim stk)
+
+theorem cliGhostExterns_fmtWrite_budget_sat {α : Type} (g : CliGhostHooks)
+    (baseExt : LibsignalHooks) {f : State → State} {spec : Spec α}
+    (hf : g.extra.lookup lsFmtWriteSym = some f)
+    (hok : HookOk f spec) :
+    HookSat (cliGhostExterns g baseExt) lsFmtWriteSym spec :=
+  hookSat_cliGhostExterns_of_extra_lookup g baseExt hf hok
+
+theorem cliGhostExterns_formatInner_budget_sat {α : Type} (g : CliGhostHooks)
+    (baseExt : LibsignalHooks) {f : State → State} {spec : Spec α}
+    (hf : g.extra.lookup lsFormatInnerSym = some f)
+    (hok : HookOk f spec) :
+    HookSat (cliGhostExterns g baseExt) lsFormatInnerSym spec :=
+  hookSat_cliGhostExterns_of_extra_lookup g baseExt hf hok
 
 theorem cliGhostExterns_durationSinceEpoch_budget_sat [LibsignalPlacement]
     (g : CliGhostHooks) (baseExt : LibsignalHooks)
@@ -401,36 +491,305 @@ theorem cliGhostExterns_blackBoxSat_budget_sat [LibsignalPlacement]
   hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
     hRow.blackBox_budget_ok (by decide : 16 ≤ 16) (by decide)
 
-theorem cliExternsPlaced_compress256Multi_budget_sat (mmpl : Obj.MultiPlacement) (W : CliHooks) :
-    HookSat (cliExternsPlaced mmpl W) CryptoVerification.SignalSession.lsCompress256Sym
-      (withVmPreserved (CryptoVerification.LibsignalTripleRatchet.compress256Spec W.C.F)) :=
-  hookSat_cli_vm mmpl W (compress256_row_placed mmpl W)
-    (cliExternsPlaced_compress256Multi_sat mmpl W) (compress256Hook_vm W)
+theorem cliGhostExterns_compress256_roBudget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {stk : Nat} (hstk : 176 ≤ stk := by decide) :
+    HookSat (cliGhostExterns g baseExt) CryptoVerification.SignalSession.lsCompress256Sym
+      (LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet.withLsRet
+        (LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget.sessionCompress256ROBudgetSpec
+          CryptoVerification.LibsignalSpqrV1.sha256Compress stk)) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.compress256_roBudget_ok hstk
 
-theorem cliExternsPlaced_compress256_budget_sat (mmpl : Obj.MultiPlacement) (W : CliHooks) :
-    HookSat (cliExternsPlaced mmpl W) CryptoVerification.SignalSession.lsCompress256Sym
-      (withVmPreserved (compress256SingleSpec W.C.F)) :=
-  hookSat_cli_vm mmpl W (compress256_row_placed mmpl W)
-    (cliExternsPlaced_compress256_sat mmpl W) (compress256Hook_vm W)
+theorem cliGhostExterns_compress256Multi_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {stk : Nat} (hstk : 176 ≤ stk := by decide) :
+    HookSat (cliGhostExterns g baseExt) CryptoVerification.SignalSession.lsCompress256Sym
+      (LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet.withLsRet
+        (withVmPreserved
+          (CryptoVerification.LibsignalTripleRatchet.withStack
+            (CryptoVerification.LibsignalTripleRatchet.compress256Spec
+              CryptoVerification.LibsignalSpqrV1.sha256Compress) stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.compress256_multi_budget_ok hstk
 
-theorem cliExternsPlaced_pubFromSecret_budget_sat (mmpl : Obj.MultiPlacement) (W : CliHooks) :
-    HookSat (cliExternsPlaced mmpl W) CryptoVerification.SignalSession.lsPubFromSecretSym
-      (withVmPreserved (pubFromSecretSpec W.C.pubKey)) :=
-  hookSat_cli_vm mmpl W (pubFromSecret_row_placed mmpl W)
-    (cliExternsPlaced_pubFromSecret_sat mmpl W) (pubFromSecretHook_vm W)
+theorem cliGhostExterns_compress256_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {stk : Nat} (hstk : 176 ≤ stk := by decide) :
+    HookSat (cliGhostExterns g baseExt) CryptoVerification.SignalSession.lsCompress256Sym
+      (LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet.withLsRet
+        (withVmPreserved
+          (CryptoVerification.LibsignalTripleRatchet.withStack
+            (LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraRowSpecs.Compress256RowSpec.compress256RowSingleSpec
+              CryptoVerification.LibsignalSpqrV1.sha256Compress) stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.compress256_single_budget_ok hstk
 
-theorem cliExternsPlaced_derivePublicKeyBytes_budget_sat (mmpl : Obj.MultiPlacement)
-    (W : CliHooks) :
-    HookSat (cliExternsPlaced mmpl W) CryptoVerification.SignalSession.lsPubFromSecretSym
-      (withVmPreserved (derivePublicKeyBytesSpec W.C.pubKey)) :=
-  hookSat_cli_vm mmpl W (pubFromSecret_row_placed mmpl W)
-    (cliExternsPlaced_derivePublicKeyBytes_sat mmpl W) (pubFromSecretHook_vm W)
+theorem cliGhostExterns_pubFromSecretWithStack_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := extHookStack)
+    (hlo : 1904 ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withLsRet (withVmPreserved (CryptoVerification.SignalSession.CliExt.withStack
+        (pubFromSecretSpec x25519PubFromSecretRef) stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.pubFromSecretWithStack_budget_ok stk hlo hhi
 
-theorem cliExternsPlaced_diffieHellman_budget_sat (mmpl : Obj.MultiPlacement) (W : CliHooks) :
-    HookSat (cliExternsPlaced mmpl W) CryptoVerification.SignalSession.lsDiffieHellmanSym
-      (withVmPreserved (diffieHellmanSpec W.C.X)) :=
-  hookSat_cli_vm mmpl W (diffieHellman_row_placed mmpl W)
-    (cliExternsPlaced_diffieHellman_sat mmpl W) (diffieHellmanHook_vm W)
+theorem cliGhostExterns_pubFromSecretWithStack_keepsFs_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := extHookStack)
+    (hlo : 1904 ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withLsRet (withVmPreserved (keepsFs
+        (CryptoVerification.SignalSession.CliExt.withStack
+          (pubFromSecretSpec x25519PubFromSecretRef) stk)))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.pubFromSecretWithStack_keepsFs_budget_ok stk hlo hhi
+
+theorem cliGhostExterns_pubFromSecretWithStack_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := extHookStack)
+    (hlo : 1904 ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withLsRet (withAlloc A lim (CryptoVerification.SignalSession.CliExt.withStack
+        (pubFromSecretSpec x25519PubFromSecretRef) stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.pubFromSecretWithStack_ls_withAlloc_ok A lim stk hlo hhi
+
+theorem cliGhostExterns_pubFromSecretWithStack_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := extHookStack)
+    (hlo : 1904 ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withAlloc A lim (withLsRet (CryptoVerification.SignalSession.CliExt.withStack
+        (pubFromSecretSpec x25519PubFromSecretRef) stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.pubFromSecretWithStack_withAlloc_ok A lim stk hlo hhi
+
+theorem cliGhostExterns_pubFromSecret_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {C : Crypto} (hC : C.pubKey = x25519PubFromSecretRef) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withLsRet (withVmPreserved (CryptoVerification.SignalSession.CliExt.pubFromSecretSpec C))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.pubFromSecret_budget_ok hC
+
+theorem cliGhostExterns_pubFromSecret_keepsFs_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {C : Crypto} (hC : C.pubKey = x25519PubFromSecretRef) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withLsRet (withVmPreserved
+        (keepsFs (CryptoVerification.SignalSession.CliExt.pubFromSecretSpec C)))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.pubFromSecret_keepsFs_budget_ok hC
+
+theorem cliGhostExterns_pubFromSecret_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {C : Crypto} (hC : C.pubKey = x25519PubFromSecretRef) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withLsRet (withAlloc A lim (CryptoVerification.SignalSession.CliExt.pubFromSecretSpec C))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.pubFromSecret_ls_withAlloc_ok A lim hC
+
+theorem cliGhostExterns_pubFromSecret_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {C : Crypto} (hC : C.pubKey = x25519PubFromSecretRef) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withAlloc A lim (withLsRet (CryptoVerification.SignalSession.CliExt.pubFromSecretSpec C))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.pubFromSecret_withAlloc_ok A lim hC
+
+theorem cliGhostExterns_pubFromSecretPureByte_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (byVal : Bool := false) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withLsRet (withVmPreserved (pureByteFunctionSpec x25519PubFromSecretRef byVal))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.pubFromSecretPureByte_budget_ok byVal
+
+theorem cliGhostExterns_pubFromSecretPureByte_keepsFs_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (byVal : Bool := false) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withLsRet (withVmPreserved (keepsFs (pureByteFunctionSpec x25519PubFromSecretRef byVal)))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.pubFromSecretPureByte_keepsFs_budget_ok byVal
+
+theorem cliGhostExterns_pubFromSecretPureByte_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (byVal : Bool := false) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withLsRet (withAlloc A lim (pureByteFunctionSpec x25519PubFromSecretRef byVal))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.pubFromSecretPureByte_ls_withAlloc_ok A lim byVal
+
+theorem cliGhostExterns_pubFromSecretPureByte_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (byVal : Bool := false) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withAlloc A lim (withLsRet (pureByteFunctionSpec x25519PubFromSecretRef byVal))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.pubFromSecretPureByte_withAlloc_ok A lim byVal
+
+theorem cliGhostExterns_derivePublicKeyBytesStack_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := extHookStack)
+    (hlo : 1904 ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withLsRet (withVmPreserved (derivePublicKeyBytesStackSpec x25519PubFromSecretRef stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.derivePublicKeyBytesStack_budget_ok stk hlo hhi
+
+theorem cliGhostExterns_derivePublicKeyBytesStack_keepsFs_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := extHookStack)
+    (hlo : 1904 ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withLsRet (withVmPreserved
+        (keepsFs (derivePublicKeyBytesStackSpec x25519PubFromSecretRef stk)))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.derivePublicKeyBytesStack_keepsFs_budget_ok stk hlo hhi
+
+theorem cliGhostExterns_derivePublicKeyBytesStack_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := extHookStack)
+    (hlo : 1904 ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withLsRet (withAlloc A lim (derivePublicKeyBytesStackSpec x25519PubFromSecretRef stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.derivePublicKeyBytesStack_ls_withAlloc_ok A lim stk hlo hhi
+
+theorem cliGhostExterns_derivePublicKeyBytesStack_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := extHookStack)
+    (hlo : 1904 ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withAlloc A lim (withLsRet (derivePublicKeyBytesStackSpec x25519PubFromSecretRef stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.derivePublicKeyBytesStack_withAlloc_ok A lim stk hlo hhi
+
+theorem cliGhostExterns_derivePublicKeyBytesStackBudget_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := extHookStack)
+    (hlo : 1904 ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withLsRet (withVmPreserved (derivePublicKeyBytesStackBudgetSpec x25519PubFromSecretRef stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.derivePublicKeyBytesStackBudget_budget_ok stk hlo hhi
+
+theorem cliGhostExterns_derivePublicKeyBytesStackBudget_keepsFs_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := extHookStack)
+    (hlo : 1904 ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withLsRet (withVmPreserved
+        (keepsFs (derivePublicKeyBytesStackBudgetSpec x25519PubFromSecretRef stk)))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.derivePublicKeyBytesStackBudget_keepsFs_budget_ok stk hlo hhi
+
+theorem cliGhostExterns_derivePublicKeyBytesStackBudget_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := extHookStack)
+    (hlo : 1904 ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withLsRet (withAlloc A lim (derivePublicKeyBytesStackBudgetSpec x25519PubFromSecretRef stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.derivePublicKeyBytesStackBudget_ls_withAlloc_ok A lim stk hlo hhi
+
+theorem cliGhostExterns_derivePublicKeyBytesStackBudget_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := extHookStack)
+    (hlo : 1904 ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsPubFromSecretSym
+      (withAlloc A lim (withLsRet (derivePublicKeyBytesStackBudgetSpec x25519PubFromSecretRef stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.derivePublicKeyBytesStackBudget_withAlloc_ok A lim stk hlo hhi
+
+theorem cliGhostExterns_diffieHellmanWithStack_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := extHookStack)
+    (hlo : 1808 ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsDiffieHellmanSym
+      (withLsRet (withVmPreserved (CryptoVerification.SignalSession.CliExt.withStack
+        (diffieHellmanSpec x25519Ref) stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.diffieHellmanWithStack_budget_ok stk hlo hhi
+
+theorem cliGhostExterns_diffieHellmanWithStack_keepsFs_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := extHookStack)
+    (hlo : 1808 ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsDiffieHellmanSym
+      (withLsRet (withVmPreserved (keepsFs
+        (CryptoVerification.SignalSession.CliExt.withStack (diffieHellmanSpec x25519Ref) stk)))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.diffieHellmanWithStack_keepsFs_budget_ok stk hlo hhi
+
+theorem cliGhostExterns_diffieHellmanWithStack_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := extHookStack)
+    (hlo : 1808 ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsDiffieHellmanSym
+      (withLsRet (withAlloc A lim (CryptoVerification.SignalSession.CliExt.withStack
+        (diffieHellmanSpec x25519Ref) stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.diffieHellmanWithStack_ls_withAlloc_ok A lim stk hlo hhi
+
+theorem cliGhostExterns_diffieHellmanWithStack_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := extHookStack)
+    (hlo : 1808 ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsDiffieHellmanSym
+      (withAlloc A lim (withLsRet (CryptoVerification.SignalSession.CliExt.withStack
+        (diffieHellmanSpec x25519Ref) stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.diffieHellmanWithStack_withAlloc_ok A lim stk hlo hhi
+
+theorem cliGhostExterns_diffieHellman_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {C : Crypto} (hC : C.X = x25519Ref) :
+    HookSat (cliGhostExterns g baseExt) lsDiffieHellmanSym
+      (withLsRet (withVmPreserved (dhSpec C))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.diffieHellman_budget_ok hC
+
+theorem cliGhostExterns_diffieHellman_keepsFs_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {C : Crypto} (hC : C.X = x25519Ref) :
+    HookSat (cliGhostExterns g baseExt) lsDiffieHellmanSym
+      (withLsRet (withVmPreserved (keepsFs (dhSpec C)))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.diffieHellman_keepsFs_budget_ok hC
+
+theorem cliGhostExterns_diffieHellman_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {C : Crypto} (hC : C.X = x25519Ref) :
+    HookSat (cliGhostExterns g baseExt) lsDiffieHellmanSym
+      (withLsRet (withAlloc A lim (dhSpec C))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.diffieHellman_ls_withAlloc_ok A lim hC
+
+theorem cliGhostExterns_diffieHellman_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {C : Crypto} (hC : C.X = x25519Ref) :
+    HookSat (cliGhostExterns g baseExt) lsDiffieHellmanSym
+      (withAlloc A lim (withLsRet (dhSpec C))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.diffieHellman_withAlloc_ok A lim hC
 
 theorem cliGhostExterns_staticSecretDrop_budget_sat [LibsignalPlacement]
     (g : CliGhostHooks) (baseExt : LibsignalHooks)
@@ -448,6 +807,607 @@ theorem cliGhostExterns_sharedSecretDrop_budget_sat [LibsignalPlacement]
   hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
     hRow.sharedSecretDrop_budget_ok
 
+theorem cliGhostExterns_toEdwards_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := dalekHookStack)
+    (hlo : dalekHookStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsToEdwardsSymCli
+      (withLsRet (withVmPreserved (dalekMontToEdExtSpec stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.toEdwards_budget_ok stk hlo hhi
+
+theorem cliGhostExterns_compress_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := dalekHookStack)
+    (hlo : dalekHookStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsCompressSymCli
+      (withLsRet (withVmPreserved (dalekCompressExtSpec stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.compress_budget_ok stk hlo hhi
+
+theorem cliGhostExterns_edNegMaster_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g) :
+    HookSat (cliGhostExterns g baseExt) lsEdNegSymCli
+      (withVmPreserved masterEdNegSpec) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.edNeg_master_budget_ok
+
+theorem cliGhostExterns_edNegUnstacked_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (byVal : Bool := false) :
+    HookSat (cliGhostExterns g baseExt) lsEdNegSymCli
+      (withVmPreserved (edwardsPointNegUnstackedSpec byVal)) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.edNeg_unstacked_budget_ok byVal
+
+theorem cliGhostExterns_edNeg_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g) :
+    HookSat (cliGhostExterns g baseExt) lsEdNegSymCli
+      (withVmPreserved
+        (cryptoLeafStubSpec (fun bs => vecU8 (dalekEdNegVec (u8Vec 160 bs))) 160 160)) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.edNeg_cryptoLeafStub_budget_ok
+
+theorem cliGhostExterns_edNegExt_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := dalekHookStack) :
+    HookSat (cliGhostExterns g baseExt) lsEdNegSymCli
+      (withLsRet (withVmPreserved (dalekEdNegExtSpec stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.edNeg_ext_budget_ok stk
+
+theorem cliGhostExterns_torsionFree_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := dalekHookStack)
+    (hlo : dalekHookStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsTorsionFreeSymCli
+      (withLsRet (withVmPreserved (dalekTorsionFreeExtSpec stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.torsionFree_budget_ok stk hlo hhi
+
+theorem cliGhostExterns_dsmb_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := dalekHookStack)
+    (hlo : dalekHookStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsDsmbSymCli
+      (withLsRet (withVmPreserved (dalekDsmbExtSpec stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.dsmb_budget_ok stk hlo hhi
+
+theorem cliGhostExterns_scalarMod_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := dalekHookStack)
+    (hlo : dalekHookStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsScalarModSymCli
+      (withLsRet (withVmPreserved (dalekScalarModExtSpec stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.scalarMod_budget_ok stk hlo hhi
+
+theorem cliGhostExterns_scalarWide_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := dalekHookStack)
+    (hlo : dalekHookStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsScalarWideSymCli
+      (withLsRet (withVmPreserved (dalekScalarWideExtSpec stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.scalarWide_budget_ok stk hlo hhi
+
+theorem cliGhostExterns_mlkemPk1_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemPk1SymCli
+      (withVmPreserved mlkemPk1Spec) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemPk1_budget_ok
+
+theorem cliGhostExterns_mlkemPk1Ls_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemPk1SymCli
+      (withLsRet (withVmPreserved mlkemPk1Spec)) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemPk1_ls_budget_ok
+
+theorem cliGhostExterns_mlkemPk2_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemPk2SymCli
+      (withVmPreserved mlkemPk2Spec) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemPk2_budget_ok
+
+theorem cliGhostExterns_mlkemPk2Ls_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemPk2SymCli
+      (withLsRet (withVmPreserved mlkemPk2Spec)) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemPk2_ls_budget_ok
+
+theorem cliGhostExterns_compress512_stackedMaster_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {stk : Nat} (hstk : 256 ≤ stk := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsCompress512SymCli
+      (withLsRet (withVmPreserved (compress512StackedMasterSpec stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.compress512_stackedMaster_budget_ok hstk
+
+theorem cliGhostExterns_compress512_stackedMaster_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {stk : Nat} (hstk : 256 ≤ stk := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsCompress512SymCli
+      (withLsRet (withAlloc A lim (compress512StackedMasterSpec stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.compress512_stackedMaster_ls_withAlloc_ok A lim hstk
+
+theorem cliGhostExterns_compress512_stackedMaster_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {stk : Nat} (hstk : 256 ≤ stk := by decide) :
+    HookSat (cliGhostExterns g baseExt) lsCompress512SymCli
+      (withAlloc A lim (withLsRet (compress512StackedMasterSpec stk))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.compress512_stackedMaster_withAlloc_ok A lim hstk
+
+theorem cliGhostExterns_compress512_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {Q : PqxdhPrims} (hF : Q.F512 = sha512CompressState) :
+    HookSat (cliGhostExterns g baseExt) lsCompress512SymCli
+      (withLsRet (withVmPreserved (CryptoVerification.SignalSession.CliExt.compress512Spec Q))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.compress512_budget_ok hF
+
+theorem cliGhostExterns_compress512_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {Q : PqxdhPrims} (hF : Q.F512 = sha512CompressState) :
+    HookSat (cliGhostExterns g baseExt) lsCompress512SymCli
+      (withLsRet (withAlloc A lim (CryptoVerification.SignalSession.CliExt.compress512Spec Q))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.compress512_ls_withAlloc_ok A lim hF
+
+theorem cliGhostExterns_compress512_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {Q : PqxdhPrims} (hF : Q.F512 = sha512CompressState) :
+    HookSat (cliGhostExterns g baseExt) lsCompress512SymCli
+      (withAlloc A lim (withLsRet (CryptoVerification.SignalSession.CliExt.compress512Spec Q))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.compress512_withAlloc_ok A lim hF
+
+theorem cliGhostExterns_compress512_pqxdhStubPlaced_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (X : UnreachedPqxdhPrimitives) {P0 : PEParams}
+    (hF : P0.Q.F512 = sha512CompressState) :
+    HookSat (cliGhostExterns g baseExt) lsCompress512SymCli
+      (withLsRet (withVmPreserved (compressInPlaceStubSpecPlaced
+        (sha512CompressOutBytes (modelPrims X P0)) 64 128))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.compress512_pqxdhStubPlaced_budget_ok X hF
+
+theorem cliGhostExterns_compress512_pqxdhStubPlaced_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (X : UnreachedPqxdhPrimitives) {P0 : PEParams}
+    (hF : P0.Q.F512 = sha512CompressState) :
+    HookSat (cliGhostExterns g baseExt) lsCompress512SymCli
+      (withLsRet (withAlloc A lim (compressInPlaceStubSpecPlaced
+        (sha512CompressOutBytes (modelPrims X P0)) 64 128))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.compress512_pqxdhStubPlaced_ls_withAlloc_ok A lim X hF
+
+theorem cliGhostExterns_compress512_pqxdhStubPlaced_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (X : UnreachedPqxdhPrimitives) {P0 : PEParams}
+    (hF : P0.Q.F512 = sha512CompressState) :
+    HookSat (cliGhostExterns g baseExt) lsCompress512SymCli
+      (withAlloc A lim (withLsRet (compressInPlaceStubSpecPlaced
+        (sha512CompressOutBytes (modelPrims X P0)) 64 128))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.compress512_pqxdhStubPlaced_withAlloc_ok A lim X hF
+
+theorem cliGhostExterns_kemEncapsPreserved_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : kemEncapsTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {Q : PqxdhPrims} (hQ : Q.encaps = kyber1024EncapsVec) :
+    HookSat (cliGhostExterns g baseExt) lsKemEncapsSymCli
+      (withLsRet (withVmPreserved (kemEncapsPreservedAtSpec stk Q))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.kemEncapsPreserved_budget_ok stk hlo hhi hQ
+
+theorem cliGhostExterns_kemEncapsPreserved_keepsFs_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : kemEncapsTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {Q : PqxdhPrims} (hQ : Q.encaps = kyber1024EncapsVec) :
+    HookSat (cliGhostExterns g baseExt) lsKemEncapsSymCli
+      (withLsRet (withVmPreserved (keepsFs (kemEncapsPreservedAtSpec stk Q)))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.kemEncapsPreserved_keepsFs_budget_ok stk hlo hhi hQ
+
+theorem cliGhostExterns_kemEncapsPreserved_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : kemEncapsTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {Q : PqxdhPrims} (hQ : Q.encaps = kyber1024EncapsVec) :
+    HookSat (cliGhostExterns g baseExt) lsKemEncapsSymCli
+      (withAlloc A lim (withLsRet (kemEncapsPreservedAtSpec stk Q))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.kemEncapsPreserved_withAlloc_ok A lim stk hlo hhi hQ
+
+theorem cliGhostExterns_kemEncapsPreserved_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : kemEncapsTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {Q : PqxdhPrims} (hQ : Q.encaps = kyber1024EncapsVec) :
+    HookSat (cliGhostExterns g baseExt) lsKemEncapsSymCli
+      (withLsRet (withAlloc A lim (kemEncapsPreservedAtSpec stk Q))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.kemEncapsPreserved_ls_withAlloc_ok A lim stk hlo hhi hQ
+
+theorem cliGhostExterns_kemEncaps_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : kemEncapsTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {Q : PqxdhPrims} (hQ : Q.encaps = kyber1024EncapsVec) :
+    HookSat (cliGhostExterns g baseExt) lsKemEncapsSymCli
+      (withLsRet (withVmPreserved (kemEncapsAtSpec stk Q))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.kemEncaps_budget_ok stk hlo hhi hQ
+
+theorem cliGhostExterns_kemEncaps_keepsFs_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : kemEncapsTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {Q : PqxdhPrims} (hQ : Q.encaps = kyber1024EncapsVec) :
+    HookSat (cliGhostExterns g baseExt) lsKemEncapsSymCli
+      (withLsRet (withVmPreserved (keepsFs (kemEncapsAtSpec stk Q)))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.kemEncaps_keepsFs_budget_ok stk hlo hhi hQ
+
+theorem cliGhostExterns_kemEncaps_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : kemEncapsTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {Q : PqxdhPrims} (hQ : Q.encaps = kyber1024EncapsVec) :
+    HookSat (cliGhostExterns g baseExt) lsKemEncapsSymCli
+      (withAlloc A lim (withLsRet (kemEncapsAtSpec stk Q))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.kemEncaps_withAlloc_ok A lim stk hlo hhi hQ
+
+theorem cliGhostExterns_kemEncaps_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : kemEncapsTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {Q : PqxdhPrims} (hQ : Q.encaps = kyber1024EncapsVec) :
+    HookSat (cliGhostExterns g baseExt) lsKemEncapsSymCli
+      (withLsRet (withAlloc A lim (kemEncapsAtSpec stk Q))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.kemEncaps_ls_withAlloc_ok A lim stk hlo hhi hQ
+
+theorem cliGhostExterns_kemDecaps_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : kemDecapsTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {Q : PqxdhPrims} (hQ : Q.decaps = kyber1024DecapsVec) :
+    HookSat (cliGhostExterns g baseExt) lsKemDecapsSymCli
+      (withLsRet (withVmPreserved (kemDecapsAtSpec stk Q))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.kemDecaps_budget_ok stk hlo hhi hQ
+
+theorem cliGhostExterns_kemDecaps_keepsFs_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : kemDecapsTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {Q : PqxdhPrims} (hQ : Q.decaps = kyber1024DecapsVec) :
+    HookSat (cliGhostExterns g baseExt) lsKemDecapsSymCli
+      (withLsRet (withVmPreserved (keepsFs (kemDecapsAtSpec stk Q)))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.kemDecaps_keepsFs_budget_ok stk hlo hhi hQ
+
+theorem cliGhostExterns_kemDecaps_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : kemDecapsTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {Q : PqxdhPrims} (hQ : Q.decaps = kyber1024DecapsVec) :
+    HookSat (cliGhostExterns g baseExt) lsKemDecapsSymCli
+      (withAlloc A lim (withLsRet (kemDecapsAtSpec stk Q))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.kemDecaps_withAlloc_ok A lim stk hlo hhi hQ
+
+theorem cliGhostExterns_kemDecaps_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : kemDecapsTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {Q : PqxdhPrims} (hQ : Q.decaps = kyber1024DecapsVec) :
+    HookSat (cliGhostExterns g baseExt) lsKemDecapsSymCli
+      (withLsRet (withAlloc A lim (kemDecapsAtSpec stk Q))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.kemDecaps_ls_withAlloc_ok A lim stk hlo hhi hQ
+
+theorem cliGhostExterns_mlkemFromSeed_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemFromSeedTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemFromSeedSymCli
+      (withLsRet (withVmPreserved (mlkemFromSeedAtSpec stk K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemFromSeed_budget_ok stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemFromSeed_keepsFs_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemFromSeedTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemFromSeedSymCli
+      (withLsRet (withVmPreserved (keepsFs (mlkemFromSeedAtSpec stk K)))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemFromSeed_keepsFs_budget_ok stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemFromSeed_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemFromSeedTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemFromSeedSymCli
+      (withAlloc A lim (withLsRet (mlkemFromSeedAtSpec stk K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemFromSeed_withAlloc_ok A lim stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemFromSeed_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemFromSeedTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemFromSeedSymCli
+      (withLsRet (withAlloc A lim (mlkemFromSeedAtSpec stk K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemFromSeed_ls_withAlloc_ok A lim stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemEncaps1_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemEncaps1TightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemEncaps1SymCli
+      (withLsRet (withVmPreserved (mlkemEncaps1AtSpec stk K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemEncaps1_budget_ok stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemEncaps1_keepsFs_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemEncaps1TightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemEncaps1SymCli
+      (withLsRet (withVmPreserved (keepsFs (mlkemEncaps1AtSpec stk K)))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemEncaps1_keepsFs_budget_ok stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemEncaps1_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemEncaps1TightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemEncaps1SymCli
+      (withAlloc A lim (withLsRet (mlkemEncaps1AtSpec stk K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemEncaps1_withAlloc_ok A lim stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemEncaps1_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemEncaps1TightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemEncaps1SymCli
+      (withLsRet (withAlloc A lim (mlkemEncaps1AtSpec stk K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemEncaps1_ls_withAlloc_ok A lim stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemEncaps2_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemEncaps2SymCli
+      (withLsRet (withVmPreserved (mlkemEncaps2Spec K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemEncaps2_budget_ok hK
+
+theorem cliGhostExterns_mlkemEncaps2_keepsFs_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemEncaps2SymCli
+      (withLsRet (withVmPreserved (keepsFs (mlkemEncaps2Spec K)))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemEncaps2_keepsFs_budget_ok hK
+
+theorem cliGhostExterns_mlkemEncaps2_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemEncaps2SymCli
+      (withAlloc A lim (withLsRet (mlkemEncaps2Spec K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemEncaps2_withAlloc_ok A lim hK
+
+theorem cliGhostExterns_mlkemEncaps2_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemEncaps2SymCli
+      (withLsRet (withAlloc A lim (mlkemEncaps2Spec K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemEncaps2_ls_withAlloc_ok A lim hK
+
+theorem cliGhostExterns_mlkemEncaps2At_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemEncaps2TightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemEncaps2SymCli
+      (withLsRet (withVmPreserved (mlkemEncaps2AtSpec stk K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemEncaps2At_budget_ok stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemEncaps2At_keepsFs_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemEncaps2TightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemEncaps2SymCli
+      (withLsRet (withVmPreserved (keepsFs (mlkemEncaps2AtSpec stk K)))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemEncaps2At_keepsFs_budget_ok stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemEncaps2At_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemEncaps2TightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemEncaps2SymCli
+      (withAlloc A lim (withLsRet (mlkemEncaps2AtSpec stk K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemEncaps2At_withAlloc_ok A lim stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemEncaps2At_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemEncaps2TightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemEncaps2SymCli
+      (withLsRet (withAlloc A lim (mlkemEncaps2AtSpec stk K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemEncaps2At_ls_withAlloc_ok A lim stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemDecapsAt_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemDecapsTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemDecapsSymCli
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec stk K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemDecapsAt_budget_ok stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemDecapsAt_keepsFs_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemDecapsTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemDecapsSymCli
+      (withLsRet (withVmPreserved (keepsFs (mlkemDecapsAtSpec stk K)))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemDecapsAt_keepsFs_budget_ok stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemDecapsAt_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemDecapsTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemDecapsSymCli
+      (withAlloc A lim (withLsRet (mlkemDecapsAtSpec stk K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemDecapsAt_withAlloc_ok A lim stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemDecapsAt_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemDecapsTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemDecapsSymCli
+      (withLsRet (withAlloc A lim (mlkemDecapsAtSpec stk K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemDecapsAt_ls_withAlloc_ok A lim stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemValidatePk_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemValidatePkSymCli
+      (withLsRet (withVmPreserved (mlkemValidatePkSpec K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemValidatePk_budget_ok hK
+
+theorem cliGhostExterns_mlkemValidatePk_keepsFs_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemValidatePkSymCli
+      (withLsRet (withVmPreserved (keepsFs (mlkemValidatePkSpec K)))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemValidatePk_keepsFs_budget_ok hK
+
+theorem cliGhostExterns_mlkemValidatePk_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemValidatePkSymCli
+      (withAlloc A lim (withLsRet (mlkemValidatePkSpec K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemValidatePk_withAlloc_ok A lim hK
+
+theorem cliGhostExterns_mlkemValidatePk_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemValidatePkSymCli
+      (withLsRet (withAlloc A lim (mlkemValidatePkSpec K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemValidatePk_ls_withAlloc_ok A lim hK
+
+theorem cliGhostExterns_mlkemValidatePkAt_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemValidatePkTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemValidatePkSymCli
+      (withLsRet (withVmPreserved (mlkemValidatePkAtSpec stk K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemValidatePkAt_budget_ok stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemValidatePkAt_keepsFs_budget_sat [LibsignalPlacement]
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemValidatePkTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemValidatePkSymCli
+      (withLsRet (withVmPreserved (keepsFs (mlkemValidatePkAtSpec stk K)))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemValidatePkAt_keepsFs_budget_ok stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemValidatePkAt_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemValidatePkTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemValidatePkSymCli
+      (withAlloc A lim (withLsRet (mlkemValidatePkAtSpec stk K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemValidatePkAt_withAlloc_ok A lim stk hlo hhi hK
+
+theorem cliGhostExterns_mlkemValidatePkAt_ls_withAlloc_sat [LibsignalPlacement]
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (g : CliGhostHooks) (baseExt : LibsignalHooks) (hOk : ExtraSpecOk g)
+    (stk : Nat := mlkemHookStack)
+    (hlo : mlkemValidatePkTightStack ≤ stk := by decide) (hhi : stk ≤ 2 ^ 64 := by decide)
+    {K : MlKem} (hK : K = mlkem768Incremental) :
+    HookSat (cliGhostExterns g baseExt) lsMlkemValidatePkSymCli
+      (withLsRet (withAlloc A lim (mlkemValidatePkAtSpec stk K))) :=
+  hookSat_cliGhostExterns_of_extraOk g baseExt hOk fun _ _ hRow =>
+    hRow.mlkemValidatePkAt_ls_withAlloc_ok A lim stk hlo hhi hK
+
 /-! ## 3. `HookOk` helpers and `CliGhostAllocHooks` -/
 
 private theorem allocHookStack_le_extHookStack : allocHookStack ≤ extHookStack := by decide
@@ -455,7 +1415,7 @@ private theorem allocHookStack_le_extHookStack : allocHookStack ≤ extHookStack
 private theorem hook_placed_rocl_ok [LibsignalPlacement] {α : Type} {H : LibsignalHooks}
     {sym : String} {spec : Spec α}
     (hsat : HookSat H sym spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide) :
+    (hmem : sym ∈ libsignalHookedExterns := by decide) :
     subroutine_ok (lsProg_617 H) (lsρ sym) (CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl spec) :=
   CryptoVerification.LibsignalPublicApi.StoreKit.subroutine_ok_withLsCodeRoLoaded_of_plain (ls_hook_ok_ultra_of_mem hsat hmem)
 
@@ -483,11 +1443,10 @@ structure CliAllocHooks [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAl
   dealloc : HookOk CryptoVerification.E2E.deallocHook (rustCliDeallocBudgetSpec M A lim)
   realloc : HookOk CryptoVerification.E2E.reallocHook0 (rustCliReallocBudgetSpec M A lim)
 
-
 /-- Witnesses that `g.alloc`, `g.dealloc`, and `g.realloc` satisfy
 `rustCli{Alloc,Dealloc,Realloc}BudgetSpec`, preserve `State.fs`, and satisfy `HookFsTraced IsFsC`,
-and that `g.memset` and `g.memcpy` satisfy all budget-threaded consumer specs (`VmPreserved`,
-`State.fs` preservation, and `HookFsTraced IsFsC`) on the 37-row `cliHookTablePlaced`. -/
+and that `g.memset`, `g.memcpy`, and `g.extra` satisfy the budget-threaded consumer specs
+(`VmPreserved`, `State.fs` preservation, and `HookFsTraced IsFsC`). -/
 structure CliGhostAllocHooks [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (g : CliGhostHooks) : Prop where
   alloc : HookOk g.alloc (rustCliAllocBudgetSpec M A lim false)
@@ -523,16 +1482,58 @@ structure CliGhostAllocHooks [LibsignalPlacement] (M : AllocCostModel) (A : Rust
     ∀ s : State, (f s).sigActions = s.sigActions ∧ (f s).oracle = s.oracle
   extraOk : ExtraSpecOk g
 
-/-- Extends `CliGhostAllocHooks` with `g.allocZeroed` (`rustCliAllocBudgetSpec M A lim true`) and
-`HookFsTraced IsFsC g.allocZeroed`. -/
+/-- Extends `CliGhostAllocHooks` with `g.allocZeroed` (`rustCliAllocBudgetSpec M A lim true`),
+`HookFsTraced IsFsC g.allocZeroed`, and the `spqrOnceCallSym` extra-ghost row + address uniqueness. -/
 structure CliGhostSpqrAllocHooks [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (g : CliGhostHooks) : Prop extends CliGhostAllocHooks M A lim g where
   allocZeroed : HookOk g.allocZeroed (rustCliAllocBudgetSpec M A lim true)
   allocZeroed_fs : ∀ s : State, (g.allocZeroed s).fs = s.fs
   allocZeroed_fsT : HookFsTraced IsFsC g.allocZeroed
+  onceCall : ∃ f, g.extra.lookup lsSpqrOnceCallSym = some f ∧ HookOk f spqrOnceCallGhostSpec
+  onceCall_unique :
+    ∀ e ∈ libsignalSessionExterns, lsρ e = lsρ spqrOnceCallSym → e = spqrOnceCallSym
+
+theorem CliGhostSpqrAllocHooks.onceCall_sat [LibsignalPlacement] {M : AllocCostModel}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits} {g : CliGhostHooks}
+    (hG : CliGhostSpqrAllocHooks M A lim g) (baseExt : LibsignalHooks) :
+    HookSat (cliGhostExterns g baseExt) spqrOnceCallSym spqrOnceCallGhostSpec := by
+  obtain ⟨f, hlook, hok⟩ := hG.onceCall
+  exact ⟨f, CryptoVerification.SignalSession.Cli.RunGlue.cliGhostExterns_extra_some g baseExt hlook,
+    hok⟩
+
+theorem CliGhostSpqrAllocHooks.onceCallHookOk [LibsignalPlacement] {M : AllocCostModel}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits} {g : CliGhostHooks}
+    (hG : CliGhostSpqrAllocHooks M A lim g) (baseExt : LibsignalHooks) :
+    OnceCallHookOk (cliGhostExterns g baseExt) :=
+  ⟨hG.onceCall_sat baseExt, hG.onceCall_unique⟩
+
+theorem CliGhostSpqrAllocHooks.onceCallHookOk_withPanics [LibsignalPlacement] {M : AllocCostModel}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits} {g : CliGhostHooks}
+    (hG : CliGhostSpqrAllocHooks M A lim g)
+    (mmpl : Obj.MultiPlacement) (W : CliHooks) :
+    OnceCallHookOk (Rust.withPanics (cliGhostExterns g (cliExternsPlaced mmpl W))) := by
+  rw [CryptoVerification.SignalSession.Cli.RunGlue.withPanics_cliGhostExterns mmpl g W]
+  exact hG.onceCallHookOk (cliExternsPlaced mmpl W)
+
+theorem CliGhostSpqrAllocHooks.onceCallHookOk_ext [LibsignalPlacement] {M : AllocCostModel}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits} {g : CliGhostHooks}
+    (hG : CliGhostSpqrAllocHooks M A lim g)
+    (mmpl : Obj.MultiPlacement) (W : CliHooks)
+    {ext : String → Option (State → State)}
+    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
+      ext sym = cliGhostExterns g (cliExternsPlaced mmpl W) sym) :
+    OnceCallHookOk (Rust.withPanics ext) := by
+  refine ⟨?_, hG.onceCall_unique⟩
+  have heq : Rust.withPanics ext spqrOnceCallSym =
+      cliGhostExterns g (cliExternsPlaced mmpl W) spqrOnceCallSym := by
+    have hnp : Rust.isPanicSymbol spqrOnceCallSym = false := by
+      simp [Rust.isPanicSymbol, spqrOnceCallSym]
+    simp only [Rust.withPanics, hnp, Bool.false_eq_true, ↓reduceIte]
+    exact hExt spqrOnceCallSym (by decide)
+  exact hookSat_of_eq heq (hG.onceCall_sat (cliExternsPlaced mmpl W))
 
 /-- Bump-allocator instantiation of `CliGhostHooks` (`allocHook0`, `deallocHook`, `reallocHook0`, `allocZeroedHook0`; no replay obligation). -/
-noncomputable def bumpGhost : CliGhostHooks where
+@[expose] noncomputable def bumpGhost : CliGhostHooks where
   alloc := CryptoVerification.E2E.allocHook0
   dealloc := CryptoVerification.E2E.deallocHook
   realloc := CryptoVerification.E2E.reallocHook0
@@ -566,6 +1567,21 @@ theorem cliGhostAllocHooks_bumpGhost [LibsignalPlacement] {M : AllocCostModel} {
   memcpy_exact := fun f hf => by cases hf; exact hookMemcpy_exact
   memset_acp := fun f hf s => by cases hf; exact ⟨rfl, rfl⟩
   extraOk := pureExtraGhosts_specOk
+
+theorem bumpGhost_writeFile_budget_sat {M : AllocCostModel} (A : RustCliAllocBudget M)
+    (lim : BudgetLimits) (baseExt : LibsignalHooks) (stk : Nat) :
+    HookSat (cliGhostExterns bumpGhost baseExt) lsWriteFileSym
+      (LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget.writeFileSpecPlaced
+        cliIo A lim stk) :=
+  cliGhostExterns_writeFile_hook_budget_sat A lim bumpGhost baseExt stk pureExtraGhosts_lookup_writeFile
+
+theorem bumpGhost_writeStdout_budget_sat {M : AllocCostModel} (A : RustCliAllocBudget M)
+    (lim : BudgetLimits) (baseExt : LibsignalHooks) (stk : Nat) :
+    HookSat (cliGhostExterns bumpGhost baseExt) lsWriteStdoutSym
+      (LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget.writeStdoutSpecPlaced
+        A lim stk) :=
+  cliGhostExterns_writeStdout_hook_budget_sat A lim bumpGhost baseExt stk
+    pureExtraGhosts_lookup_writeStdout
 
 theorem cliGhostExterns_memset_budget_sat [LibsignalPlacement] (baseExt : LibsignalHooks)
     {g : CliGhostHooks} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -717,49 +1733,62 @@ theorem cliExternsPlaced_exactMemcpy_sat [LibsignalPlacement] (mmpl : Obj.MultiP
     HookSatExactMemcpy (cliGhostExterns g (cliExternsPlaced mmpl W)) "memcpy" :=
   cliGhostExterns_exactMemcpy_sat (cliExternsPlaced mmpl W) hG
 
-/-- Post-F3 `A2''` bridge: `CliGhostAllocHooks` discharges `HkdfPlacedHooksExactSat` on
+/-- `CliGhostAllocHooks` discharges `HkdfPlacedHooksExactSat sha256Compress` on
     `cliGhostExterns g (cliExternsPlaced mmpl W)`. -/
-theorem _root_.LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat.HkdfPlacedHooksExactSat.of_allocHooks
+theorem _root_.LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat.HkdfPlacedHooksExactSat.of_allocHooks_sha256
     [LibsignalPlacement] {mmpl : Obj.MultiPlacement} {g : CliGhostHooks} {W : CliHooks}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (hG : CliGhostAllocHooks M A lim g) :
-    HkdfPlacedHooksExactSat W.C.F (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
+    HkdfPlacedHooksExactSat CryptoVerification.LibsignalSpqrV1.sha256Compress
+      (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
   { memset := by
       obtain ⟨f, hf, _, _, _, hok, _⟩ := hG.memset
       exact ⟨f, cliGhostExterns_memset_some g _ hf, hok⟩
     memcpy := cliExternsPlaced_exactMemcpy_sat mmpl g W hG
     compress256 :=
-      (cliGhostExterns_other g _ (by decide) (by decide) (by decide)
-        (by decide) (by decide) (by decide)).trans
-        (cliExternsPlaced_row mmpl W (compress256_row_placed mmpl W)) }
+      LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs.hookSatCompress256_cliGhostExterns_of_extraOk
+        g (cliExternsPlaced mmpl W) hG.extraOk }
+
+/-- `CliGhostAllocHooks` with `W.C.F = sha256Compress` discharges
+    `HkdfPlacedHooksExactSat W.C.F` on `cliGhostExterns g (cliExternsPlaced mmpl W)`. -/
+theorem _root_.LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat.HkdfPlacedHooksExactSat.of_allocHooks
+    [LibsignalPlacement] {mmpl : Obj.MultiPlacement} {g : CliGhostHooks} {W : CliHooks}
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    (hG : CliGhostAllocHooks M A lim g)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress) :
+    HkdfPlacedHooksExactSat W.C.F (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
+  hF ▸ HkdfPlacedHooksExactSat.of_allocHooks_sha256 hG
 
 /-- `Rust.withPanics` specialization of `HkdfPlacedHooksExactSat.of_allocHooks`. -/
 theorem _root_.LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat.HkdfPlacedHooksExactSat.of_allocHooks_withPanics
     [LibsignalPlacement] {mmpl : Obj.MultiPlacement} {g : CliGhostHooks} {W : CliHooks}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hG : CliGhostAllocHooks M A lim g) :
+    (hG : CliGhostAllocHooks M A lim g)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress) :
     HkdfPlacedHooksExactSat W.C.F
       (Rust.withPanics (cliGhostExterns g (cliExternsPlaced mmpl W))) := by
   rw [CryptoVerification.SignalSession.Cli.RunGlue.withPanics_cliGhostExterns mmpl g W]
-  exact HkdfPlacedHooksExactSat.of_allocHooks hG
+  exact HkdfPlacedHooksExactSat.of_allocHooks hG hF
 
 /-- Variant-extern lift of `HkdfPlacedHooksExactSat.of_allocHooks` (covers any `H` agreeing with
     `cliGhostExterns g (cliExternsPlaced mmpl W)` outside RNG). -/
 theorem _root_.LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat.HkdfPlacedHooksExactSat.of_allocHooks_ext
     [LibsignalPlacement] {mmpl : Obj.MultiPlacement} {g : CliGhostHooks} {W : CliHooks}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hG : CliGhostAllocHooks M A lim g) {H : LibsignalHooks}
+    (hG : CliGhostAllocHooks M A lim g)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress) {H : LibsignalHooks}
     (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
       H sym = cliGhostExterns g (cliExternsPlaced mmpl W) sym) :
     HkdfPlacedHooksExactSat W.C.F H := by
   have hBase : HkdfPlacedHooksExactSat W.C.F (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
-    HkdfPlacedHooksExactSat.of_allocHooks hG
+    HkdfPlacedHooksExactSat.of_allocHooks hG hF
   refine { memset := ?_, memcpy := ?_, compress256 := ?_ }
   · obtain ⟨f, hf, hok⟩ := hBase.memset
     exact ⟨f, (hExt lsMemsetSym (by decide)).trans hf, hok⟩
   · obtain ⟨f, hf, hex⟩ := hBase.memcpy
     exact ⟨f, (hExt lsMemcpySym (by decide)).trans hf, hex⟩
-  · exact (hExt CryptoVerification.LibsignalTripleRatchet.lsCompress256Sym (by decide)).trans
+  · exact LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat.hookSatCompress256_of_sym_eq
+      (hExt CryptoVerification.LibsignalTripleRatchet.lsCompress256Sym (by decide))
       hBase.compress256
 
 /-- `HookExactMemcpy` implies `HookOk f ConcatBudgetAux.framelessMemcpyAcpSpec`
@@ -980,31 +2009,6 @@ theorem cliExternsPlaced_realloc_budget_sat [LibsignalPlacement] (mmpl : Obj.Mul
   ⟨g.realloc, cliGhostExterns_realloc g _, hG.realloc⟩
 
 /-! ## 4. `AllocContractsXCliPlaced` and `AllocContractsFsPlaced` -/
-
-private theorem cli_row_ghost_rocl_ok [LibsignalPlacement] {α : Type}
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    {sym : String} {f : State → State} {spec : Spec α}
-    (hrow : (sym, f) ∈ cliHookTablePlaced mmpl W)
-    (hh : HookOk f spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide)
-    (h1 : sym ≠ lsRustAllocSymCli := by decide)
-    (h2 : sym ≠ lsRustDeallocSymCli := by decide)
-    (h3 : sym ≠ lsRustReallocSymCli := by decide)
-    (h4 : sym ≠ lsRustAllocZeroedSymCli := by decide)
-    (h5 : sym ≠ lsRustNoAllocShimSymCli := by decide)
-    (h6 : sym ≠ lsStringCloneSym := by decide)
-    (h7 : sym ≠ lsReadFileSym := by decide)
-    (h8 : sym ≠ lsReadStdinSym := by decide)
-    (h9 : sym ≠ lsMemsetSym := by decide)
-    (h10 : sym ≠ lsMemcpySym := by decide)
-    (hExtra : cliExtraGhostSyms.contains sym = false ∨ g.extra.lookup sym = none := by
-      left; decide) :
-    subroutine_ok (lsProg_617 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsρ sym)
-      (CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl spec) :=
-  hook_placed_rocl_ok
-    (cliGhostExterns_sat_of_cliExternsPlaced mmpl g W ⟨f, cliExternsPlaced_row mmpl W hrow, hh⟩
-      h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 hExtra)
-    hmem
 
 theorem allocContractsXCliPlaced_of_hooks [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (g : CliGhostHooks) (W : CliHooks) {M : AllocCostModel}

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Bytes.Basic
 import DY.Bytes.AttackerKnowledge
@@ -38,7 +38,7 @@ import Symbolic.Specifications.Model.TripleRatchet
 import Symbolic.Specifications.Model.PQXDH
 import Symbolic.Specifications.Model.Composed
 public import Mathlib.Tactic.Basic
-public import Symbolic.Proofs.Swarm.COMPOSED.CompPresBob
+public import Symbolic.Proofs.Swarm.COMPOSED.CompPresBob -- proof-setup: allow-public-import
 import Batteries.Tactic.SeqFocus
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Spqr
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.SymEnc
@@ -47,7 +47,7 @@ import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Trunc
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.COMPOSED.CompPresPQXDH
-import Symbolic.Proofs.Swarm.COMPOSED.CompPresTRExp
+public import Symbolic.Proofs.Swarm.COMPOSED.CompPresTRExp -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompPubInv
 import Symbolic.Proofs.Swarm.COMPOSED.CompTermAlgebra
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -77,7 +77,7 @@ all protocol transitions, and derives symbolic MAC and KDF inversion lemmas
 (`macKdfSafe_tr_trunc8_inv`, `macKdfSafe_tr_kdfExtract_inv`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -186,7 +186,7 @@ end UnsealedInjectivity
 
 /-! ## Input validity and `MacKdfSafeTR` -/
 
-def TruncInputValidTR (T : ExecTrace) (inp : DY.Bytes) : Prop :=
+@[expose] def TruncInputValidTR (T : ExecTrace) (inp : DY.Bytes) : Prop :=
   inp.AttackerKnows T ∨
   ∃ pqSalt seed myIk peerIk a ns pn m pqMsg,
     inp = hmac (trMsgKeys pqSalt seed).macKey
@@ -194,12 +194,12 @@ def TruncInputValidTR (T : ExecTrace) (inp : DY.Bytes) : Prop :=
         (trHonestWireMsg (dhPk a) ns pn
           (SymEnc.symEnc (trMsgKeys pqSalt seed).cipherKey (trMsgKeys pqSalt seed).iv m) pqMsg)))
 
-def IsRatchetOrPqxdhBlock23 (b1 i : DY.Bytes) : Prop :=
+@[expose] def IsRatchetOrPqxdhBlock23 (b1 i : DY.Bytes) : Prop :=
   i = Concat.concat b1 (Concat.concat (lit "WhisperRatchet") (litByte 2)) ∨
   i = Concat.concat b1 (Concat.concat pqxdhLabel (litByte 2)) ∨
   i = Concat.concat b1 (Concat.concat pqxdhLabel (litByte 3))
 
-def KdfInputValidTR (T : ExecTrace) (s i : DY.Bytes) : Prop :=
+@[expose] def KdfInputValidTR (T : ExecTrace) (s i : DY.Bytes) : Prop :=
   (s.AttackerKnows T ∧ i.AttackerKnows T) ∨
   (i = litByte 0x01 ∧ ∃ j ses pk n rIdx src,
       T.EventLoggedAt (TREvent.SkippedKeyStored ses pk n (KdfExtract.kdfExtract s i) rIdx src) j) ∨

@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.Proof
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5Placed
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.Proof -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -24,6 +24,8 @@ import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.StepsPlaced
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `spqr::init_inner` (`Block 324`): Relocatable `[LibsignalPlacement]` Verification
@@ -34,7 +36,7 @@ Proves the relocatable `[LibsignalPlacement]` verification theorems for `spqr::i
 - `init_inner_placed_ok_blockProgram` (`InitInnerPlacedOkX A F ext`)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -75,7 +77,7 @@ attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 /-! ## 1. Subroutine Call Wrappers (`SepWPp`) on `Block 324` -/
 
 /-- Return postcondition of relocatable `spqr::init_inner` (`Block 324`) for `SepWPp`. -/
-def InitInnerPlacedPost [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def InitInnerPlacedPost [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (s0 : State) (x : InitInnerGhost) : State → SepProp → Prop :=
   fun sf Pf =>
     (Pf ⊢
@@ -292,47 +294,6 @@ theorem call_authNew_placed_x [LibsignalPlacement] {A : RustAlloc} {F : ShaCompr
       SepWPp.exists_elim fun a4 => SepWPp.exists_elim fun a5 => ?_
     exact hnext sf a0 a1 a2 a3 a4 a5 hpc_sf hrun_sf (by rw [hsp_sf, hsp])
       hinv_sf hcs_sf (by rw [htr, htrace])
-
-theorem call_statesIntoPb_placed_ext [LibsignalPlacement] {A : RustAlloc} {F : ShaCompress}
-    {ext : String → Option (State → State)} {st : States spqrPolyApi (spqrAuthApi F)}
-    (hinto_raw : subroutine_ok ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext))
-      (lsmpl.base 334) (statesIntoPbPlacedSpec A F))
-    (out : BitVec 64) {s0 s : State} {ret_pc : BitVec 64} {P Frame R : SepProp}
-    {Q : State → SepProp → Prop}
-    (hpc : s.pc = lsmpl.base 334)
-    (hrun : s.status = .Running) (hsp : s.sp = s0.sp - 1040#64)
-    (hsp_align : ((s0.sp - 1040#64) &&& 15#64 == 0#64) = true)
-    (hlr : s.readReg64 .x30 = ret_pc) (htrace : s.trace = s0.trace)
-    (hx8 : s.readReg64 .x8 = out) (hx0 : s.readReg64 .x0 = s0.sp - 1032#64)
-    (hsplit : P = (memRegion out optProtoInnerStateSize ∗
-      chunkedStatesAt A (s0.sp - 1032#64) st ∗ statesIntoPbJumpTablePlacedAt ∗ A.pool ∗
-      stackAt (s0.sp - 1040#64) statesIntoPbStack) ∗ Frame)
-    (hnext : ∀ (sf : State),
-      sf.pc = ret_pc → sf.status = .Running → sf.sp = s0.sp - 1040#64 →
-      CalleeSavedPreserved s sf → sf.trace = s0.trace →
-      SepWPp ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext)) (s0.readReg64 .x30) sf
-        ((optProtoInnerStateAt A out st.into_pb.innerState ∗
-          memRegion (s0.sp - 1032#64) chunkedStatesSize ∗ statesIntoPbJumpTablePlacedAt ∗
-          A.pool ∗ stackAt (s0.sp - 1040#64) statesIntoPbStack) ∗ Frame)
-        Q (InitInnerPanic s0 R)) :
-    SepWPp ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext)) (s0.readReg64 .x30) s P Q (InitInnerPanic s0 R) := by
-  refine SepWPp.call hinto_raw (x := ⟨out, s0.sp - 1032#64, st⟩) (F := Frame)
-    hpc hrun (by rw [State.spAligned, hsp]; exact hsp_align) hlr ?_
-    (fun _ _ _ _ h => allowPanic_not_exited h) (fun sf _ => ?_)
-    (fun sf hpc_sf hrun_sf hsp_sf hcs_sf => ?_)
-  · intro R' hm; rw [hsplit] at hm; dsimp only [statesIntoPbPlacedSpec]; rw [hsp]
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hm ⊢; exact ⟨⟨hx8, hx0⟩, hm⟩
-  · change (sf.mem ⊨ ((statesIntoPbPlacedSpec A F).onPanic ⟨out, s0.sp - 1032#64, st⟩ s sf ∗ Frame) ∗ R) →
-      (sf.mem ⊨ ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap ∗ R)
-    intro hmem; dsimp only [statesIntoPbPlacedSpec, statesIntoPbOnPanic] at hmem; rw [← sepConj_assoc]
-    have hpan := allowPanic_frame (φ := allocFailedIn s sf ∧ s.trace <+: sf.trace)
-      (ψ := allocFailedIn s0 sf ∧ s0.trace <+: sf.trace)
-      (fun ⟨haf, htr_sub⟩ => by unfold allocFailedIn at haf ⊢; rw [htrace] at haf htr_sub; exact ⟨haf, htr_sub⟩) hmem
-    simpa only [sepConj_assoc] using hpan
-  · dsimp only [statesIntoPbPlacedSpec]; rw [hsp, sepConj_assoc]
-    refine SepWPp.pure_left fun htr => ?_
-    have hnext' := hnext sf hpc_sf hrun_sf (by rw [hsp_sf, hsp]) hcs_sf (by rw [htr, htrace])
-    exact SepWPp.weaken_pre (Entails.of_eq (by ac_rfl)) hnext'
 
 theorem call_statesIntoPb_placed_x [LibsignalPlacement] {A : RustAlloc} {F : ShaCompress}
     {ext : String → Option (State → State)} {st : States spqrPolyApi (spqrAuthApi F)}
@@ -680,7 +641,7 @@ theorem init_inner_bl_412_placed [LibsignalPlacement] {ext : String → Option (
   wp_steps; wp_done
 
 /-- Abstract call interface for `<States>::into_pb` at `lsmpl.base 334` on `Block 324`. -/
-def IntoPbCallAtPlaced [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def IntoPbCallAtPlaced [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State))
     (s0 : State) (out : BitVec 64) (d : Direction) (authKey : Bytes)
     (Q : State → SepProp → Prop) (R : SepProp) : Prop :=
@@ -770,7 +731,7 @@ theorem init_inner_from_412_placed [LibsignalPlacement]
   exact SepWPp.done hpcf hrunf ⟨Entails.of_eq (by ac_rfl), hspf, hcsf, htrf⟩
 
 /-- Abstract call interface for `<Authenticator>::new` at `lsmpl.base 340` on `Block 324`. -/
-def AuthCallAtPlaced [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def AuthCallAtPlaced [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State))
     (s0 : State) (authKey : Bytes) (Q : State → SepProp → Prop) (R : SepProp) : Prop :=
   ∀ (s : State) (ret_pc : BitVec 64) (P Frame : SepProp),

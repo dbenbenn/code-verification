@@ -10,22 +10,23 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.DecodesPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.PolyDecoderPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.PolyEncoderPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.TopDecodesPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.UnchunkedPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public meta import LibsignalBinary.Proofs.Placed.GenLsBlock -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.States1aBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.DecodesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.PolyDecoderPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.PolyEncoderPlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.TopDecodesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.UnchunkedPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+public meta import LibsignalBinary.Proofs.Placed.GenLsBlock -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.States1aBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Chunked `States` Drop Glue (Block `443`, Part 1/2)
@@ -36,7 +37,7 @@ variant contracts (`keysUnsampled`, `noHeaderReceived`, `ct1Sampled`, `headerRec
 (`lsProg_443 H`) under `RustCliAllocBudget M` and `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -121,7 +122,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Budget-threaded specification of
 `core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#3]` (Block `443`). -/
-def dropChunkedStatesLocal1PlacedSpec [LibsignalPlacement]
+@[expose] def dropChunkedStatesLocal1PlacedSpec [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress) :
     Spec (DropChunkedStatesGhost F × M.σ) where
   pre := fun (x, st) s =>
@@ -138,7 +139,7 @@ def dropChunkedStatesLocal1PlacedSpec [LibsignalPlacement]
 
 /-- Per-variant budget-threaded specification of
 `core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#3]` (Block `443`). -/
-def dropChunkedStatesLocal1PlacedVariantSpec [LibsignalPlacement]
+@[expose] def dropChunkedStatesLocal1PlacedVariantSpec [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) {F : ShaCompress}
     (st_v : States spqrPolyApi (spqrAuthApi F)) : Spec (BitVec 64 × M.σ) where
   pre := fun (a, st) s =>

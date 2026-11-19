@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
-public import Computational.Proofs.GameHop.Swap
+public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface -- proof-setup: allow-public-import
+public import Computational.Proofs.GameHop.Swap -- proof-setup: allow-public-import
 import Computational.Proofs.GameHop.StateSim
 import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 import VCVio.CryptoFoundations.SecExp.Measure
 import VCVio.EvalDist.Monad.Basic
 
-@[expose] public section
+public section
 
 open scoped ENNReal
 open MeasureTheory
@@ -57,23 +57,33 @@ export Computational.Proofs.GameHop.Swap.SlotM
 
 namespace SlotComp
 export Computational.Proofs.GameHop.Swap.SlotM.SlotComp
-  (of_eq pure liftComp getSlot bind eager_eq_lazy_run' map)
+  (of_eq pure liftComp getSlot bind map)
+
+theorem run_some_eq_map_run' {κ : Type} {samp : ProbComp κ} {α : Type} {mx : SlotM κ α}
+    (hx : SlotComp samp mx) (k : κ) :
+    mx.run (some k) = ((fun a => (a, some k)) <$> mx.run' (some k)) := by
+  simp only [StateT.run'_eq, map_eq_bind_pure_comp, bind_assoc, Function.comp_apply, pure_bind]
+  conv_lhs => rw [← bind_pure (mx.run (some k))]
+  exact MonadAttach.bind_congr_of_forall_mem_support (mx.run (some k)) fun ⟨a, o⟩ hy => by
+    have ho : o = some k := hx.keep k (a, o) hy
+    rw [ho]
+
+theorem eager_eq_lazy_run' {κ : Type} {samp : ProbComp κ} {α β : Type} [MeasurableSpace β]
+    {mx : SlotM κ α} (hx : SlotComp samp mx) (obs : α → ProbComp β) :
+    𝒟[samp >>= fun k => mx.run' (some k) >>= obs] = 𝒟[mx.run' none >>= obs] := by
+  have hc := hx.comm (fun r => obs r.1)
+  simp only [StateT.run'_eq, map_eq_bind_pure_comp, bind_assoc, Function.comp_apply, pure_bind]
+  rw [hc, bind_assoc]
+  refine evalDist_bind_congr (mx.run none) _ _ fun ⟨a, o⟩ => ?_
+  cases o with
+  | none =>
+    simp only [fill1_none, bind_assoc, pure_bind, OracleComp.evalDist_bind_const]
+  | some k =>
+    simp only [fill1_some, pure_bind]
+
 end SlotComp
 
 variable {κ : Type}
-
-theorem SlotComp.run_some_eq_map_run' {samp : ProbComp κ} {α : Type}
-    {mx : SlotM κ α} (h : SlotComp samp mx) (k : κ) :
-    mx.run (some k) = (fun a => (a, some k)) <$> mx.run' (some k) := by
-  simp only [StateT.run'_eq, Functor.map_map]
-  conv_lhs => rw [← bind_pure (mx.run (some k))]
-  rw [map_eq_bind_pure_comp]
-  refine _root_.Proofs.SignalPqxdh.Security.bind_congr_of_support
-    (mx.run (some k)) _ _ fun y hy => ?_
-  rcases y with ⟨a, o⟩
-  have ho : o = some k := h.keep k (a, o) hy
-  subst ho
-  rfl
 
 @[simp] theorem run'_liftComp {α : Type} (c : ProbComp α) (o : Option κ) :
     (liftM c : SlotM κ α).run' o = c := by
@@ -276,7 +286,7 @@ theorem abs_sub_boolBias_le_two_mul_sampleIndexRange_coin_game (N : ℕ)
 
 /-! ## `PrfChainKey` (`G3.6 → G3.7`) cutoff hybrid -/
 
-def sampCkPair (P : Primitives) (ideal : Bool) : ProbComp (Bytes × Bytes) := do
+@[expose] def sampCkPair (P : Primitives) (ideal : Bool) : ProbComp (Bytes × Bytes) := do
   let ck ← sampleBytes32
   if ideal then do
     let r1 ← sampleBytes32
@@ -296,7 +306,7 @@ theorem prfCkExp_eq_sampCkPair
   congr 1; funext b
   cases b <;> rfl
 
-def sendSlotIndex? {S : Setup} : SessionId S → Option Nat
+@[expose] def sendSlotIndex? {S : Setup} : SessionId S → Option Nat
   | .sendOPK u i     => some (sessionSlotIndex (S := S) (.sendOPK u i))
   | .sendNoOPK u i   => some (sessionSlotIndex (S := S) (.sendNoOPK u i))
   | .recvOPK _ _ _   => none
@@ -386,7 +396,7 @@ theorem sendSlotIndex?_inj {S : Setup} {sid1 sid2 : SessionId S} {idx : Nat}
   | recvNoOPK _ _ _ => cases h1
 
 /-- Whether slot `idx` (`< S.N_send_tot` initiator, `≥ S.N_send_tot` receiver) has fired in `hst`. -/
-def authSlotFired (S : Setup) (idx : Nat) (hst : AuthHybridStateFixed S) : Bool :=
+@[expose] def authSlotFired (S : Setup) (idx : Nat) (hst : AuthHybridStateFixed S) : Bool :=
   if idx < S.N_send_tot then
     hst.toAuthHybridState.base.usedSendSessions.any (fun sid => sendSlotIndex? sid == some idx)
   else
@@ -416,7 +426,7 @@ theorem recvSlot_ne_of_authSlotFired {S : Setup} {idx : Nat}
   simp only [hge, ↓reduceIte, decide_eq_true_eq] at hFired
   omega
 
-def getCkAtSlot (idx : Nat) (samp : ProbComp (Bytes × Bytes)) (P : Primitives) (slotIdx : Nat) :
+@[expose] def getCkAtSlot (idx : Nat) (samp : ProbComp (Bytes × Bytes)) (P : Primitives) (slotIdx : Nat) :
     SlotM (Bytes × Bytes) (Bytes × Bytes) :=
   if slotIdx == idx then
     SlotM.getSlot samp
@@ -460,7 +470,7 @@ theorem run'_getCkAtSlot_bind_pure_none {α : Type}
       · simp
     simp only [hbeq, Bool.false_eq_true, ↓reduceIte, SlotM.run'_liftComp_bind, SlotM.run'_pure, hlt]
 
-def finishAuthSendCk {S : Setup} (P : Primitives)
+@[expose] def finishAuthSendCk {S : Setup} (P : Primitives)
     (sid : SessionId S) (uEntry : PrincipalEntry)
     (peerPrincipal? : Option (Nat × PrincipalEntry))
     (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
@@ -485,7 +495,7 @@ def finishAuthSendCk {S : Setup} (P : Primitives)
     hst.toAuthHybridState
   (resp, { toAuthHybridState := hst', recvCount := hst.recvCount })
 
-def finishAuthRecvCk {S : Setup} (P : Primitives)
+@[expose] def finishAuthRecvCk {S : Setup} (P : Primitives)
     (msg : PreKeyMsg) (prep : PreparedAuthRecv S)
     (drKey : DRKey) (rk1 : Bytes) (spqrSalt? : Option Bytes)
     (recvCount' : Nat) (p : Bytes × Bytes) :
@@ -553,7 +563,7 @@ theorem authSlotFired_finishAuthRecvCk_self {S : Setup} (P : Primitives) (idx : 
   simp only [hge, ↓reduceIte, decide_eq_true_eq]
   omega
 
-def authCkSendWith (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (Bytes × Bytes))
+@[expose] def authCkSendWith (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (Bytes × Bytes))
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthHybridStateFixed S) : ProbComp (AuthResponse × AuthHybridStateFixed S) := do
   let st := hst.toAuthHybridState.base
@@ -633,7 +643,7 @@ def authCkSendWith (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (Byte
                     hst.toAuthHybridState
                   pure (resp, { toAuthHybridState := hst', recvCount := hst.recvCount })
 
-def authCkSendSlot (S : Setup) (P : Primitives) (idx : Nat) (samp : ProbComp (Bytes × Bytes))
+@[expose] def authCkSendSlot (S : Setup) (P : Primitives) (idx : Nat) (samp : ProbComp (Bytes × Bytes))
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthHybridStateFixed S) :
     SlotM (Bytes × Bytes) (AuthResponse × AuthHybridStateFixed S) := do
@@ -714,7 +724,7 @@ def authCkSendSlot (S : Setup) (P : Primitives) (idx : Nat) (samp : ProbComp (By
                     hst.toAuthHybridState
                   pure (resp, { toAuthHybridState := hst', recvCount := hst.recvCount })
 
-def authCkRecvWith (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (Bytes × Bytes))
+@[expose] def authCkRecvWith (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (Bytes × Bytes))
     (msg : PreKeyMsg) (prep? : Option (PreparedAuthRecv S))
     (hst : AuthHybridStateFixed S) : ProbComp (AuthResponse × AuthHybridStateFixed S) := do
   let recvCount' := hst.recvCount + 1
@@ -771,7 +781,7 @@ def authCkRecvWith (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (Byte
         let (resp, hst') := prep.finish res?
         pure (resp, { toAuthHybridState := hst', recvCount := recvCount' })
 
-def authCkRecvSlot (S : Setup) (P : Primitives) (idx : Nat) (samp : ProbComp (Bytes × Bytes))
+@[expose] def authCkRecvSlot (S : Setup) (P : Primitives) (idx : Nat) (samp : ProbComp (Bytes × Bytes))
     (msg : PreKeyMsg) (prep? : Option (PreparedAuthRecv S))
     (hst : AuthHybridStateFixed S) :
     SlotM (Bytes × Bytes) (AuthResponse × AuthHybridStateFixed S) := do
@@ -829,7 +839,7 @@ def authCkRecvSlot (S : Setup) (P : Primitives) (idx : Nat) (samp : ProbComp (By
         let (resp, hst') := prep.finish res?
         pure (resp, { toAuthHybridState := hst', recvCount := recvCount' })
 
-def authCkOtherStep (S : Setup) (P : Primitives) (q : AuthQuery S)
+@[expose] def authCkOtherStep (S : Setup) (P : Primitives) (q : AuthQuery S)
     (hst : AuthHybridStateFixed S) : ProbComp (AuthResponse × AuthHybridStateFixed S) := do
   if hst.toAuthHybridState.base.hasWonAuth then
     pure (.noneResp, hst)
@@ -837,7 +847,7 @@ def authCkOtherStep (S : Setup) (P : Primitives) (q : AuthQuery S)
     let (resp, base') ← (pqxdhAuthImpl true true S P q).run hst.toAuthHybridState.base
     pure (resp, { hst with toAuthHybridState := { hst.toAuthHybridState with base := base' } })
 
-def authCkStepWith (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (Bytes × Bytes))
+@[expose] def authCkStepWith (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (Bytes × Bytes))
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
     ProbComp ((authSpec S).Range q × AuthHybridStateFixed S) :=
   match q with
@@ -1042,7 +1052,7 @@ theorem authCkStepSlot_run'_none_eq (S : Setup) (P : Primitives) (idx : Nat) (b 
   all_goals
     rw [SlotM.run'_liftComp]
 
-def SlotFireAtAuth (S : Setup) {κ : Type} (idx : Nat)
+@[expose] def SlotFireAtAuth (S : Setup) {κ : Type} (idx : Nat)
     (mx : SlotM κ (AuthResponse × AuthHybridStateFixed S)) : Prop :=
   ∀ y ∈ support (mx.run none), y.2.isSome = true → authSlotFired S idx y.1.2 = true
 
@@ -1190,7 +1200,7 @@ theorem authCkRecvWith_congr_slot (S : Setup) (P : Primitives)
       authCkRecvWith S P samp2 msg prep? hst := by
   unfold authCkRecvWith; dsimp only; rw [hSlot]
 
-def AuthSlotFiredAt (S : Setup) (idx : Nat)
+@[expose] def AuthSlotFiredAt (S : Setup) (idx : Nat)
     (mx : ProbComp (AuthResponse × AuthHybridStateFixed S)) : Prop :=
   ∀ y ∈ support mx, authSlotFired S idx y.2 = true
 
@@ -1492,7 +1502,7 @@ theorem authCkStepWith_after (S : Setup) (P : Primitives) (idx : Nat) (b : Bool)
     simp only [hEqF, Bool.false_eq_true, ↓reduceIte, hlt]
   all_goals rfl
 
-noncomputable def finalizeAuthFixed {S : Setup} (P : Primitives) (secb b' : Bool)
+@[expose] def finalizeAuthFixed {S : Setup} (P : Primitives) (secb b' : Bool)
     (finalSt : AuthHybridState S) : ProbComp Bool := do
   let allChallengedClean := finalSt.base.sessions.all (fun s =>
     !s.challenged || authInitCorruptionClause P true finalSt.base.principals s)
@@ -1508,7 +1518,7 @@ noncomputable def finalizeAuthFixed {S : Setup} (P : Primitives) (secb b' : Bool
   else
     return (b' == secb)
 
-noncomputable def authCkPreSampleRun (S : Setup) (P : Primitives) (idx : Nat)
+@[expose] def authCkPreSampleRun (S : Setup) (P : Primitives) (idx : Nat)
     (p : Bytes × Bytes) (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthHybridStateFixed.empty S secb
@@ -1520,7 +1530,7 @@ noncomputable def authCkPreSampleRun (S : Setup) (P : Primitives) (idx : Nat)
   let (b', finalSt) ← (simulateQ fullImpl A.run).run initSt
   finalizeAuthFixed P secb b' finalSt.toAuthHybridState
 
-noncomputable def authCkCutoffExp (S : Setup) (P : Primitives) (cutoff : Nat)
+@[expose] def authCkCutoffExp (S : Setup) (P : Primitives) (cutoff : Nat)
     (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthHybridStateFixed.empty S secb
@@ -1647,13 +1657,13 @@ theorem evalDist_simulateQ_proj_inv {ι α St1 St2 : Type}
     oa 0 (by simpa only [Bool.false_eq_true] using
       Computational.Proofs.GameHop.StateSim.isQueryBoundP_false oa 0) st hInv (Nat.zero_le 1) obs
 
-def eraseIdealCk1_0 {S : Setup} (s : IdealAuthSession S) : IdealAuthSession S :=
+@[expose] def eraseIdealCk1_0 {S : Setup} (s : IdealAuthSession S) : IdealAuthSession S :=
   { s with ck1_0 := [] }
 
-def eraseAuthCk1_0 {S : Setup} (hst : AuthHybridState S) : AuthHybridState S :=
+@[expose] def eraseAuthCk1_0 {S : Setup} (hst : AuthHybridState S) : AuthHybridState S :=
   { hst with idealSessions := hst.idealSessions.map eraseIdealCk1_0 }
 
-def eraseAuthFixedCk1_0 {S : Setup} (hst : AuthHybridStateFixed S) : AuthHybridStateFixed S :=
+@[expose] def eraseAuthFixedCk1_0 {S : Setup} (hst : AuthHybridStateFixed S) : AuthHybridStateFixed S :=
   { toAuthHybridState := eraseAuthCk1_0 hst.toAuthHybridState
     recvCount := hst.recvCount }
 

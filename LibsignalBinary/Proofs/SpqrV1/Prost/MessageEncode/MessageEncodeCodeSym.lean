@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ProtoReprCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ProtoReprCodeSym -- shake: keep -- proof-setup: allow-public-import
+meta import GeneratedLean.LibsignalSessionPlacedObjShard7
+meta import GeneratedLean.LibsignalSessionPlacedObjShard8
 
 /-!
 # Relocatable Per-Block Fetches for `SpqrV1/Prost/MessageEncode` (`[local#1]`)
@@ -22,7 +24,7 @@ Generates per-block placement descriptors (`Blocks 150, 152–156`) for the `[lo
 `prost::encoding::message::encode` monomorphizations and re-exports `ProtoReprCodeSym`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

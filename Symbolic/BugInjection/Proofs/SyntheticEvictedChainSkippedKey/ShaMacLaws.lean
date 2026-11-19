@@ -441,12 +441,6 @@ theorem gamma_spqrSendKey_length (S : OpaqueSymbolSemantics) (g : Ghost) (st c :
   rw [DY.Bytes.rec_eq (gSpqrSendKey S) (gAll evictedI0 S g)]
   exact spqrKeyBytes_length _
 
-theorem gamma_spqrRecvKey_length (S : OpaqueSymbolSemantics) (g : Ghost) (st m : DY.Bytes) :
-    (gamma evictedI0 S g (({ st := st, msg := m } : DY.Spqr.RecvKey.SubF DY.Bytes).pack)).length = 32 := by
-  unfold gamma gamma'
-  rw [DY.Bytes.rec_eq (gSpqrRecvKey S) (gAll evictedI0 S g)]
-  exact spqrKeyBytes_length _
-
 theorem gamma_trMsgKeys_congr_prk {S₁ S₂ : OpaqueSymbolSemantics} {g₁ g₂ : Ghost}
     {salt₁ seed₁ salt₂ seed₂ : DY.Bytes}
     (hprk : gamma evictedI0 S₁ g₁ (hmac salt₁ seed₁) = gamma evictedI0 S₂ g₂ (hmac salt₂ seed₂)) :

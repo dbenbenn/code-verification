@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1Key
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1Key -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KeyIndDefs
 import Computational.Proofs.SignalPqxdh.Delta.KeyInd.CorrAt
 import Computational.Proofs.SignalPqxdh.Delta.KeyInd.Coupling
@@ -25,7 +25,7 @@ import VCVio.OracleComp.EvalDist.Measure
 accounting for the KEM decapsulation failure event `hasBadKemCorrRecords` in `runKeyIndShCrSim1Key`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -395,7 +395,7 @@ theorem pqxdhKeyIndShCrCachedImpl1Key_eq_of_ne_initPrin (checkG2 : Bool) (S : Se
   | initPrin u => exact False.elim (hNe u rfl)
   | _ => rfl
 
-noncomputable def tryPauseKeyIndQuery1Key (S : Setup) (P : Primitives)
+def tryPauseKeyIndQuery1Key (S : Setup) (P : Primitives)
     (sIdx : Nat) (gq : KeyIndQuery S)
     (cont : (keyIndSpec S).Range gq → OracleComp (unifSpec + keyIndSpec S) Bool)
     (hst : KeyIndShCrState S) : Option (PausedShCrKem S (KeyIndState S)) :=
@@ -412,7 +412,7 @@ noncomputable def tryPauseKeyIndQuery1Key (S : Setup) (P : Primitives)
       (finishKeyIndBase S P (.sendNoOPK u i) bundle) sIdx cont hst
   | _, _ => none
 
-noncomputable def shcrChoosePkKeyInd1KeyAt (S : Setup) (P : Primitives)
+def shcrChoosePkKeyInd1KeyAt (S : Setup) (P : Primitives)
     (bIdx sIdx : Nat) (A : KeyIndAdversary S) :
     Bytes → Bytes → ProbComp (Bytes × (Bytes → Bytes → ProbComp Bytes)) :=
   shcrChoosePkGenericAt P ($ᵗ Bool >>= fun secb => pure (KeyIndState.empty S secb))

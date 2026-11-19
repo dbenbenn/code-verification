@@ -9,54 +9,74 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
 public import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal
-public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
-public import LibsignalBinary.Proofs.PeakBudget.GateM2rGStatesRecvTwins
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
-public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3
-public import LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvGroupSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightBranches
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightGroupSplit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpecRepaired
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
-public import LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.W2RecvWhisperRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4InitBobPeak
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterHelpers
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterStageHelpers
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
-public import LibsignalBinary.Proofs.PeakBudget.W4PathCVerNeWideDefs
-public import LibsignalBinary.Proofs.PeakBudget.W4PostBobPrev1Dom
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0TdAux
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkSlot
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB
-public import LibsignalBinary.Proofs.PeakBudget.W4SlotGroupSpec
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTightCredit
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromCredit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeserAux
+import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
+import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
+public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
+import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal
+import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
+public import LibsignalBinary.Proofs.PeakBudget.GateM2rGStatesRecvTwins -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
+public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvGroupSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightBranches
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightGroupSplit
+import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpecRepaired
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
+import LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot
+import LibsignalBinary.Proofs.PeakBudget.W2RecvWhisperRealSlot
+import LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec
+import LibsignalBinary.Proofs.PeakBudget.W4InitBobPeak
+import LibsignalBinary.Proofs.PeakBudget.W4OuterHelpers
+import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W4OuterStageHelpers
+import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpec
+import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
+import LibsignalBinary.Proofs.PeakBudget.W4PathCVerNeWideDefs
+public import LibsignalBinary.Proofs.PeakBudget.W4PostBobPrev1Dom -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0TdAux
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkSlot
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB
+import LibsignalBinary.Proofs.PeakBudget.W4SlotGroupSpec
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTightCredit
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromCredit
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bProofPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeserAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.Potential
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.E2E.Seed.Defs
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightSpec
+import LibsignalBinary.Proofs.PeakBudget.W4InnerPeakSpec
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortAfterGetPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPollPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget
 
 /-!
 # Post-Bob `Dom0'` (`archivedTrials = []`, `rc_len1 ≤ 1`) Slot Caps, Dischargers, & `1 GiB` Checks
@@ -72,7 +92,7 @@ Closed-`Nat` post-Bob `Dom0'` (`PostBobPrev1Dom`) stage-level, slot-level, call-
   (`PksmCanonSliceEnv`) and adversarial outer wire (`PksmTryFromWireSliceEnv`) inputs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -80,7 +100,6 @@ set_option maxHeartbeats 800000
 
 namespace LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0PostBob
 
-open Arm64.Obj (Image)
 open Arm64.Process (bytesOfString)
 open CryptoVerification (LibsignalPlacement)
 open CryptoVerification.E2E (UnreachedPqxdhPrimitives)
@@ -4633,12 +4652,12 @@ theorem verNeTightTopEnv_fine_groupSpec (enc : List (BitVec 8)) :
 
 /-- Post-Bob (`rc_len1 ≤ 1`) scaled group bound for `SerializePrev1SeqFreeEnv` (`35,952,015`),
 built directly from `W4PostBobPrev1Dom.segClonePostBob1FineGrpS`. -/
-def serializePrev1PostBob1FineGrpS : Nat :=
+@[expose] def serializePrev1PostBob1FineGrpS : Nat :=
   segClonePostBob1FineGrpS + (11056 + 3 * FineScale) + 3 * FineScale
 
-/-- Exact closed decimal-literal cumulative small-pool credit (`140,230,427` B) for `Dom0'`
+/-- Exact closed decimal-literal cumulative small-pool credit (`140,410,769` B) for `Dom0'`
 (`W4RecvPrekeyCmkDom0'`). -/
-abbrev w4CmkDom0'Cum : Nat := 140230427
+abbrev w4CmkDom0'Cum : Nat := 140410769
 
 /-- Exact closed decimal-literal post-slot live large-pool credit (`29,726,017` B) for `Dom0'`. -/
 abbrev w4CmkDom0'Live : Nat := 29726017
@@ -4652,7 +4671,7 @@ abbrev w4CmkDom0'MaxReq : Nat := 4194368
 
 /-- Exact `maxOps`-parametric `FineScale`-scaled small-group expression `grpS` (`83`/`109`/`128`)
 for `Dom0'` (`serializePrev1PostBob1FineGrpS` on `gStore1`). -/
-def w4CmkDom0'GrpSExprOf (maxOps : Nat) : Nat :=
+@[expose] def w4CmkDom0'GrpSExprOf (maxOps : Nat) : Nat :=
   let gLoad := 11056 + 51 * FineScale + deserCancelFineGrpS
   let gTrust := 16659 + 42 * FineScale
   let gP1Ok := gLoad + gTrust
@@ -4698,14 +4717,14 @@ def w4CmkDom0'GrpSExprOf (maxOps : Nat) : Nat :=
 /-- Parametric `Dom0'` `grpS` function specialized at `maxOps = 83`, `109`, `128`. -/
 abbrev w4CmkDom0'GrpSOf (maxOps : Nat) : Nat := w4CmkDom0'GrpSExprOf maxOps
 
-/-- Exact closed decimal-literal `Dom0'` `grpS` at `maxOps = 83` (`2,730,214,888`). -/
-abbrev w4CmkDom0'GrpS83 : Nat := 2730214888
+/-- Exact closed decimal-literal `Dom0'` `grpS` at `maxOps = 83` (`2,733,753,832`). -/
+abbrev w4CmkDom0'GrpS83 : Nat := 2733753832
 
-/-- Exact closed decimal-literal `Dom0'` `grpS` at `maxOps = 109 = w4c_defaultDecodeMaxOps` (`2,737,495,460`). -/
-abbrev w4CmkDom0'GrpS109 : Nat := 2737495460
+/-- Exact closed decimal-literal `Dom0'` `grpS` at `maxOps = 109 = w4c_defaultDecodeMaxOps` (`2,741,034,404`). -/
+abbrev w4CmkDom0'GrpS109 : Nat := 2741034404
 
-/-- Exact closed decimal-literal `Dom0'` `grpS` at `maxOps = 128` (`2,742,815,878`). -/
-abbrev w4CmkDom0'GrpS128 : Nat := 2742815878
+/-- Exact closed decimal-literal `Dom0'` `grpS` at `maxOps = 128` (`2,746,354,822`). -/
+abbrev w4CmkDom0'GrpS128 : Nat := 2746354822
 
 /-- Definitional cap aliases (`rfl`-equal to `w4CmkDom0'*`). -/
 abbrev fits2_zbDom0'Cum : Nat := w4CmkDom0'Cum
@@ -4725,7 +4744,7 @@ theorem w4CmkDom0'GrpSOf_128_eq : w4CmkDom0'GrpSOf 128 = w4CmkDom0'GrpS128 := by
 
 /-- Kernel-`decide` check tying `w4CmkDom0'Cum` to `W4PostBobPrev1Dom.w4PostBobSerializePrev1TightCum`. -/
 theorem w4CmkDom0'Cum_eq_postBobDelta :
-    w4CmkDom0'Cum = 138754427 + (w4PostBobSerializePrev1TightCum - 1184912) := by decide
+    w4CmkDom0'Cum = 138934769 + (w4PostBobSerializePrev1TightCum - 1184912) := by decide
 
 /-- Equality check tying `w4CmkDom0'Peak` to `W4PostBobPrev1Dom` constants. -/
 theorem w4CmkDom0'Peak_eq_postBobDelta :
@@ -4735,11 +4754,11 @@ theorem w4CmkDom0'Peak_eq_postBobDelta :
             fineOptLarge 2097152 + fineOptLarge postBobTotalPrev1Cap286K) -
           4570694) := by decide
 
-private theorem s3c_tdCum_eq : w4cTdCumOf msgCapBytes = 44530601 := by decide
+private theorem s3c_tdCum_eq : w4cTdCumOf msgCapBytes = 44620772 := by decide
 private theorem s3c_tdLive_eq : w4cTdLiveOf msgCapBytes = 2086032 := by decide
 private theorem s3c_tdPeak_eq : w4cTdPeakOf msgCapBytes = 2086032 := by decide
 private theorem s3c_tdMaxReq_eq : w4cTdMaxReqOf msgCapBytes = 1048576 := by decide
-private theorem s3c_tdFailCum_eq : w4cTdFailCumOf msgCapBytes = 44526173 := by decide
+private theorem s3c_tdFailCum_eq : w4cTdFailCumOf msgCapBytes = 44616344 := by decide
 private theorem s3c_tdFailPeak_eq : w4cTdFailPeakOf msgCapBytes = 2086032 := by decide
 private theorem s3c_store1_live_eq :
     (w4PostBobOneChainLarge + fineOptLarge w4PostBobPqCap) +
@@ -4824,9 +4843,9 @@ private theorem s3a_sub4_cmkDom0_untrusted_and_pathB_credit
     · exact (w4c_tryDecryptCliLinkedSrEnvOf_cmk_phaseCreditSpec (maxOps := maxOps)
         (hSr w4.base.C.F w4.base.K) (hDom.tdB_dom hpb)).of_imp fun _ h =>
         m2rg_tryDecryptCliLinkedEnvOf'_mono hLoopSub (Nat.le_refl maxOps) (fun _ _ _ hr => hr) h
-  have hTdB : PhaseCreditSpec fineCostModel P.TryDecEnv 44530601 2086032 2086032 1048576 := by
+  have hTdB : PhaseCreditSpec fineCostModel P.TryDecEnv 44620772 2086032 2086032 1048576 := by
     rwa [s3c_tdCum_eq, s3c_tdLive_eq, s3c_tdPeak_eq, s3c_tdMaxReq_eq] at hTdB0
-  have hP3B : PhaseCreditSpec fineCostModel _ 52816731 3461398 3461398 1048576 :=
+  have hP3B : PhaseCreditSpec fineCostModel _ 52906902 3461398 3461398 1048576 :=
     (w4StageP3Wide_fine_phaseCredit_tight s3a4_w4CloneBDom_credit hTdB).mono
       (by decide) (by decide) (by decide) (by decide)
   have hSave : PhaseCreditSpec fineCostModel
@@ -4844,9 +4863,9 @@ private theorem s3a_sub4_cmkDom0_untrusted_and_pathB_credit
   have hOptP2B := phaseCredit_optStageEnv fineCostModel_modelHyps hP2B
   have hOptP3B := phaseCredit_optStageEnv fineCostModel_modelHyps hP3B
   have hOptP4B := phaseCredit_optStageEnv fineCostModel_modelHyps hP4B
-  have hP34B : PhaseCreditSpec fineCostModel _ 61885309 9047458 9047458 2097152 :=
+  have hP34B : PhaseCreditSpec fineCostModel _ 61975480 9047458 9047458 2097152 :=
     (hOptP3B.seq hOptP4B).mono (by decide) (by decide) (by decide) (by decide)
-  have hP234B : PhaseCreditSpec fineCostModel _ 70318517 12528171 12528171 2097152 :=
+  have hP234B : PhaseCreditSpec fineCostModel _ 70408688 12528171 12528171 2097152 :=
     (hOptP2B.seq hP34B).mono (by decide) (by decide) (by decide) (by decide)
   have hPathB : PhaseCreditSpec fineCostModel
       (W4BinaryRecvPrekeyPathBWideCmkSrEnvOf SR LoopAdvEnv maxOps w4)
@@ -5124,9 +5143,9 @@ private theorem s3a_sub5_cmkDom0_pathAC_credit
         · exact Or.inr ⟨e1, e2, rfl,
             LibsignalBinary.Proofs.PeakBudget.GateM2rGStatesRecvTwins.m2rg_tryDecryptCliLinkedFailEnvOf'_mono
               hLoopSub (Nat.le_refl maxOps) (fun _ _ _ hr => hr) h1, h2⟩
-  have hCurTrial : PhaseCreditSpec fineCostModel P.CurTrialFailEnv 44526173 0 2086032 1048576 := by
+  have hCurTrial : PhaseCreditSpec fineCostModel P.CurTrialFailEnv 44616344 0 2086032 1048576 := by
     rwa [s3c_tdFailCum_eq, s3c_tdFailPeak_eq, s3c_tdMaxReq_eq] at hCurTrial0
-  have hCurStep : PhaseCreditSpec fineCostModel _ 52812303 0 3461398 1048576 :=
+  have hCurStep : PhaseCreditSpec fineCostModel _ 52902474 0 3461398 1048576 :=
     (phaseCredit_optStageEnv fineCostModel_modelHyps
       (w4TryDecryptCloneFailWide_dom_fine_cancel_phaseCredit hDom.outer_dom.cur_dom hCurTrial)).mono
       (by decide) (by decide) (by decide) (by decide)
@@ -5167,7 +5186,7 @@ private theorem s3a_sub5_cmkDom0_pathAC_credit
     (hBnd33.seq hC3).mono (by decide) (by decide) (by decide) (by decide)
   have hC1 : PhaseCreditSpec fineCostModel _ 20360792 7691407 7691407 2097152 :=
     (hLoopStep.seq hC2).mono (by decide) (by decide) (by decide) (by decide)
-  have hP2CTail : PhaseCreditSpec fineCostModel _ 73173095 7691407 7691407 2097152 :=
+  have hP2CTail : PhaseCreditSpec fineCostModel _ 73263266 7691407 7691407 2097152 :=
     (hCurStep.seq hC1).mono (by decide) (by decide) (by decide) (by decide)
   have hOptP2C := phaseCredit_optStageEnv fineCostModel_modelHyps hP2CTail
   have hTdAC0 : PhaseCreditSpec fineCostModel
@@ -5183,9 +5202,9 @@ private theorem s3a_sub5_cmkDom0_pathAC_credit
         m2rg_tryDecryptCliLinkedEnvOf'_mono hLoopSub (Nat.le_refl maxOps) (fun _ _ _ hr => hr) h
   have hTdAC : PhaseCreditSpec fineCostModel
       (W4RecvPrekeyTryDecACCmkSrEnvOf SR LoopAdvEnv maxOps w4.base)
-      44530601 2086032 2086032 1048576 := by
+      44620772 2086032 2086032 1048576 := by
     rwa [s3c_tdCum_eq, s3c_tdLive_eq, s3c_tdPeak_eq, s3c_tdMaxReq_eq] at hTdAC0
-  have hTdACWide : PhaseCreditSpec fineCostModel _ 44575570 2086032 2086032 1048576 :=
+  have hTdACWide : PhaseCreditSpec fineCostModel _ 44665741 2086032 2086032 1048576 :=
     (w4StageP3Wide_zeroLive_fine_phaseCredit_tight s3a5_w4CloneACDom_credit hTdAC).mono
       (by decide) (by decide) (by decide) (by decide)
   have hOptP3A := phaseCredit_optStageEnv fineCostModel_modelHyps hTdACWide
@@ -5194,7 +5213,7 @@ private theorem s3a_sub5_cmkDom0_pathAC_credit
       (by decide) (by decide) (by decide) (by decide)
   have hOptP3C : PhaseCreditSpec fineCostModel
       (m2rg_verNePrev1P3PathCEnv' LoopAdvEnv maxOps SR w4)
-      44575570 3211282 5316629 2097152 := by
+      44665741 3211282 5316629 2097152 := by
     unfold m2rg_verNePrev1P3PathCEnv' m2rg_verNePrev1P3PathCEnvOf' W4StageP3Prev1WideEnvOf
     exact phaseCredit_optStageEnv fineCostModel_modelHyps
       ((hTdACWide.or hVerNeSeq).mono (by decide) (by decide) (by decide) (by decide))
@@ -5270,18 +5289,18 @@ private theorem s3a_sub5_cmkDom0_pathAC_credit
   have hOptP4C : PhaseCreditSpec fineCostModel _ 4367427 11401352 11401352 4194368 :=
     phaseCredit_optStageEnv fineCostModel_modelHyps
       ((hSaveStep.seq hP4C1).mono (by decide) (by decide) (by decide) (by decide))
-  have hPA34 : PhaseCreditSpec fineCostModel _ 54703025 11874605 11874605 4194368 :=
+  have hPA34 : PhaseCreditSpec fineCostModel _ 54793196 11874605 11874605 4194368 :=
     (hOptP3A.seq hOptP4A).mono (by decide) (by decide) (by decide) (by decide)
-  have hPA234 : PhaseCreditSpec fineCostModel _ 66632954 16085299 16085299 4194368 :=
+  have hPA234 : PhaseCreditSpec fineCostModel _ 66723125 16085299 16085299 4194368 :=
     (hOptP2A.seq hPA34).mono (by decide) (by decide) (by decide) (by decide)
   have hPathA : PhaseCreditSpec fineCostModel
       (W4BinaryRecvPrekeyPathAWideCmkSrEnvFixedOf SR LoopAdvEnv maxOps w4)
       w4CmkDom0'Cum w4CmkDom0'Live w4CmkDom0'Peak w4CmkDom0'MaxReq := by
     unfold W4BinaryRecvPrekeyPathAWideCmkSrEnvFixedOf m2rg_W4BinaryRecvPrekeyPathAWideCmkEnvFixedOf'
     exact (hP1Ok.seq hPA234).mono (by decide) (by decide) (by decide) (by decide)
-  have hPC34 : PhaseCreditSpec fineCostModel _ 48942997 14612634 14612634 4194368 :=
+  have hPC34 : PhaseCreditSpec fineCostModel _ 49033168 14612634 14612634 4194368 :=
     (hOptP3C.seq hOptP4C).mono (by decide) (by decide) (by decide) (by decide)
-  have hPC234 : PhaseCreditSpec fineCostModel _ 122116092 22304041 22304041 4194368 :=
+  have hPC234 : PhaseCreditSpec fineCostModel _ 122296434 22304041 22304041 4194368 :=
     (hOptP2C.seq hPC34).mono (by decide) (by decide) (by decide) (by decide)
   have hPathC : PhaseCreditSpec fineCostModel
       (W4BinaryRecvPrekeyPathCWideCmkVerNeSrEnvFixedOf SR LoopAdvEnv maxOps w4)
@@ -5928,7 +5947,7 @@ private def dom0p_dummyCliHooks (P : PEParams) : CliHooks where
   Q := P.Q
 
 /-- `SR`-parametric `maxOps`-parametric `SingleSlotFineSpec` for `Dom0'` (`W4BinaryRecvPrekeyDomCmk0'`). -/
-def w4BinaryRecvPrekeyCmkDom0'Of_singleSlotFineSpec {P : PEParams} {c : CallV} {i : Inputs}
+@[expose] def w4BinaryRecvPrekeyCmkDom0'Of_singleSlotFineSpec {P : PEParams} {c : CallV} {i : Inputs}
     (SR : W4StatesRecvEnv) (maxOps : Nat)
     (hSrCred : ∀ F K, StatesRecvTightCreditSpec F (SR F K) 1647247 93776)
     (hSrGrp : ∀ F K, StatesRecvTightGroupSpec F (SR F K) statesRecvTightGroupS_split)
@@ -5992,7 +6011,7 @@ def w4BinaryRecvPrekeyCmkDom0'Of_singleSlotFineSpec {P : PEParams} {c : CallV} {
     | send _ => exact ⟨fun _ {_} h => False.elim h⟩
 
 /-- Default `maxOps = 109` `SR`-parametric `SingleSlotFineSpec` for `Dom0'`. -/
-def w4BinaryRecvPrekeyCmkDom0'_singleSlotFineSpec {P : PEParams} {c : CallV} {i : Inputs}
+@[expose] def w4BinaryRecvPrekeyCmkDom0'_singleSlotFineSpec {P : PEParams} {c : CallV} {i : Inputs}
     (SR : W4StatesRecvEnv)
     (hSrCred : ∀ F K, StatesRecvTightCreditSpec F (SR F K) 1647247 93776)
     (hSrGrp : ∀ F K, StatesRecvTightGroupSpec F (SR F K) statesRecvTightGroupS_split)
@@ -6029,7 +6048,7 @@ theorem w4BinaryRecvPrekeyCmkDom0'_singleSlotFineSpec_caps
   ⟨rfl, rfl, rfl, rfl, rfl⟩
 
 /-- Sealed `@StatesRecvProtoEnv'` `maxOps`-parametric `SingleSlotFineSpec` (`0` `SR` hypotheses). -/
-def w4BinaryRecvPrekeyCmkDom0'Of_singleSlotFineSpec' {P : PEParams} {c : CallV} {i : Inputs}
+@[expose] def w4BinaryRecvPrekeyCmkDom0'Of_singleSlotFineSpec' {P : PEParams} {c : CallV} {i : Inputs}
     (maxOps : Nat) (hi : CliPqOrD3RecvDom P i) :
     SingleSlotFineSpec
       (fun evs =>
@@ -6046,7 +6065,7 @@ def w4BinaryRecvPrekeyCmkDom0'Of_singleSlotFineSpec' {P : PEParams} {c : CallV} 
     w4c_repairedStatesRecv_creditSpec w4c_repairedStatesRecv_split_groupSpec hi
 
 /-- Sealed `@StatesRecvProtoEnv'` default `maxOps = 109` `SingleSlotFineSpec` (`0` `SR` hypotheses). -/
-def w4BinaryRecvPrekeyCmkDom0'_singleSlotFineSpec' {P : PEParams} {c : CallV} {i : Inputs}
+@[expose] def w4BinaryRecvPrekeyCmkDom0'_singleSlotFineSpec' {P : PEParams} {c : CallV} {i : Inputs}
     (hi : CliPqOrD3RecvDom P i) :
     SingleSlotFineSpec
       (fun evs =>

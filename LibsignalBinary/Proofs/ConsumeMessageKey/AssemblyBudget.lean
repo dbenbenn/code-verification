@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Assembly
-public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Hmac
-public import LibsignalBinary.Proofs.ConsumeMessageKey.RunOfCalleesBudget
+import LibsignalBinary.Proofs.ConsumeMessageKey.Assembly
+import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexBudget
+import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneBudget
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Hmac -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.RunOfCalleesBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudgetAux
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.CompressAndDigest
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.EntryAndKeyBlock
@@ -21,6 +21,8 @@ import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.NewFromSliceSecondHal
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Binary Refinement for `RatchetState::consume_message_key`
@@ -29,7 +31,7 @@ Assembles the budget-threaded placed refinement for `RatchetState::consume_messa
 under `RustCliAllocBudget M` and `VmPreserved`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -70,7 +72,7 @@ open LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget 
   CmkAllocHooks FindIndexPlacedOk HmacPlacedOk HmacPlacedRoOk
 )
 open LibsignalBinary.Proofs.ConsumeMessageKey.RunOfCalleesBudget (
-  CmkPlacedRunStmt consume_message_key_placed_ro_run_of consume_message_key_placed_run_of
+  CmkPlacedRunStmt
 )
 open LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudgetAux (
   hmacExcHooks hmacExcHooks_compress hmacExcHooks_memcpy hmacExcHooks_memset
@@ -545,71 +547,5 @@ theorem hmac_sha256_placed_ro_ok_at_cmk [LibsignalPlacement]
     (h_c256 : H lsCompress256Sym = some (compress256Hook F)) :
     HmacPlacedRoOk H F :=
   ls_subroutine_ok_of_block (i := 24) (j := 73) (hmac_sha256_placed_ro_ok F h_mc h_ms h_c256)
-
-/-- Budget-threaded placed refinement for `consume_message_key` (`HookSat` allocator shim). -/
-theorem consume_message_key_placed_run_of_hooks [LibsignalPlacement] {M : AllocCostModel}
-    (F : ShaState → List (BitVec 8) → ShaState)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (H : String → Option (State → State))
-    (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
-    (h_realloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hhmac : HmacPlacedOk H F) :
-    CmkPlacedRunStmt F A lim H := by
-  intro hA hmm
-  exact consume_message_key_placed_run_of F A lim H
-    (find_receiver_chain_index_placed_ok_at_cmk A h_bb)
-    hhmac
-    (grow_one_placed_ok_at_cmk hA h_realloc) hA hmm
-
-/-- Budget-threaded placed refinement for `consume_message_key` (`hookNoop` allocator shim). -/
-theorem consume_message_key_placed_run [LibsignalPlacement] {M : AllocCostModel}
-    (F : ShaState → List (BitVec 8) → ShaState)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (H : String → Option (State → State))
-    (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
-    (h_shim : H lsNoAllocShimSym = some hookNoop)
-    (h_realloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hhmac : HmacPlacedOk H F) :
-    CmkPlacedRunStmt F A lim H := by
-  intro hA hmm
-  exact consume_message_key_placed_run_of F A lim H
-    (find_receiver_chain_index_placed_ok_at_cmk A h_bb)
-    hhmac
-    (grow_one_placed_ok_of_noop_at_cmk h_shim h_realloc hA) hA hmm
-
-/-- `.rodata`-backed budget-threaded placed refinement for `consume_message_key` (`HookSat` shim). -/
-theorem consume_message_key_placed_ro_run_of_hooks [LibsignalPlacement] {M : AllocCostModel}
-    (F : ShaState → List (BitVec 8) → ShaState)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (H : String → Option (State → State))
-    (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
-    (h_realloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (h_mc : H lsMemcpySym = some hookMemcpy)
-    (h_ms : H lsMemsetSym = some hookMemset)
-    (h_c256 : H lsCompress256Sym = some (compress256Hook F)) :
-    CmkPlacedRunStmt F A lim H := by
-  intro hA hmm
-  exact consume_message_key_placed_ro_run_of F A lim H
-    (find_receiver_chain_index_placed_ok_at_cmk A h_bb)
-    (hmac_sha256_placed_ro_ok_at_cmk F h_mc h_ms h_c256)
-    (grow_one_placed_ok_at_cmk hA h_realloc) hA hmm
-
-/-- `.rodata`-backed budget-threaded placed refinement for `consume_message_key` (`hookNoop` shim). -/
-theorem consume_message_key_placed_ro_run [LibsignalPlacement] {M : AllocCostModel}
-    (F : ShaState → List (BitVec 8) → ShaState)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (H : String → Option (State → State))
-    (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
-    (h_shim : H lsNoAllocShimSym = some hookNoop)
-    (h_realloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (h_mc : H lsMemcpySym = some hookMemcpy)
-    (h_ms : H lsMemsetSym = some hookMemset)
-    (h_c256 : H lsCompress256Sym = some (compress256Hook F)) :
-    CmkPlacedRunStmt F A lim H := by
-  intro hA hmm
-  exact consume_message_key_placed_ro_run_of F A lim H
-    (find_receiver_chain_index_placed_ok_at_cmk A h_bb)
-    (hmac_sha256_placed_ro_ok_at_cmk F h_mc h_ms h_c256)
-    (grow_one_placed_ok_of_noop_at_cmk h_shim h_realloc hA) hA hmm
 
 end LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudget

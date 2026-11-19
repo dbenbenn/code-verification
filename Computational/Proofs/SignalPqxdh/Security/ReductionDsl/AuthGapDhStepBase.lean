@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeGapDh
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSim
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeGapDh -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSim
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCr -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake -- proof-setup: allow-public-import
 
 /-!
 # Shared infrastructure for the `Auth` Gap-DH evaluation equivalence
@@ -20,7 +22,7 @@ Defines the state encoding `fgSimToVal`, the generic runner bridge `agRunBridge`
 lemmas for the Gap-DH patching helpers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -110,26 +112,26 @@ theorem agFindMGdh_map {α β : Type} (f : α → β) (p : β → OracleComp Gdh
 
 /-! ## State encoding -/
 
-@[simp] def rootEntryToVal (e : FgRootEntry) : rootEntryTy.denote :=
+@[expose, simp] def rootEntryToVal (e : FgRootEntry) : rootEntryTy.denote :=
   (e.rk, (fgPosToVal e.dhPos, (e.rk1, e.ck1_0)))
 
-@[simp] def valToRootEntry (x : rootEntryTy.denote) : FgRootEntry :=
+@[expose, simp] def valToRootEntry (x : rootEntryTy.denote) : FgRootEntry :=
   ⟨x.1, valToFgPos x.2.1, x.2.2.1, x.2.2.2⟩
 
-@[simp] def respRecToVal (r : AuthRespRecord) : respRecTy.denote :=
+@[expose, simp] def respRecToVal (r : AuthRespRecord) : respRecTy.denote :=
   (r.bKey, (r.ikAPk, r.ekAPk))
 
-@[simp] def fgSimToVal {S : Setup} (st : FgAuthSimState S) : fgSimTy.denote :=
+@[expose, simp] def fgSimToVal {S : Setup} (st : FgAuthSimState S) : fgSimTy.denote :=
   (authStateToVal st.base, (st.fgL.map fgPatchEntryToVal, (st.fgRootL.map rootEntryToVal,
     (st.rawRoCache.map (Prod.map id drKeyToVal), (st.advRoLog,
       (st.respRecs.map respRecToVal, st.advKeyPows))))))
 
-@[simp] def paVal (U V : Bytes) (useDh1 : Bool) (t s : Nat) : paramsTy.denote :=
+@[expose, simp] def paVal (U V : Bytes) (useDh1 : Bool) (t s : Nat) : paramsTy.denote :=
   (U, (V, (useDh1, (t, s))))
 
 /-- Decodes `(useDh1, t)` into `(useDh1, targetPrinIdx, sendIsOpk, sendSubIdx)`, using sentinel
     `S.N_id` when `t` is out of range. -/
-def paTargetChoice (S : Setup) (useDh1 : Bool) (t : Nat) : Bool × Nat × Bool × Nat :=
+@[expose] def paTargetChoice (S : Setup) (useDh1 : Bool) (t : Nat) : Bool × Nat × Bool × Nat :=
   if useDh1 then (true, (t, (false, 0)))
   else if t < S.N_send_opk_tot then (false, (t / S.N_send_opk, (true, t % S.N_send_opk)))
   else if t < S.N_send_tot then
@@ -137,10 +139,10 @@ def paTargetChoice (S : Setup) (useDh1 : Bool) (t : Nat) : Bool × Nat × Bool �
     (false, (r / S.N_send_no_opk, (false, r % S.N_send_no_opk)))
   else (false, (S.N_id, (false, 0)))
 
-def paSpkOpt (S : Setup) (sIdx : Nat) : Option (Nat × Nat) :=
+@[expose] def paSpkOpt (S : Setup) (sIdx : Nat) : Option (Nat × Nat) :=
   if sIdx < S.N_spk_tot then some (sIdx / S.N_recv, sIdx % S.N_recv) else none
 
-@[simp] def fg2PaVal (S : Setup) (U V : Bytes) (useDh1 : Bool) (t sIdx : Nat) :
+@[expose, simp] def fg2PaVal (S : Setup) (U V : Bytes) (useDh1 : Bool) (t sIdx : Nat) :
     fg2ParamsTy.denote :=
   let tc := paTargetChoice S useDh1 t
   (U, (V, (tc.1, (tc.2.1, (tc.2.2.1, (tc.2.2.2, paSpkOpt S sIdx))))))

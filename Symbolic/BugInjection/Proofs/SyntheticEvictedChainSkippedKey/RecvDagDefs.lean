@@ -153,24 +153,6 @@ theorem evalDagShapeAux_irrel (opOf : Nat → DagOp)
     · rw [ih _ hc.1, ih _ hc.2]
     · rw [ih _ hc.1, ih _ hc.2]
 
-/-- Injective integer key for `HwBytes` of length `< 2048`. -/
-def packBytesKey (bs : HwBytes) : Nat :=
-  bs.length + 2048 * bytesToNat bs
-
-theorem packBytesKey_inj {a b : HwBytes}
-    (ha : a.length < 2048) (hb : b.length < 2048)
-    (heq : packBytesKey a = packBytesKey b) : a = b := by
-  unfold packBytesKey at heq
-  have hlen : a.length = b.length := by omega
-  have hnat : bytesToNat a = bytesToNat b := by omega
-  exact eq_of_bytesToNat_eq hlen hnat
-
-/-- Bucket index `0..255` from first byte (`0` on empty). -/
-def bytesBucketIdx (bs : HwBytes) : Nat :=
-  match bs with
-  | [] => 0
-  | b :: _ => b.toNat
-
 /-- Checks that within a bucket of `(id, isAI, packedKey)` triples, no `isAI = true` entry
 shares `packedKey` with any distinct `id' ≠ id`. -/
 def bucketNoCollision (entries : List (Nat × Bool × Nat)) : Bool :=

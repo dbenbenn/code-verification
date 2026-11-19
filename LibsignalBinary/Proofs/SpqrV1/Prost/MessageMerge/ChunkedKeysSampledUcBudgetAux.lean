@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledUc
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedKeysSampledUc
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -25,6 +25,8 @@ import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergePart2CodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget Preconditions, Error Frames & Inner Exits for `Chunked.KeysSampled::merge` (Block `304`)
@@ -34,7 +36,7 @@ Provides budget-threaded loop preconditions, error frames, placed decode-error e
 Block `304`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -121,7 +123,7 @@ theorem bv64_add80_add8 (a : BitVec 64) : a + 80#64 + 8#64 = a + 88#64 := by bv_
 
 /-- Named wrapper around capacity-bounded `Vec<u8>` so `sepExists_sepConj_left`/`right`
 does not pull `cap`/`ptr` existentials out of untouched `Vec<u8>` fields. -/
-def vecU8CapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8CapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) (bs : List (BitVec 8)) : SepProp :=
   ∃∗ cap : BitVec 64, ∃∗ ptr : BitVec 64, ⌜BytesMergeCapOk cap bsLen⌝ ∗ vecU8At A a cap ptr bs
 
 theorem unchunked4CapAt_eq (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
@@ -169,7 +171,7 @@ theorem decodeErrorWith_le3_ks (A : RustAlloc) (err : BitVec 64) {n : Nat} (hn :
 /-! ## Budget Preconditions, Error Frame, and Placed Exits for `Chunked.KeysSampled::merge` -/
 
 /-- Budget-threaded outer loop-header separation-logic bundle at `+0x0a8` (`entry + 168#64`). -/
-def chunkedKeysSampledLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedKeysSampledLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (m : V1State.Chunked.KeysSampled) (bs cur : List (BitVec 8)) (polyBound : Nat) : SepProp :=
@@ -179,7 +181,7 @@ def chunkedKeysSampledLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     chunkedInlSavedRegs10 s0.sp s0 ∗ (bufRef ↦₆₄ slot) ∗ sliceCursorAfter slot ptr bs cur
 
 /-- Budget-threaded inner `Unchunked.HeaderSent` loop-header bundle at `+0x1ac` (`entry + 428#64`). -/
-def chunkedKeysSampledUcLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedKeysSampledUcLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (uc : V1State.Unchunked.HeaderSent) (sendingHdr : Option PolynomialEncoder)
@@ -191,7 +193,7 @@ def chunkedKeysSampledUcLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     chunkedInlSavedRegs10 s0.sp s0 ∗ (bufRef ↦₆₄ slot) ∗ sliceCursorAfter slot ptr bs cur
 
 /-- Budget-threaded error-exit separation-logic bundle at fuel `f` (`f ≤ 6 * bs.length + 12`). -/
-def chunkedKeysSampledErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chunkedKeysSampledErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (f polyBound : Nat) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (m : V1State.Chunked.KeysSampled) (bs : List (BitVec 8)) : SepProp :=

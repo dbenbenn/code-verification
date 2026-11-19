@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhProofs
-public import Computational.Proofs.ReductionDsl.SoundnessTwoClass
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhProofs -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SoundnessTwoClass -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhEvalEq
 
 /-!
@@ -21,7 +21,7 @@ import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhEva
 list-scanning session arms from non-session arms that make at most `32` primitive queries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +36,7 @@ open SignalPqxdh.Security.ReductionDsl.KeyInd
 open SignalPqxdh.Security.ReductionDsl.KeyIndGapDh
 
 /-- Predicate identifying session-creating `KeyInd` queries (`initiate*` and `accept*`). -/
-def isSessionQ {S : Setup} : KeyIndQuery S → Bool
+@[expose] def isSessionQ {S : Setup} : KeyIndQuery S → Bool
   | .initiateOPK _ _ _   => true
   | .initiateNoOPK _ _ _ => true
   | .acceptOPK _ _ _ _   => true
@@ -72,7 +72,7 @@ theorem keyIndAdv_sessionBound_on (S : Setup) (b : QueryBudget)
 
 /-- Variant of `gdhHandle` with the four session arms replaced by no-ops, used to bound
     non-session primitive queries. -/
-def gdhHandleNS (S : Setup) (K : Nat) :
+@[expose] def gdhHandleNS (S : Setup) (K : Nat) :
     Comp pqxdhOps pqGapDhIface [gdhStateTy, keyIndQueryTy] (.prod keyIndRespTy gdhStateTy) :=
   let st : Var [gdhStateTy, keyIndQueryTy] gdhStateTy := .zero
   let q : Var [gdhStateTy, keyIndQueryTy] keyIndQueryTy := .succ .zero
@@ -171,75 +171,6 @@ theorem ite_eval_queryBound {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T} 
   · rename_i h; exact hc h
   · rename_i h; exact hd (by simpa using h)
 
-theorem callGdhHandle_primBound_NS (S : Setup) (K : Nat) {Δ : List PT}
-    (st1 : Var Δ gdh1KeyStateTy) (qV : Var Δ keyIndQueryTy) (env : Env Δ) (q : KeyIndQuery S)
-    (hq : env.get qV = keyIndQenc q) (hns : isSessionQ q = false) :
-    ((callGdhHandle S K st1 qV).eval env).IsQueryBoundP (fun q => isPrimQuery q = true) 32 := by
-  rw [callGdhHandle_eval_NS S K st1 qV env q hq hns]
-  exact comp_primBound _ env (callGdhHandleNS_queries_prim_le S K st1 qV)
-
-theorem gdh1KeyHandle_primBound_heavy (S : Setup) (K : Nat) (s : gdh1KeyStateTy.denote)
-    (t : KeyIndQuery S) :
-    ((gdh1KeyHandle S K).eval (.cons s (.cons (keyIndQenc t) .nil))).IsQueryBoundP
-      (fun q => isPrimQuery q = true) (16 * (5 * S.N_dh + S.N_sess_tot + 12)) :=
-  comp_primBound _ _ ((gdh1KeyHandle_queries_prim_le S K).trans (by omega))
-
-theorem gdh1KeyHandle_primBound_light (S : Setup) (K : Nat) (s : gdh1KeyStateTy.denote)
-    (t : KeyIndQuery S) (ht : isSessionQ t = false) :
-    ((gdh1KeyHandle S K).eval (.cons s (.cons (keyIndQenc t) .nil))).IsQueryBoundP
-      (fun q => isPrimQuery q = true) 32 := by
-  cases t with
-  | initPrin u =>
-    simp only [gdh1KeyHandle, keyIndQenc, caseSumV,
-      Comp.eval, v, Expr.eval, Env.get_zero', Env.get_succ', Ext.refl_wk']
-    exact comp_primBound _ _ ((initPrin1KeyB_queries_prim_le _ _ _).trans (by omega))
-  | corruptIK u =>
-    simp only [gdh1KeyHandle, keyIndQenc, caseSumV,
-      Comp.eval, v, Expr.eval, Env.get_zero', Env.get_succ', Ext.refl_wk']
-    exact callGdhHandle_primBound_NS S K _ _ _ (.corruptIK u) rfl rfl
-  | genSPK u j =>
-    simp only [gdh1KeyHandle, keyIndQenc, caseSumV,
-      Comp.eval, v, Expr.eval, Env.get_zero', Env.get_succ', Ext.refl_wk']
-    unfold genSpk1KeyB
-    refine ite_eval_queryBound _ _ _ _ (fun _ => comp_primBound _ _ ?_)
-      (fun _ => callGdhHandle_primBound_NS S K _ _ _ (.genSPK u j) rfl rfl)
-    simp only [letV_queries, bindV_queries, caseOptV_queries, Comp.queries,
-      liftGdhComp_queries_prim, gPrim_queries_wPrimGdh, sigChalQ_dsl_queries_prim,
-      sBytes32_queries, sRandom64_queries, qX25519Base_queries, qKemKeyGen_queries]
-    omega
-  | genOPK u j o =>
-    simp only [gdh1KeyHandle, keyIndQenc, caseSumV,
-      Comp.eval, v, Expr.eval, Env.get_zero', Env.get_succ', Ext.refl_wk']
-    exact callGdhHandle_primBound_NS S K _ _ _ (.genOPK u j o) rfl rfl
-  | initiateOPK u i b => simp [isSessionQ] at ht
-  | initiateNoOPK u i b => simp [isSessionQ] at ht
-  | acceptOPK k j o h => simp [isSessionQ] at ht
-  | acceptNoOPK k j l h => simp [isSessionQ] at ht
-  | testSession sid =>
-    simp only [gdh1KeyHandle, keyIndQenc, caseSumV,
-      Comp.eval, v, Expr.eval, Env.get_zero', Env.get_succ', Ext.refl_wk']
-    exact callGdhHandle_primBound_NS S K _ _ _ (.testSession sid) rfl rfl
-  | roQuery sec =>
-    simp only [gdh1KeyHandle, keyIndQenc, caseSumV,
-      Comp.eval, v, Expr.eval, Env.get_zero', Env.get_succ', Ext.refl_wk']
-    exact callGdhHandle_primBound_NS S K _ _ _ (.roQuery sec) rfl rfl
-  | revealDhSecrets =>
-    simp only [gdh1KeyHandle, keyIndQenc, caseSumV,
-      Comp.eval, v, Expr.eval, Env.get_zero', Env.get_succ', Ext.refl_wk']
-    exact callGdhHandle_primBound_NS S K _ _ _ .revealDhSecrets rfl rfl
-  | revealSessionKey sid =>
-    simp only [gdh1KeyHandle, keyIndQenc, caseSumV,
-      Comp.eval, v, Expr.eval, Env.get_zero', Env.get_succ', Ext.refl_wk']
-    exact callGdhHandle_primBound_NS S K _ _ _ (.revealSessionKey sid) rfl rfl
-  | registerKey sk =>
-    simp only [gdh1KeyHandle, keyIndQenc, caseSumV,
-      Comp.eval, v, Expr.eval, Env.get_zero', Env.get_succ', Ext.refl_wk']
-    exact callGdhHandle_primBound_NS S K _ _ _ (.registerKey sk) rfl rfl
-  | revealSpkSk u j =>
-    simp only [gdh1KeyHandle, keyIndQenc, caseSumV,
-      Comp.eval, v, Expr.eval, Env.get_zero', Env.get_succ', Ext.refl_wk']
-    exact callGdhHandle_primBound_NS S K _ _ _ (.revealSpkSk u j) rfl rfl
-
 set_option allowUnsafeReducibility true in
 attribute [local semireducible] Env.get Ext.wk
 end
@@ -253,59 +184,6 @@ private theorem split_arith (q k X F : ℕ) (hk : k ≤ q) (hX : 2 ≤ X) (hF : 
   have h3 : 16 * (k + 1) * X = (k + 1) * (32 + d) := by rw [← hd]; ring
   rw [h1, h2, h3]
   nlinarith
-
-/-- Two-class primitive-query bound for `fgKeyInd1KeyGapDhProg` given `q` total game queries and
-    `m` session queries. -/
-theorem fgKeyInd1KeyGapDhProg_primBounded_split (S : Setup) (K q m : Nat)
-    (A : Unit → OracleComp (unifSpec + keyIndSpec S) Bool)
-    (hA : ∀ a, (A a).IsQueryBoundP (ReductionDsl.isGameQuery (G := keyIndSpec S)) q)
-    (hAH : ∀ a, (A a).IsQueryBoundP
-      (onGame (G := keyIndSpec S) (fun t => isSessionQ t = true)) m)
-    (U V : Bytes) :
-    ((fgKeyInd1KeyGapDhProg S K).eval A (U, V)).IsQueryBoundP
-      (fun q => isPrimQuery q = true)
-      (32 * (q - min q m) + 16 * (min q m + 1) * (5 * S.N_dh + S.N_sess_tot + 12)) := by
-  refine (CostedReduction.queryBound_eval₂ (fgKeyInd1KeyGapDhProg S K)
-    (fun q => isPrimQuery q = true)
-    SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight
-    SignalPqxdh.LegacyCosted.samplerZeroQueryWeight ?_ ?_
-    (fun t => isSessionQ t = true) (kL := 32) (kH := 16 * (5 * S.N_dh + S.N_sess_tot + 12))
-    (by omega) (fun t s _ => gdh1KeyHandle_primBound_heavy S K s t)
-    (fun t s ht => gdh1KeyHandle_primBound_light S K s t (by simpa using ht))
-    A q m hA hAH (U, V)).mono ?_
-  · intro g x hx
-    cases g with
-    | inl t => simp [SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight]
-    | inr t => simp [pqSigAndDdhIface, pqChalIface, isPrimQuery] at hx
-  · intro k
-    change IsQueryBoundP
-      (liftM (OracleSpec.query (spec := PrimBaseSpec + sigAndDdhOracle.spec) (Sum.inl (Sum.inl k))))
-      (fun q => isPrimQuery q = true) 0
-    rw [isQueryBoundP_query_iff]
-    simp [isPrimQuery]
-  · have h0 : (fgKeyInd1KeyGapDhProg S K).init.queries
-        SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight
-        SignalPqxdh.LegacyCosted.samplerZeroQueryWeight = 0 :=
-      fgKeyInd1KeyGapDhProg_init_queries_prim S K
-    have hF : (fgKeyInd1KeyGapDhProg S K).finish.queries
-        SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight
-        SignalPqxdh.LegacyCosted.samplerZeroQueryWeight ≤ 3 * S.N_dh + S.N_sess_tot :=
-      gdh1KeyFinish_queries_prim_le S K
-    rw [h0]
-    exact split_arith q (min q m) _ _ (min_le_left _ _) (by omega) (hF.trans (by omega))
-
-theorem gdhPrimQueryBudget_le_primQueryBudget (S : Setup) (b : QueryBudget) :
-    gdhPrimQueryBudget S b ≤ primQueryBudget S b := by
-  unfold gdhPrimQueryBudget primQueryBudget
-  dsimp only
-  have hX : 12 ≤ 5 * S.N_dh + S.N_sess_tot + 12 := by omega
-  obtain ⟨r, hr⟩ : ∃ r, b.q_total = min (min b.q_on b.q_total) S.N_sess_tot + r :=
-    ⟨b.q_total - min (min b.q_on b.q_total) S.N_sess_tot, by omega⟩
-  generalize min (min b.q_on b.q_total) S.N_sess_tot = k at hr ⊢
-  generalize 5 * S.N_dh + S.N_sess_tot + 12 = X at hX ⊢
-  rw [hr, Nat.add_sub_cancel_left]
-  have h2 : r * 12 ≤ r * X := Nat.mul_le_mul le_rfl hX
-  nlinarith [h2]
 
 theorem split_prim_eq_gdhPrimQueryBudget (S : Setup) (b : QueryBudget) :
     32 * (b.q_total - min b.q_total (min b.q_on S.N_sess_tot)) +
@@ -327,15 +205,5 @@ theorem keyIndAdv_gameBound (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIn
   cases q
   · exact propext ⟨False.elim, Bool.noConfusion⟩
   · exact propext ⟨fun _ => rfl, fun _ => trivial⟩
-
-/-- Evaluating `fgKeyInd1KeyGapDhProg S K` on a `b`-bounded `KeyInd` adversary makes at most
-    `gdhPrimQueryBudget S b` primitive queries. -/
-theorem fgKeyInd1KeyGapDhProg_primBounded_gdhPrimQueryBudget (S : Setup) (K : Nat)
-    (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) (U V : Bytes) :
-    ((fgKeyInd1KeyGapDhProg S K).eval (fun _ => A.1.run) (U, V)).IsQueryBoundP
-      (fun q => isPrimQuery q = true) (gdhPrimQueryBudget S b) :=
-  (fgKeyInd1KeyGapDhProg_primBounded_split S K b.q_total (min b.q_on S.N_sess_tot) (fun _ => A.1.run)
-    (keyIndAdv_gameBound S b A) (fun _ => keyIndAdv_sessionBound_on S b A) U V).mono
-    (le_of_eq (split_prim_eq_gdhPrimQueryBudget S b))
 
 end SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDh

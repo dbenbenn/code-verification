@@ -10,11 +10,11 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvB.Defs
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers2BPure
-public import Symbolic.Proofs.Swarm.SHARED.StateSizePure
+public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers2BPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.SHARED.StateSizePure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers1APure
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Bytes.Basic
 import DY.Bytes.AttackerKnowledge
@@ -54,7 +54,7 @@ import Symbolic.Specifications.Model.MsgKeys
 import Symbolic.Specifications.Model.TripleRatchet
 import Symbolic.Specifications.Model.PQXDH
 import Symbolic.Specifications.Model.Composed
-public import Symbolic.Proofs.Swarm.COMPOSED.CompPresBob
+public import Symbolic.Proofs.Swarm.COMPOSED.CompPresBob -- proof-setup: allow-public-import
 public import Symbolic.Specifications.Refinement.TraceExplanation
 import Batteries.Tactic.SeqFocus
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Spqr
@@ -64,7 +64,7 @@ import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Trunc
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.COMPOSED.CompPresPQXDH
-import Symbolic.Proofs.Swarm.COMPOSED.CompPresTRExp
+public import Symbolic.Proofs.Swarm.COMPOSED.CompPresTRExp -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompPubInv
 import Symbolic.Proofs.Swarm.COMPOSED.CompTermAlgebra
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -77,7 +77,7 @@ constructor-site sender-state and attacker-knowledge witnesses at `messageEncryp
 `macKdfSafe_tr_trunc8_inv_strong`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -114,7 +114,7 @@ abbrev TTRStEntry :=
   PersistentGlobalState.State.ExecEntryT (PersistentLocalState.LocalState TRState)
 
 /-- State `st` is stored for participant `p` at trace index `i` of `tr`. -/
-def TRStateStoredAt (p : Participant) (st : TRState) (i : Nat) (tr : ExecTrace) : Prop :=
+@[expose] def TRStateStoredAt (p : Participant) (st : TRState) (i : Nat) (tr : ExecTrace) : Prop :=
   (tr.at? i : Option TTRStEntry) = some ⟨⟨p, st⟩⟩
 
 section UnsealedInjectivity
@@ -175,7 +175,7 @@ end UnsealedInjectivity
 
 /-- Strengthened `Trunc.trunc8` input validity predicate on trace `T`, recording the constructor-site
 attacker-knowability and sender-state witnesses from `TripleRatchet.messageEncrypt`. -/
-def TruncInputValidTRStrong (T : ExecTrace) (inp : DY.Bytes) : Prop :=
+@[expose] def TruncInputValidTRStrong (T : ExecTrace) (inp : DY.Bytes) : Prop :=
   inp.AttackerKnows T ∨
   ∃ (pqSalt seed myIk peerIk a : DY.Bytes) (ns pn : UInt32) (m pqMsg : DY.Bytes)
     (t_s stH : Nat) (me : Participant) (st_s : TRState),

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6PlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6PlacedBudgetAux -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1
@@ -20,6 +20,16 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6c
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6e
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6f
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6fPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6Placed
 
 /-!
 # Budget-Threaded Placed Variant 6 (`HeaderReceived`, `+1464`, Block `333`)
@@ -29,7 +39,7 @@ for Variant 6 (`InnerState.headerReceived`) of `<spqr::v1::chunked::states::Stat
 `HeaderReceivedFromPbEnv` and `StatesFromPbEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -856,44 +866,6 @@ theorem states_from_pb_headerReceived_1464_of_placedHooks_sepWP [LibsignalPlacem
             exact hevs1.append hevs2
           · rw [LibsignalBinary.Heap.AllocCostModel.stepEvents_append]
             exact v6hr_reassoc_exit_post hPf
-
-theorem states_from_pb_headerReceived_1464_placed_sepWP [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksBudget M A lim ext)
-    (hdec : DefsBudget.DecoderFromPbPlacedOkExt M A lim ext)
-    (st : M.σ) (s : V1State.Chunked.HeaderReceived)
-    (s0 s1 : State) (hcl1 : LibsignalCodeLoaded lsmpl s1.mem)
-    (out pbA : BitVec 64)
-    (hfits : FitsEnv M lim st (HeaderReceivedFromPbAllocEnv s))
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = lsmpl.base 333 + 1464#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64)
-    (hx19_1 : s1.readReg64 .x19 = out)
-    (hx23_1 : s1.readReg64 .x23 = (s0.sp - 2400#64) + 848#64)
-    (hx27_1 : s1.readReg64 .x27 = pbA)
-    (htr1 : TraceCalleeSaved s1 s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext)) (s0.readReg64 .x30) s1
-      (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        memRegion (s0.sp - 2400#64) 2304 ∗
-        statesFromPbSavedCells s0 ∗
-        memRegion out chunkedStatesSize ∗
-        optProtoInnerStateAt A.repAlloc pbA (some (.headerReceived s)) ∗
-        statesFromPbJumpTablePlacedAt ∗
-        A.pool lim st s1)
-      (fun sf Pf =>
-        (∃ evs : List AllocEvent,
-          HeaderReceivedFromPbEnv s evs ∧
-          (Pf ⊢
-            resultChunkedStatesAt A.repAlloc (F := F) out
-              (States.from_pb spqrPolyApi (spqrAuthApi F) { innerState := some (.headerReceived s) }) ∗
-            memRegion pbA optProtoInnerStateSize ∗
-            statesFromPbJumpTablePlacedAt ∗ A.pool lim (M.stepEvents evs st) sf ∗
-            stackAt s0.sp statesFromPbStack)) ∧
-        sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace) :=
-  states_from_pb_headerReceived_1464_of_placedHooks_sepWP (F := F) hA.toPlacedBudget hdec
-    st s s0 s1 hcl1 out pbA hfits hsp0_align hpc1 hrun1 hsp1 hx19_1 hx23_1 hx27_1 htr1
 
 theorem states_from_pb_headerReceived_1464_of_placedHooks [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}

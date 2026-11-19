@@ -9,9 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyDom0Record
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlotDom0
+public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyDom0Record -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlotDom0 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
 
 /-!
 # Parametric & Closed `archivedTrials = []` Producers
@@ -25,7 +32,7 @@ Producers discharging `archivedTrials = []` (`Dom0`) from session-file and `load
    `w4RecvPrekeyRealDom0Of_of_cliPqOrD3RecvDom_*` lemmas).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,17 +63,6 @@ open LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlotDom0
   (W4RecvPrekeyRealDom0 W4RecvPrekeyRealDom0Of)
 
 /-! ## Parametric `list_eq_nil_*` & `w4RecvPrekeyRealDom0_of_recordTie` Producers -/
-
-/-- Polymorphic `loadRec` tie consumer: if `loadRec Scope F peer` succeeds with some `recOpt` and
-`hTie` yields `xs = []` on `.ok recOpt`, then `xs = []`. -/
-theorem list_eq_nil_of_loadRec_ok_tie {α : Type}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {F : FsFiles} {peer : AddrVal} {xs : List α}
-    (hok : ∃ recOpt, loadRec Scope F peer = .ok recOpt)
-    (hTie : ∀ recOpt, loadRec Scope F peer = .ok recOpt → xs = []) :
-    xs = [] := by
-  obtain ⟨recOpt, hlr⟩ := hok
-  exact hTie recOpt hlr
 
 /-- Polymorphic prost `RecordStructure.decode` tie consumer over `loadRec Scope F peer = .ok recOpt`:
 covers both `recOpt = none` (`hNone`) and `recOpt = some r` (`hTie` + `hPrev0`). -/
@@ -107,72 +103,7 @@ theorem list_eq_nil_of_deserialize_tie {α : Type}
   rw [hprev0, Nat.le_zero] at hle
   exact List.eq_nil_of_length_eq_zero hle
 
-/-- Lifts `W4RecvPrekeyRealDom R` to `W4RecvPrekeyRealDom0 R` from a `loadRec` + prost
-`RecordStructure.decode` tie and zero-previous-sessions witness. -/
-theorem w4RecvPrekeyRealDom0_of_recordTie
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {R : W4RecvPrekeyRealParams} {recOpt : Option (SessionRecord (List (BitVec 8)))}
-    (hDom : W4RecvPrekeyRealDom R)
-    (hlr : loadRec Scope R.files R.peer.val = .ok recOpt)
-    (hNone : loadRec Scope R.files R.peer.val = .ok none → R.archivedTrials = [])
-    (hTie : ∀ r rec, loadRec Scope R.files R.peer.val = .ok (some r) →
-      RecordStructure.decode (encodeRecord r) = some rec →
-      R.archivedTrials.length ≤ rec.previousSessions.length)
-    (hPrev0 : ∀ r, loadRec Scope R.files R.peer.val = .ok (some r) →
-      ∃ rec, RecordStructure.decode (encodeRecord r) = some rec ∧ rec.previousSessions = []) :
-    W4RecvPrekeyRealDom0 R :=
-  ⟨hDom, list_eq_nil_of_loadRec_decode_tie hlr hNone hTie hPrev0⟩
-
-/-- `(smallFileCap, maxCt)`-parametric companion of `w4RecvPrekeyRealDom0_of_recordTie`. -/
-theorem w4RecvPrekeyRealDom0Of_of_recordTie
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {smallFileCap maxCt : Nat}
-    {R : W4RecvPrekeyRealParams} {recOpt : Option (SessionRecord (List (BitVec 8)))}
-    (hDom : W4RecvPrekeyRealDomOf smallFileCap maxCt R)
-    (hlr : loadRec Scope R.files R.peer.val = .ok recOpt)
-    (hNone : loadRec Scope R.files R.peer.val = .ok none → R.archivedTrials = [])
-    (hTie : ∀ r rec, loadRec Scope R.files R.peer.val = .ok (some r) →
-      RecordStructure.decode (encodeRecord r) = some rec →
-      R.archivedTrials.length ≤ rec.previousSessions.length)
-    (hPrev0 : ∀ r, loadRec Scope R.files R.peer.val = .ok (some r) →
-      ∃ rec, RecordStructure.decode (encodeRecord r) = some rec ∧ rec.previousSessions = []) :
-    W4RecvPrekeyRealDom0Of smallFileCap maxCt R :=
-  ⟨hDom, list_eq_nil_of_loadRec_decode_tie hlr hNone hTie hPrev0⟩
-
-/-- `SessionRecord` tie form of `w4RecvPrekeyRealDom0_of_recordTie`. -/
-theorem w4RecvPrekeyRealDom0_of_loadRec_tie
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {R : W4RecvPrekeyRealParams}
-    (hDom : W4RecvPrekeyRealDom R)
-    (hok : ∃ recOpt, loadRec Scope R.files R.peer.val = .ok recOpt)
-    (hTie : ∀ recOpt, loadRec Scope R.files R.peer.val = .ok recOpt → R.archivedTrials = []) :
-    W4RecvPrekeyRealDom0 R :=
-  ⟨hDom, list_eq_nil_of_loadRec_ok_tie hok hTie⟩
-
-/-- `(smallFileCap, maxCt)`-parametric `SessionRecord` tie form of `w4RecvPrekeyRealDom0Of_of_recordTie`. -/
-theorem w4RecvPrekeyRealDom0Of_of_loadRec_tie
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {smallFileCap maxCt : Nat} {R : W4RecvPrekeyRealParams}
-    (hDom : W4RecvPrekeyRealDomOf smallFileCap maxCt R)
-    (hok : ∃ recOpt, loadRec Scope R.files R.peer.val = .ok recOpt)
-    (hTie : ∀ recOpt, loadRec Scope R.files R.peer.val = .ok recOpt → R.archivedTrials = []) :
-    W4RecvPrekeyRealDom0Of smallFileCap maxCt R :=
-  ⟨hDom, list_eq_nil_of_loadRec_ok_tie hok hTie⟩
-
 /-! ## Closed `archivedTrials = []` Producers on `CliPqOrD3RecvDom` -/
-
-/-- On any `.recv peer` input in `CliPqOrD3RecvDom W i` and any `Scope` extending `scopeIn` with
-`EncodeInjOn Scope`, `loadRec Scope (runFiles i) (addrValOf peer)` succeeds (with `none` when
-`st.session = none` and `some (toRecord …)` when `st.session = some (x, g)`). -/
-theorem exists_loadRec_ok_of_cliPqOrD3RecvDom {W : PEParams}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    (hinj : EncodeInjOn Scope) (hsub : ∀ r, scopeIn r → Scope r)
-    {i : Inputs} {peer : AddrV}
-    (hi : CliPqOrD3RecvDom W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.recv peer)) :
-    ∃ recOpt, loadRec Scope (runFiles i) (addrValOf peer) = .ok recOpt := by
-  obtain ⟨st, ct, rc, hwf, rfl⟩ := cliPqOrD3RecvDom_eq_pqRecvInputs hi hparse
-  exact ⟨_, loadRec_pqRecv_of_scope hinj hsub hwf hparse⟩
 
 /-- `scopeKit` specialization of `exists_loadRec_ok_of_cliPqOrD3RecvDom` (`0` extra hypotheses). -/
 theorem exists_loadRec_scopeKit_ok_of_cliPqOrD3RecvDom {W : PEParams}
@@ -207,15 +138,6 @@ theorem sessions_get_deserialize_prev0_of_cliPqOrD3RecvDom {W : PEParams}
     have hlen := encodeRecordUnderExtras_length_le_2pow64_of_wf hwf hs
     exact ⟨_, _, hget, deserialize_encodeRecordUnderExtras_of_record_le hlen, rfl⟩
 
-/-- Polymorphic `xs = []` producer on `CliPqOrD3RecvDom W i` from a `loadRec scopeKit` tie. -/
-theorem list_eq_nil_of_cliPqOrD3RecvDom_restateTie {α : Type} {W : PEParams}
-    {i : Inputs} {peer : AddrV} {xs : List α}
-    (hi : CliPqOrD3RecvDom W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.recv peer))
-    (hTie : ∀ recOpt, loadRec scopeKit (runFiles i) (addrValOf peer) = .ok recOpt → xs = []) :
-    xs = [] :=
-  list_eq_nil_of_loadRec_ok_tie (exists_loadRec_scopeKit_ok_of_cliPqOrD3RecvDom hi hparse) hTie
-
 /-- Polymorphic `xs = []` producer on `CliPqOrD3RecvDom W i` from a `loadRec` +
 `RecordStructure.decode` tie across both `st.session = none` and `st.session = some (x, g)`. -/
 theorem list_eq_nil_of_cliPqOrD3RecvDom_loadRec_decodeTie {α : Type} {W : PEParams}
@@ -248,48 +170,5 @@ theorem list_eq_nil_of_cliPqOrD3RecvDom_deserializeTie {α : Type} {W : PEParams
   obtain ⟨bs, orec, hget, hdes, hprev0⟩ :=
     sessions_get_deserialize_prev0_of_cliPqOrD3RecvDom hi hparse
   exact list_eq_nil_of_deserialize_tie hget hdes hprev0 hTie
-
-/-- `W4RecvPrekeyRealDom0Of` lift on `CliPqOrD3RecvDom` under a `loadRec scopeKit` tie. -/
-theorem w4RecvPrekeyRealDom0Of_of_cliPqOrD3RecvDom_restateTie {W : PEParams}
-    {smallFileCap maxCt : Nat} {i : Inputs} {peer : AddrV} {R : W4RecvPrekeyRealParams}
-    (hi : CliPqOrD3RecvDom W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.recv peer))
-    (hfiles : R.files = runFiles i) (hpeer : R.peer.val = addrValOf peer)
-    (hDom : W4RecvPrekeyRealDomOf smallFileCap maxCt R)
-    (hTie : ∀ recOpt, loadRec scopeKit R.files R.peer.val = .ok recOpt → R.archivedTrials = []) :
-    W4RecvPrekeyRealDom0Of smallFileCap maxCt R :=
-  ⟨hDom, list_eq_nil_of_cliPqOrD3RecvDom_restateTie hi hparse
-    (fun recOpt hlr => hTie recOpt (hfiles.symm ▸ hpeer.symm ▸ hlr))⟩
-
-/-- `W4RecvPrekeyRealDom0Of` lift on `CliPqOrD3RecvDom` under a `loadRec` + `RecordStructure.decode` tie. -/
-theorem w4RecvPrekeyRealDom0Of_of_cliPqOrD3RecvDom_loadRec_decodeTie {W : PEParams}
-    {smallFileCap maxCt : Nat} {i : Inputs} {peer : AddrV} {R : W4RecvPrekeyRealParams}
-    (hi : CliPqOrD3RecvDom W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.recv peer))
-    (hfiles : R.files = runFiles i) (hpeer : R.peer.val = addrValOf peer)
-    (hDom : W4RecvPrekeyRealDomOf smallFileCap maxCt R)
-    (hNone : loadRec scopeKit R.files R.peer.val = .ok none → R.archivedTrials = [])
-    (hTie : ∀ r rec, loadRec scopeKit R.files R.peer.val = .ok (some r) →
-      RecordStructure.decode (encodeRecord r) = some rec →
-      R.archivedTrials.length ≤ rec.previousSessions.length) :
-    W4RecvPrekeyRealDom0Of smallFileCap maxCt R :=
-  ⟨hDom, list_eq_nil_of_cliPqOrD3RecvDom_loadRec_decodeTie hi hparse
-    (fun hlr => hNone (hfiles.symm ▸ hpeer.symm ▸ hlr))
-    (fun r rec hlr hdec => hTie r rec (hfiles.symm ▸ hpeer.symm ▸ hlr) hdec)⟩
-
-/-- `W4RecvPrekeyRealDom0Of` lift on `CliPqOrD3RecvDom` under a `sessions.get` + `RecordStructure.deserialize` tie. -/
-theorem w4RecvPrekeyRealDom0Of_of_cliPqOrD3RecvDom_deserializeTie {W : PEParams}
-    {smallFileCap maxCt : Nat} {i : Inputs} {peer : AddrV} {R : W4RecvPrekeyRealParams}
-    (hi : CliPqOrD3RecvDom W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.recv peer))
-    (hfiles : R.files = runFiles i) (hpeer : R.peer.val = addrValOf peer)
-    (hDom : W4RecvPrekeyRealDomOf smallFileCap maxCt R)
-    (hTie : ∀ bs orec,
-      StoresGhost.opened.sessions.get cliIo.rd R.files (addressText R.peer.val) = .ok bs →
-      RecordStructure.deserialize bs = .ok orec →
-      R.archivedTrials.length ≤ (orec.map (·.previousSessions.length)).getD 0) :
-    W4RecvPrekeyRealDom0Of smallFileCap maxCt R :=
-  ⟨hDom, list_eq_nil_of_cliPqOrD3RecvDom_deserializeTie hi hparse
-    (fun bs orec hget hdes => hTie bs orec (hfiles.symm ▸ hpeer.symm ▸ hget) hdes)⟩
 
 end LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyDom0Tie

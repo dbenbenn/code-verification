@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneBasePlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlacedBudget
-public meta import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlacedBudget -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneChainsPlaced
-public meta import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneChains -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneBasePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlacedBudget
+public meta import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlacedBudget -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneChainsPlaced
+public meta import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneChains -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
@@ -24,6 +24,10 @@ import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneAssemble
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatch
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneChains
 
 /-!
 # Budget-Threaded Relocatable CLI `SegClone` Sub-Segment 5 (`receiver_chains` Loop)
@@ -32,7 +36,7 @@ Proves `receiver_chains` cloning (`+0x544 / +0x300 → +0x548 / +0x390`) on CLI 
 threading `RustCliAllocBudget M` (`A.pool`) and `FitsEvents`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -82,7 +86,7 @@ attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Deterministic `AllocEvent` sequence for `receiver_chains` cloning, matching `segCloneEvents`. -/
-def receiverChainsCloneEvents (chains : List ChainGhost) (rcs : List ReceiverChain) :
+@[expose] def receiverChainsCloneEvents (chains : List ChainGhost) (rcs : List ReceiverChain) :
     List AllocEvent :=
   if rcs = [] then []
   else rustAllocEvents (104 * rcs.length) 8 ++ (chains.zip rcs).flatMap chainCloneEvents

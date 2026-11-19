@@ -9,15 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreSessionPrev1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreSessionPrev1Budget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreShimPlacedBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreSessionPrev1Placed
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreSessionPrev1Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreShimPlacedBudget
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.Layout -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.LayoutBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.Sym
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable CLI `<SessionFiles as SessionStore>::store_session` on `Prev1`
@@ -26,7 +34,7 @@ Budget-threaded `[LibsignalPlacement]` `Prev1` `store_session` specifications an
 Block `570` (`lsProg_570 H`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -92,7 +100,7 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 /-- Budget-threaded `SessionRecord::serialize` on a record with a current session and
 `previous_sessions = [enc]`, at `serializeStackX` and a 32-byte `out`, parameterized by
 `SerPrev1Env`. -/
-def serializePrev1BodySpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def serializePrev1BodySpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (SerPrev1Env : SessionGhost → Session (List (BitVec 8)) → List (BitVec 8) →
       List AllocEvent → Prop) : Spec (SerializePrev1BodyGhost × M.σ) where
@@ -112,7 +120,7 @@ def serializePrev1BodySpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
         vecU8 A.repAlloc (x.out + 8#64) (encodeRecordPrev1Mem x.G x.sess x.enc) ∗
         A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp serializeStackX
 
-def sessStorePollPrev1MemSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def sessStorePollPrev1MemSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (StorePrev1Env : SessStorePollPrev1Ghost → List AllocEvent → Prop)
     (stk : Nat) : Spec (SessStorePollPrev1Ghost × M.σ) :=
@@ -141,7 +149,7 @@ def sessStorePollPrev1MemSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
             sessionStateReprAt A.repAlloc (x.recA + 24#64) x.G x.sess ∗
             A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp stk }
 
-def sessStorePollPrev1SpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def sessStorePollPrev1SpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (StorePrev1Env : SessStorePollPrev1Ghost → List AllocEvent → Prop)
     (stk : Nat) : Spec (SessStorePollPrev1Ghost × M.σ) :=
@@ -464,37 +472,6 @@ theorem sessStorePollPrev1Mem_placed_ok_of_deps [LibsignalPlacement] {M : AllocC
     (serializePrev1_cells_placed_ok hSer' (by omega) hhi)
     (dirPut_cells_placed_ok hPut' (by omega) hhi)
 
-theorem sessStorePollPrev1Mem_placed_ok_of_deps_cl [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {AddrEnv : AddrGhost → List AllocEvent → Prop}
-    {SerPrev1Env : SessionGhost → Session (List (BitVec 8)) → List (BitVec 8) →
-      List AllocEvent → Prop}
-    {PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
-    {addrProg serProg putProg : Program} {addrBlk serBlk putBlk : Nat}
-    [IsLsBlockProg addrProg addrBlk H]
-    [IsLsBlockProg serProg serBlk H]
-    [IsLsBlockProg putProg putBlk H]
-    {addrStk putStk stk : Nat}
-    (hAddr : subroutine_ok addrProg (lsmpl.base 594)
-      (addrTextSpecPlaced A lim AddrEnv addrStk))
-    (hSer : subroutine_ok serProg (lsmpl.base 52)
-      (withLsCodeLoaded lsmpl (serializePrev1BodySpecX A lim SerPrev1Env)))
-    (hPut : subroutine_ok putProg (lsmpl.base 542)
-      (dirPutSpecPlaced A lim PutEnv putStk))
-    (hstk : 0xd0 + max (max addrStk serializeStackX) (max putStk extHookStack) ≤ stk)
-    (hAddrBlk : addrBlk < 619 := by decide)
-    (hAddrUnmut : (addrBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hSerBlk : serBlk < 619 := by decide)
-    (hSerUnmut : (serBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hPutBlk : putBlk < 619 := by decide)
-    (hPutUnmut : (putBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok (lsProg_570 H) (lsmpl.base 570)
-      (sessStorePollPrev1MemSpecPlaced A lim
-        (CliStorePollPrev1Env AddrEnv SerPrev1Env PutEnv) stk) :=
-  sessStorePollPrev1Mem_placed_ok_of_deps hAddr
-    (ls_transfer_cl_to_lscro (callerProg := lsProg_570 H) hSer (by decide) hSerBlk hSerUnmut)
-    hPut hstk hAddrBlk hAddrUnmut (by decide) (by decide) hPutBlk hPutUnmut
-
 theorem sessStorePollPrev1_placed_of_mem [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {StorePrev1Env : SessStorePollPrev1Ghost → List AllocEvent → Prop}
@@ -564,37 +541,6 @@ theorem sessStorePollPrev1_placed_ok_of_deps [LibsignalPlacement] {M : AllocCost
         (CliStorePollPrev1Env AddrEnv SerPrev1Env PutEnv) stk) :=
   sessStorePollPrev1_placed_of_mem
     (sessStorePollPrev1Mem_placed_ok_of_deps hAddr hSer hPut hstk
-      hAddrBlk hAddrUnmut hSerBlk hSerUnmut hPutBlk hPutUnmut)
-
-theorem sessStorePollPrev1_placed_ok_of_deps_cl [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {AddrEnv : AddrGhost → List AllocEvent → Prop}
-    {SerPrev1Env : SessionGhost → Session (List (BitVec 8)) → List (BitVec 8) →
-      List AllocEvent → Prop}
-    {PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
-    {addrProg serProg putProg : Program} {addrBlk serBlk putBlk : Nat}
-    [IsLsBlockProg addrProg addrBlk H]
-    [IsLsBlockProg serProg serBlk H]
-    [IsLsBlockProg putProg putBlk H]
-    {addrStk putStk stk : Nat}
-    (hAddr : subroutine_ok addrProg (lsmpl.base 594)
-      (addrTextSpecPlaced A lim AddrEnv addrStk))
-    (hSer : subroutine_ok serProg (lsmpl.base 52)
-      (withLsCodeLoaded lsmpl (serializePrev1BodySpecX A lim SerPrev1Env)))
-    (hPut : subroutine_ok putProg (lsmpl.base 542)
-      (dirPutSpecPlaced A lim PutEnv putStk))
-    (hstk : 0xd0 + max (max addrStk serializeStackX) (max putStk extHookStack) ≤ stk)
-    (hAddrBlk : addrBlk < 619 := by decide)
-    (hAddrUnmut : (addrBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hSerBlk : serBlk < 619 := by decide)
-    (hSerUnmut : (serBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hPutBlk : putBlk < 619 := by decide)
-    (hPutUnmut : (putBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok (lsProg_570 H) (lsmpl.base 570)
-      (sessStorePollPrev1SpecPlaced A lim
-        (CliStorePollPrev1Env AddrEnv SerPrev1Env PutEnv) stk) :=
-  sessStorePollPrev1_placed_of_mem
-    (sessStorePollPrev1Mem_placed_ok_of_deps_cl hAddr hSer hPut hstk
       hAddrBlk hAddrUnmut hSerBlk hSerUnmut hPutBlk hPutUnmut)
 
 end Placed

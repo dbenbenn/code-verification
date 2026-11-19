@@ -446,7 +446,39 @@ private theorem canMap_eq_false_of_allPerm_rw_pos {m : Memory} {base : BitVec 64
   rw [h0] at hm0
   exact Bool.noConfusion hm0
 
-/-- Successful `mremap(oldAddr, oldLen, newLen, MREMAP_MAYMOVE)` when `mremapFail = false`,
+private theorem untaggedAddr_of_le_user_va {x : BitVec 64} (h : x.toNat ≤ USER_VA_LIMIT) :
+    untaggedAddr x = x := by
+  unfold USER_VA_LIMIT at h
+  have hb55 : x.getLsbD 55 = false := by
+    rw [BitVec.getLsbD_eq_getElem (by decide), BitVec.getElem_eq_testBit_toNat]
+    exact Nat.testBit_lt_two_pow (by omega)
+  unfold untaggedAddr
+  rw [hb55]
+  simp only [Bool.false_eq_true, ↓reduceIte]
+  apply BitVec.eq_of_toNat_eq
+  simp only [BitVec.toNat_and, show (0x00ffffffffffffff#64 : BitVec 64).toNat = 2 ^ 56 - 1 from rfl,
+    Nat.and_two_pow_sub_one_eq_mod]
+  exact Nat.mod_eq_of_lt (by omega)
+
+@[simp] theorem mremapRefusal_beq_enomem_enomem :
+    (MremapRefusal.enomem == MremapRefusal.enomem) = true := rfl
+@[simp] theorem mremapRefusal_beq_efault_efault :
+    (MremapRefusal.efault == MremapRefusal.efault) = true := rfl
+@[simp] theorem mremapRefusal_beq_enomem_efault :
+    (MremapRefusal.enomem == MremapRefusal.efault) = false := rfl
+@[simp] theorem mremapRefusal_beq_efault_enomem :
+    (MremapRefusal.efault == MremapRefusal.enomem) = false := rfl
+
+/-- `mremap` with supported `flags` (`0` or `MREMAP_MAYMOVE`) and `newLen > USER_VA_LIMIT`
+    returns `-EINVAL` immediately (`check_mremap_params`, `mm/mremap.c:2028-2045`). -/
+theorem execMremap_einval_of_newLen_gt (s : State)
+    (hflags : s.readReg64 .x3 = 0#64 ∨ s.readReg64 .x3 = MREMAP_MAYMOVE)
+    (hgt : ¬ (s.readReg64 .x2).toNat ≤ USER_VA_LIMIT) :
+    execMremap s = (s.writeReg64 .x0 (-EINVAL)).advancePC := by
+  dsimp (config := { zetaHave := true }) only [execMremap]
+  rcases hflags with hf | hf <;> simp [hf, MREMAP_MAYMOVE, hgt]
+
+/-- Successful `mremap(oldAddr, oldLen, newLen, MREMAP_MAYMOVE)` when `mremapRefusal = none`,
     `sanitizeMmapAddr` on the unmapped source memory returns `some newBase`, and
     `pageAlignUp newLen ≤ s.physMemAvail + pageAlignUp oldLen`. -/
 theorem execMremap_ok (s : State) {newBase : BitVec 64}
@@ -454,13 +486,13 @@ theorem execMremap_ok (s : State) {newBase : BitVec 64}
     (hal : (s.readReg64 .x0).toNat % PAGE_SIZE = 0)
     (holdLen : s.readReg64 .x1 ≠ 0#64)
     (hnewLen : s.readReg64 .x2 ≠ 0#64)
-    (hnewMax : (s.readReg64 .x2).toNat ≤ 2 ^ 64 - PAGE_SIZE)
+    (hnewMax : (s.readReg64 .x2).toNat ≤ USER_VA_LIMIT)
     (hfit : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat ≤ USER_VA_LIMIT)
     (hperm : s.mem.allPerm (fun p => p == some Perm.rw) (s.readReg64 .x0)
       (pageAlignUp (s.readReg64 .x1).toNat) = true)
     (hanon : s.mem.allAnon (s.readReg64 .x0)
       (pageAlignUp (s.readReg64 .x1).toNat) = true)
-    (hnoFail : s.oracle.mremapFail s.oracleIdx = false)
+    (hnoFail : s.oracle.mremapRefusal s.oracleIdx = none)
     (hsan : sanitizeMmapAddr
       (s.mem.unmapNonFrozen (s.readReg64 .x0) (pageAlignUp (s.readReg64 .x1).toNat))
       (s.oracle.mmap s.oracleIdx)
@@ -477,15 +509,17 @@ theorem execMremap_ok (s : State) {newBase : BitVec 64}
     intro h; exact holdLen (BitVec.eq_of_toNat_eq (by simpa using h))
   have hnewLen' : (s.readReg64 .x2).toNat ≠ 0 := by
     intro h; exact hnewLen (BitVec.eq_of_toNat_eq (by simpa using h))
-  have hnewNotGt : ¬((s.readReg64 .x2).toNat > 2 ^ 64 - PAGE_SIZE) := by omega
-  have hfitNotGt : ¬((s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat > USER_VA_LIMIT) := by
-    omega
+  have hunt : untaggedAddr (s.readReg64 .x0) = s.readReg64 .x0 :=
+    untaggedAddr_of_le_user_va (by omega)
+  have holdMax : (s.readReg64 .x1).toNat ≤ 2 ^ 64 - PAGE_SIZE := by
+    have := hfit; unfold pageAlignUp PAGE_SIZE USER_VA_LIMIT at *; omega
   have hfrz := allPerm_not_frozen_of_allPerm_rw hperm
   have hcm := canMap_eq_false_of_allPerm_rw_pos (pageAlignUp_pos_of_ne_zero holdLen') hperm
   dsimp (config := { zetaHave := true }) only [execMremap]
-  simp [hflags, hal, holdLen', hnewLen', hnewNotGt, hfitNotGt, hfrz, hcm, hanon, hperm, hnoFail, hsan, hphys]
+  simp [hunt, hflags, MREMAP_MAYMOVE, hal, holdLen', holdMax, hnewLen', hnewMax, hfit, hfrz, hcm,
+    hanon, hperm, hnoFail, hsan, hphys]
 
-/-- `mremap(oldAddr, oldLen, newLen, MREMAP_MAYMOVE)` when `mremapFail = false`,
+/-- `mremap(oldAddr, oldLen, newLen, MREMAP_MAYMOVE)` when `mremapRefusal = none`,
     `sanitizeMmapAddr` returns `some newBase`, and
     `¬ pageAlignUp newLen ≤ s.physMemAvail + pageAlignUp oldLen` transitions to
     `ExecStatus.OutOfMemory`. -/
@@ -494,13 +528,13 @@ theorem execMremap_oom (s : State) {newBase : BitVec 64}
     (hal : (s.readReg64 .x0).toNat % PAGE_SIZE = 0)
     (holdLen : s.readReg64 .x1 ≠ 0#64)
     (hnewLen : s.readReg64 .x2 ≠ 0#64)
-    (hnewMax : (s.readReg64 .x2).toNat ≤ 2 ^ 64 - PAGE_SIZE)
+    (hnewMax : (s.readReg64 .x2).toNat ≤ USER_VA_LIMIT)
     (hfit : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat ≤ USER_VA_LIMIT)
     (hperm : s.mem.allPerm (fun p => p == some Perm.rw) (s.readReg64 .x0)
       (pageAlignUp (s.readReg64 .x1).toNat) = true)
     (hanon : s.mem.allAnon (s.readReg64 .x0)
       (pageAlignUp (s.readReg64 .x1).toNat) = true)
-    (hnoFail : s.oracle.mremapFail s.oracleIdx = false)
+    (hnoFail : s.oracle.mremapRefusal s.oracleIdx = none)
     (hsan : sanitizeMmapAddr
       (s.mem.unmapNonFrozen (s.readReg64 .x0) (pageAlignUp (s.readReg64 .x1).toNat))
       (s.oracle.mmap s.oracleIdx)
@@ -512,47 +546,247 @@ theorem execMremap_oom (s : State) {newBase : BitVec 64}
     intro h; exact holdLen (BitVec.eq_of_toNat_eq (by simpa using h))
   have hnewLen' : (s.readReg64 .x2).toNat ≠ 0 := by
     intro h; exact hnewLen (BitVec.eq_of_toNat_eq (by simpa using h))
-  have hnewNotGt : ¬((s.readReg64 .x2).toNat > 2 ^ 64 - PAGE_SIZE) := by omega
-  have hfitNotGt : ¬((s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat > USER_VA_LIMIT) := by
-    omega
+  have hunt : untaggedAddr (s.readReg64 .x0) = s.readReg64 .x0 :=
+    untaggedAddr_of_le_user_va (by omega)
+  have holdMax : (s.readReg64 .x1).toNat ≤ 2 ^ 64 - PAGE_SIZE := by
+    have := hfit; unfold pageAlignUp PAGE_SIZE USER_VA_LIMIT at *; omega
   have hfrz := allPerm_not_frozen_of_allPerm_rw hperm
   have hcm := canMap_eq_false_of_allPerm_rw_pos (pageAlignUp_pos_of_ne_zero holdLen') hperm
   dsimp (config := { zetaHave := true }) only [execMremap]
-  simp [hflags, hal, holdLen', hnewLen', hnewNotGt, hfitNotGt, hfrz, hcm, hanon, hperm, hnoFail, hsan, hphys]
+  simp [hunt, hflags, MREMAP_MAYMOVE, hal, holdLen', holdMax, hnewLen', hnewMax, hfit, hfrz, hcm,
+    hanon, hperm, hnoFail, hsan, hphys]
 
 /-- `mremap` returns `-ENOMEM` (preserving `s.status`, advancing the oracle and `PC`) whenever a
-    valid `MREMAP_MAYMOVE` request hits `oracle.mremapFail = true` or no unmapped destination fits. -/
+    valid `MREMAP_MAYMOVE` request hits `oracle.mremapRefusal = some .enomem` or `none` with no
+    unmapped destination fitting. -/
 theorem execMremap_enomem_of_fail (s : State)
     (hflags : s.readReg64 .x3 = MREMAP_MAYMOVE)
     (hal : (s.readReg64 .x0).toNat % PAGE_SIZE = 0)
     (holdLen : s.readReg64 .x1 ≠ 0#64)
     (hnewLen : s.readReg64 .x2 ≠ 0#64)
-    (hnewMax : (s.readReg64 .x2).toNat ≤ 2 ^ 64 - PAGE_SIZE)
+    (hnewMax : (s.readReg64 .x2).toNat ≤ USER_VA_LIMIT)
     (hfit : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat ≤ USER_VA_LIMIT)
     (hperm : s.mem.allPerm (fun p => p == some Perm.rw) (s.readReg64 .x0)
       (pageAlignUp (s.readReg64 .x1).toNat) = true)
     (hanon : s.mem.allAnon (s.readReg64 .x0)
       (pageAlignUp (s.readReg64 .x1).toNat) = true)
-    (hfail : s.oracle.mremapFail s.oracleIdx = true ∨
-      sanitizeMmapAddr
-        (s.mem.unmapNonFrozen (s.readReg64 .x0) (pageAlignUp (s.readReg64 .x1).toNat))
-        (s.oracle.mmap s.oracleIdx)
-        (pageAlignUp (s.readReg64 .x2).toNat) = none) :
+    (hfail : s.oracle.mremapRefusal s.oracleIdx = some .enomem ∨
+      (s.oracle.mremapRefusal s.oracleIdx = none ∧
+        sanitizeMmapAddr
+          (s.mem.unmapNonFrozen (s.readReg64 .x0) (pageAlignUp (s.readReg64 .x1).toNat))
+          (s.oracle.mmap s.oracleIdx)
+          (pageAlignUp (s.readReg64 .x2).toNat) = none)) :
     execMremap s = ((s.nextOracle).writeReg64 .x0 (-ENOMEM)).advancePC := by
   have holdLen' : (s.readReg64 .x1).toNat ≠ 0 := by
     intro h; exact holdLen (BitVec.eq_of_toNat_eq (by simpa using h))
   have hnewLen' : (s.readReg64 .x2).toNat ≠ 0 := by
     intro h; exact hnewLen (BitVec.eq_of_toNat_eq (by simpa using h))
-  have hnewNotGt : ¬((s.readReg64 .x2).toNat > 2 ^ 64 - PAGE_SIZE) := by omega
-  have hfitNotGt : ¬((s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat > USER_VA_LIMIT) := by
+  have hunt : untaggedAddr (s.readReg64 .x0) = s.readReg64 .x0 :=
+    untaggedAddr_of_le_user_va (by omega)
+  have holdMax : (s.readReg64 .x1).toNat ≤ 2 ^ 64 - PAGE_SIZE := by
+    have := hfit; unfold pageAlignUp PAGE_SIZE USER_VA_LIMIT at *; omega
+  have hfrz := allPerm_not_frozen_of_allPerm_rw hperm
+  have hcm := canMap_eq_false_of_allPerm_rw_pos (pageAlignUp_pos_of_ne_zero holdLen') hperm
+  dsimp (config := { zetaHave := true }) only [execMremap]
+  rcases hfail with hmf | ⟨hmf, hnone⟩
+  · simp [hunt, hflags, MREMAP_MAYMOVE, hal, holdLen', holdMax, hnewLen', hnewMax, hmf]
+  · simp [hunt, hflags, MREMAP_MAYMOVE, hal, holdLen', holdMax, hnewLen', hnewMax, hfit, hfrz, hcm,
+      hanon, hperm, hmf, hnone]
+
+/-- `mremap` returns `EFAULT_RET` (`-EFAULT`, advancing `s.nextOracle` and `PC` with `s.mem`
+    unchanged) when a valid request hits `oracle.mremapRefusal = some .efault` (modeling unmerged
+    adjacent anonymous VMAs in `check_prep_vma`, `mm/mremap.c:1849`). -/
+theorem execMremap_efault_of_refusal (s : State)
+    (hflags : s.readReg64 .x3 = 0#64 ∨ s.readReg64 .x3 = MREMAP_MAYMOVE)
+    (hal : (s.readReg64 .x0).toNat % PAGE_SIZE = 0)
+    (holdLen : s.readReg64 .x1 ≠ 0#64)
+    (hnewLen : s.readReg64 .x2 ≠ 0#64)
+    (hnewMax : (s.readReg64 .x2).toNat ≤ USER_VA_LIMIT)
+    (hfit : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat ≤ USER_VA_LIMIT)
+    (hperm : s.mem.allPerm (fun p => p == some Perm.rw) (s.readReg64 .x0)
+      (pageAlignUp (s.readReg64 .x1).toNat) = true)
+    (hanon : s.mem.allAnon (s.readReg64 .x0)
+      (pageAlignUp (s.readReg64 .x1).toNat) = true)
+    (href : s.oracle.mremapRefusal s.oracleIdx = some .efault) :
+    execMremap s = ((s.nextOracle).writeReg64 .x0 EFAULT_RET).advancePC := by
+  have holdLen' : (s.readReg64 .x1).toNat ≠ 0 := by
+    intro h; exact holdLen (BitVec.eq_of_toNat_eq (by simpa using h))
+  have hnewLen' : (s.readReg64 .x2).toNat ≠ 0 := by
+    intro h; exact hnewLen (BitVec.eq_of_toNat_eq (by simpa using h))
+  have hunt : untaggedAddr (s.readReg64 .x0) = s.readReg64 .x0 :=
+    untaggedAddr_of_le_user_va (by omega)
+  have holdMax : (s.readReg64 .x1).toNat ≤ 2 ^ 64 - PAGE_SIZE := by
+    have := hfit; unfold pageAlignUp PAGE_SIZE USER_VA_LIMIT at *; omega
+  have hfrz := allPerm_not_frozen_of_allPerm_rw hperm
+  have hcm := canMap_eq_false_of_allPerm_rw_pos (pageAlignUp_pos_of_ne_zero holdLen') hperm
+  dsimp (config := { zetaHave := true }) only [execMremap]
+  rcases hflags with hf | hf <;>
+    simp [hunt, hf, MREMAP_MAYMOVE, hal, holdLen', holdMax, hnewLen', hnewMax, hfit, hfrz, hcm,
+      hanon, hperm, href]
+
+/-- Successful in-place `mremap(oldAddr, oldLen, newLen, 0)` shrinking or preserving the page-aligned
+    size (`pageAlignUp newLen ≤ pageAlignUp oldLen`) when `mremapRefusal = none`. -/
+theorem execMremap_inPlace_shrink_ok (s : State)
+    (hflags : s.readReg64 .x3 = 0#64)
+    (hal : (s.readReg64 .x0).toNat % PAGE_SIZE = 0)
+    (holdLen : s.readReg64 .x1 ≠ 0#64)
+    (hnewLen : s.readReg64 .x2 ≠ 0#64)
+    (hnewMax : (s.readReg64 .x2).toNat ≤ USER_VA_LIMIT)
+    (hfit : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat ≤ USER_VA_LIMIT)
+    (hperm : s.mem.allPerm (fun p => p == some Perm.rw) (s.readReg64 .x0)
+      (pageAlignUp (s.readReg64 .x1).toNat) = true)
+    (hanon : s.mem.allAnon (s.readReg64 .x0)
+      (pageAlignUp (s.readReg64 .x1).toNat) = true)
+    (hnoFail : s.oracle.mremapRefusal s.oracleIdx = none)
+    (hle : pageAlignUp (s.readReg64 .x2).toNat ≤ pageAlignUp (s.readReg64 .x1).toNat) :
+    execMremap s =
+      ((((s.setMem (s.mem.remapRw (s.readReg64 .x0) (pageAlignUp (s.readReg64 .x1).toNat)
+          (s.readReg64 .x0) (pageAlignUp (s.readReg64 .x2).toNat))).setPhysMemAvail
+          (s.physMemAvail + pageAlignUp (s.readReg64 .x1).toNat -
+            pageAlignUp (s.readReg64 .x2).toNat)).nextOracle).writeReg64
+        .x0 (s.readReg64 .x0)).advancePC := by
+  have holdLen' : (s.readReg64 .x1).toNat ≠ 0 := by
+    intro h; exact holdLen (BitVec.eq_of_toNat_eq (by simpa using h))
+  have hnewLen' : (s.readReg64 .x2).toNat ≠ 0 := by
+    intro h; exact hnewLen (BitVec.eq_of_toNat_eq (by simpa using h))
+  have hunt : untaggedAddr (s.readReg64 .x0) = s.readReg64 .x0 :=
+    untaggedAddr_of_le_user_va (by omega)
+  have holdMax : (s.readReg64 .x1).toNat ≤ 2 ^ 64 - PAGE_SIZE := by
+    have := hfit; unfold pageAlignUp PAGE_SIZE USER_VA_LIMIT at *; omega
+  have hfrz := allPerm_not_frozen_of_allPerm_rw hperm
+  have hcm := canMap_eq_false_of_allPerm_rw_pos (pageAlignUp_pos_of_ne_zero holdLen') hperm
+  dsimp (config := { zetaHave := true }) only [execMremap]
+  simp [hunt, hflags, hal, holdLen', holdMax, hnewLen', hnewMax, hfit, hfrz, hcm, hanon, hperm,
+    hnoFail, hle]
+
+/-- Successful in-place `mremap(oldAddr, oldLen, newLen, 0)` growing (`pageAlignUp oldLen <
+    pageAlignUp newLen`) when `mremapRefusal = none`, the tail `[oldAddr + oldAligned,
+    oldAddr + newAligned)` fits in `USER_VA_LIMIT` and is unmapped, and `s.physMemAvail` suffices. -/
+theorem execMremap_inPlace_grow_ok (s : State)
+    (hflags : s.readReg64 .x3 = 0#64)
+    (hal : (s.readReg64 .x0).toNat % PAGE_SIZE = 0)
+    (holdLen : s.readReg64 .x1 ≠ 0#64)
+    (hnewLen : s.readReg64 .x2 ≠ 0#64)
+    (hnewMax : (s.readReg64 .x2).toNat ≤ USER_VA_LIMIT)
+    (hfit : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x2).toNat ≤ USER_VA_LIMIT)
+    (hperm : s.mem.allPerm (fun p => p == some Perm.rw) (s.readReg64 .x0)
+      (pageAlignUp (s.readReg64 .x1).toNat) = true)
+    (hanon : s.mem.allAnon (s.readReg64 .x0)
+      (pageAlignUp (s.readReg64 .x1).toNat) = true)
+    (hnoFail : s.oracle.mremapRefusal s.oracleIdx = none)
+    (hlt : pageAlignUp (s.readReg64 .x1).toNat < pageAlignUp (s.readReg64 .x2).toNat)
+    (htail : s.mem.canMap
+      (s.readReg64 .x0 + BitVec.ofNat 64 (pageAlignUp (s.readReg64 .x1).toNat))
+      (pageAlignUp (s.readReg64 .x2).toNat - pageAlignUp (s.readReg64 .x1).toNat) = true)
+    (hphys : pageAlignUp (s.readReg64 .x2).toNat ≤
+      s.physMemAvail + pageAlignUp (s.readReg64 .x1).toNat) :
+    execMremap s =
+      ((((s.setMem (s.mem.remapRw (s.readReg64 .x0) (pageAlignUp (s.readReg64 .x1).toNat)
+          (s.readReg64 .x0) (pageAlignUp (s.readReg64 .x2).toNat))).setPhysMemAvail
+          (s.physMemAvail + pageAlignUp (s.readReg64 .x1).toNat -
+            pageAlignUp (s.readReg64 .x2).toNat)).nextOracle).writeReg64
+        .x0 (s.readReg64 .x0)).advancePC := by
+  have holdLen' : (s.readReg64 .x1).toNat ≠ 0 := by
+    intro h; exact holdLen (BitVec.eq_of_toNat_eq (by simpa using h))
+  have hnewLen' : (s.readReg64 .x2).toNat ≠ 0 := by
+    intro h; exact hnewLen (BitVec.eq_of_toNat_eq (by simpa using h))
+  have holdFit : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat ≤ USER_VA_LIMIT := by
+    omega
+  have hunt : untaggedAddr (s.readReg64 .x0) = s.readReg64 .x0 :=
+    untaggedAddr_of_le_user_va (by omega)
+  have holdMax : (s.readReg64 .x1).toNat ≤ 2 ^ 64 - PAGE_SIZE := by
+    have := holdFit; unfold pageAlignUp PAGE_SIZE USER_VA_LIMIT at *; omega
+  have hnotLe : ¬(pageAlignUp (s.readReg64 .x2).toNat ≤ pageAlignUp (s.readReg64 .x1).toNat) := by
     omega
   have hfrz := allPerm_not_frozen_of_allPerm_rw hperm
   have hcm := canMap_eq_false_of_allPerm_rw_pos (pageAlignUp_pos_of_ne_zero holdLen') hperm
   dsimp (config := { zetaHave := true }) only [execMremap]
-  rcases hfail with hmf | hnone
-  · simp [hflags, hal, holdLen', hnewLen', hnewNotGt, hfitNotGt, hfrz, hcm, hanon, hperm, hmf]
-  · cases hmf : s.oracle.mremapFail s.oracleIdx <;>
-      simp [hflags, hal, holdLen', hnewLen', hnewNotGt, hfitNotGt, hfrz, hcm, hanon, hperm, hnone]
+  simp [hunt, hflags, hal, holdLen', holdMax, hnewLen', hnewMax, holdFit, hfit, hfrz, hcm, hanon,
+    hperm, hnoFail, hnotLe, htail, hphys]
+
+/-- In-place `mremap(oldAddr, oldLen, newLen, 0)` growing when the tail is unmapped and fits in
+    `USER_VA_LIMIT` but `¬ pageAlignUp newLen ≤ s.physMemAvail + pageAlignUp oldLen` transitions to
+    `ExecStatus.OutOfMemory`. -/
+theorem execMremap_inPlace_oom (s : State)
+    (hflags : s.readReg64 .x3 = 0#64)
+    (hal : (s.readReg64 .x0).toNat % PAGE_SIZE = 0)
+    (holdLen : s.readReg64 .x1 ≠ 0#64)
+    (hnewLen : s.readReg64 .x2 ≠ 0#64)
+    (hnewMax : (s.readReg64 .x2).toNat ≤ USER_VA_LIMIT)
+    (hfit : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x2).toNat ≤ USER_VA_LIMIT)
+    (hperm : s.mem.allPerm (fun p => p == some Perm.rw) (s.readReg64 .x0)
+      (pageAlignUp (s.readReg64 .x1).toNat) = true)
+    (hanon : s.mem.allAnon (s.readReg64 .x0)
+      (pageAlignUp (s.readReg64 .x1).toNat) = true)
+    (hnoFail : s.oracle.mremapRefusal s.oracleIdx = none)
+    (hlt : pageAlignUp (s.readReg64 .x1).toNat < pageAlignUp (s.readReg64 .x2).toNat)
+    (htail : s.mem.canMap
+      (s.readReg64 .x0 + BitVec.ofNat 64 (pageAlignUp (s.readReg64 .x1).toNat))
+      (pageAlignUp (s.readReg64 .x2).toNat - pageAlignUp (s.readReg64 .x1).toNat) = true)
+    (hphys : ¬ pageAlignUp (s.readReg64 .x2).toNat ≤
+      s.physMemAvail + pageAlignUp (s.readReg64 .x1).toNat) :
+    execMremap s = s.setStatus .OutOfMemory := by
+  have holdLen' : (s.readReg64 .x1).toNat ≠ 0 := by
+    intro h; exact holdLen (BitVec.eq_of_toNat_eq (by simpa using h))
+  have hnewLen' : (s.readReg64 .x2).toNat ≠ 0 := by
+    intro h; exact hnewLen (BitVec.eq_of_toNat_eq (by simpa using h))
+  have holdFit : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat ≤ USER_VA_LIMIT := by
+    omega
+  have hunt : untaggedAddr (s.readReg64 .x0) = s.readReg64 .x0 :=
+    untaggedAddr_of_le_user_va (by omega)
+  have holdMax : (s.readReg64 .x1).toNat ≤ 2 ^ 64 - PAGE_SIZE := by
+    have := holdFit; unfold pageAlignUp PAGE_SIZE USER_VA_LIMIT at *; omega
+  have hnotLe : ¬(pageAlignUp (s.readReg64 .x2).toNat ≤ pageAlignUp (s.readReg64 .x1).toNat) := by
+    omega
+  have hfrz := allPerm_not_frozen_of_allPerm_rw hperm
+  have hcm := canMap_eq_false_of_allPerm_rw_pos (pageAlignUp_pos_of_ne_zero holdLen') hperm
+  dsimp (config := { zetaHave := true }) only [execMremap]
+  simp [hunt, hflags, hal, holdLen', holdMax, hnewLen', hnewMax, holdFit, hfit, hfrz, hcm, hanon,
+    hperm, hnoFail, hnotLe, htail, hphys]
+
+/-- In-place `mremap(oldAddr, oldLen, newLen, 0)` returns `-ENOMEM` (advancing `s.nextOracle` and
+    `PC`, leaving memory unchanged) when `oracle.mremapRefusal = some .enomem`, or when
+    `oracle.mremapRefusal = none` and growing with either `oldAddr + newAligned > USER_VA_LIMIT`
+    or a non-unmapped expansion tail. -/
+theorem execMremap_inPlace_enomem (s : State)
+    (hflags : s.readReg64 .x3 = 0#64)
+    (hal : (s.readReg64 .x0).toNat % PAGE_SIZE = 0)
+    (holdLen : s.readReg64 .x1 ≠ 0#64)
+    (hnewLen : s.readReg64 .x2 ≠ 0#64)
+    (hnewMax : (s.readReg64 .x2).toNat ≤ USER_VA_LIMIT)
+    (hfit : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat ≤ USER_VA_LIMIT)
+    (hperm : s.mem.allPerm (fun p => p == some Perm.rw) (s.readReg64 .x0)
+      (pageAlignUp (s.readReg64 .x1).toNat) = true)
+    (hanon : s.mem.allAnon (s.readReg64 .x0)
+      (pageAlignUp (s.readReg64 .x1).toNat) = true)
+    (hfail : s.oracle.mremapRefusal s.oracleIdx = some .enomem ∨
+      (s.oracle.mremapRefusal s.oracleIdx = none ∧
+        pageAlignUp (s.readReg64 .x1).toNat < pageAlignUp (s.readReg64 .x2).toNat ∧
+        (¬((s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x2).toNat ≤ USER_VA_LIMIT) ∨
+         s.mem.canMap
+           (s.readReg64 .x0 + BitVec.ofNat 64 (pageAlignUp (s.readReg64 .x1).toNat))
+           (pageAlignUp (s.readReg64 .x2).toNat - pageAlignUp (s.readReg64 .x1).toNat) = false))) :
+    execMremap s = ((s.nextOracle).writeReg64 .x0 (-ENOMEM)).advancePC := by
+  have holdLen' : (s.readReg64 .x1).toNat ≠ 0 := by
+    intro h; exact holdLen (BitVec.eq_of_toNat_eq (by simpa using h))
+  have hnewLen' : (s.readReg64 .x2).toNat ≠ 0 := by
+    intro h; exact hnewLen (BitVec.eq_of_toNat_eq (by simpa using h))
+  have hunt : untaggedAddr (s.readReg64 .x0) = s.readReg64 .x0 :=
+    untaggedAddr_of_le_user_va (by omega)
+  have holdMax : (s.readReg64 .x1).toNat ≤ 2 ^ 64 - PAGE_SIZE := by
+    have := hfit; unfold pageAlignUp PAGE_SIZE USER_VA_LIMIT at *; omega
+  have hfrz := allPerm_not_frozen_of_allPerm_rw hperm
+  have hcm := canMap_eq_false_of_allPerm_rw_pos (pageAlignUp_pos_of_ne_zero holdLen') hperm
+  dsimp (config := { zetaHave := true }) only [execMremap]
+  rcases hfail with hmf | ⟨hmf, hlt, hbad⟩
+  · simp [hunt, hflags, hal, holdLen', holdMax, hnewLen', hnewMax, hmf]
+  · have hnotLe : ¬(pageAlignUp (s.readReg64 .x2).toNat ≤ pageAlignUp (s.readReg64 .x1).toNat) := by
+      omega
+    rcases hbad with hlim | htail
+    · simp [hunt, hflags, hal, holdLen', holdMax, hnewLen', hnewMax, hfit, hfrz, hcm, hanon, hperm,
+        hmf, hnotLe, hlim]
+    · simp [hunt, hflags, hal, holdLen', holdMax, hnewLen', hnewMax, hfit, hfrz, hcm, hanon, hperm,
+        hmf, hnotLe, htail]
 
 @[simp]
 theorem _root_.Arm64.Memory.allPerm_r_of_canRead {m : Memory} {addr : BitVec 64} {n : Nat}
@@ -563,6 +797,23 @@ theorem _root_.Arm64.Memory.allPerm_r_of_canRead {m : Memory} {addr : BitVec 64}
 theorem _root_.Arm64.Memory.allNoLazyFree_of_canRead {m : Memory} {addr : BitVec 64} {n : Nat}
     (h : m.canRead addr n = true) : m.allNoLazyFree addr n = true :=
   ((Bool.and_eq_true _ _).mp h).2
+
+@[simp]
+theorem allPpollReventsWritable_of_canWrite {m : Memory} {ufds : BitVec 64} {nfds : Nat}
+    (hcw : m.canWrite ufds (nfds * 8) = true) :
+    allPpollReventsWritable m ufds nfds = true := by
+  unfold allPpollReventsWritable
+  rw [List.all_eq_true]
+  intro i hi
+  rw [List.mem_range] at hi
+  unfold Memory.canWrite at hcw ⊢
+  rw [Memory.allPerm_iff] at hcw ⊢
+  intro j hj
+  have hadd : BitVec.ofNat 64 (i * 8 + 6) + BitVec.ofNat 64 j =
+      BitVec.ofNat 64 (i * 8 + 6 + j) := by
+    apply BitVec.eq_of_toNat_eq; simp [Nat.add_assoc]
+  rw [BitVec.add_assoc, hadd]
+  exact hcw (i * 8 + 6 + j) (by omega)
 
 /-- Non-blocking `ppoll(ufds, nfds, tsp, 0)` with zero timeout `{0, 0}`: updates each `revents`
     halfword via `evalPpollEntries` and returns the ready count in `X0`. -/
@@ -578,23 +829,28 @@ theorem execPpoll_ok (s : State) {m' : Memory} {count : Nat}
     (hufdsRead : s.mem.canRead (s.readReg64 .x0) ((s.readReg32 .x1).toNat * 8) = true)
     (hufdsWrite : s.mem.canWrite (s.readReg64 .x0) ((s.readReg32 .x1).toNat * 8) = true)
     (heval : evalPpollEntries s.fs s.mem (s.readReg64 .x0) (s.readReg32 .x1).toNat 0 0 =
-      some (m', count)) :
+      some (m', count))
+    (hufdsZeroFit : (s.readReg32 .x1).toNat = 0 → (s.readReg64 .x0).toNat ≤ USER_VA_LIMIT := by
+      omega) :
     execPpoll s = ((s.setMem m').writeReg64 .x0 (BitVec.ofNat 64 count)).advancePC := by
   have htspDec : decide ((s.readReg64 .x2).toNat + 16 ≤ 2 ^ 64) = true :=
     decide_eq_true htspFit
   have hufdsDec : decide ((s.readReg64 .x0).toNat + (s.readReg32 .x1).toNat * 8 ≤ 2 ^ 64) = true :=
     decide_eq_true hufdsFit
   have hnfdsNotGt : ¬((s.readReg32 .x1).toNat > FsState.maxOpenFds) := by omega
+  have hrevW : allPpollReventsWritable s.mem (s.readReg64 .x0) (s.readReg32 .x1).toNat = true :=
+    allPpollReventsWritable_of_canWrite hufdsWrite
   dsimp (config := { zetaHave := true }) only [execPpoll]
   rw [htspDec, hufdsDec]
   by_cases hnfds0 : (s.readReg32 .x1).toNat = 0
-  · rw [hnfds0] at heval
+  · have hzeroLim : (s.readReg64 .x0).toNat ≤ USER_VA_LIMIT := hufdsZeroFit hnfds0
+    rw [hnfds0] at heval
     simp only [evalPpollEntries, Option.some.injEq, Prod.mk.injEq] at heval
     rcases heval with ⟨rfl, rfl⟩
     have hsetSelf : s.setMem s.mem = s := by cases s; rfl
-    simp [hsigmask, htspNe, htspRead, htvSec, htvNsec, hnfds0, hsetSelf]
+    simp [hsigmask, htspNe, htspRead, htvSec, htvNsec, hnfds0, hzeroLim, hsetSelf]
   · simp [hsigmask, htspNe, htspRead, htvSec, htvNsec, hnfdsNotGt, hnfds0,
-      hufdsRead, hufdsWrite, heval]
+      hufdsRead, hrevW, heval]
 
 theorem SigAltStack.onSigStack_of_size_zero {sas : SigAltStack} (h : sas.size = 0#64)
     (sp : BitVec 64) : sas.onSigStack sp = false := by
@@ -714,11 +970,16 @@ theorem execRtSigaction_any_ok (s : State)
       let s' :=
         if act == 0#64 then s
         else
-          s.setSigAction signum
-            { handler := s.mem.read64 act
+          let handler := s.mem.read64 act
+          let sAct := s.setSigAction signum
+            { handler := handler
               flags := s.mem.read64 (act + 8#64) &&& UAPI_SA_FLAGS
               restorer := s.mem.read64 (act + 16#64)
               mask := s.mem.read64 (act + 24#64) &&& ~~~SIG_UNBLOCKABLE_MASK }
+          if signum == LINUX_SIGABRT && handler == SIG_IGN then
+            sAct.setSigPending (sAct.sigPending &&& ~~~SIGABRT_MASK)
+          else
+            sAct
       if oldact == 0#64 then
         (s'.writeReg64 .x0 0#64).advancePC
       else
@@ -755,10 +1016,14 @@ theorem execRtSigaction_any_ok (s : State)
         decide_eq_true holdFit
       rw [holdDec]
       rcases hdisp with hdfl | hign | hsegv | hbus
-      · simp [hsigset, hsle, hgt64, hact0, hkill, hstop, hcr, hdfl, hold0, hcw]
-      · simp [hsigset, hsle, hgt64, hact0, hkill, hstop, hcr, hign, hold0, hcw]
-      · simp [hsigset, hact0, hcr, hsegv, hold0, hcw, LINUX_SIGSEGV, LINUX_SIGKILL, LINUX_SIGSTOP]
-      · simp [hsigset, hact0, hcr, hbus, hold0, hcw, LINUX_SIGBUS, LINUX_SIGKILL, LINUX_SIGSTOP]
+      · simp [hsigset, hsle, hgt64, hact0, hkill, hstop, hcr, hdfl, hold0, hcw, SIG_DFL, SIG_IGN]
+      · by_cases habrt : s.readReg32 .x0 = LINUX_SIGABRT
+        · simp [hsigset, hact0, hcr, hign, hold0, hcw, habrt, LINUX_SIGABRT, LINUX_SIGKILL, LINUX_SIGSTOP]
+        · simp [hsigset, hsle, hgt64, hact0, hkill, hstop, hcr, hign, hold0, hcw, habrt]
+      · simp [hsigset, hact0, hcr, hsegv, hold0, hcw, LINUX_SIGSEGV, LINUX_SIGABRT, LINUX_SIGKILL,
+          LINUX_SIGSTOP]
+      · simp [hsigset, hact0, hcr, hbus, hold0, hcw, LINUX_SIGBUS, LINUX_SIGABRT, LINUX_SIGKILL,
+          LINUX_SIGSTOP]
 
 /-- Valid `rt_sigaction(signum, act, oldact, 8)` for `1 ≤ signum ≤ 64`, `SIG_DFL`/`SIG_IGN` (or
     null `act`), and null or writable `oldact`. -/
@@ -782,11 +1047,16 @@ theorem execRtSigaction_ok (s : State)
       let s' :=
         if act == 0#64 then s
         else
-          s.setSigAction signum
-            { handler := s.mem.read64 act
+          let handler := s.mem.read64 act
+          let sAct := s.setSigAction signum
+            { handler := handler
               flags := s.mem.read64 (act + 8#64) &&& UAPI_SA_FLAGS
               restorer := s.mem.read64 (act + 16#64)
               mask := s.mem.read64 (act + 24#64) &&& ~~~SIG_UNBLOCKABLE_MASK }
+          if signum == LINUX_SIGABRT && handler == SIG_IGN then
+            sAct.setSigPending (sAct.sigPending &&& ~~~SIGABRT_MASK)
+          else
+            sAct
       if oldact == 0#64 then
         (s'.writeReg64 .x0 0#64).advancePC
       else
@@ -794,5 +1064,28 @@ theorem execRtSigaction_ok (s : State)
           .x0 0#64).advancePC :=
   execRtSigaction_any_ok s hsigset hlo hhi
     (hact.imp id fun ⟨hk, hs, hf, hc, hd⟩ => ⟨hk, hs, hf, hc, hd.imp id Or.inl⟩) hold
+
+/-- `futex(uaddr, FUTEX_WAKE_PRIVATE, ...)` returns `0` (`0` threads woken in single-threaded
+    execution) whenever `uaddr` is 4-byte-aligned and `uaddr + 4 ≤ USER_VA_LIMIT`. -/
+theorem execFutex_wake_private_ok (s : State)
+    (hop : s.readReg32 .x1 = FUTEX_WAKE_PRIVATE)
+    (hal : (s.readReg64 .x0).toNat % 4 = 0)
+    (hva : (s.readReg64 .x0).toNat + 4 ≤ USER_VA_LIMIT) :
+    execFutex s = (s.writeReg64 .x0 0#64).advancePC := by
+  dsimp (config := { zetaHave := true }) only [execFutex]
+  simp [hop, FUTEX_WAKE_PRIVATE, FUTEX_WAKE, FUTEX_PRIVATE_FLAG, hal, hva]
+
+/-- `futex(uaddr, op, ...)` for `op = FUTEX_WAKE` (`1`) or `op = FUTEX_WAKE_PRIVATE` (`129`) returns
+    `0` whenever `uaddr` is 4-byte-aligned, `uaddr + 4 ≤ USER_VA_LIMIT`, and `[uaddr, uaddr + 4)`
+    is writable (`s.mem.canWrite uaddr 4 = true`). -/
+theorem execFutex_wake_ok (s : State)
+    (hop : s.readReg32 .x1 = FUTEX_WAKE ∨ s.readReg32 .x1 = FUTEX_WAKE_PRIVATE)
+    (hal : (s.readReg64 .x0).toNat % 4 = 0)
+    (hva : (s.readReg64 .x0).toNat + 4 ≤ USER_VA_LIMIT)
+    (hcw : s.mem.canWrite (s.readReg64 .x0) 4 = true) :
+    execFutex s = (s.writeReg64 .x0 0#64).advancePC := by
+  dsimp (config := { zetaHave := true }) only [execFutex]
+  rcases hop with hop | hop <;>
+    simp [hop, FUTEX_WAKE_PRIVATE, FUTEX_WAKE, FUTEX_PRIVATE_FLAG, hal, hva, hcw]
 
 end ProofLib

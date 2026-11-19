@@ -9,19 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart1PlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart1PlacedBudget -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart1PlacedBudget -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart3Budget
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart3Budget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart3
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
 
 /-!
 # `<NoHeaderReceived>::recv_hdr_chunk` (Block `369`) — Budget-Threaded Part 3
@@ -30,7 +33,7 @@ Budget-threaded `[LibsignalPlacement]` proof of `recv_hdr_chunk_hmac_placed_wpp{
 (offsets `564 .. 696`): `sliceConcat3` (Block `386`), `libcrux_hmac`, and `ct_mac_data` deallocation.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -53,7 +56,7 @@ open CryptoVerification.LibsignalTripleRatchet.Keys
 open CryptoVerification.LibsignalSpqrV1
   (Authenticator Bytes LibcruxHmacCall PolyDecoder spqrAuthApi spqrPolyApi)
 open CryptoVerification.SpqrV1.Alloc
-  (SliceConcat3Ghost)
+  (SliceConcat3Ghost spqr_hook_ok_of_mem)
 open CryptoVerification.SpqrV1.Auth
   (AuthenticatorGhost pointsTo64_rev64_eq_toBEBytes toBEBytes_8_length)
 open CryptoVerification.SpqrV1.Auth.MacHdrFacts
@@ -63,7 +66,7 @@ open CryptoVerification.SpqrV1.Auth.NewFacts
 open CryptoVerification.SpqrV1.ChainProofs
   (bytesAt_false bytesAt_true)
 open CryptoVerification.SpqrV1.States.Leaves
-  (of_sepWP_lscro)
+  (of_sepWP_lscro subroutine_ok_withLsCodeRoLoaded_of_plain)
 open CryptoVerification.SpqrV1.States.Leaves.RecvHdrChunk
   (NoHeaderReceivedRecvHdrChunkGhost bytes_rem_entails_memRegion_hdr fold_sp_168_24_24
    hdrLabelSym macHdrUnchecked_eq_hmacWith_hdr memRegion_24_of_sp_192 memRegion_48_sp_168_cells
@@ -78,6 +81,10 @@ open LibsignalBinary.Heap
    rustDeallocEvents)
 open LibsignalBinary.Heap.SpecBudget
   (LibcruxHmacEnv libcruxHmacBudgetSpec libcruxHmacSha256Events)
+open LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+  (LsRetAddr624 lsLen lsRetAddr624_blockPlacement_base_add)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
+  (extract_withLsRet intro_withLsRet withLsRet)
 open LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget
   (SliceConcat3Env fitsEnv_sliceConcat3_iff sliceConcat3Events vecU8_of_exists_vecU8At)
 open LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefsPlacedBudget
@@ -110,6 +117,59 @@ attribute [local irreducible]
 
 abbrev libcrux_hmac_hdr_placed_ok_at_recvHdr :=
   @RecvHdrChunkPart3Budget.libcrux_hmac_hdr_placed_ok_at_recvHdr
+
+@[local wp_norm]
+private theorem lsRetAddr624_blkPl_369 [LibsignalPlacement] (off : BitVec 64)
+    (ho : off.toNat < lsLen 369 := by decide) :
+    LsRetAddr624 ((blkPl_369).base + off) :=
+  lsRetAddr624_blockPlacement_base_add 369 off (by decide) ho
+
+private theorem libcrux_hmac_hdr_withLsRet_placed_ok_at_recvHdr [LibsignalPlacement]
+    {P : Prop} {F : ShaCompress}
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {ext : String → Option (State → State)}
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym
+      (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
+    subroutine_ok ((blkPC_369).rebase (blkPl_369).base (Rust.withPanics ext))
+      (lsρ spqrLibcruxHmacSym)
+      (withLsCodeRoLoaded lsmpl (withLsRet (libcruxHmacHdrSpec P F M A lim))) := by
+  apply subroutine_ok_withLsCodeRoLoaded_of_plain
+  have hraw :
+      subroutine_ok ((blkPC_369).rebase (blkPl_369).base (Rust.withPanics ext))
+        (lsρ spqrLibcruxHmacSym)
+        (withLsRet (libcruxHmacBudgetSpec F M A lim)) :=
+    spqr_hook_ok_of_mem (prog := lsProg_369 (Rust.withPanics ext)) hhmac
+  refine subroutine_ok_outcome_intro fun ⟨x, st⟩ R s0 hpc hrun hpre hsp => ?_
+  obtain ⟨hlr, hpre⟩ := extract_withLsRet hpre
+  dsimp only [libcruxHmacHdrSpec] at hpre
+  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
+  rcases hpre with ⟨⟨hx8, hx0, hx1, hx2, hx3, hx4, hx5, hx6, hk_imp, hd_lt, hfits⟩, hmem⟩
+  have hpre' : s0.mem ⊨ (withLsRet (libcruxHmacBudgetSpec F M A lim)).pre (x, st) s0 ∗ R := by
+    refine intro_withLsRet hlr ?_
+    dsimp only [libcruxHmacBudgetSpec]
+    rw [sepConj_assoc, satisfies_pure_sepConj]
+    exact ⟨⟨hx8, hx0, hx1, hx2, hx3, hx4, hx5, hx6, hfits⟩, hmem⟩
+  refine hraw.mono_outcome (x, st) R s0 hpc hrun hpre' hsp fun sf hout => ?_
+  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, hex, hpost⟩ | ⟨hoom, hpost⟩
+  · refine Or.inl ⟨hret, hcc, ?_⟩
+    dsimp only [withLsRet, libcruxHmacBudgetSpec, libcruxHmacHdrSpec] at hpost ⊢
+    simp only [sepExists_sepConj_left, satisfies_sepExists] at hpost
+    rcases hpost with ⟨evs, hpost⟩
+    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
+    rcases hpost with ⟨⟨hk_lt, hd_lt', htr_eq, hevs⟩, hmem'⟩
+    have hevs_eq : evs = libcruxHmacSha256Events := by
+      dsimp only [LibcruxHmacEnv] at hevs
+      simpa only [hk_lt, hd_lt', and_self, ↓reduceIte] using hevs
+    subst hevs_eq
+    exact ⟨⟨hk_lt, htr_eq⟩, hmem'⟩
+  · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
+    dsimp only [withLsRet, libcruxHmacBudgetSpec, libcruxHmacHdrSpec] at hpost ⊢
+    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
+    rcases hpost with ⟨⟨hk_ge | hd_ge, hpref⟩, hmem'⟩
+    · exact ⟨⟨hk_imp hk_ge, hpref⟩, hmem'⟩
+    · omega
+  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hpost⟩))
+  · exact Or.inr (Or.inr (Or.inr ⟨hoom, hpost⟩))
 
 /-! ## Local Stack Alignment Helpers -/
 
@@ -156,7 +216,8 @@ theorem recv_hdr_chunk_hmac_placed_wpp_ofPrePostEnv [LibsignalPlacement]
     {PreEnv PostEnv : NoHeaderReceivedRecvHdrChunkGhost F → List AllocEvent → Prop}
     {ext : String → Option (State → State)}
     (hC : RecvHdrChunkContractsPlaced M A lim ext)
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacBudgetSpec F M A lim))
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym
+      (withLsRet (libcruxHmacBudgetSpec F M A lim)))
     (x : NoHeaderReceivedRecvHdrChunkGhost F)
     (receivingHdr : PolyDecoder) (hdrFull : Bytes)
     (cap_hdrFull ptr_hdrFull ptr_mac ptr_hdr c1 c2 : BitVec 64)
@@ -238,7 +299,7 @@ theorem recv_hdr_chunk_hmac_placed_wpp_ofPrePostEnv [LibsignalPlacement]
       (recvHdrChunkPlacedPostQOfPrePostEnv M A lim F PreEnv PostEnv x st0 s0 R)
       (recvHdrChunkPlacedPostQp F x s0 R) := by
   have h_concat3 := sliceConcat3_placed_ok_at_recvHdr hC
-  have h_hmac := libcrux_hmac_hdr_placed_ok_at_recvHdr
+  have h_hmac := libcrux_hmac_hdr_withLsRet_placed_ok_at_recvHdr
     (P := (x.self.recv_hdr_chunk x.epoch x.chunk).isPanic = true) hhmac
   have h_dealloc := dealloc_placed_ok_at_recvHdr hC
   have hfits_split : FitsEvents M lim st_cur
@@ -394,7 +455,9 @@ theorem recv_hdr_chunk_hmac_placed_wpp_ofPrePostEnv [LibsignalPlacement]
   · wp_norm_lhs
   · wp_norm_lhs
   · intro _R' _hmR'
-    dsimp only [libcruxHmacHdrSpec, g_hmac] at _hmR' ⊢
+    dsimp only [withLsRet, libcruxHmacHdrSpec, g_hmac] at _hmR' ⊢
+    rw [sepConj_assoc, satisfies_pure_sepConj]
+    refine ⟨by simp (config := { decide := true }) only [wp_norm, arm64_norm, *], ?_⟩
     rw [sepConj_assoc, satisfies_pure_sepConj]
     refine ⟨⟨by simp only [wp_norm, arm64_norm, *],
              by simp only [wp_norm, arm64_norm, *],
@@ -411,11 +474,11 @@ theorem recv_hdr_chunk_hmac_placed_wpp_ofPrePostEnv [LibsignalPlacement]
     simp only [wp_norm, arm64_norm]
     exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) _hmR'
   · intro _
-    dsimp only [libcruxHmacHdrSpec]
+    dsimp only [withLsRet, libcruxHmacHdrSpec]
     exact onPanic_same_entails_recvHdr (by simp only [wp_norm, arm64_norm, *])
   · exact ⟨fun _ _ => rfl, fun _ => rfl⟩
   intro sf_1 hpc_sf_1 hrun_sf_1 hsp_sf_1 hcs_sf_1 hF_sf_1
-  dsimp only [libcruxHmacHdrSpec, g_hmac]
+  dsimp only [withLsRet, libcruxHmacHdrSpec, g_hmac]
   simp only [Arm64.CalleeSavedPreserved, wp_norm, arm64_norm] at hsp_sf_1 hcs_sf_1
   rcases hcs_sf_1 with ⟨hx19_sf_1, hx20_sf_1, hx21_sf_1, hx22_sf_1, hx23_sf_1,
     hx24_sf_1, hx25_sf_1, hx26_sf_1, hx27_sf_1, hx28_sf_1, hx29_sf_1, hvregs_sf_1⟩
@@ -476,7 +539,8 @@ theorem recv_hdr_chunk_hmac_placed_wpp_ofEnv [LibsignalPlacement]
     {Env : NoHeaderReceivedRecvHdrChunkGhost F → List AllocEvent → Prop}
     {ext : String → Option (State → State)}
     (hC : RecvHdrChunkContractsPlaced M A lim ext)
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacBudgetSpec F M A lim))
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym
+      (withLsRet (libcruxHmacBudgetSpec F M A lim)))
     (x : NoHeaderReceivedRecvHdrChunkGhost F)
     (receivingHdr : PolyDecoder) (hdrFull : Bytes)
     (cap_hdrFull ptr_hdrFull ptr_mac ptr_hdr c1 c2 : BitVec 64)
@@ -568,7 +632,8 @@ theorem recv_hdr_chunk_hmac_placed_wpp [LibsignalPlacement]
     {F : ShaCompress}
     {ext : String → Option (State → State)}
     (hC : RecvHdrChunkContractsPlaced M A lim ext)
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacBudgetSpec F M A lim))
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym
+      (withLsRet (libcruxHmacBudgetSpec F M A lim)))
     (x : NoHeaderReceivedRecvHdrChunkGhost F)
     (receivingHdr : PolyDecoder) (hdrFull : Bytes)
     (cap_hdrFull ptr_hdrFull ptr_mac ptr_hdr c1 c2 : BitVec 64)

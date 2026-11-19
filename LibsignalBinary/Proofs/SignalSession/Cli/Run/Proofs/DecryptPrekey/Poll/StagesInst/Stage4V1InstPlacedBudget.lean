@@ -9,23 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.KyberMarkFitPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkShimsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerSeqFreePlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.KyberMarkFitPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPollPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePollPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkShimsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerSeqFreePlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -33,6 +33,23 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Hooks
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.SymPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.LayoutPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` Poll Stage P4 Instantiations
@@ -43,7 +60,7 @@ instantiates `StageP4MatchedCliPlacedStmt` and `StageP4PathACliPlacedStmt` (plus
 from `hDropNz : lsmpl.base 547 ≠ 0#64`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -160,7 +177,7 @@ private theorem toSkeletonRunHooks [LibsignalPlacement] {M : AllocCostModel}
   { alloc := hh.alloc, allocFs := hh.allocFs, panics := hh.panics, memcpyRO := hh.memcpyRO,
     bcmp := hh.bcmp, fs := hh.fs, utf8 := hh.utf8, memrchr := hh.memrchr,
     codecHooks := hh.codecHooks, allocZeroed := hh.allocZeroed, stringClone := hh.stringClone,
-    formatInner := hh.formatInner, blackBox := hh.blackBox }
+    formatInner := hh.formatInner, fmtWrite := hh.fmtWrite, blackBox := hh.blackBox }
 
 theorem cliSerContractsX_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -213,7 +230,7 @@ private theorem withPanics_cliGhostExterns_eq (mmpl : Obj.MultiPlacement)
   CryptoVerification.SignalSession.Cli.RunGlue.withPanics_cliGhostExterns mmpl gh W
 
 /-- Retag `IdentityStoreBudgetEnv` from `cliIdentityKitSpecPlaced` to `cliIdStoreSpecFullPlaced`. -/
-def fullIdKitBudgetEnv [LibsignalPlacement] {A : RustAlloc}
+@[expose] def fullIdKitBudgetEnv [LibsignalPlacement] {A : RustAlloc}
     {rd : ReadRule} {F0 : FsFiles} {pathOk : List (BitVec 8) → Prop}
     {peer : AddrGhost} {t1 t2 t3 t4 : Nat}
     (baseEnv : IdentityStoreBudgetEnv
@@ -320,7 +337,7 @@ abbrev cliPollIdBudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
       σ.idTrustShim σ.idTrustPoll σ.idSaveShim σ.idSavePoll cliIdentityVtSym ReadEnv)
 
 /-- Concrete `remove_pre_key` poll allocation envelope for `cliPollPkKitPlaced`. -/
-def cliPollPkRemovePollEnv
+@[expose] def cliPollPkRemovePollEnv
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (F0 : FsFiles) (dir : DirGhost) (id : BitVec 32) : List AllocEvent → Prop :=
   CliPkRemovePollEnv cliIo.rd DecimalEnv (DirGetEnv PathEnv ReadEnv cliIo.rd) DirPutEnv
@@ -328,7 +345,7 @@ def cliPollPkRemovePollEnv
 
 /-- Default `PreKeyStoreBudgetEnv` for `cliPollPkKitPlaced` (Stage P4 only invokes `remove_pre_key`;
 `getPollEnv` is `(· = [])`). -/
-def cliPollPkBudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
+@[expose] def cliPollPkBudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
     (pid : BitVec 32) (σ : DpKitStk)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop := ReadFileRuleEnv cliIo.rd) :
     PreKeyStoreBudgetEnv (cliPollPkKitPlaced A F0 pid σ) where
@@ -336,7 +353,7 @@ def cliPollPkBudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
   removePollEnv := cliPollPkRemovePollEnv ReadEnv F0
 
 /-- Concrete `mark_kyber_pre_key_used` poll allocation envelope for `cliPollKpkKitPlaced`. -/
-def cliPollKpkMarkPollEnv
+@[expose] def cliPollKpkMarkPollEnv
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (F0 : FsFiles) (kg : KyberGhost) (kid ksid : BitVec 32) (kbk : PublicKey) :
     List AllocEvent → Prop :=
@@ -345,7 +362,7 @@ def cliPollKpkMarkPollEnv
 
 /-- Default `KyberPreKeyStoreBudgetEnv` for `cliPollKpkKitPlaced` (Stage P4 only invokes
 `mark_kyber_pre_key_used`; `getPollEnv` is `(· = [])`). -/
-def cliPollKpkBudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
+@[expose] def cliPollKpkBudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
     (kpkId spkId : BitVec 32) (kbk : PublicKey) (σ : DpKitStk)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop := ReadFileRuleEnv cliIo.rd) :
     KyberPreKeyStoreBudgetEnv (cliPollKpkKitPlaced A F0 kpkId spkId kbk σ) where
@@ -1026,7 +1043,7 @@ theorem stageP4Matched_placed_of_kits [LibsignalPlacement]
 
 /-- Concrete CLI-instantiated budget-threaded Path B Stage P4 statement (`M4`) binding `kitEnv` to
 `cliPollSessBudgetEnv` and `ikitEnv` to `cliPollIdBudgetEnv`. -/
-def StageP4MatchedCliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP4MatchedCliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
     {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
@@ -1088,7 +1105,7 @@ theorem stageP4Matched_placed_inst [LibsignalPlacement] (hDropNz : lsmpl.base 54
       (cliPollId_kitPlacedOkI mmpl gh W B F0 peer hDropNz hh hRead)
 
 /-- SeqFree (`cliPollSessSeqFreeBudgetEnv`) Path B Stage P4 statement (`M4`). -/
-def StageP4MatchedSeqFreeCliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP4MatchedSeqFreeCliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
     {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
@@ -1263,7 +1280,7 @@ theorem stageP4PathA_placed_of_kits [LibsignalPlacement]
 /-- Concrete CLI-instantiated budget-threaded Path A 4-kit Stage P4 statement binding the four
 store budget envelopes to `cliPollSessBudgetEnv`, `cliPollIdBudgetEnv`, `cliPollPkBudgetEnv`, and
 `cliPollKpkBudgetEnv`. -/
-def StageP4PathACliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP4PathACliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
     {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
@@ -1339,7 +1356,7 @@ theorem stageP4PathA_placed_inst [LibsignalPlacement] (hDropNz : lsmpl.base 547 
       (cliPollKpk_markKitPlacedOk mmpl gh W B F0 kpkId spkId kbk hDropNz hh hRead)
 
 /-- SeqFree (`cliPollSessSeqFreeBudgetEnv`) Path A 4-kit Stage P4 statement. -/
-def StageP4PathASeqFreeCliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP4PathASeqFreeCliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
     {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}

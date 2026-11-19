@@ -19,7 +19,7 @@ Defines `p2BobSessV1At`, stack/error unpacking helpers, and `p2_call_inImage_oom
 by `StageP2Sub5Aux` and `StageP2Sub5V1`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -51,7 +51,7 @@ set_option maxRecDepth 200000
 set_option linter.unusedSimpArgs false
 
 /-- The `0x700` stack bytes `initialize_bob_session` at SPQR V1 needs below `stageP2bStack`. -/
-def p2BobV1StackExtra (sp : BitVec 64) : SepProp :=
+@[expose] def p2BobV1StackExtra (sp : BitVec 64) : SepProp :=
   memRegion (sp - 768#64 - BitVec.ofNat 64 SpqrV1.Top.InitialState.initialStateStack) 0x700
 
 theorem p2BobV1StackExtra_join (sp : BitVec 64) :
@@ -64,7 +64,7 @@ theorem p2BobV1StackExtra_join (sp : BitVec 64) :
   rw [ProofLib.stackAt_split_bottom sp stageP2bStack 0x700 (by decide), ha]
 
 /-- Bob's 344-byte V1 `SessionState` at `outPtr`, its SPQR vec buffer, and its 7 heap boxes. -/
-def p2BobSessV1At (A : RustAlloc) (outPtr : BitVec 64) (inp : AcceptKeysInput)
+@[expose] def p2BobSessV1At (A : RustAlloc) (outPtr : BitVec 64) (inp : AcceptKeysInput)
     (ikBPk spkBPk : SignalPqxdh.Bytes) (drKey : DRKey) (pq : List (BitVec 8)) : SepProp :=
   ∃∗ localIkBoxPtr : BitVec 64, ∃∗ remoteIkBoxPtr : BitVec 64, ∃∗ rootKeyBoxPtr : BitVec 64,
   ∃∗ baseKeyBoxPtr : BitVec 64, ∃∗ ratchetPubBoxPtr : BitVec 64,
@@ -122,22 +122,6 @@ theorem p2BobSessV1At_intro (A : RustAlloc) (outPtr : BitVec 64) (inp : AcceptKe
     (Entails.sepExists_right c3 (Entails.sepExists_right c4 (Entails.sepExists_right d0
     (Entails.sepExists_right d1 (Entails.sepExists_right d2 ?_)))))))))))))))))
   exact Entails.pure_right ⟨h1, h2, h3, h4, h5, h6, h7⟩ (Entails.refl _)
-
-/-- Bind a `SepWPp` segment ending at `mid` into a continuation under `PanicOomProp s0`. -/
-theorem p2_bind_loaded_v1 {prog : Program} {img : Obj.Image} {mid target : BitVec 64}
-    {s0 s : State} {P : SepProp} {Qm post : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h1 : SepWPp prog mid s P Qm (PanicOomProp s0))
-    (h2 : ∀ sm Pm, Steps prog s sm → sm.pc = mid → sm.status = .Running →
-      img.FrozenLoaded sm → sm.symtab = img.symtab → Qm sm Pm →
-      SepWPp prog target sm Pm post (PanicOomProp s0)) :
-    SepWPp prog target s P post (PanicOomProp s0) := by
-  intro R hm hL
-  rcases h1 R hm hL with ⟨sm, hsteps, ⟨hpcm, hrunm, Pm, hmm, hQ⟩ | hpan⟩
-  · rcases h2 sm Pm hsteps hpcm hrunm (hF.of_keepsFrozen hsteps.keepsFrozen)
-      (hsteps.symtab_eq.trans hsym) hQ R hmm (hsteps.codeLoaded hL) with ⟨sf, hsteps', hout⟩
-    exact ⟨sf, hsteps.trans hsteps', hout⟩
-  · exact ⟨sm, hsteps, Or.inr hpan⟩
 
 theorem p2_entails_frame_v1 {P P₁ P₂ F Q : SepProp} (hent : P₁ ⊢ P₂) (hP : P = P₁ ∗ F)
     (h : P₂ ∗ F ⊢ Q) : P ⊢ Q := by
@@ -212,59 +196,5 @@ theorem isSameAccountDistinctSpecExt_to_at {prog : Program} {entry : BitVec 64}
       (isSameAccountDistinctAtSpec A parse
         CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.isSameAccountDistinctStackExt) :=
   h
-
-theorem p2_logFilterAddr_eq (img : Obj.Image) :
-    logFilterAddr img =
-      img.base + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) := by
-  unfold logFilterAddr
-  rfl
-
-theorem p2_call_inImage_oom_steps_frame {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s0 s : State} {φ : Prop}
-    {P T F : SepProp} {Q : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (htr : s0.trace <+: s.trace)
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hpan_eq : ∀ sf, spec.onPanic x s sf =
-      (⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap) := by intro _; rfl)
-    (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by intro _ _; rfl)
-    (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intro _; rfl)
-    (hnext : ∀ sf : State, Steps prog s sf → sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q (PanicOomProp s0)) :
-    SepWPp prog ret s P Q (PanicOomProp s0) := by
-  intro R hm hL
-  have hm' : s.mem ⊨ (spec.inImage img).pre x s ∗ (F ∗ R) := by
-    dsimp only [Spec.inImage]
-    rw [hspec, sepConj_assoc, satisfies_pure_sepConj, sepConj_assoc, satisfies_pure_sepConj,
-      ← sepConj_assoc, ← hP]
-    exact ⟨⟨hF, hsym⟩, hφ, hm⟩
-  obtain ⟨sm, hsteps, hout, -⟩ :=
-    hcall.no_fault_before_outcome x (F ∗ R) s hpc hrun hm' hsp hL
-  rcases hout with ⟨⟨hpcm, _, hrunm⟩, ⟨hspm, hcsm⟩, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, _, hpost⟩ |
-    ⟨_hoom_st, _hoom_post⟩
-  rotate_right
-  · dsimp only [Spec.inImage] at _hoom_post
-    rw [hoom_false] at _hoom_post
-    exact (not_satisfies_false_sepConj _hoom_post).elim
-  · dsimp only [Spec.inImage] at hpost
-    rw [← sepConj_assoc] at hpost
-    rw [hlr] at hpcm
-    have hsp_alm : sm.spAligned = true := by simpa [State.spAligned, hspm] using hsp
-    obtain ⟨sf, hsteps', hout'⟩ :=
-      hnext sm hsteps hpcm hrunm hspm hsp_alm hcsm
-        (hF.of_keepsFrozen hsteps.keepsFrozen) (hsteps.symtab_eq.trans hsym)
-        R hpost (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout'⟩
-  · dsimp only [Spec.inImage] at hpost
-    rw [hpan_eq, ← sepConj_assoc] at hpost
-    exact ⟨sm, hsteps, Or.inr (Or.inl ⟨hpan, _, hpost, p2_allowPanic_oom_of_trace_prefix htr⟩)⟩
-  · dsimp only [Spec.inImage] at hpost
-    rw [hexit_false] at hpost
-    exact (allowPanic_not_exited hpost).elim
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits

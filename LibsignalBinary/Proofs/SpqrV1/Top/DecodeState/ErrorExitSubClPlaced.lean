@@ -9,11 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitClPlaced
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitSub
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitSubPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlaced -- proof-setup: allow-public-import
 
 /-!
 # Code-Loaded `[LibsignalPlacement]` Outer Loop & `ChainPB` Error Exits for `spqr::decode_state` (Block `325`)
@@ -22,7 +29,7 @@ Proves code-loaded error-exit blocks for `v1::State::merge` (`+1828`), outer `de
 `skip_field` (`+1628..+1672`), and nested `ChainPB` field errors under `LibsignalPlacement`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

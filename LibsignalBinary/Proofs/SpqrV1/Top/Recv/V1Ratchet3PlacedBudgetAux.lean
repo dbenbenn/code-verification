@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet3
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet3Placed
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet3
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet3Placed
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3
@@ -31,6 +32,8 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.Pure
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
 
 /-!
 # Budget-Threaded Relocatable V1 `<Message>::deserialize` & `<States>::from_pb` (`+1532..+1736`)
@@ -39,7 +42,7 @@ Envelope-parametric and default `SpqrRecvEnv` steppers for `<Message>::deseriali
 and `<States>::from_pb` (`+1636..+1736`) in `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -56,7 +59,7 @@ open CryptoVerification
   (LibsignalCodeLoaded LibsignalPlacement lsmpl lsρ sepWP_seq_lscl)
 open CryptoVerification.LibsignalSpqrV1
   (Error Message MlKem MsgPreamble PqRatchetState SpqrRecvModel States
-   V1State msgPreamble recvResultExactKeyAt spqrAuthApi spqrDecodeState spqrPolyApi spqrV1Recv)
+   V1State msgPreamble spqrAuthApi spqrDecodeState spqrPolyApi spqrV1Recv)
 open CryptoVerification.LibsignalTripleRatchet (VecArg framelessMemcpySpec)
 open CryptoVerification.LibsignalTripleRatchetRepr (noneCap)
 open CryptoVerification.SpqrV1.Drop
@@ -77,13 +80,14 @@ open CryptoVerification.SpqrV1.Top.MessageDeserialize
 open CryptoVerification.SpqrV1.Top.MessageSerialize (messageAt)
 open CryptoVerification.SpqrV1.Top.Send (chunkedStatesTail920At chunkedStatesWord0)
 open CryptoVerification.SpqrV1.Top.Recv
-  (MsgRemValid SepWPpLS chunkedStatesAt_entails_reloc_words hsp_add_544_eq hsp_add_560_eq
+  (MsgRemValid SepWPpLS chunkedStatesAt_entails_reloc_words hsp_add_544_eq
+   hsp_add_560_eq
    memRegion_1168_split_statesFromPb memRegion_136_join_fp_spill memRegion_24_words3
    memRegion_4064_join_1968_928 memRegion_4064_split_2096 memRegion_4416_join_statesFromPb_err
    memRegion_928_split_header32_body896 memRegion_split_4288_for_1532 messageAt_expose_bytes39
    messageErrorAt_sub3056_expose msgRemFrame msg_expose_rem_bound msg_unexpose_rem
    reassemble_chunkedStatesAt_words reassemble_src_928_after_memcpy recv_chunkedStatesWord0_add_one_beq_zero
-   recv_err_byte_foldX resultChunkedStatesAt_err_expose resultChunkedStatesAt_panic_false
+   resultChunkedStatesAt_err_expose resultChunkedStatesAt_panic_false
    ret_48_split sp_sub_4992_aligned spqrErrorByte_eq_zero_iff spqrRecvCalleeStackX
    spqrRecvPlacedEntry spqrRecvPlacedProg spqrRecvRoPlacedAt spqrRecvSavedRegs
    spqrV1Recv_v1_msgDeserialize_err spqrV1Recv_v1_statesFromPb_err stackAt_spqrRecvCallee_split
@@ -93,13 +97,17 @@ open CryptoVerification.SpqrV1.Top.Recv
 open CryptoVerification.SpqrV1.Top.Recv.Placed (blkPC_329 blkPl_329)
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FitsEnv FreeOnlyEvs RustCliAllocBudget VmPreserved)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (MsgDeserErrEnv)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag (SpqrErrorValidTag recvResultExactKeyDispAt)
 open LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget (StatesFromPbEnv)
-open LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsBudget (messageDeserializeSpecX)
+open LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsBudget
+  (MsgDeserPostEvs messageDeserializeSpecX)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
   (SpqrRecvPlacedContracts SpqrRecvPlacedContractsOfEnv statesFromPbPlacedSpecXOfEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
-  (SpqrRecvEnv sepWP_spqrRecvPlacedPostOfEnv_of_post0 spqrRecvBudgetPanicPost
-   spqrRecvPlacedPost spqrRecvPlacedPost0 spqrRecvPlacedPost0OfEnv spqrRecvPlacedPostOfEnv)
+  (SpqrRecvEnv recv_err_byte_disp_foldX sepWP_spqrRecvPlacedPostOfEnv_of_post0
+   spqrRecvBudgetPanicPost spqrRecvPlacedPost spqrRecvPlacedPost0 spqrRecvPlacedPost0OfEnv
+   spqrRecvPlacedPostOfEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
   (SpqrRecvDropContractsBudget SpqrRecvEnv.append_freeOnly seq_vm_clean seq_vm_lscl)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet1PlacedBudget
@@ -180,6 +188,12 @@ theorem step_msgDeserialize_1532_placed_ofEnv {MC : AllocCostModel}
     (hinner : pre_pb.inner = some (.v1 pb))
     (hmv : pre.version = 1#8)
     (hmin : ∀ vn, pre_pb.versionNegotiation = some vn → ¬(1#8 < vn.minVersion.truncate 8))
+    (hFit_md : (∃ err, Message.deserialize spqrPolyApi pre.epoch pre.remaining = .error err) →
+      FitsEnv MC lim (MC.stepEvents evs0 st_cost) MsgDeserErrEnv)
+    (hevs_md_err : ∀ err evs_md evs_d,
+      Message.deserialize spqrPolyApi pre.epoch pre.remaining = .error err →
+      MsgDeserErrEnv evs_md → FreeOnlyEvs evs_d →
+      Env ((evs0 ++ evs_md) ++ evs_d))
     (s0 s : State) (P R : SepProp)
     (hs0_align : s0.spAligned = true)
     (hpc : s.pc = spqrRecvPlacedEntry + 1532#64)
@@ -290,7 +304,8 @@ theorem step_msgDeserialize_1532_placed_ofEnv {MC : AllocCostModel}
       hx30_sc (by rw [htr_sc.1, htr.1]) (fun sm => onPanic_false_budget _ sm) (fun _ _ => rfl)
       (by
         dsimp only [messageDeserializeSpecX]
-        refine frame_pure_pre ⟨hx0_sc, hx1_sc, hx2_sc, hx3_sc, hrem_lt⟩ (by rw [hsp_sc]; sep_focus))
+        refine frame_pure_pre ⟨hx0_sc, hx1_sc, hx2_sc, hx3_sc, hrem_lt, hFit_md⟩
+          (by rw [hsp_sc]; sep_focus))
       ?_
     intro sm hpcm hrunm hspm hcsm
     rcases hcsm with ⟨hx19_c, hx20_c, hx21_c, hx22_c, hx23_c, hx24_c, hx25_c, hx26_c, hx27_c, hx28_c, hxfp_c, hvregs_c⟩
@@ -370,14 +385,18 @@ theorem step_msgDeserialize_1532_placed_ofEnv {MC : AllocCostModel}
           (spqrV1Recv_v1_msgDeserialize_err F K hpre hdec hinner hmv hmin hmd).2 ?_
         exact step_msgDeserialize_err_2060_placed_ofEnv A lim st_cost Env (evs0 ++ evs_md)
           (fun evs_d hd => by
-            rw [List.append_assoc]
-            exact hevs_free (evs_md ++ evs_d) (FreeOnlyEvs.append hevs_md hd))
+            rcases hevs_md with hfree | ⟨_, hmde⟩
+            · rw [List.append_assoc]
+              exact hevs_free (evs_md ++ evs_d) (FreeOnlyEvs.append hfree hd)
+            · exact hevs_md_err err evs_md evs_d hmd hmde hd)
           F K ext (toDropContractsBudget hC) st msg ret
           pre pre_pb pb w0 w1 err q0_err w2_err hpre hdec hinner hmv hmin hmd htag_err
           s0 s_err _ R _ rfl hs0_align hpc_err hrun_err hsp_err (traceVRegs_trans htr_err htr_sm')
           (hx19_err.trans hx19_sm) (hx25_err.trans hx25_sm) (hx26_err.trans hx26_sm)
           (by ac_rfl) hcl_err
     | ok sckaMsg =>
+      have hevs_md_free : FreeOnlyEvs evs_md :=
+        hevs_md.elim id fun ⟨⟨_, h⟩, _⟩ => by rw [hmd] at h; cases h
       dsimp only [messageResultAt]
       have hexp_msg := messageAt_expose_bytes39 spqrPolyApi (s0.sp - 3056#64) sckaMsg
       rw [bv_sub_add_lit s0.sp 3056 8, bv_sub_add_lit s0.sp 3056 9] at hexp_msg
@@ -441,7 +460,7 @@ theorem step_msgDeserialize_1532_placed_ofEnv {MC : AllocCostModel}
         apply ProofLib.SepWP.done hpc1 hrun1
         dsimp only [F_rest]
         rw [← A.pool_transport lim (MC.stepEvents (evs0 ++ evs_md) st_cost) sm s1 (hvm_ok.trans hvm_reloc)]
-        exact hok_tail evs_md sckaMsg s1 _ hevs_md hmd hpc1 hrun1 hsp1
+        exact hok_tail evs_md sckaMsg s1 _ hevs_md_free hmd hpc1 hrun1 hsp1
           (traceVRegs_trans htr1 (traceVRegs_trans htr_ok htr_sm'))
           hx0_1 hx8_1
           (hx19_1.trans (hx19_ok.trans hx19_sm)) (hx20_1.trans (hx20_ok.trans hx20_sm))
@@ -464,6 +483,11 @@ theorem step_msgDeserialize_1532_placed {MC : AllocCostModel}
     (hinner : pre_pb.inner = some (.v1 pb))
     (hmv : pre.version = 1#8)
     (hmin : ∀ vn, pre_pb.versionNegotiation = some vn → ¬(1#8 < vn.minVersion.truncate 8))
+    (hFit_md : (∃ err, Message.deserialize spqrPolyApi pre.epoch pre.remaining = .error err) →
+      FitsEnv MC lim (MC.stepEvents evs0 st_cost) MsgDeserErrEnv)
+    (hevs_md_err : ∀ err evs_md,
+      Message.deserialize spqrPolyApi pre.epoch pre.remaining = .error err →
+      MsgDeserErrEnv evs_md → SpqrRecvEnv st msg (evs0 ++ evs_md))
     (s0 s : State) (P R : SepProp)
     (hs0_align : s0.spAligned = true)
     (hpc : s.pc = spqrRecvPlacedEntry + 1532#64)
@@ -511,9 +535,17 @@ theorem step_msgDeserialize_1532_placed {MC : AllocCostModel}
   step_msgDeserialize_1532_placed_ofEnv (SpqrRecvEnv st msg) evs0
     (fun _ hd => SpqrRecvEnv.append_freeOnly hevs0 hd)
     hC st msg ret pre remPtr pre_pb pb w0 w1 hpre hvalid hdec hinner hmv hmin
+    hFit_md
+    (fun err evs_md _ herr hmde hd =>
+      SpqrRecvEnv.append_freeOnly (hevs_md_err err evs_md herr hmde) hd)
     s0 s P R hs0_align hpc hrun hsp htr hx19 hx20 hx21 hx22 hx23 hx24 hx26 hx27 hx28 hx29 hP hok_tail
 
 /-! ## 2. `<States>::from_pb` Call, Error Path (`+2144 -> +2492`), and Relocation (`+1640..+1736`) -/
+
+omit [LibsignalPlacement] in
+private theorem spqrErrorByte_valid (err : Error) :
+    SpqrErrorValidTag (spqrErrorByte err) := by
+  cases err <;> (dsimp only [spqrErrorByte]; decide)
 
 /-- Envelope-parametric error branch after `<States>::from_pb` returns `.error (.err err)` at
     `+1640 .. +1668 -> +2144 .. +2160 -> +2492 .. +2500`. -/
@@ -577,7 +609,7 @@ theorem step_post_statesFromPb_err_1640_placed_ofEnv {MC : AllocCostModel}
   refine seq_vm_lscl (mid := (blkPl_329).base + 2500#64) hcl
     (P_mid :=
       spqrRecvRoPlacedAt ∗ st.at A.repAlloc ∗ msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs0 st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗ memRegion (s0.sp - 4992#64) 352 ∗
       ((s0.sp - 4640#64) ↦₆₄ w0) ∗ ((s0.sp - 4632#64) ↦₆₄ w1) ∗
@@ -594,11 +626,12 @@ theorem step_post_statesFromPb_err_1640_placed_ofEnv {MC : AllocCostModel}
       wp_steps 15
       refine SepWP.focus_weaken (hw1_err ret) (by sep_focus) ?_
       refine SepWP.focus_weaken
-        (recv_err_byte_foldX A.repAlloc ret w2_err w3_err
-          (spqrErrorByte err) (err == .stateDecode) (spqrErrorByte_eq_zero_iff hst0))
+        (recv_err_byte_disp_foldX A.repAlloc ret w2_err w3_err
+          (spqrErrorByte err) (err == .stateDecode) (spqrErrorByte_eq_zero_iff hst0)
+          (spqrErrorByte_valid err))
         (by sep_focus) ?_
-      have hres_eq : recvResultExactKeyAt A.repAlloc ret (.error (err == .stateDecode)) =
-          recvResultExactKeyAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) := by
+      have hres_eq : recvResultExactKeyDispAt A.repAlloc ret (.error (err == .stateDecode)) =
+          recvResultExactKeyDispAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) := by
         rw [(spqrV1Recv_v1_statesFromPb_err F K hpre hdec hinner hmv hmin hmsg hst0).1]
       rw [hres_eq]
       refine SepWP.focus_weaken (memRegion_4416_join_statesFromPb_err s0.sp w1_err w2_err w3_err sckaMsg) (by sep_focus) ?_
@@ -826,7 +859,7 @@ theorem step_post_statesFromPb_ok_1640_placed {MC : AllocCostModel}
           ⟨by simp only [wp_norm, arm64_norm],
            Entails.of_eq (by sep_ac_rfl), ?_⟩
         refine ⟨?_, ⟨?_, ?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-        all_goals first | rfl | (change _ = s0.sp - 96#64; simp only [wp_norm, arm64_norm, *]) | simp only [htr_mc.1, htr_mc.2, wp_norm, arm64_norm, *]
+        all_goals first | rfl | simp only [htr_mc.1, htr_mc.2, wp_norm, arm64_norm, *]
       )
     · intro s1 hpc1 hrun1 hvm3
         ⟨hsp1, htr1, hx0_1, hx1_1, hx2_1, hx19_1, hx20_1, hx21_1, hx22_1,

@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.CostedTables
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimShallow
-public import Computational.Proofs.ReductionDsl.Soundness
-public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
-public import Computational.Proofs.GameHop.CompDedup
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.CostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimShallow -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
+public import Computational.Proofs.GameHop.CompDedup -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Bridge
 import Computational.Proofs.ReductionDsl.SM.GameCosted
 import Computational.Proofs.ReductionDsl.Size
@@ -29,7 +29,7 @@ Establishes size honesty, evaluation agreement under `SimStateBounded K` for adv
 most `q ≤ K` queries, target query bounds, and static cost bounds.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames.Ratchet.LibsignalSim
 
@@ -240,10 +240,10 @@ variable {PQ PQC Pt : Type} {ℓ : ℕ}
 
 local notation "S" => simSig PQ PQC Pt ℓ
 
-def ghostChainEnc (g : GhostChain) : Option PublicKey × (ℕ × (ℕ × List ℕ)) :=
+@[expose] def ghostChainEnc (g : GhostChain) : Option PublicKey × (ℕ × (ℕ × List ℕ)) :=
   (g.key, (g.epoch, (g.last, g.skipped)))
 
-def ghostChainDec (v : Option PublicKey × (ℕ × (ℕ × List ℕ))) : GhostChain :=
+@[expose] def ghostChainDec (v : Option PublicKey × (ℕ × (ℕ × List ℕ))) : GhostChain :=
   ⟨v.1, v.2.1, v.2.2.1, v.2.2.2⟩
 
 @[simp] theorem ghostChainDec_ghostChainEnc (g : GhostChain) :
@@ -254,11 +254,11 @@ def ghostChainDec (v : Option PublicKey × (ℕ × (ℕ × List ℕ))) : GhostCh
     ghostChainEnc (ghostChainDec v) = v := by
   rcases v with ⟨k, ep, last, sk⟩; rfl
 
-def simRecEnc (r : Record (Plain ℓ) (List (BitVec 8))) :
+@[expose] def simRecEnc (r : Record (Plain ℓ) (List (BitVec 8))) :
     (Bool × ℕ × ℕ) × Plain ℓ × List (BitVec 8) :=
   (posEnc r.pos, r.msg, r.ct)
 
-def simRecDec (v : (Bool × ℕ × ℕ) × Plain ℓ × List (BitVec 8)) :
+@[expose] def simRecDec (v : (Bool × ℕ × ℕ) × Plain ℓ × List (BitVec 8)) :
     Record (Plain ℓ) (List (BitVec 8)) :=
   ⟨posDec v.1, v.2.1, v.2.2⟩
 
@@ -270,7 +270,7 @@ def simRecDec (v : (Bool × ℕ × ℕ) × Plain ℓ × List (BitVec 8)) :
     simRecEnc (simRecDec v) = v := by
   rcases v with ⟨p, m, c⟩; simp [simRecEnc, simRecDec]
 
-def simMirEnc (s : GameState Unit (Plain ℓ) (List (BitVec 8))) :
+@[expose] def simMirEnc (s : GameState Unit (Plain ℓ) (List (BitVec 8))) :
     (@simMirTy PQ PQC Pt ℓ).denote :=
   (s.b,
    (s.win,
@@ -284,7 +284,7 @@ def simMirEnc (s : GameState Unit (Plain ℓ) (List (BitVec 8))) :
            (s.leaks,
             s.corrs.map (fun pe => (partyEnc pe.1, pe.2))))))))))))
 
-def simMirDec (v : (@simMirTy PQ PQC Pt ℓ).denote) :
+@[expose] def simMirDec (v : (@simMirTy PQ PQC Pt ℓ).denote) :
     GameState Unit (Plain ℓ) (List (BitVec 8)) :=
   let (b, (win, (epAB, (idxAB, (tL, (trs, (chall, (comp, (maAB, (leaks, corrs)))))))))) := v
   { st := fun _ => ()
@@ -323,7 +323,7 @@ def simMirDec (v : (@simMirTy PQ PQC Pt ℓ).denote) :
     ⟨maA, maB⟩, leaks, corrs⟩
   simp [simMirEnc, simMirDec, List.map_map, Function.comp_def]
 
-def simStateEnc (s : SimState PQ Pt ℓ) : (@simStateTy PQ PQC Pt ℓ).denote :=
+@[expose] def simStateEnc (s : SimState PQ Pt ℓ) : (@simStateTy PQ PQC Pt ℓ).denote :=
   (simMirEnc s.mir,
    ((s.pq .A, s.pq .B),
     ((s.pn .A, s.pn .B),
@@ -332,7 +332,7 @@ def simStateEnc (s : SimState PQ Pt ℓ) : (@simStateTy PQ PQC Pt ℓ).denote :=
        (((s.chains .A).map ghostChainEnc, (s.chains .B).map ghostChainEnc),
         (s.amb, s.stopped)))))))
 
-def simStateDec (v : (@simStateTy PQ PQC Pt ℓ).denote) : SimState PQ Pt ℓ :=
+@[expose] def simStateDec (v : (@simStateTy PQ PQC Pt ℓ).denote) : SimState PQ Pt ℓ :=
   let (mir, (pqAB, (pnAB, (unackA, (honest, (chainsAB, (amb, stopped))))))) := v
   { mir := simMirDec mir
     pq := fun | .A => pqAB.1 | .B => pqAB.2
@@ -366,7 +366,7 @@ variable {P : Params PQ PQC} {Dh : DHFun (BitVec 256) Pt}
 
 local notation "OO" => simOps (ℓ := ℓ) P Dh encT decT
 
-def mInTransitE [DecidableEq Pt] [Zero Pt] {Γ} (K : ℕ) (s : Expr OO Γ simMirTy)
+@[expose] def mInTransitE [DecidableEq Pt] [Zero Pt] {Γ} (K : ℕ) (s : Expr OO Γ simMirTy)
     (qParty : Expr OO Γ .bool) (w : Expr OO Γ (.base .wire)) : Expr OO Γ (.opt simRecTy) :=
   rdslExpr =>
     letE (s, (qParty, w)) fun (s0, (qp0, w0)) =>
@@ -684,23 +684,23 @@ local notation "S" => simSig PQ PQC Pt ℓ
 local notation "OO" => simOps (ℓ := ℓ) P Dh encT decT
 local notation "SIface" => simIface PQ PQC Pt ℓ
 
-def simFindChain (cs : List (Option PublicKey × (ℕ × (ℕ × List ℕ)))) (pk : PublicKey) :
+@[expose] def simFindChain (cs : List (Option PublicKey × (ℕ × (ℕ × List ℕ)))) (pk : PublicKey) :
     Option (ℕ × (Option PublicKey × (ℕ × (ℕ × List ℕ)))) :=
   match cs.findIdx? (fun g => g.1 == some pk) with
   | some ci => some (ci, cs.getD ci (none, (0, (0, []))))
   | none => none
 
-def simModifyChainAccept (cs : List (Option PublicKey × (ℕ × (ℕ × List ℕ)))) (ci i : ℕ) :
+@[expose] def simModifyChainAccept (cs : List (Option PublicKey × (ℕ × (ℕ × List ℕ)))) (ci i : ℕ) :
     List (Option PublicKey × (ℕ × (ℕ × List ℕ))) :=
   cs.modify ci (fun g => (g.1, (g.2.1, simChainAccept g.2.2 i)))
 
-def simPushChain (cs : List (Option PublicKey × (ℕ × (ℕ × List ℕ))))
+@[expose] def simPushChain (cs : List (Option PublicKey × (ℕ × (ℕ × List ℕ))))
     (T : PublicKey) (t i : ℕ) : List (Option PublicKey × (ℕ × (ℕ × List ℕ))) :=
   let g := (some T, (t, simChainAccept (0, []) i))
   let cs' := cs ++ [g]
   cs'.drop (cs'.length - 5)
 
-def simRevealSpkChains {Pt : Type} (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
+@[expose] def simRevealSpkChains {Pt : Type} (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
     (csA : List (Option PublicKey × (ℕ × (ℕ × List ℕ)))) (st : SimFig8St Pt) :
     List (Option PublicKey × (ℕ × (ℕ × List ℕ))) :=
   match st.γ with
@@ -709,7 +709,7 @@ def simRevealSpkChains {Pt : Type} (Dh : DHFun (BitVec 256) Pt) (encT : Pt → P
       if g.1.isNone then (some (encT (Dh.dh x Dh.base)), g.2) else g
   | _ => csA
 
-def simToGhost {PQ PQC Pt : Type} (P : Params PQ PQC) (qB : Bool) (st : SimFig8St Pt)
+@[expose] def simToGhost {PQ PQC Pt : Type} (P : Params PQ PQC) (qB : Bool) (st : SimFig8St Pt)
     (pn : BitVec 32) (cs : List (Option PublicKey × (ℕ × (ℕ × List ℕ))))
     (unackA : Bool) (pq : PQ) (ep : ℕ) : GhostState PQ :=
   let Q := partyDec qB
@@ -726,7 +726,7 @@ def simToGhost {PQ PQC Pt : Type} (P : Params PQ PQC) (qB : Bool) (st : SimFig8S
         pendingPreKey := Q == Party.A && unackA, pqRatchetState := pq },
     ep, cs.map (·.2.1)⟩
 
-def simSpqrSendPub {PQ PQC : Type} (P : Params PQ PQC) (qB unackA : Bool)
+@[expose] def simSpqrSendPub {PQ PQC : Type} (P : Params PQ PQC) (qB unackA : Bool)
     (pq : PQ) (rq : PQC) (pn : BitVec 32) : Option (PQ × LibsignalMsgPublicPart) :=
   let Q := partyDec qB
   (P.spqr.send pq rq).map fun x =>
@@ -752,10 +752,10 @@ def simParseRecv {PQ PQC Pt : Type} (P : Params PQ PQC) (decT : PublicKey → Op
           some (pq', (min i B, (h.senderRatchetKey,
             (decT h.senderRatchetKey, (i, ((ser, tag), effectiveHkdfSalt32 salt))))))
 
-def initChainAE {Γ} : Expr OO Γ (ghostChainTy PQ PQC Pt ℓ) :=
+@[expose] def initChainAE {Γ} : Expr OO Γ (ghostChainTy PQ PQC Pt ℓ) :=
   .pair .none (.pair (.nat 0) (Expr.op (O := OO) SimOp.emptyChainSt .unit))
 
-def hasUnknownKeyE {Γ}
+@[expose] def hasUnknownKeyE {Γ}
     (cs : Expr OO Γ (.list (ghostChainTy PQ PQC Pt ℓ))) : Expr OO Γ .bool :=
   rdslExpr =>
     anyB 5 cs fun (optPk, _) =>
@@ -763,7 +763,7 @@ def hasUnknownKeyE {Γ}
       | none => true
       | some _ => false
 
-def findChainE {Γ}
+@[expose] def findChainE {Γ}
     (arg : Expr OO Γ (.prod (.list (ghostChainTy PQ PQC Pt ℓ)) (.base .pk))) :
     Expr OO Γ (.opt (.prod .nat (ghostChainTy PQ PQC Pt ℓ))) :=
   rdslExpr =>
@@ -778,7 +778,7 @@ def findChainE {Γ}
           | none => none
           | some (idx, found) => some (idx + 1, found)
 
-def modifyChainAcceptE {Γ}
+@[expose] def modifyChainAcceptE {Γ}
     (arg : Expr OO Γ (.prod (.list (ghostChainTy PQ PQC Pt ℓ)) (.prod .nat .nat))) :
     Expr OO Γ (.list (ghostChainTy PQ PQC Pt ℓ)) :=
   rdslExpr =>
@@ -791,7 +791,7 @@ def modifyChainAcceptE {Γ}
              g)
           acc
 
-def pushChainE {Γ}
+@[expose] def pushChainE {Γ}
     (arg : Expr OO Γ
       (.prod (.list (ghostChainTy PQ PQC Pt ℓ)) (.prod (.base .pk) (.prod .nat .nat)))) :
     Expr OO Γ (.list (ghostChainTy PQ PQC Pt ℓ)) :=
@@ -805,7 +805,7 @@ def pushChainE {Γ}
       foldrB 5 cs0 [g] fun elem acc =>
         if len acc < 5 then cons elem acc else acc
 
-def revealSpkChainsE {Γ}
+@[expose] def revealSpkChainsE {Γ}
     (arg : Expr OO Γ (.prod (.list (ghostChainTy PQ PQC Pt ℓ)) (.base .fig8st))) :
     Expr OO Γ (.list (ghostChainTy PQ PQC Pt ℓ)) :=
   rdslExpr =>
@@ -823,7 +823,7 @@ def revealSpkChainsE {Γ}
              rest)
           | some _ => g
 
-def spqrSendPubE {Γ}
+@[expose] def spqrSendPubE {Γ}
     (arg : Expr OO Γ
       (.prod .bool (.prod .bool (.prod (.base .pq) (.prod (.base .pqc) (.base .u32)))))) :
     Expr OO Γ (.opt (.prod (.base .pq) (.base .lpub))) :=
@@ -838,7 +838,7 @@ def spqrSendPubE {Γ}
             Expr.op (O := OO) SimOp.mkLPub
               (pn, (pqm, (Expr.op (O := OO) SimOp.effectiveHkdfSalt32 salt?, addr))))
 
-def parseRecvE (B : ℕ) {Γ}
+@[expose] def parseRecvE (B : ℕ) {Γ}
     (arg : Expr OO Γ (.prod .bool (.prod (.base .pq) (.base .wire)))) :
     Expr OO Γ
       (.opt (.prod (.base .pq)
@@ -868,7 +868,7 @@ def parseRecvE (B : ℕ) {Γ}
           else
             none
 
-def toGhostE {Γ}
+@[expose] def toGhostE {Γ}
     (arg : Expr OO Γ
       (.prod .bool
         (.prod (.base .fig8st)
@@ -896,7 +896,7 @@ def toGhostE {Γ}
           (Expr.op (O := OO) SimOp.fig8Root st,
             (pn, (sender, (rcs, (((!qB) && unackA), (pq, (ep, eps))))))))
 
-def guardC {Γ t} (s : Expr OO Γ simStateTy)
+@[expose] def guardC {Γ t} (s : Expr OO Γ simStateTy)
     (body : Comp OO SIface Γ (.prod (.opt t) simStateTy)) :
     Comp OO SIface Γ (.prod (.opt t) simStateTy) :=
   rdsl do
@@ -905,7 +905,7 @@ def guardC {Γ t} (s : Expr OO Γ simStateTy)
     else
       raw body
 
-def simDrawSendCoinsC {Γ} (r : Expr OO Γ (.opt (.base .pqc))) :
+@[expose] def simDrawSendCoinsC {Γ} (r : Expr OO Γ (.opt (.base .pqc))) :
     Comp OO SIface Γ (.prod (.base .pqc) (.opt (.base .bv256))) :=
   rdsl do
     match r with
@@ -916,7 +916,7 @@ def simDrawSendCoinsC {Γ} (r : Expr OO Γ (.opt (.base .pqc))) :
       rc ← sample (I := SIface) (UniformSamplerTag.base SimBaseSamp.bv256) ()
       return (rq, some rc)
 
-def simSendPostQueryC {Γ} :
+@[expose] def simSendPostQueryC {Γ} :
     Comp OO SIface
       (.opt (fig8CTy PQ PQC Pt ℓ) ::
        .prod (.base .pq) (.base .lpub) ::
@@ -950,7 +950,7 @@ def simSendPostQueryC {Γ} :
           (ssStopped s0)
       return (some w, nextSt)
 
-def simSendPostCoinsC {Γ} :
+@[expose] def simSendPostCoinsC {Γ} :
     Comp OO SIface
       (.prod (.base .pqc) (.opt (.base .bv256)) ::
        simMirTy ::
@@ -977,7 +977,7 @@ def simSendPostCoinsC {Γ} :
 
 /-- `LibsignalSim.simSend` in `ReductionDsl`, handling `transmit` (`chal = .none`) and `challenge`
 (`chal = .some m₁`). -/
-def simSendC (qep : ℕ) {Γ}
+@[expose] def simSendC (qep : ℕ) {Γ}
     (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool)
     (m₀ : Expr OO Γ (.base .plain)) (chal : Expr OO Γ (.opt (.base .plain)))
     (r : Expr OO Γ (.opt (.base .pqc))) :
@@ -997,7 +997,7 @@ def simSendC (qep : ℕ) {Γ}
           _coins ← simDrawSendCoinsC (P := P) (Dh := Dh) (encT := encT) (decT := decT) r0
           simSendPostCoinsC (P := P) (Dh := Dh) (encT := encT) (decT := decT)
 
-def inTE (K : ℕ) {Γ} (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool)
+@[expose] def inTE (K : ℕ) {Γ} (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool)
     (c : Expr OO Γ (fig8CTy PQ PQC Pt ℓ)) : Expr OO Γ .bool :=
   rdslExpr =>
     letE (s, (qParty, c)) fun (s0, (qp0, c0)) =>
@@ -1006,7 +1006,7 @@ def inTE (K : ℕ) {Γ} (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool)
           isSomeE (mInTransitE (P := P) (Dh := Dh) (encT := encT) (decT := decT)
             K (ssMir s0) (otherE qp0) wH)
 
-def fwdC (K : ℕ) {Γ} (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool)
+@[expose] def fwdC (K : ℕ) {Γ} (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool)
     (c : Expr OO Γ (fig8CTy PQ PQC Pt ℓ)) :
     Comp OO SIface Γ (.opt (fig8RrTy PQ PQC Pt ℓ)) :=
   rdsl do
@@ -1015,7 +1015,7 @@ def fwdC (K : ℕ) {Γ} (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool)
     else
       query (I := SIface) SM.SMTag.ij (qParty, c)
 
-def onAcceptPreE {Γ}
+@[expose] def onAcceptPreE {Γ}
     (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool)
     (t i : Expr OO Γ .nat) (ciOpt : Expr OO Γ (.opt .nat))
     (T : Expr OO Γ (.base .pk)) (pq' : Expr OO Γ (.base .pq)) :
@@ -1034,7 +1034,7 @@ def onAcceptPreE {Γ}
       ssMk (ssMir s0) (pSet (ssPq s0) q0 pq0) (ssPn s0) (ssUnackA s0 && q0)
         (ssHonest s0) (pSet (ssChains s0) q0 cs) (ssAmb s0) (ssStopped s0)
 
-def onAcceptE (K qep : ℕ) {Γ}
+@[expose] def onAcceptE (K qep : ℕ) {Γ}
     (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool)
     (w : Expr OO Γ (.base .wire)) (isDel : Expr OO Γ .bool)
     (t i : Expr OO Γ .nat) (m : Expr OO Γ (.base .plain))
@@ -1065,7 +1065,7 @@ def onAcceptE (K qep : ℕ) {Γ}
         else
           (some (.inl ()), ssSetMirWin s0)
 
-def onAnswerE (K qep : ℕ) {Γ}
+@[expose] def onAnswerE (K qep : ℕ) {Γ}
     (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool)
     (w : Expr OO Γ (.base .wire)) (isDel : Expr OO Γ .bool)
     (ciOpt : Expr OO Γ (.opt .nat)) (T : Expr OO Γ (.base .pk))
@@ -1088,7 +1088,7 @@ def onAnswerE (K qep : ℕ) {Γ}
           onAcceptE (P := P) (Dh := Dh) (encT := encT) (decT := decT) K qep
             s0 q0 w0 del0 t0 i0 m ci0 T0 pq0
 
-def honestCE (K : ℕ) {Γ} (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool)
+@[expose] def honestCE (K : ℕ) {Γ} (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool)
     (w : Expr OO Γ (.base .wire)) : Expr OO Γ (.opt (fig8CTy PQ PQC Pt ℓ)) :=
   rdslExpr =>
     letE (s, (qParty, w)) fun (s0, (qp0, w0)) =>
@@ -1098,7 +1098,7 @@ def honestCE (K : ℕ) {Γ} (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bo
       | none => none
       | some (_wH, cH) => some cH
 
-def mkCE {Γ} (honestC : Expr OO Γ (.opt (fig8CTy PQ PQC Pt ℓ)))
+@[expose] def mkCE {Γ} (honestC : Expr OO Γ (.opt (fig8CTy PQ PQC Pt ℓ)))
     (lct : Expr OO Γ (.base .lct)) (t : Expr OO Γ .nat) (T? : Expr OO Γ (.opt (.base .pt))) :
     Expr OO Γ (fig8CTy PQ PQC Pt ℓ) :=
   rdslExpr =>
@@ -1109,20 +1109,20 @@ def mkCE {Γ} (honestC : Expr OO Γ (.opt (fig8CTy PQ PQC Pt ℓ)))
       | some c@(_hdr, cLct) =>
         if Expr.op (O := OO) SimOp.lctSaltEq (cLct, lct0) then c else dflt
 
-def spkAmbE {Γ} (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool) : Expr OO Γ .bool :=
+@[expose] def spkAmbE {Γ} (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool) : Expr OO Γ .bool :=
   .and (.not qParty)
     (hasUnknownKeyE (P := P) (Dh := Dh) (encT := encT) (decT := decT) (pGet (ssChains s) qParty))
 
-def ambCondE {Γ} (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool) : Expr OO Γ .bool :=
+@[expose] def ambCondE {Γ} (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool) : Expr OO Γ .bool :=
   orE (mInWinE (ssMir s) qParty)
     (spkAmbE (P := P) (Dh := Dh) (encT := encT) (decT := decT) s qParty)
 
-def sAmbE {Γ} (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool) : Expr OO Γ simStateTy :=
+@[expose] def sAmbE {Γ} (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool) : Expr OO Γ simStateTy :=
   .ite (ambCondE (P := P) (Dh := Dh) (encT := encT) (decT := decT) s qParty)
     (ssSetAmb s (.add (ssAmb s) (.nat 1)))
     s
 
-def evictedHonestE {Γ} (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool)
+@[expose] def evictedHonestE {Γ} (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool)
     (honestC : Expr OO Γ (.opt (fig8CTy PQ PQC Pt ℓ))) : Expr OO Γ .bool :=
   rdslExpr =>
     letE (s, (qParty, honestC)) fun (s0, (qp0, hc0)) =>
@@ -1131,10 +1131,10 @@ def evictedHonestE {Γ} (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool)
       | some ((epH, _), _) =>
         !(epH == pGet (mEpoch (ssMir s0)) qp0 + 1)
 
-@[reducible] def parsedRecvTy : Ty S :=
+@[expose, reducible] def parsedRecvTy : Ty S :=
   .prod (.base .pq) (.prod .nat (.prod (.base .pk) (.prod (.opt (.base .pt)) (.base .lct))))
 
-def simRecvNewChainNormalC (K qep : ℕ) {Γ} :
+@[expose] def simRecvNewChainNormalC (K qep : ℕ) {Γ} :
     Comp OO SIface
       (parsedRecvTy (PQ := PQ) (PQC := PQC) (Pt := Pt) (ℓ := ℓ) ::
         .prod simStateTy (.prod .bool (.prod (.base .wire) .bool)) :: Γ)
@@ -1155,7 +1155,7 @@ def simRecvNewChainNormalC (K qep : ℕ) {Γ} :
         return onAnswerE (P := P) (Dh := Dh) (encT := encT) (decT := decT) K qep
           sAmb q1 w1 del1 none pk pq' res
 
-def simRecvNewChainStopC (K : ℕ) {Γ} :
+@[expose] def simRecvNewChainStopC (K : ℕ) {Γ} :
     Comp OO SIface
       (parsedRecvTy (PQ := PQ) (PQC := PQC) (Pt := Pt) (ℓ := ℓ) ::
         .prod simStateTy (.prod .bool (.prod (.base .wire) .bool)) :: Γ)
@@ -1190,7 +1190,7 @@ def simRecvNewChainStopC (K : ℕ) {Γ} :
 
 /-- `LibsignalSim.simRecv` in `ReductionDsl` with list-scan bound `K`; meta-level matching on `k`
 keeps static query weight `1` when `k = none`. -/
-def simRecvC (K qep : ℕ) (k : Option ℕ) {Γ}
+@[expose] def simRecvC (K qep : ℕ) (k : Option ℕ) {Γ}
     (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool)
     (w : Expr OO Γ (.base .wire)) (isDel : Expr OO Γ .bool) :
     Comp OO SIface Γ (.prod (.opt (simRrTy PQ PQC Pt ℓ)) simStateTy) :=
@@ -1247,7 +1247,7 @@ def simRecvC (K qep : ℕ) (k : Option ℕ) {Γ}
             return onAnswerE (P := P) (Dh := Dh) (encT := encT) (decT := decT) K qep
               s0 q0 w0 del0 (some ci1) pk0 pq' res
 
-def simCorrC (K : ℕ) {Γ}
+@[expose] def simCorrC (K : ℕ) {Γ}
     (s : Expr OO Γ simStateTy) (qParty : Expr OO Γ .bool) :
     Comp OO SIface Γ (.prod (.opt (.base .ghostSt)) simStateTy) :=
   rdsl do
@@ -1287,7 +1287,7 @@ def simCorrC (K : ℕ) {Γ}
         return (some ghostOut, nextSt)
 
 /-- Combined 5-oracle dispatcher for `LibsignalSim.simImpl` in `ReductionDsl`. -/
-def simHandleC (K qep : ℕ) (k : Option ℕ) :
+@[expose] def simHandleC (K qep : ℕ) (k : Option ℕ) :
     Comp OO SIface
       [simStateTy (PQ := PQ) (PQC := PQC) (Pt := Pt) (ℓ := ℓ),
        (simCodec PQ PQC Pt ℓ).Q]
@@ -1316,7 +1316,7 @@ def simHandleC (K qep : ℕ) (k : Option ℕ) :
         (simCorrC (P := P) (Dh := Dh) (encT := encT) (decT := decT) K s qp)
       return (.inr out, s')
 
-def initSimE {Γ} (pqA pqB : Expr OO Γ (.base .pq)) : Expr OO Γ simStateTy :=
+@[expose] def initSimE {Γ} (pqA pqB : Expr OO Γ (.base .pq)) : Expr OO Γ simStateTy :=
   ssMk initSimMirE
     (.pair pqA pqB)
     (.pair (Expr.op (O := OO) SimOp.zeroU32 .unit) (Expr.op (O := OO) SimOp.zeroU32 .unit))
@@ -1326,7 +1326,7 @@ def initSimE {Γ} (pqA pqB : Expr OO Γ (.base .pq)) : Expr OO Γ simStateTy :=
     (.nat 0)
     (.bool false)
 
-def simInitC :
+@[expose] def simInitC :
     Comp OO SIface [.unit]
       (.prod .unit (simStateTy (PQ := PQ) (PQC := PQC) (Pt := Pt) (ℓ := ℓ))) :=
   rdsl [_] do
@@ -1336,7 +1336,7 @@ def simInitC :
         (Expr.op (O := OO) SimOp.spqrInitA pqrKey)
         (Expr.op (O := OO) SimOp.spqrInitB pqrKey))
 
-def simFinishC (k : Option ℕ) :
+@[expose] def simFinishC (k : Option ℕ) :
     Comp OO SIface
       [simStateTy (PQ := PQ) (PQC := PQC) (Pt := Pt) (ℓ := ℓ), .bool] .bool :=
   match k with
@@ -1344,7 +1344,7 @@ def simFinishC (k : Option ℕ) :
   | some _ => rdsl [_, _] do sample (I := SIface) UniformSamplerTag.bool ()
 
 /-- Costed `CostedReduction` for `LibsignalSim.simRun` with list-scan bound `K`. -/
-@[reducible] def simRunProg (K qep : ℕ) (k : Option ℕ) :
+@[expose, reducible] def simRunProg (K qep : ℕ) (k : Option ℕ) :
     CostedReduction OO SIface
       (SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)))
       (simCodec PQ PQC Pt ℓ) .unit .unit .bool .bool where
@@ -1354,7 +1354,7 @@ def simFinishC (k : Option ℕ) :
   finish := simFinishC P Dh encT decT k
 
 /-- Costed `CostedReduction` for `Refine.sim` (`simRunProg` at `k = none`). -/
-@[reducible] def simProg (K qep : ℕ) :
+@[expose, reducible] def simProg (K qep : ℕ) :
     CostedReduction OO SIface
       (SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)))
       (simCodec PQ PQC Pt ℓ) .unit .unit .bool .bool :=
@@ -1429,7 +1429,7 @@ theorem SimStateBounded.chains_le {K : ℕ} {s : SimState PQ Pt ℓ}
   · exact h.chainsB_le
 
 /-- Query-budget invariant on `simStateTy.denote` with `m` adversary game queries remaining. -/
-def SimBoundInv (K m : ℕ) (v : (@simStateTy PQ PQC Pt ℓ).denote) : Prop :=
+@[expose] def SimBoundInv (K m : ℕ) (v : (@simStateTy PQ PQC Pt ℓ).denote) : Prop :=
   let s := simStateDec v
   s.mir.trans.length + m ≤ K ∧ s.mir.chall.length + m ≤ K ∧
   s.honest.length + m ≤ K ∧
@@ -2538,7 +2538,7 @@ theorem ret_onAnswerE_eval (K qep : ℕ) {Γ}
 omit [DecidableEq Pt] [Zero Pt] [SampleableType PQC] in
 /-- Deduplicated `corr-P` mirror counterpart of `simCorr`, using `afterCorrDedup` so `mAfterCorrE`
 evaluates directly to `simCorrDedup`. -/
-def simCorrDedup (Q : Party) : StateT (SimState PQ Pt ℓ) (Fig8Comp Pt ℓ) (Option (GhostState PQ)) := do
+@[expose] def simCorrDedup (Q : Party) : StateT (SimState PQ Pt ℓ) (Fig8Comp Pt ℓ) (Option (GhostState PQ)) := do
   let s ← get
   if s.mir.win || !(s.mir.corrAllowed Q) || inReceiveOnlyEpoch s.mir Q || !(noAliceCorrWhileAliceBelowEpoch10 s.mir Q) then return none
   let res ← liftQ (SM.corrQuery (Msg := LibsignalMsgPublicPart × Plain ℓ) (Coins := BitVec 256) (C := Fig8C Pt) Q)
@@ -3446,7 +3446,7 @@ theorem handlerImpl_simHandleC_ij (K qep : ℕ) (k : Option ℕ)
   refine bind_congr fun ⟨r', s'⟩ => ?_
   cases r' <;> simp [Prod.map]
 
-def simImplDedup (qep : ℕ) (k : Option ℕ) :
+@[expose] def simImplDedup (qep : ℕ) (k : Option ℕ) :
     QueryImpl (unifSpec + SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)))
       (StateT (SimState PQ Pt ℓ) (Fig8Comp Pt ℓ)) :=
   let c : QueryImpl unifSpec (StateT (SimState PQ Pt ℓ) (Fig8Comp Pt ℓ)) := fun n =>
@@ -3504,7 +3504,7 @@ theorem simImpl_eval (K qep : ℕ) (k : Option ℕ)
   · exact handlerImpl_simHandleC_cr P Dh encT decT K qep k st Q hBound
 
 /-- Query-budget invariant on `SimState PQ Pt ℓ` with `m` adversary game queries remaining. -/
-def SimStateInv (K m : ℕ) (st : SimState PQ Pt ℓ) : Prop :=
+@[expose] def SimStateInv (K m : ℕ) (st : SimState PQ Pt ℓ) : Prop :=
   st.mir.trans.length + m ≤ K ∧ st.mir.chall.length + m ≤ K ∧
   st.honest.length + m ≤ K ∧
   (∃ U : List Pos, U.length + m ≤ K ∧ CountLe st.mir.comp U ∧ ∀ r ∈ st.mir.trans, r.pos ∈ U) ∧
@@ -4031,7 +4031,7 @@ theorem makesAtMostQueries_iff_isGameQuery {St Msg Coins C : Type}
   isQueryBoundP_congr oa (by funext x; cases x <;> simp [isGameQuery]) q
 
 omit [DecidableEq Pt] [Zero Pt] [SampleableType PQC] in
-def simStateCanon (s : SimState PQ Pt ℓ) : SimState PQ Pt ℓ :=
+@[expose] def simStateCanon (s : SimState PQ Pt ℓ) : SimState PQ Pt ℓ :=
   { s with mir := canonComp s.mir }
 
 omit [DecidableEq Pt] [Zero Pt] [SampleableType PQC] in

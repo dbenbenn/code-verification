@@ -9,11 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Stage P1 on Store Kits
@@ -22,11 +28,9 @@ Relocatable `[LibsignalPlacement]` Stage P1 umbrella module on Block `518` (`lsP
 `(blkPl_518).base = lsmpl.base 518`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits
 
@@ -40,15 +44,12 @@ open CryptoVerification.CliHandshake.RespClosurePlaced
 
 /-- Block `518` (`message_decrypt_prekey::<signal_session_handshake::Coins>::{closure#0}`) program
 under `[LibsignalPlacement]`. -/
-abbrev stageP1ProgPlaced [LibsignalPlacement] (ext : String → Option (State → State)) : Program :=
+noncomputable abbrev stageP1ProgPlaced [LibsignalPlacement] (ext : String → Option (State → State)) : Program :=
   lsProg_518 ext
 
 /-- Block `518` entry address `(blkPl_518).base = lsmpl.base 518` under `[LibsignalPlacement]`. -/
 abbrev stageP1EntryPlaced [LibsignalPlacement] : BitVec 64 :=
   (blkPl_518).base
-
-theorem stageP1EntryPlaced_eq_lsmpl_base [LibsignalPlacement] :
-    stageP1EntryPlaced = lsmpl.base 518 := rfl
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits
 

@@ -9,20 +9,40 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.FsFds
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitFdsPilotPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.KyberMarkFitPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KyberKitOkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkShimsPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.FsFds -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitFdsPilotPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.KyberMarkFitPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KyberKitOkPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkShimsPlacedBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymE -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.KyberMarkFitPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkShimsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+public import ProofLib.Placed.OpcodeExclusion
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Placed Budgeted `KyberPreKeyStoreSpec` with Closed-FD Invariant
@@ -33,7 +53,7 @@ Establishes `KyberPreKeyStoreKitPlacedOkFds` (`fds = true`) on `cliKpkStoreSpecF
 `FdsGe3Closed`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
@@ -612,146 +632,6 @@ theorem cliKpkFull_getPoll_fds_rocl_placed_ok_of_poll [LibsignalPlacement] {M : 
   exact ls_subroutine_ok_rocl_of_block (callerProg := callerProg) (j := 576)
     h576_kit hCallerBlk (by decide) (by decide)
 
-theorem cliKpkStoreSpecPlaced_markPoll_fds_rocl_of_poll [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {rd : ReadRule} {F0 : FsFiles} {pathOk : List (BitVec 8) → Prop}
-    {kid ksid : BitVec 32} {kbk : PublicKey}
-    (G : CliKpkGetSide) {s1 s2 s3 s4 : Nat}
-    (hGetBox : ∀ box self id st, pkBoxAt box self id st ⊢ memRegion box 16)
-    (hMarkBox : ∀ box self baseKeyA id signedId st,
-      kpkMarkBoxAt box self baseKeyA id signedId st ⊢ memRegion box 32)
-    {MarkEnv : FsFiles → KpkMarkPollGhost → List AllocEvent → Prop}
-    {kitEnv : KyberPreKeyStoreBudgetEnv
-      (cliKpkStoreSpecPlaced A.repAlloc rd F0 pathOk kid ksid kbk G s1 s2 s3 s4 hGetBox hMarkBox)}
-    {callerProg : Program} {callerBlk : Nat} [IsLsBlockProg callerProg callerBlk H]
-    (hMarkEnv : ∀ fut out self baseKeyA st0 evs,
-      MarkEnv F0 ⟨fut, out, self, baseKeyA, kid, ksid, kbk, st0⟩ evs →
-        kitEnv.markPollEnv st0 kid ksid kbk evs)
-    (h578 : subroutine_ok (lsProg_578 H) (lsmpl.base 578)
-      (withFdsGe3Closed (kpkMarkPollSpecPlaced rd pathOk A lim MarkEnv s4)))
-    (hCallerBlk : callerBlk < 619 := by decide) :
-    let kit :=
-      cliKpkStoreSpecPlaced A.repAlloc rd F0 pathOk kid ksid kbk G s1 s2 s3 s4 hGetBox hMarkBox
-    subroutine_ok callerProg (0#64 + kit.markPollOff)
-      (withLsRoCl lsmpl (kitKpkMarkPollSpecE M A lim kit kitEnv true)) := by
-  intro kit
-  have h578_kit : subroutine_ok (lsProg_578 H) (lsmpl.base 578)
-      (withLsCodeRoLoaded lsmpl (kitKpkMarkPollSpecE M A lim kit kitEnv true)) := by
-    refine subroutine_ok.of_codeLoaded
-      fun ⟨⟨fut, out, self, baseKeyA, kid', ksid', kbk'⟩, st0, st⟩ R s0 hpc hrun hpre hsp _ => ?_
-    change KyberGhost at st0
-    obtain ⟨hcrl, hpre1⟩ := extract_withLsCodeRoLoaded hpre
-    have hpre2 : s0.mem ⊨ ⌜s0.fs.files = F0 ∧ FdsGe3Closed s0.fs⌝ ∗
-        ((kitKpkMarkPollSpec M A lim kit kitEnv true).pre
-          (⟨fut, out, self, baseKeyA, kid', ksid', kbk'⟩, st0, st) s0 ∗ R) := by
-      change s0.mem ⊨ (⌜s0.fs.files = F0 ∧ FdsGe3Closed s0.fs⌝ ∗
-        (kitKpkMarkPollSpec M A lim kit kitEnv true).pre
-          (⟨fut, out, self, baseKeyA, kid', ksid', kbk'⟩, st0, st) s0) ∗ R at hpre1
-      simpa only [sepConj_assoc] using hpre1
-    rw [satisfies_pure_sepConj] at hpre2
-    obtain ⟨⟨hfiles, hfds0⟩, hpre3⟩ := hpre2
-    change s0.mem ⊨
-      (⌜(0#64 &&& 0xfff#64) = 0#64 ∧ s0.readReg64 .x0 = fut ∧ s0.readReg64 .x8 = out ∧
-          (kid' = kid ∧ ksid' = ksid ∧ kbk' = kbk) ∧
-          FitsEnv M lim st (kitEnv.markPollEnv st0 kid' ksid' kbk')⌝ ∗
-        kpkMarkBoxAt fut self baseKeyA kid' ksid' 0#8 ∗
-        (⌜CliKpkInv rd F0 pathOk kid ksid kbk st0⌝ ∗ dirAt A.repAlloc self st0.oneTime ∗
-          dirAt A.repAlloc (self + 40#64) st0.lastResort) ∗
-        memRegion out 48 ∗ (baseKeyA ↦ₛ kbk'.bytes.toList) ∗
-        A.pool lim st s0 ∗ stackAt s0.sp s4) ∗ R at hpre3
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hpre3
-    obtain ⟨⟨_, hx0, hx8, ⟨hxid, hxsid, hxbk⟩, hfit_kit⟩, hpre4⟩ := hpre3
-    rw [hxid, hxsid, hxbk] at hfit_kit hpre4 ⊢
-    have hpre5 : s0.mem ⊨ ⌜CliKpkInv rd F0 pathOk kid ksid kbk st0⌝ ∗
-        (kpkMarkBoxAt fut self baseKeyA kid ksid 0#8 ∗
-          dirAt A.repAlloc self st0.oneTime ∗ dirAt A.repAlloc (self + 40#64) st0.lastResort ∗
-          (baseKeyA ↦ₛ kbk.bytes.toList) ∗ memRegion out 48 ∗
-          A.pool lim st s0 ∗ stackAt s0.sp s4 ∗ R) :=
-      Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpre4
-    rw [satisfies_pure_sepConj] at hpre5
-    obtain ⟨hinv, hspatial⟩ := hpre5
-    let xg : KpkMarkPollGhost := ⟨fut, out, self, baseKeyA, kid, ksid, kbk, st0⟩
-    have hfit_hop : FitsEnv M lim st (MarkEnv s0.fs.files xg) := fun evs hm => by
-      rw [hfiles] at hm
-      exact hfit_kit evs (hMarkEnv fut out self baseKeyA st0 evs hm)
-    have hpre_hop : s0.mem ⊨
-        (withFdsGe3Closed (kpkMarkPollSpecPlaced rd pathOk A lim MarkEnv s4)).pre (xg, st) s0 ∗
-          R := by
-      dsimp only [withFdsGe3Closed, kpkMarkPollSpecPlaced, withLsCodeRoLoaded]
-      have h1 : s0.mem ⊨
-          ⌜FdsGe3Closed s0.fs⌝ ∗
-          (⌜LibsignalCodeRoLoaded lsmpl s0.mem⌝ ∗
-          (⌜s0.readReg64 .x0 = fut ∧ s0.readReg64 .x8 = out ∧
-            PkNameOk pathOk st0.oneTime kid ∧ KpkBaseKeysOk pathOk st0.lastResort kid ∧
-            KpkSeenOk rd s0.fs.files st0.lastResort kid ksid kbk ∧
-            st0.oneTime.changed.length < 2 ^ 32 ∧ st0.lastResort.changed.length < 2 ^ 32 ∧
-            FitsEnv M lim st (MarkEnv s0.fs.files xg)⌝ ∗
-          (kpkMarkBoxAt fut self baseKeyA kid ksid 0#8 ∗
-            dirAt A.repAlloc self st0.oneTime ∗ dirAt A.repAlloc (self + 40#64) st0.lastResort ∗
-            (baseKeyA ↦ₛ kbk.bytes.toList) ∗ memRegion out 48 ∗
-            A.pool lim st s0 ∗ stackAt s0.sp s4 ∗ R))) := by
-        rw [satisfies_pure_sepConj]; refine ⟨hfds0, ?_⟩
-        rw [satisfies_pure_sepConj]; refine ⟨hcrl, ?_⟩
-        rw [satisfies_pure_sepConj]
-        exact ⟨⟨hx0, hx8, hinv.nameOk, hinv.baseOk, hfiles ▸ hinv.seenOk,
-          hinv.oneLt.1, hinv.lastLt.1, hfit_hop⟩, hspatial⟩
-      exact Eq.mp (congrArg (s0.mem ⊨ ·) (by sep_ac_rfl)) h1
-    refine h578.mono_outcome (xg, st) R s0 hpc hrun hpre_hop hsp fun sf hout => ?_
-    rcases hout with ⟨hret, hcc, hpost0⟩ | ⟨_, hpan⟩ | ⟨_, _, hex⟩ | ⟨_, hoom⟩
-    · refine Or.inl ⟨hret, hcc, ?_⟩
-      dsimp only [withFdsGe3Closed] at hpost0
-      rw [sepConj_assoc, satisfies_pure_sepConj] at hpost0
-      obtain ⟨hfds_sf, hpost⟩ := hpost0
-      refine Satisfies.mono (sepConj_mono_left ?_) hpost
-      show (kpkMarkPollSpecPlaced rd pathOk A lim MarkEnv s4).post (xg, st) s0 sf ⊢
-        (kitKpkMarkPollSpec M A lim kit kitEnv true).post
-          (⟨fut, out, self, baseKeyA, kid, ksid, kbk⟩, st0, st) s0 sf
-      dsimp only [kpkMarkPollSpecPlaced, withLsCodeRoLoaded, kitKpkMarkPollSpec, kit,
-        cliKpkStoreSpecPlaced, cliKpkStoreSpec, cliKpkStoreAt, kpkMarkPollOutAt, xg]
-      refine Entails.sepExists_elim fun evs => ?_
-      rw [sepExists_sepConj_left]
-      refine Entails.sepExists_elim fun res => ?_
-      rw [sepConj_assoc]
-      refine Entails.pure_left fun ⟨hres, htr, hmenv⟩ => ?_
-      rw [hfiles] at hres hmenv
-      subst hres
-      have hkenv : kitEnv.markPollEnv st0 kid ksid kbk evs :=
-        hMarkEnv fut out self baseKeyA st0 evs hmenv
-      set m := kpkMarkOf rd F0 st0 kid ksid kbk
-      refine Entails.trans
-        (Entails.of_eq (show _ =
-          kpkMarkOutAt A.repAlloc out m.1 ∗
-            (dirAt A.repAlloc self m.2.oneTime ∗ dirAt A.repAlloc (self + 40#64) m.2.lastResort ∗
-              kpkMarkBoxAt fut self baseKeyA kid ksid 1#8 ∗
-              (baseKeyA ↦ₛ kbk.bytes.toList) ∗ A.pool lim (M.stepEvents evs st) sf ∗
-              stackAt s0.sp s4) by sep_ac_rfl)) ?_
-      refine Entails.trans (sepConj_mono_left (cliKpkMarkOut_entails A.repAlloc out m.1)) ?_
-      rw [sepExists_sepConj_left]
-      refine Entails.sepExists_elim fun ans => ?_
-      rw [sepConj_assoc]
-      refine Entails.pure_left fun hrel => ?_
-      refine Entails.sepExists_right ans (Entails.sepExists_right evs ?_)
-      refine Entails.pure_right ⟨hrel, by rw [List.append_nil]; exact htr, hkenv, hfds_sf⟩ ?_
-      refine Entails.trans ?_
-        (Entails.of_eq (show
-          ⌜CliKpkInv rd F0 pathOk kid ksid kbk m.2⌝ ∗
-            (unitSpePollOutAt (cliKpkMarkErrSpec A.repAlloc) out ans ∗
-              (dirAt A.repAlloc self m.2.oneTime ∗ dirAt A.repAlloc (self + 40#64) m.2.lastResort ∗
-                kpkMarkBoxAt fut self baseKeyA kid ksid 1#8 ∗
-                (baseKeyA ↦ₛ kbk.bytes.toList) ∗ A.pool lim (M.stepEvents evs st) sf ∗
-                stackAt s0.sp s4)) = _ by sep_ac_rfl))
-      exact Entails.pure_right hinv.mark (Entails.refl _)
-    · dsimp only [withFdsGe3Closed, kpkMarkPollSpecPlaced, withLsCodeRoLoaded] at hpan
-      exact (not_satisfies_false_sepConj hpan).elim
-    · dsimp only [withFdsGe3Closed, kpkMarkPollSpecPlaced, withLsCodeRoLoaded] at hex
-      exact (not_satisfies_false_sepConj hex).elim
-    · dsimp only [withFdsGe3Closed, kpkMarkPollSpecPlaced, withLsCodeRoLoaded] at hoom
-      exact (not_satisfies_false_sepConj hoom).elim
-  change subroutine_ok callerProg (0#64 + lsmpl.base 578) _
-  rw [BitVec.zero_add]
-  exact ls_subroutine_ok_rocl_of_block (callerProg := callerProg) (j := 578)
-    h578_kit hCallerBlk (by decide) (by decide)
-
 theorem cliKpkFull_markPoll_fds_rocl_placed_ok_of_poll [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
     {rd : ReadRule} {F0 : FsFiles} {pathOk : List (BitVec 8) → Prop}
@@ -929,78 +809,6 @@ theorem cliKpkKitPlacedOkFds_full_of_polls [LibsignalPlacement] {M : AllocCostMo
     rw [lsDropOffPlaced_eq hDropNz]
     exact cliIdFutDrop_fds_rocl_placed_ok hblk
 
-/-- Assemble `KyberPreKeyStoreKitPlacedOkFds` for general-`G` `cliKpkStoreSpecPlaced`. -/
-theorem cliKpkStorePlacedOkFds_of_polls [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {rd : ReadRule} {F0 : FsFiles} {pathOk : List (BitVec 8) → Prop}
-    {kid ksid : BitVec 32} {kbk : PublicKey}
-    (G : CliKpkGetSide) {s1 s2 s3 s4 : Nat}
-    (hGetBox : ∀ box self id st, pkBoxAt box self id st ⊢ memRegion box 16)
-    (hMarkBox : ∀ box self baseKeyA id signedId st,
-      kpkMarkBoxAt box self baseKeyA id signedId st ⊢ memRegion box 32)
-    (MarkEnv : FsFiles → KpkMarkPollGhost → List AllocEvent → Prop)
-    (kitEnv : KyberPreKeyStoreBudgetEnv
-      (cliKpkStoreSpecPlaced A.repAlloc rd F0 pathOk kid ksid kbk G s1 s2 s3 s4 hGetBox hMarkBox))
-    (hDropNz : lsmpl.base 547 ≠ 0#64)
-    (hFs : AllocContractsFsPlaced A lim H)
-    (hs1 : 32 + extHookStack ≤ s1)
-    (hs3 : 48 + extHookStack ≤ s3)
-    (hGetPoll : subroutine_ok (lsProg_576 H) (lsmpl.base 576)
-      (withLsCodeRoLoaded lsmpl
-        (kitKpkGetPollSpecE M A lim
-          (cliKpkStoreSpecPlaced A.repAlloc rd F0 pathOk kid ksid kbk G s1 s2 s3 s4
-            hGetBox hMarkBox)
-          kitEnv true)))
-    (hMarkEnv : ∀ fut out self baseKeyA st0 evs,
-      MarkEnv F0 ⟨fut, out, self, baseKeyA, kid, ksid, kbk, st0⟩ evs →
-        kitEnv.markPollEnv st0 kid ksid kbk evs)
-    (hMarkPoll : subroutine_ok (lsProg_578 H) (lsmpl.base 578)
-      (withFdsGe3Closed (kpkMarkPollSpecPlaced rd pathOk A lim MarkEnv s4))) :
-    KyberPreKeyStoreKitPlacedOkFds A lim
-      (cliKpkStoreSpecPlaced A.repAlloc rd F0 pathOk kid ksid kbk G s1 s2 s3 s4 hGetBox hMarkBox)
-      kitEnv H where
-  getShim hblk := cliKpkGetShim_fds_rocl_placed_ok G hGetBox hMarkBox hFs hs1 hblk
-  getPoll {callerProg} {callerBlk} _ hblk := by
-    change subroutine_ok callerProg (0#64 + lsmpl.base 576) _
-    rw [BitVec.zero_add]
-    exact ls_subroutine_ok_rocl_of_block (callerProg := callerProg) (j := 576)
-      hGetPoll hblk (by decide) (by decide)
-  getFutDrop hblk := by
-    change subroutine_ok _ (0#64 + lsDropOffPlaced) _
-    rw [lsDropOffPlaced_eq hDropNz]
-    exact cliIdFutDrop_fds_rocl_placed_ok hblk
-  markShim hblk := cliKpkMarkShim_fds_rocl_placed_ok G hGetBox hMarkBox hFs hs3 hblk
-  markPoll hblk :=
-    cliKpkStoreSpecPlaced_markPoll_fds_rocl_of_poll G hGetBox hMarkBox hMarkEnv hMarkPoll hblk
-  markFutDrop hblk := by
-    change subroutine_ok _ (0#64 + lsDropOffPlaced) _
-    rw [lsDropOffPlaced_eq hDropNz]
-    exact cliIdFutDrop_fds_rocl_placed_ok hblk
-
 /-! ## `FsAtFds` and `writeFileHook` preservation -/
-
-theorem fsAt_cliKpkFullKit_of_fdsGe3Closed [LibsignalPlacement] {A : RustAlloc}
-    {envOk : FsFiles → Prop} {rd : ReadRule} {F0 : FsFiles}
-    {pathOk : List (BitVec 8) → Prop} {kid ksid : BitVec 32} {kbk : PublicKey}
-    {s1 s2 s3 s4 : Nat} {P : Program} {s : State}
-    (hP : TraceFsSound P) (henv : envOk F0) (hfiles : s.fs.files = F0) (hfds : FdsGe3Closed s.fs) :
-    FsAtFds envOk
-      (cliKpkStoreSpecFullPlaced A rd F0 pathOk kid ksid kbk s1 s2 s3 s4).fdsOk
-      (cliKpkStoreSpecFullPlaced A rd F0 pathOk kid ksid kbk s1 s2 s3 s4).Quiet P s :=
-  .inr ⟨cliKpkStoreSpecFullPlaced_quiet (A := A) rd F0 pathOk kid ksid kbk s1 s2 s3 s4,
-    hP, hfiles.symm ▸ henv, hfds⟩
-
-theorem cliKpkStoreSpecFullPlaced_writeFileHook [LibsignalPlacement] {A : RustAlloc}
-    {rd : ReadRule} {F0 : FsFiles} {pathOk : List (BitVec 8) → Prop}
-    {kid ksid : BitVec 32} {kbk : PublicKey} {s1 s2 s3 s4 : Nat} {s : State}
-    (hfds : (cliKpkStoreSpecFullPlaced A rd F0 pathOk kid ksid kbk s1 s2 s3 s4).fdsOk s.fs) :
-    (cliKpkStoreSpecFullPlaced A rd F0 pathOk kid ksid kbk s1 s2 s3 s4).fdsOk
-      (writeFileHook s).fs :=
-  fdsGe3Closed_writeFileHook hfds
-
-theorem hookOk_writeFileHook_withFdsGe3Closed_kpk {α : Type} {S : Spec α}
-    (h : HookOk writeFileHook S) :
-    HookOk writeFileHook (withFdsGe3Closed S) :=
-  hookOk_withFdsGe3Closed_writeFileHook h
 
 end LibsignalBinary.Proofs.SignalSession.Cli.KitInst.KyberPreKeyKitFdsPlacedBudget

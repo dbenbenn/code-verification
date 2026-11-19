@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliKitW1EncExactSplit
+public import LibsignalBinary.Proofs.PeakBudget.CliKitW1EncExactSplit -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudgetAux
 import LibsignalBinary.Proofs.E2E.Epochs
 import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Defs
@@ -40,6 +40,17 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.LayoutPlacedBudge
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeserAux
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.PeakBudget.CliKitW1SpqrSendAuxR2
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
 
 /-!
 # Guarded-Tight `W1` (`encrypt` `@109`) Group Core
@@ -52,7 +63,7 @@ Proves `w1x_groupCore_Stmt W`: under `CliPqxdhInputs ⟨W.C, W.Q⟩ g.i`,
 `CliEncryptSlotEnv` satisfies `PhaseGroupSpec fineCostModel … w1EncExactGrpS`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -308,9 +319,7 @@ private theorem w1x_gr_otrEncryptCore_imp_step
   cases hs : (pqxdhSpqrModel P).send otr.pqrState rest with
   | none =>
     rw [hs] at hevs'
-    have hnil : evs' = [] := hevs'
-    subst hnil
-    exact Or.inl FreeOnlyEvs.nil
+    exact Or.inl (Or.inr hevs')
   | some val =>
     rcases val with ⟨_, pqrKey, pqrMsg⟩
     rw [hs] at hevs'

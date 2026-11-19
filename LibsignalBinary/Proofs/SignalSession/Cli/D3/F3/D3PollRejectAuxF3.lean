@@ -10,13 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BinaryOomSpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeStore
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.Ok
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Pure Store & Message Rejection Predicates and `decPkDef` Helpers (`pkToE? pm = none`)
@@ -26,7 +28,7 @@ Pure `scopeIn` injectivity/coverage lemmas, store and message rejection predicat
 `some none` when `pkToE? pm = none` and no active session matches `pm`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -117,7 +119,7 @@ structure DecPkStoreOk (W : PEParams) (F : FsFiles) : Prop where
 
 /-- Message rejection condition: `pm` parses from some wire body via `pksmParse`,
 has `pkToE? pm = none`, has distinct peer/self service IDs, and matches no active session. -/
-def MsgCondPkToENone (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] def MsgCondPkToENone (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer me : AddrVal) (pm : PreKeySignalMessage) : Prop :=
   (∃ body : List (BitVec 8), pksmParse body = some pm) ∧
   pkToE? pm = none ∧
@@ -126,7 +128,7 @@ def MsgCondPkToENone (Scope : SessionRecord (List (BitVec 8)) → Prop)
     r.currentSession = some s → ¬ SessMatchesPm s pm
 
 /-- `decPkOk` predicate combining `DecPkStoreOk` and `MsgCondPkToENone`. -/
-def DecPkOkD3Untyped (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] def DecPkOkD3Untyped (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer me : AddrVal) (pm : PreKeySignalMessage) : Prop :=
   DecPkStoreOk W F ∧ MsgCondPkToENone Scope F peer me pm
 

@@ -9,22 +9,23 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ProtoReprCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ProtoReprCodeSym -- shake: keep -- proof-setup: allow-public-import
+public import ProofLib.ProgramReflection.SortedFresh
+meta import GeneratedLean.LibsignalSessionPlacedObjShard13
 
 /-!
-# Instruction Decode & Block Lemmas for `SpqrV1/Prost/MessageEncode` (`[local#2]`)
+# Block Placement Descriptors for `SpqrV1/Prost/MessageEncode` (`[local#2]`)
 
-Generates per-block placement descriptors (`Blocks 313, 315–319`) and `gen_decodes` instruction
-tables for `ChainParams`, `PolynomialDecoder`, `PolynomialEncoder`, and `EpochDirection`
-`encode` and `encoded_len` monomorphizations.
+Generates per-block placement descriptors (`Blocks 313, 315–319`) for `ChainParams`,
+`PolynomialDecoder`, `PolynomialEncoder`, and `EpochDirection` `encode` and `encoded_len`
+monomorphizations.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification
 
@@ -38,22 +39,3 @@ gen_ls_blk 318
 gen_ls_blk 319
 
 end CryptoVerification
-
-namespace CryptoVerification.SpqrV1.Prost.MessageEncode
-
-open Arm64 ProofLib.ProgramReflection
-
-set_option maxRecDepth 200000
-set_option maxHeartbeats 400000
-
-gen_decodes libsignalSessionCode_tree libsignalSessionBin
-  [0x37278 → 0x373b8, 0x37604 → 0x37af4,
-   0x4cd78 → 0x4cec8, 0x4d14c → 0x4d6a4]
-
-gen_decodes libsignalSessionCode_tree spqrPolyDecBin
-  [0x39f7c → 0x3a060, 0x642fc → 0x643e0]
-
-gen_decodes libsignalSessionCode_tree spqrPolyEncBin
-  [0x38e70 → 0x38f7c, 0x615f4 → 0x61700]
-
-end CryptoVerification.SpqrV1.Prost.MessageEncode

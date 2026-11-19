@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Refinement.Cli.ModelLinks
+public import Symbolic.Proofs.Tests.Refinement.Cli.ModelLinks -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Refinement.Composed.Cli.SDet.Defs
 import Symbolic.Proofs.Refinement.Composed.Cli.SDet
 
@@ -22,7 +22,7 @@ discharges `ModelLinks.DraftDet`, linking `CompRefinesCliModelMoves` to `ModelLi
 Checked by Lean.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

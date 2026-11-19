@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge
-public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyPromModel
-public import Symbolic.Proofs.Swarm.CREF.Cli.World.TopPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyPromModel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.World.TopPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyPromReject
 import Symbolic.Proofs.Swarm.CREF.Prelude
+public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape -- proof-setup: allow-public-import
 
 /-!
 # Promote Pre-Key Receive Reject Step and Directory Invariant Extraction
@@ -22,7 +23,7 @@ Proves the `CliCallStepSpec` postcondition for rejected `.recv` calls (`rpkProm_
 extracts `BobPromDirInv` from `PqPartyInv` and `FilesBounded` (`bobPromDirInv_of_pqPartyInv`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -10,15 +10,24 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneBase
-public import LibsignalBinary.Proofs.Common.InImageKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.SerializeExt.SessionCloneAux.ChainCloneBasePart1
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.SerializeExt.WPX
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.SerializeExt.SessionCloneAux.Fetch
+public import LibsignalBinary.Proofs.Common.InImageKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.SerializeExt.SessionCloneAux.ChainCloneBasePart1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
+public import ProofLib.SepLogic.WPp
+public import Lean.Elab.SyntheticMVars
+public import Lean.Meta.Reduce
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -53,11 +62,11 @@ attribute [scoped arm64_norm, scoped wp_norm]
 
 /-! ## 1. Extern Hooks, Callee Address Bridges, and Panic Tails -/
 
-def scShimSpec (A : RustAlloc) : Spec Unit where
+@[expose] def scShimSpec (A : RustAlloc) : Spec Unit where
   pre := fun _ s0 => A.pool ∗ stackAt s0.sp extHookStack
   post := fun _ s0 sf => ⌜sf.trace = s0.trace⌝ ∗ A.pool ∗ stackAt s0.sp extHookStack
 
-def scMemcpySpec (A : RustAlloc) : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def scMemcpySpec (A : RustAlloc) : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧
      s0.readReg64 .x1 = src ∧
@@ -70,90 +79,6 @@ def scMemcpySpec (A : RustAlloc) : Spec (BitVec 64 × BitVec 64 × List (BitVec 
     (dst ↦ₛ bs) ∗
     (src ↦ₛ bs) ∗
     A.pool ∗ stackAt s0.sp extHookStack
-
-open Lean Elab Tactic Meta in
-elab "wpx_clear_invs" : tactic => do
-  let g0 ← getMainGoal
-  let invs ← g0.withContext do
-    let mut acc : Array FVarId := #[]
-    for decl in (← getLCtx) do
-      if !decl.isImplementationDetail then
-        let dty ← instantiateMVars decl.type
-        if (inImageKitFindImg? dty).isSome then
-          acc := acc.push decl.fvarId
-    return acc
-  if !invs.isEmpty then
-    let g1 ← g0.tryClearMany invs
-    setGoals ([g1] ++ (← getGoals).tail)
-
-theorem sc_shim_ok_at {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)} (hA : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr sessionCloneName + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-      ((scShimSpec A).inImage img) := by
-  have hraw := hA.session_shim_ok_at sessionCloneName
-    (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-    (hk := by simp only [fnOff_sessionClone, shimName, arm64_norm])
-  refine subroutine_ok_frame_weaken_inImage (fun _ _ => A.pool) hraw
-    (fun _ _ => ?_) (fun _ _ _ => ?_) (fun _ _ _ => Entails.pure_left False.elim)
-  · simp only [scShimSpec, withStack, LibsignalTripleRatchet.sessionShimSpec, emp_sepConj]
-    exact Entails.of_eq (by ac_rfl)
-  · simp only [scShimSpec, withStack, LibsignalTripleRatchet.sessionShimSpec]
-    exact Entails.of_eq (by ac_rfl)
-
-theorem sc_alloc_ok_at {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)} (hA : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr sessionCloneName + bv% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-      ((rustAllocSpecWithStack A extHookStack).inImage img) :=
-  hA.alloc_ok_at sessionCloneName
-    (num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-    (hk := by simp only [fnOff_sessionClone, allocName, arm64_norm])
-
-theorem sc_memcpy_ok_at {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)} (hA : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr sessionCloneName + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-      ((scMemcpySpec A).inImage img) := by
-  have hraw := hA.session_memcpy_ok_at sessionCloneName
-    (num% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-    (hk := by simp only [fnOff_sessionClone, memcpyName, arm64_norm])
-  refine subroutine_ok_frame_weaken_inImage (fun _ _ => A.pool) hraw
-    (fun _ _ => ?_) (fun _ _ _ => ?_) (fun _ _ _ => Entails.pure_left False.elim)
-  · simp only [scMemcpySpec, LibsignalTripleRatchet.sessionMemcpySpec, libcMemcpySpec]
-    exact Entails.of_eq (by ac_rfl)
-  · simp only [scMemcpySpec, LibsignalTripleRatchet.sessionMemcpySpec, libcMemcpySpec]
-    exact Entails.of_eq (by ac_rfl)
-
-theorem sc_panic_at_handle_error {img : Obj.Image}
-    {ext : String → Option (State → State)} :
-    (tripleRatchetProgAtExt img.base ext).externAt?
-      ((tripleRatchetProgAtExt img.base ext).fnAddr sessionCloneName + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone")) =
-      some Rust.panicked :=
-  panic_at_panicSymbol fnOff_sessionClone (k := num% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-    (by decide) (by decide) (ls_hook% "alloc::raw_vec::handle_error") (by simp [Rust.isPanicSymbol])
-
-theorem fnAddr_sessionClone_to_chainCloneLocal1 {img : Obj.Image} {ext : String → Option (State → State)} :
-    (tripleRatchetProgAtExt img.base ext).fnAddr sessionCloneName + bv% (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone") =
-      (tripleRatchetProgAtExt img.base ext).fnAddr chainCloneLocal1Name := by
-  change (img.base + BitVec.ofNat 64 (libsignalSessionCode.fnOff sessionCloneName)) + bv% (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone") =
-    img.base + BitVec.ofNat 64 (libsignalSessionCode.fnOff chainCloneLocal1Name)
-  rw [fnOff_sessionClone, fnOff_chainCloneLocal1]
-  bv_omega
-
-theorem sc_chainClone_ok_at {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hcc : ChainCloneLocal1Ok img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr sessionCloneName + bv% (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-      ((chainCloneSpecX A).inImage img) := by
-  rwa [fnAddr_sessionClone_to_chainCloneLocal1]
-
-theorem sc_senderChainClone_ok_at {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hscc : SenderChainCloneLocal1Ok img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr sessionCloneName + bv% (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone"))
-      ((senderChainCloneSpecX A).inImage img) := by
-  rwa [fnAddr_sessionClone_to_chainCloneLocal1]
 
 abbrev scPanicPost (A : RustAlloc) (x : SessionCloneGhost) (R : SepProp) (s0 : State) :
     State → SepProp → Prop :=
@@ -181,122 +106,6 @@ theorem sc_onPanic_of_callee_panic {A : RustAlloc} {x : SessionCloneGhost}
   rw [htr] at haf hpre
   rw [← sepConj_assoc] at hm'
   exact sc_onPanic_of_allocFailed ⟨haf, hpre⟩ hm'
-
-theorem sc_panic_0x474 {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    {ret : BitVec 64} {Q : State → SepProp → Prop}
-    (x : SessionCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr sessionCloneName + 0x474#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPpX img (tripleRatchetProgAtExt img.base ext) ret s P Q (scPanicPost A x R s0) := by
-  have hfn := fnOff_sessionClone
-  have hpanic := sc_panic_at_handle_error (img := img) (ext := ext)
-  sessionClone_fetches img.base (Rust.withPanics ext) hfn 0x474 12
-  clear hfn; unfold tripleRatchetProgAtExt at *
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr sessionCloneName = entry reverting [libsignalSessionCode]
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)) = prog reverting [libsignalSessionCode]
-  examples_hide_fetches; apply SepWPpX.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone")); wp_steps
-  refine SepWP.done rfl hrun (SepWPpX.panic hrun hpanic fun hm => ?_)
-  exact sc_onPanic_of_allocFailed (Record.SegCloneSteps.allocFailedIn_of_eq (by simp only [State.setPC, State.writeReg64, Rust.panicked, htrace])) hm
-
-theorem sc_panic_0x480 {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    {ret : BitVec 64} {Q : State → SepProp → Prop}
-    (x : SessionCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr sessionCloneName + 0x480#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPpX img (tripleRatchetProgAtExt img.base ext) ret s P Q (scPanicPost A x R s0) := by
-  have hfn := fnOff_sessionClone
-  have hpanic := sc_panic_at_handle_error (img := img) (ext := ext)
-  sessionClone_fetches img.base (Rust.withPanics ext) hfn 0x480 12
-  clear hfn; unfold tripleRatchetProgAtExt at *
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr sessionCloneName = entry reverting [libsignalSessionCode]
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)) = prog reverting [libsignalSessionCode]
-  examples_hide_fetches; apply SepWPpX.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone")); wp_steps
-  refine SepWP.done rfl hrun (SepWPpX.panic hrun hpanic fun hm => ?_)
-  exact sc_onPanic_of_allocFailed (Record.SegCloneSteps.allocFailedIn_of_eq (by simp only [State.setPC, State.writeReg64, Rust.panicked, htrace])) hm
-
-theorem sc_panic_0x48c {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    {ret : BitVec 64} {Q : State → SepProp → Prop}
-    (x : SessionCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr sessionCloneName + 0x48c#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPpX img (tripleRatchetProgAtExt img.base ext) ret s P Q (scPanicPost A x R s0) := by
-  have hfn := fnOff_sessionClone
-  have hpanic := sc_panic_at_handle_error (img := img) (ext := ext)
-  sessionClone_fetches img.base (Rust.withPanics ext) hfn 0x48c 12
-  clear hfn; unfold tripleRatchetProgAtExt at *
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr sessionCloneName = entry reverting [libsignalSessionCode]
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)) = prog reverting [libsignalSessionCode]
-  examples_hide_fetches; apply SepWPpX.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone")); wp_steps
-  refine SepWP.done rfl hrun (SepWPpX.panic hrun hpanic fun hm => ?_)
-  exact sc_onPanic_of_allocFailed (Record.SegCloneSteps.allocFailedIn_of_eq (by simp only [State.setPC, State.writeReg64, Rust.panicked, htrace])) hm
-
-theorem sc_panic_0x498 {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    {ret : BitVec 64} {Q : State → SepProp → Prop}
-    (x : SessionCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr sessionCloneName + 0x498#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPpX img (tripleRatchetProgAtExt img.base ext) ret s P Q (scPanicPost A x R s0) := by
-  have hfn := fnOff_sessionClone
-  have hpanic := sc_panic_at_handle_error (img := img) (ext := ext)
-  sessionClone_fetches img.base (Rust.withPanics ext) hfn 0x498 12
-  clear hfn; unfold tripleRatchetProgAtExt at *
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr sessionCloneName = entry reverting [libsignalSessionCode]
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)) = prog reverting [libsignalSessionCode]
-  examples_hide_fetches; apply SepWPpX.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone")); wp_steps
-  refine SepWP.done rfl hrun (SepWPpX.panic hrun hpanic fun hm => ?_)
-  exact sc_onPanic_of_allocFailed (Record.SegCloneSteps.allocFailedIn_of_eq (by simp only [State.setPC, State.writeReg64, Rust.panicked, htrace])) hm
-
-theorem sc_panic_0x4a4 {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    {ret : BitVec 64} {Q : State → SepProp → Prop}
-    (x : SessionCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr sessionCloneName + 0x4a4#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPpX img (tripleRatchetProgAtExt img.base ext) ret s P Q (scPanicPost A x R s0) := by
-  have hfn := fnOff_sessionClone
-  have hpanic := sc_panic_at_handle_error (img := img) (ext := ext)
-  sessionClone_fetches img.base (Rust.withPanics ext) hfn 0x4a4 12
-  clear hfn; unfold tripleRatchetProgAtExt at *
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr sessionCloneName = entry reverting [libsignalSessionCode]
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)) = prog reverting [libsignalSessionCode]
-  examples_hide_fetches; apply SepWPpX.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone")); wp_steps
-  refine SepWP.done rfl hrun (SepWPpX.panic hrun hpanic fun hm => ?_)
-  exact sc_onPanic_of_allocFailed (Record.SegCloneSteps.allocFailedIn_of_eq (by simp only [State.setPC, State.writeReg64, Rust.panicked, htrace])) hm
-
-theorem sc_panic_0x4b0 {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    {ret : BitVec 64} {Q : State → SepProp → Prop}
-    (x : SessionCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr sessionCloneName + 0x4b0#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPpX img (tripleRatchetProgAtExt img.base ext) ret s P Q (scPanicPost A x R s0) := by
-  have hfn := fnOff_sessionClone
-  have hpanic := sc_panic_at_handle_error (img := img) (ext := ext)
-  sessionClone_fetches img.base (Rust.withPanics ext) hfn 0x4b0 12
-  clear hfn; unfold tripleRatchetProgAtExt at *
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr sessionCloneName = entry reverting [libsignalSessionCode]
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)) = prog reverting [libsignalSessionCode]
-  examples_hide_fetches; apply SepWPpX.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone")); wp_steps
-  refine SepWP.done rfl hrun (SepWPpX.panic hrun hpanic fun hm => ?_)
-  exact sc_onPanic_of_allocFailed (Record.SegCloneSteps.allocFailedIn_of_eq (by simp only [State.setPC, State.writeReg64, Rust.panicked, htrace])) hm
-
-/-! ## 2. Frame-Pointer (`x29 = sp + 0x170`) and Stack Normalization -/
 
 @[scoped arm64_norm, scoped wp_norm]
 theorem fp_sub_120 (sp : BitVec 64) :
@@ -357,7 +166,7 @@ theorem chunks104_6QWAt_sp_0xf8 (sp : BitVec 64)
 /-! ## 3. Stack Frame (`sessionCloneStackX`), Spill Slots (`sp .. sp + 0x90`), and Saved Regs -/
 
 /-- Spatial layout of the 144-byte spill area `sp .. sp + 0x90` in `SessionStructure::clone`. -/
-def scSpillSlotsAt (sp : BitVec 64)
+@[expose] def scSpillSlotsAt (sp : BitVec 64)
     (v0c : BitVec 32) (v10 v18 v20 : BitVec 64)
     (v28 v2c : BitVec 32) (v30 : BitVec 64) (v3c : BitVec 32)
     (v40 v48 : BitVec 64) (v54 : BitVec 32) (v58 v60 v68 v70 v78 : BitVec 64)
@@ -482,7 +291,7 @@ theorem scSpillSlotsAt_entails_memRegion_0x90 (sp : BitVec 64)
     pointsTo64_entails_memRegion _ _
 
 /-- Callee-saved register save area `sp + 0x170 .. sp + 0x1d0` (96 bytes). -/
-def scSavedRegsAt (sp : BitVec 64)
+@[expose] def scSavedRegsAt (sp : BitVec 64)
     (r29 r30 r28 r27 r26 r25 r24 r23 r22 r21 r20 r19 : BitVec 64) : SepProp :=
   ((sp + 0x170#64) ↦₆₄ r29) ∗ ((sp + 0x178#64) ↦₆₄ r30) ∗
   ((sp + 0x180#64) ↦₆₄ r28) ∗ ((sp + 0x188#64) ↦₆₄ r27) ∗
@@ -628,7 +437,7 @@ theorem sc_vecAt_0x48_chains_eq (A : RustAlloc) (src cap ptr : BitVec 64)
   ac_rfl
 
 /-- Spatial layout of the 344-byte destination `SessionStructure` slot at `dst`. -/
-def scDstSlotsAt (dst : BitVec 64) (dv : DstVals) : SepProp :=
+@[expose] def scDstSlotsAt (dst : BitVec 64) (dv : DstVals) : SepProp :=
   (dst ↦₆₄ dv.w_ca0) ∗ ((dst + 0x08#64) ↦₆₄ dv.w_ca8) ∗ ((dst + 0x10#64) ↦₆₄ dv.w_cb0) ∗
   ((dst + 0x18#64) ↦₆₄ dv.w_cb8) ∗ ((dst + 0x20#64) ↦₆₄ dv.w_cc0) ∗ ((dst + 0x28#64) ↦₆₄ dv.w_cc8) ∗
   ((dst + 0x30#64) ↦₆₄ dv.w_cd0) ∗ ((dst + 0x38#64) ↦₆₄ dv.w_cd8) ∗ ((dst + 0x40#64) ↦₆₄ dv.w_ce0) ∗

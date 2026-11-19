@@ -9,12 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Bytes.BytesCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Bytes.BytesCodeSym -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+meta import GeneratedLean.LibsignalSessionPlacedObjShard0
+meta import GeneratedLean.LibsignalSessionPlacedObjShard11
+meta import GeneratedLean.LibsignalSessionPlacedObjShard3
+meta import GeneratedLean.LibsignalSessionPlacedObjShard5
 
 /-!
 # Relocatable Per-Block Symbol Bindings for `TripleRatchet/Prost`
@@ -23,7 +28,7 @@ Per-block symbol bindings and instruction-fetch aliases for the Prost decoding a
 subroutines (blocks 1, 5, 7, 8, 10, 13, 76, 108, 250, 261, and 293).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

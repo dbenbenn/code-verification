@@ -9,15 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyAPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyBPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyPlaced
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveAuxBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeSeqFreeXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionCloneSeqFreeXBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyAPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyBPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyPlaced
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveAuxBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeSeqFreeXBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionCloneSeqFreeXBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
@@ -31,6 +30,8 @@ meta import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerB
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBody
 
 /-!
 # Budget-Threaded Placed `SessionRecord::serialize` Body Proof (`Prev1`)
@@ -41,7 +42,7 @@ both the bounded allocation-plus-drop envelope (`SerializePrev1EnvX`) and the pr
 sequence-free envelope (`SerializePrev1Env`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option relaxedAutoImplicit false
@@ -150,13 +151,13 @@ attribute [local simp] bv64_ult_zeroX bv64_ult_zeroK5
 
 /-- Allocation-only prefix envelope for `SessionRecord::serialize` on a record with current
 session `sess` (ghost `G`) and `previous_sessions = [enc]`. -/
-def SerializePrev1AllocEnvX (G : SessionGhost)
+@[expose] def SerializePrev1AllocEnvX (G : SessionGhost)
     (sess : Session (List (BitVec 8))) (enc : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   let recLen := (encodeRecordPrev1Mem G sess enc).length
   BoundedRustEvs (8 * recLen + 128) (256 * (recLen + 16)) evs
 
 /-- Full allocation-and-drop envelope for `SessionRecord::serialize` with one previous session. -/
-def SerializePrev1EnvX (G : SessionGhost)
+@[expose] def SerializePrev1EnvX (G : SessionGhost)
     (sess : Session (List (BitVec 8))) (enc : List (BitVec 8)) : List AllocEvent → Prop :=
   SeqEnv (SerializePrev1AllocEnvX G sess enc) FreeOnlyEvs
 

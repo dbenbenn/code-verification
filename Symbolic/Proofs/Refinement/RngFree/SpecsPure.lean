@@ -9,9 +9,11 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import Symbolic.Proofs.Refinement.RngFree.SendSpecPure
+import Symbolic.Proofs.Refinement.RngFree.SendSpecPure
+import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApi
+import Symbolic.Proofs.SpecLemmas.CliPureBytes
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

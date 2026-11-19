@@ -10,15 +10,18 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOkBudgetVmSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.NewFromSlice -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.NewFromSliceGen -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Kdf.NewFromSlice
+import LibsignalBinary.Proofs.SpqrV1.Kdf.NewFromSliceGen
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudgetAux
+import LibsignalBinary.Proofs.ConsumeMessageKey.CoupledCompress256Sat
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.DefsSat
 import LibsignalBinary.Proofs.SpqrV1.Kdf.FinalizeFixedGen
+import LibsignalBinary.Proofs.SpqrV1.Kdf.NewFromSliceSat
 import LibsignalBinary.Proofs.SpqrV1.Kdf.NewFromSliceSegsExact
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Block `402` (`new_from_slice [local#3]`) `RunsToVm` Bridge (`HkdfToSliceOkBudgetNfsSat`)
@@ -40,11 +43,11 @@ namespace LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOkBudgetNfsSat
 
 open Arm64 ProofLib
 open CryptoGames.HMAC (ShaState chunks64 sha256IV sha256With)
-open CryptoGames.LibsignalSession (Crypto)
+open CryptoGames.LibsignalSession (Crypto ShaCompress)
 open CryptoVerification
   (IsLsBlockProg LibsignalCodeLoaded LibsignalHooks LibsignalPlacement
    blkLib_eq_402 blkPC_379 blkPl_379 blkPl_402 libsignalSessionLib lsProg_402 lsmpl)
-open CryptoVerification.LibsignalHmac (compress256Hook shaStateBytes)
+open CryptoVerification.LibsignalHmac (shaStateBytes)
 open CryptoVerification.LibsignalSession.CryptoHmacSha256
   (agreesOutside_nfsPrologueMem agreesOutside_toFrame nfsPrologueMem nfsSp sha256With_length)
 open CryptoVerification.LibsignalTripleRatchet
@@ -60,24 +63,26 @@ open CryptoVerification.SpqrV1.Kdf
 open CryptoVerification.SpqrV1.Kdf.NewFromSlice3GenProof
   (NfsGt64Common StateG1 StateG2 StateG2a agreesOutside_nfsZeroMem agreesOutside_sub_176_288
    nfs3CodeFakeB nfs_chunks_1_to_4_of_G4_placed nfs_seg0_pro_gt64_placed
-   nfs_seg0b1_gt64_placed nfs_seg0c_gt64_placed nfs_seg0d1_gt64_placed nfsZeroMem)
+   nfs_seg0b1_gt64_placed nfs_seg0d1_gt64_placed nfsZeroMem)
 open CryptoVerification.SpqrV1.Kdf.NewFromSlice3Proof
-  (nfs3PlacedFakeB nfs3PlacedFakeB_add_iv
-   nfs_second_half_placed spqrSha256IVAddr)
+  (nfs3PlacedFakeB nfs3PlacedFakeB_add_iv spqrSha256IVAddr)
 open LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudgetAux
   (stripExecOutside_readBytes stripExecOutside_readable stripExecOutside_rw unstrip_frame)
+open LibsignalBinary.Proofs.ConsumeMessageKey.CoupledCompress256Sat
+  (hmacNoMemsetExcHooksSat hmacNoMemsetExcHooksSat_compress hmacNoMemsetExcHooksSat_memcpy)
 open LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.DefsSat
   (s2Frame_of_hmacFrame s2Frame_readBytes_eq_of_readable s2Frame_readable_of_readable)
 open LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOkBudgetVmSat
-  (RunsToVm blk402_noMsr blk402_noSvc0 hmacNoMemsetExcHooks hmacNoMemsetExcHooks_compress
-   hmacNoMemsetExcHooks_memcpy lift_block_to_379_vm placed_memset_budget_optAlloc_steps_sat
-   stripS_hmacSt stripS_mem stripS_read64 stripS_read8 stripS_readBytes)
+  (RunsToVm blk402_noMsr blk402_noSvc0 lift_block_to_379_vm
+   placed_memset_budget_optAlloc_steps_sat stripS_hmacSt stripS_mem stripS_read64 stripS_read8
+   stripS_readBytes unstrip_s2Frame)
+open LibsignalBinary.Proofs.SpqrV1.Kdf.NewFromSliceSat (nfs_seg0c_gt64_placed_exact)
 open LibsignalBinary.Proofs.SpqrV1.Kdf.NewFromSliceSegsExact
-  (new_from_slice3_placed_run_exact nfs_seg0a_gt64_placed_exact)
+  (new_from_slice3_placed_run_exact nfs_second_half_placed_exact nfs_seg0a_gt64_placed_exact)
 open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat
   (CallingConventionPreserved.x23 CallingConventionPreserved.x24
    CallingConventionPreserved.x25 CallingConventionPreserved.x26
-   HkdfPlacedHooksExactSat)
+   HkdfPlacedHooksExactSat HookSatCompress256)
 open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget (sessionMemsetRegionBudgetSpec)
 
 private theorem trRunsTo_of_hmac {prog : Program} {s : State} {P : State → Prop}
@@ -85,7 +90,7 @@ private theorem trRunsTo_of_hmac {prog : Program} {s : State} {P : State → Pro
     RunsTo prog s P :=
   fun hL => let ⟨s', hs, htr, hv, hp, hL'⟩ := h hL; ⟨s', hs, ⟨htr, hv⟩, hp, hL'⟩
 
-/-- `≤ 64`-byte Block `402` (`new_from_slice3`) lifted onto Block `379`'s `RunsToVm`. -/
+/-- `≤ 64`-byte Block `402` (`new_from_slice3`) lifted onto Block `379`'s `RunsToVm` (`720` B stack). -/
 theorem nfs_le64_vm [LibsignalPlacement] {C : Crypto} {H : LibsignalHooks}
     [hH : HkdfPlacedHooksExactSat C.F H] {s : State}
     (hcl : LibsignalCodeLoaded lsmpl s.mem)
@@ -93,19 +98,19 @@ theorem nfs_le64_vm [LibsignalPlacement] {C : Crypto} {H : LibsignalHooks}
     (hlen : (s.readReg64 .x2).toNat ≤ 64)
     (hiv : s.mem.readBytes spqrSha256IVAddr 32 = shaStateBytes sha256IV)
     (hread_iv : s.mem.Readable spqrSha256IVAddr 32)
-    (hdisj_iv_stack : DisjointRegions spqrSha256IVAddr 32 (s.sp - 544#64) 544)
+    (hdisj_iv_stack : DisjointRegions spqrSha256IVAddr 32 (s.sp - 720#64) 720)
     (hrw_out : RW s.mem (s.readReg64 .x0) 0x98)
-    (hrw_stack : RW s.mem (s.sp - 544#64) 544)
-    (hdisj_out_stack : DisjointRegions (s.readReg64 .x0) 0x98 (s.sp - 544#64) 544)
+    (hrw_stack : RW s.mem (s.sp - 720#64) 720)
+    (hdisj_out_stack : DisjointRegions (s.readReg64 .x0) 0x98 (s.sp - 720#64) 720)
     (hread_key : s.mem.Readable (s.readReg64 .x1) (s.readReg64 .x2).toNat)
     (hdisj_key_stack : (s.readReg64 .x2).toNat = 0 ∨
-      DisjointRegions (s.readReg64 .x1) (s.readReg64 .x2).toNat (s.sp - 544#64) 544)
+      DisjointRegions (s.readReg64 .x1) (s.readReg64 .x2).toNat (s.sp - 720#64) 720)
     (hal : (s.sp &&& 0b1111#64) = 0#64) :
     let key := s.mem.readBytes (s.readReg64 .x1) (s.readReg64 .x2).toNat
     RunsToVm ((blkPC_379).rebase (blkPl_379).base H) s fun s' =>
       s'.pc = s.readReg64 .lr ∧ s'.status = .Running ∧ CalleeSaved s s' ∧
       s'.mem.read64 (s.readReg64 .x0) = 0#64 ∧ HmacSt s'.mem (s.readReg64 .x0 + 8#64) C.F key [] ∧
-      Frame s.mem s'.mem [(s.readReg64 .x0, 0x98), (s.sp - 544#64, 544)] := by
+      S2Frame s.mem s'.mem [(s.readReg64 .x0, 0x98), (s.sp - 720#64, 720)] := by
   intro key
   have heq402 : ∀ X, lsProg_402 X = libsignalSessionLib.blockProgram lsmpl 402 X :=
     fun X => IsLsBlockProg.eq_blockProgram (prog := lsProg_402 X)
@@ -115,11 +120,11 @@ theorem nfs_le64_vm [LibsignalPlacement] {C : Crypto} {H : LibsignalHooks}
   have hP := heq402 H ▸ trRunsTo_of_hmac (new_from_slice3_placed_run_exact (F := C.F)
     hH.memcpy hH.compress256 hpc hstat hlen hiv hread_iv hdisj_iv_stack
     hrw_out hrw_stack hdisj_out_stack hread_key hdisj_key_stack hal)
-  have hQ := heq402 (hmacNoMemsetExcHooks C.F H s.mem kp402) ▸
+  have hQ := heq402 (hmacNoMemsetExcHooksSat C.F H s.mem kp402) ▸
     trRunsTo_of_hmac (new_from_slice3_placed_run_exact (F := C.F)
     (s₀ := ProofLib.stripS kp402 s)
-    (hmacNoMemsetExcHooks_memcpy hH.memcpy s.mem kp402)
-    (hmacNoMemsetExcHooks_compress C.F H s.mem kp402)
+    (hmacNoMemsetExcHooksSat_memcpy hH.memcpy s.mem kp402)
+    (hmacNoMemsetExcHooksSat_compress hH.compress256 s.mem kp402)
     ((by cases s; rfl : (ProofLib.stripS kp402 s).pc = s.pc).trans hpc)
     ((by cases s; rfl : (ProofLib.stripS kp402 s).status = s.status).trans hstat)
     (by rw [hr]; exact hlen)
@@ -142,7 +147,7 @@ theorem nfs_le64_vm [LibsignalPlacement] {C : Crypto} {H : LibsignalHooks}
   rw [stripS_mem, stripS_mem, hr .x0, hsp_s] at hfr'
   refine ⟨(by cases s; cases sf; exact hpc'), (by cases sf; exact hst'),
     ⟨(by cases s; cases sf; exact hcs'.1), fun r hrm => ?_⟩,
-    htag', hhm', unstrip_frame hfr' hvm.perm_eq⟩
+    htag', hhm', unstrip_s2Frame hfr' hvm.perm_eq⟩
   have := hcs'.2 r hrm; cases s; cases sf; exact this
 
 /-! ## `> 64`-Byte `nfsZeroMem` & `S2Frame` Helpers -/
@@ -322,7 +327,7 @@ private structure G2aUnstripped [LibsignalPlacement] (F : ShaState → List (Bit
   sp_align : (nfsSp s₀ &&& 0b1111#64) = 0#64
   x29_eq : s.readReg64 .x29 = nfsSp s₀ + 464#64
   x19_eq : s.readReg64 .x19 = s₀.readReg64 .x0
-  x22_eq : s.readReg64 .x22 = nfs3PlacedFakeB + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)
+  x22_eq : s.readReg64 .x22 = nfs3PlacedFakeB + bv% (601056 + 64)
   x25_eq : s.readReg64 .x25 = s₀.readReg64 .x25
   x26_eq : s.readReg64 .x26 = s₀.readReg64 .x26
   x27_eq : s.readReg64 .x27 = s₀.readReg64 .x27
@@ -330,13 +335,14 @@ private structure G2aUnstripped [LibsignalPlacement] (F : ShaState → List (Bit
     nfsSp s₀ + 288#64 + BitVec.ofNat 64 (key.length - 64 * (key.length / 64)) + 1#64
   x1_eq : (s.readReg64 .x1).truncate 8 = 0#8
   x2_eq : (s.readReg64 .x2).toNat = 63 - (key.length - 64 * (key.length / 64))
-  lr_eq : s.readReg64 .lr = nfs3CodeFakeB + bv% (ls_off% CryptoVerification.SpqrV1.Kdf.newFromSlice3Name + 220)
+  lr_eq : s.readReg64 .lr = nfs3CodeFakeB + bv% (400296 + 220)
   x20_eq : s.readReg64 .x20 = nfsSp s₀ + 352#64
   x21_eq : s.readReg64 .x21 = BitVec.ofNat 64 (key.length / 64)
   x23_eq : s.readReg64 .x23 = BitVec.ofNat 64 (key.length - 64 * (key.length / 64))
   x24_eq : s.readReg64 .x24 = BitVec.ofNat 64 (63 - (key.length - 64 * (key.length / 64)))
-  frame_stk : Frame s₀.mem s.mem [(s₀.sp - 544#64, 544)]
-  read_out : ∀ x, OutsideRegion (nfsSp s₀ + 176#64) 288 x → s.mem.read8 x = (nfsZeroMem s₀).read8 x
+  frame_stk : S2Frame s₀.mem s.mem [(s₀.sp - 720#64, 720)]
+  read_out : ∀ x, InRegion (nfsSp s₀) 544 x →
+    OutsideRegion (nfsSp s₀ + 176#64) 288 x → s.mem.read8 x = (nfsZeroMem s₀).read8 x
   mem_copy : ∃ m_copy : Memory,
     (∀ a, s.mem.read8 a =
       (m_copy.write8 (nfsSp s₀ + 288#64 + BitVec.ofNat 64 (key.length - 64 * (key.length / 64))) 128#8).read8 a) ∧
@@ -346,29 +352,32 @@ private structure G2aUnstripped [LibsignalPlacement] (F : ShaState → List (Bit
       shaStateBytes ((chunks64 (key.take (64 * (key.length / 64)))).foldl F sha256IV)
 
 private theorem g2aUnstripped_of_stateG2a [LibsignalPlacement]
-    {F : ShaState → List (BitVec 8) → ShaState} {key : List (BitVec 8)} {s₀ s : State}
-    (hs : StateG2a nfs3CodeFakeB F key s₀ s nfs3PlacedFakeB (lsmpl.ρ lsMemsetSym)) :
+    {F : ShaState → List (BitVec 8) → ShaState} {key : List (BitVec 8)} {s₀ s₁ s : State}
+    (hs2_01 : S2Frame s₀.mem s₁.mem [(s₀.sp - 720#64, 720)])
+    (hrout_01 : ∀ x, InRegion (nfsSp s₀) 544 x →
+      OutsideRegion (nfsSp s₀ + 176#64) 288 x → s₁.mem.read8 x = (nfsZeroMem s₀).read8 x)
+    (hs : StateG2a nfs3CodeFakeB F key (s₀.setMem s₁.mem) s nfs3PlacedFakeB (lsmpl.ρ lsMemsetSym)) :
     G2aUnstripped F key s₀ s := by
   rcases hs with ⟨hpc, ⟨hstat, hsp, hal, hx29, hx19, hx22, hx25, hx26, hx27, hag_z⟩,
     hx0, hx1, hx2, hlr, hx20, hx21, hx23, hx24, ⟨m_copy, hmem, ht, hst0⟩⟩
-  have hf1 : Frame s₀.mem (nfsPrologueMem s₀) [(s₀.sp - 544#64, 544)] :=
-    Frame.mono (agreesOutside_toFrame (agreesOutside_nfsPrologueMem s₀)) fun a ha r hr => by
+  have hnsp : nfsSp (s₀.setMem s₁.mem) = nfsSp s₀ := by cases s₀; rfl
+  rw [hnsp] at hsp hal hx29 hx0 hx20 hag_z hmem ht hst0
+  have hs2_12_544 : S2Frame s₁.mem s.mem [(s₀.sp - 544#64, 544)] :=
+    s2Frame_stack_of_g2a (s₀ := s₀.setMem s₁.mem) (by rwa [hnsp])
+  have hs2_12 : S2Frame s₁.mem s.mem [(s₀.sp - 720#64, 720)] :=
+    hs2_12_544.mono fun a ha r hr => by
       simp only [List.mem_singleton] at hr; subst hr
-      have ha' := ha (s₀.sp - 544#64, 544) (by simp)
-      dsimp only [nfsSp, OutsideRegion] at ha' ⊢; bv_omega
-  have hf2 : Frame (nfsPrologueMem s₀) (nfsZeroMem s₀) [(s₀.sp - 544#64, 544)] :=
-    Frame.mono (agreesOutside_toFrame (agreesOutside_nfsZeroMem s₀)) fun a ha r hr => by
-      simp only [List.mem_singleton] at hr; subst hr
-      have ha' := ha (s₀.sp - 544#64, 544) (by simp)
-      dsimp only [nfsSp, OutsideRegion] at ha' ⊢; bv_omega
-  have hf3 : Frame (nfsZeroMem s₀) s.mem [(s₀.sp - 544#64, 544)] :=
-    Frame.mono (agreesOutside_toFrame hag_z) fun a ha r hr => by
-      simp only [List.mem_singleton] at hr; subst hr
-      have ha' := ha (s₀.sp - 544#64, 544) (by simp)
-      dsimp only [nfsSp, OutsideRegion] at ha' ⊢; bv_omega
-  exact ⟨hpc, hstat, hsp, hal, hx29, hx19, hx22, hx25, hx26, hx27,
-    hx0, hx1, hx2, hlr, hx20, hx21, hx23, hx24, (hf1.trans hf2).trans hf3,
-    fun x hx => hag_z.1 x hx, ⟨m_copy, fun a => by rw [hmem], ht, hst0⟩⟩
+      have ha' := ha (s₀.sp - 720#64, 720) (by simp)
+      dsimp only [OutsideRegion] at ha' ⊢; clear * - ha'; bv_omega
+  refine ⟨hpc, hstat, hsp, hal, hx29, (by cases s₀; exact hx19), hx22,
+    (by cases s₀; exact hx25), (by cases s₀; exact hx26), (by cases s₀; exact hx27),
+    hx0, hx1, hx2, hlr, hx20, hx21, hx23, hx24, hs2_01.trans hs2_12,
+    fun x hin hx => ?_, ⟨m_copy, fun a => by rw [hmem], ht, hst0⟩⟩
+  rw [hag_z.1 x hx]
+  rcases (fixedWriteAt_nfsZeroMem s₀ x).idem with hid | ⟨b, hb⟩
+  · exact (hid s₁.mem).trans (hrout_01 x hin hx)
+  · have hset_self : s₀.setMem s₀.mem = s₀ := by cases s₀; rfl
+    exact (hb s₁.mem).trans (hset_self ▸ (hb s₀.mem).symm)
 
 private theorem unstrip_g2a [LibsignalPlacement] {F : ShaState → List (BitVec 8) → ShaState}
     {key : List (BitVec 8)} {kp : BitVec 64 → Bool} {s₀ sf : State}
@@ -388,9 +397,9 @@ private theorem unstrip_g2a [LibsignalPlacement] {F : ShaState → List (BitVec 
     (by cases sf; exact hx0), (by cases sf; exact hx1), (by cases sf; exact hx2),
     (by cases sf; exact hlr), (by cases sf; exact hx20), (by cases sf; exact hx21),
     (by cases sf; exact hx23), (by cases sf; exact hx24),
-    unstrip_frame hfr hvm.perm_eq,
-    fun x hx => ?_, ⟨m_copy, fun a => ?_, ht, hst0⟩⟩
-  · have h1 := hrout x hx
+    unstrip_s2Frame hfr hvm.perm_eq,
+    fun x hin hx => ?_, ⟨m_copy, fun a => ?_, ht, hst0⟩⟩
+  · have h1 := hrout x hin hx
     rwa [stripS_read8, nfsZeroMem_stripS_read8] at h1
   · have h1 := hmc8 a
     rwa [stripS_read8] at h1
@@ -401,7 +410,7 @@ private theorem nfs_rw_pad_dst {m : Memory} {sp : BitVec 64} {tlen : Nat}
   h.sub (by bv_omega)
 
 private theorem nfs_out_pad_dst_of_stack {sp0 a : BitVec 64} {tlen : Nat}
-    (ht : tlen < 64) (ha : OutsideRegion (sp0 - 544#64) 544 a) :
+    (ht : tlen < 64) (ha : OutsideRegion (sp0 - 720#64) 720 a) :
     OutsideRegion (sp0 - 544#64 + 288#64 + BitVec.ofNat 64 tlen + 1#64) (63 - tlen) a := by
   dsimp only [OutsideRegion] at ha ⊢; bv_omega
 
@@ -465,18 +474,71 @@ private theorem stateG2_stripS [LibsignalPlacement] {F : ShaState → List (BitV
       buf_eq := by rw [hnsp, stripS_readBytes]; exact hg2.buf_eq
       st0_bytes := by rw [hnsp, stripS_readBytes]; exact hg2.st0_bytes }
 
+private theorem nfs_from_g2_run_exact [LibsignalPlacement] {F : ShaCompress}
+    {X : LibsignalHooks} (h_c256 : HookSatCompress256 X lsCompress256Sym F)
+    {s₀' s_g2 : State} {key : List (BitVec 8)}
+    (hg2 : StateG2 nfs3CodeFakeB F key s₀' s_g2 nfs3PlacedFakeB)
+    (hkey_gt : 64 < key.length) (hkey_lt : key.length < 2 ^ 63)
+    (hiv : s₀'.mem.readBytes spqrSha256IVAddr 32 = shaStateBytes sha256IV)
+    (hread_iv : s₀'.mem.Readable spqrSha256IVAddr 32)
+    (hdisj_iv_stack : DisjointRegions spqrSha256IVAddr 32 (s₀'.sp - 720#64) 720)
+    (hrw_out : RW s₀'.mem (s₀'.readReg64 .x0) 0x98)
+    (hrw_stack : RW s₀'.mem (s₀'.sp - 720#64) 720)
+    (hdisj_out_stack : DisjointRegions (s₀'.readReg64 .x0) 0x98 (s₀'.sp - 720#64) 720)
+    (hal : (s₀'.sp &&& 0b1111#64) = 0#64) :
+    RunsTo (lsProg_402 X) s_g2 fun s' =>
+      s'.pc = s₀'.readReg64 .lr ∧ s'.status = .Running ∧ CalleeSaved s₀' s' ∧
+      s'.mem.read64 (s₀'.readReg64 .x0) = 0#64 ∧
+      HmacSt s'.mem (s₀'.readReg64 .x0 + 8#64) F (sha256With F key) [] ∧
+      S2Frame s₀'.mem s'.mem [(s₀'.readReg64 .x0, 0x98), (s₀'.sp - 720#64, 720)] := by
+  have hk_le : (sha256With F key).length ≤ 64 := by
+    have : (sha256With F key).length = 32 := sha256With_length F key; omega
+  refine trRunsTo_of_hmac ?_
+  refine (nfs_seg0c_gt64_placed_exact h_c256 hg2 hkey_gt hkey_lt hrw_stack).trans
+    fun s_g3 ⟨hs2_23, hg3⟩ => ?_
+  set s₀3 := s₀'.setMem s_g3.mem
+  have hrw_stk3_720 : RW s₀3.mem (s₀3.sp - 720#64) 720 := hs2_23.rw_of_rw _ _ hrw_stack
+  have hrw_stk3_544 : RW s₀3.mem (s₀3.sp - 544#64) 544 := hrw_stk3_720.sub (by clear * -; bv_omega)
+  have hrw_out3 : RW s₀3.mem (s₀3.readReg64 .x0) 0x98 := hs2_23.rw_of_rw _ _ hrw_out
+  have hread_iv3 : s₀3.mem.Readable spqrSha256IVAddr 32 :=
+    s2Frame_readable_of_readable hs2_23 hread_iv
+  have hiv3 : s₀3.mem.readBytes spqrSha256IVAddr 32 = shaStateBytes sha256IV :=
+    (s2Frame_readBytes_eq_of_readable hs2_23 hread_iv (by decide) fun r hr => by
+      simp only [List.mem_singleton] at hr; subst hr
+      exact hdisj_iv_stack.symm).trans hiv
+  have hdisj_iv_544 : DisjointRegions spqrSha256IVAddr 32 (s₀3.sp - 544#64) 544 := by
+    clear * - hdisj_iv_stack
+    simp only [s₀3, State.sp_setMem, DisjointRegions] at hdisj_iv_stack ⊢; bv_omega
+  have hdisj_out_544 : DisjointRegions (s₀3.readReg64 .x0) 0x98 (s₀3.sp - 544#64) 544 := by
+    clear * - hdisj_out_stack
+    simp only [s₀3, State.readReg64_setMem, State.sp_setMem, DisjointRegions] at hdisj_out_stack ⊢
+    bv_omega
+  refine (nfs_seg0d1_gt64_placed hg3 hrw_stk3_544).trans fun s_g4 hg4 => ?_
+  refine (nfs_chunks_1_to_4_of_G4_placed hg4 hk_le hiv3 hread_iv3 hdisj_iv_544
+    hrw_out3 hrw_stk3_544 hdisj_out_544 hal).trans
+    fun s1 ⟨hpc1, hstat1, hR1, hM1, hx0_1, hx1_1, hx2_1, hist1, hblk1, hivsw1⟩ => ?_
+  refine (nfs_second_half_placed_exact (s₀ := s₀3) h_c256 hk_le hal hdisj_iv_stack hrw_stk3_720
+    hpc1 hstat1 hR1 hM1 hx0_1 hx1_1 hx2_1 hist1 hblk1 hivsw1).mono
+    fun s' ⟨hpc', hstat', hcs', hm0', hhm', hs2_3'⟩ => ?_
+  have hs2_pre3 : S2Frame s₀'.mem s_g3.mem [(s₀'.readReg64 .x0, 0x98), (s₀'.sp - 720#64, 720)] :=
+    hs2_23.mono fun a ha _ hr => by
+      simp only [List.mem_singleton] at hr; subst hr; exact ha _ (by simp)
+  exact ⟨hpc', hstat',
+    ⟨hcs'.1, fun r hrm => (hcs'.2 r hrm).trans (by rfl)⟩,
+    hm0', hhm', hs2_pre3.trans hs2_3'⟩
+
 private theorem nfs_gt64_chunkC [LibsignalPlacement] {C : Crypto} {H : LibsignalHooks}
     [hH : HkdfPlacedHooksExactSat C.F H] {s₀ s_g2 : State} {key : List (BitVec 8)}
     (hcl_g2 : LibsignalCodeLoaded lsmpl s_g2.mem)
     (hkey_gt : 64 < key.length) (hkey_lt : key.length < 2 ^ 63)
     (hiv : s₀.mem.readBytes spqrSha256IVAddr 32 = shaStateBytes sha256IV)
     (hread_iv : s₀.mem.Readable spqrSha256IVAddr 32)
-    (hdisj_iv_stack : DisjointRegions spqrSha256IVAddr 32 (s₀.sp - 544#64) 544)
+    (hdisj_iv_stack : DisjointRegions spqrSha256IVAddr 32 (s₀.sp - 720#64) 720)
     (hrw_out : RW s₀.mem (s₀.readReg64 .x0) 0x98)
-    (hrw_stack : RW s₀.mem (s₀.sp - 544#64) 544)
-    (hdisj_out_stack : DisjointRegions (s₀.readReg64 .x0) 0x98 (s₀.sp - 544#64) 544)
+    (hrw_stack : RW s₀.mem (s₀.sp - 720#64) 720)
+    (hdisj_out_stack : DisjointRegions (s₀.readReg64 .x0) 0x98 (s₀.sp - 720#64) 720)
     (hal : (s₀.sp &&& 0b1111#64) = 0#64)
-    (hs2_g2 : S2Frame s₀.mem s_g2.mem [(s₀.sp - 544#64, 544)])
+    (hs2_g2 : S2Frame s₀.mem s_g2.mem [(s₀.sp - 720#64, 720)])
     (hrout_g2 : ∀ x, InRegion (nfsSp s₀) 544 x →
       OutsideRegion (nfsSp s₀ + 176#64) 288 x → s_g2.mem.read8 x = (nfsZeroMem s₀).read8 x)
     (hg2 : StateG2 nfs3CodeFakeB C.F key (s₀.setMem s_g2.mem) s_g2 nfs3PlacedFakeB) :
@@ -484,15 +546,14 @@ private theorem nfs_gt64_chunkC [LibsignalPlacement] {C : Crypto} {H : Libsignal
       s'.pc = s₀.readReg64 .lr ∧ s'.status = .Running ∧ CalleeSaved s₀ s' ∧
       s'.mem.read64 (s₀.readReg64 .x0) = 0#64 ∧
       HmacSt s'.mem (s₀.readReg64 .x0 + 8#64) C.F (sha256With C.F key) [] ∧
-      S2Frame s₀.mem s'.mem [(s₀.readReg64 .x0, 0x98), (s₀.sp - 544#64, 544)] := by
-  have hk_le : (sha256With C.F key).length ≤ 64 := by
-    have : (sha256With C.F key).length = 32 := sha256With_length C.F key; omega
+      S2Frame s₀.mem s'.mem [(s₀.readReg64 .x0, 0x98), (s₀.sp - 720#64, 720)] := by
   have heq402 : ∀ X, lsProg_402 X = libsignalSessionLib.blockProgram lsmpl 402 X :=
     fun X => IsLsBlockProg.eq_blockProgram (prog := lsProg_402 X)
   let kp402 := ProofLib.progKeep (libsignalSessionLib.blockProgram lsmpl 402 H)
-  have hc256Q := hmacNoMemsetExcHooks_compress C.F H s_g2.mem kp402
+  have hc256Q := hmacNoMemsetExcHooksSat_compress hH.compress256 s_g2.mem kp402
   let s₀' := s₀.setMem s_g2.mem
-  have hrw_stack' : RW s₀'.mem (s₀'.sp - 544#64) 544 := hs2_g2.rw_of_rw _ _ hrw_stack
+  have hrw_stack' : RW s₀'.mem (s₀'.sp - 720#64) 720 := hs2_g2.rw_of_rw _ _ hrw_stack
+  have hrw_stack544' : RW s₀'.mem (s₀'.sp - 544#64) 544 := hrw_stack'.sub (by clear * -; bv_omega)
   have hrw_out' : RW s₀'.mem (s₀'.readReg64 .x0) 0x98 := hs2_g2.rw_of_rw _ _ hrw_out
   have hread_iv_g2 : s₀'.mem.Readable spqrSha256IVAddr 32 :=
     s2Frame_readable_of_readable hs2_g2 hread_iv
@@ -502,53 +563,40 @@ private theorem nfs_gt64_chunkC [LibsignalPlacement] {C : Crypto} {H : Libsignal
       exact hdisj_iv_stack.symm).trans hiv
   have hg2_strip : StateG2 nfs3CodeFakeB C.F key
       (ProofLib.stripS kp402 s₀') (ProofLib.stripS kp402 s_g2) nfs3PlacedFakeB :=
-    stateG2_stripS kp402 hrout_g2 hrw_stack' hg2
-  have hP := heq402 H ▸ trRunsTo_of_hmac (
-    (nfs_seg0c_gt64_placed hH.compress256 hg2 hkey_gt hkey_lt hrw_stack').trans fun _ hg3 =>
-    (nfs_seg0d1_gt64_placed hg3 hrw_stack').trans fun _ hg4 =>
-    (nfs_chunks_1_to_4_of_G4_placed hg4 hk_le hiv_g2 hread_iv_g2 hdisj_iv_stack
-      hrw_out' hrw_stack' hdisj_out_stack hal).trans
-      fun _ ⟨hpc1, hstat1, hR1, hM1, hx0_1, hx1_1, hx2_1, hist1, hblk1, hivsw1⟩ =>
-    nfs_second_half_placed (s₀ := s₀') hH.compress256 hk_le hal
-      hpc1 hstat1 hR1 hM1 hx0_1 hx1_1 hx2_1 hist1 hblk1 hivsw1)
+    stateG2_stripS kp402 hrout_g2 hrw_stack544' hg2
+  have hP := heq402 H ▸ nfs_from_g2_run_exact hH.compress256 hg2 hkey_gt hkey_lt
+    hiv_g2 hread_iv_g2 hdisj_iv_stack hrw_out' hrw_stack' hdisj_out_stack hal
   have hr0' : ∀ r, (ProofLib.stripS kp402 s₀').readReg64 r = s₀.readReg64 r := fun _ => by cases s₀; rfl
   have hsp0' : (ProofLib.stripS kp402 s₀').sp = s₀.sp := by cases s₀; rfl
   have hm0' : (ProofLib.stripS kp402 s₀').mem = ProofLib.stripExecOutside kp402 s_g2.mem := by
     cases s₀; rfl
-  have hQ := heq402 (hmacNoMemsetExcHooks C.F H s_g2.mem kp402) ▸ trRunsTo_of_hmac (
-    (nfs_seg0c_gt64_placed hc256Q hg2_strip hkey_gt hkey_lt
-      (by rw [hm0', hsp0']; exact stripExecOutside_rw kp402 s_g2.mem _ _ hrw_stack')).trans fun _ hg3 =>
-    (nfs_seg0d1_gt64_placed hg3
-      (by rw [hm0', hsp0']; exact stripExecOutside_rw kp402 s_g2.mem _ _ hrw_stack')).trans fun _ hg4 =>
-    (nfs_chunks_1_to_4_of_G4_placed hg4 hk_le
+  have hQ := heq402 (hmacNoMemsetExcHooksSat C.F H s_g2.mem kp402) ▸
+    nfs_from_g2_run_exact hc256Q hg2_strip hkey_gt hkey_lt
       (by rw [hm0', stripExecOutside_readBytes]; exact hiv_g2)
       (by rw [hm0']; exact stripExecOutside_readable kp402 s_g2.mem _ _ hread_iv_g2)
       (by rw [hsp0']; exact hdisj_iv_stack)
       (by rw [hm0', hr0' .x0]; exact stripExecOutside_rw kp402 s_g2.mem _ _ hrw_out')
       (by rw [hm0', hsp0']; exact stripExecOutside_rw kp402 s_g2.mem _ _ hrw_stack')
       (by rw [hr0' .x0, hsp0']; exact hdisj_out_stack)
-      (by rw [hsp0']; exact hal)).trans
-      fun _ ⟨hpc1, hstat1, hR1, hM1, hx0_1, hx1_1, hx2_1, hist1, hblk1, hivsw1⟩ =>
-    nfs_second_half_placed (s₀ := ProofLib.stripS kp402 s₀') hc256Q hk_le (by rw [hsp0']; exact hal)
-      hpc1 hstat1 hR1 hM1 hx0_1 hx1_1 hx2_1 hist1 hblk1 hivsw1)
+      (by rw [hsp0']; exact hal)
   refine (lift_block_to_379_vm (Pj := lsProg_402 H)
     blkLib_eq_402 blk402_noSvc0 blk402_noMsr (by decide) (by decide) hcl_g2 hP hQ
     (fun _ hs => hs.2.1) (fun _ hs => hs.2.1)
     fun sf hvm ⟨hpc', hst', hcs', htag', hhm', hfr'⟩ => ?_).mono
     fun sf ⟨hpc', hst', hcs', htag', hhm', hfr'⟩ => by
-      have hs2_pre2 : S2Frame s₀.mem s_g2.mem [(s₀.readReg64 .x0, 0x98), (s₀.sp - 544#64, 544)] :=
+      have hs2_pre2 : S2Frame s₀.mem s_g2.mem [(s₀.readReg64 .x0, 0x98), (s₀.sp - 720#64, 720)] :=
         hs2_g2.mono fun a ha _ hr => by
           simp only [List.mem_singleton] at hr; subst hr; exact ha _ (by simp)
       exact ⟨hpc', hst',
         ⟨hcs'.1, fun r hrm => (hcs'.2 r hrm).trans (by cases s₀; rfl)⟩,
-        htag', hhm', hs2_pre2.trans (s2Frame_of_hmacFrame hfr')⟩
+        htag', hhm', hs2_pre2.trans hfr'⟩
   rw [hr0' .x0, stripS_read64] at htag'
   change HmacSt _ _ _ _ _ at hhm'
   rw [hr0' .x0, stripS_hmacSt] at hhm'
   rw [hm0', stripS_mem, hr0' .x0, hsp0'] at hfr'
   refine ⟨(by cases s₀; cases sf; exact hpc'), (by cases sf; exact hst'),
     ⟨(by cases s₀; cases sf; exact hcs'.1), fun r hrm => ?_⟩,
-    htag', hhm', unstrip_frame hfr' hvm.perm_eq⟩
+    htag', hhm', unstrip_s2Frame hfr' hvm.perm_eq⟩
   have := hcs'.2 r hrm; cases s₀; cases sf; exact this
 
 private theorem nfs_gt64_vm [LibsignalPlacement] {C : Crypto} {H : LibsignalHooks}
@@ -559,81 +607,87 @@ private theorem nfs_gt64_vm [LibsignalPlacement] {C : Crypto} {H : LibsignalHook
     (hgt : 64 < (s₀.readReg64 .x2).toNat) (hlt : (s₀.readReg64 .x2).toNat < 2 ^ 63)
     (hiv : s₀.mem.readBytes spqrSha256IVAddr 32 = shaStateBytes sha256IV)
     (hread_iv : s₀.mem.Readable spqrSha256IVAddr 32)
-    (hdisj_iv_stack : DisjointRegions spqrSha256IVAddr 32 (s₀.sp - 544#64) 544)
+    (hdisj_iv_stack : DisjointRegions spqrSha256IVAddr 32 (s₀.sp - 720#64) 720)
     (hrw_out : RW s₀.mem (s₀.readReg64 .x0) 0x98)
-    (hrw_stack : RW s₀.mem (s₀.sp - 544#64) 544)
-    (hdisj_out_stack : DisjointRegions (s₀.readReg64 .x0) 0x98 (s₀.sp - 544#64) 544)
+    (hrw_stack : RW s₀.mem (s₀.sp - 720#64) 720)
+    (hdisj_out_stack : DisjointRegions (s₀.readReg64 .x0) 0x98 (s₀.sp - 720#64) 720)
     (hread_key : s₀.mem.Readable (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat)
-    (hdisj_key_stack : DisjointRegions (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat (s₀.sp - 544#64) 544)
+    (hdisj_key_stack : DisjointRegions (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat (s₀.sp - 720#64) 720)
     (hal : (s₀.sp &&& 0b1111#64) = 0#64) :
     let key := s₀.mem.readBytes (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat
     RunsToVm ((blkPC_379).rebase (blkPl_379).base H) s₀ fun s' =>
       s'.pc = s₀.readReg64 .lr ∧ s'.status = .Running ∧ CalleeSaved s₀ s' ∧
       s'.mem.read64 (s₀.readReg64 .x0) = 0#64 ∧
       HmacSt s'.mem (s₀.readReg64 .x0 + 8#64) C.F (sha256With C.F key) [] ∧
-      S2Frame s₀.mem s'.mem [(s₀.readReg64 .x0, 0x98), (s₀.sp - 544#64, 544)] := by
+      S2Frame s₀.mem s'.mem [(s₀.readReg64 .x0, 0x98), (s₀.sp - 720#64, 720)] := by
   intro key
+  have hrw_stack544 : RW s₀.mem (s₀.sp - 544#64) 544 := hrw_stack.sub (by clear * -; bv_omega)
   have hkey_len : key.length = (s₀.readReg64 .x2).toNat := Memory.readBytes_length _ _ _
   have hkey_gt : 64 < key.length := by omega
   have hkey_lt : key.length < 2 ^ 63 := by omega
-  have hk_le : (sha256With C.F key).length ≤ 64 := by
-    have : (sha256With C.F key).length = 32 := sha256With_length C.F key; omega
   have heq402 : ∀ X, lsProg_402 X = libsignalSessionLib.blockProgram lsmpl 402 X :=
     fun X => IsLsBlockProg.eq_blockProgram (prog := lsProg_402 X)
   let kp402 := ProofLib.progKeep (libsignalSessionLib.blockProgram lsmpl 402 H)
-  have hmcQ := hmacNoMemsetExcHooks_memcpy (F := C.F) hH.memcpy s₀.mem kp402
-  have hc256Q := hmacNoMemsetExcHooks_compress C.F H s₀.mem kp402
+  have hmcQ := hmacNoMemsetExcHooksSat_memcpy (F := C.F) hH.memcpy s₀.mem kp402
+  have hc256Q := hmacNoMemsetExcHooksSat_compress hH.compress256 s₀.mem kp402
   have hr0 : ∀ r, (ProofLib.stripS kp402 s₀).readReg64 r = s₀.readReg64 r := fun _ => by cases s₀; rfl
   have hsp0 : (ProofLib.stripS kp402 s₀).sp = s₀.sp := by cases s₀; rfl
   have hkey_s : (ProofLib.stripS kp402 s₀).mem.readBytes
       ((ProofLib.stripS kp402 s₀).readReg64 .x1) ((ProofLib.stripS kp402 s₀).readReg64 .x2).toNat = key := by
     rw [hr0 .x1, hr0 .x2, stripS_readBytes]
-  have hiv' : s₀.mem.readBytes (nfs3PlacedFakeB + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 = shaStateBytes sha256IV := by
+  have hiv' : s₀.mem.readBytes (nfs3PlacedFakeB + bv% (601056 + 64)) 32 = shaStateBytes sha256IV := by
     rwa [nfs3PlacedFakeB_add_iv]
-  have hread_iv' : s₀.mem.Readable (nfs3PlacedFakeB + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 := by
+  have hread_iv' : s₀.mem.Readable (nfs3PlacedFakeB + bv% (601056 + 64)) 32 := by
     rwa [nfs3PlacedFakeB_add_iv]
-  have hdisj_iv_stack' : DisjointRegions (nfs3PlacedFakeB + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 (s₀.sp - 544#64) 544 := by
+  have hdisj_iv_stack' : DisjointRegions (nfs3PlacedFakeB + bv% (601056 + 64)) 32 (s₀.sp - 720#64) 720 := by
     rwa [nfs3PlacedFakeB_add_iv]
   -- Chunk A (`s₀ -> s_g2a` before `memset`)
   have hA : RunsToVm ((blkPC_379).rebase (blkPl_379).base H) s₀ (G2aUnstripped C.F key s₀) := by
     have hP := heq402 H ▸ trRunsTo_of_hmac (
-      (nfs_seg0_pro_gt64_placed (H := H) hpc hstat hgt hrw_stack hal).trans fun _ hg0 =>
+      (nfs_seg0_pro_gt64_placed (H := H) hpc hstat hgt hrw_stack544 hal).trans fun _ hg0 =>
       (nfs_seg0a_gt64_placed_exact hH.memcpy hH.compress256 hg0 hgt hlt hiv' hread_iv'
-        hdisj_iv_stack' hrw_stack hread_key hdisj_key_stack).trans fun _ hg1 =>
-      (nfs_seg0b1_gt64_placed hg1 hkey_gt hkey_lt hrw_stack).mono fun _ h2a =>
-        g2aUnstripped_of_stateG2a h2a)
-    have hQ := heq402 (hmacNoMemsetExcHooks C.F H s₀.mem kp402) ▸ trRunsTo_of_hmac (
-      (nfs_seg0_pro_gt64_placed (H := hmacNoMemsetExcHooks C.F H s₀.mem kp402) (s₀ := ProofLib.stripS kp402 s₀)
+        hdisj_iv_stack' hrw_stack hread_key hdisj_key_stack).trans
+        fun s1 ⟨hs2_01, hrout_01, hg1⟩ =>
+      (nfs_seg0b1_gt64_placed hg1 hkey_gt hkey_lt
+        ((hs2_01.rw_of_rw _ _ hrw_stack).sub (by simp only [State.sp_setMem]; clear * -; bv_omega))).mono
+        fun _ h2a => g2aUnstripped_of_stateG2a hs2_01 hrout_01 h2a)
+    have hrw_s720 : RW (ProofLib.stripS kp402 s₀).mem ((ProofLib.stripS kp402 s₀).sp - 720#64) 720 := by
+      rw [stripS_mem, hsp0]; exact stripExecOutside_rw kp402 s₀.mem _ _ hrw_stack
+    have hQ := heq402 (hmacNoMemsetExcHooksSat C.F H s₀.mem kp402) ▸ trRunsTo_of_hmac (
+      (nfs_seg0_pro_gt64_placed (H := hmacNoMemsetExcHooksSat C.F H s₀.mem kp402)
+        (s₀ := ProofLib.stripS kp402 s₀)
         ((by cases s₀; rfl : (ProofLib.stripS kp402 s₀).pc = s₀.pc).trans hpc)
         ((by cases s₀; rfl : (ProofLib.stripS kp402 s₀).status = s₀.status).trans hstat)
         (by rw [hr0 .x2]; exact hgt)
-        (by rw [stripS_mem, hsp0]; exact stripExecOutside_rw kp402 s₀.mem _ _ hrw_stack)
+        (hrw_s720.sub (by clear * -; bv_omega))
         (by rw [hsp0]; exact hal)).trans fun _ hg0 =>
       (nfs_seg0a_gt64_placed_exact hmcQ hc256Q hg0
         (by rw [hr0 .x2]; exact hgt) (by rw [hr0 .x2]; exact hlt)
         (by rw [stripS_readBytes]; exact hiv')
         (by rw [stripS_mem]; exact stripExecOutside_readable kp402 s₀.mem _ _ hread_iv')
         (by rw [hsp0]; exact hdisj_iv_stack')
-        (by rw [stripS_mem, hsp0]; exact stripExecOutside_rw kp402 s₀.mem _ _ hrw_stack)
+        hrw_s720
         (by rw [stripS_mem, hr0 .x1, hr0 .x2]; exact stripExecOutside_readable kp402 s₀.mem _ _ hread_key)
-        (by rw [hr0 .x1, hr0 .x2, hsp0]; exact hdisj_key_stack)).trans fun _ hg1 =>
+        (by rw [hr0 .x1, hr0 .x2, hsp0]; exact hdisj_key_stack)).trans
+        fun s1 ⟨hs2_01, hrout_01, hg1⟩ =>
       (nfs_seg0b1_gt64_placed (key := key) (hkey_s ▸ hg1) hkey_gt hkey_lt
-        (by rw [stripS_mem, hsp0]; exact stripExecOutside_rw kp402 s₀.mem _ _ hrw_stack)).mono
-        fun _ h2a => g2aUnstripped_of_stateG2a h2a)
+        ((hs2_01.rw_of_rw _ _ hrw_s720).sub (by simp only [State.sp_setMem]; clear * -; bv_omega))).mono
+        fun _ h2a => g2aUnstripped_of_stateG2a hs2_01 hrout_01 h2a)
     exact lift_block_to_379_vm (Pj := lsProg_402 H)
       blkLib_eq_402 blk402_noSvc0 blk402_noMsr (by decide) (by decide) hcl hP hQ
       (fun _ hs => hs.status) (fun _ hs => hs.status)
       fun sf hvm hq => unstrip_g2a hvm hq
   -- Chunk B (`s_g2a -> s_g2` across `bl memset`)
   have hB : RunsToVm ((blkPC_379).rebase (blkPl_379).base H) s₀ fun s_g2 =>
-      S2Frame s₀.mem s_g2.mem [(s₀.sp - 544#64, 544)] ∧
+      S2Frame s₀.mem s_g2.mem [(s₀.sp - 720#64, 720)] ∧
       (∀ x, InRegion (nfsSp s₀) 544 x →
         OutsideRegion (nfsSp s₀ + 176#64) 288 x → s_g2.mem.read8 x = (nfsZeroMem s₀).read8 x) ∧
       StateG2 nfs3CodeFakeB C.F key (s₀.setMem s_g2.mem) s_g2 nfs3PlacedFakeB := by
     refine hA.trans_full fun s h2a _ hL379 => ?_
     rcases h2a with ⟨hpc_s, hstat_s, hsp_s, hal_nfs, hx29, hx19, hx22, hx25, hx26, hx27,
       hx0, hx1, hx2, hlr, hx20, hx21, hx23, hx24, hfr_stk, hrout, ⟨m_copy, hmc8, htail_copy, hst0_copy⟩⟩
-    have hRW_s : s.mem.RW (nfsSp s₀) 544 := (hfr_stk.rw_iff _ _).mpr hrw_stack
+    have hRW_s720 : s.mem.RW (s₀.sp - 720#64) 720 := hfr_stk.rw_of_rw _ _ hrw_stack
+    have hRW_s : s.mem.RW (nfsSp s₀) 544 := hRW_s720.sub (by dsimp only [nfsSp]; clear * -; bv_omega)
     set tail := key.drop (64 * (key.length / 64))
     have htail_len : key.length - 64 * (key.length / 64) = tail.length := by simp [tail]
     rw [htail_len] at hx0 hx2 hx23 hx24 hmc8 htail_copy
@@ -646,11 +700,12 @@ private theorem nfs_gt64_vm [LibsignalPlacement] {C : Crypto} {H : LibsignalHook
       placed_memset_budget_optAlloc_steps_sat
         (prog := (blkPC_379).rebase (blkPl_379).base H) (i := 379)
         hMemsetVm hstat_s hpc_s hx0 hx1 hx2 hlr hsp_al_s hrw_dst
-    have hs2_s' : S2Frame s₀.mem s'.mem [(s₀.sp - 544#64, 544)] := by
-      refine (s2Frame_of_hmacFrame hfr_stk).trans (hs2_ms.mono fun a ha r hr => ?_)
+    have hs2_s' : S2Frame s₀.mem s'.mem [(s₀.sp - 720#64, 720)] := by
+      refine hfr_stk.trans (hs2_ms.mono fun a ha r hr => ?_)
       simp only [List.mem_singleton] at hr; subst hr
-      exact nfs_out_pad_dst_of_stack htail_lt (ha (s₀.sp - 544#64, 544) (by simp))
-    have hrw_s' : s'.mem.RW (nfsSp s₀) 544 := hs2_s'.rw_of_rw _ _ hrw_stack
+      exact nfs_out_pad_dst_of_stack htail_lt (ha (s₀.sp - 720#64, 720) (by simp))
+    have hrw_s' : s'.mem.RW (nfsSp s₀) 544 :=
+      (hs2_s'.rw_of_rw _ _ hrw_stack).sub (by dsimp only [nfsSp]; clear * -; bv_omega)
     have hP_stk : ∀ a, InRegion (nfsSp s₀) 544 a →
         (s.mem.perm a).r = true ∧ s.mem.isLazyFree a = false := fun a ha => by
       obtain ⟨hp, hlf⟩ := Memory.permNoLazy_eq_some_rw_iff.mp (hRW_s a ha)
@@ -681,7 +736,7 @@ private theorem nfs_gt64_vm [LibsignalPlacement] {C : Crypto} {H : LibsignalHook
       have hout_dst : OutsideRegion dst (63 - tail.length) x :=
         nfs_out_pad_dst_of_176 htail_lt hx
       exact (hs2_ms.1 x hpr hlf fun r hr => by
-        simp only [List.mem_singleton] at hr; subst hr; exact hout_dst).trans (hrout x hx)
+        simp only [List.mem_singleton] at hr; subst hr; exact hout_dst).trans (hrout x hin hx)
     have htail_len' : tail.length = key.length - 64 * (key.length / 64) := by simp [tail]
     exact ⟨s', hsteps_ms, hvm_ms, hacp_ms, htr_ms, hv_ms,
       ⟨hs2_s', hrout_s',
@@ -706,7 +761,7 @@ private theorem nfs_gt64_vm [LibsignalPlacement] {C : Crypto} {H : LibsignalHook
       hdisj_iv_stack hrw_out hrw_stack hdisj_out_stack hal hs2_g2 hrout_g2 hg2
 
 /-- Arbitrary-length (`< 2 ^ 63`) Block `402` (`new_from_slice3`) lifted onto Block `379`'s
-`RunsToVm` under `[HkdfPlacedHooksExactSat C.F H]`. -/
+`RunsToVm` under `[HkdfPlacedHooksExactSat C.F H]` (`720` B stack). -/
 theorem nfs_gen_vm [LibsignalPlacement] {C : Crypto} {H : LibsignalHooks}
     [hH : HkdfPlacedHooksExactSat C.F H]
     (hMemsetVm : HookSat H lsMemsetSym sessionMemsetRegionBudgetSpec) {s : State}
@@ -715,28 +770,26 @@ theorem nfs_gen_vm [LibsignalPlacement] {C : Crypto} {H : LibsignalHooks}
     (hlt : (s.readReg64 .x2).toNat < 2 ^ 63)
     (hiv : s.mem.readBytes spqrSha256IVAddr 32 = shaStateBytes sha256IV)
     (hread_iv : s.mem.Readable spqrSha256IVAddr 32)
-    (hdisj_iv_stack : DisjointRegions spqrSha256IVAddr 32 (s.sp - 544#64) 544)
+    (hdisj_iv_stack : DisjointRegions spqrSha256IVAddr 32 (s.sp - 720#64) 720)
     (hrw_out : RW s.mem (s.readReg64 .x0) 0x98)
-    (hrw_stack : RW s.mem (s.sp - 544#64) 544)
-    (hdisj_out_stack : DisjointRegions (s.readReg64 .x0) 0x98 (s.sp - 544#64) 544)
+    (hrw_stack : RW s.mem (s.sp - 720#64) 720)
+    (hdisj_out_stack : DisjointRegions (s.readReg64 .x0) 0x98 (s.sp - 720#64) 720)
     (hread_key : s.mem.Readable (s.readReg64 .x1) (s.readReg64 .x2).toNat)
     (hdisj_key_stack : (s.readReg64 .x2).toNat = 0 ∨
-      DisjointRegions (s.readReg64 .x1) (s.readReg64 .x2).toNat (s.sp - 544#64) 544)
+      DisjointRegions (s.readReg64 .x1) (s.readReg64 .x2).toNat (s.sp - 720#64) 720)
     (hal : (s.sp &&& 0b1111#64) = 0#64) :
     let key := s.mem.readBytes (s.readReg64 .x1) (s.readReg64 .x2).toNat
     RunsToVm ((blkPC_379).rebase (blkPl_379).base H) s fun s' =>
       s'.pc = s.readReg64 .lr ∧ s'.status = .Running ∧ CalleeSaved s s' ∧
       s'.mem.read64 (s.readReg64 .x0) = 0#64 ∧
       HmacSt s'.mem (s.readReg64 .x0 + 8#64) C.F (effectiveHmacKey C.F key) [] ∧
-      S2Frame s.mem s'.mem [(s.readReg64 .x0, 0x98), (s.sp - 544#64, 544)] := by
+      S2Frame s.mem s'.mem [(s.readReg64 .x0, 0x98), (s.sp - 720#64, 720)] := by
   intro key
   have hkey_len : key.length = (s.readReg64 .x2).toNat := Memory.readBytes_length _ _ _
   by_cases hle : (s.readReg64 .x2).toNat ≤ 64
   · rw [effectiveHmacKey_of_le C.F (by omega)]
-    exact (nfs_le64_vm (C := C) hcl hpc hstat hle hiv hread_iv hdisj_iv_stack
-      hrw_out hrw_stack hdisj_out_stack hread_key hdisj_key_stack hal).mono
-      fun s' ⟨hpc', hst', hcs', hm0', hhm', hfr'⟩ =>
-        ⟨hpc', hst', hcs', hm0', hhm', s2Frame_of_hmacFrame hfr'⟩
+    exact nfs_le64_vm (C := C) hcl hpc hstat hle hiv hread_iv hdisj_iv_stack
+      hrw_out hrw_stack hdisj_out_stack hread_key hdisj_key_stack hal
   · have hgt : 64 < (s.readReg64 .x2).toNat := by omega
     have hgt' : 64 < key.length := by omega
     have heff : effectiveHmacKey C.F key = sha256With C.F key := by

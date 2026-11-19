@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecv
-public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecv -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Statements
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.RecvPlacedCodeSym
@@ -26,7 +26,7 @@ Relocatable `[LibsignalPlacement]` widened `spqr::recv` contract (`spqrRecvPlace
 Segment S5 seams, and root compositions for Blocks `130` (`HookRng`) and `433` (`CoinsRng`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -78,7 +78,7 @@ local notation "recvResultAtW_pub" =>
     spqrRecvResultAt A r res
 
 /-- Relocatable `spqr::recv` specification with the widened key layout (`recvResultAtW`). -/
-def spqrRecvPlacedSpecW (A : RustAlloc) (S : SpqrModel) : Spec (VecArg × VecArg × BitVec 64) where
+@[expose] def spqrRecvPlacedSpecW (A : RustAlloc) (S : SpqrModel) : Spec (VecArg × VecArg × BitVec 64) where
   pre := fun (st, msg, ret) s =>
     ⌜s.readReg64 .x0 = st.v ∧ s.readReg64 .x1 = msg.v ∧ s.readReg64 .x8 = ret⌝ ∗
       st.at A ∗ msg.at A ∗ memRegion ret 48 ∗ logOff tryDecryptPlacedImg ∗ A.pool ∗
@@ -94,7 +94,7 @@ end
 
 /-- Relocatable `spqrRecvPlacedSpecW` with `tokenInitPlacedAt` framed and the bounds of
     `spqrRecvPlacedSpecXT` (`st < 2^32`, `msg < 2^40`, `spqrRecvStack ≤ sp`). -/
-def spqrRecvPlacedSpecWT (A : RustAlloc) (S : SpqrModel) : Spec (VecArg × VecArg × BitVec 64) :=
+@[expose] def spqrRecvPlacedSpecWT (A : RustAlloc) (S : SpqrModel) : Spec (VecArg × VecArg × BitVec 64) :=
   { spqrRecvPlacedSpecW A S with
     pre := fun x s =>
       ⌜x.1.bytes.length < 2 ^ 32 ∧ x.2.1.bytes.length < 2 ^ 40 ∧ spqrRecvStack ≤ s.sp.toNat⌝ ∗
@@ -109,7 +109,7 @@ private theorem recvResultAtX_entails_recvResultAtW_placed (F : ShaCompress) (K 
   exact recvResultAtX_entails_recvResultAt A ret F K st msg
 
 /-- Raw relocatable `spqr::recv` specification over `SpqrRecvModel` (`recvResultExactKeyAt`). -/
-def spqrRecvPlacedRawSpecX (A : RustAlloc) (S : SpqrRecvModel) :
+@[expose] def spqrRecvPlacedRawSpecX (A : RustAlloc) (S : SpqrRecvModel) :
     Spec (VecArg × VecArg × BitVec 64) where
   pre := fun (st, msg, ret) s =>
     ⌜s.readReg64 .x0 = st.v ∧ s.readReg64 .x1 = msg.v ∧ s.readReg64 .x8 = ret⌝ ∗
@@ -124,7 +124,7 @@ def spqrRecvPlacedRawSpecX (A : RustAlloc) (S : SpqrRecvModel) :
       anyHeap
 
 /-- Relocatable `spqr::recv` specification with `tokenInitPlacedAt` framed and input/stack bounds. -/
-def spqrRecvPlacedSpecXT (A : RustAlloc) (S : SpqrRecvModel) :
+@[expose] def spqrRecvPlacedSpecXT (A : RustAlloc) (S : SpqrRecvModel) :
     Spec (VecArg × VecArg × BitVec 64) :=
   withLsCodeRoLoaded lsmpl
     { spqrRecvPlacedRawSpecX A S with
@@ -171,7 +171,7 @@ theorem spqrRecvPlacedOkWT_of_v1 {prog : Program} {entry_pc : BitVec 64}
 
 /-- Relocatable Segment S5 seam with `tokenInitPlacedAt` framed and `x.st.pqRatchetState.length < 2^32`
     + `rootStack ≤ s0.sp.toNat`. -/
-def S5SeamPlacedWT (prog : Program) (entry : BitVec 64)
+@[expose] def S5SeamPlacedWT (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel) : Prop :=
   ∀ (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (mkg : MessageKeyGenerator) (draws : Nat)
@@ -866,7 +866,7 @@ theorem pqRecv_549_placed_okWT (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
 
 /-- Relocatable `try_decrypt_with_state` specification with `tokenInitPlacedAt` framed and
     `x.st.pqRatchetState.length < 2 ^ 32`. -/
-def tryDecryptPlacedSpecT (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def tryDecryptPlacedSpecT (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost :=
   { tryDecryptSpecPlaced C A ctl parse S with
     pre := fun x s =>

@@ -14,7 +14,7 @@ import Init.Data.String.Defs
 public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 import ProofLib.SepLogic.WP.StateNorm
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

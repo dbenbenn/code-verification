@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1Placed
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2Placed
@@ -32,7 +32,7 @@ Relocatable symbolic execution of the `Ordering::Less` (`+1076..+1420`) branch o
 (Block `329`), discharging `InitInnerPlacedTail`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -73,7 +73,7 @@ open CryptoVerification.SpqrV1.Top.Recv.Placed
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 attribute [local simp, local arm64_norm, local wp_norm] sp_sub_96_sub_48 hsp_add_544
 

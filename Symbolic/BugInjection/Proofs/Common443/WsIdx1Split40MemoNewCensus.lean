@@ -40,11 +40,8 @@ theorem rVal_rngAt36_inits : ∀ c ∈ (rngAt 36).inits, RVal c := by
 set_option maxRecDepth 200000 in
 theorem rVal_cliCoins2Fast_inits : ∀ c ∈ cliCoins2Fast.inits, RVal c := by
   unfold RVal NonInjOff KdfFree; decide +kernel
-theorem rVal_rngAt36 : RVal (rngAt 36) :=
-  rVal_of_len (by rw [rngAt36_length]; decide) (by rw [rngAt36_length]; decide)
 theorem seg0_35_eq : seg 0 35 = .recv bundle0 :: call0Rng := rfl
 theorem seg35_3_eq : seg 35 3 = [.pt (ptAt 35), .rng (rngAt 36), .send (sendAt 37)] := rfl
-theorem seg38_2_eq : seg 38 2 = [.pt (ptAt 38), .send (sendAt 39)] := rfl
 theorem call0Rng_take_1_bytes : ∀ ev ∈ call0Rng.take 1, DY.Libsignal.Composed.Refinement.eventBytes ev = rngAt 1 := by intro ev hev; rw [call0Rng_take_1_eq, List.mem_singleton] at hev; subst hev; rfl
 theorem call0Rng_drop_33_bytes : ∀ ev ∈ call0Rng.drop 33, DY.Libsignal.Composed.Refinement.eventBytes ev = rngAt 34 := by intro ev hev; rw [call0Rng_drop_33_eq, List.mem_singleton] at hev; subst hev; rfl
 theorem aliceVis_draws_pin_gen {r : Records} {S : Sem} {g : Ghost} {tr₁ : ExecTrace} {a pB : Participant} {o : DY.Libsignal.PQXDH.AliceHandshakeOut} {hb : DY.Libsignal.PQXDH.BundleHandles} {bun b_ek b_dhs : HwBytes} {rs : List MachineEvent} (hvis : List.Forall₂ (EventMatchesEntry compI0 r S g) (.recv bun :: rs) (aliceVis tr₁ (CompPrefixInvAlice.iniAliceStartTr tr₁ a pB o) hb)) (hek_ev : ∀ ev ∈ rs.take 1, DY.Libsignal.Composed.Refinement.eventBytes ev = b_ek) (hdhs_ev : ∀ ev ∈ rs.drop 33, DY.Libsignal.Composed.Refinement.eventBytes ev = b_dhs) : gamma compI0 S g (randTerm tr₁.length 32) = b_ek ∧ gamma compI0 S g (randTerm (tr₁.length + 2) 32) = b_dhs := by
@@ -63,17 +60,6 @@ theorem aliceVis_draws_pin_gen {r : Records} {S : Sem} {g : Ghost} {tr₁ : Exec
       exact ⟨(gamma_of_single rfl rfl hem_ek).trans (hek_ev ev_ek (by simp)),
         (gamma_of_single rfl rfl hem_dhs).trans (hdhs_ev ev_dhs (by simpa using hev_dhs_mem))⟩
 abbrev aliceVis_draws_pin {r : Records} {S : Sem} {g : Ghost} {tr₁ : ExecTrace} {a pB : Participant} {o : DY.Libsignal.PQXDH.AliceHandshakeOut} {hb : DY.Libsignal.PQXDH.BundleHandles} {bun : HwBytes} {rs : List MachineEvent} := @aliceVis_draws_pin_gen r S g tr₁ a pB o hb bun (rngAt 1) (rngAt 34) rs
-theorem encVis_two_pins {i : ExternInterpretation} {r : Records} {S : Sem} {g : Ghost} {tr₃ : ExecTrace} {me : Participant} {sIdx : Nat} {stA : DY.Libsignal.TripleRatchet.TRState} {cl pq e c' : Nat} {pt w : HwBytes} (hm₂ : List.Forall₂ (EventMatchesEntry i r S g) [.pt pt, .send w] (encVis tr₃ (CompPrefixInvEnc.encNextTr tr₃ me sIdx stA cl pq) (some (e, c')) true)) : gamma i S g (randTerm tr₃.length 32) = pt ∧ cl = 0 := by
-  unfold encVis encDraws encSend at hm₂; rw [CompPrefixInvFresh.newRandoms_encNextTr, lastSent_encNextTr] at hm₂
-  by_cases hcl : (cl != 0) = true
-  · have hlen := hm₂.length_eq; simp [hcl] at hlen
-  · refine ⟨gamma_of_single rfl rfl (List.forall₂_cons.mp hm₂).1, ?_⟩
-    rcases Nat.eq_zero_or_pos cl with rfl | hpos
-    · rfl
-    · exact absurd (bne_iff_ne.mpr (Nat.ne_of_gt hpos)) hcl
-theorem gamma_randTerm_zero {S : Sem} {g : Ghost} (idx : Nat) : gamma compI0 S g (randTerm idx 0) = [] := by unfold gamma gamma' randTerm; rw [DY.Bytes.rec_eq (gRandom g) (gAll compI0 S g)]; rfl
-theorem rVal_randTerm_zero {S : Sem} {g : Ghost} (idx : Nat) : RVal (gamma compI0 S g (randTerm idx 0)) := by
-  rw [gamma_randTerm_zero]; exact rVal_of_len (by decide) (by decide)
 theorem mem_inits_tail_of_take {α : Type} :
     ∀ (xs : List α) {n : Nat}, n ≠ 0 → n ≤ xs.length → xs.take n ∈ (List.inits xs).tail
   | [], _, hn0, hle => absurd (Nat.le_zero.mp hle) hn0

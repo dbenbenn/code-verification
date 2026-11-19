@@ -9,27 +9,27 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Delta.AuthDefs
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c5
+import Computational.Proofs.SignalPqxdh.Delta.AuthDefs
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c5
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Delta.Auth.Mono
+import Computational.Proofs.SignalPqxdh.Delta.Auth.Mono
 public import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyAuthDefs
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2b
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC3b
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6b
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c4
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c5
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthHopInterface
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2b
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC3b
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6b
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c1
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c3
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c4
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c5
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopB3
 
 /-!
 # One-key authentication: KEM correctness bad-event monotonicity
@@ -38,7 +38,7 @@ Proves `authCorrMono1Key` (`AuthCorrMonoStmt1Key`), showing that `hasBadAuthKemC
 along `.g3` steps of `pqxdhAuthSendLatchedStageImpl1Key`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

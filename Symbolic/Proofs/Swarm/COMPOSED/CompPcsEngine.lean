@@ -23,7 +23,7 @@ key-schedule invariants, KDF domain separation along `RootDescends`, and dual st
 witness-based attacker-knowledge closures.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -258,7 +258,7 @@ theorem CompRkSteps.to_rootDescends {dh₁ rk₀ rk : Bytes} {d : Nat}
   | @step_succ _ _ _ pk' sk' _ ih => exact .step (theirPk := pk') (ourSk := sk') ih
 
 /-- Step-1 anchored chain-root derivation `CompChainRootFrom1 dh₁ ikm m ck₀`. -/
-def CompChainRootFrom1 (dh₁ ikm : Bytes) (m : Nat) (ck₀ : Bytes) : Prop :=
+@[expose] def CompChainRootFrom1 (dh₁ ikm : Bytes) (m : Nat) (ck₀ : Bytes) : Prop :=
   match m with
   | 0 => ck₀ = (pqxdhKdf ikm).ck
   | 1 => ck₀ = (kdfRk (pqxdhKdf ikm).rk dh₁).2
@@ -314,7 +314,7 @@ theorem CompChainRootFrom1.rootDescends_of_derivesChain_heal {dh₁ ikm ck₀ rk
 /-! ## Witness Closure and Heal-Share Compromise -/
 
 /-- Syntactic shape of keys exposed by Triple Ratchet `exposeKey` / `exposeSkipped` transitions. -/
-def IsScheduleKey (k : Bytes) : Prop :=
+@[expose] def IsScheduleKey (k : Bytes) : Prop :=
   (∃ r p sk, k = (createChain r p sk).1) ∨
   (∃ r p sk, k = (createChain r p sk).2) ∨
   (∃ ikm, k = (pqxdhKdf ikm).ck) ∨
@@ -322,7 +322,7 @@ def IsScheduleKey (k : Bytes) : Prop :=
   (∃ c, k = (kdfCk c).2)
 
 /-- Honest ephemeral DH secret predicate matching `HonestDHKey tr`. -/
-def IsHonestDH (tr : ExecTrace) (d : Bytes) : Prop :=
+@[expose] def IsHonestDH (tr : ExecTrace) (d : Bytes) : Prop :=
   (∃ s i, tr.EventLogged (TREvent.HonestDH s d i)) ∨
   (∃ me st idx, StateStoredAt me st idx tr ∧ st.dhs = d)
 
@@ -632,7 +632,7 @@ theorem PcsWitnessClosureInv.inv_rootDescends_to_heal_dh {EW ClosedW : Bytes →
           .inr
 
 /-- Per-event schedule invariant on `TREvent`. -/
-def CompEventScheduleOKFor (SessionAt : SessionInfo → Nat → Bytes → Bytes → Prop)
+@[expose] def CompEventScheduleOKFor (SessionAt : SessionInfo → Nat → Bytes → Bytes → Prop)
     (_tr : ExecTrace) : TREvent → Prop
   | .MessageKey s .receiver seed _ n rIdx _ =>
     1 ≤ rIdx ∧
@@ -981,7 +981,7 @@ theorem pcsQuery_of_compClosure {MsgEncRand MsgEncWitness Closed ClosedW : Bytes
 /-! ## Reachable Invariant Bundle and Post-Compromise Security -/
 
 /-- Bundled invariants on a reachable composed trace `tr` sufficient for `PCSQuery tr`. -/
-def ReachableCompPCSBundle (tr : ExecTrace) : Prop :=
+@[expose] def ReachableCompPCSBundle (tr : ExecTrace) : Prop :=
   ∃ (SessionAt : SessionInfo → Nat → Bytes → Bytes → Prop)
     (MsgEncRand MsgEncWitness Closed ClosedW : Bytes → Prop),
     (∀ {s doneIdx ikm dh₁}, SessionAt s doneIdx ikm dh₁ →

@@ -15,10 +15,12 @@ import Symbolic.Proofs.TopLevelHelpers.Composed.Cli.ExternWitness
 /-!
 # Satisfiability of the Cryptographic Extern Contracts
 
-Witnesses `CompExternsSatisfiableCli`: there exist an extern interpretation `interp` and CLI hooks
-`W` satisfying `ExternInterpretationTotalOnUsedSymbols`, `ExternContractsHoldCli`, and
-`HooksMatchInterpretation`, showing that the universal `(interp, W)` hypotheses of
-`comp_refines_cli` and `signal_session_secure` are non-vacuous.
+Witnesses `CompExternsSatisfiableCli` and `RealAes256ContractsSatisfiable`: there exist an extern
+interpretation `interp` and CLI hooks `W` satisfying `ExternInterpretationTotalOnUsedSymbols`,
+`ExternContractsHoldCli`, and `HooksMatchPlaced` (`HooksMatchInterpretation` with
+`W.C.E = CryptoGames.AES256.aes256Enc` and `W.C.D = CryptoGames.AES256.aes256Dec`), showing that
+the universal `(interp, W)` hypotheses of `comp_refines_cli_placed` and `signal_session_secure_placed`
+are non-vacuous.
 -/
 
 @[expose] public section
@@ -27,11 +29,16 @@ set_option autoImplicit false
 
 namespace Proven.ExternWitness
 
-open DY.Libsignal.Composed.Refinement.Cli (CompExternsSatisfiableCli)
+open DY.Libsignal.Composed.Refinement.Cli (CompExternsSatisfiableCli RealAes256ContractsSatisfiable)
 
 /-- Joint satisfiability of `ExternInterpretationTotalOnUsedSymbols`, `ExternContractsHoldCli`,
 and `HooksMatchInterpretation`. -/
 theorem comp_externsSatisfiable_cli : CompExternsSatisfiableCli :=
   Symbolic.Proofs.TopLevelHelpers.Composed.Cli.comp_externsSatisfiable_cli_proof
+
+/-- Joint satisfiability of `ExternInterpretationTotalOnUsedSymbols`, `ExternContractsHoldCli`,
+and `HooksMatchPlaced` (`W.C.E = aes256Enc`, `W.C.D = aes256Dec`). -/
+theorem realAes256ContractsSatisfiable_cli : RealAes256ContractsSatisfiable :=
+  Symbolic.Proofs.TopLevelHelpers.Composed.Cli.realAes256ContractsSatisfiable_cli_proof
 
 end Proven.ExternWitness

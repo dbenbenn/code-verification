@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.SignalSession.PqDirNoMatch
-public import LibsignalBinary.Specifications.SignalSession.SmScheme
+public import LibsignalBinary.Proofs.SignalSession.SmScheme
 import all Init.Data.Repr
-public import LibsignalBinary.Proofs.SignalSession.PqStep
+public import LibsignalBinary.Proofs.SignalSession.PqStep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Run
 
 /-!
@@ -24,7 +24,7 @@ preserves pre-key ID lists and candidate paths, so reading back `pqPartyCandidat
 an accepted call recovers `encodeDir W st'` as an exact list equality.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +36,7 @@ open CryptoVerification.E2E CryptoVerification.LibsignalProtoCodec
 /-! ## Candidate file paths and input constructors -/
 
 /-- Candidate relative file paths of a `PqParty` directory, in the order written by `encodeDir`. -/
-def pqPartyCandidatePaths (party : Party)
+@[expose] def pqPartyCandidatePaths (party : Party)
     (spkIds opkIds otkIds lrkIds : List (BitVec 32)) : List String :=
   [addressFile, identityKeyPairFile, registrationIdFile,
    identityFile (partyAddressName party.other),
@@ -46,7 +46,7 @@ def pqPartyCandidatePaths (party : Party)
   otkIds.map oneTimeKyberPreKeyFile ++
   (lrkIds.map fun i => [lastResortKyberPreKeyFile i, baseKeysFile i]).flatten
 
-def pqPartyCandidatePathsOf (st : PqParty) : List String :=
+@[expose] def pqPartyCandidatePathsOf (st : PqParty) : List String :=
   pqPartyCandidatePaths st.party
     (st.signed.map (·.1))
     (st.oneTime.map (·.1))
@@ -54,7 +54,7 @@ def pqPartyCandidatePathsOf (st : PqParty) : List String :=
     (st.kyberLastResort.map (·.1))
 
 /-- Candidate relative file paths of a `PqParty` directory excluding `sessions/<peer>`. -/
-def pqPartyNoSessionPaths (party : Party)
+@[expose] def pqPartyNoSessionPaths (party : Party)
     (spkIds opkIds otkIds lrkIds : List (BitVec 32)) : List String :=
   [addressFile, identityKeyPairFile, registrationIdFile,
    identityFile (partyAddressName party.other)] ++
@@ -63,7 +63,7 @@ def pqPartyNoSessionPaths (party : Party)
   otkIds.map oneTimeKyberPreKeyFile ++
   (lrkIds.map fun i => [lastResortKyberPreKeyFile i, baseKeysFile i]).flatten
 
-def pqPartyNoSessionPathsOf (st : PqParty) : List String :=
+@[expose] def pqPartyNoSessionPathsOf (st : PqParty) : List String :=
   pqPartyNoSessionPaths st.party
     (st.signed.map (·.1))
     (st.oneTime.map (·.1))
@@ -72,24 +72,24 @@ def pqPartyNoSessionPathsOf (st : PqParty) : List String :=
 
 /-- Read back an ordered `(path, bytes)` directory list from an outcome file lookup `fs`, omitting
 missing paths while keeping empty files. -/
-def readBackDir (paths : List String) (fs : String → Option (List (BitVec 8))) :
+@[expose] def readBackDir (paths : List String) (fs : String → Option (List (BitVec 8))) :
     List (String × List (BitVec 8)) :=
   paths.filterMap fun p => (fs p).map fun bs => (p, bs)
 
 /-- File-level `Inputs` constructor from an on-disk `dirFiles` list. -/
-def cliPqRawInputs (cmd : Cmd) (dirFiles extra : List (String × List (BitVec 8)))
+@[expose] def cliPqRawInputs (cmd : Cmd) (dirFiles extra : List (String × List (BitVec 8)))
     (coins stdin : List (BitVec 8)) : Inputs :=
   { argv := cmd.argv
     dirs := partyDirs ++ (match cmd with | .init _ dir => [dir] | _ => [])
     files := dirFiles ++ extra ++ [(coinsFile, coins)]
     stdin := stdin }
 
-def cliPqRecvInputsFromFiles (party : Party) (dirFiles : List (String × List (BitVec 8)))
+@[expose] def cliPqRecvInputsFromFiles (party : Party) (dirFiles : List (String × List (BitVec 8)))
     (c : List (BitVec 8)) (rc : BitVec 256) : Inputs :=
   cliPqRawInputs (.recv (partyAddress party.other)) dirFiles [] (HMAC.keyToBytes32 rc) c
 
 /-- Pre-key ID distinctness component of `PqxdhPartyInSpecDomain`. -/
-def PqDirIdsNodup (st : PqParty) : Prop :=
+@[expose] def PqDirIdsNodup (st : PqParty) : Prop :=
   (st.signed.map (·.1)).Nodup ∧
   (st.oneTime.map (·.1)).Nodup ∧
   (st.kyberOneTime.map (·.1)).Nodup ∧
@@ -581,7 +581,7 @@ theorem encodeRecordX_isEmpty_eq_false (E : Party → RecordExtras)
   rfl
 
 /-- Splice `rec` in place of `st.session` inside `encodeDir W st`. -/
-def cliPqDirRawSpec (W : PEParams) (st : PqParty) (rec : List (BitVec 8)) :
+@[expose] def cliPqDirRawSpec (W : PEParams) (st : PqParty) (rec : List (BitVec 8)) :
     List (String × List (BitVec 8)) :=
   let hdrOnly : PqParty :=
     { st with session := none, signed := [], oneTime := [], kyberOneTime := [],
@@ -591,7 +591,7 @@ def cliPqDirRawSpec (W : PEParams) (st : PqParty) (rec : List (BitVec 8)) :
     (encodeDir W { st with session := none, peerId := none }).drop 3
 
 /-- Extract `(sessionBytes, stdout)` on exit code `0`. -/
-def cliPqAfterSpec (P : Party) : Option Outcome → Option (List (BitVec 8) × List (BitVec 8))
+@[expose] def cliPqAfterSpec (P : Party) : Option Outcome → Option (List (BitVec 8) × List (BitVec 8))
   | some (.exited 0 out fs) => some ((fs (sessionFile (partyAddress P.other))).getD [], out)
   | _ => none
 

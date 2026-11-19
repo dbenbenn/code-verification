@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.SignalSessionIoPlacedObj
+public import GeneratedLean.SignalSessionIoPlacedObj -- proof-setup: allow-public-import
 public import VerifiedLibraries.RustStd.Spec
 public import VerifiedLibraries.RustStd.Proofs.ExecSeg
 public import VerifiedLibraries.RustStd.Proofs.FinishGrow
@@ -25,7 +25,7 @@ lifter (`sepWP_seg_cliIo_block_pure`), `cliIoWithCodeLoaded` wrappers, and gener
 fetches for blocks `0..4` of `CryptoVerification.signalSessionIoMultiLib`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -50,7 +50,7 @@ class CliIoPlacement where
 abbrev cliIoMpl [CliIoPlacement] : MultiPlacement := CliIoPlacement.mpl
 
 /-- `P` installs no extern hooks inside code block `j` of `signalSessionIoMultiLib`. -/
-def CliIoBlockNoExtern (mpl : MultiPlacement) (P : Program) (j : Nat) : Prop :=
+@[expose] def CliIoBlockNoExtern (mpl : MultiPlacement) (P : Program) (j : Nat) : Prop :=
   ∀ off : Nat, off < (signalSessionIoMultiLib.blockLib j).text.code.length →
     P.externAt? (mpl.base j + BitVec.ofNat 64 off) = none
 
@@ -276,7 +276,7 @@ theorem sepWP_seg_cliIo_block_pure {mpl : MultiPlacement} {P : Program}
     exact False.elim hf
 
 /-- Wrap `spec` with `signalSessionIoMultiLib.CodeLoaded mpl` in both `pre` and `post`. -/
-def cliIoWithCodeLoaded {α : Type} (mpl : MultiPlacement) (spec : Spec α) : Spec α :=
+@[expose] def cliIoWithCodeLoaded {α : Type} (mpl : MultiPlacement) (spec : Spec α) : Spec α :=
   { signalSessionIoMultiLib.withCodeLoaded mpl spec with
     post := fun x s0 sf => ⌜signalSessionIoMultiLib.CodeLoaded mpl sf.mem⌝ ∗ spec.post x s0 sf }
 
@@ -342,12 +342,12 @@ theorem cliIoFinishGrow_lookup :
 /-! ## 4. Per-Block Placement Projections & Fetch Generation (`0..4`) -/
 
 -- Block 0: `signal_session_io::read_stdin` (`436` B / `109` insns, `[0x0 → 0x1b0]`)
-def cliIoLib00 : PlacedLib := signalSessionIoMultiLib.blockLib 0
-def cliIoPl00 [CliIoPlacement] : Placement :=
+@[expose] def cliIoLib00 : PlacedLib := signalSessionIoMultiLib.blockLib 0
+@[expose] def cliIoPl00 [CliIoPlacement] : Placement :=
   signalSessionIoMultiLib.blockPlacement CliIoPlacement.mpl 0
 theorem cliIoPlaceable00 [CliIoPlacement] : cliIoLib00.Placeable cliIoPl00 :=
   signalSessionIoMultiLib.placeable_blockLib (by rw [cliIoBlocks_len]; decide) CliIoPlacement.placeable
-def cliIoPC00 [CliIoPlacement] : Program := cliIoLib00.program cliIoPl00
+@[expose] def cliIoPC00 [CliIoPlacement] : Program := cliIoLib00.program cliIoPl00
 
 def cliIoProg00 : Program := { code := cliIoLib00.text.code, symbols := cliIoLib00.text.symbols }
 def cliIoTree00 : WordTree := word_tree_of% cliIoProg00
@@ -423,12 +423,12 @@ theorem cliIoBlockNoSvc0_02 :
   rfl_kernel
 
 -- Block 3: `signal_session_io::read_file` (`572` B / `143` insns, `[0x0 → 0x238]`)
-def cliIoLib03 : PlacedLib := signalSessionIoMultiLib.blockLib 3
-def cliIoPl03 [CliIoPlacement] : Placement :=
+@[expose] def cliIoLib03 : PlacedLib := signalSessionIoMultiLib.blockLib 3
+@[expose] def cliIoPl03 [CliIoPlacement] : Placement :=
   signalSessionIoMultiLib.blockPlacement CliIoPlacement.mpl 3
 theorem cliIoPlaceable03 [CliIoPlacement] : cliIoLib03.Placeable cliIoPl03 :=
   signalSessionIoMultiLib.placeable_blockLib (by rw [cliIoBlocks_len]; decide) CliIoPlacement.placeable
-def cliIoPC03 [CliIoPlacement] : Program := cliIoLib03.program cliIoPl03
+@[expose] def cliIoPC03 [CliIoPlacement] : Program := cliIoLib03.program cliIoPl03
 
 def cliIoProg03 : Program := { code := cliIoLib03.text.code, symbols := cliIoLib03.text.symbols }
 def cliIoTree03 : WordTree := word_tree_of% cliIoProg03
@@ -450,12 +450,12 @@ theorem cliIoBlockNoSvc0_03 :
   rfl_kernel
 
 -- Block 4: `<alloc::raw_vec::RawVecInner>::finish_grow` (`168` B / `42` insns, `[0x0 → 0xa4]`)
-def cliIoLib04 : PlacedLib := signalSessionIoMultiLib.blockLib 4
-def cliIoPl04 [CliIoPlacement] : Placement :=
+@[expose] def cliIoLib04 : PlacedLib := signalSessionIoMultiLib.blockLib 4
+@[expose] def cliIoPl04 [CliIoPlacement] : Placement :=
   signalSessionIoMultiLib.blockPlacement CliIoPlacement.mpl 4
 theorem cliIoPlaceable04 [CliIoPlacement] : cliIoLib04.Placeable cliIoPl04 :=
   signalSessionIoMultiLib.placeable_blockLib (by rw [cliIoBlocks_len]; decide) CliIoPlacement.placeable
-def cliIoPC04 [CliIoPlacement] : Program := cliIoLib04.program cliIoPl04
+@[expose] def cliIoPC04 [CliIoPlacement] : Program := cliIoLib04.program cliIoPl04
 
 def cliIoProg04 : Program := { code := cliIoLib04.text.code, symbols := cliIoLib04.text.symbols }
 def cliIoTree04 : WordTree := word_tree_of% cliIoProg04
@@ -480,7 +480,7 @@ theorem cliIoBlockNoSvc0_04 :
 
 /-- Block selector for the 3 unhooked `signalSessionIoMultiLib` read blocks (`read_stdin` `0`,
     `read_file` `3`, and `<alloc::raw_vec::RawVecInner>::finish_grow` `4`). -/
-def cliIoReadsKeep (i : Nat) : Bool :=
+@[expose] def cliIoReadsKeep (i : Nat) : Bool :=
   i == 0 || i == 3 || i == 4
 
 /-- Block-subset `CodeLoaded` for `signalSessionIoMultiLib` on `{0, 3, 4}`
@@ -568,7 +568,7 @@ theorem sepWP_seg_cliIo_block_pure_reads {mpl : MultiPlacement} {P : Program}
     exact False.elim hf
 
 /-- Wrap `spec` with `CliIoReadsCodeLoaded mpl` in both `pre` and `post`. -/
-def cliIoWithReadsCodeLoaded {α : Type} (mpl : MultiPlacement) (spec : Spec α) : Spec α :=
+@[expose] def cliIoWithReadsCodeLoaded {α : Type} (mpl : MultiPlacement) (spec : Spec α) : Spec α :=
   { signalSessionIoMultiLib.withCodeLoadedWhere cliIoReadsKeep mpl spec with
     post := fun x s0 sf => ⌜CliIoReadsCodeLoaded mpl sf.mem⌝ ∗ spec.post x s0 sf }
 

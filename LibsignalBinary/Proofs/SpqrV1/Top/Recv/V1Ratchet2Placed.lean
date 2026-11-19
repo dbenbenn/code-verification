@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExit
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet2
@@ -23,7 +23,7 @@ Relocatable pre/post `<Message>::deserialize` steppers (`+1532..+1568`) and `.ro
 lemmas for `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.Recv
 
@@ -192,43 +192,5 @@ theorem step_post_msgDeserialize_ok_1556_placed (ext : String → Option (State 
     (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
 
 /-! ## 2. Placed `.rodata` Exposure Lemmas -/
-
-theorem spqrRecvRoPlacedAt_expose_statesFromPb :
-    spqrRecvRoPlacedAt ⊢
-      statesFromPbJumpTablePlacedAt ∗
-      (∃∗ P_ro : SepProp, ⌜statesFromPbJumpTablePlacedAt ∗ P_ro ⊢ spqrRecvRoPlacedAt⌝ ∗ P_ro) := by
-  unfold spqrRecvRoPlacedAt
-  refine Entails.trans
-    (Entails.of_eq (show
-      Prost.MessageMerge.v1StateJumpTablesPlacedAt ∗
-        statesFromPbJumpTablePlacedAt ∗
-        statesRecvRoPlacedAt ∗
-        statesIntoPbJumpTablePlacedAt =
-      statesFromPbJumpTablePlacedAt ∗
-        (Prost.MessageMerge.v1StateJumpTablesPlacedAt ∗
-          statesRecvRoPlacedAt ∗
-          statesIntoPbJumpTablePlacedAt) by ac_rfl)) ?_
-  refine sepConj_mono_right ?_
-  refine Entails.sepExists_right _ (Entails.pure_right ?_ (Entails.refl _))
-  exact Entails.of_eq (by ac_rfl)
-
-theorem spqrRecvRoPlacedAt_expose_statesRecv :
-    spqrRecvRoPlacedAt ⊢
-      statesRecvRoPlacedAt ∗
-      (∃∗ P_ro : SepProp, ⌜statesRecvRoPlacedAt ∗ P_ro ⊢ spqrRecvRoPlacedAt⌝ ∗ P_ro) := by
-  unfold spqrRecvRoPlacedAt
-  refine Entails.trans
-    (Entails.of_eq (show
-      Prost.MessageMerge.v1StateJumpTablesPlacedAt ∗
-        statesFromPbJumpTablePlacedAt ∗
-        statesRecvRoPlacedAt ∗
-        statesIntoPbJumpTablePlacedAt =
-      statesRecvRoPlacedAt ∗
-        (Prost.MessageMerge.v1StateJumpTablesPlacedAt ∗
-          statesFromPbJumpTablePlacedAt ∗
-          statesIntoPbJumpTablePlacedAt) by ac_rfl)) ?_
-  refine sepConj_mono_right ?_
-  refine Entails.sepExists_right _ (Entails.pure_right ?_ (Entails.refl _))
-  exact Entails.of_eq (by ac_rfl)
 
 end CryptoVerification.SpqrV1.Top.Recv

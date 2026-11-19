@@ -9,12 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Phase23PlacedBudgetAux
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Phase23PlacedBudgetAux -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.Basic
 import ProofLib.SepLogic.WP
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Bytes.BytesCodeSym
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23BudgetAux
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `prost::encoding::bytes::merge [local#3]` (Block `290`): Budget-Threaded Phase 2
@@ -24,7 +31,7 @@ under `FitsEnv M lim st (BytesMergeEnv x)` (`RustCliAllocBudget M`), re-exportin
 Phase 3 from `Phase23PlacedBudgetAux`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

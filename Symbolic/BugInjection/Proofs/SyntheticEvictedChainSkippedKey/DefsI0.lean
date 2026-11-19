@@ -35,12 +35,12 @@ open DY.Libsignal.Refinement
   (StubSymbol x25519PublicKeySymbol x25519AgreementSymbol x25519TorsionSymbol
    aesCbcEncryptSymbol aesCbcDecryptSymbol sha256CompressSymbol sha256CompressFunction)
 open DY.Libsignal.PQXDH.Refinement
-  (kyberEncapsSymbol kyberDecapsSymbol toEdwardsSymbol torsionFreeSymbol
+  (kyberEncapsSymbol kyberDecapsSymbol
    mlkem768Encaps1Symbol libcruxHmacSymbol X25519TorsionShiftsRejected)
 open DY.Libsignal.Composed.Refinement (ProtocolSetup OpaqueSymbolSemantics gamma leBytes secretBytes)
 open DY.Libsignal.Composed.Refinement.Cli (ExternContractsHoldCli HooksMatchInterpretation)
 open CryptoVerification.SignalSession (CliHooks)
-open Symbolic.BugInjection (PQXDHSpqrSetup TorsionShiftsRecorded compFits cliCompShape fillFresh)
+open Symbolic.BugInjection (PQXDHSpqrSetup TorsionShiftsRecorded SetupMatches cliCompShape fillFresh)
 open Symbolic.BugInjection.Disproofs.Hyp.FrozenSSC.Interp0
   (bytesToNat compTag4 compDefaultPub compDefaultDh compDefaultSha256 compDefaultHmac
    compDefaultKyberCt compDefaultKyberSs compKyberEncaps compKyberDecaps
@@ -289,10 +289,6 @@ def evictedI0 : ExternInterpretation :=
       match args with | [_, rand] => some (compKyberEncaps rand) | _ => some (compDefaultKyberCt ++ compDefaultKyberSs)
     else if s = kyberDecapsSymbol then
       match args with | [_, ct] => some (compKyberDecaps ct) | _ => some compDefaultKyberSs
-    else if s = toEdwardsSymbol then
-      match args with | [u, [sign]] => some (compToEdwards u sign) | _ => some (List.replicate 160 0#8)
-    else if s = torsionFreeSymbol then
-      match args with | [pt] => some (compTorsionFree pt) | _ => some [0#8]
     else if s = libcruxHmacSymbol then
       match args with | [k, d] => some (compHmac k d) | _ => some (compDefaultHmac [] [])
     else if s = sha256CompressSymbol then
@@ -340,15 +336,6 @@ def evictedHooks0 : CliHooks where
   Q :=
     { F512 := fun st blk =>
         bytesToSha512StateLE (compSha512 (CryptoVerification.E2E.sha512StateBytesLE st) blk)
-      montToEd := fun u sign =>
-        some ⟨compToEdwards u.toList sign, compToEdwards_length u.toList sign⟩
-      compress := fun pt => CryptoVerification.E2E.fitVec 32 (compEdwardsCompress pt.toList)
-      edNeg := fun pt => CryptoVerification.E2E.fitVec 160 (compEdwardsNeg pt.toList)
-      isTorsionFree := fun pt => decide (compTorsionFree pt.toList = [1#8])
-      dsmb := fun a pt b =>
-        CryptoVerification.E2E.fitVec 160 (compDoubleScalarMul a.toList pt.toList b.toList)
-      scalarMod := fun s => CryptoVerification.E2E.fitVec 32 (compScalarModOrder s.toList)
-      scalarWide := fun w => CryptoVerification.E2E.fitVec 32 (compScalarModOrderWide w.toList)
       encaps := fun _ rand =>
         (⟨(compKyberEncaps rand.toList).take 1568, by
             rw [List.length_take, compKyberEncaps_length]; rfl⟩,
@@ -362,13 +349,10 @@ def evictedRecordsI0 (w : PQXDHSpqrSetup) : ProtocolSetup :=
     spkId := w.spkId, kpkId := w.kpkId, opkId := 0, kyberSecB := w.kyberSec, fresh := w.fresh,
     opaqueBytes := gamma evictedI0 w.compSem w.compGhost }
 
-def evictedSem0 : OpaqueSymbolSemantics :=
-  compSemOf evictedI0 (evictedRecordsI0 Symbolic.BugInjection.Synthetic.Witnesses.EvictedChainSkippedKeyCli.setup)
-
-/-- Strengthens `compFits` with `iw.1 = evictedI0`, fresh signing/KEM randomness, torsion-shift
+/-- Strengthens `SetupMatches` with `iw.1 = evictedI0`, fresh signing/KEM randomness, torsion-shift
 laws, and CLI hook agreement. -/
 def evictedCompFitsPinned (iw : cliCompShape.Interp) (r : ProtocolSetup) : Prop :=
-  (compFits Symbolic.BugInjection.Synthetic.Witnesses.EvictedChainSkippedKeyCli.setup iw.1 r ∧
+  (SetupMatches Symbolic.BugInjection.Synthetic.Witnesses.EvictedChainSkippedKeyCli.setup iw.1 r ∧
     iw.1 = evictedI0 ∧
     (secretBytes r 3 = fillFresh 11 64 ∧ secretBytes r 4 = fillFresh 16 64 ∧
       secretBytes r 5 = fillFresh 17 64) ∧

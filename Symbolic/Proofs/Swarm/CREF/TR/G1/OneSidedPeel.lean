@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSkelLocal
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.SpineShapeModKemInv
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSkelLocal -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.SpineShapeModKemInv -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
@@ -34,6 +34,45 @@ import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+import Symbolic.Proofs.Swarm.Leaves.IC13_Stage1Kyber
+import Batteries.Lean.Except
+import Batteries.Tactic.Init
+import Batteries.Tactic.SeqFocus
+import Comparse.Basic
+import Comparse.Formats.Basic
+import Comparse.Formats.Derived
+import DY.ALaCarte.Ordering
+import DY.Actions.Network
+import DY.Actions.PersistentGlobalState
+import DY.Bytes.AttackerKnowledgeTheorem
+import DY.Comparse
+import DY.Meta.CombineMacro
+import DY.Trace.BaseAttackerKnowledge
+import DY.Trace.Manipulation
+import Init.Data.List.Control
+import Init.Data.Range.Basic
+import Init.Data.String
+import Init.Data.String.Pattern.Basic
+import Init.Data.String.Pattern.String
+import Init.Data.String.Slice
+import Init.Data.String.TakeDrop
+import Lean.Elab.SyntheticMVars
+import Lean.Exception
+import Lean.Meta.Reduce
+import Mathlib.Data.List.Basic
+import Mathlib.Data.List.Forall2
+import Mathlib.Data.Vector.Basic
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.Tactic.Continuity
+import Mathlib.Tactic.Push
+import Std.Data.DTreeMap.Internal.Operations
+import Std.Tactic.BVDecide.Normalize.Prop
+import Symbolic.Proofs.Swarm.CREF.Stage1Kyber
+import VCVio.CryptoFoundations.PRG
+import VCVio.EvalDist.Monad.Bool
+import VCVio.EvalDist.ProbabilityNotation
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.Prelude.Core
 
 /-!
 # One-Step Spine Peel and KEM Twin Closure
@@ -43,7 +82,7 @@ Proves `gamma'`-shape twin closure for KEM shared secrets and implicit-rejection
 `peel_rk`, `peel_ikm`) along known-peer-key Double Ratchet and PQXDH spines.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -283,7 +322,7 @@ theorem hole_known {T : ExecTrace} (hT : ReachableTrace T) {pk' w : DY.Bytes} {t
 
 /-- Any attacker-known twin `R'` with the same `gamma'` shape as `ss` forces `ss` to be
 attacker-known. -/
-def KemKnownFromTwin (T : ExecTrace) (ss : DY.Bytes) : Prop :=
+@[expose] def KemKnownFromTwin (T : ExecTrace) (ss : DY.Bytes) : Prop :=
   ∀ R' : DY.Bytes, R'.AttackerKnows T →
     (gamma' i S g R').shape = (gamma' i S g ss).shape → ss.AttackerKnows T
 
@@ -451,7 +490,7 @@ theorem kemKnownFromTwin_bobKemShare {T : ExecTrace} (hT : ReachableTrace T)
       kemKnownFromTwin_of_decap i S g hT hKem32 hctAk hpqAk hdec
 
 /-- Known-peer-key PQXDH IKM holes together with `KemKnownFromTwin` on the KEM shared secret. -/
-def IkmHolesKemK (T : ExecTrace) (ikm : DY.Bytes) : Prop :=
+@[expose] def IkmHolesKemK (T : ExecTrace) (ikm : DY.Bytes) : Prop :=
   ∃ (a b e : DY.Bytes) (d : Option DY.Bytes) (ss : DY.Bytes),
     ikm = pqxdhIkm a b e d ss ∧
     DhHoleK (·.AttackerKnows T) a ∧ DhHoleK (·.AttackerKnows T) b ∧

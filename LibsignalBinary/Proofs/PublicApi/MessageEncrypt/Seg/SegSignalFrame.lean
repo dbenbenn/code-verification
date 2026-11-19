@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seams
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seams -- proof-setup: allow-public-import
 
 /-!
 # Memory Frames and Region-Splitting Lemmas for `segSignal_ok`
@@ -18,7 +18,7 @@ Defines invariant frame components (`sgFix`, `sgFrameU`, `sgFrameE`, `sgFrameP`,
 `sgFrameK`), poll-buffer region cuts, and `takenRecord` unpack/pack helpers for `segSignal`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.SegSignal
 
@@ -40,12 +40,6 @@ theorem segSignal_memRegion_cut (b b' : BitVec 64) (N n k : Nat) (hb : b' = b + 
     (hN : N = n + k) (h : N ≤ 2 ^ 64) :
     memRegion b N = memRegion b n ∗ memRegion b' k :=
   memRegion_split' hN hb h
-
-theorem segSignal_mono_front {m : Memory} {P Q W W' Rest : SepProp} (hm : m ⊨ P) (heq : P = W ∗ Rest)
-    (hW : W ⊢ W') (hQ : W' ∗ Rest = Q) : m ⊨ Q := by
-  rw [heq] at hm
-  rw [← hQ]
-  exact Satisfies.mono (sepConj_mono_left hW) hm
 
 theorem segSignal_list_len6 {α : Type} (ws : List α) (h : ws.length = 6) :
     ∃ w0 w1 w2 w3 w4 w5, ws = [w0, w1, w2, w3, w4, w5] := by

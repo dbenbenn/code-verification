@@ -17,6 +17,7 @@ import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk`: `gf::parallel_mult` Shift Table and Odd Tail
@@ -28,7 +29,7 @@ normalization rules, shift-table initialization (`+2752 -> +3384`), and odd trai
 multiplication (`+3608 -> +3784`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.NextChunk
 
@@ -119,56 +120,9 @@ theorem parallelMult_odd_eq_map_snoc (a : GF16) (pre : List GF16) (heven : pre.l
 
 /-! ## 2. PC-Relative `ADRP` Lemmas in `0x6ae54..0x6b1ac` -/
 
-@[local arm64_norm, local wp_norm]
-theorem fnAddr_adrp_6ae54 {b : BitVec 64} {H : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr polyNextChunkName + 2768#64) &&&
-      0xfffffffffffff000#64) + bv% (ls_bytes% "00000b1016201d302c402750" - 0x65000) =
-      b + bv% (ls_xref% 0x5e970 0x5e974) := by
-  rw [Program.fnAddr_rebase, polyNextChunk_fnOff]
-  revert hb; bv_bits
-
-@[local arm64_norm, local wp_norm]
-theorem fnAddr_adrp_6b0c8 {b : BitVec 64} {H : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr polyNextChunkName + 3396#64) &&&
-      0xfffffffffffff000#64) + bv% (ls_xref% 0x5e628 0x5e62c - 0x65000) =
-      b + bv% (ls_xref% 0x5e628 0x5e62c) := by
-  rw [Program.fnAddr_rebase, polyNextChunk_fnOff]
-  revert hb; bv_bits
-
-@[local arm64_norm, local wp_norm]
-theorem fnAddr_adrp_6b0e0 {b : BitVec 64} {H : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr polyNextChunkName + 3420#64) &&&
-      0xfffffffffffff000#64) + bv% (ls_xref% 0x5e638 0x5e63c - 0x65000) =
-      b + bv% (ls_xref% 0x5e638 0x5e63c) := by
-  rw [Program.fnAddr_rebase, polyNextChunk_fnOff]
-  revert hb; bv_bits
-
-@[local arm64_norm, local wp_norm]
-theorem fnAddr_adrp_6b19c {b : BitVec 64} {H : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr polyNextChunkName + 3608#64) &&&
-      0xfffffffffffff000#64) + bv% (ls_xref% 0x5e628 0x5e62c - 0x65000) =
-      b + bv% (ls_xref% 0x5e628 0x5e62c) := by
-  rw [Program.fnAddr_rebase, polyNextChunk_fnOff]
-  revert hb; bv_bits
-
-@[local arm64_norm, local wp_norm]
-theorem fnAddr_adrp_6b1ac {b : BitVec 64} {H : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr polyNextChunkName + 3624#64) &&&
-      0xfffffffffffff000#64) + bv% (ls_xref% 0x5e638 0x5e63c - 0x65000) =
-      b + bv% (ls_xref% 0x5e638 0x5e63c) := by
-  rw [Program.fnAddr_rebase, polyNextChunk_fnOff]
-  revert hb; bv_bits
-
-/-! ## 3. Stack-Slot Bundle for `parallel_mult` (`fsp + 112..232`) -/
-
 /-- The 15 precomputed 32-bit shifts of `yv` stored on the stack at `fsp + 148..228` by
     `0x6ae44..0x6aebc` and read on every iteration of `0x6aec4..0x6b0b8`. -/
-def shiftTableAt (fsp : BitVec 64) (yv : BitVec 16) : SepProp :=
+@[expose] def shiftTableAt (fsp : BitVec 64) (yv : BitVec 16) : SepProp :=
   let y32 := BitVec.zeroExtend 32 yv
   ((fsp + 148#64) ↦₃₂ (y32 <<< 15)) ∗ ((fsp + 152#64) ↦₃₂ (y32 <<< 14)) ∗
   ((fsp + 156#64) ↦₃₂ (y32 <<< 13)) ∗ ((fsp + 160#64) ↦₃₂ (y32 <<< 12)) ∗
@@ -180,7 +134,7 @@ def shiftTableAt (fsp : BitVec 64) (yv : BitVec 16) : SepProp :=
   ((fsp + 224#64) ↦₃₂ (y32 <<< 1))
 
 /-- Raw 32-bit stack slots at `fsp + 148..228`. -/
-def shiftSlotsRawAt (fsp : BitVec 64) : SepProp :=
+@[expose] def shiftSlotsRawAt (fsp : BitVec 64) : SepProp :=
   ∃∗ d148 : BitVec 32, ∃∗ d152 : BitVec 32, ∃∗ d156 : BitVec 32, ∃∗ d160 : BitVec 32,
   ∃∗ d164 : BitVec 32, ∃∗ d168 : BitVec 32, ∃∗ d172 : BitVec 32, ∃∗ d176 : BitVec 32,
   ∃∗ d180 : BitVec 32, ∃∗ d184 : BitVec 32, ∃∗ d192 : BitVec 32, ∃∗ d200 : BitVec 32,
@@ -198,7 +152,7 @@ theorem shiftTableAt_entails_raw (fsp : BitVec 64) (yv : BitVec 16) :
   exact Entails.refl _
 
 /-- Unused 4-byte padding cells in `fsp + 144..232`. -/
-def shiftTablePadAt (fsp : BitVec 64) : SepProp :=
+@[expose] def shiftTablePadAt (fsp : BitVec 64) : SepProp :=
   memRegion (fsp + 144#64) 4 ∗ memRegion (fsp + 188#64) 4 ∗ memRegion (fsp + 196#64) 4 ∗
   memRegion (fsp + 204#64) 4 ∗ memRegion (fsp + 212#64) 4 ∗ memRegion (fsp + 220#64) 4 ∗
   memRegion (fsp + 228#64) 4
@@ -333,7 +287,7 @@ theorem memRegion_112_fold_sum (fsp u112 u120 u128 u136 : BitVec 64) :
 
 /-! ## 4. Bitvector Normalization Rules for `0x6ae44..0x6b0b8` (`parallel_mult` Pair Loop) -/
 
-def pmTerm_sm (cv yv : BitVec 16) (i : Nat) : BitVec 32 :=
+@[expose] def pmTerm_sm (cv yv : BitVec 16) (i : Nat) : BitVec 32 :=
   (BitVec.zeroExtend 32 cv <<< i) &&& (if yv.getLsbD i = true then 0xffff_ffff#32 else 0#32)
 
 @[local arm64_norm ↓, local wp_norm ↓]
@@ -615,135 +569,5 @@ theorem polyMul_pair_c2_eq (yv x : BitVec 16) :
   rw [unaccelerated_polyMul_eq_pmTerms_sm]; ac_rfl
 
 /-! ## 5. Precomputed Shift-Table Setup (`0x6ae44..0x6aec0`, `+2752 -> +3384`) -/
-
-theorem shiftTableInit_sepWP {b : BitVec 64} {ext : String → Option (State → State)}
-    {ret : BitVec 64} {post : State → SepProp → Prop}
-    (hb : b &&& 0xfff#64 = 0#64) (n : Nat) (yv : BitVec 16)
-    (s : State) (fsp clonePtr : BitVec 64)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (u112 u136 : BitVec 64) (Frame : SepProp)
-    (hpc : s.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName + 2752#64)
-    (hrun : s.status = .Running) (hsp : s.sp = fsp)
-    (hx20 : s.readReg64 .x20 = BitVec.ofNat 64 n)
-    (hx21 : s.readReg64 .x21 = BitVec.zeroExtend 64 yv)
-    (hx22 : s.readReg64 .x22 = clonePtr)
-    (hcont : ∀ s1 : State,
-      s1.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName + 3384#64 →
-      s1.status = .Running → s1.sp = fsp → s1.trace = s.trace →
-      calleeSavedVRegs s1 = calleeSavedVRegs s →
-      s1.readReg64 .x18 = b + bv% (ls_xref% 0x5e970 0x5e974) →
-      s1.readReg64 .x20 = BitVec.ofNat 64 n →
-      s1.readReg64 .x21 = BitVec.zeroExtend 64 yv →
-      s1.readReg64 .x22 = clonePtr →
-      s1.readReg64 .x24 = clonePtr →
-      s1.readReg64 .x26 = 2#64 →
-      s1.readReg64 .x28 = s.readReg64 .x28 →
-      s1.readReg64 .x29 = s.readReg64 .x29 →
-      s1.readReg64 .x30 = s.readReg64 .x30 →
-      SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) ret s1
-        (shiftTableAt fsp yv ∗ ((fsp + 112#64) ↦₆₄ clonePtr) ∗
-         ((fsp + 136#64) ↦₆₄ BitVec.ofNat 64 n) ∗ Frame) post) :
-    SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) ret s
-      (shiftSlotsRawAt fsp ∗ ((fsp + 112#64) ↦₆₄ u112) ∗
-       ((fsp + 136#64) ↦₆₄ u136) ∗ Frame) post := by
-  have hadrp := fnAddr_adrp_6ae54 (H := Rust.withPanics ext) hb
-  poly_next_chunk_fetches_range b (Rust.withPanics ext) 0xac0 128
-  dsimp only [tripleRatchetProgAtExt, polyNextChunkName, BitVec.ofNat_eq_ofNat] at hadrp hpc hcont ⊢
-  generalize_entry hentry :
-    (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName = entry
-  examples_hide_fetches
-  unfold shiftSlotsRawAt
-  apply sepWP_exists_left_sep; intro d148; apply sepWP_exists_left_sep; intro d152
-  apply sepWP_exists_left_sep; intro d156; apply sepWP_exists_left_sep; intro d160
-  apply sepWP_exists_left_sep; intro d164; apply sepWP_exists_left_sep; intro d168
-  apply sepWP_exists_left_sep; intro d172; apply sepWP_exists_left_sep; intro d176
-  apply sepWP_exists_left_sep; intro d180; apply sepWP_exists_left_sep; intro d184
-  apply sepWP_exists_left_sep; intro d192; apply sepWP_exists_left_sep; intro d200
-  apply sepWP_exists_left_sep; intro d208; apply sepWP_exists_left_sep; intro d216
-  apply sepWP_exists_left_sep; intro d224
-  wp_steps
-  unfold shiftTableAt at hcont; dsimp only at hcont
-  refine SepWP.weaken_pre (Entails.of_eq (by ac_rfl))
-    (hcont _ (by wp_norm_goal) (by wp_norm_lhs) (by simp only [wp_norm, hsp])
-      (by simp only [arm64_norm, wp_norm]) rfl (by simp only [wp_norm, hadrp])
-      (by simp only [wp_norm, hx20]) (by simp only [wp_norm, hx21])
-      (by simp only [wp_norm, hx22]) (by simp only [wp_norm, hx22])
-      (by wp_norm_lhs) (by wp_norm_lhs) (by wp_norm_lhs) (by wp_norm_lhs))
-
-/-! ## 6. Odd Trailing Element (`0x6b19c..0x6b248`, `+3608 -> +3784`) -/
-
-theorem nextChunk_unacceleratedMul_addr (b : BitVec 64) (H : String → Option (State → State)) :
-    (libsignalSessionCode.rebase b H).fnAddr polyNextChunkName + 18446744073709525280#64 =
-      (libsignalSessionCode.rebase b H).fnAddr unacceleratedMulName := by
-  rw [Program.fnAddr_rebase, Program.fnAddr_rebase, polyNextChunk_fnOff, unacceleratedMul_fnOff]
-  bv_omega
-
-theorem parallelMultOddTail_sepWP {b : BitVec 64} {ext : String → Option (State → State)}
-    {ret : BitVec 64} {post : State → SepProp → Prop}
-    (hb : b &&& 0xfff#64 = 0#64)
-    (idx : Nat) (yv : BitVec 16) (last : GF16) (hidx_lt : 2 * idx < 2 ^ 63)
-    (s : State) (fsp clonePtr : BitVec 64)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true) (Frame : SepProp)
-    (hpc : s.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName + 3608#64)
-    (hrun : s.status = .Running) (hsp : s.sp = fsp)
-    (hx19 : s.readReg64 .x19 = BitVec.ofNat 64 idx)
-    (hx21 : s.readReg64 .x21 = BitVec.zeroExtend 64 yv)
-    (hx22 : s.readReg64 .x22 = clonePtr)
-    (hcont : ∀ s1 : State,
-      s1.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName + 3784#64 →
-      s1.status = .Running → s1.sp = fsp → s1.trace = s.trace →
-      calleeSavedVRegs s1 = calleeSavedVRegs s →
-      s1.readReg64 .x20 = s.readReg64 .x20 →
-      s1.readReg64 .x22 = clonePtr →
-      s1.readReg64 .x24 = s.readReg64 .x24 →
-      s1.readReg64 .x25 = s.readReg64 .x25 →
-      s1.readReg64 .x26 = s.readReg64 .x26 →
-      s1.readReg64 .x27 = s.readReg64 .x27 →
-      s1.readReg64 .x28 = s.readReg64 .x28 →
-      s1.readReg64 .x29 = s.readReg64 .x29 →
-      SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) ret s1
-        (gf16At ⟨unaccelerated.mul last.value yv⟩ (clonePtr + BitVec.ofNat 64 (2 * idx)) ∗
-         tokenInitAt b ∗ reduceTableAt b ∗ Frame) post) :
-    SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) ret s
-      (gf16At last (clonePtr + BitVec.ofNat 64 (2 * idx)) ∗
-       tokenInitAt b ∗ reduceTableAt b ∗ Frame) post := by
-  have hmul : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName +
-        18446744073709525280#64)
-      (unacceleratedMulSpec b) := by
-    rw [nextChunk_unacceleratedMul_addr]; exact unacceleratedMul_ok b ext
-  have hadrp1 := fnAddr_adrp_6b19c (H := Rust.withPanics ext) hb
-  have hadrp2 := fnAddr_adrp_6b1ac (H := Rust.withPanics ext) hb
-  have halign := GF.Mul2U16.aligned_86bd8 b hb
-  poly_next_chunk_fetches_range b (Rust.withPanics ext) 0xe18 176
-  dsimp only [tripleRatchetProgAtExt, polyNextChunkName, BitVec.ofNat_eq_ofNat] at hmul hadrp1 hadrp2 hpc hcont ⊢
-  generalize_entry hentry :
-    (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName = entry
-  examples_hide_fetches
-  have hlsl : BitVec.ofNat 64 idx <<< 1 = BitVec.ofNat 64 (2 * idx) := shl_one_ofNat_eq_nat idx
-  unfold gf16At tokenInitAt
-  wp_steps 2
-  apply step_ldar32
-  · wp_norm_lhs
-  · wp_norm_lhs
-  · wp_assumption
-  · wp_norm_lhs
-  · wp_norm_lhs
-  · exact halign
-  · wp_sep_access
-  · wp_norm_lhs
-  wp_steps 8
-  wp_apply
-  wp_steps 1
-  unfold gf16At tokenInitAt at hcont; dsimp only at hcont
-  refine SepWP.weaken_pre (Entails.of_eq (by ac_rfl))
-    (hcont _ (by wp_norm_goal) (by wp_norm_lhs)
-      (by simp only [wp_norm, ‹sf.sp = _›, hsp])
-      (by simp only [arm64_norm, wp_norm, hpost])
-      (by simp only [arm64_norm, wp_norm, *])
-      (by simp only [wp_norm, h_1]) (by simp only [wp_norm, h_3, hx22])
-      (by simp only [wp_norm, h_5]) (by simp only [wp_norm, h_6])
-      (by simp only [wp_norm, h_7]) (by simp only [wp_norm, h_8])
-      (by simp only [wp_norm, h_9]) (by simp only [wp_norm, hcs_sf]))
 
 end CryptoVerification.SpqrV1.Poly.NextChunk

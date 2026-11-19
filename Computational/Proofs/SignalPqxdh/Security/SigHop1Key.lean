@@ -9,12 +9,19 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.SigHop1KeyA
-public import Computational.Proofs.SignalPqxdh.Security.SigHop
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkCoupling
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+public import Computational.Proofs.SignalPqxdh.Security.SigHop1KeyA -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.SigHop -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkCoupling
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+import VCVio.OracleComp.ProbComp
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhD -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhF -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # One-Key `KeyInd` Bad-Signature Hop (`G0_1 -> G1` and `G0 -> G2`)
@@ -25,7 +32,7 @@ one-key random-oracle handshake game (`keyInd1KeyExpG0_1 → keyInd1KeyExpG1`) b
 the birthday collision bound to obtain `keyInd1Key_hop_G0_G1_le` and `keyInd1Key_hop_G0_G2_le`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,11 +48,36 @@ open Proofs.SignalPqxdh.Security.FgGapDh.Ik
 
 /-! ## Support-restricted continuations and preservation bridges -/
 
-private noncomputable def withSupp {α : Type} (m : ProbComp α) (k : α → ProbComp Bool) (x : α) :
-    ProbComp Bool :=
-  @ite _ (x ∈ support m) (Classical.propDecidable _) (k x) (pure false)
+instance instDecidableEqKeyIndState {S : Setup} : DecidableEq (KeyIndState S) := fun a b =>
+  decidable_of_iff
+    (a.secb = b.secb ∧
+     a.principals = b.principals ∧
+     a.spkBundles = b.spkBundles ∧
+     a.opkEntries = b.opkEntries ∧
+     a.sessions = b.sessions ∧
+     a.respSessions = b.respSessions ∧
+     a.usedRecvOPK = b.usedRecvOPK ∧
+     a.usedRecvNoOPK = b.usedRecvNoOPK ∧
+     a.seenKyberBaseKeys = b.seenKyberBaseKeys ∧
+     a.roCache = b.roCache ∧
+     a.advKeys = b.advKeys)
+    ⟨fun ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11⟩ => by
+      cases a; cases b; dsimp only at *; subst_vars; rfl,
+     fun h => by subst h; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩⟩
 
-private theorem evalDist_bind_withSupp_eq {α : Type} (m : ProbComp α) (k : α → ProbComp Bool) :
+instance instDecidableEqKeyIndFgCutoffState {S : Setup} : DecidableEq (KeyIndFgCutoffState S) := fun a b =>
+  decidable_of_iff (a.base = b.base ∧ a.advRoLog = b.advRoLog)
+    ⟨fun ⟨h1, h2⟩ => by cases a; cases b; dsimp only at *; subst_vars; rfl,
+     fun h => by subst h; exact ⟨rfl, rfl⟩⟩
+
+private def withSupp {α : Type} [DecidableEq α] (m : ProbComp α) (k : α → ProbComp Bool) (x : α) :
+    ProbComp Bool :=
+  @ite _ (x ∈ support m)
+    (decidable_of_iff (x ∈ finSupport m) (mem_finSupport_iff_mem_support m x))
+    (k x) (pure false)
+
+private theorem evalDist_bind_withSupp_eq {α : Type} [DecidableEq α]
+    (m : ProbComp α) (k : α → ProbComp Bool) :
     𝒟[m >>= k] = 𝒟[m >>= withSupp m k] := by
   refine OracleComp.evalDist_bind_congr_of_support m k (withSupp m k) (fun x hx => ?_)
   unfold withSupp
@@ -86,7 +118,7 @@ private theorem pqxdhKeyIndImpl_other_pres_raw (S : Setup) (P : Primitives)
 
 /-! ## Pre-sampled one-key `KeyIndFgCutoffState` implementation -/
 
-noncomputable def fg1KeyPreInitPrin (kIdx : ℕ) (optSk : Option Bytes)
+@[expose] noncomputable def fg1KeyPreInitPrin (kIdx : ℕ) (optSk : Option Bytes)
     (S : Setup) (P : Primitives) (u : Fin S.N_id) :
     StateT (KeyIndState S) ProbComp KeyIndResponse := do
   let st ← get
@@ -108,7 +140,7 @@ noncomputable def fg1KeyPreInitPrin (kIdx : ℕ) (optSk : Option Bytes)
 
 /-- Pre-sampled one-key `KeyIndFgCutoffState` implementation substituting `optSk` at principal
     `kIdx` during `.initPrin` and delegating all other queries to `pqxdhKeyIndFgImpl`. -/
-noncomputable def pqxdhKeyInd1KeyFgPreImpl (kIdx : ℕ) (optSk : Option Bytes)
+@[expose] noncomputable def pqxdhKeyInd1KeyFgPreImpl (kIdx : ℕ) (optSk : Option Bytes)
     (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndFgCutoffState S) ProbComp)
   | .initPrin u => liftFgBase (fg1KeyPreInitPrin kIdx optSk S P u)
@@ -328,14 +360,14 @@ theorem evalDist_runKeyInd1KeySim_eq_preSample {S : Setup}
 
 /-- Absorbing win condition for `sigReductionKeyInd1KeyAt`: `st.forgery` holds a valid signature
     under `P.sigPkGen sk` on a message `mStar` not in `msgs`. -/
-def Sig1KeyWon {S : Setup} (P : Primitives) (sk : Bytes)
+@[expose] def Sig1KeyWon {S : Setup} (P : Primitives) (sk : Bytes)
     (st : Sig1KeySimState S) (msgs : List Bytes) : Prop :=
   ∃ mStar sigStar,
     st.forgery = some (mStar, sigStar) ∧
     P.sigVerify (P.sigPkGen sk) mStar sigStar = true ∧
     mStar ∉ msgs
 
-noncomputable def sig1KeyWinBool {S : Setup} {α : Type} (P : Primitives) (sk : Bytes)
+@[expose] noncomputable def sig1KeyWinBool {S : Setup} {α : Type} (P : Primitives) (sk : Bytes)
     (res : (α × Sig1KeySimState S) × List Bytes) : Bool :=
   let (mStar, sigStar) := res.1.2.forgery.getD ([], [])
   P.sigVerify (P.sigPkGen sk) mStar sigStar && decide (mStar ∉ res.2)
@@ -511,32 +543,9 @@ theorem deadDh2_N_send_tot_eq_deadDh1 {S : Setup} (P : Primitives) (kIdx : ℕ) 
   unfold deadDh2
   rw [hTgtV, sessDeadIk_N_send_tot_eq_false P V hst hValidSess, Bool.true_and, Bool.or_false]
 
-theorem safe_of_deadDh1_true {S : Setup} (P : Primitives) (kIdx : ℕ)
-    (hst : KeyIndFgCutoffState S)
-    (hVP : ValidPrincipals S hst.base.principals)
-    (hClean : CleanPeers S P kIdx hst.base.principals (badPeersKeyInd hst.base))
-    (hDead1 : deadDh1 kIdx hst = true) :
-    (keyIndSigLens S).Safe P kIdx hst.base := by
-  unfold deadDh1 at hDead1
-  cases hF : hst.base.principals.find? (fun (idx, _) => idx == kIdx) with
-  | none => rw [hF] at hDead1; cases hDead1
-  | some p =>
-    rcases p with ⟨u0, ek⟩
-    rw [hF] at hDead1
-    dsimp only at hDead1
-    have hu0Eq : u0 = kIdx :=
-      beq_iff_eq.mp (List.find?_some (p := fun (x : Nat × PrincipalEntry) => x.1 == kIdx) hF)
-    subst hu0Eq
-    have hekMem : (u0, ek) ∈ hst.base.principals := List.mem_of_find?_eq_some hF
-    refine ⟨hVP, ⟨ek, hekMem⟩, ?_, hClean⟩
-    intro e heMem
-    have hEq := mem_principals_unique hVP.2 heMem hekMem
-    subst hEq
-    exact hDead1
-
 /-- Active coupling relation between the pre-sampled one-key game state `hst` and the
     `GapSigEufCma` simulator state `(st, msgs)`. -/
-def Sig1KeyRel (S : Setup) (b : QueryBudget) (P : Primitives)
+@[expose] def Sig1KeyRel (S : Setup) (b : QueryBudget) (P : Primitives)
     (hP : CryptoWellFormedPrimitivesδ P) (kIdx : ℕ)
     (uSk sk : Bytes) (huSk : uSk.length = 32) (hvSk : sk.length = 32)
     (rem : ℕ) (hst : KeyIndFgCutoffState S) (st : Sig1KeySimState S) (msgs : List Bytes) : Prop :=
@@ -1647,7 +1656,7 @@ theorem evalDist_simulateQ_sig1Key_le {S : Setup} {α : Type}
               one_le_evalDist_sig1KeyWon P P.isValidDhTriple sk b.q_total (k r) st' msgs' hWon)
             (fun r hst' st' msgs' hRel' => ih r rem' (h_cont r) hst' st' msgs' hRel')
 
-noncomputable def badSigProbKeyInd1KeyAt (S : Setup) (P : Primitives) (kIdx : ℕ)
+@[expose] noncomputable def badSigProbKeyInd1KeyAt (S : Setup) (P : Primitives) (kIdx : ℕ)
     (A : KeyIndAdversary S) : ℝ :=
   (𝒟[runKeyInd1KeySim S P A >>= fun (_, _, finalSt) =>
     pure (hasBadSigKeyIndAt S P kIdx finalSt)] {true}).toReal
@@ -1680,7 +1689,7 @@ theorem badSigProbKeyInd1KeyAt_le_gapSigEufCma (S : Setup) (b : QueryBudget) (P 
 
 /-! ## Union bound and one-key `G0 → G2` hops -/
 
-noncomputable def badSigNoCollProbKeyInd1Key (S : Setup) (P : Primitives)
+@[expose] noncomputable def badSigNoCollProbKeyInd1Key (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ℝ :=
   (𝒟[runKeyInd1KeySim S P A >>= fun (_, _, finalSt) =>
     pure (hasBadSigKeyInd finalSt && noPrinPkColl P finalSt.principals)] {true}).toReal

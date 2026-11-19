@@ -10,16 +10,17 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Drop Glue for `[ChainEpoch]` and `Chain`
@@ -28,7 +29,7 @@ Proves `RustCliAllocBudget`-threaded `[LibsignalPlacement]` contracts (`FreeOnly
 Blocks `143` (`[ChainEpoch] [local#1]`), `287` (`[ChainEpoch] [local#2]`), and `269` (`Chain`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge
-public import Symbolic.Proofs.Refinement.LemmasPure
-public import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj
+public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.LemmasPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.EncodeWithCovered
 import Symbolic.Proofs.Swarm.CREF.TR.SendRetCoinsCliPureA
 
@@ -23,7 +23,7 @@ Proves that `slots_RecordCanonical_Q slots_NonEmptyV1Q` uniquely determines the 
 PQXDH sessions (`recordCanonical_Q_inj`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

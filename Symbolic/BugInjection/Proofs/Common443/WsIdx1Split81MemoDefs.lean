@@ -24,8 +24,6 @@ theorem setupPublic_0 {r : Records} (hNe : r.alice ≠ r.bob) : setupPublic r 0 
 theorem split81PinObl : Split81PinObl := fun r hfits =>
   have hNe : r.alice ≠ r.bob := hfits.1.1.1
   ⟨setupSecret_0 hNe, setupSecret_1 hNe, setupSecret_2 hNe, setupSecret_4 hNe, setupPublic_0 hNe, setupPublic_2 hNe, setupPublic_4 hNe, setupPublic_6 hNe, hNe⟩
-theorem split81PkPin : Split81PkPin := split81PkPin_of_pinObl split81PinObl
-theorem split40PkPin : Split40PkPin := split81PkPin
 def stA81 (r : Records) (tr₁ : ExecTrace) : TRState :=
   let o₁ := iniAliceOut tr₁ (setupSecret r 0) (setupPublic r 2) (setupPublic r 4) (setupPublic r 6) none
   iniAliceStartState tr₁ r.bob o₁

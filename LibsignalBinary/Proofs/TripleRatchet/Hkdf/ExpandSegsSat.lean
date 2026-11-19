@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandBlock1 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandBlock1
 public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandLoop -- proof-setup: allow-public-import
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
 import LibsignalBinary.Proofs.AesCbc.Bytes
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `HookSat` Relocatable Segment Proofs for `expand_multi_info`
@@ -61,6 +61,74 @@ open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat
   (HkdfPlacedHooksExactSat)
 
 attribute [local arm64_norm] MemWidth.bytes SimdMemSize.bytes
+
+/-- `816`-byte stack precondition for `expand_multi_info` (`496` B frame + `320` B `finalize_fixed` slack). -/
+public structure ExpandPreSat (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
+    (prk info : List (BitVec 8)) (infoPtr : BitVec 64) (okmLen : ℕ) (s₀ : State) : Prop
+    extends ExpandPre b F prk info infoPtr okmLen s₀ where
+  rw_stk816       : RW s₀.mem (s₀.sp - 816#64) 816
+  disj_x2_stk816  : DisjointRegions (s₀.readReg64 .x2) okmLen (s₀.sp - 816#64) 816
+  disj_x0_stk816  : DisjointRegions (s₀.readReg64 .x0) 0x90 (s₀.sp - 816#64) 816
+  disj_x1_stk816  : DisjointRegions (s₀.readReg64 .x1) 16 (s₀.sp - 816#64) 816
+  out_info_stk816 : ∀ a, InRegion infoPtr info.length a → OutsideRegion (s₀.sp - 816#64) 816 a
+
+public theorem ExpandPreSat.of_816 {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
+    {prk info : List (BitVec 8)} {infoPtr : BitVec 64} {okmLen : ℕ} {s₀ : State}
+    (hpc : s₀.pc = b + bv% (offExpandMultiInfo))
+    (hstat : s₀.status = .Running)
+    (hx3 : s₀.readReg64 .x3 = BitVec.ofNat 64 okmLen)
+    (hprk_le : prk.length ≤ 64)
+    (hinfo_lt : info.length < 23)
+    (hokm_len : okmLen = 64 ∨ okmLen = 80)
+    (hhmac : HmacSt s₀.mem (s₀.readReg64 .x0) F prk [])
+    (hinfo_ptr : s₀.mem.read64 (s₀.readReg64 .x1) = infoPtr)
+    (hinfo_len : s₀.mem.read64 (s₀.readReg64 .x1 + 8#64) = BitVec.ofNat 64 info.length)
+    (hinfo_bytes : s₀.mem.readBytes infoPtr info.length = info)
+    (hread_x0 : s₀.mem.Readable (s₀.readReg64 .x0) 0x90)
+    (hread_x1 : s₀.mem.Readable (s₀.readReg64 .x1) 16)
+    (hrw_x2 : RW s₀.mem (s₀.readReg64 .x2) okmLen)
+    (hrw_stk816 : RW s₀.mem (s₀.sp - 816#64) 816)
+    (hd_x2_stk816 : DisjointRegions (s₀.readReg64 .x2) okmLen (s₀.sp - 816#64) 816)
+    (hd_x0_stk816 : DisjointRegions (s₀.readReg64 .x0) 0x90 (s₀.sp - 816#64) 816)
+    (hd_x0_x2 : DisjointRegions (s₀.readReg64 .x0) 0x90 (s₀.readReg64 .x2) okmLen)
+    (hd_x1_stk816 : DisjointRegions (s₀.readReg64 .x1) 16 (s₀.sp - 816#64) 816)
+    (hd_x1_x2 : DisjointRegions (s₀.readReg64 .x1) 16 (s₀.readReg64 .x2) okmLen)
+    (hout_info_stk816 : ∀ a, InRegion infoPtr info.length a → OutsideRegion (s₀.sp - 816#64) 816 a)
+    (hout_info_x2 : ∀ a, InRegion infoPtr info.length a → OutsideRegion (s₀.readReg64 .x2) okmLen a)
+    (hsp_aligned : (s₀.sp &&& 15#64) = 0#64) :
+    ExpandPreSat b F prk info infoPtr okmLen s₀ :=
+  { toExpandPre :=
+      { pc_eq         := hpc
+        status        := hstat
+        x3_eq         := hx3
+        prk_le        := hprk_le
+        info_lt       := hinfo_lt
+        okm_len       := hokm_len
+        hmac_st       := hhmac
+        info_ptr      := hinfo_ptr
+        info_len      := hinfo_len
+        info_bytes    := hinfo_bytes
+        read_x0       := hread_x0
+        read_x1       := hread_x1
+        rw_x2         := hrw_x2
+        rw_stack      := hrw_stk816.sub (by bv_omega)
+        disj_x2_stack := by
+          rcases hokm_len with rfl | rfl <;>
+            (unfold DisjointRegions at hd_x2_stk816 ⊢; bv_omega)
+        disj_x0_stack := by unfold DisjointRegions at hd_x0_stk816 ⊢; bv_omega
+        disj_x0_x2    := hd_x0_x2
+        disj_x1_stack := by unfold DisjointRegions at hd_x1_stk816 ⊢; bv_omega
+        disj_x1_x2    := hd_x1_x2
+        out_info_stk  := fun a ha => by
+          have h := hout_info_stk816 a ha
+          unfold OutsideRegion at h ⊢; bv_omega
+        out_info_x2   := hout_info_x2
+        sp_aligned    := hsp_aligned }
+    rw_stk816       := hrw_stk816
+    disj_x2_stk816  := hd_x2_stk816
+    disj_x0_stk816  := hd_x0_stk816
+    disj_x1_stk816  := hd_x1_stk816
+    out_info_stk816 := hout_info_stk816 }
 
 /-! ## `HmacSt` Counter-Update Helpers -/
 

@@ -9,28 +9,37 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CallsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortAfterGetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortErrPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortLoopPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CallsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.EpiloguePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortAfterGetPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortErrPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortLoopPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
-import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Fetches
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortAfterGet
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortErr
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymE -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.CallSpecs
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Calls
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Pure
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Post-`last_resort.get` Envelopes & Exact-Capacity `concat`
@@ -40,7 +49,7 @@ Defines concrete-capacity post-`last_resort.get` event envelopes (`kpkAfterLrGet
 (`kpkConcat2PosAtSpec`), and stack-restoration helpers for Block `578`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -106,7 +115,7 @@ attribute [local irreducible] Program.fetch Program.externAt?
 /-- Deterministic pre-dispatch allocator events emitted on `gr = .ok seenBs`:
 `<PublicKey>::serialize` (`alloc(33, 1)`), `concat` (`alloc(37, 1)`), and freeing `serPtr`
 (`dealloc(33, 1)`). -/
-def kpkAfterLrGetPreEvents : List AllocEvent :=
+@[expose] def kpkAfterLrGetPreEvents : List AllocEvent :=
   publicKeySerializeEvents ++ rustAllocEvents 37 1 ++ rustDeallocEvents 33 1
 
 /-- Concrete-cap branch envelope from `+468` after `used` (`cap = usedCap`) is built and `serPtr` is
@@ -114,7 +123,7 @@ freed:
 - when `seenBs.length % 37 = 0`: `KpkBcmpLoopEnv PutEnv x usedCap seenCap fileCap seenBs`
   (covering both `seenBs = []` direct append and the `bcmp` chunk loop);
 - when `seenBs.length % 37 ≠ 0`: `kpkMalformedEvents usedCap seenCap fileCap`. -/
-def KpkAfterLrGetBranchEnv
+@[expose] def KpkAfterLrGetBranchEnv
     (PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (x : KpkMarkPollGhost) (usedCap seenCap fileCap : BitVec 64)
     (seenBs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
@@ -125,7 +134,7 @@ def KpkAfterLrGetBranchEnv
 
 /-- Concrete-cap allocator event envelope for `kpk_after_lr_get_174_placed` on `gr = .ok seenBs`:
 `kpkAfterLrGetPreEvents` followed by `KpkAfterLrGetBranchEnv PutEnv x 37#64 seenCap fileCap seenBs`. -/
-def KpkAfterLrGetOkEnv
+@[expose] def KpkAfterLrGetOkEnv
     (PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (x : KpkMarkPollGhost) (seenCap fileCap : BitVec 64)
     (seenBs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
@@ -339,7 +348,7 @@ private theorem ofNat_ult_of_le_p {a b : Nat} (hle : a ≤ b) (hb : b < 2 ^ 64) 
 
 /-- Exact-capacity `concat [local#3]` spec preserving `cap = BitVec.ofNat 64 (bs0.length + bs1.length)`
 without erasing it into `vecU8` or requiring `CliPanicHooksPlaced`. -/
-def kpkConcat2PosAtSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def kpkConcat2PosAtSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) : Spec (Concat2PosCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.outVec ∧ s.readReg64 .x1 = x.slicesA ∧ s.readReg64 .x2 = 2#64 ∧

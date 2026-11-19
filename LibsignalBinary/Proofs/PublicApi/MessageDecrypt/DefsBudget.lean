@@ -10,14 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.Placed.PublicApiCodeSym
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.PublicApiCodeSym
 public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Defs
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable `MessageDecrypt` Seam States and Segment Specifications
@@ -28,7 +30,7 @@ wrapping the `[LibsignalPlacement]` definitions from `Defs` with `A.atState lim 
 `SeamBudget` (`onOom = ⌜False⌝`, `allocFailedIn` dropped from `onPanic`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -71,7 +73,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
 /-- Pure ghost-to-model shape validity implied by `sessionModelRel` together with `sessionStateAt`
     satisfiability (constraining every ghost `Vec` length in `SegCloneEnv` and `RecordDecryptEnv`
     in terms of `ses`). -/
-def SessionGhostValid (G : SessionGhost) (ses : Session (List (BitVec 8))) : Prop :=
+@[expose] def SessionGhostValid (G : SessionGhost) (ses : Session (List (BitVec 8))) : Prop :=
   sessionModelRel G ses ∧
   ∃ (A : RustAlloc) (ss : BitVec 64) (m : Memory) (R : SepProp),
     m ⊨ sessionStateAt A ss G ses.state ∗ R
@@ -107,31 +109,24 @@ theorem sessionGhostValid_of_recordPlacedPre [LibsignalPlacement]
   rw [sepConj_assoc] at h7
   exact ⟨_, h7⟩
 
-/-- `RecordDecryptEnv` on `recGhostOf` is definitionally independent of `prevPtr`. -/
-theorem recordDecryptEnv_recGhostOf_eq (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
-    (x : DecryptGhost) (prevPtr₁ prevPtr₂ : BitVec 64)
-    (G : SessionGhost) (st : SessionState (List (BitVec 8))) :
-    RecordDecryptEnv tdEnv (recGhostOf x prevPtr₁ G st) =
-      RecordDecryptEnv tdEnv (recGhostOf x prevPtr₂ G st) := rfl
-
 /-- `load_session` shim + poll step envelope (`+0x0 → +0x8c`, before the `Box` dealloc at `+0x8c`). -/
-def LoadPollStepEnv {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
+@[expose] def LoadPollStepEnv {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
     (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (rem : AddrVal) : List AllocEvent → Prop :=
   SeqEnv (BoxAllocEnv kit.loadBoxSize) (kitEnv.loadPollEnv st0 rem)
 
 /-- Remaining-events envelope from `StoreCall` (`+0x2388`) to function return. -/
-def FromStoreCallEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
+@[expose] def FromStoreCallEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (rem : AddrVal) (rec' : SessionRecord (List (BitVec 8))) : List AllocEvent → Prop :=
   SeqEnv (StoreStepEnv kit kitEnv st0 rem rec') FreeOnlyEvs
 
 /-- Remaining-events envelope from `Trusted false` (`+0x21b0`) to function return. -/
-def FromTrustedFalseEnv (x : DecryptGhost) : List AllocEvent → Prop :=
+@[expose] def FromTrustedFalseEnv (x : DecryptGhost) : List AllocEvent → Prop :=
   SeqEnv (StringCloneEnv x.rem.name) FreeOnlyEvs
 
 /-- Remaining-events envelope from `Trusted true` (`+0x2150`) to function return. -/
-def FromTrustedTrueEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
+@[expose] def FromTrustedTrueEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (ist0 : ikit.IdState) (x : DecryptGhost)
@@ -141,7 +136,7 @@ def FromTrustedTrueEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (fun evs => FreeOnlyEvs evs ∨ FromStoreCallEnv kit kitEnv st0 x.rem.val rec' evs)
 
 /-- Remaining-events envelope from `Trusted t` (`trustedPCPlaced t`) to function return. -/
-def FromTrustedEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
+@[expose] def FromTrustedEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (ist0 : ikit.IdState) (x : DecryptGhost) (t : Bool)
@@ -150,7 +145,7 @@ def FromTrustedEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
   else FromTrustedFalseEnv x
 
 /-- Remaining-events envelope from `KeyReady` (`+0x1fcc`) to function return. -/
-def FromKeyReadyEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
+@[expose] def FromKeyReadyEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (ist0 : ikit.IdState) (x : DecryptGhost)
@@ -160,7 +155,7 @@ def FromKeyReadyEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
       FromTrustedTrueEnv kit kitEnv st0 ikit ikitEnv ist0 x rec' k evs)
 
 /-- Remaining-events envelope from `PostSome` (`+0x1f50`) to function return. -/
-def FromPostSomeEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : UuidParser)
+@[expose] def FromPostSomeEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : UuidParser)
     (kit : SessionStoreSpec A 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
     (x : DecryptGhost) (rec : SessionRecord (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
@@ -172,7 +167,7 @@ def FromPostSomeEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : UuidPa
       FromKeyReadyEnv kit kitEnv st0 ikit ikitEnv ist0 x rec' k evs
 
 /-- Remaining-events envelope from `RegionSome` (`+0x1a8`) to function return. -/
-def FromRegionSomeEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : UuidParser)
+@[expose] def FromRegionSomeEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : UuidParser)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (kit : SessionStoreSpec A 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -183,11 +178,11 @@ def FromRegionSomeEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : Uuid
 
 /-- Remaining-events envelope from `RegionNone` (`+0x1a8`) to function return:
     17-byte `"decryption failed"` allocation followed by teardown frees. -/
-def FromRegionNoneEnv : List AllocEvent → Prop :=
+@[expose] def FromRegionNoneEnv : List AllocEvent → Prop :=
   SeqEnv (· = rustAllocEvents 17 1) FreeOnlyEvs
 
 /-- Remaining-events envelope from `LoadPolled` (`+0x8c`) to function return. -/
-def FromLoadPolledEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : UuidParser)
+@[expose] def FromLoadPolledEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : UuidParser)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (kit : SessionStoreSpec A 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -205,7 +200,7 @@ def FromLoadPolledEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (parse : Uuid
         FromRegionSomeEnv C S parse tdEnv kit kitEnv st0 ikit ikitEnv ist0 x rec G ses.state evs)
 
 /-- Full end-to-end allocation envelope of `session_message_decrypt_signal_with_stores`. -/
-def WithStoresDecEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
+@[expose] def WithStoresDecEnv {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
     (C : Crypto) (S : SpqrModel) (parse : UuidParser)
@@ -222,17 +217,9 @@ theorem fromPostSomeEnv_nonempty {A : RustAlloc} {C : Crypto} {S : SpqrModel} {p
     ∃ evs, FromPostSomeEnv C S parse kit kitEnv st0 ikit ikitEnv ist0 x rec evs :=
   ⟨[], Or.inl LibsignalBinary.Heap.FreeOnlyEvs.nil⟩
 
-theorem fromLoadPolledEnv_nonempty {A : RustAlloc} {C : Crypto} {S : SpqrModel} {parse : UuidParser}
-    {tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop}
-    {kit : SessionStoreSpec A 0#64} {kitEnv : SessionStoreBudgetEnv kit} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A 0#64} {ikitEnv : IdentityStoreBudgetEnv ikit} {ist0 : ikit.IdState}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop} {x : DecryptGhost} :
-    ∃ evs, FromLoadPolledEnv C S parse tdEnv kit kitEnv st0 ikit ikitEnv ist0 Scope x evs :=
-  ⟨rustDeallocEvents kit.loadBoxSize 8, Or.inl rfl⟩
-
 /-! ## 2. Budget-Threaded Seam States (`lsProg_197`, Block `197`) -/
 
-def LoadPolledStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def LoadPolledStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -252,7 +239,7 @@ def LoadPolledStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto
       (retagIdentityStore (A' := A.atState lim st s) ikit)
       st0 ist0 Scope x ans R s0 s
 
-def RegionSomeStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def RegionSomeStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -277,7 +264,7 @@ def RegionSomeStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto
       (retagIdentityStore (A' := A.atState lim st s) ikit)
       st0 ist0 Scope x ans R s0 s
 
-def RegionNoneStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def RegionNoneStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -296,7 +283,7 @@ def RegionNoneStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto
       (retagIdentityStore (A' := A.atState lim st s) ikit)
       st0 ist0 Scope x ans R s0 s
 
-def PostSomeStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def PostSomeStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -317,7 +304,7 @@ def PostSomeStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
       (retagIdentityStore (A' := A.atState lim st s) ikit)
       st0 ist0 Scope x ans R s0 s
 
-def PostNoneStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def PostNoneStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -336,7 +323,7 @@ def PostNoneStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
       (retagIdentityStore (A' := A.atState lim st s) ikit)
       st0 ist0 Scope x ans R s0 s
 
-def KeyReadyStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def KeyReadyStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -361,7 +348,7 @@ def KeyReadyStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
       (retagIdentityStore (A' := A.atState lim st s) ikit)
       st0 ist0 Scope x ans R s0 s
 
-def TrustedStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def TrustedStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -386,7 +373,7 @@ def TrustedStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
       (retagIdentityStore (A' := A.atState lim st s) ikit)
       st0 ist0 Scope x ans t R s0 s
 
-def StoreCallStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def StoreCallStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -409,7 +396,7 @@ def StoreCallStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
       (retagIdentityStore (A' := A.atState lim st s) ikit)
       st0 ist0 Scope x ans R s0 s
 
-def ErrJoinStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def ErrJoinStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -428,7 +415,7 @@ def ErrJoinStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
       (retagIdentityStore (A' := A.atState lim st s) ikit)
       st0 ist0 Scope x pt R s0 s
 
-def ResultFinalStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def ResultFinalStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -452,7 +439,7 @@ def ResultFinalStateVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypt
 /-- Budget-threaded `[LibsignalPlacement]` specification of
     `session_message_decrypt_signal_with_stores` (Block `197`), reusing
     `Defs.withStoresDecPlacedSpecV` via `A.atState` and dropping `allocFailedIn` from `onPanic`. -/
-def withStoresDecPlacedSpecV [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def withStoresDecPlacedSpecV [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -500,7 +487,7 @@ theorem withStoresDecPlacedSpecV_pre_addrOk [LibsignalPlacement] {M : AllocCostM
     (A := A.atState lim st_init s0) (kit := retagSessionStore kit) (ikit := retagIdentityStore ikit) hpre.2
 
 /-- Common budget-threaded segment step shape on `lsProg_197 H` under `[LibsignalPlacement]`. -/
-def DecSegVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def DecSegVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -562,7 +549,7 @@ abbrev DropSessionStructureLocal2PlacedOk [LibsignalPlacement] {M : AllocCostMod
       (LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget.dropSessionStructureLocal2Spec
         M A lim))
 
-def SegLoadSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def SegLoadSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -582,7 +569,7 @@ def SegLoadSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
       (fun s' => ∃ ans, LoadPolledStateVPlaced C A lim ctl parse S tdEnv encRecord
         kit kitEnv ikit ikitEnv st0 ist0 Scope x st_init ans R s0 s')
 
-def SegDispatchSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def SegDispatchSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -605,7 +592,7 @@ def SegDispatchSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto
         ResultFinalStateVPlaced C A lim ctl parse S tdEnv encRecord
           kit kitEnv ikit ikitEnv st0 ist0 Scope x st_init R s0 s')
 
-def SegRegionSomeSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def SegRegionSomeSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -631,7 +618,7 @@ def SegRegionSomeSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Cryp
       (fun s' => PostSomeStateVPlaced C A lim ctl parse S tdEnv encRecord
         kit kitEnv ikit ikitEnv st0 ist0 Scope x st_init ans R s0 s')
 
-def SegRegionNoneSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def SegRegionNoneSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -649,7 +636,7 @@ def SegRegionNoneSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Cryp
       (fun s' => PostNoneStateVPlaced C A lim ctl parse S tdEnv encRecord
         kit kitEnv ikit ikitEnv st0 ist0 Scope x st_init ans R s0 s')
 
-def SegPostSomeSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def SegPostSomeSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -671,7 +658,7 @@ def SegPostSomeSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto
         ErrJoinStateVPlaced C A lim ctl parse S tdEnv encRecord
           kit kitEnv ikit ikitEnv st0 ist0 Scope x st_init false R s0 s')
 
-def SegPostNoneSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def SegPostNoneSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -689,7 +676,7 @@ def SegPostNoneSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto
       (fun s' => ErrJoinStateVPlaced C A lim ctl parse S tdEnv encRecord
         kit kitEnv ikit ikitEnv st0 ist0 Scope x st_init false R s0 s')
 
-def SegTrustSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def SegTrustSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -712,7 +699,7 @@ def SegTrustSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
         ErrJoinStateVPlaced C A lim ctl parse S tdEnv encRecord
           kit kitEnv ikit ikitEnv st0 ist0 Scope x st_init true R s0 s')
 
-def SegUntrustedSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def SegUntrustedSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -730,7 +717,7 @@ def SegUntrustedSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypt
       (fun s' => ErrJoinStateVPlaced C A lim ctl parse S tdEnv encRecord
         kit kitEnv ikit ikitEnv st0 ist0 Scope x st_init true R s0 s')
 
-def SegSaveSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def SegSaveSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -753,7 +740,7 @@ def SegSaveSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
         ErrJoinStateVPlaced C A lim ctl parse S tdEnv encRecord
           kit kitEnv ikit ikitEnv st0 ist0 Scope x st_init true R s0 s')
 
-def SegStoreSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def SegStoreSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -777,7 +764,7 @@ def SegStoreSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
         ErrJoinStateVPlaced C A lim ctl parse S tdEnv encRecord
           kit kitEnv ikit ikitEnv st0 ist0 Scope x st_init true R s0 s')
 
-def SegErrTeardownSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def SegErrTeardownSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -796,7 +783,7 @@ def SegErrTeardownSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Cry
       (fun s' => ResultFinalStateVPlaced C A lim ctl parse S tdEnv encRecord
         kit kitEnv ikit ikitEnv st0 ist0 Scope x st_init R s0 s')
 
-def SegWriteSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def SegWriteSpecVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)

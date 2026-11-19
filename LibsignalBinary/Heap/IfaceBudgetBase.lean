@@ -606,23 +606,6 @@ theorem subroutine_ok_rustCliAllocBudget_withStackBase {M : AllocCostModel}
     rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
     exact Entails.of_eq (by sep_ac_rfl)
 
-theorem subroutine_ok_inImage_rustCliAllocBudget_withStackBase {M : AllocCostModel}
-    {prog : Program} {entry : BitVec 64} {img : Obj.Image} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {zeroed : Bool} {stk : Nat}
-    (hle : allocHookStack ≤ stk) (hbound : stk ≤ 2 ^ 64)
-    (h : subroutine_ok prog entry ((rustCliAllocBudgetSpecBase M A lim zeroed).inImage img)) :
-    subroutine_ok prog entry ((rustCliAllocBudgetSpecWithStackBase M A lim zeroed stk).inImage img) := by
-  refine subroutine_ok_frame_oom'
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - allocHookStack)) h ?_ ?_
-  · rintro ⟨size, align, st⟩ s0
-    dsimp only [Spec.inImage, rustCliAllocBudgetSpecBase, rustCliAllocBudgetSpecWithStackBase]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · rintro ⟨size, align, st⟩ s0 sf
-    dsimp only [Spec.inImage, rustCliAllocBudgetSpecBase, rustCliAllocBudgetSpecWithStackBase]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-
 theorem subroutine_ok_rustCliDeallocBudget_withStackBase {M : AllocCostModel}
     {prog : Program} {entry : BitVec 64} {A : RustCliAllocBudget M}
     {lim : BudgetLimits} {stk : Nat}
@@ -637,23 +620,6 @@ theorem subroutine_ok_rustCliDeallocBudget_withStackBase {M : AllocCostModel}
     exact Entails.of_eq (by sep_ac_rfl)
   · rintro ⟨p, size, align, st⟩ s0 sf
     dsimp only [rustCliDeallocBudgetSpecBase, rustCliDeallocBudgetSpecWithStackBase]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-
-theorem subroutine_ok_inImage_rustCliDeallocBudget_withStackBase {M : AllocCostModel}
-    {prog : Program} {entry : BitVec 64} {img : Obj.Image} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {stk : Nat}
-    (hle : allocHookStack ≤ stk) (hbound : stk ≤ 2 ^ 64)
-    (h : subroutine_ok prog entry ((rustCliDeallocBudgetSpecBase M A lim).inImage img)) :
-    subroutine_ok prog entry ((rustCliDeallocBudgetSpecWithStackBase M A lim stk).inImage img) := by
-  refine subroutine_ok_frame_oom'
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - allocHookStack)) h ?_ ?_
-  · rintro ⟨p, size, align, st⟩ s0
-    dsimp only [Spec.inImage, rustCliDeallocBudgetSpecBase, rustCliDeallocBudgetSpecWithStackBase]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · rintro ⟨p, size, align, st⟩ s0 sf
-    dsimp only [Spec.inImage, rustCliDeallocBudgetSpecBase, rustCliDeallocBudgetSpecWithStackBase]
     rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
     exact Entails.of_eq (by sep_ac_rfl)
 
@@ -674,23 +640,6 @@ theorem subroutine_ok_rustCliReallocBudget_withStackBase {M : AllocCostModel}
     rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
     exact Entails.of_eq (by sep_ac_rfl)
 
-theorem subroutine_ok_inImage_rustCliReallocBudget_withStackBase {M : AllocCostModel}
-    {prog : Program} {entry : BitVec 64} {img : Obj.Image} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {stk : Nat}
-    (hle : allocHookStack ≤ stk) (hbound : stk ≤ 2 ^ 64)
-    (h : subroutine_ok prog entry ((rustCliReallocBudgetSpecBase M A lim).inImage img)) :
-    subroutine_ok prog entry ((rustCliReallocBudgetSpecWithStackBase M A lim stk).inImage img) := by
-  refine subroutine_ok_frame_oom'
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - allocHookStack)) h ?_ ?_
-  · rintro ⟨p, old, align, new, bs, st⟩ s0
-    dsimp only [Spec.inImage, rustCliReallocBudgetSpecBase, rustCliReallocBudgetSpecWithStackBase]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · rintro ⟨p, old, align, new, bs, st⟩ s0 sf
-    dsimp only [Spec.inImage, rustCliReallocBudgetSpecBase, rustCliReallocBudgetSpecWithStackBase]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-
 theorem subroutine_ok_rustCliAllocNoOom_withStackBase {M : AllocCostModel}
     {prog : Program} {entry : BitVec 64} {A : RustCliAllocBudget M}
     {lim : BudgetLimits} {zeroed : Bool} {stk : Nat}
@@ -708,23 +657,6 @@ theorem subroutine_ok_rustCliAllocNoOom_withStackBase {M : AllocCostModel}
     rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
     exact Entails.of_eq (by sep_ac_rfl)
 
-theorem subroutine_ok_inImage_rustCliAllocNoOom_withStackBase {M : AllocCostModel}
-    {prog : Program} {entry : BitVec 64} {img : Obj.Image} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {zeroed : Bool} {stk : Nat}
-    (hle : allocHookStack ≤ stk) (hbound : stk ≤ 2 ^ 64)
-    (h : subroutine_ok prog entry ((rustCliAllocNoOomSpecBase M A lim zeroed).inImage img)) :
-    subroutine_ok prog entry ((rustCliAllocNoOomSpecWithStackBase M A lim zeroed stk).inImage img) := by
-  refine subroutine_ok_frame_oom'
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - allocHookStack)) h ?_ ?_
-  · rintro ⟨size, align, st⟩ s0
-    dsimp only [Spec.inImage, rustCliAllocNoOomSpecBase, rustCliAllocNoOomSpecWithStackBase]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · rintro ⟨size, align, st⟩ s0 sf
-    dsimp only [Spec.inImage, rustCliAllocNoOomSpecBase, rustCliAllocNoOomSpecWithStackBase]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-
 theorem subroutine_ok_rustCliReallocNoOom_withStackBase {M : AllocCostModel}
     {prog : Program} {entry : BitVec 64} {A : RustCliAllocBudget M}
     {lim : BudgetLimits} {stk : Nat}
@@ -739,23 +671,6 @@ theorem subroutine_ok_rustCliReallocNoOom_withStackBase {M : AllocCostModel}
     exact Entails.of_eq (by sep_ac_rfl)
   · rintro ⟨p, old, align, new, bs, st⟩ s0 sf
     dsimp only [rustCliReallocNoOomSpecBase, rustCliReallocNoOomSpecWithStackBase]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-
-theorem subroutine_ok_inImage_rustCliReallocNoOom_withStackBase {M : AllocCostModel}
-    {prog : Program} {entry : BitVec 64} {img : Obj.Image} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {stk : Nat}
-    (hle : allocHookStack ≤ stk) (hbound : stk ≤ 2 ^ 64)
-    (h : subroutine_ok prog entry ((rustCliReallocNoOomSpecBase M A lim).inImage img)) :
-    subroutine_ok prog entry ((rustCliReallocNoOomSpecWithStackBase M A lim stk).inImage img) := by
-  refine subroutine_ok_frame_oom'
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - allocHookStack)) h ?_ ?_
-  · rintro ⟨p, old, align, new, bs, st⟩ s0
-    dsimp only [Spec.inImage, rustCliReallocNoOomSpecBase, rustCliReallocNoOomSpecWithStackBase]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · rintro ⟨p, old, align, new, bs, st⟩ s0 sf
-    dsimp only [Spec.inImage, rustCliReallocNoOomSpecBase, rustCliReallocNoOomSpecWithStackBase]
     rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
     exact Entails.of_eq (by sep_ac_rfl)
 

@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk`: Budget-Threaded Placed `.rodata` Bridges
@@ -21,7 +22,7 @@ and defines `withLsCodeLoaded` `.rodata` budget contracts (`PolyNextChunkRodataP
 discharge bridges to `withLsCodeRoLoaded`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -121,17 +122,6 @@ theorem to_defsBudget_rodataPlacedOkExt_ofEnv [LibsignalPlacement]
   rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
   exact ⟨hcl, hpre⟩
 
-/-- Discharge `completePointsPolysPlacedAt` from `LibsignalCodeRoLoaded lsmpl` to lift
-    `PolyNextChunkRodataPlacedOkExtOfEnv` (`withLsCodeLoaded`) to `PolyNextChunkPlacedOkExtOfEnv`
-    (`withLsCodeRoLoaded`). -/
-theorem polyNextChunkPlacedOkExt_of_rodata_ofEnv [LibsignalPlacement]
-    {Env : PolyNextChunkGhost → List AllocEvent → Prop}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hro_ok : PolyNextChunkRodataPlacedOkExtOfEnv Env M A lim ext) :
-    PolyNextChunkPlacedOkExtOfEnv Env M A lim ext :=
-  polyNextChunkPlacedOkExt_of_rodata_codeLoaded hro_ok
-
 /-- Canonical `PolyNextChunkEnv` specialization of `polyNextChunkPlacedOkExt_of_rodata_ofEnv`. -/
 theorem polyNextChunkPlacedOkExt_of_rodata [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -139,18 +129,5 @@ theorem polyNextChunkPlacedOkExt_of_rodata [LibsignalPlacement]
     (hro_ok : PolyNextChunkRodataPlacedOkExt M A lim ext) :
     PolyNextChunkPlacedOkExt M A lim ext :=
   polyNextChunkPlacedOkExt_of_rodata_codeLoaded hro_ok
-
-/-- Discharge `completePointsPolysPlacedAt` from `DefsBudget.PolyNextChunkRodataPlacedOkExtOfEnv`
-    (`withLsCodeRoLoaded`). -/
-theorem polyNextChunkPlacedOkExt_of_rodataRo_ofEnv [LibsignalPlacement]
-    {Env : PolyNextChunkGhost → List AllocEvent → Prop}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hro_ok :
-      LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget.PolyNextChunkRodataPlacedOkExtOfEnv
-        Env M A lim ext) :
-    PolyNextChunkPlacedOkExtOfEnv Env M A lim ext :=
-  LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlacedBudget.polyNextChunkPlacedOkExt_of_rodata
-    hro_ok
 
 end LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlacedBudget

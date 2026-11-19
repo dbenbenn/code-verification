@@ -15,28 +15,24 @@
 //! - **Purpose:** Verifies the exact Rust `1.98.1` (`48a229ceaefd4985c50990b14116b6d856af0985`,
 //!   LLVM `22.1.8`) compiler, `rust-src`, bundled `rust-lld`, and bundled musl 1.2.5 SHA-256
 //!   digests; enforces manifest and source-tree guards on `--main-rust <Cargo.toml>` binary
-//!   crates; compiles the single-CGU fat-LTO object under `-Zbuild-std=std,panic_abort` and
-//!   `-Cpanic=immediate-abort`; and generates AArch64 global-allocator shim bridges when linking
-//!   pre-verified `#![no_std]` + `alloc` images.
+//!   crates; and compiles the single-CGU fat-LTO object under `-Zbuild-std=std,panic_abort` and
+//!   `-Cpanic=immediate-abort`.
 //!
 //! # Key Types & Functions
 //! - [`StdToolchain`], [`RustLld`], [`check_std_toolchain`]: toolchain and musl digest checks.
 //! - [`RustMainKind`], [`StdBinCrate`], [`classify_rust_manifest`]: manifest parser and guards.
-//! - [`std_encoded_rustflags`], [`build_std_main_objects`], [`rust_alloc_bridge_asm`]: build &
-//!   bridge helpers.
+//! - [`std_encoded_rustflags`], [`build_std_main_objects`]: deterministic `std` build helpers.
 //!
 //! # When to Read This File
-//! - Read this file for the pinned `std` toolchain checks, manifest guards, `-Zbuild-std` flags,
-//!   and global-allocator bridge assembly.
+//! - Read this file for the pinned `std` toolchain checks, manifest guards, and `-Zbuild-std`
+//!   compilation flags.
 
 use crate::link::{
     filter_gnu_archive_obj_members, normalize_gnu_archive_member_names, run_cmd, sha256, tool,
 };
 use anyhow::{Context, Result, anyhow, bail, ensure};
-use object::{Object, ObjectSymbol};
 use rust_obj2lean::untrusted_driver;
 use serde_json::{Map, Value};
-use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -1239,14 +1235,13 @@ pub fn std_encoded_rustflags(
 }
 
 /// Compile `std_crate` with `-Zbuild-std=std,panic_abort -- --emit=obj` and stage
-/// `work/main_rust.o` (weakening any symbol in `image_exports`) and `work/compiler_builtins.a`.
+/// `work/main_rust.o` and `work/compiler_builtins.a`.
 pub fn build_std_main_objects(
     tc: &StdToolchain,
     std_crate: &StdBinCrate,
     repo_root: &Path,
     work: &Path,
     objcopy: &Path,
-    image_exports: &HashSet<String>,
 ) -> Result<(PathBuf, PathBuf)> {
     let target_dir = work.join("rust-target");
     let cargo_home = std::env::var_os("CARGO_HOME")
@@ -1337,34 +1332,14 @@ pub fn build_std_main_objects(
         builtins_rlibs
     );
 
-    // Stage `work/main_rust.o` with debug stripped and any symbols already exported by pre-verified
-    // `images` weakened so calls bind to the pinned image and `--gc-sections` drops duplicates.
-    let mut weaken: Vec<String> = Vec::new();
-    if !image_exports.is_empty() {
-        let raw_bytes = std::fs::read(raw_main_o)?;
-        let parsed = object::File::parse(raw_bytes.as_slice())
-            .with_context(|| format!("cannot parse emitted object {}", raw_main_o.display()))?;
-        for sym in parsed.symbols() {
-            if sym.is_undefined() || sym.is_local() {
-                continue;
-            }
-            if let Ok(name) = sym.name()
-                && image_exports.contains(name)
-            {
-                weaken.push(name.to_string());
-            }
-        }
-        weaken.sort();
-        weaken.dedup();
-    }
-
+    // Stage `work/main_rust.o` with debug info stripped.
     let out_main_o = work.join("main_rust.o");
-    let mut oc = Command::new(objcopy);
-    oc.arg("--strip-debug");
-    for sym in &weaken {
-        oc.arg(format!("--weaken-symbol={sym}"));
-    }
-    run_cmd(oc.arg(raw_main_o).arg(&out_main_o))?;
+    run_cmd(
+        Command::new(objcopy)
+            .arg("--strip-debug")
+            .arg(raw_main_o)
+            .arg(&out_main_o),
+    )?;
 
     // Stage `work/compiler_builtins.a` from `libcompiler_builtins-*.rlib`: drop non-ELF `.rmeta`
     // members first, then strip debug info and normalize member names deterministically.
@@ -1384,199 +1359,4 @@ pub fn build_std_main_objects(
     std::fs::write(&out_builtins_a, normalized)?;
 
     Ok((out_main_o, out_builtins_a))
-}
-
-// ---------------------------------------------------------------------------
-// Global-allocator extern bridge for `#![no_std]` + `alloc` pre-verified images
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AllocShimKind {
-    NoAllocShimIsUnstableV2,
-    Alloc,
-    Dealloc,
-    Realloc,
-    AllocZeroed,
-    AllocErrorHandler,
-}
-
-/// Match a raw extern symbol name (`_RNvCs<hash>_7___rustc<len>___rust_*` or unmangled
-/// `__rust_*`) to its Rust global-allocator shim kind, if any.
-pub fn classify_alloc_shim(raw: &str) -> Option<AllocShimKind> {
-    if raw == "__rust_no_alloc_shim_is_unstable_v2"
-        || raw.ends_with("___rust_no_alloc_shim_is_unstable_v2")
-    {
-        Some(AllocShimKind::NoAllocShimIsUnstableV2)
-    } else if raw == "__rust_alloc" || raw.ends_with("___rust_alloc") {
-        Some(AllocShimKind::Alloc)
-    } else if raw == "__rust_dealloc" || raw.ends_with("___rust_dealloc") {
-        Some(AllocShimKind::Dealloc)
-    } else if raw == "__rust_realloc" || raw.ends_with("___rust_realloc") {
-        Some(AllocShimKind::Realloc)
-    } else if raw == "__rust_alloc_zeroed" || raw.ends_with("___rust_alloc_zeroed") {
-        Some(AllocShimKind::AllocZeroed)
-    } else if raw == "__rust_alloc_error_handler" || raw.ends_with("___rust_alloc_error_handler") {
-        Some(AllocShimKind::AllocErrorHandler)
-    } else {
-        None
-    }
-}
-
-/// Return global/weak defined symbol names in an ELF relocatable object.
-pub fn defined_nonlocal_symbols(obj_bytes: &[u8]) -> Result<HashSet<String>> {
-    let parsed = object::File::parse(obj_bytes).context("cannot parse ELF relocatable object")?;
-    let mut out = HashSet::new();
-    for s in parsed.symbols() {
-        if !s.is_undefined()
-            && !s.is_local()
-            && let Ok(name) = s.name()
-            && !name.is_empty()
-        {
-            out.insert(name.to_string());
-        }
-    }
-    Ok(out)
-}
-
-fn asm_quote(sym: &str) -> String {
-    if sym
-        .bytes()
-        .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'.' | b'$'))
-    {
-        sym.to_string()
-    } else {
-        format!("\"{}\"", sym.replace('\\', "\\\\").replace('"', "\\\""))
-    }
-}
-
-/// Emit AArch64 assembly bridges forwarding `___rustc::__rust_*` global-allocator shims to
-/// `libc.a`'s `malloc` / `posix_memalign` / `free` / `calloc` / `realloc`, matching
-/// `std::sys::alloc::unix::System` (`MIN_ALIGN = 16` on AArch64).
-pub fn rust_alloc_bridge_asm(raw_syms: &[String]) -> String {
-    let mut items: Vec<(&str, AllocShimKind)> = raw_syms
-        .iter()
-        .filter_map(|s| classify_alloc_shim(s).map(|k| (s.as_str(), k)))
-        .collect();
-    if items.is_empty() {
-        return String::new();
-    }
-    items.sort_by_key(|(s, _)| *s);
-    items.dedup_by_key(|(s, _)| *s);
-
-    let mut asm = String::new();
-    let needs_aligned_helper = items.iter().any(|(_, k)| {
-        matches!(
-            k,
-            AllocShimKind::Alloc | AllocShimKind::AllocZeroed | AllocShimKind::Realloc
-        )
-    });
-
-    if needs_aligned_helper {
-        // Shared local helper `(x0 = size, x1 = align) -> x0 = ptr` via `posix_memalign`.
-        asm += ".section .text.__snap_aligned_alloc,\"ax\",@progbits\n\
-                .p2align 2\n\
-                .L__snap_aligned_alloc:\n\
-                stp x29, x30, [sp, #-32]!\n\
-                mov x29, sp\n\
-                str xzr, [sp, #16]\n\
-                mov x2, x0\n\
-                cmp x1, #8\n\
-                mov x8, #8\n\
-                csel x1, x1, x8, hi\n\
-                add x0, sp, #16\n\
-                bl posix_memalign\n\
-                ldr x8, [sp, #16]\n\
-                cmp w0, #0\n\
-                csel x0, x8, xzr, eq\n\
-                ldp x29, x30, [sp], #32\n\
-                ret\n";
-    }
-
-    for (idx, (raw, kind)) in items.into_iter().enumerate() {
-        let q = asm_quote(raw);
-        asm += &format!(
-            ".section .text.__snap_alloc_bridge_{idx},\"ax\",@progbits\n\
-             .p2align 2\n\
-             .globl {q}\n\
-             .type {q},@function\n\
-             {q}:\n"
-        );
-        match kind {
-            AllocShimKind::NoAllocShimIsUnstableV2 => {
-                asm += "ret\n";
-            }
-            AllocShimKind::Dealloc => {
-                asm += "b free\n";
-            }
-            AllocShimKind::Alloc => {
-                asm += "cmp x1, #16\n\
-                        b.hi .L__snap_aligned_alloc\n\
-                        cmp x1, x0\n\
-                        b.hi .L__snap_aligned_alloc\n\
-                        b malloc\n";
-            }
-            AllocShimKind::AllocZeroed => {
-                asm += &format!(
-                    "cmp x1, #16\n\
-                     b.hi .L__snap_az_slow_{idx}\n\
-                     cmp x1, x0\n\
-                     b.hi .L__snap_az_slow_{idx}\n\
-                     mov x1, #1\n\
-                     b calloc\n\
-                     .L__snap_az_slow_{idx}:\n\
-                     stp x29, x30, [sp, #-32]!\n\
-                     mov x29, sp\n\
-                     str x19, [sp, #16]\n\
-                     mov x19, x0\n\
-                     bl .L__snap_aligned_alloc\n\
-                     cbz x0, .L__snap_az_done_{idx}\n\
-                     mov x1, #0\n\
-                     mov x2, x19\n\
-                     bl memset\n\
-                     .L__snap_az_done_{idx}:\n\
-                     ldr x19, [sp, #16]\n\
-                     ldp x29, x30, [sp], #32\n\
-                     ret\n"
-                );
-            }
-            AllocShimKind::Realloc => {
-                asm += &format!(
-                    "cmp x2, #16\n\
-                     b.hi .L__snap_re_slow_{idx}\n\
-                     cmp x2, x3\n\
-                     b.hi .L__snap_re_slow_{idx}\n\
-                     mov x1, x3\n\
-                     b realloc\n\
-                     .L__snap_re_slow_{idx}:\n\
-                     stp x29, x30, [sp, #-48]!\n\
-                     mov x29, sp\n\
-                     stp x19, x20, [sp, #16]\n\
-                     str x21, [sp, #32]\n\
-                     mov x19, x0\n\
-                     cmp x1, x3\n\
-                     csel x20, x1, x3, lo\n\
-                     mov x0, x3\n\
-                     mov x1, x2\n\
-                     bl .L__snap_aligned_alloc\n\
-                     mov x21, x0\n\
-                     cbz x0, .L__snap_re_done_{idx}\n\
-                     mov x1, x19\n\
-                     mov x2, x20\n\
-                     bl memcpy\n\
-                     mov x0, x19\n\
-                     bl free\n\
-                     mov x0, x21\n\
-                     .L__snap_re_done_{idx}:\n\
-                     ldr x21, [sp, #32]\n\
-                     ldp x19, x20, [sp, #16]\n\
-                     ldp x29, x30, [sp], #48\n\
-                     ret\n"
-                );
-            }
-            AllocShimKind::AllocErrorHandler => {
-                asm += "brk #0x1\n";
-            }
-        }
-    }
-    asm
 }

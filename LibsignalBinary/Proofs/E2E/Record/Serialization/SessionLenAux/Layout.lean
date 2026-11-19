@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodedLen
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodedLen -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionLenAux.Pure
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Reversible `SepProp` layout decompositions for `sessionStateReprAt` (`0x25fd0`)
@@ -21,7 +22,7 @@ Decomposes `sessionStateReprAt A ss G s` into read atoms (`tags1to5Cells`, `optS
 `Vec` headers/buffers (`sessionUnused`) via exact `SepProp` equalities.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.Serialization.SessionLenAux
 
@@ -60,7 +61,7 @@ theorem kyberTail_pointsToBytes_eq (a : BitVec 64) (tail : List (BitVec 8)) (id 
     ← pointsTo32_eq_pointsToBytes]
 
 /-- Value word at offset +4 of a `PendingPreKey`'s `pre_key_id: Option<u32>`. -/
-def pendingPreKeyIdValAt (a : BitVec 64) (tail : List (BitVec 8)) : Option (BitVec 32) → SepProp
+@[expose] def pendingPreKeyIdValAt (a : BitVec 64) (tail : List (BitVec 8)) : Option (BitVec 32) → SepProp
   | none => a ↦ₛ (tail.drop 4).take 4
   | some v => a ↦₃₂ v
 
@@ -115,7 +116,7 @@ theorem pendingTail_pointsToBytes_eq (a : BitVec 64) (tail : List (BitVec 8)) (p
 
 /-! ## Unpacked `PendingPreKey` and `PendingKyberPreKey` predicates -/
 
-def pendingUnpacked (A : RustAlloc) (a : BitVec 64) :
+@[expose] def pendingUnpacked (A : RustAlloc) (a : BitVec 64) :
     Option TailVecGhost → Option PendingPreKey → SepProp
   | none, none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 40
   | some g, some p =>
@@ -163,7 +164,7 @@ theorem optTailVecAt_pending_eq (A : RustAlloc) (a : BitVec 64)
       rw [hvec, htail]
       ac_rfl
 
-def kyberUnpacked (A : RustAlloc) (a : BitVec 64) :
+@[expose] def kyberUnpacked (A : RustAlloc) (a : BitVec 64) :
     Option TailVecGhost → Option PendingKyberPreKey → SepProp
   | none, none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 24
   | some g, some k =>
@@ -313,7 +314,7 @@ theorem chainAt_srk_cap_lt {A : RustAlloc} {gc : ChainGhost × ReceiverChain} {a
 /-! ## Cell bundles and `sessionStateReprAt` decomposition -/
 
 /-- The 8 saved-register stack slots of `SessionStructure::encoded_len` (`sp - 64 .. sp - 8`). -/
-def frameCells (sp v64 v56 v48 v40 v32 v24 v16 v8 : BitVec 64) : SepProp :=
+@[expose] def frameCells (sp v64 v56 v48 v40 v32 v24 v16 v8 : BitVec 64) : SepProp :=
   ((sp - 64#64) ↦₆₄ v64) ∗ ((sp - 56#64) ↦₆₄ v56) ∗
   ((sp - 48#64) ↦₆₄ v48) ∗ ((sp - 40#64) ↦₆₄ v40) ∗
   ((sp - 32#64) ↦₆₄ v32) ∗ ((sp - 24#64) ↦₆₄ v24) ∗
@@ -333,7 +334,7 @@ theorem stackAt_sessionLen_eq (sp : BitVec 64) :
   cells_unfold
 
 /-- Cells of `ss` read in Tags 1–5 (`+0x000..+0x110`). -/
-def tags1to5Cells (ss : BitVec 64) (G : SessionGhost) (s : Session (List (BitVec 8))) : SepProp :=
+@[expose] def tags1to5Cells (ss : BitVec 64) (G : SessionGhost) (s : Session (List (BitVec 8))) : SepProp :=
   ((ss + 16#64) ↦₆₄ BitVec.ofNat 64 G.localIk.bytes.length) ∗
   ((ss + 40#64) ↦₆₄ BitVec.ofNat 64 G.remoteIk.bytes.length) ∗
   ((ss + 64#64) ↦₆₄ 32#64) ∗
@@ -341,14 +342,14 @@ def tags1to5Cells (ss : BitVec 64) (G : SessionGhost) (s : Session (List (BitVec
   ((ss + 332#64) ↦₃₂ s.state.previousCounter)
 
 /-- Cells of `ss` read in Tags 10, 11, 13, 15 (`+0x2bc..+0x358` and `+0x3e0..+0x41c`). -/
-def tags10to15Cells (ss : BitVec 64) (s : Session (List (BitVec 8))) : SepProp :=
+@[expose] def tags10to15Cells (ss : BitVec 64) (s : Session (List (BitVec 8))) : SepProp :=
   ((ss + 112#64) ↦₆₄ BitVec.ofNat 64 s.aliceBaseKey.length) ∗
   ((ss + 136#64) ↦₆₄ BitVec.ofNat 64 s.state.pqRatchetState.length) ∗
   ((ss + 336#64) ↦₃₂ s.remoteRegistrationId) ∗
   ((ss + 340#64) ↦₃₂ s.localRegistrationId)
 
 /-- Untouched `cap`/`ptr` header words and `Vec<u8>` heap buffers of `ss`. -/
-def sessionUnused (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
+@[expose] def sessionUnused (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
     (s : Session (List (BitVec 8))) : SepProp :=
   (ss ↦₆₄ G.localIk.cap) ∗ ((ss + 8#64) ↦₆₄ G.localIk.ptr) ∗
     vecU8Buf A G.localIk.cap G.localIk.ptr G.localIk.bytes ∗
@@ -363,7 +364,7 @@ def sessionUnused (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
     vecU8Buf A G.pq.cap G.pq.ptr s.state.pqRatchetState
 
 /-- Unpacked heap body of `sessionStateAt` (after extracting pure invariants). -/
-def sessionBodyUnpacked (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
+@[expose] def sessionBodyUnpacked (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
     (s : Session (List (BitVec 8))) : SepProp :=
   tags1to5Cells ss G s ∗
   optSenderChainAt A (ss + 144#64) G.sender s.state.senderChain ∗

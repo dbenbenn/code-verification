@@ -85,10 +85,10 @@ private theorem stackFrameAt_1024_split_pm (sp0 : BitVec 64) :
   ac_rfl
 
 set_option maxHeartbeats 400000 in
-private theorem blk11_posixMemalign (hMalloc : LibcMallocImplPlaced24Stmt)
+private theorem blk11_posixMemalign {ro : Bool} (hMalloc : LibcMallocImplPlaced24Stmt ro)
     [MallocngMultiPlacement] {B : GhostName → BitVec 64 → Nat → Nat → SepProp} (hB : ∀ γ p n a, MallocngTightBlock γ p n a ⊢ B γ p n a) (γ : GhostName) :
     subroutine_ok (mallocngBlockProg mmpl 11 msvc) (mbase 11)
-      (withCL mmpl (ToBaseSpec.toSpec (mallocngPosixMemalignTokSpec B msvc γ maddrs) (mbase 11))) := by
+      (withCL mmpl (ToBaseSpec.toSpec (mallocngPosixMemalignTokModeSpec ro B msvc γ maddrs) (mbase 11))) := by
   refine subroutine_ok_withCL_of_cl fun m0 hcl0 => ?_
   have hfn : ∀ c, (blkPC_b11.rebase c (fun _ => none)).fnAddr "posix_memalign" = c := fun c => by
     dsimp only [Program.fnAddr, Program.rebase, Program.fnOff, Program.findSymbol?, blkPC_b11, PlacedLib.program]
@@ -103,7 +103,7 @@ private theorem blk11_posixMemalign (hMalloc : LibcMallocImplPlaced24Stmt)
     (externAt?_placedProgram_rebase_none _ _ _ _) rfl
   apply subroutine_ok_of_sepWP_init
   rintro ⟨res, align, len, sp0, tp, brkStart, bud, ivs0⟩ R s0 hpc hrun hpre hspAl0
-  dsimp only [ToBaseSpec.toSpec, mallocngPosixMemalignTokSpec] at hpre ⊢
+  dsimp only [ToBaseSpec.toSpec, mallocngPosixMemalignTokModeSpec] at hpre ⊢
   simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
   obtain ⟨rfl, ⟨hx0, hx1, hx2, hsp_eq, _, _, _, hCaveat⟩, hpre⟩ := hpre
   subst hsp_eq
@@ -113,13 +113,13 @@ private theorem blk11_posixMemalign (hMalloc : LibcMallocImplPlaced24Stmt)
   have ⟨htp0, hbrks0⟩ : s0.tpidrEl0 = tp ∧ s0.brkStart = brkStart := by
     have hm0 : s0.mem ⊨ ⌜s0.tpidrEl0 = tp ∧ s0.brkStart = brkStart⌝ ∗
         ((OptOutPtr (MallocngTokBlock (B γ))).interp res none ∗
-         mallocngIface.MallocngHeap γ maddrs tp brkStart s0.brk bud ivs0 ∗
+         (mallocngModeIface ro).MallocngHeap γ maddrs tp brkStart s0.brk bud ivs0 ∗
          stackFrameAt s0.sp mallocngStackBytes ∗ R) := by
       dsimp only [MallocngEnv] at hpre
       exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpre
     rw [satisfies_pure_sepConj] at hm0; exact hm0.1
   refine ⟨(OptOutPtr (MallocngTokBlock (B γ))).interp res none ∗
-    MallocngEnv mallocngIface γ maddrs tp brkStart bud ivs0 s0 ∗
+    MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bud ivs0 s0 ∗
     stackFrameAt s0.sp mallocngStackBytes, by simpa [sepConj_assoc] using hpre, ?_⟩
   wp_step; wp_step
   wp_if hLs7
@@ -141,8 +141,8 @@ private theorem blk11_posixMemalign (hMalloc : LibcMallocImplPlaced24Stmt)
       rw [pure_sepConj_of_true ⟨True.intro, by subst hsf; simpa [arm64_norm] using hRetEq,
             ⟨by subst hsf; proc_preserved_step, mappedDelta_of_perm_eq (by subst hsf; simp [arm64_norm])⟩⟩]
       have hEnvToPost :
-          MallocngEnv mallocngIface γ maddrs tp brkStart bud ivs0 s0 ⊢
-          MallocngPostEnv mallocngIface γ maddrs tp brkStart bud ivs0 s0 sf := by
+          MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bud ivs0 s0 ⊢
+          MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bud ivs0 s0 sf := by
         dsimp only [MallocngPostEnv, MallocngEnv]
         refine Entails.trans ?_ (Entails.sepExists_intro ivs0)
         rw [pure_sepConj_of_true (noOrphanMappings_refl_of_perm_eq (by subst hsf; simp [arm64_norm])),
@@ -246,7 +246,7 @@ private theorem blk11_posixMemalign (hMalloc : LibcMallocImplPlaced24Stmt)
          ((s0.sp - 24#64) ↦₆₄ s0.readReg64 (.gpr 30#5)) ∗
          ((s0.sp - 8#64) ↦₆₄ w3) ∗
          stackFrameAt sp1 736 ∗ stackFrameAt (sp1 - 736#64) 256 ∗
-         MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 sc sm ∗
+         MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 sc sm ∗
          (MallocngTokBlock (B γ)).interp q (len.toNat, max align.toNat 16)))
         (by dsimp only [MallocngTokBlock, eff, bf]; exact Entails.of_eq (by ac_rfl)) ?_
       refine sepWP_pure_left_pm fun hcl_sm => sepWP_pure_left_pm fun ⟨hproc_sm, hmd_sm⟩ =>
@@ -278,8 +278,8 @@ private theorem blk11_posixMemalign (hMalloc : LibcMallocImplPlaced24Stmt)
           rw [pure_sepConj_of_true ⟨True.intro, by subst hsf; simpa [arm64_norm] using hRet0.symm, hAcctAll⟩,
             stackFrameAt_1024_split_pm s0.sp]
           have hPostEnvCongr :
-              MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 sc sm ⊢
-              MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf := by
+              MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 sc sm ⊢
+              MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf := by
             dsimp only [MallocngPostEnv, MallocngEnv]
             refine Entails.sepExists_elim fun ivsf => Entails.trans ?_ (Entails.sepExists_intro ivsf)
             refine Entails.pure_left fun hNoOrph => Entails.pure_left fun ⟨htp_sm, hbrks_sm⟩ => ?_
@@ -296,7 +296,7 @@ private theorem blk11_posixMemalign (hMalloc : LibcMallocImplPlaced24Stmt)
           dsimp only [sp1]; cells_unfold
           refine Entails.trans (Entails.of_eq (show _ =
               ((res ↦₆₄ q) ∗ (MallocngTokBlock (B γ)).interp q (len.toNat, max align.toNat 16)) ∗
-              MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 sc sm ∗
+              MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 sc sm ∗
               (((s0.sp - 16#64) ↦₆₄ s0.readReg64 (.gpr 19#5)) ∗
                ((s0.sp - 32#64) ↦₆₄ s0.readReg64 (.gpr 29#5)) ∗
                ((s0.sp - 24#64) ↦₆₄ s0.readReg64 (.gpr 30#5)) ∗
@@ -331,7 +331,7 @@ private theorem blk11_posixMemalign (hMalloc : LibcMallocImplPlaced24Stmt)
          ((s0.sp - 24#64) ↦₆₄ s0.readReg64 (.gpr 30#5)) ∗
          ((s0.sp - 8#64) ↦₆₄ w3) ∗
          memRegion res 8 ∗ stackFrameAt sp1 736 ∗ stackFrameAt (sp1 - 736#64) 256 ∗
-         MallocngCoreImpl γ maddrs brkStart sm.brk bud ivs0 ∗
+         (mallocngModeIface ro).MallocngCore γ maddrs brkStart sm.brk bud ivs0 ∗
          ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64)))
         (by dsimp only [FramePM, evVal]; exact Entails.of_eq (by ac_rfl)) ?_
       refine sepWP_pure_left_pm fun hcl_sm => sepWP_pure_left_pm fun ⟨hproc_sm, hmd_sm⟩ =>
@@ -379,20 +379,20 @@ private theorem blk11_posixMemalign (hMalloc : LibcMallocImplPlaced24Stmt)
           simp only [sepExists_sepConj_left]
           exact Entails.trans (by sep_frame) (Entails.sepExists_intro evVal)
         have hPostEnv0 :
-            (MallocngCoreImpl γ maddrs brkStart sm.brk bud ivs0 ∗
+            ((mallocngModeIface ro).MallocngCore γ maddrs brkStart sm.brk bud ivs0 ∗
              MallocngRuntime maddrs tp) ⊢
-            MallocngPostEnv mallocngIface γ maddrs tp brkStart bud ivs0 s0 sf := by
-          dsimp only [MallocngPostEnv, MallocngEnv, mallocngIface]
+            MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bud ivs0 s0 sf := by
+          dsimp only [MallocngPostEnv, MallocngEnv]
           refine Entails.trans ?_ (Entails.sepExists_intro ivs0)
           have htp_f : se.tpidrEl0 = tp := hProc0_se.2.2.1.trans htp0
           have hbrks_f : se.brkStart = brkStart := hProc0_se.2.2.2.1.trans hbrks0
-          rw [MallocngHeapImpl_eq, pure_sepConj_of_true hNoOrphAll,
+          rw [mallocngModeIface_heap_eq, pure_sepConj_of_true hNoOrphAll,
             pure_sepConj_of_true ⟨by subst hsf; simp [arm64_norm, htp_f], by subst hsf; simp [arm64_norm, hbrks_f]⟩,
             hbrk_f]
           sep_frame
         dsimp only [sp1]; cells_unfold
         refine Entails.trans (Entails.of_eq (show _ =
-            (MallocngCoreImpl γ maddrs brkStart sm.brk bud ivs0 ∗
+            ((mallocngModeIface ro).MallocngCore γ maddrs brkStart sm.brk bud ivs0 ∗
              (((tp - 0xa4#64) ↦₃₂ evVal) ∗ ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64))) ∗
             (((s0.sp - 16#64) ↦₆₄ s0.readReg64 (.gpr 19#5)) ∗
              ((s0.sp - 32#64) ↦₆₄ s0.readReg64 (.gpr 29#5)) ∗
@@ -416,6 +416,15 @@ private theorem blk11_posixMemalign (hMalloc : LibcMallocImplPlaced24Stmt)
           by simp [arm64_norm],
           by simpa [arm64_norm] using hcs_e.vregs.trans (by simpa [hsc, arm64_norm] using hcs_m.vregs)⟩
 
+theorem placed_posixMemalign_mode_ok {ro : Bool} (hMalloc : LibcMallocImplPlaced24Stmt ro)
+    [MallocngMultiPlacement] {P : Program} {B : GhostName → BitVec 64 → Nat → Nat → SepProp} (hB : ∀ γ p n a, MallocngTightBlock γ p n a ⊢ B γ p n a) (γ : GhostName)
+    (hext : ∀ pc, P.externAt? pc = none := by
+      intro pc; simp [Program.rebase, PlacedLib.program, Program.externAt?, Program.hookAtOff?])
+    (hsvc : P.svc = msvc := by rfl) :
+    subroutine_ok P (mbase 11)
+      (withCL mmpl (ToBaseSpec.toSpec (mallocngPosixMemalignTokModeSpec ro B msvc γ maddrs) (mbase 11))) :=
+  subroutine_ok_block_to_block (j := 11) (by decide) (blk11_posixMemalign hMalloc hB γ) hext hsvc
+
 theorem placed_posixMemalign_ok (hMalloc : LibcMallocImplPlaced24Stmt)
     [MallocngMultiPlacement] {P : Program} {B : GhostName → BitVec 64 → Nat → Nat → SepProp} (hB : ∀ γ p n a, MallocngTightBlock γ p n a ⊢ B γ p n a) (γ : GhostName)
     (hext : ∀ pc, P.externAt? pc = none := by
@@ -423,7 +432,20 @@ theorem placed_posixMemalign_ok (hMalloc : LibcMallocImplPlaced24Stmt)
     (hsvc : P.svc = msvc := by rfl) :
     subroutine_ok P (mbase 11)
       (withCL mmpl (ToBaseSpec.toSpec (mallocngPosixMemalignTokSpec B msvc γ maddrs) (mbase 11))) :=
-  subroutine_ok_block_to_block (j := 11) (by decide) (blk11_posixMemalign hMalloc hB γ) hext hsvc
+  placed_posixMemalign_mode_ok (ro := false) hMalloc hB γ hext hsvc
+
+theorem posixMemalignPlaced_entry_tok_mode_ok {ro : Bool} {B : GhostName → BitVec 64 → Nat → Nat → SepProp}
+    (hB : ∀ γ p n a, MallocngTightBlock γ p n a ⊢ B γ p n a)
+    (hMalloc : LibcMallocImplPlaced24Stmt ro)
+    (mpl : Obj.MultiPlacement) (svc : State → State)
+    (hPlace : VerifiedLibraries.mallocngLib.Placeable mpl) (hSvc : MallocngSvcValid svc)
+    (γ : GhostName) :
+    mallocngMultiEntryOk mpl svc "posix_memalign"
+      (mallocngPosixMemalignTokModeSpec ro B svc γ (mallocngAddrsOfPlacement mpl)) := by
+  let _ : MallocngMultiPlacement := ⟨mpl, svc, hPlace, hSvc⟩
+  refine ⟨by decide +kernel, 11, 0, by decide +kernel, ?_⟩
+  rw [fnAddr_posix_memalign]
+  exact withCL_to_withCodeLoaded (blk11_posixMemalign hMalloc hB γ)
 
 theorem posixMemalignPlaced_entry_tok_ok {B : GhostName → BitVec 64 → Nat → Nat → SepProp} (hB : ∀ γ p n a, MallocngTightBlock γ p n a ⊢ B γ p n a)
     (hMalloc : LibcMallocImplPlaced24Stmt)
@@ -431,19 +453,17 @@ theorem posixMemalignPlaced_entry_tok_ok {B : GhostName → BitVec 64 → Nat �
     (hPlace : VerifiedLibraries.mallocngLib.Placeable mpl) (hSvc : MallocngSvcValid svc)
     (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "posix_memalign"
-      (mallocngPosixMemalignTokSpec B svc γ (mallocngAddrsOfPlacement mpl)) := by
-  let _ : MallocngMultiPlacement := ⟨mpl, svc, hPlace, hSvc⟩
-  refine ⟨by decide +kernel, 11, 0, by decide +kernel, ?_⟩
-  rw [fnAddr_posix_memalign]
-  exact withCL_to_withCodeLoaded (blk11_posixMemalign hMalloc hB γ)
+      (mallocngPosixMemalignTokSpec B svc γ (mallocngAddrsOfPlacement mpl)) :=
+  posixMemalignPlaced_entry_tok_mode_ok (ro := false) hB hMalloc mpl svc hPlace hSvc γ
 
-theorem posixMemalignPlaced_entry_tight_ok (hMalloc : LibcMallocImplPlaced24Stmt)
+theorem posixMemalignPlaced_entry_tight_ok {ro : Bool} (hMalloc : LibcMallocImplPlaced24Stmt ro)
     (mpl : Obj.MultiPlacement) (svc : State → State)
     (hPlace : VerifiedLibraries.mallocngLib.Placeable mpl) (hSvc : MallocngSvcValid svc)
     (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "posix_memalign"
-      (mallocngPosixMemalignTightSpec mallocngIface svc γ (mallocngAddrsOfPlacement mpl)) :=
-  posixMemalignPlaced_entry_tok_ok (B := mallocngOldTok)
+      (mallocngPosixMemalignTightSpec (mallocngModeIface ro) svc γ (mallocngAddrsOfPlacement mpl)) := by
+  have h := posixMemalignPlaced_entry_tok_mode_ok (ro := ro) (B := mallocngOldTok)
     (fun γ p n a => mallocngTightBlock_to_token γ p n a) hMalloc mpl svc hPlace hSvc γ
+  rwa [mallocngPosixMemalignTokModeSpec_oldTok] at h
 
 end VerifiedLibraries.Mallocng.Proofs

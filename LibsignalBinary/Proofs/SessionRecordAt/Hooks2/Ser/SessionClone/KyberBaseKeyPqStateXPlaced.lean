@@ -9,13 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.BaseX
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.BaseX -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.KyberBaseKeyPqStateX
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ReceiverChainsPendingPreKeyXPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +38,7 @@ open CryptoVerification.E2E.Record.Placed
 open CryptoVerification.LibsignalProtoCodec CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalTripleRatchet.FromRecordChainClone
 open CryptoVerification.LibsignalTripleRatchet.RawByteMove
-open CryptoVerification.LibsignalTripleRatchet.ChainCloneLocal1 (ChainCloneLocal1Ok SenderChainCloneLocal1Ok)
+
 open CryptoVerification.LibsignalTripleRatchet.Record.SegCloneSteps
 open CryptoVerification.E2E.Record.Serialization
 open Proofs.libsignal

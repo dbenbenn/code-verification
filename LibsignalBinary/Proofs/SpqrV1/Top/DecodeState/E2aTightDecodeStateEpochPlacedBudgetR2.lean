@@ -9,17 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.E2aTightBytesZeroAux
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochLoopClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbChain
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbLeaf
+public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.E2aTightBytesZeroAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochLoopClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonClPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbChain
+import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbLeaf
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
@@ -27,6 +27,12 @@ import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.VersionNegotiationLoop
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Field
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Varint
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Loop -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Canonical Guarded-Tight `ChainEpochPB::merge` (`+600 -> +624`, Block `325`)
@@ -36,7 +42,7 @@ reaches `+624` under `SpqrTightEvs 6 183420 79236` (`send` `(2, 1476, 32)` + `re
 `(4, 181944, 79236)`), parameterized over monotone outer state `V_state : Nat → SepProp`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -138,20 +144,20 @@ theorem e2ar2_rebind_state [LibsignalPlacement] {prog : Program} {ret : BitVec 6
 
 /-! ## 1. Canonical Validity Predicates, Wire Helpers, & Block-299 Seam -/
 
-def e2ar2_ValidEpochDirPB (maxPrev : Nat) (m : EpochDirectionPB) : Prop :=
+@[expose] def e2ar2_ValidEpochDirPB (maxPrev : Nat) (m : EpochDirectionPB) : Prop :=
   m.next.length ≤ 32 ∧ m.prev.length ≤ maxPrev
 
-def e2ar2_ValidChainEpochPB (m : ChainEpochPB) : Prop :=
+@[expose] def e2ar2_ValidChainEpochPB (m : ChainEpochPB) : Prop :=
   (∀ d, m.send = some d → e2ar2_ValidEpochDirPB 0 d) ∧
   (∀ d, m.recv = some d → e2ar2_ValidEpochDirPB 79236 d)
 
-def e2ar2_epochDirectionZeroCapAt (A : RustAlloc) (a : BitVec 64) (d : EpochDirectionPB) :
+@[expose] def e2ar2_epochDirectionZeroCapAt (A : RustAlloc) (a : BitVec 64) (d : EpochDirectionPB) :
     SepProp :=
   (∃∗ p1 : BitVec 64, vecU8At A a 0#64 p1 d.next) ∗
   (∃∗ p2 : BitVec 64, vecU8At A (a + 0x18#64) 0#64 p2 d.prev) ∗
   ((a + 0x30#64) ↦₃₂ d.ctr) ∗ memRegion (a + 0x34#64) 4
 
-def E2ar2EpochDirCanonicalOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def E2ar2EpochDirCanonicalOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   ∀ (maxPrev ops cum maxReq : Nat),
     ((maxPrev = 0 ∧ ops = 2 ∧ cum = 1476 ∧ maxReq = 32) ∨

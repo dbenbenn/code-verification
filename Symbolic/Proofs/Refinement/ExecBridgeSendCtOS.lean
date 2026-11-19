@@ -25,7 +25,7 @@ expansion into three HMAC blocks (`hkdfExpand_80_eq_blocks`), and relates `seria
 under `protoSignalCodec` to `encodeWith canonicalVariation`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

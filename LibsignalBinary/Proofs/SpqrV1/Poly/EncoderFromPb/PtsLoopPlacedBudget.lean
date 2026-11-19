@@ -11,14 +11,15 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
-import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PtsLoop
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PtsLoop -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable `.points` Deserialization for `<PolyEncoder>::from_pb`
@@ -28,7 +29,7 @@ Threads `RustCliAllocBudget M`, `encoderFromPbPtsLoopEvents`, `VmPreserved`, and
 loop on Block `374`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

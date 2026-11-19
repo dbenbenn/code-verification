@@ -12,6 +12,7 @@ module
 public import Symbolic.Specifications.Concrete.ByteSpecs
 public import Symbolic.Specifications.Concrete.ImageSymbols
 public import Symbolic.Specifications.Model.EquationalTheory.X25519
+public import LibsignalBinary.Specifications.SignalPqxdh.Model
 public import Mathlib.Algebra.Group.Nat.Defs
 
 /-!
@@ -111,12 +112,13 @@ namespace DY.Libsignal.PQXDH.Refinement
 
 open CryptoProofLib.Refinement (ByteString ExternInterpretation)
 
-/-- Whether `PublicKey::is_torsion_free` accepts the 32-byte Montgomery key `b` after decompressing
-it to an Edwards point. -/
-def X25519TorsionFree (interpretation : ExternInterpretation) (b : ByteString) : Prop :=
-  ∃ pt : ByteString, pt.length = 160 ∧
-    interpretation toEdwardsSymbol [b, [0#8]] = some pt ∧
-    interpretation torsionFreeSymbol [pt] = some [1#8]
+/-- Whether `PublicKey::is_torsion_free` accepts the 32-byte Montgomery key `b`: `montLiftEd` lifts
+`b` with sign bit `0` to an affine `EdPoint` `P` in the prime-order subgroup (`[ℓ]P = O`). -/
+def X25519TorsionFree (b : ByteString) : Prop :=
+  ∃ P : VerifiedLibraries.Common.EdPoint,
+    SignalPqxdh.montLiftEd b 0#8 = some P ∧
+    (VerifiedLibraries.Common.edSmul VerifiedLibraries.Common.edOrderL P ==
+      VerifiedLibraries.Common.edZero) = true
 
 /-- Requires `X25519TorsionFree` to reject any 32-byte key whose u-coordinate equals a non-trivial
 8-torsion shift of an X25519 public key. -/
@@ -130,6 +132,6 @@ def X25519TorsionShiftsRejected (interpretation : ExternInterpretation) : Prop :
       DY.X25519.uCoord
         (((interpretation DY.Libsignal.Refinement.x25519PublicKeySymbol [s]).getD
           []).map BitVec.toNat) →
-    ¬ X25519TorsionFree interpretation k
+    ¬ X25519TorsionFree k
 
 end DY.Libsignal.PQXDH.Refinement

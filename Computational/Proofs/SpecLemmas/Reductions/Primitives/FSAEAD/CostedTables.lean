@@ -20,7 +20,7 @@ interface, and source game codecs (`pubCodec`, `ratchetCodec`) for Forward-Secur
 (`FSAEAD.spec`).
 -/
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.SpecLemmas.Reductions.Primitives.FSAEAD.CostedTables
 
@@ -32,12 +32,12 @@ inductive FSort | ss | rs | ad | pub | msg | ct
 variable (SS RS AD Pub M C : Type)
 
 /-- Signature for FS-AEAD reductions with unit-sized sorts. -/
-@[reducible] def fsSig : Sig where
+@[expose, reducible] def fsSig : Sig where
   Base := FSort
   den := fun | .ss => SS | .rs => RS | .ad => AD | .pub => Pub | .msg => M | .ct => C
   sz := fun _ _ => 1
 
-def fsStateSampleSort : Bool → FSort
+@[expose] def fsStateSampleSort : Bool → FSort
   | true => .ss
   | false => .rs
 
@@ -47,7 +47,7 @@ instance instSampleableHybKey [SampleableType SS] [SampleableType RS] :
   | false => inferInstanceAs (SampleableType RS)
 
 /-- Operation table for FS-AEAD exposing the public-header projection `pubOf` at cost `k`. -/
-@[reducible] def fsOps (pubOf : C → Option Pub) (k : ℕ) : Ops (fsSig SS RS AD Pub M C) where
+@[expose, reducible] def fsOps (pubOf : C → Option Pub) (k : ℕ) : Ops (fsSig SS RS AD Pub M C) where
   Op := Unit
   dom := fun _ => .base .ct
   cod := fun _ => .opt (.base .pub)
@@ -58,11 +58,11 @@ variable {SS RS AD Pub M C}
 
 local notation "FT" => Ty (fsSig SS RS AD Pub M C)
 
-@[reducible] def bt (s : FSort) : FT := .base s
+@[expose, reducible] def bt (s : FSort) : FT := .base s
 
-@[reducible] def rrTy (m : FT) : FT := .sum .unit (.prod .nat (.opt m))
+@[expose, reducible] def rrTy (m : FT) : FT := .sum .unit (.prod .nat (.opt m))
 
-def rrEnc : ReceiveResult M → (rrTy (bt .msg) : FT).denote
+@[expose] def rrEnc : ReceiveResult M → (rrTy (bt .msg) : FT).denote
   | .rejected => .inl ()
   | .accepted i m => .inr (i, m)
 
@@ -70,7 +70,7 @@ inductive FsaeadTag | tr | ch | cs | cr | dl | ij
 
 /-- Target oracle interface for `unifSpec + FSAEAD.spec SS RS adT.denote M C` at unit query and coin
 cost. -/
-def fsaeadIface (adT : FT) :
+@[expose] def fsaeadIface (adT : FT) :
     Iface (fsSig SS RS AD Pub M C) (unifSpec + spec SS RS adT.denote M C) where
   fwdU := fun n => query (spec := unifSpec + spec SS RS adT.denote M C) (.inl n)
   uCost := 1
@@ -108,21 +108,21 @@ variable {SS RS AD Pub M C : Type}
 
 local notation "PT" => Ty (fsSig SS RS AD Pub M C)
 
-def rrDec : (rrTy (.prod (bt .pub) (bt .msg)) : PT).denote → ReceiveResult (Pub × M)
+@[expose] def rrDec : (rrTy (.prod (bt .pub) (bt .msg)) : PT).denote → ReceiveResult (Pub × M)
   | .inl () => .rejected
   | .inr (i, m) => .accepted i m
 
-@[reducible] def pubQ : PT :=
+@[expose, reducible] def pubQ : PT :=
   .sum (.prod (bt .ad) (.prod (bt .pub) (bt .msg)))
   (.sum (.prod (bt .ad) (.prod (.prod (bt .pub) (bt .msg)) (.prod (bt .pub) (bt .msg))))
   (.sum .unit (.sum .unit (.sum (.prod (bt .ad) (bt .ct)) (.prod (bt .ad) (bt .ct))))))
 
-@[reducible] def pubR : PT :=
+@[expose, reducible] def pubR : PT :=
   .sum (.opt (bt .ct)) (.sum (.opt (bt .ss)) (.sum (.opt (.prod (bt .ss) (bt .rs)))
     (.opt (rrTy (.prod (bt .pub) (bt .msg))))))
 
 /-- Source game codec for `FSAEAD.spec` with messages `Pub × M` (`codecCost = 6`). -/
-def pubCodec : GameCodec (fsSig SS RS AD Pub M C) (spec SS RS AD (Pub × M) C) where
+@[expose] def pubCodec : GameCodec (fsSig SS RS AD Pub M C) (spec SS RS AD (Pub × M) C) where
   Q := pubQ
   R := pubR
   qenc := fun
@@ -151,28 +151,28 @@ variable {CK MK AD Pub M C : Type}
 
 local notation "RT" => Ty (fsSig CK MK AD Pub M C)
 
-@[reducible] def rssTy : RT := .prod (bt .ss) .nat
+@[expose, reducible] def rssTy : RT := .prod (bt .ss) .nat
 
-@[reducible] def rrsTy : RT := .prod (bt .ss) (.prod .nat (.list (.prod .nat (bt .rs))))
+@[expose, reducible] def rrsTy : RT := .prod (bt .ss) (.prod .nat (.list (.prod .nat (bt .rs))))
 
-def rssDec : (rssTy : RT).denote → RatchetSenderState CK
+@[expose] def rssDec : (rssTy : RT).denote → RatchetSenderState CK
   | (w, i) => ⟨w, i⟩
 
-def rrsDec : (rrsTy : RT).denote → RatchetReceiverState CK MK
+@[expose] def rrsDec : (rrsTy : RT).denote → RatchetReceiverState CK MK
   | (w, i, d) => ⟨w, i, d⟩
 
-def rrDecM : (rrTy (bt .msg) : RT).denote → ReceiveResult M
+@[expose] def rrDecM : (rrTy (bt .msg) : RT).denote → ReceiveResult M
   | .inl () => .rejected
   | .inr (i, m) => .accepted i m
 
-@[reducible] def ratchetQ : RT :=
+@[expose, reducible] def ratchetQ : RT :=
   .sum (.prod (bt .ad) (bt .msg))
   (.sum (.prod (bt .ad) (.prod (bt .msg) (bt .msg)))
   (.sum .unit (.sum .unit
     (.sum (.prod (bt .ad) (.prod .nat (bt .ct)))
           (.prod (bt .ad) (.prod .nat (bt .ct)))))))
 
-@[reducible] def ratchetR : RT :=
+@[expose, reducible] def ratchetR : RT :=
   .sum (.opt (.prod .nat (bt .ct)))
   (.sum (.opt rssTy)
   (.sum (.opt (.prod rssTy rrsTy))
@@ -180,7 +180,7 @@ def rrDecM : (rrTy (bt .msg) : RT).denote → ReceiveResult M
 
 /-- Source game codec for the ACD19 Fig. 6 ratchet FS-AEAD game over `RatchetSenderState` and
 `RatchetReceiverState` (`codecCost = 6`). -/
-def ratchetCodec :
+@[expose] def ratchetCodec :
     GameCodec (fsSig CK MK AD Pub M C)
       (spec (RatchetSenderState CK) (RatchetReceiverState CK MK) AD M (ℕ × C)) where
   Q := ratchetQ

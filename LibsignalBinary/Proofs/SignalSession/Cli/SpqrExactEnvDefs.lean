@@ -9,17 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SeamSpecsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPhase3PlacedBudget
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedEnv
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.TopPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializeBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SeamSpecsPlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1PlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPhase3PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedEnv -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopClPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.TopPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializeBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlacedBudget
 
 /-!
 # Exact Cap-Free SPQR Entry-Point Allocation Envelopes
@@ -33,7 +37,7 @@ Defines exact, cap-free allocation event envelopes for SPQR entry points:
   Block 427).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -63,14 +67,14 @@ abbrev DecodeStateBytesEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop
   DecodeStateEnv { st := ⟨0#64, 0#64, 0#64, bs⟩, outPtr := 0#64 } evs
 
 /-- Pointer-existentialized `(States, Message)` form of `StatesRecvExactEnv K`. -/
-def StatesRecvExactPairEnv {F : ShaCompress} (K : MlKem)
+@[expose] def StatesRecvExactPairEnv {F : ShaCompress} (K : MlKem)
     (st : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi)
     (evs : List AllocEvent) : Prop :=
   ∃ outA selfA msgA,
     StatesRecvExactEnv (F := F) K ⟨outA, selfA, msgA, st, msg⟩ evs
 
 /-- Concrete `VecArg`-indexed tight linked `spqr::recv` envelope (`Block 329`). -/
-def CliSpqrRecvTightLinkedEnv (W : CliHooks) (st _msg : VecArg) (evs : List AllocEvent) : Prop :=
+@[expose] def CliSpqrRecvTightLinkedEnv (W : CliHooks) (st _msg : VecArg) (evs : List AllocEvent) : Prop :=
   ∃ pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto,
     SpqrRecvTightLinkedEnv W.C.F W.Q.K
       DecodeStateBytesEnv StatesFromPbEnv StatesIntoPbExactEnv (StatesRecvExactPairEnv W.Q.K)
@@ -79,7 +83,7 @@ def CliSpqrRecvTightLinkedEnv (W : CliHooks) (st _msg : VecArg) (evs : List Allo
 /-- Cap-free state-indexed Block `427` (`spqr::send::<signal_session_ratchet::Coins>`) allocation
 envelope composed from `DecodeStateEnv`, `FromPb.DefsBudget.StatesFromPbEnv`,
 `StatesSendTightEnv`, `MessageSerializeEnv spqrPolyApi`, and `StatesIntoPbExactEnv`. -/
-def SpqrSendCoinsTightLinkedEnv (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrSendCoinsTightLinkedEnv (F : ShaCompress) (K : MlKem)
     (x : SendCall) (evs : List AllocEvent) : Prop :=
   let decEnv : List AllocEvent → Prop :=
     DecodeStateEnv { st := x.st, outPtr := 0#64 }
@@ -109,7 +113,7 @@ def SpqrSendCoinsTightLinkedEnv (F : ShaCompress) (K : MlKem)
 /-- Byte-slice-indexed `SpqrSendBudgetEnv` projection of `SpqrSendCoinsTightLinkedEnv F K`
 (`(fun sc : SendCall => SpqrSendCoinsTightBytesEnv F K sc.st.bytes sc.rest) =
 SpqrSendCoinsTightLinkedEnv F K` definitionally). -/
-def SpqrSendCoinsTightBytesEnv (F : ShaCompress) (K : MlKem) : SpqrSendBudgetEnv :=
+@[expose] def SpqrSendCoinsTightBytesEnv (F : ShaCompress) (K : MlKem) : SpqrSendBudgetEnv :=
   fun stBs rest evs =>
     SpqrSendCoinsTightLinkedEnv F K
       { ret := 0#64, st := ⟨0#64, 0#64, 0#64, stBs⟩, cur := 0#64, rest := rest }

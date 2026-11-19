@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.TopPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk2
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Chunked Braid Send-Chunk Leaf Transitions 2 (Relocatable)
@@ -22,7 +23,7 @@ Relocatable `[LibsignalPlacement]` contracts for `<Ct1Received>::send_ek_chunk` 
 and `<Ct1Sampled>::send_ct1_chunk` (Block `335`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

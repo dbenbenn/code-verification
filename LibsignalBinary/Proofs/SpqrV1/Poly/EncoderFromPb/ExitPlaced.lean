@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Exit
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Exit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PtsLoop
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyEncoder>::from_pb`: Relocatable Epilogue and Exit Blocks
@@ -21,7 +22,7 @@ Relocatable `[LibsignalPlacement]` proofs of the shared epilogue (`+1460`), erro
 `+1496`, `+1612`), and success header copy (`+1572 → s0.lr`) on Block `374`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.EncoderFromPb
 

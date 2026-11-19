@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsPlacedInst
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsPlacedInst -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Chain.FromPb
 import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPb
@@ -28,6 +28,9 @@ import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPt
 import LibsignalBinary.Proofs.SpqrV1.Drop.States2
 import LibsignalBinary.Proofs.SpqrV1.Drop.Unchunked
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Placed Drop & Chain Callee Instantiations for `SpqrV1PlacedSeams`
@@ -35,7 +38,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlaced
 Code-loaded placed contracts for SPQR drop and chain callees under `[CliSpqrExt W ext]`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option maxRecDepth 200000
 

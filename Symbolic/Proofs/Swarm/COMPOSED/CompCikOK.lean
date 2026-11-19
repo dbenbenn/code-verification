@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.COMPOSED.CompInvDefs
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -43,7 +43,7 @@ assuming `SpqrInv`. Combines `CikNetOK` with `SpqrInv.netPub` to establish `CikO
 on reachable traces (`cikOK_of_reachable`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

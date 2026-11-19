@@ -45,7 +45,7 @@ Proves preservation of `SpqrInv` across the Triple Ratchet state-exposure (`expo
 `messageDecrypt`, `messageDecryptSkipped`) transitions of `DY.Libsignal.Composed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -379,7 +379,7 @@ theorem append_logMessageKeyAndStore {tr : ExecTrace} (hinv : SpqrInv tr)
 
 /-! ## Receiver-Chain and `logSkippedKeys` Helpers -/
 
-def RecvChainInv (keys : HandshakeKeys) (c : RecvChain) : Prop :=
+@[expose] def RecvChainInv (keys : HandshakeKeys) (c : RecvChain) : Prop :=
   (c.index = 0 ∧ c.rIdx = 1 ∧ c.chainKey = keys.ck) ∨
   (∃ n, c.index.toNat = n + 1 ∧ c.rIdx = 1 ∧ c.chainKey = chainKeyAt keys.ck (n + 1)) ∨
   (∃ rkChain pk sk n,

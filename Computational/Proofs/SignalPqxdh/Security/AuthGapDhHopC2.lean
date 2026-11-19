@@ -9,11 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3
 import Computational.Proofs.SignalPqxdh.Security.FgGapDh
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingE
 import Computational.Proofs.SpecLemmas.Assumptions.KemCorrect
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.RoKemHopA -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.CollisionsC -- proof-setup: allow-public-import
 
 /-!
 # `Auth` hop `G3 → G3.5`: cutoff wrapper, handshake matching, and send/recv case analysis
@@ -23,7 +28,7 @@ monotonicity and `buildSecrets` ↔ `matchIdealAuthHandshake` equivalence, and d
 matched non-ideal receive subcases.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 open SignalPqxdh SignalPqxdh.Security
@@ -40,7 +45,7 @@ structure AuthAdvCutoffState (S : Setup) where
   advRoLog  : List Bytes := []
   respRecs  : List AuthRespRecord := []
 
-def AuthAdvCutoffState.empty (S : Setup) (secb : Bool) : AuthAdvCutoffState S :=
+@[expose] def AuthAdvCutoffState.empty (S : Setup) (secb : Bool) : AuthAdvCutoffState S :=
   { hyb := AuthHybridState.empty S secb
     advRoLog := []
     respRecs := [] }
@@ -50,7 +55,7 @@ theorem AuthAdvCutoffState.hyb_empty (S : Setup) (secb : Bool) :
     (AuthAdvCutoffState.empty S secb).hyb = AuthHybridState.empty S secb := rfl
 
 /-- Executes `pqxdhAuthHybridKoskImpl` while logging `.roQuery` inputs and responder handshakes. -/
-def pqxdhAuthAdvStageImpl (stage : AuthHybridStage) (S : Setup) (P : Primitives) :
+@[expose] def pqxdhAuthAdvStageImpl (stage : AuthHybridStage) (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthAdvCutoffState S) ProbComp) := fun q =>
   match q with
   | .roQuery secrets => StateT.mk (fun hst => do
@@ -77,41 +82,12 @@ theorem map_hyb_pqxdhAuthAdvStageImpl (stage : AuthHybridStage) (S : Setup) (P :
       (pqxdhAuthHybridKoskImpl stage true true S P q).run hst.hyb := by
   cases q <;> simp [pqxdhAuthAdvStageImpl, StateT.run_mk, Prod.map]
 
-theorem map_hyb_fullAuthAdvStageImpl (stage : AuthHybridStage) (S : Setup) (P : Primitives)
-    (q : (unifSpec + authSpec S).Domain) (hst : AuthAdvCutoffState S) :
-    Prod.map id AuthAdvCutoffState.hyb <$>
-      (((QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (AuthAdvCutoffState S) ProbComp) +
-        pqxdhAuthAdvStageImpl stage S P) q).run hst =
-    (((QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (AuthHybridState S) ProbComp) +
-      pqxdhAuthHybridKoskImpl stage true true S P) q).run hst.hyb := by
-  cases q with
-  | inl uq => simp [QueryImpl.liftTarget, StateT.run_monadLift, Prod.map]
-  | inr gq => exact map_hyb_pqxdhAuthAdvStageImpl stage S P gq hst
-
-theorem simulateQ_map_hyb_fullAuthAdvStageImpl (stage : AuthHybridStage) (S : Setup) (P :
-    Primitives)
-    {α : Type} (oa : OracleComp (unifSpec + authSpec S) α) (hst : AuthAdvCutoffState S) :
-    let fullAdv := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (AuthAdvCutoffState S) ProbComp) + pqxdhAuthAdvStageImpl stage S P
-    let fullHyb := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (AuthHybridState S) ProbComp) + pqxdhAuthHybridKoskImpl stage true true S P
-    Prod.map id AuthAdvCutoffState.hyb <$> ((simulateQ fullAdv oa).run hst) =
-      (simulateQ fullHyb oa).run hst.hyb :=
-  _root_.Proofs.SignalPqxdh.Security.map_proj_simulateQ
-    AuthAdvCutoffState.hyb
-    ((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-      (StateT (AuthAdvCutoffState S) ProbComp) + pqxdhAuthAdvStageImpl stage S P)
-    ((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-      (StateT (AuthHybridState S) ProbComp) + pqxdhAuthHybridKoskImpl stage true true S P)
-    (map_hyb_fullAuthAdvStageImpl stage S P)
-    oa hst
-
 /-- Combined Hop 1–3 abort predicate on `AuthHybridState S`. -/
-def isAuthG3Abort {S : Setup} (P : Primitives) (hst : AuthHybridState S) : Bool :=
+@[expose] def isAuthG3Abort {S : Setup} (P : Primitives) (hst : AuthHybridState S) : Bool :=
   hasEcPkCollisionAuth P hst || hasBadSigAuth hst ||
   hasKemPkCollisionAuth hst || hasBadKemShCrAuth P hst
 
-noncomputable def finalizeAuthKosk (S : Setup) (P : Primitives)
+@[expose] def finalizeAuthKosk (S : Setup) (P : Primitives)
     (secb b' : Bool) (finalSt : AuthHybridState S) : ProbComp Bool :=
   let allChallengedClean := finalSt.base.sessions.all (fun s =>
     !s.challenged || authInitCorruptionClause P true finalSt.base.principals s)
@@ -131,52 +107,6 @@ theorem finalizeAuthKosk_of_isAuthG3Abort {S : Setup} (P : Primitives)
     finalizeAuthKosk S P secb b' finalSt = $ᵗ Bool := by
   unfold finalizeAuthKosk
   simp [hAbort]
-
-theorem authKoskExpAtStage_eq_bind_finalizeAuthKosk (stage : AuthHybridStage)
-    (S : Setup) (P : Primitives) (A : AuthAdversary S) :
-    authKoskExpAtStage stage S P A = (do
-      let secb ← $ᵗ Bool
-      let initSt := AuthHybridState.empty S secb
-      let impl := (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (AuthHybridState S)
-        ProbComp) +
-        pqxdhAuthHybridKoskImpl stage true true S P
-      let (b', finalSt) ← (simulateQ impl A.run).run initSt
-      finalizeAuthKosk S P secb b' finalSt) := rfl
-
-theorem authKoskExpAtStage_eq_advStage (stage : AuthHybridStage)
-    (S : Setup) (P : Primitives) (A : AuthAdversary S) :
-    authKoskExpAtStage stage S P A = (do
-      let secb ← $ᵗ Bool
-      let initSt := AuthAdvCutoffState.empty S secb
-      let impl := (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (AuthAdvCutoffState S)
-        ProbComp) +
-        pqxdhAuthAdvStageImpl stage S P
-      let (b', finalHst) ← (simulateQ impl A.run).run initSt
-      finalizeAuthKosk S P secb b' finalHst.hyb) := by
-  rw [authKoskExpAtStage_eq_bind_finalizeAuthKosk]
-  apply bind_congr; intro secb
-  have hsim := simulateQ_map_hyb_fullAuthAdvStageImpl stage S P A.run
-    (AuthAdvCutoffState.empty S secb)
-  dsimp only [AuthAdvCutoffState.hyb_empty] at hsim ⊢
-  rw [← hsim, bind_map_left]
-  rfl
-
-theorem authFixedAdvG3_sub_G3_5_le_two_mul_abs_sub
-    (S : Setup) (P : Primitives) (A : AuthAdversary S) :
-    |authFixedAdvG3 S P A - authFixedAdvG3_5 S P A| ≤
-      2 * |(𝒟[authKoskExpAtStage .g3_5 S P A] {true}).toReal -
-           (𝒟[authKoskExpAtStage .g3 S P A] {true}).toReal| := by
-  have hG3 : authFixedAdvG3 S P A = (𝒟[authKoskExpAtStage .g3 S P A].boolBias).toReal := by
-    change authFixedAdvAtStage .g3 S P A = _
-    rw [authFixedAdvAtStage_eq_authKoskAdvAtStage .g3 S P A]
-    rfl
-  have hG35 : authFixedAdvG3_5 S P A = (𝒟[authKoskExpAtStage .g3_5 S P A].boolBias).toReal := by
-    change authFixedAdvAtStage .g3_5 S P A = _
-    rw [authFixedAdvAtStage_eq_authKoskAdvAtStage .g3_5 S P A]
-    rfl
-  rw [hG3, hG35, abs_sub_comm (𝒟[authKoskExpAtStage .g3_5 S P A] {true}).toReal]
-  exact abs_sub_boolBias_toReal_le_two_mul_abs_sub
-    (authKoskExpAtStage .g3 S P A) (authKoskExpAtStage .g3_5 S P A)
 
 /-! ## `isAuthG3Abort` monotonicity -/
 
@@ -483,276 +413,6 @@ theorem authHybridExtends_runAuthHybridSendKosk {S : Setup} (stage : AuthHybridS
              List.Sublist.refl _, List.sublist_cons_self _ _,
              hInitSub, List.Sublist.refl _⟩)
 
-theorem authHybridExtends_pqxdhAuthHybridKoskImpl {S : Setup} (stage : AuthHybridStage)
-    (useRo checkAuth : Bool) (P : Primitives) (q : AuthQuery S) (hst : AuthHybridState S)
-    {y : AuthResponse × AuthHybridState S}
-    (hy : y ∈ support ((pqxdhAuthHybridKoskImpl stage useRo checkAuth S P q).run hst)) :
-    AuthHybridExtends P hst y.2 := by
-  unfold pqxdhAuthHybridKoskImpl at hy
-  rw [StateT.run_bind, StateT.run_get, pure_bind] at hy
-  dsimp only at hy
-  refine authHybridExtends_if_noneResp P _ _ hst (fun hy => ?_) hy
-  cases q with
-  | sendOPK u i bundle m0 m1 =>
-    dsimp only at hy
-    split_ifs at hy
-    · exact authHybridExtends_pure_noneResp P hst hy
-    · exact authHybridExtends_runAuthHybridSendKosk stage useRo P (.sendOPK u i) u bundle m0 m1 hst
-        hy
-  | sendNoOPK u i bundle m0 m1 =>
-    dsimp only at hy
-    split_ifs at hy
-    · exact authHybridExtends_pure_noneResp P hst hy
-    · exact authHybridExtends_runAuthHybridSendKosk stage useRo P (.sendNoOPK u i) u bundle m0 m1
-        hst hy
-  | recvOPK k j o msg =>
-    dsimp only at hy
-    refine authHybridExtends_if_noneResp P _ _ hst (fun hy => ?_) hy
-    refine authHybridExtends_if_noneResp P _ _ hst (fun hy => ?_) hy
-    refine authHybridExtends_if_noneResp P _ _ hst (fun hy => ?_) hy
-    cases hFk : hst.base.principals.find? (fun (idx, _) => idx == k.val) with
-          | none =>
-            rw [hFk] at hy; exact authHybridExtends_pure_noneResp P hst hy
-          | some ke =>
-            rcases ke with ⟨_, kEntry⟩; rw [hFk] at hy; dsimp only at hy
-            cases hFb : hst.base.spkBundles.find? (fun (idx, _) => idx == (k.val, j.val)) with
-            | none =>
-              rw [hFb] at hy; exact authHybridExtends_pure_noneResp P hst hy
-            | some kb =>
-              rcases kb with ⟨_, bEntry⟩; rw [hFb] at hy; dsimp only at hy
-              cases hFo : hst.base.opkEntries.find? (fun (idx, _) => idx == (k.val, j.val,
-                o.val)) with
-              | none =>
-                rw [hFo] at hy; exact authHybridExtends_pure_noneResp P hst hy
-              | some oo =>
-                rcases oo with ⟨_, oEntry⟩; rw [hFo] at hy; dsimp only at hy
-                refine authHybridExtends_if_noneResp P _ _ hst (fun hy => ?_) hy
-                refine authHybridExtends_if_noneResp P _ _ hst (fun hy => ?_) hy
-                cases hDec : P.kemDecaps bEntry.pqspkSk msg.hdr.kemCt with
-                    | none =>
-                      rw [hDec] at hy; exact authHybridExtends_pure_noneResp P hst hy
-                    | some ss =>
-                      rw [hDec] at hy; dsimp only at hy
-                      rw [StateT.run_bind, StateT.run_set, pure_bind] at hy
-                      refine AuthHybridExtends.trans ?_
-                        (authHybridExtends_bind_state_eq P _ hy
-                          (state_eq_of_liftM _ _) (fun schedRes y hy => ?_))
-                      · exact ⟨List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _,
-                          List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _,
-                          List.sublist_cons_self _ _⟩
-                      · cases schedRes with
-                      | none =>
-                        exact authHybridExtends_pure_noneResp P _ hy
-                      | some out =>
-                        rcases out with ⟨drKey, rk1, ck1_1, pt, roCache', rootRoCache'⟩
-                        dsimp only at hy
-                        cases hFS : findHonestPrincipal P hst.base.principals msg.hdr.ikAPk with
-                        | none =>
-                          rw [hFS] at hy; dsimp only at hy
-                          rw [StateT.run_bind, StateT.run_set, pure_bind, StateT.run_pure,
-                            mem_support_pure_iff] at hy
-                          rcases hy with ⟨_, rfl⟩
-                          refine ⟨List.Sublist.refl _, List.Sublist.refl _, ?_,
-                            List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _,
-                              List.Sublist.refl _⟩
-                          dsimp only; rw [map_opk_opkPk_consume]
-                        | some se =>
-                          rcases se with ⟨_, senderEntry⟩; rw [hFS] at hy; dsimp only at hy
-                          split_ifs at hy <;>
-                            (rw [StateT.run_bind, StateT.run_set, pure_bind, StateT.run_pure,
-                              mem_support_pure_iff] at hy;
-                             rcases hy with ⟨_, rfl⟩;
-                             refine ⟨List.Sublist.refl _, List.Sublist.refl _, ?_,
-                               List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _,
-                                 List.Sublist.refl _⟩;
-                             dsimp only; rw [map_opk_opkPk_consume])
-  | recvNoOPK k j l msg =>
-    dsimp only at hy
-    refine authHybridExtends_if_noneResp P _ _ hst (fun hy => ?_) hy
-    refine authHybridExtends_if_noneResp P _ _ hst (fun hy => ?_) hy
-    refine authHybridExtends_if_noneResp P _ _ hst (fun hy => ?_) hy
-    cases hFk : hst.base.principals.find? (fun (idx, _) => idx == k.val) with
-          | none =>
-            rw [hFk] at hy; exact authHybridExtends_pure_noneResp P hst hy
-          | some ke =>
-            rcases ke with ⟨_, kEntry⟩; rw [hFk] at hy; dsimp only at hy
-            cases hFb : hst.base.spkBundles.find? (fun (idx, _) => idx == (k.val, j.val)) with
-            | none =>
-              rw [hFb] at hy; exact authHybridExtends_pure_noneResp P hst hy
-            | some kb =>
-              rcases kb with ⟨_, bEntry⟩; rw [hFb] at hy; dsimp only at hy
-              refine authHybridExtends_if_noneResp P _ _ hst (fun hy => ?_) hy
-              cases hDec : P.kemDecaps bEntry.pqspkSk msg.hdr.kemCt with
-                | none =>
-                  rw [hDec] at hy; exact authHybridExtends_pure_noneResp P hst hy
-                | some ss =>
-                  rw [hDec] at hy; dsimp only at hy
-                  rw [StateT.run_bind, StateT.run_set, pure_bind] at hy
-                  refine AuthHybridExtends.trans ?_
-                    (authHybridExtends_bind_state_eq P _ hy
-                      (state_eq_of_liftM _ _) (fun schedRes y hy => ?_))
-                  · exact ⟨List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _,
-                      List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _,
-                      List.sublist_cons_self _ _⟩
-                  · cases schedRes with
-                  | none =>
-                    exact authHybridExtends_pure_noneResp P _ hy
-                  | some out =>
-                    rcases out with ⟨drKey, rk1, ck1_1, pt, roCache', rootRoCache'⟩
-                    dsimp only at hy
-                    cases hFS : findHonestPrincipal P hst.base.principals msg.hdr.ikAPk with
-                    | none =>
-                      rw [hFS] at hy; dsimp only at hy
-                      rw [StateT.run_bind, StateT.run_set, pure_bind, StateT.run_pure,
-                        mem_support_pure_iff] at hy
-                      rcases hy with ⟨_, rfl⟩
-                      exact ⟨List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _,
-                        List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _,
-                          List.Sublist.refl _⟩
-                    | some se =>
-                      rcases se with ⟨_, senderEntry⟩; rw [hFS] at hy; dsimp only at hy
-                      split_ifs at hy <;>
-                        (rw [StateT.run_bind, StateT.run_set, pure_bind, StateT.run_pure,
-                          mem_support_pure_iff] at hy;
-                         rcases hy with ⟨_, rfl⟩;
-                         exact ⟨List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _,
-                           List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _,
-                             List.Sublist.refl _⟩)
-  | initPrin u =>
-    refine authHybridExtends_of_liftAuthBase P _ hst (fun p hp => ?_) hy
-    unfold pqxdhAuthImpl at hp
-    rw [StateT.run_bind, StateT.run_get, pure_bind] at hp
-    dsimp only at hp
-    split_ifs at hp
-    · rw [StateT.run_pure, mem_support_pure_iff] at hp
-      rcases hp with ⟨_, rfl⟩; exact AuthHybridExtends.refl P hst
-    · simp only [StateT.run_bind, StateT.run_monadLift, monadLift_self,
-        StateT.run_set, StateT.run_pure, bind_assoc, pure_bind,
-        support_bind, Set.mem_iUnion, mem_support_pure_iff] at hp
-      rcases hp with ⟨sec0, _, secSign, _, _, rfl⟩
-      exact ⟨List.sublist_cons_self _ _, List.Sublist.refl _, List.Sublist.refl _,
-        List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _⟩
-  | corruptIK u =>
-    refine authHybridExtends_of_liftAuthBase P _ hst (fun p hp => ?_) hy
-    unfold pqxdhAuthImpl at hp
-    rw [StateT.run_bind, StateT.run_get, pure_bind] at hp
-    dsimp only at hp
-    cases hF : hst.base.principals.find? (fun (idx, _) => idx == u.val) with
-    | none =>
-      rw [hF] at hp; dsimp only at hp
-      rw [StateT.run_pure, mem_support_pure_iff] at hp
-      rcases hp with ⟨_, rfl⟩; exact AuthHybridExtends.refl P hst
-    | some ue =>
-      rcases ue with ⟨_, entry⟩; rw [hF] at hp; dsimp only at hp
-      rw [StateT.run_bind, StateT.run_set, pure_bind, StateT.run_pure, mem_support_pure_iff] at hp
-      rcases hp with ⟨_, rfl⟩
-      refine ⟨?_, List.Sublist.refl _, List.Sublist.refl _,
-        List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _⟩
-      dsimp only; rw [map_prin_ikAPk_corrupt]
-  | genSPK u j =>
-    refine authHybridExtends_of_liftAuthBase P _ hst (fun p hp => ?_) hy
-    unfold pqxdhAuthImpl at hp
-    rw [StateT.run_bind, StateT.run_get, pure_bind] at hp
-    dsimp only at hp
-    split_ifs at hp
-    · rw [StateT.run_pure, mem_support_pure_iff] at hp
-      rcases hp with ⟨_, rfl⟩; exact AuthHybridExtends.refl P hst
-    · cases hF : hst.base.principals.find? (fun (idx, _) => idx == u.val) with
-      | none =>
-        rw [hF] at hp; dsimp only at hp
-        rw [StateT.run_pure, mem_support_pure_iff] at hp
-        rcases hp with ⟨_, rfl⟩; exact AuthHybridExtends.refl P hst
-      | some ue =>
-        rcases ue with ⟨_, uEntry⟩; rw [hF] at hp; dsimp only at hp
-        simp only [StateT.run_bind, StateT.run_monadLift, monadLift_self,
-          StateT.run_set, StateT.run_pure, bind_assoc, pure_bind,
-          support_bind, Set.mem_iUnion, mem_support_pure_iff] at hp
-        rcases hp with ⟨spkSk, _, rSpk, _, ⟨pqPk, pqSk⟩, _, rPq, _, _, rfl⟩
-        exact ⟨List.Sublist.refl _, List.sublist_cons_self _ _, List.Sublist.refl _,
-          List.sublist_cons_self _ _, List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _⟩
-  | genOPK u j o =>
-    refine authHybridExtends_of_liftAuthBase P _ hst (fun p hp => ?_) hy
-    unfold pqxdhAuthImpl at hp
-    rw [StateT.run_bind, StateT.run_get, pure_bind] at hp
-    dsimp only at hp
-    split_ifs at hp
-    · rw [StateT.run_pure, mem_support_pure_iff] at hp
-      rcases hp with ⟨_, rfl⟩; exact AuthHybridExtends.refl P hst
-    · simp only [StateT.run_bind, StateT.run_monadLift,
-        monadLift_self, StateT.run_set, StateT.run_pure, bind_assoc, pure_bind,
-        support_bind, Set.mem_iUnion, mem_support_pure_iff] at hp
-      rcases hp with ⟨opkSk, _, _, rfl⟩
-      exact ⟨List.Sublist.refl _, List.Sublist.refl _, List.sublist_cons_self _ _,
-        List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _⟩
-  | registerKey sk =>
-    refine authHybridExtends_of_liftAuthBase P _ hst (fun p hp => ?_) hy
-    unfold pqxdhAuthImpl at hp
-    rw [StateT.run_bind, StateT.run_get, pure_bind] at hp
-    dsimp only at hp
-    cases hReg : registerAdvKey P hst.base.advKeys sk with
-    | none =>
-      rw [hReg] at hp; dsimp only at hp
-      rw [StateT.run_pure, mem_support_pure_iff] at hp
-      rcases hp with ⟨_, rfl⟩; exact AuthHybridExtends.refl P hst
-    | some pa =>
-      rcases pa with ⟨pk, advKeys'⟩; rw [hReg] at hp; dsimp only at hp
-      rw [StateT.run_bind, StateT.run_set, pure_bind, StateT.run_pure, mem_support_pure_iff] at hp
-      rcases hp with ⟨_, rfl⟩; dsimp only
-      exact ⟨List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _,
-        List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _⟩
-  | roQuery secrets =>
-    refine authHybridExtends_of_liftAuthBase P _ hst (fun p hp => ?_) hy
-    unfold pqxdhAuthImpl at hp
-    rw [StateT.run_bind, StateT.run_get, pure_bind] at hp
-    dsimp only at hp
-    split_ifs at hp
-    · rw [StateT.run_pure, mem_support_pure_iff] at hp
-      rcases hp with ⟨_, rfl⟩; exact AuthHybridExtends.refl P hst
-    · simp only [StateT.run_bind, StateT.run_monadLift, monadLift_self,
-        StateT.run_set, StateT.run_pure, bind_assoc, pure_bind,
-        support_bind, Set.mem_iUnion, mem_support_pure_iff] at hp
-      rcases hp with ⟨⟨_, _⟩, _, _, rfl⟩; dsimp only
-      exact ⟨List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _,
-        List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _⟩
-  | roRootQuery rk dh =>
-    refine authHybridExtends_of_liftAuthBase P _ hst (fun p hp => ?_) hy
-    unfold pqxdhAuthImpl at hp
-    rw [StateT.run_bind, StateT.run_get, pure_bind] at hp
-    dsimp only at hp
-    split_ifs at hp
-    · rw [StateT.run_pure, mem_support_pure_iff] at hp
-      rcases hp with ⟨_, rfl⟩; exact AuthHybridExtends.refl P hst
-    · simp only [StateT.run_bind, StateT.run_monadLift, monadLift_self,
-        StateT.run_set, StateT.run_pure, bind_assoc, pure_bind,
-        support_bind, Set.mem_iUnion, mem_support_pure_iff] at hp
-      rcases hp with ⟨⟨_, _⟩, _, _, rfl⟩; dsimp only
-      exact ⟨List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _,
-        List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _, List.Sublist.refl _⟩
-  | revealDhSecrets =>
-    refine authHybridExtends_of_liftAuthBase P _ hst (fun p hp => ?_) hy
-    unfold pqxdhAuthImpl at hp
-    rw [StateT.run_bind, StateT.run_get, pure_bind] at hp
-    dsimp only at hp
-    split_ifs at hp <;>
-      (rw [StateT.run_pure, mem_support_pure_iff] at hp;
-       rcases hp with ⟨_, rfl⟩; exact AuthHybridExtends.refl P hst)
-
-theorem isAuthG3Abort_mono_pqxdhAuthAdvStageImpl {S : Setup} (stage : AuthHybridStage)
-    (P : Primitives) (q : AuthQuery S) (s : AuthAdvCutoffState S)
-    (hAb : isAuthG3Abort P s.hyb = true)
-    (y : AuthResponse × AuthAdvCutoffState S)
-    (hy : y ∈ support ((pqxdhAuthAdvStageImpl stage S P q).run s)) :
-    isAuthG3Abort P y.2.hyb = true := by
-  have hyHyb : (y.1, y.2.hyb) ∈ support ((pqxdhAuthHybridKoskImpl stage true true S P q).run
-    s.hyb) := by
-    cases q <;>
-      (simp only [pqxdhAuthAdvStageImpl, StateT.run_mk, support_bind, Set.mem_iUnion,
-        mem_support_pure_iff] at hy;
-       rcases hy with ⟨⟨resp, h'⟩, hh', rfl⟩;
-       exact hh')
-  exact isAuthG3Abort_mono_of_extends P (authHybridExtends_pqxdhAuthHybridKoskImpl stage true true P
-    q s.hyb hyHyb) hAb
-
 theorem isAuthG3Abort_withBaseRoCache {S : Setup} (P : Primitives)
     (c : List (Bytes × DRKey)) (hst : AuthHybridState S) :
     isAuthG3Abort P { hst with base := { hst.base with roCache := c } } = isAuthG3Abort P hst := rfl
@@ -843,7 +503,7 @@ theorem eq_of_nodup_map_auth {α β : Type} (f : α → β) {L : List α}
     · exact ih hNodup.2 ha' hb'
 
 /-- Key-store well-formedness invariant on `principals`, `spkBundles`, `opkEntries`, and `advKeys`. -/
-def ValidAuthKeyStores (S : Setup) (P : Primitives) (st : AuthState S) : Prop :=
+@[expose] def ValidAuthKeyStores (S : Setup) (P : Primitives) (st : AuthState S) : Prop :=
   ValidPrincipals S st.principals ∧
   ValidSpkBundles S st.spkBundles ∧
   ValidOpkEntries S st.opkEntries ∧
@@ -860,7 +520,7 @@ theorem validAuthKeyStores_empty (S : Setup) (P : Primitives) (secb : Bool) :
   have hNil := validEcLists_nil S
   refine ⟨hNil.1, hNil.2.1, hNil.2.2.1, ?_, ?_, ?_, ?_⟩ <;> (intro _ h; cases h)
 
-def idealSessionSecrets {S : Setup} (P : Primitives)
+@[expose] def idealSessionSecrets {S : Setup} (P : Primitives)
     (uEntry : PrincipalEntry) (ekASk ss : Bytes) (s : IdealAuthSession S) : Bytes :=
   buildSecrets
     (P.x25519 uEntry.secIKA0 s.peerSpkPk)
@@ -869,7 +529,7 @@ def idealSessionSecrets {S : Setup} (P : Primitives)
     (s.peerOpkPk?.map (fun opkPk => P.x25519 ekASk opkPk))
     ss
 
-def recvHandshakeSecrets (P : Primitives)
+@[expose] def recvHandshakeSecrets (P : Primitives)
     (kEntry : PrincipalEntry) (bEntry : SpkBundleEntry)
     (dh4? : Option Bytes) (ss : Bytes) (hdr : HandshakeHdr) : Bytes :=
   buildSecrets
@@ -880,7 +540,7 @@ def recvHandshakeSecrets (P : Primitives)
     ss
 
 /-- Well-formedness witness for an `IdealAuthSession S` created during `runAuthHybridSendKosk`. -/
-def ValidIdealAuthSession (S : Setup) (P : Primitives) (hst : AuthHybridState S)
+@[expose] def ValidIdealAuthSession (S : Setup) (P : Primitives) (hst : AuthHybridState S)
     (s : IdealAuthSession S) (sessEntry : AuthInitiatorEntry S)
     (u : Nat) (uEntry : PrincipalEntry) (kemCoins ss_s : Bytes)
     (initRec : _root_.SignalPqxdh.Security.InitKemRecord S) : Prop :=
@@ -906,7 +566,7 @@ def ValidIdealAuthSession (S : Setup) (P : Primitives) (hst : AuthHybridState S)
     ∃ skOpk, skOpk.length = 32 ∧ P.pow8 opkPk = P.pow8 (P.x25519Base skOpk))
 
 /-- Well-formedness witness for a responder handshake at `evalAuthHybridRecvSchedule`. -/
-def ValidAuthRespHandshake (S : Setup) (P : Primitives) (hst : AuthHybridState S)
+@[expose] def ValidAuthRespHandshake (S : Setup) (P : Primitives) (hst : AuthHybridState S)
     (k : Fin S.N_id) (j : Fin S.N_recv)
     (kEntry : PrincipalEntry) (bEntry : SpkBundleEntry)
     (opkPk? : Option Bytes) (dh4? : Option Bytes)
@@ -1142,7 +802,7 @@ theorem secrets_eq_imp_matchIdealAuthHandshake_of_pqspkHonest {S : Setup} (P : P
 
 /-! ## Matched receive case analysis -/
 
-def lookupSpkSkTakeNonEmpty (S : Setup) (P : Primitives)
+@[expose] def lookupSpkSkTakeNonEmpty (S : Setup) (P : Primitives)
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (advKeyPows : List (Bytes × Bytes))
     (spkPk : Bytes) : Bytes :=
@@ -1155,7 +815,7 @@ def lookupSpkSkTakeNonEmpty (S : Setup) (P : Primitives)
     | some (sk, _) => sk
     | none => []
 
-def initAuthDh1CandNonEmpty (S : Setup) (P : Primitives)
+@[expose] def initAuthDh1CandNonEmpty (S : Setup) (P : Primitives)
     (principals : List (Nat × PrincipalEntry))
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (advKeyPows : List (Bytes × Bytes))

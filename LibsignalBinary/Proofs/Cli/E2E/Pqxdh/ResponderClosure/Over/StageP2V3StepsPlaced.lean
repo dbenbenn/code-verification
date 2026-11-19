@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V3Steps
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsEPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V3Steps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsEPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import all Init.Data.String.Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsB -- proof-setup: allow-public-import
 
 /-!
 # Placed Stage P2 Over-Path Outer `v3` Reject Basic Blocks
@@ -25,7 +26,7 @@ Proves `[LibsignalPlacement]` basic-block specifications for the outer `v3` reje
 `+0x0868` to `dropProcessPrekeyImplName` on `stageP1ProgPlaced ext`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -263,7 +264,7 @@ theorem p2_over_seg1d_v3_to_drop_ext_placed_wp [LibsignalPlacement]
 abbrev x3dhUnsupportedSym : String := "libsignal_cli_handshake:.rodata..Lanon.83"
 
 /-- Byte encoding of the 24-byte `"X3DH no longer supported"` `.rodata` message. -/
-def x3dhUnsupportedBytes : List (BitVec 8) :=
+@[expose] def x3dhUnsupportedBytes : List (BitVec 8) :=
   ("X3DH no longer supported".toUTF8.toList).map UInt8.toBitVec
 
 theorem x3dhUnsupportedBytes_length : x3dhUnsupportedBytes.length = 24 := by decide +kernel

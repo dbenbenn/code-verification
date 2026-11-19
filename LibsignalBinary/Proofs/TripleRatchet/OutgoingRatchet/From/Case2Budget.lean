@@ -10,11 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case2
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.FrameBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case2
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.FrameBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -24,7 +24,7 @@ Proves the `[LibsignalPlacement]` `RustCliAllocBudget` contract for the `version
 of `<OutgoingTripleRatchet>::from_session_state`, along with `deserialize_vm_placed_ok`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -93,7 +93,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- `deserializePlacedSpec` strengthened with `VmPreserved s0 sf` so budget callers can transport
 framed `A.pool lim st` across the call. -/
-def deserializePlacedBudgetSpec [LibsignalPlacement] : Spec DeserGhost :=
+@[expose] def deserializePlacedBudgetSpec [LibsignalPlacement] : Spec DeserGhost :=
   withVmPreserved deserializePlacedSpec
 
 section DeserializeVm
@@ -288,7 +288,7 @@ theorem otrFrom_case2_placed_ok_of_contracts [LibsignalPlacement] {M : AllocCost
     congrArg Prod.snd hmod
   have hnopanic : (.error (.invalidSessionStructure .versionTooLarge) :
       Except SignalProtocolError (OutgoingTripleRatchet (List (BitVec 8)))) ≠ .error .panic := by
-    decide
+    nofun
   have hagree : G.AgreeExceptPq { G with pq := ⟨0#64, 1#64⟩ } := rfl
   have hagree' : G.AgreeExceptPq { G with pq := ⟨0#64, 1#64⟩, sender := some sg } :=
     agreeExceptPq_of_sender G ⟨0#64, 1#64⟩ sg hGs

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepPreChainPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepPreChainPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.PurePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepPreChainPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepPreChainPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.PurePlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlacedBudget -- proof-setup: allow-public-import
 public meta import Lean
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
@@ -21,12 +21,35 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.PurePlaced
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage2
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Decode
+import Mathlib.Tactic.Basic
+import Mathlib.Tactic.ToAdditive
+import Mathlib.Tactic.ToDual
+import Lean.Elab.SyntheticMVars
+import Lean.Meta.Reduce
+import ProofLib.GenDecodes
+import ProofLib.GenPlacedFetches
+import ProofLib.ProgramReflection
+import ProofLib.SepLogic.CodeLookup
+import ProofLib.SepLogic.WP.ControlTactics
+import ProofLib.VCGen
+import ProofLib
+import ProofLib.FsTrace
+import ProofLib.Placed.Multi
+import ProofLib.ProgramReflection.Variant.TrapTransfer
+import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step244
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Cells
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExit
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExitPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExitPlacedBudget
 
 /-!
 # Budget-Threaded Stage 4 Segment 1 (`[LibsignalPlacement]`, `+4260 → +4576 / +4508`)
@@ -35,15 +58,13 @@ Executes `+4260 → +4496` (`ephA` draw/clamp and `<RootKey>::create_chain`) and
 (`Ok`) or `+4508` (`Err`) under `RustCliAllocBudget M`, advancing `A.pool` by `stage4PreChainEvents`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
 set_option linter.dupNamespace false
 set_option linter.unusedSimpArgs false
 set_option maxRecDepth 200000
-
-noncomputable section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepPreChainPlacedBudget
 
@@ -90,7 +111,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPl
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.PurePlacedBudget
   (staticDrop_ok_at_init_placed)
 open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-  (derivePublicKeyBytesSpec)
+  (derivePublicKeyBytesSpec derivePublicKeyBytesStackBudgetSpec)
 open LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
   (createChainSpec createChainSpecWithStack)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepPreChainPlacedBudgetAux
@@ -465,7 +486,9 @@ theorem stage4_step_prechain_to_4496_placed_of_callees [LibsignalPlacement] {M :
       subroutine_ok (initProgPlaced mmpl gh W) (lsmpl.base 618)
         (withLsRoCl lsmpl (coinsFillSpecPlacedW3 cStk)))
     (hDerivePubKey : subroutine_ok (initProgPlaced mmpl gh W) (lsmpl.base 200)
-      (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl (derivePublicKeyBytesSpec W.C.pubKey)))
+      (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
+        (LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet.withLsRet
+          (derivePublicKeyBytesStackBudgetSpec W.C.pubKey 1904))))
     (hCreateChain : subroutine_ok (initProgPlaced mmpl gh W) (lsmpl.base 40)
       (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl (createChainSpec M A lim W.C)))
     (hcoinsLt : x.coins.length < 2 ^ 63)
@@ -538,7 +561,7 @@ theorem stage4_step_prechain_to_4496_placed_of_callees [LibsignalPlacement] {M :
   refine sepWPp_seq_files (traceFsSound_initPlaced mmpl gh W)
     (sepWPp_mono_pre hent2
       (stage4_step_prechain_4376_to_4448_placed (A := A) (lim := lim) (st := st) (Frame := Frame)
-        hstk hspk hDerivePubKey hctrl2 htr2 hx20_2 hx21_2 hx22_2)) ?_
+        hstk hstk64 hspk hDerivePubKey hctrl2 htr2 hx20_2 hx21_2 hx22_2)) ?_
   rintro s4 P4 _ _ _ ⟨htr4, hctrl4, hx20_4, hx21_4, hx22_4, hx23_4, hx25_4, hent4⟩
   exact sepWPp_mono_pre hent4
     (stage4_step_prechain_from_4448_placed (A := A) (lim := lim) (st := st) (Frame := Frame)
@@ -864,4 +887,3 @@ theorem stage4_branch_4496_err_placed [LibsignalPlacement] {M : AllocCostModel}
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepPreChainPlacedBudget
 
-end

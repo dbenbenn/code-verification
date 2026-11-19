@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.Base
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserializeBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserializeBudget
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Assemble
 import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.Proof
 import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize
@@ -21,6 +22,10 @@ import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.BasePlacedBudget
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsPlaced -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Relocatable Top-Level Verification of `<Message>::deserialize`
@@ -29,7 +34,7 @@ Proves the allocation-budget `MessageDeserializePlacedOkX` and `blockProgram` th
 `<spqr::v1::chunked::states::Message>::deserialize` (Block `351`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,10 +61,18 @@ open CryptoVerification.SpqrV1.Top.MessageDeserialize
    ult_one_sub_five_32_of_gt_6 ult_one_sub_five_64_of_gt_6 unshiftWord vecU8_live_entails_dealloc)
 open CryptoVerification.SpqrV1.Top.Placed (blkLib_eq_351 blkPC_351 blkPl_351)
 open LibsignalBinary.Heap
-  (AllocCostModel AllocEvent BudgetLimits FreeOnlyEvs RustCliAllocBudget VmPreserved
+  (AllocCostModel AllocEvent BudgetLimits FitsEnv FreeOnlyEvs RustCliAllocBudget VmPreserved
    rustCliDeallocBudgetSpec rustDeallocEvents)
-open LibsignalBinary.Heap.SpecBudget (formatInnerBudgetSpec)
-open LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsBudget (messageDeserializeSpecX)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs
+  (CliFormatInnerLsCall cliFormatInnerLsCall_exactEvs_mem_u8DisplayPrefixed
+   formatInnerCallCliLsSpec lsRetAddrFormatInner_blockPlacement_base_add lsU8DisplayFmtSym
+   prefixedOneArgTplBytes)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs
+  (CliFormatInnerEnv MsgDeserErrEnv fitsEnv_cliFormatInnerEnv_of_msgDeserErrEnv
+   msgDeserErrEnv_of_cliFormatInnerEnv msgDeserErrEnv_of_fmt_and_dealloc)
+open VerifiedLibraries.RustStd (fmtArgEntriesAt fmtArgumentsAt fmtRef8)
+open LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsBudget
+  (MsgDeserPostEvs messageDeserializeSpecX)
 open LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsPlacedBudget
   (MessageDeserializePlacedOkX)
 open LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.BasePlacedBudget
@@ -126,7 +139,7 @@ private theorem sepWP_msgDeser_finish [LibsignalPlacement]
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {hooks : String → Option (State → State)}
     {call : MessageDeserializeCall} {st : M.σ} {evs : List AllocEvent}
-    (hevs : FreeOnlyEvs evs)
+    (hevs : MsgDeserPostEvs (Message.deserialize P_poly call.epoch call.fromBytes) evs)
     {s0 s : State} {P R : SepProp} {post : State → SepProp → Prop}
     (hpost : post = fun sf P_f =>
       ((sf.mem ⊨ P_f ∗ R) →
@@ -154,13 +167,99 @@ private theorem sepWP_msgDeser_finish [LibsignalPlacement]
   rw [sepConj_assoc, satisfies_pure_sepConj]
   exact ⟨⟨htrf, hevs⟩, Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hm1⟩
 
+/-- `.rodata` symbol of the 42-byte `"Expected a number between 0 and 6, got {}"` `fmt::Arguments`
+    template in `Block 351` (`+724`). -/
+abbrev msgDeserErrTplSym : String := "spqr:.rodata.str1.1+0xad2"
+
+/-- Literal 39-byte prefix `"Expected a number between 0 and 6, got "` of `msgDeserErrTplSym`. -/
+@[expose] def msgDeserErrPfxBs : List (BitVec 8) :=
+  [0x45#8, 0x78#8, 0x70#8, 0x65#8, 0x63#8, 0x74#8, 0x65#8, 0x64#8, 0x20#8,
+   0x61#8, 0x20#8, 0x6e#8, 0x75#8, 0x6d#8, 0x62#8, 0x65#8, 0x72#8, 0x20#8,
+   0x62#8, 0x65#8, 0x74#8, 0x77#8, 0x65#8, 0x65#8, 0x6e#8, 0x20#8, 0x30#8,
+   0x20#8, 0x61#8, 0x6e#8, 0x64#8, 0x20#8, 0x36#8, 0x2c#8, 0x20#8, 0x67#8,
+   0x6f#8, 0x74#8, 0x20#8]
+
+/-- Concrete `CliFormatInnerLsCall` descriptor at `Block 351 + 748`. -/
+@[expose] def msgDeserFmtCall [LibsignalPlacement] (sp : BitVec 64) (fb0 : BitVec 8) :
+    CliFormatInnerLsCall where
+  ret := sp - 136#64
+  x0 := lsρ msgDeserErrTplSym
+  x1 := sp - 64#64
+  argsRo := false
+  shape := .u8DisplayPrefixed msgDeserErrPfxBs (sp - 68#64) false fb0
+
+private theorem sp_sub_64_even (s0 : State) (hsp : s0.spAligned = true) :
+    (s0.sp - 64#64).getLsbD 0 = false := by
+  dsimp only [State.spAligned] at hsp
+  have h16 : s0.sp &&& 15#64 = 0#64 := beq_iff_eq.mp hsp
+  have hnot : ¬ (s0.sp - 64#64).getLsbD 0 = true := by
+    revert h16; bv_kernel
+  exact Bool.eq_false_iff.mpr hnot
+
+private theorem msgDeserFmtCall_sep_eq [LibsignalPlacement] (s0 : State)
+    (hsp : s0.spAligned = true) (fb0 : BitVec 8) :
+    fmtArgumentsAt (msgDeserFmtCall s0.sp fb0).argsRo (msgDeserFmtCall s0.sp fb0).x0
+        (msgDeserFmtCall s0.sp fb0).x1 (msgDeserFmtCall s0.sp fb0).tpl
+        (msgDeserFmtCall s0.sp fb0).args ∗
+      (msgDeserFmtCall s0.sp fb0).clientSep =
+      (lsρ msgDeserErrTplSym ↦ᵣ prefixedOneArgTplBytes msgDeserErrPfxBs) ∗
+      ((s0.sp - 68#64) ↦₈ fb0) ∗
+      ((s0.sp - 64#64) ↦₆₄ (s0.sp - 68#64)) ∗
+      ((s0.sp - 56#64) ↦₆₄ lsρ lsU8DisplayFmtSym) := by
+  have heven := sp_sub_64_even s0 hsp
+  have ha8 : s0.sp - 64#64 + 8#64 = s0.sp - 56#64 := by bv_omega
+  dsimp only [msgDeserFmtCall, CliFormatInnerLsCall.argsRo, CliFormatInnerLsCall.x1,
+    CliFormatInnerLsCall.tpl, CliFormatInnerLsCall.args, CliFormatInnerLsCall.clientSep,
+    fmtArgumentsAt, fmtArgEntriesAt, fmtRef8]
+  simp only [heven, Bool.false_eq_true, ↓reduceIte, ha8]
+  sep_ac_rfl
+
+private theorem satisfies_drop_left {m : Memory} {P Q : SepProp} (hm : m ⊨ P ∗ Q) : m ⊨ Q :=
+  ((satisfies_pure_sepConj True Q m).mp (satisfies_true_sepConj hm)).2
+
+private theorem sepWP_msgDeser_finish_ro [LibsignalPlacement]
+    {P_poly : PolyApi} {M : AllocCostModel}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {hooks : String → Option (State → State)}
+    {call : MessageDeserializeCall} {st : M.σ} {evs : List AllocEvent}
+    (hevs : MsgDeserPostEvs (Message.deserialize P_poly call.epoch call.fromBytes) evs)
+    {s0 s : State} {P P_ro R : SepProp} {post : State → SepProp → Prop}
+    (hpost : post = fun sf P_f =>
+      ((sf.mem ⊨ P_f ∗ R) →
+        (sf.mem ⊨ (messageDeserializeSpecX P_poly M A lim).post (call, st) s0 sf ∗ R)) ∧
+      sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
+    (hwp : SepWP ((blkPC_351).rebase (blkPl_351).base hooks) (s0.readReg64 .lr) s P
+      (fun sf P_f =>
+        VmPreserved s sf ∧
+        (P_f ⊢
+          P_ro ∗
+          messageResultAt P_poly call.out (Message.deserialize P_poly call.epoch call.fromBytes) ∗
+          (call.fromPtr ↦ₛ call.fromBytes) ∗
+          A.pool lim (M.stepEvents evs st) s ∗
+          stackAt s0.sp messageDeserializeStackX) ∧
+        sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace)) :
+    SepWP ((blkPC_351).rebase (blkPl_351).base hooks) (s0.readReg64 .lr) s P post := by
+  subst hpost
+  refine SepWP.mono hwp ?_
+  intro sf P_f _ _ ⟨hvm, hent, hspf, hcsf, htrf⟩
+  refine ⟨fun hmR => ?_, hspf, hcsf⟩
+  have hm0 := Satisfies.mono (sepConj_mono_left hent) hmR
+  rw [sepConj_assoc] at hm0
+  have hm1 := satisfies_drop_left hm0
+  rw [← A.pool_of_vmPreserved (lim := lim) (st := M.stepEvents evs st) hvm] at hm1
+  dsimp only [messageDeserializeSpecX]
+  simp only [sepExists_sepConj_left, satisfies_sepExists]
+  refine ⟨evs, ?_⟩
+  rw [sepConj_assoc, satisfies_pure_sepConj]
+  exact ⟨⟨htrf, hevs⟩, Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hm1⟩
+
 set_option maxHeartbeats 1600000 in
 /-- Error branch for invalid tag `tag > 6` (`+700..+844`, 37 insns) on `Block 351`. -/
 theorem step_err_fmt_placed [LibsignalPlacement] {M : AllocCostModel}
     (P_poly : PolyApi) (ext : String → Option (State → State))
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (hFmt : subroutine_ok ((blkPC_351).rebase (blkPl_351).base (Rust.withPanics ext))
-      (lsρ spqrFormatInnerSym) (formatInnerBudgetSpec M A lim))
+      (lsρ spqrFormatInnerSym) (formatInnerCallCliLsSpec M A lim))
     (hDealloc : subroutine_ok ((blkPC_351).rebase (blkPl_351).base (Rust.withPanics ext))
       (lsρ spqrDeallocSym) (rustCliDeallocBudgetSpec M A lim))
     (call : MessageDeserializeCall)
@@ -176,6 +275,7 @@ theorem step_err_fmt_placed [LibsignalPlacement] {M : AllocCostModel}
         (sf.mem ⊨ (messageDeserializeSpecX P_poly M A lim).post (call, st) s0 sf ∗ R)) ∧
         sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
     (herr : Message.deserialize P_poly call.epoch call.fromBytes = .error .msgDecode)
+    (hfit_err : FitsEnv M lim st MsgDeserErrEnv)
     (hpc : s.pc = (blkPl_351).base + 700#64)
     (hrun : s.status = .Running)
     (hsp : s.sp = s0.sp - 144#64)
@@ -185,6 +285,7 @@ theorem step_err_fmt_placed [LibsignalPlacement] {M : AllocCostModel}
     (hx29 : s.readReg64 .x29 = s0.sp - 48#64)
     (hcs_hi : DeserHighCalleeSaved s0 s)
     (hP : P =
+      (lsρ msgDeserErrTplSym ↦ᵣ prefixedOneArgTplBytes msgDeserErrPfxBs) ∗
       (call.fromPtr ↦ₛ call.fromBytes) ∗
       rawOutBufAt call.out o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a ∗
       A.pool lim st s ∗
@@ -200,7 +301,7 @@ theorem step_err_fmt_placed [LibsignalPlacement] {M : AllocCostModel}
   subst hP
   unfold msgDeserFramePad msgDeserScratchAt msgDeserSavedAt
   dsimp only [spqrFormatInnerSym, spqrDeallocSym] at hFmt hDealloc
-  have hafter_fmt : ∀ (s1 : State) (bs : List (BitVec 8)) (cap ptr : BitVec 64),
+  have hafter_fmt : ∀ (s1 : State) (evs₁ : List AllocEvent) (bs : List (BitVec 8)) (cap ptr : BitVec 64),
       s1.pc = (blkPl_351).base + 752#64 →
       s1.status = .Running →
       s1.sp = s0.sp - 144#64 →
@@ -208,6 +309,7 @@ theorem step_err_fmt_placed [LibsignalPlacement] {M : AllocCostModel}
       s1.readReg64 .x19 = call.out →
       s1.readReg64 .x29 = s0.sp - 48#64 →
       DeserHighCalleeSaved s0 s1 →
+      CliFormatInnerEnv evs₁ →
       bs.length ≤ cap.toNat →
       cap.toNat < 2 ^ 63 →
       SepWP ((blkPC_351).rebase (blkPl_351).base (Rust.withPanics ext)) (s0.readReg64 .lr) s1
@@ -217,8 +319,9 @@ theorem step_err_fmt_placed [LibsignalPlacement] {M : AllocCostModel}
           (if cap = 0#64 then emp
            else A.repAlloc.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
              memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)) ∗
-          A.pool lim st s1 ∗
+          A.pool lim (M.stepEvents evs₁ st) s1 ∗
           stackAt (s0.sp - 144#64) CryptoVerification.LibsignalTripleRatchet.extHookStack) ∗
+        (lsρ msgDeserErrTplSym ↦ᵣ prefixedOneArgTplBytes msgDeserErrPfxBs) ∗
         (call.fromPtr ↦ₛ call.fromBytes) ∗
         rawOutBufAt call.out o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a ∗
         memRegion (s0.sp - 144#64) 8 ∗
@@ -240,7 +343,7 @@ theorem step_err_fmt_placed [LibsignalPlacement] {M : AllocCostModel}
         ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x21) ∗
         ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗
         ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19)) post := by
-    intro s1 bs cap ptr hpc1 hrun1 hsp1 htr1 hx19_1 hx29_1 hcs1_hi hle hlt
+    intro s1 evs₁ bs cap ptr hpc1 hrun1 hsp1 htr1 hx19_1 hx29_1 hcs1_hi hevs₁ hle hlt
     rcases hcs1_hi with ⟨hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hvregs_1⟩
     have ha8 : s0.sp - 136#64 + 8#64 = s0.sp - 128#64 := by bv_omega
     have ha16 : s0.sp - 136#64 + 16#64 = s0.sp - 120#64 := by bv_omega
@@ -248,10 +351,9 @@ theorem step_err_fmt_placed [LibsignalPlacement] {M : AllocCostModel}
     by_cases hcap : cap = 0#64
     · subst hcap
       simp only [↓reduceIte, emp_sepConj]
-      have hstep_nil : A.pool lim st s1 = A.pool lim (M.stepEvents ([] : List AllocEvent) st) s1 := by
-        rw [LibsignalBinary.Heap.AllocCostModel.stepEvents_nil]
-      rw [hstep_nil]
-      refine sepWP_msgDeser_finish (evs := []) (by simp [FreeOnlyEvs]) hpost ?_
+      refine sepWP_msgDeser_finish_ro (evs := evs₁)
+        (P_ro := lsρ msgDeserErrTplSym ↦ᵣ prefixedOneArgTplBytes msgDeserErrPfxBs)
+        (Or.inr ⟨⟨.msgDecode, herr⟩, msgDeserErrEnv_of_cliFormatInnerEnv hevs₁⟩) hpost ?_
       by_vm_steps (
         refine SepWP.fold (pointsTo64_entails_byte_memRegion7 s0.sp ptr) (by sep_focus) ?_
         refine SepWP.fold (rawOutBufAt_entails_err_split call.out o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a)
@@ -283,7 +385,7 @@ theorem step_err_fmt_placed [LibsignalPlacement] {M : AllocCostModel}
       refine ProofLib.SepWP.transport_budgetPool
         (_hnsp.toVmPreserved (by simp only [arm64_norm, wp_norm])) (hnext := ?_)
       apply (LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserializeBudget.call_dealloc
-        hDealloc ptr (s0.sp - 144#64) cap.toNat st (s0 := s0))
+        hDealloc ptr (s0.sp - 144#64) cap.toNat (M.stepEvents evs₁ st) (s0 := s0))
       · wp_focus_close wp_norm_goal
       · wp_focus_close wp_norm_lhs
       · wp_focus_close wp_norm_lhs
@@ -299,8 +401,15 @@ theorem step_err_fmt_placed [LibsignalPlacement] {M : AllocCostModel}
       · intro s2 hpc2 hrun2 hsp2 htr2 _hacp2 hcs2
         rcases hcs2 with ⟨hx19_2, hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hx28_2, hx29_2, hvregs_2⟩
         simp only [arm64_norm, wp_norm] at hx19_2 hx20_2 hx21_2 hx22_2 hx23_2 hx24_2 hx25_2 hx26_2 hx27_2 hx28_2 hx29_2 hvregs_2
-        refine sepWP_msgDeser_finish (evs := rustDeallocEvents cap.toNat 1)
-          (by simp [rustDeallocEvents, FreeOnlyEvs]) hpost ?_
+        have hstep_app :
+            A.pool lim (M.stepEvents (rustDeallocEvents cap.toNat 1) (M.stepEvents evs₁ st)) s2 =
+              A.pool lim (M.stepEvents (evs₁ ++ rustDeallocEvents cap.toNat 1) st) s2 := by
+          rw [← M.stepEvents_append]
+        rw [hstep_app]
+        refine sepWP_msgDeser_finish_ro (evs := evs₁ ++ rustDeallocEvents cap.toNat 1)
+          (P_ro := lsρ msgDeserErrTplSym ↦ᵣ prefixedOneArgTplBytes msgDeserErrPfxBs)
+          (Or.inr ⟨⟨.msgDecode, herr⟩, msgDeserErrEnv_of_fmt_and_dealloc cap.toNat 1 hevs₁⟩)
+          hpost ?_
         by_vm_steps (
           refine SepWP.fold (pointsTo64_entails_byte_memRegion7 s0.sp ptr) (by sep_focus) ?_
           refine SepWP.fold (rawOutBufAt_entails_err_split call.out o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a)
@@ -325,28 +434,39 @@ theorem step_err_fmt_placed [LibsignalPlacement] {M : AllocCostModel}
   intro _m_strip
   wp_steps
   refine SepWP.fold (msgDeser_fmt_slot_fold s0.sp f08 f10 f18) (by sep_focus) ?_
+  refine SepWP.fold (Entails.of_eq (msgDeserFmtCall_sep_eq s0 hsp_align fb0).symm)
+    (by dsimp only [lsρ, msgDeserErrTplSym, lsU8DisplayFmtSym]; sep_focus) ?_
   refine SepWP.done (by wp_norm_goal) (by wp_norm_goal) fun _m_real _hnsp => ?_
   refine ProofLib.SepWPp.transport_budgetPool
     (_hnsp.toVmPreserved (by simp only [arm64_norm, wp_norm])) (hnext := ?_)
-  apply (LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserializeBudget.call_formatInner_then_sepWP
-    hFmt (s0.sp - 136#64) (s0.sp - 144#64) st (s0 := s0))
+  apply (LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserializeBudget.call_formatInnerCallLsEnv_then_sepWP
+    hFmt (msgDeserFmtCall s0.sp fb0) (s0.sp - 144#64) st (s0 := s0))
   · wp_focus_close wp_norm_goal
   · wp_focus_close wp_norm_lhs
   · wp_focus_close wp_norm_lhs
   · exact hsp_sub_align
   · wp_focus_close wp_norm_lhs
+  · simp only [wp_norm, arm64_norm, blkPl_351]
+    apply lsRetAddrFormatInner_blockPlacement_base_add <;> decide
   · wp_focus_close wp_norm_lhs
-  · wp_focus_close wp_norm_lhs
+  · dsimp only [msgDeserFmtCall]; wp_focus_close wp_norm_lhs
+  · dsimp only [msgDeserFmtCall, lsρ, msgDeserErrTplSym]; wp_focus_close wp_norm_lhs
+  · dsimp only [msgDeserFmtCall]; wp_focus_close wp_norm_lhs
+  · exact ⟨sp_sub_64_even s0 hsp_align, by decide, by decide⟩
+  · exact fitsEnv_cliFormatInnerEnv_of_msgDeserErrEnv hfit_err
+  · exact cliFormatInnerLsCall_exactEvs_mem_u8DisplayPrefixed _ _ _ _ _ _ _ _ (by decide)
   · sep_focus
-  · intro s1 bs cap ptr hpc1 hrun1 hsp1 htr1 hcs1 hle hlt _hptr
+  · intro s1 evs₁ bs cap ptr hpc1 hrun1 hsp1 htr1 hcs1 hevs₁ hle hlt _hptr
     rcases hcs1 with ⟨hx19_1, hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hx29_1, hvregs_1⟩
     simp only [arm64_norm, wp_norm] at hx19_1 hx20_1 hx21_1 hx22_1 hx23_1 hx24_1 hx25_1 hx26_1 hx27_1 hx28_1 hx29_1 hvregs_1
-    refine align_pre (by sep_ac_rfl)
-      (hafter_fmt s1 bs cap ptr hpc1 hrun1 hsp1 htr1 hx19_1
+    refine SepWP.fold (Entails.of_eq (msgDeserFmtCall_sep_eq s0 hsp_align fb0))
+      (by sep_focus) ?_
+    refine align_pre (by dsimp only [msgDeserFmtCall, lsmpl, lsρ, lsU8DisplayFmtSym]; sep_ac_rfl)
+      (hafter_fmt s1 evs₁ bs cap ptr hpc1 hrun1 hsp1 htr1 hx19_1
         (hx29_1.trans hx29)
         ⟨hx23_1.trans hx23, hx24_1.trans hx24, hx25_1.trans hx25,
          hx26_1.trans hx26, hx27_1.trans hx27, hx28_1.trans hx28,
-         hvregs_1.trans hvregs⟩ hle hlt)
+         hvregs_1.trans hvregs⟩ hevs₁ hle hlt)
 
 /-- Entry dispatch for `call.fromBytes = []` (`+0: cbz x3, +144` → `+144..+160`) on `Block 351`. -/
 theorem step_entry_empty_placed [LibsignalPlacement] {M : AllocCostModel}
@@ -378,7 +498,7 @@ theorem step_entry_empty_placed [LibsignalPlacement] {M : AllocCostModel}
   have hstep_nil : A.pool lim st s0 = A.pool lim (M.stepEvents ([] : List AllocEvent) st) s0 := by
     rw [LibsignalBinary.Heap.AllocCostModel.stepEvents_nil]
   rw [hstep_nil]
-  refine sepWP_msgDeser_finish (evs := []) (by simp [FreeOnlyEvs]) hpost ?_
+  refine sepWP_msgDeser_finish (evs := []) (Or.inl (by simp [FreeOnlyEvs])) hpost ?_
   by_vm_steps (
     refine SepWP.fold (rawOutBufAt_entails_err_split call.out o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a)
       (by sep_focus) ?_
@@ -397,7 +517,7 @@ theorem step_entry_tag_gt_6_placed [LibsignalPlacement] {M : AllocCostModel}
     (P_poly : PolyApi) (ext : String → Option (State → State))
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (hFmt : subroutine_ok ((blkPC_351).rebase (blkPl_351).base (Rust.withPanics ext))
-      (lsρ spqrFormatInnerSym) (formatInnerBudgetSpec M A lim))
+      (lsρ spqrFormatInnerSym) (formatInnerCallCliLsSpec M A lim))
     (hDealloc : subroutine_ok ((blkPC_351).rebase (blkPl_351).base (Rust.withPanics ext))
       (lsρ spqrDeallocSym) (rustCliDeallocBudgetSpec M A lim))
     (call : MessageDeserializeCall) (tag : BitVec 8) (rest : List (BitVec 8))
@@ -416,6 +536,8 @@ theorem step_entry_tag_gt_6_placed [LibsignalPlacement] {M : AllocCostModel}
     (hbytes : call.fromBytes = tag :: rest)
     (htag : 6 < tag.toNat)
     (hlen : call.fromBytes.length < 2 ^ 63)
+    (hfit_err : (∃ err, Message.deserialize P_poly call.epoch call.fromBytes = .error err) →
+      FitsEnv M lim st MsgDeserErrEnv)
     (hpc : s0.pc = (blkPl_351).base)
     (hrun : s0.status = .Running)
     (hsp_align : s0.spAligned = true)
@@ -423,6 +545,7 @@ theorem step_entry_tag_gt_6_placed [LibsignalPlacement] {M : AllocCostModel}
     (hx2 : s0.readReg64 .x2 = call.fromPtr)
     (hx3 : s0.readReg64 .x3 = BitVec.ofNat 64 call.fromBytes.length)
     (hP : P =
+      (lsρ msgDeserErrTplSym ↦ᵣ prefixedOneArgTplBytes msgDeserErrPfxBs) ∗
       (call.fromPtr ↦ₛ call.fromBytes) ∗
       rawOutBufAt call.out o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a ∗
       A.pool lim st s0 ∗
@@ -452,7 +575,7 @@ theorem step_entry_tag_gt_6_placed [LibsignalPlacement] {M : AllocCostModel}
       (by simp only [arm64_norm, wp_norm])
     intro hvmp
     rw [← A.pool_of_vmPreserved (lim := lim) (st := st) hvmp]
-    apply h_cont _ _ R post hpost herr
+    apply h_cont _ _ R post hpost herr (hfit_err ⟨.msgDecode, herr⟩)
     · wp_focus_close wp_norm_goal
     · wp_focus_close wp_norm_lhs
     · wp_focus_close wp_norm_lhs
@@ -506,7 +629,7 @@ theorem step_ok_tail_direct_placed [LibsignalPlacement] {M : AllocCostModel}
       msgDeserSavedAt s0.sp (s0.readReg64 .fp) (s0.readReg64 .lr)
         (s0.readReg64 .x22) (s0.readReg64 .x21) (s0.readReg64 .x20) (s0.readReg64 .x19)) :
     SepWP ((blkPC_351).rebase (blkPl_351).base hooks) (s0.readReg64 .lr) s P post := by
-  refine sepWP_msgDeser_finish hevs hpost ?_
+  refine sepWP_msgDeser_finish (Or.inl hevs) hpost ?_
   have hspA : s.spAligned = true := by
     rw [State.spAligned, hsp]; exact sp_sub_144_aligned s0 hs0A
   rcases hcs with ⟨hx23, hx24, hx25, hx26, hx27, hx28, hvregs⟩
@@ -842,122 +965,198 @@ theorem messageDeserialize_placed_ok_ext [LibsignalPlacement] {M : AllocCostMode
     (ext : String → Option (State → State))
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (hFmt : subroutine_ok ((blkPC_351).rebase (blkPl_351).base (Rust.withPanics ext))
-      (lsρ spqrFormatInnerSym) (formatInnerBudgetSpec M A lim))
+      (lsρ spqrFormatInnerSym) (formatInnerCallCliLsSpec M A lim))
     (hDealloc : subroutine_ok ((blkPC_351).rebase (blkPl_351).base (Rust.withPanics ext))
       (lsρ spqrDeallocSym) (rustCliDeallocBudgetSpec M A lim)) :
     subroutine_ok ((blkPC_351).rebase (blkPl_351).base (Rust.withPanics ext))
       (blkPl_351).base
-      (messageDeserializeSpecX P_poly M A lim) := by
+      (withLsCallInv lsmpl (messageDeserializeSpecX P_poly M A lim)) := by
   apply subroutine_ok_of_sepWPp
   rintro ⟨call, st⟩ R s0 hpc hrun hpre hsp_align
   change s0.mem ⊨
-    (⌜s0.readReg64 .x0 = call.out ∧
-      s0.readReg64 .x1 = call.epoch ∧
-      s0.readReg64 .x2 = call.fromPtr ∧
-      s0.readReg64 .x3 = BitVec.ofNat 64 call.fromBytes.length ∧
-      call.fromBytes.length < 2 ^ 63⌝ ∗
-     (memRegion call.out 48 ∗
-      (call.fromPtr ↦ₛ call.fromBytes) ∗
-      A.pool lim st s0 ∗
-      stackAt s0.sp messageDeserializeStackX)) ∗ R at hpre
+    (⌜LsCallInv lsmpl s0.mem⌝ ∗
+     (⌜s0.readReg64 .x0 = call.out ∧
+       s0.readReg64 .x1 = call.epoch ∧
+       s0.readReg64 .x2 = call.fromPtr ∧
+       s0.readReg64 .x3 = BitVec.ofNat 64 call.fromBytes.length ∧
+       call.fromBytes.length < 2 ^ 63 ∧
+       ((∃ err, Message.deserialize P_poly call.epoch call.fromBytes = .error err) →
+         FitsEnv M lim st MsgDeserErrEnv)⌝ ∗
+      (memRegion call.out 48 ∗
+       (call.fromPtr ↦ₛ call.fromBytes) ∗
+       A.pool lim st s0 ∗
+       stackAt s0.sp messageDeserializeStackX))) ∗ R at hpre
   rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx2, hx3, hlen⟩, hpre⟩
-  refine ⟨memRegion call.out 48 ∗
-      (call.fromPtr ↦ₛ call.fromBytes) ∗
-      A.pool lim st s0 ∗
-      stackAt s0.sp messageDeserializeStackX, R, hpre, ?_⟩
-  conv =>
-    arg 4
-    simp only [memRegion_48_eq_rawOutBufAt call.out, sepExists_sepConj_left]
-  apply SepWPp.exists_elim; intro o2a
-  apply SepWPp.exists_elim; intro oc6
-  apply SepWPp.exists_elim; intro oc5
-  apply SepWPp.exists_elim; intro oc4
-  apply SepWPp.exists_elim; intro oc3
-  apply SepWPp.exists_elim; intro oc2
-  apply SepWPp.exists_elim; intro oc1
-  apply SepWPp.exists_elim; intro oc0
-  apply SepWPp.exists_elim; intro o9
-  apply SepWPp.exists_elim; intro o8
-  apply SepWPp.exists_elim; intro o0
+  rcases hpre with ⟨hinv, hpre⟩
+  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
+  rcases hpre with ⟨⟨hx0, hx1, hx2, hx3, hlen, hfit_err⟩, hpre⟩
   have hbytes_cases : call.fromBytes = [] ∨ ∃ tag rest, call.fromBytes = tag :: rest := by
     cases call.fromBytes with
     | nil => exact Or.inl rfl
     | cons t r => exact Or.inr ⟨t, r, rfl⟩
   rcases hbytes_cases with hbytes | ⟨tag, rest, hbytes⟩
-  · apply SepWPp.of_sepWP_ret
+  · refine ⟨memRegion call.out 48 ∗
+        (call.fromPtr ↦ₛ call.fromBytes) ∗
+        A.pool lim st s0 ∗
+        stackAt s0.sp messageDeserializeStackX, R, hpre, ?_⟩
+    conv =>
+      arg 4
+      simp only [memRegion_48_eq_rawOutBufAt call.out, sepExists_sepConj_left]
+    apply SepWPp.exists_elim; intro o2a
+    apply SepWPp.exists_elim; intro oc6
+    apply SepWPp.exists_elim; intro oc5
+    apply SepWPp.exists_elim; intro oc4
+    apply SepWPp.exists_elim; intro oc3
+    apply SepWPp.exists_elim; intro oc2
+    apply SepWPp.exists_elim; intro oc1
+    apply SepWPp.exists_elim; intro oc0
+    apply SepWPp.exists_elim; intro o9
+    apply SepWPp.exists_elim; intro o8
+    apply SepWPp.exists_elim; intro o0
+    apply SepWPp.of_sepWP_ret
     exact step_entry_empty_placed P_poly (Rust.withPanics ext) A lim st call
       o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a s0 _ R _ rfl
       hbytes hpc hrun hx0 hx3 (by sep_ac_rfl)
-  · conv =>
-      arg 4
-      simp only [stackAt_msgDeser_split s0.sp, sepExists_sepConj_right]
-    apply SepWPp.exists_elim; intro s19
-    apply SepWPp.exists_elim; intro s20
-    apply SepWPp.exists_elim; intro s21
-    apply SepWPp.exists_elim; intro s22
-    apply SepWPp.exists_elim; intro s30
-    apply SepWPp.exists_elim; intro s29
-    apply SepWPp.exists_elim; intro f58
-    apply SepWPp.exists_elim; intro f50
-    apply SepWPp.exists_elim; intro fb0
-    apply SepWPp.exists_elim; intro st1
-    apply SepWPp.exists_elim; intro st0
-    apply SepWPp.exists_elim; intro st6
-    apply SepWPp.exists_elim; intro st5
-    apply SepWPp.exists_elim; intro st4
-    apply SepWPp.exists_elim; intro st3
-    apply SepWPp.exists_elim; intro f18
-    apply SepWPp.exists_elim; intro f10
-    apply SepWPp.exists_elim; intro f08
-    rcases tag_cases tag with h0 | h1 | h2 | h3 | h4 | h5 | h6 | hgt6
-    · apply SepWPp.of_sepWP_ret
-      exact step_entry_tag_le_6_placed P_poly hPoly (Rust.withPanics ext) A lim st call tag rest
+  · by_cases hgt6 : 6 < tag.toNat
+    · have hpre_ro : s0.mem ⊨
+          (memRegion call.out 48 ∗
+           (lsρ msgDeserErrTplSym ↦ᵣ prefixedOneArgTplBytes msgDeserErrPfxBs) ∗
+           (call.fromPtr ↦ₛ call.fromBytes) ∗
+           A.pool lim st s0 ∗
+           stackAt s0.sp messageDeserializeStackX) ∗ R := by
+        have h0 := CryptoVerification.lsro_slice_intro hinv.1
+          (sym := msgDeserErrTplSym) (off := 0) (addr := lsρ msgDeserErrTplSym)
+          (bs := prefixedOneArgTplBytes msgDeserErrPfxBs)
+          (BitVec.add_zero _).symm (by rfl_kernel) hpre
+        exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) h0
+      refine ⟨memRegion call.out 48 ∗
+          (lsρ msgDeserErrTplSym ↦ᵣ prefixedOneArgTplBytes msgDeserErrPfxBs) ∗
+          (call.fromPtr ↦ₛ call.fromBytes) ∗
+          A.pool lim st s0 ∗
+          stackAt s0.sp messageDeserializeStackX, R, hpre_ro, ?_⟩
+      conv =>
+        arg 4
+        simp only [memRegion_48_eq_rawOutBufAt call.out, sepExists_sepConj_left]
+      apply SepWPp.exists_elim; intro o2a
+      apply SepWPp.exists_elim; intro oc6
+      apply SepWPp.exists_elim; intro oc5
+      apply SepWPp.exists_elim; intro oc4
+      apply SepWPp.exists_elim; intro oc3
+      apply SepWPp.exists_elim; intro oc2
+      apply SepWPp.exists_elim; intro oc1
+      apply SepWPp.exists_elim; intro oc0
+      apply SepWPp.exists_elim; intro o9
+      apply SepWPp.exists_elim; intro o8
+      apply SepWPp.exists_elim; intro o0
+      conv =>
+        arg 4
+        simp only [stackAt_msgDeser_split s0.sp, sepExists_sepConj_right]
+      apply SepWPp.exists_elim; intro s19
+      apply SepWPp.exists_elim; intro s20
+      apply SepWPp.exists_elim; intro s21
+      apply SepWPp.exists_elim; intro s22
+      apply SepWPp.exists_elim; intro s30
+      apply SepWPp.exists_elim; intro s29
+      apply SepWPp.exists_elim; intro f58
+      apply SepWPp.exists_elim; intro f50
+      apply SepWPp.exists_elim; intro fb0
+      apply SepWPp.exists_elim; intro st1
+      apply SepWPp.exists_elim; intro st0
+      apply SepWPp.exists_elim; intro st6
+      apply SepWPp.exists_elim; intro st5
+      apply SepWPp.exists_elim; intro st4
+      apply SepWPp.exists_elim; intro st3
+      apply SepWPp.exists_elim; intro f18
+      apply SepWPp.exists_elim; intro f10
+      apply SepWPp.exists_elim; intro f08
+      exact step_entry_tag_gt_6_placed P_poly ext A lim st hFmt hDealloc call tag rest
         o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a
         f08 f10 f18 st3 st4 st5 st6 st0 st1 fb0 f50 f58
-        s29 s30 s22 s21 s20 s19 s0 _ R _ rfl hbytes (Or.inl h0) hlen hpc hrun hsp_align
-        hx0 hx1 hx2 hx3 (by sep_ac_rfl)
-    · apply SepWPp.of_sepWP_ret
-      exact step_entry_tag_le_6_placed P_poly hPoly (Rust.withPanics ext) A lim st call tag rest
-        o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a
-        f08 f10 f18 st3 st4 st5 st6 st0 st1 fb0 f50 f58
-        s29 s30 s22 s21 s20 s19 s0 _ R _ rfl hbytes (Or.inr (Or.inl h1)) hlen hpc hrun hsp_align
-        hx0 hx1 hx2 hx3 (by sep_ac_rfl)
-    · apply SepWPp.of_sepWP_ret
-      exact step_entry_tag_le_6_placed P_poly hPoly (Rust.withPanics ext) A lim st call tag rest
-        o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a
-        f08 f10 f18 st3 st4 st5 st6 st0 st1 fb0 f50 f58
-        s29 s30 s22 s21 s20 s19 s0 _ R _ rfl hbytes (Or.inr (Or.inr (Or.inl h2))) hlen hpc hrun hsp_align
-        hx0 hx1 hx2 hx3 (by sep_ac_rfl)
-    · apply SepWPp.of_sepWP_ret
-      exact step_entry_tag_le_6_placed P_poly hPoly (Rust.withPanics ext) A lim st call tag rest
-        o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a
-        f08 f10 f18 st3 st4 st5 st6 st0 st1 fb0 f50 f58
-        s29 s30 s22 s21 s20 s19 s0 _ R _ rfl hbytes (Or.inr (Or.inr (Or.inr (Or.inl h3)))) hlen hpc hrun hsp_align
-        hx0 hx1 hx2 hx3 (by sep_ac_rfl)
-    · apply SepWPp.of_sepWP_ret
-      exact step_entry_tag_le_6_placed P_poly hPoly (Rust.withPanics ext) A lim st call tag rest
-        o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a
-        f08 f10 f18 st3 st4 st5 st6 st0 st1 fb0 f50 f58
-        s29 s30 s22 s21 s20 s19 s0 _ R _ rfl hbytes (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl h4))))) hlen hpc hrun hsp_align
-        hx0 hx1 hx2 hx3 (by sep_ac_rfl)
-    · apply SepWPp.of_sepWP_ret
-      exact step_entry_tag_le_6_placed P_poly hPoly (Rust.withPanics ext) A lim st call tag rest
-        o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a
-        f08 f10 f18 st3 st4 st5 st6 st0 st1 fb0 f50 f58
-        s29 s30 s22 s21 s20 s19 s0 _ R _ rfl hbytes (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl h5)))))) hlen hpc hrun hsp_align
-        hx0 hx1 hx2 hx3 (by sep_ac_rfl)
-    · apply SepWPp.of_sepWP_ret
-      exact step_entry_tag_le_6_placed P_poly hPoly (Rust.withPanics ext) A lim st call tag rest
-        o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a
-        f08 f10 f18 st3 st4 st5 st6 st0 st1 fb0 f50 f58
-        s29 s30 s22 s21 s20 s19 s0 _ R _ rfl hbytes (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr h6)))))) hlen hpc hrun hsp_align
-        hx0 hx1 hx2 hx3 (by sep_ac_rfl)
-    · exact step_entry_tag_gt_6_placed P_poly ext A lim st hFmt hDealloc call tag rest
-        o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a
-        f08 f10 f18 st3 st4 st5 st6 st0 st1 fb0 f50 f58
-        s29 s30 s22 s21 s20 s19 s0 _ R _ rfl hbytes hgt6 hlen hpc hrun hsp_align
+        s29 s30 s22 s21 s20 s19 s0 _ R _ rfl hbytes hgt6 hlen hfit_err hpc hrun hsp_align
         hx0 hx2 hx3 (by sep_ac_rfl)
+    · refine ⟨memRegion call.out 48 ∗
+          (call.fromPtr ↦ₛ call.fromBytes) ∗
+          A.pool lim st s0 ∗
+          stackAt s0.sp messageDeserializeStackX, R, hpre, ?_⟩
+      conv =>
+        arg 4
+        simp only [memRegion_48_eq_rawOutBufAt call.out, sepExists_sepConj_left]
+      apply SepWPp.exists_elim; intro o2a
+      apply SepWPp.exists_elim; intro oc6
+      apply SepWPp.exists_elim; intro oc5
+      apply SepWPp.exists_elim; intro oc4
+      apply SepWPp.exists_elim; intro oc3
+      apply SepWPp.exists_elim; intro oc2
+      apply SepWPp.exists_elim; intro oc1
+      apply SepWPp.exists_elim; intro oc0
+      apply SepWPp.exists_elim; intro o9
+      apply SepWPp.exists_elim; intro o8
+      apply SepWPp.exists_elim; intro o0
+      conv =>
+        arg 4
+        simp only [stackAt_msgDeser_split s0.sp, sepExists_sepConj_right]
+      apply SepWPp.exists_elim; intro s19
+      apply SepWPp.exists_elim; intro s20
+      apply SepWPp.exists_elim; intro s21
+      apply SepWPp.exists_elim; intro s22
+      apply SepWPp.exists_elim; intro s30
+      apply SepWPp.exists_elim; intro s29
+      apply SepWPp.exists_elim; intro f58
+      apply SepWPp.exists_elim; intro f50
+      apply SepWPp.exists_elim; intro fb0
+      apply SepWPp.exists_elim; intro st1
+      apply SepWPp.exists_elim; intro st0
+      apply SepWPp.exists_elim; intro st6
+      apply SepWPp.exists_elim; intro st5
+      apply SepWPp.exists_elim; intro st4
+      apply SepWPp.exists_elim; intro st3
+      apply SepWPp.exists_elim; intro f18
+      apply SepWPp.exists_elim; intro f10
+      apply SepWPp.exists_elim; intro f08
+      rcases tag_cases tag with h0 | h1 | h2 | h3 | h4 | h5 | h6 | hgt6'
+      · apply SepWPp.of_sepWP_ret
+        exact step_entry_tag_le_6_placed P_poly hPoly (Rust.withPanics ext) A lim st call tag rest
+          o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a
+          f08 f10 f18 st3 st4 st5 st6 st0 st1 fb0 f50 f58
+          s29 s30 s22 s21 s20 s19 s0 _ R _ rfl hbytes (Or.inl h0) hlen hpc hrun hsp_align
+          hx0 hx1 hx2 hx3 (by sep_ac_rfl)
+      · apply SepWPp.of_sepWP_ret
+        exact step_entry_tag_le_6_placed P_poly hPoly (Rust.withPanics ext) A lim st call tag rest
+          o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a
+          f08 f10 f18 st3 st4 st5 st6 st0 st1 fb0 f50 f58
+          s29 s30 s22 s21 s20 s19 s0 _ R _ rfl hbytes (Or.inr (Or.inl h1)) hlen hpc hrun hsp_align
+          hx0 hx1 hx2 hx3 (by sep_ac_rfl)
+      · apply SepWPp.of_sepWP_ret
+        exact step_entry_tag_le_6_placed P_poly hPoly (Rust.withPanics ext) A lim st call tag rest
+          o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a
+          f08 f10 f18 st3 st4 st5 st6 st0 st1 fb0 f50 f58
+          s29 s30 s22 s21 s20 s19 s0 _ R _ rfl hbytes (Or.inr (Or.inr (Or.inl h2))) hlen hpc hrun hsp_align
+          hx0 hx1 hx2 hx3 (by sep_ac_rfl)
+      · apply SepWPp.of_sepWP_ret
+        exact step_entry_tag_le_6_placed P_poly hPoly (Rust.withPanics ext) A lim st call tag rest
+          o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a
+          f08 f10 f18 st3 st4 st5 st6 st0 st1 fb0 f50 f58
+          s29 s30 s22 s21 s20 s19 s0 _ R _ rfl hbytes (Or.inr (Or.inr (Or.inr (Or.inl h3)))) hlen hpc hrun hsp_align
+          hx0 hx1 hx2 hx3 (by sep_ac_rfl)
+      · apply SepWPp.of_sepWP_ret
+        exact step_entry_tag_le_6_placed P_poly hPoly (Rust.withPanics ext) A lim st call tag rest
+          o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a
+          f08 f10 f18 st3 st4 st5 st6 st0 st1 fb0 f50 f58
+          s29 s30 s22 s21 s20 s19 s0 _ R _ rfl hbytes (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl h4))))) hlen hpc hrun hsp_align
+          hx0 hx1 hx2 hx3 (by sep_ac_rfl)
+      · apply SepWPp.of_sepWP_ret
+        exact step_entry_tag_le_6_placed P_poly hPoly (Rust.withPanics ext) A lim st call tag rest
+          o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a
+          f08 f10 f18 st3 st4 st5 st6 st0 st1 fb0 f50 f58
+          s29 s30 s22 s21 s20 s19 s0 _ R _ rfl hbytes (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl h5)))))) hlen hpc hrun hsp_align
+          hx0 hx1 hx2 hx3 (by sep_ac_rfl)
+      · apply SepWPp.of_sepWP_ret
+        exact step_entry_tag_le_6_placed P_poly hPoly (Rust.withPanics ext) A lim st call tag rest
+          o0 o8 o9 oc0 oc1 oc2 oc3 oc4 oc5 oc6 o2a
+          f08 f10 f18 st3 st4 st5 st6 st0 st1 fb0 f50 f58
+          s29 s30 s22 s21 s20 s19 s0 _ R _ rfl hbytes (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr h6)))))) hlen hpc hrun hsp_align
+          hx0 hx1 hx2 hx3 (by sep_ac_rfl)
+      · exact absurd hgt6' hgt6
 
 /-- `<spqr::v1::chunked::states::Message>::deserialize` (`Block 351`, 212 insns) meets
     `MessageDeserializePlacedOkX P_poly M A lim ext`. -/
@@ -965,24 +1164,16 @@ theorem messageDeserialize_placed_ok_x [LibsignalPlacement] {M : AllocCostModel}
     (P_poly : PolyApi) (hPoly : PolyApiChunkLaw P_poly)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State))
     (hFmt : subroutine_ok ((blkPC_351).rebase (blkPl_351).base (Rust.withPanics ext))
-      (lsρ spqrFormatInnerSym) (formatInnerBudgetSpec M A lim))
+      (lsρ spqrFormatInnerSym) (formatInnerCallCliLsSpec M A lim))
     (hDealloc : subroutine_ok ((blkPC_351).rebase (blkPl_351).base (Rust.withPanics ext))
       (lsρ spqrDeallocSym) (rustCliDeallocBudgetSpec M A lim)) :
     MessageDeserializePlacedOkX P_poly M A lim ext :=
-  subroutine_ok_mono (messageDeserialize_placed_ok_ext P_poly hPoly ext A lim hFmt hDealloc)
-    (fun call R s0 hpre => by
-      change s0.mem ⊨ (⌜LsCallInv lsmpl s0.mem⌝ ∗
-        (messageDeserializeSpecX P_poly M A lim).pre call s0) ∗ R at hpre
-      rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-      exact hpre.2)
-    (fun _ _ _ _ h => h)
-    (fun _ _ _ _ h => h)
-    (fun _ _ _ _ _ h => h)
+  messageDeserialize_placed_ok_ext P_poly hPoly ext A lim hFmt hDealloc
 
 theorem messageDeserialize_spqrPolyApi_placed_ok_x [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State))
     (hFmt : subroutine_ok ((blkPC_351).rebase (blkPl_351).base (Rust.withPanics ext))
-      (lsρ spqrFormatInnerSym) (formatInnerBudgetSpec M A lim))
+      (lsρ spqrFormatInnerSym) (formatInnerCallCliLsSpec M A lim))
     (hDealloc : subroutine_ok ((blkPC_351).rebase (blkPl_351).base (Rust.withPanics ext))
       (lsρ spqrDeallocSym) (rustCliDeallocBudgetSpec M A lim)) :
     MessageDeserializePlacedOkX spqrPolyApi M A lim ext :=
@@ -993,12 +1184,12 @@ theorem messageDeserialize_placed_ok_blockProgram [LibsignalPlacement] {M : Allo
     (ext : String → Option (State → State))
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (hFmt : subroutine_ok ((blkPC_351).rebase (blkPl_351).base (Rust.withPanics ext))
-      (lsρ spqrFormatInnerSym) (formatInnerBudgetSpec M A lim))
+      (lsρ spqrFormatInnerSym) (formatInnerCallCliLsSpec M A lim))
     (hDealloc : subroutine_ok ((blkPC_351).rebase (blkPl_351).base (Rust.withPanics ext))
       (lsρ spqrDeallocSym) (rustCliDeallocBudgetSpec M A lim)) :
     subroutine_ok (libsignalSessionLib.blockProgram lsmpl 351 (Rust.withPanics ext))
       (lsmpl.base 351)
-      (messageDeserializeSpecX P_poly M A lim) := by
+      (withLsCallInv lsmpl (messageDeserializeSpecX P_poly M A lim)) := by
   have hok := messageDeserialize_placed_ok_ext P_poly hPoly ext A lim hFmt hDealloc
   rw [IsLsBlockProg.eq_blockProgram (prog := (blkPC_351).rebase (blkPl_351).base (Rust.withPanics ext))] at hok
   exact hok

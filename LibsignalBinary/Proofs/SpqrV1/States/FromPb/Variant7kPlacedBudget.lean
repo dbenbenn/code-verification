@@ -10,11 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7kPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7kPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4PlacedBudget
@@ -23,6 +23,18 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7gPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7hPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7jPlacedBudget
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7b -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7d -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7f -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7g -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7k -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4Placed
 
 /-!
 # Budget-Threaded Placed Variant 7 (`Ct1Sampled`, Block `333`) — Part K
@@ -31,7 +43,7 @@ Budget-threaded relocatable post-call stage compositions (`+3720`, `+7348`, `+74
 error-exit sequencing, and discharge of `V7Ok7404PropPlaced` for Variant 7 (`InnerState.ct1Sampled`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -200,7 +212,7 @@ theorem v7_seq_err_4632_wpp_placed [LibsignalPlacement]
 
 /-- Budget-threaded placed hypothesis for the final `Ok(dec)` success path
 (`+7404 -> +7468 -> +8180 -> s0.x30`) of Variant 7 (`InnerState.ct1Sampled`). -/
-def V7Ok7404PropPlaced [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def V7Ok7404PropPlaced [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) {F : ShaCompress}
     {ext : String → Option (State → State)} (s0 : State) (out pbA : BitVec 64)
     (s : V1State.Chunked.Ct1Sampled) : Prop :=

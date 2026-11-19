@@ -30,7 +30,7 @@ execution lifting (`steps_of_loaded_b_stub`).
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.TieSpec
 
@@ -53,7 +53,7 @@ open LibsignalBinary.Heap.Fine (
 /-! ## Byte Comparison and `--branch-stubs` Tail Validator -/
 
 /-- Byte equality via `Nat.beq`. -/
-def f3ByteBeq (a b : BitVec 8) : Bool :=
+@[expose] def f3ByteBeq (a b : BitVec 8) : Bool :=
   Nat.beq a.toNat b.toNat
 
 theorem f3ByteBeq_true_iff (a b : BitVec 8) : f3ByteBeq a b = true ↔ a = b := by
@@ -61,7 +61,7 @@ theorem f3ByteBeq_true_iff (a b : BitVec 8) : f3ByteBeq a b = true ↔ a = b := 
   rw [Nat.beq_eq]
   exact ⟨BitVec.eq_of_toNat_eq, congrArg BitVec.toNat⟩
 
-def f3BytesEq1 : Nat → List (BitVec 8) → List (BitVec 8) → Bool
+@[expose] def f3BytesEq1 : Nat → List (BitVec 8) → List (BitVec 8) → Bool
   | 0, _, _ => true
   | n + 1, a :: xs, b :: ys => Bool.and (f3ByteBeq a b) (f3BytesEq1 n xs ys)
   | _ + 1, _, _ => false
@@ -82,7 +82,7 @@ theorem f3BytesEq1_getElem_eq :
     refine ⟨?_, Nat.succ_lt_succ ih.2.1, Nat.succ_lt_succ ih.2.2⟩
     simpa using ih.1
 
-def f3StepByteEq (xs ys : List (BitVec 8))
+@[expose] def f3StepByteEq (xs ys : List (BitVec 8))
     (k : List (BitVec 8) → List (BitVec 8) → Bool) : Bool :=
   List.casesOn xs false fun a xs' =>
   List.casesOn ys false fun b ys' =>
@@ -102,7 +102,7 @@ theorem f3StepByteEq_eq (n : Nat) (k : List (BitVec 8) → List (BitVec 8) → B
       cases f3ByteBeq a b <;> rfl
 
 /-- Tail-recursive 8-byte block comparison for linear-time kernel reduction. -/
-def f3BytesEq8 : Nat → List (BitVec 8) → List (BitVec 8) → Bool
+@[expose] def f3BytesEq8 : Nat → List (BitVec 8) → List (BitVec 8) → Bool
   | 0, _, _ => true
   | q + 1, xs, ys =>
     f3StepByteEq xs ys fun xs1 ys1 =>
@@ -133,11 +133,11 @@ theorem f3BytesEq8_eq_f3BytesEq1 :
     simpa only [f3BytesEq8] using h8
 
 /-- Whether byte offset `k` from `textBase` falls inside a 4-byte stub word of `stubSpec`. -/
-def isF3BranchStubByteOff (stubSpec : List (Nat × BitVec 64)) (k : Nat) : Bool :=
+@[expose] def isF3BranchStubByteOff (stubSpec : List (Nat × BitVec 64)) (k : Nat) : Bool :=
   stubSpec.any fun (off, _) => Nat.ble off k && !Nat.ble (off + 4) k
 
 /-- Expected branch-stub target at word-aligned byte offset `off` from `textBase`, if any. -/
-def f3BranchStubTarget? (stubSpec : List (Nat × BitVec 64)) (off : Nat) : Option (BitVec 64) :=
+@[expose] def f3BranchStubTarget? (stubSpec : List (Nat × BitVec 64)) (off : Nat) : Option (BitVec 64) :=
   (stubSpec.find? fun (o, _) => o == off).map Prod.snd
 
 /-- Check that every `(off, tgt) ∈ stubSpec` is 4-byte aligned, lies in the `[headOff, headOff + 4 * tailWords)`
@@ -156,7 +156,7 @@ def f3StubSpecValid (stubSpec : List (Nat × BitVec 64)) (textBase : BitVec 64)
     - if `f3BranchStubTarget? stubSpec off = some tgt`, `xs`'s 4 bytes decode via `Arm64.decode` to
       `Instr.b (tgt - (textBase + BitVec.ofNat 64 off))` and `ys`'s 4 bytes are `0, 0, 0, 0`;
     - otherwise `xs`'s 4 bytes equal `ys`'s 4 bytes. -/
-def f3CheckTextWordsFrom (stubSpec : List (Nat × BitVec 64)) (textBase : BitVec 64) :
+@[expose] def f3CheckTextWordsFrom (stubSpec : List (Nat × BitVec 64)) (textBase : BitVec 64) :
     Nat → Nat → List (BitVec 8) → List (BitVec 8) → Bool
   | _, 0, _, _ => true
   | off, rem + 1, x0 :: x1 :: x2 :: x3 :: xs, y0 :: y1 :: y2 :: y3 :: ys =>
@@ -223,64 +223,6 @@ theorem f3CheckTextWordsFrom_nonStub_byte {stubSpec : List (Nat × BitVec 64)} {
         refine ⟨?_, by simp; omega, by simp; omega⟩
         simpa using ih.1
 
-theorem f3CheckTextWordsFrom_stub_word {stubSpec : List (Nat × BitVec 64)} {textBase : BitVec 64} :
-    ∀ (off rem : Nat) (xs ys : List (BitVec 8)),
-      f3CheckTextWordsFrom stubSpec textBase off rem xs ys = true →
-      ∀ (wIdx : Nat) (tgt : BitVec 64), wIdx < rem →
-        f3BranchStubTarget? stubSpec (off + 4 * wIdx) = some tgt →
-        ∃ b0 b1 b2 b3,
-          xs.drop (4 * wIdx) = b0 :: b1 :: b2 :: b3 :: xs.drop (4 * (wIdx + 1)) ∧
-          ys.drop (4 * wIdx) = 0#8 :: 0#8 :: 0#8 :: 0#8 :: ys.drop (4 * (wIdx + 1)) ∧
-          Arm64.decode (b3 ++ b2 ++ b1 ++ b0) =
-            some (.b (tgt - (textBase + BitVec.ofNat 64 (off + 4 * wIdx))))
-  | _, 0, _, _, _, _, _, hw, _ => absurd hw (Nat.not_lt_zero _)
-  | off, rem + 1, [], _, h, _, _, _, _ => by simp [f3CheckTextWordsFrom] at h
-  | off, rem + 1, [_], _, h, _, _, _, _ => by simp [f3CheckTextWordsFrom] at h
-  | off, rem + 1, [_, _], _, h, _, _, _, _ => by simp [f3CheckTextWordsFrom] at h
-  | off, rem + 1, [_, _, _], _, h, _, _, _, _ => by simp [f3CheckTextWordsFrom] at h
-  | off, rem + 1, _ :: _ :: _ :: _ :: _, [], h, _, _, _, _ => by simp [f3CheckTextWordsFrom] at h
-  | off, rem + 1, _ :: _ :: _ :: _ :: _, [_], h, _, _, _, _ => by simp [f3CheckTextWordsFrom] at h
-  | off, rem + 1, _ :: _ :: _ :: _ :: _, [_, _], h, _, _, _, _ => by simp [f3CheckTextWordsFrom] at h
-  | off, rem + 1, _ :: _ :: _ :: _ :: _, [_, _, _], h, _, _, _, _ => by simp [f3CheckTextWordsFrom] at h
-  | off, rem + 1, x0 :: x1 :: x2 :: x3 :: xs, y0 :: y1 :: y2 :: y3 :: ys, h, 0, tgt, _, hst => by
-    unfold f3CheckTextWordsFrom at h
-    rw [Nat.mul_zero, Nat.add_zero] at hst
-    dsimp only at h
-    rw [hst] at h
-    dsimp only at h
-    cases hok :
-        ((Arm64.decode (x3 ++ x2 ++ x1 ++ x0) == some (Instr.b (tgt - (textBase + BitVec.ofNat 64 off)))) &&
-         f3ByteBeq y0 0#8 && f3ByteBeq y1 0#8 && f3ByteBeq y2 0#8 && f3ByteBeq y3 0#8) with
-    | false => rw [hok] at h; simp at h
-    | true =>
-      simp only [Bool.and_eq_true, beq_iff_eq, f3ByteBeq_true_iff] at hok
-      rcases hok with ⟨⟨⟨⟨hdec, hy0⟩, hy1⟩, hy2⟩, hy3⟩
-      subst hy0; subst hy1; subst hy2; subst hy3
-      refine ⟨x0, x1, x2, x3, rfl, rfl, ?_⟩
-      simpa using hdec
-  | off, rem + 1, x0 :: x1 :: x2 :: x3 :: xs, y0 :: y1 :: y2 :: y3 :: ys, h, wIdx + 1, tgt, hw, hst => by
-    unfold f3CheckTextWordsFrom at h
-    dsimp only at h
-    cases hok :
-        (match f3BranchStubTarget? stubSpec off with
-         | some tgt' =>
-           (Arm64.decode (x3 ++ x2 ++ x1 ++ x0) == some (Instr.b (tgt' - (textBase + BitVec.ofNat 64 off)))) &&
-           f3ByteBeq y0 0#8 && f3ByteBeq y1 0#8 && f3ByteBeq y2 0#8 && f3ByteBeq y3 0#8
-         | none =>
-           f3ByteBeq x0 y0 && f3ByteBeq x1 y1 && f3ByteBeq x2 y2 && f3ByteBeq x3 y3) with
-    | false => rw [hok] at h; simp at h
-    | true =>
-      rw [hok] at h
-      dsimp only at h
-      have hoff_eq : off + 4 * (wIdx + 1) = (off + 4) + 4 * wIdx := by omega
-      rw [hoff_eq] at hst
-      obtain ⟨b0, b1, b2, b3, hxs, hys, hdec⟩ :=
-        f3CheckTextWordsFrom_stub_word (off + 4) rem xs ys h wIdx tgt (Nat.lt_of_succ_lt_succ hw) hst
-      refine ⟨b0, b1, b2, b3, ?_, ?_, ?_⟩
-      · simpa [Nat.mul_add] using hxs
-      · simpa [Nat.mul_add] using hys
-      · rwa [hoff_eq]
-
 theorem f3BranchStubTarget?_none_of_not_isF3BranchStubByteOff :
     ∀ (stubSpec : List (Nat × BitVec 64)) {k : Nat},
       (stubSpec.all fun (o, _) => o % 4 == 0) = true →
@@ -305,167 +247,10 @@ theorem f3BranchStubTarget?_none_of_not_isF3BranchStubByteOff :
     simp only [List.find?_cons, hne]
     exact f3BranchStubTarget?_none_of_not_isF3BranchStubByteOff rest hall.2 hnot.2
 
-/-- Parametric non-stub byte-equality theorem for `.img.text` (`headBlocks * 8 + 4 * tailWords` B). -/
-theorem f3TextNonStubBytes_eq {stubSpec : List (Nat × BitVec 64)} {textBase : BitVec 64}
-    {headBlocks tailWords : Nat} {segBytes refCode : List (BitVec 8)}
-    (hStubAl : (stubSpec.all fun (o, _) => o % 4 == 0) = true)
-    (hlenRef : refCode.length = headBlocks * 8 + 4 * tailWords)
-    (hHead : f3BytesEq8 headBlocks segBytes refCode = true)
-    (hTail : f3CheckTextWordsFrom stubSpec textBase (headBlocks * 8) tailWords
-      (fastDrop (headBlocks * 8) segBytes) (fastDrop (headBlocks * 8) refCode) = true) :
-    ∀ (k : Nat) (hk : k < headBlocks * 8 + 4 * tailWords),
-      isF3BranchStubByteOff stubSpec k = false →
-      ∃ (hkSeg : k < segBytes.length),
-        segBytes[k]'hkSeg = refCode[k]'(by omega) := by
-  intro k hk hns
-  by_cases hkHead : k < headBlocks * 8
-  · have hEq1 : f3BytesEq1 (headBlocks * 8) segBytes refCode = true :=
-      (f3BytesEq8_eq_f3BytesEq1 headBlocks segBytes refCode).symm.trans hHead
-    have ⟨hget, hkSeg, hkRef⟩ := f3BytesEq1_getElem_eq (headBlocks * 8) segBytes refCode hEq1 k hkHead
-    refine ⟨hkSeg, ?_⟩
-    rw [List.getElem?_eq_getElem hkSeg, List.getElem?_eq_getElem hkRef] at hget
-    exact Option.some.inj hget
-  · rw [fastDrop_eq_drop, fastDrop_eq_drop] at hTail
-    have hj : k - headBlocks * 8 < 4 * tailWords := by omega
-    have hnsOff : f3BranchStubTarget? stubSpec (headBlocks * 8 + 4 * ((k - headBlocks * 8) / 4)) = none := by
-      have hmul : headBlocks * 8 + 4 * ((k - headBlocks * 8) / 4) = 4 * (k / 4) := by omega
-      rw [hmul]
-      exact f3BranchStubTarget?_none_of_not_isF3BranchStubByteOff stubSpec hStubAl hns
-    have ⟨hget, hkSegDrop, _⟩ :=
-      f3CheckTextWordsFrom_nonStub_byte (headBlocks * 8) tailWords
-        (segBytes.drop (headBlocks * 8)) (refCode.drop (headBlocks * 8)) hTail (k - headBlocks * 8) hj hnsOff
-    have hkSeg : k < segBytes.length := by simp at hkSegDrop; omega
-    have hkRef : k < refCode.length := by omega
-    refine ⟨hkSeg, ?_⟩
-    have h1 : (segBytes.drop (headBlocks * 8))[k - headBlocks * 8]? = some (segBytes[k]'hkSeg) := by
-      rw [List.getElem?_drop, show headBlocks * 8 + (k - headBlocks * 8) = k by omega,
-          List.getElem?_eq_getElem hkSeg]
-    have h2 : (refCode.drop (headBlocks * 8))[k - headBlocks * 8]? = some (refCode[k]'hkRef) := by
-      rw [List.getElem?_drop, show headBlocks * 8 + (k - headBlocks * 8) = k by omega,
-          List.getElem?_eq_getElem hkRef]
-    rw [h1, h2] at hget
-    exact Option.some.inj hget
-
-/-- Loaded-memory corollary: every non-branch-stub byte `k < headBlocks * 8 + 4 * tailWords` in any
-    loaded state `s0` of `elf` has `Perm.rx` and reads `refCode[k]`, while every `(off, tgt) ∈ stubSpec`
-    has `s0.mem.canExec (textBase + off) 4 = true` and decodes to `Instr.b (tgt - (textBase + off))`. -/
-theorem f3LoadedText_matches_mod_branchStubs
-    {stubSpec : List (Nat × BitVec 64)} {textBase : BitVec 64} {headBlocks tailWords : Nat}
-    {elf : ElfImage} {refCode : List (BitVec 8)} {hseg1 : 1 < elf.segments.length}
-    (hValid : f3StubSpecValid stubSpec textBase (headBlocks * 8) tailWords = true)
-    (hbrk : ∀ {inputs : ProcessInputs} {s0 : State},
-      elf.loadState inputs = .ok s0 →
-      HoldsBytes s0.mem textBase (elf.segments[1]'hseg1).bytes (fun _ => Perm.rx))
-    (hlenRef : refCode.length = headBlocks * 8 + 4 * tailWords)
-    (hHead : f3BytesEq8 headBlocks (elf.segments[1]'hseg1).bytes refCode = true)
-    (hTail : f3CheckTextWordsFrom stubSpec textBase (headBlocks * 8) tailWords
-      (fastDrop (headBlocks * 8) (elf.segments[1]'hseg1).bytes)
-      (fastDrop (headBlocks * 8) refCode) = true)
-    {inputs : ProcessInputs} {s0 : State} (hs0 : elf.loadState inputs = .ok s0) :
-    (∀ (k : Nat) (hk : k < headBlocks * 8 + 4 * tailWords),
-      isF3BranchStubByteOff stubSpec k = false →
-      s0.mem.perm (textBase + BitVec.ofNat 64 k) = some Perm.rx ∧
-      s0.mem.read8 (textBase + BitVec.ofNat 64 k) = refCode[k]'(by omega)) ∧
-    (∀ off tgt, (off, tgt) ∈ stubSpec →
-      s0.mem.canExec (textBase + BitVec.ofNat 64 off) 4 = true ∧
-      Arm64.decode (s0.mem.read32 (textBase + BitVec.ofNat 64 off)) =
-        some (.b (tgt - (textBase + BitVec.ofNat 64 off)))) := by
-  have hhb := hbrk hs0
-  unfold f3StubSpecValid at hValid
-  simp only [Bool.and_eq_true, beq_iff_eq] at hValid
-  have hStubAl : (stubSpec.all fun (o, _) => o % 4 == 0) = true := by
-    rw [List.all_eq_true]
-    intro ⟨o, t⟩ hm
-    have hv := List.all_eq_true.mp hValid.2 (o, t) hm
-    simp only [Bool.and_eq_true] at hv
-    exact hv.1.1.1.1
-  refine ⟨fun k hk hns => ?_, fun off tgt hmem => ?_⟩
-  · obtain ⟨hkSeg, heq⟩ := f3TextNonStubBytes_eq hStubAl hlenRef hHead hTail k hk hns
-    have ⟨hrd, hpm, _⟩ := hhb k hkSeg
-    exact ⟨hpm, hrd.trans heq⟩
-  · rw [fastDrop_eq_drop, fastDrop_eq_drop] at hTail
-    have hv := List.all_eq_true.mp hValid.2 (off, tgt) hmem
-    simp only [Bool.and_eq_true, beq_iff_eq] at hv
-    rcases hv with ⟨⟨⟨⟨hoff4, hge_b⟩, hlt_b⟩, hnw_b⟩, hfind⟩
-    have hge : headBlocks * 8 ≤ off := Nat.le_of_ble_eq_true hge_b
-    have hlt : off < headBlocks * 8 + 4 * tailWords := by
-      cases hb : Nat.ble (headBlocks * 8 + 4 * tailWords) off with
-      | false =>
-        exact Classical.byContradiction fun h => by
-          have hle : headBlocks * 8 + 4 * tailWords ≤ off := by omega
-          rw [Nat.ble_eq.mpr hle] at hb; cases hb
-      | true => rw [hb] at hlt_b; simp at hlt_b
-    have hnw : textBase.toNat + off + 4 ≤ 2 ^ 64 := Nat.le_of_ble_eq_true hnw_b
-    let wIdx : Nat := (off - headBlocks * 8) / 4
-    have hoff_eq : off = headBlocks * 8 + 4 * wIdx := by omega
-    have hw : wIdx < tailWords := by omega
-    rw [hoff_eq] at hfind
-    obtain ⟨b0, b1, b2, b3, hxs, _, hdec⟩ :=
-      f3CheckTextWordsFrom_stub_word (headBlocks * 8) tailWords
-        ((elf.segments[1]'hseg1).bytes.drop (headBlocks * 8)) (refCode.drop (headBlocks * 8))
-        hTail wIdx tgt hw hfind
-    rw [List.drop_drop] at hxs
-    have hdrop_len : 4 ≤ ((elf.segments[1]'hseg1).bytes.drop (headBlocks * 8 + 4 * wIdx)).length := by
-      rw [hxs]; simp
-    simp only [List.length_drop] at hdrop_len
-    have hoff0 : off < (elf.segments[1]'hseg1).bytes.length := by omega
-    have hoff1 : off + 1 < (elf.segments[1]'hseg1).bytes.length := by omega
-    have hoff2 : off + 2 < (elf.segments[1]'hseg1).bytes.length := by omega
-    have hoff3 : off + 3 < (elf.segments[1]'hseg1).bytes.length := by omega
-    have hb0 : (elf.segments[1]'hseg1).bytes[off]'hoff0 = b0 := by
-      have hget : ((elf.segments[1]'hseg1).bytes.drop (headBlocks * 8 + 4 * wIdx))[0]? = some b0 := by
-        rw [hxs]; rfl
-      rw [List.getElem?_drop, Nat.add_zero, ← hoff_eq, List.getElem?_eq_getElem hoff0] at hget
-      exact Option.some.inj hget
-    have hb1 : (elf.segments[1]'hseg1).bytes[off + 1]'hoff1 = b1 := by
-      have hget : ((elf.segments[1]'hseg1).bytes.drop (headBlocks * 8 + 4 * wIdx))[1]? = some b1 := by
-        rw [hxs]; rfl
-      rw [List.getElem?_drop, ← hoff_eq, List.getElem?_eq_getElem hoff1] at hget
-      exact Option.some.inj hget
-    have hb2 : (elf.segments[1]'hseg1).bytes[off + 2]'hoff2 = b2 := by
-      have hget : ((elf.segments[1]'hseg1).bytes.drop (headBlocks * 8 + 4 * wIdx))[2]? = some b2 := by
-        rw [hxs]; rfl
-      rw [List.getElem?_drop, ← hoff_eq, List.getElem?_eq_getElem hoff2] at hget
-      exact Option.some.inj hget
-    have hb3 : (elf.segments[1]'hseg1).bytes[off + 3]'hoff3 = b3 := by
-      have hget : ((elf.segments[1]'hseg1).bytes.drop (headBlocks * 8 + 4 * wIdx))[3]? = some b3 := by
-        rw [hxs]; rfl
-      rw [List.getElem?_drop, ← hoff_eq, List.getElem?_eq_getElem hoff3] at hget
-      exact Option.some.inj hget
-    have hadd1 : textBase + BitVec.ofNat 64 off + 1#64 = textBase + BitVec.ofNat 64 (off + 1) := by bv_omega
-    have hadd2 : textBase + BitVec.ofNat 64 off + 2#64 = textBase + BitVec.ofNat 64 (off + 2) := by bv_omega
-    have hadd3 : textBase + BitVec.ofNat 64 off + 3#64 = textBase + BitVec.ofNat 64 (off + 3) := by bv_omega
-    have r0 : s0.mem.read8 (textBase + BitVec.ofNat 64 off) = b0 := (hhb off hoff0).1.trans hb0
-    have r1 : s0.mem.read8 (textBase + BitVec.ofNat 64 off + 1#64) = b1 := by
-      rw [hadd1]; exact (hhb (off + 1) hoff1).1.trans hb1
-    have r2 : s0.mem.read8 (textBase + BitVec.ofNat 64 off + 2#64) = b2 := by
-      rw [hadd2]; exact (hhb (off + 2) hoff2).1.trans hb2
-    have r3 : s0.mem.read8 (textBase + BitVec.ofNat 64 off + 3#64) = b3 := by
-      rw [hadd3]; exact (hhb (off + 3) hoff3).1.trans hb3
-    have p0 : s0.mem.perm (textBase + BitVec.ofNat 64 off) = some Perm.rx := (hhb off hoff0).2.1
-    have p1 : s0.mem.perm (textBase + BitVec.ofNat 64 off + 1#64) = some Perm.rx := by
-      rw [hadd1]; exact (hhb (off + 1) hoff1).2.1
-    have p2 : s0.mem.perm (textBase + BitVec.ofNat 64 off + 2#64) = some Perm.rx := by
-      rw [hadd2]; exact (hhb (off + 2) hoff2).2.1
-    have p3 : s0.mem.perm (textBase + BitVec.ofNat 64 off + 3#64) = some Perm.rx := by
-      rw [hadd3]; exact (hhb (off + 3) hoff3).2.1
-    refine ⟨?_, ?_⟩
-    · have ha2 : textBase + BitVec.ofNat 64 off + 1#64 + 1#64 =
-          textBase + BitVec.ofNat 64 off + 2#64 := by bv_omega
-      have ha3 : textBase + BitVec.ofNat 64 off + 2#64 + 1#64 =
-          textBase + BitVec.ofNat 64 off + 3#64 := by bv_omega
-      simp only [Memory.canExec, Memory.allPerm]
-      rw [ha2, ha3, p0, p1, p2, p3]
-      rfl
-    · unfold Memory.read32
-      dsimp only
-      rw [BitVec.add_zero, r0, r1, r2, r3, hoff_eq]
-      exact hdec
-
 /-! ## Structural `WordTree` Validator for `ProgContainsMultiLib` -/
 
 /-- Structural 4-byte quad verifier against `t : WordTree`. -/
-def checkQuadBytesFrom (t : WordTree) : Nat → List (BitVec 8) → Bool
+@[expose] def checkQuadBytesFrom (t : WordTree) : Nat → List (BitVec 8) → Bool
   | _, [] => true
   | qIdx, b0 :: b1 :: b2 :: b3 :: rest =>
     match t.getQuad? qIdx with
@@ -531,7 +316,7 @@ theorem checkQuadBytesFrom_byte_eq {t : WordTree} {n : Nat} (hwf : t.checkSize? 
         exact heq'
 
 /-- Check that `inner : Program` is a word-aligned byte slice of `outerBase` + `t : WordTree`. -/
-def checkProgSliceInWordTree (outerBase : BitVec 64) (t : WordTree) (inner : Program) : Bool :=
+@[expose] def checkProgSliceInWordTree (outerBase : BitVec 64) (t : WordTree) (inner : Program) : Bool :=
   let off := inner.base.toNat - outerBase.toNat
   Nat.ble outerBase.toNat inner.base.toNat &&
   (off % 4 == 0) &&
@@ -574,7 +359,7 @@ theorem codeLoaded_of_checkProgSliceInWordTree {outer inner : Program} {t : Word
     · rw [← haddr]; exact hCL.isLazyFree_eq (off + k) hidx_o
 
 /-- Structural recursion over `lib.blocks` verifying every block in `t : WordTree`. -/
-def checkMultiBlocksFrom (outerBase : BitVec 64) (t : WordTree)
+@[expose] def checkMultiBlocksFrom (outerBase : BitVec 64) (t : WordTree)
     (lib : MultiPlacedLib) (mpl : MultiPlacement) : Nat → List CodeBlock → Bool
   | _, [] => true
   | i, _ :: rest =>
@@ -631,7 +416,7 @@ structure F3Seg5ShimBundle (P : Program)
       (rdlAllocZeroedInstrs rdlAzAddr callocAddr cAddrs.posixMemalign memsetAddr)
 
 /-- `WordTree` validator for `F3Seg5ShimBundle`. -/
-def checkF3Seg5ShimBundle (imgBase : BitVec 64) (t : WordTree)
+@[expose] def checkF3Seg5ShimBundle (imgBase : BitVec 64) (t : WordTree)
     (rdlAddrs : RustAllocAddrs)
     (rdlAzAddr noShimV2Addr : BitVec 64)
     (cAddrs : MallocngCEntryAddrs) (callocAddr memcpyAddr memsetAddr : BitVec 64) : Bool :=

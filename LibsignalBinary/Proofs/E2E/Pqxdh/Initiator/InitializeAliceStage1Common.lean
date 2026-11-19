@@ -9,18 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridge
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridge -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import all Init.Data.String.Pattern.Basic
 import all Init.Data.String.Pattern.String
 import all Init.Data.String.Slice
 import all Init.Data.String.TakeDrop
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepDefs
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceDecode -- shake: keep
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option maxRecDepth 200000
 set_option linter.unusedSimpArgs false
@@ -30,28 +29,11 @@ open Arm64 ProofLib ProofLib.ProgramReflection CryptoGames CryptoGames.Libsignal
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr CryptoVerification.LibsignalTripleRatchetRepr
 open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalSession
-open CryptoVerification.LibsignalTripleRatchet.Decrypt.DhStep (rngFill_ok_at_tripleRatchet
-  rngFillAfter0Spec)
+open CryptoVerification.LibsignalTripleRatchet.Decrypt.DhStep (rngFillAfter0Spec)
 open CryptoVerification.E2E.Pqxdh CryptoVerification.E2E.Pqxdh.ResponderCore
 @[simp, arm64_norm] abbrev calculateAgreementStack : Nat := ResponderCore.calculateAgreementStack
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero bv_sub_sub_lit bv_add_neg64
-ls_attribute [local arm64_norm ↓, local wp_norm ↓]
-  sp_setPC_pre sp_setMem_setPC_pre readReg64_setPC_pre readReg64_setMem_setPC_pre
-  readReg32_setPC_pre readReg32_setMem_setPC_pre readReg_setPC_pre readReg_setMem_setPC_pre
-  CryptoVerification.libsignalSessionCode_fnOff_0x3e6e0
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_stub% "memmove")
-  (ls_stub% "memcpy")
-  (ls_stub% "alloc::raw_vec::handle_error")
-  (ls_stub% "core::panicking::panic_fmt")
-  (ls_stub% "<usize as core::fmt::Display>::fmt")
-  (ls_stub% "<x25519_dalek::x25519::StaticSecret as core::ops::drop::Drop>::drop")
-  (ls_stub% "libsignal_session_rng_fill")
-  (ls_stub% "libcrux_ml_kem::mlkem1024::kyber::encapsulate")
-  extractLsb_hi56_3 and_ff_hi56_3 and_ff32_hi56_3 zext64_trunc32_hi56_3_and_ff
 @[simp, arm64_norm] abbrev initializeAliceSessionSym : String :=
     "libsignal_protocol::ratchet::initialize_alice_session::<libsignal_pqxdh_e2e::PqxdhRng>"
 @[simp, arm64_norm]
@@ -62,11 +44,11 @@ structure KyberEncapsCall where
   coinsPtr : BitVec 64
   coins32  : Bytes
   outPtr   : BitVec 64
-def kyberEncapsOutBytes (P : Primitives) (pk coins : Bytes) : Bytes :=
+@[expose] def kyberEncapsOutBytes (P : Primitives) (pk coins : Bytes) : Bytes :=
     match P.kemEncaps pk coins with
   | some (ss, ct) => ct ++ ss
   | none          => []
-def kyberEncapsStubSpec (P : Primitives) : Spec KyberEncapsCall where
+@[expose] def kyberEncapsStubSpec (P : Primitives) : Spec KyberEncapsCall where
   pre := fun g s => ⌜s.readReg64 .x0 = g.pkPtr ∧ s.readReg64 .x1 = g.coinsPtr ∧ s.readReg64 .x8 =
     g.outPtr ∧ g.pk1568.length = 1568 ∧ g.coins32.length = 32 ∧
       (P.kemEncaps g.pk1568 g.coins32).isSome⌝ ∗ (g.pkPtr ↦ₛ bytesToBv8 g.pk1568) ∗
@@ -75,118 +57,8 @@ def kyberEncapsStubSpec (P : Primitives) : Spec KyberEncapsCall where
       (g.coinsPtr ↦ₛ bytesToBv8 g.coins32) ∗
       (g.outPtr ↦ₛ fitBv8 1600 (kyberEncapsOutBytes P g.pk1568 g.coins32)) ∗
         stackAt s0.sp pqxdhHookStack
-theorem kyberEncapsStub_ok_at {P : Primitives} {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {absHooks : String → Option (State → State)} (hEncaps : HookSat absHooks kyberEncapsStub
-      (kyberEncapsStubSpec P)) {name : String} {k : Nat} (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff kyberEncapsStub := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl absHooks) ((tripleRatchetProgAt img.base C ctl
-      absHooks).fnAddr name + BitVec.ofNat 64 k)
-      (kyberEncapsStubSpec P) := hook_ok_at (hname := kyberEncapsStub) rfl hk
-        (by rw [(ls_stub% "libcrux_ml_kem::mlkem1024::kyber::encapsulate")]; decide)
-    (fun H =>
-      by rw [(ls_stub% "libcrux_ml_kem::mlkem1024::kyber::encapsulate")]; exact (ls_hook% "libcrux_ml_kem::mlkem1024::kyber::encapsulate") H)
-      (by decide +kernel) (by
-      rcases hEncaps with ⟨fn, hfn, hok⟩
-      exact ⟨fn, by rw [← hfn]; rfl, hok⟩)
-def PanicOomProp (s0 sf : State) (Pf : SepProp) : Prop := ∀ R : SepProp, (sf.mem ⊨ Pf ∗ R) →
+@[expose] def PanicOomProp (s0 sf : State) (Pf : SepProp) : Prop := ∀ R : SepProp, (sf.mem ⊨ Pf ∗ R) →
     (sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R)
-private theorem of_sepWP_frozen_ia {prog : Program} {img : Obj.Image} (mid : BitVec 64) {ret :
-    BitVec 64} {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop} (hF : img.FrozenLoaded s)
-    (h : SepWP prog mid s P (fun sm Pm => img.FrozenLoaded sm → SepWPp prog ret sm Pm Q Qp)) :
-    SepWPp prog ret s P Q Qp := by
-  have h1p : SepWPp prog mid s P (fun sm Pm =>
-    img.FrozenLoaded sm → SepWPp prog ret sm Pm Q Qp) Qp := SepWPp.of_sepWP_ret h
-  unfold SepWPp at h1p ⊢; intro R hm hL
-  rcases h1p R hm hL with ⟨sm, hsteps, ⟨hpcm, hrunm, Pm, hmm, hnext⟩ | hpan⟩
-  · rcases hnext (hF.of_keepsFrozen hsteps.keepsFrozen) R hmm (hsteps.codeLoaded hL) with
-      ⟨sf, hsteps', hout⟩; exact ⟨sf, hsteps.trans hsteps', hout⟩
-  · exact ⟨sm, hsteps, Or.inr hpan⟩
-theorem SepWPp.bind_frozen {prog : Program} {img : Obj.Image} {mid target : BitVec 64} {s : State}
-    {P : SepProp} {Qm post Qp : State → SepProp → Prop} (hF : img.FrozenLoaded s) (h1 : SepWPp prog
-      mid s P Qm Qp) (h2 : ∀ sm Pm, sm.pc = mid → sm.status =
-      .Running → img.FrozenLoaded sm → Qm sm Pm → SepWPp prog target sm Pm post Qp) :
-    SepWPp prog target s P post Qp := by
-  unfold SepWPp at h1 ⊢; intro R hm hL
-  rcases h1 R hm hL with ⟨sm, hsteps, ⟨hpcm, hrunm, Pm, hmm, hQ⟩ | hpan⟩
-  · rcases h2 sm Pm hpcm hrunm (hF.of_keepsFrozen hsteps.keepsFrozen) hQ R hmm (hsteps.codeLoaded
-      hL) with ⟨sf, hsteps', hout⟩
-    exact ⟨sf, hsteps.trans hsteps', hout⟩
-  · exact ⟨sm, hsteps, Or.inr hpan⟩
-theorem SepWPp.call_frame_frozen {α : Type} {prog : Program} {img : Obj.Image} {ret entry ret_pc :
-    BitVec 64} {spec : Spec α} {x : α} {s : State} {φ : Prop} {P T F : SepProp} {Q Qp : State →
-    SepProp → Prop} (hF : img.FrozenLoaded s) (hcall : subroutine_ok prog entry spec) (hpc : s.pc =
-    entry) (hrun : s.status = .Running) (hsp : s.spAligned = true) (hlr : s.readReg64 Reg.lr =
-      ret_pc) (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F) (hexit : ∀ sf code R',
-    sf.status = .Exited code → (sf.mem ⊨ spec.onExit x code s sf ∗ R') → False) (hpanic : ∀ sf,
-    sf.status = .Panicked → Qp sf (spec.onPanic x s sf ∗ F)) (hnext : ∀ sf : State, sf.pc =
-      ret_pc → sf.status = .Running → sf.sp =
-        s.sp → CalleeSavedPreserved s sf → img.FrozenLoaded sf → SepWPp prog ret sf (spec.post x s
-        sf ∗ F) Q Qp)
-    (hoom : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intro sf; first | rfl | simp only [Spec.inImage]) :
-    SepWPp prog ret s P Q Qp := by
-  refine SepWPp.bind_frozen (mid := ret_pc)
-    (Qm := fun sm Pm => sm.sp = s.sp ∧ CalleeSavedPreserved s sm ∧ Pm = (spec.post x s sm ∗ F)) hF
-    (ProofLib.SepWPp.call_frame (x := x) hcall hpc hrun hsp hlr hspec hφ hP hexit hpanic
-      (fun sm hpcm hrunm hspm hcsm => ProofLib.SepWPp.done hpcm hrunm ⟨hspm, hcsm, rfl⟩)
-      (fun sf R' _ hoom_post => by
-        rw [hoom sf] at hoom_post; exact (not_satisfies_false_sepConj hoom_post).elim))
-    (fun sm _ hpcm hrunm hFm ⟨hspm, hcsm, hPm⟩ => hPm ▸ hnext sm hpcm hrunm hspm hcsm hFm)
-def pqxdhCalculateAgreementFrozenSpec (P : Primitives) (A : RustAlloc) (img : Obj.Image) : Spec
-    (BitVec 64 × Bytes × BitVec 64 × Bytes × BitVec 64 × BitVec 64) :=
-      { pqxdhCalculateAgreementBaseSpec P A img with
-    pre := fun (ourA, ourSk32, theirA, theirPk32, ret, sp) s =>
-      ⌜img.FrozenLoaded s ∧ s.readReg64 .x0 = ourA ∧ s.readReg64 .x1 = theirA ∧ s.readReg64 .x8 =
-        ret ∧ s.sp = sp ∧ ourSk32.length = 32 ∧ theirPk32.length = 32⌝ ∗
-        (ourA ↦ₛ bytesToBv8 ourSk32) ∗ (theirA ↦ₛ bytesToBv8 theirPk32) ∗ memRegion ret 24 ∗
-      A.pool ∗ stackAt sp calculateAgreementStack }
-theorem calculateAgreement_frozen_ok_trap {P : Primitives} {A : RustAlloc} {img : Obj.Image} {C : Crypto}
-    {absHooks : String → Option (State → State)} (himg : Obj.Loads
-    libsignalSessionImage img) (hag : PqxdhCalculateAgreementOk_trap P A img C absHooks) :
-    subroutine_ok (trTrapProgAt img.base C absHooks) ((trTrapProgAt img.base C
-      absHooks).fnAddr calculateAgreementSym) (pqxdhCalculateAgreementFrozenSpec P A img) := by
-  refine Arm64.subroutine_ok_outcome_intro ?_
-  intro ⟨ourA, our, theirA, their, ret, sp⟩ R s0 hpc hrun hpre hsp
-  dsimp only [pqxdhCalculateAgreementFrozenSpec] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre; rcases hpre with ⟨⟨hF, hx⟩, hpre⟩
-  have hpre' : s0.mem ⊨ (pqxdhCalculateAgreementSpec P A img).pre (ourA, our, theirA, their, ret,
-    sp) s0 ∗ R := by
-    dsimp only [pqxdhCalculateAgreementSpec]; rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hx, ?_⟩; have hro := rodata_0x7ff6a himg hF.roData hpre
-    refine Satisfies.mono (Entails.of_eq ?_) hro; ac_rfl
-  refine (Arm64.subroutine_ok.to_outcome hag (ourA, our, theirA, their, ret, sp) R s0 hpc hrun hpre' hsp).mono_outcome fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | hpan
-  · refine Or.inl ⟨hret, hcc, ?_⟩; dsimp only [pqxdhCalculateAgreementSpec] at hq
-    have hq' : sf.mem ⊨ ((img.base + bv% (ls_xref% 0x3e748 0x3e74c)) ↦ᵣ List.replicate 32 0#8) ∗
-        ((pqxdhCalculateAgreementFrozenSpec P A img).post (ourA, our, theirA, their, ret,
-        sp) s0 sf ∗ R) := by
-      refine Satisfies.mono (Entails.of_eq ?_) hq
-      dsimp only [pqxdhCalculateAgreementFrozenSpec, pqxdhCalculateAgreementBaseSpec]; ac_rfl
-    exact Satisfies.of_sep_right hq'
-  · exact Or.inr hpan
-theorem calculateAgreement_frozen_ok {P : Primitives} {A : RustAlloc} {img : Obj.Image} {C : Crypto}
-    {ctl : BitVec 64} {absHooks : String → Option (State → State)} (himg : Obj.Loads
-    libsignalSessionImage img) (hag : PqxdhCalculateAgreementOk P A img C ctl absHooks) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl absHooks) ((tripleRatchetProgAt img.base C ctl
-      absHooks).fnAddr calculateAgreementSym) (pqxdhCalculateAgreementFrozenSpec P A img) := by
-  refine Arm64.subroutine_ok_outcome_intro ?_
-  intro ⟨ourA, our, theirA, their, ret, sp⟩ R s0 hpc hrun hpre hsp
-  dsimp only [pqxdhCalculateAgreementFrozenSpec] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre; rcases hpre with ⟨⟨hF, hx⟩, hpre⟩
-  have hpre' : s0.mem ⊨ (pqxdhCalculateAgreementSpec P A img).pre (ourA, our, theirA, their, ret,
-    sp) s0 ∗ R := by
-    dsimp only [pqxdhCalculateAgreementSpec]; rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hx, ?_⟩; have hro := rodata_0x7ff6a himg hF.roData hpre
-    refine Satisfies.mono (Entails.of_eq ?_) hro; ac_rfl
-  refine (Arm64.subroutine_ok.to_outcome hag (ourA, our, theirA, their, ret, sp) R s0 hpc hrun hpre' hsp).mono_outcome fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | hpan
-  · refine Or.inl ⟨hret, hcc, ?_⟩; dsimp only [pqxdhCalculateAgreementSpec] at hq
-    have hq' : sf.mem ⊨ ((img.base + bv% (ls_xref% 0x3e748 0x3e74c)) ↦ᵣ List.replicate 32 0#8) ∗
-        ((pqxdhCalculateAgreementFrozenSpec P A img).post (ourA, our, theirA, their, ret,
-        sp) s0 sf ∗ R) := by
-      refine Satisfies.mono (Entails.of_eq ?_) hq
-      dsimp only [pqxdhCalculateAgreementFrozenSpec, pqxdhCalculateAgreementBaseSpec]; ac_rfl
-    exact Satisfies.of_sep_right hq'
-  · exact Or.inr hpan
 theorem calcErr_entails_at_add3648 (fsp : BitVec 64) : ((fsp + 3648#64) ↦₆₄ 1#64) ∗ (∃∗
     hi : BitVec 56, (fsp + 3656#64) ↦₆₄ (hi ++ 3#8)) ∗ (∃∗ u2 : BitVec 64, (fsp + 3664#64) ↦₆₄ u2) ⊢
       ∃∗ u2 : BitVec 64, ∃∗ hi : BitVec 56, ((fsp + 3648#64) ↦₆₄ 1#64) ∗ ((fsp + 3656#64) ↦₆₄ (hi ++
@@ -211,71 +83,16 @@ theorem cells3_add3648_to_memRegion24 (sp w0 w1 w2 : BitVec 64) : ((sp + 3648#64
   rw [(memRegion_cells (sp + 3648#64) 3 (by decide) : memRegion (sp + 3648#64) 24 = cells (sp +
     3648#64) 3)]; have h := cells_3_merge (sp + 3648#64) w0 w1 w2
   simp only [BitVec.add_assoc, BitVec.reduceAdd] at h; exact h
-theorem allowPanic_hag_base {P : Primitives} {A : RustAlloc} {img : Obj.Image} {s0 s : State} {F :
-    SepProp} {x : BitVec 64 × Bytes × BitVec 64 × Bytes × BitVec 64 × BitVec 64} (htr : s.trace =
-    s0.trace) : ∀ sf, sf.status =
-      .Panicked → PanicOomProp s0 sf ((pqxdhCalculateAgreementFrozenSpec P A img).onPanic x s sf ∗
-      F) := by
-  intro sf _ R hm
-  dsimp only [pqxdhCalculateAgreementFrozenSpec, pqxdhCalculateAgreementBaseSpec, rustPanicOnOom]
-    at hm
-  exact allowPanic_frame (allocFailedIn_of_trace_eq htr) hm
-theorem SepWPp_call_hag_alice {prog : Program} {ret : BitVec 64} {s : State} {P_pre : SepProp} {Q :
-    State → SepProp → Prop} {s0 : State} {F : SepProp} {call_pc ret_pc fsp : BitVec 64} {P :
-    Primitives} {A : RustAlloc} {img : Obj.Image} (hWF : StructuralPrims P) (hag : subroutine_ok
-    prog call_pc (pqxdhCalculateAgreementFrozenSpec P A img)) (hF : img.FrozenLoaded s) (ourA :
-    BitVec 64) (our : Bytes) (theirA : BitVec 64) (their : Bytes) (hpc : s.pc =
-      call_pc) (hrun : s.status = .Running) (hfsp_align : fsp &&& 15#64 == 0#64) (hsp_eq : s.sp =
-    fsp) (hlr : s.readReg64 Reg.lr = ret_pc) (htr : s.trace = s0.trace) (hx : s.readReg64 Reg.x0 =
-    ourA ∧ s.readReg64 Reg.x1 = theirA ∧ s.readReg64 Reg.x8 = fsp + 3648#64 ∧ s.sp = fsp ∧
-      our.length = 32 ∧ their.length = 32) (hP : P_pre = (((ourA ↦ₛ bytesToBv8 our) ∗
-    (theirA ↦ₛ bytesToBv8 their) ∗ memRegion (fsp + 3648#64) 24 ∗ A.pool ∗
-      stackAt fsp calculateAgreementStack) ∗ F)) (herr : P.x25519 our their =
-      List.replicate 32 0 → ∀ (sf : State) (hi : BitVec 56) (u2 : BitVec 64), sf.pc =
-      ret_pc → sf.status = .Running → sf.sp = fsp → CalleeSavedPreserved s sf → sf.trace =
-        s0.trace → img.FrozenLoaded sf → SepWPp prog ret sf (((fsp + 3648#64) ↦₆₄ 1#64) ∗ ((fsp +
-          3656#64) ↦₆₄ (hi ++ 3#8)) ∗ ((fsp + 3664#64) ↦₆₄ u2) ∗ (ourA ↦ₛ bytesToBv8 our) ∗
-          (theirA ↦ₛ bytesToBv8 their) ∗ A.pool ∗ stackAt fsp calculateAgreementStack ∗
-            F) Q (PanicOomProp s0)) (hok : P.x25519 our their ≠ List.replicate 32 0 →
-      ∀ (sf : State) (dh_ptr : BitVec 64), sf.pc = ret_pc → sf.status = .Running → sf.sp = fsp →
-        CalleeSavedPreserved s sf → sf.trace =
-        s0.trace → img.FrozenLoaded sf → SepWPp prog ret sf (((fsp + 3648#64) ↦₆₄ 0#64) ∗ ((fsp +
-        3656#64) ↦₆₄ dh_ptr) ∗ ((fsp + 3664#64) ↦₆₄ 32#64) ∗
-            (dh_ptr ↦ₛ bytesToBv8 (P.x25519 our their)) ∗ A.live dh_ptr 32 1 ∗
-            (ourA ↦ₛ bytesToBv8 our) ∗ (theirA ↦ₛ bytesToBv8 their) ∗ A.pool ∗
-            stackAt fsp calculateAgreementStack ∗ F) Q (PanicOomProp s0)) :
-    SepWPp prog ret s P_pre Q (PanicOomProp s0) := by
-  have hsp_align_s : s.spAligned = true := by unfold State.spAligned; rw [hsp_eq]; exact hfsp_align
-  refine SepWPp.call_frame_frozen (x := (ourA, our, theirA, their, fsp + 3648#64, fsp))
-    hF hag hpc hrun hsp_align_s hlr rfl ⟨hF, hx⟩ hP (fun _ _ _ _ hm =>
-      allowPanic_not_exited hm) (allowPanic_hag_base htr)
-    (fun sf hpc_f hrun_f hsp_f hcs_f hF_f => ?_)
-  dsimp only [pqxdhCalculateAgreementFrozenSpec, pqxdhCalculateAgreementBaseSpec,
-    pqxdhCalculateAgreementResultAt]
-  rw [htr, sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc]
-  refine SepWPp.pure_elim fun htr_sf => ?_; by_cases hdh : P.x25519 our their = List.replicate 32 0
-  · simp only [hdh, ↓reduceIte, BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-    refine SepWPp.fold (calcErr_entails_at_add3648 fsp) (by sep_focus) ?_
-    rw [sepExists_sepConj_left]; refine SepWPp.exists_elim fun u2 => ?_; rw [sepExists_sepConj_left]
-    refine SepWPp.exists_elim fun hi => ?_; simp only [sepConj_assoc]
-    exact herr hdh sf hi u2 hpc_f hrun_f (hsp_f.trans hsp_eq) hcs_f htr_sf hF_f
-  · have hdh_bv_len : (bytesToBv8 (P.x25519 our their)).length = 32 := by
-      simp [bytesToBv8, hWF.x25519_len our their]
-    simp only [hdh, ↓reduceIte, BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-    refine SepWPp.fold (boxSliceU8_32_entails_at_add3648 A fsp hdh_bv_len) (by sep_focus) ?_
-    rw [sepExists_sepConj_left]; refine SepWPp.exists_elim fun dh_ptr => ?_
-    simp only [sepConj_assoc]
-    exact hok hdh sf dh_ptr hpc_f hrun_f (hsp_f.trans hsp_eq) hcs_f htr_sf hF_f
-def aliceOpkParamAt (a : BitVec 64) (opk? : Option (UInt32 × Bytes)) : SepProp := match opk? with
+@[expose] def aliceOpkParamAt (a : BitVec 64) (opk? : Option (UInt32 × Bytes)) : SepProp := match opk? with
   | none => (a ↦₈ 0#8) ∗ memRegion (a + 1#64) 32
   | some (_, opkPk) => (a ↦₈ 1#8) ∗ ((a + 1#64) ↦ₛ bytesToBv8 opkPk)
-def dhSecretsPrefix (dh1 dh2 dh3 : Bytes) (dh4? : Option Bytes) : Bytes := match dh4? with
+@[expose] def dhSecretsPrefix (dh1 dh2 dh3 : Bytes) (dh4? : Option Bytes) : Bytes := match dh4? with
   | none     => F_X25519 ++ dh1 ++ dh2 ++ dh3
   | some dh4 => F_X25519 ++ dh1 ++ dh2 ++ dh3 ++ dh4
 theorem dhSecretsPrefix_append_ss (dh1 dh2 dh3 : Bytes) (dh4? : Option Bytes) (ss : Bytes) :
     dhSecretsPrefix dh1 dh2 dh3 dh4? ++ ss = buildSecrets dh1 dh2 dh3 dh4? ss := by
   cases dh4? <;> rfl
-def dhSecretsRemAt (secretsPtr : BitVec 64) (opkB? : Option (UInt32 × Bytes)) : SepProp :=
+@[expose] def dhSecretsRemAt (secretsPtr : BitVec 64) (opkB? : Option (UInt32 × Bytes)) : SepProp :=
     match opkB? with
   | none   => memRegion (secretsPtr + 128#64) 32 ∗ memRegion (secretsPtr + 160#64) 32
   | some _ => memRegion (secretsPtr + 160#64) 32
@@ -312,9 +129,9 @@ theorem cells3_456_entails_memRegion24 (fsp v0 v1 v2 : BitVec 64) : ((fsp + 456#
   exact Entails.sepExists_right v0 (Entails.sepExists_right v1 (Entails.sepExists_right v2
     (Entails.refl _)))
 def mkWord32 (b0 b1 b2 b3 : BitVec 8) : BitVec 32 := b3 ++ b2 ++ b1 ++ b0
-def word32Bytes (u : BitVec 32) : List (BitVec 8) :=
+@[expose] def word32Bytes (u : BitVec 32) : List (BitVec 8) :=
     [u.extractLsb' 0 8, u.extractLsb' 8 8, u.extractLsb' 16 8, u.extractLsb' 24 8]
-def words32Bytes (us : List (BitVec 32)) : List (BitVec 8) := us.flatMap word32Bytes
+@[expose] def words32Bytes (us : List (BitVec 32)) : List (BitVec 8) := us.flatMap word32Bytes
 def word32At (bs : List (BitVec 8)) (off : Nat) : BitVec 32 :=
   mkWord32 (bs.getD off 0#8) (bs.getD (off + 1) 0#8) (bs.getD (off + 2) 0#8) (bs.getD (off + 3) 0#8)
 def kemCoinBytesOf128 (rng128 : List (BitVec 8)) : List (BitVec 8) :=
@@ -369,41 +186,12 @@ theorem tapeAfter_word32Bytes_four (ctl cur : BitVec 64) (u : BitVec 32) (rest :
     rw [pointsToBytes_append, show (word32Bytes u).length = 4 from rfl, h4, ←
       pointsTo32_eq_pointsToBytes_word32Bytes]
   rw [hlen, h4, hpts, BitVec.add_zero, Nat.sub_zero]; ac_rfl
-def sp2Rng4Spec (ctl : BitVec 64) :
+@[expose] def sp2Rng4Spec (ctl : BitVec 64) :
     Spec (BitVec 64 × BitVec 32 × BitVec 64 × BitVec 32 × List (BitVec 8)) where
   pre := fun (destPtr, w, cur, u, rest) s => ⌜s.readReg64 .x0 = destPtr ∧ s.readReg64 .x1 = 4#64⌝ ∗
     (destPtr ↦₃₂ w) ∗ tapeAfter ctl cur (word32Bytes u ++ rest) 0
   post := fun (destPtr, _, cur, u, rest) s0 sf =>
     ⌜sf.trace = s0.trace⌝ ∗ (destPtr ↦₃₂ u) ∗ (cur ↦₃₂ u) ∗ tapeAfter ctl (cur + 4#64) rest 0
-theorem sp2Rng4_ok_at {img : Obj.Image} {C : Crypto} {ctl : BitVec 64} {absHooks : String → Option
-    (State → State)} {name : String} {k : Nat} (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "libsignal_session_rng_fill" := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl absHooks) ((tripleRatchetProgAt img.base C ctl
-      absHooks).fnAddr name + BitVec.ofNat 64 k)
-      (sp2Rng4Spec ctl) := by
-  have hrng := rngFill_ok_at_tripleRatchet (b := img.base) (C := C) (ctl := ctl) (abs :=
-    absHooks) (name := name) (k := k) hk
-  refine Arm64.subroutine_ok_outcome_intro ?_
-  intro ⟨destPtr, w, cur, u, rest⟩ R s0 hpc hrun hpre hsp; dsimp only [sp2Rng4Spec] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre; rcases hpre with ⟨⟨hx0, hx1⟩, hpre⟩
-  have hx1_nat : (s0.readReg64 .x1).toNat = 4 := by rw [hx1]; rfl
-  have hpre' : s0.mem ⊨ (rngFillAfter0Spec ctl).pre (destPtr, 4, cur, word32Bytes u ++ rest) s0 ∗
-    R := by
-    dsimp only [rngFillAfter0Spec]; rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1_nat⟩, ?_⟩
-    exact Satisfies.mono (sepConj_mono_left (sepConj_mono_left (pointsTo32_entails_memRegion4
-      destPtr w))) hpre
-  refine (Arm64.subroutine_ok.to_outcome hrng (destPtr, 4, cur, word32Bytes u ++ rest) R s0 hpc hrun hpre' hsp).mono_outcome fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | hpan
-  · refine Or.inl ⟨hret, hcc, ?_⟩; dsimp only [rngFillAfter0Spec] at hq
-    have htake : ((word32Bytes u ++ rest) ++ List.replicate 4 0#8).take 4 = word32Bytes u := by
-      rw [List.append_assoc, List.take_append_of_le_length (by simp [word32Bytes]),
-        List.take_of_length_le (by simp [word32Bytes])]
-    have hmin : min 4 (word32Bytes u ++ rest).length = 4 := by simp [word32Bytes]
-    rw [htake, hmin, ← pointsTo32_eq_pointsToBytes_word32Bytes destPtr u,
-      tapeAfter_word32Bytes_four ctl cur u rest] at hq; dsimp only [sp2Rng4Spec]
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hq
-  · exact Or.inr hpan
 theorem words32Bytes_cons (u : BitVec 32) (us : List (BitVec 32)) : words32Bytes (u :: us) =
     word32Bytes u ++ words32Bytes us := rfl
 theorem words32Bytes_nil :
@@ -417,18 +205,18 @@ theorem pointsToBytes_words32Bytes_cons (base : BitVec 64) (u : BitVec 32) (us :
       pointsToBytes_word32Bytes_append base u (words32Bytes us)
 theorem pointsToBytes_words32Bytes_nil (base : BitVec 64) : (base ↦ₛ words32Bytes []) = emp :=
     pointsToBytes_nil base
-def rngSlots1a (fsp : BitVec 64) (w_68 w_72 w_76 w_80 w_84 w_88 w_92 : BitVec 32) : SepProp :=
+@[expose] def rngSlots1a (fsp : BitVec 64) (w_68 w_72 w_76 w_80 w_84 w_88 w_92 : BitVec 32) : SepProp :=
     ((fsp + 68#64) ↦₃₂ w_68) ∗ ((fsp + 72#64) ↦₃₂ w_72) ∗ ((fsp + 76#64) ↦₃₂ w_76) ∗ ((fsp +
   80#64) ↦₃₂ w_80) ∗ ((fsp + 84#64) ↦₃₂ w_84) ∗ ((fsp + 88#64) ↦₃₂ w_88) ∗ ((fsp + 92#64) ↦₃₂ w_92)
-def rngSlots1b (fsp : BitVec 64) (w_36 w_40 w_44 w_48 w_52 w_56 w_60 w_64 : BitVec 32) : SepProp :=
+@[expose] def rngSlots1b (fsp : BitVec 64) (w_36 w_40 w_44 w_48 w_52 w_56 w_60 w_64 : BitVec 32) : SepProp :=
     ((fsp + 36#64) ↦₃₂ w_36) ∗ ((fsp + 40#64) ↦₃₂ w_40) ∗ ((fsp + 44#64) ↦₃₂ w_44) ∗ ((fsp +
   48#64) ↦₃₂ w_48) ∗ ((fsp + 52#64) ↦₃₂ w_52) ∗ ((fsp + 56#64) ↦₃₂ w_56) ∗ ((fsp +
     60#64) ↦₃₂ w_60) ∗ ((fsp + 64#64) ↦₃₂ w_64)
-def rngSlots2a (fsp : BitVec 64) (w_4 w_8 w_12 w_16 w_20 w_24 w_28 w_32 : BitVec 32) : SepProp :=
+@[expose] def rngSlots2a (fsp : BitVec 64) (w_4 w_8 w_12 w_16 w_20 w_24 w_28 w_32 : BitVec 32) : SepProp :=
     ((fsp + 4#64) ↦₃₂ w_4) ∗ ((fsp + 8#64) ↦₃₂ w_8) ∗ ((fsp + 12#64) ↦₃₂ w_12) ∗ ((fsp +
   16#64) ↦₃₂ w_16) ∗ ((fsp + 20#64) ↦₃₂ w_20) ∗ ((fsp + 24#64) ↦₃₂ w_24) ∗ ((fsp +
     28#64) ↦₃₂ w_28) ∗ ((fsp + 32#64) ↦₃₂ w_32)
-def kemCoinSlots64 (fsp : BitVec 64) (v_2080 v_2088 v_2096 v_2104 : BitVec 64) : SepProp :=
+@[expose] def kemCoinSlots64 (fsp : BitVec 64) (v_2080 v_2088 v_2096 v_2104 : BitVec 64) : SepProp :=
     ((fsp + 2080#64) ↦₆₄ v_2080) ∗ ((fsp + 2088#64) ↦₆₄ v_2088) ∗ ((fsp + 2096#64) ↦₆₄ v_2096) ∗
   ((fsp + 2104#64) ↦₆₄ v_2104)
 theorem pointsTo64_to_pointsTo8 (p : BitVec 64) (v : BitVec 64) : (p ↦₆₄ v) =
@@ -753,7 +541,7 @@ theorem kemEncapsHook_ok_initiatorModelPrims
 @[simp, arm64_norm]
 private theorem bv_add_sub_lit (x a b : BitVec 64) : (x + a) - b = x + (a - b) := by bv_omega
 @[simp, arm64_norm] private theorem bv_add_zero (x : BitVec 64) : x + 0#64 = x := BitVec.add_zero x
-def initAliceSavedRegs (fsp : BitVec 64) (s0 : State) : SepProp :=
+@[expose] def initAliceSavedRegs (fsp : BitVec 64) (s0 : State) : SepProp :=
     ((fsp + 5296#64) ↦₆₄ s0.readReg64 (.gpr 29#5)) ∗ ((fsp +
   5304#64) ↦₆₄ s0.readReg64 (.gpr 30#5)) ∗ ((fsp + 5312#64) ↦₆₄ s0.readReg64 (.gpr 28#5)) ∗ ((fsp +
     5320#64) ↦₆₄ s0.readReg64 (.gpr 27#5)) ∗ ((fsp + 5328#64) ↦₆₄ s0.readReg64 (.gpr 26#5)) ∗
@@ -805,7 +593,7 @@ theorem memRegion1600_3648_split24 (fsp : BitVec 64) : memRegion (fsp + 3648#64)
     memRegion (fsp + 3648#64) 24 ∗ memRegion (fsp + 3672#64) 1576 :=
   ProofLib.memRegion_split' (b := fsp + 3648#64) (n := 24) (k := 1576) (b' :=
     fsp + 3672#64) rfl (by bv_omega) (by decide)
-def aliceErrResultAt (outPtr tagWord : BitVec 64) : SepProp :=
+@[expose] def aliceErrResultAt (outPtr tagWord : BitVec 64) : SepProp :=
     (outPtr ↦₆₄ 0xffffffffffffffff#64) ∗ ((outPtr + 8#64) ↦₆₄ tagWord) ∗ memRegion (outPtr +
   16#64) 40
 theorem memRegion16_eq_cells2 (base : BitVec 64) : memRegion base 16 = ∃∗ w0 : BitVec 64, ∃∗
@@ -846,7 +634,7 @@ theorem memRegion56_eq_cells7 (base : BitVec 64) : memRegion base 56 = ∃∗ w0
         ((base + 32#64) ↦₆₄ w4) ∗ ((base + 40#64) ↦₆₄ w5) ∗ ((base + 48#64) ↦₆₄ w6) := by
   rw [(memRegion_cells base 7 (by decide) : memRegion base 56 = cells base 7)]
   simp only [cells, sepConj_emp, BitVec.add_assoc, BitVec.reduceAdd, sepExists_sepConj_right]
-def CalleeSavedGprsPreserved (s s' : State) : Prop :=
+@[expose] def CalleeSavedGprsPreserved (s s' : State) : Prop :=
   s'.readReg64 .x19 = s.readReg64 .x19 ∧
   s'.readReg64 .x20 = s.readReg64 .x20 ∧
   s'.readReg64 .x21 = s.readReg64 .x21 ∧

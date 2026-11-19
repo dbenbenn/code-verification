@@ -9,11 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.V1StateStepPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.V1StateStepPlaced
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergePart2CodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitSubClPlaced
 
 /-!
 # Code-Loaded Outer `PqRatchetState::v1` (Tag 3) & Default `skip_field` for `spqr::decode_state` (Block `325`)
@@ -22,7 +30,7 @@ Proves code-loaded outer `skip_field(depth=100)` (`+456`), 224-byte Q-register s
 and outer Tag 3 (`PqRatchetState::v1`, `+312`) `some` and `none` merge paths.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.DecodeState
 

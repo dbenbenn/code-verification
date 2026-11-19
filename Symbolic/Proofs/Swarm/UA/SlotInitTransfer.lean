@@ -11,8 +11,8 @@ module
 
 import DY.Trace.Monad
 import DY.Actions.ProtocolEvent
-public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical
+public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.CREF.CBadG2.MacGuess
 import Symbolic.Proofs.Swarm.CREF.CBadG2.Stamps
@@ -22,9 +22,15 @@ import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CBadG2Pure
 import Symbolic.Proofs.Swarm.CREF.SendWire.WhisperPureA
 import Symbolic.Proofs.Swarm.CREF.TR.FreshSigmaHead
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil
-import Symbolic.Proofs.Swarm.UA.Base
+public import Symbolic.Proofs.Swarm.UA.Base
 import Symbolic.DYBridge.DY.Trace.Monad
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
+import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials
+import Symbolic.Proofs.Swarm.CREF.RoleSnapshots
+import Symbolic.Proofs.Swarm.CREF.Stage1Trials
+import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
+import Symbolic.Proofs.Swarm.CREF.TR.FreshSigmaReach
 
 /-!
 # Step-Level Trace, Stamp, and `CBadSigmaFrame` Transfer
@@ -34,7 +40,7 @@ with `StampsLt` bounds for `stepView` and `CBadSigmaFrame` transfer of `GhostWF`
 `MatchesEventsClassical`, `RecvCollisionOn`, and `¬ ReadCollisionCliClassical`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

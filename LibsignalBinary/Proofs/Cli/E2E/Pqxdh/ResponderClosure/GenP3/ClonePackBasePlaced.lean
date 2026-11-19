@@ -10,13 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePackBase
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePack
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysTailPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePack -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysTailPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -51,7 +53,7 @@ set_option maxRecDepth 200000
 set_option linter.unusedSimpArgs false
 
 /-- Untouched spatial frame threaded across `pack_eq_placed_wp` / `pack_ne_placed_wp`. -/
-def packRestFramePlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def packRestFramePlaced [LibsignalPlacement] (A : RustAlloc)
     (sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (rest : List (BitVec 8))
     (recG : SessionGhost) (st : SessionState (List (BitVec 8))) (w : GenP3J4Witness)

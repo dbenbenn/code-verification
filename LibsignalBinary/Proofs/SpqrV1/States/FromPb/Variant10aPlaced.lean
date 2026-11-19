@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch0Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch2Placed
@@ -19,6 +19,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10a
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Relocatable Variant 10 (`Ct2Sampled`, `+1632`) — Error & Cleanup Paths
@@ -28,7 +29,7 @@ error epilogues (`+2084`, `+2064`), and `Authenticator` cleanup deallocation pat
 `+7212`, `+5820`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

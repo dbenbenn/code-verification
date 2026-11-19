@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SR.ModelW
+public import Symbolic.Proofs.SR.ModelW -- proof-setup: allow-public-import
 
 /-!
 # Inversion of `SessionState.tryDecryptFromRecordW` into three ratchet branches
@@ -20,7 +20,7 @@ remote-identity, SPQR, MAC, and AES-decrypt conditions together with the exclusi
 `decryptW_ok_branch`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -436,7 +436,7 @@ theorem dhRatchetStep_ok_index_eq_zero
   obtain ⟨_sc, _newRootKey, _, _, _, hrc1, _, _⟩ := dhRatchetStep_ok_inv hok
   exact rootCreateChain_ok_index_eq_zero hrc1
 
-def ratchetStateOf {PQ : Type} (st : SessionState PQ) : RatchetState :=
+@[expose] def ratchetStateOf {PQ : Type} (st : SessionState PQ) : RatchetState :=
   ⟨st.rootKey, st.senderChain, st.receiverChains, st.previousCounter,
     CryptoGames.LibsignalSession.maxForwardJumps⟩
 

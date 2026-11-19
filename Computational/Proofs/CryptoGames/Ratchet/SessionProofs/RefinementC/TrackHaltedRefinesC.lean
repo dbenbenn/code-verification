@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC
 public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedBase
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.HiddenSaltBound
-public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge
-public import Computational.Proofs.CryptoGames.SM.Theorem1Reductions
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.HiddenSaltBound
+import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge
+import Computational.Proofs.CryptoGames.SM.Theorem1Reductions
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedStepSendRecv
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedStepDeliverInject
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedStepInject
@@ -36,12 +36,11 @@ Couples the tracker-halted real game `KemFailTrackBridge.gameRTrackHalted` on
 `libsignalSessionScheme` with `SM.game` on `runLibsignalToModularSchemeSimTrackHalted`
 (`sim_game_boolDist_le_C_trackHalted` and `simCNoneWinEventTrackHalted_le_auth`). Once the KEM-fail
 candidate latches, send queries return `none` on both sides and reduce to the unhalted coupling via
-`dropSendsAdv`.
--/
+`dropSendsAdv`.-/
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace CryptoGames.LibsignalSM.Proofs.Refinement
 
@@ -872,76 +871,6 @@ theorem eps0EventTrackHalted_eq_runRContTrack (P : Params PQ (BitVec 512)) (K : 
   simp [eps0EventTrackHalted, KemFailTrackBridge.runRTrackHalted, runRContTrack,
     KemFailTrackBridge.libsignalSessionPqrOf, bind_assoc]
 
-private theorem run_win_prob_le_auth_track {Key St Msg Coins C : Type} [DecidableEq Msg]
-    [DecidableEq C] [SampleableType Key] [SampleableType Coins]
-    (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) (hΔ : 0 < Δ)
-    (A : SM.Adversary St Msg Coins C) :
-    𝒟[($ᵗ Bool : ProbComp Bool) >>= fun b =>
-      SM.run sm Δ qep SM.Config.h1 b A >>= fun (_, s) => pure s.win] {true} ≤
-      ∑ t ∈ Finset.range (qep + 2), ∑ tL ∈ admissibleLastLeakGuesses Δ t,
-        SM.authAdvantage sm Δ qep tL t (Thm1.challSim Δ qep A) := by
-  let f1 : Bool × SM.GameState St Msg C → ProbComp Bool :=
-    fun z => pure z.2.win
-  let f2 : Bool × SM.GameState St Msg C → ProbComp Bool :=
-    fun _ => pure false
-  let fAuth (t : ℕ) (tL : Option ℕ) :
-      (Bool × Thm1.Mirror Msg C) × SM.GameState St Msg C → ProbComp Bool :=
-    fun z => pure (z.2.win && SM.authLosingConditionsAvoided Δ tL t z.2)
-  have hclose : Thm1L17.CloseBySum Δ qep
-      (($ᵗ Bool : ProbComp Bool) >>= fun b =>
-        SM.run sm Δ qep SM.Config.h1 b A >>= fun (_, s) => pure s.win)
-      (($ᵗ Bool : ProbComp Bool) >>= fun b =>
-        ($ᵗ Key : ProbComp Key) >>= fun k =>
-          (simulateQ (Thm1L17.fullImpl sm Δ qep SM.Config.h2) A).run
-            (SM.initState sm k b) >>= f2)
-      (fun t tL =>
-        ($ᵗ Bool : ProbComp Bool) >>= fun b =>
-          ($ᵗ Key : ProbComp Key) >>= fun k =>
-            (simulateQ (Thm1L17.fullImpl sm Δ qep (SM.Config.auth t))
-              ((simulateQ (Thm1.simImpl Δ qep (fun _ => none) none) A).run
-                (Thm1.toMirror (SM.initState sm k b)))).run
-              (Thm1L17.toAuth (SM.initState sm k b)) >>= fAuth t tL) := by
-    unfold SM.run
-    simp only [bind_assoc]
-    refine Thm1L17.closeBySum_bind Δ qep ($ᵗ Bool : ProbComp Bool) fun b =>
-      Thm1L17.closeBySum_bind Δ qep ($ᵗ Key : ProbComp Key) fun k => ?_
-    exact Thm1L17.closeBySum_simulateQ sm Δ qep hΔ A f1 f2 fAuth
-      (fun _ _ hwin => by simp [f1, f2, hwin])
-      (fun t tL z hwin hok => by simp [fAuth, hwin, hok])
-      (Thm1L17.wfState_init sm Δ k b) rfl
-  have htr := (hclose {true}).1
-  dsimp only [fAuth] at htr
-  simp_rw [← Thm1L17.authGame_challSim_evalDist sm Δ qep _ _ A] at htr
-  have hzero :
-      𝒟[($ᵗ Bool : ProbComp Bool) >>= fun b =>
-        ($ᵗ Key : ProbComp Key) >>= fun k =>
-          (simulateQ (Thm1L17.fullImpl sm Δ qep SM.Config.h2) A).run
-            (SM.initState sm k b) >>= f2] {true} = 0 := by
-    dsimp only [f2]
-    rw [evalDist_bind_congr ($ᵗ Bool) _ (fun _ => pure false) fun _ => by
-      rw [evalDist_bind_congr ($ᵗ Key) _ (fun _ => pure false) fun _ =>
-        OracleComp.evalDist_bind_const _ _]
-      exact OracleComp.evalDist_bind_const _ _]
-    rw [OracleComp.evalDist_bind_const]
-    simp
-  rw [hzero, zero_add] at htr
-  exact htr
-
-/-- Bounds `simCNoneWinEventTrackHalted` by the authenticity advantage of
-`runLibsignalToModularSchemeSimTrackHalted`. -/
-theorem simCNoneWinEventTrackHalted_le_auth (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
-    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ)
-    (A : LibAdv PQ (BitVec 512) ℓ) :
-    let sm := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
-    𝒟[simCNoneWinEventTrackHalted P K ℓ Dh encPt encT decT idOf lam qep A] {true} ≤
-      ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) t,
-        SM.authAdvantage sm (2 + 1) (qep + 1) tL t
-          (Thm1.challSim (2 + 1) (qep + 1)
-            (runLibsignalToModularSchemeSimTrackHalted P K Dh encPt encT decT idOf lam qep A)) :=
-  run_win_prob_le_auth_track (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) (2 + 1) (qep + 1)
-    (by omega) (runLibsignalToModularSchemeSimTrackHalted P K Dh encPt encT decT idOf lam qep A)
-
 /-- Bounds the boolean distance between `gameRTrackHalted` and `SM.game` on
 `runLibsignalToModularSchemeSimTrackHalted`. -/
 theorem sim_game_boolDist_le_C_trackHalted (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
@@ -1070,40 +999,6 @@ theorem sim_game_boolDist_le_C_trackHalted (P : Params PQ (BitVec 512)) (K : MlK
   refine hdist.trans ?_
   gcongr
   exact le_of_eq rfl
-
-theorem sim_game_boolDist_le_C_trackHalted_bind (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
-    (Dh : DHFun (BitVec 256) Pt) (hDh : Dh.Commutes)
-    (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
-    (hX : X25519RealizesDh P.C Dh encPt encT) (hdec : ∀ T, decT (encT T) = some T)
-    (hD : ∀ k x, P.C.D k (P.C.E k x) = x) (hrt : RoundTrip.RtHyp P ℓ)
-    (hinj : Function.Injective encT) (hdum : ∀ T, encT T ≠ dummyKey) (hz : ∀ x, Dh.dh x 0 = 0)
-    (idOf : Party → IdentityKey) (hid : idOf .A = P.idA ∧ idOf .B = P.idB) (lam : Pt) (qep q : ℕ)
-    (hS : Corr.SpqrSendCorrectQ P.spqr q) (hq32 : q < 2 ^ 32) (δ : ℝ≥0∞)
-    (hδ : ∀ Q : Pt, 𝒟[($ᵗ BitVec 256 : ProbComp (BitVec 256))] {x | Dh.dh x Dh.base = Q} ≤ δ)
-    (A : LibAdv PQ (BitVec 512) ℓ) (hq : SM.MakesAtMostQueries A q) :
-    let onImage := ratchetKeyAdmissible P.codec decT encT
-    (𝒟[KemFailTrackBridge.gameRTrackHalted KemFailTrackBridge.libsignalSessionPqrOf P.C.F K
-        (libsignalSessionScheme P ℓ encPt lam) 3 qep (configR1OnCurve onImage) A >>=
-        fun z => pure z.1]).boolDist
-      (𝒟[SM.game (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) 3 (qep + 1) SM.Config.h1
-          (runLibsignalToModularSchemeSimTrackHalted P K Dh encPt encT decT idOf lam qep A)]) ≤
-      (LibsignalSim.forgedEpochStartSpuriousStepTerm P.C.F encPt Dh q +
-        𝒟[simCNoneWinEventTrackHalted P K ℓ Dh encPt encT decT idOf lam qep A] {true}) +
-      hiddenSaltTermTrackHalted P K ℓ Dh encPt encT decT idOf lam qep A +
-      (LibsignalSim.spuriousStepTerm P.C.F encPt Dh q qep + (qep + 2) * (q + qep + 2) * δ) +
-      𝒟[eps0EventTrackHalted P K ℓ encPt lam onImage qep A] {true} := by
-  intro onImage
-  have heq :
-      (KemFailTrackBridge.gameRTrackHalted KemFailTrackBridge.libsignalSessionPqrOf P.C.F K
-        (libsignalSessionScheme P ℓ encPt lam) 3 qep
-        (configR1OnCurve onImage) A >>= fun z => pure z.1) =
-      (Prod.fst <$> KemFailTrackBridge.gameRTrackHalted KemFailTrackBridge.libsignalSessionPqrOf
-        P.C.F K (libsignalSessionScheme P ℓ encPt lam) 3 qep
-        (configR1OnCurve onImage) A) := by
-    simp [map_eq_bind_pure_comp]
-  rw [heq]
-  exact sim_game_boolDist_le_C_trackHalted P K ℓ Dh hDh encPt encT decT hX hdec hD hrt hinj hdum
-    hz idOf hid lam qep q hS hq32 δ hδ A hq
 
 end MainCoupling
 

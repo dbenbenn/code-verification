@@ -20,17 +20,4 @@ open DY.Libsignal.Composed DY.Libsignal.Composed.Refinement
 open Symbolic.BugInjection Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1
 open Symbolic.BugInjection.Proofs.Common443
 
-theorem specLeaves : SpecAssembly.SpecLeaves :=
-  ⟨WsIdx1Split40MemoCloseFinal.split40MemoCensusOwn,
-   WsIdx1Split81MemoCloseFinal.split81MemoCensusOwn⟩
-
-theorem specObls : SpecTop.SpecObls :=
-  SpecAssembly.specObls_of specLeaves
-
-theorem not_collisionAt_wsIdx1 {r : Records} {S : Sem}
-    (hfits : compFitsPinned setup SpecTop.compI0 r)
-    (hnb : ∀ g ms τ₁, ExplainsMoves SpecTop.compI0 r S who ok g ms τ₁ → CompSetupSecrecy.NoBrk r ms) :
-    ¬ CollisionAt SpecTop.compI0 r S who ok trace :=
-  SpecTop.not_collisionAt_of specObls hfits hnb
-
 end Symbolic.BugInjection.Proofs.Cheval26WeakStateIdx1

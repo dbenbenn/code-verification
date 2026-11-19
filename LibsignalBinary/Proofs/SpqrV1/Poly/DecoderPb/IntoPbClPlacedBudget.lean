@@ -9,18 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPtBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbOuterBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbProofBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPtBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbClPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbOuterBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbProofBudget
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPFrozen
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbProof
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `withLsCodeLoaded` Proof for `<PolyDecoder>::into_pb`
@@ -29,7 +34,7 @@ Proves `decoder_into_pb_cl_placed_ok_ext` and `decoder_into_pb_cl_placed_ok_x` o
 `[LibsignalPlacement]` with `RustCliAllocBudget M` and `withLsCodeLoaded lsmpl`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -188,49 +193,6 @@ private theorem into_pb_epilogue_post_entails_pool (Pool : SepProp)
     (Entails.of_eq (by sep_ac_rfl)) ?_
   refine Entails.trans (sepConj_mono hcells (sepConj_mono h32 (Entails.refl _))) ?_
   exact Entails.of_eq (by sep_ac_rfl)
-
-/-- `withLsCodeLoaded lsmpl (decoderIntoPbSpec M A lim)` entails
-    `withLsCodeLoaded lsmpl (decoderIntoPbSpecX M A lim)` by framing the unused
-    bottom stack region (`decoderIntoPbStackX - decoderIntoPbStack`). -/
-theorem decoderIntoPbSpecX_cl_of_decoderIntoPbSpec_cl [LibsignalPlacement]
-    {P : Program} {addr : BitVec 64}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (h : subroutine_ok P addr (withLsCodeLoaded lsmpl (decoderIntoPbSpec M A lim))) :
-    subroutine_ok P addr (withLsCodeLoaded lsmpl (decoderIntoPbSpecX M A lim)) := by
-  refine subroutine_ok_outcome_intro fun (x, st) R s0 hpc hrun hpre hal => ?_
-  obtain ⟨hcl0, hpre0⟩ := extract_withLsCodeLoaded hpre
-  have hle : decoderIntoPbStack ≤ decoderIntoPbStackX := by decide
-  have hsplit : stackAt s0.sp decoderIntoPbStackX =
-      memRegion (s0.sp - BitVec.ofNat 64 decoderIntoPbStackX)
-        (decoderIntoPbStackX - decoderIntoPbStack) ∗
-        stackAt s0.sp decoderIntoPbStack := by
-    have h1 := stackAt_split_bottom s0.sp decoderIntoPbStack
-      (decoderIntoPbStackX - decoderIntoPbStack) (by decide)
-    rwa [Nat.add_sub_of_le hle] at h1
-  let R' : SepProp :=
-    memRegion (s0.sp - BitVec.ofNat 64 decoderIntoPbStackX)
-      (decoderIntoPbStackX - decoderIntoPbStack) ∗ R
-  have hpre' : s0.mem ⊨ (withLsCodeLoaded lsmpl (decoderIntoPbSpec M A lim)).pre (x, st) s0 ∗ R' := by
-    dsimp only [withLsCodeLoaded]
-    rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
-    refine ⟨hcl0, ?_⟩
-    dsimp only [decoderIntoPbSpecX, decoderIntoPbSpec, R'] at hpre0 ⊢
-    rw [hsplit] at hpre0
-    ac_nf at hpre0 ⊢
-  refine h.mono_outcome (x, st) R' s0 hpc hrun hpre' hal fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨_, hpan⟩ | ⟨_, _, hex⟩ | ⟨_, hoom⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    simp only [withLsCodeLoaded, decoderIntoPbSpecX, decoderIntoPbSpec, R',
-      sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hpost ⊢
-    rcases hpost with ⟨evs, hpost⟩
-    refine ⟨evs, ?_⟩
-    rw [hsplit]
-    ac_nf at hpost ⊢
-  · exact (not_satisfies_false_sepConj hpan).elim
-  · dsimp only [withLsCodeLoaded, decoderIntoPbSpec] at hex
-    rw [satisfies_pure_sepConj] at hex
-    exact False.elim hex.1
-  · exact (not_satisfies_false_sepConj hoom).elim
 
 /-! ## Budget-Threaded `withLsCodeLoaded` Proofs for Block `377` -/
 
@@ -691,17 +653,5 @@ theorem decoder_into_pb_cl_placed_ok_ext [LibsignalPlacement]
   refine ⟨decoderIntoPbAllocEvents dec ++ evs_free, ?_⟩
   rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
   exact ⟨⟨htrf, hacp_all, henv_final⟩, by simpa only [sepConj_assoc] using hm1⟩
-
-theorem decoder_into_pb_cl_placed_ok_x [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hshim_sat : HookSat (Rust.withPanics ext) spqrRustNoAllocShimSym rustAllocShimVmSpec)
-    (halloc_sat : HookSat (Rust.withPanics ext) spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hdrop : subroutine_ok ((blkPC_377).rebase (blkPl_377).base (Rust.withPanics ext))
-      (lsmpl.base 264) (withLsCodeLoaded lsmpl (dropGlueSortedSetPt16Spec M A lim))) :
-    subroutine_ok ((blkPC_377).rebase (blkPl_377).base (Rust.withPanics ext))
-      (blkPl_377).base (withLsCodeLoaded lsmpl (decoderIntoPbSpecX M A lim)) :=
-  decoderIntoPbSpecX_cl_of_decoderIntoPbSpec_cl
-    (decoder_into_pb_cl_placed_ok_ext hshim_sat halloc_sat hdrop)
 
 end LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbClPlacedBudget

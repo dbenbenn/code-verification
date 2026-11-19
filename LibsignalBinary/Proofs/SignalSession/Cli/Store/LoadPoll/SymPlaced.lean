@@ -9,11 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.BranchesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.Sym
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.BranchesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.Sym
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
+public import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Defs
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Defs
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.Branches -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.Epilogue
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.EpiloguePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.LayoutPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `Ok(b :: bs)` Branch & Top-Level `load_session::{closure#0}`
@@ -22,7 +38,7 @@ Proves `lpoll_deser_copy_78_placed`, `lpoll_branch_ok_cons_placed`, and `sessLoa
 on Block `569` (`lsProg_569 H`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

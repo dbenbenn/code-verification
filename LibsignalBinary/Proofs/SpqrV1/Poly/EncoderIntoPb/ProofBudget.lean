@@ -11,20 +11,21 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Outer
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.OuterBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.OuterPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Outer -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.OuterBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.OuterPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder>::into_pb`: Budget-Threaded Placed Verification
@@ -34,7 +35,7 @@ Proves `EncoderIntoPbPlacedOkExt` and `EncoderIntoPbPlacedOkX` on Block `375` un
 `EncoderIntoPbEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -743,20 +744,6 @@ theorem encoder_into_pb_placed_ok_ext {M : AllocCostModel} {A : RustCliAllocBudg
     (spqr_hook_ok_of_mem hshim_sat)
     (spqr_hook_ok_of_mem halloc_sat)
     hdrop
-
-/-- Subroutine-mode `<PolyEncoder>::into_pb` (Block `375`) satisfies `encoderIntoPbSpecX M A lim`
-    under `[LibsignalPlacement]`. -/
-theorem encoder_into_pb_placed_ok_x_sub {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {ext : String → Option (State → State)}
-    (hshim_raw : subroutine_ok ((blkPC_375).rebase (blkPl_375).base (Rust.withPanics ext))
-      (lsρ spqrRustNoAllocShimSym) rustAllocShimVmSpec)
-    (halloc_raw : subroutine_ok ((blkPC_375).rebase (blkPl_375).base (Rust.withPanics ext))
-      (lsρ spqrRustAllocSym) (rustCliAllocBudgetSpec M A lim false))
-    (hdrop : subroutine_ok ((blkPC_375).rebase (blkPl_375).base (Rust.withPanics ext))
-      (lsmpl.base 265) (dropGluePoly16Spec M A lim)) :
-    EncoderIntoPbPlacedOkX M A lim ext :=
-  encoderIntoPbSpecX_of_encoderIntoPbSpec
-    (encoder_into_pb_placed_ok_sub hshim_raw halloc_raw hdrop)
 
 /-- Hook-mode `<PolyEncoder>::into_pb` (Block `375`) satisfies `encoderIntoPbSpecX M A lim`
     under `[LibsignalPlacement]`. -/

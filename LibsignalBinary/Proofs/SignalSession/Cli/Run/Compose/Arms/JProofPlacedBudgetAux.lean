@@ -9,16 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.JPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5MovesLayout
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.JPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5MovesLayout -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStoresPlacedBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Shared Epilogues and Layout Helpers for Budget-Threaded Arm `J`
@@ -27,7 +31,7 @@ Payload layout lemmas and shared epilogue theorems (`j_epi_jp`, `j_tail_dealloc_
 on Block `579` supporting `JProofPlacedBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -289,7 +293,7 @@ theorem j_cs_trans_jp {s0 s1 s2 : State}
 
 /-! ## Join Payload Layout Helpers -/
 
-def j_joinPayloadBytes_jp (ws : StoresWords) (outCap outPtr outLen : BitVec 64) :
+@[expose] def j_joinPayloadBytes_jp (ws : StoresWords) (outCap outPtr outLen : BitVec 64) :
     List (BitVec 8) :=
   storesBytes ws ++ (unpack64 outCap ++ (unpack64 outPtr ++ unpack64 outLen))
 

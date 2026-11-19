@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.NonVacProofs.AllocWitness
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.Fetch
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
+public import LibsignalBinary.Proofs.ConsumeMessageKey.NonVacProofs.AllocWitness -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.Fetch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,7 +32,7 @@ abbrev lsHandleAllocErrorSymNonVac : String :=
 abbrev lsVecRemoveAssertFailedSymNonVac : String :=
   "_RNvMNtCs69KKACWg7bl_5alloc3vecINtB2_3VecpE6remove13assert_failed"
 
-def witnessMemcmpHook : State → State :=
+@[expose] def witnessMemcmpHook : State → State :=
   retHook fun s =>
     let p1 := s.readReg64 .x0
     let p2 := s.readReg64 .x1
@@ -39,7 +40,7 @@ def witnessMemcmpHook : State → State :=
     s.writeReg64 .x0 (if s.mem.readBytes p1 n = s.mem.readBytes p2 n then 0#64 else 1#64)
 
 /-- Witness hook table over mangled `libsignalSessionExterns` symbol names. -/
-noncomputable def witnessHooksPlaced : LibsignalHooks := fun sym =>
+@[expose] def witnessHooksPlaced : LibsignalHooks := fun sym =>
   if sym = lsRustAllocSym then some witnessAllocHook
   else if sym = lsRustDeallocSym then some witnessDeallocHook
   else if sym = lsRustReallocSym then some witnessReallocHook
@@ -58,7 +59,7 @@ noncomputable def witnessHooksPlaced : LibsignalHooks := fun sym =>
   else none
 
 /-- Placed counterpart of `AllocSucceedsWithRoom`. -/
-def AllocSucceedsWithRoomPlaced (A : RustAlloc) (hooks : LibsignalHooks) : Prop :=
+@[expose] def AllocSucceedsWithRoomPlaced (A : RustAlloc) (hooks : LibsignalHooks) : Prop :=
   (∀ f, hooks lsRustAllocSym = some f →
     ∀ size align R (s : State), s.status = .Running → s.spAligned = true →
       (s.mem ⊨ (rustAllocSpec A).pre (size, align) s ∗ R) →
@@ -98,28 +99,12 @@ theorem witnessHooksPlaced_blackBox :
     witnessHooksPlaced lsBlackBoxU8Sym = some CryptoVerification.LibsignalSession.blackBoxHook :=
   rfl
 
-theorem witnessHooksPlaced_noAllocShim_eq :
-    witnessHooksPlaced lsRustNoAllocShimSym = some hookNoop :=
-  rfl
-
 theorem witnessHooksPlaced_memcpy_eq :
     witnessHooksPlaced "memcpy" = some hookMemcpy :=
   rfl
 
-theorem witnessHooksPlaced_memcmp_eq :
-    witnessHooksPlaced "memcmp" = some witnessMemcmpHook :=
-  rfl
-
-theorem witnessHooksPlaced_memset_eq :
-    witnessHooksPlaced "memset" = some hookMemset :=
-  rfl
-
 theorem witnessHooksPlaced_memmove_eq :
     witnessHooksPlaced "memmove" = some hookMemmove :=
-  rfl
-
-theorem witnessHooksPlaced_handleError_eq :
-    witnessHooksPlaced lsHandleErrorSym = some Rust.panicked :=
   rfl
 
 theorem witnessHooksPlaced_handleAllocError_eq :
@@ -144,7 +129,7 @@ theorem witnessHooksPlaced_succeedsWithRoom :
       rw [hx0, hx1]; exact hroom
     simp only [witnessAllocHook, retHook, allocBody, hroom', ↓reduceDIte,
       readReg64_setPC_writeReg64_x0]
-    exact (Classical.choose_spec hroom').1
+    exact (chooseRoom_spec hroom').1
   · intro f hf p old align new bs R s _hrun _hsp hpre hroom
     have hf' : witnessReallocHook = f := by
       simpa [witnessHooksPlaced, lsRustReallocSym, lsRustAllocSym, lsRustDeallocSym] using hf
@@ -155,6 +140,6 @@ theorem witnessHooksPlaced_succeedsWithRoom :
       rw [hx2, hx3]; exact hroom
     simp only [witnessReallocHook, retHook, reallocBody, hroom', ↓reduceDIte,
       readReg64_setPC_writeReg64_x0]
-    exact (Classical.choose_spec hroom').1
+    exact (chooseRoom_spec hroom').1
 
 end CryptoVerification.LibsignalSession.NonVacuityWitness

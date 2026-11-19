@@ -9,12 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFill
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFill -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable `signal_session_coins_fill` Proof
@@ -23,13 +28,11 @@ Proves `coinsFillSpecPlacedW3` for `signal_session_coins_fill` on block `618` (`
 `[LibsignalPlacement]` and `AllocContractsFsPlaced A H`, and transfers it to `initProgPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
 set_option maxRecDepth 200000
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate
 
@@ -55,7 +58,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 abbrev cliCoinsFillStackPlaced : Nat := 0x50 + extHookStack
 
 /-- Relocatable `signal_session_coins_fill` contract under `withLsCodeRoLoaded`. -/
-def coinsFillSpecPlacedW3 [LibsignalPlacement] (stk : Nat) : Spec CoinsFillGhost :=
+@[expose] def coinsFillSpecPlacedW3 [LibsignalPlacement] (stk : Nat) : Spec CoinsFillGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = BitVec.ofNat 64 x.len ∧

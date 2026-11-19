@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.Dispatch
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.Dispatch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch0Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch3Placed
@@ -25,7 +25,7 @@ Relocatable `[LibsignalPlacement]` proofs of the prologue, jump-table dispatch, 
 epilogues, and shared `Ok(V1Recv)` store epilogue for Block `332`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

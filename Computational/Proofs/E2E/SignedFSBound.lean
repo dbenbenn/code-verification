@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SignedFSStages
-public import Computational.Proofs.CryptoGames.SM.ReductionsQueries
+public import Computational.Proofs.E2E.SignedFSStages -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.ReductionsQueries -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.IndexRestrictions
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.FSAEADBound
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.MsgAeadCorrect
@@ -18,6 +18,11 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.PubToAD
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.SignedPubToAD
 import Computational.Proofs.E2E.SignedThm5Gen
 import ProofLib.Lemmas
+public import Computational.Proofs.CryptoGames.FSAEAD.PubProofDefs
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalShortDefs
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.FSAEAD.HybridWithProofDefs
+public import Computational.Proofs.E2E.SignedAdv -- proof-setup: allow-public-import
 
 /-!
 # Signed FS-AEAD bound on mixtures
@@ -27,7 +32,7 @@ of a prefix-indexed mixture of `lFS` games by `fsShortBoundMix` with single aver
 against `lChainPRG`, `lSaltPRF32`, and `lWire`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec MeasureTheory ENNReal
 
@@ -52,7 +57,7 @@ abbrev fsB (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt
   multiSlotOtccaReduction (lIdeal C codec ℓ encT) (lAeadR C codec ℓ encT idO) (lChainPRG C.F) maxSkip
     (if la then q + (maxSkip + 1) else q) la (fsAp codec A)
 
-noncomputable def fsPrgMix (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt → PublicKey)
+@[expose] noncomputable def fsPrgMix (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt → PublicKey)
     (oa : ProbComp α) (idOf : α → Party → IdentityKey) (maxSkip : ℕ)
     (A : α → FSAEAD.RatchetAdversary (BitVec 256) (BitVec 256) (Header Pt) (LibsignalMsgPublicPart × Plain ℓ)
       LibsignalCiphertextWithSalt32) (m : ℕ) : ℝ≥0∞ :=
@@ -60,7 +65,7 @@ noncomputable def fsPrgMix (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ :
     (prgAvg oa fun o => cumulativeChainPrgReduction (lIdeal C codec ℓ encT) (lAeadR C codec ℓ encT (idOf o))
       (lChainPRG C.F) maxSkip m (fsAp codec (A o)))
 
-noncomputable def fsSWMix (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt → PublicKey)
+@[expose] noncomputable def fsSWMix (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt → PublicKey)
     (oa : ProbComp α) (idOf : α → Party → IdentityKey) (maxSkip q : ℕ)
     (A : α → FSAEAD.RatchetAdversary (BitVec 256) (BitVec 256) (Header Pt) (LibsignalMsgPublicPart × Plain ℓ)
       LibsignalCiphertextWithSalt32) (m : ℕ) : ℝ≥0∞ :=
@@ -74,7 +79,7 @@ noncomputable def fsSWMix (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : 
           (fsB C codec ℓ encT (idOf o) maxSkip q (isLookaheadHop m) (A o))))
 
 /-- Averaged FS-AEAD short bound over a prefix distribution `oa`. -/
-noncomputable def fsShortBoundMix (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt → PublicKey)
+@[expose] noncomputable def fsShortBoundMix (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt → PublicKey)
     (oa : ProbComp α) (idOf : α → Party → IdentityKey) (maxSkip q qd : ℕ)
     (A : α → FSAEAD.RatchetAdversary (BitVec 256) (BitVec 256) (Header Pt) (LibsignalMsgPublicPart × Plain ℓ)
       LibsignalCiphertextWithSalt32) : ℝ≥0∞ :=

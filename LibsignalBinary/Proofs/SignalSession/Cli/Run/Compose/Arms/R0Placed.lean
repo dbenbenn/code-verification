@@ -9,9 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Hops -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # Relocatable Arm `R0` Specification for `signal_session::run`
@@ -20,7 +23,7 @@ Defines `RunHopPrePlacedOf` and `RunHopPrePlaced` (`R+0x0 → R+0x214`) on Block
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +39,7 @@ open CryptoVerification.SignalSession.Cli.MainHops
 open CryptoVerification.SignalSession.Cli.RunSkeleton
 
 /-- Slot-parametric relocatable Arm `R0` contract (`R+0x0 → R+0x214` or `RejectKPlaced` / `PanicK`). -/
-def RunHopPrePlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
+@[expose] def RunHopPrePlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (slots : RunSlots) (resStack : Nat) : Prop :=
   ∀ {g : RunCall} {s0 : State} {Q Qp : State → SepProp → Prop},
     RunHooksPlaced A H →
@@ -53,7 +56,7 @@ def RunHopPrePlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustA
     SepWPp (runProgPlaced H) (s0.readReg64 .lr) s0 (runEntryMemPlaced A g s0 resStack)
       Q Qp (runOom s0)
 
-def RunHopPrePlaced [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
+@[expose] def RunHopPrePlaced [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (needs : RunNeeds) (resStack : Nat) : Prop :=
   RunHopPrePlacedOf CodeOk A H B S (slotsOfPlaced A S needs) resStack
 

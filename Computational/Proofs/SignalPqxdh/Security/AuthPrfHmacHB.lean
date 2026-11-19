@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacD
+public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacD -- proof-setup: allow-public-import
 public import Computational.Specifications.Assumptions.KemCorrect
 import Computational.Proofs.SignalPqxdh.Security.SigHopA
 import LibsignalBinary.Proofs.SpecLemmas.SignalPqxdh.Model
@@ -22,7 +22,7 @@ import VCVio.OracleComp.EvalDist.Measure
 `gProb P false D unifTag B ≤ gProb P true (· ≤ m) (prfHmacTagQ m) B` when `D r ↔ r < m`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +35,7 @@ open RoKem
 
 /-! ## `ProbComp` transliteration of `gStep` -/
 
-def pKey (gen : ℕ → ProbComp MessageKeys) (i : ℕ) (st : PrfHmacMuState) :
+@[expose] def pKey (gen : ℕ → ProbComp MessageKeys) (i : ℕ) (st : PrfHmacMuState) :
     ProbComp ((ℕ × MessageKeys) × PrfHmacMuState) :=
   match st.keys.lookup i with
   | some e => pure (e, st)
@@ -43,7 +43,7 @@ def pKey (gen : ℕ → ProbComp MessageKeys) (i : ℕ) (st : PrfHmacMuState) :
     let mk ← gen st.keys.length
     pure ((st.keys.length, mk), { st with keys := (i, (st.keys.length, mk)) :: st.keys })
 
-def pEncRest (P : Primitives) (defer : ℕ → Prop) [DecidablePred defer]
+@[expose] def pEncRest (P : Primitives) (defer : ℕ → Prop) [DecidablePred defer]
     (ptag : ℕ → Bytes → ProbComp Bytes) (i : ℕ) (ad pt : Bytes)
     (x : (ℕ × MessageKeys) × PrfHmacMuState) : ProbComp (Option Bytes × PrfHmacMuState) :=
   if defer x.1.1 then do
@@ -58,12 +58,12 @@ def pEncRest (P : Primitives) (defer : ℕ → Prop) [DecidablePred defer]
   else
     pure (some (P.aeadEnc x.1.2 ad pt), { x.2 with chal := (i, (ad, P.aeadEnc x.1.2 ad pt)) :: x.2.chal })
 
-def pFresh (chal : List (ℕ × (Bytes × Bytes))) (i : ℕ) (ad ct : Bytes) : Bool :=
+@[expose] def pFresh (chal : List (ℕ × (Bytes × Bytes))) (i : ℕ) (ad ct : Bytes) : Bool :=
   match chal.lookup i with
   | some (ad0, ct0) => aeadMacInput ad (etmBody ct) != aeadMacInput ad0 (etmBody ct0)
   | none => true
 
-def pForgeRest (P : Primitives) (defer : ℕ → Prop) [DecidablePred defer] (i : ℕ) (ad ct : Bytes)
+@[expose] def pForgeRest (P : Primitives) (defer : ℕ → Prop) [DecidablePred defer] (i : ℕ) (ad ct : Bytes)
     (x : (ℕ × MessageKeys) × PrfHmacMuState) : ProbComp (Bool × PrfHmacMuState) :=
   if pFresh x.2.chal i ad ct = true ∧ 24 ≤ ct.length then
     if defer x.1.1 then
@@ -73,7 +73,7 @@ def pForgeRest (P : Primitives) (defer : ℕ → Prop) [DecidablePred defer] (i 
   else pure (false, x.2)
 
 /-- `ProbComp` version of `gStep`. -/
-def pStep (P : Primitives) (gen : ℕ → ProbComp MessageKeys) (defer : ℕ → Prop) [DecidablePred defer]
+@[expose] def pStep (P : Primitives) (gen : ℕ → ProbComp MessageKeys) (defer : ℕ → Prop) [DecidablePred defer]
     (ptag : ℕ → Bytes → ProbComp Bytes) (q : AeadMuIntQuery) (st : PrfHmacMuState) :
     ProbComp (aeadMuIntSpec.Range q × PrfHmacMuState) :=
   match q with
@@ -85,7 +85,7 @@ def pStep (P : Primitives) (gen : ℕ → ProbComp MessageKeys) (defer : ℕ →
     if st.chal.lookup i = some (ad, ct) then pure (false, st)
     else pKey gen i st >>= pForgeRest P defer i ad ct
 
-def gen80 : ℕ → ProbComp MessageKeys := fun _ => sampleMessageKeys80
+@[expose] def gen80 : ℕ → ProbComp MessageKeys := fun _ => sampleMessageKeys80
 
 /-! ## Bridge from `simulateQ` -/
 
@@ -149,14 +149,14 @@ theorem sim_gStep (defer : ℕ → Prop) [DecidablePred defer]
       all_goals erw [sim_aeadDec]
       all_goals simp
 
-noncomputable def pOuter (gen : ℕ → ProbComp MessageKeys) (defer : ℕ → Prop) [DecidablePred defer]
+@[expose] def pOuter (gen : ℕ → ProbComp MessageKeys) (defer : ℕ → Prop) [DecidablePred defer]
     (ptag : ℕ → Bytes → ProbComp Bytes) :
     QueryImpl AeadMuIntSimSpec (StateT PrfHmacMuState ProbComp) := fun q =>
   match q with
   | Sum.inl pq => StateT.mk fun s => (primBaseImpl P pq) >>= fun u => pure (u, s)
   | Sum.inr mq => StateT.mk fun s => pStep P gen defer ptag mq s
 
-def pFinish (ptag : ℕ → Bytes → ProbComp Bytes) (pending : List (ℕ × Bytes × Bytes)) :
+@[expose] def pFinish (ptag : ℕ → Bytes → ProbComp Bytes) (pending : List (ℕ × Bytes × Bytes)) :
     List (ℕ × Bytes) → ProbComp Bool
   | [] => pure false
   | (r, x) :: pts => do
@@ -197,7 +197,7 @@ theorem sim_gFinish (tag : ℕ → Bytes → OracleComp PrfHmacSimSpec Bytes)
 end Bridge
 
 /-- The generic hybrid in `ProbComp`. -/
-noncomputable def pGame (P : Primitives) (gen : ℕ → ProbComp MessageKeys) (defer : ℕ → Prop)
+@[expose] def pGame (P : Primitives) (gen : ℕ → ProbComp MessageKeys) (defer : ℕ → Prop)
     [DecidablePred defer] (ptag : ℕ → Bytes → ProbComp Bytes) (B : AeadMuIntCtxtAdv) :
     ProbComp Bool := do
   let z ← (simulateQ (pOuter P gen defer ptag) B.run).run {}
@@ -631,9 +631,9 @@ theorem dec_tag (P : Primitives) (hP : WellFormedPrimitivesδ P) (mk : MessageKe
 
 /-! ## Per-query couplings -/
 
-def uT : ℕ → Bytes → ProbComp Bytes := fun _ _ => sampleBytes32
+@[expose] def uT : ℕ → Bytes → ProbComp Bytes := fun _ _ => sampleBytes32
 
-def pT (P : Primitives) (m : ℕ) (k : Bytes) : ℕ → Bytes → ProbComp Bytes := fun r x =>
+@[expose] def pT (P : Primitives) (m : ℕ) (k : Bytes) : ℕ → Bytes → ProbComp Bytes := fun r x =>
   if r < m then sampleBytes32 else pure (hmacSha256Ref P k x)
 
 section Steps

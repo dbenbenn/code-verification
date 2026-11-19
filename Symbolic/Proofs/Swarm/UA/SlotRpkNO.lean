@@ -41,6 +41,7 @@ import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Trace.Monad
 import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.Actions.Network
+import Symbolic.Proofs.Swarm.CREF.RoleSnapshots
 
 /-!
 # Bob Non-Promote Pre-Key `recv` Slot
@@ -50,7 +51,7 @@ across Bob's fresh-start or session-overwrite pre-key `recv` call via `Step.bobS
 on exit `0` and rejection transfer on exit `1`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

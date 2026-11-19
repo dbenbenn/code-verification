@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.Common.CallInv
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX -- proof-setup: allow-public-import
+import ProofLib
 import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.MergePendingPreKey
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 /-!
@@ -38,7 +38,7 @@ open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalTripl
 open CryptoVerification.E2E.Record CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.E2E.Record
 open CryptoVerification.E2E.Record.DeserializeSeed CryptoVerification.E2E.Record.DeserializeGeneral
-open CryptoVerification.E2E.Record.Serialization (OkAt allocPanic)
+open CryptoVerification.E2E.Record.Serialization (allocPanic)
 open Proofs.libsignal.Hooks2
 
 set_option maxRecDepth 200000
@@ -46,33 +46,6 @@ set_option maxHeartbeats 400000
 
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-
-private theorem mergeField_fnOff_pendingPreKey :
-    CryptoVerification.libsignalSessionCode.fnOff mergeFieldName = num% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>") :=
-  (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")
-
-open Lean Elab Tactic in
-local elab "mf9_fetches_range " b:term:max H:term:max kStart:num kEnd:num : tactic => do
-  let off := num% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")
-  let kStart := kStart.getNat
-  let kEnd := kEnd.getNat
-  let fetchEntry := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  let hfn := mkIdent (.str `CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.MergeFieldGenPendingPreKey "mergeField_fnOff_pendingPreKey")
-  let mut k := kStart
-  while k <= kEnd do
-    let dec := mkIdent (.str `CryptoVerification.E2E.Record.DeserializeSeed
-      s!"pendingPreKeyBin_decode_0x{String.ofList (Nat.toDigits 16 (off + k))}")
-    let kq := Syntax.mkNumLit (toString k)
-    if k == 0 then
-      evalTactic (← `(tactic|
-        have := $fetchEntry (b := $b) (H := $H) $hfn (by decide) $dec))
-    else
-      evalTactic (← `(tactic|
-        have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
-    k := k + 4
-
-/-! ## Pure field and payload lemmas for tag 9 (`pending_pre_key`) -/
 
 private theorem genField_tag_eq_9_iff (fl : GenField) :
     fl.tag = 9 ↔ ∃ k, fl = .pending k := by
@@ -104,15 +77,6 @@ private theorem mergeBytes_pending_eq_pendingPreKey {k : List (BitVec 8)} (hk : 
   exact h
 
 /-! ## Rodata jump-table byte load at `0x4901c + 8 = 0x49024` -/
-
-private theorem rodata_jump_tag9_pendingPreKey {s : State} (hF : sessionImg0.FrozenLoaded s) :
-    s.mem.read8 (sessionImg0.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 8)) = 0xb5#8 ∧
-      s.mem.canRead (sessionImg0.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 8)) 1 = true := by
-  have hhb := loads_rodata_holdsBytes E2E.Record.loads_sessionImg0 hF
-    (off := num% (ls_bytes% "0082775f19328d6db5d6cb6d" + 8)) (n := 1) (bs := [0xb5#8])
-    (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel) (by rfl_kernel) rfl
-    (by rfl_kernel)
-  exact ⟨(holdsBytes_cons_iff.mp hhb).1.1, (memSlice_of_holdsBytes_ro hhb).1⟩
 
 set_option allowUnsafeReducibility true in
 attribute [local semireducible] SepWP in
@@ -456,10 +420,6 @@ private theorem sliceCursorAfter_pending_fold_pendingPreKey (slot ptr : BitVec 6
 
 /-! ## Pure BitVec, branch, and address helpers for tag 9 -/
 
-private theorem adrp_rodata_sym_4601c_pendingPreKey (b : BitVec 64) (hb : b &&& 4095#64 = 0#64) :
-    (b + bv% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>") + 40#64 &&& bv% (2 ^ 64 - 4096)) + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" - page% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>" + 712)) = b + bv% (ls_bytes% "0082775f19328d6db5d6cb6d") := by
-  simp only [hb, arm64_norm]
-
 private theorem wt_and_ff_eq_pendingPreKey (r2 : BitVec 64) (hx2 : r2.setWidth 8 = 2#8) :
     r2.truncate 32 &&& 255#32 = 2#32 := by
   apply BitVec.eq_of_toNat_eq
@@ -543,50 +503,6 @@ private theorem len35_sub_one_pendingPreKey {n : Nat} (_h : 36 + n < 2 ^ 62) :
 private theorem len35_add_neg1_pendingPreKey {n : Nat} (h : 36 + n < 2 ^ 62) :
     BitVec.ofNat 64 (35 + n) + bv% (2 ^ 64 - 1) = BitVec.ofNat 64 (34 + n) := by
   rw [show (bv% (2 ^ 64 - 1)) = -1#64 by rfl, ← BitVec.sub_eq_add_neg]; exact len35_sub_one_pendingPreKey h
-
-private theorem bytesMerge_ok_sub_pendingPreKey {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : Prost.BytesMergeOk sessionImg0 C A0 ctl abs) :
-    subroutine_ok (tripleRatchetProgAt sessionImg0.base C ctl abs)
-      ((tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr mergeFieldName + bv% (2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")))
-      (Prost.bytesMergeSpec A0 sessionImg0) := by
-  have heq : (tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr mergeFieldName + bv% (2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) =
-      (tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr Prost.bytesMergeName := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>"),
-      (ls_lemma% fnOff "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]")]
-    bv_omega
-  rw [heq]; exact h
-
-private theorem of_sepWP_frozen_pendingPreKey {prog : Program} {img : Obj.Image} {mid ret : BitVec 64}
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hfl : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h : SepWP prog mid s P (fun sm Pm =>
-      img.FrozenLoaded sm → sm.symtab = img.symtab → SepWPp prog ret sm Pm Q Qp)) :
-    SepWPp prog ret s P Q Qp :=
-  SepWPp.of_sepWP_frozen hfl hsym h
-
-private theorem call_frame_inv_pendingPreKey {α : Type} {prog : Program} {img : Obj.Image}
-    {entry ret_pc ret : BitVec 64} {spec : Spec α} {x : α} {φ : Prop}
-    {T F : SepProp} {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (hfl : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hexit : ∀ sf code R', sf.status = .Exited code → (sf.mem ⊨ spec.onExit x code s sf ∗ R') → False)
-    (hpanic : ∀ sf, sf.status = .Panicked → Qp sf (spec.onPanic x s sf ∗ F))
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom : ∀ sf, (spec.inImage img).onOom x s sf = ⌜False⌝ := by intro _; rfl) :
-    SepWPp prog ret s P Q Qp := by
-  exact ProofLib.SepWPp.call_inImage_frame hcall hfl hsym hpc hrun hsp hlr hspec hφ hP hexit hpanic
-    hnext (fun sf _ _ hpost => by
-      change sf.mem ⊨ (spec.inImage img).onOom x s sf ∗ _ at hpost
-      rw [hoom sf] at hpost
-      exact (not_satisfies_false_sepConj hpost).elim)
 
 private theorem pre_to_bytesMerge_pendingPreKey (ss : BitVec 64) (v : SSG)
     (bufRef slot ptr : BitVec 64) {k : List (BitVec 8)} (hk : k.length = 33) (tail : List (BitVec 8))
@@ -715,31 +631,6 @@ private theorem allowPanic_call_pendingPreKey {s_call s0 sf : State} {F R : SepP
     unfold allocFailedIn; rw [htr]; exact id
   exact allowPanic_frame h1 hm
 
-
-private theorem rodata_jump_tag9_pendingPreKey_ext {img : Obj.Image} {s : State}
-    (hLoads : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s) :
-    s.mem.read8 (img.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 8)) = 0xb5#8 ∧
-      s.mem.canRead (img.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 8)) 1 = true := by
-  have hhb := loads_rodata_holdsBytes hLoads hF
-    (off := num% (ls_bytes% "0082775f19328d6db5d6cb6d" + 8)) (n := 1) (bs := [0xb5#8])
-    (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel) (by rfl_kernel) rfl
-    (by rfl_kernel)
-  exact ⟨(holdsBytes_cons_iff.mp hhb).1.1, (memSlice_of_holdsBytes_ro hhb).1⟩
-
-private theorem bytesMerge_ok_sub_pendingPreKey_extW {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (h : Prost.X.BytesMergeOkW img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr mergeFieldName + bv% (2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")))
-      (Prost.X.bytesMergeSpecW A img) := by
-  have heq : (SP2Ext img.base ext).fnAddr mergeFieldName + bv% (2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) =
-      (SP2Ext img.base ext).fnAddr Prost.bytesMergeName := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>"),
-      (ls_lemma% fnOff "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]")]
-    bv_omega
-  rw [heq]; exact h
-
 private theorem pre_to_bytesMerge_pendingPreKey_extW {A : RustAlloc} (ss : BitVec 64) (v : SSG)
     (bufRef slot ptr : BitVec 64) {k : List (BitVec 8)} (hk : k.length = 33) (tail : List (BitVec 8))
     (sp0 r29 r30 r25 w118 r24 r23 r22 r21 r20 r19 : BitVec 64) :
@@ -840,190 +731,6 @@ private theorem final_post_entails_pendingPreKey_extW {A : RustAlloc} (ss cap' p
   refine sepConj_mono (prostSSGAt_pending_some_fold_pendingPreKey A ss cap' ptr' v k) ?_
   refine sepConj_mono_right (sepConj_mono_right (sepConj_mono_right ?_))
   exact stackAt_mergeField_fold_pendingPreKeyX sp0 r29 r30 r25 w118 r24 r23 r22 r21 r20 r19
-
-theorem mergeFieldGenPendingPreKey_ok_extWA (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) (hLoads : Obj.Loads libsignalSessionImage img)
-    (hC : DeserializeCalleesAtWA img A ext) :
-    MergeFieldGenOkAtWA img A ext (fun fl => fl.tag = 9) := by
-  dsimp only [MergeFieldGenOkAtWA, OkAtX]
-  apply subroutine_ok_of_sepWPp
-  intro ⟨ss, v, fld, bufRef, slot, ptr, tail⟩ R s0 hpc hrun hpre hsp_align
-  refine ⟨(mergeFieldGenSpecAtWA A img (fun fl => fl.tag = 9)).pre
-    ⟨ss, v, fld, bufRef, slot, ptr, tail⟩ s0, R, hpre, ?_⟩
-  clear hpre
-  dsimp only [mergeFieldGenSpecAtWA]
-  refine SepWPp.pure_elim fun ⟨hx0, hx1, hx2, hx3, hx4, htag, hOk, hFresh, hlen, hF0, hsym0⟩ => ?_
-  obtain ⟨k, rfl⟩ := (genField_tag_eq_9_iff fld).mp htag
-  have hk : k.length = 33 := hOk
-  have hp : v.pending = none := hFresh
-  dsimp only [GenField.tag, GenField.wt, WireType.toNat] at hx1 hx2
-  have hx1_tr : BitVec.truncate 32 (s0.readReg64 .x1) = 9#32 := hx1
-  have hx4_tr : BitVec.truncate 32 (s0.readReg64 .x4) = 99#32 := hx4
-  rw [List.length_append, pending_payload_length_pendingPreKey hk] at hlen
-  rw [State.spAligned] at hsp_align
-  have hb : img.base &&& 4095#64 = 0#64 :=
-    base_aligned_of_loads hLoads
-  have hcall := bytesMerge_ok_sub_pendingPreKey_extW hC.2.2.1
-  mf9_fetches_range img.base (Rust.withPanics ext) 0x000 0x03c
-  mf9_fetches_range img.base (Rust.withPanics ext) 0x314 0x368
-  mf9_fetches_range img.base (Rust.withPanics ext) 0x708 0x718
-  mf9_fetches_range img.base (Rust.withPanics ext) 0x758 0x7a0
-  mf9_fetches_range img.base (Rust.withPanics ext) 0x7f4 0x844
-  mf9_fetches_range img.base (Rust.withPanics ext) 0x8e4 0x8f0
-  mf9_fetches_range img.base (Rust.withPanics ext) 0x92c 0x934
-  dsimp only [SP2Ext, contractProg] at hpc hcall ⊢
-  have hx2_tr : (s0.readReg64 (Reg.gpr 2#5)).truncate 32 &&& 255#32 = 2#32 :=
-    wt_and_ff_eq_pendingPreKey (s0.readReg64 .x2) hx2
-  have hx2_64 : BitVec.truncate 32 (BitVec.zeroExtend 64 (BitVec.truncate 32 (s0.readReg64 (Reg.gpr 2#5))) &&& 255#64) = 2#32 :=
-    wt_and_ff_64_eq_pendingPreKey (s0.readReg64 .x2) hx2
-  have hlen36_ne0 : (BitVec.ofNat 64 (36 + tail.length) == 0#64) = false := len36_ne_zero_pendingPreKey hlen
-  have hlen36_sub1 : BitVec.ofNat 64 (36 + tail.length) - 1#64 = BitVec.ofNat 64 (35 + tail.length) := len36_sub_one_pendingPreKey hlen
-  have hlen36_add_neg1 : BitVec.ofNat 64 (36 + tail.length) + bv% (2 ^ 64 - 1) = BitVec.ofNat 64 (35 + tail.length) := len36_add_neg1_pendingPreKey hlen
-  have hlen35_sub35 : BitVec.ofNat 64 (35 + tail.length) - 35#64 = BitVec.ofNat 64 tail.length := len35_sub_35_pendingPreKey hlen
-  have hlen35_add_neg35 : BitVec.ofNat 64 (35 + tail.length) + bv% (2 ^ 64 - 35) = BitVec.ofNat 64 tail.length := len35_add_neg35_pendingPreKey hlen
-  have hlen35_ult35 : BitVec.ult (BitVec.ofNat 64 (35 + tail.length)) 35#64 = false := len35_ult_35_pendingPreKey hlen
-  have hlen35_ule35 : BitVec.ule 35#64 (BitVec.ofNat 64 (35 + tail.length)) = true := len35_ule_35_pendingPreKey hlen
-  have hlen35_ult_tail : BitVec.ult (BitVec.ofNat 64 (35 + tail.length)) (BitVec.ofNat 64 tail.length) = false := len35_ult_tail_pendingPreKey hlen
-  have hlen35_sub_tail : BitVec.ofNat 64 (35 + tail.length) - BitVec.ofNat 64 tail.length = 35#64 := len35_sub_tail_pendingPreKey hlen
-  have hlen35_ule_tail : BitVec.ule (BitVec.ofNat 64 (35 + tail.length)) (BitVec.ofNat 64 tail.length) = false := len35_ule_tail_pendingPreKey hlen
-  have htail_ult_len35 : BitVec.ult (BitVec.ofNat 64 tail.length) (BitVec.ofNat 64 (35 + tail.length)) = true := tail_ult_len35_pendingPreKey hlen
-  have hlen35_sub1 : BitVec.ofNat 64 (35 + tail.length) - 1#64 = BitVec.ofNat 64 (34 + tail.length) := len35_sub_one_pendingPreKey hlen
-  have hlen35_add_neg1 : BitVec.ofNat 64 (35 + tail.length) + bv% (2 ^ 64 - 1) = BitVec.ofNat 64 (34 + tail.length) := len35_add_neg1_pendingPreKey hlen
-  have hadrp :
-      (((libsignalSessionCode.rebase img.base
-        (Rust.withPanics ext)).fnAddr mergeFieldName + 40#64) &&&
-        bv% (2 ^ 64 - 4096)) + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" - page% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>" + 712)) = img.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d") := by
-    rw [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")]
-    exact adrp_rodata_sym_4601c_pendingPreKey img.base hb
-  have hfetch_0x34 := CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := img.base) (H := Rust.withPanics ext)
-    (k := 52) mergeField_fnOff_pendingPreKey (by decide)
-    (ls_decode% CryptoVerification.E2E.Record.DeserializeSeed.pendingPreKeyBin (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 52))
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr mergeFieldName = entry
-  examples_hide_fetches
-  conv =>
-    arg 4
-    rw [prostSSGAt_pending_none_unfold_pendingPreKey A ss v hp,
-        sliceCursorAt_pending_unfold_pendingPreKey slot ptr hk tail,
-        stackAt_mergeField_unfold_pendingPreKeyX s0.sp]
-    simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  refine SepWPp.exists_elim fun w100 => SepWPp.exists_elim fun w108 =>
-    SepWPp.exists_elim fun w110 => SepWPp.exists_elim fun w118 =>
-    SepWPp.exists_elim fun w120 => SepWPp.exists_elim fun v80 =>
-    SepWPp.exists_elim fun v72 => SepWPp.exists_elim fun v64 =>
-    SepWPp.exists_elim fun v56 => SepWPp.exists_elim fun v48 =>
-    SepWPp.exists_elim fun v40 => SepWPp.exists_elim fun v32 =>
-    SepWPp.exists_elim fun v24 => SepWPp.exists_elim fun v16 =>
-    SepWPp.exists_elim fun v8 => ?_
-  apply of_sepWP_frozen_pendingPreKey hF0 hsym0 (mid := entry + bv% (52))
-  iterate 13 wp_step
-  apply SepWP.done (by simp only [wp_norm, arm64_norm]) (by simp only [wp_norm, arm64_norm, hrun])
-  intro hF1 hsym1
-  obtain ⟨hread9, hcan9⟩ := rodata_jump_tag9_pendingPreKey_ext hLoads hF1
-  apply of_sepWP_frozen_pendingPreKey hF1 hsym1 (mid := entry + bv% (2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")))
-  refine step_ldr8_ro_pendingPreKey (pc := entry + bv% (52)) (pc' := entry + bv% (56))
-    (r := Reg.gpr 11#5) (v64 := 181#64)
-    rfl (by simp only [wp_norm, arm64_norm, hrun]) hfetch_0x34 rfl
-    (ea := img.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 8)) (wb := none)
-    (by simp only [evalAddrMode, wp_norm, arm64_norm])
-    hread9 hcan9 (by simp only [applyWriteback, wp_norm, arm64_norm]) ?_
-  iterate 35 wp_step
-  iterate 26 wp_step
-  apply SepWP.done (by simp only [wp_norm, arm64_norm]) (by simp only [wp_norm, arm64_norm, hrun])
-  intro hF2 hsym2
-  refine call_frame_inv_pendingPreKey
-    (x := ⟨.lengthDelimited, ss + 248#64, 0#64, 1#64, [], bufRef, slot,
-      ptr + 2#64, 33#8 :: k ++ tail⟩)
-    (T := vecU8At A (ss + 248#64) 0#64 1#64 [] ∗
-      (bufRef ↦₆₄ slot) ∗
-      Prost.sliceCursorAt slot (ptr + 2#64) (33#8 :: k ++ tail) ∗
-      A.pool ∗
-      stackAt (s0.sp - 240#64) Prost.X.bytesMergeStackW)
-    hcall hF2 hsym2
-    (by simp only [wp_norm, arm64_norm])
-    (by simp only [wp_norm, arm64_norm, hrun])
-    (by rw [State.spAligned]; simpa only [wp_norm, arm64_norm] using hsp_align)
-    rfl
-    (by simp only [Prost.X.bytesMergeRawSpecW, wp_norm, arm64_norm]; rfl)
-    (by rw [List.length_cons, List.length_append, hk]; omega)
-    (pre_to_bytesMerge_pendingPreKey_extW (A := A) ss v bufRef slot ptr hk tail s0.sp
-      (s0.readReg64 (Reg.gpr 29#5)) (s0.readReg64 (Reg.gpr 30#5))
-      (s0.readReg64 (Reg.gpr 25#5)) w118
-      (s0.readReg64 (Reg.gpr 24#5)) (s0.readReg64 (Reg.gpr 23#5))
-      (s0.readReg64 (Reg.gpr 22#5)) (s0.readReg64 (Reg.gpr 21#5))
-      (s0.readReg64 (Reg.gpr 20#5)) (s0.readReg64 (Reg.gpr 19#5)))
-    (fun _ _ _ _ hm => allowPanic_not_exited hm)
-    (fun sf _ hm => by
-      dsimp only [Prost.X.bytesMergeRawSpecW, allocPanic] at hm ⊢
-      exact allowPanic_call_pendingPreKey (by simp only [wp_norm, arm64_norm]) hm) ?_
-  intro sf hpcf hrunf hspf hcsf _ _
-  simp only [wp_norm, arm64_norm] at hpcf
-  have hsp_sf : sf.sp = s0.sp - 240#64 := by
-    simpa only [wp_norm, arm64_norm] using hspf
-  have hx21_sf : sf.readReg64 (Reg.gpr 21#5) = BitVec.ofNat 64 tail.length := by
-    simpa only [wp_norm, arm64_norm] using hcsf.2.2.1
-  have hx24_sf : sf.readReg64 (Reg.gpr 24#5) = bufRef := by
-    simpa only [wp_norm, arm64_norm] using hcsf.2.2.2.2.2.1
-  have hx26_sf : sf.readReg64 (Reg.gpr 26#5) = s0.readReg64 (Reg.gpr 26#5) := by
-    simpa only [wp_norm, arm64_norm] using hcsf.2.2.2.2.2.2.2.1
-  have hx27_sf : sf.readReg64 (Reg.gpr 27#5) = s0.readReg64 (Reg.gpr 27#5) := by
-    simpa only [wp_norm, arm64_norm] using hcsf.2.2.2.2.2.2.2.2.1
-  have hx28_sf : sf.readReg64 (Reg.gpr 28#5) = s0.readReg64 (Reg.gpr 28#5) := by
-    simpa only [wp_norm, arm64_norm] using hcsf.2.2.2.2.2.2.2.2.2.1
-  have hvregs_sf : calleeSavedVRegs sf = calleeSavedVRegs s0 := by
-    simpa only [wp_norm, arm64_norm] using hcsf.2.2.2.2.2.2.2.2.2.2.2
-  rw [post_of_bytesMerge_pendingPreKey_extW (A := A) ss v bufRef slot ptr hk tail s0.sp
-    (s0.readReg64 (Reg.gpr 29#5)) (s0.readReg64 (Reg.gpr 30#5))
-    (s0.readReg64 (Reg.gpr 25#5)) w118
-    (s0.readReg64 (Reg.gpr 24#5)) (s0.readReg64 (Reg.gpr 23#5))
-    (s0.readReg64 (Reg.gpr 22#5)) (s0.readReg64 (Reg.gpr 21#5))
-    (s0.readReg64 (Reg.gpr 20#5)) (s0.readReg64 (Reg.gpr 19#5))
-    _ sf (by simp only [wp_norm, arm64_norm])]
-  refine SepWPp.exists_elim fun cap' => SepWPp.exists_elim fun ptr' =>
-    SepWPp.pure_elim fun htr_sf => SepWPp.pure_elim fun hx0_sf => ?_
-  have htr_sf' : sf.trace = s0.trace := by
-    simpa only [wp_norm, arm64_norm] using htr_sf
-  have htail_ult_self : BitVec.ult (BitVec.ofNat 64 tail.length) (BitVec.ofNat 64 tail.length) = false := by
-    simp [BitVec.ult]
-  have htail_ule_self : BitVec.ule (BitVec.ofNat 64 tail.length) (BitVec.ofNat 64 tail.length) = true := by
-    simp [BitVec.ule]
-  apply SepWPp.of_sepWP_ret
-  iterate 19 wp_step
-  apply SepWP.fold (final_post_entails_pendingPreKey_extW (A := A) ss cap' ptr' v bufRef slot ptr hk tail s0.sp
-    (s0.readReg64 (Reg.gpr 29#5)) (s0.readReg64 (Reg.gpr 30#5))
-    (s0.readReg64 (Reg.gpr 25#5)) w118
-    (s0.readReg64 (Reg.gpr 24#5)) (s0.readReg64 (Reg.gpr 23#5))
-    (s0.readReg64 (Reg.gpr 22#5)) (s0.readReg64 (Reg.gpr 21#5))
-    (s0.readReg64 (Reg.gpr 20#5)) (s0.readReg64 (Reg.gpr 19#5)))
-    (sepConj_emp _).symm
-  apply SepWP.done (by simp only [wp_norm, arm64_norm]) (by simp only [wp_norm, arm64_norm, hrunf])
-  refine ⟨fun hmf => ?_,
-    by simp only [wp_norm, arm64_norm],
-    by simp only [CalleeSavedPreserved, wp_norm, arm64_norm, hx26_sf, hx27_sf, hx28_sf, hvregs_sf, and_self]⟩
-  rw [end_trace_pendingPreKey sf s0 bufRef tail.length htr_sf',
-      end_x0_pendingPreKey sf s0 bufRef tail.length]
-  simp only [and_self, pure_true, emp_sepConj]
-  rw [sepConj_emp] at hmf
-  exact hmf
-
-private theorem mergeFieldGenSpecAtWA_A0_pendingPreKey (img : Obj.Image) (P : GenField → Prop) :
-    mergeFieldGenSpecAtWA A0 img P = mergeFieldGenSpecAtW img P := by
-  have hp : A0.pool = emp := rfl
-  unfold mergeFieldGenSpecAtWA mergeFieldGenSpecAtW
-  congr 1
-  · funext x s; simp only [hp, emp_sepConj]
-  · funext x s sf; simp only [hp, emp_sepConj]
-
-theorem mergeFieldGenPendingPreKey_ok_extW (img : Obj.Image)
-    (ext : String → Option (State → State)) (hLoads : Obj.Loads libsignalSessionImage img)
-    (hC : DeserializeCalleesAtW img ext) :
-    MergeFieldGenOkAtW img ext (fun fl => fl.tag = 9) := by
-  unfold MergeFieldGenOkAtW
-  rw [← mergeFieldGenSpecAtWA_A0_pendingPreKey]
-  exact mergeFieldGenPendingPreKey_ok_extWA img A0 ext hLoads hC
-
-/-! ## Relocatable `[LibsignalPlacement]` proof for tag 9 (`pending_pre_key`) -/
 
 section Placed
 

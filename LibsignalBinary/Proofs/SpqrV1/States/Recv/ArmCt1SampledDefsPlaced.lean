@@ -13,7 +13,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymBasePlaced
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

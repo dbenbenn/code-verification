@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2d
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsb
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hse2
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2d -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsb -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hse2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsaPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hse3Placed
@@ -21,6 +21,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsfPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsg
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsh
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 2 (`HeaderSent`, `+508`) — Part I
@@ -28,7 +29,7 @@ import ProofLib.SepLogic.WPp
 Relocatable Block-`333` post-`<PolyEncoder>::from_pb` branches at `+9328` and `+9388`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -67,7 +68,7 @@ set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
 
 attribute [local irreducible]
-  Program.fetch Program.externAt? Program.fnOff libsignalSessionCode
+  Program.fetch Program.externAt? Program.fnOff
   CryptoVerification.blkPC_333
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   extractLsb'_0_64_append extractLsb'_64_64_append

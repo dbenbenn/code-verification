@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.SessionSteps
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionSteps -- proof-setup: allow-public-import
 import all DY.Bytes.Basic
 import all DY.ALaCarte.Basic
 import all DY.ALaCarte.DecidableEq
@@ -58,7 +58,7 @@ Discharges `not_bobStartCollides_call3` from the pre-certified `Table.Cli.cliTab
 `cliGamma`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

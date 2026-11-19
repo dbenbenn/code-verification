@@ -11,18 +11,20 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop
-public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolateFullPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.MainLoop
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.MainLoopPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop
+public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolateFullPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.MainLoop
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.MainLoopPlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.DefsBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolateFull -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Main Loop for `<PolyDecoder as Decoder>::decoded_message`
@@ -31,7 +33,7 @@ Threads `RustCliAllocBudget M` and `DecodedMessageLoopEnv` through the evaluatio
 loop (`+548..+1404`) on Block `418`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

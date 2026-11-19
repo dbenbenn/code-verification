@@ -11,18 +11,21 @@ module
 
 public import ProofLib.SepLogic.Bytes
 public import VerifiedLibraries.Mallocng.Proofs.Common
-public import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Common.SharedHelpers
 public import LibsignalBinary.Heap.IfaceSimp
 public import LibsignalBinary.Heap.Fine.ElfInitFine
 public import LibsignalBinary.Heap.Fine.RustEntriesFine
 public import LibsignalBinary.Heap.Fine.AllocZeroedFine
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StackBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.Startup
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Fixture
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.CliPlacement
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StackBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.Startup -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Fixture -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.CliPlacement
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.IfaceBudgetBase
 public meta import ProofLib.ProgramReflection
+import LibsignalBinary.Proofs.SignalSession.Cli.CliElfProof
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSymChars
 
 /-!
 # Concrete Startup, Initial-Pool, and Branch-Stub Witnesses on `f3TrialElf`
@@ -39,7 +42,7 @@ public meta import ProofLib.ProgramReflection
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Inst
 
@@ -122,45 +125,6 @@ theorem f3Trial_startupCode : F3StartupCode f3TrialRxProg f3StdLayout :=
     f3TrialRxProg_externs_none f3TrialRxProg_overrides_none
     (by rw [f3TrialRxProg_base]; exact f3Trial_startupCode_chk)
 
-/-- Whole-process `MuslHarnessNeedLocksN 80` on `f3TrialElf` (preserving writable
-`(f3StdLayout.libcAddr + 3#64) ↦₈ 0#8` across `cMainAddr`) for any `Syscall.standard` program `P`
-hook-free inside `seg[5]`. -/
-theorem f3Trial_muslHarnessNeedLocks80 {P : Program}
-    (hsvc : P.svc = Syscall.standard)
-    (hHookFree : ∀ pc, progKeep f3TrialRxProg pc = true → (P.externAt? pc).isNone = true) :
-    MuslHarnessNeedLocksN 80 f3StdLayout.libcAddr f3TrialElf P f3StdLayout.cMainAddr
-      (StdMuslExitGlobalsNoNeedLocks f3StdLayout 0#8)
-      (fun i => CliInputsOk i ∧ InputsLoadable i)
-      (f3StartupMainPreNeedLocks f3StdLayout f3TrialElf) :=
-  f3MuslHarnessNeedLocks80_of_layout f3Trial_matchesImage f3Trial_startupCode hsvc hHookFree
-
-/-- Whole-process `MuslHarnessN 80` on `f3TrialElf` for any `Syscall.standard` program `P`
-hook-free inside `seg[5]`. -/
-theorem f3Trial_muslHarness80 {P : Program}
-    (hsvc : P.svc = Syscall.standard)
-    (hHookFree : ∀ pc, progKeep f3TrialRxProg pc = true → (P.externAt? pc).isNone = true) :
-    MuslHarnessN 80 f3TrialElf P f3StdLayout.cMainAddr
-      (StdMuslExitGlobals f3StdLayout 0#8)
-      (fun i => CliInputsOk i ∧ InputsLoadable i)
-      (f3StartupMainPre f3StdLayout f3TrialElf) :=
-  f3MuslHarness80_of_layout f3Trial_matchesImage f3Trial_startupCode hsvc hHookFree
-
-theorem f3TrialRx_muslHarnessNeedLocks80 :
-    MuslHarnessNeedLocksN 80 f3StdLayout.libcAddr f3TrialElf f3TrialRxProg f3StdLayout.cMainAddr
-      (StdMuslExitGlobalsNoNeedLocks f3StdLayout 0#8)
-      (fun i => CliInputsOk i ∧ InputsLoadable i)
-      (f3StartupMainPreNeedLocks f3StdLayout f3TrialElf) :=
-  f3Trial_muslHarnessNeedLocks80 f3TrialRxProg_svc
-    (fun pc _ => by rw [f3TrialRxProg_no_ext pc]; rfl)
-
-theorem f3TrialRx_muslHarness80 :
-    MuslHarnessN 80 f3TrialElf f3TrialRxProg f3StdLayout.cMainAddr
-      (StdMuslExitGlobals f3StdLayout 0#8)
-      (fun i => CliInputsOk i ∧ InputsLoadable i)
-      (f3StartupMainPre f3StdLayout f3TrialElf) :=
-  f3Trial_muslHarness80 f3TrialRxProg_svc
-    (fun pc _ => by rw [f3TrialRxProg_no_ext pc]; rfl)
-
 /-! ## `StdExtraRo ∗ StdExtraRw` to `mallocngLib.dataInit` Bridge -/
 
 /-- `MallocngAddrs` resolved from `f3MallocngMpl`. -/
@@ -169,7 +133,7 @@ noncomputable abbrev f3MAddrs : VerifiedLibraries.Mallocng.MallocngAddrs :=
 
 /-- Zero-initialized alignment padding (`4` + `5` bytes) inside the 200-byte `mallocng` `.rodata`
 block. -/
-noncomputable def f3MallocngRoPad : SepProp :=
+@[expose] noncomputable def f3MallocngRoPad : SepProp :=
   ((f3MAddrs.sizeClasses + 132#64) ↦ᵣ List.replicate 4 0#8) ∗
   ((f3MAddrs.sizeClasses + 163#64) ↦ᵣ List.replicate 5 0#8)
 
@@ -273,151 +237,7 @@ theorem f3StdExtra_entails_mallocngDataInit :
 
 /-! ## Rust Global Allocator Contracts on `f3TrialRxProg` -/
 
-/-- Fine-budget `RustCliAllocBudgetEntries` for `__rdl_{alloc,dealloc,realloc}` on `f3TrialRxProg`. -/
-theorem f3Trial_fineRustCliAllocBudgetEntries (γ : GhostName) (tp brkStart : BitVec 64) :
-    RustCliAllocBudgetEntriesBase fineCostModel
-      (fineRustCliAllocBudget γ f3MallocngMpl tp brkStart)
-      f3TrialRxProg f3RdlAddrs :=
-  fineRustCliAllocBudgetEntries f3Trial_progContainsMallocng γ tp brkStart
-    f3Trial_seg5ShimBundle.rdlShims f3Trial_allocMemcpyVm_ok
-
-/-- No-OOM (`onOom := ⌜False⌝`) `RustCliAllocNoOomEntries` for `__rdl_{alloc,dealloc,realloc}` on
-`f3TrialRxProg`. -/
-theorem f3Trial_fineRustCliAllocNoOomEntries (γ : GhostName) (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) :
-    RustCliAllocNoOomEntriesBase fineCostModel
-      (fineRustCliAllocBudget γ f3MallocngMpl tp brkStart)
-      lim f3TrialRxProg f3RdlAddrs :=
-  fineRustCliAllocNoOomEntries f3Trial_progContainsMallocng γ tp brkStart lim
-    f3Trial_seg5ShimBundle.rdlShims f3Trial_allocMemcpyVm_ok
-
-/-- Fine-budget `rustAllocZeroedBudgetSpec` for `__rdl_alloc_zeroed` at `f3RdlAzAddr` on
-`f3TrialRxProg`. -/
-theorem f3Trial_fineRdlAllocZeroed_ok (γ : GhostName) (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) :
-    subroutine_ok f3TrialRxProg f3RdlAzAddr
-      (rustAllocZeroedBudgetSpecBase fineCostModel
-        (fineRustCliAllocBudget γ f3MallocngMpl tp brkStart) lim) :=
-  fineRdlAllocZeroed_budget_placed_ok f3Trial_progContainsMallocng γ tp brkStart
-    f3RdlAzAddr f3StdLayout.memsetAddr lim
-    f3Trial_seg5ShimBundle.allocZeroedInstrs f3Trial_allocMemsetVm_ok
-
-/-- No-OOM (`onOom := ⌜False⌝`) `rustCliAllocNoOomSpec` for `__rdl_alloc_zeroed` at `f3RdlAzAddr`
-on `f3TrialRxProg`. -/
-theorem f3Trial_fineRdlAllocZeroed_noOom_ok (γ : GhostName) (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) :
-    subroutine_ok f3TrialRxProg f3RdlAzAddr
-      (rustCliAllocNoOomSpecBase fineCostModel
-        (fineRustCliAllocBudget γ f3MallocngMpl tp brkStart) lim true) :=
-  fineRdlAllocZeroed_noOom_placed_ok f3Trial_progContainsMallocng γ tp brkStart
-    f3RdlAzAddr f3StdLayout.memsetAddr lim
-    f3Trial_seg5ShimBundle.allocZeroedInstrs f3Trial_allocMemsetVm_ok
-
 /-! ## `ElfInitFine` Pool and `cMainAddr` Entry Witnesses -/
-
-/-- Initial `A.pool lim fineCostModel.init s0` witness on `f3TrialElf` from `ElfInitFine`. -/
-theorem f3TrialElf_fineBudgetPool_of_init {lim : BudgetLimits}
-    {i : Inputs} {sLoad s0 : State} {auxvPtr : BitVec 64} {R : SepProp}
-    (hcnt : lim.enforced = true → f3SegCount + 1 ≤ lim.staticCount)
-    (hbytes : lim.enforced = true → cliStackSize + f3SegByteSum ≤ lim.staticBytes)
-    (hphys : lim.enforced = true → lim.physCap ≤ 2 ^ 30)
-    (hLoad : f3TrialElf.loadState (cliProcessInputs i) = .ok sLoad)
-    (hVm : StartupVmPreserved sLoad s0)
-    (htpLo : 164 ≤ s0.tpidrEl0.toNat)
-    (htpHi : s0.tpidrEl0.toNat ≤ 2 ^ 48)
-    (hmem : s0.mem ⊨
-      VerifiedLibraries.mallocngLib.dataInit f3MallocngMpl ∗
-        MallocngRuntime f3MAddrs s0.tpidrEl0 ∗
-        ((f3MAddrs.libc + 8#64) ↦₆₄ auxvPtr) ∗
-        MallocngAuxvAt auxvPtr ∗ R) :
-    ∃ γ : GhostName,
-      let A := fineRustCliAllocBudget γ f3MallocngMpl s0.tpidrEl0 s0.brkStart
-      s0.mem ⊨ A.pool lim fineCostModel.init s0 ∗ R :=
-  cliElf_fineBudgetPool_of_init
-    (f3TrialElf_cliElfMallocngLayout hcnt hbytes hphys)
-    hLoad hVm htpLo htpHi hmem
-
-/-- Token-patched counterpart of `f3TrialElf_fineBudgetPool_of_init` on
-`patchElfTokensPlaced f3TrialElf`. -/
-theorem f3TrialElf_patched_fineBudgetPool_of_init [LibsignalPlacement] {lim : BudgetLimits}
-    {i : Inputs} {sLoad s0 : State} {auxvPtr : BitVec 64} {R : SepProp}
-    (hcnt : lim.enforced = true → f3SegCount + 1 ≤ lim.staticCount)
-    (hbytes : lim.enforced = true → cliStackSize + f3SegByteSum ≤ lim.staticBytes)
-    (hphys : lim.enforced = true → lim.physCap ≤ 2 ^ 30)
-    (hLoad : (patchElfTokensPlaced f3TrialElf).loadState (cliProcessInputs i) = .ok sLoad)
-    (hVm : StartupVmPreserved sLoad s0)
-    (htpLo : 164 ≤ s0.tpidrEl0.toNat)
-    (htpHi : s0.tpidrEl0.toNat ≤ 2 ^ 48)
-    (hmem : s0.mem ⊨
-      VerifiedLibraries.mallocngLib.dataInit f3MallocngMpl ∗
-        MallocngRuntime f3MAddrs s0.tpidrEl0 ∗
-        ((f3MAddrs.libc + 8#64) ↦₆₄ auxvPtr) ∗
-        MallocngAuxvAt auxvPtr ∗ R) :
-    ∃ γ : GhostName,
-      let A := fineRustCliAllocBudget γ f3MallocngMpl s0.tpidrEl0 s0.brkStart
-      s0.mem ⊨ A.pool lim fineCostModel.init s0 ∗ R :=
-  cliElf_fineBudgetPool_of_init
-    (f3TrialElf_patched_cliElfMallocngLayout hcnt hbytes hphys)
-    hLoad hVm htpLo htpHi hmem
-
-/-- Combines `f3TrialElf_fineBudgetPool_of_init` with `RustCliAllocBudgetEntries` for any program
-`P` containing `mallocngLib`, 1-instruction `B`-thunks, `rdl_shim`, and `memcpy`. -/
-theorem f3TrialElf_fineBudgetPool_and_entries_of_init
-    {P : Program} {lim : BudgetLimits}
-    {thunkAddrs rdlAddrs : RustAllocAddrs} {memcpyAddr : BitVec 64}
-    {i : Inputs} {sLoad s0 : State} {auxvPtr : BitVec 64} {R : SepProp}
-    (hP : ProgContainsMallocng P f3MallocngMpl)
-    (hThunks : VerifiedLibraries.RustStd.RustStdThunkCode P thunkAddrs.toRustStd rdlAddrs.toRustStd)
-    (hShims : VerifiedLibraries.RustStd.RustStdRdlShimCode P rdlAddrs.toRustStd
-      (mallocngPlacedCAddrs f3MallocngMpl) memcpyAddr)
-    (hMemcpy : subroutine_ok P memcpyAddr allocMemcpyVmSpec)
-    (hcnt : lim.enforced = true → f3SegCount + 1 ≤ lim.staticCount)
-    (hbytes : lim.enforced = true → cliStackSize + f3SegByteSum ≤ lim.staticBytes)
-    (hphys : lim.enforced = true → lim.physCap ≤ 2 ^ 30)
-    (hLoad : f3TrialElf.loadState (cliProcessInputs i) = .ok sLoad)
-    (hVm : StartupVmPreserved sLoad s0)
-    (htpLo : 164 ≤ s0.tpidrEl0.toNat)
-    (htpHi : s0.tpidrEl0.toNat ≤ 2 ^ 48)
-    (hmem : s0.mem ⊨
-      VerifiedLibraries.mallocngLib.dataInit f3MallocngMpl ∗
-        MallocngRuntime f3MAddrs s0.tpidrEl0 ∗
-        ((f3MAddrs.libc + 8#64) ↦₆₄ auxvPtr) ∗
-        MallocngAuxvAt auxvPtr ∗ R) :
-    ∃ γ : GhostName,
-      let A := fineRustCliAllocBudget γ f3MallocngMpl s0.tpidrEl0 s0.brkStart
-      (s0.mem ⊨ A.pool lim fineCostModel.init s0 ∗ R) ∧
-      RustCliAllocBudgetEntriesBase fineCostModel A P thunkAddrs :=
-  cliElf_fineBudgetPool_and_entries_of_init hP hThunks hShims hMemcpy
-    (f3TrialElf_cliElfMallocngLayout hcnt hbytes hphys)
-    hLoad hVm htpLo htpHi hmem
-
-/-- Closed `seg[5]` counterpart of `f3TrialElf_fineBudgetPool_and_entries_of_init` on
-`f3TrialRxProg` at `f3RdlAddrs` and `f3RdlAzAddr`. -/
-theorem f3TrialElf_rdl_fineBudgetPool_and_entries_of_init {lim : BudgetLimits}
-    {i : Inputs} {sLoad s0 : State} {auxvPtr : BitVec 64} {R : SepProp}
-    (hcnt : lim.enforced = true → f3SegCount + 1 ≤ lim.staticCount)
-    (hbytes : lim.enforced = true → cliStackSize + f3SegByteSum ≤ lim.staticBytes)
-    (hphys : lim.enforced = true → lim.physCap ≤ 2 ^ 30)
-    (hLoad : f3TrialElf.loadState (cliProcessInputs i) = .ok sLoad)
-    (hVm : StartupVmPreserved sLoad s0)
-    (htpLo : 164 ≤ s0.tpidrEl0.toNat)
-    (htpHi : s0.tpidrEl0.toNat ≤ 2 ^ 48)
-    (hmem : s0.mem ⊨
-      VerifiedLibraries.mallocngLib.dataInit f3MallocngMpl ∗
-        MallocngRuntime f3MAddrs s0.tpidrEl0 ∗
-        ((f3MAddrs.libc + 8#64) ↦₆₄ auxvPtr) ∗
-        MallocngAuxvAt auxvPtr ∗ R) :
-    ∃ γ : GhostName,
-      let A := fineRustCliAllocBudget γ f3MallocngMpl s0.tpidrEl0 s0.brkStart
-      (s0.mem ⊨ A.pool lim fineCostModel.init s0 ∗ R) ∧
-      RustCliAllocBudgetEntriesBase fineCostModel A f3TrialRxProg f3RdlAddrs ∧
-      (∀ k : BudgetLimits,
-        subroutine_ok f3TrialRxProg f3RdlAzAddr (rustAllocZeroedBudgetSpecBase fineCostModel A k)) := by
-  obtain ⟨γ, hPool⟩ :=
-    f3TrialElf_fineBudgetPool_of_init hcnt hbytes hphys hLoad hVm htpLo htpHi hmem
-  exact ⟨γ, hPool,
-    f3Trial_fineRustCliAllocBudgetEntries γ s0.tpidrEl0 s0.brkStart,
-    fun k => f3Trial_fineRdlAllocZeroed_ok γ s0.tpidrEl0 s0.brkStart k⟩
 
 /-- Produces `A.pool lim fineCostModel.init sm` and `cliMainStk` stack ownership at `cMainAddr`
 entry from `f3StartupMainPreNeedLocks f3StdLayout f3TrialElf i sm ∗ R`. -/
@@ -448,233 +268,7 @@ theorem f3TrialElf_main_fineBudgetPool {lim : BudgetLimits} {i : Inputs} {sm : S
       (f3TrialElf_cliElfMallocngLayout hcnt hbytes hphys)
       f3MAddrs_libc f3StdExtra_entails_mallocngDataInit hm
 
-/-- Pairs `f3TrialElf_main_fineBudgetPool` with `RustCliAllocBudgetEntries` (`f3RdlAddrs`) and
-`rustAllocZeroedBudgetSpec` (`f3RdlAzAddr`) on `f3TrialRxProg`. -/
-theorem f3TrialElf_main_fineBudgetPool_and_entries {lim : BudgetLimits}
-    {i : Inputs} {sm : State} {R : SepProp}
-    (hcnt : lim.enforced = true → f3SegCount + 1 ≤ lim.staticCount)
-    (hbytes : lim.enforced = true → cliStackSize + f3SegByteSum ≤ lim.staticBytes)
-    (hphys : lim.enforced = true → lim.physCap ≤ 2 ^ 30)
-    (hm : sm.mem ⊨ f3StartupMainPreNeedLocks f3StdLayout f3TrialElf i sm ∗ R) :
-    ∃ γ : GhostName,
-      let A := fineRustCliAllocBudget γ f3MallocngMpl sm.tpidrEl0 sm.brkStart
-      (sm.mem ⊨
-        (A.pool lim fineCostModel.init sm ∗
-          ⌜f3TrialRxProg.CodeLoaded sm.mem ∧
-            cliMainStk ≤ sm.sp.toNat ∧
-            sm.sp = (StackLayout.of f3TrialElf (cliInputs i)).sp0 - 48#64 ∧
-            sm.readReg64 .lr = f3StdLayout.libcStartMainStage2Addr + 56#64 ∧
-            sm.tpidrEl0 = f3StdLayout.builtinTlsAddr + 200#64 ∧
-            MallocngBrkStartWf sm.brkStart ∧
-            sm.brk = sm.brkStart ∧
-            sm.brkStart = f3StdLayout.brkStart⌝ ∗
-          argvAtRO (sm.readReg64 .x1) (("libsignal-cli" :: i.argv).map bytesOfString) ∗
-          stackAt sm.sp cliMainStk ∗
-          f3MallocngRoPad ∗
-          f3StartupResidual f3StdLayout f3TrialElf i) ∗ R) ∧
-      RustCliAllocBudgetEntriesBase fineCostModel A f3TrialRxProg f3RdlAddrs ∧
-      (∀ k : BudgetLimits,
-        subroutine_ok f3TrialRxProg f3RdlAzAddr (rustAllocZeroedBudgetSpecBase fineCostModel A k)) := by
-  obtain ⟨γ, hPool⟩ := f3TrialElf_main_fineBudgetPool hcnt hbytes hphys hm
-  exact ⟨γ, hPool,
-    f3Trial_fineRustCliAllocBudgetEntries γ sm.tpidrEl0 sm.brkStart,
-    fun k => f3Trial_fineRdlAllocZeroed_ok γ sm.tpidrEl0 sm.brkStart k⟩
-
-/-- Unbudgeted `cMainAddr` heap initializer (`(mallocngRustCliAlloc γ f3MAddrs).pool 0 0 sm`) on
-`f3TrialElf`. -/
-theorem f3TrialElf_main_mallocngHeap {i : Inputs} {sm : State} {R : SepProp}
-    (hm : sm.mem ⊨ f3StartupMainPreNeedLocks f3StdLayout f3TrialElf i sm ∗ R) :
-    ∃ γ : GhostName,
-      sm.mem ⊨
-        ((mallocngRustCliAlloc γ f3MAddrs).pool 0 0 sm ∗
-          StdErrnoCell sm.tpidrEl0 ∗
-          ⌜f3TrialRxProg.CodeLoaded sm.mem ∧
-            cliMainStk ≤ sm.sp.toNat ∧
-            sm.sp = (StackLayout.of f3TrialElf (cliInputs i)).sp0 - 48#64 ∧
-            sm.readReg64 .lr = f3StdLayout.libcStartMainStage2Addr + 56#64 ∧
-            sm.tpidrEl0 = f3StdLayout.builtinTlsAddr + 200#64 ∧
-            MallocngBrkStartWf sm.brkStart ∧
-            sm.brk = sm.brkStart ∧
-            sm.brkStart = f3StdLayout.brkStart⌝ ∗
-          argvAtRO (sm.readReg64 .x1) (("libsignal-cli" :: i.argv).map bytesOfString) ∗
-          stackAt sm.sp cliMainStk ∗
-          f3MallocngRoPad ∗
-          f3StartupResidual f3StdLayout f3TrialElf i) ∗ R := by
-  have hrx : f3StdLayout.rxProgram f3TrialElf = f3TrialRxProg := rfl
-  simpa only [hrx] using
-    f3InitMallocngHeap f3MAddrs_libc f3StdExtra_entails_mallocngStartupData hm
-
 /-! ## `.img.text` 1-Hop `--branch-stubs` Execution Lifts -/
-
-/-- Steps `__rust_alloc` from `f3StubAddrs.alloc` (`.img.text` `Instr.b` into `seg[5]`
-`__rdl_alloc`) under any hook-unfetched `Syscall.standard` program `P`. -/
-theorem f3Trial_stub_alloc_steps {P : Program} {inputs : ProcessInputs} {sLoad s0 : State}
-    (γ : GhostName) (tp brkStart : BitVec 64) (lim : BudgetLimits)
-    (x : Nat × Nat × fineCostModel.σ) (R : SepProp)
-    (hsLoad : f3TrialElf.loadState inputs = .ok sLoad)
-    (hkf : sLoad.mem.KeepsFrozen s0.mem)
-    (hrx_cl : f3TrialRxProg.CodeLoaded s0.mem)
-    (hp_svc : P.svc = Syscall.standard)
-    (hp_stub : P.externAt? f3StubAddrs.alloc = none)
-    (hhooks : P.HooksUnfetched s0.mem)
-    (hpc : s0.pc = f3StubAddrs.alloc)
-    (hrun : s0.status = .Running)
-    (hsp : s0.spAligned = true)
-    (hpre : s0.mem ⊨
-      (rustCliAllocBudgetSpecBase fineCostModel
-        (fineRustCliAllocBudget γ f3MallocngMpl tp brkStart) lim false).pre x s0 ∗ R) :
-    ∃ sf, Steps P s0 sf ∧
-      SubroutineOutcome
-        (rustCliAllocBudgetSpecBase fineCostModel
-          (fineRustCliAllocBudget γ f3MallocngMpl tp brkStart) lim false)
-        x R s0 sf := by
-  obtain ⟨hal, hexec, hdec⟩ :=
-    f3Trial_keepsFrozen_stub_at hsLoad hkf f3StubAlloc_mem_targets f3StubAlloc_addr_eq
-  have hpre' : s0.mem ⊨
-      (rustCliAllocBudgetSpecBase fineCostModel
-        (fineRustCliAllocBudget γ f3MallocngMpl tp brkStart) lim false).pre x
-        (s0.setPC f3RdlAddrs.alloc) ∗ R := by
-    rcases x with ⟨sz, al, st⟩
-    simpa only [rustCliAllocBudgetSpecBase, State.readReg64_setPC, State.sp_setPC,
-      RustCliAllocBudget.pool_setPC] using hpre
-  exact steps_of_loaded_b_stub
-    ((f3Trial_fineRustCliAllocBudgetEntries γ tp brkStart).alloc lim)
-    f3TrialRxProg_svc f3TrialRxProg_no_ext hp_svc hp_stub
-    hpc hrun hsp hal hexec hdec hrx_cl hhooks hpre'
-    (fun sf => by
-      rcases x with ⟨sz, al, st⟩
-      simp only [rustCliAllocBudgetSpecBase, allocCallPreserved_setPC_left, State.sp_setPC])
-    (fun _ => rfl) (fun _ _ => rfl)
-    (fun sf => by
-      rcases x with ⟨sz, al, st⟩
-      simp only [rustCliAllocBudgetSpecBase, oomPreserved_setPC_left])
-
-/-- Steps `__rust_dealloc` from `f3StubAddrs.dealloc` (`.img.text` `Instr.b` into `seg[5]`
-`__rdl_dealloc`) under any hook-unfetched `Syscall.standard` program `P`. -/
-theorem f3Trial_stub_dealloc_steps {P : Program} {inputs : ProcessInputs} {sLoad s0 : State}
-    (γ : GhostName) (tp brkStart : BitVec 64) (lim : BudgetLimits)
-    (x : BitVec 64 × Nat × Nat × fineCostModel.σ) (R : SepProp)
-    (hsLoad : f3TrialElf.loadState inputs = .ok sLoad)
-    (hkf : sLoad.mem.KeepsFrozen s0.mem)
-    (hrx_cl : f3TrialRxProg.CodeLoaded s0.mem)
-    (hp_svc : P.svc = Syscall.standard)
-    (hp_stub : P.externAt? f3StubAddrs.dealloc = none)
-    (hhooks : P.HooksUnfetched s0.mem)
-    (hpc : s0.pc = f3StubAddrs.dealloc)
-    (hrun : s0.status = .Running)
-    (hsp : s0.spAligned = true)
-    (hpre : s0.mem ⊨
-      (rustCliDeallocBudgetSpecBase fineCostModel
-        (fineRustCliAllocBudget γ f3MallocngMpl tp brkStart) lim).pre x s0 ∗ R) :
-    ∃ sf, Steps P s0 sf ∧
-      SubroutineOutcome
-        (rustCliDeallocBudgetSpecBase fineCostModel
-          (fineRustCliAllocBudget γ f3MallocngMpl tp brkStart) lim)
-        x R s0 sf := by
-  obtain ⟨hal, hexec, hdec⟩ :=
-    f3Trial_keepsFrozen_stub_at hsLoad hkf f3StubDealloc_mem_targets f3StubDealloc_addr_eq
-  have hpre' : s0.mem ⊨
-      (rustCliDeallocBudgetSpecBase fineCostModel
-        (fineRustCliAllocBudget γ f3MallocngMpl tp brkStart) lim).pre x
-        (s0.setPC f3RdlAddrs.dealloc) ∗ R := by
-    rcases x with ⟨p, sz, al, st⟩
-    simpa only [rustCliDeallocBudgetSpecBase, State.readReg64_setPC, State.sp_setPC,
-      RustCliAllocBudget.pool_setPC] using hpre
-  exact steps_of_loaded_b_stub
-    ((f3Trial_fineRustCliAllocBudgetEntries γ tp brkStart).dealloc lim)
-    f3TrialRxProg_svc f3TrialRxProg_no_ext hp_svc hp_stub
-    hpc hrun hsp hal hexec hdec hrx_cl hhooks hpre'
-    (fun sf => by
-      rcases x with ⟨p, sz, al, st⟩
-      simp only [rustCliDeallocBudgetSpecBase, allocCallPreserved_setPC_left, State.sp_setPC])
-    (fun _ => rfl) (fun _ _ => rfl) (fun _ => rfl)
-
-/-- Steps `__rust_realloc` from `f3StubAddrs.realloc` (`.img.text` `Instr.b` into `seg[5]`
-`__rdl_realloc`) under any hook-unfetched `Syscall.standard` program `P`. -/
-theorem f3Trial_stub_realloc_steps {P : Program} {inputs : ProcessInputs} {sLoad s0 : State}
-    (γ : GhostName) (tp brkStart : BitVec 64) (lim : BudgetLimits)
-    (x : BitVec 64 × Nat × Nat × Nat × List (BitVec 8) × fineCostModel.σ) (R : SepProp)
-    (hsLoad : f3TrialElf.loadState inputs = .ok sLoad)
-    (hkf : sLoad.mem.KeepsFrozen s0.mem)
-    (hrx_cl : f3TrialRxProg.CodeLoaded s0.mem)
-    (hp_svc : P.svc = Syscall.standard)
-    (hp_stub : P.externAt? f3StubAddrs.realloc = none)
-    (hhooks : P.HooksUnfetched s0.mem)
-    (hpc : s0.pc = f3StubAddrs.realloc)
-    (hrun : s0.status = .Running)
-    (hsp : s0.spAligned = true)
-    (hpre : s0.mem ⊨
-      (rustCliReallocBudgetSpecBase fineCostModel
-        (fineRustCliAllocBudget γ f3MallocngMpl tp brkStart) lim).pre x s0 ∗ R) :
-    ∃ sf, Steps P s0 sf ∧
-      SubroutineOutcome
-        (rustCliReallocBudgetSpecBase fineCostModel
-          (fineRustCliAllocBudget γ f3MallocngMpl tp brkStart) lim)
-        x R s0 sf := by
-  obtain ⟨hal, hexec, hdec⟩ :=
-    f3Trial_keepsFrozen_stub_at hsLoad hkf f3StubRealloc_mem_targets f3StubRealloc_addr_eq
-  have hpre' : s0.mem ⊨
-      (rustCliReallocBudgetSpecBase fineCostModel
-        (fineRustCliAllocBudget γ f3MallocngMpl tp brkStart) lim).pre x
-        (s0.setPC f3RdlAddrs.realloc) ∗ R := by
-    rcases x with ⟨p, old, al, nw, bs, st⟩
-    simpa only [rustCliReallocBudgetSpecBase, State.readReg64_setPC, State.sp_setPC,
-      RustCliAllocBudget.pool_setPC] using hpre
-  exact steps_of_loaded_b_stub
-    ((f3Trial_fineRustCliAllocBudgetEntries γ tp brkStart).realloc lim)
-    f3TrialRxProg_svc f3TrialRxProg_no_ext hp_svc hp_stub
-    hpc hrun hsp hal hexec hdec hrx_cl hhooks hpre'
-    (fun sf => by
-      rcases x with ⟨p, old, al, nw, bs, st⟩
-      simp only [rustCliReallocBudgetSpecBase, allocCallPreserved_setPC_left, State.sp_setPC])
-    (fun _ => rfl) (fun _ _ => rfl)
-    (fun sf => by
-      rcases x with ⟨p, old, al, nw, bs, st⟩
-      simp only [rustCliReallocBudgetSpecBase, oomPreserved_setPC_left])
-
-/-- Steps `__rust_alloc_zeroed` from `f3StubAzAddr` (`.img.text` `Instr.b` into `seg[5]`
-`__rdl_alloc_zeroed`) under any hook-unfetched `Syscall.standard` program `P`. -/
-theorem f3Trial_stub_allocZeroed_steps {P : Program} {inputs : ProcessInputs} {sLoad s0 : State}
-    (γ : GhostName) (tp brkStart : BitVec 64) (lim : BudgetLimits)
-    (x : Nat × Nat × fineCostModel.σ) (R : SepProp)
-    (hsLoad : f3TrialElf.loadState inputs = .ok sLoad)
-    (hkf : sLoad.mem.KeepsFrozen s0.mem)
-    (hrx_cl : f3TrialRxProg.CodeLoaded s0.mem)
-    (hp_svc : P.svc = Syscall.standard)
-    (hp_stub : P.externAt? f3StubAzAddr = none)
-    (hhooks : P.HooksUnfetched s0.mem)
-    (hpc : s0.pc = f3StubAzAddr)
-    (hrun : s0.status = .Running)
-    (hsp : s0.spAligned = true)
-    (hpre : s0.mem ⊨
-      (rustAllocZeroedBudgetSpecBase fineCostModel
-        (fineRustCliAllocBudget γ f3MallocngMpl tp brkStart) lim).pre x s0 ∗ R) :
-    ∃ sf, Steps P s0 sf ∧
-      SubroutineOutcome
-        (rustAllocZeroedBudgetSpecBase fineCostModel
-          (fineRustCliAllocBudget γ f3MallocngMpl tp brkStart) lim)
-        x R s0 sf := by
-  obtain ⟨hal, hexec, hdec⟩ :=
-    f3Trial_keepsFrozen_stub_at hsLoad hkf f3StubAz_mem_targets f3StubAz_addr_eq
-  have hpre' : s0.mem ⊨
-      (rustAllocZeroedBudgetSpecBase fineCostModel
-        (fineRustCliAllocBudget γ f3MallocngMpl tp brkStart) lim).pre x
-        (s0.setPC f3RdlAzAddr) ∗ R := by
-    rcases x with ⟨sz, al, st⟩
-    simpa only [rustAllocZeroedBudgetSpecBase, rustCliAllocBudgetSpecBase, State.readReg64_setPC,
-      State.sp_setPC, RustCliAllocBudget.pool_setPC] using hpre
-  exact steps_of_loaded_b_stub
-    (f3Trial_fineRdlAllocZeroed_ok γ tp brkStart lim)
-    f3TrialRxProg_svc f3TrialRxProg_no_ext hp_svc hp_stub
-    hpc hrun hsp hal hexec hdec hrx_cl hhooks hpre'
-    (fun sf => by
-      rcases x with ⟨sz, al, st⟩
-      simp only [rustAllocZeroedBudgetSpecBase, rustCliAllocBudgetSpecBase,
-        allocCallPreserved_setPC_left, State.sp_setPC])
-    (fun _ => rfl) (fun _ _ => rfl)
-    (fun sf => by
-      rcases x with ⟨sz, al, st⟩
-      simp only [rustAllocZeroedBudgetSpecBase, rustCliAllocBudgetSpecBase, oomPreserved_setPC_left])
 
 example {lim : BudgetLimits} {i : Inputs} {sm : State} {R : SepProp}
     (hcnt : lim.enforced = true → f3SegCount + 1 ≤ lim.staticCount)

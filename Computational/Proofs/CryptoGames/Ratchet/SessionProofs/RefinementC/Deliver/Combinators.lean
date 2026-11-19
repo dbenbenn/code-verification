@@ -21,7 +21,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject
 increment the ambiguity counter `amb`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

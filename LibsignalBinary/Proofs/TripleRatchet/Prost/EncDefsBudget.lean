@@ -11,9 +11,9 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.Placed.GenLsBlock
 public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefs
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Prost Encoding Leaf Specifications
@@ -22,11 +22,13 @@ Deterministic `Vec::reserve` allocator event envelopes and `RustCliAllocBudget`-
 specifications for `encode_varint::<Vec<u8>>` and `<wire::SignalMessage as Message>::encoded_len`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
+
+open CryptoVerification.LibsignalTripleRatchet (reserveCap trTrapProgAt)
 
 open Arm64 ProofLib SepProp
 open LibsignalBinary.Heap
@@ -37,8 +39,6 @@ open CryptoVerification
   (LibsignalPlacement LibsignalHooks lsmpl withLsCodeLoaded blkPC_10 blkPl_10 blkPC_108 blkPl_108)
 open CryptoVerification.RustHeap (RustAlloc vecU8At)
 open CryptoVerification.LibsignalProtoCodec (encodeVarint encode)
-open CryptoVerification.LibsignalTripleRatchet
-  (reserveCap tripleRatchetProgAtExt trTrapProgAt tripleRatchetProgAt)
 open CryptoVerification.LibsignalTripleRatchet.Prost
   (encodeVarintName encodedLenName encodeVarintStack encodeVarintStackX encodedLenStack
    wireSignalMessageAt WireLengthsFit EncodeVarintGhost EncodedLenGhost)
@@ -47,7 +47,7 @@ open CryptoVerification.LibsignalTripleRatchet.Prost
 
 /-- Single-byte reserve-and-push transition `(cap, len) → (cap', len + 1)` matching
 `do_reserve_and_handle` (`additional := 1`) when `len = cap` and emitting `[]` when `len < cap`. -/
-def pushByteStep (cap len : Nat) : Nat × List AllocEvent :=
+@[expose] def pushByteStep (cap len : Nat) : Nat × List AllocEvent :=
   if len < cap then
     (cap, [])
   else
@@ -57,18 +57,18 @@ def pushByteStep (cap len : Nat) : Nat × List AllocEvent :=
 
 /-- Deterministic `AllocEvent` list emitted while pushing `n` bytes one-by-one into a `Vec<u8>`
 with initial `(cap, len)` via `do_reserve_and_handle` (`additional := 1`). -/
-def pushBytesEvents : Nat → Nat → Nat → List AllocEvent
+@[expose] def pushBytesEvents : Nat → Nat → Nat → List AllocEvent
   | 0, _, _ => []
   | n + 1, cap, len =>
     let step := pushByteStep cap len
     step.2 ++ pushBytesEvents n step.1 (len + 1)
 
 /-- Deterministic `AllocEvent` list emitted by `encode_varint::<Vec<u8>> [local#1]` on `x`. -/
-def encodeVarintEvents (x : EncodeVarintGhost) : List AllocEvent :=
+@[expose] def encodeVarintEvents (x : EncodeVarintGhost) : List AllocEvent :=
   pushBytesEvents (encodeVarint x.val).length x.cap.toNat x.bs.length
 
 /-- Callee-fixed allocator event envelope of `encode_varint::<Vec<u8>> [local#1]`. -/
-def EncodeVarintEnv (x : EncodeVarintGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def EncodeVarintEnv (x : EncodeVarintGhost) (evs : List AllocEvent) : Prop :=
   evs = encodeVarintEvents x
 
 theorem encodeVarintEnv_events (x : EncodeVarintGhost) :
@@ -91,7 +91,7 @@ theorem encodeVarintEvents_of_spare {x : EncodeVarintGhost}
 
 /-- Budget-threaded contract of `prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]`
 (`encodeVarintStack`, `onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def encodeVarintSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def encodeVarintSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (EncodeVarintGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.val ∧ s.readReg64 .x1 = x.v ∧
@@ -110,7 +110,7 @@ def encodeVarintSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
       stackAt s0.sp encodeVarintStack
 
 /-- Budget-threaded contract of `encode_varint::<Vec<u8>> [local#1]` at `encodeVarintStackX`. -/
-def encodeVarintSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def encodeVarintSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (EncodeVarintGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.val ∧ s.readReg64 .x1 = x.v ∧
@@ -133,7 +133,7 @@ def encodeVarintSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
 /-- `VmPreserved`-augmented contract of
 `<libsignal_protocol::proto::wire::SignalMessage as prost::message::Message>::encoded_len`
 (`0` allocations; callers pass `A.repAlloc` and transport `A.pool lim st` via `VmPreserved`). -/
-def encodedLenSpec (A : RustAlloc) : Spec EncodedLenGhost where
+@[expose] def encodedLenSpec (A : RustAlloc) : Spec EncodedLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ WireLengthsFit x.m⌝ ∗
       wireSignalMessageAt A x.g x.a x.m ∗ stackAt s.sp encodedLenStack
@@ -144,40 +144,15 @@ def encodedLenSpec (A : RustAlloc) : Spec EncodedLenGhost where
 
 /-! ## Target `subroutine_ok` propositions -/
 
-def EncodeVarintOkExt {M : AllocCostModel} (b : BitVec 64) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr encodeVarintName)
-    (encodeVarintSpec A lim)
-
-def EncodeVarintOk_trap {M : AllocCostModel} (b : BitVec 64) (C : Crypto)
+@[expose] def EncodeVarintOk_trap {M : AllocCostModel} (b : BitVec 64) (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr encodeVarintName)
     (encodeVarintSpec A lim)
 
-def EncodeVarintOk {M : AllocCostModel} (b : BitVec 64) (C : Crypto)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr encodeVarintName)
-    (encodeVarintSpec A lim)
-
-def EncodedLenOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr encodedLenName)
-    (encodedLenSpec A)
-
-def EncodedLenOk_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
+@[expose] def EncodedLenOk_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr encodedLenName)
-    (encodedLenSpec A)
-
-def EncodedLenOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr encodedLenName)
     (encodedLenSpec A)
 
 abbrev EncodeVarintPlacedOk [LibsignalPlacement] {M : AllocCostModel}

@@ -10,8 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.Proof
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.Proof
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.Defs
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Budget-Threaded `dropSpeSpecStk`
@@ -19,7 +21,7 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.Proof
 Defines the budget-threaded stack-parameterized `dropSpeSpecStk` contract over `FreeOnlyEvs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,7 +34,7 @@ open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 open CryptoVerification.LibsignalTripleRatchetRepr (speAt)
 open CryptoVerification.LibsignalTripleRatchet.Getters (DropSpeGhost)
 
-def dropSpeSpecStk [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def dropSpeSpecStk [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) : Spec (DropSpeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a ∧ LsRetAddr624 (s.readReg64 .x30)⌝ ∗

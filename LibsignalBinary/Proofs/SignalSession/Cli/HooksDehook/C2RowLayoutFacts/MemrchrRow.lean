@@ -11,8 +11,14 @@ module
 
 public import LibsignalBinary.Heap.Fine.F3LayoutData -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2 -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.RowCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.RowCommon
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemrchrExtraReplays -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.CodeSubslice -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Cutover-2 (`C2`) `memrchr` `.text.lib2` Per-Row `GhostRowOk` Glue (`C2RowLayoutFacts.MemrchrRow`)
@@ -35,8 +41,9 @@ open LibsignalBinary.Heap.Fine (f3StdLayout)
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2 (StdMainEntryLr)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.RowCommon
-  (c2_keepLib2Text_of_sub_lt c2_realHullNoExt_of_keepLib2Text checkProgCodeSubslice
-   f3CodeInv_and_fs_keepsFrozen f3CodeInv_codeLoaded_of_checkProgCodeSubslice)
+  (c2_keepLib2Text_of_sub_lt c2_noPanic_of_band_sub_lt c2_realHullNoExt_of_keepLib2Text
+   checkProgCodeSubslice f3CodeInv_and_fs_keepsFrozen
+   f3CodeInv_codeLoaded_of_checkProgCodeSubslice)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay
   (ExtraEntryGuard GhostRowOk GhostRowReplayOn)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemrchrExtraReplays
@@ -44,7 +51,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemrchrExtraReplays
    keepR_memrchr_entry memrchrEntryGuard memrchrGhost memrchrGhost_rowOk
    memrchrHullByteLen memrchrSubProg)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts
-  (C2ExternTableFacts f3LsRetAddr624_rxRegion_guard keepLib2Text)
+  (C2ExternTableFacts f3LsRetAddr624_rxRegion_guard isLinkedPanicAddr keepLib2Text)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics (F3CodeInv)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie (f3TrialRxProg)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen
@@ -63,6 +70,14 @@ theorem keepR_memrchr_sub_keepLib2Text {mpl : Obj.MultiPlacement}
   exact c2_keepLib2Text_of_sub_lt hkeep
     (by decide : c2Lib2TextLo.toNat ≤ c2MemrchrAddr.toNat)
     (by decide : c2MemrchrAddr.toNat + memrchrHullByteLen ≤ c2Lib2TextHi.toNat)
+
+theorem keepR_memrchr_noPanic {mpl : Obj.MultiPlacement}
+    (hResMemrchr : libsignalSessionLib.resolve mpl lsMemrchrSym = c2MemrchrAddr) :
+    ∀ pc : BitVec 64, keepR_memrchr mpl pc = true → isLinkedPanicAddr pc = false := by
+  intro pc hkeep
+  unfold keepR_memrchr at hkeep
+  rw [hResMemrchr, decide_eq_true_eq] at hkeep
+  exact c2_noPanic_of_band_sub_lt hkeep (by decide) (by decide)
 
 /-- Every crate return address `LsRetAddr624 lr` lies outside `keepR_memrchr lsmpl` at Cutover-2. -/
 theorem c2_memrchr_hKeep [LibsignalPlacement]
@@ -110,7 +125,8 @@ theorem c2_memrchrGhost_rowOk [LibsignalPlacement]
     (f3CodeInv_codeLoaded_of_checkProgCodeSubslice hRxMemrchr)
     (f3CodeInv_and_fs_keepsFrozen lsmpl mmpl PredFs)
     (c2_memrchr_hKeep hResMemrchr hLs)
-    (c2_realHullNoExt_of_keepLib2Text hExt (keepR_memrchr_sub_keepLib2Text hResMemrchr))
+    (c2_realHullNoExt_of_keepLib2Text hExt (keepR_memrchr_sub_keepLib2Text hResMemrchr)
+      (keepR_memrchr_noPanic hResMemrchr))
 
 /-- `guardOf`-adapted `GhostRowOk` for `lsMemrchrSym` at `mpl := lsmpl`. -/
 theorem c2_memrchrGhost_rowOk_guardOf [LibsignalPlacement]
@@ -133,28 +149,5 @@ theorem c2_memrchrGhost_rowOk_guardOf [LibsignalPlacement]
   exact ⟨hRow.1, ghostRowReplayOn_of_guard_imp hRow.2 hGuard⟩
 
 /-! ## 3. Startup Entry-Guard Dischargers -/
-
-/-- Trivial startup `StdMainEntryLr` discharge of `memrchrEntryGuard mpl s0` (`True`). -/
-theorem c2MemrchrEntryGuard_of_stdMainEntryLr
-    {mpl : Obj.MultiPlacement} {s0 : State}
-    (_hlr : StdMainEntryLr f3StdLayout s0) :
-    memrchrEntryGuard mpl s0 :=
-  trivial
-
-/-- Per-arm `lsMemrchrSym` `ExtraEntryGuard` discharge at Cutover-2. -/
-theorem c2_extraEntryGuard_memrchr_arm
-    {mpl : Obj.MultiPlacement} {guardOf : String → State → Prop} {s0 : State}
-    (hGuardEq : guardOf lsMemrchrSym s0 ↔ memrchrEntryGuard mpl s0) :
-    guardOf lsMemrchrSym s0 :=
-  extraEntryGuard_memrchr_arm hGuardEq
-
-/-- Singleton `g.extra = [(lsMemrchrSym, memrchrGhost mpl mmpl)]` `ExtraEntryGuard` discharge. -/
-theorem c2_extraEntryGuard_singleton_memrchr [LibsignalPlacement]
-    {mpl mmpl : Obj.MultiPlacement} {guardOf : String → State → Prop}
-    {g : CliGhostHooks} {s0 : State}
-    (hg : g.extra = [(lsMemrchrSym, memrchrGhost mpl mmpl)])
-    (hGuardEq : guardOf lsMemrchrSym s0 ↔ memrchrEntryGuard mpl s0) :
-    ExtraEntryGuard guardOf g s0 :=
-  extraEntryGuard_singleton_memrchr hg hGuardEq
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.MemrchrRow

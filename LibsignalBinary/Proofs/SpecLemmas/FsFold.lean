@@ -11,7 +11,7 @@ module
 
 public import LibsignalBinary.Specifications.SignalSession.Run
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -26,12 +26,12 @@ namespace CryptoVerification.SignalSession
 
 open Arm64
 /-- The regular-file content of an entry. -/
-def fileOfEntry : Option FsEntry → Option (List (BitVec 8))
+@[expose] def fileOfEntry : Option FsEntry → Option (List (BitVec 8))
   | some (.file bs) => some bs
   | _ => none
 
 /-- Two file systems hold the same regular files at every key. -/
-def SameFiles (a b : FsState) : Prop := ∀ q, fileOfEntry (a.entries q) = fileOfEntry (b.entries q)
+@[expose] def SameFiles (a b : FsState) : Prop := ∀ q, fileOfEntry (a.entries q) = fileOfEntry (b.entries q)
 
 theorem SameFiles.setEntry {a b : FsState} (h : SameFiles a b) (p : FsPath) (e : Option FsEntry) :
     SameFiles (a.setEntry p e) (b.setEntry p e) := by
@@ -42,18 +42,18 @@ theorem SameFiles.setEntry {a b : FsState} (h : SameFiles a b) (p : FsPath) (e :
   · exact h q
 
 /-- The loader's files fold (`Process.initFsState`). -/
-def filesFold (files : List (String × List (BitVec 8))) (a : FsState) : FsState :=
+@[expose] def filesFold (files : List (String × List (BitVec 8))) (a : FsState) : FsState :=
   files.foldl (fun fs (p, bs) =>
     (((FsPath.nonEmptyPrefixes (normalizePath p)).dropLast).foldl
       (fun acc pref => acc.setEntry pref (some .dir)) fs).setFile p (some (.file bs))) a
 
 /-- The loader's directories fold (`Process.initFsState`). -/
-def dirsFold (dirs : List String) (a : FsState) : FsState :=
+@[expose] def dirsFold (dirs : List String) (a : FsState) : FsState :=
   dirs.foldl (fun fs d => (FsPath.nonEmptyPrefixes (normalizePath d)).foldl
     (fun acc pref => acc.setEntry pref (some .dir)) fs) a
 
 /-- A file system that holds no regular file (only directories). -/
-def NoFiles (a : FsState) : Prop := ∀ q, fileOfEntry (a.entries q) = none
+@[expose] def NoFiles (a : FsState) : Prop := ∀ q, fileOfEntry (a.entries q) = none
 
 theorem NoFiles.base : NoFiles ({} : FsState) := by
   intro q

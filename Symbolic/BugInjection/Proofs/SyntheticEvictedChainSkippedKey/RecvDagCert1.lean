@@ -12,9 +12,9 @@ module
 public import Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagData
 
 /-!
-# Per-Node DAG Certificate Slice 1
+# Per-Node DAG Certificate Shard 1
 
-Kernel-checked `dagNodeOk` certificates (`certRangeOk_1`) for receive-DAG nodes `384 ≤ id < 768`.
+Kernel-checked `dagNodeOk` certificates (`certRangeOk_1`) for receive-DAG nodes `1680 ≤ id < 3360`.
 -/
 
 @[expose] public section
@@ -25,56 +25,42 @@ namespace Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCe
 
 open Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagDefs (dagNodeOk)
 open Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagData
-  (dagOp dagBytes certRangeOk dagNodeOk_of_certRangeOk)
+  (dagOp dagBytes certRangeOk certRangeOk_trans dagNodeOk_of_certRangeOk)
 
-private theorem certSlice_1_0 : certRangeOk 384 32 = true := by decide +kernel
-private theorem certSlice_1_1 : certRangeOk 416 32 = true := by decide +kernel
-private theorem certSlice_1_2 : certRangeOk 448 32 = true := by decide +kernel
-private theorem certSlice_1_3 : certRangeOk 480 32 = true := by decide +kernel
-private theorem certSlice_1_4 : certRangeOk 512 32 = true := by decide +kernel
-private theorem certSlice_1_5 : certRangeOk 544 32 = true := by decide +kernel
-private theorem certSlice_1_6 : certRangeOk 576 32 = true := by decide +kernel
-private theorem certSlice_1_7 : certRangeOk 608 32 = true := by decide +kernel
-private theorem certSlice_1_8 : certRangeOk 640 32 = true := by decide +kernel
-private theorem certSlice_1_9 : certRangeOk 672 32 = true := by decide +kernel
-private theorem certSlice_1_10 : certRangeOk 704 32 = true := by decide +kernel
-private theorem certSlice_1_11 : certRangeOk 736 32 = true := by decide +kernel
+private theorem s0 : certRangeOk 1680 1740 = true := by decide +kernel
+private theorem s1 : certRangeOk 1740 1800 = true := by decide +kernel
+private theorem s2 : certRangeOk 1800 1860 = true := by decide +kernel
+private theorem s3 : certRangeOk 1860 1920 = true := by decide +kernel
+private theorem s4 : certRangeOk 1920 1980 = true := by decide +kernel
+private theorem s5 : certRangeOk 1980 2040 = true := by decide +kernel
+private theorem s6 : certRangeOk 2040 2100 = true := by decide +kernel
+private theorem s7 : certRangeOk 2100 2160 = true := by decide +kernel
+private theorem s8 : certRangeOk 2160 2220 = true := by decide +kernel
+private theorem s9 : certRangeOk 2220 2280 = true := by decide +kernel
+private theorem s10 : certRangeOk 2280 2340 = true := by decide +kernel
+private theorem s11 : certRangeOk 2340 2400 = true := by decide +kernel
+private theorem s12 : certRangeOk 2400 2460 = true := by decide +kernel
+private theorem s13 : certRangeOk 2460 2520 = true := by decide +kernel
+private theorem s14 : certRangeOk 2520 2580 = true := by decide +kernel
+private theorem s15 : certRangeOk 2580 2640 = true := by decide +kernel
+private theorem s16 : certRangeOk 2640 2700 = true := by decide +kernel
+private theorem s17 : certRangeOk 2700 2760 = true := by decide +kernel
+private theorem s18 : certRangeOk 2760 2820 = true := by decide +kernel
+private theorem s19 : certRangeOk 2820 2880 = true := by decide +kernel
+private theorem s20 : certRangeOk 2880 2940 = true := by decide +kernel
+private theorem s21 : certRangeOk 2940 3000 = true := by decide +kernel
+private theorem s22 : certRangeOk 3000 3060 = true := by decide +kernel
+private theorem s23 : certRangeOk 3060 3120 = true := by decide +kernel
+private theorem s24 : certRangeOk 3120 3180 = true := by decide +kernel
+private theorem s25 : certRangeOk 3180 3240 = true := by decide +kernel
+private theorem s26 : certRangeOk 3240 3300 = true := by decide +kernel
+private theorem s27 : certRangeOk 3300 3360 = true := by decide +kernel
 
-theorem certRangeOk_1 {id : Nat} (hlo : 384 ≤ id) (hhi : id < 768) :
-    dagNodeOk dagOp dagBytes id = true := by
-  if hs0 : id < 416 then
-    exact dagNodeOk_of_certRangeOk certSlice_1_0 (by omega) hs0
-  else
-  if hs1 : id < 448 then
-    exact dagNodeOk_of_certRangeOk certSlice_1_1 (by omega) hs1
-  else
-  if hs2 : id < 480 then
-    exact dagNodeOk_of_certRangeOk certSlice_1_2 (by omega) hs2
-  else
-  if hs3 : id < 512 then
-    exact dagNodeOk_of_certRangeOk certSlice_1_3 (by omega) hs3
-  else
-  if hs4 : id < 544 then
-    exact dagNodeOk_of_certRangeOk certSlice_1_4 (by omega) hs4
-  else
-  if hs5 : id < 576 then
-    exact dagNodeOk_of_certRangeOk certSlice_1_5 (by omega) hs5
-  else
-  if hs6 : id < 608 then
-    exact dagNodeOk_of_certRangeOk certSlice_1_6 (by omega) hs6
-  else
-  if hs7 : id < 640 then
-    exact dagNodeOk_of_certRangeOk certSlice_1_7 (by omega) hs7
-  else
-  if hs8 : id < 672 then
-    exact dagNodeOk_of_certRangeOk certSlice_1_8 (by omega) hs8
-  else
-  if hs9 : id < 704 then
-    exact dagNodeOk_of_certRangeOk certSlice_1_9 (by omega) hs9
-  else
-  if hs10 : id < 736 then
-    exact dagNodeOk_of_certRangeOk certSlice_1_10 (by omega) hs10
-  else
-    exact dagNodeOk_of_certRangeOk certSlice_1_11 (by omega) hhi
+private theorem shard_1 : certRangeOk 1680 3360 = true :=
+  (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans (certRangeOk_trans s0 s1) s2) s3) s4) s5) s6) s7) s8) s9) s10) s11) s12) s13) s14) s15) s16) s17) s18) s19) s20) s21) s22) s23) s24) s25) s26) s27)
+
+theorem certRangeOk_1 {id : Nat} (hlo : 1680 ≤ id) (hhi : id < 3360) :
+    dagNodeOk dagOp dagBytes id = true :=
+  dagNodeOk_of_certRangeOk shard_1 hlo hhi
 
 end Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvDagCert1

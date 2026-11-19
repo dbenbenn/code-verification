@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeSig
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSim
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeSig -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSim -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimRecv
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimSend
 import VCVio.EvalDist.Monad.Basic
@@ -22,7 +22,7 @@ Proves that `extractC` evaluates to `extractBundleForgeryPrim` and that every no
 `sigStepC` factors through `stepAuthForSigPrim`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 namespace SignalPqxdh.Security.ReductionDsl.AuthHs
@@ -30,10 +30,10 @@ open _root_.ReductionDsl hiding B PTag U32 bundleOfV bundleT bundleV dhSecretsT 
 open SignalPqxdh SignalPqxdh.LegacyCosted SignalPqxdh.Security SignalPqxdh.Security.ReductionDsl
 open OracleSpec OracleComp
 
-def sigCoreToVal {S : Setup} (s : SigReductionState (AuthState S)) : sigCoreTy.denote :=
+@[expose] def sigCoreToVal {S : Setup} (s : SigReductionState (AuthState S)) : sigCoreTy.denote :=
   (s.forgery, (s.targetParty, (s.targetPk, authStateToVal s.gameState)))
 
-def doneVal {S : Setup} (p : AuthResponse × SigReductionState (AuthState S)) : sigStepTy.denote :=
+@[expose] def doneVal {S : Setup} (p : AuthResponse × SigReductionState (AuthState S)) : sigStepTy.denote :=
   .inl (authRespToVal p.1, sigCoreToVal p.2)
 
 set_option hygiene false in
@@ -122,7 +122,7 @@ variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List (Ty pqSig)}
   (s : SigReductionState (AuthState S))
 
 /-- `sigStepC` on a non-`signTwo` query: a common computation `D` with a done-projection `g`. -/
-def SigDoneFactor (qv : AuthQuery S) (lhs : OracleComp PrimBaseSpec sigStepTy.denote) : Prop :=
+@[expose] def SigDoneFactor (qv : AuthQuery S) (lhs : OracleComp PrimBaseSpec sigStepTy.denote) : Prop :=
   ∃ (α : Type) (D : OracleComp PrimBaseSpec α)
     (g : α → AuthResponse × SigReductionState (AuthState S)),
     lhs = (doneVal ∘ g) <$> D ∧

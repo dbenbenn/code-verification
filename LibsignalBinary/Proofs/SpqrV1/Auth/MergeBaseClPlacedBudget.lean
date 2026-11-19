@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MergePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Auth.MergePlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
@@ -21,6 +21,12 @@ import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergePlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Proof of `Authenticator::merge` (Block 295)
@@ -30,7 +36,7 @@ Verifies `prost::encoding::message::merge::<Authenticator, &mut &[u8]> [local#2]
 using `ChunkedDefsBudget.decodeErrorPushMergeBudgetSpec` on block 257.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -1181,28 +1187,5 @@ theorem auth_merge_base_cl_placed_ok_of_cro_contracts [LibsignalPlacement] {M : 
   auth_merge_base_cl_placed_ok_of_cro_contracts_env
     (fun _ _ h => h) (fun _ _ h => h)
     hFromCall hPushCall hVarintCall hSkipCall hBytesCall
-
-/-- `withLsCodeLoaded` correctness of `Authenticator::merge` (block 295) against `MergeBaseBudget.authMergeSpec`. -/
-theorem auth_merge_base_cl_placed_ok_of_contracts [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hFromCall : subroutine_ok ((blkPC_295).rebase (blkPl_295).base H) (lsmpl.base 261)
-      (withLsCodeLoaded lsmpl (decodeErrorFromBudgetSpec M A lim)))
-    (hPushCall : subroutine_ok ((blkPC_295).rebase (blkPl_295).base H) (lsmpl.base 257)
-      (withLsCodeLoaded lsmpl (decodeErrorPushMergeBudgetSpec M A lim)))
-    (hVarintCall : subroutine_ok ((blkPC_295).rebase (blkPl_295).base H) (lsmpl.base 291)
-      (withLsCodeLoaded lsmpl (decodeVarint2Spec A lim)))
-    (hSkipCall : subroutine_ok ((blkPC_295).rebase (blkPl_295).base H) (lsmpl.base 263)
-      (withLsCodeLoaded lsmpl (skipField3Spec A lim)))
-    (hBytesCall : subroutine_ok ((blkPC_295).rebase (blkPl_295).base H) (lsmpl.base 290)
-      (withLsCodeRoLoaded lsmpl (bytesMerge3RawBudgetSpec A lim))) :
-    subroutine_ok ((blkPC_295).rebase (blkPl_295).base H)
-      (blkPl_295).base
-      (withLsCodeRoLoaded lsmpl (authMergeSpec A lim)) :=
-  auth_merge_base_cl_placed_ok_of_cro_contracts
-    (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded hFromCall)
-    (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded hPushCall)
-    (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded hVarintCall)
-    (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded hSkipCall)
-    hBytesCall
 
 end LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseClPlacedBudget

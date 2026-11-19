@@ -9,16 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Specifications.SignalSession.CliLabels
+public import LibsignalBinary.Proofs.Placed.CliLabels -- proof-setup: allow-public-import
 public import ProofLib.Placed.LabelsInterned
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliLabelsLfoCert
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfLabelsLfoCertChecksA
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfLabelsLfoCertChecksB
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliLabelsLfoObjsEq
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliLabelsLfoText
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliLabelsLfoData
 meta import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliLabelsLfoCert
 meta import Lean
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -68,11 +70,11 @@ private meta def elabCopyCliLabelsLfoOriginTrees : CommandElab := fun _ => do
 
 copy_cli_labels_lfo_origin_trees
 
-noncomputable def cliLabelsLfo_bO
+@[expose] noncomputable def cliLabelsLfo_bO
     (i : Fin libsignalSessionLib.blocks.length) : Arm64.Obj.SliceOrigin :=
   Arm64.Obj.LabelsInterned.originAt cliLabelsLfo_bOTree i
 
-noncomputable def cliLabelsLfo_dO
+@[expose] noncomputable def cliLabelsLfo_dO
     (i : Fin libsignalSessionLib.data.length) : Arm64.Obj.SliceOrigin :=
   Arm64.Obj.LabelsInterned.originAt cliLabelsLfo_dOTree i
 
@@ -217,26 +219,26 @@ theorem cliLabelsLfo_spec :
   labelsFromObjects_of_split_checks_nd
     CliLabelsLfoObjsEq.cliLabelsLfo_objs_eq
     CliLabelsLfoText.cliLabelsLfo_lib_eq
-    CliLabelsLfoCert.cliLabelsLfo_names_sz
-    CliLabelsLfoCert.cliLabelsLfo_chars_sz
-    CliLabelsLfoCert.cliLabelsLfo_names_eq
-    CliLabelsLfoCert.cliLabelsLfo_names_nodup
-    CliLabelsLfoCert.cliLabelsLfo_names_zero
-    CliLabelsLfoCert.cliLabelsLfo_blocks_sz
-    CliLabelsLfoCert.cliLabelsLfo_data_sz
-    CliLabelsLfoCert.cliLabelsLfo_roles_ok
+    ElfLabelsLfoCertChecksA.cliLabelsLfo_names_sz
+    ElfLabelsLfoCertChecksA.cliLabelsLfo_chars_sz
+    ElfLabelsLfoCertChecksA.cliLabelsLfo_names_eq
+    ElfLabelsLfoCertChecksA.cliLabelsLfo_names_nodup
+    ElfLabelsLfoCertChecksA.cliLabelsLfo_names_zero
+    ElfLabelsLfoCertChecksA.cliLabelsLfo_blocks_sz
+    ElfLabelsLfoCertChecksA.cliLabelsLfo_data_sz
+    ElfLabelsLfoCertChecksA.cliLabelsLfo_roles_ok
     CliLabelsLfoObjsEq.cliLabelsLfo_objs_ok
-    CliLabelsLfoCert.cliLabelsLfo_groups_ok
-    CliLabelsLfoCert.cliLabelsLfo_bdisj_ok
-    CliLabelsLfoCert.cliLabelsLfo_ddisj_ok
+    ElfLabelsLfoCertChecksA.cliLabelsLfo_groups_ok
+    ElfLabelsLfoCertChecksB.cliLabelsLfo_bdisj_ok
+    ElfLabelsLfoCertChecksB.cliLabelsLfo_ddisj_ok
     CliLabelsLfoText.cliLabelsLfo_tbytes_ok
     CliLabelsLfoText.cliLabelsLfo_tmeta_ok
     CliLabelsLfoData.cliLabelsLfo_dbytes_ok
     CliLabelsLfoData.cliLabelsLfo_dmeta_ok
     CliLabelsLfoText.cliLabelsLfo_brelocs_ok
     CliLabelsLfoData.cliLabelsLfo_drelocs_ok
-    CliLabelsLfoCert.cliLabelsLfo_exports_ok
-    CliLabelsLfoCert.cliLabelsLfo_externs_ok
+    ElfLabelsLfoCertChecksB.cliLabelsLfo_exports_ok
+    ElfLabelsLfoCertChecksB.cliLabelsLfo_externs_ok
 
 theorem cliLabelsLfo :
     ∃ bO dO, Arm64.Obj.LabelsFromObjects cliLinkObjs libsignalSessionLib bO dO :=

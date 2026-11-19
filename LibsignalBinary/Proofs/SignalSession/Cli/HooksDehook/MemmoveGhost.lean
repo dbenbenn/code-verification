@@ -10,101 +10,80 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveCode -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhost -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
 public import LibsignalBinary.Heap.Fine.SpecBudgetHelpersFine
 public import LibsignalBinary.Heap.IfaceBudget
 import ProofLib.Process.OracleEq
 import ProofLib.BV.Bits
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
-# Ghost `memmove` Hook & Complete Bounded Consumer `HookOk` Suite (`HooksDehook.MemmoveGhost`)
+# Ghost `memmove` Hook and Bounded Consumer `HookOk` Suite (`HooksDehook.MemmoveGhost`)
 
-Card **L3-b** (`memmove` ghost hook + C11 §8.1 obligations on the generic C11 `CliGhostHooks.extra`
-design — one `("memmove", f)` entry + `GhostRowSpecOk`, zero new named fields on `CliGhostHooks`):
+Defines the `memmove` ghost hooks and consumer `HookOk` lifts for the `("memmove", f)` entry in
+`CliGhostHooks.extra`:
 
-1. **Ghost `memmove` hooks (`memmoveGhostFn`, `memmoveGhostFnK`, `memmoveGhostPure`, `memmoveGhostPureK`):**
+1. Ghost `memmove` hooks (`memmoveGhostFn`, `memmoveGhostFnK`, `memmoveGhostPure`, `memmoveGhostPureK`):
    - `memmoveGhostFn keepR P_real P_sub entry`: wraps `MemmoveCode.masterMemmoveSpec` via
-     `linkedCallHook` with the `W`-independent fallback `hookMemmove` (fixed before `∀ W : CliHooks`,
-     matching `CliGhostHooks.extra` and `GhostRowReplayOn`).
+     `linkedCallHook` with the `W`-independent fallback `hookMemmove`.
    - `memmoveGhostFnK keepR P_real P_sub entry`: wraps the `K`-narrowed contract
      `memmoveSpecK keepR masterMemmoveSpec` via `linkedCallHook` with fallback `hookMemmove`.
-   - `keepR : BitVec 64 → Bool` stays generic throughout, with canonical `.text.b_pre` hull predicate
+   - `keepR : BitVec 64 → Bool` stays generic, with canonical `.text.b_pre` hull predicate
      `keepBPreHull m` (`[m, m + 956)`, `rfl`-identical to `TrapSafeWords.keepBlock m 956`) over the
-     `239`-word (`956` B) C2 `2C` `.text.b_pre` hull `bPreHullWords m resolve padWord` entered at
+     `239`-word (`956` B) `.text.b_pre` hull `bPreHullWords m resolve padWord` entered at
      `m + bPreMemmoveByteOff` (`= m + 660#64`).
-2. **State / Frame / `oracle` / `AllocCallPreserved` / `TrapRetHook` Properties (C11 §8.1 (1)–(2)):**
+2. State, frame, `oracle`, `AllocCallPreserved`, and `TrapRetHook` properties:
    - Unconditional (`0` `hasWords` / `svc` premises): `*_fs`, `*_fsT` (`HookFsTraced IsFsC`),
      `*_symtab`, `*_keepLr_false_of_noException` (`K`), `*_of_keepLr_true`, and
      `trapRetHook_memmoveGhostFn{,K}` (`TrapRetHook L f` when `keepR L = true`).
    - Over the `239`-word `bPreHullWords m resolve padWord` hull: `VmPreserved` (recovered across
      `stripS keepR` via `MemmoveCode.stdMemmoveSpec`), `OomPreserved ∧ PoolPreserved`,
      `.oracle = s0.oracle`, `AllocCallPreserved`, and `.trace = s0.trace`.
-3. **Complete Bounded Consumer `HookOk` Suite (C11 §8.1 (3), Plain / `K` / Budget / `withAlloc`):**
-   - Real `libc.a` `memmove` (`masterMemmoveSpec`) requires `MemmoveArithBound` (`base.toNat + len ≤
-     2^64 ∧ len < 2^63`) on every arm because forward/backward end-pointer calculation `d + n` /
-     `s + n` wraps modulo `2^64` otherwise. PR `#1348` already migrated both non-budget and budget
-     consumer `*Sat` chains to bounded `*MemmoveBounded*` contracts, so §4 provides **plain**,
-     **`K`-narrowed**, **budget (`withVmPreserved`)**, and **`withAlloc A lim` (plain + `K`,
-     non-budget + budget)** theorems across `libcMemmoveBoundedSpec`, `sessionMemmoveBoundedSpec`
-     (+ `keepsFs`), `sessionMemmoveBoundedBudgetSpec` (+ `keepsFs`), `sessionMemmoveBoundedAcpSpec`,
-     and `withAllocVmPreserved (sessionMemmoveBoundedSpec stk)` for arbitrary `stk : Nat` (`memmove`
-     is a `0`-stack frameless leaf).
+3. Bounded consumer `HookOk` suite (plain, `K`, budget, `withAlloc`):
+   Real `libc.a` `memmove` (`masterMemmoveSpec`) requires `MemmoveArithBound` (`base.toNat + len ≤
+   2^64 ∧ len < 2^63`) because forward/backward end-pointer calculation `d + n` / `s + n` wraps
+   modulo `2^64` otherwise. Consumer `*Sat` chains use bounded `*MemmoveBounded*` contracts, so
+   this module proves plain, `K`-narrowed, `withVmPreserved`, and `withAlloc A lim` `HookOk`
+   lemmas across `libcMemmoveBoundedSpec`, `sessionMemmoveBoundedSpec`,
+   `sessionMemmoveBoundedBudgetSpec`, `sessionMemmoveBoundedAcpSpec`, and
+   `withAllocVmPreserved (sessionMemmoveBoundedSpec stk)` for arbitrary `stk : Nat` (`memmove` is
+   a `0`-stack frameless leaf).
 
-## C4 (`H-REV2`), F1, & H1 Architecture Across `L3-b` (`MemmoveGhost{,K}`), `L3-d` (`MemmoveLrTrap`), & Card `c`
+## Architecture of the 3-Entry `.text.b_pre` Hull
 
-- **Why naive C11 §6.2 `hInteriorNoExt` fails on `P_ghost` (`C4 / H-REV2`):**
-  The single-`P_sub` `.text.b_pre` hull `[m, m + 956)` (`239` words on the C2 `2C` layout) spans
-  `memcpy` (`99`w at `m`), `padWord` (`1`w at `m + 396`), `memset` (`65`w at `m + 400`), and
-  `memmove` (`74`w at `m + 660`). On `P_ghost := cliProgExtPlacedAt mpl extFn 617 W`,
-  `resolve mpl "memcpy" = m` has `externAt? = g.memcpy` and `resolve mpl "memset" = m + 400` has
-  `externAt? = g.memset` (`BcmpHookPlaced.lean:251-258, 379-439`), both `some _` when Stage A named
-  ghosts are active; furthermore Stage A's `g.memcpy` / `g.memset` may use narrow `keepMemcpyBlk20`
-  (`396` B) / `keepMemsetBlk21` (`260` B) where `keep L = false` on `[m + 660, m + 956)`.
-- **How `L3-b` (`MemmoveGhost{,K,Replays}`) + `L3-d` (`MemmoveLrTrap`) + card `c` resolve C4, F1, and H1
-  without importing off-train C2 files:**
-  1. **Internal ghost execution (`MemmoveGhostK.f3EmptyMemmoveGhostHook{,K}`):**
-     `f3EmptyMemmoveGhostHook{,K}` instantiates `P_real := MemsetGhostK.emptyStdProg`
-     (`= Program.ofSvc Syscall.standard`), where `emptyStdProg.externAt? pc = none` holds
-     unconditionally by `rfl`. Hence `P_ghost`'s active `g.memcpy` / `g.memset` hooks **never**
-     intercept the internal `memmove → b memcpy` execution inside `f3EmptyMemmoveGhostHook{,K}`, and
-     every `HookOk` (`MemmoveGhostK` §4) and `visitedIn` (`MemmoveGhostReplays` §1) theorem has
-     **zero `P_ghost` extern premises** (**F1**).
-  2. **Post-hook / call-site `CodeLoaded` (**H1**):**
-     In `MemmoveGhostReplays` §§2–4, `hInvLoaded` evaluates
-     `P_sub.CodeLoaded (stripExecOutside keepR u.mem)` strictly at the call-site state `u.mem`
-     (discharged in card `c` via `f3CodeInv_rxWords_codeLoaded_strip` `:203` with
-     `hAlign : addr.toNat % 4 = 0`, and transported to `(f u).mem` via `hInvKf` +
-     `hSteps.keepsFrozen`), never at `s0.mem`.
-  3. **Outer `Steps P_ghost` `lr`-trap (`MemmoveGhostReplays` `_replaysOn_of_lrOut` → `L3-d` → card `c`):**
-     For C11's `GhostRowReplayOn` (`keep_outer := fun _ => false`), `MemmoveGhostReplays` §4 exports
-     `f3EmptyMemmoveGhostHook_replaysOn_of_lrOut` (taking `hLiftVis` for
-     `f3RxSeg_steps_realW_of_visitedIn` `:444` / `StepsVisitedIn` `:428` and trajectory-level
-     `hlr_stub` at `u.pc = stubPc`) plus `bPreHull3_reg_ext_of_entries`, whose premises use the
-     **verbatim shapes** of `Lib2LayoutFacts.lean` @ `a230f2671b` (`origin/stock-lld/c2-startup-dnm`,
-     NOT imported; cf. `keepTextBPre_sub_rxProg` `:114`, `C2ExternTableFacts` `:316`,
-     `f3Row_ghostProg617_externAt_none_of_ne_entry` `:368`) with
-     `rowSyms := ["memmove", "memcpy", "memset"]` and `resolve := libsignalSessionLib.resolve mpl`:
-     - **Off-entry pcs (`F1`, verbatim conclusion shape of
-       `Lib2LayoutFacts.lean:392-402` `f3RowSyms_ghostProg617_externAt_none_of_ne_entries`, backed by
-       `:346-353` `f3RxSeg_ghostProg617_externAt_none_of_ne_entries`, @ `a230f2671b`):**
-       `∀ {pc : BitVec 64}, keepBPreHull m pc = true → pc ∉ ["memmove", "memcpy", "memset"].map resolve → P_ghost.externAt? pc = none`.
-     - **3 hooked entry pcs (`C4`, verbatim lookup shape of
-       `Lib2LayoutFacts.lean:355-362` `f3RxSeg_ghostProg617_externAt_entry` @ `a230f2671b`):**
-       `∀ {sym : String}, sym ∈ ["memmove", "memcpy", "memset"] → P_ghost.externAt? (resolve sym) = extOf sym`.
-       - At `"memmove"`: `TrapRetHook L f` for `keepBPreHull m L = true` via
-         `MemmoveGhostK.trapRetHook_f3EmptyMemmoveGhostHook{,K}` (`MemmoveCode.lean:1110, :1140`).
-       - At `"memcpy"` and `"memset"`: `TrapRetHook L f` for **all** `L : BitVec 64` (even when Stage A
-         `keepMemcpyBlk20 L = false` / `keepMemsetBlk21 L = false`) via
-         `MemmoveCode.trapRetHook_linkedCallHook_of_hookOk_and_lr` (`MemmoveCode.lean:1155`) +
-         `MemcpyGhost.memcpyGhostHook_master_ok` / `MemsetGhost.memsetGhostHook_master_ok` +
-         `MemcpyLrTrap` / `MemsetLrTrap` `99`w/`65`w leaf `lr`-preservation.
-     - **1-word alignment pad at `m + 396` (`padWord := 0#32` on C2 `2C`):**
-       In `Arm64/Trusted/ISA/Decode.lean` (`ISA/README.md:122`), `decode 0#32 = none`, so `fetchMem`
-       at `m + 396` returns `none` and `Step.halt_unmapped` transitions to `.Halted`, contradicted
-       immediately by `hnhalt_sf : sf.status ≠ .Halted` in `L3-d`'s `trap_impossible`.
+The single-`P_sub` `.text.b_pre` hull `[m, m + 956)` (`239` words) spans `memcpy` (`99` words at
+`m`), `padWord` (`1` word at `m + 396`), `memset` (`65` words at `m + 400`), and `memmove` (`74`
+words at `m + 660`). On `P_ghost := cliProgExtPlacedAt mpl extFn 617 W`, `resolve mpl "memcpy"` and
+`resolve mpl "memset"` carry active hooks `g.memcpy` and `g.memset`, so a naive interior-unhooked
+hypothesis fails; moreover `g.memcpy` / `g.memset` may use narrow `keepMemcpyBlk20` (`396` B) /
+`keepMemsetBlk21` (`260` B) predicates where `keep L = false` on `[m + 660, m + 956)`.
+
+This is handled across `MemmoveGhost{,K,Replays}`, `MemmoveLrTrap`, and `MemmoveExtraReplays`:
+1. Internal ghost execution (`MemmoveGhostK.f3EmptyMemmoveGhostHook{,K}`): instantiates
+   `P_real := MemsetGhostK.emptyStdProg` (`= Program.ofSvc Syscall.standard`), where
+   `externAt? pc = none` unconditionally. Thus active `g.memcpy` / `g.memset` hooks never intercept
+   the internal `memmove → b memcpy` jump, and the `HookOk` and `visitedIn` theorems need no
+   `P_ghost` extern premises.
+2. Call-site `CodeLoaded`: in `MemmoveGhostReplays`, `hInvLoaded` evaluates
+   `P_sub.CodeLoaded (stripExecOutside keepR u.mem)` at the call-site state `u.mem` (not `s0.mem`),
+   discharged via `f3CodeInv_rxWords_codeLoaded_strip` and transported across `hSteps.keepsFrozen`.
+3. Outer `Steps P_ghost` `lr`-trap: `MemmoveGhostReplays` exports
+   `f3EmptyMemmoveGhostHook_replaysOn_of_lrOut` and `bPreHull3_reg_ext_of_entries` with premises
+   matching `Lib2LayoutFacts` over `["memmove", "memcpy", "memset"]`:
+   - Off-entry pcs in `keepBPreHull m` have `P_ghost.externAt? pc = none`.
+   - The 3 entry pcs carry `TrapRetHook L`:
+     - `"memmove"` for `keepBPreHull m L = true` via `trapRetHook_f3EmptyMemmoveGhostHook{,K}`;
+     - `"memcpy"` and `"memset"` for all `L` via `trapRetHook_linkedCallHook_of_hookOk_and_lr` and
+       `MemcpyLrTrap` / `MemsetLrTrap` leaf `lr`-preservation.
+   - At the `0#32` alignment pad (`m + 396`), `decode 0#32 = none`, so `fetchMem` returns `none`
+     and `Step.halt_unmapped` transitions to `.Halted`, ruled out by `sf.status ≠ .Halted` in
+     `MemmoveLrTrap.trap_impossible`.
 -/
 
 set_option autoImplicit false
@@ -281,29 +260,17 @@ theorem keepFsTrace_hookMemmove_masterK_ok (keepR : BitVec 64 → Bool) :
 
 /-! ## 2. Master `HookOk` & Pointwise State / Frame / Trap Properties -/
 
-/-- C11 §8.1 obligation (1): `memmoveGhostFn` preserves `State.fs` unconditionally. -/
+/-- `memmoveGhostFn` preserves `State.fs` unconditionally. -/
 theorem memmoveGhostFn_fs
     (keepR : BitVec 64 → Bool) (P_real P_sub : Program) (entry : BitVec 64) (s0 : State) :
     (memmoveGhostFn keepR P_real P_sub entry s0).fs = s0.fs :=
   linkedCallHook_fs keepR P_real P_sub entry masterMemmoveSpec hookMemmove s0
 
-/-- `K`-form C11 §8.1 obligation (1): `memmoveGhostFnK` preserves `State.fs` unconditionally. -/
+/-- `memmoveGhostFnK` preserves `State.fs` unconditionally. -/
 theorem memmoveGhostFnK_fs
     (keepR : BitVec 64 → Bool) (P_real P_sub : Program) (entry : BitVec 64) (s0 : State) :
     (memmoveGhostFnK keepR P_real P_sub entry s0).fs = s0.fs :=
   linkedCallHook_fs keepR P_real P_sub entry (memmoveSpecK keepR masterMemmoveSpec) hookMemmove s0
-
-/-- C11 §8.1 obligation (2): `memmoveGhostFn` satisfies `HookFsTraced IsFsC` unconditionally. -/
-theorem memmoveGhostFn_fsT
-    (keepR : BitVec 64 → Bool) (P_real P_sub : Program) (entry : BitVec 64) :
-    HookFsTraced IsFsC (memmoveGhostFn keepR P_real P_sub entry) :=
-  linkedCallHook_fsT keepR P_real P_sub entry masterMemmoveSpec hookMemmove
-
-/-- `K`-form C11 §8.1 obligation (2): `memmoveGhostFnK` satisfies `HookFsTraced IsFsC` unconditionally. -/
-theorem memmoveGhostFnK_fsT
-    (keepR : BitVec 64 → Bool) (P_real P_sub : Program) (entry : BitVec 64) :
-    HookFsTraced IsFsC (memmoveGhostFnK keepR P_real P_sub entry) :=
-  linkedCallHook_fsT keepR P_real P_sub entry (memmoveSpecK keepR masterMemmoveSpec) hookMemmove
 
 /-- Unconditional `.symtab` preservation for `linkedCallHook` whenever `(fallback s0).symtab = s0.symtab`. -/
 theorem linkedCallHook_symtab_eq {α : Type}
@@ -795,7 +762,7 @@ theorem memmoveGhostFnK_of_keepLr_true
   unfold memmoveGhostFnK linkedCallHook
   simp only [hnAct, ↓reduceDIte]
 
-/-- C4 `TrapRetHook L` (`rfl`-identical to `TrapSafeWords.TrapHook L`) for plain `memmoveGhostFn`
+/-- `TrapRetHook L` (`rfl`-identical to `TrapSafeWords.TrapHook L`) for plain `memmoveGhostFn`
     whenever `keepR L = true` (`MemmoveCode.lean:1110`). -/
 theorem trapRetHook_memmoveGhostFn
     {keepR : BitVec 64 → Bool} {P_real P_sub : Program} {entry L : BitVec 64}
@@ -803,7 +770,7 @@ theorem trapRetHook_memmoveGhostFn
     TrapRetHook L (memmoveGhostFn keepR P_real P_sub entry) :=
   trapRetHook_linkedCallHook_of_keepLr hkeepL (trapRetHook_hookMemmove L)
 
-/-- C4 `TrapRetHook L` (`rfl`-identical to `TrapSafeWords.TrapHook L`) for `K`-narrowed
+/-- `TrapRetHook L` (`rfl`-identical to `TrapSafeWords.TrapHook L`) for `K`-narrowed
     `memmoveGhostFnK` whenever `keepR L = true` (`MemmoveCode.lean:1140`). -/
 theorem trapRetHook_memmoveGhostFnK
     {keepR : BitVec 64 → Bool} {P_real P_sub : Program} {entry L : BitVec 64}
@@ -929,7 +896,7 @@ theorem memmoveGhostFn_allocVmPreserved_sessionBounded_ok (stk : Nat := 0) :
     (memmoveGhostFn_vmPreserved hsvc_real hsvc_sub hreal_no hsub_no hhull hres)
     (memmoveGhostFn_oracle hsvc_real hsvc_sub hreal_no hsub_no hhull hres) stk
 
--- 3.3 Plain `withAlloc A lim` contracts on `memmoveGhostFn` (C11 `GhostRowSpecOk` arms):
+-- 3.3 Plain `withAlloc A lim` contracts on `memmoveGhostFn` (`GhostRowSpecOk` arms):
 
 theorem memmoveGhostFn_master_withAlloc_ok {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
@@ -1030,63 +997,11 @@ end GenericHookOkSuite
 
 /-! ## 4. Concrete `pureWordsProg m (bPreHullWords m resolve padWord)` Satisfiability Witnesses -/
 
-/-- Concrete single-`P_sub` `.text.b_pre` hull instantiation of `memmoveGhostFn_master_ok`
-    witnessing joint satisfiability of all `P_sub` hull premises. -/
-theorem memmoveGhostPure_master_ok
-    {keepR : BitVec 64 → Bool} {P_real : Program} (m : BitVec 64)
-    {resolve : String → BitVec 64} (padWord : BitVec 32 := bPrePadWord)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keepR pc = true → P_real.externAt? pc = none)
-    (hres : resolve "memcpy" = m := by rfl) :
-    HookOk (memmoveGhostPure keepR P_real m resolve padWord) masterMemmoveSpec :=
-  memmoveGhostFn_master_ok hsvc_real rfl hreal_no
-    (pureWordsProg_externAt_none m (bPreHullWords m resolve padWord))
-    (pureWordsProg_bPreHull_hasWords m resolve padWord) hres
+/-! ## 5. Bundling into `GhostRowSpecOk`
 
-/-- Concrete single-`P_sub` `.text.b_pre` hull instantiation of `memmoveGhostFnK_masterK_ok`. -/
-theorem memmoveGhostPureK_masterK_ok
-    {keepR : BitVec 64 → Bool} {P_real : Program} (m : BitVec 64)
-    {resolve : String → BitVec 64} (padWord : BitVec 32 := bPrePadWord)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keepR pc = true → P_real.externAt? pc = none)
-    (hres : resolve "memcpy" = m := by rfl) :
-    HookOk (memmoveGhostPureK keepR P_real m resolve padWord)
-      (memmoveSpecK keepR masterMemmoveSpec) :=
-  memmoveGhostFnK_masterK_ok hsvc_real rfl hreal_no
-    (pureWordsProg_externAt_none m (bPreHullWords m resolve padWord))
-    (pureWordsProg_bPreHull_hasWords m resolve padWord) hres
-
-/-! ## 5. C11 Module A (`GhostRowSpecOk`) Bundling Preview
-
-`GhostRowSpecOk` belongs to C11's Module A
-(`LibsignalBinary/Proofs/SignalSession/Cli/Run/Slots/ExtraGhostSpecs.lean` +
-`ExtraRowSpecs/MemmoveRowSpec.lean`, not landed yet) and is intentionally **not** defined here.
-Once C11 Commit 2B aligns `MemmoveRowSpec`'s three `RowSpec` arms to PR `#1348`'s bounded contracts
-(`libcMemmoveBoundedSpec`, `sessionMemmoveBoundedSpec`, `sessionMemmoveBoundedBudgetSpec`), the
-C11 §8.1 obligations proved above bundle directly into `memmoveGhost_rowSpecOk` in 5 lines:
-
-```lean
-theorem memmoveGhost_rowSpecOk
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    {keepR : BitVec 64 → Bool} {P_real P_sub : Program}
-    {m : BitVec 64} {resolve : String → BitVec 64} {padWord : BitVec 32}
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keepR pc = true → P_real.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hhull : P_sub.hasWords m (bPreHullWords m resolve padWord))
-    (hres : resolve "memcpy" = m := by rfl) :
-    GhostRowSpecOk M A lim "memmove"
-      (memmoveGhostFn keepR P_real P_sub (m + bPreMemmoveByteOff)) :=
-  ⟨memmoveGhostFn_fs keepR P_real P_sub (m + bPreMemmoveByteOff),
-   memmoveGhostFn_fsT keepR P_real P_sub (m + bPreMemmoveByteOff),
-   fun stk => ⟨memmoveGhostFn_libcBounded_ok hsvc_real hsvc_sub hreal_no hsub_no hhull hres stk,
-     memmoveGhostFn_sessionBounded_ok hsvc_real hsvc_sub hreal_no hsub_no hhull hres stk,
-     memmoveGhostFn_sessionBoundedBudget_ok hsvc_real hsvc_sub hreal_no hsub_no hhull hres stk⟩,
-   fun stk => ⟨memmoveGhostFn_libcBounded_withAlloc_ok hsvc_real hsvc_sub hreal_no hsub_no hhull hres A lim stk,
-     memmoveGhostFn_sessionBounded_withAlloc_ok hsvc_real hsvc_sub hreal_no hsub_no hhull hres A lim stk,
-     memmoveGhostFn_sessionBoundedBudget_withAlloc_ok hsvc_real hsvc_sub hreal_no hsub_no hhull hres A lim stk⟩⟩
-```
+`GhostRowSpecOk` lives in `Cli.Run.Slots.ExtraGhostSpecs` with the `"memmove"` row arm in
+`ExtraRowSpecs.MemmoveRowSpec`. The bounded `HookOk` obligations proved in this module are
+assembled into `memmoveGhost_rowSpecOk` in `HooksDehook.MemmoveExtraReplays`.
 -/
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveGhost

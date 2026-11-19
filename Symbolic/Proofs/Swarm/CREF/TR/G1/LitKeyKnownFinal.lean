@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.LitKeyKnown
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.LitKeyKnown -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.CkSafeTR
 import Symbolic.Proofs.Swarm.CREF.TR.G1.LitKeyKnownSInv
@@ -22,7 +22,7 @@ Proves `skippedSeedKnownTR_of_litJunk`: on any reachable composed trace, a logge
 skipped seed attacker-known.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

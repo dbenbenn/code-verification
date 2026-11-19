@@ -9,11 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.Layout
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.Layout -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -166,9 +169,9 @@ theorem add1_lt63_bne_zero {w0 : BitVec 64} (hw0 : w0.toNat < 2 ^ 63) :
   apply bne_iff_ne.mpr
   bv_omega
 
-/-! ## `SepWPp` panic predicate and `Spec.inImage` call combinator -/
+/-! ## `SepWPp` panic predicate and call helpers -/
 
-def KpkPanicAllow (s0 : State) : State → SepProp → Prop :=
+@[expose] def KpkPanicAllow (s0 : State) : State → SepProp → Prop :=
   fun sf P_f => ∀ R, (sf.mem ⊨ P_f ∗ R) →
     sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R
 
@@ -187,56 +190,10 @@ theorem kpk_panic_of_trace {s0 s sf : State} {R' : SepProp}
   rw [htr] at hfail hpref
   exact ⟨hfail, hpref⟩
 
-theorem kpk_call_inImage {prog : Program} {img : Obj.Image} {ret : BitVec 64}
-    {s0 s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    {α : Type} {callee_pc ret_pc : BitVec 64} {spec : Spec α} (x : α)
-    (hcall : subroutine_ok prog callee_pc (spec.inImage img))
-    (hinv : ImgCallInv img s)
-    (hpc : s.pc = callee_pc)
-    (hrun : s.status = .Running)
-    (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hP : P ⊢ spec.pre x s ∗ F)
-    (hexit : ∀ sf code R', sf.status = .Exited code →
-      (sf.mem ⊨ spec.onExit x code s sf ∗ R') → False := by
-      intro _ _ _ _ he; exact not_satisfies_false_sepConj he)
-    (hoom : ∀ sf R', sf.status = .OutOfMemory →
-      (sf.mem ⊨ spec.onOom x s sf ∗ R') → False := by
-      intro _ _ _ ho; exact not_satisfies_false_sepConj ho)
-    (hpanic : ∀ sf R', sf.status = .Panicked →
-      (sf.mem ⊨ spec.onPanic x s sf ∗ R') →
-      allocFailedIn s0 sf ∧ s0.trace <+: sf.trace := by
-      intro _ _ _ hp; exact (not_satisfies_false_sepConj hp).elim)
-    (hnext : ∀ sf : State,
-      ImgCallInv img sf →
-      sf.pc = ret_pc →
-      sf.status = .Running →
-      sf.sp = s.sp →
-      CalleeSavedPreserved s sf →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q (KpkPanicAllow s0)) :
-    SepWPp prog ret s P Q (KpkPanicAllow s0) := by
-  refine SepWPp.call_wpp_frozen hcall (x := x) (F := F) hinv.1 hinv.2 hpc hrun hsp hlr ?_ ?_ ?_ ?_ ?_
-  · intro R hm
-    have hm_pre : s.mem ⊨ (spec.pre x s ∗ F) ∗ R :=
-      Satisfies.mono (sepConj_mono_left hP) hm
-    dsimp only [Spec.inImage]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hinv, by simpa only [sepConj_assoc] using hm_pre⟩
-  · intro sf code R' hex he
-    exact hexit sf code R' hex he
-  · rintro sf hpan ⟨R', hp⟩
-    exact kpkPanicAllow_of_eq (hpanic sf R' hpan hp)
-  · intro sf hpcm hrunm hspm hcsm hfz' hsym'
-    exact hnext sf ⟨hfz', hsym'⟩ hpcm hrunm hspm hcsm
-  · intro sf R' hoom_s ho
-    exact (hoom sf (F ∗ R') hoom_s (by simpa only [Spec.inImage, sepConj_assoc] using ho)).elim
-
-/-! ## Exact 54-cell (`0x1b0`-byte) stack frame partition -/
-
-def kpkSlack3 (sp0 : BitVec 64) : SepProp :=
+@[expose] def kpkSlack3 (sp0 : BitVec 64) : SepProp :=
   cells (sp0 - 432#64) 1 ∗ cells (sp0 - 272#64) 1 ∗ cells (sp0 - 104#64) 1
 
-def kpkSavedRegs (s0 : State) : SepProp :=
+@[expose] def kpkSavedRegs (s0 : State) : SepProp :=
   ((s0.sp - 96#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((s0.sp - 88#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((s0.sp - 80#64) ↦₆₄ s0.readReg64 .x28) ∗
@@ -291,41 +248,41 @@ structure KpkScratch where
   ret9   : BitVec 64
   ret10  : BitVec 64
 
-def slot7At (sp0 : BitVec 64) (sc : KpkScratch) : SepProp :=
+@[expose] def slot7At (sp0 : BitVec 64) (sc : KpkScratch) : SepProp :=
   ((sp0 - 424#64) ↦₆₄ sc.sp08) ∗
   ((sp0 - 416#64) ↦₆₄ sc.sp10_0) ∗ ((sp0 - 408#64) ↦₆₄ sc.sp10_1) ∗
   ((sp0 - 400#64) ↦₆₄ sc.sp10_2) ∗ ((sp0 - 392#64) ↦₆₄ sc.sp10_3) ∗
   ((sp0 - 384#64) ↦₆₄ sc.sp10_4) ∗ ((sp0 - 376#64) ↦₆₄ sc.sp10_5)
 
-def slotSp40At (sp0 : BitVec 64) (sc : KpkScratch) : SepProp :=
+@[expose] def slotSp40At (sp0 : BitVec 64) (sc : KpkScratch) : SepProp :=
   ((sp0 - 368#64) ↦₆₄ sc.sp40_0) ∗ ((sp0 - 360#64) ↦₆₄ sc.sp40_1) ∗
   ((sp0 - 352#64) ↦₆₄ sc.sp40_2) ∗ ((sp0 - 344#64) ↦₆₄ sc.sp40_3) ∗
   ((sp0 - 336#64) ↦₆₄ sc.sp40_4) ∗ ((sp0 - 328#64) ↦₆₄ sc.sp40_5)
 
-def slotSp70At (sp0 : BitVec 64) (sc : KpkScratch) : SepProp :=
+@[expose] def slotSp70At (sp0 : BitVec 64) (sc : KpkScratch) : SepProp :=
   ((sp0 - 320#64) ↦₆₄ sc.sp70_0) ∗ ((sp0 - 312#64) ↦₆₄ sc.sp70_1) ∗
   ((sp0 - 304#64) ↦₆₄ sc.sp70_2) ∗ ((sp0 - 296#64) ↦₆₄ sc.sp70_3) ∗
   ((sp0 - 288#64) ↦₆₄ sc.sp70_4) ∗ ((sp0 - 280#64) ↦₆₄ sc.sp70_5)
 
-def slotDecAt (sp0 : BitVec 64) (sc : KpkScratch) : SepProp :=
+@[expose] def slotDecAt (sp0 : BitVec 64) (sc : KpkScratch) : SepProp :=
   ((sp0 - 264#64) ↦₆₄ sc.dec0) ∗ ((sp0 - 256#64) ↦₆₄ sc.dec1) ∗ ((sp0 - 248#64) ↦₆₄ sc.dec2)
 
-def slotFp90At (sp0 : BitVec 64) (sc : KpkScratch) : SepProp :=
+@[expose] def slotFp90At (sp0 : BitVec 64) (sc : KpkScratch) : SepProp :=
   ((sp0 - 240#64) ↦₆₄ sc.fp90_0) ∗ ((sp0 - 232#64) ↦₆₄ sc.fp90_1) ∗
   ((sp0 - 224#64) ↦₆₄ sc.fp90_2) ∗ ((sp0 - 216#64) ↦₆₄ sc.fp90_3) ∗
   ((sp0 - 208#64) ↦₆₄ sc.fp90_4) ∗ ((sp0 - 200#64) ↦₆₄ sc.fp90_5)
 
-def slotRetHeadAt (sp0 : BitVec 64) (sc : KpkScratch) : SepProp :=
+@[expose] def slotRetHeadAt (sp0 : BitVec 64) (sc : KpkScratch) : SepProp :=
   ((sp0 - 192#64) ↦₆₄ sc.ret0) ∗ ((sp0 - 184#64) ↦₆₄ sc.ret1) ∗
   ((sp0 - 176#64) ↦₆₄ sc.ret2) ∗ ((sp0 - 168#64) ↦₆₄ sc.ret3) ∗
   ((sp0 - 160#64) ↦₆₄ sc.ret4) ∗ ((sp0 - 152#64) ↦₆₄ sc.ret5)
 
-def slotRetTailAt (sp0 : BitVec 64) (sc : KpkScratch) : SepProp :=
+@[expose] def slotRetTailAt (sp0 : BitVec 64) (sc : KpkScratch) : SepProp :=
   ((sp0 - 144#64) ↦₆₄ sc.ret6) ∗ ((sp0 - 136#64) ↦₆₄ sc.ret7) ∗
   ((sp0 - 128#64) ↦₆₄ sc.ret8) ∗ ((sp0 - 120#64) ↦₆₄ sc.ret9) ∗
   ((sp0 - 112#64) ↦₆₄ sc.ret10)
 
-def kpkScratchAt (sp0 : BitVec 64) (sc : KpkScratch) : SepProp :=
+@[expose] def kpkScratchAt (sp0 : BitVec 64) (sc : KpkScratch) : SepProp :=
   slot7At sp0 sc ∗ slotSp40At sp0 sc ∗ slotSp70At sp0 sc ∗
   slotDecAt sp0 sc ∗ slotFp90At sp0 sc ∗ slotRetHeadAt sp0 sc ∗ slotRetTailAt sp0 sc
 
@@ -684,6 +641,5 @@ theorem satisfies_open_frame {m : Memory} {sp0 : BitVec 64} {R : SepProp}
   ac_rfl
 
 /-! ## Shared exit blocks (`+500`, `+480`, `+412`, `+440`, `+216`) -/
-
 
 end CryptoVerification.SignalSession.Cli.Store.KpkGetPoll.Helpers

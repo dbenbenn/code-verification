@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent2StagesPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent2StagesPlacedAuxBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCSBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent2StagesPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent2StagesPlacedAuxBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCSBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Auth.Encode1
 import ProofLib.SepLogic.WPp
@@ -26,7 +26,7 @@ Re-exports Stages 1–3 from `Ct1Sent2StagesPlacedAuxBudget` and proves relocata
 (`es: Vec<u8>`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

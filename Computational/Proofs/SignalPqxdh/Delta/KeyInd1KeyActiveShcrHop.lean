@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyCoupling -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyCoupling
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveShallow -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.Constructions.SampleableType.Measure
+public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyDefs
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSim
 
 /-!
 # Creation-Order One-Key `KeyInd` Hop `G2 -> G3` (`KemShCr`) and `G0 -> G3` Combiner
@@ -85,7 +87,7 @@ namespace Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveShcrHop
 public section
 /-! ## Creation-order `KemShCr` coupling (`G2_1 -> G3`) -/
 
-private noncomputable def runShCrActiveGenSPK (embedTarget : Bool) (S : Setup) (P : Primitives)
+private def runShCrActiveGenSPK (embedTarget : Bool) (S : Setup) (P : Primitives)
     (u : Fin S.N_id) (j : Fin S.N_recv) :
     StateT (KeyIndShCrState S) ProbComp KeyIndResponse := fun hst =>
   if !embedTarget then
@@ -108,16 +110,12 @@ private noncomputable def runShCrActiveGenSPK (embedTarget : Bool) (S : Setup) (
           (fun st bs => { st with spkBundles := bs })
           KeyIndResponse.noneResp KeyIndResponse.bundleResp u j)).run hst
 
-private noncomputable def pqxdhKeyInd1KeyActiveShCrCachedImpl (embedTarget : Bool)
+private def pqxdhKeyInd1KeyActiveShCrCachedImpl (embedTarget : Bool)
     (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndShCrState S) ProbComp)
   | .initPrin u => liftKeyIndShCrBase (pqxdhKeyIndImpl1KeyRo S P (.initPrin u))
   | .genSPK u j => runShCrActiveGenSPK embedTarget S P u j
   | q_other     => pqxdhKeyIndShCrCachedImpl embedTarget S P q_other
-
-private theorem pqxdhKeyInd1KeyActiveShCrCachedImpl_false_eq (S : Setup) (P : Primitives) :
-    pqxdhKeyInd1KeyActiveShCrCachedImpl false S P = pqxdhKeyInd1KeyShCrCachedImpl false S P := by
-  funext q; cases q <;> rfl
 
 private theorem pqxdhKeyInd1KeyActiveShCrCachedImpl_eq_of_ne_genSPK (embedTarget : Bool)
     (S : Setup) (P : Primitives) (q : KeyIndQuery S) (hNotGen : ∀ u j, q ≠ .genSPK u j) :
@@ -125,7 +123,7 @@ private theorem pqxdhKeyInd1KeyActiveShCrCachedImpl_eq_of_ne_genSPK (embedTarget
       pqxdhKeyInd1KeyShCrCachedImpl embedTarget S P q := by
   cases q <;> first | rfl | exact False.elim (hNotGen _ _ rfl)
 
-private noncomputable def tryPauseKeyInd1KeyActiveQuery (S : Setup) (P : Primitives)
+private def tryPauseKeyInd1KeyActiveQuery (S : Setup) (P : Primitives)
     (sIdx : Nat) (gq : KeyIndQuery S)
     (cont : (keyIndSpec S).Range gq → OracleComp (unifSpec + keyIndSpec S) Bool)
     (hst : KeyIndShCrState S) : Option (PausedShCrKem S (KeyIndState S)) :=
@@ -142,7 +140,7 @@ private noncomputable def tryPauseKeyInd1KeyActiveQuery (S : Setup) (P : Primiti
       (finishKeyIndBase S P (.sendNoOPK u i) bundle) sIdx cont hst
   | _, _ => none
 
-private noncomputable def shcrChoosePkKeyInd1KeyActiveAt (S : Setup) (P : Primitives)
+private def shcrChoosePkKeyInd1KeyActiveAt (S : Setup) (P : Primitives)
     (spkOrd sIdx : Nat) (A : KeyIndAdversary S) :
     Bytes → Bytes → ProbComp (Bytes × (Bytes → Bytes → ProbComp Bytes)) :=
   shcrChoosePkGenericAt P ($ᵗ Bool >>= fun secb => pure (KeyIndState.empty S secb))
@@ -1336,7 +1334,7 @@ private theorem simulateQ_pqxdhKeyIndShCrActivePrimImpl1Key (embedTarget : Bool)
     dsimp only [pqxdhKeyIndShCrActivePrimImpl1Key, pqxdhKeyInd1KeyActiveShCrCachedImpl]
     exact simulateQ_pqxdhKeyIndShCrPrimImpl embedTarget S P hP _ hst hV
 
-private noncomputable def toPaused1KeyActive {S : Setup} (P : Primitives)
+private def toPaused1KeyActive {S : Setup} (P : Primitives)
     (d : PausedShCrData S) : PausedShCrKem S (KeyIndState S) where
   bundle := d.bundle
   resume := fun ss kemCt =>

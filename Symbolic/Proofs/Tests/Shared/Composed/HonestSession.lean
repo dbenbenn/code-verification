@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Shared.Composed.Runs
+public import Symbolic.Proofs.Tests.Shared.Composed.Runs -- proof-setup: allow-public-import
 import Init.Data.String.Defs
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
@@ -58,7 +58,7 @@ session with a one-time prekey (`t4Opk .. t7Opk`), together with reachability, e
 `NoCompromise` / `HonestRun` lemmas on their prefixes.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -333,10 +333,10 @@ private theorem encTr_le (tr : ExecTrace) (me : Participant) (stH : Nat) (st : T
   exact le_append_of_le (le_append_of_le (le_append_of_le (le_append_of_le (le_append_of_le
     (le_append_of_le (Trace.append_le _ _) _) _) _) _) _) _
 
-def t1 : ExecTrace := ((PQXDH.registerIdentity "alice").run Trace.nil).2.val
-def t2 : ExecTrace := ((PQXDH.registerIdentity "bob").run t1).2.val
-def t3 : ExecTrace := ((PQXDH.genSignedPrekey "bob" 9).run t2).2.val
-def t4 : ExecTrace := ((PQXDH.genPQPrekey "bob" 9).run t3).2.val
+@[expose] def t1 : ExecTrace := ((PQXDH.registerIdentity "alice").run Trace.nil).2.val
+@[expose] def t2 : ExecTrace := ((PQXDH.registerIdentity "bob").run t1).2.val
+@[expose] def t3 : ExecTrace := ((PQXDH.genSignedPrekey "bob" 9).run t2).2.val
+@[expose] def t4 : ExecTrace := ((PQXDH.genPQPrekey "bob" 9).run t3).2.val
 
 private theorem t1_eq : t1 = registerIdentityTr Trace.nil "alice" :=
   (Runs.registerIdentity (by unfold PQXDH.isRegisteredB; rw [someEventB_nil]; rfl)).2
@@ -430,9 +430,9 @@ private theorem t4_facts :
   · rw [t4_eq]; dsimp only [genPQPrekeyTr]; rw [t3_length]
     exact at?_append_at _ _ (by simp only [append_len, t3_length])
 
-def bh1 : BundleHandles := { spk := 14, spkSig := 15, pqpk := 20, pqpkSig := 21, opk := none }
+@[expose] def bh1 : BundleHandles := { spk := 14, spkSig := 15, pqpk := 20, pqpkSig := 21, opk := none }
 
-def t5 : ExecTrace := aliceTr t4 "alice" "bob" ikA (dhPk ikB) (dhPk spkB) (kemPk pqskB)
+@[expose] def t5 : ExecTrace := aliceTr t4 "alice" "bob" ikA (dhPk ikB) (dhPk spkB) (kemPk pqskB)
 
 theorem t5_length : t5.length = 31 := by
   dsimp only [t5, aliceTr, aliceTrOpt]; simp only [append_len, t4_length]
@@ -445,14 +445,14 @@ theorem t5_runs : Runs (Composed.aliceStart "alice" "bob" 4 6 bh1) t4 30 t5 := b
 abbrev o1 : AliceHandshakeOut := aliceOut t4 ikA (dhPk ikB) (dhPk spkB) (kemPk pqskB)
 abbrev keys1 : HandshakeKeys := o1.keys
 abbrev dhsA : Bytes := rnd 24 32
-def stA0 : TRState := aliceSt "bob" o1 dhsA
+@[expose] def stA0 : TRState := aliceSt "bob" o1 dhsA
 
 abbrev m0 : Bytes := rnd 31 32
 abbrev coins0 : Bytes := rnd 32 32
-def key0 : Bytes := (Spqr.spqrSend stA0.spqr coins0).2.1
-def pqm0 : Bytes := (Spqr.spqrSend stA0.spqr coins0).2.2
-def t6 : ExecTrace := encTr t5 "alice" 30 stA0 key0
-def stA1 : TRState := encSt stA0 coins0
+@[expose] def key0 : Bytes := (Spqr.spqrSend stA0.spqr coins0).2.1
+@[expose] def pqm0 : Bytes := (Spqr.spqrSend stA0.spqr coins0).2.2
+@[expose] def t6 : ExecTrace := encTr t5 "alice" 30 stA0 key0
+@[expose] def stA1 : TRState := encSt stA0 coins0
 
 theorem t6_length : t6.length = 38 := by
   dsimp only [t6, encTr]; simp only [append_len, t5_length]
@@ -473,10 +473,10 @@ theorem t6_runs : Runs (TripleRatchet.messageEncrypt "alice" 30 32 33) t5 37 t6 
 
 abbrev m1 : Bytes := rnd 38 32
 abbrev coins1 : Bytes := rnd 39 32
-def key1 : Bytes := (Spqr.spqrSend stA1.spqr coins1).2.1
-def pqm1 : Bytes := (Spqr.spqrSend stA1.spqr coins1).2.2
-def t7 : ExecTrace := encTr t6 "alice" 36 stA1 key1
-def stA2 : TRState := encSt stA1 coins1
+@[expose] def key1 : Bytes := (Spqr.spqrSend stA1.spqr coins1).2.1
+@[expose] def pqm1 : Bytes := (Spqr.spqrSend stA1.spqr coins1).2.2
+@[expose] def t7 : ExecTrace := encTr t6 "alice" 36 stA1 key1
+@[expose] def stA2 : TRState := encSt stA1 coins1
 
 theorem t7_length : t7.length = 45 := by
   dsimp only [t7, encTr]; simp only [append_len, t6_length]
@@ -495,22 +495,22 @@ theorem t7_runs : Runs (TripleRatchet.messageEncrypt "alice" 36 32 40) t6 44 t7 
   exact runs_cast (Runs.messageEncrypt (tr := t6) (stH := 36) (pqH := 40) (st := stA1) (pq := key1) hst
     (by decide) hpq) (by rw [t6_length]) rfl
 
-def kh1 : BobKeyHandles := { ik := 9, spk := 13, pqspk := 19, opk := none }
-def mh1 : PreKeyMsgHandles := { ek := 25, ct := 26, msg := 37 }
+@[expose] def kh1 : BobKeyHandles := { ik := 9, spk := 13, pqspk := 19, opk := none }
+@[expose] def mh1 : PreKeyMsgHandles := { ek := 25, ct := 26, msg := 37 }
 abbrev dhsB1 : Bytes := rnd 45 32
-def stB00 : TRState := bobSt0 "alice" ikB spkB (dhPk ikA) keys1 (encSig stA0 coins0 key0 m0)
-def stB0' : TRState := (ratchetState stB00 (dhPk dhsA) dhsB1).1
-def cB : RecvChain := (ratchetState stB00 (dhPk dhsA) dhsB1).2
-def cB' : RecvChain := { cB with chainKey := (kdfCk cB.chainKey).1, index := 1 }
-def seedB0 : Bytes := (kdfCk cB.chainKey).2
-def stB1 : TRState :=
+@[expose] def stB00 : TRState := bobSt0 "alice" ikB spkB (dhPk ikA) keys1 (encSig stA0 coins0 key0 m0)
+@[expose] def stB0' : TRState := (ratchetState stB00 (dhPk dhsA) dhsB1).1
+@[expose] def cB : RecvChain := (ratchetState stB00 (dhPk dhsA) dhsB1).2
+@[expose] def cB' : RecvChain := { cB with chainKey := (kdfCk cB.chainKey).1, index := 1 }
+@[expose] def seedB0 : Bytes := (kdfCk cB.chainKey).2
+@[expose] def stB1 : TRState :=
   { stB0' with recv := [cB'], spqr := recvSt (Spqr.spqrInit keys1.pqr spqrB2A) pqm0 }
 
 theorem recv8 : Spqr.spqrRecv stB0'.spqr pqm0 1 =
     some (recvSt (Spqr.spqrInit keys1.pqr spqrB2A) pqm0, key0) :=
   spqrRecv_init_agree keys1.pqr coins0 pqm0 .b2a (bytesToLiteral_spqrSendMsg _ _)
 
-def t8 : ExecTrace :=
+@[expose] def t8 : ExecTrace :=
   let tr1 := (t7.append (RndE 32)).append (NetE key0)
   let tr5 := (((tr1.append (EvP (.BobDone "bob" "alice" (dhPk ikB) (dhPk ikA) (dhPk spkB)
       (kemPk pqskB) none o1.ek o1.ct keys1))).append
@@ -573,14 +573,14 @@ theorem t8_runs : Runs (Composed.bobStart "bob" "alice" kh1 1 mh1 33 1) t7 53 t8
     (by rw [skipTr_zero _ _ _ _ _ _ rfl]; simp only [append_len, t7_length])
     (by rw [skipTr_zero _ _ _ _ _ _ rfl]; dsimp only [t8]; simp only [append_len, t7_length]; rfl)
 
-def cB'' : RecvChain := { cB' with chainKey := (kdfCk cB'.chainKey).1, index := 2 }
-def seedB1 : Bytes := (kdfCk cB'.chainKey).2
-def stB2 : TRState := { stB1 with recv := [cB''], spqr := recvSt stB1.spqr pqm1 }
+@[expose] def cB'' : RecvChain := { cB' with chainKey := (kdfCk cB'.chainKey).1, index := 2 }
+@[expose] def seedB1 : Bytes := (kdfCk cB'.chainKey).2
+@[expose] def stB2 : TRState := { stB1 with recv := [cB''], spqr := recvSt stB1.spqr pqm1 }
 
 theorem recv9 : Spqr.spqrRecv stB1.spqr pqm1 2 = some (stB2.spqr, recvKey stB1.spqr pqm1) :=
   spqrRecv_not_init _ _ _ (recvSt_not_init _ _) (bytesToLiteral_spqrSendMsg _ _)
 
-def t9 : ExecTrace :=
+@[expose] def t9 : ExecTrace :=
   let tr0 := t8.append (NetE (recvKey stB1.spqr pqm1))
   ((tr0.append (EvT (.Received "bob" "alice" (dhPk dhsA) 1 m1))).append
     (EvT (.MessageKey (stB1.sessionInfo "bob") .receiver seedB1 key1 1 2 53))).append
@@ -627,10 +627,10 @@ theorem t9_runs : Runs (TripleRatchet.messageDecrypt "bob" 53 44 40 2) t8 57 t9 
 
 abbrev m2 : Bytes := rnd 58 32
 abbrev coins2 : Bytes := rnd 59 32
-def key2 : Bytes := (Spqr.spqrSend stB2.spqr coins2).2.1
-def pqm2 : Bytes := (Spqr.spqrSend stB2.spqr coins2).2.2
-def t10 : ExecTrace := encTr t9 "bob" 57 stB2 key2
-def stB3 : TRState := encSt stB2 coins2
+@[expose] def key2 : Bytes := (Spqr.spqrSend stB2.spqr coins2).2.1
+@[expose] def pqm2 : Bytes := (Spqr.spqrSend stB2.spqr coins2).2.2
+@[expose] def t10 : ExecTrace := encTr t9 "bob" 57 stB2 key2
+@[expose] def stB3 : TRState := encSt stB2 coins2
 
 theorem t10_length : t10.length = 65 := by
   dsimp only [t10, encTr]; simp only [append_len, t9_length]
@@ -647,17 +647,17 @@ theorem t10_runs : Runs (TripleRatchet.messageEncrypt "bob" 57 32 60) t9 64 t10 
     (by decide) hpq) (by rw [t9_length]) rfl
 
 abbrev dhsA2 : Bytes := rnd 65 32
-def stA3' : TRState := (ratchetState stA2 (dhPk dhsB1) dhsA2).1
-def cA1 : RecvChain := (ratchetState stA2 (dhPk dhsB1) dhsA2).2
-def cA1' : RecvChain := { cA1 with chainKey := (kdfCk cA1.chainKey).1, index := 1 }
-def cA0 : RecvChain := { ratchetKey := dhPk spkB, chainKey := keys1.ck, index := 0, rIdx := 1 }
-def stA4 : TRState := { stA3' with recv := [cA0, cA1'], spqr := recvSt stA2.spqr pqm2 }
-def seedA1 : Bytes := (kdfCk cA1.chainKey).2
+@[expose] def stA3' : TRState := (ratchetState stA2 (dhPk dhsB1) dhsA2).1
+@[expose] def cA1 : RecvChain := (ratchetState stA2 (dhPk dhsB1) dhsA2).2
+@[expose] def cA1' : RecvChain := { cA1 with chainKey := (kdfCk cA1.chainKey).1, index := 1 }
+@[expose] def cA0 : RecvChain := { ratchetKey := dhPk spkB, chainKey := keys1.ck, index := 0, rIdx := 1 }
+@[expose] def stA4 : TRState := { stA3' with recv := [cA0, cA1'], spqr := recvSt stA2.spqr pqm2 }
+@[expose] def seedA1 : Bytes := (kdfCk cA1.chainKey).2
 
 theorem recv11 : Spqr.spqrRecv stA3'.spqr pqm2 1 = some (stA4.spqr, recvKey stA2.spqr pqm2) :=
   spqrRecv_not_init _ _ _ (spqrSend_st_not_init _ _) (bytesToLiteral_spqrSendMsg _ _)
 
-def t11 : ExecTrace :=
+@[expose] def t11 : ExecTrace :=
   let tr1 := (((t10.append (RndE 32)).append (NetE (recvKey stA2.spqr pqm2))).append
     (EvT (.DHRatchet "alice" "bob" (dhPk dhsB1) (dhPk dhsA2)))).append
     (EvT (.HonestDH (stA3'.sessionInfo "alice") dhsA2 1))
@@ -719,8 +719,8 @@ theorem t11_runs : Runs (TripleRatchet.messageDecrypt "alice" 43 64 60 1) t10 71
     (by rw [skipTr_zero _ _ _ _ _ _ rfl]; simp only [append_len, t10_length])
     (by rw [skipTr_zero _ _ _ _ _ _ rfl]; rfl)
 
-def t12 : ExecTrace := exposeCkrTr t11 "alice" stA4 cA0
-def t13 : ExecTrace := exposeCksTr t12 "alice" stA4
+@[expose] def t12 : ExecTrace := exposeCkrTr t11 "alice" stA4 cA0
+@[expose] def t13 : ExecTrace := exposeCksTr t12 "alice" stA4
 
 theorem t12_length : t12.length = 74 := by
   dsimp only [t12, exposeCkrTr]; simp only [append_len, t11_length]
@@ -744,10 +744,10 @@ theorem t13_runs : Runs (TripleRatchet.exposeKey "alice" 71 .cks) t12 75 t13 := 
 
 abbrev m3 : Bytes := rnd 76 32
 abbrev coins3 : Bytes := rnd 77 32
-def key3 : Bytes := (Spqr.spqrSend stA4.spqr coins3).2.1
-def pqm3 : Bytes := (Spqr.spqrSend stA4.spqr coins3).2.2
-def t14 : ExecTrace := encTr t13 "alice" 71 stA4 key3
-def stA5 : TRState := encSt stA4 coins3
+@[expose] def key3 : Bytes := (Spqr.spqrSend stA4.spqr coins3).2.1
+@[expose] def pqm3 : Bytes := (Spqr.spqrSend stA4.spqr coins3).2.2
+@[expose] def t14 : ExecTrace := encTr t13 "alice" 71 stA4 key3
+@[expose] def stA5 : TRState := encSt stA4 coins3
 
 theorem t14_length : t14.length = 83 := by
   dsimp only [t14, encTr]; simp only [append_len, t13_length]
@@ -767,16 +767,16 @@ theorem t14_runs : Runs (TripleRatchet.messageEncrypt "alice" 71 32 78) t13 82 t
     (by decide) hpq) (by rw [t13_length]) rfl
 
 abbrev dhsB2 : Bytes := rnd 83 32
-def stB4' : TRState := (ratchetState stB3 (dhPk dhsA2) dhsB2).1
-def cB2 : RecvChain := (ratchetState stB3 (dhPk dhsA2) dhsB2).2
-def cB2' : RecvChain := { cB2 with chainKey := (kdfCk cB2.chainKey).1, index := 1 }
-def stB5 : TRState := { stB4' with recv := [cB'', cB2'], spqr := recvSt stB3.spqr pqm3 }
-def seedB3 : Bytes := (kdfCk cB2.chainKey).2
+@[expose] def stB4' : TRState := (ratchetState stB3 (dhPk dhsA2) dhsB2).1
+@[expose] def cB2 : RecvChain := (ratchetState stB3 (dhPk dhsA2) dhsB2).2
+@[expose] def cB2' : RecvChain := { cB2 with chainKey := (kdfCk cB2.chainKey).1, index := 1 }
+@[expose] def stB5 : TRState := { stB4' with recv := [cB'', cB2'], spqr := recvSt stB3.spqr pqm3 }
+@[expose] def seedB3 : Bytes := (kdfCk cB2.chainKey).2
 
 theorem recv15 : Spqr.spqrRecv stB4'.spqr pqm3 3 = some (stB5.spqr, recvKey stB3.spqr pqm3) :=
   spqrRecv_not_init _ _ _ (spqrSend_st_not_init _ _) (bytesToLiteral_spqrSendMsg _ _)
 
-def t15 : ExecTrace :=
+@[expose] def t15 : ExecTrace :=
   let tr1 := (((t14.append (RndE 32)).append (NetE (recvKey stB3.spqr pqm3))).append
     (EvT (.DHRatchet "bob" "alice" (dhPk dhsA2) (dhPk dhsB2)))).append
     (EvT (.HonestDH (stB4'.sessionInfo "bob") dhsB2 2))
@@ -843,7 +843,7 @@ theorem t15_runs : Runs (TripleRatchet.messageDecrypt "bob" 63 82 78 3) t14 89 t
     (by rw [skipTr_zero _ _ _ _ _ _ rfl]; rfl)
 
 /-- The 90-entry honest session trace without a one-time prekey. -/
-def wTr : ExecTrace := t15
+@[expose] def wTr : ExecTrace := t15
 
 theorem length_wTr : wTr.length = 90 := t15_length
 
@@ -1198,7 +1198,7 @@ theorem wTr_cks_sent_at : wTr.MessageSentAt stA4.cks 75 := by
 /-! ### No PQXDH compromise on `wTr` and its prefixes -/
 
 /-- The trace indices whose `PQXDHEvent` satisfies `p`. -/
-def evIdx (tr : ExecTrace) (p : PQXDHEvent → Bool) : List Nat :=
+@[expose] def evIdx (tr : ExecTrace) (p : PQXDHEvent → Bool) : List Nat :=
   (List.range tr.length).filter fun i =>
     match tr.getEventAt PQXDHEvent i with
     | some e => p e
@@ -1218,7 +1218,7 @@ theorem not_logged {tr : ExecTrace} {p : PQXDHEvent → Bool} (hidx : evIdx tr p
   exact List.not_mem_nil this
 
 /-- Compromise and break events. -/
-def isCompromise : PQXDHEvent → Bool
+@[expose] def isCompromise : PQXDHEvent → Bool
   | .CompromisedIK .. | .CompromisedSPK .. | .CompromisedPQSPK .. | .CompromisedOPK ..
   | .BrokenDH | .BrokenKEM => true
   | _ => false
@@ -1363,7 +1363,7 @@ theorem t8_honestRun : HonestRun false t8 :=
 
 abbrev opkB : Bytes := rnd 22 32
 
-def t4Opk : ExecTrace := genOneTimePrekeyTr t4 "bob"
+@[expose] def t4Opk : ExecTrace := genOneTimePrekeyTr t4 "bob"
 
 theorem t4Opk_length : t4Opk.length = 26 := by
   dsimp only [t4Opk, genOneTimePrekeyTr]; simp only [append_len, t4_length]
@@ -1371,10 +1371,10 @@ theorem t4Opk_length : t4Opk.length = 26 := by
 theorem t4Opk_runs : Runs (PQXDH.genOneTimePrekey "bob") t4 24 t4Opk :=
   runs_cast (Runs.genOneTimePrekey t4 "bob") (by rw [t4_length]) rfl
 
-def bhOpk : BundleHandles :=
+@[expose] def bhOpk : BundleHandles :=
   { spk := 14, spkSig := 15, pqpk := 20, pqpkSig := 21, opk := some 25 }
 
-def t5Opk : ExecTrace :=
+@[expose] def t5Opk : ExecTrace :=
   aliceTrOpk t4Opk "alice" "bob" ikA (dhPk ikB) (dhPk spkB) (kemPk pqskB) (dhPk opkB)
 
 theorem t5Opk_length : t5Opk.length = 35 := by
@@ -1399,14 +1399,14 @@ abbrev oOpk : AliceHandshakeOut :=
   aliceOutOpk t4Opk ikA (dhPk ikB) (dhPk spkB) (kemPk pqskB) (dhPk opkB)
 abbrev keysOpk : HandshakeKeys := oOpk.keys
 abbrev dhsAOpk : Bytes := rnd 28 32
-def stA0Opk : TRState := aliceSt "bob" oOpk dhsAOpk
+@[expose] def stA0Opk : TRState := aliceSt "bob" oOpk dhsAOpk
 
 abbrev m0Opk : Bytes := rnd 35 32
 abbrev coins0Opk : Bytes := rnd 36 32
-def key0Opk : Bytes := (Spqr.spqrSend stA0Opk.spqr coins0Opk).2.1
-def pqm0Opk : Bytes := (Spqr.spqrSend stA0Opk.spqr coins0Opk).2.2
-def t6Opk : ExecTrace := encTr t5Opk "alice" 34 stA0Opk key0Opk
-def stA1Opk : TRState := encSt stA0Opk coins0Opk
+@[expose] def key0Opk : Bytes := (Spqr.spqrSend stA0Opk.spqr coins0Opk).2.1
+@[expose] def pqm0Opk : Bytes := (Spqr.spqrSend stA0Opk.spqr coins0Opk).2.2
+@[expose] def t6Opk : ExecTrace := encTr t5Opk "alice" 34 stA0Opk key0Opk
+@[expose] def stA1Opk : TRState := encSt stA0Opk coins0Opk
 
 theorem t6Opk_length : t6Opk.length = 42 := by
   dsimp only [t6Opk, encTr]; simp only [append_len, t5Opk_length]
@@ -1426,23 +1426,23 @@ theorem t6Opk_runs : Runs (TripleRatchet.messageEncrypt "alice" 34 32 37) t5Opk 
   exact runs_cast (Runs.messageEncrypt (tr := t5Opk) (stH := 34) (pqH := 37) (st := stA0Opk) (pq := key0Opk)
     hst (by decide) hpq) (by rw [t5Opk_length]) rfl
 
-def khOpk : BobKeyHandles := { ik := 9, spk := 13, pqspk := 19, opk := some 24 }
-def mhOpk : PreKeyMsgHandles := { ek := 29, ct := 30, msg := 41 }
+@[expose] def khOpk : BobKeyHandles := { ik := 9, spk := 13, pqspk := 19, opk := some 24 }
+@[expose] def mhOpk : PreKeyMsgHandles := { ek := 29, ct := 30, msg := 41 }
 abbrev dhsB1Opk : Bytes := rnd 42 32
-def stB00Opk : TRState :=
+@[expose] def stB00Opk : TRState :=
   bobSt0 "alice" ikB spkB (dhPk ikA) keysOpk (encSig stA0Opk coins0Opk key0Opk m0Opk)
-def stB0'Opk : TRState := (ratchetState stB00Opk (dhPk dhsAOpk) dhsB1Opk).1
-def cBOpk : RecvChain := (ratchetState stB00Opk (dhPk dhsAOpk) dhsB1Opk).2
-def cB'Opk : RecvChain := { cBOpk with chainKey := (kdfCk cBOpk.chainKey).1, index := 1 }
-def seedB0Opk : Bytes := (kdfCk cBOpk.chainKey).2
-def stB1Opk : TRState :=
+@[expose] def stB0'Opk : TRState := (ratchetState stB00Opk (dhPk dhsAOpk) dhsB1Opk).1
+@[expose] def cBOpk : RecvChain := (ratchetState stB00Opk (dhPk dhsAOpk) dhsB1Opk).2
+@[expose] def cB'Opk : RecvChain := { cBOpk with chainKey := (kdfCk cBOpk.chainKey).1, index := 1 }
+@[expose] def seedB0Opk : Bytes := (kdfCk cBOpk.chainKey).2
+@[expose] def stB1Opk : TRState :=
   { stB0'Opk with recv := [cB'Opk], spqr := recvSt (Spqr.spqrInit keysOpk.pqr spqrB2A) pqm0Opk }
 
 theorem recv7Opk : Spqr.spqrRecv stB0'Opk.spqr pqm0Opk 1 =
     some (recvSt (Spqr.spqrInit keysOpk.pqr spqrB2A) pqm0Opk, key0Opk) :=
   spqrRecv_init_agree keysOpk.pqr coins0Opk pqm0Opk .b2a (bytesToLiteral_spqrSendMsg _ _)
 
-def t7Opk : ExecTrace :=
+@[expose] def t7Opk : ExecTrace :=
   let tr1 := ((t6Opk.append (RndE 32)).append (NetE key0Opk)).append
     (EvP (.OPKUsed "bob" (dhPk opkB)))
   let tr5 := (((tr1.append (EvP (.BobDone "bob" "alice" (dhPk ikB) (dhPk ikA) (dhPk spkB)

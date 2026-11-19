@@ -19,16 +19,16 @@ Defines `PrintableAsciiArg`, `ArgvShapeOk`, `ArgvFitsInitialStack`, `LoadablePat
 `CliRejectsMalformedCommandLine` over `LibsignalBinary.Specifications.SignalSession.Run`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 namespace CryptoVerification.SignalSession
 
 /-- Nonempty printable/NUL-free ASCII string (`0 < c.toNat < 128`), preserved losslessly by `bytesOfString` and C-string parsing. -/
-def PrintableAsciiArg (s : String) : Prop := s ≠ "" ∧ ∀ c ∈ s.toList, 0 < c.toNat ∧ c.toNat < 128
+@[expose] def PrintableAsciiArg (s : String) : Prop := s ≠ "" ∧ ∀ c ∈ s.toList, 0 < c.toNat ∧ c.toNat < 128
 
 /-- Boolean recognizer for valid CLI command-line shapes (`keygen _ _`, `init _ _`, `send _`, `recv _`). -/
-def ArgvShapeOk : List String → Bool
+@[expose] def ArgvShapeOk : List String → Bool
   | ["keygen", _, _] => true
   | ["init", _, _] => true
   | ["send", _] => true
@@ -37,15 +37,15 @@ def ArgvShapeOk : List String → Bool
 
 /-- Bounds the serialized `argv` strings (with NUL terminators) and pointer table to 16 KiB
 on the CLI's 8 MiB stack (`processInputs`, DEV-CLI7). -/
-def ArgvFitsInitialStack (argv : List String) : Prop :=
+@[expose] def ArgvFitsInitialStack (argv : List String) : Prop :=
   (argv.map fun a => a.length + 1 + 8).sum ≤ 16384
 
 /-- Relative path without leading `/` or `..` segments, accepted by `ElfImage.loadState`. -/
-def LoadablePath (p : String) : Prop := Arm64.hasLeadingSlash p = false ∧ Arm64.hasDotDot p = false
+@[expose] def LoadablePath (p : String) : Prop := Arm64.hasLeadingSlash p = false ∧ Arm64.hasDotDot p = false
 
 /-- Specification that malformed command lines (`ArgvShapeOk i.argv = false`) on loadable
 inputs within stack bounds exit with code `2`, empty stdout, and unchanged files. -/
-def CliRejectsMalformedCommandLine (run : CliRun) : Prop :=
+@[expose] def CliRejectsMalformedCommandLine (run : CliRun) : Prop :=
   ∀ i : Inputs, (∀ a ∈ i.argv, PrintableAsciiArg a) → ArgvFitsInitialStack i.argv → ArgvShapeOk i.argv = false →
     (∀ d ∈ i.dirs, LoadablePath d) → (∀ f ∈ i.files, LoadablePath f.1) →
     (∀ f ∈ i.files, f.1 ∉ i.dirs) →

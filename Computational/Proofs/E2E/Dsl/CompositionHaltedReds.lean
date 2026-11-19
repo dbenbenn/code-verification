@@ -16,10 +16,10 @@ public import Computational.Proofs.E2E.Dsl.CompositionHaltedWitness -- proof-set
 public import Computational.Proofs.E2E.Dsl.HaltedDrSessionSim -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.HaltedDrSessionSimSteps -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.HaltedPrefixSubprogs -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.KindRedHalted -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.KindRedHalted
 public import Computational.Proofs.E2E.Dsl.KindRedHaltedInst -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.M3PqxdhSize -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.PrefixRedHalted -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.M3PqxdhSize
+import Computational.Proofs.E2E.Dsl.PrefixRedHalted
 public import Computational.Proofs.E2E.Dsl.PrefixRedHaltedInst -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
@@ -74,19 +74,6 @@ open Computational.Proofs.E2E.Dsl.CompositionHaltedWitness (HaltedSimInv
   e2ePerStepWeightedFactor params_bits_le_budget)
 
 private theorem maxForwardJumps_eq : maxForwardJumps = 25000 := rfl
-
-private theorem bits_qTotal_succ_le_budget
-    (S : SignalPqxdh.Setup) (b : SignalPqxdh.QueryBudget) (qStart qDR qInst qep ℓ : ℕ) :
-    bits (b.q_total + 1) ≤ bits (bhE2ECostBudget S b qStart qDR qInst qep ℓ) := by
-  apply bits_mono
-  rw [bhE2ECostBudget_eq_factors]
-  set W := e2ePerStepWeightedFactor S b qStart qInst qep ℓ
-  have h1 : b.q_total + 1 ≤ 1 * W := by
-    dsimp only [W, e2ePerStepWeightedFactor]
-    omega
-  have h2 : 1 * W ≤ 2 ^ 10 * (b.q_total + qStart + qDR + 1) * W :=
-    Nat.mul_le_mul_right W (by omega)
-  omega
 
 private theorem prefix_endpointCost_le
     (S : SignalPqxdh.Setup) (b : SignalPqxdh.QueryBudget) (qStart qInst qep ℓ : ℕ) :
@@ -245,14 +232,6 @@ private def haltedLocalSmKindStep {Pt : Type} (S : SignalPqxdh.Setup) (ℓ : ℕ
       (e2eKeyIndTargetIface S ℓ Pt) rfl b qSt qI qep σHE idxE sqE ρ _ i sq
       hσH hidx hsq hInstLen hMeta hCorr hRev hPrin hSess hEp hTrLen
       (fun st hst => ⟨(hTrInv st hst).1, (hTrInv st hst).2, (hTrInv st hst).3, (hTrInv st hst).4⟩)
-
-private def kindSubprogramsHalted {Pt : Type} (S : SignalPqxdh.Setup) (ℓ : ℕ)
-    (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem)
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) (b : SignalPqxdh.QueryBudget) :
-    KindRedHalted.HaltedKindSubprograms S (Pt := Pt) ℓ P C K decT encT
-      (KemFailSessionTrack C.F Bytes) :=
-  KindRedHaltedInst.mkKindSubprogramsHaltedClamped
-    (haltedLocalSmKindStep (Pt := Pt) S ℓ P C K decT encT) b
 
 @[expose] def prefixSubprogramsHalted {Pt : Type} (S : SignalPqxdh.Setup) (ℓ : ℕ)
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem)

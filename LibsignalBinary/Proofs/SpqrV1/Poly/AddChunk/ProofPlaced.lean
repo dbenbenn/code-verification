@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.LoopPlaced
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::add_chunk`: Relocatable Main Proof
@@ -21,7 +22,7 @@ Relocatable `[LibsignalPlacement]` proofs of `bsearchReplace`, `bsearchPush`, th
 outer loop, `add_chunk_bsearch_placed_ok_ext`, and `add_chunk_placed_ok_ext` on Block `419`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.AddChunk
 

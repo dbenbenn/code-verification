@@ -11,16 +11,16 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged3
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged2PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkReceivedCt1SampledPlaced
@@ -32,6 +32,10 @@ import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 public meta import Lean -- shake: keep
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged1Placed
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
 # `<States>::recv` (Block `332`) — `.ct1Acknowledged` Arm, Part 3 Aux (Budget-Threaded)
@@ -41,7 +45,7 @@ Allocation-event envelopes (`StatesRecvCt1AcknowledgedPreEnv` / `StatesRecvCt1Ac
 for `.ct1Acknowledged`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -123,7 +127,7 @@ attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Extract the concrete `Chunk` from the `.ek` and `.ekCt1Ack` payload arms of `<States>::recv`
     on `.ct1Acknowledged`, and `none` on all other payload variants. -/
-def ct1AckPayloadChunk? (p : MessagePayload spqrPolyApi) : Option Chunk :=
+@[expose] def ct1AckPayloadChunk? (p : MessagePayload spqrPolyApi) : Option Chunk :=
   match p with
   | .ek chunk => some chunk
   | .ekCt1Ack chunk => some chunk
@@ -140,7 +144,7 @@ theorem ct1AckPayloadChunk?_eq_none_of_ne {p : MessagePayload spqrPolyApi}
 /-- Exact allocation-phase prefix envelope of `<Ct1Acknowledged>::recv_ek_chunk` (`Block 349`)
     on `(st, chunk)`: `add_chunk` on `st.receiving_ek`, followed by `decoded_message`, followed by
     `Ct1AckRecvEkTailPreEnv`. -/
-def Ct1AcknowledgedChunkPreEnv {F : ShaCompress} (K : MlKem)
+@[expose] def Ct1AcknowledgedChunkPreEnv {F : ShaCompress} (K : MlKem)
     (st : Chunked.SendCt.Ct1Acknowledged spqrPolyApi (spqrAuthApi F))
     (chunk : Chunk) (evs : List AllocEvent) : Prop :=
   let dec1 := addChunkTotal st.receiving_ek chunk
@@ -151,7 +155,7 @@ def Ct1AcknowledgedChunkPreEnv {F : ShaCompress} (K : MlKem)
 
 /-- Postcondition envelope of `<Ct1Acknowledged>::recv_ek_chunk` (`Block 349`) on `(st, chunk)`:
     `Ct1AcknowledgedChunkPreEnv K st chunk` followed by `FreeOnlyEvs`. -/
-def Ct1AcknowledgedChunkPostEnv {F : ShaCompress} (K : MlKem)
+@[expose] def Ct1AcknowledgedChunkPostEnv {F : ShaCompress} (K : MlKem)
     (st : Chunked.SendCt.Ct1Acknowledged spqrPolyApi (spqrAuthApi F))
     (chunk : Chunk) (evs : List AllocEvent) : Prop :=
   SeqEnv (Ct1AcknowledgedChunkPreEnv K st chunk) FreeOnlyEvs evs
@@ -177,7 +181,7 @@ theorem ct1AcknowledgedChunkPostEnv_nonempty {F : ShaCompress} (K : MlKem)
     (Block `332`): `Ct1AcknowledgedChunkPreEnv K st chunk` on same-epoch `.ek chunk` /
     `.ekCt1Ack chunk`, and `[]` on all non-allocating branches (`msg.epoch > st.uc.epoch`,
     `msg.epoch < st.uc.epoch`, or non-ek payload). -/
-def StatesRecvCt1AcknowledgedPreEnv {F : ShaCompress} (K : MlKem)
+@[expose] def StatesRecvCt1AcknowledgedPreEnv {F : ShaCompress} (K : MlKem)
     (x : StatesRecvGhost F) (evs : List AllocEvent) : Prop :=
   match x.self with
   | .ct1Acknowledged st =>
@@ -193,7 +197,7 @@ def StatesRecvCt1AcknowledgedPreEnv {F : ShaCompress} (K : MlKem)
     (Block `332`): `FreeOnlyEvs` on `msg.epoch > st.uc.epoch` (state drop),
     `Ct1AcknowledgedChunkPostEnv K st chunk` on same-epoch `.ek chunk` / `.ekCt1Ack chunk`,
     and `[]` on all no-op branches. -/
-def StatesRecvCt1AcknowledgedPostEnv {F : ShaCompress} (K : MlKem)
+@[expose] def StatesRecvCt1AcknowledgedPostEnv {F : ShaCompress} (K : MlKem)
     (x : StatesRecvGhost F) (evs : List AllocEvent) : Prop :=
   match x.self with
   | .ct1Acknowledged st =>

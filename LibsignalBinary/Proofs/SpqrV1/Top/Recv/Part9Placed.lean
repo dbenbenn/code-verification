@@ -13,8 +13,8 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Defs
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSize
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.Pure
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeStep
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part5Placed
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part7
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part5Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part7 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
@@ -33,7 +33,7 @@ Relocatable symbolic execution of the V0 chain-ratchet branch (`+496..+740`, `+2
 `+2920..+2948`) of `spqr::recv` (Block `329`), discharging `V0ChainPlacedTail`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -93,7 +93,7 @@ open CryptoVerification.SpqrV1.Top.Recv.Placed
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 attribute [local simp, local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
   Prost.EncodeToVec.extractLsb_lo_append64 Prost.EncodeToVec.extractLsb_hi_append64

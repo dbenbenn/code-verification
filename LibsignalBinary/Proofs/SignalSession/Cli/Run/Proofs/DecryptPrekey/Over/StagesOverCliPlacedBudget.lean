@@ -11,35 +11,45 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.RecordCodecs.AssemblyBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SelfSpecPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.StagesOverCliPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage1InstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdKeyPairPollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdRegIdPollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.ShimsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.RecordCodecs.AssemblyBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SelfSpecPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.StagesOverCliPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage1InstPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdKeyPairPollPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdRegIdPollPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.ShimsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Heap.SpecBudget
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4
 import LibsignalBinary.Proofs.Common.SharedHelpers
-meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStmts
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCallees
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.PollCommonPlaced
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.S_d2c -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced
 
 /-!
 # Budget-Threaded Relocatable CLI Poll Self-Kit and Stage P1 Over-Path Adapters
@@ -50,7 +60,7 @@ for `cliPollSelfKitPlaced`, and Stage P1 adapters (`OverStageP1OkCliPlacedStmt` 
 `OverClosureUntrustedD2cPlacedStmt`) on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -205,7 +215,7 @@ abbrev RunHooksPlaced :=
 
 /-- Tight pre-state-pinned allocation envelope for `IdentityFiles::get_identity_key_pair::{closure#0}`
 on `cliPollSelfKitPlaced` (`Dir::get("identity-key-pair")`, `OptIkpTryFromEnv`, and `FreeOnlyEvs`). -/
-def cliPollSelfKpPollEnv
+@[expose] def cliPollSelfKpPollEnv
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (F0 : FsFiles) (g : IdGhost) : List AllocEvent → Prop :=
   SeqEnv (DirGetEnv PathEnv ReadEnv cliIo.rd F0 g.own (utf8 "identity-key-pair"))
@@ -214,14 +224,14 @@ def cliPollSelfKpPollEnv
 /-- Tight pre-state-pinned allocation envelope for
 `IdentityFiles::get_local_registration_id::{closure#0}` on `cliPollSelfKitPlaced`
 (`Dir::get("registration-id")`, `OptRegIdMalformedEnv`, and `FreeOnlyEvs`). -/
-def cliPollSelfRegIdPollEnv
+@[expose] def cliPollSelfRegIdPollEnv
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (F0 : FsFiles) (g : IdGhost) : List AllocEvent → Prop :=
   SeqEnv (DirGetEnv PathEnv ReadEnv cliIo.rd F0 g.own (utf8 "registration-id"))
     (SeqEnv (OptRegIdMalformedEnv (g.own.get cliIo.rd F0 (utf8 "registration-id"))) FreeOnlyEvs)
 
 /-- Canonical `IdentitySelfStoreBudgetEnv` for `cliPollSelfKitPlaced`. -/
-def cliPollSelfBudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
+@[expose] def cliPollSelfBudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
     (peer : AddrGhost) (σ : DpKitStk)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop := ReadFileRuleEnv cliIo.rd) :
     IdentitySelfStoreBudgetEnv (cliPollSelfKitPlaced A F0 peer σ) where
@@ -760,7 +770,7 @@ theorem cliPollSelf_kitPlacedOk_stagesHooks [LibsignalPlacement] {M : AllocCostM
 /-- Budget-threaded counterpart of `Poll.OverStageP1OkCliPlacedStmt` (`onPanic := PanicOomProp s0`,
 fixing `st := StoresGhost.opened.sessions`, `ist := StoresGhost.opened.identity`, and
 `s0.fs.files = F0`). -/
-def OverStageP1OkCliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverStageP1OkCliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
     {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
@@ -845,14 +855,9 @@ theorem overStageP1OkCli_of_trap [LibsignalPlacement]
     hro0 (cliPollStageP1_fsAt_placed (runHooks_of_stages hh) F0 scopeKit peer B hfiles0)
     hpc hrun hsp_align0 hsp_eq hx0 hx1 hx2
 
-/-- Closed CLI instantiation of `OverStageP1OkCliPlacedStmt` from `hDropNz : lsmpl.base 547 ≠ 0#64`. -/
-theorem overStageP1OkCli_placed_inst [LibsignalPlacement] (hDropNz : lsmpl.base 547 ≠ 0#64) :
-    OverStageP1OkCliPlacedStmt :=
-  overStageP1OkCli_of_trap (stageP1_ok_trap_placed_inst hDropNz)
-
 /-- Budget-threaded counterpart of `Poll.OverClosureUntrustedD2cPlacedStmt` (`decPkDefD2c` / `DecPkOkD2c`
 untrusted-identity branch on Block `518` under `[LibsignalPlacement]`). -/
-def OverClosureUntrustedD2cPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverClosureUntrustedD2cPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
     {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
@@ -1097,7 +1102,7 @@ theorem closure_untrusted_d2c_trap_placed_ok [LibsignalPlacement]
       loadRec_of_cliPollSessPlaced_loadRel hinjK hsub hfPeer hload
     have hans : S.decryptPrekey y.g.F y.g.peer.val y.g.me.val y.g.msg y.g.coins = some none := by
       rw [hS, decPkDefD2c_eq_decPkDef_of_untrusted X ⟨W.C, W.Q⟩ Scope y.g.F y.g.peer.val y.g.me.val
-        y.g.msg y.g.coins (by rw [htrusted]; decide)]
+        y.g.msg y.g.coins (by rw [htrusted]; simp)]
       exact decPkDef_of_trust_err X ⟨W.C, W.Q⟩ Scope y.g.F y.g.peer.val y.g.me.val
         y.g.msg y.g.coins hloadRec (Or.inr htrusted)
     have hout : slotOutTr (S.decryptPrekey y.g.F y.g.peer.val y.g.me.val y.g.msg y.g.coins)
@@ -1218,7 +1223,7 @@ theorem closure_untrusted_d2c_placed_ok [LibsignalPlacement] :
 
 /-! ## `LibsignalFrozen` Variants -/
 
-def OverClosureUntrustedD2cFrozenPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverClosureUntrustedD2cFrozenPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
     {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}

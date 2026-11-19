@@ -11,23 +11,25 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.BaseBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeChain.MessageKeyLoopXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.BaseXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.PendingKyberPreKeyXPlacedBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.PendingPreKeyFieldsXBPlacedBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.PqRatchetStateEpilogueXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.PrologueVersionLocalIdentityXPlacedBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.RegistrationIdsBaseKeyXPlacedBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.RemoteIdentityRootKeyCounterXPlacedBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.SenderReceiverChainsXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRawX
+import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
+import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.BaseBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeChain.MessageKeyLoopXBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.BaseXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.PendingKyberPreKeyXPlacedBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.PendingPreKeyFieldsXBPlacedBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.PqRatchetStateEpilogueXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.PrologueVersionLocalIdentityXPlacedBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.RegistrationIdsBaseKeyXPlacedBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.RemoteIdentityRootKeyCounterXPlacedBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.SenderReceiverChainsXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRawX
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `<SessionStructure as prost::Message>::encode_raw::<Vec<u8>>` (Block `14`)
@@ -36,7 +38,7 @@ Assembles all budget-threaded segment proofs to establish `EncodeRawPlacedOkX M 
 Block `14` (`SessionStructure::encode_raw`) at `encodeRawStackX` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -551,17 +553,5 @@ theorem encodeRaw_placed_ok_cl [LibsignalPlacement] {M : AllocCostModel}
       (withLsCl lsmpl (encodeRawSpecX M A lim)) :=
   ls_subroutine_ok_cl_of_callee (callerProg := callerProg)
     (encodeRaw_placed_ok_ext A lim H hC hEV hDR hEC)
-
-theorem encodeRaw_placed_cl_of_contracts [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    {callerProg : Program} {callerBlk : Nat} {H : LibsignalHooks}
-    [IsLsBlockProg callerProg callerBlk H]
-    (hC : SerContractsXPlaced M A lim H)
-    (hEV : EncodeVarintPlacedOkX M A lim H)
-    (hDR : DoReservePlacedOkX M A lim H) :
-    subroutine_ok callerProg (lsmpl.base 14)
-      (withLsCl lsmpl (encodeRawSpecX M A lim)) :=
-  ls_subroutine_ok_cl_of_callee (callerProg := callerProg)
-    (encodeRaw_placed_ok_of_contracts A lim H hC hEV hDR)
 
 end LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRawXBudget

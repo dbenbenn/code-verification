@@ -19,7 +19,7 @@ abstract whole-message AES-256-CBC interface `AesW`, matching the binary's exter
 proves definitional agreement with the block-cipher CBC instance `cbcW`.
 -/
 
-@[expose] public section
+public section
 
 namespace Proofs.libsignal.SR
 
@@ -32,11 +32,11 @@ structure AesW where
   dec : AesKey → Block → List (BitVec 8) → Option (List (BitVec 8))
 
 /-- Block-cipher CBC instance reproducing the `CryptoGames.LibsignalSession` operations. -/
-def cbcW (C : Crypto) : AesW where
+@[expose] def cbcW (C : Crypto) : AesW where
   enc := aesCbcEncrypt C.E
   dec := aesCbcDecrypt C.D
 
-def TripleRatchet.decryptW {PQ PQC : Type} (C : Crypto) (W : AesW) (spqr : Spqr PQ PQC)
+@[expose] def TripleRatchet.decryptW {PQ PQC : Type} (C : Crypto) (W : AesW) (spqr : Spqr PQ PQC)
     (expected : Option (List (BitVec 8))) (ciphertext : SignalMessage) (msgType : MessageType)
     (coins : BitVec 256) : Mut (TripleRatchet PQ) (List (BitVec 8)) := do
   let their := ciphertext.senderRatchetKey
@@ -61,7 +61,7 @@ def TripleRatchet.decryptW {PQ PQC : Type} (C : Crypto) (W : AesW) (spqr : Spqr 
 
 namespace SessionState
 
-def tryDecryptWithStateW {PQ PQC : Type} [Inhabited PQ] (C : Crypto) (W : AesW)
+@[expose] def tryDecryptWithStateW {PQ PQC : Type} [Inhabited PQ] (C : Crypto) (W : AesW)
     (spqr : Spqr PQ PQC)
     (expected : Option (List (BitVec 8))) (ciphertext : SignalMessage) (msgType : MessageType)
     (coins : BitVec 256) : Mut (SessionState PQ) (List (BitVec 8)) := do
@@ -72,7 +72,7 @@ def tryDecryptWithStateW {PQ PQC : Type} [Inhabited PQ] (C : Crypto) (W : AesW)
   modify fun s => (session.applyToSessionState s).clearUnacknowledgedPreKeyMessage
   return ptext
 
-def tryDecryptFromRecordW {PQ PQC : Type} [Inhabited PQ] (C : Crypto) (W : AesW)
+@[expose] def tryDecryptFromRecordW {PQ PQC : Type} [Inhabited PQ] (C : Crypto) (W : AesW)
     (spqr : Spqr PQ PQC)
     (expected : Option (List (BitVec 8))) (ciphertext : SignalMessage) (msgType : MessageType)
     (coins : BitVec 256) (record : SessionState PQ) :
@@ -93,7 +93,7 @@ theorem tryDecryptFromRecordW_cbcW {PQ PQC : Type} [Inhabited PQ] (C : Crypto)
 
 end SessionState
 
-def OutgoingTripleRatchet.encryptW {PQ PQC : Type} (C : Crypto) (W : AesW) (codec : SignalMessageProtoCodec)
+@[expose] def OutgoingTripleRatchet.encryptW {PQ PQC : Type} (C : Crypto) (W : AesW) (codec : SignalMessageProtoCodec)
     (spqr : Spqr PQ PQC)
     (ptext : List (BitVec 8)) (addresses : Option (List (BitVec 8))) (coins : PQC) :
     Mut (OutgoingTripleRatchet PQ) SignalMessage := do
@@ -111,7 +111,7 @@ def OutgoingTripleRatchet.encryptW {PQ PQC : Type} (C : Crypto) (W : AesW) (code
 
 namespace SessionState
 
-def messageEncryptW {PQ PQC : Type} [Inhabited PQ] (C : Crypto) (W : AesW) (codec : SignalMessageProtoCodec)
+@[expose] def messageEncryptW {PQ PQC : Type} [Inhabited PQ] (C : Crypto) (W : AesW) (codec : SignalMessageProtoCodec)
     (spqr : Spqr PQ PQC)
     (addresses : Option (List (BitVec 8))) (ptext : List (BitVec 8)) (coins : PQC)
     (record : SessionState PQ) : Except SignalProtocolError SignalMessage × SessionState PQ :=

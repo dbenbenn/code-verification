@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong
-public import Symbolic.Proofs.Swarm.CREF.TR.SkippedVarFresh
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.SkippedVarFresh -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TROpen
 
@@ -21,7 +21,7 @@ Provides `recvSeed` inversion, identity-key congruence for `SkippedVarConcl`, an
 `SkippedFreshAliasExclB` exclusion predicate for fresh-chain ratchet-key aliasing.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -76,7 +76,7 @@ theorem snjf_skippedVarConcl_congr_ik
       h₈, h₉, h₁₀, hpeer ▸ hmy ▸ h₁₁, h₁₂, h₁₃⟩
 
 /-- Exclusion of fresh-chain ratchet-key aliasing for a responder-stored skipped key. -/
-def SkippedFreshAliasExclB
+@[expose] def SkippedFreshAliasExclB
     (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (ms₁ : List Move) (_τ₁ : List MachineEvent) : Prop :=
   ∀ (p : Participant) (stateIdx₀ : Nat) (body : HwBytes) (m : SignalMessage) (st₀ st_prov : TRState)

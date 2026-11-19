@@ -9,20 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3PollRejectAuxF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3ExternNoAllocFail
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.PlacedOomRecovery2
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Proofs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Agree.Common
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bounds
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.EncOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3PollRejectAuxF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3ExternNoAllocFail
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.PlacedOomRecovery2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Proofs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Agree.Common -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bounds
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.EncOk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Domains
@@ -33,6 +33,9 @@ import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Run
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.RunProofDefs
 import ProofLib.CoreLemmas
 import ProofLib.ProgramReflection
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # Two-Placement Pre-Key `recv` Combinators, `recvOverStdinCap`, & `pksmParseNone`
@@ -42,7 +45,7 @@ Two-placement `(mpl, mmpl)` whole-process combinators for `pqRecvInputs`, plus
 `Placed.cliRunPlacedSig` and `CliReachesOOMPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -59,12 +62,12 @@ open CryptoVerification.LibsignalPublicApi.StoreKit (FsFiles)
 open CryptoVerification.LibsignalPublicApiRepr (AddrVal)
 open CryptoVerification.LibsignalTripleRatchetRepr (uuidTryParse)
 open CryptoVerification.SignalSession (
-  Address ArgvFitsInitialStack CliHooks CliPqxdhInputs CliReachesOOMPlaced Cmd Inputs Outcome
-  OutcomeOrExcusedAbort PqParty PqxdhPartyInSpecDomain PrintableAsciiArg cliExternsPlaced
-  cliProcessInputs coinsFile dirsFold encodeDir fileCapBytes filesFold filesOf files_eq_entries
-  initFsState_entries loadable_pqRecvInputs observe partyAddress pqInputs pqRecvInputs stdinCapBytes
-  stdioPaths
+  Address ArgvFitsInitialStack CliHooks CliPqxdhInputs Cmd Inputs Outcome OutcomeOrExcusedAbort
+  PqParty PqxdhPartyInSpecDomain PrintableAsciiArg cliExternsPlaced cliProcessInputs coinsFile
+  dirsFold encodeDir fileCapBytes filesFold filesOf files_eq_entries initFsState_entries
+  loadable_pqRecvInputs observe partyAddress pqInputs pqRecvInputs stdinCapBytes stdioPaths
 )
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (CliReachesOOMPlaced)
 open CryptoVerification.SignalSession.Cli (
   CliInputsOk CoinsReadable CommitOk InputsLoadable IsSendOverCap IsStdinOverCap MainCaseB2
   MainResult RunAnswer cliInputs
@@ -83,7 +86,7 @@ open CryptoVerification.SignalSession.Cli.Slots (
   distinctSid_party encOk₀ filesOkPeer_pqRecv filesOk₀ pqSessBytes_le_fileCapBytes
   runEncOk_pqRecv runFilesOk_of_peer scopeIn
 )
-open CryptoVerification.SignalSession.Placed (cliRunPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliRunPlacedSig)
 open LibsignalBinary.Heap (AllocCostModel BudgetLimits RustCliAllocBudget)
 open LibsignalBinary.Heap.Fine (fineCostModel fineHookRustCliAllocBudget)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3ExternNoAllocFail (
@@ -133,12 +136,12 @@ theorem runHsOk_pqRecvPrekey_body_f3 {S : RunSem}
     rw [hin] at hstdin; injection hstdin with _ hrest; subst hrest
     rw [← hpeer, ← hme']; exact hdec pm hpm
 
-def defaultExtrasF3 : UnreachedPqxdhPrimitives :=
+@[expose] def defaultExtrasF3 : UnreachedPqxdhPrimitives :=
   ⟨fun _ => [], fun _ _ _ => [], fun _ _ => [], fun _ _ => [], fun _ => ([], []),
    fun _ => [], fun _ _ _ => false⟩
 
 /-- Pure `RunSem` constructor matching `MainHops.cliRunSem` definitionally (`rfl`). -/
-noncomputable def cliRunSemF3 (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+@[expose] noncomputable def cliRunSemF3 (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (decPk : FsFiles → AddrVal → AddrVal → PreKeySignalMessage → List (BitVec 8) → SlotAns (List (BitVec 8)))
     (decPkOk : FsFiles → AddrVal → AddrVal → PreKeySignalMessage → Prop)
     (parseFn : List (BitVec 8) → Option PreKeySignalMessage) : RunSem :=
@@ -283,80 +286,6 @@ theorem pqRecv_strict_obs_of_f3B2NeedLocks
       (not_isStdinOverCap_of_stdin_le (Nat.le_of_not_gt hstin))
       hobs (coinsReadable_pqRecvInputs WP st c rc) hcommit
 
-theorem pqRecv_outcomeOrOom_obs_of_f3B2NeedLocks
-    {mpl mmpl : MultiPlacement}
-    {exitStk : Nat} {libcAddr : BitVec 64} {stk : Nat} {CodeOk : Memory → Prop}
-    {elf : ElfImage} {W : CliHooks} {Run : Inputs → RunAnswer → Prop}
-    (H : CliElfF3B2NeedLocksAssumptions mpl mmpl exitStk libcAddr stk CodeOk elf)
-    (hmainW : ∀ (γ : GhostName) (tp : BitVec 64),
-      subroutine_ok (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) (mpl.base 617)
-        (b2MainSpecTightNeedLocksFineAt libcAddr CodeOk
-          (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart)
-          cliBudgetLimits fineCostModel.init stk (cliStaticsPlacedAt mpl) Run cliProcessInputs))
-    {st : PqParty} {c : List (BitVec 8)} {rc : BitVec 256} {o : Outcome}
-    (hst : PqxdhPartyInSpecDomain ⟨W.C, W.Q⟩ st)
-    (hclause : c.length ≤ stdinCapBytes →
-      ∃ a, Run (pqRecvInputs ⟨W.C, W.Q⟩ st c rc) a ∧
-        observe (pqRecvInputs ⟨W.C, W.Q⟩ st c rc).files a = o ∧
-        CommitOk (pqRecvInputs ⟨W.C, W.Q⟩ st c rc) (MainResult.ofAnswer a)) :
-    let inp := pqRecvInputs ⟨W.C, W.Q⟩ st c rc
-    OutcomeOrExcusedAbort (CliReachesOOMPlaced mpl mmpl elf W)
-      (cliRunPlacedSig mpl mmpl elf W) inp
-      (· = if c.length > stdinCapBytes then .exited 2 [] (filesOf inp.files) else o) :=
-  outcomeOrExcusedAbort_of_eq (pqRecv_strict_obs_of_f3B2NeedLocks H hmainW hst hclause)
-
-theorem pqRecv_strict_pred_of_f3B2NeedLocks
-    {mpl mmpl : MultiPlacement}
-    {exitStk : Nat} {libcAddr : BitVec 64} {stk : Nat} {CodeOk : Memory → Prop}
-    {elf : ElfImage} {W : CliHooks} {Run : Inputs → RunAnswer → Prop}
-    (H : CliElfF3B2NeedLocksAssumptions mpl mmpl exitStk libcAddr stk CodeOk elf)
-    (hmainW : ∀ (γ : GhostName) (tp : BitVec 64),
-      subroutine_ok (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) (mpl.base 617)
-        (b2MainSpecTightNeedLocksFineAt libcAddr CodeOk
-          (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart)
-          cliBudgetLimits fineCostModel.init stk (cliStaticsPlacedAt mpl) Run cliProcessInputs))
-    {st : PqParty} {c : List (BitVec 8)} {rc : BitVec 256} {Pred : Outcome → Prop}
-    (hst : PqxdhPartyInSpecDomain ⟨W.C, W.Q⟩ st)
-    (hclause : c.length ≤ stdinCapBytes →
-      ∃ a, Run (pqRecvInputs ⟨W.C, W.Q⟩ st c rc) a ∧
-        Pred (observe (pqRecvInputs ⟨W.C, W.Q⟩ st c rc).files a) ∧
-        CommitOk (pqRecvInputs ⟨W.C, W.Q⟩ st c rc) (MainResult.ofAnswer a)) :
-    let inp := pqRecvInputs ⟨W.C, W.Q⟩ st c rc
-    ∃ o : Outcome,
-      cliRunPlacedSig mpl mmpl elf W inp = some o ∧
-      (if c.length > stdinCapBytes then o = .exited 2 [] (filesOf inp.files) else Pred o) := by
-  by_cases hstin : c.length > stdinCapBytes
-  · have h := pqRecv_strict_obs_of_f3B2NeedLocks (rc := rc)
-      (o := .exited 2 [] (filesOf (pqRecvInputs ⟨W.C, W.Q⟩ st c rc).files)) H hmainW hst
-      (fun hle => False.elim (Nat.not_lt_of_ge hle hstin))
-    dsimp only at h ⊢; simp only [hstin, ↓reduceIte] at h ⊢; exact ⟨_, h, rfl⟩
-  · obtain ⟨a, hrun, hp, hcommit⟩ := hclause (Nat.le_of_not_gt hstin)
-    have h := pqRecv_strict_obs_of_f3B2NeedLocks (rc := rc) H hmainW hst
-      (fun _ => ⟨a, hrun, rfl, hcommit⟩)
-    dsimp only at h ⊢; simp only [hstin, ↓reduceIte] at h ⊢; exact ⟨_, h, hp⟩
-
-theorem pqRecv_outcomeOrOom_pred_of_f3B2NeedLocks
-    {mpl mmpl : MultiPlacement}
-    {exitStk : Nat} {libcAddr : BitVec 64} {stk : Nat} {CodeOk : Memory → Prop}
-    {elf : ElfImage} {W : CliHooks} {Run : Inputs → RunAnswer → Prop}
-    (H : CliElfF3B2NeedLocksAssumptions mpl mmpl exitStk libcAddr stk CodeOk elf)
-    (hmainW : ∀ (γ : GhostName) (tp : BitVec 64),
-      subroutine_ok (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) (mpl.base 617)
-        (b2MainSpecTightNeedLocksFineAt libcAddr CodeOk
-          (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart)
-          cliBudgetLimits fineCostModel.init stk (cliStaticsPlacedAt mpl) Run cliProcessInputs))
-    {st : PqParty} {c : List (BitVec 8)} {rc : BitVec 256} {Pred : Outcome → Prop}
-    (hst : PqxdhPartyInSpecDomain ⟨W.C, W.Q⟩ st)
-    (hclause : c.length ≤ stdinCapBytes →
-      ∃ a, Run (pqRecvInputs ⟨W.C, W.Q⟩ st c rc) a ∧
-        Pred (observe (pqRecvInputs ⟨W.C, W.Q⟩ st c rc).files a) ∧
-        CommitOk (pqRecvInputs ⟨W.C, W.Q⟩ st c rc) (MainResult.ofAnswer a)) :
-    let inp := pqRecvInputs ⟨W.C, W.Q⟩ st c rc
-    OutcomeOrExcusedAbort (CliReachesOOMPlaced mpl mmpl elf W)
-      (cliRunPlacedSig mpl mmpl elf W) inp
-      (fun o => if c.length > stdinCapBytes then o = .exited 2 [] (filesOf inp.files) else Pred o) :=
-  Or.inl (pqRecv_strict_pred_of_f3B2NeedLocks H hmainW hst hclause)
-
 /-! ## 3. `recvOverStdinCap` -/
 
 theorem d3_recvOverStdinCap_strict_of_f3
@@ -391,44 +320,19 @@ theorem d3_recvOverStdinCap_f3
 
 /-! ## 4. `CliPqOrD3RecvInputs`, `pqD3ScopedRun`, & `pksmParseNone` -/
 
-def CliPqOrD3RecvInputs (WP : PEParams) (i : Inputs) : Prop :=
+@[expose] def CliPqOrD3RecvInputs (WP : PEParams) (i : Inputs) : Prop :=
   CliPqxdhInputs WP i ∨
   ∃ (st : PqParty) (ct : List (BitVec 8)) (rc : BitVec 256),
     PqxdhPartyInSpecDomain WP st ∧ i = pqRecvInputs WP st ct rc
 
-def pqD3ScopedRun (WP : PEParams) (Run₀ : Inputs → RunAnswer → Prop) (i : Inputs) (a : RunAnswer) : Prop :=
+@[expose] def pqD3ScopedRun (WP : PEParams) (Run₀ : Inputs → RunAnswer → Prop) (i : Inputs) (a : RunAnswer) : Prop :=
   CliPqOrD3RecvInputs WP i ∧ Run₀ i a
 
 theorem pqScopedRun_le_pqD3ScopedRun (WP : PEParams) (Run₀ : Inputs → RunAnswer → Prop)
     {i : Inputs} {a : RunAnswer} (h : CliPqxdhInputs WP i ∧ Run₀ i a) :
     pqD3ScopedRun WP Run₀ i a := ⟨Or.inl h.1, h.2⟩
 
-theorem mainCaseB2_mono_run {Run₁ Run₂ : Inputs → RunAnswer → Prop}
-    (hle : ∀ i a, Run₁ i a → Run₂ i a) {SendOverCap StdinOverCap : Inputs → Prop}
-    {i : Inputs} {r : MainResult} (h : MainCaseB2 Run₁ SendOverCap StdinOverCap i r) :
-    MainCaseB2 Run₂ SendOverCap StdinOverCap i r := by
-  cases h with
-  | usage h1 h2 => exact .usage h1 h2
-  | stdinOverCap h1 => exact .stdinOverCap h1
-  | sendOverCap h1 h2 h3 => exact .sendOverCap h1 h2 h3
-  | call hrun h1 h2 h3 h4 => exact .call (hle _ _ hrun) h1 h2 h3 h4
-
-theorem subroutine_ok_b2MainSpecTightNeedLocksFineAt_antitone
-    {prog : Program} {entry_pc libcAddr : BitVec 64} {CodeOk : Memory → Prop}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {st : M.σ}
-    {stk : Nat} {Statics : SepProp} {Run₁ Run₂ : Inputs → RunAnswer → Prop}
-    {inputsOf : Inputs → ProcessInputs}
-    (hle : ∀ i a, Run₁ i a → Run₂ i a)
-    (hok : subroutine_ok prog entry_pc
-      (b2MainSpecTightNeedLocksFineAt libcAddr CodeOk A lim st stk Statics Run₂ inputsOf)) :
-    subroutine_ok prog entry_pc
-      (b2MainSpecTightNeedLocksFineAt libcAddr CodeOk A lim st stk Statics Run₁ inputsOf) := by
-  refine subroutine_ok.of_codeLoaded fun g R s0 hpc hst hpre hal _ =>
-    hok.mono_outcome g R s0 hpc hst ?_ hal fun _ hout => hout
-  simp only [b2MainSpecTightNeedLocksFineAt, sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-  exact ⟨⟨hpre.1.1, mainCaseB2_mono_run hle hpre.1.2.1, hpre.1.2.2⟩, hpre.2⟩
-
-def MainOkParseNoneD3F3
+@[expose] def MainOkParseNoneD3F3
     (mpl mmpl : MultiPlacement) (CodeOk : Memory → Prop)
     (libcAddr brkStart : BitVec 64) (stk : Nat) : Prop :=
   mpl.base 547 ≠ 0#64 →

@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSMInstance
-public import Computational.Proofs.CryptoGames.SM.ReductionsQueries
-public import Computational.Proofs.CryptoGames.FSAEAD.AeadRedBound
+public import Computational.Proofs.CryptoGames.SM.ReductionsQueries -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.FSAEAD.AeadRedBound
 public import Computational.Proofs.CryptoGames.FSAEAD.PubProofDefs
 import Computational.Proofs.GameHop.StateSim
 
@@ -24,7 +24,7 @@ Proves decryption-query bounds (`pubRed_makesAtMostDecQueries`) and single-AD-cl
 (`pubRed_adClassConst`) for `FSAEAD.pubRed`, along with single-query `IsQueryBoundP` helpers.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 

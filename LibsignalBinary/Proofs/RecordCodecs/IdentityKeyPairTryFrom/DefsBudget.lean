@@ -9,13 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.Defs
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.Decode
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostCleanup
 import ProofLib.SepLogic.WPp
@@ -28,7 +26,7 @@ import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 invariants, `Vec<u8>` deallocation tails, and shared epilogue (`+812 .. +836`) on Block `84`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

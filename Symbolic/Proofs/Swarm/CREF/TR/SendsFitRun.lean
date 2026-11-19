@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 public import Mathlib.Algebra.Group.Nat.Defs
 import Symbolic.Proofs.Swarm.CREF.Prelude
 
@@ -20,7 +20,7 @@ Defines `SendsFit`, bounding every `.send m` event in a machine-event trace to l
 and proves closure under empty and appended traces.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,7 +32,7 @@ cref_open
 open DY.Libsignal DY.Libsignal.HwEvents
 
 /-- Every `.send m` event in `acc` has length `< 2 ^ 64`. -/
-def SendsFit (acc : List MachineEvent) : Prop :=
+@[expose] def SendsFit (acc : List MachineEvent) : Prop :=
   ∀ m : HwBytes, .send m ∈ acc → m.length < 2 ^ 64
 
 theorem sendsFit_nil : SendsFit [] := fun _ h => nomatch h

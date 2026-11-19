@@ -10,20 +10,28 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TightPTrapPlaced
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchetBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.TightTargetsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKeyBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DeriveKeysBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTightBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMacBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TightPTrapPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchetBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.TightTargetsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKeyBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DeriveKeysBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTightBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMacBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Model
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTightModel
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` Handshake `try_decrypt_with_state::<Coins>`
@@ -35,7 +43,7 @@ Budget-threaded (`RustCliAllocBudget M` / `BudgetLimits`) relocatable contracts
 `allocFailedIn` from `onPanic` under `FitsEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000
@@ -50,14 +58,14 @@ open CryptoGames.LibsignalSession (
 )
 open CryptoVerification (LibsignalPlacement lsmpl withLsCodeLoaded)
 open CryptoVerification.CliHandshake.TryDecPlaced (blkPC_508 blkPl_508)
-open CryptoVerification.LibsignalSpqrV1 (MlKem TokenInit spqrV1)
+open CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1)
 open CryptoVerification.LibsignalTripleRatchetRepr (UuidParser coinsOf uuidTryParse)
 open CryptoVerification.LibsignalTripleRatchet (SeedsLen32 SpqrModel TryDecryptGhost rootStack)
-open CryptoVerification.LibsignalTripleRatchet.Decrypt (tryDecryptPlacedImg)
 open CryptoVerification.LibsignalTripleRatchet.Decrypt.Model (model_of_recvPanics)
 open CryptoVerification.LibsignalTripleRatchet.DecryptPq (
   model_spqrDropPanic_eq_of_ne_panic spqrDropPanic
 )
+open CryptoVerification.SpqrV1.GF.Mul2U16 (tokenInitPlacedAt)
 open LibsignalBinary.Heap (AllocCostModel AllocEvent BudgetLimits FitsEnv RustCliAllocBudget)
 open LibsignalBinary.Heap.SpecBudget (SpqrHooksBudget TripleRatchetHooksBudget)
 open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (TryDecryptEnvArgs tryDecryptEnvArgs)
@@ -75,13 +83,13 @@ abbrev tryDecryptPqOnPanicTight := @tryDecryptOnPanicTight
 `DistinctSid` (`remoteIdentity ≠ some localIdentity ∨ DistinctSid`), reusing
 `Cli.LibsignalTripleRatchet.tryDecryptPlacedSpecP` via `A.atState` and dropping `allocFailedIn`
 from `onPanic`. -/
-def tryDecryptPlacedSpecP [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tryDecryptPlacedSpecP [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) :
     Spec (TryDecryptGhost × M.σ) where
   pre := fun (x, st) s =>
-    ⌜FitsEnv M lim st (tdEnv (tryDecryptEnvArgs x))⌝ ∗
+    ⌜FitsEnv M lim st (tdEnv (tryDecryptEnvArgs x)) ∧ x.rem.name.bytes.length ≤ 40⌝ ∗
       (CryptoVerification.Cli.LibsignalTripleRatchet.tryDecryptPlacedSpecP
         C (A.atState lim st s) ctl uuidParse S).pre x s
   post :=
@@ -92,8 +100,8 @@ def tryDecryptPlacedSpecP [LibsignalPlacement] {M : AllocCostModel}
       C A lim ctl uuidParse S tdEnv).onPanic
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `tryDecryptPlacedSpecTP` over
-`tryDecryptPlacedSpecP` with `TokenInit tryDecryptPlacedImg`. -/
-def tryDecryptPlacedSpecTP [LibsignalPlacement] {M : AllocCostModel}
+`tryDecryptPlacedSpecP` with `tokenInitPlacedAt`. -/
+@[expose] def tryDecryptPlacedSpecTP [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) :
@@ -101,15 +109,15 @@ def tryDecryptPlacedSpecTP [LibsignalPlacement] {M : AllocCostModel}
   { tryDecryptPlacedSpecP C A lim ctl uuidParse S tdEnv with
     pre := fun (x, st) s =>
       ⌜x.st.pqRatchetState.length < 2 ^ 32⌝ ∗
-        TokenInit tryDecryptPlacedImg ∗
+        tokenInitPlacedAt ∗
         (tryDecryptPlacedSpecP C A lim ctl uuidParse S tdEnv).pre (x, st) s
     post := fun (x, st) s0 sf =>
-      TokenInit tryDecryptPlacedImg ∗
+      tokenInitPlacedAt ∗
         (tryDecryptPlacedSpecP C A lim ctl uuidParse S tdEnv).post (x, st) s0 sf }
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `tryDecryptPlacedSpecTP` with tight
 `onPanic := tryDecryptOnPanicTight` (dropping both `S.recvPanics` and `allocFailedIn`). -/
-def tryDecryptPlacedSpecTPTight [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tryDecryptPlacedSpecTPTight [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) :
@@ -119,7 +127,7 @@ def tryDecryptPlacedSpecTPTight [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded `tryDecryptPlacedSpecP` restricted to `Q x.st.pqRatchetState` with frame `F`
 and tight `onPanic`. -/
-def tryDecryptPlacedSpecQF_PTight [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tryDecryptPlacedSpecQF_PTight [LibsignalPlacement] {M : AllocCostModel}
     (Q : List (BitVec 8) → Prop) (F : SepProp)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel)
@@ -146,7 +154,20 @@ theorem fitsEnv_of_pre_P_placed [LibsignalPlacement] {M : AllocCostModel}
     FitsEnv M lim st (tdEnv (tryDecryptEnvArgs x)) := by
   dsimp only [tryDecryptPlacedSpecP] at hpre
   rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact hpre.1
+  exact hpre.1.1
+
+/-- Extract `x.rem.name.bytes.length ≤ 40` from
+`(tryDecryptPlacedSpecP C A lim ctl parse S tdEnv).pre (x, st) s0 ∗ R`. -/
+theorem remNameLen_of_pre_P_placed [LibsignalPlacement] {M : AllocCostModel}
+    {C : Crypto} {A : RustCliAllocBudget M} {lim : BudgetLimits} {ctl : BitVec 64}
+    {parse : UuidParser} {S : SpqrModel}
+    {tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop}
+    {x : TryDecryptGhost} {st : M.σ} {R : SepProp} {s0 : State}
+    (hpre : s0.mem ⊨ (tryDecryptPlacedSpecP C A lim ctl parse S tdEnv).pre (x, st) s0 ∗ R) :
+    x.rem.name.bytes.length ≤ 40 := by
+  dsimp only [tryDecryptPlacedSpecP] at hpre
+  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
+  exact hpre.1.2
 
 /-- Extract `SeedsLen32 x.st ∧ x.st.receiverChains.length < 2 ^ 32 ∧ rootStack ≤ s0.sp.toNat`
 from `(tryDecryptPlacedSpecP C A lim ctl uuidTryParse S tdEnv).pre (x, st) s0 ∗ R`. -/
@@ -274,7 +295,7 @@ theorem reaches_outcome_tryDecryptSpecQF_PTight_of_afterCmk_placed [LibsignalPla
   · exact (not_satisfies_false_sepConj hqe).elim
   · exact (not_satisfies_false_sepConj hoom).elim
 
-def tryDecryptPlacedTightSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tryDecryptPlacedTightSpec [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) :
@@ -354,8 +375,8 @@ theorem reaches_outcome_tight_of_spqrDropPanic_placed [LibsignalPlacement] {M : 
   · exact (not_satisfies_false_sepConj hoom).elim
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `tryDecryptPlacedSpecT` over
-`DefsPlacedBudget.tryDecryptPlacedSpec` with `TokenInit tryDecryptPlacedImg`. -/
-def tryDecryptPlacedSpecT [LibsignalPlacement] {M : AllocCostModel}
+`DefsPlacedBudget.tryDecryptPlacedSpec` with `tokenInitPlacedAt`. -/
+@[expose] def tryDecryptPlacedSpecT [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) :
@@ -363,19 +384,19 @@ def tryDecryptPlacedSpecT [LibsignalPlacement] {M : AllocCostModel}
   { LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget.tryDecryptPlacedSpec
       C A lim ctl uuidParse S tdEnv with
     pre := fun (x, st) s =>
-      ⌜x.st.pqRatchetState.length < 2 ^ 32⌝ ∗
-        TokenInit tryDecryptPlacedImg ∗
+      ⌜x.st.pqRatchetState.length < 2 ^ 32 ∧ x.rem.name.bytes.length ≤ 40⌝ ∗
+        tokenInitPlacedAt ∗
         (LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget.tryDecryptPlacedSpec
           C A lim ctl uuidParse S tdEnv).pre (x, st) s
     post := fun (x, st) s0 sf =>
-      TokenInit tryDecryptPlacedImg ∗
+      tokenInitPlacedAt ∗
         (LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget.tryDecryptPlacedSpec
           C A lim ctl uuidParse S tdEnv).post (x, st) s0 sf }
 
 /-! ## 3. Budget-Threaded Placed Run Statement Abbreviations & Weakening Bridges -/
 
 /-- Budget-threaded `[LibsignalPlacement]` twin of `TryDecryptPqV1RunStmtPlaced`. -/
-def TryDecryptPqV1RunStmtPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def TryDecryptPqV1RunStmtPlaced [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (K : MlKem) (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (abs : String → Option (State → State)) : Prop :=
@@ -387,7 +408,7 @@ def TryDecryptPqV1RunStmtPlaced [LibsignalPlacement] {M : AllocCostModel}
         (tryDecryptPlacedSpecT C A lim ctl uuidTryParse (spqrV1 C.F K) tdEnv))
 
 /-- Budget-threaded `[LibsignalPlacement]` twin of `TryDecryptPqV1RunStmtPPlaced`. -/
-def TryDecryptPqV1RunStmtPPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def TryDecryptPqV1RunStmtPPlaced [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (K : MlKem) (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (abs : String → Option (State → State)) : Prop :=
@@ -399,7 +420,7 @@ def TryDecryptPqV1RunStmtPPlaced [LibsignalPlacement] {M : AllocCostModel}
         (tryDecryptPlacedSpecTP C A lim ctl uuidTryParse (spqrV1 C.F K) tdEnv))
 
 /-- Budget-threaded `[LibsignalPlacement]` twin of `TryDecryptPqV1RunStmtPTightPlaced`. -/
-def TryDecryptPqV1RunStmtPTightPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def TryDecryptPqV1RunStmtPTightPlaced [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (K : MlKem) (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (abs : String → Option (State → State)) : Prop :=
@@ -417,20 +438,29 @@ theorem tryDecryptPlacedSpecTP_pre_of_tryDecryptPlacedSpecT [LibsignalPlacement]
     {x : TryDecryptGhost} {st : M.σ} {s : State} {R : SepProp}
     (h : s.mem ⊨ (tryDecryptPlacedSpecT C A lim ctl parse S tdEnv).pre (x, st) s ∗ R) :
     s.mem ⊨ (tryDecryptPlacedSpecTP C A lim ctl parse S tdEnv).pre (x, st) s ∗ R := by
+  dsimp only [tryDecryptPlacedSpecT,
+    LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget.tryDecryptPlacedSpec] at h
+  rw [sepConj_assoc, satisfies_pure_sepConj] at h
+  rcases h with ⟨⟨hpq, hlen⟩, h⟩
+  rw [sepConj_assoc, sepConj_left_comm, sepConj_assoc, satisfies_pure_sepConj] at h
+  rcases h with ⟨hfit, h⟩
   have h0 : s.mem ⊨
       (CryptoVerification.Cli.LibsignalSpqrV1.tryDecryptPlacedSpecT
-        C (A.atState lim st s) ctl parse S).pre x s ∗
-      (⌜FitsEnv M lim st (tdEnv (tryDecryptEnvArgs x))⌝ ∗ R) := by
-    dsimp only [tryDecryptPlacedSpecT,
-      LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget.tryDecryptPlacedSpec,
-      CryptoVerification.Cli.LibsignalSpqrV1.tryDecryptPlacedSpecT] at h ⊢
+        C (A.atState lim st s) ctl parse S).pre x s ∗ R := by
+    dsimp only [CryptoVerification.Cli.LibsignalSpqrV1.tryDecryptPlacedSpecT]
+    rw [sepConj_assoc, satisfies_pure_sepConj]
+    refine ⟨hpq, ?_⟩
     convert h using 1
     sep_ac_rfl
   have h1 :=
     CryptoVerification.Cli.LibsignalSpqrV1.tryDecryptPlacedSpecTP_pre_of_tryDecryptPlacedSpecT h0
   dsimp only [tryDecryptPlacedSpecTP, tryDecryptPlacedSpecP,
     CryptoVerification.Cli.LibsignalSpqrV1.tryDecryptPlacedSpecTP] at h1 ⊢
-  convert h1 using 1
+  rw [sepConj_assoc, satisfies_pure_sepConj] at h1 ⊢
+  refine ⟨h1.1, ?_⟩
+  rw [sepConj_assoc, sepConj_left_comm, sepConj_assoc, satisfies_pure_sepConj]
+  refine ⟨⟨hfit, hlen⟩, ?_⟩
+  convert h1.2 using 1
   sep_ac_rfl
 
 theorem tryDecryptPlacedOnPanicTight_weaken [LibsignalPlacement] {M : AllocCostModel}

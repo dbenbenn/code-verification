@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroCPlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.TopPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXCliPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroCPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.TopPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXCliPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -22,6 +22,21 @@ import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.ChainMergeAux.PrologueS
 import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.MergeReceiverChainsAux.Steps
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.ChainMessageKeysGExt
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.TopPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroBPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.CodePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.EntryPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.MK
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.MKPush
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `VerNe.Chain3` (Block `516`) Part C (`MessageKeys` Push and Top-Level Closure)
@@ -31,7 +46,7 @@ step and full `MessageKeys` (`tag = 4`) slice (`chain3MessageKeys_cro_placed_ok`
 `message::merge<Chain> [local#4]` (Block `516`) under `StoreKit.withLsCodeRoLoaded`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -1138,35 +1153,6 @@ private theorem cli_framelessMemcpy_sat [LibsignalPlacement]
     exact ⟨⟨hpost.2.1.1, hpost.2.1.2, hpost.1⟩, hpost.2.2⟩
   · exact Or.inr hrest
 
-theorem chainMerge5_cro_cli_of_block [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {callerProg : Program} {callerBlk : Nat}
-    [IsLsBlockProg callerProg callerBlk (cliGhostExterns gh (cliExternsPlaced mmpl W))]
-    (hA : CliGhostAllocHooks M A lim gh) :
-    subroutine_ok callerProg (lsmpl.base 516)
-      (withLsCodeRoLoaded lsmpl (TopPlacedBudgetAux.chainMerge3RawSpecW A lim)) := by
-  rw [← chainMerge3RawSpecW_eq_top A lim]
-  exact chainMerge5_cro_of_block_hooks (cli_noAllocShim_sat mmpl gh W hA.shim_eq)
-    ((show lsRustAllocSymCli = lsRustAllocSym by decide) ▸
-      cliExternsPlaced_alloc_budget_sat mmpl gh W hA)
-    ((show lsRustReallocSymCli = lsRustReallocSym by decide) ▸
-      cliExternsPlaced_realloc_budget_sat mmpl gh W hA)
-    ((show lsRustDeallocSymCli = lsRustDeallocSym by decide) ▸
-      cliExternsPlaced_dealloc_budget_sat mmpl gh W hA)
-    (cli_framelessMemcpy_sat mmpl gh W hA)
-    (cliGhostExterns_panic_handle_error mmpl gh W)
-
-theorem chainMerge5_cro_of_block_cliHooks [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {callerProg : Program} {callerBlk : Nat}
-    [IsLsBlockProg callerProg callerBlk (cliGhostExterns bumpGhost (cliExternsPlaced mmpl W))]
-    (hA : CliAllocHooks A lim) :
-    subroutine_ok callerProg (lsmpl.base 516)
-      (withLsCodeRoLoaded lsmpl (TopPlacedBudgetAux.chainMerge3RawSpecW A lim)) :=
-  chainMerge5_cro_cli_of_block mmpl bumpGhost W (cliAllocHooks_to_bumpGhost hA)
-
 theorem chainMerge5CroPlacedOkExt_cli [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -1182,13 +1168,6 @@ theorem chainMerge5CroPlacedOkExt_cli [LibsignalPlacement]
     (cli_framelessMemcpy_sat mmpl gh W hA)
     (cliGhostExterns_panic_handle_error mmpl gh W)
 
-theorem chainMerge5CroPlacedOkExt_of_cliHooks [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliAllocHooks A lim) :
-    ChainMerge5CroPlacedOkExt A lim (cliGhostExterns bumpGhost (cliExternsPlaced mmpl W)) :=
-  chainMerge5CroPlacedOkExt_cli mmpl bumpGhost W (cliAllocHooks_to_bumpGhost hA)
-
 theorem overPrevDecode_cro_placed_of_hooks [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {ext : LibsignalHooks}
     (hshim : HookSat ext lsRustNoAllocShimSym noAllocShimBudgetSpec)
@@ -1201,27 +1180,5 @@ theorem overPrevDecode_cro_placed_of_hooks [LibsignalPlacement] {M : AllocCostMo
   overPrevDecode_cro_placed_of_hooks_chain5
     hshim halloc hrealloc hdealloc hmc hpanic_raw
     (chainMerge5CroPlacedOkExt_of_hooks hshim halloc hrealloc hdealloc hmc hpanic_raw)
-
-theorem overPrevDecode_cro_placed_cli [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh) :
-    OverPrevDecodeCroPlacedAt A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
-  overPrevDecode_cro_placed_of_hooks (cli_noAllocShim_sat mmpl gh W hA.shim_eq)
-    ((show lsRustAllocSymCli = lsRustAllocSym by decide) ▸
-      cliExternsPlaced_alloc_budget_sat mmpl gh W hA)
-    ((show lsRustReallocSymCli = lsRustReallocSym by decide) ▸
-      cliExternsPlaced_realloc_budget_sat mmpl gh W hA)
-    ((show lsRustDeallocSymCli = lsRustDeallocSym by decide) ▸
-      cliExternsPlaced_dealloc_budget_sat mmpl gh W hA)
-    (cli_framelessMemcpy_sat mmpl gh W hA)
-    (cliGhostExterns_panic_handle_error mmpl gh W)
-
-theorem overPrevDecode_cro_placed_of_cliHooks [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliAllocHooks A lim) :
-    OverPrevDecodeCroPlacedAt A lim (cliGhostExterns bumpGhost (cliExternsPlaced mmpl W)) :=
-  overPrevDecode_cro_placed_cli mmpl bumpGhost W (cliAllocHooks_to_bumpGhost hA)
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroCPlacedBudget

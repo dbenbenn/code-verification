@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoder
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.Proof
@@ -26,7 +26,7 @@ Relocatable `[LibsignalPlacement]` verification of `<KeysSampled>::recv_ct1_chun
 `keys_sampled_recv_ct1_chunk_placed_cl_ext` (`KeysSampledRecvCt1ChunkPlacedOkX`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

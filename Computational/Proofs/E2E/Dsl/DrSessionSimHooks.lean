@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.TablesHonest
-public import Computational.Proofs.E2E.Dsl.ClampsLossless
-public import Computational.Proofs.E2E.Dsl.SmReachInvParty
+public import Computational.Proofs.E2E.Dsl.TablesHonest -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.ClampsLossless
+import Computational.Proofs.E2E.Dsl.SmReachInvParty
 import Computational.Proofs.E2E.ComposedBinaryLinkV1
+public import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SpqrV1Sync.TopStateTight -- proof-setup: allow-public-import
 
 /-!
 # SPQR DSL Hooks and Double Ratchet Helper Combinators
@@ -22,7 +24,7 @@ and accessors, bounded receiver-chain and skipped-key list combinators, and the 
 single-chain advance gadget `advanceSingleChainC`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -100,7 +102,7 @@ structure SpqrDslHooks (ℓ : ℕ) {Pt : Type} (P : SignalPqxdh.Primitives)
 
 /-! ## Value codecs for `ghostPartsT` components -/
 
-def encodeChainKey (ck : ChainKey) : BitVec 256 × BitVec 32 :=
+@[expose] def encodeChainKey (ck : ChainKey) : BitVec 256 × BitVec 32 :=
   (ck.key, ck.index)
 
 def decodeChainKey (p : BitVec 256 × BitVec 32) : ChainKey :=
@@ -111,10 +113,10 @@ def decodeChainKey (p : BitVec 256 × BitVec 32) : ChainKey :=
   cases ck
   rfl
 
-def encodeMsgKey (mk : MessageKeyGenerator) : BitVec 256 × BitVec 32 :=
+@[expose] def encodeMsgKey (mk : MessageKeyGenerator) : BitVec 256 × BitVec 32 :=
   (bytesToKey32 mk.seed, mk.counter)
 
-def decodeMsgKey (p : BitVec 256 × BitVec 32) : MessageKeyGenerator :=
+@[expose] def decodeMsgKey (p : BitVec 256 × BitVec 32) : MessageKeyGenerator :=
   { seed := keyToBytes32 p.1, counter := p.2 }
 
 theorem decodeMsgKey_encodeMsgKey {mk : MessageKeyGenerator} (h : mk.seed.length = 32) :
@@ -123,11 +125,11 @@ theorem decodeMsgKey_encodeMsgKey {mk : MessageKeyGenerator} (h : mk.seed.length
   dsimp only at h
   simp [encodeMsgKey, decodeMsgKey, keyToBytes32_bytesToKey32 seed h]
 
-def encodeSenderChain {ℓ : ℕ} (sc : SenderChain) : (drSenderChainT (ℓ := ℓ)).denote :=
+@[expose] def encodeSenderChain {ℓ : ℕ} (sc : SenderChain) : (drSenderChainT (ℓ := ℓ)).denote :=
   ((sc.ratchetKey.publicKey, bytesToKey32 sc.ratchetKey.privateKey.bytes.toList),
    (sc.chainKey.key, sc.chainKey.index))
 
-def decodeSenderChain {ℓ : ℕ} (p : (drSenderChainT (ℓ := ℓ)).denote) : SenderChain :=
+@[expose] def decodeSenderChain {ℓ : ℕ} (p : (drSenderChainT (ℓ := ℓ)).denote) : SenderChain :=
   { ratchetKey := { publicKey := p.1.1, privateKey := ⟨keyToBytesVec32 p.1.2⟩ }
     chainKey := { key := p.2.1, index := p.2.2 } }
 
@@ -146,7 +148,7 @@ theorem keyVec_bytesToKey32_vec (v : List.Vector (BitVec 8) 32) :
   rcases sc with ⟨⟨pub, priv⟩, ⟨ck, idx⟩⟩
   simp [encodeSenderChain, decodeSenderChain]
 
-def encodeRecvChain {ℓ : ℕ} (rc : ReceiverChain) : (drRecvChainT (ℓ := ℓ)).denote :=
+@[expose] def encodeRecvChain {ℓ : ℕ} (rc : ReceiverChain) : (drRecvChainT (ℓ := ℓ)).denote :=
   (rc.senderRatchetKey,
    (rc.chainKey.map encodeChainKey, rc.messageKeys.map encodeMsgKey))
 
@@ -253,30 +255,30 @@ variable {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto} {K : 
 local notation "S" => e2eSig ℓ
 local notation "OO" => e2eOps ℓ P C K decT encT
 
-def gpIsB {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ .bool := .fst p
-def gpVer {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ U32 := .fst (.snd p)
-def gpLocId {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ IdKey :=
+@[expose] def gpIsB {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ .bool := .fst p
+@[expose] def gpVer {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ U32 := .fst (.snd p)
+@[expose] def gpLocId {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ IdKey :=
   .fst (.snd (.snd p))
-def gpRemId {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ (.opt IdKey) :=
+@[expose] def gpRemId {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ (.opt IdKey) :=
   .fst (.snd (.snd (.snd p)))
-def gpRk {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ BV256 :=
+@[expose] def gpRk {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ BV256 :=
   .fst (.snd (.snd (.snd (.snd p))))
-def gpPrevCtr {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ U32 :=
+@[expose] def gpPrevCtr {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ U32 :=
   .fst (.snd (.snd (.snd (.snd (.snd p)))))
-def gpPend {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ .bool :=
+@[expose] def gpPend {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ .bool :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd p))))))
-def gpEp {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ .nat :=
+@[expose] def gpEp {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ .nat :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd p)))))))
-def gpCEps {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ (.list .nat) :=
+@[expose] def gpCEps {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ (.list .nat) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd p))))))))
-def gpSc {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ (.opt drSenderChainT) :=
+@[expose] def gpSc {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ (.opt drSenderChainT) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd p)))))))))
-def gpRcs {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ (.list drRecvChainT) :=
+@[expose] def gpRcs {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ (.list drRecvChainT) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd p))))))))))
-def gpPqSt {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ (B 32) :=
+@[expose] def gpPqSt {O' : Ops S} {Γ} (p : Expr O' Γ ghostPartsT) : Expr O' Γ (B 32) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd p))))))))))
 
-def gpMk {O' : Ops S} {Γ}
+@[expose] def gpMk {O' : Ops S} {Γ}
     (isB : Expr O' Γ .bool)
     (ver : Expr O' Γ U32)
     (locId : Expr O' Γ IdKey)
@@ -292,7 +294,7 @@ def gpMk {O' : Ops S} {Γ}
   .pair isB (.pair ver (.pair locId (.pair remId? (.pair rk (.pair prevCtr
     (.pair pend (.pair ep (.pair cEps (.pair sc? (.pair rcs pqSt))))))))))
 
-def optBytes32LitE {Γ} : Option Bytes → Expr OO Γ (.opt (B 32))
+@[expose] def optBytes32LitE {Γ} : Option Bytes → Expr OO Γ (.opt (B 32))
   | none => .none
   | some bs => .some (e2ePureOp (.bytesLit 32 bs) .unit)
 
@@ -315,7 +317,7 @@ theorem cost_optBytes32LitE_le {Γ : List (Ty S)} (opt : Option Bytes)
     simp only [optBytes32LitE, Expr.cost, cost_e2ePureOp, E2EPureOp.cost, h32]
     omega
 
-def sendAddrsE {Γ} (isB : Expr OO Γ .bool) : Expr OO Γ (.opt (B 32)) :=
+@[expose] def sendAddrsE {Γ} (isB : Expr OO Γ .bool) : Expr OO Γ (.opt (B 32)) :=
   .ite isB
     (optBytes32LitE (serializedPartyAddresses uuidTryParse .B .A))
     (optBytes32LitE (serializedPartyAddresses uuidTryParse .A .B))
@@ -342,7 +344,7 @@ theorem cost_sendAddrsE_le {Γ} (isB : Expr OO Γ .bool) :
     (serializedPartyAddresses_length_le_128 uuidTryParse .B .A)
   omega
 
-def expectedAddrsE {Γ} (isB : Expr OO Γ .bool) : Expr OO Γ (.opt (B 32)) :=
+@[expose] def expectedAddrsE {Γ} (isB : Expr OO Γ .bool) : Expr OO Γ (.opt (B 32)) :=
   .ite isB
     (optBytes32LitE (serializedPartyAddresses uuidTryParse .A .B))
     (optBytes32LitE (serializedPartyAddresses uuidTryParse .B .A))
@@ -370,7 +372,7 @@ theorem cost_expectedAddrsE_le {Γ} (isB : Expr OO Γ .bool) :
     (serializedPartyAddresses_length_le_128 uuidTryParse .B .A)
   omega
 
-def sessionVersionEffE {Γ} (ver : Expr OO Γ U32) : Expr OO Γ U32 :=
+@[expose] def sessionVersionEffE {Γ} (ver : Expr OO Γ U32) : Expr OO Γ U32 :=
   .letE ver
     (.ite (e2ePureOp .u32Eq (.pair .v0 (e2ePureOp (.u32Lit 0#32) .unit)))
       (e2ePureOp (.u32Lit 2#32) .unit)
@@ -405,7 +407,7 @@ private theorem foldr_drop1Step_snd {α : Type} :
   | _ :: xs => by
     simp [List.foldr_cons, drop1Step, foldr_drop1Step_fst xs]
 
-def drop1BE {O' : Ops S} {Γ t} (cap : ℕ) (xs : Expr O' Γ (.list t)) : Expr O' Γ (.list t) :=
+@[expose] def drop1BE {O' : Ops S} {Γ t} (cap : ℕ) (xs : Expr O' Γ (.list t)) : Expr O' Γ (.list t) :=
   .snd (.foldrB cap xs (.pair .nil .nil) (.pair (.cons .v0 (.fst .v1)) (.fst .v1)))
 
 theorem eval_drop1BE {O' : Ops S} {Γ t} (cap : ℕ) (xs : Expr O' Γ (.list t)) (ρ : Env Γ)
@@ -415,7 +417,7 @@ theorem eval_drop1BE {O' : Ops S} {Γ t} (cap : ℕ) (xs : Expr O' Γ (.list t))
   rw [List.take_of_length_le hlen]
   exact foldr_drop1Step_snd (xs.eval ρ)
 
-def pushEvict5E {O' : Ops S} {Γ t} (xs : Expr O' Γ (.list t)) (x : Expr O' Γ t) :
+@[expose] def pushEvict5E {O' : Ops S} {Γ t} (xs : Expr O' Γ (.list t)) (x : Expr O' Γ t) :
     Expr O' Γ (.list t) :=
   .letE (.pair xs x)
     (let xs0 : Expr O' _ (.list t) := .fst .v0
@@ -472,7 +474,7 @@ private theorem getLast?_take_succ :
     have ih := getLast?_take_succ (b :: tl) i hi'
     simpa [List.take_succ_cons, List.getLast?_cons_cons, List.getD] using ih
 
-def getDZero5E {O' : Ops S} {Γ} (cEps : Expr O' Γ (.list .nat)) (idx : Expr O' Γ .nat) :
+@[expose] def getDZero5E {O' : Ops S} {Γ} (cEps : Expr O' Γ (.list .nat)) (idx : Expr O' Γ .nat) :
     Expr O' Γ .nat :=
   .letE (.pair cEps idx)
     (let l0 : Expr O' _ (.list .nat) := .fst .v0
@@ -524,7 +526,7 @@ private theorem foldr_findWithIdxStep {α : Type} (p : α → Bool) :
         simp [ih]
     · simp
 
-def findChainWithIdx5E {Γ} (rcs : Expr OO Γ (.list drRecvChainT)) (their : Expr OO Γ PK) :
+@[expose] def findChainWithIdx5E {Γ} (rcs : Expr OO Γ (.list drRecvChainT)) (their : Expr OO Γ PK) :
     Expr OO Γ (.prod .nat (.opt drRecvChainT)) :=
   .letE (.pair rcs their)
     (.foldrB 5 (.fst .v0) (.pair (.nat 0) .none)
@@ -568,7 +570,7 @@ private theorem foldr_replaceFirstStep_snd {α : Type} (p : α → Bool) (newVal
       subst hi
       simp
 
-def replaceFirstChain5E {Γ} (rcs : Expr OO Γ (.list drRecvChainT)) (their : Expr OO Γ PK)
+@[expose] def replaceFirstChain5E {Γ} (rcs : Expr OO Γ (.list drRecvChainT)) (their : Expr OO Γ PK)
     (newRc : Expr OO Γ drRecvChainT) : Expr OO Γ (.list drRecvChainT) :=
   .letE (.pair rcs (.pair their newRc))
     (.snd
@@ -632,7 +634,7 @@ private theorem foldr_takeFirstMatchStep {α : Type} (p : α → Bool) :
         · simp [List.eraseIdx_cons_succ, ih.2]
     · simp
 
-def takeSkippedFromListE {Γ} (mks : Expr OO Γ (.list (.prod BV256 U32)))
+@[expose] def takeSkippedFromListE {Γ} (mks : Expr OO Γ (.list (.prod BV256 U32)))
     (targetCtr : Expr OO Γ U32) :
     Expr OO Γ (.prod (.opt (.prod BV256 U32)) (.list (.prod BV256 U32))) :=
   .letE (.pair mks targetCtr)
@@ -716,7 +718,7 @@ theorem cost_takeSkippedFromListE_le {Γ} (mks : Expr OO Γ (.list (.prod BV256 
 
 /-! ## Bounded single-chain advance -/
 
-@[reducible] def chainAdvAccT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def chainAdvAccT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .opt (.prod (.prod BV256 U32) (.list (.prod BV256 U32)))
 
 def chainAdvStepFn (F : ShaCompress) (targetCtr : BitVec 32) :
@@ -735,7 +737,7 @@ def chainAdvStepFn (F : ShaCompress) (targetCtr : BitVec 32) :
       some ((ck, idx), mks)
 
 /-- Advances `(ck, mks)` up to `targetCtr` in `25,000` bounded `Comp.iter` steps. -/
-def advanceSingleChainC {ι : Type} {T : OracleSpec ι} (I : Iface S T) {Γ}
+@[expose] def advanceSingleChainC {ι : Type} {T : OracleSpec ι} (I : Iface S T) {Γ}
     (ckInit : Expr OO Γ (.prod BV256 U32))
     (mksInit : Expr OO Γ (.list (.prod BV256 U32)))
     (targetCtr : Expr OO Γ U32) :

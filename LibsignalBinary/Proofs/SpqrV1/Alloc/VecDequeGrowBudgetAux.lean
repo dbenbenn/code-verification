@@ -9,26 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeGrow
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeGrow
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.Alloc.Fetch
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # `AllocCallPreserved` `memmove` and `RawVec<ChainEpoch>::grow_one` Helpers
@@ -38,7 +38,7 @@ budget contracts for block 361 (`finish_grow [local#8]`) and block 356
 (`RawVec<ChainEpoch>::grow_one`), used by `VecDequeGrowBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -231,7 +231,7 @@ private theorem pointsToBytes_listMove_append_entails (base : BitVec 64)
   rwa [hlen] at hreg
 
 /-- Stack-equipped `AllocCallPreserved ∧ VmPreserved` `memmove` contract. -/
-def sessionMemmoveAcpSpec (hookStack : Nat := 4096) :
+@[expose] def sessionMemmoveAcpSpec (hookStack : Nat := 4096) :
     Spec (BitVec 64 × List (BitVec 8) × Nat × Nat × Nat) where
   pre := (sessionMemmoveSpec hookStack).pre
   post := fun (base, buf, dst, src, len) s0 sf =>
@@ -262,7 +262,7 @@ theorem hookMemmove_sessionMemmoveAcp_ok (hookStack : Nat := 4096) :
     same `AllocCallPreserved ∧ VmPreserved` postcondition, gated by `MemmoveArithBound base buf`
     in `.pre` so real `libc.a` `memmove` satisfies it (`VecDequeGrowBudget` /
     `AddChunkCl1PlacedBudget` / `SpqrChainPlacedInstBudget`). -/
-def sessionMemmoveBoundedAcpSpec (hookStack : Nat := 4096) :
+@[expose] def sessionMemmoveBoundedAcpSpec (hookStack : Nat := 4096) :
     Spec (BitVec 64 × List (BitVec 8) × Nat × Nat × Nat) :=
   { sessionMemmoveAcpSpec hookStack with
     pre := (sessionMemmoveBoundedSpec hookStack).pre }
@@ -275,7 +275,7 @@ theorem hookMemmove_sessionMemmoveBoundedAcp_ok (hookStack : Nat := 4096) :
   rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
   exact h x R s0 hrun hpre.2 hsp
 
-def sessionMemmoveFrontToEndAcpSpec (hookStack : Nat) :
+@[expose] def sessionMemmoveFrontToEndAcpSpec (hookStack : Nat) :
     Spec (BitVec 64 × List (BitVec 8) × Nat) where
   pre := fun (base, bs_front, uninitLen) s0 =>
     ⌜s0.readReg64 .x0 = base + BitVec.ofNat 64 uninitLen ∧
@@ -350,7 +350,7 @@ private theorem memRegion_24_eq (a : BitVec 64) :
         (a ↦₆₄ v2) ∗ ((a + 8#64) ↦₆₄ v1) ∗ ((a + 16#64) ↦₆₄ v0)) :=
   CryptoVerification.SpqrV1.Alloc.memRegion_24 a
 
-def finishGrow8AllocAcpSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow8AllocAcpSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) :
     Spec (CryptoVerification.LibsignalTripleRatchet.FinishGrowCall × M.σ) where
   pre := fun (x, st) s =>
@@ -372,7 +372,7 @@ def finishGrow8AllocAcpSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
       A.pool lim (M.stepEvents (rustAllocEvents (x.new.toNat * x.stride.toNat) x.align.toNat) st) sf ∗
       stackAt s0.sp (hookStack + 48)
 
-def finishGrow8ReallocAcpSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow8ReallocAcpSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) :
     Spec (CryptoVerification.LibsignalTripleRatchet.FinishGrowCall × M.σ) where
   pre := fun (x, st) s =>
@@ -507,7 +507,7 @@ theorem finish_grow_8_ne_acp_placed_ok_of_hooks [LibsignalPlacement] {M : AllocC
     (sf.readReg64 Reg.x0)
   wp_done
 
-def finishGrow8ZeroCellsAcpSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow8ZeroCellsAcpSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FG8CellsGhost M.σ) where
   pre := fun (out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp, st) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
@@ -528,7 +528,7 @@ def finishGrow8ZeroCellsAcpSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
       A.pool lim (M.stepEvents (rustAllocEvents (new.toNat * stride.toNat) align.toNat) st) sf ∗
       stackAt fsp (hookStack + 48)
 
-def finishGrow8NeCellsAcpSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow8NeCellsAcpSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FG8CellsGhost M.σ) where
   pre := fun (out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp, st) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
@@ -632,7 +632,7 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
   calleeSavedVRegs_setMem_pre
 
 /-- `AllocCallPreserved` budget contract for `RawVec<ChainEpoch>::grow_one` (`stride = 112, align = 8`). -/
-def growOneChainEpochBsAcpSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def growOneChainEpochBsAcpSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (GrowGhost × M.σ) where
   pre := fun ((v, cap, ptr, bs), st) s =>
     ⌜s.readReg64 .x0 = v ∧ bs.length ≤ cap.toNat * 112 ∧ ptr ≠ 0#64 ∧

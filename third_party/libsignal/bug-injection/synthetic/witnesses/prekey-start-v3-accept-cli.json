@@ -1,0 +1,35 @@
+{
+  "comment": "Synthetic mutant for outer version-3 PreKey handshake acceptance: process_prekey_impl omits the CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION rejection when starting a Bob session, accepting a PreKeySignalMessage whose outer version byte is downgraded from 0x44 (v4) to 0x33 (v3) while retaining Kyber fields 7 and 8.",
+  "setup_seed": 23209,
+  "rng_seed": 41,
+  "calls": [
+    {
+      "entry": "init",
+      "b": {
+        "honest_bundle": true
+      }
+    },
+    {
+      "entry": "send",
+      "who": 0,
+      "b": {
+        "utf8": "hello bob"
+      }
+    },
+    {
+      "entry": "recv",
+      "who": 1,
+      "b": {
+        "replace": {
+          "message_of": 1
+        },
+        "find": {
+          "hex": "0344122105abbb904f"
+        },
+        "with": {
+          "hex": "0333122105abbb904f"
+        }
+      }
+    }
+  ]
+}

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExpand
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExpand -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `spqr::kdf::hkdf_to_slice`: Expand Loop and Top-Level Proof
@@ -21,7 +21,7 @@ Proves the HKDF-Expand loop (`0x636f0 → 0x639e4`) for `okmLen ∈ {32, 64, 96}
 fixed-base and `[LibsignalPlacement]` `RunsTo` theorems for `spqr::kdf::hkdf_to_slice`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -55,9 +55,6 @@ attribute [local simp, local arm64_norm] bv_sub_add_lit hkdfCodeFakeB bv_sub_add
 @[scoped simp, arm64_norm] theorem extractLsb'_0_64_zero128 : (0#128).extractLsb' 0 64 = 0#64 := rfl
 @[scoped simp, arm64_norm] theorem extractLsb'_64_64_zero128 : (0#128).extractLsb' 64 64 = 0#64 := rfl
 
-@[simp, arm64_norm] private
-gen_decodes libsignalSessionCode_tree libsignalSessionCode [0x5e098 → 0x5e59c]
-
 variable {b b_iv : BitVec 64} {C : Crypto} {ext : String → Option (State → State)}
 
 theorem hkdfExpand_64_eq (F : ShaState → List (BitVec 8) → ShaState) (prk info : List (BitVec 8)) :
@@ -68,7 +65,7 @@ theorem hkdfExpand_64_eq (F : ShaState → List (BitVec 8) → ShaState) (prk in
   rw [h2, hblocks, List.take_of_length_le]; simp [Expand.t1, Expand.t2, length_hmacWith]
 
 /-- Postcondition of `spqr::kdf::hkdf_to_slice` (`b + 0x63284` → `s₀.readReg64 .lr`). -/
-def HPost (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def HPost (F : ShaState → List (BitVec 8) → ShaState)
     (salt ikm info : List (BitVec 8)) (okmA : BitVec 64) (okmLen : ℕ)
     (s₀ s' : State) : Prop :=
   s'.pc = s₀.readReg64 .lr ∧
@@ -116,16 +113,6 @@ local macro "hkdf_epilogue_body" : tactic => `(tactic| (
     rcases hr with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> kdf_reg
   · exact (hA.readBytes_eq hd_okm (by have := hpre.okm_len; omega)).trans hx.okm_all))
 
-/-- Epilogue (`b + 0x5dfcc` → `s₀.readReg64 .lr`, 21 steps): zeroes stack scratch slots, restores
-`sp = s₀.sp` and `x19..x30`, and returns. -/
-theorem epilogue_runsTo [HkdfHooks C.F ext] {aligned : Prop}
-    {salt ikm info : List (BitVec 8)} {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ}
-    {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀ b_iv aligned)
-    (hx : StateDone b C.F salt ikm info okmA okmLen s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s (HPost C.F salt ikm info okmA okmLen s₀) := by
-  hkdf_epilogue_body
-
 theorem epilogue_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks} {aligned : Prop}
     {salt ikm info : List (BitVec 8)} {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ}
     {s₀ s : State}
@@ -145,15 +132,6 @@ local macro "hkdf_b1_done_32_body" : tactic => `(tactic| (
     ⟨by kdf_reg, by kdf_reg, by kdf_reg,
      by rw [State.mem_setPC]; exact hsaved, by rw [State.mem_setPC]; exact hframe⟩,
     by rw [State.mem_setPC, hkdfExpand_32_eq]; exact hokm⟩))
-
-/-- Case `okmLen = 32` (`b + 0x636f0` → `b + 0x5dfcc`, 1 step): `x26 = 0#64`, so `cbz x26` jumps
-directly to `StateDone` at `0x5dfcc`. -/
-theorem b1_done_32_runsTo [HkdfHooks C.F ext] {aligned : Prop}
-    {salt ikm info : List (BitVec 8)} {saltA ikmA infoA okmA : BitVec 64} {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA 32 s₀ b_iv aligned)
-    (hx : StateB1Done b C.F salt ikm info infoA okmA 32 s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s (StateDone b C.F salt ikm info okmA 32 s₀) := by
-  hkdf_b1_done_32_body
 
 theorem b1_done_32_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks} {aligned : Prop}
     {salt ikm info : List (BitVec 8)} {saltA ikmA infoA okmA : BitVec 64} {s₀ s : State}
@@ -193,19 +171,6 @@ local macro "hkdf_b1_to_loop_body" : tactic => `(tactic| (
       m24_eq := hx.exp.m24_eq, hmac_208 := hx.exp.hmac_208 },
     by kdf_reg, by kdf_reg, by kdf_reg, by kdf_reg,
     by kdf_reg, by kdf_reg, by kdf_reg, hx.t1_508, hx.okm_32⟩))
-
-/-- Loop entry (`b + 0x636f0` → `b + 0x637b8`, 6 steps when `okmLen = 64 ∨ okmLen = 96`):
-steps from `StateB1Done` into `StateLoop` with `i = 1`, `rem = okmLen - 32`, `dstOff = 32`. -/
-theorem b1_to_loop_runsTo [HkdfHooks C.F ext]
-    {salt ikm info : List (BitVec 8)} {infoA okmA : BitVec 64} {okmLen : ℕ}
-    {s₀ s : State} (hokm : okmLen = 64 ∨ okmLen = 96)
-    (hx : StateB1Done b C.F salt ikm info infoA okmA okmLen s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s
-      (StateLoop b C.F salt ikm info infoA okmA
-        (Expand.t1 C.F (hkdfExtractBytes C.F salt ikm) info)
-        (Expand.t1 C.F (hkdfExtractBytes C.F salt ikm) info)
-        okmLen 1 (okmLen - 32) 32 s₀) := by
-  hkdf_b1_to_loop_body
 
 theorem b1_to_loop_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     {salt ikm info : List (BitVec 8)} {infoA okmA : BitVec 64} {okmLen : ℕ}
@@ -252,12 +217,14 @@ theorem info_ge32_lemmas {n : ℕ} (hge : 32 ≤ n) (hlt : n < 64) :
   have hm : n ∈ List.range' 32 32 := List.mem_range'.mpr ⟨n - 32, by omega, by omega⟩
   clear hge hlt; revert hm; generalize n = k; decide +revert
 
+abbrev offLoopMemcpyTarget : Nat := 558412
+
 /-- Loop cut `StateLoopA1` at `pc_target` (after 46 steps from `0x5e2dc`):
 `Hmac(PRK, tPrev)` initialized at `hsp s₀ + 352#64`, and `memcpy(hsp s₀ + 384#64, infoA, 32)` called. -/
 structure StateLoopA1 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (salt ikm info : List (BitVec 8)) (infoA okmA : BitVec 64)
     (tPrev okmSoFar : List (BitVec 8)) (okmLen i rem dstOff : ℕ)
-    (s₀ s : State) (pc_target : BitVec 64 := b + bv% (ls_off% "memcpy")) : Prop where
+    (s₀ s : State) (pc_target : BitVec 64 := b + bv% offLoopMemcpyTarget) : Prop where
   pc_eq    : s.pc = pc_target
   exp      : HExpCommon F (hkdfExtractBytes F salt ikm) info infoA okmLen s₀ s
   lr_eq    : s.readReg64 .lr = b + 0x5e478#64
@@ -327,19 +294,6 @@ local macro "hkdf_iter_a1_body" : tactic => `(tactic| (
         (hpre.disj_okm_stk.symm.sub_left (hsp s₀ + 32#64) ⟨by decide, by bv_omega⟩).sub_right okmA
           ⟨by omega, by have := hpre.okm_len; bv_omega⟩
       exact (hA.readBytes_eq hd (by have := hpre.okm_len; omega)).trans hx.okm_pre))
-
-/-- Loop segment `A1` (`b + 0x5e2dc` → `b + 0x97228`, 46 steps): copies `Hmac(PRK, [])` to
-`hsp s₀ + 352#64`, writes `tPrev` (32 B) from `hsp s₀ + 508#64` to `hsp s₀ + 352#64..384#64`,
-and calls `memcpy(hsp s₀ + 384#64, infoA, 32)`. -/
-theorem iter_a1_runsTo [HkdfHooks C.F ext] {aligned : Prop}
-    {salt ikm info tPrev okmSoFar : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen i rem dstOff : ℕ} {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀ b_iv aligned)
-    (ht_len : tPrev.length = 32) (hrem : rem = 32 ∨ rem = 64) (hdst : dstOff ≤ okmLen)
-    (hx : StateLoop b C.F salt ikm info infoA okmA tPrev okmSoFar okmLen i rem dstOff s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s
-      (StateLoopA1 b C.F salt ikm info infoA okmA tPrev okmSoFar okmLen i rem dstOff s₀) := by
-  hkdf_iter_a1_body
 
 theorem iter_a1_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks} {aligned : Prop}
     {salt ikm info tPrev okmSoFar : List (BitVec 8)}
@@ -468,39 +422,6 @@ local macro "hkdf_iter_a2_post" : tactic => `(tactic| (
       have hlen : dstOff ≤ 2 ^ 64 := by have := hpre.okm_len; omega
       rw [hA3.readBytes_eq hd3 hlen, hA2.readBytes_eq hd2 hlen, hA1.readBytes_eq hd1 hlen]
       exact hx.okm_pre))
-
-set_option maxHeartbeats 1600000 in
-theorem iter_a2_runsTo [HkdfHooks C.F ext] {aligned : Prop}
-    {salt ikm info tPrev okmSoFar : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen i rem dstOff : ℕ}
-    {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀ b_iv aligned)
-    (ht_len : tPrev.length = 32) (hdst : dstOff ≤ okmLen)
-    (hx : StateLoopA1 b C.F salt ikm info infoA okmA tPrev okmSoFar okmLen i rem dstOff s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s
-      (StateLoopA2 b C.F salt ikm info infoA okmA tPrev okmSoFar okmLen i rem dstOff s₀) := by
-  have hpc := hx.pc_eq; have hrun := hx.exp.common.status
-  have hsp_eq := hx.exp.common.sp_eq; have hx29 := hx.exp.common.x29_eq
-  have hlr := hx.lr_eq; have hx0 := hx.x0_eq; have hx1 := hx.x1_eq; have hx2 := hx.x2_eq
-  have hx19 := hx.x19_eq; have hx21 := hx.x21_eq; have hx22 := hx.x22_eq
-  have hx23 := hx.x23_eq; have hx24 := hx.x24_eq; have hx25 := hx.x25_eq
-  have hx26 := hx.x26_eq; have hx27 := hx.x27_eq; have hhsp := hsp_aligned hpre.sp_aligned
-  have hrw_hsp : s.mem.RW (hsp s₀) 688 := HFrame.rw_hsp hpre hx.exp.common.frame
-  have hrw_384 : s.mem.RW (hsp s₀ + 384#64) 32 := hrw_hsp.sub (by bv_omega)
-  have hinfo_all : s.mem.readBytes infoA info.length = info := HFrame.info_bytes hpre hx.exp.common.frame
-  have hinfo_take : s.mem.readBytes infoA 32 = info.take 32 := by
-    simpa using Bytes.readBytes_slice_of_readBytes_eq s.mem infoA info hinfo_all 0 32 (by have := hpre.info_ge; omega)
-  have htake_len : (info.take 32).length = 32 := List.length_take_of_le hpre.info_ge
-  have hx2_nat : (s.readReg64 .x2).toNat = 32 := by rw [hx2]; rfl
-  refine s2_memcpy_step_ext b C ext hrun hpc hx0 hx1 hx2_nat hlr hinfo_take hrw_384 ?_
-  hkdf_iter_a2_mid
-  refine s2_compress256_step_ext b C ext
-    (stPtr := hsp s₀ + 416#64) (blkPtr := hsp s₀ + 352#64) (lr := b + 0x5e494#64)
-    (st := hmacInnerInit C.F prk) (blk := tPrev ++ info.take 32)
-    (by kdf_reg) (by kdf_reg) (by kdf_reg) (by kdf_reg) (by kdf_reg) (by kdf_reg)
-    (by rw [Expand.mem_setMem]; exact hin_416) (by rw [Expand.mem_setMem]; exact hblk_352) hblk_len
-    (by rw [Expand.mem_setMem]; exact hrw_416) ?_
-  hkdf_iter_a2_post
 
 set_option maxHeartbeats 1600000 in
 theorem iter_a2_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks} {aligned : Prop}
@@ -771,26 +692,6 @@ local macro "hkdf_iter_b_post" pc8d0:term : tactic => `(tactic| (
         exact hx.okm_pre))
 
 set_option maxHeartbeats 4000000 in
-theorem iter_b_runsTo [HkdfHooks C.F ext] {aligned : Prop}
-    {salt ikm info tPrev okmSoFar : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen i rem dstOff : ℕ} {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀ b_iv aligned)
-    (ht_len : tPrev.length = 32) (hi : i = 1 ∨ i = 2) (hrem : rem = 32 ∨ rem = 64)
-    (hdst : dstOff + 32 ≤ okmLen)
-    (hx : StateLoopA2 b C.F salt ikm info infoA okmA tPrev okmSoFar okmLen i rem dstOff s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s
-      (StateLoopC b C.F salt ikm info infoA okmA tPrev okmSoFar okmLen i rem dstOff s₀) := by
-  have hpc := hx.pc_eq; hkdf_iter_b_pre
-  refine s2_memcpy_step_ext b C ext
-    (dst := hsp s₀ + 352#64) (src := infoA + 32#64) (lr := b + 0x5e4d8#64)
-    (len := k) (bs := info.drop 32)
-    (by kdf_reg) (by kdf_reg) (by kdf_reg)
-    (by rw [State.readReg64_setMem]; simp (config := { decide := true }) only [arm64_norm, BitVec.add_zero])
-    hx2_nat (by kdf_reg) (by rw [Expand.mem_setMem]; exact hinfo_drop)
-    (by rw [Expand.mem_setMem]; exact hrw_352) ?_
-  hkdf_iter_b_post (b + 0x5e4d8#64)
-
-set_option maxHeartbeats 4000000 in
 theorem iter_b_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks} {aligned : Prop}
     (h_memcpy : H lsMemcpySym = some memcpyHook)
     {salt ikm info tPrev okmSoFar : List (BitVec 8)}
@@ -828,50 +729,6 @@ structure StateLoopFin (b : BitVec 64) (F : ShaState → List (BitVec 8) → Sha
   t_540   : s.mem.readBytes (hsp s₀ + 540#64) 32 =
               hmacWith F (hkdfExtractBytes F salt ikm) (tPrev ++ info ++ [BitVec.ofNat 8 (i + 1)])
   okm_pre : s.mem.readBytes okmA dstOff = okmSoFar
-
-/-- `finalize_fixed` inside loop (`b + 0x6ce50` → `b + 0x63784`): computes
-`T(i + 1) = hmacWith C.F prk (tPrev ++ info ++ [BitVec.ofNat 8 (i + 1)])` at `hsp s₀ + 540#64`. -/
-theorem iter_fin_runsTo [HkdfHooks C.F ext]
-    {salt ikm info tPrev okmSoFar : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen i rem dstOff : ℕ} {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀) (hdst : dstOff ≤ okmLen)
-    (hx : StateLoopC b C.F salt ikm info infoA okmA tPrev okmSoFar okmLen i rem dstOff s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s
-      (StateLoopFin b C.F salt ikm info infoA okmA tPrev okmSoFar okmLen i rem dstOff s₀) := by
-  have hrw_hsp := HFrame.rw_hsp hpre hx.exp.common.frame
-  have hrw_sub := HFrame.rw_sub_544 hpre hx.exp.common.frame
-  have hfin_pre : FinPre3Pfx b C.F (hkdfExtractBytes C.F salt ikm)
-      (tPrev ++ info.take 32) (info.drop 32 ++ [BitVec.ofNat 8 (i + 1)]) s :=
-    { pc_eq := hx.pc_eq, status := hx.exp.common.status, key_le := by simp [hkdfExtractBytes, hmacWith],
-      tail_lt := by have := hpre.info_lt; simp; omega, hmac_st := by rw [hx.x1_eq]; exact hx.hmac_32,
-      rw_out := by rw [hx.x0_eq]; exact hrw_hsp.sub (by bv_omega),
-      rw_hm := by rw [hx.x1_eq]; exact hrw_hsp.sub (by bv_omega),
-      rw_fsp := by rw [hx.exp.common.sp_eq]; exact hrw_sub.sub (by bv_omega),
-      disj_out_hm := by rw [hx.x0_eq, hx.x1_eq]; unfold DisjointRegions; bv_omega,
-      disj_out_fsp := by rw [hx.x0_eq, hx.exp.common.sp_eq]; unfold DisjointRegions; bv_omega,
-      disj_hm_fsp := by rw [hx.x1_eq, hx.exp.common.sp_eq]; unfold DisjointRegions; bv_omega,
-      sp_aligned := by rw [hx.exp.common.sp_eq]; exact (hsp_aligned hpre.sp_aligned).2.1 }
-  refine (FinalizeFixed3Proof.finalize_fixed3_pfx_runsTo_ext (ext := ext) hfin_pre).mono
-    fun s' ⟨hpc', hrun', hcs, hout, hfr⟩ => ?_
-  rw [hx.lr_eq] at hpc'; rw [hx.x0_eq] at hout; rw [hx.x0_eq, hx.x1_eq, hx.exp.common.sp_eq] at hfr
-  have hmsg_eq : (tPrev ++ info.take 32) ++ (info.drop 32 ++ [BitVec.ofNat 8 (i + 1)]) =
-      tPrev ++ info ++ [BitVec.ofNat 8 (i + 1)] := by
-    rw [List.append_assoc tPrev (info.take 32), ← List.append_assoc (info.take 32), List.take_append_drop, ← List.append_assoc]
-  rw [hmsg_eq] at hout
-  have hokm' : s'.mem.readBytes okmA dstOff = okmSoFar := by
-    by_cases h0 : dstOff = 0
-    · subst h0; exact hx.okm_pre
-    · have hokm_len := hpre.okm_len
-      refine (Expand.Frame.readBytes_eq hfr (fun r hr => ?_) (by omega)).trans hx.okm_pre
-      simp only [List.mem_cons, List.not_mem_nil, or_false] at hr; rcases hr with rfl | rfl | rfl <;> dsimp only
-      · exact (hpre.disj_okm_stk.symm.sub_left (hsp s₀ + 540#64) ⟨by decide, by bv_omega⟩).sub_right okmA ⟨by omega, by bv_omega⟩
-      · exact (hpre.disj_okm_stk.symm.sub_left (hsp s₀ + 32#64) ⟨by decide, by bv_omega⟩).sub_right okmA ⟨by omega, by bv_omega⟩
-      · exact (hpre.disj_okm_stk.symm.sub_left (hsp s₀ - 144#64) ⟨by decide, by bv_omega⟩).sub_right okmA ⟨by omega, by bv_omega⟩
-  exact ⟨hpc', HExpCommon.of_fin_frame hx.exp hrun' hcs hfr,
-    (CalleeSaved.x20 hcs).trans hx.x20_eq, (CalleeSaved.x21 hcs).trans hx.x21_eq,
-    (CalleeSaved.x22 hcs).trans hx.x22_eq, (CalleeSaved.x24 hcs).trans hx.x24_eq,
-    (CalleeSaved.x25 hcs).trans hx.x25_eq, (CalleeSaved.x26 hcs).trans hx.x26_eq,
-    (CalleeSaved.x27 hcs).trans hx.x27_eq, (CalleeSaved.x28 hcs).trans hx.x28_eq, hout, hokm'⟩
 
 theorem iter_fin_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     (h_memcpy : H lsMemcpySym = some memcpyHook)
@@ -971,38 +828,6 @@ set_option hygiene false in local macro "hkdf_iter_d_continue_post" : tactic => 
     rw [hpre_m1, hnext_m1]))
 
 set_option maxHeartbeats 1600000 in
-/-- Loop continuation (`b + 0x5e2a8` → `b + 0x5e2dc`, 4 steps + `memcpy` + 9 steps when `rem = 64`):
-copies `T(2)` to `okmA + 32#64`, caches `T(2)` at `hsp s₀ + 508#64`, and loops back to `0x5e2dc`
-with `i = 2`, `rem = 32`, `dstOff = 64`. -/
-theorem iter_d_continue_runsTo [HkdfHooks C.F ext] {aligned : Prop}
-    {salt ikm info tPrev okmSoFar : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ}
-    {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀ b_iv aligned)
-    (hokm96 : okmLen = 96)
-    (hx : StateLoopFin b C.F salt ikm info infoA okmA tPrev okmSoFar okmLen 1 64 32 s₀ s) :
-    let tNext := hmacWith C.F (hkdfExtractBytes C.F salt ikm) (tPrev ++ info ++ [2#8])
-    RunsTo (tripleRatchetProgAtExt b ext) s
-      (StateLoop b C.F salt ikm info infoA okmA tNext (okmSoFar ++ tNext) okmLen 2 32 64 s₀) := by
-  intro tNext; subst hokm96
-  have ht_540 : s.mem.readBytes (hsp s₀ + 540#64) 32 = tNext := hx.t_540
-  have htNext_len : tNext.length = 32 := length_hmacWith _ _ _
-  generalize tNext = tN at ht_540 htNext_len ⊢
-  have hpc := hx.pc_eq; have hrun := hx.exp.common.status
-  have hsp_eq := hx.exp.common.sp_eq; have hx29 := hx.exp.common.x29_eq
-  have hx20 : s.readReg64 .x20 = okmA + 64#64 := hx.x20_eq
-  have hx21 := hx.x21_eq; have hx22 : s.readReg64 .x22 = okmA + 32#64 := hx.x22_eq
-  have hx24 := hx.x24_eq; have hx25 := hx.x25_eq
-  have hx26 : s.readReg64 .x26 = 32#64 := hx.x26_eq
-  have hx27 : s.readReg64 .x27 = 1#64 := hx.x27_eq
-  have hx28 := hx.x28_eq; have hhsp := hsp_aligned hpre.sp_aligned
-  have hrw_okm : s.mem.RW okmA 96 := HFrame.rw_okm hpre hx.exp.common.frame
-  have hrw_dst : s.mem.RW (okmA + 32#64) 32 := hrw_okm.sub (by bv_omega)
-  iterate 4 kdf_step
-  refine s2_memcpy_step_ext b C ext hrun rfl rfl rfl rfl rfl ht_540 hrw_dst ?_
-  hkdf_iter_d_continue_post
-
-set_option maxHeartbeats 1600000 in
 theorem iter_d_continue_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks} {aligned : Prop}
     (h_memcpy : H lsMemcpySym = some memcpyHook)
     {salt ikm info tPrev okmSoFar : List (BitVec 8)}
@@ -1079,32 +904,6 @@ set_option hygiene false in local macro "hkdf_iter_d_done_post" : tactic => `(ta
   rw [hpre_m1, hnext_m1, hokm_eq, hdst_eq]))
 
 set_option maxHeartbeats 1600000 in
-/-- Loop exit (`b + 0x5e2a8` → `b + 0x5dfcc`, 4 steps + `memcpy` + 13 steps when `rem = 32`). -/
-theorem iter_d_done_runsTo [HkdfHooks C.F ext] {aligned : Prop}
-    {salt ikm info tPrev okmSoFar : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen i dstOff : ℕ} {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀ b_iv aligned)
-    (hdst_pos : 0 < dstOff) (hdst_eq : dstOff + 32 = okmLen)
-    (hokm_eq : okmSoFar ++ hmacWith C.F (hkdfExtractBytes C.F salt ikm)
-        (tPrev ++ info ++ [BitVec.ofNat 8 (i + 1)]) =
-      hkdfExpand C.F (hkdfExtractBytes C.F salt ikm) info okmLen)
-    (hx : StateLoopFin b C.F salt ikm info infoA okmA tPrev okmSoFar okmLen i 32 dstOff s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s (StateDone b C.F salt ikm info okmA okmLen s₀) := by
-  let prk := hkdfExtractBytes C.F salt ikm
-  have ht_540 : s.mem.readBytes (hsp s₀ + 540#64) 32 =
-      hmacWith C.F prk (tPrev ++ info ++ [BitVec.ofNat 8 (i + 1)]) := hx.t_540
-  have htNext_len : (hmacWith C.F prk (tPrev ++ info ++ [BitVec.ofNat 8 (i + 1)])).length = 32 := length_hmacWith _ _ _
-  generalize hmacWith C.F prk (tPrev ++ info ++ [BitVec.ofNat 8 (i + 1)]) = tN at ht_540 htNext_len hokm_eq
-  have hpc := hx.pc_eq; have hrun := hx.exp.common.status; have hsp_eq := hx.exp.common.sp_eq; have hx29 := hx.exp.common.x29_eq
-  have hx20 := hx.x20_eq; have hx21 := hx.x21_eq; have hx22 := hx.x22_eq; have hx24 := hx.x24_eq; have hx25 := hx.x25_eq
-  have hx26 : s.readReg64 .x26 = 0#64 := hx.x26_eq; have hx27 := hx.x27_eq; have hx28 := hx.x28_eq; have hhsp := hsp_aligned hpre.sp_aligned
-  have hrw_okm : s.mem.RW okmA okmLen := HFrame.rw_okm hpre hx.exp.common.frame
-  have hrw_dst : s.mem.RW (okmA + BitVec.ofNat 64 dstOff) 32 := hrw_okm.sub (by have := hpre.okm_len; bv_omega)
-  iterate 4 kdf_step
-  refine s2_memcpy_step_ext b C ext hrun rfl rfl rfl rfl rfl ht_540 hrw_dst ?_
-  hkdf_iter_d_done_post
-
-set_option maxHeartbeats 1600000 in
 theorem iter_d_done_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks} {aligned : Prop}
     (h_memcpy : H lsMemcpySym = some memcpyHook)
     {salt ikm info tPrev okmSoFar : List (BitVec 8)}
@@ -1130,21 +929,6 @@ theorem iter_d_done_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks} {ali
   refine s2_memcpy_step_placed_429 h_memcpy hrun rfl rfl rfl rfl rfl ht_540 hrw_dst ?_
   hkdf_iter_d_done_post
 
-/-- One full loop iteration (`b + 0x5e2dc` → `b + 0x5e2a8`, `A1 + A2 + B + Fin`). -/
-theorem iter_step_runsTo [HkdfHooks C.F ext]
-    {salt ikm info tPrev okmSoFar : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen i rem dstOff : ℕ} {s₀ s : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀)
-    (ht_len : tPrev.length = 32) (hi : i = 1 ∨ i = 2) (hrem : rem = 32 ∨ rem = 64)
-    (hdst : dstOff + 32 ≤ okmLen)
-    (hx : StateLoop b C.F salt ikm info infoA okmA tPrev okmSoFar okmLen i rem dstOff s₀ s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s
-      (StateLoopFin b C.F salt ikm info infoA okmA tPrev okmSoFar okmLen i rem dstOff s₀) :=
-  (iter_a1_runsTo hpre ht_len hrem (by omega) hx).trans fun _ hs1 =>
-  (iter_a2_runsTo hpre ht_len (by omega) hs1).trans fun _ hs2 =>
-  (iter_b_runsTo hpre ht_len hi hrem hdst hs2).trans fun _ hs3 =>
-  iter_fin_runsTo hpre (by omega) hs3
-
 theorem iter_step_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
     (h_memcpy : H lsMemcpySym = some memcpyHook)
     (h_memset : H lsMemsetSym = some memsetHook)
@@ -1162,27 +946,6 @@ theorem iter_step_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}
   (iter_a2_placed_runsTo h_memcpy h_compress hpre ht_len (by omega) hs1).trans fun _ hs2 =>
   (iter_b_placed_runsTo h_memcpy hpre ht_len hi hrem hdst hs2).trans fun _ hs3 =>
   iter_fin_placed_runsTo h_memcpy h_memset h_compress hpre (by omega) hs3
-
-/-- Full `RunsTo` theorem for `spqr::kdf::hkdf_to_slice` (`b + 0x63284` → `s₀.readReg64 .lr`). -/
-theorem hkdf_to_slice_runsTo_ext [HkdfHooks C.F ext]
-    (hNfs : Nfs3GenRunsToExt b C.F ext)
-    {salt ikm info : List (BitVec 8)}
-    {saltA ikmA infoA okmA : BitVec 64} {okmLen : ℕ} {s₀ : State}
-    (hpre : HPre b salt ikm info saltA ikmA infoA okmA okmLen s₀) :
-    RunsTo (tripleRatchetProgAtExt b ext) s₀ (HPost C.F salt ikm info okmA okmLen s₀) := by
-  refine (block1_phase_runsTo hNfs hpre).trans fun s₁ hs₁ => ?_
-  rcases hpre.okm_len with rfl | rfl | rfl
-  · exact (b1_done_32_runsTo hpre hs₁).trans fun _ hdone => epilogue_runsTo hpre hdone
-  · refine (b1_to_loop_runsTo (Or.inl rfl) hs₁).trans fun _ hloop1 => ?_
-    refine (iter_step_runsTo hpre (Expand.t1_length _ _ _) (Or.inl rfl) (Or.inl rfl) (by decide) hloop1).trans fun _ hfin1 => ?_
-    refine (iter_d_done_runsTo hpre (by decide) rfl ?_ hfin1).trans fun _ hdone => epilogue_runsTo hpre hdone
-    exact (hkdfExpand_64_eq C.F (hkdfExtractBytes C.F salt ikm) info).symm
-  · refine (b1_to_loop_runsTo (Or.inr rfl) hs₁).trans fun _ hloop1 => ?_
-    refine (iter_step_runsTo hpre (Expand.t1_length _ _ _) (Or.inl rfl) (Or.inr rfl) (by decide) hloop1).trans fun _ hfin1 => ?_
-    refine (iter_d_continue_runsTo hpre rfl hfin1).trans fun _ hloop2 => ?_
-    refine (iter_step_runsTo hpre (length_hmacWith _ _ _) (Or.inr rfl) (Or.inl rfl) (by decide) hloop2).trans fun _ hfin2 => ?_
-    refine (iter_d_done_runsTo hpre (by decide) rfl ?_ hfin2).trans fun _ hdone => epilogue_runsTo hpre hdone
-    exact (hkdfExpand_96_eq C.F (hkdfExtractBytes C.F salt ikm) info).symm
 
 /-- Full placed `RunsTo` theorem for `spqr::kdf::hkdf_to_slice` (Block `379`). -/
 theorem hkdf_to_slice_placed_runsTo [LibsignalPlacement] {H : LibsignalHooks}

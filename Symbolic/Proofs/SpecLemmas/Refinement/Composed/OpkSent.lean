@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Bytes.Basic
@@ -44,7 +44,7 @@ is preserved by every `Move.act`, so any one-time prekey public key read by `bob
 attacker-known (`bobOpkPk_known`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -61,7 +61,7 @@ open Symbolic.Swarm.COMPOSED.CompTrace
 /-! ## `OpkNetOK` invariant and single-step lemmas -/
 
 /-- Every stored one-time prekey record has its public key on the network. -/
-def OpkNetOK (tr : ExecTrace) : Prop :=
+@[expose] def OpkNetOK (tr : ExecTrace) : Prop :=
   ∀ p sk i, PQXDHStoredAt tr p { kind := .oneTimePrekey, sk } i →
     ∃ j, NetMsgAt (DiffieHellman.dhPk sk) j tr
 

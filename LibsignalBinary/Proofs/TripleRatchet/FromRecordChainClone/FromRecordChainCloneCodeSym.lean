@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard7
+meta import GeneratedLean.LibsignalSessionPlacedObjShard8
 
 /-!
 # Per-Block Fetch & Relocation Lemmas for `FromRecordChainClone`
@@ -20,7 +22,7 @@ Generates per-block `PlacedLib`, `WordTree` fetches, `ADRP` pair steps, `:lo12:`
 fetches, and symbol resolution lemmas for blocks `161` (`Chain::clone [local#2]`), `134`, and `157`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

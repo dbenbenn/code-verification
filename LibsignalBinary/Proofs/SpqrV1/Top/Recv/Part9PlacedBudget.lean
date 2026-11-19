@@ -10,19 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part5PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part8PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part9Placed
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part9PlacedBudgetAux
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part5PlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part8PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part9Placed
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part9PlacedBudgetAux
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
@@ -46,6 +46,8 @@ import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
 
 /-!
 # Budget-Threaded Relocatable `Ordering::Greater` (`V0ChainPlacedTail`) for `spqr::recv`
@@ -54,7 +56,7 @@ Proves `step_ordering_greater_placed_ofEnv`, `step_ordering_greater_placed`, and
 `v0ChainPlacedTailGen_of_contracts` for `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -101,13 +103,16 @@ open LibsignalBinary.Proofs.Placed.BudgetPoolSync (hooksException sepWP_seg_ls_v
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624 lsRetAddr624_blockPlacement_base_add)
 open LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget (ChainIntoPbAllocEnv ChainIntoPbEnv)
 open LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget (ChainRecvKeyEnv chainRecvKeyEvents)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag
+  (spqrErrorTagCanonical spqrErrorTagCanonical_valid_of_ne_invalidParams)
 open LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget (PqRatchetStateEncodeToVecEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget
   (ChainFromAllocEnv ChainFromEnv chainFromPbSpecX)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
   (SpqrRecvPlacedContracts SpqrRecvPlacedContractsOfEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
-  (SpqrRecvEnv spqrRecvBudgetPanicPost spqrRecvPlacedPost spqrRecvPlacedPostOfEnv)
+  (SpqrRecvEnv chainFromPb_ne_invalidParams spqrRecvBudgetPanicPost spqrRecvPlacedPost
+   spqrRecvPlacedPostOfEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget (SpqrRecvEnv.append_freeOnly)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3PlacedBudget (SepWPpLS.call_lscro)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part5PlacedBudgetAux
@@ -404,7 +409,11 @@ theorem step_ordering_greater_placed_ofEnv {MC : AllocCostModel}
           rw [List.append_assoc]
           exact hevs_free (evs_fpb ++ evs_d) (hevs_fpb.append hd))
         F K ext (SpqrRecvPlacedContractsOfEnv.toDropContracts hC)
-        st msg ret vn pb e w0 w1 d2896 herr_recv hnp s0 _ _ R hs0_align
+        st msg ret vn pb e w0 w1 d2896 herr_recv hnp
+        ((show CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.spqrErrorTag e =
+            spqrErrorTagCanonical e by cases e <;> rfl) ▸
+          spqrErrorTagCanonical_valid_of_ne_invalidParams (chainFromPb_ne_invalidParams hfpb))
+        s0 _ _ R hs0_align
         (by simp only [spqrRecvPlacedEntry, arm64_norm, *])
         (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
         ⟨by simp only [wp_norm, arm64_norm, htr_sm'.1, *],
@@ -572,225 +581,5 @@ theorem step_ordering_greater_placed {MC : AllocCostModel}
     s0 s P R (fun _ hd => SpqrRecvEnv.append_freeOnly hevs0 hd)
     hfits_cf hfits_rk hfits_into hfits_enc hevs_rk_err hevs_rk_ok
     hs0_align hpc hrun hsp htr hx19 hx20 hx21 hx27 hx28 hx29 hP
-
-/-- Package `step_ordering_greater_placed_ofEnv` as `V0ChainPlacedTailGen`
-    (`Part5PlacedBudgetAux`). -/
-theorem v0ChainPlacedTailGen_of_contracts {MC : AllocCostModel}
-    {H_inner : V1InnerHeapPred} {A : RustCliAllocBudget MC} {lim : BudgetLimits}
-    (st_cost : MC.σ) (Env : List AllocEvent → Prop) (evs0 : List AllocEvent)
-    {F : ShaCompress} {K : MlKem}
-    {DecodePreEnv DecodePostEnv : DecodeStateGhost → List AllocEvent → Prop}
-    {InitEnv : InitInnerGhost → List AllocEvent → Prop}
-    {FromPbEnv : V1State → List AllocEvent → Prop}
-    {RecvEnv : StatesRecvGhost F → List AllocEvent → Prop}
-    {IntoPbEnv : StatesIntoPbGhost F → List AllocEvent → Prop}
-    {ext : String → Option (State → State)}
-    (hC : SpqrRecvPlacedContractsOfEnv H_inner A lim F K
-      DecodePreEnv DecodePostEnv InitEnv FromPbEnv RecvEnv IntoPbEnv ext)
-    (st msg : VecArg) (ret : BitVec 64)
-    (hst_len : st.bytes.length < 2 ^ 32)
-    (s0 : State) (R : SepProp)
-    (hs0_align : s0.spAligned = true)
-    (hevs_free : ∀ evs_d, FreeOnlyEvs evs_d → Env (evs0 ++ evs_d))
-    (hfits_cf : ∀ (pre_pb : PqRatchetState) (vn : VersionNegotiationPB),
-      spqrDecodeState st.bytes = .ok pre_pb →
-      pre_pb.versionNegotiation = some vn →
-      FitsEnv MC lim (MC.stepEvents evs0 st_cost)
-        (ChainFromAllocEnv pre_pb.chain (some vn)))
-    (hfits_rk : ∀ (pre : MsgPreamble) (pre_pb : PqRatchetState) (vn : VersionNegotiationPB)
-        (evs_cf : List AllocEvent) (chain0 : Chain) (G_c0 : ChainGhost),
-      msgPreamble msg.bytes = .ok pre →
-      spqrDecodeState st.bytes = .ok pre_pb →
-      pre_pb.versionNegotiation = some vn →
-      ChainFromEnv pre_pb.chain (some vn) evs_cf →
-      chainFrom (spqrHkdfWith F) pre_pb.chain (some vn) = .ok chain0 →
-      FitsEnv MC lim (MC.stepEvents (evs0 ++ evs_cf) st_cost)
-        (ChainRecvKeyEnv (spqrHkdfWith F)
-          ⟨s0.sp - 3056#64, s0.sp - 4288#64, 0#64, pre.index, G_c0, chain0⟩))
-    (hfits_into : ∀ (pre : MsgPreamble) (pre_pb : PqRatchetState) (vn : VersionNegotiationPB)
-        (evs_cf : List AllocEvent) (chain0 : Chain) (G_c0 : ChainGhost)
-        (chain1 : Chain) (rawKey : Bytes) (gChain : ChainGhost),
-      msgPreamble msg.bytes = .ok pre →
-      spqrDecodeState st.bytes = .ok pre_pb →
-      pre_pb.versionNegotiation = some vn →
-      ChainFromEnv pre_pb.chain (some vn) evs_cf →
-      chainFrom (spqrHkdfWith F) pre_pb.chain (some vn) = .ok chain0 →
-      chain0.recvKey (spqrHkdfWith F) 0#64 pre.index = .ok (chain1, rawKey) →
-      FitsEnv MC lim
-        (MC.stepEvents
-          (evs0 ++ evs_cf ++ chainRecvKeyEvents (spqrHkdfWith F)
-            ⟨s0.sp - 3056#64, s0.sp - 4288#64, 0#64, pre.index, G_c0, chain0⟩)
-          st_cost)
-        (ChainIntoPbAllocEnv ⟨s0.sp - 3008#64, s0.sp - 4288#64, gChain, chain1⟩))
-    (hfits_enc : ∀ (pre : MsgPreamble) (pre_pb : PqRatchetState) (vn : VersionNegotiationPB)
-        (pb : V1State) (evs_cf : List AllocEvent) (chain0 : Chain) (G_c0 : ChainGhost)
-        (chain1 : Chain) (rawKey : Bytes) (gChain : ChainGhost) (evs_into : List AllocEvent),
-      msgPreamble msg.bytes = .ok pre →
-      spqrDecodeState st.bytes = .ok pre_pb →
-      pre_pb.versionNegotiation = some vn →
-      pre_pb.inner = some (.v1 pb) →
-      ChainFromEnv pre_pb.chain (some vn) evs_cf →
-      chainFrom (spqrHkdfWith F) pre_pb.chain (some vn) = .ok chain0 →
-      chain0.recvKey (spqrHkdfWith F) 0#64 pre.index = .ok (chain1, rawKey) →
-      ChainIntoPbEnv ⟨s0.sp - 3008#64, s0.sp - 4288#64, gChain, chain1⟩ evs_into →
-      FitsEnv MC lim
-        (MC.stepEvents
-          (evs0 ++ evs_cf ++ chainRecvKeyEvents (spqrHkdfWith F)
-            ⟨s0.sp - 3056#64, s0.sp - 4288#64, 0#64, pre.index, G_c0, chain0⟩ ++ evs_into)
-          st_cost)
-        (PqRatchetStateEncodeToVecEnv
-          { versionNegotiation := some vn, chain := some chain1.intoPb, inner := some (.v1 pb) }))
-    (hevs_rk_err : ∀ (pre : MsgPreamble) (pre_pb : PqRatchetState) (vn : VersionNegotiationPB)
-        (evs_cf : List AllocEvent) (chain0 : Chain) (G_c0 : ChainGhost)
-        (e : Error) (evs_d : List AllocEvent),
-      msgPreamble msg.bytes = .ok pre →
-      spqrDecodeState st.bytes = .ok pre_pb →
-      pre_pb.versionNegotiation = some vn →
-      ChainFromEnv pre_pb.chain (some vn) evs_cf →
-      chainFrom (spqrHkdfWith F) pre_pb.chain (some vn) = .ok chain0 →
-      chain0.recvKey (spqrHkdfWith F) 0#64 pre.index = .error (.err e) →
-      FreeOnlyEvs evs_d →
-      Env
-        (evs0 ++ evs_cf ++ chainRecvKeyEvents (spqrHkdfWith F)
-          ⟨s0.sp - 3056#64, s0.sp - 4288#64, 0#64, pre.index, G_c0, chain0⟩ ++ evs_d))
-    (hevs_rk_ok : ∀ (pre : MsgPreamble) (pre_pb : PqRatchetState) (vn : VersionNegotiationPB)
-        (pb : V1State) (evs_cf : List AllocEvent) (chain0 : Chain) (G_c0 : ChainGhost)
-        (chain1 : Chain) (rawKey : Bytes) (gChain : ChainGhost)
-        (evs_into evs_enc evs_d : List AllocEvent),
-      msgPreamble msg.bytes = .ok pre →
-      spqrDecodeState st.bytes = .ok pre_pb →
-      pre_pb.versionNegotiation = some vn →
-      pre_pb.inner = some (.v1 pb) →
-      ChainFromEnv pre_pb.chain (some vn) evs_cf →
-      chainFrom (spqrHkdfWith F) pre_pb.chain (some vn) = .ok chain0 →
-      chain0.recvKey (spqrHkdfWith F) 0#64 pre.index = .ok (chain1, rawKey) →
-      ChainIntoPbEnv ⟨s0.sp - 3008#64, s0.sp - 4288#64, gChain, chain1⟩ evs_into →
-      PqRatchetStateEncodeToVecEnv
-        { versionNegotiation := some vn, chain := some chain1.intoPb, inner := some (.v1 pb) }
-        evs_enc →
-      FreeOnlyEvs evs_d →
-      Env
-        (evs0 ++ evs_cf ++ chainRecvKeyEvents (spqrHkdfWith F)
-          ⟨s0.sp - 3056#64, s0.sp - 4288#64, 0#64, pre.index, G_c0, chain0⟩ ++
-          evs_into ++ evs_enc ++ evs_d)) :
-    V0ChainPlacedTailGen A lim (MC.stepEvents evs0 st_cost) F K ext st msg ret s0
-      (spqrRecvPlacedPostOfEnv A lim st_cost Env (spqrV1Recv F K) st msg ret s0 R) R := by
-  intro pre _remPtr pre_pb vn pb w0 w1 _w26 s P
-    hpre _hrem hdec hvn hinner _hw0 _hw26 hmin hver_gt
-    hpc hrun hsp htr hx19 hx20 hx21 _hx22 _hx23 _hx24 _hx26 hx27 hx28 hx29 hP
-  exact step_ordering_greater_placed_ofEnv st_cost Env evs0 hC
-    st msg ret pre pre_pb vn pb w0 w1 hst_len hpre hdec hvn hinner hmin hver_gt
-    s0 s P R hevs_free
-    (hfits_cf pre_pb vn hdec hvn)
-    (fun evs_cf chain0 G_c0 => hfits_rk pre pre_pb vn evs_cf chain0 G_c0 hpre hdec hvn)
-    (fun evs_cf chain0 G_c0 chain1 rawKey gChain =>
-      hfits_into pre pre_pb vn evs_cf chain0 G_c0 chain1 rawKey gChain hpre hdec hvn)
-    (fun evs_cf chain0 G_c0 chain1 rawKey gChain evs_into =>
-      hfits_enc pre pre_pb vn pb evs_cf chain0 G_c0 chain1 rawKey gChain evs_into
-        hpre hdec hvn hinner)
-    (fun evs_cf chain0 G_c0 e evs_d =>
-      hevs_rk_err pre pre_pb vn evs_cf chain0 G_c0 e evs_d hpre hdec hvn)
-    (fun evs_cf chain0 G_c0 chain1 rawKey gChain evs_into evs_enc evs_d =>
-      hevs_rk_ok pre pre_pb vn pb evs_cf chain0 G_c0 chain1 rawKey gChain evs_into evs_enc evs_d
-        hpre hdec hvn hinner)
-    hs0_align hpc hrun hsp htr hx19 hx20 hx21 hx27 hx28 hx29 hP
-
-theorem v0ChainPlacedTail_of_contracts {MC : AllocCostModel}
-    {H_inner : V1InnerHeapPred} {A : RustCliAllocBudget MC} {lim : BudgetLimits}
-    (st_cost : MC.σ) (evs0 : List AllocEvent)
-    {F : ShaCompress} {K : MlKem}
-    {ext : String → Option (State → State)}
-    (hC : SpqrRecvPlacedContracts H_inner A lim F K ext)
-    (st msg : VecArg) (ret : BitVec 64)
-    (hevs0 : SpqrRecvEnv st msg evs0)
-    (hst_len : st.bytes.length < 2 ^ 32)
-    (s0 : State) (R : SepProp)
-    (hs0_align : s0.spAligned = true)
-    (hfits_cf : ∀ (pre_pb : PqRatchetState) (vn : VersionNegotiationPB),
-      spqrDecodeState st.bytes = .ok pre_pb →
-      pre_pb.versionNegotiation = some vn →
-      FitsEnv MC lim (MC.stepEvents evs0 st_cost)
-        (ChainFromAllocEnv pre_pb.chain (some vn)))
-    (hfits_rk : ∀ (pre : MsgPreamble) (pre_pb : PqRatchetState) (vn : VersionNegotiationPB)
-        (evs_cf : List AllocEvent) (chain0 : Chain) (G_c0 : ChainGhost),
-      msgPreamble msg.bytes = .ok pre →
-      spqrDecodeState st.bytes = .ok pre_pb →
-      pre_pb.versionNegotiation = some vn →
-      ChainFromEnv pre_pb.chain (some vn) evs_cf →
-      chainFrom (spqrHkdfWith F) pre_pb.chain (some vn) = .ok chain0 →
-      FitsEnv MC lim (MC.stepEvents (evs0 ++ evs_cf) st_cost)
-        (ChainRecvKeyEnv (spqrHkdfWith F)
-          ⟨s0.sp - 3056#64, s0.sp - 4288#64, 0#64, pre.index, G_c0, chain0⟩))
-    (hfits_into : ∀ (pre : MsgPreamble) (pre_pb : PqRatchetState) (vn : VersionNegotiationPB)
-        (evs_cf : List AllocEvent) (chain0 : Chain) (G_c0 : ChainGhost)
-        (chain1 : Chain) (rawKey : Bytes) (gChain : ChainGhost),
-      msgPreamble msg.bytes = .ok pre →
-      spqrDecodeState st.bytes = .ok pre_pb →
-      pre_pb.versionNegotiation = some vn →
-      ChainFromEnv pre_pb.chain (some vn) evs_cf →
-      chainFrom (spqrHkdfWith F) pre_pb.chain (some vn) = .ok chain0 →
-      chain0.recvKey (spqrHkdfWith F) 0#64 pre.index = .ok (chain1, rawKey) →
-      FitsEnv MC lim
-        (MC.stepEvents
-          (evs0 ++ evs_cf ++ chainRecvKeyEvents (spqrHkdfWith F)
-            ⟨s0.sp - 3056#64, s0.sp - 4288#64, 0#64, pre.index, G_c0, chain0⟩)
-          st_cost)
-        (ChainIntoPbAllocEnv ⟨s0.sp - 3008#64, s0.sp - 4288#64, gChain, chain1⟩))
-    (hfits_enc : ∀ (pre : MsgPreamble) (pre_pb : PqRatchetState) (vn : VersionNegotiationPB)
-        (pb : V1State) (evs_cf : List AllocEvent) (chain0 : Chain) (G_c0 : ChainGhost)
-        (chain1 : Chain) (rawKey : Bytes) (gChain : ChainGhost) (evs_into : List AllocEvent),
-      msgPreamble msg.bytes = .ok pre →
-      spqrDecodeState st.bytes = .ok pre_pb →
-      pre_pb.versionNegotiation = some vn →
-      pre_pb.inner = some (.v1 pb) →
-      ChainFromEnv pre_pb.chain (some vn) evs_cf →
-      chainFrom (spqrHkdfWith F) pre_pb.chain (some vn) = .ok chain0 →
-      chain0.recvKey (spqrHkdfWith F) 0#64 pre.index = .ok (chain1, rawKey) →
-      ChainIntoPbEnv ⟨s0.sp - 3008#64, s0.sp - 4288#64, gChain, chain1⟩ evs_into →
-      FitsEnv MC lim
-        (MC.stepEvents
-          (evs0 ++ evs_cf ++ chainRecvKeyEvents (spqrHkdfWith F)
-            ⟨s0.sp - 3056#64, s0.sp - 4288#64, 0#64, pre.index, G_c0, chain0⟩ ++ evs_into)
-          st_cost)
-        (PqRatchetStateEncodeToVecEnv
-          { versionNegotiation := some vn, chain := some chain1.intoPb, inner := some (.v1 pb) }))
-    (hevs_rk_err : ∀ (pre : MsgPreamble) (pre_pb : PqRatchetState) (vn : VersionNegotiationPB)
-        (evs_cf : List AllocEvent) (chain0 : Chain) (G_c0 : ChainGhost)
-        (e : Error) (evs_d : List AllocEvent),
-      msgPreamble msg.bytes = .ok pre →
-      spqrDecodeState st.bytes = .ok pre_pb →
-      pre_pb.versionNegotiation = some vn →
-      ChainFromEnv pre_pb.chain (some vn) evs_cf →
-      chainFrom (spqrHkdfWith F) pre_pb.chain (some vn) = .ok chain0 →
-      chain0.recvKey (spqrHkdfWith F) 0#64 pre.index = .error (.err e) →
-      FreeOnlyEvs evs_d →
-      SpqrRecvEnv st msg
-        (evs0 ++ evs_cf ++ chainRecvKeyEvents (spqrHkdfWith F)
-          ⟨s0.sp - 3056#64, s0.sp - 4288#64, 0#64, pre.index, G_c0, chain0⟩ ++ evs_d))
-    (hevs_rk_ok : ∀ (pre : MsgPreamble) (pre_pb : PqRatchetState) (vn : VersionNegotiationPB)
-        (pb : V1State) (evs_cf : List AllocEvent) (chain0 : Chain) (G_c0 : ChainGhost)
-        (chain1 : Chain) (rawKey : Bytes) (gChain : ChainGhost)
-        (evs_into evs_enc evs_d : List AllocEvent),
-      msgPreamble msg.bytes = .ok pre →
-      spqrDecodeState st.bytes = .ok pre_pb →
-      pre_pb.versionNegotiation = some vn →
-      pre_pb.inner = some (.v1 pb) →
-      ChainFromEnv pre_pb.chain (some vn) evs_cf →
-      chainFrom (spqrHkdfWith F) pre_pb.chain (some vn) = .ok chain0 →
-      chain0.recvKey (spqrHkdfWith F) 0#64 pre.index = .ok (chain1, rawKey) →
-      ChainIntoPbEnv ⟨s0.sp - 3008#64, s0.sp - 4288#64, gChain, chain1⟩ evs_into →
-      PqRatchetStateEncodeToVecEnv
-        { versionNegotiation := some vn, chain := some chain1.intoPb, inner := some (.v1 pb) }
-        evs_enc →
-      FreeOnlyEvs evs_d →
-      SpqrRecvEnv st msg
-        (evs0 ++ evs_cf ++ chainRecvKeyEvents (spqrHkdfWith F)
-          ⟨s0.sp - 3056#64, s0.sp - 4288#64, 0#64, pre.index, G_c0, chain0⟩ ++
-          evs_into ++ evs_enc ++ evs_d)) :
-    V0ChainPlacedTail A lim st_cost evs0 F K ext st msg ret s0 R :=
-  v0ChainPlacedTailGen_of_contracts st_cost (SpqrRecvEnv st msg) evs0 hC
-    st msg ret hst_len s0 R hs0_align
-    (fun _ hd => SpqrRecvEnv.append_freeOnly hevs0 hd)
-    hfits_cf hfits_rk hfits_into hfits_enc hevs_rk_err hevs_rk_ok
 
 end LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part9PlacedBudget

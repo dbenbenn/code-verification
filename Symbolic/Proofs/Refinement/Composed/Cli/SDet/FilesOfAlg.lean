@@ -21,7 +21,7 @@ Defines `RegularFileList` for PQXDH CLI directory entries and proves that `files
 a normalized-path `List.foldl` lookup (`filesOf_eq_optFold`) with append composition.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,11 +31,11 @@ open DY.Libsignal (HwBytes)
 open CryptoVerification.E2E (PEParams)
 open CryptoVerification.SignalSession
 
-def topFileDirs : List String :=
+@[expose] def topFileDirs : List String :=
   ["identities", "sessions", "signed-pre-keys", "one-time-pre-keys",
    "one-time-kyber-pre-keys", "last-resort-kyber-pre-keys", "bundle"]
 
-def RegularFileList (files : List (String × HwBytes)) : Prop :=
+@[expose] def RegularFileList (files : List (String × HwBytes)) : Prop :=
   ∀ f ∈ files,
     Arm64.normalizePath f.1 ≠ [] ∧
     Arm64.normalizePath f.1 ∉ stdioPaths.map Arm64.normalizePath ∧

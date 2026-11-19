@@ -10,10 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.Cli.E2E.V1.BobTailV1PlacedBudgetSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollariesBudgetSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.V1.BobTailV1PlacedBudgetSat
+import LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollariesBudgetSat
 public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlacedBudgetSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlacedBudgetSat
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1PlacedBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1PlacedBudget
 
 /-!
 # `HookSat` Sibling of `StageP2PurePlacedBudget` (`Kits/StageP2PurePlacedBudgetSat.lean`)

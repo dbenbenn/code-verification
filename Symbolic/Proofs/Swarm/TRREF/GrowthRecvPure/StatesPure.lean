@@ -12,6 +12,7 @@ module
 public import Symbolic.Proofs.Swarm.CREF.Grow.Defs
 public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvB.Defs
 import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers3BPure
+import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers3APure
 
 /-!
 # SPQR V1 Receive Growth Bounds: First Six V1 States
@@ -20,7 +21,7 @@ Proves `≤ st.length + 2^17` encoded state growth under `statesRecv` for `keysU
 `keysSampled`, `headerSent`, `ct1Received`, `ekSentCt1Received`, and `noHeaderReceived`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

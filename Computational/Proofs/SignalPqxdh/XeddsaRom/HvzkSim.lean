@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.XeddsaRom.Statements
+public import Computational.Proofs.SignalPqxdh.XeddsaRom.Statements -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.XeddsaRom.Roundtrip
 import VCVio.OracleComp.Constructions.SampleableType.Measure
 import VCVio.EvalDist.MeasureTVDist.Basic
@@ -26,7 +26,7 @@ SHA-512 random-oracle model for `GapDhWithSignRo` and `GapSigEufCmaRo`: hedged-n
 decoupling, wide modular reduction (`deltaWide`), and Schnorr HVZK random-oracle programming.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 4096
@@ -77,7 +77,7 @@ open Computational.Proofs.SignalPqxdh.XeddsaRom.Roundtrip (
 /-- Simulated XEdDSA signing in `Sha512RoComp` given public key `pk` and candidate Edwards sign bit
     `bSim` without the secret scalar, programming uncached challenge entries into the random-oracle
     cache. -/
-noncomputable def xeddsaSimSign (P : Primitives) (pk : Bytes) (bSim : UInt8) (m : Bytes) :
+@[expose] def xeddsaSimSign (P : Primitives) (pk : Bytes) (bSim : UInt8) (m : Bytes) :
     Sha512RoComp Bytes := do
   let edPk := (P.montToEd pk bSim).getD (edDummy P)
   let capA := P.compress edPk
@@ -94,7 +94,7 @@ noncomputable def xeddsaSimSign (P : Primitives) (pk : Bytes) (bSim : UInt8) (m 
     | none   => cache.cacheQuery (capR ++ capA ++ m) hDigest
   return (capR ++ s.take 31 ++ [(s.getD 31 0 &&& 0x7F) ||| signBitByte])
 
-noncomputable def gapDhWithSignRoExpAt (P : Primitives)
+@[expose] def gapDhWithSignRoExpAt (P : Primitives)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool) (pow8 : Bytes → Bytes)
     (u v : Bytes) (A : GapDhWithSignRoAdv) : ProbComp Bool := do
   let U := P.x25519Base u
@@ -109,7 +109,7 @@ noncomputable def gapDhWithSignRoExpAt (P : Primitives)
 
 /-- Simulated candidate-output computation of `A` on public keys `(U, V)` and candidate sign bit
     `bSim` without `u` or `v`. -/
-noncomputable def gapDhWithSignSimRun (P : Primitives)
+@[expose] def gapDhWithSignSimRun (P : Primitives)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool)
     (U V : Bytes) (bSim : UInt8) (A : GapDhWithSignRoAdv) : ProbComp Bytes :=
   let sigImpl : QueryImpl sigOracleSpec Sha512RoComp := fun (.sign m) =>
@@ -118,21 +118,21 @@ noncomputable def gapDhWithSignSimRun (P : Primitives)
     pure (isValidDhTriple X Y Z)
   (simulateQ (primBaseRoImpl P + (sigImpl + ddhImpl)) (A.run U V)).run' ∅
 
-noncomputable def gapDhWithSignSimExpAt (P : Primitives)
+@[expose] def gapDhWithSignSimExpAt (P : Primitives)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool) (pow8 : Bytes → Bytes)
     (u v : Bytes) (bSim : UInt8) (A : GapDhWithSignRoAdv) : ProbComp Bool := do
   let Z ← gapDhWithSignSimRun P isValidDhTriple (P.x25519Base u) (P.x25519Base v) bSim A
   return (pow8 Z == pow8 (P.x25519 u (P.x25519Base v)))
 
 /-- Simulated `GapDhWithSignRo` experiment using the Edwards sign bit `C.edSign (clampedScalarZMod u)`. -/
-noncomputable def gapDhWithSignSimExp (P : Primitives) (C : XeddsaCurveWitness P)
+@[expose] def gapDhWithSignSimExp (P : Primitives) (C : XeddsaCurveWitness P)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool) (pow8 : Bytes → Bytes)
     (A : GapDhWithSignRoAdv) : ProbComp Bool := do
   let u ← sampleScalar32
   let v ← sampleScalar32
   gapDhWithSignSimExpAt P isValidDhTriple pow8 u v (C.edSign (clampedScalarZMod u)) A
 
-noncomputable def gapSigEufCmaRoExpAt (P : Primitives)
+@[expose] def gapSigEufCmaRoExpAt (P : Primitives)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool)
     (sk : Bytes) (A : GapSigEufCmaRoAdv) : ProbComp Bool := do
   let pk := P.sigPkGen sk
@@ -154,7 +154,7 @@ noncomputable def gapSigEufCmaRoExpAt (P : Primitives)
 
 /-- Simulated EUF-CMA ROM experiment parameterized by public key `pk` and candidate sign bit `bSim`
     without `sk`. -/
-noncomputable def gapSigEufCmaSimExpOnPk (P : Primitives)
+@[expose] def gapSigEufCmaSimExpOnPk (P : Primitives)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool)
     (pk : Bytes) (bSim : UInt8) (A : GapSigEufCmaRoAdv) : ProbComp Bool := do
   let sigImpl : QueryImpl sigOracleSpec (StateT (List Bytes) Sha512RoComp) :=
@@ -172,13 +172,13 @@ noncomputable def gapSigEufCmaSimExpOnPk (P : Primitives)
     return (ok && decide (mStar ∉ signedMsgs))
   checkInRo.run' ∅
 
-noncomputable abbrev gapSigEufCmaSimExpAt (P : Primitives)
+abbrev gapSigEufCmaSimExpAt (P : Primitives)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool)
     (sk : Bytes) (bSim : UInt8) (A : GapSigEufCmaRoAdv) : ProbComp Bool :=
   gapSigEufCmaSimExpOnPk P isValidDhTriple (P.x25519Base sk) bSim A
 
 /-- Simulated EUF-CMA ROM experiment using the Edwards sign bit `C.edSign (clampedScalarZMod sk)`. -/
-noncomputable def gapSigEufCmaSimExp (P : Primitives) (C : XeddsaCurveWitness P)
+@[expose] def gapSigEufCmaSimExp (P : Primitives) (C : XeddsaCurveWitness P)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool)
     (A : GapSigEufCmaRoAdv) : ProbComp Bool := do
   let sk ← sampleScalar32
@@ -844,13 +844,13 @@ private theorem sha512RoImpl_run_none {t : Bytes} {c : sha512RoSpec.QueryCache}
       (fun v => (v, c.cacheQuery t v)) <$> sampleRandom64 :=
   QueryImpl.withCaching_run_none sha512RoBaseImpl h
 
-private noncomputable def sigRoImpl₀ (P : Primitives) (sk : Bytes) :
+private def sigRoImpl₀ (P : Primitives) (sk : Bytes) :
     QueryImpl sigOracleSpec Sha512RoComp :=
   fun (.sign m) => do
     let r ← liftM (m := ProbComp) sampleRandom64
     simulateQ sha512RoImpl (xeddsaSignRo P sk m r)
 
-private noncomputable def impl₀ (P : Primitives)
+private def impl₀ (P : Primitives)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool) (sk : Bytes) :
     QueryImpl XeddsaRomOracleSpec Sha512RoComp :=
   primBaseRoImpl P + (sigRoImpl₀ P sk + ddhRoImpl isValidDhTriple)
@@ -883,7 +883,7 @@ private theorem impl₀_ddh (P : Primitives) (isValidDhTriple : Bytes → Bytes 
     impl₀ P isValidDhTriple sk (.inr (.inr (X, Y, Z))) =
       pure (isValidDhTriple X Y Z) := rfl
 
-private noncomputable def sigRoImpl₁ (P : Primitives) (sk : Bytes) :
+private def sigRoImpl₁ (P : Primitives) (sk : Bytes) :
     QueryImpl sigOracleSpec Sha512RoComp :=
   fun (.sign m) => StateT.mk fun advC =>
     sampleRandom64 >>= fun h1Digest =>
@@ -902,7 +902,7 @@ private theorem sigRoImpl₁_run (P : Primitives) (sk m : Bytes) (advC : sha512R
         (sha512RoImpl (capR ++ capA ++ m)).run advC >>= fun p2 =>
           pure (xeddsaSignFromDigests P sk h1Digest p2.1, p2.2)) := rfl
 
-private noncomputable def impl₁ (P : Primitives)
+private def impl₁ (P : Primitives)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool) (sk : Bytes) :
     QueryImpl XeddsaRomOracleSpec Sha512RoComp :=
   primBaseRoImpl P + (sigRoImpl₁ P sk + ddhRoImpl isValidDhTriple)
@@ -1023,7 +1023,7 @@ private theorem sigH1Step₀_run (t₁ : Bytes) (advC sigC : sha512RoSpec.QueryC
       | none =>
           (fun v => (v, ((advC, sigC.cacheQuery t₁ v), bad))) <$> sampleRandom64 := rfl
 
-private noncomputable def sigTrk₀ (P : Primitives) (sk : Bytes) :
+private def sigTrk₀ (P : Primitives) (sk : Bytes) :
     QueryImpl sigOracleSpec (StateT Hop1State ProbComp) :=
   fun (.sign m) => StateT.mk fun s =>
     sampleRandom64 >>= fun r =>
@@ -1057,7 +1057,7 @@ private theorem simulateQ_sha512RoImpl_xeddsaSignRo_run
   simp [simulateQ_bind, simulateQ_query, OracleQuery.input_query, OracleQuery.cont_query,
     id_map, StateT.run_bind]
 
-private noncomputable def sigTrk₁ (P : Primitives) (sk : Bytes) :
+private def sigTrk₁ (P : Primitives) (sk : Bytes) :
     QueryImpl sigOracleSpec (StateT Hop1State ProbComp) :=
   fun (.sign m) => StateT.mk fun ((advC, sigC), bad) =>
     sampleRandom64 >>= fun r =>
@@ -1093,13 +1093,13 @@ private def primBaseTrk (P : Primitives)
   (QueryImpl.ofLift unifSpec (StateT Hop1State ProbComp) +
     (fun q => simulateQ ro (primRoStep P q))) + ro
 
-private noncomputable def impl₀_trk (P : Primitives)
+private def impl₀_trk (P : Primitives)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool) (sk : Bytes) :
     QueryImpl XeddsaRomOracleSpec (StateT Hop1State ProbComp) :=
   primBaseTrk P roStep₀ +
     (sigTrk₀ P sk + ddhStateImpl Hop1State isValidDhTriple)
 
-private noncomputable def impl₁_trk (P : Primitives)
+private def impl₁_trk (P : Primitives)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool) (sk : Bytes) :
     QueryImpl XeddsaRomOracleSpec (StateT Hop1State ProbComp) :=
   primBaseTrk P roStep₁ +
@@ -1420,6 +1420,9 @@ private theorem evalDistEq_step_impl₁_trk (P : Primitives)
       congr 1
     simp_rw [hconst]
     let : MeasurableSpace (Bytes × sha512RoSpec.QueryCache) := ⊤
+    let : MeasurableSpace
+      (XeddsaRomOracleSpec.Range (Sum.inr (Sum.inl (SigQuery.sign m))) ×
+        sha512RoSpec.QueryCache) := ⊤
     exact EvalDistEq.of_evalDist_eq (OracleComp.evalDist_bind_const sampleRandom64 _)
   · rfl
 
@@ -1618,7 +1621,7 @@ private theorem roLog_run (t : Bytes) (advC : sha512RoSpec.QueryCache)
       (fun p : Bytes × sha512RoSpec.QueryCache =>
         (p.1, (p.2, Insert.insert t dom, msgs))) <$> (sha512RoImpl t).run advC := rfl
 
-private noncomputable def sigLog (P : Primitives) (sk : Bytes) :
+private def sigLog (P : Primitives) (sk : Bytes) :
     QueryImpl sigOracleSpec (StateT LogState ProbComp) :=
   fun (.sign m) => StateT.mk fun (advC, dom, msgs) =>
     sampleRandom64 >>= fun h1Digest =>
@@ -1642,7 +1645,7 @@ private theorem sigLog_run (P : Primitives) (sk m : Bytes)
           pure (xeddsaSignFromDigests P sk h1Digest p2.1,
             (p2.2, Insert.insert t₂ dom, msgs ++ [m]))) := rfl
 
-private noncomputable def impl₁_log (P : Primitives)
+private def impl₁_log (P : Primitives)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool) (sk : Bytes) :
     QueryImpl XeddsaRomOracleSpec (StateT LogState ProbComp) :=
   ((QueryImpl.ofLift unifSpec (StateT LogState ProbComp) +
@@ -1923,7 +1926,7 @@ private theorem impl₁_log_card_bounds {α : Type}
           Bool.false_eq_true, ↓reduceIte] at htail
         exact htail
 
-private noncomputable def evalNoncesDom (sk : Bytes) (dom : Finset Bytes) :
+private def evalNoncesDom (sk : Bytes) (dom : Finset Bytes) :
     List Bytes → List Bytes → ProbComp Bool
   | _, [] => pure false
   | seen, m :: ms => do
@@ -2462,11 +2465,11 @@ private theorem uint8_shift_signBit_bool (b : UInt8) :
     decide
   simpa [uint8_ofNat_toNat_eq b] using hcheck ⟨b.toNat, b.toBitVec.isLt⟩
 
-private noncomputable def sigRoImpl₃ (P : Primitives) (pk : Bytes) (bSim : UInt8) :
+private def sigRoImpl₃ (P : Primitives) (pk : Bytes) (bSim : UInt8) :
     QueryImpl sigOracleSpec Sha512RoComp :=
   fun (.sign m) => xeddsaSimSign P pk bSim m
 
-private noncomputable def impl₃ (P : Primitives)
+private def impl₃ (P : Primitives)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool) (pk : Bytes) (bSim : UInt8) :
     QueryImpl XeddsaRomOracleSpec Sha512RoComp :=
   primBaseRoImpl P + (sigRoImpl₃ P pk bSim + ddhRoImpl isValidDhTriple)
@@ -2912,6 +2915,12 @@ private theorem hop23_step_charged
   rcases sq with ⟨m⟩
   let : MeasurableSpace (Bytes × sha512RoSpec.QueryCache) := ⊤
   let : MeasurableSpace (Bytes × sha512RoSpec.QueryCache × Bool) := ⊤
+  let : MeasurableSpace
+    (XeddsaRomOracleSpec.Range (Sum.inr (Sum.inl (SigQuery.sign m))) ×
+      sha512RoSpec.QueryCache) := ⊤
+  let : MeasurableSpace
+    (XeddsaRomOracleSpec.Range (Sum.inr (Sum.inl (SigQuery.sign m))) ×
+      sha512RoSpec.QueryCache × Bool) := ⊤
   rw [liftNoBad_run, liftNoBad_run, impl₁_sig, impl₃_sig]
   exact (measureETVDist_map_le _ _ _ Measurable.of_discrete).trans
     (measureETVDist_sig_hop23_step P C sk m s)
@@ -3256,27 +3265,6 @@ private theorem measureETVDist_gapDhWithSignRoExpAt_le
   rw [hL, hR]
   exact (measureETVDist_map_le _ _ winFn Measurable.of_discrete).trans h3hop
 
-theorem gapDhWithSignRoExpAt_abs_sub_sim_le (P : Primitives) (hWF : WellFormedPrimitivesδ P)
-    (C : XeddsaCurveWitness P) (A : GapDhWithSignRoAdv) (hA : A.Bounded) (u v : Bytes) :
-    |(𝒟[gapDhWithSignRoExpAt P P.isValidDhTriple P.pow8 u v A] {true}).toReal -
-      (𝒟[gapDhWithSignSimExpAt P P.isValidDhTriple P.pow8 u v
-        (C.edSign (clampedScalarZMod u)) A] {true}).toReal| ≤
-      xeddsaSimLoss A.q_sig (xeddsaChalBudget A.q_ro A.q_verify A.q_prim_sigSign) := by
-  let _ := hWF
-  exact abs_toReal_sub_le_of_measureETVDist_le _ _ (xeddsaSimLoss_nonneg _ _)
-    (measureETVDist_gapDhWithSignRoExpAt_le P C A hA u v)
-
-theorem gapDhWithSignRoExpAt_le_sim (P : Primitives) (hWF : WellFormedPrimitivesδ P)
-    (C : XeddsaCurveWitness P) (A : GapDhWithSignRoAdv) (hA : A.Bounded) (u v : Bytes) :
-    (𝒟[gapDhWithSignRoExpAt P P.isValidDhTriple P.pow8 u v A] {true}).toReal ≤
-      (𝒟[gapDhWithSignSimExpAt P P.isValidDhTriple P.pow8 u v
-        (C.edSign (clampedScalarZMod u)) A] {true}).toReal +
-        xeddsaSimLoss A.q_sig (xeddsaChalBudget A.q_ro A.q_verify A.q_prim_sigSign) := by
-  have h := gapDhWithSignRoExpAt_abs_sub_sim_le P hWF C A hA u v
-  linarith [le_abs_self ((𝒟[gapDhWithSignRoExpAt P P.isValidDhTriple P.pow8 u v A] {true}).toReal -
-    (𝒟[gapDhWithSignSimExpAt P P.isValidDhTriple P.pow8 u v
-      (C.edSign (clampedScalarZMod u)) A] {true}).toReal)]
-
 /-- HVZK signing-simulation bound for `GapDhWithSignRo`. -/
 theorem gapDhWithSignRo_le_sim (P : Primitives) (hWF : WellFormedPrimitivesδ P)
     (C : XeddsaCurveWitness P) (A : GapDhWithSignRoAdv) (hA : A.Bounded) :
@@ -3428,26 +3416,6 @@ private theorem measureETVDist_gapSigEufCmaRoExpAt_le
             (simulateQ (impl₃ P P.isValidDhTriple pk (C.edSign (clampedScalarZMod sk))) oa).run ∅) >>=
             post) := rfl
     _ ≤ _ := (measureETVDist_bind_le _ _ post Measurable.of_discrete).trans h3hop
-
-theorem gapSigEufCmaRoExpAt_abs_sub_sim_le (P : Primitives) (hWF : WellFormedPrimitivesδ P)
-    (C : XeddsaCurveWitness P) (A : GapSigEufCmaRoAdv) (hA : A.Bounded) (sk : Bytes) :
-    |(𝒟[gapSigEufCmaRoExpAt P P.isValidDhTriple sk A] {true}).toReal -
-      (𝒟[gapSigEufCmaSimExpAt P P.isValidDhTriple sk (C.edSign (clampedScalarZMod sk)) A]
-        {true}).toReal| ≤
-      xeddsaSimLoss A.q_sig (xeddsaChalBudget A.q_ro A.q_verify A.q_prim_sigSign) :=
-  abs_toReal_sub_le_of_measureETVDist_le _ _ (xeddsaSimLoss_nonneg _ _)
-    (measureETVDist_gapSigEufCmaRoExpAt_le P hWF C A hA sk)
-
-theorem gapSigEufCmaRoExpAt_le_sim (P : Primitives) (hWF : WellFormedPrimitivesδ P)
-    (C : XeddsaCurveWitness P) (A : GapSigEufCmaRoAdv) (hA : A.Bounded) (sk : Bytes) :
-    (𝒟[gapSigEufCmaRoExpAt P P.isValidDhTriple sk A] {true}).toReal ≤
-      (𝒟[gapSigEufCmaSimExpAt P P.isValidDhTriple sk (C.edSign (clampedScalarZMod sk)) A]
-        {true}).toReal +
-        xeddsaSimLoss A.q_sig (xeddsaChalBudget A.q_ro A.q_verify A.q_prim_sigSign) := by
-  have h := gapSigEufCmaRoExpAt_abs_sub_sim_le P hWF C A hA sk
-  linarith [le_abs_self ((𝒟[gapSigEufCmaRoExpAt P P.isValidDhTriple sk A] {true}).toReal -
-    (𝒟[gapSigEufCmaSimExpAt P P.isValidDhTriple sk (C.edSign (clampedScalarZMod sk)) A]
-      {true}).toReal)]
 
 /-- HVZK signing-simulation bound for `GapSigEufCmaRo`. -/
 theorem gapSigEufCmaRo_le_sim (P : Primitives) (hWF : WellFormedPrimitivesδ P)

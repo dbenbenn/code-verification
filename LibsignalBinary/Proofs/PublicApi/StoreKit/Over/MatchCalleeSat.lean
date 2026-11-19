@@ -10,10 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.SessionRecordCallees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.SessionRecordCallees
 public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.MatchDefs -- proof-setup: allow-public-import
 import LibsignalBinary.Heap.SpecBudget
 import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.MatchCalleeBudgetSat
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `HookSat`-Backed `StoreKit.Over.MatchCallee` Proofs (`MatchCalleeSat`)

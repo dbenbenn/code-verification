@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPt
-public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedRepr
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedRepr -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoder
 import LibsignalBinary.Proofs.SpqrV1.Drop.Unchunked
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Drop Glue for `spqr::v1::chunked::*`
@@ -31,7 +31,7 @@ Proves subroutine contracts for the five `spqr::v1::chunked` state drop-glue fun
 - `core::ptr::drop_glue::<spqr::v1::chunked::send_ek::HeaderSent>` (`0x4c858`, Block `276`)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Drop
 
@@ -91,7 +91,7 @@ theorem stack_restore_64_dropStack32 (sp fp lr x20 x19 : BitVec 64) :
 /-- Memory layout of `spqr::v1::chunked::send_ct::Ct2Sampled` (`456` bytes) at `a`:
     - `+0..+400`: `sending_ct2: PolyEncoder`
     - `+400..+456`: `uc: Unchunked.SendCt.Ct2Sent` -/
-def chunkedCt2SampledAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def chunkedCt2SampledAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Chunked.SendCt.Ct2Sampled spqrPolyApi (spqrAuthApi F)) : SepProp :=
   polyEncoderAt A a st.sending_ct2 ∗
     unchunkedCt2SentAt A (a + 400#64) st.uc
@@ -99,7 +99,7 @@ def chunkedCt2SampledAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
 /-- Memory layout of `spqr::v1::chunked::send_ct::EkReceivedCt1Sampled` (`528` bytes) at `a`:
     - `+0..+400`: `sending_ct1: PolyEncoder`
     - `+400..+528`: `uc: Unchunked.SendCt.Ct1SentEkReceived` -/
-def chunkedEkReceivedCt1SampledAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def chunkedEkReceivedCt1SampledAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Chunked.SendCt.EkReceivedCt1Sampled spqrPolyApi (spqrAuthApi F)) : SepProp :=
   polyEncoderAt A a st.sending_ct1 ∗
     unchunkedCt1SentEkReceivedAt A (a + 400#64) st.uc
@@ -107,7 +107,7 @@ def chunkedEkReceivedCt1SampledAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 
 /-- Memory layout of `spqr::v1::chunked::send_ek::Ct1Received` (`504` bytes) at `a`:
     - `+0..+400`: `sending_ek: PolyEncoder`
     - `+400..+504`: `uc: Unchunked.SendEk.EkSentCt1Received` -/
-def chunkedCt1ReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def chunkedCt1ReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Chunked.SendEk.Ct1Received spqrPolyApi (spqrAuthApi F)) : SepProp :=
   polyEncoderAt A a st.sending_ek ∗
     unchunkedEkSentCt1ReceivedAt A (a + 400#64) st.uc
@@ -115,7 +115,7 @@ def chunkedCt1ReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
 /-- Memory layout of `spqr::v1::chunked::send_ek::EkSentCt1Received` (`504` bytes) at `a`:
     - `+0..+104`: `uc: Unchunked.SendEk.EkSentCt1Received`
     - `+104..+504`: `receiving_ct2: PolyDecoder` -/
-def chunkedEkSentCt1ReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def chunkedEkSentCt1ReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Chunked.SendEk.EkSentCt1Received spqrPolyApi (spqrAuthApi F)) : SepProp :=
   unchunkedEkSentCt1ReceivedAt A a st.uc ∗
     polyDecoderAt A (a + 104#64) st.receiving_ct2
@@ -124,14 +124,14 @@ def chunkedEkSentCt1ReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     - `+0..+400`: `sending_ek: PolyEncoder`
     - `+400..+480`: `uc: Unchunked.SendEk.EkSent`
     - `+480..+880`: `receiving_ct1: PolyDecoder` -/
-def chunkedHeaderSentAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def chunkedHeaderSentAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Chunked.SendEk.HeaderSent spqrPolyApi (spqrAuthApi F)) : SepProp :=
   polyEncoderAt A a st.sending_ek ∗
     unchunkedEkSentAt A (a + 400#64) st.uc ∗
     polyDecoderAt A (a + 480#64) st.receiving_ct1
 
 /-- Flat-offset 2-Vec headers at `a + 400#64` (`56` bytes). -/
-def twoVec400HeadersAt (a : BitVec 64) (g : TwoVecGhost) : SepProp :=
+@[expose] def twoVec400HeadersAt (a : BitVec 64) (g : TwoVecGhost) : SepProp :=
   ((a + 400#64) ↦₆₄ g.v1.cap) ∗ ((a + 408#64) ↦₆₄ g.v1.ptr) ∗ memRegion (a + 416#64) 8 ∗
   ((a + 424#64) ↦₆₄ g.v2.cap) ∗ ((a + 432#64) ↦₆₄ g.v2.ptr) ∗ memRegion (a + 440#64) 16
 
@@ -164,7 +164,7 @@ theorem twoVec400HeadersAt_entails_memRegion_56 (a : BitVec 64) (g : TwoVecGhost
   exact twoVec56HeadersAt_entails_memRegion_56 (a + 400#64) g
 
 /-- Flat-offset 3-Vec headers at `a + 400#64` (`80` bytes). -/
-def threeVec400HeadersAt (a : BitVec 64) (g : ThreeVecGhost) : SepProp :=
+@[expose] def threeVec400HeadersAt (a : BitVec 64) (g : ThreeVecGhost) : SepProp :=
   ((a + 400#64) ↦₆₄ g.v1.cap) ∗ ((a + 408#64) ↦₆₄ g.v1.ptr) ∗ memRegion (a + 416#64) 8 ∗
   ((a + 424#64) ↦₆₄ g.v2.cap) ∗ ((a + 432#64) ↦₆₄ g.v2.ptr) ∗ memRegion (a + 440#64) 8 ∗
   ((a + 448#64) ↦₆₄ g.v3.cap) ∗ ((a + 456#64) ↦₆₄ g.v3.ptr) ∗ memRegion (a + 464#64) 16
@@ -202,7 +202,7 @@ theorem threeVec400HeadersAt_entails_memRegion_80 (a : BitVec 64) (g : ThreeVecG
   exact threeVec80HeadersAt_entails_memRegion_80 (a + 400#64) g
 
 /-- Flat-offset 4-Vec headers at `a + 400#64` (`104` bytes). -/
-def fourVec400HeadersAt (a : BitVec 64) (g : FourVecGhost) : SepProp :=
+@[expose] def fourVec400HeadersAt (a : BitVec 64) (g : FourVecGhost) : SepProp :=
   ((a + 400#64) ↦₆₄ g.v1.cap) ∗ ((a + 408#64) ↦₆₄ g.v1.ptr) ∗ memRegion (a + 416#64) 8 ∗
   ((a + 424#64) ↦₆₄ g.v2.cap) ∗ ((a + 432#64) ↦₆₄ g.v2.ptr) ∗ memRegion (a + 440#64) 8 ∗
   ((a + 448#64) ↦₆₄ g.v3.cap) ∗ ((a + 456#64) ↦₆₄ g.v3.ptr) ∗ memRegion (a + 464#64) 8 ∗
@@ -240,7 +240,7 @@ theorem fourVec400HeadersAt_entails_memRegion_104 (a : BitVec 64) (g : FourVecGh
   exact fourVec104HeadersAt_entails_memRegion_104 (a + 400#64) g
 
 /-- Flat-offset 5-Vec headers at `a + 400#64` (`128` bytes). -/
-def fiveVec400HeadersAt (a : BitVec 64) (g : FiveVecGhost) : SepProp :=
+@[expose] def fiveVec400HeadersAt (a : BitVec 64) (g : FiveVecGhost) : SepProp :=
   ((a + 400#64) ↦₆₄ g.v1.cap) ∗ ((a + 408#64) ↦₆₄ g.v1.ptr) ∗ memRegion (a + 416#64) 8 ∗
   ((a + 424#64) ↦₆₄ g.v2.cap) ∗ ((a + 432#64) ↦₆₄ g.v2.ptr) ∗ memRegion (a + 440#64) 8 ∗
   ((a + 448#64) ↦₆₄ g.v3.cap) ∗ ((a + 456#64) ↦₆₄ g.v3.ptr) ∗ memRegion (a + 464#64) 8 ∗
@@ -351,7 +351,7 @@ structure DropChunkedCt2SampledGhost (F : ShaCompress) where
   a : BitVec 64
   st : Chunked.SendCt.Ct2Sampled spqrPolyApi (spqrAuthApi F)
 
-def dropChunkedCt2SampledSpec (A : RustAlloc) (F : ShaCompress) :
+@[expose] def dropChunkedCt2SampledSpec (A : RustAlloc) (F : ShaCompress) :
     Spec (DropChunkedCt2SampledGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -366,7 +366,7 @@ structure DropChunkedEkReceivedCt1SampledGhost (F : ShaCompress) where
   a : BitVec 64
   st : Chunked.SendCt.EkReceivedCt1Sampled spqrPolyApi (spqrAuthApi F)
 
-def dropChunkedEkReceivedCt1SampledSpec (A : RustAlloc) (F : ShaCompress) :
+@[expose] def dropChunkedEkReceivedCt1SampledSpec (A : RustAlloc) (F : ShaCompress) :
     Spec (DropChunkedEkReceivedCt1SampledGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -381,7 +381,7 @@ structure DropChunkedCt1ReceivedGhost (F : ShaCompress) where
   a : BitVec 64
   st : Chunked.SendEk.Ct1Received spqrPolyApi (spqrAuthApi F)
 
-def dropChunkedCt1ReceivedSpec (A : RustAlloc) (F : ShaCompress) :
+@[expose] def dropChunkedCt1ReceivedSpec (A : RustAlloc) (F : ShaCompress) :
     Spec (DropChunkedCt1ReceivedGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -396,7 +396,7 @@ structure DropChunkedEkSentCt1ReceivedGhost (F : ShaCompress) where
   a : BitVec 64
   st : Chunked.SendEk.EkSentCt1Received spqrPolyApi (spqrAuthApi F)
 
-def dropChunkedEkSentCt1ReceivedSpec (A : RustAlloc) (F : ShaCompress) :
+@[expose] def dropChunkedEkSentCt1ReceivedSpec (A : RustAlloc) (F : ShaCompress) :
     Spec (DropChunkedEkSentCt1ReceivedGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -411,7 +411,7 @@ structure DropChunkedHeaderSentGhost (F : ShaCompress) where
   a : BitVec 64
   st : Chunked.SendEk.HeaderSent spqrPolyApi (spqrAuthApi F)
 
-def dropChunkedHeaderSentSpec (A : RustAlloc) (F : ShaCompress) :
+@[expose] def dropChunkedHeaderSentSpec (A : RustAlloc) (F : ShaCompress) :
     Spec (DropChunkedHeaderSentGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -488,37 +488,6 @@ local macro "chunked_ct2_sampled_steps " prog:term:max entry:term:max : tactic =
             A.pool ∗ stackAt s0.sp dropGluePoly16Stack by ac_rfl))
           (sepConj_mono_left (chunked_400_join a tag 56 456 rfl (by decide)))) ?_
       wp_done))
-
-theorem drop_chunked_ct2_sampled_ok_ext {A : RustAlloc} {F : ShaCompress} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedCt2SampledName)
-      (dropChunkedCt2SampledSpec A F) := by
-  simp only [dropChunkedCt2SampledSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedCt2SampledName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::send_ct::Ct2Sampled>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::send_ct::Ct2Sampled>" "__rustc::__rust_dealloc")) (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::v1::chunked::send_ct::Ct2Sampled>") (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  have hpoly16_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedCt2SampledName + bv% (2 ^ 64 - ls_rel% "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" "core::ptr::drop_glue::<spqr::v1::chunked::send_ct::Ct2Sampled>"))
-      (dropGluePoly16Spec A) := by
-    have hrel : (dropProgAtExt b ext).fnAddr dropChunkedCt2SampledName =
-        (dropProgAtExt b ext).fnAddr dropPoly16Name + bv% (ls_rel% "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" "core::ptr::drop_glue::<spqr::v1::chunked::send_ct::Ct2Sampled>") :=
-      Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" "core::ptr::drop_glue::<spqr::v1::chunked::send_ct::Ct2Sampled>")) (b := b) (X := Rust.withPanics ext)
-        (ls_lemma% fnOff "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>") (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::v1::chunked::send_ct::Ct2Sampled>") (by decide)
-    refine sub_ok_of_addr_eq ?_ (drop_glue_poly16_ok_ext hdealloc)
-    rw [hrel, BitVec.add_assoc]; simp
-  simp only [rustDeallocSpec] at hdealloc_raw
-  code_fetches_sym libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::v1::chunked::send_ct::Ct2Sampled>" 72
-  dsimp only [dropProgAtExt, dropChunkedCt2SampledName, chunkedCt2SampledSize,
-    BitVec.ofNat_eq_ofNat] at hdealloc_raw hpoly16_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::v1::chunked::send_ct::Ct2Sampled>" = entry
-  examples_hide_fetches
-  chunked_ct2_sampled_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry
 
 theorem drop_chunked_ct2_sampled_placed_ok [LibsignalPlacement] {A : RustAlloc} {F : ShaCompress}
     {H : String → Option (State → State)}
@@ -644,37 +613,6 @@ local macro "chunked_ek_received_ct1_sampled_steps " prog:term:max entry:term:ma
                 (sepConj_mono_left (chunked_400_join a tag 128 528 rfl (by decide)))) ?_
             wp_done))
 
-theorem drop_chunked_ek_received_ct1_sampled_ok_ext {A : RustAlloc} {F : ShaCompress} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedEkReceivedCt1SampledName)
-      (dropChunkedEkReceivedCt1SampledSpec A F) := by
-  simp only [dropChunkedEkReceivedCt1SampledSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedEkReceivedCt1SampledName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::send_ct::EkReceivedCt1Sampled>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::send_ct::EkReceivedCt1Sampled>" "__rustc::__rust_dealloc")) (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::v1::chunked::send_ct::EkReceivedCt1Sampled>") (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  have hpoly16_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedEkReceivedCt1SampledName + bv% (2 ^ 64 - ls_rel% "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" "core::ptr::drop_glue::<spqr::v1::chunked::send_ct::EkReceivedCt1Sampled>"))
-      (dropGluePoly16Spec A) := by
-    have hrel : (dropProgAtExt b ext).fnAddr dropChunkedEkReceivedCt1SampledName =
-        (dropProgAtExt b ext).fnAddr dropPoly16Name + bv% (ls_rel% "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" "core::ptr::drop_glue::<spqr::v1::chunked::send_ct::EkReceivedCt1Sampled>") :=
-      Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" "core::ptr::drop_glue::<spqr::v1::chunked::send_ct::EkReceivedCt1Sampled>")) (b := b) (X := Rust.withPanics ext)
-        (ls_lemma% fnOff "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>") (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::v1::chunked::send_ct::EkReceivedCt1Sampled>") (by decide)
-    refine sub_ok_of_addr_eq ?_ (drop_glue_poly16_ok_ext hdealloc)
-    rw [hrel, BitVec.add_assoc]; simp
-  simp only [rustDeallocSpec] at hdealloc_raw
-  code_fetches_sym libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::v1::chunked::send_ct::EkReceivedCt1Sampled>" 132
-  dsimp only [dropProgAtExt, dropChunkedEkReceivedCt1SampledName,
-    chunkedEkReceivedCt1SampledSize, BitVec.ofNat_eq_ofNat] at hdealloc_raw hpoly16_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::v1::chunked::send_ct::EkReceivedCt1Sampled>" = entry
-  examples_hide_fetches
-  chunked_ek_received_ct1_sampled_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry
-
 theorem drop_chunked_ek_received_ct1_sampled_placed_ok [LibsignalPlacement] {A : RustAlloc} {F : ShaCompress}
     {H : String → Option (State → State)}
     (hdealloc : subroutine_ok ((blkPC_275).rebase (blkPl_275).base H)
@@ -782,37 +720,6 @@ local macro "chunked_ct1_received_steps " prog:term:max entry:term:max : tactic 
                 A.pool ∗ stackAt s0.sp dropGluePoly16Stack by ac_rfl))
               (sepConj_mono_left (chunked_400_join a tag 104 504 rfl (by decide)))) ?_
           wp_done))
-
-theorem drop_chunked_ct1_received_ok_ext {A : RustAlloc} {F : ShaCompress} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedCt1ReceivedName)
-      (dropChunkedCt1ReceivedSpec A F) := by
-  simp only [dropChunkedCt1ReceivedSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedCt1ReceivedName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::Ct1Received>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::Ct1Received>" "__rustc::__rust_dealloc")) (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::Ct1Received>") (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  have hpoly16_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedCt1ReceivedName + bv% (2 ^ 64 - ls_rel% "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::Ct1Received>"))
-      (dropGluePoly16Spec A) := by
-    have hrel : (dropProgAtExt b ext).fnAddr dropChunkedCt1ReceivedName =
-        (dropProgAtExt b ext).fnAddr dropPoly16Name + bv% (ls_rel% "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::Ct1Received>") :=
-      Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::Ct1Received>")) (b := b) (X := Rust.withPanics ext)
-        (ls_lemma% fnOff "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>") (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::Ct1Received>") (by decide)
-    refine sub_ok_of_addr_eq ?_ (drop_glue_poly16_ok_ext hdealloc)
-    rw [hrel, BitVec.add_assoc]; simp
-  simp only [rustDeallocSpec] at hdealloc_raw
-  code_fetches_sym libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::Ct1Received>" 112
-  dsimp only [dropProgAtExt, dropChunkedCt1ReceivedName, chunkedCt1ReceivedSize,
-    BitVec.ofNat_eq_ofNat] at hdealloc_raw hpoly16_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::Ct1Received>" = entry
-  examples_hide_fetches
-  chunked_ct1_received_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry
 
 theorem drop_chunked_ct1_received_placed_ok [LibsignalPlacement] {A : RustAlloc} {F : ShaCompress}
     {H : String → Option (State → State)}
@@ -922,37 +829,6 @@ local macro "chunked_ek_sent_ct1_received_steps " prog:term:max entry:term:max :
                 memRegion (a + 488#64) 16) ∗ A.pool ∗ stackAt s0.sp dropGluePoly16Stack by ac_rfl))
               (sepConj_mono_left (chunked_104_400_join a))) ?_
           wp_done))
-
-theorem drop_chunked_ek_sent_ct1_received_ok_ext {A : RustAlloc} {F : ShaCompress} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedEkSentCt1ReceivedName)
-      (dropChunkedEkSentCt1ReceivedSpec A F) := by
-  simp only [dropChunkedEkSentCt1ReceivedSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedEkSentCt1ReceivedName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::EkSentCt1Received>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::EkSentCt1Received>" "__rustc::__rust_dealloc")) (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::EkSentCt1Received>") (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  have hpt16_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedEkSentCt1ReceivedName + bv% (2 ^ 64 - ls_rel% "core::ptr::drop_glue::<[sorted_vec::SortedSet<spqr::encoding::polynomial::Pt>; 16]>" "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::EkSentCt1Received>"))
-      (dropGlueSortedSetPt16Spec A) := by
-    have hrel : (dropProgAtExt b ext).fnAddr dropChunkedEkSentCt1ReceivedName =
-        (dropProgAtExt b ext).fnAddr dropSortedSetPt16Name + bv% (ls_rel% "core::ptr::drop_glue::<[sorted_vec::SortedSet<spqr::encoding::polynomial::Pt>; 16]>" "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::EkSentCt1Received>") :=
-      Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<[sorted_vec::SortedSet<spqr::encoding::polynomial::Pt>; 16]>" "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::EkSentCt1Received>")) (b := b) (X := Rust.withPanics ext)
-        (ls_lemma% fnOff "core::ptr::drop_glue::<[sorted_vec::SortedSet<spqr::encoding::polynomial::Pt>; 16]>") (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::EkSentCt1Received>") (by decide)
-    refine sub_ok_of_addr_eq ?_ (drop_glue_sorted_set_pt16_ok_ext hdealloc)
-    rw [hrel, BitVec.add_assoc]; simp
-  simp only [rustDeallocSpec] at hdealloc_raw
-  code_fetches_sym libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::EkSentCt1Received>" 112
-  dsimp only [dropProgAtExt, dropChunkedEkSentCt1ReceivedName,
-    chunkedEkSentCt1ReceivedSize, BitVec.ofNat_eq_ofNat] at hdealloc_raw hpt16_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::EkSentCt1Received>" = entry
-  examples_hide_fetches
-  chunked_ek_sent_ct1_received_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry
 
 theorem drop_chunked_ek_sent_ct1_received_placed_ok [LibsignalPlacement] {A : RustAlloc} {F : ShaCompress}
     {H : String → Option (State → State)}
@@ -1088,46 +964,6 @@ local macro "chunked_header_sent_steps " prog:term:max entry:term:max : tactic =
                 (memRegion (s0.sp - 4160#64) 32 ∗ stackAt s0.sp dropGluePoly16Stack) by ac_rfl))
               (sepConj_mono (chunked_880_join a) (sepConj_mono_right hstack64_join))) ?_
           wp_done))
-
-theorem drop_chunked_header_sent_ok_ext {A : RustAlloc} {F : ShaCompress} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedHeaderSentName)
-      (dropChunkedHeaderSentSpec A F) := by
-  simp only [dropChunkedHeaderSentSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedHeaderSentName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::HeaderSent>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::HeaderSent>" "__rustc::__rust_dealloc")) (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::HeaderSent>") (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  have hpoly16_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedHeaderSentName + bv% (2 ^ 64 - ls_rel% "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::HeaderSent>"))
-      (dropGluePoly16Spec A) := by
-    have hrel : (dropProgAtExt b ext).fnAddr dropChunkedHeaderSentName =
-        (dropProgAtExt b ext).fnAddr dropPoly16Name + bv% (ls_rel% "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::HeaderSent>") :=
-      Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::HeaderSent>")) (b := b) (X := Rust.withPanics ext)
-        (ls_lemma% fnOff "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>") (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::HeaderSent>") (by decide)
-    refine sub_ok_of_addr_eq ?_ (drop_glue_poly16_ok_ext hdealloc)
-    rw [hrel, BitVec.add_assoc]; simp
-  have hpt16_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedHeaderSentName + bv% (2 ^ 64 - ls_rel% "core::ptr::drop_glue::<[sorted_vec::SortedSet<spqr::encoding::polynomial::Pt>; 16]>" "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::HeaderSent>"))
-      (dropGlueSortedSetPt16Spec A) := by
-    have hrel : (dropProgAtExt b ext).fnAddr dropChunkedHeaderSentName =
-        (dropProgAtExt b ext).fnAddr dropSortedSetPt16Name + bv% (ls_rel% "core::ptr::drop_glue::<[sorted_vec::SortedSet<spqr::encoding::polynomial::Pt>; 16]>" "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::HeaderSent>") :=
-      Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<[sorted_vec::SortedSet<spqr::encoding::polynomial::Pt>; 16]>" "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::HeaderSent>")) (b := b) (X := Rust.withPanics ext)
-        (ls_lemma% fnOff "core::ptr::drop_glue::<[sorted_vec::SortedSet<spqr::encoding::polynomial::Pt>; 16]>") (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::HeaderSent>") (by decide)
-    refine sub_ok_of_addr_eq ?_ (drop_glue_sorted_set_pt16_ok_ext hdealloc)
-    rw [hrel, BitVec.add_assoc]; simp
-  simp only [rustDeallocSpec] at hdealloc_raw
-  code_fetches_sym libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::HeaderSent>" 100
-  dsimp only [dropProgAtExt, dropChunkedHeaderSentName,
-    chunkedHeaderSentSize, BitVec.ofNat_eq_ofNat] at hdealloc_raw hpoly16_raw hpt16_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::v1::chunked::send_ek::HeaderSent>" = entry
-  examples_hide_fetches
-  chunked_header_sent_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry
 
 theorem drop_chunked_header_sent_placed_ok [LibsignalPlacement] {A : RustAlloc} {F : ShaCompress}
     {H : String → Option (State → State)}

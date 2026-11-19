@@ -10,14 +10,30 @@ limitations under the License.
 module
 
 public import Computational.Proofs.E2E.Dsl.DrSessionSimBookkeeping -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.HaltedDrSessionLifter -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.HaltedDrSessionLifter
 public import Computational.Proofs.E2E.Dsl.HaltedDrSessionSimAux -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.HaltedDrSessionSimStepsAux -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.HaltedDrTrackerDsl -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.SmReachInv -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge -- proof-setup: allow-public-import
-public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore -- proof-setup: allow-public-import
-public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.HaltedDrTrackerDsl
+import Computational.Proofs.E2E.Dsl.SmReachInv
+import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge
+import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore
+import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge
+import Computational.Proofs.E2E.ComposedKeyIndHop
+import Computational.Proofs.E2E.ComposedPrefixHelpers
+import Computational.Proofs.E2E.Dsl.LocalSessionStep
+import Computational.Proofs.E2E.Dsl.LocalSessionStepAux
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.GameHop.Advantage
+import Computational.Proofs.GameHop.GlobalHybrid
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Mathlib.Data.List.Dedup
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Bool
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Online-Halted Double Ratchet Send and Challenge Step Arms

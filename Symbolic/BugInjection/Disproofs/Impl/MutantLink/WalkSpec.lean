@@ -29,7 +29,7 @@ set_option autoImplicit false
 namespace Symbolic.BugInjection.Disproofs.Impl.MutantLink.WalkSpec
 
 open Arm64 Arm64.Obj Arm64.Obj.Interned Arm64.Process
-open ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection
+open ProofLib ProofLib.ProgramReflection
 
 /-- Witnesses that `checkMultiTextSliceB` holds on contiguous slices covering `[0, n)`. -/
 inductive SlicesTextVarOk (ML : MultiLib) (mly : MultiLayout) (img : ElfImage) :

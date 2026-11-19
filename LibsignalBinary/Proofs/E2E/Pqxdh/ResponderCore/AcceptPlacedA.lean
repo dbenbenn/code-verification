@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobPlaced
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobPlaced -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.SharedCodeSym
 import ProofLib.SepLogic.WPFrozen
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable `Pqxdh::accept` (Block `79`), Part A: Frozen Helpers and `opk = none` Branch
@@ -23,7 +24,7 @@ Provides `LibsignalFrozen` stepping, `.rodata` introduction, and Block `207`
 `pqxdhAccept_opt_fields_opk_none_placed_ok` on `lsProg_79 H` for the `g.inp.opkBSk? = none` branch.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -136,7 +137,7 @@ theorem ls_subroutine_ok_withLsFrozen_of_block [LibsignalFullPlacement] {α : Ty
   have hQL : calleeProg.CodeLoaded s0.mem := by
     rw [hcallee_prog.eq_blockProgram]
     have h := hfr0.2 j hlt_blocks
-    rwa [Program.codeLoaded_iff] at h ⊢
+    rw [Program.codeLoaded_iff] at h ⊢; exact h
   obtain ⟨sf, hstepsQ, hout, _⟩ := hcallee.no_fault_before_outcome x R s0 hpc hrun hpre hsp hQL
   have hext : ∀ pc, calleeProg.externAt? pc = callerProg.externAt? pc := fun pc => by
     rw [hcallee_prog.eq_blockProgram, hcaller.eq_blockProgram,
@@ -179,7 +180,7 @@ theorem subroutine_ok_withMemEq_of_withLsCodeRoLoaded [LibsignalPlacement] {α :
     (fun _ _ _ _ hq => hq)
 
 theorem externAt_79_of_mem [LibsignalFullPlacement] {H : LibsignalHooks}
-    {sym : String} (hmem : sym ∈ libsignalSessionExterns := by decide) :
+    {sym : String} (hmem : sym ∈ libsignalHookedExterns := by decide) :
     (lsProg_79 H).externAt? (lsρ sym) = H sym := by
   have heq : (lsProg_79 H).externAt? (lsρ sym) = (lsProg_75 H).externAt? (lsρ sym) := by
     rw [(inferInstance : IsLsBlockProg (lsProg_79 H) 79 H).eq_blockProgram,
@@ -190,7 +191,7 @@ theorem externAt_79_of_mem [LibsignalFullPlacement] {H : LibsignalHooks}
 
 theorem hook_ok_79_of_mem [LibsignalFullPlacement] {α : Type} {H : LibsignalHooks}
     {sym : String} {spec : Spec α} (hsat : HookSat H sym spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide) :
+    (hmem : sym ∈ libsignalHookedExterns := by decide) :
     subroutine_ok (lsProg_79 H) (lsρ sym) spec := by
   obtain ⟨f, hf, hok⟩ := hsat
   exact subroutine_ok_of_hookOk ((externAt_79_of_mem hmem).trans hf) hok
@@ -200,7 +201,7 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Pro
 /-! ## 2. `SepWPp_call_hag_placed` for `PrivateKey::calculate_agreement` (Block `207`) -/
 
 /-- Relocatable base specification for `PrivateKey::calculate_agreement` (Block `207`). -/
-def acceptCalculateAgreementPlacedBaseSpec (P : Primitives) (A : RustAlloc) :
+@[expose] def acceptCalculateAgreementPlacedBaseSpec (P : Primitives) (A : RustAlloc) :
     Spec (BitVec 64 × Bytes × BitVec 64 × Bytes × BitVec 64 × BitVec 64) where
   pre := fun (ourA, ourSk32, theirA, theirPk32, ret, sp) s =>
     ⌜s.readReg64 .x0 = ourA ∧ s.readReg64 .x1 = theirA ∧ s.readReg64 .x8 = ret ∧ s.sp = sp ∧
@@ -346,12 +347,12 @@ theorem SepWPp_call_hag_placed [LibsignalPlacement] {prog : Program} {ret : BitV
 /-! ## 3. Full-Library Frozen Spec & `opk = none` Proof on Block `79` -/
 
 /-- Full-library frozen (`withLsFrozen lsmpl`) contract for `Pqxdh::accept` (Block `79`). -/
-def pqxdhAcceptOptFieldsFrozenPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
+@[expose] def pqxdhAcceptOptFieldsFrozenPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
     Spec AcceptFieldsCallGhost :=
   withLsFrozen lsmpl (pqxdhAcceptOptFieldsInnerPlacedSpec P A)
 
 /-- `pqxdhAcceptOptFieldsInnerPlacedSpec` restricted to `g.inp.opkBSk? = none`. -/
-def pqxdhAcceptOptFieldsOpkNoneInnerPlacedSpec [LibsignalPlacement]
+@[expose] def pqxdhAcceptOptFieldsOpkNoneInnerPlacedSpec [LibsignalPlacement]
     (P : Primitives) (A : RustAlloc) : Spec AcceptFieldsCallGhost :=
   { pqxdhAcceptOptFieldsInnerPlacedSpec P A with
     pre := fun g s =>
@@ -362,14 +363,73 @@ abbrev acceptRustDeallocSym : String := "_RNvCs1njKG4L9aB3_7___rustc14___rust_de
 abbrev acceptKyberDecapsSym : String :=
   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11decapsulate"
 
+/-- `<PublicKey>::is_canonical` call contract at `5120 + 400 = 5520` bytes of stack
+(`dalekHookStack = 5120`), matching `Phase4Block202.ecPubKeyIsCanonicalResponderCallSpecAt 5120 P`. -/
+@[expose] def ecPubKeyIsCanonicalDalekCallSpec (P : Primitives) : Spec KeyCanonicalGhost where
+  pre := fun g s => ⌜s.readReg64 .x0 = g.keyPtr ∧ g.keyBytes.length = 32⌝ ∗
+    (g.keyPtr ↦ₛ bytesToBv8 g.keyBytes) ∗ stackAt s.sp (5120 + 400)
+  post := fun g s0 sf => ⌜sf.trace = s0.trace ∧ (sf.readReg64 .x0).setWidth 8 =
+      (if P.isCanonicalEC g.keyBytes then 1#8 else 0#8)⌝ ∗ (g.keyPtr ↦ₛ bytesToBv8 g.keyBytes) ∗
+      stackAt s0.sp (5120 + 400)
+
+theorem accept_canon_stack_to_dalek (sp : BitVec 64) :
+    memRegion (sp - 16384#64) 6944 ∗ stackAt (sp - 4944#64) (pqxdhHookStack + 400) =
+      memRegion (sp - 16384#64) 5920 ∗ stackAt (sp - 4944#64) (5120 + 400) := by
+  simp only [stackAt, pqxdhHookStack]
+  have h1 : sp - 4944#64 - BitVec.ofNat 64 4496 = sp - 9440#64 := by bv_omega
+  have h2 : sp - 4944#64 - BitVec.ofNat 64 5520 = sp - 10464#64 := by bv_omega
+  rw [h1, h2,
+    ProofLib.memRegion_split' (b := sp - 16384#64) (n := 5920) (k := 1024)
+      (b' := sp - 10464#64) rfl (by bv_omega) (by decide),
+    ProofLib.memRegion_split' (b := sp - 10464#64) (n := 1024) (k := 4496)
+      (b' := sp - 9440#64) rfl (by bv_omega) (by decide),
+    sepConj_assoc]
+
+theorem subroutine_ok_ecPubKeyIsCanonical_dalek_of_4k [LibsignalPlacement]
+    {prog : Program} {entry : BitVec 64} {P : Primitives}
+    (h : subroutine_ok prog entry
+      (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalCallSpec P))) :
+    subroutine_ok prog entry
+      (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalDalekCallSpec P)) := by
+  have hsplit : ∀ sp : BitVec 64,
+      stackAt sp (5120 + 400) = memRegion (sp - 5520#64) 1024 ∗ stackAt sp (pqxdhHookStack + 400) := by
+    intro sp
+    simp only [stackAt, pqxdhHookStack]
+    have h1 : sp - BitVec.ofNat 64 5520 = sp - 5520#64 := rfl
+    have h2 : sp - BitVec.ofNat 64 4496 = sp - 4496#64 := rfl
+    rw [h1, h2,
+      ProofLib.memRegion_split' (b := sp - 5520#64) (n := 1024) (k := 4496)
+        (b' := sp - 4496#64) rfl (by bv_omega) (by decide)]
+  refine subroutine_ok_outcome_intro fun g R s0 hpc hrun hpre hsp => ?_
+  have hpre' : s0.mem ⊨
+      (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalCallSpec P)).pre g s0 ∗
+      (memRegion (s0.sp - 5520#64) 1024 ∗ R) := by
+    dsimp only [Obj.MultiPlacedLib.withCodeLoaded, ecPubKeyIsCanonicalDalekCallSpec,
+      ecPubKeyIsCanonicalCallSpec] at hpre ⊢
+    rw [hsplit s0.sp] at hpre
+    convert hpre using 1; ac_rfl
+  refine h.mono_outcome g (memRegion (s0.sp - 5520#64) 1024 ∗ R) s0 hpc hrun hpre' hsp fun sf hout => ?_
+  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan, hp⟩ | ⟨code, hex, he⟩ | ⟨hoom, ho⟩
+  · refine Or.inl ⟨hret, hcc, ?_⟩
+    dsimp only [Obj.MultiPlacedLib.withCodeLoaded, ecPubKeyIsCanonicalDalekCallSpec,
+      ecPubKeyIsCanonicalCallSpec] at hpost ⊢
+    rw [hsplit s0.sp]
+    convert hpost using 1; ac_rfl
+  · dsimp only [Obj.MultiPlacedLib.withCodeLoaded, ecPubKeyIsCanonicalCallSpec] at hp
+    exact False.elim (not_satisfies_false_sepConj hp)
+  · dsimp only [Obj.MultiPlacedLib.withCodeLoaded, ecPubKeyIsCanonicalCallSpec] at he
+    exact False.elim (not_satisfies_false_sepConj he)
+  · dsimp only [Obj.MultiPlacedLib.withCodeLoaded, ecPubKeyIsCanonicalCallSpec] at ho
+    exact False.elim (not_satisfies_false_sepConj ho)
+
 set_option maxHeartbeats 6000000 in
 /-- Relocatable `Pqxdh::accept` (Block `79`) on the `g.inp.opkBSk? = none` branch under
-`[LibsignalFullPlacement]`. -/
-theorem pqxdhAccept_opt_fields_opk_none_placed_ok [LibsignalFullPlacement]
+`[LibsignalFullPlacement]` from `ecPubKeyIsCanonicalDalekCallSpec` (`5120`-byte Dalek stack). -/
+theorem pqxdhAccept_opt_fields_opk_none_dalek_placed_ok [LibsignalFullPlacement]
     {P : Primitives} {A : RustAlloc} {H : LibsignalHooks}
     (hWF : StructuralPrims P)
     (h_canon : subroutine_ok (lsProg_79 H) (lsmpl.base 202)
-      (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalCallSpec P)))
+      (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalDalekCallSpec P)))
     (h_agree : subroutine_ok (lsProg_79 H) (lsmpl.base 207)
       (withLsCodeRoLoaded lsmpl (acceptCalculateAgreementPlacedBaseSpec P A)))
     (h_hkdf_extract : PqxdhHkdfExtractPlacedOk P (lsProg_79 H))
@@ -384,10 +444,10 @@ theorem pqxdhAccept_opt_fields_opk_none_placed_ok [LibsignalFullPlacement]
     subroutine_ok (lsProg_79 H) (blkPl_79).base
       (withLsFrozen lsmpl (pqxdhAcceptOptFieldsOpkNoneInnerPlacedSpec P A)) := by
   refine subroutine_ok_withLsFrozen_of_withRoSlice
-    (roSym := "libsignal_protocol:.rodata..Lanon.393")
+    (roSym := "libsignal_protocol:.rodata..Lanon.400")
     (roBytes := incomingBaseKeyInvalidBytes) (by decide) ?_
   refine subroutine_ok_withLsFrozen_of_withRoSlice
-    (roSym := "libsignal_protocol:.rodata..Lanon.352")
+    (roSym := "libsignal_protocol:.rodata..Lanon.359")
     (roBytes := bytesToBv8 infoPqxdh) (by decide) ?_
   have hshim := hook_ok_79_of_mem h_shim (by decide)
   have halloc := hook_ok_79_of_mem h_alloc (by decide)
@@ -428,9 +488,11 @@ theorem pqxdhAccept_opt_fields_opk_none_placed_ok [LibsignalFullPlacement]
   apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
   intro hF0_1; try simp only [arm64_norm] at hF0_1
   refine SepWPp.of_sepWP_lsfull hF0_1 (mid := (blkPl_79).base + 52#64) ?_
+  refine SepWP.fold (Entails.of_eq (accept_canon_stack_to_dalek s0.sp)) (by sep_focus) ?_
   wp_call (subroutine_ok_withMemEq_of_withCodeLoaded
-    (spec := ecPubKeyIsCanonicalCallSpec P) h_canon hF0_1.code)
+    (spec := ecPubKeyIsCanonicalDalekCallSpec P) h_canon hF0_1.code)
     ⟨s0.readReg64 (.gpr 0#5) + 160#64, inp.hdr.ekAPk⟩
+  refine SepWP.fold (Entails.of_eq (accept_canon_stack_to_dalek s0.sp).symm) (by sep_focus) ?_
   apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
   intro hF1; try simp only [arm64_norm] at hF1
   cases hcanon_b : P.isCanonical inp.hdr.ekAPk
@@ -457,17 +519,17 @@ theorem pqxdhAccept_opt_fields_opk_none_placed_ok [LibsignalFullPlacement]
       refine SepWPp.fold (Entails.of_eq (incoming_alloc_split _)) (by sep_focus) ?_
       sep_elim_exists'
       refine SepWPp.fold
-        (Entails.of_eq (rodata_incoming_split1 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.393")))
+        (Entails.of_eq (rodata_incoming_split1 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.400")))
         (by sep_focus) ?_
       apply SepWPp.of_sepWP_ret
       wp_simp_pre_fast [bv_sub_add_lit', BitVec.reduceSub, sepConj_assoc]
       wp_steps
       refine SepWP.fold
-        (Entails.of_eq (rodata_incoming_1_to_2 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.393")))
+        (Entails.of_eq (rodata_incoming_1_to_2 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.400")))
         (by sep_focus) ?_
       wp_steps
       refine SepWP.fold
-        (Entails.of_eq (rodata_incoming_split2 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.393")).symm)
+        (Entails.of_eq (rodata_incoming_split2 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.400")).symm)
         (by sep_focus) ?_
       refine SepWP.fold (incoming_overlap_prep _ _ _) (by sep_focus) ?_
       sep_elim_exists'; wp_steps
@@ -782,7 +844,7 @@ theorem pqxdhAccept_opt_fields_opk_none_placed_ok [LibsignalFullPlacement]
                 wp_call hexp' (s0.sp - 1744#64, hkdfExtractRef P none (F_X25519 ++
                   P.x25519 inp.spkBSk inp.hdr.ikAPk ++ P.x25519 inp.ikBSk inp.hdr.ekAPk ++
                   P.x25519 inp.spkBSk inp.hdr.ekAPk ++ ss), s0.sp - 4912#64,
-                  lsmpl.ρ "libsignal_protocol:.rodata..Lanon.352",
+                  lsmpl.ρ "libsignal_protocol:.rodata..Lanon.359",
                   INFO_PQXDH, s0.sp - 176#64, s0.sp - 4944#64); sep_elim_exists'
                 refine SepWP.fold (Entails.of_eq (stack_to_kdf s0.sp).symm) (by sep_focus) ?_
                 refine SepWP.fold (Entails.of_eq (outPtr_ok104_cells_split (s0.readReg64 (.gpr
@@ -807,5 +869,29 @@ theorem pqxdhAccept_opt_fields_opk_none_placed_ok [LibsignalFullPlacement]
                 clear h_canon h_agree hext_none hexp' hshim halloc hdealloc hmemcpy hdecaps
                   hpan_rawvec hpan_alloc
                 simp only [sepConj_assoc, *]; wp_done
+
+/-- Compatibility `4096`-byte stack wrapper around `pqxdhAccept_opt_fields_opk_none_dalek_placed_ok`. -/
+theorem pqxdhAccept_opt_fields_opk_none_placed_ok [LibsignalFullPlacement]
+    {P : Primitives} {A : RustAlloc} {H : LibsignalHooks}
+    (hWF : StructuralPrims P)
+    (h_canon : subroutine_ok (lsProg_79 H) (lsmpl.base 202)
+      (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalCallSpec P)))
+    (h_agree : subroutine_ok (lsProg_79 H) (lsmpl.base 207)
+      (withLsCodeRoLoaded lsmpl (acceptCalculateAgreementPlacedBaseSpec P A)))
+    (h_hkdf_extract : PqxdhHkdfExtractPlacedOk P (lsProg_79 H))
+    (h_hkdf_expand : PqxdhHkdfExpandMultiInfoPlacedOk P (lsProg_79 H))
+    (h_shim : HookSat H Keys.lsRustNoAllocShimSym noAllocShimSpec)
+    (h_alloc : HookSat H Keys.lsRustAllocSym (rustAllocSpec A))
+    (h_dealloc : HookSat H acceptRustDeallocSym (rustDeallocSpec A))
+    (h_memcpy : HookSat H lsMemcpySym framelessMemcpySpec)
+    (h_decaps : HookSat H acceptKyberDecapsSym (kyberDecapsStubSpec P))
+    (h_pan_rawvec : H acceptHandleRawVecErrorSym = some Rust.panicked)
+    (h_pan_alloc : H Keys.lsHandleAllocErrorSym = some Rust.panicked) :
+    subroutine_ok (lsProg_79 H) (blkPl_79).base
+      (withLsFrozen lsmpl (pqxdhAcceptOptFieldsOpkNoneInnerPlacedSpec P A)) :=
+  pqxdhAccept_opt_fields_opk_none_dalek_placed_ok hWF
+    (subroutine_ok_ecPubKeyIsCanonical_dalek_of_4k h_canon) h_agree
+    h_hkdf_extract h_hkdf_expand h_shim h_alloc h_dealloc h_memcpy h_decaps
+    h_pan_rawvec h_pan_alloc
 
 end CryptoVerification.E2E.Pqxdh.ResponderCore

@@ -19,7 +19,7 @@ Proves that when every receiver chain in `st₀_src.recv` has concretized ratche
 from `pk`, `findRecvChain st₀_src.recv rk` cannot succeed for any `rk` with the same bytes as `pk`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

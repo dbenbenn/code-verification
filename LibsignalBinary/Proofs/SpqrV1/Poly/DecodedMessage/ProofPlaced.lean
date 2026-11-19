@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DropEpilogue
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolateFull
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DropEpilogue -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolateFull -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DropEpiloguePlaced
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.Interpolate
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.LoopPlaced
@@ -20,6 +20,7 @@ import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangeComplete.Proof -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Proof -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::decoded_message`: Relocatable Top-Level Proof
@@ -27,7 +28,7 @@ import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Proof -- shake: keep
 Relocatable `[LibsignalPlacement]` proof of `polyDecoderDecodedMessage_placed_ok` on Block `418`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,9 +40,9 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalS
 open CryptoVerification.SpqrV1.Poly CryptoVerification.SpqrV1.Alloc CryptoVerification.CodeLayout
 open CryptoVerification.SpqrV1.Poly.AddChunk
 open CryptoVerification.SpqrV1.Poly.ComputeAt
-open CryptoVerification.SpqrV1.Poly.LagrangePrepare (lagrangePrepareName lagrangePrepare_fnOff LagrangePrepareArgs lagrangePrepareSpec lagrangePreparePlacedSpec lagrangePreparePure lagrangePreparePure_length lagrangePrepareStack lagrangePrepare_ok polyOf_eq)
-open CryptoVerification.SpqrV1.Poly.LagrangeComplete (lagrangeCompleteName lagrangeComplete_fnOff LagrangeCompleteArgs lagrangeCompleteSpec lagrangeCompletePlacedSpec lagrangeCompletePure lagrangeCompletePure_length lagrangeCompleteStack lagrangeComplete_ok lagrangeComplete_placed_ok)
-open CryptoVerification.SpqrV1.GF.UnacceleratedMul (reduceTableAt reduceTablePlacedAt)
+open CryptoVerification.SpqrV1.Poly.LagrangePrepare (lagrangePrepareName LagrangePrepareArgs lagrangePreparePlacedSpec lagrangePreparePure lagrangePreparePure_length lagrangePrepareStack polyOf_eq)
+open CryptoVerification.SpqrV1.Poly.LagrangeComplete (lagrangeCompleteName LagrangeCompleteArgs lagrangeCompletePlacedSpec lagrangeCompletePure lagrangeCompletePure_length lagrangeCompleteStack lagrangeComplete_placed_ok)
+open CryptoVerification.SpqrV1.GF.UnacceleratedMul (reduceTablePlacedAt)
 open CryptoVerification.SpqrV1.GF.Mul2U16
 
 set_option maxRecDepth 200000
@@ -58,7 +59,7 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 
 /-! ## Initialization of `polys: [Option<Poly>; 16]` (`+352..+424`) -/
 
-def rawOptPolySlots (base : BitVec 64) : Nat → SepProp
+@[expose] def rawOptPolySlots (base : BitVec 64) : Nat → SepProp
   | 0 => emp
   | n + 1 => ((∃∗ w : BitVec 64, base ↦₆₄ w) ∗ memRegion (base + 8#64) 16) ∗ rawOptPolySlots (base + 24#64) n
 

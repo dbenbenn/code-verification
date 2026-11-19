@@ -24,7 +24,7 @@ Defines the prefix-averaged adversary `advAvg oa D` and proves that its CKA and 
 branches equal the `oa`-mixtures of the per-prefix branches.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec MeasureTheory ENNReal
 
@@ -45,7 +45,7 @@ theorem simulateQ_liftTarget_liftM_run {ι : Type} {spec : OracleSpec ι} {σ α
     simp only [ih, bind_assoc]
 
 /-- Averaged adversary that samples `o ← oa` with its own coins and runs `D o`. -/
-def advAvg {ι : Type} {spec : OracleSpec ι} {α β : Type} (oa : ProbComp α)
+@[expose] def advAvg {ι : Type} {spec : OracleSpec ι} {α β : Type} (oa : ProbComp α)
     (D : α → OracleComp (unifSpec + spec) β) : OracleComp (unifSpec + spec) β :=
   bind (m := OracleComp (unifSpec + spec)) (liftM oa : OracleComp (unifSpec + spec) α) D
 

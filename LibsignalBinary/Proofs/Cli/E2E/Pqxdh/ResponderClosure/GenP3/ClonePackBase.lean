@@ -13,7 +13,7 @@ public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.Defs
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -96,7 +96,7 @@ structure PackDstVals where
   ube4 : BitVec 32
 
 /-- Spatial layout of the 344-byte destination `SessionStructure` slot at `sp + 0xa90`. -/
-def packDstSlotsAt (sp : BitVec 64) (dv : PackDstVals) : SepProp :=
+@[expose] def packDstSlotsAt (sp : BitVec 64) (dv : PackDstVals) : SepProp :=
   ((sp + 0xa90#64) ↦₆₄ dv.ua90) ∗ ((sp + 0xa98#64) ↦₆₄ dv.ua98) ∗ ((sp + 0xaa0#64) ↦₆₄ dv.uaa0) ∗
   ((sp + 0xaa8#64) ↦₆₄ dv.uaa8) ∗ ((sp + 0xab0#64) ↦₆₄ dv.uab0) ∗ ((sp + 0xab8#64) ↦₆₄ dv.uab8) ∗
   ((sp + 0xac0#64) ↦₆₄ dv.uac0) ∗ ((sp + 0xac8#64) ↦₆₄ dv.uac8) ∗ ((sp + 0xad0#64) ↦₆₄ dv.uad0) ∗
@@ -179,7 +179,7 @@ theorem memRegion_344_entails_packDstSlotsAt (sp : BitVec 64) :
 
 /-- Spatial layout of the 344-byte destination `SessionStructure` slot at `sp + 0xa90` after
 storing all cloned fields from `w : GenP3J4Witness` and `w20 : BitVec 32`. -/
-def packDstSlotsWrittenAt (sp : BitVec 64) (recG : SessionGhost)
+@[expose] def packDstSlotsWrittenAt (sp : BitVec 64) (recG : SessionGhost)
     (st : SessionState (List (BitVec 8))) (w : GenP3J4Witness) (w20 : BitVec 32) : SepProp :=
   let locIdLen := BitVec.ofNat 64 recG.localIk.bytes.length
   let remIdLen := BitVec.ofNat 64 recG.remoteIk.bytes.length

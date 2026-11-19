@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Shared.Composed.HonestSession
+public import Symbolic.Proofs.Tests.Shared.Composed.HonestSession -- proof-setup: allow-public-import
 import Init.Data.String.Defs
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
@@ -60,7 +60,7 @@ establishes `AttackerKnows` derivation lemmas for `HandshakeKeys` and forged bun
 messages, and constructs concrete reachable compromise witness traces.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -298,7 +298,7 @@ private theorem someEventB_of_evIdx_nil {tr : ExecTrace} {p : PQXDHEvent → Boo
       rw [h] at hmem
       exact List.not_mem_nil hmem
 
-def regCorruptTr (tr : ExecTrace) (p : Participant) (ik : Bytes) : ExecTrace :=
+@[expose] def regCorruptTr (tr : ExecTrace) (p : Participant) (ik : Bytes) : ExecTrace :=
   (tr.append (EvP (.IdentityRegistered p (dhPk ik) (Signature.vk ik) false))).append
     (EvP (.CompromisedIK p (dhPk ik)))
 
@@ -317,7 +317,7 @@ theorem regCorruptTr_reach {tr : ExecTrace} {p : Participant} {skIdx : Nat} {ik 
     (regCorruptTr tr p ik).Reachable reachability :=
   reach_of_runs (Runs.registerCorruptIdentity hunreg hnet) (registerCorruptIdentity_reachable hr)
 
-def compIkTr (tr : ExecTrace) (p : Participant) (ik : Bytes) : ExecTrace :=
+@[expose] def compIkTr (tr : ExecTrace) (p : Participant) (ik : Bytes) : ExecTrace :=
   (tr.append (EvP (.CompromisedIK p (dhPk ik)))).append (NetE ik)
 
 theorem Runs.compromiseIK {tr : ExecTrace} {p : Participant} {idx : Nat} {ik : Bytes}
@@ -333,7 +333,7 @@ theorem compIkTr_reach {tr : ExecTrace} {p : Participant} {idx : Nat} {ik : Byte
     (compIkTr tr p ik).Reachable reachability :=
   reach_of_runs (Runs.compromiseIK hst) (compromiseIK_reachable hr)
 
-def compSpkTr (tr : ExecTrace) (b : Participant) (spk : Bytes) : ExecTrace :=
+@[expose] def compSpkTr (tr : ExecTrace) (b : Participant) (spk : Bytes) : ExecTrace :=
   (tr.append (EvP (.CompromisedSPK b (dhPk spk)))).append (NetE spk)
 
 theorem Runs.compromiseSPK {tr : ExecTrace} {b : Participant} {idx : Nat} {spk : Bytes}
@@ -349,7 +349,7 @@ theorem compSpkTr_reach {tr : ExecTrace} {b : Participant} {idx : Nat} {spk : By
     (compSpkTr tr b spk).Reachable reachability :=
   reach_of_runs (Runs.compromiseSPK hst) (compromiseSPK_reachable hr)
 
-def compPqTr (tr : ExecTrace) (b : Participant) (pqsk : Bytes) : ExecTrace :=
+@[expose] def compPqTr (tr : ExecTrace) (b : Participant) (pqsk : Bytes) : ExecTrace :=
   (tr.append (EvP (.CompromisedPQSPK b (kemPk pqsk)))).append (NetE pqsk)
 
 theorem Runs.compromisePQSPK {tr : ExecTrace} {b : Participant} {idx : Nat} {pqsk : Bytes}
@@ -385,7 +385,7 @@ theorem compOpkTr_reach {tr : ExecTrace} {b : Participant} {idx : Nat} {opk : By
     (compOpkTr tr b opk).Reachable reachability :=
   reach_of_runs (Runs.compromiseOPK hst hguard) (compromiseOPK_reachable hr)
 
-def breakDHTr (tr : ExecTrace) : ExecTrace := tr.append (EvP .BrokenDH)
+@[expose] def breakDHTr (tr : ExecTrace) : ExecTrace := tr.append (EvP .BrokenDH)
 
 theorem Runs.breakDH (tr : ExecTrace) : Runs PQXDH.breakDH tr () (breakDHTr tr) :=
   Runs.logEvent tr PQXDHEvent.BrokenDH
@@ -394,7 +394,7 @@ theorem breakDHTr_reach {tr : ExecTrace} (hr : tr.Reachable reachability) :
     (breakDHTr tr).Reachable reachability :=
   reach_of_runs (Runs.breakDH tr) (breakDH_reachable hr)
 
-def breakKEMTr (tr : ExecTrace) : ExecTrace := tr.append (EvP .BrokenKEM)
+@[expose] def breakKEMTr (tr : ExecTrace) : ExecTrace := tr.append (EvP .BrokenKEM)
 
 theorem Runs.breakKEM (tr : ExecTrace) : Runs PQXDH.breakKEM tr () (breakKEMTr tr) :=
   Runs.logEvent tr PQXDHEvent.BrokenKEM
@@ -403,7 +403,7 @@ theorem breakKEMTr_reach {tr : ExecTrace} (hr : tr.Reachable reachability) :
     (breakKEMTr tr).Reachable reachability :=
   reach_of_runs (Runs.breakKEM tr) (breakKEM_reachable hr)
 
-def invertTr (tr : ExecTrace) (sk : Bytes) : ExecTrace := tr.append (NetE sk)
+@[expose] def invertTr (tr : ExecTrace) (sk : Bytes) : ExecTrace := tr.append (NetE sk)
 abbrev invertDHTr := invertTr
 abbrev invertKEMTr := invertTr
 
@@ -758,7 +758,7 @@ abbrev advPlain : Bytes := lit "adv-initial-plaintext-32-bytes-1"
 
 /-- Appends an attacker-forged prekey bundle (`dhPk advSpkSk` and `kemPk advPqSk`, both signed under
 leaked/inverted identity secret `ikB`) to `tr`. -/
-def forgedBundlePrefix (tr : ExecTrace) (ikB : Bytes) : ExecTrace :=
+@[expose] def forgedBundlePrefix (tr : ExecTrace) (ikB : Bytes) : ExecTrace :=
   (((tr.append (NetE (dhPk advSpkSk))).append
     (NetE (Signature.sign ikB advSpkNonce (encodeEC (dhPk advSpkSk))))).append
     (NetE (kemPk advPqSk))).append
@@ -811,7 +811,7 @@ abbrev forgedBobCt (ikA ikB spkB pqskB : Bytes) : Bytes :=
 
 /-- Fake initiator `TRState` used by the attacker to construct a valid inner Triple Ratchet message 0
 for `Composed.bobStart`. -/
-def stFakeMsg0 (ikAPk ikBPk spkPk : Bytes) (keys : HandshakeKeys) : TRState :=
+@[expose] def stFakeMsg0 (ikAPk ikBPk spkPk : Bytes) (keys : HandshakeKeys) : TRState :=
   { peer := "bob", myIk := serializedIk ikAPk, peerIk := serializedIk ikBPk,
     rk := (createChain keys.rk spkPk advDhsA).1, dhs := advDhsA,
     cks := (createChain keys.rk spkPk advDhsA).2, ns := 0, pn := 0,
@@ -819,17 +819,17 @@ def stFakeMsg0 (ikAPk ikBPk spkPk : Bytes) (keys : HandshakeKeys) : TRState :=
     recv := [{ ratchetKey := spkPk, chainKey := keys.ck, index := 0, rIdx := 1 }],
     spqr := Spqr.spqrInit keys.pqr spqrA2B }
 
-def forgedSpqrKey (keys : HandshakeKeys) : Bytes :=
+@[expose] def forgedSpqrKey (keys : HandshakeKeys) : Bytes :=
   (Spqr.spqrSend (Spqr.spqrInit keys.pqr spqrA2B) advCoins).2.1
 
-def forgedSpqrMsg (keys : HandshakeKeys) : Bytes :=
+@[expose] def forgedSpqrMsg (keys : HandshakeKeys) : Bytes :=
   (Spqr.spqrSend (Spqr.spqrInit keys.pqr spqrA2B) advCoins).2.2
 
-def forgedPreKeyStage2 (tr : ExecTrace) (ikA ikB spkB pqskB : Bytes) : ExecTrace :=
+@[expose] def forgedPreKeyStage2 (tr : ExecTrace) (ikA ikB spkB pqskB : Bytes) : ExecTrace :=
   (tr.append (NetE (dhPk advEkSk))).append (NetE (forgedBobCt ikA ikB spkB pqskB))
 
 /-- Appends a forged 3-message `PreKeySignalMessage` (`ek`, `ct`, `encMsg`) to `tr`. -/
-def forgedPreKeyPrefix (tr : ExecTrace) (ikA ikB spkB pqskB : Bytes) : ExecTrace :=
+@[expose] def forgedPreKeyPrefix (tr : ExecTrace) (ikA ikB spkB pqskB : Bytes) : ExecTrace :=
   let keys := forgedBobKeys ikA ikB spkB pqskB
   let st := stFakeMsg0 (dhPk ikA) (dhPk ikB) (dhPk spkB) keys
   (forgedPreKeyStage2 tr ikA ikB spkB pqskB).append
@@ -887,7 +887,7 @@ theorem forgedPreKeyPrefix_reach {tr : ExecTrace} {ikA ikB spkB pqskB : Bytes}
       (ak_lit _) hpqKey (ak_lit _))
 
 /-- Trace produced when Bob accepts `forgedPreKeyPrefix` via `Composed.bobStart`. -/
-def forgedBobStartTr (trPre : ExecTrace) (b a : Participant) (ikA ikB spkB pqskB : Bytes) :
+@[expose] def forgedBobStartTr (trPre : ExecTrace) (b a : Participant) (ikA ikB spkB pqskB : Bytes) :
     ExecTrace :=
   let keys := forgedBobKeys ikA ikB spkB pqskB
   let stS := stFakeMsg0 (dhPk ikA) (dhPk ikB) (dhPk spkB) keys
@@ -985,12 +985,12 @@ abbrev isCompOPK : PQXDHEvent → Bool := fun | .CompromisedOPK .. => true | _ =
 abbrev isBrokenDH : PQXDHEvent → Bool := fun | .BrokenDH => true | _ => false
 abbrev isBrokenKEM : PQXDHEvent → Bool := fun | .BrokenKEM => true | _ => false
 
-def isAnyTRExposure : TREvent → Bool
+@[expose] def isAnyTRExposure : TREvent → Bool
   | .ExposedDHs .. | .ExposedRK .. | .ExposedCKs .. | .ExposedCKr .. | .ExposedMK ..
   | .ExposedSpqr .. => true
   | _ => false
 
-def trEvIdx (tr : ExecTrace) (p : TREvent → Bool) : List Nat :=
+@[expose] def trEvIdx (tr : ExecTrace) (p : TREvent → Bool) : List Nat :=
   (List.range tr.length).filter fun i =>
     match tr.getEventAt TREvent i with | some e => p e | none => false
 
@@ -1490,8 +1490,8 @@ abbrev advSetup_reach : advSetup.Reachable reachability := t4_reach
 
 /-! ### Witness Trace `trIKB` -/
 
-def trIKB_pre : ExecTrace := forgedBundlePrefix (compIkTr advSetup "bob" advIkB) advIkB
-def trIKB : ExecTrace :=
+@[expose] def trIKB_pre : ExecTrace := forgedBundlePrefix (compIkTr advSetup "bob" advIkB) advIkB
+@[expose] def trIKB : ExecTrace :=
   aliceTr trIKB_pre "alice" "bob" advIkA (dhPk advIkB) (dhPk advSpkSk) (kemPk advPqSk)
 abbrev trIKB_out : AliceHandshakeOut :=
   aliceOut trIKB_pre advIkA (dhPk advIkB) (dhPk advSpkSk) (kemPk advPqSk)
@@ -1560,9 +1560,9 @@ theorem trIKB_knows_block {k : Bytes} (hk : IsHandshakeBlock trIKB_out.keys k) :
 
 /-! ### Witness Trace `trBrokenDHA` -/
 
-def trBrokenDHA_pre : ExecTrace :=
+@[expose] def trBrokenDHA_pre : ExecTrace :=
   forgedBundlePrefix (invertTr (breakDHTr advSetup) advIkB) advIkB
-def trBrokenDHA : ExecTrace :=
+@[expose] def trBrokenDHA : ExecTrace :=
   aliceTr trBrokenDHA_pre "alice" "bob" advIkA (dhPk advIkB) (dhPk advSpkSk) (kemPk advPqSk)
 abbrev trBrokenDHA_out : AliceHandshakeOut :=
   aliceOut trBrokenDHA_pre advIkA (dhPk advIkB) (dhPk advSpkSk) (kemPk advPqSk)
@@ -1639,9 +1639,9 @@ theorem trBrokenDHA_knows_block {k : Bytes} (hk : IsHandshakeBlock trBrokenDHA_o
 abbrev advForgedBobKeys : HandshakeKeys := forgedBobKeys advIkA advIkB advSpkB advPqskB
 abbrev advForgedBobCt : Bytes := forgedBobCt advIkA advIkB advSpkB advPqskB
 
-def trIKA_pre : ExecTrace :=
+@[expose] def trIKA_pre : ExecTrace :=
   forgedPreKeyPrefix (compIkTr advSetup "alice" advIkA) advIkA advIkB advSpkB advPqskB
-def trIKA : ExecTrace :=
+@[expose] def trIKA : ExecTrace :=
   forgedBobStartTr trIKA_pre "bob" "alice" advIkA advIkB advSpkB advPqskB
 
 theorem trIKA_reach : trIKA.Reachable reachability := by
@@ -1713,9 +1713,9 @@ theorem trIKA_knows_block {k : Bytes} (hk : IsHandshakeBlock advForgedBobKeys k)
 
 /-! ### Witness Trace `trSPKB` -/
 
-def trSPKB_pre : ExecTrace :=
+@[expose] def trSPKB_pre : ExecTrace :=
   forgedPreKeyPrefix (compSpkTr advSetup "bob" advSpkB) advIkA advIkB advSpkB advPqskB
-def trSPKB : ExecTrace :=
+@[expose] def trSPKB : ExecTrace :=
   forgedBobStartTr trSPKB_pre "bob" "alice" advIkA advIkB advSpkB advPqskB
 
 theorem trSPKB_reach : trSPKB.Reachable reachability := by
@@ -1787,9 +1787,9 @@ theorem trSPKB_knows_block {k : Bytes} (hk : IsHandshakeBlock advForgedBobKeys k
 
 /-! ### Witness Trace `trBrokenDHB` -/
 
-def trBrokenDHB_pre : ExecTrace :=
+@[expose] def trBrokenDHB_pre : ExecTrace :=
   forgedPreKeyPrefix (invertTr (breakDHTr advSetup) advIkA) advIkA advIkB advSpkB advPqskB
-def trBrokenDHB : ExecTrace :=
+@[expose] def trBrokenDHB : ExecTrace :=
   forgedBobStartTr trBrokenDHB_pre "bob" "alice" advIkA advIkB advSpkB advPqskB
 
 theorem trBrokenDHB_reach : trBrokenDHB.Reachable reachability := by
@@ -1866,36 +1866,36 @@ theorem trBrokenDHB_knows_block {k : Bytes} (hk : IsHandshakeBlock advForgedBobK
 
 /-! ### Witness Trace `trAlias` -/
 
-def trAlias1 : ExecTrace := compIkTr t4 "bob" ikB
-def trAlias2 : ExecTrace := regCorruptTr trAlias1 "carol" ikB
-def trAlias3 : ExecTrace := aliceTr trAlias2 "alice" "carol" ikA (dhPk ikB) (dhPk spkB) (kemPk pqskB)
+@[expose] def trAlias1 : ExecTrace := compIkTr t4 "bob" ikB
+@[expose] def trAlias2 : ExecTrace := regCorruptTr trAlias1 "carol" ikB
+@[expose] def trAlias3 : ExecTrace := aliceTr trAlias2 "alice" "carol" ikA (dhPk ikB) (dhPk spkB) (kemPk pqskB)
 
 abbrev trAlias_out : AliceHandshakeOut :=
   aliceOut trAlias2 ikA (dhPk ikB) (dhPk spkB) (kemPk pqskB)
 abbrev trAlias_keys : HandshakeKeys := trAlias_out.keys
 abbrev trAlias_dhsA : Bytes := rnd 28 32
-def trAlias_stA0 : TRState := aliceSt "carol" trAlias_out trAlias_dhsA
+@[expose] def trAlias_stA0 : TRState := aliceSt "carol" trAlias_out trAlias_dhsA
 
 abbrev trAlias_m0 : Bytes := rnd 35 32
 abbrev trAlias_coins0 : Bytes := rnd 36 32
-def trAlias_key0 : Bytes := (Spqr.spqrSend trAlias_stA0.spqr trAlias_coins0).2.1
+@[expose] def trAlias_key0 : Bytes := (Spqr.spqrSend trAlias_stA0.spqr trAlias_coins0).2.1
 def trAlias_pqm0 : Bytes := (Spqr.spqrSend trAlias_stA0.spqr trAlias_coins0).2.2
-def trAlias4 : ExecTrace := encTr trAlias3 "alice" 34 trAlias_stA0 trAlias_key0
+@[expose] def trAlias4 : ExecTrace := encTr trAlias3 "alice" 34 trAlias_stA0 trAlias_key0
 
 def trAlias_mh : PreKeyMsgHandles := { ek := 29, ct := 30, msg := 41 }
 abbrev trAlias_dhsB1 : Bytes := rnd 42 32
 def trAlias_stB00 : TRState :=
   bobSt0 "alice" ikB spkB (dhPk ikA) trAlias_keys
     (encSig trAlias_stA0 trAlias_coins0 trAlias_key0 trAlias_m0)
-def trAlias_stB0' : TRState := (ratchetState trAlias_stB00 (dhPk trAlias_dhsA) trAlias_dhsB1).1
+@[expose] def trAlias_stB0' : TRState := (ratchetState trAlias_stB00 (dhPk trAlias_dhsA) trAlias_dhsB1).1
 def trAlias_cB : RecvChain := (ratchetState trAlias_stB00 (dhPk trAlias_dhsA) trAlias_dhsB1).2
 def trAlias_cB' : RecvChain := { trAlias_cB with chainKey := (kdfCk trAlias_cB.chainKey).1, index := 1 }
-def trAlias_seedB0 : Bytes := (kdfCk trAlias_cB.chainKey).2
-def trAlias_stB1 : TRState :=
+@[expose] def trAlias_seedB0 : Bytes := (kdfCk trAlias_cB.chainKey).2
+@[expose] def trAlias_stB1 : TRState :=
   { trAlias_stB0' with
     recv := [trAlias_cB'], spqr := recvSt (Spqr.spqrInit trAlias_keys.pqr spqrB2A) trAlias_pqm0 }
 
-def trAlias : ExecTrace :=
+@[expose] def trAlias : ExecTrace :=
   let tr1 := (trAlias4.append (RndE 32)).append (NetE trAlias_key0)
   let tr5 := (((tr1.append (EvP (.BobDone "bob" "alice" (dhPk ikB) (dhPk ikA) (dhPk spkB)
       (kemPk pqskB) none trAlias_out.ek trAlias_out.ct trAlias_keys))).append
@@ -2112,7 +2112,7 @@ theorem trAlias_trExposure_indices : trEvIdx trAlias isAnyTRExposure = [] := by
 
 /-! ### Witness Trace `trThm7Case1_pq` -/
 
-def trThm7Case1_pq : ExecTrace :=
+@[expose] def trThm7Case1_pq : ExecTrace :=
   compPqTr (compSpkTr (compIkTr t5 "bob" ikB) "bob" spkB) "bob" pqskB
 
 theorem trThm7Case1_pq_reach : trThm7Case1_pq.Reachable reachability := by
@@ -2246,7 +2246,7 @@ theorem trThm7Case1_kem_knows_block {k : Bytes} (hk : IsHandshakeBlock keys1 k) 
 
 /-! ### Witness Trace `trThm7Case3_pq` -/
 
-def trThm7Case3_pq : ExecTrace :=
+@[expose] def trThm7Case3_pq : ExecTrace :=
   compPqTr (invertTr (invertTr (breakDHTr t5) ikB) spkB) "bob" pqskB
 
 theorem trThm7Case3_pq_reach : trThm7Case3_pq.Reachable reachability := by
@@ -2311,7 +2311,7 @@ theorem trThm7Case3_pq_knows_block {k : Bytes} (hk : IsHandshakeBlock keys1 k) :
 
 /-! ### Witness Trace `trThm7Case3_kem` -/
 
-def trThm7Case3_kem : ExecTrace :=
+@[expose] def trThm7Case3_kem : ExecTrace :=
   invertTr (breakKEMTr (invertTr (invertTr (breakDHTr t5) ikB) spkB)) pqskB
 
 theorem trThm7Case3_kem_reach : trThm7Case3_kem.Reachable reachability := by
@@ -2380,7 +2380,7 @@ theorem trThm7Case3_kem_knows_block {k : Bytes} (hk : IsHandshakeBlock keys1 k) 
 
 /-! ### Witness Trace `trThm9Case2` -/
 
-def trThm9Case2 : ExecTrace :=
+@[expose] def trThm9Case2 : ExecTrace :=
   compPqTr (compSpkTr (compIkTr t8 "bob" ikB) "bob" spkB) "bob" pqskB
 
 theorem trThm9Case2_reach : trThm9Case2.Reachable reachability := by
@@ -2666,13 +2666,13 @@ theorem trThm9Case6_knows_block {k : Bytes} (hk : IsHandshakeBlock keys1 k) :
 
 /-! ### Witness Traces `trThm9Case2_opk` and `trThm9Case3_opk` -/
 
-def t6Opk_comp : ExecTrace := compOpkTr t6Opk "bob" opkB
+@[expose] def t6Opk_comp : ExecTrace := compOpkTr t6Opk "bob" opkB
 abbrev dhsB1Opk_comp : Bytes := rnd 44 32
-def stB0'Opk_comp : TRState := (ratchetState stB00Opk (dhPk dhsAOpk) dhsB1Opk_comp).1
-def stB1Opk_comp : TRState :=
+@[expose] def stB0'Opk_comp : TRState := (ratchetState stB00Opk (dhPk dhsAOpk) dhsB1Opk_comp).1
+@[expose] def stB1Opk_comp : TRState :=
   { stB0'Opk_comp with recv := [cB'Opk], spqr := recvSt (Spqr.spqrInit keysOpk.pqr spqrB2A) pqm0Opk }
 
-def wTrOpk_comp : ExecTrace :=
+@[expose] def wTrOpk_comp : ExecTrace :=
   let tr1 := ((t6Opk_comp.append (RndE 32)).append (NetE key0Opk)).append
     (EvP (.OPKUsed "bob" (dhPk opkB)))
   let tr5 := (((tr1.append (EvP (.BobDone "bob" "alice" (dhPk ikB) (dhPk ikA) (dhPk spkB)
@@ -2925,7 +2925,7 @@ theorem trThm9Case2_opk_knows_block {k : Bytes} (hk : IsHandshakeBlock keysOpk k
     (ak_net (at?_mono ho_tr wTrOpk_comp_netOpk_at))
     (ak_net (at?_mono h6_tr t6Opk_ct_at)) hk
 
-def trThm9Case3_opk : ExecTrace :=
+@[expose] def trThm9Case3_opk : ExecTrace :=
   invertTr (breakKEMTr (compSpkTr (compIkTr wTrOpk_comp "bob" ikB) "bob" spkB)) pqskB
 
 theorem trThm9Case3_opk_reach : trThm9Case3_opk.Reachable reachability := by
@@ -3003,7 +3003,7 @@ theorem trThm9Case3_opk_knows_block {k : Bytes} (hk : IsHandshakeBlock keysOpk k
 
 /-! ### Witness Trace `trSessionExposedCKr` -/
 
-def trSessionExposedCKr : ExecTrace := exposeCkrTr t8 "alice" stA0 cA0
+@[expose] def trSessionExposedCKr : ExecTrace := exposeCkrTr t8 "alice" stA0 cA0
 
 theorem trSessionExposedCKr_reach : trSessionExposedCKr.Reachable reachability :=
   exposeCkr_reach (stH := 30) (pk := dhPk spkB) t8_reach

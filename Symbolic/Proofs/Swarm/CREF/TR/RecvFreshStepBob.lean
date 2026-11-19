@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvFreshStepStart
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvFreshStepStart -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -25,12 +25,12 @@ import Symbolic.Proofs.Swarm.CREF.TR.RecvFreshDecA
 import VCVio.Prelude.Core
 import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Trace.Monad
-import Symbolic.DYBridge.DY.Trace.Manipulation
+public import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Actions.Network
 import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
-import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+public import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
 
 /-!
@@ -41,7 +41,7 @@ its newly derived session descriptor has no prior receiver events or stored snap
 pre-step trace.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

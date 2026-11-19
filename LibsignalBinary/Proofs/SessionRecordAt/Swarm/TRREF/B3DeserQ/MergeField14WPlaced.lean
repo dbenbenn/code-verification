@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.MF14AuxW
+public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.MF14AuxW -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
@@ -17,6 +17,10 @@ import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+public import LibsignalBinary.Proofs.E2E.Record.L1GX.Defs
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Defs
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable `[LibsignalPlacement]` `merge_field` on Tag 14 (Block `15`)
@@ -26,7 +30,7 @@ Verifies `mergeField14KyberW_placed_ok` (over `kyberAt14`) and `mergeField14W_pl
 slice length `< 2 ^ 62`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,7 +44,7 @@ open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalTripl
 open CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.E2E.Record.DeserializeSeed CryptoVerification.E2E.Record.DeserializeGeneral
 open CryptoVerification.E2E.Record.L1GX CryptoVerification.E2E.Record.L1GX.Leaf.MF14Aux
-open CryptoVerification.E2E.Record.Serialization (OkAt allocPanic)
+open CryptoVerification.E2E.Record.Serialization (allocPanic)
 open Proofs.libsignal.Hooks2
 
 set_option maxRecDepth 200000
@@ -53,7 +57,7 @@ attribute [local wp_norm] kyberB0_signExtend_getLsbD_63 kyberB0_signExtend_getLs
 
 theorem L1_MergeField14WPlaced : True := trivial
 
-def mergeField14KyberRawSpecW (P : GenFieldX → Prop) : Spec MergeFieldXGhost where
+@[expose] def mergeField14KyberRawSpecW (P : GenFieldX → Prop) : Spec MergeFieldXGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ (s.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 x.fld.tag ∧
       (s.readReg64 .x2).setWidth 8 = BitVec.ofNat 8 x.fld.wt.toNat ∧ s.readReg64 .x3 = x.bufRef ∧
@@ -73,11 +77,11 @@ abbrev mergeField14KyberPlacedSpecW [LibsignalPlacement] (P : GenFieldX → Prop
     Spec MergeFieldXGhost :=
   LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl (mergeField14KyberRawSpecW P)
 
-def MergeField14KyberPlacedOkW [LibsignalPlacement] (H : LibsignalHooks)
+@[expose] def MergeField14KyberPlacedOkW [LibsignalPlacement] (H : LibsignalHooks)
     (P : GenFieldX → Prop) : Prop :=
   subroutine_ok (lsProg_15 H) (blkPl_15).base (mergeField14KyberPlacedSpecW P)
 
-def mergeField14RawSpecW (P : GenFieldX → Prop) : Spec MergeFieldXGhost where
+@[expose] def mergeField14RawSpecW (P : GenFieldX → Prop) : Spec MergeFieldXGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ (s.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 x.fld.tag ∧
       (s.readReg64 .x2).setWidth 8 = BitVec.ofNat 8 x.fld.wt.toNat ∧ s.readReg64 .x3 = x.bufRef ∧
@@ -97,7 +101,7 @@ abbrev mergeField14PlacedSpecW [LibsignalPlacement] (P : GenFieldX → Prop) :
     Spec MergeFieldXGhost :=
   LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl (mergeField14RawSpecW P)
 
-def MergeField14PlacedOkW [LibsignalPlacement] (H : LibsignalHooks)
+@[expose] def MergeField14PlacedOkW [LibsignalPlacement] (H : LibsignalHooks)
     (P : GenFieldX → Prop) : Prop :=
   subroutine_ok (lsProg_15 H) (blkPl_15).base (mergeField14PlacedSpecW P)
 

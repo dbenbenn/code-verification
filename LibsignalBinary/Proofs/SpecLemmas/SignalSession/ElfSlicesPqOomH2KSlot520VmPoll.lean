@@ -9,16 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonStage2PathAFullPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidMatchUntrustedPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.DecPkPollKitsStage2PlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.DecPkPollKitsFdsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KSlot520VmPathA
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KSlot520VmPathB
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ValidMatchDecPkSlotSeqFree
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget
+public import LibsignalBinary.Specifications.CryptoGames.DH.X25519
+public import LibsignalBinary.Specifications.CryptoGames.KEM.MlKem
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopPlacedBudgetFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonStage2PathAFullPlacedBudgetFd -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidMatchUntrustedPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.DecPkPollKitsStage2PlacedBudgetFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.DecPkPollKitsFdsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KSlot520VmPathA
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KSlot520VmPathB
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ValidMatchDecPkSlotSeqFree -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
@@ -40,6 +42,12 @@ import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import ProofLib.SepLogic.WPFrozen
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinkedBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedInstPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SlotPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # Kit-Parametric D3 `validMatch` Poll and Frozen Slot-`520` Producers (`ElfSlicesPqOomH2KSlot520VmPoll`)
@@ -54,7 +62,7 @@ Assembles the Block-`518` `withLsFrozen` poll closure
 producer `h2k520vm_decPkValidMatchSlotOk_seqFree_targetGuarded_of_dirGet_frozen`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000
@@ -297,7 +305,7 @@ theorem h2k520vm_decPk_d3_validMatch_seqFree_poll_frozen_kits_placedBudget [Libs
           A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
       ⟨hh.alloc, hh.allocFs, hh.panics, hh.memcpyRO, hh.bcmp, hh.fs,
        hh.utf8, hh.memrchr, hh.codecHooks, hh.allocZeroed, hh.stringClone, hh.formatInner,
-       hh.blackBox⟩
+       hh.fmtWrite, hh.blackBox⟩
     let σ := cliKitStk B
     let pid := pmPreKeyId y.g.msg
     let sid := y.g.msg.signedPreKeyId
@@ -641,6 +649,9 @@ theorem h2k520vm_decPkValidMatchSlotOk_seqFree_of_dirGet_frozen_placedBudget [Li
     {tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hDecaps : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
     (hh : LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget.RunHooksPlaced
       A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hGet : subroutine_ok (lsProg_589 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
@@ -688,7 +699,7 @@ theorem h2k520vm_decPkValidMatchSlotOk_seqFree_of_dirGet_frozen_placedBudget [Li
       StageP2PathAQpanCliD3NoReadAtFrozenPlacedBudgetStmt A lim DeserEnv X mmpl gh W cliRunBudgets
         _ _ :=
     stageP2PathAQpan_cli_d3_full_noRead_placed_of_kits A lim (DeserEnv := DeserEnv)
-      X mmpl gh W cliRunBudgets h547 hG hSpqr
+      X mmpl gh W cliRunBudgets h547 hG hF hX hDecaps hSpqr
       hKits.selfOk hKits.spkOk hKits.kpkOk hKits.pkOk
   intro stk h1 h2
   exact h2k520vm_cliDecryptPrekey_slot_d3_match_seqFree_frozen_kits_placedBudget_at_block
@@ -713,6 +724,9 @@ theorem h2k520vm_decPkValidMatchSlotOk_seqFree_targetGuarded_of_dirGet_frozen
     {TargetEnv : DecPkGhost → List AllocEvent → Prop}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hDecaps : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
     (hh : LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget.RunHooksPlaced
       A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hGet : subroutine_ok (lsProg_589 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
@@ -749,7 +763,7 @@ theorem h2k520vm_decPkValidMatchSlotOk_seqFree_targetGuarded_of_dirGet_frozen
   h10b_decPkValidMatchSlotOk_targetGuarded_frozen S sEnvs needs hSlot
     (fun sEnvs0 hsEnv0 =>
       h2k520vm_decPkValidMatchSlotOk_seqFree_of_dirGet_frozen_placedBudget mmpl gh W X
-        h547 hG hh hGet hDeser hSpqr hTryDec S sEnvs0 needs hsEnv0
+        h547 hG hF hX hDecaps hh hGet hDeser hSpqr hTryDec S sEnvs0 needs hsEnv0
         hfiles hdecPk hdecPkOk hneed)
     hfiles hdecPkOk hBridge
 

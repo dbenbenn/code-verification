@@ -263,10 +263,10 @@ theorem libsignalCliPqSecure_instantiable_of_cli
   have hA0 : CliGameAdversaryPerInstanceBounded A0 b1 1 (fun _ => 1) :=
     ⟨⟨trivial, trivial, trivial, trivial, trivial, trivial, trivial⟩, trivial, fun _ _ => trivial⟩
   rcases hMain (pqModelRun X255 W255) X255 W255 (hCliModel X255 W255)
-      bhEncaps1Total_W255 modelPrims_X255_cwfδ 0 modelPrims_X255_kemCorrectWith_zero
+      bhEncaps1Total_W255 c255_D_E modelPrims_X255_cwfδ 0 modelPrims_X255_kemCorrectWith_zero
       dh255 encPt255 encT255 decT255 1 hℓ
       dh255_commutes libX25519Rel_c255 decT255_encT255 encT255_ne_dummyKey
-      dh255_zero c255_D_E dh255_kerUniform
+      dh255_zero dh255_kerUniform
       b1 1 (fun _ => 1) (fun _ _ => show 2 * (1 + 1) + 25002 < 2 ^ 32 by decide)
       1 (fun _ => MeasureTheory.prob_le_one) A0 hA0
     with ⟨hK, _, hBound1, hBound2⟩

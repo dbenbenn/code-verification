@@ -25,7 +25,7 @@ import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11Aux
 Proves `closeByStateC_inject_newChain_amb_find_some` for `closeByStateC_inject_step` when an ambiguous new-chain injection resolves to an existing chain after accounting for the SPK ratchet.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

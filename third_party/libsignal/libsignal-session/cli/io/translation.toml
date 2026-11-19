@@ -3,9 +3,8 @@
 # Extracts the `libsignal-cli-io` crate (`read_file`, `write_file`, `read_stdin`, `write_stdout`,
 # plus its crate-local `<alloc::raw_vec::RawVecInner>::finish_grow` copy) compiled from the parent
 # `libsignal-session` crate directory (`../..`) with the same `Cargo.lock`, release profile, and
-# `rustflags` as `../../translation.toml`, into a standalone image (`SignalSessionIoObj.lean`) and
-# relocatable `Obj.MultiPlacedLib` (`SignalSessionIoPlacedObj.lean`) so the main
-# `libsignalSessionObj` offsets do not move.
+# `rustflags` as `../../translation.toml`, into a relocatable `Obj.MultiPlacedLib`
+# (`SignalSessionIoPlacedObj.lean`) so the main `libsignalSessionObj` offsets do not move.
 
 crate_dir = "../.."
 crates = ["libsignal-cli-io"]
@@ -13,7 +12,7 @@ obj_name = "signalSessionIo"
 obj_file = "GeneratedLean/SignalSessionIoObj.lean"
 namespace_prefix = "CryptoVerification"
 page_separate_data = true
-legacy_linked_image = true
+legacy_linked_image = false
 hashed_inputs = [
     "cli/io/translation.toml",
     "Cargo.toml",
@@ -21,7 +20,7 @@ hashed_inputs = [
     "cli/io/Cargo.toml",
     "cli/io/src/lib.rs",
 ]
-rustflags = ["--cfg", 'aes_backend="soft"', "--cfg", 'sha2_backend="soft"']
+rustflags = ["--cfg", 'sha2_backend="soft"']
 license_header = [
     "Machine code in this file is compiled from original repository source in",
     "`third_party/libsignal/libsignal-session/cli/io/src/lib.rs` (Copyright 2026 Google LLC;",
@@ -42,6 +41,7 @@ no_clone_env_var = "LIBSIGNAL_NO_CLONE"
 home_subdir = "sw/libsignal"
 
 [placed]
+placed_only = true
 multi = true
 exports = [
     "libsignal_cli_io::read_file",

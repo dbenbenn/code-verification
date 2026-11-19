@@ -577,30 +577,160 @@ def demangle_rust_v0(sym: str) -> str:
         return sym
 
 
+EXTRACTED_OBJ_DEF_RE = re.compile(
+    r"def\s+\w+\s*:\s*Obj\.ExtractedObj\s+where(.*?)(?=\ndef\s+|\Z)", re.S
+)
+EXTRACTED_SYM_RE = re.compile(
+    r'\{\s*rawName\s*:=\s*"((?:[^"\\]|\\.)*)"\s*,\s*name\s*:=\s*"((?:[^"\\]|\\.)*)"\s*,'
+    r"\s*sec\s*:=\s*(\.undef|\.other|\.sec\s+\d+)\s*,\s*value\s*:=\s*(0x[0-9a-fA-F]+|\d+)\s*,"
+    r"\s*size\s*:=\s*(\d+)\s*,\s*kind\s*:=\s*\.(\w+)\s*,\s*bind\s*:=\s*\.(\w+)\s*\}"
+)
+EXTRACTED_RELOC_RE = re.compile(
+    r"\{\s*off\s*:=\s*(0x[0-9a-fA-F]+|\d+)\s*,\s*kind\s*:=\s*(?:none|some\s+\.(\w+))\s*,"
+    r"\s*symIdx\s*:=\s*(\d+)(?:\s*,\s*addend\s*:=\s*(-?\d+))?\s*\}"
+)
+LDST_RELOC_WIDTHS: dict[str, int] = {
+    "ldst8Lo12": 1,
+    "ldst16Lo12": 2,
+    "ldst32Lo12": 4,
+    "ldst64Lo12": 8,
+    "ldst128Lo12": 16,
+}
+ACCESS_RELOC_WIDTHS: dict[str, int] = {
+    **LDST_RELOC_WIDTHS,
+    "prel32": 4,
+    "abs64": 8,
+    "ld64GotLo12Nc": 8,
+}
+
+
+def _unescape_lean_str(s: str) -> str:
+    return s.replace(r"\"", '"').replace(r"\\", "\\")
+
+
+def _is_rust_method_or_fn_symbol(raw_name: str, dem_name: str) -> bool:
+    """True when an `SHN_UNDEF` `STT_NOTYPE` symbol without load/store relocations is a Rust
+    method, generic function instantiation, or closure rather than a module-path `static`."""
+    base = raw_name.split(".llvm.", 1)[0]
+    if base.startswith(("_RNvM", "_RNvX", "_RINv", "_RNC")):
+        return True
+    return dem_name.startswith("<") or "::{" in dem_name
+
+
+def _parse_extracted_obj_extern_data(extracted_lean: pathlib.Path) -> dict[str, int]:
+    """Derive external data symbols & sizes directly from `LibsignalSessionExtractedObj.lean`
+    (`placed_only = true` mode, independent of lockfiles)."""
+    text = extracted_lean.read_text(encoding="utf-8")
+    blocks = list(EXTRACTED_OBJ_DEF_RE.finditer(text))
+    if not blocks:
+        raise RuntimeError(f"no `Obj.ExtractedObj` blocks found in {extracted_lean}")
+    defined_nonlocal_raw: set[str] = set()
+    defined_nonlocal_dem: set[str] = set()
+    undef_refs: dict[str, dict[str, Any]] = {}
+    for m_obj in blocks:
+        body = m_obj.group(1)
+        s_pos = body.find("symbols := [")
+        if s_pos < 0:
+            raise RuntimeError(f"missing `symbols := [` in {extracted_lean}")
+        syms = list(EXTRACTED_SYM_RE.finditer(body[s_pos:]))
+        for sm in syms:
+            raw_s, dem_s, sec, _val, _sz_s, _kind, bind = sm.groups()
+            if sec.startswith(".sec") and bind != "local":
+                defined_nonlocal_raw.add(_unescape_lean_str(raw_s))
+                defined_nonlocal_dem.add(_unescape_lean_str(dem_s))
+        for rm in EXTRACTED_RELOC_RE.finditer(body[:s_pos]):
+            rtype = rm.group(2) or "none"
+            sidx = int(rm.group(3))
+            addend = int(rm.group(4)) if rm.group(4) is not None else 0
+            if sidx >= len(syms):
+                raise RuntimeError(
+                    f"relocation symIdx {sidx} out of bounds ({len(syms)}) in {extracted_lean}"
+                )
+            if sidx == 0:
+                continue
+            sm = syms[sidx]
+            raw_s, dem_s, sec, _val, sz_s, kind, _bind = sm.groups()
+            raw_name = _unescape_lean_str(raw_s)
+            dem_name = _unescape_lean_str(dem_s)
+            if sec != ".undef" or not raw_name:
+                continue
+            info = undef_refs.setdefault(
+                raw_name,
+                {"dem": dem_name, "kinds": set(), "rtypes": set(), "max_end": 0},
+            )
+            info["kinds"].add(kind)
+            info["rtypes"].add(rtype)
+            info["max_end"] = max(info["max_end"], int(sz_s))
+            width = ACCESS_RELOC_WIDTHS.get(rtype, 0)
+            if width > 0 and addend >= 0:
+                info["max_end"] = max(info["max_end"], addend + width)
+
+    out: dict[str, int] = {}
+    for raw_name, info in sorted(undef_refs.items()):
+        dem = str(info["dem"])
+        if raw_name in defined_nonlocal_raw or dem in defined_nonlocal_dem:
+            continue
+        rtypes = info["rtypes"]
+        kinds = info["kinds"]
+        any_branch = bool(rtypes & {"call26", "jump26", "condbr19", "tstbr14"})
+        any_tls = any(rt.startswith("tls") for rt in rtypes)
+        any_ldst = bool(rtypes & set(LDST_RELOC_WIDTHS.keys()))
+        if any_branch or any_tls or "func" in kinds or "tls" in kinds:
+            continue
+        if not (any_ldst or "object" in kinds) and _is_rust_method_or_fn_symbol(raw_name, dem):
+            continue
+        if raw_name in EIGHT_BYTE_EXTERN_DATA_SYMS:
+            size = 8
+        elif dem == "core::unicode::unicode_data::white_space::WHITESPACE_MAP":
+            size = max(256, int(info["max_end"]))
+        else:
+            size = max(8, int(info["max_end"]))
+        if dem in out:
+            raise RuntimeError(
+                f"duplicate demangled externData entry {dem!r} in {extracted_lean}"
+            )
+        out[dem] = size
+    if not out:
+        raise RuntimeError(f"parsed empty external data set from {extracted_lean}")
+    return out
+
+
 def parse_generated_lean_extern_data(repo_root: pathlib.Path) -> dict[str, int]:
-    """Parse `externData := [ ("...", 0x..., <size>), ... ]` from `.GeneratedLean/**/LibsignalSessionObj.lean`."""
+    """Parse proved external data symbols from `.GeneratedLean/**/LibsignalSessionObj.lean` when
+    present, or directly from `.GeneratedLean/**/LibsignalSessionExtractedObj.lean` under
+    `placed_only = true`."""
     gen_root = repo_root / ".GeneratedLean"
     if not gen_root.is_dir():
         raise RuntimeError(f"missing `.GeneratedLean` directory at {gen_root}")
     cands = sorted(p for p in gen_root.glob("**/LibsignalSessionObj.lean") if p.is_file())
-    if len(cands) != 1:
+    if len(cands) > 1:
         raise RuntimeError(
-            f"expected exactly 1 LibsignalSessionObj.lean under {gen_root}, found {cands}"
+            f"expected at most 1 LibsignalSessionObj.lean under {gen_root}, found {cands}"
         )
-    text = cands[0].read_text(encoding="utf-8")
-    m_blk = EXTERN_DATA_BLOCK_RE.search(text)
-    if m_blk is None:
-        raise RuntimeError(f"missing `externData := [...]` block in {cands[0]}")
-    out: dict[str, int] = {}
-    for m_it in EXTERN_DATA_ITEM_RE.finditer(m_blk.group(1)):
-        name = m_it.group(1)
-        size = int(m_it.group(3))
-        if name in out:
-            raise RuntimeError(f"duplicate externData entry {name!r} in {cands[0]}")
-        out[name] = size
-    if not out:
-        raise RuntimeError(f"parsed empty `externData` in {cands[0]}")
-    return out
+    if len(cands) == 1:
+        text = cands[0].read_text(encoding="utf-8")
+        m_blk = EXTERN_DATA_BLOCK_RE.search(text)
+        if m_blk is None:
+            raise RuntimeError(f"missing `externData := [...]` block in {cands[0]}")
+        out: dict[str, int] = {}
+        for m_it in EXTERN_DATA_ITEM_RE.finditer(m_blk.group(1)):
+            name = m_it.group(1)
+            size = int(m_it.group(3))
+            if name in out:
+                raise RuntimeError(f"duplicate externData entry {name!r} in {cands[0]}")
+            out[name] = size
+        if not out:
+            raise RuntimeError(f"parsed empty `externData` in {cands[0]}")
+        return out
+    extracted_cands = sorted(
+        p for p in gen_root.glob("**/LibsignalSessionExtractedObj.lean") if p.is_file()
+    )
+    if len(extracted_cands) != 1:
+        raise RuntimeError(
+            f"expected 1 LibsignalSessionExtractedObj.lean (or LibsignalSessionObj.lean) under {gen_root}, "
+            f"found {extracted_cands}"
+        )
+    return _parse_extracted_obj_extern_data(extracted_cands[0])
 
 
 def canonicalize_map_input_token(raw_input: str) -> tuple[str, str | None, str]:

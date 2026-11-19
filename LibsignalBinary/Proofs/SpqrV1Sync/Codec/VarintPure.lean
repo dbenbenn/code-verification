@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append
-public meta import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append
-public import LibsignalBinary.Proofs.ProtoCodecRoundTrip
+public meta import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 public import LibsignalBinary.Specifications.AsmConstants
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDecDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDefs
@@ -20,7 +19,7 @@ public import LibsignalBinary.Specifications.CryptoGames.AEAD.EtMDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HKDFDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.WireAeadDefs
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Construction
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Defs
@@ -34,7 +33,7 @@ public import LibsignalBinary.Specifications.CryptoGames.Ratchet.RootKdfDefs
 public import LibsignalBinary.Specifications.HkdfSalt
 public import LibsignalBinary.Specifications.LibsignalAesCbc
 public import LibsignalBinary.Specifications.LibsignalHmac
-public import LibsignalBinary.Specifications.LibsignalProtoCodec
+public import LibsignalBinary.Proofs.ProtoCodecKat
 public import LibsignalBinary.Specifications.LibsignalSession
 public import LibsignalBinary.Specifications.LibsignalSessionRepr
 public import LibsignalBinary.Specifications.LibsignalSignalMessage
@@ -48,7 +47,7 @@ public import LibsignalBinary.Specifications.LibsignalSpqrV1.Proto
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.ProtoPB
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
-public import LibsignalBinary.Specifications.LibsignalTripleRatchetProst
+public import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst
 public import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
 public import LibsignalBinary.Specifications.RustHeap.Alloc
 public import LibsignalBinary.Specifications.RustHeap.Vec
@@ -66,7 +65,7 @@ Length bounds, equivalence, and round-trip theorems for the two 64-bit varint co
   epochs, message indices, and chunk indices.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.Codec
 

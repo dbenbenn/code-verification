@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.PureRecvEval
+public import Symbolic.Proofs.Swarm.CREF.TR.PureRecvEval -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhSessionModel
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 
@@ -21,7 +21,7 @@ Proves 32-byte roundtrip lemmas between `HMAC.keyToBytes32` and `pureCoinsOf`
 `tryFrom_protoSignalCodec_ciphertext_length_le`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

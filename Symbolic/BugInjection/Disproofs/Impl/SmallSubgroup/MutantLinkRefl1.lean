@@ -15,12 +15,12 @@ public meta import GeneratedLean.BugInjectionMutant
 public import GeneratedLean.LibsignalSessionPlacedObj
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import ProofLib.Placed.Multi
 public import ProofLib.ProgramReflection
 public meta import ProofLib.ProgramReflection
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.MutantLinkData
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.MutantLinkInterned
-import GeneratedLean.LibsignalSessionObj
 
 /-!
 Proves that `libsignalSessionLib` equals `lsInternedMultiLib.toMultiPlacedLibFast lsSharedExterns`

@@ -9,20 +9,20 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots
-public import Symbolic.Proofs.Swarm.CREF.TR.PQLeak
-public import Symbolic.Proofs.Swarm.CREF.Xpl.PrefixReach
+public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PQLeak -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Xpl.PrefixReach -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.ALaCarte.Basic
 import DY.Trace.Manipulation
 import DY.Actions.Network
 import DY.Actions.ProtocolEvent
-import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.ModelSplit
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.Sem
-import Symbolic.Proofs.Swarm.CREF.Xpl.InvCommon
+public import Symbolic.Proofs.Swarm.CREF.Xpl.InvCommon -- proof-setup: allow-public-import
 import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Trace.Monad
 import Symbolic.DYBridge.DY.ALaCarte.Basic
@@ -38,7 +38,7 @@ boundaries, and proves that `TR.AppendsOnlyExposure` extensions preserve stored 
 `RoleSnapshots`, and `bobDoneBaseKeys`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

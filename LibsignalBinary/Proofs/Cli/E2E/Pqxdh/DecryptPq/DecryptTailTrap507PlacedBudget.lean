@@ -9,25 +9,33 @@ limitations under the License.
 
 module
 
+public import LibsignalBinary.Heap.AesDecErrRoBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.DecryptTailTrap507Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.VerifyMacTrap507PlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecrypt
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchet
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchetBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchetBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecrypt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchetBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.DecryptTailTrap507Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.VerifyMacTrap507PlacedBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchetBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -37,7 +45,7 @@ Budget-threaded (`RustCliAllocBudget M`) verification of Segment `S8` (`S8SeamPl
 `S9` (`S9SeamPlaced`) for `try_decrypt_with_state::<signal_session_handshake::Coins>` on Block `507`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -52,7 +60,7 @@ open CryptoGames.LibsignalSession (
 open CryptoVerification (
   LibsignalPlacement lsMemcpySym lsRustDeallocSym lsmpl lsρ
 )
-open CryptoVerification.RustHeap (allocHookStack)
+open CryptoVerification.RustHeap (allocHookStack vecU8)
 open CryptoVerification.LibsignalTripleRatchetRepr (
   SessionGhost decryptDraws okTagVec protocolAddressAt sessionStateAt signalMessageAt
   uuidTryParse
@@ -100,10 +108,13 @@ open LibsignalBinary.Heap (
   AllocCostModel AllocEvent BudgetLimits FitsEnv FreeOnlyEvs RustCliAllocBudget SeqEnv
   rustCliDeallocBudgetSpec rustDeallocEvents
 )
-open LibsignalBinary.Heap.SpecBudget (
-  FormatInnerEnv aesCallPreBudget aesDecBudgetSpec
-  formatInnerBudgetEnvSpec formatInnerBudgetSpec
+open LibsignalBinary.Heap.AesDecErrRoBudget (
+  aesDecBudgetSpecErrRo cliAesDecBudgetSpecErrRo cliAesDecErrStr1Addr cliAesDecErrStr2Addr
 )
+open LibsignalBinary.Heap.SpecBudget (
+  aesCallPreBudget aesDecBudgetSpec formatInnerBudgetEnvSpec
+)
+open LibsignalBinary.Proofs.Placed.BridgeReloc (lsro_slice_intro)
 open LibsignalBinary.Proofs.Placed.BudgetPoolSync (
   hooksException sepWP_seg_ls_vm
 )
@@ -122,8 +133,21 @@ open LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefsBudget (
   SepWPp.call_cro_frame_placed SepWPp.call_frame_placed SepWPp.of_sepWP_placed
 )
 open LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudgetAux (
-  speBodyAt_atState
+  aesErrFmtCall aesErrFmtCall_sep_eq cliAesErr_ne_zero failedToDecryptPfxBs
+  formatInnerCallCliLsSpec_aesErr_post_entails formatInnerCallCliLsSpec_pre_eq
+  satisfies_drop_focus sp_sub_1104_even speBodyAt_atState
+  subroutine_ok_withLsRet624_aesDec_of_cliErrRo
 )
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs (
+  cliFormatInnerLsCallSpec
+  cliFormatInnerLsCall_exactEvs_mem_cliAesErrDisplayPrefixedShim
+  exists_cliAesErrIsStr1_of_disj formatInnerCallCliLsSpec formatInnerCallLsEnvSpec
+  lsRetAddrFormatInner_base_add prefixedOneArgTplBytes withLsRetFormatInner
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (
+  CliFormatInnerEnv
+)
+open VerifiedLibraries.RustStd (fmtArgumentsAt)
 open LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchetBudgetAux (
   protocolAddressAt_atState sessionStateAt_atState signalMessageAt_atState
   trAt_atState vecResultAt_atState vecU8_atState
@@ -135,6 +159,8 @@ open LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget (
   AesDecryptStatePlaced ApplyRatchetStatePlaced ErrTailStatePlaced S8SeamPlaced S9SeamPlaced
   cliTryDecryptSpecPlaced
 )
+open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (lsRetAddr624_base_add)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
@@ -184,7 +210,7 @@ theorem aesDecrypt_some_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (S : SpqrModel) (H : String → Option (State → State))
     (haes : subroutine_ok ((blkPC_508).rebase (blkPl_508).base H)
-      (lsρ lsAesDecSym) (aesDecBudgetSpec C.D M A lim))
+      (lsρ lsAesDecSym) (withLsRet (aesDecBudgetSpec C.D M A lim)))
     (x : TryDecryptGhost) (st : M.σ) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (mks : MessageKeys)
     (newPqrState pt : List (BitVec 8)) (draws : Nat) (R : SepProp) (s0 s : State)
@@ -234,7 +260,7 @@ theorem aesDecrypt_some_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
   let aesCallArg : AesCall :=
     ⟨x.msgG.ctPtr, x.msg.ciphertext, s0.sp - 1504#64 + 0x500#64, keyToBytes32 mks.cipherKey,
      s0.sp - 1504#64 + 0x540#64, blockToBytesLE mks.iv, s0.sp - 1504#64 + 0x3d0#64⟩
-  refine SepWPp.call_frame_placed (spec := aesDecBudgetSpec C.D M A lim)
+  refine SepWPp.call_frame_placed (spec := withLsRet (aesDecBudgetSpec C.D M A lim))
     (x := (aesCallArg, st))
     (T := (x.msgG.ctPtr ↦ₛ x.msg.ciphertext) ∗
           ((s0.sp - 1504#64 + 0x500#64) ↦ₛ keyToBytes32 mks.cipherKey) ∗
@@ -245,11 +271,12 @@ theorem aesDecrypt_some_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     (ret_pc := (blkPl_508).base + 1688#64)
     hcl1 haes (by rfl) (by exact hstat)
     (spAligned_of_sp_eq (by simp only [wp_norm]) hsp_al) (by rfl)
-    (by dsimp only [aesDecBudgetSpec, aesCallPreBudget, aesCallArg]; simp only [wp_norm, hsp]; rfl)
+    (by dsimp only [withLsRet, aesDecBudgetSpec, aesCallPreBudget, aesCallArg]; simp only [wp_norm, hsp, pure_sepConj_pure_assoc]; rfl)
     ?_ (by sep_focus)
-    (fun _ _ _ _ h => by dsimp only [aesDecBudgetSpec] at h; rw [satisfies_pure_sepConj] at h; exact h.1)
-    (fun _ _ _ hm_pan => by dsimp only [aesDecBudgetSpec] at hm_pan; exact noPanic_callee hm_pan) ?_
-  · refine ⟨trivial, ?_, trivial, trivial, trivial, trivial, trivial, hkey_len, hiv_len, hct_lt40,
+    (fun _ _ _ _ h => by dsimp only [withLsRet, aesDecBudgetSpec] at h; rw [satisfies_pure_sepConj] at h; exact h.1)
+    (fun _ _ _ hm_pan => by dsimp only [withLsRet, aesDecBudgetSpec] at hm_pan; exact noPanic_callee hm_pan) ?_
+  · refine ⟨lsRetAddr624_base_add 508 1688#64 (by decide) (by decide),
+      trivial, ?_, trivial, trivial, trivial, trivial, trivial, hkey_len, hiv_len, hct_lt40,
       hfits.seq_left⟩
     rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (Nat.lt_trans hct_lt40 (by decide))]
   · clear hcl1
@@ -258,7 +285,7 @@ theorem aesDecrypt_some_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     rcases hcs2 with ⟨hx19_2, hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hx28_2, hx29_2, hvregs_2⟩
     clear hx26_2
     simp only [wp_norm, hx19, hx20, hx21, hx22, hx23, hx24, hx25, hx27, hx28, hx29_sp, hvregs] at hx19_2 hx20_2 hx21_2 hx22_2 hx23_2 hx24_2 hx25_2 hx27_2 hx28_2 hx29_2 hvregs_2
-    dsimp only [aesDecBudgetSpec, aesCallArg, AesCall.frame]
+    dsimp only [withLsRet, aesDecBudgetSpec, aesCallArg, AesCall.frame]
     rw [bytesToKey32_keyToBytes32, bytesToBlock_blockToBytesLE, hd]
     simp only [wp_norm, hsp]
     apply SepWPp.elim_exists; intro evs1
@@ -303,14 +330,16 @@ theorem aesDecrypt_some_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       rcases hmsg_bounds with ⟨hm1, hm2, hm3, hm4, hm5⟩
       sep_close
 
+abbrev tplSym_508 : String := "libsignal_cli_handshake:.rodata.str1.1+0x89"
+
 set_option maxHeartbeats 800000 in
 theorem aesDecrypt_none_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (S : SpqrModel) (H : String → Option (State → State))
     (haes : subroutine_ok ((blkPC_508).rebase (blkPl_508).base H)
-      (lsρ lsAesDecSym) (aesDecBudgetSpec C.D M A lim))
+      (lsρ lsAesDecSym) (withLsRet (cliAesDecBudgetSpecErrRo C.D M A lim)))
     (hfmt : subroutine_ok ((blkPC_508).rebase (blkPl_508).base H)
-      (lsρ lsFormatInnerSym) (formatInnerBudgetSpec M A lim))
+      (lsρ lsFormatInnerSym) (formatInnerCallCliLsSpec M A lim))
     (hdealloc : subroutine_ok ((blkPC_508).rebase (blkPl_508).base H)
       (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
     (x : TryDecryptGhost) (st : M.σ) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
@@ -329,6 +358,7 @@ theorem aesDecrypt_none_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
   rcases h8 with ⟨hpc, ⟨hstat, hsp, hsp0, hsp_al, hx29, htr, hcl, hvregs⟩,
     hx19, hx20, hx21, hx22, hx23, hx24, hx25, hx27, hx28,
     newPqrCap, newPqrPtr, msgW, hmsgW, hpqr_le, hpqr_lt, hpqr_nz, hmem⟩
+  have heven : (s0.sp - 1104#64).getLsbD 0 = false := sp_sub_1104_even hsp hsp_al
   change s.pc = (blkPl_508).base + 1656#64 at hpc
   have hx29_sp : s.readReg64 .x29 = (s0.sp - 1504#64) + 1408#64 := by rw [hx29]; bv_omega
   clear hx29
@@ -340,6 +370,8 @@ theorem aesDecrypt_none_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       messageKeysAt_eq (s0.sp - 1504#64) mks,
       stackAt_sub_split (s0.sp - 1504#64) extHookStack (by decide),
       aesDecrypt_scr_split (s0.sp - 1504#64)] at hmem
+  have hmem := lsro_slice_intro hcl.2 (sym := tplSym_508) (off := 0) (addr := lsρ tplSym_508)
+    (bs := prefixedOneArgTplBytes failedToDecryptPfxBs) (BitVec.add_zero _).symm (by decide) hmem
   simp only [← sepConj_assoc] at hmem
   refine sepWPp_to_steps_or_panic ((blkPl_508).base + 780#64) hmem hL ?_
   clear hmem
@@ -362,7 +394,7 @@ theorem aesDecrypt_none_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
   let aesCallArg : AesCall :=
     ⟨x.msgG.ctPtr, x.msg.ciphertext, s0.sp - 1504#64 + 0x500#64, keyToBytes32 mks.cipherKey,
      s0.sp - 1504#64 + 0x540#64, blockToBytesLE mks.iv, s0.sp - 1504#64 + 0x3d0#64⟩
-  refine SepWPp.call_frame_placed (spec := aesDecBudgetSpec C.D M A lim)
+  refine SepWPp.call_frame_placed (spec := withLsRet (cliAesDecBudgetSpecErrRo C.D M A lim))
     (x := (aesCallArg, st))
     (T := (x.msgG.ctPtr ↦ₛ x.msg.ciphertext) ∗
           ((s0.sp - 1504#64 + 0x500#64) ↦ₛ keyToBytes32 mks.cipherKey) ∗
@@ -373,11 +405,17 @@ theorem aesDecrypt_none_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     (ret_pc := (blkPl_508).base + 1688#64)
     hcl1 haes (by rfl) (by exact hstat)
     (spAligned_of_sp_eq (by simp only [wp_norm]) hsp_al) (by rfl)
-    (by dsimp only [aesDecBudgetSpec, aesCallPreBudget, aesCallArg]; simp only [wp_norm, hsp]; rfl)
+    (by dsimp only [withLsRet, cliAesDecBudgetSpecErrRo, aesDecBudgetSpecErrRo,
+          aesCallPreBudget, aesCallArg]; simp only [wp_norm, hsp, pure_sepConj_pure_assoc]; rfl)
     ?_ (by sep_focus)
-    (fun _ _ _ _ h => by dsimp only [aesDecBudgetSpec] at h; rw [satisfies_pure_sepConj] at h; exact h.1)
-    (fun _ _ _ hm_pan => by dsimp only [aesDecBudgetSpec] at hm_pan; exact noPanic_callee hm_pan) ?_
-  · refine ⟨trivial, ?_, trivial, trivial, trivial, trivial, trivial, hkey_len, hiv_len, hct_lt40,
+    (fun _ _ _ _ h => by
+      dsimp only [withLsRet, cliAesDecBudgetSpecErrRo, aesDecBudgetSpecErrRo] at h
+      rw [satisfies_pure_sepConj] at h; exact h.1)
+    (fun _ _ _ hm_pan => by
+      dsimp only [withLsRet, cliAesDecBudgetSpecErrRo, aesDecBudgetSpecErrRo] at hm_pan
+      exact noPanic_callee hm_pan) ?_
+  · refine ⟨lsRetAddr624_base_add 508 1688#64 (by decide) (by decide),
+      trivial, ?_, trivial, trivial, trivial, trivial, trivial, hkey_len, hiv_len, hct_lt40,
       hfits.seq_left⟩
     rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (Nat.lt_trans hct_lt40 (by decide))]
   · clear hcl1
@@ -386,7 +424,7 @@ theorem aesDecrypt_none_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     rcases hcs2 with ⟨hx19_2, hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hx28_2, hx29_2, hvregs_2⟩
     clear hx26_2
     simp only [wp_norm, hx19, hx20, hx21, hx22, hx23, hx24, hx25, hx27, hx28, hx29_sp, hvregs] at hx19_2 hx20_2 hx21_2 hx22_2 hx23_2 hx24_2 hx25_2 hx27_2 hx28_2 hx29_2 hvregs_2
-    dsimp only [aesDecBudgetSpec, aesCallArg, AesCall.frame]
+    dsimp only [withLsRet, cliAesDecBudgetSpecErrRo, aesDecBudgetSpecErrRo, aesCallArg, AesCall.frame]
     rw [bytesToKey32_keyToBytes32, bytesToBlock_blockToBytesLE, hd]
     simp only [wp_norm, hsp]
     apply SepWPp.elim_exists; intro evs1
@@ -394,14 +432,18 @@ theorem aesDecrypt_none_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     apply SepWPp.elim_pure; rintro ⟨htr2, hevs1⟩
     simp only [htr] at htr2
     refine SepWPp.elim_exists_focus
-      (Φ := fun p : BitVec 64 => ⌜p ≠ 0⌝ ∗ ((s0.sp - 520#64) ↦₆₄ p))
+      (Φ := fun p : BitVec 64 => ∃∗ len : BitVec 64,
+        ⌜(p = cliAesDecErrStr1Addr ∧ len = 0x33#64) ∨ (p = cliAesDecErrStr2Addr ∧ len = 0x11#64)⌝ ∗
+        ((s0.sp - 520#64) ↦₆₄ p) ∗ ((s0.sp - 512#64) ↦₆₄ len))
       (by sep_focus) fun p => ?_
+    apply SepWPp.elim_exists; intro len
     simp only [sepConj_assoc]
-    apply SepWPp.elim_pure; intro hp_nz
+    apply SepWPp.elim_pure; intro hdisj
+    have hp_nz : p ≠ 0#64 := cliAesErr_ne_zero hdisj
+    obtain ⟨isStr1, hp_eq, hlen_eq⟩ := exists_cliAesErrIsStr1_of_disj hdisj
     simp only [← sepConj_assoc]
     refine SepWPp.mono_focus (aesDecrypt_none_prep s0.sp) (by sep_focus) ?_
     simp only [sepConj_assoc]
-    refine SepWPp.elim_memRegion8_focus (a := s0.sp - 512#64) (by sep_focus) fun w512 => ?_
     refine SepWPp.elim_memRegion1_focus (a := s0.sp - 1120#64) (by sep_focus) fun b1120 => ?_
     refine SepWPp.elim_memRegion8_focus (a := s0.sp - 1104#64) (by sep_focus) fun w1104 => ?_
     refine SepWPp.elim_memRegion8_focus (a := s0.sp - 1096#64) (by sep_focus) fun w1096 => ?_
@@ -412,29 +454,59 @@ theorem aesDecrypt_none_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     wp_sync_507 (lsρ lsFormatInnerSym)
     apply SepWP.done (by rfl) (by exact hrun2)
     intro hcl2'
-    refine SepWPp.call_frame_placed (spec := formatInnerBudgetSpec M A lim)
-      (x := (s0.sp - 1144#64, M.stepEvents evs1 st))
-      (T := memRegion (s0.sp - 1144#64) 24 ∗
+    let fmtCall := aesErrFmtCall tplSym_508 529 s0.sp isStr1
+    refine SepWPp.mono_focus
+      (Entails.of_eq (aesErrFmtCall_sep_eq tplSym_508 529 s0.sp p len isStr1 heven hp_eq hlen_eq).symm)
+      (by dsimp only [lsρ, tplSym_508]; simp only [wp_norm]; sep_focus) ?_
+    refine SepWPp.call_frame_placed (spec := formatInnerCallCliLsSpec M A lim)
+      (x := (fmtCall, M.stepEvents evs1 st))
+      (T := fmtArgumentsAt fmtCall.argsRo fmtCall.x0 fmtCall.x1 fmtCall.tpl fmtCall.args ∗
+            memRegion fmtCall.ret 24 ∗
+            fmtCall.clientSep ∗
             A.pool lim (M.stepEvents evs1 st) _ ∗
             stackAt (s0.sp - 1504#64) extHookStack)
       (ret_pc := (blkPl_508).base + 2656#64)
       hcl2' hfmt (by rfl) (by exact hrun2)
       (spAligned_of_sp_eq (by simp only [wp_norm]) hsp_al2) (by rfl)
-      (by dsimp only [formatInnerBudgetSpec, formatInnerBudgetEnvSpec]; simp only [wp_norm, hsp2]; rfl)
-      (by refine ⟨by simp only [wp_norm], FitsEnv.nil⟩) (by sep_focus)
-      (fun _ _ _ _ h => by dsimp only [formatInnerBudgetSpec, formatInnerBudgetEnvSpec] at h; rw [satisfies_pure_sepConj] at h; exact h.1)
-      (fun _ _ _ hm_pan => by dsimp only [formatInnerBudgetSpec, formatInnerBudgetEnvSpec] at hm_pan; exact noPanic_callee hm_pan) ?_
+      (by rw [formatInnerCallCliLsSpec_pre_eq]; simp only [wp_norm, hsp2]; rfl)
+      (by refine ⟨lsRetAddrFormatInner_base_add 508 2656#64 (by decide) (by decide) (by decide),
+          by simp only [wp_norm, fmtCall, aesErrFmtCall],
+          by simp only [wp_norm, fmtCall, aesErrFmtCall, tplSym_508, lsρ],
+          by simp only [wp_norm, fmtCall, aesErrFmtCall],
+          ⟨by decide, heven, by decide, by decide⟩,
+          (hfits.seq_right hevs1).seq_left,
+          cliFormatInnerLsCall_exactEvs_mem_cliAesErrDisplayPrefixedShim _ _ _ _ _ _ _ _ _ (by decide)⟩)
+      (by sep_focus)
+      (fun _ _ _ _ h => by
+        dsimp only [formatInnerCallCliLsSpec, formatInnerCallLsEnvSpec, withLsRetFormatInner,
+          cliFormatInnerLsCallSpec] at h
+        rw [satisfies_pure_sepConj] at h; exact h.1)
+      (fun _ _ _ hm_pan => by
+        dsimp only [formatInnerCallCliLsSpec, formatInnerCallLsEnvSpec, withLsRetFormatInner,
+          cliFormatInnerLsCallSpec] at hm_pan
+        exact noPanic_callee hm_pan) ?_
     clear hcl2'
     intro s3 hpc3 hrun3 hsp3 hsp_al3 hcs3 hcl3
     simp only [wp_norm, hsp2] at hsp3
     rcases hcs3 with ⟨hx19_3, hx20_3, hx21_3, hx22_3, hx23_3, hx24_3, hx25_3, hx26_3, hx27_3, hx28_3, hx29_3, hvregs_3⟩
     simp only [wp_norm, hx19_2, hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx27_2, hx28_2, hx29_2, hvregs_2] at hx19_3 hx20_3 hx21_3 hx22_3 hx23_3 hx24_3 hx25_3 hx26_3 hx27_3 hx28_3 hx29_3 hvregs_3
-    dsimp only [formatInnerBudgetSpec, formatInnerBudgetEnvSpec, FormatInnerEnv]
+    refine SepWPp.mono_focus
+      (formatInnerCallCliLsSpec_aesErr_post_entails A lim tplSym_508 529 s0.sp p len isStr1 heven hp_eq hlen_eq
+        (M.stepEvents evs1 st) _ s3)
+      (by sep_focus) ?_
+    dsimp only [formatInnerBudgetEnvSpec]
     simp only [wp_norm, hsp2]
-    apply SepWPp.elim_exists; intro evs2
-    simp only [sepConj_assoc]
-    apply SepWPp.elim_pure; rintro ⟨htr3, rfl⟩
-    simp only [htr2] at htr3
+    apply SepWPp.elim_exists_focus
+      (Φ := fun evs2 : List AllocEvent =>
+        ⌜s3.trace = s2.trace ∧ CliFormatInnerEnv evs2⌝ ∗
+          (∃∗ b : List (BitVec 8), vecU8 A.repAlloc (s0.sp - 1144#64) b) ∗
+          A.pool lim (M.stepEvents evs2 (M.stepEvents evs1 st)) s3 ∗
+          stackAt (s0.sp - 1504#64) extHookStack)
+      (by sep_focus) fun evs2 => ?_
+    rw [sepConj_assoc]
+    apply SepWPp.elim_pure; rintro ⟨htr3, hevs2⟩
+    simp only [wp_norm, htr2] at htr3
+    rw [← M.stepEvents_append evs1 evs2 st]
     change SepWPp _ _ _ _ _ _
     rw [formatInner_post_eq_badCiphertext A.repAlloc s0.sp]
     simp only [← sepConj_assoc]
@@ -449,7 +521,9 @@ theorem aesDecrypt_none_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       apply SepWPp.of_sepWP_ret
       apply SepWP.done (by rfl) (by exact hrun3)
       intro _ _ hmf
-      refine ⟨evs1, SeqEnv.inl hevs1, rfl, ⟨hrun3, hsp3, hsp0,
+      have hmf := satisfies_drop_focus
+        (Drop := lsρ tplSym_508 ↦ᵣ prefixedOneArgTplBytes failedToDecryptPfxBs) (by sep_focus) hmf
+      refine ⟨evs1 ++ evs2, SeqEnv.append hevs1 (SeqEnv.inl hevs2), rfl, ⟨hrun3, hsp3, hsp0,
           spAligned_of_sp_eq (by simp only [wp_norm]) hsp_al3, ?_, htr3, hcl4, by simp only [wp_norm, hvregs_3]⟩,
         by simp only [wp_norm, hx19_3],
         by simp only [wp_norm, hx20_3],
@@ -465,7 +539,7 @@ theorem aesDecrypt_none_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
             errTail_sp_split s0.sp,
             errTail_reg190_split s0.sp]
         have hmf1 := Satisfies.mono_focus (mks_parts_entails_memRegion s0.sp mks) (by sep_focus) hmf
-        have hmf2 := Satisfies.mono_focus (errTail_sp_entails_memRegion s0.sp newPqrCap x.locA newPqrPtr x.remA _ _ _ p w512 p w512 msgW) (by sep_focus) hmf1
+        have hmf2 := Satisfies.mono_focus (errTail_sp_entails_memRegion s0.sp newPqrCap x.locA newPqrPtr x.remA _ _ _ p len p len msgW) (by sep_focus) hmf1
         clear hmf hmf1
         simp only [wp_norm, sepConj_assoc] at hmsg_bounds hmf2 ⊢
         rcases hmsg_bounds with ⟨hm1, hm2, hm3, hm4, hm5⟩
@@ -478,8 +552,8 @@ theorem aesDecrypt_none_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       apply SepWP.done (by rfl) (by exact hrun3)
       intro hcl3'
       refine SepWPp.call_frame_placed (spec := rustCliDeallocBudgetSpec M A lim)
-        (x := (newPqrPtr, newPqrCap.toNat, 1, M.stepEvents evs1 st))
-        (T := A.pool lim (M.stepEvents evs1 st) _ ∗
+        (x := (newPqrPtr, newPqrCap.toNat, 1, M.stepEvents (evs1 ++ evs2) st))
+        (T := A.pool lim (M.stepEvents (evs1 ++ evs2) st) _ ∗
               A.live newPqrPtr newPqrCap.toNat 1 ∗
               memRegion newPqrPtr newPqrCap.toNat ∗
               stackAt (s0.sp - 1504#64) allocHookStack)
@@ -501,7 +575,7 @@ theorem aesDecrypt_none_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       simp only [wp_norm, hsp3, sepConj_assoc]
       apply SepWPp.elim_pure; rintro ⟨hacp4, _⟩
       have htr4 : s4.trace = s0.trace := hacp4.2.1.trans (by simp only [wp_norm, htr3])
-      rw [← M.stepEvents_append evs1 (rustDeallocEvents newPqrCap.toNat 1) st]
+      rw [← M.stepEvents_append (evs1 ++ evs2) (rustDeallocEvents newPqrCap.toNat 1) st, List.append_assoc]
       simp only [← sepConj_assoc]
       apply SepWPp.of_sepWP_placed hcl4 (mid := (blkPl_508).base + 780#64)
       wp_sync_507 ((blkPl_508).base + 780#64)
@@ -510,8 +584,10 @@ theorem aesDecrypt_none_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       apply SepWPp.of_sepWP_ret
       apply SepWP.done (by rfl) (by exact hrun4)
       intro _ _ hmf
-      refine ⟨evs1 ++ rustDeallocEvents newPqrCap.toNat 1,
-        SeqEnv.append hevs1 (freeOnlyEvs_rustDeallocEvents newPqrCap.toNat 1),
+      have hmf := satisfies_drop_focus
+        (Drop := lsρ tplSym_508 ↦ᵣ prefixedOneArgTplBytes failedToDecryptPfxBs) (by sep_focus) hmf
+      refine ⟨evs1 ++ (evs2 ++ rustDeallocEvents newPqrCap.toNat 1),
+        SeqEnv.append hevs1 (SeqEnv.append hevs2 (freeOnlyEvs_rustDeallocEvents newPqrCap.toNat 1)),
         rfl, ⟨hrun4, hsp4, hsp0,
           spAligned_of_sp_eq (by simp only [wp_norm]) hsp_al4, ?_, htr4, hcl5, by simp only [wp_norm, hvregs_4]⟩,
         by simp only [wp_norm, hx19_4],
@@ -529,7 +605,7 @@ theorem aesDecrypt_none_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
             errTail_sp_split s0.sp,
             errTail_reg190_split s0.sp]
         have hmf1 := Satisfies.mono_focus (mks_parts_entails_memRegion s0.sp mks) (by sep_focus) hmf
-        have hmf2 := Satisfies.mono_focus (errTail_sp_entails_memRegion s0.sp newPqrCap x.locA newPqrPtr x.remA _ _ _ p w512 p w512 msgW) (by sep_focus) hmf1
+        have hmf2 := Satisfies.mono_focus (errTail_sp_entails_memRegion s0.sp newPqrCap x.locA newPqrPtr x.remA _ _ _ p len p len msgW) (by sep_focus) hmf1
         clear hmf hmf1
         simp only [wp_norm, sepConj_assoc] at hmsg_bounds hmf2 ⊢
         rcases hmsg_bounds with ⟨hm1, hm2, hm3, hm4, hm5⟩
@@ -539,9 +615,9 @@ theorem aesDecrypt_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (S : SpqrModel) (H : String → Option (State → State))
     (haes : subroutine_ok ((blkPC_508).rebase (blkPl_508).base H)
-      (lsρ lsAesDecSym) (aesDecBudgetSpec C.D M A lim))
+      (lsρ lsAesDecSym) (withLsRet (cliAesDecBudgetSpecErrRo C.D M A lim)))
     (hfmt : subroutine_ok ((blkPC_508).rebase (blkPl_508).base H)
-      (lsρ lsFormatInnerSym) (formatInnerBudgetSpec M A lim))
+      (lsρ lsFormatInnerSym) (formatInnerCallCliLsSpec M A lim))
     (hdealloc : subroutine_ok ((blkPC_508).rebase (blkPl_508).base H)
       (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim)) :
     S8SeamPlaced ((blkPC_508).rebase (blkPl_508).base H) (blkPl_508).base
@@ -552,7 +628,8 @@ theorem aesDecrypt_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     exact aesDecrypt_none_507_placed_ok C A lim ctl S H haes hfmt hdealloc
       x st trG tr st1 mks newPqrState draws R s0 s hfits hd h8 hL
   | some pt =>
-    exact aesDecrypt_some_507_placed_ok C A lim ctl S H haes
+    exact aesDecrypt_some_507_placed_ok C A lim ctl S H
+      (subroutine_ok_withLsRet624_aesDec_of_cliErrRo haes)
       x st trG tr st1 mks newPqrState pt draws R s0 s hfits hd h8 hL
 
 /-! ## Segment `S9` (`S9SeamPlaced`) -/

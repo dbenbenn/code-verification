@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 import all Init.Data.Nat.Bitwise.Basic
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerHeaderPlaced
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerHeaderPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerChunked1Placed
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerChunked3aPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesVnEncodePlaced
@@ -21,7 +21,7 @@ import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpers
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesVnEncode
 import ProofLib.SepLogic.WPp
 
-@[expose] public section
+public section
 
 /-!
 # Relocatable `spqr::send::<signal_session_ratchet::Coins>` Phase 3e (Part 3b): `V1State` Variants `idx = 1, 8`
@@ -71,7 +71,7 @@ attribute [local arm64_norm]
      
   
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero EncodedLen.zeroExtend64_beq_zero32
   EncodedLen.ofNat_countLeadingZeros_64 EncodedLen.ofNat_countLeadingZeros_32
   ProofLib.truncate32_ofNat64 EncodedLen.hwVarintLen_eq_ofNat_varintLen_norm

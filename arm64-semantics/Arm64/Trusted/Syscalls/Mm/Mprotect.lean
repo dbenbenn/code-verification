@@ -32,10 +32,12 @@ def SYS_MPROTECT : BitVec 64 := 226#64
     - `[INTENTIONAL_SCOPE]`: if `prot` is neither `MMAP_PROT_NONE` (`0`) nor `MMAP_PROT_RW` (`3`),
       fails closed with `.Exception "unmodeled mprotect (only PROT_NONE and PROT_READ|PROT_WRITE)"`;
     - if `addr` is not page-aligned (`addr.toNat % PAGE_SIZE != 0`), returns `-EINVAL`;
+    - if `len == 0`, returns `0` without modifying memory (`mm/mprotect.c:890`);
+    - if `PAGE_ALIGN(len)` overflows 64 bits or `addr + size` wraps around 64 bits
+      (`mm/mprotect.c:893` `if (end <= start) return -ENOMEM`), returns `-ENOMEM`;
     - if `[addr, addr + size)` exceeds the 48-bit user virtual address space
       (`addr.toNat + size > 2 ^ 48`), fails closed with
       `.Exception "mprotect range exceeds user VA space"`;
-    - if `len == 0`, returns `0` without modifying memory (`mm/mprotect.c:821`);
     - if `[addr, addr + size)` intersects any frozen byte, fails closed with
       `.Exception "mprotect on frozen memory"`;
     - if `[addr, addr + size)` is completely unmapped (`s.mem.canMap addr size`), returns `-ENOMEM`
@@ -51,7 +53,7 @@ def SYS_MPROTECT : BitVec 64 := 226#64
       `s.physMemAvail` and transitioning to `ExecStatus.OutOfMemory` if `s.physMemAvail < needed`),
       preserving byte values, and returns `0`. -/
 def execMprotect (s : State) : State :=
-  let addr := s.readReg64 Reg.x0
+  let addr := untaggedAddr (s.readReg64 Reg.x0)
   let len := (s.readReg64 Reg.x1).toNat
   let prot := s.readReg64 Reg.x2
   let size := pageAlignUp len
@@ -59,10 +61,12 @@ def execMprotect (s : State) : State :=
     s.setStatus (.Exception "unmodeled mprotect (only PROT_NONE and PROT_READ|PROT_WRITE)")
   else if addr.toNat % PAGE_SIZE != 0 then
     (s.writeReg64 Reg.x0 (-EINVAL)).advancePC
-  else if !decide (addr.toNat + size ≤ 2 ^ 48) then
-    s.setStatus (.Exception "mprotect range exceeds user VA space")
   else if len == 0 then
     (s.writeReg64 Reg.x0 0#64).advancePC
+  else if !decide (len ≤ 2 ^ 64 - PAGE_SIZE) || !decide (addr.toNat + size < 2 ^ 64) then
+    (s.writeReg64 Reg.x0 (-ENOMEM)).advancePC
+  else if !decide (addr.toNat + size ≤ 2 ^ 48) then
+    s.setStatus (.Exception "mprotect range exceeds user VA space")
   else if !s.mem.allPerm (fun p => !p.frozen) addr size then
     s.setStatus (.Exception "mprotect on frozen memory")
   else if !s.mem.allPerm (·.mapped) addr size then

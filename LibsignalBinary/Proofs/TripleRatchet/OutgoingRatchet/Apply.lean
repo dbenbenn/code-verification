@@ -10,13 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.OutgoingRatchetCodeSym
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.OutgoingRatchetCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
+import ProofLib.Sep
+meta import Lean
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Verification of `OutgoingTripleRatchet::apply_to_session_state`
@@ -25,7 +27,7 @@ Verifies `<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_
 against `otrApplyRawSpec`, `otrApplySpec`, and `otrApplyPlacedSpec`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.OutgoingRatchet
 
@@ -41,17 +43,25 @@ set_option maxHeartbeats 800000
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
+run_meta do
+  let env ← Lean.getEnv
+  for (h, ks) in #[(``sessionStateAt, #[1]), (``otrAt, #[1])] do
+    let n := Lean.mkPrivateName env (((ks.foldl Lean.Name.mkNum ProofLib.Sep.sepKeyMarker).str "_TARGET_") ++ h)
+    unless env.contains n do
+      Lean.withExporting (isExporting := false) do
+        Lean.addDecl <| .defnDecl { name := n, levelParams := [], type := .const ``Unit [], value := .const ``Unit.unit [], hints := .abbrev, safety := .safe }
+
 /-! ## Byte and region helpers -/
 
 theorem keyToBytes32_length (k : BitVec 256) : (keyToBytes32 k).length = 32 := by
   simp [keyToBytes32]
 
 /-- Pack a byte list into a `w`-bit word in little-endian order. -/
-def packBV (w : Nat) (bs : List (BitVec 8)) : BitVec w :=
+@[expose] def packBV (w : Nat) (bs : List (BitVec 8)) : BitVec w :=
   bs.foldr (fun b acc => (acc <<< 8) ||| b.zeroExtend w) 0
 
 /-- Pack 8 bytes into a 64-bit little-endian word. -/
-def pack64 (bs : List (BitVec 8)) : BitVec 64 := packBV 64 bs
+@[expose] def pack64 (bs : List (BitVec 8)) : BitVec 64 := packBV 64 bs
 
 theorem unpack64_pack64 (bs : List (BitVec 8)) (h : bs.length = 8) :
     unpack64 (pack64 bs) = bs := by
@@ -141,28 +151,7 @@ theorem stackAt_otrApply (sp : BitVec 64) :
       (∃∗ s13 : BitVec 64, (sp - 24#64) ↦₆₄ s13) ∗
       (∃∗ s14 : BitVec 64, (sp - 16#64) ↦₆₄ s14) ∗
       (∃∗ s15 : BitVec 64, (sp - 8#64) ↦₆₄ s15) := by
-  show memRegion (sp - BitVec.ofNat 64 4224) 4224 = _
-  rw [mr_cut' sp 4224 128 4096 128 4224 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 128 120 8 120 128 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 120 112 8 112 120 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 112 104 8 104 112 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 104 100 4 100 104 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 100 96 4 96 100 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 96 88 8 88 96 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 88 80 8 80 88 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 80 72 8 72 80 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 72 64 8 64 72 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 64 56 8 56 64 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 56 48 8 48 56 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 48 40 8 40 48 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 40 32 8 32 40 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 32 24 8 24 32 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 24 16 8 16 24 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 16 8 8 8 16 rfl rfl (by decide) (by decide) (by decide)]
-  have hstk : memRegion (sp - BitVec.ofNat 64 4224) 4096 = stackAt (sp - 128#64) allocHookStack := by
-    simp only [stackAt, allocHookStack]; congr 1; bv_omega
-  rw [hstk, memRegion_four (sp - BitVec.ofNat 64 100)]
-  simp only [memRegion_eight]
+  dsimp only [stackAt, otrApplyInternalStack, allocHookStack]; sep_interval_eq
 
 theorem stackAt_otrApply_fold (sp s1 s2 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 : BitVec 64)
     (s3 : BitVec 32) :
@@ -185,21 +174,12 @@ theorem stackAt_otrApply_fold (sp s1 s2 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s1
       ((sp - 16#64) ↦₆₄ s14) ∗
       ((sp - 8#64) ↦₆₄ s15) ⊢
     stackAt sp otrApplyInternalStack := by
-  rw [stackAt_otrApply sp]
-  refine sepConj_mono (Entails.refl _) (sepConj_mono (Entails.refl _) ?_)
-  refine sepConj_mono (Entails.sepExists_intro s1) (sepConj_mono (Entails.sepExists_intro s2) ?_)
-  refine sepConj_mono (Entails.refl _) (sepConj_mono (Entails.sepExists_intro s3) ?_)
-  refine sepConj_mono (Entails.sepExists_intro s4) (sepConj_mono (Entails.sepExists_intro s5) ?_)
-  refine sepConj_mono (Entails.sepExists_intro s6) (sepConj_mono (Entails.sepExists_intro s7) ?_)
-  refine sepConj_mono (Entails.sepExists_intro s8) (sepConj_mono (Entails.sepExists_intro s9) ?_)
-  refine sepConj_mono (Entails.sepExists_intro s10) (sepConj_mono (Entails.sepExists_intro s11) ?_)
-  refine sepConj_mono (Entails.sepExists_intro s12) (sepConj_mono (Entails.sepExists_intro s13) ?_)
-  exact sepConj_mono (Entails.sepExists_intro s14) (Entails.sepExists_intro s15)
+  dsimp only [stackAt, otrApplyInternalStack, allocHookStack]; sep_interval
 
 /-! ## Decomposition of `otrAt` and `sessionStateAt` for `OTR::apply_to_session_state` -/
 
 /-- The heap part of `vecU8At A v cap ptr bs` without the 24-byte header at `v`. -/
-def vecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
@@ -229,18 +209,12 @@ theorem memRegion_32_cells (a : BitVec 64) :
     memRegion a 32 =
       (∃∗ w0 : BitVec 64, a ↦₆₄ w0) ∗ (∃∗ w1 : BitVec 64, (a + 8#64) ↦₆₄ w1) ∗
       (∃∗ w2 : BitVec 64, (a + 16#64) ↦₆₄ w2) ∗ (∃∗ w3 : BitVec 64, (a + 24#64) ↦₆₄ w3) := by
-  have hs : ∀ (b : BitVec 64) (k : Nat), k ≤ 24 →
-      memRegion b (8 + k) = memRegion b 8 ∗ memRegion (b + 8#64) k :=
-    fun b k hk => memRegion_split' rfl rfl (by omega)
-  rw [hs a 24 (by decide), hs _ 16 (by decide), hs _ 8 (by decide)]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd, memRegion_eight]
+  sep_interval_eq
 
 theorem cells_32_entails_memRegion (a w0 w1 w2 w3 : BitVec 64) :
     ((a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) ∗ ((a + 16#64) ↦₆₄ w2) ∗ ((a + 24#64) ↦₆₄ w3)) ⊢
       memRegion a 32 := by
-  rw [memRegion_32_cells a]
-  exact sepConj_mono (Entails.sepExists_intro w0) (sepConj_mono (Entails.sepExists_intro w1)
-    (sepConj_mono (Entails.sepExists_intro w2) (Entails.sepExists_intro w3)))
+  sep_interval
 
 theorem mr_cut_add (a : BitVec 64) (c n k : Nat) (h : n + k ≤ 2 ^ 64) :
     memRegion (a + BitVec.ofNat 64 c) (n + k) =
@@ -269,34 +243,13 @@ theorem otrAt_apply_split (A : RustAlloc) (o pqCap pqPtr : BitVec 64)
   rw [vecU8At_eq_cells_buf A o pqCap pqPtr ot.pqrState,
       chainKeyBytes_pointsTo (o + 0x98#64) ot.senderChainKey,
       pointsToBytes_32_eq_pointsTo64 (o + 0x98#64) kbs (keyToBytes32_length _)]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-  refine sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right ?_)))
-  have h1 := pointsToBytes_entails_memRegion (o + 0x18#64) ot.senderRatchetKey.publicKey.bytes.toList
-  have h2 := pointsToBytes_entails_memRegion (o + 0x38#64) ot.senderRatchetKey.privateKey.bytes.toList
-  have h3 := pointsToBytes_entails_memRegion (o + 0x58#64) ot.localIdentityKey.publicKey.bytes.toList
-  have h4 := pointsToBytes_entails_memRegion (o + 0x78#64) ot.remoteIdentityKey.publicKey.bytes.toList
-  rw [List.Vector.toList_length] at h1 h2 h3 h4
-  have h128 :
-      memRegion (o + 0x18#64) 128 =
-        memRegion (o + 0x18#64) 32 ∗ memRegion (o + 0x38#64) 32 ∗
-          memRegion (o + 0x58#64) 32 ∗ memRegion (o + 0x78#64) 32 := by
-    rw [show (128 : Nat) = 32 + (32 + (32 + 32)) from rfl,
-        mr_cut_add o 24 32 (32 + (32 + 32)) (by decide),
-        mr_cut_add o 56 32 (32 + 32) (by decide),
-        mr_cut_add o 88 32 32 (by decide)]
-  have h5 := pointsTo32_entails_memRegion (o + 0xbc#64) ot.previousCounter
-  have h6 := pointsTo8_entails_memRegion (o + 0xc0#64) ot.sessionVersion
-  have h12 :
-      memRegion (o + 0xbc#64) 12 =
-        memRegion (o + 0xbc#64) 4 ∗ memRegion (o + 0xc0#64) 1 ∗ memRegion (o + 0xc1#64) 7 := by
-    rw [show (12 : Nat) = 4 + (1 + 7) from rfl,
-        mr_cut_add o 188 4 (1 + 7) (by decide),
-        mr_cut_add o 192 1 7 (by decide)]
-  rw [h128, h12]
   simp only [sepConj_assoc]
-  exact sepConj_mono h1 (sepConj_mono h2 (sepConj_mono h3 (sepConj_mono h4
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono h5 (sepConj_mono h6 (Entails.refl _)))))))))))
+  refine sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right ?_)))
+  have := ot.senderRatchetKey.publicKey.bytes.toList_length
+  have := ot.senderRatchetKey.privateKey.bytes.toList_length
+  have := ot.localIdentityKey.publicKey.bytes.toList_length
+  have := ot.remoteIdentityKey.publicKey.bytes.toList_length
+  sep_interval
 
 /-- Fold the remaining fields of `o` into `memRegion o 200`. -/
 theorem otr_fold_memRegion (o w0 w1 w2 ck0 ck1 ck2 ck3 : BitVec 64) (idx : BitVec 32) :
@@ -306,42 +259,10 @@ theorem otr_fold_memRegion (o w0 w1 w2 ck0 ck1 ck2 ck3 : BitVec 64) (idx : BitVe
       ((o + 0xa8#64) ↦₆₄ ck2) ∗ ((o + 0xb0#64) ↦₆₄ ck3) ∗
       ((o + 0xb8#64) ↦₃₂ idx) ∗ memRegion (o + 0xbc#64) 12) ⊢
     memRegion o 200 := by
-  have h0 := pointsTo64_entails_memRegion o w0
-  have h1 := pointsTo64_entails_memRegion (o + 8#64) w1
-  have h2 := pointsTo64_entails_memRegion (o + 16#64) w2
-  have hck := cells_32_entails_memRegion (o + 0x98#64) ck0 ck1 ck2 ck3
-  simp only [BitVec.add_assoc, BitVec.reduceAdd] at hck
-  have hidx := pointsTo32_entails_memRegion (o + 0xb8#64) idx
-  have hm :
-      memRegion o 200 =
-        memRegion o 8 ∗ (memRegion (o + 8#64) 8 ∗ (memRegion (o + 16#64) 8 ∗
-          (memRegion (o + 0x18#64) 128 ∗ (memRegion (o + 0x98#64) 32 ∗
-            (memRegion (o + 0xb8#64) 4 ∗ memRegion (o + 0xbc#64) 12))))) := by
-    rw [memRegion_split o 8 192 (by decide),
-        mr_cut_add o 8 8 184 (by decide),
-        mr_cut_add o 16 8 176 (by decide),
-        mr_cut_add o 24 128 48 (by decide),
-        mr_cut_add o 152 32 16 (by decide),
-        mr_cut_add o 184 4 12 (by decide)]
-  rw [hm]
-  have hassoc :
-      ((o ↦₆₄ w0) ∗ ((o + 8#64) ↦₆₄ w1) ∗ ((o + 16#64) ↦₆₄ w2) ∗
-        memRegion (o + 0x18#64) 128 ∗
-        ((o + 0x98#64) ↦₆₄ ck0) ∗ ((o + 0xa0#64) ↦₆₄ ck1) ∗
-        ((o + 0xa8#64) ↦₆₄ ck2) ∗ ((o + 0xb0#64) ↦₆₄ ck3) ∗
-        ((o + 0xb8#64) ↦₃₂ idx) ∗ memRegion (o + 0xbc#64) 12) =
-      ((o ↦₆₄ w0) ∗ (((o + 8#64) ↦₆₄ w1) ∗ (((o + 16#64) ↦₆₄ w2) ∗
-        (memRegion (o + 0x18#64) 128 ∗
-          ((((o + 0x98#64) ↦₆₄ ck0) ∗ ((o + 0xa0#64) ↦₆₄ ck1) ∗
-            ((o + 0xa8#64) ↦₆₄ ck2) ∗ ((o + 0xb0#64) ↦₆₄ ck3)) ∗
-            (((o + 0xb8#64) ↦₃₂ idx) ∗ memRegion (o + 0xbc#64) 12)))))) := by
-    simp only [sepConj_assoc]
-  rw [hassoc]
-  exact sepConj_mono h0 (sepConj_mono h1 (sepConj_mono h2 (sepConj_mono (Entails.refl _)
-    (sepConj_mono hck (sepConj_mono hidx (Entails.refl _))))))
+  sep_interval
 
 /-- The untouched fields of `sessionStateAt A ss G st` during `OTR::apply_to_session_state`. -/
-def sessionApplyFrame (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
+@[expose] def sessionApplyFrame (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
     (st : SessionState (List (BitVec 8))) (sg : SenderChainGhost) (sc : SenderChain) : SepProp :=
   ⌜PublicKey.deserialize G.localIk.bytes = .ok st.localIdentity.publicKey ∧
     (match st.remoteIdentity with
@@ -421,36 +342,13 @@ theorem sessionStateAt_sender_some (A : RustAlloc) (ss : BitVec 64) (G : Session
     sessionStateAt A ss G st ⊢ ∃∗ sg : SenderChainGhost, ⌜G.sender = some sg⌝ ∗ sessionStateAt A ss G st := by
   cases hGs : G.sender with
   | none =>
-    have hpull : sessionStateAt A ss G st = (⌜False⌝ ∗
-        (⌜PublicKey.deserialize G.localIk.bytes = .ok st.localIdentity.publicKey ∧
-          (match st.remoteIdentity with
-           | none => G.remoteIk.bytes = []
-           | some ik => PublicKey.deserialize G.remoteIk.bytes = .ok ik.publicKey) ∧
-          G.chains.length = st.receiverChains.length ∧
-          G.pending.isSome = st.pendingPreKey ∧ G.regIds.length = 8 ∧
-          G.localIk.bytes.length = 33 ∧
-          (st.remoteIdentity.isSome → G.remoteIk.bytes.length = 33)⌝ ∗
-        vecGhostAt A G.localIk ss ∗
-        vecGhostAt A G.remoteIk (ss + 0x18#64) ∗
-        vecU8At A (ss + 0x30#64) G.root.cap G.root.ptr (keyToBytes32 st.rootKey) ∗
-        vecAt A 104 8 (chainAt A) (ss + 0x48#64) G.chainsCap G.chainsPtr
-          (G.chains.zip st.receiverChains) ∗
-        vecGhostAt A G.alice (ss + 0x60#64) ∗
-        vecU8At A (ss + 0x78#64) G.pq.cap G.pq.ptr st.pqRatchetState ∗
-        optTailVecAt A 48 (ss + 0xf8#64) G.pending ∗
-        optTailVecAt A 32 (ss + 0x128#64) G.kyber ∗
-        ((ss + 0x148#64) ↦₃₂ st.sessionVersion) ∗
-        ((ss + 0x14c#64) ↦₃₂ st.previousCounter) ∗
-        ((ss + 0x150#64) ↦ₛ G.regIds))) := by
-      unfold sessionStateAt
-      rw [hsc, hGs]
-      simp only [optSenderChainAt]
-      ac_rfl
-    rw [hpull]
-    exact Entails.pure_left fun h => False.elim h
+    unfold sessionStateAt; rw [hsc, hGs]; dsimp only [optSenderChainAt]
+    refine Entails.pure_left fun _ => ?_
+    rw [sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
+        sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm]
+    exact Entails.pure_left False.elim
   | some sg =>
-    refine Entails.trans ?_ (Entails.sepExists_intro sg)
-    exact Entails.pure_right rfl (Entails.refl _)
+    exact Entails.sepExists_right sg (Entails.pure_right rfl (Entails.refl _))
 
 /-- Fold a freshly allocated 32-byte block with the four 64-bit words of `keyToBytes32 k` into
 `vecU8Buf A 32#64 p' (keyToBytes32 k)`. -/
@@ -482,8 +380,6 @@ private theorem int64_toBitVec_ofUInt64 (u : UInt64) : (Int64.ofUInt64 u).toBitV
 
 @[local simp, local arm64_norm, local wp_norm]
 private theorem uint64_toBitVec_ofBitVec (b : BitVec 64) : (UInt64.ofBitVec b).toBitVec = b := rfl
-
-gen_decodes libsignalSessionCode_tree libsignalSessionBin [(ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state") → (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state" + 312)]
 
 private theorem addsPState64_hi_false_aux {cap : BitVec 64}
     (h1 : (32#64).ule cap = true) (h2 : cap.ult 0x8000000000000000#64 = true) :
@@ -539,198 +435,17 @@ theorem sepWP_unpack_stackAt_otrApply {prog : Program} {pc : BitVec 64} {s : Sta
           ((sp - 16#64) ↦₆₄ s14) ∗
           ((sp - 8#64) ↦₆₄ s15)) ∗ F) post) :
     SepWP prog pc s P post := by
+  have hnext :=
+    SepWP.exists_elim fun s1 => SepWP.exists_elim fun s2 => SepWP.exists_elim fun s4 =>
+    SepWP.exists_elim fun s5 => SepWP.exists_elim fun s6 => SepWP.exists_elim fun s7 =>
+    SepWP.exists_elim fun s8 => SepWP.exists_elim fun s9 => SepWP.exists_elim fun s10 =>
+    SepWP.exists_elim fun s11 => SepWP.exists_elim fun s12 => SepWP.exists_elim fun s13 =>
+    SepWP.exists_elim fun s14 => SepWP.exists_elim fun s15 => SepWP.exists_elim fun s3 =>
+    h s1 s2 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s3
   rw [hf, stackAt_otrApply sp]
-  simp only [sepConj_assoc]
-  apply skip_atom; simp only [sepConj_assoc]
-  apply skip_atom; simp only [sepConj_assoc]
-  apply elim_ex; intro s1; simp only [sepConj_assoc]
-  apply elim_ex; intro s2; simp only [sepConj_assoc]
-  apply skip_atom; simp only [sepConj_assoc]
-  apply elim_ex; intro s3; simp only [sepConj_assoc]
-  apply elim_ex; intro s4; simp only [sepConj_assoc]
-  apply elim_ex; intro s5; simp only [sepConj_assoc]
-  apply elim_ex; intro s6; simp only [sepConj_assoc]
-  apply elim_ex; intro s7; simp only [sepConj_assoc]
-  apply elim_ex; intro s8; simp only [sepConj_assoc]
-  apply elim_ex; intro s9; simp only [sepConj_assoc]
-  apply elim_ex; intro s10; simp only [sepConj_assoc]
-  apply elim_ex; intro s11; simp only [sepConj_assoc]
-  apply elim_ex; intro s12; simp only [sepConj_assoc]
-  apply elim_ex; intro s13; simp only [sepConj_assoc]
-  apply elim_ex; intro s14; simp only [sepConj_assoc]
-  apply elim_ex; intro s15; simp only [sepConj_assoc]
-  apply skip_atom; simp only [sepConj_assoc]
-  have h' := h s1 s2 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s3
-  simpa only [sepConj_assoc] using h'
+  bi_entail
 
 end ApplyFrameFacts
-
-theorem otrApplyRaw_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hA : AllocContracts b A ext) :
-    OtrApplyRawExtOk b A ext := by
-  unfold OtrApplyRawExtOk otrApplyRawSpec
-  have hshim := hA.shim_ok_at
-    "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state"
-    (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state")) (by rw [(ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state"), (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")])
-  have halloc := hA.alloc_ok_at
-    "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state"
-    (num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state")) (by rw [(ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state"), (ls_stub% "__rustc::__rust_alloc")])
-  have hdealloc := hA.dealloc_ok_at
-    "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state"
-    (num% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state")) (by rw [(ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state"), (ls_stub% "__rustc::__rust_dealloc")])
-  have hpanic := panic_at_handle_error_ext b ext
-    "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state"
-    (num% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state")) (by rw [(ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state"), (ls_stub% "alloc::raw_vec::handle_error")])
-  code_fetches libsignalSessionCode libsignalSessionBin b
-    (Rust.withPanics ext) (ls_lemma% fnOff "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state") (num% (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state")) 316
-  have htripleRatchetProgAt : tripleRatchetProgAtExt b ext =
-      libsignalSessionCode.rebase b (Rust.withPanics ext) := rfl
-  have hName : otrApplyName =
-      "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state" := rfl
-  rw [htripleRatchetProgAt] at hshim halloc hdealloc hpanic ⊢
-  rw [hName]
-  clear htripleRatchetProgAt hName
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state" = entry
-  conv => arg 3; arg 2; ext x s0 sf; rw [sepExists_sepConj_left, sepExists_sepConj_right]
-  examples_hide_fetches
-  wpp_init x s0
-  obtain ⟨o, pqCap, pqPtr, ot, ss, G, st⟩ := x
-  dsimp only at *
-  have hsc_some : ∃ sc, st.senderChain = some sc := Option.isSome_iff_exists.mp h
-  obtain ⟨sc, hsc⟩ := hsc_some
-  apply SepWPp.of_sepWP (mid := entry + bv% (60))
-  refine ApplyFrameFacts.sepWP_unpack_stackAt_otrApply s0.sp (by sep_focus)
-    fun s1 s2 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s3 => ?_
-  refine SepWP.fold (otrAt_apply_split A o pqCap pqPtr ot) (by sep_focus) ?_
-  refine SepWP.fold (sessionStateAt_sender_some A ss G st sc hsc) (by sep_focus) ?_
-  wp_simp_pre only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  apply SepWP.exists_elim; intro sg
-  refine SepWP.focus_pure (by sep_focus) fun hGs => ?_
-  let sg_id : SenderChainGhost := { sg with ck := sg.ck }
-  have hG_eq : G = { G with sender := some sg_id, pq := G.pq } := by
-    cases G; dsimp only at hGs; subst hGs; rfl
-  let sc_id : SenderChain := { sc with chainKey := sc.chainKey }
-  have hst_eq : st = { st with senderChain := some sc_id, pqRatchetState := st.pqRatchetState } := by
-    cases st; dsimp only at hsc; subst hsc; rfl
-  conv =>
-    arg 4
-    rw [hG_eq, hst_eq,
-      sessionStateAt_eq_apply A ss G st sg sc G.pq st.pqRatchetState sg.ck sc.chainKey]
-  clear hG_eq hst_eq sg_id sc_id
-  refine SepWP.fold (vecU8Buf_cap_lt A sg.srk.cap sg.srk.ptr sg.srk.bytes) (by sep_focus) ?_
-  refine SepWP.focus_pure (by sep_focus) fun hsrk_cap => ?_
-  refine SepWP.fold (vecU8Buf_dealloc_32 A sg.ck.cap sg.ck.ptr (keyToBytes32 sc.chainKey.key)
-    (keyToBytes32_length _)) (by sep_focus) ?_
-  refine SepWP.focus_pure (by sep_focus) fun hck_bounds => ?_
-  refine SepWP.fold (vecU8Buf_dealloc A G.pq.cap G.pq.ptr st.pqRatchetState) (by sep_focus) ?_
-  refine SepWP.focus_pure (by sep_focus) fun hpq_bounds => ?_
-  wp_steps
-  wp_call hshim ()
-  wp_steps
-  have hpow2 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  wp_call halloc (32, 1)
-  apply SepWP.done (by exact hpc_sf_1) (by exact hrun_sf_1)
-  by_cases hck_null : sf_1.readReg64 Reg.x0 = 0#64
-  · -- Allocation failed (`x0 = 0`): branch to `+0x130` (`handle_error` panic)
-    have hck_beq : (sf_1.readReg64 (Reg.gpr 0#5) == 0#64) = true := beq_iff_eq.mpr hck_null
-    have hck_eq0 : sf_1.readReg64 Reg.x0 = 0 := hck_null
-    rw [ite_eq_left_iff.mpr (fun h => absurd hck_eq0 h)]
-    apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::apply_to_session_state"))
-    refine SepWP.focus_pure (by sep_focus) fun htr => ?_
-    wp_steps
-    apply SepWP.done (by rfl) (by simp only [State.status_setPC, State.status_writeReg64, hrun_sf_1])
-    refine SepWPp.panic (by simp only [State.status_setPC, State.status_writeReg64, hrun_sf_1])
-      (by simpa only [State.pc_setPC, BitVec.ofNat_eq_ofNat] using hpanic) fun hm => ?_
-    simpa only [sepConj_assoc] using
-      allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, State.trace_setPC, State.trace_writeReg64, htr, h_3])) hm
-  · -- Allocation succeeded (`x0 ≠ 0`)
-    have hck_beq : (sf_1.readReg64 (Reg.gpr 0#5) == 0#64) = false := beq_eq_false_iff_ne.mpr hck_null
-    have hck_ne0 : sf_1.readReg64 Reg.x0 ≠ 0 := hck_null
-    rw [ite_eq_right_iff.mpr (fun h => absurd h hck_ne0)]
-    apply SepWPp.of_sepWP_ret
-    refine SepWP.focus_pure (by sep_focus) fun htr1 => ?_
-    rcases htr1 with ⟨_, htr1⟩
-    wp_simp_pre only [memRegion_32_cells,
-      sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    apply SepWP.exists_elim; intro w3
-    apply SepWP.exists_elim; intro w2
-    apply SepWP.exists_elim; intro w1
-    apply SepWP.exists_elim; intro w0
-    have hsrk_ne : (sg.srk.cap + 1#64 == 0#64) = false := by
-      rw [beq_eq_false_iff_ne]; bv_omega
-    have hck_hi : ConditionHolds CondCode.HI (addsPState64 (sg.ck.cap - 1#64) 3#64) = false :=
-      addsPState64_hi_false hck_bounds
-    wp_steps
-    wp_call hdealloc (sg.ck.ptr, sg.ck.cap.toNat, 1)
-    wp_steps
-    let sc' : SenderChain := { sc with chainKey := ot.senderChainKey }
-    wp_if hpq_beq
-    · -- Old `G.pq.cap = 0`: skip `__rust_dealloc`
-      have hpq0 : G.pq.cap = (0 : BitVec 64) := hpq_beq
-      rw [ite_eq_left_iff.mpr (fun h => absurd hpq0 h)]
-      wp_steps
-      rw [hsp_sf, h_4]
-      refine SepWP.fold (vecU8Buf_of_cells_32 A (sf_1.readReg64 Reg.x0) ot.senderChainKey.key hck_null)
-        (by sep_focus) ?_
-      refine SepWP.fold (otr_fold_memRegion o pqCap pqPtr
-        (BitVec.ofNat 64 ot.pqrState.length)
-        (pack64 ((keyToBytes32 ot.senderChainKey.key).take 8))
-        (pack64 (((keyToBytes32 ot.senderChainKey.key).drop 8).take 8))
-        (pack64 (((keyToBytes32 ot.senderChainKey.key).drop 16).take 8))
-        (pack64 ((keyToBytes32 ot.senderChainKey.key).drop 24))
-        ot.senderChainKey.index) (by sep_focus) ?_
-      refine SepWP.fold (stackAt_otrApply_fold s0.sp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-        (by sep_focus) ?_
-      apply SepWP.instantiate_post_exists (afterOtrApply G sg (sf_1.readReg64 Reg.x0) pqCap pqPtr)
-      have hpost_ss :
-          sessionStateAt A ss (afterOtrApply G sg (sf_1.readReg64 Reg.x0) pqCap pqPtr)
-            (ot.applyToSessionState st) =
-          sessionStateAt A ss
-            { G with sender := some ({ sg with ck := ⟨32#64, sf_1.readReg64 Reg.x0⟩ }), pq := ⟨pqCap, pqPtr⟩ }
-            { st with senderChain := some sc', pqRatchetState := ot.pqrState } := by
-        simp [afterOtrApply, OutgoingTripleRatchet.applyToSessionState, hsc, sc']
-      rw [hpost_ss, sessionStateAt_eq_apply A ss G st sg sc ⟨pqCap, pqPtr⟩ ot.pqrState
-        ⟨32#64, sf_1.readReg64 Reg.x0⟩ ot.senderChainKey]
-      have hrel := applyRel_afterOtrApply G sg hGs (sf_1.readReg64 Reg.x0) pqCap pqPtr
-      wp_done
-    · -- Old `G.pq.cap ≠ 0`: call `__rust_dealloc`
-      have hpq0 : G.pq.cap ≠ (0 : BitVec 64) := hpq_beq
-      rw [ite_eq_right_iff.mpr (fun h => absurd h hpq0)]
-      wp_steps
-      wp_call hdealloc (G.pq.ptr, G.pq.cap.toNat, 1)
-      wp_steps
-      rw [hsp_sf_1, hsp_sf, h_4]
-      refine SepWP.fold (vecU8Buf_of_cells_32 A (sf_1.readReg64 Reg.x0) ot.senderChainKey.key hck_null)
-        (by sep_focus) ?_
-      refine SepWP.fold (otr_fold_memRegion o pqCap pqPtr
-        (BitVec.ofNat 64 ot.pqrState.length)
-        (pack64 ((keyToBytes32 ot.senderChainKey.key).take 8))
-        (pack64 (((keyToBytes32 ot.senderChainKey.key).drop 8).take 8))
-        (pack64 (((keyToBytes32 ot.senderChainKey.key).drop 16).take 8))
-        (pack64 ((keyToBytes32 ot.senderChainKey.key).drop 24))
-        ot.senderChainKey.index) (by sep_focus) ?_
-      refine SepWP.fold (stackAt_otrApply_fold s0.sp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-        (by sep_focus) ?_
-      apply SepWP.instantiate_post_exists (afterOtrApply G sg (sf_1.readReg64 Reg.x0) pqCap pqPtr)
-      have hpost_ss :
-          sessionStateAt A ss (afterOtrApply G sg (sf_1.readReg64 Reg.x0) pqCap pqPtr)
-            (ot.applyToSessionState st) =
-          sessionStateAt A ss
-            { G with sender := some ({ sg with ck := ⟨32#64, sf_1.readReg64 Reg.x0⟩ }), pq := ⟨pqCap, pqPtr⟩ }
-            { st with senderChain := some sc', pqRatchetState := ot.pqrState } := by
-        simp [afterOtrApply, OutgoingTripleRatchet.applyToSessionState, hsc, sc']
-      rw [hpost_ss, sessionStateAt_eq_apply A ss G st sg sc ⟨pqCap, pqPtr⟩ ot.pqrState
-        ⟨32#64, sf_1.readReg64 Reg.x0⟩ ot.senderChainKey]
-      have hrel := applyRel_afterOtrApply G sg hGs (sf_1.readReg64 Reg.x0) pqCap pqPtr
-      wp_done
-
-theorem otrApplyRaw_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (hA : AllocHooks A abs) :
-    OtrApplyRawOk b C A ctl abs :=
-  otrApplyRaw_ok_ext b A (tripleRatchetExterns C ctl abs)
-    (AllocContracts.of_tripleRatchetProgAt b C A ctl abs hA)
 
 /-- Split the 64 KiB `smallRootStack` into the 61312-byte unused prefix and the 4224-byte
 `otrApplyInternalStack` frame. -/
@@ -738,56 +453,12 @@ theorem smallRootStack_split_otrApply (sp : BitVec 64) :
     memRegion (sp - BitVec.ofNat 64 smallRootStack) smallRootStack =
       (memRegion (sp - 65536#64) 61312 ∗
        memRegion (sp - BitVec.ofNat 64 otrApplyInternalStack) otrApplyInternalStack) := by
-  change memRegion (sp - 65536#64) (61312 + 4224) =
-    (memRegion (sp - 65536#64) 61312 ∗ memRegion (sp - 4224#64) 4224)
-  rw [memRegion_split (sp - 65536#64) 61312 4224 (by decide)]
-  have h1 : sp - 65536#64 + BitVec.ofNat 64 61312 = sp - 4224#64 := by bv_arith
-  rw [h1]
-
-theorem otrApply_ok_ext (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hA : AllocContracts img.base A ext) : OtrApplyExtOk img A ext := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  rw [otrApplySpec, Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨_, hpre⟩
-  have hpre_eq :
-      ((⌜s0.readReg64 .x0 = x.o ∧ s0.readReg64 .x1 = x.ss ∧ x.st.senderChain.isSome⌝ ∗
-          otrAt A x.o x.pqCap x.pqPtr x.ot ∗ sessionStateAt A x.ss x.G x.st ∗ logOff img ∗
-          stackAt s0.sp smallRootStack ∗ A.pool) ∗ R) =
-      ((otrApplyRawSpec A).pre x s0 ∗
-        ((logOff img ∗ memRegion (s0.sp - 65536#64) 61312) ∗ R)) := by
-    dsimp only [otrApplyRawSpec, stackAt]
-    rw [smallRootStack_split_otrApply]
-    ac_rfl
-  refine (otrApplyRaw_ok_ext img.base A ext hA).mono_outcome x
-    ((logOff img ∗ memRegion (s0.sp - 65536#64) 61312) ∗ R)
-    s0 hpc hrun (hpre_eq ▸ hpre) hsp fun sf hout => ?_
-  rcases hout with ⟨h1, h2, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, hex, hpost⟩ | ⟨hoom, hpost⟩
-  · have hpost_eq :
-        ((otrApplyRawSpec A).post x s0 sf ∗
-          ((logOff img ∗ memRegion (s0.sp - 65536#64) 61312) ∗ R)) =
-        ((otrApplySpec A img).post x s0 sf ∗ R) := by
-      dsimp only [otrApplyRawSpec, otrApplySpec, Spec.inImage, stackAt]
-      rw [smallRootStack_split_otrApply]
-      ac_rfl
-    exact Or.inl ⟨h1, h2, hpost_eq ▸ hpost⟩
-  · rw [← sepConj_assoc] at hpost
-    exact Or.inr (Or.inl ⟨hpan, allowPanic_frame id hpost⟩)
-  · exact (allowPanic_not_exited hpost).elim
-  · exact (not_satisfies_false_sepConj hpost).elim
-
-theorem otrApply_ok (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (S : SpqrModel) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (h : TripleRatchetHooks C A S abs) : OtrApplyOk img C A ctl abs :=
-  otrApply_ok_ext img A (tripleRatchetExterns C ctl abs)
-    (AllocContracts.of_tripleRatchetProgAt img.base C A ctl abs h.alloc)
-
-/-! ## `AllocContractsX` (`extHookStack` = 16 KiB) variant -/
+  simp only [smallRootStack, otrApplyInternalStack, allocHookStack, Nat.reducePow, Nat.reduceAdd]
+  sep_interval_eq
 
 abbrev otrApplyInternalStackX : Nat := 0x80 + extHookStack
 
-def otrApplyRawSpecX (A : RustAlloc) : Spec OtrApplyGhost where
+@[expose] def otrApplyRawSpecX (A : RustAlloc) : Spec OtrApplyGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.o ∧ s.readReg64 .x1 = x.ss ∧ x.st.senderChain.isSome⌝ ∗
       otrAt A x.o x.pqCap x.pqPtr x.ot ∗ sessionStateAt A x.ss x.G x.st ∗
@@ -819,28 +490,8 @@ theorem stackAt_otrApplyX (sp : BitVec 64) :
       (∃∗ s13 : BitVec 64, (sp - 24#64) ↦₆₄ s13) ∗
       (∃∗ s14 : BitVec 64, (sp - 16#64) ↦₆₄ s14) ∗
       (∃∗ s15 : BitVec 64, (sp - 8#64) ↦₆₄ s15) := by
-  show memRegion (sp - BitVec.ofNat 64 16512) 16512 = _
-  rw [mr_cut' sp 16512 128 16384 128 16512 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 128 120 8 120 128 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 120 112 8 112 120 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 112 104 8 104 112 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 104 100 4 100 104 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 100 96 4 96 100 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 96 88 8 88 96 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 88 80 8 80 88 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 80 72 8 72 80 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 72 64 8 64 72 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 64 56 8 56 64 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 56 48 8 48 56 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 48 40 8 40 48 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 40 32 8 32 40 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 32 24 8 24 32 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 24 16 8 16 24 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 16 8 8 8 16 rfl rfl (by decide) (by decide) (by decide)]
-  have hstk : memRegion (sp - BitVec.ofNat 64 16512) 16384 = stackAt (sp - 128#64) extHookStack := by
-    simp only [stackAt, extHookStack]; congr 1; bv_omega
-  rw [hstk, memRegion_four (sp - BitVec.ofNat 64 100)]
-  simp only [memRegion_eight]
+  simp only [stackAt, otrApplyInternalStackX, extHookStack, Nat.reducePow, Nat.reduceAdd]
+  sep_interval_eq
 
 theorem stackAt_otrApplyX_fold (sp s1 s2 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 : BitVec 64)
     (s3 : BitVec 32) :
@@ -863,16 +514,8 @@ theorem stackAt_otrApplyX_fold (sp s1 s2 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s
       ((sp - 16#64) ↦₆₄ s14) ∗
       ((sp - 8#64) ↦₆₄ s15) ⊢
     stackAt sp otrApplyInternalStackX := by
-  rw [stackAt_otrApplyX sp]
-  refine sepConj_mono (Entails.refl _) (sepConj_mono (Entails.refl _) ?_)
-  refine sepConj_mono (Entails.sepExists_intro s1) (sepConj_mono (Entails.sepExists_intro s2) ?_)
-  refine sepConj_mono (Entails.refl _) (sepConj_mono (Entails.sepExists_intro s3) ?_)
-  refine sepConj_mono (Entails.sepExists_intro s4) (sepConj_mono (Entails.sepExists_intro s5) ?_)
-  refine sepConj_mono (Entails.sepExists_intro s6) (sepConj_mono (Entails.sepExists_intro s7) ?_)
-  refine sepConj_mono (Entails.sepExists_intro s8) (sepConj_mono (Entails.sepExists_intro s9) ?_)
-  refine sepConj_mono (Entails.sepExists_intro s10) (sepConj_mono (Entails.sepExists_intro s11) ?_)
-  refine sepConj_mono (Entails.sepExists_intro s12) (sepConj_mono (Entails.sepExists_intro s13) ?_)
-  exact sepConj_mono (Entails.sepExists_intro s14) (Entails.sepExists_intro s15)
+  simp only [stackAt, otrApplyInternalStackX, extHookStack, Nat.reducePow, Nat.reduceAdd]
+  sep_interval
 
 namespace ApplyFrameFacts
 
@@ -900,29 +543,15 @@ theorem sepWP_unpack_stackAt_otrApplyX {prog : Program} {pc : BitVec 64} {s : St
           ((sp - 16#64) ↦₆₄ s14) ∗
           ((sp - 8#64) ↦₆₄ s15)) ∗ F) post) :
     SepWP prog pc s P post := by
+  have hnext :=
+    SepWP.exists_elim fun s1 => SepWP.exists_elim fun s2 => SepWP.exists_elim fun s4 =>
+    SepWP.exists_elim fun s5 => SepWP.exists_elim fun s6 => SepWP.exists_elim fun s7 =>
+    SepWP.exists_elim fun s8 => SepWP.exists_elim fun s9 => SepWP.exists_elim fun s10 =>
+    SepWP.exists_elim fun s11 => SepWP.exists_elim fun s12 => SepWP.exists_elim fun s13 =>
+    SepWP.exists_elim fun s14 => SepWP.exists_elim fun s15 => SepWP.exists_elim fun s3 =>
+    h s1 s2 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s3
   rw [hf, stackAt_otrApplyX sp]
-  simp only [sepConj_assoc]
-  apply skip_atom; simp only [sepConj_assoc]
-  apply skip_atom; simp only [sepConj_assoc]
-  apply elim_ex; intro s1; simp only [sepConj_assoc]
-  apply elim_ex; intro s2; simp only [sepConj_assoc]
-  apply skip_atom; simp only [sepConj_assoc]
-  apply elim_ex; intro s3; simp only [sepConj_assoc]
-  apply elim_ex; intro s4; simp only [sepConj_assoc]
-  apply elim_ex; intro s5; simp only [sepConj_assoc]
-  apply elim_ex; intro s6; simp only [sepConj_assoc]
-  apply elim_ex; intro s7; simp only [sepConj_assoc]
-  apply elim_ex; intro s8; simp only [sepConj_assoc]
-  apply elim_ex; intro s9; simp only [sepConj_assoc]
-  apply elim_ex; intro s10; simp only [sepConj_assoc]
-  apply elim_ex; intro s11; simp only [sepConj_assoc]
-  apply elim_ex; intro s12; simp only [sepConj_assoc]
-  apply elim_ex; intro s13; simp only [sepConj_assoc]
-  apply elim_ex; intro s14; simp only [sepConj_assoc]
-  apply elim_ex; intro s15; simp only [sepConj_assoc]
-  apply skip_atom; simp only [sepConj_assoc]
-  have h' := h s1 s2 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s3
-  simpa only [sepConj_assoc] using h'
+  bi_entail
 
 end ApplyFrameFacts
 
@@ -930,16 +559,13 @@ theorem smallRootStack_split_otrApplyX (sp : BitVec 64) :
     memRegion (sp - BitVec.ofNat 64 smallRootStack) smallRootStack =
       (memRegion (sp - 65536#64) 49024 ∗
        memRegion (sp - BitVec.ofNat 64 otrApplyInternalStackX) otrApplyInternalStackX) := by
-  change memRegion (sp - 65536#64) (49024 + 16512) =
-    (memRegion (sp - 65536#64) 49024 ∗ memRegion (sp - 16512#64) 16512)
-  rw [memRegion_split (sp - 65536#64) 49024 16512 (by decide)]
-  have h1 : sp - 65536#64 + BitVec.ofNat 64 49024 = sp - 16512#64 := by bv_arith
-  rw [h1]
+  simp only [smallRootStack, otrApplyInternalStackX, extHookStack, Nat.reducePow, Nat.reduceAdd]
+  sep_interval_eq
 
 /-! ## Relocatable `[LibsignalPlacement]` contracts -/
 
 /-- Relocatable root-level specification of `OTR::apply_to_session_state`. -/
-def otrApplyPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec OtrApplyGhost where
+@[expose] def otrApplyPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec OtrApplyGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.o ∧ s.readReg64 .x1 = x.ss ∧ x.st.senderChain.isSome⌝ ∗
       otrAt A x.o x.pqCap x.pqPtr x.ot ∗ sessionStateAt A x.ss x.G x.st ∗
@@ -1119,25 +745,18 @@ theorem otrApply_placed_ok [LibsignalPlacement] {A : RustAlloc}
     subroutine_ok ((blkPC_20).rebase (blkPl_20).base H) (blkPl_20).base
       (otrApplyPlacedSpec A) := by
   refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  have hpre_eq :
-      (otrApplyPlacedSpec A).pre x s0 ∗ R =
-      (otrApplyRawSpec A).pre x s0 ∗
-        (((lsLogFilterAddr ↦₆₄ 0#64) ∗ memRegion (s0.sp - 65536#64) 61312) ∗ R) := by
-    dsimp only [otrApplyPlacedSpec, otrApplyRawSpec, stackAt]
-    rw [smallRootStack_split_otrApply]
-    ac_rfl
   refine (otrApplyRaw_placed_ok h_shim h_alloc h_dealloc h_panic).mono_outcome x
     (((lsLogFilterAddr ↦₆₄ 0#64) ∗ memRegion (s0.sp - 65536#64) 61312) ∗ R)
-    s0 hpc hrun (hpre_eq ▸ hpre) hsp fun sf hout => ?_
+    s0 hpc hrun
+    (by dsimp only [otrApplyPlacedSpec, otrApplyRawSpec, stackAt] at hpre ⊢
+        rw [smallRootStack_split_otrApply s0.sp] at hpre
+        exact Satisfies.mono (by bi_entail) hpre)
+    hsp fun sf hout => ?_
   rcases hout with ⟨h1, h2, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, hex, hpost⟩ | ⟨hoom, hpost⟩
-  · have hpost_eq :
-        ((otrApplyRawSpec A).post x s0 sf ∗
-          (((lsLogFilterAddr ↦₆₄ 0#64) ∗ memRegion (s0.sp - 65536#64) 61312) ∗ R)) =
-        ((otrApplyPlacedSpec A).post x s0 sf ∗ R) := by
-      dsimp only [otrApplyRawSpec, otrApplyPlacedSpec, stackAt]
-      rw [smallRootStack_split_otrApply]
-      ac_rfl
-    exact Or.inl ⟨h1, h2, hpost_eq ▸ hpost⟩
+  · exact Or.inl ⟨h1, h2, by
+      dsimp only [otrApplyRawSpec, otrApplyPlacedSpec, stackAt] at hpost ⊢
+      rw [smallRootStack_split_otrApply s0.sp]
+      exact Satisfies.mono (by bi_entail) hpost⟩
   · rw [← sepConj_assoc] at hpost
     exact Or.inr (Or.inl ⟨hpan, allowPanic_frame id hpost⟩)
   · exact (allowPanic_not_exited hpost).elim

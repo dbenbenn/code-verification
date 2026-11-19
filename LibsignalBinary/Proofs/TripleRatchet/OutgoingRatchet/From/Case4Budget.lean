@@ -10,15 +10,17 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case3Budget
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case4
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.FrameBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case2Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case3Budget
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case4
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.FrameBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym
 
 /-!
 # Budget-Threaded Relocatable `OTR::from_session_state` Case 4 (`st.remoteIdentity = some rem`)
@@ -27,7 +29,7 @@ Proves the `[LibsignalPlacement]` `RustCliAllocBudget` contract for the `Ok` bra
 (`st.remoteIdentity = some rem`) of `<OutgoingTripleRatchet>::from_session_state`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -135,10 +135,10 @@ theorem fresh_session {S : Sem} {g : Ghost} {tr₁ tr₂ tr₃ : ExecTrace}
     (hdhs : CompFreshDistinct.FreshSafeTerm compI0 S g (randTerm (tr₁.length + 2) 32))
     (hm₁ : CompFreshDistinct.FreshSafeTerm compI0 S g (randTerm tr₂.length 32))
     (hcoins₁ : CompFreshDistinct.FreshSafeTerm compI0 S g (randTerm (tr₂.length + 1) cl₁))
-    (hm₁_len : (g.σ tr₂.length 32).length ≠ 64)
+    (hm₁_len : (g.σ tr₂.length 32).length < 48)
     (hm₃ : CompFreshDistinct.FreshSafeTerm compI0 S g (randTerm tr₃.length 32))
     (hcoins₃ : CompFreshDistinct.FreshSafeTerm compI0 S g (randTerm (tr₃.length + 1) cl₃))
-    (hm₃_len : (g.σ tr₃.length 32).length ≠ 64) :
+    (hm₃_len : (g.σ tr₃.length 32).length < 48) :
     let o := CompPrefixInvAlice.iniAliceOut tr₁ ikA ikB spk pqpk none
     let stA := CompPrefixInvAlice.iniAliceStartState tr₁ b o
     let stA' := CompPrefixInvEnc.encSt tr₂ stA cl₁

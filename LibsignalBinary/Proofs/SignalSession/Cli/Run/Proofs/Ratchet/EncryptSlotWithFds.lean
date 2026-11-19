@@ -9,31 +9,40 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeSeqFreeXBudget
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitFdsPilotPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitFdsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInnerPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePollPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPollPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPollPlacedBudgetFdSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SessDeserStoreWithFds
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreKitWithFds
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeSeqFreeXBudget
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitFdsPilotPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitFdsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInnerPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePollPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPollPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPollPlacedBudgetFdSat
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXCliPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SessDeserStoreWithFds
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreKitWithFds
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
 
 /-!
 # File-Descriptor-Threaded Store-Kit and Outer Slot Bridges for `encrypt` (Placed)
@@ -44,7 +53,7 @@ Converts `encSlotSpecPlaced (withFds A)` to two-sided `withFdsGe3Closed (encSlot
 contract.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -234,36 +243,6 @@ theorem w1BinarySessKitPlaced_withFds_okSE [LibsignalPlacement] {M : AllocCostMo
     hDropNz hh.allocFs h569Fd h570Fd
     (Nat.le_refl loadShimNeed) (Nat.le_refl storeShimNeed)
   exact sessionOnlyKitPlacedOkSE_withFds_of_fds henf hFds
-
-/-- Assembles `IdentityStoreKitPlacedOkI (withFds A)` at `w1IdKitPlaced` and
-`w1BinaryIdKitPlacedBudgetFixed` from a `withFdsGe3Closed` `Dir::get` (Block `589`) contract. -/
-theorem w1BinaryIdKitPlaced_withFds_okIE [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (henf : lim.enforced = true)
-    (B : RunBudgets) (F0 : FsFiles) (peer : AddrGhost)
-    (hDropNz : lsmpl.base 547 ≠ 0#64)
-    (hh : RunHooksPlaced A lim H)
-    (hhWf : RunHooksPlaced (withFds A) lim H)
-    (hGet589 : subroutine_ok (lsProg_589 H) (lsmpl.base 589)
-      (withFdsGe3Closed
-        (dirGetSpecPlaced cliIo.rd cliWrOk A lim
-          (DirGetEnv PathEnv (ReadFileRuleEnvFixed cliIo.rd) cliIo.rd)
-          (RunBudgets.dirGetNeed ⟨B.readFile⟩))))
-    (h_bb : H lsBlackBoxU8Sym = some blackBoxHook) :
-    IdentityStoreKitPlacedOkI (withFds A) lim
-      (w1IdKitPlaced (withFds A).repAlloc B F0 peer)
-      (w1BinaryIdKitPlacedBudgetFixed (withFds A).repAlloc B F0 peer) H := by
-  have hPut543Wf := cliDirPutStr_placed_ok hhWf
-  have hPut543Fd := subroutine_ok_dirPutStr_withFdsGe3Closed_of_withFds henf hPut543Wf
-  have h566Fd := idTrustPoll_placed_ok_of_get_bb_fd hh.allocFs hGet589 h_bb
-    (Nat.le_refl _) (by decide) (by decide)
-  have h565Fd := idSavePoll_placed_ok_of_get_put_bb_fd hh.allocFs hGet589 hPut543Fd h_bb
-    (Nat.le_refl _) (by decide) (by decide) (by decide) (by decide)
-  have hIdFds := cliIdKitOkIE_fds_placed_direct_of_polls
-    (F0 := F0) (peer := peer) (vtSym := cliIdentityVtRoSym)
-    hDropNz hh.allocFs h566Fd h565Fd
-    (Nat.le_refl trustShimNeed) (Nat.le_refl saveShimNeed)
-  exact identityStoreKitPlacedOkI_withFds_of_fds henf hIdFds
 
 theorem w1BinaryIdKitPlaced_withFds_okIE_sat [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}

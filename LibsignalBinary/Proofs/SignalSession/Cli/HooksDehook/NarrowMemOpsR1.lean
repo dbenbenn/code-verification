@@ -12,24 +12,30 @@ module
 public import LibsignalBinary.Heap.MuslMemOpsRunsToPlaced
 public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HInit.CliInitSlotOkPlacedAt -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhost -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhost -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhost
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
-# Layout-Free Narrow `memset` / `memcpy` Ghost-Hook R1 Witnesses (`HooksDehook.NarrowMemOpsR1`)
+# Layout-Free Narrow `memset` / `memcpy` Ghost-Hook Witnesses (`HooksDehook.NarrowMemOpsR1`)
 
-Provides layout-free, `W`-independent real-code narrow ghost hooks (`P_real := Program.ofSvc
+Provides layout-free, `W`-independent narrow ghost hooks (`P_real := Program.ofSvc
 Syscall.standard`) over `mallocngBlockProg mmpl 21 Syscall.standard` (`memset`) and
-`mallocngBlockProg mmpl 20 Syscall.standard` (`memcpy`), sitting strictly below
-`F3AllocStdinGhostHooks` and `ElfSlicesPqOomPlacedInst` (zero `F3*` or `Elf*` imports).
-
-Closes H-REV Stage A Condition **C2** (`#1255`) at the `linkedCallHook` layer:
+`mallocngBlockProg mmpl 20 Syscall.standard` (`memcpy`), below `F3AllocStdinGhostHooks` and
+`ElfSlicesPqOomPlacedInst` (no `F3*` or `Elf*` imports):
 - unconditional `VmPreserved`, `.fs`, `.trace`, `ExecFrozen`, `HookNoAllocFailed`, and
   `HookFsTraced IsFsC` preservation across all three `linkedCallHook` branches;
-- all R1 consumer `HookOk` lifts (`libcMem{set,cpy}Spec`, `sessionMem{set,cpy}Spec`,
+- consumer `HookOk` lifts (`libcMem{set,cpy}Spec`, `sessionMem{set,cpy}Spec`,
   `{memset,memcpy}RegionSpec`, `sessionMem{set,cpy}RegionSpec`, `framelessMemcpySpec`,
   `SpqrV1.Alloc.sessionMemcpyRegionROSpec`);
-- 1-term R1 conjunction & `∃ f, slot = some f ∧ ...` existential witnesses matching Stage A's
-  `CliGhostAllocHooks` / `CliGhostSpqrAllocHooks` and `CliGhostA0Hooks` fields verbatim.
+- conjunction and existential (`∃ f, slot = some f ∧ ...`) witnesses matching
+  `CliGhostAllocHooks`, `CliGhostSpqrAllocHooks`, and `CliGhostA0Hooks`.
 -/
 
 set_option autoImplicit false
@@ -234,10 +240,9 @@ theorem narrowMemcpyGhostHook_sessionMemcpyRegionRO_ok (mmpl : MultiPlacement) :
     (fun pc _ => stdProg_externAt_none pc) (mallocngBlockProg20_externAt_none mmpl Syscall.standard)
     (mallocngBlockProg20_hasWords mmpl Syscall.standard)
 
-/-! ## 4. R1 Bundle Witnesses (Direct Conjunction + `∃ f, slot = some f ∧ ...` Existential) -/
+/-! ## 4. Bundle Witnesses (Direct Conjunction + `∃ f, slot = some f ∧ ...` Existential) -/
 
-/-- Direct R1 `memset` conjunction on `narrowMemsetGhostHook mmpl` (matches H-REV `rev_c10_c3.md`
-    R-2 / T-1). -/
+/-- Conjunction of state-frame and consumer `HookOk` obligations for `narrowMemsetGhostHook mmpl`. -/
 theorem narrowMemsetGhostHook_r1_conj (mmpl : MultiPlacement) :
     (∀ stk, 0 < stk → HookOk (narrowMemsetGhostHook mmpl) (libcMemsetSpec stk)) ∧
     (∀ stk, 0 < stk → HookOk (narrowMemsetGhostHook mmpl) (sessionMemsetSpec stk)) ∧
@@ -254,8 +259,7 @@ theorem narrowMemsetGhostHook_r1_conj (mmpl : MultiPlacement) :
    narrowMemsetGhostHook_fs mmpl,
    narrowMemsetGhostHook_fsT mmpl⟩
 
-/-- Direct R1 `memcpy` conjunction on `narrowMemcpyGhostHook mmpl` (matches H-REV `rev_c10_c3.md`
-    R-2 / T-1). -/
+/-- Conjunction of state-frame and consumer `HookOk` obligations for `narrowMemcpyGhostHook mmpl`. -/
 theorem narrowMemcpyGhostHook_r1_conj (mmpl : MultiPlacement) :
     (∀ stk, HookOk (narrowMemcpyGhostHook mmpl) (libcMemcpySpec stk)) ∧
     (∀ stk, HookOk (narrowMemcpyGhostHook mmpl) (sessionMemcpySpec stk)) ∧
@@ -276,8 +280,7 @@ theorem narrowMemcpyGhostHook_r1_conj (mmpl : MultiPlacement) :
    narrowMemcpyGhostHook_fs mmpl,
    narrowMemcpyGhostHook_fsT mmpl⟩
 
-/-- Exact 1-term existential witness for Stage A `CliGhostAllocHooks.memset` /
-    `CliGhostSpqrAllocHooks.memset`. -/
+/-- Existential witness for `CliGhostAllocHooks.memset` / `CliGhostSpqrAllocHooks.memset`. -/
 theorem narrowMemsetGhostHook_r1_allocWitness (mmpl : MultiPlacement)
     {slot : Option (State → State)}
     (hslot : slot = some (narrowMemsetGhostHook mmpl) := by rfl) :
@@ -291,8 +294,7 @@ theorem narrowMemsetGhostHook_r1_allocWitness (mmpl : MultiPlacement)
       HookFsTraced IsFsC f :=
   ⟨narrowMemsetGhostHook mmpl, hslot, narrowMemsetGhostHook_r1_conj mmpl⟩
 
-/-- Exact 1-term existential witness for Stage A `CliGhostAllocHooks.memcpy` /
-    `CliGhostSpqrAllocHooks.memcpy`. -/
+/-- Existential witness for `CliGhostAllocHooks.memcpy` / `CliGhostSpqrAllocHooks.memcpy`. -/
 theorem narrowMemcpyGhostHook_r1_allocWitness (mmpl : MultiPlacement)
     {slot : Option (State → State)}
     (hslot : slot = some (narrowMemcpyGhostHook mmpl) := by rfl) :
@@ -308,7 +310,7 @@ theorem narrowMemcpyGhostHook_r1_allocWitness (mmpl : MultiPlacement)
       HookFsTraced IsFsC f :=
   ⟨narrowMemcpyGhostHook mmpl, hslot, narrowMemcpyGhostHook_r1_conj mmpl⟩
 
-/-- Exact 1-term existential witness for Stage A `CliGhostA0Hooks.memset` (non-budget). -/
+/-- Existential witness for `CliGhostA0Hooks.memset` (non-budget). -/
 theorem narrowMemsetGhostHook_r1_a0Witness (mmpl : MultiPlacement)
     {slot : Option (State → State)}
     (hslot : slot = some (narrowMemsetGhostHook mmpl) := by rfl) :
@@ -327,7 +329,7 @@ theorem narrowMemsetGhostHook_r1_a0Witness (mmpl : MultiPlacement)
    narrowMemsetGhostHook_fs mmpl,
    narrowMemsetGhostHook_fsT mmpl⟩
 
-/-- Exact 1-term existential witness for Stage A `CliGhostA0Hooks.memcpy` (non-budget). -/
+/-- Existential witness for `CliGhostA0Hooks.memcpy` (non-budget). -/
 theorem narrowMemcpyGhostHook_r1_a0Witness (mmpl : MultiPlacement)
     {slot : Option (State → State)}
     (hslot : slot = some (narrowMemcpyGhostHook mmpl) := by rfl) :

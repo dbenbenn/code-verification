@@ -11,22 +11,22 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart10PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart3PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart7PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart8PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart9PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart10PlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart3PlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart7PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart8PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart9PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
@@ -37,6 +37,16 @@ import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart7
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch2Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch3Placed
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.Dispatch
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart10Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart3Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart8Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart9Placed
 
 /-!
 # `<States>::recv` (Block `332`) — `.ct1Sampled` Arm, Part 10 (Budget-Threaded)
@@ -45,7 +55,7 @@ Composes all budget-threaded `[LibsignalPlacement]` paths of the `.ct1Sampled` a
 tag = 1#64`) against `Ct1SampledRecvPreEnv` / `Ct1SampledRecvPostEnv` and `Ct1SampledRecvEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

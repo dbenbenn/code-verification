@@ -9,8 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Prog
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Prog -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import ProofLib.SepLogic.WPp
 
@@ -22,7 +21,7 @@ coroutine and stack-frame layout predicates (`decryptPrekeySavedRegsAt`, `decryp
 `sessionRecordEmptyAt`), and scratch-slot packing helpers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,31 +38,13 @@ set_option maxHeartbeats 1200000
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_stub% "memcpy")
-
-/-! ## 1. Isolated Callee Contracts for Stage P1 (`+0x0000..+0x0868`) -/
-
 /-- Trivial no-op `drop_in_place` contract for boxed store futures (`0x01fe4`). -/
-def futNoopDropSpec : Spec Unit where
+@[expose] def futNoopDropSpec : Spec Unit where
   pre := fun _ _ => emp
   post := fun _ s0 sf => ⌜sf.trace = s0.trace⌝
 
-/-- Isolated external callee contracts for Stage P1 (`load_session` and `is_trusted_identity`
-trait shims, future polls, and future drops). Peer proofs (`InMem` / `StoreKit`) instantiate
-this structure directly. -/
-structure StageP1CalleeContracts (A : RustAlloc) (b : BitVec 64) (C : Crypto)
-    (ctl : BitVec 64) (abs : String → Option (State → State))
-    (loadDropAddr trustDropAddr : BitVec 64) : Prop where
-  alloc : AllocHooks A abs
-  loadFutDrop : subroutine_ok (tripleRatchetProgAt b C ctl abs) loadDropAddr futNoopDropSpec
-  trustFutDrop : subroutine_ok (tripleRatchetProgAt b C ctl abs) trustDropAddr futNoopDropSpec
-
-/-! ## 2. Coroutine & Stack Frame Layouts for `0x4b0cc` -/
-
 /-- Callee-saved registers `x19..x30` saved at `sp0 - 0x60#64 .. sp0` in `0x4b0cc` prologue. -/
-def decryptPrekeySavedRegsAt (sp0 : BitVec 64) (s0 : State) : SepProp :=
+@[expose] def decryptPrekeySavedRegsAt (sp0 : BitVec 64) (s0 : State) : SepProp :=
   ((sp0 - 0x60#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((8#64 + (sp0 - 0x60#64)) ↦₆₄ s0.readReg64 .x30) ∗
   ((16#64 + (sp0 - 0x60#64)) ↦₆₄ s0.readReg64 .x28) ∗
@@ -79,7 +60,7 @@ def decryptPrekeySavedRegsAt (sp0 : BitVec 64) (s0 : State) : SepProp :=
 
 /-- Initial 14 words (`0x00..0x70`) of the `message_decrypt_prekey::{closure#0}` coroutine at
 `coroPtr`. -/
-def decryptPrekeyCoroInitAt (coroPtr msgPtr remoteAddrPtr localAddrPtr
+@[expose] def decryptPrekeyCoroInitAt (coroPtr msgPtr remoteAddrPtr localAddrPtr
     sessStorePtr sessStoreVt idStorePtr idStoreVt
     preKeyStorePtr preKeyStoreVt spkStorePtr spkStoreVt
     kyberStorePtr kyberStoreVt rngPtr : BitVec 64) : SepProp :=
@@ -100,7 +81,7 @@ def decryptPrekeyCoroInitAt (coroPtr msgPtr remoteAddrPtr localAddrPtr
 
 /-- Copied 14 words (`0x70..0xe0`) of the `message_decrypt_prekey::{closure#0}` coroutine at
 `coroPtr`. -/
-def decryptPrekeyCoroCopyAt (coroPtr msgPtr remoteAddrPtr localAddrPtr
+@[expose] def decryptPrekeyCoroCopyAt (coroPtr msgPtr remoteAddrPtr localAddrPtr
     sessStorePtr sessStoreVt idStorePtr idStoreVt
     preKeyStorePtr preKeyStoreVt spkStorePtr spkStoreVt
     kyberStorePtr kyberStoreVt rngPtr : BitVec 64) : SepProp :=
@@ -122,7 +103,7 @@ def decryptPrekeyCoroCopyAt (coroPtr msgPtr remoteAddrPtr localAddrPtr
 /-- Empty `SessionRecord` header (`32` B at `recPtr = coroPtr + 0xe0#64`):
 `previous_sessions` empty `VecDeque` (`cap = 0, ptr = 8, len = 0`) and `current_session = None`
 (`-1`). -/
-def sessionRecordEmptyHeaderAt (recPtr : BitVec 64) : SepProp :=
+@[expose] def sessionRecordEmptyHeaderAt (recPtr : BitVec 64) : SepProp :=
   (recPtr ↦₆₄ 0#64) ∗
   ((recPtr + 0x08#64) ↦₆₄ 8#64) ∗
   ((recPtr + 0x10#64) ↦₆₄ 0#64) ∗
@@ -130,7 +111,7 @@ def sessionRecordEmptyHeaderAt (recPtr : BitVec 64) : SepProp :=
 
 /-- Inlined `process_prekey_impl` coroutine initial state (`coroPtr + 0x2c8..0x390`, 25 words):
 12 header words at `0x2c8..0x328` and 13 active words at `0x328..0x390`. -/
-def processPrekeyInnerInitAt (coroPtr msgPtr remoteAddrPtr localAddrPtr
+@[expose] def processPrekeyInnerInitAt (coroPtr msgPtr remoteAddrPtr localAddrPtr
     idStorePtr idStoreVt preKeyStorePtr preKeyStoreVt
     spkStorePtr spkStoreVt kyberStorePtr kyberStoreVt : BitVec 64) : SepProp :=
   ((coroPtr + 0x2c8#64) ↦₆₄ msgPtr) ∗
@@ -161,7 +142,7 @@ def processPrekeyInnerInitAt (coroPtr msgPtr remoteAddrPtr localAddrPtr
 
 /-- Inlined `process_prekey_impl` post-trust coroutine fields written at `+0x0734..+0x0760`
 (`coroPtr + 0x428..0x468` and `coroPtr + 0x490..0x4b0`). -/
-def processPrekeyPostTrustAt (coroPtr msgPtr remoteAddrPtr localAddrPtr
+@[expose] def processPrekeyPostTrustAt (coroPtr msgPtr remoteAddrPtr localAddrPtr
     idStorePtr idStoreVt preKeyStorePtr preKeyStoreVt
     spkStorePtr spkStoreVt kyberStorePtr kyberStoreVt : BitVec 64) : SepProp :=
   ((coroPtr + 0x428#64) ↦₆₄ spkStorePtr) ∗

@@ -9,16 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkSlot
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverAuxPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotDom0LeafL23
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathACore
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
+public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkSlot -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverAuxPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotDom0LeafL23
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathACore -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureVtablesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # `OverD3` Loaded-Session and Fresh-Responder Domain Bounds
@@ -29,7 +42,7 @@ sessions loaded under `CliPqOrD3RecvDom`, together with `TopStateTight`, `Sessio
 `pathAInitSession`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -88,7 +101,7 @@ open SignalPqxdh (DRKey)
 `r.currentSession = some s_old`, `s_old.state.pqRatchetState` satisfies `TopStateTight`, both
 `s_old` and `clearPending s_old` satisfy `SessionCloneDom 286196`, and
 `(encodeRecord r).length ≤ 2097152`. -/
-def h7l4_Stmt : Prop :=
+@[expose] def h7l4_Stmt : Prop :=
   ∀ [LibsignalPlacement] (A : RustAlloc) (P : PEParams) (B : RunBudgets)
     {i : Inputs} {peerV : AddrV} {F : FsFiles} {peer : AddrGhost}
     {r : SessionRecord (List (BitVec 8))} {s_old : Session (List (BitVec 8))},
@@ -110,7 +123,7 @@ has `receiverChains = []`, `pqRatchetState.length ≤ 2048`, `TopStateTight`,
 `td.a.st = st0` and `td.a.msg.ciphertext.length ≤ msgCapBytes`, and — given
 `SessionGhostValid recG ses0` — `FreshBobCloneDom 16384 recG ses0` and
 `SegCloneEnv recG st0 ⊆ W4CloneACDomEnv`. -/
-def h7l5a_Stmt : Prop :=
+@[expose] def h7l5a_Stmt : Prop :=
   ∀ (P : PEParams) (me : LocalIdentity) (k : ResponderPreKeySecrets)
     (m : PreKeyMessageFields) (dk : DRKey),
     let ses0 := pathAInitSession P me k m dk
@@ -145,100 +158,6 @@ private theorem h7l45r_scopeKit_of_loadRel [LibsignalPlacement]
     injection hr' with hr'
     subst hr'
     exact hsc
-
-private theorem h7l45r_seedsLen32_clearPending {s : Session (List (BitVec 8))}
-    (h : SeedsLen32 s.state) :
-    SeedsLen32 (clearPending s).state := by
-  simpa [clearPending, SeedsLen32] using h
-
-/-- `clearPending` preserves `SessionCloneDom pqCap` (drops `pendingKyberPreKey` to `none` and only
-clears `pendingPreKey := false` inside `state`). -/
-theorem h7l45r_sessionCloneDom_clearPending {pqCap : Nat}
-    {s : Session (List (BitVec 8))}
-    (hdom : SessionCloneDom pqCap s) :
-    SessionCloneDom pqCap (clearPending s) where
-  rc_len := hdom.rc_len
-  seeds32 := h7l45r_seedsLen32_clearPending hdom.seeds32
-  alice_len := hdom.alice_len
-  kyber_cap := fun _ hk => nomatch hk
-  pq_len := hdom.pq_len
-
-theorem h7l45r_loaded_session_tight_and_cloneDom [LibsignalPlacement]
-    (A : RustAlloc) (P : PEParams) (B : RunBudgets)
-    {i : Inputs} {peerV : AddrV} {F : FsFiles} {peer : AddrGhost}
-    {r : SessionRecord (List (BitVec 8))} {s_old : Session (List (BitVec 8))}
-    (hi : CliPqOrD3RecvDom P i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.recv peerV))
-    (hfiles : F = runFiles i)
-    (hpeer : peer.val = addrValOf peerV)
-    (hload : (cliPollSessKitPlaced A F scopeKit peer (cliKitStk B)).loadRel
-      StoresGhost.opened.sessions peer.val (.ok (some r)))
-    (hcur : r.currentSession = some s_old) :
-    TopStateTight P.C.F P.Q.K s_old.state.pqRatchetState ∧
-    SessionCloneDom 286196 s_old ∧
-    SessionCloneDom 286196 (clearPending s_old) ∧
-    (encodeRecord r).length ≤ 2097152 := by
-  have hPeer0 : PeerSpqrStateTight640 P.C.F P.Q.K (runFiles i) (addrValOf peerV) :=
-    peerSpqrStateTight640_of_pqOrD3Recv hi hparse
-  have hPeer : PeerSpqrStateTight640 P.C.F P.Q.K F peer.val := by
-    rw [hfiles, hpeer]
-    exact hPeer0
-  have hKit : scopeKit r := h7l45r_scopeKit_of_loadRel hload
-  let σ := cliKitStk B
-  have hScAt :
-      (cliSessionStoreSpec A 0#64 cliIo.rd F cliWrOk scopeKit peer
-        σ.sessLoadShim σ.sessLoadPoll σ.sessStoreShim σ.sessStorePoll).ScopeAt
-        scopeKit StoresGhost.opened.sessions peer.val r :=
-    ⟨hKit, hload⟩
-  have hTop : TopStateTight P.C.F P.Q.K s_old.state.pqRatchetState :=
-    peerSpqrStateTight640_of_cliSessionStoreSpec hScAt hcur rfl hPeer
-  have hpq_le : s_old.state.pqRatchetState.length ≤ 286196 := by
-    have hle := topStateTight_length_le hTop
-    have hcap_eq : spqrStateTightCapBytes = 286196 := rfl
-    rw [hcap_eq] at hle
-    exact hle
-  have hDom : SessionCloneDom 286196 s_old :=
-    sessionCloneDom_of_scopeKit_pq hKit hcur hpq_le
-  have hDomClr : SessionCloneDom 286196 (clearPending s_old) :=
-    h7l45r_sessionCloneDom_clearPending hDom
-  have hEnc : (encodeRecord r).length ≤ 2097152 := by
-    have hle := h7l23_loadRel_encodeRecord_le_sessionCap_of_loadRel hload
-    have hcap_eq : sessionCapBytes = 2097152 := rfl
-    rw [hcap_eq] at hle
-    exact hle
-  exact ⟨hTop, hDom, hDomClr, hEnc⟩
-
-theorem h7l45r_l4 : h7l4_Stmt := by
-  intro _ A P B _i _peerV _F _peer _r _s_old hi hparse hfiles hpeer hload hcur
-  exact h7l45r_loaded_session_tight_and_cloneDom A P B hi hparse hfiles hpeer hload hcur
-
-/-- Discharges `arch_valid` on `W4BinaryArchiveDirectEnv` via `g_arch := ⟨0#64, 0#64, none⟩`. -/
-theorem h7l45r_arch_valid_none (r : SessionRecord (List (BitVec 8))) :
-    ∀ (G : SessionGhost) (ses : Session (List (BitVec 8))),
-      (⟨0#64, 0#64, none⟩ : RecordGhost).cur = some G →
-      r.currentSession = some ses →
-      SessionGhostValid G ses ∧ SessionCloneDom 286196 ses := by
-  intro _ _ hg
-  cases hg
-
-/-- Discharges `arch_valid` given `RecordGhostValid g_arch r`, `r.currentSession = some s_old`, and `SessionCloneDom 286196 s_old`. -/
-theorem h7l45r_arch_valid_some {g_arch : RecordGhost}
-    {r : SessionRecord (List (BitVec 8))} {s_old : Session (List (BitVec 8))}
-    (hcur : r.currentSession = some s_old)
-    (hdom : SessionCloneDom 286196 s_old)
-    (hrgv : RecordGhostValid g_arch r) :
-    ∀ (G : SessionGhost) (ses : Session (List (BitVec 8))),
-      g_arch.cur = some G →
-      r.currentSession = some ses →
-      SessionGhostValid G ses ∧ SessionCloneDom 286196 ses := by
-  intro G ses hg hses
-  have hs_eq : ses = s_old := Option.some.inj (hses.symm.trans hcur)
-  subst hs_eq
-  have hgv : SessionGhostValid G ses := by
-    unfold RecordGhostValid at hrgv
-    rw [hg, hses] at hrgv
-    exact hrgv
-  exact ⟨hgv, hdom⟩
 
 /-! ## 3. Fresh-Responder `pathAInitState` and `pathAInitSession` Bounds -/
 
@@ -332,15 +251,5 @@ theorem h7l45r_pathAInit_segClone_sub_w4CloneACDomEnv
     W4CloneACDomEnv evs :=
   ⟨recG, pathAInitSession P me k m dk,
     h7l45r_pathAInit_freshBobCloneDom P me k m dk recG hgv, hevs⟩
-
-theorem h7l45r_l5a : h7l5a_Stmt := by
-  intro P me k m dk
-  refine ⟨h7l45r_pathAInit_receiverChains_nil P me k m dk,
-    h7l45r_pathAInit_pqRatchetState_length_le_2048 P me k m dk,
-    h7l45r_pathAInit_topStateTight P me k m dk,
-    h7l45r_pathAInit_sessionCloneDom_16K P me k m dk,
-    fun td hst hct => h7l45r_pathAInit_tdAC_dom P me k m dk td hst hct,
-    fun recG hgv => ⟨h7l45r_pathAInit_freshBobCloneDom P me k m dk recG hgv,
-      fun _ hevs => h7l45r_pathAInit_segClone_sub_w4CloneACDomEnv P me k m dk recG hgv hevs⟩⟩
 
 end LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotDom0LeafL45R

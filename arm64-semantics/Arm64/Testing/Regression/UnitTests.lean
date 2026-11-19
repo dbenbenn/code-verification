@@ -954,9 +954,11 @@ def allTestsPart1 (_ : Unit := ()) : List TestCase := [
         (mmapArgs sMmap1 0x1000#64 |>.writeReg64 .x3 0x21#64)
       -- 3d. getrandom(0x3000, 3, 0) fills bytes from oracle query 2 and returns 3;
       --     valid flags (GRND_NONBLOCK=1, GRND_RANDOM=2, GRND_INSECURE=4, GRND_NONBLOCK|GRND_RANDOM=3,
-      --     GRND_NONBLOCK|GRND_INSECURE=5, and ignored upper 32 bits of X2) succeed, while unknown flags,
-      --     GRND_RANDOM|GRND_INSECURE (6 or 7), or count > MAX_RW_COUNT (0x7ffff000) return -EINVAL (-22)
-      --     without writing the buffer or advancing oracleIdx.
+      --     GRND_NONBLOCK|GRND_INSECURE=5, and ignored upper 32 bits of X2) succeed, while unknown flags
+      --     or GRND_RANDOM|GRND_INSECURE (6 or 7) return -EINVAL (-22) without writing the buffer or
+      --     advancing oracleIdx. count > MAX_RW_COUNT (0x7ffff000) and partially-writable buffers
+      --     (Linux returns a short count) fail closed with .Exception, also without writing the buffer
+      --     or advancing oracleIdx.
       let callGetrandom (s : State) (buf count flags64 : BitVec 64) : State :=
         runWordsRaw [0xd4000001#32, 0xd65f03c0#32]
           (s |>.writeReg64 .x8 278#64 |>.writeReg64 .x0 buf |>.writeReg64 .x1 count
@@ -967,6 +969,8 @@ def allTestsPart1 (_ : Unit := ()) : List TestCase := [
       let sRandMutExcl6 := callGetrandom sRandUpperW2 0x3000#64 1#64 0x6#64
       let sRandMutExcl7 := callGetrandom sRandUpperW2 0x3000#64 1#64 0x7#64
       let sRandTooBig := callGetrandom sRandUpperW2 0x3000#64 0x7ffff001#64 0#64
+      -- [0x3000, 0x3003) is mapped: a 2-byte buffer at 0x3002 is writable for 1 byte only.
+      let sRandPartial := callGetrandom sRandUpperW2 0x3002#64 2#64 0#64
       -- 4. exit(0) and exit_group(7)
       let sExit := runWordsRaw [0xd4000001#32, 0xd65f03c0#32]
         (sMmap |>.writeReg64 .x8 93#64 |>.writeReg64 .x0 0#64)
@@ -1005,9 +1009,12 @@ def allTestsPart1 (_ : Unit := ()) : List TestCase := [
       sRandMutExcl6.oracleIdx == 4 &&
       sRandMutExcl7.readReg64 .x0 == -22#64 &&
       sRandMutExcl7.oracleIdx == 4 &&
-      sRandTooBig.readReg64 .x0 == -22#64 &&
+      sRandTooBig.status == .Exception "unmodeled getrandom count > MAX_RW_COUNT (short read)" &&
       sRandTooBig.mem.read8 0x3000#64 == 0x30#8 &&
       sRandTooBig.oracleIdx == 4 &&
+      sRandPartial.status == .Exception "unmodeled getrandom partial-fault short read" &&
+      sRandPartial.mem.read8 0x3002#64 == sRandUpperW2.mem.read8 0x3002#64 &&
+      sRandPartial.oracleIdx == 4 &&
       sExit.status == .Exited 0#64 &&
       sExitGroup.status == .Exited 7#64 },
   { name := "execWords: SVC #0 nondeterministic clock_gettime (oracle query, non-monotonic successive calls, EFAULT and unmodeled clock ID preserve oracleIdx)"
@@ -2225,7 +2232,7 @@ def allTestsPart2 (_ : Unit := ()) : List TestCase := [
   else Harness.UnitTestCase.skipMissingFiles "ELF Process Semantics: runElfImageFast vs runElfImage on echo_stdin.elf"
     ["Arm64/Testing/Regression/fixtures/echo_stdin.elf"],
   if_test_files_exist% ["fixtures/abort_status.elf"]
-  then { name := "ELF Process Semantics: stock zig/musl abort_status.elf abort() (rt_sigprocmask fail-closed) vs exit(134) (134, signal none) fast-vs-ref check"
+  then { name := "ELF Process Semantics: stock zig/musl abort_status.elf abort() (134, signal some 6) vs exit(134) (134, signal none) fast-vs-ref check"
          check := Testing.Process.checkAbortStatusProcess }
   else Harness.UnitTestCase.skipMissingFiles "ELF Process Semantics: abort_status.elf fast-vs-ref check"
     ["Arm64/Testing/Regression/fixtures/abort_status.elf"],
@@ -2491,7 +2498,7 @@ def main (args : List String) : IO UInt32 := do
   IO.println s!"[unit_tests] Phases 2-4/4 ({baseCases.length} base + {1 + phase4Cases.length} process/diff cases, {allItems.size} work items) completed in {t4 - t1} ms (total {t4 - t0} ms)"
   stdout.flush
   let abortQemuName :=
-    "ELF Process Semantics: differential qemu-aarch64 vs runElf on static musl abort() (QEMU 134 vs Lean rt_sigprocmask fail-closed; exit(134) match)"
+    "ELF Process Semantics: differential qemu-aarch64 vs runElf on static musl abort() (134, SIGABRT) and exit(134) (134, none)"
   let extraCases : List Testing.TestCase := [
     if abortElfMissing.isEmpty then { name := abortQemuName, check := abortQemuOk }
     else Testing.Harness.UnitTestCase.skipMissingFiles abortQemuName [abortElfRel]

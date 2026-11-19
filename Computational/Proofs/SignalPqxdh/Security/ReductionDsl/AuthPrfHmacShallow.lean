@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacA
+public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacA -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacRun
 import Computational.Proofs.SignalPqxdh.Security.SigHopA
 import VCVio.EvalDist.Monad.Basic
@@ -22,7 +22,7 @@ hmResume`, separating `PrimBaseSpec` pre-processing from the at-most-one `PrfHma
 and replaces closure-returning receive preparation with closure-free `HmRecvData`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,7 +34,7 @@ open OracleSpec OracleComp
 
 /-! ## Multi-key Game Steps -/
 
-def hmKeyP (i : ℕ) (st : PrfHmacMuState) :
+@[expose] def hmKeyP (i : ℕ) (st : PrfHmacMuState) :
     OracleComp PrimBaseSpec ((ℕ × MessageKeys) × PrfHmacMuState) :=
   match st.keys.lookup i with
   | some e => pure (e, st)
@@ -56,7 +56,7 @@ theorem embedPrim_ite {ι : Type} {spec : OracleSpec.{0, 0} ι} {α : Type} (c :
       if c then embedPrim (spec := spec) a else embedPrim (spec := spec) b := by
   split <;> rfl
 
-def hmForgeP (jt i : ℕ) (ad ct : Bytes) (st : PrfHmacMuState) :
+@[expose] def hmForgeP (jt i : ℕ) (ad ct : Bytes) (st : PrfHmacMuState) :
     OracleComp PrimBaseSpec (Bool × PrfHmacMuState) :=
   if st.chal.lookup i == some (ad, ct) then pure (false, st)
   else do
@@ -94,16 +94,16 @@ structure HmEncCont where
   ct : Bytes
   st : PrfHmacMuState
 
-def HmEncCont.x0 (c : HmEncCont) : Bytes := aeadMacInput c.ad (etmBody c.ct)
+@[expose] def HmEncCont.x0 (c : HmEncCont) : Bytes := aeadMacInput c.ad (etmBody c.ct)
 
-def HmEncCont.post (c : HmEncCont) (t : Bytes) : Option Bytes × PrfHmacMuState :=
+@[expose] def HmEncCont.post (c : HmEncCont) (t : Bytes) : Option Bytes × PrfHmacMuState :=
   (some (etmBody c.ct ++ t.take 8), { c.st with
     chal := (c.i, (c.ad, etmBody c.ct ++ t.take 8)) :: c.st.chal
     pending := c.st.pending.filter (fun e => !(e.1 == c.r && e.2.1 == c.x0))
     bad := c.st.bad || prfHmacPendingHit c.st.pending c.r c.x0 t })
 
 /-- Pre-oracle `encOnce` step, returning `.inr` iff the key has rank `jt`. -/
-def hmEncPre (jt i : ℕ) (ad pt : Bytes) (st : PrfHmacMuState) :
+@[expose] def hmEncPre (jt i : ℕ) (ad pt : Bytes) (st : PrfHmacMuState) :
     OracleComp PrimBaseSpec ((Option Bytes × PrfHmacMuState) ⊕ HmEncCont) :=
   match st.chal.lookup i with
   | some _ => pure (.inl (none, st))
@@ -161,11 +161,11 @@ structure HmSendCont (S : Setup) where
   hst    : AuthHybridStateFixed S
   enc    : HmEncCont
 
-def HmSendCont.post {S : Setup} (c : HmSendCont S) (t : Bytes) : HmRes S :=
+@[expose] def HmSendCont.post {S : Setup} (c : HmSendCont S) (t : Bytes) : HmRes S :=
   (finishAuthIntSendPure c.sid c.bundle c.m0 c.m1 c.p default ((c.enc.post t).1.getD []) c.hst,
     (c.enc.post t).2)
 
-def hmSendTail (S : Setup) (jt : ℕ) (sid : SessionId S) (bundle : PreKeyBundleInput)
+@[expose] def hmSendTail (S : Setup) (jt : ℕ) (sid : SessionId S) (bundle : PreKeyBundleInput)
     (m0 m1 : Bytes) (hst : AuthHybridStateFixed S) (mst : PrfHmacMuState) (p : AuthIntSendPrep S) :
     OracleComp PrimBaseSpec (HmRes S ⊕ HmSendCont S) :=
   if p.isIdealSend then do
@@ -179,14 +179,14 @@ def hmSendTail (S : Setup) (jt : ℕ) (sid : SessionId S) (bundle : PreKeyBundle
     let ct ← primQ (.aeadEnc mk p.ad p.msgPlain)
     pure (.inl (finishAuthIntSendPure sid bundle m0 m1 p mk ct hst, mst))
 
-def hmSendPre (S : Setup) (jt : ℕ) (sid : SessionId S) (u : Fin S.N_id)
+@[expose] def hmSendPre (S : Setup) (jt : ℕ) (sid : SessionId S) (u : Fin S.N_id)
     (bundle : PreKeyBundleInput) (m0 m1 : Bytes) (hst : AuthHybridStateFixed S)
     (mst : PrfHmacMuState) : OracleComp PrimBaseSpec (HmRes S ⊕ HmSendCont S) := do
   match ← prepAuthIntSendPrim S sid u bundle m0 m1 hst with
   | none => pure (.inl ((.noneResp, hst), mst))
   | some p => hmSendTail S jt sid bundle m0 m1 hst mst p
 
-def hmResume {S : Setup} : HmRes S ⊕ HmSendCont S → OracleComp PrfHmacSimSpec (HmRes S)
+@[expose] def hmResume {S : Setup} : HmRes S ⊕ HmSendCont S → OracleComp PrfHmacSimSpec (HmRes S)
   | .inl r => pure r
   | .inr c => c.post <$> prfHmacEvalQ c.enc.x0
 
@@ -234,7 +234,7 @@ def HmRecvData.toPrep {S : Setup} (mkFinish : List (Nat × UInt32 × UInt32 × B
   { kEntry := d.kEntry, bEntry := d.bEntry, opkPk? := d.opkPk?, secrets := d.secrets,
     hstDec := d.hstDec, finish := mkFinish d.usedTriples' d.senderIsHonest d.hstDec }
 
-def hmFinishPrepP (S : Setup) (kVal jVal : Nat) (kEntry : PrincipalEntry)
+@[expose] def hmFinishPrepP (S : Setup) (kVal jVal : Nat) (kEntry : PrincipalEntry)
     (bEntry : SpkBundleEntry) (opkSk? opkPk? : Option Bytes) (msg : PreKeyMsg)
     (hst : AuthHybridState S) : OracleComp PrimBaseSpec (Option (HmRecvData S)) := do
   let st := hst.base
@@ -282,7 +282,7 @@ theorem finishPrepareAuthRecvPrim_eq (S : Setup) (kVal jVal : Nat) (kEntry : Pri
     · simp only [map_bind, map_pure, Option.map_some]
       rfl
 
-def hmRecvOPKPrepP (S : Setup) (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk)
+@[expose] def hmRecvOPKPrepP (S : Setup) (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk)
     (msg : PreKeyMsg) (hst : AuthHybridState S) :
     OracleComp PrimBaseSpec (Option (HmRecvData S)) := do
   let st := hst.base
@@ -300,7 +300,7 @@ def hmRecvOPKPrepP (S : Setup) (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_
     hmFinishPrepP S k.val j.val kEntry bEntry (some oEntry.opkSk) (some oEntry.opkPk) msg hst
   | _, _, _ => return none
 
-def hmRecvNoOPKPrepP (S : Setup) (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk)
+@[expose] def hmRecvNoOPKPrepP (S : Setup) (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk)
     (msg : PreKeyMsg) (hst : AuthHybridState S) :
     OracleComp PrimBaseSpec (Option (HmRecvData S)) := do
   let st := hst.base
@@ -369,7 +369,7 @@ theorem prepareAuthRecvNoOPKPrim_eq (S : Setup) (k : Fin S.N_id) (j : Fin S.N_re
 abbrev HmSchedOut := Option (DRKey × Bytes × Bytes × Bytes × List (Bytes × DRKey) ×
   List ((Bytes × Bytes) × (Bytes × Bytes)))
 
-def hmSchedFinP {S : Setup} (jt : ℕ) (kEntry : PrincipalEntry) (msg : PreKeyMsg)
+@[expose] def hmSchedFinP {S : Setup} (jt : ℕ) (kEntry : PrincipalEntry) (msg : PreKeyMsg)
     (recvCount : Nat) (mkSaltCache : AuthMkSaltCache S) (sp : AuthIntRecvSchedPrep S)
     (mst : PrfHmacMuState) :
     OracleComp PrimBaseSpec ((HmSchedOut × AuthMkSaltCache S) × PrfHmacMuState) := do
@@ -446,7 +446,7 @@ theorem prfMuRun_finishAuthRecvScheduleMuPrim {S : Setup} (jt : ℕ) (kEntry : P
     refine bind_congr fun mk => bind_congr fun pt? => ?_
     rcases pt? with _ | pt <;> rfl
 
-def hmSchedP (S : Setup) (jt : ℕ) (hstDec : AuthHybridState S) (recvCount : Nat)
+@[expose] def hmSchedP (S : Setup) (jt : ℕ) (hstDec : AuthHybridState S) (recvCount : Nat)
     (mkSaltCache : AuthMkSaltCache S) (kEntry : PrincipalEntry) (bEntry : SpkBundleEntry)
     (opkPk? : Option Bytes) (secrets : Bytes) (msg : PreKeyMsg) (mst : PrfHmacMuState) :
     OracleComp PrimBaseSpec ((HmSchedOut × AuthMkSaltCache S) × PrfHmacMuState) := do
@@ -469,7 +469,7 @@ theorem prfMuRun_evalAuthRecvScheduleMuPrim (S : Setup) (jt : ℕ) (hstDec : Aut
   · rfl
   · exact prfMuRun_finishAuthRecvScheduleMuPrim jt kEntry msg recvCount mkSaltCache sp mst
 
-def hmRecvTail (S : Setup) (jt : ℕ) (msg : PreKeyMsg) (hst : AuthHybridStateFixed S)
+@[expose] def hmRecvTail (S : Setup) (jt : ℕ) (msg : PreKeyMsg) (hst : AuthHybridStateFixed S)
     (mst : PrfHmacMuState) (d : HmRecvData S)
     (fin : HmSchedOut → AuthResponse × AuthHybridState S) :
     OracleComp PrimBaseSpec (HmRes S) := do
@@ -483,7 +483,7 @@ def hmRecvTail (S : Setup) (jt : ℕ) (msg : PreKeyMsg) (hst : AuthHybridStateFi
 /-! ## Fused Step -/
 
 /-- Pre-oracle `PrimBaseSpec` stage of one `Auth` query in the fused `PrfHmac` reduction. -/
-def hmPre (S : Setup) (jt : ℕ) (q : AuthQuery S) (hst : AuthHybridStateFixed S)
+@[expose] def hmPre (S : Setup) (jt : ℕ) (q : AuthQuery S) (hst : AuthHybridStateFixed S)
     (mst : PrfHmacMuState) : OracleComp PrimBaseSpec (HmRes S ⊕ HmSendCont S) :=
   match q with
   | .sendOPK u i bundle m0 m1 =>

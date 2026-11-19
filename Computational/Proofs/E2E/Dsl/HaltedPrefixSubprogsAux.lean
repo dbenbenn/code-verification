@@ -10,20 +10,20 @@ limitations under the License.
 module
 
 public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge -- proof-setup: allow-public-import
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.CostedTables -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.CostedTables
 public import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.MacroLift -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.SizeBudgetBridge -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.ClampsLossless -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.M3Interfaces -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.E2EStateRepr -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.FreshnessSim -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.StartAndExtSmAux -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.StartAndExtSm -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.M3Subprograms -- proof-setup: allow-public-import
-public import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.PrefixRedHaltedEval -- proof-setup: allow-public-import
-public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.MacroLift
+import Computational.Proofs.ReductionDsl.SizeBudgetBridge
+import Computational.Proofs.E2E.Dsl.ClampsLossless
+import Computational.Proofs.E2E.Dsl.M3Interfaces
+import Computational.Proofs.E2E.Dsl.E2EStateRepr
+import Computational.Proofs.E2E.Dsl.FreshnessSim
+import Computational.Proofs.E2E.Dsl.StartAndExtSmAux
+import Computational.Proofs.E2E.Dsl.StartAndExtSm
+import Computational.Proofs.E2E.Dsl.M3Subprograms
+import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers
+import Computational.Proofs.E2E.Dsl.PrefixRedHaltedEval
+import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore
 public import Computational.Specifications.Reductions.ReductionDsl.AtomicOps
 public import Computational.Specifications.Reductions.ReductionDsl.TargetCodecs
 import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync
@@ -149,11 +149,6 @@ private theorem castDen_liftVal_eq {ℓ : ℕ} {Pt : Type} {t : Ty (e2eSig ℓ)}
     castDen h (liftVal (Pt := Pt) x) = cast hD.symm x := by
   have h1 : HEq (castDen h (liftVal (Pt := Pt) x)) (liftVal (Pt := Pt) x) := by cases h; rfl
   exact eq_of_heq ((h1.trans (liftVal_heq (Pt := Pt) x)).trans (cast_heq hD.symm x).symm)
-
-theorem liftVal_eq_id {ℓ : ℕ} {Pt : Type} {t : Ty (e2eSig ℓ)}
-    (hD : (liftTy (Pt := Pt) t).denote = t.denote := by rfl) (x : t.denote) :
-    liftVal (Pt := Pt) x = cast hD.symm x :=
-  eq_of_heq ((liftVal_heq (Pt := Pt) x).trans (cast_heq hD.symm x).symm)
 
 @[expose] def castExpr {S₀ : Sig} {O₀ : Ops S₀} {Γ : List (Ty S₀)} {t₁ t₂ : Ty S₀}
     (h : t₁ = t₂) (e : Expr O₀ Γ t₁) : Expr O₀ Γ t₂ := h ▸ e

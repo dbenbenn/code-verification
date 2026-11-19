@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -43,21 +43,21 @@ export LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit (fit
 /-! ## 1. Exact `RawVec` (`initCap = 4`) Doubling Schedule -/
 
 /-- One `RawVec::grow_one` capacity transition (`0 ↦ 4`, `cap ↦ 2 * cap` for `cap > 0`). -/
-def vecCap4Next (cap : Nat) : Nat :=
+@[expose] def vecCap4Next (cap : Nat) : Nat :=
   if cap = 0 then 4 else 2 * cap
 
 /-- Capacity after pushing one element at current `(len, cap)`: grows iff `¬ (len < cap)`. -/
-def vecCap4Push (len cap : Nat) : Nat :=
+@[expose] def vecCap4Push (len cap : Nat) : Nat :=
   if len < cap then cap else vecCap4Next cap
 
 /-- Exact `RawVec<T>::grow_one` capacity (`initCap = 4`, doubling) after pushing `n` elements
 starting from `(len = 0, cap = 0)`. -/
-def vecCap4Of : Nat → Nat
+@[expose] def vecCap4Of : Nat → Nat
   | 0 => 0
   | len + 1 => vecCap4Push len (vecCap4Of len)
 
 /-- Reachable `RawVec` capacities with initial capacity `4`: `0` or `4 * 2 ^ j`. -/
-def IsPow2Cap4 (cap : Nat) : Prop :=
+@[expose] def IsPow2Cap4 (cap : Nat) : Prop :=
   cap = 0 ∨ ∃ j : Nat, cap = 4 * 2 ^ j
 
 @[simp] theorem vecCap4Of_zero : vecCap4Of 0 = 0 := rfl
@@ -120,9 +120,6 @@ theorem vecCap4Of_mono {m n : Nat} (hmn : m ≤ n) : vecCap4Of m ≤ vecCap4Of n
   | refl => omega
   | step _ ih => exact Nat.le_trans ih (vecCap4Of_step_le _)
 
-theorem vecCap4Of_pos_of_pos {n : Nat} (hn : 0 < n) : 4 ≤ vecCap4Of n := by
-  simpa only [vecCap4Of_one] using vecCap4Of_mono (m := 1) hn
-
 theorem isPow2Cap4_next_le_of_lt {cap capMax : Nat}
     (hcap : IsPow2Cap4 cap) (hmax : IsPow2Cap4 capMax) (hlt : cap < capMax) :
     vecCap4Next cap ≤ capMax := by
@@ -157,24 +154,11 @@ theorem vecCap4Of_le_four_mul_pow {n : Nat} (j : Nat) (hn : n ≤ 4 * 2 ^ j) :
       have hlt : vecCap4Of len < 4 * 2 ^ j := by omega
       exact isPow2Cap4_next_le_of_lt (vecCap4Of_pow2 len) (Or.inr ⟨j, rfl⟩) hlt
 
-theorem vecCap4Of_le_four {n : Nat} (hn : n ≤ 4) : vecCap4Of n ≤ 4 :=
-  vecCap4Of_le_four_mul_pow 0 (by simpa using hn)
-
 theorem vecCap4Of_le_eight {n : Nat} (hn : n ≤ 8) : vecCap4Of n ≤ 8 :=
   vecCap4Of_le_four_mul_pow 1 (by simpa using hn)
 
-theorem vecCap4Of_le_1024 {n : Nat} (hn : n ≤ 1024) : vecCap4Of n ≤ 1024 :=
-  vecCap4Of_le_four_mul_pow 8 (by omega)
-
 theorem vecCap4Of_le_pow20 {n : Nat} (hn : n ≤ 2 ^ 20) : vecCap4Of n ≤ 2 ^ 20 :=
   vecCap4Of_le_four_mul_pow 18 (by omega)
-
-/-- Every wire entry of a repeated `Chain` / `MessageKey` field uses `≥ 2` bytes
-(tag + length varint), so `k ≤ bs.length / 2 ≤ 2 ^ 20` when `bs.length ≤ 2 ^ 21`, giving
-`vecCap4Of (n / 2) ≤ 2 ^ 20`. -/
-theorem vecCap4Of_div2_le_pow20 {n : Nat} (hn : n ≤ 2 ^ 21) :
-    vecCap4Of (n / 2) ≤ 2 ^ 20 :=
-  vecCap4Of_le_pow20 (by omega)
 
 /-- Tight non-power-of-two upper bound: for `k ≥ 5`, `vecCap4Of k ≤ 2 * k - 2`
 (attained right after doubling at `k = 4 * 2 ^ j + 1`, where `vecCap4Of k = 8 * 2 ^ j = 2 * k - 2`). -/
@@ -194,12 +178,12 @@ theorem vecCap4Of_le_two_mul_sub_two {k : Nat} (hk : 5 ≤ k) :
 
 /-- Exact `AllocEvent` list emitted by one `grow_one` step (`stride = 104, align = 8`) from `cap`
 to `vecCap4Next cap`. -/
-def vec104GrowEvents (cap : Nat) : List AllocEvent :=
+@[expose] def vec104GrowEvents (cap : Nat) : List AllocEvent :=
   if cap = 0 then rustAllocEvents (4 * 104) 8
   else rustReallocEvents (cap * 104) (2 * cap * 104) 8
 
 /-- Per-step `cumSmall` charge of `vec104GrowEvents cap` under `HasFineReallocCredit M`. -/
-def vec104StepCumCost (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
+@[expose] def vec104StepCumCost (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
   if cap = 0 then
     if 4 * 104 ≤ HasFineReallocCredit.smallMaxReq M then
       HasFineReallocCredit.smallAllocCost M (4 * 104)
@@ -212,7 +196,7 @@ def vec104StepCumCost (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) 
       HasFineReallocCredit.largeMetaCost M
 
 /-- Cumulative `cumSmall` upper bound along the doubling chain `0 → 4 → 8 → … → cap`. -/
-def vec104CumOfCap (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
+@[expose] def vec104CumOfCap (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
   if cap < 4 then 0
   else if cap < 8 then vec104StepCumCost M 0
   else vec104CumOfCap M (cap / 2) + vec104StepCumCost M (cap / 2)
@@ -220,16 +204,16 @@ termination_by cap
 decreasing_by omega
 
 /-- Remaining `cumSmall` budget from current capacity `cap` up to target capacity `capMax`. -/
-def vec104CumRem (M : AllocCostModel) [HasFineReallocCredit M] (capMax cap : Nat) : Nat :=
+@[expose] def vec104CumRem (M : AllocCostModel) [HasFineReallocCredit M] (capMax cap : Nat) : Nat :=
   vec104CumOfCap M capMax - vec104CumOfCap M cap
 
 /-- Direct-`mmap` live byte cost of a `Vec<104>` at capacity `cap`. -/
-def vec104LargeLive (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
+@[expose] def vec104LargeLive (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
   if cap * 104 ≤ HasFineReallocCredit.smallMaxReq M then 0
   else HasFineReallocCredit.largeCost M (cap * 104)
 
 /-- Transient peak direct-`mmap` overlap across all `grow_one` doublings `0 → 4 → 8 → … → cap`. -/
-def vec104PeakLarge (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
+@[expose] def vec104PeakLarge (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
   if cap < 4 then 0
   else if cap < 8 then vec104LargeLive M 4
   else max (vec104PeakLarge M (cap / 2))
@@ -238,7 +222,7 @@ termination_by cap
 decreasing_by omega
 
 /-- Direct-`mmap` live byte cost of a `Vec<u8>` (`align = 1`) at capacity `cap`. -/
-def bytesLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
+@[expose] def bytesLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
   if cap ≤ HasFineReallocCredit.smallMaxReq M then 0
   else HasFineReallocCredit.largeCost M cap
 
@@ -506,205 +490,6 @@ theorem vec104Push_budget_step (M : AllocCostModel) [HasFineReallocCredit M]
 
 /-! ## 3. Symbolic Upper Bounds under `hsplit` & `hlarge` -/
 
-theorem vec104LargeLive_eq_zero_of_le_1024 (M : AllocCostModel) [HasFineReallocCredit M]
-    (hsplit : 1024 * 104 ≤ HasFineReallocCredit.smallMaxReq M)
-    {cap : Nat} (hcap : cap ≤ 1024) :
-    vec104LargeLive M cap = 0 := by
-  unfold vec104LargeLive
-  have hle : cap * 104 ≤ HasFineReallocCredit.smallMaxReq M := by omega
-  simp only [hle, ↓reduceIte]
-
-theorem vec104LargeLive_le_of_hlarge (M : AllocCostModel) [HasFineReallocCredit M]
-    {cLarge : Nat}
-    (hlarge : ∀ req : Nat, HasFineReallocCredit.smallMaxReq M < req →
-      HasFineReallocCredit.largeCost M req ≤ req + cLarge)
-    (cap : Nat) :
-    vec104LargeLive M cap ≤ cap * 104 + cLarge := by
-  unfold vec104LargeLive
-  split
-  · omega
-  · rename_i h
-    exact hlarge (cap * 104) (by omega)
-
-theorem bytesLargeLive_le_of_hlarge (M : AllocCostModel) [HasFineReallocCredit M]
-    {cLarge : Nat}
-    (hlarge : ∀ req : Nat, HasFineReallocCredit.smallMaxReq M < req →
-      HasFineReallocCredit.largeCost M req ≤ req + cLarge)
-    (cap : Nat) :
-    bytesLargeLive M cap ≤ cap + cLarge := by
-  unfold bytesLargeLive
-  split
-  · omega
-  · rename_i h
-    exact hlarge cap (by omega)
-
-theorem bytesLargeLive_eq_zero_of_le_smallMaxReq (M : AllocCostModel) [HasFineReallocCredit M]
-    {cap : Nat} (hcap : cap ≤ HasFineReallocCredit.smallMaxReq M) :
-    bytesLargeLive M cap = 0 := by
-  unfold bytesLargeLive
-  simp only [hcap, ↓reduceIte]
-
-/-- Symbolic single-vector live bound at `cap ≤ 2 ^ 20`
-(`= 109,060,099` B under T2's `cLarge = 8,195`). -/
-theorem vec104LargeLive_le_of_cap_le_pow20 (M : AllocCostModel) [HasFineReallocCredit M]
-    {cLarge : Nat}
-    (hlarge : ∀ req : Nat, HasFineReallocCredit.smallMaxReq M < req →
-      HasFineReallocCredit.largeCost M req ≤ req + cLarge)
-    {cap : Nat} (hcap : cap ≤ 2 ^ 20) :
-    vec104LargeLive M cap ≤ 2 ^ 20 * 104 + cLarge := by
-  have h := vec104LargeLive_le_of_hlarge M hlarge cap
-  omega
-
-theorem vec104PeakLarge_eq_zero_of_le_1024 (M : AllocCostModel) [HasFineReallocCredit M]
-    (hsplit : 1024 * 104 ≤ HasFineReallocCredit.smallMaxReq M)
-    {cap : Nat} (hcap : cap ≤ 1024) :
-    vec104PeakLarge M cap = 0 := by
-  induction cap using Nat.strongRecOn with
-  | ind c ih =>
-    unfold vec104PeakLarge
-    split
-    · rfl
-    · split
-      · exact vec104LargeLive_eq_zero_of_le_1024 M hsplit (by omega)
-      · rename_i h1 h2
-        have ih_half := ih (c / 2) (by omega) (by omega)
-        have hl_half := vec104LargeLive_eq_zero_of_le_1024 M hsplit (cap := c / 2) (by omega)
-        have hl_c := vec104LargeLive_eq_zero_of_le_1024 M hsplit (cap := c) hcap
-        rw [ih_half, hl_half, hl_c]
-        rfl
-
-theorem vec104PeakLarge_le_of_hlarge (M : AllocCostModel) [HasFineReallocCredit M]
-    {cLarge : Nat}
-    (hlarge : ∀ req : Nat, HasFineReallocCredit.smallMaxReq M < req →
-      HasFineReallocCredit.largeCost M req ≤ req + cLarge)
-    (cap : Nat) :
-    vec104PeakLarge M cap ≤ ((cap / 2) * 104 + cLarge) + (cap * 104 + cLarge) := by
-  induction cap using Nat.strongRecOn with
-  | ind c ih =>
-    unfold vec104PeakLarge
-    split
-    · omega
-    · split
-      · have h4 := vec104LargeLive_le_of_hlarge M hlarge 4
-        omega
-      · rename_i h1 h2
-        have ih_half := ih (c / 2) (by omega)
-        have hl_half := vec104LargeLive_le_of_hlarge M hlarge (c / 2)
-        have hl_c := vec104LargeLive_le_of_hlarge M hlarge c
-        have hquarter : (c / 2) / 2 ≤ c / 2 := Nat.div_le_self _ _
-        omega
-
-/-- Symbolic single-vector transient `realloc` peak bound at `cap ≤ 2 ^ 20`
-(`= 163,594,246` B under T2's `cLarge = 8,195`). -/
-theorem vec104PeakLarge_le_of_cap_le_pow20 (M : AllocCostModel) [HasFineReallocCredit M]
-    {cLarge : Nat}
-    (hlarge : ∀ req : Nat, HasFineReallocCredit.smallMaxReq M < req →
-      HasFineReallocCredit.largeCost M req ≤ req + cLarge)
-    {cap : Nat} (hcap : cap ≤ 2 ^ 20) :
-    vec104PeakLarge M cap ≤ (2 ^ 19 * 104 + cLarge) + (2 ^ 20 * 104 + cLarge) := by
-  have h := vec104PeakLarge_le_of_hlarge M hlarge cap
-  omega
-
-/-- Per-vector bound on `vec104LargeLive M (vecCap4Of k)` under `hsplit` and `hlarge`:
-`0` when `k ≤ 1024`, and `≤ 208 * k - 208 + cLarge` when `1025 ≤ k`. -/
-theorem vec104LargeLive_vecCap4Of_le (M : AllocCostModel) [HasFineReallocCredit M]
-    {cLarge : Nat}
-    (hsplit : 1024 * 104 ≤ HasFineReallocCredit.smallMaxReq M)
-    (hlarge : ∀ req : Nat, HasFineReallocCredit.smallMaxReq M < req →
-      HasFineReallocCredit.largeCost M req ≤ req + cLarge)
-    (k : Nat) :
-    vec104LargeLive M (vecCap4Of k) ≤
-      if 1025 ≤ k then (208 * k - 208) + cLarge else 0 := by
-  by_cases hk : 1025 ≤ k
-  · simp only [hk, ↓reduceIte]
-    have hcap := vecCap4Of_le_two_mul_sub_two (k := k) (by omega)
-    have hl := vec104LargeLive_le_of_hlarge M hlarge (vecCap4Of k)
-    omega
-  · simp only [hk, ↓reduceIte]
-    rw [vec104LargeLive_eq_zero_of_le_1024 M hsplit (vecCap4Of_le_1024 (by omega))]
-
-theorem filter_ge_1025_mul_le_sum (ks : List Nat) :
-    1025 * (ks.filter (fun k => decide (1025 ≤ k))).length ≤ ks.sum := by
-  induction ks with
-  | nil => simp
-  | cons k rest ih =>
-    simp only [List.filter_cons, List.sum_cons]
-    by_cases hk : 1025 ≤ k
-    · simp only [decide_eq_true hk, ↓reduceIte, List.length_cons]
-      omega
-    · simp only [decide_eq_false hk, Bool.false_eq_true, ↓reduceIte]
-      omega
-
-theorem filter_ge_1025_length_le_div (ks : List Nat) :
-    (ks.filter (fun k => decide (1025 ≤ k))).length ≤ ks.sum / 1025 := by
-  have h := filter_ge_1025_mul_le_sum ks
-  omega
-
-/-- Multi-vector bound (by large-vector count): sums `vec104LargeLive M (vecCap4Of k)` over
-arbitrary `ks : List Nat`. Under `208 ≤ cLarge` (`cLarge = 8,195` on T2 gives `cLarge - 208 = 7,987`),
-bounded by `208 * ks.sum + nLarge * (cLarge - 208)`. -/
-theorem sum_vec104LargeLive_le_filter (M : AllocCostModel) [HasFineReallocCredit M]
-    {cLarge : Nat}
-    (hsplit : 1024 * 104 ≤ HasFineReallocCredit.smallMaxReq M)
-    (hlarge : ∀ req : Nat, HasFineReallocCredit.smallMaxReq M < req →
-      HasFineReallocCredit.largeCost M req ≤ req + cLarge)
-    (ks : List Nat) :
-    (ks.map (fun k => vec104LargeLive M (vecCap4Of k))).sum ≤
-      208 * ks.sum +
-        (ks.filter (fun k => decide (1025 ≤ k))).length * (cLarge - 208) +
-        (ks.filter (fun k => decide (1025 ≤ k))).length * (208 - min 208 cLarge) := by
-  induction ks with
-  | nil => simp
-  | cons k rest ih =>
-    simp only [List.map_cons, List.sum_cons, List.filter_cons]
-    have hk_le := vec104LargeLive_vecCap4Of_le M hsplit hlarge k
-    by_cases hk : 1025 ≤ k
-    · simp only [hk, ↓reduceIte] at hk_le
-      simp only [decide_eq_true hk, ↓reduceIte, List.length_cons, Nat.add_mul, Nat.one_mul]
-      omega
-    · simp only [hk, ↓reduceIte] at hk_le
-      simp only [decide_eq_false hk, Bool.false_eq_true, ↓reduceIte]
-      omega
-
-/-- Multi-vector bound (`208 ≤ cLarge`, bounded vector count `ks.length`):
-for `ks.length ≤ nVecs` (e.g., `nVecs = 5` on `NonEmptyV1Q` receiver chains),
-`(ks.map (vec104LargeLive M ∘ vecCap4Of)).sum ≤ 208 * ks.sum + ks.length * (cLarge - 208)`. -/
-theorem sum_vec104LargeLive_le_of_length (M : AllocCostModel) [HasFineReallocCredit M]
-    {cLarge : Nat} (hc : 208 ≤ cLarge)
-    (hsplit : 1024 * 104 ≤ HasFineReallocCredit.smallMaxReq M)
-    (hlarge : ∀ req : Nat, HasFineReallocCredit.smallMaxReq M < req →
-      HasFineReallocCredit.largeCost M req ≤ req + cLarge)
-    (ks : List Nat) :
-    (ks.map (fun k => vec104LargeLive M (vecCap4Of k))).sum ≤
-      208 * ks.sum + ks.length * (cLarge - 208) := by
-  have h1 := sum_vec104LargeLive_le_filter M hsplit hlarge ks
-  have hmin : 208 - min 208 cLarge = 0 := by omega
-  rw [hmin, Nat.mul_zero, Nat.add_zero] at h1
-  have hlen : (ks.filter (fun k => decide (1025 ≤ k))).length ≤ ks.length :=
-    List.length_filter_le _ _
-  have hmul : (ks.filter (fun k => decide (1025 ≤ k))).length * (cLarge - 208) ≤
-      ks.length * (cLarge - 208) := Nat.mul_le_mul_right _ hlen
-  omega
-
-/-- General multi-vector bound (`208 ≤ cLarge`, unrestricted vector count):
-`(ks.map (vec104LargeLive M ∘ vecCap4Of)).sum ≤ 208 * ks.sum + (ks.sum / 1025) * (cLarge - 208)`
-(for `ks.sum ≤ 2 ^ 20` and `cLarge = 8,195`: `≤ 208 * 2 ^ 20 + 1023 * 7987 = 226,274,509` B). -/
-theorem sum_vec104LargeLive_le_of_sum (M : AllocCostModel) [HasFineReallocCredit M]
-    {cLarge : Nat} (hc : 208 ≤ cLarge)
-    (hsplit : 1024 * 104 ≤ HasFineReallocCredit.smallMaxReq M)
-    (hlarge : ∀ req : Nat, HasFineReallocCredit.smallMaxReq M < req →
-      HasFineReallocCredit.largeCost M req ≤ req + cLarge)
-    (ks : List Nat) :
-    (ks.map (fun k => vec104LargeLive M (vecCap4Of k))).sum ≤
-      208 * ks.sum + (ks.sum / 1025) * (cLarge - 208) := by
-  have h1 := sum_vec104LargeLive_le_filter M hsplit hlarge ks
-  have hmin : 208 - min 208 cLarge = 0 := by omega
-  rw [hmin, Nat.mul_zero, Nat.add_zero] at h1
-  have hdiv := filter_ge_1025_length_le_div ks
-  have hmul : (ks.filter (fun k => decide (1025 ≤ k))).length * (cLarge - 208) ≤
-      (ks.sum / 1025) * (cLarge - 208) := Nat.mul_le_mul_right _ hdiv
-  omega
-
 /-! ## 4. Deallocation Credit Lemmas & `SessionGhost` / `SessionState` Live Potentials -/
 
 /-- Deallocating a non-zero `Vec<104>` buffer (`align = 8`) credits `vec104LargeLive M cap` back
@@ -741,11 +526,11 @@ theorem stepEvents_free_bytes (M : AllocCostModel) [HasFineReallocCredit M]
 
 /-- Large-`mmap` bytes owned by a niche-capable `cap : BitVec 64` (`0` when `cap.slt 1#64 = true`,
 i.e., `cap = 0#64` or `cap = noneCap`; else `bytesLargeLive M cap.toNat`). -/
-def sgnCapLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (cap : BitVec 64) : Nat :=
+@[expose] def sgnCapLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (cap : BitVec 64) : Nat :=
   if cap.slt 1#64 = true then 0 else bytesLargeLive M cap.toNat
 
 /-- Direct-`mmap` live cost of one `MessageKeyGhost` (its four `Vec<u8>` buffers). -/
-def messageKeyLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (g : MessageKeyGhost) : Nat :=
+@[expose] def messageKeyLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (g : MessageKeyGhost) : Nat :=
   bytesLargeLive M g.cipher.cap.toNat +
   bytesLargeLive M g.mac.cap.toNat +
   bytesLargeLive M g.iv.cap.toNat +
@@ -753,7 +538,7 @@ def messageKeyLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (g : Messa
 
 /-- Direct-`mmap` live cost of one `(ChainGhost × ReceiverChain)` in `chainAt` (credited back
 by one iteration of `drop_glue::<Vec<Chain>>`). -/
-def chainPairLargeLive (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def chainPairLargeLive (M : AllocCostModel) [HasFineReallocCredit M]
     (gc : ChainGhost × ReceiverChain) : Nat :=
   bytesLargeLive M gc.1.srk.cap.toNat +
   bytesLargeLive M gc.1.priv.cap.toNat +
@@ -764,7 +549,7 @@ def chainPairLargeLive (M : AllocCostModel) [HasFineReallocCredit M]
   (gc.1.keys.map (messageKeyLargeLive M)).sum
 
 /-- Purely ghost-indexed `ChainGhost` direct-`mmap` live cost (using `sgnCapLargeLive M cg.ck.cap`). -/
-def chainGhostLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (cg : ChainGhost) : Nat :=
+@[expose] def chainGhostLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (cg : ChainGhost) : Nat :=
   bytesLargeLive M cg.srk.cap.toNat +
   bytesLargeLive M cg.priv.cap.toNat +
   sgnCapLargeLive M cg.ck.cap +
@@ -772,7 +557,7 @@ def chainGhostLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (cg : Chai
   (cg.keys.map (messageKeyLargeLive M)).sum
 
 /-- Direct-`mmap` live cost of a `Some` `SenderChainGhost` at `ss + 0x90`. -/
-def senderChainLargeLive (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def senderChainLargeLive (M : AllocCostModel) [HasFineReallocCredit M]
     (sg : SenderChainGhost) : Nat :=
   bytesLargeLive M sg.srk.cap.toNat +
   bytesLargeLive M sg.priv.cap.toNat +
@@ -780,13 +565,13 @@ def senderChainLargeLive (M : AllocCostModel) [HasFineReallocCredit M]
   vec104LargeLive M sg.mkCap.toNat
 
 /-- Direct-`mmap` live cost of `Option TailVecGhost` (`pending_pre_key` / `pending_kyber_pre_key`). -/
-def optTailVecLargeLive (M : AllocCostModel) [HasFineReallocCredit M] : Option TailVecGhost → Nat
+@[expose] def optTailVecLargeLive (M : AllocCostModel) [HasFineReallocCredit M] : Option TailVecGhost → Nat
   | none => 0
   | some tg => bytesLargeLive M tg.vec.cap.toNat
 
 /-- Exact direct-`mmap` live cost owned by `sessionStateAt A.repAlloc ss G st` and credited back
 by `dropSessionStructureLocal1`. -/
-def ssStateLargeLive (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def ssStateLargeLive (M : AllocCostModel) [HasFineReallocCredit M]
     (G : SessionGhost) (st : SessionState (List (BitVec 8))) : Nat :=
   bytesLargeLive M G.localIk.cap.toNat +
   bytesLargeLive M G.remoteIk.cap.toNat +
@@ -803,7 +588,7 @@ def ssStateLargeLive (M : AllocCostModel) [HasFineReallocCredit M]
 
 /-- Purely ghost-indexed `SessionGhost` direct-`mmap` live cost (`ssStateLargeLive` without `st`
 when `none` chain-keys carry `ck.cap.slt 1#64 = true`, e.g. `0#64` or `noneCap`). -/
-def ssLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (G : SessionGhost) : Nat :=
+@[expose] def ssLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (G : SessionGhost) : Nat :=
   bytesLargeLive M G.localIk.cap.toNat +
   bytesLargeLive M G.remoteIk.cap.toNat +
   bytesLargeLive M G.root.cap.toNat +

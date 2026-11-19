@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled2
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampledPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampledPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -22,6 +22,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1Placed
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable Inlined `.keysUnsampled` Sub-Step (`+684..+2588`, Block 124)
@@ -30,7 +31,7 @@ Verifies `step_keysUnsampled_684_to_2588_placed` inside Block 124 (`spqr::send::
 under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -55,7 +56,7 @@ open CryptoVerification.SpqrV1.Top.Send.Placed
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [-arm64_norm]
   Kdf.HkdfToSliceProof.sp_sub_688_eq_hsp
   Kdf.HkdfToSliceProof.sp_add_neg688_eq_hsp
@@ -363,6 +364,6 @@ theorem polyNextChunkPlaced_onPanic_of_ok {A : RustAlloc} (x : PolyNextChunkGhos
     (_h : x.enc.nextChunk = .ok (x.enc', x.chunk)) (s0 sf : State) :
     (polyNextChunkPlacedSpec A).onPanic x s0 sf =
       (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) := by
-  dsimp only [polyNextChunkPlacedSpec, polyNextChunkSpec]
+  dsimp only [polyNextChunkPlacedSpec]
 
 end CryptoVerification.SpqrV1.Top.Send

@@ -11,14 +11,19 @@ module
 
 public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.HookDischarge.Libc.Common -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.HookDischarge.RustStd.Common -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.HookDischarge.Libc.Common
+import LibsignalBinary.Proofs.HookDischarge.RustStd.Common
 public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO -- proof-setup: allow-public-import
 import VerifiedLibraries.RustStd.Proofs.Wave1.CoreMemrchr
 import VerifiedLibraries.RustStd.Proofs.Wave1.CoreMemrchrLemmas
 import LibsignalBinary.Heap.Fine.SpecBudgetHelpersFine
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Read-Only `core::slice::memchr::memrchr` Hook Discharge (`HookDischarge.RustStd.MemrchrRO`)

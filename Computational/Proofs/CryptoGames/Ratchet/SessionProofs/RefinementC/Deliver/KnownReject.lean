@@ -20,7 +20,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject
 Closes `deliver` on a known receiver chain when the ghost chain rejects the message index.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

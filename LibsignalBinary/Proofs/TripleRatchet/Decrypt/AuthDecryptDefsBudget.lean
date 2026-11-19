@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefs
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefs
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -22,7 +22,7 @@ equates `tryDecryptFnSpecPlaced.onPanic` with `tryDecryptSpecPlaced.onPanic` ove
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

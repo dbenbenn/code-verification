@@ -9,13 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Specifications for Identity Getters, `is_same_account`, `clear_unacknowledged_pre_key_message`, and Drop Glue
 
-Defines symbol names, stack budgets, ghost states, and fixed-image / relocatable `[LibsignalPlacement]`
+Defines symbol names, stack budgets, ghost states, and relocatable `[LibsignalPlacement]`
 contracts for:
 1. `<SessionState>::local_identity_key` (`0x119f4`) and `remote_identity_key` (`0x11b04`)
 2. `<SessionState>::clear_unacknowledged_pre_key_message` (`0x12404`)
@@ -24,7 +26,16 @@ contracts for:
    `Vec<session_structure::Chain>` (`0x1e74`), and `SignalProtocolError` (`0x2374`)
 -/
 
-@[expose] public section
+public section
+
+namespace CryptoVerification.LibsignalTripleRatchet
+open Arm64 ProofLib CryptoVerification
+
+/-- `log::MAX_LOG_LEVEL_FILTER` global at `0` (`Off`) under `[LibsignalPlacement]`. -/
+@[expose] def logOff [LibsignalPlacement] (_img : Unit) : SepProp :=
+  lsLogFilterAddr ↦₆₄ 0#64
+
+end CryptoVerification.LibsignalTripleRatchet
 
 namespace CryptoVerification.LibsignalTripleRatchet.Getters
 
@@ -126,21 +137,8 @@ structure LocalIdentityKeyGhost where
 
 /-- Sret layout of `Result<IdentityKey, InvalidSessionError>::Ok(ik)` at `ret` (33 bytes):
 tag `0#8` at `ret + 0` and 32-byte public key at `ret + 1 .. ret + 33`. -/
-def localIdentityOkAt (ret : BitVec 64) (ik : IdentityKey) : SepProp :=
+@[expose] def localIdentityOkAt (ret : BitVec 64) (ik : IdentityKey) : SepProp :=
   (ret ↦₈ 0#8) ∗ ((ret + 1#64) ↦ₛ ik.publicKey.bytes.toList)
-
-/-- Specification of `<SessionState>::local_identity_key` (`0x119f4`): deserializes
-`local_identity_public` (`PublicKey.deserialize g.bytes = .ok ik.publicKey`), writes
-`localIdentityOkAt x.ret x.ik`, and preserves `vecGhostAt A x.g x.ss`. -/
-def localIdentityKeySpec (A : RustAlloc) (img : Obj.Image) : Spec LocalIdentityKeyGhost where
-  pre := fun x s =>
-    ⌜s.readReg64 .x0 = x.ss ∧ s.readReg64 .x8 = x.ret ∧
-      PublicKey.deserialize x.g.bytes = .ok x.ik.publicKey⌝ ∗
-      vecGhostAt A x.g x.ss ∗ memRegion x.ret 33 ∗ logOff img ∗ stackAt s.sp localIdentityKeyStack
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      vecGhostAt A x.g x.ss ∗ localIdentityOkAt x.ret x.ik ∗ logOff img ∗
-      stackAt s0.sp localIdentityKeyStack
 
 /-! ## 2. `SessionState::remote_identity_key` (`0x11b04`, 101 insns) -/
 
@@ -158,25 +156,9 @@ structure RemoteIdentityKeyGhost where
 /-- Sret layout of `Result<Option<IdentityKey>, InvalidSessionError>::Ok(rem)` at `ret` (34 bytes):
 - `none`: bytes `0..2` equal `0#8, 0#8`, bytes `2..34` unspecified (`memRegion`);
 - `some ik`: bytes `0..2` equal `0#8, 1#8`, key bytes at `ret + 2 .. ret + 34`. -/
-def remoteIdentityOkAt (ret : BitVec 64) : Option IdentityKey → SepProp
+@[expose] def remoteIdentityOkAt (ret : BitVec 64) : Option IdentityKey → SepProp
   | none => (ret ↦₈ 0#8) ∗ ((ret + 1#64) ↦₈ 0#8) ∗ memRegion (ret + 2#64) 32
   | some ik => (ret ↦₈ 0#8) ∗ ((ret + 1#64) ↦₈ 1#8) ∗ ((ret + 2#64) ↦ₛ ik.publicKey.bytes.toList)
-
-/-- Specification of `<SessionState>::remote_identity_key` (`0x11b04`): returns `Ok(None)` when
-`remote_identity_public` is empty, or deserializes `ik` and writes `remoteIdentityOkAt x.ret x.rem`
-while preserving `vecGhostAt A x.g (x.ss + 0x18#64)`. -/
-def remoteIdentityKeySpec (A : RustAlloc) (img : Obj.Image) : Spec RemoteIdentityKeyGhost where
-  pre := fun x s =>
-    ⌜s.readReg64 .x0 = x.ss ∧ s.readReg64 .x8 = x.ret ∧
-      (match x.rem with
-       | none => x.g.bytes = []
-       | some ik => PublicKey.deserialize x.g.bytes = .ok ik.publicKey)⌝ ∗
-      vecGhostAt A x.g (x.ss + 0x18#64) ∗ memRegion x.ret 34 ∗ logOff img ∗
-      stackAt s.sp remoteIdentityKeyStack
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      vecGhostAt A x.g (x.ss + 0x18#64) ∗ remoteIdentityOkAt x.ret x.rem ∗ logOff img ∗
-      stackAt s0.sp remoteIdentityKeyStack
 
 /-! ## 3. `SessionState::clear_unacknowledged_pre_key_message` (`0x12404`, 22 insns) -/
 
@@ -193,7 +175,7 @@ structure ClearUpkGhost where
 deallocates `pending_pre_key.base_key` (`ss + 0xf8`) and `pending_kyber_pre_key.ciphertext`
 (`ss + 0x128`) when present, sets both niche capacities to `-1`, and establishes `sessionStateAt`
 for `st.clearUnacknowledgedPreKeyMessage` with `{ G with pending := none, kyber := none }`. -/
-def clearUpkSpec (A : RustAlloc) : Spec ClearUpkGhost where
+@[expose] def clearUpkSpec (A : RustAlloc) : Spec ClearUpkGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss⌝ ∗
       sessionStateAt A x.ss x.G x.st ∗ A.pool ∗ stackAt s.sp clearUpkStack
@@ -206,29 +188,29 @@ def clearUpkSpec (A : RustAlloc) : Spec ClearUpkGhost where
 /-! ## 4. `IdentityKey::is_same_account` (`0xacec`, 48 insns) -/
 
 /-- Specification of `<PublicKey as PartialEq>::eq` (`0x3ebf0`, calling `ct_eq` at `0x3ecc4`). -/
-noncomputable def publicKeyEqSpec : Spec (BitVec 64 × PublicKey × BitVec 64 × PublicKey × BitVec 64) where
+@[expose] def publicKeyEqSpec : Spec (BitVec 64 × PublicKey × BitVec 64 × PublicKey × BitVec 64) where
   pre := fun (p1, pk1, p2, pk2, sp) s =>
     ⌜s.readReg64 .x0 = p1 ∧ s.readReg64 .x1 = p2 ∧ s.sp = sp⌝ ∗
       (p1 ↦ₛ pk1.bytes.toList) ∗ (p2 ↦ₛ pk2.bytes.toList) ∗
-      stackFrameFor libsignalSessionImage "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq" sp ∗
-      stackFrameFor libsignalSessionImage "<[u8] as subtle::ConstantTimeEq>::ct_eq" (sp - 16#64)
+      stackFrameAt sp 16 ∗
+      stackFrameAt (sp - 16#64) 48
   post := fun (p1, pk1, p2, pk2, sp) s0 sf =>
     ⌜sf.readReg64 .x0 = (if pk1 == pk2 then 1#64 else 0#64) ∧ sf.trace = s0.trace⌝ ∗
       (p1 ↦ₛ pk1.bytes.toList) ∗ (p2 ↦ₛ pk2.bytes.toList) ∗
-      stackFrameFor libsignalSessionImage "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq" sp ∗
-      stackFrameFor libsignalSessionImage "<[u8] as subtle::ConstantTimeEq>::ct_eq" (sp - 16#64)
+      stackFrameAt sp 16 ∗
+      stackFrameAt (sp - 16#64) 48
 
 /-- Base-program hypothesis: `<PublicKey as PartialEq>::eq` meets `publicKeyEqSpec` on `tripleRatchetProgAt`. -/
-def PublicKeyEqOk (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
+@[expose] def PublicKeyEqOk (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr publicKeyEqName)
     publicKeyEqSpec
 
-def PublicKeyEqOkExt (b : BitVec 64) (ext : String → Option (State → State)) : Prop :=
+@[expose] def PublicKeyEqOkExt (b : BitVec 64) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr publicKeyEqName)
     publicKeyEqSpec
 
-def PublicKeyEqOk_trap (b : BitVec 64) (C : Crypto)
+@[expose] def PublicKeyEqOk_trap (b : BitVec 64) (C : Crypto)
     (abs : String → Option (State → State)) : Prop :=
   PublicKeyEqOkExt b (trTrapExterns C abs)
 
@@ -251,7 +233,7 @@ structure IsSameAccountGhost where
 
 /-- Specification of `<IdentityKey>::is_same_account` (`0xacec`) when `x.localIk ≠ x.remoteIk`:
 `PublicKey::eq` returns `0`, returning `w0 = 0` without dereferencing the address arguments. -/
-def isSameAccountSpec : Spec IsSameAccountGhost where
+@[expose] def isSameAccountSpec : Spec IsSameAccountGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.localIkA ∧ s.readReg64 .x2 = x.remoteIkA ∧ x.localIk ≠ x.remoteIk⌝ ∗
       (x.localIkA ↦ₛ x.localIk.publicKey.bytes.toList) ∗
@@ -277,7 +259,7 @@ structure DropChainGhost where
 /-- Specification of `core::ptr::drop_glue::<session_structure::Chain>` (`0x35dc8`):
 deallocates `sender_ratchet_key`, `sender_ratchet_key_private`, `chain_key.key`, all element buffers
 of `message_keys`, and the `message_keys` buffer itself, leaving `memRegion x.a 104`. -/
-def dropChainSpec (A : RustAlloc) : Spec DropChainGhost where
+@[expose] def dropChainSpec (A : RustAlloc) : Spec DropChainGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
       chainAt A x.gc x.a ∗ A.pool ∗ stackAt s.sp dropChainStack
@@ -287,7 +269,7 @@ def dropChainSpec (A : RustAlloc) : Spec DropChainGhost where
 
 /-- Common `session_structure::Chain` layout without `priv.bytes = []` or `srk.bytes.length = 33`,
 satisfied by both receiver chains (`chainAt`) and `Some` sender chains (`optSenderChainAt`). -/
-def protoChainAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 64) : SepProp :=
+@[expose] def protoChainAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 64) : SepProp :=
   ⌜PublicKey.deserialize gc.1.srk.bytes = .ok gc.2.senderRatchetKey ∧
     gc.2.messageKeys.length ≤ maxMessageKeys ∧
     gc.1.keys.length = gc.2.messageKeys.length⌝ ∗
@@ -299,7 +281,7 @@ def protoChainAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 
 
 /-- Specification of `core::ptr::drop_glue::<session_structure::Chain>` (`0x35dc8..0x35ec0`) on
 `protoChainAt` (arbitrary `priv.bytes`), used when dropping a `Some` sender chain at `ss + 0x90`. -/
-def dropProtoChainSpec (A : RustAlloc) : Spec DropChainGhost where
+@[expose] def dropProtoChainSpec (A : RustAlloc) : Spec DropChainGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
       protoChainAt A x.gc x.a ∗ A.pool ∗ stackAt s.sp dropChainStack
@@ -326,7 +308,7 @@ structure DropVecMessageKeyGhost where
 /-- Specification of `core::ptr::drop_glue::<Vec<chain::MessageKey>>` (`0x1f28`):
 deallocates `cipher_key`, `mac_key`, `iv`, and `seed` of each element and frees the outer buffer,
 leaving `memRegion x.v 24`. -/
-def dropVecMessageKeySpec (A : RustAlloc) : Spec DropVecMessageKeyGhost where
+@[expose] def dropVecMessageKeySpec (A : RustAlloc) : Spec DropVecMessageKeyGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.v⌝ ∗
       vecAt A 104 8 (messageKeyAt A) x.v x.cap x.ptr x.mks ∗ A.pool ∗
@@ -354,7 +336,7 @@ structure DropVecChainGhost where
 /-- Specification of `core::ptr::drop_glue::<Vec<session_structure::Chain>>` (`0x1e74`):
 drops each element's owned buffers and `message_keys` vector, frees the outer buffer, and leaves
 `memRegion x.v 24`. -/
-def dropVecChainSpec (A : RustAlloc) : Spec DropVecChainGhost where
+@[expose] def dropVecChainSpec (A : RustAlloc) : Spec DropVecChainGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.v⌝ ∗
       vecAt A 104 8 (chainAt A) x.v x.cap x.ptr x.cs ∗ A.pool ∗
@@ -369,7 +351,7 @@ def dropVecChainSpec (A : RustAlloc) : Spec DropVecChainGhost where
 - indices `{0, 1, 12, 18, 22, 24, 25, 27}` → `+0x040`: frees the `String` payload at `a + 8`;
 - indices `2..11, 13..17, 20, 21, 23` → `+0x0ac`: no-op epilogue;
 - index `19` (`SessionNotFound`) and index `26` (`ApplicationCallbackError`) are excluded by `speAt`. -/
-def speJumpTable : List (BitVec 8) :=
+@[expose] def speJumpTable : List (BitVec 8) :=
   [0x00#8, 0x00#8, 0x1b#8, 0x1b#8, 0x1b#8, 0x1b#8, 0x1b#8, 0x1b#8,
    0x1b#8, 0x1b#8, 0x1b#8, 0x1b#8, 0x00#8, 0x1b#8, 0x1b#8, 0x1b#8,
    0x1b#8, 0x1b#8, 0x00#8, 0x13#8, 0x1b#8, 0x1b#8, 0x00#8, 0x1b#8,
@@ -387,10 +369,9 @@ structure DropSpeGhost where
   /-- Error variant. -/
   e : SignalProtocolError
 
-/-- Specification of `core::ptr::drop_glue::<SignalProtocolError>` (`0x2374`, used via `.inImage img`
-for the `.rodata` jump table `speJumpTable`): consumes `speAt A x.fnName x.a x.e` and leaves
+/-- Specification of `core::ptr::drop_glue::<SignalProtocolError>` (`0x2374`, using the `.rodata` jump table `speJumpTable`): consumes `speAt A x.fnName x.a x.e` and leaves
 `memRegion x.a 48`. -/
-def dropSpeSpec (A : RustAlloc) : Spec DropSpeGhost where
+@[expose] def dropSpeSpec (A : RustAlloc) : Spec DropSpeGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
       speAt A x.fnName x.a x.e ∗ A.pool ∗ stackAt s.sp dropSpeStack
@@ -398,7 +379,7 @@ def dropSpeSpec (A : RustAlloc) : Spec DropSpeGhost where
     ⌜sf.trace = s0.trace⌝ ∗
       memRegion x.a 48 ∗ A.pool ∗ stackAt s0.sp dropSpeStack
 
-def dropSpeSpecX (A : RustAlloc) : Spec DropSpeGhost where
+@[expose] def dropSpeSpecX (A : RustAlloc) : Spec DropSpeGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
       speAt A x.fnName x.a x.e ∗ A.pool ∗ stackAt s.sp dropSpeStackX
@@ -406,7 +387,7 @@ def dropSpeSpecX (A : RustAlloc) : Spec DropSpeGhost where
     ⌜sf.trace = s0.trace⌝ ∗
       memRegion x.a 48 ∗ A.pool ∗ stackAt s0.sp dropSpeStackX
 
-def dropChainSpecX (A : RustAlloc) : Spec DropChainGhost where
+@[expose] def dropChainSpecX (A : RustAlloc) : Spec DropChainGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
       chainAt A x.gc x.a ∗ A.pool ∗ stackAt s.sp dropChainStackX
@@ -414,7 +395,7 @@ def dropChainSpecX (A : RustAlloc) : Spec DropChainGhost where
     ⌜sf.trace = s0.trace⌝ ∗
       memRegion x.a 104 ∗ A.pool ∗ stackAt s0.sp dropChainStackX
 
-def dropProtoChainSpecX (A : RustAlloc) : Spec DropChainGhost where
+@[expose] def dropProtoChainSpecX (A : RustAlloc) : Spec DropChainGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
       protoChainAt A x.gc x.a ∗ A.pool ∗ stackAt s.sp dropChainStackX
@@ -431,7 +412,7 @@ abbrev dropVecMessageKeyStackX : Nat := 48 + extHookStack
 /-- `drop_glue<Vec<Chain>>` frame (48 B) + `dropVecMessageKeyStackX`. -/
 abbrev dropVecChainStackX : Nat := 48 + dropVecMessageKeyStackX
 
-def clearUpkSpecX (A : RustAlloc) : Spec ClearUpkGhost where
+@[expose] def clearUpkSpecX (A : RustAlloc) : Spec ClearUpkGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss⌝ ∗
       sessionStateAt A x.ss x.G x.st ∗ A.pool ∗ stackAt s.sp clearUpkStackX
@@ -441,7 +422,7 @@ def clearUpkSpecX (A : RustAlloc) : Spec ClearUpkGhost where
         x.st.clearUnacknowledgedPreKeyMessage ∗
       A.pool ∗ stackAt s0.sp clearUpkStackX
 
-def dropVecMessageKeySpecX (A : RustAlloc) : Spec DropVecMessageKeyGhost where
+@[expose] def dropVecMessageKeySpecX (A : RustAlloc) : Spec DropVecMessageKeyGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.v⌝ ∗
       vecAt A 104 8 (messageKeyAt A) x.v x.cap x.ptr x.mks ∗ A.pool ∗
@@ -450,7 +431,7 @@ def dropVecMessageKeySpecX (A : RustAlloc) : Spec DropVecMessageKeyGhost where
     ⌜sf.trace = s0.trace⌝ ∗
       memRegion x.v 24 ∗ A.pool ∗ stackAt s0.sp dropVecMessageKeyStackX
 
-def dropVecChainSpecX (A : RustAlloc) : Spec DropVecChainGhost where
+@[expose] def dropVecChainSpecX (A : RustAlloc) : Spec DropVecChainGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.v⌝ ∗
       vecAt A 104 8 (chainAt A) x.v x.cap x.ptr x.cs ∗ A.pool ∗
@@ -467,7 +448,7 @@ abbrev publicKeyEqStackExt : Nat := 64 + extHookStack
 
 /-- Contract of `<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq` (`0x3ebf0`) with
 `publicKeyEqStackExt = 64 + extHookStack = 16448` B stack (for 32-bit stacked `CliExt.blackBoxSpec`). -/
-def publicKeyEqSpecExt : Spec (BitVec 64 × PublicKey × BitVec 64 × PublicKey × BitVec 64) where
+@[expose] def publicKeyEqSpecExt : Spec (BitVec 64 × PublicKey × BitVec 64 × PublicKey × BitVec 64) where
   pre := fun (p1, pk1, p2, pk2, sp) s =>
     ⌜s.readReg64 .x0 = p1 ∧ s.readReg64 .x1 = p2 ∧ s.sp = sp⌝ ∗
       (p1 ↦ₛ pk1.bytes.toList) ∗ (p2 ↦ₛ pk2.bytes.toList) ∗
@@ -479,7 +460,7 @@ def publicKeyEqSpecExt : Spec (BitVec 64 × PublicKey × BitVec 64 × PublicKey 
 
 /-- Stacked 32-bit `black_box` hypothesis: `<PublicKey as PartialEq>::eq` meets `publicKeyEqSpecExt`
 (`64 + extHookStack = 16448` B stack) on `tripleRatchetProgAtExt b ext`. -/
-def PublicKeyEqOkExt32 (b : BitVec 64) (ext : String → Option (State → State)) : Prop :=
+@[expose] def PublicKeyEqOkExt32 (b : BitVec 64) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (tripleRatchetProgAtExt b ext)
     ((tripleRatchetProgAtExt b ext).fnAddr publicKeyEqName)
     publicKeyEqSpecExt
@@ -489,7 +470,7 @@ def PublicKeyEqOkExt32 (b : BitVec 64) (ext : String → Option (State → State
 abbrev isSameAccountStackExt : Nat := 80 + publicKeyEqStackExt
 
 /-- `isSameAccountSpec` at `isSameAccountStackExt = 80 + 64 + extHookStack` (`16528` B). -/
-def isSameAccountSpecExt : Spec IsSameAccountGhost where
+@[expose] def isSameAccountSpecExt : Spec IsSameAccountGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.localIkA ∧ s.readReg64 .x2 = x.remoteIkA ∧ x.localIk ≠ x.remoteIk⌝ ∗
       (x.localIkA ↦ₛ x.localIk.publicKey.bytes.toList) ∗
@@ -504,7 +485,7 @@ def isSameAccountSpecExt : Spec IsSameAccountGhost where
 /-! ## 10. Relocatable `[LibsignalPlacement]` Specs for `local_identity_key` and `remote_identity_key` -/
 
 /-- Relocatable specification of `<SessionState>::local_identity_key` (Block `28`) under `[LibsignalPlacement]`. -/
-def localIdentityKeyPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec LocalIdentityKeyGhost where
+@[expose] def localIdentityKeyPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec LocalIdentityKeyGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ s.readReg64 .x8 = x.ret ∧
       PublicKey.deserialize x.g.bytes = .ok x.ik.publicKey⌝ ∗
@@ -516,7 +497,7 @@ def localIdentityKeyPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec Local
       stackAt s0.sp localIdentityKeyStack
 
 /-- Relocatable specification of `<SessionState>::remote_identity_key` (Block `29`) under `[LibsignalPlacement]`. -/
-def remoteIdentityKeyPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec RemoteIdentityKeyGhost where
+@[expose] def remoteIdentityKeyPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec RemoteIdentityKeyGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ s.readReg64 .x8 = x.ret ∧
       (match x.rem with

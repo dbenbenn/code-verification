@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 import DY.Trace.Basic
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecBasePure
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1LeavesPure
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecBasePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1LeavesPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepNoRatchetPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepRatchetDHProvPure
@@ -24,6 +24,7 @@ import Symbolic.Proofs.Swarm.CREF.TR.Leaks -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- shake: keep
 import Symbolic.DYBridge.DY.Trace.Basic
+public import Symbolic.Proofs.Swarm.CREF.TR.SpqrSemDef -- proof-setup: allow-public-import
 
 /-!
 # Whisper Receive Pending Pre-Key Branch Helpers
@@ -31,7 +32,7 @@ import Symbolic.DYBridge.DY.Trace.Basic
 Helper lemmas for the `PureAliceInitPending` disjunct across DH-ratchet receive steps.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

@@ -9,42 +9,39 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ContractsExt
-public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccount
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ContractsExt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccount -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import all Init.Data.String.Pattern.Basic
 import all Init.Data.String.Pattern.String
 import all Init.Data.String.Slice
 import all Init.Data.String.TakeDrop
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Stage2ContractsExt
 import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.CtEqRO
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Glue
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Expand
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Extract
-import LibsignalBinary.Proofs.TripleRatchet.InImage.Uuid
+import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.Defs
+import LibsignalBinary.Proofs.TripleRatchet.TrapRng
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step244
 
 /-!
 # Extern-Parameterized Account and Chain Callee Contracts for `initiate`
 
-Proves `CliExternsOk P A ext`-parameterized `subroutine_ok` theorems on
-`tripleRatchetProgAtExt img.base (cliExternsWith ext)` for `<IdentityKey>::is_same_account`,
+Shared specifications and stack-layout lemmas for `<IdentityKey>::is_same_account`,
 `<PrivateKey>::calculate_agreement`, and `<RootKey>::create_chain`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
 
-noncomputable section
-
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate
 
-open Arm64 Arm64.Process ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection
+open Arm64 Arm64.Process ProofLib ProofLib.ProgramReflection
 open CryptoGames CryptoGames.HKDF CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification.RustHeap
 open CryptoVerification.E2E
@@ -55,16 +52,8 @@ open CryptoVerification.SignalSession CryptoVerification.SignalSession.Cli
 abbrev isSameAccountSym : String :=
   "<libsignal_protocol::identity_key::IdentityKey>::is_same_account"
 
-private theorem hookSat_cliExternsWith_chain {α : Type} {ext : String → Option (State → State)}
-    {name : String} {spec : Spec α}
-    (hnp : E2E.isImagePanicSymbol name = false)
-    (h : HookSat ext name spec) :
-    HookSat (cliExternsWith ext) name spec := by
-  simp only [HookSat, cliExternsWith, withCliPanics_of_isImagePanicSymbol_false _ hnp]
-  exact h
-
 /-- Stack-parameterized `<IdentityKey>::is_same_account` distinct-account specification. -/
-def isSameAccountDistinctAtSpec (A : RustAlloc) (parse : UuidParser) (isaStk : Nat) :
+@[expose] def isSameAccountDistinctAtSpec (A : RustAlloc) (parse : UuidParser) (isaStk : Nat) :
     Spec Pqxdh.WireEntries.IsSameAccountDistinctGhost where
   pre := fun g s =>
     ⌜s.readReg64 .x0 = g.localIkA ∧
@@ -95,25 +84,6 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Stack budget for `<IdentityKey>::is_same_account` under `CliExternsOk` (`80 + publicKeyEqStackExt = 16528` bytes). -/
 abbrev isSameAccountExtStack : Nat := 80 + Getters.publicKeyEqStackExt
-
-private theorem publicKeyEq_ok_at_isSameAccount_ext (b : BitVec 64)
-    {ext : String → Option (State → State)}
-    (h_bb : HookSat ext "subtle::black_box::<u8>" CliExt.blackBoxSpec) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr isSameAccountSym +
-        BitVec.ofNat 64 (num% (ls_off% "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq" -
-          ls_off% "<libsignal_protocol::identity_key::IdentityKey>::is_same_account")))
-      Getters.publicKeyEqSpecExt := by
-  have hEq : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr Getters.publicKeyEqName)
-      Getters.publicKeyEqSpecExt :=
-    Glue.publicKeyEq_ok_ext32 b h_bb
-  dsimp only [tripleRatchetProgAtExt] at hEq ⊢
-  rwa [← Program.fnAddr_rel
-    (ls_lemma% fnOff "<libsignal_protocol::identity_key::IdentityKey>::is_same_account")
-    (ls_lemma% fnOff "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq")
-    (k := num% (ls_off% "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq" -
-      ls_off% "<libsignal_protocol::identity_key::IdentityKey>::is_same_account")) rfl]
 
 private theorem stackAt_16368_split_uuid (sp : BitVec 64) :
     stackAt sp 16368 = memRegion (sp - 16368#64) 16176 ∗ stackAt sp uuidTryParseStack := by
@@ -201,58 +171,6 @@ private def parseSidRelExtSpec (parse : UuidParser) :
         ⌜Pqxdh.WireEntries.SidCellsRel (serviceIdParse parse bs) b0' w0' w1'⌝ ∗
         (out ↦₈ b0') ∗ ((out + 1#64) ↦₆₄ w0') ∗ ((out + 9#64) ↦₆₄ w1')) ∗
       stackAt s0.sp Getters.publicKeyEqStackExt
-
-private theorem parseSidRel_ok_at_ext (b : BitVec 64) (H : String → Option (State → State)) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr isSameAccountSym +
-        BitVec.ofNat 64 (num% (ls_off% "<libsignal_core::address::ServiceId>::parse_from_service_id_string" -
-          ls_off% "<libsignal_protocol::identity_key::IdentityKey>::is_same_account")))
-      (parseSidRelExtSpec uuidTryParse) := by
-  have huuid16368 : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr uuidTryParseName)
-      (uuidTryParseStackSpec 16368) := by
-    refine subroutine_ok_map (uuidTryParse_ok_F b H) ?_
-    rintro ⟨p, bs, out⟩ R s0 hpre
-    dsimp only [uuidTryParseStackSpec] at hpre
-    rw [stackAt_16368_split_uuid s0.sp] at hpre
-    refine ⟨(p, bs, out), memRegion (s0.sp - 16368#64) 16176 ∗ R,
-      Satisfies.of_eq hpre (by dsimp only [uuidTryParseCodeSpec]; ac_rfl),
-      fun sf hpost => ?_⟩
-    dsimp only [uuidTryParseCodeSpec, uuidTryParseStackSpec] at hpost ⊢
-    rw [stackAt_16368_split_uuid s0.sp]
-    exact Satisfies.of_eq hpost (by ac_rfl)
-  have hps0 := parseSid_ok_of_contract_stack b H 16368 huuid16368
-  have hps : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr isSameAccountSym +
-        BitVec.ofNat 64 (num% (ls_off% "<libsignal_core::address::ServiceId>::parse_from_service_id_string" -
-          ls_off% "<libsignal_protocol::identity_key::IdentityKey>::is_same_account")))
-      (parseSidCodeStackSpec 16368) := by
-    rwa [← Program.fnAddr_rel
-      (ls_lemma% fnOff "<libsignal_protocol::identity_key::IdentityKey>::is_same_account")
-      (ls_lemma% fnOff "<libsignal_core::address::ServiceId>::parse_from_service_id_string")
-      (k := num% (ls_off% "<libsignal_core::address::ServiceId>::parse_from_service_id_string" -
-        ls_off% "<libsignal_protocol::identity_key::IdentityKey>::is_same_account")) rfl]
-  refine subroutine_ok_map hps ?_
-  rintro ⟨p, bs, out, b0, w0, w1⟩ R s0 hpre
-  refine ⟨(p, bs, out), R, ?_, fun sf hpost => ?_⟩
-  · simp only [parseSidRelExtSpec, parseSidCodeStackSpec, parseSidSpec,
-      stackAt_publicKeyEqStackExt_eq_parseSid16368 s0.sp] at hpre ⊢
-    have hm : s0.mem ⊨ ((out ↦₈ b0) ∗ ((out + 1#64) ↦₆₄ w0) ∗ ((out + 9#64) ↦₆₄ w1)) ∗
-        (⌜s0.readReg64 .x0 = p ∧ (s0.readReg64 .x1).toNat = bs.length ∧ s0.readReg64 .x8 = out⌝ ∗
-          (p ↦ₛ bs) ∗ stackAt (s0.sp - 80#64) 16368 ∗ stackAt s0.sp parseSidFrameStack ∗ R) :=
-      Satisfies.of_eq hpre (by ac_rfl)
-    have hm' :=
-      Arm64.Satisfies.mono (sepConj_mono_left (pointsTo_17_entails_memRegion_ext out b0 w0 w1)) hm
-    exact Satisfies.of_eq hm' (by ac_rfl)
-  · simp only [parseSidCodeStackSpec, parseSidSpec, parseSidRelExtSpec,
-      stackAt_publicKeyEqStackExt_eq_parseSid16368 s0.sp] at hpost ⊢
-    have hm : sf.mem ⊨ parseSidResultAt out (serviceIdParse uuidTryParse bs) ∗
-        (⌜sf.trace = s0.trace⌝ ∗ (p ↦ₛ bs) ∗
-          stackAt (s0.sp - 80#64) 16368 ∗ stackAt s0.sp parseSidFrameStack ∗ R) :=
-      Satisfies.of_eq hpost (by ac_rfl)
-    have hm' :=
-      Arm64.Satisfies.mono (sepConj_mono_left (parseSidResultAt_entails_rel_cells_ext out _)) hm
-    exact Satisfies.of_eq hm' (by ac_rfl)
 
 private theorem stackAt_isSameAccountExt_split (sp : BitVec 64) :
     stackAt sp isSameAccountExtStack =
@@ -409,90 +327,6 @@ private def isSameAccountDistinctRawExtSpec (parse : UuidParser) :
     (g.remoteNamePtr ↦ₛ g.remoteNameBytes) ∗
     stackAt s0.sp isSameAccountExtStack
 
-set_option maxRecDepth 200000 in
-set_option maxHeartbeats 800000 in
-set_option linter.unusedSimpArgs false in
-private theorem isSameAccountDistinctRaw_ext_ok {b : BitVec 64} {P : PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b (cliExternsWith ext))
-      ((tripleRatchetProgAtExt b (cliExternsWith ext)).fnAddr isSameAccountSym)
-      (isSameAccountDistinctRawExtSpec uuidTryParse) := by
-  simp only [isSameAccountDistinctRawExtSpec]
-  have hEq' := publicKeyEq_ok_at_isSameAccount_ext b
-    (hookSat_cliExternsWith_chain (by rfl_kernel) hOk.blackBox)
-  simp only [Getters.publicKeyEqSpecExt] at hEq'
-  have hParse := parseSidRel_ok_at_ext b (Rust.withPanics (cliExternsWith ext))
-  simp only [parseSidRelExtSpec] at hParse
-  wp_init x s0
-  have hfn : libsignalSessionCode.fnOff isSameAccountSym =
-      num% (ls_off% "<libsignal_protocol::identity_key::IdentityKey>::is_same_account") :=
-    ls_lemma% fnOff "<libsignal_protocol::identity_key::IdentityKey>::is_same_account"
-  code_fetches libsignalSessionCode
-    CryptoVerification.LibsignalTripleRatchet.libsignalTripleRatchetBin b
-    (Rust.withPanics (cliExternsWith ext)) hfn
-    (num% (ls_off% "<libsignal_protocol::identity_key::IdentityKey>::is_same_account")) 192
-  replace hpc : s0.pc =
-      (libsignalSessionCode.rebase b
-        (Rust.withPanics (cliExternsWith ext))).fnAddr isSameAccountSym := by
-    rw [hpc, Program.fnAddr_rebase, hfn]
-  dsimp only [tripleRatchetProgAtExt] at hEq' hParse ⊢
-  clear hfn hOk
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (cliExternsWith ext))).fnAddr isSameAccountSym = entry
-  examples_hide_fetches
-  obtain ⟨localIkA, localIk, localAddr, localNamePtr, localNameBytes,
-    remoteIkA, remoteIk, remoteAddr, remoteNamePtr, remoteNameBytes⟩ := x
-  dsimp only at *
-  have h_or : localIk ≠ remoteIk ∨
-      Pqxdh.WireEntries.DistinctSid uuidTryParse localNameBytes remoteNameBytes := h
-  subst h_1 h_2 h_3 h_4
-  rw [stackAt_isSameAccountExt_split s0.sp]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  apply SepWP.exists_elim; intro b0_init
-  apply SepWP.exists_elim; intro w0_init
-  apply SepWP.exists_elim; intro w1_init
-  cells_unfold
-  wp_pull_exists
-  wp_steps
-  wp_call hEq' (s0.readReg64 (Reg.gpr 0#5), localIk.publicKey,
-    s0.readReg64 (Reg.gpr 2#5), remoteIk.publicKey, s0.sp - 80#64)
-  by_cases hpk : (localIk.publicKey == remoteIk.publicKey) = true
-  · have hik_eq : localIk = remoteIk := by
-      cases localIk; cases remoteIk
-      have hpk' := of_decide_eq_true hpk
-      subst hpk'; rfl
-    have hDist : Pqxdh.WireEntries.DistinctSid uuidTryParse localNameBytes remoteNameBytes :=
-      h_or.resolve_left (not_not.mpr hik_eq)
-    simp only [hpk, ↓reduceIte] at *
-    wp_steps
-    wp_call hParse
-    wp_steps
-    wp_if hb0
-    · wp_steps
-      wp_call hParse
-      wp_steps
-      wp_if hb1
-      · wp_steps
-        wp_done
-      · wp_steps
-        wp_if hb01
-        · wp_steps
-          wp_done
-        · wp_steps
-          have hrel1 : Pqxdh.WireEntries.SidCellsRel (serviceIdParse uuidTryParse localNameBytes) _ _ _ := ‹_›
-          have hrel2 : Pqxdh.WireEntries.SidCellsRel (serviceIdParse uuidTryParse remoteNameBytes) _ _ _ := ‹_›
-          have hne := cond_uuid_words_ne_ext (sidCellsRel_ne_of_distinct_ext hDist hrel1 hrel2
-            (by revert hb0; rcases sidCellsRel_b0_cases_ext hrel1 with rfl | rfl | rfl <;> decide)
-            (by revert hb1; rcases sidCellsRel_b0_cases_ext hrel2 with rfl | rfl | rfl <;> decide)
-            (by revert hb01; rcases sidCellsRel_b0_cases_ext hrel1 with rfl | rfl | rfl <;>
-                rcases sidCellsRel_b0_cases_ext hrel2 with rfl | rfl | rfl <;> decide))
-          wp_done
-    · wp_steps
-      wp_done
-  · simp only [hpk, Bool.false_eq_true, ↓reduceIte] at *
-    wp_steps
-    wp_done
-
 private def vecU8BufRest_ext (A : RustAlloc) (cap ptr : BitVec 64) (n : Nat) : SepProp :=
   if cap = 0 then emp
   else A.live ptr cap.toNat 1 ∗ memRegion (ptr + BitVec.ofNat 64 n) (cap.toNat - n)
@@ -546,112 +380,6 @@ private theorem protocolAddressAt_expose_ext (A : RustAlloc) (g : AddrGhost) (a 
   rw [vecU8At_expose_ext]
   ac_rfl
 
-/-- `<IdentityKey>::is_same_account` with distinct keys or distinct `ServiceId`s under `CliExternsOk P A ext`. -/
-theorem isSameAccount_ext_ok {b : BitVec 64} {P : PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b (cliExternsWith ext))
-      ((tripleRatchetProgAtExt b (cliExternsWith ext)).fnAddr isSameAccountSym)
-      (isSameAccountDistinctAtSpec A uuidTryParse isSameAccountExtStack) := by
-  refine subroutine_ok_map (isSameAccountDistinctRaw_ext_ok hOk) ?_
-  rintro ⟨localIkA, localIk, locA, loc, remoteIkA, remoteIk, remA, rem⟩ R s0 hpre
-  simp only [isSameAccountDistinctAtSpec, protocolAddressAt_expose_ext] at hpre
-  have hpre' : s0.mem ⊨
-      ⌜s0.readReg64 .x0 = localIkA ∧ s0.readReg64 .x1 = locA ∧
-        s0.readReg64 .x2 = remoteIkA ∧ s0.readReg64 .x3 = remA ∧
-        (localIk ≠ remoteIk ∨ Pqxdh.WireEntries.DistinctSid uuidTryParse loc.name.bytes rem.name.bytes)⌝ ∗
-      (⌜loc.name.bytes.length ≤ loc.name.cap.toNat ∧ loc.name.cap.toNat < 2 ^ 63 ∧
-        loc.name.ptr ≠ 0⌝ ∗
-        (⌜rem.name.bytes.length ≤ rem.name.cap.toNat ∧ rem.name.cap.toNat < 2 ^ 63 ∧
-          rem.name.ptr ≠ 0⌝ ∗
-          ((localIkA ↦ₛ localIk.publicKey.bytes.toList) ∗
-           ((locA + 8#64) ↦₆₄ loc.name.ptr) ∗
-           ((locA + 16#64) ↦₆₄ BitVec.ofNat 64 loc.name.bytes.length) ∗
-           (loc.name.ptr ↦ₛ loc.name.bytes) ∗
-           (remoteIkA ↦ₛ remoteIk.publicKey.bytes.toList) ∗
-           ((remA + 8#64) ↦₆₄ rem.name.ptr) ∗
-           ((remA + 16#64) ↦₆₄ BitVec.ofNat 64 rem.name.bytes.length) ∗
-           (rem.name.ptr ↦ₛ rem.name.bytes) ∗
-           stackAt s0.sp isSameAccountExtStack ∗
-           addrRest_ext A loc locA ∗ addrRest_ext A rem remA ∗ R))) :=
-    Satisfies.of_eq hpre (by ac_rfl)
-  rw [satisfies_pure_sepConj] at hpre'
-  rcases hpre' with ⟨⟨hx0, hx1, hx2, hx3, hdist⟩, hpre'⟩
-  rw [satisfies_pure_sepConj] at hpre'
-  rcases hpre' with ⟨hloc_pure, hpre'⟩
-  rw [satisfies_pure_sepConj] at hpre'
-  rcases hpre' with ⟨hrem_pure, hm⟩
-  refine ⟨⟨localIkA, localIk, locA, loc.name.ptr, loc.name.bytes,
-    remoteIkA, remoteIk, remA, rem.name.ptr, rem.name.bytes⟩,
-    addrRest_ext A loc locA ∗ addrRest_ext A rem remA ∗ R, ?_, fun sf hpost => ?_⟩
-  · simp only [isSameAccountDistinctRawExtSpec]
-    have hloc_lt : loc.name.bytes.length < 2 ^ 64 := by omega
-    have hrem_lt : rem.name.bytes.length < 2 ^ 64 := by omega
-    have hm' : s0.mem ⊨
-        ⌜s0.readReg64 .x0 = localIkA ∧ s0.readReg64 .x1 = locA ∧
-          s0.readReg64 .x2 = remoteIkA ∧ s0.readReg64 .x3 = remA ∧
-          loc.name.bytes.length < 2 ^ 64 ∧ rem.name.bytes.length < 2 ^ 64 ∧
-          (localIk ≠ remoteIk ∨ Pqxdh.WireEntries.DistinctSid uuidTryParse loc.name.bytes rem.name.bytes)⌝ ∗
-        ((localIkA ↦ₛ localIk.publicKey.bytes.toList) ∗
-         ((locA + 8#64) ↦₆₄ loc.name.ptr) ∗
-         ((locA + 16#64) ↦₆₄ BitVec.ofNat 64 loc.name.bytes.length) ∗
-         (loc.name.ptr ↦ₛ loc.name.bytes) ∗
-         (remoteIkA ↦ₛ remoteIk.publicKey.bytes.toList) ∗
-         ((remA + 8#64) ↦₆₄ rem.name.ptr) ∗
-         ((remA + 16#64) ↦₆₄ BitVec.ofNat 64 rem.name.bytes.length) ∗
-         (rem.name.ptr ↦ₛ rem.name.bytes) ∗
-         stackAt s0.sp isSameAccountExtStack ∗
-         addrRest_ext A loc locA ∗ addrRest_ext A rem remA ∗ R) := by
-      rw [satisfies_pure_sepConj]
-      exact ⟨⟨hx0, hx1, hx2, hx3, hloc_lt, hrem_lt, hdist⟩, hm⟩
-    exact Satisfies.of_eq hm' (by ac_rfl)
-  · simp only [isSameAccountDistinctRawExtSpec, isSameAccountDistinctAtSpec,
-      protocolAddressAt_expose_ext] at hpost ⊢
-    have hpost' : sf.mem ⊨
-        ⌜(sf.readReg64 .x0).setWidth 32 = 0#32 ∧ sf.trace = s0.trace⌝ ∗
-        ((localIkA ↦ₛ localIk.publicKey.bytes.toList) ∗
-         ((locA + 8#64) ↦₆₄ loc.name.ptr) ∗
-         ((locA + 16#64) ↦₆₄ BitVec.ofNat 64 loc.name.bytes.length) ∗
-         (loc.name.ptr ↦ₛ loc.name.bytes) ∗
-         (remoteIkA ↦ₛ remoteIk.publicKey.bytes.toList) ∗
-         ((remA + 8#64) ↦₆₄ rem.name.ptr) ∗
-         ((remA + 16#64) ↦₆₄ BitVec.ofNat 64 rem.name.bytes.length) ∗
-         (rem.name.ptr ↦ₛ rem.name.bytes) ∗
-         stackAt s0.sp isSameAccountExtStack ∗
-         addrRest_ext A loc locA ∗ addrRest_ext A rem remA ∗ R) :=
-      Satisfies.of_eq hpost (by ac_rfl)
-    rw [satisfies_pure_sepConj] at hpost'
-    rcases hpost' with ⟨hret, hpost'⟩
-    have hpost'' : sf.mem ⊨
-        ⌜(sf.readReg64 .x0).setWidth 32 = 0#32 ∧ sf.trace = s0.trace⌝ ∗
-        (⌜loc.name.bytes.length ≤ loc.name.cap.toNat ∧ loc.name.cap.toNat < 2 ^ 63 ∧
-          loc.name.ptr ≠ 0⌝ ∗
-          (⌜rem.name.bytes.length ≤ rem.name.cap.toNat ∧ rem.name.cap.toNat < 2 ^ 63 ∧
-            rem.name.ptr ≠ 0⌝ ∗
-            ((localIkA ↦ₛ localIk.publicKey.bytes.toList) ∗
-             ((locA + 8#64) ↦₆₄ loc.name.ptr) ∗
-             ((locA + 16#64) ↦₆₄ BitVec.ofNat 64 loc.name.bytes.length) ∗
-             (loc.name.ptr ↦ₛ loc.name.bytes) ∗
-             (remoteIkA ↦ₛ remoteIk.publicKey.bytes.toList) ∗
-             ((remA + 8#64) ↦₆₄ rem.name.ptr) ∗
-             ((remA + 16#64) ↦₆₄ BitVec.ofNat 64 rem.name.bytes.length) ∗
-             (rem.name.ptr ↦ₛ rem.name.bytes) ∗
-             stackAt s0.sp isSameAccountExtStack ∗
-             addrRest_ext A loc locA ∗ addrRest_ext A rem remA ∗ R))) := by
-      rw [satisfies_pure_sepConj]
-      refine ⟨hret, ?_⟩
-      rw [satisfies_pure_sepConj]
-      refine ⟨hloc_pure, ?_⟩
-      rw [satisfies_pure_sepConj]
-      exact ⟨hrem_pure, hpost'⟩
-    exact Satisfies.of_eq hpost'' (by ac_rfl)
-
-theorem isSameAccount_inImage_ext_ok {img : Obj.Image} {P : PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base (cliExternsWith ext))
-      ((tripleRatchetProgAtExt img.base (cliExternsWith ext)).fnAddr isSameAccountSym)
-      ((isSameAccountDistinctAtSpec A uuidTryParse isSameAccountExtStack).inImage img) :=
-  subroutine_ok_inImage_of_subroutine_ok img (isSameAccount_ext_ok hOk)
-
 end IsSameAccountExt
 
 /-! ## `<PrivateKey>::calculate_agreement` and `<RootKey>::create_chain` -/
@@ -666,175 +394,9 @@ private theorem stackAt_calcSub_split_ext (sp : BitVec 64) :
   exact ProofLib.memRegion_split' (b := sp - 16432#64) (n := 48) (k := 16384)
     (b' := sp - 16384#64) (by decide) (by bv_omega) (by decide)
 
-private theorem stackAt_calcSub_eq_ctEqFrame_ext (sp : BitVec 64) :
-    stackAt sp (48 + extHookStack) =
-      stackFrameFor libsignalSessionImage ctEqName sp ∗ stackAt (sp - 48#64) extHookStack := by
-  have hframe : memRegion (sp - 48#64) 48 =
-      stackFrameFor libsignalSessionImage ctEqName sp := by
-    rw [show (48 : Nat) = 8 * 6 by rfl, ProofLib.memRegion_cells (sp - 48#64) 6 (by decide)]
-    cells_unfold
-    simp only [stackFrameFor, ctEqName,
-      (ls_lemma% frameBytes "<[u8] as subtle::ConstantTimeEq>::ct_eq"), reduceStackFrameAt]
-  change memRegion (sp - 16432#64) 16432 =
-    stackFrameFor libsignalSessionImage ctEqName sp ∗ memRegion (sp - 48#64 - 16384#64) 16384
-  have hsub : sp - 48#64 - 16384#64 = sp - 16432#64 := by bv_omega
-  rw [hsub, ← hframe,
-      ProofLib.memRegion_split' (b := sp - 16432#64) (n := 16384) (k := 48)
-        (b' := sp - 48#64) (by decide) (by bv_omega) (by decide)]
-  ac_rfl
-
-private theorem dhCallAt_of_stage2X {img : Obj.Image} {X : Ratchet.X25519Fn}
-    {prog : Program} {entry : BitVec 64}
-    (h : subroutine_ok prog entry
-      ((LibsignalTripleRatchet.withStack (diffieHellmanSpec X) extHookStack).inImage img)) :
-    subroutine_ok prog entry (Keys.dhCallSpecAt img X (48 + extHookStack)) := by
-  refine subroutine_ok_map h ?_
-  rintro ⟨secA, sec, pubA, pub, ret, sp⟩ R s0 hpre
-  dsimp only [Keys.dhCallSpecAt] at hpre
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hF, hx0, hx1, hx8, hsp⟩, hpre⟩
-  subst hsp
-  rw [stackAt_calcSub_split_ext s0.sp] at hpre
-  refine ⟨(secA, sec, pubA, pub, ret), memRegion (s0.sp - 16432#64) 48 ∗ R, ?_, ?_⟩
-  · dsimp only [Spec.inImage, LibsignalTripleRatchet.withStack, diffieHellmanSpec]
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hF.1, hF.2⟩, ⟨hx0, hx1, hx8⟩, by arm64_sep_close⟩
-  · intro sf hpost
-    dsimp only [Spec.inImage, LibsignalTripleRatchet.withStack, diffieHellmanSpec,
-      Keys.dhCallSpecAt] at hpost ⊢
-    rw [stackAt_calcSub_split_ext s0.sp]
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨htr, hpost⟩
-    exact ⟨htr, by arm64_sep_close⟩
-
-private theorem zeroizeCallAt_of_stage2X {img : Obj.Image}
-    {prog : Program} {entry : BitVec 64}
-    (h : subroutine_ok prog entry
-      ((LibsignalTripleRatchet.withStack zeroizeSecretSpec extHookStack).inImage img)) :
-    subroutine_ok prog entry (Keys.zeroizeCallSpecAt img (48 + extHookStack)) := by
-  refine subroutine_ok_map h ?_
-  rintro ⟨a, sp⟩ R s0 hpre
-  dsimp only [Keys.zeroizeCallSpecAt] at hpre
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hF, hx0, hsp⟩, hpre⟩
-  subst hsp
-  rw [stackAt_calcSub_split_ext s0.sp] at hpre
-  refine ⟨a, memRegion (s0.sp - 16432#64) 48 ∗ R, ?_, ?_⟩
-  · dsimp only [Spec.inImage, LibsignalTripleRatchet.withStack, zeroizeSecretSpec]
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hF.1, hF.2⟩, hx0, by arm64_sep_close⟩
-  · intro sf hpost
-    dsimp only [Spec.inImage, LibsignalTripleRatchet.withStack, zeroizeSecretSpec,
-      Keys.zeroizeCallSpecAt] at hpost ⊢
-    rw [stackAt_calcSub_split_ext s0.sp]
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨htr, hpost⟩
-    exact ⟨htr, by arm64_sep_close⟩
-
-private theorem shimCallAt_of_stage2X {img : Obj.Image}
-    {prog : Program} {entry : BitVec 64}
-    (h : subroutine_ok prog entry
-      ((LibsignalTripleRatchet.withStack sessionShimSpec (48 + extHookStack)).inImage img)) :
-    subroutine_ok prog entry (Keys.shimCallSpecAt img (48 + extHookStack)) := by
-  refine subroutine_ok_map h ?_
-  rintro sp R s0 hpre
-  dsimp only [Keys.shimCallSpecAt] at hpre
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hF, hsp⟩, hpre⟩
-  subst hsp
-  refine ⟨(), R, ?_, ?_⟩
-  · dsimp only [Spec.inImage, LibsignalTripleRatchet.withStack, sessionShimSpec, noAllocShimSpec]
-    simp only [emp_sepConj, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hF.1, hF.2⟩, hpre⟩
-  · intro sf hpost
-    dsimp only [Spec.inImage, LibsignalTripleRatchet.withStack, sessionShimSpec, noAllocShimSpec,
-      Keys.shimCallSpecAt] at hpost ⊢
-    simpa only [sepConj_assoc] using hpost
-
-private theorem allocCallAt_of_stage2X {img : Obj.Image} {A : RustAlloc}
-    {prog : Program} {entry : BitVec 64}
-    (h : subroutine_ok prog entry
-      ((rustAllocSpecWithStack A extHookStack).inImage img)) :
-    subroutine_ok prog entry (Keys.allocCallSpecAt img A (48 + extHookStack)) := by
-  refine subroutine_ok_map h ?_
-  rintro ⟨size, align, sp⟩ R s0 hpre
-  dsimp only [Keys.allocCallSpecAt] at hpre
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hF, hx0, hx1, hlay, hsp⟩, hpre⟩
-  subst hsp
-  rw [stackAt_calcSub_split_ext s0.sp] at hpre
-  refine ⟨(size, align), memRegion (s0.sp - 16432#64) 48 ∗ R, ?_, ?_⟩
-  · dsimp only [Spec.inImage, rustAllocSpecWithStack]
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hF.1, hF.2⟩, ⟨hx0, hx1, hlay⟩, by arm64_sep_close⟩
-  · intro sf hpost
-    dsimp only [Spec.inImage, rustAllocSpecWithStack, Keys.allocCallSpecAt] at hpost ⊢
-    rw [stackAt_calcSub_split_ext s0.sp]
-    ac_nf at hpost ⊢
-
 section CtEqWrap
 
-attribute [local irreducible] libsignalSessionImage
-
-set_option maxRecDepth 200000 in
-private theorem ctEqCallAt_of_ext32 {img : Obj.Image} {prog : Program} {entry : BitVec 64}
-    (h : subroutine_ok prog entry ConsumeMessageKeyTransfer.ctEqSliceROSpecExt) :
-    subroutine_ok prog entry (Keys.ctEqCallSpecAt img (48 + extHookStack)) := by
-  refine subroutine_ok_map h ?_
-  rintro ⟨p1, k1, p2, k2, sp⟩ R s0 hpre
-  dsimp only [Keys.ctEqCallSpecAt] at hpre
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨_, hx0, hx1, hsp, hk1, hk2⟩, hpre⟩
-  rw [stackAt_calcSub_eq_ctEqFrame_ext sp] at hpre
-  refine ⟨(p1, k1, p2, k2, sp), R, ?_, ?_⟩
-  · dsimp only [ConsumeMessageKeyTransfer.ctEqSliceROSpecExt]
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-    exact ⟨⟨hx0, hx1, hsp, hk1, hk2⟩, Satisfies.of_eq hpre rfl⟩
-  · intro sf hpost
-    dsimp only [ConsumeMessageKeyTransfer.ctEqSliceROSpecExt, Keys.ctEqCallSpecAt] at hpost ⊢
-    rw [stackAt_calcSub_eq_ctEqFrame_ext sp]
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨⟨hres, htr⟩, hpost⟩
-    refine ⟨⟨?_, htr⟩, hpost⟩
-    have h8 : ((sf.readReg64 .x0).setWidth 32).setWidth 8 = (sf.readReg64 .x0).setWidth 8 := by
-      bv_omega
-    rw [← h8, hres]
-    split <;> rfl
-
 end CtEqWrap
-
-/-- `<PrivateKey>::calculate_agreement` at residual stack `48 + extHookStack` under `CliExternsOk P A ext`. -/
-theorem calculateAgreement_at_ext_ok {img : Obj.Image} {P : PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hOk : CliExternsOk P A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base (cliExternsWith ext))
-      ((tripleRatchetProgAtExt img.base (cliExternsWith ext)).fnAddr calculateAgreementName)
-      ((Keys.calculateAgreementSpecAt P.C.X A (48 + extHookStack)).inImage img) := by
-  have hC := (Slots.Stage2ContractsExt.of_externsOk hOk img).toStage2ContractsX
-  have hct0 : subroutine_ok (tripleRatchetProgAtExt img.base (cliExternsWith ext))
-      ((tripleRatchetProgAtExt img.base (cliExternsWith ext)).fnAddr ctEqName)
-      ConsumeMessageKeyTransfer.ctEqSliceROSpecExt :=
-    ConsumeMessageKeyTransfer.ctEqRO_ok_ext32 img.base
-      (hookSat_cliExternsWith_chain (by rfl_kernel) hOk.blackBox)
-  have hct_at : subroutine_ok (tripleRatchetProgAtExt img.base (cliExternsWith ext))
-      ((tripleRatchetProgAtExt img.base (cliExternsWith ext)).fnAddr calculateAgreementName +
-        BitVec.ofNat 64 (num% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" -
-          ls_off% "<libsignal_core::curve::PrivateKey>::calculate_agreement")))
-      ConsumeMessageKeyTransfer.ctEqSliceROSpecExt := by
-    dsimp only [tripleRatchetProgAtExt] at hct0 ⊢
-    rwa [← Program.fnAddr_rel
-      (ls_lemma% fnOff "<libsignal_core::curve::PrivateKey>::calculate_agreement")
-      (ls_lemma% fnOff "<[u8] as subtle::ConstantTimeEq>::ct_eq")
-      (k := num% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" -
-        ls_off% "<libsignal_core::curve::PrivateKey>::calculate_agreement")) rfl]
-  exact Keys.calculateAgreement_ok_of_hooks_gen (subStack := 48 + extHookStack) (by decide) himg
-    (dhCallAt_of_stage2X (hC.dh_ok_at calculateAgreementName _))
-    (zeroizeCallAt_of_stage2X (hC.shared_drop_ok_at calculateAgreementName _))
-    (ctEqCallAt_of_ext32 hct_at)
-    (shimCallAt_of_stage2X (hC.toAllocContractsX.shim_ok_at calculateAgreementName _ (48 + extHookStack)))
-    (allocCallAt_of_stage2X (hC.toAllocContractsX.alloc_ok_at calculateAgreementName _))
-    (zeroizeCallAt_of_stage2X (hC.static_drop_ok_at calculateAgreementName _))
 
 private theorem stackAt_extract_split_calc (sp : BitVec 64) :
     stackAt sp extractStackExt =
@@ -859,178 +421,6 @@ private theorem stackAt_extract_split_dealloc (sp : BitVec 64) :
     memRegion (sp - 17360#64) 976 ∗ memRegion (sp - 16384#64) 16384
   exact ProofLib.memRegion_split' (b := sp - 17360#64) (n := 976) (k := 16384)
     (b' := sp - 16384#64) (by decide) (by bv_omega) (by decide)
-
-private theorem calcCallAt_extractStackExt {img : Obj.Image} {X : Ratchet.X25519Fn} {A : RustAlloc}
-    {H : String → Option (State → State)}
-    (hag : subroutine_ok (libsignalSessionCode.rebase img.base H)
-      ((libsignalSessionCode.rebase img.base H).fnAddr calculateAgreementName)
-      ((Keys.calculateAgreementSpecAt X A (48 + extHookStack)).inImage img)) :
-    subroutine_ok (libsignalSessionCode.rebase img.base H)
-      ((libsignalSessionCode.rebase img.base H).fnAddr createChainName +
-        BitVec.ofNat 64 (num% (ls_off% "<libsignal_core::curve::PrivateKey>::calculate_agreement" -
-          ls_off% "<libsignal_protocol::ratchet::keys::RootKey>::create_chain")))
-      ((Keys.calculateAgreementCallSpecAt X A extractStackExt).inImage img) := by
-  have hrel := Keys.subroutine_ok_rel_rebase
-    (k := num% (ls_off% "<libsignal_core::curve::PrivateKey>::calculate_agreement" -
-      ls_off% "<libsignal_protocol::ratchet::keys::RootKey>::create_chain"))
-    hag
-    (ls_lemma% fnOff "<libsignal_core::curve::PrivateKey>::calculate_agreement")
-    (ls_lemma% fnOff "<libsignal_protocol::ratchet::keys::RootKey>::create_chain")
-    (by decide)
-  apply subroutine_ok_outcome_intro
-  rintro ⟨ourA, our, theirA, their, ret, sp⟩ R s0 hpc hrun hpre hsp
-  dsimp only [Spec.inImage, Keys.calculateAgreementCallSpecAt] at hpre
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hL, ⟨hx0, hx1, hx8, hsp_eq⟩, hpre⟩
-  subst hsp_eq
-  rw [stackAt_extract_split_calc s0.sp] at hpre
-  have hpre' : s0.mem ⊨ ((Keys.calculateAgreementSpecAt X A (48 + extHookStack)).inImage img).pre
-      ⟨ourA, our, theirA, their, ret⟩ s0 ∗ (memRegion (s0.sp - 17360#64) 768 ∗ R) := by
-    dsimp only [Spec.inImage, Keys.calculateAgreementSpecAt]
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hL, ⟨hx0, hx1, hx8⟩, by arm64_sep_close⟩
-  refine hrel.mono_outcome ⟨ourA, our, theirA, their, ret⟩ (memRegion (s0.sp - 17360#64) 768 ∗ R)
-      s0 hpc hrun hpre' hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | hoom
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [Spec.inImage, Keys.calculateAgreementSpecAt,
-      Keys.calculateAgreementCallSpecAt] at hq ⊢
-    rw [stackAt_extract_split_calc s0.sp]
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-    rcases hq with ⟨htr, hq⟩
-    exact ⟨htr, by arm64_sep_close⟩
-  · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
-    dsimp only [Spec.inImage, Keys.calculateAgreementSpecAt,
-      Keys.calculateAgreementCallSpecAt] at hq ⊢
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-    refine ⟨hq.1, ?_⟩
-    have hany : anyHeap ∗ memRegion (s0.sp - 17360#64) 768 ⊢ anyHeap :=
-      entails_anyHeap _
-    exact Satisfies.mono (sepConj_mono_left hany) (Satisfies.of_eq hq.2 (by ac_rfl))
-  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, by
-      dsimp only [Spec.inImage, Keys.calculateAgreementSpecAt] at hq
-      rw [satisfies_pure_sepConj] at hq; exact False.elim hq.1⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨hoom.1, by
-      dsimp only [Spec.inImage, Keys.calculateAgreementSpecAt] at hoom
-      rw [satisfies_pure_sepConj] at hoom; exact False.elim hoom.2.1⟩))
-
-private theorem extractKey32_at_extractStackExt {img : Obj.Image} {C : Crypto}
-    {H : String → Option (State → State)}
-    (hext : subroutine_ok (libsignalSessionCode.rebase img.base H)
-      ((libsignalSessionCode.rebase img.base H).fnAddr extractName)
-      ((extractSpecExt C.F).inImage img)) :
-    subroutine_ok (libsignalSessionCode.rebase img.base H)
-      ((libsignalSessionCode.rebase img.base H).fnAddr createChainName +
-        BitVec.ofNat 64 (num% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" -
-          ls_off% "<libsignal_protocol::ratchet::keys::RootKey>::create_chain")))
-      (Keys.extractKey32StackSpecAt C.F img extractStackExt) := by
-  have hrel := Keys.subroutine_ok_rel_rebase
-    (k := num% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" -
-      ls_off% "<libsignal_protocol::ratchet::keys::RootKey>::create_chain"))
-    hext
-    (ls_lemma% fnOff "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract")
-    (ls_lemma% fnOff "<libsignal_protocol::ratchet::keys::RootKey>::create_chain")
-    (by decide)
-  refine subroutine_ok_map hrel ?_
-  rintro ⟨ret, saltA, rk, ikmA, ikm, sp⟩ R s0 hpre
-  dsimp only [Keys.extractKey32StackSpecAt] at hpre
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hF, hx0, hx1, hx2, hx3, hx4, hsp, hsalt_ne, hikm⟩, hpre⟩
-  subst hsp
-  refine ⟨⟨ret, saltA, some (Ratchet.keyToBytesVec32 rk), ikmA, ikm⟩, R, ?_, ?_⟩
-  · dsimp only [Spec.inImage, extractSpecExt, optSaltAt]
-    rw [eq_true hsalt_ne, pure_true, emp_sepConj, Keys.pointsTo_keyVec_toList]
-    simp only [Option.isSome_some, reduceCtorEq, IsEmpty.forall_iff, forall_const, true_and,
-      sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hF.1, hF.2⟩, ⟨hx0, hx1, hx2, hx3, hx4, hikm⟩, by arm64_sep_close⟩
-  · intro sf hpost
-    dsimp only [Spec.inImage, extractSpecExt, ExtractGhost.prk, optSaltAt,
-      Keys.extractKey32StackSpecAt] at hpost ⊢
-    rw [eq_true hsalt_ne, pure_true, emp_sepConj, Keys.pointsTo_keyVec_toList] at hpost
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨htr, hpost⟩
-    exact ⟨htr, by arm64_sep_close⟩
-
-private theorem expandCells8_at_extractStackExt {img : Obj.Image} {C : Crypto}
-    {H : String → Option (State → State)}
-    (hexp : subroutine_ok (libsignalSessionCode.rebase img.base H)
-      ((libsignalSessionCode.rebase img.base H).fnAddr expandMultiInfoName)
-      ((expandMultiInfoSpecExt C.F).inImage img)) :
-    subroutine_ok (libsignalSessionCode.rebase img.base H)
-      ((libsignalSessionCode.rebase img.base H).fnAddr createChainName +
-        BitVec.ofNat 64 (num% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" -
-          ls_off% "<libsignal_protocol::ratchet::keys::RootKey>::create_chain")))
-      (Keys.expandCellsStackSpecAt C.F img 8 extractStackExt) := by
-  have hrel := Keys.subroutine_ok_rel_rebase
-    (k := num% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" -
-      ls_off% "<libsignal_protocol::ratchet::keys::RootKey>::create_chain"))
-    hexp
-    (ls_lemma% fnOff "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info")
-    (ls_lemma% fnOff "<libsignal_protocol::ratchet::keys::RootKey>::create_chain")
-    (by decide)
-  refine subroutine_ok_map hrel ?_
-  rintro ⟨hkdfA, prk, infoHdrA, infoA, info, okmA, sp⟩ R s0 hpre
-  dsimp only [Keys.expandCellsStackSpecAt] at hpre
-  rw [stackAt_extract_split_expand sp, ← ProofLib.memRegion_cells okmA 8 (by decide)] at hpre
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hF, hx0, hx1, hx2, hx3, hsp, hprk, hinfo, hlen⟩, hpre⟩
-  subst hsp
-  refine ⟨⟨hkdfA, prk, infoHdrA, infoA, info, okmA, 8 * 8⟩,
-    memRegion (s0.sp - 17360#64) 336 ∗ R, ?_, ?_⟩
-  · dsimp only [Spec.inImage, expandMultiInfoSpecExt]
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hF.1, hF.2⟩, ⟨hx0, hx1, hx2, hx3, hprk, hinfo, hlen⟩, by arm64_sep_close⟩
-  · intro sf hpost
-    dsimp only [Spec.inImage, expandMultiInfoSpecExt, Keys.expandCellsStackSpecAt] at hpost ⊢
-    rw [stackAt_extract_split_expand s0.sp]
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨htr, hpost⟩
-    have hE := sepConj_mono_left
-      (Q := ((infoHdrA ↦₆₄ infoA) ∗ ((infoHdrA + 8#64) ↦₆₄ BitVec.ofNat 64 info.length) ∗
-        (infoA ↦ᵣ info) ∗ (okmA ↦ₛ hkdfExpand C.F prk info (8 * 8)) ∗
-        stackAt s0.sp expandMultiInfoStackExt ∗ memRegion (s0.sp - 17360#64) 336) ∗ R)
-      (Keys.hmacCore_entails_cells C.F hkdfA prk)
-    replace hpost := Satisfies.mono hE (by simpa only [sepConj_assoc] using hpost)
-    exact ⟨htr, by arm64_sep_close⟩
-
-private theorem dealloc_at_extractStackExt {img : Obj.Image} {A : RustAlloc}
-    {H : String → Option (State → State)} {addr : BitVec 64}
-    (hd : subroutine_ok (libsignalSessionCode.rebase img.base H) addr
-      ((rustDeallocExternSpecWithStack A extHookStack).inImage img)) :
-    subroutine_ok (libsignalSessionCode.rebase img.base H) addr
-      (Keys.deallocStackSpecAt A img extractStackExt) := by
-  refine subroutine_ok_map (Keys.deallocExtStack_of_rustDeallocExtern_rebase hd) ?_
-  rintro ⟨p, size, align, sp⟩ R s0 hpre
-  dsimp only [Keys.deallocStackSpecAt] at hpre
-  rw [stackAt_extract_split_dealloc sp] at hpre
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hpure, hpre⟩
-  refine ⟨(p, size, align, sp), memRegion (sp - 17360#64) 976 ∗ R, ?_, ?_⟩
-  · dsimp only [Keys.deallocExtStackSpec]
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hpure, by arm64_sep_close⟩
-  · intro sf hpost
-    dsimp only [Keys.deallocExtStackSpec, Keys.deallocStackSpecAt] at hpost ⊢
-    rw [stackAt_extract_split_dealloc sp]
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨htr, hpost⟩
-    exact ⟨htr, by arm64_sep_close⟩
-
-/-- `<RootKey>::create_chain` at `extractStackExt = 17360` bytes under `CliExternsOk P A ext`. -/
-theorem rootKeyCreateChain_at_extractStackExt_ok {img : Obj.Image} {P : PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hOk : CliExternsOk P A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base (cliExternsWith ext))
-      ((tripleRatchetProgAtExt img.base (cliExternsWith ext)).fnAddr createChainName)
-      ((Keys.createChainSpecAt P.C A extractStackExt).inImage img) := by
-  have hHkdf := HkdfContractsExt.of_externsOk img hOk
-  have hA := Slots.allocContractsX_cliExternsWith_of_externsOk hOk img
-  exact Keys.createChain_ok_of_hooks_gen (callStack := extractStackExt) (by decide) himg
-    (calcCallAt_extractStackExt (calculateAgreement_at_ext_ok himg hOk))
-    (extractKey32_at_extractStackExt (extract_ok_ext' img P.C (cliExternsWith ext) himg hHkdf))
-    (expandCells8_at_extractStackExt (expand_multi_info_ok_ext' img P.C (cliExternsWith ext) hHkdf))
-    (dealloc_at_extractStackExt (hA.dealloc_ok_at createChainName _))
 
 end CreateChainExt
 

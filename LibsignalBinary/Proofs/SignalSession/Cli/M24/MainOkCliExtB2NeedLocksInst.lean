@@ -9,15 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1PlacedRoBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.ParseFailPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInstNoMatch
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1PlacedRoBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.ParseFailPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInstNoMatch -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatch
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.CommitOk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Proofs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bounds
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+public import ProofLib.Disproof.Basic
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Block `579 → 617` Lift and `MainOkCliExt*B2NeedLocksPlacedAt` Constructors
@@ -28,7 +40,7 @@ Lifts Block-`579` `runSpecTightPlaced` contracts to `b2MainSpecTightNeedLocksFin
 `MainOkCliExtOverB2NeedLocksPlacedAt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -39,8 +51,7 @@ namespace LibsignalBinary.Proofs.SignalSession.Cli.M24.MainOkCliExtB2NeedLocksIn
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib
 open CryptoGames.LibsignalSession (GhostState)
-open CryptoVerification
-  (LibsignalPlacement libsignalMutatedBlocks libsignalSessionExterns lsmpl)
+open CryptoVerification (ExternsDistinctOnHooked LibsignalPlacement libsignalMutatedBlocks lsmpl)
 open CryptoVerification.E2E
   (Bytes PEParams PreKeyBundleFields PreKeyMessageFields RecordExtras UnreachedPqxdhPrimitives
    initiateTapeLen wirePrekey wireWhisper)
@@ -129,7 +140,7 @@ theorem mainFrameSize_le_cliMainStk : mainFrameSize ≤ cliMainStk := by
   decide
 
 /-- Scope `Run₀` to `CliPqxdhInputs WP`. -/
-def pqScopedRun (WP : PEParams) (Run₀ : Inputs → RunAnswer → Prop)
+@[expose] def pqScopedRun (WP : PEParams) (Run₀ : Inputs → RunAnswer → Prop)
     (i : Inputs) (a : RunAnswer) : Prop :=
   CliPqxdhInputs WP i ∧ Run₀ i a
 
@@ -467,7 +478,7 @@ theorem b2MainSpecTightNeedLocksFineAt_of_runSem_placed
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}
@@ -550,7 +561,7 @@ theorem b2MainSpecTightNeedLocksFineAt_of_pqScopedRunSem_placed
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}
@@ -868,7 +879,7 @@ theorem mainOkCliExtPqB2NeedLocksPlacedAt_of_pqScopedMainSubroutine
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {ext : CliHooks → String → Option (State → State)}
     {mainIdx : Nat} {inputsOf : Inputs → ProcessInputs} {CodeOk : Memory → Prop}
     {libcAddr brkStart : BitVec 64} {stk : Nat} {lim : BudgetLimits}
@@ -895,7 +906,7 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_of_pqScopedMainSubroutine
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {ext : CliHooks → String → Option (State → State)}
     {mainIdx : Nat} {inputsOf : Inputs → ProcessInputs} {CodeOk : Memory → Prop}
     {libcAddr brkStart : BitVec 64} {stk : Nat} {lim : BudgetLimits}
@@ -922,7 +933,7 @@ theorem mainOkCliExtPqB2NeedLocksPlacedAt_of_mainSubroutine
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {ext : CliHooks → String → Option (State → State)}
     {mainIdx : Nat} {inputsOf : Inputs → ProcessInputs} {CodeOk : Memory → Prop}
     {libcAddr brkStart : BitVec 64} {stk : Nat} {lim : BudgetLimits}
@@ -949,7 +960,7 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_of_mainSubroutine
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {ext : CliHooks → String → Option (State → State)}
     {mainIdx : Nat} {inputsOf : Inputs → ProcessInputs} {CodeOk : Memory → Prop}
     {libcAddr brkStart : BitVec 64} {stk : Nat} {lim : BudgetLimits}
@@ -978,7 +989,7 @@ theorem mainOkCliExtPqB2NeedLocksPlacedAt_of_runTight_and_hops
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}
@@ -1033,7 +1044,7 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_of_runTight_and_hops
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}

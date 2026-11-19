@@ -9,20 +9,20 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHop
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopA
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_ReductionsAuthHandshake
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB1 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHop
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopA -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_ReductionsAuthHandshake
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 
 /-!
 # One-Key `KemShCr` Simulator and Index-Guessing Coupling
@@ -31,11 +31,9 @@ Defines `pqxdhAuthShCrSimImpl1Key` over `pqxdhAuthImpl1KeyG` and bounds bad KEM 
 collisions in the one-key `Auth` game via target-index guessing.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open Classical
 open scoped BigOperators ENNReal
@@ -46,7 +44,7 @@ open OracleComp
 
 namespace Proofs.SignalPqxdh.Security
 
-def pqxdhAuthShCrSimImpl1Key (embedTarget : Bool) (S : Setup) (P : Primitives) :
+@[expose] def pqxdhAuthShCrSimImpl1Key (embedTarget : Bool) (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthShCrState S) ProbComp)
   | .genSPK u j => runAuthShCrGenSPK embedTarget S P u j
   | .sendOPK u i bundle m0 m1 =>
@@ -63,7 +61,7 @@ def pqxdhAuthShCrSimImpl1Key (embedTarget : Bool) (S : Setup) (P : Primitives) :
       (pqxdhAuthSimImpl1Key S P (.recvNoOPK k j l msg)) k j msg.hdr
   | q_other => liftAuthShCrBase (pqxdhAuthSimImpl1Key S P q_other)
 
-noncomputable def tryPauseAuthQuery1Key (S : Setup) (P : Primitives)
+@[expose] def tryPauseAuthQuery1Key (S : Setup) (P : Primitives)
     (sIdx : Nat) (gq : AuthQuery S)
     (cont : (authSpec S).Range gq → OracleComp (unifSpec + authSpec S) Bool)
     (hst : AuthShCrState S) : Option (PausedShCrKem S (AuthState S)) :=
@@ -80,13 +78,13 @@ noncomputable def tryPauseAuthQuery1Key (S : Setup) (P : Primitives)
       (finishAuthSimBase S P (.sendNoOPK u i) bundle m0 m1) sIdx cont hst
   | _, _ => none
 
-noncomputable def shcrChoosePkAuthAt1Key (S : Setup) (P : Primitives)
+@[expose] def shcrChoosePkAuthAt1Key (S : Setup) (P : Primitives)
     (bIdx sIdx : Nat) (A : AuthAdversary S) :
     Bytes → Bytes → ProbComp (Bytes × (Bytes → Bytes → ProbComp Bytes)) :=
   shcrChoosePkGenericAt P ($ᵗ Bool >>= fun secb => pure (AuthState.empty S secb))
     (pqxdhAuthShCrSimImpl1Key true S P) (tryPauseAuthQuery1Key S P) bIdx sIdx A.run
 
-noncomputable def runAuthShCrSim1Key (S : Setup) (P : Primitives)
+@[expose] def runAuthShCrSim1Key (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp (Bool × Bool × AuthShCrState S) := do
   let secb ← $ᵗ Bool
   let initSt : AuthShCrState S := { base := AuthState.empty S secb }
@@ -95,13 +93,13 @@ noncomputable def runAuthShCrSim1Key (S : Setup) (P : Primitives)
   let (b', finalHst) ← (simulateQ impl A.run).run initSt
   return (secb, b', finalHst)
 
-noncomputable def badKemShCrProbAuthAt1Key (S : Setup) (P : Primitives)
+@[expose] noncomputable def badKemShCrProbAuthAt1Key (S : Setup) (P : Primitives)
     (idx : Nat) (A : AuthAdversary S) : ℝ :=
   (𝒟[runAuthShCrSim1Key S P A >>= fun (_, _, finalHst) =>
     pure (_root_.Proofs.SignalPqxdh.Security.hasBadKemShCrRecordsAt S P idx finalHst.initKemRecs
       finalHst.recvKemRecs)] {true}).toReal
 
-noncomputable def badKemShCrProbAuth1Key (S : Setup) (P : Primitives)
+@[expose] noncomputable def badKemShCrProbAuth1Key (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ℝ :=
   (𝒟[runAuthShCrSim1Key S P A >>= fun (_, _, finalHst) =>
     pure (_root_.Proofs.SignalPqxdh.Security.hasBadKemShCrRecords S P finalHst.initKemRecs

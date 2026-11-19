@@ -12,19 +12,24 @@ module
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.New
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags123Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags456Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewMacAndBoxesBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologueBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.New
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags123Budget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags456Budget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewMacAndBoxesBudget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologueBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags123BudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewMacAndBoxes -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags456BudgetAux
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `<SignalMessage>::new` (Block `63`)
@@ -34,7 +39,7 @@ relocatable `[LibsignalPlacement]` `subroutine_ok` theorems for `signalMessageNe
 `signalMessageNewSpec`, and `signalMessageNewSpecX` under `withLsCodeLoaded` and `withLsCodeRoLoaded`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -128,7 +133,7 @@ attribute [local simp, local arm64_norm]
 /-! ## `Inv`-preserving call, sequencing, and `subroutine_ok` helpers -/
 
 /-- Add a `KeepsFrozen`-stable memory invariant `Inv` to `spec`'s precondition. -/
-def withMemInv {α : Type} (Inv : Memory → Prop) (spec : Spec α) : Spec α :=
+@[expose] def withMemInv {α : Type} (Inv : Memory → Prop) (spec : Spec α) : Spec α :=
   { spec with pre := fun x s => spec.pre x s ∗ ⌜Inv s.mem⌝ }
 
 private theorem bind_state {prog : Program} {ret : BitVec 64} {s : State} {P : SepProp}
@@ -1183,37 +1188,6 @@ theorem signalMessageNew_placed_ok [LibsignalPlacement]
     h_shim h_alloc h_dealloc h_mc hPk hEncLen
     (by rwa [← encodeVarintSpec_eq_withStack]) hSerAddr hMac
 
-/-- Relocatable `[LibsignalPlacement]` budget proof for `<SignalMessage>::new` (`signalMessageNewStackX`,
-`withLsCodeLoaded`). -/
-theorem signalMessageNew_placed_ok_x [LibsignalPlacement]
-    {M : AllocCostModel} {C : Crypto} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks}
-    (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
-    (h_alloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (h_dealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (h_mc : HookSat H lsMemcpySym framelessMemcpyBudgetSpec)
-    (hPk : subroutine_ok ((blkPC_63).rebase (blkPl_63).base H) (lsmpl.base 205)
-      (withLsCodeLoaded lsmpl (publicKeySerializeSpecX M A lim)))
-    (hEncLen : subroutine_ok ((blkPC_63).rebase (blkPl_63).base H) (lsmpl.base 108)
-      (withLsCodeLoaded lsmpl (encodedLenSpec A.repAlloc)))
-    (hVarint : subroutine_ok ((blkPC_63).rebase (blkPl_63).base H) (lsmpl.base 10)
-      (withLsCodeLoaded lsmpl (encodeVarintSpecX A lim)))
-    (hSerAddr : subroutine_ok ((blkPC_63).rebase (blkPl_63).base H) (lsmpl.base 61)
-      (withLsCodeLoaded lsmpl (serializeAddressesSpecX M A lim uuidTryParse)))
-    (hMac : subroutine_ok ((blkPC_63).rebase (blkPl_63).base H) (lsmpl.base 60)
-      (withLsCodeLoaded lsmpl (computeMacSpecX M A lim C.F))) :
-    subroutine_ok ((blkPC_63).rebase (blkPl_63).base H) (blkPl_63).base
-      (withLsCodeLoaded lsmpl (signalMessageNewSpecX M A lim C.F uuidTryParse)) :=
-  signalMessageNew_placed_ok_gen_at (Inv := LibsignalCodeLoaded lsmpl)
-    (hookStack := extHookStack) (saStack := serializeAddressesStackX)
-    (varStack := encodeVarintStackX)
-    (fun h => h) (fun h hkf => h.of_keepsFrozen hkf)
-    (by decide) (by decide) (by decide) (by decide)
-    stackAt_signalMessageNewStackX_ready
-    (fun sp0 s0 c => newFrameRest_entails_stackAtX sp0 c s0)
-    h_shim h_alloc h_dealloc h_mc hPk hEncLen
-    (by rwa [← encodeVarintSpecX_eq_withStack]) hSerAddr hMac
-
 /-- Relocatable `[LibsignalPlacement]` budget proof for `<SignalMessage>::new` (`signalMessageNewStack`,
 `withLsCodeRoLoaded`). -/
 theorem signalMessageNew_placed_cro_ok [LibsignalPlacement]
@@ -1244,36 +1218,5 @@ theorem signalMessageNew_placed_cro_ok [LibsignalPlacement]
     (fun sp0 s0 c => newFrameRest_entails_stackAt sp0 c s0)
     h_shim h_alloc h_dealloc h_mc hPk hEncLen
     (by rwa [← encodeVarintSpec_eq_withStack]) hSerAddr hMac
-
-/-- Relocatable `[LibsignalPlacement]` budget proof for `<SignalMessage>::new` (`signalMessageNewStackX`,
-`withLsCodeRoLoaded`). -/
-theorem signalMessageNew_placed_cro_ok_x [LibsignalPlacement]
-    {M : AllocCostModel} {C : Crypto} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks}
-    (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
-    (h_alloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (h_dealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (h_mc : HookSat H lsMemcpySym framelessMemcpyBudgetSpec)
-    (hPk : subroutine_ok ((blkPC_63).rebase (blkPl_63).base H) (lsmpl.base 205)
-      (withLsCodeLoaded lsmpl (publicKeySerializeSpecX M A lim)))
-    (hEncLen : subroutine_ok ((blkPC_63).rebase (blkPl_63).base H) (lsmpl.base 108)
-      (withLsCodeLoaded lsmpl (encodedLenSpec A.repAlloc)))
-    (hVarint : subroutine_ok ((blkPC_63).rebase (blkPl_63).base H) (lsmpl.base 10)
-      (withLsCodeLoaded lsmpl (encodeVarintSpecX A lim)))
-    (hSerAddr : subroutine_ok ((blkPC_63).rebase (blkPl_63).base H) (lsmpl.base 61)
-      (withLsCodeLoaded lsmpl (serializeAddressesSpecX M A lim uuidTryParse)))
-    (hMac : subroutine_ok ((blkPC_63).rebase (blkPl_63).base H) (lsmpl.base 60)
-      (withLsCodeRoLoaded lsmpl (computeMacSpecX M A lim C.F))) :
-    subroutine_ok ((blkPC_63).rebase (blkPl_63).base H) (blkPl_63).base
-      (withLsCodeRoLoaded lsmpl (signalMessageNewSpecX M A lim C.F uuidTryParse)) :=
-  signalMessageNew_placed_ok_gen_at (Inv := LibsignalCodeRoLoaded lsmpl)
-    (hookStack := extHookStack) (saStack := serializeAddressesStackX)
-    (varStack := encodeVarintStackX)
-    (fun h => h.1) (fun h hkf => h.of_keepsFrozen hkf)
-    (by decide) (by decide) (by decide) (by decide)
-    stackAt_signalMessageNewStackX_ready
-    (fun sp0 s0 c => newFrameRest_entails_stackAtX sp0 c s0)
-    h_shim h_alloc h_dealloc h_mc hPk hEncLen
-    (by rwa [← encodeVarintSpecX_eq_withStack]) hSerAddr hMac
 
 end LibsignalBinary.Proofs.TripleRatchet.Wire.NewBudget

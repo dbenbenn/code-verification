@@ -28,6 +28,8 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+import Symbolic.Proofs.Swarm.CREF.Xpl.Steps
+import Symbolic.Proofs.Swarm.CREF.Xpl.StepsMix
 
 /-!
 # Pre-Key `¬ KnownBaseKeyOn` Helper Before Any `recv` Run
@@ -38,7 +40,7 @@ event occurs in `runTrace r ss`, so `bobDoneBaseKeys (runTrace r ss) = []` and
 `¬ KnownBaseKeyOn interp S g (runTrace r ss) p` holds across all `(g, ss, vis)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -64,7 +66,7 @@ open Symbolic.Swarm.CREF.XplSteps
    xfix_traceLength xfix_guardOnTrace xfix_guardTrace xfix_pure xfix_failure
    xat?_le_eq xlt_of_at?_some)
 
-def noRecvEvent : CliEvent → Bool
+@[expose] def noRecvEvent : CliEvent → Bool
   | .run ev => match ev.cmd with | .recv _ => false | _ => true
   | .env _ => true
 

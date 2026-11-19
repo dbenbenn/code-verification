@@ -93,7 +93,7 @@ private theorem groupNestBound_pos_of_maplen_zero {g : GroupDesc} (hMap0 : g.map
 /-! ## Fuel Induction for `nontrivial_free` -/
 
 set_option maxHeartbeats 800000 in
-theorem blk05_nontrivialFree_body [MallocngMultiPlacement]
+theorem blk05_nontrivialFree_body [MallocngMultiPlacement] {ro : Bool}
     {b : BitVec 64} (hb : BlkBase 5 b) {k fuel : Nat} (hFuel : fuel ≤ 6)
     {γ : GhostName} {brkStart : BitVec 64} {bud : MallocngBudget}
     {st : MallocngSt} {g : GroupDesc} {idx : Nat}
@@ -104,9 +104,9 @@ theorem blk05_nontrivialFree_body [MallocngMultiPlacement]
         ∀ (st1 : MallocngSt) (pg1 : GroupDesc) (pIdx : Nat),
           groupNestBound pg1 ≤ fuel' → EmptyGroupKeepWf st1 → FullQueueKeepWf st1 →
           subroutine_ok (blkPC_b05.rebase b (fun _ => none)) b
-            (nontrivialFreeFuelPlainSpec (k + 1) fuel' γ brkStart bud st1 pg1 pIdx)) :
+            (nontrivialFreeFuelPlainSpec (k + 1) fuel' γ brkStart bud st1 pg1 pIdx ro)) :
     subroutine_ok (blkPC_b05.rebase b (fun _ => none)) b
-      (nontrivialFreeFuelPlainSpec k fuel γ brkStart bud st g idx) := by
+      (nontrivialFreeFuelPlainSpec k fuel γ brkStart bud st g idx ro) := by
   have _ := hb
   apply subroutine_ok_of_sepWP_init
   intro _ R s0 hpc hrun hpre hspAl0
@@ -115,7 +115,7 @@ theorem blk05_nontrivialFree_body [MallocngMultiPlacement]
        s0.readReg64 .x1 = BitVec.ofNat 64 idx ∧
        g ∈ st.groups ∧
        ∃ hIdx : idx < g.slots.length, g.slots[idx]'hIdx = .claimed⌝ ∗
-      (MallocngCoreStInflightA (k + 1) γ maddrs brkStart s0.brk bud.liveCost bud.peakCost st ∗
+      (MallocngCoreStInflightModeA ro (k + 1) γ maddrs brkStart s0.brk bud.liveCost bud.peakCost st ∗
        stackFrameAt s0.sp (32 * (fuel + 1)) ∗
        MallocngRoTablesA maddrs ∗ R) := by
     refine Satisfies.mono ?_ hpre
@@ -128,7 +128,7 @@ theorem blk05_nontrivialFree_body [MallocngMultiPlacement]
   have hpreSpatial : s0.mem ⊨
       ⌜MallocngWFInflight (k + 1) maddrs.base brkStart s0.brk bud.liveCost bud.peakCost st⌝ ∗
       ((stackFrameAt s0.sp (32 * (fuel + 1)) ∗
-        MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ∗
+        MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ro ∗
         (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
         ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
         ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
@@ -141,7 +141,7 @@ theorem blk05_nontrivialFree_body [MallocngMultiPlacement]
   rw [satisfies_pure_sepConj] at hpreSpatial
   obtain ⟨hwf, hpreSpatial⟩ := hpreSpatial
   refine ⟨_, hpreSpatial, ?_⟩
-  refine SepWP.mono (post := NfFuelPost k fuel γ brkStart bud st s0) ?_
+  refine SepWP.mono (post := NfFuelPost (ro := ro) k fuel γ brkStart bud st s0) ?_
     (fun sf P_f _ _ ⟨hEnt, hspF, hcsF⟩ =>
       ⟨fun hm => Satisfies.mono (sepConj_mono_left hEnt) hm, hspF, hcsF⟩)
   refine SepWP.weaken_pre (sepConj_mono_left (unpack_nfStack s0.sp fuel hFuel)) ?_
@@ -302,14 +302,14 @@ theorem blk05_nontrivialFree_body [MallocngMultiPlacement]
     dsimp only [nfStackSaved]
     sep_frame
 
-theorem blk05_nontrivialFree_fuel [MallocngMultiPlacement]
+theorem blk05_nontrivialFree_fuel [MallocngMultiPlacement] {ro : Bool}
     {b : BitVec 64} (hb : BlkBase 5 b) (fuel : Nat) (hFuel : fuel ≤ 6)
     (k : Nat) (γ : GhostName) (brkStart : BitVec 64) (bud : MallocngBudget)
     (st : MallocngSt) (g : GroupDesc) (idx : Nat)
     (hBound : groupNestBound g ≤ fuel)
     (hKeep : EmptyGroupKeepWf st) (hFull : FullQueueKeepWf st) :
     subroutine_ok (blkPC_b05.rebase b (fun _ => none)) b
-      (nontrivialFreeFuelPlainSpec k fuel γ brkStart bud st g idx) := by
+      (nontrivialFreeFuelPlainSpec k fuel γ brkStart bud st g idx ro) := by
   induction fuel generalizing k st g idx with
   | zero =>
     refine blk05_nontrivialFree_body hb hFuel hBound hKeep hFull fun hMap0 => ?_
@@ -322,7 +322,7 @@ theorem blk05_nontrivialFree_fuel [MallocngMultiPlacement]
 
 /-! ## Top-Level Placed Soundness -/
 
-theorem placed_nontrivialFree_ok : NontrivialFreeTopPlacedStmt := by
+theorem placed_nontrivialFree_ok {ro : Bool} : NontrivialFreeTopPlacedStmt ro := by
   intro _ γ brkStart b st g idx
   unfold nontrivialFreeTopPlacedSpec
   refine subroutine_ok_withCL_of_cl fun m0 _hcl0 => ?_
@@ -339,7 +339,7 @@ theorem placed_nontrivialFree_ok : NontrivialFreeTopPlacedStmt := by
     rw [← stackFrameAt_eq_memRegion s0.sp 224]
     exact stack224_split_fuel s0.sp fuel hFuel
   have hpre' : s0.mem ⊨
-      ((nontrivialFreeFuelPlainSpec 0 fuel γ brkStart b st g idx).pre () s0 ∗
+      ((nontrivialFreeFuelPlainSpec 0 fuel γ brkStart b st g idx ro).pre () s0 ∗
        memRegion (s0.sp - 224#64) (224 - 32 * (fuel + 1))) ∗ R := by
     refine Satisfies.mono ?_ hpre
     dsimp only [nontrivialFreeFuelPlainSpec]
@@ -356,7 +356,7 @@ theorem placed_nontrivialFree_ok : NontrivialFreeTopPlacedStmt := by
         ((⌜s0.readReg64 .x0 = g.metaPtr ∧ s0.readReg64 .x1 = BitVec.ofNat 64 idx ∧
            g ∈ st.groups ∧ ∃ hIdx : idx < g.slots.length, g.slots[idx]'hIdx = .claimed⌝ ∗
           stackFrameAt s0.sp (32 * (fuel + 1)) ∗ MallocngRoTablesA maddrs ∗
-          NfStaticRest γ maddrs st ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
+          NfStaticRest γ maddrs st ro ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
           ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
           ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
           MappedSet st.masterDom (OwnedMappedByte st) ∗
@@ -367,7 +367,7 @@ theorem placed_nontrivialFree_ok : NontrivialFreeTopPlacedStmt := by
         ac_rfl)) hpre'
     rw [satisfies_pure_sepConj] at h1
     exact h1.1
-  have hSub := blk05_nontrivialFree_fuel hb5 fuel hFuel 0 γ brkStart b st g idx (Nat.le_refl _)
+  have hSub := blk05_nontrivialFree_fuel (ro := ro) hb5 fuel hFuel 0 γ brkStart b st g idx (Nat.le_refl _)
     (emptyGroupKeepWf_of_wf hwf) trivial
   refine ⟨_, hpre', ?_⟩
   refine SepWP.call_subroutine_frame (x := ()) (ret_pc := s0.readReg64 .lr)
@@ -380,11 +380,11 @@ theorem placed_nontrivialFree_ok : NontrivialFreeTopPlacedStmt := by
     (fun _ _ _ ho => False.elim (not_satisfies_false_sepConj ho))
   refine SepWP.done hpcF hrunF ⟨fun hm => ?_, hspF, hcsF⟩
   refine Satisfies.mono (sepConj_mono_left ?_) hm
-  dsimp only [nontrivialFreeFuelPlainSpec, NfRetSep, MallocngCoreStA]
+  dsimp only [nontrivialFreeFuelPlainSpec, NfRetSep, MallocngCoreStModeA]
   rw [sepExists_sepConj_left]
   refine Entails.sepExists_mono fun st' => ?_
   try rw [sepConj_assoc]
-  refine Entails.pure_left fun ⟨hProc, hBrk, hTp, hPerm, _, hMa, hCnt, hDynLen, hGrp⟩ => ?_
+  refine Entails.pure_left fun ⟨hProc, hBrk, hTp, hPerm, _, hMa, hCnt, hDynLen, hGrp, _⟩ => ?_
   have hDelta : MallocngMappedDelta 0 0 s0.mem sf.mem :=
     ⟨[], by decide, by decide, fun a ha => Or.inl (by rwa [← hPerm])⟩
   have hMaLe : st'.metaAreas.length ≤ st.metaAreas.length := by rw [hMa]; exact Nat.le_refl _
@@ -392,12 +392,12 @@ theorem placed_nontrivialFree_ok : NontrivialFreeTopPlacedStmt := by
   rw [hSp224]
   sep_frame
 
-theorem placed_nontrivialFree_keep_ok [MallocngMultiPlacement]
+theorem placed_nontrivialFree_keep_ok [MallocngMultiPlacement] {ro : Bool}
     (γ : GhostName) (brkStart : BitVec 64) (b : MallocngBudget)
     (st : MallocngSt) (g : GroupDesc) (idx : Nat) :
     EmptyGroupKeepWf st → FullQueueKeepWf st →
     subroutine_ok (mallocngBlockProg mmpl 5 msvc) (mbase 5)
-      (nontrivialFreeTopPlacedSpec γ brkStart b st g idx) :=
+      (nontrivialFreeTopPlacedSpec γ brkStart b st g idx ro) :=
   fun _ _ => placed_nontrivialFree_ok γ brkStart b st g idx
 
 end

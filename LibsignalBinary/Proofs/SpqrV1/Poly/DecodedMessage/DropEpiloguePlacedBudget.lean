@@ -10,15 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DropEpilogue
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DropEpilogue -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeHeap
 import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Drop Glue and Epilogue for `<PolyDecoder as Decoder>::decoded_message`
@@ -27,7 +28,7 @@ Threads `RustCliAllocBudget M`, `FreeOnlyEvs`, and `AllocCallPreserved` through 
 cache drop glue and epilogue paths on Block `418`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

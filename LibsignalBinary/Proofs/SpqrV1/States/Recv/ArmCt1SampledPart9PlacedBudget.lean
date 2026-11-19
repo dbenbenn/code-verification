@@ -11,15 +11,15 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart3PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart5PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart6PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart8PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart9Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart3PlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart5PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart6PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart8PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart9Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
@@ -31,6 +31,23 @@ import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart8
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart9
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.SyscallsMmap
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart5Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart6Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart8Placed
 
 /-!
 # `<States>::recv` (Block `332`) — `.ct1Sampled` Arm, Part 9 (Budget-Threaded)
@@ -39,7 +56,7 @@ Budget-threaded `[LibsignalPlacement]` composition of Path 5b (`ack = false`, `+
 and the Path 5c tail (`ack = true`, `+11696 -> s0.x30`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -531,60 +548,6 @@ theorem ct1Sampled_path_some_ok_no_ack_placed_ofPrePostEnv [LibsignalPlacement]
   exact ⟨evsRek, evsDrop, hevsRek, hevsDrop,
     Entails.trans hPf (Entails.of_eq (by rw [hpool4f]; sep_ac_rfl)),
     hsp_f, hcs_f, htr_f⟩
-
-theorem ct1Sampled_path_some_ok_no_ack_placed_ofEnv [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress} {K : MlKem}
-    {Env : UnchunkedCt1SentRecvEkGhost F → List AllocEvent → Prop}
-    {ext : String → Option (State → State)}
-    (hdealloc : HookSat (Rust.withPanics ext) spqrDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hmemcpy : HookSat (Rust.withPanics ext) spqrMemcpySym (withVmPreserved sessionMemcpySpec))
-    (hrecv_ek : subroutine_ok (lsProg_332 (Rust.withPanics ext)) (lsmpl.base 338)
-      (withLsCodeLoaded lsmpl (unchunkedCt1SentRecvEkSpecOfEnv M A lim F K Env)))
-    (st_cost : M.σ) (s0 s_in : State) (fsp selfA outA : BitVec 64)
-    (st : Ct1Sampled spqrPolyApi (spqrAuthApi F))
-    (dec' : PolyDecoder) (c_uc : Words16) (decoded : Bytes)
-    (uc_ek : Ct1SentEkReceived (spqrAuthApi F))
-    (sc : CopyScratchStack) (k : EpilogueStoreStack) (Rest : SepProp)
-    (hcl : LibsignalCodeLoaded lsmpl s_in.mem)
-    (hres : st.uc.recv_ek K st.uc.epoch decoded = .ok uc_ek)
-    (hfits : FitsEnv M lim st_cost
-      (Env ⟨fsp + 1856#64, fsp + 3696#64, fsp + 3832#64, st.uc, decoded, .ok uc_ek⟩))
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true) (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hfsp : fsp = s0.sp - 4240#64) (hpc : s_in.pc = (blkPl_332).base + 11496#64)
-    (hrun : s_in.status = .Running) (hsp : s_in.sp = fsp)
-    (hx19 : s_in.readReg64 .x19 = outA) (hx20 : s_in.readReg64 .x20 = st.uc.epoch)
-    (hx21 : s_in.readReg64 .x21 = fsp + 3856#64) (hx22 : s_in.readReg64 .x22 = 0#64)
-    (hx23 : s_in.readReg64 .x23 = polyEncoderTagVal st.sending_ct1)
-    (hx28 : s_in.readReg64 .x28 = fsp + 3272#64) (hx29 : s_in.readReg64 .x29 = fsp + 4144#64)
-    (htr : TraceCalleeSaved s_in s0) :
-    SepWP (lsProg_332 (Rust.withPanics ext)) (s0.readReg64 .x30) s_in
-      (optVecU8At A.repAlloc (fsp + 3832#64) (some decoded) ∗
-        polyDecoderAt A.repAlloc (fsp + 2752#64) dec' ∗
-        polyEncoderAt A.repAlloc selfA st.sending_ct1 ∗ wordsAt (selfA + 400#64) c_uc.toList ∗
-        wordsAt (fsp + 3696#64) c_uc.toList ∗
-        relocatedHeap (fun a => unchunkedCt1SentAt A.repAlloc a st.uc) (wordsBytes c_uc.toList) ∗
-        memRegion (selfA + 528#64) 400 ∗ copyScratchStackAt fsp sc ∗ epilogueStoreStackPart1At fsp k ∗
-        ((fsp + 232#64) ↦₆₄ selfA) ∗ ((fsp + 512#64) ↦₆₄ k.w200) ∗ ((fsp + 520#64) ↦₆₄ k.w208) ∗
-        wordsAt (fsp + 528#64) k.tail.toList ∗ memRegion (fsp + 576#64) 376 ∗
-        memRegion (fsp + 568#64) 8 ∗ memRegion (fsp + 952#64) 8 ∗ memRegion (fsp + 976#64) 1776 ∗
-        memRegion (fsp + 3152#64) 544 ∗ memRegion (fsp + 3824#64) 8 ∗ memRegion (fsp + 3856#64) 288 ∗
-        memRegion outA v1RecvSize ∗ statesRecvRoPlacedAt ∗ A.pool lim st_cost s_in ∗
-        stackAt fsp statesRecvCalleeStackX ∗ statesRecvSavedCells s0 ∗ Rest)
-      (fun sf Pf =>
-        ∃ evsRek evsDrop : List AllocEvent,
-          Env ⟨fsp + 1856#64, fsp + 3696#64, fsp + 3832#64, st.uc, decoded, .ok uc_ek⟩ evsRek ∧
-          FreeOnlyEvs evsDrop ∧
-          (Pf ⊢
-            resultV1RecvAt A.repAlloc (F := F) outA
-              (.ok { key := none, state := .ekReceivedCt1Sampled { uc := uc_ek, sending_ct1 := st.sending_ct1 } }) ∗
-            memRegion selfA chunkedStatesSize ∗ statesRecvRoPlacedAt ∗
-            A.pool lim (M.stepEvents (evsRek ++ evsDrop) st_cost) sf ∗
-            stackAt s0.sp statesRecvStackX ∗ Rest) ∧
-          sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace) :=
-  ct1Sampled_path_some_ok_no_ack_placed_ofPrePostEnv
-    hdealloc hmemcpy hrecv_ek st_cost s0 s_in fsp selfA outA st dec' c_uc decoded uc_ek sc k Rest
-    hcl hres hfits hfsp_align hsp0_align hfsp hpc hrun hsp
-    hx19 hx20 hx21 hx22 hx23 hx28 hx29 htr
 
 theorem ct1Sampled_path_some_ok_no_ack_placed [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress} {K : MlKem}

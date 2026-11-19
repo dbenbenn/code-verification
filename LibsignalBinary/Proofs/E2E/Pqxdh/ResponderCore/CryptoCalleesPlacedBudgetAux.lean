@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDeriveBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCallees
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChainBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDeriveBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCallees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChainBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -30,6 +30,9 @@ import LibsignalBinary.Proofs.TripleRatchet.Hkdf.FinalizeFixed
 import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain
 import ProofLib.OpcodeExclusion
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Expand
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # `VmPreserved` Lockstep Bridges for Block `53` (`96` B) and Block `54` (`GenericHkdf::extract`)
@@ -39,7 +42,7 @@ Proves `expand_multi_info_96_46_placed_vm_ok` (Block `53`), `extract_placed_vm_o
 `ikm.length ∈ {160, 192, 224}`) with `VmPreserved` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -1546,9 +1549,7 @@ private theorem fin_long_ext_runsTo [LibsignalPlacement] {C : Crypto} {H : Libsi
     · exact disj_sp0_sub_off sp0 144#64 144 336#64 96 (by decide)
   have hframe' : ExtFrame s0 sp0 s'.mem :=
     hframe.trans_triple hfr' hsub_144.2 hsub_176.2 hsub_m144.2
-  have hlr' : s.readReg64 .lr =
-      extPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" + 380) := by
-    rw [hlr, extPlacedFakeB_off_380]
+  have hlr' := hlr.trans extPlacedFakeB_off_380.symm
   exact ⟨⟨hstat', hcs.sp_eq.trans hsp, (CalleeSaved.x19 hcs).trans hx19,
     (CalleeSaved.x27 hcs).trans hx27,
     (CalleeSaved.x29 hcs).trans hx29, hsaved', hframe'⟩,

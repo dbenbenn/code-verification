@@ -12,11 +12,14 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefs
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Handshake `bytes::merge` Specifications and Codec Bridges
@@ -26,7 +29,7 @@ and `bytesMerge3ProtoRawSpec` at `bytesMerge3Stack` (`33120` B), together with s
 `LibsignalSpqrV1.Proto.mergeBytes` equivalence combinators.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -65,7 +68,7 @@ abbrev bytesMerge3RawSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
 
 /-- Budget-threaded raw contract of
 `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#5]` at `bytesMerge3Stack`. -/
-def bytesMerge3RawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def bytesMerge3RawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BytesMergeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
@@ -135,21 +138,6 @@ theorem SepWPp.to_subroutineOutcome3 {M : AllocCostModel} {prog : Program}
   · exact ⟨sf, hsteps, Or.inr (Or.inl ⟨hpan, hpanic hmf⟩)⟩
   · exact False.elim (not_satisfies_false_sepConj hfalse)
 
-theorem SepWPp.to_subroutineOutcome3_cro {M : AllocCostModel} {pl : Obj.MultiPlacement}
-    {prog : Program} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {x : BytesMergeGhost} {st : M.σ} {s0 : State} {P R : SepProp}
-    (_hsp_align : s0.spAligned = true)
-    (hm : s0.mem ⊨ P ∗ R) (hL : prog.CodeLoaded s0.mem)
-    (h : SepWPp prog (s0.readReg64 .lr) s0 P
-      (MergePost3 A lim x st s0 R) (MergePanic3 A lim x st s0 R)) :
-    ∃ sf, Steps prog s0 sf ∧
-      SubroutineOutcome (withLsCodeRoLoaded pl (bytesMerge3RawSpec A lim)) (x, st) R s0 sf := by
-  obtain ⟨sf, hsteps, ⟨hpc, hrun, P_f, hmf, hpost, hsp, hcs⟩ | ⟨hpan, P_f, hmf, hpanic⟩ | ⟨_, hfalse⟩⟩ :=
-    h R hm hL
-  · exact ⟨sf, hsteps, Or.inl ⟨⟨hpc, hsp, hrun⟩, ⟨hsp, hcs⟩, hpost hmf⟩⟩
-  · exact ⟨sf, hsteps, Or.inr (Or.inl ⟨hpan, hpanic hmf⟩)⟩
-  · exact False.elim (not_satisfies_false_sepConj hfalse)
-
 theorem SepWPp.lift_merge3Gen {M : AllocCostModel} {reqCap : Bool} {prog : Program}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {x : BytesMergeGhost} {st : M.σ} {s0 s : State} {P R : SepProp}
@@ -203,7 +191,7 @@ abbrev BytesMergeProtoEnv (x : BytesMergeProtoGhost) : List AllocEvent → Prop 
 
 /-- Budget-threaded raw contract of `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#5]`
 stated directly in terms of `LibsignalSpqrV1.Proto.mergeBytes`. -/
-def bytesMerge3ProtoRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def bytesMerge3ProtoRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BytesMergeProtoGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = x.wt.toU32.setWidth 8 ∧
@@ -245,18 +233,6 @@ theorem bytesMerge3ProtoRawSpec_post_eq {M : AllocCostModel} (A : RustCliAllocBu
   rw [proto_mergeBytes_toOption x.wt x.bs]
   rfl
 
-theorem subroutine_ok_bytesMerge3Proto_of_codec {M : AllocCostModel}
-    {prog : Program} {entry : BitVec 64} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (h : subroutine_ok prog entry (bytesMerge3RawSpec A lim)) :
-    subroutine_ok prog entry (bytesMerge3ProtoRawSpec A lim) := by
-  refine subroutine_ok_outcome_intro fun ⟨x, st⟩ R s0 hpc hrun hpre hsp => ?_
-  rw [bytesMerge3ProtoRawSpec_pre_eq] at hpre
-  refine h.mono_outcome (x.toCodec, st) R s0 hpc hrun hpre hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | hrest
-  · rw [← bytesMerge3ProtoRawSpec_post_eq] at hpost
-    exact Or.inl ⟨hret, hcc, hpost⟩
-  · exact Or.inr hrest
-
 theorem subroutine_ok_bytesMerge3Proto_of_codec_cro {M : AllocCostModel}
     {pl : Obj.MultiPlacement} {prog : Program} {entry : BitVec 64}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -268,20 +244,6 @@ theorem subroutine_ok_bytesMerge3Proto_of_codec_cro {M : AllocCostModel}
   refine h.mono_outcome (x.toCodec, st) R s0 hpc hrun hpre hsp fun sf hout => ?_
   rcases hout with ⟨hret, hcc, hpost⟩ | hrest
   · dsimp only [withLsCodeRoLoaded] at hpost ⊢
-    rw [← bytesMerge3ProtoRawSpec_post_eq] at hpost
-    exact Or.inl ⟨hret, hcc, hpost⟩
-  · exact Or.inr hrest
-
-theorem subroutine_ok_bytesMerge3Proto_of_codec_placed [LibsignalPlacement] {M : AllocCostModel}
-    {prog : Program} {entry : BitVec 64} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (h : subroutine_ok prog entry (withLsCl lsmpl (bytesMerge3RawSpec A lim))) :
-    subroutine_ok prog entry (withLsCl lsmpl (bytesMerge3ProtoRawSpec A lim)) := by
-  refine subroutine_ok_outcome_intro fun ⟨x, st⟩ R s0 hpc hrun hpre hsp => ?_
-  dsimp only [withLsCl] at hpre
-  rw [bytesMerge3ProtoRawSpec_pre_eq] at hpre
-  refine h.mono_outcome (x.toCodec, st) R s0 hpc hrun hpre hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | hrest
-  · dsimp only [withLsCl] at hpost ⊢
     rw [← bytesMerge3ProtoRawSpec_post_eq] at hpost
     exact Or.inl ⟨hret, hcc, hpost⟩
   · exact Or.inr hrest

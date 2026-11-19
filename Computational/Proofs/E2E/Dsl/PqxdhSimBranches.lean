@@ -10,6 +10,10 @@ limitations under the License.
 module
 
 public import Computational.Proofs.E2E.Dsl.PqxdhSimTypes
+import Computational.Proofs.E2E.Dsl.ClampsLossless
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.Soundness
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
 
 /-!
 # Per-Branch `ReductionDsl` Simulators for One-Key Real PQXDH
@@ -19,7 +23,7 @@ Defines the 14 per-constructor `ReductionDsl` handler arms over `E2EPqxdhHooks` 
 zero-target-query bounds for each arm.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -107,11 +111,11 @@ variable {ℓ : ℕ} {S : Setup} {O : Ops (e2eSig ℓ)} {ι : Type} {T : OracleS
   {I : Iface (e2eSig ℓ) T}
 
 /-- Non-reducible wrapper around `Expr.eqN` preventing `simp` from unfolding `@decide`. -/
-def natEqE {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def natEqE {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
     (a b : Expr O Γ .nat) : Expr O Γ .bool :=
   .eqN a b
 
-def initPrin1KeyBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def initPrin1KeyBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S)) (u : Expr O Γ (FinT S.N_id)) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
   letV (finValE H u) fun uNat =>
@@ -123,7 +127,7 @@ def initPrin1KeyBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (
           .ret (rsE (rInitPrinE (v pk) (v pk))
             (setPrinE (v st) (.cons (.pair (v uNat) entry) (stPrin (v st))))))
 
-def initPrin1KeyB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def initPrin1KeyB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S)) (u : Expr O Γ (FinT S.N_id)) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
   letV (finValE H u) fun uNat =>
@@ -135,7 +139,7 @@ def initPrin1KeyB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
           .ret (rsE (rInitPrinE (v pk) (v pk))
             (setPrinE (v st) (.cons (.pair (v uNat) entry) (stPrin (v st))))))
 
-def corruptBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def corruptBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S)) (u : Expr O Γ (FinT S.N_id)) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
   letV (finValE H u) fun uNat =>
@@ -149,7 +153,7 @@ def corruptBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSi
         .ret (rsE (rCorrE (peSec0 (.snd (v found))) (peSecSign (.snd (v found))))
           (setPrinE (v st) ps')))
 
-def corruptB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def corruptB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S)) (u : Expr O Γ (FinT S.N_id)) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
   letV (finValE H u) fun uNat =>
@@ -163,7 +167,7 @@ def corruptB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
         .ret (rsE (rCorrE (peSec0 (.snd (v found))) (peSecSign (.snd (v found))))
           (setPrinE (v st) ps')))
 
-def genSpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def genSpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S))
     (u : Expr O Γ (FinT S.N_id)) (j : Expr O Γ (FinT S.N_recv)) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
@@ -192,7 +196,7 @@ def genSpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig
             .ret (rsE (rBundleE bOut)
               (setSpkE (v st) (.cons (.pair (v uj) bEntry) (stSpk (v st)))))))
 
-def genSpkB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def genSpkB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S))
     (u : Expr O Γ (FinT S.N_id)) (j : Expr O Γ (FinT S.N_recv)) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
@@ -221,7 +225,7 @@ def genSpkB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
             .ret (rsE (rBundleE bOut)
               (setSpkE (v st) (.cons (.pair (v uj) bEntry) (stSpk (v st)))))))
 
-def genOpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def genOpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S))
     (u : Expr O Γ (FinT S.N_id)) (j : Expr O Γ (FinT S.N_recv)) (o : Expr O Γ (FinT S.N_opk)) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
@@ -234,7 +238,7 @@ def genOpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig
           .ret (rsE (rPkE (v opkPk))
             (setOpkE (v st) (.cons (.pair (v ujo) oEntry) (stOpk (v st))))))
 
-def genOpkB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def genOpkB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S))
     (u : Expr O Γ (FinT S.N_id)) (j : Expr O Γ (FinT S.N_recv)) (o : Expr O Γ (FinT S.N_opk)) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
@@ -247,7 +251,7 @@ def genOpkB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
           .ret (rsE (rPkE (v opkPk))
             (setOpkE (v st) (.cons (.pair (v ujo) oEntry) (stOpk (v st))))))
 
-def initiateCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def initiateCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S))
     (sid : Expr O Γ (sidT S)) (u : Expr O Γ (FinT S.N_id)) (bundle : Expr O Γ bundleT) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
@@ -340,7 +344,7 @@ def initiateCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eS
                                 (.cons (ieSetRandE (v sessV) (v drKeyRand)) (stSess (v st))))))))))
 
 /-- Shared one-key real initiator handshake body for `.initiateOPK` and `.initiateNoOPK`. -/
-def initiateC (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def initiateC (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S))
     (sid : Expr O Γ (sidT S)) (u : Expr O Γ (FinT S.N_id)) (bundle : Expr O Γ bundleT) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
@@ -432,7 +436,7 @@ def initiateC (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig �
                               (setSessE (v st)
                                 (.cons (ieSetRandE (v sessV) (v drKeyRand)) (stSess (v st))))))))))
 
-def initiateOpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def initiateOpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S))
     (u : Expr O Γ (FinT S.N_id)) (i : Expr O Γ (FinT S.N_send_opk))
     (bundle : Expr O Γ bundleT) :
@@ -441,7 +445,7 @@ def initiateOpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e
     (.ret (rsE rNoneE (v st)))
     (initiateCFuel H nFuel st (.inl (.pair u i)) u bundle)
 
-def initiateOpkB (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def initiateOpkB (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S))
     (u : Expr O Γ (FinT S.N_id)) (i : Expr O Γ (FinT S.N_send_opk))
     (bundle : Expr O Γ bundleT) :
@@ -450,7 +454,7 @@ def initiateOpkB (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig
     (.ret (rsE rNoneE (v st)))
     (initiateC H nAdv st (.inl (.pair u i)) u bundle)
 
-def initiateNoOpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def initiateNoOpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S))
     (u : Expr O Γ (FinT S.N_id)) (i : Expr O Γ (FinT S.N_send_no_opk))
     (bundle : Expr O Γ bundleT) :
@@ -459,7 +463,7 @@ def initiateNoOpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty 
     (.ret (rsE rNoneE (v st)))
     (initiateCFuel H nFuel st (.inr (.inl (.pair u i))) u bundle)
 
-def initiateNoOpkB (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def initiateNoOpkB (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S))
     (u : Expr O Γ (FinT S.N_id)) (i : Expr O Γ (FinT S.N_send_no_opk))
     (bundle : Expr O Γ bundleT) :
@@ -468,7 +472,7 @@ def initiateNoOpkB (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eS
     (.ret (rsE rNoneE (v st)))
     (initiateC H nAdv st (.inr (.inl (.pair u i))) u bundle)
 
-def acceptOpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def acceptOpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S))
     (k : Expr O Γ (FinT S.N_id)) (j : Expr O Γ (FinT S.N_recv)) (o : Expr O Γ (FinT S.N_opk))
     (hdr : Expr O Γ hdrT) :
@@ -560,7 +564,7 @@ def acceptOpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2e
                                         (fun _ => rAcceptFreshE))
                                       (v st2))))))))))
 
-def acceptOpkB (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def acceptOpkB (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S))
     (k : Expr O Γ (FinT S.N_id)) (j : Expr O Γ (FinT S.N_recv)) (o : Expr O Γ (FinT S.N_opk))
     (hdr : Expr O Γ hdrT) :
@@ -652,7 +656,7 @@ def acceptOpkB (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig �
                                         (fun _ => rAcceptFreshE))
                                       (v st2))))))))))
 
-def acceptNoOpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def acceptNoOpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S))
     (k : Expr O Γ (FinT S.N_id)) (j : Expr O Γ (FinT S.N_recv)) (l : Expr O Γ (FinT S.N_no_opk))
     (hdr : Expr O Γ hdrT) :
@@ -727,7 +731,7 @@ def acceptNoOpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e
                                   (fun _ => rAcceptFreshE))
                                 (v st2))))))))
 
-def acceptNoOpkB (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def acceptNoOpkB (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S))
     (k : Expr O Γ (FinT S.N_id)) (j : Expr O Γ (FinT S.N_recv)) (l : Expr O Γ (FinT S.N_no_opk))
     (hdr : Expr O Γ hdrT) :
@@ -802,7 +806,7 @@ def acceptNoOpkB (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig
                                   (fun _ => rAcceptFreshE))
                                 (v st2))))))))
 
-def testBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def testBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S)) (sid : Expr O Γ (sidT S)) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
   letV sid fun sidV =>
@@ -822,7 +826,7 @@ def testBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig �
           .ret (rsE (rDrKeyE (.ite (stSecb (v st)) (ieReal (v e)) (ieRand (v e))))
             (setSessE (v st) ss'))))
 
-def testB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def testB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S)) (sid : Expr O Γ (sidT S)) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
   letV sid fun sidV =>
@@ -842,18 +846,18 @@ def testB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
           .ret (rsE (rDrKeyE (.ite (stSecb (v st)) (ieReal (v e)) (ieRand (v e))))
             (setSessE (v st) ss'))))
 
-def ro1KeyRealB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def ro1KeyRealB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S)) (secrets : Expr O Γ (PB 192)) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
   bindV (H.callPrim .hkdfDerive96 secrets) fun dk =>
     .ret (rsE (rDrKeyE (v dk)) (v st))
 
-def revealDh1KeyRealB {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def revealDh1KeyRealB {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S)) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
   .ret (rsE rNoneE (v st))
 
-def revealBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def revealBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S)) (sid : Expr O Γ (sidT S)) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
   letV sid fun sidV =>
@@ -873,7 +877,7 @@ def revealBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig
              .ite (sidEqE H (ieSid (v x)) (v sidV)) (ieSetRevE (v x)) (v x)
            .ret (rsE (rDrKeyE (ieReal (v e))) (setSessE (v st) ss'))))
 
-def revealB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def revealB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S)) (sid : Expr O Γ (sidT S)) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
   letV sid fun sidV =>
@@ -893,7 +897,7 @@ def revealB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
              .ite (sidEqE H (ieSid (v x)) (v sidV)) (ieSetRevE (v x)) (v x)
            .ret (rsE (rDrKeyE (ieReal (v e))) (setSessE (v st) ss'))))
 
-def registerB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def registerB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S)) (sk : Expr O Γ (PB 32)) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
   letV sk fun skV =>
@@ -903,7 +907,7 @@ def registerB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
         .ret (rsE (rPkE (v pk))
           (setAdvE (v st) (.cons (.pair (v skV) (v pk)) (stAdv (v st))))))
 
-def revealSpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def revealSpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S))
     (u : Expr O Γ (FinT S.N_id)) (j : Expr O Γ (FinT S.N_recv)) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
@@ -917,7 +921,7 @@ def revealSpkBFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2e
             (v b)
         .ret (rsE (rSpkSkE (beSpkSk (.snd (v bFound)))) (setSpkE (v st) bs')))
 
-def revealSpkB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def revealSpkB (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (st : Var Γ (e2eKeyIndStateTy ℓ S))
     (u : Expr O Γ (FinT S.N_id)) (j : Expr O Γ (FinT S.N_recv)) :
     Comp O I Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
@@ -941,7 +945,7 @@ variable {ℓ : ℕ} {S : Setup} {Pt : Type} {P : Primitives} {C : Crypto} {K : 
   {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
   {ι : Type} {T : OracleSpec ι} {I₀ : Iface (e2eSig ℓ) T}
 
-@[reducible] def encKiStepOut (out : KeyIndResponse × KeyIndState S) :
+@[expose, reducible] def encKiStepOut (out : KeyIndResponse × KeyIndState S) :
     (Ty.prod (keyIndRT (ℓ := ℓ)) (e2eKeyIndStateTy ℓ S)).denote :=
   (keyIndRenc out.1, e2eKeyIndStateToVal out.2)
 

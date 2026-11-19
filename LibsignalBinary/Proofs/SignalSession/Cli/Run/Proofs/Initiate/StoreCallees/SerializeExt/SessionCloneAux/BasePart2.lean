@@ -9,15 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.SerializeExt.SessionCloneAux.BasePart1
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.SerializeExt.SessionCloneAux.BasePart1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `SessionStructure::clone`: Optional Sub-Struct Clone Relations and `encSessionMem` Preservation
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -59,7 +61,7 @@ theorem memRegion_344_entails_scDstSlotsAt (dst : BitVec 64) :
   rw [hd dv]
   exact Entails.sepExists_right dv (Entails.refl _)
 
-def scDstSlotsWrittenAt (dst : BitVec 64)
+@[expose] def scDstSlotsWrittenAt (dst : BitVec 64)
     (localIk' remoteIk' : VecGhost) (rootPtr' : BitVec 64)
     (chainsCap' chainsPtr' : BitVec 64) (alice' : VecGhost)
     (pqCap' pqPtr' : BitVec 64)
@@ -93,7 +95,7 @@ theorem sc_chunks96_6QAt_dst_0x98 (dst : BitVec 64) (q0 q1 q2 q3 q4 q5 : BitVec 
 
 /-! ## 5. Enhanced `ScOptPendClone` / `ScOptKybClone` and `sessionStateReprAt` + `encSessionMem` Preservation -/
 
-def ScOptPendClone (A : RustAlloc) (orig : Option TailVecGhost)
+@[expose] def ScOptPendClone (A : RustAlloc) (orig : Option TailVecGhost)
     (pendCap' pendPtr' : BitVec 64) (w23 w24 : BitVec 32) (v18 : BitVec 64) (v2c : BitVec 32) : SepProp :=
   match orig with
   | none => ⌜pendCap' = noneCap⌝
@@ -103,7 +105,7 @@ def ScOptPendClone (A : RustAlloc) (orig : Option TailVecGhost)
         gp.tail = unpack32 w23 ++ unpack32 w24 ++ unpack64 v18 ++ unpack32 v2c ++ unpack32 tw4⌝ ∗
       vecU8Buf A pendCap' pendPtr' gp.vec.bytes
 
-def ScOptKybClone (A : RustAlloc) (orig : Option TailVecGhost)
+@[expose] def ScOptKybClone (A : RustAlloc) (orig : Option TailVecGhost)
     (kybCap' kybPtr' : BitVec 64) (v28 : BitVec 32) : SepProp :=
   match orig with
   | none => ⌜kybCap' = noneCap⌝

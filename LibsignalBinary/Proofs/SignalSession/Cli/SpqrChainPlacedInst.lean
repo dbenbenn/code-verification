@@ -9,12 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrDropsPlacedInst
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrDropsPlacedInst
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbClPlaced
 import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbClPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.ProofPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlaced
+public import LibsignalBinary.Proofs.AesCbc.LibsignalAesCbcProofDefs
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SendCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.HooksE.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.TrapBridgePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsPlacedInst -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # Code-Loaded Placed `spqr::chain::Chain` (Blocks `364, 365, 323`) CLI Instantiations
@@ -25,7 +36,7 @@ Establishes code-loaded `[LibsignalPlacement]` contracts under `[CliSpqrExt W H]
 `SpqrRecvPlacedContracts` on `spqrRecvPlacedProg` (including `trTrapExternsPlaced`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -41,11 +52,12 @@ open CryptoVerification
    blkPC_365 blkPl_365 instIsLsBlockProg_365)
 open CryptoVerification.RustHeap (RustAlloc)
 open CryptoVerification.LibsignalAesCbc (memcpyHook memsetHook)
+open CryptoVerification.LibsignalHmac (compress256Hook)
 open CryptoVerification.LibsignalSpqrV1 (spqrHkdfWith libcruxHmacSpec)
 open CryptoVerification.LibsignalTripleRatchet (withLsCodeRoLoaded sessionShimSpec)
-open CryptoVerification.SignalSession (CliHooks cliExternsPlaced)
+open CryptoVerification.SignalSession (CliHooks cliExternsPlaced lsCompress256Sym)
 open CryptoVerification.SignalSession.Cli
-  (CliSpqrExt instCliSpqrExtWithPanics
+  (CliSpqrA0MlKemHooks CliSpqrExt instCliSpqrExtWithPanics
    cliSpqrExt_self cliSpqrExt_trTrap
    cliSpqrExt_shim_sat cliSpqrExt_panic_handle_error
    cliAlloc_at_block cliDealloc_at_block cliChainNew_placed_ok cliSpqrSendCoins_placed_ok)
@@ -159,6 +171,7 @@ theorem cliSpqrSend_chainFromPb_ok [LibsignalPlacement]
     (hMs : gh.memset = some memsetHook)
     (hMc : gh.memcpy = some memcpyHook)
     (hMv : gh.extra.lookup "memmove" = some hookMemmove)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (compress256Hook W.C.F))
     (hHmac : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W))
       lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F A0)) :
     subroutine_ok (spqrSendPlacedProg (cliGhostExterns gh (cliExternsPlaced mmpl W)))
@@ -166,7 +179,7 @@ theorem cliSpqrSend_chainFromPb_ok [LibsignalPlacement]
       (CryptoVerification.LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl
         (chainFromPbSpecX CryptoVerification.E2E.HooksE.A0)) := by
   have : CliSpqrExt W (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
-    cliSpqrExt_self mmpl gh W hG hMs hMc hMv hHmac
+    cliSpqrExt_self mmpl gh W hG hMs hMc hMv hCp hHmac
   exact cliSpqrSend_chainFromPb_ok_ext W
 
 theorem cliSpqrSend_chainIntoPb_ok [LibsignalPlacement]
@@ -175,6 +188,7 @@ theorem cliSpqrSend_chainIntoPb_ok [LibsignalPlacement]
     (hMs : gh.memset = some memsetHook)
     (hMc : gh.memcpy = some memcpyHook)
     (hMv : gh.extra.lookup "memmove" = some hookMemmove)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (compress256Hook W.C.F))
     (hHmac : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W))
       lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F A0)) :
     subroutine_ok (spqrSendPlacedProg (cliGhostExterns gh (cliExternsPlaced mmpl W)))
@@ -182,7 +196,7 @@ theorem cliSpqrSend_chainIntoPb_ok [LibsignalPlacement]
       (CryptoVerification.LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl
         (chainIntoPbSpecX CryptoVerification.E2E.HooksE.A0)) := by
   have : CliSpqrExt W (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
-    cliSpqrExt_self mmpl gh W hG hMs hMc hMv hHmac
+    cliSpqrExt_self mmpl gh W hG hMs hMc hMv hCp hHmac
   exact cliSpqrSend_chainIntoPb_ok_ext W
 
 /-- Specializes `cliSpqrSendCoins_placed_ok` by discharging `hChainFromPb` (Block `364`) and `hChainIntoPb` (Block `365`). -/
@@ -192,8 +206,10 @@ theorem cliSpqrSendCoins_placed_ok_of_decode_intoPb [LibsignalPlacement]
     (hMs : gh.memset = some memsetHook)
     (hMc : gh.memcpy = some memcpyHook)
     (hMv : gh.extra.lookup "memmove" = some hookMemmove)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (compress256Hook W.C.F))
     (hHmac : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W))
       lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F A0))
+    (hMlkem : CliSpqrA0MlKemHooks W (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hDecodeState : subroutine_ok
       (libsignalSessionLib.blockProgram lsmpl 325
         (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
@@ -214,9 +230,9 @@ theorem cliSpqrSendCoins_placed_ok_of_decode_intoPb [LibsignalPlacement]
       (CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
         (spqrSendCoinsPlacedSpecT CryptoVerification.E2E.HooksE.A0 0#64
           (pqxdhSpqrModel ⟨W.C, W.Q⟩))) :=
-  cliSpqrSendCoins_placed_ok mmpl gh W hG hMs hMc hMv hHmac
-    (cliSpqrSend_chainFromPb_ok mmpl gh W hG hMs hMc hMv hHmac)
-    (cliSpqrSend_chainIntoPb_ok mmpl gh W hG hMs hMc hMv hHmac)
+  cliSpqrSendCoins_placed_ok mmpl gh W hG hMs hMc hMv hCp hHmac hMlkem
+    (cliSpqrSend_chainFromPb_ok mmpl gh W hG hMs hMc hMv hCp hHmac)
+    (cliSpqrSend_chainIntoPb_ok mmpl gh W hG hMs hMc hMv hCp hHmac)
     hDecodeState hStatesIntoPb
 
 /-! ## `spqrRecvPlacedProg` contracts (`SpqrRecvPlacedContracts`) -/
@@ -274,13 +290,14 @@ theorem cliSpqrRecv_chainFromPb_ok_trTrap [LibsignalPlacement]
     (hMs : gh.memset = some memsetHook)
     (hMc : gh.memcpy = some memcpyHook)
     (hMv : gh.extra.lookup "memmove" = some hookMemmove)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (compress256Hook W.C.F))
     (hHmac : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W))
       lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F A0)) :
     subroutine_ok
       (spqrRecvPlacedProg (trTrapExternsPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))))
       (lsmpl.base 364) (withLsCodeRoLoaded lsmpl (chainFromPbSpecX A0)) := by
   have : CliSpqrExt W (trTrapExternsPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))) :=
-    cliSpqrExt_trTrap mmpl gh W hG hMs hMc hMv hHmac
+    cliSpqrExt_trTrap mmpl gh W hG hMs hMc hMv hCp hHmac
   exact cliSpqrRecv_chainFromPb_ok W
 
 theorem cliSpqrRecv_chainIntoPb_ok_trTrap [LibsignalPlacement]
@@ -289,13 +306,14 @@ theorem cliSpqrRecv_chainIntoPb_ok_trTrap [LibsignalPlacement]
     (hMs : gh.memset = some memsetHook)
     (hMc : gh.memcpy = some memcpyHook)
     (hMv : gh.extra.lookup "memmove" = some hookMemmove)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (compress256Hook W.C.F))
     (hHmac : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W))
       lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F A0)) :
     subroutine_ok
       (spqrRecvPlacedProg (trTrapExternsPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))))
       (lsmpl.base 365) (withLsCodeRoLoaded lsmpl (chainIntoPbSpecX A0)) := by
   have : CliSpqrExt W (trTrapExternsPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))) :=
-    cliSpqrExt_trTrap mmpl gh W hG hMs hMc hMv hHmac
+    cliSpqrExt_trTrap mmpl gh W hG hMs hMc hMv hCp hHmac
   exact cliSpqrRecv_chainIntoPb_ok W
 
 theorem cliSpqrRecv_chainFrom_ok_trTrap [LibsignalPlacement]
@@ -304,13 +322,14 @@ theorem cliSpqrRecv_chainFrom_ok_trTrap [LibsignalPlacement]
     (hMs : gh.memset = some memsetHook)
     (hMc : gh.memcpy = some memcpyHook)
     (hMv : gh.extra.lookup "memmove" = some hookMemmove)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (compress256Hook W.C.F))
     (hHmac : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W))
       lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F A0)) :
     subroutine_ok
       (spqrRecvPlacedProg (trTrapExternsPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))))
       (lsmpl.base 323) (withLsCodeRoLoaded lsmpl (chainFromSpecX (spqrHkdfWith W.C.F) A0)) := by
   have : CliSpqrExt W (trTrapExternsPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))) :=
-    cliSpqrExt_trTrap mmpl gh W hG hMs hMc hMv hHmac
+    cliSpqrExt_trTrap mmpl gh W hG hMs hMc hMv hCp hHmac
   exact cliSpqrRecv_chainFrom_ok W
 
 end LibsignalBinary.Proofs.SignalSession.Cli.SpqrChainPlacedInst

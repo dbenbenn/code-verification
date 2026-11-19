@@ -898,9 +898,35 @@ def symEvalGround : Sym.Simp.Simproc := fun e => do
             (mkApp2 (mkConst ``Eq.refl [Level.one]) bvTy lit)
           return .step lit prf true
     return .rfl false
+  if declName == ``Eq && e.getAppNumArgs == 3 && (e.getArg! 0).isConstOf ``Bool then
+    let a := e.getArg! 1
+    let b := e.getArg! 2
+    if a.isConstOf ``Bool.false && b.isConstOf ``Bool.true then
+      let fProp ← Sym.shareCommon (mkConst ``False)
+      return .step fProp (mkConst ``Bool.false_eq_true) true
+    if a.isConstOf ``Bool.true && b.isConstOf ``Bool.false then
+      let fProp ← Sym.shareCommon (mkConst ``False)
+      return .step fProp (mkConst ``Bool.true_eq_false) true
+    if (a.isConstOf ``Bool.true && b.isConstOf ``Bool.true) ||
+       (a.isConstOf ``Bool.false && b.isConstOf ``Bool.false) then
+      let tProp ← Sym.shareCommon (mkConst ``True)
+      return .step tProp (mkApp2 (mkConst ``eq_self [Level.one]) (mkConst ``Bool) a) true
+    return .rfl false
   if (declName == ``BEq.beq || declName == ``bne) && e.getAppNumArgs == 4 then
     let a := e.getArg! 2
     let b := e.getArg! 3
+    if (e.getArg! 0).isConstOf ``Bool then
+      if (a.isConstOf ``Bool.true || a.isConstOf ``Bool.false) &&
+         (b.isConstOf ``Bool.true || b.isConstOf ``Bool.false) then
+        let va := a.isConstOf ``Bool.true
+        let vb := b.isConstOf ``Bool.true
+        let isEq := if declName == ``BEq.beq then (va == vb) else (va != vb)
+        let bExpr ← Sym.shareCommon (toExpr isEq)
+        let eqTy ← mkEq e bExpr
+        let prf := mkApp2 (mkConst ``id [Level.zero]) eqTy
+          (mkApp2 (mkConst ``Eq.refl [Level.one]) (mkConst ``Bool) bExpr)
+        return .step bExpr prf true
+      return .rfl false
     if let some (w1, v1) := evalBitVecLitPure? a then
       if let some (w2, v2) := evalBitVecLitPure? b then
         if w1 == w2 then
@@ -1304,7 +1330,7 @@ def wpSymStepInBlock (methods : Sym.Simp.Methods) (config : Sym.Simp.Config)
     trace[proofLib.symStep.fallback]
       m!"conditional PC (`ite`): stepping with wpStepCoreWithOutcome at PC {pcExpr0}"
     let out ← wpStepCoreWithOutcome (tacticName := "wp_sym_step") (isSingleStep := !inStepLoop)
-      (resolvedItePcRef := resolvedItePcRef)
+      (resolvedItePcRef := resolvedItePcRef) (fromSymStep := true)
     return (out, bs)
   let (progExpr, _targetPcExpr, pcExpr) ← getSepWPStateAndPC
   if (iteApp? pcExpr).isSome then
@@ -1376,7 +1402,7 @@ def wpSymStepInBlock (methods : Sym.Simp.Methods) (config : Sym.Simp.Config)
     trace[proofLib.symStep.fallback]
       m!"{reason}: stepping with wpStepCoreWithOutcome at PC {pcExpr}\n\
         instruction: {instExpr}\ngoal head: {goalHead}"
-  let out ← wpStepCoreWithOutcome (isSingleStep := !inStepLoop)
+  let out ← wpStepCoreWithOutcome (isSingleStep := !inStepLoop) (fromSymStep := true)
   return (out, bs)
 
 /-- Step forward through up to `maxSteps` instructions using the `SymM` / `Sym.Simp` engine,

@@ -9,17 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupErrSymPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.Common
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailProof
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailSym
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.LoadRatchetProof
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.LoadRatchetSym
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.TightTargets
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.Ext
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupErrSymPlaced
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.Common -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailProof
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailSym
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.LoadRatchetProof
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.LoadRatchetSym
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.TightTargets
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.Ext
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.RegChain
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step244Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Main
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.ProtoExt
 
 /-!
 # Relocatable Tight Segment `S1` and `ErrTail` on Block `433`
@@ -28,7 +33,7 @@ Proves the relocatable tight-panic seams `S1TightSeamPlaced` and `ErrTailTightSe
 `try_decrypt_with_state::<Coins>` (block `433`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,6 +45,7 @@ open CryptoVerification CryptoVerification.RustHeap CryptoVerification.Libsignal
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.LibsignalSession
 open CryptoVerification.LibsignalTripleRatchet hiding memRegion_eight
+open CryptoVerification.LibsignalTripleRatchet.ReceiveRatchetFrom (trFromPlacedSpec trFromRawPlacedSpec)
 open CryptoVerification.LibsignalTripleRatchet.Getters hiding drop_chain_placed_ok
 open CryptoVerification.LibsignalTripleRatchet.Decrypt hiding
   ErrTailStatePlaced ErrTailStateXPlaced LoadRatchetStatePlaced FindChainStatePlaced

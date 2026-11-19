@@ -10,10 +10,12 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Pqxdh.Security.HeadlineDelta
-public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyCoupling -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyCoupling
 import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveBounds
 import Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindProgs
 import Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindBundle
+public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyDefs
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1Key -- proof-setup: allow-public-import
 
 /-!
 # One-Key PQXDH δ Key Indistinguishability Headline Proof
@@ -68,10 +70,6 @@ theorem ki1KeyActiveGapDhDsl (S : Setup) :
     PqxdhDelta.KI1KeyActiveG3BoundStmt S
       (pqxdhKeyInd1KeyCostedSims S).eval.gdh :=
   Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindBundle.ki1KeyKindActiveGapDhDsl S
-
-theorem ki1KeyGapDhDsl (S : Setup) :
-    PqxdhDelta.KI1KeyG3BoundStmt S (pqxdhKeyInd1KeyCostedSims S).eval.gdh :=
-  Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindBundle.ki1KeyKindGapDhDsl S
 
 theorem pqxdhKeyInd1KeyCostedSims_securityδ (S : Setup) :
     PqxdhKeyIndReductionBoundδ S (pqxdhKeyInd1KeyCostedSims S).eval :=

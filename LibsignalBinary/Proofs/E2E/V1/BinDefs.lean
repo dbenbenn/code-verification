@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Bin.Hooks
-public import LibsignalBinary.Proofs.E2E.V1.Scope
+public import LibsignalBinary.Proofs.E2E.Bin.Hooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.V1.Scope -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Statements
 
 /-!
@@ -27,7 +27,7 @@ satisfying `PqInv S Pq` (implying `< 2 ^ 32`, closed under `S.send` and `S.recv`
 emitted PQ ratchet messages to `≤ 2 ^ 30` bytes).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.V1
 
@@ -39,20 +39,20 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalT
 open CryptoVerification.LibsignalPublicApiRepr CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.LibsignalPublicApi.StoreKit.Identity
 open CryptoVerification.E2E.Bin
-open CryptoVerification.LibsignalSpqrV1 (TokenInit otrEncryptSpecT tryDecryptSpecT)
+
 
 /-! ## Post-quantum state invariant `PqInv` -/
 
 /-- `Pq` is closed under `S.send`. -/
-def SendClosed (S : SpqrModel) (Pq : List (BitVec 8) → Prop) : Prop :=
+@[expose] def SendClosed (S : SpqrModel) (Pq : List (BitVec 8) → Prop) : Prop :=
   ∀ st rest st' salt pm, Pq st → S.send st rest = some (st', salt, pm) → Pq st'
 
 /-- `Pq` is closed under `S.recv` (on `Ok`). -/
-def RecvClosed (S : SpqrModel) (Pq : List (BitVec 8) → Prop) : Prop :=
+@[expose] def RecvClosed (S : SpqrModel) (Pq : List (BitVec 8) → Prop) : Prop :=
   ∀ st msg st' salt, Pq st → S.recv st msg = .ok (st', salt) → Pq st'
 
 /-- On a `Pq` state, `S.send` emits a PQ ratchet message of at most `2 ^ 30` bytes. -/
-def SendMsgBoundOn (S : SpqrModel) (Pq : List (BitVec 8) → Prop) : Prop :=
+@[expose] def SendMsgBoundOn (S : SpqrModel) (Pq : List (BitVec 8) → Prop) : Prop :=
   ∀ st rest st' salt pm, Pq st → S.send st rest = some (st', salt, pm) → pm.length ≤ 2 ^ 30
 
 /-- Closure and length-bound conditions on a post-quantum state invariant `Pq` under `S`. -/
@@ -63,11 +63,11 @@ structure PqInv (S : SpqrModel) (Pq : List (BitVec 8) → Prop) : Prop where
   msg : SendMsgBoundOn S Pq
 
 /-- Every current session in `r` has its `pqRatchetState` satisfying `Pq`. -/
-def RecordPqP (Pq : List (BitVec 8) → Prop) (r : SessionRecord (List (BitVec 8))) : Prop :=
+@[expose] def RecordPqP (Pq : List (BitVec 8) → Prop) (r : SessionRecord (List (BitVec 8))) : Prop :=
   ∀ s, r.currentSession = some s → Pq s.state.pqRatchetState
 
 /-- Store-side record invariant replacing `RecordPqStateLengthBelow2Pow32` in `InMemRecOkV1` with `RecordPqP Pq`. -/
-def InMemRecOkP (Pq : List (BitVec 8) → Prop) (r : SessionRecord (List (BitVec 8))) : Prop :=
+@[expose] def InMemRecOkP (Pq : List (BitVec 8) → Prop) (r : SessionRecord (List (BitVec 8))) : Prop :=
   Record.RecordInScope r ∧ RecordPqP Pq r ∧ r.currentSession.isSome
 
 /-- At `Pq := (·.length < 2 ^ 32)`, `InMemRecOkP Pq` coincides with `InMemRecOkV1`. -/
@@ -108,18 +108,5 @@ theorem _root_.CryptoVerification.E2E.Bin.BinHooks.toV1 {C : Crypto} {A : RustAl
   hashbrownBin := h.hashbrownBin
   alloc_eq := h.alloc_eq
   tpidrSafe := h.tpidrSafe
-
-/-- Binary execution environment at SPQR V1, combining `BinHooksV1` with the `OTR::encrypt`
-(`otrEncryptSpecT`) and `try_decrypt_with_state` (`tryDecryptSpecT`) contracts. -/
-structure BinEnvV1 (C : Crypto) (A : RustAlloc) (S : SpqrModel) (img : Obj.Image)
-    (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop where
-  loads : Obj.Loads libsignalSessionImage img
-  hooks : BinHooksV1 C A S abs
-  otrEnc : subroutine_ok (tripleRatchetProg img C ctl abs) (entryOf img otrEncryptName)
-    (otrEncryptSpecT C A ctl uuidTryParse S img)
-  tryDec : subroutine_ok (tripleRatchetProg img C ctl abs) (entryOf img tryDecryptName)
-    (tryDecryptSpecT C A ctl uuidTryParse S img)
-
-/-! ## V1 in-memory public entry specifications -/
 
 end CryptoVerification.E2E.V1

@@ -10,18 +10,25 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserCloneTailPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadKpkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadRegSpkSpinePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlacedBudgetAux
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserCloneTailPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadKpkPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadRegSpkSpinePlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlacedBudgetAux
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserClonePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserCloneTail -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkSpinePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Arm `R1b` Proof (`run_hop_init2_placed_ok`)
@@ -32,7 +39,7 @@ Defines the prefix-closed stage envelopes (`Init2Stage4Env`, `Init2Stage3Env`, `
 `[LibsignalPlacement]` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -85,7 +92,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget (RunCalle
 /-! ## Prefix-Closed Stage Envelopes and `Init2Env` -/
 
 /-- Success-path allocation-event envelope of `r1b_step_kpk_placed`: `bundleRead` for `"kyber-pre-key"` followed by `split_signed` on `kpkBs`. -/
-def R1bStepKpkOkEnv (cEnvs : RunCalleesEnvs) (files : FsFiles)
+@[expose] def R1bStepKpkOkEnv (cEnvs : RunCalleesEnvs) (files : FsFiles)
     (dir kpkBs : List (BitVec 8)) : List AllocEvent → Prop :=
   SeqEnv (cEnvs.bundleRead files dir (utf8 "kyber-pre-key")) (cEnvs.splitSigned kpkBs)
 
@@ -97,7 +104,7 @@ example (files : FsFiles) :
   Or.inl rfl
 
 /-- Error-path allocation-event envelope of `r1b_step_kpk_placed`: `bundleRead` failure or `splitSigned kpkBs = none`, followed by `FreeOnlyEvs`. -/
-def R1bStepKpkErrEnv (cEnvs : RunCalleesEnvs) (files : FsFiles)
+@[expose] def R1bStepKpkErrEnv (cEnvs : RunCalleesEnvs) (files : FsFiles)
     (dir : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   match cliIo.rd files (dir ++ [0x2f#8] ++ utf8 "kyber-pre-key") with
   | .error () => SeqEnv (cEnvs.bundleRead files dir (utf8 "kyber-pre-key")) FreeOnlyEvs evs
@@ -122,7 +129,7 @@ example :
   exact Or.inl rfl
 
 /-- Allocation-event envelope from `0x24ec` through `0x28f0` (Stages 4a, 4b, and `0x27bc → 0x28f0`). -/
-def Init2Stage4Env (spkKey kpkKey : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def Init2Stage4Env (spkKey kpkKey : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   match PublicKey.deserialize spkKey with
   | .error _ => FreeOnlyEvs evs
   | .ok _ =>
@@ -140,7 +147,7 @@ example (spkKey kpkKey : List (BitVec 8)) : ∃ evs, Init2Stage4Env spkKey kpkKe
   · exact ⟨rustAllocEvents 64 1, Or.inl rfl⟩
 
 /-- Allocation-event envelope from `0x12dc` through `0x28f0` (Stage 3 `one-time-pre-key` and Stage 4). -/
-def Init2Stage3Env (cEnvs : RunCalleesEnvs) (files : FsFiles)
+@[expose] def Init2Stage3Env (cEnvs : RunCalleesEnvs) (files : FsFiles)
     (dir spkKey kpkKey : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   cEnvs.bundleRead files dir (utf8 "one-time-pre-key") evs ∨
   R1bStepOpkErrEnv cEnvs files dir evs ∨
@@ -168,7 +175,7 @@ example (files : FsFiles) :
   Or.inl rfl
 
 /-- Allocation-event envelope from `0x1260` through `0x28f0` (Stage 2 `kyber-pre-key` and Stages 3–4). -/
-def Init2Stage2Env (cEnvs : RunCalleesEnvs) (files : FsFiles)
+@[expose] def Init2Stage2Env (cEnvs : RunCalleesEnvs) (files : FsFiles)
     (dir spkKey : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   cEnvs.bundleRead files dir (utf8 "kyber-pre-key") evs ∨
   R1bStepKpkErrEnv cEnvs files dir evs ∨
@@ -190,7 +197,7 @@ example (files : FsFiles) :
   Or.inl rfl
 
 /-- Allocation-event envelope from `0x0c6c` (`signed-pre-key` read after valid 4-byte `registration-id`) through `0x28f0`. -/
-def Init2AfterRegOkEnv (cEnvs : RunCalleesEnvs) (files : FsFiles)
+@[expose] def Init2AfterRegOkEnv (cEnvs : RunCalleesEnvs) (files : FsFiles)
     (dir : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   let spkPath := dir ++ [0x2f#8] ++ utf8 "signed-pre-key"
   PathEnv dir (utf8 "signed-pre-key") evs ∨
@@ -215,7 +222,7 @@ example (c0 : RunCalleesEnvs) (files : FsFiles) :
   Or.inl rfl
 
 /-- Full prefix-closed allocation-event envelope for Arm `R1b` (`R+0x074c → R+0x28f0` or `RejectKPlacedEnv`). -/
-def Init2Env (cEnvs : RunCalleesEnvs) (g : RunCall) (d : Init1Data)
+@[expose] def Init2Env (cEnvs : RunCalleesEnvs) (g : RunCall) (d : Init1Data)
     (evs : List AllocEvent) : Prop :=
   let files := runFiles g.i
   let dir := d.dir

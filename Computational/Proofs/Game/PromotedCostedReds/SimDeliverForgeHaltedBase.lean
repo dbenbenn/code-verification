@@ -14,17 +14,21 @@ public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeBase
 public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanOracle -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedInit -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedSendCorrSub -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitness -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitness
 public import Computational.Proofs.Game.PromotedCostedReds.KemFailBadHalted -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitnessSub -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepRecvFwd -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepSendCorr -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8WireSnap -- proof-setup: allow-public-import
 
 /-!
 # Base DSL Definitions for Online-Halted `simDeliverForge`
 
 Defines the raw state `dfHaltedT`, the hybrid simulation relation `DFHaltedStateRel`, the
 tracker-halted costed reduction `simDeliverForgeRedProgHalted`, and its sanitized semantic oracle
-`simDeliverForgeOracleSanTrackHalted`.
--/
+`simDeliverForgeOracleSanTrackHalted`.-/
 
 public section
 
@@ -38,22 +42,22 @@ open _root_.ReductionDsl (Sig Ops Iface Ty Expr Comp Var CostedReduction
   UniformSamplerTag AtomicUnifBase SMTagDF
   GhostStT PlainT BV256 BV512 U32 B smQT smRT lpubT fig8CtT recvResultT)
 open _root_.CryptoGames (Party)
-open CryptoGames.CBC (Plain)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.SM (pGet noBobSendInEpoch0)
-open CryptoGames.SM.Construction.DeliverForge
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.SM (pGet noBobSendInEpoch0)
+open _root_.CryptoGames.SM.Construction.DeliverForge
   (AdversaryDF AdversaryCompDF specDF transmitQueryDF challQueryDF)
-open CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart)
-open CryptoGames.Ratchet.LibsignalSim
+open _root_.CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart)
+open _root_.CryptoGames.Ratchet.LibsignalSim
   (Fig8St Fig8C kemTrackEnc mkPub toWire
    deliverForgeSemHook scPostSendPure semDrawSendCoins semSendHook)
-open CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState initSimC)
-open CryptoGames.LibsignalSession (Crypto ShaCompress IdentityKey PublicKey GhostState Params)
+open _root_.CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState initSimC)
+open _root_.CryptoGames.LibsignalSession (Crypto ShaCompress IdentityKey PublicKey GhostState Params)
 open Computational.Proofs.Game.PromotedCostedReds.SanOracleCore (semRecvHookS semCorrHookTGB)
-open CryptoGames.LibsignalSM.Proofs.Refinement
+open _root_.CryptoGames.LibsignalSM.Proofs.Refinement
   (KemFailTrackState initKemFailTrack stepKemFailSend stepKemFailDeliver)
-open CryptoVerification.LibsignalSpqrV1 (MlKem)
-open CryptoVerification.E2E (Bytes paramsV1)
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem)
+open _root_.CryptoVerification.E2E (Bytes paramsV1)
 open Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge
   (sessSpqrKemOp atomicDraw256)
 open Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon (dummyBoolSessionRed)
@@ -78,8 +82,6 @@ open Computational.Proofs.Game.PromotedCostedReds.KemFailRedSendCorrSub
 open Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitnessSub
   (findRevHonestIdxE kemOnDeliverPostAtomicE)
 open Computational.Proofs.Game.PromotedCostedReds.KemFailBadHalted (honestExchangeFailsPolyC)
-
-noncomputable section
 
 @[expose, reducible] def dfHaltedT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (dfFullT ℓ Pt) (kemTrackT ℓ Pt)
@@ -721,7 +723,5 @@ theorem semSendTrackHalted_support {PQ Pt : Type} [DecidableEq Pt] [Zero Pt] {�
                 (by rintro rq₀ rfl; simp only [support_pure, Set.mem_singleton_iff] at hrq
                     exact ⟨hrq, hrc⟩)
                 hpub hres
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedBase

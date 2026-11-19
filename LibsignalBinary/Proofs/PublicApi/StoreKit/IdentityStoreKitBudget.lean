@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKit
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKit -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `IdentityKeyStore` Contracts
@@ -22,7 +22,7 @@ public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKit
 total-correctness shim and poll contracts (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -87,7 +87,7 @@ structure IdentityStoreBudgetEnv {A : RustAlloc} {b : BitVec 64}
   savePollEnv : ikit.IdState → AddrVal → IdentityKey → List AllocEvent → Prop
 
 /-- `is_trusted_identity` shim + poll + `Box` dealloc step envelope. -/
-def TrustStepEnv {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b)
+@[expose] def TrustStepEnv {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b)
     (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
     (rem : AddrVal) (key : IdentityKey) (d : Direction) : List AllocEvent → Prop :=
   SeqEnv (BoxAllocEnv ikit.trustBoxSize)
@@ -95,7 +95,7 @@ def TrustStepEnv {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b)
       (· = rustDeallocEvents ikit.trustBoxSize 8))
 
 /-- `save_identity` shim + poll + `Box` dealloc step envelope. -/
-def SaveStepEnv {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b)
+@[expose] def SaveStepEnv {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b)
     (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
     (rem : AddrVal) (key : IdentityKey) : List AllocEvent → Prop :=
   SeqEnv (BoxAllocEnv ikit.saveBoxSize)
@@ -103,7 +103,7 @@ def SaveStepEnv {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b)
       (· = rustDeallocEvents ikit.saveBoxSize 8))
 
 /-- Budget-threaded `is_trusted_identity` shim contract. -/
-def kitTrustShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitTrustShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (ikit : IdentityStoreSpec A.repAlloc b) (fds : Bool := false) :
     Spec (IdentityShimCall × BitVec 8 × M.σ) where
   pre := fun (x, d, st) s =>
@@ -132,7 +132,7 @@ def kitTrustShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Budg
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp ikit.trustShimStack
 
 /-- Budget-threaded `save_identity` shim contract. -/
-def kitSaveShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitSaveShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (ikit : IdentityStoreSpec A.repAlloc b) (fds : Bool := false) :
     Spec (IdentityShimCall × M.σ) where
   pre := fun (x, st) s =>
@@ -160,7 +160,7 @@ def kitSaveShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Budge
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp ikit.saveShimStack
 
 /-- Budget-threaded `is_trusted_identity` poll contract. -/
-def kitTrustPollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitTrustPollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (ikit : IdentityStoreSpec A.repAlloc b)
     (ikitEnv : IdentityStoreBudgetEnv ikit) (fds : Bool := false) :
     Spec (IdentityPollCall × Direction × BitVec 64 × ikit.IdState × M.σ) where
@@ -191,7 +191,7 @@ def kitTrustPollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Budg
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp ikit.trustPollStack
 
 /-- Budget-threaded `save_identity` poll contract. -/
-def kitSavePollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitSavePollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (ikit : IdentityStoreSpec A.repAlloc b)
     (ikitEnv : IdentityStoreBudgetEnv ikit) (fds : Bool := false) :
     Spec (IdentityPollCall × BitVec 64 × ikit.IdState × M.σ) where

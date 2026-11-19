@@ -13,22 +13,26 @@ public import Aesop.BuiltinRules
 public import LibsignalBinary.Specifications.RustHeap.Alloc
 public import Mathlib.Tactic.ToDual
 public import ProofLib.Hoare.LibcHooks
+public import LibsignalBinary.Proofs.Common.UnmappedDecidable -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpecLemmas.RustHeapAllocProofDefs
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import ProofLib.VCGen
 import VCVio.Prelude.Core
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalSession.NonVacuityWitness
 
 open Arm64 ProofLib CryptoVerification.RustHeap
+open LibsignalBinary.Proofs.Common.UnmappedDecidable
+  (findIdxFrom findIdxFrom_isSome_iff findIdxFrom_some_spec)
+open scoped LibsignalBinary.Proofs.Common.UnmappedDecidable
 
 /-- Witness `RustAlloc` instance with `emp` pool and live tokens. -/
-def A₀ : RustAlloc := ⟨emp, fun _ _ _ => emp⟩
+@[expose] def A₀ : RustAlloc := ⟨emp, fun _ _ _ => emp⟩
 
 /-- Existence of a non-null, `align`-aligned unmapped region of `size` bytes in `m`. -/
-def HasRoom (m : Memory) (size align : Nat) : Prop :=
+@[expose] def HasRoom (m : Memory) (size align : Nat) : Prop :=
   ∃ p : BitVec 64, p ≠ 0 ∧ p.toNat % align = 0 ∧ Unmapped m p size
 
 theorem heapMatches_mapFresh {h : Heap} {m : Memory} (hm : h.Matches m)
@@ -105,40 +109,88 @@ theorem satisfies_mapFresh_unmapped {P : SepProp} {m : Memory} {p : BitVec 64} {
   · intro a han
     simpa [Memory.isAnon_mapFresh, Memory.isAnon_mapZero, Perm.rw] using han
 
-noncomputable def allocBody (s : State) : State :=
+@[expose] def RoomAt (m : Memory) (size align k : Nat) : Prop :=
+  let p := BitVec.ofNat 64 k
+  k < 2 ^ 64 ∧ p ≠ 0 ∧ p.toNat % align = 0 ∧ Unmapped m p size
+
+local instance instDecidableRoomAt (m : Memory) (size align k : Nat) :
+    Decidable (RoomAt m size align k) :=
+  inferInstanceAs (Decidable
+    (k < 2 ^ 64 ∧ BitVec.ofNat 64 k ≠ 0 ∧ (BitVec.ofNat 64 k).toNat % align = 0 ∧
+      Unmapped m (BitVec.ofNat 64 k) size))
+
+/-- Lowest-fit search over `[0, 2 ^ 64)` for an unmapped aligned block of `size` bytes.
+Note: terminating in `≤ 2 ^ 64` steps; evaluates quickly when low addresses fit (e.g. `Memory.empty`),
+but infeasible to exhaustively `#eval` when memory has no room. -/
+@[expose] def findRoomIdx? (m : Memory) (size align : Nat) : Option Nat :=
+  findIdxFrom (fun k => decide (RoomAt m size align k)) (2 ^ 64) 0
+
+theorem findRoomIdx?_isSome_iff (m : Memory) (size align : Nat) :
+    (findRoomIdx? m size align).isSome = true ↔ HasRoom m size align := by
+  unfold findRoomIdx?
+  rw [findIdxFrom_isSome_iff]
+  simp only [Nat.zero_le, Nat.zero_add, true_and, decide_eq_true_eq]
+  constructor
+  · rintro ⟨k, _, _, hne, hal, hun⟩
+    exact ⟨BitVec.ofNat 64 k, hne, hal, hun⟩
+  · rintro ⟨p, hne, hal, hun⟩
+    refine ⟨p.toNat, p.isLt, p.isLt, ?_, ?_, ?_⟩ <;> simpa [BitVec.ofNat_toNat]
+
+local instance instDecidableHasRoom (m : Memory) (size align : Nat) :
+    Decidable (HasRoom m size align) :=
+  decidable_of_iff ((findRoomIdx? m size align).isSome = true)
+    (findRoomIdx?_isSome_iff m size align)
+
+@[expose] def chooseRoom {m : Memory} {size align : Nat} (_h : HasRoom m size align) : BitVec 64 :=
+  BitVec.ofNat 64 ((findRoomIdx? m size align).getD 0)
+
+theorem chooseRoom_spec {m : Memory} {size align : Nat} (h : HasRoom m size align) :
+    chooseRoom h ≠ 0 ∧ (chooseRoom h).toNat % align = 0 ∧ Unmapped m (chooseRoom h) size := by
+  have his : (findRoomIdx? m size align).isSome = true := (findRoomIdx?_isSome_iff m size align).mpr h
+  cases hopt : findRoomIdx? m size align with
+  | none => rw [hopt] at his; cases his
+  | some k =>
+    obtain ⟨_, _, hdec⟩ := findIdxFrom_some_spec _ hopt
+    have hr : RoomAt m size align k := of_decide_eq_true hdec
+    simp only [chooseRoom, hopt, Option.getD_some]
+    exact ⟨hr.2.1, hr.2.2.1, hr.2.2.2⟩
+
+@[expose] def allocBody (s : State) : State :=
   let size := (s.readReg64 .x0).toNat
   let align := (s.readReg64 .x1).toNat
-  letI := Classical.propDecidable (HasRoom s.mem size align)
   if h : HasRoom s.mem size align then
-    let p := Classical.choose h
+    let p := chooseRoom h
     (s.setMem (s.mem.mapFresh p size Perm.rw)).writeReg64 .x0 p
   else
     (s.appendTrace [allocFailedEvent]).writeReg64 .x0 0#64
 
-noncomputable def witnessAllocHook : State → State :=
+example :
+    (allocBody (((default : State).writeReg64 .x0 16#64).writeReg64 .x1 8#64)).readReg64 .x0 =
+      8#64 := rfl
+
+@[expose] def witnessAllocHook : State → State :=
   retHook allocBody
 
-noncomputable def reallocBody (s : State) : State :=
+@[expose] def reallocBody (s : State) : State :=
   let p := s.readReg64 .x0
   let old := (s.readReg64 .x1).toNat
   let align := (s.readReg64 .x2).toNat
   let new := (s.readReg64 .x3).toNat
-  letI := Classical.propDecidable (HasRoom s.mem new align)
   if h : HasRoom s.mem new align then
-    let q := Classical.choose h
+    let q := chooseRoom h
     let m1 := s.mem.mapFresh q new Perm.rw
     let m2 := m1.writeBytes q (s.mem.readBytes p (min old new))
     (s.setMem m2).writeReg64 .x0 q
   else
     (s.appendTrace [allocFailedEvent]).writeReg64 .x0 0#64
 
-noncomputable def witnessReallocHook : State → State :=
+@[expose] def witnessReallocHook : State → State :=
   retHook reallocBody
 
-def witnessDeallocHook : State → State :=
+@[expose] def witnessDeallocHook : State → State :=
   hookNoop
 
-noncomputable def witnessHooks : String → Option (State → State) := fun sym =>
+@[expose] def witnessHooks : String → Option (State → State) := fun sym =>
   if sym = "__rustc::__rust_alloc" then some witnessAllocHook
   else if sym = "__rustc::__rust_dealloc" then some witnessDeallocHook
   else if sym = "__rustc::__rust_realloc" then some witnessReallocHook
@@ -167,9 +219,9 @@ theorem witnessAllocHook_ok : HookOk witnessAllocHook (rustAllocSpec A₀) := by
   rw [hx0, hx1]
   split
   · rename_i hroom
-    have hspec := Classical.choose_spec hroom
+    have hspec := chooseRoom_spec hroom
     rcases hspec with ⟨hp_ne, hp_al, hp_unmap⟩
-    set p := Classical.choose hroom
+    set p := chooseRoom hroom
     refine ⟨Memory.keepsFrozen_mapFresh s0.mem p size Perm.rw, rfl, hrun,
       ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, ?_⟩
     dsimp only [rustAllocSpec]
@@ -218,9 +270,9 @@ theorem witnessReallocHook_ok : HookOk witnessReallocHook (rustReallocSpec A₀)
   rw [hx0, hx1, hx2, hx3]
   split
   · rename_i hroom
-    have hspec := Classical.choose_spec hroom
+    have hspec := chooseRoom_spec hroom
     rcases hspec with ⟨hq_ne, hq_al, hq_unmap⟩
-    set q := Classical.choose hroom
+    set q := chooseRoom hroom
     let c := min old new
     have hc_le_new : c ≤ new := Nat.min_le_right old new
     have hbs_le_c : bs.length ≤ c := Nat.le_min.mpr ⟨hbs_old, hbs_new⟩
@@ -328,7 +380,7 @@ theorem witnessHooks_succeedsWithRoom : AllocSucceedsWithRoom A₀ witnessHooks 
       rw [hx0, hx1]; exact hroom
     simp only [witnessAllocHook, retHook, allocBody, hroom', ↓reduceDIte,
       readReg64_setPC_writeReg64_x0]
-    exact (Classical.choose_spec hroom').1
+    exact (chooseRoom_spec hroom').1
   · intro f hf p old align new bs R s _hrun _hsp hpre hroom
     simp only [witnessHooks] at hf
     have hf' : witnessReallocHook = f := by
@@ -340,6 +392,6 @@ theorem witnessHooks_succeedsWithRoom : AllocSucceedsWithRoom A₀ witnessHooks 
       rw [hx2, hx3]; exact hroom
     simp only [witnessReallocHook, retHook, reallocBody, hroom', ↓reduceDIte,
       readReg64_setPC_writeReg64_x0]
-    exact (Classical.choose_spec hroom').1
+    exact (chooseRoom_spec hroom').1
 
 end CryptoVerification.LibsignalSession.NonVacuityWitness

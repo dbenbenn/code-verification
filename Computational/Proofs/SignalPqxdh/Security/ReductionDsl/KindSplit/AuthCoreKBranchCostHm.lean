@@ -214,14 +214,6 @@ theorem intSendPrepKC_cost_le (S : Setup) (K_on K_ro : ℕ) (opk : Bool)
       | simp (discharger := clear *- ; omega) only [Nat.max_eq_left]
     omega
 
-theorem intSendPrepKC_r64_le (S : Setup) (K_on K_ro : ℕ) (opk : Bool)
-    {Γ₁ Γ₂ Δ : List (Ty pqSig)} (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var Γ₂ sendQTy)
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (intSendPrepKC S K_on K_ro opk (Δ := Δ) fhst x).queries (fun _ => 0) (sampR64W rfl) ≤ 2 := by
-  change (AuthCoreKArmsBase.intSendPrepKC S K_on K_ro opk (Δ := Δ) fhst x).queries
-    hm_zP hm_r64S ≤ 2
-  rw [hm_intSendPrepKC_r64]; decide
-
 theorem intSendPrepKC_queries_prim_le (S : Setup) (K_on K_ro : ℕ) (opk : Bool)
     {Γ₁ Γ₂ Δ : List (Ty pqSig)} (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var Γ₂ sendQTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
@@ -693,36 +685,6 @@ theorem hmSchedPrepKC_cost_le (S : Setup) (K_on K_ro : ℕ) {Δ : List (Ty pqSig
     | simp (discharger := clear *- ; omega) only [Nat.max_eq_left]
   omega
 
-theorem hmSchedPrepKC_r64_le (S : Setup) (K_on K_ro : ℕ) {Δ : List (Ty pqSig)}
-    (a : Expr pqxdhOps Δ schedPrepArgsTy) :
-    (hmSchedPrepKC S K_on K_ro a).queries (fun _ => 0) (sampR64W rfl) ≤ 2 := by
-  change (AuthCoreKArmsBase.hmSchedPrepKC S K_on K_ro a).queries hm_zP hm_r64S ≤ 2
-  rw [hm_hmSchedPrepKC_r64]
-  decide
-
-theorem hmSchedPrepKC_queries_prim_le (S : Setup) (K_on K_ro : ℕ) {Δ : List (Ty pqSig)}
-    (a : Expr pqxdhOps Δ schedPrepArgsTy) :
-    (hmSchedPrepKC S K_on K_ro a).queries primIfacePrimQueryWeight samplerZeroQueryWeight ≤
-      15 + 4 * min K_on S.N_dh + 10 * min K_on S.N_sess_tot := by
-  have h := hm_hmSchedPrepKC_queries_tight S K_on K_ro a
-  change (AuthCoreKArmsBase.hmSchedPrepKC S K_on K_ro a).queries primW primWS ≤ _
-  omega
-
-theorem hmSchedPrepKC_size_le (S : Setup) (K_on K_ro : ℕ) {Δ : List (Ty pqSig)}
-    (a : Expr pqxdhOps Δ schedPrepArgsTy) :
-    (hmSchedPrepKC S K_on K_ro a).size ≤
-      a.size + 6000 + 20 * bits K_on + 10 * bits K_ro := by
-  have h := hm_hmSchedPrepKC_size_tight S K_on K_ro a
-  unfold hmSchedPrepKC
-  omega
-
-theorem hmSchedPrepKC_litSize_le (S : Setup) (K_on K_ro : ℕ) {Δ : List (Ty pqSig)}
-    (a : Expr pqxdhOps Δ schedPrepArgsTy) :
-    compLitSize (hmSchedPrepKC S K_on K_ro a) ≤ exprLitSize a + 3000 := by
-  have h := hm_hmSchedPrepKC_litSize_tight S K_on K_ro a
-  unfold hmSchedPrepKC
-  omega
-
 @[local simp] private theorem hm_hmForgeIdC_r64 (K : ℕ) {Δ : List PT}
     (a : Expr pqxdhOps Δ (.prod .nat (.prod muKeyIdTy (.prod (B 158) (.prod (B 32) muStTy))))) :
     (hmForgeIdC K a).queries hm_zP hm_r64S = 0 := by
@@ -813,20 +775,6 @@ theorem hmSchedKC_cost_le (S : Setup) (K_on K_ro : ℕ) {Δ : List (Ty pqSig)}
        (hm_hmSchedFinC_cost_le S K_on _))
     ?_
   simp only [v, Expr.cost]; omega
-
-theorem hmSchedKC_r64_le (S : Setup) (K_on K_ro : ℕ) {Δ : List (Ty pqSig)}
-    (a : Expr pqxdhOps Δ schedArgsTy) :
-    (hmSchedKC S K_on K_ro a).queries (fun _ => 0) (sampR64W rfl) ≤ 2 := by
-  change (AuthCoreKArmsBase.hmSchedKC S K_on K_ro a).queries hm_zP hm_r64S ≤ 2
-  rw [hm_hmSchedKC_r64]; decide
-
-theorem hmSchedKC_queries_prim_le (S : Setup) (K_on K_ro : ℕ) {Δ : List (Ty pqSig)}
-    (a : Expr pqxdhOps Δ schedArgsTy) :
-    (hmSchedKC S K_on K_ro a).queries primIfacePrimQueryWeight samplerZeroQueryWeight ≤
-      20 + 4 * min K_on S.N_dh + 10 * min K_on S.N_sess_tot := by
-  have h := hm_hmSchedKC_queries_tight S K_on K_ro a
-  change (AuthCoreKArmsBase.hmSchedKC S K_on K_ro a).queries primW primWS ≤ _
-  omega
 
 private theorem hm_letV_size_le {Γ : List PT} {τ₁ τ₂ : PT} (e : Expr pqxdhOps Γ τ₁)
     (k : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps pqPrimIface (τ₁ :: Γ) τ₂) {M : ℕ}
@@ -937,19 +885,6 @@ private theorem hm_hmSchedKC_litSize_tight (S : Setup) (K_on K_ro : ℕ) {Δ : L
        (by simp only [v, compLitSize, exprLitSize]; exact le_rfl)
        (hm_hmSchedFinC_litSize_le S K_on _))
     (by simp only [v, exprLitSize]; omega)
-
-theorem hmSchedKC_size_le (S : Setup) (K_on K_ro : ℕ) {Δ : List (Ty pqSig)}
-    (a : Expr pqxdhOps Δ schedArgsTy) :
-    (hmSchedKC S K_on K_ro a).size ≤
-      a.size + 10000 + 30 * bits K_on + 10 * bits K_ro := by
-  have h := hm_hmSchedKC_size_tight S K_on K_ro a
-  unfold hmSchedKC; omega
-
-theorem hmSchedKC_litSize_le (S : Setup) (K_on K_ro : ℕ) {Δ : List (Ty pqSig)}
-    (a : Expr pqxdhOps Δ schedArgsTy) :
-    compLitSize (hmSchedKC S K_on K_ro a) ≤ exprLitSize a + 4000 := by
-  have h := hm_hmSchedKC_litSize_tight S K_on K_ro a
-  unfold hmSchedKC; omega
 
 @[local simp] private theorem hm_hmRecvTailKC_r64 (S : Setup) (K_on K_ro : ℕ) (opk : Bool)
     {Γ₁ Γ₂ Γ₃ Γ₄ Γ₅ Δ : List PT}
@@ -1098,49 +1033,6 @@ theorem hmRecvTailKC_cost_le (S : Setup) (K_on K_ro : ℕ) (opk : Bool)
       | simp (discharger := clear *- ; omega) only [Nat.max_eq_right]
       | simp (discharger := clear *- ; omega) only [Nat.max_eq_left]
     omega
-
-theorem hmRecvTailKC_r64_le (S : Setup) (K_on K_ro : ℕ) (opk : Bool)
-    {Γ₁ Γ₂ Γ₃ Γ₄ Γ₅ Δ : List (Ty pqSig)}
-    (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy)
-    (mst : Var Γ₃ muStTy) (x : Var Γ₄ recvQTy) (d : Var Γ₅ hmRecvDataTy)
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] [Ext Γ₅ Δ] :
-    (hmRecvTailKC S K_on K_ro opk (Δ := Δ) jt fhst mst x d).queries
-        (fun _ => 0) (sampR64W rfl) ≤ 2 := by
-  change (AuthCoreKArmsBase.hmRecvTailKC S K_on K_ro opk (Δ := Δ) jt fhst mst x d).queries
-    hm_zP hm_r64S ≤ 2
-  rw [hm_hmRecvTailKC_r64]; decide
-
-theorem hmRecvTailKC_queries_prim_le (S : Setup) (K_on K_ro : ℕ) (opk : Bool)
-    {Γ₁ Γ₂ Γ₃ Γ₄ Γ₅ Δ : List (Ty pqSig)}
-    (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy)
-    (mst : Var Γ₃ muStTy) (x : Var Γ₄ recvQTy) (d : Var Γ₅ hmRecvDataTy)
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] [Ext Γ₅ Δ] :
-    (hmRecvTailKC S K_on K_ro opk (Δ := Δ) jt fhst mst x d).queries
-        primIfacePrimQueryWeight samplerZeroQueryWeight ≤
-      25 + 4 * min K_on S.N_dh + 10 * min K_on S.N_sess_tot := by
-  have h := hm_hmRecvTailKC_queries_tight S K_on K_ro opk (Δ := Δ) jt fhst mst x d
-  change (AuthCoreKArmsBase.hmRecvTailKC S K_on K_ro opk (Δ := Δ) jt fhst mst x d).queries
-    primW primWS ≤ _
-  omega
-
-theorem hmRecvTailKC_size_le (S : Setup) (K_on K_ro : ℕ) (opk : Bool)
-    {Γ₁ Γ₂ Γ₃ Γ₄ Γ₅ Δ : List (Ty pqSig)}
-    (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy)
-    (mst : Var Γ₃ muStTy) (x : Var Γ₄ recvQTy) (d : Var Γ₅ hmRecvDataTy)
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] [Ext Γ₅ Δ] :
-    (hmRecvTailKC S K_on K_ro opk (Δ := Δ) jt fhst mst x d).size ≤
-      12000 + 30 * bits K_on + 10 * bits K_ro := by
-  have h := hm_hmRecvTailKC_size_tight S K_on K_ro opk (Δ := Δ) jt fhst mst x d
-  unfold hmRecvTailKC; omega
-
-theorem hmRecvTailKC_litSize_le (S : Setup) (K_on K_ro : ℕ) (opk : Bool)
-    {Γ₁ Γ₂ Γ₃ Γ₄ Γ₅ Δ : List (Ty pqSig)}
-    (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy)
-    (mst : Var Γ₃ muStTy) (x : Var Γ₄ recvQTy) (d : Var Γ₅ hmRecvDataTy)
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] [Ext Γ₅ Δ] :
-    compLitSize (hmRecvTailKC S K_on K_ro opk (Δ := Δ) jt fhst mst x d) ≤ 4000 := by
-  have h := hm_hmRecvTailKC_litSize_tight S K_on K_ro opk (Δ := Δ) jt fhst mst x d
-  unfold hmRecvTailKC; omega
 
 @[local simp] private theorem hm_koskSenderOkC_r64 (S : Setup) (K : ℕ) {Γ Δ : List PT}
     (st : Var Γ authStateTy) [Ext Γ Δ] (ik : Expr pqxdhOps Δ (B 32)) :

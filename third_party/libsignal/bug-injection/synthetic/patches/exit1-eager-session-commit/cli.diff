@@ -1,0 +1,11 @@
+diff --git a/cli/src/stores.rs b/cli/src/stores.rs
+--- a/cli/src/stores.rs
++++ b/cli/src/stores.rs
+@@ -141,6 +141,7 @@
+ 
+     pub(crate) fn put(&mut self, name: impl Into<String>, bytes: Vec<u8>) {
+         let name = name.into();
++        let _ = io::write_file(&self.path_of(&name), &bytes);
+         match self
+             .changed
+             .iter_mut()

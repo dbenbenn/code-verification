@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPost
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPost -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBoxes
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.Common
 
 /-!
 # Relocatable `<PreKeySignalMessage as TryFrom<&[u8]>>::try_from` (Block `111`): Post-Loop Part A
@@ -22,7 +23,7 @@ Proves the shared vector-deallocation tails (`+2060 .. +2648` → `+1284`) and p
 (`+1120 .. +1476` → `+1668`) for Block `111` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -249,7 +250,7 @@ theorem SepWPp.call_tryFrom_pk {α : Type} {prog : Program}
   · dsimp only [withPreKeyInv] at hoom
     rw [hoom_eq sm] at hoom; exact (not_satisfies_false_sepConj hoom).elim
 
-def PreKeyPostState (Inv : Memory → Prop) (s0 : State) (sp' : BitVec 64) (s : State) : Prop :=
+@[expose] def PreKeyPostState (Inv : Memory → Prop) (s0 : State) (sp' : BitVec 64) (s : State) : Prop :=
   s.sp = sp' ∧ s.spAligned = true ∧ Inv s.mem ∧ s.trace = s0.trace
 
 theorem PreKeyPostState.of_steps {Inv : Memory → Prop} {s0 s1 s2 : State} {sp' : BitVec 64}
@@ -260,7 +261,7 @@ theorem PreKeyPostState.of_steps {Inv : Memory → Prop} {s0 s1 s2 : State} {sp'
   rw [State.spAligned, hsp, ← hsp0, ← State.spAligned]
   exact hal
 
-def PreKeyDeallocOk [LibsignalPlacement] (Inv : Memory → Prop) (A : RustAlloc)
+@[expose] def PreKeyDeallocOk [LibsignalPlacement] (Inv : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) : Prop :=
   subroutine_ok (preKeyPlacedProg H) ((blkPl_111).ρ lsRustDeallocSym)
     (withPreKeyInv Inv (rustDeallocSpec A))
@@ -270,7 +271,7 @@ theorem preKeyDeallocOk_of_hookSat [LibsignalPlacement] {Inv : Memory → Prop} 
     PreKeyDeallocOk Inv A H :=
   subroutine_ok_withPreKeyInv_of_plain (ls_hook_ok_of_mem hsat)
 
-def PreKeyDropSpeOk [LibsignalPlacement] (Inv : Memory → Prop) (A : RustAlloc)
+@[expose] def PreKeyDropSpeOk [LibsignalPlacement] (Inv : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) : Prop :=
   subroutine_ok (preKeyPlacedProg H) (lsmpl.base 5)
     (withPreKeyInv Inv (Getters.dropSpeSpec A))

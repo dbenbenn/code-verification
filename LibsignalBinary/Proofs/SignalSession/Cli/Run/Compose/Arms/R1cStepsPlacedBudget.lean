@@ -9,17 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib -- shake: keep
 public meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cHelpersPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cStepsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cHelpersPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cStepsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.WritePaths -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cHelpersPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded `signal_session::run` Arm `R1c` Placed Tail Stepping
@@ -29,7 +38,7 @@ Relocatable (`[LibsignalPlacement]`) stepping proofs on Block `579` (`runProgPla
 (`R+0x2908 → R+0xf8c`) and error deallocation tail (`R+0x2a20 → R+0x2c7c`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -81,21 +90,21 @@ local macro "r1c_close_post" : tactic =>
 
 /-- Exact deallocation event list for dropping a `String`/`Vec<u8>` buffer with capacity `cap`
 (`align = 1`). -/
-def r1cFreeCapEvs (cap : BitVec 64) : List AllocEvent :=
+@[expose] def r1cFreeCapEvs (cap : BitVec 64) : List AllocEvent :=
   if cap = 0#64 then [] else rustDeallocEvents cap.toNat 1
 
-def r1cFreePeerEvs (peerG : AddrGhost) : List AllocEvent :=
+@[expose] def r1cFreePeerEvs (peerG : AddrGhost) : List AllocEvent :=
   r1cFreeCapEvs peerG.name.cap
 
-def r1cFreeDirPeerEvs (d : Init2Data) : List AllocEvent :=
+@[expose] def r1cFreeDirPeerEvs (d : Init2Data) : List AllocEvent :=
   r1cFreeCapEvs d.dirCap ++ r1cFreePeerEvs d.peerG
 
-def r1cFreeNamesEvs (d : Init2Data) : List AllocEvent :=
+@[expose] def r1cFreeNamesEvs (d : Init2Data) : List AllocEvent :=
   r1cFreeCapEvs d.meG.name.cap ++ r1cFreeDirPeerEvs d
 
 /-- Exact deallocation event list for `r1c_ok_tail` (`spkSig` 64 B, `kpk` 1568 B, `kpkSig` 64 B,
 followed by `me`, `dir`, `peer` names). -/
-def r1cOkTailEvs (d : Init2Data) : List AllocEvent :=
+@[expose] def r1cOkTailEvs (d : Init2Data) : List AllocEvent :=
   rustDeallocEvents 64 1 ++ rustDeallocEvents 1568 1 ++ rustDeallocEvents 64 1 ++
     r1cFreeNamesEvs d
 

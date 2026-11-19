@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.CryptoGames.SM.LibsignalGame
-public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Lazy
+public import Computational.Proofs.CryptoGames.FSAEAD.Lazy
 public import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
 
 /-!

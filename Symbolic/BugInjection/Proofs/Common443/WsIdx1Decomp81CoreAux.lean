@@ -58,7 +58,6 @@ def acceptAt (n : Nat) : HwBytes :=
 def rs4 : List MachineEvent := (((Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1.trace).drop 43).take 35).tail
 theorem seg40_shape : seg 40 3 = [.recv (wireAt 40), .rng (rngAt 41), .accept (acceptAt 42)] := rfl
 theorem seg43_shape : seg 43 35 = .recv (wireAt 43) :: rs4 := rfl
-theorem seg78_shape : seg 78 3 = [.pt (ptAt 78), .rng (rngAt 79), .send (sendAt 80)] := rfl
 theorem rs4_length : rs4.length = 34 := rfl
 theorem rs4_map_kind : rs4.map eventKind = List.replicate 34 .rng := rfl
 theorem rs4_kind : ∀ e ∈ rs4, eventKind e = .rng := fun _ he => List.eq_of_mem_replicate (rs4_map_kind ▸ List.mem_map_of_mem he)

@@ -17,7 +17,7 @@ public import Symbolic.Specifications.Model.PQXDH
 Defines `kdfRk` and `createChain` for deriving root and chain keys from Diffie-Hellman outputs.
 -/
 
-@[expose] public section
+public section
 
 namespace DY.Libsignal.PQXDH
 
@@ -28,13 +28,13 @@ open Literal Concat DiffieHellman KdfExtract PQKem
 
 /-- Derives a `(rootKey, chainKey)` pair from root key `rk` and DH output `dhOut` via HKDF with
 info `"WhisperRatchet"`. -/
-def kdfRk (rk dhOut: Bytes): Bytes × Bytes :=
+@[expose] def kdfRk (rk dhOut: Bytes): Bytes × Bytes :=
   let prk := hmac rk dhOut
   (hkdfBlock1 prk (lit "WhisperRatchet"), hkdfBlock2 prk (lit "WhisperRatchet"))
 
 /-- Derives a `(rootKey, chainKey)` pair from root key `rk`, normalized peer public key `theirPk`,
 and local secret key `ourSk`. -/
-def createChain (rk theirPk ourSk: Bytes): Bytes × Bytes :=
+@[expose] def createChain (rk theirPk ourSk: Bytes): Bytes × Bytes :=
   kdfRk rk (DiffieHellman.dh (X25519.normalizeX25519Key theirPk) ourSk)
 
 end DY.Libsignal.PQXDH

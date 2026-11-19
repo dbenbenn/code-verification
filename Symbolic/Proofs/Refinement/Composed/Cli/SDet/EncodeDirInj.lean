@@ -22,7 +22,7 @@ Proves that `PqPartyEquiv` characterizes equality of `filesOf (encodeDir P st)` 
 `PqParty` states in `PqxdhPartyInSpecDomain`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

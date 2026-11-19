@@ -11,14 +11,14 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontPlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysTailPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePackBasePlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePackPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontPlacedBudgetAux
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysTailPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePackBasePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePackPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -30,6 +30,8 @@ import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Placed Segment 5: Pack & Version Dispatch (Block `518`)
@@ -39,7 +41,7 @@ Zero-allocation event envelope `ClonePackEnv`, `VmPreserved` pack steps (`pack_e
 `+0x1bac → +0x1cd4 / +0x1e04`, `genP3J4PlacedBudget → genP3PostPlacedBudget`) on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -106,10 +108,10 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Exact allocator event sequence emitted across Stage P3 Segment 5 (`+0x1bac → +0x1cd4 / +0x1e04`):
 Segment 5 performs only stack loads/stores and register arithmetic (`[]`). -/
-def clonePackEvents : List AllocEvent := []
+@[expose] def clonePackEvents : List AllocEvent := []
 
 /-- Exact allocator event envelope for Stage P3 Segment 5 (`clonePack_vregs_placed_ok`). -/
-def ClonePackEnv (evs : List AllocEvent) : Prop :=
+@[expose] def ClonePackEnv (evs : List AllocEvent) : Prop :=
   evs = clonePackEvents
 
 theorem clonePackEnv_events : ClonePackEnv clonePackEvents := rfl
@@ -118,14 +120,6 @@ theorem clonePackEnv_events : ClonePackEnv clonePackEvents := rfl
 theorem fitsEnv_clonePack_iff {M : AllocCostModel} {lim : BudgetLimits} {stB : M.σ} :
     FitsEnv M lim stB ClonePackEnv ↔ FitsEvents M lim stB clonePackEvents :=
   FitsEnv.eq_iff
-
-theorem fitsEvents_clonePack (M : AllocCostModel) (lim : BudgetLimits) (stB : M.σ) :
-    FitsEvents M lim stB clonePackEvents :=
-  trivial
-
-theorem fitsEnv_clonePack (M : AllocCostModel) (lim : BudgetLimits) (stB : M.σ) :
-    FitsEnv M lim stB ClonePackEnv :=
-  fun _ h => h ▸ trivial
 
 /-! ## 2. `VmPreserved`-Recording Placed Segment 5 Pack Steps -/
 
@@ -329,15 +323,6 @@ theorem pack_ne_placed_wp_vm [LibsignalPlacement] (ext : String → Option (Stat
 
 /-! ## 3. Budget-Threaded Placed Segment 5 Theorems (`genP3J4PlacedBudget → genP3PostPlacedBudget`) -/
 
-private theorem sepWPp_weaken_post_pack {prog : Program} {ret : BitVec 64} {s : State} {P : SepProp}
-    {Q Q' Qp : State → SepProp → Prop}
-    (h : SepWPp prog ret s P Q Qp) (hw : ∀ sf P_f, Q sf P_f → Q' sf P_f) :
-    SepWPp prog ret s P Q' Qp := by
-  intro R hm hL
-  obtain ⟨sf, hsteps, ⟨hpc, hrun, P_f, hmf, hQ⟩ | hpan⟩ := h R hm hL
-  · exact ⟨sf, hsteps, Or.inl ⟨hpc, hrun, P_f, hmf, hw sf P_f hQ⟩⟩
-  · exact ⟨sf, hsteps, Or.inr hpan⟩
-
 set_option maxHeartbeats 800000 in
 /-- Budget-threaded Placed Segment 5 with `calleeSavedVRegs` (`+0x1bac → +0x1cd4 / +0x1e04`,
 `genP3J4PlacedBudget → genP3PostPlacedBudget`): preserves `stB` unchanged (zero allocations). -/
@@ -424,100 +409,5 @@ theorem clonePack_vregs_placed_ok [LibsignalPlacement]
       remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest recG st w
       ((s.readReg64 .x20).truncate 32) rem loc msgG msg hvmp1
       h_loc_deser h_rem_deser h_pend_some h_reg_len h_loc_len h_rem_len hreg_eq hchains_len hsc_inl
-
-/-- `M.stepEvents clonePackEvents stB` variant of `clonePack_vregs_placed_ok`. -/
-theorem clonePack_vregs_placed_ok_stepEvents [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {stB : M.σ}
-    {Qp : State → SepProp → Prop}
-    (ext : String → Option (State → State))
-    (s0 s : State)
-    (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
-    (msgVer : BitVec 32) (rest : List (BitVec 8))
-    (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
-    (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
-    (hrc_len : st.receiverChains.length < 2 ^ 32)
-    (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    (hsp_root : rootStack ≤ sp.toNat)
-    (hcro : LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryM3Placed + 0x1bac#64)
-    (hrun : s.status = .Running)
-    (htr : s.trace = s0.trace) :
-    SepWPp (lsProg_518 ext) (cloneExitPCPlaced st msgVer) s
-      (genP3J4PlacedBudget A lim stB sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur
-        msgVer rest recG st rem loc msgG msg s)
-      (fun s1 P_f =>
-        (P_f ⊢ genP3PostPlacedBudget A lim (M.stepEvents clonePackEvents stB) sp fp coroPtr ctxPtr
-          remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest recG st rem loc msgG msg s1) ∧
-        s1.trace = s0.trace ∧
-        LibsignalCodeRoLoaded lsmpl s1.mem ∧
-        calleeSavedVRegs s1 = calleeSavedVRegs s)
-      Qp :=
-  clonePack_vregs_placed_ok ext s0 s sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur
-    msgVer rest recG st rem loc msgG msg hrc_len hsp_align hsp_root hcro hpc hrun htr
-
-/-- Envelope (`ClonePackEnv`) variant of `clonePack_vregs_placed_ok`. -/
-theorem clonePack_vregs_placed_ok_env [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {stB : M.σ}
-    {Qp : State → SepProp → Prop}
-    (ext : String → Option (State → State))
-    (s0 s : State)
-    (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
-    (msgVer : BitVec 32) (rest : List (BitVec 8))
-    (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
-    (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
-    (hrc_len : st.receiverChains.length < 2 ^ 32)
-    (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    (hsp_root : rootStack ≤ sp.toNat)
-    (hcro : LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryM3Placed + 0x1bac#64)
-    (hrun : s.status = .Running)
-    (htr : s.trace = s0.trace) :
-    SepWPp (lsProg_518 ext) (cloneExitPCPlaced st msgVer) s
-      (genP3J4PlacedBudget A lim stB sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur
-        msgVer rest recG st rem loc msgG msg s)
-      (fun s1 P_f =>
-        ∃ evs : List AllocEvent, ClonePackEnv evs ∧
-          (P_f ⊢ genP3PostPlacedBudget A lim (M.stepEvents evs stB) sp fp coroPtr ctxPtr remAddrPtr
-            locAddrPtr whisperMsgPtr cur msgVer rest recG st rem loc msgG msg s1) ∧
-          s1.trace = s0.trace ∧
-          LibsignalCodeRoLoaded lsmpl s1.mem ∧
-          calleeSavedVRegs s1 = calleeSavedVRegs s)
-      Qp :=
-  sepWPp_weaken_post_pack
-    (clonePack_vregs_placed_ok_stepEvents ext s0 s sp fp coroPtr ctxPtr remAddrPtr locAddrPtr
-      whisperMsgPtr cur msgVer rest recG st rem loc msgG msg hrc_len hsp_align hsp_root hcro hpc
-      hrun htr)
-    fun _ _ ⟨hent1, htr1, hcro1, hv1⟩ => ⟨clonePackEvents, rfl, hent1, htr1, hcro1, hv1⟩
-
-/-- Placed Segment 5 corollary without the `calleeSavedVRegs` conjunct. -/
-theorem clonePack_placed_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {stB : M.σ}
-    {Qp : State → SepProp → Prop}
-    (ext : String → Option (State → State))
-    (s0 s : State)
-    (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
-    (msgVer : BitVec 32) (rest : List (BitVec 8))
-    (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
-    (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
-    (hrc_len : st.receiverChains.length < 2 ^ 32)
-    (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    (hsp_root : rootStack ≤ sp.toNat)
-    (hcro : LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryM3Placed + 0x1bac#64)
-    (hrun : s.status = .Running)
-    (htr : s.trace = s0.trace) :
-    SepWPp (lsProg_518 ext) (cloneExitPCPlaced st msgVer) s
-      (genP3J4PlacedBudget A lim stB sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur
-        msgVer rest recG st rem loc msgG msg s)
-      (fun s1 P_f =>
-        (P_f ⊢ genP3PostPlacedBudget A lim stB sp fp coroPtr ctxPtr remAddrPtr locAddrPtr
-          whisperMsgPtr cur msgVer rest recG st rem loc msgG msg s1) ∧
-        s1.trace = s0.trace ∧
-        LibsignalCodeRoLoaded lsmpl s1.mem)
-      Qp :=
-  sepWPp_weaken_post_pack
-    (clonePack_vregs_placed_ok ext s0 s sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur
-      msgVer rest recG st rem loc msgG msg hrc_len hsp_align hsp_root hcro hpc hrun htr)
-    fun _ _ ⟨hent1, htr1, hcro1, _⟩ => ⟨hent1, htr1, hcro1⟩
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePackPlacedBudget

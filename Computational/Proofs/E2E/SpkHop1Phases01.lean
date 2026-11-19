@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SpkHop1Phases01A
+public import Computational.Proofs.E2E.SpkHop1Phases01A -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 /-!
 # Hop 2 Phase 0 and the PRF-to-PRG Step
@@ -1301,7 +1301,7 @@ theorem isAliceSpkQuery_prob_le_hop2GuessUnit (P : Params Bytes PQC)
     simp
 
 /-- Canonical lazy-table version of `receiveSpk` using `s`. -/
-def stepReceiveSpk (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def stepReceiveSpk (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (s : BitVec 256)
     (g : GhostState Bytes) (c : Bytes) (rc : BitVec 256)
     (L : List (Pt × BitVec 256)) :
@@ -1404,7 +1404,7 @@ theorem simulateQ_prfOracleImpl_liftSpkGameM_bind {Key α β : Type} {ℓ : ℕ}
   simulateQ_prfOracleImpl_liftM_bind mac (m.run st) st_prf F
 
 /-- Reference receive step in `runSpkRef`, rejecting queries that hit `spk_s` on Alice's epoch-0 chain. -/
-def stepReceiveRef (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def stepReceiveRef (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (s : BitVec 256)
     (sRef : GameSt Bytes ℓ) (Q : Party) (c : Bytes) (rc : BitVec 256)
     (L : List (Pt × BitVec 256)) :
@@ -1424,7 +1424,7 @@ def stepReceiveRef (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) P
 abbrev SpkTabSt (Pt : Type) (ℓ : ℕ) :=
   SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes × List (Pt × BitVec 256)
 
-def liftSpkTab {ℓ : ℕ} {α : Type}
+@[expose] def liftSpkTab {ℓ : ℕ} {α : Type}
     (m : StateT (SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes) ProbComp α) :
     StateT (SpkTabSt Pt ℓ) ProbComp α :=
   StateT.mk fun ⟨st, L⟩ => do
@@ -1439,7 +1439,7 @@ omit [DecidableEq Pt] [Zero Pt] [SampleableType Pt] in
     (liftSpkTab m).run (st, L) = (m.run st >>= fun r => pure (r.1, (r.2, L))) :=
   rfl
 
-def deliverSpkStep (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def deliverSpkStep (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (s : BitVec 256) :
     QueryImpl ((Party × Bytes) →ₒ Option (SM.RecvResult (CBC.Plain ℓ)))
       (StateT (SpkTabSt Pt ℓ) ProbComp) :=
@@ -1456,7 +1456,7 @@ def deliverSpkStep (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) P
         return (some (.accepted t' i' (if st.chall.contains r.pos then none else some m')),
           (st.accept Q st' r.pos, L'))
 
-def injectSpkStep (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def injectSpkStep (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256) :
     QueryImpl ((Party × Bytes) →ₒ Option (SM.RecvResult (CBC.Plain ℓ)))
       (StateT (SpkTabSt Pt ℓ) ProbComp) :=
@@ -1476,7 +1476,7 @@ def injectSpkStep (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt
       else
         return (some .rejected, ({ st with win := true }, L'))
 
-def spkStepImpl (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def spkStepImpl (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256) :
     QueryImpl (unifSpec + SM.spec (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes)
       (StateT (SpkTabSt Pt ℓ) ProbComp)
@@ -1599,7 +1599,7 @@ theorem simulateQ_prfOracleImpl_spkOracleImpl_bind {Key α β : Type} {ℓ : ℕ
     rw [spkOracleImpl_true_tableFor_step_bind mac P Dh encT decT qep s hker key z t st L]
     refine bind_congr fun r => ih r.1 r.2.1 r.2.2
 
-def SpkRefInv {ℓ : ℕ} (P : Params Bytes PQC) (spk : PublicKey) (sRef : GameSt Bytes ℓ) : Prop :=
+@[expose] def SpkRefInv {ℓ : ℕ} (P : Params Bytes PQC) (spk : PublicKey) (sRef : GameSt Bytes ℓ) : Prop :=
   GameInv P spk { sRef with win := false } ∧ (sRef.st .B).party = .B
 
 theorem spkRefInv_party_eq {ℓ : ℕ} {P : Params Bytes PQC} {spk : PublicKey}
@@ -1748,7 +1748,7 @@ theorem patchGameSpk_epoch_eq {ℓ : ℕ} (C : Crypto) (z ck0 : BitVec 256)
   | A => simp [patchGameSpk_st_A, patchAlice_epoch, patchAlicePub_epoch]
   | B => simp [patchGameSpk_st_B, patchBobSpk_epoch]
 
-def patchRecvParty (C : Crypto) (z ck0 : BitVec 256) (Q : Party) (g : GhostState Bytes) :
+@[expose] def patchRecvParty (C : Crypto) (z ck0 : BitVec 256) (Q : Party) (g : GhostState Bytes) :
     GhostState Bytes :=
   patchParty ck0 Q (patchPartyPub (KeyPair.generate C z).publicKey (KeyPair.generate C z) Q g)
 

@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyGet
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyGet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Return-Tail Helpers for `<spqr::chain::Chain>::recv_key` (Block `366`)
@@ -23,7 +24,7 @@ Defines `RecvKeyPlacedStateInv`, `recvKeyPost`, `recvKeyPanic`, and the relocata
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

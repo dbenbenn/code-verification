@@ -9,13 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bErrWSigMsg
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bErrWSharedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bSigMsgPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bErrWSigMsg
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bErrWSharedPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bSigMsgPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailCleanup
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPost
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailC -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailBWPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailCWPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ParseLemmas
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.SigMsgWPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bErrWShared
 
 /-!
 # Relocatable `[LibsignalPlacement]` `SignalMessage::try_from` Error Continuation
@@ -24,7 +30,7 @@ Proves `preKeySigMsgErrW_placed_proof` (`+0x864 → +0x878 → +0x9f0 → +0x504
 `preKeyPlacedProg H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -82,7 +88,7 @@ private theorem w8bSigErr_spills96_entails_memRegion
   apply entails_of_eq; ac_rfl
 
 /-- Frame carried across `preKey_sigMsg_err_878_to_9f0_placed_wpX` (`+0x878 → +0x9f0`). -/
-def w8bSigErr878FramePlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
+@[expose] def w8bSigErr878FramePlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
     (sp' sret ptr bkCap bkPtr kyberLen ikCap ikPtr msgCap msgPtr kyberBoxPtr kyberBoxLen : BitVec 64)
     (regTag regVal opkTag opkVal spkId kpkVal : BitVec 32)
     (p0 p1 p2 p3 p4 p5 p6 p7 p8 p31 : BitVec 8) (w9 : BitVec 32) (w13 : BitVec 16)
@@ -118,7 +124,7 @@ def w8bSigErr878FramePlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
     preKeyCalleeSavedAt sp' s0 ∗ memRegion sret 248 ∗ (ptr ↦ₛ bytes)
 
 /-- Frame `R` carried across `ErrTailCWPlaced.e_9f0_words2_placed_wpE` (`+0x9f0 → +0x504`). -/
-def w8bSigErr9f0RestPlaced [LibsignalPlacement] (s0 : State)
+@[expose] def w8bSigErr9f0RestPlaced [LibsignalPlacement] (s0 : State)
     (sp' ptr msgLen kyberLen w15 : BitVec 64)
     (regTag regVal opkTag opkVal spkId kpkVal regId ikHi p8z : BitVec 32)
     (bytes : List (BitVec 8)) : SepProp :=

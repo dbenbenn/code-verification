@@ -536,6 +536,224 @@ theorem mallocngHeap_read_liveUser_repack (γ : GhostName) (A : MallocngAddrs)
   rw [pure_sepConj_of_true hCount, pure_sepConj_of_true hWf]
   exact Entails.refl _
 
+/-- Mode-parameterized opaque read-only heap bundle (`ro = false` matches `MallocngReadRest`,
+    `ro = true` holds `.ro` `__libc.auxv` and `MallocngAuxvRoAt`). -/
+@[irreducible] def MallocngReadRestMode (ro : Bool)
+    (γ : GhostName) (A : MallocngAddrs) (tp brkStart brk : BitVec 64)
+    (b : MallocngBudget) (ivs : List (BitVec 64 × Nat)) (st : MallocngSt) : SepProp :=
+  ⌜MallocngCountIvsWF b ivs st ∧ MallocngWF A.base brkStart brk b.liveCost b.peakCost st⌝ ∗
+  MallocngLiveAuth γ st.liveMap ∗
+  (A.lock ↦₃₂ 0#32) ∗
+  (A.replaced ↦₃₂ 0#32) ∗
+  (A.aaReplaced ↦₃₂ 0#32) ∗
+  MallocngAuxvPtrCell ro A.libc st.auxvPtr ∗
+  MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
+  ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
+  MappedSet st.masterDom (OwnedMappedByte st) ∗
+  MallocngRuntime A tp
+
+theorem MallocngReadRestMode_false
+    (γ : GhostName) (A : MallocngAddrs) (tp brkStart brk : BitVec 64)
+    (b : MallocngBudget) (ivs : List (BitVec 64 × Nat)) (st : MallocngSt) :
+    MallocngReadRestMode false γ A tp brkStart brk b ivs st =
+      MallocngReadRest γ A tp brkStart brk b ivs st := by
+  unfold MallocngReadRestMode MallocngReadRest
+  rfl
+
+theorem mallocngHeapMode_read_liveUser_unpackΦ {ro : Bool} {T : SepProp}
+    {Φ : MallocngLiveMap → Prop} (γ : GhostName) (A : MallocngAddrs)
+    (tp brkStart brk : BitVec 64) (b : MallocngBudget) (ivs : List (BitVec 64 × Nat))
+    (p : BitVec 64) (n : Nat)
+    (hLook : ∀ L : MallocngLiveMap, MallocngLiveAuth γ L ∗ T ⊢
+      ⌜L p = some n ∧ Φ L⌝ ∗ MallocngLiveAuth γ L ∗ T) :
+    (mallocngModeIface ro).MallocngHeap γ A tp brkStart brk b ivs ∗ T ⊢
+      ∃∗ st : MallocngSt, ∃∗ g : GroupDesc, ∃∗ idx : Nat, ∃∗ effCost : Nat,
+        ⌜g ∈ st.groups ∧
+          (∃ hIdx : idx < g.slots.length, g.slots[idx]'hIdx = .liveUser p n effCost) ∧
+          LiveUserBlockFacts st g idx p n effCost ∧ Φ st.liveMap⌝ ∗
+        MallocngRoTablesAt A ∗
+        (A.ctx ↦ₛ st.ctx.toBytes) ∗
+        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
+        MallocngReadRestMode ro γ A tp brkStart brk b ivs st ∗
+        T := by
+  rw [mallocngModeIface_heap_eq, mallocngModeIface_core_eq]
+  unfold MallocngRoTablesA
+  rw [sepConj_assoc, sepConj_assoc, sepExists_sepConj_left, sepExists_sepConj_right]
+  refine Entails.sepExists_mono fun st => ?_
+  unfold MallocngCoreStModeA MallocngCoreStInflightModeA
+  refine Entails.trans (Entails.of_eq (show _ =
+      ⌜MallocngCountIvsWF b ivs st⌝ ∗
+      ⌜MallocngWF A.base brkStart brk b.liveCost b.peakCost st⌝ ∗
+      ((MallocngLiveAuth γ st.liveMap ∗ T) ∗
+       (MallocngRoTablesAt A ∗
+        (A.ctx ↦ₛ st.ctx.toBytes) ∗
+        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
+        (A.lock ↦₃₂ 0#32) ∗
+        (A.replaced ↦₃₂ 0#32) ∗
+        (A.aaReplaced ↦₃₂ 0#32) ∗
+        MallocngAuxvPtrCell ro A.libc st.auxvPtr ∗
+        MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
+        ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
+        MappedSet st.masterDom (OwnedMappedByte st) ∗
+        MallocngRuntime A tp)) by
+    generalize (MallocngRoTablesAt A) = PRo
+    generalize (MallocngAuxvPtrCell ro A.libc st.auxvPtr) = PAvP
+    generalize (MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap) = PAu
+    ac_rfl)) ?_
+  refine Entails.pure_left fun hCount => Entails.pure_left fun hWf => ?_
+  refine Entails.trans (sepConj_mono_left (hLook st.liveMap)) ?_
+  rw [sepConj_assoc]
+  refine Entails.pure_left fun ⟨hLive, hΦ⟩ => ?_
+  obtain ⟨g, hg, idx, hIdx, effCost, hSlot⟩ := (hWf.liveMap_wf p n).mp hLive
+  have hFacts := liveUserBlockFacts_of hWf hg hIdx hSlot
+  refine Entails.trans ?_
+    (Entails.sepExists_intro
+      (P := fun g' => ∃∗ idx' : Nat, ∃∗ effCost' : Nat,
+        ⌜g' ∈ st.groups ∧
+          (∃ hIdx' : idx' < g'.slots.length, g'.slots[idx']'hIdx' = .liveUser p n effCost') ∧
+          LiveUserBlockFacts st g' idx' p n effCost' ∧ Φ st.liveMap⌝ ∗
+        MallocngRoTablesAt A ∗
+        (A.ctx ↦ₛ st.ctx.toBytes) ∗
+        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
+        MallocngReadRestMode ro γ A tp brkStart brk b ivs st ∗
+        T) g)
+  refine Entails.trans ?_
+    (Entails.sepExists_intro
+      (P := fun idx' => ∃∗ effCost' : Nat,
+        ⌜g ∈ st.groups ∧
+          (∃ hIdx' : idx' < g.slots.length, g.slots[idx']'hIdx' = .liveUser p n effCost') ∧
+          LiveUserBlockFacts st g idx' p n effCost' ∧ Φ st.liveMap⌝ ∗
+        MallocngRoTablesAt A ∗
+        (A.ctx ↦ₛ st.ctx.toBytes) ∗
+        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
+        MallocngReadRestMode ro γ A tp brkStart brk b ivs st ∗
+        T) idx)
+  refine Entails.trans ?_
+    (Entails.sepExists_intro
+      (P := fun effCost' =>
+        ⌜g ∈ st.groups ∧
+          (∃ hIdx' : idx < g.slots.length, g.slots[idx]'hIdx' = .liveUser p n effCost') ∧
+          LiveUserBlockFacts st g idx p n effCost' ∧ Φ st.liveMap⌝ ∗
+        MallocngRoTablesAt A ∗
+        (A.ctx ↦ₛ st.ctx.toBytes) ∗
+        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
+        MallocngReadRestMode ro γ A tp brkStart brk b ivs st ∗
+        T) effCost)
+  refine Entails.pure_right ⟨hg, ⟨hIdx, hSlot⟩, hFacts, hΦ⟩ ?_
+  unfold MallocngReadRestMode
+  rw [pure_sepConj_of_true ⟨hCount, hWf⟩]
+  exact Entails.of_eq (by
+    generalize (MallocngRoTablesAt A) = PRo
+    generalize (MallocngAuxvPtrCell ro A.libc st.auxvPtr) = PAvP
+    generalize (MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap) = PAu
+    ac_rfl)
+
+theorem mallocngHeapMode_read_liveUser_unpackT {ro : Bool} {T : SepProp} (γ : GhostName)
+    (A : MallocngAddrs) (tp brkStart brk : BitVec 64) (b : MallocngBudget)
+    (ivs : List (BitVec 64 × Nat)) (p : BitVec 64) (n : Nat)
+    (hLook : ∀ L : MallocngLiveMap, MallocngLiveAuth γ L ∗ T ⊢
+      ⌜L p = some n⌝ ∗ MallocngLiveAuth γ L ∗ T) :
+    (mallocngModeIface ro).MallocngHeap γ A tp brkStart brk b ivs ∗ T ⊢
+      ∃∗ st : MallocngSt, ∃∗ g : GroupDesc, ∃∗ idx : Nat, ∃∗ effCost : Nat,
+        ⌜g ∈ st.groups ∧
+          (∃ hIdx : idx < g.slots.length, g.slots[idx]'hIdx = .liveUser p n effCost) ∧
+          LiveUserBlockFacts st g idx p n effCost⌝ ∗
+        MallocngRoTablesAt A ∗
+        (A.ctx ↦ₛ st.ctx.toBytes) ∗
+        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
+        MallocngReadRestMode ro γ A tp brkStart brk b ivs st ∗
+        T := by
+  refine Entails.trans (mallocngHeapMode_read_liveUser_unpackΦ (ro := ro) (Φ := fun _ => True)
+    γ A tp brkStart brk b ivs p n fun L => Entails.trans (hLook L)
+      (Entails.pure_left fun h => Entails.pure_right ⟨h, trivial⟩ (Entails.refl _))) ?_
+  refine Entails.sepExists_mono fun st => Entails.sepExists_mono fun g =>
+    Entails.sepExists_mono fun idx => Entails.sepExists_mono fun effCost => ?_
+  exact Entails.pure_left fun h => Entails.pure_right ⟨h.1, h.2.1, h.2.2.1⟩ (Entails.refl _)
+
+theorem mallocngHeapMode_read_liveUser_unpack {ro : Bool} (γ : GhostName) (A : MallocngAddrs)
+    (tp brkStart brk : BitVec 64) (b : MallocngBudget) (ivs : List (BitVec 64 × Nat))
+    (p : BitVec 64) (n : Nat) :
+    (mallocngModeIface ro).MallocngHeap γ A tp brkStart brk b ivs ∗ MallocngBlockToken γ p n ⊢
+      ∃∗ st : MallocngSt, ∃∗ g : GroupDesc, ∃∗ idx : Nat, ∃∗ effCost : Nat,
+        ⌜g ∈ st.groups ∧
+          (∃ hIdx : idx < g.slots.length, g.slots[idx]'hIdx = .liveUser p n effCost) ∧
+          LiveUserBlockFacts st g idx p n effCost⌝ ∗
+        MallocngRoTablesAt A ∗
+        (A.ctx ↦ₛ st.ctx.toBytes) ∗
+        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
+        MallocngReadRestMode ro γ A tp brkStart brk b ivs st ∗
+        MallocngBlockToken γ p n :=
+  mallocngHeapMode_read_liveUser_unpackT (ro := ro) γ A tp brkStart brk b ivs p n fun L =>
+    Entails.trans (mallocngBlock_lookup γ L p n) (Entails.pure_left fun h =>
+      Entails.pure_right h.2 (Entails.refl _))
+
+theorem mallocngHeapMode_read_liveUser_unpackTight {ro : Bool} (γ : GhostName) (A : MallocngAddrs)
+    (tp brkStart brk : BitVec 64) (b : MallocngBudget) (ivs : List (BitVec 64 × Nat))
+    (p : BitVec 64) (n a : Nat) :
+    (mallocngModeIface ro).MallocngHeap γ A tp brkStart brk b ivs ∗ MallocngTightBlock γ p n a ⊢
+      ∃∗ st : MallocngSt, ∃∗ g : GroupDesc, ∃∗ idx : Nat, ∃∗ effCost : Nat,
+        ⌜g ∈ st.groups ∧
+          (∃ hIdx : idx < g.slots.length, g.slots[idx]'hIdx = .liveUser p n effCost) ∧
+          LiveUserBlockFacts st g idx p n effCost ∧ st.liveMap.ov p ≤ a - 16⌝ ∗
+        MallocngRoTablesAt A ∗
+        (A.ctx ↦ₛ st.ctx.toBytes) ∗
+        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
+        MallocngReadRestMode ro γ A tp brkStart brk b ivs st ∗
+        MallocngTightBlock γ p n a :=
+  mallocngHeapMode_read_liveUser_unpackΦ (ro := ro) (Φ := fun L => L.ov p ≤ a - 16)
+    γ A tp brkStart brk b ivs p n fun L =>
+      Entails.trans (mallocngTightBlock_lookup γ L p n a) (Entails.pure_left fun h =>
+        Entails.pure_right h.2 (Entails.refl _))
+
+theorem mallocngHeapMode_read_liveUser_repack {ro : Bool} (γ : GhostName) (A : MallocngAddrs)
+    (tp brkStart brk : BitVec 64) (b : MallocngBudget) (ivs : List (BitVec 64 × Nat))
+    (st : MallocngSt) :
+    MallocngRoTablesAt A ∗
+    (A.ctx ↦ₛ st.ctx.toBytes) ∗
+    ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
+    MallocngReadRestMode ro γ A tp brkStart brk b ivs st ⊢
+      (mallocngModeIface ro).MallocngHeap γ A tp brkStart brk b ivs := by
+  rw [mallocngModeIface_heap_eq, mallocngModeIface_core_eq]
+  unfold MallocngReadRestMode MallocngRoTablesA MallocngCoreStModeA MallocngCoreStInflightModeA
+  refine Entails.trans (Entails.of_eq (show _ =
+      ⌜MallocngCountIvsWF b ivs st ∧ MallocngWF A.base brkStart brk b.liveCost b.peakCost st⌝ ∗
+      ((MallocngRoTablesAt A ∗
+        (MallocngLiveAuth γ st.liveMap ∗
+         (A.ctx ↦ₛ st.ctx.toBytes) ∗
+         (A.lock ↦₃₂ 0#32) ∗
+         (A.replaced ↦₃₂ 0#32) ∗
+         (A.aaReplaced ↦₃₂ 0#32) ∗
+         MallocngAuxvPtrCell ro A.libc st.auxvPtr ∗
+         MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
+         ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
+         ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
+         MappedSet st.masterDom (OwnedMappedByte st))) ∗
+       MallocngRuntime A tp) by
+    generalize (MallocngRoTablesAt A) = PRo
+    generalize (MallocngAuxvPtrCell ro A.libc st.auxvPtr) = PAvP
+    generalize (MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap) = PAu
+    ac_rfl)) ?_
+  refine Entails.pure_left fun ⟨hCount, hWf⟩ => ?_
+  refine sepConj_mono_left (sepConj_mono_right ?_)
+  refine Entails.trans ?_
+    (Entails.sepExists_intro
+      (P := fun st' =>
+        ⌜MallocngCountIvsWF b ivs st'⌝ ∗
+        ⌜MallocngWF A.base brkStart brk b.liveCost b.peakCost st'⌝ ∗
+        MallocngLiveAuth γ st'.liveMap ∗
+        (A.ctx ↦ₛ st'.ctx.toBytes) ∗
+        (A.lock ↦₃₂ 0#32) ∗
+        (A.replaced ↦₃₂ 0#32) ∗
+        (A.aaReplaced ↦₃₂ 0#32) ∗
+        MallocngAuxvPtrCell ro A.libc st'.auxvPtr ∗
+        MallocngAuxvStateRo ro γ st'.auxvPtr st'.auxvSnap ∗
+        ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗
+        ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
+        MappedSet st'.masterDom (OwnedMappedByte st'))
+      st)
+  rw [pure_sepConj_of_true hCount, pure_sepConj_of_true hWf]
+  exact Entails.refl _
+
 /-! ## Pure Bitfield and Address Lemmas for `get_meta`, `get_stride`, and `get_nominal_size` -/
 
 theorem hdrByte_extract (r5 idx : Nat) (hr5 : r5 ≤ 5) (hIdx : idx ≤ 31) :

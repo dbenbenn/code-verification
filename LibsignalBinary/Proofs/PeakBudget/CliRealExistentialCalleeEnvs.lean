@@ -9,19 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
-public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
+import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal
-public import LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.W2RecvWhisperRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTightCredit
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
+public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot
+import LibsignalBinary.Proofs.PeakBudget.W2RecvWhisperRealSlot
+import LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot
+public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTightCredit
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedWrappers
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Witness-Free Existential Real CLI Callee Envelopes
@@ -32,7 +40,7 @@ using `CliPqxdhInputs` and `cliIo_rd_ok_length_le_sessionCapBytes` (`bs.length �
 `IoHooks.readViewF`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -79,10 +87,7 @@ open LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec (CliSessLoadPollEnv
 open LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux (msgCapBytes sessionCapBytes)
 open LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedWrappers
   (w2CliDecryptSlot_polls_cliPqInputs_fine_creditSpec)
-open LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot
-  (W1SendRealDom W1SendRealParams W1SendRealSlotEnv peer_and_rem_name_le_40_of_send
-   w1SendRealDcanCum w1SendRealDcanGrpS w1SendRealDcanLive w1SendRealDcanMaxReq w1SendRealDcanPeak
-   w1SendRealDcan_live_le_peak w1SendReal_singleSlotFineSpec_of_rdBounded)
+open LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot (W1SendRealDom W1SendRealParams peer_and_rem_name_le_40_of_send w1SendRealDcanCum w1SendRealDcanGrpS w1SendRealDcanLive w1SendRealDcanMaxReq w1SendRealDcanPeak w1SendRealDcan_live_le_peak)
 open LibsignalBinary.Proofs.PeakBudget.W2RecvWhisperRealSlot
   (W2RealRecordSerEnv W2RealTdEnv W2RecvWhisperRealDom W2RecvWhisperRealParams
    W2RecvWhisperRealSlotEnv idPeers_rd_length_le_64_of_cliPqInputs_recv
@@ -158,35 +163,6 @@ theorem cliIo_rd_ok_length_le_sessionCapBytes (F : FsFiles) (path bs : List (Bit
         exact Nat.zero_le _
 
 /-! ## Real Slot Specs for `W1` (`send`) and `W2` (`recv` Whisper) -/
-
-/-- `SingleSlotFineSpec` for `W1SendRealSlotEnv`, discharging the session file-size cap via
-`cliIo_rd_ok_length_le_sessionCapBytes`. -/
-def w1SendRealSlot_dcan_singleSlotFineSpec_noFb
-    {img : Arm64.Obj.Image} {W : PEParams} {i : Inputs} {peerAddr : AddrV}
-    (R : W1SendRealParams)
-    (hi : CliPqxdhInputs W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.send peerAddr))
-    (hdom : W1SendRealDom (.send peerAddr) R) :
-    SingleSlotFineSpec (W1SendRealSlotEnv img W i R) :=
-  let h := hdom peerAddr rfl
-  let hn := peer_and_rem_name_le_40_of_send hparse h.1 h.2.1
-  let S := w1SendReal_singleSlotFineSpec_of_rdBounded (B := R.B) (img := img)
-    RecordDeserializeCancelEnv
-    deserCancelFineCum deserCancelFineLive deserCancelFinePeak deserCancelFineMaxReq
-    deserCancelFineGrpS
-    hi hparse h.2.2
-    (fun p bs hrd => cliIo_rd_ok_length_le_sessionCapBytes (runFiles i) p bs hrd)
-    h.1 h.2.1 hn.1 hn.2
-    (fun _ hbs => recordDeserializeCancelEnv_fine_phaseCreditSpec hbs)
-    (fun bs _ => recordDeserializeCancelEnv_fine_groupSpec bs)
-  { cum := w1SendRealDcanCum
-    live := w1SendRealDcanLive
-    peak := w1SendRealDcanPeak
-    maxReq := w1SendRealDcanMaxReq
-    grpS := w1SendRealDcanGrpS
-    credit := S.credit_spec
-    live_le_peak := S.live_le_peak
-    groups := S.group_spec }
 
 theorem w2Real_hLoadEq_noFb [LibsignalPlacement] {A : RustAlloc}
     {i : Inputs} {pathOk : List (BitVec 8) → Prop} {peer : AddrGhost}
@@ -331,250 +307,11 @@ structure W3InitRealParams where
   g_rec : RecordGhost
   r_rec : SessionRecord (List (BitVec 8))
 
-/-- Call-site domain guard for `W3InitRealParams` on `.init peerV dir` (`peer.name ≤ 40`,
-key/registration/SPQR bounds, `2 MiB` read cap, and `RecordAliceInitiatedAnyCkBounds`). -/
-def W3InitRealDom
-    (_img : Arm64.Obj.Image) (_S : RunSem) (g : RunCall) (w : W3InitRealParams) : Prop :=
-  (∀ peerV dir, g.c = .init peerV dir → w.x.peer.name.bytes.length ≤ 40) ∧
-  w.ownKeyName.length ≤ 64 ∧
-  w.ownRegName.length ≤ 64 ∧
-  w.x_spqr.p.authKey.length ≤ 32 ∧
-  (∀ p bs, w.rd w.x.F p = .ok bs → bs.length ≤ sessionCapBytes) ∧
-  RecordAliceInitiatedAnyCkBounds w.g_rec w.r_rec
-
 /-- Concrete `W3` (`init`) slot envelope at `W3InitRealParams`. -/
-def W3InitRealSlotEnv (w : W3InitRealParams) (evs : List AllocEvent) : Prop :=
+@[expose] def W3InitRealSlotEnv (w : W3InitRealParams) (evs : List AllocEvent) : Prop :=
   W3InitiateSlotEnv
     (mkW3InitiateSlotParamsDeser w.rd RecordDeserializeCancelEnv
       w.x w.ownKeyName w.ownRegName w.F w.x_spqr w.g_rec w.r_rec)
     evs
-
-/-- Mode-dispatched `CliRunCalleeEnvs` bundle quantifying existentially over guarded call-site
-witnesses across all five CLI callee slots (`init`, `send`, `recv` whisper, `PKSM`, `recv-prekey`). -/
-def mkExistentialRealCalleeEnvs [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) (P : PEParams) (g : RunCall) :
-    CliRunCalleeEnvs where
-  initEnv := match g.c with
-    | .init _ _ => fun evs =>
-      ∃ w : W3InitRealParams, W3InitRealDom img S g w ∧ W3InitRealSlotEnv w evs
-    | _ => fun _ => False
-  encEnv := match g.c with
-    | .send _ => fun evs =>
-      ∃ w1R : W1SendRealParams, W1SendRealDom g.c w1R ∧ W1SendRealSlotEnv img P g.i w1R evs
-    | _ => fun _ => False
-  decSigEnv := match g.c with
-    | .recv _ => fun evs =>
-      ∃ w2R : W2RecvWhisperRealParams,
-        W2RecvWhisperRealDom g.c w2R ∧ W2RecvWhisperRealSlotEnv P g.i w2R evs
-    | _ => fun _ => False
-  pksmEnv := PksmCanonSliceEnv
-  decPkEnv := match g.c with
-    | .recv _ => fun evs =>
-      ∃ w4R : W4RecvPrekeyRealParams,
-        W4RecvPrekeyRealDomOf sessionCapBytes msgCapBytes w4R ∧ W4RecvPrekeyRealEnv w4R evs
-    | _ => fun _ => False
-
-theorem existentialW3_credit [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) (P : PEParams) (g : RunCall) :
-    PhaseCreditSpec fineCostModel
-      (mkExistentialRealCalleeEnvs img S P g).initEnv
-      w3InitRealCum w3InitRealLive w3InitRealPeak w3InitRealMaxReq := by
-  rcases g with ⟨i', c', a', res', call', stores', inp', coins'⟩
-  cases c'
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · rename_i peerV dir
-    exact phaseCredit_exists_guarded_u fun w hw =>
-      (w3InitReal_singleSlotFineSpec_noA0 (hw.1 peerV dir rfl) w.F
-        hw.2.1 hw.2.2.1 hw.2.2.2.1 hw.2.2.2.2.1 hw.2.2.2.2.2).credit
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · exact emptyPhaseCreditSpec _ _ _ _
-
-theorem existentialW3_groups [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) (P : PEParams) (g : RunCall) :
-    PhaseGroupSpec fineCostModel
-      (mkExistentialRealCalleeEnvs img S P g).initEnv
-      w3InitRealGrpS := by
-  rcases g with ⟨i', c', a', res', call', stores', inp', coins'⟩
-  cases c'
-  · exact emptyPhaseGroupSpec _
-  · rename_i peerV dir
-    exact phaseGroupSpec_exists_guarded fineCostModel fun w hw =>
-      (w3InitReal_singleSlotFineSpec_noA0 (hw.1 peerV dir rfl) w.F
-        hw.2.1 hw.2.2.1 hw.2.2.2.1 hw.2.2.2.2.1 hw.2.2.2.2.2).groups
-  · exact emptyPhaseGroupSpec _
-  · exact emptyPhaseGroupSpec _
-
-theorem existentialW1_credit [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) {P : PEParams} {g : RunCall}
-    (hi : CliPqxdhInputs P g.i)
-    (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
-    PhaseCreditSpec fineCostModel
-      (mkExistentialRealCalleeEnvs img S P g).encEnv
-      w1SendRealDcanCum w1SendRealDcanLive w1SendRealDcanPeak w1SendRealDcanMaxReq := by
-  rcases g with ⟨i', c', a', res', call', stores', inp', coins'⟩
-  cases c'
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · exact phaseCredit_exists_guarded_u fun w1R hw1 =>
-      (w1SendRealSlot_dcan_singleSlotFineSpec_noFb (img := img) w1R hi hparse hw1).credit
-  · exact emptyPhaseCreditSpec _ _ _ _
-
-theorem existentialW1_groups [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) {P : PEParams} {g : RunCall}
-    (hi : CliPqxdhInputs P g.i)
-    (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
-    PhaseGroupSpec fineCostModel
-      (mkExistentialRealCalleeEnvs img S P g).encEnv
-      w1SendRealDcanGrpS := by
-  rcases g with ⟨i', c', a', res', call', stores', inp', coins'⟩
-  cases c'
-  · exact emptyPhaseGroupSpec _
-  · exact emptyPhaseGroupSpec _
-  · exact phaseGroupSpec_exists_guarded fineCostModel fun w1R hw1 =>
-      (w1SendRealSlot_dcan_singleSlotFineSpec_noFb (img := img) w1R hi hparse hw1).groups
-  · exact emptyPhaseGroupSpec _
-
-theorem existentialW2_credit [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) {P : PEParams} {g : RunCall}
-    (hi : CliPqxdhInputs P g.i)
-    (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
-    PhaseCreditSpec fineCostModel
-      (mkExistentialRealCalleeEnvs img S P g).decSigEnv
-      w2RecvWhisperRealDcanCum w2RecvWhisperRealDcanLive w2RecvWhisperRealDcanPeak
-      w2RecvWhisperRealDcanMaxReq := by
-  rcases g with ⟨i', c', a', res', call', stores', inp', coins'⟩
-  cases c'
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · exact phaseCredit_exists_guarded_u fun w2R hw2 =>
-      (w2RecvWhisperRealSlot_dcan_singleSlotFineSpec_noFb w2R hi hparse hw2).credit
-
-theorem existentialW2_groups [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) {P : PEParams} {g : RunCall}
-    (hi : CliPqxdhInputs P g.i)
-    (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
-    PhaseGroupSpec fineCostModel
-      (mkExistentialRealCalleeEnvs img S P g).decSigEnv
-      w2RecvWhisperRealDcanGrpS := by
-  rcases g with ⟨i', c', a', res', call', stores', inp', coins'⟩
-  cases c'
-  · exact emptyPhaseGroupSpec _
-  · exact emptyPhaseGroupSpec _
-  · exact emptyPhaseGroupSpec _
-  · exact phaseGroupSpec_exists_guarded fineCostModel fun w2R hw2 =>
-      (w2RecvWhisperRealSlot_dcan_singleSlotFineSpec_noFb w2R hi hparse hw2).groups
-
-theorem existentialW4_credit [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) (P : PEParams) (g : RunCall) :
-    PhaseCreditSpec fineCostModel
-      (mkExistentialRealCalleeEnvs img S P g).decPkEnv
-      w4RecvPrekeyReal1MiB_i_Cum w4RecvPrekeyReal1MiB_i_Live
-      w4RecvPrekeyReal1MiB_i_Peak w4RecvPrekeyReal1MiB_i_MaxReq := by
-  rcases g with ⟨i', c', a', res', call', stores', inp', coins'⟩
-  cases c'
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · exact phaseCredit_exists_guarded_u fun w4R hw4 =>
-      (w4RecvPrekeyReal1MiB_i_singleSlotFineSpec w4R hw4).credit
-
-theorem existentialW4_groups [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) (P : PEParams) (g : RunCall) :
-    PhaseGroupSpec fineCostModel
-      (mkExistentialRealCalleeEnvs img S P g).decPkEnv
-      w4RecvPrekeyRealGrpS := by
-  rcases g with ⟨i', c', a', res', call', stores', inp', coins'⟩
-  cases c'
-  · exact emptyPhaseGroupSpec _
-  · exact emptyPhaseGroupSpec _
-  · exact emptyPhaseGroupSpec _
-  · exact phaseGroupSpec_exists_guarded fineCostModel fun w4R hw4 =>
-      (w4RecvPrekeyReal1MiB_i_singleSlotFineSpec w4R hw4).groups
-
-/-- `CliRealCalleeFineSpecs` witness on `mkExistentialRealCalleeEnvs img S P g` under
-`CliPqxdhInputs P g.i` and `parseArgs = some g.c`. -/
-def existentialRealCalleeFineSpecs [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) {P : PEParams} {g : RunCall}
-    (hi : CliPqxdhInputs P g.i)
-    (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
-    CliRealCalleeFineSpecs (mkExistentialRealCalleeEnvs img S P g) where
-  initCum := w3InitRealCum
-  initLive := w3InitRealLive
-  initPeak := w3InitRealPeak
-  initMaxReq := w3InitRealMaxReq
-  initGrpS := w3InitRealGrpS
-  init_spec := existentialW3_credit img S P g
-  init_lp := w3InitReal_caps_le.2.2.1
-  init_grp := existentialW3_groups img S P g
-  encCum := w1SendRealDcanCum
-  encLive := w1SendRealDcanLive
-  encPeak := w1SendRealDcanPeak
-  encMaxReq := w1SendRealDcanMaxReq
-  encGrpS := w1SendRealDcanGrpS
-  enc_spec := existentialW1_credit img S hi hparse
-  enc_lp := w1SendRealDcan_live_le_peak
-  enc_grp := existentialW1_groups img S hi hparse
-  decSigCum := w2RecvWhisperRealDcanCum
-  decSigLive := w2RecvWhisperRealDcanLive
-  decSigPeak := w2RecvWhisperRealDcanPeak
-  decSigMaxReq := w2RecvWhisperRealDcanMaxReq
-  decSigGrpS := w2RecvWhisperRealDcanGrpS
-  decSig_spec := existentialW2_credit img S hi hparse
-  decSig_lp := w2RecvWhisperRealDcan_live_le_peak
-  decSig_grp := existentialW2_groups img S hi hparse
-  pksmCum := pksmCanonSliceCum msgCapBytes
-  pksmLive := pksmCanonSliceLive msgCapBytes
-  pksmPeak := pksmCanonSlicePeak msgCapBytes
-  pksmMaxReq := pksmCanonSliceMaxReq msgCapBytes
-  pksmGrpS := pksmCanonSliceGrpS msgCapBytes
-  pksm_spec := fun _ hrest => pksmCanonSlice_fine_phaseCredit hrest
-  pksm_lp := pksmCanonSliceLive_le_peak msgCapBytes
-  pksm_grp := fun _ hrest => pksmCanonSlice_fine_groupSpec hrest
-  decPkCum := w4RecvPrekeyReal1MiB_i_Cum
-  decPkLive := w4RecvPrekeyReal1MiB_i_Live
-  decPkPeak := w4RecvPrekeyReal1MiB_i_Peak
-  decPkMaxReq := w4RecvPrekeyReal1MiB_i_MaxReq
-  decPkGrpS := w4RecvPrekeyRealGrpS
-  decPk_spec := existentialW4_credit img S P g
-  decPk_lp := w4RecvPrekeyReal1MiB_i_eq.2.2.2.2
-  decPk_grp := existentialW4_groups img S P g
-
-/-- Numerical 5-slot `run` bounds for `existentialRealCalleeFineSpecs`. -/
-theorem existentialRealCalleeFineSpecs_direct_run_bounds [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) {P : PEParams} {g : RunCall}
-    (hi : CliPqxdhInputs P g.i)
-    (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
-    let SE := existentialRealCalleeFineSpecs img S hi hparse
-    cliRun1MiBCustomPksmCum SE.pksmCum SE.initCum SE.encCum SE.decSigCum SE.decPkCum ≤
-      cliRealDirectRunCum_i ∧
-    cliRun1MiBCustomPksmLive SE.pksmLive SE.initLive SE.encLive SE.decSigLive SE.decPkLive ≤
-      cliRealDirectRunLive_i ∧
-    cliRun1MiBCustomPksmPeak SE.pksmLive SE.pksmPeak
-      SE.initPeak SE.encLive SE.encPeak SE.decSigPeak SE.decPkPeak ≤
-      cliRealDirectRunPeak_i ∧
-    cliRun1MiBCustomPksmMaxReq SE.pksmMaxReq
-      SE.initMaxReq SE.encMaxReq SE.decSigMaxReq SE.decPkMaxReq ≤
-      cliRealDirectRunMaxReq_i ∧
-    cliRunOpenedCustomPksmGrpS msgCapBytes SE.pksmGrpS
-      SE.initGrpS SE.encGrpS SE.decSigGrpS SE.decPkGrpS ≤
-      cliRealDirectRunGrpS_i := by
-  dsimp only [existentialRealCalleeFineSpecs]
-  exact ⟨by decide, by decide, by decide, by decide, by decide⟩
-
-/-! ## Non-Vacuity Witness -/
-
-/-- Allocating `3#8` `recv-prekey` non-vacuity witness on `mkExistentialRealCalleeEnvs`. -/
-theorem existentialRealCalleeEnvs_recvPrekey_nonvacuous [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) :
-    ∃ (P₀ : PEParams) (g₀ : RunCall) (fullLog : List AllocEvent),
-      CliPqRealCallDomain P₀ g₀ ∧
-      CliMainEnv uuidTryParse
-        (fun g' => CliRunOpenedEnv cliIo.rd
-          (mkExistentialRealCalleeEnvs img S P₀ g') sessionCapBytes g')
-        g₀ none false [] false fullLog ∧
-      AllocEvent.alloc 72 ∈ fullLog ∧
-      AllocEvent.realloc 1 2048 1569 ∈ fullLog :=
-  cliPqRealCallDomain_recvPrekey_nonvacuous (mkExistentialRealCalleeEnvs img S) (fun _ _ => rfl)
 
 end LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs

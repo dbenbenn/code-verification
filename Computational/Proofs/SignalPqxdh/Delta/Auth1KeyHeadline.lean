@@ -9,10 +9,15 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyAssembly
-public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyStatements
-public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdComb
+import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyAssembly
+import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyStatements
+public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyB -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdComb
+public import Computational.Proofs.SignalPqxdh.Auth1KeyStatements -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuth1KeySig -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.Pqxdh.Security.HeadlineDelta
 
 /-!
 # Conditional one-key `Auth` headline closure
@@ -22,7 +27,7 @@ Defines `Auth1KeyDslFamily` and derives `PqxdhAuth1KeySecureδ` and
 bad-event bound.
 -/
 
-@[expose] public section
+public section
 
 open scoped ENNReal
 open MeasureTheory
@@ -64,7 +69,7 @@ def Auth1KeySigHopStmt (S : Setup) : Prop :=
         ≤ (S.N_id : ℝ) * GapSigEufCmaReal P P.isValidDhTriple (sigReductionAuth1Key S b A)
 
 /-- Per-principal one-key signature hop bound `authSig1KeyPerKBound`. -/
-def Auth1KeySigPerKStmt (S : Setup) : Prop :=
+@[expose] def Auth1KeySigPerKStmt (S : Setup) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b),
       ∀ k < S.N_id, authSig1KeyPerKBound S P b A k

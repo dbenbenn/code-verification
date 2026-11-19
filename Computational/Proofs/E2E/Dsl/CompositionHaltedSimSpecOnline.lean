@@ -12,12 +12,12 @@ module
 public import Computational.Specifications.LibsignalCli.StatementPqElf
 public import Computational.Specifications.Game.ModelIface
 public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.BinaryHarnessCostedRedsV1 -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.BinaryHarnessCostedRedsV1
 public import Computational.Proofs.E2E.Dsl.CompositionHaltedWitness -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.CompositionHaltedSimSpecInst -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.PrefixRedHaltedEval -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.PrefixRedHaltedEval
 public import Computational.Proofs.E2E.Dsl.PrefixRedHaltedByKind -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.KindRedHaltedEval -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.KindRedHaltedEval
 import Computational.Proofs.E2E.Dsl.CompositionHaltedWitnessInst
 import Computational.Proofs.ReductionDsl.Soundness
 
@@ -505,17 +505,6 @@ theorem oneStage_eval_eq_online
   rcases hSimInv (b_out, σ_out) hout with ⟨qKi1, qSend1, qSt1, qSess1, hInvOut⟩
   dsimp only [Prod.map, id_eq]
   exact spec.finish_eq hInvOut b_out
-
-/-- Exact `pqxdhKeyIndExpForHandshake` distribution equality for any `OneStageAtomicSimSpecOnline`. -/
-theorem evalDist_pqxdhKeyIndExp_oneStage_eq_online
-    (spec : OneStageAtomicSimSpecOnline S Pt ℓ O b qStart qs DrvSt)
-    (P : SignalPqxdh.Primitives)
-    (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
-    (B_A : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool)
-    (hB : HaltedTargetAdvPerInstanceBounded B_A b qStart qs) :
-    𝒟[pqxdhKeyIndExpForHandshake S P ki ⟨spec.R.eval (fun _ => B_A) ()⟩] =
-      𝒟[pqxdhKeyIndExpForHandshake S P ki ⟨spec.R_ref.eval (fun _ => B_A) ()⟩] := by
-  rw [oneStage_eval_eq_online spec B_A hB]
 
 end OnlineOneStageSimProofs
 

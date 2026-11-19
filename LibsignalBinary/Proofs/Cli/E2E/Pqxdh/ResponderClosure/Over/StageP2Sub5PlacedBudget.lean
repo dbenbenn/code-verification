@@ -11,13 +11,13 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub4PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub5Placed
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub4PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub5Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget
 
 /-!
 # Budget-Threaded Placed Stage P2 Over-Path Entry Precondition
@@ -26,7 +26,7 @@ Defines the budget-threaded `[LibsignalPlacement]` Stage P2 Over-path entry prec
 `stageP2OverPreAtPlaced` at `+0x0868` and relates it to `A.atState`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,7 +56,7 @@ open LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget (retagIden
 
 /-- Budget-threaded placed spatial precondition at `+0x0868` for `stageP2_over_v1_kits` on a
 populated 1-session record. -/
-noncomputable def stageP2OverPreAtPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP2OverPreAtPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (b : BitVec 64)
     (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
     (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)

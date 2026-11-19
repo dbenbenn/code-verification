@@ -12,7 +12,7 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V1PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V1PlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Arms2PlacedBudget
@@ -28,6 +28,13 @@ import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1Common --
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import ProofLib
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5V1PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ArmsAPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ArmsBPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2BridgesPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6PlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Kit-Generic Over-Path Stage-P2 V1 (`regErr` Variant)
@@ -37,7 +44,7 @@ Stage-P2 V1 Over-path (`+0x0868 → +0x1778`) theorem specialized to the `∀ lo
 promote tail is vacuous (`fun _ => False`).
 -/
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.DecPkD2cCanonStage2V1RegErrPlacedBudgetFd
 
@@ -137,7 +144,7 @@ open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6Place
   (stageP2_over_sub6_v1_kits_ext_placed_withEnv_ofEnv)
 open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V1PlacedBudget
   (P2OverSub6EnvOf P2OverV1Arm4Env P2OverV1Arm5EnvOfAcceptErr P2OverV1Arm6EnvOfBob
-   P2OverV1OkEnvOfBobAndProm)
+   P2OverV1OkEnvOfBobAndProm p2_over_bobExtPlaced_le_overPure)
 open VerifiedLibraries.Mallocng (MallocngMaxAllocSize)
 
 private theorem freeOnlyEvs_rustDeallocEvents (size align : Nat) :
@@ -1151,7 +1158,7 @@ theorem stageP2_over_v1_kits_memInv_ext_regErr_placed_ofEnv [LibsignalPlacement]
     ((stageP2OverV1CallStack4K_eq spkKit kpkKit pkKit skit).symm ▸
       p2_over_callStack_le_v1CallStack spkKit kpkKit pkKit skit)
     ((stageP2OverV1CallStack4K_eq spkKit kpkKit pkKit skit).symm ▸
-      Nat.le_trans p2_over_bobExt_le_overPure
+      Nat.le_trans p2_over_bobExtPlaced_le_overPure
         (p2_over_pure_le_v1CallStack spkKit kpkKit pkKit skit))
     stk hstk
 

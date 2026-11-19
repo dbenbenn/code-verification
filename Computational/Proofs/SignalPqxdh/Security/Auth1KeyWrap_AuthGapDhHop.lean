@@ -9,19 +9,19 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
-public import Computational.Proofs.SignalPqxdh.Security.SigHop
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.SigHop
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopA
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_ReductionsAuthHandshake
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
-public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyA
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopA -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_ReductionsAuthHandshake
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyA
 
 /-!
 # One-Key `Auth` Simulator Validity and Primitive Bridging
@@ -30,11 +30,9 @@ Proves simulator state invariants and `PrimBaseSpec` equivalence for `pqxdhAuthS
 the shared-scalar identity-key oracle `pqxdhAuthImpl1KeyG`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal
 open MeasureTheory
@@ -215,7 +213,7 @@ theorem pqxdhAuthSimImpl_validAuthSim_step1Key (S : Setup) (P : Primitives)
     apply h_from_proj
     unfold pqxdhAuthSimImpl1Key pqxdhAuthImpl1KeyG; dsimp only; prove_preserves_at
 
-noncomputable def runAuthWithProv1Key (prov : ProvFnType) (S : Setup) (P : Primitives)
+def runAuthWithProv1Key (prov : ProvFnType) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp (Bool × Bool × AuthState S) := do
   let secb ← $ᵗ Bool
   let initSt := AuthState.empty S secb

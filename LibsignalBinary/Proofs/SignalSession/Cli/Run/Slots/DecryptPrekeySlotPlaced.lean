@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlot
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlot -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.E2E.Bin.Record
 
 /-!
 # Relocatable `decrypt_prekey` Slot Adapter
@@ -22,7 +23,7 @@ Relocatable `[LibsignalPlacement]` definitions (`slotFramePlaced`, `decPkSlotSpe
 `dpSlot_ok_state_frozen_placed`) for `signal_session_handshake::decrypt_prekey`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -40,7 +41,7 @@ open CryptoVerification.SignalSession.Cli.RunSkeleton
 open CryptoVerification.SignalSession.Cli.RunProofs (dpWordsAt)
 
 /-- Relocatable `[LibsignalPlacement]` counterpart of `RunCompose.slotFrame`. -/
-def slotFramePlaced [LibsignalPlacement] (A : RustAlloc) (x : SlotCtx) : SepProp :=
+@[expose] def slotFramePlaced [LibsignalPlacement] (A : RustAlloc) (x : SlotCtx) : SepProp :=
   ⌜x.coins.length < 2 ^ 63⌝ ∗
   storesAt A x.stores StoresGhost.opened ∗ protocolAddressAt A x.peer x.peerA ∗
     protocolAddressAt A x.me x.meA ∗ coinsInstalledPlaced x.coinsP x.coins ∗
@@ -48,7 +49,7 @@ def slotFramePlaced [LibsignalPlacement] (A : RustAlloc) (x : SlotCtx) : SepProp
 
 /-- Relocatable `[LibsignalPlacement]` `decrypt_prekey` slot contract carrying
 `withLsCodeRoLoaded lsmpl`. -/
-def decPkSlotSpecPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (stk : Nat) :
+@[expose] def decPkSlotSpecPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (stk : Nat) :
     Spec DecPkGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
@@ -80,7 +81,7 @@ def decPkSlotSpecPlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (stk :
         ⌜S.decryptPrekey x.F x.peer.val x.me.val x.msg x.coins = none ∨ allocFailedIn s0 sf⌝ ∗
           anyHeap }
 
-def decPkSlotSpecBasePlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (stk : Nat) :
+@[expose] def decPkSlotSpecBasePlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (stk : Nat) :
     Spec DecPkGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.msgA ∧ s.readReg64 .x1 = x.peerA ∧ s.readReg64 .x2 = x.meA ∧
@@ -98,7 +99,7 @@ def decPkSlotSpecBasePlaced [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (s
   post := (decPkSlotSpecPlaced A S stk).post
   onPanic := (decPkSlotSpecPlaced A S stk).onPanic
 
-def decPkSlotSpecPlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop)
+@[expose] def decPkSlotSpecPlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop)
     (A : RustAlloc) (S : RunSem) (stk : Nat) : Spec DecPkGhost :=
   { decPkSlotSpecBasePlaced A S stk with
     pre := fun x s0 => (decPkSlotSpecBasePlaced A S stk).pre x s0 ∗ ⌜CodeOk s0.mem⌝ }
@@ -116,13 +117,13 @@ example [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (stk : Nat) :
       withLsFrozen lsmpl (decPkSlotSpecBasePlaced A S stk) := rfl
 
 /-- The 13 ABI argument words passed to `decrypt_prekey` under `[LibsignalPlacement]`. -/
-def dpSlotArgsPlaced [LibsignalPlacement] (x : DecPkGhost) : List (BitVec 64) :=
+@[expose] def dpSlotArgsPlaced [LibsignalPlacement] (x : DecPkGhost) : List (BitVec 64) :=
   [ x.msgA, x.peerA, x.meA, x.stores + 240#64, lsρ cliSessionVtSym, x.stores,
     lsρ cliIdentityVtSym, x.stores + 200#64, lsρ cliPreKeyVtSym, x.stores + 80#64,
     lsρ cliSignedPreKeyVtSym, x.stores + 120#64, lsρ cliKyberPreKeyVtSym ]
 
 /-- Relocatable `[LibsignalPlacement]` state-coupled `RunProofs.DpPollKState`. -/
-def dpSlotPollKStatePlaced [LibsignalPlacement] (A : RustAlloc) (B : RunBudgets) (S : RunSem) :
+@[expose] def dpSlotPollKStatePlaced [LibsignalPlacement] (A : RustAlloc) (B : RunBudgets) (S : RunSem) :
     RunProofs.DpPollKState where
   Ghost := DecPkGhost
   args := dpSlotArgsPlaced

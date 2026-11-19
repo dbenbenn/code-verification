@@ -13,13 +13,17 @@ public meta import Lean -- shake: keep
 public meta import ProofLib -- shake: keep
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.MallocngBridgeBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneX
-public import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneX -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
 import LibsignalBinary.Proofs.Common.HookTrace
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.Hooks
 import ProofLib.Hoare.LibcHooks
 import ProofLib.SepLogic.WPp
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+import ProofLib.SepLogic.CodeLookup
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Hook Lifts and `VmPreserved` Basic-Block Steppers
@@ -29,7 +33,7 @@ Provides `extHookStack = 16,384` B `NoOom` allocator contracts (`rustCli{Alloc,D
 `AllocContractsBudgetPlaced`, and `by_vm_steps` basic-block steppers preserving `VmPreserved`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -85,7 +89,7 @@ theorem allocCallPreserved_trace_eq {s0 sf : State} (h : AllocCallPreserved s0 s
 
 /-- Strengthen a `Spec α` postcondition with `⌜VmPreserved s0 sf⌝` so `A.pool lim st s0`
 transports across non-allocator calls (`shim`, `memcpy`, `memmove`) via `A.pool_transport`. -/
-def withVmPreserved {α : Type} (spec : Spec α) : Spec α :=
+@[expose] def withVmPreserved {α : Type} (spec : Spec α) : Spec α :=
   { spec with post := fun x s0 sf => ⌜VmPreserved s0 sf⌝ ∗ spec.post x s0 sf }
 
 theorem vmPreserved_hookNoop (s0 : State) : VmPreserved s0 (hookNoop s0) := by
@@ -170,7 +174,7 @@ theorem subroutine_ok_withLsCl_withVmPreserved_withHookStack_mono {α : Type} {p
 /-! ## 2. Linked-ELF `subroutine_ok` Bridges (`shim` & `memcpy`) -/
 
 /-- `VmPreserved`-preserving no-op contract for `__rustc::__rust_no_alloc_shim_is_unstable_v2()`. -/
-def rustAllocShimVmSpec : Spec Unit where
+@[expose] def rustAllocShimVmSpec : Spec Unit where
   pre := fun _ _ => emp
   post := fun _ s0 sf => ⌜AllocCallPreserved s0 sf ∧ VmPreserved s0 sf⌝
 
@@ -404,7 +408,7 @@ theorem fetch_withSvc (P : Program) (svc : State → State) (pc : BitVec 64) :
 /-- Trap-all hook table used with `noSyscalls` in `sepWP_rebase_vmPreserved` so `wp_steps` can
 discharge `VmPreserved s sm` across basic blocks containing `STR`/`STP` (`SepWP.step_str*`
 quantifies over an abstract `m' : Memory` without `m'.perm = s.mem.perm`). -/
-def trapHooks : LibsignalHooks :=
+@[expose] def trapHooks : LibsignalHooks :=
   fun _ => some (fun s => s.setStatus (.Exception "extern"))
 
 private theorem findSome?_override_none :

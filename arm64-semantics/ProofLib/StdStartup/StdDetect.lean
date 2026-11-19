@@ -101,7 +101,7 @@ elab "have_instrs" h:ident startIdx:num count:num : tactic => do
     let i := startIdx.getNat + k; let fnId := Lean.Name.mkSimple s!"hf_{i}"; let fnName := Lean.mkIdent fnId
     let iStx := Lean.Syntax.mkNumLit (toString i); let offStx := Lean.Syntax.mkNumLit (toString (4 * i))
     if i == 0 then Lean.Elab.Tactic.evalTactic (← `(tactic| have $fnName := ProofLib.StdStartup.hasInstrs.fetch_at_zero $h))
-    else Lean.Elab.Tactic.evalTactic (← `(tactic| (have $fnName := ProofLib.StdStartup.hasInstrs.fetch_at $h $iStx (off := BitVec.ofNat 64 $offStx); try simp (config := { ground := true }) only [BitVec.add_assoc] at $fnName:ident)))
+    else Lean.Elab.Tactic.evalTactic (← `(tactic| have $fnName := ProofLib.StdStartup.hasInstrs.fetch_at $h $iStx (off := BitVec.ofNat 64 $offStx)))
     Lean.Elab.Tactic.liftMetaTactic1 fun mvarId => mvarId.withContext do
       let some decl := (← Lean.MonadLCtx.getLCtx).findFromUserName? fnId | return mvarId
       let ty ← Lean.instantiateMVars decl.type
@@ -110,6 +110,7 @@ elab "have_instrs" h:ident startIdx:num count:num : tactic => do
         let newTy ← Lean.Meta.mkEq (ty.getArg! 1) (Lean.mkApp2 (Lean.mkConst ``Option.some [0]) (Lean.mkConst ``Instr) instClean)
         let (_, mvarId') ← (← mvarId.assert fnId newTy decl.toExpr).intro1P; return ← mvarId'.tryClear decl.fvarId
       return mvarId
+    if i != 0 then Lean.Elab.Tactic.evalTactic (← `(tactic| try simp (config := { ground := true }) only [BitVec.add_assoc] at $fnName:ident))
 private theorem step_str8_perm {prog : Program} {target_pc pc ea : BitVec 64} {s : State} {P P' : SepProp} {post : State → SepProp → Prop} {oom : State → SepProp}
     {rt : Reg} {addr : AddrMode} {wb : Option (Reg × BitVec 64)} {val : BitVec 8} (hpc : s.pc = pc) (hrun : s.status = .Running)
     (hfetch : prog.fetch pc = some (.str .B8 rt addr)) (hsp : checkAddrSPAligned s addr = true) (haddr : evalAddrMode s addr = (ea, wb)) (hval : (s.readReg32 rt).truncate 8 = val) (hstore : SepStore8 ea val P P')
@@ -268,7 +269,7 @@ macro "close_chunk_rel" s:ident : tactic => `(tactic| refine ⟨by simp [wp_norm
 private theorem detect_chunk1 (P : Program) (base hwcap : BitVec 64) (hc : hasInstrs P base (decodeWords detectChunk1Words))
     {target_pc : BitVec 64} {s : State} {Pre : SepProp} {post : State → SepProp → Prop} {oom : State → SepProp} (hpc : s.pc = base) (hrun : s.status = .Running) (hx19 : s.readReg64 (.gpr 19#5) = hwcap)
     (hnext : ∀ sf : State, sf.pc = base + 0xcc#64 → sf.status = .Running → sf.readReg64 (.gpr 19#5) = hwcap → (sf.readReg64 (.gpr 10#5)).getLsbD 30 = hwcap.getLsbD 8 → (sf.readReg64 (.gpr 13#5)).getLsbD 22 = false → (sf.readReg64 (.gpr 11#5)).getLsbD 12 = false → PureChunkRel s sf → SepWP P target_pc sf Pre post oom) : SepWP P target_pc s Pre post oom := by
-  have_instrs hc 0 51; wp_steps 51; exact hnext _ (by simp [wp_norm, arm64_norm, bv_lin_norm]) (by simp [wp_norm, arm64_norm, hrun]) (by simp [wp_norm, arm64_norm, hx19]) (by simp only [LogicalOp.ofBits]; close_bit_prop [hx19]) (by close_bit_prop [hx19]) (by close_bit_prop [hx19]) (by close_chunk_rel s)
+  have_instrs hc 0 51; wp_steps 51; exact hnext _ (by simp [wp_norm, arm64_norm, bv_lin_norm]) (by simp [wp_norm, arm64_norm, hrun]) (by simp [wp_norm, arm64_norm, hx19]) (by close_bit_prop [hx19]) (by close_bit_prop [hx19]) (by close_bit_prop [hx19]) (by close_chunk_rel s)
 private theorem detect_chunk2 (P : Program) (base hwcap : BitVec 64) (hc : hasInstrs P base (decodeWords detectChunk2Words))
     {target_pc : BitVec 64} {s : State} {Pre : SepProp} {post : State → SepProp → Prop} {oom : State → SepProp}
     (hpc : s.pc = base) (hrun : s.status = .Running) (hx19 : s.readReg64 (.gpr 19#5) = hwcap) (hx10 : (s.readReg64 (.gpr 10#5)).getLsbD 30 = hwcap.getLsbD 8) (hx13 : (s.readReg64 (.gpr 13#5)).getLsbD 22 = false) (hx11 : (s.readReg64 (.gpr 11#5)).getLsbD 12 = false)

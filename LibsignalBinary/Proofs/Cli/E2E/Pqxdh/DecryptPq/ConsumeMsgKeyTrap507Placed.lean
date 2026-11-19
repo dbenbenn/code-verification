@@ -9,10 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ConsumeMsgKeySub507Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ConsumeMsgKeySub507Placed
 import Arm64.Trusted.Spec.Hoare
 import all Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Trap.ExtSegMidS4A
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKey -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.ConsumeMsgKeyHelpersPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlaced
+public import ProofLib.RegChain
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
 # Relocatable Segment `S4` (`ConsumeMsgKey`) Seam on Block `507`
@@ -21,7 +28,7 @@ Relocatable `[LibsignalPlacement]` verification of Segment `S4` (`<ProtocolAddre
 `RatchetState::consume_message_key`, and formatted-string drop, `S4SeamPlaced`) on Block `507`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -374,7 +381,7 @@ theorem consumeMsgKey_507_placed_ok [LibsignalPlacement] (C : Crypto) (A : RustA
       · refine Or.inr ⟨hpan, ?_⟩
         rw [cliTryDecryptSpecPlaced_onPanic_eq]
         dsimp only [tryDecryptSpecPlaced, withLsCodeRoLoaded,
-          tryDecryptRawSpecPlaced, tryDecryptSpec, Spec.inImage]
+          tryDecryptRawSpecPlaced]
         rw [sepConj_assoc, satisfies_pure_sepConj]
         exact ⟨⟨Or.inr (Or.inr halloc0), htr0⟩, hany⟩
       · exact Or.inr ⟨hpan, ⟨Or.inr halloc0, htr0⟩, hany⟩
@@ -590,7 +597,7 @@ theorem consumeMsgKey_507_placed_ok [LibsignalPlacement] (C : Crypto) (A : RustA
               refine Or.inr ⟨hpan, ?_⟩
               rw [cliTryDecryptSpecPlaced_onPanic_eq]
               dsimp only [tryDecryptSpecPlaced, withLsCodeRoLoaded,
-                tryDecryptRawSpecPlaced, tryDecryptSpec, Spec.inImage]
+                tryDecryptRawSpecPlaced]
               rw [sepConj_assoc, satisfies_pure_sepConj]
               exact ⟨⟨Or.inr (Or.inr halloc0), htr0⟩, hany⟩
           · next e r2 hmod =>

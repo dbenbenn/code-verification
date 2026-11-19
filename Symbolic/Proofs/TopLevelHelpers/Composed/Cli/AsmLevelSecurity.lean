@@ -10,18 +10,17 @@ limitations under the License.
 module
 
 public import Symbolic.Specifications.Security.Binary
-public import Symbolic.Proofs.SpecLemmas.SecurityBinaryFixed
+public import Symbolic.Proofs.SpecLemmas.SecurityBinaryPlaced -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.TopEvents
 
 /-!
 # Assembly-Level CLI Security from Whole-Protocol Refinement
 
-Transfers whole-protocol CLI refinement (`CompRefinesCliElf`, `CompRefinesCliBinary`, and
-relocatable `CompRefinesCliBinaryPlaced`) to assembly-level security (`SignalSessionSecureFor`,
-`SignalSessionSecure`, and `SignalSessionSecurePlaced`).
+Transfers relocatable whole-protocol CLI refinement (`CompRefinesCliBinaryPlaced`) to
+assembly-level security (`SignalSessionSecurePlaced`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,82 +30,57 @@ open Arm64.Obj (MultiPlacement)
 open Arm64.Process (ElfImage)
 open CryptoProofLib.Refinement (ExternInterpretation)
 open CryptoVerification.SignalSession (CliHooks)
-open DY.Libsignal.HwEvents (CliEvent)
-open DY.Libsignal.Composed.Refinement
-  (AllSecurityQueriesHoldOnHwTrace Explains OpaqueSymbolSemantics
-   ProtocolSetup ProtocolSetupWF)
-open DY.Libsignal.Composed.Refinement.Cli
-  (CliTraces CliTurn CollisionAfterExplainedPrefix
-   CompRefinesCliBinary CompRefinesCliElf ExternContractsHoldCli
-   HooksMatchInterpretation InvertsGuarded signalSessionSecureFor_of_refines
-   elfRel initDirs runFnToRelation)
-open DY.Libsignal.Composed.Security (SignalSessionSecure SignalSessionSecureFor)
+open DY.Libsignal.Composed.Refinement.Cli (signalSessionSecureFor_of_refines)
 
-noncomputable abbrev elfRelPlaced (mpl mmpl : MultiPlacement) (elf : ElfImage)
+abbrev elfRelPlaced (mpl : MultiPlacement) (elf : ElfImage)
     (interp : ExternInterpretation) (W : CliHooks) :
     CryptoVerification.SignalSession.Inputs →
     Option CryptoVerification.SignalSession.Outcome → Prop :=
-  DY.Libsignal.Composed.Refinement.Cli.elfRelPlaced mpl mmpl elf interp W
+  DY.Libsignal.Composed.Refinement.Cli.elfRelPlaced mpl elf interp W
 
-abbrev CompRefinesCliBinaryPlacedAt (mpl mmpl : MultiPlacement) (bytes : List (BitVec 8)) : Prop :=
-  DY.Libsignal.Composed.Refinement.Cli.CompRefinesCliBinaryPlacedAt mpl mmpl bytes
+abbrev CompRefinesCliBinaryPlacedAt (mpl : MultiPlacement) (bytes : List (BitVec 8)) : Prop :=
+  DY.Libsignal.Composed.Refinement.Cli.CompRefinesCliBinaryPlacedAt mpl bytes
 
 abbrev CompRefinesCliBinaryPlaced (bytes : List (BitVec 8)) : Prop :=
   DY.Libsignal.Composed.Refinement.Cli.CompRefinesCliBinaryPlaced bytes
 
-abbrev SignalSessionSecurePlacedAt (mpl mmpl : MultiPlacement) (bytes : List (BitVec 8)) : Prop :=
-  DY.Libsignal.Composed.Security.SignalSessionSecurePlacedAt mpl mmpl bytes
+abbrev SignalSessionSecurePlacedAt (mpl : MultiPlacement) (bytes : List (BitVec 8)) : Prop :=
+  DY.Libsignal.Composed.Security.SignalSessionSecurePlacedAt mpl bytes
 
 abbrev SignalSessionSecurePlaced (bytes : List (BitVec 8)) : Prop :=
   DY.Libsignal.Composed.Security.SignalSessionSecurePlaced bytes
 
-/-- Transfers `CompRefinesCliElf elf` to `SignalSessionSecureFor HooksMatchInterpretation (elfRel elf)`. -/
-theorem comp_asm_security_cli_of_elf_refines {elf : ElfImage}
-    (hRef : CompRefinesCliElf elf) : SignalSessionSecureFor HooksMatchInterpretation (elfRel elf) :=
-  signalSessionSecureFor_of_refines hRef
-
-/-- Transfers `CompRefinesCliBinary bytes` to `SignalSessionSecure bytes`. -/
-theorem signal_session_secure_of_binary_refines {bytes : List (BitVec 8)}
-    (hBin : CompRefinesCliBinary bytes) : SignalSessionSecure bytes :=
-  let ⟨elf, hparse, hcode, hprog, hRef⟩ := hBin
-  ⟨elf, hparse, hcode, hprog, comp_asm_security_cli_of_elf_refines hRef⟩
-
 /-- Transfers `CompRefinesCliBinaryPlaced bytes` to `SignalSessionSecurePlaced bytes`. -/
 theorem signal_session_secure_placed_of_binary_refines {bytes : List (BitVec 8)}
     (hBin : CompRefinesCliBinaryPlaced bytes) : SignalSessionSecurePlaced bytes := by
-  intro mpl mmpl hLs hMm
-  rcases hBin mpl mmpl hLs hMm with ⟨elf, hparse, hcode, hprog, hRef⟩
+  intro mpl hLs
+  rcases hBin mpl hLs with ⟨elf, hparse, hcode, hprog, hRef⟩
   exact ⟨elf, hparse, hcode, hprog, signalSessionSecureFor_of_refines hRef⟩
+
+/-- Transfers `CompRefinesCliBinary bytes` to `SignalSessionSecure bytes`. -/
+theorem signal_session_secure_of_binary_refines {bytes : List (BitVec 8)}
+    (hBin : DY.Libsignal.Composed.Refinement.Cli.CompRefinesCliBinary bytes) :
+    DY.Libsignal.Composed.Security.SignalSessionSecure bytes := by
+  rcases hBin with ⟨elf, addrs, hparse, haddrs, hprog, hRef⟩
+  exact ⟨elf, addrs, hparse, haddrs, hprog, signalSessionSecureFor_of_refines hRef⟩
 
 end Symbolic.Proofs.TopLevelHelpers.Composed.Cli.AsmSecurity
 
 namespace Symbolic.Proofs.TopLevelHelpers.Composed.Cli
 
-open Arm64.Obj (MultiPlacement)
-open Arm64.Process (ElfImage)
-open DY.Libsignal.Composed.Refinement.Cli
-  (CompRefinesCliElf CompRefinesCliBinary HooksMatchInterpretation elfRel)
-open DY.Libsignal.Composed.Security (SignalSessionSecure)
 open AsmSecurity (CompRefinesCliBinaryPlaced CompRefinesCliBinaryPlacedAt
   SignalSessionSecurePlaced SignalSessionSecurePlacedAt elfRelPlaced)
-
-/-- Transfers `CompRefinesCliBinary bytes` to `SignalSessionSecure bytes`. -/
-theorem signal_session_secure_of_binary_refines {bytes : List (BitVec 8)}
-    (hBin : CompRefinesCliBinary bytes) : SignalSessionSecure bytes :=
-  AsmSecurity.signal_session_secure_of_binary_refines hBin
 
 /-- Transfers `CompRefinesCliBinaryPlaced bytes` to `SignalSessionSecurePlaced bytes`. -/
 theorem signal_session_secure_placed_of_binary_refines {bytes : List (BitVec 8)}
     (hBin : CompRefinesCliBinaryPlaced bytes) : SignalSessionSecurePlaced bytes :=
   AsmSecurity.signal_session_secure_placed_of_binary_refines hBin
 
-/--
-info: 'Symbolic.Proofs.TopLevelHelpers.Composed.Cli.signal_session_secure_of_binary_refines' depends on axioms: [propext,
- Classical.choice,
- Quot.sound]
--/
-#guard_msgs in
-#print axioms signal_session_secure_of_binary_refines
+/-- Transfers `CompRefinesCliBinary bytes` to `SignalSessionSecure bytes`. -/
+theorem signal_session_secure_of_binary_refines {bytes : List (BitVec 8)}
+    (hBin : DY.Libsignal.Composed.Refinement.Cli.CompRefinesCliBinary bytes) :
+    DY.Libsignal.Composed.Security.SignalSessionSecure bytes :=
+  AsmSecurity.signal_session_secure_of_binary_refines hBin
 
 /--
 info: 'Symbolic.Proofs.TopLevelHelpers.Composed.Cli.signal_session_secure_placed_of_binary_refines' depends on axioms: [propext,
@@ -115,5 +89,13 @@ info: 'Symbolic.Proofs.TopLevelHelpers.Composed.Cli.signal_session_secure_placed
 -/
 #guard_msgs in
 #print axioms signal_session_secure_placed_of_binary_refines
+
+/--
+info: 'Symbolic.Proofs.TopLevelHelpers.Composed.Cli.signal_session_secure_of_binary_refines' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms signal_session_secure_of_binary_refines
 
 end Symbolic.Proofs.TopLevelHelpers.Composed.Cli

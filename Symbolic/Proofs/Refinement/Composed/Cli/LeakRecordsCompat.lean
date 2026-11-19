@@ -20,7 +20,7 @@ Defines the responder-quarantine projection `CliTurn.leakRecords`, the shadow-tu
 pre-key wire messages.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,11 +36,11 @@ open CryptoVerification.SignalSession (PublicBundle)
 
 /-- Suppresses Bob's session record when `t.bobOff = true` and agrees with `t.records r`
 otherwise. -/
-def CliTurn.leakRecords (t : CliTurn) (r : ProtocolSetup) (p : Participant) : Option HwBytes :=
+@[expose] def CliTurn.leakRecords (t : CliTurn) (r : ProtocolSetup) (p : Participant) : Option HwBytes :=
   if t.bobOff = true ∧ p = r.bob then none else t.records r p
 
 /-- Shadow-turn leak predicate over `t.leakRecords r` and `t.opkUsed r`. -/
-def KeyInDirsV1 (r : ProtocolSetup) (t : CliTurn) (k : HwBytes) : Prop :=
+@[expose] def KeyInDirsV1 (r : ProtocolSetup) (t : CliTurn) (k : HwBytes) : Prop :=
   LeakableSecret r (t.leakRecords r) (t.opkUsed r) k
 
 theorem CliTurn.leakRecords_eq_records_of_bobOff_false {t : CliTurn} {r : ProtocolSetup}
@@ -50,18 +50,18 @@ theorem CliTurn.leakRecords_eq_records_of_bobOff_false {t : CliTurn} {r : Protoc
 
 /-- Field-length and type-byte well-formedness predicate characterizing the image of
 `publicBundleOf`. -/
-def BundleTyped (b : PublicBundle) : Prop :=
+@[expose] def BundleTyped (b : PublicBundle) : Prop :=
   b.identityKey.length = 33 ∧ b.identityKey.head? = some 5#8 ∧
   b.signedKey.length = 33 ∧ b.signedKey.head? = some 5#8 ∧ b.signedSig.length = 64 ∧
   b.kyberKey.length = 1569 ∧ b.kyberKey.head? = some 8#8 ∧ b.kyberSig.length = 64 ∧
   ∀ id key, b.oneTime = some (id, key) → key.length = 33 ∧ key.head? = some 5#8
 
 /-- Typed `PublicBundle` whose serialized `bundleBlob` satisfies `HonestBundle`. -/
-def HonestBundleDir (interp : ExternInterpretation) (r : ProtocolSetup) (b : PublicBundle) : Prop :=
+@[expose] def HonestBundleDir (interp : ExternInterpretation) (r : ProtocolSetup) (b : PublicBundle) : Prop :=
   BundleTyped b ∧ HonestBundle interp r (bundleBlob b)
 
 /-- Canonical pre-key wire encoding built from 32-byte EC keys and a 1568-byte Kyber ciphertext. -/
-def CanonicalPreKey (b : HwBytes) : Prop :=
+@[expose] def CanonicalPreKey (b : HwBytes) : Prop :=
   ∃ (preKeyId : Option (BitVec 32)) (spkId kpkId regId : BitVec 32) (ik ek ct msg : HwBytes),
     ik.length = 32 ∧ ek.length = 32 ∧ ct.length = 1568 ∧
     b = preKeyWire preKeyId spkId kpkId regId (ecKey ik) ek ct msg

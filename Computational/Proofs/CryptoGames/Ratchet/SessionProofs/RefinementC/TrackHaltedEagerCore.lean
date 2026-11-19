@@ -13,6 +13,7 @@ public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Eager
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementWeak.Eager
 import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11Aux
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Coupling
 
 /-!
 # Tracker-halted non-eager runner and hook bridges
@@ -23,7 +24,7 @@ lemmas for `deliver`, `inject`, and `corrupt`.
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace CryptoGames.LibsignalSM.Proofs.Refinement
 
@@ -64,7 +65,7 @@ def stepSimCTrackNone (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
       (x.1, tr)).run x.2) >>=
     fun r => pure (r.1.1, ((r.1.2.1, r.2), r.1.2.2))
 
-def simStepImplCTrackNone (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
+@[expose] def simStepImplCTrackNone (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) :
@@ -73,7 +74,7 @@ def simStepImplCTrackNone (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
   fun q => StateT.mk fun ⟨x, tr⟩ =>
     stepSimCTrackNone P K ℓ Dh encPt encT decT idOf lam qep q x tr
 
-def runSimCTrackNone {α : Type} (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
+@[expose] def runSimCTrackNone {α : Type} (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ)
@@ -788,7 +789,7 @@ theorem tb_cxSend_base (P : Params PQ (BitVec 512)) (Dh : DHFun (BitVec 256) Pt)
     (cxSend P Dh encPt encT idOf lam Q sC s' res).base = s' := by
   cases res <;> rfl
 
-def stepSimCTrackNoneSend (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
+@[expose] def stepSimCTrackNoneSend (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ)
     (Q : Party) (m₀ : Plain ℓ) (chal : Option (Plain ℓ)) (r : Option (BitVec 512))

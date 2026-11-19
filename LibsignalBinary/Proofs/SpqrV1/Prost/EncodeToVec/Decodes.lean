@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 import ProofLib.GenDecodes
+public import ProofLib.ProgramReflection.SortedFresh
 
 /-!
 # `PqRatchetState::encode_to_vec`: Instruction Decode Table
@@ -20,7 +20,7 @@ Pre-compiled `gen_decodes` instruction decode table for
 (`0x6d010..0x6ee60`, 1,940 instructions).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.EncodeToVec
 
@@ -30,8 +30,5 @@ set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
 abbrev spqrEncodeToVecOff : Nat := 0x67c18
-
-gen_decodes libsignalSessionCode_tree spqrEncodeToVecBin
-  [0x67c18 → 0x69a68]
 
 end CryptoVerification.SpqrV1.Prost.EncodeToVec

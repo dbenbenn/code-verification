@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1RatchetErr2500
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1RatchetErr2500Placed
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1RatchetErr2500
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1RatchetErr2500Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
@@ -23,6 +23,8 @@ import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Drop.States2Budget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable V1 Ratchet Chain & Key Error Cleanup
@@ -32,7 +34,7 @@ Envelope-parametric and default `SpqrRecvEnv` error-cleanup steppers after `spqr
 (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -49,7 +51,7 @@ open CryptoVerification
   (LibsignalCodeLoaded LibsignalPlacement LibsignalRoLoaded lsmpl sepWP_seq_lscl withMemEq)
 open CryptoVerification.LibsignalSpqrV1
   (Chain EpochSecret Error Message MlKem PqRatchetState SpqrRecvModel V1Recv
-   recvResultExactKeyAt spqrAuthApi spqrPolyApi spqrV1Recv)
+   spqrAuthApi spqrPolyApi spqrV1Recv)
 open CryptoVerification.LibsignalTripleRatchet (VecArg)
 open CryptoVerification.LibsignalTripleRatchetRepr (noneCap)
 open CryptoVerification.RustHeap (allocHookStack)
@@ -68,7 +70,7 @@ open CryptoVerification.SpqrV1.Top.Recv
    memRegion_4416_join_464_32_3920 memRegion_4416_join_recvKey_err memRegion_464_16_of_msg
    optEpochSecret_none_entails_of_hfold optEpochSecret_some_entails_of_hfold
    ownFrame_join_err_2524
-   recvKeyErrAt_sub3056_expose_words4 recv_err_q0_foldX recv_err_words_foldX ret_48_split
+   recvKeyErrAt_sub3056_expose_words4 ret_48_split
    rodata_chunkedStatesLocal2JumpTablePlacedAt sp_sub_4992_aligned spqrErrorTag_eq_zero_iff
    spqrRecvCalleeStackX spqrRecvPlacedEntry spqrRecvPlacedProg spqrRecvRoPlacedAt
    spqrRecvSavedRegs stackAt_spqrRecvCallee_split subroutine_ok_withMemEq_of_lscl
@@ -79,8 +81,10 @@ open LibsignalBinary.Heap
    rustCliDeallocBudgetSpec rustDeallocEvents)
 open LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget (dropSpqrChainSpec)
 open LibsignalBinary.Proofs.SpqrV1.Drop.States2Budget (dropChunkedStatesLocal2PlacedSpec)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag (SpqrErrorValidTag recvResultExactKeyDispAt)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
-  (SpqrRecvEnv spqrRecvPlacedPost0 spqrRecvPlacedPost0OfEnv step_epilogue_placed_ofEnv)
+  (SpqrRecvEnv recv_err_q0_disp_foldX recv_err_words_disp_foldX spqrRecvPlacedPost0
+   spqrRecvPlacedPost0OfEnv step_epilogue_placed_ofEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
   (SpqrRecvDropContractsBudget SpqrRecvEnv.append_freeOnly close_free_step deallocFreeOnlySpec
    freeOnlyWitness seq_free_lscl seq_vm_lscl subroutine_ok_deallocFreeOnly)
@@ -125,7 +129,7 @@ theorem step_drop_vn_2632_placed_ofEnv {MC : AllocCostModel} {F : ShaCompress}
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs0 st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       memRegion (s0.sp - 4992#64) 352 ∗
@@ -219,7 +223,7 @@ theorem step_drop_vn_2632_placed {MC : AllocCostModel} {F : ShaCompress}
     (hrun : s.status = .Running) (hsp : s.sp = s0.sp - 4992#64) (htr : TraceVRegs s s0)
     (hx23 : s.readReg64 .x23 = w0) (hx26 : s.readReg64 .x26 = 0#64)
     (hP : P = spqrRecvRoPlacedAt ∗ st.at A.repAlloc ∗ msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs0 st_cost) s ∗ stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       memRegion (s0.sp - 4992#64) 352 ∗ ((s0.sp - 4640#64) ↦₆₄ w0) ∗ ((s0.sp - 4632#64) ↦₆₄ w1) ∗
       optVersionNegotiationPBTailAt A.repAlloc w0 w1 (s0.sp - 4624#64) pre_pb.versionNegotiation ∗
@@ -261,7 +265,7 @@ theorem step_drop_optEpochSecret_2600_placed_ofEnv {MC : AllocCostModel} {F : Sh
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs0 st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       memRegion (s0.sp - 4992#64) 352 ∗
@@ -364,7 +368,7 @@ theorem step_drop_optEpochSecret_2600_placed {MC : AllocCostModel} {F : ShaCompr
     (hx23 : s.readReg64 .x23 = w0) (hx24 : s.readReg64 .x24 = kw0)
     (hx25 : s.readReg64 .x25 = kw1) (hx28 : s.readReg64 .x28 = 0#64)
     (hP : P = spqrRecvRoPlacedAt ∗ st.at A.repAlloc ∗ msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs0 st_cost) s ∗ stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       memRegion (s0.sp - 4992#64) 352 ∗ ((s0.sp - 4640#64) ↦₆₄ w0) ∗ ((s0.sp - 4632#64) ↦₆₄ w1) ∗
       optVersionNegotiationPBTailAt A.repAlloc w0 w1 (s0.sp - 4624#64) pre_pb.versionNegotiation ∗
@@ -398,6 +402,8 @@ theorem step_chainFrom_err_2568_placed_ofEnv {MC : AllocCostModel}
     (herr : (spqrV1Recv F K).recv st.bytes msg.bytes = .error (e == .stateDecode))
     (htag_q0 : BitVec.truncate 8 q0_err =
       CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.spqrErrorTag e)
+    (hvalid : SpqrErrorValidTag
+      (CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.spqrErrorTag e))
     (s0 s : State) (P R : SepProp) (post : State → SepProp → Prop)
     (hpost : post = spqrRecvPlacedPost0OfEnv A lim st_cost Env (spqrV1Recv F K) st msg ret s0 R)
     (hs0_align : s0.spAligned = true)
@@ -457,9 +463,11 @@ theorem step_chainFrom_err_2568_placed_ofEnv {MC : AllocCostModel}
         ((ret + 16#64) ↦₆₄ q0_err.extractLsb' 64 64) ∗
         ((ret + 24#64) ↦₆₄ w3_err) ∗
         memRegion (ret + 32#64) 16) ⊢
-      recvResultExactKeyAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) := by
+      recvResultExactKeyDispAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) := by
     rw [herr]
-    exact recv_err_q0_foldX A.repAlloc ret (q0_err.extractLsb' 64 64) w3_err q0_err e htag_q0
+    exact recv_err_q0_disp_foldX A.repAlloc ret (q0_err.extractLsb' 64 64) w3_err q0_err
+      (CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.spqrErrorTag e) (e == .stateDecode)
+      htag_q0 (Iff.of_eq (spqrErrorTag_eq_zero_iff e)) hvalid
   refine seq_vm_lscl hcl (mid := lsmpl.base 273)
     (P_mid :=
       chunkedStatesLocal2JumpTablePlacedAt ∗
@@ -570,6 +578,8 @@ theorem step_chainFrom_err_2568_placed {MC : AllocCostModel}
     (herr : (spqrV1Recv F K).recv st.bytes msg.bytes = .error (e == .stateDecode))
     (htag_q0 : BitVec.truncate 8 q0_err =
       CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.spqrErrorTag e)
+    (hvalid : SpqrErrorValidTag
+      (CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.spqrErrorTag e))
     (s0 s : State) (P R : SepProp) (post : State → SepProp → Prop)
     (hpost : post = spqrRecvPlacedPost0 A lim st_cost (spqrV1Recv F K) st msg ret s0 R)
     (hs0_align : s0.spAligned = true) (hpc : s.pc = spqrRecvPlacedEntry + 2568#64)
@@ -596,7 +606,7 @@ theorem step_chainFrom_err_2568_placed {MC : AllocCostModel}
   step_chainFrom_err_2568_placed_ofEnv A lim st_cost (SpqrRecvEnv st msg) evs0
     (fun _ hd => SpqrRecvEnv.append_freeOnly hevs0 hd)
     F K ext hC st msg ret pre_pb w0 w1 sckaMsg v kw0 kw1 kw2 kw3 P_key hfold_key
-    e q0_err w3_err herr htag_q0 s0 s P R post hpost hs0_align
+    e q0_err w3_err herr htag_q0 hvalid s0 s P R post hpost hs0_align
     hpc hrun hsp htr hx19 hx23 hx24 hx25 hx28 hP hcl
 
 theorem step_post_chainFrom_err_1860_placed_ofEnv {MC : AllocCostModel}
@@ -616,6 +626,8 @@ theorem step_post_chainFrom_err_1860_placed_ofEnv {MC : AllocCostModel}
         optEpochSecretAt A.repAlloc dst v.key)
     (e : Error)
     (herr : (spqrV1Recv F K).recv st.bytes msg.bytes = .error (e == .stateDecode))
+    (hvalid : SpqrErrorValidTag
+      (CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.spqrErrorTag e))
     (s0 s : State) (P R : SepProp) (post : State → SepProp → Prop)
     (hpost : post = spqrRecvPlacedPost0OfEnv A lim st_cost Env (spqrV1Recv F K) st msg ret s0 R)
     (hs0_align : s0.spAligned = true)
@@ -726,7 +738,7 @@ theorem step_post_chainFrom_err_1860_placed_ofEnv {MC : AllocCostModel}
   · intro s1 hpc1 hrun1 hcl1 hvm ⟨hsp1, htr1, hx19_1, hx23_1, hx24_1, hx25_1, hx28_1⟩
     refine SepWP.transport_budgetPool hvm (hnext := ?_)
     exact step_chainFrom_err_2568_placed_ofEnv A lim st_cost Env evs0 hevs_free F K ext hC st msg ret
-      pre_pb w0 w1 sckaMsg v kw0 kw1 kw2 kw3 P_key hfold_key e q0_err w3_err herr htag_q0
+      pre_pb w0 w1 sckaMsg v kw0 kw1 kw2 kw3 P_key hfold_key e q0_err w3_err herr htag_q0 hvalid
       s0 s1 _ R post hpost hs0_align hpc1 hrun1 hsp1 htr1 hx19_1 hx23_1 hx24_1 hx25_1 hx28_1
       (by sep_ac_rfl) hcl1
 
@@ -742,6 +754,8 @@ theorem step_post_chainFrom_err_1860_placed {MC : AllocCostModel}
       (dst ↦₆₄ kw0) ∗ ((dst + 8#64) ↦₆₄ kw1) ∗ ((dst + 16#64) ↦₆₄ kw2) ∗ ((dst + 24#64) ↦₆₄ kw3) ∗ P_key ⊢
         optEpochSecretAt A.repAlloc dst v.key)
     (e : Error) (herr : (spqrV1Recv F K).recv st.bytes msg.bytes = .error (e == .stateDecode))
+    (hvalid : SpqrErrorValidTag
+      (CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.spqrErrorTag e))
     (s0 s : State) (P R : SepProp) (post : State → SepProp → Prop)
     (hpost : post = spqrRecvPlacedPost0 A lim st_cost (spqrV1Recv F K) st msg ret s0 R)
     (hs0_align : s0.spAligned = true) (hpc : s.pc = spqrRecvPlacedEntry + 1860#64)
@@ -765,7 +779,7 @@ theorem step_post_chainFrom_err_1860_placed {MC : AllocCostModel}
   step_post_chainFrom_err_1860_placed_ofEnv A lim st_cost (SpqrRecvEnv st msg) evs0
     (fun _ hd => SpqrRecvEnv.append_freeOnly hevs0 hd)
     F K ext hC st msg ret pre_pb w0 w1 sckaMsg v kw0 kw1 kw2 kw3 P_key hfold_key
-    e herr s0 s P R post hpost hs0_align hpc hrun hsp htr
+    e herr hvalid s0 s P R post hpost hs0_align hpc hrun hsp htr
     hx19 hx23 hx24 hx25 hx27 hx28 hP hcl
 
 /-! ## 4. Post-`recv_key` Error Cleanup at `+2000 .. +2056 -> +2632` -/
@@ -788,6 +802,8 @@ theorem step_recvKey_err_2028_placed_ofEnv {MC : AllocCostModel}
       ((r + 8#64) ↦₆₄ w1_err) ⊢
         ((r + 8#64) ↦₈ CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.spqrErrorTag err) ∗
         memRegion (r + 9#64) 7)
+    (hvalid : SpqrErrorValidTag
+      (CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.spqrErrorTag err))
     (s0 s : State) (P R : SepProp) (post : State → SepProp → Prop)
     (hpost : post = spqrRecvPlacedPost0OfEnv A lim st_cost Env (spqrV1Recv F K) st msg ret s0 R)
     (hs0_align : s0.spAligned = true)
@@ -844,11 +860,11 @@ theorem step_recvKey_err_2028_placed_ofEnv {MC : AllocCostModel}
         ((ret + 16#64) ↦₆₄ w2_err) ∗
         ((ret + 24#64) ↦₆₄ w3_err) ∗
         memRegion (ret + 32#64) 16) ⊢
-      recvResultExactKeyAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) := by
+      recvResultExactKeyDispAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) := by
     rw [herr]
-    exact recv_err_words_foldX A.repAlloc ret w1_err w2_err w3_err
+    exact recv_err_words_disp_foldX A.repAlloc ret w1_err w2_err w3_err
       (CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.spqrErrorTag err) (err == .stateDecode)
-      (Iff.of_eq (spqrErrorTag_eq_zero_iff err)) hw1_err
+      (Iff.of_eq (spqrErrorTag_eq_zero_iff err)) hvalid hw1_err
   let st0 := MC.stepEvents evs0 st_cost
   refine seq_vm_lscl hcl (mid := lsmpl.base 269)
     (P_mid :=
@@ -1015,6 +1031,8 @@ theorem step_recvKey_err_2028_placed {MC : AllocCostModel}
       ((r + 8#64) ↦₆₄ w1_err) ⊢
         ((r + 8#64) ↦₈ CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.spqrErrorTag err) ∗
         memRegion (r + 9#64) 7)
+    (hvalid : SpqrErrorValidTag
+      (CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.spqrErrorTag err))
     (s0 s : State) (P R : SepProp) (post : State → SepProp → Prop)
     (hpost : post = spqrRecvPlacedPost0 A lim st_cost (spqrV1Recv F K) st msg ret s0 R)
     (hs0_align : s0.spAligned = true) (hpc : s.pc = spqrRecvPlacedEntry + 2028#64)
@@ -1040,7 +1058,7 @@ theorem step_recvKey_err_2028_placed {MC : AllocCostModel}
   step_recvKey_err_2028_placed_ofEnv A lim st_cost (SpqrRecvEnv st msg) evs0
     (fun _ hd => SpqrRecvEnv.append_freeOnly hevs0 hd)
     F K ext hC st msg ret pre_pb w0 w1 sckaMsg v g1 chain1 err w1_err w2_err w3_err
-    herr hw1_err s0 s P R post hpost hs0_align hpc hrun hsp htr
+    herr hw1_err hvalid s0 s P R post hpost hs0_align hpc hrun hsp htr
     hx19 hx21 hx22 hx23 hx24 hx26 hx29 hP hcl
 
 theorem step_recvKey_err_2000_placed_ofEnv {MC : AllocCostModel}
@@ -1057,6 +1075,8 @@ theorem step_recvKey_err_2000_placed_ofEnv {MC : AllocCostModel}
     (g1 : ChainGhost) (chain1 : Chain)
     (err : Error)
     (herr : (spqrV1Recv F K).recv st.bytes msg.bytes = .error (err == .stateDecode))
+    (hvalid : SpqrErrorValidTag
+      (CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.spqrErrorTag err))
     (s0 s : State) (P R : SepProp) (post : State → SepProp → Prop)
     (hpost : post = spqrRecvPlacedPost0OfEnv A lim st_cost Env (spqrV1Recv F K) st msg ret s0 R)
     (hs0_align : s0.spAligned = true)
@@ -1105,7 +1125,7 @@ theorem step_recvKey_err_2000_placed_ofEnv {MC : AllocCostModel}
   wp_steps 7
   refine ProofLib.SepWP.done (by simp only [arm64_norm]; rfl) (by simp only [arm64_norm, *]) fun hcl1 => ?_
   exact step_recvKey_err_2028_placed_ofEnv A lim st_cost Env evs0 hevs_free F K ext hC st msg ret
-    pre_pb w0 w1 sckaMsg v g1 chain1 err w1_err w2_err w3_err herr hw1_err s0 _ _ R post
+    pre_pb w0 w1 sckaMsg v g1 chain1 err w1_err w2_err w3_err herr hw1_err hvalid s0 _ _ R post
     hpost hs0_align
     (by simp only [spqrRecvPlacedEntry, arm64_norm, *])
     (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
@@ -1124,6 +1144,8 @@ theorem step_recvKey_err_2000_placed {MC : AllocCostModel}
     (pre_pb : PqRatchetState) (w0 w1 : BitVec 64) (sckaMsg : Message spqrPolyApi)
     (v : V1Recv spqrPolyApi (spqrAuthApi F)) (g1 : ChainGhost) (chain1 : Chain) (err : Error)
     (herr : (spqrV1Recv F K).recv st.bytes msg.bytes = .error (err == .stateDecode))
+    (hvalid : SpqrErrorValidTag
+      (CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.spqrErrorTag err))
     (s0 s : State) (P R : SepProp) (post : State → SepProp → Prop)
     (hpost : post = spqrRecvPlacedPost0 A lim st_cost (spqrV1Recv F K) st msg ret s0 R)
     (hs0_align : s0.spAligned = true) (hpc : s.pc = spqrRecvPlacedEntry + 2000#64)
@@ -1145,7 +1167,7 @@ theorem step_recvKey_err_2000_placed {MC : AllocCostModel}
     SepWP (spqrRecvPlacedProg ext) (s0.readReg64 .x30) s P post :=
   step_recvKey_err_2000_placed_ofEnv A lim st_cost (SpqrRecvEnv st msg) evs0
     (fun _ hd => SpqrRecvEnv.append_freeOnly hevs0 hd)
-    F K ext hC st msg ret pre_pb w0 w1 sckaMsg v g1 chain1 err herr s0 s P R post
+    F K ext hC st msg ret pre_pb w0 w1 sckaMsg v g1 chain1 err herr hvalid s0 s P R post
     hpost hs0_align hpc hrun hsp htr hx19 hx23 hx28 hx29 hP hcl
 
 end LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1RatchetErr2500PlacedBudget

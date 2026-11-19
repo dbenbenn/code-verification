@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import ProofLib.Placed.AdrpLdst
-public meta import LibsignalBinary.Proofs.Placed.Bridge -- shake: keep
-public import LibsignalBinary.Proofs.Placed.Bridge
+meta import LibsignalBinary.Proofs.Placed.Bridge
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
 public import ProofLib.GenDecodes
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import ProofLib.GenPlacedFetches
@@ -28,7 +28,7 @@ Provides `IsLsBlockProg`, `LibsignalCodeLoaded`, cross-block call and tail-jump 
 lemmas (`ls_hook_ok`, `ls_hook_ok_panics`), and the `gen_ls_block <idx>` command elaborator.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -37,7 +37,7 @@ namespace LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 open _root_.Arm64 _root_.Arm64.Obj ProofLib ProofLib.ProgramReflection ProofLib.GenPlacedFetches
 open CryptoVerification (libsignalSessionBlocks libsignalSessionData libsignalSessionLib libsignalSessionMultiLib)
-open LibsignalBinary.Proofs.Placed.Bridge (LibsignalHooks LibsignalPlacement checkBlockCharSymAt evalStrLit extract_withCodeLoaded fastLookupBlockSym libsignalMutatedBlocks libsignalSessionExterns libsignalSessionLib_blockProgram_fnAddr libsignalSessionLib_blocks_length lookupBlockSym_of_fast_some lookupBlockSym_some_of_chars lsNotBlockCharSym lsmpl lsρ)
+open LibsignalBinary.Proofs.Placed.Bridge (LibsignalHooks LibsignalPlacement checkBlockCharSymAt evalStrLit extract_withCodeLoaded fastLookupBlockSym libsignalHookedExterns libsignalMutatedBlocks libsignalSessionExterns libsignalSessionLib_blockProgram_fnAddr libsignalSessionLib_blocks_length lookupBlockSym_of_fast_some lookupBlockSym_some_of_chars lsNotBlockCharSym lsmpl lsρ)
 open LibsignalBinary.Proofs.Placed.BridgeReloc (ls_fnAddr_text_chars ls_resolve_data_chars ls_resolve_text_chars)
 
 /-! ## 1. `IsLsBlockProg` Typeclass -/
@@ -101,7 +101,7 @@ theorem ls_externAt?_blockProgram_eq_of_externs_eq
 /-- Every unmutated block `i ∉ libsignalMutatedBlocks` of `libsignalSessionLib` has its relocated
 code loaded in `m` (`624 = libsignalSessionLib.blocks.length`), satisfied by both stock and
 mutated binaries. -/
-def LibsignalCodeLoaded (pl : MultiPlacement) (m : Memory) : Prop :=
+@[expose] def LibsignalCodeLoaded (pl : MultiPlacement) (m : Memory) : Prop :=
   ∀ i, i < 624 → (i ∈ libsignalMutatedBlocks) = false →
     ∀ (X O : String → Option (State → State)) (svc : State → State),
       (libsignalSessionLib.blockProgram pl i X O svc).CodeLoaded m
@@ -124,7 +124,7 @@ theorem LibsignalCodeLoaded.of_codeLoaded {pl : MultiPlacement} {m : Memory}
     (hcl : libsignalSessionLib.CodeLoaded pl m) : LibsignalCodeLoaded pl m := by
   intro i hi _ _ _ _
   have h := hcl i (by rw [libsignalSessionLib_blocks_length]; omega)
-  rwa [Program.codeLoaded_iff] at h ⊢
+  rw [Program.codeLoaded_iff] at h ⊢; exact h
 
 abbrev withLsCodeLoaded {α : Type} (pl : MultiPlacement) (spec : Spec α) : Spec α :=
   { spec with pre := fun x s0 => spec.pre x s0 ∗ ⌜LibsignalCodeLoaded pl s0.mem⌝ }
@@ -206,7 +206,7 @@ local elab "char_strings_of% " listStx:term:max : term => do
       | _ => throwError "char_strings_of%: expected string literal"
   mkListLit lcTy csEs.toList
 
-private noncomputable def lsExternCharSyms : List (List Char) :=
+private def lsExternCharSyms : List (List Char) :=
   char_strings_of% libsignalSessionExterns
 
 private theorem lsExternCharSyms_map_eq :
@@ -236,39 +236,6 @@ theorem ls_blockPlacement_ρ_extern {pl : MultiPlacement} {i : Nat} {sym : Strin
     (libsignalSessionLib.blockPlacement pl i).ρ sym = pl.ρ sym :=
   ls_extern_resolve_eq hmem
 
-private theorem nodup_map_of_nodup_map {α β γ : Type} {l : List α} {f : α → β} {g : α → γ}
-    (h : (l.map g).Nodup) (hinj : ∀ x ∈ l, ∀ y ∈ l, f x = f y → g x = g y) :
-    (l.map f).Nodup := by
-  induction l with
-  | nil => exact .nil
-  | cons a rest ih =>
-    simp only [List.map_cons, List.nodup_cons, List.mem_map] at h ⊢
-    refine ⟨?_, ih h.2 (fun x hx y hy => hinj x (.tail _ hx) y (.tail _ hy))⟩
-    rintro ⟨b, hb, hfb⟩
-    exact h.1 ⟨b, hb, hinj b (.tail _ hb) a (.head _) hfb⟩
-
-theorem lsExterns_offs_nodup_at [LibsignalPlacement] {i : Nat}
-    (hext : (libsignalSessionLib.blockLib i).text.externs = libsignalSessionExterns) :
-    (((libsignalSessionLib.blockLib i).text.externs.map fun e =>
-      ((libsignalSessionLib.blockPlacement lsmpl i).ρ e -
-        (libsignalSessionLib.blockPlacement lsmpl i).base).toNat)).Nodup := by
-  rw [hext]
-  apply nodup_map_of_nodup_map LibsignalPlacement.externsDistinct
-  intro x hx y hy hxy
-  have hrx : (libsignalSessionLib.blockPlacement lsmpl i).ρ x = lsmpl.ρ x :=
-    ls_blockPlacement_ρ_extern hx
-  have hry : (libsignalSessionLib.blockPlacement lsmpl i).ρ y = lsmpl.ρ y :=
-    ls_blockPlacement_ρ_extern hy
-  have hbveq : (libsignalSessionLib.blockPlacement lsmpl i).ρ x -
-      (libsignalSessionLib.blockPlacement lsmpl i).base =
-      (libsignalSessionLib.blockPlacement lsmpl i).ρ y -
-      (libsignalSessionLib.blockPlacement lsmpl i).base :=
-    BitVec.eq_of_toNat_eq hxy
-  have hρeq : (libsignalSessionLib.blockPlacement lsmpl i).ρ x =
-      (libsignalSessionLib.blockPlacement lsmpl i).ρ y := by
-    bv_omega
-  exact hrx.symm.trans (hρeq.trans hry)
-
 private theorem findSome?_map_off_eq_none {es : List String} {f : String → Nat}
     {H : String → Option (State → State)} {v : Nat}
     (hnotmem : ∀ b ∈ es, f b ≠ v) :
@@ -281,63 +248,89 @@ private theorem findSome?_map_off_eq_none {es : List String} {f : String → Nat
     simp only [List.map_cons, List.findSome?_cons, hne, Bool.false_eq_true, ↓reduceIte]
     exact ih (fun b hb => hnotmem b (.tail _ hb))
 
+private theorem findSome?_map_off_eq_none_of_none {es : List String} {f : String → Nat}
+    {H : String → Option (State → State)} {k : Nat}
+    (hall : ∀ e ∈ es, f e = k → H e = none) :
+    (es.map (fun e => (e, f e))).findSome?
+      (fun p => if (p.2 == k) = true then H p.1 else none) = none := by
+  induction es with
+  | nil => rfl
+  | cons b tl ih =>
+    simp only [List.map_cons, List.findSome?_cons]
+    by_cases hfb : f b = k
+    · simp only [beq_iff_eq.mpr hfb, ↓reduceIte, hall b (.head _) hfb]
+      exact ih (fun e he => hall e (.tail _ he))
+    · simp only [beq_eq_false_iff_ne.mpr hfb, Bool.false_eq_true, ↓reduceIte]
+      exact ih (fun e he => hall e (.tail _ he))
+
 private theorem findSome?_map_off_eq_some {es : List String} {f : String → Nat}
-    {H : String → Option (State → State)} {k : Nat} {sym : String}
-    (hnodup : (es.map f).Nodup) (hk : es[k]? = some sym) :
+    {H : String → Option (State → State)} {sym : String}
+    (hmem : sym ∈ es) (huniq : ∀ e ∈ es, f e = f sym → e = sym) :
     (es.map (fun e => (e, f e))).findSome?
       (fun p => if (p.2 == f sym) = true then H p.1 else none) = H sym := by
-  induction es generalizing k with
-  | nil => simp at hk
+  induction es with
+  | nil => cases hmem
   | cons a rest ih =>
-    simp only [List.map_cons, List.nodup_cons, List.mem_map] at hnodup
-    cases k with
-    | zero =>
-      simp only [List.getElem?_cons_zero, Option.some.injEq] at hk
-      subst hk
-      have hrest : (rest.map (fun e => (e, f e))).findSome?
-          (fun p => if (p.2 == f a) = true then H p.1 else none) = none :=
-        findSome?_map_off_eq_none (fun b hb heq => hnodup.1 ⟨b, hb, heq⟩)
-      simp only [List.map_cons, List.findSome?_cons, beq_self_eq_true, ↓reduceIte, hrest]
-      cases H a <;> rfl
-    | succ k' =>
-      simp only [List.getElem?_cons_succ] at hk
-      have hmem : sym ∈ rest := List.mem_of_getElem? hk
-      have hne : (f a == f sym) = false := by
-        rw [beq_eq_false_iff_ne]
-        intro heq
-        exact hnodup.1 ⟨sym, hmem, heq.symm⟩
-      simp only [List.map_cons, List.findSome?_cons, hne, Bool.false_eq_true, ↓reduceIte]
-      exact ih hnodup.2 hk
+    simp only [List.map_cons, List.findSome?_cons]
+    by_cases hfa : f a = f sym
+    · obtain rfl : a = sym := huniq a (.head _) hfa
+      simp only [beq_self_eq_true, ↓reduceIte]
+      cases hH : H a with
+      | some g => rfl
+      | none =>
+        exact findSome?_map_off_eq_none_of_none fun e he hfe => by
+          obtain rfl := huniq e (.tail _ he) hfe
+          exact hH
+    · rcases List.mem_cons.mp hmem with rfl | hrest
+      · exact absurd rfl hfa
+      · simp only [beq_eq_false_iff_ne.mpr hfa, Bool.false_eq_true, ↓reduceIte]
+        exact ih hrest (fun e he => huniq e (.tail _ he))
 
 /-- Look up the external hook at `lsρ sym` in any block `i`'s program `prog`. -/
 theorem ls_externAt?_of_blockProg [LibsignalPlacement] {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
     {sym : String} {k : Nat} (hk : libsignalSessionExterns[k]? = some sym)
     {bi : Nat} [LsBlockBound bi]
-    (_hi : i < bi := by decide) (_hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
+    (_hi : i < bi := by decide) (_hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide)
+    (hhooked : sym ∈ libsignalHookedExterns := by decide) :
     prog.externAt? (lsρ sym) = H sym := by
   rw [hprog.eq_blockProgram]
   have hext := hprog.externs_eq
   have hmem : sym ∈ libsignalSessionExterns := List.mem_of_getElem? hk
   have hρ : (libsignalSessionLib.blockPlacement lsmpl i).ρ sym = lsρ sym :=
     ls_blockPlacement_ρ_extern hmem
-  have hnodup := lsExterns_offs_nodup_at hext
-  rw [hext] at hnodup
   dsimp only [Program.externAt?, Program.hookAtOff?, MultiPlacedLib.blockProgram, PlacedLib.program]
   simp only [hext, ← hρ, ite_self, findSome?_const_none, Option.or_none]
-  exact findSome?_map_off_eq_some hnodup hk
+  refine findSome?_map_off_eq_some
+    (f := fun e => ((libsignalSessionLib.blockPlacement lsmpl i).ρ e -
+      (libsignalSessionLib.blockPlacement lsmpl i).base).toNat)
+    (H := H) hmem fun e he hfe => ?_
+  have hρe : (libsignalSessionLib.blockPlacement lsmpl i).ρ e = lsρ e :=
+    ls_blockPlacement_ρ_extern he
+  have hbveq :
+      (libsignalSessionLib.blockPlacement lsmpl i).ρ e -
+        (libsignalSessionLib.blockPlacement lsmpl i).base =
+      (libsignalSessionLib.blockPlacement lsmpl i).ρ sym -
+        (libsignalSessionLib.blockPlacement lsmpl i).base :=
+    BitVec.eq_of_toNat_eq hfe
+  have hρeq :
+      (libsignalSessionLib.blockPlacement lsmpl i).ρ e =
+        (libsignalSessionLib.blockPlacement lsmpl i).ρ sym := by
+    bv_omega
+  exact LibsignalPlacement.externsDistinct sym hhooked e he (hρe.symm.trans (hρeq.trans hρ))
 
-/-- Prove `subroutine_ok prog (lsρ sym) spec` for an external hook `sym` in `libsignalSessionExterns`
+/-- Prove `subroutine_ok prog (lsρ sym) spec` for an external hook `sym` in `libsignalHookedExterns`
     from `HookSat H sym spec`. -/
 theorem ls_hook_ok [LibsignalPlacement] {α : Type} {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
     {sym : String} {spec : Spec α} {k : Nat} (hk : libsignalSessionExterns[k]? = some sym)
     (hsat : HookSat H sym spec)
     {bi : Nat} [LsBlockBound bi]
-    (hi : i < bi := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
+    (hi : i < bi := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide)
+    (hhooked : sym ∈ libsignalHookedExterns := by decide) :
     subroutine_ok prog (lsρ sym) spec := by
   obtain ⟨f, hf, hok⟩ := hsat
-  exact subroutine_ok_of_hookOk ((ls_externAt?_of_blockProg hk hi hunmut).trans hf) hok
+  exact subroutine_ok_of_hookOk ((ls_externAt?_of_blockProg hk hi hunmut hhooked).trans hf) hok
 
 /-- Prove `subroutine_ok prog (lsρ sym) spec` when `prog` uses `Rust.withPanics hooks` and `sym`
     is a non-panic external hook. -/
@@ -347,10 +340,11 @@ theorem ls_hook_ok_panics [LibsignalPlacement] {α : Type} {prog : Program} {i :
     (hsat : HookSat hooks sym spec)
     (hnp : Rust.isPanicSymbol sym = false := by decide)
     {bi : Nat} [LsBlockBound bi]
-    (hi : i < bi := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
+    (hi : i < bi := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide)
+    (hhooked : sym ∈ libsignalHookedExterns := by decide) :
     subroutine_ok prog (lsρ sym) spec := by
   obtain ⟨f, hf, hok⟩ := hsat
-  refine ls_hook_ok hk ⟨f, ?_, hok⟩ hi hunmut
+  refine ls_hook_ok hk ⟨f, ?_, hok⟩ hi hunmut hhooked
   simp [Rust.withPanics, hnp, hf]
 
 /-- Resolve `prog.externAt? (lsρ sym) = some Rust.panicked` when `sym` is a Rust panic symbol. -/
@@ -359,9 +353,10 @@ theorem ls_externAt?_panicSymbol [LibsignalPlacement] {prog : Program} {i : Nat}
     {sym : String} {k : Nat} (hk : libsignalSessionExterns[k]? = some sym)
     (hp : Rust.isPanicSymbol sym = true := by decide)
     {bi : Nat} [LsBlockBound bi]
-    (hi : i < bi := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
+    (hi : i < bi := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide)
+    (hhooked : sym ∈ libsignalHookedExterns := by decide) :
     prog.externAt? (lsρ sym) = some Rust.panicked := by
-  rw [ls_externAt?_of_blockProg hk hi hunmut]
+  rw [ls_externAt?_of_blockProg hk hi hunmut hhooked]
   simp [Rust.withPanics, hp]
 
 /-- Transfer `subroutine_ok calleeProg entry (withLsCodeLoaded lsmpl spec)` from block `j` to
@@ -757,10 +752,12 @@ meta def elabGenLsBlock : CommandElab := fun stx => do
         $blkLibEqId:ident ▸ LibsignalPlacement.block_placeable $idxStx:num (by decide) (by decide)
     ))
     elabCommand (← `(command|
+      -- noncomputable: the generated `blkLib_*` constants have no compiled code (added with `addDecl` only); compiling this def panics in LCNF.ExplicitBoxing
       noncomputable def $blkPCId:ident [LibsignalPlacement] : Program :=
         ($blkLibId:ident).program $blkPlId:ident
     ))
     elabCommand (← `(command|
+      -- noncomputable: the generated `blkLib_*` constants have no compiled code (added with `addDecl` only); compiling this def panics in LCNF.ExplicitBoxing
       noncomputable abbrev $lsProgId:ident [LibsignalPlacement] (H : LibsignalHooks) : Program :=
         ($blkPCId:ident).rebase ($blkPlId:ident).base H
     ))
@@ -1051,7 +1048,7 @@ export LibsignalBinary.Proofs.Placed.PlacedCallSym (LibsignalCodeLoaded LsBlockB
 export LibsignalBinary.Proofs.Placed.PlacedCallSym (extract_withMemEq subroutine_ok_withLsCodeLoaded_of_plain)
 export LibsignalBinary.Proofs.Placed.PlacedCallSym (subroutine_ok_withCodeLoaded_of_withLsCodeLoaded sepWP_seq_lscl sepWP_mono_lscl)
 export LibsignalBinary.Proofs.Placed.PlacedCallSym (ls_extern_resolve_eq ls_extern_resolve_of_getElem? ls_blockPlacement_ρ_extern)
-export LibsignalBinary.Proofs.Placed.PlacedCallSym (lsExterns_offs_nodup_at ls_externAt?_of_blockProg ls_hook_ok ls_hook_ok_panics)
+export LibsignalBinary.Proofs.Placed.PlacedCallSym (ls_externAt?_of_blockProg ls_hook_ok ls_hook_ok_panics)
 export LibsignalBinary.Proofs.Placed.PlacedCallSym (ls_externAt?_panicSymbol ls_subroutine_ok_of_block lscall_blk_cl lscall_blk lsjump_blk)
 export LibsignalBinary.Proofs.Placed.PlacedCallSym (ls_blockPlacement_ρ ls_blockPlacement_base add_off_add_sub_sub_cancel)
 export LibsignalBinary.Proofs.Placed.PlacedCallSym (add_add_sub_cancel_bv add_sub_cancel_left_bv ls_resolve_block_chars)

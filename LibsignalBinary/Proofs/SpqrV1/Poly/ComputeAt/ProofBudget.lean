@@ -9,15 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.PhaseBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.PhaseBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.Phase -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Proof for `<spqr::encoding::polynomial::Poly>::compute_at`
@@ -25,7 +28,7 @@ import ProofLib.SepLogic.WPp
 Proves `computeAt_placed_ok` on Block `371` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,7 +45,7 @@ open CryptoVerification.SpqrV1.Alloc
   (growOneStack spqrHandleErrorSym spqrRustAllocSym
    spqrRustNoAllocShimSym spqrRustReallocSym spqr_hook_ok_of_mem)
 open CryptoVerification.SpqrV1.GF.Mul2U16
-  (tokenInitPlacedAt zeroExtend_16_truncate_32_64)
+  (OnceCallHookOk tokenInitPlacedAt zeroExtend_16_truncate_32_64)
 open CryptoVerification.SpqrV1.GF.UnacceleratedMul (reduceTablePlacedAt)
 open CryptoVerification.SpqrV1.Poly (gf16SliceAt)
 open CryptoVerification.SpqrV1.Poly.ComputeAt
@@ -126,6 +129,7 @@ set_option maxHeartbeats 1600000 in
 theorem computeAt_placed_ok [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext))
     (h_panic : (Rust.withPanics ext) spqrHandleErrorSym = some Rust.panicked)
     (hshim_sat : HookSat (Rust.withPanics ext) spqrRustNoAllocShimSym noAllocShimSpec)
     (halloc_sat : HookSat (Rust.withPanics ext) spqrRustAllocSym
@@ -231,7 +235,7 @@ theorem computeAt_placed_ok [LibsignalPlacement]
             M.stepEvents (computeAtEvents a.poly.coefficients.length) st := by
         simp [st1, computeAtEvents, computeAtAllocEvents, computeAtScratchCap, hnil,
           ← M.stepEvents_append]
-      refine SepWP.mono (from_61974_cap4_placed_sepWP M A lim st1 ext hdealloc a R s0 _
+      refine SepWP.mono (from_61974_cap4_placed_sepWP M A lim st1 ext hOnce hdealloc a R s0 _
         (by simp [hnil]) v0_1 hp'_ne hp'_al v1_1 1#64 hsp0
         (by exact hcl_974)
         (by wp_norm_lhs)
@@ -246,7 +250,8 @@ theorem computeAt_placed_ok [LibsignalPlacement]
           have hx21 := hcs_g.2.2.1
           simp only [arm64_norm, wp_norm] at hx21 ⊢
           rw [hx21]
-          simpa [arm64_norm, wp_norm] using hx2_init))
+          simpa [arm64_norm, wp_norm] using hx2_init)
+        (by simpa [arm64_norm, wp_norm] using hcs_g.2.2.2.2.2.2.2.2.2.2.1))
         fun sf1 P_f _ _ ⟨himp, hsp1, hcs1⟩ => ⟨fun hm => ?_, hsp1, hcs1⟩
       have hq := himp hm
       rw [hevs0] at hq
@@ -288,6 +293,8 @@ theorem computeAt_placed_ok [LibsignalPlacement]
     have hx20_0 : sf.readReg64 (Reg.gpr 20#5) = BitVec.ofNat 64 a.poly.coefficients.length := ‹_›
     have hx21_0 : sf.readReg64 (Reg.gpr 21#5) =
         BitVec.zeroExtend 64 (BitVec.truncate 32 (s0.readReg64 (Reg.gpr 2#5))) := ‹_›
+    have hx29_0 : sf.readReg64 (Reg.gpr 29#5) = s0.sp - 96#64 := by
+      simpa [arm64_norm, wp_norm] using (‹sf.readReg64 (Reg.gpr 29#5) = _› : _)
     have hvregs_sf0 : calleeSavedVRegs sf = calleeSavedVRegs s0 := by
       simpa [arm64_norm, wp_norm] using hvregs
     rw [← A.pool_of_vmPreserved ‹_›]
@@ -313,6 +320,8 @@ theorem computeAt_placed_ok [LibsignalPlacement]
     have hx21_1 : sf_1.readReg64 (Reg.gpr 21#5) =
         BitVec.zeroExtend 64 (BitVec.truncate 32 (s0.readReg64 (Reg.gpr 2#5))) :=
       eq_trans_assump ‹_› (by simp [arm64_norm, wp_norm, hx21_0])
+    have hx29_1 : sf_1.readReg64 (Reg.gpr 29#5) = s0.sp - 96#64 :=
+      eq_trans_assump ‹_› (by simp [arm64_norm, wp_norm, hx29_0])
     have hsp_sf1_al : (sf_1.sp &&& 15#64 == 0#64) = true := by
       rw [hsp_sf1, beq_iff_eq]; revert hsp0; bv_bits
     have htr_sf1 : sf_1.trace = s0.trace := by
@@ -402,7 +411,7 @@ theorem computeAt_placed_ok [LibsignalPlacement]
               M.stepEvents (computeAtEvents a.poly.coefficients.length) st := by
           simp [st2, st1, computeAtEvents, computeAtAllocEvents, computeAtScratchCap, hlen1,
             ← M.stepEvents_append]
-        refine SepWP.mono (from_61974_cap4_placed_sepWP M A lim st2 ext hdealloc a R s0 _
+        refine SepWP.mono (from_61974_cap4_placed_sepWP M A lim st2 ext hOnce hdealloc a R s0 _
           (by omega) v0_2 hp'_ne hp'_al v1_1 1#64 hsp0
           (by exact hcl_974)
           (by wp_norm_lhs)
@@ -428,7 +437,11 @@ theorem computeAt_placed_ok [LibsignalPlacement]
             have hx21 := hcs_g.2.2.1
             simp only [arm64_norm, wp_norm] at hx21 ⊢
             rw [hx21, hx21_1]
-            simpa [arm64_norm, wp_norm] using hx2_init))
+            simpa [arm64_norm, wp_norm] using hx2_init)
+          (by
+            have hx29 := hcs_g.2.2.2.2.2.2.2.2.2.2.1
+            simp only [arm64_norm, wp_norm] at hx29 ⊢
+            rw [hx29, hx29_1]))
           fun sf1 P_f _ _ ⟨himp, hsp1, hcs1⟩ => ⟨fun hm => ?_, hsp1, hcs1⟩
         have hq := himp hm
         rw [hevs1] at hq
@@ -459,7 +472,7 @@ theorem computeAt_placed_ok [LibsignalPlacement]
         have hle1 : ¬ a.poly.coefficients.length ≤ 1 := by omega
         simp [st1, computeAtEvents, computeAtAllocEvents, computeAtScratchCap, h0, hlen1, hle1,
           ← M.stepEvents_append]
-      refine SepWP.mono (from_61974_ge2_placed_sepWP M A lim st1 ext hdealloc a R s0 _
+      refine SepWP.mono (from_61974_ge2_placed_sepWP M A lim st1 ext hOnce hdealloc a R s0 _
         hlen_ge2 (by omega) (sf_1.readReg64 (Reg.gpr 0#5)) hptr0 hp0_al _ 1#64 hsp0
         (by exact hcl_974)
         (by wp_norm_lhs)
@@ -473,7 +486,8 @@ theorem computeAt_placed_ok [LibsignalPlacement]
         (by
           simp only [arm64_norm, wp_norm]
           rw [hx21_1]
-          simpa [arm64_norm, wp_norm] using hx2_init))
+          simpa [arm64_norm, wp_norm] using hx2_init)
+        (by simpa [arm64_norm, wp_norm] using hx29_1))
         fun sf1 P_f _ _ ⟨himp, hsp1, hcs1⟩ => ⟨fun hm => ?_, hsp1, hcs1⟩
       have hq := himp hm
       rw [hevs_ge2] at hq

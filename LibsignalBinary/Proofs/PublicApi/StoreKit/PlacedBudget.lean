@@ -9,13 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` Store-Kit Contracts
@@ -25,7 +27,7 @@ public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudg
 all six store-kit traits.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -96,7 +98,7 @@ theorem ls_futDrop_ok_of_block_fs [LibsignalPlacement]
 
 /-- Relocatable budget-threaded `load_session` poll contract parameterized by
     `kit : SessionStoreSpec A.repAlloc 0#64` and `kitEnv : SessionStoreBudgetEnv kit`. -/
-def kitLoadPollPlacedSpecS (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitLoadPollPlacedSpecS (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit)
     (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
@@ -136,7 +138,7 @@ abbrev kitLoadPollPlacedSpecSE (M : AllocCostModel) (A : RustCliAllocBudget M) (
 
 /-- Relocatable budget-threaded `store_session` poll contract parameterized by
     `kit : SessionStoreSpec A.repAlloc 0#64` and `kitEnv : SessionStoreBudgetEnv kit`. -/
-def kitStorePollPlacedSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitStorePollPlacedSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
     (fds : Bool := false) :
@@ -180,7 +182,7 @@ abbrev kitStorePollPlacedSpecE (M : AllocCostModel) (A : RustCliAllocBudget M) (
 
 /-- Relocatable budget-threaded `is_trusted_identity` poll contract parameterized by
     `ikit : IdentityStoreSpec A.repAlloc 0#64` and `ikitEnv : IdentityStoreBudgetEnv ikit`. -/
-def kitTrustPollPlacedSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitTrustPollPlacedSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (fds : Bool := false) :
     Spec (IdentityPollCall × Direction × BitVec 64 × ikit.IdState × M.σ) where
@@ -227,7 +229,7 @@ abbrev kitTrustPollPlacedSpecI [LibsignalPlacement] (M : AllocCostModel) (A : Ru
 
 /-- Relocatable budget-threaded `save_identity` poll contract parameterized by
     `ikit : IdentityStoreSpec A.repAlloc 0#64` and `ikitEnv : IdentityStoreBudgetEnv ikit`. -/
-def kitSavePollPlacedSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitSavePollPlacedSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (fds : Bool := false) :
     Spec (IdentityPollCall × BitVec 64 × ikit.IdState × M.σ) where

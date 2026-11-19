@@ -10,11 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.SplitBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.PrologueFetchBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.PrologueClones
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.SplitBudget
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.PrologueFetchBudget
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.PrologueClones -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
@@ -22,6 +22,12 @@ meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import ProofLib.SepLogic.WPp
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
 
 /-!
 # Budget-Threaded `PreKeySignalMessage::new` Input Clones and Key Serialization
@@ -30,7 +36,7 @@ Relocatable `[LibsignalPlacement]` stepping lemmas for `+0x000..+0x1ac` of `PreK
 (block `41`) under `RustCliAllocBudget M`, tracking exact clone and serialization allocation events.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -101,15 +107,15 @@ private theorem SepWPp.of_sepWP_lscl [LibsignalPlacement] {prog : Program} {mid 
 
 /-! ## Prologue Clone Event Lists -/
 
-def kyberCloneEvs (kp : Option KyberPayload) : List AllocEvent :=
+@[expose] def kyberCloneEvs (kp : Option KyberPayload) : List AllocEvent :=
   match kp with
   | none => []
   | some k => if k.ciphertext = [] then [] else rustAllocEvents k.ciphertext.length 1
 
-def pkSerialize2Evs : List AllocEvent :=
+@[expose] def pkSerialize2Evs : List AllocEvent :=
   publicKeySerializeEvents ++ publicKeySerializeEvents
 
-def msgCloneEvs (msg : SignalMessage) : List AllocEvent :=
+@[expose] def msgCloneEvs (msg : SignalMessage) : List AllocEvent :=
   rustAllocEvents msg.serialized.length 1
 
 /-! ## Frame Setup and Argument Spills (`+0x000..+0x04c`) -/
@@ -392,50 +398,6 @@ theorem preKeyMsg_kyber_clone_wpp_placed [LibsignalPlacement]
     x sp0 w320 w312 w324 w296 ver32 pkId32 st s hky_max hfits
     hpc hrun hsp hsp_align hx6 hx20 hx21 hx22 hx23 hx25 hx26 hx29
 
-theorem preKeyMsg_kyber_clone_wpp_placed_noAllocShim [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hshim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hmemcpy : HookSat H lsMemcpySym framelessMemcpyBudgetSpec)
-    (x : PreKeyMsgNewCall) (sp0 w320 w312 : BitVec 64) (w324 w296 ver32 pkId32 : BitVec 32)
-    (st : M.σ) (s : State)
-    (hky_max : ∀ k, x.kp = some k → k.ciphertext.length + 1 ≤ 2 ^ 63)
-    (hfits : FitsEvents M lim st (kyberCloneEvs x.kp))
-    (hpc : s.pc = (blkPl_41).base + 76#64) (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 368#64) (hsp_align : s.spAligned = true)
-    (hx6 : s.readReg64 .x6 = x.bkA) (hx20 : s.readReg64 .x20 = (if x.kp.isSome then x.kyPtr else 0#64))
-    (hx21 : s.readReg64 .x21 = x.spk.zeroExtend 64) (hx22 : s.readReg64 .x22 = x.ikA)
-    (hx23 : s.readReg64 .x23 = x.regId.zeroExtend 64) (hx25 : s.readReg64 .x25 = pkId32.zeroExtend 64)
-    (hx26 : s.readReg64 .x26 = ver32.zeroExtend 64) (hx29 : s.readReg64 .x29 = sp0 - 96#64) :
-    SepWPp (lsProg_41 H) ((blkPl_41).base + 224#64) s
-      ((x.kyA ↦₆₄ (if x.kp.isSome then x.kyPtr else 0#64)) ∗
-       optKyberRestAt A.repAlloc x.kyA x.kyPtr x.kp ∗
-       ((sp0 - 324#64) ↦₃₂ w324) ∗ ((sp0 - 320#64) ↦₆₄ w320) ∗ ((sp0 - 312#64) ↦₆₄ w312) ∗
-       ((sp0 - 296#64) ↦₃₂ w296) ∗ ((sp0 - 280#64) ↦₆₄ x.kyA) ∗
-       A.pool lim st s ∗ stackAt (sp0 - 368#64) preKeyMsgSubStack)
-      (fun sm Pm =>
-        (sm.sp = sp0 - 368#64 ∧ sm.spAligned = true ∧ sm.readReg64 .x6 = x.bkA ∧
-         sm.readReg64 .x19 =
-           (match x.kp with | none => noneCap | some k => BitVec.ofNat 64 k.ciphertext.length) ∧
-         sm.readReg64 .x21 = x.spk.zeroExtend 64 ∧ sm.readReg64 .x22 = x.ikA ∧
-         sm.readReg64 .x23 = x.regId.zeroExtend 64 ∧ sm.readReg64 .x25 = pkId32.zeroExtend 64 ∧
-         sm.readReg64 .x26 = ver32.zeroExtend 64 ∧ sm.readReg64 .x29 = sp0 - 96#64 ∧
-         sm.trace = s.trace ∧ calleeSavedVRegs sm = calleeSavedVRegs s) ∧
-        (Pm ⊢ ∃∗ kyberCopyPtr : BitVec 64, ∃∗ w312' : BitVec 64,
-          ⌜x.kp.isSome → kyberCopyPtr ≠ 0#64⌝ ∗ optKyberAt A.repAlloc x.kyA x.kyPtr x.kp ∗
-          ((sp0 - 324#64) ↦₃₂ kyberIdOf x.kp w324) ∗ ((sp0 - 320#64) ↦₆₄ kyberCopyPtr) ∗
-          ((sp0 - 312#64) ↦₆₄ w312') ∗ ((sp0 - 296#64) ↦₃₂ (if x.kp.isSome then 1#32 else 0#32)) ∗
-          ((sp0 - 280#64) ↦₆₄ x.kyA) ∗ optKyberCopyBuf A.repAlloc kyberCopyPtr x.kp ∗
-          A.pool lim (M.stepEvents (kyberCloneEvs x.kp) st) sm ∗
-          stackAt (sp0 - 368#64) preKeyMsgSubStack))
-      (fun _ _ => False) :=
-  preKeyMsg_kyber_clone_wpp_placed_of_ok
-    (ls_hook_ok_of_mem hshim)
-    (preKeyMsg_alloc_placed_ok halloc)
-    (ls_hook_ok_of_mem hmemcpy)
-    x sp0 w320 w312 w324 w296 ver32 pkId32 st s hky_max hfits
-    hpc hrun hsp hsp_align hx6 hx20 hx21 hx22 hx23 hx25 hx26 hx29
-
 /-! ## `PublicKey::serialize` Calls (`+0x0e0..+0x0fc`) -/
 
 theorem preKeyMsg_pk_serialize_wpp_placed_of_ok [LibsignalPlacement]
@@ -595,42 +557,6 @@ theorem preKeyMsg_pk_serialize_wpp_placed [LibsignalPlacement]
       (fun _ _ => False) :=
   preKeyMsg_pk_serialize_wpp_placed_of_ok
     (preKeyMsg_publicKeySerialize_placed_ok hshim halloc)
-    x sp0 kyberCap ver32 pkId32 st s hfits hcl hpc hrun hsp hsp_align
-    hx6 hx19 hx21 hx22 hx23 hx25 hx26 hx29
-
-theorem preKeyMsg_pk_serialize_wpp_placed_noAllocShim [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hshim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (x : PreKeyMsgNewCall) (sp0 kyberCap : BitVec 64) (ver32 pkId32 : BitVec 32)
-    (st : M.σ) (s : State)
-    (hfits : FitsEvents M lim st pkSerialize2Evs)
-    (hcl : LibsignalCodeLoaded lsmpl s.mem)
-    (hpc : s.pc = (blkPl_41).base + 224#64) (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 368#64) (hsp_align : s.spAligned = true)
-    (hx6 : s.readReg64 .x6 = x.bkA) (hx19 : s.readReg64 .x19 = kyberCap)
-    (hx21 : s.readReg64 .x21 = x.spk.zeroExtend 64) (hx22 : s.readReg64 .x22 = x.ikA)
-    (hx23 : s.readReg64 .x23 = x.regId.zeroExtend 64) (hx25 : s.readReg64 .x25 = pkId32.zeroExtend 64)
-    (hx26 : s.readReg64 .x26 = ver32.zeroExtend 64) (hx29 : s.readReg64 .x29 = sp0 - 96#64) :
-    SepWPp (lsProg_41 H) ((blkPl_41).base + 252#64) s
-      ((x.bkA ↦ₛ x.baseKey.bytes.toList) ∗ (x.ikA ↦ₛ x.ik.publicKey.bytes.toList) ∗
-       A.pool lim st s ∗ stackAt (sp0 - 368#64) preKeyMsgSubStack)
-      (fun sm Pm =>
-        (sm.sp = sp0 - 368#64 ∧ sm.spAligned = true ∧ sm.readReg64 .x1 = 33#64 ∧
-         sm.readReg64 .x19 = kyberCap ∧ sm.readReg64 .x20 = x.bkA ∧
-         sm.readReg64 .x21 = x.spk.zeroExtend 64 ∧ sm.readReg64 .x22 = x.ikA ∧
-         sm.readReg64 .x23 = x.regId.zeroExtend 64 ∧ sm.readReg64 .x24 = 33#64 ∧
-         sm.readReg64 .x25 = pkId32.zeroExtend 64 ∧ sm.readReg64 .x26 = ver32.zeroExtend 64 ∧
-         sm.readReg64 .x29 = sp0 - 96#64 ∧ sm.trace = s.trace ∧
-         calleeSavedVRegs sm = calleeSavedVRegs s) ∧
-        (Pm ⊢ (x.bkA ↦ₛ x.baseKey.bytes.toList) ∗ (x.ikA ↦ₛ x.ik.publicKey.bytes.toList) ∗
-          boxU8Buf A.repAlloc (sm.readReg64 .x28) x.baseKey.serialize ∗
-          boxU8Buf A.repAlloc (sm.readReg64 .x0) x.ik.serialize ∗
-          A.pool lim (M.stepEvents pkSerialize2Evs st) sm ∗
-          stackAt (sp0 - 368#64) preKeyMsgSubStack))
-      (fun _ _ => False) :=
-  preKeyMsg_pk_serialize_wpp_placed_of_ok
-    (preKeyMsg_publicKeySerialize_placed_ok_noAllocShim hshim halloc)
     x sp0 kyberCap ver32 pkId32 st s hfits hcl hpc hrun hsp hsp_align
     hx6 hx19 hx21 hx22 hx23 hx25 hx26 hx29
 
@@ -852,52 +778,6 @@ theorem preKeyMsg_msg_clone_wpp_placed [LibsignalPlacement]
     (subroutine_ok_noAllocShim_of_sessionShimBudget (preKeyMsg_shim_placed_ok hshim))
     (preKeyMsg_alloc_placed_ok halloc)
     (subroutine_ok_framelessMemcpy_of_sessionMemcpyRegionBudget (preKeyMsg_memcpy_placed_ok hmemcpy))
-    x sp0 kyberCap bkSerPtr ikSerPtr w360 w344 w312 w332 w328 ver32 pkId32 st s hfits
-    hpc hrun hsp hsp_align hx0 hx1 hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx26 hx28 hx29
-
-theorem preKeyMsg_msg_clone_wpp_placed_noAllocShim [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hshim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hmemcpy : HookSat H lsMemcpySym framelessMemcpyBudgetSpec)
-    (x : PreKeyMsgNewCall) (sp0 kyberCap bkSerPtr ikSerPtr w360 w344 w312 : BitVec 64)
-    (w332 w328 ver32 pkId32 : BitVec 32) (st : M.σ) (s : State)
-    (hfits : FitsEvents M lim st (msgCloneEvs x.msg))
-    (hpc : s.pc = (blkPl_41).base + 252#64) (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 368#64) (hsp_align : s.spAligned = true)
-    (hx0 : s.readReg64 .x0 = ikSerPtr) (hx1 : s.readReg64 .x1 = 33#64)
-    (hx19 : s.readReg64 .x19 = kyberCap) (hx20 : s.readReg64 .x20 = x.bkA)
-    (hx21 : s.readReg64 .x21 = x.spk.zeroExtend 64) (hx22 : s.readReg64 .x22 = x.ikA)
-    (hx23 : s.readReg64 .x23 = x.regId.zeroExtend 64) (hx24 : s.readReg64 .x24 = 33#64)
-    (hx25 : s.readReg64 .x25 = pkId32.zeroExtend 64) (hx26 : s.readReg64 .x26 = ver32.zeroExtend 64)
-    (hx28 : s.readReg64 .x28 = bkSerPtr) (hx29 : s.readReg64 .x29 = sp0 - 96#64) :
-    SepWPp (lsProg_41 H) ((blkPl_41).base + 428#64) s
-      (signalMessageAt A.repAlloc x.msgG x.msgA x.msg ∗
-       ((sp0 - 360#64) ↦₆₄ w360) ∗ ((sp0 - 344#64) ↦₆₄ w344) ∗
-       ((sp0 - 332#64) ↦₃₂ w332) ∗ ((sp0 - 328#64) ↦₃₂ w328) ∗ ((sp0 - 312#64) ↦₆₄ w312) ∗
-       ((sp0 - 288#64) ↦₆₄ x.msgA) ∗
-       A.pool lim st s ∗ stackAt (sp0 - 368#64) preKeyMsgSubStack)
-      (fun sm Pm =>
-        (sm.sp = sp0 - 368#64 ∧ sm.spAligned = true ∧ sm.readReg64 .x0 = ikSerPtr ∧
-         sm.readReg64 .x8 = 1#64 ∧ sm.readReg64 .x19 = kyberCap ∧ sm.readReg64 .x22 = 33#64 ∧
-         sm.readReg64 .x23 = x.regId.zeroExtend 64 ∧ sm.readReg64 .x24 = 33#64 ∧
-         sm.readReg64 .x25 = pkId32.zeroExtend 64 ∧
-         sm.readReg64 .x27 = BitVec.ofNat 64 x.msg.serialized.length ∧
-         sm.readReg64 .x28 = bkSerPtr ∧ sm.readReg64 .x29 = sp0 - 96#64 ∧ sm.trace = s.trace ∧
-         calleeSavedVRegs sm = calleeSavedVRegs s ∧ 9 ≤ x.msg.serialized.length ∧
-         x.msg.serialized.length < 2 ^ 40 ∧ sm.readReg64 .x26 ≠ 0#64) ∧
-        (Pm ⊢ signalMessageAt A.repAlloc x.msgG x.msgA x.msg ∗ ((sp0 - 360#64) ↦₆₄ x.ikA) ∗
-          ((sp0 - 344#64) ↦₆₄ 33#64) ∗ ((sp0 - 332#64) ↦₃₂ ver32) ∗
-          ((sp0 - 328#64) ↦₃₂ x.spk) ∗ ((sp0 - 312#64) ↦₆₄ x.bkA) ∗
-          ((sp0 - 288#64) ↦₆₄ x.msgA) ∗
-          boxU8Buf A.repAlloc (sm.readReg64 .x26) x.msg.serialized ∗
-          A.pool lim (M.stepEvents (msgCloneEvs x.msg) st) sm ∗
-          stackAt (sp0 - 368#64) preKeyMsgSubStack))
-      (fun _ _ => False) :=
-  preKeyMsg_msg_clone_wpp_placed_of_ok
-    (ls_hook_ok_of_mem hshim)
-    (preKeyMsg_alloc_placed_ok halloc)
-    (ls_hook_ok_of_mem hmemcpy)
     x sp0 kyberCap bkSerPtr ikSerPtr w360 w344 w312 w332 w328 ver32 pkId32 st s hfits
     hpc hrun hsp hsp_align hx0 hx1 hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx26 hx28 hx29
 

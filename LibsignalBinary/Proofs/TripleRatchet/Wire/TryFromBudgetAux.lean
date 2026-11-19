@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFrom
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFrom -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBudget -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.Wire.WireCodeSym
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Common.SharedHelpers
 
 /-!
 # Budget-Threaded `<SignalMessage>::try_from` Prologue & Epilogue
@@ -25,7 +25,7 @@ allocator event envelope (`TryFromEnvGen`), and panic-free budget specification
 fast path, and shared epilogue (`+0x440`) lemmas on Block `85`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -82,7 +82,7 @@ attribute [local simp, local wp_norm]
 
 /-- Epilogue state invariant augmented with `VmPreserved s0 s` for framing `A.pool lim st` across
 pure prologue segments. -/
-def EpilogueStateBudgetPlaced [LibsignalPlacement] (s0 : State) (sp' : BitVec 64) (s : State) :
+@[expose] def EpilogueStateBudgetPlaced [LibsignalPlacement] (s0 : State) (sp' : BitVec 64) (s : State) :
     Prop :=
   EpilogueStatePlaced s0 sp' s ∧ VmPreserved s0 s
 
@@ -145,7 +145,7 @@ theorem fitsEnv_tryFrom_post {M : AllocCostModel} {lim : BudgetLimits} {st : M.�
 
 /-- Relocatable `[LibsignalPlacement]` panic-free budget specification of
 `<SignalMessage as TryFrom<&[u8]>>::try_from` (Block `85`), parameterized by `PostEnv`. -/
-def tryFromPlacedSpecGen [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tryFromPlacedSpecGen [LibsignalPlacement] {M : AllocCostModel}
     (PostEnv : TryFromGhost → List AllocEvent → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (TryFromGhost × M.σ) where

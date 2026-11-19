@@ -9,15 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
-public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
+public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysInit
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Budget-Threaded Constant Basis Cases (`n = 0, 1, 3`)
@@ -27,7 +30,7 @@ Relocatable `[LibsignalPlacement]` verification of the constant Lagrange basis c
 `BasisN3Env`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -108,10 +111,10 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 /-- Exact allocator event sequence for the `n = 1` constant basis path (`+1136..+2608`):
     `24` bytes (align `8`) for `basisPtr`, `2` bytes (align `2`) for `basis[0]`,
     and `2` bytes (align `2`) for `accPtr`. -/
-def basisN1Events : List AllocEvent :=
+@[expose] def basisN1Events : List AllocEvent :=
   rustAllocEvents 24 8 ++ rustAllocEvents 2 2 ++ rustAllocEvents 2 2
 
-def BasisN1Env (evs : List AllocEvent) : Prop :=
+@[expose] def BasisN1Env (evs : List AllocEvent) : Prop :=
   evs = basisN1Events
 
 theorem fitsEnv_basisN1_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :
@@ -123,11 +126,11 @@ theorem fitsEnv_basisN1_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ
 /-- Exact allocator event sequence for the `n = 3` constant basis path (`+1136..+2608`):
     `72` bytes (align `8`) for `basisPtr`, three `6`-byte (align `2`) buffers for `basis[0..2]`,
     and `6` bytes (align `2`) for `accPtr`. -/
-def basisN3Events : List AllocEvent :=
+@[expose] def basisN3Events : List AllocEvent :=
   rustAllocEvents 72 8 ++ rustAllocEvents 6 2 ++ rustAllocEvents 6 2 ++
     rustAllocEvents 6 2 ++ rustAllocEvents 6 2
 
-def BasisN3Env (evs : List AllocEvent) : Prop :=
+@[expose] def BasisN3Env (evs : List AllocEvent) : Prop :=
   evs = basisN3Events
 
 theorem fitsEnv_basisN3_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :

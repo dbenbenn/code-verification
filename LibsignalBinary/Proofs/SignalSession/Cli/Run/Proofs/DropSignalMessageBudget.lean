@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSignalMessage
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSignalMessage -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Specification for `SignalMessage` Drop Glue
@@ -18,7 +18,7 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSignalMess
 Defines `dropSignalMessageSpec` over `RustCliAllocBudget M` at parameterized stack budget `stk`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -32,7 +32,7 @@ open CryptoVerification.SignalSession.Cli.RunProofs (DropSignalMessageGhost)
 
 /-- Parameterized-stack budget-threaded specification for `drop_glue::<SignalMessage>` recording
 only `.free` allocation events. -/
-def dropSignalMessageSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def dropSignalMessageSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (stk : Nat) : Spec (DropSignalMessageGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗ signalMessageAt A.repAlloc x.g x.a x.m ∗

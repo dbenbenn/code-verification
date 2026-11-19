@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag11
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
@@ -23,7 +23,7 @@ Verifies tag arm 11 (`Ct2Sampled`, entry `+700`) under `[LibsignalPlacement]` to
 `(blkPl_298).base + 2700#64` with `withLsCl`-wrapped cross-block drops.
 -/
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag11ClPlaced
 end LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag11ClPlaced
@@ -58,7 +58,7 @@ attribute [local irreducible] Program.fetch Program.externAt?
   v1StateMergeJumpTablePlacedExpanded optProtoInnerStateJumpTablePlacedAt
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   EncodedLen.noneCap_add_one_beq_zero EncodedLen.noneCap_add_one_bne_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero v1StateMerge_fnOff
+attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero
 
 private theorem v1Tag11_err_dealloc_w7_1884_placed [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}

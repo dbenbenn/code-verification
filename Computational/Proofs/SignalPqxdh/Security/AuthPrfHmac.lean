@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHA2
-public import Computational.Proofs.SpecLemmas.Pqxdh.Security.BoundProofDefs
+public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHA2 -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.Pqxdh.Security.BoundProofDefs
 import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHB
 import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHC
 import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacHD
@@ -23,7 +23,7 @@ Bounds the multi-key INT-CTXT advantage of `aeadMuIntReductionAuth S b A` by the
 advantage of `prfHmacReductionAuth S b A` plus `N_recv_tot / 2^64`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

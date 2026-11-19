@@ -10,22 +10,22 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Session.ACD19.Ratchet.LibsignalBound
-public import Computational.Proofs.CryptoGames.SM.BlankedPrivRed
-public import Computational.Proofs.CryptoGames.SM.Reductions
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.CostedTables
+import Computational.Proofs.CryptoGames.SM.BlankedPrivRed
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.CostedTables -- proof-setup: allow-public-import
 public import Computational.Proofs.CryptoGames.FSAEAD.HybridWithProofDefs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
 /-!
 # Libsignal Session Reduction Programs and Concrete Advantage Bounds
 
 First-order `ReductionDsl` simulator programs (`Refine.SimProg`, `Refine.evalSim`) and concrete and
 costed ACD19 Theorem 5 and Theorem 6 advantage bounds (`fsShortBound`, `fsShortBoundWith`,
-`fig8ShortBoundWith`) for the libsignal Double Ratchet instance.
--/
+`fig8ShortBoundWith`) for the libsignal Double Ratchet instance.-/
 
 open OracleComp OracleSpec ENNReal
 
@@ -49,7 +49,7 @@ abbrev SimProg (PQ PQC Pt : Type) [SampleableType PQC] [DecidableEq Pt] [Zero Pt
     .unit .unit .bool .bool
 
 /-- Evaluate a `SimProg` reduction program on a libsignal R1 adversary `A`. -/
-def evalSim {PQ PQC Pt : Type} [SampleableType PQC] [DecidableEq Pt] [Zero Pt]
+@[expose] def evalSim {PQ PQC Pt : Type} [SampleableType PQC] [DecidableEq Pt] [Zero Pt]
     {ℓ : ℕ} {P : Params PQ PQC}
     {Dh : DHFun (BitVec 256) Pt} {encT : Pt → PublicKey}
     {decT : PublicKey → Option Pt}
@@ -70,14 +70,14 @@ section Bounds
 variable {Pt : Type} [DecidableEq Pt]
 
 /-- Slot `j` chain-PRG advantage term of ACD19 Theorem 5 against `lChainPRG`. -/
-noncomputable def chainPRGTerm (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt → PublicKey)
+@[expose] noncomputable def chainPRGTerm (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt → PublicKey)
     (idOf : Party → IdentityKey) (R : FsAdv Pt ℓ) (j : ℕ) : ℝ≥0∞ :=
   (lChainPRG C.F (j / 2)).prgAdvantage
     (FSAEAD.Thm5.cumulativeChainPrgReduction (lIdeal C codec ℓ encT) (lAeadR C codec ℓ encT idOf) (lChainPRG C.F)
       maxForwardJumps j (pubToAD codec R))
 
 /-- Computational slot sum of `fsShortBound` over the `fsSlotCount qR` active hybrid slots. -/
-noncomputable def fsCompBound (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt → PublicKey)
+@[expose] noncomputable def fsCompBound (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt → PublicKey)
     (idOf : Party → IdentityKey) (qR qd : ℕ) (R : FsAdv Pt ℓ) : ℝ≥0∞ :=
   2 * ∑ j ∈ Finset.range (fsSlotCount qR),
     (chainPRGTerm C codec ℓ encT idOf R (FSAEAD.Thm5.slotToHybridHopIndex qR j) +
@@ -86,7 +86,7 @@ noncomputable def fsCompBound (C : Crypto) (codec : SignalMessageProtoCodec) (�
 
 /-- ACD19 Theorem 5 bound for an FS-AEAD adversary `R` with at most `qR` queries and `qd`
 decryption queries (`DEV-LS10`, `DEV-LS13`, `DEV-LS14`, `DEV-LS23`, `DEV-LS25`). -/
-noncomputable def fsShortBound (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt → PublicKey)
+@[expose] noncomputable def fsShortBound (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt → PublicKey)
     (idOf : Party → IdentityKey) (qR qd : ℕ) (R : FsAdv Pt ℓ) : ℝ≥0∞ :=
   fsCompBound C codec ℓ encT idOf qR qd R + 4 * macForgeryTerm C qd
 
@@ -99,12 +99,11 @@ wire OT-CCA terms remain named advantages, and the MAC-forgery and spurious-step
 over fixed tests.
 
 **DEV-LS32 (formalization): `Δ_SM = 3`.** ACD19 Thm 6 sets `Δ_SM = 2 + Δ_CKA` with `Δ_CKA = 1`
-from Thm 3, written `(2 + 1)` here with CKA parameter `1`.
--/
+from Thm 3, written `(2 + 1)` here with CKA parameter `1`.-/
 
 /-- Step-cost, query-count, and size-honesty bounds for a `Refine.SimProg` reduction program `R`
 at query bound `q` and epoch cap `qep`. -/
-def simCostedBounds {PQ PQC : Type} [Inhabited PQ] [SampleableType PQC]
+@[expose] def simCostedBounds {PQ PQC : Type} [Inhabited PQ] [SampleableType PQC]
     {ℓ : ℕ} {P : Params PQ PQC} {Dh : DHFun (BitVec 256) Pt}
     {encT : Pt → PublicKey} {decT : PublicKey → Option Pt}
     (q qep : ℕ) (R : Refine.SimProg PQ PQC Pt ℓ P Dh encT decT) : Prop :=
@@ -112,7 +111,7 @@ def simCostedBounds {PQ PQC : Type} [Inhabited PQ] [SampleableType PQC]
 
 omit [Zero Pt] [SampleableType Pt] in
 /-- `fsCompBound` evaluated on a costed FS-AEAD reduction bundle `R`. -/
-noncomputable def fsCompBoundWith (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+@[expose] noncomputable def fsCompBoundWith (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     {encT : Pt → PublicKey} {idOf : Party → IdentityKey}
     (qR : ℕ) (R : FsCostedReds C codec ℓ encT idOf) (A : FsAdv Pt ℓ) : ℝ≥0∞ :=
   2 * ∑ j ∈ Finset.range (fsSlotCount qR),
@@ -121,35 +120,56 @@ noncomputable def fsCompBoundWith (C : Crypto) (codec : SignalMessageProtoCodec)
         wireOtccaTermCosted C codec ℓ qR R A (FSAEAD.Thm5.slotToHybridHopIndex qR j)))
 
 omit [Zero Pt] [SampleableType Pt] in
+/-- Direct-output multi-session FS-AEAD step bound at one session (chain-PRG and salt-PRF
+on `A false la`, plus wire OT-CCA on `A true la`), evaluated via `R.prgRedAuth` and
+`R.multiRedAuth` at query fuel `qR`. -/
+@[expose] noncomputable def fsAuthCompBoundWith (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+    {encT : Pt → PublicKey} {idOf : Party → IdentityKey}
+    (qR : ℕ) (R : FsCostedReds C codec ℓ encT idOf) (A : Bool → Bool → FsAdv Pt ℓ) : ℝ≥0∞ :=
+  2 * ∑ j ∈ Finset.range (fsSlotCount qR),
+    let m := FSAEAD.Thm5.slotToHybridHopIndex qR j
+    let la := FSAEAD.Thm5.isLookaheadHop m
+    (chainPRGTermAuthCosted C qR R (A false la) m +
+      (2 * saltPRFTermAuthCosted C qR R (A false la) m +
+        wireOtccaTermAuthCosted C codec ℓ qR R (A true la) m))
+
+omit [Zero Pt] [SampleableType Pt] in
 /-- `fsShortBound` evaluated on a costed FS-AEAD reduction bundle `R`. -/
-noncomputable def fsShortBoundWith (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+@[expose] noncomputable def fsShortBoundWith (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     {encT : Pt → PublicKey} {idOf : Party → IdentityKey}
     (qR qd : ℕ) (R : FsCostedReds C codec ℓ encT idOf) (A : FsAdv Pt ℓ) : ℝ≥0∞ :=
   fsCompBoundWith C codec ℓ qR R A + 4 * macForgeryTerm C qd
 
 /-- Concrete ACD19 Theorem 6 bound evaluated on costed Fig. 8 and FS-AEAD reduction bundles `R` and `Rfs`. -/
-noncomputable def fig8ShortBoundWith (Dh : DHFun (BitVec 256) Pt)
+@[expose] noncomputable def fig8ShortBoundWith (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt) (qep q : ℕ)
     (R : Fig8CostedReds Dh encPt C codec ℓ encT idOf lam)
     (Rfs : FsCostedReds C codec ℓ encT idOf) (B : Fig8Adv Pt ℓ) : ℝ≥0∞ :=
+  let qR := min (2 * q) (q + 2)
   let cka := dhScheme Dh
   let prng := rootPRNG C.F encPt
   let authB := R.challSim.eval (fun _ => B) ()
   let privB := fun i => (R.privRedB i).eval (fun _ => B) ()
-  2 * ∑ t ∈ Finset.range (qep + 2), ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) t,
-      (CKA.advantage cka 1 (healEpoch tL) ((R.redCKAAuth tL t).eval (fun _ => authB) ())
-        + PRFPRNG.advantage prng ((R.redPRNGAuth tL t).eval (fun _ => authB) ())
-        + ∑ j ∈ Finset.range q,
-            fsShortBoundWith C codec ℓ (min (2 * q) (q + 2)) q Rfs
-              ((R.redFSAuth j tL t).eval (fun _ => authB) ()))
-    + 2 * ∑ i ∈ Finset.range (qep + 1), ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) i,
-      (2 * CKA.advantage cka 1 (healEpoch tL) ((R.redCKAPriv tL i).eval (fun _ => privB i) ())
-        + 2 * PRFPRNG.advantage prng ((R.redPRNGPriv tL i).eval (fun _ => privB i) ())
-        + fsShortBoundWith C codec ℓ (min (2 * q) (q + 2)) q Rfs
-            ((R.redFSPriv tL i).eval (fun _ => privB i) ())
-        + 2 * fsShortBoundWith C codec ℓ (min (2 * q) (q + 2)) q Rfs
-            ((R.redFSPrivCoin tL i).eval (fun _ => privB i) ()))
+  -- authenticity (ACD19 Thm 8)
+  2 * ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) (qep + 1),
+      (CKA.advantage cka 1 (healEpoch tL) ((R.redCKAAuth tL).eval (fun _ => authB) ())
+        + (∑ t ∈ Finset.Ico (healEpoch tL) (qep + 2),
+            (2 * PRFPRNG.advantage prng ((R.redPRNGAuth tL t).eval (fun _ => authB) ())
+              + ∑ j ∈ Finset.range (q + 1),
+                  fsAuthCompBoundWith C codec ℓ qR Rfs
+                    (fun stage la => (R.redFSAuth stage la j tL t).eval (fun _ => authB) ())))
+        + 8 * macForgeryTerm C q)
+    -- privacy (ACD19 switch-back Thm 12)
+    + 2 * ∑ i ∈ Finset.range (qep + 1),
+      ((∑ tL ∈ admissibleLastLeakGuesses (2 + 1) i,
+          (2 * CKA.advantage cka 1 (healEpoch tL) ((R.redCKAPriv tL i).eval (fun _ => privB i) ())
+            + 2 * CKA.advantage cka 1 (healEpoch tL) ((R.redCKAPrivU tL i).eval (fun _ => privB i) ())
+            + 2 * PRFPRNG.advantage prng ((R.redPRNGPriv tL i).eval (fun _ => privB i) ())))
+        + fsShortBoundWith C codec ℓ qR q Rfs
+            ((R.redFSPriv i).eval (fun _ => privB i) ())
+        + 2 * fsShortBoundWith C codec ℓ qR q Rfs
+            ((R.redFSPrivCoin i).eval (fun _ => privB i) ()))
 
 end Bounds
 

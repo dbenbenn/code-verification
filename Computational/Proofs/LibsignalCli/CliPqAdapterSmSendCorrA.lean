@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.CliPqAdapterRemoteIdInv
-public import Computational.Proofs.E2E.BhAdapterIjHelpersV1Core
+public import Computational.Proofs.LibsignalCli.CliPqAdapterRemoteIdInv -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.BhAdapterIjHelpersV1Core
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Simulation
 import Computational.Proofs.LibsignalCli.CliPqHandshakeStepCore
 import Computational.Proofs.ReductionDsl.SM.GameCosted
@@ -21,6 +21,7 @@ import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SignalSession.Closure.Version
 import ProofLib.SepLogic.WP.StateNorm
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.LibsignalCli.Entry.CliPqSessionCap
 
 /-!
 # SM adapter step coupling: corrupt, send, challenge, and Alice deliver/inject
@@ -29,7 +30,7 @@ Proves step-level coupling between `cliDrvSM` and `cliComposedAdapterImplWith` f
 corruption, transmit, challenge, and Alice deliver/inject queries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.constructorNameAsVariable false
@@ -207,14 +208,14 @@ theorem cliAdapterDrvRel_update_inst_ad {S : SignalPqxdh.Setup} {ℓ : ℕ}
       exact cliAdapterInstRel_with_insts hInst_k _ _
 
 /-- Per-instance remote-identity agreement with CLI directory peer keys. -/
-def CliAdapterInstRemoteIdInv {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def CliAdapterInstRemoteIdInv {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (d : BHModelInst S ℓ) (im : ModelDriverInstanceMeta S) : Prop :=
   ∀ gs_m, d.gs = some gs_m → !im.ikACorrAtAccept →
     (gs_m.st .A).session.remoteIdentity = some d.idB ∧
     (im.bobAccepted → (gs_m.st .B).session.remoteIdentity = some d.idA)
 
 /-- Driver-wide remote-identity invariant across all active `BHModelInst` instances. -/
-def CliAdapterDrvRemoteIdInv (S : SignalPqxdh.Setup) (ℓ : ℕ)
+@[expose] def CliAdapterDrvRemoteIdInv (S : SignalPqxdh.Setup) (ℓ : ℕ)
     (ds_cli : ModelDriverState S ℓ) (σ_e2e : BHE2EDrvState S ℓ) : Prop :=
   ∀ i (hi_e2e : i < σ_e2e.insts.length) (hi_mb : i < ds_cli.instMeta.length),
     CliAdapterInstRemoteIdInv σ_e2e.insts[i] ds_cli.instMeta[i]
@@ -355,14 +356,14 @@ theorem cliAdapterTrans_filter_map_pos {S : SignalPqxdh.Setup} {ℓ : ℕ}
 
 /-! ## Early-exit and corrupt coupling -/
 
-def cliAliceAdapterUpdate {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def cliAliceAdapterUpdate {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (σ_ad : CliAdapterState S) (i : ℕ) (optRr : Option (SM.RecvResult (Plain ℓ))) :
     CliAdapterState S :=
   match optRr with
   | some (.accepted _ _ _) => (σ_ad.1, (fun j => if j = i then true else σ_ad.2.1 j), σ_ad.2.2)
   | _ => σ_ad
 
-def cliWrapAdapterSend {S : SignalPqxdh.Setup}
+@[expose] def cliWrapAdapterSend {S : SignalPqxdh.Setup}
     (inst : BHAdapterInstMeta S) (ack : Bool) (p : Party) (ct : Bytes) : Bytes :=
   if SM.partyEnc p then
     if ct.isEmpty then [] else wireWhisper :: ct

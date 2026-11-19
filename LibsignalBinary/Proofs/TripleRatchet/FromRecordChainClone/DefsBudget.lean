@@ -21,7 +21,7 @@ envelopes (`ChainCloneEnv`, `SenderChainCloneEnv`), and total-correctness budget
 (`chainCloneSpec`, `senderChainCloneSpec`) over `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -48,7 +48,7 @@ open LibsignalBinary.Heap (
     3. `chain_key` (`some _` → `rustAllocEvents 32 1`);
     4. `message_keys` (`nonempty` → `rustAllocEvents (104 * len) 8` followed by `len` per-element
        `seed` allocations `rustAllocEvents mkg.seed.length 1`). -/
-def chainCloneEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
+@[expose] def chainCloneEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
   (if gc.1.srk.bytes.length = 0 then [] else rustAllocEvents gc.1.srk.bytes.length 1) ++
   (if gc.1.priv.bytes.length = 0 then [] else rustAllocEvents gc.1.priv.bytes.length 1) ++
   (match gc.2.chainKey with
@@ -59,7 +59,7 @@ def chainCloneEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
      gc.2.messageKeys.flatMap (fun mkg => rustAllocEvents mkg.seed.length 1))
 
 /-- Allocation envelope for `<session_structure::Chain as Clone>::clone` on `gc`. -/
-def ChainCloneEnv (gc : ChainGhost × ReceiverChain) (evs : List AllocEvent) : Prop :=
+@[expose] def ChainCloneEnv (gc : ChainGhost × ReceiverChain) (evs : List AllocEvent) : Prop :=
   evs = chainCloneEvents gc
 
 theorem chainCloneEnv_events (gc : ChainGhost × ReceiverChain) :
@@ -75,7 +75,7 @@ theorem fitsEvents_chainClone_of_fitsEnv (M : AllocCostModel) (lim : BudgetLimit
 /-- Budget-threaded specification of `<session_structure::Chain as Clone>::clone`:
     under `FitsEnv M lim st (ChainCloneEnv x.gc)`, neither OOM nor `handle_error` panic can occur
     (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def chainCloneSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def chainCloneSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainCloneGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src ∧
@@ -95,17 +95,17 @@ def chainCloneSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
 /-! ## 3. Sender-Chain Clone Trace, Envelope, and `senderChainCloneSpec` -/
 
 /-- Underlying `(ChainGhost × ReceiverChain)` view of a `Some` sender chain `(g, sc)`. -/
-def senderChainAsProtoGhost (g : SenderChainGhost) (sc : SenderChain) :
+@[expose] def senderChainAsProtoGhost (g : SenderChainGhost) (sc : SenderChain) :
     ChainGhost × ReceiverChain :=
   (⟨g.srk, g.priv, g.mkCap, g.mkPtr, [], g.ck⟩,
     ⟨sc.ratchetKey.publicKey, some sc.chainKey, []⟩)
 
 /-- Deterministic `AllocEvent` sequence emitted when cloning a `Some` sender chain `(g, sc)`. -/
-def senderChainCloneEvents (g : SenderChainGhost) (sc : SenderChain) : List AllocEvent :=
+@[expose] def senderChainCloneEvents (g : SenderChainGhost) (sc : SenderChain) : List AllocEvent :=
   chainCloneEvents (senderChainAsProtoGhost g sc)
 
 /-- Allocation envelope for cloning a `Some` sender chain `(g, sc)`. -/
-def SenderChainCloneEnv (g : SenderChainGhost) (sc : SenderChain)
+@[expose] def SenderChainCloneEnv (g : SenderChainGhost) (sc : SenderChain)
     (evs : List AllocEvent) : Prop :=
   evs = senderChainCloneEvents g sc
 
@@ -114,7 +114,7 @@ theorem senderChainCloneEnv_events (g : SenderChainGhost) (sc : SenderChain) :
 
 /-- Budget-threaded sender-chain clone specification (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`
     under `FitsEnv M lim st (SenderChainCloneEnv x.g x.sc)`). -/
-def senderChainCloneSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def senderChainCloneSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SenderChainCloneGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src ∧

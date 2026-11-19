@@ -22,7 +22,7 @@ Shows that appending `.env .breakDH` or `.env .breakKEM` extends any `Explains` 
 silent model step `.breakDH` or `.breakKEM` without changing ghost state or visible entries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

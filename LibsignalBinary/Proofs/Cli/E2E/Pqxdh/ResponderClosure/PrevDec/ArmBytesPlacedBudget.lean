@@ -11,15 +11,20 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmBytesPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmBytesPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeRepeatedCommon
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmBytes -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeW
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWPlaced
 
 /-!
 # Budget-Threaded Placed Bytes Arms (Tags 2, 3, 4, 13, 15)
@@ -28,14 +33,14 @@ Threads `A.pool` and `BytesMerge6Placed514OkExtW` across the `[LibsignalPlacemen
 arms (tags 2, 3, 4, 13, 15) on `lsProg_518 ext`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmBytesPlacedBudget
 
-open Arm64 ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection SepProp
+open Arm64 ProofLib ProofLib.ProgramReflection SepProp
 open CryptoGames.LibsignalSession (SessionState)
 open CryptoVerification (LibsignalPlacement lsmpl)
 open CryptoVerification.RustHeap (vecU8 vecU8At)
@@ -78,7 +83,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 
 /-- Pool-preserving postcondition of the post-call `cbz w0, +0x2160` jump. -/
-def OverDecCbzPoolPost (s : State) (g : OverDecG) (sf : State) (P_f : SepProp) : Prop :=
+@[expose] def OverDecCbzPoolPost (s : State) (g : OverDecG) (sf : State) (P_f : SepProp) : Prop :=
   OverDecCbzPost s g sf P_f ∧
     (∀ {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ),
       A.pool lim st sf = A.pool lim st s)

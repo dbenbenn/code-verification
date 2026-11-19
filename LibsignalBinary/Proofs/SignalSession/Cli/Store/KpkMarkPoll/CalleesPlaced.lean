@@ -9,22 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Callees
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.FinishGrowPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymE
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Callees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.FinishGrowPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.Placed
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymE -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton
 
 /-!
 # Self-Contained `[LibsignalPlacement]` Callee Contracts for `KpkMarkPoll`
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

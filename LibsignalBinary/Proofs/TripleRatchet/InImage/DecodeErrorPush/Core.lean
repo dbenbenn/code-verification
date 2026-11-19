@@ -10,23 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.TrapRng
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.TrapRng -- proof-setup: allow-public-import
 public import ProofLib.SepLogic.WP
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-public import LibsignalBinary.Proofs.SpecLemmas.LibsignalTripleRatchetProofDefs
-
-/-!
-# Core Helpers and `finish_grow` for `<DecodeError>::push`
-
-Instruction decodes, extern hook lemmas, and verification of `RawVecInner::finish_grow` for
-the 32-byte `(&'static str, &'static str)` context-stack entries of `prost::DecodeError`.
--/
-
-@[expose] public section
+import LibsignalBinary.Proofs.SpecLemmas.LibsignalTripleRatchetProofDefs
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.InImage.DecodeErrorPush
 
@@ -41,10 +32,6 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Instruction decode lemmas -/
-
-gen_decodes libsignalSessionCode_tree libsignalSessionBin [(ls_off% "<prost::error::DecodeError>::push") → (ls_off% "<alloc::raw_vec::RawVecInner>::grow_amortized" + 120)]
-
-/-! ## Function names and offsets -/
 
 abbrev finishGrow7Name : String :=
   "<alloc::raw_vec::RawVecInner>::finish_grow [local#6]"
@@ -152,86 +139,8 @@ theorem allocHooks_tripleRatchetExterns (C : Crypto) (ctl : BitVec 64)
     by unfold HookSat at hd ⊢; rwa [← e5],
     by unfold HookSat at hr ⊢; rwa [← e6]⟩
 
-theorem panic_at_handle_error_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "alloc::raw_vec::handle_error")) :
-    (trTrapProgAt b C abs).externAt? ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) =
-      some Rust.panicked :=
-  panic_at_panicSymbol hfn hk (by decide) (ls_hook% "alloc::raw_vec::handle_error")
-    (by simp [Rust.isPanicSymbol])
-
-theorem panic_at_handle_error {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "alloc::raw_vec::handle_error")) :
-    (tripleRatchetProgAt b C ctl abs).externAt? ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) =
-      some Rust.panicked := by
-  have h := panic_at_handle_error_trap (b := b) (C := C) (abs := abs) hfn hk
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr name]
-  rcases (trapsOnly_trTrap_kit b C ctl abs).hook ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) with
-    heq | ⟨f, hf, ht⟩
-  · exact heq.symm.trans h
-  · cases h.symm.trans hf
-    exact False.elim (ht default (ProofLib.Variant.OutcomeStatus.of_panicked rfl))
-
-theorem shim_ok_at_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2")) :
-    subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k)
-      sessionShimSpec :=
-  hook_ok_at hfn hk (by decide) (ls_hook% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-    (by simp [Rust.isPanicSymbol])
-    ⟨hookNoop, rfl, sessionShim_hookOk⟩
-
-theorem shim_ok_at {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2")) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      sessionShimSpec := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr name]
-  exact subroutine_ok_kit_of_trTrap (shim_ok_at_trap hfn hk)
-
-theorem alloc_ok_at_trap {A : RustAlloc} {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs)
-    {name : String} {off k : Nat} (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "__rustc::__rust_alloc")) :
-    subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k)
-      (rustAllocSpec A) :=
-  hook_ok_at_raw hfn hk (by decide) (ls_hook% "__rustc::__rust_alloc")
-    (allocHooks_tripleRatchetExterns_trap C A abs hA).alloc
-
-theorem alloc_ok_at {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs)
-    {name : String} {off k : Nat} (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "__rustc::__rust_alloc")) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      (rustAllocSpec A) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr name]
-  exact subroutine_ok_kit_of_trTrap (alloc_ok_at_trap hA hfn hk)
-
-theorem realloc_ok_at_trap {A : RustAlloc} {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs)
-    {name : String} {off k : Nat} (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "__rustc::__rust_realloc")) :
-    subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k)
-      (rustReallocSpec A) :=
-  hook_ok_at_raw hfn hk (by decide) (ls_hook% "__rustc::__rust_realloc")
-    (allocHooks_tripleRatchetExterns_trap C A abs hA).realloc
-
-theorem realloc_ok_at {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs)
-    {name : String} {off k : Nat} (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "__rustc::__rust_realloc")) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      (rustReallocSpec A) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr name]
-  exact subroutine_ok_kit_of_trTrap (realloc_ok_at_trap hA hfn hk)
-
 /-- Uninitialized-buffer specialization of `rustReallocSpec` (`bs = []`). -/
-def rustReallocUninitSpec (A : RustAlloc) : Spec (BitVec 64 × Nat × Nat × Nat) where
+@[expose] def rustReallocUninitSpec (A : RustAlloc) : Spec (BitVec 64 × Nat × Nat × Nat) where
   pre := fun (p, old, align, new) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = old ∧ (s.readReg64 .x2).toNat = align ∧
       (s.readReg64 .x3).toNat = new ∧ LayoutOk new align⌝ ∗
@@ -244,34 +153,6 @@ def rustReallocUninitSpec (A : RustAlloc) : Spec (BitVec 64 × Nat × Nat × Nat
        else
         ⌜(sf.readReg64 .x0).toNat % align = 0 ∧ sf.trace = s0.trace⌝ ∗
           A.live (sf.readReg64 .x0) new align ∗ memRegion (sf.readReg64 .x0) new)
-
-theorem realloc_uninit_ok_at_trap {A : RustAlloc} {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs)
-    {name : String} {off k : Nat} (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "__rustc::__rust_realloc")) :
-    subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k)
-      (rustReallocUninitSpec A) := by
-  refine subroutine_ok_outcome_intro fun ⟨p, old, align, new⟩ R s0 hpc hrun hpre hsp => ?_
-  have hraw := (realloc_ok_at_trap (b := b) (C := C) hA hfn hk).to_outcome (p, old, align, new, []) R s0 hpc hrun
-    (by
-      simp only [rustReallocSpec, rustReallocUninitSpec, List.length_nil, Nat.zero_le,
-        and_true, pointsToBytes_nil, BitVec.ofNat_eq_ofNat, BitVec.add_zero, Nat.sub_zero,
-        emp_sepConj] at hpre ⊢
-      exact hpre) hsp
-  refine hraw.mono_outcome (fun sf hout => ?_)
-  unfold SubroutineOutcome at hout ⊢
-  simpa only [rustReallocSpec, rustReallocUninitSpec, List.length_nil,
-    pointsToBytes_nil, BitVec.ofNat_eq_ofNat, BitVec.add_zero, Nat.sub_zero,
-    emp_sepConj] using hout
-
-theorem realloc_uninit_ok_at {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs)
-    {name : String} {off k : Nat} (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "__rustc::__rust_realloc")) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      (rustReallocUninitSpec A) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr name]
-  exact subroutine_ok_kit_of_trTrap (realloc_uninit_ok_at_trap hA hfn hk)
 
 theorem SepWP.instantiate_post_exists {α : Type _} {prog : Program} {target_pc : BitVec 64}
     {s : State} {P R : SepProp} {Q : State → α → SepProp} {rest : State → Prop} (w : α)
@@ -319,7 +200,7 @@ abbrev FinishGrow7Ghost :=
   BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 ×
     BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64
 
-def finishGrow7ZeroSpec (A : RustAlloc) : Spec FinishGrow7Ghost where
+@[expose] def finishGrow7ZeroSpec (A : RustAlloc) : Spec FinishGrow7Ghost where
   pre := fun (out, cap, ptr, new, o0, o1, o2, fsp) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
       s.readReg64 .x3 = new ∧ s.sp = fsp ∧ cap = 0#64 ∧
@@ -336,71 +217,7 @@ def finishGrow7ZeroSpec (A : RustAlloc) : Spec FinishGrow7Ghost where
       A.pool ∗ cells (fsp - 32#64) 4 ∗ stackAt (fsp - 32#64) allocHookStack ∗
       (out ↦₆₄ tag) ∗ ((out + 8#64) ↦₆₄ p') ∗ ((out + 16#64) ↦₆₄ o2')
 
-theorem finish_grow_7_zero_ok_trap {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr finishGrow7Name)
-      (finishGrow7ZeroSpec A) := by
-  unfold finishGrow7ZeroSpec
-  cells_unfold
-  have hfn := (ls_lemma% fnOff "<alloc::raw_vec::RawVecInner>::finish_grow [local#6]")
-  have hshim := shim_ok_at_trap (b := b) (C := C) (abs := abs) hfn
-    (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#6]")) (by decide)
-  have halloc := alloc_ok_at_trap (b := b) (C := C) hA hfn
-    (k := num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#6]")) (by decide)
-  code_fetches CryptoVerification.libsignalSessionCode libsignalSessionBin b
-    (Rust.withPanics (trTrapExterns C abs)) hfn (num% (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#6]")) 164
-  dsimp only [trTrapProgAt, finishGrow7Name] at hshim halloc ⊢
-  clear hfn hA
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))).fnAddr
-    "<alloc::raw_vec::RawVecInner>::finish_grow [local#6]" = entry
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  wp_init x s0
-  obtain ⟨out, cap, ptr, new, o0, o1, o2, fsp⟩ := x
-  dsimp only at *
-  subst fsp
-  subst cap
-  have hlsr59 := lsr59_eq_zero (new := new) (by omega)
-  have hhi := hi_32_eq_false (new := new) (by omega)
-  have hcbz := beq_lsl5_zero_eq_false h_7 (by omega)
-  have hlsl : (new <<< 5).toNat = new.toNat * 32 := lsl5_toNat (by omega)
-  have hpow8 : ∃ k, 8 = 2 ^ k := ⟨3, rfl⟩
-  have hlay : LayoutOk (new.toNat * 32) 8 := ⟨by omega, hpow8, by omega⟩
-  wp_steps
-  wp_apply
-  wp_steps
-  wp_apply
-  wp_steps
-  wp_if hoom
-  · have hoom' : sf_1.readReg64 Reg.x0 ≠ 0 := hoom
-    simp only [hoom', ite_false]
-    wp_steps
-    apply SepWP.instantiate_post_exists 0#64
-    apply SepWP.instantiate_post_exists (sf_1.readReg64 Reg.x0)
-    simp only [(by decide : (0#64 : BitVec 64) = 1#64 ↔ False), ite_false]
-    wp_done
-  · simp only [hoom, BitVec.ofNat_eq_ofNat, ite_true]
-    wp_steps
-    apply SepWP.instantiate_post_exists 1#64
-    apply SepWP.instantiate_post_exists 8#64
-    simp only [ite_true]
-    wp_done
-
-theorem finish_grow_7_zero_ok {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr finishGrow7Name)
-      (finishGrow7ZeroSpec A) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr finishGrow7Name]
-  exact subroutine_ok_kit_of_trTrap (finish_grow_7_zero_ok_trap hA)
-
-def finishGrow7NeSpec (A : RustAlloc) : Spec FinishGrow7Ghost where
+@[expose] def finishGrow7NeSpec (A : RustAlloc) : Spec FinishGrow7Ghost where
   pre := fun (out, cap, ptr, new, o0, o1, o2, fsp) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
       s.readReg64 .x3 = new ∧ s.sp = fsp ∧ cap ≠ 0#64 ∧
@@ -418,68 +235,6 @@ def finishGrow7NeSpec (A : RustAlloc) : Spec FinishGrow7Ghost where
         A.live p' (new.toNat * 32) 8 ∗ memRegion p' (new.toNat * 32)) ∗
       A.pool ∗ cells (fsp - 32#64) 4 ∗ stackAt (fsp - 32#64) allocHookStack ∗
       (out ↦₆₄ tag) ∗ ((out + 8#64) ↦₆₄ p') ∗ ((out + 16#64) ↦₆₄ o2')
-
-theorem finish_grow_7_ne_ok_trap {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr finishGrow7Name)
-      (finishGrow7NeSpec A) := by
-  unfold finishGrow7NeSpec
-  cells_unfold
-  have hfn := (ls_lemma% fnOff "<alloc::raw_vec::RawVecInner>::finish_grow [local#6]")
-  have hrealloc := realloc_uninit_ok_at_trap (b := b) (C := C) hA hfn
-    (k := num% (ls_off% "__rustc::__rust_realloc" - ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#6]")) (by decide)
-  code_fetches CryptoVerification.libsignalSessionCode libsignalSessionBin b
-    (Rust.withPanics (trTrapExterns C abs)) hfn (num% (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#6]")) 164
-  dsimp only [trTrapProgAt, finishGrow7Name] at hrealloc ⊢
-  clear hfn hA
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))).fnAddr
-    "<alloc::raw_vec::RawVecInner>::finish_grow [local#6]" = entry
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  wp_init x s0
-  obtain ⟨out, cap, ptr, new, o0, o1, o2, fsp⟩ := x
-  dsimp only at *
-  subst fsp
-  have hlsr59 := lsr59_eq_zero (new := new) (by omega)
-  have hhi := hi_32_eq_false (new := new) (by omega)
-  have hcap_beq : (cap == 0#64) = false := beq_eq_false_iff_ne.mpr h_6
-  have hlsl_cap : (cap <<< 5).toNat = cap.toNat * 32 := lsl5_toNat (by omega)
-  have hlsl_new : (new <<< 5).toNat = new.toNat * 32 := lsl5_toNat (by omega)
-  have hpow8 : ∃ k, 8 = 2 ^ k := ⟨3, rfl⟩
-  have hlay : LayoutOk (new.toNat * 32) 8 := ⟨by omega, hpow8, by omega⟩
-  wp_steps
-  wp_apply
-  wp_steps
-  wp_if hoom
-  · have hoom' : sf.readReg64 Reg.x0 ≠ 0 := hoom
-    simp only [hoom', ite_false]
-    wp_steps
-    apply SepWP.instantiate_post_exists 0#64
-    apply SepWP.instantiate_post_exists (sf.readReg64 Reg.x0)
-    simp only [(by decide : (0#64 : BitVec 64) = 1#64 ↔ False), ite_false]
-    wp_done
-  · simp only [hoom, BitVec.ofNat_eq_ofNat, ite_true]
-    wp_steps
-    apply SepWP.instantiate_post_exists 1#64
-    apply SepWP.instantiate_post_exists 8#64
-    simp only [ite_true]
-    wp_done
-
-theorem finish_grow_7_ne_ok {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr finishGrow7Name)
-      (finishGrow7NeSpec A) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr finishGrow7Name]
-  exact subroutine_ok_kit_of_trTrap (finish_grow_7_ne_ok_trap hA)
-
-/-! ## Memory region and stack splitting helpers -/
 
 theorem memRegion_split (a : BitVec 64) (n k : Nat) (h : n + k ≤ 2 ^ 64) :
     memRegion a (n + k) = memRegion a n ∗ memRegion (a + BitVec.ofNat 64 n) k :=

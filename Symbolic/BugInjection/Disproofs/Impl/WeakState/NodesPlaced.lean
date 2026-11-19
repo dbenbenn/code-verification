@@ -38,7 +38,7 @@ set_option autoImplicit false
 namespace Symbolic.BugInjection.Disproofs.Impl.WeakState.NodesPlaced
 
 open Symbolic.BugInjection (cliCompShapePlaced)
-open Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable (cliCompFitsPinned)
+open Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable (CliSetupMatchesPinned)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.MutantLink (mutantMpl mutantMmpl)
 open CryptoVerification.BugInjection (mutantCliElfBytes)
 
@@ -49,7 +49,7 @@ open CryptoVerification.BugInjection (mutantCliElfBytes)
 theorem impl_half_bytes_placed :
     ∀ elf : Arm64.Process.ElfImage, Arm64.Process.ElfImage.parse mutantCliElfBytes = .ok elf →
       (cliCompShapePlaced mutantMpl mutantMmpl).ImplHalf
-        (cliCompFitsPinned Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1Cli.setup)
+        (CliSetupMatchesPinned Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1Cli.setup)
         elf Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1Cli.trace :=
   Symbolic.BugInjection.Disproofs.Impl.WeakState.ImplPlaced.impl_half_bytes_placed_of_runs
     Symbolic.BugInjection.Disproofs.Impl.WeakState.FastInputs.wsFiles0

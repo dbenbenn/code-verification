@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieNormPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptBinPure
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieNormPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptBinPure -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -21,7 +21,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieRec
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieRec -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptRecRelPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.DecCryptoAPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepRatchetDHaPure
@@ -37,6 +37,8 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SessionPrimsPure -- proof-setup: allow-public-import
+import Symbolic.Proofs.SR.SendSpecWPure
 
 /-!
 # Record Relation Core for Pre-Key Session Start
@@ -45,7 +47,7 @@ Proves `RpkRecRel` between Bob's post-handshake symbolic state `rpkR_finalSt w` 
 session record `sm.state` from `AcceptTieD` and the bundled model glue `RpkT1Glue`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

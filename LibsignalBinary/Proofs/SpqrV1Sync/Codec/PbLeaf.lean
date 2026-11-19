@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Loop
+public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Loop -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Auth
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Proto
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
@@ -25,7 +25,7 @@ messages of `pq_ratchet.proto` (`ChainParamsPB`, `EpochDirectionPB`, `ProtoAuthe
 enclosing messages.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.Codec
 

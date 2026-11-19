@@ -12,10 +12,14 @@ module
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StrlenCode -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhost -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
 public import LibsignalBinary.Heap.Fine.SpecBudgetHelpersFine
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Ghost `strlen` Hook & Consumer `HookOk` Suite (`HooksDehook.StrlenGhost`)
@@ -91,29 +95,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyCode (
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhost (
   withExecFrozen hookOk_withExecFrozen_of_plain
 )
-open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StrlenCode (
-  StrlenStatePreserved strlenSrc masterStrlenSpec processStrlenSpec masterStrlenROSpec
-  processStrlenSpec_pre_eq strlenSpecK
-  muslStrlenWords_length pureWordsProg_strlen_hasWords
-  vmPreserved_of_processFieldsPreserved
-  subroutine_ok_processStrlen_of_hasWords subroutine_ok_masterStrlen_of_hasWords
-  subroutine_ok_masterStrlenK_of_hasWords
-  hookStrlen_masterStrlen_ok hookStrlen_masterStrlenK_ok
-  hookOk_masterStrlenRO_of_master hookOk_masterStrlenROK_of_master
-  hookOk_strlenSpecK_of_plain hookOk_inImage hookOk_strlenSpecK_inImage
-  hookOk_cliStrlenPadded_of_master hookOk_cliStrlenPaddedK_of_master
-  hookOk_strlenPaddedRO_of_master hookOk_strlenPaddedROK_of_master
-  hookOk_strlenSpecRO_padRO_of_master hookOk_strlenSpecRO_padROK_of_master
-  hookOk_strlenSpecRO_roDataPad_of_master hookOk_strlenSpecRO_roDataPadK_of_master
-  hookOk_strlenSpecRO_alignedEnd_of_master hookOk_strlenSpecRO_alignedEndK_of_master
-  hookOk_mainStrlen_padRO_of_master hookOk_mainStrlen_padROK_of_master
-  hookOk_mainStrlen_roDataPad_of_master hookOk_mainStrlen_roDataPadK_of_master
-  hookOk_mainStrlen_alignedEnd_of_master hookOk_mainStrlen_alignedEndK_of_master
-  hookOk_cliExtStrlen_padRO_of_master hookOk_cliExtStrlen_padROK_of_master
-  hookOk_cliExtStrlen_roDataPad_of_master hookOk_cliExtStrlen_roDataPadK_of_master
-  hookOk_cliExtStrlen_alignedEnd_of_master hookOk_cliExtStrlen_alignedEndK_of_master
-  strlenSpecK_keepsFs strlenSpecK_withVmPreserved strlenSpecK_withOomPoolPreserved
-)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StrlenCode (StrlenStatePreserved strlenSrc masterStrlenSpec processStrlenSpec masterStrlenROSpec processStrlenSpec_pre_eq strlenSpecK muslStrlenWords_length pureWordsProg_strlen_hasWords vmPreserved_of_processFieldsPreserved subroutine_ok_processStrlen_of_hasWords subroutine_ok_masterStrlen_of_hasWords subroutine_ok_masterStrlenK_of_hasWords hookStrlen_masterStrlen_ok hookStrlen_masterStrlenK_ok hookOk_masterStrlenRO_of_master hookOk_masterStrlenROK_of_master hookOk_strlenSpecK_of_plain hookOk_cliStrlenPadded_of_master hookOk_cliStrlenPaddedK_of_master hookOk_strlenPaddedRO_of_master hookOk_strlenPaddedROK_of_master hookOk_strlenSpecRO_padRO_of_master hookOk_strlenSpecRO_padROK_of_master hookOk_strlenSpecRO_roDataPad_of_master hookOk_strlenSpecRO_roDataPadK_of_master hookOk_strlenSpecRO_alignedEnd_of_master hookOk_strlenSpecRO_alignedEndK_of_master hookOk_mainStrlen_padRO_of_master hookOk_mainStrlen_padROK_of_master hookOk_mainStrlen_roDataPad_of_master hookOk_mainStrlen_roDataPadK_of_master hookOk_mainStrlen_alignedEnd_of_master hookOk_mainStrlen_alignedEndK_of_master hookOk_cliExtStrlen_padRO_of_master hookOk_cliExtStrlen_padROK_of_master hookOk_cliExtStrlen_roDataPad_of_master hookOk_cliExtStrlen_roDataPadK_of_master hookOk_cliExtStrlen_alignedEnd_of_master hookOk_cliExtStrlen_alignedEndK_of_master strlenSpecK_keepsFs strlenSpecK_withVmPreserved strlenSpecK_withOomPoolPreserved)
 
 /-! ## 1. Ghost `strlen` Hook Definitions & `keep` Coverage -/
 
@@ -765,19 +747,6 @@ theorem strlenGhostHookK_any_keepsFs_ok {α : Type} {spec : Spec α}
     HookOk (strlenGhostHookK keep P_real P_sub entryTarget) (strlenSpecK keep spec.keepsFs) := by
   rw [← strlenSpecK_keepsFs]
   exact hh.keepsFs (strlenGhostHookK_fs keep P_real P_sub entryTarget)
-
-omit hsvc_real hsvc_sub hreal_no hsub_no hwords haddr in
-theorem strlenGhostHook_any_inImage_ok (img : Obj.Image) {α : Type} {spec : Spec α}
-    (hh : HookOk (strlenGhostHook keep P_real P_sub entryTarget) spec) :
-    HookOk (strlenGhostHook keep P_real P_sub entryTarget) (spec.inImage img) :=
-  hookOk_inImage img hh
-
-omit hsvc_real hsvc_sub hreal_no hsub_no hwords haddr in
-theorem strlenGhostHookK_any_inImage_ok (img : Obj.Image) {α : Type} {spec : Spec α}
-    (hh : HookOk (strlenGhostHookK keep P_real P_sub entryTarget) (strlenSpecK keep spec)) :
-    HookOk (strlenGhostHookK keep P_real P_sub entryTarget)
-      (strlenSpecK keep (spec.inImage img)) :=
-  hookOk_strlenSpecK_inImage keep img hh
 
 omit hsvc_real hsvc_sub hreal_no hsub_no hwords haddr in
 theorem strlenGhostHook_any_withExecFrozen_ok {α : Type} {spec : Spec α}

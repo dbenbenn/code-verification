@@ -9,18 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowAmortizedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowAmortizedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.InImage.DecodeErrorPush.Push
 import ProofLib.SepLogic.WPp
@@ -33,7 +33,7 @@ under `withLsCodeLoaded lsmpl` via Block `258` (`GrowAmortizedBudget.grow_one_st
 together with own-block `blockProgram` and cross-block `[IsLsBlockProg]` transfer corollaries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -339,82 +339,6 @@ theorem decode_error_push_merge_placed_ok [LibsignalPlacement] {M : AllocCostMod
 
 /-! ## 3. Own-Block `blockProgram` and Generic `[IsLsBlockProg]` Caller Corollaries -/
 
-/-- Own-block `libsignalSessionLib.blockProgram lsmpl 257 H` corollary under `withLsCodeLoaded`. -/
-theorem decode_error_push_merge_blockProgram_cl [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks}
-    (h_panic : H lsHandleErrorSym = some Rust.panicked)
-    (hshim : HookSat H lsRustNoAllocShimSym (withVmPreserved noAllocShimSpec))
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim)) :
-    subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 H) (lsmpl.base 257)
-      (withLsCodeLoaded lsmpl (decodeErrorPushMergeBudgetSpec M A lim)) := by
-  have hok := decode_error_push_merge_placed_ok h_panic hshim halloc hrealloc
-  rwa [IsLsBlockProg.eq_blockProgram (prog := lsProg_257 H) (i := 257) (H := H),
-    ls_blockPlacement_base lsmpl 257] at hok
-
-/-- Own-block `libsignalSessionLib.blockProgram lsmpl 257 H` corollary under `withLsCodeRoLoaded`. -/
-theorem decode_error_push_merge_blockProgram_cro [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks}
-    (h_panic : H lsHandleErrorSym = some Rust.panicked)
-    (hshim : HookSat H lsRustNoAllocShimSym (withVmPreserved noAllocShimSpec))
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim)) :
-    subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 H) (lsmpl.base 257)
-      (withLsCodeRoLoaded lsmpl (decodeErrorPushMergeBudgetSpec M A lim)) :=
-  subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
-    (decode_error_push_merge_blockProgram_cl h_panic hshim halloc hrealloc)
-
-/-- Own-block `libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext)` corollary under
-`withLsCodeLoaded`. -/
-theorem decode_error_push_merge_blockProgram_withPanics_cl [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : LibsignalHooks}
-    (h_panic : ext lsHandleErrorSym = some Rust.panicked)
-    (hshim : HookSat ext lsRustNoAllocShimSym (withVmPreserved noAllocShimSpec))
-    (halloc : HookSat ext lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat ext lsRustReallocSym (rustCliReallocBudgetSpec M A lim)) :
-    subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext))
-      (lsmpl.base 257)
-      (withLsCodeLoaded lsmpl (decodeErrorPushMergeBudgetSpec M A lim)) :=
-  decode_error_push_merge_blockProgram_cl
-    ((withPanics_lsHandleErrorSym_eq ext).trans h_panic)
-    (hookSat_withPanics_of_not_isPanicSymbol isPanicSymbol_lsRustNoAllocShimSym hshim)
-    (hookSat_withPanics_of_not_isPanicSymbol isPanicSymbol_lsRustAllocSym halloc)
-    (hookSat_withPanics_of_not_isPanicSymbol isPanicSymbol_lsRustReallocSym hrealloc)
-
-/-- Own-block `libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext)` corollary under
-`withLsCodeRoLoaded`. -/
-theorem decode_error_push_merge_blockProgram_withPanics_cro [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : LibsignalHooks}
-    (h_panic : ext lsHandleErrorSym = some Rust.panicked)
-    (hshim : HookSat ext lsRustNoAllocShimSym (withVmPreserved noAllocShimSpec))
-    (halloc : HookSat ext lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat ext lsRustReallocSym (rustCliReallocBudgetSpec M A lim)) :
-    subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext))
-      (lsmpl.base 257)
-      (withLsCodeRoLoaded lsmpl (decodeErrorPushMergeBudgetSpec M A lim)) :=
-  subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
-    (decode_error_push_merge_blockProgram_withPanics_cl h_panic hshim halloc hrealloc)
-
-/-- Generic cross-block `[IsLsBlockProg callerProg i H]` transfer at `(lsmpl.base 257)` under
-`withLsCl`. -/
-theorem decode_error_push_merge_at_block_lscl [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {callerProg : Program} {i : Nat} {H : LibsignalHooks}
-    [IsLsBlockProg callerProg i H]
-    (h_panic : H lsHandleErrorSym = some Rust.panicked)
-    (hshim : HookSat H lsRustNoAllocShimSym (withVmPreserved noAllocShimSpec))
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 257)
-      (withLsCl lsmpl (decodeErrorPushMergeBudgetSpec M A lim)) :=
-  ls_subroutine_ok_cl_of_block (callerProg := callerProg) (calleeProg := lsProg_257 H)
-    (decode_error_push_merge_placed_ok h_panic hshim halloc hrealloc) hi
-
 /-- Generic cross-block `[IsLsBlockProg callerProg i H]` transfer at `(lsmpl.base 257)` under
 `withLsCodeLoaded`. -/
 theorem decode_error_push_merge_at_block_cl [LibsignalPlacement] {M : AllocCostModel}
@@ -431,23 +355,6 @@ theorem decode_error_push_merge_at_block_cl [LibsignalPlacement] {M : AllocCostM
   ls_subroutine_ok_of_block (callerProg := callerProg) (calleeProg := lsProg_257 H)
     (decode_error_push_merge_placed_ok h_panic hshim halloc hrealloc) hi
 
-/-- Generic cross-block `[IsLsBlockProg callerProg i H]` transfer at `(lsmpl.base 257)` under
-`withLsCodeRoLoaded`. -/
-theorem decode_error_push_merge_at_block_cro [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {callerProg : Program} {i : Nat} {H : LibsignalHooks}
-    [IsLsBlockProg callerProg i H]
-    (h_panic : H lsHandleErrorSym = some Rust.panicked)
-    (hshim : HookSat H lsRustNoAllocShimSym (withVmPreserved noAllocShimSpec))
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 257)
-      (withLsCodeRoLoaded lsmpl (decodeErrorPushMergeBudgetSpec M A lim)) :=
-  keys_ls_subroutine_ok_of_block_cro (callerProg := callerProg) (calleeProg := lsProg_257 H)
-    (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
-      (decode_error_push_merge_placed_ok h_panic hshim halloc hrealloc)) hi
-
 /-- Generic cross-block `[IsLsBlockProg callerProg i (Rust.withPanics ext)]` transfer at
 `(lsmpl.base 257)` under `withLsCodeLoaded`. -/
 theorem decode_error_push_merge_at_block_withPanics_cl [LibsignalPlacement] {M : AllocCostModel}
@@ -462,25 +369,6 @@ theorem decode_error_push_merge_at_block_withPanics_cl [LibsignalPlacement] {M :
     subroutine_ok callerProg (lsmpl.base 257)
       (withLsCodeLoaded lsmpl (decodeErrorPushMergeBudgetSpec M A lim)) :=
   decode_error_push_merge_at_block_cl
-    ((withPanics_lsHandleErrorSym_eq ext).trans h_panic)
-    (hookSat_withPanics_of_not_isPanicSymbol isPanicSymbol_lsRustNoAllocShimSym hshim)
-    (hookSat_withPanics_of_not_isPanicSymbol isPanicSymbol_lsRustAllocSym halloc)
-    (hookSat_withPanics_of_not_isPanicSymbol isPanicSymbol_lsRustReallocSym hrealloc) hi
-
-/-- Generic cross-block `[IsLsBlockProg callerProg i (Rust.withPanics ext)]` transfer at
-`(lsmpl.base 257)` under `withLsCodeRoLoaded`. -/
-theorem decode_error_push_merge_at_block_withPanics_cro [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {callerProg : Program} {i : Nat} {ext : LibsignalHooks}
-    [IsLsBlockProg callerProg i (Rust.withPanics ext)]
-    (h_panic : ext lsHandleErrorSym = some Rust.panicked)
-    (hshim : HookSat ext lsRustNoAllocShimSym (withVmPreserved noAllocShimSpec))
-    (halloc : HookSat ext lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat ext lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 257)
-      (withLsCodeRoLoaded lsmpl (decodeErrorPushMergeBudgetSpec M A lim)) :=
-  decode_error_push_merge_at_block_cro
     ((withPanics_lsHandleErrorSym_eq ext).trans h_panic)
     (hookSat_withPanics_of_not_isPanicSymbol isPanicSymbol_lsRustNoAllocShimSym hshim)
     (hookSat_withPanics_of_not_isPanicSymbol isPanicSymbol_lsRustAllocSym halloc)

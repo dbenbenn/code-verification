@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5 -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
 import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 import VCVio.CryptoFoundations.SecExp.Measure
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # `Auth` `IND-CPA` Cutoff Hybrid and Telescoping Bound
@@ -23,7 +24,7 @@ slot-cutoff hybrid experiments (`authCpaCutoffExp`, `authCpaSlotCutoffExp`), and
 telescoping bound `abs_sub_authCpaCutoffExp_le_mul_aeadIndCpa`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000
@@ -40,18 +41,18 @@ open _root_.Proofs.SignalPqxdh.Security.FgGapDh
    initSessionSlotIdx_inj_of_lt RelProbUpToBad simulateQ_relProbUpToBad
    evalDist_simulateQ_eq_of_step_or_bad)
 
-def eraseIdealSessionAead {S : Setup} (s : IdealAuthSession S) : IdealAuthSession S :=
+@[expose] def eraseIdealSessionAead {S : Setup} (s : IdealAuthSession S) : IdealAuthSession S :=
   { s with msgPlain := [], deriveMessageKeys := (default : MessageKeys) }
 
 /-- State projection of the `Auth` `IND-CPA` hop (`G4 → G5`): sets `secb := true`, canonicalizes
     `advKeys` with `P.pow8`, and erases the `sent`/`recvd` logs and `msgPlain`/`deriveMessageKeys` in
     `idealSessions`. -/
-def eraseAuthCpa (P : Primitives) {S : Setup} (hst : AuthHybridState S) : AuthHybridState S :=
+@[expose] def eraseAuthCpa (P : Primitives) {S : Setup} (hst : AuthHybridState S) : AuthHybridState S :=
   let hst1 :=
     eraseAuthEvents (cacheAuthAdvKeys P { hst with base := { hst.base with secb := true } })
   { hst1 with idealSessions := hst1.idealSessions.map eraseIdealSessionAead }
 
-def eraseAuthCpaFixed (P : Primitives) {S : Setup} (hst : AuthHybridStateFixed S) :
+@[expose] def eraseAuthCpaFixed (P : Primitives) {S : Setup} (hst : AuthHybridStateFixed S) :
     AuthHybridStateFixed S :=
   { toAuthHybridState := eraseAuthCpa P hst.toAuthHybridState, recvCount := hst.recvCount,
     mkSaltCache := hst.mkSaltCache }
@@ -96,11 +97,6 @@ theorem simulateQ_checkBundleSpkHonIdealFromPeerPrim (S : Setup) (P : Primitives
             u == k && ((pEntry.corrupted && P.pow8 b.spkPk == P.pow8 bundle.spkB) ||
               b.spkPk == bundle.spkB))
           (fun _ => rfl) spkBundles]
-
-theorem stepUntilAuthCpaChallengeFixedPrim_pure (idx : Nat) (S : Setup) {α : Type}
-    (defaultVal a : α) (fuel : Nat) (hst : AuthHybridStateFixed S) :
-    stepUntilAuthCpaChallengeFixedPrim idx S defaultVal (pure a) fuel hst =
-      pure (.done a hst) := rfl
 
 @[simp]
 theorem stepUntilAuthCpaChallengeFixedPrim_query_inl (idx : Nat) (S : Setup) {α : Type}
@@ -190,91 +186,6 @@ private def setUsedSend {S : Setup} (u : List (SessionId S)) (hst : AuthHybridSt
   { hst with toAuthHybridState :=
     { hst.toAuthHybridState with base := { hst.toAuthHybridState.base with usedSendSessions := u } } }
 
-private theorem stepAuthCpaNonSendPrim_map_setUsedSend (S : Setup)
-    (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
-    Prod.map id (setUsedSend hst.toAuthHybridState.base.usedSendSessions) <$>
-      stepAuthCpaNonSendPrim S q hst = stepAuthCpaNonSendPrim S q hst := by
-  unfold stepAuthCpaNonSendPrim; cases q with
-  | recvOPK k j o msg =>
-    dsimp only; split
-    · rfl
-    · split
-      · rfl
-      · rw [map_bind]; apply bind_congr; intro _; split
-        · rfl
-        · cases hst.toAuthHybridState.base.principals.find? (fun (idx, _) => idx == k.val) with
-          | none => rfl
-          | some kp =>
-            rcases kp with ⟨_, _⟩
-            cases hst.toAuthHybridState.base.spkBundles.find?
-                (fun (idx, _) => idx == (k.val, j.val)) with
-            | none => rfl
-            | some bp =>
-              rcases bp with ⟨_, _⟩
-              cases hst.toAuthHybridState.base.opkEntries.find?
-                  (fun (idx, _) => idx == (k.val, j.val, o.val)) with
-              | none => rfl
-              | some op =>
-                rcases op with ⟨_, _⟩; dsimp only; split
-                · rfl
-                · rw [map_bind]; apply bind_congr; intro _; rw [map_bind]; apply bind_congr; intro _
-                  split
-                  · rfl
-                  · rw [map_bind]; apply bind_congr; rintro (_ | _)
-                    · rfl
-                    · dsimp only; repeat (rw [map_bind]; apply bind_congr; intro _)
-                      split
-                      · rw [map_bind]; apply bind_congr; intro _; rfl
-                      · rfl
-  | recvNoOPK k j l msg =>
-    dsimp only; split
-    · rfl
-    · split
-      · rfl
-      · rw [map_bind]; apply bind_congr; intro _; split
-        · rfl
-        · cases hst.toAuthHybridState.base.principals.find? (fun (idx, _) => idx == k.val) with
-          | none => rfl
-          | some kp =>
-            rcases kp with ⟨_, _⟩
-            cases hst.toAuthHybridState.base.spkBundles.find?
-                (fun (idx, _) => idx == (k.val, j.val)) with
-            | none => rfl
-            | some bp =>
-              rcases bp with ⟨_, _⟩; dsimp only; rw [map_bind]; apply bind_congr; intro _
-              rw [map_bind]; apply bind_congr; intro _; split
-              · rfl
-              · rw [map_bind]; apply bind_congr; rintro (_ | _)
-                · rfl
-                · dsimp only; repeat (rw [map_bind]; apply bind_congr; intro _)
-                  split
-                  · rw [map_bind]; apply bind_congr; intro _; rfl
-                  · rfl
-  | corruptIK u =>
-    unfold stepAuthOtherPrim; dsimp only
-    cases hst.toAuthHybridState.base.principals.find? (fun (idx, _) => idx == u.val) <;> rfl
-  | genSPK u j =>
-    unfold stepAuthOtherPrim; dsimp only; split
-    · rfl
-    · cases hst.toAuthHybridState.base.principals.find? (fun (idx, _) => idx == u.val) with
-      | none => rfl
-      | some up =>
-        rcases up with ⟨_, _⟩; dsimp only; repeat (rw [map_bind]; apply bind_congr; intro _)
-        rfl
-  | sendOPK _ _ _ _ _ | sendNoOPK _ _ _ _ _ => rfl
-  | _ =>
-    unfold stepAuthOtherPrim; dsimp only; split
-    · rfl
-    · repeat (rw [map_bind]; apply bind_congr; intro _)
-      rfl
-
-private theorem stepAuthCpaNonSendPrim_usedSendSessions (S : Setup) (q : AuthQuery S)
-    (hst : AuthHybridStateFixed S) {p : AuthResponse × AuthHybridStateFixed S}
-    (hp : p ∈ support (stepAuthCpaNonSendPrim S q hst)) :
-    p.2.toAuthHybridState.base.usedSendSessions = hst.toAuthHybridState.base.usedSendSessions := by
-  rw [← stepAuthCpaNonSendPrim_map_setUsedSend S q hst, support_map] at hp
-  rcases hp with ⟨_, _, rfl⟩; rfl
-
 private theorem tryPauseAuthCpaSendFixedPrim_subset_usedSend (allowPause : Bool) (cut : Nat)
     (S : Setup) (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthHybridStateFixed S) {p : AuthResponse × AuthHybridStateFixed S}
@@ -305,35 +216,6 @@ private theorem tryPauseAuthCpaSendFixedPrim_subset_usedSend (allowPause : Bool)
           simp only [support_pure, Set.mem_singleton_iff, Sum.inl.injEq] at hp; subst hp
           rw [finishAuthCpaSendFixedPure_usedSendSessions]; exact List.subset_cons_self _ _
 
-private theorem stepAuthCpaCutoffPrim_subset_usedSend (cut : Nat) (S : Setup)
-    (q : AuthQuery S) (hst : AuthHybridStateFixed S) {p : AuthResponse × AuthHybridStateFixed S}
-    (hp : p ∈ support (stepAuthCpaCutoffPrim cut S q hst)) :
-    hst.toAuthHybridState.base.usedSendSessions ⊆ p.2.toAuthHybridState.base.usedSendSessions := by
-  cases q with
-  | sendOPK u i bundle m0 m1 =>
-    unfold stepAuthCpaCutoffPrim at hp; dsimp only at hp; split at hp
-    · simp only [support_pure, Set.mem_singleton_iff] at hp; subst hp; exact List.Subset.refl _
-    · unfold runAuthSendCpaCutoffPrim at hp; rw [MonadAttach.mem_support_bind] at hp
-      rcases hp with ⟨res, hres, hp⟩; cases res with
-      | inl _ =>
-        simp only [support_pure, Set.mem_singleton_iff] at hp; subst hp
-        exact tryPauseAuthCpaSendFixedPrim_subset_usedSend false cut S (.sendOPK u i) u bundle
-          m0 m1 hst hres
-      | inr _ =>
-        simp only [support_pure, Set.mem_singleton_iff] at hp; subst hp; exact List.Subset.refl _
-  | sendNoOPK u i bundle m0 m1 =>
-    unfold stepAuthCpaCutoffPrim at hp; dsimp only at hp; split at hp
-    · simp only [support_pure, Set.mem_singleton_iff] at hp; subst hp; exact List.Subset.refl _
-    · unfold runAuthSendCpaCutoffPrim at hp; rw [MonadAttach.mem_support_bind] at hp
-      rcases hp with ⟨res, hres, hp⟩; cases res with
-      | inl _ =>
-        simp only [support_pure, Set.mem_singleton_iff] at hp; subst hp
-        exact tryPauseAuthCpaSendFixedPrim_subset_usedSend false cut S (.sendNoOPK u i) u bundle
-          m0 m1 hst hres
-      | inr _ =>
-        simp only [support_pure, Set.mem_singleton_iff] at hp; subst hp; exact List.Subset.refl _
-  | _ => rw [stepAuthCpaNonSendPrim_usedSendSessions S _ hst hp]
-
 private theorem tryPauseAuthCpaSendFixedPrim_false_eq_of_mem_usedSend
     (idx cut : Nat) (S : Setup) (sid sid' : SessionId S)
     (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes) (hst : AuthHybridStateFixed S)
@@ -352,58 +234,16 @@ private theorem tryPauseAuthCpaSendFixedPrim_false_eq_of_mem_usedSend
         hNeSid (initSessionSlotIdx_inj_of_lt (hEq.trans hSid.symm) (hSid.symm ▸ hLt))
       rw [hCut (initSessionSlotIdx sid') hNeIdx]; simp only [Bool.false_and]
 
-private theorem stepAuthCpaCutoffPrim_eq_of_mem_usedSend
-    (idx cut : Nat) (S : Setup) (sid : SessionId S) (q : AuthQuery S) (hst : AuthHybridStateFixed S)
-    (hSid : initSessionSlotIdx sid = idx) (hLt : idx < S.N_send_tot)
-    (hCut : ∀ sIdx, sIdx ≠ idx → decide (sIdx < idx) = decide (sIdx < cut))
-    (hMem : sid ∈ hst.toAuthHybridState.base.usedSendSessions) :
-    stepAuthCpaCutoffPrim idx S q hst = stepAuthCpaCutoffPrim cut S q hst := by
-  cases q with
-  | sendOPK u i bundle m0 m1 =>
-    unfold stepAuthCpaCutoffPrim runAuthSendCpaCutoffPrim; dsimp only; split
-    · rfl
-    · rw [tryPauseAuthCpaSendFixedPrim_false_eq_of_mem_usedSend
-        idx cut S sid (.sendOPK u i) u bundle m0 m1 hst hSid hLt hCut hMem]
-  | sendNoOPK u i bundle m0 m1 =>
-    unfold stepAuthCpaCutoffPrim runAuthSendCpaCutoffPrim; dsimp only; split
-    · rfl
-    · rw [tryPauseAuthCpaSendFixedPrim_false_eq_of_mem_usedSend
-        idx cut S sid (.sendNoOPK u i) u bundle m0 m1 hst hSid hLt hCut hMem]
-  | _ => rfl
-
-private theorem runWithPrimStep_stepAuthCpaCutoffPrim_eq_of_mem_usedSend
-    (idx cut : Nat) (S : Setup) (sid : SessionId S) {α : Type}
-    (mx : OracleComp (unifSpec + authSpec S) α)
-    (hst : AuthHybridStateFixed S)
-    (hSid : initSessionSlotIdx sid = idx) (hLt : idx < S.N_send_tot)
-    (hCut : ∀ sIdx, sIdx ≠ idx → decide (sIdx < idx) = decide (sIdx < cut))
-    (hMem : sid ∈ hst.toAuthHybridState.base.usedSendSessions) :
-    runWithPrimStep (stepAuthCpaCutoffPrim idx S) mx hst =
-      runWithPrimStep (stepAuthCpaCutoffPrim cut S) mx hst := by
-  induction mx using OracleComp.inductionOn generalizing hst with
-  | pure x => rfl
-  | query_bind q cont ih =>
-    cases q with
-    | inl n =>
-      rw [runWithPrimStep_query_inl, runWithPrimStep_query_inl]
-      congr 1; funext u
-      exact ih u hst hMem
-    | inr gq =>
-      rw [runWithPrimStep_query_inr, runWithPrimStep_query_inr,
-          stepAuthCpaCutoffPrim_eq_of_mem_usedSend idx cut S sid gq hst hSid hLt hCut hMem]
-      exact bind_congr_of_mem_support_spec (stepAuthCpaCutoffPrim cut S gq hst) _ _
-        (fun p hp => ih p.1 p.2 (stepAuthCpaCutoffPrim_subset_usedSend cut S gq hst hp hMem))
-
 /-- Session-cutoff `Auth` experiment over `PrimBaseSpec` (`cut = 0` encrypts `m1` on all fresh
     challenge sessions; `cut = S.N_send_tot` encrypts `m0` on all fresh challenge sessions). -/
-noncomputable def authCpaCutoffExp (cut : Nat) (S : Setup) (P : Primitives) (A : AuthAdversary S) :
+@[expose] def authCpaCutoffExp (cut : Nat) (S : Setup) (P : Primitives) (A : AuthAdversary S) :
     ProbComp Bool :=
   simulateQ (primBaseImpl P) do
     let (b', finalSt) ←
       runWithPrimStep (stepAuthCpaCutoffPrim cut S) A.run (AuthHybridStateFixed.empty S true)
     finalizeAeadCpaGameNoAuthPrim S b' finalSt.toAuthHybridState
 
-noncomputable def cpaAfterStepUntil (idx : Nat) (S : Setup) (P : Primitives)
+@[expose] def cpaAfterStepUntil (idx : Nat) (S : Setup) (P : Primitives)
     (secb : Bool) (fuel : Nat) : AuthCpaPauseResult S Bool → ProbComp Bool
   | .done b' hst =>
     simulateQ (primBaseImpl P) (finalizeAeadCpaGameNoAuthPrim S b' hst.toAuthHybridState)
@@ -419,182 +259,12 @@ noncomputable def cpaAfterStepUntil (idx : Nat) (S : Setup) (P : Primitives)
       (finalizeAeadCpaGameNoAuthPrim S b' finalSt.toAuthHybridState)
 
 /-- 1-step `IND-CPA` simulation world at fixed `(idx, secb)` before comparing `== secb`. -/
-noncomputable def cpaStepWorld (idx : Nat) (S : Setup) (P : Primitives)
+def cpaStepWorld (idx : Nat) (S : Setup) (P : Primitives)
     (secb : Bool) (fuel : Nat) (A : AuthAdversary S) : ProbComp Bool :=
   simulateQ (primBaseImpl P)
     (stepUntilAuthCpaChallengeFixedPrim idx S false A.run fuel
       (AuthHybridStateFixed.empty S true)) >>=
     cpaAfterStepUntil idx S P secb fuel
-
-private theorem simulateQ_tryPause_and_cpaAfter_eq
-    (idx : Nat) (S : Setup) (P : Primitives) (secb : Bool) (hLt : idx < S.N_send_tot)
-    (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
-    (hst : AuthHybridStateFixed S) (cont : AuthResponse → OracleComp (unifSpec + authSpec S) Bool)
-    (Q' fuel1' fuel2 : Nat)
-    (h_cont : ∀ r, IsQueryBoundP (cont r) (fun q => isGameQuery q = true) Q') (h2 : Q' ≤ fuel2)
-    (ih : ∀ r s',
-      (simulateQ (primBaseImpl P)
-        (stepUntilAuthCpaChallengeFixedPrim idx S false (cont r) fuel1' s') >>=
-        cpaAfterStepUntil idx S P secb fuel2) =
-      (simulateQ (primBaseImpl P)
-        (runWithPrimStep (stepAuthCpaCutoffPrim (if secb then idx else idx + 1) S) (cont r) s') >>=
-        fun (b', finalSt) =>
-          simulateQ (primBaseImpl P)
-            (finalizeAeadCpaGameNoAuthPrim S b' finalSt.toAuthHybridState))) :
-    (simulateQ (primBaseImpl P)
-      (do
-        let stepRes ← tryPauseAuthCpaSendFixedPrim true idx S sid u bundle m0 m1 hst
-        match stepRes with
-        | .inl (resp, s') => stepUntilAuthCpaChallengeFixedPrim idx S false (cont resp) fuel1' s'
-        | .inr (ad, m0', m1', payload, s') => pure (.paused ad m0' m1' payload s' cont)) >>=
-      cpaAfterStepUntil idx S P secb fuel2) =
-    (simulateQ (primBaseImpl P)
-      (runAuthSendCpaCutoffPrim (if secb then idx else idx + 1) S sid u bundle m0 m1 hst >>=
-        fun p => runWithPrimStep
-          (stepAuthCpaCutoffPrim (if secb then idx else idx + 1) S) (cont p.1) p.2) >>=
-      fun (b', finalSt) =>
-        simulateQ (primBaseImpl P)
-          (finalizeAeadCpaGameNoAuthPrim S b' finalSt.toAuthHybridState)) := by
-  have hCut : ∀ sIdx, sIdx ≠ idx →
-      decide (sIdx < idx) = decide (sIdx < if secb then idx else idx + 1) := fun sIdx hNe => by
-    cases secb
-    · simp; omega
-    · rfl
-  unfold runAuthSendCpaCutoffPrim tryPauseAuthCpaSendFixedPrim; dsimp only
-  by_cases hLen : (m0.length != m1.length) = true
-  · simp only [hLen, ↓reduceIte, pure_bind]; exact ih .noneResp hst
-  · have hLenEq : (m0.length == m1.length) = true := by revert hLen; simp
-    simp only [hLen, Bool.false_eq_true, ↓reduceIte]
-    by_cases hUsed : hst.toAuthHybridState.base.usedSendSessions.contains sid = true
-    · simp only [hUsed, ↓reduceIte, pure_bind]; exact ih .noneResp hst
-    · simp only [hUsed, Bool.false_eq_true, ↓reduceIte]
-      rw [← prepAuthCpaSendFixedPrim_map_sid S sid u bundle m0 m1 hst]
-      simp only [map_eq_bind_pure_comp, Function.comp_def, simulateQ_bind, bind_assoc, pure_bind]
-      apply bind_congr; intro prep?; cases prep? with
-      | none => simp only [Option.map_none, simulateQ_pure, pure_bind]; exact ih .noneResp hst
-      | some pair =>
-        rcases pair with ⟨isFreshPeer, isIdealSend, rawP⟩; simp only [Option.map_some]
-        by_cases hFresh : isFreshPeer = true
-        · simp only [hFresh, ↓reduceIte, Bool.true_and, Bool.false_and, Bool.false_eq_true]
-          by_cases hIdx : (initSessionSlotIdx sid == idx) = true
-          · have hsIdx : initSessionSlotIdx sid = idx := beq_iff_eq.mp hIdx
-            have hPlain :
-                (if decide (initSessionSlotIdx sid < if secb = true then idx else idx + 1) = true
-                 then m0 else m1) = (if secb = true then m1 else m0) := by
-              rw [hsIdx]; cases secb <;> simp
-            simp only [hIdx, ↓reduceIte, simulateQ_pure, pure_bind, cpaAfterStepUntil, hLenEq,
-              simulateQ_bind, simulateQ_embedUnif, bind_assoc, finishAuthCpaSendFixedPure_msgPlain_irrel]
-            apply bind_congr; intro mk; simp only [hPlain, simulateQ_primQ_aeadEnc_bytes, pure_bind]
-            let fin := finishAuthCpaSendFixedPure true true (withSid sid rawP)
-              (P.aeadEnc mk (withSid sid rawP).ad (if secb = true then m1 else m0)) hst
-            have hMemSid : sid ∈ fin.2.toAuthHybridState.base.usedSendSessions := by
-              dsimp [fin]; rw [finishAuthCpaSendFixedPure_usedSendSessions, withSid_sid]
-              exact List.mem_cons_self
-            rw [runWithPrimStepFuel_eq_runWithPrimStep false (stepAuthCpaCutoffPrim idx S)
-                  (cont fin.1) Q' fuel2 (h_cont _) h2 fin.2,
-                runWithPrimStep_stepAuthCpaCutoffPrim_eq_of_mem_usedSend idx
-                  (if secb = true then idx else idx + 1) S sid (cont fin.1) fin.2 hsIdx hLt hCut
-                  hMemSid]
-          · have hCutSid := hCut (initSessionSlotIdx sid)
-              (beq_eq_false_iff_ne.mp (Bool.eq_false_iff.mpr hIdx))
-            simp only [hIdx, Bool.false_eq_true, ↓reduceIte, simulateQ_bind, simulateQ_embedUnif,
-              bind_assoc]
-            apply bind_congr; intro mk; rw [hCutSid]; apply bind_congr; intro aeadCt
-            simp only [simulateQ_pure, pure_bind]; exact ih _ _
-        · simp only [hFresh, Bool.false_eq_true, ↓reduceIte, simulateQ_bind, bind_assoc]
-          apply bind_congr; intro mk; apply bind_congr; intro aeadCt
-          simp only [simulateQ_pure, pure_bind]; exact ih _ _
-
-private theorem stepUntilFixed_nonSend (idx : Nat) (S : Setup) {α : Type} (dflt : α)
-    (gq : AuthQuery S) (h : ¬ isAuthSendQuery (Sum.inr gq))
-    (cont : (unifSpec + authSpec S).Range (Sum.inr gq) → OracleComp (unifSpec + authSpec S) α)
-    (f : Nat) (hst : AuthHybridStateFixed S) :
-    stepUntilAuthCpaChallengeFixedPrim idx S dflt (liftM (OracleSpec.query (Sum.inr gq)) >>= cont)
-      (f + 1) hst =
-    (stepAuthCpaNonSendPrim S gq hst >>=
-      fun p => stepUntilAuthCpaChallengeFixedPrim idx S dflt (cont p.1) f p.2) := by
-  cases gq <;> first | exact False.elim (h trivial) | rfl
-
-theorem simulateQ_stepUntil_and_cpaAfter_eq_cutoff (idx : Nat) (S : Setup) (P : Primitives)
-    (secb : Bool) (hLt : idx < S.N_send_tot)
-    (mx : OracleComp (unifSpec + authSpec S) Bool)
-    (Q fuel1 fuel2 : Nat)
-    (h_mx : IsQueryBoundP mx (fun q => isGameQuery q = true) Q)
-    (h1 : Q ≤ fuel1) (h2 : Q ≤ fuel2)
-    (hst : AuthHybridStateFixed S) :
-    (simulateQ (primBaseImpl P) (stepUntilAuthCpaChallengeFixedPrim idx S false mx fuel1 hst) >>=
-      cpaAfterStepUntil idx S P secb fuel2) =
-    (simulateQ (primBaseImpl P)
-      (runWithPrimStep (stepAuthCpaCutoffPrim (if secb then idx else idx + 1) S) mx hst) >>=
-      fun (b', finalSt) =>
-        simulateQ (primBaseImpl P)
-          (finalizeAeadCpaGameNoAuthPrim S b' finalSt.toAuthHybridState)) := by
-  induction mx using OracleComp.inductionOn generalizing Q fuel1 hst with
-  | pure x =>
-    rw [stepUntilAuthCpaChallengeFixedPrim_pure, runWithPrimStep_pure]; simp [cpaAfterStepUntil]
-  | query_bind q cont ih =>
-    rw [isQueryBoundP_query_bind_iff] at h_mx; cases q with
-    | inl n =>
-      rcases h_mx with ⟨_, h_cont⟩
-      have hnl : ¬ (isGameQuery (Sum.inl n : ℕ ⊕ AuthQuery S) = true) := by simp [isGameQuery]
-      simp only [hnl] at h_cont
-      rw [stepUntilAuthCpaChallengeFixedPrim_query_inl, runWithPrimStep_query_inl]
-      simp only [simulateQ_bind, bind_assoc]; congr 1; funext u
-      exact ih u Q fuel1 (h_cont u) h1 h2 hst
-    | inr gq =>
-      rcases h_mx with ⟨h_first, h_cont⟩
-      have hgr : isGameQuery (Sum.inr gq : ℕ ⊕ AuthQuery S) = true := rfl
-      rcases h_first with h_abs | hQpos
-      · exact False.elim (h_abs hgr)
-      · obtain ⟨Q', rfl⟩ : ∃ Q', Q = Q' + 1 := ⟨Q - 1, by omega⟩
-        obtain ⟨fuel1', rfl⟩ : ∃ fuel1', fuel1 = fuel1' + 1 := ⟨fuel1 - 1, by omega⟩
-        simp only [hgr, ↓reduceIte, Nat.add_sub_cancel] at h_cont; rw [runWithPrimStep_query_inr]
-        cases gq with
-        | sendOPK u i bundle m0 m1 =>
-          change (simulateQ (primBaseImpl P) (if bundle.opkB?.isNone then
-              stepUntilAuthCpaChallengeFixedPrim idx S false (cont .noneResp) fuel1' hst
-            else do
-              let stepRes ← tryPauseAuthCpaSendFixedPrim true idx S (.sendOPK u i) u bundle m0 m1 hst
-              match stepRes with
-              | .inl (resp, s') =>
-                stepUntilAuthCpaChallengeFixedPrim idx S false (cont resp) fuel1' s'
-              | .inr (ad, m0', m1', payload, s') => pure (.paused ad m0' m1' payload s' cont)) >>=
-            cpaAfterStepUntil idx S P secb fuel2) = _
-          unfold stepAuthCpaCutoffPrim; dsimp only; split
-          · exact ih .noneResp Q' fuel1' (h_cont .noneResp) (by omega) (by omega) hst
-          · exact simulateQ_tryPause_and_cpaAfter_eq idx S P secb hLt (.sendOPK u i) u bundle m0 m1
-              hst cont Q' fuel1' fuel2 h_cont (by omega)
-              (fun r s' => ih r Q' fuel1' (h_cont r) (by omega) (by omega) s')
-        | sendNoOPK u i bundle m0 m1 =>
-          change (simulateQ (primBaseImpl P) (if bundle.opkB?.isSome then
-              stepUntilAuthCpaChallengeFixedPrim idx S false (cont .noneResp) fuel1' hst
-            else do
-              let stepRes ←
-                tryPauseAuthCpaSendFixedPrim true idx S (.sendNoOPK u i) u bundle m0 m1 hst
-              match stepRes with
-              | .inl (resp, s') =>
-                stepUntilAuthCpaChallengeFixedPrim idx S false (cont resp) fuel1' s'
-              | .inr (ad, m0', m1', payload, s') => pure (.paused ad m0' m1' payload s' cont)) >>=
-            cpaAfterStepUntil idx S P secb fuel2) = _
-          unfold stepAuthCpaCutoffPrim; dsimp only; split
-          · exact ih .noneResp Q' fuel1' (h_cont .noneResp) (by omega) (by omega) hst
-          · exact simulateQ_tryPause_and_cpaAfter_eq idx S P secb hLt (.sendNoOPK u i) u bundle
-              m0 m1 hst cont Q' fuel1' fuel2 h_cont (by omega)
-              (fun r s' => ih r Q' fuel1' (h_cont r) (by omega) (by omega) s')
-        | _ =>
-          rw [stepUntilFixed_nonSend idx S false _ (by simp [isAuthSendQuery]) cont fuel1' hst]
-          dsimp only [stepAuthCpaCutoffPrim]; simp only [simulateQ_bind, bind_assoc]
-          congr 1; funext p; exact ih p.1 Q' fuel1' (h_cont p.1) (by omega) (by omega) p.2
-
-theorem cpaStepWorld_eq_authCpaCutoffExp (idx : Nat) (S : Setup) (P : Primitives)
-    (secb : Bool) (hLt : idx < S.N_send_tot)
-    (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b) :
-    cpaStepWorld idx S P secb b.q_total A.1 =
-      authCpaCutoffExp (if secb then idx else idx + 1) S P A.1 := by
-  unfold cpaStepWorld authCpaCutoffExp
-  rw [simulateQ_stepUntil_and_cpaAfter_eq_cutoff idx S P secb hLt
-    A.1.run b.q_total b.q_total b.q_total (SignalPqxdh.QueryBounded.auth_total A.property) (le_refl _) (le_refl _)
-    (AuthHybridStateFixed.empty S true), simulateQ_bind]
 
 private theorem tryPauseAuthCpaSendSlotPrim_ns_le (cut : Nat) (S : Setup)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
@@ -701,7 +371,7 @@ theorem stepUntilAuthCpaChallengeSlotPrim_query_inl (idx : Nat) (S : Setup) {α 
         fun u => stepUntilAuthCpaChallengeSlotPrim idx S defaultVal (cont u) fuel shst) := rfl
 
 /-- Creation-order session-cutoff `Auth` experiment over `PrimBaseSpec`. -/
-noncomputable def authCpaSlotCutoffExp (cut : Nat) (S : Setup) (P : Primitives)
+@[expose] def authCpaSlotCutoffExp (cut : Nat) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   simulateQ (primBaseImpl P) do
     let (b', (_, finalSt)) ←
@@ -709,7 +379,7 @@ noncomputable def authCpaSlotCutoffExp (cut : Nat) (S : Setup) (P : Primitives)
         (0, AuthHybridStateFixed.empty S true)
     finalizeAeadCpaGameNoAuthPrim S b' finalSt.toAuthHybridState
 
-noncomputable def cpaSlotAfterStepUntil (idx : Nat) (S : Setup) (P : Primitives)
+@[expose] def cpaSlotAfterStepUntil (idx : Nat) (S : Setup) (P : Primitives)
     (secb : Bool) (fuel : Nat) : AuthCpaSlotPauseResult S Bool → ProbComp Bool
   | .done b' (_, hst) =>
     simulateQ (primBaseImpl P) (finalizeAeadCpaGameNoAuthPrim S b' hst.toAuthHybridState)
@@ -725,7 +395,7 @@ noncomputable def cpaSlotAfterStepUntil (idx : Nat) (S : Setup) (P : Primitives)
       (finalizeAeadCpaGameNoAuthPrim S b' finalSt.toAuthHybridState)
 
 /-- 1-step creation-order `IND-CPA` simulation world at fixed `(idx, secb)` before `== secb`. -/
-noncomputable def cpaSlotStepWorld (idx : Nat) (S : Setup) (P : Primitives)
+@[expose] def cpaSlotStepWorld (idx : Nat) (S : Setup) (P : Primitives)
     (secb : Bool) (fuel : Nat) (A : AuthAdversary S) : ProbComp Bool :=
   simulateQ (primBaseImpl P)
     (stepUntilAuthCpaChallengeSlotPrim idx S false A.run fuel
@@ -1171,15 +841,5 @@ theorem abs_sub_authCpaCutoffExp_eq_mul_aeadIndCpa (S : Setup) (P : Primitives)
         AeadIndCpaReal P (aeadCpaReductionAuthFixed S b A) := by
   rw [← authCpaSlotCutoffExp_zero_eq S P A.1, ← authCpaSlotCutoffExp_min_eq S P b A]
   exact abs_sub_authCpaSlotCutoffExp_eq_mul_aeadIndCpa S P b A
-
-/-- Upper bound form `M_send * Adv ≤ S.N_send_tot * Adv` for `authCpaCutoffExp`. -/
-theorem abs_sub_authCpaCutoffExp_le_mul_aeadIndCpa
-    (S : Setup) (P : Primitives) (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b) :
-    |(𝒟[authCpaCutoffExp 0 S P A.1] {true}).toReal -
-     (𝒟[authCpaCutoffExp S.N_send_tot S P A.1] {true}).toReal| ≤
-      (S.N_send_tot : ℝ) * AeadIndCpaReal P (aeadCpaReductionAuthFixed S b A) := by
-  rw [abs_sub_authCpaCutoffExp_eq_mul_aeadIndCpa S P b A]
-  exact mul_le_mul_of_nonneg_right (Nat.cast_le.mpr (Nat.min_le_right _ _))
-    (aeadIndCpa_nonneg _ _)
 
 end SignalPqxdh.Security

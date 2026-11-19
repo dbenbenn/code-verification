@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ChainEncodedLenBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.ChainEncodedLenBasePlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.ChainEncodedLenPlaced
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ChainEncodedLenBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.ChainEncodedLenBasePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.ChainEncodedLenPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EpochEncodedLenPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ChainEncodedLenBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EpochEncodedLenPlaced
 
 /-!
 # `VmPreserved` Placed Proofs for `Chain::encoded_len` (Blocks `485` and `406`)
@@ -21,7 +23,7 @@ Lifts `Chain::encoded_len` `[LibsignalPlacement]` contracts to `DefsBudget.chain
 with `VmPreserved` on CLI Blocks `485` (`[local#3]`) and `406` (`[local#2]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

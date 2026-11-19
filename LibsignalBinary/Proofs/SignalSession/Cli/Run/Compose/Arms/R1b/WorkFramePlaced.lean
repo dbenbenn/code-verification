@@ -9,13 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CallHelpersParsePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.WorkFrame
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CallHelpersParsePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.WorkFrame
 public meta import Lean
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
 import all Init.Data.String.Defs
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanup -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+public import LibsignalBinary.Proofs.Placed.BlocksTreeDefs
 
 /-!
 # Relocatable Work Frame and `r1b_OkCtxPlaced` for Arm `R1b`
@@ -23,7 +33,7 @@ import all Init.Data.String.Defs
 Relocatable (`[LibsignalPlacement]`) counterparts of `R1b.WorkFrame` on Block `579`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -191,10 +201,10 @@ noncomputable abbrev r1b_relocSym579 (off : Nat) : String :=
     | none => ""
   | none => ""
 
-noncomputable abbrev r1b_regIdSym : String := "libsignal_cli:.rodata..Lanon.13"
-noncomputable abbrev r1b_unreadSym : String := "libsignal_cli:.rodata..Lanon.65"
+abbrev r1b_regIdSym : String := "libsignal_cli:.rodata..Lanon.13"
+abbrev r1b_unreadSym : String := "libsignal_cli:.rodata..Lanon.65"
 noncomputable abbrev r1b_spkSym : String := r1b_relocSym579 0xc80
-noncomputable abbrev r1b_malfSym : String := "libsignal_cli:.rodata..Lanon.67"
+abbrev r1b_malfSym : String := "libsignal_cli:.rodata..Lanon.67"
 noncomputable abbrev r1b_kpkSym : String := r1b_relocSym579 0x1268
 noncomputable abbrev r1b_opkSym : String := r1b_relocSym579 0x12dc
 
@@ -228,7 +238,7 @@ theorem r1b_ro_opk_placed [LibsignalPlacement] {m : Memory} {R : SepProp}
     m ⊨ (lsρ r1b_opkSym ↦ᵣ utf8 "one-time-pre-key") ∗ R :=
   lsro_intro_chk hinv.2 (sym := r1b_opkSym) (bs := utf8 "one-time-pre-key") (by decide +kernel) hm
 
-def r1b_invCore_placed [LibsignalPlacement] (A : RustAlloc) (g : RunCall) (d : Init1Data)
+@[expose] def r1b_invCore_placed [LibsignalPlacement] (A : RustAlloc) (g : RunCall) (d : Init1Data)
     (s0 : State) : SepProp :=
   let fsp := runFsp s0
   memRegion g.res runResSize ∗ memRegion g.call 56 ∗

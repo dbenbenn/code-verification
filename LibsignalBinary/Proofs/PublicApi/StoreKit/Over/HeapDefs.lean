@@ -10,6 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.HeapDefs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Empty-`previous_sessions` Bridge Lemmas
@@ -18,7 +20,7 @@ Re-exports `ResponderClosure.Over.HeapDefs` and establishes the `ps = []` unfold
 `sessionRecordAt = sessionRecordPrevAt ... []` bridge lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,12 +52,5 @@ theorem prevVecAt_ne_zero_nil_eq (A : RustAlloc) (r cap ptr : BitVec 64) (hcap :
   unfold prevVecAt vecAt vecBuf
   simp only [List.length_nil, Nat.zero_le, Nat.zero_mul, Nat.sub_zero, BitVec.ofNat_eq_ofNat,
     BitVec.add_zero, true_and, hcap, ↓reduceIte, arrayAt, emp_sepConj]
-
-/-- For `ps = []`, `sessionRecordPrevAt` is definitionally equal to `sessionRecordAt`. -/
-theorem sessionRecordAt_eq_prevAt (A : RustAlloc) (r : BitVec 64) (g : RecordGhost)
-    (rec : SessionRecord (List (BitVec 8))) :
-    sessionRecordAt A r g rec = sessionRecordPrevAt A r g [] rec := by
-  unfold sessionRecordAt sessionRecordPrevAt recCurAt
-  cases g.cur <;> cases rec.currentSession <;> rfl
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over

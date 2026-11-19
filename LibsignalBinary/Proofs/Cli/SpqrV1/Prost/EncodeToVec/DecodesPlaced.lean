@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionPlacedObj
+public import GeneratedLean.LibsignalSessionPlacedObj -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
@@ -19,7 +19,7 @@ Block index and entry-point resolution for `<spqr::proto::pq_ratchet::PqRatchetS
 prost::message::Message>::encode_to_vec` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

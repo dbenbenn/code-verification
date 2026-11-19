@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.CBad
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.PkDispatchAtPure
-public import Symbolic.Proofs.Swarm.CREF.TR.SlotsZ6Pure
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSendBranch
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh
+public import Symbolic.Proofs.Swarm.CREF.CBad -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.PkDispatchAtPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.SlotsZ6Pure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSendBranch -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvWire.By2SupplyA
 import Symbolic.Proofs.Swarm.CREF.TR.ByteChainReselect.C16
@@ -30,7 +30,7 @@ and discharges byte-chain reselection, non-junk skipped-key provenance, and `NoR
 from `CleanBy`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -64,7 +64,7 @@ open Symbolic.Swarm.CREF.CliPure.TR.RecvDecStepAt
 open Symbolic.Swarm.CREF.TR.RecvDecStep.SkippedVarKnownCk (SkippedVarConcl)
 
 /-- Skipped-key public-key dispatch supply predicate. -/
-def SkippedPkDispatchAtKPure
+@[expose] def SkippedPkDispatchAtKPure
     (interpretation : ExternInterpretation)
     (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (ms₁ : List Move) (_τ₁ : List MachineEvent) : Prop :=
@@ -111,7 +111,7 @@ def SkippedPkDispatchAtKPure
            (gamma interpretation S g (trMsgKeys salt seed).iv).take 16] = some ptBytes)
 
 /-- Byte-chain reselection obligation at `(r₀, S, g, ms₁, τ₁)`. -/
-def RcvByteChainReselectAt
+@[expose] def RcvByteChainReselectAt
     (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (ms₁ : List Move) (_τ₁ : List MachineEvent) : Prop :=
   ∀ (body : HwBytes) (m : SignalMessage) (t₀ : DY.Bytes) (msg₀ : TRSignalMsg) (st₀ : TRState)
@@ -154,7 +154,7 @@ theorem rcv_byteChainReselectAt_of_c16
   exact ⟨t₁, msg₁, ht₁, hparse₁, hver₁, hrk₁, hctr₁, hseed₁, hk₁, hMac₁, hNC₁⟩
 
 /-- Non-junk `SkippedKeyStored` provenance and non-low-order ratchet-key supply. -/
-def RcvSkippedNotJunkSeedProvAt
+@[expose] def RcvSkippedNotJunkSeedProvAt
     (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (ms₁ : List Move) : Prop :=
   ∀ (p : Participant) (st₀ st_prov : TRState) (m : SignalMessage) (pk seed : DY.Bytes)

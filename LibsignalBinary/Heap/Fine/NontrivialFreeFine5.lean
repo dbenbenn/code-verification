@@ -82,7 +82,7 @@ theorem blk05_nontrivialFree_body_fine [MallocngMultiPlacement]
        s0.readReg64 .x1 = BitVec.ofNat 64 idx ∧
        g ∈ st.groups ∧
        ∃ hIdx : idx < g.slots.length, g.slots[idx]'hIdx = .claimed⌝ ∗
-      (MallocngCoreStInflightA (k + 1) γ maddrs brkStart s0.brk liveCost peakCost st ∗
+      (MallocngCoreStInflightModeA true (k + 1) γ maddrs brkStart s0.brk liveCost peakCost st ∗
        stackFrameAt s0.sp (32 * (fuel + 1)) ∗
        MallocngRoTablesA maddrs ∗ R) := by
     refine Satisfies.mono ?_ hpre
@@ -95,7 +95,7 @@ theorem blk05_nontrivialFree_body_fine [MallocngMultiPlacement]
   have hpreSpatial : s0.mem ⊨
       ⌜MallocngWFInflight (k + 1) maddrs.base brkStart s0.brk liveCost peakCost st⌝ ∗
       ((stackFrameAt s0.sp (32 * (fuel + 1)) ∗
-        MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ∗
+        MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st true ∗
         (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
         ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
         ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
@@ -287,7 +287,7 @@ theorem blk05_nontrivialFree_fuel_fine [MallocngMultiPlacement]
 
 /-! ## Placed `nontrivial_free` Contract -/
 
-noncomputable def nontrivialFreeFinePlacedSpec [MallocngMultiPlacement]
+def nontrivialFreeFinePlacedSpec [MallocngMultiPlacement]
     (γ : GhostName) (brkStart : BitVec 64) (liveCost peakCost : Nat)
     (st : MallocngSt) (g : GroupDesc) (idx : Nat) : Spec Unit :=
   { pre := fun (_ : Unit) s0 =>
@@ -297,7 +297,7 @@ noncomputable def nontrivialFreeFinePlacedSpec [MallocngMultiPlacement]
        ∃ hIdx : idx < g.slots.length, g.slots[idx]'hIdx = .claimed⌝ ∗
       stackFrame s0 224 ∗
       MallocngRoTablesA maddrs ∗
-      MallocngCoreStInflightA 1 γ maddrs brkStart s0.brk liveCost peakCost st
+      MallocngCoreStInflightModeA true 1 γ maddrs brkStart s0.brk liveCost peakCost st
     post := fun (_ : Unit) s0 sf =>
       ∃∗ st' : MallocngSt,
         ⌜MallocngProcPreserved s0 sf ∧ sf.brk = s0.brk ∧ sf.tpidrEl0 = s0.tpidrEl0 ∧
@@ -307,7 +307,7 @@ noncomputable def nontrivialFreeFinePlacedSpec [MallocngMultiPlacement]
          (dynamicRootRegions st').length ≤ (dynamicRootRegions st).length⌝ ∗
         stackFrame s0 224 ∗
         MallocngRoTablesA maddrs ∗
-        MallocngCoreStA γ maddrs brkStart s0.brk liveCost peakCost st' ∗
+        MallocngCoreStModeA true γ maddrs brkStart s0.brk liveCost peakCost st' ∗
         VendorFree.NfRetSep st st' (sf.readReg64 .x0) (sf.readReg64 .x1) }
 
 theorem placed_nontrivialFree_fine_ok [MallocngMultiPlacement]
@@ -347,7 +347,7 @@ theorem placed_nontrivialFree_fine_ok [MallocngMultiPlacement]
         ((⌜s0.readReg64 .x0 = g.metaPtr ∧ s0.readReg64 .x1 = BitVec.ofNat 64 idx ∧
            g ∈ st.groups ∧ ∃ hIdx : idx < g.slots.length, g.slots[idx]'hIdx = .claimed⌝ ∗
           stackFrameAt s0.sp (32 * (fuel + 1)) ∗ MallocngRoTablesA maddrs ∗
-          NfStaticRest γ maddrs st ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
+          NfStaticRest γ maddrs st true ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
           ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
           ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
           MappedSet st.masterDom (OwnedMappedByte st) ∗
@@ -371,7 +371,7 @@ theorem placed_nontrivialFree_fine_ok [MallocngMultiPlacement]
     (fun _ _ _ ho => False.elim (not_satisfies_false_sepConj ho))
   refine SepWP.done hpcF hrunF ⟨fun hm => ?_, hspF, hcsF⟩
   refine Satisfies.mono (sepConj_mono_left ?_) hm
-  dsimp only [nontrivialFreeFuelFinePlainSpec, MallocngCoreStA]
+  dsimp only [nontrivialFreeFuelFinePlainSpec, MallocngCoreStModeA]
   rw [sepExists_sepConj_left]
   refine Entails.sepExists_mono fun st' => ?_
   try rw [sepConj_assoc]

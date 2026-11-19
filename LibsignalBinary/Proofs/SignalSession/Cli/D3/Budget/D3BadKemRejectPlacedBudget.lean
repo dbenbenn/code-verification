@@ -9,18 +9,34 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemEnvCPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemRejectAuxPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3UntypedElfF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SlotPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.WrapperStatePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemEnvCPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemRejectAuxPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3UntypedElfF3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SlotPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.WrapperStatePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemRejectPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3PollRejectAuxPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3V3RejectPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Untyped/Bad-KEM (`pkToE? pm = none`) Block-`520` `decrypt_prekey` Rejection
@@ -31,7 +47,7 @@ theorem (`cliDpPoll_pkToENone_reject_ok_placedBudget`), lifts it to block `520`
 re-exports the `DecPkD3UntypedEnv` credit bounds and `SingleSlotFineSpec` witnesses.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.style.haveILetI false
@@ -43,8 +59,8 @@ namespace LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemRejectPlace
 open Arm64 Arm64.Obj Arm64.Process ProofLib SepProp
 open CryptoGames.LibsignalSessionApi (PreKeySignalMessage SessionRecord)
 open CryptoVerification
-  (IsLsBlockProg LibsignalFullPlacement LibsignalHooks LibsignalPlacement
-   libsignalMutatedBlocks libsignalSessionExterns libsignalSessionLib lsmpl lsρ)
+  (ExternsDistinctOnHooked IsLsBlockProg LibsignalFullPlacement
+   LibsignalHooks LibsignalPlacement libsignalMutatedBlocks libsignalSessionLib lsmpl lsρ)
 open CryptoVerification.E2E (UnreachedPqxdhPrimitives)
 open CryptoVerification.LibsignalPublicApi.StoreKit (FsFiles withLsCodeRoLoaded)
 open CryptoVerification.LibsignalPublicApiRepr (AddrVal)
@@ -101,11 +117,11 @@ open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
 
 /-- Builds a `[LibsignalFullPlacement]` instance whose underlying `toLibsignalPlacement` is
 definitionally `libsignalPlacementOf mpl hblk hext_nodup`. -/
-@[instance_reducible]
+@[expose, instance_reducible]
 def libsignalFullPlacementOf (mpl : Obj.MultiPlacement)
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (hpl : libsignalSessionLib.Placeable mpl) : LibsignalFullPlacement where
   toLibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
   placeable := hpl
@@ -118,7 +134,7 @@ private theorem toClosureRunHooksPlaced [LibsignalPlacement] {M : AllocCostModel
   { alloc := hh.alloc, allocFs := hh.allocFs, panics := hh.panics, memcpyRO := hh.memcpyRO,
     bcmp := hh.bcmp, fs := hh.fs, utf8 := hh.utf8, memrchr := hh.memrchr,
     codecHooks := hh.codecHooks, allocZeroed := hh.allocZeroed, stringClone := hh.stringClone,
-    formatInner := hh.formatInner, blackBox := hh.blackBox }
+    formatInner := hh.formatInner, fmtWrite := hh.fmtWrite, blackBox := hh.blackBox }
 
 /-! ## 2. Poll Dispatch and Block-`520` Caller-Slot Reduction -/
 
@@ -258,7 +274,7 @@ private theorem r20m3_toSkeletonRunHooksPlaced [LibsignalPlacement] {M : AllocCo
   { alloc := hh.alloc, allocFs := hh.allocFs, panics := hh.panics, memcpyRO := hh.memcpyRO,
     bcmp := hh.bcmp, fs := hh.fs, utf8 := hh.utf8, memrchr := hh.memrchr,
     codecHooks := hh.codecHooks, allocZeroed := hh.allocZeroed, stringClone := hh.stringClone,
-    formatInner := hh.formatInner, blackBox := hh.blackBox }
+    formatInner := hh.formatInner, fmtWrite := hh.fmtWrite, blackBox := hh.blackBox }
 
 private theorem r20m3_pollEnv_v3_sub [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {B : RunBudgets}
@@ -520,7 +536,7 @@ theorem decPkD3Untyped_hdecPk_of_seams
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (hpl : libsignalSessionLib.Placeable mpl)
     (ghFixed : CliGhostHooks)
     {brkStart : BitVec 64}

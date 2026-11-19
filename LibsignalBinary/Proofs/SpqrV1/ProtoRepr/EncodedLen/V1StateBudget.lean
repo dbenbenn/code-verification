@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1StateBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1State
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1StateBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1State
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.EncodedLenCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `VmPreserved` Placed Propositions for `V1State::encoded_len`
@@ -19,7 +21,7 @@ Defines `[LibsignalPlacement]` `subroutine_ok` propositions for `V1State::encode
 (Blocks `177` and `405`) against `DefsV1StateBudget.v1StateEncodedLenRo{Pinned,}Spec`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,39 +37,39 @@ open CryptoVerification.SpqrV1.ProtoRepr (v1StateJtSymLocal1 v1StateJtSymLocal2)
 open LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1StateBudget
   (v1StateEncodedLenRoPinnedSpec v1StateEncodedLenRoSpec)
 
-def V1StateEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_177).rebase (blkPl_177).base (Rust.withPanics ext)) (blkPl_177).base
     (withLsCodeLoaded lsmpl (v1StateEncodedLenRoPinnedSpec A (lsρ v1StateJtSymLocal1)))
 
-def V1StateEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_177).rebase (blkPl_177).base (Rust.withPanics ext)) (blkPl_177).base
     (withLsCodeLoaded lsmpl (v1StateEncodedLenRoSpec A (lsρ v1StateJtSymLocal1)))
 
-def V1StateEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   V1StateEncodedLenLocal1PinnedPlacedOkExt A (tripleRatchetExterns C ctl abs)
 
-def V1StateEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   V1StateEncodedLenLocal1PlacedOkExt A (tripleRatchetExterns C ctl abs)
 
-def V1StateEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_405).rebase (blkPl_405).base (Rust.withPanics ext)) (blkPl_405).base
     (withLsCodeLoaded lsmpl (v1StateEncodedLenRoPinnedSpec A (lsρ v1StateJtSymLocal2)))
 
-def V1StateEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_405).rebase (blkPl_405).base (Rust.withPanics ext)) (blkPl_405).base
     (withLsCodeLoaded lsmpl (v1StateEncodedLenRoSpec A (lsρ v1StateJtSymLocal2)))
 
-def V1StateEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   V1StateEncodedLenLocal2PinnedPlacedOkExt A (tripleRatchetExterns C ctl abs)
 
-def V1StateEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   V1StateEncodedLenLocal2PlacedOkExt A (tripleRatchetExterns C ctl abs)
 

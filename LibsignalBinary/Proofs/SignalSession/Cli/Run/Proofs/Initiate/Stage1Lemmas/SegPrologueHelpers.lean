@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityVtables
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityVtables -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Defs
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.Callees
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.Fetches
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecDefs
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.ModelAndLayout
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.SerializeExt.SessionCloneAux.BasePart2
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
@@ -31,12 +31,10 @@ poll stack-frame split/merge lemmas, and the shared Stage 1 early `Err` exit pat
 (`stage1_plain11_exit_ext_ok`, `stage1_untrusted_exit_ext_ok`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage1Lemmas
 
@@ -63,22 +61,6 @@ attribute [-arm64_norm]
 attribute [local arm64_norm, local wp_norm]
   cliInitiateFrame initLocalsSize
   bv_sub_add_lit sp_sub_96_sub_4096 sp_sub_4192_sub_3216 sp_sub_96_add_96 BitVec.toNat_zero
-
-/-- Steps a `SepWP` basic-block segment inside `SepWPp` under `ImgCallInv img s`. -/
-theorem sepWPp_step_to {prog : Program} {img : Obj.Image} (mid : BitVec 64) {ret : BitVec 64}
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hinv : ImgCallInv img s)
-    (h : SepWP prog mid s P
-      (fun sm Pm => ∀ sNext : State, sm = sNext →
-        sNext.pc = mid → sNext.status = .Running → ImgCallInv img sNext →
-        SepWPp prog ret sNext Pm Q Qp oom) oom) :
-    SepWPp prog ret s P Q Qp oom := by
-  intro R hm hL
-  rcases h.elim hm hL with ⟨sm, hsteps, ⟨hpc, hrun, Pm, hmm, hnext⟩ | hoom⟩
-  · obtain ⟨sf, hsteps', hout⟩ :=
-      hnext sm rfl hpc hrun (hinv.of_steps hsteps) R hmm (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout⟩
-  · exact ⟨sm, hsteps, Or.inr (Or.inr hoom)⟩
 
 theorem sepWPp_drop_left {prog : Program} {tgt : BitVec 64} {s : State}
     {cell P : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
@@ -166,66 +148,6 @@ theorem cs_fp {s sm : State} (h : CalleeSavedPreserved s sm) :
 theorem cs_vregs {s sm : State} (h : CalleeSavedPreserved s sm) :
     calleeSavedVRegs sm = calleeSavedVRegs s := h.2.2.2.2.2.2.2.2.2.2.2
 
-/-- `cliIdFutDropName` is non-null in any loaded image, so `cbz x8` never skips `futDrop`. -/
-theorem cliIdFutDrop_ne_zero_ext {img : Obj.Image} {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    ((libsignalSessionCode.rebase img.base
-        (Rust.withPanics (cliExternsWith ext))).fnAddr KitInst.cliIdFutDropName == 0#64) = false := by
-  obtain ⟨_, _, hb, _, _, _⟩ := ProofLib.ObjectLoad.load_eq_ok himg
-  rw [Program.fnAddr_rebase, KitInst.cliIdFutDrop_fnOff, beq_eq_false_iff_ne]
-  intro h
-  rw [show img.base = 0#64 - KitInst.cliIdFutDropOff by
-    change img.base + KitInst.cliIdFutDropOff = 0#64 at h
-    rw [← h, BitVec.add_sub_cancel]] at hb
-  exact absurd hb (by decide)
-
-theorem cliIdFutDrop_ne_zero {img : Obj.Image} {W : CliHooks}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    ((libsignalSessionCode.rebase img.base
-        (Rust.withPanics (cliExterns W))).fnAddr KitInst.cliIdFutDropName == 0#64) = false :=
-  cliIdFutDrop_ne_zero_ext (ext := cliHookExterns W) himg
-
-@[irreducible] def futDropAddr_ext (img : Obj.Image)
-    (ext : String → Option (State → State)) : BitVec 64 :=
-  (libsignalSessionCode.rebase img.base
-    (Rust.withPanics (cliExternsWith ext))).fnAddr KitInst.cliIdFutDropName
-
-theorem futDropAddr_ext_eq (img : Obj.Image) (ext : String → Option (State → State)) :
-    futDropAddr_ext img ext =
-      (libsignalSessionCode.rebase img.base
-        (Rust.withPanics (cliExternsWith ext))).fnAddr KitInst.cliIdFutDropName := by
-  unfold futDropAddr_ext; rfl
-
-theorem futDropAddr_ext_ne_zero {img : Obj.Image} {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    (futDropAddr_ext img ext == 0#64) = false := by
-  rw [futDropAddr_ext_eq]; exact cliIdFutDrop_ne_zero_ext (ext := ext) himg
-
-theorem rodata_idTrustFut_drop_irr_ext {img : Obj.Image}
-    {ext : String → Option (State → State)} {s : State}
-    (himg : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s) :
-    ∀ R, (s.mem ⊨ R) →
-      (s.mem ⊨ ((img.base + idTrustFutVtOff) ↦₆₄ᵣ futDropAddr_ext img ext) ∗ R) := by
-  rw [futDropAddr_ext_eq]; exact rodata_idTrustFut_drop_ext (ext := ext) himg hF
-
-@[irreducible] def idTrustPollAddr_ext (img : Obj.Image)
-    (ext : String → Option (State → State)) : BitVec 64 :=
-  (libsignalSessionCode.rebase img.base
-    (Rust.withPanics (cliExternsWith ext))).fnAddr idTrustPollName
-
-theorem idTrustPollAddr_ext_eq (img : Obj.Image) (ext : String → Option (State → State)) :
-    idTrustPollAddr_ext img ext =
-      (libsignalSessionCode.rebase img.base
-        (Rust.withPanics (cliExternsWith ext))).fnAddr idTrustPollName := by
-  unfold idTrustPollAddr_ext; rfl
-
-theorem rodata_idTrustFut_poll_irr_ext {img : Obj.Image}
-    {ext : String → Option (State → State)} {s : State}
-    (himg : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s) :
-    ∀ R, (s.mem ⊨ R) →
-      (s.mem ⊨ (((img.base + idTrustFutVtOff) + 24#64) ↦₆₄ᵣ idTrustPollAddr_ext img ext) ∗ R) := by
-  rw [idTrustPollAddr_ext_eq]; exact rodata_idTrustFut_poll_ext (ext := ext) himg hF
-
 theorem bytes32_eq_exists_words4 (p : BitVec 64) {bs : List (BitVec 8)}
     (hlen : bs.length = 32) :
     (p ↦ₛ bs) ⊢
@@ -276,7 +198,7 @@ theorem boxU8Buf_serialize_unpack (A : RustAlloc) (ptr : BitVec 64) (pk : Public
   exact pure_sepConj_elim fun ⟨hp, _⟩ => pure_sepConj_intro hp (Entails.refl _)
 
 /-- Spatial body of `cliBundleAt` at a fixed `opkId`. -/
-def cliBundleBody (a : BitVec 64) (b : BundleV) (spkSigPtr kpkSigPtr kpkPtr : BitVec 64)
+@[expose] def cliBundleBody (a : BitVec 64) (b : BundleV) (spkSigPtr kpkSigPtr kpkPtr : BitVec 64)
     (opkId : BitVec 32) : SepProp :=
   let opkFlag : BitVec 32 := if b.opk.isSome then 1#32 else 0#32
   (a ↦₆₄ 64#64) ∗ ((a + 8#64) ↦₆₄ spkSigPtr) ∗ ((a + 16#64) ↦₆₄ 64#64) ∗
@@ -521,367 +443,5 @@ theorem poll_frame_5ba_merge (sp : BitVec 64) (f0 f1 : BitVec 64) (outSz : Nat)
       memRegion (sp + 0x5ba#64) (initLocalsSize - 0x5ba) := by
   rw [poll_frame_5ba_split sp outSz hout]
   sep_frame
-
-set_option maxHeartbeats 2400000 in
-/-- `SpeOwned.plain 11` (`SignatureValidationFailed`) error return from `0x0350` when `x26 = speWord 11`. -/
-theorem stage1_plain11_exit_ext_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {B : RunBudgets} {S : RunSem}
-    {x : InitGhost} {stk : Nat} {s0 s : State}
-    {Q Qp : State → SepProp → Prop}
-    (hstk : cliInitiateNeed B ≤ stk)
-    (hstk64 : stk ≤ 2 ^ 63)
-    (hx8 : s0.readReg64 .x8 = x.ret)
-    (hctrl : InInitiateExt img ext s0 s 0x0350)
-    (htr : s.trace = s0.trace)
-    (hans : S.initiate x.F x.peer.val x.me.val x.bundle x.coins = some none)
-    (hpost : ∀ sf Pf, InitExitPost A img S x stk s0 sf Pf → Q sf Pf)
-    (hx26 : s.readReg64 (.gpr 26#5) = speWord 11) :
-    SepWPp (initProgExt img ext) (s0.readReg64 .lr) s
-      (stage2Mem A img x stk s0) Q Qp (initOom s0) := by
-  let fsp := s0.sp - BitVec.ofNat 64 cliInitiateFrame
-  refine sepWPp_mono_pre ?_
-    (stage1_epilogue_err_ext_ok hstk hstk64 hctrl htr hx8 hans hpost
-      (H_err := emp)
-      (H_extra := coinsCursorAt img x.coinsP x.coins 0 ∗
-        CryptoVerification.LibsignalSpqrV1.TokenInit img)
-      (by
-        rw [sepConj_emp]
-        exact words_to_plain11_initResAt A x.ret
-          (s.readReg64 (.gpr 26#5)) (s.readReg64 (.gpr 27#5))
-          (s.readReg64 (.gpr 25#5)) (s.readReg64 (.gpr 28#5))
-          (s.readReg64 (.gpr 24#5)) (s.readReg64 (.gpr 21#5)) hx26))
-  unfold stage2Mem
-  dsimp only [fsp]
-  refine Entails.trans ?_
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-        (sepConj_mono_right (sepConj_mono_left
-          (stage2Locals_entails_memRegion img fsp x s0)))))))))))
-  sep_frame
-
-theorem stage1_plain11_exit_ok {img : Obj.Image} {A : RustAlloc}
-    {W : CliHooks} {B : RunBudgets} {S : RunSem}
-    {x : InitGhost} {stk : Nat} {s0 s : State}
-    {Q Qp : State → SepProp → Prop}
-    (hstk : cliInitiateNeed B ≤ stk)
-    (hstk64 : stk ≤ 2 ^ 63)
-    (hx8 : s0.readReg64 .x8 = x.ret)
-    (hctrl : InInitiate img W s0 s 0x0350)
-    (htr : s.trace = s0.trace)
-    (hans : S.initiate x.F x.peer.val x.me.val x.bundle x.coins = some none)
-    (hpost : ∀ sf Pf, InitExitPost A img S x stk s0 sf Pf → Q sf Pf)
-    (hx26 : s.readReg64 (.gpr 26#5) = speWord 11) :
-    SepWPp (initProg img W) (s0.readReg64 .lr) s
-      (stage2Mem A img x stk s0) Q Qp (initOom s0) :=
-  stage1_plain11_exit_ext_ok (ext := cliHookExterns W) hstk hstk64 hx8
-    (inInitiate_toExt hctrl) htr hans hpost hx26
-
-set_option maxHeartbeats 2400000 in
-/-- Untrusted-identity `Err` exit (`0x0244 → String::clone → 0x026c → 0x0350 → ret`) when `is_trusted_identity` returns `Ok(false)`. -/
-theorem stage1_untrusted_exit_ext_ok {img : Obj.Image} {P : PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} {X : UnreachedPqxdhPrimitives} {B : RunBudgets} {S : RunSem}
-    {x : InitGhost} {stk : Nat} {s0 s : State}
-    {Q Qp : State → SepProp → Prop}
-    (hh : RunHooksExt img A (cliExternsWith ext))
-    (hS : S.initiate = initDef X P)
-    (hstk : cliInitiateNeed B ≤ stk)
-    (hstk64 : stk ≤ 2 ^ 63)
-    (hx8 : s0.readReg64 .x8 = x.ret)
-    (hctrl : InInitiateExt img ext s0 s 0x0244)
-    (hx21 : s.readReg64 (.gpr 21#5) = s.sp + 0xfe0#64)
-    (htr : s.trace = s0.trace)
-    (htrustF : StoresGhost.opened.identity.trusted cliIo.rd x.F x.peer.val x.bundle.idKey =
-      .ok false)
-    (hpost : ∀ sf Pf, InitExitPost A img S x stk s0 sf Pf → Q sf Pf)
-    (hpanic : ∀ sf Pf, InitPanicPost A img S x stk s0 sf Pf → Qp sf Pf) :
-    SepWPp (initProgExt img ext) (s0.readReg64 .lr) s
-      (stage2Mem A img x stk s0) Q Qp (initOom s0) := by
-  code_fetches_range CryptoVerification.libsignalSessionCode cliInitiateStage1Bin img.base
-    (Rust.withPanics (cliExternsWith ext)) cliInitiate_fnOff
-    (num% (ls_off% "libsignal_cli_handshake::initiate")) 0x0244 0x0040
-  have hpc := hctrl.pc; have hrun := hctrl.run; have hsp := hctrl.sp
-  have hfp := hctrl.fp; have hx19 := hctrl.x19; have hfs0 := hctrl.files0
-  have hvregs := hctrl.vregs; have hal0 := hctrl.spAligned
-  have hal := inInitiateExt_spAligned_cur hctrl
-  unfold stage2Mem; dsimp only; rw [← hsp]
-  have hsplit5ba :
-      memRegion (s.sp + 0x5ba#64) (initLocalsSize - 0x5ba) =
-        memRegion (s.sp + 0x5ba#64) (0x1600 - 0x5ba) ∗
-          memRegion (s.sp + 0x1600#64) 24 ∗
-          (∃∗ b0 : BitVec 8, (s.sp + 0x1618#64) ↦₈ b0) ∗
-          memRegion (s.sp + 0x1619#64) 7 ∗
-          memRegion (s.sp + 0x1620#64) (initLocalsSize - 0x1620) := by
-    rw [show initLocalsSize - 0x5ba = (0x1600 - 0x5ba) + (24 + (1 + (7 + (initLocalsSize - 0x1620)))) by decide,
-      memRegion_split (s.sp + 0x5ba#64) (0x1600 - 0x5ba) _ (by decide),
-      memRegion_split _ 24 _ (by decide),
-      memRegion_split _ 1 _ (by decide), ProofLib.memRegion_one,
-      memRegion_split _ 7 _ (by decide)]
-    simp only [Nat.reduceSub, BitVec.add_assoc, BitVec.reduceAdd]
-  rw [hsplit5ba]
-  refine sepWPp_mono_pre (P' :=
-      ∃∗ b0 : BitVec 8,
-        ((s.sp + 0x1618#64) ↦₈ b0) ∗
-        memRegion (s.sp + 0x1619#64) 7 ∗
-        memRegion (s.sp + 0x1600#64) 24 ∗
-        storesAt A x.stores StoresGhost.opened ∗
-        protocolAddressAt A x.peer x.peerA ∗ protocolAddressAt A x.me x.meA ∗
-        cliBundleAt x.bundleA x.bundle x.spkSigPtr x.kpkSigPtr x.kpkPtr ∗
-        coinsCursorAt img x.coinsP x.coins 0 ∗
-        CryptoVerification.LibsignalSpqrV1.TokenInit img ∗
-        (s0.sp ↦₃₂ 0#32) ∗ memRegion x.ret 48 ∗
-        logOff img ∗ A.pool ∗ initSaved s0 ∗
-        memRegion s.sp 0xd0 ∗ initArgsAt img s.sp x s0 ∗
-        memRegion (s.sp + 0x128#64) 0x490 ∗
-        ((s.sp + 0x5b8#64) ↦₈ 0#8) ∗ ((s.sp + 0x5b9#64) ↦₈ 0#8) ∗
-        memRegion (s.sp + 0x5ba#64) (0x1600 - 0x5ba) ∗
-        memRegion (s.sp + 0x1620#64) (initLocalsSize - 0x1620) ∗
-        stackAt s.sp (stk - cliInitiateFrame))
-    (by
-      simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-      apply Entails.sepExists_elim; intro b0
-      exact Entails.sepExists_right b0 (by sep_frame)) ?_
-  refine sepWPp_exists_elim fun b0 => ?_
-  unfold initArgsAt
-  have hent : initEntryExt img ext =
-      (libsignalSessionCode.rebase img.base
-        (Rust.withPanics (cliExternsWith ext))).fnAddr cliInitiateName := rfl
-  dsimp only [initPcExt, initEntryExt, initProgExt, tripleRatchetProgAtExt] at hpc ⊢
-  try simp only [BitVec.ofNat_eq_ofNat] at hpc
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics (cliExternsWith ext))).fnAddr cliInitiateName = fnBase
-  examples_hide_fetches
-  refine sepWPp_step_to
-    (fnBase + bv% (ls_rel% "libsignal_cli_handshake::initiate"
-      "<alloc::string::String as core::clone::Clone>::clone"))
-    hctrl.inv ?_
-  wp_steps
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  intro sClone hsClone hpcC hrunC hinvC
-  have hspC : sClone.sp = s.sp := by rw [← hsClone]; simp [wp_norm, arm64_norm]
-  have hx0C : sClone.readReg64 .x0 = x.peerA := by rw [← hsClone]; simp [wp_norm, arm64_norm]
-  have hx8C : sClone.readReg64 .x8 = s.sp + 0x1600#64 := by
-    rw [← hsClone]; simp [wp_norm, arm64_norm, hsp]; try bv_omega
-  have hlrC : sClone.readReg64 .lr = initPcExt img ext 0x0258 := by
-    rw [← hsClone]; dsimp [initPcExt]; rw [hent]
-    simp [wp_norm, arm64_norm]; try bv_omega
-  have hx20C : sClone.readReg64 (.gpr 20#5) = x.peerA := by
-    rw [← hsClone]; simp [wp_norm, arm64_norm]
-  have hx21C : sClone.readReg64 (.gpr 21#5) = s.sp + 0xfe0#64 := by
-    rw [← hsClone]; simp [wp_norm, arm64_norm, hx21]
-  have hfpC : sClone.readReg64 .fp = s.readReg64 .fp := by
-    rw [← hsClone]; simp [wp_norm, arm64_norm]
-  have hx19C : sClone.readReg64 (.gpr 19#5) = s.readReg64 (.gpr 19#5) := by
-    rw [← hsClone]; simp [wp_norm, arm64_norm]
-  have hvregsC : calleeSavedVRegs sClone = calleeSavedVRegs s0 := by
-    rw [← hsClone]; simp [calleeSavedVRegs, wp_norm, arm64_norm, hvregs]
-  have htrC : sClone.trace = s0.trace := by rw [← hsClone]; simp [wp_norm, arm64_norm, htr]
-  have hfsC : sClone.fs.files = s0.fs.files := by rw [← hsClone]; simp [wp_norm, arm64_norm, hfs0]
-  have halC : sClone.spAligned = true := by simpa only [State.spAligned, hspC] using hal
-  clear hsClone
-  have hclone := init_stringClone_ok_at_ext (ext := ext) hh hstk hstk64
-  refine sepWPp_mono_pre (P' :=
-      ((stringCloneAtStkSpec A (stk - cliInitiateFrame)).pre
-        (x.peerA, s.sp + 0x1600#64, x.peer.name) sClone) ∗
-      (((s.sp + 0x1618#64) ↦₈ b0) ∗ memRegion (s.sp + 0x1619#64) 7 ∗
-        (((x.peerA + asm64% addrDeviceOff) ↦₈ x.peer.device) ∗
-          memRegion (x.peerA + asm64% (addrDeviceOff + 1))
-            (asm% (protocolAddressSize - (addrDeviceOff + 1)))) ∗
-        storesAt A x.stores StoresGhost.opened ∗
-        protocolAddressAt A x.me x.meA ∗
-        cliBundleAt x.bundleA x.bundle x.spkSigPtr x.kpkSigPtr x.kpkPtr ∗
-        coinsCursorAt img x.coinsP x.coins 0 ∗
-        CryptoVerification.LibsignalSpqrV1.TokenInit img ∗
-        (s0.sp ↦₃₂ 0#32) ∗ memRegion x.ret 48 ∗
-        logOff img ∗ initSaved s0 ∗
-        memRegion s.sp 0xd0 ∗ initArgsAt img s.sp x s0 ∗
-        memRegion (s.sp + 0x128#64) 0x490 ∗
-        ((s.sp + 0x5b8#64) ↦₈ 0#8) ∗ ((s.sp + 0x5b9#64) ↦₈ 0#8) ∗
-        memRegion (s.sp + 0x5ba#64) (0x1600 - 0x5ba) ∗
-        memRegion (s.sp + 0x1620#64) (initLocalsSize - 0x1620))) ?_ ?_
-  · unfold stringCloneAtStkSpec protocolAddressAt initArgsAt
-    dsimp only
-    rw [hspC]
-    repeat rw [sepConj_assoc]
-    exact pure_sepConj_intro ⟨hx0C, hx8C⟩ (by sep_frame)
-  rw [← hent] at hpcC
-  refine initCallInImage_ext hh hpanic hclone hpcC hrunC halC hinvC htrC hfsC hlrC
-    (Entails.refl _) (fun _ => Entails.refl _) ?_
-  intro sm hpcM hrunM hspM hcsM hinvM hfsM
-  unfold stringCloneAtStkSpec; dsimp only
-  rw [sepConj_assoc]
-  refine sepWPp_pure_elim fun htrM => ?_
-  have htrM' : sm.trace = s0.trace := htrM.trans htrC
-  have hfsM' : sm.fs.files = s0.fs.files := hfsM htrM'
-  have hspM' : sm.sp = s.sp := hspM.trans hspC
-  have hx20M : sm.readReg64 (.gpr 20#5) = x.peerA := (cs_x20 hcsM).trans hx20C
-  have hx21M : sm.readReg64 (.gpr 21#5) = s.sp + 0xfe0#64 := (cs_x21 hcsM).trans hx21C
-  refine sepWPp_mono_pre
-    (sepConj_mono
-      (sepConj_mono_right (sepConj_mono_left (vecU8_unpack_words A (s.sp + 0x1600#64) x.peer.val.name)))
-      (Entails.refl _)) ?_
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  refine sepWPp_exists_elim fun cap => ?_
-  refine sepWPp_exists_elim fun ptr => ?_
-  have haddr1618 : (s.sp + 0xfe0#64) + 0x638#64 = s.sp + 0x1618#64 := by bv_omega
-  dsimp only [initPcExt] at hpcM
-  rw [hent] at hpcM
-  dsimp only [initProgExt, tripleRatchetProgAtExt]
-  refine sepWPp_step_to (fnBase + 0x026c#64) hinvM ?_
-  wp_steps
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  intro sMid hsMid hpcMid hrunMid hinvMid
-  have hspMid : sMid.sp = s.sp := by rw [← hsMid]; simp [wp_norm, arm64_norm, hspM']
-  have hx27Mid : sMid.readReg64 (.gpr 27#5) = cap := by rw [← hsMid]; simp [wp_norm, arm64_norm]
-  have hx25Mid : sMid.readReg64 (.gpr 25#5) = ptr := by rw [← hsMid]; simp [wp_norm, arm64_norm]
-  have hx28Mid : sMid.readReg64 (.gpr 28#5) = BitVec.ofNat 64 x.peer.val.name.length := by
-    rw [← hsMid]; simp [wp_norm, arm64_norm]
-  have hfpMid : sMid.readReg64 .fp = s0.sp - 0x60#64 := by
-    rw [← hsMid]; simp [wp_norm, arm64_norm, cs_fp hcsM, hfpC, hfp]
-  have hx19Mid : sMid.readReg64 (.gpr 19#5) = s0.readReg64 .x8 := by
-    rw [← hsMid]; simp [wp_norm, arm64_norm, cs_x19 hcsM, hx19C, hx19]
-  have hvregsMid : calleeSavedVRegs sMid = calleeSavedVRegs s0 := by
-    rw [← hsMid]; simp [calleeSavedVRegs, wp_norm, arm64_norm, cs_vregs hcsM, hvregsC]
-  have htrMid : sMid.trace = s0.trace := by rw [← hsMid]; simp [wp_norm, arm64_norm, htrM']
-  have hfsMid : sMid.fs.files = s0.fs.files := by
-    rw [← hsMid]; simp [wp_norm, arm64_norm, hfsM']
-  clear hsMid
-  have hdev8 : BitVec.extractLsb' 0 8 (BitVec.zeroExtend 64 x.peer.device) = x.peer.device := by
-    bv_bits
-  have htrunc8 : BitVec.truncate 8 (BitVec.zeroExtend 64 x.peer.device) = x.peer.device := by
-    bv_bits
-  try rw [haddr1618]
-  try rw [hdev8]
-  try rw [htrunc8]
-  refine sepWPp_mono_pre (P' :=
-      ((∃∗ w4 : BitVec 64,
-          ⌜BitVec.extractLsb' 0 8 w4 = x.peer.device⌝ ∗
-          ((s.sp + 0x1618#64) ↦₆₄ w4)) ∗
-        ((s.sp + 0x1600#64) ↦₆₄ cap) ∗
-        ((s.sp + 0x1608#64) ↦₆₄ ptr) ∗
-        ((s.sp + 0x1610#64) ↦₆₄ BitVec.ofNat 64 x.peer.val.name.length) ∗
-        stage1VecBuf A cap ptr x.peer.val.name ∗
-        protocolAddressAt A x.peer x.peerA ∗
-        storesAt A x.stores StoresGhost.opened ∗
-        protocolAddressAt A x.me x.meA ∗
-        cliBundleAt x.bundleA x.bundle x.spkSigPtr x.kpkSigPtr x.kpkPtr ∗
-        coinsCursorAt img x.coinsP x.coins 0 ∗
-        CryptoVerification.LibsignalSpqrV1.TokenInit img ∗
-        (s0.sp ↦₃₂ 0#32) ∗ memRegion x.ret 48 ∗
-        logOff img ∗ A.pool ∗ initSaved s0 ∗
-        memRegion s.sp 0xd0 ∗ initArgsAt img s.sp x s0 ∗
-        memRegion (s.sp + 0x128#64) 0x490 ∗
-        ((s.sp + 0x5b8#64) ↦₈ 0#8) ∗ ((s.sp + 0x5b9#64) ↦₈ 0#8) ∗
-        memRegion (s.sp + 0x5ba#64) (0x1600 - 0x5ba) ∗
-        memRegion (s.sp + 0x1620#64) (initLocalsSize - 0x1620) ∗
-        stackAt s.sp (stk - cliInitiateFrame))) ?_ ?_
-  · rw [hspC]
-    unfold protocolAddressAt
-    have hpack4 : ((s.sp + 0x1618#64) ↦₈ x.peer.device) ∗ memRegion (s.sp + 0x1619#64) 7 ⊢
-        ∃∗ w4 : BitVec 64, ⌜BitVec.extractLsb' 0 8 w4 = x.peer.device⌝ ∗ ((s.sp + 0x1618#64) ↦₆₄ w4) := by
-      simpa only [BitVec.add_assoc, BitVec.reduceAdd] using
-        byte_and_pad7_entails_word64 (s.sp + 0x1618#64) x.peer.device
-    refine Entails.trans ?_ (sepConj_mono_left hpack4)
-    sep_frame
-  simp only [sepExists_sepConj_left]
-  refine sepWPp_exists_elim fun w4 => ?_
-  rw [sepConj_assoc]
-  refine sepWPp_pure_elim fun hw4 => ?_
-  refine sepWPp_step_to (fnBase + 0x0350#64) hinvMid ?_
-  wp_steps
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  intro sErr hsErr hpcErr hrunErr hinvErr
-  have hspErr : sErr.sp = s0.sp - BitVec.ofNat 64 cliInitiateFrame := by
-    rw [← hsErr]; simp [wp_norm, arm64_norm, hspMid, hsp]
-  have hfpErr : sErr.readReg64 .fp = s0.sp - 0x60#64 := by
-    rw [← hsErr]; simp [wp_norm, arm64_norm, hfpMid]
-  have hx19Err : sErr.readReg64 (.gpr 19#5) = s0.readReg64 .x8 := by
-    rw [← hsErr]; simp [wp_norm, arm64_norm, hx19Mid]
-  have hvregsErr : calleeSavedVRegs sErr = calleeSavedVRegs s0 := by
-    rw [← hsErr]; simp [calleeSavedVRegs, wp_norm, arm64_norm, hvregsMid]
-  have hfsErr : sErr.fs.files = s0.fs.files := by
-    rw [← hsErr]; simp [wp_norm, arm64_norm, hfsMid]
-  have htrErr : sErr.trace = s0.trace := by
-    rw [← hsErr]; simp [wp_norm, arm64_norm, htrMid]
-  have hx26Err : sErr.readReg64 (.gpr 26#5) = speWord speUntrustedIdentity := by
-    rw [← hsErr]; simp [wp_norm, arm64_norm]; rfl
-  have hx27Err : sErr.readReg64 (.gpr 27#5) = cap := by
-    rw [← hsErr]; simp [wp_norm, arm64_norm, hx27Mid]
-  have hx25Err : sErr.readReg64 (.gpr 25#5) = ptr := by
-    rw [← hsErr]; simp [wp_norm, arm64_norm, hx25Mid]
-  have hx28Err : sErr.readReg64 (.gpr 28#5) = BitVec.ofNat 64 x.peer.val.name.length := by
-    rw [← hsErr]; simp [wp_norm, arm64_norm, hx28Mid]
-  have hx24Err : sErr.readReg64 (.gpr 24#5) = w4 := by
-    rw [← hsErr]; simp [wp_norm, arm64_norm]
-  clear hsErr
-  rw [← hent] at hpcErr
-  have hctrlErr : InInitiateExt img ext s0 sErr 0x0350 :=
-    ⟨hpcErr, hrunErr, hspErr, hfpErr, hx19Err, hfsErr, hinvErr, hvregsErr, hal0⟩
-  have hans : S.initiate x.F x.peer.val x.me.val x.bundle x.coins = some none := by
-    rw [hS]
-    exact initDef_eq_some_none_of_trust_false X P x.F x.peer.val x.me.val
-      x.bundle x.coins htrustF
-  refine sepWPp_mono_pre ?_
-    (stage1_epilogue_err_ext_ok hstk hstk64 hctrlErr htrErr hx8 hans hpost
-      (H_err := stage1VecBuf A cap ptr x.peer.val.name)
-      (H_extra := coinsCursorAt img x.coinsP x.coins 0 ∗
-        CryptoVerification.LibsignalSpqrV1.TokenInit img)
-      (by
-        rw [hx27Err, hx25Err]
-        exact words_to_untrusted_initResAt A x.ret x.peer.val
-          (sErr.readReg64 (.gpr 26#5)) cap ptr
-          (sErr.readReg64 (.gpr 28#5))
-          (sErr.readReg64 (.gpr 24#5)) (sErr.readReg64 (.gpr 21#5))
-          hx26Err hx28Err (hx24Err ▸ hw4)))
-  rw [← hsp]
-  have hlocMerge :
-      memRegion s.sp 0xd0 ∗ initArgsAt img s.sp x s0 ∗
-        memRegion (s.sp + 0x128#64) 0x490 ∗
-        ((s.sp + 0x5b8#64) ↦₈ 0#8) ∗ ((s.sp + 0x5b9#64) ↦₈ 0#8) ∗
-        (memRegion (s.sp + 0x5ba#64) (0x1600 - 0x5ba) ∗
-          ((s.sp + 0x1600#64) ↦₆₄ cap) ∗
-          ((s.sp + 0x1608#64) ↦₆₄ ptr) ∗
-          ((s.sp + 0x1610#64) ↦₆₄ BitVec.ofNat 64 x.peer.val.name.length) ∗
-          ((s.sp + 0x1618#64) ↦₆₄ w4) ∗
-          memRegion (s.sp + 0x1620#64) (initLocalsSize - 0x1620)) ⊢
-        memRegion s.sp initLocalsSize := by
-    refine Entails.trans (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-      (sepConj_mono_right (sepConj_mono_right ?_)))))
-      (stage2Locals_entails_memRegion img s.sp x s0)
-    have m64 := pointsTo64_entails_memRegion
-    refine Entails.trans (sepConj_mono (Entails.refl _)
-      (sepConj_mono (m64 _ _) (sepConj_mono (m64 _ _)
-      (sepConj_mono (m64 _ _) (sepConj_mono (m64 _ _) (Entails.refl _)))))) ?_
-    rw [← sepConj_assoc, memRegion_merge (s.sp + 0x5ba#64) (s.sp + 0x1600#64) (0x1600 - 0x5ba) 8 (0x1608 - 0x5ba) (by bv_omega) (by decide) (by decide)]
-    rw [← sepConj_assoc, memRegion_merge (s.sp + 0x5ba#64) (s.sp + 0x1608#64) (0x1608 - 0x5ba) 8 (0x1610 - 0x5ba) (by bv_omega) (by decide) (by decide)]
-    rw [← sepConj_assoc, memRegion_merge (s.sp + 0x5ba#64) (s.sp + 0x1610#64) (0x1610 - 0x5ba) 8 (0x1618 - 0x5ba) (by bv_omega) (by decide) (by decide)]
-    rw [← sepConj_assoc, memRegion_merge (s.sp + 0x5ba#64) (s.sp + 0x1618#64) (0x1618 - 0x5ba) 8 (0x1620 - 0x5ba) (by bv_omega) (by decide) (by decide)]
-    rw [memRegion_merge (s.sp + 0x5ba#64) (s.sp + 0x1620#64) (0x1620 - 0x5ba) (initLocalsSize - 0x1620)
-      (initLocalsSize - 0x5ba) (by bv_omega) (by decide) (by decide)]
-    exact Entails.refl _
-  refine Entails.trans ?_ (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left hlocMerge))))))))))
-  sep_frame
-
-theorem stage1_untrusted_exit_ok {img : Obj.Image} {A : RustAlloc}
-    {W : CliHooks} {X : UnreachedPqxdhPrimitives} {B : RunBudgets} {S : RunSem}
-    {x : InitGhost} {stk : Nat} {s0 s : State}
-    {Q Qp : State → SepProp → Prop}
-    (hh : RunHooks img A (cliExterns W))
-    (hS : S.initiate = initDef X ⟨W.C, W.Q⟩)
-    (hstk : cliInitiateNeed B ≤ stk)
-    (hstk64 : stk ≤ 2 ^ 63)
-    (hx8 : s0.readReg64 .x8 = x.ret)
-    (hctrl : InInitiate img W s0 s 0x0244)
-    (hx21 : s.readReg64 (.gpr 21#5) = s.sp + 0xfe0#64)
-    (htr : s.trace = s0.trace)
-    (htrustF : StoresGhost.opened.identity.trusted cliIo.rd x.F x.peer.val x.bundle.idKey =
-      .ok false)
-    (hpost : ∀ sf Pf, InitExitPost A img S x stk s0 sf Pf → Q sf Pf)
-    (hpanic : ∀ sf Pf, InitPanicPost A img S x stk s0 sf Pf → Qp sf Pf) :
-    SepWPp (initProg img W) (s0.readReg64 .lr) s
-      (stage2Mem A img x stk s0) Q Qp (initOom s0) :=
-  stage1_untrusted_exit_ext_ok (P := ⟨W.C, W.Q⟩) (ext := cliHookExterns W) hh.toExt hS hstk hstk64
-    hx8 (inInitiate_toExt hctrl) hx21 htr htrustF hpost hpanic
 
 end CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage1Lemmas

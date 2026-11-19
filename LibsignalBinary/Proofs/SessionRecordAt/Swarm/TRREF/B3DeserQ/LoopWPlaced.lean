@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Defs
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Adapters
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Adapters -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -22,6 +22,7 @@ import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Fields
 import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.ReprMove
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable `[LibsignalPlacement]` `SessionRecord::deserialize` Loop (Block `46`)
@@ -32,7 +33,7 @@ Verifies relocatable `.base` framing (`mergeFieldQPlacedOkW_base`), loop entry
 `deserializeBodyQPlacedW_ok`, `recordDeserializeOpen_placed_of_exactQ`) on `lsProg_46 H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,7 +46,7 @@ open CryptoVerification.RustHeap
 open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalTripleRatchetRepr
 open CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.E2E.Record.DeserializeSeed CryptoVerification.E2E.Record.DeserializeGeneral
-open CryptoVerification.E2E.Record.Serialization (OkAt CanonRecord CanonSession allocPanic)
+open CryptoVerification.E2E.Record.Serialization (CanonRecord CanonSession allocPanic)
 open CryptoVerification.E2E.RecordX (DeserializeScopeP SessionScopeP)
 open CryptoVerification.E2E.Bin (BinCanonSession recordDeserializeStack)
 open CryptoVerification.E2E.Record.L1GX

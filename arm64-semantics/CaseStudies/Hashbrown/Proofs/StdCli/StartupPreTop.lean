@@ -95,12 +95,13 @@ local macro "hb_top_wp_simp" : tactic => `(tactic|
 
 private theorem hb_top_nv_of_eq {a b : State}
     (h1 : b.fs = a.fs) (h2 : b.trace = a.trace) (h3 : b.tpidrEl0 = a.tpidrEl0)
-    (h4 : b.sigActions = a.sigActions) (h5 : b.sigAltStack = a.sigAltStack) :
+    (h4 : b.sigActions = a.sigActions) (h5 : b.sigAltStack = a.sigAltStack)
+    (h6 : b.sigPending = a.sigPending) :
     HbNonVmFields a b :=
-  ⟨h1, h2, h3, h4, h5⟩
+  ⟨h1, h2, h3, h4, h5, h6⟩
 
 local macro "hb_top_nv_rfl " s:term : tactic => `(tactic|
-  refine hb_top_nv_of_eq (a := $s) ?_ ?_ ?_ ?_ ?_ <;>
+  refine hb_top_nv_of_eq (a := $s) ?_ ?_ ?_ ?_ ?_ ?_ <;>
     simp [wp_norm, arm64_norm, State.stepExclOracle, State.stepExclLoop])
 
 private theorem hb_top_evalSvc_rt_sigaction {P : Program} {s : State}
@@ -380,7 +381,7 @@ private theorem hbLoad_to_cMain {P : Program} {C : HbCliLayout} {S : HbStartupLa
       s_cm.readReg64 .x30 = C.std.libcStartMainStage2Addr + 0x38#64 ∧
       s_cm.readReg64 .x0 = BitVec.ofNat 64 inputs.argv.length ∧
       s_cm.readReg64 .x1 = sl.argvTableAddr ∧
-      s_cm.tpidrEl0 = C.std.builtinTlsAddr + 0xc8#64 ∧ s_cm.sigAltStack = {} ∧
+      s_cm.tpidrEl0 = C.std.builtinTlsAddr + 0xc8#64 ∧ s_cm.sigAltStack = {} ∧ s_cm.sigPending = 0#64 ∧
       StdTlsFieldsPreserved s0 s_cm ∧
       (s_cm.mem ⊨
         stackAt sl.sp0 48 ∗ memRegion (sl.sp0 - 524288#64) 523408 ∗ stackAt (sl.sp0 - 0x30#64) 0x340 ∗
@@ -424,11 +425,11 @@ private theorem hbLoad_to_cMain {P : Program} {C : HbCliLayout} {S : HbStartupLa
     sep_entail
   obtain ⟨s_cm, hsteps, hres | ⟨_, hfalse⟩⟩ :=
     SepWP.to_reaches_pc (hbStage12_to_cMain (F := F_st12) hS hm hvalid hinfo cPre) hpre_s0 hcode0
-  · obtain ⟨hpc, hrun, P_cm, hm_cm, ⟨hsp, hsp_al, hlr, hx0, hx1, _, htp, hsas_cm, htls⟩, hent_cm⟩ := hres
+  · obtain ⟨hpc, hrun, P_cm, hm_cm, ⟨hsp, hsp_al, hlr, hx0, hx1, _, htp, hsas_cm, hspnd_cm, htls⟩, hent_cm⟩ := hres
     rw [sepConj_emp] at hm_cm
     have hm_cm' := Satisfies.mono hent_cm hm_cm
     refine ⟨s_cm, hinfo, hcode0, hsteps, hpc, hrun, hsp, hsp_al, hlr, hx0, hx1, htp,
-      hsas_cm.trans hinfo.s0_sigAltStack, htls, ?_⟩
+      hsas_cm.trans hinfo.s0_sigAltStack, hspnd_cm.trans hinfo.s0_sigPending, htls, ?_⟩
     refine Satisfies.mono ?_ hm_cm'
     dsimp only [Stage1GlobalsPost, HbStage2GlobalsPost, F_st12]
     refine Entails.trans (Q := (memRegion (sl.sp0 - 524288#64) 523744 ∗ memRegion (sl.sp0 - 0x220#64) 0x1f0) ∗
@@ -572,6 +573,7 @@ private theorem hbStep_cMain_to_userMain {P : Program} {C : HbCliLayout} {S : Hb
     (htp : s_cm.tpidrEl0 = C.std.builtinTlsAddr + 0xc8#64)
     (htls : StdTlsFieldsPreserved s0 s_cm)
     (hsas_cm : s_cm.sigAltStack = {})
+    (hspnd_cm : s_cm.sigPending = 0#64)
     (hsat_cm : s_cm.mem ⊨
       (stackAt (StackLayout.of img inputs).sp0 48 ∗
         stackAt ((StackLayout.of img inputs).sp0 - 0x30#64) 0x340 ∗
@@ -768,7 +770,7 @@ private theorem hbStep_cMain_to_userMain {P : Program} {C : HbCliLayout} {S : Hb
     · intro s_mh G hpc_mh hrun_mh hsp_mh hal_mh hlr_mh hx0_mh hnv_mh hvm_mh hk
       have hsp_mh_lo : 0xd0 ≤ s_mh.sp.toNat := by
         rw [hsp_mh, hsp_sub150_nat]; exact Nat.le_trans (by decide) hsp_sub150_lo
-      have hsas_mh : s_mh.sigAltStack = {} := hnv_mh.2.2.2.2.trans hsas_cm
+      have hsas_mh : s_mh.sigAltStack = {} := hnv_mh.2.2.2.2.1.trans hsas_cm
       have htp_mh : s_mh.tpidrEl0 = tp := hnv_mh.2.2.1.trans htp
       have hphys_mh : hbExpectedAltRawSz sl.auxvEntries + 4096 ≤ s_mh.physMemAvail := by
         rw [hvm_mh.physMemAvail_eq, htls.2.2.2.2.2.1, hinfo.s0_physMemAvail]
@@ -814,14 +816,14 @@ private theorem hbStep_cMain_to_userMain {P : Program} {C : HbCliLayout} {S : Hb
             dsimp only [sl]
             rw [hperm1 a]
             simp only [Memory.perm_setPermNonFrozen, Memory.perm_mapZero, hvm_mh.perm_eq]))
-    · intro s_post s0' G hsp_post hpc0 hrun0 hsp0 hal0 hlr0 hx0_0 hx1_0 hx2_0 _ hk
+    · intro s_post s0' G hsp_post hspnd_post hpc0 hrun0 hsp0 hal0 hlr0 hx0_0 hx1_0 hx2_0 hnv0 hk
       refine step_hb_sigaction_wrap (hb_hasInstrs_withSvc hsig_fast)
         (actOpt := some (11#32, hbCustomSigAction C S))
         (Pin := ((s_post.sp ↦₆₄ S.signalHandlerAddr) ∗ ((s_post.sp + 8#64) ↦₆₄ 0#64) ∗ ((s_post.sp + 0x88#64) ↦₆₄ 0x08000004#64)) ∗ Pin11)
         (Pout := fun _ => ((s_post.sp ↦₆₄ S.signalHandlerAddr) ∗ ((s_post.sp + 8#64) ↦₆₄ 0#64) ∗ ((s_post.sp + 0x88#64) ↦₆₄ 0x08000004#64)) ∗ Pcustom11)
         (F := G) (fun _ hm => by rw [hsp0]; rw [sepConj_assoc] at hm; exact hm)
         hpc0 hrun0 hal0 hlr0 hx0_0 hx1_0 hx2_0 (Or.inr (Or.inl rfl))
-        (fun si Gi hpci hruni hspi hali hlri hx0i hx1i hx2i _ hki => ?_)
+        (fun si Gi hpci hruni hspi hali hlri hx0i hx1i hx2i hnvi hki => ?_)
         (fun sf _ hpcf hrunf hspf half hcsf hx0f hnvf => by rw [hsp0]; exact hk sf hpcf hrunf (hspf.trans hsp0) half hcsf hx0f hnvf)
       have hspi_lo : 0x90 ≤ si.sp.toNat := by
         rw [hspi, BitVec.toNat_sub_of_le (BitVec.le_def.mpr (by rw [hsp0, hsp_post, hsp_sub150_nat]; exact Nat.le_trans (by decide) hsp_sub150_lo)),
@@ -834,7 +836,7 @@ private theorem hbStep_cMain_to_userMain {P : Program} {C : HbCliLayout} {S : Hb
         (hb_hasInstrs_withSvc hlsa_mid) (hb_hasInstrs_withSvc hlsa_tail)
         (hasCode_withSvc hret) (hb_hasInstrs_withSvc cPre.memOps.memcpy)
         hal_hs hsig_gt1 hpci hruni hali hspi_lo hlri hx0i hx1i hx2i
-        (Or.inl rfl) hact_ne (Or.inl rfl)
+        (Or.inl rfl) hact_ne (Or.inl rfl) (fun _ => hnvi.2.2.2.2.2.trans (hnv0.2.2.2.2.2.trans (hspnd_post.trans hspnd_cm)))
         fun s1 hpc1 hrun1 hsp1 hal1 hcs1 hx0_1 hnv1 => hki s1 0#64 hpc1 hrun1 hsp1 hal1 hcs1 hx0_1 hnv1
     · intro s_post s0' G hsp_post hsig7_post hpc0 hrun0 hsp0 hal0 hlr0 hx0_0 hx1_0 hx2_0 hnv0 hk
       refine step_hb_sigaction_wrap (hb_hasInstrs_withSvc hsig_fast) (actOpt := none)
@@ -876,7 +878,7 @@ private theorem hbStep_cMain_to_userMain {P : Program} {C : HbCliLayout} {S : Hb
         (hb_hasInstrs_withSvc hlsa_mid) (hb_hasInstrs_withSvc hlsa_tail)
         (hasCode_withSvc hret) (hb_hasInstrs_withSvc cPre.memOps.memcpy)
         hal_hs hsig_gt1 hpci hruni hali hspi_lo hlri hx0i hx1i hx2i
-        (Or.inr rfl) hact_ne (Or.inr rfl)
+        (Or.inr rfl) hact_ne (Or.inr rfl) (fun h => by cases h)
         fun s2 hpc2 hrun2 hsp2 hal2 hcs2 hx0_2 hnv2 => hki s2 0#64 hpc2 hrun2 hsp2 hal2 hcs2 hx0_2 hnv2
     · intro sf altBase hb4k hbAl hbFit hbMap hpc_f hrun_f hsp_f hal_f _ hlr_f hfs_f htr_f htp_f hphys_f hbrk_f hbrkS_f hperm_f
       dsimp only [Pmh_out, HbAltstackMappedPre]
@@ -1243,7 +1245,7 @@ theorem hbStartup_to_userMain {P : Program} {C : HbCliLayout} {S : HbStartupLayo
   obtain ⟨s0, hload⟩ := loadState_ok_of_valid_low_brk img hvalid hwf
     (Nat.le_trans (by omega : img.brkStart.toNat ≤ 5 * 2 ^ 20) (by decide : 5 * 2 ^ 20 ≤ STACK_BASE_MIN))
   obtain ⟨s_cm, hinfo, hcode0, hsteps_cm, hpc_cm, hrun_cm, hsp_cm, hal_cm, hlr_cm,
-    hx0_cm, hx1_cm, htp_cm, hsas_cm, htls_cm, hm_cm0⟩ :=
+    hx0_cm, hx1_cm, htp_cm, hsas_cm, hspnd_cm, htls_cm, hm_cm0⟩ :=
     hbLoad_to_cMain cPre hS hm hvalid hload hrx
   have hm_cm1 : s_cm.mem ⊨ (∃∗ R_st12 : SepProp, R_st12) ∗
       (stackAt sl.sp0 48 ∗ memRegion (sl.sp0 - 524288#64) 523408 ∗ stackAt (sl.sp0 - 0x30#64) 0x340 ∗
@@ -1269,7 +1271,7 @@ theorem hbStartup_to_userMain {P : Program} {C : HbCliLayout} {S : HbStartupLayo
   obtain ⟨s_main, altBase, e0, hsteps_m, hb4k, hbAl, hbFit, hbMap, hpc_m, hrun_m,
     hsp_m, hal_m, hlr_m, htp_m, hfs_m, htr_m, hphys_m, hbrk_m, hbrkS_m, hperm_m, hm_m0⟩ :=
     hbStep_cMain_to_userMain cPre hv hS hm hvalid hbudget hinfo (hsteps_cm.codeLoaded hcode0)
-      hpc_cm hrun_cm hsp_cm hal_cm hlr_cm hx0_cm hx1_cm htp_cm htls_cm hsas_cm hsat_cm
+      hpc_cm hrun_cm hsp_cm hal_cm hlr_cm hx0_cm hx1_cm htp_cm htls_cm hsas_cm hspnd_cm hsat_cm
   have hsteps_all : Steps P s0 s_main := hsteps_cm.trans hsteps_m
   have hsp0_lo : 262352 ≤ sl.sp0.toNat :=
     Nat.le_trans (by decide : 262352 ≤ STACK_BASE_MIN + 262144)

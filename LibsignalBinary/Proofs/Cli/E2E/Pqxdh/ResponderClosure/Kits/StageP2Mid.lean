@@ -20,7 +20,7 @@ Region-splitting, stack-bound, `FsAt`, and `.Quiet` (`stageP2EnvOk`, `stageP2Qui
 across Stage P2 Substages P2.1–P2.4.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -77,18 +77,6 @@ theorem p2_memRegion_a90_288_split_65_223 (sp : BitVec 64) :
   ProofLib.memRegion_split' (b := sp + 0xa90#64) (n := 65) (k := 223)
     (b' := sp + 0xad1#64) rfl (by bv_omega) (by decide)
 
-theorem p2_memRegion_3e0_split_9_359 (sp : BitVec 64) :
-    memRegion (sp + 0x3e0#64) 368 =
-      memRegion (sp + 0x3e0#64) 9 ∗ memRegion (sp + 0x3e9#64) 359 :=
-  ProofLib.memRegion_split' (b := sp + 0x3e0#64) (n := 9) (k := 359)
-    (b' := sp + 0x3e9#64) rfl (by bv_omega) (by decide)
-
-theorem p2_memRegion_3e0_split_64_304 (sp : BitVec 64) :
-    memRegion (sp + 0x3e0#64) 368 =
-      memRegion (sp + 0x3e0#64) 64 ∗ memRegion (sp + 0x420#64) 304 :=
-  ProofLib.memRegion_split' (b := sp + 0x3e0#64) (n := 64) (k := 304)
-    (b' := sp + 0x420#64) rfl (by bv_omega) (by decide)
-
 theorem p2_cells8_930_split_7_57 (sp : BitVec 64) :
     cells (sp + 0x930#64) 8 =
       memRegion (sp + 0x930#64) 7 ∗ memRegion (sp + 0x937#64) 57 := by
@@ -108,13 +96,6 @@ theorem p2_memRegion_3e0_split_344_24 (sp : BitVec 64) :
       memRegion (sp + 0x3e0#64) 344 ∗ memRegion (sp + 0x538#64) 24 :=
   ProofLib.memRegion_split' (b := sp + 0x3e0#64) (n := 344) (k := 24)
     (b' := sp + 0x538#64) rfl (by bv_omega) (by decide)
-
-theorem p2_memRegion_a90_288_split_cells8_224 (sp : BitVec 64) :
-    memRegion (sp + 0xa90#64) 288 =
-      cells (sp + 0xa90#64) 8 ∗ memRegion (sp + 0xad0#64) 224 := by
-  rw [ProofLib.memRegion_split' (b := sp + 0xa90#64) (n := 64) (k := 224)
-        (b' := sp + 0xad0#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_cells (sp + 0xa90#64) 8 (by decide)]
 
 theorem p2_cells2_4f8_eq (coroPtr : BitVec 64) :
     cells (coroPtr + 0x4f8#64) 2 =
@@ -142,13 +123,6 @@ theorem p2_processPrekeyActive10At_eq
       ((coroPtr + 0x478#64) ↦₆₄ localAddrPtr) ∗ ((coroPtr + 0x480#64) ↦₆₄ (coroPtr + 0xe0#64)) := by
   unfold processPrekeyActive10At
   ac_rfl
-
-theorem p2_cells2_398_join_48 (coroPtr : BitVec 64) :
-    cells (coroPtr + 0x398#64) 2 ∗ memRegion (coroPtr + 0x3a8#64) 48 =
-      memRegion (coroPtr + 0x398#64) 64 := by
-  rw [← ProofLib.memRegion_cells (coroPtr + 0x398#64) 2 (by decide),
-      ProofLib.memRegion_split' (b := coroPtr + 0x398#64) (n := 16) (k := 48)
-        (b' := coroPtr + 0x3a8#64) rfl (by bv_omega) (by decide)]
 
 theorem p2_spkShim_le_stageP2 {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
     (spkKit : SignedPreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
@@ -262,7 +236,7 @@ theorem p2_memRegion64_to_bytes32_pair (base : BitVec 64) :
   exact Entails.pure_right ⟨hpk, hsk⟩ (Entails.refl _)
 
 /-- Combined file-system environment predicate for the 4 Stage P2 stores. -/
-def stageP2EnvOk {A : RustAlloc} {b : BitVec 64}
+@[expose] def stageP2EnvOk {A : RustAlloc} {b : BitVec 64}
     (spkKit : SignedPreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b) (ikit : IdentityStoreSpec A b) (F : FsFiles) : Prop :=
   spkKit.envOk F ∧ kpkKit.envOk F ∧ pkKit.envOk F ∧ ikit.envOk F
@@ -325,27 +299,8 @@ theorem p2_pointsToBytes_entails_memRegion (base : BitVec 64) (bs : List (BitVec
   rw [← hlen]
   exact ProofLib.pointsToBytes_entails_memRegion base bs
 
-theorem p2_memRegion9_fp80_unpack (fp : BitVec 64) :
-    memRegion (fp + 0xffffffffffffff80#64) 9 ⊢
-      ∃∗ u_fp80 : BitVec 64, ∃∗ b_fp78 : BitVec 8,
-        ((fp + 0xffffffffffffff80#64) ↦₆₄ u_fp80) ∗
-        ((fp + 0xffffffffffffff88#64) ↦₈ b_fp78) := by
-  rw [ProofLib.memRegion_split' (b := fp + 0xffffffffffffff80#64) (n := 8) (k := 1)
-        (b' := fp + 0xffffffffffffff88#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_eight, ProofLib.memRegion_one]
-  rw [sepExists_sepConj_left]
-  refine Entails.sepExists_elim fun u_fp80 => ?_
-  rw [sepExists_sepConj_right]
-  exact Entails.sepExists_right u_fp80 (Entails.refl _)
-
-theorem p2_memRegion_ac8_join_1_223 (sp : BitVec 64) :
-    memRegion (sp + 0xac8#64) 8 ∗ memRegion (sp + 0xad0#64) 1 ∗ memRegion (sp + 0xad1#64) 223 =
-      memRegion (sp + 0xac8#64) 8 ∗ memRegion (sp + 0xad0#64) 224 := by
-  rw [ProofLib.memRegion_split' (b := sp + 0xad0#64) (n := 1) (k := 223)
-        (b' := sp + 0xad1#64) rfl (by bv_omega) (by decide)]
-
 /-- Combined `.Quiet` predicate for the 4 Stage P2 stores (`NoFsEv` on store events). -/
-def stageP2Quiet {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
+@[expose] def stageP2Quiet {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
     (spkKit : SignedPreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b) (skit : IdentitySelfStoreSpec ikit) : Prop :=
   spkKit.Quiet ∧ kpkKit.Quiet ∧ pkKit.Quiet ∧ skit.Quiet

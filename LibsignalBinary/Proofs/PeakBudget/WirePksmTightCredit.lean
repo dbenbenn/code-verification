@@ -13,40 +13,43 @@ public import LibsignalBinary.Heap.Fine.ClientBounds
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBaseBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlacedBudgetAux
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedABudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedBBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlacedBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedABudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedBBudget
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
-public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
+public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
 public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakSpec
 public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
-public import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromCredit
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.WireSignalHelpers
-public import LibsignalBinary.Proofs.PeakBudget.WireTryFromHelpers
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBoxesBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBudget
+import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromCredit
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.WireSignalHelpers
+import LibsignalBinary.Proofs.PeakBudget.WireTryFromHelpers
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromDefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBudget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBoxesBudget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBudget
 public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhCorrectModel
 public import LibsignalBinary.Specifications.SignalSession.PqDir
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Canonical-Outer `PreKeySignalMessage::try_from` Tight Credit & `CliMainEnv` Integration
@@ -70,7 +73,7 @@ Contents:
 5. Outer `W4SlotR3bCanonEnv`, `CliRunCanonTightEnv`, and whole-`main` `CliMainEnv` corollaries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -204,7 +207,7 @@ open ProofLib
 
 /-- Lift canonical PQXDH `PreKeyMessageFields` (`PqxdhCorrectModel`) into `ResponderWire`'s
 `PreKeyTryFromArgs` (`PreKeyTryFromBase`) at slice pointer `ptr` and output pointer `sret`. -/
-def preKeyArgsOfFields (ptr sret : BitVec 64) (m : PreKeyMessageFields) : PreKeyTryFromArgs where
+@[expose] def preKeyArgsOfFields (ptr sret : BitVec 64) (m : PreKeyMessageFields) : PreKeyTryFromArgs where
   ptr := ptr
   sret := sret
   regId := m.regId
@@ -217,7 +220,7 @@ def preKeyArgsOfFields (ptr sret : BitVec 64) (m : PreKeyMessageFields) : PreKey
   inner := m.inner
 
 /-- Project `PreKeyTryFromArgs` back to the pointer-free `PreKeyMessageFields` model record. -/
-def preKeyFieldsOfArgs (x : PreKeyTryFromArgs) : PreKeyMessageFields where
+@[expose] def preKeyFieldsOfArgs (x : PreKeyTryFromArgs) : PreKeyMessageFields where
   regId := x.regId
   opkId := x.opkId
   spkId := x.spkId
@@ -325,21 +328,21 @@ private theorem phaseCreditSpec_seq_freeOnly_right {M : AllocCostModel}
 `SigTryFromBoundedEnv` and `TryFromEnvGen.loopOnly` (early loop exit + `FreeOnlyEvs`), so
 `SigTryFromConcreteEnv` embeds unconditionally for all `bs : List (BitVec 8)` while retaining
 `sigTryFromDelta*` bounds. -/
-def SigTryFromCanonInnerEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def SigTryFromCanonInnerEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   SigTryFromBoundedEnv ⟨0#64, bs, 0#64⟩ evs ∨
   SeqEnv (SigTryFromLoopBoundedEnv bs.length SigTryFromCaps.zero) FreeOnlyEvs evs
 
 /-- Core canonical-outer allocator event envelope for `<PreKeySignalMessage as TryFrom<&[u8]>>::try_from`:
 the outer wire slice `rest` is the canonical encoding `m.bytes` of some `m : PreKeyMessageFields`
 while `m.inner` stays completely adversarial (`SigTryFromCanonInnerEnv`, `1 × 94·N`). -/
-def PksmCanonCoreEnv (rest : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def PksmCanonCoreEnv (rest : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   ∃ m : PreKeyMessageFields,
     rest = m.bytes ∧
     PreKeyTryFromEnv SigTryFromCanonInnerEnv (preKeyArgsOfFields 0#64 0#64 m) evs
 
 /-- Canonical-outer CLI slice envelope for `PreKeySignalMessage::try_from` (`RecvArmEnv` tag `3#8`):
 either early/cleanup `FreeOnlyEvs` or `PksmCanonCoreEnv rest` (replacing `PksmTryFromSliceEnv`). -/
-def PksmCanonSliceEnv (rest : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def PksmCanonSliceEnv (rest : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ PksmCanonCoreEnv rest evs
 
 theorem pksmCanonSliceEnv_nil (rest : List (BitVec 8)) : PksmCanonSliceEnv rest [] :=
@@ -356,13 +359,6 @@ theorem preKeyTryFromEnv_mono
     (fun _ hp => seqEnv_mono (fun _ hf => hf)
       (fun _ hs2 => seqEnv_mono (fun _ h2 => h2)
         (fun _ hs3 => seqEnv_mono (hSig x.inner) (fun _ h4 => h4) hs3) hs2) hp) h
-
-theorem pksmCanonCoreEnv_of_bounded {x : PreKeyTryFromArgs} {rest : List (BitVec 8)}
-    {evs : List AllocEvent} (hrest : rest = x.bytes) (hevs : PreKeyTryFromBoundedEnv x evs) :
-    PksmCanonCoreEnv rest evs := by
-  refine ⟨preKeyFieldsOfArgs x, hrest, ?_⟩
-  rw [preKeyArgsOfFields_of_args, preKeyTryFromEnv_congr_ptrs]
-  exact preKeyTryFromEnv_mono (fun _ _ h => Or.inl h) x hevs
 
 /-- For any CLI call `i` in `CliPqxdhInputs W i` whose `argv` parses as `recv peer` and whose
 `stdin` starts with the pre-key wire tag `3#8 :: rest`, `rest` is the canonical wire encoding
@@ -717,7 +713,7 @@ theorem sigTryFromCanonInner_phaseGroup {M : AllocCostModel} [HasFineGroupCredit
 
 /-- As-is closed-form cumulative small-allocation bound for `PksmCanonSliceEnv` at slice cap `N`
 (`preKeyTryFromCapDeltaCum N N` = `103,232,265` B at `N = msgCapBytes = 1,048,576`). -/
-def pksmCanonSliceCum (N : Nat) : Nat :=
+@[expose] def pksmCanonSliceCum (N : Nat) : Nat :=
   preKeyTryFromCapDeltaCum N N
 
 /-- Tight-inner cumulative bound exploiting `m.inner.length + 1636 ≤ m.bytes.length`
@@ -726,20 +722,20 @@ def pksmCanonSliceTightInnerCum (N : Nat) : Nat :=
   preKeyTryFromCapDeltaCum (N - 1636) N
 
 /-- Live heap delta bound for `PksmCanonSliceEnv` at slice cap `N` (`8,462,395` B at `1 MiB`). -/
-def pksmCanonSliceLive (N : Nat) : Nat :=
+@[expose] def pksmCanonSliceLive (N : Nat) : Nat :=
   preKeyTryFromCapDeltaLive N N
 
 /-- Peak live heap delta bound for `PksmCanonSliceEnv` at slice cap `N` (`14,811,248` B at `1 MiB`). -/
-def pksmCanonSlicePeak (N : Nat) : Nat :=
+@[expose] def pksmCanonSlicePeak (N : Nat) : Nat :=
   preKeyTryFromCapDeltaPeak N N
 
 /-- Maximum single allocation request bound for `PksmCanonSliceEnv` at slice cap `N`
 (`2,097,152` B at `1 MiB`). -/
-def pksmCanonSliceMaxReq (N : Nat) : Nat :=
+@[expose] def pksmCanonSliceMaxReq (N : Nat) : Nat :=
   preKeyTryFromCapMaxReq N N
 
 /-- Scaled small-allocation group bound (`PhaseGroupSpec`) for `PksmCanonSliceEnv` at slice cap `N`. -/
-def pksmCanonSliceGrpS (N : Nat) : Nat :=
+@[expose] def pksmCanonSliceGrpS (N : Nat) : Nat :=
   preKeyTryFromCapDeltaGrpS N N
 
 /-- Tight-inner scaled small-allocation group bound at `M_cap = N - 1636`. -/
@@ -751,19 +747,6 @@ theorem pksmCanonSliceLive_le_peak (N : Nat) :
     pksmCanonSliceLive N ≤ pksmCanonSlicePeak N := by
   unfold pksmCanonSliceLive pksmCanonSlicePeak preKeyTryFromCapDeltaLive preKeyTryFromCapDeltaPeak
   omega
-
-/-- Kernel-checked `1 MiB` (`msgCapBytes = 1,048,576`) profile for `PksmCanonSliceEnv`, plus the
-exact `101,123,411` B (`101.12 MB`) `Δcum` reduction vs unmodified `pksmSliceCum msgCapBytes`
-(`204,355,676` B). -/
-theorem pksmCanonSlice1MiB_profile_eq :
-    pksmCanonSliceCum msgCapBytes = 103232265 ∧
-    pksmCanonSliceTightInnerCum msgCapBytes = 103040325 ∧
-    pksmCanonSliceLive msgCapBytes = 8462395 ∧
-    pksmCanonSlicePeak msgCapBytes = 14811248 ∧
-    pksmCanonSliceMaxReq msgCapBytes = 2097152 ∧
-    pksmCanonSliceGrpS msgCapBytes = 2496720998 ∧
-    pksmSliceCum msgCapBytes - pksmCanonSliceCum msgCapBytes = 101123411 := by
-  decide
 
 private theorem freeOr_zero_left (a : Nat) : max 0 a ≤ a := by omega
 
@@ -818,42 +801,6 @@ theorem pksmCanonSlice_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
   ((PhaseCreditSpec.freeOnly_of_hyps hM).or (pksmCanonCore_phaseCredit hM hLow hrest)).mono
     (freeOr_zero_left _) (freeOr_zero_left _) (freeOr_zero_left _) (freeOr_zero_left _)
 
-/-- Tight-inner `PhaseCreditSpec` for `PksmCanonSliceEnv rest` (`103,040,325` B at `1 MiB`),
-using `m.inner.length + 1636 ≤ m.bytes.length`. -/
-theorem pksmCanonSlice_tightInner_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hLow : WireLowInterceptHyps M)
-    {rest : List (BitVec 8)} {N : Nat} (hrest : rest.length ≤ N) :
-    PhaseCreditSpec M (PksmCanonSliceEnv rest)
-      (pksmCanonSliceTightInnerCum N)
-      (pksmCanonSliceLive N)
-      (pksmCanonSlicePeak N)
-      (pksmCanonSliceMaxReq N) := by
-  have hCore :
-      PhaseCreditSpec M (PksmCanonCoreEnv rest)
-        (pksmCanonSliceTightInnerCum N)
-        (pksmCanonSliceLive N)
-        (pksmCanonSlicePeak N)
-        (pksmCanonSliceMaxReq N) := by
-    unfold PksmCanonCoreEnv
-    refine phaseCreditSpec_exists_guarded (fun m hm => ?_)
-    have hB : (preKeyArgsOfFields 0#64 0#64 m).bytes.length ≤ N := by
-      rw [preKeyArgsOfFields_bytes, ← hm]
-      exact hrest
-    have hInTight : (preKeyArgsOfFields 0#64 0#64 m).inner.length ≤ N - 1636 := by
-      have h1636 := PreKeyMessageFields.inner_length_add_1636_le_bytes m
-      have hlen : m.bytes.length ≤ N := hm ▸ hrest
-      simp only [preKeyArgsOfFields_inner]
-      omega
-    have hIn : (preKeyArgsOfFields 0#64 0#64 m).inner.length ≤ N :=
-      Nat.le_trans hInTight (Nat.sub_le N 1636)
-    exact (preKeyTryFromCanonInner_phaseCredit hM hLow (preKeyArgsOfFields 0#64 0#64 m)).mono
-      (preKeyTryFromDeltaCum_le_cap hInTight hB)
-      (preKeyTryFromDeltaLive_le_cap hIn hB)
-      (preKeyTryFromDeltaPeak_le_cap hIn hB)
-      (preKeyTryFromMaxReq_le_cap hIn hB)
-  exact ((PhaseCreditSpec.freeOnly_of_hyps hM).or hCore).mono
-    (freeOr_zero_left _) (freeOr_zero_left _) (freeOr_zero_left _) (freeOr_zero_left _)
-
 /-- `fineCostModel` specialization of `pksmCanonSlice_phaseCredit` (`0` `*Hyps` binders). -/
 theorem pksmCanonSlice_fine_phaseCredit {rest : List (BitVec 8)} {N : Nat}
     (hrest : rest.length ≤ N) :
@@ -863,17 +810,6 @@ theorem pksmCanonSlice_fine_phaseCredit {rest : List (BitVec 8)} {N : Nat}
       (pksmCanonSlicePeak N)
       (pksmCanonSliceMaxReq N) :=
   pksmCanonSlice_phaseCredit fineCostModel_modelHyps fineCostModel_wireLowInterceptHyps hrest
-
-/-- `fineCostModel` specialization of `pksmCanonSlice_tightInner_phaseCredit` (`0` `*Hyps` binders). -/
-theorem pksmCanonSlice_tightInner_fine_phaseCredit {rest : List (BitVec 8)} {N : Nat}
-    (hrest : rest.length ≤ N) :
-    PhaseCreditSpec fineCostModel (PksmCanonSliceEnv rest)
-      (pksmCanonSliceTightInnerCum N)
-      (pksmCanonSliceLive N)
-      (pksmCanonSlicePeak N)
-      (pksmCanonSliceMaxReq N) :=
-  pksmCanonSlice_tightInner_phaseCredit fineCostModel_modelHyps fineCostModel_wireLowInterceptHyps
-    hrest
 
 /-- `PhaseGroupSpec` for `PksmCanonCoreEnv rest` at `rest.length ≤ N`. -/
 theorem pksmCanonCore_phaseGroup {M : AllocCostModel} [HasFineGroupCredit M]
@@ -901,27 +837,6 @@ theorem pksmCanonSlice_fine_groupSpec {rest : List (BitVec 8)} {N : Nat}
     (hrest : rest.length ≤ N) :
     PhaseGroupSpec fineCostModel (PksmCanonSliceEnv rest) (pksmCanonSliceGrpS N) :=
   pksmCanonSlice_phaseGroup fineCostModel_wireGroupHyps hrest
-
-/-- Tight-inner `fineCostModel` `PhaseGroupSpec` at `M_cap = N - 1636`. -/
-theorem pksmCanonSlice_tightInner_fine_groupSpec {rest : List (BitVec 8)} {N : Nat}
-    (hrest : rest.length ≤ N) :
-    PhaseGroupSpec fineCostModel (PksmCanonSliceEnv rest) (pksmCanonSliceTightInnerGrpS N) := by
-  have hCore : PhaseGroupSpec fineCostModel (PksmCanonCoreEnv rest)
-      (pksmCanonSliceTightInnerGrpS N) :=
-    { groups_le := fun st {evs} hEnv => by
-        rcases hEnv with ⟨m, hm, hPre⟩
-        have hB : (preKeyArgsOfFields 0#64 0#64 m).bytes.length ≤ N := by
-          rw [preKeyArgsOfFields_bytes, ← hm]
-          exact hrest
-        have hInTight : (preKeyArgsOfFields 0#64 0#64 m).inner.length ≤ N - 1636 := by
-          have h1636 := PreKeyMessageFields.inner_length_add_1636_le_bytes m
-          have hlen : m.bytes.length ≤ N := hm ▸ hrest
-          simp only [preKeyArgsOfFields_inner]
-          omega
-        exact ((preKeyTryFromCanonInner_phaseGroup fineCostModel_wireGroupHyps
-          (preKeyArgsOfFields 0#64 0#64 m)).mono
-          (preKeyTryFromDeltaGrpS_le_cap hInTight hB)).groups_le st hPre }
-  exact ((PhaseGroupSpec.freeOnly fineCostModel).or hCore).mono (freeOr_zero_left _)
 
 /-! ## Binary Containment Bridge (`PreKeyTryFromOkPlacedBudget` → `PksmCanonSliceEnv`) -/
 
@@ -1052,14 +967,6 @@ theorem preKeyTryFromConcrete_m_sub_pksmCanonSlice (ptr sret : BitVec 64)
     PksmCanonSliceEnv m.bytes evs :=
   preKeyTryFromConcrete_sub_pksmCanonSlice (preKeyArgsOfFields_bytes ptr sret m).symm h
 
-/-- Contravariant `FitsEnv` transfer from `PksmCanonCoreEnv x.bytes` to Block `111`'s concrete
-precondition `FitsEnv M lim st (PreKeyTryFromEnv SigTryFromConcreteEnv x)`. -/
-theorem fitsEnv_preKeyTryFromConcrete_of_pksmCanonCore
-    {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} {x : PreKeyTryFromArgs}
-    (hfit : FitsEnv M lim st (PksmCanonCoreEnv x.bytes)) :
-    FitsEnv M lim st (PreKeyTryFromEnv SigTryFromConcreteEnv x) :=
-  fun evs hevs => hfit evs (preKeyTryFromConcrete_sub_pksmCanonCore rfl hevs)
-
 /-- Contravariant `FitsEnv` transfer from `PksmCanonSliceEnv x.bytes` to Block `111`'s concrete
 precondition `FitsEnv M lim st (PreKeyTryFromEnv SigTryFromConcreteEnv x)`. -/
 theorem fitsEnv_preKeyTryFromConcrete_of_pksmCanonSlice
@@ -1096,53 +1003,12 @@ theorem subroutine_ok_preKeyTryFromPlaced_canonSlice [LibsignalPlacement]
     rcases hevs with ⟨⟨htr, hE⟩, hmem⟩
     exact ⟨⟨htr, preKeyTryFromConcrete_sub_pksmCanonSlice rfl hE⟩, hmem⟩
 
-/-- Placed budget subroutine correctness for Block `111` (`PreKeyTryFromOkPlacedBudget`) specialized
-directly to `PksmCanonSliceEnv x.bytes` from explicit callee contracts. -/
-theorem preKeyTryFrom_placed_ok_of_callees_canonSlice [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks}
-    (hint32 : subroutine_ok (preKeyPlacedProg H) (lsmpl.base 8)
-      (withLsCodeLoaded lsmpl (int32MergeSpec A lim)))
-    (hbytes : subroutine_ok (preKeyPlacedProg H) (lsmpl.base 7)
-      (withLsCodeLoaded lsmpl (bytesMergeRawSpec A lim)))
-    (hdealloc : PreKeyDeallocOk (LibsignalCodeLoaded lsmpl) A lim H)
-    (hDropSpe : PreKeyDropSpeOk (LibsignalCodeLoaded lsmpl) A lim H)
-    (hIntoBox : PreKeyIntoBoxOk (LibsignalCodeLoaded lsmpl) A lim H)
-    (hSigTryFrom : PreKeySigTryFromOk (LibsignalCodeLoaded lsmpl) A lim H)
-    (hTryClone : PreKeyTryCloneOk (LibsignalCodeLoaded lsmpl) A lim H) :
-    subroutine_ok (preKeyPlacedProg H) (blkPl_111).base
-      (preKeyTryFromPlacedEnvSpec (fun x => PksmCanonSliceEnv x.bytes) M A lim) :=
-  subroutine_ok_preKeyTryFromPlaced_canonSlice
-    (preKeyTryFrom_placed_ok_of_callees hint32 hbytes hdealloc hDropSpe hIntoBox hSigTryFrom
-      hTryClone)
-
-/-- Placed budget subroutine correctness for Block `111` (`PreKeyTryFromOkPlacedBudget.preKeyTryFrom_placed_ok`,
-`:741`) specialized directly to `PksmCanonSliceEnv x.bytes`. -/
-theorem preKeyTryFrom_placed_ok_canonSlice [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks}
-    (hshim_s : HookSat H lsRustNoAllocShimSym sessionShimBudgetSpec)
-    (hshim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmemcpy : HookSat H lsMemcpySym framelessMemcpyBudgetSpec)
-    (hbytes : subroutine_ok (preKeyPlacedProg H) (lsmpl.base 7)
-      (withLsCodeLoaded lsmpl (bytesMergeRawSpec A lim)))
-    (hDropSpe : PreKeyDropSpeOk (LibsignalCodeLoaded lsmpl) A lim H)
-    (hSigTryFrom : PreKeySigTryFromOk (LibsignalCodeLoaded lsmpl) A lim H) :
-    subroutine_ok (preKeyPlacedProg H) (blkPl_111).base
-      (preKeyTryFromPlacedEnvSpec (fun x => PksmCanonSliceEnv x.bytes) M A lim) :=
-  subroutine_ok_preKeyTryFromPlaced_canonSlice
-    (preKeyTryFrom_placed_ok hshim_s hshim halloc hdealloc hrealloc hmemcpy hbytes hDropSpe
-      hSigTryFrom)
-
 /-! ## Concrete Allocating Non-Vacuity Witness -/
 
 /-- Concrete canonical `PreKeyMessageFields` witness whose `inner := [0x01#8, 0x42#8]` carries a
 valid length-delimited payload (`mergeBytes .lengthDelimited [0x01#8, 0x42#8] = some ([0x42#8], [])`),
 driving the allocating `bytes::merge` `94·N` step (`SigTryFromLoopBoundedEnv.bytesStep`). -/
-def pksmNonVacFields : PreKeyMessageFields where
+@[expose] def pksmNonVacFields : PreKeyMessageFields where
   regId := 1#32
   opkId := some 2#32
   spkId := 3#32
@@ -1152,12 +1018,12 @@ def pksmNonVacFields : PreKeyMessageFields where
   idPub := List.Vector.replicate 32 0#8
   inner := [0x01#8, 0x42#8]
 
-def pksmNonVacArgs : PreKeyTryFromArgs :=
+@[expose] def pksmNonVacArgs : PreKeyTryFromArgs :=
   preKeyArgsOfFields 0#64 0#64 pksmNonVacFields
 
 /-- Inner allocating event trace exercising `SigTryFromLoopBoundedEnv.bytesStep .ct` (`bytes::merge`)
 followed by `SigTryFromErrTailEnv.fromOnly` (`.alloc 72`). -/
-def pksmNonVacInnerEvs : List AllocEvent :=
+@[expose] def pksmNonVacInnerEvs : List AllocEvent :=
   bytesMergeEventsCore .lengthDelimited 0#64 [0x01#8, 0x42#8] ++ rustAllocEvents 72 8
 
 /-- Full allocating trace in `PksmCanonCoreEnv pksmNonVacFields.bytes` exercising:
@@ -1165,7 +1031,7 @@ def pksmNonVacInnerEvs : List AllocEvent :=
 - Seg 2 `into_boxed_slice` on `kyberBytes` at `cap = 2048` (`.realloc 1 2048 1569`),
 - Seg 3 `pksmNonVacInnerEvs` (`bytes::merge` `94·N` step + `.alloc 72`),
 - Seg 4 `try_clone_from_ref_in` on `pksmNonVacFields.bytes`. -/
-def pksmNonVacEvents : List AllocEvent :=
+@[expose] def pksmNonVacEvents : List AllocEvent :=
   preKeyLoopEvents pksmNonVacArgs ++
     (intoBoxedSliceEvents ⟨0#64, 2048#64, 0#64, pksmNonVacArgs.kyberBytes⟩ ++
       (pksmNonVacInnerEvs ++ rustAllocEvents pksmNonVacFields.bytes.length 1))
@@ -1241,314 +1107,21 @@ theorem pksmNonVacEvents_allocating :
     exact List.mem_append_right _ (List.mem_append_left _ List.mem_cons_self)
   exact ⟨ha72', hre, List.ne_nil_of_mem ha72'⟩
 
-private theorem pksmNonVacFields_bytes_length_le :
-    pksmNonVacFields.bytes.length ≤ msgCapBytes := by
-  let x : PreKeyTryFromArgs := pksmNonVacArgs
-  have hb : pksmNonVacFields.bytes = x.bytes := rfl
-  have henc33 : (encodeVarint 33#64).length = 1 := by decide
-  have hf1 : (psmField1 x).length = 2 := by rw [psmField1_some x 2#32 rfl]; decide
-  have hf2 : (psmField2 x).length = 35 := by
-    rw [psmField2_eq, List.length_cons, List.length_append, henc33, PreKeyTryFromArgs.bkBytes_length]
-  have hf3 : (psmField3 x).length = 35 := by
-    rw [psmField3_eq, List.length_cons, List.length_append, henc33, PreKeyTryFromArgs.ikBytes_length]
-  have hf4 : (psmField4 x).length = 4 := by rw [psmField4_eq x (by decide)]; decide
-  have hf5 : (psmField5 x).length = 2 := by rw [psmField5_eq]; decide
-  have hf6 : (psmField6 x).length = 2 := by rw [psmField6_eq]; decide
-  have hf7 : (psmField7 x).length = 2 := by rw [psmField7_eq]; decide
-  have hf8 : (psmField8 x).length = 1572 := by
-    rw [psmField8_eq, encodeVarint_1569, List.length_cons, List.length_append,
-      PreKeyTryFromArgs.kyberBytes_length]
-    decide
-  rw [hb, PreKeyTryFromArgs.bytes, List.length_cons, protoBytes_eq_psmRem0]
-  simp only [psmRem0, psmRem1, psmRem2, psmRem3, psmRem4, psmRem5, psmRem6, psmRem7, psmRem8,
-    List.length_append, List.length_nil, hf1, hf2, hf3, hf4, hf5, hf6, hf7, hf8, msgCapBytes]
-  decide
-
-/-- Concrete `FitsEnv fineCostModel cliBudgetLimits` witness for `PksmCanonSliceEnv` on
-`pksmNonVacFields.bytes`. -/
-theorem pksmNonVacSlice_fitsEnv_cliBudgetLimits :
-    FitsEnv fineCostModel cliBudgetLimits fineCostModel.init
-      (PksmCanonSliceEnv pksmNonVacFields.bytes) := by
-  have hlen : pksmNonVacFields.bytes.length ≤ msgCapBytes := pksmNonVacFields_bytes_length_le
-  have hcr := pksmCanonSlice_fine_phaseCredit hlen
-  have hgr := pksmCanonSlice_fine_groupSpec hlen
-  exact fitsEnv_oneGiB_of_group_bounds_S4 (lim := cliBudgetLimits) hcr hgr
-    (by decide) (by decide) (by decide) (by decide) (by decide)
-    (by decide) (by decide) (by decide) (by decide)
-
 /-! ## Outer `W4SlotR3bCanonEnv`, `CliRunCanonTightEnv`, & `CliMainEnv` Corollaries -/
 
 /-! ### 5.1 Outer `SlotW4` / `R3b` Canonical Wire + Slot Composition -/
 
 /-- Canonical-outer `R3b` envelope `R3bEnv (PksmCanonSliceEnv rest) DecPkEnv`. -/
-def W4SlotR3bCanonEnv (rest : List (BitVec 8)) (DecPkEnv : List AllocEvent → Prop)
+@[expose] def W4SlotR3bCanonEnv (rest : List (BitVec 8)) (DecPkEnv : List AllocEvent → Prop)
     (evs : List AllocEvent) : Prop :=
   R3bEnv (PksmCanonSliceEnv rest) DecPkEnv evs
 
 def w4SlotR3bCanonDeltaCum (stdinCap decCum : Nat) : Nat :=
   pksmCanonSliceCum stdinCap + decCum
 
-def w4SlotR3bCanonDeltaLive (stdinCap decLive : Nat) : Nat :=
-  pksmCanonSliceLive stdinCap + decLive
-
-def w4SlotR3bCanonDeltaPeak (stdinCap decLive decPeak : Nat) : Nat :=
-  max
-    (max (pksmCanonSlicePeak stdinCap) (pksmCanonSliceLive stdinCap + decPeak))
-    (w4SlotR3bCanonDeltaLive stdinCap decLive)
-
-def w4SlotR3bCanonMaxReq (stdinCap decMaxReq : Nat) : Nat :=
-  max (pksmCanonSliceMaxReq stdinCap) decMaxReq
-
-theorem w4SlotR3bCanon_live_le_peak (stdinCap decLive decPeak : Nat) :
-    w4SlotR3bCanonDeltaLive stdinCap decLive ≤
-      w4SlotR3bCanonDeltaPeak stdinCap decLive decPeak :=
-  Nat.le_max_right _ _
-
-/-- `PhaseCreditSpec` for `W4SlotR3bCanonEnv rest DecPkEnv`. -/
-theorem w4SlotR3bCanon_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hLow : WireLowInterceptHyps M)
-    {rest : List (BitVec 8)} {stdinCap : Nat} (hrest : rest.length ≤ stdinCap)
-    {DecPkEnv : List AllocEvent → Prop} {decCum decLive decPeak decMaxReq : Nat}
-    (hDec : PhaseCreditSpec M DecPkEnv decCum decLive decPeak decMaxReq) :
-    PhaseCreditSpec M (W4SlotR3bCanonEnv rest DecPkEnv)
-      (w4SlotR3bCanonDeltaCum stdinCap decCum)
-      (w4SlotR3bCanonDeltaLive stdinCap decLive)
-      (w4SlotR3bCanonDeltaPeak stdinCap decLive decPeak)
-      (w4SlotR3bCanonMaxReq stdinCap decMaxReq) := by
-  have hFree : PhaseCreditSpec M FreeOnlyEvs 0 0 0 0 := PhaseCreditSpec.freeOnly_of_hyps hM
-  have hPksm := pksmCanonSlice_phaseCredit hM hLow hrest
-  have hDecFree := phaseCreditSpec_seq_freeOnly_right hM hDec
-  have hSeq := hPksm.seq (hFree.or hDecFree)
-  refine (hFree.or hSeq).mono ?_ ?_ ?_ ?_
-  · unfold w4SlotR3bCanonDeltaCum; simp only [Nat.zero_max]; exact Nat.le_refl _
-  · unfold w4SlotR3bCanonDeltaLive; simp only [Nat.zero_max]; exact Nat.le_refl _
-  · unfold w4SlotR3bCanonDeltaPeak w4SlotR3bCanonDeltaLive
-    omega
-  · unfold w4SlotR3bCanonMaxReq; simp only [Nat.zero_max]; exact Nat.le_refl _
-
-/-- `fineCostModel` specialization of `w4SlotR3bCanon_phaseCredit` (`0` `*Hyps` binders). -/
-theorem w4SlotR3bCanon_fine_phaseCredit
-    {rest : List (BitVec 8)} {stdinCap : Nat} (hrest : rest.length ≤ stdinCap)
-    {DecPkEnv : List AllocEvent → Prop} {decCum decLive decPeak decMaxReq : Nat}
-    (hDec : PhaseCreditSpec fineCostModel DecPkEnv decCum decLive decPeak decMaxReq) :
-    PhaseCreditSpec fineCostModel (W4SlotR3bCanonEnv rest DecPkEnv)
-      (w4SlotR3bCanonDeltaCum stdinCap decCum)
-      (w4SlotR3bCanonDeltaLive stdinCap decLive)
-      (w4SlotR3bCanonDeltaPeak stdinCap decLive decPeak)
-      (w4SlotR3bCanonMaxReq stdinCap decMaxReq) :=
-  w4SlotR3bCanon_phaseCredit fineCostModel_modelHyps fineCostModel_wireLowInterceptHyps hrest hDec
-
-/-- `PhaseGroupSpec fineCostModel` for `W4SlotR3bCanonEnv rest DecPkEnv` (`R3bEnv`). -/
-theorem w4SlotR3bCanon_fine_groupSpec
-    {rest : List (BitVec 8)} {DecPkEnv : List AllocEvent → Prop}
-    {stdinCap g_decPk : Nat} (hrest : rest.length ≤ stdinCap)
-    (hdec : PhaseGroupSpec fineCostModel DecPkEnv g_decPk) :
-    PhaseGroupSpec fineCostModel (W4SlotR3bCanonEnv rest DecPkEnv)
-      (pksmCanonSliceGrpS stdinCap + g_decPk) := by
-  have htail := ((PhaseGroupSpec.freeOnly fineCostModel).or
-    ((hdec.seq (PhaseGroupSpec.freeOnly fineCostModel)).mono
-      (Nat.le_of_eq (Nat.add_zero _)))).mono (freeOr_zero_left _)
-  exact ((PhaseGroupSpec.freeOnly fineCostModel).or
-    ((pksmCanonSlice_fine_groupSpec hrest).seq htail)).mono
-    (freeOr_zero_left _)
-
-/-- Kernel-checked `1 MiB` `R3b` Path-A (`205,347,739` B) profile with `PksmCanonSliceEnv`
-(`308,580,004` B vs `409,703,415` B on unmodified `PksmTryFromSliceEnv`). -/
-theorem r3bCanonArm1MiB_c09bTight_deser0_profile_eq :
-    pksmCanonSliceCum msgCapBytes + 205347739 = 308580004 ∧
-    pksmCanonSliceTightInnerCum msgCapBytes + 205347739 = 308388064 ∧
-    pksmCanonSliceLive msgCapBytes + 34901913 = 43364308 ∧
-    max (pksmCanonSlicePeak msgCapBytes) (pksmCanonSliceLive msgCapBytes + 34901913) = 43364308 ∧
-    max (pksmCanonSliceMaxReq msgCapBytes) 3407872 = 3407872 := by
-  decide
-
-/-- Direct `CliPqxdhInputs` pre-key `recv` trace bridge into `W4SlotR3bCanonEnv rest DecPkEnv`:
-if `i` is in `CliPqxdhInputs W i`, `argv` parses as `recv peer`, `stdin = 3#8 :: rest`, and Block `111`
-emits `evs₁` on the canonical `PreKeyMessageFields` input `m` (`rest = m.bytes`) followed by
-`evs₂` in `FreeOnlyEvs` or `SeqEnv DecPkEnv FreeOnlyEvs`, then `evs₁ ++ evs₂` lies in
-`W4SlotR3bCanonEnv rest DecPkEnv`. -/
-theorem r3bEnv_canon_of_cliPqInputs_recv_prekey
-    {W : PEParams} {i : Inputs} {peer : AddrV} {rest : List (BitVec 8)}
-    {DecPkEnv : List AllocEvent → Prop} {ptr sret : BitVec 64}
-    {evs₁ evs₂ : List AllocEvent}
-    (hi : CliPqxdhInputs W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.recv peer))
-    (hst : i.stdin = 3#8 :: rest)
-    (hpksm : ∀ m : PreKeyMessageFields, rest = m.bytes →
-      PreKeyTryFromEnv SigTryFromConcreteEnv (preKeyArgsOfFields ptr sret m) evs₁)
-    (htail : FreeOnlyEvs evs₂ ∨ SeqEnv DecPkEnv FreeOnlyEvs evs₂) :
-    W4SlotR3bCanonEnv rest DecPkEnv (evs₁ ++ evs₂) := by
-  obtain ⟨m, hm, _⟩ := cliPqInputs_recv_prekey_canonical hi hparse hst
-  refine Or.inr (SeqEnv.append ?_ htail)
-  rw [hm]
-  exact preKeyTryFromConcrete_m_sub_pksmCanonSlice ptr sret m (hpksm m hm)
-
 /-! ### `CliRunCalleeEnvs`, `CliRunOpenedEnv`, & `CliRunCanonTightEnv` Corollaries -/
 
-/-- Sibling of `CliRunWrapperEnvs.toCalleeEnvs` (`CliRunArmsPeak.lean:1537`) wiring
-`PksmCanonSliceEnv` in place of `PksmTryFromSliceEnv`. -/
-def toCanonCalleeEnvs (W : CliRunWrapperEnvs) : CliRunCalleeEnvs where
-  initEnv := W.initEnv
-  encEnv := W.encEnv
-  decSigEnv := W.decSigEnv
-  pksmEnv := PksmCanonSliceEnv
-  decPkEnv := W.decPkEnv
-
-/-- Sibling of `CliRunWrapperSlotSpecs.toCalleeSpecs` (`CliRunArmsPeak.lean:1559`) wiring
-`pksmCanonSlice_phaseCredit` (`103,232,265` B at `1 MiB`) into `CliRunSlotCalleeSpecs`. -/
-def toCanonCalleeSpecs {M : AllocCostModel} [HasFineReallocCredit M]
-    {W : CliRunWrapperEnvs} (SW : CliRunWrapperSlotSpecs M W)
-    (hM : ModelHyps M) (hLow : WireLowInterceptHyps M) (stdinCap : Nat) :
-    CliRunSlotCalleeSpecs M (toCanonCalleeEnvs W) stdinCap where
-  initCum := SW.initCum
-  initLive := SW.initLive
-  initPeak := SW.initPeak
-  initMaxReq := SW.initMaxReq
-  init_spec := SW.init_spec
-  init_lp := SW.init_lp
-  encCum := SW.encCum
-  encLive := SW.encLive
-  encPeak := SW.encPeak
-  encMaxReq := SW.encMaxReq
-  enc_spec := SW.enc_spec
-  enc_lp := SW.enc_lp
-  decSigCum := SW.decSigCum
-  decSigLive := SW.decSigLive
-  decSigPeak := SW.decSigPeak
-  decSigMaxReq := SW.decSigMaxReq
-  decSig_spec := SW.decSig_spec
-  decSig_lp := SW.decSig_lp
-  pksmCum := pksmCanonSliceCum stdinCap
-  pksmLive := pksmCanonSliceLive stdinCap
-  pksmPeak := pksmCanonSlicePeak stdinCap
-  pksmMaxReq := pksmCanonSliceMaxReq stdinCap
-  pksm_spec := fun _ hrest => pksmCanonSlice_phaseCredit hM hLow hrest
-  pksm_lp := pksmCanonSliceLive_le_peak stdinCap
-  decPkCum := SW.decPkCum
-  decPkLive := SW.decPkLive
-  decPkPeak := SW.decPkPeak
-  decPkMaxReq := SW.decPkMaxReq
-  decPk_spec := SW.decPk_spec
-  decPk_lp := SW.decPk_lp
-
-/-- Sibling of `CliRunTightEnvOf` (`CliRunPeakSpec.lean:1059`) using `toCanonCalleeEnvs`. -/
-abbrev CliRunCanonTightEnvOf (W : RunCall → CliRunWrapperEnvs) (wireOutCap : Nat)
-    (g : RunCall) (evs : List AllocEvent) : Prop :=
-  CliRunOpenedEnv cliIo.rd (toCanonCalleeEnvs (W g)) wireOutCap g evs
-
-/-- Sibling of `CliRunTightEnv` (`CliRunPeakSpec.lean:1064`) at `wireOutCap = sessionCapBytes`
-(`2 MiB`), using `PksmCanonSliceEnv` on `recv` tag `3#8`. -/
-abbrev CliRunCanonTightEnv (W : RunCall → CliRunWrapperEnvs)
-    (g : RunCall) (evs : List AllocEvent) : Prop :=
-  CliRunCanonTightEnvOf W sessionCapBytes g evs
-
-/-- Sibling of `cliRun_slots_tight_phaseCredit` (`CliRunArmsPeak.lean:1690`) for `toCanonCalleeEnvs`. -/
-theorem cliRunCanon_slots_tight_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hT : CliRunTightHyps M) (hLow : WireLowInterceptHyps M)
-    {rd : ReadRule} {W : CliRunWrapperEnvs}
-    {g : RunCall} {stdinCap maxInitDir fileCap bundleCap : Nat}
-    (SW : CliRunWrapperSlotSpecs M W) (wireOutCap : Nat)
-    (hstdin : g.i.stdin.length ≤ stdinCap)
-    (hownCap : ∀ bs,
-      rd (runFiles g.i) (pathOf StoresGhost.opened.identity.own.path (utf8 "address")) = .ok bs →
-      bs.length ≤ fileCap)
-    (hinitDir : ∀ peer dir, g.c = .init peer dir → dir.length ≤ maxInitDir ∧
-      (∀ name bs, rd (runFiles g.i) (pathOf dir name) = .ok bs → bs.length ≤ bundleCap)) :
-    let S := toCanonCalleeSpecs SW hM hLow stdinCap
-    PhaseCreditSpec M
-      (CliRunEnv uuidTryParse rd StoresGhost.opened.identity.own (toCanonCalleeEnvs W) wireOutCap g)
-      (cliRunTightDeltaCum S maxInitDir fileCap bundleCap wireOutCap)
-      (cliRunDeltaLive S maxInitDir fileCap wireOutCap)
-      (cliRunDeltaPeak S maxInitDir fileCap bundleCap wireOutCap)
-      (cliRunMaxReq S maxInitDir fileCap bundleCap wireOutCap) :=
-  cliRun_tight_phaseCredit hM hT hLow (toCanonCalleeSpecs SW hM hLow stdinCap) wireOutCap
-    hstdin hownCap hinitDir
-
-/-- Sibling of `cliRunOpened_slots_tight_phaseCredit` (`CliRunArmsPeak.lean:1710`) for
-`toCanonCalleeEnvs`. -/
-theorem cliRunCanonOpened_slots_tight_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hT : CliRunTightHyps M) (hLow : WireLowInterceptHyps M)
-    {rd : ReadRule} {W : CliRunWrapperEnvs}
-    {g : RunCall} {stdinCap maxInitDir fileCap bundleCap : Nat}
-    (SW : CliRunWrapperSlotSpecs M W) (wireOutCap : Nat)
-    (hstdin : g.i.stdin.length ≤ stdinCap)
-    (hownCap : ∀ bs,
-      rd (runFiles g.i) (pathOf StoresGhost.opened.identity.own.path (utf8 "address")) = .ok bs →
-      bs.length ≤ fileCap)
-    (hinitDir : ∀ peer dir, g.c = .init peer dir → dir.length ≤ maxInitDir ∧
-      (∀ name bs, rd (runFiles g.i) (pathOf dir name) = .ok bs → bs.length ≤ bundleCap)) :
-    let S := toCanonCalleeSpecs SW hM hLow stdinCap
-    PhaseCreditSpec M (CliRunOpenedEnv rd (toCanonCalleeEnvs W) wireOutCap g)
-      (cliRunOpenedTightDeltaCum S maxInitDir fileCap bundleCap wireOutCap)
-      (cliRunOpenedDeltaLive S maxInitDir wireOutCap)
-      (cliRunOpenedDeltaPeak S maxInitDir fileCap bundleCap wireOutCap)
-      (cliRunOpenedMaxReq S maxInitDir fileCap bundleCap wireOutCap) := by
-  exact cliRunOfR0_tight_phaseCredit_of_callees hM hT
-    (toCanonCalleeSpecs SW hM hLow stdinCap) wireOutCap
-    (r0Opened_phaseCredit_of_path hM
-      (path_phaseCredit hM dirDomainCaps_opened_own.path_len_le utf8_address_length_le) hownCap)
-    hstdin (initBundlePaths_phaseCredit hM hinitDir)
-    (fun _ hrest => sigTryFromSlice_phaseCredit hM hLow hrest)
-
-/-- Sibling of `cliRunTight_phaseCredit` (`CliRunPeakSpec.lean:1085`) for `CliRunCanonTightEnvOf`. -/
-theorem cliRunCanonTight_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hT : CliRunTightHyps M) (hLow : WireLowInterceptHyps M)
-    {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {stdinCap maxInitDir fileCap bundleCap wireOutCap : Nat}
-    (SW : CliRunWrapperSlotSpecs M (W g))
-    (hcaps : CliPqDomainCaps stdinCap fileCap g.i)
-    (hspqr : CliRunSpqrAndInitCaps maxInitDir bundleCap g) :
-    let S := toCanonCalleeSpecs SW hM hLow stdinCap
-    PhaseCreditSpec M (CliRunCanonTightEnvOf W wireOutCap g)
-      (cliRunOpenedTightDeltaCum S maxInitDir fileCap bundleCap wireOutCap)
-      (cliRunOpenedDeltaLive S maxInitDir wireOutCap)
-      (cliRunOpenedDeltaPeak S maxInitDir fileCap bundleCap wireOutCap)
-      (cliRunOpenedMaxReq S maxInitDir fileCap bundleCap wireOutCap) :=
-  cliRunCanonOpened_slots_tight_phaseCredit hM hT hLow SW wireOutCap
-    hcaps.stdin_le
-    (fun bs hrd => cliIo_rd_runFiles_length_le_of_filesBounded hcaps.files_bounded _ bs hrd)
-    hspqr.init_caps
-
-/-- `fineCostModel` specialization of `cliRunCanonTight_phaseCredit` (`0` `*Hyps` binders). -/
-theorem cliRunCanonTight_phaseCredit_fine
-    {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {stdinCap maxInitDir fileCap bundleCap wireOutCap : Nat}
-    (SW : CliRunWrapperSlotSpecs fineCostModel (W g))
-    (hcaps : CliPqDomainCaps stdinCap fileCap g.i)
-    (hspqr : CliRunSpqrAndInitCaps maxInitDir bundleCap g) :
-    let S := toCanonCalleeSpecs SW fineCostModel_modelHyps fineCostModel_wireLowInterceptHyps
-      stdinCap
-    PhaseCreditSpec fineCostModel (CliRunCanonTightEnvOf W wireOutCap g)
-      (cliRunOpenedTightDeltaCum S maxInitDir fileCap bundleCap wireOutCap)
-      (cliRunOpenedDeltaLive S maxInitDir wireOutCap)
-      (cliRunOpenedDeltaPeak S maxInitDir fileCap bundleCap wireOutCap)
-      (cliRunOpenedMaxReq S maxInitDir fileCap bundleCap wireOutCap) :=
-  cliRunCanonTight_phaseCredit fineCostModel_modelHyps fineCostModel_cliRunTightHyps
-    fineCostModel_wireLowInterceptHyps SW hcaps hspqr
-
 /-! ### 5.3 `1 MiB` Closed-Form Slot Profile & `PhaseGroupSpec` for `CliRunCanonTightEnv` -/
-
-def cliRunCanon1MiBSlotCum (initCum encCum decSigCum decPkCum : Nat) : Nat :=
-  r0Opened1MiBCum +
-    max (initArmDeltaCum (pathDeltaCum 26 16) 1637 initCum)
-      (max (r2TightDeltaCum encCum sessionCapBytes)
-        (max (sigSliceCum msgCapBytes + decSigCum)
-          (pksmCanonSliceCum msgCapBytes + decPkCum)))
-
-def cliRunCanon1MiBSlotLive (initLive encLive decSigLive decPkLive : Nat) : Nat :=
-  r0Opened1MiBLive +
-    max (initArmDeltaLive (pathDeltaLive 26 16) initLive)
-      (max (r2DeltaLive fineCostModel encLive sessionCapBytes)
-        (max (sigSliceLive msgCapBytes + decSigLive)
-          (pksmCanonSliceLive msgCapBytes + decPkLive)))
-
-def cliRunCanon1MiBSlotPeak (initPeak encLive encPeak decSigPeak decPkPeak : Nat) : Nat :=
-  max r0Opened1MiBPeak
-    (r0Opened1MiBLive +
-      max (initArmDeltaPeak (pathDeltaLive 26 16) (pathDeltaPeak 26 16) 1637 initPeak)
-        (max (r2DeltaPeak fineCostModel encLive encPeak sessionCapBytes)
-          (max (max (sigSlicePeak msgCapBytes) (sigSliceLive msgCapBytes + decSigPeak))
-            (max (pksmCanonSlicePeak msgCapBytes) (pksmCanonSliceLive msgCapBytes + decPkPeak)))))
 
 def cliRunCanon1MiBSlotMaxReq (initMaxReq encMaxReq decSigMaxReq decPkMaxReq : Nat) : Nat :=
   max r0Opened1MiBMaxReq
@@ -1556,61 +1129,6 @@ def cliRunCanon1MiBSlotMaxReq (initMaxReq encMaxReq decSigMaxReq decPkMaxReq : N
       (max (r2MaxReq encMaxReq sessionCapBytes)
         (max (max (sigSliceMaxReq msgCapBytes) decSigMaxReq)
           (max (pksmCanonSliceMaxReq msgCapBytes) decPkMaxReq))))
-
-/-- Definitional bridge showing `cliRunOpenedTightDelta*` on `toCanonCalleeSpecs` at `1 MiB` equal
-`cliRunCanon1MiBSlot*` (`rfl`). -/
-theorem cliRunCanonOpened_1MiB_eq_slotProfile {W : CliRunWrapperEnvs}
-    (SW : CliRunWrapperSlotSpecs fineCostModel W) :
-    let S := toCanonCalleeSpecs SW fineCostModel_modelHyps fineCostModel_wireLowInterceptHyps
-      msgCapBytes
-    cliRunOpenedTightDeltaCum S 26 sessionCapBytes 1637 sessionCapBytes =
-      cliRunCanon1MiBSlotCum SW.initCum SW.encCum SW.decSigCum SW.decPkCum ∧
-    cliRunOpenedDeltaLive S 26 sessionCapBytes =
-      cliRunCanon1MiBSlotLive SW.initLive SW.encLive SW.decSigLive SW.decPkLive ∧
-    cliRunOpenedDeltaPeak S 26 sessionCapBytes 1637 sessionCapBytes =
-      cliRunCanon1MiBSlotPeak SW.initPeak SW.encLive SW.encPeak SW.decSigPeak SW.decPkPeak ∧
-    cliRunOpenedMaxReq S 26 sessionCapBytes 1637 sessionCapBytes =
-      cliRunCanon1MiBSlotMaxReq SW.initMaxReq SW.encMaxReq SW.decSigMaxReq SW.decPkMaxReq :=
-  ⟨rfl, rfl, rfl, rfl⟩
-
-/-- Witness-free `1 MiB` `PhaseCreditSpec fineCostModel` for `CliRunCanonTightEnv W g` from
-`CliRunFineSlotSpecs`. -/
-theorem cliRunCanonTight_1MiB_fine_phaseCredit
-    {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    (SW : CliRunFineSlotSpecs (W g))
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hspqr : CliRunTightSpqrCaps g) :
-    PhaseCreditSpec fineCostModel (CliRunCanonTightEnv W g)
-      (cliRunCanon1MiBSlotCum SW.initCum SW.encCum SW.decSigCum SW.decPkCum)
-      (cliRunCanon1MiBSlotLive SW.initLive SW.encLive SW.decSigLive SW.decPkLive)
-      (cliRunCanon1MiBSlotPeak SW.initPeak SW.encLive SW.encPeak SW.decSigPeak SW.decPkPeak)
-      (cliRunCanon1MiBSlotMaxReq SW.initMaxReq SW.encMaxReq SW.decSigMaxReq SW.decPkMaxReq) :=
-  cliRunCanonTight_phaseCredit_fine SW.toWrapperSlotSpecs hcaps hspqr
-
-/-- `PhaseGroupSpec fineCostModel` for `RecvArmEnv stdin DecSigEnv PksmCanonSliceEnv DecPkEnv`. -/
-theorem recvArmEnv_canon_fine_groupSpec {stdin : List (BitVec 8)}
-    {DecSigEnv DecPkEnv : List AllocEvent → Prop}
-    {stdinCap g_decSig g_decPk : Nat}
-    (hstdin : stdin.length ≤ stdinCap)
-    (hdecSig : PhaseGroupSpec fineCostModel DecSigEnv g_decSig)
-    (hdecPk : PhaseGroupSpec fineCostModel DecPkEnv g_decPk) :
-    PhaseGroupSpec fineCostModel
-      (RecvArmEnv stdin DecSigEnv PksmCanonSliceEnv DecPkEnv)
-      (max (sigTryFromCapDeltaGrpS stdinCap + g_decSig)
-        (pksmCanonSliceGrpS stdinCap + g_decPk)) := by
-  unfold RecvArmEnv
-  rcases stdin with _ | ⟨b, rest⟩
-  · exact (PhaseGroupSpec.freeOnly fineCostModel).mono (Nat.zero_le _)
-  · have hrest : rest.length ≤ stdinCap := Nat.le_of_succ_le hstdin
-    by_cases hb2 : b = 2#8
-    · simp only [hb2, ↓reduceIte]
-      exact (r3aEnv_fine_groupSpec hrest hdecSig).mono (Nat.le_max_left _ _)
-    · simp only [hb2, ↓reduceIte]
-      by_cases hb3 : b = 3#8
-      · simp only [hb3, ↓reduceIte]
-        exact (w4SlotR3bCanon_fine_groupSpec hrest hdecPk).mono (Nat.le_max_right _ _)
-      · simp only [hb3, ↓reduceIte]
-        exact (PhaseGroupSpec.freeOnly fineCostModel).mono (Nat.zero_le _)
 
 def cliRunCanonArmFineGrpS (stdinCap g_init g_enc g_decSig g_decPk : Nat) : Nat :=
   max (84 * FineScale + g_init)
@@ -1621,175 +1139,7 @@ def cliRunCanonArmFineGrpS (stdinCap g_init g_enc g_decSig g_decPk : Nat) : Nat 
 def cliRunCanonOpenedFineGrpS (stdinCap g_init g_enc g_decSig g_decPk : Nat) : Nat :=
   15 * FineScale + cliRunCanonArmFineGrpS stdinCap g_init g_enc g_decSig g_decPk
 
-/-- Sibling of `cliRunTight_fine_groupSpec` (`CliTopBudgetSpec`) for `CliRunCanonTightEnvOf`. -/
-theorem cliRunCanonTight_fine_groupSpec
-    {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {stdinCap wireOutCap : Nat}
-    (SW : CliRunFineSlotSpecs (W g))
-    (hstdin : g.i.stdin.length ≤ stdinCap) :
-    PhaseGroupSpec fineCostModel (CliRunCanonTightEnvOf W wireOutCap g)
-      (cliRunCanonOpenedFineGrpS stdinCap SW.initGrpS SW.encGrpS SW.decSigGrpS SW.decPkGrpS) := by
-  have hr0 := r0OpenedEnv_fine_groupSpec cliIo.rd (runFiles g.i)
-  have harm : PhaseGroupSpec fineCostModel
-      (RunArmEnv cliIo.rd (runFiles g.i) (toCanonCalleeEnvs (W g)) wireOutCap g.i.stdin g.c)
-      (cliRunCanonArmFineGrpS stdinCap SW.initGrpS SW.encGrpS SW.decSigGrpS SW.decPkGrpS) := by
-    unfold RunArmEnv cliRunCanonArmFineGrpS toCanonCalleeEnvs
-    cases g.c with
-    | keygen _ _ =>
-      exact (PhaseGroupSpec.freeOnly fineCostModel).mono (Nat.zero_le _)
-    | init _ dir =>
-      exact (initArmEnv_fine_groupSpec cliIo.rd (runFiles g.i) dir SW.init_grp).mono
-        (Nat.le_max_left _ _)
-    | send _ =>
-      exact (r2Env_fine_groupSpec wireOutCap SW.enc_grp).mono
-        (Nat.le_trans (Nat.le_max_left _ _) (Nat.le_max_right _ _))
-    | recv _ =>
-      exact (recvArmEnv_canon_fine_groupSpec hstdin SW.decSig_grp SW.decPk_grp).mono
-        (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_max_right _ _))
-  exact cliRunOfR0_fine_groupSpec hr0 harm
-
 /-! ### Whole-`main` (`CliMainEnv`) Corollaries for `CliRunCanonTightEnv` -/
-
-/-- Sibling of `cliMain_with_cliRunTight_phaseCredit` (`CliRunPeakSpec.lean:1171`) for
-`CliRunCanonTightEnvOf`. -/
-theorem cliMain_with_cliRunCanonTight_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hT : CliRunTightHyps M) (hLow : WireLowInterceptHyps M)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {stdinCap maxInitDir fileCap bundleCap wireOutCap maxDir maxName : Nat}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (SW : CliRunWrapperSlotSpecs M (W g))
-    (hcaps : CliPqDomainCaps stdinCap fileCap g.i)
-    (hspqr : CliRunSpqrAndInitCaps maxInitDir bundleCap g)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ 64)
-    (hdirs : ∀ dn ∈ dirs, dn.1.length ≤ maxDir ∧ ∀ nm ∈ dn.2, nm.length ≤ maxName) :
-    let S := toCanonCalleeSpecs SW hM hLow stdinCap
-    let runCum := cliRunOpenedTightDeltaCum S maxInitDir fileCap bundleCap wireOutCap
-    let runLive := cliRunOpenedDeltaLive S maxInitDir wireOutCap
-    let runPeak := cliRunOpenedDeltaPeak S maxInitDir fileCap bundleCap wireOutCap
-    let runMaxReq := cliRunOpenedMaxReq S maxInitDir fileCap bundleCap wireOutCap
-    PhaseCreditSpec M
-      (CliMainEnv uuidParse (CliRunCanonTightEnvOf W wireOutCap) g addrOpt needStdin dirs ok)
-      (cliMainDeltaCum stdinCap fileCap runCum ((dirs.map (fun dn => dn.2.length)).sum) maxDir maxName)
-      (cliMainDeltaLive stdinCap fileCap runLive)
-      (cliMainDeltaPeak stdinCap fileCap runLive runPeak maxDir maxName)
-      (cliMainMaxReq stdinCap fileCap runMaxReq maxDir maxName) :=
-  cliMain_phaseCredit hM hcaps haddr hdirs (cliRunCanonTight_phaseCredit hM hT hLow SW hcaps hspqr)
-
-/-- Combined whole-`main` `PhaseCreditSpec` + `PhaseGroupSpec` on `fineCostModel` for
-`CliMainEnv uuidParse (CliRunCanonTightEnv W)` (`0` `*Hyps` binders). -/
-theorem cliMain_with_cliRunCanonTight_fine_credit_and_groups
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (SW : CliRunFineSlotSpecs (W g))
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hspqr : CliRunTightSpqrCaps g)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes) :
-    let runCum := cliRunCanon1MiBSlotCum SW.initCum SW.encCum SW.decSigCum SW.decPkCum
-    let runLive := cliRunCanon1MiBSlotLive SW.initLive SW.encLive SW.decSigLive SW.decPkLive
-    let runPeak := cliRunCanon1MiBSlotPeak SW.initPeak SW.encLive SW.encPeak SW.decSigPeak SW.decPkPeak
-    let runMaxReq := cliRunCanon1MiBSlotMaxReq SW.initMaxReq SW.encMaxReq SW.decSigMaxReq SW.decPkMaxReq
-    let runGrpS := cliRunCanonOpenedFineGrpS msgCapBytes SW.initGrpS SW.encGrpS SW.decSigGrpS SW.decPkGrpS
-    PhaseCreditSpec fineCostModel
-      (CliMainEnv uuidParse (CliRunCanonTightEnv W) g addrOpt needStdin dirs ok)
-      (cliMainTightCumOf runCum)
-      (cliMainTightLiveOf runLive)
-      (cliMainTightPeakOf runLive runPeak)
-      (cliMainTightReqOf runMaxReq) ∧
-    PhaseGroupSpec fineCostModel
-      (CliMainEnv uuidParse (CliRunCanonTightEnv W) g addrOpt needStdin dirs ok)
-      (cliMainTightGrpSOf runGrpS) :=
-  cliMain_fine_credit_and_groups_of_run hcaps haddr hdirs
-    (cliRunCanonTight_1MiB_fine_phaseCredit SW hcaps hspqr)
-    (cliRunCanonTight_fine_groupSpec (wireOutCap := sessionCapBytes) SW hcaps.stdin_le)
-
-/-- Parametric-cap whole-`main` `FitsTrace fineCostModel` for `CliRunCanonTightEnv W`. -/
-theorem cliMain_canon_fitsTrace_of_runCap
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    {runCumCap runLiveCap runPeakCap runReqCap runGrpSCap : Nat}
-    (SW : CliRunFineSlotSpecs (W g))
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hspqr : CliRunTightSpqrCaps g)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes)
-    (hrc : cliRunCanon1MiBSlotCum SW.initCum SW.encCum SW.decSigCum SW.decPkCum ≤ runCumCap)
-    (hrl : cliRunCanon1MiBSlotLive SW.initLive SW.encLive SW.decSigLive SW.decPkLive ≤ runLiveCap)
-    (hrp : cliRunCanon1MiBSlotPeak SW.initPeak SW.encLive SW.encPeak SW.decSigPeak SW.decPkPeak ≤ runPeakCap)
-    (hrr : cliRunCanon1MiBSlotMaxReq SW.initMaxReq SW.encMaxReq SW.decSigMaxReq SW.decPkMaxReq ≤ runReqCap)
-    (hrg : cliRunCanonOpenedFineGrpS msgCapBytes SW.initGrpS SW.encGrpS SW.decSigGrpS SW.decPkGrpS ≤ runGrpSCap)
-    (hramCap : cliMainTightRamNeedOf runCumCap runLiveCap runPeakCap runReqCap runGrpSCap ≤ cliOneGiB)
-    (hvaCap : cliMainTightVaNeedOf runCumCap runLiveCap runPeakCap runReqCap runGrpSCap ≤ 2 ^ 48)
-    {fullLog : List AllocEvent}
-    (hEnv : CliMainEnv uuidParse (CliRunCanonTightEnv W) g addrOpt needStdin dirs ok fullLog) :
-    FitsTrace fineCostModel lim (cliMainTightStepReserveOf runReqCap runGrpSCap) fullLog :=
-  cliMain_fitsTrace_of_runFineBounds henf hsb hsc hcap hcaps haddr hdirs
-    (cliRunCanonTight_1MiB_fine_phaseCredit SW hcaps hspqr)
-    (cliRunCanonTight_fine_groupSpec (wireOutCap := sessionCapBytes) SW hcaps.stdin_le)
-    hrc hrl hrp hrr hrg hramCap hvaCap hEnv
-
-/-- Parametric-cap whole-`main` `FitsEnv fineCostModel` for `CliRunCanonTightEnv W`. -/
-theorem cliMain_canon_fitsEnv_of_runCap
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    {runCumCap runLiveCap runPeakCap runReqCap runGrpSCap : Nat}
-    (SW : CliRunFineSlotSpecs (W g))
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hspqr : CliRunTightSpqrCaps g)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes)
-    (hrc : cliRunCanon1MiBSlotCum SW.initCum SW.encCum SW.decSigCum SW.decPkCum ≤ runCumCap)
-    (hrl : cliRunCanon1MiBSlotLive SW.initLive SW.encLive SW.decSigLive SW.decPkLive ≤ runLiveCap)
-    (hrp : cliRunCanon1MiBSlotPeak SW.initPeak SW.encLive SW.encPeak SW.decSigPeak SW.decPkPeak ≤ runPeakCap)
-    (hrr : cliRunCanon1MiBSlotMaxReq SW.initMaxReq SW.encMaxReq SW.decSigMaxReq SW.decPkMaxReq ≤ runReqCap)
-    (hrg : cliRunCanonOpenedFineGrpS msgCapBytes SW.initGrpS SW.encGrpS SW.decSigGrpS SW.decPkGrpS ≤ runGrpSCap)
-    (hramCap : cliMainTightRamNeedOf runCumCap runLiveCap runPeakCap runReqCap runGrpSCap ≤ cliOneGiB)
-    (hvaCap : cliMainTightVaNeedOf runCumCap runLiveCap runPeakCap runReqCap runGrpSCap ≤ 2 ^ 48) :
-    FitsEnv fineCostModel lim fineCostModel.init
-      (CliMainEnv uuidParse (CliRunCanonTightEnv W) g addrOpt needStdin dirs ok) :=
-  cliMain_fitsEnv_of_runFineBounds henf hsb hsc hcap hcaps haddr hdirs
-    (cliRunCanonTight_1MiB_fine_phaseCredit SW hcaps hspqr)
-    (cliRunCanonTight_fine_groupSpec (wireOutCap := sessionCapBytes) SW hcaps.stdin_le)
-    hrc hrl hrp hrr hrg hramCap hvaCap
-
-def cliUnifiedCanonDeserRunCumCap (dc : Nat) : Nat :=
-  cliRunCanon1MiBSlotCum
-    (cliInitSlotCumCap + dc)
-    (cliSendSlotCumCap + dc)
-    (cliRecvWhisperSlotCumCap + dc)
-    (cliRecvPrekeySlotCumCap + dc)
-
-def cliUnifiedCanonDeserRunLiveCap (dl : Nat) : Nat :=
-  cliRunCanon1MiBSlotLive
-    (cliInitSlotLiveCap + dl)
-    (cliSendSlotLiveCap + dl)
-    (cliRecvWhisperSlotLiveCap + dl)
-    (cliRecvPrekeySlotLiveCap + dl)
-
-def cliUnifiedCanonDeserRunPeakCap (dl dp : Nat) : Nat :=
-  cliRunCanon1MiBSlotPeak
-    (cliInitSlotPeakCap + dp)
-    (cliSendSlotLiveCap + dl)
-    (cliSendSlotPeakCap + dp)
-    (cliRecvWhisperSlotPeakCap + dp)
-    (cliRecvPrekeySlotPeakCap + dp)
 
 def cliUnifiedCanonDeserRunReqCap (dr : Nat) : Nat :=
   cliRunCanon1MiBSlotMaxReq
@@ -1805,10 +1155,10 @@ def cliUnifiedCanonDeserRunGrpSCap (dg : Nat) : Nat :=
     (cliRecvWhisperSlotGrpSCap + dg)
     (cliRecvPrekeySlotGrpSCap + dg)
 
-def cliMainCanonStepReserve : Nat :=
+@[expose] def cliMainCanonStepReserve : Nat :=
   cliMainTightStepReserveOf (cliUnifiedCanonDeserRunReqCap 0) (cliUnifiedCanonDeserRunGrpSCap 0)
 
-def cliMainCanonDeserParamStepReserve : Nat :=
+@[expose] def cliMainCanonDeserParamStepReserve : Nat :=
   cliMainTightStepReserveOf
     (cliUnifiedCanonDeserRunReqCap cliDeserMaxReq)
     (cliUnifiedCanonDeserRunGrpSCap cliDeserMaxGrpS)
@@ -1817,123 +1167,6 @@ private theorem max4_le_max4 {a1 a2 b1 b2 c1 c2 d1 d2 : Nat}
     (ha : a1 ≤ a2) (hb : b1 ≤ b2) (hc : c1 ≤ c2) (hd : d1 ≤ d2) :
     max a1 (max b1 (max c1 d1)) ≤ max a2 (max b2 (max c2 d2)) :=
   max_le_max ha (max_le_max hb (max_le_max hc hd))
-
-private theorem cliUnifiedCanonDeser_bounds_mono
-    {dc dl dp dr dg : Nat} {W : CliRunWrapperEnvs} {SW : CliRunFineSlotSpecs W}
-    (hCaps : CliRunDeserParamSlotCaps dc dl dp dr dg SW) :
-    cliRunCanon1MiBSlotCum SW.initCum SW.encCum SW.decSigCum SW.decPkCum ≤
-      cliUnifiedCanonDeserRunCumCap dc ∧
-    cliRunCanon1MiBSlotLive SW.initLive SW.encLive SW.decSigLive SW.decPkLive ≤
-      cliUnifiedCanonDeserRunLiveCap dl ∧
-    cliRunCanon1MiBSlotPeak SW.initPeak SW.encLive SW.encPeak SW.decSigPeak SW.decPkPeak ≤
-      cliUnifiedCanonDeserRunPeakCap dl dp ∧
-    cliRunCanon1MiBSlotMaxReq SW.initMaxReq SW.encMaxReq SW.decSigMaxReq SW.decPkMaxReq ≤
-      cliUnifiedCanonDeserRunReqCap dr ∧
-    cliRunCanonOpenedFineGrpS msgCapBytes SW.initGrpS SW.encGrpS SW.decSigGrpS SW.decPkGrpS ≤
-      cliUnifiedCanonDeserRunGrpSCap dg := by
-  rcases hCaps with
-    ⟨hic, hil, hip, hir, hig,
-     hec, hel, hep, her, heg,
-     hsc, hsl, hsp, hsr, hsg,
-     hpc, hpl, hpp, hpr, hpg⟩
-  refine ⟨?_, ?_, ?_, ?_, ?_⟩
-  · simp only [cliUnifiedCanonDeserRunCumCap, cliRunCanon1MiBSlotCum, initArmDeltaCum,
-      r2TightDeltaCum]
-    exact Nat.add_le_add_left
-      (max4_le_max4 (by omega) (by omega) (by omega) (by omega)) _
-  · simp only [cliUnifiedCanonDeserRunLiveCap, cliRunCanon1MiBSlotLive, initArmDeltaLive,
-      r2DeltaLive]
-    exact Nat.add_le_add_left
-      (max4_le_max4 (by omega) (by omega) (by omega) (by omega)) _
-  · unfold cliRunCanon1MiBSlotPeak cliUnifiedCanonDeserRunPeakCap
-    have hp_init :
-        initArmDeltaPeak (pathDeltaLive 26 16) (pathDeltaPeak 26 16) 1637 SW.initPeak ≤
-          initArmDeltaPeak (pathDeltaLive 26 16) (pathDeltaPeak 26 16) 1637
-            (cliInitSlotPeakCap + dp) := by
-      unfold initArmDeltaPeak
-      exact max_le_max (Nat.le_refl _)
-        (Nat.add_le_add_left (max_le_max (Nat.le_refl _) (Nat.add_le_add_left hip _)) _)
-    have hp_enc :
-        r2DeltaPeak fineCostModel SW.encLive SW.encPeak sessionCapBytes ≤
-          r2DeltaPeak fineCostModel (cliSendSlotLiveCap + dl) (cliSendSlotPeakCap + dp)
-            sessionCapBytes := by
-      unfold r2DeltaPeak
-      exact max_le_max hep (Nat.add_le_add_right hel _)
-    have hp_sig :
-        max (sigSlicePeak msgCapBytes) (sigSliceLive msgCapBytes + SW.decSigPeak) ≤
-          max (sigSlicePeak msgCapBytes)
-            (sigSliceLive msgCapBytes + (cliRecvWhisperSlotPeakCap + dp)) :=
-      max_le_max (Nat.le_refl _) (Nat.add_le_add_left hsp _)
-    have hp_pk :
-        max (pksmCanonSlicePeak msgCapBytes) (pksmCanonSliceLive msgCapBytes + SW.decPkPeak) ≤
-          max (pksmCanonSlicePeak msgCapBytes)
-            (pksmCanonSliceLive msgCapBytes + (cliRecvPrekeySlotPeakCap + dp)) :=
-      max_le_max (Nat.le_refl _) (Nat.add_le_add_left hpp _)
-    exact max_le_max (Nat.le_refl _)
-      (Nat.add_le_add_left (max4_le_max4 hp_init hp_enc hp_sig hp_pk) _)
-  · unfold cliRunCanon1MiBSlotMaxReq cliUnifiedCanonDeserRunReqCap initArmMaxReq r2MaxReq
-    exact max_le_max (Nat.le_refl _)
-      (max4_le_max4
-        (max_le_max (Nat.le_refl _) (max_le_max (Nat.le_refl _) hir))
-        (max_le_max her (Nat.le_refl _))
-        (max_le_max (Nat.le_refl _) hsr)
-        (max_le_max (Nat.le_refl _) hpr))
-  · unfold cliRunCanonOpenedFineGrpS cliUnifiedCanonDeserRunGrpSCap cliRunCanonArmFineGrpS
-    exact Nat.add_le_add_left
-      (max4_le_max4
-        (Nat.add_le_add_left hig _)
-        (Nat.add_le_add_right heg _)
-        (Nat.add_le_add_left hsg _)
-        (Nat.add_le_add_left hpg _)) _
-
-/-- Direct sibling of `CliTopBudgetSpec.cliMain_fitsTrace_fineCostModel` (`:1773`) for
-`CliRunCanonTightEnv W` under `CliRunTightSlotCaps SW`. -/
-theorem cliMain_canon_fitsTrace_fineCostModel
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (SW : CliRunFineSlotSpecs (W g))
-    (hSlots : CliRunTightSlotCaps SW)
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hspqr : CliRunTightSpqrCaps g)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes)
-    {fullLog : List AllocEvent}
-    (hEnv : CliMainEnv uuidParse (CliRunCanonTightEnv W) g addrOpt needStdin dirs ok fullLog) :
-    FitsTrace fineCostModel lim cliMainCanonStepReserve fullLog := by
-  obtain ⟨h1, h2, h3, h4, h5⟩ := cliUnifiedCanonDeser_bounds_mono hSlots
-  exact cliMain_canon_fitsTrace_of_runCap henf hsb hsc hcap SW hcaps hspqr haddr hdirs
-    h1 h2 h3 h4 h5 (by decide) (by decide) hEnv
-
-/-- Direct sibling of `CliTopBudgetSpec.cliMain_fitsEnv_fineCostModel` (`:1801`) for
-`CliRunCanonTightEnv W` under `CliRunTightSlotCaps SW`. -/
-theorem cliMain_canon_fitsEnv_fineCostModel
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (SW : CliRunFineSlotSpecs (W g))
-    (hSlots : CliRunTightSlotCaps SW)
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hspqr : CliRunTightSpqrCaps g)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes) :
-    FitsEnv fineCostModel lim fineCostModel.init
-      (CliMainEnv uuidParse (CliRunCanonTightEnv W) g addrOpt needStdin dirs ok) := by
-  obtain ⟨h1, h2, h3, h4, h5⟩ := cliUnifiedCanonDeser_bounds_mono hSlots
-  exact cliMain_canon_fitsEnv_of_runCap henf hsb hsc hcap SW hcaps hspqr haddr hdirs
-    h1 h2 h3 h4 h5 (by decide) (by decide)
 
 private theorem deserParamSlotCaps_mono
     {dc1 dl1 dp1 dr1 dg1 dc2 dl2 dp2 dr2 dg2 : Nat}
@@ -1965,68 +1198,5 @@ private theorem deserParamSlotCaps_mono
      Nat.le_trans h18 (Nat.add_le_add_left hp _),
      Nat.le_trans h19 (max_le_max (Nat.le_refl _) hr),
      Nat.le_trans h20 (Nat.add_le_add_left hg _)⟩
-
-/-- Parametric-`DeserEnv` sibling of `CliTopBudgetSpec.cliMain_deserParam_fitsTrace_fineCostModel`
-(`:1889`) for `CliRunCanonTightEnv W`. -/
-theorem cliMain_canon_deserParam_fitsTrace_fineCostModel
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    {deserCum deserLive deserPeak deserMaxReq deserGrpS : Nat}
-    (SW : CliRunFineSlotSpecs (W g))
-    (hSlots : CliRunDeserParamSlotCaps deserCum deserLive deserPeak deserMaxReq deserGrpS SW)
-    (hdc : deserCum ≤ cliDeserMaxCum)
-    (hdl : deserLive ≤ cliDeserMaxLive)
-    (hdp : deserPeak ≤ cliDeserMaxPeak)
-    (hdr : deserMaxReq ≤ cliDeserMaxReq)
-    (hdg : deserGrpS ≤ cliDeserMaxGrpS)
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hspqr : CliRunTightSpqrCaps g)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes)
-    {fullLog : List AllocEvent}
-    (hEnv : CliMainEnv uuidParse (CliRunCanonTightEnv W) g addrOpt needStdin dirs ok fullLog) :
-    FitsTrace fineCostModel lim cliMainCanonDeserParamStepReserve fullLog := by
-  have hSlotsMax := deserParamSlotCaps_mono hSlots hdc hdl hdp hdr hdg
-  obtain ⟨h1, h2, h3, h4, h5⟩ := cliUnifiedCanonDeser_bounds_mono hSlotsMax
-  exact cliMain_canon_fitsTrace_of_runCap henf hsb hsc hcap SW hcaps hspqr haddr hdirs
-    h1 h2 h3 h4 h5 (by decide) (by decide) hEnv
-
-/-- Parametric-`DeserEnv` sibling of `CliTopBudgetSpec.cliMain_deserParam_fitsEnv_fineCostModel`
-for `CliRunCanonTightEnv W`. -/
-theorem cliMain_canon_deserParam_fitsEnv_fineCostModel
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    {deserCum deserLive deserPeak deserMaxReq deserGrpS : Nat}
-    (SW : CliRunFineSlotSpecs (W g))
-    (hSlots : CliRunDeserParamSlotCaps deserCum deserLive deserPeak deserMaxReq deserGrpS SW)
-    (hdc : deserCum ≤ cliDeserMaxCum)
-    (hdl : deserLive ≤ cliDeserMaxLive)
-    (hdp : deserPeak ≤ cliDeserMaxPeak)
-    (hdr : deserMaxReq ≤ cliDeserMaxReq)
-    (hdg : deserGrpS ≤ cliDeserMaxGrpS)
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hspqr : CliRunTightSpqrCaps g)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes) :
-    FitsEnv fineCostModel lim fineCostModel.init
-      (CliMainEnv uuidParse (CliRunCanonTightEnv W) g addrOpt needStdin dirs ok) := by
-  have hSlotsMax := deserParamSlotCaps_mono hSlots hdc hdl hdp hdr hdg
-  obtain ⟨h1, h2, h3, h4, h5⟩ := cliUnifiedCanonDeser_bounds_mono hSlotsMax
-  exact cliMain_canon_fitsEnv_of_runCap henf hsb hsc hcap SW hcaps hspqr haddr hdirs
-    h1 h2 h3 h4 h5 (by decide) (by decide)
 
 end LibsignalBinary.Proofs.PeakBudget.WirePksmTightCredit

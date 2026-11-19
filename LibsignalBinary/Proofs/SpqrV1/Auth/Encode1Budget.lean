@@ -10,12 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Auth.Encode1
-public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBaseBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Auth.Encode1
+public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Event Decompositions and Unpinning Bridges for `Authenticator::encode`
@@ -25,7 +26,7 @@ Provides stage-by-stage `FitsEvents` and `AllocCostModel.stepEvents` decompositi
 together with pinned-to-unpinned `subroutine_ok` bridges for `Authenticator::encode`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -146,24 +147,6 @@ theorem stepEvents_authEncode_eq {M : AllocCostModel} (st : M.σ) (x : AuthEncod
 
 /-! ## `authenticatorPBPinnedAt` Bounds Extractor -/
 
-/-- Polymorphic-outcome pure-bounds extractor for `authenticatorPBPinnedAt`. -/
-theorem sepWPp_extract_authenticatorPBPinnedAt_bounds {prog : Program} {ret : BitVec 64}
-    {s : State} {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {g : AuthenticatorPBGhost} {authA : BitVec 64} {auth : AuthenticatorPB}
-    {P F : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hP : P = authenticatorPBPinnedAt A.repAlloc g authA auth ∗ F)
-    (hk : auth.rootKey.length < 2 ^ 63 → auth.macKey.length < 2 ^ 63 →
-      (g.rootKey.cap = 0 → auth.rootKey = []) →
-      (g.macKey.cap = 0 → auth.macKey = []) →
-      SepWPp prog ret s P Q Qp oom) :
-    SepWPp prog ret s P Q Qp oom := by
-  intro R hm hL
-  have hm' : s.mem ⊨ authenticatorPBPinnedAt A.repAlloc g authA auth ∗ (F ∗ R) := by
-    rw [hP, sepConj_assoc] at hm; exact hm
-  obtain ⟨hrk_lt, hmk_lt, hrk_nil, hmk_nil⟩ :=
-    authenticatorPBPinnedAt_bounds_of_satisfies hm'
-  exact hk hrk_lt hmk_lt hrk_nil hmk_nil R hm hL
-
 /-! ## Pinned-to-Unpinned Bridges -/
 
 theorem authEncode_post_unpinned_of_pinned_env {resStack : Nat}
@@ -260,29 +243,5 @@ theorem authEncode_unpinned_of_pinned_placed [LibsignalPlacement] {resStack : Na
     subroutine_ok prog entry
       (withLsCodeLoaded lsmpl (authEncodeSpecOf resStack A lim)) :=
   authEncode_unpinned_of_pinned_placed_env hpinned
-
-theorem authEncode1_placed_of_pinned [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hpinned : AuthEncode1PinnedPlacedOkExt A lim H) :
-    AuthEncode1PlacedOkExt A lim H :=
-  authEncode_unpinned_of_pinned_placed hpinned
-
-theorem authEncode1_placed_of_pinned_x [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hpinned : AuthEncode1PinnedPlacedOkX A lim H) :
-    AuthEncode1PlacedOkX A lim H :=
-  authEncode_unpinned_of_pinned_placed hpinned
-
-theorem authEncode2_placed_of_pinned [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hpinned : AuthEncode2PinnedPlacedOkExt A lim H) :
-    AuthEncode2PlacedOkExt A lim H :=
-  authEncode_unpinned_of_pinned_placed hpinned
-
-theorem authEncode2_placed_of_pinned_x [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hpinned : AuthEncode2PinnedPlacedOkX A lim H) :
-    AuthEncode2PlacedOkX A lim H :=
-  authEncode_unpinned_of_pinned_placed hpinned
 
 end LibsignalBinary.Proofs.SpqrV1.Auth.Encode1Budget

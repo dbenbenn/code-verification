@@ -10,16 +10,20 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostCleanupBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostRkSome
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostCleanupBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostRkSome
 public import ProofLib.Placed.OpcodeExclusion
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs -- shake: keep
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Wire.WireCodeSym
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.FindIndexCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromHooks -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded `ratchet_key = Some(rk)` Head for `<SignalMessage>::try_from`
@@ -29,7 +33,7 @@ Lifts `deserializeFull_placed_ok` (Block `201`) to `VmPreserved` and proves the 
 on Block `85`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

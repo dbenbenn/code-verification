@@ -9,20 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.SpqrLeafCodecCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvPeakHelpers
-public import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvRaw
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeStep
+public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrLeafCodecCredit
+public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvPeakHelpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvRaw
+import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeStep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Peak Live-Heap Specification for SPQR `spqr::recv`
@@ -32,7 +35,7 @@ order across decode, version dispatch (`Ordering::Less`, `Ordering::Greater`, `O
 symmetric-chain advance, and protobuf state re-encoding.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -72,6 +75,9 @@ open LibsignalBinary.Proofs.PeakBudget.SpqrRecvPeakHelpers
   (chainAddEpoch_phaseCreditSpec chainNew_phaseCreditSpec chainRecvKey_phaseCreditSpec
    nextKeyInternalReq recvKeyCapMax recvKey_raw_le_of_maxOoo vecDequeGrowMaxReq)
 open LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvRaw (states_recv_raw_le_2976)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (MsgDeserErrEnv)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
+  (phaseCreditSpec_msgDeserErrEnv_any)
 
 /-! ## Abstract `PhaseCreditSpec` Combinators -/
 
@@ -213,7 +219,7 @@ export LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
 
 /-- `Ordering::Less` branch envelope for call ghosts `(xInit, xInto)` tied to `vn.authKey` and `chainFrom`.
 -/
-def SpqrRecvLessCallEnv (F : ShaCompress) (pre_pb : PqRatchetState) (vn : VersionNegotiationPB)
+@[expose] def SpqrRecvLessCallEnv (F : ShaCompress) (pre_pb : PqRatchetState) (vn : VersionNegotiationPB)
     (xInit : InitInnerGhost) (xInto : ChainIntoPbCall) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
     SeqEnv (InitInnerEnv F xInit)
@@ -223,13 +229,13 @@ def SpqrRecvLessCallEnv (F : ShaCompress) (pre_pb : PqRatchetState) (vn : Versio
             (chainFrom (spqrHkdfWith F) pre_pb.chain (some vn) = .ok xInto.chain ∧
               SeqEnv (ChainIntoPbEnv xInto) FreeOnlyEvs evsTail))) evs
 
-def lessDeltaCum (rawPre : Nat) : Nat :=
+@[expose] def lessDeltaCum (rawPre : Nat) : Nat :=
   96 * (2 * (2 * rawPre + 2048) + 9539) + 58610 + (2 * (rawPre + 296) + 9539)
 
-def lessDeltaLive (rawPre : Nat) : Nat :=
+@[expose] def lessDeltaLive (rawPre : Nat) : Nat :=
   96 * ((2 * rawPre + 2048) + 8195) + 49858 + ((rawPre + 296) + 8195)
 
-def lessMaxReq (rawPre : Nat) : Nat :=
+@[expose] def lessMaxReq (rawPre : Nat) : Nat :=
   2 * rawPre + 2048
 
 theorem spqrRecvOrderingLess_phaseCreditSpec
@@ -286,12 +292,12 @@ theorem spqrRecvOrderingLess_phaseCreditSpec
 
 /-- Chain initialization envelope in `Ordering::Greater` (`ChainNewEnv`, `ChainFromEnv`, or `FreeOnlyEvs`).
 -/
-def V0ChainInitEnv (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (_xNew : ChainNewGhost)
+@[expose] def V0ChainInitEnv (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (_xNew : ChainNewGhost)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ ChainNewEnv evs ∨ ChainFromEnv pre_pb.chain (some vn) evs
 
 /-- `Ordering::Greater` branch envelope for call ghosts `(xNew, xRk, xInto)`. -/
-def SpqrRecvGreaterCallEnv (F : ShaCompress)
+@[expose] def SpqrRecvGreaterCallEnv (F : ShaCompress)
     (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
     (xNew : ChainNewGhost) (xRk : ChainRecvKeyGhost) (xInto : ChainIntoPbCall)
     (evs : List AllocEvent) : Prop :=
@@ -311,43 +317,43 @@ def SpqrRecvGreaterCallEnv (F : ShaCompress)
                         inner := some (.v1 pb) })
                     FreeOnlyEvs) evsTail))) evs)
 
-def greaterRecvKeyCum (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def greaterRecvKeyCum (M : AllocCostModel) [HasFineReallocCredit M]
     (rawPre maxJumpCap maxOooCap d : Nat) : Nat :=
   (maxJumpCap + 1) * HasFineReallocCredit.smallAllocCost M nextKeyInternalReq +
     HasFineReallocCredit.smallAllocCost M 32 +
     d * (2 * recvKeyCapMax (rawPre + 296) maxOooCap + 9539)
 
-def greaterRecvKeyLarge (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def greaterRecvKeyLarge (M : AllocCostModel) [HasFineReallocCredit M]
     (rawPre maxOooCap : Nat) : Nat :=
   if HasFineReallocCredit.smallMaxReq M < recvKeyCapMax (rawPre + 296) maxOooCap then
     recvKeyCapMax (rawPre + 296) maxOooCap + 8195
   else 0
 
-def greaterIntoBound (rawPre maxOooCap : Nat) : Nat :=
+@[expose] def greaterIntoBound (rawPre maxOooCap : Nat) : Nat :=
   rawPre + 328 + 36 * maxOooCap
 
-def greaterEncodeBound (rawPre maxOooCap : Nat) : Nat :=
+@[expose] def greaterEncodeBound (rawPre maxOooCap : Nat) : Nat :=
   greaterIntoBound rawPre maxOooCap + 752
 
-def greaterDeltaCum (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def greaterDeltaCum (M : AllocCostModel) [HasFineReallocCredit M]
     (rawPre maxJumpCap maxOooCap d : Nat) : Nat :=
   58610 + greaterRecvKeyCum M rawPre maxJumpCap maxOooCap d +
     (2 * greaterIntoBound rawPre maxOooCap + 9539) +
     (2 * greaterEncodeBound rawPre maxOooCap + 9539)
 
-def greaterDeltaLive (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def greaterDeltaLive (M : AllocCostModel) [HasFineReallocCredit M]
     (rawPre maxOooCap : Nat) : Nat :=
   49858 + greaterRecvKeyLarge M rawPre maxOooCap +
     (greaterIntoBound rawPre maxOooCap + 8195) +
     (greaterEncodeBound rawPre maxOooCap + 8195)
 
-def greaterDeltaPeak (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def greaterDeltaPeak (M : AllocCostModel) [HasFineReallocCredit M]
     (rawPre maxOooCap : Nat) : Nat :=
   49858 + 2 * greaterRecvKeyLarge M rawPre maxOooCap +
     (greaterIntoBound rawPre maxOooCap + 8195) +
     (greaterEncodeBound rawPre maxOooCap + 8195)
 
-def greaterMaxReq (rawPre maxOooCap : Nat) : Nat :=
+@[expose] def greaterMaxReq (rawPre maxOooCap : Nat) : Nat :=
   max 448 (max (recvKeyCapMax (rawPre + 296) maxOooCap) (greaterEncodeBound rawPre maxOooCap))
 
 theorem spqrRecvOrderingGreater_phaseCreditSpec
@@ -479,7 +485,7 @@ structure StatesRecvCreditSpec (M : AllocCostModel) [HasFineReallocCredit M] (F 
 
 /-- Optional `<Chain>::add_epoch` envelope (`evs = []` when `esOpt = none`, `ChainAddEpochEnv` when `some`).
 -/
-def OptChainAddEpochEnv (F : ShaCompress) (esOpt : Option EpochSecret) (xAdd : ChainAddEpochGhost)
+@[expose] def OptChainAddEpochEnv (F : ShaCompress) (esOpt : Option EpochSecret) (xAdd : ChainAddEpochGhost)
     (evs : List AllocEvent) : Prop :=
   match esOpt with
   | none => evs = []
@@ -487,7 +493,7 @@ def OptChainAddEpochEnv (F : ShaCompress) (esOpt : Option EpochSecret) (xAdd : C
 
 /-- Symmetric-chain and protobuf re-encoding tail (`+1856 .. +2820`) of the `Ordering::Equal` branch.
 -/
-def V1ChainAndEncodeEnv (F : ShaCompress)
+@[expose] def V1ChainAndEncodeEnv (F : ShaCompress)
     (pre_pb : PqRatchetState) (esOpt : Option EpochSecret)
     (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
     (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
@@ -515,7 +521,7 @@ def V1ChainAndEncodeEnv (F : ShaCompress)
                               FreeOnlyEvs)) evs3)) evs2) evs1)) evs
 
 /-- `Ordering::Equal` (`V1RatchetTail`, `+1532 .. +2820`) allocator trace envelope. -/
-def SpqrRecvEqualCallEnv (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrRecvEqualCallEnv (F : ShaCompress) (K : MlKem)
     (StatesRecvEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
       List AllocEvent → Prop)
     (pre_pb : PqRatchetState) (pb : V1State)
@@ -524,46 +530,47 @@ def SpqrRecvEqualCallEnv (F : ShaCompress) (K : MlKem)
     (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
     (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
     (evs : List AllocEvent) : Prop :=
-  SeqEnv FreeOnlyEvs
-    (fun evsAfterMd =>
-      FreeOnlyEvs evsAfterMd ∨
-        SeqEnv (StatesFromPbBoundedEnv pb)
-          (fun evsAfterFrom =>
-            FreeOnlyEvs evsAfterFrom ∨
-              (States.from_pb spqrPolyApi (spqrAuthApi F) pb = .ok st0 ∧
-                SeqEnv (StatesRecvEnv st0 sckaMsg)
-                  (fun evsAfterRecv =>
-                    FreeOnlyEvs evsAfterRecv ∨
-                      (States.recv K st0 sckaMsg = .ok v ∧
-                        xSInto.st = v.state ∧
-                        V1ChainAndEncodeEnv F pre_pb v.key
-                          xAdd xRk xSInto xCInto evsAfterRecv)) evsAfterFrom)) evsAfterMd) evs
+  SeqEnv MsgDeserErrEnv FreeOnlyEvs evs ∨
+    SeqEnv FreeOnlyEvs
+      (fun evsAfterMd =>
+        FreeOnlyEvs evsAfterMd ∨
+          SeqEnv (StatesFromPbBoundedEnv pb)
+            (fun evsAfterFrom =>
+              FreeOnlyEvs evsAfterFrom ∨
+                (States.from_pb spqrPolyApi (spqrAuthApi F) pb = .ok st0 ∧
+                  SeqEnv (StatesRecvEnv st0 sckaMsg)
+                    (fun evsAfterRecv =>
+                      FreeOnlyEvs evsAfterRecv ∨
+                        (States.recv K st0 sckaMsg = .ok v ∧
+                          xSInto.st = v.state ∧
+                          V1ChainAndEncodeEnv F pre_pb v.key
+                            xAdd xRk xSInto xCInto evsAfterRecv)) evsAfterFrom)) evsAfterMd) evs
 
-def equalAddEpochReq (rawPre : Nat) : Nat :=
+@[expose] def equalAddEpochReq (rawPre : Nat) : Nat :=
   vecDequeGrowMaxReq (rawPre + 296)
 
-def equalRecvKeyCum (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def equalRecvKeyCum (M : AllocCostModel) [HasFineReallocCredit M]
     (rawPre maxJumpCap maxOooCap d : Nat) : Nat :=
   (maxJumpCap + 1) * HasFineReallocCredit.smallAllocCost M nextKeyInternalReq +
     HasFineReallocCredit.smallAllocCost M 32 +
     d * (2 * recvKeyCapMax (rawPre + 1058) maxOooCap + 9539)
 
-def equalRecvKeyLarge (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def equalRecvKeyLarge (M : AllocCostModel) [HasFineReallocCredit M]
     (rawPre maxOooCap : Nat) : Nat :=
   if HasFineReallocCredit.smallMaxReq M < recvKeyCapMax (rawPre + 1058) maxOooCap then
     recvKeyCapMax (rawPre + 1058) maxOooCap + 8195
   else 0
 
-def equalSIntoReq (rawPre : Nat) : Nat :=
+@[expose] def equalSIntoReq (rawPre : Nat) : Nat :=
   2 * (rawPre + 2976) + 1824
 
-def equalCIntoBound (rawPre maxOooCap : Nat) : Nat :=
+@[expose] def equalCIntoBound (rawPre maxOooCap : Nat) : Nat :=
   rawPre + 1090 + 36 * maxOooCap
 
-def equalEncodeBound (rawPre maxOooCap : Nat) : Nat :=
+@[expose] def equalEncodeBound (rawPre maxOooCap : Nat) : Nat :=
   2 * rawPre + 4818 + 36 * maxOooCap
 
-def equalChainTailCum (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def equalChainTailCum (M : AllocCostModel) [HasFineReallocCredit M]
     (rawPre maxJumpCap maxOooCap d : Nat) : Nat :=
   58610 + (2 * equalAddEpochReq rawPre + 57714) +
     equalRecvKeyCum M rawPre maxJumpCap maxOooCap d +
@@ -571,21 +578,21 @@ def equalChainTailCum (M : AllocCostModel) [HasFineReallocCredit M]
     (2 * equalCIntoBound rawPre maxOooCap + 9539) +
     (2 * equalEncodeBound rawPre maxOooCap + 9539)
 
-def equalChainTailLive (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def equalChainTailLive (M : AllocCostModel) [HasFineReallocCredit M]
     (rawPre maxOooCap : Nat) : Nat :=
   49858 + (equalAddEpochReq rawPre + 8195) + equalRecvKeyLarge M rawPre maxOooCap +
     64 * (equalSIntoReq rawPre + 8195) +
     (equalCIntoBound rawPre maxOooCap + 8195) +
     (equalEncodeBound rawPre maxOooCap + 8195)
 
-def equalChainTailPeak (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def equalChainTailPeak (M : AllocCostModel) [HasFineReallocCredit M]
     (rawPre maxOooCap : Nat) : Nat :=
   49858 + (equalAddEpochReq rawPre + 8195) + 2 * equalRecvKeyLarge M rawPre maxOooCap +
     64 * (equalSIntoReq rawPre + 8195) +
     (equalCIntoBound rawPre maxOooCap + 8195) +
     (equalEncodeBound rawPre maxOooCap + 8195)
 
-def equalChainTailMaxReq (rawPre maxOooCap : Nat) : Nat :=
+@[expose] def equalChainTailMaxReq (rawPre maxOooCap : Nat) : Nat :=
   max (equalAddEpochReq rawPre)
     (max (recvKeyCapMax (rawPre + 1058) maxOooCap)
       (max (equalSIntoReq rawPre) (equalEncodeBound rawPre maxOooCap)))
@@ -754,7 +761,7 @@ theorem v1ChainAndEncode_phaseCreditSpec
     (by dsimp only [rAdd, rSInto, bCInto, rEnc]; simp only [Nat.add_assoc]; exact Nat.le_refl _)
     (Nat.max_le.mpr ⟨h448, Nat.le_refl _⟩)
 
-def equalDeltaCum (M : AllocCostModel) [HasFineReallocCredit M] {F : ShaCompress}
+@[expose] def equalDeltaCum (M : AllocCostModel) [HasFineReallocCredit M] {F : ShaCompress}
     {StatesRecvEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
       List AllocEvent → Prop}
     (S : StatesRecvCreditSpec M F StatesRecvEnv)
@@ -763,7 +770,7 @@ def equalDeltaCum (M : AllocCostModel) [HasFineReallocCredit M] {F : ShaCompress
     (S.kCum * rawPre + S.cCum) +
     equalChainTailCum M rawPre maxJumpCap maxOooCap d
 
-def equalDeltaLive (M : AllocCostModel) [HasFineReallocCredit M] {F : ShaCompress}
+@[expose] def equalDeltaLive (M : AllocCostModel) [HasFineReallocCredit M] {F : ShaCompress}
     {StatesRecvEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
       List AllocEvent → Prop}
     (S : StatesRecvCreditSpec M F StatesRecvEnv)
@@ -772,7 +779,7 @@ def equalDeltaLive (M : AllocCostModel) [HasFineReallocCredit M] {F : ShaCompres
     (S.kLive * rawPre + S.cLive) +
     equalChainTailLive M rawPre maxOooCap
 
-def equalDeltaPeak (M : AllocCostModel) [HasFineReallocCredit M] {F : ShaCompress}
+@[expose] def equalDeltaPeak (M : AllocCostModel) [HasFineReallocCredit M] {F : ShaCompress}
     {StatesRecvEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
       List AllocEvent → Prop}
     (S : StatesRecvCreditSpec M F StatesRecvEnv)
@@ -782,7 +789,7 @@ def equalDeltaPeak (M : AllocCostModel) [HasFineReallocCredit M] {F : ShaCompres
     (S.kPeak * rawPre + S.cPeak) +
     equalChainTailPeak M rawPre maxOooCap
 
-def equalMaxReq {F : ShaCompress}
+@[expose] def equalMaxReq {F : ShaCompress}
     {StatesRecvEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
       List AllocEvent → Prop}
     {M : AllocCostModel} [HasFineReallocCredit M]
@@ -879,18 +886,20 @@ theorem spqrRecvOrderingEqual_phaseCreditSpec
   have hAfterFrom := phaseCreditSpec_or_freeOnly hM hAfterFromOk
   have hAfterMd := phaseCreditSpec_or_freeOnly hM (phaseCreditSpec_seq_flat hFromPb hAfterFrom)
   have hFull := phaseCreditSpec_seq_freeOnly_left hM hAfterMd
+  have hMdErr := phaseCreditSpec_seq_freeOnly_right hM (phaseCreditSpec_msgDeserErrEnv_any hM)
   unfold SpqrRecvEqualCallEnv equalDeltaCum equalDeltaLive equalDeltaPeak equalMaxReq
-  exact hFull.mono
-    (by simp only [Nat.add_assoc]; exact Nat.le_refl _)
-    (by simp only [Nat.add_assoc]; exact Nat.le_refl _)
-    (by simp only [Nat.add_assoc]; exact Nat.le_refl _)
-    (Nat.le_refl _)
+  exact (hMdErr.or hFull).mono
+    (Nat.max_le.mpr ⟨by omega, by simp only [Nat.add_assoc]; exact Nat.le_refl _⟩)
+    (Nat.max_le.mpr ⟨by omega, by simp only [Nat.add_assoc]; exact Nat.le_refl _⟩)
+    (Nat.max_le.mpr ⟨by omega, by simp only [Nat.add_assoc]; exact Nat.le_refl _⟩)
+    (Nat.max_le.mpr ⟨Nat.le_trans (by omega : 320 ≤ 2 * rawPre + 4096) (Nat.le_max_left _ _),
+      Nat.le_refl _⟩)
 
 /-! ## Top-Level `spqr::recv` Join (`SpqrRecvPartsEnv`) -/
 
 /-- Full `spqr::recv` allocator trace envelope on input state slice `stBytes`, composing message
 preamble validation, `spqr::decode_state`, and the three version-ordering dispatch branches. -/
-def SpqrRecvPartsEnv (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrRecvPartsEnv (F : ShaCompress) (K : MlKem)
     (StatesRecvEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
       List AllocEvent → Prop)
     (stBytes : Bytes)
@@ -914,7 +923,7 @@ def SpqrRecvPartsEnv (F : ShaCompress) (K : MlKem)
                 SpqrRecvEqualCallEnv F K StatesRecvEnv pre_pb pb st0 sckaMsg v
                   xAdd xRk xSInto xCInto evsAfterDec)))) evs
 
-def spqrRecvDeltaCum (M : AllocCostModel) [HasFineReallocCredit M] {F : ShaCompress}
+@[expose] def spqrRecvDeltaCum (M : AllocCostModel) [HasFineReallocCredit M] {F : ShaCompress}
     {StatesRecvEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
       List AllocEvent → Prop}
     (S : StatesRecvCreditSpec M F StatesRecvEnv)
@@ -924,7 +933,7 @@ def spqrRecvDeltaCum (M : AllocCostModel) [HasFineReallocCredit M] {F : ShaCompr
       (max (greaterDeltaCum M (201 * stLen) maxJumpCap maxOooCap d)
         (equalDeltaCum M S (201 * stLen) maxJumpCap maxOooCap d))
 
-def spqrRecvDeltaLive (M : AllocCostModel) [HasFineReallocCredit M] {F : ShaCompress}
+@[expose] def spqrRecvDeltaLive (M : AllocCostModel) [HasFineReallocCredit M] {F : ShaCompress}
     {StatesRecvEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
       List AllocEvent → Prop}
     (S : StatesRecvCreditSpec M F StatesRecvEnv)
@@ -934,7 +943,7 @@ def spqrRecvDeltaLive (M : AllocCostModel) [HasFineReallocCredit M] {F : ShaComp
       (max (greaterDeltaLive M (201 * stLen) maxOooCap)
         (equalDeltaLive M S (201 * stLen) maxOooCap))
 
-def spqrRecvDeltaPeak (M : AllocCostModel) [HasFineReallocCredit M] {F : ShaCompress}
+@[expose] def spqrRecvDeltaPeak (M : AllocCostModel) [HasFineReallocCredit M] {F : ShaCompress}
     {StatesRecvEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
       List AllocEvent → Prop}
     (S : StatesRecvCreditSpec M F StatesRecvEnv)
@@ -944,7 +953,7 @@ def spqrRecvDeltaPeak (M : AllocCostModel) [HasFineReallocCredit M] {F : ShaComp
       (max (greaterDeltaPeak M (201 * stLen) maxOooCap)
         (equalDeltaPeak M S (201 * stLen) maxOooCap))
 
-def spqrRecvMaxReq {M : AllocCostModel} [HasFineReallocCredit M] {F : ShaCompress}
+@[expose] def spqrRecvMaxReq {M : AllocCostModel} [HasFineReallocCredit M] {F : ShaCompress}
     {StatesRecvEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
       List AllocEvent → Prop}
     (S : StatesRecvCreditSpec M F StatesRecvEnv)
@@ -1050,7 +1059,7 @@ theorem spqrRecvParts_phaseCreditSpec
 
 /-- Affine fine credit `cumSmall s + max (liveLarge s) (peakLarge s)` upper-bounding `M.footprint s - baseFine`.
 -/
-def fineCredit (M : AllocCostModel) [HasFineReallocCredit M] (s : M.σ) : Nat :=
+@[expose] def fineCredit (M : AllocCostModel) [HasFineReallocCredit M] (s : M.σ) : Nat :=
   HasFineReallocCredit.cumSmall s +
     max (HasFineReallocCredit.liveLarge s) (HasFineReallocCredit.peakLarge s)
 

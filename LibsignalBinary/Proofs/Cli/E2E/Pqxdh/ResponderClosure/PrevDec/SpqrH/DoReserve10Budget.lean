@@ -11,11 +11,14 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DoReserve10
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DoReserve10 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Handshake `finish_grow [local#9]` and `do_reserve_and_handle [local#8]` Specifications
@@ -25,7 +28,7 @@ Defines allocator event lists, envelopes, and total-correctness (`onPanic = ⌜F
 1-byte-element `finish_grow` and 3-argument `do_reserve_and_handle` under `RustCliAllocBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -50,11 +53,11 @@ open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (
 /-! ## 1. Allocator Event Lists & Envelopes for 1-Byte-Element `finish_grow` -/
 
 /-- Exact allocator event list of 1-byte-element (`stride = 1, align = 1`) `finish_grow`. -/
-def finishGrow1Events (cap new : Nat) : List AllocEvent :=
+@[expose] def finishGrow1Events (cap new : Nat) : List AllocEvent :=
   finishGrowEvents cap new 1 1
 
 /-- Allocator event envelope of 1-byte-element `finish_grow`. -/
-def FinishGrow1Env (x : FinishGrow1Call) (evs : List AllocEvent) : Prop :=
+@[expose] def FinishGrow1Env (x : FinishGrow1Call) (evs : List AllocEvent) : Prop :=
   evs = finishGrow1Events x.cap.toNat x.new.toNat
 
 theorem fitsEnv_finishGrow1_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
@@ -63,27 +66,11 @@ theorem fitsEnv_finishGrow1_iff {M : AllocCostModel} {lim : BudgetLimits} {st : 
       FitsEvents M lim st (finishGrow1Events x.cap.toNat x.new.toNat) :=
   FitsEnv.eq_iff
 
-theorem finishGrow1Events_doReserve_eq (x : DoReserveCall)
-    (hbound : reserveCap x.cap.toNat x.bs.length x.additional < 2 ^ 64) :
-    finishGrow1Events x.cap.toNat
-        (BitVec.ofNat 64 (reserveCap x.cap.toNat x.bs.length x.additional)).toNat =
-      doReserveEvents x := by
-  have hnew :
-      (BitVec.ofNat 64 (reserveCap x.cap.toNat x.bs.length x.additional)).toNat =
-        reserveCap x.cap.toNat x.bs.length x.additional := by
-    rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt hbound]
-  unfold finishGrow1Events finishGrowEvents doReserveEvents
-  rw [hnew, Nat.mul_one, Nat.mul_one]
-  by_cases hcap : x.cap = 0#64
-  · rw [hcap]; rfl
-  · have hcap_nat : x.cap.toNat ≠ 0 := fun h0 => hcap (BitVec.eq_of_toNat_eq h0)
-    simp only [hcap, hcap_nat, ↓reduceIte]
-
 /-! ## 2. Budget-Threaded `finishGrow1*` Contracts & Combinators -/
 
 /-- Total-correctness (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`) contract of 1-byte-element
 `finish_grow` (`stride = 1, align = 1`, 32-byte frame) under `FitsEnv M lim st (FinishGrow1Env x)`. -/
-def finishGrow1Spec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow1Spec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (FinishGrow1Call × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.cap ∧ s.readReg64 .x2 = x.ptr ∧
@@ -102,7 +89,7 @@ def finishGrow1Spec (M : AllocCostModel) (A : RustCliAllocBudget M)
       A.pool lim (M.stepEvents (finishGrow1Events x.cap.toNat x.new.toNat) st) sf ∗
       stackAt s0.sp finishGrow32Stack
 
-def finishGrow1AllocSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow1AllocSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (FinishGrow1Call × M.σ) :=
   { finishGrow1Spec M A lim with
     pre := fun (x, st) s =>
@@ -112,7 +99,7 @@ def finishGrow1AllocSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
         FitsEnv M lim st (FinishGrow1Env x)⌝ ∗
       memRegion x.out 24 ∗ A.pool lim st s ∗ stackAt s.sp finishGrow32Stack }
 
-def finishGrow1ReallocSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow1ReallocSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (FinishGrow1Call × M.σ) :=
   { finishGrow1Spec M A lim with
     pre := fun (x, st) s =>
@@ -144,7 +131,7 @@ theorem finish_grow_11_of_zero_ne {M : AllocCostModel} {A : RustCliAllocBudget M
     rcases hpre with ⟨⟨hx0, hx1, hx2, hx3, _, hbs, hle, hnew, hlay, hfits⟩, hmem⟩
     exact ⟨⟨hx0, hx1, hx2, hx3, hcap0, hbs, hle, hnew, hlay, hfits⟩, hmem⟩
 
-def finishGrow24ZeroCellsSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow24ZeroCellsSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (FG24Ghost × M.σ) where
   pre := fun ((out, cap, ptr, new, bs, o0, o1, o2, fsp), st) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
@@ -161,7 +148,7 @@ def finishGrow24ZeroCellsSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
       A.pool lim (M.stepEvents (finishGrow1Events 0 new.toNat) st) sf ∗
       stackAt fsp finishGrow32Stack
 
-def finishGrow24NeCellsSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow24NeCellsSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (FG24Ghost × M.σ) where
   pre := fun ((out, cap, ptr, new, bs, o0, o1, o2, fsp), st) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
@@ -241,7 +228,7 @@ theorem finish_grow_24_ne_cells_of_spec {M : AllocCostModel} {A : RustCliAllocBu
 
 /-! ## 3. Budget-Threaded `doReserve1*` Contracts & Combinators -/
 
-def doReserve1Raw32Spec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def doReserve1Raw32Spec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DoReserveCall × M.σ) where
   pre := fun (x, st) s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional
@@ -263,7 +250,7 @@ def doReserve1Raw32Spec (M : AllocCostModel) (A : RustCliAllocBudget M)
       memRegion (p' + BitVec.ofNat 64 x.bs.length) (newCap - x.bs.length)) ∗
     A.pool lim (M.stepEvents (doReserveEvents x) st) sf ∗ stackAt s0.sp doReserve32Stack
 
-def doReserve1RawSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def doReserve1RawSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DoReserveCall × M.σ) where
   pre := fun (x, st) s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional
@@ -287,7 +274,7 @@ def doReserve1RawSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-- Vec wrapper around `doReserve1RawSpec`: contract of 3-argument `do_reserve_and_handle`
 (`stride = 1, align = 1` hardcoded, so `x3` and `x4` are unconstrained) at `doReserveStackX`. -/
-def doReserve1VecSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def doReserve1VecSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DoReserveCall × M.σ) where
   pre := fun (x, st) s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional

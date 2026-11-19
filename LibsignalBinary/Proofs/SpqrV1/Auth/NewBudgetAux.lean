@@ -12,21 +12,22 @@ module
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Auth.New
-public meta import LibsignalBinary.Proofs.SpqrV1.Auth.New -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Auth.UpdateBudgetAux
-public meta import LibsignalBinary.Proofs.SpqrV1.Auth.Update -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SpqrV1.Auth.New
+public meta import LibsignalBinary.Proofs.SpqrV1.Auth.New -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.UpdateBudgetAux -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SpqrV1.Auth.Update -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `<spqr::authenticator::Authenticator>::new` (Block `340`)
@@ -36,7 +37,7 @@ specifications, and relocatable `[LibsignalPlacement]` proofs for `<Authenticato
 (Block `340`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -45,14 +46,13 @@ set_option linter.unusedSimpArgs false
 
 namespace LibsignalBinary.Proofs.SpqrV1.Auth.NewBudgetAux
 
+open CryptoVerification.LibsignalTripleRatchet (extHookStack sessionShimSpec withStack)
+
 open Arm64 ProofLib
 open CryptoGames.HMAC (ShaState)
 open CryptoVerification (LibsignalPlacement blkLib_eq_340 blkPC_340 blkPl_340 lsmpl lsρ)
 open CryptoVerification.RustHeap (RustAlloc vecHeader vecU8 vecU8At)
 open CryptoVerification.LibsignalSessionRepr (VecPin)
-open CryptoVerification.LibsignalTripleRatchet (
-  extHookStack sessionShimSpec tripleRatchetProgAtExt withStack
-)
 open CryptoVerification.LibsignalTripleRatchet.Keys (SepWPp.rw_pre)
 open CryptoVerification.LibsignalTripleRatchet.Keys.AgreeStateSimp (
   readReg32_setMem_setPC_pre readReg32_setPC_pre readReg64_setMem_setPC_pre readReg64_setPC_pre
@@ -117,19 +117,19 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 
 /-- Exact initial allocation events in `<Authenticator>::new` before calling `Authenticator::update`:
 two `__rust_alloc_zeroed(32, 1)` allocations for the initial 32-byte zeroed `root_key` and `mac_key`. -/
-def authNewInitEvents : List AllocEvent :=
+@[expose] def authNewInitEvents : List AllocEvent :=
   rustAllocEvents 32 1 ++ rustAllocEvents 32 1
 
-def AuthNewInitAllocEnv (evs : List AllocEvent) : Prop :=
+@[expose] def AuthNewInitAllocEnv (evs : List AllocEvent) : Prop :=
   evs = authNewInitEvents
 
-def AuthNewDropPinEnv (cap : BitVec 64) (evs : List AllocEvent) : Prop :=
+@[expose] def AuthNewDropPinEnv (cap : BitVec 64) (evs : List AllocEvent) : Prop :=
   evs = optCapDeallocEvents cap
 
 /-- Envelope for `<Authenticator>::new` with pinned `root_key: Vec<u8>`:
 two 32-byte zeroed allocations, followed by `Authenticator::update` (`rkLen = 32`), followed by
 conditional deallocation of `x.rkPin.cap`. -/
-def AuthNewPinnedEnv (x : AuthNewPinnedGhost) : List AllocEvent → Prop :=
+@[expose] def AuthNewPinnedEnv (x : AuthNewPinnedGhost) : List AllocEvent → Prop :=
   SeqEnv
     (SeqEnv AuthNewInitAllocEnv (AuthUpdateLenEnv 32 x.rootKey.length))
     (AuthNewDropPinEnv x.rkPin.cap)
@@ -137,7 +137,7 @@ def AuthNewPinnedEnv (x : AuthNewPinnedGhost) : List AllocEvent → Prop :=
 /-- Unpinned envelope for `<Authenticator>::new`:
 two 32-byte zeroed allocations, followed by `Authenticator::update` (`rkLen = 32`), followed by
 `FreeOnlyEvs` drop of the consumed `root_key: Vec<u8>`. -/
-def AuthNewEnv (x : AuthNewGhost) : List AllocEvent → Prop :=
+@[expose] def AuthNewEnv (x : AuthNewGhost) : List AllocEvent → Prop :=
   SeqEnv
     (SeqEnv AuthNewInitAllocEnv (AuthUpdateLenEnv 32 x.rootKey.length))
     FreeOnlyEvs
@@ -246,7 +246,7 @@ theorem fitsEnv_authNewPinned_unpack {M : AllocCostModel} {lim : BudgetLimits}
 
 /-- Unplaced stack-parameterized budget-threaded pinned specification of `<Authenticator>::new`
 (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def authNewPinnedSpecAtBase (stk : Nat) (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def authNewPinnedSpecAtBase (stk : Nat) (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthNewPinnedGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -266,7 +266,7 @@ def authNewPinnedSpecAtBase (stk : Nat) (F : ShaState → List (BitVec 8) → Sh
       A.pool lim (M.stepEvents evs st) sf ∗
       stackAt s0.sp stk
 
-def authNewPinnedSpecAt [LibsignalPlacement] (stk : Nat)
+@[expose] def authNewPinnedSpecAt [LibsignalPlacement] (stk : Nat)
     (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthNewPinnedGhost × M.σ) where
@@ -290,7 +290,7 @@ def authNewPinnedSpecAt [LibsignalPlacement] (stk : Nat)
 
 /-- Unplaced stack-parameterized budget-threaded unpinned specification of `<Authenticator>::new`
 (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def authNewSpecAtBase (stk : Nat) (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def authNewSpecAtBase (stk : Nat) (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthNewGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -310,7 +310,7 @@ def authNewSpecAtBase (stk : Nat) (F : ShaState → List (BitVec 8) → ShaState
       A.pool lim (M.stepEvents evs st) sf ∗
       stackAt s0.sp stk
 
-def authNewSpecAt [LibsignalPlacement] (stk : Nat)
+@[expose] def authNewSpecAt [LibsignalPlacement] (stk : Nat)
     (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthNewGhost × M.σ) where
@@ -332,67 +332,51 @@ def authNewSpecAt [LibsignalPlacement] (stk : Nat)
       A.pool lim (M.stepEvents evs st) sf ∗
       stackAt s0.sp stk
 
-def authNewPinnedSpecBase (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def authNewPinnedSpecBase (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthNewPinnedGhost × M.σ) :=
   authNewPinnedSpecAtBase authNewStackX F M A lim
 
-def authNewPinnedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def authNewPinnedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthNewPinnedGhost × M.σ) :=
   authNewPinnedSpecAt authNewStackX F M A lim
 
-def authNewSpecBase (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def authNewSpecBase (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthNewGhost × M.σ) :=
   authNewSpecAtBase authNewStackX F M A lim
 
-def authNewSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def authNewSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthNewGhost × M.σ) :=
   authNewSpecAt authNewStackX F M A lim
 
-def authNewPinnedSpecExtBase (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def authNewPinnedSpecExtBase (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthNewPinnedGhost × M.σ) :=
   authNewPinnedSpecAtBase authNewStackExt F M A lim
 
-def authNewPinnedSpecExt [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def authNewPinnedSpecExt [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthNewPinnedGhost × M.σ) :=
   authNewPinnedSpecAt authNewStackExt F M A lim
 
-def authNewSpecExtBase (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def authNewSpecExtBase (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthNewGhost × M.σ) :=
   authNewSpecAtBase authNewStackExt F M A lim
 
-def authNewSpecExt [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def authNewSpecExt [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthNewGhost × M.σ) :=
   authNewSpecAt authNewStackExt F M A lim
 
-def AuthNewPlacedOk [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def AuthNewPlacedOk [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_340).rebase (blkPl_340).base H) (blkPl_340).base
     (withLsCallInv lsmpl (authNewSpec F M A lim))
-
-def AuthNewOkX (img : Obj.Image) (F : ShaState → List (BitVec 8) → ShaState)
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr authNewName)
-    ((authNewSpecBase F M A lim).inImage img)
-
-def AuthNewOkExt (img : Obj.Image) (F : ShaState → List (BitVec 8) → ShaState)
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr authNewName)
-    ((authNewSpecExtBase F M A lim).inImage img)
-
-/-! ## Helper Bridges -/
 
 private theorem pure_sepConj_imp {P Q : Prop} {R : SepProp} (h : P → Q) :
     ⌜P⌝ ∗ R ⊢ ⌜Q⌝ ∗ R :=

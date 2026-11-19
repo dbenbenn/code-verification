@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1LeavesPure
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1LeavesPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.R3StepExistingPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TROpen
@@ -24,7 +24,7 @@ Case-splits a successful `pureEvalRecvWireWithCoinsW` whisper receive call into 
 skipped-key, existing-chain, and DH-ratchet branches over the composed model.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

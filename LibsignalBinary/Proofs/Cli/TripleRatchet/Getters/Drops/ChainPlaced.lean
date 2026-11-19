@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.ProtoExt
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.ProtoExt
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.Common
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.ClearUnacknowledgedPreKeyMessage -- proof-setup: allow-public-import
 
 /-!
 # Relocatable Proofs for CLI `drop_glue<Chain>`
@@ -24,7 +25,7 @@ Proves `dropProtoChainSpec` and `dropChainSpec` for CLI `core::ptr::drop_glue::<
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.Cli.LibsignalTripleRatchet.Getters
 

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Session.StatementComposed -- shake: keep
-public import Computational.Proofs.E2E.ComposedKeyIndHop
-public import Computational.Proofs.GameHop.GlobalHybrid
+public import Computational.Proofs.SpecLemmas.Session.StatementComposed -- shake: keep -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.ComposedKeyIndHop -- proof-setup: allow-public-import
+import Computational.Proofs.GameHop.GlobalHybrid
 import Computational.Proofs.GameHop.Advantage
 import Computational.Proofs.GameHop.StateSim
 import VCVio.EvalDist.Monad.Basic
@@ -26,7 +26,7 @@ Provides `ProbComp` monotonicity and decomposition lemmas, challenge-bit preserv
 hybrid.
 -/
 
-@[expose] public section
+public section
 
 open scoped ENNReal
 open OracleComp OracleSpec MeasureTheory

@@ -20,23 +20,7 @@ public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C0
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C1
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C2
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C3
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q0
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q1
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q0
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q1
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q2
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q0q0
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q0q1
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q0q2
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q0q3q0
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q0q3q1
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q0q3q2
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q0q3q3L
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q0q3q3R
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q1
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q2
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q3
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q3
+public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C5
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C6
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C7
@@ -57,43 +41,11 @@ public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C21
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C22
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C23
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C24
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q0
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q0
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q1
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q2
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q3q0
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q3q1
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q3q2
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q3q3q0
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q3q3q1
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q3q3q2
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q3q3q3L
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q3q3q3R
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q1
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q2
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q3
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q2
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q3
+public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C26
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C27
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C28
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q0
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q1
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q2
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q0
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q1
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q2q0q0
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q2q0q1
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q2q0q2
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q2q0q3L
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q2q0q3R
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q2q1
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q2q2
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q2q3
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q3
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q1
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q2
-public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q3
+public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C30
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C31
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C32
@@ -165,7 +117,7 @@ public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C97
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C98
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C99
 
-/-! Chained `148`-chunk `cliRunPlacedSig` proof (`hbRun2`) for `Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2`. -/
+/-! Chained `100`-chunk `cliRunPlacedSig` proof (`hbRun2`) for `Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2`. -/
 
 @[expose] public section
 
@@ -175,8 +127,8 @@ namespace Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2
 
 open Arm64.Obj (MultiPlacement)
 open Arm64.Process (ElfImage)
-open CryptoVerification.SignalSession (cliExternsPlacedSig)
-open CryptoVerification.SignalSession.Placed (cliRunPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (cliExternsPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliRunPlacedSig)
 open Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable (compHooks0)
 open Symbolic.BugInjection.Proofs.Common.CompHooks0PlacedEq (compHooks0_placed_eq)
 open Symbolic.BugInjection.Proofs.CliExec.ElfFullSpecPlacedCore (ElfCkptReachablePlaced)
@@ -189,23 +141,7 @@ open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C0 (c0)
 open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C1 (c1)
 open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C2 (c2)
 open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C3 (c3)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q0 (c4q0)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q1 (c4q1)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q0 (c4q2q0)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q1 (c4q2q1)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q2 (c4q2q2)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q0q0 (c4q2q3q0q0)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q0q1 (c4q2q3q0q1)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q0q2 (c4q2q3q0q2)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q0q3q0 (c4q2q3q0q3q0)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q0q3q1 (c4q2q3q0q3q1)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q0q3q2 (c4q2q3q0q3q2)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q0q3q3L (c4q2q3q0q3q3L)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q0q3q3R (c4q2q3q0q3q3R)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q1 (c4q2q3q1)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q2 (c4q2q3q2)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q2q3q3 (c4q2q3q3)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4q3 (c4q3)
+open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C4 (c4)
 open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C5 (c5)
 open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C6 (c6)
 open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C7 (c7)
@@ -226,43 +162,11 @@ open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C21 (c21)
 open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C22 (c22)
 open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C23 (c23)
 open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C24 (c24)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q0 (c25q0)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q0 (c25q1q0q0)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q1 (c25q1q0q1)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q2 (c25q1q0q2)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q3q0 (c25q1q0q3q0)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q3q1 (c25q1q0q3q1)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q3q2 (c25q1q0q3q2)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q3q3q0 (c25q1q0q3q3q0)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q3q3q1 (c25q1q0q3q3q1)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q3q3q2 (c25q1q0q3q3q2)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q3q3q3L (c25q1q0q3q3q3L)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q0q3q3q3R (c25q1q0q3q3q3R)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q1 (c25q1q1)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q2 (c25q1q2)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q1q3 (c25q1q3)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q2 (c25q2)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25q3 (c25q3)
+open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C25 (c25)
 open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C26 (c26)
 open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C27 (c27)
 open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C28 (c28)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q0 (c29q0q0)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q1 (c29q0q1)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q2 (c29q0q2)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q0 (c29q0q3q0)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q1 (c29q0q3q1)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q2q0q0 (c29q0q3q2q0q0)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q2q0q1 (c29q0q3q2q0q1)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q2q0q2 (c29q0q3q2q0q2)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q2q0q3L (c29q0q3q2q0q3L)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q2q0q3R (c29q0q3q2q0q3R)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q2q1 (c29q0q3q2q1)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q2q2 (c29q0q3q2q2)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q2q3 (c29q0q3q2q3)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q0q3q3 (c29q0q3q3)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q1 (c29q1)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q2 (c29q2)
-open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29q3 (c29q3)
+open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C29 (c29)
 open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C30 (c30)
 open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C31 (c31)
 open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2.C32 (c32)
@@ -341,6 +245,6 @@ theorem hbRun2 {mpl mmpl : MultiPlacement} {elf : ElfImage}
   cliRunPlacedSig_of_elfFinalChunk hv
     (fun name => congrArg (cliExternsPlacedSig mmpl · name) compHooks0_placed_eq)
     hbInp2_eq ssC2Out_eq
-    (((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((ElfCkptReachablePlaced.init.step c0).step c1).step c2).step c3).step c4q0).step c4q1).step c4q2q0).step c4q2q1).step c4q2q2).step c4q2q3q0q0).step c4q2q3q0q1).step c4q2q3q0q2).step c4q2q3q0q3q0).step c4q2q3q0q3q1).step c4q2q3q0q3q2).step c4q2q3q0q3q3L).step c4q2q3q0q3q3R).step c4q2q3q1).step c4q2q3q2).step c4q2q3q3).step c4q3).step c5).step c6).step c7).step c8).step c9).step c10).step c11).step c12).step c13).step c14).step c15).step c16).step c17).step c18).step c19).step c20).step c21).step c22).step c23).step c24).step c25q0).step c25q1q0q0).step c25q1q0q1).step c25q1q0q2).step c25q1q0q3q0).step c25q1q0q3q1).step c25q1q0q3q2).step c25q1q0q3q3q0).step c25q1q0q3q3q1).step c25q1q0q3q3q2).step c25q1q0q3q3q3L).step c25q1q0q3q3q3R).step c25q1q1).step c25q1q2).step c25q1q3).step c25q2).step c25q3).step c26).step c27).step c28).step c29q0q0).step c29q0q1).step c29q0q2).step c29q0q3q0).step c29q0q3q1).step c29q0q3q2q0q0).step c29q0q3q2q0q1).step c29q0q3q2q0q2).step c29q0q3q2q0q3L).step c29q0q3q2q0q3R).step c29q0q3q2q1).step c29q0q3q2q2).step c29q0q3q2q3).step c29q0q3q3).step c29q1).step c29q2).step c29q3).step c30).step c31).step c32).step c33).step c34).step c35).step c36).step c37).step c38).step c39).step c40).step c41).step c42).step c43).step c44).step c45).step c46).step c47).step c48).step c49).step c50).step c51).step c52).step c53).step c54).step c55).step c56).step c57).step c58).step c59).step c60).step c61).step c62).step c63).step c64).step c65).step c66).step c67).step c68).step c69).step c70).step c71).step c72).step c73).step c74).step c75).step c76).step c77).step c78).step c79).step c80).step c81).step c82).step c83).step c84).step c85).step c86).step c87).step c88).step c89).step c90).step c91).step c92).step c93).step c94).step c95).step c96).step c97).step c98) c99
+    (((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((ElfCkptReachablePlaced.init.step c0).step c1).step c2).step c3).step c4).step c5).step c6).step c7).step c8).step c9).step c10).step c11).step c12).step c13).step c14).step c15).step c16).step c17).step c18).step c19).step c20).step c21).step c22).step c23).step c24).step c25).step c26).step c27).step c28).step c29).step c30).step c31).step c32).step c33).step c34).step c35).step c36).step c37).step c38).step c39).step c40).step c41).step c42).step c43).step c44).step c45).step c46).step c47).step c48).step c49).step c50).step c51).step c52).step c53).step c54).step c55).step c56).step c57).step c58).step c59).step c60).step c61).step c62).step c63).step c64).step c65).step c66).step c67).step c68).step c69).step c70).step c71).step c72).step c73).step c74).step c75).step c76).step c77).step c78).step c79).step c80).step c81).step c82).step c83).step c84).step c85).step c86).step c87).step c88).step c89).step c90).step c91).step c92).step c93).step c94).step c95).step c96).step c97).step c98) c99
 
 end Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Call2

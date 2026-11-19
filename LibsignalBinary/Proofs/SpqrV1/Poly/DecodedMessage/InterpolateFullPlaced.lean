@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolateFull
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolateFull -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.Interpolate
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolatePlaced
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Proof -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 
 /-!
 # `<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::decoded_message`: Relocatable Full Inlined `lagrange_interpolate`
@@ -22,7 +24,7 @@ Relocatable `[LibsignalPlacement]` proof of the full inlined `Poly::lagrange_int
 (`+660..+1284`, cache hit and cache miss) on Block `418`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.DecodedMessage
 
@@ -32,14 +34,11 @@ open CryptoVerification.LibsignalSessionRepr CryptoVerification.LibsignalTripleR
 open CryptoVerification.LibsignalSpqrV1
 open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.CodeLayout
-open CryptoVerification.SpqrV1.GF.UnacceleratedMul (reduceTableAt reduceTablePlacedAt)
+open CryptoVerification.SpqrV1.GF.UnacceleratedMul (reduceTablePlacedAt)
 open CryptoVerification.SpqrV1.GF.Mul2U16
 open CryptoVerification.SpqrV1.Alloc
 open CryptoVerification.SpqrV1.Poly
-open CryptoVerification.SpqrV1.Poly.LagrangePrepare
-  (lagrangePrepareName lagrangePrepare_fnOff LagrangePrepareArgs lagrangePrepareSpec
-   lagrangePreparePlacedSpec lagrangePreparePure lagrangePreparePure_length
-   lagrangePrepareStack lagrangePrepare_ok lagrangePrepare_placed_ok polyOf_eq)
+open CryptoVerification.SpqrV1.Poly.LagrangePrepare (lagrangePrepareName LagrangePrepareArgs lagrangePreparePlacedSpec lagrangePreparePure lagrangePreparePure_length lagrangePrepareStack lagrangePrepare_placed_ok polyOf_eq)
 open CryptoVerification.SpqrV1.Poly.LagrangeComplete
 open CryptoVerification.SpqrV1.Poly.ComputeAt
 
@@ -861,7 +860,7 @@ theorem lagrangeInterpolate_inlined_placed_wpp [LibsignalPlacement] {A : RustAll
           ((sp0 - 160#64) ↦₆₄ sf1.readReg64 .x0) ∗ ((sp0 - 152#64) ↦₆₄ 0#64) ∗
           ((sp0 - 144#64) ↦₆₄ b_cap) ∗ ((sp0 - 136#64) ↦₆₄ ptr_b) ∗
           ((sp0 - 128#64) ↦₆₄ BitVec.ofNat 64 (pts_slice.length + 1)) ∗
-          A.pool ∗ memRegion ((sp0 - 672#64) - 4096#64) 3856 ∗
+          A.pool ∗ memRegion ((sp0 - 672#64) - 4096#64) 3664 ∗
           memRegion ((sp0 - 672#64) - 4304#64) 208 ∗ F)
         _ hpc3 hrun3 hsp3 rfl hx19_3 hx21_3 hx23_3 hx24_3 hx25_3 hx27_3 hx29_3 ?_)
     · rw [stackAt_alloc_eq_complete (sp0 - 672#64)]
@@ -886,7 +885,7 @@ theorem lagrangeInterpolate_inlined_placed_wpp [LibsignalPlacement] {A : RustAll
           ((sp0 - 160#64) ↦₆₄ sf1.readReg64 .x0) ∗
           ((sp0 - 144#64) ↦₆₄ b_cap) ∗ ((sp0 - 136#64) ↦₆₄ ptr_b) ∗
           ((sp0 - 128#64) ↦₆₄ BitVec.ofNat 64 (pts_slice.length + 1)) ∗
-          A.pool ∗ memRegion ((sp0 - 672#64) - 4096#64) 3856 ∗
+          A.pool ∗ memRegion ((sp0 - 672#64) - 4096#64) 3664 ∗
           memRegion ((sp0 - 672#64) - 4304#64) 208 ∗ F)
         _ hpc4 hrun4 hsp4 hx21_4 hx24_4 hx25_4 hx26_4 hx27_4 hx29_4 ?_)
     · exact Entails.of_eq (by ac_rfl)

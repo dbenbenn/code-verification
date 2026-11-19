@@ -12,6 +12,7 @@ module
 public import Computational.Specifications.Session.StatementSpkModel
 public import Computational.Proofs.Game.PromotedCostedReds.SpkTier2Lift -- proof-setup: allow-public-import
 import Computational.Proofs.E2E.Dsl.TablesHonest
+public import Computational.Proofs.ReductionDsl.Size -- proof-setup: allow-public-import
 
 /-!
 # Tier-2 Key Encoders

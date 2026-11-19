@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Reductions
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
 import VCVio.OracleComp.EvalDist.Measure
 
 /-!
@@ -22,7 +22,7 @@ Defines the synchronization invariant `Sync` between `redCKAAuth` (uniform CKA k
 preservation for each engine oracle.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -41,7 +41,7 @@ variable {KC Γ CCoins T I : Type} {KR Sig K : Type} {SS RS M E : Type}
 variable (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
   (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep : ℕ)
 
-def eraseSt {St Msg C : Type} (g : SM.GameState St Msg C) : SM.GameState Unit Msg C :=
+@[expose] def eraseSt {St Msg C : Type} (g : SM.GameState St Msg C) : SM.GameState Unit Msg C :=
   { st := fun _ => ()
     epoch := g.epoch
     idx := g.idx
@@ -55,18 +55,18 @@ def eraseSt {St Msg C : Type} (g : SM.GameState St Msg C) : SM.GameState Unit Ms
     leaks := g.leaks
     corrs := g.corrs }
 
-def localCKA (mo : Mode) (Δcka t : ℕ) : Bool :=
+@[expose] def localCKA (mo : Mode) (Δcka t : ℕ) : Bool :=
   mo.tL.isNone || decide (mo.tH + Δcka ≤ t)
 
-def knownRoot (mo : Mode) (t : ℕ) : Bool :=
+@[expose] def knownRoot (mo : Mode) (t : ℕ) : Bool :=
   decide (mo.tStar ≤ t) || (mo.tL.isSome && decide (t < mo.tH))
 
-def cImpl (tH : ℕ) :
+@[expose] def cImpl (tH : ℕ) :
     QueryImpl (unifSpec + CKA.spec Γ CCoins T I) (StateT (CKA.GameState Γ T) ProbComp) :=
   (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (CKA.GameState Γ T) ProbComp)
     + CKA.oracleImpl cka Δcka tH
 
-def pImpl :
+@[expose] def pImpl :
     QueryImpl (unifSpec + PRFPRNG.spec Sig I K) (StateT (PRFPRNG.GameState Sig I K) ProbComp) :=
   (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (PRFPRNG.GameState Sig I K) ProbComp)
     + PRFPRNG.oracleImpl prng
@@ -83,7 +83,7 @@ abbrev SMSpec (Γ T Sig SS RS M CCoins E : Type) :=
 abbrev SMComp (Γ T Sig SS RS M CCoins E : Type) :=
   OracleComp (SMSpec Γ T Sig SS RS M CCoins E)
 
-def stepC (mo : Mode) (q : (SMSpec Γ T Sig SS RS M CCoins E).Domain)
+@[expose] def stepC (mo : Mode) (q : (SMSpec Γ T Sig SS RS M CCoins E).Domain)
     (esC : EStateC Γ T Sig SS RS M E I) (sc : CKA.GameState Γ T) :
     ProbComp (((SMSpec Γ T Sig SS RS M CCoins E).Range q × EStateC Γ T Sig SS RS M E I) ×
       CKA.GameState Γ T) :=
@@ -91,7 +91,7 @@ def stepC (mo : Mode) (q : (SMSpec Γ T Sig SS RS M CCoins E).Domain)
     ((implE (hooksCKA cka prng fs Δcka mo) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy q).run
       esC)).run sc
 
-def stepP (mo : Mode) (q : (SMSpec Γ T Sig SS RS M CCoins E).Domain)
+@[expose] def stepP (mo : Mode) (q : (SMSpec Γ T Sig SS RS M CCoins E).Domain)
     (esP : EStateP Γ T Sig SS RS M E K) (sp : PRFPRNG.GameState Sig I K) :
     ProbComp (((SMSpec Γ T Sig SS RS M CCoins E).Range q × EStateP Γ T Sig SS RS M E K) ×
       PRFPRNG.GameState Sig I K) :=
@@ -99,14 +99,14 @@ def stepP (mo : Mode) (q : (SMSpec Γ T Sig SS RS M CCoins E).Domain)
     ((implE (hooksPRNG cka prng fs mo) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy q).run
       esP)).run sp
 
-def runL (mo : Mode) (oa : SMComp Γ T Sig SS RS M CCoins E Bool)
+@[expose] def runL (mo : Mode) (oa : SMComp Γ T Sig SS RS M CCoins E Bool)
     (esC : EStateC Γ T Sig SS RS M E I) (sc : CKA.GameState Γ T) : ProbComp Bool := do
   let r ← (simulateQ (cImpl cka Δcka mo.tH)
     ((simulateQ (implE (hooksCKA cka prng fs Δcka mo) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy)
       oa).run esC)).run sc
   pure (authOut (2 + Δcka) mo.policy r.1.2)
 
-def runR (mo : Mode) (oa : SMComp Γ T Sig SS RS M CCoins E Bool)
+@[expose] def runR (mo : Mode) (oa : SMComp Γ T Sig SS RS M CCoins E Bool)
     (esP : EStateP Γ T Sig SS RS M E K) (sp : PRFPRNG.GameState Sig I K) : ProbComp Bool := do
   let r ← (simulateQ (pImpl prng)
     ((simulateQ (implE (hooksPRNG cka prng fs mo) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy)
@@ -2025,7 +2025,7 @@ theorem Sync.ping_pong_synced {prng : PRFPRNG KR Sig I K} {Δcka : ℕ} {mo : Mo
       rw [← hepP] at hsM
       simp [hsM] at hsend
 
-def epMgmtNew {St Msg C : Type} (g : SM.GameState St Msg C) (Δ : ℕ) (P : Party) (bad : Bool) :
+@[expose] def epMgmtNew {St Msg C : Type} (g : SM.GameState St Msg C) (Δ : ℕ) (P : Party) (bad : Bool) :
     SM.GameState St Msg C :=
   let s₁ := if bad && !(g.safeCh Δ P) then g.leak (g.epoch P + 1) else g
   { s₁ with epoch := Function.update s₁.epoch P (s₁.epoch P + 1),
@@ -2298,7 +2298,7 @@ theorem Sync.record_new_epoch {prng : PRFPRNG KR Sig I K} {Δcka : ℕ} {mo : Mo
         simp only [Function.update_of_ne (Party.other_ne P), hroot0]
         exact hprng_at hm hnot_eq }
 
-def postSendC (P : Party) (m_msg : M) (bad : Bool) (esC : EStateC Γ T Sig SS RS M E I)
+@[expose] def postSendC (P : Party) (m_msg : M) (bad : Bool) (esC : EStateC Γ T Sig SS RS M E I)
     (res : Option (Option Γ × T × Sig × SS) × CKAState T I) :
     Option (Header T × E) × EStateC Γ T Sig SS RS M E I :=
   match res.1 with
@@ -2313,7 +2313,7 @@ def postSendC (P : Party) (m_msg : M) (bad : Bool) (esC : EStateC Γ T Sig SS RS
     let rcd : SM.Record M (Header T × E) := ⟨⟨P, m, 1⟩, m_msg, (h, fe.2)⟩
     (some (h, fe.2), { esC with g := gC₁.record (2 + Δcka) P stC' rcd false, h := res.2 })
 
-def postSendP (P : Party) (m_msg : M) (bad : Bool) (esP : EStateP Γ T Sig SS RS M E K)
+@[expose] def postSendP (P : Party) (m_msg : M) (bad : Bool) (esP : EStateP Γ T Sig SS RS M E K)
     (res : Option (Γ × T × Option Sig × SS) × PRNGState T Sig K) :
     Option (Header T × E) × EStateP Γ T Sig SS RS M E K :=
   match res.1 with
@@ -2549,7 +2549,7 @@ theorem simulateQ_sampleT_pImpl (α : Type) [SampleableType α] :
     simulateQ (pImpl prng) (sampleT α) = StateT.lift ($ᵗ α : ProbComp α) :=
   simulateQ_liftM_unif _ _
 
-def startSendP_body (mo : Mode) (m : ℕ) (γ : Γ) (σv : Option Sig) (coins : CCoins) :
+@[expose] def startSendP_body (mo : Mode) (m : ℕ) (γ : Γ) (σv : Option Sig) (coins : CCoins) :
     HM (PRFPRNG.spec Sig I K) (PRNGState T Sig K) (Option (Γ × T × Option Sig × SS)) := do
   let c := cka.send γ coins
   match ← rootPRNG prng mo m c.2.2 σv with

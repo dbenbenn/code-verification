@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced
-public import LibsignalBinary.Proofs.SpqrV1.Auth.Encode1
+public import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.Encode1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
 import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2
@@ -25,7 +25,7 @@ subroutine contracts for `prost::encoding::message::encode::<Authenticator, Vec<
 (block 151).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -70,7 +70,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-! ## Shared Placed Step Lemmas (Blocks 151 and 314) -/
 
 /-- Entry predicate for placed `encode<Authenticator> [local#1]` (block 151) or `[local#2]` (block 314). -/
-def IsAuthEncodePlacedEntry [LibsignalPlacement] (prog : Program) (entry : BitVec 64) : Prop :=
+@[expose] def IsAuthEncodePlacedEntry [LibsignalPlacement] (prog : Program) (entry : BitVec 64) : Prop :=
   (∃ H, prog = lsProg_151 H ∧ entry = (blkPl_151).base) ∨
   (∃ H, prog = lsProg_314 H ∧ entry = (blkPl_314).base)
 
@@ -1136,16 +1136,16 @@ theorem authEncode1_gen_placed_ok [LibsignalPlacement] {resStack : Nat} (hres : 
     ← bs0_append_encodeAuthMsg x.bs x.auth]
   convert hm using 1; ac_rfl
 
-def AuthEncode1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (H : String → Option (State → State)) : Prop :=
+@[expose] def AuthEncode1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_151 H) (blkPl_151).base (withLsCodeLoaded lsmpl (authEncodePinnedSpec A))
 
-def AuthEncode1PlacedOkExt [LibsignalPlacement] (A : RustAlloc) (H : String → Option (State → State)) : Prop :=
+@[expose] def AuthEncode1PlacedOkExt [LibsignalPlacement] (A : RustAlloc) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_151 H) (blkPl_151).base (withLsCodeLoaded lsmpl (authEncodeSpec A))
 
-def AuthEncode1PinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc) (H : String → Option (State → State)) : Prop :=
+@[expose] def AuthEncode1PinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_151 H) (blkPl_151).base (withLsCodeLoaded lsmpl (authEncodePinnedSpecX A))
 
-def AuthEncode1PlacedOkX [LibsignalPlacement] (A : RustAlloc) (H : String → Option (State → State)) : Prop :=
+@[expose] def AuthEncode1PlacedOkX [LibsignalPlacement] (A : RustAlloc) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_151 H) (blkPl_151).base (withLsCodeLoaded lsmpl (authEncodeSpecX A))
 
 theorem auth_encode_1_pinned_placed_ok [LibsignalPlacement] {A : RustAlloc} {H : String → Option (State → State)}

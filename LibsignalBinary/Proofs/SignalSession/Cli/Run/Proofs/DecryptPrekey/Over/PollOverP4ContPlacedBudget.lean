@@ -11,19 +11,19 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBridgePlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1DefsPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4ContPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4SpatialPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreSessionPrev1Budget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBridgePlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4ContPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4SpatialPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreSessionPrev1Budget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegs
@@ -34,6 +34,21 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.Cl
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureSpeOwned
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStmts
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4Cont
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCallees
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Trap.SameAccount
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureExitPlaced
 
 /-!
 # Budget-Threaded Placed CLI Poll Overwrite-Path (`Path C`) Stage P4 Continuation
@@ -44,7 +59,7 @@ Defines the CLI `Prev1` session-store budget envelopes (`cliPollSessPrev1StorePo
 `closure_pathC_p4_cont_placed` and `closure_pathC_p4_cont_cli_placed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -205,7 +220,7 @@ theorem cliPollStageP4Prev1_fsAt_placed [LibsignalPlacement]
 
 /-- 3-state `stageP3DispatchOkMidPrev1Placed`, evaluating `A.pool` at the post-Step5 state `s'`
 while indexing stack slots at `s.sp`. -/
-def stageP3DispatchOkMidPrev1At_placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP3DispatchOkMidPrev1At_placed [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ) (s0 s s' : State)
     (coroPtr outPtr initErrsPtr prevCap prevPtr ptCap ptPtr : BitVec 64)
     (enc pt : List (BitVec 8)) (b_2c0 : BitVec 8)
@@ -218,7 +233,7 @@ def stageP3DispatchOkMidPrev1At_placed [LibsignalPlacement] {M : AllocCostModel}
 /-- Exact binary allocation envelope of CLI `<SessionFiles as SessionStore>::store_session` poll
 on a 1-element `previous_sessions = [enc]` record (`AddrTextValEnv` → `SerializePrev1EnvX` →
 `DirPutEnv`), matching `CliStorePollPrev1Env` by `rfl` with zero existential quantifiers. -/
-def cliPollSessPrev1StorePollEnv
+@[expose] def cliPollSessPrev1StorePollEnv
     (d : DirGhost) (rem : AddrVal) (G : SessionGhost)
     (sess : Session (List (BitVec 8))) (enc : List (BitVec 8)) :
     List AllocEvent → Prop :=
@@ -227,7 +242,7 @@ def cliPollSessPrev1StorePollEnv
       (DirPutEnv d (Cli.addressText rem) (Over.encodeRecordPrev1Mem G sess enc)))
 
 /-- Concrete `StorePrev1BudgetEnv` for `cliPollSessPrev1KitPlaced`. -/
-def cliPollSessPrev1BudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
+@[expose] def cliPollSessPrev1BudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
     (peer : AddrGhost) (σ : DpKitStk) :
     StorePrev1BudgetEnv (cliPollSessPrev1KitPlaced A F0 peer σ) where
   storePollPrev1Env := cliPollSessPrev1StorePollEnv
@@ -236,7 +251,7 @@ def cliPollSessPrev1BudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles
 `<SessionFiles as SessionStore>::store_session` poll on a 1-element `previous_sessions = [enc]`
 record (`AddrTextValEnv` → `SerializePrev1Env` → `DirPutEnv`), matching
 `CliStorePollPrev1Env (AddrTextEnv DecimalEnv) SerializePrev1Env DirPutEnv` by `rfl`. -/
-def cliPollSessPrev1SeqFreeStorePollEnv
+@[expose] def cliPollSessPrev1SeqFreeStorePollEnv
     (d : DirGhost) (rem : AddrVal) (G : SessionGhost)
     (sess : Session (List (BitVec 8))) (enc : List (BitVec 8)) :
     List AllocEvent → Prop :=
@@ -245,7 +260,7 @@ def cliPollSessPrev1SeqFreeStorePollEnv
       (DirPutEnv d (Cli.addressText rem) (Over.encodeRecordPrev1Mem G sess enc)))
 
 /-- SeqFree `StorePrev1BudgetEnv` for `cliPollSessPrev1KitPlaced` (`SerializePrev1Env`). -/
-def cliPollSessPrev1SeqFreeBudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
+@[expose] def cliPollSessPrev1SeqFreeBudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
     (peer : AddrGhost) (σ : DpKitStk) :
     StorePrev1BudgetEnv (cliPollSessPrev1KitPlaced A F0 peer σ) where
   storePollPrev1Env := cliPollSessPrev1SeqFreeStorePollEnv
@@ -262,7 +277,7 @@ structure CliStageP4Prev1Envs [LibsignalPlacement] {A : RustAlloc}
 
 /-- Concrete CLI 4-kit `Prev1` Stage P4 budget envelope bundle binding `cliPollSessPrev1BudgetEnv`,
 `cliPollIdBudgetEnv`, `cliPollPkBudgetEnv`, and `cliPollKpkBudgetEnv`. -/
-def cliPollStageP4Prev1Envs [LibsignalPlacement] (A : RustAlloc)
+@[expose] def cliPollStageP4Prev1Envs [LibsignalPlacement] (A : RustAlloc)
     (B : RunBudgets) (F0 : FsFiles) (peer : AddrGhost)
     (pid kpkId spkId : BitVec 32) (kbk : PublicKey)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop) :
@@ -275,7 +290,7 @@ def cliPollStageP4Prev1Envs [LibsignalPlacement] (A : RustAlloc)
 /-- SeqFree CLI 4-kit `Prev1` Stage P4 budget envelope bundle binding
 `cliPollSessPrev1SeqFreeBudgetEnv`, `cliPollIdBudgetEnv`, `cliPollPkBudgetEnv`, and
 `cliPollKpkBudgetEnv`. -/
-def cliPollStageP4Prev1SeqFreeEnvs [LibsignalPlacement] (A : RustAlloc)
+@[expose] def cliPollStageP4Prev1SeqFreeEnvs [LibsignalPlacement] (A : RustAlloc)
     (B : RunBudgets) (F0 : FsFiles) (peer : AddrGhost)
     (pid kpkId spkId : BitVec 32) (kbk : PublicKey)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop) :
@@ -288,7 +303,7 @@ def cliPollStageP4Prev1SeqFreeEnvs [LibsignalPlacement] (A : RustAlloc)
 /-- Budget-threaded placed Stage P4 (`+0x34dc → s0.readReg64 .x30`) contract over 1-element
 `previous_sessions` on `dpPollProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))`
 parameterized by `p4Envs`, eliminating `PanicOomProp` (`onPanic := fun _ _ => False`). -/
-def StageP4Prev1VRegsPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StageP4Prev1VRegsPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (p4Envs : ∀ (B : RunBudgets) (F0 : FsFiles) (peer : AddrGhost)
       (pid kpkId spkId : BitVec 32) (kbk : PublicKey),
@@ -352,7 +367,7 @@ def StageP4Prev1VRegsPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
 store budget envelopes to `cliPollStageP4Prev1Envs` (`cliPollSessPrev1BudgetEnv`,
 `cliPollIdBudgetEnv`, `cliPollPkBudgetEnv`, `cliPollKpkBudgetEnv`), matching
 `StageP4PathACliPlacedStmt`. -/
-def StageP4Prev1CliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP4Prev1CliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
@@ -433,7 +448,7 @@ theorem stageP4Prev1VRegsPlaced_of_cli [LibsignalPlacement] {M : AllocCostModel}
 `Prev1` 4-kit Stage P4 statement binding the four store budget envelopes to
 `cliPollStageP4Prev1SeqFreeEnvs` (`cliPollSessPrev1SeqFreeBudgetEnv`, `cliPollIdBudgetEnv`,
 `cliPollPkBudgetEnv`, `cliPollKpkBudgetEnv`). -/
-def StageP4Prev1SeqFreeCliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP4Prev1SeqFreeCliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
@@ -1151,7 +1166,11 @@ theorem closure_pathC_p4_cont_placed [LibsignalPlacement] {M : AllocCostModel}
   have hrecOk : ops.RecPrev1Ok G' ses' enc := by
     have hr := pathC_recPrev1Ok_of_tryDecrypt_placed (A := A.repAlloc) (σ := σ)
       hs_old hdecOk hver hok hex0 hm_sess0
-    dsimp only at hr
+    change ops.RecPrev1Ok G'
+      { pathAInitSession ⟨W.C, W.Q⟩ meE k m dk with
+        state := (genP3S5Model W.C W.Q.K y.g.peer y.g.me y.g.msg.message y.g.coins st0).2
+        pendingPreKey := none
+        pendingKyberPreKey := none } enc at hr
     rw [hst'_eq] at hr
     exact hr
   have hwp4 := hP4 mmpl gh W B y.g.F y.g.peer pid m.kpkId m.spkId y.g.msg.baseKey st_pre hh

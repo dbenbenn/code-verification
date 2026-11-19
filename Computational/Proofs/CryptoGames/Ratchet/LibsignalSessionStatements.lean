@@ -12,9 +12,10 @@ module
 public import LibsignalBinary.Specifications.CryptoGames.SM.LibsignalGame
 public import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalRefinesDefs
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip
-public import Computational.Proofs.CryptoGames.SM.BlankedPrivRed
-public import Computational.Proofs.CryptoGames.SM.ReductionsQueries
+public import Computational.Proofs.CryptoGames.SM.BucketAuthBridge -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.BlankedPrivRed -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.ReductionsQueries -- proof-setup: allow-public-import
 public import Computational.Proofs.CryptoGames.FSAEAD.PubProofDefs
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.StateInv
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.IndexRestrictions
@@ -22,6 +23,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.QueryBounds
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RestrictedReds
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.SaltHop
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
 
 /-!
 # Intermediate statements of the libsignal session theorem
@@ -31,10 +33,9 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.SaltHop
 Intermediate reductions, query bounds, and the H1 session refinement (`Refine.libsignal_refines`)
 from the restricted libsignal SM game (DEV-LS1–DEV-LS7) to ACD19's H1 game (DEV-LS6). Assumes short
 version-4 header round-tripping (`SignalRoundTripShort`, DEV-LS21), single-epoch AD classes
-(DEV-LS8), public message parts (DEV-LS13), and the salt hop (DEV-LS25).
--/
+(DEV-LS8), public message parts (DEV-LS13), and the salt hop (DEV-LS25).-/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -116,6 +117,32 @@ theorem libsignal_refines (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 25
   exact CryptoGames.LibsignalSM.Proofs.Refinement.libsignal_refines_proof P ℓ Dh encPt encT decT hX hdec hrt hL hfit hinj
     hdum hz hS idOf hid lam qep q hq32 δ hδ
 
+/-- Stage-2 `canon`-bucket refinement counterpart of `libsignal_refines`, proved via
+`libsignal_refines_proof_bucket`. -/
+theorem libsignal_refines_bucket (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+    (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
+    (hX : X25519RealizesDh P.C Dh encPt encT) (hdec : ∀ T, decT (encT T) = some T)
+    (hrt : SignalRoundTripShort P.codec) (hL : LengthsOk P ℓ) (hfit : SignalEncodeFits32 P.codec)
+    (hinj : Function.Injective encT) (hdum : ∀ T, encT T ≠ dummyKey) (hz : ∀ x, Dh.dh x 0 = 0)
+    (hS : Corr.SpqrOffCorrect P.spqr) (idOf : Party → IdentityKey)
+    (hid : idOf .A = P.idA ∧ idOf .B = P.idB) (lam : Pt) (qep q : ℕ) (hq32 : q < 2 ^ 32) (δ : ℝ≥0∞)
+    (hδ : ∀ Q : Pt, 𝒟[($ᵗ BitVec 256 : ProbComp (BitVec 256))] {x | Dh.dh x Dh.base = Q} ≤ δ) :
+    ∀ A : LibAdv PQ PQC ℓ, SM.MakesAtMostQueries A q →
+      hybridAdvantageR (libsignalSessionScheme P ℓ encPt lam) (2 + 1) qep
+          (configR1OnCurve (ratchetKeyAdmissible P.codec decT encT)) A ≤
+        hybridAdvantage (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) (2 + 1) (qep + 1)
+            Config.h1 (sim P ℓ Dh encT decT qep A)
+          + 2 * ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) ((qep + 1) + 1),
+              CryptoGames.SM.BucketAuthBridge.bucketAuthAdvantage
+                (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) (2 + 1) (qep + 1) tL
+                (Thm1.challSim (2 + 1) (qep + 1) (sim P ℓ Dh encT decT qep A))
+          + 2 * LibsignalSim.forgedEpochStartSpuriousStepTerm P.C.F encPt Dh q
+          + 2 * LibsignalSim.spuriousStepTerm P.C.F encPt Dh q qep
+          + 2 * LibsignalSim.epoch0Term P ℓ encPt lam (ratchetKeyAdmissible P.codec decT encT) qep q A
+          + 2 * ((qep + 2) * (q + qep + 2) * δ) := by
+  exact CryptoGames.LibsignalSM.Proofs.Refinement.libsignal_refines_proof_bucket P ℓ Dh encPt encT
+    decT hX hdec hrt hL hfit hinj hdum hz hS idOf hid lam qep q hq32 δ hδ
+
 end Refine
 
 namespace Corr
@@ -130,7 +157,7 @@ variable {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] [Inha
   [SampleableType PQC]
 
 /-- Unbounded-FS-AEAD form of the ACD19 Theorem 6 H1 bound for `lFS` and Fig. 8 adversary `B`. -/
-noncomputable def fig8H1Bound (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+@[expose] noncomputable def fig8H1Bound (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
     (lam : Pt) (qep q : ℕ) (B : Fig8Adv Pt ℓ) : ℝ≥0∞ :=
   let cka := dhScheme Dh

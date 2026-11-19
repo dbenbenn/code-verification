@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful
+public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful -- proof-setup: allow-public-import
 import DY.Actions.Network
 import DY.Actions.PersistentLocalState
 import DY.Trace.Basic
@@ -41,7 +41,7 @@ for `p` (or nobody) whose visible entries match a `session_initiate` block (`rec
 `rng` events) either satisfies `IniKind` or has `NoSessionEffect`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -685,7 +685,7 @@ structure IniBlockShape (blk : List MachineEvent) : Prop where
 
 /-- Step conclusion for a `session_initiate` block: a move acting for `p` (or nobody) that either
 satisfies `IniKind` or has `NoSessionEffect`. -/
-def IniStep (p : Participant) (_blk : List MachineEvent) (tr : ExecTrace) (m : Move) : Prop :=
+@[expose] def IniStep (p : Participant) (_blk : List MachineEvent) (tr : ExecTrace) (m : Move) : Prop :=
   ActorIn p m ∧ (IniKind m ∨ NoSessionEffect tr m)
 
 /-- Single-move inversion for a `session_initiate` block. -/

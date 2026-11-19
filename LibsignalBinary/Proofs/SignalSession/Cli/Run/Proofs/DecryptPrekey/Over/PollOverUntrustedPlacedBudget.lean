@@ -11,11 +11,11 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverUntrustedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.PollStmtPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureEntryPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverUntrustedPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.PollStmtPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureEntryPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4
@@ -26,6 +26,16 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.Cl
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Trap.SameAccount
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedExtPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCalleesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureExitPlaced
 
 /-!
 # Budget-Threaded Placed D2(c) Poll Untrusted Branch and Entry Helpers
@@ -35,7 +45,7 @@ Defines budget-threaded `CliDpPollOkD2cStatePlacedAt`, `CliDpPollOkD2cStatePlace
 `closure_untrusted_d2c_placed_ok` (plus `LibsignalFrozen` counterparts).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -133,7 +143,7 @@ attribute [-arm64_norm]
 /-- Pointwise budget-threaded `[LibsignalPlacement]` D2(c) poll contract on Block `518`
 (`dpPollEntryPlaced = lsmpl.base 518`) at fixed `(mmpl, gh, W, X, B, S, Scope)` and envelope
 `DecPkEnv : DecPkGhost → List AllocEvent → Prop`. -/
-def CliDpPollOkD2cStatePlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliDpPollOkD2cStatePlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -159,7 +169,7 @@ def CliDpPollOkD2cStatePlacedAt [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded `[LibsignalPlacement]` D2(c) poll closure statement: `dpPollEntryPlaced`
 (`lsmpl.base 518`) meets `dpPollSpecStateBudget` under `decPkDefD2c` and `DecPkOkD2c`. -/
-def CliDpPollOkD2cStatePlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliDpPollOkD2cStatePlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -676,7 +686,7 @@ theorem closure_untrusted_d2c_of_stmt_placed_ok [LibsignalPlacement]
       loadRec_of_cliPollSessPlaced_loadRel hinjK hsub hfPeer hload
     have hans : S.decryptPrekey y.g.F y.g.peer.val y.g.me.val y.g.msg y.g.coins = some none := by
       rw [hS, decPkDefD2c_eq_decPkDef_of_untrusted X ⟨W.C, W.Q⟩ Scope y.g.F y.g.peer.val y.g.me.val
-        y.g.msg y.g.coins (by rw [htrusted]; decide)]
+        y.g.msg y.g.coins (by rw [htrusted]; simp)]
       exact decPkDef_of_trust_err X ⟨W.C, W.Q⟩ Scope y.g.F y.g.peer.val y.g.me.val
         y.g.msg y.g.coins hloadRec (Or.inr htrusted)
     have hout : slotOutTr (S.decryptPrekey y.g.F y.g.peer.val y.g.me.val y.g.msg y.g.coins)
@@ -856,77 +866,10 @@ theorem closure_untrusted_d2c_placed_ok [LibsignalPlacement]
     A lim hDropNz mmpl gh W X B S Scope hh hRead hDeser hinjK hsub hS stk' hneed hstk63 y
     hfits_p1 hevs_sub R s0 hpc hrun hsp hro0 hx0 hx1 hx2 hfiles0 hfPeer hdecOk htrusted hm_base
 
-/-- Convenience wrapper around `closure_untrusted_d2c_placed_ok` accepting
-`ClosureStagesStmtPlacedBudget.RunHooksPlaced`. -/
-theorem closure_untrusted_d2c_stagesHooks_placed_ok [LibsignalPlacement]
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
-    {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    (hDropNz : lsmpl.base 547 ≠ 0#64)
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks)
-    (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop)
-    (hh : LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget.RunHooksPlaced
-      A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (hRead : subroutine_ok (dpPollProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))) (lsρ lsReadFileSym)
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim B.readFile ReadEnv))
-    (hDeser : subroutine_ok (dpPollProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))) (lsmpl.base 46)
-      (sessDeserializeSpecPlaced Slots.scopeKit A lim DeserEnv))
-    (hinjK : Slots.EncodeInjOn Slots.scopeKit)
-    (hsub : ∀ r, Scope r → Slots.scopeIn r)
-    (hS : S.decryptPrekey = decPkDefD2c X ⟨W.C, W.Q⟩ Scope)
-    (stk' : Nat) (hneed : dpPollNeed B ≤ stk') (hstk63 : stk' ≤ 2 ^ 63)
-    (y : DpPollGhostStateBudget (dpSlotPollKStatePlaced A lim DecPkEnv B S))
-    (hfits_p1 : FitsEnv M lim y.st (CliDpPollUntrustedEnv (A := A.repAlloc) B ReadEnv DeserEnv y.g))
-    (hevs_sub : ∀ evs,
-      CliDpPollUntrustedEnv (A := A.repAlloc) B ReadEnv DeserEnv y.g evs → DecPkEnv y.g evs)
-    (R : SepProp) (s0 : State)
-    (hpc : s0.pc = dpPollEntryPlaced)
-    (hrun : s0.status = .Running)
-    (hsp : s0.spAligned = true)
-    (hro0 : LibsignalCodeRoLoaded lsmpl s0.mem)
-    (hx0 : s0.readReg64 .x0 = y.out)
-    (hx1 : s0.readReg64 .x1 = y.fut)
-    (hx2 : s0.readReg64 .x2 = y.cx)
-    (hfiles0 : s0.fs.files = y.g.F)
-    (hfPeer : Slots.FilesOkPeer Scope y.g.F y.g.peer.val)
-    (hdecOk : DecPkOkD2c ⟨W.C, W.Q⟩ Scope y.g.F y.g.peer.val y.g.me.val y.g.msg)
-    (htrusted : StoresGhost.opened.identity.trusted cliIo.rd y.g.F y.g.peer.val
-      y.g.msg.identityKey = .ok false)
-    (hm_base : s0.mem ⊨
-      memRegion y.out 48 ∗
-      dpFutStartAt y.fut (dpSlotArgsPlaced y.g) ∗
-      memRegion y.cx 32 ∗
-      storesAt A.repAlloc y.g.stores StoresGhost.opened ∗
-      protocolAddressAt A.repAlloc y.g.peer y.g.peerA ∗
-      protocolAddressAt A.repAlloc y.g.me y.g.meA ∗
-      coinsInstalledPlaced y.g.coinsP y.g.coins ∗
-      LsTokenInit ∗
-      lsLogOff ∗
-      A.pool lim y.st s0 ∗
-      preKeyMsgAt A.repAlloc y.g.msgG y.g.msgA y.g.msg ∗
-      stackAt s0.sp stk' ∗
-      R) :
-    let prog := dpPollProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))
-    let K := dpSlotPollKStatePlaced A lim DecPkEnv B S
-    ∃ P Fr : SepProp, (s0.mem ⊨ P ∗ Fr) ∧
-      SepWPp prog (s0.readReg64 Reg.lr) s0 P
-        (fun sf P_f =>
-          (Steps prog s0 sf → (sf.mem ⊨ P_f ∗ Fr) →
-            (sf.mem ⊨ (withLsCodeRoLoaded lsmpl (dpPollSpecStateBudget K stk')).post y s0 sf ∗ R)) ∧
-            sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
-        (fun sf P_f =>
-          Steps prog s0 sf → (sf.mem ⊨ P_f ∗ Fr) →
-            (sf.mem ⊨ (withLsCodeRoLoaded lsmpl (dpPollSpecStateBudget K stk')).onPanic y s0 sf ∗ R)) :=
-  closure_untrusted_d2c_placed_ok A lim hDropNz mmpl gh W X B S Scope (runHooks_of_stages hh) hRead hDeser
-    hinjK hsub hS stk' hneed hstk63 y hfits_p1 hevs_sub R s0 hpc hrun hsp hro0 hx0 hx1 hx2
-    hfiles0 hfPeer hdecOk htrusted hm_base
-
 
 /-! ## `LibsignalFrozen` Counterparts -/
 
-def CliDpPollOkD2cStateFrozenPlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliDpPollOkD2cStateFrozenPlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -950,7 +893,7 @@ def CliDpPollOkD2cStateFrozenPlacedAt [LibsignalPlacement] {M : AllocCostModel}
       (CryptoVerification.LibsignalTripleRatchet.withLsFrozen lsmpl
         (dpPollSpecStateBudget (dpSlotPollKStatePlaced A lim DecPkEnv B S) stk'))
 
-def CliDpPollOkD2cStateFrozenPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliDpPollOkD2cStateFrozenPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -1195,71 +1138,6 @@ theorem closure_untrusted_d2c_frozen_placed_ok [LibsignalPlacement]
             (sf.mem ⊨ (CryptoVerification.LibsignalTripleRatchet.withLsFrozen lsmpl (dpPollSpecStateBudget K stk')).onPanic y s0 sf ∗ R)) := by
   exact LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverUntrustedPlacedBudget.closure_untrusted_d2c_of_stmt_frozen_placed_ok stageP1_untrusted_mangled_placed_ok
     A lim hDropNz mmpl gh W X B S Scope hh hRead hDeser hinjK hsub hS stk' hneed hstk63 y
-    hfits_p1 hevs_sub R s0 hpc hrun hsp hfr0 hx0 hx1 hx2 hfiles0 hfPeer hdecOk htrusted hm_base
-
-theorem closure_untrusted_d2c_stagesHooks_frozen_placed_ok [LibsignalPlacement]
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
-    {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    (hDropNz : lsmpl.base 547 ≠ 0#64)
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks)
-    (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop)
-    (hh : LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget.RunHooksPlaced
-      A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (hRead : subroutine_ok (dpPollProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))) (lsρ lsReadFileSym)
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim B.readFile ReadEnv))
-    (hDeser : subroutine_ok (dpPollProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))) (lsmpl.base 46)
-      (sessDeserializeSpecPlaced Slots.scopeKit A lim DeserEnv))
-    (hinjK : Slots.EncodeInjOn Slots.scopeKit)
-    (hsub : ∀ r, Scope r → Slots.scopeIn r)
-    (hS : S.decryptPrekey = decPkDefD2c X ⟨W.C, W.Q⟩ Scope)
-    (stk' : Nat) (hneed : dpPollNeed B ≤ stk') (hstk63 : stk' ≤ 2 ^ 63)
-    (y : DpPollGhostStateBudget (dpSlotPollKStatePlaced A lim DecPkEnv B S))
-    (hfits_p1 : FitsEnv M lim y.st (CliDpPollUntrustedEnv (A := A.repAlloc) B ReadEnv DeserEnv y.g))
-    (hevs_sub : ∀ evs,
-      CliDpPollUntrustedEnv (A := A.repAlloc) B ReadEnv DeserEnv y.g evs → DecPkEnv y.g evs)
-    (R : SepProp) (s0 : State)
-    (hpc : s0.pc = dpPollEntryPlaced)
-    (hrun : s0.status = .Running)
-    (hsp : s0.spAligned = true)
-    (hfr0 : CryptoVerification.LibsignalFrozen lsmpl s0.mem)
-    (hx0 : s0.readReg64 .x0 = y.out)
-    (hx1 : s0.readReg64 .x1 = y.fut)
-    (hx2 : s0.readReg64 .x2 = y.cx)
-    (hfiles0 : s0.fs.files = y.g.F)
-    (hfPeer : Slots.FilesOkPeer Scope y.g.F y.g.peer.val)
-    (hdecOk : DecPkOkD2c ⟨W.C, W.Q⟩ Scope y.g.F y.g.peer.val y.g.me.val y.g.msg)
-    (htrusted : StoresGhost.opened.identity.trusted cliIo.rd y.g.F y.g.peer.val
-      y.g.msg.identityKey = .ok false)
-    (hm_base : s0.mem ⊨
-      memRegion y.out 48 ∗
-      dpFutStartAt y.fut (dpSlotArgsPlaced y.g) ∗
-      memRegion y.cx 32 ∗
-      storesAt A.repAlloc y.g.stores StoresGhost.opened ∗
-      protocolAddressAt A.repAlloc y.g.peer y.g.peerA ∗
-      protocolAddressAt A.repAlloc y.g.me y.g.meA ∗
-      coinsInstalledPlaced y.g.coinsP y.g.coins ∗
-      LsTokenInit ∗
-      lsLogOff ∗
-      A.pool lim y.st s0 ∗
-      preKeyMsgAt A.repAlloc y.g.msgG y.g.msgA y.g.msg ∗
-      stackAt s0.sp stk' ∗
-      R) :
-    let prog := dpPollProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))
-    let K := dpSlotPollKStatePlaced A lim DecPkEnv B S
-    ∃ P Fr : SepProp, (s0.mem ⊨ P ∗ Fr) ∧
-      SepWPp prog (s0.readReg64 Reg.lr) s0 P
-        (fun sf P_f =>
-          (Steps prog s0 sf → (sf.mem ⊨ P_f ∗ Fr) →
-            (sf.mem ⊨ (CryptoVerification.LibsignalTripleRatchet.withLsFrozen lsmpl (dpPollSpecStateBudget K stk')).post y s0 sf ∗ R)) ∧
-            sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
-        (fun sf P_f =>
-          Steps prog s0 sf → (sf.mem ⊨ P_f ∗ Fr) →
-            (sf.mem ⊨ (CryptoVerification.LibsignalTripleRatchet.withLsFrozen lsmpl (dpPollSpecStateBudget K stk')).onPanic y s0 sf ∗ R)) := by
-  exact LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverUntrustedPlacedBudget.closure_untrusted_d2c_frozen_placed_ok A lim hDropNz mmpl gh W X B S Scope
-    (runHooks_of_stages hh) hRead hDeser hinjK hsub hS stk' hneed hstk63 y
     hfits_p1 hevs_sub R s0 hpc hrun hsp hfr0 hx0 hx1 hx2 hfiles0 hfPeer hdecOk htrusted hm_base
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverUntrustedPlacedBudget

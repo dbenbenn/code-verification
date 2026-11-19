@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsPlacedInst
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParams
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirection
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateProofClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeStateClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsPlacedInst -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParams -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirection -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateProofClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeStateClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlaced
 import LibsignalBinary.Proofs.SpqrV1.Drop.DropCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1
 import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2
@@ -23,6 +23,8 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.UnchunkedFromPbClPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.RecvPlacedCodeSym
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # Placed `V1State::merge` & `spqr::decode_state` Instantiations
@@ -33,7 +35,7 @@ and single-block leaf drops (Blocks 271, 283..286) under `[CliSpqrExt W ext]`, a
 `spqr::recv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -47,6 +49,7 @@ open CryptoVerification.LibsignalSession CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalTripleRatchetRepr
 open CryptoVerification.LibsignalTripleRatchet.Keys
 open CryptoVerification.LibsignalAesCbc (memcpyHook memsetHook)
+open CryptoVerification.LibsignalHmac (compress256Hook)
 open CryptoVerification.LibsignalSpqrV1
 open CryptoVerification.SpqrV1.Alloc
 open CryptoVerification.SpqrV1.Varint
@@ -289,6 +292,7 @@ theorem cliSpqrDecodeState_sendCoins_ok [LibsignalPlacement]
     (hMs : gh.memset = some memsetHook)
     (hMc : gh.memcpy = some memcpyHook)
     (hMv : gh.extra.lookup "memmove" = some hookMemmove)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (compress256Hook W.C.F))
     (hHmac : HookSat (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))
       Slots.lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F E2E.HooksE.A0))
     (hDrop267 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 267 (Rust.withPanics (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))))
@@ -342,7 +346,7 @@ theorem cliSpqrDecodeState_sendCoins_ok [LibsignalPlacement]
         (CryptoVerification.SpqrV1.Top.DecodeState.decodeStatePlacedSpecX
           canonicalV1InnerHeap E2E.HooksE.A0)) := by
   have : CliSpqrExt W (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
-    cliSpqrExt_self mmpl gh W hG hMs hMc hMv hHmac
+    cliSpqrExt_self mmpl gh W hG hMs hMc hMv hCp hHmac
   exact cliSpqrDecodeState_cl W
     hDrop267 hDrop270 hDrop281 hDrop282
     hPush257 hFrom261 hSkip263 hBytes290 hVarint291 hChainParams294 hEpochDir299
@@ -421,6 +425,7 @@ theorem cliSpqrDecodeState_recv_trTrap_ok [LibsignalPlacement]
     (hMs : gh.memset = some memsetHook)
     (hMc : gh.memcpy = some memcpyHook)
     (hMv : gh.extra.lookup "memmove" = some hookMemmove)
+    (hCp : gh.extra.lookup lsCompress256Sym = some (compress256Hook W.C.F))
     (hHmac : HookSat (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))
       Slots.lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F E2E.HooksE.A0))
     (hDrop267 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 267 (Rust.withPanics (Slots.trTrapExternsPlaced (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W)))))
@@ -472,7 +477,7 @@ theorem cliSpqrDecodeState_recv_trTrap_ok [LibsignalPlacement]
       (LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl
         (decodeStatePlacedSpecX canonicalV1InnerHeap E2E.HooksE.A0)) := by
   have : CliSpqrExt W (Slots.trTrapExternsPlaced (RunGlue.cliGhostExterns gh (cliExternsPlaced mmpl W))) :=
-    cliSpqrExt_trTrap mmpl gh W hG hMs hMc hMv hHmac
+    cliSpqrExt_trTrap mmpl gh W hG hMs hMc hMv hCp hHmac
   exact cliSpqrDecodeState_recv_ok W
     hDrop267 hDrop270 hDrop281 hDrop282
     hPush257 hFrom261 hSkip263 hBytes290 hVarint291 hChainParams294 hEpochDir299

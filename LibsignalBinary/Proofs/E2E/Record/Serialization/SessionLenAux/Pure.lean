@@ -18,7 +18,7 @@ Little-endian byte-unpacking bridges (`leBytes` to `unpack32` / `unpack64`), pro
 encoded-length lemmas, receiver-chain loop sum lemmas, and `BitVec` overflow-check helpers.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.Serialization.SessionLenAux
 
@@ -183,11 +183,11 @@ theorem encPendingKyber_length (k : PendingKyberPreKey) :
 /-! ## Receiver-chains loop sum lemmas -/
 
 /-- Sum of `body + varint(body.length)` without the 1-byte tag-7 key per element. -/
-def chainNoKeyLen (gc : ChainGhost × ReceiverChain) : Nat :=
+@[expose] def chainNoKeyLen (gc : ChainGhost × ReceiverChain) : Nat :=
   (encChainMem gc).length + (encodeVarint (BitVec.ofNat 64 (encChainMem gc).length)).length
 
 /-- Total tag-7 encoded bytes for a list of receiver chains. -/
-def chainsTotalLen (cs : List (ChainGhost × ReceiverChain)) : Nat :=
+@[expose] def chainsTotalLen (cs : List (ChainGhost × ReceiverChain)) : Nat :=
   ((cs.map fun gc => lenField 7 (encChainMem gc)).flatten).length
 
 theorem lenField_7_encChainMem_length (gc : ChainGhost × ReceiverChain) :
@@ -202,7 +202,7 @@ theorem chainsTotalLen_cons (gc : ChainGhost × ReceiverChain) (cs : List (Chain
   simp [chainsTotalLen]
 
 /-- Sum of `chainNoKeyLen` over `cs`, plus `cs.length` (the 1-byte keys), equals `chainsTotalLen cs`. -/
-def chainsNoKeySum : List (ChainGhost × ReceiverChain) → Nat
+@[expose] def chainsNoKeySum : List (ChainGhost × ReceiverChain) → Nat
   | [] => 0
   | gc :: cs => chainNoKeyLen gc + chainsNoKeySum cs
 

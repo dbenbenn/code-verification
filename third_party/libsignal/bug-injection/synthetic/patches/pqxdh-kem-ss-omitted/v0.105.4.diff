@@ -1,0 +1,29 @@
+--- a/rust/protocol/src/pqxdh.rs
++++ b/rust/protocol/src/pqxdh.rs
+@@ -224,8 +224,7 @@ pub(crate) fn pqxdh_initiate<R: Rng + CryptoRng>(
+     }
+ 
+     let kyber_ciphertext = {
+-        let (ss, ct) = parameters.their_kyber_pre_key.encapsulate(&mut csprng)?;
+-        secrets.extend_from_slice(ss.as_ref());
++        let (_ss, ct) = parameters.their_kyber_pre_key.encapsulate(&mut csprng)?;
+         ct
+     };
+ 
+@@ -365,12 +364,10 @@ pub(crate) fn pqxdh_accept(parameters: &RecipientParameters) -> Result<Handshake
+         );
+     }
+ 
+-    secrets.extend_from_slice(
+-        &parameters
+-            .our_kyber_pre_key_pair
+-            .secret_key
+-            .decapsulate(parameters.their_kyber_ciphertext)?,
+-    );
++    let _ss = parameters
++        .our_kyber_pre_key_pair
++        .secret_key
++        .decapsulate(parameters.their_kyber_ciphertext)?;
+ 
+     Ok(HandshakeKeys::derive(&secrets))
+ }

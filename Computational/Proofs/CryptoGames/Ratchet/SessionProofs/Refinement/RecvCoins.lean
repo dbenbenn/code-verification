@@ -23,7 +23,7 @@ Proves that receiver-chain operations commute with sender-field updates and that
 ratchet steps fail independently of receive coins.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -147,7 +147,7 @@ theorem keyPair_generate_publicKey {C : Crypto} {Dh : DHFun (BitVec 256) Pt}
   change (C.pubKey (vec32 (keyToBytes32 (CKA.clamp256 x)))).toList = b.toList
   rw [hX.1.pubKey_hook (CKA.clamp256 x), hX.1.dh_clamp x Dh.base, hb]
 
-def withSender (s : RatchetState) (rk : LibsignalSession.RootKey) (sc : Option SenderChain) : RatchetState :=
+@[expose] def withSender (s : RatchetState) (rk : LibsignalSession.RootKey) (sc : Option SenderChain) : RatchetState :=
   { s with rootKey := rk, senderChain := sc }
 
 @[local simp]

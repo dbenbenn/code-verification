@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Hops
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.LitsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Hops -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.LitsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # Relocatable Hop Contracts M1–M6 for `main` (`[LibsignalPlacement]`, Block `617`)
@@ -24,7 +25,7 @@ Relocatable `[LibsignalPlacement]` counterparts of `Hops.lean` on Block `617` (`
 `.rodata` invariant `[LsCodeInv CodeOk]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,9 +58,6 @@ theorem mPcPlaced_zero [LibsignalPlacement] :
     mPcPlaced 0 = (blkPl_617).base := by
   change lsmpl.base 617 + 0#64 = (blkPl_617).base
   exact BitVec.add_zero _
-
-theorem blkPl_617_base_eq [LibsignalPlacement] :
-    (blkPl_617).base = lsmpl.base 617 := rfl
 
 /-! ## Frozen Code + `.rodata` Invariant Typeclass (`LsCodeInv`) -/
 
@@ -141,7 +139,7 @@ structure AtRetPlaced [LibsignalPlacement] (CodeOk : Memory → Prop)
   base : InMainPlaced CodeOk s0 s 0xb80
   w26 : (s.readReg64 (.gpr 26#5)).setWidth 32 = BitVec.ofNat 32 code
 
-def ExitKPlacedRet [LibsignalPlacement] (CodeOk : Memory → Prop) (H : LibsignalHooks)
+@[expose] def ExitKPlacedRet [LibsignalPlacement] (CodeOk : Memory → Prop) (H : LibsignalHooks)
     (A : RustAlloc) (s0 : State) (ret : BitVec 64) (stk : Nat) (G : Nat → State → Prop)
     (Q Qp : State → SepProp → Prop) : Prop :=
   ∀ (s : State) (code : Nat), AtRetPlaced CodeOk s0 s code → G code s →

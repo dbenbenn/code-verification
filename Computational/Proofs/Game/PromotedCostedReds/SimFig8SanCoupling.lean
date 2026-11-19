@@ -9,11 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanSem
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost
+public import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanSem
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.GhostStep
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
 
 /-!
 # Sanitized `simFig8` Snapshot Invariant, Game Coupling, and `SimFig8EvalOk` Bridge
@@ -23,7 +28,7 @@ Proves preservation of the combined snapshot and ghost-chain invariant `SanSnapE
 in `SM.run`, and derives `SimFig8EvalOk` for `simFig8ProgOfStep`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -81,7 +86,7 @@ open Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost
 
 /-- Well-formedness of a corruption `GhostState` snapshot: at most 5 receiver chains, at most 2000
 stored message keys per chain, and 32-byte message-key seeds. -/
-def SnapWF {PQ : Type} (gh : GhostState PQ) : Prop :=
+@[expose] def SnapWF {PQ : Type} (gh : GhostState PQ) : Prop :=
   gh.session.receiverChains.length ≤ 5 ∧
     ∀ rc ∈ gh.session.receiverChains,
       rc.messageKeys.length ≤ 2000 ∧ ∀ mk ∈ rc.messageKeys, mk.seed.length = 32
@@ -89,7 +94,7 @@ def SnapWF {PQ : Type} (gh : GhostState PQ) : Prop :=
 /-- Combined simulator-only invariant for atomic `simFig8` steps: tight SPQR states (`SanExtra`),
 bounded ghost chains (`≤ 5` chains, `≤ 2000` skipped indices), `SnapWF` on all snapshots, and
 canonical wire encoding on `honest`. -/
-def SanSnapExtra {ℓ : ℕ} {Pt : Type} (C : Crypto) (K : MlKem)
+@[expose] def SanSnapExtra {ℓ : ℕ} {Pt : Type} (C : Crypto) (K : MlKem)
     (sC : LibsignalToModularSchemeSimState Bytes Pt ℓ) : Prop :=
   SanExtra C K sC ∧
     (∀ R, (sC.base.chains R).length ≤ 5 ∧ ∀ g ∈ sC.base.chains R, g.skipped.length ≤ 2000) ∧
@@ -543,7 +548,7 @@ abbrev Fig8G (Pt : Type) (ℓ : ℕ) :=
   GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)
 
 /-- Query implementation of `CryptoGames.SM.run fig 3 (qep + 1) cfg`. -/
-def fig8GameImpl {Pt : Type} [DecidableEq Pt] {ℓ : ℕ}
+@[expose] def fig8GameImpl {Pt : Type} [DecidableEq Pt] {ℓ : ℕ}
     (fig : CryptoGames.SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt)
       (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
     (qep : ℕ) (cfg : CryptoGames.SM.Config (LibsignalMsgPublicPart × Plain ℓ)) :
@@ -672,7 +677,7 @@ abbrev SimImpl (PQ PQC Pt : Type) (ℓ : ℕ) :=
   QueryImpl (unifSpec + CryptoGames.SM.spec (GhostState PQ) (Plain ℓ) PQC Bytes)
     (StateT (LibsignalToModularSchemeSimState PQ Pt ℓ) (Fig8Comp Pt ℓ))
 
-def simFig8ClampOf {PQ PQC Pt : Type} {ℓ : ℕ} (P : Params PQ PQC) (O : SimImpl PQ PQC Pt ℓ)
+@[expose] def simFig8ClampOf {PQ PQC Pt : Type} {ℓ : ℕ} (P : Params PQ PQC) (O : SimImpl PQ PQC Pt ℓ)
     (A : CryptoGames.SM.Adversary (GhostState PQ) (Plain ℓ) PQC Bytes) :
     CryptoGames.SM.Adversary (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
       (BitVec 256) (Fig8C Pt) :=
@@ -802,24 +807,24 @@ end GameCouplingInfra
 
 section PartyAndKeptInv
 
-def Fig8CkaInv {Pt : Type} (st : Fig8St Pt) : Prop :=
+@[expose] def Fig8CkaInv {Pt : Type} (st : Fig8St Pt) : Prop :=
   if st.id.sendsIn (st.tcur + 1) then ∃ h, st.γ = .pub h else ∃ x, st.γ = .exp x
 
-def SkippedLenLe (B0 : ℕ) (v : RatchetReceiverState (BitVec 256) (BitVec 256)) : Prop :=
+@[expose] def SkippedLenLe (B0 : ℕ) (v : RatchetReceiverState (BitVec 256) (BitVec 256)) : Prop :=
   v.skippedKeys.length ≤ B0
 
 theorem SkippedLenLe.mono {B0 B0' : ℕ} {v : RatchetReceiverState (BitVec 256) (BitVec 256)}
     (hle : B0 ≤ B0') (hv : SkippedLenLe B0 v) : SkippedLenLe B0' v :=
   Nat.le_trans hv hle
 
-def Fig8PartyInv {Pt : Type} (B0 : ℕ) (st : Fig8St Pt) : Prop :=
+@[expose] def Fig8PartyInv {Pt : Type} (B0 : ℕ) (st : Fig8St Pt) : Prop :=
   Fig8CkaInv st ∧ ∀ t v, st.vR t = some v → SkippedLenLe B0 v
 
 theorem Fig8PartyInv.mono {Pt : Type} {B0 B0' : ℕ} {st : Fig8St Pt}
     (hle : B0 ≤ B0') (hst : Fig8PartyInv B0 st) : Fig8PartyInv B0' st :=
   ⟨hst.1, fun t v hv => (hst.2 t v hv).mono hle⟩
 
-def KeptInv {Pt : Type} (B0 : ℕ) (k : Kept Pt) : Prop :=
+@[expose] def KeptInv {Pt : Type} (B0 : ℕ) (k : Kept Pt) : Prop :=
   (∀ st, k.full = some st → Fig8PartyInv B0 st) ∧
   (∀ t v, k.rs t = some v → SkippedLenLe B0 v)
 
@@ -2884,7 +2889,7 @@ theorem simFig8ProgOfStep_evalOk_san {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Z
 
 /-- Construct a `SimFig8AtomicStepBundle` from any single-query step body matching
 `simFig8OracleSan` under `SimCStateBounded L` and `SanSnapExtra C K`. -/
-def SimFig8AtomicStepBundle.ofSan {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def SimFig8AtomicStepBundle.ofSan {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (ℓ : ℕ) (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (lam : Pt) (L qep q B T Kc Bsk : ℕ)

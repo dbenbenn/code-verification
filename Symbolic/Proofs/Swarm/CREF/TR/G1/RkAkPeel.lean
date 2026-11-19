@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.OneSidedPeel
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.OneSidedPeel -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.CanonLocal
 
@@ -20,7 +20,7 @@ Proves `oneSidedPeelAK` and `false_of_oneSidedPeelAK`, establishing the one-side
 the relaxed seed separation hypothesis `SeedSepAK`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +39,7 @@ variable (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
 /-- Relaxed seed separation: an attacker-known honest or skipped-seed term `u'` in the memo window
 of `t₁` matching the `gamma'` shape of a `Q`-term `v'` in the memo window of `t₂` equals `v'`,
 forces `v'` to be attacker-known, or decomposes `u'` as `kdfExtract` on attacker-known inputs. -/
-def SeedSepAK (T : ExecTrace) (Q : DY.Bytes → Prop) (t₁ t₂ : DY.Bytes) : Prop :=
+@[expose] def SeedSepAK (T : ExecTrace) (Q : DY.Bytes → Prop) (t₁ t₂ : DY.Bytes) : Prop :=
   ∀ (u' v' : DY.Bytes), u'.AttackerKnows T → (HonestKdfOut T u' ∨ SkippedSeedLogged T u') → Q v' →
     (∀ e ∈ (gamma' i S g u').memo, e ∈ (gamma' i S g t₁).memo) →
     (∀ e ∈ (gamma' i S g v').memo, e ∈ (gamma' i S g t₂).memo) →

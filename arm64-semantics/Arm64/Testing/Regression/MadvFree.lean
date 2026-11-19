@@ -176,12 +176,20 @@ theorem execMadvise_non_anon_fails_closed (s : State)
       (execMadvise s).status = .Exception "madvise on non-anonymous memory") ∧
     (s.readReg64 .x2 = MADV_NORMAL → s.status = .Running →
       (execMadvise s).status = .Running ∧ (execMadvise s).readReg64 .x0 = 0#64) := by
-  have hfit64 : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat ≤ 2 ^ 64 := by omega
+  have hunt : untaggedAddr (s.readReg64 .x0) = s.readReg64 .x0 :=
+    untaggedAddr_of_le_user_va (by omega)
+  have hlenMax : (s.readReg64 .x1).toNat ≤ 2 ^ 64 - PAGE_SIZE := by
+    have hle := pageAlignUp_le (s.readReg64 .x1).toNat
+    unfold PAGE_SIZE; omega
+  have hfit64 : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat < 2 ^ 64 := by omega
   refine ⟨fun hf => ?_, fun hd => ?_, fun hn hrun => ?_⟩
-  · simp [execMadvise, MADV_DONTNEED, MADV_FREE, hf, hal, hlen, hfit, hfit64, hfrz, hmap, hnonanon]
-  · simp [execMadvise, MADV_DONTNEED, MADV_FREE, hd, hal, hlen, hfit, hfit64, hfrz, hmap, hnonanon]
-  · have hexec : execMadvise s = (s.writeReg64 .x0 0#64).advancePC := by
-      simp [execMadvise, MADV_NORMAL, MADV_DONTNEED, MADV_FREE, hn, hal, hlen, hfit, hfit64, hfrz, hmap]
+  · have hf32 : (s.readReg32 .x2).signExtend 64 = MADV_FREE := by simp [State.readReg32, hf, MADV_FREE]
+    simp [execMadvise, hunt, MADV_DONTNEED, MADV_FREE, hf32, hal, hlen, hlenMax, hfit, hfit64, hfrz, hmap, hnonanon]
+  · have hd32 : (s.readReg32 .x2).signExtend 64 = MADV_DONTNEED := by simp [State.readReg32, hd, MADV_DONTNEED]
+    simp [execMadvise, hunt, MADV_DONTNEED, MADV_FREE, hd32, hal, hlen, hlenMax, hfit, hfit64, hfrz, hmap, hnonanon]
+  · have hn32 : (s.readReg32 .x2).signExtend 64 = MADV_NORMAL := by simp [State.readReg32, hn, MADV_NORMAL]
+    have hexec : execMadvise s = (s.writeReg64 .x0 0#64).advancePC := by
+      simp [execMadvise, hunt, MADV_NORMAL, MADV_DONTNEED, MADV_FREE, hn32, hal, hlen, hlenMax, hfit, hfit64, hfrz, hmap]
     rw [hexec]
     exact ⟨by cases s; exact hrun, by simp⟩
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
 
 /-!
 # `find_receiver_chain_key`, `ChainKey::message_keys`, and `ChainKey::next_chain_key` Specifications
@@ -20,7 +20,7 @@ proved on `sessionProg` and transferred to `tripleRatchetProgAt` via
 `ConsumeMessageKeyTransfer.session_subroutine_ok_mono`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 
@@ -66,7 +66,7 @@ The fourth arm, ISE "invalid chain key" (rodata `0x54a3e`, 17 bytes, `0xea38`), 
 the stored key `Vec` is not 32 bytes long (`ChainKey::from_pb`). `optChainKeyAt` fixes the length
 at 32, so that arm is dead and has no case here. Other errors are `False`: the model's only other
 outcome is `.panic` at an out-of-range index, which `findIdx?` excludes. -/
-def findReceiverChainKeyResultAt (r : BitVec 64) : Except SignalProtocolError (Option ChainKey) → SepProp
+@[expose] def findReceiverChainKeyResultAt (r : BitVec 64) : Except SignalProtocolError (Option ChainKey) → SepProp
   | .ok none => (r ↦₃₂ 0#32) ∗ memRegion (r + 4#64) 36
   | .ok (some ck) => (r ↦₃₂ 1#32) ∗ ((r + 4#64) ↦ₛ chainKeyBytes ck)
   | .error (.invalidSessionStructure .missingReceiverChainKey) =>
@@ -86,126 +86,17 @@ structure FindReceiverChainKeyGhost where
   /-- The sret (`x8`, 40 bytes). -/
   ret : BitVec 64
 
-/-- Contract for `RatchetState::find_receiver_chain_key(&self = x0, their = x1) -> Result<Option<ChainKey>,
-InvalidSessionError>` (sret `x8`): loads `receiver_chains.{ptr, len}` (`0xe910`), calls
-`find_receiver_chain_index`, bounds-checks the returned index, and reads chain `i`'s `chain_key`
-(`cap` at `+0x48`, `ptr` at `+0x50`, `len` at `+0x58`, `index` at `+0x60`), refining
-`RatchetState.findReceiverChainKey`. -/
-def findReceiverChainKeySpec (A : RustAlloc) (img : Obj.Image) : Spec FindReceiverChainKeyGhost :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x1 = x.theirA ∧ s.readReg64 .x8 = x.ret⌝ ∗
-        ratchetAt A x.self x.G x.st ∗ (x.theirA ↦ₛ x.their.bytes.toList) ∗ memRegion x.ret 40 ∗
-        logOff img ∗ stackAt s.sp findReceiverChainKeyStack
-      post := fun x s0 sf =>
-        ⌜sf.trace = s0.trace⌝ ∗
-        ratchetAt A x.self x.G x.st ∗ (x.theirA ↦ₛ x.their.bytes.toList) ∗
-        findReceiverChainKeyResultAt x.ret (x.st.findReceiverChainKey x.their) ∗
-        logOff img ∗ stackAt s0.sp findReceiverChainKeyStack }
-    img
-
-/-! ## `ChainKey::message_keys` -/
-
 /-- `MessageKeyGenerator::Seed((seed, counter))` at `r` (40 bytes): `u32` tag `1` at `+0`, seed
 `Vec<u8>` at `+8`, and `u32` counter at `+0x20` (matching the `Ok` arm of
 `consumeMessageKeyResultAt`). -/
-def mkgAt (A : RustAlloc) (r : BitVec 64) (g : MessageKeyGenerator) : SepProp :=
+@[expose] def mkgAt (A : RustAlloc) (r : BitVec 64) (g : MessageKeyGenerator) : SepProp :=
   (r ↦₃₂ 1#32) ∗ memRegion (r + 4#64) 4 ∗ vecU8 A (r + 8#64) g.seed ∗
     ((r + 32#64) ↦₃₂ g.counter) ∗ memRegion (r + 36#64) 4
 
 /-- Ghost of `message_keys` and `next_chain_key`: `(self, chain key, sret)`. -/
 abbrev ChainKeyGhost := BitVec 64 × ChainKey × BitVec 64
 
-/-- Contract for `ChainKey::message_keys(&self = x0) -> MessageKeyGenerator` (sret `x8`): computes
-`hmac_sha256(sp, self[0..32], [0x01])` (`0x126d8`), allocates a 32-byte `Vec<u8>` (`0x126ec`), and
-writes `Seed { cap = 32, ptr, len = 32, counter = index }`, panicking via `handle_error` (`0x1272c`)
-only on allocation failure (refining `ChainKey.messageKeys`). -/
-def messageKeysSpec (F : ShaCompress) (A : RustAlloc) (img : Obj.Image) : Spec ChainKeyGhost :=
-  Spec.inImage
-    { pre := fun (self, ck, ret) s =>
-        ⌜s.readReg64 .x0 = self ∧ s.readReg64 .x8 = ret⌝ ∗
-        (self ↦ₛ chainKeyBytes ck) ∗ memRegion ret 40 ∗ A.pool ∗ stackAt s.sp messageKeysStack
-      post := fun (self, ck, ret) s0 sf =>
-        ⌜sf.trace = s0.trace⌝ ∗
-        (self ↦ₛ chainKeyBytes ck) ∗ mkgAt A ret (ck.messageKeys F) ∗
-        A.pool ∗ stackAt s0.sp messageKeysStack
-      onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
-    img
-
-/-! ## `ChainKey::next_chain_key` -/
-
-/-- Contract for `ChainKey::next_chain_key(&self = x0) -> ChainKey` (sret `x8`, 36 bytes): computes
-`hmac_sha256(sp + 0xc, self[0..32], [0x02])` (`0x12764`), panics via `panic_const_add_overflow`
-(`0x127a0`) iff `index = u32::MAX`, and otherwise writes the derived key and `index + 1` (refining
-`ChainKey.nextChainKey`). -/
-def nextChainKeySpec (F : ShaCompress) (img : Obj.Image) : Spec ChainKeyGhost :=
-  Spec.inImage
-    { pre := fun (self, ck, ret) s =>
-        ⌜s.readReg64 .x0 = self ∧ s.readReg64 .x8 = ret⌝ ∗
-        (self ↦ₛ chainKeyBytes ck) ∗ memRegion ret 36 ∗ stackAt s.sp nextChainKeyStack
-      post := fun (self, ck, ret) s0 sf =>
-        ⌜ck.nextChainKey F ≠ .error .panic ∧ sf.trace = s0.trace⌝ ∗
-        (self ↦ₛ chainKeyBytes ck) ∗
-        (match ck.nextChainKey F with
-          | .ok ck' => ret ↦ₛ chainKeyBytes ck'
-          | .error _ => ⌜False⌝) ∗
-        stackAt s0.sp nextChainKeyStack
-      onPanic := fun (_, ck, _) s0 sf =>
-        ⌜ck.nextChainKey F = .error .panic ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
-    img
-
-/-! ## Subroutine Contract Predicates -/
-
-def FindReceiverChainKeyOkExt (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext) ((tripleRatchetProgAtExt img.base ext).fnAddr findReceiverChainKeyName)
-    (findReceiverChainKeySpec A img)
-
-/-- findReceiverChainKey meets `findReceiverChainKeySpec` on `tripleRatchetProgAt`. -/
-def FindReceiverChainKeyOk (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  FindReceiverChainKeyOkExt img A (tripleRatchetExterns C ctl abs)
-
-def MessageKeysOkExt (img : Obj.Image) (F : ShaCompress) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName) (messageKeysSpec F A img)
-
-/-- `message_keys` meets `messageKeysSpec` on `tripleRatchetProgAt`. -/
-def MessageKeysOk (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  MessageKeysOkExt img C.F A (tripleRatchetExterns C ctl abs)
-
-def NextChainKeyOkExt (img : Obj.Image) (F : ShaCompress)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr nextChainKeyName) (nextChainKeySpec F img)
-
-/-- `next_chain_key` meets `nextChainKeySpec` on `tripleRatchetProgAt`. -/
-def NextChainKeyOk (img : Obj.Image) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  NextChainKeyOkExt img C.F (tripleRatchetExterns C ctl abs)
-
-/-! ## `AllocContractsX` (`extHookStack`) stack budget, spec, and `OkX` predicate for `message_keys` -/
-
 /-- `ChainKey::message_keys` stack budget under `AllocContractsX` (`4096 + extHookStack`). -/
 abbrev messageKeysStackX : Nat := 4096 + extHookStack
-
-def messageKeysSpecX (F : ShaCompress) (A : RustAlloc) (img : Obj.Image) : Spec ChainKeyGhost :=
-  Spec.inImage
-    { pre := fun (self, ck, ret) s =>
-        ⌜s.readReg64 .x0 = self ∧ s.readReg64 .x8 = ret⌝ ∗
-        (self ↦ₛ chainKeyBytes ck) ∗ memRegion ret 40 ∗ A.pool ∗ stackAt s.sp messageKeysStackX
-      post := fun (self, ck, ret) s0 sf =>
-        ⌜sf.trace = s0.trace⌝ ∗
-        (self ↦ₛ chainKeyBytes ck) ∗ mkgAt A ret (ck.messageKeys F) ∗
-        A.pool ∗ stackAt s0.sp messageKeysStackX
-      onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
-    img
-
-def MessageKeysOkX (img : Obj.Image) (F : ShaCompress) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName) (messageKeysSpecX F A img)
 
 end CryptoVerification.LibsignalTripleRatchet

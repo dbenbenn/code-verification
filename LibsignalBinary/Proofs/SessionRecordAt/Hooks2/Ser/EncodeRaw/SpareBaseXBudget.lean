@@ -11,27 +11,29 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.BaseBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.PrologueVersionLocalIdentity
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DoReserveExtBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.Common
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeChain.BaseXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.BaseX
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.BaseXBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
+import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.BaseBudget
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.PrologueVersionLocalIdentity -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DoReserveExtBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.Common
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeChain.BaseXBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.BaseX -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.BaseXBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionClone
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionCloneX
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Pre-Reserved Callee Step Lemmas for `SessionStructure::encode_raw` (Block `14`)
@@ -42,7 +44,7 @@ Constructs the zero-capacity witness model (`zeroCapModel`, `vmWitnessAlloc`) to
 `encode::<Chain>` when the output buffer has spare capacity.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -123,7 +125,7 @@ private theorem vmPreserved_symm {s₁ s₂ : State} (h : VmPreserved s₁ s₂)
 
 /-- Zero-capacity `AllocCostModel` (`stepReserve ev _ := ev.reqBytes + 1`) rejecting every non-empty
     allocation event sequence under `zeroCapLim` (`physCap = 0`, `enforced = true`). -/
-def zeroCapModel : AllocCostModel where
+@[expose] def zeroCapModel : AllocCostModel where
   σ := Unit
   init := ()
   step := fun _ _ => ()
@@ -185,7 +187,7 @@ def vmWitnessAlloc {M : AllocCostModel} (A : RustCliAllocBudget M) (s0 : State) 
 
 /-- Pre-reserved (`0`-allocation, `VmPreserved`) contract of `encode_varint` (Block `10`) at
     `encodeVarintStackX`. -/
-def encodeVarintPreallocSpecX (A : RustAlloc) : Spec EncodeVarintGhost where
+@[expose] def encodeVarintPreallocSpecX (A : RustAlloc) : Spec EncodeVarintGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.val ∧ s.readReg64 .x1 = x.v ∧
       x.bs.length + (encodeVarint x.val).length ≤ x.cap.toNat ∧
@@ -419,7 +421,7 @@ theorem encraw_call_memcpy_buf_prealloc_placed_x [LibsignalPlacement]
 
 /-- Pre-reserved (`0`-allocation, `VmPreserved`) contract for `encode::<Chain>` (Block `12`) at
 `encodeChainStackX`. -/
-def encodeChainPreallocSpecX' (A : RustAlloc) : Spec EncodeChainGhost where
+@[expose] def encodeChainPreallocSpecX' (A : RustAlloc) : Spec EncodeChainGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = BitVec.ofNat 64 x.tag ∧ s.readReg64 .x1 = x.a ∧ s.readReg64 .x2 = x.v ∧
       (x.tag = 6 ∨ x.tag = 7) ∧

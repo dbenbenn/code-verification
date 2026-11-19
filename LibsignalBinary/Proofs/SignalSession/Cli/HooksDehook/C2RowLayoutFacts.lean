@@ -10,40 +10,54 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpGhostReplays -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.AesCbc -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.AesCbcRow -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.CodeSubslice -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.CliIoWriteRow -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.Compress256Row
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.Compress512Row -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.MlKemRow -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.X25519Row -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.X25519GhostReplays
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.Dalek -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.DalekRows -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.DurCst16 -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.FromUtf8 -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.FromUtf8Row -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.LibcRows -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.MemmoveRow -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.MemrchrRow -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.DalekRows
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.DurCst16
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.FromUtf8
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.FromUtf8Row
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.LibcRows
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.LibcruxHmacRow
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.MemmoveRow
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.MemrchrRow
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.Time -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.TimeAddPanic -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.TimeAddPanic
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveExtraReplays -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemrchrExtraReplays -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.NarrowF3R1Witness -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StrlenGhostReplays -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.Compress256 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.LibcruxHmac -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8GhostReplays -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.RowCommon
 
 /-!
-# Cutover-2 (`C2`) Aggregate Layout-Fact Bundles & Per-Row `GhostRowOk` Re-Exports (`HooksDehook.C2RowLayoutFacts`)
+# Aggregate Layout-Fact Bundles and Per-Row `GhostRowOk` Re-Exports
 
-**Checked by Lean. Untrusted (`Role::Proof`).**
+**Checked by Lean.**
 
-Single canonical definition site (per GK6c 15:42Z / 15:47Z / 16:25Z rulings) for the two aggregate
-Cutover-2 layout-fact bundles closed by `rfl_kernel` at T4:
-1. **`C2ResolveFacts (mpl : Obj.MultiPlacement) : Prop`:** Symbol-resolved entry equalities
-   `libsignalSessionLib.resolve mpl <sym> = c2<Row>Addr` across all 10 de-hooked C2 rows
-   (`from_utf8`, `duration_since`, `SystemTime::add`, `memrchr`, `"strlen"`, `"bcmp"`, `"memmove"`,
-   and the 3 Dalek `.text.lib2` rows via `Dalek.C2DalekResolveFacts mpl`).
-2. **`C2Lib2RxSliceFacts (mpl : Obj.MultiPlacement) : Prop`:** Linear byte-subslice checks
-   `CodeSubslice.checkProgCodeSubslice Tie.f3TrialRxProg <rowSubProg> = true` against the **exact**
+Defines the two aggregate layout-fact bundles and re-exports per-row `GhostRowOk` theorems at
+`mpl := lsmpl`:
+1. `C2ResolveFacts (mpl : Obj.MultiPlacement) : Prop`: symbol-resolved entry equalities
+   `libsignalSessionLib.resolve mpl <sym> = c2<Row>Addr` across `from_utf8`, `duration_since`,
+   `SystemTime::add`, `memrchr`, `"strlen"`, `"bcmp"`, `"memmove"`, `compress256`, `libcrux_hmac`,
+   `aes_256_cbc_encrypt`, `aes_256_cbc_decrypt`, and the 3 Dalek `.text.lib2` rows
+   (`Dalek.C2DalekResolveFacts mpl`).
+2. `C2Lib2RxSliceFacts (mpl : Obj.MultiPlacement) : Prop`: linear byte-subslice checks
+   `CodeSubslice.checkProgCodeSubslice Tie.f3TrialRxProg <rowSubProg> = true` against the
    `subProg` definition each row's replay and `GhostRowSpecOk` are proved over.
-3. **Consumer-ready `GhostRowOk` one-liners across all 10 rows at `mpl := lsmpl` (`[LibsignalPlacement]`):**
-   Each row theorem instantiates `mpl := lsmpl` directly (`0` second `LinkedAt` witnesses, `0`
-   `mpl = lsmpl` assumptions) on `InvS := fun u => F3CodeInv lsmpl mmpl u.mem ∧ PredFs u.fs` and
-   `EG := fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W')` matching
+3. Per-row `GhostRowOk` re-exports at `mpl := lsmpl` (`[LibsignalPlacement]`): instantiates
+   `mpl := lsmpl` directly (without a second `LinkedAt` witness or `mpl = lsmpl` equality) on
+   `InvS := fun u => F3CodeInv lsmpl mmpl u.mem ∧ PredFs u.fs` and
+   `EG := fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W')`, matching
    `ExtraGhostReplay.ExtraListReplaysOn` / `ExtraOk`.
 -/
 
@@ -53,26 +67,48 @@ set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts
 
-open Arm64 Arm64.Obj Arm64.Process
+open Arm64 Arm64.Obj Arm64.Process ProofLib
+open VerifiedLibraries (mallocngLib)
 open CryptoVerification (LibsignalPlacement lsmpl)
 open CryptoVerification.SignalSession
-  (CliHooks cliElfBytes cliExternsPlaced libsignalSessionLib lsBlackBoxSym lsDurationSinceSym
-   lsFromUtf8Sym lsMemrchrSym lsSharedSecretDropSym lsStaticSecretDropSym lsTimeAddSym)
+  (CliHooks cliElfBytes cliExternsPlaced libsignalSessionLib lsAesDecSym lsAesEncSym lsBlackBoxSym
+   lsCompress256Sym lsDurationSinceSym lsFromUtf8Sym lsLibcruxHmacSym lsMemrchrSym
+   lsSharedSecretDropSym lsStaticSecretDropSym lsTimeAddSym)
 open CryptoVerification.SignalSession.Cli.RunGlue (CliGhostHooks)
+open LibsignalBinary.Heap (BudgetLimits)
+open LibsignalBinary.Heap.Fine (f3StdLayout)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.AesCbcGhostReplays
+  (aesDecEntryGuard aesDecGhost aesDecSpecOf aesDecWeakSpecOf aesEncEntryGuard aesEncGhost
+   aesEncSpecOf)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpGhostReplays
   (bcmpEntryGuard bcmpGhost bcmpSubProg)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxGhostReplays
   (blackBoxEntryGuard blackBoxGhost blackBoxSubProg)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.AesCbc
+  (aesCbcSubProg c2AesDecAddr c2AesEncAddr)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.AesCbcRow
+  (c2_aesDecGhost_hookOk c2_aesDecGhost_rowOk_lsmpl_and_fs c2_aesDecGhost_weakHookOk
+   c2_aesEncGhost_hookOk c2_aesEncGhost_rowOk_lsmpl_and_fs)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.CodeSubslice
   (checkProgCodeSubslice)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.Compress256
+  (c2Compress256Pl)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.Compress256Row
+  (c2_compress256Ghost_rowOk_lsmpl_and_fs)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.Dalek
   (C2DalekResolveFacts)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.FromUtf8Row
   (c2_fromUtf8MplGhost_rowOk c2_fromUtf8MplGhost_rowOk_guardOf)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.LibcruxHmac
+  (libcruxHmacSubProg)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.LibcruxHmacRow
+  (c2_libcruxHmacGhost_hookOk c2_libcruxHmacGhost_rowOk_lsmpl_and_fs)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.Time
   (c2TimeMpl c2_durationSinceGhost_rowOk_lsmpl_and_fs)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.TimeAddPanic
   (c2_timeAddGhost_rowOk_lsmpl_extra c2_timeAddGhost_rowOk_lsmpl_guardOf)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.Compress256GhostReplays
+  (compress256EntryGuard compress256Ghost compress256SubProg)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.DurationSinceGhostReplays
   (durationSinceEntryGuard durationSinceGhost durationSinceSubProg)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay
@@ -80,14 +116,14 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8GhostReplays
   (fromUtf8EntryGuard fromUtf8MplGhost fromUtf8SubProg)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8SingleBlock (fromUtf8Placement)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LibcruxHmacGhostReplays
+  (libcruxHmacEntryGuard libcruxHmacGhost libcruxHmacSpecOf)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveExtraReplays
   (memmoveEntryGuard memmoveGhost memmoveSubProg)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemrchrExtraReplays
   (memrchrEntryGuard memrchrGhost memrchrSubProg)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.NarrowF3R1Witness
   (f3EmptyMemcpyGhostHookNarrow f3EmptyMemsetGhostHookNarrow)
-open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.SharedSecretDropGhostReplays
-  (sharedSecretDropEntryGuard sharedSecretDropGhost sharedSecretDropSubProg)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StaticSecretDropGhostReplays
   (staticSecretDropEntryGuard staticSecretDropGhost staticSecretDropSubProg)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StrlenGhostReplays
@@ -101,15 +137,15 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics (F3CodeInv)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie (f3TrialRxProg)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen
-  (c2BcmpAddr c2BlackBoxAddr c2DurationSinceAddr c2FromUtf8Addr c2FromUtf8TableAddr c2MemmoveAddr
-   c2MemrchrAddr c2SharedSecretDropAddr c2StaticSecretDropAddr c2StrlenAddr c2TimeAddAddr)
+  (c2BcmpAddr c2BlackBoxAddr c2Compress256Addr c2DurationSinceAddr c2FromUtf8Addr
+   c2FromUtf8TableAddr c2LibcruxHmacAddr c2MemmoveAddr c2MemrchrAddr c2SharedSecretDropAddr
+   c2StaticSecretDropAddr c2StrlenAddr c2TimeAddAddr)
 
 /-! ## 1. Aggregate Pending-Witness Bundles (`C2ResolveFacts`, `C2Lib2RxSliceFacts`) -/
 
-/-- Aggregate Cutover-2 symbol-resolution witness across all 10 de-hooked rows (`37 → 27`), tied to
-    `mpl` (instantiated at `lsmpl` under `libsignalSessionLib.LinkedAt cliElfBytes lsmpl` and closed
-    by `rfl_kernel` at T4). Embeds `Dalek.C2DalekResolveFacts mpl` to avoid a second definition site
-    for the 3 Dalek equalities. -/
+/-- Aggregate symbol-resolution witness across the linked `.text.lib2` rows (11 direct fields plus
+    the 3 Dalek equalities embedded via `Dalek.C2DalekResolveFacts mpl`), tied to `mpl` and
+    instantiated at `lsmpl` under `libsignalSessionLib.LinkedAt cliElfBytes lsmpl`. -/
 structure C2ResolveFacts (mpl : Obj.MultiPlacement) : Prop where
   fromUtf8_eq : libsignalSessionLib.resolve mpl lsFromUtf8Sym = c2FromUtf8Addr
   durationSince_eq : libsignalSessionLib.resolve mpl lsDurationSinceSym = c2DurationSinceAddr
@@ -119,6 +155,10 @@ structure C2ResolveFacts (mpl : Obj.MultiPlacement) : Prop where
   bcmp_eq : libsignalSessionLib.resolve mpl "bcmp" = c2BcmpAddr
   memmove_eq : libsignalSessionLib.resolve mpl "memmove" = c2MemmoveAddr
   dalek : C2DalekResolveFacts mpl
+  compress256_eq : libsignalSessionLib.resolve mpl lsCompress256Sym = c2Compress256Addr
+  libcruxHmac_eq : libsignalSessionLib.resolve mpl lsLibcruxHmacSym = c2LibcruxHmacAddr
+  aesEnc_eq : libsignalSessionLib.resolve mpl lsAesEncSym = c2AesEncAddr
+  aesDec_eq : libsignalSessionLib.resolve mpl lsAesDecSym = c2AesDecAddr
 
 theorem C2ResolveFacts.blackBox_eq {mpl : Obj.MultiPlacement} (h : C2ResolveFacts mpl) :
     libsignalSessionLib.resolve mpl lsBlackBoxSym = c2BlackBoxAddr :=
@@ -132,13 +172,9 @@ theorem C2ResolveFacts.staticSecretDrop_eq {mpl : Obj.MultiPlacement} (h : C2Res
     libsignalSessionLib.resolve mpl lsStaticSecretDropSym = c2StaticSecretDropAddr :=
   h.dalek.staticSecretDrop_eq
 
-/-- Aggregate Cutover-2 RX byte-subslice witness across all 10 de-hooked rows (`37 → 27`), checked
-    against `Tie.f3TrialRxProg` using the **exact** `subProg` definition each row's replay and
-    `GhostRowSpecOk` are proved over (discharged by `rfl_kernel` at T4; `[M]` on
-    `stock-wp5-startup` @ `60a74fc348`: `rfl_kernel` on
-    `checkProgCodeSubslice f3TrialRxProg (durationSinceSubProg c2TimeMpl) = false` took `3.23s`
-    kernel / `0.00s` elab / `3.40 GiB` RSS, and a simulated non-short-circuiting
-    `f3TrialRxProg.code.drop` tail walk + 320-byte match took `3.17s` kernel / `3.41 GiB` RSS). -/
+/-- Aggregate RX byte-subslice witness across the linked `.text.lib2` rows (12 sub-program checks),
+    checked against `Tie.f3TrialRxProg` using the `subProg` definition each row's replay and
+    `GhostRowSpecOk` are proved over. -/
 structure C2Lib2RxSliceFacts (mpl : Obj.MultiPlacement) : Prop where
   fromUtf8 :
     checkProgCodeSubslice f3TrialRxProg
@@ -149,8 +185,6 @@ structure C2Lib2RxSliceFacts (mpl : Obj.MultiPlacement) : Prop where
     checkProgCodeSubslice f3TrialRxProg (timeAddSubProg c2TimeMpl) = true
   blackBox :
     checkProgCodeSubslice f3TrialRxProg (blackBoxSubProg mpl) = true
-  sharedSecretDrop :
-    checkProgCodeSubslice f3TrialRxProg (sharedSecretDropSubProg mpl) = true
   staticSecretDrop :
     checkProgCodeSubslice f3TrialRxProg (staticSecretDropSubProg mpl) = true
   memrchr :
@@ -161,8 +195,14 @@ structure C2Lib2RxSliceFacts (mpl : Obj.MultiPlacement) : Prop where
     checkProgCodeSubslice f3TrialRxProg (bcmpSubProg mpl) = true
   memmove :
     checkProgCodeSubslice f3TrialRxProg (memmoveSubProg mpl) = true
+  compress256 :
+    checkProgCodeSubslice f3TrialRxProg (compress256SubProg c2Compress256Pl) = true
+  libcruxHmac :
+    checkProgCodeSubslice f3TrialRxProg libcruxHmacSubProg = true
+  aesCbc :
+    checkProgCodeSubslice f3TrialRxProg aesCbcSubProg = true
 
-/-! ## 2. Consumer-Shaped `GhostRowOk` One-Liners Across All 10 Rows at `mpl := lsmpl` -/
+/-! ## 2. Per-Row `GhostRowOk` Re-Exports at `mpl := lsmpl` -/
 
 private theorem ghostRowReplayOn_of_true_guard
     {mpl mmpl : Obj.MultiPlacement} {InvS : State → Prop}
@@ -173,7 +213,7 @@ private theorem ghostRowReplayOn_of_true_guard
     GhostRowReplayOn mpl mmpl InvS EG sym entryGuard f :=
   ⟨h.preserves_execFrozen, fun W s0 sf _ => h.replay_at_stub W s0 sf trivial⟩
 
-/-- Cutover-2 `GhostRowOk` re-export for `lsFromUtf8Sym` (`core::str::converts::from_utf8`) at
+/-- `GhostRowOk` re-export for `lsFromUtf8Sym` (`core::str::converts::from_utf8`) at
     `mpl := lsmpl`. -/
 theorem c2_fromUtf8Ghost_rowOk [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement)
@@ -195,7 +235,7 @@ theorem c2_fromUtf8Ghost_rowOk [LibsignalPlacement]
   c2_fromUtf8MplGhost_rowOk lsmpl mmpl PredFs g extra hLook
     hRo hExt hRx.fromUtf8 hRes.fromUtf8_eq hLs
 
-/-- `guardOf`-adapted Cutover-2 `GhostRowOk` re-export for `lsFromUtf8Sym` at `mpl := lsmpl`. -/
+/-- `guardOf`-adapted `GhostRowOk` re-export for `lsFromUtf8Sym` at `mpl := lsmpl`. -/
 theorem c2_fromUtf8Ghost_rowOk_guardOf [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement)
     (PredFs : FsState → Prop)
@@ -218,7 +258,7 @@ theorem c2_fromUtf8Ghost_rowOk_guardOf [LibsignalPlacement]
   c2_fromUtf8MplGhost_rowOk_guardOf lsmpl mmpl PredFs guardOf g extra hLook hGuard
     hRo hExt hRx.fromUtf8 hRes.fromUtf8_eq hLs
 
-/-- Cutover-2 `GhostRowOk` re-export for `lsDurationSinceSym` (`SystemTime::duration_since`) at
+/-- `GhostRowOk` re-export for `lsDurationSinceSym` (`SystemTime::duration_since`) at
     `mpl := lsmpl`. -/
 theorem c2_durationSinceGhost_rowOk [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement)
@@ -239,8 +279,8 @@ theorem c2_durationSinceGhost_rowOk [LibsignalPlacement]
     (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
     hRo hExt hRx.durationSince hRes.durationSince_eq hLs
 
-/-- `guardOf`-adapted Cutover-2 `GhostRowOk` re-export for `lsDurationSinceSym` at `mpl := lsmpl`
-    (`0` `hGuard` premise needed because `durationSinceEntryGuard lsmpl` is `True`). -/
+/-- `guardOf`-adapted `GhostRowOk` re-export for `lsDurationSinceSym` at `mpl := lsmpl`
+    (no `hGuard` premise needed because `durationSinceEntryGuard lsmpl` is `True`). -/
 theorem c2_durationSinceGhost_rowOk_guardOf [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement)
     (PredFs : FsState → Prop)
@@ -260,7 +300,7 @@ theorem c2_durationSinceGhost_rowOk_guardOf [LibsignalPlacement]
   have hRow := c2_durationSinceGhost_rowOk mmpl PredFs g extra hRes hRx hRo hExt hLs
   exact ⟨hRow.1, ghostRowReplayOn_of_true_guard (guardOf lsDurationSinceSym) hRow.2⟩
 
-/-- Cutover-2 `GhostRowOk` re-export for `lsTimeAddSym` (`<SystemTime as Add<Duration>>::add`) at
+/-- `GhostRowOk` re-export for `lsTimeAddSym` (`<SystemTime as Add<Duration>>::add`) at
     `mpl := lsmpl`. -/
 theorem c2_timeAddGhost_rowOk [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement)
@@ -279,8 +319,8 @@ theorem c2_timeAddGhost_rowOk [LibsignalPlacement]
   c2_timeAddGhost_rowOk_lsmpl_extra mmpl PredFs g extra
     hExt hRx.timeAdd hRes.timeAdd_eq hLs
 
-/-- `guardOf`-adapted Cutover-2 `GhostRowOk` re-export for `lsTimeAddSym` at `mpl := lsmpl`
-    (`0` `hGuard` premise needed because `timeAddEntryGuard lsmpl` is `True`). -/
+/-- `guardOf`-adapted `GhostRowOk` re-export for `lsTimeAddSym` at `mpl := lsmpl`
+    (no `hGuard` premise needed because `timeAddEntryGuard lsmpl` is `True`). -/
 theorem c2_timeAddGhost_rowOk_guardOf [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement)
     (PredFs : FsState → Prop)
@@ -299,7 +339,7 @@ theorem c2_timeAddGhost_rowOk_guardOf [LibsignalPlacement]
   c2_timeAddGhost_rowOk_lsmpl_guardOf mmpl PredFs guardOf g extra
     hExt hRx.timeAdd hRes.timeAdd_eq hLs
 
-/-- Cutover-2 `GhostRowOk` re-export for `lsBlackBoxSym` (`core::hint::black_box::<&[u8]>`) at
+/-- `GhostRowOk` re-export for `lsBlackBoxSym` (`core::hint::black_box::<&[u8]>`) at
     `mpl := lsmpl`. -/
 theorem c2_blackBoxGhost_rowOk [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement)
@@ -319,7 +359,7 @@ theorem c2_blackBoxGhost_rowOk [LibsignalPlacement]
   DalekRows.c2_blackBoxGhost_rowOk lsmpl mmpl PredFs g extra hLook
     hExt hRx.blackBox hRes.blackBox_eq hLs
 
-/-- `guardOf`-adapted Cutover-2 `GhostRowOk` re-export for `lsBlackBoxSym` at `mpl := lsmpl`. -/
+/-- `guardOf`-adapted `GhostRowOk` re-export for `lsBlackBoxSym` at `mpl := lsmpl`. -/
 theorem c2_blackBoxGhost_rowOk_guardOf [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement)
     (PredFs : FsState → Prop)
@@ -340,49 +380,7 @@ theorem c2_blackBoxGhost_rowOk_guardOf [LibsignalPlacement]
   DalekRows.c2_blackBoxGhost_rowOk_guardOf lsmpl mmpl PredFs guardOf g extra hLook hGuard
     hExt hRx.blackBox hRes.blackBox_eq hLs
 
-/-- Cutover-2 `GhostRowOk` re-export for `lsSharedSecretDropSym` (`SharedSecret::drop`) at
-    `mpl := lsmpl`. -/
-theorem c2_sharedSecretDropGhost_rowOk [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement)
-    (PredFs : FsState → Prop)
-    (g : CliGhostHooks) (extra : ExtraGhostTable)
-    (hLook : extra.lookup lsSharedSecretDropSym = some (sharedSecretDropGhost lsmpl mmpl))
-    (hRes : C2ResolveFacts lsmpl)
-    (hRx : C2Lib2RxSliceFacts lsmpl)
-    (hExt : C2ExternTableFacts lsmpl)
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes lsmpl) :
-    GhostRowOk lsmpl mmpl
-      (fun u => F3CodeInv lsmpl mmpl u.mem ∧ PredFs u.fs)
-      (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
-      lsSharedSecretDropSym
-      (sharedSecretDropEntryGuard lsmpl)
-      (sharedSecretDropGhost lsmpl mmpl) :=
-  DalekRows.c2_sharedSecretDropGhost_rowOk lsmpl mmpl PredFs g extra hLook
-    hExt hRx.sharedSecretDrop hRes.sharedSecretDrop_eq hLs
-
-/-- `guardOf`-adapted Cutover-2 `GhostRowOk` re-export for `lsSharedSecretDropSym` at
-    `mpl := lsmpl`. -/
-theorem c2_sharedSecretDropGhost_rowOk_guardOf [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement)
-    (PredFs : FsState → Prop)
-    (guardOf : String → State → Prop)
-    (g : CliGhostHooks) (extra : ExtraGhostTable)
-    (hLook : extra.lookup lsSharedSecretDropSym = some (sharedSecretDropGhost lsmpl mmpl))
-    (hGuard : ∀ s0 : State, guardOf lsSharedSecretDropSym s0 → sharedSecretDropEntryGuard lsmpl s0)
-    (hRes : C2ResolveFacts lsmpl)
-    (hRx : C2Lib2RxSliceFacts lsmpl)
-    (hExt : C2ExternTableFacts lsmpl)
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes lsmpl) :
-    GhostRowOk lsmpl mmpl
-      (fun u => F3CodeInv lsmpl mmpl u.mem ∧ PredFs u.fs)
-      (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
-      lsSharedSecretDropSym
-      (guardOf lsSharedSecretDropSym)
-      (sharedSecretDropGhost lsmpl mmpl) :=
-  DalekRows.c2_sharedSecretDropGhost_rowOk_guardOf lsmpl mmpl PredFs guardOf g extra hLook hGuard
-    hExt hRx.sharedSecretDrop hRes.sharedSecretDrop_eq hLs
-
-/-- Cutover-2 `GhostRowOk` re-export for `lsStaticSecretDropSym` (`StaticSecret::drop`) at
+/-- `GhostRowOk` re-export for `lsStaticSecretDropSym` (`StaticSecret::drop`) at
     `mpl := lsmpl`. -/
 theorem c2_staticSecretDropGhost_rowOk [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement)
@@ -402,7 +400,7 @@ theorem c2_staticSecretDropGhost_rowOk [LibsignalPlacement]
   DalekRows.c2_staticSecretDropGhost_rowOk lsmpl mmpl PredFs g extra hLook
     hExt hRx.staticSecretDrop hRes.staticSecretDrop_eq hLs
 
-/-- `guardOf`-adapted Cutover-2 `GhostRowOk` re-export for `lsStaticSecretDropSym` at
+/-- `guardOf`-adapted `GhostRowOk` re-export for `lsStaticSecretDropSym` at
     `mpl := lsmpl`. -/
 theorem c2_staticSecretDropGhost_rowOk_guardOf [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement)
@@ -424,7 +422,7 @@ theorem c2_staticSecretDropGhost_rowOk_guardOf [LibsignalPlacement]
   DalekRows.c2_staticSecretDropGhost_rowOk_guardOf lsmpl mmpl PredFs guardOf g extra hLook hGuard
     hExt hRx.staticSecretDrop hRes.staticSecretDrop_eq hLs
 
-/-- Cutover-2 `GhostRowOk` re-export for Route-`R0` `lsMemrchrSym` (`slice::memchr::memrchr`) at
+/-- `GhostRowOk` re-export for `lsMemrchrSym` (`slice::memchr::memrchr`) at
     `mpl := lsmpl`. -/
 theorem c2_memrchrGhost_rowOk [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement)
@@ -444,8 +442,8 @@ theorem c2_memrchrGhost_rowOk [LibsignalPlacement]
     (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
     hExt hRx.memrchr hRes.memrchr_eq hLs
 
-/-- `guardOf`-adapted Cutover-2 `GhostRowOk` re-export for `lsMemrchrSym` at `mpl := lsmpl`
-    (`0` `hGuard` premise needed because `memrchrEntryGuard lsmpl` is `True`). -/
+/-- `guardOf`-adapted `GhostRowOk` re-export for `lsMemrchrSym` at `mpl := lsmpl`
+    (no `hGuard` premise needed because `memrchrEntryGuard lsmpl` is `True`). -/
 theorem c2_memrchrGhost_rowOk_guardOf [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement)
     (PredFs : FsState → Prop)
@@ -464,7 +462,7 @@ theorem c2_memrchrGhost_rowOk_guardOf [LibsignalPlacement]
   have hRow := c2_memrchrGhost_rowOk mmpl PredFs g extra hRes hRx hExt hLs
   exact ⟨hRow.1, ghostRowReplayOn_of_true_guard (guardOf lsMemrchrSym) hRow.2⟩
 
-/-- Cutover-2 `GhostRowOk` re-export for `"strlen"` at `mpl := lsmpl`. -/
+/-- `GhostRowOk` re-export for `"strlen"` at `mpl := lsmpl`. -/
 theorem c2_strlenGhost_rowOk [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement)
     (PredFs : FsState → Prop)
@@ -483,7 +481,7 @@ theorem c2_strlenGhost_rowOk [LibsignalPlacement]
   LibcRows.c2_strlenGhost_rowOk lsmpl mmpl PredFs g extra hLook
     hExt hRx.strlen hRes.strlen_eq hLs
 
-/-- `guardOf`-adapted Cutover-2 `GhostRowOk` re-export for `"strlen"` at `mpl := lsmpl`. -/
+/-- `guardOf`-adapted `GhostRowOk` re-export for `"strlen"` at `mpl := lsmpl`. -/
 theorem c2_strlenGhost_rowOk_guardOf [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement)
     (PredFs : FsState → Prop)
@@ -504,7 +502,7 @@ theorem c2_strlenGhost_rowOk_guardOf [LibsignalPlacement]
   LibcRows.c2_strlenGhost_rowOk_guardOf lsmpl mmpl PredFs guardOf g extra hLook hGuard
     hExt hRx.strlen hRes.strlen_eq hLs
 
-/-- Cutover-2 `GhostRowOk` re-export for `"bcmp"` at `mpl := lsmpl`. -/
+/-- `GhostRowOk` re-export for `"bcmp"` at `mpl := lsmpl`. -/
 theorem c2_bcmpGhost_rowOk [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement)
     (PredFs : FsState → Prop)
@@ -523,7 +521,7 @@ theorem c2_bcmpGhost_rowOk [LibsignalPlacement]
   LibcRows.c2_bcmpGhost_rowOk lsmpl mmpl PredFs g extra hLook
     hExt hRx.bcmp hRes.bcmp_eq hLs
 
-/-- `guardOf`-adapted Cutover-2 `GhostRowOk` re-export for `"bcmp"` at `mpl := lsmpl`. -/
+/-- `guardOf`-adapted `GhostRowOk` re-export for `"bcmp"` at `mpl := lsmpl`. -/
 theorem c2_bcmpGhost_rowOk_guardOf [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement)
     (PredFs : FsState → Prop)
@@ -544,8 +542,8 @@ theorem c2_bcmpGhost_rowOk_guardOf [LibsignalPlacement]
   LibcRows.c2_bcmpGhost_rowOk_guardOf lsmpl mmpl PredFs guardOf g extra hLook hGuard
     hExt hRx.bcmp hRes.bcmp_eq hLs
 
-/-- Cutover-2 `GhostRowOk` re-export for `"memmove"` at `mpl := lsmpl` (`hGMemcpy` / `hGMemset`
-    consumer-discharged per GK6c ruling). -/
+/-- `GhostRowOk` re-export for `"memmove"` at `mpl := lsmpl` (`hGMemcpy` and `hGMemset`
+    discharged by the caller). -/
 theorem c2_memmoveGhost_rowOk [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement)
     (PredFs : FsState → Prop)
@@ -566,7 +564,7 @@ theorem c2_memmoveGhost_rowOk [LibsignalPlacement]
   MemmoveRow.c2_memmoveGhost_rowOk lsmpl mmpl PredFs g extra hLook hGMemcpy hGMemset
     hExt hRx.memmove hRes.memmove_eq hLs
 
-/-- `guardOf`-adapted Cutover-2 `GhostRowOk` re-export for `"memmove"` at `mpl := lsmpl`. -/
+/-- `guardOf`-adapted `GhostRowOk` re-export for `"memmove"` at `mpl := lsmpl`. -/
 theorem c2_memmoveGhost_rowOk_guardOf [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement)
     (PredFs : FsState → Prop)
@@ -588,5 +586,223 @@ theorem c2_memmoveGhost_rowOk_guardOf [LibsignalPlacement]
       (memmoveGhost lsmpl mmpl) :=
   MemmoveRow.c2_memmoveGhost_rowOk_guardOf lsmpl mmpl PredFs guardOf g extra hLook hGuard
     hGMemcpy hGMemset hExt hRx.memmove hRes.memmove_eq hLs
+
+/-- `GhostRowOk` re-export for `lsCompress256Sym` (`sha2::sha256::compress256`) at
+    `mpl := lsmpl`. -/
+theorem c2_compress256Ghost_rowOk [LibsignalPlacement]
+    (mmpl : Obj.MultiPlacement)
+    (PredFs : FsState → Prop)
+    (g : CliGhostHooks) (extra : ExtraGhostTable)
+    (hRes : C2ResolveFacts lsmpl)
+    (hRx : C2Lib2RxSliceFacts lsmpl)
+    (hRo : C2RoSliceFacts)
+    (hExt : C2ExternTableFacts lsmpl)
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes lsmpl) :
+    GhostRowOk lsmpl mmpl
+      (fun u => F3CodeInv lsmpl mmpl u.mem ∧ PredFs u.fs)
+      (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
+      lsCompress256Sym
+      (compress256EntryGuard lsmpl)
+      (compress256Ghost c2Compress256Pl) :=
+  c2_compress256Ghost_rowOk_lsmpl_and_fs mmpl PredFs
+    (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
+    hRo.compress256K32Slice hExt hRx.compress256 hRes.compress256_eq hLs
+
+/-- `guardOf`-adapted `GhostRowOk` re-export for `lsCompress256Sym` at `mpl := lsmpl`
+    (no `hGuard` premise needed because `compress256EntryGuard lsmpl` is `True`). -/
+theorem c2_compress256Ghost_rowOk_guardOf [LibsignalPlacement]
+    (mmpl : Obj.MultiPlacement)
+    (PredFs : FsState → Prop)
+    (guardOf : String → State → Prop)
+    (g : CliGhostHooks) (extra : ExtraGhostTable)
+    (hRes : C2ResolveFacts lsmpl)
+    (hRx : C2Lib2RxSliceFacts lsmpl)
+    (hRo : C2RoSliceFacts)
+    (hExt : C2ExternTableFacts lsmpl)
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes lsmpl) :
+    GhostRowOk lsmpl mmpl
+      (fun u => F3CodeInv lsmpl mmpl u.mem ∧ PredFs u.fs)
+      (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
+      lsCompress256Sym
+      (guardOf lsCompress256Sym)
+      (compress256Ghost c2Compress256Pl) := by
+  have hRow := c2_compress256Ghost_rowOk mmpl PredFs g extra hRes hRx hRo hExt hLs
+  exact ⟨hRow.1, ghostRowReplayOn_of_true_guard (guardOf lsCompress256Sym) hRow.2⟩
+
+/-- `GhostRowOk` re-export for `lsLibcruxHmacSym` (`libcrux_hmac::hmac`) at
+    `mpl := lsmpl`. -/
+theorem c2_libcruxHmacGhost_rowOk [LibsignalPlacement]
+    (mmpl : Obj.MultiPlacement)
+    (brkStart : BitVec 64) (lim : BudgetLimits)
+    (PredFs : FsState → Prop)
+    (g : CliGhostHooks) (extra : ExtraGhostTable)
+    (hRes : C2ResolveFacts lsmpl)
+    (hExt : C2ExternTableFacts lsmpl)
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes lsmpl)
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) :
+    GhostRowOk lsmpl mmpl
+      (fun u => F3CodeInv lsmpl mmpl u.mem ∧ PredFs u.fs)
+      (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
+      lsLibcruxHmacSym
+      (libcruxHmacEntryGuard lsmpl)
+      (libcruxHmacGhost LibcruxHmac.keepRxSeg libcruxHmacSubProg c2LibcruxHmacAddr mmpl brkStart lim) :=
+  c2_libcruxHmacGhost_rowOk_lsmpl_and_fs mmpl brkStart lim PredFs
+    (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
+    hExt hRes.libcruxHmac_eq hLs hMm
+
+/-- `guardOf`-adapted `GhostRowOk` re-export for `lsLibcruxHmacSym` at `mpl := lsmpl`
+    (no `hGuard` premise needed because `libcruxHmacEntryGuard lsmpl` is `True`). -/
+theorem c2_libcruxHmacGhost_rowOk_guardOf [LibsignalPlacement]
+    (mmpl : Obj.MultiPlacement)
+    (brkStart : BitVec 64) (lim : BudgetLimits)
+    (PredFs : FsState → Prop)
+    (guardOf : String → State → Prop)
+    (g : CliGhostHooks) (extra : ExtraGhostTable)
+    (hRes : C2ResolveFacts lsmpl)
+    (hExt : C2ExternTableFacts lsmpl)
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes lsmpl)
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) :
+    GhostRowOk lsmpl mmpl
+      (fun u => F3CodeInv lsmpl mmpl u.mem ∧ PredFs u.fs)
+      (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
+      lsLibcruxHmacSym
+      (guardOf lsLibcruxHmacSym)
+      (libcruxHmacGhost LibcruxHmac.keepRxSeg libcruxHmacSubProg c2LibcruxHmacAddr mmpl brkStart lim) := by
+  have hRow := c2_libcruxHmacGhost_rowOk mmpl brkStart lim PredFs g extra hRes hExt hLs hMm
+  exact ⟨hRow.1, ghostRowReplayOn_of_true_guard (guardOf lsLibcruxHmacSym) hRow.2⟩
+
+/-- Pointwise `HookOk` re-export for `libcruxHmacGhost` at `(γ, tp)`. -/
+theorem c2_libcruxHmacGhost_ok [LibsignalPlacement]
+    (mmpl : Obj.MultiPlacement)
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
+    (hLsLsmpl : libsignalSessionLib.LinkedAt cliElfBytes lsmpl)
+    (brkStart : BitVec 64) (lim : BudgetLimits)
+    (γ : GhostName) (tp : BitVec 64) :
+    HookOk
+      (libcruxHmacGhost LibcruxHmac.keepRxSeg libcruxHmacSubProg c2LibcruxHmacAddr mmpl brkStart lim)
+      (libcruxHmacSpecOf mmpl brkStart lim γ tp) :=
+  c2_libcruxHmacGhost_hookOk mmpl hMm hLsLsmpl brkStart lim γ tp
+
+/-- `GhostRowOk` re-export for `lsAesEncSym` (`aes_256_cbc_encrypt`) at `mpl := lsmpl`. -/
+theorem c2_aesEncGhost_rowOk [LibsignalPlacement]
+    (mmpl : Obj.MultiPlacement)
+    (brkStart : BitVec 64) (lim : BudgetLimits)
+    (PredFs : FsState → Prop)
+    (g : CliGhostHooks) (extra : ExtraGhostTable)
+    (hRes : C2ResolveFacts lsmpl)
+    (hExt : C2ExternTableFacts lsmpl)
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes lsmpl)
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
+    (hbrk : brkStart = f3StdLayout.brkStart := by decide) :
+    GhostRowOk lsmpl mmpl
+      (fun u => F3CodeInv lsmpl mmpl u.mem ∧ PredFs u.fs)
+      (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
+      lsAesEncSym
+      (aesEncEntryGuard lsmpl)
+      (aesEncGhost AesCbc.keepRxSeg aesCbcSubProg c2AesEncAddr mmpl brkStart lim) :=
+  c2_aesEncGhost_rowOk_lsmpl_and_fs mmpl brkStart lim PredFs
+    (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
+    hExt hRes.aesEnc_eq hLs hMm hbrk
+
+/-- `guardOf`-adapted `GhostRowOk` re-export for `lsAesEncSym` at `mpl := lsmpl`
+    (no `hGuard` premise needed because `aesEncEntryGuard lsmpl` is `True`). -/
+theorem c2_aesEncGhost_rowOk_guardOf [LibsignalPlacement]
+    (mmpl : Obj.MultiPlacement)
+    (brkStart : BitVec 64) (lim : BudgetLimits)
+    (PredFs : FsState → Prop)
+    (guardOf : String → State → Prop)
+    (g : CliGhostHooks) (extra : ExtraGhostTable)
+    (hRes : C2ResolveFacts lsmpl)
+    (hExt : C2ExternTableFacts lsmpl)
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes lsmpl)
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
+    (hbrk : brkStart = f3StdLayout.brkStart := by decide) :
+    GhostRowOk lsmpl mmpl
+      (fun u => F3CodeInv lsmpl mmpl u.mem ∧ PredFs u.fs)
+      (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
+      lsAesEncSym
+      (guardOf lsAesEncSym)
+      (aesEncGhost AesCbc.keepRxSeg aesCbcSubProg c2AesEncAddr mmpl brkStart lim) := by
+  have hRow := c2_aesEncGhost_rowOk mmpl brkStart lim PredFs g extra hRes hExt hLs hMm hbrk
+  exact ⟨hRow.1, ghostRowReplayOn_of_true_guard (guardOf lsAesEncSym) hRow.2⟩
+
+/-- `GhostRowOk` re-export for `lsAesDecSym` (`aes_256_cbc_decrypt`) at `mpl := lsmpl`. -/
+theorem c2_aesDecGhost_rowOk [LibsignalPlacement]
+    (mmpl : Obj.MultiPlacement)
+    (brkStart : BitVec 64) (lim : BudgetLimits)
+    (PredFs : FsState → Prop)
+    (g : CliGhostHooks) (extra : ExtraGhostTable)
+    (hRes : C2ResolveFacts lsmpl)
+    (hExt : C2ExternTableFacts lsmpl)
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes lsmpl)
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
+    (hbrk : brkStart = f3StdLayout.brkStart := by decide) :
+    GhostRowOk lsmpl mmpl
+      (fun u => F3CodeInv lsmpl mmpl u.mem ∧ PredFs u.fs)
+      (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
+      lsAesDecSym
+      (aesDecEntryGuard lsmpl)
+      (aesDecGhost AesCbc.keepRxSeg aesCbcSubProg c2AesDecAddr mmpl brkStart lim) :=
+  c2_aesDecGhost_rowOk_lsmpl_and_fs mmpl brkStart lim PredFs
+    (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
+    hExt hRes.aesDec_eq hLs hMm hbrk
+
+/-- `guardOf`-adapted `GhostRowOk` re-export for `lsAesDecSym` at `mpl := lsmpl`
+    (no `hGuard` premise needed because `aesDecEntryGuard lsmpl` is `True`). -/
+theorem c2_aesDecGhost_rowOk_guardOf [LibsignalPlacement]
+    (mmpl : Obj.MultiPlacement)
+    (brkStart : BitVec 64) (lim : BudgetLimits)
+    (PredFs : FsState → Prop)
+    (guardOf : String → State → Prop)
+    (g : CliGhostHooks) (extra : ExtraGhostTable)
+    (hRes : C2ResolveFacts lsmpl)
+    (hExt : C2ExternTableFacts lsmpl)
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes lsmpl)
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
+    (hbrk : brkStart = f3StdLayout.brkStart := by decide) :
+    GhostRowOk lsmpl mmpl
+      (fun u => F3CodeInv lsmpl mmpl u.mem ∧ PredFs u.fs)
+      (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
+      lsAesDecSym
+      (guardOf lsAesDecSym)
+      (aesDecGhost AesCbc.keepRxSeg aesCbcSubProg c2AesDecAddr mmpl brkStart lim) := by
+  have hRow := c2_aesDecGhost_rowOk mmpl brkStart lim PredFs g extra hRes hExt hLs hMm hbrk
+  exact ⟨hRow.1, ghostRowReplayOn_of_true_guard (guardOf lsAesDecSym) hRow.2⟩
+
+/-- Pointwise `HookOk` re-export for `aesEncGhost` at `(γ, tp)`. -/
+theorem c2_aesEncGhost_ok [LibsignalPlacement]
+    (mmpl : Obj.MultiPlacement)
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
+    (hLsLsmpl : libsignalSessionLib.LinkedAt cliElfBytes lsmpl)
+    (brkStart : BitVec 64) (lim : BudgetLimits)
+    (γ : GhostName) (tp : BitVec 64) :
+    HookOk
+      (aesEncGhost AesCbc.keepRxSeg aesCbcSubProg c2AesEncAddr mmpl brkStart lim)
+      (aesEncSpecOf mmpl brkStart lim γ tp) :=
+  c2_aesEncGhost_hookOk mmpl hMm hLsLsmpl brkStart lim γ tp
+
+/-- Pointwise `HookOk` re-export for `aesDecGhost` at `(γ, tp)`. -/
+theorem c2_aesDecGhost_ok [LibsignalPlacement]
+    (mmpl : Obj.MultiPlacement)
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
+    (hLsLsmpl : libsignalSessionLib.LinkedAt cliElfBytes lsmpl)
+    (brkStart : BitVec 64) (lim : BudgetLimits)
+    (γ : GhostName) (tp : BitVec 64) :
+    HookOk
+      (aesDecGhost AesCbc.keepRxSeg aesCbcSubProg c2AesDecAddr mmpl brkStart lim)
+      (aesDecSpecOf mmpl brkStart lim γ tp) :=
+  c2_aesDecGhost_hookOk mmpl hMm hLsLsmpl brkStart lim γ tp
+
+/-- Pointwise `HookOk` companion re-export for `aesDecGhost` at `aesDecWeakSpecOf`. -/
+theorem c2_aesDecGhost_weak_ok [LibsignalPlacement]
+    (mmpl : Obj.MultiPlacement)
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
+    (hLsLsmpl : libsignalSessionLib.LinkedAt cliElfBytes lsmpl)
+    (brkStart : BitVec 64) (lim : BudgetLimits)
+    (γ : GhostName) (tp : BitVec 64) :
+    HookOk
+      (aesDecGhost AesCbc.keepRxSeg aesCbcSubProg c2AesDecAddr mmpl brkStart lim)
+      (aesDecWeakSpecOf mmpl brkStart lim γ tp) :=
+  c2_aesDecGhost_weakHookOk mmpl hMm hLsLsmpl brkStart lim γ tp
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts

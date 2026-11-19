@@ -44,23 +44,21 @@ downloads the verified ELF artifact, re-checks `--verify-pin`, and builds and au
 library `CliElfLib` (which owns this module and lists `.GeneratedLean/cli-elf/libsignal-cli.elf` as
 an `input_file`; no default lake root imports this module). These jobs and steps run unconditionally
 on every `push` to `main` (and `workflow_dispatch`) and on `pull_request`s touching the ELF's byte
-or build inputs, trusted specifications, or the `CliElfLib`-only proof modules
-(`scripts/clielf_ci_paths.txt`); a PR that modifies only shared upstream proof modules skips them,
+or build inputs, trusted specifications, or the `CliElfLib`-only proof modules;
+a PR that modifies only shared upstream proof modules skips them,
 so any breakage it introduces in the `CliElfLib`-only modules surfaces on the first `main` push that
 contains it, and the binary-level verification claim refers to a `main` commit SHA whose
 `cli-elf-build` and `lake build` jobs ran the CLI ELF steps green.
 
 **What the pin means.** Anyone can rebuild the ELF from source and compare its SHA-256 with the pin.
 The pin is the only place where a byte of the ELF is named. Every address the statement uses comes
-from the ELF itself (`ElfImage.parse`, `loadState`) or from `libsignalSessionLib` and
-`VerifiedLibraries.mallocngLib` under kernel-checked `MultiPlacement`s `mpl` and `mmpl`
-(`CliBinaryPq.lean`, stock `ld.lld` link under `stock/stock_c2.ld` at base `0x400000`; name labels:
-`CliLabelsFromObjects` (`CliLabels.lean`)).
+from the ELF itself (`ElfImage.parse`, `loadState`, and `.symtab` lookup via `resolveCliElfAddrs` in
+`CliBinaryPq.lean`).
 
 ## Main definitions
 
 * `cliElfBytes`: the raw bytes of the pinned `libsignal-cli` ELF, the subject of every binary-level
-  CLI statement (`CliBinaryPq.lean`, `CliBinaryExtProofDefs.lean`).
+  CLI statement (`CliBinaryPq.lean`, `StatementPqElf.lean`, `ElfBinding.lean`, `Binary.lean`).
 -/
 
 namespace CryptoVerification.SignalSession
@@ -68,8 +66,9 @@ namespace CryptoVerification.SignalSession
 set_option maxRecDepth 4000000 in
 /-- Raw bytes of the static ARM64 `libsignal-cli` ELF (`ET_EXEC`, musl), verified against its
 pinned digest by `file_bytes%`. -/
+-- noncomputable: Lean's LCNF compiler overflows an 8 MiB stack on ~1M-element file_bytes% List.cons
 noncomputable def cliElfBytes : List (BitVec 8) :=
   file_bytes% "../../../.GeneratedLean/cli-elf/libsignal-cli.elf"
-    sha256 "50066cbd732256eb5f19f93d1d98800914336b7926225de3ebfa0bb37eca98ce"
+    sha256 "f35c326d90895b1b52e5daf099bdc5cadff1e34ba3352b807a06a3d94c33e56a"
 
 end CryptoVerification.SignalSession

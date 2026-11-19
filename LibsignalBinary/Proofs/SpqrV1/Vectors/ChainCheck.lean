@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Chain
-public import LibsignalBinary.Proofs.SpqrV1.Vectors.Chain
-public meta import LibsignalBinary.Proofs.SpqrV1.Vectors.Chain
+public import LibsignalBinary.Proofs.SpqrV1.Vectors.Chain -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SpqrV1.Vectors.Chain -- proof-setup: allow-public-import
 public meta import LibsignalBinary.Specifications.LibsignalSpqrV1.Chain
 
 /-!
@@ -22,7 +22,7 @@ instantiated with `spqrHkdfWith sha256Compress`, checking `KeyOpResult`, state t
 `prost` protobuf wire round-trips, and cross-trace Alice/Bob key agreement via `#guard`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Vectors.ChainCheck
 
@@ -33,7 +33,7 @@ open CryptoVerification.SpqrV1.Vectors.Chain
 /-! ## Reference SHA-256 Compression Function -/
 
 /-- SHA-256 round constants `K₀ … K₆₃` (FIPS 180-4 §4.2.2). -/
-def K256 : List (BitVec 32) :=
+@[expose] def K256 : List (BitVec 32) :=
   [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
@@ -43,16 +43,16 @@ def K256 : List (BitVec 32) :=
    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2]
 
-def bigS0 (x : BitVec 32) : BitVec 32 := x.rotateRight 2 ^^^ x.rotateRight 13 ^^^ x.rotateRight 22
-def bigS1 (x : BitVec 32) : BitVec 32 := x.rotateRight 6 ^^^ x.rotateRight 11 ^^^ x.rotateRight 25
-def smallS0 (x : BitVec 32) : BitVec 32 := x.rotateRight 7 ^^^ x.rotateRight 18 ^^^ (x >>> 3)
-def smallS1 (x : BitVec 32) : BitVec 32 := x.rotateRight 17 ^^^ x.rotateRight 19 ^^^ (x >>> 10)
+@[expose] def bigS0 (x : BitVec 32) : BitVec 32 := x.rotateRight 2 ^^^ x.rotateRight 13 ^^^ x.rotateRight 22
+@[expose] def bigS1 (x : BitVec 32) : BitVec 32 := x.rotateRight 6 ^^^ x.rotateRight 11 ^^^ x.rotateRight 25
+@[expose] def smallS0 (x : BitVec 32) : BitVec 32 := x.rotateRight 7 ^^^ x.rotateRight 18 ^^^ (x >>> 3)
+@[expose] def smallS1 (x : BitVec 32) : BitVec 32 := x.rotateRight 17 ^^^ x.rotateRight 19 ^^^ (x >>> 10)
 
-def be32 (b : List (BitVec 8)) : BitVec 32 :=
+@[expose] def be32 (b : List (BitVec 8)) : BitVec 32 :=
   b.foldl (fun acc x => (acc <<< 8) ||| x.zeroExtend 32) 0
 
 /-- Message schedule `W₀ … W₆₃` of a 64-byte block. -/
-def schedule (blk : List (BitVec 8)) : Array (BitVec 32) := Id.run do
+@[expose] def schedule (blk : List (BitVec 8)) : Array (BitVec 32) := Id.run do
   let mut w : Array (BitVec 32) := #[]
   for t in [0:16] do
     w := w.push (be32 ((blk.drop (4 * t)).take 4))
@@ -61,7 +61,7 @@ def schedule (blk : List (BitVec 8)) : Array (BitVec 32) := Id.run do
   return w
 
 /-- The SHA-256 compression function (FIPS 180-4 §6.2.2, steps 1–4). -/
-def sha256Compress (H : ShaState) (blk : List (BitVec 8)) : ShaState := Id.run do
+@[expose] def sha256Compress (H : ShaState) (blk : List (BitVec 8)) : ShaState := Id.run do
   let w := schedule blk
   let h0 := H.toList
   let mut a := h0[0]!; let mut b := h0[1]!; let mut c := h0[2]!; let mut d := h0[3]!
@@ -73,13 +73,13 @@ def sha256Compress (H : ShaState) (blk : List (BitVec 8)) : ShaState := Id.run d
   let out := [a, b, c, d, e, f, g, h]
   return List.Vector.ofFn fun i => h0[i.val]! + out[i.val]!
 
-def realHkdf : HkdfFn :=
+@[expose] def realHkdf : HkdfFn :=
   spqrHkdfWith sha256Compress
 
 /-! ## Protobuf Wire Codec for `ChainPB` -/
 
 /-- Unsigned base-128 varint encoding (protobuf wire type 0). -/
-def encodeVarint (n : Nat) : Bytes :=
+@[expose] def encodeVarint (n : Nat) : Bytes :=
   if n < 128 then
     [BitVec.ofNat 8 n]
   else
@@ -88,7 +88,7 @@ termination_by n
 decreasing_by omega
 
 /-- Unsigned base-128 varint decoding (`(value, remainingBytes)`). -/
-def decodeVarint (bs : Bytes) (shift : Nat := 0) (acc : Nat := 0) : Option (Nat × Bytes) :=
+@[expose] def decodeVarint (bs : Bytes) (shift : Nat := 0) (acc : Nat := 0) : Option (Nat × Bytes) :=
   match bs with
   | [] => none
   | b :: rest =>
@@ -100,23 +100,23 @@ def decodeVarint (bs : Bytes) (shift : Nat := 0) (acc : Nat := 0) : Option (Nat 
       decodeVarint rest (shift + 7) acc'
 
 /-- Length-delimited field encoding (protobuf wire type 2). -/
-def encodeTagLen (tag : BitVec 8) (payload : Bytes) : Bytes :=
+@[expose] def encodeTagLen (tag : BitVec 8) (payload : Bytes) : Bytes :=
   tag :: encodeVarint payload.length ++ payload
 
 /-- Decode a length-delimited byte slice after reading its tag byte. -/
-def decodeLenBytes (bs : Bytes) : Option (Bytes × Bytes) := do
+@[expose] def decodeLenBytes (bs : Bytes) : Option (Bytes × Bytes) := do
   let (len, rest) ← decodeVarint bs
   if rest.length < len then none
   else some (rest.take len, rest.drop len)
 
 /-- `prost::Message::encode` for `pqrpb::chain::epoch::EpochDirection`. -/
-def encodeEpochDirectionPB (pb : EpochDirectionPB) : Bytes :=
+@[expose] def encodeEpochDirectionPB (pb : EpochDirectionPB) : Bytes :=
   (if pb.ctr == 0#32 then [] else 0x08#8 :: encodeVarint pb.ctr.toNat) ++
   (if pb.next.isEmpty then [] else encodeTagLen 0x12#8 pb.next) ++
   (if pb.prev.isEmpty then [] else encodeTagLen 0x1a#8 pb.prev)
 
 /-- `prost::Message::decode` for `pqrpb::chain::epoch::EpochDirection`. -/
-def decodeEpochDirectionPB : Bytes → EpochDirectionPB → Option EpochDirectionPB
+@[expose] def decodeEpochDirectionPB : Bytes → EpochDirectionPB → Option EpochDirectionPB
   | [], acc => some acc
   | 0x08#8 :: rest, acc => do
     let (v, rest') ← decodeVarint rest
@@ -137,12 +137,12 @@ def decodeEpochDirectionPB : Bytes → EpochDirectionPB → Option EpochDirectio
 termination_by bs _ => bs.length
 
 /-- `prost::Message::encode` for `pqrpb::chain::Epoch`. -/
-def encodeChainEpochPB (pb : ChainEpochPB) : Bytes :=
+@[expose] def encodeChainEpochPB (pb : ChainEpochPB) : Bytes :=
   (match pb.send with | none => [] | some s => encodeTagLen 0x0a#8 (encodeEpochDirectionPB s)) ++
   (match pb.recv with | none => [] | some r => encodeTagLen 0x12#8 (encodeEpochDirectionPB r))
 
 /-- `prost::Message::decode` for `pqrpb::chain::Epoch`. -/
-def decodeChainEpochPB : Bytes → ChainEpochPB → Option ChainEpochPB
+@[expose] def decodeChainEpochPB : Bytes → ChainEpochPB → Option ChainEpochPB
   | [], acc => some acc
   | 0x0a#8 :: rest, acc => do
     let (b, rest') ← decodeLenBytes rest
@@ -160,12 +160,12 @@ def decodeChainEpochPB : Bytes → ChainEpochPB → Option ChainEpochPB
 termination_by bs _ => bs.length
 
 /-- `prost::Message::encode` for `pqrpb::ChainParams`. -/
-def encodeChainParamsPB (pb : ChainParamsPB) : Bytes :=
+@[expose] def encodeChainParamsPB (pb : ChainParamsPB) : Bytes :=
   (if pb.maxJump == 0#32 then [] else 0x08#8 :: encodeVarint pb.maxJump.toNat) ++
   (if pb.maxOooKeys == 0#32 then [] else 0x10#8 :: encodeVarint pb.maxOooKeys.toNat)
 
 /-- `prost::Message::decode` for `pqrpb::ChainParams`. -/
-def decodeChainParamsPB : Bytes → ChainParamsPB → Option ChainParamsPB
+@[expose] def decodeChainParamsPB : Bytes → ChainParamsPB → Option ChainParamsPB
   | [], acc => some acc
   | 0x08#8 :: rest, acc => do
     let (v, rest') ← decodeVarint rest
@@ -181,7 +181,7 @@ def decodeChainParamsPB : Bytes → ChainParamsPB → Option ChainParamsPB
 termination_by bs _ => bs.length
 
 /-- `prost::Message::encode` for `pqrpb::Chain`. -/
-def encodeChainPB (pb : ChainPB) : Bytes :=
+@[expose] def encodeChainPB (pb : ChainPB) : Bytes :=
   (if pb.direction == 0#32 then [] else 0x08#8 :: encodeVarint pb.direction.toNat) ++
   (if pb.currentEpoch == 0#64 then [] else 0x10#8 :: encodeVarint pb.currentEpoch.toNat) ++
   (pb.links.flatMap fun link => encodeTagLen 0x1a#8 (encodeChainEpochPB link)) ++
@@ -190,7 +190,7 @@ def encodeChainPB (pb : ChainPB) : Bytes :=
   (match pb.params with | none => [] | some p => encodeTagLen 0x32#8 (encodeChainParamsPB p))
 
 /-- `prost::Message::decode` for `pqrpb::Chain`. -/
-def decodeChainPBLoop : Bytes → ChainPB → Option ChainPB
+@[expose] def decodeChainPBLoop : Bytes → ChainPB → Option ChainPB
   | [], acc => some acc
   | 0x08#8 :: rest, acc => do
     let (v, rest') ← decodeVarint rest
@@ -227,12 +227,12 @@ def decodeChainPBLoop : Bytes → ChainPB → Option ChainPB
   | _, _ => none
 termination_by bs _ => bs.length
 
-def decodeChainPB (bs : Bytes) : Option ChainPB :=
+@[expose] def decodeChainPB (bs : Bytes) : Option ChainPB :=
   decodeChainPBLoop bs {}
 
 /-! ## Error Formatting (`format_chain_err`) -/
 
-def formatError : Error → String
+@[expose] def formatError : Error → String
   | .epochOutOfRange ep => s!"EpochOutOfRange:{ep.toNat}"
   | .sendKeyEpochDecreased a b => s!"SendKeyEpochDecreased:{a.toNat}:{b.toNat}"
   | .keyJump ctr atIdx => s!"KeyJump:{ctr.toNat}:{atIdx.toNat}"
@@ -242,17 +242,17 @@ def formatError : Error → String
   | .chainNotAvailable => "ChainNotAvailable"
   | _ => "Other"
 
-def formatChainError : ChainError → String
+@[expose] def formatChainError : ChainError → String
   | .err e => formatError e
   | .panic p => s!"Panic:{reprStr p}"
 
 /-! ## `cedGcTrace` Replay -/
 
 /-- Parameters for `cedGcTrace` (`max_jump = 25`, `max_ooo_keys = 10`, `trim_size = 12`). -/
-def cedGcParams : ChainParamsPB :=
+@[expose] def cedGcParams : ChainParamsPB :=
   { maxJump := 25#32, maxOooKeys := 10#32 }
 
-def execCedStep (ced : ChainEpochDirection) (step : CedStepVec) :
+@[expose] def execCedStep (ced : ChainEpochDirection) (step : CedStepVec) :
     ChainEpochDirection × KeyOpResult :=
   if step.op == "next_key" then
     match ced.nextKey realHkdf with
@@ -266,7 +266,7 @@ def execCedStep (ced : ChainEpochDirection) (step : CedStepVec) :
     (ced, .err s!"UnknownOp:{step.op}")
 
 /-- Check a single `CedStepVec` transition and `intoPb`/`fromPb` + wire round-trip. -/
-def checkCedStep (ced : ChainEpochDirection) (step : CedStepVec) :
+@[expose] def checkCedStep (ced : ChainEpochDirection) (step : CedStepVec) :
     ChainEpochDirection × Bool :=
   let (ced', actualRes) := execCedStep ced step
   let argOk :=
@@ -289,7 +289,7 @@ def checkCedStep (ced : ChainEpochDirection) (step : CedStepVec) :
     ChainEpochDirection.fromPb pb == .ok ced'
   (ced', stepOk)
 
-def checkCedTraceSteps (ced : ChainEpochDirection) : List CedStepVec → List Bool
+@[expose] def checkCedTraceSteps (ced : ChainEpochDirection) : List CedStepVec → List Bool
   | [] => []
   | step :: rest =>
     let (ced', ok) := checkCedStep ced step
@@ -314,7 +314,7 @@ def firstCedMismatch? (ced : ChainEpochDirection) (steps : List CedStepVec) (idx
 def chainTraceParams : ChainParamsPB :=
   ({ maxJump := 15#32, maxOooKeys := 6#32 : ChainParams }).intoPb
 
-def execChainStep (c : Chain) (step : ChainStepVec) : Chain × KeyOpResult :=
+@[expose] def execChainStep (c : Chain) (step : ChainStepVec) : Chain × KeyOpResult :=
   if step.op == "add_epoch" then
     match c.addEpoch realHkdf { epoch := step.epoch, secret := step.indexOrSecret } with
     | .ok c' => (c', .okKey [])
@@ -332,7 +332,7 @@ def execChainStep (c : Chain) (step : ChainStepVec) : Chain × KeyOpResult :=
 
 /-- Check a single `ChainStepVec` transition, its protobuf wire encoding/decoding `chainPbAfter`,
 and `Chain.fromPb` round-trip (matching `tools/spqr-vectors/src/main.rs:823–833`). -/
-def checkChainStep (c : Chain) (step : ChainStepVec) : Chain × Bool :=
+@[expose] def checkChainStep (c : Chain) (step : ChainStepVec) : Chain × Bool :=
   let (c', actualRes) := execChainStep c step
   let pb := c'.intoPb
   let encodedPb := encodeChainPB pb
@@ -356,7 +356,7 @@ def checkChainStep (c : Chain) (step : ChainStepVec) : Chain × Bool :=
     (cFromWire, stepOk)
   | _, _ => (c', false)
 
-def checkChainTraceSteps (c : Chain) : List ChainStepVec → List Bool
+@[expose] def checkChainTraceSteps (c : Chain) : List ChainStepVec → List Bool
   | [] => []
   | step :: rest =>
     let (c', ok) := checkChainStep c step
@@ -450,15 +450,6 @@ def checkAliceBobKeyAgreement : Bool :=
     aliceRecvdFromBob.all (fun entry => bobSent.contains entry)
 
 /-! ## Kernel-checked parameter theorem and `#guard` vector checks -/
-
-theorem guard_chain_trace_params :
-    cedGcParams.maxJumpOrDefault = 25#32 ∧
-      cedGcParams.maxOooKeysOrDefault = 10#32 ∧
-      cedGcParams.trimSize = 12 ∧
-      chainTraceParams.maxJumpOrDefault = 15#32 ∧
-      chainTraceParams.maxOooKeysOrDefault = 6#32 ∧
-      chainTraceParams.trimSize = 7 := by
-  decide +kernel
 
 -- SHA-256 and HMAC-SHA256 sanity checks:
 #guard sha256With sha256Compress (asciiBytes "abc") ==

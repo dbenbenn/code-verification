@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.Defs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.SpecsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.ChainDefs
@@ -23,7 +23,7 @@ import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.ChainDefs
 invariant, slice statements, and loop induction corresponding to `VerNe.Chain3.Defs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -44,7 +44,7 @@ open CryptoVerification.CliHandshake.Placed
 /-! ## 1. Placed contract (`chainMerge3PlacedSpecW`, `Chain3PlacedOkAtW`) -/
 
 /-- Image-independent core of `chainMerge3SpecAtW`. -/
-def chainMerge3RawSpecW : Spec ChainMergeGenGhost where
+@[expose] def chainMerge3RawSpecW : Spec ChainMergeGenGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = 2#8 ∧ s.readReg64 .x1 = x.a ∧ s.readReg64 .x2 = x.bufRef ∧
       x.c.Ok ∧ (x.c.payload ++ x.tail).length < 2 ^ 62⌝ ∗
@@ -59,12 +59,12 @@ def chainMerge3RawSpecW : Spec ChainMergeGenGhost where
   onPanic := Serialization.allocPanic
 
 /-- Placed contract for `message::merge<Chain> [local#3]`. -/
-def chainMerge3PlacedSpecW [LibsignalPlacement] : Spec ChainMergeGenGhost :=
+@[expose] def chainMerge3PlacedSpecW [LibsignalPlacement] : Spec ChainMergeGenGhost :=
   withLsCl lsmpl chainMerge3RawSpecW
 
 /-- `message::merge<Chain> [local#4]` (Block `516`) meets `chainMerge3PlacedSpecW` on
 `lsProg_516 (Rust.withPanics ext)`. -/
-def Chain3PlacedOkAtW [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
+@[expose] def Chain3PlacedOkAtW [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_516 (Rust.withPanics ext)) (lsmpl.base 516) chainMerge3PlacedSpecW
 
 abbrev chainMerge5PlacedSpecW [LibsignalPlacement] : Spec ChainMergeGenGhost :=
@@ -86,7 +86,7 @@ structure Chain3CalleesPlacedW [LibsignalPlacement]
 
 /-! ## 3. Loop invariant and segment steps -/
 
-noncomputable abbrev chain3PCPlacedAtW [LibsignalPlacement]
+abbrev chain3PCPlacedAtW [LibsignalPlacement]
     (_ext : String → Option (State → State)) (off : BitVec 64) : BitVec 64 :=
   lsmpl.base 516 + off
 
@@ -96,7 +96,7 @@ abbrev Chain3StepPlacedAtW [LibsignalPlacement]
   SegStepG (lsProg_516 (Rust.withPanics ext)) chainMerge3PlacedSpecW x R s0 s Q
 
 /-- Placed loop invariant at `+0x0a8` after `k` of the chain's fields. -/
-def Chain3LoopPlacedAtW [LibsignalPlacement]
+@[expose] def Chain3LoopPlacedAtW [LibsignalPlacement]
     (ext : String → Option (State → State)) (x : ChainMergeGenGhost)
     (R : SepProp) (s0 : State) (k : Nat) (s : State) : Prop :=
   s.pc = chain3PCPlacedAtW ext 0xa8#64 ∧ s.status = .Running ∧ s.trace = s0.trace ∧
@@ -115,14 +115,14 @@ def Chain3LoopPlacedAtW [LibsignalPlacement]
       stackAt (s0.sp - 0xf0#64) chainMerge3SubStackX ∗ chain3SavedRegs s0.sp s0 ∗ R)
 
 /-- Return state of `[local#3]` with `chainMerge3PlacedSpecW.post`. -/
-def Chain3RetPlacedAtW [LibsignalPlacement]
+@[expose] def Chain3RetPlacedAtW [LibsignalPlacement]
     (x : ChainMergeGenGhost) (R : SepProp) (s0 sf : State) : Prop :=
   Returned s0 sf ∧ CallingConventionPreserved s0 sf ∧
     (sf.mem ⊨ chainMerge3PlacedSpecW.post x s0 sf ∗ R)
 
 /-! ## 4. Placed slice statements -/
 
-def Chain3EntryPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
+@[expose] def Chain3EntryPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
   Chain3CalleesPlacedW ext →
   ∀ (x : ChainMergeGenGhost) (R : SepProp) (s0 : State),
     s0.pc = lsmpl.base 516 →
@@ -131,7 +131,7 @@ def Chain3EntryPlacedStmt [LibsignalPlacement] (ext : String → Option (State �
     s0.spAligned = true →
     Chain3StepPlacedAtW ext x R s0 s0 (Chain3LoopPlacedAtW ext x R s0 0)
 
-def Chain3SrkPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
+@[expose] def Chain3SrkPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
   Chain3CalleesPlacedW ext →
   ∀ (x : ChainMergeGenGhost) (R : SepProp) (s0 : State) (k : Nat) (s : State)
     (hk : k < x.c.fields.length),
@@ -139,7 +139,7 @@ def Chain3SrkPlacedStmt [LibsignalPlacement] (ext : String → Option (State →
     Chain3LoopPlacedAtW ext x R s0 k s →
     Chain3StepPlacedAtW ext x R s0 s (Chain3LoopPlacedAtW ext x R s0 (k + 1))
 
-def Chain3ChainKeyPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
+@[expose] def Chain3ChainKeyPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
   Chain3CalleesPlacedW ext →
   ∀ (x : ChainMergeGenGhost) (R : SepProp) (s0 : State) (k : Nat) (s : State)
     (hk : k < x.c.fields.length),
@@ -147,7 +147,7 @@ def Chain3ChainKeyPlacedStmt [LibsignalPlacement] (ext : String → Option (Stat
     Chain3LoopPlacedAtW ext x R s0 k s →
     Chain3StepPlacedAtW ext x R s0 s (Chain3LoopPlacedAtW ext x R s0 (k + 1))
 
-def Chain3MessageKeysPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
+@[expose] def Chain3MessageKeysPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
   Chain3CalleesPlacedW ext →
   ∀ (x : ChainMergeGenGhost) (R : SepProp) (s0 : State) (k : Nat) (s : State)
     (hk : k < x.c.fields.length),
@@ -155,7 +155,7 @@ def Chain3MessageKeysPlacedStmt [LibsignalPlacement] (ext : String → Option (S
     Chain3LoopPlacedAtW ext x R s0 k s →
     Chain3StepPlacedAtW ext x R s0 s (Chain3LoopPlacedAtW ext x R s0 (k + 1))
 
-def Chain3ExitPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
+@[expose] def Chain3ExitPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
   ∀ (x : ChainMergeGenGhost) (R : SepProp) (s0 s : State),
     Chain3LoopPlacedAtW ext x R s0 x.c.fields.length s →
     Chain3StepPlacedAtW ext x R s0 s (Chain3RetPlacedAtW x R s0)

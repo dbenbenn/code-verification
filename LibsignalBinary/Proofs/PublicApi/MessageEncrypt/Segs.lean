@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Defs
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seams
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seams -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Segment Specifications for `session_message_encrypt_with_stores`
@@ -33,7 +35,7 @@ public-entry wrapper statement `EntryWrapStmt`.
 | `SegFinishSpecV` | `Stored` → outcome | `+0xe88..+0xf2c`, `+0xf3c..+0xfac`, `+0x5f8..+0x660` |
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt
 
@@ -42,11 +44,11 @@ open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalPublicApiRepr CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.LibsignalPublicApi CryptoVerification.LibsignalPublicApi.StoreKit
-open CryptoVerification.LibsignalPublicApi.MessageDecrypt (SessionOnlyKitOkS SessionOnlyVtablesOk)
+
 
 /-- Encryption-side projection of `RecordInScope`, omitting the decrypt-only
 `remoteIdentity ≠ some localIdentity` condition while preserving conjunct positions. -/
-def RecordInScopeEnc (r : SessionRecord (List (BitVec 8))) : Prop :=
+@[expose] def RecordInScopeEnc (r : SessionRecord (List (BitVec 8))) : Prop :=
   ∀ s, r.currentSession = some s →
     True ∧ SeedsLen32 s.state ∧
       s.state.receiverChains.length < 2 ^ 32 ∧
@@ -60,334 +62,6 @@ theorem _root_.CryptoVerification.LibsignalPublicApi.RecordInScope.toEnc
 instance (r : SessionRecord (List (BitVec 8))) : Coe (RecordInScope r) (RecordInScopeEnc r) :=
   ⟨RecordInScope.toEnc⟩
 
-/-- Shared segment environment bundling the loaded image, external hooks, store kit contracts
-(`StoreKitOkS`), callee contracts (`EncCallees Q`), and scope bridges (`scopeIn`, `scopeQ`). -/
-structure EncEnv {A : RustAlloc} {img : Obj.Image}
-    (kit : SessionStoreSpec A img.base) (st0 : kit.StoreState)
-    (ikit : IdentityStoreSpec A img.base) (_ist0 : ikit.IdState)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (C : Crypto) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop where
-  loads : Obj.Loads libsignalSessionImage img
-  hooks : PublicApiHooksNoStores C A S abs
-  kitOk : SessionOnlyKitOkS kit Scope C encRecord ctl abs
-  ikitOk : IdentityStoreKitOkI img ikit C ctl abs
-  callees : EncCallees Q img C A ctl parse S abs
-  vtables : SessionOnlyVtablesOk img kit
-  idVtables : IdentityVtablesOk img ikit
-  scopeIn : ∀ {rem : AddrVal} (r : SessionRecord (List (BitVec 8))),
-    kit.ScopeAt Scope st0 rem r → RecordInScopeEnc r
-  scopeQ : ∀ {rem : AddrVal} (r : SessionRecord (List (BitVec 8))) (s : Session (List (BitVec 8))),
-    kit.ScopeAt Scope st0 rem r → r.currentSession = some s → Q s.state.pqRatchetState
-  recOk : ∀ {x : WithStoresEncGhost} {r : SessionRecord (List (BitVec 8))}
-    {sess : Session (List (BitVec 8))} {otr : OutgoingTripleRatchet (List (BitVec 8))}
-    {taken : SessionState (List (BitVec 8))} {k : IdentityKey} {m : CiphertextMessage}
-    {otr' : OutgoingTripleRatchet (List (BitVec 8))},
-    StepsThroughEncrypt (kit.ScopeAt Scope st0 x.rem.val) C S parse x r sess otr taken k m otr' →
-    kit.RecOk (storedRecord sess otr' taken)
-
-/-- Deduces `Q otr.pqrState` from `Scope r` and `OutgoingTripleRatchet.fromSessionState`
-success. -/
-theorem EncEnv.q_otr {A : RustAlloc} {img : Obj.Image}
-    {kit : SessionStoreSpec A img.base} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A img.base} {ist0 : ikit.IdState}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {Q : List (BitVec 8) → Prop} {C : Crypto} {ctl : BitVec 64}
-    {S : SpqrModel}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {abs : String → Option (State → State)}
-    (env : EncEnv kit st0 ikit ist0 Scope Q C ctl uuidTryParse S encRecord abs)
-    {rem : AddrVal} {r : SessionRecord (List (BitVec 8))}
-    {sess : Session (List (BitVec 8))} {otr : OutgoingTripleRatchet (List (BitVec 8))}
-    {taken : SessionState (List (BitVec 8))} (hcur : r.currentSession = some sess)
-    (hsc : kit.ScopeAt Scope st0 rem r)
-    (hfrom : execOk OutgoingTripleRatchet.fromSessionState sess.state = .ok (otr, taken)) :
-    Q otr.pqrState :=
-  fromSessionState_pqrState hfrom ▸ env.scopeQ r sess hsc hcur
-
-/-- Segment-exit relation: execution from `s` reaches either a state satisfying `next` or an
-outcome of `withStoresEncSpecV` from `s0`. -/
-def SegExit {A : RustAlloc} {img : Obj.Image}
-    (kit : SessionStoreSpec A img.base) (st0 : kit.StoreState)
-    (ikit : IdentityStoreSpec A img.base) (ist0 : ikit.IdState)
-    (C : Crypto) (ctl : BitVec 64) (parse : UuidParser)
-    (S : SpqrModel) (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) (x : WithStoresEncGhost) (R : SepProp) (s0 s : State)
-    (next : State → Prop) : Prop :=
-  (tripleRatchetProgAt img.base C ctl abs).CodeLoaded s.mem →
-    ∃ sf, Steps (tripleRatchetProgAt img.base C ctl abs) s sf ∧
-      (next sf ∨ SubroutineOutcome (withStoresEncSpecV kit st0 ikit ist0 C ctl parse S encRecord) x R s0 sf)
-
-/-- Filesystem trace-quietness invariant carried from entry `s0` to `s` for both store kits. -/
-abbrev EncFsCtx {A : RustAlloc} {img : Obj.Image}
-    (kit : SessionStoreSpec A img.base) (ikit : IdentityStoreSpec A img.base)
-    (C : Crypto) (ctl : BitVec 64) (abs : String → Option (State → State)) (s0 s : State) : Prop :=
-  FsCtx (fun f => kit.envOk f ∧ ikit.envOk f) (kit.Quiet ∧ ikit.Quiet)
-    (tripleRatchetProgAt img.base C ctl abs) s0 s
-
-/-- `segLoad` (Entry → `Cur`): prologue, `load_session` shim/poll/drop/free, and result
-dispatch. -/
-def SegLoadSpecV {A : RustAlloc} {img : Obj.Image}
-    (kit : SessionStoreSpec A img.base) (st0 : kit.StoreState)
-    (ikit : IdentityStoreSpec A img.base) (ist0 : ikit.IdState)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (C : Crypto) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  EncEnv kit st0 ikit ist0 Scope Q C ctl parse S encRecord abs →
-    ∀ (x : WithStoresEncGhost) (R : SepProp) (s0 : State),
-      EncFsCtx kit ikit C ctl abs s0 s0 →
-      s0.pc = encEntry img → s0.status = .Running → s0.spAligned = true →
-      (s0.mem ⊨ (withStoresEncSpecV kit st0 ikit ist0 C ctl parse S encRecord).pre x s0 ∗ R) →
-      SegExit kit st0 ikit ist0 C ctl parse S encRecord abs x R s0 s0
-        (fun s => ∃ r g sess, CurStateV kit st0 ikit ist0 Scope ctl encRecord x r g sess R s0 s)
-
-abbrev SegLoadSpec (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  SegLoadSpecV (hookSessionStoreSpec A img.base) () (hookIdentityStoreSpec A img.base) ()
-    Scope Q C ctl parse S encRecord abs
-
-/-- `segFrom` (`Cur` → `Otr`): `OTR::from_session_state` call and 200-byte OTR stack copy. -/
-def SegFromSpecV {A : RustAlloc} {img : Obj.Image}
-    (kit : SessionStoreSpec A img.base) (st0 : kit.StoreState)
-    (ikit : IdentityStoreSpec A img.base) (ist0 : ikit.IdState)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (C : Crypto) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  EncEnv kit st0 ikit ist0 Scope Q C ctl parse S encRecord abs →
-    ∀ (x : WithStoresEncGhost) (r : SessionRecord (List (BitVec 8))) (g : RecordGhost)
-      (sess : Session (List (BitVec 8))) (R : SepProp) (s0 s : State),
-      CurStateV kit st0 ikit ist0 Scope ctl encRecord x r g sess R s0 s →
-      SegExit kit st0 ikit ist0 C ctl parse S encRecord abs x R s0 s
-        (fun s' => ∃ otr taken pqCap pqPtr,
-          OtrStateV kit st0 ikit ist0 Scope ctl encRecord x r sess otr taken pqCap pqPtr R s0 s')
-
-abbrev SegFromSpec (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  SegFromSpecV (hookSessionStoreSpec A img.base) () (hookIdentityStoreSpec A img.base) ()
-    Scope Q C ctl parse S encRecord abs
-
-/-- `segIdentity` (`Otr` → `Key`): `remote_identity_key` lookup and `expect` unwrap. -/
-def SegIdentitySpecV {A : RustAlloc} {img : Obj.Image}
-    (kit : SessionStoreSpec A img.base) (st0 : kit.StoreState)
-    (ikit : IdentityStoreSpec A img.base) (ist0 : ikit.IdState)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (C : Crypto) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  EncEnv kit st0 ikit ist0 Scope Q C ctl parse S encRecord abs →
-    ∀ (x : WithStoresEncGhost) (r : SessionRecord (List (BitVec 8)))
-      (sess : Session (List (BitVec 8))) (otr : OutgoingTripleRatchet (List (BitVec 8)))
-      (taken : SessionState (List (BitVec 8))) (pqCap pqPtr : BitVec 64) (R : SepProp)
-      (s0 s : State),
-      OtrStateV kit st0 ikit ist0 Scope ctl encRecord x r sess otr taken pqCap pqPtr R s0 s →
-      SegExit kit st0 ikit ist0 C ctl parse S encRecord abs x R s0 s
-        (fun s' => ∃ k,
-          KeyStateV kit st0 ikit ist0 Scope ctl encRecord x r sess otr taken pqCap pqPtr k R s0 s')
-
-abbrev SegIdentitySpec (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  SegIdentitySpecV (hookSessionStoreSpec A img.base) () (hookIdentityStoreSpec A img.base) ()
-    Scope Q C ctl parse S encRecord abs
-
-/-- `segSignal` (`Key` → `Cm`, `pendingPreKey = none`): pre-key items check and `OTR::encrypt`
-producing a `SignalMessage`. -/
-def SegSignalSpecV {A : RustAlloc} {img : Obj.Image}
-    (kit : SessionStoreSpec A img.base) (st0 : kit.StoreState)
-    (ikit : IdentityStoreSpec A img.base) (ist0 : ikit.IdState)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (C : Crypto) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  EncEnv kit st0 ikit ist0 Scope Q C ctl parse S encRecord abs →
-    ∀ (x : WithStoresEncGhost) (r : SessionRecord (List (BitVec 8)))
-      (sess : Session (List (BitVec 8))) (otr : OutgoingTripleRatchet (List (BitVec 8)))
-      (taken : SessionState (List (BitVec 8))) (pqCap pqPtr : BitVec 64) (k : IdentityKey)
-      (R : SepProp) (s0 s : State),
-      sess.pendingPreKey = none →
-      KeyStateV kit st0 ikit ist0 Scope ctl encRecord x r sess otr taken pqCap pqPtr k R s0 s →
-      SegExit kit st0 ikit ist0 C ctl parse S encRecord abs x R s0 s
-        (fun s' => ∃ m otr' pqCap' pqPtr',
-          CmStateV kit st0 ikit ist0 Scope C ctl parse S encRecord x r sess otr taken k m otr'
-            pqCap' pqPtr' R s0 s')
-
-abbrev SegSignalSpec (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  SegSignalSpecV (hookSessionStoreSpec A img.base) () (hookIdentityStoreSpec A img.base) ()
-    Scope Q C ctl parse S encRecord abs
-
-/-- `segPreKey` (`Key` → `Cm`, `pendingPreKey = some items`): expiry check, optional Kyber
-clone, `OTR::encrypt`, and `PreKeySignalMessage::new`. -/
-def SegPreKeySpecV {A : RustAlloc} {img : Obj.Image}
-    (kit : SessionStoreSpec A img.base) (st0 : kit.StoreState)
-    (ikit : IdentityStoreSpec A img.base) (ist0 : ikit.IdState)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (C : Crypto) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  EncEnv kit st0 ikit ist0 Scope Q C ctl parse S encRecord abs →
-    ∀ (x : WithStoresEncGhost) (r : SessionRecord (List (BitVec 8)))
-      (sess : Session (List (BitVec 8))) (otr : OutgoingTripleRatchet (List (BitVec 8)))
-      (taken : SessionState (List (BitVec 8))) (pqCap pqPtr : BitVec 64) (k : IdentityKey)
-      (R : SepProp) (s0 s : State),
-      sess.pendingPreKey.isSome →
-      KeyStateV kit st0 ikit ist0 Scope ctl encRecord x r sess otr taken pqCap pqPtr k R s0 s →
-      SegExit kit st0 ikit ist0 C ctl parse S encRecord abs x R s0 s
-        (fun s' => ∃ m otr' pqCap' pqPtr',
-          CmStateV kit st0 ikit ist0 Scope C ctl parse S encRecord x r sess otr taken k m otr'
-            pqCap' pqPtr' R s0 s')
-
-abbrev SegPreKeySpec (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  SegPreKeySpecV (hookSessionStoreSpec A img.base) () (hookIdentityStoreSpec A img.base) ()
-    Scope Q C ctl parse S encRecord abs
-
-/-- `segTrust` (`Cm` → `Save`): `is_trusted_identity` shim/poll/drop/free and
-`UntrustedIdentity` error path. -/
-def SegTrustSpecV {A : RustAlloc} {img : Obj.Image}
-    (kit : SessionStoreSpec A img.base) (st0 : kit.StoreState)
-    (ikit : IdentityStoreSpec A img.base) (ist0 : ikit.IdState)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (C : Crypto) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  EncEnv kit st0 ikit ist0 Scope Q C ctl parse S encRecord abs →
-    ∀ (x : WithStoresEncGhost) (r : SessionRecord (List (BitVec 8)))
-      (sess : Session (List (BitVec 8))) (otr : OutgoingTripleRatchet (List (BitVec 8)))
-      (taken : SessionState (List (BitVec 8))) (k : IdentityKey) (m : CiphertextMessage)
-      (otr' : OutgoingTripleRatchet (List (BitVec 8))) (pqCap' pqPtr' : BitVec 64) (R : SepProp)
-      (s0 s : State),
-      ikit.addrOk x.rem.val →
-      EncFsCtx kit ikit C ctl abs s0 s →
-      CmStateV kit st0 ikit ist0 Scope C ctl parse S encRecord x r sess otr taken k m otr' pqCap'
-        pqPtr' R s0 s →
-      SegExit kit st0 ikit ist0 C ctl parse S encRecord abs x R s0 s
-        (fun s' => SaveStateV kit st0 ikit ist0 Scope C ctl parse S encRecord x r sess otr taken k
-          m otr' pqCap' pqPtr' R s0 s')
-
-abbrev SegTrustSpec (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  SegTrustSpecV (hookSessionStoreSpec A img.base) () (hookIdentityStoreSpec A img.base) ()
-    Scope Q C ctl parse S encRecord abs
-
-/-- `segSave` (`Save` → `Apply`): `save_identity` shim/poll/drop/free and dispatch. -/
-def SegSaveSpecV {A : RustAlloc} {img : Obj.Image}
-    (kit : SessionStoreSpec A img.base) (st0 : kit.StoreState)
-    (ikit : IdentityStoreSpec A img.base) (ist0 : ikit.IdState)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (C : Crypto) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  EncEnv kit st0 ikit ist0 Scope Q C ctl parse S encRecord abs →
-    ∀ (x : WithStoresEncGhost) (r : SessionRecord (List (BitVec 8)))
-      (sess : Session (List (BitVec 8))) (otr : OutgoingTripleRatchet (List (BitVec 8)))
-      (taken : SessionState (List (BitVec 8))) (k : IdentityKey) (m : CiphertextMessage)
-      (otr' : OutgoingTripleRatchet (List (BitVec 8))) (pqCap' pqPtr' : BitVec 64) (R : SepProp)
-      (s0 s : State),
-      ikit.addrOk x.rem.val →
-      EncFsCtx kit ikit C ctl abs s0 s →
-      SaveStateV kit st0 ikit ist0 Scope C ctl parse S encRecord x r sess otr taken k m otr' pqCap'
-        pqPtr' R s0 s →
-      SegExit kit st0 ikit ist0 C ctl parse S encRecord abs x R s0 s
-        (fun s' => ∃ c, ApplyStateV kit st0 ikit ist0 Scope C ctl parse S encRecord x r sess otr
-          taken k m otr' pqCap' pqPtr' c R s0 s')
-
-abbrev SegSaveSpec (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  SegSaveSpecV (hookSessionStoreSpec A img.base) () (hookIdentityStoreSpec A img.base) ()
-    Scope Q C ctl parse S encRecord abs
-
-/-- `segApplyStore` (`Apply` → `Stored`): `OTR::apply_to_session_state` and
-`store_session` shim/poll/drop/free. -/
-def SegApplyStoreSpecV {A : RustAlloc} {img : Obj.Image}
-    (kit : SessionStoreSpec A img.base) (st0 : kit.StoreState)
-    (ikit : IdentityStoreSpec A img.base) (ist0 : ikit.IdState)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (C : Crypto) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  EncEnv kit st0 ikit ist0 Scope Q C ctl parse S encRecord abs →
-    ∀ (x : WithStoresEncGhost) (r : SessionRecord (List (BitVec 8)))
-      (sess : Session (List (BitVec 8))) (otr : OutgoingTripleRatchet (List (BitVec 8)))
-      (taken : SessionState (List (BitVec 8))) (k : IdentityKey) (m : CiphertextMessage)
-      (otr' : OutgoingTripleRatchet (List (BitVec 8))) (pqCap' pqPtr' : BitVec 64)
-      (c : IdentityChange) (R : SepProp) (s0 s : State),
-      kit.addrOk x.rem.val →
-      EncFsCtx kit ikit C ctl abs s0 s →
-      ApplyStateV kit st0 ikit ist0 Scope C ctl parse S encRecord x r sess otr taken k m otr'
-        pqCap' pqPtr' c R s0 s →
-      SegExit kit st0 ikit ist0 C ctl parse S encRecord abs x R s0 s
-        (fun s' => StoredStateV kit st0 ikit ist0 Scope C ctl parse S encRecord x r sess otr taken
-          k m otr' c R s0 s')
-
-abbrev SegApplyStoreSpec (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  SegApplyStoreSpecV (hookSessionStoreSpec A img.base) () (hookIdentityStoreSpec A img.base) ()
-    Scope Q C ctl parse S encRecord abs
-
-/-- `segFinish` (`Stored` → outcome): `SessionRecord` drop, 248-byte `sret` copy, and
-epilogue. -/
-def SegFinishSpecV {A : RustAlloc} {img : Obj.Image}
-    (kit : SessionStoreSpec A img.base) (st0 : kit.StoreState)
-    (ikit : IdentityStoreSpec A img.base) (ist0 : ikit.IdState)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (C : Crypto) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  EncEnv kit st0 ikit ist0 Scope Q C ctl parse S encRecord abs →
-    ∀ (x : WithStoresEncGhost) (r : SessionRecord (List (BitVec 8)))
-      (sess : Session (List (BitVec 8))) (otr : OutgoingTripleRatchet (List (BitVec 8)))
-      (taken : SessionState (List (BitVec 8))) (k : IdentityKey) (m : CiphertextMessage)
-      (otr' : OutgoingTripleRatchet (List (BitVec 8))) (c : IdentityChange) (R : SepProp)
-      (s0 s : State),
-      StoredStateV kit st0 ikit ist0 Scope C ctl parse S encRecord x r sess otr taken k m otr' c R
-        s0 s →
-      SegExit kit st0 ikit ist0 C ctl parse S encRecord abs x R s0 s (fun _ => False)
-
-abbrev SegFinishSpec (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  SegFinishSpecV (hookSessionStoreSpec A img.base) () (hookIdentityStoreSpec A img.base) ()
-    Scope Q C ctl parse S encRecord abs
-
 theorem StepsThroughEncrypt.inScope {Scope : SessionRecord (List (BitVec 8)) → Prop} {C : Crypto}
     {S : SpqrModel} {x : WithStoresEncGhost}
     {r : SessionRecord (List (BitVec 8))} {sess : Session (List (BitVec 8))}
@@ -400,7 +74,7 @@ theorem StepsThroughEncrypt.inScope {Scope : SessionRecord (List (BitVec 8)) →
 
 /-- Pure postcondition agreement for the success path: given `StepsThroughEncrypt` and
 `okAnswers r c`, `messageEncrypt` returns `Ok m` with RNG draw count `S.draws`. -/
-def EncModelOkStmt (C : Crypto) (S : SpqrModel) (uuidParse : UuidParser) : Prop :=
+@[expose] def EncModelOkStmt (C : Crypto) (S : SpqrModel) (uuidParse : UuidParser) : Prop :=
   ∀ (x : WithStoresEncGhost) (r : SessionRecord (List (BitVec 8)))
     (sess : Session (List (BitVec 8))) (otr : OutgoingTripleRatchet (List (BitVec 8)))
     (taken : SessionState (List (BitVec 8))) (k : IdentityKey) (m : CiphertextMessage)
@@ -412,7 +86,7 @@ def EncModelOkStmt (C : Crypto) (S : SpqrModel) (uuidParse : UuidParser) : Prop 
       x.draws S (okAnswers r c) = S.draws otr.pqrState x.rest
 
 /-- Closure of `kit.RecOk` under `messageEncrypt` updates on records in `kit.ScopeAt Scope st0`. -/
-def EncModelRecOk {A : RustAlloc} {b : BitVec 64}
+@[expose] def EncModelRecOk {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (st0 : kit.StoreState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (C : Crypto) (S : SpqrModel) (uuidParse : UuidParser) : Prop :=
@@ -443,43 +117,5 @@ theorem recOk_of_encModelRecOk {A : RustAlloc} {b : BitVec 64}
     exact h15.2.1
   · rw [hm]
     simp
-
-/-- Bundle of all nine segment specifications for `session_message_encrypt_with_stores`. -/
-structure EncSegsV {A : RustAlloc} {img : Obj.Image}
-    (kit : SessionStoreSpec A img.base) (st0 : kit.StoreState)
-    (ikit : IdentityStoreSpec A img.base) (ist0 : ikit.IdState)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (C : Crypto) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop where
-  load : SegLoadSpecV kit st0 ikit ist0 Scope Q C ctl parse S encRecord abs
-  fromS : SegFromSpecV kit st0 ikit ist0 Scope Q C ctl parse S encRecord abs
-  identity : SegIdentitySpecV kit st0 ikit ist0 Scope Q C ctl parse S encRecord abs
-  signal : SegSignalSpecV kit st0 ikit ist0 Scope Q C ctl parse S encRecord abs
-  preKey : SegPreKeySpecV kit st0 ikit ist0 Scope Q C ctl parse S encRecord abs
-  trust : SegTrustSpecV kit st0 ikit ist0 Scope Q C ctl parse S encRecord abs
-  save : SegSaveSpecV kit st0 ikit ist0 Scope Q C ctl parse S encRecord abs
-  applyStore : SegApplyStoreSpecV kit st0 ikit ist0 Scope Q C ctl parse S encRecord abs
-  finish : SegFinishSpecV kit st0 ikit ist0 Scope Q C ctl parse S encRecord abs
-
-abbrev EncSegs (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
-    (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) : Prop :=
-  EncSegsV (hookSessionStoreSpec A img.base) () (hookIdentityStoreSpec A img.base) ()
-    Scope Q C ctl parse S encRecord abs
-
-/-- Wrapper specification lifting `withStoresEncSpec` (`0x3caf4`) to the public entry
-`session_message_encrypt` (`0x430cc`). -/
-def EntryWrapStmt (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (parse : UuidParser)
-    (S : SpqrModel) (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (abs : String → Option (State → State)) (img : Obj.Image) : Prop :=
-  Obj.Loads libsignalSessionImage img →
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (encEntry img)
-      (withStoresEncSpec C A ctl parse S encRecord img) →
-    subroutine_ok (tripleRatchetProg img C ctl abs) (entryOf img encryptEntryName)
-      (encryptSpec C A ctl parse S encRecord img)
 
 end CryptoVerification.LibsignalPublicApi.MessageEncrypt

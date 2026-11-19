@@ -19,7 +19,7 @@ Defines the CLI symbol-name abbreviation for `<spqr::proto::pq_ratchet::V1State 
 prost::message::Message>::encoded_len [local#3]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ProtoRepr
 

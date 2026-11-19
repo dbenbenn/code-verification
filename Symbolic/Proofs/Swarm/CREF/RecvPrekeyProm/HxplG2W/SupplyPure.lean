@@ -9,11 +9,15 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.IfacePure
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.IfacePure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.World.RelCliPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.SupplyPkPure
 import Symbolic.Proofs.Swarm.CREF.TROpen
+public import Symbolic.Proofs.Swarm.CREF.CBad -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatementDefs
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.OpkRelC
 
 /-!
 # `PromRawCtxSupply` Assembly
@@ -23,7 +27,7 @@ from `CHist`, `TRRecvFreshAll`, `prom_g1cAttackerBuiltSeedExcl'_of_matchedPrefix
 `NoRatchet` and `Skipped` ratchet-key dispatches.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -40,7 +44,7 @@ open CryptoProofLib.Refinement (ExternInterpretation)
 
 /-- Asserts `P g ms acc` at every clean explanation `(g, ms)` of `acc` on an accepting,
 non-colliding promote call. -/
-def PromCtxAt (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PromCtxAt (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool)
     (P : Ghost → List Move → List MachineEvent → Prop) : Prop :=
   ∀ (j : Nat) (e' : PromTurn) (mid acc : List MachineEvent)

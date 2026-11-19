@@ -11,13 +11,27 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5aPresenceBPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5aPresenceBPlaced -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.Common
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.StdStartup.MemOps
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem
+public import VerifiedLibraries.RustStd.Proofs.ExecSegSym
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W0Spec
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` Presence Segment (`+0x460 → +0x57c`)
@@ -27,7 +41,7 @@ Defines budget-threaded `BkNoneJoinFramePlaced` and `PreKeyDropSpeOk` over
 on `preKeyPlacedProg H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -77,7 +91,7 @@ abbrev presenceErrTailStatePlaced_nonvacuous :=
 
 /-- Budget-threaded `[LibsignalPlacement]` Join frame at `+0x5e0` (`1504`, `m.baseKey = none`),
 instantiating `PksmWire.BkNoneJoinFramePlaced` at `A.atState lim st s2`. -/
-def BkNoneJoinFramePlaced [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def BkNoneJoinFramePlaced [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (s0 s2 : State) : Prop :=
   CryptoVerification.SignalSession.Cli.RunProofs.PksmWire.BkNoneJoinFramePlaced
@@ -101,7 +115,7 @@ theorem bkNoneJoinFramePlaced_iff [LibsignalPlacement] (M : AllocCostModel)
   Iff.rfl
 
 /-- Budget-threaded `drop_glue<SignalProtocolError>` callee contract on `preKeyPlacedProg H`. -/
-def PreKeyDropSpeOk [LibsignalPlacement] (Inv : Memory → Prop) (M : AllocCostModel)
+@[expose] def PreKeyDropSpeOk [LibsignalPlacement] (Inv : Memory → Prop) (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (preKeyPlacedProg H) (lsmpl.base 5)
     (withPreKeyInv Inv (dropSpeSpec M A lim))

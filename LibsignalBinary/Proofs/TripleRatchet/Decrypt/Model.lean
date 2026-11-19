@@ -20,7 +20,7 @@ Branch unfolding and invariant lemmas for `SessionState.tryDecryptWithState`,
 `aesCbcDecrypt`, parameterized `decFn`, and explicit-`coins` forms.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Decrypt.Model
 
@@ -1017,29 +1017,8 @@ theorem modelFn_fst_eq_panic_iff (C : Crypto)
                       rintro ⟨⟩
                   exact iff_of_false hfn hmod
 
-theorem tryDecryptFnSpec_pre_eq (C : Crypto)
-    (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
-    (A : RustAlloc) (ctl : BitVec 64) (S : SpqrModel) (img : Obj.Image) :
-    (tryDecryptFnSpec C decFn A ctl uuidTryParse S img).pre =
-      (tryDecryptSpec C A ctl uuidTryParse S img).pre := by
-  unfold tryDecryptFnSpec tryDecryptSpec Spec.inImage
-  rfl
-
-theorem tryDecryptFnSpec_onPanic_eq (C : Crypto)
-    (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
-    (A : RustAlloc) (ctl : BitVec 64) (S : SpqrModel) (img : Obj.Image) :
-    (tryDecryptFnSpec C decFn A ctl uuidTryParse S img).onPanic =
-      (tryDecryptSpec C A ctl uuidTryParse S img).onPanic := by
-  funext x s0 sf
-  unfold tryDecryptFnSpec tryDecryptSpec Spec.inImage
-  cases hp : S.recvPanics x.st.pqRatchetState x.msg.pqRatchet with
-  | true => simp only [hp, true_or, or_true]
-  | false => simp only [modelFn_fst_eq_panic_iff C decFn S x hp]
-
-/-! ## 7. Generic-over-Coins Model Unfolding Lemmas -/
-
 /-- Pure session-model execution of `tryDecryptWithState` with explicit `coins`. -/
-def modelWithCoins (C : Crypto) (S : SpqrModel) (expected : Option (List (BitVec 8)))
+@[expose] def modelWithCoins (C : Crypto) (S : SpqrModel) (expected : Option (List (BitVec 8)))
     (msg : SignalMessage) (msgType : MessageType) (coins : BitVec 256)
     (st : SessionState (List (BitVec 8))) :
     Except SignalProtocolError (List (BitVec 8)) × SessionState (List (BitVec 8)) :=

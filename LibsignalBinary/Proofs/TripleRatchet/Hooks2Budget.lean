@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.SpecBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.TripleRatchet.InImage.Uuid
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.Defs
+import LibsignalBinary.Proofs.TripleRatchet.TrapRng
 
 /-!
 # Budget-Threaded Configurable-Stack Hook Contracts
@@ -25,7 +26,7 @@ and slow-varint helpers, `subtle::black_box`, `Uuid::try_parse`, `rng_fill`, AES
 empty-state `spqr::recv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -108,7 +109,7 @@ abbrev decodeVarintSlowSpecWithStack := @decodeVarintSlowBudgetSpecWithStack
 
 /-- Budget-threaded `DecodeError::push` contract with configurable stack budget,
 existentializing the updated `Box<Inner>` pointer `e'` in `post`. -/
-def decodeErrorPushExternBudgetSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def decodeErrorPushExternBudgetSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat := extHookStack) :
     Spec (BitVec 64 × BitVec 64 × Nat × M.σ) where
   pre := fun (d, e, n, st) s =>
@@ -263,7 +264,7 @@ theorem decodeVarintSlowWithStack_of_decodeVarintSlow {M : AllocCostModel}
 
 /-! ## `VmPreserved`-strengthened `black_box`, `Uuid::try_parse`, and `rng_fill` specs -/
 
-def blackBoxU8BudgetSpec : Spec (BitVec 64) :=
+@[expose] def blackBoxU8BudgetSpec : Spec (BitVec 64) :=
   withVmPreserved CryptoVerification.LibsignalTripleRatchet.blackBoxU8Spec
 
 abbrev blackBoxU8Spec : Spec (BitVec 64) := blackBoxU8BudgetSpec
@@ -287,7 +288,7 @@ theorem blackBoxU8_of_blackBox {P : Program} {addr : BitVec 64}
   · exact Or.inr (Or.inl hpan)
   · exact Or.inr (Or.inr hex)
 
-def uuidTryParseAnyBudgetSpec : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) :=
+@[expose] def uuidTryParseAnyBudgetSpec : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) :=
   withVmPreserved CryptoVerification.LibsignalTripleRatchet.uuidTryParseAnySpec
 
 abbrev uuidTryParseAnySpec : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) :=
@@ -374,7 +375,7 @@ theorem uuidTryParseAnyWithStack_of_code {P : Program} {addr : BitVec 64} {hookS
     rw [h0, satisfies_pure_sepConj] at hoom_sat
     exact False.elim hoom_sat.1
 
-def rngFillAnyBudgetSpec : Spec (BitVec 64 × Nat) :=
+@[expose] def rngFillAnyBudgetSpec : Spec (BitVec 64 × Nat) :=
   withVmPreserved CryptoVerification.LibsignalTripleRatchet.rngFillAnySpec
 
 abbrev rngFillAnySpec : Spec (BitVec 64 × Nat) := rngFillAnyBudgetSpec
@@ -422,7 +423,7 @@ theorem aesDecWeak_of_aesDec {M : AllocCostModel} {P : Program} {addr : BitVec 6
 /-- Relational empty-state `spqr::recv` budget contract (`st.bytes = []` in `pre` at `spqrRecvStack`),
 parameterized by allocator event envelope `Env : List (BitVec 8) → List AllocEvent → Prop`
 (`onPanic = ⌜False⌝` under `FitsEnv M lim s (Env msg.bytes)`). -/
-def spqrRecvEmptyAnyBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def spqrRecvEmptyAnyBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (Env : List (BitVec 8) → List AllocEvent → Prop) :
     Spec (VecArg × VecArg × BitVec 64 × M.σ) where
   pre := fun (st, msg, ret, s_m) s =>

@@ -18,7 +18,7 @@ public import LibsignalBinary.Specifications.CryptoGames.Ratchet.RootKdfDefs
 Byte-list X25519 wrapper and 64-byte `(RootKey, ChainKey)` tuple encoding for `create_chain` proofs.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames
 namespace Ratchet
@@ -26,7 +26,7 @@ open HMAC HKDF
 
 /-- An `X25519Fn` on byte lists (the argument type of `CKA.X25519Model`): `X` on 32-byte inputs,
 `[]` otherwise. -/
-def X25519Fn.toListFn (X : X25519Fn) : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) :=
+@[expose] def X25519Fn.toListFn (X : X25519Fn) : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) :=
   fun k u =>
     if hk : k.length = 32 then
       if hu : u.length = 32 then (X ⟨k, hk⟩ ⟨u, hu⟩).toList else []
@@ -34,7 +34,7 @@ def X25519Fn.toListFn (X : X25519Fn) : List (BitVec 8) → List (BitVec 8) → L
 
 /-- The 64 bytes `root_key ‖ chain_key` of a `(RootKey, ChainKey)` pair, as the binary returns
 them (the tuple `([u8; 32], [u8; 32])`, root key first). -/
-def keysToBytes (p : RootKey × ChainKey) : List (BitVec 8) :=
+@[expose] def keysToBytes (p : RootKey × ChainKey) : List (BitVec 8) :=
   keyToBytes32 p.1 ++ keyToBytes32 p.2
 
 end Ratchet

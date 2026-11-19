@@ -9,13 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSessionPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSessionPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Bin.Hooks
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsErrUnwind
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSession
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4StoreSession -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StorePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4ErrUnwind
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveIdProof
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsErrUnwindPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4SaveIdPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlaced
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 
 /-!
 # Relocatable Stage P4.4 Dispatch Proof: `store_session`
@@ -24,7 +35,7 @@ Relocatable `[LibsignalPlacement]` counterpart of `StageP4VRegsStoreSessionProof
 (`lsProg_518 ext`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -52,7 +63,7 @@ open CryptoVerification.CliHandshake.RespClosurePlaced
 open CryptoVerification.SignalSession
 
 /-- Resources shared unchanged across Placed Substage P4.4 (`store_session`). -/
-def stageP4StoreSessionSharedPlaced {A : RustAlloc}
+@[expose] def stageP4StoreSessionSharedPlaced {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr remoteAddrPtr sessionStorePtr prevStatesPtr : BitVec 64)
@@ -72,7 +83,7 @@ def stageP4StoreSessionSharedPlaced {A : RustAlloc}
   stackAt s.sp (storeSessionCallStack kit)
 
 /-- Spatial precondition of Placed Substage P4.4 at `+0x3cc`. -/
-def stageP4StoreSessionPrePlaced {A : RustAlloc}
+@[expose] def stageP4StoreSessionPrePlaced {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr outPtr remoteAddrPtr sessionStorePtr prevStatesPtr ptCap ptPtr : BitVec 64)
@@ -94,7 +105,7 @@ def stageP4StoreSessionPrePlaced {A : RustAlloc}
   kit.storeAt sessionStorePtr sst0
 
 /-- Spatial postcondition of Placed Substage P4.4 on `Ok(())` at `s0.readReg64 .x30`. -/
-def stageP4StoreSessionOkPostPlaced {A : RustAlloc}
+@[expose] def stageP4StoreSessionOkPostPlaced {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr outPtr remoteAddrPtr sessionStorePtr prevStatesPtr : BitVec 64)
@@ -111,7 +122,7 @@ def stageP4StoreSessionOkPostPlaced {A : RustAlloc}
   kit.storeAt sessionStorePtr (kit.storeUpdate sst0 peer.val ⟨some ss⟩ (.ok ()))
 
 /-- Spatial postcondition of Placed Substage P4.4 on `Err(())` at `s0.readReg64 .x30`. -/
-def stageP4StoreSessionErrPostPlaced {A : RustAlloc}
+@[expose] def stageP4StoreSessionErrPostPlaced {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr outPtr remoteAddrPtr sessionStorePtr prevStatesPtr : BitVec 64)

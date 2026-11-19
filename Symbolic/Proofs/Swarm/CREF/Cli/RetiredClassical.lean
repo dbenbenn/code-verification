@@ -9,7 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
+import Symbolic.Proofs.Refinement.Composed.Cli.Model
+public import LibsignalBinary.Specifications.SignalSession.Run
+public import Symbolic.Specifications.Concrete.ExternInterpretation
+public import Symbolic.Specifications.Concrete.MachineEvents
+public import Symbolic.Specifications.Model.Composed
+public import Symbolic.Specifications.Model.Instance
+public import Symbolic.Specifications.Refinement.CliSetup
+public import Symbolic.Specifications.Refinement.Statement
 
 /-!
 # Classical-Attacker Refinement Definitions
@@ -19,7 +26,7 @@ predicates without break, invert, or corrupt-registration environment events, br
 unified-attacker statement on `BreakFree` traces in `ClassicalBridge`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,7 +38,7 @@ open DY.Libsignal.HwEvents (RunEvent EnvEvent CliEvent)
 
 /-- Classical environment-event matching: matches `leak p k` against an environment leak step of
 `p` and rejects all other `EnvEvent` constructors. -/
-def EnvMatchesClassical (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def EnvMatchesClassical (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (tr : ExecTrace) (s : Step) (ev : EnvEvent) (vis : List VisEntry) : Prop :=
   match ev with
   | .leak p k =>
@@ -71,7 +78,7 @@ abbrev MatchesEventsClassical (interpretation : ExternInterpretation) (r : Proto
   MatchesEventsClassicalAt interpretation r S g none
 
 /-- Classical trace explanation over `MatchesEventsClassical`. -/
-def ExplainsClassical (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def ExplainsClassical (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ss : List Step) (vis : List VisEntry) (evs : List CliEvent) : Prop :=
   GhostAndSemMatchSetup interpretation r S g ∧ GhostWF g vis ∧ ModelRunWF r ss ∧
     MatchesEventsClassical interpretation r S g (setupTrace r) ss evs vis
@@ -109,7 +116,7 @@ inductive CliTracesClassical (Rel : Inputs → Option Outcome → Prop) (interp 
       CliTracesClassical Rel interp r t (leaks ++ [.run (runEventOf c none)])
 
 /-- Earlier accepted read collision along a `MatchesEventsClassical` prefix. -/
-def ReadCollisionCliClassical (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def ReadCollisionCliClassical (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ss : List Step) (evs : List CliEvent) : Prop :=
   ∃ (evs₁ : List CliEvent) (ev : RunEvent) (evs₂ : List CliEvent) (ss₁ ss₂ : List Step) (m : Step)
     (vis₁ : List VisEntry) (msgIdx : Nat) (out b : HwBytes) (t : DY.Bytes),
@@ -120,7 +127,7 @@ def ReadCollisionCliClassical (interp : ExternInterpretation) (r : ProtocolSetup
     (runTrace r ss₁).getMessageSentAt msgIdx = some t ∧
     RecvCollisionOn interp r S g (runTrace r ss₁) vis₁ (honestSaltsOf r ss₁) t
 
-def ModelAcceptsTermAfterAttackerSendsClassical (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def ModelAcceptsTermAfterAttackerSendsClassical (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ss : List Step) (evs₁ : List CliEvent) (ev : RunEvent) (t : DY.Bytes) : Prop :=
   ∃ (ext : List DY.Bytes) (m : Step) (msgIdx : Nat) (g₁ : Ghost) (vis₁ : List VisEntry),
     (∀ x ∈ ext, x.AttackerKnows (runTrace r ss)) ∧
@@ -129,7 +136,7 @@ def ModelAcceptsTermAfterAttackerSendsClassical (interp : ExternInterpretation) 
     (runTrace r (ss ++ ext.map .network)).getMessageSentAt msgIdx = some t ∧
     ExplainsClassical interp r S g₁ (ss ++ ext.map .network ++ [m]) vis₁ (evs₁ ++ [.run ev])
 
-def RepresentationsCollideOrAcceptedCollideClassical (interp : ExternInterpretation)
+@[expose] def RepresentationsCollideOrAcceptedCollideClassical (interp : ExternInterpretation)
     (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (evs₁ : List CliEvent) (g' : Ghost)
     (ss' : List Step) (vis' : List VisEntry) (ev : RunEvent) (b : HwBytes) : Prop :=
   let tr := runTrace r ss'
@@ -141,7 +148,7 @@ def RepresentationsCollideOrAcceptedCollideClassical (interp : ExternInterpretat
     ((∃ t ∈ reps, accepts t) ∧
       ∀ t ∈ reps, accepts t → RecvCollisionOn interp r S g' tr vis' salts t)
 
-def SignalMsgAcceptedOnlyViaCollisionClassical (interp : ExternInterpretation) (r : ProtocolSetup)
+@[expose] def SignalMsgAcceptedOnlyViaCollisionClassical (interp : ExternInterpretation) (r : ProtocolSetup)
     (S : OpaqueSymbolSemantics) (g : Ghost) (ss : List Step) (evs₁ : List CliEvent) (ev : RunEvent)
     (b : HwBytes) : Prop :=
   (∃ t, t ∈ recvRepresentationsOn interp S g (runTrace r ss) b) ∧
@@ -149,7 +156,7 @@ def SignalMsgAcceptedOnlyViaCollisionClassical (interp : ExternInterpretation) (
       ¬ ReadCollisionCliClassical interp r S g' ss' evs₁ →
       RepresentationsCollideOrAcceptedCollideClassical interp r S evs₁ g' ss' vis' ev b
 
-def PreKeyStartCollidesOrRejectsClassical (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def PreKeyStartCollidesOrRejectsClassical (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ss : List Step) (evs₁ : List CliEvent) (b : HwBytes) (p : PreKeyFields) : Prop :=
   (∃ x, x ∈ preKeyRepresentationsOn interp r S g (runTrace r ss) b) ∧
     (KyberMismatch interp r p ∨
@@ -158,12 +165,12 @@ def PreKeyStartCollidesOrRejectsClassical (interp : ExternInterpretation) (r : P
         ∀ x ∈ preKeyRepresentationsOn interp r S g' (runTrace r ss') b,
           BobSessionStartCollidesOrImplicitRejectsOn interp r S g' (runTrace r ss') vis' (honestSaltsOf r ss') p x)
 
-def PrefixExplainingGhostsClassical (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def PrefixExplainingGhostsClassical (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ss : List Step) (evs₁ : List CliEvent) : Set Ghost :=
   {g' | g'.σ = g.σ ∧ ∃ vis', ExplainsClassical interp r S g' ss vis' evs₁}
 
 /-- Collision excuse for the next `RunEvent` after a classical explained prefix `evs₁`. -/
-def NextEventCollidesClassical (interp : ExternInterpretation) (r : ProtocolSetup)
+@[expose] def NextEventCollidesClassical (interp : ExternInterpretation) (r : ProtocolSetup)
     (S : OpaqueSymbolSemantics) (g : Ghost) (ss : List Step) (vis : List VisEntry)
     (evs₁ : List CliEvent) (ev : RunEvent) : Prop :=
   let tr := runTrace r ss
@@ -189,7 +196,7 @@ def NextEventCollidesClassical (interp : ExternInterpretation) (r : ProtocolSetu
 
 /-- Existence of a classical explained prefix `evs₁` whose next `RunEvent` triggers
 `NextEventCollidesClassical`. -/
-def CollisionAfterExplainedPrefixClassical (interp : ExternInterpretation) (r : ProtocolSetup)
+@[expose] def CollisionAfterExplainedPrefixClassical (interp : ExternInterpretation) (r : ProtocolSetup)
     (S : OpaqueSymbolSemantics) (evs : List CliEvent) : Prop :=
   ∃ (evs₁ : List CliEvent) (ev : RunEvent) (evs₂ : List CliEvent) (g : Ghost) (ss : List Step)
     (vis : List VisEntry),

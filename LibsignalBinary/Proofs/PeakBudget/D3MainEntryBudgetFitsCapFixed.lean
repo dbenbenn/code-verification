@@ -9,40 +9,54 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
-public import LibsignalBinary.Proofs.PeakBudget.CliKitEnvFits
-public import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
-public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal
-public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
-public import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.MainEntryBudgetFitsCapReal
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemSlots
-public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3
-public import LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.W2RecvWhisperRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromCredit
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInst
-public import LibsignalBinary.Proofs.SignalSession.Cli.Parity.F3.BundleInitElfF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.AllPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssemblyPlacedBudget
+import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+import LibsignalBinary.Proofs.PeakBudget.CliKitEnvFits
+import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
+public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
+public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
+import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal
+import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
+import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+import LibsignalBinary.Proofs.PeakBudget.MainEntryBudgetFitsCapReal
+public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemSlots
+public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+import LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot
+import LibsignalBinary.Proofs.PeakBudget.W2RecvWhisperRealSlot
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromCredit
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInst -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Parity.F3.BundleInitElfF3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.AllPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssemblyPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeserAux
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptPlaced
 
 /-!
 # D3 `MainEntryBudgetFitsCapOf` Closure at `cliBudgetLimits` (`1 GiB`)
@@ -56,7 +70,7 @@ Discharges `MainEntryBudgetFitsCapOf fineCostModel cliBudgetLimits fineCostModel
    reads) at `cliBudgetLimits` (`1 GiB`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -64,7 +78,6 @@ set_option maxHeartbeats 400000
 
 namespace LibsignalBinary.Proofs.PeakBudget.D3MainEntryBudgetFitsCapFixed
 
-open Arm64.Obj (Image)
 open Arm64.Process (bytesOfString)
 open CryptoGames.LibsignalSessionApi (PreKeySignalMessage)
 open CryptoVerification (LibsignalPlacement)
@@ -128,7 +141,7 @@ theorem boundedReadFileEnv_of_readFileRuleEnvFixed_cliIo
   · exact boundedReadFileEnv_overCapSchedule
 
 /-- Address-normalized wire slice projection of `W8bAssemblyPlacedBudget.PksmTryFromEnv`. -/
-def PksmTryFromWireSliceEnv (rest : List (BitVec 8)) : List AllocEvent → Prop :=
+@[expose] def PksmTryFromWireSliceEnv (rest : List (BitVec 8)) : List AllocEvent → Prop :=
   PksmTryFromEnv ⟨0#64, rest, 0#64⟩
 
 section PksmWireSlicePriv
@@ -522,8 +535,8 @@ theorem pksmTryFromWireSlice_fine_groupSpec {rest : List (BitVec 8)}
 
 /-- Binary-kit `CliRunCalleeEnvs` bundle using `PksmTryFromWireSliceEnv` on `pksmEnv` and parametric
 `decPkEnv`. -/
-def mkD3BinaryKitCalleeEnvsWithDecPk [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+@[expose] def mkD3BinaryKitCalleeEnvsWithDecPk [LibsignalPlacement]
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (decPkEnv : RunCall → List AllocEvent → Prop) (g : RunCall) : CliRunCalleeEnvs :=
   { mkBinaryKitRealCalleeEnvsFixed img S X W g with
     pksmEnv := PksmTryFromWireSliceEnv
@@ -906,7 +919,7 @@ private theorem ownIkp_le_105_of_cliPqInputs {P : PEParams} {i : Inputs}
           (norm_dir_slash_ne_ikp (dir := "last-resort-kyber-pre-keys") (by decide) (by decide) (by decide))
 
 private theorem initEnv_eq_w3Fixed [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {g : RunCall} (hi : CliPqOrD3RecvInputs ⟨W.C, W.Q⟩ g.i) :
     (mkBinaryKitRealCalleeEnvs img S X W g).initEnv =
       (match g.c with
@@ -933,7 +946,7 @@ private theorem initEnv_eq_w3Fixed [LibsignalPlacement]
   | recv _ => rfl
 
 private theorem d3KitW3_credit [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {g : RunCall} (hi : CliPqOrD3RecvInputs ⟨W.C, W.Q⟩ g.i) :
     PhaseCreditSpec fineCostModel (mkBinaryKitRealCalleeEnvs img S X W g).initEnv
       d3KitW3Cum d3KitW3Live d3KitW3Peak d3KitW3MaxReq := by
@@ -943,7 +956,7 @@ private theorem d3KitW3_credit [LibsignalPlacement]
     ownIkp_le_105_of_cliPqInputs hi₀ bs (hfiles₀.symm ▸ hrd))).credit
 
 private theorem d3KitW3_groups [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {g : RunCall} (hi : CliPqOrD3RecvInputs ⟨W.C, W.Q⟩ g.i) :
     PhaseGroupSpec fineCostModel (mkBinaryKitRealCalleeEnvs img S X W g).initEnv d3KitW3GrpS := by
   obtain ⟨g₀, hi₀, _, _, hfiles₀⟩ := exists_cliPqxdhInputs_same_argv_runFiles hi
@@ -982,7 +995,7 @@ private theorem w4Dom_congr_runFiles {c : CallV} {i i₀ : Inputs} {w : W4Binary
     exact ⟨h1, h2, h3.trans hf, h4, h5⟩⟩
 
 private theorem encEnv_congr_runFiles [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {g g₀ : RunCall} (hc : g₀.c = g.c) (hf : runFiles g₀.i = runFiles g.i) :
     (mkBinaryKitRealCalleeEnvs img S X W g).encEnv =
       (mkBinaryKitRealCalleeEnvs img S X W g₀).encEnv := by
@@ -999,7 +1012,7 @@ private theorem encEnv_congr_runFiles [LibsignalPlacement]
   | recv _ => rfl
 
 private theorem decSigEnv_congr_runFiles [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {g g₀ : RunCall} (hc : g₀.c = g.c) (hf : runFiles g₀.i = runFiles g.i) :
     (mkBinaryKitRealCalleeEnvs img S X W g).decSigEnv =
       (mkBinaryKitRealCalleeEnvs img S X W g₀).decSigEnv := by
@@ -1016,7 +1029,7 @@ private theorem decSigEnv_congr_runFiles [LibsignalPlacement]
   | send _ => rfl
 
 private theorem decPkEnvFixed_congr_runFiles [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {g g₀ : RunCall} (hc : g₀.c = g.c) (hf : runFiles g₀.i = runFiles g.i) :
     (mkBinaryKitRealCalleeEnvsFixed img S X W g).decPkEnv =
       (mkBinaryKitRealCalleeEnvsFixed img S X W g₀).decPkEnv := by
@@ -1033,7 +1046,7 @@ private theorem decPkEnvFixed_congr_runFiles [LibsignalPlacement]
   | send _ => rfl
 
 private theorem d3KitW1_credit [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {g : RunCall} (hi : CliPqOrD3RecvInputs ⟨W.C, W.Q⟩ g.i)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
     PhaseCreditSpec fineCostModel (mkBinaryKitRealCalleeEnvs img S X W g).encEnv
@@ -1045,7 +1058,7 @@ private theorem d3KitW1_credit [LibsignalPlacement]
   exact (binaryKitW1_fineSpec img S X W g₀ hi₀ hparse₀).credit
 
 private theorem d3KitW1_groups [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {g : RunCall} (hi : CliPqOrD3RecvInputs ⟨W.C, W.Q⟩ g.i)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
     PhaseGroupSpec fineCostModel (mkBinaryKitRealCalleeEnvs img S X W g).encEnv
@@ -1057,7 +1070,7 @@ private theorem d3KitW1_groups [LibsignalPlacement]
   exact (binaryKitW1_fineSpec img S X W g₀ hi₀ hparse₀).groups
 
 private theorem d3KitW2_credit [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {g : RunCall} (hi : CliPqOrD3RecvInputs ⟨W.C, W.Q⟩ g.i)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
     PhaseCreditSpec fineCostModel (mkBinaryKitRealCalleeEnvs img S X W g).decSigEnv
@@ -1070,7 +1083,7 @@ private theorem d3KitW2_credit [LibsignalPlacement]
   exact (binaryKitW2_fineSpec img S X W g₀ hi₀ hparse₀).credit
 
 private theorem d3KitW2_groups [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {g : RunCall} (hi : CliPqOrD3RecvInputs ⟨W.C, W.Q⟩ g.i)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
     PhaseGroupSpec fineCostModel (mkBinaryKitRealCalleeEnvs img S X W g).decSigEnv
@@ -1082,7 +1095,7 @@ private theorem d3KitW2_groups [LibsignalPlacement]
   exact (binaryKitW2_fineSpec img S X W g₀ hi₀ hparse₀).groups
 
 private theorem d3KitW4Fixed_credit [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {g : RunCall} (hi : CliPqOrD3RecvInputs ⟨W.C, W.Q⟩ g.i)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
     PhaseCreditSpec fineCostModel (mkBinaryKitRealCalleeEnvsFixed img S X W g).decPkEnv
@@ -1094,7 +1107,7 @@ private theorem d3KitW4Fixed_credit [LibsignalPlacement]
   exact (binaryKitW4Fixed_fineSpec img S X W g₀ hi₀ hparse₀).credit
 
 private theorem d3KitW4Fixed_groups [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {g : RunCall} (hi : CliPqOrD3RecvInputs ⟨W.C, W.Q⟩ g.i)
     (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
     PhaseGroupSpec fineCostModel (mkBinaryKitRealCalleeEnvsFixed img S X W g).decPkEnv
@@ -1106,7 +1119,7 @@ private theorem d3KitW4Fixed_groups [LibsignalPlacement]
   exact (binaryKitW4Fixed_fineSpec img S X W g₀ hi₀ hparse₀).groups
 
 private def d3BinaryKitCalleeFineSpecs [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {decPkEnv : RunCall → List AllocEvent → Prop} {g : RunCall}
     (S_pk : SingleSlotFineSpec (decPkEnv g))
     (hi : CliPqOrD3RecvInputs ⟨W.C, W.Q⟩ g.i)
@@ -1223,7 +1236,7 @@ private theorem optStage_groupSpec_p2 {P : List AllocEvent → Prop} {g : Nat}
   ((PhaseGroupSpec.freeOnly fineCostModel).or h).mono (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩)
 
 private theorem d3BinaryKitCalleeFineSpecs_bounds [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {decPkEnv : RunCall → List AllocEvent → Prop} {g : RunCall}
     (S_pk : SingleSlotFineSpec (decPkEnv g))
     (hCaps : S_pk.cum ≤ binaryKitW4FixedCum ∧
@@ -1299,7 +1312,7 @@ private theorem seqEnv_mono_p2 {A₁ A₂ B₁ B₂ : List AllocEvent → Prop}
   · exact Or.inr ⟨e₁, e₂, rfl, ha e₁ h1, hb e₂ h2⟩
 
 private theorem realCliMainD3RecvWithDecPk_fitsEnv_cliBudgetLimits_w4Fixed [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (decPkEnv : RunCall → List AllocEvent → Prop)
     (S_pk : ∀ (g : RunCall),
       CliPqOrD3RecvInputs ⟨W.C, W.Q⟩ g.i →
@@ -1416,7 +1429,7 @@ private theorem realCliMainD3RecvWithDecPk_fitsEnv_cliBudgetLimits_w4Fixed [Libs
 /-- Whole-`main` `FitsEnv fineCostModel cliBudgetLimits` (`1 GiB`) on `CliPqOrD3RecvInputs ⟨W.C, W.Q⟩`
 for `mkD3BinaryKitCalleeEnvsWithDecPk` with any `decPkEnv` bounded by `d3RecvW4Ext*`. -/
 theorem realCliMainD3RecvWithDecPk_fitsEnv_cliBudgetLimits [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (decPkEnv : RunCall → List AllocEvent → Prop)
     (S_pk : ∀ (g : RunCall),
       CliPqOrD3RecvInputs ⟨W.C, W.Q⟩ g.i →
@@ -1451,7 +1464,7 @@ theorem realCliMainD3RecvWithDecPk_fitsEnv_cliBudgetLimits [LibsignalPlacement]
 `(mkBinaryKitRealCalleeEnvsFixed img S X W g).decPkEnv` on `CliPqOrD3RecvInputs` prekey calls. -/
 theorem mainEntryBudgetFitsCapOf_pqD3Recv_fixed [LibsignalPlacement]
     {M : AllocCostModel}
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     (DecPkSlotEnv : DecPkGhost → List AllocEvent → Prop)
     (hNwDom : ∀ (i : Inputs) (nw : List (String × List (BitVec 8))) (out : List (BitVec 8)),
@@ -3291,7 +3304,7 @@ set_option linter.unusedVariables false
 (`CliInitD3Inputs ⟨W.C, W.Q⟩`, covering `initOverFileCap` with `ReadFileRuleEnvFixed cliIo.rd`). -/
 theorem mainEntryBudgetFitsCapOf_initD3ScopedRun_fixed [LibsignalPlacement]
     {M : AllocCostModel}
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     (DecPkSlotEnv : DecPkGhost → List AllocEvent → Prop)
     (hNwDom : ∀ (i : Inputs) (nw : List (String × List (BitVec 8))) (out : List (BitVec 8)),

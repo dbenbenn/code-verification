@@ -305,16 +305,6 @@ theorem modelRunWF_ssClean {r : ProtocolSetup} {cls : Nat → Nat} (k : Nat)
   rw [← List.take_append_drop k (cleanCallSteps cls cleanSpqrIdxs)] at hfull
   exact modelRunWF_of_append hfull
 
-theorem step_ok_ssClean {r : ProtocolSetup} {cls : Nat → Nat} {k : Nat} {s : Step}
-    (hfit : evictedCompFitsPinned (evictedI0, evictedHooks0) r)
-    (hv : ValidCoinLens cls)
-    (hk : k < 24)
-    (hs : (cleanCallSteps cls cleanSpqrIdxs)[k]? = some s) :
-    s.ok (runTrace r (ssClean cls cleanSpqrIdxs k)) = true := by
-  unfold runTrace
-  rw [setupTrace_eq_t4 hfit]
-  exact (stepsWF_and_honest_full hv).2.2.1 k hk s hs
-
 theorem ssClean_succ {cls : Nat → Nat} {spqrIdxs : Nat → UInt32} {k : Nat} {s : Step}
     (hs : (cleanCallSteps cls spqrIdxs)[k]? = some s) :
     ssClean cls spqrIdxs (k + 1) = ssClean cls spqrIdxs k ++ [s] := by

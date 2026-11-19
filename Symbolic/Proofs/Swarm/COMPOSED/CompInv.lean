@@ -27,7 +27,7 @@ Proves that `SpqrInv` holds on every reachable trace of `Composed.reachability`
 secrecy (`bob_responder_secrecy`), and handshake authentication (`authentication`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

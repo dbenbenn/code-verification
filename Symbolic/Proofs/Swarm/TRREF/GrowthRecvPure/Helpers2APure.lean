@@ -9,12 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers1BPure
-public import ProofLib.Lemmas
+public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers1BPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.ProofHubsPure
 import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers1APure
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -166,7 +165,7 @@ theorem encodeRepeatedMessage_set_le {M : Type} (encodeRaw : M → Bytes) (tag :
     have ih := encodeRepeatedMessage_set_le encodeRaw tag K xs i x x' hget hle
     omega
 
-def bytesSum (xs : List Bytes) : Nat := (xs.map List.length).sum
+@[expose] def bytesSum (xs : List Bytes) : Nat := (xs.map List.length).sum
 
 @[scoped simp]
 theorem bytesSum_nil : bytesSum [] = 0 := rfl
@@ -189,12 +188,12 @@ theorem mergeRepeatedBytes_bytesSum_le {wt : Proto.WireType} {xs xs' : List Byte
   rcases mergeBytes_length_le hm with ⟨h1, _⟩
   rw [bytesSum_append]; omega
 
-def encWeight (m : PolynomialEncoder) : Nat := bytesSum m.pts + bytesSum m.polys
-def optEncWeight : Option PolynomialEncoder → Nat := optWeight encWeight
-def decWeight (m : PolynomialDecoder) : Nat := bytesSum m.pts
-def optDecWeight : Option PolynomialDecoder → Nat := optWeight decWeight
-def authWeight (m : ProtoAuthenticator) : Nat := m.rootKey.length + m.macKey.length
-def optAuthWeight : Option ProtoAuthenticator → Nat := optWeight authWeight
+@[expose] def encWeight (m : PolynomialEncoder) : Nat := bytesSum m.pts + bytesSum m.polys
+@[expose] def optEncWeight : Option PolynomialEncoder → Nat := optWeight encWeight
+@[expose] def decWeight (m : PolynomialDecoder) : Nat := bytesSum m.pts
+@[expose] def optDecWeight : Option PolynomialDecoder → Nat := optWeight decWeight
+@[expose] def authWeight (m : ProtoAuthenticator) : Nat := m.rootKey.length + m.macKey.length
+@[expose] def optAuthWeight : Option ProtoAuthenticator → Nat := optWeight authWeight
 
 theorem polyEnc_mergeField_weight_le (d : Nat) (m : PolynomialEncoder) (tag : BitVec 32) (wt : Proto.WireType)
     (rest : Bytes) (m' : PolynomialEncoder) (rest' : Bytes)
@@ -456,27 +455,27 @@ theorem mergeMessage_weight_le {M : Type}
       have hm1 := mergeFieldsLoop_weight_le mergeField w depth' (hstep depth') sub.length prev m1 sub hloop
       omega
 
-def ckKeysUnsampledW (m : V1State.Chunked.KeysUnsampled) : Nat :=
+@[expose] def ckKeysUnsampledW (m : V1State.Chunked.KeysUnsampled) : Nat :=
   optWeight (fun u => optAuthWeight u.auth) m.uc
-def ckKeysSampledW (m : V1State.Chunked.KeysSampled) : Nat :=
+@[expose] def ckKeysSampledW (m : V1State.Chunked.KeysSampled) : Nat :=
   optWeight (fun u => optAuthWeight u.auth) m.uc + optEncWeight m.sendingHdr
-def ckHeaderSentW (m : V1State.Chunked.HeaderSent) : Nat :=
+@[expose] def ckHeaderSentW (m : V1State.Chunked.HeaderSent) : Nat :=
   optWeight (fun u => optAuthWeight u.auth) m.uc + optEncWeight m.sendingEk + optDecWeight m.receivingCt1
-def ckCt1ReceivedW (m : V1State.Chunked.Ct1Received) : Nat :=
+@[expose] def ckCt1ReceivedW (m : V1State.Chunked.Ct1Received) : Nat :=
   optWeight (fun u => optAuthWeight u.auth) m.uc + optEncWeight m.sendingEk
-def ckEkSentCt1ReceivedW (m : V1State.Chunked.EkSentCt1Received) : Nat :=
+@[expose] def ckEkSentCt1ReceivedW (m : V1State.Chunked.EkSentCt1Received) : Nat :=
   optWeight (fun u => optAuthWeight u.auth) m.uc + optDecWeight m.receivingCt2
-def ckNoHeaderReceivedW (m : V1State.Chunked.NoHeaderReceived) : Nat :=
+@[expose] def ckNoHeaderReceivedW (m : V1State.Chunked.NoHeaderReceived) : Nat :=
   optWeight (fun u => optAuthWeight u.auth) m.uc + optDecWeight m.receivingHdr
-def ckHeaderReceivedW (m : V1State.Chunked.HeaderReceived) : Nat :=
+@[expose] def ckHeaderReceivedW (m : V1State.Chunked.HeaderReceived) : Nat :=
   optWeight (fun u => optAuthWeight u.auth) m.uc + optDecWeight m.receivingEk
-def ckCt1SampledW (m : V1State.Chunked.Ct1Sampled) : Nat :=
+@[expose] def ckCt1SampledW (m : V1State.Chunked.Ct1Sampled) : Nat :=
   optWeight (fun u => optAuthWeight u.auth) m.uc + optEncWeight m.sendingCt1 + optDecWeight m.receivingEk
-def ckEkReceivedCt1SampledW (m : V1State.Chunked.EkReceivedCt1Sampled) : Nat :=
+@[expose] def ckEkReceivedCt1SampledW (m : V1State.Chunked.EkReceivedCt1Sampled) : Nat :=
   optWeight (fun u => optAuthWeight u.auth) m.uc + optEncWeight m.sendingCt1
-def ckCt1AcknowledgedW (m : V1State.Chunked.Ct1Acknowledged) : Nat :=
+@[expose] def ckCt1AcknowledgedW (m : V1State.Chunked.Ct1Acknowledged) : Nat :=
   optWeight (fun u => optAuthWeight u.auth) m.uc + optDecWeight m.receivingEk
-def ckCt2SampledW (m : V1State.Chunked.Ct2Sampled) : Nat :=
+@[expose] def ckCt2SampledW (m : V1State.Chunked.Ct2Sampled) : Nat :=
   optWeight (fun u => optAuthWeight u.auth) m.uc + optEncWeight m.sendingCt2
 
 end Symbolic.Swarm.TRREF.GrowthRecvPureB

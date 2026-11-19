@@ -10,10 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Unchunked.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Unchunked
-public import LibsignalBinary.Proofs.SpqrV1.Auth.FromPb
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Unchunked -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.FromPb -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Layout Predicates and Specifications for `<Ct1Sent>::from_pb` and `<EkSentCt1Received>::from_pb`
@@ -23,7 +24,7 @@ Defines binary layout predicates (`ct1SentAt`, `ekSentCt1ReceivedAt`, `ct1SentRe
 and shared `Vec<u8>` / stack helpers.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Unchunked
 
@@ -62,7 +63,7 @@ abbrev ekSentCt1ReceivedFromPbStack : Nat := authFromPbStack + 144
     - `+72..+96`: `es: Vec<u8>`
     - `+96..+120`: `ct1: Vec<u8>`
     - `+120..+128`: `epoch: u64` -/
-def ct1SentAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def ct1SentAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Unchunked.SendCt.Ct1Sent (spqrAuthApi F)) : SepProp :=
   authenticatorAt A a st.auth ∗
     vecU8 A (a + 48#64) st.hdr ∗
@@ -75,7 +76,7 @@ def ct1SentAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     - `+48..+72`: `dk: Vec<u8>`
     - `+72..+96`: `ct1: Vec<u8>`
     - `+96..+104`: `epoch: u64` -/
-def ekSentCt1ReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def ekSentCt1ReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Unchunked.SendEk.EkSentCt1Received (spqrAuthApi F)) : SepProp :=
   authenticatorAt A a st.auth ∗
     vecU8 A (a + 48#64) st.dk ∗
@@ -86,7 +87,7 @@ def ekSentCt1ReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     - `.ok st`: `ct1SentAt A a st` (`[a + 0]` is `st.auth.rootKey.cap < 2^63`, so `≠ noneCap`)
     - `.error _`: `(a ↦₆₄ noneCap) ∗ ((a + 8#64) ↦₈ 0#8) ∗ memRegion (a + 9#64) 119`
       (`niche = -1` at `+0`, `Error::StateDecode = 0#8` at `+8`). -/
-def ct1SentResultAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
+@[expose] def ct1SentResultAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
     StatesResult (Unchunked.SendCt.Ct1Sent (spqrAuthApi F)) → SepProp
   | .ok st => ct1SentAt A a st
   | .error _ => (a ↦₆₄ noneCap) ∗ ((a + 8#64) ↦₈ 0#8) ∗ memRegion (a + 9#64) 119
@@ -95,7 +96,7 @@ def ct1SentResultAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
     - `.ok st`: `ekSentCt1ReceivedAt A a st` (`[a + 0]` is `st.auth.rootKey.cap < 2^63`, so `≠ noneCap`)
     - `.error _`: `(a ↦₆₄ noneCap) ∗ ((a + 8#64) ↦₈ 0#8) ∗ memRegion (a + 9#64) 95`
       (`niche = -1` at `+0`, `Error::StateDecode = 0#8` at `+8`). -/
-def ekSentCt1ReceivedResultAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
+@[expose] def ekSentCt1ReceivedResultAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
     StatesResult (Unchunked.SendEk.EkSentCt1Received (spqrAuthApi F)) → SepProp
   | .ok st => ekSentCt1ReceivedAt A a st
   | .error _ => (a ↦₆₄ noneCap) ∗ ((a + 8#64) ↦₈ 0#8) ∗ memRegion (a + 9#64) 95
@@ -111,7 +112,7 @@ structure Ct1SentFromPbGhost where
   pb : V1State.Unchunked.Ct1Sent
 
 /-- Specification of `<spqr::v1::unchunked::send_ct::Ct1Sent>::from_pb` (`x0 = out`, `x1 = pbA`). -/
-def ct1SentFromPbSpec (A : RustAlloc) (F : ShaCompress) : Spec Ct1SentFromPbGhost where
+@[expose] def ct1SentFromPbSpec (A : RustAlloc) (F : ShaCompress) : Spec Ct1SentFromPbGhost where
   pre x s :=
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.pbA⌝ ∗
       memRegion x.out 128 ∗
@@ -124,13 +125,7 @@ def ct1SentFromPbSpec (A : RustAlloc) (F : ShaCompress) : Spec Ct1SentFromPbGhos
       A.pool ∗ stackAt s0.sp ct1SentFromPbStack
   onPanic _ s0 sf := ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def Ct1SentFromPbOkX (img : Obj.Image) (A : RustAlloc) (F : ShaCompress)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr ct1SentFromPbName)
-    ((ct1SentFromPbSpec A F).inImage img)
-
-def Ct1SentFromPbPlacedOk [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def Ct1SentFromPbPlacedOk [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_339).rebase (blkPl_339).base H) (blkPl_339).base
     (ct1SentFromPbSpec A F)
@@ -144,7 +139,7 @@ structure EkSentCt1ReceivedFromPbGhost where
   pb : V1State.Unchunked.EkSentCt1Received
 
 /-- Specification of `<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb` (`x0 = out`, `x1 = pbA`). -/
-def ekSentCt1ReceivedFromPbSpec (A : RustAlloc) (F : ShaCompress) :
+@[expose] def ekSentCt1ReceivedFromPbSpec (A : RustAlloc) (F : ShaCompress) :
     Spec EkSentCt1ReceivedFromPbGhost where
   pre x s :=
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.pbA⌝ ∗
@@ -159,13 +154,7 @@ def ekSentCt1ReceivedFromPbSpec (A : RustAlloc) (F : ShaCompress) :
       A.pool ∗ stackAt s0.sp ekSentCt1ReceivedFromPbStack
   onPanic _ s0 sf := ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def EkSentCt1ReceivedFromPbOkX (img : Obj.Image) (A : RustAlloc) (F : ShaCompress)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr ekSentCt1ReceivedFromPbName)
-    ((ekSentCt1ReceivedFromPbSpec A F).inImage img)
-
-def EkSentCt1ReceivedFromPbPlacedOk [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def EkSentCt1ReceivedFromPbPlacedOk [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_348).rebase (blkPl_348).base H) (blkPl_348).base
     (ekSentCt1ReceivedFromPbSpec A F)
@@ -173,7 +162,7 @@ def EkSentCt1ReceivedFromPbPlacedOk [LibsignalPlacement] (A : RustAlloc) (F : Sh
 /-! ## Shared Memory, Stack, and `Vec<u8>` Helpers -/
 
 /-- Heap payload + bounds of a `Vec<u8>` separated from its 3 header words. -/
-def vecU8Payload (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Payload (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0#64⌝ ∗
     (if cap = 0#64 then emp
      else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
@@ -575,7 +564,7 @@ theorem extractLsb'_64_64_append (v2 v1 : BitVec 64) :
     show ¬(64 + i < 64) by omega]
 
 /-- Tail of `authenticatorPBPinnedAt A ga p auth` after separating `(p ↦₆₄ ga.rootKey.cap)`. -/
-def authPBPinnedTailAt (A : RustAlloc) (ga : AuthenticatorPBGhost) (p : BitVec 64)
+@[expose] def authPBPinnedTailAt (A : RustAlloc) (ga : AuthenticatorPBGhost) (p : BitVec 64)
     (auth : ProtoAuthenticator) : SepProp :=
   ((p + 8#64) ↦₆₄ ga.rootKey.ptr) ∗ ((p + 16#64) ↦₆₄ BitVec.ofNat 64 auth.rootKey.length) ∗
     vecU8Payload A ga.rootKey.cap ga.rootKey.ptr auth.rootKey ∗
@@ -642,7 +631,7 @@ theorem authenticatorPBPinnedAt_entails_dealloc (A : RustAlloc) (ga : Authentica
   dsimp only
   exact Entails.of_eq (by ac_rfl)
 
-def auth48HeadersAt (a : BitVec 64) (ga : TwoVecGhost) : SepProp :=
+@[expose] def auth48HeadersAt (a : BitVec 64) (ga : TwoVecGhost) : SepProp :=
   ((a + 48#64) ↦₆₄ ga.v1.cap) ∗ ((a + 56#64) ↦₆₄ ga.v1.ptr) ∗ memRegion (a + 64#64) 8 ∗
   ((a + 72#64) ↦₆₄ ga.v2.cap) ∗ ((a + 80#64) ↦₆₄ ga.v2.ptr) ∗ memRegion (a + 88#64) 8
 

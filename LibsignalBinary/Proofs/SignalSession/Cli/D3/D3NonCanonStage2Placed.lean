@@ -9,12 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonStage2PathAPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverFoldsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonStage2PathAPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverFoldsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Steps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4KyberRefused -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub4Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub5Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonStage2AuxPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverFolds -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureDefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CoinsBridgePlaced
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Over-Path (`Path C`) Stage P2 for Non-Canonical `PreKeySignalMessage` Wire Encodings
@@ -24,14 +39,14 @@ relocatable Over-Path (`Path C`) Stage P2 contracts for arbitrary `pm : PreKeySi
 satisfying `pkToE? pm = some m` (`pm.serialized` unconstrained).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.D3
 
-open Arm64 Arm64.Process ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection ProofLib.Variant
+open Arm64 Arm64.Process ProofLib ProofLib.ProgramReflection ProofLib.Variant
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSession CryptoVerification.LibsignalSessionRepr
@@ -421,7 +436,7 @@ theorem p2OverOkPost_fold_pathCOver_d3_placed {B : RunBudgets} {S : RunSem} [Lib
 
 /-- Pure model-rejection witness discharged on all 6 Stage P2 error arms on Path C (`Over`)
 for arbitrary `pm.serialized` under `[LibsignalPlacement]`. -/
-def StageP2PathCOverModelRejD3Placed (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+@[expose] def StageP2PathCOverModelRejD3Placed (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (F : FsFiles) (pm : PreKeySignalMessage) : Prop :=
   ∃ (m : PreKeyMessageFields) (i : SignalMessage),
     pkToE? pm = some m ∧
@@ -439,7 +454,7 @@ def StageP2PathCOverModelRejD3Placed (X : UnreachedPqxdhPrimitives) (W : CliHook
 
 /-- Exit postcondition of all 6 Stage P2 store-error and PQXDH-rejection arms on Path C (`Over`)
 for arbitrary `pm.serialized` under `[LibsignalPlacement]`. -/
-def StageP2PathCOverErrD3Placed [LibsignalPlacement] (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+@[expose] def StageP2PathCOverErrD3Placed [LibsignalPlacement] (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (B : RunBudgets) (x : DecPkGhost) (fut out : BitVec 64)
     (s1 sf : State) (sp : BitVec 64) (Pf : SepProp) : Prop :=
   ∃ err : ApiError AddrVal Unit,

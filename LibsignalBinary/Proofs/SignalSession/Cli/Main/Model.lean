@@ -11,9 +11,12 @@ module
 
 public meta import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs -- shake: keep
 import all Init.Data.String.Defs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Kits
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.Run
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.RunProofDefs
+public import ProofLib.Hoare.LibcHooks
+public import ProofLib.Simulation
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
 
 /-!
 # Pure Specification Model for `signal-session` `main`
@@ -23,7 +26,7 @@ run inputs (`coinsOf`, `inputOf`), and sequential store commits (`WriteRule`, `c
 with `#guard` edge-case checks.
 -/
 
-@[expose] public section
+public section
 
 set_option warningAsError false
 
@@ -38,11 +41,11 @@ open CryptoVerification.LibsignalPublicApi.StoreKit
 
 /-! ## Argument Parsing -/
 
-def isDigit (b : BitVec 8) : Bool := decide (48 ≤ b.toNat ∧ b.toNat ≤ 57)
+@[expose] def isDigit (b : BitVec 8) : Bool := decide (48 ≤ b.toNat ∧ b.toNat ≤ 57)
 
 /-- Unsigned base-10 integer parser (`<uN as FromStr>::from_str`): optional leading `'+'` followed by
 one or more ASCII digits with value `≤ bound`. -/
-def parseUnsigned (bound : Nat) (bs : List (BitVec 8)) : Option Nat :=
+@[expose] def parseUnsigned (bound : Nat) (bs : List (BitVec 8)) : Option Nat :=
   let ds := match bs with
     | b :: rest => if b = 43#8 then rest else bs
     | [] => []
@@ -52,7 +55,7 @@ def parseUnsigned (bound : Nat) (bs : List (BitVec 8)) : Option Nat :=
     if v ≤ bound then some v else none
 
 /-- Splits `bs` around its last `'.'` byte (`str::rsplit_once('.')`). -/
-def rsplitDot (bs : List (BitVec 8)) : Option (List (BitVec 8) × List (BitVec 8)) :=
+@[expose] def rsplitDot (bs : List (BitVec 8)) : Option (List (BitVec 8) × List (BitVec 8)) :=
   match bs.reverse.span (fun b => b != 46#8) with
   | (_, []) => none
   | (devR, _ :: nameR) => some (nameR.reverse, devR.reverse)
@@ -63,7 +66,7 @@ structure AddrV where
   device : BitVec 8
 
 /-- Parses `<service-id>.<device>` with `serviceIdParse uuidParse` and `u8` device ID in `1..=127`. -/
-def addrParse (uuidParse : UuidParser) (bs : List (BitVec 8)) : Option AddrV :=
+@[expose] def addrParse (uuidParse : UuidParser) (bs : List (BitVec 8)) : Option AddrV :=
   match rsplitDot bs with
   | none => none
   | some (name, dev) =>
@@ -79,14 +82,14 @@ inductive CallV where
   | recv (peer : AddrV)
 
 /-- Numeric command tag (`0` keygen, `1` init, `2` send, `3` recv). -/
-def CallV.tag : CallV → Nat
+@[expose] def CallV.tag : CallV → Nat
   | .keygen .. => 0
   | .init .. => 1
   | .send _ => 2
   | .recv _ => 3
 
 /-- Parses `argv[1..]` (for ASCII arguments) into `Option CallV`, requiring `n ≤ 100` for `keygen`. -/
-def parseArgs (uuidParse : UuidParser) : List (List (BitVec 8)) → Option CallV
+@[expose] def parseArgs (uuidParse : UuidParser) : List (List (BitVec 8)) → Option CallV
   | [c, a, x] =>
     if c = utf8 "keygen" then
       match addrParse uuidParse a, parseUnsigned (2 ^ 32 - 1) x with
@@ -193,10 +196,10 @@ theorem parseArgs_none_of_shape (uuidParse : UuidParser) {argv : List String}
 /-! ## Read Inputs -/
 
 /-- Bytes returned by `read_file("coins")` on `i` (defaulting to `[]` if absent). -/
-def coinsOf (i : Inputs) : List (BitVec 8) := (filesOf i.files "coins").getD []
+@[expose] def coinsOf (i : Inputs) : List (BitVec 8) := (filesOf i.files "coins").getD []
 
 /-- Input byte slice passed to `run`: `i.stdin` for `send`/`recv`, `[]` for `keygen`/`init`. -/
-def inputOf (i : Inputs) (c : CallV) : List (BitVec 8) := if 1 < c.tag then i.stdin else []
+@[expose] def inputOf (i : Inputs) (c : CallV) : List (BitVec 8) := if 1 < c.tag then i.stdin else []
 
 /-! ## `Stores::commit` -/
 
@@ -204,7 +207,7 @@ def inputOf (i : Inputs) (c : CallV) : List (BitVec 8) := if 1 < c.tag then i.st
 abbrev WriteRule : Type := FsFiles → List (BitVec 8) → List (BitVec 8) → Option FsFiles
 
 /-- Sequential `Stores::commit` fold over `wr`, short-circuiting on the first `none` (`Err`). -/
-def commitFiles (wr : WriteRule) : FsFiles → List (List (BitVec 8) × List (BitVec 8)) → Option FsFiles
+@[expose] def commitFiles (wr : WriteRule) : FsFiles → List (List (BitVec 8) × List (BitVec 8)) → Option FsFiles
   | F, [] => some F
   | F, (p, bs) :: ws => match wr F p bs with
     | some F' => commitFiles wr F' ws

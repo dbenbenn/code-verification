@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKem
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreSim
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKem -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreSim -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 
 /-!
@@ -20,7 +20,7 @@ Value encodings of the `KemShCr` reduction state and evaluation lemmas for share
 components (`onBase`, `preCheckC`, `checkSigsC`, `initFinishC`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,24 +31,24 @@ open OracleSpec OracleComp RoKem
 
 namespace SignalPqxdh.Security.ReductionDsl.KeyInd
 
-def initRecToVal {S : Setup} (r : RoKem.InitKemRecord S) : initRecTy.denote :=
+@[expose] def initRecToVal {S : Setup} (r : RoKem.InitKemRecord S) : initRecTy.denote :=
   (r.sendIdx, (sessionIdToVal r.sid, (r.pqspkPk, (r.kemCt, r.kemSs))))
 
-def recvRecToVal (r : RoKem.RecvKemRecord) : recvRecTy.denote :=
+@[expose] def recvRecToVal (r : RoKem.RecvKemRecord) : recvRecTy.denote :=
   (0, (r.k, (r.j, (r.pqspkPk, (r.pqspkSk, (r.kemCt, r.kemSs))))))
 
 /-- Value encoding of `KeyIndShCrState` with pause index `sIdx` and chosen public key. -/
-def shcrStToVal {S : Setup} (h : KeyIndShCrState S) (sIdx : Nat) (chosen : Bytes) :
+@[expose] def shcrStToVal {S : Setup} (h : KeyIndShCrState S) (sIdx : Nat) (chosen : Bytes) :
     shcrStTy.denote :=
   (keyIndStateToVal h.base, (h.targetBIdx?.map (fun bIdx => (bIdx / S.N_recv, bIdx % S.N_recv)),
     (h.targetPk, (h.targetSk, (h.sendCount,
     (h.initKemRecs.map initRecToVal, (h.recvKemRecs.map recvRecToVal, (sIdx, chosen))))))))
 
-def encSCS {S : Setup} (sIdx : Nat) (chosen : Bytes) (p : KeyIndResponse × KeyIndShCrState S) :
+@[expose] def encSCS {S : Setup} (sIdx : Nat) (chosen : Bytes) (p : KeyIndResponse × KeyIndShCrState S) :
     SCS.denote :=
   (keyIndRespToVal p.1, shcrStToVal p.2 sIdx chosen)
 
-def encFin {S : Setup} (s : KeyIndState S) (p : KeyIndResponse × Option (KeyIndState S)) :
+@[expose] def encFin {S : Setup} (s : KeyIndState S) (p : KeyIndResponse × Option (KeyIndState S)) :
     RS.denote :=
   (keyIndRespToVal p.1, keyIndStateToVal (p.2.getD s))
 
@@ -70,7 +70,7 @@ theorem onBase_eval (sV : Var Γ₁ shcrStTy) (h : KeyIndShCrState S) (sIdx : Na
     pure_bind]
   rfl
 
-def preCheckFullPrim (S : Setup) (sid : SessionId S) (u : Nat) (bundle : PreKeyBundleInput)
+@[expose] def preCheckFullPrim (S : Setup) (sid : SessionId S) (u : Nat) (bundle : PreKeyBundleInput)
     (st : KeyIndState S) : OracleComp PrimBaseSpec (Option (Nat × PrincipalEntry)) :=
   if st.sessions.any (fun e => e.sid == sid) then pure none
   else match st.principals.find? (fun (idx, _) => idx == u) with

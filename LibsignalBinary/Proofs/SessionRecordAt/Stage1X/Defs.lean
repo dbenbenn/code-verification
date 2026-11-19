@@ -9,23 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Defs
 public import LibsignalBinary.Proofs.ConsumeMessageKey.Defs
-public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym
-public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.FindIndexCodeSym
+public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.FindIndexCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Defs
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
 
 /-!
 # Shared Stage-1 `X` Contract Definitions
 
-Defines the shared `SP2Ext` and `[LibsignalPlacement]` contract symbols, stack budgets
+Defines the shared `[LibsignalPlacement]` contract symbols, stack budgets
 (`extHookStack = 16384`), and specifications for `libsignal_protocol::crypto::hmac_sha256`
 (`hmacStackX = 18432`, Block `73`) and
 `<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_index`
 (`findIndexStackX = 17408`, Block `26`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,9 +40,6 @@ open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalSession
 
 theorem L1_Stage1X_Defs : True := trivial
-
--- `Stage1X.SP2Ext` is an alias of `Proofs.libsignal.Hooks2.SP2Ext` (`contractProg b ext`).
-export Proofs.libsignal.Hooks2 (SP2Ext)
 
 /- External hook stack budget (`16384`): an alias of `LibsignalTripleRatchet.extHookStack`;
 `= RustSpec.externStack` by `Proofs.libsignal.HookStack.externStack_eq_extHookStack` (`rfl`). -/
@@ -59,7 +56,7 @@ hook stack). -/
 abbrev hmacStackX : Nat := 2048 + CryptoVerification.LibsignalTripleRatchet.extHookStack
 
 /-- Contract of `crypto::hmac_sha256` with `hmacStackX = 18432` B stack. -/
-def hmacSpecX (F : ShaCompress) :
+@[expose] def hmacSpecX (F : ShaCompress) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8)) where
   pre := fun (out, ka, key, ia, inp) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = ka ∧ (s.readReg64 .x2).toNat = key.length ∧
@@ -70,13 +67,6 @@ def hmacSpecX (F : ShaCompress) :
     ⌜sf.trace = s0.trace⌝ ∗
     (out ↦ₛ hmacWith F key inp) ∗ (ka ↦ₛ key) ∗ (ia ↦ₛ inp) ∗ stackAt s0.sp hmacStackX
 
-/-- `HmacOkX`: `hmac_sha256` meets `hmacSpecX` on `SP2Ext img.base ext`. -/
-abbrev HmacOkX (img : Obj.Image) (F : ShaCompress)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (SP2Ext img.base ext)
-    ((SP2Ext img.base ext).fnAddr hmacName)
-    ((hmacSpecX F).inImage img)
-
 /-! ## `<RatchetState>::find_receiver_chain_index` -/
 
 /-- Symbol name of `<RatchetState>::find_receiver_chain_index`. -/
@@ -86,29 +76,6 @@ abbrev findIndexName : String :=
 /-- Stack budget for `find_receiver_chain_index` with `externStack = 16384`:
 `1024 + 16384 = 17408` bytes. -/
 abbrev findIndexStackX : Nat := 1024 + CryptoVerification.LibsignalTripleRatchet.extHookStack
-
-/-- Contract of `find_receiver_chain_index` with `findIndexStackX = 17408` B stack. -/
-def findIndexSpecX (img : Obj.Image) (A : RustAlloc) : Spec FindIndexGhost where
-  pre := fun (p, cs, theirA, their) s =>
-    ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = cs.length ∧ s.readReg64 .x2 = theirA ∧
-      cs.length * 104 < 2 ^ 63⌝ ∗
-    arrayAt (chainAt A) 104 p cs ∗ (theirA ↦ₛ their.bytes.toList) ∗
-    (logFilterAddr img ↦₆₄ 0#64) ∗ stackAt s.sp findIndexStackX
-  post := fun (p, cs, theirA, their) s0 sf =>
-    ⌜sf.trace = s0.trace ∧
-      match (cs.map (·.2)).findIdx? (fun c => c.senderRatchetKey == their) with
-      | some i => sf.readReg64 .x0 = 1#64 ∧ (sf.readReg64 .x1).toNat = i
-      | none => sf.readReg64 .x0 = 0#64⌝ ∗
-    arrayAt (chainAt A) 104 p cs ∗ (theirA ↦ₛ their.bytes.toList) ∗
-    (logFilterAddr img ↦₆₄ 0#64) ∗ stackAt s0.sp findIndexStackX
-
-/-- `subroutine_ok` for `find_receiver_chain_index` on `SP2Ext img.base ext` at
-`findIndexStackX = 17408` B. -/
-abbrev FindIndexOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (SP2Ext img.base ext)
-    ((SP2Ext img.base ext).fnAddr findIndexName)
-    ((findIndexSpecX img A).inImage img)
 
 /-! ## Relocatable `[LibsignalPlacement]` specifications -/
 
@@ -128,7 +95,7 @@ theorem hmac_placed_ok_cl [LibsignalPlacement] {F : ShaCompress} {H : LibsignalH
 
 /-- Relocatable `[LibsignalPlacement]` contract of `find_receiver_chain_index` with
 `findIndexStackX = 17408` B stack (`lsLogFilterAddr ↦₆₄ 0#64`). -/
-def findIndexPlacedSpecX [LibsignalPlacement] (A : RustAlloc) : Spec FindIndexGhost where
+@[expose] def findIndexPlacedSpecX [LibsignalPlacement] (A : RustAlloc) : Spec FindIndexGhost where
   pre := fun (p, cs, theirA, their) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = cs.length ∧ s.readReg64 .x2 = theirA ∧
       cs.length * 104 < 2 ^ 63⌝ ∗

@@ -8,7 +8,7 @@ The idea is that you bring code and a specification (or, more likely, iterativel
 
 ## Prerequisites
 
-- **Lean:** [elan](https://github.com/leanprover/elan). It installs the toolchain pinned in [`lean-toolchain`](lean-toolchain) (`leanprover/lean4:v4.34.0`) on the first `lake` command.
+- **Lean:** [elan](https://github.com/leanprover/elan). It installs the toolchain pinned in [`lean-toolchain`](lean-toolchain) (`leanprover/lean4:v4.35.0`) on the first `lake` command.
 - **Rust:** `rustc` and `cargo` **1.98.1** (the exact version is pinned: the `VerifiedLibraries` build scripts check the bundled musl `libc.a` byte for byte), with the `aarch64-unknown-linux-musl` and `aarch64-unknown-linux-gnu` targets and the `rust-src` and `llvm-tools` (`rust-lld`, `llvm-ar`) components:
 
   ```bash
@@ -68,7 +68,7 @@ In simple terms, the ELF object file is made up of the following sections (for o
 - `.rodata` has global read-only data
 - `.data` and `.bss` have mutable and zero-initialized global data
 - `.symtab` has a symbol table used by the linker to resolve functions and globals, and which we use to identify where in the code each function lives
-- `.rela.*` sections have relocations: the symbolic references to patch. Our linker resolves these statically, except for absolute addresses, which the loader fills in (in the data or in GOT slots) once the load address is chosen. Calls to external functions go to a stub whose behavior is given by a hook rather than a PLT.
+- `.rela.*` sections have relocations: the symbolic references to patch. Placement resolves symbolic references across valid static-linker layouts (`Obj.PlacedLib` / `Obj.MultiPlacedLib`), including GOT slots and `ld.lld` instruction relaxations. Calls to external functions go to a stub whose behavior is given by a hook rather than a PLT.
 
 An ELF file might have other sections that we use as hints (e.g., DWARF debug info), and other sections that are irrelevant to us (e.g., note sections that aren't even loaded).
 
@@ -88,7 +88,7 @@ The model is single-threaded: there is one PE and no other observer of memory, s
 
 ### Whole-process ELF semantics
 
-Alongside relocatable library verification (`Obj.Loads` + `subroutine_ok`), the engine models complete, statically linked Linux AArch64 executables (`ET_EXEC`) from `_start` (`crt1.o`) through `SYS_exit` / `SYS_exit_group` in [`Arm64/Trusted/Process/`](Arm64/Trusted/Process/README.md):
+Alongside layout-generic placed library verification (`Obj.PlacedLib` / `Obj.MultiPlacedLib` + `subroutine_ok`), the engine models complete, statically linked Linux AArch64 executables (`ET_EXEC`) from `_start` (`crt1.o`) through `SYS_exit` / `SYS_exit_group` in [`Arm64/Trusted/Process/`](Arm64/Trusted/Process/README.md):
 
 - **Loading & environment inputs ([`Types.lean`](Arm64/Trusted/Process/Types.lean), [`Loader.lean`](Arm64/Trusted/Process/Loader.lean)):** `loadElf` (`ElfImage.parse` + `ElfImage.loadState`, with compile-time helper `elf_image%`) validates a static AArch64 `ET_EXEC` binary purely in Lean, maps its `PT_LOAD` segments and deterministic Linux user stack (`argc`, `argv`, `envp`, `auxv` including `AT_RANDOM`), initializes `State.fs` (`stdin`/`stdout`/`stderr` on `fd 0/1/2` plus pre-populated `files`/`dirs`), and seeds `State.oracle` / `State.exclFails` from `ProcessInputs`.
 - **Whole-binary contracts ([`Semantics.lean`](Arm64/Trusted/Process/Semantics.lean), proof rules in [`ProofLib/Process.lean`](ProofLib/Process.lean)):** Under the hook-free program `Program.pureMem`, `ElfSafe`, `ElfCorrect`, and multi-exit-code `ElfRunsTo` state separation-logic-free safety (`ProcessSafeRun` / `ProcessSafeOutcome`) and total functional correctness (`ProcessExitsWith` over `ProcessOutcome`: `exitCode`, `signal`, `stdout`, `stderr`, and final `State.fs`) directly over `Arm64.Step` / `Arm64.Steps`.
@@ -158,7 +158,7 @@ The dependency order `Arm64 < ProofLib < VerifiedLibraries < CaseStudies` is enf
 
 ### Building API docs
 
-API documentation is generated on demand with [`doc-gen4`](https://github.com/leanprover/doc-gen4) (`v4.34.0`), gated behind the opt-in Lake configuration flag `-Kenv=dev` in [`lakefile.lean`](lakefile.lean) and `CaseStudies/<Lib>/lakefile.lean` (e.g., [`CaseStudies/Hashbrown/lakefile.lean`](CaseStudies/Hashbrown/lakefile.lean)) so normal `lake build` runs, CI, and `lake-manifest.json` stay untouched.
+API documentation is generated on demand with [`doc-gen4`](https://github.com/leanprover/doc-gen4) (`v4.35.0`), gated behind the opt-in Lake configuration flag `-Kenv=dev` in [`lakefile.lean`](lakefile.lean) and `CaseStudies/<Lib>/lakefile.lean` (e.g., [`CaseStudies/Hashbrown/lakefile.lean`](CaseStudies/Hashbrown/lakefile.lean)) so normal `lake build` runs, CI, and `lake-manifest.json` stay untouched.
 
 Invoke `lake` with `-R -Kenv=dev`:
 

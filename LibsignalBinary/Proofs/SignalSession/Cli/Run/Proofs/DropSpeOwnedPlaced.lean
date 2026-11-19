@@ -9,12 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwned
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainCodeSym
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwned
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.Proof.Helpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwned.Common
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwned.WithStr
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable Drop Glue Proof for Owned `SignalProtocolError`
@@ -23,7 +30,7 @@ Proves `DropSpeOwnedOkPlaced` for `core::ptr::drop_glue::<SignalProtocolError>` 
 `[LibsignalPlacement]` and transfers it to caller blocks `i < 619`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -37,17 +44,17 @@ open CryptoVerification.SignalSession CryptoVerification.SignalSession.Cli
 open CryptoVerification.SignalSession.Cli.Placed
 
 /-- Relocatable `[LibsignalPlacement]` specification for `drop_glue::<SignalProtocolError>`. -/
-def dropSpeOwnedSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
+@[expose] def dropSpeOwnedSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
     Spec DropSpeOwnedGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl (dropSpeOwnedSpec A stk)
 
 /-- Relocatable `drop_glue::<SignalProtocolError>` contract on `lsProg_553`. -/
-def DropSpeOwnedOkPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def DropSpeOwnedOkPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   ∀ stk, 32 + extHookStack ≤ stk → stk ≤ 2 ^ 64 →
     subroutine_ok (lsProg_553 H) (blkPl_553).base (dropSpeOwnedSpecPlaced A stk)
 
 /-- Caller-block-polymorphic `drop_glue::<SignalProtocolError>` contract. -/
-def DropSpeOwnedOkAtBlock [LibsignalPlacement] (callerProg : Program) (A : RustAlloc) : Prop :=
+@[expose] def DropSpeOwnedOkAtBlock [LibsignalPlacement] (callerProg : Program) (A : RustAlloc) : Prop :=
   ∀ stk, 32 + extHookStack ≤ stk → stk ≤ 2 ^ 64 →
     subroutine_ok callerProg (blkPl_553).base (dropSpeOwnedSpecPlaced A stk)
 

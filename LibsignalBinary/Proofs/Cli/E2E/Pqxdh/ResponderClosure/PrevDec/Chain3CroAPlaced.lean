@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneX
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.BytesMerge6Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.Chain3Placed
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneX -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.BytesMerge6Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.Chain3Placed
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.ChainMergeAux.PrologueSenderRatchetKey
@@ -21,6 +21,16 @@ import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.Core
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.CodePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.EntryPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.ExitPlaced
+import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.ChainDefs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # `GrowOneChain` and `VerNe.Chain3` (Block `516`) Part A under `LibsignalCodeRoLoaded`
@@ -31,7 +41,7 @@ Verifies `<alloc::raw_vec::RawVec<Chain>>::grow_one` (Block `43`) without `memmo
 `StoreKit.LibsignalCodeRoLoaded lsmpl`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -633,13 +643,13 @@ theorem chain3CalleesCro_of_hooks [LibsignalPlacement] {ext : LibsignalHooks}
       hshim' halloc' hrealloc' hpan_raw'
 
 /-- Loop invariant of `message::merge<Chain> [local#4]` augmented with `LibsignalCodeRoLoaded`. -/
-def Chain3LoopCroPlacedAtW [LibsignalPlacement] (ext : LibsignalHooks)
+@[expose] def Chain3LoopCroPlacedAtW [LibsignalPlacement] (ext : LibsignalHooks)
     (x : E2E.Record.DeserializeGeneral.ChainMergeGenGhost) (R : SepProp)
     (s0 : State) (k : Nat) (s : State) : Prop :=
   StoreKit.LibsignalCodeRoLoaded lsmpl s.mem ∧
     VerNe.Chain3.Chain3LoopPlacedAtW ext x R s0 k s
 
-def Chain3EntryCroStmt [LibsignalPlacement] (ext : LibsignalHooks) : Prop :=
+@[expose] def Chain3EntryCroStmt [LibsignalPlacement] (ext : LibsignalHooks) : Prop :=
   Chain3CalleesCroPlacedW ext →
   ∀ (x : E2E.Record.DeserializeGeneral.ChainMergeGenGhost) (R : SepProp) (s0 : State),
     s0.pc = lsmpl.base 516 → s0.status = .Running →
@@ -647,7 +657,7 @@ def Chain3EntryCroStmt [LibsignalPlacement] (ext : LibsignalHooks) : Prop :=
     s0.spAligned = true →
     VerNe.Chain3.Chain3StepPlacedAtW ext x R s0 s0 (Chain3LoopCroPlacedAtW ext x R s0 0)
 
-def Chain3SrkCroStmt [LibsignalPlacement] (ext : LibsignalHooks) : Prop :=
+@[expose] def Chain3SrkCroStmt [LibsignalPlacement] (ext : LibsignalHooks) : Prop :=
   Chain3CalleesCroPlacedW ext →
   ∀ (x : E2E.Record.DeserializeGeneral.ChainMergeGenGhost) (R : SepProp)
     (s0 : State) (k : Nat) (s : State) (hk : k < x.c.fields.length),
@@ -655,7 +665,7 @@ def Chain3SrkCroStmt [LibsignalPlacement] (ext : LibsignalHooks) : Prop :=
     Chain3LoopCroPlacedAtW ext x R s0 k s →
     VerNe.Chain3.Chain3StepPlacedAtW ext x R s0 s (Chain3LoopCroPlacedAtW ext x R s0 (k + 1))
 
-def Chain3ChainKeyCroStmt [LibsignalPlacement] (ext : LibsignalHooks) : Prop :=
+@[expose] def Chain3ChainKeyCroStmt [LibsignalPlacement] (ext : LibsignalHooks) : Prop :=
   Chain3CalleesCroPlacedW ext →
   ∀ (x : E2E.Record.DeserializeGeneral.ChainMergeGenGhost) (R : SepProp)
     (s0 : State) (k : Nat) (s : State) (hk : k < x.c.fields.length),
@@ -663,7 +673,7 @@ def Chain3ChainKeyCroStmt [LibsignalPlacement] (ext : LibsignalHooks) : Prop :=
     Chain3LoopCroPlacedAtW ext x R s0 k s →
     VerNe.Chain3.Chain3StepPlacedAtW ext x R s0 s (Chain3LoopCroPlacedAtW ext x R s0 (k + 1))
 
-def Chain3MessageKeysCroStmt [LibsignalPlacement] (ext : LibsignalHooks) : Prop :=
+@[expose] def Chain3MessageKeysCroStmt [LibsignalPlacement] (ext : LibsignalHooks) : Prop :=
   Chain3CalleesCroPlacedW ext →
   ∀ (x : E2E.Record.DeserializeGeneral.ChainMergeGenGhost) (R : SepProp)
     (s0 : State) (k : Nat) (s : State) (hk : k < x.c.fields.length),

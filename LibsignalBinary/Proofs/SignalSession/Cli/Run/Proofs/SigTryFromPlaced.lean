@@ -9,11 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFrom
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import ProofLib.FsTrace
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.SepLogic.WP.Apply
+public import VerifiedLibraries.Mallocng.Spec
 
 /-!
 # Relocatable `SignalMessage::try_from` Slot Bridge
@@ -22,7 +27,7 @@ Defines `tryFromSpecPlaced` for `<SignalMessage as TryFrom<&[u8]>>::try_from` (B
 `[LibsignalPlacement]`, and transfers the contract to any caller block `i < 619`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -37,7 +42,7 @@ open CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
 open CryptoVerification.LibsignalPublicApi.StoreKit
 
 /-- Relocatable `[LibsignalPlacement]` specification for `<SignalMessage as TryFrom<&[u8]>>::try_from` (Block `85`). -/
-def tryFromSpecPlaced [LibsignalPlacement] (A : RustAlloc) : Spec TryFromGhost :=
+@[expose] def tryFromSpecPlaced [LibsignalPlacement] (A : RustAlloc) : Spec TryFromGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.bytesA ∧ (s.readReg64 .x1).toNat = x.bytes.length ∧

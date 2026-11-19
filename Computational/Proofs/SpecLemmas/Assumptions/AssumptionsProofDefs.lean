@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Assumptions.Assumptions
-public import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthGames
+public import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthGames -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalPqxdh.Model
 public import Computational.Specifications.Pqxdh.Game
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.EffSalt
@@ -23,7 +23,7 @@ public import LibsignalBinary.Specifications.CryptoGames.AEAD.EffSalt
 `Computational/Proofs/SignalPqxdh/TwoKeyAndAuthStatements.lean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 namespace SignalPqxdh

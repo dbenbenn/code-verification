@@ -9,11 +9,30 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SpqrDesc
-public import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SpqrDesc
+public import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Defs
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.GhostStep
+public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.SM.DeliverForge
+import Computational.Proofs.ReductionDsl.SM.RedCKA
+import Computational.Proofs.ReductionDsl.SM.RedFS
+import Computational.Proofs.ReductionDsl.SM.RedPRNG
+import Computational.Proofs.ReductionDsl.SM.Theorem1
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
+import VCVio.EvalDist.EvalDistEq
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
+public import Computational.Proofs.ReductionDsl.Fig8Atomic -- proof-setup: allow-public-import
 
 /-!
 # Snapshot Seed Derivation, Known-Seed Decryption, and SPQR Wrappers
@@ -23,7 +42,7 @@ iteration, corruption-snapshot message-key derivation, known-seed decryption, wi
 and SPQR send/receive wrappers, with evaluation, cost, and description-bit bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -91,7 +110,7 @@ namespace Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto
 
 section ChainIter
 
-def chainStepFn (F : CryptoGames.LibsignalSession.ShaCompress) (k : BitVec 256) : BitVec 256 :=
+@[expose] def chainStepFn (F : CryptoGames.LibsignalSession.ShaCompress) (k : BitVec 256) : BitVec 256 :=
   bytesToKey32 (chainHmac F k chainKeySeed)
 
 theorem chainKeyAfter_eq_iterate (F : CryptoGames.LibsignalSession.ShaCompress) :
@@ -101,7 +120,7 @@ theorem chainKeyAfter_eq_iterate (F : CryptoGames.LibsignalSession.ShaCompress) 
     rw [Function.iterate_succ_apply]
     exact chainKeyAfter_eq_iterate F n (chainStepFn F k)
 
-def chainCountStep (F : CryptoGames.LibsignalSession.ShaCompress) (x : BitVec 256 × ℕ) :
+@[expose] def chainCountStep (F : CryptoGames.LibsignalSession.ShaCompress) (x : BitVec 256 × ℕ) :
     BitVec 256 × ℕ :=
   if x.2 = 0 then x else (chainStepFn F x.1, x.2 - 1)
 
@@ -143,7 +162,7 @@ local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 private theorem hb0 : bits 0 = 1 := bits_zero
 private theorem hb1 : bits 1 = 1 := bits_eq_of_bounds (by omega) (by omega) (by omega) (by omega)
 
-def hmacOneE (b : BitVec 8) {Γ : List (Ty ASig)} (k : Expr AOps Γ BV256) : Expr AOps Γ BV256 :=
+@[expose] def hmacOneE (b : BitVec 8) {Γ : List (Ty ASig)} (k : Expr AOps Γ BV256) : Expr AOps Γ BV256 :=
   sOpSym (.hmacSha256Op 1) (.pair k (sOpPure (.bytesLit 1 [b]) .unit))
 
 @[simp] theorem eval_hmacOneE (b : BitVec 8) {Γ : List (Ty ASig)} (k : Expr AOps Γ BV256)
@@ -168,7 +187,7 @@ theorem descBits_hmacOneE (b : BitVec 8) {Γ : List (Ty ASig)} (k : Expr AOps Γ
     atomicPureOpDescBits, atomicExprDescBits, h1, List.length_singleton, hb1]
   omega
 
-def chainCountStepE {Γ : List (Ty ASig)} :
+@[expose] def chainCountStepE {Γ : List (Ty ASig)} :
     Expr AOps (.prod BV256 .nat :: Γ) (.prod BV256 .nat) :=
   .ite (.eqN (.snd .v0) (.nat 0)) .v0
     (.pair (hmacOneE chainKeySeed (.fst .v0)) (.sub (.snd .v0) (.nat 1)))
@@ -182,7 +201,7 @@ theorem eval_chainCountStepE {Γ : List (Ty ASig)} (x : BitVec 256 × ℕ) (ρ :
   · simp [chainCountStepE, chainCountStep, chainStepFn, Expr.eval, Expr.v0, hd]
 
 /-- Derives the message-key seed after `d ≤ Kc` counter-guarded chain steps followed by one HMAC. -/
-def chainSeedIterC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T) (Kc : ℕ)
+@[expose] def chainSeedIterC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T) (Kc : ℕ)
     {Γ : List (Ty ASig)} (kd : Expr AOps Γ (.prod BV256 .nat)) : Comp AOps I' Γ BV256 :=
   .bind (.iter Kc kd (.ret chainCountStepE))
     (.ret (hmacOneE messageKeySeed (.fst .v0)))
@@ -276,7 +295,7 @@ end ChainSeedAtomic
 section DeferredCandidatePure
 
 /-- Structural well-formedness of a corruption snapshot (`≤ 5` receiver chains, `≤ 2000` stored keys per chain, 32-byte seeds). -/
-def SnapWFProd {PQ : Type} (gh : GhostState PQ) : Prop :=
+@[expose] def SnapWFProd {PQ : Type} (gh : GhostState PQ) : Prop :=
   gh.session.receiverChains.length ≤ 5 ∧
     ∀ rc ∈ gh.session.receiverChains,
       rc.messageKeys.length ≤ 2000 ∧
@@ -341,7 +360,7 @@ private theorem ite_congr_inst {α : Type} {p : Prop} (d₁ d₂ : Decidable p)
     | isTrue _ => exact ht
 
 /-- Invariant that snapshots for the same party and epoch `≥ 2` agree on the sender ratchet keypair and latest receiver-chain public key. -/
-def SnapsCurEpochEq {PQ : Type} (snaps : List (Party × ℕ × GhostState PQ)) : Prop :=
+@[expose] def SnapsCurEpochEq {PQ : Type} (snaps : List (Party × ℕ × GhostState PQ)) : Prop :=
   ∀ e₁ ∈ snaps, ∀ e₂ ∈ snaps,
     e₁.1 = e₂.1 → e₁.2.1 = e₂.2.1 → 2 ≤ e₁.2.1 →
     e₁.2.2.session.senderChain.map (·.ratchetKey) =
@@ -349,7 +368,7 @@ def SnapsCurEpochEq {PQ : Type} (snaps : List (Party × ℕ × GhostState PQ)) :
     e₁.2.2.session.receiverChains.getLast?.map (·.senderRatchetKey) =
       e₂.2.2.session.receiverChains.getLast?.map (·.senderRatchetKey)
 
-def candK4Cur {PQ : Type} (Q : Party) (t : ℕ) (Y : PublicKey)
+@[expose] def candK4Cur {PQ : Type} (Q : Party) (t : ℕ) (Y : PublicKey)
     (e_cur : Party × ℕ × GhostState PQ) : Option (PublicKey × PrivateKey) :=
   if e_cur.1 = Q.other ∧ e_cur.2.1 = t then
     e_cur.2.2.session.senderChain.bind fun sc_cur =>
@@ -976,7 +995,7 @@ variable {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
 local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
-@[reducible] def candT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def candT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .sum (BV256 (ℓ := ℓ) (Pt := Pt)) (.prod (BV256 (ℓ := ℓ) (Pt := Pt)) .nat)
 
 omit [DecidableEq Pt] [Zero Pt] in
@@ -2156,7 +2175,7 @@ theorem descBits_snapCandE (Ls Lck : ℕ) {Γ : List (Ty ASig)}
     atomicTyDescBits, atomicSortDescBits, varIdx, Nat.reduceAdd] at hb1 hb3 hb2 hb4 hf1 hf3 hf2 hf4 ⊢
   omega
 
-@[reducible] def candK4CurT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def candK4CurT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (PK (ℓ := ℓ) (Pt := Pt)) (BV256 (ℓ := ℓ) (Pt := Pt))
 
 def candK4CurE {Γ : List (Ty ASig)}
@@ -2821,7 +2840,7 @@ theorem knownSeedBAtomicC_descBits_le {ι : Type} {T : OracleSpec ι} (I' : Ifac
   omega
 
 /-- Computes `snapshotMessageKeySeedBFast` via five non-nested bounded scans and at most one `chainSeedIterC` walk. -/
-def knownSeedBAtomicFastC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T) (L Kc : ℕ)
+@[expose] def knownSeedBAtomicFastC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T) (L Kc : ℕ)
     {Γ : List (Ty ASig)}
     (snapsE : Expr AOps Γ (.list (snapT ℓ Pt)))
     (qBE : Expr AOps Γ .bool) (tE : Expr AOps Γ .nat) (wE : Expr AOps Γ (B 32)) :
@@ -2981,10 +3000,10 @@ variable {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
 local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
-@[reducible] def kDecOutT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def kDecOutT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod .nat (.prod .nat (.prod (lpubT (ℓ := ℓ) (Pt := Pt)) (PlainT (ℓ := ℓ) (Pt := Pt))))
 
-def kDecOutV (r : ℕ × (ℕ × (LibsignalMsgPublicPart × Plain ℓ))) :
+@[expose] def kDecOutV (r : ℕ × (ℕ × (LibsignalMsgPublicPart × Plain ℓ))) :
     (kDecOutT ℓ Pt).denote :=
   (r.1, (r.2.1, (lpubV r.2.2.1, r.2.2.2)))
 
@@ -3006,7 +3025,7 @@ theorem serializedPartyAddresses_len_le_36 (s r : Party) (v : Bytes)
       rw [← hv]
       simp [List.length_append, addrBytes_length]
 
-def optBytesLitE {Γ : List (Ty ASig)} : Option Bytes → Expr AOps Γ (.opt (B 32))
+@[expose] def optBytesLitE {Γ : List (Ty ASig)} : Option Bytes → Expr AOps Γ (.opt (B 32))
   | none => .none
   | some v => .some (sOpPure (.bytesLit 32 v) .unit)
 
@@ -3086,7 +3105,7 @@ def kDecryptAtomicPE (P : Params Bytes (BitVec 512))
                 (.pair .v1 .v0)))))))
 
 /-- Atomic expression for `simKDecryptFig8`. -/
-def kDecryptAtomicE (idA idB : IdentityKey) (B_cap : ℕ) {Γ : List (Ty ASig)}
+@[expose] def kDecryptAtomicE (idA idB : IdentityKey) (B_cap : ℕ) {Γ : List (Ty ASig)}
     (qBE : Expr AOps Γ .bool) (wE : Expr AOps Γ (B 32))
     (c'E : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt)))
     (seedE : Expr AOps Γ (B 32)) :
@@ -3489,7 +3508,7 @@ theorem knownSeedDecryptAtomicC_descBits_le (idA idB : IdentityKey) (L Kc B_cap 
   omega
 
 /-- Linear-cost atomic computation for snapshot seed lookup followed by `simKDecryptFig8`. -/
-def knownSeedDecryptAtomicFastC (idA idB : IdentityKey) (L Kc B_cap : ℕ)
+@[expose] def knownSeedDecryptAtomicFastC (idA idB : IdentityKey) (L Kc B_cap : ℕ)
     {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T) {Γ : List (Ty ASig)}
     (snapsE : Expr AOps Γ (.list (snapT ℓ Pt)))
     (qBE : Expr AOps Γ .bool) (tE : Expr AOps Γ .nat) (wE : Expr AOps Γ (B 32))
@@ -3722,7 +3741,7 @@ variable {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
 local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
-def toWireAtomicE {Γ : List (Ty ASig)}
+@[expose] def toWireAtomicE {Γ : List (Ty ASig)}
     (cE : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt))) : Expr AOps Γ (B 32) :=
   eLet (.fst (.snd (.snd cE)))
     (sOpPure .bytesAppend8 (.pair (.fst .v0) (sOpPure .u64LeBytes (.snd .v0))))
@@ -3759,7 +3778,7 @@ theorem toWireAtomicE_descBits_le {Γ : List (Ty ASig)}
     atomicPureOpDescBits, Expr.v0, varIdx]
   omega
 
-def lctSaltEqAtomicE {Γ : List (Ty ASig)}
+@[expose] def lctSaltEqAtomicE {Γ : List (Ty ASig)}
     (cE : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt)))
     (saltE : Expr AOps Γ BV256) : Expr AOps Γ .bool :=
   sOpPure .bv256Eq (.pair (.snd (.snd (.snd cE))) saltE)
@@ -3796,7 +3815,7 @@ theorem lctSaltEqAtomicE_descBits_le {Γ : List (Ty ASig)}
   simp only [lctSaltEqAtomicE, atomicExprDescBits, descBits_sOpPure, atomicPureOpDescBits]
   omega
 
-def lctSaltEqOfLctAtomicE {Γ : List (Ty ASig)}
+@[expose] def lctSaltEqOfLctAtomicE {Γ : List (Ty ASig)}
     (cE : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt)))
     (lctE : Expr AOps Γ (lctT (ℓ := ℓ) (Pt := Pt))) : Expr AOps Γ .bool :=
   lctSaltEqAtomicE cE (.snd (.snd lctE))
@@ -3836,7 +3855,7 @@ theorem lctSaltEqOfLctAtomicE_descBits_le {Γ : List (Ty ASig)}
   simp only [atomicExprDescBits] at h
   omega
 
-def injOKAtomicE {Γ : List (Ty ASig)} (wE : Expr AOps Γ (B 32)) : Expr AOps Γ .bool :=
+@[expose] def injOKAtomicE {Γ : List (Ty ASig)} (wE : Expr AOps Γ (B 32)) : Expr AOps Γ .bool :=
   sOpCurve .checkRatchetKeyOnCurve wE
 
 abbrev ratchetKeyAdmissibleAtomicE {Γ : List (Ty ASig)} (wE : Expr AOps Γ (B 32)) :
@@ -3864,7 +3883,7 @@ theorem injOKAtomicE_descBits_le {Γ : List (Ty ASig)} (wE : Expr AOps Γ (B 32)
   simp only [injOKAtomicE, descBits_sOpCurve]
   omega
 
-def isZeroPtOptAtomicE {Γ : List (Ty ASig)}
+@[expose] def isZeroPtOptAtomicE {Γ : List (Ty ASig)}
     (tOptE : Expr AOps Γ (.opt PtT)) : Expr AOps Γ .bool :=
   .caseOpt tOptE (.bool false) (sOpGrp .ptIsZero .v0)
 
@@ -3928,7 +3947,7 @@ variable {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
 local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
-def effSaltE {Γ : List (Ty ASig)} (s : Expr AOps Γ (.opt BV256)) : Expr AOps Γ BV256 :=
+@[expose] def effSaltE {Γ : List (Ty ASig)} (s : Expr AOps Γ (.opt BV256)) : Expr AOps Γ BV256 :=
   .caseOpt s (sOpPure (.bv256Lit 0) .unit) .v0
 
 @[simp] theorem effSaltE_eval {Γ : List (Ty ASig)} (s : Expr AOps Γ (.opt BV256)) (ρ : Env Γ) :
@@ -3951,7 +3970,7 @@ theorem effSaltE_descBits_le {Γ : List (Ty ASig)} (s : Expr AOps Γ (.opt BV256
   simp only [effSaltE, atomicExprDescBits, descBits_sOpPure, atomicPureOpDescBits, Expr.v0, varIdx]
   omega
 
-def mkPubRawAtomicC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T) {Γ : List (Ty ASig)}
+@[expose] def mkPubRawAtomicC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T) {Γ : List (Ty ASig)}
     (inpE : Expr AOps Γ (.prod (B 32) (.prod BV512 (.prod U32 (.opt (B 32)))))) :
     Comp AOps I' Γ (.opt (.prod (B 32) (lpubT (ℓ := ℓ) (Pt := Pt)))) :=
   .bind (.ret inpE)
@@ -4035,7 +4054,7 @@ theorem mkPubRawAtomicC_eval {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
   · simp only [Option.map_some, Expr.eval, effSaltE_eval, lpubV, salt32V_effectiveHkdfSalt32]
     rfl
 
-def mkPubInpE (idA idB : IdentityKey) {Γ : List (Ty ASig)}
+@[expose] def mkPubInpE (idA idB : IdentityKey) {Γ : List (Ty ASig)}
     (sBaseE : Expr AOps Γ (simBaseT ℓ Pt)) (qBE : Expr AOps Γ .bool)
     (rqE : Expr AOps Γ BV512) (pnE : Expr AOps Γ U32) :
     Expr AOps Γ (.prod (B 32) (.prod BV512 (.prod U32 (.opt (B 32))))) :=
@@ -4114,7 +4133,7 @@ theorem mkPubInpE_descBits_le (idA idB : IdentityKey) {Γ : List (Ty ASig)}
   omega
 
 /-- Atomic SPQR send and public header wrapper for `LibsignalSim.mkPub`. -/
-def mkPubAtomicC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
+@[expose] def mkPubAtomicC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
     (idA idB : IdentityKey) {Γ : List (Ty ASig)}
     (sBaseE : Expr AOps Γ (simBaseT ℓ Pt)) (qBE : Expr AOps Γ .bool)
     (rqE : Expr AOps Γ BV512) (pnE : Expr AOps Γ U32) :
@@ -4205,10 +4224,10 @@ variable {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
 local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
-@[reducible] def parseOutT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def parseOutT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (B 32) (.prod .nat (.prod PK (.prod (.opt PtT) (lctT (ℓ := ℓ) (Pt := Pt)))))
 
-def parseOutV (x : Bytes × (ℕ × (PublicKey × (Option Pt × (ℕ × LibsignalCiphertextWithSalt32))))) :
+@[expose] def parseOutV (x : Bytes × (ℕ × (PublicKey × (Option Pt × (ℕ × LibsignalCiphertextWithSalt32))))) :
     (parseOutT ℓ Pt).denote :=
   (x.1, (x.2.1, (x.2.2.1, (x.2.2.2.1, lctV (ℓ := ℓ) (Pt := Pt) x.2.2.2.2))))
 
@@ -4333,7 +4352,7 @@ theorem parseBodyE_descBits_le (Bc : ℕ) {Γ : List (Ty ASig)} :
     Expr.v0, Expr.v2, Expr.v3, varIdx, Nat.reduceAdd, hb8p] at hs ⊢
   omega
 
-def parseRecvRawAtomicC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
+@[expose] def parseRecvRawAtomicC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
     (idA idB : IdentityKey) (Bc : ℕ) {Γ : List (Ty ASig)}
     (inpE : Expr AOps Γ (.prod .bool (.prod (B 32) (B 32)))) :
     Comp AOps I' Γ (.opt (parseOutT ℓ Pt)) :=
@@ -4478,7 +4497,7 @@ theorem parseRecvRawAtomicC_eval {ι : Type} {T : OracleSpec ι} (I' : Iface ASi
       · simp [haddr]
 
 /-- Atomic computation for `simParseRecvC`. -/
-def parseRecvAtomicC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
+@[expose] def parseRecvAtomicC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
     (idA idB : IdentityKey) (Bc : ℕ) {Γ : List (Ty ASig)}
     (qBE : Expr AOps Γ .bool) (pqE : Expr AOps Γ (B 32)) (wE : Expr AOps Γ (B 32)) :
     Comp AOps I' Γ (.opt (parseOutT ℓ Pt)) :=

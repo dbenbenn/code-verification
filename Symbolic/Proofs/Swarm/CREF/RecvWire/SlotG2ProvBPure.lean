@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.SkippedNotJunkFixPure
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.SlotG2HelpersPure
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1AtPureA
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.SkippedNotJunkFixPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.SlotG2HelpersPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1AtPureA -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.SupplyVck
 import Symbolic.Proofs.Swarm.CREF.RecvWire.SkippedProvBPureA
@@ -28,7 +28,7 @@ import Symbolic.Proofs.Swarm.CREF.TROpen
 import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepRatchetDHProvPure -- shake: keep
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvCol -- shake: keep
+import Symbolic.Proofs.Swarm.CREF.TR.RecvCol -- shake: keep
 
 /-!
 # Skipped-Key `ProvB` Dispatch for `RecvWire`
@@ -37,7 +37,7 @@ Proves `slotG2_skipped_provB_dispatch_at`, `rcv_honestSkelUniq_of_matchedPrefix`
 `skipped_pk_dispatch_atK'` for skipped-key Whisper decryption.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

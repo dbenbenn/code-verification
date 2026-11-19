@@ -112,53 +112,6 @@ theorem gRed2Bounded_atomic_of_bounds {S : SignalPqxdh.Setup} {Pt : Type} {ℓ :
     (atomicE2EOps_sizeHonest ℓ P C K decT encT)
     (atomicBaseSamplers_sizeHonest ℓ Pt)
 
-/-- Assemble `CompositionCostedReductionsBounded` from component cost, size, and query bounds. -/
-theorem compositionBounded_of_bounds {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
-    (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
-    (b : SignalPqxdh.QueryBudget) (qStart : ℕ) (qs : ℕ → ℕ)
-    (R : CompositionCostedReductions S ℓ P C K qep decT encT)
-    (hKindCost : let qDR := ∑ k ∈ Finset.range qStart, qs k
-      R.kindRed.totalCost (b.q_total + qStart + qDR) ≤
-        bhE2ECostBudget S b qStart qDR (Finset.sup (Finset.range qStart) qs) qep ℓ)
-    (hKindSize : let qDR := ∑ k ∈ Finset.range qStart, qs k
-      R.kindRed.size ≤ reductionSizeBudget +
-        2 ^ 12 * bits (bhE2ECostBudget S b qStart qDR (Finset.sup (Finset.range qStart) qs) qep ℓ))
-    (hKindQ : let qTot := b.q_total + qStart + ∑ k ∈ Finset.range qStart, qs k
-      R.kindRed.totalQueries (fun _ => 1) (fun _ => 0) qTot ≤ 2 * qTot)
-    (hPrefCost : let qDR := ∑ k ∈ Finset.range qStart, qs k
-      ∀ k < qStart, (R.prefixRed k).totalCost (b.q_total + qStart + qDR) ≤
-        bhE2ECostBudget S b qStart qDR (Finset.sup (Finset.range qStart) qs) qep ℓ)
-    (hPrefSize : let qDR := ∑ k ∈ Finset.range qStart, qs k
-      ∀ k < qStart, (R.prefixRed k).size ≤ reductionSizeBudget +
-        2 ^ 12 * bits (bhE2ECostBudget S b qStart qDR (Finset.sup (Finset.range qStart) qs) qep ℓ))
-    (hPrefQ1 : ∀ k < qStart,
-      (R.prefixRed k).init.queries (fun _ => 1) (fun _ => 0) +
-        (R.prefixRed k).handlePre.queries (fun _ => 1) (fun _ => 0) +
-        (R.prefixRed k).chDone.queries (fun _ => 1) (fun _ => 0) = 0)
-    (hPrefQ2 : let qTot := b.q_total + qStart + ∑ k ∈ Finset.range qStart, qs k
-      ∀ k < qStart, (R.prefixRed k).totalQueries (fun _ => 1) (fun _ => 0) qTot ≤ qTot)
-    (hKindCostByKind : let qDR := ∑ k ∈ Finset.range qStart, qs k
-      R.kindRed.CostBoundedByKind bhQueryKind (bhKindCounts b qStart qDR)
-        (bhE2ECostBudgetByKind S b qStart qDR (Finset.sup (Finset.range qStart) qs) qep ℓ))
-    (hKindQSum : let qSum := (List.ofFn (bhKindCounts b qStart (∑ k ∈ Finset.range qStart, qs k))).sum
-      R.kindRed.totalQueries (fun _ => 1) (fun _ => 0) qSum ≤ 2 * qSum)
-    (hPrefCostByKind : let qDR := ∑ k ∈ Finset.range qStart, qs k
-      ∀ k < qStart, (R.prefixRed k).CostBoundedByKind bhQueryKind (bhKindCounts b qStart qDR)
-        (bhE2ECostBudgetByKind S b qStart qDR (Finset.sup (Finset.range qStart) qs) qep ℓ))
-    (hPrefQ2Sum : let qSum := (List.ofFn (bhKindCounts b qStart (∑ k ∈ Finset.range qStart, qs k))).sum
-      ∀ k < qStart, (R.prefixRed k).totalQueries (fun _ => 1) (fun _ => 0) qSum ≤ qSum) :
-    CompositionCostedReductionsBounded P C K qep decT encT b qStart qs R := by
-  refine ⟨⟨?_, fun k hk => ?_⟩,
-    ⟨⟨hKindCostByKind, hKindQSum⟩,
-      fun k hk => ⟨hPrefCostByKind k hk, hPrefQ1 k hk, hPrefQ2Sum k hk⟩⟩⟩
-  · exact gRedBounded_of_bounds R.kindRed (fun _ => 1) (fun _ => 0) _ _ _
-      hKindCost hKindSize hKindQ
-      (atomicE2EOps_sizeHonest ℓ P C K decT encT)
-      (atomicBaseSamplers_sizeHonest ℓ Pt)
-  · exact gRed2Bounded_atomic_of_bounds (R.prefixRed k) _ _ _ false
-      (hPrefCost k hk) (hPrefSize k hk) (hPrefQ1 k hk) (hPrefQ2 k hk)
-
 section ShallowHalted
 
 variable {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type} {SessH : Type}
@@ -750,42 +703,6 @@ theorem prefixHandlePostHalted_cost_le
     Expr.v0, Expr.v1, Expr.v2] at *
   omega
 
-theorem prefixRedHalted_totalCost_le_leaf
-    (subs : HaltedPrefixSubprograms S (Pt := Pt) ℓ P C K decT encT SessH)
-    (b : SignalPqxdh.QueryBudget) (qStart qDR qep qTot : ℕ) {k : ℕ} (hk : k < qStart) :
-    (prefixRedHalted subs b qStart qDR qep k).totalCost qTot ≤
-      haltedPrefixEndpointCost subs b qStart +
-        qTot * haltedPrefixStepCost subs b qStart qDR qep := by
-  have hempty := subs.emptyDrvStateE_cost (Γ := [.unit]) (.bool false)
-  have hch := subs.defaultPrefixCtxE_cost (Γ := [drvHaltedTy subs, .bool])
-  have hres := subs.drvSetBitE_cost (Γ := [drvHaltedTy subs, .opt .nat, .bool]) (.fst .v0) .v2
-  have hfin := subs.finishPrefixC_cost b qStart
-    (Γ := [drvHaltedTy subs, .bool, .bool]) (.fst .v0) .v1 .v2
-  have hpre := prefixHandlePreHalted_cost_le subs b qStart qDR qep hk
-  have hpost := prefixHandlePostHalted_cost_le subs b qStart qDR qep hk
-  have hcc : (e2eTargetGameCodec S ℓ Pt).codecCost ≤ 64 := by
-    dsimp [e2eTargetGameCodec, _root_.ReductionDsl.e2eGameCodec]; omega
-  have hstep :
-      max 1 (max (prefixHandlePreHalted subs b qStart qDR qep k).cost
-          (prefixHandlePostHalted subs b qStart qDR qep k).cost +
-          (e2eTargetGameCodec S ℓ Pt).codecCost) ≤
-        haltedPrefixStepCost subs b qStart qDR qep := by
-    have hpos : 1 ≤ haltedPrefixStepCost subs b qStart qDR qep := by
-      unfold haltedPrefixStepCost; omega
-    omega
-  have hmul :
-      qTot * max 1 (max (prefixHandlePreHalted subs b qStart qDR qep k).cost
-          (prefixHandlePostHalted subs b qStart qDR qep k).cost +
-          (e2eTargetGameCodec S ℓ Pt).codecCost) ≤
-        qTot * haltedPrefixStepCost subs b qStart qDR qep :=
-    Nat.mul_le_mul_left qTot hstep
-  rw [TwoStageCostedReduction.totalCost]
-  have hu : (e2eSessionTargetIface ℓ Pt).uCost = 1 := rfl
-  rw [hu]
-  dsimp only [prefixRedHalted, haltedPrefixEndpointCost, Comp.cost, Expr.cost,
-    Expr.v0, Expr.v1, Expr.v2] at hempty hch hres hfin hmul ⊢
-  omega
-
 /-- Leaf syntax-size upper bound for `prefixRedHalted` at `k < qStart`. -/
 @[expose] def haltedPrefixSizeBound
     (subs : HaltedPrefixSubprograms S (Pt := Pt) ℓ P C K decT encT SessH)
@@ -850,26 +767,6 @@ theorem prefixRedHalted_size_le_budget
       reductionSizeBudget + 2 ^ 12 * bits costBudget :=
   size_le_budget_of_log_cost h₀ h₁
     (le_trans (prefixRedHalted_size_le_leaf subs b qStart qDR qep hk) hLeaf)
-
-/-- `GRed2Bounded` certificate for `prefixRedHalted` under `costBudget`. -/
-theorem prefixRedHalted_gRed2Bounded
-    (subs : HaltedPrefixSubprograms S (Pt := Pt) ℓ P C K decT encT SessH)
-    (b : SignalPqxdh.QueryBudget) (qStart qDR qep qTot costBudget : ℕ)
-    {k : ℕ} (hk : k < qStart)
-    (hCost :
-      haltedPrefixEndpointCost subs b qStart +
-        qTot * haltedPrefixStepCost subs b qStart qDR qep ≤ costBudget)
-    (hSize :
-      (prefixRedHalted subs b qStart qDR qep k).size ≤
-        reductionSizeBudget + 2 ^ 12 * bits costBudget) :
-    GRed2Bounded (prefixRedHalted subs b qStart qDR qep k)
-      (fun _ => 1) (fun _ => 0) qTot qTot costBudget false :=
-  gRed2Bounded_atomic_of_bounds (prefixRedHalted subs b qStart qDR qep k)
-    qTot qTot costBudget false
-    (le_trans (prefixRedHalted_totalCost_le_leaf subs b qStart qDR qep qTot hk) hCost)
-    hSize
-    (prefixRedHalted_stage1Queries subs b qStart qDR qep k)
-    (prefixRedHalted_totalQueries_le subs b qStart qDR qep k qTot)
 
 private theorem isQueryBoundP_sessionTargetIface_fwdU (n : ℕ) :
     ((e2eSessionTargetIface ℓ Pt).fwdU n).IsQueryBoundP (isSmTargetQuery ℓ) 0 :=

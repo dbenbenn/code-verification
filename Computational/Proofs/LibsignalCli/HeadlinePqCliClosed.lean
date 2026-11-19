@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.HeadlinePqCliMixEq
-public import Computational.Proofs.LibsignalCli.StatementPqSecure
+public import Computational.Proofs.LibsignalCli.HeadlinePqCliMixEq -- proof-setup: allow-public-import
+public import Computational.Proofs.LibsignalCli.StatementPqSecure -- proof-setup: allow-public-import
 import Computational.Proofs.LibsignalCli.CliPqAdapterSmStep
 import Computational.Proofs.LibsignalCli.CliPqKeyIndStep
 import Computational.Proofs.LibsignalCli.CliPqStartStep
 import Computational.Proofs.LibsignalCli.HeadlinePqCli
 import Computational.Proofs.SignalPqxdh.Delta.Statements
+import Computational.Proofs.SpecLemmas.Pqxdh.Security.HeadlineDelta
 
 /-!
 # Closed CLI security on PQXDH directories with SPQR
@@ -24,7 +25,7 @@ Assembles the step-level adapter bridges and `headlineδ_proof.keyInd` to prove
 `LibsignalCliPqSecure S ℓ` with no external premises.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

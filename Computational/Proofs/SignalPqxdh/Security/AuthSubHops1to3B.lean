@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3 -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -404,7 +404,7 @@ private theorem forall_support_pure {α : Type} (x : α) (P : α → Prop) (h : 
   rw [support_pure, Set.mem_singleton_iff] at hb
   exact hb ▸ h
 
-def InvCkG3_6 {S : Setup} (P : Primitives) (hst : AuthHybridState S) : Prop :=
+@[expose] def InvCkG3_6 {S : Setup} (P : Primitives) (hst : AuthHybridState S) : Prop :=
   ∀ s ∈ hst.idealSessions, s.mkSeed = P.chainKdfSeed s.ck1_0 ∧ s.ck1_1 = P.chainKdfNext s.ck1_0
 
 theorem invCkG3_6_empty (S : Setup) (P : Primitives) (secb : Bool) :
@@ -510,7 +510,7 @@ theorem invCkG3_6_runAuthHybridSendKosk {S : Setup} (P : Primitives)
     · exact forall_support_pure _ _ hInv
   · exact forall_support_pure _ _ hInv
 
-def erasePreparedAuthRecv {S : Setup} (prep : PreparedAuthRecv S) : PreparedAuthRecv S :=
+@[expose] def erasePreparedAuthRecv {S : Setup} (prep : PreparedAuthRecv S) : PreparedAuthRecv S :=
   { prep with
     hstDec := eraseAuthCk1_0 prep.hstDec
     matchedSess? := prep.matchedSess?.map eraseIdealCk1_0
@@ -1100,7 +1100,7 @@ theorem evalDist_recv_schedule_g3_7_eq_authCkRecvWith_end {S : Setup} (cutoff : 
         simp only [pure_bind]
 
 
-def isAuthRecvQueryB {S : Setup} : (Nat ⊕ AuthQuery S) → Bool
+@[expose] def isAuthRecvQueryB {S : Setup} : (Nat ⊕ AuthQuery S) → Bool
   | .inr (.recvOPK _ _ _ _)   => true
   | .inr (.recvNoOPK _ _ _ _) => true
   | _                         => false

@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DropEpilogue
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DropEpilogue -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeHeap
 import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Proof -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::decoded_message`: Relocatable Drop Glue and Epilogue
@@ -23,7 +24,7 @@ Relocatable `[LibsignalPlacement]` proofs of the `polys: [Option<Poly>; 16]` dro
 `points_vecs` deallocation, and epilogue on Block `418`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +36,7 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalS
 open CryptoVerification.SpqrV1.Poly CryptoVerification.SpqrV1.Alloc CryptoVerification.CodeLayout
 open CryptoVerification.SpqrV1.Poly.AddChunk CryptoVerification.SpqrV1.Poly.AddChunk.AddChunkNorm
 open CryptoVerification.SpqrV1.Poly.ComputeAt
-open CryptoVerification.SpqrV1.Poly.LagrangePrepare (lagrangePrepareName lagrangePrepare_fnOff LagrangePrepareArgs lagrangePrepareSpec lagrangePreparePure lagrangePreparePure_length lagrangePrepareStack lagrangePrepare_ok polyOf_eq)
+open CryptoVerification.SpqrV1.Poly.LagrangePrepare (lagrangePrepareName LagrangePrepareArgs lagrangePreparePure lagrangePreparePure_length lagrangePrepareStack polyOf_eq)
 open CryptoVerification.SpqrV1.Poly.LagrangeComplete
 
 set_option maxRecDepth 200000

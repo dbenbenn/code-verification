@@ -9,20 +9,21 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead
-public import Computational.Proofs.SignalPqxdh.Security.SigHopA
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C2
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5C1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C2
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M1 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5C1
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # One-key multi-user AEAD integrity query bounds
@@ -31,7 +32,7 @@ One-key (`pqxdhAuthImpl1KeyG`) counterparts of the `MuBounded` and query-budget 
 `AuthSubHops4to5M1` for `aeadMuIntReductionAuth1Key`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

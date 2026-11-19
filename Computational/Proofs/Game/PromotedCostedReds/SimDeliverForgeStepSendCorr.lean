@@ -9,16 +9,47 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepSendCorrCost
+public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepSendCorrCost -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.FSAEAD.HybridLazy
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5On
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Start
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedFS
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11Aux
+import Computational.Proofs.E2E.RefuseCorrB0Core
+import Computational.Proofs.E2E.Relabel.GameEq
+import Computational.Proofs.E2E.SpkHop1A
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SpqrDesc
+import Computational.Proofs.HeadlineV1.CouplingV1
+import Computational.Proofs.HeadlineV1.DeliverForgeShifted
+import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECoupleT
+import Computational.Proofs.HeadlineV1.SignedRefineC
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.Fig8ExcessCosts
+import Computational.Proofs.ReductionDsl.Fig8SourceCosts
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.PubRed
+import Computational.Proofs.ReductionDsl.PureAuxMacroLift
+import Computational.Proofs.ReductionDsl.SM.DeliverForge
+import Computational.Proofs.ReductionDsl.SM.RedCKA
+import Computational.Proofs.ReductionDsl.SM.RedFS
+import Computational.Proofs.ReductionDsl.SM.RedPRNG
+import Computational.Proofs.ReductionDsl.SM.Theorem1
+import Computational.Proofs.SessionCostedFig8.Bundles
+import Computational.Proofs.SessionCostedFig8.ProgSizeBounds
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
 
 /-!
 # Send and Corrupt Step Equivalence for `SimDeliverForge`
 
 Proves semantic `.eval` equivalence for the atomic `.send` and `.corrupt` step computations of
-`SimDeliverForge` against `simDeliverForgeOracleSan`.
--/
+`SimDeliverForge` against `simDeliverForgeOracleSan`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,19 +62,19 @@ open _root_.ReductionDsl (Ty Expr Comp Ops Env bits atomicSig atomicSessionOps f
   lpubT lpubV lpubOfV ckaStT fsSendStT fsSendStV fsSendStOfV
   partyToBool boolToParty)
 open _root_.CryptoGames (Party)
-open CryptoGames.CBC (Plain)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart lFig8)
-open CryptoGames.Ratchet.LibsignalSim (Fig8St Fig8C SimState GhostChain SimCStateBounded
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart lFig8)
+open _root_.CryptoGames.Ratchet.LibsignalSim (Fig8St Fig8C SimState GhostChain SimCStateBounded
   mkPub toWire toGhost simToGhost_eq scPostSendPure semDrawSendCoins semSendHook deliverForgeSemHook)
-open CryptoGames.Ratchet.LibsignalSimC (Kept LibsignalToModularSchemeSimState)
-open CryptoGames.SM (Pos Record GameState partyEnc partyDec posTy posEnc posDec
+open _root_.CryptoGames.Ratchet.LibsignalSimC (Kept LibsignalToModularSchemeSimState)
+open _root_.CryptoGames.SM (Pos Record GameState partyEnc partyDec posTy posEnc posDec
   pGet pSet sendsInE sendsInE_eval)
-open CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey GhostState)
-open CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1SessionUniformCoins)
-open CryptoVerification.LibsignalSession (ratchetCostBudget)
-open CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
-open CryptoVerification.E2E (Bytes paramsV1)
+open _root_.CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey GhostState)
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1SessionUniformCoins)
+open _root_.CryptoVerification.LibsignalSession (ratchetCostBudget)
+open _root_.CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
+open _root_.CryptoVerification.E2E (Bytes paramsV1)
 open Computational.Proofs.ReductionDsl.Fig8Atomic (salt32V_salt32OfV)
 open Computational.Proofs.Game.PromotedCostedReds.SanOracleCore
   (semCorrHookTGB fig8StTruncSkB figS fig8San)
@@ -81,12 +112,10 @@ open Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepSendCorrCos
    dfSendStepC_queries dfCorrStepC_queries
    dfSendStepC_cost dfCorrStepC_cost dfSendStepC_descBits_le dfCorrStepC_descBits_le)
 
-noncomputable section
-
-@[reducible] def dfSendCorrStateT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def dfSendCorrStateT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   SimDeliverForgeStepSendCorrCost.dfSendCorrStateT ℓ Pt
 
-@[reducible] def dfSendCorrStateDec {ℓ : ℕ} {Pt : Type} (v : (dfSendCorrStateT ℓ Pt).denote) :
+@[expose, reducible] def dfSendCorrStateDec {ℓ : ℕ} {Pt : Type} (v : (dfSendCorrStateT ℓ Pt).denote) :
     LibsignalToModularSchemeSimState Bytes Pt ℓ × List (Fig8C Pt) :=
   SimDeliverForgeStepSendCorrCost.dfSendCorrStateDec v
 
@@ -162,8 +191,9 @@ private theorem fig8CtV_fig8CtOfV {ℓ : ℕ} {Pt : Type}
     (v : (fig8CtT (ℓ := ℓ) (Pt := Pt)).denote) :
     fig8CtV (ℓ := ℓ) (Pt := Pt) (fig8CtOfV v) = v := by
   rcases v with ⟨h, n, ws, sv⟩
-  simp [fig8CtV, fig8CtOfV, _root_.ReductionDsl.lctV, _root_.ReductionDsl.lctOfV,
-    _root_.ReductionDsl.wireSaltCtV, _root_.ReductionDsl.wireSaltCtOfV, salt32V_salt32OfV]
+  dsimp only [fig8CtV, fig8CtOfV, _root_.ReductionDsl.lctV, _root_.ReductionDsl.lctOfV,
+    _root_.ReductionDsl.wireSaltCtV, _root_.ReductionDsl.wireSaltCtOfV]
+  rw [salt32V_salt32OfV]
 
 private theorem fig8StV_fig8StOfV {ℓ : ℕ} {Pt : Type}
     (v : (fig8StT (ℓ := ℓ) (Pt := Pt)).denote) :
@@ -1099,7 +1129,7 @@ theorem dfCorrStepC_eval
     rw [_root_.ReductionDsl.Env.get_cons_zero, map_pure]
     exact congrArg pure (Prod.ext rfl hvDec)
 
-def simDeliverForgeSendCorrSpec
+@[expose] def simDeliverForgeSendCorrSpec
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (ℓ : ℕ) (C : Crypto) (K : MlKem) (idA idB : IdentityKey) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
@@ -1131,7 +1161,5 @@ theorem simDeliverForgeSendCorrSpec_nonempty
     (lam : Pt) (qep q : ℕ) :
     Nonempty (SimDeliverForgeSendCorrSpec Pt ℓ C K idA idB Dh encPt encT decT lam qep q) :=
   ⟨simDeliverForgeSendCorrSpec ℓ C K idA idB Dh encPt encT decT lam qep q⟩
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepSendCorr

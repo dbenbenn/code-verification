@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
 import ProofLib.SepLogic.WPFrozen
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # External Stub Contracts at `externStack = 2^14` and Caller-Block Transport
@@ -23,7 +25,7 @@ hook and subroutine transfer lemmas (`ls_hook_ok_of_caller`, `ls_subroutine_ok_c
 `ls_subroutine_ok_of_callee`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 
@@ -33,7 +35,7 @@ open Arm64 ProofLib
 
 /-- `memcpy(dst = x0, src = x1, len = x2)` from a read-only source `src ↦ᵣ bs`, owning
 `externStack` bytes of stack and preserving the trace (`(dst, src, bs)`). -/
-def sessionMemcpyROXSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def sessionMemcpyROXSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ (s0.readReg64 .x2).toNat = bs.length⌝ ∗
       memRegion dst bs.length ∗ (src ↦ᵣ bs) ∗ stackAt s0.sp CryptoVerification.LibsignalTripleRatchet.extHookStack
@@ -57,7 +59,7 @@ instance instIsLsBlockProg_lsBlkProg0 [LibsignalPlacement] (H : LibsignalHooks) 
 without requiring `i < 619` on the caller block index `i`. -/
 theorem ls_externAt?_of_caller [LibsignalPlacement] {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
-    {sym : String} (hmem : sym ∈ libsignalSessionExterns := by decide) :
+    {sym : String} (hmem : sym ∈ libsignalHookedExterns := by decide) :
     prog.externAt? (lsρ sym) = H sym := by
   have heq : prog.externAt? (lsρ sym) = (lsBlkProg lsmpl 0 H).externAt? (lsρ sym) := by
     rw [hprog.eq_blockProgram]
@@ -72,7 +74,7 @@ theorem ls_externAt?_of_caller [LibsignalPlacement] {prog : Program} {i : Nat}
 theorem ls_hook_ok_of_caller [LibsignalPlacement] {α : Type} {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
     {sym : String} {spec : Spec α} (hsat : HookSat H sym spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide) :
+    (hmem : sym ∈ libsignalHookedExterns := by decide) :
     subroutine_ok prog (lsρ sym) spec := by
   obtain ⟨f, hf, hok⟩ := hsat
   exact subroutine_ok_of_hookOk ((ls_externAt?_of_caller hmem).trans hf) hok
@@ -158,7 +160,7 @@ theorem ls_subroutine_ok_of_callee [LibsignalPlacement] {α : Type}
 
 /-- Caller-block-polymorphic relocatable `memcpy` from read-only `.rodata` (`sessionMemcpyROXSpec`)
 under `[LibsignalPlacement]`. -/
-def SessionMemcpyROXPlacedOk [LibsignalPlacement] (H : LibsignalHooks) : Prop :=
+@[expose] def SessionMemcpyROXPlacedOk [LibsignalPlacement] (H : LibsignalHooks) : Prop :=
   ∀ {callerProg : Program} {callerBlk : Nat} [IsLsBlockProg callerProg callerBlk H],
     subroutine_ok callerProg (lsρ "memcpy") (withLsCl lsmpl sessionMemcpyROXSpec)
 

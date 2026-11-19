@@ -117,120 +117,6 @@ theorem groups_fine_length_le {inflight : Nat} {base brkStart brk : BitVec 64}
   generalize finePeak63Count b = p63c at hLargeLe ⊢
   omega
 
-private theorem nodup_map_of_inj_on {α β : Type} {f : α → β} {xs : List α}
-    (hnd : xs.Nodup) (hinj : ∀ x ∈ xs, ∀ y ∈ xs, f x = f y → x = y) :
-    (xs.map f).Nodup := by
-  induction xs with
-  | nil => exact List.nodup_nil
-  | cons x rest ih =>
-    simp only [List.nodup_cons, List.map_cons] at hnd ⊢
-    refine ⟨?_, ih hnd.2 (fun a ha b hb =>
-      hinj a (List.mem_cons_of_mem x ha) b (List.mem_cons_of_mem x hb))⟩
-    intro hMem
-    obtain ⟨y, hyRest, hfy⟩ := List.mem_map.mp hMem
-    have hxy := hinj y (List.mem_cons_of_mem x hyRest) x List.mem_cons_self hfy
-    exact hnd.1 (hxy ▸ hyRest)
-
-private theorem slotAddr_toNat_eq (ma : MetaAreaDesc) (k : Nat)
-    (hBound : ma.base.toNat + 4096 ≤ 2 ^ 48) (hk : k < 101) :
-    (ma.slotAddr k).toNat = ma.base.toNat + (24 + 40 * k) := by
-  have h24 : 24 + 40 * k < 2 ^ 64 := by omega
-  have hSum : ma.base.toNat + (24 + 40 * k) < 2 ^ 64 := by omega
-  simp only [MetaAreaDesc.slotAddr, BitVec.toNat_add, BitVec.toNat_ofNat,
-    Nat.mod_eq_of_lt h24, Nat.mod_eq_of_lt hSum]
-
-private theorem metaAreaSlots_nodup_gen (n : Nat) (hn : n ≤ 101) (mas : List MetaAreaDesc)
-    (hMaNd : (mas.map (·.base)).Nodup)
-    (hMaBounds : ∀ ma ∈ mas, 4096 ≤ ma.base.toNat ∧ ma.base.toNat % 4096 = 0 ∧
-      ma.base.toNat + 4096 ≤ 2 ^ 48) :
-    (mas.flatMap fun ma => (List.range n).map ma.slotAddr).Nodup := by
-  induction mas with
-  | nil => exact List.nodup_nil
-  | cons ma rest ih =>
-    simp only [List.map_cons, List.nodup_cons] at hMaNd
-    simp only [List.flatMap_cons]
-    have hMaB := hMaBounds ma List.mem_cons_self
-    have hRestB : ∀ m' ∈ rest, 4096 ≤ m'.base.toNat ∧ m'.base.toNat % 4096 = 0 ∧
-        m'.base.toNat + 4096 ≤ 2 ^ 48 :=
-      fun m' hm' => hMaBounds m' (List.mem_cons_of_mem ma hm')
-    have hHeadNd : ((List.range n).map ma.slotAddr).Nodup := by
-      refine nodup_map_of_inj_on (xs := List.range n) List.nodup_range ?_
-      intro k1 hk1 k2 hk2 hEq
-      have hk1Lt : k1 < 101 := Nat.lt_of_lt_of_le (List.mem_range.mp hk1) hn
-      have hk2Lt : k2 < 101 := Nat.lt_of_lt_of_le (List.mem_range.mp hk2) hn
-      have hToNat := congrArg BitVec.toNat hEq
-      rw [slotAddr_toNat_eq ma k1 hMaB.2.2 hk1Lt, slotAddr_toNat_eq ma k2 hMaB.2.2 hk2Lt] at hToNat
-      omega
-    have hTailNd := ih hMaNd.2 hRestB
-    refine (List.nodup_append (l₁ := (List.range n).map ma.slotAddr)
-      (l₂ := rest.flatMap fun ma => (List.range n).map ma.slotAddr)).mpr
-      ⟨hHeadNd, hTailNd, fun a ha1 b hb2 hAb => ?_⟩
-    subst hAb
-    obtain ⟨k1, hk1, rfl⟩ := List.mem_map.mp ha1
-    obtain ⟨ma2, hma2, ha2'⟩ := List.mem_flatMap.mp hb2
-    obtain ⟨k2, hk2, hEq⟩ := List.mem_map.mp ha2'
-    have hk1Lt : k1 < 101 := Nat.lt_of_lt_of_le (List.mem_range.mp hk1) hn
-    have hk2Lt : k2 < 101 := Nat.lt_of_lt_of_le (List.mem_range.mp hk2) hn
-    have hMa2B := hRestB ma2 hma2
-    have hToNat := congrArg BitVec.toNat hEq
-    rw [slotAddr_toNat_eq ma k1 hMaB.2.2 hk1Lt, slotAddr_toNat_eq ma2 k2 hMa2B.2.2 hk2Lt] at hToNat
-    have hBaseNatEq : ma.base.toNat = ma2.base.toNat := by omega
-    exact hMaNd.1 ((BitVec.eq_of_toNat_eq hBaseNatEq) ▸ List.mem_map_of_mem hma2)
-
-private theorem metaAreaSlots_nodup (mas : List MetaAreaDesc)
-    (hMaNd : (mas.map (·.base)).Nodup)
-    (hMaBounds : ∀ ma ∈ mas, 4096 ≤ ma.base.toNat ∧ ma.base.toNat % 4096 = 0 ∧
-      ma.base.toNat + 4096 ≤ 2 ^ 48) :
-    (mas.flatMap fun ma => (List.range 101).map ma.slotAddr).Nodup :=
-  metaAreaSlots_nodup_gen 101 (Nat.le_refl 101) mas hMaNd hMaBounds
-
-/-- Budget-independent `meta_area` activation bound from `st.groups.length ≤ maxGroups`:
-    when `freeMetas = []` and `bumpMetas = []` at `inflight ≤ 7`,
-    `st.metaAreas.length + 1 ≤ 1 + (7 + maxGroups) / 101`. -/
-theorem metaAreas_succ_le_of_groups_le {inflight : Nat} {base brkStart brk : BitVec 64}
-    {liveCost peakCost maxGroups : Nat} {st : MallocngSt}
-    (hwf : MallocngWFInflight inflight base brkStart brk liveCost peakCost st)
-    (hGs : st.groups.length ≤ maxGroups)
-    (hInflight : inflight ≤ 7)
-    (hNoFree : st.freeMetas = [])
-    (hNoBump : st.bumpMetas = []) :
-    st.metaAreas.length + 1 ≤ 1 + (7 + maxGroups) / 101 := by
-  let usedAndFree :=
-    st.groups.map (·.metaPtr) ++ st.freeMetas.map (·.ptr) ++ st.bumpMetas ++ st.reservedMetas
-  have ⟨_hUfNd, hUfIff⟩ := hwf.free_bump_metas_wf.2.2.2.2
-  have hAllSlotsLen : (allMetaSlots st).length = 101 * st.metaAreas.length := by
-    unfold allMetaSlots
-    induction st.metaAreas with
-    | nil => rfl
-    | cons _ rest ih =>
-      simp only [List.flatMap_cons, List.length_append, List.length_map, List.length_range, ih,
-        List.length_cons]
-      omega
-  have hSlotNd : (allMetaSlots st).Nodup :=
-    metaAreaSlots_nodup st.metaAreas hwf.metaAreas_wf.1
-      (fun ma hma => ⟨(hwf.metaAreas_wf.2.1 ma hma).1, (hwf.metaAreas_wf.2.1 ma hma).2.1,
-        (hwf.metaAreas_wf.2.1 ma hma).2.2.1⟩)
-  have hSlotsLeUf : (allMetaSlots st).length ≤ usedAndFree.length :=
-    nodup_length_le_of_subset hSlotNd (fun m hm => (hUfIff m).mpr hm)
-  have hInflightBound := hwf.inflight_wf
-  have hUfLen : usedAndFree.length = st.groups.length + st.reservedMetas.length := by
-    simp [usedAndFree, hNoFree, hNoBump]
-  omega
-
-/-- `meta_area` activation bound under `MallocngFineInv`:
-    when `freeMetas = []` and `bumpMetas = []` at `inflight ≤ 7`,
-    `st.metaAreas.length + 1 ≤ fineMaxMetaAreas b`. -/
-theorem metaAreas_fine_succ_le {inflight : Nat} {base brkStart brk : BitVec 64}
-    {liveCost peakCost : Nat} {b : FineBudget} {ivs : List (BitVec 64 × Nat)}
-    {alignMap : BitVec 64 → Option Nat} {st : MallocngSt}
-    (hwf : MallocngWFInflight inflight base brkStart brk liveCost peakCost st)
-    (hFine : MallocngFineInv inflight b ivs alignMap st)
-    (hInflight : inflight ≤ 7)
-    (hNoFree : st.freeMetas = [])
-    (hNoBump : st.bumpMetas = []) :
-    st.metaAreas.length + 1 ≤ fineMaxMetaAreas b :=
-  metaAreas_succ_le_of_groups_le hwf (groups_fine_length_le hwf hFine) hInflight hNoFree hNoBump
-
 /-! ## Ring-Empty Occupancy and Group-Creation Bounds -/
 
 private def checkTag6Inj : Bool :=
@@ -590,7 +476,7 @@ theorem active_zero_occ_bounds {inflight : Nat} {base brkStart brk : BitVec 64}
     dsimp only [baseChild]
     unfold nestedEdge
     rw [List.filter_filter]
-    congr 1
+    apply congrArg List.length
     refine List.filter_congr fun cg _ => ?_
     by_cases h1 : cg.sc = ch <;> by_cases h2 : cg.maplen = 0 <;>
       by_cases h3 : cg.nestedCap = slotStride sc - 4 <;> simp [h1, h2, h3]
@@ -846,8 +732,8 @@ theorem dynamicRootRegions_fine_bounds {inflight : Nat} {base brkStart brk : Bit
     dsimp only [rootGs]
     unfold rootBytes
     rw [List.filter_filter]
-    congr 1
-    congr 1
+    apply congrArg List.sum
+    apply congrArg (List.map _)
     refine List.filter_congr fun g _ => ?_
     by_cases h1 : g.sc = sc <;> by_cases h2 : 0 < g.maplen <;> simp [h1, h2]
   have hLt48LeR :
@@ -878,38 +764,6 @@ theorem dynamicRootRegions_fine_bounds {inflight : Nat} {base brkStart brk : Bit
       hPagesLeMax hLt48LeR ( Nat.le_trans (Nat.add_le_add_left hStrBytesLe _) hCumB ) hLargeBytesLe
   exact ⟨hLenBound, hByteBound, dynamicRootRegions_fit48_inflight hwf⟩
 
-/-- Derived `masterDom` byte-count bound under `MallocngFineInv`:
-    `st.masterDom.length ≤ fineFootprint b`. -/
-theorem masterDom_fine_length_le {inflight : Nat} {base brkStart brk : BitVec 64}
-    {liveCost peakCost : Nat} {b : FineBudget} {ivs : List (BitVec 64 × Nat)}
-    {alignMap : BitVec 64 → Option Nat} {st : MallocngSt}
-    (hwf : MallocngWFInflight inflight base brkStart brk liveCost peakCost st)
-    (hFine : MallocngFineInv inflight b ivs alignMap st) :
-    st.masterDom.length ≤ fineFootprint b := by
-  have ⟨_, hByteBound, hFit48⟩ := dynamicRootRegions_fine_bounds hwf hFine
-  let allDynBytes := (dynamicRootRegions st).flatMap fun r => rangeAddrs r.1 r.2
-  have hRegBound : ∀ r ∈ dynamicRootRegions st, r.2 ≤ 2 ^ 64 := by
-    intro r hr
-    have h48 := hFit48 r hr
-    omega
-  have hSubDom : ∀ a ∈ st.masterDom, a ∈ allDynBytes := by
-    intro a ha
-    obtain ⟨r, hrMem, hInReg⟩ := hwf.masterDom_wf.2.2 a ha
-    exact List.mem_flatMap.mpr ⟨r, hrMem,
-      (mem_rangeAddrs_iff_inRegion r.1 (hRegBound r hrMem) a).mpr hInReg⟩
-  have hDomLeAll : st.masterDom.length ≤ allDynBytes.length :=
-    nodup_length_le_of_subset hwf.masterDom_wf.1 hSubDom
-  have hFlatLen : ∀ rs : List (BitVec 64 × Nat),
-      ((rs.flatMap fun r => rangeAddrs r.1 r.2).length) = (rs.map Prod.snd).sum := by
-    intro rs
-    induction rs with
-    | nil => rfl
-    | cons r rest ih =>
-      simp only [List.flatMap_cons, List.length_append, rangeAddrs_length, List.map_cons,
-        List.sum_cons, ih]
-  rw [hFlatLen] at hDomLeAll
-  exact Nat.le_trans hDomLeAll hByteBound
-
 /-! ## `heap_footprint_bound` Discharge -/
 
 private theorem holds_sepConj_right {P Q : SepProp} {h : Heap}
@@ -934,7 +788,7 @@ theorem fineHeap_footprint_bound
   obtain ⟨alignMap, hExH⟩ := SepProp.holds_sepExists hExH
   obtain ⟨liveCost, hExH⟩ := SepProp.holds_sepExists hExH
   obtain ⟨peakCost, hBodyH⟩ := SepProp.holds_sepExists hExH
-  unfold FineCoreStInflightA MallocngCoreStInflightA at hBodyH
+  unfold FineCoreStInflightA MallocngCoreStInflightModeA at hBodyH
   obtain ⟨hFine, hRest1⟩ := SepProp.holds_pure_sepConj hBodyH
   obtain ⟨_, hRest2⟩ := holds_sepConj_right hRest1
   obtain ⟨hwf, _⟩ := SepProp.holds_pure_sepConj hRest2

@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergePhase23W
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWDefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergePhase23Placed
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergePhase23W -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWDefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergePhase23Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.BytesMerge6Phase23Placed -- proof-setup: allow-public-import
 
 /-!
 # Relocatable Handshake `bytes::merge [local#5]` W-Mode Phases 2 and 3 Re-exports
@@ -22,7 +23,7 @@ Re-exports the unified `bytesMergeRawSpecXBoth` Phase 2 and Phase 3 lemmas on Bl
 (`lsProg_514 H`), covering `x.bs.length < 2 ^ 62` without `BytesMergeCapOk`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,9 +34,5 @@ open CryptoVerification.RustHeap
 open CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.LibsignalTripleRatchet.Prost
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH
-
-theorem mergePanicXBoth_eq_mergePanicXW (A : RustAlloc) (x : BytesMergeGhost)
-    (s0 : State) (R : SepProp) :
-    MergePanicXBoth A x s0 R = MergePanicXW A x s0 R := rfl
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec

@@ -21,12 +21,10 @@ splits (`keyWords4`), and unaligned byte-level splits for the 64-byte `(pk, sk)`
 (`exists_kpSplit`) and optional 32-byte one-time pre-key.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage2Lemmas
 
@@ -219,49 +217,6 @@ theorem err_stack_fold (s0 : State) {stk : Nat}
       rfl (by dsimp [cliInitiateFrame, initLocalsSize]; bv_omega) (by decide)
   rw [← sepConj_assoc, sepConj_comm]
   exact sepConj_mono_right htop
-
-theorem initArgsAt_eq_sp (img : Obj.Image) (x : InitGhost) (s0 : State) :
-    initArgsAt img (s0.sp - BitVec.ofNat 64 cliInitiateFrame) x s0 =
-      ((s0.sp - 7200#64) ↦₆₄ x.peerA) ∗
-      ((s0.sp - 7192#64) ↦₆₄ x.meA) ∗
-      ((s0.sp - 7184#64) ↦₆₄ (x.stores + 0xf0#64)) ∗
-      ((s0.sp - 7176#64) ↦₆₄ sessVt img) ∗
-      ((s0.sp - 7168#64) ↦₆₄ x.stores) ∗
-      ((s0.sp - 7160#64) ↦₆₄ idVt img) ∗
-      ((s0.sp - 7152#64) ↦₆₄ x.bundleA) ∗
-      ((s0.sp - 7144#64) ↦₆₄ 0#64) ∗
-      ((s0.sp - 7136#64) ↦₃₂ 0#32) ∗ memRegion (s0.sp - 7132#64) 4 ∗
-      ((s0.sp - 7128#64) ↦₆₄ (s0.sp - 0x71#64)) ∗
-      ((s0.sp - 7120#64) ↦₆₄ (x.bundleA + 0x78#64)) := by
-  dsimp only [initArgsAt, cliInitiateFrame]
-  exact congrArg₂ sepConj (u64_addr_eq (by bv_omega))
-    (congrArg₂ sepConj (u64_addr_eq (by bv_omega))
-      (congrArg₂ sepConj (u64_addr_eq (by bv_omega))
-        (congrArg₂ sepConj (u64_addr_eq (by bv_omega))
-          (congrArg₂ sepConj (u64_addr_eq (by bv_omega))
-            (congrArg₂ sepConj (u64_addr_eq (by bv_omega))
-              (congrArg₂ sepConj (u64_addr_eq (by bv_omega))
-                (congrArg₂ sepConj (u64_addr_eq (by bv_omega))
-                  (congrArg₂ sepConj (u32_addr_eq (by bv_omega))
-                    (congrArg₂ sepConj (mr_addr_eq (by bv_omega))
-                      (congrArg₂ sepConj (u64_addr_eq (by bv_omega))
-                        (u64_addr_eq (by bv_omega))))))))))))
-
-theorem initArgsAt_entails_memRegion (img : Obj.Image) (x : InitGhost) (s0 : State) :
-    initArgsAt img (s0.sp - BitVec.ofNat 64 cliInitiateFrame) x s0 ⊢
-      memRegion (s0.sp - 7200#64) 88 := by
-  rw [initArgsAt_eq_sp]
-  refine mr_fold (s0.sp - 7200#64) (s0.sp - 7192#64) 8 80 88 (mr_of_u64 _ _) ?_
-  refine mr_fold (s0.sp - 7192#64) (s0.sp - 7184#64) 8 72 80 (mr_of_u64 _ _) ?_
-  refine mr_fold (s0.sp - 7184#64) (s0.sp - 7176#64) 8 64 72 (mr_of_u64 _ _) ?_
-  refine mr_fold (s0.sp - 7176#64) (s0.sp - 7168#64) 8 56 64 (mr_of_u64 _ _) ?_
-  refine mr_fold (s0.sp - 7168#64) (s0.sp - 7160#64) 8 48 56 (mr_of_u64 _ _) ?_
-  refine mr_fold (s0.sp - 7160#64) (s0.sp - 7152#64) 8 40 48 (mr_of_u64 _ _) ?_
-  refine mr_fold (s0.sp - 7152#64) (s0.sp - 7144#64) 8 32 40 (mr_of_u64 _ _) ?_
-  refine mr_fold (s0.sp - 7144#64) (s0.sp - 7136#64) 8 24 32 (mr_of_u64 _ _) ?_
-  refine mr_fold (s0.sp - 7136#64) (s0.sp - 7132#64) 4 20 24 (mr_of_u32 _ _) ?_
-  refine mr_fold (s0.sp - 7132#64) (s0.sp - 7128#64) 4 16 20 (Entails.refl _) ?_
-  exact mr_fold (s0.sp - 7128#64) (s0.sp - 7120#64) 8 8 16 (mr_of_u64 _ _) (mr_of_u64 _ _)
 
 theorem initFreshRecAt_eq_sp (s0 : State) :
     initFreshRecAt (s0.sp - BitVec.ofNat 64 cliInitiateFrame) =

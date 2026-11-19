@@ -11,19 +11,22 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePendingStepsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePendingStepsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePendingSteps
+import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Placed Sub-Segment 3A: `pending_pre_key` (Block `518`)
@@ -33,7 +36,7 @@ budget-threaded CPS sub-segment theorem `clonePendingPreKey_placed_ok` (`+0x1a5c
 on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -99,7 +102,7 @@ abbrev oom_tail_378c_placed_ok :=
 /-- Exact allocator event sequence emitted while cloning `pending_pre_key : Option TailVecGhost`
 (`+0x1a5c → +0x1ac8`): `[]` when `pending = none` or `gp.vec.bytes = []`, else
 `rustAllocEvents gp.vec.bytes.length 1`. -/
-def clonePendingPreKeyEvents (pending : Option TailVecGhost) : List AllocEvent :=
+@[expose] def clonePendingPreKeyEvents (pending : Option TailVecGhost) : List AllocEvent :=
   match pending with
   | none => []
   | some gp =>
@@ -107,7 +110,7 @@ def clonePendingPreKeyEvents (pending : Option TailVecGhost) : List AllocEvent :
     else rustAllocEvents gp.vec.bytes.length 1
 
 /-- Exact allocator event envelope for `clonePendingPreKey_placed_ok`. -/
-def ClonePendingPreKeyEnv (pending : Option TailVecGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ClonePendingPreKeyEnv (pending : Option TailVecGhost) (evs : List AllocEvent) : Prop :=
   evs = clonePendingPreKeyEvents pending
 
 @[simp]

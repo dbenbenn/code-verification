@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecv
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKeyBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecv -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKeyBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -24,7 +26,7 @@ Defines `spqrRecvRawSpecPlaced`, the Segment S5 allocator event envelope `PqRecv
 representation normalizers, and shared panic/stepping helpers over `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -78,6 +80,10 @@ open LibsignalBinary.Heap (
 )
 open LibsignalBinary.Heap.SpecBudget (
   FormatInnerEnv formatInnerBudgetEnvSpec formatInnerBudgetSpec
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (CliFormatInnerEnv)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag (
+  spqrRecvResultDispAt spqrRecvResultDispAt_entails_spqrRecvResultAt
 )
 open LibsignalBinary.Proofs.Placed.BudgetPoolSync (
   hooksException sepWP_seg_ls_vm
@@ -143,6 +149,11 @@ namespace Simp
     (lim : BudgetLimits) (st : M.σ) (s : State) :
     spqrRecvResultAt (A.atState lim st s) = spqrRecvResultAt A.repAlloc := rfl
 
+@[scoped simp] theorem spqrRecvResultDispAt_atState {M : AllocCostModel} (A : RustCliAllocBudget M)
+    (lim : BudgetLimits) (st : M.σ) (s : State) :
+    spqrRecvResultDispAt (A.atState lim st s) = spqrRecvResultDispAt A.repAlloc := by
+  funext r res; cases res <;> rfl
+
 @[scoped simp] theorem vecArg_at_atState {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s : State) (v : VecArg) :
     v.at (A.atState lim st s) = v.at A.repAlloc := rfl
@@ -154,7 +165,7 @@ open Simp (
   sessionStateAt_atState trAt_atState trRestAt_atState speBodyAt_atState
   protocolAddressAt_atState signalMessageAt_atState signalMessageRestAt_atState
   vecU8At_atState vecU8_atState spqrRecvKeyAt_atState spqrRecvResultAt_atState
-  vecArg_at_atState
+  spqrRecvResultDispAt_atState vecArg_at_atState
 )
 
 /-- State-parameterized `steps_of_sepWP_placed` allowing `P_mid : State → SepProp` to carry
@@ -201,7 +212,7 @@ theorem tryDecryptFnOnPanic_eq_tryDecryptOnPanic (C : Crypto)
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `spqr::recv` raw contract, parameterized by
     `RecvEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop` and dropping
     `allocFailedIn` from `onPanic` so only `S.recvPanics` remains. -/
-def spqrRecvRawSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def spqrRecvRawSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (S : SpqrModel)
     (RecvEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop) :
     Spec ((VecArg × VecArg × BitVec 64) × M.σ) where
@@ -219,9 +230,9 @@ def spqrRecvRawSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     - on `S.recv tr.pqrState x.msg.pqRatchet = .ok _`, `RecvEnv tr.pqrState x.msg.pqRatchet`;
     - on `.error _`, `RecvEnv` followed by `fmtEnv` followed by an optional `mkg.seed` free
       (`FreeOnlyEvs`). -/
-def PqRecvEnv (S : SpqrModel)
+@[expose] def PqRecvEnv (S : SpqrModel)
     (RecvEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
-    (fmtEnv : List AllocEvent → Prop := FormatInnerEnv)
+    (fmtEnv : List AllocEvent → Prop := CliFormatInnerEnv)
     (x : TryDecryptGhost) (tr : TripleRatchet (List (BitVec 8))) :
     List AllocEvent → Prop :=
   match S.recv tr.pqrState x.msg.pqRatchet with
@@ -289,6 +300,47 @@ theorem onPanic_of_spqrRecv_budget_placed [LibsignalPlacement] {M : AllocCostMod
   rw [sepConj_assoc, satisfies_pure_sepConj]
   exact ⟨⟨Or.inr hpan, hpref⟩,
     Satisfies.mono (sepConj_mono_left (ProofLib.entails_anyHeap _)) hmem⟩
+
+/-- Relocatable `[LibsignalPlacement]` `spqr::recv` raw contract strengthened with
+    `spqrRecvResultDispAt` (`SpqrErrorValidTag d` on `.error sd`). -/
+@[expose] def spqrRecvRawDispSpec [LibsignalPlacement] (A : RustAlloc) (S : SpqrModel) :
+    Spec (VecArg × VecArg × BitVec 64) where
+  pre := (spqrRecvRawSpec A S).pre
+  post := fun (st, msg, ret) s0 sf =>
+    ⌜sf.trace = s0.trace ∧ ¬ S.recvPanics st.bytes msg.bytes⌝ ∗ st.at A ∗ msg.at A ∗
+      spqrRecvResultDispAt A ret (S.recv st.bytes msg.bytes) ∗
+      logOff tryDecryptPlacedImg ∗ A.pool ∗ stackAt s0.sp spqrRecvStack
+  onPanic := (spqrRecvRawSpec A S).onPanic
+
+/-- Budget-threaded relocatable `[LibsignalPlacement]` `spqr::recv` raw contract strengthened with
+    `spqrRecvResultDispAt` (`SpqrErrorValidTag d` on `.error sd`). -/
+@[expose] def spqrRecvRawDispSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+    (A : RustCliAllocBudget M) (lim : BudgetLimits) (S : SpqrModel)
+    (RecvEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop) :
+    Spec ((VecArg × VecArg × BitVec 64) × M.σ) where
+  pre := fun ((st_v, msg_v, ret), st) s =>
+    ⌜FitsEnv M lim st (RecvEnv st_v.bytes msg_v.bytes)⌝ ∗
+      (spqrRecvRawDispSpec (A.atState lim st s) S).pre (st_v, msg_v, ret) s
+  post := fun ((st_v, msg_v, ret), st) s0 sf =>
+    ∃∗ evs : List AllocEvent,
+      ⌜RecvEnv st_v.bytes msg_v.bytes evs⌝ ∗
+      (spqrRecvRawDispSpec (A.atState lim (M.stepEvents evs st) sf) S).post (st_v, msg_v, ret) s0 sf
+  onPanic := fun ((st_v, msg_v, _), _) s0 sf =>
+    ⌜S.recvPanics st_v.bytes msg_v.bytes ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
+
+theorem onPanic_of_spqrRecv_disp_budget_placed [LibsignalPlacement] {M : AllocCostModel}
+    {C : Crypto} {A : RustCliAllocBudget M} {lim : BudgetLimits} {S : SpqrModel}
+    {RecvEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
+    {x : TryDecryptGhost} {st_v msg_v : VecArg} {ret : BitVec 64} {st_m : M.σ}
+    {F R : SepProp} {s0 sm sf : State}
+    (htrace : sm.trace = s0.trace)
+    (hst : st_v.bytes = x.st.pqRatchetState)
+    (hmsg : msg_v.bytes = x.msg.pqRatchet)
+    (h : sf.mem ⊨ ((spqrRecvRawDispSpecPlaced A lim S RecvEnv).onPanic
+      ((st_v, msg_v, ret), st_m) sm sf ∗ F) ∗ R) :
+    sf.mem ⊨ tryDecryptOnPanic C uuidTryParse S x s0 sf ∗ R :=
+  onPanic_of_spqrRecv_budget_placed (A := A) (lim := lim) (RecvEnv := RecvEnv) (ret := ret)
+    (st_m := st_m) htrace hst hmsg h
 
 
 end LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs

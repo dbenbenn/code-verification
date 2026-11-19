@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.CollisionsA
-public import Computational.Proofs.GameHop.Advantage
-public import Computational.Proofs.GameHop.Fel
-public import Computational.Proofs.GameHop.StateSim
+import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+import Computational.Proofs.GameHop.Advantage
+import Computational.Proofs.GameHop.Fel
+import Computational.Proofs.GameHop.StateSim
 public import VCVio.EvalDist.Monad.Basic
 public import VCVio.OracleComp.Constructions.SampleableType.Measure
-public import Computational.Proofs.SignalPqxdh.Security.CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+public import Computational.Proofs.SignalPqxdh.Security.CollisionsB -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
 public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 
 /-!
 # One-key collision invariant and potential bound
@@ -27,7 +27,7 @@ One-key (`pqxdhAuthImpl1KeyG`) counterparts of `runAuthSim` and
 `pqxdhAuthImpl_valid_and_potential_le` from `CollisionsB`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +39,7 @@ open SignalPqxdh
 
 /-- Shared simulation core for `Auth` (`useRo = true, checkAuth = true`) and `HndlFirstMsg`
     (`useRo = false, checkAuth = false`). -/
-noncomputable def runAuthSim1Key (useRo checkAuth : Bool) (S : Setup) (P : Primitives)
+@[expose] def runAuthSim1Key (useRo checkAuth : Bool) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp (Bool × Bool × AuthState S) := do
   let secb ← $ᵗ Bool
   let initSt := AuthState.empty S secb

@@ -9,9 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Bridge
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Bridge
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Decoded Previous Session Bridge Re-exports
@@ -20,6 +28,6 @@ Re-exports the layout-independent separation-logic entailments `prevDec_sessionA
 `prevDec_sessionStateAt_canon`, and `prevDec_dropPre` from `PrevDec.Bridge`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false

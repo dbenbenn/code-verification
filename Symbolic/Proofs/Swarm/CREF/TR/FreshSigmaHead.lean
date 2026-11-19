@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
+public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -19,10 +19,10 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.FreshSigmaReach
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil
@@ -44,7 +44,7 @@ Proves `matchedPrefix_updateFreshAt`: updating the ghost randomness table `g.σ`
 at least `(runTraceMoves r₀ ms).length` preserves `MatchedPrefix`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

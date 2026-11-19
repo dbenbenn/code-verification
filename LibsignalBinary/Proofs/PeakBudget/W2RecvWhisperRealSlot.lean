@@ -11,51 +11,58 @@ module
 
 public import Arm64.Trusted.Process.Semantics
 public import LibsignalBinary.Heap.Fine.ClientBounds
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
-public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakSpec
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliRunPeakSpec
 public import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
 public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
-public import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit
-public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedEnv
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedGroupSplit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedWrappers
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightGroupSplit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptSlotPeak
-public import LibsignalBinary.Proofs.PeakBudget.W2Seg4CmkSeeds738
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentitySpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionSpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDet
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliBinaryPqProofDefs
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Process
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit
+import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedEnv -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedGroupSplit
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedWrappers
+public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightGroupSplit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptSlotPeak
+public import LibsignalBinary.Proofs.PeakBudget.W2Seg4CmkSeeds738 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
+public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentitySpec
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionSpec
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDet
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliBinaryPqProofDefs
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Process
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
 public import LibsignalBinary.Specifications.LibsignalE2E.SchemeModel
 public import LibsignalBinary.Specifications.SignalSession.PqDir
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -380,7 +387,7 @@ theorem w2CliDecryptSlot_polls_cliPqInputs_fine_groupSpec {A : RustAlloc}
 
 /-- Real W2 `try_decrypt` envelope at `dhCap ≤ 16`, `caps.length ≤ 12`, `DoublingChainLe 2000 caps`, and `SpqrRecvC07C09aTightLinkedEnv`.
 -/
-def W2RealTdEnv (F : ShaCompress) (K : MlKem)
+@[expose] def W2RealTdEnv (F : ShaCompress) (K : MlKem)
     (a : TryDecryptEnvArgs) (evs : List AllocEvent) : Prop :=
   ∃ (dhCap : Nat) (needGrow withAddr errAlloc : Bool) (caps : List Nat)
     (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
@@ -555,7 +562,7 @@ theorem peer_and_rem_name_le_40_of_recv {i : Inputs} {peerAddr : AddrV}
 
 /-- `0`-prev session-record serialize envelope for W2 (`decryptRecord` clears `previousSessions = []`).
 -/
-def W2RealRecordSerEnv (r : SessionRecord (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
+@[expose] def W2RealRecordSerEnv (r : SessionRecord (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
   match r.currentSession with
   | none => RecordSerializeCancelEnv ⟨0#64, 0#64, none⟩ r evs
   | some ses =>
@@ -563,7 +570,7 @@ def W2RealRecordSerEnv (r : SessionRecord (List (BitVec 8))) (evs : List AllocEv
       RecordSerializeCancelEnv ⟨0#64, 0#64, some G⟩ r evs
 
 /-- `0`-prev `store_session` poll envelope for W2 guarded by `SessionGhostValid G ses`. -/
-def W2RealStorePollEnv (peer : AddrGhost) (dir : DirGhost) (_rem : AddrVal)
+@[expose] def W2RealStorePollEnv (peer : AddrGhost) (dir : DirGhost) (_rem : AddrVal)
     (r : SessionRecord (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
   match r.currentSession with
   | none => CliSessStorePollEnv dir peer ⟨0#64, 0#64, none⟩ r evs
@@ -572,7 +579,7 @@ def W2RealStorePollEnv (peer : AddrGhost) (dir : DirGhost) (_rem : AddrVal)
       CliSessStorePollEnv dir peer ⟨0#64, 0#64, some G⟩ r evs
 
 /-- Real W2 `SessionStoreBudgetEnv` on `cliSessionKitSpecPlaced`. -/
-def w2RealSessionKitPlacedEnv [LibsignalPlacement] (A : RustAlloc)
+@[expose] def w2RealSessionKitPlacedEnv [LibsignalPlacement] (A : RustAlloc)
     (F : FsFiles) (pathOk : List (BitVec 8) → Prop) (peer : AddrGhost)
     (s1 s2 s3 s4 : Nat)
     (DeserEnv : List (BitVec 8) → List AllocEvent → Prop)
@@ -589,7 +596,7 @@ def w2RealSessionKitPlacedEnv [LibsignalPlacement] (A : RustAlloc)
     vtSym idVtSym
 
 /-- Real W2 `SessionStoreBudgetEnv` on `cliSessionStoreSpec`. -/
-def w2RealSessionKitEnv [LibsignalPlacement] (A : RustAlloc)
+@[expose] def w2RealSessionKitEnv [LibsignalPlacement] (A : RustAlloc)
     (F : FsFiles) (pathOk : List (BitVec 8) → Prop) (peer : AddrGhost)
     (s1 s2 s3 s4 : Nat)
     (DeserEnv : List (BitVec 8) → List AllocEvent → Prop) :
@@ -598,7 +605,7 @@ def w2RealSessionKitEnv [LibsignalPlacement] (A : RustAlloc)
   loadPollEnv := (w2RealSessionKitPlacedEnv A F pathOk peer s1 s2 s3 s4 DeserEnv).loadPollEnv
   storePollEnv := W2RealStorePollEnv peer
 
-def w2RealIdentityKitEnv {A : RustAlloc}
+@[expose] def w2RealIdentityKitEnv {A : RustAlloc}
     (F : FsFiles) (pathOk : List (BitVec 8) → Prop) (peer : AddrGhost)
     (t1 t2 t3 t4 : Nat) :
     IdentityStoreBudgetEnv
@@ -649,10 +656,10 @@ private theorem w2RealTd_maxReq_mono {dhCap : Nat} (hdh : dhCap ≤ 16) :
   | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 => decide
   | _ + 17 => omega
 
-def w2RealTdCum : Nat := w2TryDecryptSeeds738Cum 16 true 12 23313687
-def w2RealTdLive : Nat := w2TryDecryptTightLive 2000 605066 msgCapBytes
-def w2RealTdPeak : Nat := w2TryDecryptTightPeak 2000 605066 621350 msgCapBytes
-def w2RealTdMaxReq : Nat := w2TryDecryptMaxReq 16 2000 302480 msgCapBytes
+@[expose] def w2RealTdCum : Nat := w2TryDecryptSeeds738Cum 16 true 12 23313687
+@[expose] def w2RealTdLive : Nat := w2TryDecryptTightLive 2000 605066 msgCapBytes
+@[expose] def w2RealTdPeak : Nat := w2TryDecryptTightPeak 2000 605066 621350 msgCapBytes
+@[expose] def w2RealTdMaxReq : Nat := w2TryDecryptMaxReq 16 2000 302480 msgCapBytes
 
 theorem w2RealTd_phaseCredit (F : ShaCompress) (K : MlKem) (a : TryDecryptEnvArgs)
     (hTop : TopStateTight F K a.st.pqRatchetState)
@@ -686,7 +693,7 @@ theorem w2RealTd_phaseCredit (F : ShaCompress) (K : MlKem) (a : TryDecryptEnvArg
         (dhCap_small_le_16 hdh) hcaps hchain hTop hct).mono
         (w2RealTd_cum_mono hdh) (Nat.le_refl _) (Nat.le_refl _) (w2RealTd_maxReq_mono hdh)
 
-def w2RecvWhisperRealCum (deserCum : Nat) : Nat :=
+@[expose] def w2RecvWhisperRealCum (deserCum : Nat) : Nat :=
   let fileCap := sessionCapBytes
   let idFileCap := 64
   let c_ld := sessLoadPollTightDeltaCum (max 0 fileCap) deserCum
@@ -699,7 +706,7 @@ def w2RecvWhisperRealCum (deserCum : Nat) : Nat :=
   let c_kr := c_id_step + max 738 (c_id_step + c_st_step)
   c_ld_step + max 738 (c_rd + c_kr)
 
-def w2RecvWhisperRealLive (deserLive : Nat) : Nat :=
+@[expose] def w2RecvWhisperRealLive (deserLive : Nat) : Nat :=
   let fileCap := sessionCapBytes
   let idFileCap := 64
   let encCap' := fileCap + 3225192
@@ -710,7 +717,7 @@ def w2RecvWhisperRealLive (deserLive : Nat) : Nat :=
   let l_kr := l_id + (l_id + l_st)
   l_ld + (l_rd + l_kr)
 
-def w2RecvWhisperRealPeak (deserLive deserPeak : Nat) : Nat :=
+@[expose] def w2RecvWhisperRealPeak (deserLive deserPeak : Nat) : Nat :=
   let fileCap := sessionCapBytes
   let idFileCap := 64
   let pqCap' := fileCap + 1128000
@@ -726,7 +733,7 @@ def w2RecvWhisperRealPeak (deserLive deserPeak : Nat) : Nat :=
   let p_kr := max p_id (l_id + max p_id (l_id + p_st))
   max p_ld (l_ld + max p_rd (l_rd + p_kr))
 
-def w2RecvWhisperRealMaxReq (deserMaxReq : Nat) : Nat :=
+@[expose] def w2RecvWhisperRealMaxReq (deserMaxReq : Nat) : Nat :=
   let fileCap := sessionCapBytes
   let idFileCap := 64
   let pqCap' := fileCap + 1128000
@@ -738,7 +745,7 @@ def w2RecvWhisperRealMaxReq (deserMaxReq : Nat) : Nat :=
   let r_kr := max (max 32 r_id) (max 40 (max (max 32 r_id) (max 32 r_st)))
   max (max 24 r_ld) (max (max 40 17) (max r_rd r_kr))
 
-def w2RecvWhisperRealGrpS (deserGrpS : Nat) : Nat :=
+@[expose] def w2RecvWhisperRealGrpS (deserGrpS : Nat) : Nat :=
   369159264 + deserGrpS + w2TryDecryptTightGroupS_split_12
 
 theorem w2RecvWhisperReal_live_le_peak (deserLive deserPeak : Nat) :
@@ -792,7 +799,7 @@ theorem w2Real_hLoadEq [LibsignalPlacement] {A : RustAlloc}
 
 /-- Closed W2 `recv`-whisper `SingleSlotFineSpec` on `StoresGhost.opened`, parametric in `(DeserEnv, deserCum, deserLive, deserPeak, deserMaxReq, deserGrpS)`.
 -/
-def w2RecvWhisperReal_singleSlotFineSpec [LibsignalPlacement] {A : RustAlloc}
+@[expose] def w2RecvWhisperReal_singleSlotFineSpec [LibsignalPlacement] {A : RustAlloc}
     {W : PEParams} {i : Inputs} {peerAddr : AddrV}
     (pathOk : List (BitVec 8) → Prop) (peer : AddrGhost)
     (s1 s2 s3 s4 t1 t2 t3 t4 : Nat)
@@ -861,80 +868,19 @@ theorem w2RecvWhisperReal_bounds_setA_decide :
     w2RecvWhisperRealGrpS 371994912 ≤ 20000 * FineScale := by
   decide
 
-theorem w2RecvWhisperReal_singleSlotFineSpec_fits_setA [LibsignalPlacement] {A : RustAlloc}
-    {W : PEParams} {i : Inputs} {peerAddr : AddrV}
-    (pathOk : List (BitVec 8) → Prop) (peer : AddrGhost)
-    (s1 s2 s3 s4 t1 t2 t3 t4 : Nat)
-    (parse : UuidParser) (x : DecryptGhost)
-    (DeserEnv : List (BitVec 8) → List AllocEvent → Prop)
-    (hi : CliPqxdhInputs W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.recv peerAddr))
-    (hpeerAddr : peer.val = addrValOf peerAddr)
-    (hrem : x.rem.val = peer.val)
-    (hct : x.msg.ciphertext.length ≤ msgCapBytes)
-    (hfb : FilesBounded sessionCapBytes (initFsState (cliInputs i)))
-    (hDeserCredit : ∀ bs, bs.length ≤ 2097152 →
-      PhaseCreditSpec fineCostModel (DeserEnv bs) 20638720 3211282 5316629 2097152)
-    (hDeserGrp : ∀ bs, bs.length ≤ 2097152 →
-      PhaseGroupSpec fineCostModel (DeserEnv bs) 371994912) :
-    let S := w2RecvWhisperReal_singleSlotFineSpec (A := A) pathOk peer s1 s2 s3 s4 t1 t2 t3 t4
-      parse x DeserEnv 20638720 3211282 5316629 2097152 371994912
-      hi hparse hpeerAddr hrem hct hfb hDeserCredit hDeserGrp
-    S.cumB ≤ 66500000 ∧
-    S.liveB ≤ 16500000 ∧
-    S.peakB ≤ 20500000 ∧
-    S.maxReq ≤ 5322344 ∧
-    S.grpS ≤ 20000 * FineScale :=
-  w2RecvWhisperReal_bounds_setA_decide
-
-/-- Set B `cliRecvWhisperSlot*Cap` numerical check. -/
-theorem w2RecvWhisperReal_bounds_setB_decide :
-    w2RecvWhisperRealCum 19417728 ≤ 66500000 ∧
-    w2RecvWhisperRealLive 3211282 ≤ 16500000 ∧
-    w2RecvWhisperRealPeak 3211282 5316629 ≤ 20500000 ∧
-    w2RecvWhisperRealMaxReq 2097152 ≤ 5322344 ∧
-    w2RecvWhisperRealGrpS 346829088 ≤ 20000 * FineScale := by
-  decide
-
-theorem w2RecvWhisperReal_singleSlotFineSpec_fits_setB [LibsignalPlacement] {A : RustAlloc}
-    {W : PEParams} {i : Inputs} {peerAddr : AddrV}
-    (pathOk : List (BitVec 8) → Prop) (peer : AddrGhost)
-    (s1 s2 s3 s4 t1 t2 t3 t4 : Nat)
-    (parse : UuidParser) (x : DecryptGhost)
-    (DeserEnv : List (BitVec 8) → List AllocEvent → Prop)
-    (hi : CliPqxdhInputs W i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.recv peerAddr))
-    (hpeerAddr : peer.val = addrValOf peerAddr)
-    (hrem : x.rem.val = peer.val)
-    (hct : x.msg.ciphertext.length ≤ msgCapBytes)
-    (hfb : FilesBounded sessionCapBytes (initFsState (cliInputs i)))
-    (hDeserCredit : ∀ bs, bs.length ≤ 2097152 →
-      PhaseCreditSpec fineCostModel (DeserEnv bs) 19417728 3211282 5316629 2097152)
-    (hDeserGrp : ∀ bs, bs.length ≤ 2097152 →
-      PhaseGroupSpec fineCostModel (DeserEnv bs) 346829088) :
-    let S := w2RecvWhisperReal_singleSlotFineSpec (A := A) pathOk peer s1 s2 s3 s4 t1 t2 t3 t4
-      parse x DeserEnv 19417728 3211282 5316629 2097152 346829088
-      hi hparse hpeerAddr hrem hct hfb hDeserCredit hDeserGrp
-    S.cumB ≤ 66500000 ∧
-    S.liveB ≤ 16500000 ∧
-    S.peakB ≤ 20500000 ∧
-    S.maxReq ≤ 5322344 ∧
-    S.grpS ≤ 20000 * FineScale :=
-  w2RecvWhisperReal_bounds_setB_decide
-
 /-! ## 5. Hard-Wired `RecordDeserializeCancelEnv` Slot Bundle -/
 
-def w2RecvWhisperRealNoDeserCum : Nat := w2RecvWhisperRealCum 0
+@[expose] def w2RecvWhisperRealNoDeserCum : Nat := w2RecvWhisperRealCum 0
 
-def w2RecvWhisperRealDcanCum : Nat := w2RecvWhisperRealCum deserCancelFineCum
+@[expose] def w2RecvWhisperRealDcanCum : Nat := w2RecvWhisperRealCum deserCancelFineCum
 
-def w2RecvWhisperRealDcanLive : Nat := w2RecvWhisperRealLive deserCancelFineLive
+@[expose] def w2RecvWhisperRealDcanLive : Nat := w2RecvWhisperRealLive deserCancelFineLive
 
-def w2RecvWhisperRealDcanPeak : Nat := w2RecvWhisperRealPeak deserCancelFineLive deserCancelFinePeak
+@[expose] def w2RecvWhisperRealDcanPeak : Nat := w2RecvWhisperRealPeak deserCancelFineLive deserCancelFinePeak
 
-def w2RecvWhisperRealDcanMaxReq : Nat := w2RecvWhisperRealMaxReq deserCancelFineMaxReq
+@[expose] def w2RecvWhisperRealDcanMaxReq : Nat := w2RecvWhisperRealMaxReq deserCancelFineMaxReq
 
-def w2RecvWhisperRealDcanGrpS : Nat := w2RecvWhisperRealGrpS deserCancelFineGrpS
+@[expose] def w2RecvWhisperRealDcanGrpS : Nat := w2RecvWhisperRealGrpS deserCancelFineGrpS
 
 theorem w2RecvWhisperRealDcan_live_le_peak :
     w2RecvWhisperRealDcanLive ≤ w2RecvWhisperRealDcanPeak :=
@@ -971,7 +917,7 @@ structure W2RecvWhisperRealParams where
 
 /-- Call-site alignment and 1 MiB ciphertext bound for `W2RecvWhisperRealParams` on `.recv peerAddr`.
 -/
-def W2RecvWhisperRealDom (c : CallV) (R : W2RecvWhisperRealParams) : Prop :=
+@[expose] def W2RecvWhisperRealDom (c : CallV) (R : W2RecvWhisperRealParams) : Prop :=
   ∀ peerAddr, c = .recv peerAddr →
     R.peer.val = addrValOf peerAddr ∧
     R.x.rem.val = R.peer.val ∧
@@ -979,7 +925,7 @@ def W2RecvWhisperRealDom (c : CallV) (R : W2RecvWhisperRealParams) : Prop :=
 
 /-- Real CLI W2 (`recv` whisper) slot envelope with `RecordDeserializeCancelEnv` wired into `w2RealSessionKitEnv`.
 -/
-def W2RecvWhisperRealSlotEnv [LibsignalPlacement]
+@[expose] def W2RecvWhisperRealSlotEnv [LibsignalPlacement]
     (W : PEParams) (i : Inputs) (R : W2RecvWhisperRealParams) (evs : List AllocEvent) : Prop :=
   WithStoresDecEnv
     (cliSessionStoreSpec R.A 0#64 cliIo.rd (runFiles i) R.pathOk scopeKit R.peer
@@ -996,7 +942,7 @@ def W2RecvWhisperRealSlotEnv [LibsignalPlacement]
 
 /-- Closed `SingleSlotFineSpec` for `W2RecvWhisperRealSlotEnv` with `RecordDeserializeCancelEnv` wired in.
 -/
-def w2RecvWhisperRealSlot_dcan_singleSlotFineSpec [LibsignalPlacement]
+@[expose] def w2RecvWhisperRealSlot_dcan_singleSlotFineSpec [LibsignalPlacement]
     {W : PEParams} {i : Inputs} {peerAddr : AddrV}
     (R : W2RecvWhisperRealParams)
     (hi : CliPqxdhInputs W i)

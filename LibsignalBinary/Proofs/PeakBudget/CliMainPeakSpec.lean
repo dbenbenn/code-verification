@@ -11,11 +11,13 @@ module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliMainIoCredit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliMainIoCredit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Peak Live-Heap Specification for `signal-session` `main` Phases M1–M6
@@ -26,7 +28,7 @@ store drops → `M6` `1024`-B `LineWriter` `write_stdout` before final drops), p
 `M : AllocCostModel` and `RunEnv : RunCall → List AllocEvent → Prop`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -67,12 +69,12 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
   (AddressEnv Reserve16Env TryAllocateInEnv)
 
 /-- Allocation envelope for `signal_session_io::write_file`. -/
-def CliWriteFileEnv (len : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def CliWriteFileEnv (len : Nat) (evs : List AllocEvent) : Prop :=
   evs = [] ∨
   (384 ≤ len ∧ evs = rustAllocEvents (len + 1) 1 ++ rustDeallocEvents (len + 1) 1)
 
 /-- Allocation envelope for `signal_session_io::write_stdout` (`1024`-B `LineWriter`). -/
-def CliWriteStdoutEnv (evs : List AllocEvent) : Prop :=
+@[expose] def CliWriteStdoutEnv (evs : List AllocEvent) : Prop :=
   evs = [] ∨ evs = rustAllocEvents 1024 1
 
 /-! ## Callee Envelopes (`address`, `reserve16`, `try_allocate_in`) -/
@@ -80,71 +82,18 @@ def CliWriteStdoutEnv (evs : List AllocEvent) : Prop :=
 def addressDeltaCum (x : AddressCall) : Nat :=
   2 * x.bs.length + 28617
 
-def addressDeltaLive (x : AddressCall) : Nat :=
-  x.bs.length + 8195
-
-def addressDeltaPeak (x : AddressCall) : Nat :=
-  x.bs.length + 16390
-
-def addressMaxReq (x : AddressCall) : Nat :=
-  max 48 x.bs.length
-
-theorem address_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (uuidParse : UuidParser) (x : AddressCall) :
-    PhaseCreditSpec M (AddressEnv uuidParse x)
-      (addressDeltaCum x) (addressDeltaLive x) (addressDeltaPeak x) (addressMaxReq x) := by
-  exact phaseCredit_address hM uuidParse x
-
-def reserve16DeltaCum (newCap : Nat) : Nat :=
-  32 * newCap + 9539
-
-def reserve16DeltaLive (newCap : Nat) : Nat :=
-  16 * newCap + 8195
-
-def reserve16DeltaPeak (newCap : Nat) : Nat :=
-  16 * newCap + 8195
-
-theorem reserve16_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (x : Reserve16Call) :
-    let curLen := x.bs.length / 16
-    let newCap := reserveCapStride 16 x.cap.toNat curLen 1
-    PhaseCreditSpec M (Reserve16Env x)
-      (reserve16DeltaCum newCap) (reserve16DeltaLive newCap)
-      (reserve16DeltaPeak newCap) (16 * newCap) := by
-  exact phaseCredit_reserve16 hM x
-
-def tryAllocateInDeltaCum (req : Nat) : Nat :=
-  2 * req + 9539
-
-def tryAllocateInDeltaLive (req : Nat) : Nat :=
-  req + 8195
-
-def tryAllocateInDeltaPeak (req : Nat) : Nat :=
-  req + 8195
-
-theorem tryAllocateIn_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (x : TryAllocateInCall)
-    (hal : x.align.toNat ≤ 16) :
-    let req := x.new.toNat * x.stride.toNat
-    PhaseCreditSpec M (TryAllocateInEnv x)
-      (tryAllocateInDeltaCum req)
-      (tryAllocateInDeltaLive req)
-      (tryAllocateInDeltaPeak req)
-      req := by
-  exact phaseCredit_tryAllocateIn hM x hal
-
 /-! ## Phase M1–M3 Envelopes (`argv`, `read_stdin`, `"coins"` `read_file`) -/
 
-def M1PhaseEnv (argvLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def M1PhaseEnv (argvLen : Nat) (evs : List AllocEvent) : Prop :=
   evs = [] ∨ evs = rustAllocEvents (16 * argvLen) 8
 
-def M2CollectStepEnv (k : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def M2CollectStepEnv (k : Nat) (evs : List AllocEvent) : Prop :=
   evs = [] ∨ evs = rustReallocEvents (16 * k) (16 * reserveCapStride 16 k k 1) 8
 
-def M2CollectEnv (argvLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def M2CollectEnv (argvLen : Nat) (evs : List AllocEvent) : Prop :=
   IterSeqEnv M2CollectStepEnv (List.range argvLen) evs
 
-def M3PhaseEnv (needStdin : Bool) (stdin : List (BitVec 8))
+@[expose] def M3PhaseEnv (needStdin : Bool) (stdin : List (BitVec 8))
     (files : String → Option FsEntry) (coinsPath : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   SeqEnv
@@ -152,16 +101,16 @@ def M3PhaseEnv (needStdin : Bool) (stdin : List (BitVec 8))
     (SeqEnv (ReadFileEnv files coinsPath) FreeOnlyEvs)
     evs
 
-def readStdinDeltaCum (stdinCap : Nat) : Nat :=
+@[expose] def readStdinDeltaCum (stdinCap : Nat) : Nat :=
   max (2 * stdinCap + 9539) (4 * 1048576 + 9 * 9539)
 
-def readStdinDeltaLive (stdinCap : Nat) : Nat :=
+@[expose] def readStdinDeltaLive (stdinCap : Nat) : Nat :=
   max (stdinCap + 8195) (1048576 + 8195)
 
-def readStdinDeltaPeak (stdinCap : Nat) : Nat :=
+@[expose] def readStdinDeltaPeak (stdinCap : Nat) : Nat :=
   max (stdinCap + 8195) 1589254
 
-def readStdinMaxReq (stdinCap : Nat) : Nat :=
+@[expose] def readStdinMaxReq (stdinCap : Nat) : Nat :=
   max stdinCap 1048576
 
 theorem readStdin_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
@@ -174,17 +123,17 @@ theorem readStdin_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
   exact (phaseCredit_readStdin hM stdin hstdin).mono
     (by omega) (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _)
 
-def m3PhaseDeltaCum (stdinCap fileCap : Nat) : Nat :=
+@[expose] def m3PhaseDeltaCum (stdinCap fileCap : Nat) : Nat :=
   readStdinDeltaCum stdinCap + max (2 * fileCap + 9539) (4 * 2097152 + 10 * 9539)
 
-def m3PhaseDeltaLive (stdinCap fileCap : Nat) : Nat :=
+@[expose] def m3PhaseDeltaLive (stdinCap fileCap : Nat) : Nat :=
   readStdinDeltaLive stdinCap + max (fileCap + 8195) (2097152 + 8195)
 
-def m3PhaseDeltaPeak (stdinCap fileCap : Nat) : Nat :=
+@[expose] def m3PhaseDeltaPeak (stdinCap fileCap : Nat) : Nat :=
   max (readStdinDeltaPeak stdinCap)
     (readStdinDeltaLive stdinCap + max (fileCap + 8195) 3162118)
 
-def m3PhaseMaxReq (stdinCap fileCap : Nat) : Nat :=
+@[expose] def m3PhaseMaxReq (stdinCap fileCap : Nat) : Nat :=
   max (readStdinMaxReq stdinCap) (max fileCap 2097152)
 
 theorem m3Phase_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
@@ -221,18 +170,18 @@ theorem m3Phase_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
   exact hst.seq hrf
 
 /-- Tight `read_stdin` (`j = 8` doubling / single-buffer) `cumSmall` bound (`573,696` B). -/
-def readStdinDeltaCum_tight : Nat := 573696
+@[expose] def readStdinDeltaCum_tight : Nat := 573696
 
 /-- Tight `"coins"` `read_file` (`j = 9` doubling / single-buffer) `cumSmall` bound (`573,818` B). -/
-def readFileDeltaCum_tight : Nat := 573818
+@[expose] def readFileDeltaCum_tight : Nat := 573818
 
 /-- Tight Phase-M3 `cumSmall` bound (`573,696 + 573,818 = 1,147,514` B). -/
-def m3PhaseDeltaCum_tight : Nat :=
+@[expose] def m3PhaseDeltaCum_tight : Nat :=
   readStdinDeltaCum_tight + readFileDeltaCum_tight
 
 /-- `CliIo` doubling-schedule Phase-M3 envelope (`j = 8` `read_stdin` + `j = 9` `"coins"` `read_file`
 followed by drop frees). -/
-def M3PhaseCliIoEnv (needStdin : Bool) (stdinLen fileLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def M3PhaseCliIoEnv (needStdin : Bool) (stdinLen fileLen : Nat) (evs : List AllocEvent) : Prop :=
   SeqEnv
     (if needStdin then CliIoReadStdinEnv stdinLen else (· = []))
     (SeqEnv (CliIoReadFileEnv fileLen) FreeOnlyEvs)
@@ -291,110 +240,9 @@ theorem m3Phase_phaseCredit_tight {M : AllocCostModel} [HasFineReallocCredit M]
     · omega
   exact hst.seq hrf
 
-theorem m3Phase_phaseCredit_fine
-    (hM : ModelHyps fineCostModel) (needStdin : Bool) (stdin : List (BitVec 8))
-    (files : String → Option FsEntry) (coinsPath : List (BitVec 8))
-    {stdinCap fileCap : Nat}
-    (hstdin : stdin.length ≤ stdinCap)
-    (hfb : ∀ p bs, files p = some (.file bs) → bs.length ≤ fileCap) :
-    PhaseCreditSpec fineCostModel (M3PhaseEnv needStdin stdin files coinsPath)
-      m3PhaseDeltaCum_tight
-      (m3PhaseDeltaLive stdinCap fileCap)
-      (m3PhaseDeltaPeak stdinCap fileCap)
-      (m3PhaseMaxReq stdinCap fileCap) :=
-  m3Phase_phaseCredit_tight hM
-    (by rw [fineCostModel_smallMaxReq_eq]; decide)
-    (by rw [fineCostModel_smallMaxReq_eq]; decide)
-    needStdin stdin files coinsPath hstdin hfb
-
-/-- Tight `M3PhaseCliIoEnv` `PhaseCreditSpec` (`Δcum = 1,147,514` B, `Δlive = 3,162,118` B,
-`Δpeak = 4,218,889` B, `maxReq = 2,097,152` B) when `131072 ≤ smallMaxReq M < 262144`. -/
-theorem m3Phase_cliIo_phaseCredit_tight {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M)
-    (hSmLo : 131072 ≤ HasFineReallocCredit.smallMaxReq M)
-    (hSmHi : HasFineReallocCredit.smallMaxReq M < 262144)
-    (needStdin : Bool) (stdinLen fileLen : Nat) :
-    PhaseCreditSpec M (M3PhaseCliIoEnv needStdin stdinLen fileLen)
-      m3PhaseDeltaCum_tight
-      (m3PhaseDeltaLive 1048576 2097152)
-      (m3PhaseDeltaPeak 1048576 2097152)
-      (m3PhaseMaxReq 1048576 2097152) := by
-  have hst : PhaseCreditSpec M (if needStdin then CliIoReadStdinEnv stdinLen else (· = []))
-      readStdinDeltaCum_tight (readStdinDeltaLive 1048576)
-      (readStdinDeltaPeak 1048576) (readStdinMaxReq 1048576) := by
-    cases needStdin
-    · simp only [Bool.false_eq_true, ↓reduceIte]
-      exact (PhaseCreditSpec.nil M).mono
-        (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-    · simp only [↓reduceIte]
-      exact (readStdin_cliIo_phaseCredit_tight hM hSmLo hSmHi stdinLen).mono
-        (by decide) (by decide) (by decide) (by decide)
-  have hrf : PhaseCreditSpec M (SeqEnv (CliIoReadFileEnv fileLen) FreeOnlyEvs)
-      readFileDeltaCum_tight
-      (max (2097152 + 8195) (2097152 + 8195))
-      (max (2097152 + 8195) 3162118)
-      (max 2097152 2097152) := by
-    refine ((readFile_cliIo_phaseCredit_tight hM hSmLo hSmHi fileLen).seq
-      (PhaseCreditSpec.freeOnly hM.freeNonInc)).mono ?_ ?_ ?_ ?_
-    · decide
-    · decide
-    · decide
-    · decide
-  exact hst.seq hrf
-
-theorem m3Phase_cliIo_anyR_phaseCredit_tight {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M)
-    (hSmLo : 131072 ≤ HasFineReallocCredit.smallMaxReq M)
-    (hSmHi : HasFineReallocCredit.smallMaxReq M < 262144)
-    (needStdin : Bool) :
-    PhaseCreditSpec M
-      (SeqEnv
-        (if needStdin then (fun e => ∃ r, CliIoReadStdinEnv r e) else (· = []))
-        (SeqEnv (fun e => ∃ r, CliIoReadFileEnv r e) FreeOnlyEvs))
-      m3PhaseDeltaCum_tight
-      (m3PhaseDeltaLive 1048576 2097152)
-      (m3PhaseDeltaPeak 1048576 2097152)
-      (m3PhaseMaxReq 1048576 2097152) := by
-  have hst : PhaseCreditSpec M
-      (if needStdin then (fun e => ∃ r, CliIoReadStdinEnv r e) else (· = []))
-      readStdinDeltaCum_tight (readStdinDeltaLive 1048576)
-      (readStdinDeltaPeak 1048576) (readStdinMaxReq 1048576) := by
-    cases needStdin
-    · simp only [Bool.false_eq_true, ↓reduceIte]
-      exact (PhaseCreditSpec.nil M).mono
-        (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-    · simp only [↓reduceIte]
-      exact (phaseCreditSpec_cliIoReadStdin_anyR_tight hM hSmLo hSmHi).mono
-        (by decide) (by decide) (by decide) (by decide)
-  have hrf : PhaseCreditSpec M
-      (SeqEnv (fun e => ∃ r, CliIoReadFileEnv r e) FreeOnlyEvs)
-      readFileDeltaCum_tight
-      (max (2097152 + 8195) (2097152 + 8195))
-      (max (2097152 + 8195) 3162118)
-      (max 2097152 2097152) := by
-    refine ((phaseCreditSpec_cliIoReadFile_anyR_tight hM hSmLo hSmHi).seq
-      (PhaseCreditSpec.freeOnly hM.freeNonInc)).mono ?_ ?_ ?_ ?_
-    · decide
-    · decide
-    · decide
-    · decide
-  exact hst.seq hrf
-
-theorem m3Phase_cliIo_phaseCredit_fine
-    (hM : ModelHyps fineCostModel) (needStdin : Bool) (stdinLen fileLen : Nat) :
-    PhaseCreditSpec fineCostModel (M3PhaseCliIoEnv needStdin stdinLen fileLen)
-      m3PhaseDeltaCum_tight
-      (m3PhaseDeltaLive 1048576 2097152)
-      (m3PhaseDeltaPeak 1048576 2097152)
-      (m3PhaseMaxReq 1048576 2097152) :=
-  m3Phase_cliIo_phaseCredit_tight hM
-    (by rw [fineCostModel_smallMaxReq_eq]; decide)
-    (by rw [fineCostModel_smallMaxReq_eq]; decide)
-    needStdin stdinLen fileLen
-
 /-! ## Phase M5 (`write_file` Loop and Store Drops) and M6 (`LineWriter` and Final Drops) -/
 
-def M5LoopAEntryEnv (dir name : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def M5LoopAEntryEnv (dir name : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   let cap0 := dir.length
   let cap1 := reserveCap cap0 cap0 1
   let need2 := decide (cap1 - (cap0 + 1) < name.length)
@@ -408,30 +256,30 @@ def M5LoopAEntryEnv (dir name : List (BitVec 8)) (evs : List AllocEvent) : Prop 
     (· = rustDeallocEvents capFinal 1)
     evs
 
-def M5WriteStepEnv (entry : List (BitVec 8) × List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def M5WriteStepEnv (entry : List (BitVec 8) × List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   if entry.1 = [] then CliWriteFileEnv entry.2.length evs
   else M5LoopAEntryEnv entry.1 entry.2 evs
 
-def M5DirStepEnv (dir : List (BitVec 8)) (names : List (List (BitVec 8)))
+@[expose] def M5DirStepEnv (dir : List (BitVec 8)) (names : List (List (BitVec 8)))
     (evs : List AllocEvent) : Prop :=
   SeqEnv (IterSeqEnv (fun name => M5WriteStepEnv (dir, name)) names) FreeOnlyEvs evs
 
-def M5PhaseEnv (dirs : List (List (BitVec 8) × List (List (BitVec 8))))
+@[expose] def M5PhaseEnv (dirs : List (List (BitVec 8) × List (List (BitVec 8))))
     (evs : List AllocEvent) : Prop :=
   SeqEnv (IterSeqEnv (fun dn => M5DirStepEnv dn.1 dn.2) dirs) FreeOnlyEvs evs
 
-def M6Env (ok : Bool) (evs : List AllocEvent) : Prop :=
+@[expose] def M6Env (ok : Bool) (evs : List AllocEvent) : Prop :=
   SeqEnv (if ok then CliWriteStdoutEnv else (· = [])) FreeOnlyEvs evs
 
-def m5DirStepDeltaCum (numChanged maxDir maxName : Nat) : Nat :=
+@[expose] def m5DirStepDeltaCum (numChanged maxDir maxName : Nat) : Nat :=
   let maxCap := max (4 * maxDir + maxName + 16) 16
   numChanged * (10 * maxCap + 4 * 9539)
 
-def m5DirStepDeltaPeak (maxDir maxName : Nat) : Nat :=
+@[expose] def m5DirStepDeltaPeak (maxDir maxName : Nat) : Nat :=
   let maxCap := max (4 * maxDir + maxName + 16) 16
   3 * maxCap + 3 * 8195
 
-def m5DirStepMaxReq (maxDir maxName : Nat) : Nat :=
+@[expose] def m5DirStepMaxReq (maxDir maxName : Nat) : Nat :=
   max (4 * maxDir + maxName + 16) 16
 
 private theorem byteArray_toList_eq_data : ∀ (bs : ByteArray), bs.toList = bs.data.toList
@@ -513,9 +361,9 @@ theorem m5DirStep_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
     exact Nat.max_le.mpr ⟨Nat.le_refl _, Nat.zero_le _⟩
   · exact Nat.max_le.mpr ⟨Nat.le_refl _, Nat.zero_le _⟩
 
-def m6DeltaCum : Nat := 2 * 1024 + 9539
-def m6DeltaLive : Nat := 1024 + 8195
-def m6DeltaPeak : Nat := 1024 + 8195
+@[expose] def m6DeltaCum : Nat := 2 * 1024 + 9539
+@[expose] def m6DeltaLive : Nat := 1024 + 8195
+@[expose] def m6DeltaPeak : Nat := 1024 + 8195
 
 theorem m6_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) (ok : Bool) :
@@ -538,7 +386,7 @@ theorem m6_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
 
 /-! ## Whole-`main` `CliMainEnv` Composition (`M1 → M2 → M3 → M4 → M5 → M6`) -/
 
-def CliMainSetupEnv (uuidParse : UuidParser) (i : Inputs)
+@[expose] def CliMainSetupEnv (uuidParse : UuidParser) (i : Inputs)
     (addrOpt : Option AddressCall) (needStdin : Bool)
     (evs : List AllocEvent) : Prop :=
   SeqEnv (M1PhaseEnv i.argv.length)
@@ -552,7 +400,7 @@ def CliMainSetupEnv (uuidParse : UuidParser) (i : Inputs)
 
 /-- Full real-order `main` allocator envelope (`M1..M3 → RunEnv g → M5 → M6`), including early-exit
 prefix paths (`evs = []` or setup + `FreeOnlyEvs`). -/
-def CliMainEnv (uuidParse : UuidParser) (RunEnv : RunCall → List AllocEvent → Prop)
+@[expose] def CliMainEnv (uuidParse : UuidParser) (RunEnv : RunCall → List AllocEvent → Prop)
     (g : RunCall) (addrOpt : Option AddressCall) (needStdin : Bool)
     (dirs : List (List (BitVec 8) × List (List (BitVec 8)))) (ok : Bool)
     (evs : List AllocEvent) : Prop :=
@@ -562,18 +410,18 @@ def CliMainEnv (uuidParse : UuidParser) (RunEnv : RunCall → List AllocEvent �
       SeqEnv (RunEnv g) (SeqEnv (M5PhaseEnv dirs) (M6Env ok)) evs')
     evs
 
-def cliMainDeltaCum (stdinCap fileCap runCum numDirty maxDir maxName : Nat) : Nat :=
+@[expose] def cliMainDeltaCum (stdinCap fileCap runCum numDirty maxDir maxName : Nat) : Nat :=
   16 * 3 * 8 + m3PhaseDeltaCum stdinCap fileCap + runCum +
     numDirty * (10 * max (4 * maxDir + maxName + 16) 16 + 4 * 9539) + m6DeltaCum + 131072
 
-def cliMainDeltaLive (stdinCap fileCap runLive : Nat) : Nat :=
+@[expose] def cliMainDeltaLive (stdinCap fileCap runLive : Nat) : Nat :=
   m3PhaseDeltaLive stdinCap fileCap + runLive + m6DeltaLive + 65536
 
-def cliMainDeltaPeak (stdinCap fileCap runLive runPeak maxDir maxName : Nat) : Nat :=
+@[expose] def cliMainDeltaPeak (stdinCap fileCap runLive runPeak maxDir maxName : Nat) : Nat :=
   m3PhaseDeltaPeak stdinCap fileCap +
     max runPeak (runLive + max (m5DirStepDeltaPeak maxDir maxName) m6DeltaPeak) + 65536
 
-def cliMainMaxReq (stdinCap fileCap runMaxReq maxDir maxName : Nat) : Nat :=
+@[expose] def cliMainMaxReq (stdinCap fileCap runMaxReq maxDir maxName : Nat) : Nat :=
   max (m3PhaseMaxReq stdinCap fileCap) (max runMaxReq (max 1024 (m5DirStepMaxReq maxDir maxName)))
 
 private theorem m5Phase_credit_priv {M : AllocCostModel} [HasFineReallocCredit M]
@@ -754,7 +602,7 @@ theorem cliMain_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
 /-! ## Tight Whole-`main` Bounds (`131072 ≤ smallMaxReq M < 262144`) -/
 
 /-- `CliIo` doubling-schedule setup envelope (`M1 → M2Collect → address → M3PhaseCliIoEnv`). -/
-def CliMainSetupCliIoEnv (uuidParse : UuidParser) (argvLen : Nat)
+@[expose] def CliMainSetupCliIoEnv (uuidParse : UuidParser) (argvLen : Nat)
     (addrOpt : Option AddressCall) (needStdin : Bool) (stdinLen fileLen : Nat)
     (evs : List AllocEvent) : Prop :=
   SeqEnv (M1PhaseEnv argvLen)
@@ -767,7 +615,7 @@ def CliMainSetupCliIoEnv (uuidParse : UuidParser) (argvLen : Nat)
     evs
 
 /-- Full real-order `main` allocator envelope with `CliIo` doubling `M3PhaseCliIoEnv`. -/
-def CliMainCliIoEnv (uuidParse : UuidParser) (RunEnv : RunCall → List AllocEvent → Prop)
+@[expose] def CliMainCliIoEnv (uuidParse : UuidParser) (RunEnv : RunCall → List AllocEvent → Prop)
     (g : RunCall) (addrOpt : Option AddressCall) (needStdin : Bool) (stdinLen fileLen : Nat)
     (dirs : List (List (BitVec 8) × List (List (BitVec 8)))) (ok : Bool)
     (evs : List AllocEvent) : Prop :=
@@ -778,16 +626,16 @@ def CliMainCliIoEnv (uuidParse : UuidParser) (RunEnv : RunCall → List AllocEve
     evs
 
 /-- Tight whole-`main` `cumSmall` bound (`m3PhaseDeltaCum_tight = 1,147,514` B plus `48,255` B for M1/M2). -/
-def cliMainDeltaCum_tight (runCum numDirty maxDir maxName : Nat) : Nat :=
+@[expose] def cliMainDeltaCum_tight (runCum numDirty maxDir maxName : Nat) : Nat :=
   48255 + m3PhaseDeltaCum_tight + runCum +
     numDirty * (10 * max (4 * maxDir + maxName + 16) 16 + 4 * 9539) + m6DeltaCum
 
 /-- Tight whole-`main` `liveLarge` bound (`64, 1024 ≤ smallMaxReq M`, so M1/M2/M6 have `Δlive = 0`). -/
-def cliMainDeltaLive_tight (stdinCap fileCap runLive : Nat) : Nat :=
+@[expose] def cliMainDeltaLive_tight (stdinCap fileCap runLive : Nat) : Nat :=
   m3PhaseDeltaLive stdinCap fileCap + runLive
 
 /-- Tight whole-`main` `peakLarge` bound (`max m3Peak (m3Live + pTail)` with M1/M2/M6 `Δpeak = 0`). -/
-def cliMainDeltaPeak_tight (stdinCap fileCap runLive runPeak maxDir maxName : Nat) : Nat :=
+@[expose] def cliMainDeltaPeak_tight (stdinCap fileCap runLive runPeak maxDir maxName : Nat) : Nat :=
   max (m3PhaseDeltaPeak stdinCap fileCap)
     (m3PhaseDeltaLive stdinCap fileCap + max runPeak (runLive + m5DirStepDeltaPeak maxDir maxName))
 
@@ -844,27 +692,6 @@ private theorem cliMainSetup_credit_tight_priv {M : AllocCostModel} [HasFineReal
   have had := addrOpt_credit_small64_priv hM hsm64 uuidParse addrOpt
   have hm3 := m3Phase_phaseCredit_tight hM hSmLo hSmHi needStdin i.stdin
     (initFsState (cliInputs i)).files (utf8 "coins") hcaps.stdin_le hcaps.files_bounded
-  exact setup_seq_priv hm1 hm2 had hm3 (by decide) (by decide) (by decide)
-
-private theorem cliMainSetup_cliIo_credit_tight_priv {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M)
-    (hSmLo : 131072 ≤ HasFineReallocCredit.smallMaxReq M)
-    (hSmHi : HasFineReallocCredit.smallMaxReq M < 262144)
-    (uuidParse : UuidParser) {argvLen : Nat} (hargv : argvLen ≤ 3)
-    (addrOpt : Option AddressCall) (needStdin : Bool) (stdinLen fileLen : Nat) :
-    PhaseCreditSpec M (CliMainSetupCliIoEnv uuidParse argvLen addrOpt needStdin stdinLen fileLen)
-      (48255 + m3PhaseDeltaCum_tight)
-      (0 + m3PhaseDeltaLive 1048576 2097152)
-      (0 + m3PhaseDeltaPeak 1048576 2097152)
-      (max 64 (m3PhaseMaxReq 1048576 2097152)) := by
-  have hsm64 : 64 ≤ HasFineReallocCredit.smallMaxReq M := Nat.le_trans (by decide) hSmLo
-  unfold CliMainSetupCliIoEnv
-  have hm1 : PhaseCreditSpec M (M1PhaseEnv argvLen) 9635 0 0 48 :=
-    phaseCredit_m1Phase_small64 hM hsm64 hargv
-  have hm2 : PhaseCreditSpec M (M2CollectEnv argvLen) 29001 0 0 64 :=
-    phaseCredit_m2Collect_small64 hM hsm64 hargv
-  have had := addrOpt_credit_small64_priv hM hsm64 uuidParse addrOpt
-  have hm3 := m3Phase_cliIo_phaseCredit_tight hM hSmLo hSmHi needStdin stdinLen fileLen
   exact setup_seq_priv hm1 hm2 had hm3 (by decide) (by decide) (by decide)
 
 private theorem cliMainTail_credit_tight_priv {M : AllocCostModel} [HasFineReallocCredit M]
@@ -959,55 +786,6 @@ theorem cliMain_phaseCredit_fine
       (cliMainDeltaPeak_tight stdinCap fileCap runLive runPeak maxDir maxName)
       (cliMainMaxReq stdinCap fileCap runMaxReq maxDir maxName) :=
   cliMain_phaseCredit_tight hM
-    (by rw [fineCostModel_smallMaxReq_eq]; decide)
-    (by rw [fineCostModel_smallMaxReq_eq]; decide)
-    hcaps haddr hdirs hrun
-
-/-- Tight full real-order `CliMainCliIoEnv` `PhaseCreditSpec` (`j = 8` `read_stdin` + `j = 9`
-`read_file` doubling schedules, `Δcum = 1,147,514` B in M3) when `131072 ≤ smallMaxReq M < 262144`. -/
-theorem cliMain_cliIo_phaseCredit_tight {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M)
-    (hSmLo : 131072 ≤ HasFineReallocCredit.smallMaxReq M)
-    (hSmHi : HasFineReallocCredit.smallMaxReq M < 262144)
-    {uuidParse : UuidParser} {RunEnv : RunCall → List AllocEvent → Prop}
-    {g : RunCall} {stdinCap fileCap runCum runLive runPeak runMaxReq maxDir maxName : Nat}
-    {addrOpt : Option AddressCall} {needStdin : Bool} {stdinLen fileLen : Nat}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (hcaps : CliPqDomainCaps stdinCap fileCap g.i)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ 64)
-    (hdirs : ∀ dn ∈ dirs, dn.1.length ≤ maxDir ∧ ∀ nm ∈ dn.2, nm.length ≤ maxName)
-    (hrun : PhaseCreditSpec M (RunEnv g) runCum runLive runPeak runMaxReq) :
-    PhaseCreditSpec M
-      (CliMainCliIoEnv uuidParse RunEnv g addrOpt needStdin stdinLen fileLen dirs ok)
-      (cliMainDeltaCum_tight runCum ((dirs.map (fun dn => dn.2.length)).sum) maxDir maxName)
-      (cliMainDeltaLive_tight 1048576 2097152 runLive)
-      (cliMainDeltaPeak_tight 1048576 2097152 runLive runPeak maxDir maxName)
-      (cliMainMaxReq 1048576 2097152 runMaxReq maxDir maxName) := by
-  let _ := haddr
-  have hsm1024 : 1024 ≤ HasFineReallocCredit.smallMaxReq M := Nat.le_trans (by decide) hSmLo
-  unfold CliMainCliIoEnv cliMainDeltaCum_tight cliMainDeltaLive_tight cliMainDeltaPeak_tight cliMainMaxReq
-  exact cliMain_combine_tight_priv
-    (cliMainSetup_cliIo_credit_tight_priv hM hSmLo hSmHi uuidParse hcaps.argv_le
-      addrOpt needStdin stdinLen fileLen)
-    (cliMainTail_credit_tight_priv hM hsm1024 hdirs hrun)
-
-theorem cliMain_cliIo_phaseCredit_fine
-    (hM : ModelHyps fineCostModel)
-    {uuidParse : UuidParser} {RunEnv : RunCall → List AllocEvent → Prop}
-    {g : RunCall} {stdinCap fileCap runCum runLive runPeak runMaxReq maxDir maxName : Nat}
-    {addrOpt : Option AddressCall} {needStdin : Bool} {stdinLen fileLen : Nat}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (hcaps : CliPqDomainCaps stdinCap fileCap g.i)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ 64)
-    (hdirs : ∀ dn ∈ dirs, dn.1.length ≤ maxDir ∧ ∀ nm ∈ dn.2, nm.length ≤ maxName)
-    (hrun : PhaseCreditSpec fineCostModel (RunEnv g) runCum runLive runPeak runMaxReq) :
-    PhaseCreditSpec fineCostModel
-      (CliMainCliIoEnv uuidParse RunEnv g addrOpt needStdin stdinLen fileLen dirs ok)
-      (cliMainDeltaCum_tight runCum ((dirs.map (fun dn => dn.2.length)).sum) maxDir maxName)
-      (cliMainDeltaLive_tight 1048576 2097152 runLive)
-      (cliMainDeltaPeak_tight 1048576 2097152 runLive runPeak maxDir maxName)
-      (cliMainMaxReq 1048576 2097152 runMaxReq maxDir maxName) :=
-  cliMain_cliIo_phaseCredit_tight hM
     (by rw [fineCostModel_smallMaxReq_eq]; decide)
     (by rw [fineCostModel_smallMaxReq_eq]; decide)
     hcaps haddr hdirs hrun

@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB1
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB1 -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -212,7 +213,7 @@ theorem simulateQ_pqxdhAuthShCrPrimImpl (embedTarget : Bool) (S : Setup) (P : Pr
     exact simulateQ_liftShCrBasePrim P _ _ hst
       (simulateQ_pqxdhAuthSimImplPrim S P (.registerKey sk) hst.base hPrin hSpk hOpk hV.2.2.2)
 
-noncomputable def _root_.SignalPqxdh.Security.PausedShCrAuthData.toPaused
+@[expose] def _root_.SignalPqxdh.Security.PausedShCrAuthData.toPaused
     {S : Setup} (P : Primitives)
     (d : PausedShCrAuthData S) : PausedShCrKem S (AuthState S) where
   bundle := d.bundle
@@ -223,14 +224,14 @@ noncomputable def _root_.SignalPqxdh.Security.PausedShCrAuthData.toPaused
         (StateT (AuthShCrState S) ProbComp) + pqxdhAuthShCrSimImpl true S P)
         (d.cont y.1)).run y.2
 
-noncomputable abbrev PausedShCrAuthData.toPaused {S : Setup} (P : Primitives)
+abbrev PausedShCrAuthData.toPaused {S : Setup} (P : Primitives)
     (d : PausedShCrAuthData S) : PausedShCrKem S (AuthState S) :=
   _root_.SignalPqxdh.Security.PausedShCrAuthData.toPaused P d
 
 @[simp] theorem PausedShCrAuthData.toPaused_bundle {S : Setup} (P : Primitives)
     (d : PausedShCrAuthData S) : (PausedShCrAuthData.toPaused P d).bundle = d.bundle := rfl
 
-noncomputable def tryPauseAuthQueryData (S : Setup) (P : Primitives)
+@[expose] def tryPauseAuthQueryData (S : Setup) (P : Primitives)
     (sIdx : Nat) (gq : AuthQuery S)
     (cont : (authSpec S).Range gq → OracleComp (unifSpec + authSpec S) Bool)
     (hst : AuthShCrState S) : Option (PausedShCrAuthData S) :=
@@ -453,7 +454,7 @@ theorem simulateQ_pqxdhAuthShCrSimImpl_validAuthSim_and_recvKemRecs (embedTarget
           have ⟨hVx, hRecx⟩ := ih y.1 y.2 f hVy (h_cont y.1) x hx
           exact ⟨hVx, by omega⟩
 
-def ValidPausedShCrAuthData (S : Setup) (P : Primitives) (N : ℕ) (d : PausedShCrAuthData S) : Prop
+@[expose] def ValidPausedShCrAuthData (S : Setup) (P : Primitives) (N : ℕ) (d : PausedShCrAuthData S) : Prop
   :=
   ValidAuthSim S P d.hst.base ∧
   ∃ f, d.hst.recvKemRecs.length + f ≤ N ∧

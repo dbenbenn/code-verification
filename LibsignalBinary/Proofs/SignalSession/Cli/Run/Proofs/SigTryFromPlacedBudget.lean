@@ -11,11 +11,15 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFrom
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.SepLogic.WP.Apply
+public import VerifiedLibraries.Mallocng.Spec
 
 /-!
 # Budget-Threaded `SignalMessage::try_from` Slot Bridge (Placed)
@@ -25,7 +29,7 @@ Budget-pool counterparts of `tryFromSpecPlaced` and cross-block transfer for
 `SigTryFromEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -46,7 +50,7 @@ open CryptoVerification.LibsignalPublicApi.StoreKit
   (withLsCodeRoLoaded ls_subroutine_ok_rocl_of_block subroutine_ok_withLsCodeRoLoaded_of_rocl)
 
 /-- Budget-threaded relocatable specification for `<SignalMessage as TryFrom<&[u8]>>::try_from` (Block `85`). -/
-def tryFromSpecPlaced [LibsignalPlacement]
+@[expose] def tryFromSpecPlaced [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (SigTryFromEnv : TryFromGhost → List AllocEvent → Prop) :
     Spec (TryFromGhost × M.σ) :=

@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Adapters
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Adapters -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPFrozen
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.Common.CallInv
+import ProofLib
 import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Leaf.DeserLoopExitG
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.WaveCTemplates
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.CodeLayout -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -445,10 +445,6 @@ private theorem prostSSGAt_move_loopExit (A : RustAlloc) (a : BitVec 64) (v : SS
 
 /-! ## Loop exit stepping on `SP2Ext` -/
 
-private theorem fnOff_deser_loopExit :
-    libsignalSessionCode.fnOff recDeserializeName = num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize") := by
-  exact (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::deserialize")
-
 local elab "dexit_code_fetches_from " codeId:ident b:term:max H:term:max hfn:term:max
     off:term:max k0:num len:num : tactic => do
   let off ← CryptoVerification.CodeLayout.evalNat off "fetches"
@@ -468,10 +464,6 @@ local elab "dexit_code_fetches_from " codeId:ident b:term:max H:term:max hfn:ter
       Lean.Elab.Tactic.evalTactic (← `(tactic|
         have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
 
-local macro "dexit_fetches " b:term:max H:term:max k0:num len:num : tactic =>
-  `(tactic| dexit_code_fetches_from CryptoVerification.libsignalSessionCode $b $H
-    fnOff_deser_loopExit (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize")) $k0 $len)
-
 private theorem int64_raw_toBitVec_loopExit (n : Nat) (h : n < 18446744073709551616) :
     ({ toUInt64 := { toBitVec := { toFin := ⟨n, h⟩ } } } : Int64).toBitVec = BitVec.ofNat 64 n := by
   apply BitVec.eq_of_toNat_eq
@@ -490,7 +482,7 @@ private theorem w0_add_one_beq_zero_loopExit {w0 : BitVec 64} (h : w0 ≠ noneCa
   rw [beq_eq_false_iff_ne]
   exact w0_add_one_ne_zero_loopExit h
 
-def deserSavedAtL_loopExit (L : BitVec 64) (s0 : State) : SepProp :=
+@[expose] def deserSavedAtL_loopExit (L : BitVec 64) (s0 : State) : SepProp :=
   ((L + 0x710#64) ↦₆₄ s0.readReg64 .x29) ∗ ((L + 0x718#64) ↦₆₄ s0.readReg64 .x30) ∗
     ((L + 0x720#64) ↦₆₄ s0.readReg64 .x28) ∗ ((L + 0x728#64) ↦₆₄ s0.readReg64 .x27) ∗
     ((L + 0x730#64) ↦₆₄ s0.readReg64 .x26) ∗ ((L + 0x738#64) ↦₆₄ s0.readReg64 .x25) ∗
@@ -655,396 +647,8 @@ private theorem dexit_frame_entails_stackAt_loopExit (s0 : State) (c0 w0 : BitVe
   exact Entails.refl _
 
 @[local simp, local wp_norm, local arm64_norm]
-private theorem frozenLoaded_writeReg64_ext (img : Obj.Image) (s : State) (r : Reg) (v : BitVec 64) :
-    img.FrozenLoaded (s.writeReg64 r v) = img.FrozenLoaded s :=
-  propext ⟨frozenLoaded_of_mem_eq rfl, frozenLoaded_of_mem_eq rfl⟩
-
-@[local simp, local wp_norm, local arm64_norm]
-private theorem frozenLoaded_writeReg32_ext (img : Obj.Image) (s : State) (r : Reg) (v : BitVec 32) :
-    img.FrozenLoaded (s.writeReg32 r v) = img.FrozenLoaded s :=
-  propext ⟨frozenLoaded_of_mem_eq rfl, frozenLoaded_of_mem_eq rfl⟩
-
-@[local simp, local wp_norm, local arm64_norm]
-private theorem frozenLoaded_setPC_ext (img : Obj.Image) (s : State) (pc : BitVec 64) :
-    img.FrozenLoaded (s.setPC pc) = img.FrozenLoaded s :=
-  propext ⟨frozenLoaded_of_mem_eq rfl, frozenLoaded_of_mem_eq rfl⟩
-
-@[local simp, local wp_norm, local arm64_norm]
-private theorem frozenLoaded_setPState_ext (img : Obj.Image) (s : State) (ps : PState) :
-    img.FrozenLoaded (s.setPState ps) = img.FrozenLoaded s :=
-  propext ⟨frozenLoaded_of_mem_eq rfl, frozenLoaded_of_mem_eq rfl⟩
-
-@[local simp, local wp_norm, local arm64_norm]
-private theorem frozenLoaded_writeVReg128_ext (img : Obj.Image) (s : State) (idx : BitVec 5) (v : BitVec 128) :
-    img.FrozenLoaded (s.writeVReg128 idx v) = img.FrozenLoaded s :=
-  propext ⟨frozenLoaded_of_mem_eq rfl, frozenLoaded_of_mem_eq rfl⟩
-
-@[local simp, local wp_norm, local arm64_norm]
 private theorem symtab_setPState_ext (s : State) (ps : PState) :
     (s.setPState ps).symtab = s.symtab := rfl
-
-private theorem fnOff_deser_memcpy_loopExit :
-    libsignalSessionCode.fnOff recDeserializeName +
-      num% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize") =
-      libsignalSessionCode.fnOff memcpyName := by
-  rw [fnOff_deser_loopExit]
-  decide
-
-theorem memcpy_ok_extW {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (hC : Stage2ContractsA0 img ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr recDeserializeName + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize"))
-      ((sessionMemcpySpec deserCalleeStack).inImage img) :=
-  subroutine_ok_sessionMemcpySpec_mono (s2 := deserCalleeStack) (by decide) (by decide)
-    (hC.memcpy_ok_at fnOff_deser_memcpy_loopExit)
-
-private theorem memcpy_ok_inv_ext {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (hmc_ok : subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr recDeserializeName + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize"))
-      ((sessionMemcpySpec deserCalleeStack).inImage img)) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr recDeserializeName + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize"))
-      { pre := ((sessionMemcpySpec deserCalleeStack).inImage img).pre
-        post := fun a s0 sf => ⌜img.FrozenLoaded sf ∧ sf.symtab = img.symtab⌝ ∗ (sessionMemcpySpec deserCalleeStack).post a s0 sf } := by
-  apply subroutine_ok_of_sepWP_init
-  intro x R s0 hpc hrun hm hsp
-  have hm_in := hm
-  dsimp only [Spec.inImage] at hm
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hm
-  rcases hm with ⟨⟨hfrozen, hsym⟩, -⟩
-  refine ⟨((sessionMemcpySpec deserCalleeStack).inImage img).pre x s0, hm_in, ?_⟩
-  refine SepWP.call_subroutine_frame_frozen (F := emp) hmc_ok hfrozen hsym hpc hrun hsp rfl
-    (fun _ hm' => by simpa [emp_sepConj] using hm')
-    (fun _ _ _ h => not_satisfies_false_sepConj h)
-    (fun _ _ _ _ h => not_satisfies_false_sepConj h) ?_
-    (fun _ _ _ h => (not_satisfies_false_sepConj h).elim)
-  intro sf hpcf hrunf hspf hcsf hf_frozen hf_sym
-  refine SepWP.done hpcf hrunf ⟨fun hmf => ?_, hspf, hcsf⟩
-  dsimp only [Spec.inImage] at hmf ⊢
-  rw [sepConj_emp] at hmf
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨⟨hf_frozen, hf_sym⟩, hmf⟩
-
-set_option maxHeartbeats 800000 in
-private theorem dexit_sepWP_loopExit_ext {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (hmc_ok : subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr recDeserializeName + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize"))
-      ((sessionMemcpySpec deserCalleeStack).inImage img))
-    {s0 s : State} {L out w0 u0 u1 u2 u3 : BitVec 64} {rest : List (BitVec 8)}
-    (hpc : s.pc = (SP2Ext img.base ext).fnAddr recDeserializeName + 0x254#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = L)
-    (hal : s.spAligned = true)
-    (hx29 : s.readReg64 .x29 = L + 0x710#64)
-    (hx19 : s.readReg64 .x19 = out)
-    (hx20 : s.readReg64 .x20 = 0#64)
-    (hw0 : w0 ≠ noneCap)
-    (hrest : rest.length = 336)
-    (hF : img.FrozenLoaded s)
-    (hsym : s.symtab = img.symtab)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0) :
-    SepWP (SP2Ext img.base ext) (s0.readReg64 .lr) s
-      (memRegion (L + 8#64) 336 ∗ memRegion (L + 0x158#64) 336 ∗ memRegion (L + 0x2a8#64) 336 ∗
-        ((L + 0x400#64) ↦₆₄ 0#64) ∗
-        ((L + 0x408#64) ↦₆₄ 0#64) ∗ ((L + 0x410#64) ↦₆₄ 8#64) ∗ ((L + 0x418#64) ↦₆₄ 0#64) ∗
-        ((L + 0x420#64) ↦₆₄ w0) ∗ ((L + 0x428#64) ↦ₛ rest) ∗
-        ((L + 0x6e8#64) ↦₆₄ (L + 0x3f8#64)) ∗
-        (out ↦₆₄ u0) ∗ ((out + 8#64) ↦₆₄ u1) ∗
-        ((out + 0x10#64) ↦₆₄ u2) ∗ ((out + 0x18#64) ↦₆₄ u3) ∗
-        memRegion (out + 0x20#64) 336 ∗
-        stackAt L deserCalleeStack ∗
-        deserSavedAtL_loopExit L s0)
-      (fun sf P_f =>
-        sf.sp = L + 0x770#64 ∧
-        sf.trace = s.trace ∧
-        CalleeSavedPreserved s0 sf ∧
-        P_f = (((L + 8#64) ↦ₛ rest) ∗ ((L + 0x158#64) ↦ₛ rest) ∗ ((L + 0x2a8#64) ↦ₛ rest) ∗
-          ((L + 0x400#64) ↦₆₄ 0#64) ∗
-          ((L + 0x408#64) ↦₆₄ 0#64) ∗ ((L + 0x410#64) ↦₆₄ 8#64) ∗ ((L + 0x418#64) ↦₆₄ 0#64) ∗
-          ((L + 0x420#64) ↦₆₄ w0) ∗ ((L + 0x428#64) ↦ₛ rest) ∗
-          ((L + 0x6e8#64) ↦₆₄ (L + 0x3f8#64)) ∗
-          (out ↦₆₄ 0#64) ∗ ((out + 8#64) ↦₆₄ 8#64) ∗
-          ((out + 0x10#64) ↦₆₄ 0#64) ∗ ((out + 0x18#64) ↦₆₄ w0) ∗
-          ((out + 0x20#64) ↦ₛ rest) ∗
-          stackAt L deserCalleeStack ∗
-          deserSavedAtL_loopExit L s0)) := by
-  subst hsp
-  have hmemcpy := memcpy_ok_inv_ext hmc_ok
-  have hw0_ne := w0_add_one_ne_zero_loopExit hw0
-  have hw0_beq := w0_add_one_beq_zero_loopExit hw0
-  dexit_fetches img.base (Rust.withPanics ext) 492 20
-  dexit_fetches img.base (Rust.withPanics ext) 596 16
-  dexit_fetches img.base (Rust.withPanics ext) 780 4
-  dexit_fetches img.base (Rust.withPanics ext) 852 68
-  dexit_fetches img.base (Rust.withPanics ext) 1208 32
-  dexit_fetches img.base (Rust.withPanics ext) 1248 44
-  dsimp only [SP2Ext, contractProg] at hpc hmemcpy ⊢
-  generalize (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr recDeserializeName = entry at *
-  examples_hide_fetches
-  unfold deserSavedAtL_loopExit
-  wp_steps
-  wp_call hmemcpy (s.sp + 8#64, s.sp + 0x428#64, rest)
-  wp_steps
-  wp_call hmemcpy (s.sp + 0x2a8#64, s.sp + 8#64, rest)
-  wp_steps
-  wp_call hmemcpy (s.sp + 0x158#64, s.sp + 0x2a8#64, rest)
-  apply ProofLib.SepWP.of_sepWP_inv (mid := entry + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize")) (by assumption) (by assumption)
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *])
-  intro hF_c4 hsym_c4
-  wp_call hmemcpy (out + 0x20#64, s.sp + 0x158#64, rest)
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *])
-  refine ⟨by simp only [wp_norm, arm64_norm, *], by simp only [wp_norm, arm64_norm, *], ?_, ?_⟩
-  · refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> simp only [wp_norm, arm64_norm, *]
-  · simp only [wp_norm, arm64_norm, *]; ac_rfl
-
-theorem deserLoopExitG_ok_of_memcpy
-    (img : Obj.Image) (ext : String → Option (State → State))
-    (hmc_ok : subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr recDeserializeName + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize"))
-      ((sessionMemcpySpec deserCalleeStack).inImage img))
-    (x : DeserializeGenGhost) (R : SepProp) (s0 s : State) (hr : DeserializeScope x.r)
-    (hs : DeserLoopGAtW img ext x R s0 (recFields x.r).length s) :
-    DeserStepGAtW img ext x R s0 s (DeserRetGAt img x R s0) := by
-  let _ := hr
-  rcases hs with ⟨hpc, hrun, ⟨htr, hvregs⟩, hsym, hfr, hsp, hal, hx29, hx19, hx20, _hx23, hmem⟩
-  let L := deserSpL s0.sp
-  let v := ssgAfter x.r (recFields x.r).length
-  let bs := encodeRecord x.r
-  have hmem : s.mem ⊨ deserLocalsG L x.p bs
-      (((recFields x.r).drop (recFields x.r).length).flatMap GenField.enc) v ∗
-    memRegion x.out 368 ∗ stackAt L deserCalleeStack ∗ deserSaved s0 ∗ R := hmem
-  rw [List.drop_length, List.flatMap_nil] at hmem
-  unfold deserLocalsG at hmem
-  rw [sliceCursorAfter_nil_loopExit L x.p bs, memRegion_3f8_split_loopExit L,
-      deserSaved_eq_atL_loopExit s0] at hmem
-  let c0 := x.p + BitVec.ofNat 64 bs.length
-  have hmem1 : s.mem ⊨
-      prostSSGAt A0 (L + 0x420#64) v ∗
-      (memRegion x.out 368 ∗
-       memRegion L 8 ∗
-       (memRegion (L + 8#64) 336 ∗ memRegion (L + 0x158#64) 336 ∗
-         memRegion (L + 0x2a8#64) 336) ∗
-       ((L + 0x3f8#64) ↦₆₄ c0) ∗ ((L + 0x400#64) ↦₆₄ 0#64) ∗ (x.p ↦ₛ bs) ∗
-       ((L + 0x408#64) ↦₆₄ 0#64) ∗ ((L + 0x410#64) ↦₆₄ 8#64) ∗ ((L + 0x418#64) ↦₆₄ 0#64) ∗
-       memRegion (L + 0x578#64) 0x170 ∗
-       ((L + 0x6e8#64) ↦₆₄ (L + 0x3f8#64)) ∗ memRegion (L + 0x6f0#64) 0x20 ∗
-       stackAt L deserCalleeStack ∗ deserSavedAtL_loopExit L s0 ∗ R) := by
-    dsimp only [c0]
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hmem
-  obtain ⟨w0, rest, H, hw0, hrest, hrebuild, hmem2⟩ := satisfies_prostSSGAt_move_loopExit hmem1
-  have hmem3 : s.mem ⊨
-      memRegion x.out 368 ∗
-      (((L + 0x420#64) ↦₆₄ w0) ∗ ((L + 0x428#64) ↦ₛ rest) ∗ H ∗
-       memRegion L 8 ∗
-       (memRegion (L + 8#64) 336 ∗ memRegion (L + 0x158#64) 336 ∗
-         memRegion (L + 0x2a8#64) 336) ∗
-       ((L + 0x3f8#64) ↦₆₄ c0) ∗ ((L + 0x400#64) ↦₆₄ 0#64) ∗ (x.p ↦ₛ bs) ∗
-       ((L + 0x408#64) ↦₆₄ 0#64) ∗ ((L + 0x410#64) ↦₆₄ 8#64) ∗ ((L + 0x418#64) ↦₆₄ 0#64) ∗
-       memRegion (L + 0x578#64) 0x170 ∗
-       ((L + 0x6e8#64) ↦₆₄ (L + 0x3f8#64)) ∗ memRegion (L + 0x6f0#64) 0x20 ∗
-       stackAt L deserCalleeStack ∗ deserSavedAtL_loopExit L s0 ∗ R) := by
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hmem2
-  obtain ⟨u0, u1, u2, u3, hmem3'⟩ := satisfies_memRegion_out_split_loopExit hmem3
-  let F := (x.p ↦ₛ bs) ∗ H ∗ memRegion L 8 ∗
-    ((L + 0x3f8#64) ↦₆₄ c0) ∗ memRegion (L + 0x578#64) 0x170 ∗
-    memRegion (L + 0x6f0#64) 0x20 ∗ R
-  have hmem4 : s.mem ⊨
-      (memRegion (L + 8#64) 336 ∗ memRegion (L + 0x158#64) 336 ∗ memRegion (L + 0x2a8#64) 336 ∗
-        ((L + 0x400#64) ↦₆₄ 0#64) ∗
-        ((L + 0x408#64) ↦₆₄ 0#64) ∗ ((L + 0x410#64) ↦₆₄ 8#64) ∗ ((L + 0x418#64) ↦₆₄ 0#64) ∗
-        ((L + 0x420#64) ↦₆₄ w0) ∗ ((L + 0x428#64) ↦ₛ rest) ∗
-        ((L + 0x6e8#64) ↦₆₄ (L + 0x3f8#64)) ∗
-        (x.out ↦₆₄ u0) ∗ ((x.out + 8#64) ↦₆₄ u1) ∗
-        ((x.out + 0x10#64) ↦₆₄ u2) ∗ ((x.out + 0x18#64) ↦₆₄ u3) ∗
-        memRegion (x.out + 0x20#64) 336 ∗
-        stackAt L deserCalleeStack ∗
-        deserSavedAtL_loopExit L s0) ∗ F := by
-    dsimp only [F]
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hmem3'
-  intro hL
-  have hwp := dexit_sepWP_loopExit_ext hmc_ok (s0 := s0) (u0 := u0) (u1 := u1) (u2 := u2) (u3 := u3)
-    hpc hrun hsp hal hx29 hx19 hx20 hw0 hrest hfr hsym hvregs
-  obtain ⟨sf, hsteps, ⟨hpcf, hrunf, P_f, hmf, hspf, htracef, hcsf, rfl⟩ | ⟨_, _hoom⟩⟩ := hwp.elim hmem4 hL
-  rotate_left; · exact (not_satisfies_false_sepConj _hoom).elim
-  have hspf0 : sf.sp = s0.sp := by
-    rw [hspf]
-    dsimp [L, deserSpL]
-    bv_omega
-  refine ⟨sf, hsteps, Or.inl ⟨⟨hpcf, hspf0, hrunf⟩, ⟨hspf0, hcsf⟩, ?_⟩⟩
-  have hmf1 : sf.mem ⊨
-      ((x.p ↦ₛ bs) ∗
-       ((x.out ↦₆₄ 0#64) ∗ ((x.out + 8#64) ↦₆₄ 8#64) ∗ ((x.out + 0x10#64) ↦₆₄ 0#64) ∗
-         (((x.out + 0x18#64) ↦₆₄ w0) ∗ ((x.out + 0x20#64) ↦ₛ rest) ∗ H)) ∗
-       (stackAt L deserCalleeStack ∗
-        (memRegion L 8 ∗
-          ((L + 8#64) ↦ₛ rest) ∗ ((L + 0x158#64) ↦ₛ rest) ∗ ((L + 0x2a8#64) ↦ₛ rest) ∗
-          ((L + 0x3f8#64) ↦₆₄ c0) ∗ ((L + 0x400#64) ↦₆₄ 0#64) ∗
-          ((L + 0x408#64) ↦₆₄ 0#64) ∗ ((L + 0x410#64) ↦₆₄ 8#64) ∗ ((L + 0x418#64) ↦₆₄ 0#64) ∗
-          ((L + 0x420#64) ↦₆₄ w0) ∗ ((L + 0x428#64) ↦ₛ rest) ∗
-          memRegion (L + 0x578#64) 0x170 ∗
-          ((L + 0x6e8#64) ↦₆₄ (L + 0x3f8#64)) ∗
-          memRegion (L + 0x6f0#64) 0x20 ∗
-          deserSavedAtL_loopExit L s0))) ∗ R := by
-    dsimp only [F, L] at hmf ⊢
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hmf
-  have hout20 : x.out + 0x18#64 + 8#64 = x.out + 0x20#64 := by bv_omega
-  have hss_out :
-      ((x.out + 0x18#64) ↦₆₄ w0) ∗ ((x.out + 0x20#64) ↦ₛ rest) ∗ H ⊢
-        prostSSGAt A0 (x.out + 0x18#64) v := by
-    have hr := hrebuild (x.out + 0x18#64)
-    rwa [hout20] at hr
-  have hstk := dexit_frame_entails_stackAt_loopExit s0 c0 w0 rest hrest
-  dsimp only at hstk
-  have hmf2 := Satisfies.mono
-    (sepConj_mono_left (sepConj_mono_right (sepConj_mono
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right hss_out))) hstk))) hmf1
-  unfold deserOutRawG deserOutRecordG
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  refine ⟨htracef.trans htr, ?_⟩
-  dsimp only [v, bs] at hmf2
-  exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hmf2
-
-theorem deserLoopExitG_ok_extW
-    (img : Obj.Image)
-    (ext : String → Option (State → State))
-    (hC : Stage2ContractsA0 img ext)
-    (x : DeserializeGenGhost) (R : SepProp) (s0 s : State) (hr : DeserializeScope x.r)
-    (hs : DeserLoopGAtW img ext x R s0 (recFields x.r).length s) :
-    DeserStepGAtW img ext x R s0 s (DeserRetGAt img x R s0) :=
-  deserLoopExitG_ok_of_memcpy img ext (memcpy_ok_extW hC) x R s0 s hr hs
-
-theorem memcpy_ok_extWA {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : Stage2ContractsA img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr recDeserializeName + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize"))
-      ((sessionMemcpySpec deserCalleeStack).inImage img) :=
-  subroutine_ok_sessionMemcpySpec_mono (s2 := deserCalleeStack) (by decide) (by decide)
-    (hC.memcpy_ok_at fnOff_deser_memcpy_loopExit)
-
-theorem deserLoopExitG_ok_of_memcpyA
-    (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State))
-    (hmc_ok : subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr recDeserializeName + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize"))
-      ((sessionMemcpySpec deserCalleeStack).inImage img))
-    (x : DeserializeGenGhost) (R : SepProp) (s0 s : State) (hr : DeserializeScope x.r)
-    (hs : DeserLoopGAtWA img A ext x R s0 (recFields x.r).length s) :
-    DeserStepGAtWA img A ext x R s0 s (DeserRetGAtA img A x R s0) := by
-  let _ := hr
-  rcases hs with ⟨hpc, hrun, ⟨htr, hvregs⟩, hsym, hfr, hsp, hal, hx29, hx19, hx20, _hx23, hmem⟩
-  let L := deserSpL s0.sp
-  let v := ssgAfter x.r (recFields x.r).length
-  let bs := encodeRecord x.r
-  have hmem : s.mem ⊨ deserLocalsGA A L x.p bs
-      (((recFields x.r).drop (recFields x.r).length).flatMap GenField.enc) v ∗
-    memRegion x.out 368 ∗ A.pool ∗ stackAt L deserCalleeStack ∗ deserSaved s0 ∗ R := hmem
-  rw [List.drop_length, List.flatMap_nil] at hmem
-  unfold deserLocalsGA at hmem
-  rw [sliceCursorAfter_nil_loopExit L x.p bs, memRegion_3f8_split_loopExit L,
-      deserSaved_eq_atL_loopExit s0] at hmem
-  let c0 := x.p + BitVec.ofNat 64 bs.length
-  have hmem1 : s.mem ⊨
-      prostSSGAt A (L + 0x420#64) v ∗
-      (memRegion x.out 368 ∗
-       memRegion L 8 ∗
-       (memRegion (L + 8#64) 336 ∗ memRegion (L + 0x158#64) 336 ∗
-         memRegion (L + 0x2a8#64) 336) ∗
-       ((L + 0x3f8#64) ↦₆₄ c0) ∗ ((L + 0x400#64) ↦₆₄ 0#64) ∗ (x.p ↦ₛ bs) ∗
-       ((L + 0x408#64) ↦₆₄ 0#64) ∗ ((L + 0x410#64) ↦₆₄ 8#64) ∗ ((L + 0x418#64) ↦₆₄ 0#64) ∗
-       memRegion (L + 0x578#64) 0x170 ∗
-       ((L + 0x6e8#64) ↦₆₄ (L + 0x3f8#64)) ∗ memRegion (L + 0x6f0#64) 0x20 ∗
-       stackAt L deserCalleeStack ∗ deserSavedAtL_loopExit L s0 ∗ (A.pool ∗ R)) := by
-    dsimp only [c0]
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hmem
-  obtain ⟨w0, rest, H, hw0, hrest, hrebuild, hmem2⟩ := satisfies_prostSSGAt_move_loopExit hmem1
-  have hmem3 : s.mem ⊨
-      memRegion x.out 368 ∗
-      (((L + 0x420#64) ↦₆₄ w0) ∗ ((L + 0x428#64) ↦ₛ rest) ∗ H ∗
-       memRegion L 8 ∗
-       (memRegion (L + 8#64) 336 ∗ memRegion (L + 0x158#64) 336 ∗
-         memRegion (L + 0x2a8#64) 336) ∗
-       ((L + 0x3f8#64) ↦₆₄ c0) ∗ ((L + 0x400#64) ↦₆₄ 0#64) ∗ (x.p ↦ₛ bs) ∗
-       ((L + 0x408#64) ↦₆₄ 0#64) ∗ ((L + 0x410#64) ↦₆₄ 8#64) ∗ ((L + 0x418#64) ↦₆₄ 0#64) ∗
-       memRegion (L + 0x578#64) 0x170 ∗
-       ((L + 0x6e8#64) ↦₆₄ (L + 0x3f8#64)) ∗ memRegion (L + 0x6f0#64) 0x20 ∗
-       stackAt L deserCalleeStack ∗ deserSavedAtL_loopExit L s0 ∗ (A.pool ∗ R)) := by
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hmem2
-  obtain ⟨u0, u1, u2, u3, hmem3'⟩ := satisfies_memRegion_out_split_loopExit hmem3
-  let F := (x.p ↦ₛ bs) ∗ H ∗ memRegion L 8 ∗
-    ((L + 0x3f8#64) ↦₆₄ c0) ∗ memRegion (L + 0x578#64) 0x170 ∗
-    memRegion (L + 0x6f0#64) 0x20 ∗ (A.pool ∗ R)
-  have hmem4 : s.mem ⊨
-      (memRegion (L + 8#64) 336 ∗ memRegion (L + 0x158#64) 336 ∗ memRegion (L + 0x2a8#64) 336 ∗
-        ((L + 0x400#64) ↦₆₄ 0#64) ∗
-        ((L + 0x408#64) ↦₆₄ 0#64) ∗ ((L + 0x410#64) ↦₆₄ 8#64) ∗ ((L + 0x418#64) ↦₆₄ 0#64) ∗
-        ((L + 0x420#64) ↦₆₄ w0) ∗ ((L + 0x428#64) ↦ₛ rest) ∗
-        ((L + 0x6e8#64) ↦₆₄ (L + 0x3f8#64)) ∗
-        (x.out ↦₆₄ u0) ∗ ((x.out + 8#64) ↦₆₄ u1) ∗
-        ((x.out + 0x10#64) ↦₆₄ u2) ∗ ((x.out + 0x18#64) ↦₆₄ u3) ∗
-        memRegion (x.out + 0x20#64) 336 ∗
-        stackAt L deserCalleeStack ∗
-        deserSavedAtL_loopExit L s0) ∗ F := by
-    dsimp only [F]
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hmem3'
-  intro hL
-  have hwp := dexit_sepWP_loopExit_ext hmc_ok (s0 := s0) (u0 := u0) (u1 := u1) (u2 := u2) (u3 := u3)
-    hpc hrun hsp hal hx29 hx19 hx20 hw0 hrest hfr hsym hvregs
-  obtain ⟨sf, hsteps, ⟨hpcf, hrunf, P_f, hmf, hspf, htracef, hcsf, rfl⟩ | ⟨_, _hoom⟩⟩ := hwp.elim hmem4 hL
-  rotate_left; · exact (not_satisfies_false_sepConj _hoom).elim
-  have hspf0 : sf.sp = s0.sp := by
-    rw [hspf]
-    dsimp [L, deserSpL]
-    bv_omega
-  refine ⟨sf, hsteps, Or.inl ⟨⟨hpcf, hspf0, hrunf⟩, ⟨hspf0, hcsf⟩, ?_⟩⟩
-  have hmf1 : sf.mem ⊨
-      ((x.p ↦ₛ bs) ∗
-       ((x.out ↦₆₄ 0#64) ∗ ((x.out + 8#64) ↦₆₄ 8#64) ∗ ((x.out + 0x10#64) ↦₆₄ 0#64) ∗
-         (((x.out + 0x18#64) ↦₆₄ w0) ∗ ((x.out + 0x20#64) ↦ₛ rest) ∗ H)) ∗
-       (stackAt L deserCalleeStack ∗
-        (memRegion L 8 ∗
-          ((L + 8#64) ↦ₛ rest) ∗ ((L + 0x158#64) ↦ₛ rest) ∗ ((L + 0x2a8#64) ↦ₛ rest) ∗
-          ((L + 0x3f8#64) ↦₆₄ c0) ∗ ((L + 0x400#64) ↦₆₄ 0#64) ∗
-          ((L + 0x408#64) ↦₆₄ 0#64) ∗ ((L + 0x410#64) ↦₆₄ 8#64) ∗ ((L + 0x418#64) ↦₆₄ 0#64) ∗
-          ((L + 0x420#64) ↦₆₄ w0) ∗ ((L + 0x428#64) ↦ₛ rest) ∗
-          memRegion (L + 0x578#64) 0x170 ∗
-          ((L + 0x6e8#64) ↦₆₄ (L + 0x3f8#64)) ∗
-          memRegion (L + 0x6f0#64) 0x20 ∗
-          deserSavedAtL_loopExit L s0))) ∗ (A.pool ∗ R) := by
-    dsimp only [F, L] at hmf ⊢
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hmf
-  have hout20 : x.out + 0x18#64 + 8#64 = x.out + 0x20#64 := by bv_omega
-  have hss_out :
-      ((x.out + 0x18#64) ↦₆₄ w0) ∗ ((x.out + 0x20#64) ↦ₛ rest) ∗ H ⊢
-        prostSSGAt A (x.out + 0x18#64) v := by
-    have hr := hrebuild (x.out + 0x18#64)
-    rwa [hout20] at hr
-  have hstk := dexit_frame_entails_stackAt_loopExit s0 c0 w0 rest hrest
-  dsimp only at hstk
-  have hmf2 := Satisfies.mono
-    (sepConj_mono_left (sepConj_mono_right (sepConj_mono
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right hss_out))) hstk))) hmf1
-  unfold deserOutRawGA deserOutRecordGA
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  refine ⟨htracef.trans htr, ?_⟩
-  dsimp only [v, bs] at hmf2
-  exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hmf2
-
-theorem deserLoopExitG_ok_extWA
-    (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hC : Stage2ContractsA img A ext)
-    (x : DeserializeGenGhost) (R : SepProp) (s0 s : State) (hr : DeserializeScope x.r)
-    (hs : DeserLoopGAtWA img A ext x R s0 (recFields x.r).length s) :
-    DeserStepGAtWA img A ext x R s0 s (DeserRetGAtA img A x R s0) :=
-  deserLoopExitG_ok_of_memcpyA img A ext (memcpy_ok_extWA hC) x R s0 s hr hs
-
-/-! ## Relocatable `[LibsignalPlacement]` loop exit -/
 
 section Placed
 

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.BytesMerge6
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.BytesMerge6Phase23Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.BytesMerge6
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.BytesMerge6Phase23Placed -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Bytes.Drops
@@ -18,6 +18,16 @@ import LibsignalBinary.Proofs.TripleRatchet.Bytes.From
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import LibsignalBinary.Proofs.VarintBridge
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DoReserve10Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DoReserve10
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafReservePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafVarintPlaced
 
 /-!
 # Placed Handshake `bytes::merge [local#5]` Verification
@@ -27,7 +37,7 @@ Verifies `[LibsignalPlacement]` `prost::encoding::bytes::merge::<Vec<u8>, &mut &
 `bytesMerge3RawSpec`, `bytesMerge3ProtoRawSpec`, and Block-`518` caller contracts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -62,7 +72,7 @@ export CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec (
 
 /-- Unified outer (`bytesMerge3Stack`) specification supporting both `BytesMergeCapOk` (`< 2 ^ 63`)
 and unconstrained-capacity `< 2 ^ 62` (`W`). -/
-def bytesMerge3RawSpecBoth (A : RustAlloc) : Spec BytesMergeGhost where
+@[expose] def bytesMerge3RawSpecBoth (A : RustAlloc) : Spec BytesMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.valPtr ∧ s.readReg64 .x2 = x.bufRef ∧ x.bs.length < 2 ^ 63 ∧
@@ -677,13 +687,13 @@ theorem bytes_merge_6_proto_placed_ok_cro [LibsignalPlacement] {A : RustAlloc}
     (bytes_merge_6_proto_placed_ok hshim halloc hrealloc hdealloc hmc hpanic_alloc hpanic_raw) hi
 
 /-- Relocatable `[LibsignalPlacement]` contract for `bytes::merge [local#5]` (Block `514`) on `lsProg_518 ext`. -/
-def BytesMerge6Placed514OkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def BytesMerge6Placed514OkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 514)
     (withLsCodeRoLoaded lsmpl (bytesMerge3RawSpec A))
 
 /-- Relocatable `[LibsignalPlacement]` `Proto.mergeBytes` contract for `bytes::merge [local#5]` (Block `514`) on `lsProg_518 ext`. -/
-def BytesMerge6ProtoPlaced514OkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def BytesMerge6ProtoPlaced514OkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 514)
     (withLsCodeRoLoaded lsmpl (bytesMerge3ProtoRawSpec A))

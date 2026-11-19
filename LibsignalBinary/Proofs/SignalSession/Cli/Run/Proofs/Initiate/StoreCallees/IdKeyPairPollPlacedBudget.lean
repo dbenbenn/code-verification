@@ -9,15 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdKeyPairPollPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.PollCommonPlacedBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdKeyPairPollPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.PollCommonPlacedBudget
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecDefs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdKeyPairPoll -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LscroKitPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.PollCommonPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded `IdentityFiles::get_identity_key_pair::{closure#0}` (`[LibsignalPlacement]`, Block `567`)
@@ -26,7 +35,7 @@ Defines `OptIkpTryFromEnv` and `CliIdKeyPairPollEnv` and verifies Block `567` ag
 `SpecsPlacedBudget.idKeyPairPollSpecPlaced` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -149,7 +158,7 @@ attribute [local arm64_norm]
 /-- Exact post-`Dir::get` decode envelope for `IdentityFiles::get_identity_key_pair::{closure#0}`:
 - `Ok bs`: runs `<IdentityKeyPair as TryFrom<&[u8]>>::try_from` (`IdentityKeyPairTryFromEnv bs.length`);
 - `Err ()`: `0` heap events (`evs = []`). -/
-def OptIkpTryFromEnv (gr : Except Unit (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
+@[expose] def OptIkpTryFromEnv (gr : Except Unit (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
   match gr with
   | .ok bs => IdentityKeyPairTryFromEnv bs.length evs
   | .error () => evs = []
@@ -157,7 +166,7 @@ def OptIkpTryFromEnv (gr : Except Unit (List (BitVec 8))) (evs : List AllocEvent
 /-- Tight budget envelope for `IdentityFiles::get_identity_key_pair::{closure#0}` (Block `567`):
 runs `Dir::get("identity-key-pair")`, runs `IdentityKeyPair::try_from` iff `Dir::get` returns
 `Ok bs`, and optionally frees a non-zero-capacity `Dir::get` byte buffer (`FreeOnlyEvs`). -/
-def CliIdKeyPairPollEnv
+@[expose] def CliIdKeyPairPollEnv
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (rd : ReadRule) (F0 : FsFiles) (x : IdOwnPollGhostPlaced) : List AllocEvent → Prop :=
   SeqEnv (GetEnv F0 x.own (utf8 "identity-key-pair"))

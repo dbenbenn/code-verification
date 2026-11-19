@@ -10,9 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Spec
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
 public import ProofLib.SepLogic.WP
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
 
 /-!
 # Stack-Frame Layout Helpers for `signal_session_handshake::decrypt_prekey`
@@ -21,7 +22,7 @@ Separation-logic and 64-bit word-cell (`↦₆₄`) layout helpers for the `2144
 frame of `signal_session_handshake::decrypt_prekey`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -58,15 +59,6 @@ theorem cmn3_ne_zero {w0 : BitVec 64} (hne : w0 ≠ BitVec.ofNat 64 (2 ^ 64 - 3)
     w0 + 3#64 ≠ 0#64 ∧ (w0 + 3#64 == 0#64) = false := by
   have h1 : w0 + 3#64 ≠ 0#64 := by bv_omega
   exact ⟨h1, beq_false_of_ne h1⟩
-
-theorem fnAddr_poll_eq_add_rel (img : Obj.Image) (ext : String → Option (State → State))
-    {wrapOff pollOff : Nat}
-    (hwrap : libsignalSessionCode.fnOff cliDecryptPrekeyName = wrapOff)
-    (hpoll : libsignalSessionCode.fnOff cliDpPollName = pollOff) :
-    (tripleRatchetProgAtExt img.base ext).fnAddr cliDpPollName =
-      (tripleRatchetProgAtExt img.base ext).fnAddr cliDecryptPrekeyName +
-        (BitVec.ofNat 64 pollOff - BitVec.ofNat 64 wrapOff) := by
-  dsimp only [tripleRatchetProgAtExt]; rw [Program.fnAddr_rebase, Program.fnAddr_rebase, hwrap, hpoll]; bv_omega
 
 theorem allocFailedIn_eq_of_trace_eq {s0 s1 sf : State} (htr : s1.trace = s0.trace) :
     allocFailedIn s1 sf ↔ allocFailedIn s0 sf := by simp only [allocFailedIn, htr]
@@ -140,7 +132,7 @@ theorem dpPost_pack {ioProp : Prop} {res : List (BitVec 64) → SepProp}
 
 /-! ## Opaque caller frame bundle & fast `SepWP` existential unpackers -/
 
-def dpCallerFrame (s0 : State) (ret : BitVec 64) (args8 : List (BitVec 64)) : SepProp :=
+@[expose] def dpCallerFrame (s0 : State) (ret : BitVec 64) (args8 : List (BitVec 64)) : SepProp :=
   dpWordsAt s0.sp args8 ∗ memRegion ret 48 ∗ memRegion (s0.sp - 56#64) 8 ∗
     ((s0.sp - 48#64) ↦₆₄ s0.readReg64 Reg.fp) ∗ ((s0.sp - 40#64) ↦₆₄ s0.readReg64 Reg.lr) ∗
     ((s0.sp - 32#64) ↦₆₄ s0.readReg64 (Reg.gpr 28#5)) ∗ ((s0.sp - 24#64) ↦₆₄ s0.readReg64 (Reg.gpr 21#5)) ∗

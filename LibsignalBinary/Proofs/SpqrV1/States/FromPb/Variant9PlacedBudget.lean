@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.ProofPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9PlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.ProofPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9PlacedBudgetAux -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
@@ -18,6 +18,20 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9b
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9d
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9aPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9dPlacedBudgetAux
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9aPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9dPlaced
 
 /-!
 # Budget-Threaded Placed Variant 9 (`Ct1Acknowledged`, `+444`, Block `333`)
@@ -27,7 +41,7 @@ top-level `subroutine_ok` contracts for Variant 9 (`InnerState.ct1Acknowledged`)
 `Ct1AcknowledgedFromPbEnv` and `StatesFromPbEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

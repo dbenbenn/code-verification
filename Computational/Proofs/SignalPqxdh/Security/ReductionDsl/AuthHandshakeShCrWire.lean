@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrEval
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeProofs
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrEval
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeProofs -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrProofs
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCr -- proof-setup: allow-public-import
 
 /-!
 # Cost Bounds for the `ReductionDsl` `Auth` `KemShCr` Adversary
@@ -19,7 +20,7 @@ import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrP
 Specializes the `shcrReductionAuthProg` step-cost bounds to `shcrAuthDslProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,13 +31,5 @@ open SignalPqxdh SignalPqxdh.LegacyCosted SignalPqxdh.Security SignalPqxdh.Secur
 
 abbrev shcrAuthDslProg (S : Setup) (b : QueryBudget) :=
   shcrReductionAuthProg S b.q_total b.q_total
-
-theorem shcrAuthDslProg_totalCost_le_sec (S : Setup) (b : QueryBudget) :
-    (shcrAuthDslProg S b).totalCost b.q_total ≤ SignalPqxdh.Security.stepCostBudget S b :=
-  shcrReductionAuthProg_totalCost_le_sec S b
-
-theorem shcrAuthDslProg_totalCost_le (S : Setup) (b : QueryBudget) :
-    (shcrAuthDslProg S b).totalCost b.q_total ≤ stepCostBudget S b :=
-  shcrReductionAuthProg_totalCost_le S b
 
 end SignalPqxdh.Security.ReductionDsl.AuthHs

@@ -461,6 +461,11 @@ register_option proofLib.frameSplitUnfold : Bool := {
     atom matching fails"
 }
 
+register_option proofLib.sepUnfoldExposed : Bool := {
+  defValue := true
+  descr := "allow fallback unfolding of `@[expose] def` pure spatial bundles when `@[sep_unfold]` matching fails"
+}
+
 register_option proofLib.sepShapeDispatch : Bool := {
   defValue := true
   descr := "dispatch `sep_focus` and `sep_entail` across entailment, universally quantified implication, \
@@ -493,9 +498,30 @@ partial def stripMData (e : Expr) : Expr :=
   | .proj _ _ b => e.updateProj! (stripMData b)
   | e => e
 
-/-- Evaluate a ground `Nat` literal in the solver normalizer. -/
-def evalNatLitSolver? (e : Expr) : MetaM (Option Nat) := do
-  let e := e.consumeMData
+/-- True if `ty` is syntactically `BitVec 64` (with either surface `OfNat` or raw `Nat` literal `64`). -/
+def isBitVec64Type (ty : Expr) : Bool :=
+  let ty := ty.consumeMData
+  ty.isAppOfArity ``BitVec 1 &&
+    (let w := (ty.getArg! 0).consumeMData
+     w.nat? == some 64 || w.rawNatLit? == some 64)
+
+/-- Peel up to `fuel` layers of shallow, non-recursive local `let`-bound free variables (`ldecl`) at
+    the head of `e`. -/
+def peelLetFVar (e : Expr) (fuel : Nat := 4) : MetaM Expr := do
+  let mut cur := e.consumeMData
+  let lctx ← getLCtx
+  for _ in [0:fuel] do
+    if !cur.isFVar then break
+    let some decl := lctx.find? cur.fvarId! | break
+    let some val := decl.value? | break
+    if val.containsFVar cur.fvarId! || val.approxDepth > 40 then break
+    cur := (← instantiateMVars val).consumeMData
+  return cur
+
+/-- Evaluate a ground (or, when `allowLetFVar` is `true`, shallow local-`let`-bound literal) `Nat`
+    expression in the solver normalizer. -/
+def evalNatLitSolver? (e : Expr) (allowLetFVar : Bool := false) : MetaM (Option Nat) := do
+  let e ← if allowLetFVar then peelLetFVar e 4 else pure e.consumeMData
   if let some n := e.rawNatLit? then return some n
   if let some n ← getNatValue? e then return some n
   if e.hasFVar || e.hasMVar then return none
@@ -503,34 +529,39 @@ def evalNatLitSolver? (e : Expr) : MetaM (Option Nat) := do
   if let some n := e'.rawNatLit? then return some n
   getNatValue? e'
 
-/-- Extract the unsigned value `< 2^64` of a ground `BitVec 64` literal. -/
-partial def evalBV64Lit? (e : Expr) : MetaM (Option Nat) := do
-  let e := e.consumeMData
-  if e.hasFVar || e.hasMVar then return none
+/-- Extract the unsigned value `< 2^64` of a ground `BitVec 64` literal (or a shallow local-`let`
+    constant expression when `allowLetFVar` is `true`, bounded to `depth` recursive steps so nested
+    `let`-DAGs never blow up). -/
+partial def evalBV64Lit? (e : Expr) (allowLetFVar : Bool := false) (depth : Nat := 6) :
+    MetaM (Option Nat) := do
+  if depth == 0 then return none
+  let e ← if allowLetFVar then peelLetFVar e 4 else pure e.consumeMData
+  if (!allowLetFVar && e.hasFVar) || e.hasMVar then return none
   if e.isAppOfArity ``BitVec.ofNat 2 then
-    if let some 64 ← evalNatLitSolver? (e.getArg! 0) then
-      if let some v ← evalNatLitSolver? (e.getArg! 1) then
+    if let some 64 ← evalNatLitSolver? (e.getArg! 0) allowLetFVar then
+      if let some v ← evalNatLitSolver? (e.getArg! 1) allowLetFVar then
         return some (v % (1 <<< 64))
   if e.isAppOfArity ``OfNat.ofNat 3 then
     let ty := e.getArg! 0
     if ty.isAppOfArity ``BitVec 1 then
-      if let some 64 ← evalNatLitSolver? (ty.getArg! 0) then
-        if let some v ← evalNatLitSolver? (e.getArg! 1) then
+      if let some 64 ← evalNatLitSolver? (ty.getArg! 0) allowLetFVar then
+        if let some v ← evalNatLitSolver? (e.getArg! 1) allowLetFVar then
           return some (v % (1 <<< 64))
   if e.isAppOfArity ``Neg.neg 3 then
-    if let some v ← evalBV64Lit? (e.getArg! 2) then
+    if let some v ← evalBV64Lit? (e.getArg! 2) allowLetFVar (depth - 1) then
       let m := 1 <<< 64
       return some ((m - (v % m)) % m)
   if e.isAppOfArity ``HMul.hMul 6 then
-    if let some a ← evalBV64Lit? (e.getArg! 4) then
-      if let some b ← evalBV64Lit? (e.getArg! 5) then
+    if let some a ← evalBV64Lit? (e.getArg! 4) allowLetFVar (depth - 1) then
+      if let some b ← evalBV64Lit? (e.getArg! 5) allowLetFVar (depth - 1) then
         return some ((a * b) % (1 <<< 64))
+  if e.hasFVar then return none
   let e' ← if e.isConst then withTransparency .default (whnf e) else pure e
   if e'.isAppOfArity ``BitVec.ofFin 2 then
-    if let some 64 ← evalNatLitSolver? (e'.getArg! 0) then
+    if let some 64 ← evalNatLitSolver? (e'.getArg! 0) false then
       let finExpr ← whnf (e'.getArg! 1)
       if finExpr.isAppOfArity ``Fin.mk 3 then
-        if let some v ← evalNatLitSolver? (finExpr.getArg! 1) then
+        if let some v ← evalNatLitSolver? (finExpr.getArg! 1) false then
           return some (v % (1 <<< 64))
   return none
 
@@ -735,21 +766,53 @@ partial def foldBV64OffsetTop? (e : Expr) : MetaM (Option (Expr × Expr)) := do
             return some (newExpr, prf)
   return none
 
-/-- Normalize a 64-bit address expression `e` in `MetaM` (stripping `mdata`, substituting local
-    `sf.sp = ...` equalities, and folding literal offset chains), returning `(e', proof?)`. -/
-partial def normAddrMeta (e : Expr) (fuel : Nat := 16) : MetaM (Expr × Option Expr) := do
+/-- True if `val` is a shallow 64-bit constant-offset pointer alias (`c`, `base + c`, `c + base`,
+    or `base - c` for a literal offset `c`), safe to peel when normalizing addresses across local
+    `let` bindings without unfolding general symbolic `let` definitions. -/
+def isConstOffsetBV64LetVal? (val : Expr) : MetaM Bool := do
+  let val := val.consumeMData
+  if val.approxDepth > 40 then return false
+  if (← evalBV64Lit? val (allowLetFVar := true) (depth := 3)).isSome then return true
+  if (val.isAppOfArity ``HAdd.hAdd 6 || val.isAppOfArity ``HSub.hSub 6) &&
+     isBitVec64Type (val.getArg! 0) then
+    if (← evalBV64Lit? (val.getArg! 5) (allowLetFVar := true) (depth := 3)).isSome then
+      return true
+    if val.isAppOfArity ``HAdd.hAdd 6 &&
+       (← evalBV64Lit? (val.getArg! 4) (allowLetFVar := true) (depth := 3)).isSome then
+      return true
+  return false
+
+/-- Normalize a 64-bit address expression `e` in `MetaM` (stripping `mdata`, optionally peeling
+    constant-offset local `let`-bound `BitVec 64` `FVar`s when `peelLets` is `true`, substituting
+    local `sf.sp = ...` equalities, and folding literal offset chains), returning `(e', proof?)`. -/
+partial def normAddrMeta (e : Expr) (fuel : Nat := 16) (peelLets : Bool := false) :
+    MetaM (Expr × Option Expr) := do
   if fuel == 0 then return (e, none)
   let e := stripMData (← instantiateMVars e)
-  if e.isAppOfArity ``HMul.hMul 6 then
-    if let some v ← evalBV64Lit? e then
+  if peelLets && e.isFVar then
+    if let some decl := (← getLCtx).find? e.fvarId! then
+      if let some val := decl.value? then
+        if !val.containsFVar e.fvarId! && val.approxDepth <= 40 then
+          let ty := (← instantiateMVars decl.type).consumeMData
+          if isBitVec64Type ty then
+            let val := stripMData (← instantiateMVars val)
+            if ← isConstOffsetBV64LetVal? val then
+              let (val', pVal?) ← normAddrMeta val (fuel - 1) peelLets
+              if val' == e then return (e, none)
+              let prf ← match pVal? with
+                | some pVal => mkExpectedTypeHint pVal (← mkEq e val')
+                | none => mkExpectedTypeHint (← mkEqRefl val') (← mkEq e val')
+              return (val', some prf)
+  if e.isAppOfArity ``HMul.hMul 6 || e.isAppOfArity ``Neg.neg 3 then
+    if let some v ← evalBV64Lit? e (allowLetFVar := peelLets) (depth := 3) then
       let cExpr := mkCanonBV64Lit v
       let prf ← mkExpectedTypeHint (← mkEqRefl cExpr) (← mkEq e cExpr)
       return (cExpr, some prf)
   if e.isAppOfArity ``HSub.hSub 6 || e.isAppOfArity ``HAdd.hAdd 6 then
     let lhs := e.getArg! 4
     let rhs := e.getArg! 5
-    let (lhs', pLhs?) ← normAddrMeta lhs (fuel - 1)
-    let (rhs', pRhs?) ← normAddrMeta rhs (fuel - 1)
+    let (lhs', pLhs?) ← normAddrMeta lhs (fuel - 1) peelLets
+    let (rhs', pRhs?) ← normAddrMeta rhs (fuel - 1) peelLets
     let fn4 := mkAppN e.getAppFn (e.getAppArgs.extract 0 4)
     let eMid := mkApp2 fn4 lhs' rhs'
     let pCongr? : Option Expr ←
@@ -774,7 +837,7 @@ partial def normAddrMeta (e : Expr) (fuel : Nat := 16) : MetaM (Expr × Option E
         let ty := stripMData (← instantiateMVars decl.type)
         let some (_, lhs, rhs) := ty.eq? | continue
         if lhs == e && !rhs.containsFVar s.fvarId! then
-          let (rhs', pRhs?) ← normAddrMeta rhs (fuel - 1)
+          let (rhs', pRhs?) ← normAddrMeta rhs (fuel - 1) peelLets
           return (rhs', ← mkEqTransOpt (some decl.toExpr) pRhs?)
   return (e, none)
 
@@ -791,85 +854,163 @@ def isPrimSepAtom (e : Expr) : Bool :=
     n == ``stackFrame16At || n == ``stackFrame32At
   | none => false
 
-/-- Normalize a `SepProp` expression `e` in `MetaM` (stripping `mdata`, unfolding `stackFrame`,
-    and normalizing addresses of all spatial
-    atoms), returning `(e', proof?)`. Uses `consumeMData` on the `SepProp.sepConj` spine so
-    traversal is strictly linear $O(N)$ in the number of atoms. -/
-partial def normSepPropMeta (e : Expr) : MetaM (Expr × Option Expr) := do
-  let e := (← instantiateMVars e).consumeMData.headBeta
-  if e.isAppOfArity ``SepProp.sepConj 2 then
-    let l := e.getArg! 0
-    let r := e.getArg! 1
-    let (l', pL?) ← normSepPropMeta l
-    let (r', pR?) ← normSepPropMeta r
-    let e' := mkApp2 (mkConst ``SepProp.sepConj) l' r'
-    if pL?.isSome || pR?.isSome then
-      let fn := mkConst ``SepProp.sepConj
-      let p1 ← match pL? with
-        | some p => mkCongrArg fn p
-        | none => mkEqRefl (mkApp fn l')
-      let p2 ← match pR? with
-        | some p => mkCongr p1 p
-        | none => mkCongrFun p1 r'
-      return (e', some p2)
-    return (e', none)
-  let e := stripMData e
+/-- Peel up to `fuel` top-level `.letE` binders (`let x := v; b` ↦ `b[x := v]`) along with
+    `consumeMData` and `headBeta`. -/
+def zetaPeelTop (e : Expr) (fuel : Nat := 8) : Expr := Id.run do
+  let mut cur := e.consumeMData.headBeta
+  for _ in [0:fuel] do
+    if let .letE _ _ v b _ := cur then
+      cur := (b.instantiate1 v).consumeMData.headBeta
+    else
+      break
+  return cur
+
+/-- Iterative post-order fold over a `SepProp.sepConj` binary tree (arbitrary left/right
+    association), running in $O(N)$ heap space and $O(1)$ call-stack depth so 200+ atom
+    spines never consume Lean's `maxRecDepth` budget. -/
+def foldSepTreeM {m : Type → Type} [Monad m] {α : Type} [Inhabited α]
+    (root : Expr)
+    (prep : Expr → m Expr)
+    (onLeaf : Expr → Expr → m α)
+    (onNode : Expr → Expr → Expr → α → α → m α) : m α := do
+  let mut work : Array (Sum Expr (Expr × Expr × Expr)) := #[.inl root]
+  let mut vals : Array α := #[]
+  while !work.isEmpty do
+    let some item := work.back? | break
+    work := work.pop
+    match item with
+    | .inl cur =>
+      let c ← prep cur
+      if c.isAppOfArity ``SepProp.sepConj 2 then
+        let l := c.getArg! 0
+        let r := c.getArg! 1
+        work := work.push (.inr (cur, l, r))
+        work := work.push (.inl r)
+        work := work.push (.inl l)
+      else
+        vals := vals.push (← onLeaf cur c)
+    | .inr (origCur, l, r) =>
+      let vr := vals.back!; vals := vals.pop
+      let vl := vals.back!; vals := vals.pop
+      vals := vals.push (← onNode origCur l r vl vr)
+  return vals.back!
+
+private def normSepLeafMeta (origRaw : Expr) (c : Expr) (peelLets : Bool := false)
+    (addrFuel : Nat := 16) : MetaM (Expr × Option Expr) := do
+  let e := stripMData c
+  let mkProofFromC (e' : Expr) (pC? : Option Expr) : MetaM (Expr × Option Expr) := do
+    if pC?.isNone && e' == origRaw then
+      return (e', none)
+    let prf ← match pC? with
+      | some pC => mkExpectedTypeHint pC (← mkEq origRaw e')
+      | none => mkExpectedTypeHint (← mkEqRefl e') (← mkEq origRaw e')
+    return (e', some prf)
   if e.isAppOfArity ``Arm64.stackFrame 2 then
     let s := e.getArg! 0
     let len := e.getArg! 1
     let spExpr := mkApp (mkConst ``State.sp) s
-    let offExpr ← match ← evalNatLitSolver? len with
+    let offExpr ← match ← evalNatLitSolver? len peelLets with
       | some n => pure (toExpr (BitVec.ofNat 64 n))
       | none => mkAppM ``BitVec.ofNat #[toExpr 64, len]
     let baseExpr ← mkAppM ``HSub.hSub #[spExpr, offExpr]
-    let (base', pBase?) ← normAddrMeta baseExpr
+    let (base', pBase?) ← normAddrMeta baseExpr addrFuel (peelLets := peelLets)
     let e' := mkApp2 (mkConst ``Arm64.memRegion) base' len
     let prf ← match pBase? with
       | some pBase =>
         let pCongr ← mkCongrFun (← mkCongrArg (mkConst ``Arm64.memRegion) pBase) len
-        mkExpectedTypeHint pCongr (← mkEq e e')
+        mkExpectedTypeHint pCongr (← mkEq origRaw e')
       | none =>
-        mkExpectedTypeHint (← mkEqRefl e') (← mkEq e e')
+        mkExpectedTypeHint (← mkEqRefl e') (← mkEq origRaw e')
     return (e', some prf)
   if e.isAppOfArity ``Arm64.stackFrame16 1 || e.isAppOfArity ``Arm64.stackFrame32 1 then
     let s := e.getArg! 0
     let atConst := if e.isAppOfArity ``Arm64.stackFrame16 1 then ``Arm64.stackFrame16At else ``Arm64.stackFrame32At
     let spExpr := mkApp (mkConst ``State.sp) s
-    let (sp', pSp?) ← normAddrMeta spExpr
+    let (sp', pSp?) ← normAddrMeta spExpr addrFuel (peelLets := peelLets)
     let e' := mkApp (mkConst atConst) sp'
     let prf ← match pSp? with
       | some pSp =>
         let pCongr ← mkCongrArg (mkConst atConst) pSp
-        mkExpectedTypeHint pCongr (← mkEq e e')
+        mkExpectedTypeHint pCongr (← mkEq origRaw e')
       | none =>
-        mkExpectedTypeHint (← mkEqRefl e') (← mkEq e e')
+        mkExpectedTypeHint (← mkEqRefl e') (← mkEq origRaw e')
     return (e', some prf)
   if isPrimSepAtom e then
     let args := e.getAppArgs
     if args.size >= 1 then
       let addr := args[0]!
-      let (addr', pAddr?) ← normAddrMeta addr
+      let (addr', pAddr?) ← normAddrMeta addr addrFuel (peelLets := peelLets)
       if let some pAddr := pAddr? then
         let mut prf ← mkCongrArg e.getAppFn pAddr
         for idx in [1:args.size] do
           prf ← mkCongrFun prf args[idx]!
         let e' := mkAppN e.getAppFn (args.set! 0 addr')
-        return (e', some prf)
-    return (e, none)
-  return (e, none)
+        return ← mkProofFromC e' (some prf)
+    return ← mkProofFromC e none
+  mkProofFromC e none
+
+/-- Normalize a `SepProp` expression `e` in `MetaM` (stripping `mdata`, peeling top-level `.letE`,
+    unfolding `stackFrame`, and normalizing addresses of spatial atoms), returning `(e', proof?)` in
+    $O(N)$ heap space and $O(1)$ stack depth. -/
+def normSepPropMeta (e : Expr) (peelLets : Bool := false) (addrFuel : Nat := 16) :
+    MetaM (Expr × Option Expr) := do
+  let mut work : Array (Sum Expr (Expr × Expr × Expr)) := #[.inl e]
+  let mut vals : Array (Expr × Option Expr) := #[]
+  while !work.isEmpty do
+    let some item := work.back? | break
+    work := work.pop
+    match item with
+    | .inl raw =>
+      let rawInst ← instantiateMVars raw
+      let c := zetaPeelTop rawInst
+      if c.isAppOfArity ``SepProp.sepConj 2 then
+        let l := c.getArg! 0
+        let r := c.getArg! 1
+        work := work.push (.inr (rawInst, l, r))
+        work := work.push (.inl r)
+        work := work.push (.inl l)
+      else
+        vals := vals.push (← normSepLeafMeta rawInst c peelLets addrFuel)
+    | .inr (rawInst, _l, _r) =>
+      let (r', pR?) := vals.back!; vals := vals.pop
+      let (l', pL?) := vals.back!; vals := vals.pop
+      let fn := mkConst ``SepProp.sepConj
+      let e' := mkApp2 fn l' r'
+      if pL?.isSome || pR?.isSome then
+        let p1 ← match pL? with
+          | some p => mkCongrArg fn p
+          | none => mkEqRefl (mkApp fn l')
+        let p2 ← match pR? with
+          | some p => mkCongr p1 p
+          | none => mkCongrFun p1 r'
+        let p2 ← if rawInst.isAppOfArity ``SepProp.sepConj 2 then pure p2
+          else mkExpectedTypeHint p2 (← mkEq rawInst e')
+        vals := vals.push (e', some p2)
+      else if !rawInst.isAppOfArity ``SepProp.sepConj 2 then
+        vals := vals.push (e', some (← mkExpectedTypeHint (← mkEqRefl e') (← mkEq rawInst e')))
+      else
+        vals := vals.push (e', none)
+  return vals.back!
 
 /-! ## Separating-conjunction trees -/
 
 /-- The atoms of a separating-conjunction tree, left to right, without `emp`.
-    Uses `.consumeMData` along the `SepProp.sepConj` spine and `stripMData` only at leaf atoms
-    so traversal scales linearly $O(N)$ on large separation-logic frames. -/
-partial def atoms (e : Expr) (acc : Array Expr := #[]) : Array Expr :=
-  let e := e.consumeMData.headBeta
-  if e.isAppOfArity ``SepProp.sepConj 2 then atoms (e.getArg! 1) (atoms (e.getArg! 0) acc)
-  else
-    let e := (stripMData e).headBeta
-    if e.isConstOf ``SepProp.emp then acc
-    else acc.push e
+    Uses an explicit work-stack with `.consumeMData` along the `SepProp.sepConj` spine and
+    `stripMData` only at leaf atoms so traversal scales linearly $O(N)$ in $O(1)$ call-stack depth. -/
+def atoms (e : Expr) (acc : Array Expr := #[]) : Array Expr := Id.run do
+  let mut work : Array Expr := #[e]
+  let mut out := acc
+  while !work.isEmpty do
+    let cur := (zetaPeelTop work.back!)
+    work := work.pop
+    if cur.isAppOfArity ``SepProp.sepConj 2 then
+      work := work.push (cur.getArg! 1)
+      work := work.push (cur.getArg! 0)
+    else
+      let leaf := (stripMData cur).headBeta
+      if !leaf.isConstOf ``SepProp.emp then
+        out := out.push leaf
+  return out
 
 def mkSep (a b : Expr) : Expr := mkApp2 (mkConst ``SepProp.sepConj) a b
 
@@ -882,6 +1023,82 @@ def mkSat (P m : Expr) : Expr := mkApp2 (mkConst ``SepProp.Satisfies) P m
 
 /-! ## Reflective AC normalization -/
 
+/-- Extract a raw syntactic `BitVec 64` literal `< 2^64` without running `whnf`. -/
+private def rawBV64ConstLit? (e : Expr) : Option Nat :=
+  let e := e.consumeMData
+  if e.isAppOfArity ``OfNat.ofNat 3 && isBitVec64Type (e.getArg! 0) then
+    (e.getArg! 1).consumeMData.rawNatLit?.map (· % (1 <<< 64))
+  else if e.isAppOfArity ``BitVec.ofNat 2 then
+    let w := (e.getArg! 0).consumeMData
+    if w.nat? == some 64 || w.rawNatLit? == some 64 then
+      (e.getArg! 1).consumeMData.rawNatLit?.map (· % (1 <<< 64))
+    else
+      none
+  else
+    none
+
+/-- Purely syntactic `(base?, off mod 2^64)` decomposition of a MVar-free `BitVec 64` offset chain. -/
+private def syntacticBV64BaseOff? (e : Expr) (fuel : Nat := 64) : Option (Option Expr × Nat) :=
+  let e := e.consumeMData
+  if e.hasMVar then none
+  else if let some c := rawBV64ConstLit? e then some (none, c)
+  else
+    match fuel with
+    | 0 => some (some e, 0)
+    | fuel + 1 =>
+      if (e.isAppOfArity ``HAdd.hAdd 6 || e.isAppOfArity ``HSub.hSub 6) &&
+         isBitVec64Type (e.getArg! 0) then
+        let isAdd := e.isAppOfArity ``HAdd.hAdd 6
+        if let some c := rawBV64ConstLit? (e.getArg! 5) then
+          match syntacticBV64BaseOff? (e.getArg! 4) fuel with
+          | some (b, o) =>
+            let off := if isAdd then (o + c) % (1 <<< 64) else (o + (1 <<< 64) - c) % (1 <<< 64)
+            some (b, off)
+          | none => none
+        else if isAdd then
+          if let some c := rawBV64ConstLit? (e.getArg! 4) then
+            match syntacticBV64BaseOff? (e.getArg! 5) fuel with
+            | some (b, o) => some (b, (o + c) % (1 <<< 64))
+            | none => none
+          else some (some e, 0)
+        else some (some e, 0)
+      else
+        some (some e, 0)
+
+private def isFixedPosWidthSepAtom (e : Expr) : Bool :=
+  match e.getAppFn.constName? with
+  | some n =>
+    n == ``pointsTo8 || n == ``pointsTo16 || n == ``pointsTo32 ||
+    n == ``pointsTo64 || n == ``pointsTo128 ||
+    n == ``pointsTo8RO || n == ``pointsTo16RO || n == ``pointsTo32RO ||
+    n == ``pointsTo64RO || n == ``pointsTo128RO ||
+    n == ``stackFrame16At || n == ``stackFrame32At
+  | none => false
+
+/-- True when `a` and `b` are syntactically distinct constant offsets from the exact same MVar-free
+    64-bit base (hence impossible to unify definitionally without wasting `Nat.add` WHNF depth). -/
+private def definitelyDisjointBV64Offset (a b : Expr) : Bool :=
+  match syntacticBV64BaseOff? a, syntacticBV64BaseOff? b with
+  | some (ba, oa), some (bb, ob) => ba == bb && oa != ob
+  | _, _ => false
+
+/-- Reducible-and-instances `isDefEq` with fast syntactic distinct-offset rejection on fixed-width
+    spatial atoms / `BitVec 64` offsets and `tryCatchRuntimeEx` state recovery on `maxRecDepth`. -/
+def reducibleIsDefEqSafe (a b : Expr) : MetaM Bool := do
+  if a == b then return true
+  if isFixedPosWidthSepAtom a && a.getAppFn == b.getAppFn &&
+     a.getAppNumArgs == b.getAppNumArgs && a.getAppNumArgs >= 1 then
+    if definitelyDisjointBV64Offset (a.getArg! 0) (b.getArg! 0) then
+      return false
+  else if ((a.isAppOfArity ``HAdd.hAdd 6 || a.isAppOfArity ``HSub.hSub 6) && isBitVec64Type (a.getArg! 0)) ||
+          ((b.isAppOfArity ``HAdd.hAdd 6 || b.isAppOfArity ``HSub.hSub 6) && isBitVec64Type (b.getArg! 0)) then
+    if definitelyDisjointBV64Offset a b then
+      return false
+  let saved ← saveState
+  MonadRuntimeException.tryCatchRuntimeEx
+    (withReducibleAndInstances (isDefEq a b))
+    (fun ex => do saved.restore; if ex.isMaxHeartbeat then throw ex else pure false)
+
 /-- Index of `a` in the shared atom table (syntactic, then reducible-defeq), appending it if new. -/
 def atomIdx (a : Expr) : StateRefT (Array Expr) MetaM Nat := do
   let tbl ← get
@@ -889,21 +1106,21 @@ def atomIdx (a : Expr) : StateRefT (Array Expr) MetaM Nat := do
   for h : i in [:tbl.size] do
     let b := tbl[i]
     if b.getAppFn == a.getAppFn && b.getAppNumArgs == a.getAppNumArgs then
-      if ← withReducibleAndInstances (isDefEq b a) then return i
+      if ← reducibleIsDefEqSafe b a then return i
   modify (·.push a)
   return tbl.size
 
 /-- Reify a separating-conjunction tree into a `SepTree` over the shared atom table. -/
-partial def reify (e : Expr) : StateRefT (Array Expr) MetaM Expr := do
-  let e := e.consumeMData.headBeta
-  if e.isAppOfArity ``SepProp.sepConj 2 then
-    return mkApp2 (mkConst ``SepTree.sep) (← reify (e.getArg! 0)) (← reify (e.getArg! 1))
-  else
-    let e := (stripMData e).headBeta
-    if e.isConstOf ``SepProp.emp then
-      return mkConst ``SepTree.nil
-    else
-      return mkApp (mkConst ``SepTree.atom) (mkRawNatLit (← atomIdx e))
+def reify (e : Expr) : StateRefT (Array Expr) MetaM Expr :=
+  foldSepTreeM (m := StateRefT (Array Expr) MetaM) e
+    (prep := fun cur => pure (zetaPeelTop cur))
+    (onLeaf := fun _ cur => do
+      let leaf := (stripMData cur).headBeta
+      if leaf.isConstOf ``SepProp.emp then
+        return mkConst ``SepTree.nil
+      else
+        return mkApp (mkConst ``SepTree.atom) (mkRawNatLit (← atomIdx leaf)))
+    (onNode := fun _ _ _ l r => pure (mkApp2 (mkConst ``SepTree.sep) l r))
 
 def mkAtomList (tbl : Array Expr) : Expr :=
   let ty := mkConst ``SepProp
@@ -921,16 +1138,16 @@ def synAtomIdx (a : Expr) : StateM SynTable Nat := do
   return tbl.size
 
 /-- `reify` over a syntactic atom table (no `isDefEq`). -/
-partial def synReify (e : Expr) : StateM SynTable Expr := do
-  let e := e.consumeMData.headBeta
-  if e.isAppOfArity ``SepProp.sepConj 2 then
-    return mkApp2 (mkConst ``SepTree.sep) (← synReify (e.getArg! 0)) (← synReify (e.getArg! 1))
-  else
-    let e := (stripMData e).headBeta
-    if e.isConstOf ``SepProp.emp then
-      return mkConst ``SepTree.nil
-    else
-      return mkApp (mkConst ``SepTree.atom) (mkRawNatLit (← synAtomIdx e))
+def synReify (e : Expr) : StateM SynTable Expr :=
+  foldSepTreeM (m := StateM SynTable) e
+    (prep := fun cur => pure (zetaPeelTop cur))
+    (onLeaf := fun _ cur => do
+      let leaf := (stripMData cur).headBeta
+      if leaf.isConstOf ``SepProp.emp then
+        return mkConst ``SepTree.nil
+      else
+        return mkApp (mkConst ``SepTree.atom) (mkRawNatLit (← synAtomIdx leaf)))
+    (onNode := fun _ _ _ l r => pure (mkApp2 (mkConst ``SepTree.sep) l r))
 
 /-- Fast path of `reifyPermTbl?`: succeeds when the atoms of `A` and `B` agree as multisets up to
     syntactic equality, using a hash map instead of quadratically many `isDefEq` calls. -/
@@ -1086,62 +1303,191 @@ inductive Step where
   /-- Same base: `IsBlock.update` at the same memory (`hb`, `hb'`, `hle`, `hΦ`). -/
   | update (hb hb' hle hΦ : Expr) (base len : Expr)
 
+/-- Syntactically reduce structure projections applied to constructor applications (`S.fld (S.mk ..)`
+    or `.proj S i (S.mk ..)`) without invoking `whnf`. -/
+def reduceCtorProjsStruct (e : Expr) : MetaM Expr := do
+  let env ← getEnv
+  Core.transform e (post := fun t => do
+    if let .proj sName idx s := t then
+      let s' := s.consumeMData
+      if s'.getAppFn.isConst && isStructure env sName then
+        let ctor := getStructureCtor env sName
+        if s'.isAppOfArity ctor.name (ctor.numParams + ctor.numFields) && idx < ctor.numFields then
+          return .visit (s'.getArg! (ctor.numParams + idx))
+      return .done t
+    let .const fnName _ := t.getAppFn | return .done t
+    let some info := env.getProjectionFnInfo? fnName | return .done t
+    if info.fromClass then return .done t
+    let args := t.getAppArgs
+    if h : info.numParams < args.size then
+      let s' := args[info.numParams].consumeMData
+      if s'.getAppFn.isConst then
+        if let some (.ctorInfo cval) := env.find? info.ctorName then
+          if s'.isAppOfArity info.ctorName (cval.numParams + cval.numFields) && info.i < cval.numFields then
+            let fld := s'.getArg! (cval.numParams + info.i)
+            let res := if args.size == info.numParams + 1 then fld
+              else mkAppN fld (args.extract (info.numParams + 1) args.size)
+            return .visit res
+    return .done t)
+
+private def structMVarProjField? (env : Environment) (t : Expr) : MetaM (Option (Expr × Name × Nat)) := do
+  if let .proj sName idx s := t then
+    let s ← instantiateMVars s
+    if s.isMVar then return some (s, sName, idx)
+    return none
+  let .const fnName _ := t.getAppFn | return none
+  let some info := env.getProjectionFnInfo? fnName | return none
+  if info.fromClass then return none
+  let args := t.getAppArgs
+  if h : info.numParams < args.size then
+    let s ← instantiateMVars args[info.numParams]
+    if s.isMVar then
+      if let some (.ctorInfo cval) := env.find? info.ctorName then
+        return some (s, cval.induct, info.i)
+  return none
+
+/-- Eta-expand non-class multi-field structure metavariables in `e` when all of their fields appear
+    projected in `e`, then syntactically reduce the resulting projections. Avoiding partial-field
+    expansion keeps unmentioned fields bound when a single struct witness matches as a whole, while
+    preventing first-order projection unification (`S.f0 ?w =?= S.f0 x`) from greedily assigning
+    `?w := x` when another projected field of `?w` has a distinct updated value. -/
+partial def etaExpandFullStructProjMVars (e : Expr) (fuel : Nat := 4) : MetaM Expr := do
+  if fuel == 0 || !e.hasMVar then return e
+  let env ← getEnv
+  let orderRef ← IO.mkRef (#[] : Array (Expr × Name))
+  let fieldsRef ← IO.mkRef ({} : Std.HashMap MVarId (Array Nat))
+  forEachExpr' e fun t => do
+    if !t.hasMVar then return false
+    if let some (mv, sName, idx) ← structMVarProjField? env t then
+      let mId := mv.mvarId!
+      let m ← fieldsRef.get
+      match m.get? mId with
+      | none =>
+        orderRef.modify (·.push (mv, sName))
+        fieldsRef.set (m.insert mId #[idx])
+      | some arr =>
+        if !arr.contains idx then
+          fieldsRef.set (m.insert mId (arr.push idx))
+    return true
+  let cands ← orderRef.get
+  if cands.isEmpty then return e
+  let fieldMap ← fieldsRef.get
+  let mut changed := false
+  for (mv, sName) in cands do
+    let mId := mv.mvarId!
+    if ← mId.isAssigned then continue
+    unless isStructure env sName && !isClass env sName do continue
+    if sName == ``BitVec || sName == ``Fin || sName == ``Substring || sName == ``Subarray then
+      continue
+    let ctor := getStructureCtor env sName
+    unless 2 ≤ ctor.numFields && ctor.numFields ≤ 24 do continue
+    let seen := fieldMap.getD mId #[]
+    unless seen.size == ctor.numFields do continue
+    let expanded ← mId.withContext do
+      let savedMv ← saveState
+      let ty ← whnfD (← inferType mv)
+      let .const tyName lvls := ty.getAppFn | return false
+      if tyName != sName then return false
+      let ctorE := mkAppN (mkConst ctor.name lvls) (ty.getAppArgs.extract 0 ctor.numParams)
+      let (fields, _, _) ← forallMetaTelescope (← inferType ctorE)
+      if ← fields.anyM fun f => do isProp (← inferType f) then
+        savedMv.restore
+        return false
+      let ok ← withAssignableSyntheticOpaque (isDefEq mv (mkAppN ctorE fields))
+      if !ok then savedMv.restore
+      return ok
+    if expanded then changed := true
+  if !changed then return e
+  let e' ← reduceCtorProjsStruct (← instantiateMVars e)
+  etaExpandFullStructProjMVars e' (fuel - 1)
+
 /-- Goal preprocessing: open `∃∗` atoms with metavariables and turn `⌜φ⌝` atoms into pending side
     goals. Returns the spatial goal and a function turning its proof into a proof of `G`. -/
-partial def expandGoal (m G : Expr) (pures : IO.Ref (Array (Expr × Expr))) :
+def expandGoal (m G0 : Expr) (pures : IO.Ref (Array (Expr × Expr))) :
     MetaM (Expr × (Expr → MetaM Expr)) := do
-  let G := (← instantiateMVars G).consumeMData
-  let as := atoms G
-  let some i := as.findIdx? fun a =>
-      a.isAppOfArity ``SepProp.pure 1 || a.isAppOfArity ``SepProp.sepExists 2
-    | return (G, pure)
-  let a := as[i]!
-  let rest := mkSepList (as.eraseIdx! i)
-  if a.isAppOfArity ``SepProp.pure 1 then
-    let φ := a.getArg! 0
-    let hφ ← mkFreshExprMVar φ
-    pures.modify (·.push (hφ, φ))
-    let (G', k) ← expandGoal m rest pures
-    return (G', fun p => do
-      let p ← k p
-      satAC m (mkSep a rest) G (mkAppN (mkConst ``Satisfies.pure_intro) #[m, φ, rest, hφ, p]))
-  else
-    let α := a.getArg! 0
-    let f := a.getArg! 1
-    let w ← mkFreshExprMVar α
-    let (G', k) ← expandGoal m (mkSep (f.beta #[w]).headBeta rest) pures
-    let u ← getLevel α
-    return (G', fun p => do
-      let p ← k p
-      let p' := mkAppN (mkConst ``Satisfies.sepExists_intro [u]) #[α, f, rest, m, w, p]
-      satAC m (mkSep a rest) G (← mkExpectedTypeHint p' (mkSat (mkSep a rest) m)))
+  let mut curG := (← instantiateMVars G0).consumeMData
+  let mut steps : Array (Expr → MetaM Expr) := #[]
+  while true do
+    let G := (← instantiateMVars curG).consumeMData
+    let as := atoms G
+    let some i := as.findIdx? fun a =>
+        a.isAppOfArity ``SepProp.pure 1 || a.isAppOfArity ``SepProp.sepExists 2
+      | do
+        curG := G
+        break
+    let a := as[i]!
+    let rest := mkSepList (as.eraseIdx! i)
+    if a.isAppOfArity ``SepProp.pure 1 then
+      let φ := a.getArg! 0
+      let hφ ← mkFreshExprMVar φ
+      pures.modify (·.push (hφ, φ))
+      steps := steps.push fun p =>
+        satAC m (mkSep a rest) G (mkAppN (mkConst ``Satisfies.pure_intro) #[m, φ, rest, hφ, p])
+      curG := rest
+    else
+      let α := a.getArg! 0
+      let f := a.getArg! 1
+      let w ← mkFreshExprMVar α
+      let u ← getLevel α
+      let rawNext := mkSep (f.beta #[w]).headBeta rest
+      let nextG ← etaExpandFullStructProjMVars rawNext
+      steps := steps.push fun p => do
+        let pCompat ← if nextG == rawNext then pure p
+          else mkExpectedTypeHint p (mkSat (← instantiateMVars rawNext) m)
+        let p' := mkAppN (mkConst ``Satisfies.sepExists_intro [u]) #[α, f, rest, m, ← instantiateMVars w, pCompat]
+        satAC m (mkSep a rest) G (← mkExpectedTypeHint p' (mkSat (mkSep a rest) m))
+      curG := nextG
+  return (curG, fun p0 => steps.foldrM (fun step acc => step acc) p0)
 
 /-- Given `e : SepProp`, atom index `idx` (0-indexed in `atoms e` order), and `hEq : atom = newExpr`,
     return `(e', hEqTree)` where `hEqTree : e = e'` replaces atom `idx` by `newExpr`. -/
-partial def rewriteAtomAtEq? (e : Expr) (idx : Nat) (newExpr hEq : Expr) : MetaM (Option (Expr × Expr)) := do
-  let rec go (cur : Expr) (k : Nat) : MetaM (Expr × Nat × Option Expr) := do
-    let curBeta := cur.consumeMData.headBeta
-    if curBeta.isAppOfArity ``SepProp.sepConj 2 then
-      let l := curBeta.getArg! 0
-      let r := curBeta.getArg! 1
-      let (l', k1, hL?) ← go l k
+def rewriteAtomAtEq? (e : Expr) (idx : Nat) (newExpr hEq : Expr) : MetaM (Option (Expr × Expr)) := do
+  let mut work : Array (Sum Expr (Expr × Expr × Expr)) := #[.inl e]
+  let mut vals : Array (Expr × Option Expr) := #[]
+  let mut k : Nat := 0
+  while !work.isEmpty do
+    let some item := work.back? | break
+    work := work.pop
+    match item with
+    | .inl cur =>
+      let curBeta := zetaPeelTop cur
+      if curBeta.isAppOfArity ``SepProp.sepConj 2 then
+        let l := curBeta.getArg! 0
+        let r := curBeta.getArg! 1
+        work := work.push (.inr (cur, l, r))
+        work := work.push (.inl r)
+        work := work.push (.inl l)
+      else
+        let leaf := (stripMData curBeta).headBeta
+        if leaf.isConstOf ``SepProp.emp then
+          vals := vals.push (cur, none)
+        else
+          let curIdx := k
+          k := k + 1
+          if curIdx == idx then
+            let hEq' ← if cur == leaf then pure hEq
+              else mkExpectedTypeHint hEq (← mkEq cur newExpr)
+            vals := vals.push (newExpr, some hEq')
+          else
+            vals := vals.push (cur, none)
+    | .inr (origCur, l, r) =>
+      let (r', hR?) := vals.back!; vals := vals.pop
+      let (l', hL?) := vals.back!; vals := vals.pop
       if let some hL := hL? then
         let step ← mkCongrFun (← mkCongrArg (mkConst ``SepProp.sepConj) hL) r
-        return (mkSep l' r, k1, some step)
-      let (r', k2, hR?) ← go r k1
-      if let some hR := hR? then
+        let e' := mkSep l' r
+        let step ← if origCur.isAppOfArity ``SepProp.sepConj 2 then pure step
+          else mkExpectedTypeHint step (← mkEq origCur e')
+        vals := vals.push (e', some step)
+      else if let some hR := hR? then
         let step ← mkCongrArg (mkApp (mkConst ``SepProp.sepConj) l) hR
-        return (mkSep l r', k2, some step)
-      return (cur, k2, none)
-    else
-      let leaf := (stripMData curBeta).headBeta
-      if leaf.isConstOf ``SepProp.emp then
-        return (cur, k, none)
-      else if k == idx then
-        return (newExpr, k + 1, some hEq)
+        let e' := mkSep l r'
+        let step ← if origCur.isAppOfArity ``SepProp.sepConj 2 then pure step
+          else mkExpectedTypeHint step (← mkEq origCur e')
+        vals := vals.push (e', some step)
       else
-        return (cur, k + 1, none)
-  let (e', _, h?) ← go e 0
+        vals := vals.push (origCur, none)
+  let (e', h?) := vals.back!
   return h?.map fun h => (e', h)
 
 /-- Decompose a normalized 64-bit address expression into `(base, signedConstOffset)`. -/
@@ -1163,10 +1509,13 @@ def splitBaseOff (e : Expr) : MetaM (Expr × Int) := do
     return (mkConst ``Unit.unit, (kv : Int))
   else return (e, 0)
 
-/-- Non-negative constant byte offset `q - p` when `p` and `q` share a base expression. -/
+/-- Non-negative constant byte offset `q - p` when `p` and `q` share a base expression
+    after `let`-transparent `normAddrMeta` canonicalization. -/
 def constAddrOffset? (p q : Expr) : MetaM (Option Nat) := do
-  let (bp, op) ← splitBaseOff p
-  let (bq, oq) ← splitBaseOff q
+  let (pNorm, _) ← normAddrMeta p 64 (peelLets := true)
+  let (qNorm, _) ← normAddrMeta q 64 (peelLets := true)
+  let (bp, op) ← splitBaseOff pNorm
+  let (bq, oq) ← splitBaseOff qNorm
   if bp == bq && oq ≥ op && (oq - op) < (2 ^ 64 : Int) then
     return some (oq - op).toNat
   else return none
@@ -1191,17 +1540,30 @@ def normAddConstOffsetAddr (q wExpr : Expr) : MetaM (Expr × Expr) := do
     for pure `MetaM` callers (`frameSplit?` / `closeEntails?`). -/
 def metaDisch (φ : Expr) : MetaM (Option Expr) := do
   let φ ← instantiateMVars φ
-  if let some (_, lhs, rhs) := φ.eq? then
-    if ← isDefEq lhs rhs then
+  if let some (eqTy, lhs, rhs) := φ.eq? then
+    if lhs == rhs then
       return some (← mkExpectedTypeHint (← mkEqRefl rhs) φ)
-    let (nl, pL?) ← normAddrMeta lhs
-    let (nr, pR?) ← normAddrMeta rhs
-    if nl == nr || (← isDefEq nl nr) then
-      let pMid ← mkExpectedTypeHint (← mkEqRefl nr) (← mkEq nl nr)
-      let p1 ← mkEqTransOpt pL? (some pMid)
-      let pSymR ← pR?.mapM mkEqSymm
-      if let some pFull ← mkEqTransOpt p1 pSymR then
-        return some (← mkExpectedTypeHint pFull φ)
+    if isBitVec64Type eqTy then
+      let (nl, pL?) ← normAddrMeta lhs 64 (peelLets := true)
+      let (nr, pR?) ← normAddrMeta rhs 64 (peelLets := true)
+      let eqNorm ←
+        if nl == nr then pure true
+        else
+          let s ← saveState
+          MonadRuntimeException.tryCatchRuntimeEx
+            (isDefEq nl nr)
+            (fun ex => do s.restore; if ex.isMaxHeartbeat then throw ex else pure false)
+      if eqNorm then
+        let pMid ← mkExpectedTypeHint (← mkEqRefl nr) (← mkEq nl nr)
+        let p1 ← mkEqTransOpt pL? (some pMid)
+        let pSymR ← pR?.mapM mkEqSymm
+        if let some pFull ← mkEqTransOpt p1 pSymR then
+          return some (← mkExpectedTypeHint pFull φ)
+    let savedEq ← saveState
+    if ← MonadRuntimeException.tryCatchRuntimeEx
+        (isDefEq lhs rhs)
+        (fun ex => do savedEq.restore; if ex.isMaxHeartbeat then throw ex else pure false) then
+      return some (← mkExpectedTypeHint (← mkEqRefl rhs) φ)
     if proofLib.frameSplitNearMiss.get (← getOptions) then
       for decl in (← getLCtx) do
         if decl.isImplementationDetail then continue
@@ -1273,24 +1635,30 @@ def liftTacDisch (disch : Disch) (φ : Expr) : TacticM (Option Expr) := do
 private def proveEqOrLeFast? {M : Type → Type} [Monad M] [MonadLiftT MetaM M]
     (disch : Expr → M (Option Expr)) (ty : Expr) : M (Option Expr) := do
   let ty ← (instantiateMVars ty : MetaM Expr)
-  if let some (_, lhs, rhs) := ty.eq? then
-    if ← (isDefEq lhs rhs : MetaM Bool) then
-      return some (← (mkExpectedTypeHint (← mkEqRefl rhs) ty : MetaM Expr))
+  if let some prf ← (metaDisch ty : MetaM (Option Expr)) then
+    return some prf
   disch ty
 
-/-- Recursively inline any local `let`-bound free variables (`ldecl` with `decl.value? = some v`) inside `e`. -/
-partial def unfoldLetFVars (e : Expr) : MetaM Expr := do
+/-- Boundedly inline shallow local `let`-bound free variables (`ldecl` with `val.approxDepth ≤ 40`)
+    inside `e` up to depth `fuel` so nested `let`-DAGs never blow up exponentially. -/
+partial def unfoldLetFVars (e : Expr) (fuel : Nat := 4) : MetaM Expr := do
   let lctx ← getLCtx
   let e' ← instantiateMVars e
-  if !e'.hasFVar then return e'
-  let rec go (t : Expr) : Expr :=
-    t.replace fun sub =>
-      if sub.isFVar then
-        match lctx.find? sub.fvarId! >>= (·.value?) with
-        | some val => some (go val)
-        | none => none
-      else none
-  return go e'
+  if !e'.hasFVar || fuel == 0 then return e'
+  let rec go (t : Expr) (d : Nat) : Expr :=
+    if d == 0 || !t.hasFVar then t
+    else
+      t.replace fun sub =>
+        if sub.isFVar then
+          match lctx.find? sub.fvarId! >>= (·.value?) with
+          | some val =>
+            if !val.containsFVar sub.fvarId! && val.approxDepth <= 40 then
+              some (go val (d - 1))
+            else
+              none
+          | none => none
+        else none
+  return go e' fuel
 
 /-- If `[q, q + wExpr)` provably lies inside `memRegion p nExpr` (via constant-offset `normAddr`
     or `disch`/`bv_omega`), return `(rhs, eqPrf)` with `eqPrf : memRegion p nExpr = rhs`, where
@@ -1411,7 +1779,7 @@ def congrAtomsWithDisch? {M : Type → Type} [Monad M] [MonadLiftT MetaM M]
   for a in h.getAppArgs, b in g.getAppArgs do
     if a == b then
       prf ← (mkCongrFun prf a : MetaM Expr)
-    else if ← (withReducibleAndInstances (isDefEq a b) : MetaM Bool) then
+    else if ← (reducibleIsDefEqSafe a b : MetaM Bool) then
       prf ← (mkCongrFun prf a : MetaM Expr)
     else if !a.hasMVar && !b.hasMVar then
       let eqTy ← (mkEq a b : MetaM Expr)
@@ -1421,28 +1789,277 @@ def congrAtomsWithDisch? {M : Type → Type} [Monad M] [MonadLiftT MetaM M]
       return none
   return some prf
 
-/-- Unfold any atom in `cur` whose head constant is tagged `@[sep_unfold]` and does not have a
-    same-head match in `other`, normalizing the unfolded result with `normSepPropMeta`. -/
-def unfoldUnmatchedSepUnfoldAtoms (cur : Expr) (hCur? : Option Expr) (other : Expr) :
+/-- True if `e` is a primitive spatial or stack-frame leaf atom. -/
+def isSpatialBundleLeaf (e : Expr) : Bool :=
+  isPrimSepAtom e ||
+  e.isAppOfArity ``Arm64.stackFrame 2 ||
+  e.isAppOfArity ``Arm64.stackFrameAt 2 ||
+  e.isAppOfArity ``Arm64.stackFrame16 1 ||
+  e.isAppOfArity ``Arm64.stackFrame32 1 ||
+  (e.getAppFn.constName? == some `ProofLib.stackAt && e.getAppNumArgs == 2)
+
+private def forallTargetSepProp (ty : Expr) : Bool :=
+  let rec go (e : Expr) (fuel : Nat) : Bool :=
+    match fuel with
+    | 0 => false
+    | fuel + 1 =>
+      match e.consumeMData with
+      | .forallE _ _ b _ => go b fuel
+      | e' => e'.isConstOf ``Arm64.SepProp
+  go ty 32
+
+private def peelHeadLams (e : Expr) : Nat × Expr :=
+  let rec go (cur : Expr) (acc : Nat) : Nat × Expr :=
+    match cur with
+    | .lam _ _ b _ => go b (acc + 1)
+    | _ => (acc, cur)
+  go e 0
+
+/-- Pure `Environment` check (`0` `whnf` / `MetaM` calls) deciding whether `fn` is a non-recursive
+    definition of type `... → SepProp` whose body decomposes (within `maxDepth` nested definitions
+    and `≤ 96` AST nodes) into `∗`, `emp`, `⌜φ⌝`, `∃∗`, and primitive spatial / stack-frame atoms
+    with at least one spatial atom. -/
+def isPureSpatialBundleConst (env : Environment) (fn : Name) (maxDepth : Nat := 3) : Bool := Id.run do
+  if fn == ``SepProp.mk || env.isProjectionFn fn then return false
+  if env.contains (Name.str fn "_sunfold") || env.contains (Name.str fn "_unsafe_rec") then return false
+  let some cinfo := env.find? fn | return false
+  if !forallTargetSepProp cinfo.type then return false
+  let some val := cinfo.value? | return false
+  if val.approxDepth > 80 then return false
+  let (_, body0) := peelHeadLams val
+  let mut work : Array (Expr × Nat) := #[(body0, maxDepth)]
+  let mut nodeCount := 0
+  let mut hasSpatial := false
+  while !work.isEmpty do
+    nodeCount := nodeCount + 1
+    if nodeCount > 96 then return false
+    let (cur0, d) := work.back!
+    work := work.pop
+    let cur := zetaPeelTop cur0
+    if cur.isAppOfArity ``SepProp.sepConj 2 then
+      work := work.push (cur.getArg! 1, d)
+      work := work.push (cur.getArg! 0, d)
+    else if cur.isConstOf ``SepProp.emp || cur.isAppOfArity ``SepProp.pure 1 then
+      continue
+    else if cur.isAppOfArity ``SepProp.sepExists 2 then
+      match (cur.getArg! 1).consumeMData with
+      | .lam _ _ body _ => work := work.push (body, d)
+      | _ => return false
+    else if isSpatialBundleLeaf cur then
+      hasSpatial := true
+    else if d > 0 then
+      let some subFn := cur.getAppFn.constName? | return false
+      if subFn == fn || subFn == ``SepProp.mk || env.isProjectionFn subFn then return false
+      if env.contains (Name.str subFn "_sunfold") || env.contains (Name.str subFn "_unsafe_rec") then
+        return false
+      let some subInfo := env.find? subFn | return false
+      let some subVal := subInfo.value? | return false
+      if subVal.approxDepth > 80 then return false
+      let (nLams, _) := peelHeadLams subVal
+      if cur.getAppNumArgs != nLams then return false
+      let subUnf := (subInfo.instantiateValueLevelParams! cur.getAppFn.constLevels!).beta cur.getAppArgs
+      work := work.push (subUnf, d - 1)
+    else
+      return false
+  return hasSpatial
+
+/-- Unfold one composite spatial bundle atom `a` when `fn` is:
+    1. explicitly tagged `@[sep_unfold]`,
+    2. `abbrev` (`.reducible`, when `includeAbbrev` is `true`, excluding structure projections), or
+    3. (when `allowExposed` is `true`) `@[expose] def` (`env.hasExposedBody fn` and `.semireducible`,
+       excluding projections) passing `isPureSpatialBundleConst` (requiring multi-atom `∗`/`emp` when
+       `multiAtomOnlyForExposed` is `true` so single-atom wrappers stay folded in `?F`). -/
+def unfoldSpatialBundleAtom? (a : Expr) (includeAbbrev : Bool := true)
+    (multiAtomOnlyForExposed : Bool := false) (allowExposed : Bool := true) : MetaM (Option Expr) := do
+  let a := stripMData (← instantiateMVars a)
+  if isPrimSepAtom a ||
+     a.isAppOfArity ``Arm64.stackFrame 2 ||
+     a.isAppOfArity ``Arm64.stackFrameAt 2 ||
+     a.isAppOfArity ``Arm64.stackFrame16 1 ||
+     a.isAppOfArity ``Arm64.stackFrame32 1 then
+    return none
+  let some fn := a.getAppFn.constName? | return none
+  if fn == ``SepProp.sepConj || fn == ``SepProp.emp ||
+     fn == ``SepProp.pure || fn == ``SepProp.sepExists || fn == ``SepProp.mk then
+    return none
+  if ← isSepUnfoldConst fn then
+    let some unf ← unfoldDefinition? a | return none
+    return some (zetaPeelTop unf)
+  if ← isProjectionFn fn then return none
+  let red ← getReducibilityStatus fn
+  if includeAbbrev && red == .reducible then
+    let some unf ← withReducible (unfoldDefinition? a) | return none
+    return some (zetaPeelTop unf)
+  let env ← getEnv
+  let allowExposed := allowExposed && proofLib.sepUnfoldExposed.get (← getOptions)
+  if allowExposed && red == .semireducible && env.hasExposedBody fn then
+    if !isPureSpatialBundleConst env fn 3 then return none
+    let some cinfo := env.find? fn | return none
+    let some val := cinfo.value? | return none
+    let (nLams, _) := peelHeadLams val
+    if a.getAppNumArgs != nLams then return none
+    let unf := zetaPeelTop ((cinfo.instantiateValueLevelParams! a.getAppFn.constLevels!).beta a.getAppArgs)
+    if multiAtomOnlyForExposed &&
+       !(unf.isAppOfArity ``SepProp.sepConj 2 || unf.isConstOf ``SepProp.emp) then
+      return none
+    return some unf
+  return none
+
+private structure BundleSpan where
+  rootBase : Expr
+  loHi? : Option (Int × Int)
+
+private def toSignedBV64 (v : Nat) : Int :=
+  if v < (1 <<< 63) then (v : Int) else (v : Int) - ((1 <<< 64) : Int)
+
+private def isBV64AddSubExpr (e : Expr) : Bool :=
+  (e.isAppOfArity ``HAdd.hAdd 6 || e.isAppOfArity ``HSub.hSub 6) &&
+    isBitVec64Type (e.getArg! 0)
+
+private def peelBV64AddSubRoot (e : Expr) : Expr := Id.run do
+  let mut root := e
+  for _ in [:8] do
+    if isBV64AddSubExpr root then root := root.getArg! 4 else break
+  return root
+
+private def splitNormAddrSpan? (addr : Expr) (width? : Option Nat) : MetaM (Option BundleSpan) := do
+  if addr.hasLooseBVars || addr.hasExprMVar then return none
+  let (normA, _) ← normAddrMeta addr (peelLets := true)
+  if normA.hasLooseBVars || normA.hasExprMVar then return none
+  if let some v ← evalBV64Lit? normA then
+    let lo := toSignedBV64 v
+    return some { rootBase := mkCanonBV64Lit 0, loHi? := width?.map fun w => (lo, lo + (w : Int)) }
+  if normA.isAppOfArity ``HAdd.hAdd 6 then
+    if let some v ← evalBV64Lit? (normA.getArg! 5) then
+      let b := normA.getArg! 4
+      if isBV64AddSubExpr b then
+        return some { rootBase := peelBV64AddSubRoot b, loHi? := none }
+      let lo := toSignedBV64 v
+      return some { rootBase := b, loHi? := width?.map fun w => (lo, lo + (w : Int)) }
+  if normA.isAppOfArity ``HSub.hSub 6 then
+    if let some v ← evalBV64Lit? (normA.getArg! 5) then
+      let b := normA.getArg! 4
+      if isBV64AddSubExpr b then
+        return some { rootBase := peelBV64AddSubRoot b, loHi? := none }
+      let lo := -(toSignedBV64 v)
+      return some { rootBase := b, loHi? := width?.map fun w => (lo, lo + (w : Int)) }
+  if isBV64AddSubExpr normA then
+    return some { rootBase := peelBV64AddSubRoot normA, loHi? := none }
+  return some { rootBase := normA, loHi? := width?.map fun w => (0, (w : Int)) }
+
+private def collectExprBundleSpans? (roots : Array Expr) (ignoreNonSpatial : Bool := false)
+    (fuel : Nat := 3) : MetaM (Option (Array BundleSpan × Bool)) := do
+  let mut work : Array (Expr × Nat) := roots.map (·, fuel)
+  let mut spans : Array BundleSpan := #[]
+  let mut hasPure := false
+  while !work.isEmpty do
+    let some (cur0, d) := work.back? | break
+    work := work.pop
+    let cur := zetaPeelTop (← instantiateMVars cur0)
+    if cur.isConstOf ``SepProp.emp then continue
+    if cur.isAppOfArity ``SepProp.sepConj 2 then
+      work := work.push (cur.getArg! 1, d)
+      work := work.push (cur.getArg! 0, d)
+      continue
+    if cur.isAppOfArity ``SepProp.sepExists 2 then
+      match (cur.getArg! 1).consumeMData with
+      | .lam _ _ body _ => work := work.push (body, d); continue
+      | _ => if ignoreNonSpatial then continue else return none
+    if cur.isAppOfArity ``SepProp.pure 1 then
+      hasPure := true
+      continue
+    if d > 0 then
+      if let some unf ← unfoldSpatialBundleAtom? cur (includeAbbrev := true)
+          (multiAtomOnlyForExposed := false) (allowExposed := true) then
+        work := work.push (unf, d - 1)
+        continue
+    let addrWidth? : Option (Expr × Option Nat) ← match cur.getAppFn.constName?, cur.getAppNumArgs with
+      | some ``pointsTo8, 2 | some ``pointsTo8RO, 2 => pure (some (cur.getArg! 0, some 1))
+      | some ``pointsTo16, 2 | some ``pointsTo16RO, 2 => pure (some (cur.getArg! 0, some 2))
+      | some ``pointsTo32, 2 | some ``pointsTo32RO, 2 => pure (some (cur.getArg! 0, some 4))
+      | some ``pointsTo64, 2 | some ``pointsTo64RO, 2 => pure (some (cur.getArg! 0, some 8))
+      | some ``pointsTo128, 2 | some ``pointsTo128RO, 2 => pure (some (cur.getArg! 0, some 16))
+      | some ``stackFrame16At, 1 => pure (some (cur.getArg! 0, some 16))
+      | some ``stackFrame32At, 1 => pure (some (cur.getArg! 0, some 32))
+      | some ``stackFrame16, 1 => pure (some (mkApp (mkConst ``State.sp) (cur.getArg! 0), some 16))
+      | some ``stackFrame32, 1 => pure (some (mkApp (mkConst ``State.sp) (cur.getArg! 0), some 32))
+      | some ``stackFrame, 2 =>
+        pure (some (mkApp (mkConst ``State.sp) (cur.getArg! 0), ← evalNatLitSolver? (cur.getArg! 1)))
+      | some ``stackFrameAt, 2 | some ``memRegion, 2 =>
+        pure (some (cur.getArg! 0, ← evalNatLitSolver? (cur.getArg! 1)))
+      | some ``regionBlock, 3 | some ``regionBlockRO, 3 =>
+        pure (some (cur.getArg! 0, ← evalNatLitSolver? (cur.getArg! 1)))
+      | some ``pointsToBytes, 2 | some ``pointsToBytesRO, 2
+      | some ``pointsToWords64, 2 | some ``pointsToWords64RO, 2 =>
+        pure (some (cur.getArg! 0, none))
+      | some `ProofLib.stackAt, 2 =>
+        pure (some (cur.getArg! 0, ← evalNatLitSolver? (cur.getArg! 1)))
+      | _, _ => pure none
+    match addrWidth? with
+    | none =>
+      if ignoreNonSpatial then continue else return none
+    | some (addr, w?) =>
+      let some sp ← splitNormAddrSpan? addr w? | return none
+      spans := spans.push sp
+  return some (spans, hasPure)
+
+/-- Conservative overlap check between an unfolded `@[expose] def` bundle `aUnf` and the non-frame
+    atoms of `other`. Returns `false` only when every spatial leaf of `aUnf` is provably disjoint
+    from every spatial atom of `other`, allowing untouched `@[expose] def` bundles to stay folded
+    in `?F`. -/
+private def bundleMayOverlapOther? (aUnf : Expr) (nonMVarOther : Array Expr) : MetaM Bool := do
+  if nonMVarOther.isEmpty then return false
+  let some (spansA, pureA) ← collectExprBundleSpans? #[aUnf] (ignoreNonSpatial := false) | return true
+  if spansA.isEmpty then return true
+  let some (spansB, pureB) ← collectExprBundleSpans? nonMVarOther (ignoreNonSpatial := true) | return true
+  if pureA && pureB then return true
+  for sa in spansA do
+    for sb in spansB do
+      let sameBase ← if sa.rootBase == sb.rootBase then pure true
+        else withReducible (isDefEq sa.rootBase sb.rootBase)
+      if sameBase then
+        match sa.loHi?, sb.loHi? with
+        | some (loA, hiA), some (loB, hiB) =>
+          if max loA loB < min hiA hiB || (loA == hiA && loA == loB) then return true
+        | _, _ => return true
+  return false
+
+/-- Unfold any atom in `cur` that is a `@[sep_unfold]` definition or (when `allowExposed` is `true`)
+    an `abbrev` or `@[expose] def` pure spatial bundle without a same-head match in `other`,
+    normalizing the unfolded result with `normSepPropMeta`. -/
+def unfoldUnmatchedSepUnfoldAtoms (cur : Expr) (hCur? : Option Expr) (other : Expr)
+    (keepDisjointExposedFolded : Bool := false) (allowExposed : Bool := false)
+    (peelLets : Bool := false) (addrFuel : Nat := 64) :
     MetaM (Expr × Option Expr) := do
   unless proofLib.frameSplitUnfold.get (← getOptions) do return (cur, hCur?)
+  let allowExposed := allowExposed && proofLib.sepUnfoldExposed.get (← getOptions)
   let otherAtoms := atoms other
+  let nonMVarOther := otherAtoms.filter fun b => !(stripMData b).isMVar
   let mut curE := cur
   let mut curH? := hCur?
-  for _ in [0:16] do
+  for _ in [0:32] do
     let as := atoms curE
     let mut changed := false
     for hi : i in [:as.size] do
       let a := stripMData (← instantiateMVars as[i])
       let some fn := a.getAppFn.constName? | continue
-      unless ← isSepUnfoldConst fn do continue
-      if otherAtoms.any fun b =>
-          let b := stripMData b
-          b == a || (b.getAppFn.constName? == some fn &&
-            (a.getAppNumArgs == 0 || (b.getAppNumArgs > 0 && b.getArg! 0 == a.getArg! 0))) then
-        continue
-      let some aUnf ← unfoldDefinition? a | continue
-      let (aNorm, pNorm?) ← normSepPropMeta aUnf
+      let matched ← otherAtoms.anyM fun b => do
+        let b := stripMData b
+        if b == a then return true
+        if b.getAppFn.constName? != some fn then return false
+        if a.getAppNumArgs == 0 then return true
+        if b.getAppNumArgs == 0 then return false
+        if b.getArg! 0 == a.getArg! 0 then return true
+        let (na, _) ← normAddrMeta (a.getArg! 0) addrFuel (peelLets := true)
+        let (nb, _) ← normAddrMeta (b.getArg! 0) addrFuel (peelLets := true)
+        return na == nb
+      if matched then continue
+      let some aUnf ← unfoldSpatialBundleAtom? a (includeAbbrev := allowExposed)
+          (multiAtomOnlyForExposed := false) (allowExposed := allowExposed)
+        | continue
+      if keepDisjointExposedFolded && !(← isSepUnfoldConst fn) then
+        unless ← bundleMayOverlapOther? aUnf nonMVarOther do continue
+      let (aNorm, pNorm?) ← normSepPropMeta aUnf peelLets addrFuel
       let eqPrf ← match pNorm? with
         | some pNorm => mkExpectedTypeHint pNorm (← mkEq a aNorm)
         | none => mkExpectedTypeHint (← mkEqRefl aNorm) (← mkEq a aNorm)
@@ -1454,27 +2071,64 @@ def unfoldUnmatchedSepUnfoldAtoms (cur : Expr) (hCur? : Option Expr) (other : Ex
     if !changed then break
   return (curE, curH?)
 
-/-- Unfold `@[sep_unfold]` atoms in `e` that do not have a same-head match in `other`
-    (definitional tree transformation for `sep_frame`). -/
-partial def expandSepUnfoldTree (e : Expr) (other : Expr) (fuel : Nat := 8) : MetaM Expr := do
+/-- Unfold `@[sep_unfold]` (and, when `allowExposed` is `true`, `@[expose] def`) multi-atom spatial
+    bundle atoms in `e` that do not have a same-head match in `other` (iterative definitional tree
+    transformation for `sep_frame`). -/
+def expandSepUnfoldTree (e : Expr) (other : Expr) (fuel : Nat := 8)
+    (allowExposed : Bool := false) : MetaM Expr := do
   unless proofLib.frameSplitUnfold.get (← getOptions) do return e
+  let allowExposed := allowExposed && proofLib.sepUnfoldExposed.get (← getOptions)
   let otherAtoms := atoms other
-  let rec go (t : Expr) (f : Nat) : MetaM Expr := do
-    let t := (← instantiateMVars t).consumeMData.headBeta
-    if t.isAppOfArity ``SepProp.sepConj 2 then
-      return mkSep (← go (t.getArg! 0) f) (← go (t.getArg! 1) f)
-    if f == 0 then return t
-    let a := stripMData t
-    let some fn := a.getAppFn.constName? | return t
-    unless ← isSepUnfoldConst fn do return t
-    if otherAtoms.any fun b =>
-        let b := stripMData b
-        b == a || (b.getAppFn.constName? == some fn &&
-          (a.getAppNumArgs == 0 || (b.getAppNumArgs > 0 && b.getArg! 0 == a.getArg! 0))) then
-      return t
-    let some aUnf ← unfoldDefinition? a | return t
-    go aUnf (f - 1)
-  go e fuel
+  let hasFrameMVar := otherAtoms.any fun b => (stripMData b).isMVar
+  let nonMVarOther := otherAtoms.filter fun b => !(stripMData b).isMVar
+  let mut work : Array (Sum (Expr × Nat) Unit) := #[.inl (e, fuel)]
+  let mut vals : Array Expr := #[]
+  while !work.isEmpty do
+    let some item := work.back? | break
+    work := work.pop
+    match item with
+    | .inl (t0, f) =>
+      let t := zetaPeelTop (← instantiateMVars t0)
+      if t.isAppOfArity ``SepProp.sepConj 2 then
+        work := work.push (.inr ())
+        work := work.push (.inl (t.getArg! 1, f))
+        work := work.push (.inl (t.getArg! 0, f))
+      else if f == 0 then
+        vals := vals.push t
+      else
+        let a := stripMData t
+        match a.getAppFn.constName? with
+        | none => vals := vals.push t
+        | some fn =>
+          let matched ← otherAtoms.anyM fun b => do
+            let b := stripMData b
+            if b == a then return true
+            if b.getAppFn.constName? != some fn then return false
+            if a.getAppNumArgs == 0 then return true
+            if b.getAppNumArgs == 0 then return false
+            if b.getArg! 0 == a.getArg! 0 then return true
+            let (na, _) ← normAddrMeta (a.getArg! 0) (peelLets := true)
+            let (nb, _) ← normAddrMeta (b.getArg! 0) (peelLets := true)
+            return na == nb
+          if matched then
+            vals := vals.push t
+          else
+            match ← unfoldSpatialBundleAtom? a (includeAbbrev := false)
+                (multiAtomOnlyForExposed := true) (allowExposed := allowExposed) with
+            | some aUnf =>
+              let doUnf ←
+                if hasFrameMVar && !(← isSepUnfoldConst fn) then
+                  bundleMayOverlapOther? aUnf nonMVarOther
+                else
+                  pure true
+              if doUnf then work := work.push (.inl (aUnf, f - 1))
+              else vals := vals.push t
+            | none => vals := vals.push t
+    | .inr () =>
+      let r := vals.back!; vals := vals.pop
+      let l := vals.back!; vals := vals.pop
+      vals := vals.push (mkSep l r)
+  return vals.back!
 
 /-- Extract the first address argument of a spatial atom or existential spatial atom. -/
 def atomFirstAddr? (e : Expr) : Option Expr :=
@@ -1568,6 +2222,37 @@ def pointsToFocusTargetInfo? (s : Expr) : Option (Expr × Nat × Name) :=
     else none
   else none
 
+/-- Cheap, `whnf`-bounded concrete length lookup for `bs : List (BitVec 8)` (`lenExpr = bs.length`),
+    checking closed `List` spines, ground `Nat` evaluation, and syntactic local `bs.length = c`
+    equalities so out-of-bounds `pointsToBytes` candidates (`off + w > n`) are rejected without
+    invoking `disch`. -/
+private def knownSliceLen? (bs lenExpr : Expr) : MetaM (Option Nat) := do
+  if let some n ← evalNatLitSolver? lenExpr true then return some n
+  let mut cur ← peelLetFVar bs 4
+  let mut cnt : Nat := 0
+  let mut closedSpine := false
+  for _ in [:256] do
+    cur := cur.consumeMData
+    if cur.isAppOfArity ``List.cons 3 then
+      cnt := cnt + 1
+      cur ← peelLetFVar (cur.getArg! 2) 4
+    else if cur.isAppOfArity ``List.nil 1 then
+      closedSpine := true
+      break
+    else
+      break
+  if closedSpine then return some cnt
+  for decl in (← getLCtx) do
+    if decl.isImplementationDetail || decl.isAuxDecl then continue
+    let ty := stripMData (← instantiateMVars decl.type)
+    let some (eqTy, lhs, rhs) := ty.eq? | continue
+    unless eqTy.consumeMData.isConstOf ``Nat do continue
+    if lhs == lenExpr then
+      if let some n ← evalNatLitSolver? rhs true then return some n
+    else if rhs == lenExpr then
+      if let some n ← evalNatLitSolver? lhs true then return some n
+  return none
+
 /-- Pre-split at most once per `p ↦ₛ bs` (`pointsToBytes`) atom in `curFull` when `sub'` requests
     a fixed-width cell `q ↦_w v` (`w ∈ {1, 2, 4, 8}`) at a constant offset `off` inside `bs`. -/
 def preSplitPointsToBytes {M : Type → Type} [Monad M] [MonadLiftT MetaM M]
@@ -1578,6 +2263,12 @@ def preSplitPointsToBytes {M : Type → Type} [Monad M] [MonadLiftT MetaM M]
   let initAtoms := atoms curFull
   let origSlices := initAtoms.filter (·.isAppOfArity ``Arm64.pointsToBytes 2)
   if origSlices.isEmpty then return (curFull, curHFull?)
+  let mut nonSliceNormAddrs : Array Expr := #[]
+  for a in initAtoms do
+    if !(a.isAppOfArity ``Arm64.pointsToBytes 2) then
+      if let some addr := atomFirstAddr? a then
+        let (aNorm, _) ← (normAddrMeta addr 64 (peelLets := true) : MetaM (Expr × Option Expr))
+        nonSliceNormAddrs := nonSliceNormAddrs.push aNorm
   let mut fullE := curFull
   let mut hFull? := curHFull?
   let mut usedSlices : Array Expr := #[]
@@ -1587,7 +2278,9 @@ def preSplitPointsToBytes {M : Type → Type} [Monad M] [MonadLiftT MetaM M]
     if fs.any (· == s) then continue
     let some (q, w, focusName) := pointsToFocusTargetInfo? s | continue
     unless (← (getEnv : MetaM Environment)).contains focusName do continue
-    if fs.any (fun a => !(a.isAppOfArity ``Arm64.pointsToBytes 2) && atomFirstAddr? a == some q) then
+    let (qNorm, _) ← (normAddrMeta q 64 (peelLets := true) : MetaM (Expr × Option Expr))
+    if nonSliceNormAddrs.contains qNorm ||
+       fs.any (fun a => !(a.isAppOfArity ``Arm64.pointsToBytes 2) && atomFirstAddr? a == some q) then
       continue
     let qLet ← (unfoldLetFVars q : MetaM Expr)
     for hi : i in [:fs.size] do
@@ -1598,6 +2291,8 @@ def preSplitPointsToBytes {M : Type → Type} [Monad M] [MonadLiftT MetaM M]
         let pLet ← (unfoldLetFVars p : MetaM Expr)
         let some off ← (constAddrOffset? pLet qLet : MetaM (Option Nat)) | continue
         let lenExpr ← (mkAppM ``List.length #[bs] : MetaM Expr)
+        if let some n ← (knownSliceLen? bs lenExpr : MetaM (Option Nat)) then
+          if off + w > n then continue
         let boundGoal ←
           if w == 1 then (mkAppM ``LT.lt #[mkNatLit off, lenExpr] : MetaM Expr)
           else (mkAppM ``LE.le #[← mkAppM ``HAdd.hAdd #[mkNatLit off, mkNatLit w], lenExpr] : MetaM Expr)
@@ -1613,6 +2308,7 @@ def preSplitPointsToBytes {M : Type → Type} [Monad M] [MonadLiftT MetaM M]
           fullE := nextFull
           hFull? ← (mkEqTransOpt hFull? (some hTree) : MetaM _)
           usedSlices := usedSlices.push a
+          nonSliceNormAddrs := nonSliceNormAddrs.push qNorm
           break
   return (fullE, hFull?)
 
@@ -1622,6 +2318,7 @@ private def isPureNearMissHypDecl (decl : LocalDecl) : MetaM Bool := do
   unless ← isProp ty do return false
   if let some n := ty.getAppFn.constName? then
     if n == ``SepProp.Satisfies || n == ``SepProp.Entails ||
+       n == ``Arm64.subroutine_ok || n == ``Arm64.Program.subroutineOk ||
        n == `ProofLib.SepFrame ||
        n == `ProofLib.SepLoad8 || n == `ProofLib.SepLoad16 ||
        n == `ProofLib.SepLoad32 || n == `ProofLib.SepLoad64 ||
@@ -1629,30 +2326,51 @@ private def isPureNearMissHypDecl (decl : LocalDecl) : MetaM Bool := do
        n == `ProofLib.SepStore32 || n == `ProofLib.SepStore64 ||
        n == `ProofLib.SepStoreDcZva ||
        n == ``Arm64.Program.hasCode || n == `ProofLib.FnCode.holds ||
-       n.toString.endsWith "SepWP" || n.toString.endsWith "SepWPp" then
+       n.toString.endsWith "SepWP" || n.toString.endsWith "SepWPp" ||
+       n.toString.endsWith "RelocCodeAt" || n.toString.endsWith "PlacedCodeAt" then
       return false
   return true
+
+/-- Collect all free variables occurring in `e`, transitively following local `let`-declarations
+    in `lctx`. -/
+private partial def collectTransitiveFVars
+    (lctx : LocalContext) (e : Expr) (s0 : Std.HashSet FVarId := {}) : Std.HashSet FVarId :=
+  let rec collect (t : Expr) (acc : Std.HashSet FVarId) : Std.HashSet FVarId :=
+    if !t.hasFVar then acc
+    else match t with
+      | .fvar id =>
+        if acc.contains id then acc
+        else
+          let acc := acc.insert id
+          match lctx.find? id >>= (·.value?) with
+          | some v => collect v acc
+          | none => acc
+      | .app f a => collect a (collect f acc)
+      | .lam _ d b _ | .forallE _ d b _ => collect b (collect d acc)
+      | .letE _ d v b _ => collect b (collect v (collect d acc))
+      | .mdata _ b | .proj _ _ b => collect b acc
+      | _ => acc
+  collect e s0
+
+/-- True when `target` has a top-level opaque free-variable atom (`cdecl`, e.g. an abstract frame
+    `R : SepProp`) that cannot appear in `full` (because `full` has no metavariables and does not
+    transitively reference that free variable). -/
+private def hasUnmatchedOpaqueFVarAtom (lctx : LocalContext) (full target : Expr) : Bool :=
+  if full.hasMVar then false
+  else
+    let tgtAtoms := atoms target
+    let isOpaqueFVar (g : Expr) : Bool :=
+      g.isFVar && ((lctx.find? g.fvarId!) >>= (·.value?)).isNone
+    if !(tgtAtoms.any isOpaqueFVar) then false
+    else
+      let fullFVs := collectTransitiveFVars lctx full
+      tgtAtoms.any fun g => isOpaqueFVar g && !fullFVs.contains g.fvarId!
 
 private partial def pruneNearMissGoal?
     (g : MVarId) (eqTy lhsLet rhsLet : Expr) : MetaM (Option MVarId) := g.withContext do
   let lctx ← getLCtx
   let addExprFVars (e : Expr) (s0 : Std.HashSet FVarId) : Std.HashSet FVarId :=
-    let rec collect (t : Expr) (acc : Std.HashSet FVarId) : Std.HashSet FVarId :=
-      if !t.hasFVar then acc
-      else match t with
-        | .fvar id =>
-          if acc.contains id then acc
-          else
-            let acc := acc.insert id
-            match lctx.find? id >>= (·.value?) with
-            | some v => collect v acc
-            | none => acc
-        | .app f a => collect a (collect f acc)
-        | .lam _ d b _ | .forallE _ d b _ => collect b (collect d acc)
-        | .letE _ d v b _ => collect b (collect v (collect d acc))
-        | .mdata _ b | .proj _ _ b => collect b acc
-        | _ => acc
-    collect e s0
+    collectTransitiveFVars lctx e s0
   let mut pureDecls : Array (LocalDecl × Expr × Std.HashSet FVarId) := #[]
   for decl in lctx do
     if ← isPureNearMissHypDecl decl then
@@ -1856,6 +2574,7 @@ def preCongrNearMissAtoms {M : Type → Type} [Monad M] [MonadLiftT MetaM M]
     return (curFull, curHFull?)
   let mut fullE := curFull
   let mut hFull? := curHFull?
+  let mut nearMissCtx? : Option (Bool × Std.HashSet FVarId) := none
   let subAtoms := atoms sub'
   for s0 in subAtoms do
     let s ← (instantiateMVars s0 : MetaM Expr)
@@ -1887,16 +2606,59 @@ def preCongrNearMissAtoms {M : Type → Type} [Monad M] [MonadLiftT MetaM M]
               break
     if matchedPass1 then continue
     if s.getAppNumArgs >= 1 && (s.getArg! 0).hasMVar then continue
+    let ctx ← match nearMissCtx? with
+      | some c => pure c
+      | none =>
+        let c ← (do
+          let lctx ← getLCtx
+          let mut anyFalse := false
+          let mut pFVs : Std.HashSet FVarId := {}
+          for decl in lctx do
+            if ← isPureNearMissHypDecl decl then
+              let ty ← instantiateMVars decl.type
+              if !ty.hasFVar && (ty.find? (·.isConstOf ``False)).isSome then
+                anyFalse := true
+              pFVs := collectTransitiveFVars lctx ty pFVs
+          return (anyFalse, pFVs) : MetaM (Bool × Std.HashSet FVarId))
+        nearMissCtx? := some c
+        pure c
+    let (anyClosedFalse, pureFVs) := ctx
+    let lctx ← (getLCtx : MetaM LocalContext)
     let mut tried := 0
     for hi : i in [:fs.size] do
       if tried >= 6 then break
       let a := fs[i]
       if subAtoms.any (· == a) then continue
       if a.getAppFn == s.getAppFn && a.getAppNumArgs == s.getAppNumArgs then
-        if a.getAppNumArgs >= 1 then
-          let aAddr ← (unfoldLetFVars (a.getArg! 0) : MetaM Expr)
-          let sAddr ← (unfoldLetFVars (s.getArg! 0) : MetaM Expr)
-          if (← (ProofLib.BV.Lin.proveNe? aAddr sAddr : MetaM _)).isSome then continue
+        let mut impossible := false
+        for ai0 in a.getAppArgs, si0 in s.getAppArgs do
+          if impossible then break
+          let ai := stripMData (← (instantiateMVars ai0 : MetaM Expr))
+          let si := stripMData (← (instantiateMVars si0 : MetaM Expr))
+          if !ai.hasMVar && !si.hasMVar && ai != si then
+            let aiLet ← (unfoldLetFVars ai : MetaM Expr)
+            let siLet ← (unfoldLetFVars si : MetaM Expr)
+            if aiLet != siLet then
+              if (← (ProofLib.BV.Lin.proveNe? aiLet siLet : MetaM _)).isSome then
+                impossible := true
+              else if !anyClosedFalse then
+                let argTy := (← (inferType aiLet : MetaM Expr)).consumeMData
+                let nonSub := argTy.isConstOf ``Nat ||
+                  (argTy.isAppOfArity ``BitVec 1 &&
+                    (let w := (argTy.getArg! 0).consumeMData
+                     w.nat? != some 0 && w.rawNatLit? != some 0))
+                if nonSub then
+                  if aiLet.isFVar then
+                    let fv := aiLet.fvarId!
+                    if ((lctx.find? fv) >>= (·.value?)).isNone && !pureFVs.contains fv &&
+                       !(collectTransitiveFVars lctx siLet).contains fv then
+                      impossible := true
+                  if !impossible && siLet.isFVar then
+                    let fv := siLet.fvarId!
+                    if ((lctx.find? fv) >>= (·.value?)).isNone && !pureFVs.contains fv &&
+                       !(collectTransitiveFVars lctx aiLet).contains fv then
+                      impossible := true
+        if impossible then continue
         tried := tried + 1
         if let some eqPrf ← (congrAtomsNearMiss? a s : MetaM (Option Expr)) then
           let sInst ← (instantiateMVars s : MetaM Expr)
@@ -1962,7 +2724,7 @@ def preSplitGoalMemRegions {M : Type → Type} [Monad M] [MonadLiftT MetaM M]
   let hypAtoms := atoms P
   let mut curGs := Gs
   let mut curHGs? := hGs?
-  for _ in [0:32] do
+  for _ in [0:128] do
     let gs := atoms curGs
     let mut splitDone := false
     for hi : i in [:gs.size] do
@@ -1972,7 +2734,13 @@ def preSplitGoalMemRegions {M : Type → Type} [Monad M] [MonadLiftT MetaM M]
         let nExpr := g.getArg! 1
         for ha in hypAtoms do
           if let some hb ← (blockOf? ha : MetaM (Option Block)) then
-            if (← (constAddrOffset? p hb.base : MetaM (Option Nat))) == some 0 && hb.len != nExpr then
+            let sameLen : Bool ←
+              if hb.len == nExpr then pure true
+              else match (← (evalNatLitSolver? hb.len : MetaM (Option Nat))),
+                         (← (evalNatLitSolver? nExpr : MetaM (Option Nat))) with
+                | some lw, some ln => pure (lw == ln)
+                | _, _ => pure false
+            if (← (constAddrOffset? p hb.base : MetaM (Option Nat))) == some 0 && !sameLen then
               if let some (rhs, eqPrf) ← splitMemRegionSubblock? disch p nExpr p hb.len then
                 if let some (gs', hTree) ← (rewriteAtomAtEq? curGs i rhs eqPrf : MetaM (Option (Expr × Expr))) then
                   curGs := gs'
@@ -1986,37 +2754,61 @@ def preSplitGoalMemRegions {M : Type → Type} [Monad M] [MonadLiftT MetaM M]
   return (curGs, curHGs?)
 
 /-- Core engine for `entail?`, optionally splitting unmatched `memRegion` blocks when `splitRegions` is `true`. -/
-def entailCore? (disch : Disch) (m P h G : Expr) (splitRegions : Bool) : TacticM (Option Expr) := do
+def entailCore? (disch : Disch) (m P h G : Expr) (splitRegions : Bool)
+    (allowExposed : Bool := false) (peelLets : Bool := false)
+    (prevUnfRef? : Option (IO.Ref (Option (Expr × Expr))) := none)
+    (closedPureFailedRef? : Option (IO.Ref Bool) := none)
+    (pass1NormRef? : Option (IO.Ref (Option (Expr × Expr))) := none) : TacticM (Option Expr) := do
+  let addrFuel : Nat := if splitRegions then 64 else 16
   let P0 := (← instantiateMVars P).consumeMData
-  let G0 := (← instantiateMVars G).consumeMData
-  let (P', hP?) ← normSepPropMeta P0
+  let GOrig := (← instantiateMVars G).consumeMData
+  let G0 ← etaExpandFullStructProjMVars GOrig
+  if hasUnmatchedOpaqueFVarAtom (← getLCtx) P0 G0 then return none
+  let (P', hP?) ← normSepPropMeta P0 peelLets addrFuel
   let h0 ← match hP? with
     | some hP => pure (mkAppN (mkConst ``Satisfies.congr_prop) #[m, P0, P', ← instantiateMVars hP, h])
     | none => pure h
   let pures ← IO.mkRef #[]
   let (Gs0, k) ← expandGoal m G0 pures
-  let (Gs1, hGs1?) ← normSepPropMeta Gs0
-  let (P, h, Gs, hGs?) ←
-    if splitRegions then
-      let d := liftTacDisch disch
-      let (P1, hP1?) ← unfoldUnmatchedSepUnfoldAtoms P' none Gs1
-      let (Gs2, hGs2?) ← unfoldUnmatchedSepUnfoldAtoms Gs1 hGs1? P1
-      let (P2, hP2?) ← expandUnmatchedStackFrameAtoms d P1 hP1? Gs2
-      let (Gs3, hGs3?) ← expandUnmatchedStackFrameAtoms d Gs2 hGs2? P2
-      let h2 ← match hP2? with
-        | some hP2 => pure (mkAppN (mkConst ``Satisfies.congr_prop) #[m, P', P2, ← instantiateMVars hP2, h0])
-        | none => pure h0
-      let (P3, h3) ← preSplitHypMemRegions disch m P2 h2 Gs3
-      let (P4, hP4?) ← preSplitPointsToBytes d P3 none Gs3
-      let (P5, hP5?) ← preCongrNearMissAtoms d P4 hP4? Gs3
-      let h5 ← match hP5? with
-        | some hP5 => pure (mkAppN (mkConst ``Satisfies.congr_prop) #[m, P3, P5, ← instantiateMVars hP5, h3])
-        | none => pure h3
-      let (Gs4, hGs4?) ← preSplitGoalMemRegions d P5 Gs3 hGs3?
-      pure (P5, h5, Gs4, hGs4?)
-    else
-      pure (P', h0, Gs1, hGs1?)
-  if splitRegions && P == P' && Gs == Gs1 then return none
+  if hasUnmatchedOpaqueFVarAtom (← getLCtx) P0 Gs0 then return none
+  let pureInitMVars ← (← pures.get).mapM fun (_, φ0) =>
+    return (← instantiateMVars φ0).hasMVar
+  let (Gs1, hGs1?) ← normSepPropMeta Gs0 peelLets addrFuel
+  if !splitRegions then
+    if let some r := pass1NormRef? then r.set (some (P', Gs1))
+  let mut P := P'
+  let mut h := h0
+  let mut Gs := Gs1
+  let mut hGs? := hGs1?
+  if splitRegions then
+    let d := liftTacDisch disch
+    let hasFrameMVar := (atoms Gs1).any fun b => (stripMData b).isMVar
+    let (P1, hP1?) ← unfoldUnmatchedSepUnfoldAtoms P' none Gs1
+      (keepDisjointExposedFolded := hasFrameMVar)
+      (allowExposed := allowExposed) (peelLets := peelLets) (addrFuel := addrFuel)
+    let (Gs2, hGs2?) ← unfoldUnmatchedSepUnfoldAtoms Gs1 hGs1? P1
+      (allowExposed := allowExposed) (peelLets := peelLets) (addrFuel := addrFuel)
+    if let some ref := prevUnfRef? then
+      if (← ref.get) == some (P1, Gs2) then return none
+      ref.set (some (P1, Gs2))
+    let (P2, hP2?) ← expandUnmatchedStackFrameAtoms d P1 hP1? Gs2
+    let (Gs3, hGs3?) ← expandUnmatchedStackFrameAtoms d Gs2 hGs2? P2
+    let h2 ← match hP2? with
+      | some hP2 => pure (mkAppN (mkConst ``Satisfies.congr_prop) #[m, P', P2, ← instantiateMVars hP2, h0])
+      | none => pure h0
+    let (P3, h3) ← preSplitHypMemRegions disch m P2 h2 Gs3
+    let (P4, hP4?) ← preSplitPointsToBytes d P3 none Gs3
+    let (P5, hP5?) ← preCongrNearMissAtoms d P4 hP4? Gs3
+    let h5 ← match hP5? with
+      | some hP5 => pure (mkAppN (mkConst ``Satisfies.congr_prop) #[m, P3, P5, ← instantiateMVars hP5, h3])
+      | none => pure h3
+    let (Gs4, hGs4?) ← preSplitGoalMemRegions d P5 Gs3 hGs3?
+    P := P5; h := h5; Gs := Gs4; hGs? := hGs4?
+  if splitRegions && !peelLets then
+    if let some r := pass1NormRef? then
+      let pChk ← instantiateMVars P
+      let gsChk ← instantiateMVars Gs
+      if (← r.get) == some (pChk, gsChk) then return none
   let hyp := atoms (← instantiateMVars P)
   let goal := atoms (← instantiateMVars Gs)
   let mut nonMVarCount := 0
@@ -2040,14 +2832,14 @@ def entailCore? (disch : Disch) (m P h G : Expr) (splitRegions : Bool) : TacticM
     if found.isNone then
       for hi : i in [:hyp.size] do
         if found.isNone && !used[i]! && hyp[i].getAppFn == g.getAppFn then
-          if ← withReducibleAndInstances (isDefEq hyp[i] g) then found := some (i, .same)
+          if ← reducibleIsDefEqSafe hyp[i] g then found := some (i, .same)
     if found.isNone then
       for hi : i in [:hyp.size] do
         if found.isNone && !used[i]! && hyp[i].getAppFn != g.getAppFn &&
            !hyp[i].getAppFn.isFVar && !g.getAppFn.isFVar &&
            !hyp[i].getAppFn.isMVar && !g.getAppFn.isMVar &&
            !(isPrimSepAtom hyp[i] && isPrimSepAtom g) then
-          if ← withReducibleAndInstances (isDefEq hyp[i] g) then found := some (i, .same)
+          if ← reducibleIsDefEqSafe hyp[i] g then found := some (i, .same)
     if let some (i, step) := found then
       used := used.set! i true
       matched := matched.set! kIdx (some (i, step))
@@ -2059,13 +2851,16 @@ def entailCore? (disch : Disch) (m P h G : Expr) (splitRegions : Bool) : TacticM
       plan := plan.push (i, g, step)
       continue
     let mut found : Option (Nat × Step) := none
+    let mut triedCongr := Array.replicate hyp.size false
     if let some gb ← blockOf? g then
       for hi : i in [:hyp.size] do
         if found.isNone && !used[i]! then
           if hypBlocks[i]!.isNone then
             hypBlocks := hypBlocks.set! i (some (← blockOf? hyp[i]))
           if let some (some hb) := hypBlocks[i]! then
-            if ← withReducibleAndInstances (isDefEq hb.base gb.base) then
+            if ← reducibleIsDefEqSafe hb.base gb.base then
+              if hyp[i].getAppFn == g.getAppFn then
+                triedCongr := triedCongr.set! i true
               if let some e ← congrAtoms? disch hyp[i] g then
                 found := some (i, .congr e)
               else if let some hle ← proveLenLe? gb.len hb.len then
@@ -2075,16 +2870,17 @@ def entailCore? (disch : Disch) (m P h G : Expr) (splitRegions : Bool) : TacticM
                   found := some (i, .update hbIsBlock gbIsBlock hle hΦ hb.base hb.len)
       if found.isNone && !gb.base.hasMVar then
         for hi : i in [:hyp.size] do
-          if found.isNone && !used[i]! && hyp[i].getAppFn == g.getAppFn then
+          if found.isNone && !used[i]! && !triedCongr[i]! && hyp[i].getAppFn == g.getAppFn then
             if let some (some hb) := hypBlocks[i]! then
               if !hb.base.hasMVar then
                 let eqBase ← mkEq hb.base gb.base
                 if (← withoutModifyingState (disch eqBase)).isSome then
+                  triedCongr := triedCongr.set! i true
                   if let some e ← congrAtoms? disch hyp[i] g then
                     found := some (i, .congr e)
     if found.isNone then
       for hi : i in [:hyp.size] do
-        if found.isNone && !used[i]! && hyp[i].getAppFn == g.getAppFn then
+        if found.isNone && !used[i]! && !triedCongr[i]! && hyp[i].getAppFn == g.getAppFn then
           if let some e ← congrAtoms? disch hyp[i] g then
             found := some (i, .congr e)
     let some (i, step) := found | return none
@@ -2108,7 +2904,7 @@ def entailCore? (disch : Disch) (m P h G : Expr) (splitRegions : Bool) : TacticM
       curP := mkSep g rest
   let leftovers := (hyp.zip used).filterMap fun (a, u) => if u then none else some a
   curP ← instantiateMVars curP
-  let Gs ← instantiateMVars Gs
+  Gs ← instantiateMVars Gs
   let spatial ← match frame? with
     | some f =>
       unless ← isDefEq f (mkSepList leftovers) do return none
@@ -2126,18 +2922,59 @@ def entailCore? (disch : Disch) (m P h G : Expr) (splitRegions : Bool) : TacticM
       let GsInst ← instantiateMVars Gs
       pure (mkAppN (mkConst ``Satisfies.congr_prop) #[m, GsInst, Gs0Inst, hGsSymm, spatial])
     | none => pure spatial
-  for (hφ, φ) in ← pures.get do
-    let some p ← proveConj disch φ | return none
+  let pureList ← pures.get
+  for hPure : idx in [:pureList.size] do
+    let (hφ, φ) := pureList[idx]
+    let hadMVar := pureInitMVars.getD idx true
+    let some p ← proveConj disch φ
+      | do
+        if !hadMVar && frame?.isNone then
+          if let some ref := closedPureFailedRef? then ref.set true
+        return none
     hφ.mvarId!.assign p
-  instantiateMVars (← k spatial)
+  let res ← instantiateMVars (← k spatial)
+  if G0 == GOrig then
+    return some res
+  else
+    return some (← mkExpectedTypeHint res (mkSat (← instantiateMVars G) m))
 
 /-- Given `h : m ⊨ P`, prove `m ⊨ G`, or return `none`. -/
 def entail? (disch : Disch) (m P h G : Expr) : TacticM (Option Expr) := do
-  let savedMCtx ← getMCtx
-  if let some prf ← entailCore? disch m P h G false then
+  let saved ← Tactic.saveState
+  let prevRef ← IO.mkRef none
+  let closedPureFailedRef ← IO.mkRef false
+  let pass1Ref ← IO.mkRef none
+  let failedClosed ← IO.mkRef ({} : Std.HashSet Expr)
+  let memoDisch : Disch := fun φ0 => do
+    let φ := stripMData (← instantiateMVars φ0)
+    if !φ.hasMVar then
+      if (← failedClosed.get).contains φ then
+        return none
+      let res ← disch φ0
+      if res.isNone then
+        failedClosed.modify (·.insert φ)
+      return res
+    else
+      disch φ0
+  let tryPass (splitRegions allowExposed peelLets : Bool) : TacticM (Option Expr) :=
+    MonadRuntimeException.tryCatchRuntimeEx
+      (entailCore? memoDisch m P h G splitRegions allowExposed peelLets
+        (if splitRegions then some prevRef else none) (some closedPureFailedRef) (some pass1Ref))
+      (fun ex => do saved.restore; if ex.isMaxHeartbeat then throw ex else pure none)
+  if let some prf ← tryPass false false false then
     return some prf
-  setMCtx savedMCtx
-  entailCore? disch m P h G true
+  saved.restore
+  if (← closedPureFailedRef.get) then return none
+  if let some prf ← tryPass true false false then
+    return some prf
+  saved.restore
+  if (← closedPureFailedRef.get) then return none
+  let hasFrameMVar := (atoms (← instantiateMVars G)).any fun b => (stripMData b).isMVar
+  let allowExp := !hasFrameMVar && proofLib.sepUnfoldExposed.get (← getOptions)
+  if !allowExp && !(← getLCtx).any (·.isLet) then return none
+  let prf? ← entailCore? memoDisch m P h G true allowExp true (some prevRef) (some closedPureFailedRef)
+  if prf?.isNone then saved.restore
+  return prf?
 
 /-- Split a proof of a content predicate into proofs of its equational conjuncts; a 128-bit read
     `m.read128 a = v` also yields its two 64-bit halves. -/
@@ -2500,13 +3337,13 @@ def explainAtomMismatchHints (t : Expr) (candidates : Array Expr)
       if allCtxAtoms.any (fun c => (spatialAtomAddr? c).isSome) ||
          !pool.any (fun c => c.getAppFn.constName? == some headName) then
         lines := lines.push
-          m!"hint: target atom `{t}` uses composite definition `{headName}`; unfold or fold `{headName}` so both sides are at the same abstraction level"
+          m!"hint: target atom `{t}` uses composite definition `{headName}`; mark `{headName}` with `@[sep_unfold]` (or `@[expose]` / `abbrev`), or unfold/fold `{headName}` so both sides are at the same abstraction level"
     else if (spatialAtomAddr? t).isSome && nearMissAtoms.isEmpty && containerAtoms.isEmpty then
       for c0 in pool do
         let c := (stripMData c0).headBeta
         if let some headName := compositeSepHead? c then
           lines := lines.push
-            m!"hint: context atom `{c}` uses composite definition `{headName}` while target atom `{t}` is a raw spatial atom; unfold or fold `{headName}` so both sides are at the same abstraction level"
+            m!"hint: context atom `{c}` uses composite definition `{headName}` while target atom `{t}` is a raw spatial atom; mark `{headName}` with `@[sep_unfold]` (or `@[expose]` / `abbrev`), or unfold/fold `{headName}` so both sides are at the same abstraction level"
           break
     return lines
   catch _ =>
@@ -2531,13 +3368,13 @@ def explainFrameSplitFailure (sub full : Expr) : MetaM MessageData := withoutMod
       if found.isNone && !used[i]! && fs[i] == s then found := some i
     for hi : i in [:fs.size] do
       if found.isNone && !used[i]! && fs[i].getAppFn == s.getAppFn then
-        if ← withReducibleAndInstances (isDefEq fs[i] s) then found := some i
+        if ← reducibleIsDefEqSafe fs[i] s then found := some i
     for hi : i in [:fs.size] do
       if found.isNone && !used[i]! && fs[i].getAppFn != s.getAppFn &&
          !fs[i].getAppFn.isFVar && !s.getAppFn.isFVar &&
          !fs[i].getAppFn.isMVar && !s.getAppFn.isMVar &&
          !(isPrimSepAtom fs[i] && isPrimSepAtom s) then
-        if ← withReducibleAndInstances (isDefEq fs[i] s) then found := some i
+        if ← reducibleIsDefEqSafe fs[i] s then found := some i
     if let some i := found then
       used := used.set! i true
     else
@@ -2587,7 +3424,8 @@ def memRegionOrExistsCellInfo? (s : Expr) : MetaM (Option (Expr × Expr × Optio
   if s.isAppOfArity ``SepProp.sepExists 2 then
     let lam := (s.getArg! 1).consumeMData
     if let .lam _ _ body _ := lam then
-      if body.hasLooseBVars && !(body.getArg! 0).hasLooseBVars then
+      let body := body.consumeMData
+      if body.getAppNumArgs == 2 && (body.getArg! 1).consumeMData == .bvar 0 && !(body.getArg! 0).hasLooseBVars then
         let q := body.getArg! 0
         let fn := body.getAppFn.constName?.getD .anonymous
         let info? : Option (Nat × Name) :=
@@ -2636,51 +3474,85 @@ def preSplitFullMemRegions {M : Type → Type} [Monad M] [MonadLiftT MetaM M]
   return (curFull, curHFull?)
 
 /-- Core engine for `frameSplit?`, splitting `memRegion` atoms when `splitRegions` is `true`. -/
-def frameSplitCore? (sub full : Expr) (splitRegions : Bool) : MetaM (Option (Expr × Expr)) := do
+def frameSplitCore? (sub full : Expr) (splitRegions : Bool) (allowExposed : Bool := false)
+    (peelLets : Bool := false)
+    (prevUnfRef? : Option (IO.Ref (Option (Expr × Expr))) := none)
+    (pass1NormRef? : Option (IO.Ref (Option (Expr × Expr))) := none) :
+    MetaM (Option (Expr × Expr)) := do
+  let addrFuel : Nat := if splitRegions then 64 else 16
   let full0 ← instantiateMVars full
   let sub0 ← instantiateMVars sub
-  let (full1, hFull1?) ← normSepPropMeta full0
-  let (sub1, hSub1?) ← normSepPropMeta sub0
-  let (full', hFull?, sub', hSub?) ←
-    if splitRegions then
-      let (full2, hFull2?) ← unfoldUnmatchedSepUnfoldAtoms full1 hFull1? sub1
-      let (sub2, hSub2?) ← unfoldUnmatchedSepUnfoldAtoms sub1 hSub1? full2
-      let (full3, hFull3?) ← expandUnmatchedStackFrameAtoms metaDisch full2 hFull2? sub2
-      let (sub3, hSub3?) ← expandUnmatchedStackFrameAtoms metaDisch sub2 hSub2? full3
-      let (full4, hFull4?) ← preSplitFullMemRegions metaDisch full3 hFull3? sub3
-      let (full5, hFull5?) ← preSplitPointsToBytes metaDisch full4 hFull4? sub3
-      let (full6, hFull6?) ← preCongrNearMissAtoms metaDisch full5 hFull5? sub3
-      let (sub4, hSub4?) ← preSplitGoalMemRegions metaDisch full6 sub3 hSub3?
-      pure (full6, hFull6?, sub4, hSub4?)
-    else
-      pure (full1, hFull1?, sub1, hSub1?)
-  if splitRegions && full' == full1 && sub' == sub1 then return none
+  if hasUnmatchedOpaqueFVarAtom (← getLCtx) full0 sub0 then return none
+  let (full1, hFull1?) ← normSepPropMeta full0 peelLets addrFuel
+  let (sub1, hSub1?) ← normSepPropMeta sub0 peelLets addrFuel
+  if !splitRegions then
+    if let some r := pass1NormRef? then r.set (some (full1, sub1))
+  let mut full' := full1
+  let mut hFull? := hFull1?
+  let mut sub' := sub1
+  let mut hSub? := hSub1?
+  if splitRegions then
+    let (full2, hFull2?) ← unfoldUnmatchedSepUnfoldAtoms full1 hFull1? sub1
+      (keepDisjointExposedFolded := true) (allowExposed := allowExposed)
+      (peelLets := peelLets) (addrFuel := addrFuel)
+    let (sub2, hSub2?) ← unfoldUnmatchedSepUnfoldAtoms sub1 hSub1? full2
+      (keepDisjointExposedFolded := false) (allowExposed := allowExposed)
+      (peelLets := peelLets) (addrFuel := addrFuel)
+    if let some ref := prevUnfRef? then
+      let mayReNormMVarLet ←
+        if sub2.hasMVar then pure ((← getLCtx).any (·.isLet)) else pure false
+      if !mayReNormMVarLet && (← ref.get) == some (full2, sub2) then return none
+      ref.set (some (full2, sub2))
+    let (full3, hFull3?) ← expandUnmatchedStackFrameAtoms metaDisch full2 hFull2? sub2
+    let (sub3, hSub3?) ← expandUnmatchedStackFrameAtoms metaDisch sub2 hSub2? full3
+    let (full4, hFull4?) ← preSplitFullMemRegions metaDisch full3 hFull3? sub3
+    let (full5, hFull5?) ← preSplitPointsToBytes metaDisch full4 hFull4? sub3
+    let (full6, hFull6?) ← preCongrNearMissAtoms metaDisch full5 hFull5? sub3
+    let (sub4, hSub4?) ← preSplitGoalMemRegions metaDisch full6 sub3 hSub3?
+    full' := full6; hFull? := hFull6?; sub' := sub4; hSub? := hSub4?
+  if splitRegions && !peelLets then
+    if let some r := pass1NormRef? then
+      let fullChk ← instantiateMVars full'
+      let subChk ← instantiateMVars sub'
+      if (← r.get) == some (fullChk, subChk) then return none
   let fs := atoms full'
   let mut used := Array.replicate fs.size false
-  for s0 in atoms sub' do
-    let s ← instantiateMVars s0
+  let mut curSub := sub'
+  let mut curHSub? := hSub?
+  let initSubAtoms := atoms sub'
+  for hSubIdx : subIdx in [:initSubAtoms.size] do
+    let s0 := initSubAtoms[subIdx]
+    let mut s ← instantiateMVars s0
+    if !fs.any (· == s) && s0.hasMVar && !s.hasMVar then
+      let (sNorm, pSNorm?) ← normSepPropMeta s peelLets addrFuel
+      if let some pSNorm := pSNorm? then
+        if let some (nextSub, hTree) ←
+            rewriteAtomAtEq? (← instantiateMVars curSub) subIdx sNorm pSNorm then
+          curSub := nextSub
+          curHSub? ← mkEqTransOpt (← curHSub?.mapM instantiateMVars) (some hTree)
+          s := sNorm
     let mut found : Option Nat := none
     for hi : i in [:fs.size] do
       if found.isNone && !used[i]! && fs[i] == s then found := some i
     for hi : i in [:fs.size] do
       if found.isNone && !used[i]! && fs[i].getAppFn == s.getAppFn then
-        if ← withReducibleAndInstances (isDefEq fs[i] s) then found := some i
+        if ← reducibleIsDefEqSafe fs[i] s then found := some i
     for hi : i in [:fs.size] do
       if found.isNone && !used[i]! && fs[i].getAppFn != s.getAppFn &&
          !fs[i].getAppFn.isFVar && !s.getAppFn.isFVar &&
          !fs[i].getAppFn.isMVar && !s.getAppFn.isMVar &&
          !(isPrimSepAtom fs[i] && isPrimSepAtom s) then
-        if ← withReducibleAndInstances (isDefEq fs[i] s) then found := some i
+        if ← reducibleIsDefEqSafe fs[i] s then found := some i
     let some i := found | return none
     used := used.set! i true
   let frame := mkSepList ((fs.zip used).filterMap fun (a, u) => if u then none else some a)
-  let sub'Inst ← instantiateMVars sub'
+  let sub'Inst ← instantiateMVars curSub
   let target' := mkSep sub'Inst frame
   let some (tbl, tA, tB) ← reifyPermTbl? full' target' | return none
   let mut prf ← eqACOfTbl full' target' tbl tA tB
   if let some hFull := hFull? then
     prf ← mkEqTrans (← instantiateMVars hFull) prf
-  if let some hSub := hSub? then
+  if let some hSub := curHSub? then
     let hSubSymm ← mkEqSymm (← instantiateMVars hSub)
     let hTargetEq ← mkCongrFun (← mkCongrArg (mkConst ``SepProp.sepConj) hSubSymm) frame
     prf ← mkEqTrans prf hTargetEq
@@ -2688,13 +3560,29 @@ def frameSplitCore? (sub full : Expr) (splitRegions : Bool) : MetaM (Option (Exp
   return some (frame, ← mkExpectedTypeHint prf (← mkEq (← instantiateMVars full0) finalTarget))
 
 /-- Split `full = sub ∗ frame`: direct syntactic/reducible matching runs first with zero overhead;
-    if unmatched atoms remain, any enclosing `memRegion p n` containing `[q, q + w)` is split out. -/
+    if unmatched atoms remain, `@[sep_unfold]` + `memRegion` splitting runs next, falling back to
+    `abbrev` / `@[expose] def` pure spatial bundle unfolding and constant-offset `let` canonicalization
+    only when needed. -/
 def frameSplit? (sub full : Expr) : MetaM (Option (Expr × Expr)) := do
-  let savedMCtx ← getMCtx
-  if let some res ← frameSplitCore? sub full false then
+  let saved ← saveState
+  let prevRef ← IO.mkRef none
+  let pass1Ref ← IO.mkRef none
+  let tryPass (splitRegions allowExposed peelLets : Bool) : MetaM (Option (Expr × Expr)) :=
+    MonadRuntimeException.tryCatchRuntimeEx
+      (frameSplitCore? sub full splitRegions allowExposed peelLets
+        (if splitRegions then some prevRef else none) (some pass1Ref))
+      (fun ex => do saved.restore; if ex.isMaxHeartbeat then throw ex else pure none)
+  if let some res ← tryPass false false false then
     return some res
-  setMCtx savedMCtx
-  frameSplitCore? sub full true
+  saved.restore
+  if let some res ← tryPass true false false then
+    return some res
+  saved.restore
+  let allowExp := proofLib.sepUnfoldExposed.get (← getOptions)
+  if !allowExp && !(← getLCtx).any (·.isLet) then return none
+  let res ← frameSplitCore? sub full true allowExp true (some prevRef)
+  if res.isNone then saved.restore
+  return res
 
 /-- True if `n` names a `SepWP` or `SepWPp` weakest-precondition predicate. -/
 def isSepWPHeadName (n : Name) : Bool :=
@@ -2714,7 +3602,7 @@ def goalHeadDesc (ty : Expr) : String :=
       else if ty.getAppFn.isMVar then "metavariable"
       else "expression"
 
-/-- True if `ty` is a `∀`/implication telescope wrapping `Satisfies` (`m ⊨ P`) or `Entails` (`P ⊢ Q`). -/
+/-- True if `ty` is a `∀`/`let`/implication telescope wrapping `Satisfies` (`m ⊨ P`) or `Entails` (`P ⊢ Q`). -/
 def isForallSatOrEntails (ty : Expr) : Bool :=
   let rec go (e : Expr) (fuel : Nat) : Bool :=
     match fuel with
@@ -2724,8 +3612,21 @@ def isForallSatOrEntails (ty : Expr) : Bool :=
       if e.isAppOfArity ``SepProp.Satisfies 2 || e.isAppOfArity ``SepProp.Entails 2 then true
       else if let .forallE _ d b _ := e then
         d.consumeMData.isAppOfArity ``SepProp.Satisfies 2 || go b fuel
+      else if let .letE _ _ _ b _ := e then
+        go b fuel
       else false
-  ty.consumeMData.isForall && go ty 6
+  let ty0 := ty.consumeMData
+  (ty0.isForall || ty0.isLet) && go ty0 8
+
+/-- Introduce any top-level `let x := v; ...` binders on `g` into the local context so `let`-bound
+    base pointers and constants become local `FVar`s before equation/entailment matching. -/
+partial def introLeadingLets (g : MVarId) : MetaM MVarId := do
+  let ty ← g.withContext do pure (← instantiateMVars (← g.getType)).consumeMData
+  if ty.isLet then
+    let (_, g') ← g.intro1P
+    introLeadingLets g'
+  else
+    return g
 
 /-- Routing hint for `sep_focus` when the goal is not an equation. -/
 def sepFocusGoalShapeHint (ty : Expr) : MessageData :=
@@ -2783,42 +3684,75 @@ partial def findSatHyp? (m : Expr) : MetaM (Option (Expr × Expr)) := do
   return none
 
 /-- Core engine for `closeEntails?`, splitting `memRegion` atoms when `splitRegions` is `true`. -/
-partial def closeEntailsCore? (disch : Disch) (P Q : Expr) (splitRegions : Bool) : TacticM (Option Expr) := do
-  let (P1, hP1?) ← normSepPropMeta P
-  let (Q1, hQ1?) ← normSepPropMeta Q
-  let (P2, hP?, Q2, hQ?) ←
-    if splitRegions then
-      let d := liftTacDisch disch
-      let (Pa, hPa?) ← unfoldUnmatchedSepUnfoldAtoms P1 hP1? Q1
-      let (Qa, hQa?) ← unfoldUnmatchedSepUnfoldAtoms Q1 hQ1? Pa
-      let (Pb, hPb?) ← expandUnmatchedStackFrameAtoms d Pa hPa? Qa
-      let (Qb, hQb?) ← expandUnmatchedStackFrameAtoms d Qa hQa? Pb
-      let (Pc, hPc?) ← preSplitFullMemRegions d Pb hPb? Qb
-      let (Pd, hPd?) ← preSplitPointsToBytes d Pc hPc? Qb
-      let (Pe, hPe?) ← preCongrNearMissAtoms d Pd hPd? Qb
-      let (Qc, hQc?) ← preSplitGoalMemRegions d Pe Qb hQb?
-      pure (Pe, hPe?, Qc, hQc?)
-    else
-      pure (P1, hP1?, Q1, hQ1?)
+partial def closeEntailsCore? (disch : Disch) (P Q : Expr) (splitRegions : Bool)
+    (allowExposed : Bool := false) (peelLets : Bool := false)
+    (prevUnfRef? : Option (IO.Ref (Option (Expr × Expr))) := none)
+    (pass1NormRef? : Option (IO.Ref (Option (Expr × Expr))) := none) : TacticM (Option Expr) := do
+  let addrFuel : Nat := if splitRegions then 64 else 16
+  if hasUnmatchedOpaqueFVarAtom (← getLCtx) (← instantiateMVars P) (← instantiateMVars Q) then
+    return none
+  let (P1, hP1?) ← normSepPropMeta P peelLets addrFuel
+  let (Q1, hQ1?) ← normSepPropMeta Q peelLets addrFuel
+  if !splitRegions then
+    if let some r := pass1NormRef? then r.set (some (P1, Q1))
+  let mut P2 := P1
+  let mut hP? := hP1?
+  let mut Q2 := Q1
+  let mut hQ? := hQ1?
+  if splitRegions then
+    let d := liftTacDisch disch
+    let (Pa, hPa?) ← unfoldUnmatchedSepUnfoldAtoms P1 hP1? Q1
+      (allowExposed := allowExposed) (peelLets := peelLets) (addrFuel := addrFuel)
+    let (Qa, hQa?) ← unfoldUnmatchedSepUnfoldAtoms Q1 hQ1? Pa
+      (allowExposed := allowExposed) (peelLets := peelLets) (addrFuel := addrFuel)
+    if let some ref := prevUnfRef? then
+      if (← ref.get) == some (Pa, Qa) then return none
+      ref.set (some (Pa, Qa))
+    let (Pb, hPb?) ← expandUnmatchedStackFrameAtoms d Pa hPa? Qa
+    let (Qb, hQb?) ← expandUnmatchedStackFrameAtoms d Qa hQa? Pb
+    let (Pc, hPc?) ← preSplitFullMemRegions d Pb hPb? Qb
+    let (Pd, hPd?) ← preSplitPointsToBytes d Pc hPc? Qb
+    let (Pe, hPe?) ← preCongrNearMissAtoms d Pd hPd? Qb
+    let (Qc, hQc?) ← preSplitGoalMemRegions d Pe Qb hQb?
+    P2 := Pe; hP? := hPe?; Q2 := Qc; hQ? := hQc?
   -- Weaken any points-to blocks in `P2` to `memRegion` when `Q2` has `memRegion` at that base/len
-  let rec weakenToRegions (cur : Expr) : MetaM (Expr × Expr) := do
-    let cb := cur.consumeMData.headBeta
-    if cb.isAppOfArity ``SepProp.sepConj 2 then
-      let (l', hl) ← weakenToRegions (cb.getArg! 0)
-      let (r', hr) ← weakenToRegions (cb.getArg! 1)
-      return (mkSep l' r', mkAppN (mkConst ``sepConj_mono) #[cb.getArg! 0, l', cb.getArg! 1, r', hl, hr])
-    else
-      let leaf := (stripMData cb).headBeta
-      if !leaf.isAppOfArity ``memRegion 2 then
-        if let some hb ← blockOf? leaf then
-          let qAtoms := atoms Q2
-          if qAtoms.any (fun ga => ga.isAppOfArity ``memRegion 2 && ga.getArg! 0 == hb.base && ga.getArg! 1 == hb.len) then
-            let reg := mkApp2 (mkConst ``memRegion) hb.base hb.len
-            let ent ← mkAppM ``IsBlock.entails_memRegion #[hb.isBlock]
-            return (reg, ent)
-      return (cur, mkApp (mkConst ``Entails.refl) cur)
+  let qAtoms := if splitRegions then atoms Q2 else #[]
+  let weakenLeaf (cur : Expr) : MetaM (Expr × Expr) := do
+    let leaf := (stripMData cur).headBeta
+    if !leaf.isAppOfArity ``memRegion 2 then
+      if let some hb ← blockOf? leaf then
+        for ga in qAtoms do
+          if ga.isAppOfArity ``memRegion 2 && ga.getArg! 0 == hb.base then
+            let qLen := ga.getArg! 1
+            let lenMatch ←
+              if qLen == hb.len then pure true
+              else if !qLen.hasMVar && !hb.len.hasMVar then isDefEq hb.len qLen
+              else pure false
+            if lenMatch then
+              let reg := mkApp2 (mkConst ``memRegion) hb.base qLen
+              let mut ent ← mkAppM ``IsBlock.entails_memRegion #[hb.isBlock]
+              if qLen != hb.len then
+                ent ← mkExpectedTypeHint ent (mkApp2 (mkConst ``SepProp.Entails) leaf reg)
+              return (reg, ent)
+    return (cur, mkApp (mkConst ``Entails.refl) cur)
+  let weakenToRegions (root : Expr) : MetaM (Expr × Expr) :=
+    foldSepTreeM (m := MetaM) root
+      (prep := fun e => pure e.consumeMData.headBeta)
+      (onLeaf := fun origCur c => do
+        let (res, prf) ← weakenLeaf c
+        if res == c then
+          return (origCur, mkApp (mkConst ``Entails.refl) origCur)
+        else
+          return (res, prf))
+      (onNode := fun origCur l r (l', hl) (r', hr) =>
+        if l' == l && r' == r then
+          pure (origCur, mkApp (mkConst ``Entails.refl) origCur)
+        else
+          pure (mkSep l' r', mkAppN (mkConst ``sepConj_mono) #[l, l', r, r', hl, hr]))
   let (P3, hWeaken) ← if splitRegions then weakenToRegions P2 else pure (P2, mkApp (mkConst ``Entails.refl) P2)
-  if splitRegions && P2 == P1 && Q2 == Q1 && P3 == P2 then return none
+  if splitRegions && !peelLets && P3 == P2 then
+    if let some r := pass1NormRef? then
+      if (← r.get) == some (P2, Q2) then return none
   let some (tbl, tA, tB) ← reifyPermTbl? P3 Q2 | return none
   let hAC ← eqACOfTbl P3 Q2 tbl tA tB
   let mut prf := mkAppN (mkConst ``Entails.trans)
@@ -2830,14 +3764,29 @@ partial def closeEntailsCore? (disch : Disch) (P Q : Expr) (splitRegions : Bool)
     prf := mkAppN (mkConst ``Entails.trans) #[P, Q2, Q, prf, mkAppN (mkConst ``Entails.of_eq) #[Q2, Q, hQSymm]]
   return some prf
 
-/-- Prove a heap-level entailment `P ⊢ Q`: tries zero-overhead AC normalization first, falling
-    back to contiguous `memRegion` splitting and block weakening when needed. -/
+/-- Prove a heap-level entailment `P ⊢ Q`: tries zero-overhead AC normalization first, then
+    `@[sep_unfold]` + contiguous `memRegion` splitting, falling back to `abbrev` / `@[expose] def`
+    pure spatial bundle unfolding and constant-offset `let` canonicalization only when needed. -/
 partial def closeEntails? (disch : Disch) (P Q : Expr) : TacticM (Option Expr) := do
-  let savedMCtx ← getMCtx
-  if let some prf ← closeEntailsCore? disch P Q false then
+  let saved ← Tactic.saveState
+  let prevRef ← IO.mkRef none
+  let pass1Ref ← IO.mkRef none
+  let tryPass (splitRegions allowExposed peelLets : Bool) : TacticM (Option Expr) :=
+    MonadRuntimeException.tryCatchRuntimeEx
+      (closeEntailsCore? disch P Q splitRegions allowExposed peelLets
+        (if splitRegions then some prevRef else none) (some pass1Ref))
+      (fun ex => do saved.restore; if ex.isMaxHeartbeat then throw ex else pure none)
+  if let some prf ← tryPass false false false then
     return some prf
-  setMCtx savedMCtx
-  closeEntailsCore? disch P Q true
+  saved.restore
+  if let some prf ← tryPass true false false then
+    return some prf
+  saved.restore
+  let allowExp := proofLib.sepUnfoldExposed.get (← getOptions)
+  if !allowExp && !(← getLCtx).any (·.isLet) then return none
+  let prf? ← closeEntailsCore? disch P Q true allowExp true (some prevRef)
+  if prf?.isNone then saved.restore
+  return prf?
 
 /-- Format a residual multiset diff message when `sep_eq` fails to prove `lhs = rhs`. -/
 def explainSepEqFailure (lhs rhs : Expr) : MetaM MessageData := withoutModifyingState do
@@ -2861,7 +3810,7 @@ def explainSepEqFailure (lhs rhs : Expr) : MetaM MessageData := withoutModifying
         let a := lhsAtoms[i]
         for hj : j in [:rhsAtoms.size] do
           if !usedL[i]! && !usedR[j]! && a.getAppFn == rhsAtoms[j].getAppFn then
-            if ← withReducibleAndInstances (isDefEq a rhsAtoms[j]) then
+            if ← reducibleIsDefEqSafe a rhsAtoms[j] then
               usedL := usedL.set! i true
               usedR := usedR.set! j true
     let lhsOnly := (lhsAtoms.zip usedL).filterMap fun (a, u) => if u then none else some a
@@ -2884,7 +3833,9 @@ def explainSepEqFailure (lhs rhs : Expr) : MetaM MessageData := withoutModifying
 
 /-- Close the main goal `m ⊨ G` (or `P ⊢ Q`) from a hypothesis over the same memory using `entail?`. -/
 partial def closeSat (disch : Disch) : TacticM Unit := do
-  let g ← getMainGoal
+  let g0 ← getMainGoal
+  let g ← introLeadingLets g0
+  if g != g0 then replaceMainGoal [g]
   let ty0 ← g.withContext do pure (stripMData (← instantiateMVars (← g.getType)))
   if proofLib.sepShapeDispatch.get (← getOptions) && isForallSatOrEntails ty0 then
     let (_, g') ← g.intros
@@ -2961,6 +3912,9 @@ elab "sep_entail" : tactic => do
     via `sepProp_eq_of_entails` and `sep_entail`, reporting the one-for-one multiset difference
     (`only in LHS` / `only in RHS`) on failure. -/
 elab (priority := default - 1) "sep_eq" : tactic => do
+  let g0 ← getMainGoal
+  let gIntro ← introLeadingLets g0
+  if gIntro != g0 then replaceMainGoal [gIntro]
   let saved ← saveState
   try
     evalTactic (← `(tactic| (apply sepProp_eq_of_entails <;> sep_entail)))
@@ -2981,7 +3935,9 @@ elab (priority := default - 1) "sep_eq" : tactic => do
     equalities to `sep_eq`. -/
 elab "sep_focus" : tactic => do
   let dispatch := proofLib.sepShapeDispatch.get (← getOptions)
-  let g ← getMainGoal
+  let g0 ← getMainGoal
+  let g ← introLeadingLets g0
+  if g != g0 then replaceMainGoal [g]
   let ty ← g.withContext do pure (stripMData (← instantiateMVars (← g.getType)))
   if dispatch && (ty.isAppOfArity ``SepProp.Entails 2 || ty.isAppOfArity ``SepProp.Satisfies 2 || isForallSatOrEntails ty) then
     evalTactic (← `(tactic| sep_entail))

@@ -9,14 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.ConsumeMsgKeySubPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.ConsumeMsgKeySubPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlacedBudget
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs
 public import ProofLib.RegChain
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.ConsumeMsgKeyHelpersPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKeyBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Segment 4 (`ConsumeMsgKey`) Sub-Lemmas on CLI Block `433`
@@ -26,7 +30,7 @@ Proves budget-threaded (`RustCliAllocBudget M`) `consume_message_key` success an
 formatted `ProtocolAddress` display-drop event list `dispDeallocEvents`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -114,7 +118,7 @@ end Simp
 
 /-- Allocation events emitted when dropping the formatted `ProtocolAddress` display string after
 `consume_message_key`. -/
-def dispDeallocEvents (dispCap : BitVec 64) : List AllocEvent :=
+@[expose] def dispDeallocEvents (dispCap : BitVec 64) : List AllocEvent :=
   if dispCap = 0 then [] else rustDeallocEvents dispCap.toNat 1
 
 theorem freeOnlyEvs_dispDeallocEvents (dispCap : BitVec 64) :

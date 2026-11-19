@@ -9,11 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Budget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Placed
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable `AllocContractsFsPlaced` and `AllocContractsXCliPlaced`
@@ -23,7 +30,7 @@ constructing `AllocContractsFsPlaced A lim H` and `AllocContractsXCliPlaced A li
 `HookSat H` witnesses or `CliAllocHooks A lim`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -33,7 +40,8 @@ namespace LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1PlacedBu
 
 open Arm64 Arm64.Obj ProofLib
 open CryptoVerification
-  (LibsignalHooks LibsignalPlacement libsignalSessionExterns ls_hook_ok_ultra_of_mem lsmpl lsρ)
+  (LibsignalHooks LibsignalPlacement libsignalHookedExterns
+  ls_hook_ok_ultra_of_mem lsmpl lsρ)
 open CryptoVerification.E2E (allocHook0 deallocHook reallocHook0)
 open CryptoVerification.LibsignalPublicApi.StoreKit
   (subroutine_ok_withLsCodeRoLoaded_of_plain withLsCodeRoLoaded)
@@ -73,7 +81,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
 `StoreKit.withLsCodeRoLoaded lsmpl`. -/
 theorem ls_hook_placed_ok [LibsignalPlacement] {α : Type} {H : LibsignalHooks} {sym : String}
     {spec : Spec α} (hsat : HookSat H sym spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide) :
+    (hmem : sym ∈ libsignalHookedExterns := by decide) :
     subroutine_ok (lsProg_617 H) (lsρ sym) (withLsCodeRoLoaded lsmpl spec) :=
   subroutine_ok_withLsCodeRoLoaded_of_plain <|
     ls_hook_ok_ultra_of_mem (prog := lsProg_617 H) (i := 617) hsat hmem

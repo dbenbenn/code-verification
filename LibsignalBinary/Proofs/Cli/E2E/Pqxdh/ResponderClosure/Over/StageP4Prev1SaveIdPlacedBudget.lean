@@ -11,16 +11,16 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1LoadTrustTailsXExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrAPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1SaveIdPlaced
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1LoadTrustTailsXExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrAPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1SaveIdPlaced
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4ErrUnwind
@@ -34,6 +34,11 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Bin.Hooks
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP4
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveId -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.HeapDefs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsAPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsBPlacedBudget
 
 /-!
 # Budget-Threaded Placed Stage P4.1 (`save_identity`) on 1-Element `previous_sessions`
@@ -43,7 +48,7 @@ Threads `A.pool` and `IdentityStoreKitPlacedOkI` across `[LibsignalPlacement]` S
 `StageP4MatchedSaveErrEnv` on `.error ()`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -184,7 +189,7 @@ private theorem savePoll_pre_intro_placed [LibsignalPlacement] {M : AllocCostMod
 /-! ## Spatial Bundles for Budget-Threaded Placed Substage P4.1 -/
 
 /-- Spatial resources preserved across budget-threaded placed Substage P4.1 over `prevVecAt [enc]`. -/
-def stageP4SaveIdPrev1SharedPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4SaveIdPrev1SharedPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (ikit : IdentityStoreSpec A.repAlloc 0#64)
     (s0 s s_pool : State)
@@ -217,7 +222,7 @@ def stageP4SaveIdPrev1SharedPlaced [LibsignalPlacement] {M : AllocCostModel}
   stackAt s.sp (saveIdCallStack ikit)
 
 /-- Precondition of budget-threaded placed Substage P4.1 at `(blkPl_518).base + 0x34dc`. -/
-def stageP4SaveIdPrev1PrePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4SaveIdPrev1PrePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st0 : M.σ)
     (ikit : IdentityStoreSpec A.repAlloc 0#64)
     (s0 s : State)
@@ -246,7 +251,7 @@ def stageP4SaveIdPrev1PrePlaced [LibsignalPlacement] {M : AllocCostModel}
   ikit.identityAt idStorePtr ist0
 
 /-- Postcondition of budget-threaded placed Substage P4.1 on `Ok(c)` at `kyberMarkUsedShimAddr`. -/
-def stageP4SaveIdPrev1OkPostPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4SaveIdPrev1OkPostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st1 : M.σ)
     (ikit : IdentityStoreSpec A.repAlloc 0#64)
     (s0 s s1 : State)
@@ -282,7 +287,7 @@ def stageP4SaveIdPrev1OkPostPlaced [LibsignalPlacement] {M : AllocCostModel}
   ikit.identityAt idStorePtr (ikit.saveUpdate ist0 peer.val remoteIk (.ok c))
 
 /-- Postcondition of budget-threaded placed Substage P4.1 on `Err(())` at `s0.readReg64 .x30`. -/
-def stageP4SaveIdPrev1ErrPostPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4SaveIdPrev1ErrPostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stf : M.σ)
     (ikit : IdentityStoreSpec A.repAlloc 0#64)
     (s0 s sf : State)
@@ -779,96 +784,5 @@ theorem stageP4_saveIdentity_prev1_vregs_kits_p4_placed [LibsignalPlacement]
     exact Entails.of_eq (by sep_ac_rfl)
 
 abbrev stageP4_saveIdentity_prev1_vregs_kits_placed := @stageP4_saveIdentity_prev1_vregs_kits_p4_placed
-
-theorem stageP4_saveIdentity_prev1_vregs_kits_withPanics_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (ext : String → Option (State → State))
-    (ikit : IdentityStoreSpec A.repAlloc 0#64)
-    (ikitEnv : IdentityStoreBudgetEnv ikit)
-    (hdealloc : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim))
-    (hDropSS3 : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)))
-    (hikit : IdentityStoreKitPlacedOkI A lim ikit ikitEnv (Rust.withPanics ext))
-    (hiVt : IdentityVtablesPlacedOk ikit)
-    {Qfs : Prop} {Qp : State → SepProp → Prop}
-    (st0 : M.σ) (s0 s : State)
-    (coroPtr ctxPtr msgPtr outPtr remoteAddrPtr remoteIkPtr idStorePtr
-     kyberStorePtr kyberStoreVt kyberMarkUsedShimAddr prevCap prevPtr ptCap ptPtr v_3d0 : BitVec 64)
-    (opkIdIsSome opkId kyberPreKeyId signedPreKeyId : BitVec 32)
-    (b_2c0 : BitVec 8) (pt enc : List (BitVec 8))
-    (peer : AddrGhost) (remoteIk : IdentityKey) (ist0 : ikit.IdState)
-    (G : SessionGhost) (ssSt : SessionState (List (BitVec 8)))
-    (F : SepProp) (Q : State → SepProp → Prop) :
-    ikit.addrOk peer.val →
-    FitsEnv M lim st0 (SaveStepEnv ikit ikitEnv ist0 peer.val remoteIk) →
-    opkIdIsSome - 2#32 ≠ 0#32 →
-    pt.length ≤ ptCap.toNat →
-    saveIdCallStack ikit ≤ 2 ^ 64 →
-    (∀ {m : Memory} {P : SepProp}, LibsignalRoLoaded lsmpl m → (m ⊨ P) →
-      m ⊨ ((kyberStoreVt + 0x28#64) ↦₆₄ᵣ kyberMarkUsedShimAddr) ∗ P) →
-    FsAt ikit.envOk Qfs (lsProg_518 (Rust.withPanics ext)) s →
-    StoreKit.LibsignalCodeRoLoaded lsmpl s.mem →
-    s.pc = dpClosureEntryP34Placed + 0x34dc#64 →
-    s.status = .Running →
-    (s.sp &&& 15#64 == 0#64) = true →
-    s.readReg64 .x19 = coroPtr →
-    s.readReg64 .x24 = s.sp + 0x370#64 →
-    s.readReg64 .x25 = s.sp + 0x210#64 →
-    s.readReg64 .x26 = outPtr →
-    s.readReg64 .x27 = ctxPtr →
-    s.readReg64 .x28 = 0xfffffffffffffffe#64 →
-    calleeSavedVRegs s = calleeSavedVRegs s0 →
-    (∀ (c : IdentityChange) (evs : List AllocEvent) (s1 : State) (P1 : SepProp),
-      SaveStepEnv ikit ikitEnv ist0 peer.val remoteIk evs →
-      Steps (lsProg_518 (Rust.withPanics ext)) s s1 →
-      ikit.saveRel ist0 peer.val remoteIk (.ok c) →
-      s1.pc = kyberMarkUsedShimAddr →
-      s1.status = .Running →
-      s1.sp = s.sp →
-      s1.trace = s.trace ++ ikit.saveEvs peer.val remoteIk (.ok c) →
-      s1.readReg64 .x0 = kyberStorePtr →
-      s1.readReg64 .x1 = kyberPreKeyId.zeroExtend 64 →
-      s1.readReg64 .x2 = signedPreKeyId.zeroExtend 64 →
-      s1.readReg64 .x3 = msgPtr + 0xa8#64 →
-      s1.readReg64 .x19 = coroPtr →
-      s1.readReg64 .x24 = s.sp + 0x370#64 →
-      s1.readReg64 .x25 = s.sp + 0x210#64 →
-      s1.readReg64 .x26 = outPtr →
-      s1.readReg64 .x27 = ctxPtr →
-      s1.readReg64 .x28 = 0xfffffffffffffffe#64 →
-      s1.readReg64 .x30 = dpClosureEntryP34Placed + 0x350#64 →
-      StoreKit.LibsignalCodeRoLoaded lsmpl s1.mem →
-      calleeSavedVRegs s1 = calleeSavedVRegs s0 →
-      (P1 ⊢ stageP4SaveIdPrev1OkPostPlaced A lim (M.stepEvents evs st0) ikit s0 s s1 coroPtr msgPtr
-        outPtr remoteAddrPtr remoteIkPtr idStorePtr kyberStorePtr kyberStoreVt
-        kyberMarkUsedShimAddr prevCap prevPtr ptCap ptPtr v_3d0
-        opkIdIsSome opkId kyberPreKeyId signedPreKeyId b_2c0 pt enc peer remoteIk ist0 c G ssSt ∗ F) →
-      SepWPp (lsProg_518 (Rust.withPanics ext)) (s0.readReg64 .x30) s1 P1 Q Qp) →
-    (∀ (evs : List AllocEvent) (sf : State) (Pf : SepProp),
-      StageP4MatchedSaveErrEnv ikit ikitEnv ist0 peer.val remoteIk evs →
-      Steps (lsProg_518 (Rust.withPanics ext)) s sf →
-      ikit.saveRel ist0 peer.val remoteIk (.error ()) →
-      sf.pc = s0.readReg64 .x30 →
-      sf.status = .Running →
-      sf.sp = s.sp + 0xcd0#64 →
-      sf.trace = s.trace ++ ikit.saveEvs peer.val remoteIk (.error ()) →
-      ClosureCalleeSavedP4 s0 sf →
-      calleeSavedVRegs sf = calleeSavedVRegs s0 →
-      StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem →
-      (Pf ⊢ stageP4SaveIdPrev1ErrPostPlaced A lim (M.stepEvents evs st0) ikit s0 s sf coroPtr msgPtr
-        outPtr remoteAddrPtr remoteIkPtr idStorePtr kyberStorePtr kyberStoreVt
-        kyberMarkUsedShimAddr ptCap ptPtr v_3d0
-        opkIdIsSome opkId kyberPreKeyId signedPreKeyId pt peer remoteIk ist0 ∗ F) →
-      Q sf Pf) →
-    SepWPp (lsProg_518 (Rust.withPanics ext)) (s0.readReg64 .x30) s
-      (stageP4SaveIdPrev1PrePlaced A lim st0 ikit s0 s coroPtr msgPtr outPtr remoteAddrPtr
-        remoteIkPtr idStorePtr kyberStorePtr kyberStoreVt prevCap prevPtr ptCap ptPtr v_3d0
-        opkIdIsSome opkId kyberPreKeyId signedPreKeyId b_2c0 pt enc peer remoteIk ist0 G ssSt ∗ F)
-      Q Qp :=
-  stageP4_saveIdentity_prev1_vregs_kits_p4_placed (Rust.withPanics ext) ikit ikitEnv
-    hdealloc hDropSS3 hikit hiVt st0 s0 s coroPtr ctxPtr msgPtr outPtr remoteAddrPtr remoteIkPtr
-    idStorePtr kyberStorePtr kyberStoreVt kyberMarkUsedShimAddr prevCap prevPtr ptCap ptPtr v_3d0
-    opkIdIsSome opkId kyberPreKeyId signedPreKeyId b_2c0 pt enc peer remoteIk ist0 G ssSt F Q
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1SaveIdPlacedBudget

@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PolysLoop
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PolysLoop -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PolysLoopPlaced
-import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PolysOuter
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PolysOuter -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PtsLoop
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyEncoder>::from_pb`: Relocatable `.polys` Outer Loop
@@ -24,7 +25,7 @@ Relocatable `[LibsignalPlacement]` proofs of the `.polys` element deserializatio
 outer loop (`+1204 → +1496 / +1548`) on Block `374`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

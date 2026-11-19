@@ -9,14 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.OutgoingRatchetCodeSym -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym -- shake: keep
-public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.OutgoingRatchetCodeSym -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+meta import GeneratedLean.LibsignalSessionPlacedObjShard0
+meta import GeneratedLean.LibsignalSessionPlacedObjShard2
+meta import GeneratedLean.LibsignalSessionPlacedObjShard3
 
 /-!
 # Relocatable Per-Block Symbol Bindings for `TripleRatchet/ReceiveRatchet`
@@ -26,7 +30,7 @@ Per-block symbol bindings and instruction-fetch aliases for `TripleRatchet::from
 (blocks 2 and 3).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

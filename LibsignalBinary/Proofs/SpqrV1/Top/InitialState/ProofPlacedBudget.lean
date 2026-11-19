@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.TopPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.ProofPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2Budget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.TopPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.ProofPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.Proof
@@ -24,6 +24,12 @@ import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.ProofPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.StepsPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Auth.NewBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget
 
 /-!
 # Budget-Threaded Relocatable Verification of `spqr::initial_state`
@@ -33,7 +39,7 @@ Proves the deterministic allocation-budget contracts `InitialStatePlacedOkX` and
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -46,7 +52,7 @@ namespace LibsignalBinary.Proofs.SpqrV1.Top.InitialState.ProofPlacedBudget
 open Arm64 Arm64.Obj ProofLib
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification
-  (IsLsBlockProg LibsignalPlacement blkPC_270 blkPl_270 libsignalSessionCode libsignalSessionLib
+  (IsLsBlockProg LibsignalPlacement blkPC_270 blkPl_270 libsignalSessionLib
    lsLogFilterAddr lsMemcpySym lsmpl lsρ subroutine_ok_withLsCodeLoaded_of_plain withLsCodeLoaded)
 open CryptoVerification.LibsignalPublicApi.StoreKit (withLsCodeRoLoaded)
 open CryptoVerification.LibsignalSpqrV1 (Version)
@@ -92,7 +98,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
   (framelessMemcpyBudgetSpec noAllocShimBudgetSpec noAllocShimSpec)
 open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget (sessionMemcpyRegionBudgetSpec)
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 
 /-! ## 1. Relocatable Budget Callee Contract Bundle (`InitialStateContractsPlaced`) -/
 
@@ -116,7 +122,7 @@ structure InitialStateContractsPlaced [LibsignalPlacement] (M : AllocCostModel)
 /-! ## 2. Dispatch on `params.version` -/
 
 /-- `initialStatePlacedSpecX` restricted to `p.version = v`. -/
-def initialStateVPlacedSpecX [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def initialStateVPlacedSpecX [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress) (v : Version) :
     Spec (InitialStateGhost × M.σ) :=
   { initialStatePlacedSpecX M A lim F with

@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.Decodes
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.Decodes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.GenLsBlock
-import GeneratedLean.LibsignalSessionObj
+meta import GeneratedLean.LibsignalSessionPlacedObjShard23
 
 /-!
 # Relocatable Per-Block Fetches for CLI SPQR V1 Leaf Drop Glue (Blocks `435`–`446`)
@@ -22,7 +22,7 @@ Generates per-block instruction decode and entry-address theorems under `[Libsig
 Blocks `435`, `436`, `439`, `440`, `441`, `444`, and `446`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

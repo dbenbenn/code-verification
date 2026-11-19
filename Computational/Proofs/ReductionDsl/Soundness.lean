@@ -19,7 +19,7 @@ Proves that static query counts (`Comp.queries`, `CostedReduction.totalQueries`,
 coin-fueled variants) upper-bound target oracle queries during evaluation.
 -/
 
-@[expose] public section
+public section
 
 namespace ReductionDsl
 
@@ -180,7 +180,7 @@ theorem simulateQ_run_StateT_of_step_le {κ : Type} {spec : OracleSpec κ} {σ �
     · simp [hp]
 
 /-- The game-query predicate on `A`'s oracles. -/
-def isGameQuery {κ : Type} {G : OracleSpec κ} : (unifSpec + G).Domain → Prop
+@[expose] def isGameQuery {κ : Type} {G : OracleSpec κ} : (unifSpec + G).Domain → Prop
   | .inl _ => False
   | .inr _ => True
 
@@ -320,7 +320,7 @@ theorem TwoStageCostedReduction.eval2_queryBound {κ : Type} {G : OracleSpec κ}
 /-! ## Coin-bounded execution -/
 
 /-- The coin-query predicate on `A`'s oracles (`.inl` draws from `unifSpec`). -/
-def isCoinQuery {κ : Type} {G : OracleSpec κ} : (unifSpec + G).Domain → Prop
+@[expose] def isCoinQuery {κ : Type} {G : OracleSpec κ} : (unifSpec + G).Domain → Prop
   | .inl _ => True
   | .inr _ => False
 
@@ -363,122 +363,5 @@ theorem runFuelBounded_queryBound {κ : Type} {G : OracleSpec κ} {C : GameCodec
         have hh := Comp.queryBound_eval P w ws hw hU0 h (.cons s (.cons (C.qenc t) .nil))
         exact (isQueryBoundP_bind hh (fun p _ => ih (C.rdec t p.1) uFuel gf p.2)).mono
           (by rw [Nat.succ_mul]; omega)
-
-theorem TwoStageCostedReduction.run1Bounded_queryBound {κ : Type} {G : OracleSpec κ}
-    {C : GameCodec S G} {rIn aIn aOut ch rIn2 out : Ty S}
-    (R : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out)
-    (P : ι → Prop) [DecidablePred P] (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ)
-    (hw : ∀ g x, P (I.enc g x) → 1 ≤ w g) (hU0 : ∀ n, (I.fwdU n).IsQueryBoundP P 0)
-    {α : Type} (dflt : α) (oa : OracleComp (unifSpec + G) α) :
-    ∀ (uFuel gFuel : ℕ) (s : R.σ.denote),
-      (R.run1Bounded dflt oa uFuel gFuel s).IsQueryBoundP P
-        (gFuel * R.handlePre.queries w ws) := by
-  induction oa using OracleComp.inductionOn with
-  | pure a =>
-    intro uFuel gFuel s; simp [TwoStageCostedReduction.run1Bounded]
-  | query_bind q mx ih =>
-    intro uFuel gFuel s
-    cases q with
-    | inl n =>
-      cases uFuel with
-      | zero => simp [TwoStageCostedReduction.run1Bounded]
-      | succ uf =>
-        simpa [TwoStageCostedReduction.run1Bounded] using
-          isQueryBoundP_bind (hU0 n) (fun u _ => ih u uf gFuel s)
-    | inr t =>
-      cases gFuel with
-      | zero => simp [TwoStageCostedReduction.run1Bounded]
-      | succ gf =>
-        simp only [TwoStageCostedReduction.run1Bounded, construct_query_bind]
-        have hh := Comp.queryBound_eval P w ws hw hU0 R.handlePre
-          (.cons s (.cons (C.qenc t) .nil))
-        refine IsQueryBoundP.mono
-          (isQueryBoundP_bind hh (m := gf * R.handlePre.queries w ws) fun res _ => ?_)
-          (by rw [Nat.succ_mul]; omega)
-        rcases res with ⟨v, s'⟩ | ⟨c, p, s'⟩
-        · exact ih (C.rdec t v) uFuel gf s'
-        · exact (isQueryBoundP_pure (spec := T) P (Mid.paused t c p s' mx) 0).mono (Nat.zero_le _)
-
-theorem runFuelBounded_eq_runFuel {κ : Type} {G : OracleSpec κ} {C : GameCodec S G} {σ : Ty S}
-    (h : Comp O I [σ, C.Q] (.prod C.R σ)) {α : Type} (dflt : α)
-    {oa : OracleComp (unifSpec + G) α} :
-    ∀ {uFuel : ℕ}, oa.IsQueryBoundP (isCoinQuery (G := G)) uFuel →
-      ∀ (gFuel : ℕ) (s : σ.denote),
-        runFuelBounded h dflt oa uFuel gFuel s = runFuel h dflt oa gFuel s := by
-  induction oa using OracleComp.inductionOn with
-  | pure a =>
-    intro uFuel _ gFuel s
-    simp [runFuelBounded, runFuel]
-  | query_bind q mx ih =>
-    intro uFuel hcoin gFuel s
-    rw [isQueryBoundP_query_bind_iff] at hcoin
-    cases q with
-    | inl n =>
-      have hpos : 0 < uFuel := hcoin.1.resolve_left (by simp [isCoinQuery])
-      obtain ⟨uf, rfl⟩ : ∃ uf, uFuel = uf + 1 := ⟨uFuel - 1, by omega⟩
-      have hsub : ∀ u, (mx u).IsQueryBoundP (isCoinQuery (G := G)) uf := by
-        intro u; simpa [isCoinQuery] using hcoin.2 u
-      simp only [runFuelBounded, runFuel, construct_query_bind]
-      congr 1; funext u
-      exact ih u (hsub u) gFuel s
-    | inr t =>
-      have hsub : ∀ u, (mx u).IsQueryBoundP (isCoinQuery (G := G)) uFuel := by
-        intro u; simpa [isCoinQuery] using hcoin.2 u
-      cases gFuel with
-      | zero =>
-        simp [runFuelBounded, runFuel]
-      | succ gf =>
-        simp only [runFuelBounded, runFuel, construct_query_bind]
-        congr 1; funext p
-        exact ih (C.rdec t p.1) (hsub _) gf p.2
-
-theorem TwoStageCostedReduction.run1Bounded_eq_run1 {κ : Type} {G : OracleSpec κ}
-    {C : GameCodec S G} {rIn aIn aOut ch rIn2 out : Ty S}
-    (R : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out) {α : Type} (dflt : α)
-    {oa : OracleComp (unifSpec + G) α} :
-    ∀ {uFuel : ℕ}, oa.IsQueryBoundP (isCoinQuery (G := G)) uFuel →
-      ∀ (gFuel : ℕ) (s : R.σ.denote),
-        R.run1Bounded dflt oa uFuel gFuel s = R.run1 dflt oa gFuel s := by
-  induction oa using OracleComp.inductionOn with
-  | pure a =>
-    intro uFuel _ gFuel s
-    simp [TwoStageCostedReduction.run1Bounded, TwoStageCostedReduction.run1]
-  | query_bind q mx ih =>
-    intro uFuel hcoin gFuel s
-    rw [isQueryBoundP_query_bind_iff] at hcoin
-    cases q with
-    | inl n =>
-      have hpos : 0 < uFuel := hcoin.1.resolve_left (by simp [isCoinQuery])
-      obtain ⟨uf, rfl⟩ : ∃ uf, uFuel = uf + 1 := ⟨uFuel - 1, by omega⟩
-      have hsub : ∀ u, (mx u).IsQueryBoundP (isCoinQuery (G := G)) uf := by
-        intro u; simpa [isCoinQuery] using hcoin.2 u
-      simp only [TwoStageCostedReduction.run1Bounded, TwoStageCostedReduction.run1,
-        construct_query_bind]
-      congr 1; funext u
-      exact ih u (hsub u) gFuel s
-    | inr t =>
-      have hsub : ∀ u, (mx u).IsQueryBoundP (isCoinQuery (G := G)) uFuel := by
-        intro u; simpa [isCoinQuery] using hcoin.2 u
-      cases gFuel with
-      | zero =>
-        simp [TwoStageCostedReduction.run1Bounded, TwoStageCostedReduction.run1]
-      | succ gf =>
-        simp only [TwoStageCostedReduction.run1Bounded, TwoStageCostedReduction.run1,
-          construct_query_bind]
-        congr 1; funext res
-        rcases res with ⟨v, s'⟩ | ⟨c, p, s'⟩
-        · exact ih (C.rdec t v) (hsub _) gf s'
-        · rfl
-
-theorem TwoStageCostedReduction.eval1Bounded_eq_eval1 {κ : Type} {G : OracleSpec κ}
-    {C : GameCodec S G} {rIn aIn aOut ch rIn2 out : Ty S}
-    (R : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out)
-    (A : aIn.denote → OracleComp (unifSpec + G) aOut.denote) (x : rIn.denote)
-    (uFuel gFuel : ℕ) (dflt : aOut.denote)
-    (hcoin : ∀ a, (A a).IsQueryBoundP (isCoinQuery (G := G)) uFuel) :
-    R.eval1Bounded A x uFuel gFuel dflt = R.eval1 A x gFuel dflt := by
-  unfold TwoStageCostedReduction.eval1Bounded TwoStageCostedReduction.eval1
-  congr 1; funext p; rcases p with ⟨a, s⟩; dsimp only
-  rw [R.run1Bounded_eq_run1 dflt (hcoin a) gFuel s]
 
 end ReductionDsl

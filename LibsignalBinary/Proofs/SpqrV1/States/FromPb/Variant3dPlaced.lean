@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3c
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3c -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3b
@@ -18,6 +18,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3bPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3cPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3d
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 3 (`Ct1Received`, `+692`) — Post-`uc` Composition
@@ -25,7 +26,7 @@ import ProofLib.SepLogic.WPp
 Relocatable Block-`333` post-`uc` and post-encoder continuations (`+924`, `+1012`, `+4884`, `+4984`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

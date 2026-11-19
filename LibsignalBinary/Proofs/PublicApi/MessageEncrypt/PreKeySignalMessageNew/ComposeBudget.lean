@@ -10,14 +10,18 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.PrologueFetchBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.SplitBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsBudget
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.PrologueFetchBudget
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.SplitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.EncodedLenBudget
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.PrologueBudget
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncodeTags1To4Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `PreKeySignalMessage::new` Composition
@@ -27,7 +31,7 @@ Relocatable `[LibsignalPlacement]` proofs that `<libsignal_protocol::protocol::P
 frameless and session-scoped shim/`memcpy` hook contracts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -66,30 +70,6 @@ open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (
 open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget (
   sessionMemcpyRegionBudgetSpec sessionShimBudgetSpec
 )
-
-/-- Relocatable `PreKeySignalMessage::new` (block `41`) satisfies
-`withLsCodeLoaded lsmpl (preKeyMsgNewSpec M A lim)` given `subroutine_ok` contracts for its callees
-and `hdealloc`. -/
-theorem preKeyMsgNew_placed_ok_of_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (h_shim : subroutine_ok (lsProg_41 H) (lsρ lsRustNoAllocShimSym) noAllocShimBudgetSpec)
-    (h_alloc : subroutine_ok (lsProg_41 H) (lsρ lsRustAllocSym)
-      (rustCliAllocNoOomSpec M A lim false))
-    (h_memcpy : subroutine_ok (lsProg_41 H) (lsρ lsMemcpySym) framelessMemcpyBudgetSpec)
-    (h_pkSer : subroutine_ok (lsProg_41 H) (blkPl_205).base
-      (withLsCl lsmpl (publicKeySerializeSpec M A lim)))
-    (hEncLen : PreKeyMsgEncodedLenPlacedOk A.repAlloc H)
-    (henc0 : subroutine_ok ((blkPC_10).rebase (blkPl_10).base H) (blkPl_10).base
-      (withLsCodeLoaded lsmpl (encodeVarintNoGrowPlacedSpec A lim)))
-    (hdealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim)) :
-    subroutine_ok (lsProg_41 H) (blkPl_41).base
-      (withLsCodeLoaded lsmpl (preKeyMsgNewSpec M A lim)) := by
-  refine subroutine_ok_outcome_intro fun (x, st) R s0 hpc hs hpre hsp => ?_
-  obtain ⟨hcl, hpre⟩ := extract_withLsCodeLoaded hpre
-  exact (preKeyMsgSegExit_placed_chain
-    (prologue_placed_ok_of_ok h_shim h_alloc h_memcpy h_pkSer hEncLen x st R s0 hcl hs hpc hsp hpre)
-    (fun s' ⟨g, hA⟩ => fields_placed_ok_of_ok henc0 h_memcpy hdealloc x st g R s0 s' hA)).mono_outcome
-      fun _ hout => hout
 
 /-- Relocatable `PreKeySignalMessage::new` (block `41`) satisfies
 `withLsCodeLoaded lsmpl (preKeyMsgNewSpec M A lim)` under `noAllocShimBudgetSpec` and
@@ -142,16 +122,5 @@ theorem preKeyMsgNew_placed_ok_sessionHooks [LibsignalPlacement]
     (fun s' ⟨g, hA⟩ =>
       fields_placed_ok_sessionHooks hshim halloc hdealloc hrealloc hmemcpy x st g R s0 s' hA)).mono_outcome
       fun _ hout => hout
-
-theorem preKeySignalMessageNew_placed_ok_sessionHooks [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hshim : HookSat H lsRustNoAllocShimSym sessionShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmemcpy : HookSat H lsMemcpySym sessionMemcpyRegionBudgetSpec) :
-    subroutine_ok (lsProg_41 H) (blkPl_41).base
-      (withLsCodeLoaded lsmpl (preKeyMsgNewSpec M A lim)) :=
-  preKeyMsgNew_placed_ok_sessionHooks hshim halloc hdealloc hrealloc hmemcpy
 
 end LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.ComposeBudget

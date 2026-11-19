@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesEncodedLen
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesInnerHeaderPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesEncodedLen -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesInnerHeaderPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodePlaced1
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridges
@@ -34,6 +34,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesPolyDecExactPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesPolyExactPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesVnEncodePlaced
 import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93
 
 /-!
 # Relocatable `spqr::send`: `InnerState` Dispatch & `PqRatchetState` Encode Assembly
@@ -43,7 +44,7 @@ Relocatable `[local#1]` callee bridges, 11-variant `V1State.InnerState` jump-tab
 `+4288/+4364 -> +6216`) in `spqr::send::<HookRng>` (Block `124`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -74,7 +75,7 @@ open CryptoVerification.SpqrV1.Top.Send.Placed
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero spqrSendPlacedEntry blkPl_124_ρ
   EncodedLen.zeroExtend64_beq_zero32
   EncodedLen.ofNat_countLeadingZeros_64 EncodedLen.ofNat_countLeadingZeros_32

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Decodes -- shake: keep
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1FromPbPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1Placed
@@ -32,7 +32,7 @@ Proves `<States>::from_pb` pre-call setup (`+224`), error cleanup (`+248 -> +904
 and `Ok(st0)` relocation and 11-arm jump-table dispatch under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

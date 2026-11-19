@@ -10,10 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Getters.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
-import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyBase -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyBase -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.OneKeyStore
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.OneKeyStoreBase
 
 /-!
 # Stage P3 Error-Drop and OOM-Aware Allocation Wrappers for `message_decrypt_prekey::{closure#0}`
@@ -23,7 +25,7 @@ wrappers (`p3_alloc_179c_ok` .. `p3_alloc_33b0_ok`) for Stage P3 of
 `message_decrypt_prekey::<PqxdhRng>::{closure#0}`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,13 +48,6 @@ set_option maxHeartbeats 1600000
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_stub% "memcpy")
-  (ls_stub% "alloc::raw_vec::handle_error")
-
 export CryptoVerification.E2E.Pqxdh.ResponderClosure (
   cond_eq_subs32_4_0
   cond_ne_subs32_4_4
@@ -94,7 +89,7 @@ theorem cells4_entails_dropSpeStack (sp fp lr x20 x19 : BitVec 64) :
   exact Entails.sepExists_right fp (Entails.sepExists_right lr
     (Entails.sepExists_right x20 (Entails.sepExists_right x19 (Entails.refl _))))
 
-def dropSpeVerSpec (A : RustAlloc) : Spec (BitVec 64 × BitVec 32) where
+@[expose] def dropSpeVerSpec (A : RustAlloc) : Spec (BitVec 64 × BitVec 32) where
   pre := fun (a, msgVer) s =>
     ⌜s.readReg64 .x0 = a⌝ ∗
     (a ↦₆₄ 0x8000000000000006#64) ∗

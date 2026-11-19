@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerChunked1PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerChunked1PlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesBudget
@@ -20,6 +20,15 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateHeader
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpers
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesVnEncode
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerHeaderPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerHeaderPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesInnerHeader
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Phase 3e (Part 1): Delegating `V1State` Variants (`idx = 9, 3`)
@@ -28,7 +37,7 @@ Threads `RustCliAllocBudget` and `VmPreserved` through `V1State::encode_raw` var
 `ct1Acknowledged` (`idx = 9`) and `ct1Received` (`idx = 3`), re-exporting `idx = 7, 4` from `Aux`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -42,7 +51,7 @@ namespace LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerChunked1Pla
 open Arm64 ProofLib ProofLib.ProgramReflection SepProp
 open LibsignalBinary.Heap
   (AllocCostModel BudgetLimits RustCliAllocBudget VmPreserved)
-open CryptoVerification (LibsignalPlacement libsignalSessionCode lsmpl)
+open CryptoVerification (LibsignalPlacement lsmpl)
 open CryptoVerification.RustHeap (vecU8At)
 open CryptoVerification.LibsignalSpqrV1 (PolynomialDecoder PolynomialEncoder V1State)
 open CryptoVerification.LibsignalSpqrV1.Proto (encodeMessage encodeOptMessage encodeVarint)
@@ -120,7 +129,7 @@ export LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerChunked1Placed
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] spqrSendPlacedEntry blkPl_427_ρ
   bv_sub_add_lit BitVec.toNat_zero
   zeroExtend64_beq_zero32

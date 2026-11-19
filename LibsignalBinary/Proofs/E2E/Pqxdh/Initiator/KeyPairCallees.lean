@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SmallCallees
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.ResponderWireCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.KeyPairCalleesDecode
+import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SmallCallees
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.ResponderWireCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom -- proof-setup: allow-public-import
+import ProofLib.ProgramReflection.SortedFresh
 import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.IsCanonical
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.Calls
-import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.TripleRatchet.Prog -- proof-setup: allow-public-import
 
 /-!
 # `KeyPair` and `IdentityKey` Callee Proofs for PQXDH Initiator
@@ -28,7 +28,7 @@ Proves `subroutine_ok` on `tripleRatchetProgAt` and `[LibsignalPlacement]` for
 (`0x28704`), and `<IdentityKey as TryFrom<&[u8]>>::try_from` (`0x2c530`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -219,7 +219,7 @@ theorem bv64_mask_low16_orr_zext16
   rw [h1, h2]
   exact bv64_mask_low16_orr_zext16_16 (a7 ++ a6 ++ a5 ++ a4 ++ a3 ++ a2) (a1 ++ a0) (b1 ++ b0)
 
-def bytes32At (a : BitVec 64)
+@[expose] def bytes32At (a : BitVec 64)
     (b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15
      b16 b17 b18 b19 b20 b21 b22 b23 b24 b25 b26 b27 b28 b29 b30 b31 : BitVec 8) : SepProp :=
   (a ↦₈ b0) ∗ ((a + 1#64) ↦₈ b1) ∗ ((a + 2#64) ↦₈ b2) ∗ ((a + 3#64) ↦₈ b3) ∗
@@ -386,7 +386,7 @@ theorem memRegion_40_words (a : BitVec 64) :
 abbrev keyPairFromPubPrivName : String :=
   "<libsignal_core::curve::KeyPair>::from_public_and_private"
 
-def keyPairFromPubPrivSpec :
+@[expose] def keyPairFromPubPrivSpec :
     Spec (BitVec 64 × List.Vector (BitVec 8) 32 × BitVec 64 ×
       List.Vector (BitVec 8) 32 × BitVec 64) where
   pre := fun (pubPtr, pk, privPtr, sk, outPtr) s =>
@@ -405,49 +405,6 @@ def keyPairFromPubPrivSpec :
     ((outPtr + 1#64) ↦ₛ pk.toList) ∗
     ((outPtr + 33#64) ↦ₛ (Ratchet.clampScalar sk).toList) ∗
     cells (s0.sp - 64#64) 8
-
-theorem keyPairFromPubPriv_ok {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr keyPairFromPubPrivName)
-      keyPairFromPubPrivSpec := by
-  unfold keyPairFromPubPrivSpec
-  simp only [memRegion_65_cells, cells, sepConj_emp, sepExists_sepConj_right,
-    bv_sub_add_lit', BitVec.add_assoc, BitVec.reduceAdd, BitVec.reduceSub]
-  code_fetches CryptoVerification.libsignalSessionCode keyPairFromPubPriv b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))
-    libsignalSessionCode_fnOff_0x3e81c 0x3e81c 424
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  rcases x with ⟨pubPtr, pk, privPtr, sk, outPtr⟩
-  dsimp only at *
-  subst h_1 h_3 h
-  obtain ⟨pk0, pk1, pk2, pk3, pk4, pk5, pk6, pk7, pk8, pk9, pk10, pk11, pk12, pk13, pk14, pk15,
-    pk16, pk17, pk18, pk19, pk20, pk21, pk22, pk23, pk24, pk25, pk26, pk27, pk28, pk29, pk30, pk31,
-    hpk, _⟩ := exists_bytes32_of_vector32 pk
-  obtain ⟨sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, sk13, sk14, sk15,
-    sk16, sk17, sk18, sk19, sk20, sk21, sk22, sk23, sk24, sk25, sk26, sk27, sk28, sk29, sk30, sk31,
-    hsk, hsk_clamp⟩ := exists_bytes32_of_vector32 sk
-  wp_pull_exists
-  rw [pointsToBytes_cons, hpk (s0.readReg64 (.gpr 0#5) + 1#64),
-    hsk (s0.readReg64 (.gpr 2#5)),
-    hpk (s0.readReg64 (.gpr 8#5) + 1#64),
-    hsk_clamp (s0.readReg64 (.gpr 8#5) + 33#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 1#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 9#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 17#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 25#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 33#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 41#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 49#64),
-    pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 57#64)]
-  dsimp only [bytes32At]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-  wp_steps
-  wp_done
-
-/-! ### 2. `<IdentityKeyPair as TryFrom<PrivateKey>>::try_from` (`0x28704`, 73 instructions) -/
 
 @[simp, arm64_norm]
 abbrev identityKeyPairTryFromName : String :=
@@ -522,7 +479,7 @@ private theorem cells_12_identityKeyPair_post (sp : BitVec 64) :
       memRegion_8_bytes_mr (sp - 32#64)]
   simp only [memRegion_8_bytes_mr_rhs, bv_sub_add_lit', BitVec.reduceSub, sepConj_assoc]
 
-def identityKeyPairTryFromSpec (pubKey : PubKeyFn) :
+@[expose] def identityKeyPairTryFromSpec (pubKey : PubKeyFn) :
     Spec (BitVec 64 × List.Vector (BitVec 8) 32 × BitVec 64) where
   pre := fun (privPtr, sk, outPtr) s =>
     ⌜s.readReg64 .x0 = privPtr ∧ s.readReg64 .x8 = outPtr⌝ ∗
@@ -535,67 +492,6 @@ def identityKeyPairTryFromSpec (pubKey : PubKeyFn) :
       ((outPtr + 1#64) ↦ₛ (pubKey (Ratchet.clampScalar sk)).toList) ∗
       ((outPtr + 33#64) ↦ₛ sk.toList) ∗
       cells (s0.sp - 160#64) 8 ∗ cells (s0.sp - 96#64) 12
-
-set_option maxHeartbeats 1600000 in
-theorem identityKeyPairTryFrom_ok {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr identityKeyPairTryFromName)
-      (identityKeyPairTryFromSpec C.pubKey) := by
-  unfold identityKeyPairTryFromSpec
-  have hpub : subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr identityKeyPairTryFromName + BitVec.ofNat 64 89744)
-      (privateKeyPublicKeySpec C.pubKey) :=
-    inImage_ok_at
-      (by simp only [libsignalSessionCode_fnOff_0x287e8, libsignalSessionCode_fnOff_0x3e678])
-      privateKeyPublicKey_ok
-  simp only [privateKeyPublicKeySpec] at hpub
-  code_fetches CryptoVerification.libsignalSessionCode identityKeyPairTryFrom b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))
-    libsignalSessionCode_fnOff_0x287e8 0x287e8 292
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  rcases x with ⟨privPtr, sk, outPtr⟩
-  dsimp only at *
-  subst h_1 h
-  obtain ⟨pk0, pk1, pk2, pk3, pk4, pk5, pk6, pk7, pk8, pk9, pk10, pk11, pk12, pk13, pk14, pk15,
-    pk16, pk17, pk18, pk19, pk20, pk21, pk22, pk23, pk24, pk25, pk26, pk27, pk28, pk29, pk30, pk31,
-    hpk, _⟩ := exists_bytes32_of_vector32 (C.pubKey (Ratchet.clampScalar sk))
-  obtain ⟨sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, sk13, sk14, sk15,
-    sk16, sk17, sk18, sk19, sk20, sk21, sk22, sk23, sk24, sk25, sk26, sk27, sk28, sk29, sk30, sk31,
-    hsk, _⟩ := exists_bytes32_of_vector32 sk
-  rw (occs := .pos [1]) [cells_12_identityKeyPair_pre s0.sp]
-  wp_pull_exists
-  wp_steps
-  wp_call hpub (s0.readReg64 (.gpr 0#5), sk, s0.sp - 80#64)
-  rw [memRegion_65_words (s0.readReg64 (.gpr 8#5)),
-      memRegion_8_bytes (s0.sp - 96#64),
-      memRegion_8_bytes (s0.sp - 88#64),
-      memRegion_7_bytes (s0.sp - 47#64),
-      memRegion_8_bytes (s0.sp - 40#64)]
-  simp only [bv_sub_add_lit', BitVec.add_assoc, BitVec.reduceAdd, BitVec.reduceSub]
-  wp_pull_exists
-  rw [hpk (s0.sp - 79#64),
-      hsk (s0.readReg64 (.gpr 0#5)),
-      hpk (s0.readReg64 (.gpr 8#5) + 1#64),
-      hsk (s0.readReg64 (.gpr 8#5) + 33#64),
-      pointsTo64_eq_extract_bytes8 (s0.sp - 32#64),
-      pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 1#64),
-      pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 9#64),
-      pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 17#64),
-      pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 25#64),
-      pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 33#64),
-      pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 41#64),
-      pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 49#64),
-      pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 57#64),
-      cells_12_identityKeyPair_post s0.sp]
-  dsimp only [memRegion_8_bytes_mr_rhs, bytes32At]
-  simp only [bv_sub_add_lit', BitVec.add_assoc, BitVec.reduceAdd, BitVec.reduceSub, sepConj_assoc]
-  wp_steps
-  simp only [bv64_extract_hi32_of_bytes8, bv64_mask_low32_orr_zext32,
-    bv64_extract_56, bv64_extract_48, bv64_extract_40, bv64_reconstruct8]
-  wp_done
 
 /-! ### 3. `<IdentityKey as TryFrom<&[u8]>>::try_from` (`0x2c530`, 66 instructions) -/
 
@@ -668,103 +564,6 @@ private theorem cells_12_identityKey_post (sp : BitVec 64) :
       memRegion_8_bytes_mr (sp - 8#64)]
   simp only [memRegion_8_bytes_mr_rhs, bv_sub_add_lit', BitVec.reduceSub, sepConj_assoc]
 
-private def pkTryFromOk40Spec (img : Obj.Image) :
-    Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64) where
-  pre := fun (p, bs, pk, out) s =>
-    ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧
-      s.readReg64 .x8 = out ∧ PublicKey.deserialize bs = .ok pk⌝ ∗
-      (p ↦ₛ bs) ∗ memRegion out 40 ∗ logOff img
-  post := fun (p, bs, pk, out) s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      (p ↦ₛ bs) ∗ (out ↦₈ 0#8) ∗ ((out + 1#64) ↦ₛ pk.bytes.toList) ∗
-      memRegion (out + 33#64) 7 ∗ logOff img
-
-private theorem pkTryFromOk40_ok_at {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr identityKeyTryFromSliceName +
-        BitVec.ofNat 64 75180)
-      (pkTryFromOk40Spec img) := by
-  have hk : libsignalSessionCode.fnOff identityKeyTryFromSliceName + 75180 =
-      libsignalSessionCode.fnOff pkTryFromName := by
-    simp only [libsignalSessionCode_fnOff_0x2c614, libsignalSessionCode_fnOff_0x3ebc0]
-  refine subroutine_ok_map
-    (pk_try_from_ok_at img C ctl abs himg identityKeyTryFromSliceName 75180 hk) ?_
-  rintro ⟨p, bs, pk, out⟩ R s0 hpre
-  simp only [pkTryFromOk40Spec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx8, hdes⟩, hmem⟩
-  refine ⟨(p, bs, out), R, ?_, fun sf hpost => ?_⟩
-  · simp only [pkTryFromCodeSpec, pkTryFromSpec, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1, hx8⟩, hmem⟩
-  · simp only [pkTryFromCodeSpec, pkTryFromSpec, hdes, pkTryFromResultAt,
-      sepConj_assoc, satisfies_pure_sepConj] at hpost
-    rcases hpost with ⟨htr, hpost⟩
-    simp only [pkTryFromOk40Spec, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨htr, hpost⟩
-
-def identityKeyTryFromSliceOkSpec (img : Obj.Image) :
-    Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64) where
-  pre := fun (p, bs, pk, outPtr) s =>
-    ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧
-      s.readReg64 .x8 = outPtr ∧ PublicKey.deserialize bs = .ok pk⌝ ∗
-      (p ↦ₛ bs) ∗ memRegion outPtr 40 ∗ logOff img ∗
-      cells (s.sp - 96#64) 12
-  post := fun (p, bs, pk, outPtr) s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      (p ↦ₛ bs) ∗
-      (outPtr ↦₆₄ 0xfffffffffffffffe#64) ∗
-      ((outPtr + 8#64) ↦ₛ pk.bytes.toList) ∗
-      logOff img ∗
-      cells (s0.sp - 96#64) 12
-
-theorem identityKeyTryFromSlice_ok {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr identityKeyTryFromSliceName)
-      (identityKeyTryFromSliceOkSpec img) := by
-  unfold identityKeyTryFromSliceOkSpec
-  have hpk := pkTryFromOk40_ok_at (C := C) (ctl := ctl) (abs := abs) himg
-  simp only [pkTryFromOk40Spec, sepConj_assoc] at hpk
-  code_fetches CryptoVerification.libsignalSessionCode identityKeyTryFromSlice img.base
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))
-    libsignalSessionCode_fnOff_0x2c614 0x2c614 264
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  rcases x with ⟨p, bs, pk, outPtr⟩
-  dsimp only at *
-  subst h_1 h_3
-  obtain ⟨pk0, pk1, pk2, pk3, pk4, pk5, pk6, pk7, pk8, pk9, pk10, pk11, pk12, pk13, pk14, pk15,
-    pk16, pk17, pk18, pk19, pk20, pk21, pk22, pk23, pk24, pk25, pk26, pk27, pk28, pk29, pk30, pk31,
-    hpk_bytes, _⟩ := exists_bytes32_of_vector32 pk.bytes
-  rw (occs := .pos [1]) [cells_12_identityKey_pre s0.sp]
-  wp_pull_exists
-  wp_steps
-  wp_call hpk (s0.readReg64 (.gpr 0#5), bs, pk, s0.sp - 88#64)
-  rw [memRegion_40_words (s0.readReg64 (.gpr 8#5)),
-      memRegion_8_bytes (s0.sp - 96#64),
-      memRegion_7_bytes (s0.sp - 55#64),
-      memRegion_8_bytes (s0.sp - 48#64),
-      memRegion_8_bytes (s0.sp - 40#64),
-      memRegion_8_bytes (s0.sp - 8#64)]
-  simp only [bv_sub_add_lit', BitVec.add_assoc, BitVec.reduceAdd, BitVec.reduceSub]
-  wp_pull_exists
-  rw [hpk_bytes (s0.sp - 87#64),
-      hpk_bytes (s0.readReg64 (.gpr 8#5) + 8#64),
-      pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 8#64),
-      pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 16#64),
-      pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 24#64),
-      pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 32#64),
-      cells_12_identityKey_post s0.sp]
-  dsimp only [memRegion_8_bytes_mr_rhs, bytes32At]
-  simp only [bv_sub_add_lit', BitVec.add_assoc, BitVec.reduceAdd, BitVec.reduceSub, sepConj_assoc]
-  wp_steps
-  wp_done
-
-/-! ## Relocatable `[LibsignalPlacement]` Contracts -/
-
 theorem keyPairFromPubPriv_placed_ok [LibsignalPlacement] (H : LibsignalHooks) :
     subroutine_ok ((blkPC_209).rebase (blkPl_209).base H) (blkPl_209).base
       keyPairFromPubPrivSpec := by
@@ -823,7 +622,7 @@ private theorem pkTryFromOk40_placed_ok [LibsignalPlacement] (H : LibsignalHooks
     simp only [pkTryFromOk40PlacedSpec, sepConj_assoc, satisfies_pure_sepConj]
     exact ⟨htr, hpost⟩
 
-def identityKeyTryFromSliceOkPlacedSpec [LibsignalPlacement] :
+@[expose] def identityKeyTryFromSliceOkPlacedSpec [LibsignalPlacement] :
     Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64) where
   pre := fun (p, bs, pk, outPtr) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧

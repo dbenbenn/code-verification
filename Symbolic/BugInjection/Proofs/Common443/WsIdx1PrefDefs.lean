@@ -51,10 +51,10 @@ structure WS40Idx1Fresh (r : Records) (S : Sem) (g : Ghost) (ms' : List Move)
     (tr₁ tr₂ tr₃ : ExecTrace) (cl₁ cl₂ : Nat) : Prop where
   hdhs₁ : FreshSafeTerm compI0 S g (randTerm (tr₁.length + 2) 32)
   hm₁ : FreshSafeTerm compI0 S g (randTerm tr₂.length 32)
-  hm₁_len : (g.σ tr₂.length 32).length ≠ 64
+  hm₁_len : (g.σ tr₂.length 32).length < 48
   hcoins₁ : FreshSafeTerm compI0 S g (randTerm (tr₂.length + 1) cl₁)
   hm₂ : FreshSafeTerm compI0 S g (randTerm tr₃.length 32)
-  hm₂_len : (g.σ tr₃.length 32).length ≠ 64
+  hm₂_len : (g.σ tr₃.length 32).length < 48
   hcoins₂ : FreshSafeTerm compI0 S g (randTerm (tr₃.length + 1) cl₂)
   hpref_safe : ∀ u ∈ prefixTerms r (runTraceMoves r ms') (runVis r ms'), FreshSafeTerm compI0 S g u
 def Pref40Hyp : Prop := ∀ (r : Records) (S : Sem) (g : Ghost) (ms' : List Move) (tr₁ tr₂ tr₃ : ExecTrace) (cl₁ cl₂ : Nat), WS40Idx1Pre r S g ms' tr₁ tr₂ tr₃ cl₁ cl₂ → WS40Idx1Fresh r S g ms' tr₁ tr₂ tr₃ cl₁ cl₂
@@ -93,10 +93,10 @@ structure WS81Idx1Fresh (r : Records) (S : Sem) (g : Ghost) (ms' : List Move)
     (tr₁ tr₂ tr₃ tr₄ tr₅ : ExecTrace) (cl₁ cl₂ cl₅ : Nat) : Prop where
   hdhs₁ : FreshSafeTerm compI0 S g (randTerm (tr₁.length + 2) 32)
   hm₁ : FreshSafeTerm compI0 S g (randTerm tr₂.length 32)
-  hm₁_len : (g.σ tr₂.length 32).length ≠ 64
+  hm₁_len : (g.σ tr₂.length 32).length < 48
   hcoins₁ : FreshSafeTerm compI0 S g (randTerm (tr₂.length + 1) cl₁)
   hm₂ : FreshSafeTerm compI0 S g (randTerm tr₃.length 32)
-  hm₂_len : (g.σ tr₃.length 32).length ≠ 64
+  hm₂_len : (g.σ tr₃.length 32).length < 48
   hcoins₂ : FreshSafeTerm compI0 S g (randTerm (tr₃.length + 1) cl₂)
   hek₂_safe : FreshSafeTerm compI0 S g (randTerm tr₄.length 32)
   hent₂_safe : FreshSafeTerm compI0 S g (randTerm (tr₄.length + 1) 32)

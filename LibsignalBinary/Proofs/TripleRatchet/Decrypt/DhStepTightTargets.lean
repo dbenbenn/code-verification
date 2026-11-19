@@ -9,28 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepMain
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTight
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepMain -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTight -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym130
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym433
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym130 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym433 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMain
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBlocks
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepRecvChain
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Model
 import ProofLib.RegChain
+import ProofLib.Sep
 import ProofLib.SepLogic.WPp
 
 /-!
-# Tight-Panic Segment S3 (`DhStepSpecTight`) Theorems
+# Tight-Panic Segment S3 (`DhStep`) Block WP Instances & Step Lemmas
 
-Proves `dhStep_okT` (`DhStepSpecTight`) and relocatable `DhStepBlockWp` instances for blocks `130`
-and `433`: every panic in `DhStep` is an allocator failure, discharging `tryDecryptOnPanicTight`
-via `spqrNoPanic`.
+Proves relocatable `DhStepBlockWp` instances for blocks `130` and `433` and placed step lemmas:
+every panic in `DhStep` is an allocator failure, discharging `tryDecryptOnPanicTight` via
+`spqrNoPanic`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +51,7 @@ open CryptoVerification.LibsignalSession
 namespace P3kR1bd
 
 /-- Dummy `SpqrModel` that never panics in `recvPanics` and always returns `.error true` in `recv`. -/
-def spqrNoPanic : SpqrModel where
+@[expose] def spqrNoPanic : SpqrModel where
   send := fun _ _ => none
   draws := fun _ _ => 0
   recv := fun _ _ => .error true
@@ -91,11 +92,11 @@ theorem model_fst_eq_panic_of_spqrNoPanic (C : Crypto) (S : SpqrModel) (x : TryD
               nomatch h
 
 /-- Any panic outcome against `spqrNoPanic` satisfies `tryDecryptOnPanicTight` for any `S`. -/
-theorem onPanicTight_of_spqrNoPanic {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel} {img : Obj.Image} {x : TryDecryptGhost} {R : SepProp} {s0 sf : State}
-    (h : sf.mem ⊨ (tryDecryptSpec C A ctl uuidTryParse spqrNoPanic img).onPanic x s0 sf ∗ R) :
+theorem onPanicTightPlaced_of_spqrNoPanic [LibsignalPlacement] {C : Crypto} {A : RustAlloc}
+    {ctl : BitVec 64} {S : SpqrModel} {x : TryDecryptGhost} {R : SepProp} {s0 sf : State}
+    (h : sf.mem ⊨ (tryDecryptSpecPlaced C A ctl uuidTryParse spqrNoPanic).onPanic x s0 sf ∗ R) :
     sf.mem ⊨ tryDecryptOnPanicTight C S uuidTryParse x s0 sf ∗ R := by
-  simp only [tryDecryptSpec, Spec.inImage] at h
+  simp only [tryDecryptSpecPlaced, withLsCodeRoLoaded, tryDecryptRawSpecPlaced] at h
   rw [sepConj_assoc, satisfies_pure_sepConj] at h
   simp only [tryDecryptOnPanicTight]
   rw [sepConj_assoc, satisfies_pure_sepConj]
@@ -106,13 +107,6 @@ theorem onPanicTight_of_spqrNoPanic {C : Crypto} {A : RustAlloc} {ctl : BitVec 6
   · nomatch hpan
   · exact Or.inr ha
 
-/-- Relocatable variant of `onPanicTight_of_spqrNoPanic`. -/
-theorem onPanicTightPlaced_of_spqrNoPanic [LibsignalPlacement] {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {x : TryDecryptGhost} {R : SepProp} {s0 sf : State}
-    (h : sf.mem ⊨ (tryDecryptSpecPlaced C A ctl uuidTryParse spqrNoPanic).onPanic x s0 sf ∗ R) :
-    sf.mem ⊨ tryDecryptOnPanicTight C S uuidTryParse x s0 sf ∗ R :=
-  onPanicTight_of_spqrNoPanic h
-
 end P3kR1bd
 
 /-! ## Relocatable `[LibsignalPlacement]` `DhStepBlockWp` Instances for Block 130 and Block 433 -/
@@ -122,7 +116,7 @@ set_option maxHeartbeats 400000
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
-def dhStepBlockWp_159 [LibsignalPlacement] (H : String → Option (State → State)) :
+@[expose] def dhStepBlockWp_159 [LibsignalPlacement] (H : String → Option (State → State)) :
     DhStepBlockWp ((blkPC_131).rebase (blkPl_131).base H) (blkPl_131).base
       (lsmpl.ρ "libsignal_session_rng_fill") where
   missingScAddr := lsmpl.ρ "libsignal_session:.rodata..Lanon.19"
@@ -150,77 +144,21 @@ def dhStepBlockWp_159 [LibsignalPlacement] (H : String → Option (State → Sta
     wp_steps
     refine SepWP.done rfl (by simp [hrun])
       ⟨by simp [hsp, sp], by simp [hx29], by simp, by simp [hx20, sp], by simp, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    have h178_fold : memRegion (sp + 0x178#64) 24 =
-        memRegion (sp + 376#64) 8 ∗ memRegion (sp + 384#64) 8 ∗
-        memRegion (sp + 392#64) 4 ∗ memRegion (sp + 396#64) 4 := by
-      rw [show sp + 0x178#64 = sp + 376#64 from rfl,
-          memRegion_split' (b := sp + 376#64) (b' := sp + 384#64) (n := 8) (k := 16) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 384#64) (b' := sp + 392#64) (n := 8) (k := 8) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 392#64) (b' := sp + 396#64) (n := 4) (k := 4) rfl (by bv_arith) (by decide)]
-    have h190_fold : memRegion (sp + 0x190#64) 0x3f0 =
-        memRegion (sp + 400#64) 288 ∗ memRegion (sp + 688#64) 8 ∗ memRegion (sp + 696#64) 8 ∗
-        memRegion (sp + 704#64) 8 ∗ memRegion (sp + 712#64) 8 ∗ memRegion (sp + 720#64) 4 ∗
-        memRegion (sp + 724#64) 92 ∗ memRegion (sp + 816#64) 8 ∗ memRegion (sp + 824#64) 8 ∗
-        memRegion (sp + 832#64) 8 ∗ memRegion (sp + 840#64) 8 ∗ memRegion (sp + 848#64) 4 ∗
-        memRegion (sp + 852#64) 556 := by
-      rw [show sp + 0x190#64 = sp + 400#64 from rfl,
-          memRegion_split' (b := sp + 400#64) (b' := sp + 688#64) (n := 288) (k := 720) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 688#64) (b' := sp + 696#64) (n := 8) (k := 712) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 696#64) (b' := sp + 704#64) (n := 8) (k := 704) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 704#64) (b' := sp + 712#64) (n := 8) (k := 696) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 712#64) (b' := sp + 720#64) (n := 8) (k := 688) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 720#64) (b' := sp + 724#64) (n := 4) (k := 684) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 724#64) (b' := sp + 816#64) (n := 92) (k := 592) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 816#64) (b' := sp + 824#64) (n := 8) (k := 584) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 824#64) (b' := sp + 832#64) (n := 8) (k := 576) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 832#64) (b' := sp + 840#64) (n := 8) (k := 568) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 840#64) (b' := sp + 848#64) (n := 8) (k := 560) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 848#64) (b' := sp + 852#64) (n := 4) (k := 556) rfl (by bv_arith) (by decide)]
-    rw [h178_fold, h190_fold]
-    change m ⊨ _
-    arm64_sep_close
+    dsimp only [sp] at hm ⊢; exact Satisfies.mono (by sep_interval) hm
   wpp_7f8_to_2dc := by
     intro s0 s u508 u500 u2c8 u2c0 u2b8 u2b0 u2d0 sp hpc hrun hsp hsp_al hx29 hx20 hx23 hx25 hx26 htrace hvregs
     wp_steps
     refine SepWP.done rfl (by simp [hrun])
       ⟨by simp [hsp, sp], by simp [hx29], by simp [sp], by simp, by simp [hx20, sp],
        by simp [hx25, sp], rfl, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    have h140_fold : memRegion (sp + 0x140#64) 0x440 =
-        memRegion (sp + 320#64) 88 ∗ memRegion (sp + 408#64) 8 ∗ memRegion (sp + 416#64) 272 ∗
-        memRegion (sp + 688#64) 8 ∗ memRegion (sp + 696#64) 8 ∗ memRegion (sp + 704#64) 8 ∗
-        memRegion (sp + 712#64) 8 ∗ memRegion (sp + 720#64) 4 ∗ memRegion (sp + 724#64) 556 ∗
-        memRegion (sp + 1280#64) 8 ∗ memRegion (sp + 1288#64) 8 ∗ memRegion (sp + 1296#64) 112 := by
-      rw [show sp + 0x140#64 = sp + 320#64 from rfl,
-          memRegion_split' (b := sp + 320#64) (b' := sp + 408#64) (n := 88) (k := 1000) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 408#64) (b' := sp + 416#64) (n := 8) (k := 992) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 416#64) (b' := sp + 688#64) (n := 272) (k := 720) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 688#64) (b' := sp + 696#64) (n := 8) (k := 712) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 696#64) (b' := sp + 704#64) (n := 8) (k := 704) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 704#64) (b' := sp + 712#64) (n := 8) (k := 696) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 712#64) (b' := sp + 720#64) (n := 8) (k := 688) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 720#64) (b' := sp + 724#64) (n := 4) (k := 684) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 724#64) (b' := sp + 1280#64) (n := 556) (k := 128) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 1280#64) (b' := sp + 1288#64) (n := 8) (k := 120) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 1288#64) (b' := sp + 1296#64) (n := 8) (k := 112) rfl (by bv_arith) (by decide)]
-    rw [h140_fold]
-    change m ⊨ _
-    arm64_sep_close
+    dsimp only [sp] at hm ⊢; exact Satisfies.mono (by sep_interval) hm
   wpp_missing_sc := by
     intro s0 s x u2c0 u2c8 sp hpc hrun hsp hsp_al hx29 hx12 hx19 hx20 hx25 hx27 hx28 htrace hvregs
     wp_steps
     refine SepWP.done rfl (by simp [hrun])
       ⟨by simp [hsp, sp], by simp [hx29], by simp [hx12, sp], by simp [hx19], by simp [hx20, sp],
        by simp [hx25, sp], rfl, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    have hsp38_fold : memRegion sp 0x38 =
-        memRegion sp 0x20 ∗ memRegion (sp + 0x20#64) 8 ∗ memRegion (sp + 0x28#64) 4 ∗
-        memRegion (sp + 0x2c#64) 4 ∗ memRegion (sp + 0x30#64) 8 := by
-      rw [memRegion_split' (b := sp) (b' := sp + 0x20#64) (n := 0x20) (k := 0x18) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 0x20#64) (b' := sp + 0x28#64) (n := 0x8) (k := 0x10) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 0x28#64) (b' := sp + 0x2c#64) (n := 0x4) (k := 0xc) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 0x2c#64) (b' := sp + 0x30#64) (n := 0x4) (k := 0x8) rfl (by bv_arith) (by decide)]
-    rw [hsp38_fold]
-    change m ⊨ _
-    arm64_sep_close
+    dsimp only [sp] at hm ⊢; exact Satisfies.mono (by sep_interval) hm
   wpp_cc1_err := by
     intro s0 s u1bc u1b4 u1a8 u1a0 u1c4 u1b0 sp hpc hrun hsp hsp_al hx29 hx20 hx23 hx25 hx26 htrace hvregs
     wp_steps
@@ -314,7 +252,7 @@ def dhStepBlockWp_159 [LibsignalPlacement] (H : String → Option (State → Sta
        by simp [htrace2], fun m R hm => ?_⟩
     simpa [emp_sepConj] using hm
 
-def dhStepBlockWp_549 [LibsignalPlacement] (H : String → Option (State → State)) :
+@[expose] def dhStepBlockWp_549 [LibsignalPlacement] (H : String → Option (State → State)) :
     DhStepBlockWp ((blkPC_434).rebase (blkPl_434).base H) (blkPl_434).base
       (lsmpl.base 618) where
   missingScAddr := lsmpl.ρ "libsignal_cli_ratchet:.rodata..Lanon.19"
@@ -342,77 +280,21 @@ def dhStepBlockWp_549 [LibsignalPlacement] (H : String → Option (State → Sta
     wp_steps
     refine SepWP.done rfl (by simp [hrun])
       ⟨by simp [hsp, sp], by simp [hx29], by simp, by simp [hx20, sp], by simp, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    have h178_fold : memRegion (sp + 0x178#64) 24 =
-        memRegion (sp + 376#64) 8 ∗ memRegion (sp + 384#64) 8 ∗
-        memRegion (sp + 392#64) 4 ∗ memRegion (sp + 396#64) 4 := by
-      rw [show sp + 0x178#64 = sp + 376#64 from rfl,
-          memRegion_split' (b := sp + 376#64) (b' := sp + 384#64) (n := 8) (k := 16) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 384#64) (b' := sp + 392#64) (n := 8) (k := 8) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 392#64) (b' := sp + 396#64) (n := 4) (k := 4) rfl (by bv_arith) (by decide)]
-    have h190_fold : memRegion (sp + 0x190#64) 0x3f0 =
-        memRegion (sp + 400#64) 288 ∗ memRegion (sp + 688#64) 8 ∗ memRegion (sp + 696#64) 8 ∗
-        memRegion (sp + 704#64) 8 ∗ memRegion (sp + 712#64) 8 ∗ memRegion (sp + 720#64) 4 ∗
-        memRegion (sp + 724#64) 92 ∗ memRegion (sp + 816#64) 8 ∗ memRegion (sp + 824#64) 8 ∗
-        memRegion (sp + 832#64) 8 ∗ memRegion (sp + 840#64) 8 ∗ memRegion (sp + 848#64) 4 ∗
-        memRegion (sp + 852#64) 556 := by
-      rw [show sp + 0x190#64 = sp + 400#64 from rfl,
-          memRegion_split' (b := sp + 400#64) (b' := sp + 688#64) (n := 288) (k := 720) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 688#64) (b' := sp + 696#64) (n := 8) (k := 712) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 696#64) (b' := sp + 704#64) (n := 8) (k := 704) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 704#64) (b' := sp + 712#64) (n := 8) (k := 696) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 712#64) (b' := sp + 720#64) (n := 8) (k := 688) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 720#64) (b' := sp + 724#64) (n := 4) (k := 684) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 724#64) (b' := sp + 816#64) (n := 92) (k := 592) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 816#64) (b' := sp + 824#64) (n := 8) (k := 584) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 824#64) (b' := sp + 832#64) (n := 8) (k := 576) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 832#64) (b' := sp + 840#64) (n := 8) (k := 568) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 840#64) (b' := sp + 848#64) (n := 8) (k := 560) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 848#64) (b' := sp + 852#64) (n := 4) (k := 556) rfl (by bv_arith) (by decide)]
-    rw [h178_fold, h190_fold]
-    change m ⊨ _
-    arm64_sep_close
+    dsimp only [sp] at hm ⊢; exact Satisfies.mono (by sep_interval) hm
   wpp_7f8_to_2dc := by
     intro s0 s u508 u500 u2c8 u2c0 u2b8 u2b0 u2d0 sp hpc hrun hsp hsp_al hx29 hx20 hx23 hx25 hx26 htrace hvregs
     wp_steps
     refine SepWP.done rfl (by simp [hrun])
       ⟨by simp [hsp, sp], by simp [hx29], by simp [sp], by simp, by simp [hx20, sp],
        by simp [hx25, sp], rfl, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    have h140_fold : memRegion (sp + 0x140#64) 0x440 =
-        memRegion (sp + 320#64) 88 ∗ memRegion (sp + 408#64) 8 ∗ memRegion (sp + 416#64) 272 ∗
-        memRegion (sp + 688#64) 8 ∗ memRegion (sp + 696#64) 8 ∗ memRegion (sp + 704#64) 8 ∗
-        memRegion (sp + 712#64) 8 ∗ memRegion (sp + 720#64) 4 ∗ memRegion (sp + 724#64) 556 ∗
-        memRegion (sp + 1280#64) 8 ∗ memRegion (sp + 1288#64) 8 ∗ memRegion (sp + 1296#64) 112 := by
-      rw [show sp + 0x140#64 = sp + 320#64 from rfl,
-          memRegion_split' (b := sp + 320#64) (b' := sp + 408#64) (n := 88) (k := 1000) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 408#64) (b' := sp + 416#64) (n := 8) (k := 992) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 416#64) (b' := sp + 688#64) (n := 272) (k := 720) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 688#64) (b' := sp + 696#64) (n := 8) (k := 712) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 696#64) (b' := sp + 704#64) (n := 8) (k := 704) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 704#64) (b' := sp + 712#64) (n := 8) (k := 696) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 712#64) (b' := sp + 720#64) (n := 8) (k := 688) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 720#64) (b' := sp + 724#64) (n := 4) (k := 684) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 724#64) (b' := sp + 1280#64) (n := 556) (k := 128) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 1280#64) (b' := sp + 1288#64) (n := 8) (k := 120) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 1288#64) (b' := sp + 1296#64) (n := 8) (k := 112) rfl (by bv_arith) (by decide)]
-    rw [h140_fold]
-    change m ⊨ _
-    arm64_sep_close
+    dsimp only [sp] at hm ⊢; exact Satisfies.mono (by sep_interval) hm
   wpp_missing_sc := by
     intro s0 s x u2c0 u2c8 sp hpc hrun hsp hsp_al hx29 hx12 hx19 hx20 hx25 hx27 hx28 htrace hvregs
     wp_steps
     refine SepWP.done rfl (by simp [hrun])
       ⟨by simp [hsp, sp], by simp [hx29], by simp [hx12, sp], by simp [hx19], by simp [hx20, sp],
        by simp [hx25, sp], rfl, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    have hsp38_fold : memRegion sp 0x38 =
-        memRegion sp 0x20 ∗ memRegion (sp + 0x20#64) 8 ∗ memRegion (sp + 0x28#64) 4 ∗
-        memRegion (sp + 0x2c#64) 4 ∗ memRegion (sp + 0x30#64) 8 := by
-      rw [memRegion_split' (b := sp) (b' := sp + 0x20#64) (n := 0x20) (k := 0x18) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 0x20#64) (b' := sp + 0x28#64) (n := 0x8) (k := 0x10) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 0x28#64) (b' := sp + 0x2c#64) (n := 0x4) (k := 0xc) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 0x2c#64) (b' := sp + 0x30#64) (n := 0x4) (k := 0x8) rfl (by bv_arith) (by decide)]
-    rw [hsp38_fold]
-    change m ⊨ _
-    arm64_sep_close
+    dsimp only [sp] at hm ⊢; exact Satisfies.mono (by sep_interval) hm
   wpp_cc1_err := by
     intro s0 s u1bc u1b4 u1a8 u1a0 u1c4 u1b0 sp hpc hrun hsp hsp_al hx29 hx20 hx23 hx25 hx26 htrace hvregs
     wp_steps
@@ -505,84 +387,6 @@ def dhStepBlockWp_549 [LibsignalPlacement] (H : String → Option (State → Sta
        ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
        by simp [htrace2], fun m R hm => ?_⟩
     simpa [emp_sepConj] using hm
-
-/-- Top-level `DhStepSpecTight` (`+0x500 → +0x3e4 / +0x30c` or allocator panic). -/
-theorem dhStep_okT (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (abs : String → Option (State → State)) :
-    DhStepSpecTight img C A ctl uuidTryParse S abs := by
-  intro himg hHooks hcc hdpk hPkSer hToPb hGrowOne hDropChain
-    x trG tr st1 R s0 s hfrom hfind hrc_len hsp0 hs3 hcode
-  dsimp only
-  cases hsc : tr.ratchet.senderChain with
-  | none =>
-    rw [dhRatchetStep_none C x.msg.senderRatchetKey (coinsOf x.rest) tr.ratchet hsc,
-        decryptDraws_of_senderChain_none C x.st st1 tr x.msg.senderRatchetKey x.rest hfrom hfind hsc]
-    obtain ⟨s', hsteps, ⟨_, _, herr⟩ | ⟨_, hoom⟩⟩ :=
-      dhStep_missing_sender_chain (A := A) (ctl := ctl) (ext := tripleRatchetExterns C ctl abs)
-        himg x trG tr st1 R s0 s hsc hs3 hcode
-    · exact ⟨s', hsteps, Or.inl ⟨trG, tr.ratchet, herr⟩⟩
-    · exact hoom.elim
-  | some sc =>
-    have ⟨hrk1_ne, hrk2_ne⟩ := rk_ne_zero s0.sp (s0.sp - 1504#64) rfl hsp0
-    have hstep1 := dhStep_recv_create_chain (S := P3kR1bd.spqrNoPanic)
-      himg hcc x trG tr st1 sc R s0 s hsc hrk1_ne hs3 hcode
-    cases hcc1 : rootCreateChain C tr.ratchet.rootKey x.msg.senderRatchetKey sc.ratchetKey.privateKey with
-    | error e =>
-      rw [hcc1] at hstep1
-      rw [dhRatchetStep_some_err1 C x.msg.senderRatchetKey (coinsOf x.rest) tr.ratchet sc e hsc hcc1,
-          decryptDraws_of_cc1_err C x.st st1 tr x.msg.senderRatchetKey x.rest sc e hfrom hfind hsc hcc1]
-      obtain ⟨s1, hsteps1, herr1 | ⟨hpan1, hq1⟩⟩ := hstep1
-      · exact ⟨s1, hsteps1, Or.inl herr1⟩
-      · exact ⟨s1, hsteps1, Or.inr ⟨hpan1, P3kR1bd.onPanicTight_of_spqrNoPanic hq1⟩⟩
-    | ok p1 =>
-      rcases p1 with ⟨rk1, rck⟩
-      rw [hcc1] at hstep1
-      rw [decryptDraws_of_cc1_ok C x.st st1 tr x.msg.senderRatchetKey x.rest sc rk1 rck hfrom hfind hsc hcc1]
-      obtain ⟨s1, hsteps1, hafter | ⟨hpan1, hq1⟩⟩ := hstep1
-      · have hrng := DhStepCallees.rngFillAt_ok_at2_td (b := img.base) (C := C) (ctl := ctl)
-          (abs := abs) (cur := x.cur) (rest := x.rest)
-        have hsd := DhStepCallees.staticDrop_ok_at2_td (b := img.base) (C := C) (ctl := ctl) (abs := abs)
-        have hstep2 := dhStep_keygen_and_send_create_chain (S := P3kR1bd.spqrNoPanic)
-          himg hcc hdpk x trG tr st1 rk1 rck R s0 s1 hrng hsd hrk2_ne hafter (hsteps1.codeLoaded hcode)
-        dsimp only at hstep2
-        cases hcc2 : rootCreateChain C rk1 x.msg.senderRatchetKey
-            (KeyPair.generate C (coinsOf x.rest)).privateKey with
-        | error e =>
-          rw [hcc2] at hstep2
-          rw [dhRatchetStep_some_err2 C x.msg.senderRatchetKey (coinsOf x.rest) tr.ratchet
-              sc rk1 rck e hsc hcc1 hcc2]
-          obtain ⟨s2, hsteps2, herr2 | ⟨hpan2, hq2⟩⟩ := hstep2
-          · exact ⟨s2, Steps.trans hsteps1 hsteps2, Or.inl herr2⟩
-          · exact ⟨s2, Steps.trans hsteps1 hsteps2, Or.inr ⟨hpan2, P3kR1bd.onPanicTight_of_spqrNoPanic hq2⟩⟩
-        | ok p2 =>
-          rcases p2 with ⟨finalRootKey, senderChainKey⟩
-          rw [hcc2] at hstep2
-          rw [dhRatchetStep_some_ok C x.msg.senderRatchetKey (coinsOf x.rest) tr.ratchet
-              sc rk1 finalRootKey rck senderChainKey hsc hcc1 hcc2]
-          obtain ⟨s2, hsteps2, hcommit | ⟨hpan2, hq2⟩⟩ := hstep2
-          · have hsteps12 := Steps.trans hsteps1 hsteps2
-            have hclamp := clampScalar_keyPair_generate C (coinsOf x.rest)
-            obtain ⟨s3, hsteps3, hout3 | ⟨hpan3, hq3⟩⟩ :=
-              DhCommit.s3_commit_spec_ext img C A ctl P3kR1bd.spqrNoPanic (tripleRatchetExterns C ctl abs)
-                himg (AllocContracts.of_tripleRatchetProgAt img.base C A ctl abs hHooks.alloc)
-                hPkSer hToPb hGrowOne hDropChain
-                x trG tr st1 sc rck (KeyPair.generate C (coinsOf x.rest))
-                finalRootKey senderChainKey R s0 s2
-                hsc hrc_len hclamp hcommit (hsteps12.codeLoaded hcode)
-            · exact ⟨s3, Steps.trans hsteps12 hsteps3, Or.inl hout3⟩
-            · exact ⟨s3, Steps.trans hsteps12 hsteps3, Or.inr ⟨hpan3, P3kR1bd.onPanicTight_of_spqrNoPanic hq3⟩⟩
-          · exact ⟨s2, Steps.trans hsteps1 hsteps2, Or.inr ⟨hpan2, P3kR1bd.onPanicTight_of_spqrNoPanic hq2⟩⟩
-      · cases hcc2 : rootCreateChain C rk1 x.msg.senderRatchetKey
-            (KeyPair.generate C (coinsOf x.rest)).privateKey with
-        | error e =>
-          rw [dhRatchetStep_some_err2 C x.msg.senderRatchetKey (coinsOf x.rest) tr.ratchet
-              sc rk1 rck e hsc hcc1 hcc2]
-          exact ⟨s1, hsteps1, Or.inr ⟨hpan1, P3kR1bd.onPanicTight_of_spqrNoPanic hq1⟩⟩
-        | ok p2 =>
-          rcases p2 with ⟨finalRootKey, senderChainKey⟩
-          rw [dhRatchetStep_some_ok C x.msg.senderRatchetKey (coinsOf x.rest) tr.ratchet
-              sc rk1 finalRootKey rck senderChainKey hsc hcc1 hcc2]
-          exact ⟨s1, hsteps1, Or.inr ⟨hpan1, P3kR1bd.onPanicTight_of_spqrNoPanic hq1⟩⟩
 
 theorem dhStep_step_70c_to_778_placed [LibsignalPlacement]
     {prog : Program} {entry rngFillEntry : BitVec 64}
@@ -673,36 +477,8 @@ theorem dhStep_step_70c_to_778_placed [LibsignalPlacement]
   have hwp1 := hwp.wpp_70c_to_778 s0 s r0 r4 c2 u10 u1c u3e0 u4a0 u4bc u510 r1 r2 r3 c0 c1 c3 c4
     u3d0 u3d8 u3e4 u3ec u400 u408 u440 u448 u4a4 u4ac u4b4 u4c0 u4c8 u4d0 u4d8 u500 u508
     hpc hrun hsp hsp_al hx29 hx23 hx25 hx26 htrace hvregs
-  have hmem_in : s.mem ⊨
-      (((sp + 0x10#64) ↦₃₂ u10) ∗ ((sp + 0x1c#64) ↦₃₂ u1c) ∗
-       ((sp + 0x194#64) ↦₃₂ r0) ∗ ((sp + 0x198#64) ↦₆₄ r1) ∗
-       ((sp + 0x1a0#64) ↦₆₄ r2) ∗ ((sp + 0x1a8#64) ↦₆₄ r3) ∗
-       ((sp + 0x1b0#64) ↦₃₂ r4) ∗
-       ((sp + 0x1b4#64) ↦₆₄ c0) ∗ ((sp + 0x1bc#64) ↦₆₄ c1) ∗
-       ((sp + 0x1c4#64) ↦₃₂ c2) ∗ ((sp + 0x1c8#64) ↦₆₄ c3) ∗
-       ((sp + 0x1d0#64) ↦₆₄ c4) ∗
-       ((sp + 0x3d0#64) ↦₆₄ u3d0) ∗ ((sp + 0x3d8#64) ↦₆₄ u3d8) ∗
-       ((sp + 0x3e0#64) ↦₃₂ u3e0) ∗ ((sp + 0x3e4#64) ↦₆₄ u3e4) ∗
-       ((sp + 0x3ec#64) ↦₆₄ u3ec) ∗
-       ((sp + 0x400#64) ↦₆₄ u400) ∗ ((sp + 0x408#64) ↦₆₄ u408) ∗
-       ((sp + 0x440#64) ↦₆₄ u440) ∗ ((sp + 0x448#64) ↦₆₄ u448) ∗
-       ((sp + 0x4a0#64) ↦₃₂ u4a0) ∗ ((sp + 0x4a4#64) ↦₆₄ u4a4) ∗
-       ((sp + 0x4ac#64) ↦₆₄ u4ac) ∗ ((sp + 0x4b4#64) ↦₆₄ u4b4) ∗
-       ((sp + 0x4bc#64) ↦₃₂ u4bc) ∗
-       ((sp + 0x4c0#64) ↦₆₄ u4c0) ∗ ((sp + 0x4c8#64) ↦₆₄ u4c8) ∗
-       ((sp + 0x4d0#64) ↦₆₄ u4d0) ∗ ((sp + 0x4d8#64) ↦₆₄ u4d8) ∗
-       ((sp + 0x500#64) ↦₆₄ u500) ∗ ((sp + 0x508#64) ↦₆₄ u508) ∗
-       ((sp + 0x510#64) ↦₃₂ u510)) ∗
-      (memRegion sp 0x10 ∗ memRegion (sp + 0x14#64) 8 ∗
-       ((sp + 0x190#64) ↦₃₂ 0#32) ∗
-       memRegion (sp + 0x1d8#64) 0x1f8 ∗
-       memRegion (sp + 0x3f4#64) 12 ∗
-       memRegion (sp + 0x410#64) 0x30 ∗
-       memRegion (sp + 0x450#64) 0x50 ∗
-       memRegion (sp + 0x4e0#64) 0x20 ∗
-       memRegion (sp + 0x514#64) 0x6c ∗ Rest) :=
-    Eq.mp (congrArg (s.mem ⊨ ·) (by dsimp only [sp]; ac_rfl)) hmem
-  obtain ⟨s1, hsteps1, hout1⟩ := hwp1.elim hmem_in hcode
+  obtain ⟨s1, hsteps1, hout1⟩ :=
+    hwp1.elim (Satisfies.mono (by dsimp only [sp] at hmem ⊢; bi_frame) hmem) hcode
   obtain ⟨hpc1, hrun1, P1, hmem1, hsp1, hx0_1, hx1_1, hx19_1, hx20_1, hx21_1, hx22_1,
     hx23_1, hx25_1, hx26_1, hx27_1, hx28_1, hx29_1, hv0_1, htrace1, hvregs1, hent1⟩ :=
     hout1.resolve_right fun ⟨_, hoom⟩ => not_satisfies_false_sepConj hoom
@@ -749,38 +525,10 @@ theorem dhStep_step_70c_to_778_placed [LibsignalPlacement]
     rw [pointsTo_16_as_two_64 (sp + 0x4d0#64) ((chainKeyBytes rck).take 16) (by simp [hrck_len]),
         htake, hdrop, hc0, hc1,
         show sp + 0x4d0#64 + 8#64 = sp + 0x4d8#64 by bv_arith]
-  have hmem1_1 : s1.mem ⊨
-      (((sp + 0x190#64) ↦₃₂ 0#32) ∗
-       ((sp + 0x194#64) ↦₃₂ r0) ∗ ((sp + 0x198#64) ↦₆₄ r1) ∗
-       ((sp + 0x1a0#64) ↦₆₄ r2) ∗ ((sp + 0x1a8#64) ↦₆₄ r3) ∗
-       ((sp + 0x1b0#64) ↦₃₂ r4) ∗
-       ((sp + 0x1b4#64) ↦₆₄ c0) ∗ ((sp + 0x1bc#64) ↦₆₄ c1) ∗
-       ((sp + 0x1c4#64) ↦₃₂ c2) ∗ ((sp + 0x1c8#64) ↦₆₄ c3) ∗
-       ((sp + 0x1d0#64) ↦₆₄ c4) ∗
-       memRegion (sp + 0x1d8#64) 0x1f8 ∗
-       ((sp + 0x400#64) ↦₆₄ c0) ∗ ((sp + 0x408#64) ↦₆₄ c1) ∗
-       memRegion (sp + 0x410#64) 0x30 ∗
-       ((sp + 0x440#64) ↦₆₄ c3) ∗ ((sp + 0x448#64) ↦₆₄ c4) ∗
-       memRegion (sp + 0x450#64) 0x50 ∗
-       ((sp + 0x500#64) ↦₆₄ r2) ∗ ((sp + 0x508#64) ↦₆₄ r3) ∗
-       ((sp + 0x510#64) ↦₃₂ r4) ∗
-       memRegion (sp + 0x514#64) 0x6c) ∗
-      (memRegion sp 0x10 ∗
-       ((sp + 0x10#64) ↦ₛ ((chainKeyBytes rck).drop 16).take 4) ∗
-       memRegion (sp + 0x14#64) 8 ∗
-       ((sp + 0x1c#64) ↦₃₂ (s.readReg64 .x24).setWidth 32) ∗
-       ((sp + 0x3d0#64) ↦ₛ chainKeyBytes rck) ∗
-       memRegion (sp + 0x3f4#64) 12 ∗
-       ((sp + 0x4a0#64) ↦ₛ keyToBytes32 rk1) ∗
-       ((sp + 0x4c0#64) ↦ₛ (chainKeyBytes rck).drop 20) ∗
-       ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes rck).take 16) ∗
-       memRegion (sp + 0x4e0#64) 0x20 ∗ Rest) := by
-    rw [h10_fold, h3d0_fold, h4a0_fold, h4c0_fold, h4d0_fold]
-    exact Eq.mp (congrArg (s1.mem ⊨ ·) (by dsimp only [sp]; ac_rfl)) hmem1_0
-  have hmem1_2 := Satisfies.mono (sepConj_mono_left (fold_after_778 sp r0 r4 c2 r1 r2 r3 c0 c1 c3 c4)) hmem1_1
-  exact ⟨s1, hsteps1, hpc1, hmeta1, hx0_1, hx1_1, hx19_1, hx20_1, hx21_1, hx22_1,
-    hx23_1, hx25_1, hx26_1, hx27_1, hx28_1, hv0_1,
-    Eq.mp (congrArg (s1.mem ⊨ ·) (by dsimp only [sp]; ac_rfl)) hmem1_2⟩
+  refine ⟨s1, hsteps1, hpc1, hmeta1, hx0_1, hx1_1, hx19_1, hx20_1, hx21_1, hx22_1,
+    hx23_1, hx25_1, hx26_1, hx27_1, hx28_1, hv0_1, ?_⟩
+  rw [h10_fold, h3d0_fold, h4a0_fold, h4c0_fold, h4d0_fold]
+  exact Satisfies.mono (by dsimp only [sp] at hmem1_0 ⊢; sep_interval) hmem1_0
 
 theorem dhStep_step_778_to_780_placed [LibsignalPlacement]
     {prog : Program} {entry rngFillEntry ctl : BitVec 64}
@@ -811,12 +559,8 @@ theorem dhStep_step_778_to_780_placed [LibsignalPlacement]
   simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hmem
   rcases hmem with ⟨u3, u2, u1, u0, hmem⟩
   have hwp1 := hwp.wpp_778_to_rng s0 s u0 u1 u2 u3 hpc hrun hsp hsp_al hx0 hx1 hx25 hv0 htrace
-  have hmem_in : s.mem ⊨
-      (((sp + 0x190#64) ↦₆₄ u0) ∗ ((sp + 0x190#64 + 8#64) ↦₆₄ u1) ∗
-       ((sp + 0x190#64 + 16#64) ↦₆₄ u2) ∗ ((sp + 0x190#64 + 24#64) ↦₆₄ u3)) ∗
-      (tapeAfter ctl cur rest 0 ∗ Rest) :=
-    Eq.mp (congrArg (s.mem ⊨ ·) (by ac_rfl)) hmem
-  obtain ⟨sc, hsteps1, hout1⟩ := hwp1.elim hmem_in hcode
+  obtain ⟨sc, hsteps1, hout1⟩ :=
+    hwp1.elim (Satisfies.mono (by dsimp only [sp] at hmem ⊢; bi_frame) hmem) hcode
   obtain ⟨hpcc, hrunc, P_c, hmem_c, hsp_c, hx0_c, hx1_c, hx30_c, hcs_c, htrace_c, hent_c⟩ :=
     hout1.resolve_right fun ⟨_, hoom⟩ => not_satisfies_false_sepConj hoom
   have hsp_al_c : sc.spAligned = true := by
@@ -824,11 +568,10 @@ theorem dhStep_step_778_to_780_placed [LibsignalPlacement]
     rw [hsp_c, ← show s.sp = s0.sp - 1504#64 from hsp]
     exact hsp_al
   have hmem_c0 := hent_c sc.mem _ hmem_c
-  have hmem_c1 := Satisfies.mono (sepConj_mono_left (fold_32_four_64 (sp + 0x190#64) 0#64 0#64 0#64 0#64)) hmem_c0
   have hpre_rng : sc.mem ⊨ (rngFillAtSpec ctl cur rest).pre (sp + 0x190#64, 32) sc ∗ Rest := by
     dsimp only [rngFillAtSpec]
     simp only [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0_c, by rw [hx1_c]; rfl⟩, hmem_c1⟩
+    refine ⟨⟨hx0_c, by rw [hx1_c]; rfl⟩, Satisfies.mono (by dsimp only [sp] at hmem_c0 ⊢; sep_interval) hmem_c0⟩
   obtain ⟨s', hsteps2, ⟨hret', hpres', hpost'⟩ | ⟨_, hpost'⟩ | ⟨_, -, hpost'⟩ | ⟨_, hpost'⟩, -⟩ :=
     hrng.no_fault_before_outcome (sp + 0x190#64, 32) Rest sc hpcc hrunc hpre_rng hsp_al_c
       (hsteps1.codeLoaded hcode)
@@ -893,11 +636,8 @@ theorem dhStep_step_780_to_7a8_placed [LibsignalPlacement]
       show sp + 0x190#64 + 1#64 = sp + 0x191#64 by bv_arith,
       show sp + 0x190#64 + 31#64 = sp + 0x1af#64 by bv_arith] at hmem
   have hwp1 := hwp.wpp_780_to_7a8 s0 s b0 b31 hpc hrun hsp hsp_al hx29 hx23 hx25 htrace hvregs
-  have hmem_in : s.mem ⊨
-      (((sp + 0x190#64) ↦₈ b0) ∗ ((sp + 0x1af#64) ↦₈ b31)) ∗
-      (((sp + 0x191#64) ↦ₛ (v.toList.drop 1).take 30) ∗ Rest) :=
-    Eq.mp (congrArg (s.mem ⊨ ·) (by dsimp only [sp]; ac_rfl)) hmem
-  obtain ⟨s', hsteps, hout⟩ := hwp1.elim hmem_in hcode
+  obtain ⟨s', hsteps, hout⟩ :=
+    hwp1.elim (Satisfies.mono (by dsimp only [sp] at hmem ⊢; bi_frame) hmem) hcode
   obtain ⟨hpc', hrun', P', hmem', hsp', hx0', hx8', hx19', hx20', hx21', hx22', hx23',
     hx24', hx25', hx26', hx27', hx28', hx29', htrace', hvregs', hent'⟩ :=
     hout.resolve_right fun ⟨_, hoom⟩ => not_satisfies_false_sepConj hoom
@@ -908,16 +648,12 @@ theorem dhStep_step_780_to_7a8_placed [LibsignalPlacement]
   have hmeta' : tryDecryptMidMetaPlaced s0 s' :=
     ⟨hrun', hsp', hsp0_al, hsp_al', hx29', htrace', hcl.of_keepsFrozen hsteps.keepsFrozen, hvregs'⟩
   have hmem'_0 := hent' s'.mem _ hmem'
-  have hmem'_1 : s'.mem ⊨
-      (((sp + 0x190#64) ↦₈ (b0 &&& 0xf8#8)) ∗
-       ((sp + 0x190#64 + 1#64) ↦ₛ (v.toList.drop 1).take 30) ∗
-       ((sp + 0x190#64 + 31#64) ↦₈ ((b31 &&& 0x7f#8) ||| 0x40#8))) ∗ Rest := by
-    rw [show sp + 0x190#64 + 1#64 = sp + 0x191#64 by bv_arith,
-        show sp + 0x190#64 + 31#64 = sp + 0x1af#64 by bv_arith]
-    exact Eq.mp (congrArg (s'.mem ⊨ ·) (by dsimp only [sp]; ac_rfl)) hmem'_0
-  rw [pointsTo_vec32_clamp_fold (sp + 0x190#64) v] at hmem'_1
-  exact ⟨s', hsteps, hpc', hmeta', hx0', hx8', hx19', hx20', hx21', hx22', hx23',
-    hx24', hx25', hx26', hx27', hx28', hmem'_1⟩
+  refine ⟨s', hsteps, hpc', hmeta', hx0', hx8', hx19', hx20', hx21', hx22', hx23',
+    hx24', hx25', hx26', hx27', hx28', ?_⟩
+  rw [← pointsTo_vec32_clamp_fold (sp + 0x190#64) v,
+      show sp + 0x190#64 + 1#64 = sp + 0x191#64 by bv_arith,
+      show sp + 0x190#64 + 31#64 = sp + 0x1af#64 by bv_arith]
+  exact Satisfies.mono (by dsimp only [sp] at hmem'_0 ⊢; bi_entail) hmem'_0
 
 theorem dhStep_step_7a8_to_7b4_placed [LibsignalPlacement]
     {prog : Program} {entry rngFillEntry : BitVec 64} {C : Crypto}
@@ -963,14 +699,8 @@ theorem dhStep_step_7a8_to_7b4_placed [LibsignalPlacement]
   simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hmem
   rcases hmem with ⟨u3, u2, u1, u0, hmem⟩
   have hwp1 := hwp.wpp_7a8_to_dpk s0 s p0 p1 p2 p3 u0 u1 u2 u3 hpc hrun hsp hsp_al hx0 hx8 hx23 hx25 htrace
-  have hmem_in : s.mem ⊨
-      (((sp + 0x190#64) ↦₆₄ p0) ∗ ((sp + 0x190#64 + 8#64) ↦₆₄ p1) ∗
-       ((sp + 0x190#64 + 16#64) ↦₆₄ p2) ∗ ((sp + 0x190#64 + 24#64) ↦₆₄ p3) ∗
-       ((sp + 0x500#64) ↦₆₄ u0) ∗ ((sp + 0x500#64 + 8#64) ↦₆₄ u1) ∗
-       ((sp + 0x500#64 + 16#64) ↦₆₄ u2) ∗ ((sp + 0x500#64 + 24#64) ↦₆₄ u3)) ∗
-      (memRegion (sp + 0x400#64) 32 ∗ Rest) :=
-    Eq.mp (congrArg (s.mem ⊨ ·) (by dsimp only [sp]; ac_rfl)) hmem
-  obtain ⟨sc, hsteps1, hout1⟩ := hwp1.elim hmem_in hcode
+  obtain ⟨sc, hsteps1, hout1⟩ :=
+    hwp1.elim (Satisfies.mono (by dsimp only [sp] at hmem ⊢; bi_frame) hmem) hcode
   obtain ⟨hpcc, hrunc, P_c, hmem_c, hsp_c, hx0_c, hx8_c, hx30_c, hcs_c, htrace_c, hent_c⟩ :=
     hout1.resolve_right fun ⟨_, hoom⟩ => not_satisfies_false_sepConj hoom
   have hsp_al_c : sc.spAligned = true := by
@@ -978,18 +708,13 @@ theorem dhStep_step_7a8_to_7b4_placed [LibsignalPlacement]
     rw [hsp_c, ← show s.sp = s0.sp - 1504#64 from hsp]
     exact hsp_al
   have hmem_c0 := hent_c sc.mem _ hmem_c
-  have hmem_c1 : sc.mem ⊨
-      (((sp + 0x190#64) ↦₆₄ p0) ∗ ((sp + 0x190#64 + 8#64) ↦₆₄ p1) ∗
-       ((sp + 0x190#64 + 16#64) ↦₆₄ p2) ∗ ((sp + 0x190#64 + 24#64) ↦₆₄ p3)) ∗
-      (((sp + 0x500#64) ↦ₛ sec.toList) ∗ memRegion (sp + 0x400#64) 32 ∗ Rest) := by
-    rw [h500_fold]
-    exact Eq.mp (congrArg (sc.mem ⊨ ·) (by dsimp only [sp]; ac_rfl)) hmem_c0
-  have hmem_c2 := Satisfies.mono (sepConj_mono_left (fold_32_four_64 (sp + 0x190#64) p0 p1 p2 p3)) hmem_c1
   let dpkG : DerivePublicKeyBytesCall := { secret := sp + 0x500#64, sec := sec, out := sp + 0x400#64 }
   have hpre_dpk : sc.mem ⊨ (derivePublicKeyBytesSpec C.pubKey).pre dpkG sc ∗ (memRegion (sp + 0x190#64) 32 ∗ Rest) := by
     dsimp only [derivePublicKeyBytesSpec, dpkG]
     simp only [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0_c, hx8_c⟩, Eq.mp (congrArg (sc.mem ⊨ ·) (by dsimp only [sp]; ac_rfl)) hmem_c2⟩
+    refine ⟨⟨hx0_c, hx8_c⟩, ?_⟩
+    rw [h500_fold]
+    exact Satisfies.mono (by dsimp only [sp] at hmem_c0 ⊢; sep_interval) hmem_c0
   obtain ⟨s', hsteps2, ⟨hret', hpres', hpost'⟩ | ⟨_, hpost'⟩ | ⟨_, -, hpost'⟩ | ⟨_, hpost'⟩, -⟩ :=
     hdpk.no_fault_before_outcome dpkG (memRegion (sp + 0x190#64) 32 ∗ Rest) sc hpcc hrunc hpre_dpk hsp_al_c
       (hsteps1.codeLoaded hcode)
@@ -1066,13 +791,8 @@ theorem dhStep_step_7b4_to_7d4_placed [LibsignalPlacement]
   simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hmem
   rcases hmem with ⟨u3, u2, u1, u0, hmem⟩
   have hwp1 := hwp.wpp_7b4_to_sd s0 s p0 p1 p2 p3 u0 u1 u2 u3 hpc hrun hsp hsp_al hx29 hx23 hx28 htrace
-  have hmem_in : s.mem ⊨
-      (((sp + 0x420#64) ↦₆₄ u0) ∗ ((sp + 0x420#64 + 8#64) ↦₆₄ u1) ∗
-       ((sp + 0x420#64 + 16#64) ↦₆₄ u2) ∗ ((sp + 0x420#64 + 24#64) ↦₆₄ u3) ∗
-       ((sp + 0x500#64) ↦₆₄ p0) ∗ ((sp + 0x500#64 + 8#64) ↦₆₄ p1) ∗
-       ((sp + 0x500#64 + 16#64) ↦₆₄ p2) ∗ ((sp + 0x500#64 + 24#64) ↦₆₄ p3)) ∗ Rest :=
-    Eq.mp (congrArg (s.mem ⊨ ·) (by dsimp only [sp]; ac_rfl)) hmem
-  obtain ⟨sc, hsteps1, hout1⟩ := hwp1.elim hmem_in hcode
+  obtain ⟨sc, hsteps1, hout1⟩ :=
+    hwp1.elim (Satisfies.mono (by dsimp only [sp] at hmem ⊢; bi_frame) hmem) hcode
   obtain ⟨hpcc, hrunc, P_c, hmem_c, hsp_c, hx0_c, hx30_c, hcs_c, htrace_c, hent_c⟩ :=
     hout1.resolve_right fun ⟨_, hoom⟩ => not_satisfies_false_sepConj hoom
   have hsp_al_c : sc.spAligned = true := by
@@ -1080,17 +800,12 @@ theorem dhStep_step_7b4_to_7d4_placed [LibsignalPlacement]
     rw [hsp_c, ← show s.sp = s0.sp - 1504#64 from hsp]
     exact hsp_al
   have hmem_c0 := hent_c sc.mem _ hmem_c
-  have hmem_c1 : sc.mem ⊨
-      (((sp + 0x500#64) ↦₆₄ p0) ∗ ((sp + 0x500#64 + 8#64) ↦₆₄ p1) ∗
-       ((sp + 0x500#64 + 16#64) ↦₆₄ p2) ∗ ((sp + 0x500#64 + 24#64) ↦₆₄ p3)) ∗
-      (((sp + 0x420#64) ↦ₛ sec.toList) ∗ Rest) := by
-    rw [h420_fold]
-    exact Eq.mp (congrArg (sc.mem ⊨ ·) (by dsimp only [sp]; ac_rfl)) hmem_c0
-  have hmem_c2 := Satisfies.mono (sepConj_mono_left (fold_32_four_64 (sp + 0x500#64) p0 p1 p2 p3)) hmem_c1
   have hpre_sd : sc.mem ⊨ zeroizeSecretSpec.pre (sp + 0x500#64) sc ∗ (((sp + 0x420#64) ↦ₛ sec.toList) ∗ Rest) := by
     dsimp only [zeroizeSecretSpec]
     simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hx0_c, hmem_c2⟩
+    refine ⟨hx0_c, ?_⟩
+    rw [h420_fold]
+    exact Satisfies.mono (by dsimp only [sp] at hmem_c0 ⊢; sep_interval) hmem_c0
   obtain ⟨s2, hsteps2, ⟨hret2, hpres2, hpost2⟩ | ⟨_, hpost2⟩ | ⟨_, -, hpost2⟩ | ⟨_, hpost2⟩, -⟩ :=
     hsd.no_fault_before_outcome (sp + 0x500#64) (((sp + 0x420#64) ↦ₛ sec.toList) ∗ Rest) sc
       hpcc hrunc hpre_sd hsp_al_c (hsteps1.codeLoaded hcode)
@@ -1098,9 +813,6 @@ theorem dhStep_step_7b4_to_7d4_placed [LibsignalPlacement]
     dsimp only [zeroizeSecretSpec] at hpost2
     simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost2
     rcases hpost2 with ⟨htrace2, hpost2⟩
-    have h500_reg : ((sp + 0x500#64) ↦ₛ List.replicate 32 0#8) ⊢ memRegion (sp + 0x500#64) 32 := by
-      simpa using pointsToBytes_entails_memRegion (sp + 0x500#64) (List.replicate 32 0#8)
-    have hmem2 := Satisfies.mono (sepConj_mono_left h500_reg) hpost2
     have hpc2 : s2.pc = entry + 1988#64 := hret2.1.trans hx30_c
     have hrun2 : s2.status = .Running := hret2.2.2
     have hsp2 : s2.sp = sp := hpres2.1.trans hsp_c
@@ -1116,8 +828,9 @@ theorem dhStep_step_7b4_to_7d4_placed [LibsignalPlacement]
     have hwp2 := hwp.wpp_7c4_to_cc2 s0 s2 msgA hpc2 hrun2 hsp2 hsp_al2 hx22_2 hx24_2 hx29_2
       (htrace2.trans htrace_c)
     have hmem2_in : s2.mem ⊨ emp ∗ (((sp + 0x420#64) ↦ₛ sec.toList) ∗ memRegion (sp + 0x500#64) 32 ∗ Rest) := by
+      have hlen0 : (List.replicate 32 0#8).length = 32 := by simp
       rw [emp_sepConj]
-      exact Eq.mp (congrArg (s2.mem ⊨ ·) (by dsimp only [sp]; ac_rfl)) hmem2
+      exact Satisfies.mono (by dsimp only [sp] at hpost2 ⊢; sep_interval) hpost2
     obtain ⟨s', hsteps3, hout3⟩ :=
       hwp2.elim hmem2_in (hsteps12.codeLoaded hcode)
     obtain ⟨hpc', hrun', P', hmem', hsp', hx0', hx1', hx2', hx8', hx30', hcs3, htrace', hent'⟩ :=

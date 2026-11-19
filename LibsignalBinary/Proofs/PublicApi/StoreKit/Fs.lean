@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+public import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome -- proof-setup: allow-public-import
 import ProofLib.BV.WidthNorm
 
 /-!
@@ -20,7 +20,7 @@ Kit-independent trace and file-system invariants (`QuietEv`, `NoFsEv`, `TraceFsS
 snapshot `s0.fs.files` whenever intervening trace events are file-system-quiet.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.StoreKit
 
@@ -33,20 +33,20 @@ abbrev FsFiles : Type := String → Option FsEntry
 
 /-- Decidable check for events that cannot mutate `fs.files` (`stdout`/`stderr` byte writes and
 non-`"fs_write"` `userDefined` events). -/
-def quietEv : TraceEvent → Bool
+@[expose] def quietEv : TraceEvent → Bool
   | .writeByte .stdout _ => true
   | .writeByte .stderr _ => true
   | .userDefined tag _ => tag != "fs_write"
   | _ => false
 
 /-- Predicate asserting that trace event `e` does not mutate `fs.files`. -/
-def QuietEv (e : TraceEvent) : Prop := quietEv e = true
+@[expose] def QuietEv (e : TraceEvent) : Prop := quietEv e = true
 
 instance (e : TraceEvent) : Decidable (QuietEv e) :=
   inferInstanceAs (Decidable (quietEv e = true))
 
 /-- Every trace event in `d` satisfies `QuietEv`. -/
-def NoFsEv (d : List TraceEvent) : Prop := ∀ e ∈ d, QuietEv e
+@[expose] def NoFsEv (d : List TraceEvent) : Prop := ∀ e ∈ d, QuietEv e
 
 @[simp] theorem quietEv_stdout (b : BitVec 8) : quietEv (.writeByte .stdout b) = true := rfl
 @[simp] theorem quietEv_stderr (b : BitVec 8) : quietEv (.writeByte .stderr b) = true := rfl
@@ -105,7 +105,7 @@ theorem NoFsEv.not_isFs {isFs : TraceEvent → Prop} (hfs : ∀ e, isFs e → ¬
 
 /-- Along every execution of `P`, the trace grows monotonically and `fs.files` is preserved
 whenever all newly emitted events satisfy `NoFsEv`. -/
-def TraceFsSound (P : Program) : Prop :=
+@[expose] def TraceFsSound (P : Program) : Prop :=
   ∀ s s', Steps P s s' →
     ∃ d, s'.trace = s.trace ++ d ∧ (NoFsEv d → s'.fs.files = s.fs.files)
 
@@ -133,7 +133,7 @@ theorem TraceFsSound.files_eq {P : Program} (hP : TraceFsSound P) {s0 s : State}
 
 /-- Trace-indexed file-system invariant: `s.trace` extends `T0` by `e`, and `NoFsEv e` implies
 `s.fs.files = F0`. -/
-def FsInv (F0 : FsFiles) (T0 : List TraceEvent) (s : State) : Prop :=
+@[expose] def FsInv (F0 : FsFiles) (T0 : List TraceEvent) (s : State) : Prop :=
   ∃ e, s.trace = T0 ++ e ∧ (NoFsEv e → s.fs.files = F0)
 
 theorem FsInv.of_entry (s : State) : FsInv s.fs.files s.trace s :=
@@ -158,7 +158,7 @@ theorem FsInv.of_steps {P : Program} (hP : TraceFsSound P) {F0 : FsFiles}
   exact hf hq.left
 
 /-- Stability of `FsInv F0 T0` across all `Steps P` executions. -/
-def CliFsSound (P : Program) : Prop :=
+@[expose] def CliFsSound (P : Program) : Prop :=
   ∀ F0 T0 s s', FsInv F0 T0 s → Steps P s s' → FsInv F0 T0 s'
 
 theorem TraceFsSound.cliFsSound {P : Program} (hP : TraceFsSound P) : CliFsSound P :=
@@ -168,7 +168,7 @@ theorem TraceFsSound.cliFsSound {P : Program} (hP : TraceFsSound P) : CliFsSound
 
 /-- Sufficient condition for re-establishing `envOk` at store callbacks: either `envOk` is
 trivial, or kit events satisfy `Q` and `TraceFsSound P` holds. -/
-def KitFsOk (envOk : FsFiles → Prop) (Q : Prop) (P : Program) : Prop :=
+@[expose] def KitFsOk (envOk : FsFiles → Prop) (Q : Prop) (P : Program) : Prop :=
   (∀ f, envOk f) ∨ (Q ∧ TraceFsSound P)
 
 theorem KitFsOk.of_true {Q : Prop} {P : Program} : KitFsOk (fun _ => True) Q P :=
@@ -178,7 +178,7 @@ theorem KitFsOk.of_sound {envOk : FsFiles → Prop} {Q : Prop} {P : Program} (hQ
     (hP : TraceFsSound P) : KitFsOk envOk Q P := .inr ⟨hQ, hP⟩
 
 /-- Entry-to-current file-system context threaded across multi-segment `Steps P` proofs. -/
-def FsCtx (envOk : FsFiles → Prop) (Q : Prop) (P : Program) (s0 s : State) : Prop :=
+@[expose] def FsCtx (envOk : FsFiles → Prop) (Q : Prop) (P : Program) (s0 s : State) : Prop :=
   (∀ f, envOk f) ∨ (Q ∧ TraceFsSound P ∧ envOk s0.fs.files ∧ Steps P s0 s)
 
 theorem FsCtx.of_entry {envOk : FsFiles → Prop} {Q : Prop} {P : Program} {s0 : State}
@@ -222,7 +222,7 @@ theorem FsCtx.mono {e₁ e₂ : FsFiles → Prop} {Q₁ Q₂ : Prop} {P : Progra
 
 /-- Pointwise counterpart of `FsCtx` at a single state `s`, suitable for threading through
 `SepWP` proofs without referencing an entry state `s0`. -/
-def FsAt (envOk : FsFiles → Prop) (Q : Prop) (P : Program) (s : State) : Prop :=
+@[expose] def FsAt (envOk : FsFiles → Prop) (Q : Prop) (P : Program) (s : State) : Prop :=
   (∀ f, envOk f) ∨ (Q ∧ TraceFsSound P ∧ envOk s.fs.files)
 
 theorem FsAt.envOk_here {envOk : FsFiles → Prop} {Q : Prop} {P : Program} {s : State}
@@ -278,7 +278,7 @@ theorem subroutine_ok_withStepsPost {α : Type} {prog : Program} {entry : BitVec
 /-! ## Precondition Environment Guard (`withEnvPre`) -/
 
 /-- Conjoins pure state predicate `φ` to `spec.pre`. -/
-def withEnvPre {α : Type} (spec : Spec α) (φ : State → Prop) : Spec α :=
+@[expose] def withEnvPre {α : Type} (spec : Spec α) (φ : State → Prop) : Spec α :=
   { spec with pre := fun x s => ⌜φ s⌝ ∗ spec.pre x s }
 
 @[simp] theorem withEnvPre_post {α : Type} (spec : Spec α) (φ : State → Prop) :

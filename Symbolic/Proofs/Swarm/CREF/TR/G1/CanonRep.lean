@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Stage1Kyber -- shake: keep
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.G1Rep
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeIdInv
+import Symbolic.Proofs.Swarm.CREF.Stage1Kyber -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.G1Rep -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeIdInv -- proof-setup: allow-public-import
 import all DY.Bytes.Basic
 import all DY.ALaCarte.Basic
 import all Comparse.Basic
@@ -26,7 +26,9 @@ import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.G1RepPtAtomsTR
 import Symbolic.Proofs.Swarm.CREF.TR.G1.RkInvCons
 import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepMac
-public import Symbolic.Proofs.Refinement.LemmasPure -- shake: keep
+import Symbolic.Proofs.Refinement.LemmasPure -- shake: keep
+import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials
+import Symbolic.Proofs.Swarm.CREF.Stage1Trials
 
 /-!
 # Canonical Ratchet-Key Representations (`ShapeRigid` and `CaseA'`)
@@ -37,7 +39,7 @@ composed term algebra. Proves unique shape preimages for `ShapeRigid` terms
 and ratchet-key agreement under `¬RecvCollision` (`rk_eq_of_noncolliding_caseA'`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -148,20 +150,20 @@ private instance subKemRejCR (i : ExternInterpretation) (S : OpaqueSymbolSemanti
 end SubFunsCR
 
 /-- No subterm of `u` is `Literal`, `randTerm _ 0`, `PQKem`, `Signature`, `SPQR`, or `TrWireMsg`. -/
-def NoLitSubterm (u : DY.Bytes) : Prop :=
+@[expose] def NoLitSubterm (u : DY.Bytes) : Prop :=
   noLitBool u = true
 
 /-- A term `u` is `ShapeRigid` if `TermShapeId u` and `NoLitSubterm u` hold. -/
-def ShapeRigid (u : DY.Bytes) : Prop :=
+@[expose] def ShapeRigid (u : DY.Bytes) : Prop :=
   TermShapeId u ∧ NoLitSubterm u
 
 /-- The stripped key `normalizeX25519Key pk` is `ShapeRigid` and `dhPk`-headed. -/
-def CaseA' (pk : DY.Bytes) : Prop :=
+@[expose] def CaseA' (pk : DY.Bytes) : Prop :=
   ShapeRigid (DY.X25519.normalizeX25519Key pk) ∧
   ∃ a : DY.Bytes, DY.X25519.normalizeX25519Key pk = DY.DiffieHellman.dhPk a
 
 /-- Complement of `CaseA'`. -/
-def CaseB' (pk : DY.Bytes) : Prop :=
+@[expose] def CaseB' (pk : DY.Bytes) : Prop :=
   ¬ CaseA' pk
 
 theorem dhPk_eq_pack_tr (a : DY.Bytes) :
@@ -682,14 +684,14 @@ theorem rk_mem_prefixTerms_memo_tr
 /-- Every receiver chain `c ∈ st.recv` of an available state `st` has an available state `H` whose
 `H.rk` was derived by a sending half-step on `c.ratchetKey` with secret key `H.dhs` and whose
 `H.recv` contains a chain with `ratchetKey = c.ratchetKey`. -/
-def InstallWitnessTR (r₀ : ProtocolSetup) (tr : ExecTrace) : Prop :=
+@[expose] def InstallWitnessTR (r₀ : ProtocolSetup) (tr : ExecTrace) : Prop :=
   ∀ st ∈ availableStates r₀ tr, ∀ c ∈ st.recv,
     ∃ H ∈ availableStates r₀ tr, ∃ rk1,
       H.rk = (createChain rk1 c.ratchetKey H.dhs).1 ∧
       ∃ c₁ ∈ H.recv, c₁.ratchetKey = c.ratchetKey
 
 /-- A ratchet key `pk` whose stripped X25519 key is not an honest `dhPk (randTerm i 32)`. -/
-def JunkTR (pk : DY.Bytes) : Prop :=
+@[expose] def JunkTR (pk : DY.Bytes) : Prop :=
   ∀ i : Nat, DY.X25519.normalizeX25519Key pk ≠ DY.DiffieHellman.dhPk (randTerm i 32)
 
 theorem junkTR_of_caseB' {pk : DY.Bytes} (hB : CaseB' pk) : JunkTR pk := by

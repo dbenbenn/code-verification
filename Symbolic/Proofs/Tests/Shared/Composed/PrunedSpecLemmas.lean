@@ -22,7 +22,7 @@ four-case `Thm7Case` decomposition of `AliceHandshakeWasCompromised` used by the
 tests.
 -/
 
-@[expose] public section
+public section
 
 namespace Symbolic.Proofs.Tests.Shared.Composed.PrunedSpecLemmas
 
@@ -132,7 +132,7 @@ variable [Composed.HasExecTrace]
 
 /-- Four-case indexing (`Fin 4`) of the disjuncts of `AliceHandshakeWasCompromised` for
 initiator-side PQXDH tightness checks. -/
-def Thm7Case (b: Participant) (ikB spk pqpk: Bytes) (i: Nat) (tr: ExecTrace): Fin 4 → Prop
+@[expose] def Thm7Case (b: Participant) (ikB spk pqpk: Bytes) (i: Nat) (tr: ExecTrace): Fin 4 → Prop
   | 0 => LoggedBefore (PQXDHEvent.CompromisedIK b ikB) i tr
   | 1 => tr.EventLogged (PQXDHEvent.CompromisedIK b ikB) ∧
       tr.EventLogged (PQXDHEvent.CompromisedSPK b spk) ∧

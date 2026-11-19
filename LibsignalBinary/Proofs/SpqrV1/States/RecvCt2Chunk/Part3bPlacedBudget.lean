@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Part3PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Part3PlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import Lean -- shake: keep
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -22,6 +22,11 @@ import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
 
 /-!
 # `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`): Budget `Ok(Done)` Write-Out
@@ -30,7 +35,7 @@ Relocatable `[LibsignalPlacement]` `RustCliAllocBudget` proof of the two-part `O
 (`+1520 .. +1848`), handing off to `recv_ct2_chunk_epilogue_placed_wpp` (`+1188`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

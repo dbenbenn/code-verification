@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6Aux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Bridges
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub4Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6Aux
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Bridges
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub4Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksB6
@@ -27,6 +27,9 @@ import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1Common
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub6V1
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Trans
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
 
 /-!
 # Placed Stage P2 Over-Path Entry Precondition
@@ -35,11 +38,9 @@ Defines the `[LibsignalPlacement]` populated-record Stage P2 entry precondition
 `stageP2OverPreAtPlaced` at `+0x0868`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 
@@ -70,7 +71,7 @@ open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched (prevSessionsEmpt
 
 /-- Placed spatial precondition at `+0x0868` for `stageP2_over_v1_kits` on a populated 1-session
 record (`prevSessionsEmptyAt A coroPtr g ∗ sessionStateReprAt A (coroPtr + 0xf8) recG sess`). -/
-def stageP2OverPreAtPlaced [LibsignalPlacement] (A : RustAlloc) (b : BitVec 64)
+@[expose] def stageP2OverPreAtPlaced [LibsignalPlacement] (A : RustAlloc) (b : BitVec 64)
     (spkKit : SignedPreKeyStoreSpec A b)
     (kpkKit : KyberPreKeyStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b)
@@ -143,4 +144,3 @@ def stageP2OverPreAtPlaced [LibsignalPlacement] (A : RustAlloc) (b : BitVec 64)
   Frame
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
-end

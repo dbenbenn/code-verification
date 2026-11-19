@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalOk
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tails
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalOk -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tails -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFrom
-import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalFetch
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalFrame
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalMem
+import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `segSignal` `OTR::encrypt` Error Path (`+0x3a4..+0x3c8` → `+0xc14`)
@@ -23,7 +25,7 @@ Routes an `Err p` result of `OTR::encrypt` at `SegSignalRetStateV` (`+0x3a4`) th
 the shared protocol-error tail `tailSignalEncryptErr_ok` (`+0xc14`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.SegSignal
 
@@ -126,99 +128,5 @@ theorem segSignal_pure_front {m : Memory} {φ : Prop} {P G : SepProp} (hm : m �
     φ ∧ (m ⊨ P ∗ G) := by
   rw [sepConj_assoc, satisfies_pure_sepConj] at hm
   exact hm
-
-/-- From `SegSignalRetStateV` (`+0x3a4`) on `OTR::encrypt = .error p`, stages the error words
-and exits via `tailSignalEncryptErr_ok`. -/
-theorem segSignal_err_path_pf {A : RustAlloc} {img : Obj.Image}
-    {kit : SessionStoreSpec A img.base} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A img.base} {ist0 : ikit.IdState}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {Q : List (BitVec 8) → Prop}
-    {C : Crypto} {ctl : BitVec 64}
-    {S : SpqrModel} {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {abs : String → Option (State → State)}
-    (env : EncEnv kit st0 ikit ist0 Scope Q C ctl uuidTryParse S encRecord abs)
-    (x : WithStoresEncGhost) (r : SessionRecord (List (BitVec 8)))
-    (sess : Session (List (BitVec 8))) (otr : OutgoingTripleRatchet (List (BitVec 8)))
-    (taken : SessionState (List (BitVec 8))) (k : IdentityKey) (R0 : SepProp) (s0 s : State)
-    (p : SignalProtocolError) (herr : (segSignalRes C S x otr).1 = .error p)
-    (hs : SegSignalRetStateV kit st0 ikit ist0 Scope C ctl S encRecord x r sess otr taken k R0 s0 s) :
-    SegExit kit st0 ikit ist0 C ctl uuidTryParse S encRecord abs x R0 s0 s (fun _ => False) := by
-  obtain ⟨hcur, hsc, hfrom, hrem, hnone, hnp, hs_pc,
-    ⟨hrun, hsp, hal0, hal, hx29, hx19, hfl, hsym, hvregs⟩, htr, hx20, hx25, hx26, hx28,
-    hpt, hrest, hloc, hnow, hstk, g, hm⟩ := hs
-  set sp := s0.sp - 0xbe0#64 with hsp0
-  have hp_pan : p ≠ .panic := by
-    rintro rfl
-    exact hnp herr
-  rw [herr] at hm
-  simp only [signalMessageResultAt, errResultAt, BitVec.add_assoc, BitVec.reduceAdd, Nat.reduceSub,
-    sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hm
-  obtain ⟨pqCap', pqPtr', hm⟩ := hm
-  have hst : speAt A (utf8 "encrypt") (sp + 0x588#64) p ⊢
-      ∃∗ ws : List (BitVec 64), ∃∗ H : SepProp,
-        ⌜SpeStaged A x.ret (.protocol p) ws H⌝ ∗ words64At (sp + 0x588#64) ws ∗ H :=
-    speStaged_of_encErrAt A (sp + 0x588#64) x.ret (.protocol p) (by intro h; cases h)
-  have hm1 := segSignal_apply hst (by sep_focus) hm
-  simp only [sepExists_sepConj_left, satisfies_sepExists] at hm1
-  obtain ⟨ws, H, hm1⟩ := hm1
-  obtain ⟨hstg, hm1⟩ := segSignal_pure_front hm1
-  obtain ⟨w0, w1, w2, w3, w4, w5, rfl⟩ := segSignal_list_len6 ws hstg.2.1
-  have hsplit : memRegion (sp + 0x5f8#64) 0x588 =
-      memRegion (sp + 0x5f8#64) 0x508 ∗ memRegion (sp + 0xb00#64) 24 ∗
-        memRegion (sp + 0xb18#64) 0x68 := by
-    rw [show (0x588 : Nat) = 0x508 + (24 + 0x68) from rfl,
-      show sp + 0x5f8#64 = sp + BitVec.ofNat 64 0x5f8 from rfl,
-      mr_cut_add sp 0x5f8 0x508 _ (by decide),
-      mr_cut_add sp (0x5f8 + 0x508) 24 _ (by decide)]
-  have hm2 := segSignal_apply (Entails.of_eq_explicit hsplit) (by sep_focus) hm1
-  have hm2' : s.mem ⊨ memRegion (sp + 0xb00#64) (8 * 3) ∗ _ :=
-    segSignal_apply (Entails.refl _) (by sep_focus) hm2
-  obtain ⟨vs, hvs, hm3⟩ := SegFrom.memRegion_exists_words64At 3 (sp + 0xb00#64) (by decide) hm2'
-  obtain ⟨v0, v1, v2, rfl⟩ := segSignal_list_len3 vs hvs
-  have hentry : encEntry img = (tripleRatchetProgAt img.base C ctl abs).fnAddr encryptWithStoresName :=
-    entryOf_eq_tripleRatchetProgAt env.loads encryptWithStoresName
-  have hs_pc' : s.pc = (tripleRatchetProgAt img.base C ctl abs).fnAddr encryptWithStoresName + 0x3a4#64 := by
-    rw [hs_pc, hentry]
-  have hx29' : s.readReg64 .x29 = sp + 0xb80#64 := by
-    rw [hx29, hsp0]
-    bv_omega
-  have hm4 := segSignal_focusR (T := ((sp + 0x580#64) ↦₆₄ errTag) ∗
-      words64At (sp + 0x588#64) [w0, w1, w2, w3, w4, w5] ∗ words64At (sp + 0xb00#64) [v0, v1, v2])
-    (encStoreExtra kit st0 ikit ist0 x s0 ∗ R0) (by sep_focus) (by sep_focus) hm3
-  refine SegFrom.SegExit.of_sepWP hm4 (segSignal_step_err hs_pc' hrun hsp hal hx25 hx26 hx29') ?_
-  intro s3 Pm3 hL hsteps hs3_pc hs3_run hm5
-    ⟨hs3_sp, hs3_tr, hs3_x19, hs3_x20, hs3_x21, hs3_x23, hs3_x25, hs3_x26, hs3_x27, hs3_x28,
-      hs3_x29, hs3_vregs, hPm3⟩
-  have ⟨hfl3, hsym3⟩ := SegFrom.callInv_steps hfl hsym hsteps hL
-  have hs3_al : s3.spAligned = true := SegFrom.spAligned_of_sp_eq hal (hs3_sp.trans hsp.symm)
-  have hm6 := Satisfies.mono (sepConj_mono_left hPm3) hm5
-  rw [← sepConj_assoc] at hm6
-  have hm7 := segSignal_apply (segSignal_err_tail_ent A sp g sess taken k pqCap' pqPtr' (segSignalRes C S x otr).2
-    w0 w1 w2 w3 w4 w5) (by sep_focus) hm6
-  have hmod := segSignal_model_err (C := C) (S := S) (x := x) hcur hnone hfrom hrem
-    (execOk_of_exec_error herr)
-  have hdraws := (segSignal_sendState (S := S) (x := x) (c := .newOrUnchanged) hcur hnone hfrom hrem).2
-  have hstf : kit.storeFinal st0 (okAnswers r .newOrUnchanged)
-      (x.model C S uuidTryParse (okAnswers r .newOrUnchanged)).2 = st0 := by
-    rw [hmod]; rfl
-  have histf : ikit.idFinal ist0 (okAnswers r .newOrUnchanged)
-      (x.model C S uuidTryParse (okAnswers r .newOrUnchanged)).2 = ist0 := by
-    rw [hmod]; rfl
-  refine tailSignalEncryptErr_ok env x R0 s0 s3
-    (okAnswers r .newOrUnchanged) (.protocol p)
-    w0 w1 w2 w3 w4 w5 H cmScratch (Or.inr rfl) g (takenRecord sess taken)
-    (some (pqCap', pqPtr', (segSignalRes C S x otr).2)) ?_ hstg ?_
-  · refine ⟨⟨by rw [hmod, segSignal_ofProtocol hp_pan], by rw [hmod]; exact ⟨hsc.2, trivial⟩,
-      by rw [hmod]; trivial⟩, ?_⟩
-    rw [hs3_tr, htr, hmod, ikit.traceOfWith_load]; rfl
-  · refine ⟨?_, ⟨hs3_run, hs3_sp, hal0, hs3_al, hs3_x29.trans hx29, hs3_x19.trans hx19,
-      hfl3, hsym3, hs3_vregs.trans hvregs⟩, ⟨hs3_x26.trans hx26, hs3_x28.trans hx28, hs3_x27, hs3_x21, hs3_x23⟩,
-      hstk, ?_⟩
-    · rw [hs3_pc, hentry]
-    · rw [hdraws, hstf, histf]
-      dsimp only
-      rw [← hsp0]
-      exact Eq.mp (congrArg (s3.mem ⊨ ·) (by ac_rfl)) hm7
 
 end CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.SegSignal

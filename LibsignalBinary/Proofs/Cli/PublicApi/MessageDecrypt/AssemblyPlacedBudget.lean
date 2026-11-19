@@ -9,14 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.AssemblyPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsVXPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordCallees.DropsPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.AssemblyBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.AssemblyPlaced
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsVXPlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordCallees.DropsPlacedBudget
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.AssemblyBudget
+import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable CLI `MessageDecrypt` Assembly
@@ -25,7 +28,7 @@ Chains the twelve budget-threaded relocatable (`[LibsignalPlacement]`) `MessageD
 `lsProg_463` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

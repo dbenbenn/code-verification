@@ -9,15 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Support.Phi
+import LibsignalBinary.Proofs.E2E.Record.Support.Phi
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BinaryOomSpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.PreKeyGeneralAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Top
-public import LibsignalBinary.Proofs.SignalSession.Cli.Parity.F3.ElfInputsExtF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
-public import Symbolic.Proofs.Refinement.Composed.Cli.ModelB2
-public import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot
-public import Symbolic.Proofs.Refinement.Composed.Cli.PksmParseEquiv
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.PreKeyGeneralAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Top
+import LibsignalBinary.Proofs.SignalSession.Cli.Parity.F3.ElfInputsExtF3
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
+public import Symbolic.Proofs.Refinement.Composed.Cli.ModelB2 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot -- proof-setup: allow-public-import
+import Symbolic.Proofs.Refinement.Composed.Cli.PksmParseEquiv
 public import Symbolic.Specifications.Refinement.Statement
 import Symbolic.Proofs.Refinement.Composed.Cli.ParD3ModelV2SlotsBase
 import Symbolic.Proofs.Refinement.Composed.Cli.Transfer
@@ -25,6 +26,7 @@ import Symbolic.Proofs.Swarm.CREF.Cli.DirBridgeAux
 import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge
 import Symbolic.Proofs.Swarm.CREF.Cli.DirStepAux
 import Symbolic.Proofs.Swarm.CREF.Cli.DirStepBridge
+public import LibsignalBinary.Proofs.SignalSession.Cli.Parity.FilesExtParity -- proof-setup: allow-public-import
 
 /-!
 # Input-Extensionality, Pre-Key Parser, and I/O Cap Helpers for Placed Progress
@@ -34,10 +36,10 @@ import Symbolic.Proofs.Swarm.CREF.Cli.DirStepBridge
 Provides `InputsEquiv` transport lemmas for `cliRunPlacedSig`, pre-key parser equivalences
 (`preKeyOfBody?_eq_pksmParse_bind_pkToE?_f3`, `pqFieldsMatch_iff_sessMatchesPm_f3`), and I/O cap
 reductions (`CallWithinCap`, `pqModelPost_of_b2_withinCap_f3`, `aboveCap_after_eq_self_f3`) used by
-`ProgressElfPlaced`.
+`ProgressElfPlacedG`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -84,7 +86,7 @@ open CryptoVerification.SignalSession (
   filesOf maxPlaintextBytes partyAddress partyDirs pqRecvInputs pqSendInputs stdinCapBytes
   stdioPaths
 )
-open CryptoVerification.SignalSession.Placed (cliRunPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliRunPlacedSig)
 open CryptoVerification.SignalSession.Cli (InputsLoadable)
 open CryptoVerification.SignalSession.Cli.RunProofs (SessMatchesPm pkToE? pkVecTag?)
 open CryptoVerification.SignalSession.Cli.RunProofs.Pksm (decodeProto kyberOk pksmParse)
@@ -314,7 +316,7 @@ theorem pqFieldsMatch_iff_sessMatchesPm_f3 (x : RecordExtras)
 
 /-- Whether a CLI call `c` lies within the I/O caps (`BundleReadWithinCapB2` on `init` bundle files,
 `maxPlaintextBytes` on `send` stdin, `stdinCapBytes` on `recv` stdin). -/
-def CallWithinCap (c : CliCall) : Prop :=
+@[expose] def CallWithinCap (c : CliCall) : Prop :=
   match c.cmd with
   | .init _ _ => BundleReadWithinCapB2 (filesOf c.bundle) bundleDir
   | .send _ => c.stdin.length ≤ maxPlaintextBytes

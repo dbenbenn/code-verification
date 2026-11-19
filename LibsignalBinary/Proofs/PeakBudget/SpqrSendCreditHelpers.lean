@@ -10,23 +10,25 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrLeafCodecCredit
-public import LibsignalBinary.Proofs.PeakBudget.VecGrowCredit
-public import LibsignalBinary.Proofs.PeakBudget.VecGrowCreditHelpers
-public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVecBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrLeafCodecCredit
+import LibsignalBinary.Proofs.PeakBudget.VecGrowCredit
+import LibsignalBinary.Proofs.PeakBudget.VecGrowCreditHelpers
+public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpersBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVecBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Assemble
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Auth
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Chain
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Poly
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.States
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # SPQR `spqr::send` Sub-Phase `PhaseCreditSpec` Helpers
@@ -37,7 +39,7 @@ envelopes (`BoundedCountEvs`), `Authenticator::mac_hdr` / `update`, `<Poly>::com
 variants, `<Chain>::add_epoch`, `<Chain>::send_key`, and `<Message>::serialize`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.PeakBudget.SpqrSendCreditHelpers
@@ -76,11 +78,11 @@ open LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget (nonFreeCount)
 
 /-! ## Count-Bounded Event Envelopes (`BoundedCountEvs`) -/
 
-def isFreeEv : AllocEvent → Bool
+@[expose] def isFreeEv : AllocEvent → Bool
   | .free _ _ => true
   | _ => false
 
-def nonFreeEvCount : List AllocEvent → Nat
+@[expose] def nonFreeEvCount : List AllocEvent → Nat
   | [] => 0
   | ev :: tl => if isFreeEv ev then nonFreeEvCount tl else nonFreeEvCount tl + 1
 
@@ -105,66 +107,13 @@ theorem nonFreeCount_eq_nonFreeEvCount :
 
 /-- Event envelope bounding the non-`.free` event count by `maxNonFree`, every request by `maxReq`, and every alignment by `16`.
 -/
-def BoundedCountEvs (maxNonFree maxReq : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def BoundedCountEvs (maxNonFree maxReq : Nat) (evs : List AllocEvent) : Prop :=
   nonFreeCount evs ≤ maxNonFree ∧
     ∀ ev ∈ evs, eventStepReq ev ≤ maxReq ∧ eventStepAlign ev ≤ 16
 
 theorem boundedCountEvs_nil (maxNonFree maxReq : Nat) :
     BoundedCountEvs maxNonFree maxReq [] :=
   ⟨Nat.zero_le _, fun _ h => nomatch h⟩
-
-theorem boundedCountEvs_mono {nf₁ nf₂ r₁ r₂ : Nat} {evs : List AllocEvent}
-    (hNF : nf₁ ≤ nf₂) (hR : r₁ ≤ r₂) (h : BoundedCountEvs nf₁ r₁ evs) :
-    BoundedCountEvs nf₂ r₂ evs :=
-  ⟨Nat.le_trans h.1 hNF, fun ev hev => ⟨Nat.le_trans (h.2 ev hev).1 hR, (h.2 ev hev).2⟩⟩
-
-private theorem stepEvents_boundedCount_aff {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (maxReq : Nat) (evs : List AllocEvent) :
-    ∀ (maxNonFree : Nat) (st0 : M.σ),
-      (nonFreeEvCount evs ≤ maxNonFree ∧
-        ∀ ev ∈ evs, eventStepReq ev ≤ maxReq ∧ eventStepAlign ev ≤ 16) →
-      HasFineReallocCredit.cumSmall (M.stepEvents evs st0) ≤
-        HasFineReallocCredit.cumSmall st0 + maxNonFree * (2 * maxReq + 9539) ∧
-      HasFineReallocCredit.liveLarge (M.stepEvents evs st0) ≤
-        HasFineReallocCredit.liveLarge st0 + maxNonFree * (maxReq + 8195) ∧
-      HasFineReallocCredit.peakLarge (M.stepEvents evs st0) ≤
-        max (HasFineReallocCredit.peakLarge st0)
-          (HasFineReallocCredit.liveLarge st0 + maxNonFree * (maxReq + 8195)) := by
-  induction evs with
-  | nil => intro _ st0 _; simp only [AllocCostModel.stepEvents_nil]; omega
-  | cons ev tl ih =>
-    intro maxNonFree st0 ⟨hcnt, hall⟩
-    have hall0 := hall ev List.mem_cons_self
-    have hall_tl : ∀ e ∈ tl, eventStepReq e ≤ maxReq ∧ eventStepAlign e ≤ 16 :=
-      fun e he => hall e (List.mem_cons_of_mem _ he)
-    simp only [AllocCostModel.stepEvents_cons]
-    by_cases hf : isFreeEv ev = true
-    · simp only [nonFreeEvCount, hf, ↓reduceIte] at hcnt
-      cases ev <;> try contradiction
-      rename_i al sz
-      obtain ⟨hc₁, hl₁, hp₁⟩ := hM.freeNonInc al sz st0
-      obtain ⟨hc₂, hl₂, hp₂⟩ := ih maxNonFree (M.step (.free al sz) st0) ⟨hcnt, hall_tl⟩
-      omega
-    · simp only [nonFreeEvCount, hf, Bool.false_eq_true, ↓reduceIte] at hcnt
-      cases maxNonFree with
-      | zero => omega
-      | succ k =>
-        rw [Nat.add_one_mul k, Nat.add_one_mul k]
-        obtain ⟨hc₁, hl₁, hp₁⟩ := hM.step_nonFree_aff st0 hall0.1 hall0.2
-        obtain ⟨hc₂, hl₂, hp₂⟩ := ih k (M.step ev st0) ⟨by omega, hall_tl⟩
-        omega
-
-theorem boundedCount_aff_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (maxNonFree maxReq : Nat) :
-    PhaseCreditSpec M (BoundedCountEvs maxNonFree maxReq)
-      (maxNonFree * (2 * maxReq + 9539))
-      (maxNonFree * (maxReq + 8195))
-      (maxNonFree * (maxReq + 8195))
-      maxReq where
-  req_align _ h := h.2
-  credit_le st0 {_} h :=
-    stepEvents_boundedCount_aff hM maxReq _ maxNonFree st0
-      ⟨nonFreeCount_eq_nonFreeEvCount _ ▸ h.1, h.2⟩
 
 private theorem step_nonFree_small {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) {ev : AllocEvent} {maxReq : Nat} (st : M.σ)
@@ -298,7 +247,7 @@ theorem libcruxHmacSha256_phaseCreditSpec
 
 /-- Allocator trace envelope for `Authenticator::mac_hdr` (`105`-byte concat buffer, `libcrux_hmac_sha256`, and buffer drop).
 -/
-def AuthMacHdrEnv : List AllocEvent → Prop :=
+@[expose] def AuthMacHdrEnv : List AllocEvent → Prop :=
   SeqEnv (SeqEnv (· = rustAllocEvents 105 1) (· = libcruxHmacSha256Events)) FreeOnlyEvs
 
 theorem authMacHdr_phaseCreditSpec
@@ -338,7 +287,7 @@ theorem sliceConcat2_small_phaseCreditSpec
 
 /-- Allocator trace envelope for `Authenticator::update` (`[rootKey, k].concat()`, `53`-byte label/epoch concat, `hkdf_to_vec(64)`, and two `32`-byte output slices).
 -/
-def AuthUpdateEnv (rkLen kLen : Nat) : List AllocEvent → Prop :=
+@[expose] def AuthUpdateEnv (rkLen kLen : Nat) : List AllocEvent → Prop :=
   SeqEnv (· = sliceConcat2Events (rkLen + kLen))
     (SeqEnv (· = sliceConcat2Events 53)
       (SeqEnv (HkdfToVecEnv 64)
@@ -366,22 +315,6 @@ theorem authUpdate_phaseCreditSpec
     rustAlloc_low_phaseCreditSpec M hM hLow (by decide) (by decide)
   have h := hs1.seq (hs2.seq (hhkdf.seq (ha32.seq (ha32.seq (PhaseCreditSpec.freeOnly_of_hyps hM)))))
   exact h.mono (by dsimp [authUpdateDeltaCum]; omega) (by omega) (by omega) (by omega)
-
-theorem authUpdate_small_phaseCreditSpec
-    (M : AllocCostModel) [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hLow : SpqrLowInterceptHyps M)
-    {rkLen kLen : Nat} (hsm : rkLen + kLen ≤ 8195) :
-    PhaseCreditSpec M (AuthUpdateEnv rkLen kLen)
-      ((77 * (rkLen + kLen) + 188) + 14689) 0 0 (max (rkLen + kLen) 64) := by
-  have hs1 := sliceConcat2_small_phaseCreditSpec M hM hLow hsm
-  have hs2 : PhaseCreditSpec M (· = sliceConcat2Events 53) 4269 0 0 53 :=
-    sliceConcat2_small_phaseCreditSpec M hM hLow (by decide)
-  have hhkdf : PhaseCreditSpec M (HkdfToVecEnv 64) 5116 0 0 64 :=
-    hkdfToVec_low_phaseCreditSpec M hM hLow (by decide)
-  have ha32 : PhaseCreditSpec M (· = rustAllocEvents 32 1) 2652 0 0 32 :=
-    rustAlloc_low_phaseCreditSpec M hM hLow (by decide) (by decide)
-  have h := hs1.seq (hs2.seq (hhkdf.seq (ha32.seq (ha32.seq (PhaseCreditSpec.freeOnly_of_hyps hM)))))
-  exact h.mono (by omega) (by omega) (by omega) (by omega)
 
 private theorem iterConcatEnv_flatMap {α : Type} (f : α → List AllocEvent) :
     ∀ (xs : List α), IterConcatEnv (fun x evs => evs = f x) xs (xs.flatMap f)
@@ -514,20 +447,11 @@ theorem computeAtCall_small_phaseCreditSpec
 
 /-- Allocator trace envelope of `Poly::from_complete_points` interpolation on `n` buffered `GF16` points.
 -/
-def PointInterpEnv (n : Nat) : List AllocEvent → Prop :=
+@[expose] def PointInterpEnv (n : Nat) : List AllocEvent → Prop :=
   BoundedCountEvs (3 * n + 6) (4 * n + 4)
 
 def pointInterpDeltaCum (n : Nat) : Nat :=
   (3 * n + 6) * (2 * (4 * n + 4) + 9539)
-
-def pointInterpDeltaLive (n : Nat) : Nat :=
-  (3 * n + 6) * (4 * n + 4 + 8195)
-
-theorem pointInterp_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (n : Nat) :
-    PhaseCreditSpec M (PointInterpEnv n)
-      (pointInterpDeltaCum n) (pointInterpDeltaLive n) (pointInterpDeltaLive n) (4 * n + 4) :=
-  boundedCount_aff_phaseCreditSpec hM (3 * n + 6) (4 * n + 4)
 
 /-- When `n ≤ 2047`, `PointInterpEnv n` stays in small classes (`Δlive = Δpeak = 0`). -/
 theorem pointInterp_small_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
@@ -539,51 +463,15 @@ theorem pointInterp_small_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCr
 
 /-- Single-polynomial interpolation, `2 * n`-byte coefficient allocation, and `compute_at` evaluation step in `<PolyEncoder>::next_chunk`.
 -/
-def PolyNextChunkPtStepEnv (n : Nat) : List AllocEvent → Prop :=
+@[expose] def PolyNextChunkPtStepEnv (n : Nat) : List AllocEvent → Prop :=
   SeqEnv (PointInterpEnv n)
     (SeqEnv (· = rustAllocEvents (2 * n) 2) (ComputeAtCallEnv n))
 
 def polyNextChunkPtStepDeltaCum (n : Nat) : Nat :=
   pointInterpDeltaCum n + (4 * n + 9539) + (4 * n + 9897)
 
-def polyNextChunkPtStepDeltaLive (n : Nat) : Nat :=
-  pointInterpDeltaLive n + (2 * n + 8195) + (2 * n + 8195)
-
 def polyNextChunkPtStepSmallDeltaCum (n : Nat) : Nat :=
   pointInterpDeltaCum n + (154 * n + 188) + (154 * n + 9897)
-
-theorem polyNextChunkPtStep_mono_bounds {n₁ n₂ : Nat} (hle : n₁ ≤ n₂) :
-    polyNextChunkPtStepDeltaCum n₁ ≤ polyNextChunkPtStepDeltaCum n₂ ∧
-    polyNextChunkPtStepDeltaLive n₁ ≤ polyNextChunkPtStepDeltaLive n₂ ∧
-    polyNextChunkPtStepSmallDeltaCum n₁ ≤ polyNextChunkPtStepSmallDeltaCum n₂ ∧
-    max 8 (4 * n₁ + 4) ≤ max 8 (4 * n₂ + 4) := by
-  have hc_pi : pointInterpDeltaCum n₁ ≤ pointInterpDeltaCum n₂ := by
-    unfold pointInterpDeltaCum
-    exact Nat.mul_le_mul (by omega) (by omega)
-  have hl_pi : pointInterpDeltaLive n₁ ≤ pointInterpDeltaLive n₂ := by
-    unfold pointInterpDeltaLive
-    exact Nat.mul_le_mul (by omega) (by omega)
-  refine ⟨?_, ?_, ?_, by omega⟩
-  · unfold polyNextChunkPtStepDeltaCum; omega
-  · unfold polyNextChunkPtStepDeltaLive; omega
-  · unfold polyNextChunkPtStepSmallDeltaCum; omega
-
-theorem polyNextChunkPtStep_phaseCreditSpec
-    (M : AllocCostModel) [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hLow : SpqrLowInterceptHyps M) (n : Nat) :
-    PhaseCreditSpec M (PolyNextChunkPtStepEnv n)
-      (polyNextChunkPtStepDeltaCum n)
-      (polyNextChunkPtStepDeltaLive n)
-      (polyNextChunkPtStepDeltaLive n)
-      (max 8 (4 * n + 4)) := by
-  have hpi := pointInterp_phaseCreditSpec hM n
-  have hout := PhaseCreditSpec.rustAlloc_aff hM (req := 2 * n) (al := 2) (by decide)
-  have hca := computeAtCall_phaseCreditSpec M hM hLow n
-  have h := hpi.seq (hout.seq hca)
-  refine h.mono ?_ ?_ ?_ (by omega)
-  · unfold polyNextChunkPtStepDeltaCum; omega
-  · unfold polyNextChunkPtStepDeltaLive; omega
-  · unfold polyNextChunkPtStepDeltaLive; omega
 
 theorem polyNextChunkPtStep_small_phaseCreditSpec
     (M : AllocCostModel) [HasFineReallocCredit M]
@@ -601,7 +489,7 @@ theorem polyNextChunkPtStep_small_phaseCreditSpec
 
 /-- Count- and length-bounded `<PolyEncoder>::next_chunk` envelope on freshly encoded `EncoderState.points`.
 -/
-def PolyNextChunkPointsBoundedEnv (numSlots maxSlotLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def PolyNextChunkPointsBoundedEnv (numSlots maxSlotLen : Nat) (evs : List AllocEvent) : Prop :=
   evs = [] ∨
     SeqEnv (· = rustAllocEvents 384 8)
       (SeqEnv (IterSeqEnv (fun _ : Unit => PolyNextChunkPtStepEnv maxSlotLen)
@@ -629,7 +517,7 @@ theorem polyNextChunkPointsBounded_small_phaseCreditSpec
   rw [hlen]; omega
 
 /-- Sequential allocator trace envelope of `<PolyEncoder as Encoder>::next_chunk`. -/
-def PolyNextChunkEnv (enc : PolyEncoder) (evs : List AllocEvent) : Prop :=
+@[expose] def PolyNextChunkEnv (enc : PolyEncoder) (evs : List AllocEvent) : Prop :=
   match enc.s with
   | .points pts =>
     evs = [] ∨
@@ -641,7 +529,7 @@ def PolyNextChunkEnv (enc : PolyEncoder) (evs : List AllocEvent) : Prop :=
 
 /-- Combined slot-count, `.points` element-count (`≤ K`), and `.polys` byte-sum (`≤ rawCap`) bound on a `PolyEncoder`.
 -/
-def EncBounded (K rawCap : Nat) (enc : PolyEncoder) : Prop :=
+@[expose] def EncBounded (K rawCap : Nat) (enc : PolyEncoder) : Prop :=
   match enc.s with
   | .points pts => pts.length ≤ 16 ∧ ∀ pt ∈ pts, pt.value.length ≤ K
   | .polys polys =>
@@ -654,188 +542,6 @@ private theorem polys_sum_two_mul_eq :
   | [] => rfl
   | p :: ps => by
     simp only [List.map_cons, List.sum_cons, polys_sum_two_mul_eq ps, Nat.mul_add]
-
-private theorem polys_sum_aff_eq (a b : Nat) :
-    ∀ (polys : List Poly),
-      (polys.map (fun p => a * p.coefficients.length + b)).sum =
-        a * (polys.map (fun p => p.coefficients.length)).sum + polys.length * b
-  | [] => by simp
-  | p :: ps => by
-    have ih := polys_sum_aff_eq a b ps
-    simp only [List.map_cons, List.sum_cons, List.length_cons, Nat.succ_mul, Nat.mul_add]
-    omega
-
-private theorem polys_foldr_max_le :
-    ∀ (polys : List Poly),
-      (polys.map (fun p => max 8 (2 * p.coefficients.length))).foldr max 0 ≤
-        max 8 ((polys.map (fun p => 2 * p.coefficients.length)).sum)
-  | [] => by simp
-  | p :: ps => by
-    have ih := polys_foldr_max_le ps
-    simp only [List.map_cons, List.foldr_cons, List.sum_cons]
-    omega
-
-private theorem iterPeak_le_sum_same {α : Type} (l : α → Nat) :
-    ∀ (xs : List α), iterPeak l l xs ≤ (xs.map l).sum
-  | [] => by simp [iterPeak]
-  | x :: xs => by
-    have ih := iterPeak_le_sum_same l xs
-    simp only [iterPeak, List.map_cons, List.sum_cons]
-    omega
-
-private theorem polyNextChunk_polys_phaseCreditSpec
-    (M : AllocCostModel) [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hLow : SpqrLowInterceptHyps M)
-    (polys : List Poly) {rawCap : Nat}
-    (hlen : polys.length ≤ 16)
-    (hraw : (polys.map (fun p => 2 * p.coefficients.length)).sum ≤ rawCap) :
-    PhaseCreditSpec M
-      (SeqEnv (IterSeqEnv (fun p => ComputeAtCallEnv p.coefficients.length) polys) FreeOnlyEvs)
-      (2 * rawCap + 158352) (rawCap + 131120) (rawCap + 131120) (max 8 rawCap) := by
-  have hiter := PhaseCreditSpec.iter
-    (fun p : Poly => 4 * p.coefficients.length + 9897)
-    (fun p => 2 * p.coefficients.length + 8195)
-    (fun p => 2 * p.coefficients.length + 8195)
-    (fun p => max 8 (2 * p.coefficients.length))
-    polys (fun p _ => computeAtCall_phaseCreditSpec M hM hLow p.coefficients.length)
-  have hc_eq := polys_sum_aff_eq 4 9897 polys
-  have hl_eq := polys_sum_aff_eq 2 8195 polys
-  have h2_eq := polys_sum_two_mul_eq polys
-  have hp_le := iterPeak_le_sum_same (fun p : Poly => 2 * p.coefficients.length + 8195) polys
-  have hr_le := polys_foldr_max_le polys
-  have hseq := hiter.seq (PhaseCreditSpec.freeOnly_of_hyps hM)
-  exact hseq.mono (by omega) (by omega) (by omega) (by omega)
-
-def polyNextChunkDeltaCum (K rawCap : Nat) : Nat :=
-  max (29756 + 16 * polyNextChunkPtStepDeltaCum K) (2 * rawCap + 158352)
-
-def polyNextChunkDeltaLive (K rawCap : Nat) : Nat :=
-  max (16 * polyNextChunkPtStepDeltaLive K) (rawCap + 131120)
-
-def polyNextChunkMaxReq (K rawCap : Nat) : Nat :=
-  max 384 (max (4 * K + 4) rawCap)
-
-theorem polyNextChunk_phaseCreditSpec
-    (M : AllocCostModel) [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hLow : SpqrLowInterceptHyps M)
-    {K rawCap : Nat} {enc : PolyEncoder} (hb : EncBounded K rawCap enc) :
-    PhaseCreditSpec M (PolyNextChunkEnv enc)
-      (polyNextChunkDeltaCum K rawCap)
-      (polyNextChunkDeltaLive K rawCap)
-      (polyNextChunkDeltaLive K rawCap)
-      (polyNextChunkMaxReq K rawCap) := by
-  unfold PolyNextChunkEnv EncBounded at *
-  cases hs : enc.s with
-  | points pts =>
-    rw [hs] at hb
-    obtain ⟨hlen, hpts⟩ := hb
-    have h384 : PhaseCreditSpec M (· = rustAllocEvents 384 8) 29756 0 0 384 :=
-      rustAlloc_low_phaseCreditSpec M hM hLow (by decide) (by decide)
-    have hstep : ∀ pt ∈ pts,
-        PhaseCreditSpec M (PolyNextChunkPtStepEnv pt.value.length)
-          (polyNextChunkPtStepDeltaCum K)
-          (polyNextChunkPtStepDeltaLive K)
-          (polyNextChunkPtStepDeltaLive K)
-          (max 8 (4 * K + 4)) := by
-      intro pt hpt
-      obtain ⟨hc, hl, _, hr⟩ := polyNextChunkPtStep_mono_bounds (hpts pt hpt)
-      exact (polyNextChunkPtStep_phaseCreditSpec M hM hLow pt.value.length).mono hc hl hl hr
-    have hc_le : pts.length * polyNextChunkPtStepDeltaCum K ≤ 16 * polyNextChunkPtStepDeltaCum K :=
-      Nat.mul_le_mul_right _ hlen
-    have hl_le : pts.length * polyNextChunkPtStepDeltaLive K ≤ 16 * polyNextChunkPtStepDeltaLive K :=
-      Nat.mul_le_mul_right _ hlen
-    have hiter_tight := PhaseCreditSpec.iter
-      (fun _ : CryptoVerification.LibsignalSpqrV1.Point => polyNextChunkPtStepDeltaCum K)
-      (fun _ => polyNextChunkPtStepDeltaLive K)
-      (fun _ => polyNextChunkPtStepDeltaLive K)
-      (fun _ => max 8 (4 * K + 4))
-      pts hstep
-    have hsum_c : (pts.map (fun _ => polyNextChunkPtStepDeltaCum K)).sum =
-        pts.length * polyNextChunkPtStepDeltaCum K := by simp
-    have hsum_l : (pts.map (fun _ => polyNextChunkPtStepDeltaLive K)).sum =
-        pts.length * polyNextChunkPtStepDeltaLive K := by simp
-    have hp_tight := iterPeak_le_sum_same
-      (fun _ : CryptoVerification.LibsignalSpqrV1.Point => polyNextChunkPtStepDeltaLive K) pts
-    have hr_fold : (pts.map (fun _ => max 8 (4 * K + 4))).foldr max 0 ≤ max 8 (4 * K + 4) := by
-      clear hpts hstep hiter_tight hlen hc_le hl_le hsum_c hsum_l hp_tight hs
-      induction pts with
-      | nil => exact Nat.zero_le _
-      | cons _ tl ih =>
-        simp only [List.map_cons, List.foldr_cons]
-        exact Nat.max_le.2 ⟨Nat.le_refl _, ih⟩
-    have hiter' : PhaseCreditSpec M
-        (IterSeqEnv (fun pt => PolyNextChunkPtStepEnv pt.value.length) pts)
-        (16 * polyNextChunkPtStepDeltaCum K)
-        (16 * polyNextChunkPtStepDeltaLive K)
-        (16 * polyNextChunkPtStepDeltaLive K)
-        (max 8 (4 * K + 4)) :=
-      hiter_tight.mono (hsum_c.symm ▸ hc_le) (hsum_l.symm ▸ hl_le)
-        (Nat.le_trans hp_tight (hsum_l.symm ▸ hl_le)) hr_fold
-    have hrhs := h384.seq (hiter'.seq (PhaseCreditSpec.freeOnly_of_hyps hM))
-    have hor := ((PhaseCreditSpec.nil M).or hrhs).of_imp fun _ h => h
-    refine hor.mono ?_ ?_ ?_ ?_
-    · clear hpts hstep hc_le hl_le hiter_tight hsum_c hsum_l hp_tight hr_fold hiter' hrhs hor h384 hs hlen
-      unfold polyNextChunkDeltaCum; generalize polyNextChunkPtStepDeltaCum K = cX; omega
-    · clear hpts hstep hc_le hl_le hiter_tight hsum_c hsum_l hp_tight hr_fold hiter' hrhs hor h384 hs hlen
-      unfold polyNextChunkDeltaLive; generalize polyNextChunkPtStepDeltaLive K = lX; omega
-    · clear hpts hstep hc_le hl_le hiter_tight hsum_c hsum_l hp_tight hr_fold hiter' hrhs hor h384 hs hlen
-      unfold polyNextChunkDeltaLive; generalize polyNextChunkPtStepDeltaLive K = lX; omega
-    · clear hpts hstep hc_le hl_le hiter_tight hsum_c hsum_l hp_tight hr_fold hiter' hrhs hor h384 hs hlen
-      unfold polyNextChunkMaxReq; omega
-  | polys polys =>
-    rw [hs] at hb
-    obtain ⟨hlen, hraw⟩ := hb
-    refine (polyNextChunk_polys_phaseCreditSpec M hM hLow polys hlen hraw).mono ?_ ?_ ?_ ?_
-    · clear hlen hraw hs; unfold polyNextChunkDeltaCum; omega
-    · clear hlen hraw hs; unfold polyNextChunkDeltaLive; omega
-    · clear hlen hraw hs; unfold polyNextChunkDeltaLive; omega
-    · clear hlen hraw hs; unfold polyNextChunkMaxReq; omega
-
-/-- Tight cumulative delta for `PolyNextChunkEnv` when `K ≤ 2047` (keeping `.points` interpolation in small classes).
--/
-def polyNextChunkSmallDeltaCum (K rawCap : Nat) : Nat :=
-  max (29756 + 16 * polyNextChunkPtStepSmallDeltaCum K) (2 * rawCap + 158352)
-
-theorem polyNextChunk_small_phaseCreditSpec
-    (M : AllocCostModel) [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hLow : SpqrLowInterceptHyps M)
-    {K rawCap : Nat} (hK : K ≤ 2047) {enc : PolyEncoder} (hb : EncBounded K rawCap enc) :
-    PhaseCreditSpec M (PolyNextChunkEnv enc)
-      (polyNextChunkSmallDeltaCum K rawCap)
-      (rawCap + 131120)
-      (rawCap + 131120)
-      (polyNextChunkMaxReq K rawCap) := by
-  unfold PolyNextChunkEnv EncBounded at *
-  cases hs : enc.s with
-  | points pts =>
-    rw [hs] at hb
-    obtain ⟨hlen, hpts⟩ := hb
-    have h384 : PhaseCreditSpec M (· = rustAllocEvents 384 8) 29756 0 0 384 :=
-      rustAlloc_low_phaseCreditSpec M hM hLow (by decide) (by decide)
-    have hstep : ∀ pt ∈ pts,
-        PhaseCreditSpec M (PolyNextChunkPtStepEnv pt.value.length)
-          (polyNextChunkPtStepSmallDeltaCum K) 0 0 (max 8 (4 * K + 4)) := by
-      intro pt hpt
-      have hpt_le : pt.value.length ≤ K := hpts pt hpt
-      obtain ⟨_, _, hc_sm, hr⟩ := polyNextChunkPtStep_mono_bounds hpt_le
-      exact (polyNextChunkPtStep_small_phaseCreditSpec M hM hLow (Nat.le_trans hpt_le hK)).mono
-        hc_sm (Nat.le_refl 0) (Nat.le_refl 0) hr
-    have hiter := PhaseCreditSpec.iter_zero_live pts hstep
-    have hc_le : pts.length * polyNextChunkPtStepSmallDeltaCum K ≤
-        16 * polyNextChunkPtStepSmallDeltaCum K :=
-      Nat.mul_le_mul_right _ hlen
-    have hrhs := h384.seq (hiter.seq (PhaseCreditSpec.freeOnly_of_hyps hM))
-    have hor := ((PhaseCreditSpec.nil M).or hrhs).of_imp fun _ h => h
-    refine hor.mono ?_ (by omega) (by omega) ?_
-    · unfold polyNextChunkSmallDeltaCum; omega
-    · unfold polyNextChunkMaxReq; omega
-  | polys polys =>
-    rw [hs] at hb
-    obtain ⟨hlen, hraw⟩ := hb
-    have hp := polyNextChunk_polys_phaseCreditSpec M hM hLow polys hlen hraw
-    refine hp.mono ?_ (Nat.le_refl _) (Nat.le_refl _) ?_
-    · unfold polyNextChunkSmallDeltaCum; omega
-    · unfold polyNextChunkMaxReq; omega
 
 /-! ## `<States>::send` Across All 11 Chunked Variants (`StatesSendEnv`) -/
 
@@ -866,125 +572,6 @@ def StatesSendEnv (F : ShaCompress) :
   | .ekReceivedCt1Sampled s => PolyNextChunkEnv s.sending_ct1
   | .ct1Acknowledged _ => (· = [])
   | .ct2Sampled s => PolyNextChunkEnv s.sending_ct2
-
-/-- Lifts `EncBounded K rawCap` across all encoder-carrying `States` variants and bounds `auth.rootKey.length ≤ rawCap` on `.headerReceived`.
--/
-def StatesEncBounded (K rawCap : Nat) {F : ShaCompress} :
-    States spqrPolyApi (spqrAuthApi F) → Prop
-  | .keysUnsampled _ => True
-  | .keysSampled s => EncBounded K rawCap s.sending_hdr
-  | .headerSent s => EncBounded K rawCap s.sending_ek
-  | .ct1Received s => EncBounded K rawCap s.sending_ek
-  | .ekSentCt1Received _ => True
-  | .noHeaderReceived _ => True
-  | .headerReceived s => (Authenticator.intoPb s.uc.auth).rootKey.length ≤ rawCap
-  | .ct1Sampled s => EncBounded K rawCap s.sending_ct1
-  | .ekReceivedCt1Sampled s => EncBounded K rawCap s.sending_ct1
-  | .ct1Acknowledged _ => True
-  | .ct2Sampled s => EncBounded K rawCap s.sending_ct2
-
-theorem statesSend_keysUnsampled_phaseCreditSpec
-    (M : AllocCostModel) [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hLow : SpqrLowInterceptHyps M)
-    (F : ShaCompress) (s : CryptoVerification.LibsignalSpqrV1.Chunked.SendEk.KeysUnsampled (spqrAuthApi F)) :
-    PhaseCreditSpec M (StatesSendEnv F (.keysUnsampled s))
-      4400000 0 0 2400 := by
-  unfold StatesSendEnv
-  have h1 := boundedCount_low_phaseCreditSpec hM hLow 8 2400 (by decide)
-  have h2 := authMacHdr_phaseCreditSpec M hM hLow
-  have h3 := sliceConcat2_small_phaseCreditSpec M hM hLow (n := 96) (by decide)
-  have h4 := encodeBytes_small_phaseCreditSpec M hM hLow (msgLen := 96) (by decide)
-  have h5 := polyNextChunkPointsBounded_small_phaseCreditSpec M hM hLow 16 (maxSlotLen := 3) (by decide)
-  have h6 := PhaseCreditSpec.freeOnly_of_hyps hM
-  have h := h1.seq (h2.seq (h3.seq (h4.seq (h5.seq h6))))
-  have hc5 : polyNextChunkPtStepSmallDeltaCum 3 = 154574 := rfl
-  exact h.mono (by rw [hc5]; omega) (by omega) (by omega) (by omega)
-
-theorem statesSend_headerReceived_phaseCreditSpec
-    (M : AllocCostModel) [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hLow : SpqrLowInterceptHyps M)
-    (F : ShaCompress)
-    (s : CryptoVerification.LibsignalSpqrV1.Chunked.SendCt.HeaderReceived spqrPolyApi (spqrAuthApi F))
-    {rawCap : Nat} (hrk : (Authenticator.intoPb s.uc.auth).rootKey.length ≤ rawCap) :
-    PhaseCreditSpec M (StatesSendEnv F (.headerReceived s))
-      (2 * rawCap + 18500000) (rawCap + 8227) (rawCap + 8227) (max 2080 (rawCap + 32)) := by
-  unfold StatesSendEnv
-  have h1 := boundedCount_low_phaseCreditSpec hM hLow 8 2080 (by decide)
-  have h2 := sliceConcat2_small_phaseCreditSpec M hM hLow (n := 41) (by decide)
-  have h3 := hkdfToVec_low_phaseCreditSpec M hM hLow (okmLen := 32) (by decide)
-  have h4 := authUpdate_phaseCreditSpec M hM hLow (Authenticator.intoPb s.uc.auth).rootKey.length 32
-  have h5 := encodeBytes_small_phaseCreditSpec M hM hLow (msgLen := 960) (by decide)
-  have h6 := polyNextChunkPointsBounded_small_phaseCreditSpec M hM hLow 16 (maxSlotLen := 30) (by decide)
-  have h7 := PhaseCreditSpec.freeOnly_of_hyps hM
-  have h := h1.seq (h2.seq (h3.seq (h4.seq (h5.seq (h6.seq h7)))))
-  have hc6 : polyNextChunkPtStepSmallDeltaCum 30 = 958877 := rfl
-  exact h.mono (by dsimp [authUpdateDeltaCum]; rw [hc6]; omega) (by omega) (by omega) (by omega)
-
-def statesSendDeltaCum (K rawCap : Nat) : Nat :=
-  max (polyNextChunkDeltaCum K rawCap) (2 * rawCap + 18500000)
-
-def statesSendDeltaLive (K rawCap : Nat) : Nat :=
-  max (polyNextChunkDeltaLive K rawCap) (rawCap + 131120)
-
-def statesSendMaxReq (K rawCap : Nat) : Nat :=
-  max 2400 (max (polyNextChunkMaxReq K rawCap) (rawCap + 32))
-
-theorem statesSend_phaseCreditSpec
-    (M : AllocCostModel) [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hLow : SpqrLowInterceptHyps M)
-    (F : ShaCompress) {K rawCap : Nat}
-    {st : States spqrPolyApi (spqrAuthApi F)} (hb : StatesEncBounded K rawCap st) :
-    PhaseCreditSpec M (StatesSendEnv F st)
-      (statesSendDeltaCum K rawCap)
-      (statesSendDeltaLive K rawCap)
-      (statesSendDeltaLive K rawCap)
-      (statesSendMaxReq K rawCap) := by
-  cases st with
-  | keysUnsampled s =>
-    exact (statesSend_keysUnsampled_phaseCreditSpec M hM hLow F s).mono
-      (by unfold statesSendDeltaCum; omega) (by omega) (by omega)
-      (by unfold statesSendMaxReq; omega)
-  | headerReceived s =>
-    exact (statesSend_headerReceived_phaseCreditSpec M hM hLow F s hb).mono
-      (by unfold statesSendDeltaCum; omega) (by unfold statesSendDeltaLive; omega)
-      (by unfold statesSendDeltaLive; omega) (by unfold statesSendMaxReq; omega)
-  | ekSentCt1Received _ | noHeaderReceived _ | ct1Acknowledged _ =>
-    exact (PhaseCreditSpec.nil M).mono (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-  | keysSampled _ | headerSent _ | ct1Received _ | ct1Sampled _ | ekReceivedCt1Sampled _
-  | ct2Sampled _ =>
-    exact (polyNextChunk_phaseCreditSpec M hM hLow hb).mono
-      (by unfold statesSendDeltaCum; omega) (by unfold statesSendDeltaLive; omega)
-      (by unfold statesSendDeltaLive; omega) (by unfold statesSendMaxReq; omega)
-
-def statesSendSmallDeltaCum (K rawCap : Nat) : Nat :=
-  max (polyNextChunkSmallDeltaCum K rawCap) (2 * rawCap + 18500000)
-
-theorem statesSend_small_phaseCreditSpec
-    (M : AllocCostModel) [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hLow : SpqrLowInterceptHyps M)
-    (F : ShaCompress) {K rawCap : Nat} (hK : K ≤ 2047)
-    {st : States spqrPolyApi (spqrAuthApi F)} (hb : StatesEncBounded K rawCap st) :
-    PhaseCreditSpec M (StatesSendEnv F st)
-      (statesSendSmallDeltaCum K rawCap)
-      (rawCap + 131120)
-      (rawCap + 131120)
-      (statesSendMaxReq K rawCap) := by
-  cases st with
-  | keysUnsampled s =>
-    exact (statesSend_keysUnsampled_phaseCreditSpec M hM hLow F s).mono
-      (by unfold statesSendSmallDeltaCum; omega) (by omega) (by omega)
-      (by unfold statesSendMaxReq; omega)
-  | headerReceived s =>
-    exact (statesSend_headerReceived_phaseCreditSpec M hM hLow F s hb).mono
-      (by unfold statesSendSmallDeltaCum; omega) (by omega) (by omega)
-      (by unfold statesSendMaxReq; omega)
-  | ekSentCt1Received _ | noHeaderReceived _ | ct1Acknowledged _ =>
-    exact (PhaseCreditSpec.nil M).mono (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-  | keysSampled _ | headerSent _ | ct1Received _ | ct1Sampled _ | ekReceivedCt1Sampled _
-  | ct2Sampled _ =>
-    exact (polyNextChunk_small_phaseCreditSpec M hM hLow hK hb).mono
-      (by unfold statesSendSmallDeltaCum; omega) (Nat.le_refl _) (Nat.le_refl _)
-      (by unfold statesSendMaxReq; omega)
 
 /-! ## `<Chain>::add_epoch` and `<Chain>::send_key` Credit Specs -/
 
@@ -1131,52 +718,11 @@ theorem nextKeyInternal_phaseCreditSpec
   subst hevs
   exact ⟨_, _, rfl, rfl, rfl⟩
 
-/-- `PhaseCreditSpec` for `<Chain>::send_key` (`Δcum ≤ 10,540`, `Δlive = Δpeak = 0`, `maxReq ≤ 100`).
--/
-theorem chainSendKey_phaseCreditSpec
-    (M : AllocCostModel) [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hLow : SpqrLowInterceptHyps M)
-    (hkdf : HkdfFn) (x : ChainSendKeyGhost) :
-    PhaseCreditSpec M (ChainSendKeyEnv hkdf x) 10540 0 0 100 := by
-  have hpop : PhaseCreditSpec M (· = chainSendKeyPopEvents x) 0 0 0 0 :=
-    (PhaseCreditSpec.freeOnly_align16 M).of_imp fun _ h =>
-      h ▸ freeOnlyAlign16_chainSendKeyPopEvents x
-  have hnki := nextKeyInternal_phaseCreditSpec M hM hLow
-  have ha32 : PhaseCreditSpec M (· = rustAllocEvents 32 1) 2652 0 0 32 :=
-    rustAlloc_low_phaseCreditSpec M hM hLow (by decide) (by decide)
-  unfold ChainSendKeyEnv
-  split
-  · refine (hpop.concat (hnki.concat ha32)).congr_mono ?_ (by omega) (by omega) (by omega) (by omega)
-    intro evs hevs; subst hevs
-    simp only [chainSendKeyEvents, List.append_assoc, ConcatEnv, NextKeyInternalEnv]
-    exact ⟨chainSendKeyPopEvents x, _, rfl, rfl, ⟨nextKeyInternalEvents, _, rfl, rfl, rfl⟩⟩
-  · exact (PhaseCreditSpec.nil M).mono (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-  · exact hpop.mono (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-
-theorem chainSendKeyAlloc_phaseCreditSpec
-    (M : AllocCostModel) [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hLow : SpqrLowInterceptHyps M)
-    (hkdf : HkdfFn) (x : ChainSendKeyGhost) :
-    PhaseCreditSpec M (ChainSendKeyAllocEnv hkdf x) 10540 0 0 100 := by
-  have hpop : PhaseCreditSpec M (· = chainSendKeyPopEvents x) 0 0 0 0 :=
-    (PhaseCreditSpec.freeOnly_align16 M).of_imp fun _ h =>
-      h ▸ freeOnlyAlign16_chainSendKeyPopEvents x
-  have hnki := nextKeyInternal_phaseCreditSpec M hM hLow
-  have ha32 : PhaseCreditSpec M (· = rustAllocEvents 32 1) 2652 0 0 32 :=
-    rustAlloc_low_phaseCreditSpec M hM hLow (by decide) (by decide)
-  unfold ChainSendKeyAllocEnv
-  split
-  · refine (hpop.concat (hnki.concat ha32)).congr_mono ?_ (by omega) (by omega) (by omega) (by omega)
-    intro evs hevs; subst hevs
-    simp only [chainSendKeyEvents, List.append_assoc, ConcatEnv, NextKeyInternalEnv]
-    exact ⟨chainSendKeyPopEvents x, _, rfl, rfl, ⟨nextKeyInternalEvents, _, rfl, rfl, rfl⟩⟩
-  · exact (PhaseCreditSpec.nil M).mono (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-
 /-! ## `<Message>::serialize` (`MessageSerializeEnv`) -/
 
 /-- Allocator trace envelope for `<Message>::serialize` (`≤ 8` small events of at most `128` bytes).
 -/
-def MessageSerializeEnv : List AllocEvent → Prop :=
+@[expose] def MessageSerializeEnv : List AllocEvent → Prop :=
   BoundedCountEvs 8 128
 
 theorem messageSerialize_phaseCreditSpec

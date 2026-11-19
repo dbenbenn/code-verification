@@ -9,18 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Specifications.SignalSession.CliLabels
+public import LibsignalBinary.Proofs.Placed.CliLabels -- proof-setup: allow-public-import
 public import ProofLib.Placed.LabelsInterned
 public import ProofLib.ProgramReflection
 public meta import Lean
 public meta import Arm64
 public meta import ProofLib.ProgramReflection
 public meta import ProofLib.Placed.LabelsInterned
-public meta import GeneratedLean.LibsignalSessionExtractedObj
-public meta import GeneratedLean.LibsignalSessionPlacedObj
-public meta import LibsignalBinary.Specifications.SignalSession.CliLabels
+public meta import GeneratedLean.LibsignalSessionExtractedObj -- proof-setup: allow-public-import
+public meta import GeneratedLean.LibsignalSessionPlacedObj -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.CliLabels -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

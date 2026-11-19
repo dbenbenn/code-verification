@@ -9,11 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
 public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.Process.Core
+public import LibsignalBinary.Heap.Fine.CreditInst
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
+public import ProofLib.StdStartup.MuslStage1Init
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # `FdsGe3Closed` Preservation for Shared-Pool (`mallocng`) Crypto Hooks
@@ -48,12 +54,9 @@ open CryptoVerification.E2E
 open CryptoVerification.LibsignalSpqrV1 (LibcruxHmacCall)
 open CryptoVerification.LibsignalTripleRatchet (AesCall extHookStack)
 open CryptoVerification.SignalSession
-  (CliHooks cliExternsPlaced cliHookTablePlaced cliPqxdhHookTablePlaced lsAesDecSym lsAesEncSym)
-open CryptoVerification.SignalSession.Cli.RunGlue
-  (CliGhostHooks cliExternsPlaced_row cliGhostExterns)
-open CryptoVerification.SignalSession.Cli.Slots
-  (aesDec_row_placed aesEnc_row_placed cliGhostExterns_sat_of_cliExternsPlaced
-   libcruxHmac_row_placed lsLibcruxHmacSymCli)
+  (CliHooks cliExternsPlaced cliPqxdhHookTablePlaced lsAesDecSym lsAesEncSym)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (cliHookTablePlaced)
+open CryptoVerification.SignalSession.Cli.Slots (lsLibcruxHmacSymCli)
 open LibsignalBinary.Heap
   (AllocCallPreserved AllocCostModel BudgetLimits FitsEvent FitsEvents
    MallocngCostModelIface MallocngCostModelSound VmPreserved rustAllocEvents)
@@ -76,6 +79,7 @@ open LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetHelpers
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
   (FdsGe3Closed extract_withFdsGe3Closed fdsGe3Closed_writeFileHook fdsGe3Closed_writeStdoutHook
    hookOk_withFdsGe3Closed withFdsGe3Closed)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (hookOk_withLsRet withLsRet)
 open VerifiedLibraries.Mallocng (MallocngMaxAllocSize mallocngStackBytes)
 
 /-! ## Non-`.Running` Stability and CPS Predicate Rules -/
@@ -988,41 +992,26 @@ private theorem list_lookup_mem {β : Type} {xs : List (String × β)} {k : Stri
     · exact List.Mem.tail _ (ih h)
 
 private theorem table_cliPqxdhPlaced_nonMallocng_fdsGe3Closed
-    (mmpl : Obj.MultiPlacement) (W : CliHooks) {sym : String} {f : State → State}
-    (hne_hmac : sym ≠ lsLibcruxHmacSymCli)
-    (hp : (sym, f) ∈ cliPqxdhHookTablePlaced mmpl W.C W.Q) :
+    (_W : CliHooks) {sym : String} {f : State → State}
+    (hp : (sym, f) ∈ cliPqxdhHookTablePlaced _W.Q) :
     ∀ u : State, FdsGe3Closed u.fs → FdsGe3Closed (f u).fs := by
-  simp only [cliPqxdhHookTablePlaced, List.mem_cons, List.not_mem_nil, or_false] at hp
-  rcases hp with h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h <;>
-    first
-    | (rcases Prod.mk.inj h with ⟨_, rfl⟩; exact fun _ hfs => hfs)
-    | exact False.elim (hne_hmac (Prod.mk.inj h).1)
-    | (rcases Prod.mk.inj h with ⟨_, rfl⟩
-       intro u hfs; unfold mlkemEncaps1Hook retHook; dsimp only; split <;> exact hfs)
+  nomatch hp
 
-/-- Every row `sym` of `cliExternsPlaced mmpl W` outside the 3 `mallocng` crypto symbols
-    (`lsAesEncSym`, `lsAesDecSym`, `lsLibcruxHmacSymCli`) preserves `FdsGe3Closed` unconditionally. -/
+/-- Every row `sym` of `cliExternsPlaced mmpl W` (with legacy unused guards on the directly
+    linked `mallocng` crypto symbols `lsAesEncSym`, `lsAesDecSym`, `lsLibcruxHmacSymCli`) preserves
+    `FdsGe3Closed` unconditionally. -/
 theorem cliExternsPlaced_nonMallocngSym_preserves_fdsGe3Closed
     (mmpl : Obj.MultiPlacement) (W : CliHooks) {sym : String} {f : State → State}
-    (hne_enc : sym ≠ lsAesEncSym) (hne_dec : sym ≠ lsAesDecSym)
-    (hne_hmac : sym ≠ lsLibcruxHmacSymCli) (hlook : cliExternsPlaced mmpl W sym = some f) :
+    (_hne_enc : sym ≠ lsAesEncSym := by decide)
+    (_hne_dec : sym ≠ lsAesDecSym := by decide)
+    (_hne_hmac : sym ≠ lsLibcruxHmacSymCli := by decide)
+    (hlook : cliExternsPlaced mmpl W sym = some f) :
     ∀ u : State, FdsGe3Closed u.fs → FdsGe3Closed (f u).fs := by
   unfold cliExternsPlaced at hlook
   split at hlook
   · injection hlook with hrf; subst hrf; exact fun _ hfs => hfs
   · have hp : (sym, f) ∈ cliHookTablePlaced mmpl W := list_lookup_mem hlook
-    unfold cliHookTablePlaced at hp
-    rw [List.mem_append] at hp
-    rcases hp with hpq | hcli
-    · exact table_cliPqxdhPlaced_nonMallocng_fdsGe3Closed mmpl W hne_hmac hpq
-    · simp only [List.mem_cons, List.not_mem_nil, or_false] at hcli
-      rcases hcli with h | h | h | h | h | h | h | h | h <;>
-        first
-        | (rcases Prod.mk.inj h with ⟨_, rfl⟩; exact fun _ hfs => hfs)
-        | exact False.elim (hne_enc (Prod.mk.inj h).1)
-        | exact False.elim (hne_dec (Prod.mk.inj h).1)
-        | (rcases Prod.mk.inj h with ⟨_, rfl⟩; exact fun _ hfs => fdsGe3Closed_writeFileHook hfs)
-        | (rcases Prod.mk.inj h with ⟨_, rfl⟩; exact fun _ hfs => fdsGe3Closed_writeStdoutHook hfs)
+    cases hp
 
 theorem cliExternsPlaced_nonMallocngSym_hookSat_withFdsGe3Closed
     {α : Type} (mmpl : Obj.MultiPlacement) (W : CliHooks)
@@ -1037,80 +1026,120 @@ theorem cliExternsPlaced_nonMallocngSym_hookSat_withFdsGe3Closed
       cliExternsPlaced_nonMallocngSym_preserves_fdsGe3Closed mmpl W hne_enc hne_dec hne_hmac hH)
     hsat
 
-theorem cliExternsPlaced_aesEnc_withFdsGe3Closed_hookSat
-    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) (W : CliHooks) (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl) :
-    HookSat (cliExternsPlaced mmpl W) lsAesEncSym
-      (withFdsGe3Closed (aesEncBudgetSpec W.C.E fineCostModel
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim)) :=
-  fineAesEnc_budget_withFdsGe3Closed_hookSat γ tp brkStart lim hPl W.C.E
-    (cliExternsPlaced_row mmpl W (aesEnc_row_placed mmpl W))
+theorem fineLibcruxHmac_budget_withLsRet_withFdsGe3Closed_hookOk [CryptoVerification.LibsignalPlacement]
+    (γ : GhostName) {mpl : Obj.MultiPlacement} (tp brkStart : BitVec 64) (lim : BudgetLimits)
+    (hPl : VerifiedLibraries.mallocngLib.Placeable mpl)
+    (F : ShaState → List (BitVec 8) → ShaState) :
+    HookOk (libcruxHmacHookMallocng mpl F)
+      (withLsRet (withFdsGe3Closed
+        (libcruxHmacBudgetSpec F fineCostModel (fineHookRustCliAllocBudget γ mpl tp brkStart) lim))) :=
+  hookOk_withLsRet (fineLibcruxHmac_budget_withFdsGe3Closed_hookOk γ tp brkStart lim hPl F)
 
-theorem cliGhostExterns_aesEnc_withFdsGe3Closed_hookSat
-    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) (gh : CliGhostHooks) (W : CliHooks)
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl) :
-    HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesEncSym
-      (withFdsGe3Closed (aesEncBudgetSpec W.C.E fineCostModel
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim)) :=
-  cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-    (cliExternsPlaced_aesEnc_withFdsGe3Closed_hookSat γ mmpl tp brkStart lim W hPl)
+theorem fineLibcruxHmac_budget_withLsRet_withFdsGe3Closed_hookSat [CryptoVerification.LibsignalPlacement]
+    {abs : String → Option (State → State)} {name : String}
+    (γ : GhostName) {mpl : Obj.MultiPlacement} (tp brkStart : BitVec 64) (lim : BudgetLimits)
+    (hPl : VerifiedLibraries.mallocngLib.Placeable mpl)
+    (F : ShaState → List (BitVec 8) → ShaState)
+    (hH : abs name = some (libcruxHmacHookMallocng mpl F)) :
+    HookSat abs name
+      (withLsRet (withFdsGe3Closed
+        (libcruxHmacBudgetSpec F fineCostModel (fineHookRustCliAllocBudget γ mpl tp brkStart) lim))) :=
+  ⟨libcruxHmacHookMallocng mpl F, hH,
+    fineLibcruxHmac_budget_withLsRet_withFdsGe3Closed_hookOk γ tp brkStart lim hPl F⟩
 
-theorem cliExternsPlaced_aesDec_withFdsGe3Closed_hookSat
-    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) (W : CliHooks) (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl) :
-    HookSat (cliExternsPlaced mmpl W) lsAesDecSym
-      (withFdsGe3Closed (aesDecBudgetSpec W.C.D fineCostModel
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim)) :=
-  fineAesDec_budget_withFdsGe3Closed_hookSat γ tp brkStart lim hPl W.C.D
-    (cliExternsPlaced_row mmpl W (aesDec_row_placed mmpl W))
+theorem hookOk_withFdsGe3Closed_of_fs_eq {α : Type} {f : State → State} {spec : Spec α}
+    (hfs : ∀ s0 : State, (f s0).fs = s0.fs)
+    (hok : HookOk f spec) :
+    HookOk f (withFdsGe3Closed spec) :=
+  hookOk_withFdsGe3Closed (fun s hfds => (hfs s).symm ▸ hfds) hok
 
-theorem cliGhostExterns_aesDec_withFdsGe3Closed_hookSat
-    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) (gh : CliGhostHooks) (W : CliHooks)
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl) :
-    HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
-      (withFdsGe3Closed (aesDecBudgetSpec W.C.D fineCostModel
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim)) :=
-  cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-    (cliExternsPlaced_aesDec_withFdsGe3Closed_hookSat γ mmpl tp brkStart lim W hPl)
+theorem hookOk_withLsRet_withFdsGe3Closed_of_fs_eq [CryptoVerification.LibsignalPlacement]
+    {α : Type} {f : State → State} {spec : Spec α}
+    (hfs : ∀ s0 : State, (f s0).fs = s0.fs)
+    (hok : HookOk f (withLsRet spec)) :
+    HookOk f (withLsRet (withFdsGe3Closed spec)) := by
+  intro x R s0 hrun hpre hsp
+  dsimp only [withLsRet, withFdsGe3Closed] at hpre
+  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
+  rcases hpre with ⟨hlr, hpre_fds⟩
+  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre_fds
+  rcases hpre_fds with ⟨hfds, hpre_base⟩
+  have hpre_ls : s0.mem ⊨ (withLsRet spec).pre x s0 ∗ R := by
+    dsimp only [withLsRet]
+    rw [sepConj_assoc, satisfies_pure_sepConj]
+    exact ⟨hlr, hpre_base⟩
+  obtain ⟨hkf, hsym, hout⟩ := hok x R s0 hrun hpre_ls hsp
+  refine ⟨hkf, hsym, ?_⟩
+  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan_st, hpan⟩ | ⟨c, hex_st, hex⟩ | ⟨hoom_st, hoom⟩
+  · refine Or.inl ⟨hret, hcc, ?_⟩
+    dsimp only [withLsRet, withFdsGe3Closed] at hpost ⊢
+    rw [sepConj_assoc, satisfies_pure_sepConj]
+    exact ⟨by rwa [hfs s0], hpost⟩
+  · exact Or.inr (Or.inl ⟨hpan_st, hpan⟩)
+  · exact Or.inr (Or.inr (Or.inl ⟨c, hex_st, hex⟩))
+  · exact Or.inr (Or.inr (Or.inr ⟨hoom_st, hoom⟩))
 
-theorem cliExternsPlaced_aesDecWeak_withFdsGe3Closed_hookSat
-    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) (W : CliHooks) (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl) :
-    HookSat (cliExternsPlaced mmpl W) lsAesDecSym
-      (withFdsGe3Closed (aesDecWeakBudgetSpec W.C.D fineCostModel
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim)) :=
-  fineAesDecWeak_budget_withFdsGe3Closed_hookSat γ tp brkStart lim hPl W.C.D
-    (cliExternsPlaced_row mmpl W (aesDec_row_placed mmpl W))
+theorem fineAesEnc_budget_withLsRet_withFdsGe3Closed_hookOk [CryptoVerification.LibsignalPlacement]
+    (γ : GhostName) {mpl : Obj.MultiPlacement} (tp brkStart : BitVec 64) (lim : BudgetLimits)
+    (hPl : VerifiedLibraries.mallocngLib.Placeable mpl)
+    (E : AesKey → Block → Block) :
+    HookOk (aesEncHookMallocng mpl E)
+      (withLsRet (withFdsGe3Closed
+        (aesEncBudgetSpec E fineCostModel (fineHookRustCliAllocBudget γ mpl tp brkStart) lim))) :=
+  hookOk_withLsRet (fineAesEnc_budget_withFdsGe3Closed_hookOk γ tp brkStart lim hPl E)
 
-theorem cliGhostExterns_aesDecWeak_withFdsGe3Closed_hookSat
-    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) (gh : CliGhostHooks) (W : CliHooks)
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl) :
-    HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
-      (withFdsGe3Closed (aesDecWeakBudgetSpec W.C.D fineCostModel
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim)) :=
-  cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-    (cliExternsPlaced_aesDecWeak_withFdsGe3Closed_hookSat γ mmpl tp brkStart lim W hPl)
+theorem fineAesEnc_budget_withLsRet_withFdsGe3Closed_hookSat [CryptoVerification.LibsignalPlacement]
+    {abs : String → Option (State → State)} {name : String}
+    (γ : GhostName) {mpl : Obj.MultiPlacement} (tp brkStart : BitVec 64) (lim : BudgetLimits)
+    (hPl : VerifiedLibraries.mallocngLib.Placeable mpl)
+    (E : AesKey → Block → Block)
+    (hH : abs name = some (aesEncHookMallocng mpl E)) :
+    HookSat abs name
+      (withLsRet (withFdsGe3Closed
+        (aesEncBudgetSpec E fineCostModel (fineHookRustCliAllocBudget γ mpl tp brkStart) lim))) :=
+  ⟨aesEncHookMallocng mpl E, hH,
+    fineAesEnc_budget_withLsRet_withFdsGe3Closed_hookOk γ tp brkStart lim hPl E⟩
 
-theorem cliExternsPlaced_libcruxHmac_withFdsGe3Closed_hookSat
-    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) (W : CliHooks) (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl) :
-    HookSat (cliExternsPlaced mmpl W) lsLibcruxHmacSymCli
-      (withFdsGe3Closed (libcruxHmacBudgetSpec W.C.F fineCostModel
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim)) :=
-  fineLibcruxHmac_budget_withFdsGe3Closed_hookSat γ tp brkStart lim hPl W.C.F
-    (cliExternsPlaced_row mmpl W (libcruxHmac_row_placed mmpl W))
+theorem fineAesDec_budget_withLsRet_withFdsGe3Closed_hookOk [CryptoVerification.LibsignalPlacement]
+    (γ : GhostName) {mpl : Obj.MultiPlacement} (tp brkStart : BitVec 64) (lim : BudgetLimits)
+    (hPl : VerifiedLibraries.mallocngLib.Placeable mpl)
+    (D : AesKey → Block → Block) :
+    HookOk (aesDecHookMallocng mpl D)
+      (withLsRet (withFdsGe3Closed
+        (aesDecBudgetSpec D fineCostModel (fineHookRustCliAllocBudget γ mpl tp brkStart) lim))) :=
+  hookOk_withLsRet (fineAesDec_budget_withFdsGe3Closed_hookOk γ tp brkStart lim hPl D)
 
-theorem cliGhostExterns_libcruxHmac_withFdsGe3Closed_hookSat
-    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) (gh : CliGhostHooks) (W : CliHooks)
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl) :
-    HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsLibcruxHmacSymCli
-      (withFdsGe3Closed (libcruxHmacBudgetSpec W.C.F fineCostModel
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim)) :=
-  cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-    (cliExternsPlaced_libcruxHmac_withFdsGe3Closed_hookSat γ mmpl tp brkStart lim W hPl)
+theorem fineAesDec_budget_withLsRet_withFdsGe3Closed_hookSat [CryptoVerification.LibsignalPlacement]
+    {abs : String → Option (State → State)} {name : String}
+    (γ : GhostName) {mpl : Obj.MultiPlacement} (tp brkStart : BitVec 64) (lim : BudgetLimits)
+    (hPl : VerifiedLibraries.mallocngLib.Placeable mpl)
+    (D : AesKey → Block → Block)
+    (hH : abs name = some (aesDecHookMallocng mpl D)) :
+    HookSat abs name
+      (withLsRet (withFdsGe3Closed
+        (aesDecBudgetSpec D fineCostModel (fineHookRustCliAllocBudget γ mpl tp brkStart) lim))) :=
+  ⟨aesDecHookMallocng mpl D, hH,
+    fineAesDec_budget_withLsRet_withFdsGe3Closed_hookOk γ tp brkStart lim hPl D⟩
+
+theorem fineAesDecWeak_budget_withLsRet_withFdsGe3Closed_hookOk [CryptoVerification.LibsignalPlacement]
+    (γ : GhostName) {mpl : Obj.MultiPlacement} (tp brkStart : BitVec 64) (lim : BudgetLimits)
+    (hPl : VerifiedLibraries.mallocngLib.Placeable mpl)
+    (D : AesKey → Block → Block) :
+    HookOk (aesDecHookMallocng mpl D)
+      (withLsRet (withFdsGe3Closed
+        (aesDecWeakBudgetSpec D fineCostModel (fineHookRustCliAllocBudget γ mpl tp brkStart) lim))) :=
+  hookOk_withLsRet (fineAesDecWeak_budget_withFdsGe3Closed_hookOk γ tp brkStart lim hPl D)
+
+theorem fineAesDecWeak_budget_withLsRet_withFdsGe3Closed_hookSat [CryptoVerification.LibsignalPlacement]
+    {abs : String → Option (State → State)} {name : String}
+    (γ : GhostName) {mpl : Obj.MultiPlacement} (tp brkStart : BitVec 64) (lim : BudgetLimits)
+    (hPl : VerifiedLibraries.mallocngLib.Placeable mpl)
+    (D : AesKey → Block → Block)
+    (hH : abs name = some (aesDecHookMallocng mpl D)) :
+    HookSat abs name
+      (withLsRet (withFdsGe3Closed
+        (aesDecWeakBudgetSpec D fineCostModel (fineHookRustCliAllocBudget γ mpl tp brkStart) lim))) :=
+  ⟨aesDecHookMallocng mpl D, hH,
+    fineAesDecWeak_budget_withLsRet_withFdsGe3Closed_hookOk γ tp brkStart lim hPl D⟩
 
 end LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.CryptoHookFds

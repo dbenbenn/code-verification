@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKey
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKey -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `consume_message_key` Callee Contract & Call Combinators
@@ -21,7 +21,7 @@ dropped from `onPanic`), along with `Steps` call-continuation combinators preser
 `LibsignalCodeRoLoaded`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +37,7 @@ open LibsignalBinary.Heap (AllocEvent AllocCostModel BudgetLimits RustCliAllocBu
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `consume_message_key` raw specification,
     reusing `KeyDerive.cmkRawSpecPlaced` via `A.atState`, eliminating `onOom` (`⌜False⌝`), and
     dropping `allocFailedIn` from `onPanic` so only `(x.model F).1 = .error .panic` remains. -/
-def cmkRawSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def cmkRawSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaCompress) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cmkEnv : ConsumeMessageKeyGhost → List AllocEvent → Prop) :
     Spec (ConsumeMessageKeyGhost × M.σ) where

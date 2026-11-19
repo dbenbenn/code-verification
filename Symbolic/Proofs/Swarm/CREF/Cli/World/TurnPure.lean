@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat
-public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
-public import Symbolic.Proofs.Swarm.CREF.OpkRelC
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
+import Symbolic.Proofs.Refinement.Composed.Cli.OldShape
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.OpkRelC -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.Composed.Cli.Transfer
 import Symbolic.Proofs.Swarm.CREF.Cli.World.InitPure
 import Symbolic.Proofs.Swarm.CREF.Cli.World.RelCliPure
@@ -27,7 +27,7 @@ target participant's record in `PureCRel` without altering `COpkRelC`, and `leak
 `records` on the active caller under `ValidCall`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

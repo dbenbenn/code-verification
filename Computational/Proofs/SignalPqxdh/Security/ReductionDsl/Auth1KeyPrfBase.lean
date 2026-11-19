@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfSharedEval
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfSharedEval -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
 
 /-!
 # One-Key `initPrin` Block for `Auth` `ReductionDsl` Programs
@@ -19,7 +19,7 @@ Defines the one-key `.initPrin` handler `initPrin1KeyFixedB` and proves its eval
 leaf invariant, and static cost and query bounds relative to the two-key block `initPrinFixedB`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 16000000
@@ -35,7 +35,7 @@ open RoKem
 open FgGapDh
 open OracleSpec OracleComp
 
-def AuthQuery.NotInitPrin {S : Setup} (q : AuthQuery S) : Prop :=
+@[expose] def AuthQuery.NotInitPrin {S : Setup} (q : AuthQuery S) : Prop :=
   ∀ u, q ≠ .initPrin u
 
 theorem stepAuthOtherPrim1Key_eq_of_ne {S : Setup} (q : AuthQuery S)
@@ -55,7 +55,7 @@ section Auth1KeyInitPrin
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
 
 /-- One-key `initPrin` block using a single scalar for both identity and signing keys. -/
-def initPrin1KeyFixedB (fhst : Var Γ₁ authHybridStateFixedTy) (u : Var Γ₂ .nat)
+@[expose] def initPrin1KeyFixedB (fhst : Var Γ₁ authHybridStateFixedTy) (u : Var Γ₂ .nat)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ RSF :=
   letV (ahsBase (ahsfHybrid (v fhst))) fun st =>
   .ite (asHasWonAuth (v st)) (.ret (.pair aNone (v fhst))) <|

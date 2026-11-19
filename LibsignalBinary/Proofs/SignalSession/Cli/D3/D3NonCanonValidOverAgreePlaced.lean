@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverAuxPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverAuxPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.PqDirNoMatch
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidMatchAuxPlaced
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.GamePaths
@@ -19,7 +19,12 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemma
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeStore
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Lemmas.Agree
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
-import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BinaryOomSpec
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3ParseRejectPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `CommitOk`, `DecPkOkOverD3`, and Model Agreement for Non-Canonical Overwrite `recv`
@@ -29,7 +34,7 @@ Proves `CommitOk` for `decPkOverDef`, `DecPkOkOverD3` on non-matching sessions, 
 wire payloads `body` satisfying `Pksm.pksmParse body = some pm` and `pkToE? pm = some m`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -340,7 +345,7 @@ theorem commitOk_pqRecvPrekey_decPkOverDef {S : RunSem} {X : UnreachedPqxdhPrimi
 session in `Scope`: combines `DecPkOkD3 W (fun _ => False) F peer me pm` (giving `pkToE? pm = some m`,
 inner `SignalMessage.tryFrom` witness, and `DecPkOk₀` at `fun _ => False`) with the loaded non-matching
 session witness in `Scope`. -/
-def DecPkOkOverD3 (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] def DecPkOkOverD3 (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer me : AddrVal) (pm : PreKeySignalMessage) : Prop :=
   DecPkOkD3 W (fun _ => False) F peer me pm ∧
   ∃ r s, Slots.loadRec Scope F peer = .ok (some r) ∧
@@ -966,23 +971,6 @@ theorem observedExcept_and_noMatchSessionFile_runAns_decPkOverDef
                 injection hsess' with hxg'; rcases Prod.mk.inj hxg' with ⟨rfl, rfl⟩
                 injection hex with _ _ hfs; subst hfs; exact hself.trans (congrArg some hrec_eq)
 
-theorem observedExcept_runAns_decPkOverDef
-    {S : RunSem} {X : UnreachedPqxdhPrimitives} {W : PEParams}
-    (hdec : S.decryptPrekey = decPkOverDef X W Slots.scopeIn)
-    (hparseS : ∀ b, S.pksmParse b = Pksm.pksmParse b)
-    {st : PqParty} (hwf : PqxdhPartyInSpecDomain W st)
-    {x : RecordExtras} {g : GhostState (List (BitVec 8))} (hsess : st.session = some (x, g))
-    {body : List (BitVec 8)} {pm : PreKeySignalMessage} {m : PreKeyMessageFields} {rc : BitVec 256}
-    (hparse : Pksm.pksmParse body = some pm)
-    (hpk : pkToE? pm = some m)
-    (hnomatch : ¬ PqSessionMatches x g m) :
-    let inp := pqRecvInputs W st (wirePrekey :: body) rc
-    OutcomeMatchesModelExceptPath W inp (sessionFile (partyAddress st.party.other))
-      (pqRecvPrekeyModel X W { st with session := none } m rc)
-      (observe inp.files (runAns S inp)) :=
-  (observedExcept_and_noMatchSessionFile_runAns_decPkOverDef
-    hdec hparseS hwf hsess hparse hpk hnomatch).1
-
 /-- Canonical (`body := m.bytes`) `OutcomeMatchesModelExceptPath ∧ NoMatchSessionFile` agreement under
 `hm : m.inner.length + 2048 < 2 ^ 32`, covering both valid and invalid inner `SignalMessage` bytes. -/
 theorem observedExcept_and_noMatchSessionFile_runAns_canonical
@@ -1012,20 +1000,5 @@ theorem observedExcept_and_noMatchSessionFile_runAns_canonical
       unfold pqRecvPrekeyModel; rw [hi]
     intro inp; rw [RunRefine.runAns_pqRecvPrekey_eq, hparseS m.bytes, hparse, hmod_none]
     exact ⟨rfl, fun _ _ _ _ h => by rw [hmod_none] at h; cases h⟩
-
-theorem observedExcept_runAns_canonical
-    {S : RunSem} {X : UnreachedPqxdhPrimitives} {W : PEParams}
-    (hdec : S.decryptPrekey = decPkOverDef X W Slots.scopeIn)
-    (hparseS : ∀ b, S.pksmParse b = Pksm.pksmParse b)
-    {st : PqParty} (hwf : PqxdhPartyInSpecDomain W st)
-    {x : RecordExtras} {g : GhostState (List (BitVec 8))} (hsess : st.session = some (x, g))
-    {m : PreKeyMessageFields} {rc : BitVec 256}
-    (hm : m.inner.length + 2048 < 2 ^ 32) (hnomatch : ¬ PqSessionMatches x g m) :
-    let inp := pqRecvInputs W st (wirePrekey :: m.bytes) rc
-    OutcomeMatchesModelExceptPath W inp (sessionFile (partyAddress st.party.other))
-      (pqRecvPrekeyModel X W { st with session := none } m rc)
-      (observe inp.files (runAns S inp)) :=
-  (observedExcept_and_noMatchSessionFile_runAns_canonical
-    hdec hparseS hwf hsess hm hnomatch).1
 
 end LibsignalBinary.Proofs.SignalSession.Cli.D3

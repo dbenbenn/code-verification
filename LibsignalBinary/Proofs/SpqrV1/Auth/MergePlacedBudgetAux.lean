@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
@@ -33,7 +33,7 @@ Defines bounded allocator event envelopes (`AuthPlacedMergeIterEnv`, `AuthPlaced
 and code-loaded `[LibsignalPlacement]` exit and field step lemmas for Block `295`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -265,11 +265,11 @@ theorem FitsEnv.authPlacedMergeLoop_split {M : AllocCostModel} {lim : BudgetLimi
     ((fitsEvents_append M lim evs₁ evs₂ st).mp (hFit (evs₁ ++ evs₂) (h₁.append h₂))).2
 
 /-- Precondition allocation envelope of placed `Authenticator::merge` (Block `295`, depth `97`). -/
-def AuthPlacedMergeEnv (x : AuthMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def AuthPlacedMergeEnv (x : AuthMergeGhost) (evs : List AllocEvent) : Prop :=
   AuthPlacedMergeLoopEnv (4 * x.bs.length + 8) x.bs.length evs
 
 /-- Postcondition allocation envelope of placed `Authenticator::merge` (Block `295`). -/
-def AuthPlacedMergePostEnv (x : AuthMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def AuthPlacedMergePostEnv (x : AuthMergeGhost) (evs : List AllocEvent) : Prop :=
   match (mergeMessage ProtoAuthenticator.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 97).toOption with
   | some (_, rest) => AuthPlacedMergeLoopEnv (4 * (x.bs.length - rest.length)) x.bs.length evs
   | none => AuthPlacedMergeLoopEnv (4 * x.bs.length + 8) x.bs.length evs
@@ -283,7 +283,7 @@ theorem authPlacedMergePostEnv_imp_pre {x : AuthMergeGhost} {evs : List AllocEve
   · exact h
 
 /-- Budget-threaded specification of `Authenticator::merge` (Block `295`). -/
-def authMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def authMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (AuthMergeGhost × M.σ) :=
   authMergeSpecOfEnv A lim AuthPlacedMergeEnv AuthPlacedMergePostEnv
 

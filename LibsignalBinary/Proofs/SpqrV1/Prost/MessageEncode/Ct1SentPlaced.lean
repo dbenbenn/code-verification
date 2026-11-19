@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent2StagesPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommon
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent2StagesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommon -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodePlaced
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodePlaced1
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent1
@@ -26,7 +26,7 @@ Completes Stage 6 (`ct1: Vec<u8>`) and the epilogue for `encode<unchunked::Ct1Se
 (Block 319), and provides the `EncodeToVec` (`Block 426`) exact callee bridges at `lsmpl.base 319`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

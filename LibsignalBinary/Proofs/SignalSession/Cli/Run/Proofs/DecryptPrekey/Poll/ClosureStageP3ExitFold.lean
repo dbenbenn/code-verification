@@ -9,11 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureExitFold
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrace -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureExitFold -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrace -- shake: keep
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4Defs
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP2Defs -- shake: keep
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Poll Stage P3 and Stage P4 Spatial Folds
@@ -23,7 +26,7 @@ Spatial bridge lemmas connecting Stage P3 error exits (`stageP3ErrPost` /
 (`Kits.stageP4ExitAt` and `stageP4MatchedExitAt`) to `dpFutDoneAt` and `memRegion s.sp 3280`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -200,7 +203,7 @@ theorem stackAt_subStack_sub_eq (sp : BitVec 64) (B : RunBudgets) {n : Nat}
 
 /-- Bidirectional split of `decryptPrekeyCoroCopyAt` (`[coroPtr + 0x70.. +0xe0)`) into the 10 words
 used by `Kits.stageP4Shared` and the 4 caller-preserved words (`+0x80`, `+0xb8`, `+0xc0`, `+0xd8`). -/
-def coroCopyRemP4At (fut meA spkPtr spkVt rng : BitVec 64) : SepProp :=
+@[expose] def coroCopyRemP4At (fut meA spkPtr spkVt rng : BitVec 64) : SepProp :=
   ((fut + 0x80#64) ↦₆₄ meA) ∗
   ((fut + 0xb8#64) ↦₆₄ spkPtr) ∗
   ((fut + 0xc0#64) ↦₆₄ spkVt) ∗
@@ -225,7 +228,7 @@ theorem coroCopy_eq_p4_sep
 
 /-- Remainder of `preKeyMsgAt A g a m` after extracting `signalMessageAt`, `baseKey` (`+0xa8`), and
 `identityKey` (`+0xc8`) for Stages P2, P3, and P4. -/
-def preKeyMsgRemBaseIdKeyAt (A : RustAlloc) (g : PreKeyMsgGhost) (a : BitVec 64)
+@[expose] def preKeyMsgRemBaseIdKeyAt (A : RustAlloc) (g : PreKeyMsgGhost) (a : BitVec 64)
     (m : PreKeySignalMessage) : SepProp :=
   optU32At (a + 0x78#64) m.preKeyId ∗
   boxU8At A (a + 0x80#64) g.serPtr m.serialized ∗
@@ -385,7 +388,7 @@ theorem stageP3Err_stack_entails_3280 (s0 : State)
 
 /-- Bidirectional split of `memRegion (sp + 0x2b0#64) 192` into the four 36-byte Stage P4 slots
 and their four 12-byte inter-slot gaps. -/
-def sp2b0GapsAt (sp : BitVec 64) : SepProp :=
+@[expose] def sp2b0GapsAt (sp : BitVec 64) : SepProp :=
   memRegion (sp + 0x2d4#64) 12 ∗
   memRegion (sp + 0x304#64) 12 ∗
   memRegion (sp + 0x334#64) 12 ∗
@@ -569,7 +572,7 @@ theorem coro_2ac_20_eq_8_12 (coroPtr : BitVec 64) :
 
 /-- Bidirectional split of `decryptPrekeyCoroCopyAt` (`[coroPtr + 0x70.. +0xe0)`) into the 8 words
 used by `Matched.stageP4MatchedShared` and the 6 caller-preserved words. -/
-def coroCopyRemMatchedP4At (fut meA pkPtr pkVt kPtr kVt rng : BitVec 64) : SepProp :=
+@[expose] def coroCopyRemMatchedP4At (fut meA pkPtr pkVt kPtr kVt rng : BitVec 64) : SepProp :=
   ((fut + 0x80#64) ↦₆₄ meA) ∗
   ((fut + 0xa8#64) ↦₆₄ pkPtr) ∗
   ((fut + 0xb0#64) ↦₆₄ pkVt) ∗

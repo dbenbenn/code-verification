@@ -10,18 +10,25 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7g
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7iPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7jPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7g -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7iPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7jPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7j
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.MallocngBridgeBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Placed Variant 7 (`Ct1Sampled`, Block `333`) — Part J
@@ -30,7 +37,7 @@ Lifts the complete `<PolyDecoder>::from_pb = Ok(dec)` success return path (`+740
 `InnerState.ct1Sampled` to `VmPreserved` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -639,58 +646,6 @@ theorem v7_dec_ok_7404_to_ret_placed_raw [LibsignalPlacement]
     A.pool lim st sf ∗
     stackAt s0.sp statesFromPbStack by ac_rfl)) ?_
   exact sepConj_mono_left hout
-
-theorem v7_dec_ok_7404_to_ret_placed_budget [LibsignalPlacement]
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksPlacedBudget M A lim ext)
-    (s0 s1 : State) (out pbA c1 p1 l1 c2 p2 l2 c3 p3 l3 c4 p4 l4 c5 p5 l5 : BitVec 64)
-    (uc : CryptoVerification.LibsignalSpqrV1.Unchunked.SendCt.Ct1Sent (spqrAuthApi F))
-    (enc : PolyEncoder) (dec : PolyDecoder) (Rest : SepProp)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = lsmpl.base 333 + 7404#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64)
-    (hx19_1 : s1.readReg64 .x19 = out)
-    (hx21_1 : s1.readReg64 .x21 = (s0.sp - 2400#64) + 1392#64)
-    (hx22_1 : s1.readReg64 .x22 = (s0.sp - 2400#64) + 1888#64)
-    (hx23_1 : s1.readReg64 .x23 = (s0.sp - 2400#64) + 848#64)
-    (hx24_1 : s1.readReg64 .x24 = c2)
-    (hx26_1 : s1.readReg64 .x26 = l1)
-    (hx27_1 : s1.readReg64 .x27 = pbA)
-    (htr1 : TraceCalleeSaved s1 s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext)) (s0.readReg64 .x30) s1
-      (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        memRegion (s0.sp - 2400#64) 16 ∗
-        (((s0.sp - 2400#64) + 16#64) ↦₆₄ v7_polyEncoderTag enc) ∗
-        (((s0.sp - 2400#64) + 24#64) ↦₆₄ c1) ∗
-        memRegion ((s0.sp - 2400#64) + 32#64) 168 ∗
-        (((s0.sp - 2400#64) + 200#64) ↦₆₄ p1) ∗
-        memRegion ((s0.sp - 2400#64) + 208#64) 1056 ∗
-        v7_ct1SentWordsAt ((s0.sp - 2400#64) + 1264#64) c1 p1 l1 c2 p2 l2 c3 p3 l3 c4 p4 l4 c5 p5 l5 uc.epoch ∗
-        polyEncoderAt A.repAlloc ((s0.sp - 2400#64) + 1392#64) enc ∗
-        memRegion ((s0.sp - 2400#64) + 1792#64) 96 ∗
-        resultPolyDecoderFromPbAt A.repAlloc ((s0.sp - 2400#64) + 1888#64) (.ok dec) ∗
-        memRegion ((s0.sp - 2400#64) + 2288#64) 16 ∗
-        statesFromPbSavedCells s0 ∗
-        memRegion out chunkedStatesSize ∗
-        v7_ct1SentHeap A.repAlloc uc c1 p1 l1 c2 p2 l2 c3 p3 l3 c4 p4 l4 c5 p5 l5 ∗
-        Rest ∗
-        A.pool lim st s1)
-      (fun sf Pf =>
-        (Pf ⊢
-          resultChunkedStatesAt A.repAlloc (F := F) out (.ok (.ct1Sampled ⟨uc, enc, dec⟩)) ∗
-          Rest ∗
-          A.pool lim st sf ∗
-          stackAt s0.sp statesFromPbStack) ∧
-        VmPreserved s1 sf ∧
-        sf.sp = s0.sp ∧
-        CalleeSavedPreserved s0 sf ∧
-        sf.trace = s0.trace) :=
-  v7_dec_ok_7404_to_ret_placed_raw A lim st hA.memcpy_ok
-    s0 s1 out pbA c1 p1 l1 c2 p2 l2 c3 p3 l3 c4 p4 l4 c5 p5 l5
-    uc enc dec Rest
-    hsp0_align hpc1 hrun1 hsp1 hx19_1 hx21_1 hx22_1 hx23_1 hx24_1 hx26_1 hx27_1 htr1
 
 theorem v7_dec_ok_7404_to_ret_placed_of_placedHooks [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}

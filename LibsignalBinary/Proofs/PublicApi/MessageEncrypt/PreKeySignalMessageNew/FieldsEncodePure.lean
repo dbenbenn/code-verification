@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.Split
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.Split -- proof-setup: allow-public-import
 
 /-!
 # Pure Prefix Encodings and `Vec` Buffer Helpers for `PreKeySignalMessage::new`
@@ -18,7 +18,7 @@ Relates concrete `encodeVarint` output to `Prost.varint`, defines the cumulative
 `serPrefix0..serPrefix8` after each protobuf tag, and provides `vecU8Buf` slice-splitting helpers.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncode
 
@@ -73,10 +73,6 @@ theorem encodeVarint_eq_prost_varint (v : BitVec 64) :
   have := v.isLt
   omega
 
-theorem prost_varint_eq_encodeVarint (v : BitVec 64) :
-    LibsignalSessionApi.Prost.varint v.toNat = encodeVarint v :=
-  (encodeVarint_eq_prost_varint v).symm
-
 theorem prost_varint_length_eq_encodeVarint (n : Nat) (hn : n < 2 ^ 64) :
     LibsignalSessionApi.Prost.varint n = encodeVarint (BitVec.ofNat 64 n) := by
   have htoNat : (BitVec.ofNat 64 n).toNat = n := by
@@ -85,31 +81,31 @@ theorem prost_varint_length_eq_encodeVarint (n : Nat) (hn : n < 2 ^ 64) :
 
 /-! ## Cumulative Serialized Prefixes `serPrefix0..serPrefix8` -/
 
-def serPrefix0 (x : PreKeyMsgNewCall) : List (BitVec 8) :=
+@[expose] def serPrefix0 (x : PreKeyMsgNewCall) : List (BitVec 8) :=
   [versionByte x.ver]
 
-def serPrefix1 (x : PreKeyMsgNewCall) : List (BitVec 8) :=
+@[expose] def serPrefix1 (x : PreKeyMsgNewCall) : List (BitVec 8) :=
   serPrefix0 x ++ LibsignalSessionApi.Prost.uint32Field 1 x.preKeyId
 
-def serPrefix2 (x : PreKeyMsgNewCall) : List (BitVec 8) :=
+@[expose] def serPrefix2 (x : PreKeyMsgNewCall) : List (BitVec 8) :=
   serPrefix1 x ++ LibsignalSessionApi.Prost.bytesField 2 (some x.baseKey.serialize)
 
-def serPrefix3 (x : PreKeyMsgNewCall) : List (BitVec 8) :=
+@[expose] def serPrefix3 (x : PreKeyMsgNewCall) : List (BitVec 8) :=
   serPrefix2 x ++ LibsignalSessionApi.Prost.bytesField 3 (some x.ik.serialize)
 
-def serPrefix4 (x : PreKeyMsgNewCall) : List (BitVec 8) :=
+@[expose] def serPrefix4 (x : PreKeyMsgNewCall) : List (BitVec 8) :=
   serPrefix3 x ++ LibsignalSessionApi.Prost.bytesField 4 (some x.msg.serialized)
 
-def serPrefix5 (x : PreKeyMsgNewCall) : List (BitVec 8) :=
+@[expose] def serPrefix5 (x : PreKeyMsgNewCall) : List (BitVec 8) :=
   serPrefix4 x ++ LibsignalSessionApi.Prost.uint32Field 5 (some x.regId)
 
-def serPrefix6 (x : PreKeyMsgNewCall) : List (BitVec 8) :=
+@[expose] def serPrefix6 (x : PreKeyMsgNewCall) : List (BitVec 8) :=
   serPrefix5 x ++ LibsignalSessionApi.Prost.uint32Field 6 (some x.spk)
 
-def serPrefix7 (x : PreKeyMsgNewCall) : List (BitVec 8) :=
+@[expose] def serPrefix7 (x : PreKeyMsgNewCall) : List (BitVec 8) :=
   serPrefix6 x ++ LibsignalSessionApi.Prost.uint32Field 7 (x.kp.map (·.preKeyId))
 
-def serPrefix8 (x : PreKeyMsgNewCall) : List (BitVec 8) :=
+@[expose] def serPrefix8 (x : PreKeyMsgNewCall) : List (BitVec 8) :=
   serPrefix7 x ++ LibsignalSessionApi.Prost.bytesField 8 (x.kp.map (·.ciphertext))
 
 theorem serPrefix8_eq_model_serialized (x : PreKeyMsgNewCall) :
@@ -174,7 +170,7 @@ theorem prost_bytesField_some (tag : Nat) (bs : List (BitVec 8)) (hlen : bs.leng
 
 /-! ## `vecU8Buf` Slice Helpers -/
 
-def vecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
@@ -192,7 +188,7 @@ theorem vecU8Buf_bounds {A : RustAlloc} {cap ptr : BitVec 64} {bs : List (BitVec
   rw [sepConj_assoc, satisfies_pure_sepConj] at hm
   exact hm.1
 
-def vecRest (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecRest (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length + 1 ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
     memRegion (ptr + BitVec.ofNat 64 (bs.length + 1)) (cap.toNat - (bs.length + 1))
@@ -244,7 +240,7 @@ theorem vecU8Buf_snoc_eq (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVe
   rw [h1, pointsToBytes_snoc_eq]
   simp only [List.length_append, List.length_singleton]
 
-def vecSliceRest (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) (n : Nat) : SepProp :=
+@[expose] def vecSliceRest (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) (n : Nat) : SepProp :=
   ⌜bs.length + n ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
     memRegion (ptr + BitVec.ofNat 64 (bs.length + n)) (cap.toNat - (bs.length + n))

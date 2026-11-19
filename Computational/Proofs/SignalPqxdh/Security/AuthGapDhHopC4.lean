@@ -9,10 +9,24 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhE -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhF
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SignalPqxdh.Security.Collisions
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
 /-!
 # `Auth` hop `G3 → G3.5`: `GapDH` step coupling for `DH3`
 
@@ -20,7 +34,7 @@ Maintains the simulation invariant `FgAuthSimInvDh3` across all `AuthQuery` step
 per-index `DH3 = CDH(ek_U*, spk_V*)` bad event `badAuthFgDh3At` by `GapDH` (`prob_badAuthFgDh3At_le_gapDh`).
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 open scoped ENNReal
 open MeasureTheory
@@ -112,7 +126,7 @@ theorem simulateQ_gapDhFullImpl_embedPrim_lookupSpkSkPrim (S : Setup) (P : Primi
         by rw [FgGapDh.simulateQ_gapDhFullImpl_embedPrim,
         FgGapDh.simulateQ_primBaseImpl_lookupSpkSkPrim]
 /-! ## Pure unfolding of `fgAuthStep` and CDH extraction -/
-def fgFinishRecvStep2AuthPure (S : Setup) (P : Primitives) (msg : PreKeyMsg) (kEntry :
+@[expose] def fgFinishRecvStep2AuthPure (S : Setup) (P : Primitives) (msg : PreKeyMsg) (kEntry :
   PrincipalEntry) (drKey : DRKey) (fgL' : List FgPatchEntry) (rk1 : Bytes) (ck1_1 : Bytes) (fgRootL'
   : List FgRootEntry) (mkSeed : Bytes) (spqrSalt? : Option Bytes) (updBase : AuthState S → AuthState
   S)
@@ -145,7 +159,7 @@ theorem simulateQ_gapDhFullImpl_fgFinishRecvStep2AuthGdh (S : Setup) (P : Primit
   | some pt =>
     simp only [simulateQ_bind, simulateQ_gapDhFullImpl_embedPrim_findHonestPrincipalPrim, pure_bind]
     cases findHonestPrincipal P (st.base.principals.take S.N_dh) msg.hdr.ikAPk <;> rfl
-noncomputable def fgFinishRecvAuthPure (S : Setup) (P : Primitives) (ddh : Bytes → Bytes → Bytes →
+@[expose] def fgFinishRecvAuthPure (S : Setup) (P : Primitives) (ddh : Bytes → Bytes → Bytes →
   Bool) (maxLen : ℕ) (msg : PreKeyMsg) (kEntry : PrincipalEntry) (bEntry : SpkBundleEntry) (ss :
   Bytes) (pos4? : Option FgPoS) (updBase : AuthState S → AuthState S)
     (st : FgAuthSimState S) : ProbComp (AuthResponse × FgAuthSimState S) := do
@@ -179,7 +193,7 @@ theorem simulateQ_gapDhFullImpl_fgFinishRecvAuthGdh (S : Setup) (P : Primitives)
   | some spqr =>
     exact simulateQ_gapDhFullImpl_fgFinishRecvStep2AuthGdh S P ddh k j msg kEntry dkL.1 dkL.2
       rkOut.1.1 _ rkOut.2 _ spqr.2 updBase st
-noncomputable def fgRunRecvOPKAuthPure (S : Setup) (P : Primitives) (ddh : Bytes → Bytes → Bytes →
+@[expose] def fgRunRecvOPKAuthPure (S : Setup) (P : Primitives) (ddh : Bytes → Bytes → Bytes →
   Bool) (maxLen : ℕ) (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) (msg : PreKeyMsg)
     (st : FgAuthSimState S) : ProbComp (AuthResponse × FgAuthSimState S) := do
   if !(msg.hdr.spkId == UInt32.ofNat j.val && msg.hdr.pqspkId == UInt32.ofNat j.val &&
@@ -250,7 +264,7 @@ theorem simulateQ_gapDhFullImpl_fgRunRecvOPKAuthGdh (S : Setup) (P : Primitives)
                   cases P.kemDecaps bEntry.pqspkSk msg.hdr.kemCt with
                   | none => rfl
                   | some ss => simp
-noncomputable def fgRunRecvNoOPKAuthPure (S : Setup) (P : Primitives) (ddh : Bytes → Bytes → Bytes →
+@[expose] def fgRunRecvNoOPKAuthPure (S : Setup) (P : Primitives) (ddh : Bytes → Bytes → Bytes →
   Bool) (maxLen : ℕ) (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk) (msg : PreKeyMsg)
     (st : FgAuthSimState S) : ProbComp (AuthResponse × FgAuthSimState S) := do
   if !(msg.hdr.spkId == UInt32.ofNat j.val && msg.hdr.pqspkId == UInt32.ofNat j.val &&
@@ -309,7 +323,7 @@ theorem simulateQ_gapDhFullImpl_fgRunRecvNoOPKAuthGdh (S : Setup) (P : Primitive
               cases P.kemDecaps bEntry.pqspkSk msg.hdr.kemCt with
               | none => rfl
               | some ss => simp
-noncomputable def fgRunSendAuthPure (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool) (useDh1 :
+@[expose] def fgRunSendAuthPure (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool) (useDh1 :
   Bool) (targetIdx : ℕ) (S : Setup) (maxLen : ℕ) (U : Bytes) (sid : SessionId S) (u : Fin S.N_id)
   (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (st : FgAuthSimState S) : ProbComp (AuthResponse × FgAuthSimState S) := do
@@ -440,7 +454,7 @@ theorem simulateQ_gapDhFullImpl_fgRunSendAuthGdh (P : Primitives) (ddh : Bytes �
                   | none => rfl
                   | some spqr =>
                     rcases spqr with ⟨_pqrStA, spqrSalt?, pqRatchetMsg⟩; dsimp only; simp)
-noncomputable def fgAuthStepPure (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool) (useDh1 :
+@[expose] def fgAuthStepPure (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool) (useDh1 :
   Bool) (targetIdx targetSpkIdx : ℕ) (S : Setup) (maxLen : ℕ) (U V : Bytes) (q : AuthQuery S) (st :
   FgAuthSimState S) :
     ProbComp (AuthResponse × FgAuthSimState S) := do
@@ -578,7 +592,7 @@ theorem pureExtractCdhFromAuthSimState_dh3_wins_of_mem (S : Setup) (P : Primitiv
   exact find?_ddh_3way_wins_of_mem P hWF u v _ _ _ h_mem
 /-! ## Simulation invariant `FgAuthSimInvDh3` -/
 /-- Step-coupling invariant for `DH3 = CDH(ek_U*, spk_V*)` (`useDh1 = false`). -/
-def FgAuthSimInvDh3 (S : Setup) (b : QueryBudget) (P : Primitives) (hP : CryptoWellFormedPrimitivesδ
+@[expose] def FgAuthSimInvDh3 (S : Setup) (b : QueryBudget) (P : Primitives) (hP : CryptoWellFormedPrimitivesδ
   P) (sIdx bIdx : ℕ) (uSk vSk : Bytes) (huSk : uSk.length = 32) (hvSk : vSk.length = 32)
     (rem : ℕ) (hst : AuthFgCutoffState S) (st : FgAuthSimState S) : Prop :=
   FgAuthBaseRel false sIdx bIdx st.base hst.base ∧

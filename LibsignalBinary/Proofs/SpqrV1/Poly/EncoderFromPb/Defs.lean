@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Poly
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Prog
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Poly -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prog -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import ProofLib.SepLogic.WPp
-import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyEncoder>::from_pb`: Definitions and Specifications
@@ -26,7 +26,7 @@ Total pure model (`fromPbResult`) and AArch64 separation-logic specifications (`
 `encoderFromPbSpecX`) for `<PolyEncoder>::from_pb` (`0x62188`, Block `374`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Layout.L22
 open Lean Meta Elab Tactic ProofLib in
@@ -64,26 +64,6 @@ abbrev dropGluePoly16Name : String :=
 abbrev dropGlueProtoPolyEncoderName : String :=
   "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>"
 
-gen_fn_decodes libsignalSessionCode_tree libsignalSessionBin
-  ["<spqr::encoding::polynomial::PolyEncoder>::from_pb"]
-
-ls_attribute [ simp, arm64_norm ↓, wp_norm ↓]
-  (ls_lemma% fnOff "<spqr::encoding::polynomial::PolyEncoder>::from_pb")
-  (ls_lemma% fnOff "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>")
-  (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>")
-  (ls_lemma% fnOff "<alloc::raw_vec::RawVec<spqr::encoding::gf::GF16>>::grow_one")
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_stub% "memcpy")
-  (ls_stub% "alloc::raw_vec::handle_error")
-  (ls_stub% "core::panicking::panic_bounds_check")
-
-macro "encoder_from_pb_fetches_range " b:term:max H:term:max k0:num len:num : tactic =>
-  `(tactic|
-    ls_code_fetches_range CryptoVerification.libsignalSessionCode libsignalSessionBin $b $H
-      "<spqr::encoding::polynomial::PolyEncoder>::from_pb" $k0 $len)
-
 /-- Own stack frame of `<PolyEncoder>::from_pb` (`0x60 + 0x3a0 = 0x400 = 1024` bytes). -/
 abbrev encoderFromPbFrame : Nat := 1024
 
@@ -96,7 +76,7 @@ abbrev encoderFromPbStackX : Nat := encoderFromPbFrame + extHookStack
 /-! ## Total Pure Model of `PolyEncoder.fromPb` -/
 
 /-- Total version of `Poly.bytesToGF16List` on even-length byte lists. -/
-def bytesToGF16ListTotal : List (BitVec 8) → List GF16
+@[expose] def bytesToGF16ListTotal : List (BitVec 8) → List GF16
   | [] => []
   | [ _ ] => []
   | b0 :: b1 :: rest => GF16.new (u16FromBeBytes b0 b1) :: bytesToGF16ListTotal rest
@@ -118,7 +98,7 @@ theorem bytesToGF16List_eq_ok (bs : List (BitVec 8)) (heven : bs.length % 2 = 0)
       omega
 
 /-- Total version of `Poly.deserialize`. -/
-def polyDeserializeTotal (serialized : List (BitVec 8)) : Except PolynomialError LibsignalSpqrV1.Poly :=
+@[expose] def polyDeserializeTotal (serialized : List (BitVec 8)) : Except PolynomialError LibsignalSpqrV1.Poly :=
   if serialized.isEmpty || serialized.length % 2 == 1 then
     .error .serializationInvalid
   else
@@ -136,7 +116,7 @@ theorem polyDeserialize_eq_ok (serialized : List (BitVec 8)) :
     simp [hbad, hok, bind, Except.bind, pure, Except.pure]
 
 /-- Total version of `PolyEncoder.decodePbPoints`. -/
-def decodePbPointsTotal : List (List (BitVec 8)) → Except PolynomialError (List Point)
+@[expose] def decodePbPointsTotal : List (List (BitVec 8)) → Except PolynomialError (List Point)
   | [] => .ok []
   | pts :: rest =>
     if pts.length % 2 != 0 then
@@ -162,7 +142,7 @@ theorem decodePbPoints_eq_ok (bss : List (List (BitVec 8))) :
       cases decodePbPointsTotal rest <;> rfl
 
 /-- Total version of `PolyEncoder.decodePbPolys`. -/
-def decodePbPolysTotal : List (List (BitVec 8)) → Except PolynomialError (List LibsignalSpqrV1.Poly)
+@[expose] def decodePbPolysTotal : List (List (BitVec 8)) → Except PolynomialError (List LibsignalSpqrV1.Poly)
   | [] => .ok []
   | polyBytes :: rest =>
     match polyDeserializeTotal polyBytes with
@@ -187,7 +167,7 @@ theorem decodePbPolys_eq_ok (bss : List (List (BitVec 8))) :
       cases decodePbPolysTotal rest <;> rfl
 
 /-- Total result of `PolyEncoder.fromPb pb` (`PolyEncoder.fromPb pb = .ok (fromPbResult pb)`). -/
-def fromPbResult (pb : ProtoPolynomialEncoder) : Except PolynomialError PolyEncoder :=
+@[expose] def fromPbResult (pb : ProtoPolynomialEncoder) : Except PolynomialError PolyEncoder :=
   if !pb.pts.isEmpty then
     if !pb.polys.isEmpty then
       .error .serializationInvalid
@@ -250,23 +230,23 @@ theorem pointsTo64_pair_eq_pointsTo128 (a : BitVec 64) (w0 w1 : BitVec 64) :
   rw [h0, h1]
 
 /-- Low byte (`bits 0..7`) of `u : BitVec 64`. -/
-def loByte (u : BitVec 64) : BitVec 8 :=
+@[expose] def loByte (u : BitVec 64) : BitVec 8 :=
   u.extractLsb' 0 8
 
 /-- High byte (`bits 56..63`) of `u : BitVec 64`. -/
-def hiByte (u : BitVec 64) : BitVec 8 :=
+@[expose] def hiByte (u : BitVec 64) : BitVec 8 :=
   u.extractLsb' 56 8
 
 /-- Pack the high 7 bytes of `u : BitVec 64` followed by `b : BitVec 8` into a 64-bit word. -/
-def unshiftWord (u : BitVec 64) (b : BitVec 8) : BitVec 64 :=
+@[expose] def unshiftWord (u : BitVec 64) (b : BitVec 8) : BitVec 64 :=
   (u >>> 8) ||| (b.zeroExtend 64 <<< 56)
 
 /-- Low 7 bytes of `u : BitVec 64`. -/
-def loBytes7 (u : BitVec 64) : List (BitVec 8) :=
+@[expose] def loBytes7 (u : BitVec 64) : List (BitVec 8) :=
   (unpack64 u).take 7
 
 /-- High 7 bytes of `u : BitVec 64`. -/
-def hiBytes7 (u : BitVec 64) : List (BitVec 8) :=
+@[expose] def hiBytes7 (u : BitVec 64) : List (BitVec 8) :=
   (unpack64 u).drop 1
 
 @[simp] theorem length_loBytes7 (u : BitVec 64) : (loBytes7 u).length = 7 := rfl
@@ -371,14 +351,14 @@ theorem left64_to_memRegion_15 (p w : BitVec 64) :
   exact sepConj_mono_left (ProofLib.pointsTo64_entails_memRegion p w)
 
 /-- 24-byte serialized `Vec` header `(cap, ptr, len)`. -/
-def vecHeaderBytesOf (pin : VecPin) (len : Nat) : List (BitVec 8) :=
+@[expose] def vecHeaderBytesOf (pin : VecPin) (len : Nat) : List (BitVec 8) :=
   unpack64 pin.cap ++ unpack64 pin.ptr ++ unpack64 (BitVec.ofNat 64 len)
 
 @[simp] theorem length_vecHeaderBytesOf (pin : VecPin) (len : Nat) :
     (vecHeaderBytesOf pin len).length = 24 := rfl
 
 /-- Concatenated 24-byte `Vec` headers for `pins` and `vecs`. -/
-def vecHeadersBytesOf : List VecPin → List (List GF16) → List (BitVec 8)
+@[expose] def vecHeadersBytesOf : List VecPin → List (List GF16) → List (BitVec 8)
   | [], _ => []
   | _, [] => []
   | pin :: pins, cs :: vecs => vecHeaderBytesOf pin cs.length ++ vecHeadersBytesOf pins vecs
@@ -397,7 +377,7 @@ theorem length_vecHeadersBytesOf :
     omega
 
 /-- Separating conjunction of `vecBuf A gf16Stride gf16Align gf16At` across `pins` and `vecs`. -/
-def vecGF16HeapList (A : RustAlloc) : List VecPin → List (List GF16) → SepProp
+@[expose] def vecGF16HeapList (A : RustAlloc) : List VecPin → List (List GF16) → SepProp
   | [], _ => emp
   | _, [] => emp
   | pin :: pins, cs :: vecs =>
@@ -529,7 +509,7 @@ structure EncoderFromPbGhost where
   /-- Logical `ProtoPolynomialEncoder` value at `pbA`. -/
   pb : ProtoPolynomialEncoder
 
-def encoderFromPbOnPanic (s0 sf : State) : SepProp :=
+@[expose] def encoderFromPbOnPanic (s0 sf : State) : SepProp :=
   ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 theorem decodePbPointsTotal_value_length_le :
@@ -563,7 +543,7 @@ theorem decodePbPointsTotal_value_length_le :
           (fun b hb => hbound b (List.mem_cons_of_mem bs hb)) pt hmem
 
 /-- Specification of `<PolyEncoder>::from_pb` (`0x62188`): consumes `protoPolynomialEncoderAt A pbA pb` at `x1` into `memRegion pbA 56` and writes `resultPolyEncoderFromPbAt A out (fromPbResult pb)` to `x0 = out` (or panics on OOM). -/
-def encoderFromPbSpec (A : RustAlloc) : Spec EncoderFromPbGhost where
+@[expose] def encoderFromPbSpec (A : RustAlloc) : Spec EncoderFromPbGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.pbA ∧
       (∀ bs ∈ x.pb.pts, bs.length ≤ 2 * 0x0555555555555555)⌝ ∗
@@ -578,7 +558,7 @@ def encoderFromPbSpec (A : RustAlloc) : Spec EncoderFromPbGhost where
   onPanic := fun _ s0 sf => encoderFromPbOnPanic s0 sf
 
 /-- Extended-stack variant of `encoderFromPbSpec` (`encoderFromPbStackX = 1024 + extHookStack`). -/
-def encoderFromPbSpecX (A : RustAlloc) : Spec EncoderFromPbGhost where
+@[expose] def encoderFromPbSpecX (A : RustAlloc) : Spec EncoderFromPbGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.pbA ∧
       (∀ bs ∈ x.pb.pts, bs.length ≤ 2 * 0x0555555555555555)⌝ ∗
@@ -592,25 +572,13 @@ def encoderFromPbSpecX (A : RustAlloc) : Spec EncoderFromPbGhost where
       A.pool ∗ stackAt s0.sp encoderFromPbStackX
   onPanic := fun _ s0 sf => encoderFromPbOnPanic s0 sf
 
-def EncoderFromPbOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (contractProg b ext)
-    ((contractProg b ext).fnAddr encoderFromPbName)
-    (encoderFromPbSpec A)
-
-def EncoderFromPbOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (contractProg img.base ext)
-    ((contractProg img.base ext).fnAddr encoderFromPbName)
-    ((encoderFromPbSpecX A).inImage img)
-
-def EncoderFromPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncoderFromPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_374).rebase (blkPl_374).base (Rust.withPanics ext))
     (blkPl_374).base
     (encoderFromPbSpec A)
 
-def EncoderFromPbPlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncoderFromPbPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_374).rebase (blkPl_374).base (Rust.withPanics ext))
     (blkPl_374).base
@@ -620,7 +588,7 @@ def EncoderFromPbPlacedOkX [LibsignalPlacement] (A : RustAlloc)
 
 /-- Remaining parts of `vecU8At A a cap ptr bs` after exposing `(a + 8) ↦₆₄ ptr`,
     `(a + 16) ↦₆₄ bs.length`, and `ptr ↦ₛ bs`. -/
-def vecU8Rest (A : RustAlloc) (a cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Rest (A : RustAlloc) (a cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   (a ↦₆₄ cap) ∗
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
   (if cap = 0 then emp
@@ -856,11 +824,11 @@ theorem sepWPp_pure_mid {prog : Program} {target_pc : BitVec 64}
   exact SepWPp.pure_left h
 
 /-- An unallocated `Vec<GF16>` slot `(cap = 0, ptr = 2, len = 0)` at `addr` (24 bytes). -/
-def emptySlotAt (addr : BitVec 64) : SepProp :=
+@[expose] def emptySlotAt (addr : BitVec 64) : SepProp :=
   (addr ↦₆₄ 0#64) ∗ ((addr + 8#64) ↦₆₄ 2#64) ∗ ((addr + 16#64) ↦₆₄ 0#64)
 
 /-- `n` contiguous `emptySlotAt` headers starting at `base` with stride 24. -/
-def emptySlotsAt (base : BitVec 64) : Nat → SepProp
+@[expose] def emptySlotsAt (base : BitVec 64) : Nat → SepProp
   | 0 => emp
   | n + 1 => emptySlotAt base ∗ emptySlotsAt (base + 24#64) n
 

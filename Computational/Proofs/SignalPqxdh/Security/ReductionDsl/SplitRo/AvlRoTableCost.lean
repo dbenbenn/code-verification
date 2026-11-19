@@ -11,7 +11,7 @@ module
 
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SplitRo.AvlRoTableDefs
 -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SplitRo.RoTableBudget
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SplitRo.RoTableBudget -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.KindedCost
 
 /-!
@@ -78,26 +78,6 @@ theorem samplePbytes32C_queries_zero {ι : Type} {T : OracleSpec ι} {I : Iface 
     (samplePbytes32C (I := I) hSmp (Γ := Γ)).queries w ws = 0 := by
   simp [samplePbytes32C, Comp.queries, hws]
 
-/-- `avlRoQueryDrKeyC` makes zero weighted queries under zero sampler weights. -/
-theorem avlRoQueryDrKeyC_queries_zero {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    (hSmp : I.smp = pqAtomicSamplers) (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ)
-    (hws : ∀ s, ws s = 0) (cap : ℕ) {Γ : List (Ty pqAtomicSig)}
-    (tblE : Expr pqAtomicOps Γ (avlTy (B 192) (drKeyT (ℓ := 0) (Pt := Empty))))
-    (secE : Expr pqAtomicOps Γ (PB 192)) :
-    (avlRoQueryDrKeyC hSmp cap tblE secE).queries w ws = 0 := by
-  simp [avlRoQueryDrKeyC, sampleDrKey96AtomicC, samplePbytes32C_queries_zero hSmp w ws hws,
-    avlSearchB192C_queries, avlInsertAtPathC_queries, Comp.queries]
-
-/-- `avlRoRootQueryPairC` makes zero weighted queries under zero sampler weights. -/
-theorem avlRoRootQueryPairC_queries_zero {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    (hSmp : I.smp = pqAtomicSamplers) (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ)
-    (hws : ∀ s, ws s = 0) (cap : ℕ) {Γ : List (Ty pqAtomicSig)}
-    (tblE : Expr pqAtomicOps Γ (avlTy (.prod (B 32) (B 32)) (.prod (PB 32) (PB 32))))
-    (inpE : Expr pqAtomicOps Γ (.prod (PB 32) (PB 32))) :
-    (avlRoRootQueryPairC hSmp cap tblE inpE).queries w ws = 0 := by
-  simp [avlRoRootQueryPairC, sampleRootPair64AtomicC, samplePbytes32C_queries_zero hSmp w ws hws,
-    avlSearchPair32C_queries, avlInsertAtPathC_queries, Comp.queries]
-
 theorem samplePbytes32C_cost_eq {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
     (hSmp : I.smp = pqAtomicSamplers) {Γ : List (Ty pqAtomicSig)} :
     (samplePbytes32C (I := I) hSmp (Γ := Γ)).cost = 37 := by
@@ -108,11 +88,6 @@ theorem samplePbytes32C_cost_eq {ι : Type} {T : OracleSpec ι} {I : Iface pqAto
     pqAtomicOps, atomicPureOps, AtomicPureOp.cost,
     pqAtomicSamplers, atomicBaseSamplers, unifSamplers, AtomicBaseUnif.cost]
 
-theorem samplePbytes32C_cost_le {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    (hSmp : I.smp = pqAtomicSamplers) {Γ : List (Ty pqAtomicSig)} :
-    (samplePbytes32C (I := I) hSmp (Γ := Γ)).cost ≤ 40 := by
-  rw [samplePbytes32C_cost_eq hSmp]; omega
-
 theorem sampleDrKey96AtomicC_cost_eq {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
     (hSmp : I.smp = pqAtomicSamplers) {Γ : List (Ty pqAtomicSig)} :
     (sampleDrKey96AtomicC (I := I) hSmp (Γ := Γ)).cost = 120 := by
@@ -120,14 +95,6 @@ theorem sampleDrKey96AtomicC_cost_eq {ι : Type} {T : OracleSpec ι} {I : Iface 
   have h2 := samplePbytes32C_cost_eq (I := I) hSmp (Γ := PB 32 :: Γ)
   have h3 := samplePbytes32C_cost_eq (I := I) hSmp (Γ := PB 32 :: PB 32 :: Γ)
   dsimp only [sampleDrKey96AtomicC, Comp.cost, Expr.cost, Expr.v0, Expr.v1, Expr.v2]
-  omega
-
-theorem sampleRootPair64AtomicC_cost_eq {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    (hSmp : I.smp = pqAtomicSamplers) {Γ : List (Ty pqAtomicSig)} :
-    (sampleRootPair64AtomicC (I := I) hSmp (Γ := Γ)).cost = 80 := by
-  have h1 := samplePbytes32C_cost_eq (I := I) hSmp (Γ := Γ)
-  have h2 := samplePbytes32C_cost_eq (I := I) hSmp (Γ := PB 32 :: Γ)
-  dsimp only [sampleRootPair64AtomicC, Comp.cost, Expr.cost, Expr.v0, Expr.v1]
   omega
 
 theorem avlSearchB192C_cost_le {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
@@ -143,14 +110,6 @@ theorem avlSearchB192C_cost_le {ι : Type} {T : OracleSpec ι} {I : Iface pqAtom
   norm_num [Nat.max_def]
   omega
 
-theorem avlSearchB192C_costAt_le {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    (cap : ℕ) {Γ : List (Ty pqAtomicSig)} {V : Ty pqAtomicSig}
-    (tblE : Expr pqAtomicOps Γ (avlTy (B 192) V))
-    (keyE : Expr pqAtomicOps Γ (B 192)) (ρ : Env Γ) :
-    (avlSearchB192C (I := I) cap tblE keyE).costAt ρ ≤
-      1108 * bits cap + 489 + tblE.cost + keyE.cost :=
-  Nat.le_trans (Comp.costAt_le_cost _ ρ) (avlSearchB192C_cost_le cap tblE keyE)
-
 theorem avlSearchPair32C_cost_le {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
     (cap : ℕ) {Γ : List (Ty pqAtomicSig)} {V : Ty pqAtomicSig}
     (tblE : Expr pqAtomicOps Γ (avlTy (.prod (B 32) (B 32)) V))
@@ -163,14 +122,6 @@ theorem avlSearchPair32C_cost_le {ι : Type} {T : OracleSpec ι} {I : Iface pqAt
     pqAtomicOps, atomicPureOps, AtomicPureOp.cost, hb0]
   norm_num [Nat.max_def]
   omega
-
-theorem avlSearchPair32C_costAt_le {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    (cap : ℕ) {Γ : List (Ty pqAtomicSig)} {V : Ty pqAtomicSig}
-    (tblE : Expr pqAtomicOps Γ (avlTy (.prod (B 32) (B 32)) V))
-    (keyE : Expr pqAtomicOps Γ (.prod (B 32) (B 32))) (ρ : Env Γ) :
-    (avlSearchPair32C (I := I) cap tblE keyE).costAt ρ ≤
-      768 * bits cap + 243 + tblE.cost + keyE.cost :=
-  Nat.le_trans (Comp.costAt_le_cost _ ρ) (avlSearchPair32C_cost_le cap tblE keyE)
 
 theorem avlInsertAtPathC_cost_le {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
     (cap : ℕ) {Γ : List (Ty pqAtomicSig)} {K V : Ty pqAtomicSig}
@@ -188,124 +139,6 @@ theorem avlInsertAtPathC_cost_le {ι : Type} {T : OracleSpec ι} {I : Iface pqAt
     hb0, hb1]
   norm_num [Nat.max_def]
   omega
-
-theorem avlInsertAtPathC_costAt_le {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    (cap : ℕ) {Γ : List (Ty pqAtomicSig)} {K V : Ty pqAtomicSig}
-    (tblE : Expr pqAtomicOps Γ (avlTy K V))
-    (pathE : Expr pqAtomicOps Γ (.list avlPathItemTy))
-    (keyE : Expr pqAtomicOps Γ K) (valE : Expr pqAtomicOps Γ V) (ρ : Env Γ) :
-    (avlInsertAtPathC (I := I) cap tblE pathE keyE valE).costAt ρ ≤
-      3312 * bits cap + 340 + tblE.cost + pathE.cost + keyE.cost + valE.cost :=
-  Nat.le_trans (Comp.costAt_le_cost _ ρ) (avlInsertAtPathC_cost_le cap tblE pathE keyE valE)
-
-theorem avlRoQueryDrKeyC_cost_sharp {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    (hSmp : I.smp = pqAtomicSamplers) (cap : ℕ) {Γ : List (Ty pqAtomicSig)}
-    (tblE : Expr pqAtomicOps Γ (avlTy (B 192) (drKeyT (ℓ := 0) (Pt := Empty))))
-    (secE : Expr pqAtomicOps Γ (PB 192)) :
-    (avlRoQueryDrKeyC hSmp cap tblE secE).cost ≤
-      4420 * bits cap + 1165 + tblE.cost + secE.cost := by
-  have hSmpCost := sampleDrKey96AtomicC_cost_eq (I := I) hSmp
-    (Γ := avlSearchResTy (drKeyT (ℓ := 0) (Pt := Empty)) ::
-          .prod (avlTy (B 192) (drKeyT (ℓ := 0) (Pt := Empty))) (B 192) :: Γ)
-  have hSrch := avlSearchB192C_cost_le (I := I) cap
-    (Γ := .prod (avlTy (B 192) (drKeyT (ℓ := 0) (Pt := Empty))) (B 192) :: Γ)
-    (V := drKeyT (ℓ := 0) (Pt := Empty)) (.fst .v0) (.snd .v0)
-  have hIns := avlInsertAtPathC_cost_le (I := I) cap
-    (Γ := drKeyT (ℓ := 0) (Pt := Empty) ::
-          avlSearchResTy (drKeyT (ℓ := 0) (Pt := Empty)) ::
-          .prod (avlTy (B 192) (drKeyT (ℓ := 0) (Pt := Empty))) (B 192) :: Γ)
-    (.fst .v2) (.snd .v1) (.snd .v2) .v0
-  simp only [avlRoQueryDrKeyC, aop, Comp.cost, Expr.cost, Expr.v0, Expr.v1, Expr.v2,
-    pqAtomicOps, atomicPureOps, AtomicPureOp.cost, PNat.val_ofNat] at hSrch hIns ⊢
-  norm_num [Nat.max_def]
-  split <;> omega
-
-theorem avlRoQueryDrKeyC_costAt_sharp {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    (hSmp : I.smp = pqAtomicSamplers) (cap : ℕ) {Γ : List (Ty pqAtomicSig)}
-    (tblE : Expr pqAtomicOps Γ (avlTy (B 192) (drKeyT (ℓ := 0) (Pt := Empty))))
-    (secE : Expr pqAtomicOps Γ (PB 192)) (ρ : Env Γ) :
-    (avlRoQueryDrKeyC hSmp cap tblE secE).costAt ρ ≤
-      4420 * bits cap + 1165 + tblE.cost + secE.cost :=
-  Nat.le_trans (Comp.costAt_le_cost _ ρ) (avlRoQueryDrKeyC_cost_sharp hSmp cap tblE secE)
-
-/-- `avlRoQueryDrKeyC` has syntactic step cost at most `roTableStepCost roTableKappa cap`. -/
-theorem avlRoQueryDrKeyC_cost_le {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    (hSmp : I.smp = pqAtomicSamplers) (cap : ℕ) {Γ : List (Ty pqAtomicSig)}
-    (tblE : Expr pqAtomicOps Γ (avlTy (B 192) (drKeyT (ℓ := 0) (Pt := Empty))))
-    (secE : Expr pqAtomicOps Γ (PB 192))
-    (hTbl : tblE.cost ≤ 16) (hSec : secE.cost ≤ 16) :
-    (avlRoQueryDrKeyC hSmp cap tblE secE).cost ≤
-      roTableStepCost roTableKappa cap := by
-  have hSharp := avlRoQueryDrKeyC_cost_sharp hSmp cap tblE secE
-  have hBits : 1 ≤ bits cap := one_le_bits cap
-  dsimp only [roTableStepCost, roTableKappa]
-  omega
-
-/-- Environment-specialized `Comp.costAt` bound for `avlRoQueryDrKeyC`. -/
-theorem avlRoQueryDrKeyC_costAt_le {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    (hSmp : I.smp = pqAtomicSamplers) (cap : ℕ) {Γ : List (Ty pqAtomicSig)}
-    (tblE : Expr pqAtomicOps Γ (avlTy (B 192) (drKeyT (ℓ := 0) (Pt := Empty))))
-    (secE : Expr pqAtomicOps Γ (PB 192)) (ρ : Env Γ)
-    (hTbl : tblE.cost ≤ 16) (hSec : secE.cost ≤ 16) :
-    (avlRoQueryDrKeyC hSmp cap tblE secE).costAt ρ ≤
-      roTableStepCost roTableKappa cap :=
-  Nat.le_trans (Comp.costAt_le_cost _ ρ) (avlRoQueryDrKeyC_cost_le hSmp cap tblE secE hTbl hSec)
-
-theorem avlRoRootQueryPairC_cost_sharp {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    (hSmp : I.smp = pqAtomicSamplers) (cap : ℕ) {Γ : List (Ty pqAtomicSig)}
-    (tblE : Expr pqAtomicOps Γ (avlTy (.prod (B 32) (B 32)) (.prod (PB 32) (PB 32))))
-    (inpE : Expr pqAtomicOps Γ (.prod (PB 32) (PB 32))) :
-    (avlRoRootQueryPairC hSmp cap tblE inpE).cost ≤
-      4080 * bits cap + 757 + tblE.cost + inpE.cost := by
-  have hSmpCost := sampleRootPair64AtomicC_cost_eq (I := I) hSmp
-    (Γ := avlSearchResTy (.prod (PB 32) (PB 32)) ::
-          .prod (avlTy (.prod (B 32) (B 32)) (.prod (PB 32) (PB 32)))
-            (.prod (B 32) (B 32)) :: Γ)
-  have hSrch := avlSearchPair32C_cost_le (I := I) cap
-    (Γ := .prod (avlTy (.prod (B 32) (B 32)) (.prod (PB 32) (PB 32)))
-            (.prod (B 32) (B 32)) :: Γ)
-    (V := .prod (PB 32) (PB 32)) (.fst .v0) (.snd .v0)
-  have hIns := avlInsertAtPathC_cost_le (I := I) cap
-    (Γ := .prod (PB 32) (PB 32) ::
-          avlSearchResTy (.prod (PB 32) (PB 32)) ::
-          .prod (avlTy (.prod (B 32) (B 32)) (.prod (PB 32) (PB 32)))
-            (.prod (B 32) (B 32)) :: Γ)
-    (.fst .v2) (.snd .v1) (.snd .v2) .v0
-  simp only [avlRoRootQueryPairC, aop, Comp.cost, Expr.cost, Expr.v0, Expr.v1, Expr.v2,
-    pqAtomicOps, atomicPureOps, AtomicPureOp.cost, PNat.val_ofNat] at hSrch hIns ⊢
-  norm_num [Nat.max_def]
-  split <;> omega
-
-theorem avlRoRootQueryPairC_costAt_sharp {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    (hSmp : I.smp = pqAtomicSamplers) (cap : ℕ) {Γ : List (Ty pqAtomicSig)}
-    (tblE : Expr pqAtomicOps Γ (avlTy (.prod (B 32) (B 32)) (.prod (PB 32) (PB 32))))
-    (inpE : Expr pqAtomicOps Γ (.prod (PB 32) (PB 32))) (ρ : Env Γ) :
-    (avlRoRootQueryPairC hSmp cap tblE inpE).costAt ρ ≤
-      4080 * bits cap + 757 + tblE.cost + inpE.cost :=
-  Nat.le_trans (Comp.costAt_le_cost _ ρ) (avlRoRootQueryPairC_cost_sharp hSmp cap tblE inpE)
-
-/-- `avlRoRootQueryPairC` has syntactic step cost at most `roTableStepCost roTableKappa cap`. -/
-theorem avlRoRootQueryPairC_cost_le {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    (hSmp : I.smp = pqAtomicSamplers) (cap : ℕ) {Γ : List (Ty pqAtomicSig)}
-    (tblE : Expr pqAtomicOps Γ (avlTy (.prod (B 32) (B 32)) (.prod (PB 32) (PB 32))))
-    (inpE : Expr pqAtomicOps Γ (.prod (PB 32) (PB 32)))
-    (hTbl : tblE.cost ≤ 16) (hInp : inpE.cost ≤ 16) :
-    (avlRoRootQueryPairC hSmp cap tblE inpE).cost ≤
-      roTableStepCost roTableKappa cap := by
-  have hSharp := avlRoRootQueryPairC_cost_sharp hSmp cap tblE inpE
-  have hBits : 1 ≤ bits cap := one_le_bits cap
-  dsimp only [roTableStepCost, roTableKappa]
-  omega
-
-/-- Environment-specialized `Comp.costAt` bound for `avlRoRootQueryPairC`. -/
-theorem avlRoRootQueryPairC_costAt_le {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    (hSmp : I.smp = pqAtomicSamplers) (cap : ℕ) {Γ : List (Ty pqAtomicSig)}
-    (tblE : Expr pqAtomicOps Γ (avlTy (.prod (B 32) (B 32)) (.prod (PB 32) (PB 32))))
-    (inpE : Expr pqAtomicOps Γ (.prod (PB 32) (PB 32))) (ρ : Env Γ)
-    (hTbl : tblE.cost ≤ 16) (hInp : inpE.cost ≤ 16) :
-    (avlRoRootQueryPairC hSmp cap tblE inpE).costAt ρ ≤
-      roTableStepCost roTableKappa cap :=
-  Nat.le_trans (Comp.costAt_le_cost _ ρ) (avlRoRootQueryPairC_cost_le hSmp cap tblE inpE hTbl hInp)
 
 theorem samplePbytes32C_size_eq {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
     (hSmp : I.smp = pqAtomicSamplers) {Γ : List (Ty pqAtomicSig)} :
@@ -353,63 +186,6 @@ theorem avlInsertAtPathC_size_le {ι : Type} {T : OracleSpec ι} {I : Iface pqAt
     maxNatE, nodeHeightE, mkShapeNodeE, joinHeightE,
     Comp.size, Expr.size, Expr.v0, Expr.v1, Expr.v2, Expr.v3, Expr.v4, Expr.v5,
     hb0, hb1]
-  omega
-
-theorem avlRoQueryDrKeyC_size_le {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    (hSmp : I.smp = pqAtomicSamplers) (cap : ℕ) {Γ : List (Ty pqAtomicSig)}
-    (tblE : Expr pqAtomicOps Γ (avlTy (B 192) (drKeyT (ℓ := 0) (Pt := Empty))))
-    (secE : Expr pqAtomicOps Γ (PB 192)) :
-    (avlRoQueryDrKeyC hSmp cap tblE secE).size ≤
-      2000 + 2 * bits (avlHeightCap cap) + tblE.size + secE.size := by
-  have hs1 := samplePbytes32C_size_eq (I := I) hSmp
-    (Γ := avlSearchResTy (drKeyT (ℓ := 0) (Pt := Empty)) ::
-          .prod (avlTy (B 192) (drKeyT (ℓ := 0) (Pt := Empty))) (B 192) :: Γ)
-  have hs2 := samplePbytes32C_size_eq (I := I) hSmp
-    (Γ := PB 32 :: avlSearchResTy (drKeyT (ℓ := 0) (Pt := Empty)) ::
-          .prod (avlTy (B 192) (drKeyT (ℓ := 0) (Pt := Empty))) (B 192) :: Γ)
-  have hs3 := samplePbytes32C_size_eq (I := I) hSmp
-    (Γ := PB 32 :: PB 32 :: avlSearchResTy (drKeyT (ℓ := 0) (Pt := Empty)) ::
-          .prod (avlTy (B 192) (drKeyT (ℓ := 0) (Pt := Empty))) (B 192) :: Γ)
-  have hSrch := avlSearchB192C_size_le (I := I) cap
-    (Γ := .prod (avlTy (B 192) (drKeyT (ℓ := 0) (Pt := Empty))) (B 192) :: Γ)
-    (V := drKeyT (ℓ := 0) (Pt := Empty)) (.fst .v0) (.snd .v0)
-  have hIns := avlInsertAtPathC_size_le (I := I) cap
-    (Γ := drKeyT (ℓ := 0) (Pt := Empty) ::
-          avlSearchResTy (drKeyT (ℓ := 0) (Pt := Empty)) ::
-          .prod (avlTy (B 192) (drKeyT (ℓ := 0) (Pt := Empty))) (B 192) :: Γ)
-    (.fst .v2) (.snd .v1) (.snd .v2) .v0
-  simp only [avlRoQueryDrKeyC, sampleDrKey96AtomicC, aop,
-    Comp.size, Expr.size, Expr.v0, Expr.v1, Expr.v2,
-    pqAtomicOps, atomicPureOps, AtomicPureOp.opSize] at hSrch hIns ⊢
-  omega
-
-theorem avlRoRootQueryPairC_size_le {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    (hSmp : I.smp = pqAtomicSamplers) (cap : ℕ) {Γ : List (Ty pqAtomicSig)}
-    (tblE : Expr pqAtomicOps Γ (avlTy (.prod (B 32) (B 32)) (.prod (PB 32) (PB 32))))
-    (inpE : Expr pqAtomicOps Γ (.prod (PB 32) (PB 32))) :
-    (avlRoRootQueryPairC hSmp cap tblE inpE).size ≤
-      2000 + 2 * bits (avlHeightCap cap) + tblE.size + inpE.size := by
-  have hs1 := samplePbytes32C_size_eq (I := I) hSmp
-    (Γ := avlSearchResTy (.prod (PB 32) (PB 32)) ::
-          .prod (avlTy (.prod (B 32) (B 32)) (.prod (PB 32) (PB 32)))
-            (.prod (B 32) (B 32)) :: Γ)
-  have hs2 := samplePbytes32C_size_eq (I := I) hSmp
-    (Γ := PB 32 :: avlSearchResTy (.prod (PB 32) (PB 32)) ::
-          .prod (avlTy (.prod (B 32) (B 32)) (.prod (PB 32) (PB 32)))
-            (.prod (B 32) (B 32)) :: Γ)
-  have hSrch := avlSearchPair32C_size_le (I := I) cap
-    (Γ := .prod (avlTy (.prod (B 32) (B 32)) (.prod (PB 32) (PB 32)))
-            (.prod (B 32) (B 32)) :: Γ)
-    (V := .prod (PB 32) (PB 32)) (.fst .v0) (.snd .v0)
-  have hIns := avlInsertAtPathC_size_le (I := I) cap
-    (Γ := .prod (PB 32) (PB 32) ::
-          avlSearchResTy (.prod (PB 32) (PB 32)) ::
-          .prod (avlTy (.prod (B 32) (B 32)) (.prod (PB 32) (PB 32)))
-            (.prod (B 32) (B 32)) :: Γ)
-    (.fst .v2) (.snd .v1) (.snd .v2) .v0
-  simp only [avlRoRootQueryPairC, sampleRootPair64AtomicC, aop,
-    Comp.size, Expr.size, Expr.v0, Expr.v1, Expr.v2,
-    pqAtomicOps, atomicPureOps, AtomicPureOp.opSize] at hSrch hIns ⊢
   omega
 
 end Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SplitRo.AvlRoTableCost

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
+import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Bytes.Basic
@@ -49,6 +49,10 @@ import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.Bytes.AttackerKnowledge
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
+public import Symbolic.Specifications.Concrete.ExternInterpretation
+public import Symbolic.Specifications.Model.Composed
+public import Symbolic.Specifications.Model.Instance
+public import Symbolic.Specifications.Refinement.Concretization
 
 /-!
 # Universal Wire-Free Term Predicate
@@ -57,7 +61,7 @@ Defines the ghost- and semantics-independent predicate `NoTrWireU` (`∀ i S g, 
 together with `SubFunction` instances for unfolding `gamma'` over the composed model.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

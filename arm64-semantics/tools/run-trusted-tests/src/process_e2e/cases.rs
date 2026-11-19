@@ -163,6 +163,17 @@ pub(super) fn exited_match(code: u64, notes: &str) -> ExpectedLean {
     }
 }
 
+pub(super) fn signaled_match(sig: u64, notes: &str) -> ExpectedLean {
+    ExpectedLean {
+        kind: "signaled".into(),
+        lean_exit_code: Some(128 + sig),
+        syscall_nr: None,
+        syscall_name: None,
+        exception_substr: None,
+        notes: notes.into(),
+    }
+}
+
 /// Run all 99 differential cases under `qemu-aarch64`, aggregate per-binary `-strace` censuses,
 /// and either write or drift-check `Arm64/Testing/ProcessE2E/expected_vectors.json`.
 pub fn regen_or_check_vectors(
@@ -709,7 +720,7 @@ pub fn regen_or_check_vectors(
         &qemu_bin,
         "stderr_stdio/panic_formatted",
         "stderr_stdio",
-        CaseCategory::UnmodeledTrap,
+        CaseCategory::Match,
         vec!["stderr_stdio", "panic-fmt"],
         vec![],
         b"payload-bytes",
@@ -719,14 +730,10 @@ pub fn regen_or_check_vectors(
         false,
         false,
         true,
-        ExpectedLean {
-            kind: "exception".into(),
-            lean_exit_code: None,
-            syscall_nr: Some(135),
-            syscall_name: Some("rt_sigprocmask".into()),
-            exception_substr: Some("unmodeled non-zero signal mask in rt_sigprocmask".into()),
-            notes: "Heap-allocated formatted `panic!(...)` emits the message on `stderr` and calls musl `abort()` -> `raise(SIGABRT)` -> `rt_sigprocmask(SIG_BLOCK, &app_mask, ...)` (`135`), which fails closed with `.Exception` on non-zero signal masks.".into(),
-        },
+        signaled_match(
+            6,
+            "Heap-allocated formatted `panic!(...)` emits the message on `stderr` and calls musl `abort()` -> `raise(SIGABRT)` -> `rt_sigprocmask` + `tkill(1, SIGABRT)` -> `rt_sigprocmask(SIG_SETMASK)` delivering `.Signaled 6#7` (`134`, matching QEMU).",
+        ),
     )?;
     run_and_record(
         &mut cases,
@@ -734,7 +741,7 @@ pub fn regen_or_check_vectors(
         &qemu_bin,
         "stderr_stdio/abort_after_stdout",
         "stderr_stdio",
-        CaseCategory::UnmodeledTrap,
+        CaseCategory::Match,
         vec!["stderr_stdio", "abort-flush"],
         vec![],
         b"",
@@ -744,14 +751,10 @@ pub fn regen_or_check_vectors(
         false,
         false,
         false,
-        ExpectedLean {
-            kind: "exception".into(),
-            lean_exit_code: None,
-            syscall_nr: Some(135),
-            syscall_name: Some("rt_sigprocmask".into()),
-            exception_substr: Some("unmodeled non-zero signal mask in rt_sigprocmask".into()),
-            notes: "Flushes `\"before-abort\\n\"` to `stdout` under `BrkMmapAlloc`, then calls `std::process::abort()` -> musl `raise(SIGABRT)` -> `rt_sigprocmask(SIG_BLOCK, &app_mask, ...)` (`135`), which fails closed with `.Exception` on non-zero signal masks.".into(),
-        },
+        signaled_match(
+            6,
+            "Flushes `\"before-abort\\n\"` to `stdout` under `BrkMmapAlloc`, then calls `std::process::abort()` -> musl `raise(SIGABRT)` -> `.Signaled 6#7` (`134`, matching QEMU).",
+        ),
     )?;
 
     // -------------------------------------------------------------------------
@@ -1225,7 +1228,7 @@ pub fn regen_or_check_vectors(
         &qemu_bin,
         "unmodified_std_probe/panic_gettid",
         "unmodified_std_probe",
-        CaseCategory::UnmodeledTrap,
+        CaseCategory::Match,
         vec!["unmodified_std_probe", "panic"],
         vec![],
         b"",
@@ -1235,14 +1238,10 @@ pub fn regen_or_check_vectors(
         false,
         false,
         true,
-        ExpectedLean {
-            kind: "exception".into(),
-            lean_exit_code: None,
-            syscall_nr: Some(135),
-            syscall_name: Some("rt_sigprocmask".into()),
-            exception_substr: Some("unmodeled non-zero signal mask in rt_sigprocmask".into()),
-            notes: "`panic!(...)` queries `gettid` (`178` -> `SIM_TID = 1`), writes the panic message to `stderr`, and calls musl `abort()` -> `raise(SIGABRT)` -> `rt_sigprocmask(SIG_BLOCK, &app_mask, ...)` (`135`), which fails closed with `.Exception` on non-zero signal masks.".into(),
-        },
+        signaled_match(
+            6,
+            "`panic!(...)` queries `gettid` (`178` -> `SIM_TID = 1`), writes the panic message to `stderr`, and calls musl `abort()` -> `raise(SIGABRT)` -> `.Signaled 6#7` (`134`, matching QEMU).",
+        ),
     )?;
     run_and_record(
         &mut cases,
@@ -1250,7 +1249,7 @@ pub fn regen_or_check_vectors(
         &qemu_bin,
         "unmodified_std_probe/abort_sigabrt",
         "unmodified_std_probe",
-        CaseCategory::UnmodeledTrap,
+        CaseCategory::Match,
         vec!["unmodified_std_probe", "abort"],
         vec![],
         b"",
@@ -1260,14 +1259,10 @@ pub fn regen_or_check_vectors(
         true,
         false,
         false,
-        ExpectedLean {
-            kind: "exception".into(),
-            lean_exit_code: None,
-            syscall_nr: Some(135),
-            syscall_name: Some("rt_sigprocmask".into()),
-            exception_substr: Some("unmodeled non-zero signal mask in rt_sigprocmask".into()),
-            notes: "`std::process::abort()` calls musl `abort()` -> `raise(SIGABRT)` -> `rt_sigprocmask(SIG_BLOCK, &app_mask, ...)` (`135`), which fails closed with `.Exception` on non-zero signal masks.".into(),
-        },
+        signaled_match(
+            6,
+            "`std::process::abort()` calls musl `abort()` -> `raise(SIGABRT)` -> `.Signaled 6#7` (`134`, matching QEMU).",
+        ),
     )?;
     run_and_record(
         &mut cases,

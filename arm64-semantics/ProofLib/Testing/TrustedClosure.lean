@@ -46,10 +46,6 @@ theorem sample_fileIo_refl (s : State) :
     Steps Program.fileIo s s :=
   Steps.refl s
 
-theorem sample_library_noSyscalls (L : LibrarySpec) :
-    library_ok_withSvc noSyscalls L → True :=
-  fun _ => trivial
-
 theorem sample_elf_stdioCli (elfBytes : List (BitVec 8)) (pre : Process.ProcessInputs → Prop)
     (post : Process.ProcessInputs → Process.ProcessOutcome → Prop) :
     Process.ElfRunsTo elfBytes pre post (prog := Program.stdioCli) → True :=
@@ -61,11 +57,11 @@ theorem sample_alloc_refl (s : State) :
 
 -- Non-alloc theorems exclude `Arm64.Trusted.Syscalls.Alloc`; `sample_alloc_refl` includes `Alloc`.
 /--
-info: [trusted_closure] scope=explicit theorems=7 without_alloc=6 with_alloc=1 violations=0
+info: [trusted_closure] scope=explicit theorems=6 without_alloc=5 with_alloc=1 violations=0
 -/
 #guard_msgs (substring := true) in
 #trusted_closure! sample_noSyscalls_refl sample_stdioWrite_refl sample_stdioCli_refl
-  sample_fileIo_refl sample_library_noSyscalls sample_elf_stdioCli sample_alloc_refl
+  sample_fileIo_refl sample_elf_stdioCli sample_alloc_refl
 
 -- Rejects a theorem over a non-alloc bundle (`Program.stdioCli`) whose statement reaches `Alloc`.
 /--

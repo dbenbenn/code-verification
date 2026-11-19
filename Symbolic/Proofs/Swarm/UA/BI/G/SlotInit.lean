@@ -44,6 +44,8 @@ import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.ALaCarte.Basic
+public import Symbolic.Proofs.SpecLemmas.ProofHubsPure -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.RoleSnapshots
 
 /-!
 # Session Initiation Slot Refinement under Break and Invert Events
@@ -53,7 +55,7 @@ Proves `uab_slot_init : UASlotInitSpecB`, preserving `PqTurnSim1A` and `UAInvB` 
 events.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

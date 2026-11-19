@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyPre
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyPre
 
 /-!
 # Signing-query bound for the one-key `Auth` `GapDhWithSign` reduction
@@ -20,7 +20,7 @@ public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyPre
 per-query steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +50,7 @@ private theorem a1sigQb_bind1 {α β : Type} {mx : OracleComp GdhSignSimSpec α}
   isQueryBoundP_bind h1 h2
 
 /-- Step-level signing-budget accounting invariant for `FgAuth1KeySimState`. -/
-def AuthSigBudgetStepInv {S : Setup} {R : Type}
+@[expose] def AuthSigBudgetStepInv {S : Setup} {R : Type}
     (m : OracleComp GdhSignSimSpec (R × FgAuth1KeySimState S)) (b : ℕ) : Prop :=
   ∃ k ≤ b,
     IsQueryBoundP m (fun q => isSigChalQuery q = true) (2 * k) ∧
@@ -201,20 +201,5 @@ theorem isQueryBoundP_fgAuth1KeyGapDhRunAt_sig (useDh1 : Bool) (targetIdx target
       A.1.run (FgAuth1KeySimState.empty S secb)
   exact (isQueryBoundP_bind hStep
     (fun p _ => isQueryBoundP_liftGdhToSign_sig _ 0)).mono (by omega)
-
-/-- Semantic signing-query bound for `fgAuth1KeyGapDhAdv4`. -/
-theorem isQueryBoundP_fgAuth1KeyGapDhAdv4_sig
-    (S : Setup) (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b) (U V : Bytes) :
-    IsQueryBoundP ((fgAuth1KeyGapDhAdv4 S b A).run U V)
-      (fun q => isSigChalQuery q = true) (fgAuth1KeyGapDhAdv4 S b A).q_sig := by
-  dsimp only [fgAuth1KeyGapDhAdv4]
-  refine a1sigQb_bind0
-    (isQueryBoundP_unifGdhSign_sig (sampleIndexRange2 (S.N_id + S.N_send_tot) S.N_spk_tot) 0)
-    (fun p _ => ?_)
-  rcases p with ⟨fl, bI⟩
-  dsimp only
-  split_ifs
-  · exact isQueryBoundP_fgAuth1KeyGapDhRunAt_sig _ _ _ S b A U V
-  · exact isQueryBoundP_fgAuth1KeyGapDhRunAt_sig _ _ _ S b A U V
 
 end Proofs.SignalPqxdh.Security

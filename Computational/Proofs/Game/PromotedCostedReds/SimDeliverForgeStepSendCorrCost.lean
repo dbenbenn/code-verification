@@ -9,21 +9,24 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8WireSnap
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEClamp2
+import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8WireSnap -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling
+import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEClamp2
 import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto
+public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SpqrDesc
 
 /-!
 # Send and Corrupt Step Programs and Cost Bounds for `SimDeliverForge`
 
 Defines the atomic `.send` (`dfSendStepC`) and `.corrupt` (`dfCorrStepC`) step computations for
-`SimDeliverForge` over `fig8SmIfaceDF`, together with query, step-cost, and description-bit bounds.
--/
+`SimDeliverForge` over `fig8SmIfaceDF`, together with query, step-cost, and description-bit bounds.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,14 +35,14 @@ namespace Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepSendCo
 open _root_.ReductionDsl (Ty Expr Comp Ops atomicSig atomicSessionOps fig8SmIfaceDF
   UniformSamplerTag AtomicUnifBase SMTagDF
   GhostStT PlainT BV256 BV512 U32 B smRT fig8CtT fig8CtOfV fig8StT lpubT ckaStT fsSendStT)
-open CryptoGames.Ratchet.LibsignalSim (Fig8C)
-open CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.SM (pGet pSet sendsInE)
-open CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey)
-open CryptoVerification.LibsignalSpqrV1 (MlKem)
-open CryptoVerification.LibsignalSession (ratchetCostBudget)
-open CryptoVerification.E2E (Bytes paramsV1)
+open _root_.CryptoGames.Ratchet.LibsignalSim (Fig8C)
+open _root_.CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.SM (pGet pSet sendsInE)
+open _root_.CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey)
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem)
+open _root_.CryptoVerification.LibsignalSession (ratchetCostBudget)
+open _root_.CryptoVerification.E2E (Bytes paramsV1)
 open Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost
   (simFullT simFullDec simMirT simBaseT keptT sentEntryT snapT)
 open Computational.Proofs.Game.PromotedCostedReds.SimFig8State
@@ -55,13 +58,11 @@ open Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
 open Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost
   (atomicSessionOpDescBits atomicExprDescBits atomicCompDescBits)
 
-noncomputable section
-
 /-- Combined `(sC, sent)` state type in `atomicSig ℓ Pt` for `SimDeliverForge`. -/
-@[reducible] def dfSendCorrStateT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def dfSendCorrStateT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (simFullT ℓ Pt) (.list (fig8CtT (ℓ := ℓ) (Pt := Pt)))
 
-@[reducible] def dfSendCorrStateDec {ℓ : ℕ} {Pt : Type} (v : (dfSendCorrStateT ℓ Pt).denote) :
+@[expose, reducible] def dfSendCorrStateDec {ℓ : ℕ} {Pt : Type} (v : (dfSendCorrStateT ℓ Pt).denote) :
     LibsignalToModularSchemeSimState Bytes Pt ℓ × List (Fig8C Pt) :=
   (simFullDec v.1, v.2.map fig8CtOfV)
 
@@ -71,26 +72,26 @@ variable {ℓ : ℕ} {Pt : Type}
 
 local notation "ASig" => atomicSig ℓ Pt
 
-def dfOrE {O' : Ops ASig} {Γ : List (Ty ASig)} (a b : Expr O' Γ .bool) : Expr O' Γ .bool :=
+@[expose] def dfOrE {O' : Ops ASig} {Γ : List (Ty ASig)} (a b : Expr O' Γ .bool) : Expr O' Γ .bool :=
   .ite a (.bool true) b
 
-def dfIsSomeE {O' : Ops ASig} {Γ : List (Ty ASig)} {a : Ty ASig}
+@[expose] def dfIsSomeE {O' : Ops ASig} {Γ : List (Ty ASig)} {a : Ty ASig}
     (e : Expr O' Γ (.opt a)) : Expr O' Γ .bool :=
   .caseOpt e (.bool false) (.bool true)
 
-def dfNatNeE {O' : Ops ASig} {Γ : List (Ty ASig)} (a b : Expr O' Γ .nat) : Expr O' Γ .bool :=
+@[expose] def dfNatNeE {O' : Ops ASig} {Γ : List (Ty ASig)} (a b : Expr O' Γ .nat) : Expr O' Γ .bool :=
   eLet (.pair a b) (dfOrE (.lt (.fst .v0) (.snd .v0)) (.lt (.snd .v0) (.fst .v0)))
 
-def dfSmRNoneE {O' : Ops ASig} {Γ : List (Ty ASig)} :
+@[expose] def dfSmRNoneE {O' : Ops ASig} {Γ : List (Ty ASig)} :
     Expr O' Γ (smRT (ℓ := ℓ) (Pt := Pt) (GhostStT (ℓ := ℓ) (Pt := Pt))) :=
   .pair .none (.pair .none .none)
 
-def dfSmRSendSomeE {O' : Ops ASig} {Γ : List (Ty ASig)}
+@[expose] def dfSmRSendSomeE {O' : Ops ASig} {Γ : List (Ty ASig)}
     (wE : Expr O' Γ (B (ℓ := ℓ) (Pt := Pt) 32)) :
     Expr O' Γ (smRT (ℓ := ℓ) (Pt := Pt) (GhostStT (ℓ := ℓ) (Pt := Pt))) :=
   .pair (.some wE) (.pair .none .none)
 
-def dfSmRCorrSomeE {O' : Ops ASig} {Γ : List (Ty ASig)}
+@[expose] def dfSmRCorrSomeE {O' : Ops ASig} {Γ : List (Ty ASig)}
     (ghE : Expr O' Γ (GhostStT (ℓ := ℓ) (Pt := Pt))) :
     Expr O' Γ (smRT (ℓ := ℓ) (Pt := Pt) (GhostStT (ℓ := ℓ) (Pt := Pt))) :=
   .pair .none (.pair .none (.some ghE))
@@ -107,7 +108,7 @@ local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 local notation "DFIface" => fig8SmIfaceDF ℓ Pt
 
-def dfIdxPredU32E {Γ : List (Ty ASig)} (idxE : Expr AOps Γ .nat) :
+@[expose] def dfIdxPredU32E {Γ : List (Ty ASig)} (idxE : Expr AOps Γ .nat) :
     Expr AOps Γ (U32 (ℓ := ℓ) (Pt := Pt)) :=
   eLet idxE
     (.ite (.lt .v0 (.nat 1))
@@ -115,7 +116,7 @@ def dfIdxPredU32E {Γ : List (Ty ASig)} (idxE : Expr AOps Γ .nat) :
       (sOpPure .u32Sub
         (.pair (sOpPure .u32OfNat .v0) (sOpPure (.u32Lit 1#32) .unit))))
 
-def dfDrawSendCoinsC {Γ : List (Ty ASig)}
+@[expose] def dfDrawSendCoinsC {Γ : List (Ty ASig)}
     (rE : Expr AOps Γ (.opt (BV512 (ℓ := ℓ) (Pt := Pt)))) :
     Comp AOps DFIface Γ
       (.prod (BV512 (ℓ := ℓ) (Pt := Pt)) (.opt (BV256 (ℓ := ℓ) (Pt := Pt)))) :=
@@ -125,7 +126,7 @@ def dfDrawSendCoinsC {Γ : List (Ty ASig)}
     (.bind (.sample (I := DFIface) (UniformSamplerTag.base AtomicUnifBase.bv256) .unit)
       (.ret (.pair .v1 (.some .v0))))
 
-@[reducible] def dfPostSendArgT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def dfPostSendArgT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (dfSendCorrStateT ℓ Pt)
     (.prod (simMirT ℓ Pt)
       (.prod .bool
@@ -134,7 +135,7 @@ def dfDrawSendCoinsC {Γ : List (Ty ASig)}
             (.prod (B (ℓ := ℓ) (Pt := Pt) 32)
               (.prod (U32 (ℓ := ℓ) (Pt := Pt)) (fig8CtT (ℓ := ℓ) (Pt := Pt))))))))
 
-def dfPostSendStateE (idA idB : IdentityKey) {Γ : List (Ty ASig)}
+@[expose] def dfPostSendStateE (idA idB : IdentityKey) {Γ : List (Ty ASig)}
     (stE : Expr AOps Γ (dfSendCorrStateT ℓ Pt))
     (s1E : Expr AOps Γ (simMirT ℓ Pt))
     (qE : Expr AOps Γ .bool)
@@ -203,14 +204,14 @@ def dfPostSendStateE (idA idB : IdentityKey) {Γ : List (Ty ASig)}
     (eLet (toWireAtomicE c0)
       (.pair (dfSmRSendSomeE w0) (.pair sC' (.cons c1 ex1))))
 
-@[reducible] def dfSendInpT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def dfSendInpT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (dfSendCorrStateT ℓ Pt)
     (.prod .bool
       (.prod (PlainT (ℓ := ℓ) (Pt := Pt))
         (.prod (.opt (PlainT (ℓ := ℓ) (Pt := Pt))) (.opt (BV512 (ℓ := ℓ) (Pt := Pt))))))
 
 /-- Atomic `.send` step computation for `SimDeliverForge` handling transmit and challenge queries. -/
-def dfSendStepC (idA idB : IdentityKey) (qep : ℕ) {Γ : List (Ty ASig)}
+@[expose] def dfSendStepC (idA idB : IdentityKey) (qep : ℕ) {Γ : List (Ty ASig)}
     (stE : Expr AOps Γ (dfSendCorrStateT ℓ Pt))
     (qE : Expr AOps Γ .bool)
     (m0E : Expr AOps Γ (PlainT (ℓ := ℓ) (Pt := Pt)))
@@ -316,7 +317,7 @@ def dfSendStepC (idA idB : IdentityKey) (qep : ℕ) {Γ : List (Ty ASig)}
                         (.fst inp7) s1_7 (.fst (.snd inp7)) (.fst (.snd (.snd inp7)))
                         (dfIsSomeE (.fst (.snd (.snd (.snd inp7))))) pq'7 pn7 c7)))))))))))
 
-def dfPostCorrStateE (idA idB : IdentityKey) (q : ℕ) {Γ : List (Ty ASig)}
+@[expose] def dfPostCorrStateE (idA idB : IdentityKey) (q : ℕ) {Γ : List (Ty ASig)}
     (stE : Expr AOps Γ (dfSendCorrStateT ℓ Pt))
     (qE : Expr AOps Γ .bool)
     (fig8stE : Expr AOps Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) :
@@ -369,7 +370,7 @@ def dfPostCorrStateE (idA idB : IdentityKey) (q : ℕ) {Γ : List (Ty ASig)}
            .pair (dfSmRCorrSomeE gh2) (.pair sC' ex2))))
 
 /-- Atomic `.corrupt` step computation for `SimDeliverForge` matching `semCorrHookTGB`. -/
-def dfCorrStepC (idA idB : IdentityKey) (q : ℕ) {Γ : List (Ty ASig)}
+@[expose] def dfCorrStepC (idA idB : IdentityKey) (q : ℕ) {Γ : List (Ty ASig)}
     (stE : Expr AOps Γ (dfSendCorrStateT ℓ Pt))
     (qE : Expr AOps Γ .bool) :
     Comp AOps DFIface Γ
@@ -1139,7 +1140,5 @@ theorem dfCorrStepC_descBits_le (hℓ : ℓ < 10 ^ 6) {Γ : List (Ty (atomicSig 
   omega
 
 end StaticBounds
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepSendCorrCost

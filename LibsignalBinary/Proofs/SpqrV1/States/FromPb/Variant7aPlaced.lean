@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7a
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.UnchunkedFromPbClPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # SPQR V1 `<States>::from_pb`: Placed Variant 7 (`Ct1Sampled`, Block `333`) — Part A
@@ -24,7 +25,7 @@ import ProofLib.SepLogic.WPp
 Relocatable (`Obj.MultiPlacedLib`) migration of `Variant7a.lean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -173,7 +174,7 @@ theorem v7_sub_ok_encoder_from_pb_placed
   henc
 
 /-- Placed contract hypothesis for `<Ct1Sent>::from_pb` (Block `339`) on `lsProg_333`. -/
-def Ct1SentFromPbPlacedOkExt (A : RustAlloc) (F : ShaCompress)
+@[expose] def Ct1SentFromPbPlacedOkExt (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_333 (Rust.withPanics ext)) (lsmpl.base 339)
     (withLsCodeLoaded lsmpl (ct1SentFromPbSpec A F))

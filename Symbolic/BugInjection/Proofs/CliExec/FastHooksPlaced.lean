@@ -21,12 +21,12 @@ public import Symbolic.BugInjection.Proofs.CliExec.FastHooksRows
 /-!
 # Closure-Free Extern Hook Dispatcher for Placed CLI Images
 
-Core-cone (`0` `GeneratedLean.*`, `0` `CliBinaryPq`, `0` `CompFitsSatisfiable`, `0` `CliProcessFixed`)
-computable `FastState` counterpart of `cliExternsPlacedSig mmpl W`:
+Computable `FastState` counterpart of `cliExternsPlacedSig mmpl W` (avoiding `GeneratedLean.*`,
+`CliBinaryPq`, `CompFitsSatisfiable`, and `CliProcessFixed` imports):
 - `MallocngCallAddrs` and `fastCallMallocngSubroutine` for replaying linked `mallocng` (`calloc`,
-  `malloc`, `free`) in `aesEncHookMallocng`, `aesDecHookMallocng`, and `libcruxHmacHookMallocng`;
-- `fastHookTablePlaced` (`37` mangled symbol rows matching `CliBinaryPq.cliHookTablePlaced`);
-- `cliPanicSymbolsPlacedList` (`18` mangled panic symbols matching `CliBinaryPq.cliPanicSymbolsPlaced`),
+  `malloc`, `free`) in `mallocng`-backed fast hooks;
+- `fastHookTablePlaced` (empty hook table `[]` matching `CliBinaryPq.cliHookTablePlaced`);
+- `cliPanicSymbolsPlacedList` (18 mangled panic symbols matching `CliBinaryPq.cliPanicSymbolsPlaced`),
   `fastIsCliPanicSymbolPlacedBs`, `hasCliHookPlaced`, and `fastExecExternPlaced`.
 -/
 
@@ -298,17 +298,6 @@ def fastCompress256 (F : ShaState → List (BitVec 8) → ShaState) (fs : FastSt
   let bs := fs.mem.readBytes (fs.readReg64 .x1) (64 * (fs.readReg64 .x2).toNat)
   fastWriteBytesRet x0 (LibsignalHmac.shaStateBytes ((chunks64 bs).foldl F st)) fs
 
-def fastAesEncOut (E : CBC.AesKey → CBC.Block → CBC.Block) (fs : FastState) : List (BitVec 8) :=
-  aesCbcEncrypt E (bytesToKey32 (fs.mem.readBytes (fs.readReg64 .x2) 32))
-    (CBC.bytesToBlock (fs.mem.readBytes (fs.readReg64 .x4) 16))
-    (fs.mem.readBytes (fs.readReg64 .x0) (fs.readReg64 .x1).toNat)
-
-def fastAesDecOut (D : CBC.AesKey → CBC.Block → CBC.Block) (fs : FastState) :
-    Option (List (BitVec 8)) :=
-  aesCbcDecrypt D (bytesToKey32 (fs.mem.readBytes (fs.readReg64 .x2) 32))
-    (CBC.bytesToBlock (fs.mem.readBytes (fs.readReg64 .x4) 16))
-    (fs.mem.readBytes (fs.readReg64 .x0) (fs.readReg64 .x1).toNat)
-
 def fastPubFromSecret (pubKey : PubKeyFn) (fs : FastState) : Option FastState :=
   fastWriteBytesRet (fs.readReg64 .x8)
     (pubKey (fastReadVecN fs.mem (fs.readReg64 .x0) 32)).toList fs
@@ -334,9 +323,7 @@ structure MallocngCallAddrs where
 /-- Fuel bound for a single `mallocng` subroutine call (`calloc` / `malloc` / `free`). -/
 abbrev mallocngSubFuel : Nat := 262144
 
-/-- Caller stack-frame size subtracted from `sp` at the `aesEncHookMallocng` allocator call site. -/
-abbrev aesEncFrameBytes : Nat := 0xcb0
-abbrev aesDecFrameBytes : Nat := 0x950
+/-- Caller stack-frame size subtracted from `sp` at the `libcruxHmacHookMallocng` allocator call site. -/
 abbrev libcruxHmacFrameBytes : Nat := 0xe0
 
 /-- Decides the subroutine stopping condition (`SubroutineChoiceBridge.isSubroutineStopB`) for
@@ -416,60 +403,6 @@ def fastStepRustDealloc1 (subStep : FastState → Option FastState) (addrs : Mal
     else
       k (fastRestoreCallerRegs fs fs1)
 
-/-- Computable counterpart of `CryptoVerification.E2E.aesEncHookMallocng`. -/
-def fastAesEncMallocng (subStep : FastState → Option FastState) (addrs : MallocngCallAddrs)
-    (E : CBC.AesKey → CBC.Block → CBC.Block) (fs0 : FastState) : Option FastState :=
-  if fs0.readReg64 .x3 != 32#64 || fs0.readReg64 .x5 != 16#64 then
-    some (fs0.setStatus (.Exception "aes_256_cbc_encrypt: key.len != 32 or iv.len != 16"))
-  else
-    let ptLen := (fs0.readReg64 .x1).toNat
-    let ctLen := (ptLen / 16 + 1) * 16
-    if 2 ^ 63 ≤ ctLen then
-      some (fs0.setStatus .Panicked)
-    else
-      fastStepRustAlloc1 subStep addrs true aesEncFrameBytes ctLen (fun fs1 p =>
-        let ct := fastAesEncOut E fs1
-        let n := BitVec.ofNat 64 ct.length
-        let r := fs1.readReg64 .x8
-        if fs1.mem.canWrite p ct.length && fs1.mem.canWrite r 24 then
-          some ((fs1.setMem (fastWriteVecHeader (fs1.mem.writeBytes p ct) r n p n)).setPC
-            (fs1.readReg64 .lr))
-        else
-          none) fs0
-
-/-- Computable counterpart of `CryptoVerification.E2E.aesDecHookMallocng`. -/
-def fastAesDecMallocng (subStep : FastState → Option FastState) (addrs : MallocngCallAddrs)
-    (D : CBC.AesKey → CBC.Block → CBC.Block) (fs0 : FastState) : Option FastState :=
-  if fs0.readReg64 .x3 != 32#64 || fs0.readReg64 .x5 != 16#64 then
-    some (fs0.setStatus (.Exception "aes_256_cbc_decrypt: key.len != 32 or iv.len != 16"))
-  else
-    let ctLen := (fs0.readReg64 .x1).toNat
-    if ctLen == 0 || ctLen % 16 != 0 then
-      let r := fs0.readReg64 .x8
-      if fs0.mem.canWrite r 8 && fs0.mem.canWrite (r + 8#64) 8 then
-        some ((fs0.setMem ((fs0.mem.write64 r errTag).write64 (r + 8#64) 1#64)).setPC
-          (fs0.readReg64 .lr))
-      else
-        none
-    else
-      fastStepRustAlloc1 subStep addrs true aesDecFrameBytes ctLen (fun fs1 p =>
-        match fastAesDecOut D fs1 with
-        | some pt =>
-          let r := fs1.readReg64 .x8
-          if fs1.mem.canWrite p pt.length && fs1.mem.canWrite r 24 then
-            some ((fs1.setMem (fastWriteVecHeader (fs1.mem.writeBytes p pt) r
-              (BitVec.ofNat 64 ctLen) p (BitVec.ofNat 64 pt.length))).setPC (fs1.readReg64 .lr))
-          else
-            none
-        | none =>
-          fastStepRustDealloc1 subStep addrs aesDecFrameBytes p (fun fs2 =>
-            let r := fs2.readReg64 .x8
-            if fs2.mem.canWrite r 8 && fs2.mem.canWrite (r + 8#64) 8 then
-              some ((fs2.setMem ((fs2.mem.write64 r errTag).write64 (r + 8#64) 1#64)).setPC
-                (fs2.readReg64 .lr))
-            else
-              none) fs1) fs0
-
 /-- Computable counterpart of `CryptoVerification.E2E.libcruxHmacHookMallocng`. -/
 def fastLibcruxHmacMallocng (subStep : FastState → Option FastState) (addrs : MallocngCallAddrs)
     (F : HMAC.ShaState → List (BitVec 8) → HMAC.ShaState) (fs0 : FastState) : Option FastState :=
@@ -503,56 +436,10 @@ def fastLibcruxHmacMallocng (subStep : FastState → Option FastState) (addrs : 
                     else
                       none) fs6) fs5) fs4) fs3) fs2) fs1) fs0
 
-/-- 27-row mangled-symbol hook table corresponding in order to `CliBinaryPq.cliHookTablePlaced`. -/
-def fastHookTablePlaced (subStep : FastState → Option FastState) (addrs : MallocngCallAddrs)
-    (W : CliHooks) : List (String × (FastState → Option FastState)) :=
-  [("_RNvNtCsbvWyylYiyxg_4sha26sha51211compress512", fastCompress512 W.Q.F512),
-   ("_RNvMs5_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryNtB5_15MontgomeryPoint10to_edwards",
-     fastToEdwards W.Q.montToEd),
-   ("_RNvMsg_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint8compress",
-     fastCompress W.Q.compress),
-   ("_RNvXso_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPointNtNtNtCskxtBwYRO61I_4core3ops5arith3Neg3neg",
-     fastEdNeg W.Q.edNeg),
-   ("_RNvMsx_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint15is_torsion_free",
-     fastTorsionFree W.Q.isTorsionFree),
-   ("_RNvMsw_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint35vartime_double_scalar_mul_basepoint",
-     fastDsmb W.Q.dsmb),
-   ("_RNvMNtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB2_6Scalar20from_bytes_mod_order",
-     fastScalarMod W.Q.scalarMod),
-   ("_RNvMNtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB2_6Scalar25from_bytes_mod_order_wide",
-     fastScalarWide W.Q.scalarWide),
-   ("_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11encapsulate",
-     fastKemEncaps W.Q.encaps),
-   ("_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11decapsulate",
-     fastKemDecaps W.Q.decaps),
-   ("_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes9from_seed",
-     fastMlkemFromSeed W.Q.K),
-   ("_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes3pk1",
-     fastMlkemPk1),
-   ("_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes3pk2",
-     fastMlkemPk2),
-   ("_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate1",
-     fastMlkemEncaps1 W.Q.K),
-   ("_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate2",
-     fastMlkemEncaps2 W.Q.K),
-   ("_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental26decapsulate_compressed_key",
-     fastMlkemDecaps W.Q.K),
-   ("_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes",
-     fastMlkemValidatePk W.Q.K),
-   ("_RNvCs65XVORQObL2_12libcrux_hmac4hmac", fastLibcruxHmacMallocng subStep addrs W.C.F),
-   ("_RNvCs9Xul1Kjr0QF_16libsignal_cli_io10write_file", fastWriteFile),
-   ("_RNvCs9Xul1Kjr0QF_16libsignal_cli_io12write_stdout", fastWriteStdout),
-   ("_RNvNtCskxtBwYRO61I_4core3fmt5write", fastFmtWrite),
-   ("_RNvNvNtCs69KKACWg7bl_5alloc3fmt6format12format_inner", fastFormatInner),
-   ("_RNvNtCsbvWyylYiyxg_4sha26sha25611compress256", fastCompress256 W.C.F),
-   ("_RNvNtCsbKnPy0UR4Ui_13signal_crypto7aes_cbc19aes_256_cbc_encrypt",
-     fastAesEncMallocng subStep addrs W.C.E),
-   ("_RNvNtCsbKnPy0UR4Ui_13signal_crypto7aes_cbc19aes_256_cbc_decrypt",
-     fastAesDecMallocng subStep addrs W.C.D),
-   ("_RNvXs8_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_9PublicKeyINtNtCskxtBwYRO61I_4core7convert4FromRNtB5_12StaticSecretE4from",
-     fastPubFromSecret W.C.pubKey),
-   ("_RNvMs6_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecret14diffie_hellman",
-     fastDiffieHellman W.C.X)]
+/-- Empty mangled-symbol hook table (`[]`) corresponding to `CliBinaryPq.cliHookTablePlaced`. -/
+def fastHookTablePlaced (_subStep : FastState → Option FastState) (_addrs : MallocngCallAddrs)
+    (_W : CliHooks) : List (String × (FastState → Option FastState)) :=
+  []
 
 /-- Mangled panic extern symbols corresponding to `CliBinaryPq.cliPanicSymbolsPlaced`. -/
 def cliPanicSymbolsPlacedList : List String :=
@@ -578,7 +465,7 @@ def cliPanicSymbolsPlacedList : List String :=
 def panicPlacedExactNamesBs : List (List UInt8) :=
   (cliPanicSymbolsPlacedList ++ panicExactNames).map strUtf8Bytes
 
-/-- UTF-8 byte-list counterpart of `CliBinaryPq.isCliPanicSymbolPlaced`. -/
+/-- UTF-8 byte-list counterpart of `CliBinaryPqPlaced.isCliPanicSymbolPlaced`. -/
 def fastIsCliPanicSymbolPlacedBs (bs : List UInt8) : Bool :=
   listUInt8IsPrefix panicPrefixBs bs ||
   panicPlacedExactNamesBs.any (fun p => listUInt8Eq bs p)

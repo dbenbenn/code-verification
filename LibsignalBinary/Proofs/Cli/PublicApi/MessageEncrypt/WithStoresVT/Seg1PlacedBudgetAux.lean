@@ -9,12 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CommonPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.WithStoresVT.Seg1Placed
-public import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CommonPlacedBudget
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.WithStoresVT.Seg1Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordCallees.DropsPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Getters.Drops.ChainPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Budget-Threaded Relocatable `WithStoresVT` (Part 1a): `EncEnvTPlaced` and Bridges
@@ -25,7 +31,7 @@ Defines the framed budget-threaded contracts `withStoresEncPlacedSpecVT` and
 under `RustCliAllocBudget M` and `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -76,7 +82,7 @@ export CryptoVerification.Cli.LibsignalPublicApi.MessageEncrypt
 
 /-- Relocatable budget-threaded `withStoresEncPlacedSpecV` with `64 ≤ x.rest.length` and `F`
     (e.g. `TokenInit img`) framed in `pre` and `post`. -/
-def withStoresEncPlacedSpecVT [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def withStoresEncPlacedSpecVT [LibsignalPlacement] {M : AllocCostModel}
     (F : SepProp) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -95,7 +101,7 @@ def withStoresEncPlacedSpecVT [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Relocatable budget-threaded `OTR::encrypt::<Coins>` spec at
     `Q := (pq.length < 2^32 ∧ 64 ≤ rest.length)` with `F` framed. -/
-def otrEncryptPlacedSpecQT [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def otrEncryptPlacedSpecQT [LibsignalPlacement] {M : AllocCostModel}
     (F : SepProp) (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv) :
     Spec (OtrEncryptGhost × M.σ) :=
@@ -219,12 +225,12 @@ abbrev EncTailsVTPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## 2. Restricted-Kit / Scope Monotonicity & `SegExitPlaced` Bridges -/
 
-@[reducible] def h45_kitEnvF {A : RustAlloc} {b : BitVec 64} {kit : SessionStoreSpec A b}
+@[expose, reducible] def h45_kitEnvF {A : RustAlloc} {b : BitVec 64} {kit : SessionStoreSpec A b}
     (kitEnv : SessionStoreBudgetEnv kit) : SessionStoreBudgetEnv (h45_kitF_placed kit) where
   loadPollEnv := kitEnv.loadPollEnv
   storePollEnv := kitEnv.storePollEnv
 
-@[reducible] def h45_kitEnvL {A : RustAlloc} {b : BitVec 64} {kit : SessionStoreSpec A b}
+@[expose, reducible] def h45_kitEnvL {A : RustAlloc} {b : BitVec 64} {kit : SessionStoreSpec A b}
     (kitEnv : SessionStoreBudgetEnv kit) : SessionStoreBudgetEnv (h45_kitL_placed kit) where
   loadPollEnv := kitEnv.loadPollEnv
   storePollEnv := kitEnv.storePollEnv

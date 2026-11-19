@@ -14,7 +14,8 @@ public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Proofs.ConsumeMessageKey.Defs
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.ConsumeCodeSym
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.ConsumeCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Callee Specifications for `RatchetState::consume_message_key`
@@ -24,7 +25,7 @@ public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.Con
 forwarding across `sessionExterns`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,7 +48,7 @@ open LibsignalBinary.Heap.SpecBudget (withVmPreserved AllocHooksBudget)
 
 /-! ## `crypto::hmac_sha256` -/
 
-def hmacSpec (F : ShaState → List (BitVec 8) → ShaState) : Spec HmacGhost :=
+@[expose] def hmacSpec (F : ShaState → List (BitVec 8) → ShaState) : Spec HmacGhost :=
   withVmPreserved (CryptoVerification.LibsignalSession.hmacSpec F)
 
 /-! ## `RawVec<MessageKey>::grow_one` -/
@@ -56,7 +57,7 @@ abbrev growOneEvents (cap : BitVec 64) : List AllocEvent :=
   rawVecGrowEvents 104 4 8 cap
 
 /-- Allocation-event envelope for `RawVec<MessageKey>::grow_one`. -/
-def GrowOneEnv (cap : BitVec 64) (evs : List AllocEvent) : Prop :=
+@[expose] def GrowOneEnv (cap : BitVec 64) (evs : List AllocEvent) : Prop :=
   (cap = 0#64 ∧ evs = rustAllocEvents (4 * 104) 8) ∨
   (cap ≠ 0#64 ∧ evs = rustReallocEvents (cap.toNat * 104) (max (2 * cap.toNat) 4 * 104) 8)
 
@@ -67,16 +68,8 @@ theorem growOneEnv_events (cap : BitVec 64) :
   · simp only [h, ↓reduceIte, true_and, true_or]
   · exact Or.inr ⟨h, by simp only [h, ↓reduceIte]⟩
 
-theorem growOneEvents_eq_of_env {cap : BitVec 64} {evs : List AllocEvent}
-    (h : GrowOneEnv cap evs) :
-    evs = growOneEvents cap := by
-  unfold growOneEvents rawVecGrowEvents rawVecNewCap
-  rcases h with ⟨hz, rfl⟩ | ⟨hnz, rfl⟩
-  · simp only [hz, ↓reduceIte]
-  · simp only [hnz, ↓reduceIte]
-
 /-- Conditional-OOM budget-threaded contract for `RawVec<MessageKey>::grow_one`. -/
-def growOneCondSpec (M : AllocCostModel)
+@[expose] def growOneCondSpec (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (GrowGhost × M.σ) where
   pre := fun ((v, cap, ptr, bs), st) s =>
@@ -106,7 +99,7 @@ def growOneCondSpec (M : AllocCostModel)
       OomPreserved s0 sf⌝
 
 /-- Total-correctness budget contract for `RawVec<MessageKey>::grow_one` under `FitsEnv`. -/
-def growOneSpec (M : AllocCostModel)
+@[expose] def growOneSpec (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (GrowGhost × M.σ) where
   pre := fun ((v, cap, ptr, bs), st) s =>
@@ -176,7 +169,7 @@ theorem subroutine_ok_growOne_of_cond {M : AllocCostModel}
     rw [satisfies_pure_sepConj] at hoom
     exact False.elim (hoom.1.2.1 hFit)
 
-def GrowOnePlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def GrowOnePlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (H : String → Option (State → State)) (A : RustCliAllocBudget M) (lim : BudgetLimits) : Prop :=
   subroutine_ok ((blkPC_24).rebase (blkPl_24).base H) (lsmpl.base 43)
     (withLsCodeLoaded lsmpl (growOneSpec M A lim))

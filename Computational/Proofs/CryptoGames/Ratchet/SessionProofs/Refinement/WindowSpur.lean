@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.GhostStep
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.SpuriousBounds
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.GhostStep -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.SpuriousBounds -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Collision
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
+import Computational.Proofs.CryptoGames.AEAD.HKDFProofDefs
 
 /-!
 # Spurious-step and zero-point rejection lemmas
@@ -25,7 +26,7 @@ rejects evicted honest ratchet keys, zero-point ratchet keys (DEV-LS11), malform
 mismatched addresses.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -43,7 +44,7 @@ variable {Pt PQ PQC : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt] [Inha
 
 /-- Boolean predicate for whether a candidate eager sending key `x` triggers a spurious MAC match
 on wire `w` with salt `salt` and evicted honest ratchet secret `y`. -/
-def spurBadSingle (P : Params PQ PQC) (encPt : Pt → List (BitVec 8)) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def spurBadSingle (P : Params PQ PQC) (encPt : Pt → List (BitVec 8)) (Dh : DHFun (BitVec 256) Pt)
     (Q : Party) (rk : Ratchet.RootKey) (curCkaMsg : Pt)
     (w : List (BitVec 8)) (salt : Salt) (y : BitVec 256) (x : BitVec 256) : Bool :=
   let ser := w.take (w.length - 8)
@@ -67,7 +68,7 @@ theorem spurBadSingle_effSalt (P : Params PQ PQC) (encPt : Pt → List (BitVec 8
   unfold spurBadSingle
   simp only [← msgKeys_effSalt]
 
-def spurBadList (P : Params PQ PQC) (encPt : Pt → List (BitVec 8)) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def spurBadList (P : Params PQ PQC) (encPt : Pt → List (BitVec 8)) (Dh : DHFun (BitVec 256) Pt)
     (Q : Party) (rk : Ratchet.RootKey) (curCkaMsg : Pt)
     (L : List (List (BitVec 8) × Salt × BitVec 256)) (x : BitVec 256) : Bool :=
   L.any fun ⟨w, salt, y⟩ => spurBadSingle P encPt Dh Q rk curCkaMsg w salt y x
@@ -608,7 +609,7 @@ theorem receive_eq_none_of_spqr_error (P : Params PQ PQC)
 
 /-! ## Point-generalized spurious-step predicates -/
 
-def spurBadSinglePt (P : Params PQ PQC) (encPt : Pt → List (BitVec 8)) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def spurBadSinglePt (P : Params PQ PQC) (encPt : Pt → List (BitVec 8)) (Dh : DHFun (BitVec 256) Pt)
     (Q : Party) (rk : Ratchet.RootKey) (curCkaMsg : Pt)
     (w : List (BitVec 8)) (salt : Salt) (T : Pt) (x : BitVec 256) : Bool :=
   let ser := w.take (w.length - 8)

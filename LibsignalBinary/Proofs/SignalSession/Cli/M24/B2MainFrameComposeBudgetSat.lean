@@ -11,15 +11,20 @@ module
 
 public import LibsignalBinary.Heap.Fine.PoolNeedLocks
 public import LibsignalBinary.Proofs.SignalSession.Cli.M24.ArgvPad -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlaced
 public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInst -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainOkCliExtB2NeedLocksInst -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1PlacedRoBudgetSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainOkCliExtB2NeedLocksInst
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1PlacedRoBudgetSat
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainOkComposePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.ParseArgsShape
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # SWAR-Padded Route-B2 `b2MainSpecTightNeedLocksFineAtPad` Hop & Process Composition
@@ -47,8 +52,8 @@ namespace LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudgetS
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib
 open CryptoVerification
-  (LibsignalHooks LibsignalPlacement LibsignalRoLoaded libsignalMutatedBlocks
-   libsignalSessionExterns lsmpl)
+  (ExternsDistinctOnHooked LibsignalHooks LibsignalPlacement
+   LibsignalRoLoaded libsignalMutatedBlocks lsmpl)
 open CryptoVerification.E2E (PEParams)
 open CryptoVerification.LibsignalTripleRatchet (extHookStack)
 open CryptoVerification.LibsignalTripleRatchetRepr (uuidTryParse)
@@ -710,7 +715,7 @@ theorem b2MainSpecTightNeedLocksFineAtPad_of_runSem_placed_sat
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}
@@ -796,7 +801,7 @@ theorem b2MainSpecTightNeedLocksFineAtPad_of_domScopedRunSem_placed_sat
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}
@@ -883,7 +888,7 @@ theorem b2MainSpecTightNeedLocksFineAtPad_of_pqScopedRunSem_placed_sat
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}

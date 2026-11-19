@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimShallow
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimShallow -- proof-setup: allow-public-import
 import VCVio.OracleComp.QueryTracking.SubSpec
 public import Computational.Proofs.CryptoGames.FSAEAD.PubProofDefs
 
@@ -23,7 +23,7 @@ Proves query-count preservation (`sim_queries_proof`) and equal-public-challenge
 (`simRun_equalPub`) for the libsignal-to-Fig. 8 simulator.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec
 
@@ -86,7 +86,7 @@ section QB
 variable {Q : (FSpec Pt ℓ).Domain → Prop} [DecidablePred Q] {α β : Type}
 
 /-- Stateful simulator computation `x` makes at most `n` `Q`-queries from every state `s`. -/
-def QB (Q : (FSpec Pt ℓ).Domain → Prop) [DecidablePred Q]
+@[expose] def QB (Q : (FSpec Pt ℓ).Domain → Prop) [DecidablePred Q]
     {α : Type} (x : SimM PQ Pt ℓ α) (n : ℕ) : Prop :=
   ∀ s : SimState PQ Pt ℓ, IsQueryBoundP (x.run s) Q n
 

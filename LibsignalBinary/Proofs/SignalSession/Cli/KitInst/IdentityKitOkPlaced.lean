@@ -9,25 +9,38 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentitySpecPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityVtablesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.AddressText.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.FinishGrowPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustShimPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPollPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSaveShimPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePollPlaced
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentitySpecPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityVtablesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.AddressText.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.FinishGrowPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustShimPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPollPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSaveShimPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePollPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentitySpec
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyDecode
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.ShimsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Placed CLI `IdentityStoreKitPlacedOkI` Assembly
@@ -37,7 +50,7 @@ assembly for CLI `IdentityFiles`, composing the `Dir` helpers with the `Identity
 shims, polls, and `futDrop`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 
 namespace CryptoVerification.SignalSession.Cli.KitInst.IdKit
@@ -61,7 +74,7 @@ open CryptoVerification.SignalSession.Cli.Store.PlacedCommon
 
 /-- Relocatable `IdentityStoreSpec` for CLI `IdentityFiles` with placed block bases and
 `.rodata` symbol addresses. -/
-def cliIdentityKitSpecPlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def cliIdentityKitSpecPlaced [LibsignalPlacement] (A : RustAlloc)
     (rd : ReadRule) (F0 : FsFiles) (pathOk : List (BitVec 8) → Prop) (peer : AddrGhost)
     (trustShimStk trustPollStk saveShimStk savePollStk : Nat)
     (vtSym : String := cliIdentityVtRoSym) :

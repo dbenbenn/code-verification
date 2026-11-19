@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Decodes -- shake: keep
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1DispatchPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1FromPbPlaced
@@ -31,7 +31,7 @@ Composes the relocatable prologue, `spqr::decode_state`, `pq.inner` unpack, and 
 into full Phase 1 execution (`+0 -> s0.lr` or 11-arm dispatch) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

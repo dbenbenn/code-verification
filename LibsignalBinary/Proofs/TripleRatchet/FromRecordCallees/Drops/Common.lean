@@ -10,11 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Getters.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
+import ProofLib.Sep
+meta import Lean
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Shared Helpers for `drop_glue<SessionStructure>` (`0x25b4` and `0x35958`)
@@ -23,7 +26,7 @@ Provides separation-logic field-deallocation lemmas, stack splits, and common `S
 shared by `drop_glue<SessionStructure> [local#1]` and `[local#2]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.FromRecordCallees
 
@@ -60,17 +63,6 @@ theorem dealloc_hookSat_tripleRatchetExterns {A : RustAlloc} (C : Crypto) (ctl :
     staticDropName, sharedDropName, rngFillName, uuidTryParseName,
     varintSlowName, noHookNames] using hA.dealloc
 
-theorem dealloc_ok_at {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs)
-    {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "__rustc::__rust_dealloc")) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      (rustDeallocSpec A) :=
-  hook_ok_at_raw hfn hk (by decide) (ls_hook% "__rustc::__rust_dealloc")
-    (dealloc_hookSat_tripleRatchetExterns C ctl hA)
-
 theorem SepWP.seq_clean {prog : Program} {mid target : BitVec 64} {s : State}
     {P P_mid : SepProp} {Q : State → Prop} {post : State → SepProp → Prop}
     (h1 : SepWP prog mid s P (fun sm Pm => (Pm ⊢ P_mid) ∧ Q sm))
@@ -82,11 +74,11 @@ theorem SepWP.seq_clean {prog : Program} {mid target : BitVec 64} {s : State}
 
 /-! ## Separation-logic deallocation helpers for `SessionStructure` (344 bytes) -/
 
-def vecPinDealloc (A : RustAlloc) (pin : VecPin) : SepProp :=
+@[expose] def vecPinDealloc (A : RustAlloc) (pin : VecPin) : SepProp :=
   if (pin.cap == 0#64) = true then emp
   else A.live pin.ptr pin.cap.toNat 1 ∗ memRegion pin.ptr pin.cap.toNat
 
-def sgnPinDealloc (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
+@[expose] def sgnPinDealloc (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
   if cap.slt 1#64 = true then emp
   else A.live ptr cap.toNat 1 ∗ memRegion ptr cap.toNat
 
@@ -100,6 +92,14 @@ theorem slt_one_iff_eq_zero {cap : BitVec 64} (h : cap.toNat < 2 ^ 63) :
   simp only [decide_eq_true_iff, h2, h3, ↓reduceIte]
   omega
 
+run_meta do
+  let env ← Lean.getEnv
+  for (h, ks) in #[(``RustAlloc.live, #[1]), (``vecPinDealloc, #[1]), (``sgnPinDealloc, #[1, 2]), (``vecAt, #[5])] do
+    let n := Lean.mkPrivateName env (((ks.foldl Lean.Name.mkNum ProofLib.Sep.sepKeyMarker).str "_TARGET_") ++ h)
+    unless env.contains n do
+      Lean.withExporting (isExporting := false) do
+        Lean.addDecl <| .defnDecl { name := n, levelParams := [], type := .const ``Unit [], value := .const ``Unit.unit [], hints := .abbrev, safety := .safe }
+
 theorem vecU8At_entails_pin_dealloc (A : RustAlloc) (a : BitVec 64) (pin : VecPin)
     (bs : List (BitVec 8)) :
     vecU8At A a pin.cap pin.ptr bs ⊢
@@ -107,12 +107,14 @@ theorem vecU8At_entails_pin_dealloc (A : RustAlloc) (a : BitVec 64) (pin : VecPi
       vecPinDealloc A pin := by
   refine Entails.trans (vecU8At_entails_dealloc A a pin.cap pin.ptr bs) ?_
   unfold vecHeader vecPinDealloc
-  rw [sepConj_pure_left_comm]
-  apply Entails.pure_left; intro _
-  have hbeq : ((pin.cap == 0#64) = true) ↔ pin.cap = 0 := beq_iff_eq
-  simp only [hbeq]
-  rw [sepConj_assoc, sepConj_assoc]
-  exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_left (pointsTo64_entails_memRegion _ _)))
+  by_cases h0 : pin.cap = 0
+  · simp only [h0, show ((0 : BitVec 64) == 0#64) = true from rfl, ↓reduceIte, sepConj_emp]
+    sep_interval
+  · have hbeq : (pin.cap == 0#64) = false := beq_eq_false_iff_ne.mpr fun h => h0 h
+    simp only [h0, hbeq, Bool.false_eq_true, ↓reduceIte]
+    refine Entails.trans (sepConj_mono_left (sepConj_mono_right (sepConj_mono_right
+      (pointsTo64_entails_memRegion _ _)))) ?_
+    bi_entail
 
 theorem vecGhostAt_entails_pin_dealloc (A : RustAlloc) (g : VecGhost) (a : BitVec 64) :
     vecGhostAt A g a ⊢
@@ -122,26 +124,17 @@ theorem vecGhostAt_entails_pin_dealloc (A : RustAlloc) (g : VecGhost) (a : BitVe
 
 theorem header_cells_entails_memRegion_24 (a cap ptr : BitVec 64) :
     ((a ↦₆₄ cap) ∗ ((a + 8#64) ↦₆₄ ptr) ∗ memRegion (a + 16#64) 8) ⊢ memRegion a 24 := by
-  rw [ProofLib.memRegion_split' (b := a) (n := 8) (k := 16) (b' := a + 8#64) rfl rfl (by decide),
-      ProofLib.memRegion_split' (b := a + 8#64) (n := 8) (k := 8) (b' := a + 16#64) rfl (by bv_omega) (by decide)]
-  exact sepConj_mono (pointsTo64_entails_memRegion _ _)
-    (sepConj_mono_left (pointsTo64_entails_memRegion _ _))
+  sep_interval
 
 theorem header_cells_entails_memRegion_32 (a cap ptr : BitVec 64) :
     ((a ↦₆₄ cap) ∗ ((a + 8#64) ↦₆₄ ptr) ∗ memRegion (a + 16#64) 16) ⊢ memRegion a 32 := by
-  rw [ProofLib.memRegion_split' (b := a) (n := 8) (k := 24) (b' := a + 8#64) rfl rfl (by decide),
-      ProofLib.memRegion_split' (b := a + 8#64) (n := 8) (k := 16) (b' := a + 16#64) rfl (by bv_omega) (by decide)]
-  exact sepConj_mono (pointsTo64_entails_memRegion _ _)
-    (sepConj_mono_left (pointsTo64_entails_memRegion _ _))
+  sep_interval
 
 end DropsCommon
 
 theorem header_cells_entails_memRegion_48_shared_lb (a cap ptr : BitVec 64) :
     ((a ↦₆₄ cap) ∗ ((a + 8#64) ↦₆₄ ptr) ∗ memRegion (a + 16#64) 32) ⊢ memRegion a 48 := by
-  rw [ProofLib.memRegion_split' (b := a) (n := 8) (k := 40) (b' := a + 8#64) rfl rfl (by decide),
-      ProofLib.memRegion_split' (b := a + 8#64) (n := 8) (k := 32) (b' := a + 16#64) rfl (by bv_omega) (by decide)]
-  exact sepConj_mono (pointsTo64_entails_memRegion _ _)
-    (sepConj_mono_left (pointsTo64_entails_memRegion _ _))
+  sep_interval
 
 namespace DropsCommon
 
@@ -155,16 +148,11 @@ theorem optTailVecAt_entails_dealloc (A : RustAlloc) (size : Nat)
   | none =>
     unfold optTailVecAt sgnPinDealloc
     have hsplit : size - 8 = 8 + (size - 16) := by omega
-    rw [hsplit,
-        ProofLib.memRegion_split' (b := a + 8#64) (n := 8) (k := size - 16)
-          (b' := a + 16#64) rfl (by bv_omega) (by omega),
-        memRegion_eight (a + 8#64),
-        sepExists_sepConj_left, sepExists_sepConj_right]
-    apply Entails.sepExists_elim; intro ptr
-    refine Entails.sepExists_right noneCap (Entails.sepExists_right ptr ?_)
     have hslt : noneCap.slt 1#64 = true := by decide
-    simp only [hslt, ↓reduceIte, sepConj_emp]
-    exact Entails.refl _
+    rw [hsplit, ProofLib.memRegion_split' (b := a + 8#64) (n := 8) (k := size - 16)
+      (b' := a + 16#64) rfl (by bv_omega) (by omega), memRegion_eight (a + 8#64)]
+    simp only [hslt, ↓reduceIte]
+    bi_entail
   | some g =>
     unfold optTailVecAt sgnPinDealloc
     apply Entails.pure_left; intro htail
@@ -178,33 +166,20 @@ theorem optTailVecAt_entails_dealloc (A : RustAlloc) (size : Nat)
       rw [sepConj_pure_left_comm]
       apply Entails.pure_left; rintro ⟨_, hcap_lt, _⟩
       unfold vecHeader
-      simp only [slt_one_iff_eq_zero hcap_lt, sepConj_assoc]
-      exact Entails.refl _
+      simp only [slt_one_iff_eq_zero hcap_lt]
+      bi_entail
     refine Entails.trans (sepConj_mono_left hvec) ?_
-    refine Entails.sepExists_right g.vec.cap (Entails.sepExists_right g.vec.ptr ?_)
     have h16 :
         (((a + 16#64) ↦₆₄ BitVec.ofNat 64 g.vec.bytes.length) ∗ ((a + 24#64) ↦ₛ g.tail)) ⊢
           memRegion (a + 16#64) (size - 16) := by
-      have hsplit : size - 16 = 8 + (size - 24) := by omega
-      rw [hsplit,
+      rw [show size - 16 = 8 + (size - 24) by omega,
           ProofLib.memRegion_split' (b := a + 16#64) (n := 8) (k := size - 24)
             (b' := a + 24#64) rfl (by bv_omega) (by omega)]
       apply sepConj_mono (pointsTo64_entails_memRegion _ _)
-      have hb := pointsToBytes_entails_memRegion (a + 24#64) g.tail
-      rwa [htail] at hb
-    have hpull1 :
-        (((a ↦₆₄ g.vec.cap) ∗ ((a + 8#64) ↦₆₄ g.vec.ptr) ∗
-          ((a + 16#64) ↦₆₄ BitVec.ofNat 64 g.vec.bytes.length) ∗
-          (if g.vec.cap.slt 1#64 = true then emp
-           else A.live g.vec.ptr g.vec.cap.toNat 1 ∗ memRegion g.vec.ptr g.vec.cap.toNat)) ∗
-          ((a + 24#64) ↦ₛ g.tail)) =
-        ((a ↦₆₄ g.vec.cap) ∗ ((a + 8#64) ↦₆₄ g.vec.ptr) ∗
-          (((a + 16#64) ↦₆₄ BitVec.ofNat 64 g.vec.bytes.length) ∗ ((a + 24#64) ↦ₛ g.tail)) ∗
-          (if g.vec.cap.slt 1#64 = true then emp
-           else A.live g.vec.ptr g.vec.cap.toNat 1 ∗ memRegion g.vec.ptr g.vec.cap.toNat)) := by
-      ac_rfl
-    rw [hpull1]
-    exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_left h16))
+      simpa [htail] using pointsToBytes_entails_memRegion (a + 24#64) g.tail
+    refine Entails.sepExists_right g.vec.cap (Entails.sepExists_right g.vec.ptr ?_)
+    refine Entails.trans ?_ (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left h16)))
+    bi_entail
 
 theorem optChainKeyAt_entails_dealloc (A : RustAlloc) (pin : VecPin)
     (ck : Option ChainKey) (a : BitVec 64) :
@@ -215,54 +190,33 @@ theorem optChainKeyAt_entails_dealloc (A : RustAlloc) (pin : VecPin)
   cases ck with
   | none =>
     unfold optChainKeyAt sgnPinDealloc
+    have hslt : optChainKeyNone.slt 1#64 = true := by decide
     rw [ProofLib.memRegion_split' (b := a + 8#64) (n := 8) (k := 16)
           (b' := a + 16#64) rfl (by bv_omega) (by decide),
-        memRegion_eight (a + 8#64),
-        sepExists_sepConj_left, sepExists_sepConj_right]
-    apply Entails.sepExists_elim; intro ptr
-    refine Entails.sepExists_right optChainKeyNone (Entails.sepExists_right ptr ?_)
-    have hslt : optChainKeyNone.slt 1#64 = true := by decide
-    simp only [hslt, ↓reduceIte, sepConj_emp]
-    exact Entails.refl _
+        memRegion_eight (a + 8#64)]
+    simp only [hslt, ↓reduceIte]
+    bi_entail
   | some c =>
-    unfold optChainKeyAt sgnPinDealloc
+    unfold optChainKeyAt
     have hvec : vecU8At A a pin.cap pin.ptr (keyToBytes32 c.key) ⊢
         (a ↦₆₄ pin.cap) ∗ ((a + 8#64) ↦₆₄ pin.ptr) ∗
           ((a + 16#64) ↦₆₄ BitVec.ofNat 64 (keyToBytes32 c.key).length) ∗
-          (if pin.cap.slt 1#64 = true then emp
-           else A.live pin.ptr pin.cap.toNat 1 ∗ memRegion pin.ptr pin.cap.toNat) := by
+          sgnPinDealloc A pin.cap pin.ptr := by
+      unfold sgnPinDealloc
       refine Entails.trans (vecU8At_entails_dealloc A a pin.cap pin.ptr (keyToBytes32 c.key)) ?_
       rw [sepConj_pure_left_comm]
       apply Entails.pure_left; rintro ⟨_, hcap_lt, _⟩
       unfold vecHeader
-      simp only [slt_one_iff_eq_zero hcap_lt, sepConj_assoc]
-      exact Entails.refl _
-    refine Entails.trans (sepConj_mono_left hvec) ?_
-    refine Entails.sepExists_right pin.cap (Entails.sepExists_right pin.ptr ?_)
-    have h16 :
+      simp only [slt_one_iff_eq_zero hcap_lt]
+      bi_entail
+    have htail :
         (((a + 16#64) ↦₆₄ BitVec.ofNat 64 (keyToBytes32 c.key).length) ∗
           ((a + 24#64) ↦₃₂ c.index) ∗ memRegion (a + 28#64) 4) ⊢
-          memRegion (a + 16#64) 16 := by
-      rw [ProofLib.memRegion_split' (b := a + 16#64) (n := 8) (k := 8)
-            (b' := a + 24#64) rfl (by bv_omega) (by decide),
-          ProofLib.memRegion_split' (b := a + 24#64) (n := 4) (k := 4)
-            (b' := a + 28#64) rfl (by bv_omega) (by decide)]
-      exact sepConj_mono (pointsTo64_entails_memRegion _ _)
-        (sepConj_mono_left (pointsTo32_entails_memRegion _ _))
-    have hpull :
-        (((a ↦₆₄ pin.cap) ∗ ((a + 8#64) ↦₆₄ pin.ptr) ∗
-          ((a + 16#64) ↦₆₄ BitVec.ofNat 64 (keyToBytes32 c.key).length) ∗
-          (if pin.cap.slt 1#64 = true then emp
-           else A.live pin.ptr pin.cap.toNat 1 ∗ memRegion pin.ptr pin.cap.toNat)) ∗
-          ((a + 24#64) ↦₃₂ c.index) ∗ memRegion (a + 28#64) 4) =
-        ((a ↦₆₄ pin.cap) ∗ ((a + 8#64) ↦₆₄ pin.ptr) ∗
-          (((a + 16#64) ↦₆₄ BitVec.ofNat 64 (keyToBytes32 c.key).length) ∗
-            ((a + 24#64) ↦₃₂ c.index) ∗ memRegion (a + 28#64) 4) ∗
-          (if pin.cap.slt 1#64 = true then emp
-           else A.live pin.ptr pin.cap.toNat 1 ∗ memRegion pin.ptr pin.cap.toNat)) := by
-      ac_rfl
-    rw [hpull]
-    exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_left h16))
+          memRegion (a + 16#64) 16 := by sep_interval
+    refine Entails.trans (sepConj_mono_left hvec) ?_
+    refine Entails.sepExists_right pin.cap (Entails.sepExists_right pin.ptr ?_)
+    refine Entails.trans ?_ (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left htail)))
+    bi_entail
 
 end DropsCommon
 
@@ -276,21 +230,28 @@ theorem cap_add_one_ne_zero_shared_lb {cap : BitVec 64} (h : cap.toNat < 2 ^ 63)
 
 theorem sender_none_entails_memRegion_104_shared_lb (a : BitVec 64) :
     ((a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 96) ⊢ memRegion a 104 := by
-  rw [ProofLib.memRegion_split' (b := a) (n := 8) (k := 96) (b' := a + 8#64) rfl rfl (by decide)]
-  exact sepConj_mono_left (pointsTo64_entails_memRegion _ _)
+  sep_interval
 
-def srkRest_shared_lb (A : RustAlloc) (a : BitVec 64) (g : VecGhost) : SepProp :=
+@[expose] def srkRest_shared_lb (A : RustAlloc) (a : BitVec 64) (g : VecGhost) : SepProp :=
   ((a + 8#64) ↦₆₄ g.ptr) ∗ ((a + 16#64) ↦₆₄ BitVec.ofNat 64 g.bytes.length) ∗
     (if g.cap = 0 then emp
      else A.live g.ptr g.cap.toNat 1 ∗ (g.ptr ↦ₛ g.bytes) ∗
        memRegion (g.ptr + BitVec.ofNat 64 g.bytes.length) (g.cap.toNat - g.bytes.length))
+
+run_meta do
+  let env ← Lean.getEnv
+  for (h, ks) in #[(``srkRest_shared_lb, #[1]), (``vecGhostAt, #[2]), (``vecU8At, #[1]), (``optChainKeyAt, #[3]), (``optTailVecAt, #[2]), (``optSenderChainAt, #[1])] do
+    let n := Lean.mkPrivateName env (((ks.foldl Lean.Name.mkNum ProofLib.Sep.sepKeyMarker).str "_TARGET_") ++ h)
+    unless env.contains n do
+      Lean.withExporting (isExporting := false) do
+        Lean.addDecl <| .defnDecl { name := n, levelParams := [], type := .const ``Unit [], value := .const ``Unit.unit [], hints := .abbrev, safety := .safe }
 
 theorem vecGhostAt_eq_srkRest_shared_lb (A : RustAlloc) (g : VecGhost) (a : BitVec 64) :
     vecGhostAt A g a =
       ⌜g.bytes.length ≤ g.cap.toNat ∧ g.cap.toNat < 2 ^ 63 ∧ g.ptr ≠ 0⌝ ∗
       (a ↦₆₄ g.cap) ∗ srkRest_shared_lb A a g := by
   unfold vecGhostAt vecU8At vecHeader srkRest_shared_lb
-  ac_rfl
+  apply Entails.antisymm <;> bi_entail
 
 theorem optSenderChainAt_some_expose_shared_lb (A : RustAlloc) (a : BitVec 64)
     (g : SenderChainGhost) (sc : SenderChain) :
@@ -307,7 +268,7 @@ theorem optSenderChainAt_some_expose_shared_lb (A : RustAlloc) (a : BitVec 64)
   rw [vecGhostAt_eq_srkRest_shared_lb A g.srk a, sepConj_assoc, sepConj_assoc]
   apply Entails.pure_left; rintro ⟨hlen, hcap_lt, hptr_ne⟩
   refine Entails.pure_right ⟨hpk, hlen, hcap_lt, hptr_ne, cap_add_one_ne_zero_shared_lb hcap_lt⟩ ?_
-  exact Entails.of_eq (by ac_rfl)
+  bi_entail
 
 theorem chainAt_of_exposed_sender_shared_lb (A : RustAlloc) (a : BitVec 64)
     (g : SenderChainGhost) (sc : SenderChain)
@@ -326,7 +287,7 @@ theorem chainAt_of_exposed_sender_shared_lb (A : RustAlloc) (a : BitVec 64)
   refine Entails.pure_right ⟨hpk, by decide, rfl⟩ ?_
   rw [vecGhostAt_eq_srkRest_shared_lb A g.srk a, sepConj_assoc, sepConj_assoc]
   refine Entails.pure_right ⟨hlen, hcap_lt, hptr_ne⟩ ?_
-  exact Entails.of_eq (by ac_rfl)
+  bi_entail
 
 namespace DropsCommon
 
@@ -353,24 +314,15 @@ theorem optSenderChainAt_some_entails_dealloc1 (A : RustAlloc) (a : BitVec 64)
     unfold vecHeader vecPinDealloc
     rw [sepConj_pure_left_comm]
     apply Entails.pure_left; rintro ⟨_, hcap_lt, _⟩
-    refine Entails.pure_right (cap_add_one_ne_zero_shared_lb hcap_lt) ?_
-    have hbeq : ((g.srk.cap == 0#64) = true) ↔ g.srk.cap = 0 := beq_iff_eq
-    simp only [hbeq]
-    rw [sepConj_assoc, sepConj_assoc]
-    exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_left (pointsTo64_entails_memRegion _ _)))
+    have hne := cap_add_one_ne_zero_shared_lb hcap_lt
+    simp only [beq_iff_eq]
+    refine Entails.trans (sepConj_mono_left (sepConj_mono_right (sepConj_mono_right
+      (pointsTo64_entails_memRegion _ _)))) ?_
+    bi_entail
   have h2 := vecGhostAt_entails_pin_dealloc A g.priv (a + 24#64)
   have h3 := optChainKeyAt_entails_dealloc A g.ck (some sc.chainKey) (a + 72#64)
-  have ha1 : (a + 24#64) + 8#64 = a + 32#64 := by bv_omega
-  have ha2 : (a + 24#64) + 16#64 = a + 40#64 := by bv_omega
-  have hc1 : (a + 72#64) + 8#64 = a + 80#64 := by bv_omega
-  have hc2 : (a + 72#64) + 16#64 = a + 88#64 := by bv_omega
-  rw [ ha1, ha2] at h2
-  rw [hc1, hc2] at h3
   refine Entails.trans (sepConj_mono h1 (sepConj_mono h2 (sepConj_mono_right h3))) ?_
-  simp only [sepExists_sepConj_right]
-  apply Entails.sepExists_elim; intro ckCap; refine Entails.sepExists_right ckCap ?_
-  apply Entails.sepExists_elim; intro ckPtr; refine Entails.sepExists_right ckPtr ?_
-  exact Entails.of_eq (by ac_rfl)
+  bi_entail
 
 end DropsCommon
 
@@ -378,13 +330,7 @@ theorem sessionTail_entails_memRegion_16_shared_lb (ss : BitVec 64)
     (v1 v2 : BitVec 32) (regIds : List (BitVec 8)) (hreg : regIds.length = 8) :
     ((ss + 0x148#64) ↦₃₂ v1) ∗ ((ss + 0x14c#64) ↦₃₂ v2) ∗ ((ss + 0x150#64) ↦ₛ regIds) ⊢
       memRegion (ss + 328#64) 16 := by
-  rw [ProofLib.memRegion_split' (b := ss + 328#64) (n := 4) (k := 12)
-        (b' := ss + 332#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_split' (b := ss + 332#64) (n := 4) (k := 8)
-        (b' := ss + 336#64) rfl (by bv_omega) (by decide)]
-  refine sepConj_mono (pointsTo32_entails_memRegion _ _) (sepConj_mono (pointsTo32_entails_memRegion _ _) ?_)
-  have hb := pointsToBytes_entails_memRegion (ss + 336#64) regIds
-  rwa [hreg] at hb
+  sep_interval
 
 theorem session_memRegions_entails_344_shared_lb (ss : BitVec 64) :
     memRegion ss 24 ∗ memRegion (ss + 24#64) 24 ∗ memRegion (ss + 48#64) 24 ∗
@@ -392,18 +338,9 @@ theorem session_memRegions_entails_344_shared_lb (ss : BitVec 64) :
       memRegion (ss + 144#64) 104 ∗ memRegion (ss + 248#64) 48 ∗
       memRegion (ss + 296#64) 32 ∗ memRegion (ss + 328#64) 16 ⊢
       memRegion ss 344 := by
-  rw [ProofLib.memRegion_split' (b := ss) (n := 24) (k := 320) (b' := ss + 24#64) rfl rfl (by decide),
-      ProofLib.memRegion_split' (b := ss + 24#64) (n := 24) (k := 296) (b' := ss + 48#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_split' (b := ss + 48#64) (n := 24) (k := 272) (b' := ss + 72#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_split' (b := ss + 72#64) (n := 24) (k := 248) (b' := ss + 96#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_split' (b := ss + 96#64) (n := 24) (k := 224) (b' := ss + 120#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_split' (b := ss + 120#64) (n := 24) (k := 200) (b' := ss + 144#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_split' (b := ss + 144#64) (n := 104) (k := 96) (b' := ss + 248#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_split' (b := ss + 248#64) (n := 48) (k := 48) (b' := ss + 296#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_split' (b := ss + 296#64) (n := 32) (k := 16) (b' := ss + 328#64) rfl (by bv_omega) (by decide)]
-  exact Entails.refl _
+  sep_interval
 
-@[reducible]
+@[expose, reducible]
 def ssFirst3HeadersAt_shared_lb (ss : BitVec 64) (G : SessionGhost) : SepProp :=
   (ss ↦₆₄ G.localIk.cap) ∗ ((ss + 8#64) ↦₆₄ G.localIk.ptr) ∗ memRegion (ss + 16#64) 8 ∗
   ((ss + 24#64) ↦₆₄ G.remoteIk.cap) ∗ ((ss + 32#64) ↦₆₄ G.remoteIk.ptr) ∗ memRegion (ss + 40#64) 8 ∗
@@ -420,45 +357,21 @@ theorem ssFirst3_entails_dealloc (A : RustAlloc) (ss : BitVec 64)
       vecPinDealloc A ⟨G.localIk.cap, G.localIk.ptr⟩ ∗
       vecPinDealloc A ⟨G.remoteIk.cap, G.remoteIk.ptr⟩ ∗
       vecPinDealloc A G.root := by
-  have h1 := vecGhostAt_entails_pin_dealloc A G.localIk ss
-  have h2 := vecGhostAt_entails_pin_dealloc A G.remoteIk (ss + 24#64)
-  have h3 := vecU8At_entails_pin_dealloc A (ss + 48#64) G.root (keyToBytes32 st.rootKey)
-  have ha1 : (ss + 24#64) + 8#64 = ss + 32#64 := by bv_omega
-  have ha2 : (ss + 24#64) + 16#64 = ss + 40#64 := by bv_omega
-  have hb1 : (ss + 48#64) + 8#64 = ss + 56#64 := by bv_omega
-  have hb2 : (ss + 48#64) + 16#64 = ss + 64#64 := by bv_omega
-  rw [ha1, ha2] at h2
-  rw [hb1, hb2] at h3
-  refine Entails.trans (sepConj_mono h1 (sepConj_mono h2 h3)) ?_
+  refine Entails.trans (sepConj_mono (vecGhostAt_entails_pin_dealloc A G.localIk ss)
+    (sepConj_mono (vecGhostAt_entails_pin_dealloc A G.remoteIk (ss + 0x18#64))
+      (vecU8At_entails_pin_dealloc A (ss + 0x30#64) G.root (keyToBytes32 st.rootKey)))) ?_
   unfold ssFirst3HeadersAt_shared_lb
-  exact Entails.of_eq (by ac_rfl)
+  bi_entail
 
 theorem ssFirst3HeadersAt_entails_memRegions (ss : BitVec 64) (G : SessionGhost) :
     ssFirst3HeadersAt_shared_lb ss G ⊢
       memRegion ss 24 ∗ memRegion (ss + 24#64) 24 ∗ memRegion (ss + 48#64) 24 := by
   unfold ssFirst3HeadersAt_shared_lb
-  have h1 := header_cells_entails_memRegion_24 ss G.localIk.cap G.localIk.ptr
-  have h2 := header_cells_entails_memRegion_24 (ss + 24#64) G.remoteIk.cap G.remoteIk.ptr
-  have h3 := header_cells_entails_memRegion_24 (ss + 48#64) G.root.cap G.root.ptr
-  have ha1 : (ss + 24#64) + 8#64 = ss + 32#64 := by bv_omega
-  have ha2 : (ss + 24#64) + 16#64 = ss + 40#64 := by bv_omega
-  have hb1 : (ss + 48#64) + 8#64 = ss + 56#64 := by bv_omega
-  have hb2 : (ss + 48#64) + 16#64 = ss + 64#64 := by bv_omega
-  rw [ha1, ha2] at h2
-  rw [hb1, hb2] at h3
-  have hgroup :
-      ((ss ↦₆₄ G.localIk.cap) ∗ ((ss + 8#64) ↦₆₄ G.localIk.ptr) ∗ memRegion (ss + 16#64) 8 ∗
-        ((ss + 24#64) ↦₆₄ G.remoteIk.cap) ∗ ((ss + 32#64) ↦₆₄ G.remoteIk.ptr) ∗ memRegion (ss + 40#64) 8 ∗
-        ((ss + 48#64) ↦₆₄ G.root.cap) ∗ ((ss + 56#64) ↦₆₄ G.root.ptr) ∗ memRegion (ss + 64#64) 8) =
-      (((ss ↦₆₄ G.localIk.cap) ∗ ((ss + 8#64) ↦₆₄ G.localIk.ptr) ∗ memRegion (ss + 16#64) 8) ∗
-       (((ss + 24#64) ↦₆₄ G.remoteIk.cap) ∗ ((ss + 32#64) ↦₆₄ G.remoteIk.ptr) ∗ memRegion (ss + 40#64) 8) ∗
-       (((ss + 48#64) ↦₆₄ G.root.cap) ∗ ((ss + 56#64) ↦₆₄ G.root.ptr) ∗ memRegion (ss + 64#64) 8)) := by ac_rfl
-  rw [hgroup]
-  exact sepConj_mono h1 (sepConj_mono h2 h3)
+  sep_interval
 
 end DropsCommon
 
-@[reducible]
+@[expose, reducible]
 def ssTail3HeadersAt_shared_lb (ss : BitVec 64) (pCap pPtr kCap kPtr : BitVec 64)
     (G : SessionGhost) : SepProp :=
   ((ss + 248#64) ↦₆₄ pCap) ∗ ((ss + 256#64) ↦₆₄ pPtr) ∗ memRegion (ss + 264#64) 32 ∗
@@ -478,56 +391,17 @@ theorem ssTail3_entails_dealloc (A : RustAlloc) (ss : BitVec 64) (G : SessionGho
       vecPinDealloc A ⟨G.alice.cap, G.alice.ptr⟩ := by
   have h1 := optTailVecAt_entails_dealloc A 48 (by decide) (by decide) (ss + 248#64) G.pending
   have h2 := optTailVecAt_entails_dealloc A 32 (by decide) (by decide) (ss + 296#64) G.kyber
-  have h3 := vecGhostAt_entails_pin_dealloc A G.alice (ss + 96#64)
-  have ha1 : (ss + 248#64) + 8#64 = ss + 256#64 := by bv_omega
-  have ha2 : (ss + 248#64) + 16#64 = ss + 264#64 := by bv_omega
-  have hb1 : (ss + 296#64) + 8#64 = ss + 304#64 := by bv_omega
-  have hb2 : (ss + 296#64) + 16#64 = ss + 312#64 := by bv_omega
-  have hc1 : (ss + 96#64) + 8#64 = ss + 104#64 := by bv_omega
-  have hc2 : (ss + 96#64) + 16#64 = ss + 112#64 := by bv_omega
-  rw [ha1, ha2] at h1
-  rw [hb1, hb2] at h2
-  rw [hc1, hc2] at h3
+  have h3 := vecGhostAt_entails_pin_dealloc A G.alice (ss + 0x60#64)
   refine Entails.trans (sepConj_mono h1 (sepConj_mono h2 h3)) ?_
-  rw [sepExists_sepConj_left]
-  apply Entails.sepExists_elim; intro pCap
-  rw [sepExists_sepConj_left]
-  apply Entails.sepExists_elim; intro pPtr
-  rw [sepExists_sepConj_left, sepExists_sepConj_right]
-  apply Entails.sepExists_elim; intro kCap
-  rw [sepExists_sepConj_left, sepExists_sepConj_right]
-  apply Entails.sepExists_elim; intro kPtr
-  refine Entails.sepExists_right pCap (Entails.sepExists_right pPtr
-    (Entails.sepExists_right kCap (Entails.sepExists_right kPtr ?_)))
   unfold ssTail3HeadersAt_shared_lb
-  exact Entails.of_eq (by ac_rfl)
+  bi_entail
 
 theorem ssTail3HeadersAt_entails_memRegions (ss : BitVec 64)
     (pCap pPtr kCap kPtr : BitVec 64) (G : SessionGhost) :
     ssTail3HeadersAt_shared_lb ss pCap pPtr kCap kPtr G ⊢
       memRegion (ss + 248#64) 48 ∗ memRegion (ss + 296#64) 32 ∗ memRegion (ss + 96#64) 24 := by
   unfold ssTail3HeadersAt_shared_lb
-  have h1 := header_cells_entails_memRegion_48_shared_lb (ss + 248#64) pCap pPtr
-  have h2 := header_cells_entails_memRegion_32 (ss + 296#64) kCap kPtr
-  have h3 := header_cells_entails_memRegion_24 (ss + 96#64) G.alice.cap G.alice.ptr
-  have ha1 : (ss + 248#64) + 8#64 = ss + 256#64 := by bv_omega
-  have ha2 : (ss + 248#64) + 16#64 = ss + 264#64 := by bv_omega
-  have hb1 : (ss + 296#64) + 8#64 = ss + 304#64 := by bv_omega
-  have hb2 : (ss + 296#64) + 16#64 = ss + 312#64 := by bv_omega
-  have hc1 : (ss + 96#64) + 8#64 = ss + 104#64 := by bv_omega
-  have hc2 : (ss + 96#64) + 16#64 = ss + 112#64 := by bv_omega
-  rw [ha1, ha2] at h1
-  rw [hb1, hb2] at h2
-  rw [hc1, hc2] at h3
-  have hgroup :
-      (((ss + 248#64) ↦₆₄ pCap) ∗ ((ss + 256#64) ↦₆₄ pPtr) ∗ memRegion (ss + 264#64) 32 ∗
-        ((ss + 296#64) ↦₆₄ kCap) ∗ ((ss + 304#64) ↦₆₄ kPtr) ∗ memRegion (ss + 312#64) 16 ∗
-        ((ss + 96#64) ↦₆₄ G.alice.cap) ∗ ((ss + 104#64) ↦₆₄ G.alice.ptr) ∗ memRegion (ss + 112#64) 8) =
-      ((((ss + 248#64) ↦₆₄ pCap) ∗ ((ss + 256#64) ↦₆₄ pPtr) ∗ memRegion (ss + 264#64) 32) ∗
-       (((ss + 296#64) ↦₆₄ kCap) ∗ ((ss + 304#64) ↦₆₄ kPtr) ∗ memRegion (ss + 312#64) 16) ∗
-       (((ss + 96#64) ↦₆₄ G.alice.cap) ∗ ((ss + 104#64) ↦₆₄ G.alice.ptr) ∗ memRegion (ss + 112#64) 8)) := by ac_rfl
-  rw [hgroup]
-  exact sepConj_mono h1 (sepConj_mono h2 h3)
+  sep_interval
 
 theorem sessionStateAt_entails_dealloc (A : RustAlloc) (ss : BitVec 64)
     (G : SessionGhost) (st : SessionState (List (BitVec 8))) :
@@ -547,51 +421,21 @@ theorem sessionStateAt_entails_dealloc (A : RustAlloc) (ss : BitVec 64)
         (((ss + 120#64) ↦₆₄ G.pq.cap) ∗ ((ss + 128#64) ↦₆₄ G.pq.ptr) ∗
           memRegion (ss + 136#64) 8 ∗ vecPinDealloc A G.pq) ∗
         memRegion (ss + 328#64) 16 := by
-  unfold sessionStateAt
+  unfold sessionStateAt ssFirst3HeadersAt_shared_lb ssTail3HeadersAt_shared_lb
   apply Entails.pure_left; rintro ⟨_, _, _, _, hreg, _, _⟩
-  have hreord :
-      (vecGhostAt A G.localIk ss ∗
-        vecGhostAt A G.remoteIk (ss + 0x18#64) ∗
-        vecU8At A (ss + 0x30#64) G.root.cap G.root.ptr (keyToBytes32 st.rootKey) ∗
-        vecAt A 104 8 (chainAt A) (ss + 0x48#64) G.chainsCap G.chainsPtr
-          (G.chains.zip st.receiverChains) ∗
-        vecGhostAt A G.alice (ss + 0x60#64) ∗
-        vecU8At A (ss + 0x78#64) G.pq.cap G.pq.ptr st.pqRatchetState ∗
-        optSenderChainAt A (ss + 0x90#64) G.sender st.senderChain ∗
-        optTailVecAt A 48 (ss + 0xf8#64) G.pending ∗
-        optTailVecAt A 32 (ss + 0x128#64) G.kyber ∗
-        ((ss + 0x148#64) ↦₃₂ st.sessionVersion) ∗
-        ((ss + 0x14c#64) ↦₃₂ st.previousCounter) ∗
-        ((ss + 0x150#64) ↦ₛ G.regIds)) =
-      ((vecGhostAt A G.localIk ss ∗
-          vecGhostAt A G.remoteIk (ss + 0x18#64) ∗
-          vecU8At A (ss + 0x30#64) G.root.cap G.root.ptr (keyToBytes32 st.rootKey)) ∗
-        optSenderChainAt A (ss + 144#64) G.sender st.senderChain ∗
-        vecAt A 104 8 (chainAt A) (ss + 72#64) G.chainsCap G.chainsPtr
-          (G.chains.zip st.receiverChains) ∗
-        (optTailVecAt A 48 (ss + 0xf8#64) G.pending ∗
-          optTailVecAt A 32 (ss + 0x128#64) G.kyber ∗
-          vecGhostAt A G.alice (ss + 0x60#64)) ∗
-        vecU8At A (ss + 120#64) G.pq.cap G.pq.ptr st.pqRatchetState ∗
-        (((ss + 0x148#64) ↦₃₂ st.sessionVersion) ∗
-          ((ss + 0x14c#64) ↦₃₂ st.previousCounter) ∗
-          ((ss + 0x150#64) ↦ₛ G.regIds))) := by ac_rfl
-  rw [hreord]
-  have h1 := ssFirst3_entails_dealloc A ss G st
-  have h2 := ssTail3_entails_dealloc A ss G
-  have h3 := vecU8At_entails_pin_dealloc A (ss + 120#64) G.pq st.pqRatchetState
-  have hpq1 : (ss + 120#64) + 8#64 = ss + 128#64 := by bv_omega
-  have hpq2 : (ss + 120#64) + 16#64 = ss + 136#64 := by bv_omega
-  rw [hpq1, hpq2] at h3
-  have h4 := sessionTail_entails_memRegion_16_shared_lb ss st.sessionVersion st.previousCounter G.regIds hreg
-  refine Entails.trans
-    (sepConj_mono h1 (sepConj_mono_right (sepConj_mono_right (sepConj_mono h2 (sepConj_mono h3 h4))))) ?_
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  apply Entails.sepExists_elim; intro pCap; refine Entails.sepExists_right pCap ?_
-  apply Entails.sepExists_elim; intro pPtr; refine Entails.sepExists_right pPtr ?_
-  apply Entails.sepExists_elim; intro kCap; refine Entails.sepExists_right kCap ?_
-  apply Entails.sepExists_elim; intro kPtr; refine Entails.sepExists_right kPtr ?_
-  exact Entails.of_eq (by ac_rfl)
+  have h_lik := vecGhostAt_entails_pin_dealloc A G.localIk ss
+  have h_rik := vecGhostAt_entails_pin_dealloc A G.remoteIk (ss + 0x18#64)
+  have h_rk := vecU8At_entails_pin_dealloc A (ss + 0x30#64) G.root (keyToBytes32 st.rootKey)
+  have h_al := vecGhostAt_entails_pin_dealloc A G.alice (ss + 0x60#64)
+  have h_pq := vecU8At_entails_pin_dealloc A (ss + 0x78#64) G.pq st.pqRatchetState
+  have hp := optTailVecAt_entails_dealloc A 48 (by decide) (by decide) (ss + 248#64) G.pending
+  have hk := optTailVecAt_entails_dealloc A 32 (by decide) (by decide) (ss + 296#64) G.kyber
+  have htail := sessionTail_entails_memRegion_16_shared_lb ss st.sessionVersion st.previousCounter
+    G.regIds hreg
+  refine Entails.trans (sepConj_mono h_lik (sepConj_mono h_rik (sepConj_mono h_rk
+    (sepConj_mono_right (sepConj_mono h_al (sepConj_mono h_pq (sepConj_mono_right
+      (sepConj_mono hp (sepConj_mono hk htail))))))))) ?_
+  bi_entail
 
 end DropsCommon
 
@@ -604,15 +448,6 @@ theorem SepWP_align_pre_shared_lb {prog : Program} {target : BitVec 64} {s : Sta
     SepWP prog target s P (fun sm Pm => (Pm ⊢ P_mid) ∧ Q sm) :=
   heq ▸ h
 
-theorem SepWP_false_elim_shared_lb {prog : Program} {target_pc : BitVec 64} {s : State}
-    {P Q : SepProp} {post : State → SepProp → Prop} :
-    SepWP prog target_pc s (P ∗ ⌜False⌝ ∗ Q) post := by
-  unfold SepWP
-  intro R hm
-  have heq : (P ∗ ⌜False⌝ ∗ Q) ∗ R = ⌜False⌝ ∗ (P ∗ Q ∗ R) := by ac_rfl
-  rw [heq, satisfies_pure_sepConj] at hm
-  exact False.elim hm.1
-
 theorem SepWP_false_elim_left_shared_lb {prog : Program} {target_pc : BitVec 64} {s : State}
     {Q : SepProp} {post : State → SepProp → Prop} :
     SepWP prog target_pc s (⌜False⌝ ∗ Q) post := by
@@ -620,6 +455,11 @@ theorem SepWP_false_elim_left_shared_lb {prog : Program} {target_pc : BitVec 64}
   intro R hm
   rw [sepConj_assoc, satisfies_pure_sepConj] at hm
   exact False.elim hm.1
+
+theorem SepWP_false_elim_shared_lb {prog : Program} {target_pc : BitVec 64} {s : State}
+    {P Q : SepProp} {post : State → SepProp → Prop} :
+    SepWP prog target_pc s (P ∗ ⌜False⌝ ∗ Q) post :=
+  SepWP.weaken_pre (by bi_entail) SepWP_false_elim_left_shared_lb
 
 namespace DropsCommon
 
@@ -630,11 +470,8 @@ abbrev SepWP.false_elim_left := @SepWP_false_elim_left_shared_lb
 theorem header24_weaken (v cap ptr : BitVec 64) (Rest : SepProp) :
     (v ↦₆₄ cap) ∗ ((v + 8#64) ↦₆₄ ptr) ∗ memRegion (v + 16#64) 8 ∗ Rest ⊢
       memRegion v 24 ∗ Rest := by
-  have heq :
-      ((v ↦₆₄ cap) ∗ ((v + 8#64) ↦₆₄ ptr) ∗ memRegion (v + 16#64) 8 ∗ Rest) =
-      (((v ↦₆₄ cap) ∗ ((v + 8#64) ↦₆₄ ptr) ∗ memRegion (v + 16#64) 8) ∗ Rest) := by ac_rfl
-  rw [heq]
-  exact sepConj_mono_left (header_cells_entails_memRegion_24 v cap ptr)
+  rw [← sepConj_assoc, ← sepConj_assoc]
+  exact sepConj_mono_left (by sep_interval)
 
 theorem drop4_strengthen_post {prog : Program} {target_pc : BitVec 64} {s : State}
     {P R : SepProp} {S₁ S₂ : SepProp}
@@ -649,8 +486,7 @@ theorem drop4_strengthen_post {prog : Program} {target_pc : BitVec 64} {s : Stat
       (sf.mem ⊨ P_f ∗ R →
         sf.mem ⊨ ∃∗ x, ∃∗ x_1, ∃∗ x_2, ∃∗ x_3,
           ⌜traceProp sf⌝ ∗ S₂ ∗ PostRest sf x x_1 x_2 x_3) ∧ rest sf) := by
-  refine SepWP.mono h fun sf _ _ _ ⟨h1, h2⟩ => ⟨fun hm => ?_, h2⟩
-  refine Satisfies.mono ?_ (h1 hm)
+  refine SepWP.mono h fun sf _ _ _ ⟨h1, h2⟩ => ⟨fun hm => Satisfies.mono ?_ (h1 hm), h2⟩
   apply Entails.sepExists_elim; intro x; refine Entails.sepExists_right x ?_
   apply Entails.sepExists_elim; intro x_1; refine Entails.sepExists_right x_1 ?_
   apply Entails.sepExists_elim; intro x_2; refine Entails.sepExists_right x_2 ?_
@@ -662,10 +498,8 @@ end DropsCommon
 theorem pq_header24_weaken_shared_lb (ss cap ptr : BitVec 64) (Rest : SepProp) :
     ((ss + 120#64) ↦₆₄ cap) ∗ ((ss + 128#64) ↦₆₄ ptr) ∗ memRegion (ss + 136#64) 8 ∗ Rest ⊢
       memRegion (ss + 120#64) 24 ∗ Rest := by
-  have h1 : (ss + 120#64) + 8#64 = ss + 128#64 := by bv_omega
-  have h2 : (ss + 120#64) + 16#64 = ss + 136#64 := by bv_omega
-  rw [← h1, ← h2]
-  exact DropsCommon.header24_weaken (ss + 120#64) cap ptr Rest
+  rw [← sepConj_assoc, ← sepConj_assoc]
+  exact sepConj_mono_left (by sep_interval)
 
 theorem drop6_strengthen_post_shared_lb {prog : Program} {target_pc : BitVec 64} {s : State}
     {P R : SepProp} {S₁ S₂ : SepProp}
@@ -680,8 +514,7 @@ theorem drop6_strengthen_post_shared_lb {prog : Program} {target_pc : BitVec 64}
       (sf.mem ⊨ P_f ∗ R →
         sf.mem ⊨ ∃∗ x, ∃∗ x_1, ∃∗ x_2, ∃∗ x_3, ∃∗ x_4, ∃∗ x_5,
           ⌜traceProp sf⌝ ∗ S₂ ∗ PostRest sf x x_1 x_2 x_3 x_4 x_5) ∧ rest sf) := by
-  refine SepWP.mono h fun sf _ _ _ ⟨h1, h2⟩ => ⟨fun hm => ?_, h2⟩
-  refine Satisfies.mono ?_ (h1 hm)
+  refine SepWP.mono h fun sf _ _ _ ⟨h1, h2⟩ => ⟨fun hm => Satisfies.mono ?_ (h1 hm), h2⟩
   apply Entails.sepExists_elim; intro x; refine Entails.sepExists_right x ?_
   apply Entails.sepExists_elim; intro x_1; refine Entails.sepExists_right x_1 ?_
   apply Entails.sepExists_elim; intro x_2; refine Entails.sepExists_right x_2 ?_

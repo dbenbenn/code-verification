@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVec
+public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVec -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
 
@@ -23,7 +23,7 @@ Relocatable `[LibsignalPlacement]` budget-threaded specification and proof for
 `spqr::kdf::hkdf_to_vec` (Block `378`) under `RustCliAllocBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -53,13 +53,13 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Exact allocator event sequence of `spqr::kdf::hkdf_to_vec`: one zeroed allocation of
     `okmLen` bytes at alignment `1`. -/
-def HkdfToVecEnv (okmLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def HkdfToVecEnv (okmLen : Nat) (evs : List AllocEvent) : Prop :=
   evs = rustAllocEvents okmLen 1
 
 /-- Budget-threaded specification of `spqr::kdf::hkdf_to_vec` (Block `378`, 47 instructions):
     total correctness (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`) under
     `FitsEnv M lim st (HkdfToVecEnv x.okmLen)`. -/
-def hkdfToVecSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def hkdfToVecSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hkdf : HkdfFn) : Spec (HkdfToVecGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x8 = x.outVec ∧

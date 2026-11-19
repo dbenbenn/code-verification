@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
 public import Symbolic.Specifications.Refinement.Statement
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -22,7 +22,7 @@ Proves `IkShape interpretation r₀` from `ExternCryptoLawsHold.x25519_public_ke
 `ExternContractsHoldCli`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

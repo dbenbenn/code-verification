@@ -16,22 +16,22 @@ Deterministic `spqr-vectors` test suite covering `Authenticator::new`, `update`,
 `mac_ct`, `verify_hdr`, `verify_ct`, and protobuf serialization.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Vectors.Authenticator
 
-def hexNibble (c : Char) : BitVec 8 :=
+@[expose] def hexNibble (c : Char) : BitVec 8 :=
   let v := c.val.toBitVec.truncate 8
   if v ≥ 0x30#8 && v ≤ 0x39#8 then v - 0x30#8
   else if v ≥ 0x61#8 && v ≤ 0x66#8 then v - 0x61#8 + 10#8
   else if v ≥ 0x41#8 && v ≤ 0x46#8 then v - 0x41#8 + 10#8
   else 0#8
 
-def unhexChars : List Char → List (BitVec 8)
+@[expose] def unhexChars : List Char → List (BitVec 8)
   | a :: b :: rest => ((hexNibble a <<< 4) ||| hexNibble b) :: unhexChars rest
   | _ => []
 
-def unhex (s : String) : List (BitVec 8) :=
+@[expose] def unhex (s : String) : List (BitVec 8) :=
   unhexChars s.toList
 
 def unhexArray (s : String) : Array (BitVec 8) :=
@@ -62,7 +62,7 @@ structure AuthMacVerifyVec where
   deriving DecidableEq, Repr
 
 /-- 30 `Authenticator::update` vectors (5 chains of 6 epochs, starting from `[0; 32]` as in `Authenticator::new`). -/
-def authUpdateVectors : List AuthUpdateVec := [
+@[expose] def authUpdateVectors : List AuthUpdateVec := [
   { rootKeyBefore := unhex "0000000000000000000000000000000000000000000000000000000000000000", macKeyBefore := unhex "0000000000000000000000000000000000000000000000000000000000000000", epoch := 0x0000000000000000#64, inputKey := unhex "78774a186003cdaf73dfefce516edeaccb6e387de1e6234aa45f4df00a8b62ad", rootKeyAfter := unhex "6f17ae608e0a647ba4c8e26ca69007ca0bce4fe756872a4b5cc57c3b993e7c72", macKeyAfter := unhex "0f47989a07f32bdee23aaaffecb65516d585a575dd2074472b1ad007cf7dddfe", pbBytesAfter := unhex "0a206f17ae608e0a647ba4c8e26ca69007ca0bce4fe756872a4b5cc57c3b993e7c7212200f47989a07f32bdee23aaaffecb65516d585a575dd2074472b1ad007cf7dddfe" },
   { rootKeyBefore := unhex "6f17ae608e0a647ba4c8e26ca69007ca0bce4fe756872a4b5cc57c3b993e7c72", macKeyBefore := unhex "0f47989a07f32bdee23aaaffecb65516d585a575dd2074472b1ad007cf7dddfe", epoch := 0x0000000000000001#64, inputKey := unhex "0796cb28571102ff06ea2ad26933a17e8225858a085270d721d028432b824e84dd68cc02a794b617cb883d1953aa48911071bd565a6969c7b0343beaedb0f174", rootKeyAfter := unhex "225dbcbf59f81c7940dd44c2cd412d6b640ef592afb095d5f265f356c415d004", macKeyAfter := unhex "0a0cff9d796e2a136a13ec272d91326d2d1788366f1e8057a9882f2ed8a47b73", pbBytesAfter := unhex "0a20225dbcbf59f81c7940dd44c2cd412d6b640ef592afb095d5f265f356c415d00412200a0cff9d796e2a136a13ec272d91326d2d1788366f1e8057a9882f2ed8a47b73" },
   { rootKeyBefore := unhex "225dbcbf59f81c7940dd44c2cd412d6b640ef592afb095d5f265f356c415d004", macKeyBefore := unhex "0a0cff9d796e2a136a13ec272d91326d2d1788366f1e8057a9882f2ed8a47b73", epoch := 0x0000000000000002#64, inputKey := unhex "ff2b3ecabd48df926fa7df4d0f5bf48ec7b58759e2ca2d41e226c674371af7a4", rootKeyAfter := unhex "4303c22abdc139b30dc86bda534d10336f10e0200b433cb7649ea56dbc3744fe", macKeyAfter := unhex "215ba08ebf0ef6cc23a0549c01c18f2c2804ce05eab9ea83865409e9c4bb040d", pbBytesAfter := unhex "0a204303c22abdc139b30dc86bda534d10336f10e0200b433cb7649ea56dbc3744fe1220215ba08ebf0ef6cc23a0549c01c18f2c2804ce05eab9ea83865409e9c4bb040d" },
@@ -96,7 +96,7 @@ def authUpdateVectors : List AuthUpdateVec := [
 ]
 
 /-- 40 `mac_hdr` / `mac_ct` / `verify_hdr` / `verify_ct` vectors (valid and invalid candidates). -/
-def authMacVerifyVectors : List AuthMacVerifyVec := [
+@[expose] def authMacVerifyVectors : List AuthMacVerifyVec := [
   { rootKey := unhex "6f17ae608e0a647ba4c8e26ca69007ca0bce4fe756872a4b5cc57c3b993e7c72", macKey := unhex "0f47989a07f32bdee23aaaffecb65516d585a575dd2074472b1ad007cf7dddfe", epoch := 0x0000000000000001#64, payload := unhex "", hdrMac := unhex "2341be5136e673c4d507b81289afdcc449acb540d1dd1a42bce1f7c598ca18e2", ctMac := unhex "ecb80f01872a6da42b3e4b546ec5e7b1432ac2d152fb9f62278225810051af27", candidateMac := unhex "2341be5136e673c4d507b81289afdcc449acb540d1dd1a42bce1f7c598ca18e2", verifyHdrOk := true, verifyCtOk := false },
   { rootKey := unhex "225dbcbf59f81c7940dd44c2cd412d6b640ef592afb095d5f265f356c415d004", macKey := unhex "0a0cff9d796e2a136a13ec272d91326d2d1788366f1e8057a9882f2ed8a47b73", epoch := 0x0000000000000002#64, payload := unhex "4d", hdrMac := unhex "8b399dda14797ca03f63f4cbf14bf2ef75f1580cac9b2de23045eb09959755e1", ctMac := unhex "9f67b76175d994eb47c118ad71d3b1b98dcc692b0f807048b26a35c706435ea2", candidateMac := unhex "9f67b76175d994eb47c118ad71d3b1b98dcc692b0f807048b26a35c706435ea2", verifyHdrOk := false, verifyCtOk := true },
   { rootKey := unhex "4303c22abdc139b30dc86bda534d10336f10e0200b433cb7649ea56dbc3744fe", macKey := unhex "215ba08ebf0ef6cc23a0549c01c18f2c2804ce05eab9ea83865409e9c4bb040d", epoch := 0x0000000000000003#64, payload := unhex "35e00c87858175abcf49e25ef8d3ca89d6e8b22885ab4388705e744e9e2f1875", hdrMac := unhex "5d10c8b05408ac521da74a92b6565e2f39c72d122790ae9e02efd0857ac7f03f", ctMac := unhex "ae46fae09336bc0be5b9631cae1de11632cb9b7850d18559ec18d6cf9b67a81b", candidateMac := unhex "5d10ccb05408ac521da74a92b6565e2f39c72d122790ae9e02efd0857ac7f03f", verifyHdrOk := false, verifyCtOk := false },

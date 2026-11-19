@@ -37,6 +37,10 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
 
 /-!
 # Whisper-Path Excuse Reduction
@@ -47,7 +51,7 @@ runs to `ModelAcceptsTermAfterAttackerSendsMoves` extensions, and proves
 bridge with `XlateInv.xlate_inv` and the forward acceptance bridge hypothesis.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

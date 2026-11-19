@@ -12,15 +12,15 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevVerNePlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.S1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlacedBudgetAux
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevVerNePlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.S1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 meta import Lean -- shake: keep
@@ -28,6 +28,7 @@ import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommon
 
 /-!
 # Envelope and Block-`518` Steppers for `Matched.M3PrevVerNePlacedBudget`
@@ -36,7 +37,7 @@ Defines `StageP3VerNeM3Env` (`SeqEnv VerNeS1Env VerNeTailEnv`) and proves the po
 Block-`518` version-mismatch and epilogue basic-block WP lemmas for `Matched.M3PrevVerNePlacedBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -105,7 +106,7 @@ local macro "wp_steps_sync_518 " ext:term:max mid:term : tactic => `(tactic| (
 /-- Allocation event envelope for `M3PrevVerNePlacedBudget` (`+0x1e04 → s0.readReg64 .x30`
 over general `prevSessionsEmptyAt`): `VerNeS1Env` (`192`B `growOneSpe` + `FreeOnlyEvs`) followed
 by `VerNeTailEnv` (`17`B `"decryption failed"` alloc + `FreeOnlyEvs`). -/
-def StageP3VerNeM3Env : List AllocEvent → Prop :=
+@[expose] def StageP3VerNeM3Env : List AllocEvent → Prop :=
   SeqEnv VerNeS1Env VerNeTailEnv
 
 theorem fitsS1_of_fitsM3 {M : AllocCostModel} {lim : BudgetLimits} {st0 : M.σ}

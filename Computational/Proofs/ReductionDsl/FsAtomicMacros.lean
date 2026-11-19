@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.FsAtomicMacrosBase -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.FsAtomicMacrosCost -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.FsAtomicMacrosSim -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.FsAtomicMacrosBase
+import Computational.Proofs.ReductionDsl.FsAtomicMacrosCost
+import Computational.Proofs.ReductionDsl.FsAtomicMacrosSim
 
 /-! # Atomic `ReductionDsl` macros and witnesses for `FsCostedReds` -/
 

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.InnerReloc
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.InnerReloc -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB
 import LibsignalBinary.Proofs.SpqrV1.Drop.DropCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.BytesMergeCodeSym
@@ -28,7 +28,7 @@ callee contracts into `spqr_decode_state_cl` on
 `libsignalSessionLib.blockProgram lsmpl 325 (Rust.withPanics ext)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -58,7 +58,7 @@ open CryptoVerification.SpqrV1.ChainProofs
 open CryptoVerification.CodeLayout
 open CryptoVerification.SpqrV1.Top.DecodeState.Placed
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 
 /-! ## 1. Canonical Representation Bridges for `Drop` Specifications under `withLsCl` -/
 

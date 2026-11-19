@@ -25,7 +25,7 @@ Proves `States.from_pb ∘ into_pb = .ok` on any `BOk` braid state (`st_bCodec`)
 and `DecWF` to `Codec.EncOk` and `Codec.DecOk` across all eleven `States` variants.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 

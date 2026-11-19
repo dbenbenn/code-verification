@@ -16,7 +16,7 @@ public import Symbolic.BugInjection.Proofs.Common.DefsCompI0
 # Pinned Witness Compatibility Predicate
 
 Defines `TorsionShiftsRecorded` and the proof-layer compatibility predicate `compFitsPinned`,
-which strengthens `compFits` by pinning the external interpretation to `compI0`, fixing
+which strengthens `SetupMatches` by pinning the external interpretation to `compI0`, fixing
 unrecorded setup randoms and participant names (`"alice"`, `"bob"`), and requiring X25519
 8-torsion rejection and shift recording. Proofs establish `SpecHalf` and `ImplHalf` against
 `compFitsPinned w` before eliminating `fits` via `not_refines_of_witness`.
@@ -38,11 +38,11 @@ def TorsionShiftsRecorded (i : ExternInterpretation) (shifts : List (HwBytes × 
 section Comp
 open DY.Libsignal.Composed.Refinement
 
-/-- Strengthens `compFits w i r` by pinning `i = compI0`, setup randoms 3–5 to
+/-- Strengthens `SetupMatches w i r` by pinning `i = compI0`, setup randoms 3–5 to
 `fillFresh 11/16/17 64`, participant names to `"alice"` and `"bob"`, X25519 torsion-shift
 rejection, and `TorsionShiftsRecorded`. -/
 def compFitsPinned (w : PQXDHSpqrSetup) (i : ExternInterpretation) (r : Records) : Prop :=
-  compFits w i r ∧ i = Symbolic.BugInjection.Disproofs.Hyp.FrozenSSC.Interp0.compI0 ∧
+  SetupMatches w i r ∧ i = Symbolic.BugInjection.Disproofs.Hyp.FrozenSSC.Interp0.compI0 ∧
     (secretBytes r 3 = fillFresh 11 64 ∧ secretBytes r 4 = fillFresh 16 64 ∧
       secretBytes r 5 = fillFresh 17 64) ∧ (r.alice = "alice" ∧ r.bob = "bob") ∧
     DY.Libsignal.PQXDH.Refinement.X25519PubTorsionShiftsRejected i ∧

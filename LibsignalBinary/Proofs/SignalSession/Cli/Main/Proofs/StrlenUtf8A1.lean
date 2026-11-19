@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRun
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # `strlen` and `from_utf8` Callee Contracts for `main`
@@ -22,7 +23,7 @@ Subroutine contracts for `strlen` and `core::str::converts::from_utf8` (ASCII) f
 follow unconditionally from address-space disjointness (`cStrAt` and `pointsToBytes`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -114,7 +115,8 @@ theorem strlenHook_ok (hookStack : Nat) : HookOk strlenHook (strlenSpec hookStac
       rw [Memory.read8_of_readBytes s0.mem p (s ++ [0#8]) hread m (by simp; omega),
         getD_append_left hm] at hm0
       exact hno0 s[m] (List.getElem_mem hm) hm0
-    unfold strlenHook
+    change strlenHook s0 = _
+    rw [strlenHook_eq_classical]
     dsimp only
     simp only [hx0, hex, ↓reduceDIte, hfind]
   · refine retHook_ok fun _ R s0 hrun hpre _hsp => ?_
@@ -199,70 +201,9 @@ theorem fromUtf8Hook_ok (hookStack : Nat) (err : List (BitVec 8) → BitVec 64 �
 
 /-! ## Subroutine Contracts at Stub Entries -/
 
-/-- `strlen` satisfies `(strlenSpec hookStack).inImage img` at its stub entry in `mProg img ext`. -/
-theorem strlen_ok {img : Obj.Image} {ext : String → Option (State → State)} {hookStack : Nat}
-    (hext : ext "strlen" = some strlenHook) :
-    subroutine_ok (mProg img ext) ((mProg img ext).fnAddr "strlen")
-      ((strlenSpec hookStack).inImage img) := by
-  refine subroutine_ok_inImage_of_subroutine_ok img ?_
-  have h := hook_ok_at (P := libsignalSessionCode) (b := img.base) (k := 0)
-    (ls_stub% "strlen") (Nat.add_zero _) (by decide) (ls_hook% "strlen")
-    (by simp [Rust.isPanicSymbol]) ⟨strlenHook, hext, strlenHook_ok hookStack⟩
-  simpa only [BitVec.add_zero] using h
-
-/-- `core::str::converts::from_utf8` satisfies `(fromUtf8AsciiSpec hookStack).inImage img` at its stub entry in `mProg img ext`. -/
-theorem fromUtf8Ascii_ok {img : Obj.Image} {ext : String → Option (State → State)}
-    {hookStack : Nat} {err : List (BitVec 8) → BitVec 64 × BitVec 16}
-    (hext : ext "core::str::converts::from_utf8" = some (fromUtf8Hook err)) :
-    subroutine_ok (mProg img ext) ((mProg img ext).fnAddr "core::str::converts::from_utf8")
-      ((fromUtf8AsciiSpec hookStack).inImage img) := by
-  refine subroutine_ok_inImage_of_subroutine_ok img ?_
-  have h := hook_ok_at (P := libsignalSessionCode) (b := img.base) (k := 0)
-    (ls_stub% "core::str::converts::from_utf8") (Nat.add_zero _) (by decide)
-    (ls_hook% "core::str::converts::from_utf8")
-    (by simp [Rust.isPanicSymbol]) ⟨fromUtf8Hook err, hext, fromUtf8Hook_ok hookStack err⟩
-  simpa only [BitVec.add_zero] using h
-
-theorem strlen_ok_cliExterns {img : Obj.Image} {hookStack : Nat} (W : CliHooks) :
-    subroutine_ok (mProg img (cliExterns W)) ((mProg img (cliExterns W)).fnAddr "strlen")
-      ((strlenSpec hookStack).inImage img) :=
-  strlen_ok (cliExterns_row W (List.mem_append_right _ (by simp)))
-
-theorem fromUtf8Ascii_ok_cliExterns {img : Obj.Image} {hookStack : Nat} (W : CliHooks) :
-    subroutine_ok (mProg img (cliExterns W))
-      ((mProg img (cliExterns W)).fnAddr "core::str::converts::from_utf8")
-      ((fromUtf8AsciiSpec hookStack).inImage img) :=
-  fromUtf8Ascii_ok (err := CryptoVerification.SignalSession.cliDefaultUtf8Err) (cliExterns_row W (List.mem_append_right _ (by simp)))
-
 section MainCalleesCheck
 open CryptoGames.LibsignalSession CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr CryptoVerification.LibsignalTripleRatchetRepr
-
-private example (img : Obj.Image) (A : RustAlloc) (uuidParse : UuidParser)
-    (hookStack resStack : Nat) (W : CliHooks)
-    (halloc : AllocContractsX img A (cliExterns W))
-    (hallocFs : AllocContractsFs img A (cliExterns W))
-    (haddr : subroutine_ok (mProg img (cliExterns W))
-      ((mProg img (cliExterns W)).fnAddr addressName)
-      ((addressSpec A uuidParse resStack).inImage img))
-    (hres16 : subroutine_ok (mProg img (cliExterns W))
-      ((mProg img (cliExterns W)).fnAddr reserve11Name)
-      ((reserve16Spec A resStack).inImage img))
-    (hres1 : subroutine_ok (mProg img (cliExterns W))
-      ((mProg img (cliExterns W)).fnAddr reserve11Name)
-      ((CryptoVerification.SpqrV1.Varint.doReserveSpecOf resStack A).keepsFs.inImage img))
-    (htry3 : subroutine_ok (mProg img (cliExterns W))
-      ((mProg img (cliExterns W)).fnAddr tryAllocateIn3Name)
-      ((tryAllocateInSpecOf resStack A).keepsFs.inImage img)) :
-    MainCallees img A (cliExterns W) uuidParse hookStack resStack :=
-  { alloc := halloc
-    allocFs := hallocFs
-    strlen := strlen_ok_cliExterns W
-    fromUtf8 := fromUtf8Ascii_ok_cliExterns W
-    address := haddr
-    reserve16 := hres16
-    reserve1 := hres1
-    tryAllocateIn3 := htry3 }
 
 end MainCalleesCheck
 
@@ -274,115 +215,5 @@ private theorem stackAt_split_ext_utf8 (sp : BitVec 64) {stk : Nat}
       stackAt sp extHookStack := by
   have h1 := stackAt_split_bottom sp extHookStack (stk - extHookStack) (by omega)
   rwa [Nat.add_sub_of_le hle] at h1
-
-/-- Frames `HookSat ext "strlen" CliExt.strlenSpec` to any stack budget `extHookStack ≤ hookStack ≤ 2 ^ 64`. -/
-theorem strlen_ok_of_hookSat {img : Obj.Image} {ext : String → Option (State → State)}
-    {hookStack : Nat} (hsat : HookSat ext "strlen" CliExt.strlenSpec)
-    (hle : extHookStack ≤ hookStack := by decide)
-    (hmax : hookStack ≤ 2 ^ 64 := by decide) :
-    subroutine_ok (mProg img ext) ((mProg img ext).fnAddr "strlen")
-      ((strlenSpec hookStack).inImage img) := by
-  rcases hsat with ⟨f, hf, hh⟩
-  have hh' : HookOk f (strlenSpec hookStack) := by
-    intro ⟨p, s⟩ R s0 hrun hpre hsp
-    have hsplit := stackAt_split_ext_utf8 s0.sp hle hmax
-    let R' : SepProp := memRegion (s0.sp - BitVec.ofNat 64 hookStack) (hookStack - extHookStack) ∗ R
-    have hpre' : s0.mem ⊨ CliExt.strlenSpec.pre (p, s) s0 ∗ R' := by
-      dsimp only [strlenSpec, CliExt.strlenSpec, CliExt.cStrAt, Cli.cStrAt, R'] at hpre ⊢
-      rw [hsplit] at hpre
-      ac_nf at hpre ⊢
-    obtain ⟨hkf, hsym, hout⟩ := hh (p, s) R' s0 hrun hpre' hsp
-    refine ⟨hkf, hsym, ?_⟩
-    rcases hout with ⟨hret, hcc, hpost⟩ | ⟨_, hp⟩ | ⟨_, _, hp⟩ | ⟨_, hp⟩
-    · refine Or.inl ⟨hret, hcc, ?_⟩
-      dsimp only [strlenSpec, CliExt.strlenSpec, CliExt.cStrAt, Cli.cStrAt, R'] at hpost ⊢
-      rw [hsplit]
-      ac_nf at hpost ⊢
-    · dsimp only [CliExt.strlenSpec] at hp; rw [satisfies_pure_sepConj] at hp; exact hp.1.elim
-    · dsimp only [CliExt.strlenSpec] at hp; rw [satisfies_pure_sepConj] at hp; exact hp.1.elim
-    · dsimp only [CliExt.strlenSpec] at hp; rw [satisfies_pure_sepConj] at hp; exact hp.1.elim
-  refine subroutine_ok_inImage_of_subroutine_ok img ?_
-  have h := hook_ok_at (P := libsignalSessionCode) (b := img.base) (hooks := ext)
-    (hname := "strlen") (k := 0) (ls_stub% "strlen") (Nat.add_zero _) (by decide)
-    (ls_hook% "strlen") (by simp [Rust.isPanicSymbol]) ⟨f, hf, hh'⟩
-  simpa only [BitVec.add_zero] using h
-
-/-- Frames `HookSat ext "core::str::converts::from_utf8" CliExt.fromUtf8Spec` to any stack budget `extHookStack ≤ hookStack ≤ 2 ^ 64`. -/
-theorem fromUtf8Ascii_ok_of_hookSat {img : Obj.Image} {ext : String → Option (State → State)}
-    {hookStack : Nat}
-    (hsat : HookSat ext "core::str::converts::from_utf8" CliExt.fromUtf8Spec)
-    (hle : extHookStack ≤ hookStack := by decide)
-    (hmax : hookStack ≤ 2 ^ 64 := by decide) :
-    subroutine_ok (mProg img ext)
-      ((mProg img ext).fnAddr "core::str::converts::from_utf8")
-      ((fromUtf8AsciiSpec hookStack).inImage img) := by
-  rcases hsat with ⟨f, hf, hh⟩
-  have hh' : HookOk f (fromUtf8AsciiSpec hookStack) := by
-    intro ⟨r, p, bs⟩ R s0 hrun hpre hsp
-    have hsplit := stackAt_split_ext_utf8 s0.sp hle hmax
-    let R' : SepProp := memRegion (s0.sp - BitVec.ofNat 64 hookStack) (hookStack - extHookStack) ∗ R
-    have hpre' : s0.mem ⊨ CliExt.fromUtf8Spec.pre (r, p, bs) s0 ∗ R' := by
-      dsimp only [fromUtf8AsciiSpec, CliExt.fromUtf8Spec, R'] at hpre ⊢
-      rw [hsplit] at hpre
-      ac_nf at hpre ⊢
-    obtain ⟨hkf, hsym, hout⟩ := hh (r, p, bs) R' s0 hrun hpre' hsp
-    refine ⟨hkf, hsym, ?_⟩
-    rcases hout with ⟨hret, hcc, hpost⟩ | ⟨_, hp⟩ | ⟨_, _, hp⟩ | ⟨_, hp⟩
-    · refine Or.inl ⟨hret, hcc, ?_⟩
-      dsimp only [fromUtf8AsciiSpec, CliExt.fromUtf8Spec, R'] at hpost ⊢
-      rw [hsplit]
-      ac_nf at hpost ⊢
-    · dsimp only [CliExt.fromUtf8Spec] at hp; rw [satisfies_pure_sepConj] at hp; exact hp.1.elim
-    · dsimp only [CliExt.fromUtf8Spec] at hp; rw [satisfies_pure_sepConj] at hp; exact hp.1.elim
-    · dsimp only [CliExt.fromUtf8Spec] at hp; rw [satisfies_pure_sepConj] at hp; exact hp.1.elim
-  refine subroutine_ok_inImage_of_subroutine_ok img ?_
-  have h := hook_ok_at (P := libsignalSessionCode) (b := img.base) (hooks := ext)
-    (hname := "core::str::converts::from_utf8") (k := 0)
-    (ls_stub% "core::str::converts::from_utf8") (Nat.add_zero _) (by decide)
-    (ls_hook% "core::str::converts::from_utf8") (by simp [Rust.isPanicSymbol]) ⟨f, hf, hh'⟩
-  simpa only [BitVec.add_zero] using h
-
-theorem strlen_ok_ext {P : E2E.PEParams} {A : CryptoVerification.RustHeap.RustAlloc}
-    {ext : String → Option (State → State)}
-    (hOk : CliExternsOk P A ext) (img : Obj.Image)
-    (hookStack : Nat := extHookStack)
-    (hle : extHookStack ≤ hookStack := by decide)
-    (hmax : hookStack ≤ 2 ^ 64 := by decide) :
-    subroutine_ok (mProg img (cliExternsWith ext))
-      ((mProg img (cliExternsWith ext)).fnAddr "strlen")
-      ((strlenSpec hookStack).inImage img) := by
-  rcases hOk.strlen with ⟨f, hf, hh⟩
-  have hnpe : E2E.isImagePanicSymbol "strlen" = false := by
-    simp [E2E.isImagePanicSymbol, E2E.extraImagePanicNames, Rust.isPanicSymbol]
-  have hsat : HookSat (cliExternsWith ext) "strlen" CliExt.strlenSpec :=
-    ⟨f, (withCliPanics_of_isImagePanicSymbol_false ext hnpe).trans hf, hh⟩
-  exact strlen_ok_of_hookSat hsat hle hmax
-
-theorem fromUtf8Ascii_ok_ext {P : E2E.PEParams} {A : CryptoVerification.RustHeap.RustAlloc}
-    {ext : String → Option (State → State)}
-    (hOk : CliExternsOk P A ext) (img : Obj.Image)
-    (hookStack : Nat := extHookStack)
-    (hle : extHookStack ≤ hookStack := by decide)
-    (hmax : hookStack ≤ 2 ^ 64 := by decide) :
-    subroutine_ok (mProg img (cliExternsWith ext))
-      ((mProg img (cliExternsWith ext)).fnAddr "core::str::converts::from_utf8")
-      ((fromUtf8AsciiSpec hookStack).inImage img) := by
-  rcases hOk.fromUtf8 with ⟨f, hf, hh⟩
-  have hnpe : E2E.isImagePanicSymbol "core::str::converts::from_utf8" = false := by
-    simp [E2E.isImagePanicSymbol, E2E.extraImagePanicNames, Rust.isPanicSymbol]
-  have hsat : HookSat (cliExternsWith ext) "core::str::converts::from_utf8" CliExt.fromUtf8Spec :=
-    ⟨f, (withCliPanics_of_isImagePanicSymbol_false ext hnpe).trans hf, hh⟩
-  exact fromUtf8Ascii_ok_of_hookSat hsat hle hmax
-
-theorem fromUtf8_ok_ext {P : E2E.PEParams} {A : CryptoVerification.RustHeap.RustAlloc}
-    {ext : String → Option (State → State)}
-    (hOk : CliExternsOk P A ext) (img : Obj.Image)
-    (hookStack : Nat := extHookStack)
-    (hle : extHookStack ≤ hookStack := by decide)
-    (hmax : hookStack ≤ 2 ^ 64 := by decide) :
-    subroutine_ok (mProg img (cliExternsWith ext))
-      ((mProg img (cliExternsWith ext)).fnAddr "core::str::converts::from_utf8")
-      ((fromUtf8AsciiSpec hookStack).inImage img) :=
-  fromUtf8Ascii_ok_ext hOk img hookStack hle hmax
 
 end CryptoVerification.SignalSession.Cli.MainHops

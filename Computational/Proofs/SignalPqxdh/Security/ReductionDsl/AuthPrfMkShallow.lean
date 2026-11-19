@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfSharedEval
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfSharedEval -- proof-setup: allow-public-import
 
 /-!
 # Shallow Pre/Post Decomposition of the `PrfMsgKeys` Step
@@ -19,7 +19,7 @@ Splits each `authMkStepReduction` game step into a `PrimBaseSpec` pre-step (`mkP
 structure of `prfMsgKeysRedProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -44,16 +44,16 @@ inductive MkCont (S : Setup) where
       (recvCount' : Nat) (cache : AuthMkSaltCache S) (slots : AuthSlotState)
       (ci? : Option ((SessionId S × Option Bytes) × Nat))
 
-def mkFreshPeer (peerPrincipal? : Option (Nat × PrincipalEntry)) : Bool :=
+@[expose] def mkFreshPeer (peerPrincipal? : Option (Nat × PrincipalEntry)) : Bool :=
   match peerPrincipal? with
   | some (_, pEntry) => !pEntry.corrupted
   | none             => false
 
-def MkCont.isSend {S : Setup} : MkCont S → Bool
+@[expose] def MkCont.isSend {S : Setup} : MkCont S → Bool
   | .send .. => true
   | .recv .. => false
 
-def MkCont.post {S : Setup} (c : MkCont S) (mk : MessageKeys) :
+@[expose] def MkCont.post {S : Setup} (c : MkCont S) (mk : MessageKeys) :
     OracleComp PrimBaseSpec (AuthResponse × AuthHybridStateFixed S) :=
   match c with
   | .send hst sid uEntry peerPrincipal? bundle m0 m1 ekASk ekAPk ss kemCt ephASk ephAPk drKey rk1
@@ -66,10 +66,10 @@ def MkCont.post {S : Setup} (c : MkCont S) (mk : MessageKeys) :
        | none => cache
        | some (key, rc) => (key, (rc, mk)) :: cache) slots mk
 
-def mkCacheToVal {S : Setup} (cache : AuthMkSaltCache S) : authMkSaltCacheTy.denote :=
+@[expose] def mkCacheToVal {S : Setup} (cache : AuthMkSaltCache S) : authMkSaltCacheTy.denote :=
   cache.map (fun ((sid, salt?), (rc, mk)) => ((sessionIdToVal sid, salt?), (rc, msgKeysToVal mk)))
 
-def MkCont.toVal {S : Setup} (secb : Bool) (idx : Nat) (sc : Bool) :
+@[expose] def MkCont.toVal {S : Setup} (secb : Bool) (idx : Nat) (sc : Bool) :
     MkCont S → prfMkChalContTy.denote
   | .send hst sid uEntry peerPrincipal? bundle m0 m1 ekASk ekAPk ss kemCt ephASk ephAPk drKey rk1
       ck1_1 spqrSalt? pqRatchetMsg msgPlain =>
@@ -84,20 +84,20 @@ def MkCont.toVal {S : Setup} (secb : Bool) (idx : Nat) (sc : Bool) :
         (authSlotStateToVal slots,
           ci?.map (fun ((sid, salt?), rc) => ((sessionIdToVal sid, salt?), rc)))))))))))))
 
-def mkCoreToVal {S : Setup} (secb : Bool) (idx : Nat) (sc : Bool) (hst : AuthHybridStateFixed S) :
+@[expose] def mkCoreToVal {S : Setup} (secb : Bool) (idx : Nat) (sc : Bool) (hst : AuthHybridStateFixed S) :
     prfMkCoreTy.denote :=
   (secb, (idx, (sc, authHybridStateFixedToVal hst)))
 
 abbrev MkPre (S : Setup) := (AuthResponse × AuthHybridStateFixed S) ⊕ (Option Bytes × MkCont S)
 
-def mkPreToVal {S : Setup} (secb : Bool) (idx : Nat) (sc : Bool) :
+@[expose] def mkPreToVal {S : Setup} (secb : Bool) (idx : Nat) (sc : Bool) :
     MkPre S → prfMkStepPreTy.denote
   | .inl (r, hst') => .inl (authRespToVal r, mkCoreToVal secb idx sc hst')
   | .inr (salt?, c) => .inr (salt?, c.toVal secb idx sc)
 
 /-! ## Pre-Steps -/
 
-def mkSendPre (S : Setup) (idx : Nat)
+@[expose] def mkSendPre (S : Setup) (idx : Nat)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthHybridStateFixed S) (sentChal : Bool) : OracleComp PrimBaseSpec (MkPre S) := do
   match ← prepareAuthSendMkPrim S sid u bundle m0 m1 hst with
@@ -126,7 +126,7 @@ def mkSendPre (S : Setup) (idx : Nat)
         spqrSalt? pqRatchetMsg msgPlain hst' deriveMessageKeys
       return .inl res
 
-def mkUnmatchedSlotsPre (S : Setup) (idx : Nat)
+@[expose] def mkUnmatchedSlotsPre (S : Setup) (idx : Nat)
     (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S) (drKey : DRKey) (rk1 : Bytes)
     (spqrSalt? : Option Bytes) (rSlot recvCount' : Nat) (cache : AuthMkSaltCache S)
     (slots' : AuthSlotState) (sentChal : Bool) : OracleComp PrimBaseSpec (MkPre S) := do
@@ -153,13 +153,13 @@ def mkUnmatchedSlotsPre (S : Setup) (idx : Nat)
       deriveMessageKeys
     return .inl res
 
-def mkUnmatchedPre (S : Setup) (idx : Nat)
+@[expose] def mkUnmatchedPre (S : Setup) (idx : Nat)
     (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S) (drKey : DRKey) (rk1 : Bytes)
     (spqrSalt? : Option Bytes) (rSlot recvCount' : Nat) (cache : AuthMkSaltCache S)
     (sentChal : Bool) : OracleComp PrimBaseSpec (MkPre S) :=
   mkUnmatchedSlotsPre S idx msg prep drKey rk1 spqrSalt? rSlot recvCount' cache {} sentChal
 
-def mkMatchedSameEphSlotsPre (S : Setup) (idx : Nat) (msg : PreKeyMsg)
+@[expose] def mkMatchedSameEphSlotsPre (S : Setup) (idx : Nat) (msg : PreKeyMsg)
     (prep : PreparedAuthRecvPrim S) (s : IdealAuthSession S) (sIdx : Nat)
     (spqrSalt? : Option Bytes) (recvCount : Nat) (cache : AuthMkSaltCache S)
     (slots : AuthSlotState) : OracleComp PrimBaseSpec (MkPre S) := do
@@ -199,12 +199,12 @@ def mkMatchedSameEphSlotsPre (S : Setup) (idx : Nat) (msg : PreKeyMsg)
       slots mk
     return .inl res
 
-def mkMatchedSameEphPre (S : Setup) (idx : Nat) (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S)
+@[expose] def mkMatchedSameEphPre (S : Setup) (idx : Nat) (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S)
     (s : IdealAuthSession S) (spqrSalt? : Option Bytes) (recvCount : Nat)
     (cache : AuthMkSaltCache S) : OracleComp PrimBaseSpec (MkPre S) :=
   mkMatchedSameEphSlotsPre S idx msg prep s (sessionSlotIndex s.sid) spqrSalt? recvCount cache {}
 
-def mkRecvPre (S : Setup) (idx : Nat)
+@[expose] def mkRecvPre (S : Setup) (idx : Nat)
     (msg : PreKeyMsg) (prep? : Option (PreparedAuthRecvPrim S))
     (hst : AuthHybridStateFixed S) (sentChal : Bool) : OracleComp PrimBaseSpec (MkPre S) := do
   let recvCount' := hst.recvCount + 1
@@ -270,7 +270,7 @@ def mkRecvPre (S : Setup) (idx : Nat)
                              mkSaltCache := hst.mkSaltCache, slots := hst.slots })
 
 /-- Pre-oracle `PrimBaseSpec` stage of a `PrfMsgKeys` game step. -/
-def mkPre (S : Setup) (idx : Nat) (q : AuthQuery S) (hst : AuthHybridStateFixed S)
+@[expose] def mkPre (S : Setup) (idx : Nat) (q : AuthQuery S) (hst : AuthHybridStateFixed S)
     (sentChal : Bool) : OracleComp PrimBaseSpec (MkPre S) :=
   match q with
   | .sendOPK u i bundle m0 m1 =>
@@ -288,13 +288,13 @@ def mkPre (S : Setup) (idx : Nat) (q : AuthQuery S) (hst : AuthHybridStateFixed 
   | qOther => .inl <$> AuthSubHops1to3.stepAuthOtherPrim S qOther hst
 
 /-- List-length invariant on a continuation produced from a state bounded by `n`. -/
-def MkCont.Bounded {S : Setup} (n : Nat) : MkCont S → Prop
+@[expose] def MkCont.Bounded {S : Setup} (n : Nat) : MkCont S → Prop
   | .send hst .. => AuthListsBounded n hst
   | .recv _ prep _ _ _ _ cache _ _ => PreparedRecvBounded n prep ∧ cache.length ≤ n
 
 /-! ## Combined Step -/
 
-def prfMkRunPre {S : Setup} (pre : OracleComp PrimBaseSpec (MkPre S)) (sentChal : Bool) :
+@[expose] def prfMkRunPre {S : Setup} (pre : OracleComp PrimBaseSpec (MkPre S)) (sentChal : Bool) :
     OracleComp PrfMkSimSpec ((AuthResponse × AuthHybridStateFixed S) × Nat × Bool) := do
   match ← embedPrimMk pre with
   | .inl (r, hst') => return ((r, hst'), 0, sentChal)
@@ -304,7 +304,7 @@ def prfMkRunPre {S : Setup} (pre : OracleComp PrimBaseSpec (MkPre S)) (sentChal 
     return (res, 1, sentChal || c.isSend)
 
 /-- Combined shallow `PrfMsgKeys` step tracking challenger query count and updated `sentChal`. -/
-def prfMkStepC (S : Setup) (idx : Nat) (q : AuthQuery S) (hst : AuthHybridStateFixed S)
+@[expose] def prfMkStepC (S : Setup) (idx : Nat) (q : AuthQuery S) (hst : AuthHybridStateFixed S)
     (sentChal : Bool) :
     OracleComp PrfMkSimSpec ((AuthResponse × AuthHybridStateFixed S) × Nat × Bool) :=
   prfMkRunPre (mkPre S idx q hst sentChal) sentChal

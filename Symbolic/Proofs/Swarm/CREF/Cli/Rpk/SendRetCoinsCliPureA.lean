@@ -9,14 +9,22 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
-public import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj
-public import Symbolic.Proofs.Refinement.RecordBytesBridge
-public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
+import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
+import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.SendWire.Ghosts -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- shake: keep
 import Symbolic.Proofs.Swarm.TRREF.B3DefsPure -- shake: keep
+public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDecDefs
+public import LibsignalBinary.Specifications.CryptoGames.AEAD.HKDFDefs
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSession
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApi
+public import Symbolic.Proofs.SpecLemmas.CliPureBytes -- proof-setup: allow-public-import
+public import Symbolic.Specifications.Concrete.MachineEvents
+public import Symbolic.Specifications.Concrete.SessionRecord
+public import Symbolic.Specifications.Refinement.Concretization
 
 /-!
 # Send-Wire Coin Roundtrips and Pending-Record Encoding
@@ -25,7 +33,7 @@ Proves 32-byte key and 16-byte block roundtrips, re-exports send-wire ghost
 helpers, and relates `recordBytes (sessionToRecordRecPending s)` to `encodeRecord`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -120,7 +128,7 @@ export Symbolic.Swarm.CREF.SendWire
 
 open Swarm.Phase0WholeFunctionBridge
 
-def sessionToRecordRecPending (s : Session (List (BitVec 8))) : RecordRec :=
+@[expose] def sessionToRecordRecPending (s : Session (List (BitVec 8))) : RecordRec :=
   { current :=
       { (Swarm.Phase0WholeFunctionBridge.sessionToSessionRec s) with
         pendingPreKey := s.pendingPreKey.map fun p => (CryptoVerification.E2E.Record.encPendingPreKey p, []),

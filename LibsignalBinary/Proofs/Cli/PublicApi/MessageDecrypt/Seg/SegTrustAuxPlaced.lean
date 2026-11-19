@@ -9,12 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegTrustAux
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegSavePlaced
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegTrustAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegSavePlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegSaveAuxPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSave
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -52,7 +59,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 
-@[reducible] def trustPollOutPlacedRel (strPtr vt o2 o3 o4 o5 : BitVec 64)
+@[expose, reducible] def trustPollOutPlacedRel (strPtr vt o2 o3 o4 o5 : BitVec 64)
     (b0 b3 : BitVec 8) (h1 : BitVec 16) : Except Unit Bool → Prop
   | .ok false => b0 = 0#8
   | .ok true => b0 = 1#8
@@ -83,7 +90,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
       (.error ()) :=
   ⟨rfl, rfl, rfl, pollOutPlacedRel_err strPtr vt w5⟩
 
-def wsTrustFixedEnvPlaced [LibsignalPlacement] (A : RustAlloc) (ikit : IdentityStoreSpec A 0#64)
+@[expose] def wsTrustFixedEnvPlaced [LibsignalPlacement] (A : RustAlloc) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (s0 : State) (sp : BitVec 64) (ist : ikit.IdState) : SepProp :=
   ((sp + 0xe8#64) ↦₆₄ x.remA) ∗ ((sp + 0x108#64) ↦₆₄ s0.readReg64 .x5) ∗
   ((sp + 0x110#64) ↦₆₄ ikit.id_vt) ∗
@@ -95,7 +102,7 @@ def wsTrustFixedEnvPlaced [LibsignalPlacement] (A : RustAlloc) (ikit : IdentityS
   ikit.identityAt (s0.readReg64 .x5) ist ∗
   FromRecordCallees.lsLogOff ∗ protocolAddressAt A x.rem x.remA ∗ A.pool ∗ stackAt sp (trustCallStack ikit)
 
-def wsTrustFixedRestPlaced (A : RustAlloc)
+@[expose] def wsTrustFixedRestPlaced (A : RustAlloc)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (s0 : State) (sp : BitVec 64) (st : kit.StoreState) : SepProp :=
   wsSavedRegs s0.sp s0 ∗ ((sp + 0xf8#64) ↦₆₄ s0.readReg64 .x3) ∗
@@ -169,7 +176,7 @@ theorem wsFixed_wsEnv_trust_join_placed [LibsignalPlacement] (A : RustAlloc)
   unfold wsEnvPlaced
   exact Entails.of_eq (by ac_rfl)
 
-def wsTrustCallPrePlaced [LibsignalPlacement] (A : RustAlloc) (ikit : IdentityStoreSpec A 0#64)
+@[expose] def wsTrustCallPrePlaced [LibsignalPlacement] (A : RustAlloc) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (s0 : State) (sp : BitVec 64) (ist : ikit.IdState)
     (c0 c1 d0 d1 d2 d3 k0 k1 k2 k3 a0 a1 a2 a3 : BitVec 64) (d5 : BitVec 32) : SepProp :=
   ((sp + 0xe8#64) ↦₆₄ x.remA) ∗ ((sp + 0x108#64) ↦₆₄ s0.readReg64 .x5) ∗
@@ -190,7 +197,7 @@ def wsTrustCallPrePlaced [LibsignalPlacement] (A : RustAlloc) (ikit : IdentitySt
   ((sp + 0xcb0#64) ↦₆₄ k2) ∗ ((sp + 0xcb8#64) ↦₆₄ k3) ∗
   FromRecordCallees.lsLogOff ∗ protocolAddressAt A x.rem x.remA ∗ A.pool ∗ stackAt sp (trustCallStack ikit)
 
-def wsTrustFramePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def wsTrustFramePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (ans : StoreAnswers (List (BitVec 8)) Unit)
     (s0 : State) (sp : BitVec 64) (st : kit.StoreState)
@@ -272,7 +279,7 @@ theorem keyReady_entails_trustCallPre_placed [LibsignalPlacement] (C : Crypto) (
   simp only [BitVec.add_assoc, BitVec.reduceAdd]
   exact Entails.of_eq (by ac_rfl)
 
-def wsTrustCallPostSpatialPlaced [LibsignalPlacement] (A : RustAlloc) (ikit : IdentityStoreSpec A 0#64)
+@[expose] def wsTrustCallPostSpatialPlaced [LibsignalPlacement] (A : RustAlloc) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (s0 : State) (sp : BitVec 64) (ist : ikit.IdState)
     (k : IdentityKey) (ans_trust : Except Unit Bool)
     (box strPtr o2 o3 o4 o5 k0 k1 k2 k3 : BitVec 64) (b0 b3 : BitVec 8) (h1 : BitVec 16)
@@ -298,7 +305,7 @@ def wsTrustCallPostSpatialPlaced [LibsignalPlacement] (A : RustAlloc) (ikit : Id
   (if ans_trust.isOk then emp else (strPtr ↦ᵣ storeHookStr)) ∗
   FromRecordCallees.lsLogOff ∗ protocolAddressAt A x.rem x.remA ∗ A.pool ∗ stackAt sp (trustCallStack ikit)
 
-def wsTrustPostCommonRestPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def wsTrustPostCommonRestPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (ans : StoreAnswers (List (BitVec 8)) Unit)
     (s0 : State) (sp : BitVec 64) (st : kit.StoreState) (ist' : ikit.IdState)

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Chain.New
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Chain.New -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeHeap
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Helper Lemmas and Specifications for `<spqr::chain::Chain>::add_epoch` (`0x61004`, 148 insns)
@@ -21,7 +21,7 @@ Pure separation-logic helpers and specifications for `<spqr::chain::Chain>::add_
 (`src/chain.rs:356–375`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ChainProofs
 
@@ -35,17 +35,6 @@ open CryptoVerification.SpqrV1.Alloc
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
-
-
-theorem sub_ok_at_rebase {α : Type} {b : BitVec 64}
-    {H : String → Option (State → State)} {spec : Spec α}
-    {name callee : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff callee)
-    (h : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr callee) spec) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr name + BitVec.ofNat 64 k) spec := by
-  rwa [← Program.fnAddr_rel rfl rfl hk]
 
 namespace AgreeStateSimp
 
@@ -100,16 +89,16 @@ abbrev chainAddEpochStackX : Nat := 192 + extHookStack
 /-- `EpochSecret` at `a` (32 bytes = `0x20`, align 8) with pinned `secret: Vec<u8>`:
 - `+0x00..+0x18` (24B): `secret: Vec<u8>` (`vecU8At A a pin.cap pin.ptr es.secret`)
 - `+0x18..+0x20` (8B): `epoch: u64` (`(a + 0x18#64) ↦₆₄ es.epoch`) -/
-def epochSecretAt (A : RustAlloc) (a : BitVec 64) (pin : VecPin) (es : EpochSecret) : SepProp :=
+@[expose] def epochSecretAt (A : RustAlloc) (a : BitVec 64) (pin : VecPin) (es : EpochSecret) : SepProp :=
   vecU8At A a pin.cap pin.ptr es.secret ∗
     ((a + 0x18#64) ↦₆₄ es.epoch)
 
 /-- `EpochSecret` at `a` (32 bytes) with existentially quantified `VecPin`. -/
-def epochSecretRepr (A : RustAlloc) (a : BitVec 64) (es : EpochSecret) : SepProp :=
+@[expose] def epochSecretRepr (A : RustAlloc) (a : BitVec 64) (es : EpochSecret) : SepProp :=
   ∃∗ pin : VecPin, epochSecretAt A a pin es
 
 /-- Pure `Chain` value constructed by `Chain.addEpoch hkdf self epochSecret` on success. -/
-def chainAddEpochVal (hkdf : HkdfFn) (self : Chain) (epochSecret : EpochSecret) : Chain :=
+@[expose] def chainAddEpochVal (hkdf : HkdfFn) (self : Chain) (epochSecret : EpochSecret) : Chain :=
   let genr8r := hkdf self.nextRoot epochSecret.secret chainAddEpochInfo 96
   let newLink : ChainEpoch :=
     { send := Chain.cedForDirection genr8r self.dir
@@ -145,7 +134,7 @@ structure ChainAddEpochGhost where
 * If `Chain.addEpoch hkdf x.self x.epochSecret = .error _`, panics in Rust with `sf.trace = s0.trace`.
 * If `Chain.addEpoch hkdf x.self x.epochSecret = .ok c'`, updates `selfPtr` to `chainRepr A x.selfPtr c'`
   and consumes `epochSecretAt` (leaving `memRegion x.esPtr 32`), or panics on OOM. -/
-def chainAddEpochSpecX (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainAddEpochGhost where
+@[expose] def chainAddEpochSpecX (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainAddEpochGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.selfPtr ∧ s.readReg64 .x1 = x.esPtr ∧
       (x.self.links.length < x.G.linksCap.toNat ∨
@@ -164,12 +153,6 @@ def chainAddEpochSpecX (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainAddEpochGhost
   onPanic := fun x s0 sf =>
     ⌜((Chain.addEpoch hkdf x.self x.epochSecret).isOk = false ∧ sf.trace = s0.trace) ∨
       (allocFailedIn s0 sf ∧ s0.trace <+: sf.trace)⌝ ∗ anyHeap
-
-def ChainAddEpochOkX (img : Obj.Image) (hkdf : HkdfFn) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainAddEpochName)
-    ((chainAddEpochSpecX hkdf A).inImage img)
 
 namespace ChainAddEpochFacts
 
@@ -216,7 +199,7 @@ theorem vecDequeSlotsAt_append_singleton_of_ne {α : Type}
       simp only [hlt, hlt', ↓reduceDIte]
 
 /-- All slots of a `VecDeque` buffer except physical slot `s`. -/
-def vecDequeSlotsExcept {α : Type} (elem : α → BitVec 64 → SepProp) (stride cap head : Nat)
+@[expose] def vecDequeSlotsExcept {α : Type} (elem : α → BitVec 64 → SepProp) (stride cap head : Nat)
     (ptr : BitVec 64) (xs : List α) (s : Nat) : SepProp :=
   vecDequeSlotsAt elem stride cap head ptr xs 0 s ∗
     vecDequeSlotsAt elem stride cap head ptr xs (s + 1) (cap - 1 - s)
@@ -279,46 +262,7 @@ theorem vecDequeSlotsAt_append_singleton_physIdx {α : Type}
   unfold vecDequeSlotsExcept
   ac_rfl
 
-theorem rodata_chainAddEpochInfo {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + bv% (ls_xref% 0x5bc5c 0x5bc60)) ↦ᵣ chainAddEpochInfo) ∗ P := by
-  have hhb := loads_rodata_holdsBytes himg hF
-    (off := num% (ls_xref% 0x5bc5c 0x5bc60)) (n := 36) (bs := chainAddEpochInfo)
-    (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel)
-    (by rfl_kernel) (by decide) (by rfl_kernel)
-  have ⟨h1, h2⟩ := holdsBytes_ro hhb
-  exact Satisfies.rodata_intro h1 h2 (by decide) hP
-
 @[simp] theorem chainAddEpochInfo_length : chainAddEpochInfo.length = 36 := by decide
-
-theorem subroutine_ok_inImage_rodata1_keep {α : Type} {prog : Program} {entry : BitVec 64}
-    {img : Obj.Image} {roAddr1 : BitVec 64} {roBytes1 : List (BitVec 8)}
-    {spec : Spec α}
-    (hro1 : ∀ {s : State} (_ : img.FrozenLoaded s) {P : SepProp},
-      (s.mem ⊨ P) → (s.mem ⊨ (roAddr1 ↦ᵣ roBytes1) ∗ P))
-    (h : subroutine_ok prog entry
-      { spec with
-        pre := fun x s => ⌜img.FrozenLoaded s ∧ s.symtab = img.symtab⌝ ∗
-          (roAddr1 ↦ᵣ roBytes1) ∗ spec.pre x s
-        post := fun x s0 sf =>
-          (roAddr1 ↦ᵣ roBytes1) ∗ spec.post x s0 sf }) :
-    subroutine_ok prog entry (spec.inImage img) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  simp only [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hL, hpre⟩
-  have hpre' : s0.mem ⊨
-      (⌜img.FrozenLoaded s0 ∧ s0.symtab = img.symtab⌝ ∗
-        (roAddr1 ↦ᵣ roBytes1) ∗ spec.pre x s0) ∗ R := by
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hL, hro1 hL.1 hpre⟩
-  refine h.mono_outcome x R s0 hpc hrun hpre' hsp ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only at hq; rw [sepConj_assoc] at hq
-    exact Satisfies.of_sep_right hq
-  · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hq⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨hoom, hq⟩))
 
 /-- Split `stackAt sp chainAddEpochStackX` (`192 + 16384 = 16576` bytes) into
 `stackAt (sp - 192#64) extHookStack` and 24 8-byte stack slots in `[sp - 192#64, sp)`. -/
@@ -441,7 +385,7 @@ theorem cells12_192_entails_memRegion_96 (sp : BitVec 64)
           (Entails.sepExists_right w11 (Entails.refl _))))))))))))
 
 /-- Stack address selected by `csel` in `add_epoch` for `cedForDirection genr8r dir`. -/
-def cedSrcAddEpoch (sp : BitVec 64) (dir : Direction) : BitVec 64 :=
+@[expose] def cedSrcAddEpoch (sp : BitVec 64) (dir : Direction) : BitVec 64 :=
   match dir with
   | .a2b => sp - 160#64
   | .b2a => sp - 128#64
@@ -490,26 +434,11 @@ theorem hokm_sp_reframe_addEpoch (sp : BitVec 64) {bs : List (BitVec 8)}
   simp (config := { decide := true }) only [bv_sub_add_lit, Nat.reduceSub, sepConj_assoc] at h1
   rw [h1, cedCells_reframe_addEpoch sp w4 w5 w6 w7 w8 w9 w10 w11 dir]
 
-theorem chainAddEpoch_fnOff : libsignalSessionCode.fnOff chainAddEpochName = 0x5bc0c :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl) libsignalSessionCode_fnOff_0x5bc0c
-
 abbrev panicAddOverflowName : String :=
   "core::panicking::panic_const::panic_const_add_overflow"
 
-theorem panicAddOverflow_fnOff :
-    libsignalSessionCode.fnOff panicAddOverflowName =
-      num% (ls_off% "core::panicking::panic_const::panic_const_add_overflow") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl)
-    (ls_stub% "core::panicking::panic_const::panic_const_add_overflow")
-
 abbrev corePanicName : String :=
   "core::panicking::panic"
-
-theorem corePanic_fnOff :
-    libsignalSessionCode.fnOff corePanicName =
-      num% (ls_off% "core::panicking::panic") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl)
-    (ls_stub% "core::panicking::panic")
 
 @[simp, arm64_norm, wp_norm]
 theorem cmp_dir_toI32 (dir : Direction) :
@@ -542,7 +471,7 @@ theorem csel_cedSrcAddEpoch_switch_bne (sp : BitVec 64) (dir : Direction) :
   cases dir <;> rfl
 
 /-- Remainder of a `Vec<u8>` heap allocation after extracting `ptr ↦ₛ bs`. -/
-def vecU8Rest (A : RustAlloc) (cap ptr : BitVec 64) (len : Nat) : SepProp :=
+@[expose] def vecU8Rest (A : RustAlloc) (cap ptr : BitVec 64) (len : Nat) : SepProp :=
   if cap = 0 then emp
   else A.live ptr cap.toNat 1 ∗
     memRegion (ptr + BitVec.ofNat 64 len) (cap.toNat - len)
@@ -618,7 +547,7 @@ theorem stackAt_chainAddEpochX_top_split (sp : BitVec 64) :
     (b' := sp - BitVec.ofNat 64 16384) rfl (by bv_omega) (by decide)
 
 /-- Untouched fields of `Chain` during `add_epoch` (`send_epoch`, `params`, and 4B tail padding). -/
-def chainUntouchedAt (a : BitVec 64) (c : Chain) : SepProp :=
+@[expose] def chainUntouchedAt (a : BitVec 64) (c : Chain) : SepProp :=
   ((a + 0x40#64) ↦₆₄ c.sendEpoch) ∗
     chainParamsAt (a + 0x48#64) c.params ∗
     memRegion (a + 0x54#64) 4
@@ -926,7 +855,7 @@ theorem SepWPp.rw_pre {prog : Program} {ret : BitVec 64} {s : State} {P P' : Sep
 abbrev chainAddEpochStackExt : Nat := 192 + hkdfToSliceStackExt
 
 /-- Contract-backed spec of `<spqr::chain::Chain>::add_epoch` at `chainAddEpochStackExt` (`17808` B). -/
-def chainAddEpochSpecExt (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainAddEpochGhost where
+@[expose] def chainAddEpochSpecExt (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainAddEpochGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.selfPtr ∧ s.readReg64 .x1 = x.esPtr ∧
       (x.self.links.length < x.G.linksCap.toNat ∨
@@ -945,12 +874,6 @@ def chainAddEpochSpecExt (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainAddEpochGho
   onPanic := fun x s0 sf =>
     ⌜((Chain.addEpoch hkdf x.self x.epochSecret).isOk = false ∧ sf.trace = s0.trace) ∨
       (allocFailedIn s0 sf ∧ s0.trace <+: sf.trace)⌝ ∗ anyHeap
-
-def ChainAddEpochOkExt (img : Obj.Image) (hkdf : HkdfFn) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainAddEpochName)
-    ((chainAddEpochSpecExt hkdf A).inImage img)
 
 theorem stackAt_chainAddEpochExt_eq (sp : BitVec 64) :
     stackAt sp chainAddEpochStackExt =
@@ -992,7 +915,7 @@ section AddEpochFrameHelpers
 open ChainAddEpochFacts ChainNewFacts
 
 /-- The 12 callee-saved stack slots `[sp - 96#64 .. sp - 8#64]` saved in the prologue of `add_epoch`. -/
-def calleeSavedStackAt (s0 : State) (v15 : BitVec 64) : SepProp :=
+@[expose] def calleeSavedStackAt (s0 : State) (v15 : BitVec 64) : SepProp :=
   ((s0.sp - 96#64) ↦₆₄ s0.readReg64 (.gpr 29#5)) ∗ ((s0.sp - 88#64) ↦₆₄ s0.readReg64 (.gpr 30#5)) ∗
   ((s0.sp - 80#64) ↦₆₄ s0.readReg64 (.gpr 27#5)) ∗ ((s0.sp - 72#64) ↦₆₄ v15) ∗
   ((s0.sp - 64#64) ↦₆₄ s0.readReg64 (.gpr 26#5)) ∗ ((s0.sp - 56#64) ↦₆₄ s0.readReg64 (.gpr 25#5)) ∗
@@ -1009,52 +932,8 @@ theorem calleeSavedStackAt_def (s0 : State) (v15 : BitVec 64) :
     ((s0.sp - 16#64) ↦₆₄ s0.readReg64 (.gpr 20#5)) ∗ ((s0.sp - 8#64) ↦₆₄ s0.readReg64 (.gpr 19#5)) =
     calleeSavedStackAt s0 v15 := rfl
 
-/-- Frame of 30 spatial atoms untouched between `0x610c8` (`entry + 196#64`) and `0x611b0` (`entry + 428#64`). -/
-def addEpochMidFrame (img : Obj.Image) (hkdf : HkdfFn) (A : RustAlloc)
-    (s0 : State) (v15 w0 w1 w2 w3 p_root' : BitVec 64)
-    (esPin : VecPin) (self : Chain) (epochSecret : EpochSecret) : SepProp :=
-  ((img.base + bv% (ls_xref% 0x5bc5c 0x5bc60)) ↦ᵣ chainAddEpochInfo) ∗
-  ((s0.sp - 192#64) ↦₆₄ w0) ∗ ((s0.sp - 184#64) ↦₆₄ w1) ∗
-  ((s0.sp - 176#64) ↦₆₄ w2) ∗ ((s0.sp - 168#64) ↦₆₄ w3) ∗
-  calleeSavedStackAt s0 v15 ∗
-  ((s0.readReg64 (.gpr 0#5) + 32#64) ↦₆₄ 32#64) ∗
-  ((s0.readReg64 (.gpr 0#5) + 40#64) ↦₆₄ p_root') ∗
-  ((s0.readReg64 (.gpr 0#5) + 48#64) ↦₆₄ 32#64) ∗
-  ((s0.readReg64 (.gpr 0#5) + 56#64) ↦₆₄ (self.currentEpoch + 1#64)) ∗
-  ((s0.readReg64 (.gpr 0#5) + 80#64) ↦₃₂ self.dir.toI32) ∗
-  chainUntouchedAt (s0.readReg64 (.gpr 0#5)) self ∗
-  ((s0.readReg64 (.gpr 1#5) + 8#64) ↦₆₄ esPin.ptr) ∗
-  ((s0.readReg64 (.gpr 1#5) + 16#64) ↦₆₄ BitVec.ofNat 64 epochSecret.secret.length) ∗
-  ((s0.readReg64 (.gpr 1#5) + 24#64) ↦₆₄ epochSecret.epoch) ∗
-  (esPin.ptr ↦ₛ epochSecret.secret) ∗
-  vecU8Rest A esPin.cap esPin.ptr epochSecret.secret.length ∗
-  A.live p_root' 32 1 ∗
-  (p_root' ↦ₛ (hkdf self.nextRoot epochSecret.secret chainAddEpochInfo 96).take 32)
-
-theorem addEpochMidFrame_def (img : Obj.Image) (hkdf : HkdfFn) (A : RustAlloc)
-    (s0 : State) (v15 w0 w1 w2 w3 p_root' : BitVec 64)
-    (esPin : VecPin) (self : Chain) (epochSecret : EpochSecret) :
-    ((img.base + bv% (ls_xref% 0x5bc5c 0x5bc60)) ↦ᵣ chainAddEpochInfo) ∗
-    ((s0.sp - 192#64) ↦₆₄ w0) ∗ ((s0.sp - 184#64) ↦₆₄ w1) ∗
-    ((s0.sp - 176#64) ↦₆₄ w2) ∗ ((s0.sp - 168#64) ↦₆₄ w3) ∗
-    calleeSavedStackAt s0 v15 ∗
-    ((s0.readReg64 (.gpr 0#5) + 32#64) ↦₆₄ 32#64) ∗
-    ((s0.readReg64 (.gpr 0#5) + 40#64) ↦₆₄ p_root') ∗
-    ((s0.readReg64 (.gpr 0#5) + 48#64) ↦₆₄ 32#64) ∗
-    ((s0.readReg64 (.gpr 0#5) + 56#64) ↦₆₄ (self.currentEpoch + 1#64)) ∗
-    ((s0.readReg64 (.gpr 0#5) + 80#64) ↦₃₂ self.dir.toI32) ∗
-    chainUntouchedAt (s0.readReg64 (.gpr 0#5)) self ∗
-    ((s0.readReg64 (.gpr 1#5) + 8#64) ↦₆₄ esPin.ptr) ∗
-    ((s0.readReg64 (.gpr 1#5) + 16#64) ↦₆₄ BitVec.ofNat 64 epochSecret.secret.length) ∗
-    ((s0.readReg64 (.gpr 1#5) + 24#64) ↦₆₄ epochSecret.epoch) ∗
-    (esPin.ptr ↦ₛ epochSecret.secret) ∗
-    vecU8Rest A esPin.cap esPin.ptr epochSecret.secret.length ∗
-    A.live p_root' 32 1 ∗
-    (p_root' ↦ₛ (hkdf self.nextRoot epochSecret.secret chainAddEpochInfo 96).take 32) =
-    addEpochMidFrame img hkdf A s0 v15 w0 w1 w2 w3 p_root' esPin self epochSecret := rfl
-
 /-- The 8 stack cells for `cedSrcAddEpoch` (`a2b` and `b2a` next-key slices). -/
-def cedStackBothAt (sp : BitVec 64) (w4 w5 w6 w7 w8 w9 w10 w11 : BitVec 64) (dir : Direction) : SepProp :=
+@[expose] def cedStackBothAt (sp : BitVec 64) (w4 w5 w6 w7 w8 w9 w10 w11 : BitVec 64) (dir : Direction) : SepProp :=
   (cedSrcAddEpoch sp dir ↦₆₄ cedWord w4 w8 dir) ∗ ((cedSrcAddEpoch sp dir + 8#64) ↦₆₄ cedWord w5 w9 dir) ∗
   ((cedSrcAddEpoch sp dir + 16#64) ↦₆₄ cedWord w6 w10 dir) ∗ ((cedSrcAddEpoch sp dir + 24#64) ↦₆₄ cedWord w7 w11 dir) ∗
   (cedSrcAddEpoch sp dir.switch ↦₆₄ cedWord w4 w8 dir.switch) ∗ ((cedSrcAddEpoch sp dir.switch + 8#64) ↦₆₄ cedWord w5 w9 dir.switch) ∗

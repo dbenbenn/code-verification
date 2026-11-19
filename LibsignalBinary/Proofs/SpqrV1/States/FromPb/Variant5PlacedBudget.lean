@@ -10,24 +10,39 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5bPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5cPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5Placed
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5bPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5cPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5a
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5a -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5b
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5c
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5d
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Auth.FromPbBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5aPlaced
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Budget-Threaded Variant 5 (`NoHeaderReceived`, `+1344`)
@@ -36,7 +51,7 @@ Allocator event envelopes, `StatesFromPbEnv` subsumption, and total-correctness 
 `subroutine_ok` contracts for `InnerState.noHeaderReceived` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -112,7 +127,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-! ## Tight Envelopes, `StatesFromPbEnv` Subsumption, and `SepWPp` Combinators -/
 
 /-- Allocation-only event envelope for Variant 5 (`NoHeaderReceived`, `+1344`, Block `333`). -/
-def NoHeaderReceivedFromPbAllocEnv (s : V1State.Chunked.NoHeaderReceived)
+@[expose] def NoHeaderReceivedFromPbAllocEnv (s : V1State.Chunked.NoHeaderReceived)
     (evs : List AllocEvent) : Prop :=
   match s.receivingHdr with
   | none =>
@@ -132,7 +147,7 @@ def NoHeaderReceivedFromPbAllocEnv (s : V1State.Chunked.NoHeaderReceived)
     else evs = []
 
 /-- Complete allocator event envelope for Variant 5 (`NoHeaderReceived`, `+1344`, Block `333`). -/
-def NoHeaderReceivedFromPbEnv (s : V1State.Chunked.NoHeaderReceived) (evs : List AllocEvent) : Prop :=
+@[expose] def NoHeaderReceivedFromPbEnv (s : V1State.Chunked.NoHeaderReceived) (evs : List AllocEvent) : Prop :=
   match s.receivingHdr with
   | none =>
     match s.uc with

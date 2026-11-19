@@ -9,21 +9,21 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C1
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C2
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C1 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C2
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5C1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M2 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5C1
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 
 /-!
 # One-key all-sessions forgery reduction step
@@ -32,7 +32,7 @@ One-key (`pqxdhAuthImpl1KeyG`) counterparts of `pqxdhAuthForgeAllImpl`, `authInt
 and `auth_hop_G3_8_split_g5_le_forgeAll` from `AuthSubHops4to5M2`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,7 +46,7 @@ open _root_.Proofs.SignalPqxdh.Security.FgGapDh
 
 /-- `split(.g3_8, stage, true)` oracle implementation (`stage ∈ {.g3_8, .g5}`) on
     `AuthHybridStateFixed S × Bool` that accumulates the all-sessions forgery flag in `.2`. -/
-def pqxdhAuthForgeAllImpl1Key (withForge : Bool) (stage : AuthHybridStage)
+@[expose] def pqxdhAuthForgeAllImpl1Key (withForge : Bool) (stage : AuthHybridStage)
     (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthHybridStateFixed S × Bool) ProbComp) := fun q =>
   StateT.mk fun ⟨hst, forged⟩ =>
@@ -81,7 +81,7 @@ def pqxdhAuthForgeAllImpl1Key (withForge : Bool) (stage : AuthHybridStage)
 
 /-- All-sessions forgery experiment: run `A` against `split(.g3_8, .g5, true)` and return whether
     `authIntForgedAll` ever held. -/
-noncomputable def authIntForgeAllExp1Key (S : Setup) (P : Primitives)
+@[expose] def authIntForgeAllExp1Key (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := (AuthHybridStateFixed.empty S secb, false)

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Sanitize
-public import Symbolic.Proofs.Swarm.CREF.ReadFaithful
-public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful
-public import Symbolic.Proofs.Swarm.CREF.Initiate.InitOk35CliPure
+public import Symbolic.Proofs.Swarm.CREF.Sanitize -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.ReadFaithful -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Initiate.InitOk35CliPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.ModelMono
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.FreshSigmaHead
@@ -27,7 +27,7 @@ accepted (`ini_explains_initOk`) `session_initiate` calls, `aliceStart` visible-
 to `shown = 35`, and `DeltaFaithful` extraction on `XplBlock`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

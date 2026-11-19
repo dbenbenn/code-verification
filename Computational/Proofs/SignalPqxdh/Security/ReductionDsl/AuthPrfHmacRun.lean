@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacA
+public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacA -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M1
 import VCVio.EvalDist.Monad.Basic
 
@@ -20,7 +20,7 @@ Fuses the two nested interpreters `runWithMuStep` and `prfMuRun` into a single `
 over paired state `(hst, mst)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -102,7 +102,7 @@ theorem prfMuRun_tryForgeMuQ (j i : ℕ) (ad ct : Bytes) (st : PrfHmacMuState) :
 
 /-- Interprets `OracleComp (unifSpec + GSpec)` into `OracleComp PrfHmacSimSpec` using `step` for
 game queries and forwarding uniform coin queries directly. -/
-def runWithPrfHmacStep {ιI : Type} {GSpec : OracleSpec.{0, 0} ιI} {St α : Type}
+@[expose] def runWithPrfHmacStep {ιI : Type} {GSpec : OracleSpec.{0, 0} ιI} {St α : Type}
     (step : (q : ιI) → St → OracleComp PrfHmacSimSpec (GSpec.Range q × St))
     (mx : OracleComp (unifSpec + GSpec) α) (st : St) :
     OracleComp PrfHmacSimSpec (α × St) :=
@@ -140,7 +140,7 @@ theorem runWithPrfHmacStep_query_inr {ιI : Type} {GSpec : OracleSpec.{0, 0} ιI
       (step gq st >>= fun p => runWithPrfHmacStep step (mx p.1) p.2) := rfl
 
 /-- Runs a multi-key step and interprets its multi-key queries with `prfHmacMuStep j`. -/
-def fuseStep {ιI : Type} {GSpec : OracleSpec.{0, 0} ιI} {St : Type} (j : ℕ)
+@[expose] def fuseStep {ιI : Type} {GSpec : OracleSpec.{0, 0} ιI} {St : Type} (j : ℕ)
     (step : (q : ιI) → St → OracleComp AeadMuIntSimSpec (GSpec.Range q × St)) :
     (q : ιI) → St × PrfHmacMuState →
       OracleComp PrfHmacSimSpec (GSpec.Range q × (St × PrfHmacMuState)) :=

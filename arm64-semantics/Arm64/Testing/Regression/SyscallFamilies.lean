@@ -16,7 +16,7 @@ public import Arm64.Trusted.Process
 # Syscall Family Dispatch Equivalence and Bundle Regression Tests
 
 Proves pointwise equivalence between table-driven `Syscall.standard` (`Syscall.dispatch
-Syscall.standardTable`) and a reference 31-way `if`/`else if` dispatch, together with fail-closed
+Syscall.standardTable`) and a reference 32-way `if`/`else if` dispatch, together with fail-closed
 trap checks for minimal syscall bundles (`Syscall.stdioCli`, `Syscall.fileIo`, `Syscall.poll`,
 `Syscall.alloc`).
 -/
@@ -27,7 +27,7 @@ namespace Arm64.Testing.Regression.SyscallFamilies
 
 open Arm64
 
-/-- Reference 31-syscall `if`/`else if` dispatch corresponding to `Syscall.standard`. -/
+/-- Reference 32-syscall `if`/`else if` dispatch corresponding to `Syscall.standard`. -/
 def legacyExecSyscall (s : State) : State :=
   let nr := s.readReg64 Reg.x8
   if nr == SYS_IOCTL then execIoctl s
@@ -52,6 +52,7 @@ def legacyExecSyscall (s : State) : State :=
   else if nr == SYS_EXIT || nr == SYS_EXIT_GROUP then
     s.setStatus (.Exited (s.readReg64 Reg.x0))
   else if nr == SYS_SET_TID_ADDRESS then execSetTidAddress s
+  else if nr == SYS_FUTEX then execFutex s
   else if nr == SYS_SCHED_GETAFFINITY then execSchedGetaffinity s
   else if nr == SYS_FCNTL then execFcntl s
   else if nr == SYS_GETPID || nr == SYS_GETTID then execGetpid s
@@ -72,7 +73,7 @@ private theorem dispatch_standard_eq_ite (s : State) (nr : BitVec 64)
     (f_write f_readv f_writev f_exit f_fcntl f_ioctl f_openat f_close f_lseek f_fstat f_ppoll
      f_brk f_munmap f_mremap f_mmap f_mprotect f_madvise f_tkill f_tgkill f_sigaltstack
      f_rtSigaction f_rtSigprocmask f_clockGettime f_getrandom
-     f_setTidAddress f_schedGetaffinity f_getpid f_unmodeled : State → State) :
+     f_setTidAddress f_futex f_schedGetaffinity f_getpid f_unmodeled : State → State) :
     (match
       ([(SYS_READ, fun s => f_readCommon s false), (SYS_WRITE, f_write),
         (SYS_READV, f_readv), (SYS_WRITEV, f_writev),
@@ -86,7 +87,8 @@ private theorem dispatch_standard_eq_ite (s : State) (nr : BitVec 64)
         (SYS_RT_SIGACTION, f_rtSigaction), (SYS_RT_SIGPROCMASK, f_rtSigprocmask)] ++
        [(SYS_CLOCK_GETTIME, f_clockGettime)] ++
        [(SYS_GETRANDOM, f_getrandom)] ++
-       [(SYS_SET_TID_ADDRESS, f_setTidAddress), (SYS_SCHED_GETAFFINITY, f_schedGetaffinity),
+       [(SYS_SET_TID_ADDRESS, f_setTidAddress), (SYS_FUTEX, f_futex),
+        (SYS_SCHED_GETAFFINITY, f_schedGetaffinity),
         (SYS_GETPID, f_getpid), (SYS_GETTID, f_getpid)]).find? (·.1 == nr) with
      | some (_, h) => h s
      | none        => f_unmodeled s) =
@@ -111,6 +113,7 @@ private theorem dispatch_standard_eq_ite (s : State) (nr : BitVec 64)
      else if nr == SYS_GETRANDOM then f_getrandom s
      else if nr == SYS_EXIT || nr == SYS_EXIT_GROUP then f_exit s
      else if nr == SYS_SET_TID_ADDRESS then f_setTidAddress s
+     else if nr == SYS_FUTEX then f_futex s
      else if nr == SYS_SCHED_GETAFFINITY then f_schedGetaffinity s
      else if nr == SYS_FCNTL then f_fcntl s
      else if nr == SYS_GETPID || nr == SYS_GETTID then f_getpid s
@@ -164,67 +167,70 @@ private theorem dispatch_standard_eq_ite (s : State) (nr : BitVec 64)
                                         · subst h18; rfl
                                         · by_cases h19 : nr = SYS_SET_TID_ADDRESS
                                           · subst h19; rfl
-                                          · by_cases h20 : nr = SYS_SCHED_GETAFFINITY
-                                            · subst h20; rfl
-                                            · by_cases h21 : nr = SYS_FCNTL
-                                              · subst h21; rfl
-                                              · by_cases h22 : nr = SYS_GETPID
-                                                · subst h22; rfl
-                                                · by_cases h23 : nr = SYS_GETTID
-                                                  · subst h23; rfl
-                                                  · by_cases h23b : nr = SYS_SIGALTSTACK
-                                                    · subst h23b; rfl
-                                                    · by_cases h24 : nr = SYS_RT_SIGPROCMASK
-                                                      · subst h24; rfl
-                                                      · by_cases h25 : nr = SYS_RT_SIGACTION
-                                                        · subst h25; rfl
-                                                        · by_cases h26 : nr = SYS_TKILL
-                                                          · subst h26; rfl
-                                                          · by_cases h27 : nr = SYS_TGKILL
-                                                            · subst h27; rfl
-                                                            · dsimp only [List.append_assoc,
-                                                                List.cons_append, List.nil_append,
-                                                                List.find?]
-                                                              rw [(ne_beq_false h1).1, (ne_beq_false h1).2,
-                                                                  (ne_beq_false h2).1, (ne_beq_false h2).2,
-                                                                  (ne_beq_false h3).1, (ne_beq_false h3).2,
-                                                                  (ne_beq_false h4).1, (ne_beq_false h4).2,
-                                                                  (ne_beq_false h5).1, (ne_beq_false h5).2,
-                                                                  (ne_beq_false h6).1, (ne_beq_false h6).2,
-                                                                  (ne_beq_false h6a).1, (ne_beq_false h6a).2,
-                                                                  (ne_beq_false h6b).1, (ne_beq_false h6b).2,
-                                                                  (ne_beq_false h7).1, (ne_beq_false h7).2,
-                                                                  (ne_beq_false h8).1, (ne_beq_false h8).2,
-                                                                  (ne_beq_false h9).1, (ne_beq_false h9).2,
-                                                                  (ne_beq_false h10).1, (ne_beq_false h10).2,
-                                                                  (ne_beq_false h11).1, (ne_beq_false h11).2,
-                                                                  (ne_beq_false h12).1, (ne_beq_false h12).2,
-                                                                  (ne_beq_false h12b).1, (ne_beq_false h12b).2,
-                                                                  (ne_beq_false h13).1, (ne_beq_false h13).2,
-                                                                  (ne_beq_false h14).1, (ne_beq_false h14).2,
-                                                                  (ne_beq_false h15).1, (ne_beq_false h15).2,
-                                                                  (ne_beq_false h16).1, (ne_beq_false h16).2,
-                                                                  (ne_beq_false h17).1, (ne_beq_false h17).2,
-                                                                  (ne_beq_false h18).1, (ne_beq_false h18).2,
-                                                                  (ne_beq_false h19).1, (ne_beq_false h19).2,
-                                                                  (ne_beq_false h20).1, (ne_beq_false h20).2,
-                                                                  (ne_beq_false h21).1, (ne_beq_false h21).2,
-                                                                  (ne_beq_false h22).1, (ne_beq_false h22).2,
-                                                                  (ne_beq_false h23).1, (ne_beq_false h23).2,
-                                                                  (ne_beq_false h23b).1, (ne_beq_false h23b).2,
-                                                                  (ne_beq_false h24).1, (ne_beq_false h24).2,
-                                                                  (ne_beq_false h25).1, (ne_beq_false h25).2,
-                                                                  (ne_beq_false h26).1, (ne_beq_false h26).2,
-                                                                  (ne_beq_false h27).1, (ne_beq_false h27).2]
-                                                              rfl
+                                          · by_cases h19b : nr = SYS_FUTEX
+                                            · subst h19b; rfl
+                                            · by_cases h20 : nr = SYS_SCHED_GETAFFINITY
+                                              · subst h20; rfl
+                                              · by_cases h21 : nr = SYS_FCNTL
+                                                · subst h21; rfl
+                                                · by_cases h22 : nr = SYS_GETPID
+                                                  · subst h22; rfl
+                                                  · by_cases h23 : nr = SYS_GETTID
+                                                    · subst h23; rfl
+                                                    · by_cases h23b : nr = SYS_SIGALTSTACK
+                                                      · subst h23b; rfl
+                                                      · by_cases h24 : nr = SYS_RT_SIGPROCMASK
+                                                        · subst h24; rfl
+                                                        · by_cases h25 : nr = SYS_RT_SIGACTION
+                                                          · subst h25; rfl
+                                                          · by_cases h26 : nr = SYS_TKILL
+                                                            · subst h26; rfl
+                                                            · by_cases h27 : nr = SYS_TGKILL
+                                                              · subst h27; rfl
+                                                              · dsimp only [List.append_assoc,
+                                                                  List.cons_append, List.nil_append,
+                                                                  List.find?]
+                                                                rw [(ne_beq_false h1).1, (ne_beq_false h1).2,
+                                                                    (ne_beq_false h2).1, (ne_beq_false h2).2,
+                                                                    (ne_beq_false h3).1, (ne_beq_false h3).2,
+                                                                    (ne_beq_false h4).1, (ne_beq_false h4).2,
+                                                                    (ne_beq_false h5).1, (ne_beq_false h5).2,
+                                                                    (ne_beq_false h6).1, (ne_beq_false h6).2,
+                                                                    (ne_beq_false h6a).1, (ne_beq_false h6a).2,
+                                                                    (ne_beq_false h6b).1, (ne_beq_false h6b).2,
+                                                                    (ne_beq_false h7).1, (ne_beq_false h7).2,
+                                                                    (ne_beq_false h8).1, (ne_beq_false h8).2,
+                                                                    (ne_beq_false h9).1, (ne_beq_false h9).2,
+                                                                    (ne_beq_false h10).1, (ne_beq_false h10).2,
+                                                                    (ne_beq_false h11).1, (ne_beq_false h11).2,
+                                                                    (ne_beq_false h12).1, (ne_beq_false h12).2,
+                                                                    (ne_beq_false h12b).1, (ne_beq_false h12b).2,
+                                                                    (ne_beq_false h13).1, (ne_beq_false h13).2,
+                                                                    (ne_beq_false h14).1, (ne_beq_false h14).2,
+                                                                    (ne_beq_false h15).1, (ne_beq_false h15).2,
+                                                                    (ne_beq_false h16).1, (ne_beq_false h16).2,
+                                                                    (ne_beq_false h17).1, (ne_beq_false h17).2,
+                                                                    (ne_beq_false h18).1, (ne_beq_false h18).2,
+                                                                    (ne_beq_false h19).1, (ne_beq_false h19).2,
+                                                                    (ne_beq_false h19b).1, (ne_beq_false h19b).2,
+                                                                    (ne_beq_false h20).1, (ne_beq_false h20).2,
+                                                                    (ne_beq_false h21).1, (ne_beq_false h21).2,
+                                                                    (ne_beq_false h22).1, (ne_beq_false h22).2,
+                                                                    (ne_beq_false h23).1, (ne_beq_false h23).2,
+                                                                    (ne_beq_false h23b).1, (ne_beq_false h23b).2,
+                                                                    (ne_beq_false h24).1, (ne_beq_false h24).2,
+                                                                    (ne_beq_false h25).1, (ne_beq_false h25).2,
+                                                                    (ne_beq_false h26).1, (ne_beq_false h26).2,
+                                                                    (ne_beq_false h27).1, (ne_beq_false h27).2]
+                                                                rfl
 
-/-- `Syscall.standard` agrees on every `State` with the 31-way `legacyExecSyscall` dispatch. -/
+/-- `Syscall.standard` agrees on every `State` with the 32-way `legacyExecSyscall` dispatch. -/
 theorem standard_eq_legacyExecSyscall (s : State) :
     Syscall.standard s = legacyExecSyscall s :=
   dispatch_standard_eq_ite s (s.readReg64 Reg.x8) execReadCommon execWrite execReadv execWritev execExit execFcntl
     execIoctl execOpenat execClose execLseek execFstat execPpoll execBrk execMunmap execMremap
     execMmap execMprotect execMadvise execTkill execTgkill execSigaltstack execRtSigaction
-    execRtSigprocmask execClockGettime execGetrandom execSetTidAddress execSchedGetaffinity
+    execRtSigprocmask execClockGettime execGetrandom execSetTidAddress execFutex execSchedGetaffinity
     execGetpid (fun s => s.setStatus (.Exception "unmodeled syscall (svc)"))
 
 theorem standard_eq_legacyExecSyscall_fun : Syscall.standard = legacyExecSyscall :=

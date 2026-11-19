@@ -10,11 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
-# `core::hint::black_box<*const u8>` Consumer `HookOk` Row Arm (`ExtraRowSpecs.BlackBoxRowSpec`)
+# `subtle::black_box::<u8>` Consumer `HookOk` Row Arm (`ExtraRowSpecs.BlackBoxRowSpec`)
 
 Row-owned consumer-contract leaf module for `lsBlackBoxSym` in `ExtraGhostSpecs.ExtraRowSpec`.
 Uses bounded stack frames (`16 ≤ stk → stk ≤ 2 ^ 64`) matching `BlackBoxCode` (`0c1b7e2b2a`).
@@ -35,7 +38,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc
   (hookOk_withAlloc_of_withVmPreserved withAlloc)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget (hookOk_withVmPreserved)
 
-/-- `core::hint::black_box<*const u8>` (`lsBlackBoxSym`) consumer `HookOk` arm with bounded stack
+/-- `subtle::black_box::<u8>` (`lsBlackBoxSym`) consumer `HookOk` arm with bounded stack
     size `16 ≤ stk → stk ≤ 2 ^ 64` (plain, `withVmPreserved`, and `withAlloc`).
     Note: `CryptoVerification.LibsignalTripleRatchet.blackBoxSpec` and
     `CryptoVerification.LibsignalSession.FindReceiverChainIndex.blackBoxSpec` have definitionally

@@ -9,16 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.CodeLayout
-public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSession
 public import LibsignalBinary.Proofs.AesCbc.LibsignalAesCbcProofDefs
 public import LibsignalBinary.Proofs.SpecLemmas.LibsignalSessionProofDefs
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import ProofLib.SepLogic.WPFrozen
+public meta import ProofLib.GenDecodes
+public meta import ProofLib.VCGen
 
-@[expose] public section
+public section
 
 set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
@@ -39,7 +41,7 @@ set_option maxHeartbeats 1600000
 /-! ## Relational Symbolic Execution (`RunsTo`) -/
 
 /-- Preservation of SIMD callee-saved registers `d8..d15` (`v8..v15` lower 64 bits). -/
-def VCalleeSaved (s₀ s : State) : Prop :=
+@[expose] def VCalleeSaved (s₀ s : State) : Prop :=
   ∀ v : BitVec 5, 8 ≤ v.toNat → s.readVReg64 v = s₀.readVReg64 v
 
 theorem VCalleeSaved.refl (s : State) : VCalleeSaved s s :=
@@ -100,7 +102,7 @@ theorem trace_writeVReg128_step {s₀ s : State} {k : BitVec 5} {val : BitVec 12
     (h : s.trace = s₀.trace) :
     (s.writeVReg128 k val).trace = s₀.trace := h
 
-def TraceEq (s₀ s : State) : Prop :=
+@[expose] def TraceEq (s₀ s : State) : Prop :=
   s.trace = s₀.trace ∧ calleeSavedVRegs s = calleeSavedVRegs s₀
 
 theorem TraceEq.refl (s : State) : TraceEq s s := ⟨rfl, rfl⟩
@@ -142,7 +144,7 @@ theorem TraceEq.writeVReg128_step {s₀ s : State} {k : BitVec 5} {val : BitVec 
 
 /-- Symbolic execution from `s` in `prog` reaches some `s'` via `Steps`, preserving `trace`
 relative to `s₀`, preserving `CodeLoaded`, and establishing `P s'`. -/
-def RunsToFrom (prog : Program) (s₀ s : State) (P : State → Prop) : Prop :=
+@[expose] def RunsToFrom (prog : Program) (s₀ s : State) (P : State → Prop) : Prop :=
   prog.CodeLoaded s.mem →
     ∃ s', Steps prog s s' ∧ s'.trace = s₀.trace ∧ calleeSavedVRegs s' = calleeSavedVRegs s₀ ∧
       P s' ∧ prog.CodeLoaded s'.mem
@@ -233,16 +235,7 @@ theorem to_reaches_pc {target : BitVec 64} {s0 : State} {P Q : State → Prop}
 
 end RunsTo
 
-/-! ## Rebased Program and Extern Hook Lookups -/
-
-noncomputable abbrev P (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
-    (alloc : String → Option (State → State)) : Program :=
-  libsignalSessionCode.rebase b (Rust.withPanics (sessionExterns F alloc))
-
-theorem sessionProg_eq_P {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    (F : ShaState → List (BitVec 8) → ShaState) (alloc : String → Option (State → State)) :
-    sessionProg img F alloc = P img.base F alloc :=
-  libsignalSessionCode_ofImage himg
+/-! ## Extern Hook Step Lemmas -/
 
 theorem hookMemcpy_eq_memcpyHook :
     ProofLib.hookMemcpy = memcpyHook := rfl
@@ -256,35 +249,6 @@ theorem hookMemset_eq_memsetHook :
   simp only [ProofLib.hookMemset, memsetHook, ProofLib.retHook,
     returnToLinkRegister, State.readReg32, State.readReg64, truncate8_truncate32]
   rfl
-
-/-- `memset` stub at `b + 0x47f28#64` (`294696`). -/
-@[scoped simp, arm64_norm]
-theorem P_externAt_272972 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
-    (alloc : String → Option (State → State)) :
-    (P b F alloc).externAt? (b + bv% (ls_off% "memset")) = some memsetHook := by
-  rw [show (bv% (ls_off% "memset") : BitVec 64) = BitVec.ofNat 64 (num% (ls_off% "memset")) from rfl,
-    Program.externAt?_rebase_add (num% (ls_off% "memset")), (ls_hook% "memset")]
-  simp [Rust.withPanics, Rust.isPanicSymbol, sessionExterns, hookMemset_eq_memsetHook]
-
-/-- `memcpy` stub at `b + 0x47f50#64` (`294736`). -/
-@[scoped simp, arm64_norm]
-theorem P_externAt_273012 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
-    (alloc : String → Option (State → State)) :
-    (P b F alloc).externAt? (b + bv% (ls_off% "memcpy")) = some memcpyHook := by
-  rw [show (bv% (ls_off% "memcpy") : BitVec 64) = BitVec.ofNat 64 (num% (ls_off% "memcpy")) from rfl,
-    Program.externAt?_rebase_add (num% (ls_off% "memcpy")), (ls_hook% "memcpy")]
-  simp [Rust.withPanics, Rust.isPanicSymbol, sessionExterns, hookMemcpy_eq_memcpyHook]
-
-/-- `sha2::sha256::compress256` stub at `b + 0x48018#64` (`294936`). -/
-@[scoped simp, arm64_norm]
-theorem P_externAt_273212 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
-    (alloc : String → Option (State → State)) :
-    (P b F alloc).externAt? (b + bv% (ls_off% "sha2::sha256::compress256")) = some (compress256Hook F) := by
-  rw [show (bv% (ls_off% "sha2::sha256::compress256") : BitVec 64) = BitVec.ofNat 64 (num% (ls_off% "sha2::sha256::compress256")) from rfl,
-    Program.externAt?_rebase_add (num% (ls_off% "sha2::sha256::compress256")), (ls_hook% "sha2::sha256::compress256")]
-  simp [Rust.withPanics, Rust.isPanicSymbol, sessionExterns]
-
-/-! ## Extern Hook Step Lemmas -/
 
 theorem read32_of_readBytes_toLEBytes (m : Memory) (a : BitVec 64) (w : BitVec 32)
     (h : m.readBytes a 4 = toLEBytes 4 w) :
@@ -396,93 +360,6 @@ theorem memsetHook_sess_eq {s : State} {m₀ : Memory} {dst lr : BitVec 64} {val
     simpa [arm64_norm] using hlr
   rw [hlr', hx0, hx1, hx2, hmem]
 
-namespace RunsTo
-
-theorem sess_memcpy_step {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {s₀ s : State} {P_post : State → Prop}
-    {m₀ : Memory} {dst src lr : BitVec 64} {len : ℕ} {bs : List (BitVec 8)}
-    (hrun : s.status = .Running)
-    (hpc : s.pc = b + bv% (ls_off% "memcpy"))
-    (hx0 : s.readReg64 .x0 = dst)
-    (hx1 : s.readReg64 .x1 = src)
-    (hx2 : (s.readReg64 .x2).toNat = len)
-    (hlr : s.readReg64 .lr = lr)
-    (hmem : s.mem = m₀)
-    (hread : m₀.readBytes src len = bs)
-    (hrw : m₀.RW dst len)
-    (h : RunsToFrom (P b F alloc) s₀ ((s.setMem (m₀.writeBytes dst bs)).setPC lr) P_post) :
-    RunsToFrom (P b F alloc) s₀ s P_post := by
-  have hlen_bs : bs.length = len := by rw [← hread, Memory.readBytes_length]
-  have hlen_le : len ≤ 2 ^ 64 := by rw [← hx2]; have := (s.readReg64 .x2).isLt; omega
-  have hcan : s.mem.canWrite dst bs.length = true := by
-    rw [hmem, hlen_bs]
-    exact hrw.canWrite_sub (by simp) hlen_le
-  have hhook : (P b F alloc).externAt? s.pc = some memcpyHook := by
-    rw [hpc]; exact P_externAt_273012 b F alloc
-  have hstate := memcpyHook_sess_eq hx0 hx1 hx2 hlr hmem hread
-  have hkeep : s.mem.KeepsFrozen (memcpyHook s).mem := by
-    rw [hstate, ← hmem]; exact Memory.keepsFrozen_writeBytes bs hcan
-  have hsym : (memcpyHook s).symtab = s.symtab := by rw [hstate]; rfl
-  refine RunsTo.hook hrun hhook hkeep hsym ?_
-  rwa [hstate]
-
-theorem sess_memset_step {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {s₀ s : State} {P_post : State → Prop}
-    {m₀ : Memory} {dst lr : BitVec 64} {val : BitVec 8} {len : ℕ}
-    (hrun : s.status = .Running)
-    (hpc : s.pc = b + bv% (ls_off% "memset"))
-    (hx0 : s.readReg64 .x0 = dst)
-    (hx1 : (s.readReg64 .x1).truncate 8 = val)
-    (hx2 : (s.readReg64 .x2).toNat = len)
-    (hlr : s.readReg64 .lr = lr)
-    (hmem : s.mem = m₀)
-    (hrw : m₀.RW dst len)
-    (h : RunsToFrom (P b F alloc) s₀
-      ((s.setMem (m₀.writeBytes dst (List.replicate len val))).setPC lr) P_post) :
-    RunsToFrom (P b F alloc) s₀ s P_post := by
-  have hlen_le : len ≤ 2 ^ 64 := by rw [← hx2]; have := (s.readReg64 .x2).isLt; omega
-  have hcan : s.mem.canWrite dst (List.replicate len val).length = true := by
-    rw [hmem, List.length_replicate]
-    exact hrw.canWrite_sub (by simp) hlen_le
-  have hhook : (P b F alloc).externAt? s.pc = some memsetHook := by
-    rw [hpc]; exact P_externAt_272972 b F alloc
-  have hstate := memsetHook_sess_eq hx0 hx1 hx2 hlr hmem
-  have hkeep : s.mem.KeepsFrozen (memsetHook s).mem := by
-    rw [hstate, ← hmem]; exact Memory.keepsFrozen_writeBytes _ hcan
-  have hsym : (memsetHook s).symtab = s.symtab := by rw [hstate]; rfl
-  refine RunsTo.hook hrun hhook hkeep hsym ?_
-  rwa [hstate]
-
-theorem sess_compress256_step {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {s₀ s : State} {P_post : State → Prop}
-    {m₀ : Memory} {stPtr blkPtr lr : BitVec 64} {st : ShaState} {blk : List (BitVec 8)}
-    (hrun : s.status = .Running)
-    (hpc : s.pc = b + bv% (ls_off% "sha2::sha256::compress256"))
-    (hx0 : s.readReg64 .x0 = stPtr)
-    (hx1 : s.readReg64 .x1 = blkPtr)
-    (hx2 : s.readReg64 .x2 = 1#64)
-    (hlr : s.readReg64 .lr = lr)
-    (hmem : s.mem = m₀)
-    (hst : m₀.readBytes stPtr 32 = shaStateBytes st)
-    (hblk : m₀.readBytes blkPtr 64 = blk)
-    (hrw : m₀.RW stPtr 32)
-    (h : RunsToFrom (P b F alloc) s₀
-      ((s.setMem (m₀.writeBytes stPtr (shaStateBytes (F st blk)))).setPC lr) P_post) :
-    RunsToFrom (P b F alloc) s₀ s P_post := by
-  have hcan : s.mem.canWrite stPtr (shaStateBytes (F st blk)).length = true := by
-    rw [hmem, shaStateBytes_length]
-    exact hrw.canWrite_sub (by simp) (by decide)
-  have hhook : (P b F alloc).externAt? s.pc = some (compress256Hook F) := by
-    rw [hpc]; exact P_externAt_273212 b F alloc
-  have hstate := compress256Hook_one_eq F hx0 hx1 hx2 hlr hmem hst hblk
-  have hkeep : s.mem.KeepsFrozen (compress256Hook F s).mem := by
-    rw [hstate, ← hmem]; exact Memory.keepsFrozen_writeBytes _ hcan
-  have hsym : (compress256Hook F s).symtab = s.symtab := by rw [hstate]; rfl
-  refine RunsTo.hook hrun hhook hkeep hsym ?_
-  rwa [hstate]
-
-end RunsTo
-
 /-! ## `sess_step` Tactic -/
 
 macro "sess_step" : tactic =>
@@ -506,7 +383,7 @@ theorem AgreesOutside.writeBytes_self (m : Memory) (a : BitVec 64) (bs : List (B
   ProofLib.agreesOutside_writeBytes m a bs
 
 /-- `m'` agrees with `m` (bytes and permissions) outside the regions `rs`. -/
-def Frame (m m' : Memory) (rs : List (BitVec 64 × ℕ)) : Prop :=
+@[expose] def Frame (m m' : Memory) (rs : List (BitVec 64 × ℕ)) : Prop :=
   (∀ a : BitVec 64, (∀ r ∈ rs, OutsideRegion r.1 r.2 a) → m'.read8 a = m.read8 a) ∧
     m'.perm = m.perm ∧
     (∀ a : BitVec 64, (∀ r ∈ rs, OutsideRegion r.1 r.2 a) → m'.isLazyFree a = m.isLazyFree a) ∧
@@ -514,12 +391,12 @@ def Frame (m m' : Memory) (rs : List (BitVec 64 × ℕ)) : Prop :=
     (∀ a : BitVec 64, m.isAnon a = true → m'.isAnon a = true)
 
 /-- The callee-saved registers `x19`–`x30` and `sp` are the same in `s` and `s'`. -/
-def CalleeSaved (s s' : State) : Prop :=
+@[expose] def CalleeSaved (s s' : State) : Prop :=
   s'.sp = s.sp ∧
     ∀ r ∈ [Reg.x19, .x20, .x21, .x22, .x23, .x24, .x25, .x26, .x27, .x28, .x29, .lr],
       s'.readReg64 r = s.readReg64 r
 
-def RW (m : Memory) (a : BitVec 64) (n : ℕ) : Prop := Memory.RW m a n
+@[expose] def RW (m : Memory) (a : BitVec 64) (n : ℕ) : Prop := Memory.RW m a n
 
 theorem Frame.refl (m : Memory) (rs : List (BitVec 64 × ℕ)) : Frame m m rs :=
   ⟨fun _ _ => rfl, rfl, fun _ _ => rfl, fun _ h => h, fun _ h => h⟩
@@ -575,7 +452,7 @@ theorem Frame.trans_agreesOutside_sub {m₀ m₁ m₂ : Memory} {rs : List (BitV
   · exact ha (b, n) hmem
   · exact ha r hr'
 
-def Memory.splice (m0 mf : Memory) (b : BitVec 64) (n : Nat) : Memory :=
+@[expose] def Memory.splice (m0 mf : Memory) (b : BitVec 64) (n : Nat) : Memory :=
   ⟨fun a => if InRegion b n a then mf.cells a else m0.cells a⟩
 
 @[simp] theorem Memory.cells_splice (m0 mf : Memory) (b : BitVec 64) (n : Nat) (a : BitVec 64) :
@@ -692,19 +569,19 @@ theorem write64_zero_pair_eq_writeBytes (m : Memory) (a : BitVec 64) :
 /-! ## `Hmac<Sha256>` Memory Layout and Short-Message Equation -/
 
 /-- The 64-byte HMAC key block `k₀ = key ‖ 0…0` (for `|key| ≤ 64`). -/
-def keyBlock (key : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def keyBlock (key : List (BitVec 8)) : List (BitVec 8) :=
   key ++ List.replicate (64 - key.length) 0
 
 /-- Inner / outer state after the key block: `F IV (k₀ ⊕ 0x36…)` / `F IV (k₀ ⊕ 0x5c…)`. -/
-def innerState (F : ShaState → List (BitVec 8) → ShaState) (key : List (BitVec 8)) : ShaState :=
+@[expose] def innerState (F : ShaState → List (BitVec 8) → ShaState) (key : List (BitVec 8)) : ShaState :=
   F sha256IV ((keyBlock key).map (· ^^^ 0x36))
 
-def outerState (F : ShaState → List (BitVec 8) → ShaState) (key : List (BitVec 8)) : ShaState :=
+@[expose] def outerState (F : ShaState → List (BitVec 8) → ShaState) (key : List (BitVec 8)) : ShaState :=
   F sha256IV ((keyBlock key).map (· ^^^ 0x5c))
 
 /-- `Hmac<Sha256>` (`0x90` B) memory representation at `a` after absorbing `msg` (`msg.length < 64`)
 under `key`. -/
-def HmacSt (m : Memory) (a : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def HmacSt (m : Memory) (a : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (key msg : List (BitVec 8)) : Prop :=
   msg.length < 64 ∧
   m.readBytes a msg.length = msg ∧
@@ -716,16 +593,16 @@ def HmacSt (m : Memory) (a : BitVec 64) (F : ShaState → List (BitVec 8) → Sh
 
 /-- The last (only) message block of the inner hash for `|msg| < 56` after the key block:
 `msg ‖ 0x80 ‖ 0… ‖ BE64(8·(64 + |msg|))`, 64 bytes. -/
-def innerLastBlock (msg : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def innerLastBlock (msg : List (BitVec 8)) : List (BitVec 8) :=
   msg ++ [0x80] ++ List.replicate (55 - msg.length) 0 ++
     toBEBytes 8 (BitVec.ofNat 64 (8 * (64 + msg.length)))
 
 /-- The digest bytes of a state: each word big-endian (`sha256With`'s output). -/
-def digestBytes (h : ShaState) : List (BitVec 8) :=
+@[expose] def digestBytes (h : ShaState) : List (BitVec 8) :=
   h.toList.flatMap (toBEBytes 4)
 
 /-- The outer block for a 32-byte inner digest `d`: `d ‖ 0x80 ‖ 0×23 ‖ BE64(768)`. -/
-def outerBlock (d : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def outerBlock (d : List (BitVec 8)) : List (BitVec 8) :=
   d ++ [0x80] ++ List.replicate 23 0 ++ toBEBytes 8 (BitVec.ofNat 64 768)
 
 @[scoped simp] private theorem chunks64_length (bs : List (BitVec 8)) :
@@ -852,23 +729,23 @@ abbrev lsCompress256Sym : String := "_RNvNtCsbvWyylYiyxg_4sha26sha25611compress2
 abbrev lsSha256IVSym : String := "libsignal_protocol:.rodata.cst32+0x100"
 abbrev lsSha256IVAddr [LibsignalPlacement] : BitVec 64 := lsρ lsSha256IVSym
 
-/-- Synthetic base `b` satisfying `b + bv% (ls_str% "kyber_pre_key_pu" + 256) = lsSha256IVAddr`,
+/-- Synthetic base `b` satisfying `b + 0x100#64 = lsSha256IVAddr`,
 reusing fixed-base `NfsMemInv` and `NfsRegInv` lemmas in `[LibsignalPlacement]` proofs. -/
 abbrev nfsPlacedFakeB [LibsignalPlacement] : BitVec 64 :=
-  lsSha256IVAddr - bv% (ls_str% "kyber_pre_key_pu" + 256)
+  lsSha256IVAddr - 0x100#64
 
 @[simp, arm64_norm]
 theorem nfsPlacedFakeB_add_iv [LibsignalPlacement] :
-    nfsPlacedFakeB + bv% (ls_str% "kyber_pre_key_pu" + 256) = lsSha256IVAddr :=
+    nfsPlacedFakeB + 0x100#64 = lsSha256IVAddr :=
   BitVec.sub_add_cancel _ _
 
 theorem ls_externAt?_of_mem [LibsignalPlacement] {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
-    {sym : String} (hmem : sym ∈ libsignalSessionExterns := by decide)
+    {sym : String} (hmem : sym ∈ libsignalHookedExterns := by decide)
     (hi : i < 619 := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     prog.externAt? (lsρ sym) = H sym := by
-  obtain ⟨k, hk, hget⟩ := List.getElem_of_mem hmem
-  exact ls_externAt?_of_blockProg (k := k) (by simp [hk, hget]) hi hunmut
+  obtain ⟨k, hk, hget⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
+  exact ls_externAt?_of_blockProg (k := k) (by simp [hk, hget]) hi hunmut (hhooked := hmem)
 
 namespace RunsTo
 

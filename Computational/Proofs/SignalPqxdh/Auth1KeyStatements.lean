@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthStatements
 public import Computational.Specifications.Pqxdh.Security.HeadlineDelta
 
 /-!
@@ -19,7 +19,7 @@ public import Computational.Specifications.Pqxdh.Security.HeadlineDelta
 alias `PqxdhCorrectAndSecureWithAuthδ` for `PqxdhCorrectAndSecureδ` (DEV-C5).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

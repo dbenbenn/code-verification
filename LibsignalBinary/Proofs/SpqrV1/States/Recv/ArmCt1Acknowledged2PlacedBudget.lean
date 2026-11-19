@@ -10,13 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged2
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymBasePlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymBasePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged1
@@ -27,6 +27,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
 # `<States>::recv` (Block `332`) — `.ct1Acknowledged` Arm, Part 2 (Budget-Threaded)
@@ -35,7 +36,7 @@ meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 `recv_ek_chunk` call (`lsmpl.base 349`), error path, and `.stillReceiving` path.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -420,48 +421,6 @@ theorem call_ct1AcknowledgedRecvEkChunk_placed_ofPrePostEnv [LibsignalPlacement]
     exact hnext sf evs hpc_sf hrun_sf (hsp_sf.trans hsp) hcs_sf
       ⟨htr.trans htrace.1, hcs_sf.2.2.2.2.2.2.2.2.2.2.2.trans htrace.2⟩ hevs
 
-theorem call_ct1AcknowledgedRecvEkChunk_placed_ofEnv [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {K : MlKem}
-    {Env : Ct1AcknowledgedRecvEkChunkGhost F → List AllocEvent → Prop}
-    {prog : Program} {entry ret_pc target_pc : BitVec 64}
-    (hcall : subroutine_ok prog entry
-      (withLsCodeRoLoaded lsmpl
-        (ct1AcknowledgedRecvEkChunkPlacedSpecOfEnv M A lim F K Env)))
-    (st_cost : M.σ)
-    (outA stA chunkA : BitVec 64)
-    (st : Chunked.SendCt.Ct1Acknowledged spqrPolyApi (spqrAuthApi F))
-    (chunk : Chunk)
-    (res : Except Error (Chunked.SendCt.Ct1AcknowledgedRecvChunk spqrPolyApi (spqrAuthApi F)))
-    (hstrict : PolyDecoderStrictSorted st.receiving_ek)
-    (hrecv : st.recv_ek_chunk K st.uc.epoch chunk = StatesResult.ofError res)
-    (hfit : FitsEnv M lim st_cost (Env ⟨outA, stA, chunkA, st, chunk, res⟩))
-    {s0 s : State} {sp_call : BitVec 64} {P Frame : SepProp}
-    {post : State → SepProp → Prop}
-    (hcro : LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.sp = sp_call)
-    (hsp_align : (sp_call &&& 15#64 == 0#64) = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc) (htrace : TraceCalleeSaved s s0)
-    (hx0 : s.readReg64 Reg.x0 = outA) (hx1 : s.readReg64 Reg.x1 = stA)
-    (hx2 : s.readReg64 Reg.x2 = st.uc.epoch) (hx3 : s.readReg64 Reg.x3 = chunkA)
-    (hsplit : P = (memRegion outA 528 ∗
-      chunkedCt1AcknowledgedAt A.repAlloc stA st ∗ chunkAt chunkA chunk ∗
-      unchunkedSendCt2PlacedRoAt ∗ tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-      A.pool lim st_cost s ∗ stackAt sp_call ct1AcknowledgedRecvEkChunkStack) ∗ Frame)
-    (hnext : ∀ (sf : State) (evs : List AllocEvent),
-      sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = sp_call → CalleeSavedPreserved s sf → TraceCalleeSaved sf s0 →
-      Env ⟨outA, stA, chunkA, st, chunk, res⟩ evs →
-      SepWP prog target_pc sf
-        ((ct1AcknowledgedRecvEkChunkResAt A.repAlloc outA res ∗
-          memRegion stA 528 ∗ chunkAt chunkA chunk ∗
-          unchunkedSendCt2PlacedRoAt ∗ tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-          A.pool lim (M.stepEvents evs st_cost) sf ∗
-          stackAt sp_call ct1AcknowledgedRecvEkChunkStack) ∗ Frame) post) :
-    SepWP prog target_pc s P post :=
-  call_ct1AcknowledgedRecvEkChunk_placed_ofPrePostEnv hcall st_cost outA stA chunkA st chunk res
-    hstrict hrecv hfit hcro hpc hrun hsp hsp_align hlr htrace hx0 hx1 hx2 hx3 hsplit hnext
-
 theorem call_ct1AcknowledgedRecvEkChunk_placed [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {F : ShaCompress} {K : MlKem}
@@ -501,93 +460,6 @@ theorem call_ct1AcknowledgedRecvEkChunk_placed [LibsignalPlacement]
           stackAt sp_call ct1AcknowledgedRecvEkChunkStack) ∗ Frame) post) :
     SepWP prog target_pc s P post :=
   call_ct1AcknowledgedRecvEkChunk_placed_ofPrePostEnv hcall st_cost outA stA chunkA st chunk res
-    hstrict hrecv hfit hcro hpc hrun hsp hsp_align hlr htrace hx0 hx1 hx2 hx3 hsplit hnext
-
-theorem call_ct1AcknowledgedRecvEkChunk_sepWPp_placed_ofPrePostEnv [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {K : MlKem}
-    {PreEnv PostEnv : Ct1AcknowledgedRecvEkChunkGhost F → List AllocEvent → Prop}
-    {prog : Program} {entry ret_pc target_pc : BitVec 64}
-    (hcall : subroutine_ok prog entry
-      (withLsCodeRoLoaded lsmpl
-        (ct1AcknowledgedRecvEkChunkPlacedSpecOfPrePostEnv M A lim F K PreEnv PostEnv)))
-    (st_cost : M.σ)
-    (outA stA chunkA : BitVec 64)
-    (st : Chunked.SendCt.Ct1Acknowledged spqrPolyApi (spqrAuthApi F))
-    (chunk : Chunk)
-    (res : Except Error (Chunked.SendCt.Ct1AcknowledgedRecvChunk spqrPolyApi (spqrAuthApi F)))
-    (hstrict : PolyDecoderStrictSorted st.receiving_ek)
-    (hrecv : st.recv_ek_chunk K st.uc.epoch chunk = StatesResult.ofError res)
-    (hfit : FitsEnv M lim st_cost (PreEnv ⟨outA, stA, chunkA, st, chunk, res⟩))
-    {s0 s : State} {sp_call : BitVec 64} {P Frame : SepProp}
-    {post Q_panic : State → SepProp → Prop}
-    (hcro : LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.sp = sp_call)
-    (hsp_align : (sp_call &&& 15#64 == 0#64) = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc) (htrace : TraceCalleeSaved s s0)
-    (hx0 : s.readReg64 Reg.x0 = outA) (hx1 : s.readReg64 Reg.x1 = stA)
-    (hx2 : s.readReg64 Reg.x2 = st.uc.epoch) (hx3 : s.readReg64 Reg.x3 = chunkA)
-    (hsplit : P = (memRegion outA 528 ∗
-      chunkedCt1AcknowledgedAt A.repAlloc stA st ∗ chunkAt chunkA chunk ∗
-      unchunkedSendCt2PlacedRoAt ∗ tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-      A.pool lim st_cost s ∗ stackAt sp_call ct1AcknowledgedRecvEkChunkStack) ∗ Frame)
-    (hnext : ∀ (sf : State) (evs : List AllocEvent),
-      sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = sp_call → CalleeSavedPreserved s sf → TraceCalleeSaved sf s0 →
-      PostEnv ⟨outA, stA, chunkA, st, chunk, res⟩ evs →
-      SepWPp prog target_pc sf
-        ((ct1AcknowledgedRecvEkChunkResAt A.repAlloc outA res ∗
-          memRegion stA 528 ∗ chunkAt chunkA chunk ∗
-          unchunkedSendCt2PlacedRoAt ∗ tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-          A.pool lim (M.stepEvents evs st_cost) sf ∗
-          stackAt sp_call ct1AcknowledgedRecvEkChunkStack) ∗ Frame) post Q_panic) :
-    SepWPp prog target_pc s P post Q_panic :=
-  SepWPp.of_sepWP <|
-    call_ct1AcknowledgedRecvEkChunk_placed_ofPrePostEnv (target_pc := ret_pc)
-      hcall st_cost outA stA chunkA st chunk res
-      hstrict hrecv hfit hcro hpc hrun hsp hsp_align hlr htrace hx0 hx1 hx2 hx3 hsplit
-      (fun sf evs hpc_sf hrun_sf hsp_sf hcs_sf htr_sf hevs =>
-        SepWP.done hpc_sf hrun_sf (hnext sf evs hpc_sf hrun_sf hsp_sf hcs_sf htr_sf hevs))
-
-theorem call_ct1AcknowledgedRecvEkChunk_sepWPp_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {K : MlKem}
-    {prog : Program} {entry ret_pc target_pc : BitVec 64}
-    (hcall : subroutine_ok prog entry
-      (withLsCodeRoLoaded lsmpl (ct1AcknowledgedRecvEkChunkPlacedSpec M A lim F K)))
-    (st_cost : M.σ)
-    (outA stA chunkA : BitVec 64)
-    (st : Chunked.SendCt.Ct1Acknowledged spqrPolyApi (spqrAuthApi F))
-    (chunk : Chunk)
-    (res : Except Error (Chunked.SendCt.Ct1AcknowledgedRecvChunk spqrPolyApi (spqrAuthApi F)))
-    (hstrict : PolyDecoderStrictSorted st.receiving_ek)
-    (hrecv : st.recv_ek_chunk K st.uc.epoch chunk = StatesResult.ofError res)
-    (hfit : FitsEnv M lim st_cost
-      (Ct1AcknowledgedRecvEkChunkPreEnv K ⟨outA, stA, chunkA, st, chunk, res⟩))
-    {s0 s : State} {sp_call : BitVec 64} {P Frame : SepProp}
-    {post Q_panic : State → SepProp → Prop}
-    (hcro : LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.sp = sp_call)
-    (hsp_align : (sp_call &&& 15#64 == 0#64) = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc) (htrace : TraceCalleeSaved s s0)
-    (hx0 : s.readReg64 Reg.x0 = outA) (hx1 : s.readReg64 Reg.x1 = stA)
-    (hx2 : s.readReg64 Reg.x2 = st.uc.epoch) (hx3 : s.readReg64 Reg.x3 = chunkA)
-    (hsplit : P = (memRegion outA 528 ∗
-      chunkedCt1AcknowledgedAt A.repAlloc stA st ∗ chunkAt chunkA chunk ∗
-      unchunkedSendCt2PlacedRoAt ∗ tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-      A.pool lim st_cost s ∗ stackAt sp_call ct1AcknowledgedRecvEkChunkStack) ∗ Frame)
-    (hnext : ∀ (sf : State) (evs : List AllocEvent),
-      sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = sp_call → CalleeSavedPreserved s sf → TraceCalleeSaved sf s0 →
-      Ct1AcknowledgedRecvEkChunkPostEnv K ⟨outA, stA, chunkA, st, chunk, res⟩ evs →
-      SepWPp prog target_pc sf
-        ((ct1AcknowledgedRecvEkChunkResAt A.repAlloc outA res ∗
-          memRegion stA 528 ∗ chunkAt chunkA chunk ∗
-          unchunkedSendCt2PlacedRoAt ∗ tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
-          A.pool lim (M.stepEvents evs st_cost) sf ∗
-          stackAt sp_call ct1AcknowledgedRecvEkChunkStack) ∗ Frame) post Q_panic) :
-    SepWPp prog target_pc s P post Q_panic :=
-  call_ct1AcknowledgedRecvEkChunk_sepWPp_placed_ofPrePostEnv hcall st_cost outA stA chunkA st chunk res
     hstrict hrecv hfit hcro hpc hrun hsp hsp_align hlr htrace hx0 hx1 hx2 hx3 hsplit hnext
 
 theorem ct1Ack_step_4468_err_19324_placed [LibsignalPlacement]

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
 
 /-!
 # Party-State and Session Equivalence for CLI Model Determinism
@@ -18,7 +18,7 @@ Defines `PqSessionEquiv` and `PqPartyEquiv` characterizing `PqParty` states with
 `filesOf (encodeDir P st)` directory snapshots, together with `InputsEquiv` equivalence lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,11 +31,11 @@ open CryptoVerification.SignalSession (PqParty pqInitInputs pqSendInputs pqRecvI
   pqxdhExpectedOutcome pqInitModel pqSendModel pqRecvWhisperModel pqRecvPrekeyModel PqSessionMatches PqxdhPartyInSpecDomain
   Inputs Outcome filesOf)
 
-def InputsEquiv (i i' : Inputs) : Prop :=
+@[expose] def InputsEquiv (i i' : Inputs) : Prop :=
   i.argv = i'.argv ∧ i.dirs = i'.dirs ∧ i.stdin = i'.stdin ∧
     ∀ p, filesOf i.files p = filesOf i'.files p
 
-def PqCall (X : UnreachedPqxdhPrimitives) (W : PEParams) (st : PqParty) (i₀ : Inputs) (o₀ : Outcome) : Prop :=
+@[expose] def PqCall (X : UnreachedPqxdhPrimitives) (W : PEParams) (st : PqParty) (i₀ : Inputs) (o₀ : Outcome) : Prop :=
   (∃ (b : PreKeyBundleFields) (t : List.Vector (BitVec 8) initiateTapeLen), st.session = none ∧
     i₀ = pqInitInputs W st b t ∧ o₀ = pqxdhExpectedOutcome W i₀ (pqInitModel X W st b t)) ∨
   (∃ (m : List (BitVec 8)) (r : List.Vector (BitVec 8) 64), m.length < 2 ^ 32 ∧
@@ -47,7 +47,7 @@ def PqCall (X : UnreachedPqxdhPrimitives) (W : PEParams) (st : PqParty) (i₀ : 
     i₀ = pqRecvInputs W st (wirePrekey :: m.bytes) rc ∧
     o₀ = pqxdhExpectedOutcome W i₀ (pqRecvPrekeyModel X W st m rc))
 
-def PqModelRel (Xof : ExternInterpretation → UnreachedPqxdhPrimitives) (Wof : ExternInterpretation → PEParams)
+@[expose] def PqModelRel (Xof : ExternInterpretation → UnreachedPqxdhPrimitives) (Wof : ExternInterpretation → PEParams)
     (interp : ExternInterpretation) (i : Inputs) (o : Outcome) : Prop :=
   ∃ st i₀, PqxdhPartyInSpecDomain (Wof interp) st ∧ InputsEquiv i i₀ ∧ PqCall (Xof interp) (Wof interp) st i₀ o
 

@@ -10,13 +10,20 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Assumptions.KeyInd1KeyRo
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeyGapDh
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDh
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkCoupling
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkCoupling
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeyGapDh -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkCoupling
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkCoupling
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.Constructions.SampleableType.Measure
+public import Computational.Proofs.SignalPqxdh.Security.CollisionsC -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhA -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkPre -- proof-setup: allow-public-import
 
 /-!
 # One-Key `GapDhWithSign` Pre-Sampling and Pure Simulation
@@ -27,7 +34,7 @@ one-key `KeyInd` game (`runKeyIndFgSim1Key`). Also bounds `ValidSpkBundles` leng
 and proves that `fgKeyIndStepPure` commutes with clearing `secIKAsign` at the target principal.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -43,14 +50,14 @@ open Proofs.SignalPqxdh.Security.FgGapDh.Opk
 namespace Proofs.SignalPqxdh.Security.FgGapDh1Key
 
 /-- Randomized XEdDSA signing-oracle implementation under challenge scalar `uSk`. -/
-def gapDhSigImpl (P : Primitives) (uSk : Bytes) : QueryImpl sigOracleSpec ProbComp :=
+@[expose] def gapDhSigImpl (P : Primitives) (uSk : Bytes) : QueryImpl sigOracleSpec ProbComp :=
   fun (.sign m) => do
     let r ← sampleRandom64
     return P.sigSign uSk m r
 
 /-- Full `GdhSignSimSpec = PrimBaseSpec + (sigOracleSpec + gapDhOracleSpec)` interpreter matching
     `gapDhWithSignExp`. -/
-def gapDhWithSignFullImpl (P : Primitives) (uSk : Bytes)
+@[expose] def gapDhWithSignFullImpl (P : Primitives) (uSk : Bytes)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool) : QueryImpl GdhSignSimSpec ProbComp :=
   primBaseImpl P + (gapDhSigImpl P uSk + gapDhDdhImpl isValidDhTriple)
 
@@ -184,20 +191,6 @@ private theorem sigQb_pure {α : Type} (a : α) :
     IsQueryBoundP (pure a : OracleComp GdhSignSimSpec α) (fun q => isSigChalQuery q = true) 0 :=
   isQueryBoundP_pure _ a 0
 
-private theorem sigQb_bind0 {α β : Type} {mx : OracleComp GdhSignSimSpec α}
-    {k : α → OracleComp GdhSignSimSpec β} {n : ℕ}
-    (h1 : IsQueryBoundP mx (fun q => isSigChalQuery q = true) 0)
-    (h2 : ∀ x ∈ support mx, IsQueryBoundP (k x) (fun q => isSigChalQuery q = true) n) :
-    IsQueryBoundP (mx >>= k) (fun q => isSigChalQuery q = true) n := by
-  simpa using isQueryBoundP_bind h1 h2
-
-private theorem sigQb_bind1 {α β : Type} {mx : OracleComp GdhSignSimSpec α}
-    {k : α → OracleComp GdhSignSimSpec β} {n : ℕ}
-    (h1 : IsQueryBoundP mx (fun q => isSigChalQuery q = true) 1)
-    (h2 : ∀ x ∈ support mx, IsQueryBoundP (k x) (fun q => isSigChalQuery q = true) n) :
-    IsQueryBoundP (mx >>= k) (fun q => isSigChalQuery q = true) (1 + n) :=
-  isQueryBoundP_bind h1 h2
-
 theorem isQueryBoundP_primGdhSignQ_sig (op : PrimQuery) (n : ℕ) :
     IsQueryBoundP (primGdhSignQ op) (fun q => isSigChalQuery q = true) n :=
   ((isQueryBoundP_query_iff (spec := GdhSignSimSpec) (fun q => isSigChalQuery q = true)
@@ -210,7 +203,7 @@ theorem isQueryBoundP_sigChalQ_sig (msg : Bytes) :
 
 /-- Step-level signing-budget accounting invariant: a step consumes `k <= st.sigBudget` units of
     `sigBudget` and issues at most `2 * k` challenger `.sign` queries. -/
-def SigBudgetStepInv {S : Setup} {R : Type}
+@[expose] def SigBudgetStepInv {S : Setup} {R : Type}
     (m : OracleComp GdhSignSimSpec (R × FgKeyInd1KeySimState S)) (b : ℕ) : Prop :=
   ∃ k ≤ b,
     IsQueryBoundP m (fun q => isSigChalQuery q = true) (2 * k) ∧
@@ -230,249 +223,7 @@ theorem sigBudgetStepInv_liftSimStep1Key {S : Setup}
     rcases hx with ⟨⟨_, _⟩, _, rfl⟩
     dsimp only; omega
 
-theorem sigBudgetStepInv_fgInitPrin1KeyGdh {S : Setup}
-    (prinFlag : Bool) (prinIdx : ℕ) (Up : Bytes) (u : Fin S.N_id)
-    (st : FgKeyInd1KeySimState S) :
-    SigBudgetStepInv (fgInitPrin1KeyGdh prinFlag prinIdx Up u st) st.sigBudget := by
-  refine ⟨0, Nat.zero_le _, ?_, ?_⟩
-  · unfold fgInitPrin1KeyGdh
-    by_cases hAny : (st.sim.base.principals.any (fun (idx, _) => idx == u.val)) = true
-    · simp only [hAny, ↓reduceIte]
-      exact sigQb_pure _
-    · simp only [hAny, Bool.false_eq_true, ↓reduceIte]
-      refine sigQb_bind0 (isQueryBoundP_unifGdhSign_sig sampleScalar32 0) (fun sk0 _ => ?_)
-      exact sigQb_bind0 (isQueryBoundP_primGdhSignQ_sig (.x25519Base sk0) 0)
-        (fun _ _ => sigQb_pure _)
-  · intro x hx
-    unfold fgInitPrin1KeyGdh at hx
-    by_cases hAny : (st.sim.base.principals.any (fun (idx, _) => idx == u.val)) = true
-    · simp [hAny] at hx; subst hx; dsimp only; omega
-    · simp only [hAny, Bool.false_eq_true, ↓reduceIte,
-        MonadAttach.mem_support_bind, support_pure, Set.mem_singleton_iff] at hx
-      rcases hx with ⟨_, _, _, _, rfl⟩
-      dsimp only; omega
-
-theorem sigBudgetStepInv_fgGenSPK1KeyGdh (prinFlag : Bool) (prinIdx : ℕ)
-    (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ) (S : Setup) (maxLen : ℕ)
-    (U V : Bytes) (u : Fin S.N_id) (j : Fin S.N_recv)
-    (st : FgKeyInd1KeySimState S) :
-    SigBudgetStepInv
-      (fgGenSPK1KeyGdh prinFlag prinIdx useDh1 targetIdx targetSpkIdx S maxLen U V u j st)
-      st.sigBudget := by
-  unfold fgGenSPK1KeyGdh
-  by_cases hPrin : (prinFlag && (u.val == prinIdx)) = true
-  · simp only [hPrin, ↓reduceIte]
-    by_cases hAny : (st.sim.base.spkBundles.any (fun (k, _) => k == (u.val, j.val))) = true
-    · refine ⟨0, Nat.zero_le _, ?_, ?_⟩
-      · simp only [hAny, ↓reduceIte]; exact sigQb_pure _
-      · intro x hx; simp [hAny] at hx; subst hx; dsimp only; omega
-    · simp only [hAny, Bool.false_eq_true, ↓reduceIte]
-      cases hFind : st.sim.base.principals.find? (fun (idx, _) => idx == u.val) with
-      | none =>
-        refine ⟨0, Nat.zero_le _, sigQb_pure _, ?_⟩
-        intro x hx; simp at hx; subst hx; dsimp only; omega
-      | some p =>
-        rcases p with ⟨_, uEntry⟩
-        dsimp only
-        by_cases hZero : (st.sigBudget == 0) = true
-        · refine ⟨0, Nat.zero_le _, ?_, ?_⟩
-          · simp only [hZero, ↓reduceIte]; exact sigQb_pure _
-          · intro x hx; simp [hZero] at hx; subst hx; dsimp only; omega
-        · have hPos : 1 ≤ st.sigBudget := by
-            have hNe : st.sigBudget ≠ 0 := beq_eq_false_iff_ne.mp (Bool.eq_false_iff.mpr hZero)
-            omega
-          simp only [hZero, Bool.false_eq_true, ↓reduceIte]
-          refine ⟨1, hPos, ?_, ?_⟩
-          · refine sigQb_bind0 (isQueryBoundP_unifGdhSign_sig sampleScalar32 0)
-              (fun spkSkRaw _ => ?_)
-            refine sigQb_bind0 (isQueryBoundP_primGdhSignQ_sig (.x25519Base spkSkRaw) 0)
-              (fun spkPkRaw _ => ?_)
-            change IsQueryBoundP _ _ (1 + (1 + 0))
-            refine sigQb_bind1 (isQueryBoundP_sigChalQ_sig _) (fun _ _ => ?_)
-            refine sigQb_bind0 (isQueryBoundP_unifGdhSign_sig sampleRandom64 0)
-              (fun seedKem _ => ?_)
-            refine sigQb_bind0 (isQueryBoundP_primGdhSignQ_sig (.kemKeyGen seedKem) 0)
-              (fun pqPair _ => ?_)
-            exact sigQb_bind1 (isQueryBoundP_sigChalQ_sig _) (fun _ _ => sigQb_pure _)
-          · intro x hx
-            simp only [MonadAttach.mem_support_bind, support_pure, Set.mem_singleton_iff] at hx
-            rcases hx with ⟨_, _, _, _, _, _, _, _, ⟨_, _⟩, _, _, _, rfl⟩
-            dsimp only; omega
-  · simp only [hPrin, Bool.false_eq_true, ↓reduceIte]
-    exact sigBudgetStepInv_liftSimStep1Key _ st
-
-theorem isQueryBoundP_runWithGdhSignStep_sig {S : Setup} {ιI : Type}
-    {GSpec : OracleSpec.{0, 0} ιI} {α : Type}
-    (step : (q : ιI) → FgKeyInd1KeySimState S →
-      OracleComp GdhSignSimSpec (GSpec.Range q × FgKeyInd1KeySimState S))
-    (h_step : ∀ gq st, SigBudgetStepInv (step gq st) st.sigBudget)
-    (mx : OracleComp (unifSpec + GSpec) α) (st : FgKeyInd1KeySimState S) :
-    IsQueryBoundP (runWithGdhSignStep step mx st)
-      (fun q => isSigChalQuery q = true) (2 * st.sigBudget) := by
-  induction mx using OracleComp.inductionOn generalizing st with
-  | pure a => simp [runWithGdhSignStep_pure]
-  | query_bind q r ih =>
-    cases q with
-    | inl n =>
-      rw [runWithGdhSignStep_query_inl, isQueryBoundP_query_bind_iff]
-      exact ⟨Or.inl (fun h => by cases h), fun u => ih u st⟩
-    | inr gq =>
-      rw [runWithGdhSignStep_query_inr]
-      rcases h_step gq st with ⟨k, hkLe, hQbStep, hSup⟩
-      have hCont : ∀ p ∈ support (step gq st),
-          IsQueryBoundP (runWithGdhSignStep step (r p.1) p.2)
-            (fun q => isSigChalQuery q = true) (2 * (st.sigBudget - k)) :=
-        fun p hp => (ih p.1 p.2).mono (by have := hSup p hp; omega)
-      exact (isQueryBoundP_bind hQbStep hCont).mono (by omega)
-
-theorem sigBudgetStepInv_fgKeyInd1KeyStep (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
-    (S : Setup) (maxLen : ℕ) (U V : Bytes) (q : KeyIndQuery S) (st : FgKeyInd1KeySimState S) :
-    SigBudgetStepInv (fgKeyInd1KeyStep useDh1 targetIdx targetSpkIdx S maxLen U V q st)
-      st.sigBudget := by
-  cases q with
-  | initPrin u => exact sigBudgetStepInv_fgInitPrin1KeyGdh useDh1 targetIdx U u st
-  | genSPK u j =>
-    exact sigBudgetStepInv_fgGenSPK1KeyGdh useDh1 targetIdx useDh1 targetIdx targetSpkIdx S
-      maxLen U V u j st
-  | _ => exact sigBudgetStepInv_liftSimStep1Key _ st
-
-theorem sigBudgetStepInv_fgKeyInd1KeyStepIk (targetIdx targetPrinIdx : ℕ)
-    (S : Setup) (maxLen : ℕ) (U V : Bytes) (q : KeyIndQuery S) (st : FgKeyInd1KeySimState S) :
-    SigBudgetStepInv (fgKeyInd1KeyStepIk targetIdx targetPrinIdx S maxLen U V q st)
-      st.sigBudget := by
-  cases q with
-  | initPrin u => exact sigBudgetStepInv_fgInitPrin1KeyGdh true targetPrinIdx U u st
-  | genSPK u j =>
-    exact sigBudgetStepInv_fgGenSPK1KeyGdh true targetPrinIdx false targetIdx
-      (FgGapDh.Ik.noSpkIdx S) S maxLen V U u j st
-  | _ => exact sigBudgetStepInv_liftSimStep1Key _ st
-
-theorem sigBudgetStepInv_fgKeyInd1KeyStepOpk (targetIdx targetOpkIdx : ℕ)
-    (S : Setup) (maxLen : ℕ) (U V : Bytes) (q : KeyIndQuery S) (st : FgKeyInd1KeySimState S) :
-    SigBudgetStepInv (fgKeyInd1KeyStepOpk targetIdx targetOpkIdx S maxLen U V q st)
-      st.sigBudget := by
-  cases q with
-  | initPrin u => exact sigBudgetStepInv_fgInitPrin1KeyGdh false S.N_id U u st
-  | genSPK u j =>
-    exact sigBudgetStepInv_fgGenSPK1KeyGdh false S.N_id false targetIdx
-      (FgGapDh.Opk.noSpkIdx S) S maxLen U V u j st
-  | _ => exact sigBudgetStepInv_liftSimStep1Key _ st
-
-theorem isQueryBoundP_fgKeyInd1KeyGapDhRunAt_sig (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
-    (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) (U V : Bytes) :
-    IsQueryBoundP (fgKeyInd1KeyGapDhRunAt useDh1 targetIdx targetSpkIdx S b A U V)
-      (fun q => isSigChalQuery q = true) (2 * min S.N_spk_tot S.N_recv) := by
-  unfold fgKeyInd1KeyGapDhRunAt
-  refine sigQb_bind0 (isQueryBoundP_unifGdhSign_sig ($ᵗ Bool) 0) (fun secb _ => ?_)
-  have hStep : IsQueryBoundP
-      (runWithGdhSignStep (fgKeyInd1KeyStep useDh1 targetIdx targetSpkIdx S b.q_total U V)
-        A.1.run (FgKeyInd1KeySimState.empty S secb))
-      (fun q => isSigChalQuery q = true) (2 * min S.N_spk_tot S.N_recv) :=
-    isQueryBoundP_runWithGdhSignStep_sig _
-      (sigBudgetStepInv_fgKeyInd1KeyStep useDh1 targetIdx targetSpkIdx S b.q_total U V)
-      A.1.run (FgKeyInd1KeySimState.empty S secb)
-  exact (isQueryBoundP_bind hStep
-    (fun p _ => isQueryBoundP_liftGdhToSign_sig _ 0)).mono (by omega)
-
-theorem isQueryBoundP_fgKeyInd1KeyGapDhRunAtIk_sig (targetIdx targetPrinIdx : ℕ)
-    (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) (U V : Bytes) :
-    IsQueryBoundP (fgKeyInd1KeyGapDhRunAtIk targetIdx targetPrinIdx S b A U V)
-      (fun q => isSigChalQuery q = true) (2 * min S.N_spk_tot S.N_recv) := by
-  unfold fgKeyInd1KeyGapDhRunAtIk
-  refine sigQb_bind0 (isQueryBoundP_unifGdhSign_sig ($ᵗ Bool) 0) (fun secb _ => ?_)
-  have hStep : IsQueryBoundP
-      (runWithGdhSignStep (fgKeyInd1KeyStepIk targetIdx targetPrinIdx S b.q_total U V)
-        A.1.run (FgKeyInd1KeySimState.empty S secb))
-      (fun q => isSigChalQuery q = true) (2 * min S.N_spk_tot S.N_recv) :=
-    isQueryBoundP_runWithGdhSignStep_sig _
-      (sigBudgetStepInv_fgKeyInd1KeyStepIk targetIdx targetPrinIdx S b.q_total U V)
-      A.1.run (FgKeyInd1KeySimState.empty S secb)
-  exact (isQueryBoundP_bind hStep
-    (fun p _ => isQueryBoundP_liftGdhToSign_sig _ 0)).mono (by omega)
-
-theorem isQueryBoundP_fgKeyInd1KeyGapDhRunAtOpk_sig (targetIdx targetOpkIdx : ℕ)
-    (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) (U V : Bytes) :
-    IsQueryBoundP (fgKeyInd1KeyGapDhRunAtOpk targetIdx targetOpkIdx S b A U V)
-      (fun q => isSigChalQuery q = true) (2 * min S.N_spk_tot S.N_recv) := by
-  unfold fgKeyInd1KeyGapDhRunAtOpk
-  refine sigQb_bind0 (isQueryBoundP_unifGdhSign_sig ($ᵗ Bool) 0) (fun secb _ => ?_)
-  have hStep : IsQueryBoundP
-      (runWithGdhSignStep (fgKeyInd1KeyStepOpk targetIdx targetOpkIdx S b.q_total U V)
-        A.1.run (FgKeyInd1KeySimState.empty S secb))
-      (fun q => isSigChalQuery q = true) (2 * min S.N_spk_tot S.N_recv) :=
-    isQueryBoundP_runWithGdhSignStep_sig _
-      (sigBudgetStepInv_fgKeyInd1KeyStepOpk targetIdx targetOpkIdx S b.q_total U V)
-      A.1.run (FgKeyInd1KeySimState.empty S secb)
-  exact (isQueryBoundP_bind hStep
-    (fun p _ => isQueryBoundP_liftGdhToSign_sig _ 0)).mono (by omega)
-
-theorem isQueryBoundP_fgKeyInd1KeyGapDhRunAtFlat_sig (idx : ℕ)
-    (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) (U V : Bytes) :
-    IsQueryBoundP (fgKeyInd1KeyGapDhRunAtFlat idx S b A U V)
-      (fun q => isSigChalQuery q = true) (2 * min S.N_spk_tot S.N_recv) := by
-  unfold fgKeyInd1KeyGapDhRunAtFlat
-  dsimp only
-  split_ifs
-  · exact isQueryBoundP_fgKeyInd1KeyGapDhRunAt_sig _ _ _ S b A U V
-  · exact isQueryBoundP_fgKeyInd1KeyGapDhRunAt_sig _ _ _ S b A U V
-  · exact isQueryBoundP_fgKeyInd1KeyGapDhRunAtIk_sig _ _ S b A U V
-  · exact isQueryBoundP_fgKeyInd1KeyGapDhRunAtOpk_sig _ _ S b A U V
-
-theorem isQueryBoundP_fgKeyInd1KeyGapDhAdv4_sig
-    (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) (U V : Bytes) :
-    IsQueryBoundP ((fgKeyInd1KeyGapDhAdv4 S b A).run U V)
-      (fun q => isSigChalQuery q = true) (fgKeyInd1KeyGapDhAdv4 S b A).q_sig := by
-  dsimp only [fgKeyInd1KeyGapDhAdv4]
-  exact (isQueryBoundP_bind
-    (isQueryBoundP_unifGdhSign_sig (FgGapDh.sampleIndexRange (fgTotalIndexCount S)) 0)
-    (fun idx _ => isQueryBoundP_fgKeyInd1KeyGapDhRunAtFlat_sig idx S b A U V)).mono (by omega)
-
-theorem fgKeyInd1KeyGapDhAdv4_ddh_queries (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (KeyIndAdversary S) b) :
-    (fgKeyInd1KeyGapDhAdv4 S b A).q_ddh ≤ gdhQueryBudget S b :=
-  le_rfl
-
-theorem primQueryBudget_le_uniform8 (S : Setup) (b : QueryBudget) :
-    primQueryBudget S b ≤ 2 ^ 8 * (b.q_total + 1) * (S.N_dh + S.N_sess_tot + 1) := by
-  unfold primQueryBudget
-  have hEq :
-      2 ^ 8 * (b.q_total + 1) * (S.N_dh + S.N_sess_tot + 1) =
-        16 * (b.q_total + 1) * (16 * (S.N_dh + S.N_sess_tot + 1)) := by ring
-  rw [hEq]
-  exact Nat.mul_le_mul_left _ (by omega)
-
-theorem primQueryBudget_le_old (S : Setup) (b : QueryBudget) :
-    primQueryBudget S b ≤ 2 ^ 10 * (b.q_total + 1) * (S.N_dh + S.N_sess_tot + 1) :=
-  (primQueryBudget_le_uniform8 S b).trans
-    (Nat.mul_le_mul_right _ (Nat.mul_le_mul_right _ (by decide)))
-
-theorem gdhQueryBudget_le_old (S : Setup) (b : QueryBudget) :
-    gdhQueryBudget S b ≤
-      8 * (b.q_ro + b.q_roRoot + b.q_total + S.N_dh + S.N_sess_tot + 1) ^ 2 := by
-  have hMin : gdhQueryBudget S b ≤ 4 * b.q_total ^ 2 + b.q_total + S.N_dh + S.N_sess_tot := by
-    unfold gdhQueryBudget
-    dsimp only
-    have := Nat.min_le_left (4 * b.q_total ^ 2)
-      (4 * min b.q_ro b.q_total * min (min b.q_on b.q_total) S.N_sess_tot +
-        2 * min (min b.q_on b.q_total) S.N_sess_tot *
-          (min (min b.q_on b.q_total) S.N_sess_tot - 1))
-    omega
-  have hQ : b.q_total ^ 2 ≤
-      (b.q_ro + b.q_roRoot + b.q_total + S.N_dh + S.N_sess_tot + 1) ^ 2 :=
-    Nat.pow_le_pow_left (by omega) 2
-  have hLin : b.q_total + S.N_dh + S.N_sess_tot ≤
-      b.q_ro + b.q_roRoot + b.q_total + S.N_dh + S.N_sess_tot + 1 := by omega
-  generalize b.q_ro + b.q_roRoot + b.q_total + S.N_dh + S.N_sess_tot + 1 = U at hQ hLin ⊢
-  have hU1 : U ≤ U ^ 2 := Nat.le_self_pow (by decide) U
-  omega
-
-theorem fgKeyInd1KeyGapDhAdv4_prim_queries (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (KeyIndAdversary S) b) :
-    (fgKeyInd1KeyGapDhAdv4 S b A).q_prim ≤ primQueryBudget S b := by
-  dsimp [fgKeyInd1KeyGapDhAdv4, primQueryBudget]
-  nlinarith
-
-noncomputable def fgInitPrin1KeyPure {S : Setup} (P : Primitives)
+@[expose] def fgInitPrin1KeyPure {S : Setup} (P : Primitives)
     (prinFlag : Bool) (prinIdx : ℕ) (Up : Bytes)
     (u : Fin S.N_id) (st : FgKeyInd1KeySimState S) :
     ProbComp (KeyIndResponse × FgKeyInd1KeySimState S) := do
@@ -493,7 +244,7 @@ noncomputable def fgInitPrin1KeyPure {S : Setup} (P : Primitives)
   let base' := { st.sim.base with principals := (u.val, entry) :: st.sim.base.principals }
   return (.initPrinResp ikPk ikPk, { st with sim := { st.sim with base := base' } })
 
-noncomputable def fgGenSPK1KeyPure (P : Primitives) (uSk : Bytes)
+@[expose] def fgGenSPK1KeyPure (P : Primitives) (uSk : Bytes)
     (ddh : Bytes → Bytes → Bytes → Bool) (prinFlag : Bool) (prinIdx : ℕ)
     (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ) (S : Setup) (maxLen : ℕ)
     (U V : Bytes) (u : Fin S.N_id) (j : Fin S.N_recv)
@@ -545,7 +296,7 @@ noncomputable def fgGenSPK1KeyPure (P : Primitives) (uSk : Bytes)
     return (resp, { st with sim := sim' })
 
 /-- Pure `ProbComp` counterpart of `fgKeyInd1KeyStep` (Cases A and C). -/
-noncomputable def fgKeyInd1KeyStepPure (P : Primitives) (uSk : Bytes)
+@[expose] def fgKeyInd1KeyStepPure (P : Primitives) (uSk : Bytes)
     (ddh : Bytes → Bytes → Bytes → Bool) (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (S : Setup) (maxLen : ℕ) (U V : Bytes) (q : KeyIndQuery S)
     (st : FgKeyInd1KeySimState S) :
@@ -559,7 +310,7 @@ noncomputable def fgKeyInd1KeyStepPure (P : Primitives) (uSk : Bytes)
     return (resp, { st with sim := sim' })
 
 /-- Pure `ProbComp` counterpart of `fgKeyInd1KeyStepIk` (Case B). -/
-noncomputable def fgKeyInd1KeyStepPureIk (P : Primitives) (uSk : Bytes)
+@[expose] def fgKeyInd1KeyStepPureIk (P : Primitives) (uSk : Bytes)
     (ddh : Bytes → Bytes → Bytes → Bool) (targetIdx targetPrinIdx : ℕ)
     (S : Setup) (maxLen : ℕ) (U V : Bytes) (q : KeyIndQuery S)
     (st : FgKeyInd1KeySimState S) :
@@ -575,7 +326,7 @@ noncomputable def fgKeyInd1KeyStepPureIk (P : Primitives) (uSk : Bytes)
     return (resp, { st with sim := sim' })
 
 /-- Pure `ProbComp` counterpart of `fgKeyInd1KeyStepOpk` (Case D). -/
-noncomputable def fgKeyInd1KeyStepPureOpk (P : Primitives) (uSk : Bytes)
+@[expose] def fgKeyInd1KeyStepPureOpk (P : Primitives) (uSk : Bytes)
     (ddh : Bytes → Bytes → Bytes → Bool) (targetIdx targetOpkIdx : ℕ)
     (S : Setup) (maxLen : ℕ) (U V : Bytes) (q : KeyIndQuery S)
     (st : FgKeyInd1KeySimState S) :
@@ -589,19 +340,19 @@ noncomputable def fgKeyInd1KeyStepPureOpk (P : Primitives) (uSk : Bytes)
     let (resp, sim') ← fgKeyIndStepPureOpk P ddh targetIdx targetOpkIdx S maxLen U V q st.sim
     return (resp, { st with sim := sim' })
 
-noncomputable def fgKeyInd1KeySimImpl (P : Primitives) (uSk : Bytes)
+@[expose] def fgKeyInd1KeySimImpl (P : Primitives) (uSk : Bytes)
     (ddh : Bytes → Bytes → Bytes → Bool) (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (S : Setup) (maxLen : ℕ) (U V : Bytes) :
     QueryImpl (keyIndSpec S) (StateT (FgKeyInd1KeySimState S) ProbComp) :=
   fun q => StateT.mk (fgKeyInd1KeyStepPure P uSk ddh useDh1 targetIdx targetSpkIdx S maxLen U V q)
 
-noncomputable def fgKeyInd1KeySimImplIk (P : Primitives) (uSk : Bytes)
+@[expose] def fgKeyInd1KeySimImplIk (P : Primitives) (uSk : Bytes)
     (ddh : Bytes → Bytes → Bytes → Bool) (targetIdx targetPrinIdx : ℕ)
     (S : Setup) (maxLen : ℕ) (U V : Bytes) :
     QueryImpl (keyIndSpec S) (StateT (FgKeyInd1KeySimState S) ProbComp) :=
   fun q => StateT.mk (fgKeyInd1KeyStepPureIk P uSk ddh targetIdx targetPrinIdx S maxLen U V q)
 
-noncomputable def fgKeyInd1KeySimImplOpk (P : Primitives) (uSk : Bytes)
+@[expose] def fgKeyInd1KeySimImplOpk (P : Primitives) (uSk : Bytes)
     (ddh : Bytes → Bytes → Bytes → Bool) (targetIdx targetOpkIdx : ℕ)
     (S : Setup) (maxLen : ℕ) (U V : Bytes) :
     QueryImpl (keyIndSpec S) (StateT (FgKeyInd1KeySimState S) ProbComp) :=
@@ -852,12 +603,12 @@ theorem gapDhWithSignExp_fgKeyInd1KeyGapDhAdvAtOpk_eq (P : Primitives)
     simulateQ_gapDhFullImpl_extractCdh4FromAdvRoLog, pure_bind]
 
 /-- One-key `FgSim` oracle implementation overriding `.initPrin` with single-scalar key generation. -/
-noncomputable def pqxdhKeyIndFgImpl1Key (S : Setup) (P : Primitives) :
+@[expose] def pqxdhKeyIndFgImpl1Key (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndFgCutoffState S) ProbComp)
   | .initPrin u => liftFgBase (pqxdhKeyIndImpl1KeyReal S P (.initPrin u))
   | q => pqxdhKeyIndFgImpl S P q
 
-noncomputable def runKeyIndFgSim1Key (S : Setup) (P : Primitives)
+@[expose] def runKeyIndFgSim1Key (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ProbComp (Bool × Bool × KeyIndFgCutoffState S) := do
   let secb ← $ᵗ Bool
   let initSt := KeyIndFgCutoffState.empty S secb
@@ -867,7 +618,7 @@ noncomputable def runKeyIndFgSim1Key (S : Setup) (P : Primitives)
   return (secb, b', finalHst)
 
 /-- Pre-sampled one-key `.initPrin` handler using `optPrinSk` at `prinIdx` when `prinFlag` holds. -/
-noncomputable def fgPreInitPrin1Key (prinFlag : Bool) (prinIdx : ℕ) (optPrinSk : Option Bytes)
+@[expose] def fgPreInitPrin1Key (prinFlag : Bool) (prinIdx : ℕ) (optPrinSk : Option Bytes)
     (S : Setup) (P : Primitives) (u : Fin S.N_id) :
     StateT (KeyIndState S) ProbComp KeyIndResponse := do
   let st ← get
@@ -900,7 +651,7 @@ theorem fgPreInitPrin1Key_false_eq (prinIdx : ℕ) (optPrinSk : Option Bytes)
 
 /-- One-key pre-sampled `KeyInd` implementation for Cases A (`useDh1 = true`) and C
     (`useDh1 = false`). -/
-noncomputable def pqxdhKeyIndFgPreImpl1Key (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
+@[expose] def pqxdhKeyIndFgPreImpl1Key (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (optUsk optVsk : Option Bytes) (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndFgCutoffState S) ProbComp)
   | .initPrin u => liftFgBase (fgPreInitPrin1Key useDh1 targetIdx optUsk S P u)
@@ -909,14 +660,14 @@ noncomputable def pqxdhKeyIndFgPreImpl1Key (useDh1 : Bool) (targetIdx targetSpkI
 /-- One-key pre-sampled `KeyInd` implementation for Case B (`DH2`): `optIkSk` is the responder
     identity scalar at `targetPrinIdx` (corresponding to `u` in `GapDhWithSign`), and `optEkSk` is
     the initiator ephemeral scalar at `targetIdx` (corresponding to `v`). -/
-noncomputable def pqxdhKeyIndFgPreImpl1KeyIk (targetIdx targetPrinIdx : ℕ)
+@[expose] def pqxdhKeyIndFgPreImpl1KeyIk (targetIdx targetPrinIdx : ℕ)
     (optIkSk optEkSk : Option Bytes) (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndFgCutoffState S) ProbComp)
   | .initPrin u => liftFgBase (fgPreInitPrin1Key true targetPrinIdx optIkSk S P u)
   | q => pqxdhKeyIndFgPreImpl false targetIdx (FgGapDh.Ik.noSpkIdx S) optEkSk none S P q
 
 /-- One-key pre-sampled `KeyInd` implementation for Case D (`DH4`). -/
-noncomputable def pqxdhKeyIndFgPreImpl1KeyOpk (targetIdx targetOpkIdx : ℕ)
+@[expose] def pqxdhKeyIndFgPreImpl1KeyOpk (targetIdx targetOpkIdx : ℕ)
     (optUsk optVsk : Option Bytes) (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndFgCutoffState S) ProbComp)
   | .initPrin u => liftFgBase (fgPreInitPrin1Key false S.N_id none S P u)
@@ -1548,14 +1299,14 @@ theorem validSpkBundles_length_le (S : Setup)
   have hLen := (hNodup.subperm hSub).length_le
   simpa using hLen
 
-def clearTargetPrinSecSign (tIdx idx : ℕ) (e : PrincipalEntry) : PrincipalEntry :=
+@[expose] def clearTargetPrinSecSign (tIdx idx : ℕ) (e : PrincipalEntry) : PrincipalEntry :=
   if idx == tIdx then { e with secIKAsign := [] } else e
 
-def clearTargetSecIKAsignBase {S : Setup} (tIdx : ℕ) (st : KeyIndState S) : KeyIndState S :=
+@[expose] def clearTargetSecIKAsignBase {S : Setup} (tIdx : ℕ) (st : KeyIndState S) : KeyIndState S :=
   { st with principals := st.principals.map (fun (idx, e) => (idx, clearTargetPrinSecSign tIdx idx e)) }
 
 /-- Clear `secIKAsign` at principal `tIdx` in `FgKeyIndSimState S`, preserving public keys and `secIKA0`. -/
-def clearTargetSecIKAsign {S : Setup} (tIdx : ℕ) (st : FgKeyIndSimState S) : FgKeyIndSimState S :=
+@[expose] def clearTargetSecIKAsign {S : Setup} (tIdx : ℕ) (st : FgKeyIndSimState S) : FgKeyIndSimState S :=
   { st with base := clearTargetSecIKAsignBase tIdx st.base }
 
 @[simp]
@@ -1888,7 +1639,7 @@ theorem fgRunAcceptNoOPKPure_clearTargetSecIKAsign (P : Primitives)
                   simp only [Option.map_none, Option.map_some, Option.isSome_none,
                     Option.isSome_some, pure_bind] <;> rfl
 
-def isNonIdentityQuery {S : Setup} : KeyIndQuery S → Bool
+@[expose] def isNonIdentityQuery {S : Setup} : KeyIndQuery S → Bool
   | .initPrin _   => false
   | .corruptIK _  => false
   | .genSPK _ _   => false

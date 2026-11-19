@@ -1,6 +1,6 @@
 # Linux AArch64 Syscall Families (`Arm64/Trusted/Syscalls/`)
 
-This directory organizes the 31 modeled Linux AArch64 supervisor calls (`SVC #0`, dispatched on
+This directory organizes the 32 modeled Linux AArch64 supervisor calls (`SVC #0`, dispatched on
 `X8`) along the upstream `linux-7.3` kernel directory hierarchy (`Include/`, `Fs/`, `Mm/`,
 `Kernel/`, `Drivers/`), paired with composable per-family dispatch bundles (`Stdio.lean`,
 `FileIo.lean`, `Poll.lean`, `Alloc.lean`, `Signals.lean`, `Time.lean`, `Random.lean`, `Misc.lean`).
@@ -30,8 +30,8 @@ and differentially tested against `qemu-aarch64` in
 | [`Mm/Mremap.lean`](Mm/Mremap.lean) | `mm/mremap.c` | `mremap` (`216`) | `MREMAP_MAYMOVE`, `Memory.remapRw`, `execMremap` |
 | [`Mm/Madvise.lean`](Mm/Madvise.lean) | `mm/madvise.c` | `madvise` (`233`) | `MADV_*`, `Memory.zeroNonFrozen`, `Memory.madvFreeNonFrozen`, `execMadvise` |
 | [`Kernel/Exit.lean`](Kernel/Exit.lean) | `kernel/exit.c` | `exit` (`93`), `exit_group` (`94`) | `execExit` |
-| [`Kernel/Signal.lean`](Kernel/Signal.lean) | `kernel/signal.c` | `tkill` (`130`), `tgkill` (`131`), `sigaltstack` (`132`), `rt_sigaction` (`134`), `rt_sigprocmask` (`135`) | `LINUX_SIG*`, `SIG_DFL`, `SIG_IGN`, `SIG_UNBLOCKABLE_MASK`, `UAPI_SA_FLAGS`, `SS_*`, `MINSIGSTKSZ`, `SigAction.toBytes`, `SigAltStack.*`, `execRtSigprocmask`, `execSigaltstack`, `execRtSigaction`, `execTkill`, `execTgkill` |
-| [`Kernel/Sys.lean`](Kernel/Sys.lean) | `kernel/fork.c`, `kernel/sched/syscalls.c`, `kernel/sys.c` | `set_tid_address` (`96`), `sched_getaffinity` (`123`), `getpid` (`172`), `gettid` (`178`) | `SCHED_AFFINITY_MASK`, `execSetTidAddress`, `execGetpid`, `execSchedGetaffinity` |
+| [`Kernel/Signal.lean`](Kernel/Signal.lean) | `kernel/signal.c` | `tkill` (`130`), `tgkill` (`131`), `sigaltstack` (`132`), `rt_sigaction` (`134`), `rt_sigprocmask` (`135`) | `LINUX_SIG*`, `SIG_DFL`, `SIG_IGN`, `SIG_UNBLOCKABLE_MASK`, `SIGABRT_MASK`, `UAPI_SA_FLAGS`, `SS_*`, `MINSIGSTKSZ`, `SigAction.toBytes`, `SigAltStack.*`, `execRtSigprocmask`, `execSigaltstack`, `execRtSigaction`, `execTkill`, `execTgkill` |
+| [`Kernel/Sys.lean`](Kernel/Sys.lean) | `kernel/fork.c`, `kernel/futex/`, `kernel/sched/syscalls.c`, `kernel/sys.c` | `set_tid_address` (`96`), `futex` (`98`), `sched_getaffinity` (`123`), `getpid` (`172`), `gettid` (`178`) | `FUTEX_WAKE`, `FUTEX_PRIVATE_FLAG`, `FUTEX_WAKE_PRIVATE`, `SCHED_AFFINITY_MASK`, `execSetTidAddress`, `execGetpid`, `execSchedGetaffinity`, `execFutex` |
 | [`Kernel/Time.lean`](Kernel/Time.lean) | `kernel/time/posix-timers.c` | `clock_gettime` (`113`) | `encodeTimespec`, `execClockGettime` |
 | [`Drivers/Random.lean`](Drivers/Random.lean) | `drivers/char/random.c` | `getrandom` (`278`) | `GRND_*`, `execGetrandom` (uses `MAX_RW_COUNT` from [`Include/Uapi.lean`](Include/Uapi.lean)) |
 
@@ -61,8 +61,8 @@ CI enforces this invariant via `#trusted_closure` (`ProofLib/TrustedClosure.lean
 | [`Signals.lean`](Signals.lean) | `tkill` (`130`), `tgkill` (`131`), `sigaltstack` (`132`), `rt_sigaction` (`134`), `rt_sigprocmask` (`135`) | Re-exports [`Kernel/Signal.lean`](Kernel/Signal.lean); defines `Syscall.signals` |
 | [`Time.lean`](Time.lean) | `clock_gettime` (`113`) | Re-exports [`Kernel/Time.lean`](Kernel/Time.lean); defines `Syscall.time` |
 | [`Random.lean`](Random.lean) | `getrandom` (`278`) | Re-exports [`Drivers/Random.lean`](Drivers/Random.lean); defines `Syscall.random` |
-| [`Misc.lean`](Misc.lean) | `set_tid_address` (`96`), `sched_getaffinity` (`123`), `getpid` (`172`), `gettid` (`178`) | Re-exports [`Kernel/Sys.lean`](Kernel/Sys.lean); defines `Syscall.misc` |
-| [`../Syscalls.lean`](../Syscalls.lean) | All `31` modeled syscalls | `Syscall.none`, `Syscall.standardTable`, `Syscall.standard`, `execSyscall` |
+| [`Misc.lean`](Misc.lean) | `set_tid_address` (`96`), `futex` (`98`), `sched_getaffinity` (`123`), `getpid` (`172`), `gettid` (`178`) | Re-exports [`Kernel/Sys.lean`](Kernel/Sys.lean); defines `Syscall.misc` |
+| [`../Syscalls.lean`](../Syscalls.lean) | All `32` modeled syscalls | `Syscall.none`, `Syscall.standardTable`, `Syscall.standard`, `execSyscall` |
 
 ## Statically Present but Unreachable Syscalls in Static Rust + musl Binaries
 
@@ -72,10 +72,11 @@ Unmodeled syscall numbers are intentionally omitted from `Syscall.standard` (and
 restrict their domain) so that any unexpected dynamic reachability fails closed with `.Exception`
 (e.g. `.Exception "unmodeled syscall (svc)"`) rather than silently approximating kernel behavior:
 
-- **`futex` (`98`)**: linked via musl `__lock` / `__unlock` and `std::sync::Once` / `Parker`. In a
-  single-threaded process (`__libc.threaded == 0`, no `clone`), uncontended atomic
-  compare-and-swap fast paths succeed immediately without entering the kernel `FUTEX_WAIT` /
-  `FUTEX_WAKE` slow path.
+- **`futex` (`98`) (outside `FUTEX_WAKE` / `FUTEX_WAKE_PRIVATE`)**: `execFutex` models
+  `FUTEX_WAKE` (`1`) and `FUTEX_WAKE_PRIVATE` (`129`), returning `0` in single-threaded execution
+  (invoked unconditionally on one-time initialization completion such as `std::sync::Once`).
+  Blocking `FUTEX_WAIT` and all other `futex` operations remain unreachable without thread
+  contention and fail closed with `.Exception "unmodeled futex op"`.
 - **`tkill` (`130`) / `tgkill` (`131`) (outside `abort()`)**: `tkill` is linked via musl `raise` /
   `abort`. Normal execution paths compiled with `-Cpanic=immediate-abort` emit `brk` / `udf` traps
   on panic rather than calling `abort()`, and `execTkill` / `execTgkill` remain fail-closed outside
@@ -97,3 +98,26 @@ restrict their domain) so that any unexpected dynamic reachability fails closed 
 - **`newfstatat` (`79`)**: linked via path-based metadata helpers (`fs::metadata` / `stat`).
   Descriptor-based `fs::read` opens the file with `openat` (`56`) and queries its size via `fstat`
   (`80`) on the open file descriptor.
+
+## Known Intentional Over-Approximations in Modeled Syscalls
+
+Modeled handlers mark intentional kernel abstractions with `[INTENTIONAL_OVERAPPROX]` in their
+docstrings so auditors can distinguish modeled guarantees from non-deterministic or metadata-erased
+kernel checks:
+
+- **Flat byte-permission `Memory` without VMA boundaries (`mremap`, `munmap`, `mprotect`, `madvise`)**:
+  `State.mem` tracks per-byte `(Perm, anon)` cells rather than Linux `vm_area_struct` trees or
+  `anon_vma` chains. `execMremap` (`Mm/Mremap.lean`) soundly over-approximates both VMA-split
+  refusals (`-ENOMEM`) and unmerged adjacent anonymous VMAs (`old_len > vma->vm_end - addr ->
+  -EFAULT` in `check_prep_vma`, `mm/mremap.c:1849`) via `s.oracle.mremapRefusal s.oracleIdx`
+  (`MremapRefusal.enomem` / `MremapRefusal.efault`).
+- **Oracle-mediated VMA placement, split refusals, and host CPU masks (`Oracle.mmap`,
+  `Oracle.mremapRefusal`, `Oracle.schedGetaffinity`)**:
+  `execMremap` models `vm.max_map_count` / `may_expand_vm` / unmerged-VMA refusals
+  nondeterministically via `s.oracle.mremapRefusal s.oracleIdx`, and places `MREMAP_MAYMOVE`
+  results (including shrinks) via `sanitizeMmapAddr` on `s.oracle.mmap s.oracleIdx` rather than
+  pinning Linux's exact VMA-tree search order. `execSchedGetaffinity` (`Kernel/Sys.lean`)
+  over-approximates host `nr_cpu_ids` (`1..8192`), active CPU bitmasks, `zalloc_cpumask_var`
+  `-ENOMEM`, and LSM `-EPERM` via `s.oracle.schedGetaffinity s.oracleIdx` (`SchedAffinityResult`).
+  `execMunmap` does not fail on interior VMA splits, and non-`MAP_FIXED` `execMmap` assumes
+  `RLIMIT_AS` and `vm.max_map_count` are not reached.

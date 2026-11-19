@@ -9,8 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.Encode1
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
@@ -29,7 +28,7 @@ Completes the verification of both monomorphizations of length-delimited Protobu
    `do_reserve_and_handle [local#7]`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageEncode
 
@@ -61,12 +60,8 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 @[local arm64_norm] private theorem bv_pc_add_sub_cancel (a b : BitVec 64) : a + (b - a) = b := by bv_omega
 
-def IsEd2EntryProg (prog : Program) (entry varint_pc reserve_pc memcpy_pc : BitVec 64) : Prop :=
-  (∃ b abs, prog = tripleRatchetProgAtExt b abs ∧
-    (tripleRatchetProgAtExt b abs).fnAddr encodeEpochDirection2Name = entry ∧
-    varint_pc = entry + bv% (2 ^ 64 - ls_rel% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#3]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]") ∧
-    reserve_pc = entry + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]" "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#6]") ∧
-    memcpy_pc = entry + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]" "memcpy")) ∨
+@[expose] def IsEd2EntryProg (prog : Program) (entry varint_pc reserve_pc memcpy_pc : BitVec 64) : Prop :=
+  False ∨
   (∃ (_ : LibsignalPlacement) (H : String → Option (State → State)),
     prog = lsProg_317 H ∧ entry = (blkPl_317).base ∧
     varint_pc = (blkPl_292).base ∧ reserve_pc = (blkPl_320).base ∧
@@ -76,39 +71,29 @@ theorem isEpochDirectionEncodeEntryProg_of_ed2 {prog : Program}
     {entry varint_pc reserve_pc memcpy_pc : BitVec 64}
     (hfn : IsEd2EntryProg prog entry varint_pc reserve_pc memcpy_pc) :
     IsEpochDirectionEncodeEntryProg prog entry := by
-  rcases hfn with ⟨b, abs, rfl, h, _, _, _⟩ | ⟨inst, H, rfl, rfl, _, _, _⟩
-  · exact Or.inl ⟨b, abs, rfl, Or.inr h⟩
+  rcases hfn with h | ⟨inst, H, rfl, rfl, _, _, _⟩
+  · nomatch h
   · exact Or.inr (Or.inr ⟨inst, H, rfl, rfl⟩)
 
 theorem ed2_fetch_add {prog : Program} {entry varint_pc reserve_pc memcpy_pc : BitVec 64}
     (hfn : IsEd2EntryProg prog entry varint_pc reserve_pc memcpy_pc) {k : Nat} {ins : Instr}
-    (h1 : ∀ b abs, (tripleRatchetProgAtExt b abs).fetch
-      ((tripleRatchetProgAtExt b abs).fnAddr encodeEpochDirection2Name + BitVec.ofNat 64 k) = some ins)
     (h_367 : ∀ [LibsignalPlacement] H,
       (lsProg_317 H).fetch ((blkPl_317).base + BitVec.ofNat 64 k) = some ins) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some ins := by
-  rcases hfn with ⟨b, abs, rfl, rfl, _, _, _⟩ | ⟨_, H, rfl, rfl, _, _, _⟩
-  · exact h1 b abs
+  rcases hfn with h | ⟨_, H, rfl, rfl, _, _, _⟩
+  · nomatch h
   · exact h_367 H
 
 theorem ed2_fetch_bl_varint {prog : Program} {entry varint_pc reserve_pc memcpy_pc : BitVec 64}
-    (hfn : IsEd2EntryProg prog entry varint_pc reserve_pc memcpy_pc) {k : Nat} {off1 : BitVec 64}
-    (h1 : ∀ b abs, (tripleRatchetProgAtExt b abs).fetch
-      ((tripleRatchetProgAtExt b abs).fnAddr encodeEpochDirection2Name + BitVec.ofNat 64 k) = some (.bl off1))
-    (hoff1 : BitVec.ofNat 64 k + off1 =
-      bv% (2 ^ 64 - ls_rel% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#3]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]"))
+    (hfn : IsEd2EntryProg prog entry varint_pc reserve_pc memcpy_pc) {k : Nat}
     (h_367 : ∀ [LibsignalPlacement] H,
       (lsProg_317 H).fetch ((blkPl_317).base + BitVec.ofNat 64 k) =
         some (.bl ((blkPl_317).ρ "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#3]" -
           (blkPl_317).base - BitVec.ofNat 64 k))) :
     prog.fetch (entry + BitVec.ofNat 64 k) =
       some (.bl (varint_pc - (entry + BitVec.ofNat 64 k))) := by
-  rcases hfn with ⟨b, abs, rfl, rfl, rfl, _, _⟩ | ⟨_, H, rfl, rfl, rfl, _, _⟩
-  · have hf := h1 b abs
-    have heq : off1 = ((tripleRatchetProgAtExt b abs).fnAddr encodeEpochDirection2Name +
-        bv% (2 ^ 64 - ls_rel% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#3]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]")) -
-        ((tripleRatchetProgAtExt b abs).fnAddr encodeEpochDirection2Name + BitVec.ofNat 64 k) := by rw [← hoff1]; bv_omega
-    rwa [heq] at hf
+  rcases hfn with h | ⟨_, H, rfl, rfl, rfl, _, _⟩
+  · nomatch h
   · have h := h_367 H; simp only [blkPl_317_ρ, ls_resolve_blk_292] at h
     have heq : lsmpl.base 292 - (blkPl_317).base - BitVec.ofNat 64 k =
         (blkPl_292).base - ((blkPl_317).base + BitVec.ofNat 64 k) := by
@@ -116,23 +101,15 @@ theorem ed2_fetch_bl_varint {prog : Program} {entry varint_pc reserve_pc memcpy_
     rwa [heq] at h
 
 theorem ed2_fetch_bl_reserve {prog : Program} {entry varint_pc reserve_pc memcpy_pc : BitVec 64}
-    (hfn : IsEd2EntryProg prog entry varint_pc reserve_pc memcpy_pc) {k : Nat} {off1 : BitVec 64}
-    (h1 : ∀ b abs, (tripleRatchetProgAtExt b abs).fetch
-      ((tripleRatchetProgAtExt b abs).fnAddr encodeEpochDirection2Name + BitVec.ofNat 64 k) = some (.bl off1))
-    (hoff1 : BitVec.ofNat 64 k + off1 =
-      bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]" "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#6]"))
+    (hfn : IsEd2EntryProg prog entry varint_pc reserve_pc memcpy_pc) {k : Nat}
     (h_367 : ∀ [LibsignalPlacement] H,
       (lsProg_317 H).fetch ((blkPl_317).base + BitVec.ofNat 64 k) =
         some (.bl ((blkPl_317).ρ "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#6]" -
           (blkPl_317).base - BitVec.ofNat 64 k))) :
     prog.fetch (entry + BitVec.ofNat 64 k) =
       some (.bl (reserve_pc - (entry + BitVec.ofNat 64 k))) := by
-  rcases hfn with ⟨b, abs, rfl, rfl, _, rfl, _⟩ | ⟨_, H, rfl, rfl, _, rfl, _⟩
-  · have hf := h1 b abs
-    have heq : off1 = ((tripleRatchetProgAtExt b abs).fnAddr encodeEpochDirection2Name +
-        bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]" "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#6]")) -
-        ((tripleRatchetProgAtExt b abs).fnAddr encodeEpochDirection2Name + BitVec.ofNat 64 k) := by rw [← hoff1]; bv_omega
-    rwa [heq] at hf
+  rcases hfn with h | ⟨_, H, rfl, rfl, _, rfl, _⟩
+  · nomatch h
   · have h := h_367 H; simp only [blkPl_317_ρ, ls_resolve_blk_320] at h
     have heq : lsmpl.base 320 - (blkPl_317).base - BitVec.ofNat 64 k =
         (blkPl_320).base - ((blkPl_317).base + BitVec.ofNat 64 k) := by
@@ -140,22 +117,14 @@ theorem ed2_fetch_bl_reserve {prog : Program} {entry varint_pc reserve_pc memcpy
     rwa [heq] at h
 
 theorem ed2_fetch_bl_memcpy {prog : Program} {entry varint_pc reserve_pc memcpy_pc : BitVec 64}
-    (hfn : IsEd2EntryProg prog entry varint_pc reserve_pc memcpy_pc) {k : Nat} {off1 : BitVec 64}
-    (h1 : ∀ b abs, (tripleRatchetProgAtExt b abs).fetch
-      ((tripleRatchetProgAtExt b abs).fnAddr encodeEpochDirection2Name + BitVec.ofNat 64 k) = some (.bl off1))
-    (hoff1 : BitVec.ofNat 64 k + off1 =
-      bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]" "memcpy"))
+    (hfn : IsEd2EntryProg prog entry varint_pc reserve_pc memcpy_pc) {k : Nat}
     (h_367 : ∀ [LibsignalPlacement] H,
       (lsProg_317 H).fetch ((blkPl_317).base + BitVec.ofNat 64 k) =
         some (.bl ((blkPl_317).ρ "memcpy" - (blkPl_317).base - BitVec.ofNat 64 k))) :
     prog.fetch (entry + BitVec.ofNat 64 k) =
       some (.bl (memcpy_pc - (entry + BitVec.ofNat 64 k))) := by
-  rcases hfn with ⟨b, abs, rfl, rfl, _, _, rfl⟩ | ⟨_, H, rfl, rfl, _, _, rfl⟩
-  · have hf := h1 b abs
-    have heq : off1 = ((tripleRatchetProgAtExt b abs).fnAddr encodeEpochDirection2Name +
-        bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]" "memcpy")) -
-        ((tripleRatchetProgAtExt b abs).fnAddr encodeEpochDirection2Name + BitVec.ofNat 64 k) := by rw [← hoff1]; bv_omega
-    rwa [heq] at hf
+  rcases hfn with h | ⟨_, H, rfl, rfl, _, _, rfl⟩
+  · nomatch h
   · have h := h_367 H
     have heq : (blkPl_317).ρ "memcpy" - (blkPl_317).base - BitVec.ofNat 64 k =
         lsρ lsMemcpySym - ((blkPl_317).base + BitVec.ofNat 64 k) := by
@@ -164,43 +133,30 @@ theorem ed2_fetch_bl_memcpy {prog : Program} {entry varint_pc reserve_pc memcpy_
 
 open Lean Meta Elab Tactic ProofLib in
 elab "ed2_fetches_prog " hfn:ident kStart:num kEnd:num : tactic => do
-  let off := 0x4d3c8
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  let fnOff := mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x4d3c8
   let rAdd := mkIdent `CryptoVerification.SpqrV1.Prost.MessageEncode.ed2_fetch_add
   let rBlV := mkIdent `CryptoVerification.SpqrV1.Prost.MessageEncode.ed2_fetch_bl_varint
   let rBlR := mkIdent `CryptoVerification.SpqrV1.Prost.MessageEncode.ed2_fetch_bl_reserve
   let rBlM := mkIdent `CryptoVerification.SpqrV1.Prost.MessageEncode.ed2_fetch_bl_memcpy
   for i in [kStart.getNat / 4 : kEnd.getNat / 4] do
     let k := 4 * i
-    let decName := Name.str `CryptoVerification.SpqrV1.Prost.MessageEncode
-      ("libsignalSessionBin_decode_" ++ "0x" ++ String.ofList (Nat.toDigits 16 (off + k)))
-    let dec := mkIdent decName
     let kHex := String.ofList (Nat.toDigits 16 k)
     let p367 := mkIdent (`CryptoVerification |>.str s!"blkPC_317_rebase_fetch_0x{kHex}")
     let kq := Syntax.mkNumLit (toString k)
     if k == 40 || k == 168 || k == 220 || k == 276 || k == 380 then
       evalTactic (← `(tactic|
         have := $rBlV $hfn (k := $kq)
-          (fun b abs => $fetchAdd (b := b) (H := Rust.withPanics abs) (k := $kq) $fnOff (by decide) $dec)
-          (by decide)
           (fun [LibsignalPlacement] H => $p367 _ H)))
     else if k == 512 || k == 540 || k == 572 || k == 644 || k == 676 then
       evalTactic (← `(tactic|
         have := $rBlR $hfn (k := $kq)
-          (fun b abs => $fetchAdd (b := b) (H := Rust.withPanics abs) (k := $kq) $fnOff (by decide) $dec)
-          (by decide)
           (fun [LibsignalPlacement] H => $p367 _ H)))
     else if k == 316 || k == 420 then
       evalTactic (← `(tactic|
         have := $rBlM $hfn (k := $kq)
-          (fun b abs => $fetchAdd (b := b) (H := Rust.withPanics abs) (k := $kq) $fnOff (by decide) $dec)
-          (by decide)
           (fun [LibsignalPlacement] H => $p367 _ H)))
     else
       evalTactic (← `(tactic|
         have := $rAdd $hfn (k := $kq)
-          (fun b abs => $fetchAdd (b := b) (H := Rust.withPanics abs) (k := $kq) $fnOff (by decide) $dec)
           (fun [LibsignalPlacement] H => $p367 _ H)))
 
 /-! ## 1. `encode<EpochDirection> [local#2]` Step Lemmas -/
@@ -1038,7 +994,7 @@ theorem epochDirection2_gen_ok_prog {resStack : Nat} (hres : resStack + 48 + 64 
     (hsp : s0.spAligned = true) :
     ∃ P, (s0.mem ⊨ P ∗ R) ∧ SepWPp prog (s0.readReg64 .lr) s0 P
       (fun s' Q => ((s'.mem ⊨ Q ∗ R) → (s'.mem ⊨ (encodeEpochDirectionPinnedSpecOf resStack A).post x s0 s' ∗ R)) ∧
-        s'.sp = s0.sp ∧ CalleeSavedPreserved s0 s' ∧ StepInv s0 s')
+        s'.sp = s0.sp ∧ CalleeSavedPreserved s0 s' ∧ StepInvPlaced s0 s')
       (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeEpochDirectionPinnedSpec A).onPanic x s0 sf ∗ R)) := by
   have hfn := isEpochDirectionEncodeEntryProg_of_ed2 hfn2
   have halign : s0.sp &&& 15#64 = 0#64 := by simpa only [State.spAligned, beq_iff_eq] using hsp
@@ -1141,106 +1097,6 @@ theorem epochDirection2_gen_ok_prog {resStack : Nat} (hres : resStack + 48 + 64 
     epochDirectionPBPinnedAt_eq_elems A x.g x.dirA x.dir hnext_cap0 hprev_cap0,
     ← bs0_append_encodeEpochDirectionMsg x.bs x.tag x.dir]
   convert hm using 1; ac_rfl
-
-theorem epochDirection2_gen_ok_ext {resStack : Nat} (hres : resStack + 48 + 64 < 2 ^ 64)
-    {b : BitVec 64} {A : RustAlloc} {ext : String → Option (State → State)}
-    {x : EncodeEpochDirectionPinnedGhost} {R : SepProp} {s0 : State}
-    (henc : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr encodeEpochDirection2Name + bv% (2 ^ 64 - ls_rel% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#3]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]"))
-      (withAuthEncodeCSPlaced s0 (encodeVarintFitSpecOf resStack A)))
-    (hdoReserve : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr encodeEpochDirection2Name + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]" "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#6]"))
-      (withAuthEncodeCSPlaced s0 (doReserveSpecOf resStack A)))
-    (hmemcpy : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr encodeEpochDirection2Name + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]" "memcpy"))
-      (withAuthEncodeCSPlaced s0 (withStack sessionMemcpyRegionSpec (0x30 + resStack))))
-    (hpc : s0.pc = (tripleRatchetProgAtExt b ext).fnAddr encodeEpochDirection2Name)
-    (hrun : s0.status = .Running)
-    (hpre : s0.mem ⊨ (encodeEpochDirectionPinnedSpecOf resStack A).pre x s0 ∗ R)
-    (hsp : s0.spAligned = true) :
-    ∃ P, (s0.mem ⊨ P ∗ R) ∧ SepWPp (tripleRatchetProgAtExt b ext) (s0.readReg64 .lr) s0 P
-      (fun s' Q => ((s'.mem ⊨ Q ∗ R) → (s'.mem ⊨ (encodeEpochDirectionPinnedSpecOf resStack A).post x s0 s' ∗ R)) ∧
-        s'.sp = s0.sp ∧ CalleeSavedPreserved s0 s' ∧ StepInv s0 s')
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeEpochDirectionPinnedSpec A).onPanic x s0 sf ∗ R)) :=
-  epochDirection2_gen_ok_prog hres (Or.inl ⟨b, ext, rfl, rfl, rfl, rfl, rfl⟩)
-    henc hdoReserve hmemcpy hpc hrun hpre hsp
-
-theorem encode_epochDirection_2_pinned_ok_ext {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    EncodeEpochDirection2PinnedOkExt b A ext := by
-  apply subroutine_ok_of_sepWPp; intro x R s0 hpc hrun hpre hsp
-  have henc0 : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr encodeEpochDirection2Name + bv% (2 ^ 64 - ls_rel% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#3]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]"))
-      (encodeVarintFitSpecOf doReserveStack A) := by
-    rw [encodeEpochDirection2_encodeVarint4_fnAddr_eq]; exact encode_varint4_fit_ok_ext hA
-  have hdoReserve0 : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr encodeEpochDirection2Name + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]" "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#6]"))
-      (doReserveSpecOf doReserveStack A) := by
-    rw [encodeEpochDirection2_doReserve7_fnAddr_eq]; exact do_reserve_7_ok_ext hA
-  have hmemcpy : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr encodeEpochDirection2Name + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]" "memcpy")) sessionMemcpyRegionSpec :=
-    hA.session_memcpy_region_ok_at encodeEpochDirection2Name
-      (num% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]" "memcpy"))
-      (by rw [(ls_lemma% fnOff "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]"), (ls_stub% "memcpy")])
-  obtain ⟨P, hP, hwp⟩ := epochDirection2_gen_ok_ext (by decide)
-    (subroutine_ok_withAuthEncodeCSPlaced s0 henc0)
-    (subroutine_ok_withAuthEncodeCSPlaced s0 hdoReserve0)
-    (subroutine_ok_withAuthEncodeCSPlaced s0 (subroutine_ok_withStack_of_subroutine_ok hmemcpy (0x30 + doReserveStack)))
-    hpc hrun hpre hsp
-  exact ⟨P, R, hP, sepWPp_mono_placed hwp (fun _ _ ⟨hp, h1, h2, _⟩ => ⟨hp, h1, h2⟩) (fun _ _ hp => hp)⟩
-
-theorem encode_epochDirection_2_ok_ext {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) : EncodeEpochDirection2OkExt b A ext :=
-  epochDirection_unpinned_of_pinned (encode_epochDirection_2_pinned_ok_ext hA)
-
-theorem encode_epochDirection_2_pinned_ok_ext_xa {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hAx : AllocContractsX img A ext) :
-    EncodeEpochDirection2PinnedOkX img A ext := by
-  have hdoReserve := do_reserve_7_ok_ext_xa (img := img) hAx
-  apply subroutine_ok_of_sepWPp; intro x R s0 hpc hrun hpre hsp
-  rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre; obtain ⟨hinv0, hpre⟩ := hpre
-  have henc0 : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr encodeEpochDirection2Name + bv% (2 ^ 64 - ls_rel% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#3]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]"))
-      ((encodeVarintFitSpecOf doReserveStackX A).inImage img) := by
-    rw [encodeEpochDirection2_encodeVarint4_fnAddr_eq]; exact encodeVarint4_fit_ok_ext_x img A ext hdoReserve
-  have hdoReserve0 : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr encodeEpochDirection2Name + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]" "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#6]"))
-      ((doReserveSpecOf doReserveStackX A).inImage img) := by
-    rw [encodeEpochDirection2_doReserve7_fnAddr_eq]; exact hdoReserve
-  have hmemcpy0 : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr encodeEpochDirection2Name + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]" "memcpy"))
-      ((withStack sessionMemcpyRegionSpec (0x30 + doReserveStackX)).inImage img) :=
-    hAx.session_memcpy_region_ok_at encodeEpochDirection2Name
-      (num% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]" "memcpy"))
-      (0x30 + doReserveStackX) (by decide) (by decide)
-      (by rw [(ls_lemma% fnOff "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#2]"), (ls_stub% "memcpy")])
-  obtain ⟨P, hP, hwp⟩ := epochDirection2_gen_ok_ext (by decide)
-    (subroutine_ok_withAuthEncodeCSPlaced_x img s0 hinv0 henc0)
-    (subroutine_ok_withAuthEncodeCSPlaced_x img s0 hinv0 hdoReserve0)
-    (subroutine_ok_withAuthEncodeCSPlaced_x img s0 hinv0 hmemcpy0) hpc hrun hpre hsp
-  exact ⟨P, R, hP, sepWPp_mono_placed hwp (fun _ _ ⟨hp, h1, h2, _⟩ => ⟨hp, h1, h2⟩) (fun _ _ hp => hp)⟩
-
-theorem encode_epochDirection_2_ok_ext_xa {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hAx : AllocContractsX img A ext) :
-    EncodeEpochDirection2OkX img A ext :=
-  epochDirection_unpinned_of_pinned_x (encode_epochDirection_2_pinned_ok_ext_xa hAx)
-
-theorem encode_epochDirection_2_pinned_ok_of_rep {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hAx : AllocContractsX img A ext)
-    (_hrep : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr encodeRepeated2Name)
-      ((encodeRepeatedSpecX A).inImage img)) :
-    EncodeEpochDirection2PinnedOkX img A ext :=
-  encode_epochDirection_2_pinned_ok_ext_xa hAx
-
-theorem encode_epochDirection_2_pinned_ok_ext_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContracts img.base A ext) :
-    EncodeEpochDirection2PinnedOkX img A ext :=
-  encode_epochDirection_2_pinned_ok_ext_xa (AllocContractsX.of_AllocContracts hA)
-
-theorem encode_epochDirection_2_ok_ext_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContracts img.base A ext) : EncodeEpochDirection2OkX img A ext :=
-  epochDirection_unpinned_of_pinned_x (encode_epochDirection_2_pinned_ok_ext_x hA)
 
 theorem encode_epochDirection_2_pinned_placed_ok [LibsignalPlacement] {A : RustAlloc} {H : String → Option (State → State)}
     (h_panic : H spqrHandleErrorSym = some Rust.panicked) (hshim : HookSat H spqrRustNoAllocShimSym noAllocShimSpec)

@@ -9,15 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core
-public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.MessageKeys
-public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.NextChainKey
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlaced
+public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.ChainKey.MessageKeys
+import LibsignalBinary.Proofs.TripleRatchet.ChainKey.NextChainKey
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
-public import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced
+import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Stack
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `OutgoingTripleRatchet::encrypt::<Coins>` Body Proof (Block `428`)
@@ -26,7 +29,7 @@ Proves the relocatable `[LibsignalPlacement]` body contracts (`otrEncrypt_coins_
 framed variant) for `OutgoingTripleRatchet::encrypt::<Coins>` (block `428`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -226,7 +229,7 @@ theorem _root_.CryptoVerification.Cli.LibsignalTripleRatchet.Encrypt.otrEncrypt_
     apply EncryptCoreFacts.sepWP_done_encrypt
     · simp (config := { decide := true }) only [arm64_norm]
     · simp (config := { decide := true }) only [arm64_norm, hrun2]
-    · exact ⟨by decide, by simp (config := { decide := true }) only [arm64_norm, htr2]⟩
+    · exact ⟨by nofun, by simp (config := { decide := true }) only [arm64_norm, htr2]⟩
     · sep_focus
     · simp (config := { decide := true }) only [arm64_norm, hsp2, BitVec.sub_add_cancel]
     · simp only [CalleeSavedPreserved]; simp (config := { decide := true }) only [arm64_norm, h29_2]

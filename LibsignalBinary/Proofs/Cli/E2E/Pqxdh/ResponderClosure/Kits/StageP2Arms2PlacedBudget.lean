@@ -9,15 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Arms2Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ArmsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Arms2Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ArmsPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlacedBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BridgePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsCPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5Defs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Arm 6 and Normal-Exit Bridges
@@ -27,7 +34,7 @@ s0.readReg64 .x30` under `P2Arm6FreeEnv`) and normal-exit entailment `p2_v1_ok_e
 `+0x1778`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -145,7 +152,7 @@ private theorem p2_finish_err_arm6_drop {prog : Program} {ret : BitVec 64} {s : 
 
 /-- Frame held constant across `stageP2_sub6_v1_kits_placed` (`+0x125c -> +0x1778` and Arm 6),
 parameterized by `A : RustCliAllocBudget M`. -/
-def p2Sub6FramePlaced {M : AllocCostModel} (A : RustCliAllocBudget M) {b : BitVec 64}
+@[expose] def p2Sub6FramePlaced {M : AllocCostModel} (A : RustCliAllocBudget M) {b : BitVec 64}
     (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
     (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
     (pkKit : PreKeyStoreSpec A.repAlloc b)
@@ -442,7 +449,7 @@ abbrev p2_v1_arm6_ok_placed := @p2_v1_arm6_ok_hooks_placed
 
 /-- Budget-threaded placed spatial postcondition at `+0x1778` (Normal exit into Stage P3
 `StageP3GenVRegs`), matching `Poll.p2OkPostAtPlaced (A.atState lim st sf)` by `rfl`. -/
-def p2OkPostAtPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def p2OkPostAtPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (s0 sf : State)
     (spkKit : SignedPreKeyStoreSpec A.repAlloc 0#64)
     (kpkKit : KyberPreKeyStoreSpec A.repAlloc 0#64)

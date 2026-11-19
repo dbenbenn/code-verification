@@ -22,6 +22,9 @@ public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.K
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhStep
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDh
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhEvalEq
+import Computational.Proofs.ReductionDsl.AtomicSizeHonest
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEvalEq
 
 /-!
 # Forgetful Simulation Seam for Shadow-Indexed `KeyInd` Gap-DH
@@ -520,28 +523,6 @@ theorem entryMatchesC_unsupported_zero {Γ₁ Γ₂ Γ₃ Γ₄ Γ₅ Δ : List 
       tlGapDhKeyInd.unsupportedW (fun _ => 0) = 0 := by
   simp [entryMatchesC, ddhEqC_unsupported_zero, ddhEqOptC_unsupported_zero, bindV, Comp.queries]
 
-theorem GdhAtomicLiftValid.liftGdhAtomic_entryMatchesC_ro_eval_eq_beq
-    {ι : Type} {T : OracleSpec ι} {A : AtomicIface T}
-    {gl : GdhAtomicLift A}
-    {evalGdh : ∀ {α : Type}, OracleComp GdhSimSpec α → OracleComp T α}
-    (hgl : GdhAtomicLiftValid gl evalGdh)
-    {Γ₁ Γ₂ Γ₃ Γ₄ Γ₅ Δ : List PT}
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] [Ext Γ₅ Δ]
-    (pos1 : Var Γ₁ fgPosTy) (pos2 : Var Γ₂ fgPosTy) (pos3 : Var Γ₃ fgPosTy)
-    (pos4? : Var Γ₄ (.opt fgPosTy)) (ssVar : Var Γ₅ (B 32))
-    (eVar : Var Δ fgPatchEntryTy) (env : Env Δ)
-    (sec sec' : Bytes)
-    (hQ : RoQueryPackWf sec
-      (env.get (Ext.wk pos1)) (env.get (Ext.wk pos2)) (env.get (Ext.wk pos3))
-      (env.get (Ext.wk pos4?)) (env.get (Ext.wk ssVar)))
-    (hE : RoFgEntryWf sec' (embedVal fgPatchEntryTy (env.get eVar))) :
-    (liftGdhAtomic gl (entryMatchesC pos1 pos2 pos3 pos4? ssVar eVar)).eval (embedEnv env) =
-      pure (sec' == sec) := by
-  rw [hgl.liftGdhAtomic_eval _ (entryMatchesC_unsupported_zero _ _ _ _ _ _) env,
-      entryMatchesC_ro_eval_eq_beq pos1 pos2 pos3 pos4? ssVar eVar env sec sec' hQ hE,
-      hgl.evalGdh_pure]
-  rfl
-
 /-- Maps `keyIndSentinel S b` back to `b.q_total + 1` on the four ordinal slots of `paramsTy`,
     leaving all other fields unchanged. -/
 @[expose] def fixParamsSent (S : Setup) (b : QueryBudget)
@@ -683,24 +664,6 @@ theorem GdhSimInv.ctr_add_one_le_q_total {S : Setup} {b : QueryBudget}
   have hLe : (roEntriesOf fgEntryDk tagged).length + sK.2.1.length + 1 ≤ b.q_total :=
     Nat.le_trans (Nat.add_le_add_right (hSum ▸ Nat.add_comm (c 0) (c 1) ▸ Nat.add_le_add hRoLe hSess) 1) h2
   exact hCtr ▸ hLe
-
-theorem GdhSimInv.smRaw_length_le_kOff {S : Setup} {b : QueryBudget}
-    {c : Fin 3 → ℕ} {sK : simShadowAtomicTy.denote}
-    (hInv : GdhSimInv S b c sK)
-    (hB : ∀ j, c j ≤ keyIndSimBounds b j) :
-    sK.1.2.2.1.length ≤ (keyIndKFuelsOfBudget S b).kOff := by
-  have h1 := hB 1
-  dsimp only [keyIndSimBounds, keyIndKFuelsOfBudget] at h1 ⊢
-  exact Nat.le_trans hInv.raw_len h1
-
-theorem GdhSimInv.smRaw_length_le_q_total {S : Setup} {b : QueryBudget}
-    {c : Fin 3 → ℕ} {sK : simShadowAtomicTy.denote}
-    (hInv : GdhSimInv S b c sK)
-    (hB : ∀ j, c j ≤ keyIndSimBounds b j) :
-    sK.1.2.2.1.length ≤ b.q_total := by
-  have h := hInv.smRaw_length_le_kOff hB
-  dsimp only [keyIndKFuelsOfBudget] at h
-  omega
 
 theorem GdhSimInv.smRaw_add_one_le_q_total {S : Setup} {b : QueryBudget}
     {c : Fin 3 → ℕ} {sK : simShadowAtomicTy.denote} {sec : Bytes}

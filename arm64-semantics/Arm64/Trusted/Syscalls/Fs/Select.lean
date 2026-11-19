@@ -61,6 +61,16 @@ def evalPpollEntries (fs : FsState) (m : Memory) (ufds : BitVec 64) :
         else
           none
 
+/-- True when every 2-byte `revents` slot (`ufds + i * 8 + 6`, `0 ≤ i < nfds`) is writable in `m`
+    (`unsafe_put_user(revents, &ufds[i].revents)` in `fs/select.c:1058`). -/
+def allPpollReventsWritable (m : Memory) (ufds : BitVec 64) (nfds : Nat) : Bool :=
+  (List.range nfds).all fun i => m.canWrite (ufds + BitVec.ofNat 64 (i * 8 + 6)) 2
+
+/-- True when at least one `revents` byte (`ufds + i * 8 + 6`, `0 ≤ i < nfds`) is writable in `m`
+    (used to fail closed when `do_sys_poll` would write a prefix of `revents` before faulting). -/
+def anyPpollReventsWritable (m : Memory) (ufds : BitVec 64) (nfds : Nat) : Bool :=
+  (List.range nfds).any fun i => m.canWrite (ufds + BitVec.ofNat 64 (i * 8 + 6)) 1
+
 /-- `ppoll(ufds, nfds, tsp, sigmask, sigsetsize)` (`__NR_ppoll = 73`, `SYSCALL_DEFINE5(ppoll)` in
     `fs/select.c:1109` and `set_user_sigmask` in `kernel/signal.c:3158`), restricted to non-blocking
     descriptor-validity probes on `fd ∈ {0, 1, 2}` with `events = 0`, zero timeout, and null
@@ -81,16 +91,19 @@ def evalPpollEntries (fs : FsState) (m : Memory) (ufds : BitVec 64) :
     - `ufds` (`X0`) and `nfds` (`W1`, `unsigned int nfds` in `do_sys_poll`, `fs/select.c:1022`):
       - `nfds > FsState.maxOpenFds` (fixed ceiling `1024`; configurable `RLIMIT_NOFILE` is not
         modeled) returns `-EINVAL`;
-      - `nfds == 0` returns `0`;
+      - `nfds == 0`: returns `-EFAULT` if `ufds.toNat > USER_VA_LIMIT` (`scoped_user_write_access_size`
+        -> `access_ok(ufds, 0)` in `fs/select.c:1049`), and `0` otherwise;
       - if `[ufds, ufds + nfds * 8)` wraps modulo `2 ^ 64` or is not readable, returns `-EFAULT`;
       - evaluates all `nfds` entries via `evalPpollEntries` (failing closed with
         `.Exception "unmodeled ppoll"` if any entry has `fd ∉ {0, 1, 2}`, `events ≠ 0`, or a
         `.custom` backend);
-      - if `[ufds, ufds + nfds * 8)` is not writable (`put_user` on `revents`), returns `-EFAULT`;
+      - checks writability of each 2-byte `revents` field (`ufds + i * 8 + 6`, `put_user` in
+        `fs/select.c:1058`), returning `-EFAULT` when no `revents` byte is writable and failing
+        closed with `.Exception` on partial-prefix `revents` faults;
       - otherwise writes `revents` (`0` for open, `POLLNVAL` for closed) and returns the count of
         entries with non-zero `revents`.
     - `[OVERPINNED_BEHAVIOR]`: Validates `tsp` (`get_timespec64`) -> `sigsetsize` (`set_user_sigmask`) ->
-      `nfds` -> `ufds` readability/writability, matching `fs/select.c:1118-1135`. -/
+      `nfds` -> `ufds` readability / `revents` writability, matching `fs/select.c:1118-1135`. -/
 def execPpoll (s : State) : State :=
   let ufds       := s.readReg64 Reg.x0
   let nfds       := (s.readReg32 Reg.x1).toNat
@@ -117,7 +130,10 @@ def execPpoll (s : State) : State :=
     else if nfds > FsState.maxOpenFds then
       (s.writeReg64 Reg.x0 (-EINVAL)).advancePC
     else if nfds == 0 then
-      (s.writeReg64 Reg.x0 0#64).advancePC
+      if !decide (ufds.toNat ≤ USER_VA_LIMIT) then
+        (s.writeReg64 Reg.x0 EFAULT_RET).advancePC
+      else
+        (s.writeReg64 Reg.x0 0#64).advancePC
     else if !decide (ufds.toNat + nfds * 8 ≤ 2 ^ 64) || !s.mem.allPerm (·.r) ufds (nfds * 8) then
       (s.writeReg64 Reg.x0 EFAULT_RET).advancePC
     else if !s.mem.canRead ufds (nfds * 8) then
@@ -126,8 +142,11 @@ def execPpoll (s : State) : State :=
       match evalPpollEntries s.fs s.mem ufds nfds 0 0 with
       | none => s.setStatus (.Exception "unmodeled ppoll")
       | some (m', count) =>
-        if !s.mem.canWrite ufds (nfds * 8) then
-          (s.writeReg64 Reg.x0 EFAULT_RET).advancePC
+        if !allPpollReventsWritable s.mem ufds nfds then
+          if !anyPpollReventsWritable s.mem ufds nfds then
+            (s.writeReg64 Reg.x0 EFAULT_RET).advancePC
+          else
+            s.setStatus (.Exception "unmodeled ppoll partial revents fault")
         else
           ((s.setMem m').writeReg64 Reg.x0 (BitVec.ofNat 64 count)).advancePC
 

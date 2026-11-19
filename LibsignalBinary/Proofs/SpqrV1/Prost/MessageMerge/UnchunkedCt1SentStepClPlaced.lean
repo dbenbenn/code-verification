@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedCt1SentStep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedCt1SentStep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirection
@@ -23,7 +23,7 @@ Proves `withLsCodeRoLoaded lsmpl` variants of the `[LibsignalPlacement]` error-e
 (`skip`, `tag1`–`tag3`) step lemmas for `Unchunked.Ct1Sent::merge` on Block `312`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedCt1SentStepClPlaced
@@ -53,7 +53,7 @@ set_option linter.unusedSimpArgs false
 
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero_u bv64_add_zero_u unchunkedCt1SentMerge_fnOff
+attribute [local simp, local arm64_norm] bv64_sub_zero_u bv64_add_zero_u
 
 theorem ct1Sent_from_err_exit_cl_placed [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}

@@ -12,7 +12,7 @@ module
 public meta import Lean -- shake: keep
 public meta import Mathlib.Tactic.Basic
 public meta import Mathlib.Tactic.ToDual
-public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces -- shake: keep
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces -- shake: keep -- proof-setup: allow-public-import
 public import Symbolic.Specifications.Refinement.TraceExplanation -- shake: keep
 
 /-!
@@ -23,7 +23,7 @@ instances that clash with `DY.Libsignal.Composed`, and `cref_open`, which opens 
 composed-refinement namespaces.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

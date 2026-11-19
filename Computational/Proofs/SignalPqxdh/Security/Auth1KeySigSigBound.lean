@@ -9,8 +9,20 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhSigBound
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuth1KeySig
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhSigBound
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuth1KeySig -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyPre
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
 
 /-!
 # Signing-query bound for the one-key `Auth` `GapSigEufCma` reduction
@@ -20,7 +32,7 @@ public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuth1KeySig
 `authSigBudgetStepInv_fgAuth1KeyStepHalt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -52,7 +64,7 @@ theorem isQueryBoundP_bind_le_of {α β : Type} {mx : OracleComp GdhSignSimSpec 
   simpa using isQueryBoundP_bind h1 h2
 
 /-- Continuation-style signing-budget invariant for a step over `SigAuth1KeySimState`. -/
-def SigAuth1KeySigPot {S : Setup} {R : Type}
+@[expose] def SigAuth1KeySigPot {S : Setup} {R : Type}
     (m : OracleComp GdhSignSimSpec (R × SigAuth1KeySimState S)) (b : ℕ) : Prop :=
   ∀ {β : Type} (k : R × SigAuth1KeySimState S → OracleComp GdhSignSimSpec β),
     (∀ p, IsQueryBoundP (k p) (fun q => isSigChalQuery q = true) (2 * p.2.fg.sigBudget)) →

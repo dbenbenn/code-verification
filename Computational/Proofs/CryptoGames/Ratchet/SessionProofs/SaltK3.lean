@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.Chains
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimC
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.Chains -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimC -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.SaltK1
 
 /-!
@@ -19,7 +19,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.SaltK1
 **Checked by Lean.** Defines `k3Seed` for branch K3 of `LibsignalSimC.snapshotMessageKeySeed` (DEV-LS37) and proves `k3Seed_eq_msgSeedAt` on chains starting from `ck0`.
 -/
 
-@[expose] public section
+public section
 
 open CryptoGames.Ratchet CryptoGames.LibsignalSession CryptoGames.Ratchet.LibsignalInst
 open CryptoGames.Ratchet.LibsignalSim
@@ -30,7 +30,7 @@ namespace CryptoGames.LibsignalSM.Proofs.SaltMismatch
 open CryptoGames.LibsignalSM.Proofs.Correctness
 
 /-- Seed extracted by branch K3 of `snapshotMessageKeySeed` from sender chain `sc`. -/
-def k3Seed (F : ShaCompress) (sc : SenderChain) (Y : PublicKey) (n : BitVec 32) :
+@[expose] def k3Seed (F : ShaCompress) (sc : SenderChain) (Y : PublicKey) (n : BitVec 32) :
     Option (List (BitVec 8)) :=
   if sc.ratchetKey.publicKey = Y then chainSeedAt F sc.chainKey n else none
 

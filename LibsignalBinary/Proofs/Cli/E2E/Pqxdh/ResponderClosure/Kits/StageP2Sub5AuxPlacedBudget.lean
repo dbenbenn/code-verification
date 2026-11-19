@@ -9,12 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP2b
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP2bAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksB5PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5AuxPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2b
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Fetch
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StoreEmpty
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridge
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.OneKeyVtables
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccount
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP2a
+import LibsignalBinary.Proofs.TripleRatchet.TrapRng
+import ProofLib.SepLogic.WP
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksB5PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5AuxPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
@@ -24,6 +32,10 @@ import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2bAux
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksB5Placed
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Substage P2.5 Tail at SPQR V1
@@ -32,7 +44,7 @@ Proves `RustCliAllocBudget M` / `VmPreserved` placed Substage P2.5 tail theorems
 +0x125c`, including `StageP2MemInv` and `LibsignalFrozen` variants) on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -92,6 +104,7 @@ open LibsignalBinary.Heap (
   AllocCostModel AllocEvent BudgetLimits FitsEnv RustCliAllocBudget VmPreserved
 )
 open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
+open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget (pqxdhAcceptPlacedStack)
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlacedBudget (
   initializeBobSessionErrOwnedPlacedSpec
 )
@@ -1051,9 +1064,9 @@ abbrev stageP2Sub5TailV1AtPlacedProp [LibsignalPlacement] {M : AllocCostModel}
     (bobV1Stk : Nat) : Prop :=
   stageP2Sub5TailV1AtPlacedOfEnvProp P A lim F (InitializeBobV1Env F) AcceptErrEnv ext bobV1Stk
 
-abbrev initializeBobSessionV1StackPlaced : Nat := stageP2bStack + 0x700
+abbrev initializeBobSessionV1StackPlaced : Nat := 768 + pqxdhAcceptPlacedStack
 
-abbrev initializeBobSessionV1StackExtPlaced : Nat := 768 + Initiator.pqxdhEntryStackExt
+abbrev initializeBobSessionV1StackExtPlaced : Nat := 768 + pqxdhAcceptPlacedStack
 
 /-- Placed Substage P2.5 Tail (`+0x1168 -> +0x125c` at SPQR V1, `StageP2PureCalleesPlacedOfEnv`). -/
 theorem stageP2_sub5_tail_v1_kits_placed_ofEnv [LibsignalPlacement] {M : AllocCostModel}

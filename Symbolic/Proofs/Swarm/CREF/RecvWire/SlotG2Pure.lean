@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.SlotG2HelpersPure
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1AtPureA
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.SlotG2HelpersPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1AtPureA -- proof-setup: allow-public-import
 import Batteries.Data.UInt
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSpqrPureA
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptSplitPure
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.RcvByPureA
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.ReadableBy2Pure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSpqrPureA -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptSplitPure
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.RcvByPureA -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.ReadableBy2Pure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.R3ChainsWFPresPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSpqrPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SendRetCoinsCliPure
@@ -35,6 +35,7 @@ import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedProvTR
 import Symbolic.Proofs.Swarm.CREF.TR.RecvRep
 import Symbolic.Proofs.Swarm.CREF.TROpen
 import Symbolic.Proofs.Swarm.TRREF.HooksOKXTRPure
+import Symbolic.Proofs.Swarm.CREF.TR.RecvCol
 
 /-!
 # Accepting Whisper Receive Witness Assembly
@@ -43,7 +44,7 @@ Combines the skipped-key, no-ratchet, and DH-ratchet decrypt-branch witnesses in
 `recvWireStepWitness_of_acceptCallBy₂K` for an accepting Whisper receive call.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

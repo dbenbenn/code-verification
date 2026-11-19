@@ -17,17 +17,33 @@ import Computational.Proofs.Game.PromotedCostedReds.KemFailRedSendCorrSub
 public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedSendCorrCost -- proof-setup: allow-public-import
 import Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitnessSub
 import Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost
+public import Computational.Proofs.E2E.Dsl.SpqrSim -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SpqrDesc
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.SM.DeliverForge
+import Computational.Proofs.ReductionDsl.SM.RedCKA
+import Computational.Proofs.ReductionDsl.SM.RedFS
+import Computational.Proofs.ReductionDsl.SM.RedPRNG
+import Computational.Proofs.ReductionDsl.SM.Theorem1
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
+import VCVio.EvalDist.EvalDistEq
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Tracker-Halted Step Handler for `uniformStart`
 
 Constructs the 5-oracle step handler `r1OracleStepTrackC` over `atomicSessionOps` and
-`coinOnlyIface` for `configR1OnCurve`, and proves its query, cost, size, and evaluation lemmas.
--/
+`coinOnlyIface` for `configR1OnCurve`, and proves its query, cost, size, and evaluation lemmas.-/
 
 public section
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
 namespace Computational.Proofs.Game.PromotedCostedReds.HaltedUniformEpoch0Step
 

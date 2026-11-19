@@ -10,7 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStores
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStores -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Specifications for `Stores` and `IdentityFiles` Drop Glue
@@ -19,7 +20,7 @@ Defines `dropStoresSpec` and `dropDirPairSpec` over `RustCliAllocBudget M` with 
 `AllocEvent` postconditions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -33,7 +34,7 @@ open CryptoVerification.SignalSession.Cli.MainHops (storesAt)
 open CryptoVerification.SignalSession.Cli.RunProofs (DropStoresGhost DropDirPairGhost)
 
 /-- Budget-threaded specification for `drop_glue::<Stores>` recording only `.free` allocation events. -/
-def dropStoresSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def dropStoresSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (stk : Nat) : Spec (DropStoresGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗ storesAt A.repAlloc x.a x.g ∗
@@ -44,7 +45,7 @@ def dropStoresSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Budget
         memRegion x.a 320 ∗ A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp stk
 
 /-- Budget-threaded specification for `drop_glue::<IdentityFiles>` recording only `.free` allocation events. -/
-def dropDirPairSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def dropDirPairSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (stk : Nat) : Spec (DropDirPairGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗ dirAt A.repAlloc x.a x.d0 ∗ dirAt A.repAlloc (x.a + 0x28#64) x.d1 ∗

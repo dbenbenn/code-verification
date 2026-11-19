@@ -20,7 +20,7 @@ public import Arm64.Trusted.ISA.Syntax
   protection flags (`Perm`, `Perm.protNone`, `Perm.ro`, `Perm.rw`, `Perm.rx`, `canRead`, `canWrite`,
   `canExec`, `canMap`, `countPerm`, `countRw`), little-endian accessors (`read8`, `read16`, `read32`, `read64`, `read128`,
   `write8`, `write16`, `write32`, `write64`, `write128`, `readBytes`, `writeBytes`), and mapping
-  helpers (`mapFresh`, `mapZero`, `unmapWritable`, `unmapNonFrozen`, `setPermNonFrozen`, `zeroNonFrozen`).
+  helpers (`mapFresh`, `mapZero`, `unmapNonFrozen`, `setPermNonFrozen`, `zeroNonFrozen`).
 - **When to read**: Use this header or `lean-sig outline Arm64/Trusted/ISA/Memory.lean` for API names;
   use `ProofLib/Memory.lean` and `Arm64/Trusted/Spec/SepLogic.lean` for reasoning about memory in proofs.
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 
 /-!
 # Linear Session-State Snapshot Faithfulness
@@ -20,7 +20,7 @@ state-faithful when no appended move reloads a snapshot already consumed by a
 successful state-storing move.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

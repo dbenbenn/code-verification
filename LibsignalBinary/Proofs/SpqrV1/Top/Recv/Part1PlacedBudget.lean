@@ -10,10 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.TripleRatchet.InImage.SpqrRecvEmpty.Varint
@@ -29,7 +30,7 @@ Default allocation-event envelope (`SpqrRecvEnv`), protocol-only panic postcondi
 (`+96..+312`) for `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -42,23 +43,29 @@ namespace LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
 open Arm64 ProofLib ProofLib.ProgramReflection
 open CryptoVerification (LibsignalPlacement)
 open CryptoVerification.LibsignalSpqrV1
-  (MsgPreamble SpqrRecvModel decodeVarint decodeVarintLoop decode_varint msgPreamble
-   recvResultExactKeyAt)
+  (AuthApi Bytes Chain ChainEpoch ChainEpochDirection ChainEpochPB ChainPB ChainParamsPB
+   ChainResult Direction Epoch EpochDirectionPB Error HkdfFn KeyHistory Message MlKem MsgPreamble
+   PolyApi SpqrRecvModel States StatesResult V1Recv VersionNegotiationPB chainFrom
+   chainFromVersionNegotiation decodeVarint decodeVarintLoop decode_chunk decode_varint msgPreamble)
 open CryptoVerification.LibsignalTripleRatchet (VecArg spqrRecvStack)
 open CryptoVerification.LibsignalTripleRatchet.InImage.SpqrRecvEmpty
   (csel_rest1_min_10 hb_eq_of_not_sxtb_tb hb_ne_of_sxtb_tb index_bounds_ne msg_expose_byte
    msg_unexpose_byte nat_le_of_bv_ule nat_lt_of_not_bv_ule rest1_cons_of_not_ule rest1_nil_of_ule
    varint_cont_of_lt varint_end_of_ge varint_out_norm)
+open CryptoVerification.RustHeap (RustAlloc)
 open CryptoVerification.SpqrV1.Top.DecodeState (TraceVRegs decodeStateSavedAt)
 open CryptoVerification.SpqrV1.Top.Recv
   (MsgRemValid SepWPpLS decodeVarintLoop_err_of_hi decodeVarintLoop_ok_of_lo
-   decodeVarintLoop_step_of_hi recv_err_msgDecode_foldX rem_len_add_not ret_48_split
+   decodeVarintLoop_step_of_hi rem_len_add_not ret_48_split
    sp_sub_4992_aligned sp_sub_96_aligned spqrRecvCalleeStackX spqrRecvPlacedEntry
    spqrRecvPlacedProg spqrRecvRoPlacedAt spqrRecvSavedRegs spqrRecvSavedRegs_eq_decodeStateSavedAt
    stack_restore_spqrRecv zeroExtend_setWidth32_of_lt)
 open CryptoVerification.SpqrV1.Top.Recv.Placed (blkPC_329 blkPl_329)
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits RustCliAllocBudget VmPreserved)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag
+  (SpqrErrorValidTag recvResultExactKeyDispAt recvResultExactKeyDispAt_error_of_byte
+   spqrErrorTagCanonical spqrErrorTagCanonical_valid_of_ne_invalidParams spqrErrorValidTag_zero)
 open LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget (SpqrBoundedEvs)
 
 variable [LibsignalPlacement]
@@ -75,12 +82,611 @@ private theorem align_pre_wp {prog : Program} {target_pc : BitVec 64} {s : State
     SepWP prog target_pc s P post :=
   heq ▸ hwp
 
+/-! ## 0. Displayable Error-Result Fold Helpers & Pure `Error ≠ .invalidParams` Lemmas -/
+
+/-- Fold `recvResultExactKeyDispAt A r (.error sd)` from `r ↦₆₄ -1`, byte `code` at `r + 8`,
+    and trailing cells `[r + 9 .. r + 48)` when `SpqrErrorValidTag code` holds. -/
+theorem recv_err_byte_disp_foldX (A : RustAlloc) (r r2 r3 : BitVec 64)
+    (code : BitVec 8) (sd : Bool) (hsd : code = 0#8 ↔ sd = true) (hd : SpqrErrorValidTag code) :
+    ((r ↦₆₄ 0xFFFFFFFFFFFFFFFF#64) ∗ ((r + 8#64) ↦₈ code) ∗ memRegion (r + 9#64) 7 ∗
+      ((r + 16#64) ↦₆₄ r2) ∗ ((r + 24#64) ↦₆₄ r3) ∗ memRegion (r + 32#64) 16) ⊢
+    recvResultExactKeyDispAt A r (.error sd) := by
+  have htail :
+      memRegion (r + 9#64) 7 ∗ ((r + 16#64) ↦₆₄ r2) ∗ ((r + 24#64) ↦₆₄ r3) ∗
+        memRegion (r + 32#64) 16 ⊢
+      memRegion (r + 9#64) 39 := by
+    rw [show (39 : Nat) = 7 + (8 + (8 + 16)) by decide,
+        memRegion_split (r + 9#64) 7 32 (by decide),
+        show r + 9#64 + 7#64 = r + 16#64 by bv_arith,
+        memRegion_split (r + 16#64) 8 24 (by decide),
+        show r + 16#64 + 8#64 = r + 24#64 by bv_arith,
+        memRegion_split (r + 24#64) 8 16 (by decide),
+        show r + 24#64 + 8#64 = r + 32#64 by bv_arith]
+    exact sepConj_mono_right (sepConj_mono (pointsTo64_entails_memRegion _ _)
+      (sepConj_mono_left (pointsTo64_entails_memRegion _ _)))
+  refine Entails.trans (sepConj_mono_right (sepConj_mono_right htail)) ?_
+  exact recvResultExactKeyDispAt_error_of_byte A r code sd hsd hd
+
+/-- Fold `recvResultExactKeyDispAt A r (.error false)` for `Err(MsgDecode)` (`w8 = 2#64`). -/
+theorem recv_err_msgDecode_disp_foldX (A : RustAlloc) (r r2 r3 : BitVec 64) :
+    ((r ↦₆₄ 0xFFFFFFFFFFFFFFFF#64) ∗ ((r + 8#64) ↦₆₄ 2#64) ∗
+      ((r + 16#64) ↦₆₄ r2) ∗ ((r + 24#64) ↦₆₄ r3) ∗ memRegion (r + 32#64) 16) ⊢
+    recvResultExactKeyDispAt A r (.error false) := by
+  have h8 : ((r + 8#64) ↦₆₄ 2#64) ⊢ ((r + 8#64) ↦₈ 2#8) ∗ memRegion (r + 9#64) 7 := by
+    rw [pointsTo64_eq_pointsToBytes]
+    change ((r + 8#64) ↦ₛ (2#8 :: [0#8, 0#8, 0#8, 0#8, 0#8, 0#8, 0#8])) ⊢ _
+    rw [pointsToBytes_cons, show r + 8#64 + 1#64 = r + 9#64 by bv_arith]
+    exact sepConj_mono_right (pointsToBytes_entails_memRegion _ _)
+  refine Entails.trans (sepConj_mono_right (sepConj_mono_left h8)) ?_
+  rw [sepConj_assoc]
+  exact recv_err_byte_disp_foldX A r r2 r3 2#8 false (by decide) (by decide)
+
+/-- Fold `recvResultExactKeyDispAt A r (.error sd)` from 4 words `(-1, w1, w2, w3)` when `w1`
+    carries `tag` in its low byte and `SpqrErrorValidTag tag` holds. -/
+theorem recv_err_words_disp_foldX (A : RustAlloc) (r w1 w2 w3 : BitVec 64)
+    (tag : BitVec 8) (sd : Bool) (hsd : tag = 0#8 ↔ sd = true) (hd : SpqrErrorValidTag tag)
+    (hw1 : ∀ r' : BitVec 64,
+      ((r' + 8#64) ↦₆₄ w1) ⊢ ((r' + 8#64) ↦₈ tag) ∗ memRegion (r' + 9#64) 7) :
+    ((r ↦₆₄ 0xFFFFFFFFFFFFFFFF#64) ∗ ((r + 8#64) ↦₆₄ w1) ∗
+      ((r + 16#64) ↦₆₄ w2) ∗ ((r + 24#64) ↦₆₄ w3) ∗ memRegion (r + 32#64) 16) ⊢
+    recvResultExactKeyDispAt A r (.error sd) := by
+  refine Entails.trans (sepConj_mono_right (sepConj_mono_left (hw1 r))) ?_
+  rw [sepConj_assoc]
+  exact recv_err_byte_disp_foldX A r w2 w3 tag sd hsd hd
+
+private theorem pointsTo64_entails_pointsTo8_memRegion7_local (a : BitVec 64) (w : BitVec 64) :
+    (a ↦₆₄ w) ⊢ ((a ↦₈ BitVec.truncate 8 w) ∗ memRegion (a + 1#64) 7) := by
+  have hsplit (k r : Nat) (off off' : BitVec 64)
+      (hkr : k = 1 + r) (hoff : (a + off) + 1#64 = a + off') (hr : k ≤ 2 ^ 64) :
+      memRegion (a + off) k = memRegion (a + off) 1 ∗ memRegion (a + off') r :=
+    ProofLib.memRegion_split' (b := a + off) (n := 1) (k := r) (b' := a + off') hkr hoff.symm hr
+  rw [hsplit 7 6 1#64 2#64 rfl (by bv_omega) (by decide),
+      hsplit 6 5 2#64 3#64 rfl (by bv_omega) (by decide),
+      hsplit 5 4 3#64 4#64 rfl (by bv_omega) (by decide),
+      hsplit 4 3 4#64 5#64 rfl (by bv_omega) (by decide),
+      hsplit 3 2 5#64 6#64 rfl (by bv_omega) (by decide),
+      hsplit 2 1 6#64 7#64 rfl (by bv_omega) (by decide),
+      pointsTo64_eq_pointsToBytes]
+  dsimp only [unpack64]
+  simp only [pointsToBytes_cons, pointsToBytes_nil, sepConj_emp, BitVec.add_assoc, BitVec.reduceAdd]
+  have hb0 : w.extractLsb' 0 8 = BitVec.truncate 8 w := by bv_kernel
+  rw [hb0]
+  exact sepConj_mono_right
+    (sepConj_mono (pointsTo8_entails_memRegion _ _)
+    (sepConj_mono (pointsTo8_entails_memRegion _ _)
+    (sepConj_mono (pointsTo8_entails_memRegion _ _)
+    (sepConj_mono (pointsTo8_entails_memRegion _ _)
+    (sepConj_mono (pointsTo8_entails_memRegion _ _)
+    (sepConj_mono (pointsTo8_entails_memRegion _ _)
+      (pointsTo8_entails_memRegion _ _)))))))
+
+/-- Fold `recvResultExactKeyDispAt A r (.error sd)` from `q0.extractLsb' 0 64` at `r + 8`
+    when `BitVec.truncate 8 q0 = tag` and `SpqrErrorValidTag tag` holds. -/
+theorem recv_err_q0_disp_foldX (A : RustAlloc) (r r2 r3 : BitVec 64) (q0 : BitVec 128)
+    (tag : BitVec 8) (sd : Bool)
+    (hq0 : BitVec.truncate 8 q0 = tag)
+    (hsd : tag = 0#8 ↔ sd = true)
+    (hd : SpqrErrorValidTag tag) :
+    ((r ↦₆₄ 0xFFFFFFFFFFFFFFFF#64) ∗
+      ((r + 8#64) ↦₆₄ q0.extractLsb' 0 64) ∗
+      ((r + 16#64) ↦₆₄ r2) ∗
+      ((r + 24#64) ↦₆₄ r3) ∗
+      memRegion (r + 32#64) 16) ⊢
+    recvResultExactKeyDispAt A r (.error sd) := by
+  refine Entails.trans
+    (sepConj_mono_right (sepConj_mono_left
+      (pointsTo64_entails_pointsTo8_memRegion7_local (r + 8#64) (q0.extractLsb' 0 64)))) ?_
+  have haddr : (r + 8#64) + 1#64 = r + 9#64 := by bv_omega
+  have htrunc : BitVec.truncate 8 (q0.extractLsb' 0 64) = BitVec.truncate 8 q0 := by bv_kernel
+  rw [haddr, htrunc, hq0, sepConj_assoc]
+  exact recv_err_byte_disp_foldX A r r2 r3 tag sd hsd hd
+
+private theorem except_bind_eq_error {ε α β : Type} {m : Except ε α} {f : α → Except ε β} {e : ε}
+    (h : (m >>= f) = .error e) :
+    m = .error e ∨ ∃ a, m = .ok a ∧ f a = .error e := by
+  cases m with
+  | error e' => exact Or.inl (by simpa [Bind.bind, Except.bind] using h)
+  | ok a => exact Or.inr ⟨a, rfl, by simpa [Bind.bind, Except.bind] using h⟩
+
+private theorem chainEpochDirectionFromPb_ne_invalidParams {pb : EpochDirectionPB} {e : Error}
+    (h : ChainEpochDirection.fromPb pb = .error e) (s : String) :
+    e ≠ .invalidParams s := by
+  unfold ChainEpochDirection.fromPb at h
+  split at h
+  · injection h with he; subst he; exact nofun
+  · contradiction
+
+private theorem chainLinksFromPb_ne_invalidParams {ls : List ChainEpochPB} {e : Error}
+    (h : Chain.linksFromPb ls = .error e) (s : String) :
+    e ≠ .invalidParams s := by
+  induction ls with
+  | nil => simp [Chain.linksFromPb] at h
+  | cons link rest ih =>
+    unfold Chain.linksFromPb at h
+    cases hsend : link.send with
+    | none =>
+      rw [hsend] at h
+      simp [Bind.bind, Except.bind] at h
+      subst h; exact nofun
+    | some sendPb =>
+      rw [hsend] at h
+      dsimp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+      rcases except_bind_eq_error h with h2 | ⟨_, _, h3⟩
+      · exact chainEpochDirectionFromPb_ne_invalidParams h2 s
+      · cases hrecv : link.recv with
+        | none =>
+          rw [hrecv] at h3
+          simp [Bind.bind, Except.bind] at h3
+          subst h3; exact nofun
+        | some recvPb =>
+          rw [hrecv] at h3
+          dsimp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h3
+          rcases except_bind_eq_error h3 with h4 | ⟨_, _, h5⟩
+          · exact chainEpochDirectionFromPb_ne_invalidParams h4 s
+          · rcases except_bind_eq_error h5 with h5 | ⟨_, _, h6⟩
+            · exact ih h5
+            · nomatch h6
+
+theorem chainFromPb_ne_invalidParams {pb : ChainPB} {e : Error}
+    (h : Chain.fromPb pb = .error e) (s : String) :
+    e ≠ .invalidParams s := by
+  unfold Chain.fromPb at h
+  cases hdir : Direction.fromI32? pb.direction with
+  | none =>
+    rw [hdir] at h
+    simp [Bind.bind, Except.bind] at h
+    subst h; exact nofun
+  | some dir =>
+    rw [hdir] at h
+    dsimp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    rcases except_bind_eq_error h with h2 | ⟨_, _, h3⟩
+    · exact chainLinksFromPb_ne_invalidParams h2 s
+    · cases hpar : pb.params with
+      | none =>
+        rw [hpar] at h3
+        simp [Bind.bind, Except.bind] at h3
+        subst h3; exact nofun
+      | some params =>
+        rw [hpar] at h3
+        simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h3
+
+theorem chainFromVersionNegotiation_ne_invalidParams {hkdf : HkdfFn} {vn : VersionNegotiationPB}
+    {e : Error} (h : chainFromVersionNegotiation hkdf vn = .error e) (s : String) :
+    e ≠ .invalidParams s := by
+  unfold chainFromVersionNegotiation at h
+  cases hdir : Direction.fromI32? vn.direction with
+  | none =>
+    rw [hdir] at h
+    simp [Bind.bind, Except.bind] at h
+    subst h; exact nofun
+  | some dir =>
+    rw [hdir] at h
+    cases hpar : vn.chainParams with
+    | none =>
+      rw [hpar] at h
+      simp [Bind.bind, Except.bind] at h
+      subst h; exact nofun
+    | some params =>
+      rw [hpar] at h
+      simp [Bind.bind, Except.bind, Pure.pure, Except.pure, Chain.new] at h
+
+theorem chainFrom_ne_invalidParams {hkdf : HkdfFn} {pb : Option ChainPB}
+    {vn : Option VersionNegotiationPB} {e : Error}
+    (h : chainFrom hkdf pb vn = .error e) (s : String) :
+    e ≠ .invalidParams s := by
+  unfold chainFrom at h
+  cases pb with
+  | some pb => exact chainFromPb_ne_invalidParams h s
+  | none =>
+    cases vn with
+    | none => injection h with he; subst he; exact nofun
+    | some vn => exact chainFromVersionNegotiation_ne_invalidParams h s
+
+private theorem chainResult_ofPanic_ne_err {α : Type} (r : Except CryptoVerification.LibsignalSpqrV1.ChainPanic α)
+    (e : Error) : ChainResult.ofPanic r ≠ .error (.err e) := by
+  cases r <;> simp [ChainResult.ofPanic]
+
+private theorem keyHistoryGetLoop_ne_invalidParams (self : KeyHistory) (atIdx : BitVec 32)
+    (want : Bytes) (params : ChainParamsPB) (e : Error) (s : String) :
+    ∀ (k i : Nat), self.data.length - i ≤ k →
+      KeyHistory.getLoop self atIdx want params i = .error (.err e) →
+      e ≠ .invalidParams s := by
+  intro k
+  induction k with
+  | zero =>
+    intro i hk h
+    unfold KeyHistory.getLoop at h
+    split at h
+    · omega
+    · simp at h; subst h; exact nofun
+  | succ k ih =>
+    intro i hk h
+    unfold KeyHistory.getLoop at h
+    split at h
+    · split at h
+      · simp at h
+      · exact ih (i + KeyHistory.KEY_SIZE) (by simp only [KeyHistory.KEY_SIZE]; omega) h
+    · simp at h; subst h; exact nofun
+
+private theorem keyAdvanceLoop_ne_err (hkdf : HkdfFn) (atIdx : BitVec 32) (params : ChainParamsPB)
+    (e : Error) :
+    ∀ (k : Nat) (self : ChainEpochDirection), atIdx.toNat - self.ctr.toNat ≤ k →
+      ChainEpochDirection.keyAdvanceLoop hkdf self atIdx params ≠ .error (.err e) := by
+  intro k
+  induction k with
+  | zero =>
+    intro self hk h
+    unfold ChainEpochDirection.keyAdvanceLoop at h
+    split at h
+    · omega
+    · split at h <;> simp at h
+  | succ k ih =>
+    intro self hk h
+    unfold ChainEpochDirection.keyAdvanceLoop at h
+    split at h
+    · split at h
+      · simp at h
+      · rename_i _ next' ctr' kv hnk
+        have hctr := ChainEpochDirection.nextKeyInternal_ctr hkdf self.next next' self.ctr ctr' kv hnk
+        dsimp only at h
+        split at h
+        · simp at h
+        · exact ih _ (by dsimp only; omega) h
+    · split at h <;> simp at h
+
+private theorem chainEpochDirectionKey_ne_invalidParams {hkdf : HkdfFn} {self : ChainEpochDirection}
+    {atIdx : BitVec 32} {params : ChainParamsPB} {e : Error}
+    (h : self.key hkdf atIdx params = .error (.err e)) (s : String) :
+    e ≠ .invalidParams s := by
+  unfold ChainEpochDirection.key at h
+  split at h
+  · rcases except_bind_eq_error h with h1 | ⟨_, _, h2⟩
+    · unfold KeyHistory.get at h1
+      dsimp only at h1
+      split at h1
+      · simp at h1
+      · split at h1
+        · simp at h1
+        · split at h1
+          · simp at h1; subst h1; exact nofun
+          · exact keyHistoryGetLoop_ne_invalidParams self.prev atIdx _ params e s
+              self.prev.data.length 0 (Nat.sub_zero _ ▸ Nat.le_refl _) h1
+    · nomatch h2
+  · split at h
+    · simp at h; subst h; exact nofun
+    · split at h
+      · simp at h; subst h; exact nofun
+      · dsimp only at h
+        split at h
+        · simp at h
+        · rcases except_bind_eq_error h with h1 | ⟨self1, _, h2⟩
+          · exact False.elim (keyAdvanceLoop_ne_err hkdf atIdx params e _ _ (Nat.le_refl _) h1)
+          · rcases except_bind_eq_error h2 with h2 | ⟨_, _, h3⟩
+            · exact False.elim (chainResult_ofPanic_ne_err _ e h2)
+            · rcases except_bind_eq_error h3 with h3 | ⟨_, _, h4⟩
+              · exact False.elim (chainResult_ofPanic_ne_err _ e h3)
+              · nomatch h4
+
+theorem chainRecvKey_ne_invalidParams {hkdf : HkdfFn} {self : Chain} {epoch : Epoch}
+    {index : BitVec 32} {e : Error}
+    (h : self.recvKey hkdf epoch index = .error (.err e)) (s : String) :
+    e ≠ .invalidParams s := by
+  unfold Chain.recvKey at h
+  split at h
+  · simp at h
+  · rcases except_bind_eq_error h with h1 | ⟨epochIndex, _, h2⟩
+    · unfold Chain.epochIdx at h1
+      split at h1
+      · simp [ChainResult.ofError] at h1; subst h1; exact nofun
+      · dsimp only at h1
+        split at h1
+        · simp [ChainResult.ofError] at h1; subst h1; exact nofun
+        · simp [ChainResult.ofError] at h1
+    · split at h2
+      · simp at h2
+      · rcases except_bind_eq_error h2 with h2 | ⟨_, _, h3⟩
+        · exact chainEpochDirectionKey_ne_invalidParams h2 s
+        · nomatch h3
+
+private theorem decodeChunk_ne_invalidParams {P : PolyApi} {bs : Bytes} {e : Error}
+    (h : decode_chunk P bs = .error e) (s : String) :
+    e ≠ .invalidParams s := by
+  unfold decode_chunk at h
+  rcases except_bind_eq_error h with h1 | ⟨⟨index, rest⟩, _, h2⟩
+  · unfold decode_varint at h1
+    split at h1 <;> simp at h1; subst h1; exact nofun
+  · dsimp only at h2
+    by_cases hcond : (decide (rest.length < 32) || decide (index.toNat > 65535)) = true
+    · simp [hcond] at h2; subst h2; exact nofun
+    · simp only [hcond, Bool.false_eq_true, ↓reduceIte] at h2
+      cases hvec : CryptoVerification.LibsignalSpqrV1.bytesToVector? 32 (rest.take 32) with
+      | none => rw [hvec] at h2; injection h2 with he; subst he; exact nofun
+      | some v => rw [hvec] at h2; nomatch h2
+
+theorem msgDeserialize_ne_invalidParams {P : PolyApi} {epoch : Epoch} {bs : Bytes} {e : Error}
+    (h : Message.deserialize P epoch bs = .error e) (s : String) :
+    e ≠ .invalidParams s := by
+  unfold Message.deserialize at h
+  cases bs with
+  | nil => simp at h; subst h; exact nofun
+  | cons b0 rest =>
+    dsimp only at h
+    cases hmt : CryptoVerification.LibsignalSpqrV1.MessageType.tryFromU8 b0 with
+    | none =>
+      rw [hmt] at h
+      simp [Bind.bind, Except.bind] at h
+      subst h; exact nofun
+    | some msgType =>
+      rw [hmt] at h
+      cases msgType <;> dsimp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+      · cases h
+      · rcases except_bind_eq_error h with h1 | ⟨⟨_, _⟩, _, h2⟩
+        · exact decodeChunk_ne_invalidParams h1 s
+        · cases h2
+      · rcases except_bind_eq_error h with h1 | ⟨⟨_, _⟩, _, h2⟩
+        · exact decodeChunk_ne_invalidParams h1 s
+        · cases h2
+      · rcases except_bind_eq_error h with h1 | ⟨⟨_, _⟩, _, h2⟩
+        · exact decodeChunk_ne_invalidParams h1 s
+        · cases h2
+      · cases h
+      · rcases except_bind_eq_error h with h1 | ⟨⟨_, _⟩, _, h2⟩
+        · exact decodeChunk_ne_invalidParams h1 s
+        · cases h2
+      · rcases except_bind_eq_error h with h1 | ⟨⟨_, _⟩, _, h2⟩
+        · exact decodeChunk_ne_invalidParams h1 s
+        · cases h2
+
+private theorem statesResult_ofPanic_ne_err {α ε : Type}
+    [CryptoVerification.LibsignalSpqrV1.ToStatesPanic ε] (r : Except ε α) (e : Error) :
+    StatesResult.ofPanic r ≠ .error (.err e) := by
+  cases r <;> simp [StatesResult.ofPanic]
+
+private theorem recvCt2_ne_invalidParams {K : MlKem} {Au : AuthApi}
+    {self : CryptoVerification.LibsignalSpqrV1.Unchunked.SendEk.EkSentCt1Received Au} {ct2 mac : Bytes} {e : Error}
+    (h : self.recv_ct2 K ct2 mac = .error (.err e)) (s : String) :
+    e ≠ .invalidParams s := by
+  unfold CryptoVerification.LibsignalSpqrV1.Unchunked.SendEk.EkSentCt1Received.recv_ct2 at h
+  rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+  · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+  · rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+    · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+    · rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+      · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+      · rcases except_bind_eq_error h with h | ⟨verifyRes, _, h⟩
+        · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+        · cases verifyRes with
+          | error _ => simp at h; subst h; exact nofun
+          | ok u => cases u; dsimp only at h; split at h <;> simp at h
+
+private theorem recvCt2Chunk_ne_invalidParams {K : MlKem} {P : PolyApi} {Au : AuthApi}
+    {self : CryptoVerification.LibsignalSpqrV1.Chunked.SendEk.EkSentCt1Received P Au} {epoch : Epoch} {chunk : P.Chunk} {e : Error}
+    (h : self.recv_ct2_chunk K epoch chunk = .error (.err e)) (s : String) :
+    e ≠ .invalidParams s := by
+  unfold CryptoVerification.LibsignalSpqrV1.Chunked.SendEk.EkSentCt1Received.recv_ct2_chunk at h
+  split at h
+  · simp at h
+  · rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+    · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+    · rcases except_bind_eq_error h with h | ⟨decoded?, _, h⟩
+      · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+      · cases decoded? with
+        | none => simp at h
+        | some ct2Full =>
+          dsimp only at h
+          split at h
+          · simp at h
+          · rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+            · exact recvCt2_ne_invalidParams h s
+            · rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+              · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+              · simp at h
+
+private theorem recvHeader_ne_invalidParams {Au : AuthApi}
+    {self : CryptoVerification.LibsignalSpqrV1.Unchunked.SendCt.NoHeaderReceived Au} {epoch : Epoch} {hdr mac : Bytes} {e : Error}
+    (h : self.recv_header epoch hdr mac = .error (.err e)) (s : String) :
+    e ≠ .invalidParams s := by
+  unfold CryptoVerification.LibsignalSpqrV1.Unchunked.SendCt.NoHeaderReceived.recv_header at h
+  split at h
+  · simp at h
+  · rcases except_bind_eq_error h with h | ⟨verifyRes, _, h⟩
+    · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+    · cases verifyRes with
+      | error _ => simp at h; subst h; exact nofun
+      | ok u => cases u; simp at h
+
+private theorem recvHdrChunk_ne_invalidParams {P : PolyApi} {Au : AuthApi}
+    {self : CryptoVerification.LibsignalSpqrV1.Chunked.SendCt.NoHeaderReceived P Au} {epoch : Epoch} {chunk : P.Chunk} {e : Error}
+    (h : self.recv_hdr_chunk epoch chunk = .error (.err e)) (s : String) :
+    e ≠ .invalidParams s := by
+  unfold CryptoVerification.LibsignalSpqrV1.Chunked.SendCt.NoHeaderReceived.recv_hdr_chunk at h
+  split at h
+  · simp at h
+  · rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+    · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+    · rcases except_bind_eq_error h with h | ⟨decoded?, _, h⟩
+      · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+      · cases decoded? with
+        | none => simp at h
+        | some hdrFull =>
+          dsimp only at h
+          split at h
+          · simp at h
+          · rcases except_bind_eq_error h with h | ⟨receivingEkRes, _, h⟩
+            · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+            · rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+              · exact recvHeader_ne_invalidParams h s
+              · cases receivingEkRes <;> simp at h
+
+private theorem recvEk_ne_invalidParams {K : MlKem} {Au : AuthApi}
+    {self : CryptoVerification.LibsignalSpqrV1.Unchunked.SendCt.Ct1Sent Au} {epoch : Epoch} {ek : Bytes} {e : Error}
+    (h : self.recv_ek K epoch ek = .error (.err e)) (s : String) :
+    e ≠ .invalidParams s := by
+  unfold CryptoVerification.LibsignalSpqrV1.Unchunked.SendCt.Ct1Sent.recv_ek at h
+  split at h
+  · simp at h
+  · split at h <;> simp at h; subst h; exact nofun
+
+private theorem ct1SampledRecvEkChunk_ne_invalidParams {K : MlKem} {P : PolyApi} {Au : AuthApi}
+    {self : CryptoVerification.LibsignalSpqrV1.Chunked.SendCt.Ct1Sampled P Au} {epoch : Epoch} {chunk : P.Chunk} {ct1Ack : Bool}
+    {e : Error} (h : self.recv_ek_chunk K epoch chunk ct1Ack = .error (.err e)) (s : String) :
+    e ≠ .invalidParams s := by
+  unfold CryptoVerification.LibsignalSpqrV1.Chunked.SendCt.Ct1Sampled.recv_ek_chunk at h
+  rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+  · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+  · rcases except_bind_eq_error h with h | ⟨decoded?, _, h⟩
+    · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+    · cases decoded? with
+      | none => cases ct1Ack <;> simp at h
+      | some decoded =>
+        dsimp only at h
+        rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+        · exact recvEk_ne_invalidParams h s
+        · cases ct1Ack with
+          | false => simp at h
+          | true =>
+            rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+            · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+            · rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+              · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+              · simp at h
+
+private theorem ct1AckRecvEkChunk_ne_invalidParams {K : MlKem} {P : PolyApi} {Au : AuthApi}
+    {self : CryptoVerification.LibsignalSpqrV1.Chunked.SendCt.Ct1Acknowledged P Au} {epoch : Epoch} {chunk : P.Chunk} {e : Error}
+    (h : self.recv_ek_chunk K epoch chunk = .error (.err e)) (s : String) :
+    e ≠ .invalidParams s := by
+  unfold CryptoVerification.LibsignalSpqrV1.Chunked.SendCt.Ct1Acknowledged.recv_ek_chunk at h
+  rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+  · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+  · rcases except_bind_eq_error h with h | ⟨decoded?, _, h⟩
+    · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+    · cases decoded? with
+      | none => simp at h
+      | some decoded =>
+        dsimp only at h
+        rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+        · exact recvEk_ne_invalidParams h s
+        · rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+          · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+          · rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+            · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+            · simp at h
+
+theorem statesRecv_ne_invalidParams {K : MlKem} {P : PolyApi} {Au : AuthApi}
+    {self : States P Au} {msg : Message P} {e : Error}
+    (h : self.recv K msg = .error (.err e)) (s : String) :
+    e ≠ .invalidParams s := by
+  unfold States.recv at h
+  cases self with
+  | keysUnsampled state =>
+    dsimp only at h; split at h <;> simp at h; subst h; exact nofun
+  | keysSampled state =>
+    dsimp only at h
+    split at h
+    · simp at h; subst h; exact nofun
+    · split at h
+      · simp at h
+      · cases hp : msg.payload <;> (rw [hp] at h; try dsimp only at h; try cases h)
+        rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+        · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+        · cases h
+  | headerSent state =>
+    dsimp only at h
+    split at h
+    · simp at h; subst h; exact nofun
+    · split at h
+      · simp at h
+      · cases hp : msg.payload <;> (rw [hp] at h; try dsimp only at h; try cases h)
+        rcases except_bind_eq_error h with h | ⟨res, _, h⟩
+        · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+        · cases res <;> cases h
+  | ct1Received state =>
+    dsimp only at h
+    split at h
+    · simp at h; subst h; exact nofun
+    · split at h
+      · simp at h
+      · cases hp : msg.payload <;> (rw [hp] at h; try dsimp only at h; try cases h)
+        rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+        · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+        · cases h
+  | ekSentCt1Received state =>
+    dsimp only at h
+    split at h
+    · simp at h; subst h; exact nofun
+    · split at h
+      · simp at h
+      · cases hp : msg.payload <;> (rw [hp] at h; try dsimp only at h; try cases h)
+        rcases except_bind_eq_error h with h | ⟨res, _, h⟩
+        · exact recvCt2Chunk_ne_invalidParams h s
+        · cases res with
+          | stillReceiving _ => cases h
+          | done p => rcases p with ⟨_, _⟩; cases h
+  | noHeaderReceived state =>
+    dsimp only at h
+    split at h
+    · simp at h; subst h; exact nofun
+    · split at h
+      · simp at h
+      · cases hp : msg.payload <;> (rw [hp] at h; try dsimp only at h; try cases h)
+        rcases except_bind_eq_error h with h | ⟨res, _, h⟩
+        · exact recvHdrChunk_ne_invalidParams h s
+        · cases res <;> cases h
+  | headerReceived state =>
+    dsimp only at h; split at h <;> simp at h; subst h; exact nofun
+  | ct1Sampled state =>
+    dsimp only at h
+    split at h
+    · simp at h; subst h; exact nofun
+    · split at h
+      · simp at h
+      · cases hp : msg.payload <;> (rw [hp] at h; try dsimp only at h; try cases h)
+        all_goals
+          rcases except_bind_eq_error h with h | ⟨res, _, h⟩
+          · exact ct1SampledRecvEkChunk_ne_invalidParams h s
+          · cases res <;> cases h
+  | ekReceivedCt1Sampled state =>
+    dsimp only at h
+    split at h
+    · simp at h; subst h; exact nofun
+    · split at h
+      · simp at h
+      · split at h
+        · rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+          · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+          · cases h
+        · rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+          · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+          · cases h
+        · simp only [Bool.false_eq_true, ↓reduceIte] at h
+          cases h
+  | ct1Acknowledged state =>
+    dsimp only at h
+    split at h
+    · simp at h; subst h; exact nofun
+    · split at h
+      · simp at h
+      · cases hp : msg.payload <;> (rw [hp] at h; try dsimp only at h; try cases h)
+        all_goals
+          rcases except_bind_eq_error h with h | ⟨res, _, h⟩
+          · exact ct1AckRecvEkChunk_ne_invalidParams h s
+          · cases res <;> cases h
+  | ct2Sampled state =>
+    dsimp only at h
+    split at h
+    · split at h
+      · rcases except_bind_eq_error h with h | ⟨_, _, h⟩
+        · exact False.elim (statesResult_ofPanic_ne_err _ e h)
+        · cases h
+      · simp at h; subst h; exact nofun
+    · cases h
+
 /-! ## 1. Budget-Threaded Postconditions, Panic Postcondition, and `SepWPpLS` Lifting Helpers -/
 
 /-- Default bounded allocation-event envelope of `spqr::recv` (`Block 329`), linear in the input
     state and message byte lengths. All core definitions and step lemmas below are also exposed
     in envelope-parametric `*OfEnv` form. -/
-def SpqrRecvEnv (st msg : VecArg) (evs : List AllocEvent) : Prop :=
+@[expose] def SpqrRecvEnv (st msg : VecArg) (evs : List AllocEvent) : Prop :=
   SpqrBoundedEvs 512 (4 * st.bytes.length + 4 * msg.bytes.length + 16384) evs
 
 /-- Budget-form panic postcondition of `spqr::recv`: drops `allocFailedIn s0 sf` while
@@ -100,7 +706,7 @@ abbrev spqrRecvPlacedCorePost0OfEnv {MC : AllocCostModel} (A : RustCliAllocBudge
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs st_cost) sf ∗
       stackAt s0.sp spqrRecvStack
 
@@ -122,7 +728,7 @@ abbrev spqrRecvPlacedCorePostOfEnv {MC : AllocCostModel} (A : RustCliAllocBudget
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs st_cost) sf ∗
       stackAt s0.sp spqrRecvStack
 
@@ -215,7 +821,7 @@ private theorem sepWP_spqrRecv_finish {MC : AllocCostModel}
           spqrRecvRoPlacedAt ∗
           st.at A.repAlloc ∗
           msg.at A.repAlloc ∗
-          recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+          recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
           A.pool lim (MC.stepEvents evs st_cost) s ∗
           stackAt s0.sp spqrRecvStack) ∧
         sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace)) :
@@ -250,7 +856,7 @@ theorem step_epilogue_placed_ofEnv {MC : AllocCostModel} (A : RustCliAllocBudget
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       memRegion (s0.sp - 4992#64) 0x1320 ∗
@@ -294,7 +900,7 @@ theorem step_epilogue_placed {MC : AllocCostModel} (A : RustCliAllocBudget MC)
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       memRegion (s0.sp - 4992#64) 0x1320 ∗
@@ -345,7 +951,7 @@ theorem step_err_msgDecode_placed_ofEnv {MC : AllocCostModel} (A : RustCliAllocB
     wp_pull_exists
     rename_i r3 r2 r1 r0
     wp_steps 4
-    have hfold := recv_err_msgDecode_foldX A.repAlloc ret r2 r3
+    have hfold := recv_err_msgDecode_disp_foldX A.repAlloc ret r2 r3
     rw [← herr] at hfold
     refine SepWP.fold hfold (by sep_focus) ?_
     unfold decodeStateSavedAt

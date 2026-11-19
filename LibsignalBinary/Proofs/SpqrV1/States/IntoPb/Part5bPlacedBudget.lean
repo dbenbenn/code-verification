@@ -10,17 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5bBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5bPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5bBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5bPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`) — Part 5b Placed: Arm 9 (`States.ct1Acknowledged`) Step Lemmas
@@ -30,7 +32,7 @@ tag `11`), threading `RustCliAllocBudget M`, `BudgetLimits`, `FitsEvents`, `Free
 `VmPreserved`, and `AllocCallPreserved`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -41,7 +43,7 @@ set_option linter.unusedSimpArgs false
 namespace LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5bPlacedBudget
 
 open Arm64 ProofLib ProofLib.ProgramReflection
-open CryptoVerification (LibsignalPlacement libsignalSessionCode lsmpl lsρ)
+open CryptoVerification (LibsignalPlacement lsmpl lsρ)
 open CryptoVerification.RustHeap (allocHookStack)
 open CryptoVerification.SpqrV1.Alloc (spqrRustAllocSym spqrRustNoAllocShimSym)
 open CryptoVerification.SpqrV1.Drop
@@ -68,7 +70,7 @@ open LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5bBudget
 open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
   (framelessMemcpyBudgetSpec noAllocShimBudgetSpec)
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
   bv_sub_sub_lit' bv_add_add_lit'
 attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero noneCap_add_two_beq_zero

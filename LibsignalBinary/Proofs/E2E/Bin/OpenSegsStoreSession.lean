@@ -19,7 +19,7 @@ import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 Proves segment 7 (`open_seg_store_session'`, `+0x234..+0x268`) of `libsignal_e2e::open`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Bin
 
@@ -27,7 +27,7 @@ set_option warningAsError false
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
-open Arm64 ProofLib ProofLib.ObjectLoad CryptoGames
+open Arm64 ProofLib CryptoGames
 open CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
@@ -85,21 +85,6 @@ private theorem binCanonSession_of_canonSession_storeSession {G0 G : SessionGhos
       unfold PublicKey.serialize; simp [List.Vector.toList_length]
     exact ⟨hcc.1 ▸ hser_len, hcc.2⟩
 
-private theorem sessionRecordAt_entails_memRegion_0x170_anyHeap (A : RustAlloc) (r : BitVec 64)
-    (G : SessionGhost) (sess : Session (List (BitVec 8))) :
-    sessionRecordAt A r ⟨0#64, 8#64, some G⟩ ⟨some sess⟩ ⊢ memRegion r 0x170 ∗ anyHeap := by
-  rw [sessionRecordAt_eq_word0_sep_tail_sep_heap A r G sess]
-  apply Entails.sepExists_elim; intro bs
-  apply Entails.pure_left; rintro ⟨hlen, _⟩
-  have h0 : (r ↦₆₄ 0#64) ⊢ memRegion r 8 := pointsTo64_entails_memRegion r 0#64
-  have h1 : ((r + 8#64) ↦ₛ (unpack64 8#64 ++ unpack64 0#64 ++ bs)) ⊢ memRegion (r + 8#64) 360 := by
-    have h := ProofLib.pointsToBytes_entails_memRegion (r + 8#64) (unpack64 8#64 ++ unpack64 0#64 ++ bs)
-    have hlen' : (unpack64 8#64 ++ unpack64 0#64 ++ bs).length = 360 := by simp [unpack64_length, hlen]
-    rwa [hlen'] at h
-  have hany : sessionRecordHeap A G sess ⊢ anyHeap := ProofLib.entails_anyHeap _
-  rw [memRegion_split r 8 360 (by decide), ← sepConj_assoc]
-  exact sepConj_mono (sepConj_mono h0 h1) hany
-
 private theorem if_entry_mono (c : Prop) [Decidable c] {P Q R : SepProp} (h : P ⊢ Q) :
     (if c then P else R) ⊢ (if c then Q else R) := by
   by_cases hc : c
@@ -117,32 +102,5 @@ private theorem arrayAt_mono_entry4 (stride : Nat) (base : BitVec 64) (k : Nat)
     (sepConj_mono (if_entry_mono _ (he _))
       (sepConj_mono (if_entry_mono _ (he _))
         (sepConj_mono (if_entry_mono _ (he _)) (Entails.refl _))))
-
-private theorem table4SingleAt_sessionBucketEntryAt_entails_inMemSessionStoreAt
-    (A : RustAlloc) (img : Obj.Image) (out k0 k1 : BitVec 64) (peer : Role)
-    (gPeer clonedG : AddrGhost) (G0 clonedRecG : SessionGhost) (sess : Session (List (BitVec 8)))
-    (k : Nat) (hPeer : gPeer.val = peer.addrVal)
-    (hcName : clonedG.name.bytes = gPeer.name.bytes) (hcDev : clonedG.device = gPeer.device)
-    (hCan0 : BinCanonSession G0 sess) (hCan : Record.Serialization.CanonSession clonedRecG sess) :
-    HashbrownBin.table4SingleAt A HashbrownBin.sessionBucketStride out k0 k1 k
-        gPeer.name.bytes gPeer.device (HashbrownBin.sessionBucketEntryAt A clonedG clonedRecG sess) ⊢
-      inMemSessionStoreAt A img out peer (some sess) := by
-  have hPeerName : gPeer.name.bytes = peer.nameBytes := by injection hPeer with h1 _
-  have hPeerDev : gPeer.device = 1#8 := by injection hPeer with _ h2
-  have hcVal : clonedG.val = peer.addrVal := by
-    unfold AddrGhost.val Role.addrVal; rw [hcName, hcDev, hPeerName, hPeerDev]
-  have hBinCan : BinCanonSession clonedRecG sess := binCanonSession_of_canonSession_storeSession hCan0 hCan
-  unfold inMemSessionStoreAt
-  refine Entails.sepExists_right k0 (Entails.sepExists_right k1 (Entails.sepExists_right k
-    (Entails.sepExists_right clonedG (Entails.sepExists_right clonedRecG ?_))))
-  refine Entails.pure_right ⟨hcVal, hBinCan⟩ ?_
-  rw [hPeerName, hPeerDev]
-  unfold HashbrownBin.table4SingleAt HashbrownBin.table4At
-  refine sepConj_mono_right (Entails.sepExists_elim fun ctrl => Entails.sepExists_right ctrl ?_)
-  refine sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-      (sepConj_mono_right (arrayAt_mono_entry4 _ _ _ fun a => ?_)))))))))
-  unfold HashbrownBin.sessionBucketEntryAt
-  exact Entails.pure_left fun _ => Entails.refl _
 
 end CryptoVerification.E2E.Bin

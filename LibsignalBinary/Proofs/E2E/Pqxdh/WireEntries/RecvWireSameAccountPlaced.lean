@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccount
-public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym
+public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccount -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step244
 
 /-!
@@ -22,7 +22,7 @@ Proves `isSameAccountDistinctRawSpec` and `isSameAccountDistinctSpec` on Block `
 via Blocks `212` (`<PublicKey as PartialEq>::eq`) and `206` (`parse_from_service_id_string`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

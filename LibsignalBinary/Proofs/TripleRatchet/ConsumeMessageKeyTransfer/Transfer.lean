@@ -9,25 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.TrapRng
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.TrapRng -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpecLemmas.LibsignalSessionProofDefs
-
-/-!
-# Monotone Hook-Map Transfer for `subroutine_ok`
-
-Proves that `subroutine_ok (P.rebase b X1) e spec` lifts to `P.rebase b X2` whenever `X2` extends
-`X1` pointwise (`X1 n = some f → X2 n = some f`), stub offsets of `P` are pairwise distinct
-(`allFreshOffsets`), and every stub's code word fails to decode (`StubsDead`). Any stub unhooked in
-`X1` halts with `halt_unmapped`, so a run reaching a `subroutine_ok` outcome never visits it.
-
-Instantiates this transfer for `libsignalSessionCode` (where every stub word is zero and checked by
-`rfl_kernel`), lifting `sessionExterns` contracts to `tripleRatchetExterns`, and provides
-relocatable `[LibsignalPlacement]` block-to-block transfer lemmas.
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.ConsumeMessageKeyTransfer
 
@@ -37,7 +22,7 @@ open CryptoVerification.LibsignalTripleRatchetRepr
 /-! ## Generic part -/
 
 /-- Every stub of `P` sits on a code word that does not decode. -/
-def StubsDead (P : Program) : Prop :=
+@[expose] def StubsDead (P : Program) : Prop :=
   ∀ n o, (n, o) ∈ P.stubs → ∃ w, P.readWordOff o = some w ∧ decode w = none
 
 /-- With the code loaded, the 32-bit memory word at `base + off` is the code word at `off`. -/
@@ -252,7 +237,7 @@ private theorem getQuad?_drop_toBytesAux' {b0 b1 b2 b3 : BitVec 8} :
       exact getQuad?_drop_toBytesAux' r acc (j - lw) hr hget
 
 /-- Every offset in `os` is word-aligned and holds the zero word of `t`. -/
-def zeroWordsAt (t : WordTree) : List Nat → Bool
+@[expose] def zeroWordsAt (t : WordTree) : List Nat → Bool
   | [] => true
   | o :: os => (o % 4 == 0 && decide (t.getQuad? (o / 4) = some (0, 0, 0, 0))) && zeroWordsAt t os
 
@@ -277,32 +262,7 @@ theorem mem_toStringSymbols {l : List (List Char × Nat)} {n : String} {o : Nat}
     · exact Or.inl rfl
     · exact Or.inr (ih h)
 
-/-- Kernel check: every stub of the session image sits on a zero word. -/
-theorem libsignalSessionCode_stubsZero :
-    zeroWordsAt libsignalSessionCode_tree (libsignalSessionCode_stubChars.map (·.2)) = true := by
-  rfl_kernel
-
 theorem decode_zero : decode (0#8 ++ 0#8 ++ 0#8 ++ 0#8) = none := by rfl_kernel
-
-theorem libsignalSessionCode_readWordOff_zero {o : Nat} (ho : o % 4 = 0)
-    (hq : libsignalSessionCode_tree.getQuad? (o / 4) = some (0, 0, 0, 0)) :
-    libsignalSessionCode.readWordOff o = some (0#8 ++ 0#8 ++ 0#8 ++ 0#8) := by
-  obtain ⟨rest, hdrop⟩ :=
-    getQuad?_drop_toBytesAux' libsignalSessionCode_tree [] (o / 4) libsignalSessionCode_tree_size hq
-  have ho4 : o = 4 * (o / 4) := by omega
-  unfold Program.readWordOff
-  rw [libsignalSessionCode_code_eq, WordTree.toBytes]
-  have hal : ¬(o % 4 ≠ 0) := by omega
-  simp only [hal, ↓reduceIte]
-  rw [ho4, hdrop]
-  rfl
-
-/-- No stub word of the session image decodes. -/
-theorem libsignalSessionCode_stubsDead : StubsDead libsignalSessionCode := by
-  intro n o hmem
-  rw [libsignalSessionCode_stubs_eq] at hmem
-  obtain ⟨ho, hq⟩ := zeroWordsAt_mem libsignalSessionCode_stubsZero (mem_toStringSymbols hmem)
-  exact ⟨_, libsignalSessionCode_readWordOff_zero ho hq, decode_zero⟩
 
 /-- `sessionExterns F alloc` maps the three allocator symbol names to `alloc`'s hooks. -/
 theorem sessionExterns_alloc (F : CryptoGames.HMAC.ShaState → List (BitVec 8) → CryptoGames.HMAC.ShaState)
@@ -365,51 +325,6 @@ theorem sessionExterns_le_trap (C : Crypto)
     · simp [Rust.withPanics, hp, CryptoVerification.LibsignalSession.sessionExterns, rngFillName] at h
   · rw [withPanics_trTrap_ne C abs hr]
     exact sessionExterns_le C 0#64 abs n f h
-
-theorem session_subroutine_ok_mono_trap {α : Type} {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img) {C : Crypto}
-    {abs : String → Option (State → State)}
-    {entry : BitVec 64} {spec : Spec α}
-    (h : subroutine_ok (CryptoVerification.LibsignalSession.sessionProg img C.F abs) entry spec) :
-    subroutine_ok (trTrapProgAt img.base C abs) entry spec := by
-  have e : CryptoVerification.LibsignalSession.sessionProg img C.F abs =
-      libsignalSessionCode.rebase img.base
-        (Rust.withPanics (CryptoVerification.LibsignalSession.sessionExterns C.F abs)) :=
-    libsignalSessionCode_ofImage himg
-  rw [e] at h
-  exact subroutine_ok_rebase_mono libsignalSessionCode_stubs_offsets_fresh
-    libsignalSessionCode_stubsDead (sessionExterns_le_trap C abs) h
-
-/-- A `subroutine_ok` contract proved on `sessionProg img C.F abs` holds on
-`tripleRatchetProgAt img.base C ctl abs`. -/
-theorem session_subroutine_ok_mono {α : Type} {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img) {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    {entry : BitVec 64} {spec : Spec α}
-    (h : subroutine_ok (CryptoVerification.LibsignalSession.sessionProg img C.F abs) entry spec) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs) entry spec :=
-  subroutine_ok_kit_of_trTrap (session_subroutine_ok_mono_trap himg h)
-
-/-- Transfers a `sessionProg img F abs` `subroutine_ok` contract to any hook map `ext` extending
-`Rust.withPanics (sessionExterns F abs)`. -/
-theorem session_subroutine_ok_mono_ext {α : Type} {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img)
-    {F : CryptoGames.HMAC.ShaState → List (BitVec 8) → CryptoGames.HMAC.ShaState}
-    {abs ext : String → Option (State → State)}
-    (hle : ∀ n f, Rust.withPanics (CryptoVerification.LibsignalSession.sessionExterns F abs) n = some f →
-      Rust.withPanics ext n = some f)
-    {entry : BitVec 64} {spec : Spec α}
-    (h : subroutine_ok (CryptoVerification.LibsignalSession.sessionProg img F abs) entry spec) :
-    subroutine_ok (libsignalSessionCode.rebase img.base (Rust.withPanics ext)) entry spec := by
-  have e : CryptoVerification.LibsignalSession.sessionProg img F abs =
-      libsignalSessionCode.rebase img.base
-        (Rust.withPanics (CryptoVerification.LibsignalSession.sessionExterns F abs)) :=
-    libsignalSessionCode_ofImage himg
-  rw [e] at h
-  exact subroutine_ok_rebase_mono libsignalSessionCode_stubs_offsets_fresh
-    libsignalSessionCode_stubsDead hle h
-
-/-! ## Relocatable `[LibsignalPlacement]` Block Transfer Helpers -/
 
 /-- Transfer a `withLsCodeLoaded lsmpl spec` contract proved on `calleeProg` (block `j`) to any
 `callerProg` (block `i`) sharing the same hook map `H`. -/

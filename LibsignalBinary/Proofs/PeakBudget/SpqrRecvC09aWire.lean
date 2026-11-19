@@ -9,13 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvGroupSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightBranches
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightBranches
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightSpec
 public import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Concrete Tight Credit and Group Specs for SPQR `spqr::recv`
@@ -27,7 +30,7 @@ concrete `<States>::recv` bounds from `SpqrStatesRecvPeakSpec`. Establishes equi
 `PhaseGroupSpec` bounds for `spqr::recv`, and `FitsEnv fineCostModel` corollaries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -241,7 +244,7 @@ theorem spqrRecv_c09a_evalLog_footprint_le
 /-! ## Tight Envelopes and `StatesRecvProtoEnv = StatesRecvEnv` Bridges -/
 
 /-- Closed `Ordering::Equal` tight envelope specialized to `StatesRecvProtoEnv`. -/
-def SpqrRecvEqualC07C09aTightEnv (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrRecvEqualC07C09aTightEnv (F : ShaCompress) (K : MlKem)
     (pre_pb : PqRatchetState) (pb : V1State)
     (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
     (v : V1Recv spqrPolyApi (spqrAuthApi F))
@@ -258,10 +261,10 @@ theorem spqrRecvEqualC07C09aTightEnv_nil (F : ShaCompress) (K : MlKem)
     (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
     (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall) :
     SpqrRecvEqualC07C09aTightEnv F K pre_pb pb st0 sckaMsg v xAdd xRk xSInto xCInto [] :=
-  Or.inl FreeOnlyEvs.nil
+  Or.inr (Or.inl FreeOnlyEvs.nil)
 
 /-- Closed `spqr::recv` tight envelope specialized to `StatesRecvProtoEnv`. -/
-def SpqrRecvC07C09aTightEnv (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrRecvC07C09aTightEnv (F : ShaCompress) (K : MlKem)
     (stBytes : Bytes)
     (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
     (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)

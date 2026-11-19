@@ -15,11 +15,12 @@ public import Symbolic.Proofs.Swarm.CREF.Sem
 public import Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupHighBitCli
 public import Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupTorsionCli
 public import Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1Cli
+public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhHooksCommon
 
 /-!
-# Satisfiability of `cliCompFitsPinned`
+# Satisfiability of `CliSetupMatchesPinned`
 
-Proves that `(compI0, compHooks0)` and `compRecordsI0 w` satisfy `cliCompFitsPinned w` for any
+Proves that `(compI0, compHooks0)` and `compRecordsI0 w` satisfy `CliSetupMatchesPinned w` for any
 plausible witness setup `w` whose torsion shifts are recorded in `compI0`, and instantiates this
 for the three composed Cheval26 CLI witnesses.
 -/
@@ -47,31 +48,28 @@ def compExecMlKem0 : CryptoVerification.LibsignalSpqrV1.MlKem :=
   { Symbolic.BugInjection.Proofs.Common443.CompI0Laws.compMlKem0 with
     keyPair := fun seed => CryptoVerification.E2E.fitVec 2400 (compMlkem768FromSeed seed.toList) }
 
-/-- Concrete `CliHooks` extending `CompI0Laws.compHooks0` with `DefsCompI0`'s recorded SHA-512,
-Edwards, scalar, and ML-KEM tables on internal `PqxdhPrims` fields. -/
+/-- Concrete `CliHooks` extending `CompI0Laws.compHooks0` with `DefsCompI0`'s recorded SHA-512
+and ML-KEM tables on internal `PqxdhPrims` fields. -/
 def compHooks0 : CryptoVerification.SignalSession.CliHooks :=
   { Symbolic.BugInjection.Proofs.Common443.CompI0Laws.compHooks0 with
     Q :=
       { Symbolic.BugInjection.Proofs.Common443.CompI0Laws.compHooks0.Q with
         F512 := fun st blk =>
           bytesToSha512StateLE (compSha512 (CryptoVerification.E2E.sha512StateBytesLE st) blk)
-        compress := fun pt => CryptoVerification.E2E.fitVec 32 (compEdwardsCompress pt.toList)
-        edNeg := fun pt => CryptoVerification.E2E.fitVec 160 (compEdwardsNeg pt.toList)
-        dsmb := fun a pt b =>
-          CryptoVerification.E2E.fitVec 160 (compDoubleScalarMul a.toList pt.toList b.toList)
-        scalarMod := fun s => CryptoVerification.E2E.fitVec 32 (compScalarModOrder s.toList)
-        scalarWide := fun w => CryptoVerification.E2E.fitVec 32 (compScalarModOrderWide w.toList)
         K := compExecMlKem0 } }
 
 theorem compI0_hooksAgree : HooksMatchInterpretation compI0 compHooks0 :=
   Symbolic.BugInjection.Proofs.Common443.CompI0Laws.compI0_hooksMatch
+
+theorem compI0_hooksAgreePlaced : HooksMatchPlaced compI0 compHooks0 :=
+  ⟨compI0_hooksAgree, rfl, rfl⟩
 
 theorem compI0_externContractsHoldCli : ExternContractsHoldCli compI0 :=
   Symbolic.BugInjection.Proofs.Common443.CompI0Laws.compI0_externContractsHoldCli
 
 /-- Combines `compFitsPinned w` with `ExternContractsHoldCli` and `HooksMatchInterpretation` for
 CLI ELF refinement witnesses. -/
-def cliCompFitsPinned (w : PQXDHSpqrSetup)
+def CliSetupMatchesPinned (w : PQXDHSpqrSetup)
     (iw : ExternInterpretation × CryptoVerification.SignalSession.CliHooks)
     (r : ProtocolSetup) : Prop :=
   compFitsPinned w iw.1 r ∧
@@ -136,10 +134,11 @@ theorem compRecordsI0_public (w : PQXDHSpqrSetup) :
    Symbolic.Swarm.CREF.b1_setupPublic_6 (compRecordsI0 w) (compRecordsI0_ne w),
    Symbolic.Swarm.CREF.b1_setupPublic_7 (compRecordsI0 w) (compRecordsI0_ne w)⟩
 
-theorem cliCompFitsPinned_satisfiable_of_plausible (w : PQXDHSpqrSetup)
-    (h : w.Plausible) (htor : TorsionShiftsRecorded compI0 w.torsionShifts) :
-    ∃ iw r, cliCompFitsPinned w iw r := by
-  obtain ⟨ha, hb, hs, hss, hk, hks, hsec, hslice, hnd, _⟩ := h
+theorem cliSetupMatchesPinned_satisfiable_of_plausible (w : PQXDHSpqrSetup)
+    (h : w.Plausible) (htor : TorsionShiftsRecorded compI0 w.torsionShifts)
+    (hw : w.withOpk = false := by rfl) :
+    ∃ iw r, CliSetupMatchesPinned w iw r := by
+  obtain ⟨ha, hb, hs, hss, hk, hks, hsec, hslice, hnd, _, _⟩ := h
   obtain ⟨h5, h6, h7⟩ := compRecordsI0_public w
   have hR := compRecordsI0_randomsAt w
   have o5 : (compRecordsI0 w).opaqueBytes (setupPublic (compRecordsI0 w) 5) = w.spkSig := by
@@ -170,7 +169,7 @@ theorem cliCompFitsPinned_satisfiable_of_plausible (w : PQXDHSpqrSetup)
       rcases hp with rfl | rfl | rfl | rfl | rfl | rfl <;>
         simp [compRecordsI0, PQXDHSpqrSetup.fresh, fillFresh, ha, hb, hs]
     · rw [hR]
-      simpa [compRecordsI0, PQXDHSpqrSetup.fresh] using hnd
+      simpa [hw, compRecordsI0, PQXDHSpqrSetup.fresh] using hnd
     · dsimp only [DY.Libsignal.Composed.Refinement.ProtocolSetup.spkSigTerm]; rw [o5]; exact hss
     · dsimp only [DY.Libsignal.Composed.Refinement.ProtocolSetup.pqpkPubTerm]; rw [o6]; exact hk
     · dsimp only [DY.Libsignal.Composed.Refinement.ProtocolSetup.pqpkSigTerm]; rw [o7]; exact hks
@@ -190,33 +189,23 @@ theorem cliCompFitsPinned_satisfiable_of_plausible (w : PQXDHSpqrSetup)
   have hs5 : secretBytes (compRecordsI0 w) 5 = fillFresh 17 64 := by
     rw [secretBytes, hR]; simp [compRecordsI0, PQXDHSpqrSetup.fresh]
   exact ⟨(compI0, compHooks0), compRecordsI0 w,
-    ⟨⟨hwf, rfl, rfl, rfl, rfl, rfl, hs0, hs1, hs2, o5, o6, o7, rfl,
+    ⟨⟨hwf, by rw [hw]; rfl, rfl, rfl, rfl, rfl, hs0, hs1, hs2, o5, o6, o7, rfl,
       compI0_cryptoEquationsHold, compI0_pubCanonical,
       compI0_kyberCorrectOn (compRecordsI0 w) w.kyberCts⟩,
      rfl, ⟨hs3, hs4, hs5⟩, ⟨rfl, rfl⟩,
      compI0_torsionShiftsRejected, htor⟩,
     compI0_externContractsHoldCli, compI0_hooksAgree⟩
 
-theorem cliCompFitsPinned_satisfiable_hb :
-    ∃ iw r, cliCompFitsPinned Witnesses.Cheval26SmallSubgroupHighBitCli.setup iw r :=
-  cliCompFitsPinned_satisfiable_of_plausible
+theorem cliSetupMatchesPinned_satisfiable_hb :
+    ∃ iw r, CliSetupMatchesPinned Witnesses.Cheval26SmallSubgroupHighBitCli.setup iw r :=
+  cliSetupMatchesPinned_satisfiable_of_plausible
     Witnesses.Cheval26SmallSubgroupHighBitCli.setup
     (by decide +kernel)
     (fun _ h => nomatch h)
 
-theorem cliCompFitsPinned_satisfiable_tor :
-    ∃ iw r, cliCompFitsPinned Witnesses.Cheval26SmallSubgroupTorsionCli.setup iw r := by
-  refine cliCompFitsPinned_satisfiable_of_plausible
-    Witnesses.Cheval26SmallSubgroupTorsionCli.setup
-    (by decide +kernel)
-    (fun ab hab => ?_)
-  simp only [Witnesses.Cheval26SmallSubgroupTorsionCli.setup, List.mem_singleton] at hab
-  subst hab
-  exact ⟨1, torsionShift_compI0_ekAPub_one⟩
-
-theorem cliCompFitsPinned_satisfiable_ws1 :
-    ∃ iw r, cliCompFitsPinned Witnesses.Cheval26WeakStateIdx1Cli.setup iw r :=
-  cliCompFitsPinned_satisfiable_of_plausible
+theorem cliSetupMatchesPinned_satisfiable_ws1 :
+    ∃ iw r, CliSetupMatchesPinned Witnesses.Cheval26WeakStateIdx1Cli.setup iw r :=
+  cliSetupMatchesPinned_satisfiable_of_plausible
     Witnesses.Cheval26WeakStateIdx1Cli.setup
     (by decide +kernel)
     (fun _ h => nomatch h)

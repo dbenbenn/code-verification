@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.KindedQueries
-public import Computational.Proofs.ReductionDsl.Size
+public import Computational.Proofs.ReductionDsl.KindedQueries -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.Size -- proof-setup: allow-public-import
 
 /-!
 # Per-Query-Kind Cost, Target-Query, and Block-Size Bounds
@@ -20,7 +20,7 @@ Soundness and static-dominance lemmas for input-specialized costs (`Expr.costAt`
 block-size bounds (`Fits`) on one-stage and two-stage `ReductionDsl` reductions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,24 +31,6 @@ open OracleComp
 section Pointwise
 
 variable {S : Sig} {ι : Type} {T : OracleSpec ι} {O : Ops S} {I : Iface S T}
-
-theorem Expr.one_le_costAt :
-    ∀ {Γ : List (Ty S)} {t : Ty S} (e : Expr O Γ t) (ρ : Env Γ), 1 ≤ e.costAt ρ
-  | _, _, .var _, _ | _, _, .unit, _ | _, _, .bool _, _ | _, _, .none, _ | _, _, .nil, _ => le_rfl
-  | _, _, .nat n, _ => one_le_bits n
-  | _, _, .mulK _ a, ρ | _, _, .divK _ a, ρ | _, _, .modK _ a, ρ => by
-    have := Expr.one_le_costAt a ρ; simp only [Expr.costAt]; omega
-  | _, _, .op _ a, ρ => by
-    have := Expr.one_le_costAt a ρ; simp only [Expr.costAt]; omega
-  | _, _, .add a _, ρ | _, _, .sub a _, ρ | _, _, .lt a _, ρ | _, _, .eqN a _, ρ
-  | _, _, .not a, ρ | _, _, .and a _, ρ | _, _, .ite a _ _, ρ | _, _, .pair a _, ρ
-  | _, _, .fst a, ρ | _, _, .snd a, ρ | _, _, .inl a, ρ | _, _, .inr a, ρ
-  | _, _, .some a, ρ | _, _, .caseOpt a _ _, ρ | _, _, .caseSum a _ _, ρ
-  | _, _, .letE a _, ρ | _, _, .cons a _, ρ | _, _, .len a, ρ
-  | _, _, .take a _, ρ | _, _, .appendL _ a _, ρ | _, _, .findB _ a _, ρ
-  | _, _, .anyB _ a _, ρ | _, _, .mapB _ a _, ρ | _, _, .foldrB _ a _ _, ρ
-  | _, _, .tconst a, ρ | _, _, .tget a _, ρ | _, _, .tset a _ _, ρ => by
-    simp only [Expr.costAt]; omega
 
 theorem Expr.costAt_le_cost :
     ∀ {Γ : List (Ty S)} {t : Ty S} (e : Expr O Γ t) (ρ : Env Γ), e.costAt ρ ≤ e.cost
@@ -468,71 +450,9 @@ section QuerySoundness
 
 variable {S : Sig} {ι κ : Type} {T : OracleSpec ι} {O : Ops S} {I : Iface S T}
 
-theorem Comp.queryBound_eval_at (P : ι → Prop) [DecidablePred P] (w : I.Tag → ℕ)
-    (ws : I.smp.Samp → ℕ) (hw : ∀ g x, P (I.enc g x) → 1 ≤ w g)
-    (hU : ∀ n, (I.fwdU n).IsQueryBoundP P 0)
-    {Γ : List (Ty S)} {t : Ty S} (c : Comp O I Γ t) :
-    ∀ ρ : Env Γ, (c.eval ρ).IsQueryBoundP P (c.queriesAt w ws ρ) := by
-  induction c with
-  | ret e => intro ρ; simp [Comp.eval, Comp.queriesAt]
-  | bind c k ihc ihk =>
-    intro ρ
-    simp only [Comp.eval, Comp.queriesAt]
-    split
-    · next x hx =>
-      rw [Comp.eval_eq_pure_of_pureEval? c ρ hx, pure_bind]
-      exact (ihk (.cons x ρ)).mono (by omega)
-    · exact isQueryBoundP_bind (ihc ρ) (fun x _ => Comp.queryBound_eval P w ws hw hU k (.cons x ρ))
-  | ite b c d ihc ihd =>
-    intro ρ; simp only [Comp.eval, Comp.queriesAt]
-    split
-    · exact ihc ρ
-    · exact ihd ρ
-  | caseOpt e n s ihn ihs =>
-    intro ρ; simp only [Comp.eval, Comp.queriesAt]
-    rcases e.eval ρ with _ | x
-    · exact ihn ρ
-    · exact ihs (.cons x ρ)
-  | caseSum e l r ihl ihr =>
-    intro ρ; simp only [Comp.eval, Comp.queriesAt]
-    rcases e.eval ρ with x | y
-    · exact ihl (.cons x ρ)
-    · exact ihr (.cons y ρ)
-  | sample s e =>
-    intro ρ; simp only [Comp.eval, Comp.queriesAt]
-    exact (liftP_queryBound P hU _).mono (Nat.zero_le _)
-  | query g e =>
-    intro ρ
-    simp only [Comp.eval, Comp.queriesAt, isQueryBoundP_map_iff, isQueryBoundP_query_iff]
-    intro h; have := hw g _ h; omega
-  | iter n e body _ =>
-    intro ρ; simp only [Comp.eval, Comp.queriesAt]
-    exact iterM_queryBound _ _ (fun a => Comp.queryBound_eval P w ws hw hU body (.cons a ρ)) n _
-  | findM K l p _ =>
-    intro ρ; simp only [Comp.eval, Comp.queriesAt]
-    exact (findML_queryBound _ (fun x => Comp.queryBound_eval P w ws hw hU p (.cons x ρ)) _).mono
-      (take_mul_le _ _ _)
-  | anyM K l p _ =>
-    intro ρ; simp only [Comp.eval, Comp.queriesAt]
-    exact (anyML_queryBound _ (fun x => Comp.queryBound_eval P w ws hw hU p (.cons x ρ)) _).mono
-      (take_mul_le _ _ _)
-  | mapM K l f _ =>
-    intro ρ; simp only [Comp.eval, Comp.queriesAt]
-    exact (mapML_queryBound _ (fun x => Comp.queryBound_eval P w ws hw hU f (.cons x ρ)) _).mono
-      (take_mul_le _ _ _)
-  | consumeFirstM K l p mk _ =>
-    intro ρ; simp only [Comp.eval, Comp.queriesAt]
-    exact (consumeFirstML_queryBound _ _
-      (fun x => Comp.queryBound_eval P w ws hw hU p (.cons x ρ)) _).mono (take_mul_le _ _ _)
-  | foldM K l z f _ =>
-    intro ρ; simp only [Comp.eval, Comp.queriesAt]
-    exact (foldML_queryBound _
-      (fun x b => Comp.queryBound_eval P w ws hw hU f (.cons x (.cons b ρ))) _ _).mono
-      (take_mul_le _ _ _)
-
 /-- Predicate on `(unifSpec + G).Domain` selecting `G`-queries in bucket `i` under `kind` (coins
 are never selected). -/
-def isQueryKind {G : OracleSpec κ} {n : ℕ} (kind : κ → Fin n) (i : Fin n) :
+@[expose] def isQueryKind {G : OracleSpec κ} {n : ℕ} (kind : κ → Fin n) (i : Fin n) :
     (unifSpec + G).Domain → Prop
   | .inl _ => False
   | .inr t => kind t = i
@@ -578,78 +498,9 @@ theorem isQueryBoundP_game_byKind {G : OracleSpec κ} {α : Type} {n : ℕ}
     rw [Function.update_of_ne hne]
     simpa [isQueryKind, hti] using hiu
 
-theorem simulateQ_run_StateT_byKind {G : OracleSpec κ} {σ α : Type}
-    {P : ι → Prop} [DecidablePred P] {n : ℕ} (kind : κ → Fin n) (hQ : Fin n → ℕ)
-    {impl : QueryImpl (unifSpec + G) (StateT σ (OracleComp T))}
-    (hCoin : ∀ m s, ((impl (.inl m)).run s).IsQueryBoundP P 0)
-    (hGame : ∀ t s, ((impl (.inr t)).run s).IsQueryBoundP P (hQ (kind t))) :
-    ∀ {oa : OracleComp (unifSpec + G) α} {qKind : Fin n → ℕ},
-      (∀ i, oa.IsQueryBoundP (isQueryKind (G := G) kind i) (qKind i)) →
-      ∀ s, ((simulateQ impl oa).run s).IsQueryBoundP P
-        (List.ofFn fun i => qKind i * hQ i).sum := by
-  intro oa
-  induction oa using OracleComp.inductionOn with
-  | pure _ => intro qKind _ s; simp [simulateQ_pure]
-  | query_bind q mx ih =>
-    intro qKind hA s
-    rw [simulateQ_query_bind, StateT.run_bind]
-    cases q with
-    | inl m =>
-      have hcont := isQueryBoundP_coin_byKind hA
-      exact (isQueryBoundP_bind (hCoin m s) (fun x _ => ih x.1 (hcont x.1) x.2)).mono (by omega)
-    | inr t =>
-      obtain ⟨hpos, hcont⟩ := isQueryBoundP_game_byKind hA
-      have hbind := isQueryBoundP_bind (hGame t s) (fun x _ => ih x.1 (hcont x.1) x.2)
-      exact hbind.mono (le_of_eq (add_list_ofFn_update_pred_mul qKind hQ (kind t) hpos))
-
-theorem CostedReduction.queryBound_eval_byKind {G : OracleSpec κ} {C : GameCodec S G}
-    {rIn aIn aOut out : Ty S} (R : CostedReduction O I G C rIn aIn aOut out)
-    (P : ι → Prop) [DecidablePred P] (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ)
-    (hw : ∀ g x, P (I.enc g x) → 1 ≤ w g)
-    (hU : ∀ m, (I.fwdU m).IsQueryBoundP P 0)
-    {n : ℕ} (kind : κ → Fin n) (hQ qKind : Fin n → ℕ)
-    (hValid : R.ValidKindQueries w ws kind hQ)
-    (A : aIn.denote → OracleComp (unifSpec + G) aOut.denote)
-    (hA : ∀ a i, (A a).IsQueryBoundP (isQueryKind (G := G) kind i) (qKind i))
-    (x : rIn.denote) :
-    (R.eval A x).IsQueryBoundP P (R.totalQueriesByKind w ws hQ qKind) := by
-  have hCoin : ∀ m s, ((R.impl (.inl m)).run s).IsQueryBoundP P 0 := by
-    intro m s
-    have := isQueryBoundP_bind (n := 0) (m := 0) (hU m)
-      (fun a _ => isQueryBoundP_pure (spec := T) P (a, s) 0)
-    simpa [CostedReduction.impl, handlerImpl] using this
-  have hGame : ∀ t s, ((R.impl (.inr t)).run s).IsQueryBoundP P (hQ (kind t)) := by
-    intro t s
-    have hh := (Comp.queryBound_eval_at P w ws hw hU R.handle
-      (.cons s (.cons (C.qenc t) .nil))).mono (hValid s t)
-    have := isQueryBoundP_bind hh
-      (fun p _ => isQueryBoundP_pure (spec := T) P (C.rdec t p.1, p.2) 0)
-    simpa [CostedReduction.impl, handlerImpl] using this
-  unfold CostedReduction.eval CostedReduction.totalQueriesByKind
-  exact (isQueryBoundP_bind (Comp.queryBound_eval P w ws hw hU R.init (.cons x .nil))
-    (fun as _ => isQueryBoundP_bind
-      (simulateQ_run_StateT_byKind kind hQ hCoin hGame (hA as.1) as.2)
-      (fun bs _ => Comp.queryBound_eval P w ws hw hU R.finish
-        (.cons bs.2 (.cons bs.1 .nil))))).mono (by omega)
-
-/-- Corollary of `CostedReduction.queryBound_eval_byKind` packaged for `QueriesBoundedByKind`. -/
-theorem CostedReduction.queriesBoundedByKind_sound {G : OracleSpec κ} {C : GameCodec S G}
-    {rIn aIn aOut out : Ty S} (R : CostedReduction O I G C rIn aIn aOut out)
-    (P : ι → Prop) [DecidablePred P] (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ)
-    (hw : ∀ g x, P (I.enc g x) → 1 ≤ w g)
-    (hU : ∀ m, (I.fwdU m).IsQueryBoundP P 0)
-    {n : ℕ} (kind : κ → Fin n) (qKind : Fin n → ℕ) {Q : ℕ}
-    (hBnd : R.QueriesBoundedByKind w ws kind qKind Q)
-    (A : aIn.denote → OracleComp (unifSpec + G) aOut.denote)
-    (hA : ∀ a i, (A a).IsQueryBoundP (isQueryKind (G := G) kind i) (qKind i))
-    (x : rIn.denote) :
-    (R.eval A x).IsQueryBoundP P Q := by
-  obtain ⟨hQ, hValid, hle⟩ := hBnd
-  exact (R.queryBound_eval_byKind P w ws hw hU kind hQ qKind hValid A hA x).mono hle
-
 /-- Continuation query-bound invariant on a stage-1 `Mid` result: any paused continuation makes at
 most `qRem i` remaining `G`-queries of kind `i`. -/
-def Mid.QueryBoundedByKind {G : OracleSpec κ} {α π σ χ : Type} {n : ℕ}
+@[expose] def Mid.QueryBoundedByKind {G : OracleSpec κ} {α π σ χ : Type} {n : ℕ}
     (kind : κ → Fin n) (qRem : Fin n → ℕ) : Mid G α π σ χ → Prop
   | .done _ _ => True
   | .paused t _ _ _ k =>
@@ -660,199 +511,6 @@ theorem Mid.queryBoundedByKind_mono {G : OracleSpec κ} {α π σ χ : Type} {n 
     ∀ m : Mid G α π σ χ, Mid.QueryBoundedByKind kind q₁ m → Mid.QueryBoundedByKind kind q₂ m
   | .done _ _, _ => trivial
   | .paused _ _ _ _ _, hk => fun u i => (hk u i).mono (hle i)
-
-theorem runFuel_queryBound_byKind {G : OracleSpec κ} {C : GameCodec S G} {σ : Ty S}
-    (h : Comp O I [σ, C.Q] (.prod C.R σ)) (P : ι → Prop) [DecidablePred P]
-    (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ)
-    (hw : ∀ g x, P (I.enc g x) → 1 ≤ w g)
-    (hU : ∀ m, (I.fwdU m).IsQueryBoundP P 0)
-    {n : ℕ} (kind : κ → Fin n) (hQ : Fin n → ℕ)
-    (hh : ∀ s t, h.queriesAt w ws (.cons s (.cons (C.qenc t) .nil)) ≤ hQ (kind t))
-    {α : Type} (dflt : α) :
-    ∀ {oa : OracleComp (unifSpec + G) α} {qRem : Fin n → ℕ},
-      (∀ i, oa.IsQueryBoundP (isQueryKind (G := G) kind i) (qRem i)) →
-      ∀ (fuel : ℕ) (s : σ.denote),
-        (runFuel h dflt oa fuel s).IsQueryBoundP P
-          (List.ofFn fun i => qRem i * hQ i).sum := by
-  intro oa
-  induction oa using OracleComp.inductionOn with
-  | pure _ => intro qRem _ fuel s; simp [runFuel]
-  | query_bind q mx ih =>
-    intro qRem hA fuel s
-    cases q with
-    | inl m =>
-      have hcont := isQueryBoundP_coin_byKind hA
-      simpa [runFuel] using isQueryBoundP_bind (hU m) (fun u _ => ih u (hcont u) fuel s)
-    | inr t =>
-      cases fuel with
-      | zero => simp [runFuel]
-      | succ f =>
-        obtain ⟨hpos, hcont⟩ := isQueryBoundP_game_byKind hA
-        simp only [runFuel, construct_query_bind]
-        have hstep := (Comp.queryBound_eval_at P w ws hw hU h
-          (.cons s (.cons (C.qenc t) .nil))).mono (hh s t)
-        exact (isQueryBoundP_bind hstep (fun p _ => ih (C.rdec t p.1) (hcont _) f p.2)).mono
-          (le_of_eq (add_list_ofFn_update_pred_mul qRem hQ (kind t) hpos))
-
-theorem TwoStageCostedReduction.run1_queryBound_byKind {G : OracleSpec κ} {C : GameCodec S G}
-    {rIn aIn aOut ch rIn2 out : Ty S}
-    (R : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out)
-    (P : ι → Prop) [DecidablePred P] (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ)
-    (hw : ∀ g x, P (I.enc g x) → 1 ≤ w g)
-    (hU : ∀ m, (I.fwdU m).IsQueryBoundP P 0)
-    {n : ℕ} (kind : κ → Fin n) (hQ : Fin n → ℕ)
-    (hh : ∀ s t, R.handlePre.queriesAt w ws (.cons s (.cons (C.qenc t) .nil)) ≤ hQ (kind t))
-    {α : Type} (dflt : α) :
-    ∀ {oa : OracleComp (unifSpec + G) α} {qKind : Fin n → ℕ},
-      (∀ i, oa.IsQueryBoundP (isQueryKind (G := G) kind i) (qKind i)) →
-      ∀ (fuel : ℕ) (s : R.σ.denote),
-        (R.run1 dflt oa fuel s).IsQueryBoundP P
-          (List.ofFn fun i => qKind i * hQ i).sum := by
-  intro oa
-  induction oa using OracleComp.inductionOn with
-  | pure _ => intro qKind _ fuel s; simp [TwoStageCostedReduction.run1]
-  | query_bind q mx ih =>
-    intro qKind hA fuel s
-    cases q with
-    | inl m =>
-      have hcont := isQueryBoundP_coin_byKind hA
-      simpa [TwoStageCostedReduction.run1] using
-        isQueryBoundP_bind (hU m) (fun u _ => ih u (hcont u) fuel s)
-    | inr t =>
-      cases fuel with
-      | zero => simp [TwoStageCostedReduction.run1]
-      | succ f =>
-        obtain ⟨hpos, hcont⟩ := isQueryBoundP_game_byKind hA
-        simp only [TwoStageCostedReduction.run1, construct_query_bind]
-        have hstep := (Comp.queryBound_eval_at P w ws hw hU R.handlePre
-          (.cons s (.cons (C.qenc t) .nil))).mono (hh s t)
-        refine (isQueryBoundP_bind hstep
-          (m := (List.ofFn fun i =>
-            Function.update qKind (kind t) (qKind (kind t) - 1) i * hQ i).sum)
-          fun res _ => ?_).mono
-          (le_of_eq (add_list_ofFn_update_pred_mul qKind hQ (kind t) hpos))
-        rcases res with ⟨v, s'⟩ | ⟨c, p, s'⟩
-        · exact ih (C.rdec t v) (hcont _) f s'
-        · exact (isQueryBoundP_pure (spec := T) P (Mid.paused t c p s' mx) 0).mono (Nat.zero_le _)
-
-theorem TwoStageCostedReduction.run1_support_queryBoundedByKind
-    {G : OracleSpec κ} {C : GameCodec S G} {rIn aIn aOut ch rIn2 out : Ty S}
-    (R : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out)
-    {n : ℕ} (kind : κ → Fin n) {α : Type} (dflt : α) :
-    ∀ {oa : OracleComp (unifSpec + G) α} {qKind : Fin n → ℕ},
-      (∀ i, oa.IsQueryBoundP (isQueryKind (G := G) kind i) (qKind i)) →
-      ∀ (fuel : ℕ) (s : R.σ.denote) (m : Mid G α R.π.denote R.σ.denote ch.denote),
-        m ∈ support (R.run1 dflt oa fuel s) → Mid.QueryBoundedByKind kind qKind m := by
-  intro oa
-  induction oa using OracleComp.inductionOn with
-  | pure _ =>
-    intro qKind _ fuel s m hm
-    simp only [TwoStageCostedReduction.run1, construct_pure, support_pure,
-      Set.mem_singleton_iff] at hm
-    subst hm; trivial
-  | query_bind q mx ih =>
-    intro qKind hA fuel s m hm
-    cases q with
-    | inl num =>
-      simp only [TwoStageCostedReduction.run1, construct_query_bind, mem_support_bind_iff] at hm
-      obtain ⟨u, -, hm⟩ := hm
-      exact ih u (isQueryBoundP_coin_byKind hA u) fuel s m hm
-    | inr t =>
-      cases fuel with
-      | zero =>
-        simp only [TwoStageCostedReduction.run1, construct_query_bind, support_pure,
-          Set.mem_singleton_iff] at hm
-        subst hm; trivial
-      | succ f =>
-        obtain ⟨_, hcont⟩ := isQueryBoundP_game_byKind hA
-        have hle : ∀ i, Function.update qKind (kind t) (qKind (kind t) - 1) i ≤ qKind i := by
-          intro i
-          by_cases h : i = kind t
-          · subst h; simp only [Function.update_self]; omega
-          · simp only [Function.update_of_ne h, le_rfl]
-        simp only [TwoStageCostedReduction.run1, construct_query_bind, mem_support_bind_iff] at hm
-        obtain ⟨res, -, hm⟩ := hm
-        rcases res with ⟨v, s'⟩ | ⟨c, p, s'⟩
-        · exact Mid.queryBoundedByKind_mono hle m (ih (C.rdec t v) (hcont _) f s' m hm)
-        · simp only [support_pure, Set.mem_singleton_iff] at hm
-          subst hm
-          exact fun u i => (hcont u i).mono (hle i)
-
-theorem TwoStageCostedReduction.eval1_queryBound_byKind
-    {G : OracleSpec κ} {C : GameCodec S G} {rIn aIn aOut ch rIn2 out : Ty S}
-    (R : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out)
-    (P : ι → Prop) [DecidablePred P] (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ)
-    (hw : ∀ g x, P (I.enc g x) → 1 ≤ w g)
-    (hU : ∀ m, (I.fwdU m).IsQueryBoundP P 0)
-    {n : ℕ} (kind : κ → Fin n) (hQ qKind : Fin n → ℕ)
-    (hValid : R.ValidKindQueries w ws kind hQ)
-    (A : aIn.denote → OracleComp (unifSpec + G) aOut.denote)
-    (hA : ∀ a i, (A a).IsQueryBoundP (isQueryKind (G := G) kind i) (qKind i))
-    (x : rIn.denote) (fuel : ℕ) (dflt : aOut.denote) :
-    (R.eval1 A x fuel dflt).IsQueryBoundP P (R.totalQueriesByKind w ws hQ qKind) := by
-  unfold TwoStageCostedReduction.eval1 TwoStageCostedReduction.totalQueriesByKind
-  have hle := le_max_left (R.chDone.queries w ws) (R.resume.queries w ws)
-  refine (isQueryBoundP_bind (Comp.queryBound_eval P w ws hw hU R.init (.cons x .nil)) fun as _ =>
-    isQueryBoundP_bind
-      (R.run1_queryBound_byKind P w ws hw hU kind hQ (fun s t => (hValid s t).1)
-        dflt (hA as.1) fuel as.2)
-      (m := R.chDone.queries w ws) fun m _ => ?_).mono (by omega)
-  cases m with
-  | done b s' =>
-    exact isQueryBoundP_bind
-      (Comp.queryBound_eval P w ws hw hU R.chDone (.cons s' (.cons b .nil)))
-      (fun c _ => isQueryBoundP_pure (spec := T) P (c, Mid.done b s') 0)
-  | paused t c p s' k =>
-    exact (isQueryBoundP_pure (spec := T) P (c, Mid.paused t c p s' k) 0).mono (Nat.zero_le _)
-
-theorem TwoStageCostedReduction.eval1_support_queryBoundedByKind
-    {G : OracleSpec κ} {C : GameCodec S G} {rIn aIn aOut ch rIn2 out : Ty S}
-    (R : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out)
-    {n : ℕ} (kind : κ → Fin n) (qKind : Fin n → ℕ)
-    (A : aIn.denote → OracleComp (unifSpec + G) aOut.denote)
-    (hA : ∀ a i, (A a).IsQueryBoundP (isQueryKind (G := G) kind i) (qKind i))
-    (x : rIn.denote) (fuel : ℕ) (dflt : aOut.denote) :
-    ∀ cm ∈ support (R.eval1 A x fuel dflt), Mid.QueryBoundedByKind kind qKind cm.2 := by
-  intro cm hcm
-  simp only [TwoStageCostedReduction.eval1, mem_support_bind_iff] at hcm
-  obtain ⟨⟨a, s₀⟩, -, m, hm, hcm⟩ := hcm
-  have hmb := R.run1_support_queryBoundedByKind kind dflt (hA a) fuel s₀ m hm
-  cases m with
-  | done b s' =>
-    simp only [mem_support_bind_iff, support_pure, Set.mem_singleton_iff] at hcm
-    obtain ⟨c, -, rfl⟩ := hcm; exact hmb
-  | paused t c p s' k =>
-    simp only [support_pure, Set.mem_singleton_iff] at hcm
-    subst hcm; exact hmb
-
-theorem TwoStageCostedReduction.eval2_queryBound_byKind
-    {G : OracleSpec κ} {C : GameCodec S G} {rIn aIn aOut ch rIn2 out : Ty S}
-    (R : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out)
-    (P : ι → Prop) [DecidablePred P] (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ)
-    (hw : ∀ g x, P (I.enc g x) → 1 ≤ w g)
-    (hU : ∀ m, (I.fwdU m).IsQueryBoundP P 0)
-    {n : ℕ} (kind : κ → Fin n) (hQ qKind : Fin n → ℕ)
-    (hValid : R.ValidKindQueries w ws kind hQ)
-    (m : Mid G aOut.denote R.π.denote R.σ.denote ch.denote)
-    (hm : Mid.QueryBoundedByKind kind qKind m)
-    (y : rIn2.denote) (fuel : ℕ) (dflt : aOut.denote) :
-    (R.eval2 m y fuel dflt).IsQueryBoundP P (R.totalQueriesByKind w ws hQ qKind) := by
-  have hle := le_max_right (R.chDone.queries w ws) (R.resume.queries w ws)
-  unfold TwoStageCostedReduction.totalQueriesByKind
-  cases m with
-  | done b s =>
-    simp only [TwoStageCostedReduction.eval2, pure_bind]
-    exact (Comp.queryBound_eval P w ws hw hU R.finish
-      (.cons s (.cons b (.cons y .nil)))).mono (by omega)
-  | paused t c p s k =>
-    simp only [TwoStageCostedReduction.eval2]
-    exact (isQueryBoundP_bind
-      (Comp.queryBound_eval P w ws hw hU R.resume (.cons s (.cons p (.cons y .nil))))
-      fun vs _ => isQueryBoundP_bind
-        (runFuel_queryBound_byKind R.handlePost P w ws hw hU kind hQ
-          (fun s' t' => (hValid s' t').2) dflt (hm (C.rdec t vs.1)) fuel vs.2)
-        fun bs _ => Comp.queryBound_eval P w ws hw hU R.finish
-          (.cons bs.2 (.cons bs.1 (.cons y .nil)))).mono (by omega)
 
 end QuerySoundness
 

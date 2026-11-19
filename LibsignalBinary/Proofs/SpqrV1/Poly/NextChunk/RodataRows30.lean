@@ -21,14 +21,14 @@ Kernel-checked evaluation of the 30 precomputed degree-29 Lagrange basis polynom
 `COMPLETE_POINTS_POLYS_30`.
 -/
 
-@[expose] public section
+public section
 
 
 namespace CryptoVerification.SpqrV1.Poly.NextChunk
 
 open CryptoVerification.LibsignalSpqrV1
 
-def cp30Row0 : PolyConst 30 :=
+@[expose] def cp30Row0 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0001#16⟩, ⟨0x21a5#16⟩, ⟨0x6f52#16⟩, ⟨0xeab8#16⟩, ⟨0x623c#16⟩, ⟨0x412b#16⟩, ⟨0xc44c#16⟩, ⟨0x1a42#16⟩, ⟨0xeb38#16⟩,
     ⟨0x16f6#16⟩, ⟨0xafb7#16⟩, ⟨0x2574#16⟩, ⟨0xcc05#16⟩, ⟨0x47a1#16⟩, ⟨0xf234#16⟩, ⟨0x57ca#16⟩, ⟨0xb39c#16⟩, ⟨0xe6e1#16⟩,
@@ -36,7 +36,7 @@ def cp30Row0 : PolyConst 30 :=
     ⟨0x7990#16⟩, ⟨0xf234#16⟩, ⟨0xf234#16⟩ ] }
 
 
-def cp30Row1 : PolyConst 30 :=
+@[expose] def cp30Row1 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0x0001#16⟩, ⟨0x21a4#16⟩, ⟨0x4ef6#16⟩, ⟨0xa44e#16⟩, ⟨0xc672#16⟩, ⟨0x8759#16⟩, ⟨0x4315#16⟩, ⟨0x5957#16⟩,
     ⟨0xb26f#16⟩, ⟨0xa499#16⟩, ⟨0x0b2e#16⟩, ⟨0x2e5a#16⟩, ⟨0xe25f#16⟩, ⟨0xa5fe#16⟩, ⟨0x57ca#16⟩, ⟨0x0000#16⟩, ⟨0xb39c#16⟩,
@@ -44,7 +44,7 @@ def cp30Row1 : PolyConst 30 :=
     ⟨0x7990#16⟩, ⟨0x0000#16⟩, ⟨0xf234#16⟩ ] }
 
 
-def cp30Row2 : PolyConst 30 :=
+@[expose] def cp30Row2 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0x418e#16⟩, ⟨0xc06d#16⟩, ⟨0xb55b#16⟩, ⟨0x6b71#16⟩, ⟨0x835b#16⟩, ⟨0x321f#16⟩, ⟨0x13a1#16⟩, ⟨0x413a#16⟩,
     ⟨0xa3d5#16⟩, ⟨0xc492#16⟩, ⟨0xc40d#16⟩, ⟨0xc527#16⟩, ⟨0xf1ec#16⟩, ⟨0x2009#16⟩, ⟨0x64f6#16⟩, ⟨0x58dc#16⟩, ⟨0x0fca#16⟩,
@@ -52,7 +52,7 @@ def cp30Row2 : PolyConst 30 :=
     ⟨0x3aa7#16⟩, ⟨0x2a24#16⟩, ⟨0xe9e5#16⟩ ] }
 
 
-def cp30Row3 : PolyConst 30 :=
+@[expose] def cp30Row3 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0x7ef4#16⟩, ⟨0x9560#16⟩, ⟨0x1a90#16⟩, ⟨0x28e7#16⟩, ⟨0x3319#16⟩, ⟨0xbc2d#16⟩, ⟨0x9729#16⟩, ⟨0x0254#16⟩,
     ⟨0x0c45#16⟩, ⟨0xe26c#16⟩, ⟨0x9a5c#16⟩, ⟨0xb3f5#16⟩, ⟨0x7cff#16⟩, ⟨0x44ff#16⟩, ⟨0x64f6#16⟩, ⟨0x6f68#16⟩, ⟨0xe819#16⟩,
@@ -60,7 +60,7 @@ def cp30Row3 : PolyConst 30 :=
     ⟨0x3aa7#16⟩, ⟨0xc3c1#16⟩, ⟨0xe9e5#16⟩ ] }
 
 
-def cp30Row4 : PolyConst 30 :=
+@[expose] def cp30Row4 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0x8691#16⟩, ⟨0xa14a#16⟩, ⟨0x8cc5#16⟩, ⟨0x901c#16⟩, ⟨0x2c80#16⟩, ⟨0xaa01#16⟩, ⟨0xe608#16⟩, ⟨0xf14e#16⟩,
     ⟨0x85ef#16⟩, ⟨0xd2cb#16⟩, ⟨0x95f1#16⟩, ⟨0xa684#16⟩, ⟨0xd92b#16⟩, ⟨0xaad2#16⟩, ⟨0x0000#16⟩, ⟨0x5e31#16⟩, ⟨0x79d2#16⟩,
@@ -68,7 +68,7 @@ def cp30Row4 : PolyConst 30 :=
     ⟨0x8ca2#16⟩, ⟨0x218c#16⟩, ⟨0xaad2#16⟩ ] }
 
 
-def cp30Row5 : PolyConst 30 :=
+@[expose] def cp30Row5 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0x5ded#16⟩, ⟨0x19ea#16⟩, ⟨0xd273#16⟩, ⟨0x0c90#16⟩, ⟨0xa9d2#16⟩, ⟨0xf3b9#16⟩, ⟨0xc078#16⟩, ⟨0x6a46#16⟩,
     ⟨0x73dd#16⟩, ⟨0xd906#16⟩, ⟨0x1953#16⟩, ⟨0x5e23#16⟩, ⟨0x73f9#16⟩, ⟨0xaad2#16⟩, ⟨0x0000#16⟩, ⟨0xbd6d#16⟩, ⟨0x5404#16⟩,
@@ -76,7 +76,7 @@ def cp30Row5 : PolyConst 30 :=
     ⟨0x8ca2#16⟩, ⟨0x8b5e#16⟩, ⟨0xaad2#16⟩ ] }
 
 
-def cp30Row6 : PolyConst 30 :=
+@[expose] def cp30Row6 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0xbc67#16⟩, ⟨0xe28e#16⟩, ⟨0xce67#16⟩, ⟨0x4b5d#16⟩, ⟨0x6ecb#16⟩, ⟨0x9a03#16⟩, ⟨0xec74#16⟩, ⟨0xe624#16⟩,
     ⟨0xad95#16⟩, ⟨0x6d62#16⟩, ⟨0x8367#16⟩, ⟨0x26b2#16⟩, ⟨0xfd10#16⟩, ⟨0x1b8b#16⟩, ⟨0x333c#16⟩, ⟨0x5c6a#16⟩, ⟨0xf05b#16⟩,
@@ -84,7 +84,7 @@ def cp30Row6 : PolyConst 30 :=
     ⟨0xcf95#16⟩, ⟨0x2714#16⟩, ⟨0xb103#16⟩ ] }
 
 
-def cp30Row7 : PolyConst 30 :=
+@[expose] def cp30Row7 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0xe873#16⟩, ⟨0x08ba#16⟩, ⟨0xc27a#16⟩, ⟨0x87f7#16⟩, ⟨0x3e05#16⟩, ⟨0xb42c#16⟩, ⟨0x17db#16⟩, ⟨0x5fce#16⟩,
     ⟨0x7c36#16⟩, ⟨0x394c#16⟩, ⟨0x7fce#16⟩, ⟨0x6502#16⟩, ⟨0x7f2f#16⟩, ⟨0x28b7#16⟩, ⟨0x333c#16⟩, ⟨0x95ce#16⟩, ⟨0xf812#16⟩,
@@ -92,7 +92,7 @@ def cp30Row7 : PolyConst 30 :=
     ⟨0xcf95#16⟩, ⟨0x9617#16⟩, ⟨0xb103#16⟩ ] }
 
 
-def cp30Row8 : PolyConst 30 :=
+@[expose] def cp30Row8 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0xb2a1#16⟩, ⟨0xe31d#16⟩, ⟨0xbfc1#16⟩, ⟨0xa324#16⟩, ⟨0x37cb#16⟩, ⟨0xa722#16⟩, ⟨0xcbda#16⟩, ⟨0x5b4f#16⟩,
     ⟨0x5c30#16⟩, ⟨0x2f48#16⟩, ⟨0xc6d6#16⟩, ⟨0x60a9#16⟩, ⟨0x77f5#16⟩, ⟨0x77cf#16⟩, ⟨0x9b20#16⟩, ⟨0x035f#16⟩, ⟨0x4304#16⟩,
@@ -100,7 +100,7 @@ def cp30Row8 : PolyConst 30 :=
     ⟨0xc60e#16⟩, ⟨0xe9ca#16⟩, ⟨0xeee3#16⟩ ] }
 
 
-def cp30Row9 : PolyConst 30 :=
+@[expose] def cp30Row9 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0x3d04#16⟩, ⟨0x52ba#16⟩, ⟨0x255b#16⟩, ⟨0xa4ea#16⟩, ⟨0xe7cc#16⟩, ⟨0x8efc#16⟩, ⟨0x99d8#16⟩, ⟨0xe7f5#16⟩,
     ⟨0x9500#16⟩, ⟨0x7dd6#16⟩, ⟨0x9bf8#16⟩, ⟨0xfc9a#16⟩, ⟨0x0236#16⟩, ⟨0xecef#16⟩, ⟨0x9b20#16⟩, ⟨0x0338#16⟩, ⟨0xba46#16⟩,
@@ -108,7 +108,7 @@ def cp30Row9 : PolyConst 30 :=
     ⟨0xc60e#16⟩, ⟨0x0729#16⟩, ⟨0xeee3#16⟩ ] }
 
 
-def cp30Row10 : PolyConst 30 :=
+@[expose] def cp30Row10 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0xfa54#16⟩, ⟨0xed4e#16⟩, ⟨0xfdca#16⟩, ⟨0xcd06#16⟩, ⟨0x34c1#16⟩, ⟨0x360c#16⟩, ⟨0x24e3#16⟩, ⟨0xb64e#16⟩,
     ⟨0xbd7c#16⟩, ⟨0x68d7#16⟩, ⟨0x92ff#16⟩, ⟨0x03a0#16⟩, ⟨0x2a5f#16⟩, ⟨0xa5c6#16⟩, ⟨0xa81c#16⟩, ⟨0x1120#16⟩, ⟨0xc4ee#16⟩,
@@ -116,7 +116,7 @@ def cp30Row10 : PolyConst 30 :=
     ⟨0x8539#16⟩, ⟨0xd6fc#16⟩, ⟨0xf532#16⟩ ] }
 
 
-def cp30Row11 : PolyConst 30 :=
+@[expose] def cp30Row11 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0x7ebd#16⟩, ⟨0x09cd#16⟩, ⟨0x6020#16⟩, ⟨0x0345#16⟩, ⟨0x2e6f#16⟩, ⟨0xac47#16⟩, ⟨0xab3e#16⟩, ⟨0x7700#16⟩,
     ⟨0xc5c1#16⟩, ⟨0xf464#16⟩, ⟨0xbfda#16⟩, ⟨0x07eb#16⟩, ⟨0x7771#16⟩, ⟨0x0dda#16⟩, ⟨0xa81c#16⟩, ⟨0xd4c7#16⟩, ⟨0xc4c1#16⟩,
@@ -124,7 +124,7 @@ def cp30Row11 : PolyConst 30 :=
     ⟨0x8539#16⟩, ⟨0x23ce#16⟩, ⟨0xf532#16⟩ ] }
 
 
-def cp30Row12 : PolyConst 30 :=
+@[expose] def cp30Row12 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0xe54c#16⟩, ⟨0x8d3f#16⟩, ⟨0xcec4#16⟩, ⟨0x417f#16⟩, ⟨0x0106#16⟩, ⟨0xd677#16⟩, ⟨0x222f#16⟩, ⟨0x026b#16⟩,
     ⟨0x9333#16⟩, ⟨0x0ec8#16⟩, ⟨0xfade#16⟩, ⟨0x8857#16⟩, ⟨0xc1cd#16⟩, ⟨0xb2da#16⟩, ⟨0xccea#16⟩, ⟨0x3785#16⟩, ⟨0x8b7a#16⟩,
@@ -132,7 +132,7 @@ def cp30Row12 : PolyConst 30 :=
     ⟨0x333c#16⟩, ⟨0xae08#16⟩, ⟨0xb605#16⟩ ] }
 
 
-def cp30Row13 : PolyConst 30 :=
+@[expose] def cp30Row13 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0x2fe3#16⟩, ⟨0x6453#16⟩, ⟨0xba92#16⟩, ⟨0x9bd9#16⟩, ⟨0x5af7#16⟩, ⟨0x14ca#16⟩, ⟨0x0f0a#16⟩, ⟨0xa960#16⟩,
     ⟨0xdc7a#16⟩, ⟨0x4a04#16⟩, ⟨0x0508#16⟩, ⟨0x2fa7#16⟩, ⟨0xbb22#16⟩, ⟨0x7e30#16⟩, ⟨0xccea#16⟩, ⟨0x4072#16⟩, ⟨0x4388#16⟩,
@@ -140,7 +140,7 @@ def cp30Row13 : PolyConst 30 :=
     ⟨0x333c#16⟩, ⟨0x180d#16⟩, ⟨0xb605#16⟩ ] }
 
 
-def cp30Row14 : PolyConst 30 :=
+@[expose] def cp30Row14 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0xea0d#16⟩, ⟨0x4874#16⟩, ⟨0xd793#16⟩, ⟨0x4263#16⟩, ⟨0xbec9#16⟩, ⟨0x1dfb#16⟩, ⟨0xce89#16⟩, ⟨0x5794#16⟩,
     ⟨0x0233#16⟩, ⟨0xaed5#16⟩, ⟨0x5918#16⟩, ⟨0x7f33#16⟩, ⟨0x0e11#16⟩, ⟨0x03b7#16⟩, ⟨0xffd6#16⟩, ⟨0x4843#16⟩, ⟨0x1958#16⟩,
@@ -148,7 +148,7 @@ def cp30Row14 : PolyConst 30 :=
     ⟨0x700b#16⟩, ⟨0x4fb6#16⟩, ⟨0xadd4#16⟩ ] }
 
 
-def cp30Row15 : PolyConst 30 :=
+@[expose] def cp30Row15 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0x58c4#16⟩, ⟨0x0994#16⟩, ⟨0xfd9b#16⟩, ⟨0x1959#16⟩, ⟨0xcd16#16⟩, ⟨0xd663#16⟩, ⟨0x3e73#16⟩, ⟨0xb8ff#16⟩,
     ⟨0xd06f#16⟩, ⟨0x5607#16⟩, ⟨0xd6c5#16⟩, ⟨0x6f21#16⟩, ⟨0x5c13#16⟩, ⟨0xfc61#16⟩, ⟨0xffd6#16⟩, ⟨0x751b#16⟩, ⟨0xbff6#16⟩,
@@ -156,7 +156,7 @@ def cp30Row15 : PolyConst 30 :=
     ⟨0x700b#16⟩, ⟨0xe262#16⟩, ⟨0xadd4#16⟩ ] }
 
 
-def cp30Row16 : PolyConst 30 :=
+@[expose] def cp30Row16 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0x07c6#16⟩, ⟨0x11ee#16⟩, ⟨0x21b0#16⟩, ⟨0xc72a#16⟩, ⟨0x7878#16⟩, ⟨0x8a40#16⟩, ⟨0xb70e#16⟩, ⟨0x01e0#16⟩,
     ⟨0xa003#16⟩, ⟨0x6249#16⟩, ⟨0x26db#16⟩, ⟨0x911c#16⟩, ⟨0xcb6b#16⟩, ⟨0x7e6e#16⟩, ⟨0xa81c#16⟩, ⟨0xd13f#16⟩, ⟨0x0b7f#16⟩,
@@ -164,7 +164,7 @@ def cp30Row16 : PolyConst 30 :=
     ⟨0x099b#16⟩, ⟨0xf1c7#16⟩, ⟨0x5fe0#16⟩ ] }
 
 
-def cp30Row17 : PolyConst 30 :=
+@[expose] def cp30Row17 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0x87b8#16⟩, ⟨0xa86b#16⟩, ⟨0x08a3#16⟩, ⟨0x692d#16⟩, ⟨0xb5c3#16⟩, ⟨0xae7d#16⟩, ⟨0x1ea3#16⟩, ⟨0x1bc6#16⟩,
     ⟨0x3b15#16⟩, ⟨0x5d2b#16⟩, ⟨0x875c#16⟩, ⟨0x2222#16⟩, ⟨0x3c97#16⟩, ⟨0xd672#16⟩, ⟨0xa81c#16⟩, ⟨0xdcf0#16⟩, ⟨0x8b17#16⟩,
@@ -172,7 +172,7 @@ def cp30Row17 : PolyConst 30 :=
     ⟨0x099b#16⟩, ⟨0xae27#16⟩, ⟨0x5fe0#16⟩ ] }
 
 
-def cp30Row18 : PolyConst 30 :=
+@[expose] def cp30Row18 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0xed5a#16⟩, ⟨0x5fbd#16⟩, ⟨0x7363#16⟩, ⟨0x065b#16⟩, ⟨0x4f7e#16⟩, ⟨0x617d#16⟩, ⟨0x1d09#16⟩, ⟨0x0388#16⟩,
     ⟨0x7d52#16⟩, ⟨0xe977#16⟩, ⟨0x6853#16⟩, ⟨0x3fb5#16⟩, ⟨0x690b#16⟩, ⟨0x4029#16⟩, ⟨0x9b20#16⟩, ⟨0x7fdb#16⟩, ⟨0x6455#16⟩,
@@ -180,7 +180,7 @@ def cp30Row18 : PolyConst 30 :=
     ⟨0x4aac#16⟩, ⟨0xcf6f#16⟩, ⟨0x4431#16⟩ ] }
 
 
-def cp30Row19 : PolyConst 30 :=
+@[expose] def cp30Row19 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0xc65e#16⟩, ⟨0x11de#16⟩, ⟨0xaa0f#16⟩, ⟨0x8bc7#16⟩, ⟨0x3d3f#16⟩, ⟨0xd7f3#16⟩, ⟨0x697b#16⟩, ⟨0x4dda#16⟩,
     ⟨0x25ff#16⟩, ⟨0x2b04#16⟩, ⟨0xb9df#16⟩, ⟨0x06e9#16⟩, ⟨0xb61a#16⟩, ⟨0xdb09#16⟩, ⟨0x9b20#16⟩, ⟨0x869c#16⟩, ⟨0xed3a#16⟩,
@@ -188,7 +188,7 @@ def cp30Row19 : PolyConst 30 :=
     ⟨0x4aac#16⟩, ⟨0x8b5e#16⟩, ⟨0x4431#16⟩ ] }
 
 
-def cp30Row20 : PolyConst 30 :=
+@[expose] def cp30Row20 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0xe12f#16⟩, ⟨0xfdd3#16⟩, ⟨0x6c80#16⟩, ⟨0xb8b7#16⟩, ⟨0xaf51#16⟩, ⟨0xf123#16⟩, ⟨0x2e48#16⟩, ⟨0x667e#16⟩,
     ⟨0x5dd4#16⟩, ⟨0x9814#16⟩, ⟨0x35ba#16⟩, ⟨0x6750#16⟩, ⟨0xf98f#16⟩, ⟨0xc54a#16⟩, ⟨0xffd6#16⟩, ⟨0x0890#16⟩, ⟨0x3af7#16⟩,
@@ -196,7 +196,7 @@ def cp30Row20 : PolyConst 30 :=
     ⟨0xfca9#16⟩, ⟨0x6b7e#16⟩, ⟨0x0706#16⟩ ] }
 
 
-def cp30Row21 : PolyConst 30 :=
+@[expose] def cp30Row21 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0xf99b#16⟩, ⟨0xa474#16⟩, ⟨0x7a1c#16⟩, ⟨0xf18b#16⟩, ⟨0x5e6c#16⟩, ⟨0xdb0b#16⟩, ⟨0xf8c2#16⟩, ⟨0x3bc6#16⟩,
     ⟨0x36bd#16⟩, ⟨0x94dd#16⟩, ⟨0x36c5#16⟩, ⟨0xc83b#16⟩, ⟨0x015f#16⟩, ⟨0x3a9c#16⟩, ⟨0xffd6#16⟩, ⟨0x8ab6#16⟩, ⟨0x9b1a#16⟩,
@@ -204,7 +204,7 @@ def cp30Row21 : PolyConst 30 :=
     ⟨0xfca9#16⟩, ⟨0x6c78#16⟩, ⟨0x0706#16⟩ ] }
 
 
-def cp30Row22 : PolyConst 30 :=
+@[expose] def cp30Row22 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0x0e15#16⟩, ⟨0x54fe#16⟩, ⟨0x2a9c#16⟩, ⟨0xc4c0#16⟩, ⟨0xad44#16⟩, ⟨0x8021#16⟩, ⟨0x87d0#16⟩, ⟨0x97cc#16⟩,
     ⟨0x84cc#16⟩, ⟨0x812e#16⟩, ⟨0x8cdd#16⟩, ⟨0xefbd#16⟩, ⟨0xc999#16⟩, ⟨0x9869#16⟩, ⟨0xccea#16⟩, ⟨0x9fb1#16⟩, ⟨0x9f4b#16⟩,
@@ -212,7 +212,7 @@ def cp30Row22 : PolyConst 30 :=
     ⟨0xbf9e#16⟩, ⟨0x8b5e#16⟩, ⟨0x1cd7#16⟩ ] }
 
 
-def cp30Row23 : PolyConst 30 :=
+@[expose] def cp30Row23 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0xa3ef#16⟩, ⟨0x3d89#16⟩, ⟨0x9551#16⟩, ⟨0x7817#16⟩, ⟨0x0104#16⟩, ⟨0x820a#16⟩, ⟨0x8c85#16⟩, ⟨0x7a13#16⟩,
     ⟨0x0086#16⟩, ⟨0x02c5#16⟩, ⟨0xffa9#16⟩, ⟨0xe52e#16⟩, ⟨0x19a4#16⟩, ⟨0x5483#16⟩, ⟨0xccea#16⟩, ⟨0x7256#16⟩, ⟨0xa090#16⟩,
@@ -220,7 +220,7 @@ def cp30Row23 : PolyConst 30 :=
     ⟨0xbf9e#16⟩, ⟨0x9789#16⟩, ⟨0x1cd7#16⟩ ] }
 
 
-def cp30Row24 : PolyConst 30 :=
+@[expose] def cp30Row24 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0x3119#16⟩, ⟨0x5229#16⟩, ⟨0xacc9#16⟩, ⟨0xedd0#16⟩, ⟨0x0dc0#16⟩, ⟨0x9147#16⟩, ⟨0xc3bb#16⟩, ⟨0x19e7#16⟩,
     ⟨0xf8e8#16⟩, ⟨0x8a8d#16⟩, ⟨0x93db#16⟩, ⟨0x73c7#16⟩, ⟨0xc1a7#16⟩, ⟨0x7bc0#16⟩, ⟨0x64f6#16⟩, ⟨0x9f1f#16⟩, ⟨0xd7e4#16⟩,
@@ -228,7 +228,7 @@ def cp30Row24 : PolyConst 30 :=
     ⟨0xb605#16⟩, ⟨0x09c5#16⟩, ⟨0x4337#16⟩ ] }
 
 
-def cp30Row25 : PolyConst 30 :=
+@[expose] def cp30Row25 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0xf746#16⟩, ⟨0x2183#16⟩, ⟨0x22d6#16⟩, ⟨0x134f#16⟩, ⟨0x1874#16⟩, ⟨0x382d#16⟩, ⟨0x6143#16⟩, ⟨0x48d9#16⟩,
     ⟨0x89e2#16⟩, ⟨0xc348#16⟩, ⟨0x4128#16⟩, ⟨0xe7a4#16⟩, ⟨0xe666#16⟩, ⟨0x1f36#16⟩, ⟨0x64f6#16⟩, ⟨0x281a#16⟩, ⟨0x6a8f#16⟩,
@@ -236,7 +236,7 @@ def cp30Row25 : PolyConst 30 :=
     ⟨0xb605#16⟩, ⟨0x4af2#16⟩, ⟨0x4337#16⟩ ] }
 
 
-def cp30Row26 : PolyConst 30 :=
+@[expose] def cp30Row26 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0xf900#16⟩, ⟨0x0b69#16⟩, ⟨0x804e#16⟩, ⟨0x584a#16⟩, ⟨0x4b48#16⟩, ⟨0x8593#16⟩, ⟨0x8f66#16⟩, ⟨0x584c#16⟩,
     ⟨0xe214#16⟩, ⟨0x4aa7#16⟩, ⟨0x6803#16⟩, ⟨0x3d0f#16⟩, ⟨0x8820#16⟩, ⟨0x45b3#16⟩, ⟨0x57ca#16⟩, ⟨0x6b44#16⟩, ⟨0xa814#16⟩,
@@ -244,7 +244,7 @@ def cp30Row26 : PolyConst 30 :=
     ⟨0xf532#16⟩, ⟨0xd04b#16⟩, ⟨0x58e6#16⟩ ] }
 
 
-def cp30Row27 : PolyConst 30 :=
+@[expose] def cp30Row27 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0xbf26#16⟩, ⟨0xe14c#16⟩, ⟨0xf2db#16⟩, ⟨0x5b17#16⟩, ⟨0x1cb4#16⟩, ⟨0xc0f8#16⟩, ⟨0xf041#16⟩, ⟨0x60ff#16⟩,
     ⟨0xea21#16⟩, ⟨0x1d8e#16⟩, ⟨0xcafb#16⟩, ⟨0x2ffb#16⟩, ⟨0x870c#16⟩, ⟨0x1279#16⟩, ⟨0x57ca#16⟩, ⟨0x547a#16⟩, ⟨0x57bb#16⟩,
@@ -252,7 +252,7 @@ def cp30Row27 : PolyConst 30 :=
     ⟨0xf532#16⟩, ⟨0x88ad#16⟩, ⟨0x58e6#16⟩ ] }
 
 
-def cp30Row28 : PolyConst 30 :=
+@[expose] def cp30Row28 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0xf42a#16⟩, ⟨0x6b09#16⟩, ⟨0x7e55#16⟩, ⟨0xdf2d#16⟩, ⟨0x4f65#16⟩, ⟨0x1218#16⟩, ⟨0x4f42#16⟩, ⟨0x2466#16⟩,
     ⟨0xf3a0#16⟩, ⟨0x6120#16⟩, ⟨0x0c37#16⟩, ⟨0x75f5#16⟩, ⟨0xdbf1#16⟩, ⟨0x5d17#16⟩, ⟨0x333c#16⟩, ⟨0x6417#16⟩, ⟨0xc00c#16⟩,
@@ -260,7 +260,7 @@ def cp30Row28 : PolyConst 30 :=
     ⟨0x4337#16⟩, ⟨0x0706#16⟩, ⟨0x1bd1#16⟩ ] }
 
 
-def cp30Row29 : PolyConst 30 :=
+@[expose] def cp30Row29 : PolyConst 30 :=
   { coefficients := [
     ⟨0x0000#16⟩, ⟨0x88fb#16⟩, ⟨0x8177#16⟩, ⟨0xdbf1#16⟩, ⟨0x694c#16⟩, ⟨0xefaa#16⟩, ⟨0x44a9#16⟩, ⟨0x929d#16⟩, ⟨0x438f#16⟩,
     ⟨0xa607#16⟩, ⟨0x0dff#16⟩, ⟨0x7c3c#16⟩, ⟨0xdcf8#16⟩, ⟨0xf31c#16⟩, ⟨0x6e2b#16⟩, ⟨0x333c#16⟩, ⟨0x569a#16⟩, ⟨0x15f9#16⟩,
@@ -268,7 +268,7 @@ def cp30Row29 : PolyConst 30 :=
     ⟨0x4337#16⟩, ⟨0x1cd7#16⟩, ⟨0x1bd1#16⟩ ] }
 
 
-def cp30Polys : List (PolyConst 30) :=
+@[expose] def cp30Polys : List (PolyConst 30) :=
   [cp30Row0, cp30Row1, cp30Row2, cp30Row3, cp30Row4, cp30Row5, cp30Row6, cp30Row7, cp30Row8, cp30Row9, cp30Row10, cp30Row11, cp30Row12, cp30Row13, cp30Row14, cp30Row15, cp30Row16, cp30Row17, cp30Row18, cp30Row19, cp30Row20, cp30Row21, cp30Row22, cp30Row23, cp30Row24, cp30Row25, cp30Row26, cp30Row27, cp30Row28, cp30Row29]
 
 theorem completePointsPolys30_eq : COMPLETE_POINTS_POLYS_30 = .ok cp30Polys :=

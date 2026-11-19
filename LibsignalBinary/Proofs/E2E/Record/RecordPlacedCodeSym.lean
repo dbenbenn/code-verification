@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionPlacedObj
+public import GeneratedLean.LibsignalSessionPlacedObj -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 
 /-!
@@ -20,7 +20,7 @@ Re-exports the per-block instruction fetch lemmas from `RecordPlacedCodeSymA`–
 resolution lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

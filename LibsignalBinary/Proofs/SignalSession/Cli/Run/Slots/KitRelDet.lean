@@ -9,20 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.LoadRec
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
-public import LibsignalBinary.Proofs.SessionRecordMin.Deserialize
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Segs
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTraced
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.LoadRec -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordMin.Deserialize -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Segs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOk -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOk -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTraced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Epochs
 import LibsignalBinary.Proofs.E2E.HooksE.TripleRatchetHooksCommon
 import LibsignalBinary.Proofs.E2E.V1.ReachSteps
 import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.B3DeserQ
-import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkCli
-import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCli
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkCli -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHook
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.ReadFileHook
@@ -32,7 +30,11 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.TrapBridge
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueX
 import LibsignalBinary.Proofs.TripleRatchet.Glue
 import LibsignalBinary.Proofs.TripleRatchet.Hooks
-import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXCli -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Session -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsX -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # CLI Store Kit Answer Determinism, Record Scope Preservation, and Trap-Program Kit Glue
@@ -45,7 +47,7 @@ identity kit contract bundles on `cliExterns W`, `trTrapExterns W.C (cliExterns 
 `cliExternsWith ext`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -508,7 +510,7 @@ theorem cliDecModelRecOk_of_scopeIn {A : RustAlloc} {b : BitVec 64} {rd : ReadRu
   exact ⟨hOut rec' hKit, hLen⟩
 
 /-- Fixed-`st0`, `kit.addrOk`-guarded variant of `DecModelRecOk`. -/
-def DecModelRecOkAt {A : RustAlloc} {b : BitVec 64}
+@[expose] def DecModelRecOkAt {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (st0 : kit.StoreState)
     (C : Crypto) (S : SpqrModel) (parse : UuidParser)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) : Prop :=
@@ -573,160 +575,6 @@ theorem hookSat_trTrap_of_cli {α : Type} (W : CliHooks) {n : String} {spec : Sp
   rcases h with ⟨fn, hfn, hok⟩
   exact ⟨fn, (trTrapExterns_cli_eq W hn hnp).trans hfn, hok⟩
 
-theorem trTrap_stub_ok {α : Type} (W : CliHooks) (img : Obj.Image) {name : String}
-    {h : State → State} {spec : Spec α} {stub : Nat}
-    (hfn : libsignalSessionCode.fnOff name = stub) (hs : stub < 2 ^ 64)
-    (hstub : ∀ H, (libsignalSessionCode.rebase 0 H).hookAtOff? stub = H name)
-    (hn : name ≠ rngFillName) (hnp : Rust.isPanicSymbol name = false)
-    (hrow : (name, h) ∈ cliHookTable W) (hh : HookOk h spec) :
-    subroutine_ok (mProg img (trTrapExterns W.C (cliExterns W)))
-      ((mProg img (trTrapExterns W.C (cliExterns W))).fnAddr name) spec := by
-  have hsat : HookSat (trTrapExterns W.C (cliExterns W)) name spec :=
-    hookSat_trTrap_of_cli W hn hnp ⟨h, cliExterns_row W hrow, hh⟩
-  have h1 := hook_ok_at (P := libsignalSessionCode) (b := img.base)
-    (hooks := trTrapExterns W.C (cliExterns W))
-    (hname := name) (k := 0) hfn (Nat.add_zero _) hs hstub hnp hsat
-  simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero] using h1
-
-theorem shim_trTrap_ok {α : Type} (W : CliHooks) (img : Obj.Image) {spec : Spec α}
-    (hh : HookOk hookNoop spec) :
-    subroutine_ok (mProg img (trTrapExterns W.C (cliExterns W)))
-      ((mProg img (trTrapExterns W.C (cliExterns W))).fnAddr shimName) spec :=
-  trTrap_stub_ok W img shim_fnOff (by decide)
-    (ls_hook% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-    (by decide) (by simp [Rust.isPanicSymbol, shimName]) (shim_row W) hh
-
-theorem alloc_trTrap_ok {α : Type} (W : CliHooks) (img : Obj.Image) {spec : Spec α}
-    (hh : HookOk E2E.allocHook0 spec) :
-    subroutine_ok (mProg img (trTrapExterns W.C (cliExterns W)))
-      ((mProg img (trTrapExterns W.C (cliExterns W))).fnAddr allocName) spec :=
-  trTrap_stub_ok W img alloc_fnOff (by decide) (ls_hook% "__rustc::__rust_alloc")
-    (by decide) (by simp [Rust.isPanicSymbol, allocName]) (alloc_row W) hh
-
-theorem dealloc_trTrap_ok {α : Type} (W : CliHooks) (img : Obj.Image) {spec : Spec α}
-    (hh : HookOk E2E.deallocHook spec) :
-    subroutine_ok (mProg img (trTrapExterns W.C (cliExterns W)))
-      ((mProg img (trTrapExterns W.C (cliExterns W))).fnAddr deallocName) spec :=
-  trTrap_stub_ok W img dealloc_fnOff (by decide) (ls_hook% "__rustc::__rust_dealloc")
-    (by decide) (by simp [Rust.isPanicSymbol, deallocName]) (dealloc_row W) hh
-
-theorem realloc_trTrap_ok {α : Type} (W : CliHooks) (img : Obj.Image) {spec : Spec α}
-    (hh : HookOk E2E.reallocHook0 spec) :
-    subroutine_ok (mProg img (trTrapExterns W.C (cliExterns W)))
-      ((mProg img (trTrapExterns W.C (cliExterns W))).fnAddr reallocName) spec :=
-  trTrap_stub_ok W img realloc_fnOff (by decide) (ls_hook% "__rustc::__rust_realloc")
-    (by decide) (by simp [Rust.isPanicSymbol, reallocName]) (realloc_row W) hh
-
-theorem memset_trTrap_ok {α : Type} (W : CliHooks) (img : Obj.Image) {spec : Spec α}
-    (hh : HookOk hookMemset spec) :
-    subroutine_ok (mProg img (trTrapExterns W.C (cliExterns W)))
-      ((mProg img (trTrapExterns W.C (cliExterns W))).fnAddr memsetName) spec :=
-  trTrap_stub_ok W img memset_fnOff (by decide) (ls_hook% "memset")
-    (by decide) (by simp [Rust.isPanicSymbol, memsetName]) (memset_row W) hh
-
-theorem memmove_trTrap_ok {α : Type} (W : CliHooks) (img : Obj.Image) {spec : Spec α}
-    (hh : HookOk hookMemmove spec) :
-    subroutine_ok (mProg img (trTrapExterns W.C (cliExterns W)))
-      ((mProg img (trTrapExterns W.C (cliExterns W))).fnAddr memmoveName) spec :=
-  trTrap_stub_ok W img memmove_fnOff (by decide) (ls_hook% "memmove")
-    (by decide) (by simp [Rust.isPanicSymbol, memmoveName]) (memmove_row W) hh
-
-theorem memcpy_trTrap_ok {α : Type} (W : CliHooks) (img : Obj.Image) {spec : Spec α}
-    (hh : HookOk hookMemcpy spec) :
-    subroutine_ok (mProg img (trTrapExterns W.C (cliExterns W)))
-      ((mProg img (trTrapExterns W.C (cliExterns W))).fnAddr memcpyName) spec :=
-  trTrap_stub_ok W img memcpy_fnOff (by decide) (ls_hook% "memcpy")
-    (by decide) (by simp [Rust.isPanicSymbol, memcpyName]) (memcpy_row W) hh
-
-theorem allocContracts_trTrap (W : CliHooks) (img : Obj.Image) :
-    AllocContracts img.base E2E.HooksE.A0 (trTrapExterns W.C (cliExterns W)) where
-  alloc := alloc_trTrap_ok W img cliAllocHooks_A0.alloc
-  dealloc := dealloc_trTrap_ok W img cliAllocHooks_A0.dealloc
-  realloc := realloc_trTrap_ok W img cliAllocHooks_A0.realloc
-  shim := shim_trTrap_ok W img sessionShim_hookOk
-  memcpy stk := memcpy_trTrap_ok W img (hookMemcpy_ok stk)
-  session_memcpy stk := memcpy_trTrap_ok W img (hookMemcpy_trace_ok stk)
-  memcpy_region := memcpy_trTrap_ok W img hookMemcpy_region_ok
-  session_memcpy_region := memcpy_trTrap_ok W img hookMemcpy_region_trace_ok
-  memmove stk := memmove_trTrap_ok W img (hookMemmove_ok stk)
-  session_memmove stk := memmove_trTrap_ok W img (hookMemmove_trace_ok stk)
-  memset stk hpos := memset_trTrap_ok W img (hookMemset_ok stk hpos)
-  session_memset stk hpos := memset_trTrap_ok W img (hookMemset_trace_ok stk hpos)
-  memset_region := memset_trTrap_ok W img hookMemset_region_ok
-  session_memset_region := memset_trTrap_ok W img hookMemset_region_trace_ok
-
-theorem allocContractsX_trTrap (W : CliHooks) (img : Obj.Image) :
-    AllocContractsX img E2E.HooksE.A0 (trTrapExterns W.C (cliExterns W)) where
-  alloc := subroutine_ok_inImage_of_subroutine_ok img <| alloc_trTrap_ok W img <|
-    hookOk_rustAllocWithStack (stk := extHookStack) cliAllocHooks_A0.alloc
-      allocHookStack_le_extHookStack extHookStack_le
-  dealloc := subroutine_ok_inImage_of_subroutine_ok img <| dealloc_trTrap_ok W img <|
-    hookOk_rustDeallocExternWithStack (stk := extHookStack) cliAllocHooks_A0.dealloc
-      allocHookStack_le_extHookStack extHookStack_le
-  realloc := subroutine_ok_inImage_of_subroutine_ok img <| realloc_trTrap_ok W img <|
-    hookOk_rustReallocExternWithStack (stk := extHookStack) cliAllocHooks_A0.realloc
-      allocHookStack_le_extHookStack extHookStack_le
-  shim stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <| shim_trTrap_ok W img <|
-    hookOk_withStack sessionShim_hookOk stk
-  memcpy stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <| memcpy_trTrap_ok W img <|
-    hookMemcpy_ok stk
-  session_memcpy stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <| memcpy_trTrap_ok W img <|
-    hookMemcpy_trace_ok stk
-  memcpy_region stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <| memcpy_trTrap_ok W img <|
-    hookOk_withStack hookMemcpy_region_ok stk
-  session_memcpy_region stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <|
-    memcpy_trTrap_ok W img <| hookOk_withStack hookMemcpy_region_trace_ok stk
-  memmove stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <| memmove_trTrap_ok W img <|
-    hookMemmove_ok stk
-  session_memmove stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <| memmove_trTrap_ok W img <|
-    hookMemmove_trace_ok stk
-  memset stk hle _ := subroutine_ok_inImage_of_subroutine_ok img <| memset_trTrap_ok W img <|
-    hookMemset_ok stk (pos_of_extHookStack_le hle)
-  session_memset stk hle _ := subroutine_ok_inImage_of_subroutine_ok img <| memset_trTrap_ok W img <|
-    hookMemset_trace_ok stk (pos_of_extHookStack_le hle)
-  memset_region stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <| memset_trTrap_ok W img <|
-    hookOk_withStack hookMemset_region_ok stk
-  session_memset_region stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <|
-    memset_trTrap_ok W img <| hookOk_withStack hookMemset_region_trace_ok stk
-
-theorem allocContractsFs_trTrap (W : CliHooks) (img : Obj.Image) :
-    AllocContractsFs img E2E.HooksE.A0 (trTrapExterns W.C (cliExterns W)) where
-  alloc := subroutine_ok_inImage_of_subroutine_ok img <| alloc_trTrap_ok W img <|
-    (hookOk_rustAllocWithStack (stk := extHookStack) cliAllocHooks_A0.alloc
-      allocHookStack_le_extHookStack extHookStack_le).keepsFs allocHook0_fs
-  dealloc := subroutine_ok_inImage_of_subroutine_ok img <| dealloc_trTrap_ok W img <|
-    (hookOk_rustDeallocExternWithStack (stk := extHookStack) cliAllocHooks_A0.dealloc
-      allocHookStack_le_extHookStack extHookStack_le).keepsFs deallocHook_fs
-  realloc := subroutine_ok_inImage_of_subroutine_ok img <| realloc_trTrap_ok W img <|
-    (hookOk_rustReallocExternWithStack (stk := extHookStack) cliAllocHooks_A0.realloc
-      allocHookStack_le_extHookStack extHookStack_le).keepsFs reallocHook0_fs
-  shim stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <| shim_trTrap_ok W img <|
-    (hookOk_withStack sessionShim_hookOk stk).keepsFs hookNoop_fs
-  memcpy stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <| memcpy_trTrap_ok W img <|
-    (hookMemcpy_ok stk).keepsFs hookMemcpy_fs
-  session_memcpy stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <| memcpy_trTrap_ok W img <|
-    (hookMemcpy_trace_ok stk).keepsFs hookMemcpy_fs
-  memcpy_region stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <| memcpy_trTrap_ok W img <|
-    (hookOk_withStack hookMemcpy_region_ok stk).keepsFs hookMemcpy_fs
-  session_memcpy_region stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <|
-    memcpy_trTrap_ok W img <| (hookOk_withStack hookMemcpy_region_trace_ok stk).keepsFs hookMemcpy_fs
-  memmove stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <| memmove_trTrap_ok W img <|
-    (hookMemmove_ok stk).keepsFs hookMemmove_fs
-  session_memmove stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <| memmove_trTrap_ok W img <|
-    (hookMemmove_trace_ok stk).keepsFs hookMemmove_fs
-  memset stk hle _ := subroutine_ok_inImage_of_subroutine_ok img <| memset_trTrap_ok W img <|
-    (hookMemset_ok stk (pos_of_extHookStack_le hle)).keepsFs hookMemset_fs
-  session_memset stk hle _ := subroutine_ok_inImage_of_subroutine_ok img <| memset_trTrap_ok W img <|
-    (hookMemset_trace_ok stk (pos_of_extHookStack_le hle)).keepsFs hookMemset_fs
-  memset_region stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <| memset_trTrap_ok W img <|
-    (hookOk_withStack hookMemset_region_ok stk).keepsFs hookMemset_fs
-  session_memset_region stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <|
-    memset_trTrap_ok W img <| (hookOk_withStack hookMemset_region_trace_ok stk).keepsFs hookMemset_fs
-  session_memcpy_region_ro stk _ _ := subroutine_ok_inImage_of_subroutine_ok img <|
-    memcpy_trTrap_ok W img <|
-      (hookOk_withStack CryptoVerification.SpqrV1.Alloc.hookMemcpy_region_ro_trace_ok stk).keepsFs
-        hookMemcpy_fs
-
 private theorem hookOk_withExternStackFromAlloc' {α : Type} {fn : State → State} {spec : Spec α}
     (h : HookOk fn spec)
     (hpan : ∀ x R s0 sf, sf.mem ⊨ spec.onPanic x s0 sf ∗ (memRegion (s0.sp - 16384#64) 12288 ∗ R) →
@@ -773,114 +621,6 @@ private theorem hookOk_withHookStack {α : Type} {fn : State → State} {spec : 
   · exact False.elim (hexit x code R s0 (fn s0) he)
   · exact False.elim (hoom x R s0 (fn s0) ho)
 
-/-- `Stage2ContractsMin` on `trTrapExterns W.C (cliExterns W)`. -/
-theorem stage2ContractsMin_trTrap {img : Obj.Image} (W : CliHooks)
-    (himg : Obj.Loads libsignalSessionImage img) :
-    Proofs.libsignal.Hooks2.Stage2ContractsMin img (trTrapExterns W.C (cliExterns W)) where
-  loads := himg
-  alloc_A0 := Proofs.libsignal.Hooks2.sub_ok_at_of_fnAddr
-    (Proofs.libsignal.Hooks2.SP2Ext_fnAddr img.base _ allocName) <|
-    subroutine_ok_inImage_of_subroutine_ok img <| alloc_trTrap_ok W img <|
-    hookOk_withExternStackFromAlloc' E2E.HooksE.allocHook0_ok
-      (fun _ _ _ _ hp => False.elim (not_satisfies_false_sepConj hp))
-      (fun _ _ _ _ _ he => not_satisfies_false_sepConj he)
-      (fun _ _ _ _ ho => not_satisfies_false_sepConj ho)
-  deallocLayout_A0 := Proofs.libsignal.Hooks2.sub_ok_at_of_fnAddr
-    (Proofs.libsignal.Hooks2.SP2Ext_fnAddr img.base _ deallocName) <|
-    subroutine_ok_inImage_of_subroutine_ok img <| dealloc_trTrap_ok W img <|
-    hookOk_withExternStackFromAlloc' deallocLayoutHook0_ok
-      (fun _ _ _ _ hp => False.elim (not_satisfies_false_sepConj hp))
-      (fun _ _ _ _ _ he => not_satisfies_false_sepConj he)
-      (fun _ _ _ _ ho => not_satisfies_false_sepConj ho)
-  realloc_A0 := Proofs.libsignal.Hooks2.sub_ok_at_of_fnAddr
-    (Proofs.libsignal.Hooks2.SP2Ext_fnAddr img.base _ reallocName) <|
-    subroutine_ok_inImage_of_subroutine_ok img <| realloc_trTrap_ok W img <|
-    hookOk_withExternStackFromAlloc' E2E.HooksE.reallocHook0_ok
-      (fun _ _ _ _ hp => False.elim (not_satisfies_false_sepConj hp))
-      (fun _ _ _ _ _ he => not_satisfies_false_sepConj he)
-      (fun _ _ _ _ ho => not_satisfies_false_sepConj ho)
-  shim := Proofs.libsignal.Hooks2.sub_ok_at_of_fnAddr
-    (Proofs.libsignal.Hooks2.SP2Ext_fnAddr img.base _ shimName) <|
-    subroutine_ok_inImage_of_subroutine_ok img <| shim_trTrap_ok W img <|
-    hookOk_withHookStack sessionShim_hookOk CryptoVerification.LibsignalTripleRatchet.extHookStack
-      (fun _ _ _ _ hp => not_satisfies_false_sepConj hp)
-      (fun _ _ _ _ _ he => not_satisfies_false_sepConj he)
-      (fun _ _ _ _ ho => not_satisfies_false_sepConj ho)
-  memcpy := Proofs.libsignal.Hooks2.sub_ok_at_of_fnAddr
-    (Proofs.libsignal.Hooks2.SP2Ext_fnAddr img.base _ memcpyName) <|
-    (allocContractsX_trTrap W img).session_memcpy
-      CryptoVerification.LibsignalTripleRatchet.extHookStack (Nat.le_refl _) (by decide)
-  memmove := Proofs.libsignal.Hooks2.sub_ok_at_of_fnAddr
-    (Proofs.libsignal.Hooks2.SP2Ext_fnAddr img.base _ memmoveName) <|
-    (allocContractsX_trTrap W img).session_memmove
-      CryptoVerification.LibsignalTripleRatchet.extHookStack (Nat.le_refl _) (by decide)
-
-/-- `Stage2ContractsMin` on `cliExterns W`, transferred from `stage2ContractsMin_trTrap` via `trapsOnly_trTrap_cli`. -/
-theorem stage2ContractsMin_cli {img : Obj.Image} (W : CliHooks)
-    (himg : Obj.Loads libsignalSessionImage img) :
-    Proofs.libsignal.Hooks2.Stage2ContractsMin img (cliExterns W) :=
-  let h := stage2ContractsMin_trTrap W himg
-  let ht := trapsOnly_trTrap_cli img.base W
-  ⟨himg,
-   subroutine_ok.of_trapsOnly ht h.alloc_A0,
-   subroutine_ok.of_trapsOnly ht h.deallocLayout_A0,
-   subroutine_ok.of_trapsOnly ht h.realloc_A0,
-   subroutine_ok.of_trapsOnly ht h.shim,
-   subroutine_ok.of_trapsOnly ht h.memcpy,
-   subroutine_ok.of_trapsOnly ht h.memmove⟩
-
-/-- `SessionRecord::deserialize` satisfies `sessDeserializeSpec scopeKit E2E.HooksE.A0 img` under `Stage2ContractsMin img ext`. -/
-theorem sessDeserialize_scopeKit_ok {img : Obj.Image} {ext : String → Option (State → State)}
-    (hStage2 : Proofs.libsignal.Hooks2.Stage2ContractsMin img ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recordDeserializeName)
-      (sessDeserializeSpec scopeKit E2E.HooksE.A0 img) := by
-  have hCallees := Proofs.libsignal.Hooks2.deserializeCalleesAtW_of_stage2Min hStage2
-  exact Symbolic.Swarm.TRREF.B3DeserQ.deserializeBodyQW_ok img ext
-    (Symbolic.Swarm.TRREF.B3DeserQ.deserLeavesQW_of_contractsMin img ext hCallees hStage2)
-    (Symbolic.Swarm.TRREF.B3DeserQ.mergeFieldQW_ok img ext hStage2.loads hCallees)
-
-theorem sessDeserialize_of_sub_scopeKit_ok {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    (hStage2 : Proofs.libsignal.Hooks2.Stage2ContractsMin img ext)
-    (hsub : ∀ r, Scope r → scopeKit r) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recordDeserializeName)
-      (sessDeserializeSpec Scope E2E.HooksE.A0 img) := by
-  refine subroutine_ok_map_panic (sessDeserialize_scopeKit_ok hStage2) fun x R s0 hpre => ?_
-  refine ⟨x, R, ?_, fun _ h => h, fun _ h => h⟩
-  dsimp only [sessDeserializeSpec] at hpre ⊢
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-  obtain ⟨⟨hx0, hx1, hx8, hsc, hF, hsym⟩, hmem⟩ := hpre
-  exact ⟨⟨hx0, hx1, hx8, hsub x.r hsc, hF, hsym⟩, hmem⟩
-
-theorem sessDeserialize_scopeKit_trTrap {img : Obj.Image} (W : CliHooks)
-    (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (tripleRatchetProgAtExt img.base (trTrapExterns W.C (cliExterns W)))
-      ((tripleRatchetProgAtExt img.base (trTrapExterns W.C (cliExterns W))).fnAddr
-        recordDeserializeName)
-      (sessDeserializeSpec scopeKit E2E.HooksE.A0 img) :=
-  sessDeserialize_scopeKit_ok (stage2ContractsMin_trTrap W himg)
-
-theorem sessDeserialize_scopeKit_cli {img : Obj.Image} (W : CliHooks)
-    (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (tripleRatchetProgAtExt img.base (cliExterns W))
-      ((tripleRatchetProgAtExt img.base (cliExterns W)).fnAddr recordDeserializeName)
-      (sessDeserializeSpec scopeKit E2E.HooksE.A0 img) :=
-  subroutine_ok_cli_of_trTrap (sessDeserialize_scopeKit_trTrap W himg)
-
-alias cliExterns_sessDeserialize_scopeKit := sessDeserialize_scopeKit_cli
-
-theorem cliExterns_sessDeserialize_of_sub_scopeKit {img : Obj.Image} (W : CliHooks)
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    (himg : Obj.Loads libsignalSessionImage img) (hsub : ∀ r, Scope r → scopeKit r) :
-    subroutine_ok (tripleRatchetProgAtExt img.base (cliExterns W))
-      ((tripleRatchetProgAtExt img.base (cliExterns W)).fnAddr recordDeserializeName)
-      (sessDeserializeSpec Scope E2E.HooksE.A0 img) :=
-  subroutine_ok_cli_of_trTrap
-    (sessDeserialize_of_sub_scopeKit_ok (stage2ContractsMin_trTrap W himg) hsub)
-
 private theorem rngTrap_fsT : HookFsTraced RunGlue.IsFsC rngTrap :=
   fun _ => FsTraced.of_eq rfl rfl
 
@@ -897,250 +637,7 @@ theorem fsTHooks_withPanics_trTrap (W : CliHooks) :
   · rw [withPanics_trTrap_ne W.C (cliExterns W) hr, cliExterns_agree W 0#64 hr] at h
     exact RunGlue.fsTHooks_withPanics (RunGlue.fsTHooks_cliExterns W) n f h
 
-theorem traceFsSound_trTrap (W : CliHooks) (b : BitVec 64) :
-    TraceFsSound (tripleRatchetProgAtExt b (trTrapExterns W.C (cliExterns W))) :=
-  RunGlue.traceFsSound_of_fsTHooks (fsTHooks_withPanics_trTrap W) RunGlue.fsTHooks_none
-
-/-- `RunHooks` on `trTrapExterns W.C (cliExterns W)` at `E2E.HooksE.A0`. -/
-theorem RunHooks.trTrap (W : CliHooks) (img : Obj.Image) :
-    RunHooks img E2E.HooksE.A0 (trTrapExterns W.C (cliExterns W)) where
-  alloc := allocContractsX_trTrap W img
-  allocFs := allocContractsFs_trTrap W img
-  memcpyRO := hookSat_trTrap_of_cli W (by decide)
-    (by simp [Rust.isPanicSymbol, memcpyName]) (cli_hookSat_memcpy_region_ro W)
-  bcmp := hookSat_trTrap_of_cli W (by decide)
-    (by simp [Rust.isPanicSymbol, cliBcmpName]) (RunGlue.cli_hookSat_bcmp W)
-  fs := traceFsSound_trTrap W img.base
-  utf8 :=
-    let ⟨err, herr⟩ := (RunHooks.cli W img).utf8
-    ⟨err, (trTrapExterns_cli_eq W (by decide) (by simp [Rust.isPanicSymbol])).trans herr⟩
-  memrchr :=
-    (trTrapExterns_cli_eq W (by decide) (by simp [Rust.isPanicSymbol])).trans
-      (cliExterns_memrchr W)
-  allocHooks :=
-    let hA := cliExterns_allocHooks W
-    ⟨hookSat_trTrap_of_cli W (by decide) (by simp [Rust.isPanicSymbol]) hA.alloc,
-     hookSat_trTrap_of_cli W (by decide) (by simp [Rust.isPanicSymbol]) hA.dealloc,
-     hookSat_trTrap_of_cli W (by decide) (by simp [Rust.isPanicSymbol]) hA.realloc⟩
-  allocZeroed := hookSat_trTrap_of_cli W (by decide)
-    (by simp [Rust.isPanicSymbol, allocZeroedName]) (cliExterns_allocZeroed W)
-  allocContracts := allocContracts_trTrap W img
-  formatInner := hookSat_trTrap_of_cli W (by decide)
-    (by simp [Rust.isPanicSymbol, formatInnerName]) (cliExterns_formatInner W)
-
-theorem cliReadFile_ok_trTrap (W : CliHooks) (img : Obj.Image) (stk : Nat) :
-    subroutine_ok (tripleRatchetProgAtExt img.base (trTrapExterns W.C (cliExterns W)))
-      ((tripleRatchetProgAtExt img.base (trTrapExterns W.C (cliExterns W))).fnAddr Cli.readFileName)
-      (readFileSpec cliIo.rd cliWrOk E2E.HooksE.A0 img stk) := by
-  have hsat := hookSat_trTrap_of_cli W (by decide)
-    (by simp [Rust.isPanicSymbol, Cli.readFileName])
-    (RunSkeleton.cliReadFile_hookSat W img stk)
-  have h := hook_ok_at (P := libsignalSessionCode) (b := img.base)
-    (hooks := trTrapExterns W.C (cliExterns W))
-    (hname := SignalSession.readFileName) (k := 0) Cli.readFile_fnOff (Nat.add_zero _) (by decide)
-    (ls_hook% "libsignal_cli_io::read_file")
-    (by simp [Rust.isPanicSymbol, SignalSession.readFileName]) hsat
-  simpa only [tripleRatchetProgAtExt, BitVec.ofNat_eq_ofNat, BitVec.add_zero] using h
-
-theorem serializeCanonX_trTrap (W : CliHooks) (img : Obj.Image) :
-    subroutine_ok (tripleRatchetProgAtExt img.base (trTrapExterns W.C (cliExterns W)))
-      ((tripleRatchetProgAtExt img.base (trTrapExterns W.C (cliExterns W))).fnAddr
-        CryptoVerification.SignalSession.Cli.recordSerializeName)
-      ((Proofs.libsignal.Hooks2.serializeCanonSpecX E2E.HooksE.A0).inImage img) :=
-  Store.SerGlueX.serializeCanonX_ok_of_trAllocContractsX (allocContractsX_trTrap W img)
-
-theorem trTrapExterns_blackBox (W : CliHooks) :
-    Rust.withPanics (trTrapExterns W.C (cliExterns W)) "subtle::black_box::<u8>" =
-      some CryptoVerification.LibsignalSession.blackBoxHook := by
-  have hne : ("subtle::black_box::<u8>" : String) ≠ rngFillName := by decide
-  rw [withPanics_trTrap_ne W.C (cliExterns W) hne, cliExterns_agree W 0#64 hne]
-  exact KitInst.cliExterns_blackBox W
-
-/-- `SessionOnlyKitOkSE` on `cliExterns W` at `Scope := scopeKit`. -/
-theorem cliSessKitOkSE_scopeKit_cli (W : CliHooks) {img : Obj.Image} {F0 : FsFiles}
-    {peer : AddrGhost} {readStk s1 s2 s3 s4 : Nat}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hs1 : loadShimNeed ≤ s1) (hs2 : loadPollNeed readStk ≤ s2)
-    (hs3 : storeShimNeed ≤ s3) (hs4 : storePollNeedX ≤ s4) :
-    MessageDecrypt.SessionOnlyKitOkSE
-      (cliSessionStoreSpec E2E.HooksE.A0 img.base cliIo.rd F0 cliWrOk scopeKit peer s1 s2 s3 s4)
-      scopeKit E2E.Record.encodeRecord (cliExterns W) :=
-  cliSessKitOkSE_cli W himg (sessDeserialize_scopeKit_cli W himg) hs1 hs2 hs3 hs4
-
-/-- `SessionOnlyKitOkSE` on `trTrapExterns W.C (cliExterns W)` at `E2E.HooksE.A0`. -/
-theorem cliSessKitOkSE_trTrap (W : CliHooks) {img : Obj.Image} {F0 : FsFiles}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop} {peer : AddrGhost}
-    {readStk s1 s2 s3 s4 : Nat}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hDeser : subroutine_ok (tripleRatchetProgAtExt img.base (trTrapExterns W.C (cliExterns W)))
-      ((tripleRatchetProgAtExt img.base (trTrapExterns W.C (cliExterns W))).fnAddr
-        recordDeserializeName)
-      (sessDeserializeSpec Scope E2E.HooksE.A0 img))
-    (hs1 : loadShimNeed ≤ s1) (hs2 : loadPollNeed readStk ≤ s2)
-    (hs3 : storeShimNeed ≤ s3) (hs4 : storePollNeedX ≤ s4) :
-    MessageDecrypt.SessionOnlyKitOkSE
-      (cliSessionStoreSpec E2E.HooksE.A0 img.base cliIo.rd F0 cliWrOk Scope peer s1 s2 s3 s4)
-      Scope E2E.Record.encodeRecord (trTrapExterns W.C (cliExterns W)) :=
-  cliSessKitOkSE himg (RunHooks.trTrap W img) (cliReadFile_ok_trTrap W img readStk)
-    hDeser (serializeCanonX_trTrap W img) hs1 hs2 hs3 hs4
-
-theorem cliSessKitOkSE_scopeKit_trTrap (W : CliHooks) {img : Obj.Image} {F0 : FsFiles}
-    {peer : AddrGhost} {readStk s1 s2 s3 s4 : Nat}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hs1 : loadShimNeed ≤ s1) (hs2 : loadPollNeed readStk ≤ s2)
-    (hs3 : storeShimNeed ≤ s3) (hs4 : storePollNeedX ≤ s4) :
-    MessageDecrypt.SessionOnlyKitOkSE
-      (cliSessionStoreSpec E2E.HooksE.A0 img.base cliIo.rd F0 cliWrOk scopeKit peer s1 s2 s3 s4)
-      scopeKit E2E.Record.encodeRecord (trTrapExterns W.C (cliExterns W)) :=
-  cliSessKitOkSE_trTrap W himg (sessDeserialize_scopeKit_trTrap W himg) hs1 hs2 hs3 hs4
-
-/-- Transfers `SessionOnlyKitOkSE` from `trTrapExterns C abs` to `SessionOnlyKitOkS` on `tripleRatchetProgAt img.base C ctl abs`. -/
-theorem sessionOnlyKitOkS_of_trTrap {A : RustAlloc} {img : Obj.Image}
-    {kit : SessionStoreSpec A img.base} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {C : Crypto} {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    (ctl : BitVec 64) {abs : String → Option (State → State)}
-    (h : MessageDecrypt.SessionOnlyKitOkSE kit Scope encRecord (trTrapExterns C abs)) :
-    MessageDecrypt.SessionOnlyKitOkS kit Scope C encRecord ctl abs :=
-  ⟨subroutine_ok_kit_of_trTrap h.loadShim,
-   subroutine_ok_kit_of_trTrap h.loadPoll,
-   subroutine_ok_kit_of_trTrap h.loadFutDrop,
-   subroutine_ok_kit_of_trTrap h.storeShim,
-   subroutine_ok_kit_of_trTrap h.storePoll,
-   subroutine_ok_kit_of_trTrap h.storeFutDrop⟩
-
-theorem cliSessKitOkS_scopeKit_kit (W : CliHooks) (ctl : BitVec 64) {img : Obj.Image}
-    {F0 : FsFiles} {peer : AddrGhost} {readStk s1 s2 s3 s4 : Nat}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hs1 : loadShimNeed ≤ s1) (hs2 : loadPollNeed readStk ≤ s2)
-    (hs3 : storeShimNeed ≤ s3) (hs4 : storePollNeedX ≤ s4) :
-    MessageDecrypt.SessionOnlyKitOkS
-      (cliSessionStoreSpec E2E.HooksE.A0 img.base cliIo.rd F0 cliWrOk scopeKit peer s1 s2 s3 s4)
-      scopeKit W.C E2E.Record.encodeRecord ctl (cliExterns W) :=
-  sessionOnlyKitOkS_of_trTrap ctl (cliSessKitOkSE_scopeKit_trTrap W himg hs1 hs2 hs3 hs4)
-
-theorem cliSessKitOkS_scopeKit_trTrap (W : CliHooks) (ctl : BitVec 64) {img : Obj.Image}
-    {F0 : FsFiles} {peer : AddrGhost} {readStk s1 s2 s3 s4 : Nat}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hs1 : loadShimNeed ≤ s1) (hs2 : loadPollNeed readStk ≤ s2)
-    (hs3 : storeShimNeed ≤ s3) (hs4 : storePollNeedX ≤ s4) :
-    MessageDecrypt.SessionOnlyKitOkS
-      (cliSessionStoreSpec E2E.HooksE.A0 img.base cliIo.rd F0 cliWrOk scopeKit peer s1 s2 s3 s4)
-      scopeKit W.C E2E.Record.encodeRecord ctl (trTrapExterns W.C (cliExterns W)) :=
-  sessionOnlyKitOkS_of_trTrap ctl <|
-    (trTrapExterns_idem W.C (cliExterns W)).symm ▸
-      cliSessKitOkSE_scopeKit_trTrap W himg hs1 hs2 hs3 hs4
-
-/-- `IdentityStoreKitOkIE` on `trTrapExterns W.C (cliExterns W)` at `E2E.HooksE.A0`. -/
-theorem cliIdKitOkIE_trTrap (W : CliHooks) {img : Obj.Image} {F0 : FsFiles} {peer : AddrGhost}
-    {readStk s1 s2 s3 s4 : Nat}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hs1 : trustShimNeed ≤ s1) (hs2 : trustPollNeed readStk ≤ s2)
-    (hs3 : saveShimNeed ≤ s3) (hs4 : savePollNeed readStk ≤ s4) :
-    StoreKit.Identity.IdentityStoreKitOkIE img
-      (cliIdentityStoreSpec E2E.HooksE.A0 img.base cliIo.rd F0 cliWrOk peer s1 s2 s3 s4)
-      (trTrapExterns W.C (cliExterns W)) :=
-  cliIdKitOkIE himg (RunHooks.trTrap W img) (cliReadFile_ok_trTrap W img readStk)
-    (Glue.publicKeyEq_ok_ext img.base (trTrapExterns_blackBox W)) hs1 hs2 hs3 hs4
-
-/-- Transfers `IdentityStoreKitOkIE` from `trTrapExterns C abs` to `IdentityStoreKitOkI` on `tripleRatchetProgAt b C ctl abs`. -/
-theorem identityStoreKitOkI_of_trTrap {A : RustAlloc} {b : BitVec 64} {img : Obj.Image}
-    {ikit : IdentityStoreSpec A b} {C : Crypto} (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (h : StoreKit.Identity.IdentityStoreKitOkIE img ikit (trTrapExterns C abs)) :
-    StoreKit.Identity.IdentityStoreKitOkI img ikit C ctl abs :=
-  ⟨subroutine_ok_kit_of_trTrap h.trustShim,
-   subroutine_ok_kit_of_trTrap h.trustPoll,
-   subroutine_ok_kit_of_trTrap h.trustFutDrop,
-   subroutine_ok_kit_of_trTrap h.saveShim,
-   subroutine_ok_kit_of_trTrap h.savePoll,
-   subroutine_ok_kit_of_trTrap h.saveFutDrop⟩
-
-theorem cliIdKitOkI_kit (W : CliHooks) (ctl : BitVec 64) {img : Obj.Image} {F0 : FsFiles}
-    {peer : AddrGhost} {readStk s1 s2 s3 s4 : Nat}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hs1 : trustShimNeed ≤ s1) (hs2 : trustPollNeed readStk ≤ s2)
-    (hs3 : saveShimNeed ≤ s3) (hs4 : savePollNeed readStk ≤ s4) :
-    StoreKit.Identity.IdentityStoreKitOkI img
-      (cliIdentityStoreSpec E2E.HooksE.A0 img.base cliIo.rd F0 cliWrOk peer s1 s2 s3 s4)
-      W.C ctl (cliExterns W) :=
-  identityStoreKitOkI_of_trTrap ctl (cliIdKitOkIE_trTrap W himg hs1 hs2 hs3 hs4)
-
-theorem cliIdKitOkI_trTrap (W : CliHooks) (ctl : BitVec 64) {img : Obj.Image} {F0 : FsFiles}
-    {peer : AddrGhost} {readStk s1 s2 s3 s4 : Nat}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hs1 : trustShimNeed ≤ s1) (hs2 : trustPollNeed readStk ≤ s2)
-    (hs3 : saveShimNeed ≤ s3) (hs4 : savePollNeed readStk ≤ s4) :
-    StoreKit.Identity.IdentityStoreKitOkI img
-      (cliIdentityStoreSpec E2E.HooksE.A0 img.base cliIo.rd F0 cliWrOk peer s1 s2 s3 s4)
-      W.C ctl (trTrapExterns W.C (cliExterns W)) :=
-  identityStoreKitOkI_of_trTrap ctl <|
-    (trTrapExterns_idem W.C (cliExterns W)).symm ▸
-      cliIdKitOkIE_trTrap W himg hs1 hs2 hs3 hs4
-
-/-! ## 5. Contract-backed (`CliExternsOk P A ext`) kit and deserialization glue -/
-
 section ExtKitGlue
-
-theorem stage2ContractsMin_of_allocX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (himg : Obj.Loads libsignalSessionImage img)
-    (hA : AllocContractsX img A ext) :
-    Proofs.libsignal.Hooks2.Stage2ContractsMinExt img A ext :=
-  Proofs.libsignal.Hooks2.Stage2ContractsMinExt.of_trAllocContractsX himg hA
-
-theorem stage2ContractsMin_ext {P : E2E.PEParams} {A : RustAlloc} {ext : String → Option (State → State)}
-    {img : Obj.Image} (hOk : CliExternsOk P A ext) (himg : Obj.Loads libsignalSessionImage img) :
-    Proofs.libsignal.Hooks2.Stage2ContractsMinExt img A (cliExternsWith ext) :=
-  stage2ContractsMin_of_allocX himg (MainHops.AllocContractsX.of_externsOk hOk img)
-
-theorem sessDeserialize_scopeKit_ok_ext {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hStage2 : Proofs.libsignal.Hooks2.Stage2ContractsMinExt img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recordDeserializeName) (sessDeserializeExtSpec scopeKit A img) := by
-  have hCallees : Proofs.libsignal.Hooks2.DeserializeCalleesAtWA img A ext :=
-    Proofs.libsignal.Hooks2.deserializeCalleesAtMinA_of_stage2MinExt hStage2
-  have hLeaves : Symbolic.Swarm.TRREF.B3DeserQ.DeserLeavesQWA img A ext :=
-    ⟨Symbolic.Swarm.TRREF.B3DeserQ.deserLoopEntryQ_ok_atWA img A ext hCallees,
-     Symbolic.Swarm.TRREF.B3DeserQ.deserLoopIterQ_ok_atWA img A ext,
-     Symbolic.Swarm.TRREF.B3DeserQ.deserLoopExitQ_ok_of_memcpyA img A ext
-       (Proofs.libsignal.Hooks2.memcpy_ok_extWMinExt hStage2)⟩
-  exact Symbolic.Swarm.TRREF.B3DeserQ.deserializeBodyQWA_ok img A ext hLeaves
-    (Symbolic.Swarm.TRREF.B3DeserQ.mergeFieldQWA_ok img A ext hStage2.loads hCallees)
-
-theorem sessDeserialize_of_sub_scopeKit_ok_ext {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    (hStage2 : Proofs.libsignal.Hooks2.Stage2ContractsMinExt img A ext) (hsub : ∀ r, Scope r → scopeKit r) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recordDeserializeName) (sessDeserializeExtSpec Scope A img) :=
-  subroutine_ok_sessDeserializeExtSpec_of_sub (sessDeserialize_scopeKit_ok_ext hStage2) hsub
-
-theorem sessDeserialize_scopeKit_ext {P : E2E.PEParams} {A : RustAlloc} {ext : String → Option (State → State)}
-    {img : Obj.Image} (hOk : CliExternsOk P A ext) (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (tripleRatchetProgAtExt img.base (cliExternsWith ext))
-      ((tripleRatchetProgAtExt img.base (cliExternsWith ext)).fnAddr recordDeserializeName)
-      (sessDeserializeExtSpec scopeKit A img) :=
-  sessDeserialize_scopeKit_ok_ext (stage2ContractsMin_ext hOk himg)
-
-theorem sessDeserialize_of_sub_scopeKit_ext {P : E2E.PEParams} {A : RustAlloc} {ext : String → Option (State → State)}
-    {img : Obj.Image} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    (hOk : CliExternsOk P A ext) (himg : Obj.Loads libsignalSessionImage img) (hsub : ∀ r, Scope r → scopeKit r) :
-    subroutine_ok (tripleRatchetProgAtExt img.base (cliExternsWith ext))
-      ((tripleRatchetProgAtExt img.base (cliExternsWith ext)).fnAddr recordDeserializeName)
-      (sessDeserializeExtSpec Scope A img) :=
-  subroutine_ok_sessDeserializeExtSpec_of_sub (sessDeserialize_scopeKit_ext hOk himg) hsub
-
-theorem cliSessKitOkSE_scopeKit_ext {P : E2E.PEParams} {A : RustAlloc} {ext : String → Option (State → State)}
-    {img : Obj.Image} {F0 : FsFiles} {peer : AddrGhost} {readStk s1 s2 s3 s4 : Nat}
-    (hOk : CliExternsOk P A ext) (himg : Obj.Loads libsignalSessionImage img)
-    (hs1 : loadShimNeed ≤ s1) (hs2 : loadPollNeed readStk ≤ s2) (hs3 : storeShimNeed ≤ s3)
-    (hs4 : storePollNeedX ≤ s4) (hreadStk : extHookStack ≤ readStk := by decide) :
-    MessageDecrypt.SessionOnlyKitOkSE
-      (cliSessionStoreSpec A img.base cliIo.rd F0 cliWrOk scopeKit peer s1 s2 s3 s4)
-      scopeKit E2E.Record.encodeRecord (cliExternsWith ext) :=
-  SessKit.cliSessKitOkSE_ext hOk himg (sessDeserialize_scopeKit_ext hOk himg) hs1 hs2 hs3 hs4 hreadStk
-
-export CryptoVerification.SignalSession.Cli.KitInst.SessKit (cliSessKitOkSE_ext)
-export CryptoVerification.SignalSession.Cli.KitInst.IdKit (cliIdKitOkIE_ext)
-export CryptoVerification.SignalSession.Cli.Store.SerGlueX (serializeCanonX_ext)
 
 end ExtKitGlue
 

@@ -19,7 +19,7 @@ Transfers the ten whole-protocol symbolic security properties along `CompRefines
 `SignalSessionSecureFor` over CLI runs from provisioned directories (`initDirs`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

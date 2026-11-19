@@ -9,13 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStores
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainCodeSym
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStores -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.Pure
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStores.Helpers
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton
 
 /-!
 # Relocatable Drop Glue Proofs for `Stores` and `IdentityFiles`
@@ -24,7 +28,7 @@ Proves `[LibsignalPlacement]` drop contracts for `IdentityFiles` (block `549`) a
 (block `550`), and transfers `cliDropStores_placed_ok` to caller blocks `i < 619`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false
@@ -46,12 +50,12 @@ open CryptoVerification.SignalSession.Cli.MainHops
 open CryptoVerification.SignalSession.Cli.RunProofs.Helpers
 
 /-- Relocatable `[LibsignalPlacement]` specification for `drop_glue::<Stores>` (block `550`). -/
-def dropStoresSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
+@[expose] def dropStoresSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
     Spec DropStoresGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl (dropStoresSpec A stk)
 
 /-- Relocatable `[LibsignalPlacement]` specification for `drop_glue::<IdentityFiles>` (block `549`). -/
-def dropDirPairSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
+@[expose] def dropDirPairSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
     Spec DropDirPairGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl (dropDirPairSpec A stk)
 

@@ -11,10 +11,13 @@ module
 
 public import Arm64.Trusted.Spec.Hoare
 public import Arm64.Trusted.Spec.SepLogic
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KWitness
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfTopJoinCanonPrime
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KWitness -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfTopJoinCanonPrime -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.LibsignalSpqrV1.Kdf
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemRejectPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut
 
 /-!
 # Spine-B (`Block 579`) and Spine-C (`Slots 464/463/521/520`) Interfaces (`ElfSlicesPqOomH2KIfaces`)
@@ -32,7 +35,7 @@ invokes `read_file`, both Spine-B (`runSpecTightPlacedPreFd`) and Spine-C (`slot
 carry `⌜FdsGe3Closed s0.fs⌝` on `pre` only, leaving `post`, `onPanic`, and `onOom` unchanged.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.style.haveILetI false
@@ -45,9 +48,10 @@ open Arm64
    subroutine_ok_mono)
 open Arm64.Obj (MultiPlacement)
 open CryptoVerification
-  (LibsignalFrozen LibsignalHooks LibsignalPlacement libsignalMutatedBlocks
-   libsignalSessionExterns lsmpl)
+  (ExternsDistinctOnHooked LibsignalFrozen LibsignalHooks LibsignalPlacement
+   libsignalMutatedBlocks lsmpl)
 open CryptoVerification.E2E (UnreachedPqxdhPrimitives)
+open CryptoVerification.LibsignalSpqrV1 (sha256Compress)
 open CryptoVerification.LibsignalTripleRatchetRepr (UuidParser uuidTryParse)
 open CryptoVerification.SignalSession
   (CliHooks Inputs cliElfImage cliExternsPlaced libsignalSessionLib)
@@ -74,6 +78,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemEnvAPlacedBudget
 open LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3UntypedElfF3 (cliRunSemD3)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
   (FdsGe3Closed ReadFileRuleEnvFixed withFdsGe3Closed)
+open LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds (withFds)
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget (libsignalPlacementOf)
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.MainOkCliExtB2NeedLocksInst (cliRunSemD2c_placed)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget (runSpecTightPlaced)
@@ -93,7 +98,7 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfTopJoinCanonPrime
 /-- Strengthen `spec.pre` with `⌜FdsGe3Closed s0.fs⌝`, leaving `post`, `onPanic`, and `onOom`
 unchanged. Used at call boundaries after which the caller executes no further `read_file`
 (`run` @ Block `579` from `main` `M4`, and inner slots `464`/`463`/`521`/`520` from `run`). -/
-def withPreFdsGe3Closed {α : Type} (spec : Spec α) : Spec α :=
+@[expose] def withPreFdsGe3Closed {α : Type} (spec : Spec α) : Spec α :=
   { spec with
     pre := fun x s0 => ⌜FdsGe3Closed s0.fs⌝ ∗ spec.pre x s0 }
 
@@ -125,12 +130,12 @@ theorem subroutine_ok_withPreFdsGe3Closed_of_withFdsGe3Closed {α : Type}
 
 /-- Pre-only `FdsGe3Closed` wrapper on a `RunSkeleton.CalleeSlot` (preserves `Ghost` and `need`
 definitionally). -/
-def slotWithPreFdsGe3Closed (σ : CalleeSlot) : CalleeSlot :=
+@[expose] def slotWithPreFdsGe3Closed (σ : CalleeSlot) : CalleeSlot :=
   { σ with spec := fun stk => withPreFdsGe3Closed (σ.spec stk) }
 
 /-- Two-sided `FdsGe3Closed` wrapper on a `RunSkeleton.CalleeSlot` (preserves `Ghost` and `need`
 definitionally). -/
-def slotWithFdsGe3Closed (σ : CalleeSlot) : CalleeSlot :=
+@[expose] def slotWithFdsGe3Closed (σ : CalleeSlot) : CalleeSlot :=
   { σ with spec := fun stk => withFdsGe3Closed (σ.spec stk) }
 
 theorem okPlaced_slotWithPreFdsGe3Closed_of_plain {callerProg : Program} {target : BitVec 64}
@@ -147,7 +152,7 @@ theorem okPlaced_slotWithPreFdsGe3Closed_of_withFdsGe3Closed
 /-- Lift the 4 inner `RunSlots` (`encrypt` 464, `decryptSignal` 463, `initiate` 521,
 `decryptPrekey` 520) with `slotWithPreFdsGe3Closed`, leaving `kemDeserialize` (590, pure codec)
 unchanged. Preserves `runNeed B` definitionally. -/
-def slotsWithPreFdsGe3Closed (slots : RunSlots) : RunSlots :=
+@[expose] def slotsWithPreFdsGe3Closed (slots : RunSlots) : RunSlots :=
   { encrypt := slotWithPreFdsGe3Closed slots.encrypt
     decryptSignal := slotWithPreFdsGe3Closed slots.decryptSignal
     initiate := slotWithPreFdsGe3Closed slots.initiate
@@ -162,7 +167,7 @@ theorem runNeed_slotsWithPreFdsGe3Closed (B : RunBudgets) (slots : RunSlots) :
 
 /-- K-route `run` spec at Block `579`: `runSpecTightPlaced` with `⌜FdsGe3Closed s0.fs⌝` on `pre`
 only (`post`, `onPanic`, `onOom` identical to `runSpecTightPlaced`). -/
-def runSpecTightPlacedPreFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def runSpecTightPlacedPreFd [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (RunEnvPred : RunCall → List AllocEvent → Prop)
     (uuidParse : UuidParser) (Run : Inputs → RunAnswer → Prop)
@@ -172,11 +177,11 @@ def runSpecTightPlacedPreFd [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Generic Spine-B Block-`579` `subroutine_ok` obligation on `mProgPlaced H` at
 `runSpecTightPlacedPreFd (LibsignalFrozen mpl)`. -/
-def h2ki_RunTightAt579PreFd
+@[expose] def h2ki_RunTightAt579PreFd
     {mpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (H : LibsignalHooks)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (RunEnvPred : RunCall → List AllocEvent → Prop)
@@ -187,20 +192,30 @@ def h2ki_RunTightAt579PreFd
       uuidTryParse (runRel S) cliWrOk cliResStack)
 
 /-- Explicit-argument Spine-B `canon'` slice interface at ghost table `ghFixed`. -/
-def h2ki_SpineBCanonSliceAt
+@[expose] def h2ki_SpineBCanonSliceAt
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (ghFixed : CliGhostHooks) : Prop :=
   mpl.base 547 ≠ 0#64 →
-  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-    h2ki_RunTightAt579PreFd hblk hext_nodup
-      (cliGhostExterns ghFixed (cliExternsPlaced mmpl W))
-      (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
-      (canonOrFallbackRunEnvExact' PksmTryFromEnv mpl mmpl cliElfImage.brkStart
-        hblk hext_nodup X W γ tp)
-      (cliRunSemD2c_placed X W)
+  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
+    W.C.F = sha256Compress →
+    W.C.E = CryptoGames.AES256.aes256Enc →
+    W.C.D = CryptoGames.AES256.aes256Dec →
+    W.C.X = CryptoGames.RFC7748.x25519Ref →
+    W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+    W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+    W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+    W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+    W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+    ∀ (γ : GhostName) (tp : BitVec 64),
+      h2ki_RunTightAt579PreFd hblk hext_nodup
+        (cliGhostExterns ghFixed (cliExternsPlaced mmpl W))
+        (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
+        (canonOrFallbackRunEnvExact' PksmTryFromEnv mpl mmpl cliElfImage.brkStart
+          hblk hext_nodup X W γ tp)
+        (cliRunSemD2c_placed X W)
 
 /-- Witness-packaged Spine-B `canon'` slice interface for `hmain` and `hinitSem`. -/
 abbrev h2ki_SpineBCanonSliceK {mpl mmpl : MultiPlacement}
@@ -210,21 +225,31 @@ abbrev h2ki_SpineBCanonSliceK {mpl mmpl : MultiPlacement}
 /-- Explicit-argument Spine-B interface for D3 `RunSem` slices (`hoverD3`, `huntyped`, `hpathB`,
 `hvalidMatch`), matching the `hrun` hypothesis of `D3MainLiftGlueF3.mainSubroutineD3F3_of_domScopedRunTight`
 with `runSpecTightPlacedPreFd`. -/
-def h2ki_SpineBRunTightOfSemAt
+@[expose] def h2ki_SpineBRunTightOfSemAt
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (ghFixed : CliGhostHooks)
     (brkStart : BitVec 64)
     (SemOf : CliHooks → RunSem)
     (RunEnvOf : CliHooks → GhostName → BitVec 64 → RunCall → List AllocEvent → Prop) : Prop :=
   mpl.base 547 ≠ 0#64 →
-  ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-    h2ki_RunTightAt579PreFd hblk hext_nodup
-      (cliGhostExterns ghFixed (cliExternsPlaced mmpl W))
-      (fineHookRustCliAllocBudget γ mmpl tp brkStart) cliBudgetLimits
-      (RunEnvOf W γ tp) (SemOf W)
+  ∀ (W : CliHooks),
+    W.C.F = sha256Compress →
+    W.C.E = CryptoGames.AES256.aes256Enc →
+    W.C.D = CryptoGames.AES256.aes256Dec →
+    W.C.X = CryptoGames.RFC7748.x25519Ref →
+    W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+    W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+    W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+    W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+    W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+    ∀ (γ : GhostName) (tp : BitVec 64),
+      h2ki_RunTightAt579PreFd hblk hext_nodup
+        (cliGhostExterns ghFixed (cliExternsPlaced mmpl W))
+        (fineHookRustCliAllocBudget γ mmpl tp brkStart) cliBudgetLimits
+        (RunEnvOf W γ tp) (SemOf W)
 
 abbrev h2ki_SpineBRunTightOfSemK {mpl mmpl : MultiPlacement}
     (w : F3CliElfGhostWitnessK mpl mmpl)
@@ -236,7 +261,7 @@ abbrev h2ki_SpineBRunTightOfSemK {mpl mmpl : MultiPlacement}
 /-! ## Spine-C (`Slots 464 / 463 / 521 / 520`) Interfaces -/
 
 /-- Spine-C Slot `464` (`encrypt`) pre-only `FdsGe3Closed` contract on `lsProg_579 H`. -/
-def h2ki_EncryptSlot464OkAtPreFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def h2ki_EncryptSlot464OkAtPreFd [LibsignalPlacement] {M : AllocCostModel}
     (H : LibsignalHooks) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (X : UnreachedPqxdhPrimitives) (W : CliHooks) : Prop :=
   (slotWithPreFdsGe3Closed
@@ -246,18 +271,22 @@ def h2ki_EncryptSlot464OkAtPreFd [LibsignalPlacement] {M : AllocCostModel}
       (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)).encrypt)).OkPlaced
     (lsProg_579 H) (lsmpl.base 464)
 
-def h2ki_W1EncryptSlot464OkK {mpl mmpl : MultiPlacement}
+@[expose] def h2ki_W1EncryptSlot464OkK {mpl mmpl : MultiPlacement}
     (w : F3CliElfGhostWitnessK mpl mmpl) : Prop :=
   letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
   mpl.base 547 ≠ 0#64 →
-  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-    h2ki_EncryptSlot464OkAtPreFd
-      (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W))
-      (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
-      X W
+  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
+    W.C.F = sha256Compress →
+    W.C.E = CryptoGames.AES256.aes256Enc →
+    W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+    ∀ (γ : GhostName) (tp : BitVec 64),
+      h2ki_EncryptSlot464OkAtPreFd
+        (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W))
+        (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
+        X W
 
 /-- Spine-C Slot `463` (`decryptSignal`) pre-only `FdsGe3Closed` contract on `lsProg_579 H`. -/
-def h2ki_DecryptSignalSlot463OkAtPreFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def h2ki_DecryptSignalSlot463OkAtPreFd [LibsignalPlacement] {M : AllocCostModel}
     (H : LibsignalHooks) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (X : UnreachedPqxdhPrimitives) (W : CliHooks) : Prop :=
   (slotWithPreFdsGe3Closed
@@ -268,18 +297,24 @@ def h2ki_DecryptSignalSlot463OkAtPreFd [LibsignalPlacement] {M : AllocCostModel}
       (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)).decryptSignal)).OkPlaced
     (lsProg_579 H) (lsmpl.base 463)
 
-def h2ki_W2DecryptSignalSlot463OkK {mpl mmpl : MultiPlacement}
+@[expose] def h2ki_W2DecryptSignalSlot463OkK {mpl mmpl : MultiPlacement}
     (w : F3CliElfGhostWitnessK mpl mmpl) : Prop :=
   letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
   mpl.base 547 ≠ 0#64 →
-  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-    h2ki_DecryptSignalSlot463OkAtPreFd
-      (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W))
-      (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
-      X W
+  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
+    W.C.F = sha256Compress →
+    W.C.D = CryptoGames.AES256.aes256Dec →
+    W.C.X = CryptoGames.RFC7748.x25519Ref →
+    W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+    W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+    ∀ (γ : GhostName) (tp : BitVec 64),
+      h2ki_DecryptSignalSlot463OkAtPreFd
+        (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W))
+        (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
+        X W
 
 /-- Spine-C Slot `521` (`initiate`) pre-only `FdsGe3Closed` contract on `lsProg_579 H`. -/
-def CliInitSlotOkPlacedAtPreFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliInitSlotOkPlacedAtPreFd [LibsignalPlacement] {M : AllocCostModel}
     (H : LibsignalHooks) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (InitEnv : InitGhost → List AllocEvent → Prop)
     (X : UnreachedPqxdhPrimitives) (W : CliHooks) : Prop :=
@@ -299,18 +334,24 @@ abbrev CliInitSlotOkPlacedPreFd [LibsignalPlacement] (mmpl : MultiPlacement)
     (X : UnreachedPqxdhPrimitives) (W : CliHooks) : Prop :=
   CliInitSlotOkPlacedAtPreFd (cliGhostExterns gh (cliExternsPlaced mmpl W)) A lim InitEnv X W
 
-def h2ki_W3InitSlot521OkK {mpl mmpl : MultiPlacement}
+@[expose] def h2ki_W3InitSlot521OkK {mpl mmpl : MultiPlacement}
     (w : F3CliElfGhostWitnessK mpl mmpl) : Prop :=
   letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
   mpl.base 547 ≠ 0#64 →
-  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-    CliInitSlotOkPlacedPreFd mmpl w.ghFixed
-      (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
-      (realCliInitBinarySlotEnvFixed W) X W
+  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
+    W.C.F = sha256Compress →
+    W.C.X = CryptoGames.RFC7748.x25519Ref →
+    W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+    W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+    W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+    ∀ (γ : GhostName) (tp : BitVec 64),
+      CliInitSlotOkPlacedPreFd mmpl w.ghFixed
+        (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
+        (realCliInitBinarySlotEnvFixed W) X W
 
 /-- Spine-C Slot `520` (`decryptPrekey`, D2c frozen) pre-only `FdsGe3Closed` contract on
 `lsProg_579 H`. -/
-def DecPkD2cSlotOkFrozenPlacedAtPreFd [LibsignalPlacement]
+@[expose] def DecPkD2cSlotOkFrozenPlacedAtPreFd [LibsignalPlacement]
     {M : AllocCostModel}
     (H : LibsignalHooks) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
@@ -327,7 +368,7 @@ def DecPkD2cSlotOkFrozenPlacedAtPreFd [LibsignalPlacement]
 
 /-- `LibsignalFrozen`-guarded pre-only `FdsGe3Closed` D2c `decryptPrekey` slot contract at
 `cliGhostExterns gh (cliExternsPlaced mmpl W)`. -/
-def DecPkD2cSlotOkFrozenPlacedPreFd [LibsignalPlacement] (mmpl : MultiPlacement)
+@[expose] def DecPkD2cSlotOkFrozenPlacedPreFd [LibsignalPlacement] (mmpl : MultiPlacement)
     (gh : CliGhostHooks) (W : CliHooks) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) : Prop :=
@@ -335,28 +376,218 @@ def DecPkD2cSlotOkFrozenPlacedPreFd [LibsignalPlacement] (mmpl : MultiPlacement)
     DecPkD2cSlotOkFrozenPlacedAtPreFd
       (cliGhostExterns gh (cliExternsPlaced mmpl W)) X W A lim DecPkEnv
 
-def h2ki_W4DecPkCanonSlot520OkK {mpl mmpl : MultiPlacement}
+@[expose] def h2ki_W4DecPkCanonSlot520OkK {mpl mmpl : MultiPlacement}
     (w : F3CliElfGhostWitnessK mpl mmpl) : Prop :=
   letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
   mpl.base 547 ≠ 0#64 →
-  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-    DecPkD2cSlotOkFrozenPlacedAtPreFd
-      (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W)) X W
-      (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
-      (cliDecPkCanonSlotEnvExact' X W)
+  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
+    W.C.F = sha256Compress →
+    W.C.D = CryptoGames.AES256.aes256Dec →
+    W.C.X = CryptoGames.RFC7748.x25519Ref →
+    W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+    W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+    W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+    W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+    ∀ (γ : GhostName) (tp : BitVec 64),
+      DecPkD2cSlotOkFrozenPlacedAtPreFd
+        (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W)) X W
+        (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
+        (cliDecPkCanonSlotEnvExact' X W)
 
 /-- Witness-packaged Spine-C Slot `520` (`decryptPrekey`, D3 untyped) interface at
 `w : F3CliElfGhostWitnessK`. -/
-def h2ki_UntypedDecPkSlot520OkK {mpl mmpl : MultiPlacement}
+@[expose] def h2ki_UntypedDecPkSlot520OkK {mpl mmpl : MultiPlacement}
     (w : F3CliElfGhostWitnessK mpl mmpl) : Prop :=
   letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
   mpl.base 547 ≠ 0#64 →
-  ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
+  ∀ (W : CliHooks), W.C.F = sha256Compress → ∀ (γ : GhostName) (tp : BitVec 64),
     (slotWithPreFdsGe3Closed
       (slotsOfSigPkFrozenPlaced
         (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
         (binaryKitRunSlotEnvsExact W
           (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)
+          cliRunBudgets_placed (realCliInitBinarySlotEnvFixed W)
+          (DecPkD3UntypedEnvOf
+            (A := (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart).repAlloc)
+            cliRunBudgets_placed (ReadFileRuleEnvFixed cliIo.rd)
+            SessDeserializeCancelEnv PqxdhAcceptBadKemErrEnv))
+        (cliRunSemD3 W)
+        (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets_placed))).decryptPrekey).OkPlaced
+      (lsProg_579 (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W))) (mpl.base 520)
+
+/-! ## Two-Sided `FdsGe3Closed` Spine-B (`runSpecTightPlacedFd`) and `withFds` Spine-C Interfaces -/
+
+/-- Two-sided (`pre` + `post`) `FdsGe3Closed` `run` spec at Block `579`: definitionally equal to
+`M4PlacedBudgetFd.runSpecTightPlacedFd`. -/
+@[expose] def runSpecTightPlacedFd [LibsignalPlacement] {M : AllocCostModel}
+    (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (RunEnvPred : RunCall → List AllocEvent → Prop)
+    (uuidParse : UuidParser) (Run : Inputs → RunAnswer → Prop)
+    (wrOk : List (BitVec 8) → Prop) (resStack : Nat) :
+    Spec (RunCall × M.σ) :=
+  withFdsGe3Closed (runSpecTightPlaced CodeOk A lim RunEnvPred uuidParse Run wrOk resStack)
+
+/-- Generic Spine-B Block-`579` `subroutine_ok` obligation on `mProgPlaced H` at two-sided
+`runSpecTightPlacedFd (LibsignalFrozen mpl)`. -/
+@[expose] def h2ki_RunTightAt579Fd
+    {mpl : MultiPlacement}
+    (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
+      (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
+    (H : LibsignalHooks)
+    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (RunEnvPred : RunCall → List AllocEvent → Prop)
+    (S : RunSem) : Prop :=
+  letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
+  subroutine_ok (mProgPlaced H) (mpl.base 579)
+    (runSpecTightPlacedFd (LibsignalFrozen mpl) A lim RunEnvPred
+      uuidTryParse (runRel S) cliWrOk cliResStack)
+
+/-- Explicit-argument two-sided `FdsGe3Closed` Spine-B `canon'` slice interface. -/
+@[expose] def h2ki_SpineBCanonSliceAtFd
+    {mpl mmpl : MultiPlacement}
+    (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
+      (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
+    (ghFixed : CliGhostHooks) : Prop :=
+  mpl.base 547 ≠ 0#64 →
+  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
+    W.C.F = sha256Compress →
+    W.C.E = CryptoGames.AES256.aes256Enc →
+    W.C.D = CryptoGames.AES256.aes256Dec →
+    W.C.X = CryptoGames.RFC7748.x25519Ref →
+    W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+    W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+    W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+    W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+    W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+    ∀ (γ : GhostName) (tp : BitVec 64),
+    h2ki_RunTightAt579Fd hblk hext_nodup
+      (cliGhostExterns ghFixed (cliExternsPlaced mmpl W))
+      (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
+      (canonOrFallbackRunEnvExact' PksmTryFromEnv mpl mmpl cliElfImage.brkStart
+        hblk hext_nodup X W γ tp)
+      (cliRunSemD2c_placed X W)
+
+/-- Witness-packaged two-sided `FdsGe3Closed` Spine-B `canon'` slice interface. -/
+abbrev h2ki_SpineBCanonSliceFdK {mpl mmpl : MultiPlacement}
+    (w : F3CliElfGhostWitnessK mpl mmpl) : Prop :=
+  h2ki_SpineBCanonSliceAtFd (mmpl := mmpl) w.hblk w.hext_nodup w.ghFixed
+
+/-- Explicit-argument two-sided `FdsGe3Closed` Spine-B interface for D3 `RunSem` slices. -/
+@[expose] def h2ki_SpineBRunTightOfSemAtFd
+    {mpl mmpl : MultiPlacement}
+    (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
+      (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
+    (ghFixed : CliGhostHooks)
+    (brkStart : BitVec 64)
+    (SemOf : CliHooks → RunSem)
+    (RunEnvOf : CliHooks → GhostName → BitVec 64 → RunCall → List AllocEvent → Prop) : Prop :=
+  mpl.base 547 ≠ 0#64 →
+  ∀ (W : CliHooks),
+    W.C.F = sha256Compress →
+    W.C.E = CryptoGames.AES256.aes256Enc →
+    W.C.D = CryptoGames.AES256.aes256Dec →
+    W.C.X = CryptoGames.RFC7748.x25519Ref →
+    W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+    W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+    W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+    W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+    W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+    ∀ (γ : GhostName) (tp : BitVec 64),
+    h2ki_RunTightAt579Fd hblk hext_nodup
+      (cliGhostExterns ghFixed (cliExternsPlaced mmpl W))
+      (fineHookRustCliAllocBudget γ mmpl tp brkStart) cliBudgetLimits
+      (RunEnvOf W γ tp) (SemOf W)
+
+abbrev h2ki_SpineBRunTightOfSemFdK {mpl mmpl : MultiPlacement}
+    (w : F3CliElfGhostWitnessK mpl mmpl)
+    (SemOf : CliHooks → RunSem)
+    (RunEnvOf : CliHooks → GhostName → BitVec 64 → RunCall → List AllocEvent → Prop) : Prop :=
+  h2ki_SpineBRunTightOfSemAtFd (mmpl := mmpl) w.hblk w.hext_nodup w.ghFixed cliElfImage.brkStart
+    SemOf RunEnvOf
+
+/-- `withFds`-parameterized Spine-C Slot `464` (`encrypt`) interface. -/
+@[expose] def h2ki_W1EncryptSlot464OkWfK {mpl mmpl : MultiPlacement}
+    (w : F3CliElfGhostWitnessK mpl mmpl) : Prop :=
+  letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
+  mpl.base 547 ≠ 0#64 →
+  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
+    W.C.F = sha256Compress →
+    W.C.E = CryptoGames.AES256.aes256Enc →
+    W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+    ∀ (γ : GhostName) (tp : BitVec 64),
+    h2ki_EncryptSlot464OkAtPreFd
+      (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W))
+      (withFds (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)) cliBudgetLimits
+      X W
+
+/-- `withFds`-parameterized Spine-C Slot `463` (`decryptSignal`) interface. -/
+@[expose] def h2ki_W2DecryptSignalSlot463OkWfK {mpl mmpl : MultiPlacement}
+    (w : F3CliElfGhostWitnessK mpl mmpl) : Prop :=
+  letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
+  mpl.base 547 ≠ 0#64 →
+  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
+    W.C.F = sha256Compress →
+    W.C.D = CryptoGames.AES256.aes256Dec →
+    W.C.X = CryptoGames.RFC7748.x25519Ref →
+    W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+    W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+    ∀ (γ : GhostName) (tp : BitVec 64),
+    h2ki_DecryptSignalSlot463OkAtPreFd
+      (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W))
+      (withFds (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)) cliBudgetLimits
+      X W
+
+/-- `withFds`-parameterized Spine-C Slot `521` (`initiate`) interface. -/
+@[expose] def h2ki_W3InitSlot521OkWfK {mpl mmpl : MultiPlacement}
+    (w : F3CliElfGhostWitnessK mpl mmpl) : Prop :=
+  letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
+  mpl.base 547 ≠ 0#64 →
+  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
+    W.C.F = sha256Compress →
+    W.C.X = CryptoGames.RFC7748.x25519Ref →
+    W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+    W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+    W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+    ∀ (γ : GhostName) (tp : BitVec 64),
+    CliInitSlotOkPlacedPreFd mmpl w.ghFixed
+      (withFds (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)) cliBudgetLimits
+      (realCliInitBinarySlotEnvFixed W) X W
+
+/-- `withFds`-parameterized Spine-C Slot `520` (`decryptPrekey`, `canon'`) interface. -/
+@[expose] def h2ki_W4DecPkCanonSlot520OkWfK {mpl mmpl : MultiPlacement}
+    (w : F3CliElfGhostWitnessK mpl mmpl) : Prop :=
+  letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
+  mpl.base 547 ≠ 0#64 →
+  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
+    W.C.F = sha256Compress →
+    W.C.D = CryptoGames.AES256.aes256Dec →
+    W.C.X = CryptoGames.RFC7748.x25519Ref →
+    W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+    W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+    W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+    W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+    ∀ (γ : GhostName) (tp : BitVec 64),
+    DecPkD2cSlotOkFrozenPlacedAtPreFd
+      (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W)) X W
+      (withFds (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)) cliBudgetLimits
+      (cliDecPkCanonSlotEnvExact' X W)
+
+/-- `withFds`-parameterized Spine-C Slot `520` (`decryptPrekey`, D3 untyped) interface. -/
+@[expose] def h2ki_UntypedDecPkSlot520OkWfK {mpl mmpl : MultiPlacement}
+    (w : F3CliElfGhostWitnessK mpl mmpl) : Prop :=
+  letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
+  mpl.base 547 ≠ 0#64 →
+  ∀ (W : CliHooks),
+    W.C.F = sha256Compress →
+    ∀ (γ : GhostName) (tp : BitVec 64),
+    (slotWithPreFdsGe3Closed
+      (slotsOfSigPkFrozenPlaced
+        (withFds (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)) cliBudgetLimits
+        (binaryKitRunSlotEnvsExact W
+          (withFds (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart))
           cliRunBudgets_placed (realCliInitBinarySlotEnvFixed W)
           (DecPkD3UntypedEnvOf
             (A := (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart).repAlloc)

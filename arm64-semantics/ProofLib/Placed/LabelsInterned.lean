@@ -11,6 +11,7 @@ module
 
 public meta import Lean
 public meta import Arm64.Trusted.Object.Labels
+meta import Arm64.Trusted.Surface.IncludeBytes
 public import ProofLib.ProgramReflection
 public meta import ProofLib.ProgramReflection
 public import ProofLib.Placed.LabelsCheck
@@ -2929,6 +2930,12 @@ private partial def decodeBytes (e : Expr) : MetaM ByteArray := do
     else if c.isAppOfArity ``List.cons 3 then
       let b ← decodeByteVal (c.getArg! 1)
       go (c.getArg! 2) (acc.push b)
+    else if c.isAppOfArity ``Arm64.IncludeBytes.cons16 17 then
+      let args := c.getAppArgs
+      let mut out := acc
+      for j in [0:16] do
+        out := out.push (← decodeByteVal args[j]!)
+      go args[16]! out
     else if c.isAppOfArity ``List.flatten 2 then
       let chunks ← decodeListElems (c.getArg! 1)
       let mut out := acc

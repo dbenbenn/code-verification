@@ -9,14 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DoReserveExtBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsX
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DoReserveExtBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsX -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.AdaptersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `SessionRecord::serialize` Specifications and Stub Contracts
@@ -28,7 +34,7 @@ Defines the canonical serialization allocation envelope `SerializeEnvX`, total-c
 `SerContractsXPlaced M A lim H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -103,7 +109,7 @@ theorem serializeStackX_le_recordSerializeStack :
 /-- Canonical allocation envelope for `<SessionRecord>::serialize`, composing the bounded allocation
 prefix `SerializeEnv g r` with the pure-deallocation suffix `FreeOnlyEvs` emitted by
 `drop_glue<SessionStructure> [local#1]` on the `Some` branch. -/
-def SerializeEnvX (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) :
+@[expose] def SerializeEnvX (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) :
     List AllocEvent → Prop :=
   SeqEnv (SerializeEnv g r) FreeOnlyEvs
 
@@ -116,46 +122,16 @@ theorem SerializeEnvX.nil (g : RecordGhost) (r : SessionRecord (List (BitVec 8))
     SerializeEnvX g r [] :=
   SeqEnv.inl (BoundedRustEvs.nil _ _)
 
-theorem SerializeEnvX.append_free {g : RecordGhost} {r : SessionRecord (List (BitVec 8))}
-    {evs₁ evs₂ : List AllocEvent} (h1 : SerializeEnv g r evs₁) (h2 : FreeOnlyEvs evs₂) :
-    SerializeEnvX g r (evs₁ ++ evs₂) :=
-  SeqEnv.append h1 h2
-
-theorem SerializeEnvX.append_free' {g : RecordGhost} {r : SessionRecord (List (BitVec 8))}
-    {evs₁ evs₂ : List AllocEvent} (h1 : SerializeEnvX g r evs₁) (h2 : FreeOnlyEvs evs₂) :
-    SerializeEnvX g r (evs₁ ++ evs₂) := by
-  rcases h1 with h1 | ⟨a, b, rfl, ha, hb⟩
-  · exact SeqEnv.append h1 h2
-  · rw [List.append_assoc]
-    exact SeqEnv.append ha (FreeOnlyEvs.append hb h2)
-
 theorem fitsEnv_serializeEnv_of_serializeEnvX {M : AllocCostModel} {lim : BudgetLimits}
     {st : M.σ} {g : RecordGhost} {r : SessionRecord (List (BitVec 8))}
     (h : FitsEnv M lim st (SerializeEnvX g r)) :
     FitsEnv M lim st (SerializeEnv g r) :=
   FitsEnv.seq_left h
 
-theorem SerializeEnvX.event_bounds {g : RecordGhost} {r : SessionRecord (List (BitVec 8))}
-    {evs : List AllocEvent} (h : SerializeEnvX g r evs) :
-    ∀ ev ∈ evs,
-      ev.withinMaxAlloc ∧
-      ev.reqBytes ≤ 256 * ((encRecordMem g r).length + 16) ∧
-      (∀ al req, ev = .aligned al req → al ≤ 16) ∧
-      (∀ al o n, ev = .realloc al o n → al ≤ 16) := by
-  intro ev hev
-  rcases h with h1 | ⟨evs₁, evs₂, rfl, h1, h2⟩
-  · exact h1.2 ev hev
-  · rcases List.mem_append.mp hev with hm1 | hm2
-    · exact h1.2 ev hm1
-    · obtain ⟨al, sz, rfl⟩ := h2 ev hm2
-      refine ⟨trivial, Nat.zero_le _, ?_, ?_⟩
-      · rintro _ _ ⟨⟩
-      · rintro _ _ _ ⟨⟩
-
 /-! ## Budget-threaded specifications -/
 
 /-- Budget-threaded `encodeChainSpec` at `encodeChainStackX`. -/
-def encodeChainSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def encodeChainSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (EncodeChainGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = BitVec.ofNat 64 x.tag ∧ s.readReg64 .x1 = x.a ∧ s.readReg64 .x2 = x.v ∧
@@ -174,7 +150,7 @@ def encodeChainSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp encodeChainStackX
 
 /-- Budget-threaded `encodeRawSpec` at `encodeRawStackX`. -/
-def encodeRawSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def encodeRawSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (EncodeRawGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ss ∧ s.readReg64 .x1 = x.v ∧
@@ -192,7 +168,7 @@ def encodeRawSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp encodeRawStackX
 
 /-- Budget-threaded `sessionCloneSpec` at `sessionCloneStackX`. -/
-def sessionCloneSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def sessionCloneSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SessionCloneGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src ∧
@@ -209,7 +185,7 @@ def sessionCloneSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-- Budget-threaded `drop_glue<SessionStructure> [local#1]` at `dropSessionStructureLocal1StackX`
 (`FreeOnlyEvs`, `0` `FitsEnv` preconditions). -/
-def dropSessionStructureLocal1SpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropSessionStructureLocal1SpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DropSessionStructureGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ss ∧ LsRetAddr624 (s.readReg64 .lr)⌝ ∗
@@ -222,7 +198,7 @@ def dropSessionStructureLocal1SpecX [LibsignalPlacement] (M : AllocCostModel) (A
         stackAt s0.sp dropSessionStructureLocal1StackX
 
 /-- Budget-threaded memory-level `serializeSpec` at `serializeStackX` using `SerializeEnvX`. -/
-def serializeSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def serializeSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SerializeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.out ∧
@@ -238,7 +214,7 @@ def serializeSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp serializeStackX
 
 /-- Budget-threaded canonical `serializeCanonSpec` at `serializeStackX` using `SerializeEnvX`. -/
-def serializeCanonSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def serializeCanonSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SerializeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.out ∧ CanonRecord x.g x.r ∧
@@ -427,36 +403,6 @@ theorem realloc_placed_ok_at_stateX {pl : Obj.MultiPlacement} [LibsignalPlacemen
     LibsignalBinary.Heap.rustCliReallocBudgetExternSpecWithStack]
   rw [sepConj_assoc, satisfies_pure_sepConj]
   exact ⟨⟨hx0, hx1, hx2, hx3, hold, hnew, hbs1, hbs2, hlr⟩,
-    Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hrest⟩
-
-theorem reallocNoOom_placed_ok_at_stateX [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {callerProg : Program} {callerBlk : Nat} [IsLsBlockProg callerProg callerBlk H]
-    {s : State} (hA : AllocContractsPlaced M A lim H)
-    (hcl : LibsignalCodeLoaded lsmpl s.mem) :
-    subroutine_ok callerProg (lsρ lsRustReallocSym)
-      { pre := fun (p, old_size, align, new_size, bs, st) s' =>
-          ⌜s'.mem = s.mem ∧
-            s'.readReg64 .x0 = p ∧ (s'.readReg64 .x1).toNat = old_size ∧
-            (s'.readReg64 .x2).toNat = align ∧ (s'.readReg64 .x3).toNat = new_size ∧
-            RustLayoutOk old_size align ∧ RustLayoutOk new_size align ∧
-            bs.length ≤ old_size ∧ bs.length ≤ new_size ∧
-            FitsEvents M lim st (rustReallocEvents old_size new_size align) ∧
-            LsRetAddr624 (s'.readReg64 .lr)⌝ ∗
-          A.live p old_size align ∗ (p ↦ₛ bs) ∗
-          memRegion (p + BitVec.ofNat 64 bs.length) (old_size - bs.length) ∗
-          A.pool lim st s' ∗ stackAt s'.sp extHookStack
-        post := (rustCliReallocNoOomExternSpecWithStack M A lim extHookStack).post } := by
-  have h0 := hA.reallocNoOom_call (callerProg := callerProg) hcl
-  refine subroutine_ok_mono h0
-    (fun ⟨p, old_size, align, new_size, bs, st⟩ _ s0 hp => ?_) (fun _ _ _ _ hq => hq)
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hp
-  rcases hp with ⟨⟨hm, hx0, hx1, hx2, hx3, hold, hnew, hbs1, hbs2, hfit, hlr⟩, hrest⟩
-  refine pack_withMemEq hm ?_
-  dsimp only [rustCliReallocNoOomExternSpecWithStack,
-    LibsignalBinary.Heap.rustCliReallocNoOomExternSpecWithStack]
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨⟨hx0, hx1, hx2, hx3, hold, hnew, hbs1, hbs2, hfit, hlr⟩,
     Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hrest⟩
 
 theorem memcpy_placed_ok_at_stateX {pl : Obj.MultiPlacement} {prog : Program}

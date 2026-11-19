@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHalted
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple7
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHalted -- proof-setup: allow-public-import
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple3
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple7 -- proof-setup: allow-public-import
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple4
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple5
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple6
@@ -19,16 +19,17 @@ import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple8
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNELeaves1
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNELeafDeliver
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNELeafDeliverProbe
+import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNELeafTransmit
+import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNESkeleton
 
 /-!
 # Online-Halted Cell Simulation and `deliver` Combinators
 
 **Checked by Lean.** Unfolds `DeliverForge.forgeGuessedAdvantageCellPaper` on
 `simDeliverForgeTrackHalted` into `cellSimRunTrackHalted` and proves the lockstep and winning-cell
-`deliver` combinators for `firstNEHalted'`.
--/
+`deliver` combinators for `firstNEHalted'`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,11 +46,9 @@ open CryptoGames.Ratchet.LibsignalSimC (Hook LibsignalToModularSchemeSimState in
 open CryptoGames.SM (RecvResult)
 open CryptoGames.SM.Construction (Header)
 open CryptoGames.SM.Thm1 (Mirror)
-open CryptoVerification.LibsignalSession.HeadlineV1 (CellK4Doomed EvictedSpurHistSimInvLazy FirstNECoupledInvD cellWinPred cellWinPred_with_b deliverForgeHook_lift_liftM_run evalDist_simulateQ_fullImplBaseDFCellPaper_cellWinPred_eq_one forgeGuessedAdvantageCellPaper forgeGuessedAdvantageCellPaper_eq_runBaseDFCellPaper fullImplBaseDFCellPaper runBaseDFCellPaper runCellStep simRecvStepC_of_probeHook_run simulateQ_fullImplBaseDFCellPaper_liftM_probComp simulateQ_fullImplBaseDFCellPaper_simImplDF'Paper_with_b simulateQ_fullImplBaseDFCellPaper_state_eq_of_win_true simulateQ_simImplDF'Paper_liftM_probComp withB)
+open CryptoVerification.LibsignalSession.HeadlineV1 (CellK4Doomed EvictedSpurHistSimInvLazy FirstNECellFamilyInvT_body FirstNECoupledInvD bucketWinPred bucketWinPred_with_b cellWinPred cellWinPred_with_b deliverForgeHook_lift_liftM_run evalDist_simulateQ_fullImplBaseDFCellPaper_cellWinPred_eq_one evalDist_simulateQ_fullImplBaseDFPaperBucket_bucketWinPred_eq_one forgeGuessedAdvantageCellPaper forgeGuessedAdvantageCellPaper_eq_runBaseDFCellPaper fullImplBaseDFCellPaper fullImplBaseDFCellPaper_none_eq_fullImplBaseDFPaper not_B1_not_B2_imp_inStage2Bucket runBaseDFCellPaper runCellStep simRecvStepC_of_probeHook_run simulateQ_bucket_eq_map_auth0_of_no_win simulateQ_fullImplBaseDFCellPaper_liftM_probComp simulateQ_fullImplBaseDFCellPaper_simImplDF'Paper_with_b simulateQ_fullImplBaseDFCellPaper_state_eq_of_win_true simulateQ_fullImplBaseDFPaperBucket_liftM_probComp simulateQ_fullImplBaseDFPaperBucket_with_b simulateQ_simImplDF'Paper_liftM_probComp withB)
 
 namespace Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHaltedDeliverAux
-
-noncomputable section
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec
@@ -85,13 +84,11 @@ abbrev cellSimRunTrackHalted {α : Type}
           (deliverForgeHook Pt ℓ) Dh) oa).run (sC, tr)).run sent)).run m')).run s
 
 theorem runBaseDFCellPaper_challSimDF'Paper_simDeliverForgeTrackHalted_eq
-    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    {PQ : Type} [Inhabited PQ]
-    (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
-    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt)
-    (qep : ℕ) (sameHdr : Fig8C Pt → Fig8C Pt → Bool) (tL : Option ℕ) (t : ℕ)
-    (cfg : CryptoGames.SM.Config (LibsignalMsgPublicPart × Plain ℓ))
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] {PQ : Type} [Inhabited PQ]
+    (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+    (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
+    (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (sameHdr : Fig8C Pt → Fig8C Pt → Bool)
+    (tL : Option ℕ) (t : ℕ) (cfg : CryptoGames.SM.Config (LibsignalMsgPublicPart × Plain ℓ))
     (f : CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt) → ProbComp Bool)
     (A : CryptoGames.LibsignalSM.LibAdv PQ (BitVec 512) ℓ) :
     let fig := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
@@ -101,9 +98,7 @@ theorem runBaseDFCellPaper_challSimDF'Paper_simDeliverForgeTrackHalted_eq
           (simDeliverForgeTrackHalted P K ℓ Dh encPt encT decT idOf lam qep A)) >>=
       fun z => f z.2] =
     𝒟[do
-      let b ← $ᵗ Bool
-      let k ← $ᵗ (BitVec 256 × BitVec 256)
-      let pqrKey ← $ᵗ BitVec 256
+      let b ← $ᵗ Bool; let k ← $ᵗ (BitVec 256 × BitVec 256); let pqrKey ← $ᵗ BitVec 256
       let sC₀ : LibsignalToModularSchemeSimState PQ Pt ℓ :=
         initSimC (P.spqr.init .a2b pqrKey) (P.spqr.init .b2a pqrKey)
       let tr₀ : KemFailTrackState P.C.F := initKemFailTrack P.C.F pqrKey
@@ -130,50 +125,42 @@ theorem runBaseDFCellPaper_challSimDF'Paper_simDeliverForgeTrackHalted_eq
   refine congrArg (($ᵗ Bool : ProbComp Bool) >>= ·) (funext fun b => ?_)
   rw [deliverForgeHook_lift_liftM_run]
   simp only [bind_assoc, pure_bind, simulateQ_bind, StateT.run_bind,
-    simulateQ_simImplDF'Paper_liftM_probComp,
-    simulateQ_fullImplBaseDFCellPaper_liftM_probComp]
+    simulateQ_simImplDF'Paper_liftM_probComp, simulateQ_fullImplBaseDFCellPaper_liftM_probComp]
   refine congrArg (($ᵗ BitVec 256 : ProbComp (BitVec 256)) >>= ·) (funext fun pqrKey => ?_)
-  simp only [StateT.run_pure, simulateQ_pure, pure_bind]
-  rfl
+  simp only [StateT.run_pure, simulateQ_pure, pure_bind]; rfl
 
 theorem forgeGuessedAdvantageCellPaper_challSimDF'Paper_simDeliverForgeTrackHalted_eq
-    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    {PQ : Type} [Inhabited PQ]
-    (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
-    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt)
-    (qep : ℕ) (tL : Option ℕ) (t : ℕ)
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] {PQ : Type} [Inhabited PQ]
+    (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+    (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
+    (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (tL : Option ℕ) (t : ℕ)
     (A : CryptoGames.LibsignalSM.LibAdv PQ (BitVec 512) ℓ) :
     let fig := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
     forgeGuessedAdvantageCellPaper fig (qep + 1) CryptoGames.SM.Construction.DeliverForge.sameHdrScheme tL t
       (CryptoGames.SM.Construction.DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
         (simDeliverForgeTrackHalted P K ℓ Dh encPt encT decT idOf lam qep A)) =
     𝒟[do
-      let b ← $ᵗ Bool
-      let k ← $ᵗ (BitVec 256 × BitVec 256)
-      let pqrKey ← $ᵗ BitVec 256
+      let b ← $ᵗ Bool; let k ← $ᵗ (BitVec 256 × BitVec 256); let pqrKey ← $ᵗ BitVec 256
       let sC₀ : LibsignalToModularSchemeSimState PQ Pt ℓ :=
         initSimC (P.spqr.init .a2b pqrKey) (P.spqr.init .b2a pqrKey)
       let tr₀ : KemFailTrackState P.C.F := initKemFailTrack P.C.F pqrKey
       let m'₀ : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt) := { st := fun _ => (), b }
-      let z ←
-        cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t tL A
-          sC₀ tr₀ [] m'₀ (CryptoGames.SM.initState fig k b)
+      let z ← cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t tL A
+        sC₀ tr₀ [] m'₀ (CryptoGames.SM.initState fig k b)
       return cellWinPred tL t z.2] {true} := by
   intro fig
-  rw [forgeGuessedAdvantageCellPaper_eq_runBaseDFCellPaper]
-  rw [runBaseDFCellPaper_challSimDF'Paper_simDeliverForgeTrackHalted_eq P K ℓ Dh encPt encT decT
-    idOf lam qep CryptoGames.SM.Construction.DeliverForge.sameHdrScheme tL t (CryptoGames.SM.Config.auth t)
-    (fun s => pure (cellWinPred tL t s))]
-  refine congrArg (fun m : ProbComp Bool => 𝒟[m] {true}) ?_
-  refine congrArg (($ᵗ Bool : ProbComp Bool) >>= ·) (funext fun b => ?_)
-  refine congrArg (($ᵗ (BitVec 256 × BitVec 256) : ProbComp _) >>= ·) (funext fun k => ?_)
-  refine congrArg (($ᵗ BitVec 256 : ProbComp (BitVec 256)) >>= ·) (funext fun pqrKey => ?_)
+  rw [forgeGuessedAdvantageCellPaper_eq_runBaseDFCellPaper,
+    runBaseDFCellPaper_challSimDF'Paper_simDeliverForgeTrackHalted_eq P K ℓ Dh encPt encT decT
+      idOf lam qep CryptoGames.SM.Construction.DeliverForge.sameHdrScheme tL t
+      (CryptoGames.SM.Config.auth t) (fun s => pure (cellWinPred tL t s))]
+  refine congrArg (fun m : ProbComp Bool => 𝒟[m] {true})
+    (congrArg (($ᵗ Bool : ProbComp Bool) >>= ·) (funext fun b =>
+      congrArg (($ᵗ (BitVec 256 × BitVec 256) : ProbComp _) >>= ·) (funext fun k =>
+        congrArg (($ᵗ BitVec 256 : ProbComp (BitVec 256)) >>= ·) (funext fun pqrKey => ?_))))
   dsimp only [cellSimRunTrackHalted]
   have hinit : CryptoGames.SM.initState fig k b = withB b (CryptoGames.SM.initState fig k false) := rfl
   rw [hinit, simulateQ_fullImplBaseDFCellPaper_simImplDF'Paper_with_b]
-  simp only [bind_assoc, pure_bind, cellWinPred_with_b]
-  rfl
+  simp only [bind_assoc, pure_bind, cellWinPred_with_b]; rfl
 
 /-! ## Query-bind lemmas -/
 
@@ -206,7 +193,200 @@ theorem evalDist_cellSimRunTrackHalted_cellWinPred_eq_zero_of_doomed {α : Type}
   rw [hcongr, OracleComp.evalDist_bind_const]
   simp
 
-theorem sum_cellSimRunTrackHalted_le_of_doomed_or_eq {α : Type}
+abbrev bucketSimRunTrackHalted {α : Type}
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    {PQ : Type} [Inhabited PQ]
+    (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
+    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt)
+    (qep : ℕ) (tL : Option ℕ) (par : Bool)
+    (oa : OracleComp (unifSpec + CryptoGames.SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512)
+      (List (BitVec 8))) α)
+    (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (tr : KemFailTrackState P.C.F)
+    (sent : List (Fig8C Pt))
+    (m' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (sw : CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt) ×
+      Option ℕ) :
+    ProbComp ((((α × (LibsignalToModularSchemeSimState PQ Pt ℓ × KemFailTrackState P.C.F)) ×
+      List (Fig8C Pt)) ×
+      Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)) ×
+      (CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt) ×
+        Option ℕ)) :=
+  let fig := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
+  let fs := lFS P.C P.codec ℓ encT idOf 25000
+  (simulateQ (CryptoGames.SM.Construction.DeliverForge.fullImplBaseDFPaperBucket fig 1 (qep + 1)
+      CryptoGames.SM.Construction.DeliverForge.sameHdrScheme tL par)
+    ((simulateQ (CryptoGames.SM.Construction.DeliverForge.simImplDF'Paper (2 + 1) (qep + 1))
+      (((simulateQ (simImplCTrackHalted P K encT decT qep fig fs
+          (deliverForgeHook Pt ℓ) Dh) oa).run (sC, tr)).run sent)).run m')).run sw
+
+@[expose] noncomputable def stage2CellBucketSumRunTrackHalted {α : Type}
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    {PQ : Type} [Inhabited PQ]
+    (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
+    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ)
+    (oa : OracleComp (unifSpec + CryptoGames.SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512)
+      (List (BitVec 8))) α)
+    (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (tr : KemFailTrackState P.C.F)
+    (sent : List (Fig8C Pt))
+    (m' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (s_cell : ℕ → Option ℕ → CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)) :
+    ℝ≥0∞ :=
+  (∑ t ∈ Finset.Ico 2 ((qep + 1) + 2),
+    𝒟[cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t (some (t - 2))
+        oa sC tr sent m' (s_cell t (some (t - 2))) >>=
+      fun z => pure (cellWinPred (some (t - 2)) t z.2)] {true}) +
+  (∑ t ∈ Finset.Ico 3 ((qep + 1) + 2),
+    𝒟[cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t (some (t - 3))
+        oa sC tr sent m' (s_cell t (some (t - 3))) >>=
+      fun z => pure (cellWinPred (some (t - 3)) t z.2)] {true}) +
+  (∑ tL ∈ CryptoGames.SM.admissibleLastLeakGuesses 4 ((qep + 1) + 1),
+    ∑ par ∈ ({false, true} : Finset Bool),
+      𝒟[bucketSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep tL par
+          oa sC tr sent m' (s_cell 0 none, none) >>=
+        fun z => pure (bucketWinPred tL z.2)] {true})
+
+theorem forgeBucketAdvantagePaper_challSimDF'Paper_simDeliverForgeTrackHalted_eq
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    {PQ : Type} [Inhabited PQ]
+    (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
+    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt)
+    (qep : ℕ) (tL : Option ℕ) (par : Bool)
+    (A : CryptoGames.LibsignalSM.LibAdv PQ (BitVec 512) ℓ) :
+    let fig := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
+    CryptoGames.SM.Construction.DeliverForge.forgeBucketAdvantagePaper fig 1 (qep + 1)
+      CryptoGames.SM.Construction.DeliverForge.sameHdrScheme tL par
+      (CryptoGames.SM.Construction.DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+        (simDeliverForgeTrackHalted P K ℓ Dh encPt encT decT idOf lam qep A)) =
+    𝒟[do
+      let b ← $ᵗ Bool
+      let k ← $ᵗ (BitVec 256 × BitVec 256)
+      let pqrKey ← $ᵗ BitVec 256
+      let sC₀ : LibsignalToModularSchemeSimState PQ Pt ℓ :=
+        initSimC (P.spqr.init .a2b pqrKey) (P.spqr.init .b2a pqrKey)
+      let tr₀ : KemFailTrackState P.C.F := initKemFailTrack P.C.F pqrKey
+      let m'₀ : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt) := { st := fun _ => (), b }
+      let z ← bucketSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep tL par A
+        sC₀ tr₀ [] m'₀ (CryptoGames.SM.initState fig k b, none)
+      return bucketWinPred tL z.2] {true} := by
+  intro fig
+  unfold CryptoGames.SM.Construction.DeliverForge.forgeBucketAdvantagePaper
+    CryptoGames.SM.Construction.DeliverForge.forgeGameBucketPaper
+    CryptoGames.SM.Construction.DeliverForge.challSimDF'Paper
+    simDeliverForgeTrackHalted simRunCTrackHaltedWith bucketSimRunTrackHalted
+  rw [OracleComp.evalDist_bind_bind_swap (γ := Bool)
+    ($ᵗ Bool : ProbComp Bool) ($ᵗ (BitVec 256 × BitVec 256) : ProbComp _)]
+  refine congrArg (fun m : ProbComp Bool => 𝒟[m] {true}) ?_
+  refine congrArg (($ᵗ (BitVec 256 × BitVec 256) : ProbComp _) >>= ·) (funext fun k => ?_)
+  simp only [StateT.run'_eq, map_eq_bind_pure_comp, Function.comp_def, bind_assoc,
+    simulateQ_bind, StateT.run_bind]
+  rw [simulateQ_fullImplBaseDFPaperBucket_liftM_probComp]
+  simp only [bind_assoc, pure_bind]
+  refine congrArg (($ᵗ Bool : ProbComp Bool) >>= ·) (funext fun b => ?_)
+  rw [deliverForgeHook_lift_liftM_run]
+  simp only [bind_assoc, pure_bind, simulateQ_bind, StateT.run_bind,
+    simulateQ_simImplDF'Paper_liftM_probComp,
+    simulateQ_fullImplBaseDFPaperBucket_liftM_probComp]
+  refine congrArg (($ᵗ BitVec 256 : ProbComp (BitVec 256)) >>= ·) (funext fun pqrKey => ?_)
+  simp only [StateT.run_pure, simulateQ_pure, pure_bind]
+  have hinit : CryptoGames.SM.initState fig k b = withB b (CryptoGames.SM.initState fig k false) := rfl
+  rw [hinit, simulateQ_fullImplBaseDFPaperBucket_with_b]
+  simp only [bind_assoc, pure_bind, bucketWinPred_with_b]
+  rfl
+
+theorem bucketSimRunTrackHalted_bind {α β : Type}
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    {PQ : Type} [Inhabited PQ]
+    (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
+    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt)
+    (qep : ℕ) (tL : Option ℕ) (par : Bool)
+    (oa : OracleComp (unifSpec + CryptoGames.SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512)
+      (List (BitVec 8))) α)
+    (ob : α → OracleComp (unifSpec + CryptoGames.SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512)
+      (List (BitVec 8))) β)
+    (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (tr : KemFailTrackState P.C.F)
+    (sent : List (Fig8C Pt))
+    (m' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (sw : CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt) ×
+      Option ℕ) :
+    bucketSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep tL par (oa >>= ob) sC tr sent m' sw =
+      (bucketSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep tL par oa sC tr sent m' sw >>=
+        fun z => bucketSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep tL par
+          (ob z.1.1.1.1) z.1.1.1.2.1 z.1.1.1.2.2 z.1.1.2 z.1.2 z.2) := by
+  simp only [bucketSimRunTrackHalted, simulateQ_bind, StateT.run_bind]
+
+theorem bucketSimRunTrackHalted_eq_map_cell0_of_no_win {α : Type}
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    {PQ : Type} [Inhabited PQ]
+    (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
+    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt)
+    (qep : ℕ) (tL : Option ℕ) (par : Bool)
+    (oa : OracleComp (unifSpec + CryptoGames.SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512)
+      (List (BitVec 8))) α)
+    (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (tr : KemFailTrackState P.C.F)
+    (sent : List (Fig8C Pt))
+    (m' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (s₀ : CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (hwin₀ : s₀.win = false)
+    (hno_win : ∀ t ∈ Finset.range ((qep + 1) + 2),
+      ∀ z ∈ support (cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t none
+        oa sC tr sent m' s₀),
+        z.2.win = false) :
+    bucketSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep tL par oa sC tr sent m'
+      (s₀, none) =
+      (cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep 0 none oa sC tr sent m' s₀ >>=
+        fun z => pure (z.1, (z.2, none))) := by
+  let fig := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
+  have hcell_eq : ∀ t : ℕ,
+      cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t none oa sC tr sent m' s₀ =
+        (simulateQ (CryptoGames.SM.Construction.DeliverForge.fullImplBaseDFPaper fig (2 + 1) (qep + 1)
+            CryptoGames.SM.Construction.DeliverForge.sameHdrScheme (CryptoGames.SM.Config.auth t))
+          ((simulateQ (CryptoGames.SM.Construction.DeliverForge.simImplDF'Paper (2 + 1) (qep + 1))
+            (((simulateQ (simImplCTrackHalted P K encT decT qep fig
+                (lFS P.C P.codec ℓ encT idOf 25000) (deliverForgeHook Pt ℓ) Dh)
+              oa).run (sC, tr)).run sent)).run m')).run s₀ := by
+    intro t
+    simp only [cellSimRunTrackHalted, fullImplBaseDFCellPaper_none_eq_fullImplBaseDFPaper]
+    rfl
+  rw [hcell_eq 0]
+  exact simulateQ_bucket_eq_map_auth0_of_no_win fig qep
+    CryptoGames.SM.Construction.DeliverForge.sameHdrScheme tL par _
+    hwin₀ fun t ht z hz => hno_win t ht z (by rwa [hcell_eq t])
+
+theorem bucketSimRunTrackHalted_bind_eq_of_cell0_no_win {α β : Type}
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    {PQ : Type} [Inhabited PQ]
+    (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
+    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt)
+    (qep : ℕ) (tL : Option ℕ) (par : Bool)
+    (oa : OracleComp (unifSpec + CryptoGames.SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512)
+      (List (BitVec 8))) α)
+    (ob : α → OracleComp (unifSpec + CryptoGames.SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512)
+      (List (BitVec 8))) β)
+    (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (tr : KemFailTrackState P.C.F)
+    (sent : List (Fig8C Pt))
+    (m' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (s₀ : CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (hwin₀ : s₀.win = false)
+    (hno_win : ∀ t ∈ Finset.range ((qep + 1) + 2),
+      ∀ z ∈ support (cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t none
+        oa sC tr sent m' s₀),
+        z.2.win = false) :
+    bucketSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep tL par (oa >>= ob)
+      sC tr sent m' (s₀, none) =
+      (cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep 0 none oa sC tr sent m' s₀ >>=
+        fun z => bucketSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep tL par
+          (ob z.1.1.1.1) z.1.1.1.2.1 z.1.1.1.2.2 z.1.1.2 z.1.2 (z.2, none)) := by
+  rw [bucketSimRunTrackHalted_bind, bucketSimRunTrackHalted_eq_map_cell0_of_no_win P K ℓ Dh encPt
+    encT decT idOf lam qep tL par oa sC tr sent m' s₀ hwin₀ hno_win, bind_assoc]
+  simp only [pure_bind]
+
+theorem sum_stage2_halted_le_of_doomed_or_eq {α : Type}
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (P : Params (List (BitVec 8)) (BitVec 512)) (K : MlKem) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
@@ -225,23 +405,87 @@ theorem sum_cellSimRunTrackHalted_le_of_doomed_or_eq {α : Type}
       cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t tL oa_pre sC tr sent m'
         (s_cell t tL) =
       cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t tL oa_post sC₁ tr₁ sent₁ m₁'
-        (s_cell₁ t tL)) :
-    ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ CryptoGames.SM.admissibleLastLeakGuesses 2 t,
-      𝒟[cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t tL oa_post sC₁ tr₁ sent₁ m₁'
-          (s_cell₁ t tL) >>=
-        fun z => pure (cellWinPred tL t z.2)] {true} ≤
-    ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ CryptoGames.SM.admissibleLastLeakGuesses 2 t,
-      𝒟[cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t tL oa_pre sC tr sent m'
-          (s_cell t tL) >>=
-        fun z => pure (cellWinPred tL t z.2)] {true} := by
-  refine Finset.sum_le_sum fun t ht => Finset.sum_le_sum fun tL htL => ?_
-  rcases hcells t ht tL htL with hdoomed | heq
-  · rw [evalDist_cellSimRunTrackHalted_cellWinPred_eq_zero_of_doomed P K ℓ Dh encPt encT decT idOf
-      lam qep t tL oa_post sC₁ tr₁ sent₁ m₁' hdoomed]
-    exact zero_le
-  · rw [heq]
+        (s_cell₁ t tL))
+    (hbuckets : ∀ tL ∈ CryptoGames.SM.admissibleLastLeakGuesses 4 ((qep + 1) + 1),
+      ∀ par ∈ ({false, true} : Finset Bool),
+      bucketSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep tL par
+        oa_pre sC tr sent m' (s_cell 0 none, none) =
+      bucketSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep tL par
+        oa_post sC₁ tr₁ sent₁ m₁' (s_cell₁ 0 none, none)) :
+    stage2CellBucketSumRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep oa_post
+      sC₁ tr₁ sent₁ m₁' s_cell₁ ≤
+    stage2CellBucketSumRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep oa_pre
+      sC tr sent m' s_cell := by
+  unfold stage2CellBucketSumRunTrackHalted
+  refine add_le_add (add_le_add (Finset.sum_le_sum fun t ht => ?_) (Finset.sum_le_sum fun t ht => ?_))
+    (Finset.sum_le_sum fun tL htL => Finset.sum_le_sum fun par hpar => ?_)
+  · have ht' : t ∈ Finset.range ((qep + 1) + 2) := Finset.mem_range.mpr (Finset.mem_Ico.mp ht).2
+    have htL : some (t - 2) ∈ CryptoGames.SM.admissibleLastLeakGuesses 2 t := by
+      simp only [CryptoGames.SM.admissibleLastLeakGuesses, Finset.mem_insert, Finset.mem_image,
+        Finset.mem_range]
+      exact Or.inr ⟨t - 2, by have := (Finset.mem_Ico.mp ht).1; omega, rfl⟩
+    rcases hcells t ht' (some (t - 2)) htL with hdoomed' | heq
+    · rw [evalDist_cellSimRunTrackHalted_cellWinPred_eq_zero_of_doomed P K ℓ Dh encPt encT decT
+        idOf lam qep t (some (t - 2)) oa_post sC₁ tr₁ sent₁ m₁' hdoomed']
+      exact zero_le
+    · rw [heq]
+  · have ht' : t ∈ Finset.range ((qep + 1) + 2) := Finset.mem_range.mpr (Finset.mem_Ico.mp ht).2
+    have htL : some (t - 3) ∈ CryptoGames.SM.admissibleLastLeakGuesses 2 t := by
+      simp only [CryptoGames.SM.admissibleLastLeakGuesses, Finset.mem_insert, Finset.mem_image,
+        Finset.mem_range]
+      exact Or.inr ⟨t - 3, by have := (Finset.mem_Ico.mp ht).1; omega, rfl⟩
+    rcases hcells t ht' (some (t - 3)) htL with hdoomed' | heq
+    · rw [evalDist_cellSimRunTrackHalted_cellWinPred_eq_zero_of_doomed P K ℓ Dh encPt encT decT
+        idOf lam qep t (some (t - 3)) oa_post sC₁ tr₁ sent₁ m₁' hdoomed']
+      exact zero_le
+    · rw [heq]
+  · rw [hbuckets tL htL par hpar]
 
-theorem evalDist_le_sum_cellSimRunTrackHalted_of_cell_step_win {α : Type}
+theorem sum_stage2_halted_le_of_cell0_pure_step {α β : Type}
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    (P : Params (List (BitVec 8)) (BitVec 512)) (K : MlKem) (ℓ : ℕ)
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
+    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ)
+    (oa : OracleComp (unifSpec + CryptoGames.SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+      (BitVec 512) (List (BitVec 8))) α)
+    (ob : α → OracleComp (unifSpec + CryptoGames.SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+      (BitVec 512) (List (BitVec 8))) β)
+    (ans : α)
+    (sC sC₁ : LibsignalToModularSchemeSimState (List (BitVec 8)) Pt ℓ)
+    (tr tr₁ : KemFailTrackState P.C.F)
+    (g₁ : CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (sent sent₁ : List (Fig8C Pt))
+    (m' m₁' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (s_cell s_cell₁ :
+      ℕ → Option ℕ → CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (hwin₀ : (s_cell 0 none).win = false)
+    (hwin₁ : (s_cell₁ 0 none).win = false)
+    (hnone_step : ∀ t ∈ Finset.range ((qep + 1) + 2),
+      cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t none oa sC tr sent m'
+        (s_cell 0 none) =
+      pure ((((ans, (sC₁, tr₁)), sent₁), m₁'), s_cell₁ 0 none))
+    (hcells : ∀ t ∈ Finset.range ((qep + 1) + 2), ∀ tL ∈ CryptoGames.SM.admissibleLastLeakGuesses 2 t,
+      CellK4Doomed tL t g₁ (s_cell₁ t tL) ∨
+      cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t tL (oa >>= ob) sC tr sent m'
+        (s_cell t tL) =
+      cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t tL (ob ans) sC₁ tr₁ sent₁ m₁'
+        (s_cell₁ t tL)) :
+    stage2CellBucketSumRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep (ob ans)
+      sC₁ tr₁ sent₁ m₁' s_cell₁ ≤
+    stage2CellBucketSumRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep (oa >>= ob)
+      sC tr sent m' s_cell := by
+  refine sum_stage2_halted_le_of_doomed_or_eq P K ℓ Dh encPt encT decT idOf lam qep
+    (oa >>= ob) (ob ans) sC sC₁ tr tr₁ g₁ sent sent₁ m' m₁' s_cell s_cell₁ hcells
+    fun tL _ par _ => ?_
+  rw [bucketSimRunTrackHalted_bind_eq_of_cell0_no_win P K ℓ Dh encPt encT decT idOf lam qep
+    tL par oa ob sC tr sent m' (s_cell 0 none) hwin₀]
+  · rw [hnone_step 0 (Finset.mem_range.mpr (by omega)), pure_bind]
+  · intro t ht z hz
+    rw [hnone_step t ht, support_pure, Set.mem_singleton_iff] at hz
+    rw [hz]
+    exact hwin₁
+
+theorem evalDist_le_stage2_halted_of_cell_step_win {α : Type}
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (P : Params (List (BitVec 8)) (BitVec 512)) (K : MlKem) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
@@ -262,33 +506,79 @@ theorem evalDist_le_sum_cellSimRunTrackHalted_of_cell_step_win {α : Type}
         (s_cell t₀ tL₀) =
       cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t₀ tL₀ oa_post sC₁ tr₁ sent₁ m₁'
         s_win)
-    (hwin : cellWinPred tL₀ t₀ s_win = true) :
+    (hwin : cellWinPred tL₀ t₀ s_win = true)
+    (hbucket_win : ¬(2 ≤ t₀ ∧ tL₀ = some (t₀ - 2)) → ¬(3 ≤ t₀ ∧ tL₀ = some (t₀ - 3)) →
+      ∀ par : Bool, CryptoGames.SM.Construction.DeliverForge.inStage2Bucket 1 tL₀ par t₀ = true →
+      ∃ sw_win,
+        bucketSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep tL₀ par
+          oa_pre sC tr sent m' (s_cell 0 none, none) =
+        bucketSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep tL₀ par
+          oa_post sC₁ tr₁ sent₁ m₁' sw_win ∧
+        bucketWinPred tL₀ sw_win = true) :
     𝒟[lhs] {true} ≤
-    ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ CryptoGames.SM.admissibleLastLeakGuesses 2 t,
-      𝒟[cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t tL oa_pre sC tr sent m'
-          (s_cell t tL) >>=
-        fun z => pure (cellWinPred tL t z.2)] {true} := by
-  have hone :
-      𝒟[cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t₀ tL₀ oa_pre sC tr sent m'
-          (s_cell t₀ tL₀) >>=
-        fun z => pure (cellWinPred tL₀ t₀ z.2)] {true} = 1 := by
-    rw [hstep_eq]
-    exact evalDist_simulateQ_fullImplBaseDFCellPaper_cellWinPred_eq_one
-      (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) qep CryptoGames.SM.Construction.DeliverForge.sameHdrScheme
-      tL₀ t₀ _ s_win hwin
-  refine le_trans MeasureTheory.prob_le_one ?_
-  rw [← hone]
-  exact le_trans
-    (Finset.single_le_sum (f := fun tL =>
-      𝒟[cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t₀ tL oa_pre sC tr sent m'
-          (s_cell t₀ tL) >>=
-        fun z => pure (cellWinPred tL t₀ z.2)] {true})
-      (fun _ _ => (zero_le : (0 : ℝ≥0∞) ≤ _)) htL₀)
-    (Finset.single_le_sum (f := fun t => ∑ tL ∈ CryptoGames.SM.admissibleLastLeakGuesses 2 t,
-      𝒟[cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t tL oa_pre sC tr sent m'
-          (s_cell t tL) >>=
-        fun z => pure (cellWinPred tL t z.2)] {true})
-      (fun _ _ => (zero_le : (0 : ℝ≥0∞) ≤ _)) ht₀)
+      stage2CellBucketSumRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep oa_pre
+        sC tr sent m' s_cell := by
+  unfold stage2CellBucketSumRunTrackHalted
+  by_cases hB1 : 2 ≤ t₀ ∧ tL₀ = some (t₀ - 2)
+  · rcases hB1 with ⟨ht2, rfl⟩
+    have hone :
+        𝒟[cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t₀ (some (t₀ - 2)) oa_pre
+            sC tr sent m' (s_cell t₀ (some (t₀ - 2))) >>=
+          fun z => pure (cellWinPred (some (t₀ - 2)) t₀ z.2)] {true} = 1 := by
+      rw [hstep_eq]
+      exact evalDist_simulateQ_fullImplBaseDFCellPaper_cellWinPred_eq_one
+        (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) qep
+        CryptoGames.SM.Construction.DeliverForge.sameHdrScheme (some (t₀ - 2)) t₀ _ s_win hwin
+    have ht_ico : t₀ ∈ Finset.Ico 2 ((qep + 1) + 2) :=
+      Finset.mem_Ico.mpr ⟨ht2, Finset.mem_range.mp ht₀⟩
+    refine MeasureTheory.prob_le_one.trans ?_
+    rw [← hone]
+    exact (Finset.single_le_sum (f := fun t =>
+        𝒟[cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t (some (t - 2)) oa_pre
+            sC tr sent m' (s_cell t (some (t - 2))) >>=
+          fun z => pure (cellWinPred (some (t - 2)) t z.2)] {true})
+      (fun _ _ => (zero_le : (0 : ℝ≥0∞) ≤ _)) ht_ico).trans
+      (le_self_add.trans le_self_add)
+  · by_cases hB2 : 3 ≤ t₀ ∧ tL₀ = some (t₀ - 3)
+    · rcases hB2 with ⟨ht3, rfl⟩
+      have hone :
+          𝒟[cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t₀ (some (t₀ - 3)) oa_pre
+              sC tr sent m' (s_cell t₀ (some (t₀ - 3))) >>=
+            fun z => pure (cellWinPred (some (t₀ - 3)) t₀ z.2)] {true} = 1 := by
+        rw [hstep_eq]
+        exact evalDist_simulateQ_fullImplBaseDFCellPaper_cellWinPred_eq_one
+          (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) qep
+          CryptoGames.SM.Construction.DeliverForge.sameHdrScheme (some (t₀ - 3)) t₀ _ s_win hwin
+      have ht_ico : t₀ ∈ Finset.Ico 3 ((qep + 1) + 2) :=
+        Finset.mem_Ico.mpr ⟨ht3, Finset.mem_range.mp ht₀⟩
+      refine MeasureTheory.prob_le_one.trans ?_
+      rw [← hone]
+      exact (Finset.single_le_sum (f := fun t =>
+          𝒟[cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t (some (t - 3)) oa_pre
+              sC tr sent m' (s_cell t (some (t - 3))) >>=
+            fun z => pure (cellWinPred (some (t - 3)) t z.2)] {true})
+        (fun _ _ => (zero_le : (0 : ℝ≥0∞) ≤ _)) ht_ico).trans
+        (le_add_self.trans le_self_add)
+    · obtain ⟨htL4, hinB⟩ := not_B1_not_B2_imp_inStage2Bucket ht₀ htL₀ hB1 hB2
+      let par₀ := CryptoGames.SM.Construction.DeliverForge.partyPar (Party.senderOf t₀)
+      obtain ⟨sw_win, hsw_eq, hsw_win⟩ := hbucket_win hB1 hB2 par₀ hinB
+      have hone :
+          𝒟[bucketSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep tL₀ par₀ oa_pre
+              sC tr sent m' (s_cell 0 none, none) >>=
+            fun z => pure (bucketWinPred tL₀ z.2)] {true} = 1 := by
+        rw [hsw_eq]
+        exact evalDist_simulateQ_fullImplBaseDFPaperBucket_bucketWinPred_eq_one
+          (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) qep
+          CryptoGames.SM.Construction.DeliverForge.sameHdrScheme tL₀ par₀ _ sw_win hsw_win
+      have hpar₀ : par₀ ∈ ({false, true} : Finset Bool) := by cases par₀ <;> simp
+      refine MeasureTheory.prob_le_one.trans ?_
+      rw [← hone]
+      exact (Finset.single_le_sum (fun _ _ => (zero_le : (0 : ℝ≥0∞) ≤ _)) hpar₀).trans
+        ((Finset.single_le_sum (f := fun tL => ∑ par ∈ ({false, true} : Finset Bool),
+          𝒟[bucketSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep tL par oa_pre
+              sC tr sent m' (s_cell 0 none, none) >>=
+            fun z => pure (bucketWinPred tL z.2)] {true})
+          (fun _ _ => (zero_le : (0 : ℝ≥0∞) ≤ _)) htL4).trans le_add_self)
 
 theorem cellSimRunTrackHalted_bind {α β : Type}
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
@@ -313,9 +603,8 @@ theorem cellSimRunTrackHalted_bind {α β : Type}
 
 theorem simImplCTrackHalted_inl {M : Type → Type} [Monad M]
     {PQ Pt : Type} [Inhabited PQ] [DecidableEq Pt] [Zero Pt] {ℓ : ℕ}
-    (P : Params PQ (BitVec 512)) (K : MlKem)
-    (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ)
-    (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
+    (P : Params PQ (BitVec 512)) (K : MlKem) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
+    (qep : ℕ) (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
       (BitVec 256) (Fig8C Pt))
     (fs : FSAEADScheme (BitVec 256) (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
       (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256)) (Header Pt)
@@ -323,46 +612,39 @@ theorem simImplCTrackHalted_inl {M : Type → Type} [Monad M]
     (H : Hook Pt ℓ M) (Dh : DHFun (BitVec 256) Pt) (n : unifSpec.Domain) :
     simImplCTrackHalted P K encT decT qep fig fs H Dh (.inl n) =
       StateT.lift (H.lift (liftM (OracleSpec.query (spec := unifSpec) n : ProbComp _) :
-        Fig8Comp Pt ℓ _)) :=
-  rfl
+        Fig8Comp Pt ℓ _)) := rfl
 
 theorem simImplCTrackHalted_transmit {M : Type → Type} [Monad M]
     {PQ Pt : Type} [Inhabited PQ] [DecidableEq Pt] [Zero Pt] {ℓ : ℕ}
-    (P : Params PQ (BitVec 512)) (K : MlKem)
-    (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ)
-    (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
+    (P : Params PQ (BitVec 512)) (K : MlKem) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
+    (qep : ℕ) (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
       (BitVec 256) (Fig8C Pt))
     (fs : FSAEADScheme (BitVec 256) (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
       (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256)) (Header Pt)
       (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32))
-    (H : Hook Pt ℓ M) (Dh : DHFun (BitVec 256) Pt)
-    (Q : Party) (m₀ : Plain ℓ) (r : Option (BitVec 512)) :
+    (H : Hook Pt ℓ M) (Dh : DHFun (BitVec 256) Pt) (Q : Party) (m₀ : Plain ℓ) (r : Option (BitVec 512)) :
     simImplCTrackHalted P K encT decT qep fig fs H Dh (.inr (.inl (.inl (.inl (.inl (Q, m₀, r)))))) =
       simSendCTrackHalted P K qep fig H Q m₀ none r := by
   dsimp only [simImplCTrackHalted, HAdd.hAdd, Add.add, QueryImpl.add]
 
 theorem simImplCTrackHalted_chall {M : Type → Type} [Monad M]
     {PQ Pt : Type} [Inhabited PQ] [DecidableEq Pt] [Zero Pt] {ℓ : ℕ}
-    (P : Params PQ (BitVec 512)) (K : MlKem)
-    (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ)
-    (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
+    (P : Params PQ (BitVec 512)) (K : MlKem) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
+    (qep : ℕ) (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
       (BitVec 256) (Fig8C Pt))
     (fs : FSAEADScheme (BitVec 256) (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
       (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256)) (Header Pt)
       (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32))
-    (H : Hook Pt ℓ M) (Dh : DHFun (BitVec 256) Pt)
-    (Q : Party) (m₀ m₁ : Plain ℓ) (r : Option (BitVec 512)) :
-    simImplCTrackHalted P K encT decT qep fig fs H Dh
-        (.inr (.inl (.inl (.inl (.inr (Q, m₀, m₁, r)))))) =
+    (H : Hook Pt ℓ M) (Dh : DHFun (BitVec 256) Pt) (Q : Party) (m₀ m₁ : Plain ℓ) (r : Option (BitVec 512)) :
+    simImplCTrackHalted P K encT decT qep fig fs H Dh (.inr (.inl (.inl (.inl (.inr (Q, m₀, m₁, r)))))) =
       simSendCTrackHalted P K qep fig H Q m₀ (some m₁) r := by
   dsimp only [simImplCTrackHalted, HAdd.hAdd, Add.add, QueryImpl.add]
 
 /-- Deterministic `KemFailTrackState` update on `deliver (Q, w)` matching both `firstNEHalted'`
 and `simImplCTrackHalted`. -/
 def updDeliverTr {PQ Pt : Type} {ℓ : ℕ} {F : ShaCompress}
-    (K : MlKem) (sC : LibsignalToModularSchemeSimState PQ Pt ℓ)
-    (tr : KemFailTrackState F) (Q : Party) (w : List (BitVec 8))
-    (res : Option (RecvResult (Plain ℓ))) : KemFailTrackState F :=
+    (K : MlKem) (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (tr : KemFailTrackState F)
+    (Q : Party) (w : List (BitVec 8)) (res : Option (RecvResult (Plain ℓ))) : KemFailTrackState F :=
   match res, sC.base.honest.reverse.findIdx?
       (fun wc => wc.1 == w && CryptoGames.Party.senderOf wc.2.1.1 == Q.other) with
   | some (.accepted _ _ _), some j => stepKemFailDeliver F K tr Q j
@@ -370,29 +652,22 @@ def updDeliverTr {PQ Pt : Type} {ℓ : ℕ} {F : ShaCompress}
 
 theorem simImplCTrackHalted_deliver_run {M : Type → Type} [Monad M] [LawfulMonad M]
     {PQ Pt : Type} [Inhabited PQ] [DecidableEq Pt] [Zero Pt] {ℓ : ℕ}
-    (P : Params PQ (BitVec 512)) (K : MlKem)
-    (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ)
-    (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
+    (P : Params PQ (BitVec 512)) (K : MlKem) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
+    (qep : ℕ) (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
       (BitVec 256) (Fig8C Pt))
     (fs : FSAEADScheme (BitVec 256) (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
       (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256)) (Header Pt)
       (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32))
-    (H : Hook Pt ℓ M) (Dh : DHFun (BitVec 256) Pt)
-    (Q : Party) (w : List (BitVec 8))
+    (H : Hook Pt ℓ M) (Dh : DHFun (BitVec 256) Pt) (Q : Party) (w : List (BitVec 8))
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (tr : KemFailTrackState P.C.F) :
-    (simImplCTrackHalted P K encT decT qep fig fs H Dh
-      (.inr (.inl (.inl (.inr (Q, w)))))).run (sC, tr) =
+    (simImplCTrackHalted P K encT decT qep fig fs H Dh (.inr (.inl (.inl (.inr (Q, w)))))).run (sC, tr) =
       ((CryptoGames.Ratchet.LibsignalSimC.guardC (CryptoGames.Ratchet.LibsignalSimC.simRecvC P encT decT qep fig fs H Q w true)).run sC >>=
         fun x => pure (x.1, (x.2, updDeliverTr K sC tr Q w x.1))) := by
-  have hlift : ∀ {α : Type} (m : M α)
-      (st : LibsignalToModularSchemeSimState PQ Pt ℓ × KemFailTrackState P.C.F),
+  have hlift : ∀ {α : Type} (m : M α) (st : LibsignalToModularSchemeSimState PQ Pt ℓ × KemFailTrackState P.C.F),
       (StateT.lift m : StateT _ M α).run st = (m >>= fun a => pure (a, st)) := fun _ _ => rfl
   dsimp only [simImplCTrackHalted, HAdd.hAdd, Add.add, QueryImpl.add]
-  simp only [StateT.run_bind, StateT.run_get, StateT.run_set, hlift,
-    bind_assoc, pure_bind]
-  refine bind_congr fun x => ?_
-  rcases x with ⟨res, sC'⟩
-  dsimp only [updDeliverTr]
+  simp only [StateT.run_bind, StateT.run_get, StateT.run_set, hlift, bind_assoc, pure_bind]
+  refine bind_congr fun ⟨res, sC'⟩ => ?_; dsimp only [updDeliverTr]
   cases res with
   | none => simp only [StateT.run_pure]
   | some rr =>
@@ -400,53 +675,43 @@ theorem simImplCTrackHalted_deliver_run {M : Type → Type} [Monad M] [LawfulMon
       cases sC.base.honest.reverse.findIdx?
         (fun wc => wc.1 == w && CryptoGames.Party.senderOf wc.2.1.1 == Q.other) <;>
       simp only [modify, modifyGet, MonadStateOf.modifyGet, StateT.run_bind, StateT.run_pure]
-    unfold StateT.modifyGet StateT.run
-    simp only [pure_bind]
+    unfold StateT.modifyGet StateT.run; simp only [pure_bind]
 
 theorem simImplCTrackHalted_inject_run {M : Type → Type} [Monad M] [LawfulMonad M]
     {PQ Pt : Type} [Inhabited PQ] [DecidableEq Pt] [Zero Pt] {ℓ : ℕ}
-    (P : Params PQ (BitVec 512)) (K : MlKem)
-    (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ)
-    (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
+    (P : Params PQ (BitVec 512)) (K : MlKem) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
+    (qep : ℕ) (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
       (BitVec 256) (Fig8C Pt))
     (fs : FSAEADScheme (BitVec 256) (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
       (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256)) (Header Pt)
       (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32))
-    (H : Hook Pt ℓ M) (Dh : DHFun (BitVec 256) Pt)
-    (Q : Party) (w : List (BitVec 8))
+    (H : Hook Pt ℓ M) (Dh : DHFun (BitVec 256) Pt) (Q : Party) (w : List (BitVec 8))
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (tr : KemFailTrackState P.C.F) :
-    (simImplCTrackHalted P K encT decT qep fig fs H Dh
-      (.inr (.inl (.inr (Q, w))))).run (sC, tr) =
+    (simImplCTrackHalted P K encT decT qep fig fs H Dh (.inr (.inl (.inr (Q, w))))).run (sC, tr) =
       ((CryptoGames.Ratchet.LibsignalSimC.guardC (CryptoGames.Ratchet.LibsignalSimC.simRecvC P encT decT qep fig fs H Q w false)).run sC >>=
         fun x => pure (x.1, (x.2, tr))) := by
-  have hlift : ∀ {α : Type} (m : M α)
-      (st : LibsignalToModularSchemeSimState PQ Pt ℓ × KemFailTrackState P.C.F),
+  have hlift : ∀ {α : Type} (m : M α) (st : LibsignalToModularSchemeSimState PQ Pt ℓ × KemFailTrackState P.C.F),
       (StateT.lift m : StateT _ M α).run st = (m >>= fun a => pure (a, st)) := fun _ _ => rfl
   dsimp only [simImplCTrackHalted, HAdd.hAdd, Add.add, QueryImpl.add]
-  simp only [StateT.run_bind, StateT.run_get, StateT.run_set, StateT.run_pure, hlift,
-    bind_assoc, pure_bind]
+  simp only [StateT.run_bind, StateT.run_get, StateT.run_set, StateT.run_pure, hlift, bind_assoc, pure_bind]
 
 theorem simImplCTrackHalted_corr_run {M : Type → Type} [Monad M] [LawfulMonad M]
     {PQ Pt : Type} [Inhabited PQ] [DecidableEq Pt] [Zero Pt] {ℓ : ℕ}
-    (P : Params PQ (BitVec 512)) (K : MlKem)
-    (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ)
-    (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
+    (P : Params PQ (BitVec 512)) (K : MlKem) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
+    (qep : ℕ) (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
       (BitVec 256) (Fig8C Pt))
     (fs : FSAEADScheme (BitVec 256) (CryptoGames.FSAEAD.RatchetSenderState (BitVec 256))
       (CryptoGames.FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256)) (Header Pt)
       (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32))
-    (H : Hook Pt ℓ M) (Dh : DHFun (BitVec 256) Pt)
-    (Q : Party)
+    (H : Hook Pt ℓ M) (Dh : DHFun (BitVec 256) Pt) (Q : Party)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (tr : KemFailTrackState P.C.F) :
     (simImplCTrackHalted P K encT decT qep fig fs H Dh (.inr (.inr Q))).run (sC, tr) =
       ((CryptoGames.Ratchet.LibsignalSimC.guardC (CryptoGames.Ratchet.LibsignalSimC.simCorrC P encT H Dh Q)).run sC >>=
         fun x => pure (x.1, (x.2, tr))) := by
-  have hlift : ∀ {α : Type} (m : M α)
-      (st : LibsignalToModularSchemeSimState PQ Pt ℓ × KemFailTrackState P.C.F),
+  have hlift : ∀ {α : Type} (m : M α) (st : LibsignalToModularSchemeSimState PQ Pt ℓ × KemFailTrackState P.C.F),
       (StateT.lift m : StateT _ M α).run st = (m >>= fun a => pure (a, st)) := fun _ _ => rfl
   dsimp only [simImplCTrackHalted, HAdd.hAdd, Add.add, QueryImpl.add]
-  simp only [StateT.run_bind, StateT.run_get, StateT.run_set, StateT.run_pure, hlift,
-    bind_assoc, pure_bind]
+  simp only [StateT.run_bind, StateT.run_get, StateT.run_set, StateT.run_pure, hlift, bind_assoc, pure_bind]
 
 theorem cellSimRunTrackHalted_inl_query_bind {α : Type}
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
@@ -490,6 +755,44 @@ theorem cellSimRunTrackHalted_inl_query_bind {α : Type}
   simp only [bind_assoc, pure_bind, simulateQ_bind, StateT.run_bind,
     simulateQ_simImplDF'Paper_liftM_probComp,
     simulateQ_fullImplBaseDFCellPaper_liftM_probComp]
+  rfl
+
+theorem bucketSimRunTrackHalted_inl_query_bind {α : Type}
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] {PQ : Type} [Inhabited PQ]
+    (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+    (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
+    (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (tL : Option ℕ) (par : Bool)
+    (n : unifSpec.Domain)
+    (u : (unifSpec + CryptoGames.SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512) (List (BitVec 8))).Range
+      (.inl n) → OracleComp (unifSpec + CryptoGames.SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512)
+        (List (BitVec 8))) α)
+    (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (tr : KemFailTrackState P.C.F)
+    (sent : List (Fig8C Pt)) (m' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (sw : CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt) × Option ℕ) :
+    bucketSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep tL par
+      (OracleSpec.query (spec := unifSpec + CryptoGames.SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512)
+        (List (BitVec 8))) (.inl n) >>= u) sC tr sent m' sw =
+    ((OracleSpec.query (spec := unifSpec) n : ProbComp (Fin (n + 1))) >>=
+      fun u₁ => bucketSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep tL par (u u₁)
+        sC tr sent m' sw) := by
+  have hlift : ∀ {β : Type} (m : DeliverForgeM Pt ℓ β),
+      (StateT.lift m : StateT (LibsignalToModularSchemeSimState PQ Pt ℓ × KemFailTrackState P.C.F)
+        (DeliverForgeM Pt ℓ) β).run (sC, tr) = (m >>= fun a => pure (a, (sC, tr))) := fun _ => rfl
+  unfold bucketSimRunTrackHalted; dsimp only
+  rw [simulateQ_query_bind]; simp only [OracleQuery.input_query, OracleQuery.cont_query]
+  dsimp only [liftM, monadLift, MonadLift.monadLift]
+  rw [simImplCTrackHalted_inl, StateT.run_bind, hlift, StateT.run_bind]
+  change (simulateQ (CryptoGames.SM.Construction.DeliverForge.fullImplBaseDFPaperBucket _ _ _ _ _ _)
+    ((simulateQ (CryptoGames.SM.Construction.DeliverForge.simImplDF'Paper (2 + 1) (qep + 1))
+      ((((deliverForgeHook Pt ℓ).lift
+          (liftM (OracleSpec.query (spec := unifSpec) n : ProbComp _) :
+            Fig8Comp Pt ℓ _)).run sent >>=
+        fun z => pure ((z.1, (sC, tr)), z.2)) >>=
+      fun z => (((simulateQ (simImplCTrackHalted P K encT decT qep _ _
+        (deliverForgeHook Pt ℓ) Dh) (u z.1.1)).run z.1.2).run z.2))).run m')).run sw = _
+  rw [deliverForgeHook_lift_liftM_run]
+  simp only [bind_assoc, pure_bind, simulateQ_bind, StateT.run_bind,
+    simulateQ_simImplDF'Paper_liftM_probComp, simulateQ_fullImplBaseDFPaperBucket_liftM_probComp]
   rfl
 
 theorem cellSimRunTrackHalted_inr_query_bind {α : Type}
@@ -669,7 +972,13 @@ theorem firstNEHalted'_deliver_run
          updDeliverTr K sC tr Q w r.1))) := by
   simp only [firstNEHalted', splitSimImplHalted, updDeliverTr, StateT.run_bind, StateT.run_get,
     StateT.run_set, StateT.run_pure, pure_bind]
-  rfl
+  cases (simRecvStepC P ℓ Dh encPt encT decT idOf lam qep Q w true (sC, (g, false))).1 with
+  | none => rfl
+  | some rr =>
+    cases rr <;>
+      cases sC.base.honest.reverse.findIdx?
+        (fun wc => wc.1 == w && CryptoGames.Party.senderOf wc.2.1.1 == Q.other) <;>
+      rfl
 
 theorem simulateQ_firstNEHalted'_deliver_query_bind {α : Type}
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
@@ -763,8 +1072,7 @@ theorem firstNEHalted'_deliver_of_not_lazy
 
 theorem deliver_halted_pure_lockstep {α : Type}
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (P : Params (List (BitVec 8)) (BitVec 512)) (K : MlKem)
-    (InvPQ : ℕ → List (BitVec 8) → Prop) (ℓ : ℕ)
+    (P : Params (List (BitVec 8)) (BitVec 512)) (K : MlKem) (InvPQ : ℕ → List (BitVec 8) → Prop) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
     (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt) (qep q : ℕ)
     (Q : Party) (w : List (BitVec 8))
@@ -774,16 +1082,15 @@ theorem deliver_halted_pure_lockstep {α : Type}
         (List (BitVec 8))) α)
     (sC sC₁ : LibsignalToModularSchemeSimState (List (BitVec 8)) Pt ℓ)
     (g g₁ : CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
-    (ans : Option (RecvResult (Plain ℓ)))
-    (tr : KemFailTrackState P.C.F) (sent sent₁ : List (Fig8C Pt))
+    (ans : Option (RecvResult (Plain ℓ))) (tr : KemFailTrackState P.C.F) (sent sent₁ : List (Fig8C Pt))
     (m' m₁' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
     (s_cell s_cell₁ :
       ℕ → Option ℕ → CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (hbody : FirstNECellFamilyInvT_body qep g m' s_cell)
     (hlazy : ∃ r_idx w_rem,
       EvictedSpurHistSimInvLazy P K InvPQ ℓ Dh encPt encT idOf lam qep q r_idx w_rem sC g)
     (hprobe_run : (((CryptoGames.Ratchet.LibsignalSimC.guardC (CryptoGames.Ratchet.LibsignalSimC.simRecvC P encT decT qep
-        (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam)
-        (lFS P.C P.codec ℓ encT idOf 25000)
+        (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) (lFS P.C P.codec ℓ encT idOf 25000)
         (probeHook (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) (qep + 1))
         Q w true)).run sC).run (g, false)) = pure ((ans, sC₁), (g₁, false)))
     (hinv₁ : FirstNECoupledInvD P Dh encPt encT idOf lam qep false false sC₁ sent₁ m₁' g₁ s_cell₁)
@@ -793,92 +1100,94 @@ theorem deliver_halted_pure_lockstep {α : Type}
         (CryptoGames.Ratchet.LibsignalSimC.guardC (CryptoGames.Ratchet.LibsignalSimC.simRecvC P encT decT qep
           (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam)
           (lFS P.C P.codec ℓ encT idOf 25000) (deliverForgeHook Pt ℓ) Q w true))
-        sC sent m' (s_cell t tL) =
-        pure ((((ans, sC₁), sent₁), m₁'), s_cell₁ t tL))
+        sC sent m' (s_cell t tL) = pure ((((ans, sC₁), sent₁), m₁'), s_cell₁ t tL))
     (hih : ∀ (u₁ : (unifSpec + CryptoGames.SM.spec (GhostState (List (BitVec 8))) (Plain ℓ) (BitVec 512)
         (List (BitVec 8))).Range (.inr (.inl (.inl (.inr (Q, w))))))
       (sC' : LibsignalToModularSchemeSimState (List (BitVec 8)) Pt ℓ)
       (g' : CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
       (fl' dead' : Bool) (tr' : KemFailTrackState P.C.F) (sent' : List (Fig8C Pt))
       (m'' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
-      (s_cell' :
-        ℕ → Option ℕ → CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)),
+      (s_cell' : ℕ → Option ℕ → CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)),
       FirstNECoupledInvD P Dh encPt encT idOf lam qep fl' dead' sC' sent' m'' g' s_cell' →
       𝒟[(simulateQ (firstNEHalted' P K InvPQ ℓ Dh encPt encT decT idOf lam qep q) (u u₁)).run
-          (sC', (g', fl', dead'), tr') >>=
-        fun z => pure z.2.2.1.2.1] {true} ≤
-      ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ CryptoGames.SM.admissibleLastLeakGuesses 2 t,
-        𝒟[cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t tL (u u₁)
-            sC' tr' sent' m'' (s_cell' t tL) >>=
-          fun z => pure (cellWinPred tL t z.2)] {true}) :
+          (sC', (g', fl', dead'), tr') >>= fun z => pure z.2.2.1.2.1] {true} ≤
+      stage2CellBucketSumRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep (u u₁)
+        sC' tr' sent' m'' s_cell') :
     𝒟[(simulateQ (firstNEHalted' P K InvPQ ℓ Dh encPt encT decT idOf lam qep q)
         (OracleSpec.query (spec := unifSpec + CryptoGames.SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
           (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)).run
-        (sC, (g, false, false), tr) >>=
-      fun z => pure z.2.2.1.2.1] {true} ≤
-    ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ CryptoGames.SM.admissibleLastLeakGuesses 2 t,
-      𝒟[cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t tL
-          (OracleSpec.query (spec := unifSpec + CryptoGames.SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
-            (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)
-          sC tr sent m' (s_cell t tL) >>=
-        fun z => pure (cellWinPred tL t z.2)] {true} := by
+        (sC, (g, false, false), tr) >>= fun z => pure z.2.2.1.2.1] {true} ≤
+    stage2CellBucketSumRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep
+      (OracleSpec.query (spec := unifSpec + CryptoGames.SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+        (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)
+      sC tr sent m' s_cell := by
   have hrun := firstNEHalted'_deliver_of_noProbe P K InvPQ ℓ Dh encPt encT decT idOf lam qep q Q w
     sC sC₁ g g₁ ans tr hlazy hprobe_run
   rw [simulateQ_firstNEHalted'_deliver_query_bind, hrun, pure_bind]
-  refine le_trans
-    (hih ans sC₁ g₁ false false (updDeliverTr K sC tr Q w ans) sent₁ m₁' s_cell₁ hinv₁) ?_
-  refine sum_cellSimRunTrackHalted_le_of_doomed_or_eq P K ℓ Dh encPt encT decT idOf lam qep
-    _ (u ans) sC sC₁ tr (updDeliverTr K sC tr Q w ans) g₁ sent sent₁ m' m₁' s_cell s_cell₁
-    fun t ht tL htL => ?_
-  rcases hcells t ht tL htL with hdoomed | hstep
-  · exact Or.inl hdoomed
-  · right
-    rw [cellSimRunTrackHalted_deliver_query_bind, hstep, pure_bind]
+  have ht0 : 0 ∈ Finset.range ((qep + 1) + 2) := Finset.mem_range.mpr (by omega)
+  rcases hinv₁ with hfalse | ⟨hdead_f, _⟩ | ⟨_, _, hbody₁, _, _⟩
+  · exact False.elim hfalse
+  · nomatch hdead_f
+  · refine le_trans
+      (hih ans sC₁ g₁ false false (updDeliverTr K sC tr Q w ans) sent₁ m₁' s_cell₁
+        (Or.inr (Or.inr ⟨rfl, rfl, hbody₁, ‹_›, ‹_›⟩))) ?_
+    refine sum_stage2_halted_le_of_cell0_pure_step P K ℓ Dh encPt encT decT idOf lam qep
+      _ u ans sC sC₁ tr (updDeliverTr K sC tr Q w ans) g₁ sent sent₁ m' m₁' s_cell s_cell₁
+      (hbody.2 0 ht0).1.win_df_false (hbody₁.2 0 ht0).1.win_df_false
+      (fun t ht => ?_) (fun t ht tL htL => ?_)
+    · rcases hcells t ht none (Finset.mem_insert_self none _) with hdoomed | hstep
+      · nomatch hdoomed.2.1
+      · rw [hbody.1 t ht 0 ht0, hbody₁.1 t ht 0 ht0] at hstep
+        conv_lhs => rw [← bind_pure (liftM (OracleSpec.query _))]
+        rw [cellSimRunTrackHalted_deliver_query_bind, hstep, pure_bind]
+        simp only [cellSimRunTrackHalted, simulateQ_pure, StateT.run_pure]
+    · rcases hcells t ht tL htL with hdoomed | hstep
+      · exact Or.inl hdoomed
+      · right; rw [cellSimRunTrackHalted_deliver_query_bind, hstep, pure_bind]
 
-theorem deliver_halted_cell_win {α : Type}
-    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (P : Params (List (BitVec 8)) (BitVec 512)) (K : MlKem)
-    (InvPQ : ℕ → List (BitVec 8) → Prop) (ℓ : ℕ)
+/-- Master combinator closing any winning-cell `deliver` subcase on `firstNEHalted'` against
+`stage2CellBucketSumRunTrackHalted`. -/
+theorem deliver_halted_cell_win {α : Type} {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    (P : Params (List (BitVec 8)) (BitVec 512)) (K : MlKem) (InvPQ : ℕ → List (BitVec 8) → Prop) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
-    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt) (qep q : ℕ)
-    (Q : Party) (w : List (BitVec 8))
+    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt) (qep q : ℕ) (Q : Party) (w : List (BitVec 8))
     (u : (unifSpec + CryptoGames.SM.spec (GhostState (List (BitVec 8))) (Plain ℓ) (BitVec 512)
       (List (BitVec 8))).Range (.inr (.inl (.inl (.inr (Q, w))))) →
-      OracleComp (unifSpec + CryptoGames.SM.spec (GhostState (List (BitVec 8))) (Plain ℓ) (BitVec 512)
-        (List (BitVec 8))) α)
+      OracleComp (unifSpec + CryptoGames.SM.spec (GhostState (List (BitVec 8))) (Plain ℓ) (BitVec 512) (List (BitVec 8))) α)
     (sC sC₁ : LibsignalToModularSchemeSimState (List (BitVec 8)) Pt ℓ)
     (g : CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
-    (ans : Option (RecvResult (Plain ℓ)))
-    (tr : KemFailTrackState P.C.F) (sent sent₁ : List (Fig8C Pt))
+    (ans : Option (RecvResult (Plain ℓ))) (tr : KemFailTrackState P.C.F) (sent sent₁ : List (Fig8C Pt))
     (m' m₁' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
     (s_cell : ℕ → Option ℕ → CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
     (t₀ : ℕ) (ht₀ : t₀ ∈ Finset.range ((qep + 1) + 2))
     (tL₀ : Option ℕ) (htL₀ : tL₀ ∈ CryptoGames.SM.admissibleLastLeakGuesses 2 t₀)
     (s_win : CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
-    (hstep_win :
-      runCellStep (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) qep t₀ tL₀
-        (CryptoGames.Ratchet.LibsignalSimC.guardC (CryptoGames.Ratchet.LibsignalSimC.simRecvC P encT decT qep
-          (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam)
-          (lFS P.C P.codec ℓ encT idOf 25000) (deliverForgeHook Pt ℓ) Q w true))
-        sC sent m' (s_cell t₀ tL₀) =
-        pure ((((ans, sC₁), sent₁), m₁'), s_win))
-    (hwin : cellWinPred tL₀ t₀ s_win = true) :
+    (hstep_win : runCellStep (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) qep t₀ tL₀
+      (CryptoGames.Ratchet.LibsignalSimC.guardC (CryptoGames.Ratchet.LibsignalSimC.simRecvC P encT decT qep
+        (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) (lFS P.C P.codec ℓ encT idOf 25000)
+        (deliverForgeHook Pt ℓ) Q w true)) sC sent m' (s_cell t₀ tL₀) = pure ((((ans, sC₁), sent₁), m₁'), s_win))
+    (hwin : cellWinPred tL₀ t₀ s_win = true)
+    (hbucket_win : ¬(2 ≤ t₀ ∧ tL₀ = some (t₀ - 2)) → ¬(3 ≤ t₀ ∧ tL₀ = some (t₀ - 3)) →
+      ∀ par : Bool, CryptoGames.SM.Construction.DeliverForge.inStage2Bucket 1 tL₀ par t₀ = true →
+      ∃ sw_win,
+        bucketSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep tL₀ par
+          (OracleSpec.query (spec := unifSpec + CryptoGames.SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+            (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)
+          sC tr sent m' (s_cell 0 none, none) =
+        bucketSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep tL₀ par
+          (u ans) sC₁ (updDeliverTr K sC tr Q w ans) sent₁ m₁' sw_win ∧
+        bucketWinPred tL₀ sw_win = true) :
     𝒟[(simulateQ (firstNEHalted' P K InvPQ ℓ Dh encPt encT decT idOf lam qep q)
         (OracleSpec.query (spec := unifSpec + CryptoGames.SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
           (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)).run
-        (sC, (g, false, false), tr) >>=
-      fun z => pure z.2.2.1.2.1] {true} ≤
-    ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ CryptoGames.SM.admissibleLastLeakGuesses 2 t,
-      𝒟[cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t tL
-          (OracleSpec.query (spec := unifSpec + CryptoGames.SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
-            (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)
-          sC tr sent m' (s_cell t tL) >>=
-        fun z => pure (cellWinPred tL t z.2)] {true} := by
-  refine evalDist_le_sum_cellSimRunTrackHalted_of_cell_step_win P K ℓ Dh encPt encT decT idOf lam
+        (sC, (g, false, false), tr) >>= fun z => pure z.2.2.1.2.1] {true} ≤
+    stage2CellBucketSumRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep
+      (OracleSpec.query (spec := unifSpec + CryptoGames.SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+        (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)
+      sC tr sent m' s_cell := by
+  refine evalDist_le_stage2_halted_of_cell_step_win P K ℓ Dh encPt encT decT idOf lam
     qep _ _ (u ans) sC sC₁ tr (updDeliverTr K sC tr Q w ans) sent sent₁ m' m₁' s_cell
-    t₀ ht₀ tL₀ htL₀ s_win ?_ hwin
+    t₀ ht₀ tL₀ htL₀ s_win ?_ hwin hbucket_win
   rw [cellSimRunTrackHalted_deliver_query_bind, hstep_win, pure_bind]
-
-end
 
 end Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHaltedDeliverAux

@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import Symbolic.Specifications.Security.Model
-public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon
+public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon -- proof-setup: allow-public-import
 import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRPCSTraces
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

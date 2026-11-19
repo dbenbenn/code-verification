@@ -10,6 +10,8 @@ limitations under the License.
 module
 
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.Common
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # In-Image Verification of `drop_glue::<Chain> [local#2]` (`0x7114c`)
@@ -18,7 +20,7 @@ Proves `drop_chain2_ok` for `core::ptr::drop_glue::<session_structure::Chain> [l
 offset `0x7114c`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Getters
 

@@ -15,29 +15,11 @@ public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessio
 # Canonical 33-Byte Public-Key Serialization Lemmas
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames.LibsignalSession
 
 theorem PublicKey.serialize_length (k : PublicKey) : k.serialize.length = 33 := by
   simp [PublicKey.serialize]
-
-theorem pk_deserialize_len33 {bs : List (BitVec 8)} {k : PublicKey}
-    (hd : PublicKey.deserialize bs = .ok k) (hl : bs.length = 33) :
-    bs = k.serialize := by
-  unfold PublicKey.deserialize at hd
-  rcases bs with _ | ⟨t, rest⟩
-  · contradiction
-  · dsimp only at hd
-    split at hd <;> try contradiction
-    rename_i h_djb
-    split at hd <;> try contradiction
-    rename_i h_len
-    cases hd
-    have ht : t = djbType := Classical.not_not.mp h_djb
-    subst ht
-    simp only [List.length_cons] at hl
-    simp only [PublicKey.serialize, List.cons.injEq, true_and, List.Vector.toList_mk]
-    exact (List.take_of_length_le (by omega)).symm
 
 end CryptoGames.LibsignalSession

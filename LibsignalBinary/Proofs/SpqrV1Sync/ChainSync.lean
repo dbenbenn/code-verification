@@ -30,7 +30,7 @@ Ghost-state invariants and step specifications for `LibsignalSpqrV1.Chain` over
   out-of-window rejection `recvKey_err`, subject to 32-bit counter non-overflow bounds.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.ChainSync
 

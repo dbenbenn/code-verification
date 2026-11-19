@@ -9,14 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4MarkKyber
 import LibsignalBinary.Proofs.E2E.Bin.Hooks
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsErrUnwind
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKey
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4RemovePreKey -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveIdProof
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsErrUnwindPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4SaveIdPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlaced
+public import ProofLib.FsTrace
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 
 /-!
 # Relocatable Stage P4.3 Dispatch Proof: `remove_pre_key`
@@ -25,7 +35,7 @@ Relocatable `[LibsignalPlacement]` counterpart of `StageP4VRegsRemovePreKeyProof
 (`lsProg_518 ext`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -53,7 +63,7 @@ open CryptoVerification.CliHandshake.RespClosurePlaced
 open CryptoVerification.SignalSession
 
 /-- Resources shared unchanged across Placed Substage P4.3 (`remove_pre_key`). -/
-def stageP4RemovePreKeySharedPlaced {A : RustAlloc}
+@[expose] def stageP4RemovePreKeySharedPlaced {A : RustAlloc}
     (pkKit : PreKeyStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr prevStatesPtr : BitVec 64) : SepProp :=
@@ -68,7 +78,7 @@ def stageP4RemovePreKeySharedPlaced {A : RustAlloc}
   stackAt s.sp (removePreKeyCallStack pkKit)
 
 /-- Spatial precondition of Placed Substage P4.3 at `0#64 + pkKit.removeShimOff`. -/
-def stageP4RemovePreKeyPrePlaced {A : RustAlloc}
+@[expose] def stageP4RemovePreKeyPrePlaced {A : RustAlloc}
     (pkKit : PreKeyStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr outPtr preKeyStorePtr prevStatesPtr ptCap ptPtr : BitVec 64)
@@ -90,7 +100,7 @@ def stageP4RemovePreKeyPrePlaced {A : RustAlloc}
   pkKit.storeAt preKeyStorePtr pst0
 
 /-- Spatial postcondition of Placed Substage P4.3 after `Ok(())` + deallocation (`+0x3cc`). -/
-def stageP4RemovePreKeyOkPostPlaced {A : RustAlloc}
+@[expose] def stageP4RemovePreKeyOkPostPlaced {A : RustAlloc}
     (pkKit : PreKeyStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr outPtr preKeyStorePtr prevStatesPtr ptCap ptPtr : BitVec 64)
@@ -114,7 +124,7 @@ def stageP4RemovePreKeyOkPostPlaced {A : RustAlloc}
   pkKit.storeAt preKeyStorePtr (pkKit.removeUpdate pst0 opkId (.ok ()))
 
 /-- Spatial postcondition of Placed Substage P4.3 on `Err(e)` at `s0.readReg64 .x30`. -/
-def stageP4RemovePreKeyErrPostPlaced {A : RustAlloc}
+@[expose] def stageP4RemovePreKeyErrPostPlaced {A : RustAlloc}
     (pkKit : PreKeyStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr outPtr preKeyStorePtr prevStatesPtr : BitVec 64)

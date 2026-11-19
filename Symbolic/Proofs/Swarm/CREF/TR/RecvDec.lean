@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TRView
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
+public import Symbolic.Proofs.Swarm.CREF.TRView -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.ALaCarte.Basic
@@ -45,7 +45,7 @@ Proves `ModelRun`, `MatchedPrefix`, and visibility step lemmas for `Move.attacke
 `Move.decryptSkipped`, and `Move.decrypt` over the composed Triple Ratchet model.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -303,7 +303,7 @@ private theorem logMessageKeyAndStore_run_snd (me : Participant) (s : SessionInf
   simp only [Symbolic.DYBridge.DY.PersistentLocalState.storeLocalState_eq_1,
     Symbolic.DYBridge.DY.PersistentGlobalState.storeGlobalState_eq_1,
     Symbolic.DYBridge.DY.appendEntry_eq_1, Traceful.run_mk]
-def logSkippedKeysTr (s : SessionInfo) (pk : DY.Bytes) (rIdx sourceStateIdx : Nat) :
+@[expose] def logSkippedKeysTr (s : SessionInfo) (pk : DY.Bytes) (rIdx sourceStateIdx : Nat) :
     DY.Bytes → UInt32 → Nat → ExecTrace → ExecTrace
   | _, _, 0, tr => tr
   | ck, n, k + 1, tr =>
@@ -428,7 +428,7 @@ theorem verifyMacAndDecrypt_run {st : TRState} {msg : TRSignalMsg} {pqSalt seed 
   simp only [_root_.guard, hmac_eq, ↓reduceIte, hdec, Traceful.run_bind, Traceful.run_pure]
   dsimp [liftM, monadLift, MonadLift.monadLift]; simp only [Traceful.run_mk, Traceful.run_pure, and_self]
 /-- Pure trace of `Move.decryptSkipped` on `tr`. -/
-def decSkippedTr (tr : ExecTrace) (me : Participant) (stateIdx skIdx rIdx _srcIdx : Nat)
+@[expose] def decSkippedTr (tr : ExecTrace) (me : Participant) (stateIdx skIdx rIdx _srcIdx : Nat)
     (st : TRState) (pk seed key pqSalt ptTerm spqr' : DY.Bytes) (n : UInt32) : ExecTrace :=
   let tr2 := ((tr.append (⟨key⟩ : Network.ExecEntryT)).append
     (⟨TREvent.SkippedKeyUsed (st.sessionInfo me) skIdx⟩ : TREntry)).append
@@ -598,7 +598,7 @@ theorem visOf_decryptSkipped {me : Participant} {stateIdx msgIdx skIdx pqIdx rId
   rw [vis_decryptSkipped_false hnext, hmsg, newRandoms_decSkippedTr,
       receivedPlaintext_decSkippedTr, exposures_decSkippedTr]; rfl
 /-- Shared tail trace of `TripleRatchet.messageDecrypt` after `tr_pre`. -/
-def decTailTr (tr_pre : ExecTrace) (me : Participant) (stateIdx : Nat)
+@[expose] def decTailTr (tr_pre : ExecTrace) (me : Participant) (stateIdx : Nat)
     (st1 : TRState) (c c' : RecvChain) (pk seed pqSalt ptTerm spqr' : DY.Bytes)
     (n : UInt32) : ExecTrace :=
   let tr_sk := logSkippedKeysTr (st1.sessionInfo me) pk c.rIdx stateIdx c.chainKey c.index
@@ -724,7 +724,7 @@ theorem ensureReceiverChain_run_noRatchet {st : TRState} {pk : DY.Bytes} {c : Re
   simp (config := { zeta := false, beta := false, eta := false, proj := false, iota := false, failIfUnchanged := false }) only [DY.Libsignal.TripleRatchet.ensureReceiverChain_eq_recvChainFor]; unfold recvChainFor TRState.toDRState; dsimp only; rw [hfind]; dsimp only
   rw [Traceful.run_pure]; exact ⟨rfl, rfl⟩
 /-- Pure state/chain output of `TripleRatchet.dhRatchetStep st theirPk` at trace length `rngIdx`. -/
-def trDhRatchetState (st : TRState) (theirPk : DY.Bytes) (rngIdx : Nat) : TRState × RecvChain :=
+@[expose] def trDhRatchetState (st : TRState) (theirPk : DY.Bytes) (rngIdx : Nat) : TRState × RecvChain :=
   let (rk1, ckr) := createChain st.rk theirPk st.dhs
   let dhs := randTerm rngIdx 32
   let (rk2, cks) := createChain rk1 theirPk dhs
@@ -837,7 +837,7 @@ theorem visOf_decrypt_noRatchet {me : Participant} {stateIdx msgIdx pqIdx : Nat}
   rw [vis_decrypt_false hnext, hmsg, newRandoms_decNoRatchet,
       receivedPlaintext_decTailTr (by simp only [append_length]; omega) hpre, exposures_decNoRatchet]; rfl
 /-- Prefix trace of `TripleRatchet.messageDecrypt` in the DH-ratchet case. -/
-def decRatchetPreTr (tr : ExecTrace) (me : Participant) (st1 : TRState)
+@[expose] def decRatchetPreTr (tr : ExecTrace) (me : Participant) (st1 : TRState)
     (pk key : DY.Bytes) : ExecTrace :=
   (((tr.append (⟨32⟩ : DY.Random.ExecEntryT)).append
     (⟨key⟩ : Network.ExecEntryT)).append

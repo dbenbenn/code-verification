@@ -12,7 +12,7 @@ module
 public import LibsignalBinary.Proofs.TripleRatchet.Mac.Defs
 public import LibsignalBinary.Proofs.TripleRatchet.Hmac.Defs
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.MacCodeSym
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.MacCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Mac.Addresses
 import LibsignalBinary.Proofs.TripleRatchet.Mac.Compute
 import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyMacWithAddresses
@@ -26,183 +26,13 @@ Composes `serialize_addresses`, `compute_mac`, and `VerifyMacWithAddresses` into
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 
 open Arm64 ProofLib CryptoGames CryptoGames.LibsignalSession
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr
-
-theorem verifyMacWithAddresses_subroutine_ok_of_base_aligned_contracts
-    (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hb : img.base &&& 0xfff#64 = 0#64)
-    (hA : AllocContracts img.base A ext)
-    (hcomp : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr compress256Name) (compress256Spec C.F))
-    (hbb_raw : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr blackBoxName) blackBoxSpec)
-    (huuid : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr uuidTryParseName) (uuidTryParseCodeSpec uuidTryParse))
-    (hnew : NewFromSliceOkExt img C ext)
-    (hpk : PublicKeySerializeOkExt img.base A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr verifyMacWithAddressesName)
-      ((verifyMacWithAddressesSpec img C.F A uuidTryParse).inImage img) :=
-  Mac.VerifyMacWithAddresses.verifyMacWithAddresses_subroutine_ok_of_compute_ext img C A ext hb hA hbb_raw huuid
-    (computeMac_subroutine_ok_of_contracts img C A ext hA hcomp hnew hpk)
-
-theorem verifyMacWithAddresses_subroutine_ok_of_contracts
-    (img : Obj.Image) (himg : Obj.Loads libsignalSessionImage img)
-    (C : Crypto) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hA : AllocContracts img.base A ext)
-    (hcomp : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr compress256Name) (compress256Spec C.F))
-    (hbb_raw : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr blackBoxName) blackBoxSpec)
-    (huuid : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr uuidTryParseName) (uuidTryParseCodeSpec uuidTryParse))
-    (hnew : NewFromSliceOkExt img C ext)
-    (hpk : PublicKeySerializeOkExt img.base A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr verifyMacWithAddressesName)
-      ((verifyMacWithAddressesSpec img C.F A uuidTryParse).inImage img) :=
-  Mac.VerifyMacWithAddresses.verifyMacWithAddresses_subroutine_ok_of_loads_ext img himg C A ext hA hbb_raw huuid
-    (computeMac_subroutine_ok_of_contracts img C A ext hA hcomp hnew hpk)
-
-theorem verifyMacWithAddresses_subroutine_ok_ext
-    (img : Obj.Image) (himg : Obj.Loads libsignalSessionImage img)
-    (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (S : SpqrModel)
-    (ext : String → Option (State → State))
-    (hC : Stage2Contracts img.base C A ctl uuidTryParse S ext)
-    (hnew : NewFromSliceOkExt img C ext)
-    (hpk : PublicKeySerializeOkExt img.base A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr verifyMacWithAddressesName)
-      ((verifyMacWithAddressesSpec img C.F A uuidTryParse).inImage img) :=
-  verifyMacWithAddresses_subroutine_ok_of_contracts img himg C A ext
-    hC.toAllocContracts hC.compress256 hC.black_box hC.uuid_try_parse hnew hpk
-
-theorem verifyMacWithAddresses_subroutine_ok_of_base_aligned_trap
-    (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (abs : String → Option (State → State))
-    (hb : img.base &&& 0xfff#64 = 0#64)
-    (hA : AllocHooks A abs)
-    (hnew : NewFromSliceOk_trap img C abs)
-    (hpk : PublicKeySerializeOk_trap img.base C A abs) :
-    subroutine_ok (trTrapProgAt img.base C abs)
-      ((trTrapProgAt img.base C abs).fnAddr verifyMacWithAddressesName)
-      ((verifyMacWithAddressesSpec img C.F A uuidTryParse).inImage img) :=
-  Mac.VerifyMacWithAddresses.verifyMacWithAddresses_subroutine_ok_of_compute_trap img C A abs hb hA
-    (computeMac_subroutine_ok_trap img C A abs hA hnew hpk)
-
-theorem verifyMacWithAddresses_subroutine_ok_of_base_aligned
-    (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (abs : String → Option (State → State))
-    (hb : img.base &&& 0xfff#64 = 0#64)
-    (hA : AllocHooks A abs)
-    (hnew : NewFromSliceOk img C ctl abs)
-    (hpk : PublicKeySerializeOk img.base C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr verifyMacWithAddressesName)
-      ((verifyMacWithAddressesSpec img C.F A uuidTryParse).inImage img) :=
-  Mac.VerifyMacWithAddresses.verifyMacWithAddresses_subroutine_ok_of_compute img C A ctl abs hb hA
-    (computeMac_subroutine_ok img C A ctl abs hA hnew hpk)
-
-theorem verifyMacWithAddresses_subroutine_ok_trap
-    (img : Obj.Image) (himg : Obj.Loads libsignalSessionImage img)
-    (C : Crypto) (A : RustAlloc)
-    (abs : String → Option (State → State))
-    (hA : AllocHooks A abs)
-    (hnew : NewFromSliceOk_trap img C abs)
-    (hpk : PublicKeySerializeOk_trap img.base C A abs) :
-    subroutine_ok (trTrapProgAt img.base C abs)
-      ((trTrapProgAt img.base C abs).fnAddr verifyMacWithAddressesName)
-      ((verifyMacWithAddressesSpec img C.F A uuidTryParse).inImage img) :=
-  Mac.VerifyMacWithAddresses.verifyMacWithAddresses_subroutine_ok_of_loads_trap img himg C A abs hA
-    (computeMac_subroutine_ok_trap img C A abs hA hnew hpk)
-
-theorem verifyMacWithAddresses_subroutine_ok
-    (img : Obj.Image) (himg : Obj.Loads libsignalSessionImage img)
-    (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (abs : String → Option (State → State))
-    (hA : AllocHooks A abs)
-    (hnew : NewFromSliceOk img C ctl abs)
-    (hpk : PublicKeySerializeOk img.base C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr verifyMacWithAddressesName)
-      ((verifyMacWithAddressesSpec img C.F A uuidTryParse).inImage img) :=
-  Mac.VerifyMacWithAddresses.verifyMacWithAddresses_subroutine_ok_of_loads img himg C A ctl abs hA
-    (computeMac_subroutine_ok img C A ctl abs hA hnew hpk)
-
-
-def VerifyMacWithAddressesOkX
-    (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (parse : UuidParser) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr verifyMacWithAddressesName)
-    ((verifyMacWithAddressesSpecX img C.F A parse).inImage img)
-
-theorem verifyMacWithAddresses_subroutine_ok_of_base_aligned_contracts_x
-    (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hb : img.base &&& 0xfff#64 = 0#64)
-    (hA : AllocContractsX img A ext)
-    (hcomp : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr compress256Name)
-      ((withStack (compress256Spec C.F) extHookStack).inImage img))
-    (hbb_raw : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr blackBoxName)
-      ((withStack blackBoxU8Spec extHookStack).inImage img))
-    (huuid : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr uuidTryParseName)
-      ((withStack (uuidTryParseSpec uuidTryParse) extHookStack).inImage img))
-    (hnew : NewFromSliceOkExt img C ext)
-    (hpk : PublicKeySerializeOkX img A ext) :
-    VerifyMacWithAddressesOkX img C A uuidTryParse ext :=
-  Mac.VerifyMacWithAddresses.verifyMacWithAddresses_subroutine_ok_of_compute_ext_x img C A ext hb hA hbb_raw huuid
-    (computeMac_subroutine_ok_of_contracts_x img C A ext hA hcomp hnew hpk)
-
-theorem verifyMacWithAddresses_subroutine_ok_of_contracts_x
-    (img : Obj.Image) (himg : Obj.Loads libsignalSessionImage img)
-    (C : Crypto) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hA : AllocContractsX img A ext)
-    (hcomp : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr compress256Name)
-      ((withStack (compress256Spec C.F) extHookStack).inImage img))
-    (hbb_raw : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr blackBoxName)
-      ((withStack blackBoxU8Spec extHookStack).inImage img))
-    (huuid : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr uuidTryParseName)
-      ((withStack (uuidTryParseSpec uuidTryParse) extHookStack).inImage img))
-    (hnew : NewFromSliceOkExt img C ext)
-    (hpk : PublicKeySerializeOkX img A ext) :
-    VerifyMacWithAddressesOkX img C A uuidTryParse ext :=
-  Mac.VerifyMacWithAddresses.verifyMacWithAddresses_subroutine_ok_of_loads_ext_x img himg C A ext hA hbb_raw huuid
-    (computeMac_subroutine_ok_of_contracts_x img C A ext hA hcomp hnew hpk)
-
-theorem verifyMacWithAddresses_subroutine_ok_ext_x
-    (img : Obj.Image) (himg : Obj.Loads libsignalSessionImage img)
-    (C : Crypto) (A : RustAlloc)
-    (encFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → List (BitVec 8))
-    (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
-    (ext : String → Option (State → State))
-    (hC : Stage2ContractsX img C A encFn decFn ext)
-    (huuid : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr uuidTryParseName)
-      ((withStack (uuidTryParseSpec uuidTryParse) extHookStack).inImage img))
-    (hnew : NewFromSliceOkExt img C ext)
-    (hpk : PublicKeySerializeOkX img A ext) :
-    VerifyMacWithAddressesOkX img C A uuidTryParse ext :=
-  verifyMacWithAddresses_subroutine_ok_of_contracts_x img himg C A ext
-    hC.toAllocContractsX hC.compress256 hC.black_box huuid hnew hpk
-
-/-! ## Relocatable `[LibsignalPlacement]` top-level contracts -/
 
 private theorem ls_subroutine_ok_lscl_of_block [LibsignalPlacement] {α : Type} {callerProg calleeProg : Program}
     {i j : Nat} {H : LibsignalHooks}

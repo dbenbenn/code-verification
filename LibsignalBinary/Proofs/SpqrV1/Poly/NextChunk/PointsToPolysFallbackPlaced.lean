@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallback
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallback -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSetup
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Placed Dynamic Lagrange Fallback Setup
@@ -23,7 +24,7 @@ Relocatable `[LibsignalPlacement]` verification of OOM panic blocks, fallback di
 `n ∉ {0, 1, 3, 5, 30, 34, 36}`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

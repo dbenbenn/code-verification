@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedB
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSlice
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSlice -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOk
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.IntoBoxedSlice
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.TryCloneFromRef
@@ -20,6 +20,9 @@ import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPost
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBoxes
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRoot
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.Common
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysPlacedSym
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
 
 /-!
 # Relocatable `<PreKeySignalMessage as TryFrom<&[u8]>>::try_from` (Block `111`): Ok Path and Top-Level Proof
@@ -29,7 +32,7 @@ Proves the Segment 4 `.ok` branch (`+2168 .. +2420` → `+1284`), post-loop comp
 under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -69,7 +72,7 @@ attribute [local arm64_norm, local wp_norm]
 
 /-! ## Callee Contracts and `KeepsFrozenInv` Lift Helpers -/
 
-def PreKeyTryCloneOk [LibsignalPlacement] (Inv : Memory → Prop) (A : RustAlloc)
+@[expose] def PreKeyTryCloneOk [LibsignalPlacement] (Inv : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) : Prop :=
   subroutine_ok (preKeyPlacedProg H) (lsmpl.base 23)
     (withPreKeyInv Inv (tryCloneFromRefSpec A))
@@ -809,7 +812,7 @@ theorem post_f90_to_034_placed_wp [LibsignalPlacement]
 
 /-! ## Epilogue (`+1284 .. +1316`) and Top-Level `preKeyTryFrom_placed_ok` -/
 
-def preKeyTryFromPlacedRawSpec (A : RustAlloc) [LibsignalPlacement] : Spec PreKeyTryFromArgs where
+@[expose] def preKeyTryFromPlacedRawSpec (A : RustAlloc) [LibsignalPlacement] : Spec PreKeyTryFromArgs where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ptr ∧
       (s.readReg64 .x1).toNat = x.bytes.length ∧

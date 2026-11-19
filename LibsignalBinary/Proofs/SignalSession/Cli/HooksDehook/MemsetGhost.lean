@@ -11,9 +11,13 @@ module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetCode -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
 public import LibsignalBinary.Heap.Fine.SpecBudgetHelpersFine
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Ghost `memset` Hook, `HookOk` Suite & `GhostExternReplays` (`HooksDehook.MemsetGhost`)
@@ -142,16 +146,6 @@ noncomputable abbrev memsetGhostHookBlk21
 noncomputable abbrev memsetGhostHookBlk21K
     (keep : BitVec 64 → Bool) (P_real : Program) (mmpl : Obj.MultiPlacement) : State → State :=
   memsetGhostHookK keep P_real (mallocngBlockProg mmpl 21 Syscall.standard) (mmpl.base 21)
-
-/-- Specialization of `memsetGhostHook` to `P_sub = pureWordsProg (mmpl.base 21) memsetWordsSym`. -/
-noncomputable abbrev memsetGhostHookPure21
-    (keep : BitVec 64 → Bool) (P_real : Program) (mmpl : Obj.MultiPlacement) : State → State :=
-  memsetGhostHook keep P_real (pureWordsProg (mmpl.base 21) memsetWordsSym) (mmpl.base 21)
-
-/-- Specialization of `memsetGhostHookK` to `P_sub = pureWordsProg (mmpl.base 21) memsetWordsSym`. -/
-noncomputable abbrev memsetGhostHookPure21K
-    (keep : BitVec 64 → Bool) (P_real : Program) (mmpl : Obj.MultiPlacement) : State → State :=
-  memsetGhostHookK keep P_real (pureWordsProg (mmpl.base 21) memsetWordsSym) (mmpl.base 21)
 
 /-- Minimal placement-generic `keep` predicate retaining only the 260-byte `memset` block (`blk21`). -/
 @[expose] def keepMemsetBlk21 (mmpl : Obj.MultiPlacement) (a : BitVec 64) : Bool :=
@@ -340,11 +334,6 @@ theorem memsetGhostHook_fsT
     (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entryTarget : BitVec 64) :
     HookFsTraced IsFsC (memsetGhostHook keep P_real P_sub entryTarget) :=
   linkedCallHook_fsT keep P_real P_sub entryTarget masterMemsetSpec hookMemset
-
-theorem memsetGhostHookK_fsT
-    (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entryTarget : BitVec 64) :
-    HookFsTraced IsFsC (memsetGhostHookK keep P_real P_sub entryTarget) :=
-  linkedCallHook_fsT keep P_real P_sub entryTarget (memsetSpecK keep masterMemsetSpec) hookMemset
 
 /-- Recover exact `Memory.perm` equality across `stripExecOutside keep` from `ExecFrozen` +
     `KeepsFrozen` + stripped-permission equality. -/

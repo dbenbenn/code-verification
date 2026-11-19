@@ -57,7 +57,10 @@ def layoutOk (size align : BitVec 64) : Bool :=
 
 /-- Non-allocator architectural and OS state preserved across a `GlobalAlloc` call:
     file system (`fs`), I/O and user trace (`trace`), signal dispositions (`sigActions`),
-    thread pointer (`tpidrEl0`), and frozen memory (`s0.mem.KeepsFrozen sf.mem`). -/
+    thread pointer (`tpidrEl0`), and frozen memory (`s0.mem.KeepsFrozen sf.mem`).
+    Note: `sigMask`, `sigPending`, and `sigAltStack` are not currently framed here; callers that
+    rely on an allocator preserving the blocked/pending signal mask or alternate signal stack
+    must establish that separately for the concrete allocator. -/
 def AllocStatePreserved (s0 sf : State) : Prop :=
   sf.fs = s0.fs ∧
   sf.trace = s0.trace ∧

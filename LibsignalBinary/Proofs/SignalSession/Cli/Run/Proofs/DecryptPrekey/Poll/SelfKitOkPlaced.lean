@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.SelfKitOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.SelfKitOk -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable `[LibsignalPlacement]` CLI Self-Identity and Full Identity Store Kit
@@ -22,7 +24,7 @@ Defines `cliIdStoreSpecFullPlaced` and `cliIdSelfSpecFullPlaced` with `lsρ cliI
 addresses and proves quietness.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -49,7 +51,7 @@ open CryptoVerification.SignalSession.Cli.KitInst.SelfRel
 
 /-- Relocatable `[LibsignalPlacement]` `cliIdStoreSpecFull` with `id_vt := lsρ cliIdentityVtSym`
 and placed shim/future-vtable/poll/drop addresses. -/
-def cliIdStoreSpecFullPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliIdStoreSpecFullPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (peer : AddrGhost)
     (trustShimStk trustPollStk saveShimStk savePollStk : Nat) : IdentityStoreSpec A 0#64 :=
   { cliIdStoreSpecFull A 0#64 rd F0 pathOk peer
@@ -67,7 +69,7 @@ def cliIdStoreSpecFullPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule
     saveFutDrop_ne_zero := fun _ => lsDropOffPlaced_ne_zero }
 
 /-- Relocatable `[LibsignalPlacement]` `IdentitySelfStoreSpec` over `cliIdStoreSpecFullPlaced`. -/
-def cliIdSelfSpecFullPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliIdSelfSpecFullPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (peer : AddrGhost)
     {t1 t2 t3 t4 : Nat}
     (kpShimStk kpPollStk regIdShimStk regIdPollStk : Nat) :
@@ -120,19 +122,5 @@ theorem cliIdSelfSpecFullPlaced_quiet [LibsignalPlacement] {A : RustAlloc}
       k1 k2 k3 k4).Quiet :=
   ⟨fun _ => by simp [cliIdSelfSpecFullPlaced, NoFsEv],
     fun _ => by simp [cliIdSelfSpecFullPlaced, NoFsEv]⟩
-
-theorem cliIdSelfSpecFullPlaced_kpRel_total [LibsignalPlacement] {A : RustAlloc}
-    {peer : AddrGhost} {t1 t2 t3 t4 k1 k2 k3 k4 : Nat} (F0 : FsFiles) (g : IdGhost) :
-    ∃ ans,
-      (cliIdSelfSpecFullPlaced A cliIo.rd F0 cliWrOk peer
-        (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4).kpRel g ans :=
-  cliKpRel_total cliSelfSpeErrWitness cliIo.rd F0 g
-
-theorem cliIdSelfSpecFullPlaced_regIdRel_total [LibsignalPlacement] {A : RustAlloc}
-    {peer : AddrGhost} {t1 t2 t3 t4 k1 k2 k3 k4 : Nat} (F0 : FsFiles) (g : IdGhost) :
-    ∃ ans,
-      (cliIdSelfSpecFullPlaced A cliIo.rd F0 cliWrOk peer
-        (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4).regIdRel g ans :=
-  cliRegIdRel_total cliSelfSpeErrWitness cliIo.rd F0 g
 
 end CryptoVerification.SignalSession.Cli.RunProofs.Poll

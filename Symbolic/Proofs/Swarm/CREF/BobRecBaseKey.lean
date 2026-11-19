@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Specifications.Refinement.TraceExplanation
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 
 /-!
 # Base-Key Agreement Between Bob's Record and Current Session
@@ -20,7 +20,7 @@ Bob's active session record matches `ecKey (gamma interpretation S g ek)` for so
 `ek` in `sessionBaseKeys` of every current Bob snapshot.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +35,7 @@ open CryptoProofLib.Refinement (ExternInterpretation)
 /-- For every current Bob snapshot `stateIdx` on `runTraceMoves r ms`, Bob's held session record
 has `current.aliceBaseKey = ecKey (gamma interpretation S g ek)` for some `ek` in
 `sessionBaseKeys (runTraceMoves r ms) stateIdx`. -/
-def BobRecordBaseKeyInSession (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def BobRecordBaseKeyInSession (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (ms : List Move) (records : Participant → Option HwBytes) : Prop :=
   ∀ rr, records r.bob = some (recordBytes rr) →
   ∀ (stateIdx : Nat) (st : DY.Libsignal.TripleRatchet.TRState),
@@ -46,7 +46,7 @@ def BobRecordBaseKeyInSession (interpretation : ExternInterpretation) (r : Proto
       rr.current.aliceBaseKey = ecKey (gamma interpretation S g ek)
 
 /-- Trace-parametric form of `BobRecordBaseKeyInSession` for a fixed base key `abk` on trace `tr`. -/
-def BobBaseKeyOn (interpretation : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (bob : Participant)
+@[expose] def BobBaseKeyOn (interpretation : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (bob : Participant)
     (tr : ExecTrace) (abk : HwBytes) : Prop :=
   ∀ (stateIdx : Nat) (st : DY.Libsignal.TripleRatchet.TRState),
     ((PersistentLocalState.getLocalState bob stateIdx :

@@ -9,14 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.ProofPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitId.PlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.PlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.ProofPlacedBudgetFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitId.PlacedBudgetFd -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.PlacedBudgetFd -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # File-Descriptor-Threaded Callee Skeleton for `signal_session::run` (Placed)
@@ -27,7 +31,7 @@ Defines precondition-only and two-sided `FdsGe3Closed` spec and slot combinators
 (`signal_session::run`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -66,7 +70,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget (dropSpeSpecX)
 /-! ## `FdsGe3Closed` spec and slot combinators -/
 
 /-- Strengthens `spec.pre` with `⌜FdsGe3Closed s0.fs⌝`, leaving `post`, `onPanic`, and `onOom` unchanged. -/
-def withPreFdsGe3Closed {α : Type} (spec : Spec α) : Spec α :=
+@[expose] def withPreFdsGe3Closed {α : Type} (spec : Spec α) : Spec α :=
   { spec with
     pre := fun x s0 => ⌜FdsGe3Closed s0.fs⌝ ∗ spec.pre x s0 }
 
@@ -94,11 +98,11 @@ theorem subroutine_ok_withPreFdsGe3Closed_of_withFdsGe3Closed {α : Type}
   exact hpost.2
 
 /-- Precondition-only `FdsGe3Closed` wrapper on a `CalleeSlot`. -/
-def slotWithPreFdsGe3Closed (σ : CalleeSlot) : CalleeSlot :=
+@[expose] def slotWithPreFdsGe3Closed (σ : CalleeSlot) : CalleeSlot :=
   { σ with spec := fun stk => withPreFdsGe3Closed (σ.spec stk) }
 
 /-- Two-sided `FdsGe3Closed` wrapper on a `CalleeSlot`. -/
-def slotWithFdsGe3Closed (σ : CalleeSlot) : CalleeSlot :=
+@[expose] def slotWithFdsGe3Closed (σ : CalleeSlot) : CalleeSlot :=
   { σ with spec := fun stk => withFdsGe3Closed (σ.spec stk) }
 
 theorem okPlaced_slotWithPreFdsGe3Closed_of_plain {callerProg : Program} {target : BitVec 64}
@@ -114,7 +118,7 @@ theorem okPlaced_slotWithPreFdsGe3Closed_of_withFdsGe3Closed
 
 /-- Applies `slotWithPreFdsGe3Closed` to the four protocol slots (`encrypt`, `decryptSignal`,
 `initiate`, `decryptPrekey`), leaving `kemDeserialize` unchanged. -/
-def slotsWithPreFdsGe3Closed (slots : RunSlots) : RunSlots :=
+@[expose] def slotsWithPreFdsGe3Closed (slots : RunSlots) : RunSlots :=
   { encrypt := slotWithPreFdsGe3Closed slots.encrypt
     decryptSignal := slotWithPreFdsGe3Closed slots.decryptSignal
     initiate := slotWithPreFdsGe3Closed slots.initiate
@@ -172,32 +176,5 @@ structure RunCalleesPlacedFd [LibsignalPlacement] {M : AllocCostModel}
   /-- `kem::Key<Public>::deserialize` (Block `590`), two-sided `withFdsGe3Closed`. -/
   kemDeserialize :
     (slotWithFdsGe3Closed σ.kemDeserialize).OkPlaced (lsProg_579 ext) (blkPl_590).base
-
-theorem RunCalleesPlacedFd.splitIdPlain [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {cEnvs : RunCalleesEnvs}
-    {ext : LibsignalHooks} {B : RunBudgets} {σ : RunSlots}
-    (hc : RunCalleesPlacedFd A lim cEnvs ext B σ) {stk : Nat} (h : splitIdNeed ≤ stk) :
-    subroutine_ok (lsProg_579 ext) (lsmpl.base 593)
-      (splitIdSpecPlaced A lim cEnvs.splitId stk) :=
-  subroutine_ok_splitIdSpecPlaced_of_okFs (hc.splitId h)
-
-theorem RunCalleesPlacedFd.splitSignedPlain [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {cEnvs : RunCalleesEnvs}
-    {ext : LibsignalHooks} {B : RunBudgets} {σ : RunSlots}
-    (hc : RunCalleesPlacedFd A lim cEnvs ext B σ) {stk : Nat} (h : splitSignedNeed ≤ stk) :
-    subroutine_ok (lsProg_579 ext) (lsmpl.base 592)
-      (splitSignedSpecPlaced A lim cEnvs.splitSigned stk) :=
-  subroutine_ok_splitSignedSpecPlaced_of_okFs (hc.splitSigned h)
-
-/-- Fixed-stack `.keepsFs` contract for `drop_glue<SignalProtocolError>` (Block `553`) on any caller
-block `i < 619`. -/
-theorem dropSpeXFs_placed_ok [LibsignalPlacement] {callerProg : Program} {i : Nat}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : LibsignalHooks} [IsLsBlockProg callerProg i ext]
-    (hh : RunHooksPlaced A lim ext)
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (blkPl_553).base
-      (withLsCodeRoLoaded lsmpl (dropSpeSpecX M A lim).keepsFs) :=
-  cliDropSpe_placed_caller_ok_x_fs hh.allocFs hi
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudgetFd

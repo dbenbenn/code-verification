@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpers
+import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpersBudget
+public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpers -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Specifications for `<spqr::chain::Chain>::send_key` (Block `367`)
@@ -22,7 +22,7 @@ allocator event envelopes (`ChainSendKeyEnv`, `ChainSendKeyAllocEnv`), and budge
 specifications (`chainSendKeySpecX`, `chainSendKeySpecExt`, `ChainSendKeyPlacedOkX`) for Block `367`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,7 +41,7 @@ open LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget (nextKeyInternalEvents)
 
 /-- Exact deallocation events emitted when `Chain::send_key` pops a single front `ChainEpoch`
 (`send.next`, `send.prev`, `recv.next`, `recv.prev` in order). -/
-def chainEpochPopEvents (gce : ChainEpochGhost) : List AllocEvent :=
+@[expose] def chainEpochPopEvents (gce : ChainEpochGhost) : List AllocEvent :=
   (if gce.send.next.cap = 0#64 then [] else rustDeallocEvents gce.send.next.cap.toNat 1) ++
     (if gce.send.prev.cap = 0#64 then [] else rustDeallocEvents gce.send.prev.cap.toNat 1) ++
     (if gce.recv.next.cap = 0#64 then [] else rustDeallocEvents gce.recv.next.cap.toNat 1) ++
@@ -50,7 +50,7 @@ def chainEpochPopEvents (gce : ChainEpochGhost) : List AllocEvent :=
 /-- Exact deallocation events emitted by `Chain::send_key`'s front-epoch pop loop prior to
 `next_key_internal`: pops `i - 1` front epochs when `self.sendEpoch < epoch` and
 `self.epochIdx epoch = .ok i`. -/
-def chainSendKeyPopEvents (x : ChainSendKeyGhost) : List AllocEvent :=
+@[expose] def chainSendKeyPopEvents (x : ChainSendKeyGhost) : List AllocEvent :=
   if x.epoch ≤ x.self.sendEpoch then
     []
   else
@@ -61,14 +61,14 @@ def chainSendKeyPopEvents (x : ChainSendKeyGhost) : List AllocEvent :=
 /-- Exact allocator events of `<spqr::chain::Chain>::send_key` on the `.ok` path:
 front-epoch deallocations followed by `next_key_internal` and `rust_alloc(32, 1)` for the returned
 32-byte message key. -/
-def chainSendKeyEvents (x : ChainSendKeyGhost) : List AllocEvent :=
+@[expose] def chainSendKeyEvents (x : ChainSendKeyGhost) : List AllocEvent :=
   chainSendKeyPopEvents x ++ nextKeyInternalEvents ++ rustAllocEvents 32 1
 
 /-- Relational allocator event envelope of `<spqr::chain::Chain>::send_key`:
 * `.ok _`: `chainSendKeyEvents x`;
 * `.error (.err _)`: `[]` (no heap calls);
 * `.error (.panic _)`: `chainSendKeyPopEvents x` (deallocations only, no `rust_alloc`). -/
-def ChainSendKeyEnv (hkdf : HkdfFn) (x : ChainSendKeyGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChainSendKeyEnv (hkdf : HkdfFn) (x : ChainSendKeyGhost) (evs : List AllocEvent) : Prop :=
   match Chain.sendKey hkdf x.self x.epoch with
   | .ok _ => evs = chainSendKeyEvents x
   | .error (.err _) => evs = []
@@ -76,13 +76,13 @@ def ChainSendKeyEnv (hkdf : HkdfFn) (x : ChainSendKeyGhost) (evs : List AllocEve
 
 /-- Precondition allocation envelope of `<spqr::chain::Chain>::send_key` (only the `.ok` path
 allocates; `.error` paths only deallocate or return immediately). -/
-def ChainSendKeyAllocEnv (hkdf : HkdfFn) (x : ChainSendKeyGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChainSendKeyAllocEnv (hkdf : HkdfFn) (x : ChainSendKeyGhost) (evs : List AllocEvent) : Prop :=
   match Chain.sendKey hkdf x.self x.epoch with
   | .ok _ => evs = chainSendKeyEvents x
   | .error _ => evs = []
 
 /-- Budget-threaded spec of `<spqr::chain::Chain>::send_key` at `chainSendKeyStackX`. -/
-def chainSendKeySpecX (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def chainSendKeySpecX (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainSendKeyGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.selfPtr ∧ s.readReg64 .x1 = x.epoch ∧ s.readReg64 .x8 = x.out ∧
@@ -99,7 +99,7 @@ def chainSendKeySpecX (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudg
     ⌜(Chain.sendKey hkdf x.self x.epoch).isPanic = true ∧ sf.trace = s0.trace⌝ ∗ anyHeap
 
 /-- Budget-threaded spec of `<spqr::chain::Chain>::send_key` at `chainSendKeyStackExt` (`18000` B). -/
-def chainSendKeySpecExt (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def chainSendKeySpecExt (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainSendKeyGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.selfPtr ∧ s.readReg64 .x1 = x.epoch ∧ s.readReg64 .x8 = x.out ∧
@@ -115,7 +115,7 @@ def chainSendKeySpecExt (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBu
   onPanic := fun (x, _) s0 sf =>
     ⌜(Chain.sendKey hkdf x.self x.epoch).isPanic = true ∧ sf.trace = s0.trace⌝ ∗ anyHeap
 
-def ChainSendKeyPlacedOkX [LibsignalPlacement] (hkdf : HkdfFn)
+@[expose] def ChainSendKeyPlacedOkX [LibsignalPlacement] (hkdf : HkdfFn)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_367).rebase (blkPl_367).base H)

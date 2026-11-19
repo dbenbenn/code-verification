@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.DecodesPlaced
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPt
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.DecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPt -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable `PolyDecoder` Drop Glue (Block `440`)
@@ -26,7 +27,7 @@ Proves `drop_glue_poly_decoder_placed_ok` and `drop_poly_decoder_placed_ok` (plu
 (`lsProg_440 H`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneBasePlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneKeysPlacedBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneKeysPlaced
-public meta import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneKeys -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneBasePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneKeysPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneKeysPlaced
+public meta import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneKeys -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
@@ -23,6 +23,10 @@ import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneAssemble
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneKeys
 
 /-!
 # Budget-Threaded Relocatable CLI `SegClone` Entry and Sub-Segments 1–4
@@ -31,7 +35,7 @@ Re-exports entry and fields 1–3 from `SegCloneKeysPlacedBudgetAux`, proves `se
 (`+0x290 → +0x544 / +0x300`), and assembles combined entry and fields 1–4 cloning on CLI Block `463`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

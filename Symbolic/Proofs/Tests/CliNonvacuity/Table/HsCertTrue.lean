@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.Table.HsTables
-public import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeSteps
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.HsTables -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeSteps -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.ALaCarte.DecidableEq
@@ -50,8 +50,9 @@ import all Init.Data.Ord.Array
 import all Init.Data.Repr
 import all Init.Data.String.Bootstrap
 import all Init.Data.String.Defs
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.HsTrueNodes -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -80,7 +81,7 @@ theorem hsTrue_sound :
     IdTreeSound myInterp (mySemComp true) (ghostOf true) HsTables.hsTrueTable.depth HsTables.hsTrueTable.idTree :=
   idTreeSound_of_cert hsTrue_wire hsTrue_bytes
 
-noncomputable def hsTrueGamma : DY.Bytes → HwBytes :=
+@[expose] def hsTrueGamma : DY.Bytes → HwBytes :=
   tableGamma myInterp (mySemComp true) (ghostOf true) HsTables.hsTrueTable
 
 theorem gamma_comp_eq_hsTrueGamma :

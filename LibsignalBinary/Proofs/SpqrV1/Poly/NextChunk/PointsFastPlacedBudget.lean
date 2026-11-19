@@ -9,14 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsFast
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsFast -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PolysLoop
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Budget-Threaded Placed `Points` Fast Path
@@ -25,7 +28,7 @@ Relocatable `[LibsignalPlacement]` verification of the `EncoderState::Points` fa
 Block `416` threading `RustCliAllocBudget M`, `BudgetLimits`, and `NextChunkPointsFastEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -125,14 +128,14 @@ attribute [local simp, local arm64_norm, local wp_norm]
 /-- Exact allocator event sequence of `<PolyEncoder as Encoder>::next_chunk` on the
     `EncoderState::Points` fast path (`+0 -> +92 -> +288..+4484 -> ret`):
     prologue `32`-byte output buffer allocation followed by epilogue `32`-byte deallocation. -/
-def nextChunkPointsFastEvents : List AllocEvent :=
+@[expose] def nextChunkPointsFastEvents : List AllocEvent :=
   rustAllocEvents 32 1 ++ rustDeallocEvents 32 1
 
 theorem nextChunkPointsFastEvents_eq :
     nextChunkPointsFastEvents = nextChunkPrologueEvents ++ nextChunkEpilogueEvents :=
   rfl
 
-def NextChunkPointsFastEnv (evs : List AllocEvent) : Prop :=
+@[expose] def NextChunkPointsFastEnv (evs : List AllocEvent) : Prop :=
   evs = nextChunkPointsFastEvents
 
 theorem fitsEnv_nextChunkPointsFast_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :

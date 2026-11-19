@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.StepBranchOKPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.VersionPure
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.StepBranchOKPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.VersionPure -- proof-setup: allow-public-import
 import Batteries.Data.UInt
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
 import DY.Actions.Network
-public import Symbolic.Proofs.Swarm.CREF.Sem
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.DecCryptoBPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepNoRatchetPure
@@ -41,6 +41,9 @@ import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Trace.Monad
 import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.Actions.Network
+import Symbolic.Proofs.Swarm.CREF.OpkRelC
+import Symbolic.Proofs.Swarm.CREF.TR.G1.CanonRep
+import Symbolic.Proofs.Swarm.CREF.TR.StoredRk
 
 /-!
 # Existing-Chain Raw Explanation Branch on Session Promotion
@@ -50,7 +53,7 @@ Proves `prom_rawKnBranch_noRatchet`, constructing a `RawDecryptMatched` witness 
 accepting, non-colliding session-promotion call.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

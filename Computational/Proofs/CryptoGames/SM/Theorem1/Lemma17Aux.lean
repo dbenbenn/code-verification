@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem1Reductions
+public import Computational.Proofs.CryptoGames.SM.Theorem1Reductions -- proof-setup: allow-public-import
 public import Computational.Proofs.CryptoGames.SM.GameProofDefs
+public import Computational.Proofs.CryptoGames.SM.PartyProofDefs
 
 /-!
 # Helper invariants and projections for Lemma 17
@@ -19,7 +20,7 @@ public import Computational.Proofs.CryptoGames.SM.GameProofDefs
 `toAuth` and `toMirror` used in `SM/Theorem1/Lemma17.lean`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -660,7 +661,7 @@ theorem authOK_of_nontrivial_inject {Δ : ℕ} {s : GameState St Msg C}
 /-! ### State projections -/
 
 /-- Project a game state to the corresponding `Config.auth` game state (`chall = []`, `b = false`). -/
-def toAuth (s : GameState St Msg C) : GameState St Msg C :=
+@[expose] def toAuth (s : GameState St Msg C) : GameState St Msg C :=
   { s with chall := [], b := false }
 
 @[simp] theorem toMirror_initState (sm : SMScheme Key St Msg Coins C) (k : Key) (b : Bool) :

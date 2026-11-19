@@ -9,9 +9,24 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC2
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC2 -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC1 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
 
 /-!
 # `Auth` hop `G3 → G3.5`: sticky-latch `DH1` simulation and monotonicity
@@ -20,7 +35,7 @@ Introduces the `.corruptIK`-latched `.g3` simulation `runAuthFgLatchedSim`, prov
 target-pre-sampling equivalence for `DH1`, and shows `.corruptIK` monotonicity on `AuthAdvLatchedState`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -119,7 +134,7 @@ theorem contains_latchDh1ForPrincipal_of_ne {S : Setup} (P : Primitives)
 
 /-! ## Latched `.g3` simulation -/
 
-def unlatchFg {S : Setup} (hst : AuthFgCutoffState S) : AuthFgCutoffState S :=
+@[expose] def unlatchFg {S : Setup} (hst : AuthFgCutoffState S) : AuthFgCutoffState S :=
   { hst with latchedDh1 := [] }
 
 @[simp]
@@ -139,7 +154,7 @@ theorem unlatchFg_respRecs {S : Setup} (hst : AuthFgCutoffState S) :
     (unlatchFg hst).respRecs = hst.respRecs := rfl
 
 /-- `.g3` `Auth` oracle on `AuthFgCutoffState S` that latches `badAuthFgDh1At` pairs right before `.corruptIK`. -/
-def pqxdhAuthFgLatchedImpl (S : Setup) (P : Primitives) :
+@[expose] def pqxdhAuthFgLatchedImpl (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthFgCutoffState S) ProbComp)
   | .corruptIK u => StateT.mk (fun hst => do
     let latched' :=
@@ -149,7 +164,7 @@ def pqxdhAuthFgLatchedImpl (S : Setup) (P : Primitives) :
     return (resp, { hst with base := h'.base, latchedDh1 := latched' }))
   | q => pqxdhAuthFgImpl S P q
 
-noncomputable def runAuthFgLatchedSim (S : Setup) (P : Primitives) (A : AuthAdversary S) :
+@[expose] def runAuthFgLatchedSim (S : Setup) (P : Primitives) (A : AuthAdversary S) :
     ProbComp (Bool × Bool × AuthFgCutoffState S) := do
   let secb ← $ᵗ Bool
   let initSt := AuthFgCutoffState.empty S secb
@@ -220,7 +235,7 @@ theorem evalDist_runAuthFgLatchedSim_badAuthFgDh3At_eq (S : Setup) (P : Primitiv
 /-! ## Pre-sampled latched `.g3` oracle -/
 
 /-- Target-pre-sampled `.g3` `Auth` oracle with sticky `latchedDh1` updates on `.corruptIK`. -/
-noncomputable def pqxdhAuthFgLatchedPreImpl (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
+@[expose] def pqxdhAuthFgLatchedPreImpl (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (optUsk optVsk : Option Bytes) (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthFgCutoffState S) ProbComp)
   | .corruptIK u => pqxdhAuthFgLatchedImpl S P (.corruptIK u)
@@ -470,17 +485,17 @@ structure AuthAdvLatchedState (S : Setup) where
   adv        : AuthAdvCutoffState S
   latchedDh1 : List (Nat × Nat) := []
 
-def AuthAdvLatchedState.empty (S : Setup) (secb : Bool) : AuthAdvLatchedState S :=
+@[expose] def AuthAdvLatchedState.empty (S : Setup) (secb : Bool) : AuthAdvLatchedState S :=
   { adv        := AuthAdvCutoffState.empty S secb
     latchedDh1 := [] }
 
-def AuthAdvLatchedState.toFg {S : Setup} (s : AuthAdvLatchedState S) : AuthFgCutoffState S :=
+@[expose] def AuthAdvLatchedState.toFg {S : Setup} (s : AuthAdvLatchedState S) : AuthFgCutoffState S :=
   { base       := s.adv.hyb.base
     advRoLog   := s.adv.advRoLog
     respRecs   := s.adv.respRecs
     latchedDh1 := s.latchedDh1 }
 
-def AuthAdvLatchedState.hyb {S : Setup} (s : AuthAdvLatchedState S) : AuthHybridState S :=
+@[expose] def AuthAdvLatchedState.hyb {S : Setup} (s : AuthAdvLatchedState S) : AuthHybridState S :=
   s.adv.hyb
 
 @[simp]
@@ -495,7 +510,7 @@ theorem AuthAdvLatchedState.adv_empty (S : Setup) (secb : Bool) :
 theorem AuthAdvLatchedState.hyb_empty (S : Setup) (secb : Bool) :
     (AuthAdvLatchedState.empty S secb).hyb = AuthHybridState.empty S secb := rfl
 
-def pqxdhAuthAdvLatchedStageImpl (stage : AuthHybridStage) (S : Setup) (P : Primitives) :
+@[expose] def pqxdhAuthAdvLatchedStageImpl (stage : AuthHybridStage) (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthAdvLatchedState S) ProbComp)
   | .corruptIK u => StateT.mk (fun s => do
     let latched' :=
@@ -512,58 +527,6 @@ theorem map_adv_pqxdhAuthAdvLatchedStageImpl (stage : AuthHybridStage) (S : Setu
         ((pqxdhAuthAdvLatchedStageImpl stage S P q).run s) =
       (pqxdhAuthAdvStageImpl stage S P q).run s.adv := by
   cases q <;> simp [pqxdhAuthAdvLatchedStageImpl, StateT.run_mk, Prod.map]
-
-theorem map_adv_fullAuthAdvLatchedStageImpl (stage : AuthHybridStage) (S : Setup)
-    (P : Primitives) (q : (unifSpec + authSpec S).Domain) (s : AuthAdvLatchedState S) :
-    Prod.map id AuthAdvLatchedState.adv <$>
-      (((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-          (StateT (AuthAdvLatchedState S) ProbComp) +
-        pqxdhAuthAdvLatchedStageImpl stage S P) q).run s =
-    (((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (AuthAdvCutoffState S) ProbComp) +
-      pqxdhAuthAdvStageImpl stage S P) q).run s.adv := by
-  cases q with
-  | inl uq => simp [QueryImpl.liftTarget, StateT.run_monadLift, Prod.map]
-  | inr gq => exact map_adv_pqxdhAuthAdvLatchedStageImpl stage S P gq s
-
-theorem simulateQ_map_adv_fullAuthAdvLatchedStageImpl (stage : AuthHybridStage) (S : Setup)
-    (P : Primitives) {α : Type} (oa : OracleComp (unifSpec + authSpec S) α)
-    (s : AuthAdvLatchedState S) :
-    let fullLatched := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (AuthAdvLatchedState S) ProbComp) + pqxdhAuthAdvLatchedStageImpl stage S P
-    let fullAdv := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (AuthAdvCutoffState S) ProbComp) + pqxdhAuthAdvStageImpl stage S P
-    Prod.map id AuthAdvLatchedState.adv <$> ((simulateQ fullLatched oa).run s) =
-      (simulateQ fullAdv oa).run s.adv :=
-  _root_.Proofs.SignalPqxdh.Security.map_proj_simulateQ
-    AuthAdvLatchedState.adv
-    ((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-      (StateT (AuthAdvLatchedState S) ProbComp) + pqxdhAuthAdvLatchedStageImpl stage S P)
-    ((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-      (StateT (AuthAdvCutoffState S) ProbComp) + pqxdhAuthAdvStageImpl stage S P)
-    (map_adv_fullAuthAdvLatchedStageImpl stage S P)
-    oa s
-
-theorem authKoskExpAtStage_eq_advLatchedStage (stage : AuthHybridStage) (S : Setup)
-    (P : Primitives) (A : AuthAdversary S) :
-    authKoskExpAtStage stage S P A =
-    (do
-      let secb ← $ᵗ Bool
-      let initSt := AuthAdvLatchedState.empty S secb
-      let impl := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-          (StateT (AuthAdvLatchedState S) ProbComp) +
-        pqxdhAuthAdvLatchedStageImpl stage S P
-      let (b', finalSt) ← (simulateQ impl A.run).run initSt
-      finalizeAuthKosk S P secb b' finalSt.hyb) := by
-  rw [authKoskExpAtStage_eq_advStage stage S P A]
-  congr 1; funext secb
-  have hsim := congrArg
-    (· >>= fun (p : Bool × AuthAdvCutoffState S) => finalizeAuthKosk S P secb p.1 p.2.hyb)
-    (simulateQ_map_adv_fullAuthAdvLatchedStageImpl stage S P A.run
-      (AuthAdvLatchedState.empty S secb))
-  dsimp only [AuthAdvLatchedState.adv_empty] at hsim
-  rw [← hsim, map_eq_bind_pure_comp]
-  simp [bind_assoc, Prod.map, AuthAdvLatchedState.hyb]
 
 theorem lookupSenderIkPk_map_corrupt (uVal sIdx : ℕ)
     (principals : List (Nat × PrincipalEntry)) :

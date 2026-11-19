@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegApplyStoreSteps
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustFrame
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegApplyStoreSteps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustFrame -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommon
 import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # OTR Relocation and Frame Helpers for `segApplyStore_ok`
@@ -21,7 +23,7 @@ Pure `SessionRecord` lemmas, 200-byte `otrAt` relocation helpers, and active/pas
 for the `store_session` phase (`+0xd9c..+0xe88`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.SegApplyStore
 
@@ -61,7 +63,7 @@ theorem fromSessionState_senderChain_isSome {s taken : SessionState (List (BitVe
   rw [← h.2]
   rfl
 
-def sessionPure (G : SessionGhost) (s : Session (List (BitVec 8))) : Prop :=
+@[expose] def sessionPure (G : SessionGhost) (s : Session (List (BitVec 8))) : Prop :=
   PendingRel G.pending s.pendingPreKey ∧ KyberRel G.kyber s.pendingKyberPreKey ∧
     G.alice.bytes = s.aliceBaseKey ∧ G.regIds.take 4 = leBytes 4 s.remoteRegistrationId.toNat ∧
     (G.regIds.drop 4).take 4 = leBytes 4 s.localRegistrationId.toNat
@@ -307,7 +309,7 @@ theorem poll46a_split_200 (sp : BitVec 64) :
   simp only [BitVec.add_assoc, BitVec.reduceAdd]
   ac_rfl
 
-def storePollRest (sp : BitVec 64) : SepProp :=
+@[expose] def storePollRest (sp : BitVec 64) : SepProp :=
   memRegion (sp + 0x46a#64) 6 ∗
   memRegion (sp + 0x480#64) 0x100 ∗
   memRegion (sp + 0x5b0#64) 0x400 ∗
@@ -366,7 +368,7 @@ theorem cmScratch_eq_38 (sp : BitVec 64) :
         memRegion (sp + 0x48#64) 8 ∗ ((sp + 0x50#64) ↦₆₄ (sp + 0x128#64))) := by
   unfold cmScratch; ac_rfl
 
-def encSpillsStoreRest (ss_vt id_vt sp : BitVec 64) (x : WithStoresEncGhost) : SepProp :=
+@[expose] def encSpillsStoreRest (ss_vt id_vt sp : BitVec 64) (x : WithStoresEncGhost) : SepProp :=
   ((sp + 0x58#64) ↦₆₄ x.now.tvSec) ∗ ((sp + 0x60#64) ↦₃₂ x.now.tvNsec) ∗
   memRegion (sp + 0x64#64) 4 ∗ ((sp + 0x68#64) ↦₆₄ x.ptA) ∗
   ((sp + 0x70#64) ↦₆₄ BitVec.ofNat 64 x.ptext.length) ∗ ((sp + 0x78#64) ↦₆₄ x.remA) ∗
@@ -386,7 +388,7 @@ theorem encSpillsAt_store_eq (ss_vt id_vt sp : BitVec 64) (x : WithStoresEncGhos
       ((sp + 0xd8#64) ↦₆₄ ss_vt) ∗ encSpillsStoreRest ss_vt id_vt sp x := by
   unfold encSpillsAtV encSpillsStoreRest; ac_rfl
 
-def storeBaseActive {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
+@[expose] def storeBaseActive {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
     (st : kit.StoreState) (ikit : IdentityStoreSpec A b) (sp : BitVec 64)
     (x : WithStoresEncGhost) (g' : RecordGhost)
     (rec' : SessionRecord (List (BitVec 8))) : SepProp :=
@@ -398,287 +400,5 @@ def storeBaseActive {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
   stackAt sp (encSubStackV kit ikit) ∗
   A.pool ∗
   kit.storeAt x.ssA st
-
-def storePassive {A : RustAlloc} {img : Obj.Image} (kit : SessionStoreSpec A img.base)
-    (ikit : IdentityStoreSpec A img.base) (ist : ikit.IdState)
-    (ctl : BitVec 64)
-    (x : WithStoresEncGhost) (k : IdentityKey) (m : CiphertextMessage)
-    (draws : Nat) (s0 : State) : SepProp :=
-  let sp := s0.sp - 0xbe0#64
-  ((sp + 0x280#64) ↦₆₄ (sp + 0x128#64)) ∗
-  memRegion (sp + 0x288#64) 200 ∗
-  ((sp + 0x350#64) ↦ₛ k.publicKey.bytes.toList) ∗
-  apiEncResultAt A (sp + 0x370#64) (.ok m) ∗
-  ((sp + 0x468#64) ↦₈ 0#8) ∗
-  ((sp + 0x469#64) ↦₈ 0#8) ∗
-  cmScratch sp ∗
-  encSpillsStoreRest kit.ss_vt ikit.id_vt sp x ∗
-  storePollRest sp ∗
-  memRegion x.ret 248 ∗
-  logOff img ∗
-  ikit.identityAt x.idA ist ∗
-  encCommonRest A ctl x draws s0
-
-theorem store_mem_split {A : RustAlloc} {img : Obj.Image} (kit : SessionStoreSpec A img.base)
-    (st : kit.StoreState) (ikit : IdentityStoreSpec A img.base) (ist : ikit.IdState)
-    (ctl : BitVec 64)
-    (x : WithStoresEncGhost) (g' : RecordGhost)
-    (rec' : SessionRecord (List (BitVec 8))) (k : IdentityKey) (m : CiphertextMessage)
-    (draws : Nat) (s0 : State) (sp : BitVec 64) (hsp : sp = s0.sp - 0xbe0#64) :
-    ((sessionRecordAt A (sp + 0x110#64) g' rec' ∗
-      ((sp + 0x280#64) ↦₆₄ (sp + 0x128#64)) ∗
-      memRegion (sp + 0x288#64) 200 ∗
-      ((sp + 0x350#64) ↦ₛ k.publicKey.bytes.toList) ∗
-      apiEncResultAt A (sp + 0x370#64) (.ok m) ∗
-      ((sp + 0x468#64) ↦₈ 0#8) ∗
-      ((sp + 0x469#64) ↦₈ 0#8)) ∗
-    cmScratch sp ∗ encSpillsAtV kit.ss_vt ikit.id_vt sp x ∗
-    memRegion (sp + 0x46a#64) 0x716 ∗ memRegion x.ret 248 ∗
-    encCommon A ctl img x draws s0) ∗ encStoreExtra kit st ikit ist x s0 ⊢
-    ⌜withStoresEncStackV kit ikit ≤ s0.sp.toNat⌝ ∗
-    ((storeBaseActive kit st ikit sp x g' rec' ∗
-      memRegion (sp + 0x470#64) 16 ∗
-      memRegion (sp + 0x580#64) 48 ∗
-      memRegion (sp + 0x9b0#64) 24) ∗
-    storePassive kit ikit ist ctl x k m draws s0) := by
-  subst hsp
-  dsimp only [storeBaseActive, storePassive]
-  set sp := s0.sp - 0xbe0#64
-  have hpre :
-      ((sessionRecordAt A (sp + 0x110#64) g' rec' ∗
-        ((sp + 0x280#64) ↦₆₄ (sp + 0x128#64)) ∗
-        memRegion (sp + 0x288#64) 200 ∗
-        ((sp + 0x350#64) ↦ₛ k.publicKey.bytes.toList) ∗
-        apiEncResultAt A (sp + 0x370#64) (.ok m) ∗
-        ((sp + 0x468#64) ↦₈ 0#8) ∗
-        ((sp + 0x469#64) ↦₈ 0#8)) ∗
-      cmScratch sp ∗ encSpillsAtV kit.ss_vt ikit.id_vt sp x ∗
-      memRegion (sp + 0x46a#64) 0x716 ∗ memRegion x.ret 248 ∗
-      encCommon A ctl img x draws s0) ∗ encStoreExtra kit st ikit ist x s0 =
-      ⌜withStoresEncStackV kit ikit ≤ s0.sp.toNat⌝ ∗
-      ((kit.storeAt x.ssA st ∗ ikit.identityAt x.idA ist ∗
-        memRegion (s0.sp - BitVec.ofNat 64 (withStoresEncStackV kit ikit)) (encSubStackV kit ikit - encSubStack) ∗
-        stackAt sp encSubStack) ∗
-      (((sessionRecordAt A (sp + 0x110#64) g' rec' ∗
-        ((sp + 0x280#64) ↦₆₄ (sp + 0x128#64)) ∗
-        memRegion (sp + 0x288#64) 200 ∗
-        ((sp + 0x350#64) ↦ₛ k.publicKey.bytes.toList) ∗
-        apiEncResultAt A (sp + 0x370#64) (.ok m) ∗
-        ((sp + 0x468#64) ↦₈ 0#8) ∗
-        ((sp + 0x469#64) ↦₈ 0#8)) ∗
-      cmScratch sp ∗ encSpillsAtV kit.ss_vt ikit.id_vt sp x ∗
-      memRegion (sp + 0x46a#64) 0x716 ∗ memRegion x.ret 248 ∗
-      protocolAddressAt A x.rem x.remA ∗ logOff img ∗ A.pool ∗
-      encCommonRest A ctl x draws s0))) := by
-    rw [encCommon_eq]
-    unfold encStoreExtra
-    ac_rfl
-  rw [hpre]
-  refine Entails.pure_left fun hbound => Entails.pure_right hbound ?_
-  have hj :
-      kit.storeAt x.ssA st ∗ ikit.identityAt x.idA ist ∗
-        memRegion (s0.sp - BitVec.ofNat 64 (withStoresEncStackV kit ikit)) (encSubStackV kit ikit - encSubStack) ∗
-        stackAt sp encSubStack ⊢
-      kit.storeAt x.ssA st ∗ ikit.identityAt x.idA ist ∗ stackAt sp (encSubStackV kit ikit) := by
-    have h1 := encSubStack_join_extra kit st ikit ist x s0 hbound
-    unfold encStoreExtra at h1
-    have h0 : kit.storeAt x.ssA st ∗ ikit.identityAt x.idA ist ∗
-        memRegion (s0.sp - BitVec.ofNat 64 (withStoresEncStackV kit ikit)) (encSubStackV kit ikit - encSubStack) ∗
-        stackAt sp encSubStack ⊢
-      (⌜withStoresEncStackV kit ikit ≤ s0.sp.toNat⌝ ∗
-        kit.storeAt x.ssA st ∗ ikit.identityAt x.idA ist ∗
-        memRegion (s0.sp - BitVec.ofNat 64 (withStoresEncStackV kit ikit)) (encSubStackV kit ikit - encSubStack)) ∗
-        stackAt sp encSubStack :=
-      Entails.trans (Entails.pure_right hbound (Entails.refl _)) (Entails.of_eq (by ac_rfl))
-    exact Entails.trans h0 h1
-  refine Entails.trans (sepConj_mono_left hj) ?_
-  rw [encSpillsAt_store_eq, storePoll_split]
-  exact Entails.of_eq (by ac_rfl)
-
-theorem store_mem_to_stored {A : RustAlloc} {img : Obj.Image} (kit : SessionStoreSpec A img.base)
-    (st : kit.StoreState) (ikit : IdentityStoreSpec A img.base) (ist : ikit.IdState)
-    (ctl : BitVec 64)
-    (x : WithStoresEncGhost) (g' : RecordGhost)
-    (rec' : SessionRecord (List (BitVec 8))) (k : IdentityKey) (m : CiphertextMessage)
-    (draws : Nat) (s0 : State) (sp : BitVec 64) (hsp : sp = s0.sp - 0xbe0#64)
-    (hbound : withStoresEncStackV kit ikit ≤ s0.sp.toNat) :
-    (storeBaseActive kit st ikit sp x g' rec' ∗
-      memRegion (sp + 0x470#64) 16 ∗
-      memRegion (sp + 0x580#64) 48 ∗
-      memRegion (sp + 0x9b0#64) 24) ∗
-    storePassive kit ikit ist ctl x k m draws s0 ⊢
-    (((∃∗ g : RecordGhost, sessionRecordAt A (sp + 0x110#64) g rec') ∗
-      ((sp + 0x280#64) ↦₆₄ (sp + 0x128#64)) ∗ memRegion (sp + 0x288#64) 200 ∗
-      ((sp + 0x350#64) ↦ₛ k.publicKey.bytes.toList) ∗ apiEncResultAt A (sp + 0x370#64) (.ok m) ∗
-      ((sp + 0x468#64) ↦₈ 0#8) ∗ memRegion (sp + 0x469#64) 1) ∗
-    cmScratch sp ∗ encSpillsAtV kit.ss_vt ikit.id_vt sp x ∗
-    memRegion (sp + 0x46a#64) 0x716 ∗ memRegion x.ret 248 ∗
-    encCommon A ctl img x draws s0) ∗ encStoreExtra kit st ikit ist x s0 := by
-  subst hsp
-  set sp := s0.sp - 0xbe0#64
-  have hsp_split := encSubStack_split_extra kit st ikit ist x s0 hbound
-  have hrec : sessionRecordAt A (sp + 0x110#64) g' rec' ⊢
-      ∃∗ g : RecordGhost, sessionRecordAt A (sp + 0x110#64) g rec' :=
-    Entails.sepExists_right g' (Entails.refl _)
-  have h469 := pointsTo8_entails_memRegion (sp + 0x469#64) 0#8
-  dsimp only [storeBaseActive, storePassive]
-  have hreord1 :
-      ((((sp + 0xc0#64) ↦₆₄ x.remA ∗ (sp + 0xd0#64) ↦₆₄ x.ssA ∗
-        (sp + 0xd8#64) ↦₆₄ kit.ss_vt ∗
-        sessionRecordAt A (sp + 0x110#64) g' rec' ∗
-        protocolAddressAt A x.rem x.remA ∗ stackAt sp (encSubStackV kit ikit) ∗ A.pool ∗
-        kit.storeAt x.ssA st) ∗
-      memRegion (sp + 0x470#64) 16 ∗ memRegion (sp + 0x580#64) 48 ∗
-      memRegion (sp + 0x9b0#64) 24) ∗
-      (((sp + 0x280#64) ↦₆₄ (sp + 0x128#64)) ∗ memRegion (sp + 0x288#64) 200 ∗
-      ((sp + 0x350#64) ↦ₛ k.publicKey.bytes.toList) ∗
-      apiEncResultAt A (sp + 0x370#64) (.ok m) ∗
-      ((sp + 0x468#64) ↦₈ 0#8) ∗ ((sp + 0x469#64) ↦₈ 0#8) ∗
-      cmScratch sp ∗ encSpillsStoreRest kit.ss_vt ikit.id_vt sp x ∗ storePollRest sp ∗
-      memRegion x.ret 248 ∗ logOff img ∗ ikit.identityAt x.idA ist ∗
-      encCommonRest A ctl x draws s0)) =
-      (kit.storeAt x.ssA st ∗ ikit.identityAt x.idA ist ∗ stackAt sp (encSubStackV kit ikit)) ∗
-      sessionRecordAt A (sp + 0x110#64) g' rec' ∗
-      ((sp + 0x469#64) ↦₈ 0#8) ∗
-      (((sp + 0x280#64) ↦₆₄ (sp + 0x128#64)) ∗ memRegion (sp + 0x288#64) 200 ∗
-        ((sp + 0x350#64) ↦ₛ k.publicKey.bytes.toList) ∗
-        apiEncResultAt A (sp + 0x370#64) (.ok m) ∗
-        ((sp + 0x468#64) ↦₈ 0#8) ∗ cmScratch sp ∗
-        encSpillsAtV kit.ss_vt ikit.id_vt sp x ∗
-        memRegion (sp + 0x46a#64) 0x716 ∗ memRegion x.ret 248 ∗
-        protocolAddressAt A x.rem x.remA ∗ logOff img ∗ A.pool ∗
-        encCommonRest A ctl x draws s0) := by
-    rw [encSpillsAt_store_eq, storePoll_split]
-    ac_rfl
-  rw [hreord1]
-  refine Entails.trans (sepConj_mono hsp_split (sepConj_mono hrec (sepConj_mono_left h469))) ?_
-  rw [encCommon_eq]
-  exact Entails.of_eq (by ac_rfl)
-
-theorem store_mem_to_tail {A : RustAlloc} {img : Obj.Image} (kit : SessionStoreSpec A img.base)
-    (st : kit.StoreState) (ikit : IdentityStoreSpec A img.base) (ist : ikit.IdState)
-    (ctl : BitVec 64)
-    (x : WithStoresEncGhost) (g' : RecordGhost)
-    (rec' : SessionRecord (List (BitVec 8))) (k : IdentityKey) (m : CiphertextMessage)
-    (draws : Nat) (s0 : State) (sp : BitVec 64) (hsp : sp = s0.sp - 0xbe0#64)
-    (hbound : withStoresEncStackV kit ikit ≤ s0.sp.toNat)
-    (w3 w4 w5 : BitVec 64) (H : SepProp) :
-    (storeBaseActive kit st ikit sp x g' rec' ∗
-      memRegion (sp + 0x470#64) 16 ∗
-      memRegion (sp + 0x580#64) 48 ∗
-      (((sp + 0x9b0#64) ↦₆₄ w3) ∗ ((sp + 0x9b8#64) ↦₆₄ w4) ∗ ((sp + 0x9c0#64) ↦₆₄ w5)) ∗
-      H) ∗
-    storePassive kit ikit ist ctl x k m draws s0 ⊢
-    (dropRecordSlots A sp cmScratch g' rec' none (some m) (pollWith sp 0x9b0 [w3, w4, w5]) ∗ H) ∗
-      encSpillsAtV kit.ss_vt ikit.id_vt sp x ∗ memRegion x.ret 248 ∗
-      encCommon A ctl img x draws s0 ∗ encStoreExtra kit st ikit ist x s0 := by
-  subst hsp
-  dsimp only [storeBaseActive, storePassive]
-  set sp := s0.sp - 0xbe0#64
-  have hsp_split := encSubStack_split_extra kit st ikit ist x s0 hbound
-  have hpoll := storePoll_merge_9b0 sp w3 w4 w5
-  have hk : ((sp + 0x350#64) ↦ₛ k.publicKey.bytes.toList) ⊢ memRegion (sp + 0x350#64) 0x20 := by
-    have h := pointsToBytes_entails_memRegion (sp + 0x350#64) k.publicKey.bytes.toList
-    have hlen : k.publicKey.bytes.toList.length = 0x20 := k.publicKey.bytes.property
-    rwa [hlen] at h
-  have h280 := pointsTo64_entails_memRegion (sp + 0x280#64) (sp + 0x128#64)
-  have h468 := pointsTo8_entails_memRegion (sp + 0x468#64) 0#8
-  have hreord :
-      ((((sp + 0xc0#64) ↦₆₄ x.remA ∗ (sp + 0xd0#64) ↦₆₄ x.ssA ∗
-        (sp + 0xd8#64) ↦₆₄ kit.ss_vt ∗
-        sessionRecordAt A (sp + 0x110#64) g' rec' ∗
-        protocolAddressAt A x.rem x.remA ∗ stackAt sp (encSubStackV kit ikit) ∗ A.pool ∗
-        kit.storeAt x.ssA st) ∗
-      memRegion (sp + 0x470#64) 16 ∗ memRegion (sp + 0x580#64) 48 ∗
-      (((sp + 0x9b0#64) ↦₆₄ w3) ∗ ((sp + 0x9b8#64) ↦₆₄ w4) ∗ ((sp + 0x9c0#64) ↦₆₄ w5)) ∗ H) ∗
-      (((sp + 0x280#64) ↦₆₄ (sp + 0x128#64)) ∗ memRegion (sp + 0x288#64) 200 ∗
-      ((sp + 0x350#64) ↦ₛ k.publicKey.bytes.toList) ∗
-      apiEncResultAt A (sp + 0x370#64) (.ok m) ∗
-      ((sp + 0x468#64) ↦₈ 0#8) ∗ ((sp + 0x469#64) ↦₈ 0#8) ∗
-      cmScratch sp ∗ encSpillsStoreRest kit.ss_vt ikit.id_vt sp x ∗ storePollRest sp ∗
-      memRegion x.ret 248 ∗ logOff img ∗ ikit.identityAt x.idA ist ∗
-      encCommonRest A ctl x draws s0)) =
-      (kit.storeAt x.ssA st ∗ ikit.identityAt x.idA ist ∗ stackAt sp (encSubStackV kit ikit)) ∗
-      ((cmScratch sp ∗ sessionRecordAt A (sp + 0x110#64) g' rec' ∗
-        ((sp + 0x280#64) ↦₆₄ (sp + 0x128#64)) ∗
-        (memRegion (sp + 0x288#64) 200 ∗ ((sp + 0x469#64) ↦₈ 0#8)) ∗
-        (((sp + 0x350#64) ↦ₛ k.publicKey.bytes.toList) ∗
-          apiEncResultAt A (sp + 0x370#64) (.ok m) ∗
-          ((sp + 0x468#64) ↦₈ 0#8)) ∗
-        (memRegion (sp + 0x470#64) 16 ∗ memRegion (sp + 0x580#64) 48 ∗
-          (((sp + 0x9b0#64) ↦₆₄ w3) ∗ ((sp + 0x9b8#64) ↦₆₄ w4) ∗ ((sp + 0x9c0#64) ↦₆₄ w5)) ∗
-          storePollRest sp)) ∗
-        H ∗ encSpillsAtV kit.ss_vt ikit.id_vt sp x ∗ memRegion x.ret 248 ∗
-        protocolAddressAt A x.rem x.remA ∗ logOff img ∗ A.pool ∗
-        encCommonRest A ctl x draws s0) := by
-    rw [encSpillsAt_store_eq]
-    ac_rfl
-  rw [hreord]
-  have hslots :
-      cmScratch sp ∗ sessionRecordAt A (sp + 0x110#64) g' rec' ∗
-        ((sp + 0x280#64) ↦₆₄ (sp + 0x128#64)) ∗
-        (memRegion (sp + 0x288#64) 200 ∗ ((sp + 0x469#64) ↦₈ 0#8)) ∗
-        (((sp + 0x350#64) ↦ₛ k.publicKey.bytes.toList) ∗
-          apiEncResultAt A (sp + 0x370#64) (.ok m) ∗
-          ((sp + 0x468#64) ↦₈ 0#8)) ∗
-        (memRegion (sp + 0x470#64) 16 ∗ memRegion (sp + 0x580#64) 48 ∗
-          (((sp + 0x9b0#64) ↦₆₄ w3) ∗ ((sp + 0x9b8#64) ↦₆₄ w4) ∗ ((sp + 0x9c0#64) ↦₆₄ w5)) ∗
-          storePollRest sp) ⊢
-      dropRecordSlots A sp cmScratch g' rec' none (some m) (pollWith sp 0x9b0 [w3, w4, w5]) := by
-    dsimp only [dropRecordSlots, otrSlotAt, cmSlotAt]
-    exact sepConj_mono_right (sepConj_mono_right (sepConj_mono h280
-      (sepConj_mono_right (sepConj_mono (sepConj_mono hk (sepConj_mono_right h468)) hpoll))))
-  refine Entails.trans (sepConj_mono hsp_split (sepConj_mono_left hslots)) ?_
-  rw [encCommon_eq]
-  exact Entails.of_eq (by ac_rfl)
-
-/-- Normalizes `storePollOutAt` after `kit.storePoll` into six 64-bit words at `sp + 0x580` plus
-the staged error resource. -/
-theorem storePollOut_words (_A : RustAlloc) (b out : BitVec 64) (ans : Except Unit Unit) :
-    storePollOutAt b out ans ⊢
-    ∃∗ w0 : BitVec 64, ∃∗ w1 : BitVec 64, ∃∗ w2 : BitVec 64,
-    ∃∗ w3 : BitVec 64, ∃∗ w4 : BitVec 64, ∃∗ w5 : BitVec 64, ∃∗ H : SepProp,
-      ⌜(w0 = 0xFFFFFFFFFFFFFFFE#64 ∨ w0 = 0x800000000000001A#64) ∧
-        w0 = pollTag ans ∧
-        (ans = .ok () → H = emp) ∧
-        (ans = .error () →
-          H = ((b + bv% (ls_reloc% 0x77cc)) ↦ᵣ storeHookStr) ∧ w1 = b + bv% (ls_reloc% 0x77cc) ∧ w2 = 10#64 ∧ w3 = 1#64 ∧ w4 = b + bv% (ls_xref% 0xc9ec 0xc9f0 + 16))⌝ ∗
-      (out ↦₆₄ w0) ∗ ((out + 8#64) ↦₆₄ w1) ∗ ((out + 0x10#64) ↦₆₄ w2) ∗
-      ((out + 0x18#64) ↦₆₄ w3) ∗ ((out + 0x20#64) ↦₆₄ w4) ∗
-      ((out + 0x28#64) ↦₆₄ w5) ∗ H := by
-  rcases ans with ⟨⟨⟩⟩ | ⟨⟨⟩⟩
-  · dsimp only [storePollOutAt, pollTag]
-    rw [ProofLib.memRegion_eight (out + 0x28#64)]
-    simp only [sepExists_sepConj_right]
-    refine Entails.sepExists_elim fun w5 => ?_
-    refine Entails.sepExists_right 0x800000000000001A#64 (Entails.sepExists_right (b + bv% (ls_reloc% 0x77cc))
-      (Entails.sepExists_right 10#64 (Entails.sepExists_right 1#64
-      (Entails.sepExists_right (b + bv% (ls_xref% 0xc9ec 0xc9f0 + 16)) (Entails.sepExists_right w5
-      (Entails.sepExists_right ((b + bv% (ls_reloc% 0x77cc)) ↦ᵣ storeHookStr) ?_))))))
-    refine Entails.pure_right ⟨Or.inr rfl, rfl, (fun h => nomatch h),
-      fun _ => ⟨rfl, rfl, rfl, rfl, rfl⟩⟩ ?_
-    exact Entails.of_eq (by ac_rfl)
-  · dsimp only [storePollOutAt, pollTag]
-    rw [show (40 : Nat) = 8 + (8 + (8 + (8 + 8))) by decide,
-        memRegion_split (out + 8#64) 8 _ (by decide),
-        memRegion_split _ 8 _ (by decide),
-        memRegion_split _ 8 _ (by decide),
-        memRegion_split _ 8 8 (by decide),
-        ProofLib.memRegion_eight (out + 8#64),
-        ProofLib.memRegion_eight (out + 8#64 + 8#64),
-        ProofLib.memRegion_eight (out + 8#64 + 8#64 + 8#64),
-        ProofLib.memRegion_eight (out + 8#64 + 8#64 + 8#64 + 8#64),
-        ProofLib.memRegion_eight (out + 8#64 + 8#64 + 8#64 + 8#64 + 8#64)]
-    simp only [BitVec.add_assoc, BitVec.reduceAdd, sepExists_sepConj_left, sepExists_sepConj_right]
-    refine Entails.sepExists_elim fun w5 => Entails.sepExists_elim fun w4 =>
-      Entails.sepExists_elim fun w3 => Entails.sepExists_elim fun w2 =>
-      Entails.sepExists_elim fun w1 => ?_
-    refine Entails.sepExists_right 0xFFFFFFFFFFFFFFFE#64 (Entails.sepExists_right w1
-      (Entails.sepExists_right w2 (Entails.sepExists_right w3
-      (Entails.sepExists_right w4 (Entails.sepExists_right w5
-      (Entails.sepExists_right emp ?_))))))
-    refine Entails.pure_right ⟨Or.inl rfl, rfl, fun _ => rfl, (fun h => nomatch h)⟩ ?_
-    rw [sepConj_emp]
-    exact Entails.of_eq (by ac_rfl)
 
 end CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.SegApplyStore

@@ -1,0 +1,45 @@
+{
+  "comment": "Synthetic mutant for eager session persistence before inner MAC verification: message_decrypt_prekey calls session_store.store_session before try_decrypt_from_record and Dir::put writes eagerly to disk, so Bob's rejected recv (exit 1) on a MAC-corrupted PreKeySignalMessage persists an unauthenticated session that Bob's subsequent send uses (exit 0).",
+  "setup_seed": 23209,
+  "rng_seed": 41,
+  "with_opk": false,
+  "torsion_shifts": [],
+  "calls": [
+    {
+      "entry": "init",
+      "who": 0,
+      "b": {
+        "honest_bundle": true
+      }
+    },
+    {
+      "entry": "send",
+      "who": 0,
+      "b": {
+        "utf8": "hello bob"
+      }
+    },
+    {
+      "entry": "recv",
+      "who": 1,
+      "b": {
+        "replace": {
+          "message_of": 1
+        },
+        "find": {
+          "hex": "e92926fbc7cfaa39"
+        },
+        "with": {
+          "hex": "ffffffffffffffff"
+        }
+      }
+    },
+    {
+      "entry": "send",
+      "who": 1,
+      "b": {
+        "utf8": "hello bob"
+      }
+    }
+  ]
+}

@@ -11,12 +11,13 @@ module
 
 public import Computational.Specifications.Reductions.ReductionDsl.AtomicOps
 public import Computational.Specifications.Reductions.ReductionDsl.TargetCodecs
-public import Computational.Proofs.ReductionDsl.MacroLift
+public import Computational.Proofs.ReductionDsl.MacroLift -- proof-setup: allow-public-import
 public import Computational.Proofs.CryptoGames.CKA.CKAProofDefs
 public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRNG.PRNGProofDefs
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Defs
 import Computational.Proofs.GameHop.StateSim
 import VCVio.EvalDist.Monad.Bool
+import Computational.Proofs.GameHop.Rnd
 
 /-!
 # Auxiliary-Context Pure Macro Compiler, `CoinSimEquiv`, and Weighted Cost
@@ -27,7 +28,7 @@ Defines distributional equivalence (`CoinSimEquiv`) across coin-forwarding chall
 AST cost functions (`exprCostW`, `compCostW`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -239,24 +240,6 @@ theorem validCoinSim_compCoinImpl {S : Sig} {O : Ops S} {ι κ : Type}
     (fun _ => EvalDistEq.rfl)
   simpa only [bind_assoc, pure_bind] using hb⟩
 
-theorem costedReduction_eval_coinSimEquiv_congr {S : Sig} {O : Ops S} {ι κ : Type}
-    {T : OracleSpec.{0, 0} ι} {I : Iface S T} {G : OracleSpec.{0, 0} κ} {C : GameCodec S G}
-    {rIn aIn aOut out : Ty S}
-    (R : CostedReduction O I G C rIn aIn aOut out)
-    {adv₁ adv₂ : aIn.denote → OracleComp (unifSpec + G) aOut.denote}
-    (hA : ∀ a, CoinSimEquiv (fun n => query (spec := unifSpec + G) (.inl n)) (adv₁ a) (adv₂ a))
-    (x : rIn.denote) :
-    CoinSimEquiv I.fwdU (R.eval adv₁ x) (R.eval adv₂ x) := ⟨by
-  intro σ₂ impl himpl s₂
-  unfold CostedReduction.eval
-  simp only [simulateQ_bind, StateT.run_bind]
-  refine EvalDistEq.rfl.bind fun p0 => ?_
-  rcases p0 with ⟨⟨a, s₁⟩, s₂'⟩
-  rw [simulateQ_compCoinImpl_run, simulateQ_compCoinImpl_run]
-  simp only [bind_map_left]
-  exact ((hA a).run_eq (compCoinImpl R.impl impl)
-    (validCoinSim_compCoinImpl R himpl) (s₁, s₂')).bind fun _ => EvalDistEq.rfl⟩
-
 private def idCoinImpl : QueryImpl unifSpec (StateT Unit ProbComp) :=
   fun n => StateT.lift (query (m := ProbComp) (spec := unifSpec) n)
 
@@ -299,20 +282,6 @@ theorem validCoinSim_challengerImpl {κ σ : Type} {H : OracleSpec.{0, 0} κ}
   dsimp only [QueryImpl.liftTarget, QueryImpl.ofLift, StateT.lift, StateT.run]
   exact EvalDistEq.rfl⟩
 
-theorem ckaBranch_evalDistEq_of_coinSimEquiv {Key State Coins Msg CKey : Type}
-    [SampleableType Key] [SampleableType Coins] [SampleableType CKey]
-    (cka : CKAScheme Key State Coins Msg CKey) (Δ tStar : ℕ) (b : Bool)
-    {adv₁ adv₂ : CryptoGames.CKA.Adversary State Coins Msg CKey}
-    (h : CoinSimEquiv
-      (fun n => query (spec := unifSpec + CryptoGames.CKA.spec State Coins Msg CKey) (.inl n))
-      adv₁ adv₂) :
-    CryptoGames.CKA.branch cka Δ tStar b adv₁ =ᵈ CryptoGames.CKA.branch cka Δ tStar b adv₂ := by
-  unfold CryptoGames.CKA.branch
-  refine EvalDistEq.rfl.bind fun k => ?_
-  simp only [StateT.run']
-  exact (h.run_eq _ (validCoinSim_challengerImpl _)
-    (CryptoGames.CKA.initState cka k b)).map Prod.fst
-
 theorem ckaGame_evalDistEq_of_coinSimEquiv {Key State Coins Msg CKey : Type}
     [SampleableType Key] [SampleableType Coins] [SampleableType CKey]
     (cka : CKAScheme Key State Coins Msg CKey) (Δ tStar : ℕ)
@@ -337,20 +306,6 @@ theorem ckaAdvantage_congr {Key State Coins Msg CKey : Type}
     CryptoGames.CKA.advantage cka Δ tStar adv₁ = CryptoGames.CKA.advantage cka Δ tStar adv₂ := by
   unfold CryptoGames.CKA.advantage
   rw [(ckaGame_evalDistEq_of_coinSimEquiv cka Δ tStar h).evalDist_eq]
-
-theorem prngBranch_evalDistEq_of_coinSimEquiv {Key State Input Output : Type}
-    [DecidableEq Input] [SampleableType Key] [SampleableType Input] [SampleableType Output]
-    (P : PRFPRNG Key State Input Output) (b : Bool)
-    {adv₁ adv₂ : PRFPRNG.Adversary State Input Output}
-    (h : CoinSimEquiv
-      (fun n => query (spec := unifSpec + PRFPRNG.spec State Input Output) (.inl n))
-      adv₁ adv₂) :
-    PRFPRNG.branch P b adv₁ =ᵈ PRFPRNG.branch P b adv₂ := by
-  unfold PRFPRNG.branch
-  refine EvalDistEq.rfl.bind fun k => ?_
-  simp only [StateT.run']
-  exact (h.run_eq _ (validCoinSim_challengerImpl _)
-    ({ σ := P.init k, b := b } : PRFPRNG.GameState State Input Output)).map Prod.fst
 
 theorem prngGame_evalDistEq_of_coinSimEquiv {Key State Input Output : Type}
     [DecidableEq Input] [SampleableType Key] [SampleableType Input] [SampleableType Output]
@@ -390,17 +345,6 @@ theorem fsaeadGame_evalDistEq_of_coinSimEquiv {Key SS RS AD Msg C : Type}
   refine EvalDistEq.rfl.bind fun b => EvalDistEq.rfl.bind fun k => ?_
   exact (h.run_eq _ (validCoinSim_challengerImpl _) (CryptoGames.FSAEAD.initState fs k b)).bind
     fun _ => EvalDistEq.rfl
-
-theorem fsaeadAdvantage_congr {Key SS RS AD Msg C : Type}
-    [DecidableEq AD] [DecidableEq Msg] [DecidableEq C] [SampleableType Key]
-    (fs : FSAEADScheme Key SS RS AD Msg C)
-    {adv₁ adv₂ : CryptoGames.FSAEAD.Adversary SS RS AD Msg C}
-    (h : CoinSimEquiv
-      (fun n => query (spec := unifSpec + CryptoGames.FSAEAD.spec SS RS AD Msg C) (.inl n))
-      adv₁ adv₂) :
-    CryptoGames.FSAEAD.advantage fs adv₁ = CryptoGames.FSAEAD.advantage fs adv₂ := by
-  unfold CryptoGames.FSAEAD.advantage
-  rw [(fsaeadGame_evalDistEq_of_coinSimEquiv fs h).evalDist_eq]
 
 theorem prgAdvantage_congr {Seed R : Type} [SampleableType Seed] [SampleableType R]
     (prg : PRGScheme Seed R) {adv₁ adv₂ : PRGScheme.PRGAdversary R}
@@ -567,7 +511,7 @@ theorem sample_bool_of_bv128_evalDistEq :
   rw [Functor.map_map, map_eq_bind_pure_comp] at hm
   exact hm.trans (evalDistEq_uniformSample_equiv equivBitVec1Bool)
 
-def fig8PureOp (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero Pt]
+@[expose] def fig8PureOp (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero Pt]
     (C : Crypto) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
     (lam : Pt) {Γ : List (Ty (atomicSig ℓ Pt))} (o : AtomicPureOp)
     (a : Expr (atomicFig8Ops ℓ Pt C Dh encPt encT lam) Γ (o.dom ℓ Pt)) :
@@ -592,7 +536,7 @@ theorem fig8PureOp_eval (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero Pt]
     (a : Expr (atomicFig8Ops ℓ Pt C Dh encPt encT lam) Γ (o.dom ℓ Pt)) (ρ : Env Γ) :
     (fig8PureOp ℓ Pt C Dh encPt encT lam o a).eval ρ = o.eval ℓ Pt (a.eval ρ) := rfl
 
-def boolOfBv128Fig8Expr (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero Pt]
+@[expose] def boolOfBv128Fig8Expr (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero Pt]
     (C : Crypto) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
     (lam : Pt) {Γ : List (Ty (atomicSig ℓ Pt))} :
     Expr (atomicFig8Ops ℓ Pt C Dh encPt encT lam) (BV128 :: Γ) .bool :=
@@ -605,7 +549,7 @@ def boolOfBv128Fig8Expr (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero Pt]
     (.nat 1)
 
 /-- `Comp` macro on `atomicFig8Ops` sampling a uniform `Bool` from a `BV128` coin draw `sampBv128`. -/
-def sampleBoolFig8Comp (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero Pt]
+@[expose] def sampleBoolFig8Comp (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero Pt]
     (C : Crypto) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
     (lam : Pt) {ι : Type} {T : OracleSpec ι}
     {I : Iface (atomicSig ℓ Pt) T} {Γ : List (Ty (atomicSig ℓ Pt))}
@@ -623,76 +567,13 @@ theorem boolOfBv128Fig8Expr_cost (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero 
     PNat.val_ofNat, hb2, hb1]
   omega
 
-theorem sampleBoolFig8Comp_cost (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero Pt]
-    (C : Crypto) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
-    (lam : Pt) {ι : Type} {T : OracleSpec ι}
-    {I : Iface (atomicSig ℓ Pt) T} {Γ : List (Ty (atomicSig ℓ Pt))}
-    (sampBv128 : Comp (atomicFig8Ops ℓ Pt C Dh encPt encT lam) I Γ BV128) :
-    (sampleBoolFig8Comp ℓ Pt C Dh encPt encT lam sampBv128).cost ≤ sampBv128.cost + 132 := by
-  have hb := boolOfBv128Fig8Expr_cost ℓ Pt C Dh encPt encT lam (Γ := Γ)
-  simp only [sampleBoolFig8Comp, Comp.cost]
-  omega
-
-theorem boolOfBv128Fig8Expr_size (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero Pt]
-    (C : Crypto) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
-    (lam : Pt) {Γ : List (Ty (atomicSig ℓ Pt))} :
-    (boolOfBv128Fig8Expr ℓ Pt C Dh encPt encT lam (Γ := Γ)).size ≤ 15 := by
-  have hb2 : bits 2 = 2 := by decide
-  have hb1 : bits 1 = 1 := by decide
-  simp only [boolOfBv128Fig8Expr, fig8PureOp_size, AtomicPureOp.opSize, Expr.size, hb2, hb1]
-  omega
-
-theorem sampleBoolFig8Comp_size (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero Pt]
-    (C : Crypto) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
-    (lam : Pt) {ι : Type} {T : OracleSpec ι}
-    {I : Iface (atomicSig ℓ Pt) T} {Γ : List (Ty (atomicSig ℓ Pt))}
-    (sampBv128 : Comp (atomicFig8Ops ℓ Pt C Dh encPt encT lam) I Γ BV128) :
-    (sampleBoolFig8Comp ℓ Pt C Dh encPt encT lam sampBv128).size ≤ sampBv128.size + 17 := by
-  have hb := boolOfBv128Fig8Expr_size ℓ Pt C Dh encPt encT lam (Γ := Γ)
-  simp only [sampleBoolFig8Comp, Comp.size]
-  omega
-
-theorem sampleBoolFig8Comp_queries (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero Pt]
-    (C : Crypto) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
-    (encT : Pt → PublicKey) (lam : Pt) {ι : Type} {T : OracleSpec ι}
-    {I : Iface (atomicSig ℓ Pt) T} {Γ : List (Ty (atomicSig ℓ Pt))}
-    (sampBv128 : Comp (atomicFig8Ops ℓ Pt C Dh encPt encT lam) I Γ BV128)
-    (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ) :
-    (sampleBoolFig8Comp ℓ Pt C Dh encPt encT lam sampBv128).queries w ws =
-      sampBv128.queries w ws := by
-  simp [sampleBoolFig8Comp, Comp.queries]
-
-theorem sampleBoolFig8Comp_coinSimEquiv (ℓ : ℕ) (Pt : Type) [DecidableEq Pt] [Zero Pt]
-    (C : Crypto) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
-    (encT : Pt → PublicKey) (lam : Pt) {ι : Type} {T : OracleSpec.{0, 0} ι}
-    {I : Iface (atomicSig ℓ Pt) T} {Γ : List (Ty (atomicSig ℓ Pt))}
-    (sampBv128 : Comp (atomicFig8Ops ℓ Pt C Dh encPt encT lam) I Γ BV128)
-    (ρ : Env Γ)
-    (hSamp : sampBv128.eval ρ = I.liftP ($ᵗ (BitVec 128) : ProbComp (BitVec 128))) :
-    CoinSimEquiv I.fwdU
-      ((sampleBoolFig8Comp ℓ Pt C Dh encPt encT lam sampBv128).eval ρ)
-      (I.liftP ($ᵗ Bool : ProbComp Bool)) := by
-  have heval :
-      (sampleBoolFig8Comp ℓ Pt C Dh encPt encT lam sampBv128).eval ρ =
-        I.liftP (do
-          let x ← ($ᵗ (BitVec 128) : ProbComp (BitVec 128))
-          pure (decide ((bytesToWordLE 64 ((toLEBytes 16 x).take 8)).toNat % 2 = 1))) := by
-    simp only [sampleBoolFig8Comp, Comp.eval, hSamp]
-    dsimp only [Iface.liftP]
-    rw [simulateQ_bind]
-    refine bind_congr fun x => ?_
-    simp only [boolOfBv128Fig8Expr, fig8PureOp_eval, Expr.eval, Env.get,
-      AtomicPureOp.eval, PNat.val_ofNat, simulateQ_pure]
-  rw [heval]
-  exact coinSimEquiv_liftP I sample_bool_of_bv128_evalDistEq
-
 end SampleBool
 
 /-! ## Auxiliary-context pure macro compiler -/
 
 section PureAuxCompiler
 
-def callPureMacroAux {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂) (auxT : Ty S₂)
+@[expose] def callPureMacroAux {S₁ S₂ : Sig} (f : S₁.Base → Ty S₂) (auxT : Ty S₂)
     (Γ : List (Ty S₁)) {O₂ : Ops S₂} {a b : Ty S₂} (e : Expr O₂ [a, auxT] b) :
     Expr O₂ (a :: mapCtx f auxT Γ) b :=
   Expr.renameM
@@ -740,7 +621,7 @@ structure PureAuxBundle (S₁ S₂ : Sig) (O₁ : Ops S₁) (O₂ : Ops S₂)
 variable {S₁ S₂ : Sig} {O₁ : Ops S₁} {O₂ : Ops S₂}
   {ι : Type} {T : OracleSpec ι} {I₁ : Iface S₁ T} {I₂ : Iface S₂ T} {auxT : Ty S₂}
 
-def compilePureAuxExpr (M : PureAuxBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) :
+@[expose] def compilePureAuxExpr (M : PureAuxBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) :
     {Γ : List (Ty S₁)} → {t : Ty S₁} →
       Expr O₁ Γ t → Expr O₂ (mapCtx M.fSort auxT Γ) (mapTy M.fSort t)
   | _, _, .var v => .var (mapVarAux M.fSort auxT v)
@@ -787,7 +668,7 @@ def compilePureAuxExpr (M : PureAuxBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) :
   | _, _, .tset m i a =>
     .tset (compilePureAuxExpr M m) (compilePureAuxExpr M i) (compilePureAuxExpr M a)
 
-def compilePureAuxComp (M : PureAuxBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) :
+@[expose] def compilePureAuxComp (M : PureAuxBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) :
     {Γ : List (Ty S₁)} → {t : Ty S₁} →
       Comp O₁ I₁ Γ t → Comp O₂ I₂ (mapCtx M.fSort auxT Γ) (mapTy M.fSort t)
   | _, _, .ret e => .ret (compilePureAuxExpr M e)
@@ -1253,7 +1134,7 @@ structure PureAuxAdapters (fSort : S₁.Base → Ty S₂) (O₂ : Ops S₂)
   adaptAOut : Expr O₂ [aOut₂] (mapTy fSort aOut₁)
   adaptOut : Expr O₂ [mapTy fSort out₁] out₂
 
-def callAdaptR {r₁T q₂T r₂T a b c d e : Ty S₂}
+@[expose] def callAdaptR {r₁T q₂T r₂T a b c d e : Ty S₂}
     (adR : Expr O₂ [r₁T, q₂T] r₂T) :
     Expr O₂ (r₁T :: a :: b :: c :: d :: e :: [q₂T]) r₂T :=
   Expr.renameM
@@ -1289,7 +1170,7 @@ theorem callAdaptR_eval {r₁T q₂T r₂T a b c d e : Ty S₂}
     | zero => rfl
     | succ w => nomatch w
 
-def compilePureAuxRed (M : PureAuxBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
+@[expose] def compilePureAuxRed (M : PureAuxBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
     {rIn₁ aIn₁ aOut₁ out₁ : Ty S₁} {rIn₂ aIn₂ aOut₂ out₂ : Ty S₂}
     (A : PureAuxAdapters M.fSort O₂ C₁ C₂ auxT rIn₁ aIn₁ aOut₁ out₁ rIn₂ aIn₂ aOut₂ out₂)
     (R : CostedReduction O₁ I₁ G C₁ rIn₁ aIn₁ aOut₁ out₁) :
@@ -1695,34 +1576,8 @@ section WeightedCost
 theorem bits_mono {m n : ℕ} (h : m ≤ n) : bits m ≤ bits n :=
   Nat.add_le_add_right (Nat.log_mono_right h) 1
 
-theorem bits_lt_pow {m k : ℕ} (hk : 0 < k) (h : m < 2 ^ k) : bits m ≤ k := by
-  rcases Nat.eq_zero_or_pos m with rfl | hm
-  · simp [bits]; omega
-  · have hlog : Nat.log 2 m < k := Nat.log_lt_of_lt_pow (Nat.ne_of_gt hm) h
-    unfold bits; omega
-
-theorem bits_add_const (n k : ℕ) : bits (n + k) ≤ bits n + k := by
-  induction k with
-  | zero => simp
-  | succ k ih =>
-    have hsucc : bits (n + k + 1) ≤ bits (n + k) + 1 := by
-      rcases Nat.eq_zero_or_pos (n + k) with h0 | hpos
-      · simp [h0, bits]
-      · unfold bits
-        have hlt : n + k + 1 < 2 ^ (Nat.log 2 (n + k) + 2) := by
-          have h1 : n + k < 2 ^ (Nat.log 2 (n + k) + 1) :=
-            Nat.lt_pow_succ_log_self (by decide) (n + k)
-          have h2 : 2 ^ (Nat.log 2 (n + k) + 2) = 2 ^ (Nat.log 2 (n + k) + 1) * 2 :=
-            pow_succ 2 (Nat.log 2 (n + k) + 1)
-          omega
-        have hlog : Nat.log 2 (n + k + 1) < Nat.log 2 (n + k) + 2 :=
-          Nat.log_lt_of_lt_pow (by omega) hlt
-        omega
-    rw [← Nat.add_assoc]
-    omega
-
 /-- Parameterized static cost of `Expr O Γ t` with custom per-op weight `opC`. -/
-def exprCostW {S : Sig} {O : Ops S} (opC : O.Op → ℕ) :
+@[expose] def exprCostW {S : Sig} {O : Ops S} (opC : O.Op → ℕ) :
     {Γ : List (Ty S)} → {t : Ty S} → Expr O Γ t → ℕ
   | _, _, .var _ | _, _, .unit | _, _, .bool _ | _, _, .none | _, _, .nil => 1
   | _, _, .nat n => bits n
@@ -1744,7 +1599,7 @@ def exprCostW {S : Sig} {O : Ops S} (opC : O.Op → ℕ) :
   | _, _, .tset m i a => exprCostW opC m + exprCostW opC i + exprCostW opC a + 128
 
 /-- Parameterized static cost of `Comp O I Γ t` with custom op, sampler, and query weights. -/
-def compCostW {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
+@[expose] def compCostW {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (opC : O.Op → ℕ) (sC : I.smp.Samp → ℕ) (qC : I.Tag → ℕ) :
     {Γ : List (Ty S)} → {t : Ty S} → Comp O I Γ t → ℕ
   | _, _, .ret e => exprCostW opC e + 1
@@ -1808,50 +1663,6 @@ theorem exprCostW_mono {S : Sig} {O : Ops S} {opC₁ opC₂ : O.Op → ℕ}
     simp only [exprCostW]; omega
   | tset _ _ _ ih1 ih2 ih3 =>
     simp only [exprCostW]; omega
-
-theorem compCostW_mono {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
-    {opC₁ opC₂ : O.Op → ℕ} {sC₁ sC₂ : I.smp.Samp → ℕ} {qC₁ qC₂ : I.Tag → ℕ}
-    (hOp : ∀ o, opC₁ o ≤ opC₂ o)
-    (hS : ∀ s, sC₁ s ≤ sC₂ s)
-    (hQ : ∀ g, qC₁ g ≤ qC₂ g)
-    {Γ : List (Ty S)} {t : Ty S} (c : Comp O I Γ t) :
-    compCostW opC₁ sC₁ qC₁ c ≤ compCostW opC₂ sC₂ qC₂ c := by
-  induction c with
-  | ret e =>
-    have he := exprCostW_mono hOp e
-    simp only [compCostW]; omega
-  | bind _ _ ihc ihk =>
-    simp only [compCostW]; omega
-  | ite b _ _ ihc ihd | caseOpt b _ _ ihc ihd | caseSum b _ _ ihc ihd =>
-    have hb := exprCostW_mono hOp b
-    have hm := max_le_max ihc ihd
-    simp only [compCostW]; omega
-  | sample s e =>
-    have he := exprCostW_mono hOp e
-    have hs := hS s
-    simp only [compCostW]; omega
-  | query g e =>
-    have he := exprCostW_mono hOp e
-    have hq := hQ g
-    simp only [compCostW]; omega
-  | iter n e _ ihb =>
-    have he := exprCostW_mono hOp e
-    have hm := Nat.mul_le_mul_left n (Nat.add_le_add_right ihb 1)
-    simp only [compCostW]; omega
-  | findM K l _ ihp | anyM K l _ ihp | mapM K l _ ihp =>
-    have hl := exprCostW_mono hOp l
-    have hm := Nat.mul_le_mul_left K (Nat.add_le_add_right ihp 1)
-    simp only [compCostW]; omega
-  | consumeFirstM K l _ mk ihp =>
-    have hl := exprCostW_mono hOp l
-    have hmk := exprCostW_mono hOp mk
-    have hm := Nat.mul_le_mul_left K (Nat.add_le_add_right (Nat.add_le_add ihp hmk) 1)
-    simp only [compCostW]; omega
-  | foldM K l z _ ihf =>
-    have hl := exprCostW_mono hOp l
-    have hz := exprCostW_mono hOp z
-    have hm := Nat.mul_le_mul_left K (Nat.add_le_add_right ihf 1)
-    simp only [compCostW]; omega
 
 theorem compilePureAuxExpr_cost_le {S₁ S₂ : Sig} {O₁ : Ops S₁} {O₂ : Ops S₂}
     {ι : Type} {T : OracleSpec ι} {I₁ : Iface S₁ T} {I₂ : Iface S₂ T} {auxT : Ty S₂}
@@ -2081,105 +1892,7 @@ theorem compilePureAuxRed_size_le {S₁ S₂ : Sig} {O₁ : Ops S₁} {O₂ : Op
   dsimp only [CostedReduction.size]
   nlinarith
 
-theorem compilePureAuxExpr_size_le_nodes {S₁ S₂ : Sig} {O₁ : Ops S₁} {O₂ : Ops S₂}
-    {ι : Type} {T : OracleSpec.{0, 0} ι} {I₁ : Iface S₁ T} {I₂ : Iface S₂ T} {auxT : Ty S₂}
-    (M : PureAuxBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) (S_max : ℕ)
-    (hOp : ∀ o, (M.opMacro o).size ≤ S_max)
-    {Γ : List (Ty S₁)} {t : Ty S₁} (e : Expr O₁ Γ t) :
-    (compilePureAuxExpr M e).size ≤ e.size + S_max * e.nodes := by
-  induction e with
-  | var _ | unit | bool _ | nat _ | none | nil =>
-    simp only [compilePureAuxExpr, Expr.size, Expr.nodes]; omega
-  | add _ _ ih1 ih2 | sub _ _ ih1 ih2 | lt _ _ ih1 ih2 | eqN _ _ ih1 ih2 | and _ _ ih1 ih2
-  | pair _ _ ih1 ih2 | cons _ _ ih1 ih2 | take _ _ ih1 ih2 | appendL _ _ _ ih1 ih2
-  | tget _ _ ih1 ih2 | letE _ _ ih1 ih2
-  | findB _ _ _ ih1 ih2 | anyB _ _ _ ih1 ih2 | mapB _ _ _ ih1 ih2 =>
-    simp only [compilePureAuxExpr, Expr.size, Expr.nodes]; nlinarith
-  | mulK _ _ ih | divK _ _ ih | modK _ _ ih | not _ ih | fst _ ih | snd _ ih
-  | inl _ ih | inr _ ih | some _ ih | len _ ih | tconst _ ih =>
-    simp only [compilePureAuxExpr, Expr.size, Expr.nodes]; nlinarith
-  | ite _ _ _ ihc iha ihb | caseOpt _ _ _ ihc iha ihb | caseSum _ _ _ ihc iha ihb
-  | foldrB _ _ _ _ ihc iha ihb | tset _ _ _ ihc iha ihb =>
-    simp only [compilePureAuxExpr, Expr.size, Expr.nodes]; nlinarith
-  | op o _ iha =>
-    have ho := hOp o
-    simp only [compilePureAuxExpr, Expr.size, Expr.nodes, callPureMacroAux_size]; nlinarith
-
-theorem compilePureAuxComp_size_le_nodes {S₁ S₂ : Sig} {O₁ : Ops S₁} {O₂ : Ops S₂}
-    {ι : Type} {T : OracleSpec.{0, 0} ι} {I₁ : Iface S₁ T} {I₂ : Iface S₂ T} {auxT : Ty S₂}
-    (M : PureAuxBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT) (S_max : ℕ)
-    (hOp : ∀ o, (M.opMacro o).size ≤ S_max)
-    (hSamp : ∀ s, (M.sampMacro s).size + 1 ≤ S_max)
-    (hQuery : ∀ g, (M.queryMacro g).size + 1 ≤ S_max)
-    {Γ : List (Ty S₁)} {t : Ty S₁} (c : Comp O₁ I₁ Γ t) :
-    (compilePureAuxComp M c).size ≤ c.size + S_max * c.nodes := by
-  induction c with
-  | ret e =>
-    have he := compilePureAuxExpr_size_le_nodes M S_max hOp e
-    simp only [compilePureAuxComp, Comp.size, Comp.nodes]; nlinarith
-  | bind _ _ ihc ihk =>
-    simp only [compilePureAuxComp, Comp.size, Comp.nodes]; nlinarith
-  | ite b _ _ ihc ihd | caseOpt b _ _ ihc ihd | caseSum b _ _ ihc ihd =>
-    have hb := compilePureAuxExpr_size_le_nodes M S_max hOp b
-    simp only [compilePureAuxComp, Comp.size, Comp.nodes]; nlinarith
-  | sample s e =>
-    have he := compilePureAuxExpr_size_le_nodes M S_max hOp e
-    have hs := hSamp s
-    simp only [compilePureAuxComp, Comp.size, Comp.nodes, callMacroAux_size]; nlinarith
-  | query g e =>
-    have he := compilePureAuxExpr_size_le_nodes M S_max hOp e
-    have hq := hQuery g
-    simp only [compilePureAuxComp, Comp.size, Comp.nodes, callMacroAux_size]; nlinarith
-  | iter _ e _ ihb | findM _ e _ ihb | anyM _ e _ ihb | mapM _ e _ ihb =>
-    have he := compilePureAuxExpr_size_le_nodes M S_max hOp e
-    simp only [compilePureAuxComp, Comp.size, Comp.nodes]; nlinarith
-  | consumeFirstM _ l _ mk ihp =>
-    have hl := compilePureAuxExpr_size_le_nodes M S_max hOp l
-    have hmk := compilePureAuxExpr_size_le_nodes M S_max hOp mk
-    simp only [compilePureAuxComp, Comp.size, Comp.nodes]; nlinarith
-  | foldM _ l z _ ihf =>
-    have hl := compilePureAuxExpr_size_le_nodes M S_max hOp l
-    have hz := compilePureAuxExpr_size_le_nodes M S_max hOp z
-    simp only [compilePureAuxComp, Comp.size, Comp.nodes]; nlinarith
-
-theorem compilePureAuxRed_size_le_nodes {S₁ S₂ : Sig} {O₁ : Ops S₁} {O₂ : Ops S₂}
-    {ι κ : Type} {T : OracleSpec.{0, 0} ι} {G : OracleSpec.{0, 0} κ}
-    {I₁ : Iface S₁ T} {I₂ : Iface S₂ T}
-    {C₁ : GameCodec S₁ G} {C₂ : GameCodec S₂ G} {auxT : Ty S₂}
-    (M : PureAuxBundle S₁ S₂ O₁ O₂ I₁ I₂ auxT)
-    {rIn₁ aIn₁ aOut₁ out₁ : Ty S₁} {rIn₂ aIn₂ aOut₂ out₂ : Ty S₂}
-    (A : PureAuxAdapters M.fSort O₂ C₁ C₂ auxT rIn₁ aIn₁ aOut₁ out₁ rIn₂ aIn₂ aOut₂ out₂)
-    (R : CostedReduction O₁ I₁ G C₁ rIn₁ aIn₁ aOut₁ out₁)
-    (S_max : ℕ)
-    (hOp : ∀ o, (M.opMacro o).size ≤ S_max)
-    (hSamp : ∀ s, (M.sampMacro s).size + 1 ≤ S_max)
-    (hQuery : ∀ g, (M.queryMacro g).size + 1 ≤ S_max) :
-    (compilePureAuxRed M A R).size ≤
-      R.size + S_max * R.nodes + A.splitIn.size + A.adaptAIn.size +
-      A.adaptQ.size + A.adaptR.size + A.adaptAOut.size + A.adaptOut.size + 74 := by
-  have hi := compilePureAuxComp_size_le_nodes M S_max hOp hSamp hQuery R.init
-  have hh := compilePureAuxComp_size_le_nodes M S_max hOp hSamp hQuery R.handle
-  have hf := compilePureAuxComp_size_le_nodes M S_max hOp hSamp hQuery R.finish
-  have hinit :
-      (compilePureAuxRed M A R).init.size ≤
-        R.init.size + S_max * R.init.nodes + A.splitIn.size + A.adaptAIn.size + 24 := by
-    simp only [compilePureAuxRed, Comp.size, Comp.renameM_size, Expr.renameM_size, Expr.size]
-    omega
-  have hhandle :
-      (compilePureAuxRed M A R).handle.size ≤
-        R.handle.size + S_max * R.handle.nodes + A.adaptQ.size + A.adaptR.size + 28 := by
-    simp only [compilePureAuxRed, Comp.size, Comp.renameM_size, Expr.renameM_size, callAdaptR_size,
-      Expr.size]
-    omega
-  have hfinish :
-      (compilePureAuxRed M A R).finish.size ≤
-        R.finish.size + S_max * R.finish.nodes + A.adaptAOut.size + A.adaptOut.size + 22 := by
-    simp only [compilePureAuxRed, Comp.size, Comp.renameM_size, Expr.renameM_size, Expr.size]
-    omega
-  dsimp only [CostedReduction.size, CostedReduction.nodes]
-  nlinarith
-
-def exprExcessOf {S : Sig} {O : Ops S} (opEx : O.Op → ℕ) :
+@[expose] def exprExcessOf {S : Sig} {O : Ops S} (opEx : O.Op → ℕ) :
     {Γ : List (Ty S)} → {t : Ty S} → Expr O Γ t → ℕ
   | _, _, .var _ | _, _, .unit | _, _, .bool _ | _, _, .nat _ | _, _, .none | _, _, .nil => 0
   | _, _, .add a b | _, _, .sub a b | _, _, .lt a b | _, _, .eqN a b | _, _, .and a b
@@ -2197,7 +1910,7 @@ def exprExcessOf {S : Sig} {O : Ops S} (opEx : O.Op → ℕ) :
     exprExcessOf opEx l + exprExcessOf opEx z + K * exprExcessOf opEx f
   | _, _, .tset m i a => exprExcessOf opEx m + exprExcessOf opEx i + exprExcessOf opEx a
 
-def compExcessOf {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
+@[expose] def compExcessOf {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (opEx : O.Op → ℕ) (sEx : I.smp.Samp → ℕ) (qEx : I.Tag → ℕ) :
     {Γ : List (Ty S)} → {t : Ty S} → Comp O I Γ t → ℕ
   | _, _, .ret e => exprExcessOf opEx e

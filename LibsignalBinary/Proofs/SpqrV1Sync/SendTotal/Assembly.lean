@@ -9,23 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Erasure
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ErasureDecAdd
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ErasureDecMsg
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidPhi
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidSendClosed
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidRecvEk
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidRecvCt
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidCodec
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidSize
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ChainDir
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ChainPrev
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ChainRecv
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ChainSmall
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopBytesSize
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopSend
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopRecvEqual
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopRecv
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Erasure
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ErasureDecAdd
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ErasureDecMsg
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidPhi
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidSendClosed
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidRecvEk
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidRecvCt
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidCodec
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidSize
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ChainDir
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ChainPrev
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ChainRecv
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.ChainSmall
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopBytesSize
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopSend
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopRecvEqual
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopRecv
 public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Defs
 public import LibsignalBinary.Specifications.AsmConstants
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDecDefs
@@ -35,7 +35,7 @@ public import LibsignalBinary.Specifications.CryptoGames.AEAD.EtMDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HKDFDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.WireAeadDefs
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Construction
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Defs
@@ -49,7 +49,7 @@ public import LibsignalBinary.Specifications.CryptoGames.Ratchet.RootKdfDefs
 public import LibsignalBinary.Specifications.HkdfSalt
 public import LibsignalBinary.Specifications.LibsignalAesCbc
 public import LibsignalBinary.Specifications.LibsignalHmac
-public import LibsignalBinary.Specifications.LibsignalProtoCodec
+public import LibsignalBinary.Proofs.ProtoCodecKat
 public import LibsignalBinary.Specifications.LibsignalSession
 public import LibsignalBinary.Specifications.LibsignalSessionRepr
 public import LibsignalBinary.Specifications.LibsignalSignalMessage
@@ -58,7 +58,7 @@ public import LibsignalBinary.Specifications.LibsignalSpqrV1.Assemble
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Auth
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Chain
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Core
-public import LibsignalBinary.Specifications.LibsignalSpqrV1.Encaps1Total
+public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Encaps1Total
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.GF16
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Hooks
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Init
@@ -74,7 +74,7 @@ public import LibsignalBinary.Specifications.LibsignalSpqrV1.States
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Top
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
-public import LibsignalBinary.Specifications.LibsignalTripleRatchetProst
+public import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst
 public import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
 public import LibsignalBinary.Specifications.RustHeap.Alloc
 public import LibsignalBinary.Specifications.RustHeap.Vec
@@ -89,7 +89,7 @@ Assembles the top-level SPQR V1 send-totality invariant obligations (`TopStmts`)
 chain, erasure-code, and serialized-size components.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 

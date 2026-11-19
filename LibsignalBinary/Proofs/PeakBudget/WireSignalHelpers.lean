@@ -10,12 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogueDeallocBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogueDeallocBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
+import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Parametric Fine-Credit Helpers for Wire `SignalMessage` & `PreKeySignalMessage`
@@ -32,7 +33,7 @@ Parametric `(M : AllocCostModel) [HasFineReallocCredit M]` step and cancellation
    `bytes::merge` loop step, and `into_boxed_slice` / `try_clone_from_ref` post-loop helpers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -66,7 +67,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
 
 /-- Symbolic `cumSmall` charge of `rustAllocEvents req al` (`al ≤ 16`):
 `0` when `req = 0`, `smallAllocCost req` when `0 < req ≤ smallMaxReq`, else `largeMetaCost`. -/
-def bytesCumAlloc (M : AllocCostModel) [HasFineReallocCredit M] (req : Nat) : Nat :=
+@[expose] def bytesCumAlloc (M : AllocCostModel) [HasFineReallocCredit M] (req : Nat) : Nat :=
   if req = 0 then 0
   else if req ≤ HasFineReallocCredit.smallMaxReq M then
     HasFineReallocCredit.smallAllocCost M req
@@ -76,7 +77,7 @@ def bytesCumAlloc (M : AllocCostModel) [HasFineReallocCredit M] (req : Nat) : Na
 /-- Symbolic `cumSmall` charge of `rustReallocEvents old new al` (`al ≤ 16`):
 `0` when `old = 0 ∨ new = 0`, `smallReallocCost new` when `0 < new ≤ smallMaxReq`,
 else `largeMetaCost`. -/
-def bytesCumRealloc (M : AllocCostModel) [HasFineReallocCredit M] (old new : Nat) : Nat :=
+@[expose] def bytesCumRealloc (M : AllocCostModel) [HasFineReallocCredit M] (old new : Nat) : Nat :=
   if old = 0 ∨ new = 0 then 0
   else if new ≤ HasFineReallocCredit.smallMaxReq M then
     HasFineReallocCredit.smallReallocCost M new
@@ -85,7 +86,7 @@ def bytesCumRealloc (M : AllocCostModel) [HasFineReallocCredit M] (old new : Nat
 
 /-- Symbolic `liveLarge` weight of a buffer of byte size `req` (`al ≤ 16`):
 `0` when `req ≤ smallMaxReq`, else `largeCost req`. -/
-def bytesLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (req : Nat) : Nat :=
+@[expose] def bytesLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (req : Nat) : Nat :=
   if req ≤ HasFineReallocCredit.smallMaxReq M then 0
   else HasFineReallocCredit.largeCost M req
 
@@ -352,7 +353,7 @@ theorem stepEvents_computeMac (M : AllocCostModel) [HasFineReallocCredit M] (st 
 /-! ## `<SignalMessage>::new` (`SignalMessageNewEnv`) Fine-Credit Bounds -/
 
 /-- Exact serialized byte length allocated by `<SignalMessage>::new`. -/
-def signalMessageNewSerLen (parse : UuidParser) (x : SignalMessageNewGhost) : Nat :=
+@[expose] def signalMessageNewSerLen (parse : UuidParser) (x : SignalMessageNewGhost) : Nat :=
   (encode (x.protoMsg parse)).length + 9
 
 /-- Symbolic `cumSmall` bound for `SignalMessageNewEnv parse x`. -/
@@ -383,7 +384,7 @@ def signalMessageNewPeak (M : AllocCostModel) [HasFineReallocCredit M]
     bytesLargeLive M (signalMessageNewSerLen parse x)
 
 /-- Maximum single-event request size in `SignalMessageNewEnv parse x`. -/
-def signalMessageNewMaxReq (parse : UuidParser) (x : SignalMessageNewGhost) : Nat :=
+@[expose] def signalMessageNewMaxReq (parse : UuidParser) (x : SignalMessageNewGhost) : Nat :=
   max (max 36 x.ciphertext.length) (max x.pqRatchet.length (signalMessageNewSerLen parse x))
 
 theorem req_align_signalMessageNew (parse : UuidParser) (x : SignalMessageNewGhost)
@@ -475,7 +476,7 @@ theorem credit_signalMessageNew (M : AllocCostModel) [HasFineReallocCredit M]
 /-! ## `<PreKeySignalMessage>::new` Fine-Credit Bounds -/
 
 /-- Prologue Kyber ciphertext copy events in `PreKeySignalMessage::new` (mirrors `kyberDeallocEvs`). -/
-def kyberCopyEvs (kp : Option KyberPayload) : List AllocEvent :=
+@[expose] def kyberCopyEvs (kp : Option KyberPayload) : List AllocEvent :=
   match kp with
   | none => []
   | some k =>
@@ -483,13 +484,13 @@ def kyberCopyEvs (kp : Option KyberPayload) : List AllocEvent :=
     else rustAllocEvents k.ciphertext.length 1
 
 /-- Byte length of optional Kyber ciphertext in `PreKeyMsgNewCall`. -/
-def kyberPayloadLen : Option KyberPayload → Nat
+@[expose] def kyberPayloadLen : Option KyberPayload → Nat
   | none => 0
   | some k => k.ciphertext.length
 
 /-- Exact 9-segment allocator event list of `PreKeySignalMessage::new`
 (`FieldsEpilogueDeallocBudget.lean:66–71,495–497`). -/
-def preKeyMsgNewEvents (x : PreKeyMsgNewCall) : List AllocEvent :=
+@[expose] def preKeyMsgNewEvents (x : PreKeyMsgNewCall) : List AllocEvent :=
   kyberCopyEvs x.kp ++
     (rustAllocEvents 33 1 ++ rustAllocEvents 33 1) ++
     rustAllocEvents x.msg.serialized.length 1 ++
@@ -499,7 +500,7 @@ def preKeyMsgNewEvents (x : PreKeyMsgNewCall) : List AllocEvent :=
     rustDeallocEvents x.msg.serialized.length 1
 
 /-- Maximum single-event request size in `preKeyMsgNewEvents x`. -/
-def preKeyMsgNewMaxReq (x : PreKeyMsgNewCall) : Nat :=
+@[expose] def preKeyMsgNewMaxReq (x : PreKeyMsgNewCall) : Nat :=
   max (max (kyberPayloadLen x.kp) 33)
       (max x.msg.serialized.length x.model.serialized.length)
 
@@ -540,79 +541,6 @@ theorem stepEvents_kyberDeallocEvs (M : AllocCostModel) [HasFineReallocCredit M]
       simp only [reduceCtorEq, ↓reduceIte, List.length_cons]
       exact stepEvents_rustDealloc_any M _ 1 (by decide) st
 
-theorem req_align_preKeyMsgNew (x : PreKeyMsgNewCall) :
-    ∀ ev ∈ preKeyMsgNewEvents x,
-      eventStepReq ev ≤ preKeyMsgNewMaxReq x ∧ eventStepAlign ev ≤ 16 := by
-  intro ev hev
-  unfold preKeyMsgNewEvents at hev
-  simp only [List.mem_append] at hev
-  have hky : kyberPayloadLen x.kp ≤ preKeyMsgNewMaxReq x := by unfold preKeyMsgNewMaxReq; omega
-  have h33 : 33 ≤ preKeyMsgNewMaxReq x := by unfold preKeyMsgNewMaxReq; omega
-  have hmsg : x.msg.serialized.length ≤ preKeyMsgNewMaxReq x := by unfold preKeyMsgNewMaxReq; omega
-  have hmod : x.model.serialized.length ≤ preKeyMsgNewMaxReq x := by unfold preKeyMsgNewMaxReq; omega
-  rcases hev with ((((((h1 | (h2 | h3)) | h4) | h5) | h6) | (h7 | h8)) | h9)
-  · cases hkp : x.kp with
-    | none => simp [hkp, kyberCopyEvs] at h1
-    | some k =>
-      simp only [hkp, kyberCopyEvs] at h1
-      simp only [hkp, kyberPayloadLen] at hky
-      split at h1
-      · cases h1
-      · exact req_align_of_rustAllocEvents hky (by decide) ev h1
-  · exact req_align_of_rustAllocEvents h33 (by decide) ev h2
-  · exact req_align_of_rustAllocEvents h33 (by decide) ev h3
-  · exact req_align_of_rustAllocEvents hmsg (by decide) ev h4
-  · exact req_align_of_rustAllocEvents hmod (by decide) ev h5
-  · cases hkp : x.kp with
-    | none => simp [hkp, kyberDeallocEvs] at h6
-    | some k =>
-      simp only [hkp, kyberDeallocEvs] at h6
-      split at h6
-      · cases h6
-      · exact req_align_of_rustDeallocEvents (al := 1) (by decide) ev h6
-  · exact req_align_of_rustDeallocEvents (al := 1) (by decide) ev h7
-  · exact req_align_of_rustDeallocEvents (al := 1) (by decide) ev h8
-  · exact req_align_of_rustDeallocEvents (al := 1) (by decide) ev h9
-
-theorem credit_preKeyMsgNew {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (x : PreKeyMsgNewCall) (st0 : M.σ) :
-    HasFineReallocCredit.cumSmall (M.stepEvents (preKeyMsgNewEvents x) st0) ≤
-      HasFineReallocCredit.cumSmall st0 +
-        (2 * kyberPayloadLen x.kp + 2 * x.msg.serialized.length +
-          2 * x.model.serialized.length + 47827) ∧
-    HasFineReallocCredit.liveLarge (M.stepEvents (preKeyMsgNewEvents x) st0) ≤
-      HasFineReallocCredit.liveLarge st0 + (x.model.serialized.length + 8195) ∧
-    HasFineReallocCredit.peakLarge (M.stepEvents (preKeyMsgNewEvents x) st0) ≤
-      max (HasFineReallocCredit.peakLarge st0)
-          (HasFineReallocCredit.liveLarge st0 +
-            (kyberPayloadLen x.kp + x.msg.serialized.length +
-              x.model.serialized.length + 41041)) := by
-  unfold preKeyMsgNewEvents
-  simp only [AllocCostModel.stepEvents_append]
-  have h1 := stepEvents_kyberCopyEvs M x.kp st0
-  set s1 := M.stepEvents (kyberCopyEvs x.kp) st0
-  have h2 := stepEvents_rustAlloc_aff hM 33 1 (by decide) s1
-  set s2 := M.stepEvents (rustAllocEvents 33 1) s1
-  have h3 := stepEvents_rustAlloc_aff hM 33 1 (by decide) s2
-  set s3 := M.stepEvents (rustAllocEvents 33 1) s2
-  have h4 := stepEvents_rustAlloc_aff hM x.msg.serialized.length 1 (by decide) s3
-  set s4 := M.stepEvents (rustAllocEvents x.msg.serialized.length 1) s3
-  have h5 := stepEvents_rustAlloc_aff hM x.model.serialized.length 1 (by decide) s4
-  set s5 := M.stepEvents (rustAllocEvents x.model.serialized.length 1) s4
-  have h6 := stepEvents_kyberDeallocEvs M x.kp s5
-  set s6 := M.stepEvents (kyberDeallocEvs x.kp) s5
-  have h7 := stepEvents_rustDealloc_any M 33 1 (by decide) s6
-  set s7 := M.stepEvents (rustDeallocEvents 33 1) s6
-  have h8 := stepEvents_rustDealloc_any M 33 1 (by decide) s7
-  set s8 := M.stepEvents (rustDeallocEvents 33 1) s7
-  have h9 := stepEvents_rustDealloc_any M x.msg.serialized.length 1 (by decide) s8
-  have hc_ky := bytesCumAlloc_le_aff hM (kyberPayloadLen x.kp)
-  have hl_ky := bytesLargeLive_le_aff hM (kyberPayloadLen x.kp)
-  have hl_33 := bytesLargeLive_le_aff hM 33
-  have hl_msg := bytesLargeLive_le_aff hM x.msg.serialized.length
-  have hl_mod := bytesLargeLive_le_aff hM x.model.serialized.length
-  exact ⟨by omega, by omega, by omega⟩
-
 theorem phaseCredit_signalMessageNew {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) (parse : UuidParser) (x : SignalMessageNewGhost) :
     PhaseCreditSpec M (SignalMessageNewEnv parse x)
@@ -640,21 +568,5 @@ theorem phaseCredit_signalMessageNew {M : AllocCostModel} [HasFineReallocCredit 
     cases h : (x.addresses parse).isSome <;>
       simp only [h, Bool.false_eq_true, ↓reduceIte] at hc hl hp <;>
       exact ⟨by omega, by omega, by omega⟩
-
-theorem phaseCredit_preKeyMsgNew {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (x : PreKeyMsgNewCall) :
-    PhaseCreditSpec M (· = preKeyMsgNewEvents x)
-      (2 * kyberPayloadLen x.kp + 2 * x.msg.serialized.length +
-        2 * x.model.serialized.length + 47827)
-      (x.model.serialized.length + 8195)
-      (kyberPayloadLen x.kp + x.msg.serialized.length +
-        x.model.serialized.length + 41041)
-      (preKeyMsgNewMaxReq x) where
-  req_align := by
-    rintro _ rfl
-    exact req_align_preKeyMsgNew x
-  credit_le := by
-    rintro st0 _ rfl
-    exact credit_preKeyMsgNew hM x st0
 
 end LibsignalBinary.Proofs.PeakBudget.WireSignalHelpers

@@ -9,14 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
 public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegLoadCommonPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegLoadCommonPlaced
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs -- shake: keep
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Budget-Threaded Relocatable CLI `SegLoad` Shared Helpers
@@ -25,7 +31,7 @@ Shared `SepWP` / `SegExitBudget` bridges, hook call lemmas, and `loadPollPlacedO
 for budget-threaded `SegLoad` on `lsProg_464 Hk` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -65,49 +71,6 @@ open LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
-
-theorem segExit_budget_of_sepWPp [LibsignalPlacement] {M : AllocCostModel} {C : Crypto}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {kit : SessionStoreSpec A.repAlloc 0#64} {kitEnv : SessionStoreBudgetEnv kit} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A.repAlloc 0#64} {ikitEnv : IdentityStoreBudgetEnv ikit} {ist0 : ikit.IdState}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {ctl : BitVec 64} {S : SpqrModel} {sendEnv : SpqrSendBudgetEnv}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {Hk : LibsignalHooks}
-    {x : WithStoresEncGhost} {st_init : M.σ} {R : SepProp} {s0 s : State}
-    {target : BitVec 64} {P : SepProp} {Out : State → Prop}
-    (hm : s.mem ⊨ P ∗ R)
-    (hwp : SepWPp (lsProg_464 Hk) target s P
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) →
-        SegExitBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl uuidTryParse S sendEnv encRecord Hk
-          x st_init R s0 sf Out)
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) →
-        (sf.mem ⊨ (withStoresEncBudgetSpecV A lim kit kitEnv st0 ikit ikitEnv ist0
-          Scope C ctl uuidTryParse S sendEnv encRecord).onPanic (x, st_init) s0 sf ∗ R))) :
-    SegExitBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl uuidTryParse S sendEnv encRecord Hk
-      x st_init R s0 s Out := by
-  intro hL
-  obtain ⟨sm, hsteps, hout⟩ := hwp R hm hL
-  rcases hout with ⟨_, _, P_f, hmf, hcont⟩ | ⟨hpan, P_f, hmf, hqp⟩ | ⟨_, _hoom⟩
-  · obtain ⟨sf, hsteps', hout'⟩ := hcont hmf (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout'⟩
-  · exact ⟨sm, hsteps, Or.inr (Or.inr (Or.inl ⟨hpan, hqp hmf⟩))⟩
-  · dsimp only at _hoom
-    exact (not_satisfies_false_sepConj _hoom).elim
-
-theorem segExit_budget_done [LibsignalPlacement] {M : AllocCostModel} {C : Crypto}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {kit : SessionStoreSpec A.repAlloc 0#64} {kitEnv : SessionStoreBudgetEnv kit} {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A.repAlloc 0#64} {ikitEnv : IdentityStoreBudgetEnv ikit} {ist0 : ikit.IdState}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {ctl : BitVec 64} {S : SpqrModel} {sendEnv : SpqrSendBudgetEnv}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {Hk : LibsignalHooks}
-    {x : WithStoresEncGhost} {st_init : M.σ} {R : SepProp} {s0 s : State} {Out : State → Prop}
-    (h : Out s) :
-    SegExitBudget A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl uuidTryParse S sendEnv encRecord Hk
-      x st_init R s0 s Out :=
-  fun _ => ⟨s, .refl s, Or.inl h⟩
 
 theorem segExit_budget_of_false [LibsignalPlacement] {M : AllocCostModel} {C : Crypto}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}

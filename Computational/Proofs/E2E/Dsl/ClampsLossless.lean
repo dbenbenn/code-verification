@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables
+public import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables -- proof-setup: allow-public-import
 public import Computational.Specifications.Assumptions.KemCorrect
-public import Computational.Proofs.SpqrV1Sync.TopStateTight
+public import Computational.Proofs.SpqrV1Sync.TopStateTight -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.TopSize
 import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbState
-import Computational.Proofs.E2E.ComposedBinaryLinkV1
+public import Computational.Proofs.E2E.ComposedBinaryLinkV1 -- proof-setup: allow-public-import
 
 /-!
 # Losslessness of Capacity Clamps in `CompositionCostedTables`
@@ -26,7 +26,7 @@ Proves roundtrip and clamp-losslessness theorems for the pure and cryptographic 
 framing.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -247,25 +247,6 @@ theorem spqrChain_roundtrip {ℓ : ℕ} (c : ChainPB)
     map_spqrEpochLink_roundtrip links hlk]
   cases params <;> simp
 
-def spqrJoinRaw {ℓ : ℕ} (parts : (spqrStatePartsT (ℓ := ℓ)).denote) : Bytes :=
-  let (v1?, (vn?, ch?)) := parts
-  CryptoVerification.LibsignalSpqrV1.Proto.encodeOptMessage
-    VersionNegotiationPB.encodeRaw 1#32 (vn?.map spqrVnOfV) ++
-  CryptoVerification.LibsignalSpqrV1.Proto.encodeOptMessage
-    ChainPB.encodeRaw 2#32 (ch?.map spqrChainOfV) ++
-  match v1? with
-  | none => []
-  | some v1Raw => CryptoVerification.LibsignalSpqrV1.Proto.encodeMessage id 3#32 v1Raw
-
-theorem spqrJoinEval_lossless_of_length_le {ℓ : ℕ}
-    (parts : (spqrStatePartsT (ℓ := ℓ)).denote)
-    (h : (spqrJoinRaw parts).length ≤ 32 * 11000) :
-    spqrJoinEval parts = spqrJoinRaw parts := by
-  rcases parts with ⟨v1?, vn?, ch?⟩
-  unfold spqrJoinRaw at h
-  unfold spqrJoinEval spqrJoinRaw
-  exact List.take_of_length_le h
-
 theorem v1State_encodeRaw_take64000_of_bOkTight (F : ShaCompress) (K : MlKem) (st : St F)
     (hbok : BOkTight st) :
     (V1State.encodeRaw st.into_pb).take 64000 = V1State.encodeRaw st.into_pb := by
@@ -428,7 +409,7 @@ private theorem spqr_encodeVarintLoop_length_le :
       have ih := spqr_encodeVarintLoop_length_le fuel (a >>> 7)
       omega
 
-def spqrMsgPayloadSuffixRaw {P : PolyApi} (m : Message P) : Bytes :=
+@[expose] def spqrMsgPayloadSuffixRaw {P : PolyApi} (m : Message P) : Bytes :=
   let tByte := [(MessageType.from_payload m.payload).toU8]
   let body :=
     match m.payload with
@@ -477,7 +458,7 @@ theorem spqrAssembleMsg_spqrMsgPayloadSuffix {ℓ : ℕ} {P : PolyApi}
   rw [hpre_eq]
   exact List.take_of_length_le (Nat.le_trans htot_len (by decide))
 
-def spqrChainNextKeyRaw {ℓ : ℕ} (F : ShaCompress) (next : Bytes) (ctr : BitVec 32) :
+@[expose] def spqrChainNextKeyRaw {ℓ : ℕ} (F : ShaCompress) (next : Bytes) (ctr : BitVec 32) :
     Bool × Option ((B (ℓ := ℓ) 32).denote × BitVec 32 × BitVec 256) :=
   match ChainEpochDirection.nextKeyInternal (spqrHkdfWith F) next ctr with
   | .error _ => (true, none)
@@ -711,7 +692,7 @@ theorem spqrV1InitOp_eval_lossless (ℓ : ℕ) (P : SignalPqxdh.Primitives) (C :
   exact List.take_of_length_le
     (Nat.le_trans (spqrV1Init_length_le_158 C.F K _ pqrKey) (by decide))
 
-def spqrNegotiateInitRaw {ℓ : ℕ} (F : ShaCompress) (K : MlKem)
+@[expose] def spqrNegotiateInitRaw {ℓ : ℕ} (F : ShaCompress) (K : MlKem)
     (verByte : BitVec 8) (dirI32 : BitVec 32) (authKey : Bytes) :
     Bool × Option (Option (B (ℓ := ℓ) 32).denote) :=
   match Version.fromU8? verByte with

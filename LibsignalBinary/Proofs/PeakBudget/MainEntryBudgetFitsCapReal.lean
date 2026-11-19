@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.MainResidualFitsEnv
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInst
+import LibsignalBinary.Proofs.PeakBudget.MainResidualFitsEnv
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInst -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.InitPlacedBudget
@@ -30,6 +30,19 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchDefs
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
 import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhCorrectModelProofDefs
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1Frame
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.CommitOk
 
 /-!
 # Whole-Program `FitsEnv` to `MainEntryBudgetFitsCap` Bridge
@@ -40,7 +53,7 @@ on `argvLen ≤ 1820`) and a domain-scoped `RunEnv → CliRunBinaryEnv` inclusio
 any callee-envelope family `E : RunCall → CliRunCalleeEnvs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -49,7 +62,6 @@ set_option maxRecDepth 200000
 namespace LibsignalBinary.Proofs.PeakBudget.MainEntryBudgetFitsCapReal
 
 open Arm64 (pageAlignUp)
-open Arm64.Obj (Image)
 open Arm64.Process (bytesOfString initFsState)
 open CryptoGames (Party)
 open CryptoGames.LibsignalSession (GhostState IdentityKey SessionState SignalMessage)
@@ -107,11 +119,9 @@ open LibsignalBinary.Proofs.PeakBudget.CliMainIoCredit
 open LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
   (CliWriteFileEnv M1PhaseEnv M2CollectEnv M2CollectStepEnv M5DirStepEnv M5LoopAEntryEnv M5PhaseEnv
    M5WriteStepEnv M6Env)
-open LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs (mkExistentialRealCalleeEnvs)
+
 open LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak (CliRunCalleeEnvs)
-open LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
-  (CliRunBinaryEnv RealCliMainBinaryEnvOf realCliMainBinaryEnvOf_90pct_fitsEnv_concrete
-   realCliMainBinaryEnvOf_fitsEnv_cliBudgetLimits_concrete realCliMainBinaryEnvOf_fitsEnv_concrete)
+open LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge (CliRunBinaryEnv RealCliMainBinaryEnvOf)
 open LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal (cliRealNinetyPctOneGiB)
 open LibsignalBinary.Proofs.PeakBudget.MainResidualFitsEnv
   (M2PhaseEnv PostM1SetupEnv PostSetupTailEnv fitsEnv_freeOnly_of_st3 fitsEnv_m2EarlyExit_of_st1
@@ -2664,62 +2674,6 @@ theorem mainEntryBudgetFitsCap_cliBudgetLimits_of_kitEnvFits
       RunEnv (pqScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemD2c_placed X W))) :=
   mainEntryBudgetFitsCap_of_fitsEnv
     cliMainSetupEarlyExit_fitsEnv_cliBudgetLimits_le1820 hMain hRunSub
-
-/-- `< 90%` (`cliRealNinetyPctOneGiB ≤ lim.physCap`) `MainEntryBudgetFitsCap` at `mkExistentialRealCalleeEnvs`. -/
-theorem mainEntryBudgetFitsCap_of_realMainEnvFits_90pct [LibsignalPlacement]
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap90 : cliRealNinetyPctOneGiB ≤ lim.physCap)
-    (img : Image) (X : UnreachedPqxdhPrimitives) (W : CliHooks) :
-    MainEntryBudgetFitsCap fineCostModel lim fineCostModel.init cliIo uuidTryParse
-      (fun g =>
-        CliRunBinaryEnv cliIo.rd
-          (mkExistentialRealCalleeEnvs img (cliRunSemD2c_placed X W) ⟨W.C, W.Q⟩ g)
-          sessionCapBytes g)
-      (pqScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemD2c_placed X W))) :=
-  mainEntryBudgetFitsCap_of_fitsEnv
-    (fun _ hargv => cliMainSetupEarlyExit_90pct_fitsEnv_le1820 henf hsb hsc hcap90 hargv)
-    (realCliMainBinaryEnvOf_90pct_fitsEnv_concrete henf hsb hsc hcap90 img
-      (cliRunSemD2c_placed X W) ⟨W.C, W.Q⟩)
-    (fun _ _ _ _ _ _ hr => hr)
-
-/-- `≤ 1 GiB` (`cliOneGiB ≤ lim.physCap`) `MainEntryBudgetFitsCap` at `mkExistentialRealCalleeEnvs`. -/
-theorem mainEntryBudgetFitsCap_of_realMainEnvFits_1GiB [LibsignalPlacement]
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap1G : cliOneGiB ≤ lim.physCap)
-    (img : Image) (X : UnreachedPqxdhPrimitives) (W : CliHooks) :
-    MainEntryBudgetFitsCap fineCostModel lim fineCostModel.init cliIo uuidTryParse
-      (fun g =>
-        CliRunBinaryEnv cliIo.rd
-          (mkExistentialRealCalleeEnvs img (cliRunSemD2c_placed X W) ⟨W.C, W.Q⟩ g)
-          sessionCapBytes g)
-      (pqScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemD2c_placed X W))) :=
-  mainEntryBudgetFitsCap_of_fitsEnv
-    (fun _ hargv =>
-      cliMainSetupEarlyExit_90pct_fitsEnv_le1820 henf hsb hsc
-        (Nat.le_trans (by unfold cliRealNinetyPctOneGiB cliOneGiB; decide) hcap1G) hargv)
-    (realCliMainBinaryEnvOf_fitsEnv_concrete henf hsb hsc hcap1G img
-      (cliRunSemD2c_placed X W) ⟨W.C, W.Q⟩)
-    (fun _ _ _ _ _ _ hr => hr)
-
-/-- `cliBudgetLimits` (`1 GiB`) `MainEntryBudgetFitsCap` at `mkExistentialRealCalleeEnvs`. -/
-theorem mainEntryBudgetFitsCap_of_realMainEnvFits_cliBudgetLimits [LibsignalPlacement]
-    (img : Image) (X : UnreachedPqxdhPrimitives) (W : CliHooks) :
-    MainEntryBudgetFitsCap fineCostModel cliBudgetLimits fineCostModel.init cliIo uuidTryParse
-      (fun g =>
-        CliRunBinaryEnv cliIo.rd
-          (mkExistentialRealCalleeEnvs img (cliRunSemD2c_placed X W) ⟨W.C, W.Q⟩ g)
-          sessionCapBytes g)
-      (pqScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemD2c_placed X W))) :=
-  mainEntryBudgetFitsCap_cliBudgetLimits_of_kitEnvFits
-    (realCliMainBinaryEnvOf_fitsEnv_cliBudgetLimits_concrete img
-      (cliRunSemD2c_placed X W) ⟨W.C, W.Q⟩)
-    (fun _ _ _ _ _ _ hr => hr)
 
 end LibsignalBinary.Proofs.PeakBudget.MainEntryBudgetFitsCapReal
 

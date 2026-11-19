@@ -9,10 +9,25 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Reductions
-public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma9
-public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10
-public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Theorem8.Stage2Defs
+import Computational.Proofs.CryptoGames.SM.Theorem8.Stage2Bucket
+public import Computational.Proofs.CryptoGames.SM.BucketAuthBridge -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Theorem8.BucketPRNGAuth -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma9
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11
+import VCVio.OracleComp.EvalDist.Measure
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+public import Computational.Proofs.CryptoGames.SM.Theorem8.BucketPRNGAuthDefs
+import LibsignalBinary.Specifications.CryptoGames.PRNG.Defs
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.Monad.Bool
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Theorem 8: authenticity of the Fig. 8 SM scheme
@@ -20,10 +35,9 @@ public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11
 **Checked by Lean.**
 
 Proves ACD19 §5.3.2 Theorem 8 (`theorem8`, matching `Theorem8` in `SM/Theorem8And12Statements.lean`)
-for the concrete reductions `redCKAAuth`, `redPRNGAuth`, and `redFSAuth` by combining Lemmas 9–11.
--/
+for the concrete reductions `redCKAAuth`, `redPRNGAuth`, and `redFSAuth` by combining Lemmas 9–11.-/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -63,32 +77,10 @@ theorem lemma11 (tL : Option ℕ) (t q : ℕ) (A : SchemeAdversary Γ T Sig SS R
       ∑ j ∈ Finset.range q, FSAEAD.advantage fs (redFSAuth cka prng fs lam Δcka qep j tL t A) := by
   exact AuthL11.lemma11_proof cka prng fs lam Δcka qep tL t q A hq
 
-/-- Authenticity of the Fig. 8 SM scheme (`Δ_SM = 2 + Δ_CKA`, ACD19 Theorem 8; DEV-SM2,
-DEV-SM27). -/
-theorem theorem8 (hc : cka.Correct) :
-    Theorem8 cka prng fs lam Δcka qep (redCKAAuth cka prng fs lam Δcka qep)
-      (redPRNGAuth cka prng fs lam Δcka qep) (redFSAuth cka prng fs lam Δcka qep) := by
-  intro tL t q A hq
-  rw [CKA.advantage_eq_boolDist, PRFPRNG.advantage_eq_boolDist]
-  set cT := 𝒟[CKA.branch cka Δcka (healEpoch tL) true (redCKAAuth cka prng fs lam Δcka qep tL t A)]
-  set cF := 𝒟[CKA.branch cka Δcka (healEpoch tL) false
-    (redCKAAuth cka prng fs lam Δcka qep tL t A)]
-  set pT := 𝒟[PRFPRNG.branch prng true (redPRNGAuth cka prng fs lam Δcka qep tL t A)]
-  set pF := 𝒟[PRFPRNG.branch prng false (redPRNGAuth cka prng fs lam Δcka qep tL t A)]
-  have h9 := lemma9 cka prng fs lam Δcka qep hc tL t A
-  have h10 := lemma10 cka prng fs lam Δcka qep hc tL t A
-  have h11 := lemma11 cka prng fs lam Δcka qep tL t q A hq
-  have hc' : cF {true} ≤ cT {true} + cT.boolDist cF := by
-    rw [Measure.boolDist_comm]; exact Measure.apply_true_le_add_boolDist _ _
-  have hp' : pF {true} ≤ pT {true} + pT.boolDist pF := by
-    rw [Measure.boolDist_comm]; exact Measure.apply_true_le_add_boolDist _ _
-  calc authAdvantage (scheme cka prng fs lam) (2 + Δcka) qep tL t A
-      ≤ cF {true} := h9
-    _ ≤ cT {true} + cT.boolDist cF := hc'
-    _ ≤ (pT {true} + pT.boolDist pF) + cT.boolDist cF := add_le_add (h10.trans hp') le_rfl
-    _ ≤ ((∑ j ∈ Finset.range q, FSAEAD.advantage fs
-          (redFSAuth cka prng fs lam Δcka qep j tL t A)) + pT.boolDist pF) + cT.boolDist cF :=
-        add_le_add (add_le_add h11 le_rfl) le_rfl
-    _ = _ := by ring
+/-! ### Stage-2 `canon`-bucket and coin-averaged authenticity reductions -/
+
+section Stage2Auth
+
+end Stage2Auth
 
 end CryptoGames.SM.Construction

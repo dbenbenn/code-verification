@@ -10,34 +10,52 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhostLifts -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhostLiftsPcs -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhostK -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Placed -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsTransferPlacedBudgetFd -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bTopPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhostLifts
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhostLiftsPcs
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhostK
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsTransferPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bTopPlacedBudget
+public import LibsignalBinary.Proofs.E2E.Bin.OpenSegsDeserialize -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Bin.OpenSegsPartyRoData -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.FallibleWithCapacity -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.ChainClone3.ChainCloneEpilogue -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.ChainClone3.ChainCloneEpilogueBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.ResponderWireCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneEpilogue -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhost -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.HopSpecsPlacedBudgetFd -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsTransferCoreFd -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssemblyPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImage.SpqrRecvEmpty.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.Core -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
-# Ghost-`memcpy` / `memset` `BaseHelperRowsSat` & `HookSat` Discharge Bundle (`CliMemcpyRowSat`)
+# Ghost-`memcpy` / `memset` `BaseHelperRowsSat` and `HookSat` Discharge Bundle (`CliMemcpyRowSat`)
 
-Cone 4 Wave 1 (`#1255` L5) row-satisfaction adapters replacing hook-identity equalities
+Contract-level row-satisfaction adapters replacing hook-identity equalities
 (`baseExt memcpyName = cliExternsPlaced mmpl W memcpyName`,
-`baseExt memsetName = cliExternsPlaced mmpl W memsetName`) with contract-level row bundles
-(`GhostMemcpyRow`, `GhostMemsetRow`, `BaseHelperRowsSat`), while keeping `memmove_eq` untouched:
+`baseExt memsetName = cliExternsPlaced mmpl W memsetName`) with `GhostMemcpyRow`,
+`GhostMemsetRow`, and `BaseHelperRowsSat`, while leaving `memmove_eq` untouched:
 
-1. **`MemcpyStripKeepsFrozen` Ghost Bridges:** `memcpyStripKeepsFrozen_linkedCallHook`,
-   `memcpyStripKeepsFrozen_memcpyGhostHook`, and `memcpyStripKeepsFrozen_memcpyGhostHookK` for
-   `CodecCalleesFsTransferPlacedBudgetFd`'s `codec_pure_fs_transfer_at_579_mc`.
-2. **`GhostMemcpyRow`, `GhostMemsetRow`, & `BaseHelperRowsSat`:** Row predicates, constructors from
-   both stock `hookMemcpy` / `hookMemset` (`BaseHelperRows.toSat`) and `memcpyGhostHook` /
+1. `MemcpyStripKeepsFrozen` bridges (`memcpyStripKeepsFrozen_linkedCallHook`,
+   `memcpyStripKeepsFrozen_memcpyGhostHook`, `memcpyStripKeepsFrozen_memcpyGhostHookK`) for
+   `CodecCalleesFsTransferPlacedBudgetFd.codec_pure_fs_transfer_at_579_mc`.
+2. `GhostMemcpyRow`, `GhostMemsetRow`, and `BaseHelperRowsSat`: row predicates, constructors from
+   both `hookMemcpy` / `hookMemset` (`BaseHelperRows.toSat`) and `memcpyGhostHook` /
    `memsetGhostHook`, and `cliGhostExterns` preservation.
-3. **`HookSat` Discharge Suite:** Discharges all shared CLI/Stage2/Codec `memcpy` & `memset`
-   contracts and all `WP6a-mc1` (`MemcpyGhostLifts` + `MemcpyGhostLiftsPcs`) file-local `memcpy`
-   contracts directly from `GhostMemcpyRow` / `GhostMemsetRow`.
-4. **Bundle & Pure-`fs` Codec Adapters:** `allocContractsXCliPlaced_of_ghost_sat`,
+3. `HookSat` dischargers for shared CLI/Stage2/Codec `memcpy` and `memset` contracts and for the
+   file-local `memcpy` contracts in `MemcpyGhostLifts` and `MemcpyGhostLiftsPcs`.
+4. Bundle and pure-`fs` codec adapters (`allocContractsXCliPlaced_of_ghost_sat`,
    `allocContractsFsPlaced_of_ghost_sat`, `stage2ContractsMinPlaced_of_ghost_sat`,
    `codecHooksPlaced_of_ghost_sat`, `publicApiDecHooksPlaced_of_ghost_sat`, and the `_of_sat`
-   Block `85` (`tryFrom`) / Block `111` (`pksmSlot`) pure-`fs` transfer corollaries.
+   Block `85` (`tryFrom`) / Block `111` (`pksmSlot`) transfer corollaries).
 -/
 
 set_option autoImplicit false
@@ -202,13 +220,6 @@ theorem memcpyStripKeepsFrozen_memcpyGhostHook
     MemcpyStripKeepsFrozen (memcpyGhostHook keep_g P_real P_sub entryTarget) :=
   memcpyStripKeepsFrozen_linkedCallHook keep_g P_real P_sub entryTarget masterMemcpySpec
 
-/-- `MemcpyStripKeepsFrozen` for `K`-narrowed `memcpyGhostHookK`. -/
-theorem memcpyStripKeepsFrozen_memcpyGhostHookK
-    (keep_g : BitVec 64 → Bool) (P_real P_sub : Program) (entryTarget : BitVec 64) :
-    MemcpyStripKeepsFrozen (memcpyGhostHookK keep_g P_real P_sub entryTarget) :=
-  memcpyStripKeepsFrozen_linkedCallHook keep_g P_real P_sub entryTarget
-    (memcpySpecK keep_g masterMemcpySpec)
-
 /-! ## 2. `GhostMemcpyRow`, `GhostMemsetRow`, & `BaseHelperRowsSat` (`memmove_eq` Preserved) -/
 
 /-- Contract-level `memcpy` row bundle on an extern map `ext`, bundling `masterMemcpySpec`,
@@ -246,55 +257,7 @@ structure BaseHelperRowsSat (mmpl : Obj.MultiPlacement) (W : CliHooks)
   memrchr_eq : baseExt lsMemrchrSym = cliExternsPlaced mmpl W lsMemrchrSym
   panics : CliPanicHooksPlaced baseExt
 
-/-- Stock `hookMemcpy` satisfies `GhostMemcpyRow`. -/
-theorem ghostMemcpyRow_of_hookMemcpy {ext : LibsignalHooks}
-    (hrow : ext memcpyName = some hookMemcpy) :
-    GhostMemcpyRow ext :=
-  ⟨hookMemcpy, hrow, hookMemcpy_masterMemcpy_ok, hookMemcpy_vmPreserved,
-    hookMemcpy_fs, hookMemcpy_fsT, memcpyStripKeepsFrozen_hookMemcpy, fun _ => rfl⟩
-
-/-- Stock `hookMemset` satisfies `GhostMemsetRow`. -/
-theorem ghostMemsetRow_of_hookMemset {ext : LibsignalHooks}
-    (hrow : ext memsetName = some hookMemset) :
-    GhostMemsetRow ext :=
-  ⟨hookMemset, hrow, hookMemset_masterMemset_ok, hookMemset_vmPreserved,
-    hookMemset_fs, hookMemset_fsT⟩
-
-/-- Any `memcpyGhostHook keep P_real P_sub entryTarget` row satisfies `GhostMemcpyRow`. -/
-theorem ghostMemcpyRow_of_memcpyGhostHook {ext : LibsignalHooks}
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entryTarget : BitVec 64}
-    (hrow : ext memcpyName = some (memcpyGhostHook keep P_real P_sub entryTarget))
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entryTarget memcpySymWords) :
-    GhostMemcpyRow ext :=
-  ⟨memcpyGhostHook keep P_real P_sub entryTarget, hrow,
-    memcpyGhostHook_master_ok hsvc_real hsvc_sub hreal_no hsub_no hwords,
-    memcpyGhostHook_vmPreserved hsvc_real hsvc_sub hreal_no hsub_no hwords,
-    linkedCallHook_fs keep P_real P_sub entryTarget masterMemcpySpec hookMemcpy,
-    linkedCallHook_fsT keep P_real P_sub entryTarget masterMemcpySpec hookMemcpy,
-    memcpyStripKeepsFrozen_memcpyGhostHook keep P_real P_sub entryTarget,
-    memcpyGhostHook_oracle hsvc_real hsvc_sub hreal_no hsub_no hwords⟩
-
-/-- Any `memsetGhostHook keep P_real P_sub entryTarget` row satisfies `GhostMemsetRow`. -/
-theorem ghostMemsetRow_of_memsetGhostHook {ext : LibsignalHooks}
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entryTarget : BitVec 64}
-    (hrow : ext memsetName = some (memsetGhostHook keep P_real P_sub entryTarget))
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entryTarget memsetWordsSym) :
-    GhostMemsetRow ext :=
-  ⟨memsetGhostHook keep P_real P_sub entryTarget, hrow,
-    memsetGhostHook_master_ok hsvc_real hsvc_sub hreal_no hsub_no hwords,
-    memsetGhostHook_vmPreserved hsvc_real hsvc_sub hreal_no hsub_no hwords,
-    linkedCallHook_fs keep P_real P_sub entryTarget masterMemsetSpec hookMemset,
-    linkedCallHook_fsT keep P_real P_sub entryTarget masterMemsetSpec hookMemset⟩
-
-/-- Combine `GhostMemcpyRow`, `GhostMemsetRow`, and a `37`-row `BaseHelperRows` witness into
+/-- Combine `GhostMemcpyRow`, `GhostMemsetRow`, and a `BaseHelperRows` witness into
 `BaseHelperRowsSat`. -/
 theorem BaseHelperRows.toSat {mmpl : Obj.MultiPlacement} {W : CliHooks}
     {baseExt : LibsignalHooks}
@@ -307,30 +270,6 @@ theorem BaseHelperRows.toSat {mmpl : Obj.MultiPlacement} {W : CliHooks}
   utf8_eq := hBase.utf8_eq
   memrchr_eq := hBase.memrchr_eq
   panics := hBase.panics
-
-/-- On the `27`-row `cliExternsPlaced mmpl W` (`cliExternsPlaced_memcpy_none`), `cliGhostExterns g`
-resolves `memcpyName` strictly to `g.memcpy`. -/
-theorem cliGhostExterns_memcpy_placed (mmpl : Obj.MultiPlacement) (W : CliHooks)
-    (g : CliGhostHooks) :
-    cliGhostExterns g (cliExternsPlaced mmpl W) memcpyName = g.memcpy := by
-  cases hg : g.memcpy with
-  | none =>
-    exact (cliGhostExterns_memcpy_none g (cliExternsPlaced mmpl W) hg).trans
-      (cliExternsPlaced_memcpy_none mmpl W)
-  | some f =>
-    exact cliGhostExterns_memcpy_some g (cliExternsPlaced mmpl W) hg
-
-/-- On the `27`-row `cliExternsPlaced mmpl W` (`cliExternsPlaced_memset_none`), `cliGhostExterns g`
-resolves `memsetName` strictly to `g.memset`. -/
-theorem cliGhostExterns_memset_placed (mmpl : Obj.MultiPlacement) (W : CliHooks)
-    (g : CliGhostHooks) :
-    cliGhostExterns g (cliExternsPlaced mmpl W) memsetName = g.memset := by
-  cases hg : g.memset with
-  | none =>
-    exact (cliGhostExterns_memset_none g (cliExternsPlaced mmpl W) hg).trans
-      (cliExternsPlaced_memset_none mmpl W)
-  | some f =>
-    exact cliGhostExterns_memset_some g (cliExternsPlaced mmpl W) hg
 
 theorem GhostMemcpyRow.of_eq {ext₁ ext₂ : LibsignalHooks}
     (heq : ext₂ memcpyName = ext₁ memcpyName) (h : GhostMemcpyRow ext₁) :
@@ -416,478 +355,14 @@ theorem GhostMemsetRow.hookSat_budget_keepsFs_of_master {α : Type} {ext : Libsi
 
 -- 3.1 Shared CLI / Stage2 / Codec `memcpy` `HookSat` dischargers:
 
-theorem GhostMemcpyRow.libcMemcpy_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext)
-    (stk : Nat := 4096) :
-    HookSat ext memcpyName (libcMemcpySpec stk) :=
-  h.hookSat_of_master fun hh => hookOk_libcMemcpy_of_master hh stk
-
-theorem GhostMemcpyRow.libcMemcpy_keepsFs_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext)
-    (stk : Nat := 4096) :
-    HookSat ext memcpyName (libcMemcpySpec stk).keepsFs :=
-  h.hookSat_keepsFs_of_master fun hh => hookOk_libcMemcpy_of_master hh stk
-
-theorem GhostMemcpyRow.libcMemcpy_budget_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext)
-    (stk : Nat := 4096) :
-    HookSat ext memcpyName (withVmPreserved (libcMemcpySpec stk)) :=
-  h.hookSat_budget_of_master fun hh => hookOk_libcMemcpy_of_master hh stk
-
-theorem GhostMemcpyRow.sessionMemcpy_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext)
-    (stk : Nat := 4096) :
-    HookSat ext memcpyName (sessionMemcpySpec stk) :=
-  h.hookSat_of_master fun hh => hookOk_sessionMemcpy_of_master hh stk
-
-theorem GhostMemcpyRow.sessionMemcpy_keepsFs_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext)
-    (stk : Nat := 4096) :
-    HookSat ext memcpyName (sessionMemcpySpec stk).keepsFs :=
-  h.hookSat_keepsFs_of_master fun hh => hookOk_sessionMemcpy_of_master hh stk
-
-theorem GhostMemcpyRow.sessionMemcpy_budget_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext)
-    (stk : Nat := 4096) :
-    HookSat ext memcpyName (sessionMemcpyBudgetSpec stk) :=
-  h.hookSat_budget_of_master fun hh => hookOk_sessionMemcpy_of_master hh stk
-
-theorem GhostMemcpyRow.cliMemcpy_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName memcpySpec :=
-  h.hookSat_of_master hookOk_cliMemcpy_of_master
-
-theorem GhostMemcpyRow.cliMemcpy_budget_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName (withVmPreserved memcpySpec) :=
-  h.hookSat_budget_of_master hookOk_cliMemcpy_of_master
-
-theorem GhostMemcpyRow.memcpyRegion_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName memcpyRegionSpec :=
-  h.hookSat_of_master hookOk_memcpyRegion_of_master
-
-theorem GhostMemcpyRow.memcpyRegion_keepsFs_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName memcpyRegionSpec.keepsFs :=
-  h.hookSat_keepsFs_of_master hookOk_memcpyRegion_of_master
-
-theorem GhostMemcpyRow.memcpyRegion_budget_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName (withVmPreserved memcpyRegionSpec) :=
-  h.hookSat_budget_of_master hookOk_memcpyRegion_of_master
-
-theorem GhostMemcpyRow.sessionMemcpyRegion_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName sessionMemcpyRegionSpec :=
-  h.hookSat_of_master hookOk_sessionMemcpyRegion_of_master
-
-theorem GhostMemcpyRow.sessionMemcpyRegion_keepsFs_sat {ext : LibsignalHooks}
-    (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName sessionMemcpyRegionSpec.keepsFs :=
-  h.hookSat_keepsFs_of_master hookOk_sessionMemcpyRegion_of_master
-
-theorem GhostMemcpyRow.sessionMemcpyRegion_withStack_sat {ext : LibsignalHooks}
-    (h : GhostMemcpyRow ext) (stk : Nat := 4096) :
-    HookSat ext memcpyName (withStack sessionMemcpyRegionSpec stk) :=
-  h.hookSat_of_master fun hh => hookOk_withStack (hookOk_sessionMemcpyRegion_of_master hh) stk
-
-theorem GhostMemcpyRow.sessionMemcpyRegion_budget_sat {ext : LibsignalHooks}
-    (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName sessionMemcpyRegionBudgetSpec :=
-  h.hookSat_budget_of_master hookOk_sessionMemcpyRegion_of_master
-
-theorem GhostMemcpyRow.framelessMemcpy_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName framelessMemcpySpec :=
-  h.hookSat_of_master hookOk_framelessMemcpy_of_master
-
-theorem GhostMemcpyRow.framelessMemcpy_keepsFs_sat {ext : LibsignalHooks}
-    (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName framelessMemcpySpec.keepsFs :=
-  h.hookSat_keepsFs_of_master hookOk_framelessMemcpy_of_master
-
 theorem GhostMemcpyRow.framelessMemcpy_budget_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
     HookSat ext memcpyName framelessMemcpyBudgetSpec :=
   h.hookSat_budget_of_master hookOk_framelessMemcpy_of_master
 
-theorem GhostMemcpyRow.sessionMemcpyRegionRO_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName CryptoVerification.SpqrV1.Alloc.sessionMemcpyRegionROSpec :=
-  h.hookSat_of_master hookOk_sessionMemcpyRegionRO_of_master
-
-theorem GhostMemcpyRow.sessionMemcpyRegionRO_budget_sat {ext : LibsignalHooks}
-    (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName
-      (withVmPreserved CryptoVerification.SpqrV1.Alloc.sessionMemcpyRegionROSpec) :=
-  h.hookSat_budget_of_master hookOk_sessionMemcpyRegionRO_of_master
-
-theorem GhostMemcpyRow.memcpyROExt_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext)
-    (stk : Nat := 16384) :
-    HookSat ext memcpyName (memcpyROExtSpec stk) :=
-  h.hookSat_of_master fun hh => hookOk_memcpyROExt_of_master hh stk
-
-theorem GhostMemcpyRow.memcpyROExt_budget_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext)
-    (stk : Nat := 16384) :
-    HookSat ext memcpyName (withVmPreserved (memcpyROExtSpec stk)) :=
-  h.hookSat_budget_of_master fun hh => hookOk_memcpyROExt_of_master hh stk
-
-theorem GhostMemcpyRow.cliMemcpyRO_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName memcpyROSpec :=
-  h.hookSat_of_master hookOk_cliMemcpyRO_of_master
-
-theorem GhostMemcpyRow.cliMemcpyRO_budget_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName (withVmPreserved memcpyROSpec) :=
-  h.hookSat_budget_of_master hookOk_cliMemcpyRO_of_master
-
-theorem GhostMemcpyRow.sessionMemcpyRO4K_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName CryptoVerification.SpqrV1.Alloc.sessionMemcpyROSpec4K :=
-  h.hookSat_of_master hookOk_sessionMemcpyRO4K_of_master
-
-theorem GhostMemcpyRow.sessionMemcpyRO4K_budget_sat {ext : LibsignalHooks}
-    (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName
-      (withVmPreserved CryptoVerification.SpqrV1.Alloc.sessionMemcpyROSpec4K) :=
-  h.hookSat_budget_of_master hookOk_sessionMemcpyRO4K_of_master
-
-theorem GhostMemcpyRow.allocMemcpyVm_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName allocMemcpyVmSpec := by
-  rcases h with ⟨f, hrow, hok, hvm, _, _, _, horc⟩
-  exact ⟨f, hrow, hookOk_allocMemcpyVm_of_master hok hvm horc⟩
-
--- 3.2 `WP6a-mc1` (`MemcpyGhostLifts` & `MemcpyGhostLiftsPcs`) file-local `HookSat` dischargers:
-
-theorem GhostMemcpyRow.openMemcpy_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName openMemcpySpec :=
-  h.hookSat_of_master hookOk_openMemcpy_of_master
-
-theorem GhostMemcpyRow.openMemcpy_budget_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName (withVmPreserved openMemcpySpec) :=
-  h.hookSat_budget_of_master hookOk_openMemcpy_of_master
-
-theorem GhostMemcpyRow.openMemcpyRo_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName openMemcpyRoSpec :=
-  h.hookSat_of_master hookOk_openMemcpyRo_of_master
-
-theorem GhostMemcpyRow.openMemcpyRo_budget_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName (withVmPreserved openMemcpyRoSpec) :=
-  h.hookSat_budget_of_master hookOk_openMemcpyRo_of_master
-
-theorem GhostMemcpyRow.hashbrownMemcpyRegion_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName hashbrownMemcpyRegionSpec :=
-  h.hookSat_of_master hookOk_hashbrownMemcpyRegion_of_master
-
-theorem GhostMemcpyRow.hashbrownMemcpyRegion_budget_sat {ext : LibsignalHooks}
-    (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName (withVmPreserved hashbrownMemcpyRegionSpec) :=
-  h.hookSat_budget_of_master hookOk_hashbrownMemcpyRegion_of_master
-
-theorem GhostMemcpyRow.pqxdhMemcpyRegion_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName pqxdhMemcpyRegionSpec :=
-  h.hookSat_of_master hookOk_pqxdhMemcpyRegion_of_master
-
-theorem GhostMemcpyRow.pqxdhMemcpyRegion_budget_sat {ext : LibsignalHooks}
-    (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName (withVmPreserved pqxdhMemcpyRegionSpec) :=
-  h.hookSat_budget_of_master hookOk_pqxdhMemcpyRegion_of_master
-
-theorem GhostMemcpyRow.chainClone3SessionMemcpy_sat {ext : LibsignalHooks}
-    (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName CryptoVerification.LibsignalTripleRatchet.ChainClone3.sessionMemcpySpec :=
-  h.hookSat_of_master hookOk_chainClone3SessionMemcpy_of_master
-
-theorem GhostMemcpyRow.chainClone3SessionMemcpyBudget_sat {ext : LibsignalHooks}
-    (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName
-      LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.ChainClone3.ChainCloneEpilogueBudget.sessionMemcpySpec := by
-  rcases h with ⟨f, hrow, hok, hvm, _, _, _, _⟩
-  exact ⟨f, hrow, hookOk_chainClone3SessionMemcpyBudget_of_master hok hvm⟩
-
-theorem GhostMemcpyRow.recordSessionCloneMemcpy_sat {ext : LibsignalHooks}
-    (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName
-      CryptoVerification.LibsignalTripleRatchet.ChainCloneLocal1.sessionMemcpySpec :=
-  h.hookSat_of_master hookOk_recordSessionCloneMemcpy_of_master
-
-theorem GhostMemcpyRow.recordSessionCloneMemcpy_budget_sat {ext : LibsignalHooks}
-    (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName
-      (withVmPreserved
-        CryptoVerification.LibsignalTripleRatchet.ChainCloneLocal1.sessionMemcpySpec) :=
-  h.hookSat_budget_of_master hookOk_recordSessionCloneMemcpy_of_master
-
-theorem GhostMemcpyRow.rustStdAllocMemcpyVm_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName LibsignalBinary.Heap.RustStdAllocBudgetBridge.allocMemcpyVmSpec := by
-  rcases h with ⟨f, hrow, hok, hvm, _, _, _, horc⟩
-  exact ⟨f, hrow, hookOk_rustStdAllocMemcpyVm_of_master hok hvm horc⟩
-
-theorem GhostMemcpyRow.sessionMemcpyROX_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName sessionMemcpyROXSpec :=
-  h.hookSat_of_master hookOk_sessionMemcpyROX_of_master
-
-theorem GhostMemcpyRow.sessionMemcpyROX_budget_sat {ext : LibsignalHooks}
-    (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName (withVmPreserved sessionMemcpyROXSpec) :=
-  h.hookSat_budget_of_master hookOk_sessionMemcpyROX_of_master
-
-theorem GhostMemcpyRow.memcpyRecvPcs_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName memcpyRecvPcsSpec :=
-  h.hookSat_of_master hookOk_memcpyRecvPcs_of_master
-
-theorem GhostMemcpyRow.memcpyRecvPcsS_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName memcpyRecvPcsSpecS :=
-  h.hookSat_of_master hookOk_memcpyRecvPcsS_of_master
-
-theorem GhostMemcpyRow.memcpyRecvPcs_budget_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName (withVmPreserved memcpyRecvPcsSpec) :=
-  h.hookSat_budget_of_master hookOk_memcpyRecvPcs_of_master
-
-theorem GhostMemcpyRow.memcpyPcs_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName memcpyPcsSpec :=
-  h.hookSat_of_master hookOk_memcpyPcs_of_master
-
-theorem GhostMemcpyRow.memcpyPcsBudget_sat {ext : LibsignalHooks} (h : GhostMemcpyRow ext) :
-    HookSat ext memcpyName memcpyPcsBudgetSpec := by
-  rcases h with ⟨f, hrow, hok, hvm, _, _, _, _⟩
-  exact ⟨f, hrow, hookOk_memcpyPcsBudget_of_master hok hvm⟩
+-- 3.2 File-local `memcpy` `HookSat` dischargers (`MemcpyGhostLifts` & `MemcpyGhostLiftsPcs`):
 
 -- 3.3 Shared CLI `memset` `HookSat` dischargers:
 
-theorem GhostMemsetRow.libcMemset_sat {ext : LibsignalHooks} (h : GhostMemsetRow ext)
-    (stk : Nat := 4096) :
-    HookSat ext memsetName (libcMemsetSpec stk) :=
-  h.hookSat_of_master fun hh => hookOk_libcMemset_of_master hh stk
-
-theorem GhostMemsetRow.libcMemset_keepsFs_sat {ext : LibsignalHooks} (h : GhostMemsetRow ext)
-    (stk : Nat := 4096) :
-    HookSat ext memsetName (libcMemsetSpec stk).keepsFs :=
-  h.hookSat_keepsFs_of_master fun hh => hookOk_libcMemset_of_master hh stk
-
-theorem GhostMemsetRow.libcMemset_budget_sat {ext : LibsignalHooks} (h : GhostMemsetRow ext)
-    (stk : Nat := 4096) :
-    HookSat ext memsetName (withVmPreserved (libcMemsetSpec stk)) :=
-  h.hookSat_budget_of_master fun hh => hookOk_libcMemset_of_master hh stk
-
-theorem GhostMemsetRow.sessionMemset_sat {ext : LibsignalHooks} (h : GhostMemsetRow ext)
-    (stk : Nat := 4096) :
-    HookSat ext memsetName (sessionMemsetSpec stk) :=
-  h.hookSat_of_master fun hh => hookOk_sessionMemset_of_master hh stk
-
-theorem GhostMemsetRow.sessionMemset_keepsFs_sat {ext : LibsignalHooks} (h : GhostMemsetRow ext)
-    (stk : Nat := 4096) :
-    HookSat ext memsetName (sessionMemsetSpec stk).keepsFs :=
-  h.hookSat_keepsFs_of_master fun hh => hookOk_sessionMemset_of_master hh stk
-
-theorem GhostMemsetRow.sessionMemset_budget_sat {ext : LibsignalHooks} (h : GhostMemsetRow ext)
-    (stk : Nat := 4096) :
-    HookSat ext memsetName (sessionMemsetBudgetSpec stk) :=
-  h.hookSat_budget_of_master fun hh => hookOk_sessionMemset_of_master hh stk
-
-theorem GhostMemsetRow.cliMemset_sat {ext : LibsignalHooks} (h : GhostMemsetRow ext) :
-    HookSat ext memsetName memsetSpec :=
-  h.hookSat_of_master hookOk_cliMemset_of_master
-
-theorem GhostMemsetRow.cliMemset_budget_sat {ext : LibsignalHooks} (h : GhostMemsetRow ext) :
-    HookSat ext memsetName (withVmPreserved memsetSpec) :=
-  h.hookSat_budget_of_master hookOk_cliMemset_of_master
-
-theorem GhostMemsetRow.memsetRegion_sat {ext : LibsignalHooks} (h : GhostMemsetRow ext) :
-    HookSat ext memsetName memsetRegionSpec :=
-  h.hookSat_of_master hookOk_memsetRegion_of_master
-
-theorem GhostMemsetRow.memsetRegion_budget_sat {ext : LibsignalHooks} (h : GhostMemsetRow ext) :
-    HookSat ext memsetName (withVmPreserved memsetRegionSpec) :=
-  h.hookSat_budget_of_master hookOk_memsetRegion_of_master
-
-theorem GhostMemsetRow.sessionMemsetRegion_sat {ext : LibsignalHooks} (h : GhostMemsetRow ext) :
-    HookSat ext memsetName sessionMemsetRegionSpec :=
-  h.hookSat_of_master hookOk_sessionMemsetRegion_of_master
-
-theorem GhostMemsetRow.sessionMemsetRegion_budget_sat {ext : LibsignalHooks}
-    (h : GhostMemsetRow ext) :
-    HookSat ext memsetName sessionMemsetRegionBudgetSpec :=
-  h.hookSat_budget_of_master hookOk_sessionMemsetRegion_of_master
-
-theorem GhostMemsetRow.session2MemsetExtern_sat {ext : LibsignalHooks} (h : GhostMemsetRow ext)
-    (stk : Nat := 16384) :
-    HookSat ext memsetName (session2MemsetExternSpec stk) :=
-  h.hookSat_of_master fun hh => hookOk_session2MemsetExtern_of_master hh stk
-
-theorem GhostMemsetRow.session2MemsetExtern_budget_sat {ext : LibsignalHooks}
-    (h : GhostMemsetRow ext) (stk : Nat := 16384) :
-    HookSat ext memsetName (withVmPreserved (session2MemsetExternSpec stk)) :=
-  h.hookSat_budget_of_master fun hh => hookOk_session2MemsetExtern_of_master hh stk
-
 /-! ## 4. Bundle & Pure-`fs` Codec Adapter Theorems over `BaseHelperRowsSat` -/
-
-theorem allocContractsXCliPlaced_of_ghost_sat [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (W : CliHooks) (baseExt : LibsignalHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (g : CliGhostHooks) (hBase : BaseHelperRowsSat mmpl W (cliGhostExterns g baseExt))
-    (hG : CliGhostAllocHooks M A lim g) :
-    AllocContractsXCliPlaced A lim (cliGhostExterns g baseExt) := by
-  have hMc := hBase.memcpy_sat
-  have hMs := hBase.memset_sat
-  exact allocContractsXCliPlaced_of_hookSat
-    ⟨g.alloc, cliGhostExterns_alloc g baseExt, hG.alloc⟩
-    ⟨g.dealloc, cliGhostExterns_dealloc g baseExt, hG.dealloc⟩
-    ⟨g.realloc, cliGhostExterns_realloc g baseExt, hG.realloc⟩
-    (shim_budget_sat_of_eq baseExt hG.shim_eq)
-    (fun stk => hMc.libcMemcpy_budget_sat stk)
-    (fun stk => hMc.sessionMemcpy_budget_sat stk)
-    hMc.memcpyRegion_budget_sat
-    hMc.sessionMemcpyRegion_budget_sat
-    (fun stk _ => hMs.libcMemset_budget_sat stk)
-    (fun stk _ => hMs.sessionMemset_budget_sat stk)
-    hMs.memsetRegion_budget_sat
-    hMs.sessionMemsetRegion_budget_sat
-
-theorem allocContractsFsPlaced_of_ghost_sat [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (W : CliHooks) (baseExt : LibsignalHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (g : CliGhostHooks) (hBase : BaseHelperRowsSat mmpl W (cliGhostExterns g baseExt))
-    (hG : CliGhostAllocHooks M A lim g) :
-    AllocContractsFsPlaced A lim (cliGhostExterns g baseExt) := by
-  have hMc := hBase.memcpy_sat
-  have hMs := hBase.memset_sat
-  refine allocContractsFsPlaced_of_hookSat
-    ⟨g.alloc, cliGhostExterns_alloc g baseExt, hG.alloc⟩
-    ⟨g.dealloc, cliGhostExterns_dealloc g baseExt, hG.dealloc⟩
-    ⟨g.realloc, cliGhostExterns_realloc g baseExt, hG.realloc⟩
-    (shim_budget_sat_of_eq baseExt hG.shim_eq)
-    (fun stk => hMc.libcMemcpy_budget_sat stk)
-    (fun stk => hMc.sessionMemcpy_budget_sat stk)
-    hMc.memcpyRegion_budget_sat
-    hMc.sessionMemcpyRegion_budget_sat
-    hMc.sessionMemcpyRegionRO_budget_sat
-    (fun stk _ => hMs.libcMemset_budget_sat stk)
-    (fun stk _ => hMs.sessionMemset_budget_sat stk)
-    hMs.memsetRegion_budget_sat
-    hMs.sessionMemsetRegion_budget_sat
-    ?_
-  intro sym hmem f hf
-  simp only [List.mem_cons, List.not_mem_nil, or_false] at hmem
-  rcases hmem with rfl | rfl | rfl | rfl | rfl | rfl
-  · rw [cliGhostExterns_alloc] at hf; cases hf; exact hG.alloc_fs
-  · rw [cliGhostExterns_dealloc] at hf; cases hf; exact hG.dealloc_fs
-  · rw [cliGhostExterns_realloc] at hf; cases hf; exact hG.realloc_fs
-  · rw [cliGhostExterns_shim, hG.shim_eq] at hf; cases hf; exact hookNoop_fs
-  · rcases hMc with ⟨f_mc, hrow_mc, _, _, hfs_mc, _, _, _⟩
-    rw [hrow_mc] at hf; cases hf; exact hfs_mc
-  · rcases hMs with ⟨f_ms, hrow_ms, _, _, hfs_ms, _⟩
-    rw [hrow_ms] at hf; cases hf; exact hfs_ms
-
-theorem stage2ContractsMinPlaced_of_ghost_sat [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (W : CliHooks) (baseExt : LibsignalHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (g : CliGhostHooks) (hBase : BaseHelperRowsSat mmpl W (cliGhostExterns g baseExt))
-    (hG : CliGhostAllocHooks M A lim g) :
-    Stage2ContractsMinPlaced M A lim (cliGhostExterns g baseExt) :=
-  stage2ContractsMinPlaced_of_hookSat
-    ⟨g.alloc, cliGhostExterns_alloc g baseExt, hG.alloc⟩
-    ⟨g.dealloc, cliGhostExterns_dealloc g baseExt, hG.dealloc⟩
-    ⟨g.realloc, cliGhostExterns_realloc g baseExt, hG.realloc⟩
-    (shim_budget_sat_of_eq baseExt hG.shim_eq)
-    (hBase.memcpy_sat.sessionMemcpy_budget_sat extHookStack)
-
-theorem codecHooksPlaced_of_ghost_sat [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (W : CliHooks) (baseExt : LibsignalHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (g : CliGhostHooks) (hBase : BaseHelperRowsSat mmpl W (cliGhostExterns g baseExt))
-    (hG : CliGhostAllocHooks M A lim g) :
-    CodecHooksPlaced M A lim (cliGhostExterns g baseExt) :=
-  codecHooksPlaced_of_hookSat
-    (noAllocShim_budget_sat_of_eq baseExt hG.shim_eq)
-    ⟨g.alloc, cliGhostExterns_alloc g baseExt, hG.alloc⟩
-    ⟨g.realloc, cliGhostExterns_realloc g baseExt, hG.realloc⟩
-    ⟨g.dealloc, cliGhostExterns_dealloc g baseExt, hG.dealloc⟩
-    hBase.memcpy_sat.framelessMemcpy_budget_sat
-    (hBase.panics lsHandleAllocErrorSym (by decide))
-    (hBase.panics lsHandleErrorSym (by decide))
-
-theorem publicApiDecHooksPlaced_of_ghost_sat [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (W : CliHooks) (baseExt : LibsignalHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (g : CliGhostHooks) (hBase : BaseHelperRowsSat mmpl W (cliGhostExterns g baseExt))
-    (hG : CliGhostAllocHooks M A lim g)
-    (hStrClone : HookSat (cliGhostExterns g baseExt) lsStringCloneSym
-      (stringCloneBudgetSpec M A lim)) :
-    PublicApiDecHooksPlaced A lim (cliGhostExterns g baseExt) :=
-  publicApiDecHooksPlaced_of_hookSat
-    (shim_budget_sat_of_eq baseExt hG.shim_eq)
-    ⟨g.alloc, cliGhostExterns_alloc g baseExt, hG.alloc⟩
-    ⟨g.dealloc, cliGhostExterns_dealloc g baseExt, hG.dealloc⟩
-    hBase.memcpy_sat.sessionMemcpyRegion_budget_sat
-    hStrClone
-    (hBase.panics lsHandleErrorSym (by decide))
-    (hBase.panics lsExpectFailedSym (by decide))
-
-/-- Pure-`fs` `tryFrom` (`Block 85`) at `lsProg_579` discharged from `BaseHelperRowsSat`. -/
-theorem tryFrom_okFs_mallocng_cli_placed_at_579_of_sat [LibsignalPlacement]
-    {M : AllocCostModel} (I : MallocngCostModelIface M) (hS : MallocngCostModelSound M I)
-    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) (g : CliGhostHooks) (W : CliHooks) (baseExt : LibsignalHooks)
-    (hBase : BaseHelperRowsSat mmpl W (cliGhostExterns g baseExt))
-    (hG : CliGhostAllocHooks M (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart) lim g) :
-    subroutine_ok (lsProg_579 (cliGhostExterns g baseExt)) (lsmpl.base 85)
-      (withLsCodeRoLoaded lsmpl
-        (tryFromPlacedSpecOkFs (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart) lim)) := by
-  rcases hBase.memcpy_sat with ⟨f_mc, hrow, hok, hvm, hfs, _, hskf, _⟩
-  exact tryFrom_okFs_mallocng_cli_placed_at_579_mc I hS γ mmpl tp brkStart lim g baseExt f_mc
-    hG hrow (hookOk_withVmPreserved (hookOk_framelessMemcpy_of_master hok) hvm) hfs hskf
-    (hBase.panics lsHandleAllocErrorSym (by decide))
-    (hBase.panics lsHandleErrorSym (by decide))
-
-/-- `fineHookRustCliAllocBudget` specialization of `tryFrom_okFs_mallocng_cli_placed_at_579_of_sat`. -/
-theorem tryFrom_okFs_fine_cli_placed_at_579_of_sat [LibsignalPlacement]
-    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) (g : CliGhostHooks) (W : CliHooks) (baseExt : LibsignalHooks)
-    (hBase : BaseHelperRowsSat mmpl W (cliGhostExterns g baseExt))
-    (hG : CliGhostAllocHooks fineCostModel (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim g) :
-    subroutine_ok (lsProg_579 (cliGhostExterns g baseExt)) (lsmpl.base 85)
-      (withLsCodeRoLoaded lsmpl
-        (tryFromPlacedSpecOkFs (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim)) :=
-  tryFrom_okFs_mallocng_cli_placed_at_579_of_sat _ _ γ mmpl tp brkStart lim g W baseExt hBase hG
-
-/-- Pure-`fs` `pksmSlot` (`Block 111`) at `lsProg_579` discharged from `BaseHelperRowsSat`. -/
-theorem pksmSlot_okFs_of_subsetA4_mallocng_cli_placed_at_579_of_sat [LibsignalPlacement]
-    {M : AllocCostModel} (I : MallocngCostModelIface M) (hS : MallocngCostModelSound M I)
-    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) (g : CliGhostHooks) (W : CliHooks) (baseExt : LibsignalHooks)
-    {PksmEnv : PksmGhost → List AllocEvent → Prop} {S : RunSem}
-    (hBase : BaseHelperRowsSat mmpl W (cliGhostExterns g baseExt))
-    (hG : CliGhostAllocHooks M (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart) lim g)
-    (hSub : ∀ {A' : RustCliAllocBudget M} {H' : LibsignalHooks},
-      CodecHooksPlaced M A' lim H' → SubsetA4PksmTryFromPlaced M A' lim PksmEnv H')
-    (hParse : ∀ b, S.pksmParse b = pksmParse b) :
-    subroutine_ok (lsProg_579 (cliGhostExterns g baseExt)) blkPl_111.base
-      (pksmSlotSpecPlacedOkFs M
-        (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart) lim PksmEnv S) := by
-  rcases hBase.memcpy_sat with ⟨f_mc, hrow, hok, hvm, hfs, _, hskf, _⟩
-  exact pksmSlot_okFs_of_subsetA4_mallocng_cli_placed_at_579_mc I hS γ mmpl tp brkStart lim g
-    baseExt f_mc hG hrow (hookOk_withVmPreserved (hookOk_framelessMemcpy_of_master hok) hvm)
-    hfs hskf
-    (hBase.panics lsHandleAllocErrorSym (by decide))
-    (hBase.panics lsHandleErrorSym (by decide))
-    hSub hParse
-
-/-- `fineHookRustCliAllocBudget` specialization of
-`pksmSlot_okFs_of_subsetA4_mallocng_cli_placed_at_579_of_sat`. -/
-theorem pksmSlot_okFs_of_subsetA4_fine_cli_placed_at_579_of_sat [LibsignalPlacement]
-    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) (g : CliGhostHooks) (W : CliHooks) (baseExt : LibsignalHooks)
-    {PksmEnv : PksmGhost → List AllocEvent → Prop} {S : RunSem}
-    (hBase : BaseHelperRowsSat mmpl W (cliGhostExterns g baseExt))
-    (hG : CliGhostAllocHooks fineCostModel (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim g)
-    (hSub : ∀ {A' : RustCliAllocBudget fineCostModel} {H' : LibsignalHooks},
-      CodecHooksPlaced fineCostModel A' lim H' →
-        SubsetA4PksmTryFromPlaced fineCostModel A' lim PksmEnv H')
-    (hParse : ∀ b, S.pksmParse b = pksmParse b) :
-    subroutine_ok (lsProg_579 (cliGhostExterns g baseExt)) blkPl_111.base
-      (pksmSlotSpecPlacedOkFs fineCostModel
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim PksmEnv S) :=
-  pksmSlot_okFs_of_subsetA4_mallocng_cli_placed_at_579_of_sat _ _ γ mmpl tp brkStart lim g W
-    baseExt hBase hG hSub hParse
-
-/-- Ready-to-apply `PksmTryFromEnv` specialization of
-`pksmSlot_okFs_of_subsetA4_fine_cli_placed_at_579_of_sat`. -/
-theorem pksmSlot_okFs_fine_cli_placed_at_579_of_sat [LibsignalPlacement]
-    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) (g : CliGhostHooks) (W : CliHooks) (baseExt : LibsignalHooks)
-    {S : RunSem}
-    (hBase : BaseHelperRowsSat mmpl W (cliGhostExterns g baseExt))
-    (hG : CliGhostAllocHooks fineCostModel (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim g)
-    (hParse : ∀ b, S.pksmParse b = pksmParse b) :
-    subroutine_ok (lsProg_579 (cliGhostExterns g baseExt)) blkPl_111.base
-      (pksmSlotSpecPlacedOkFs fineCostModel
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim PksmTryFromEnv S) :=
-  pksmSlot_okFs_of_subsetA4_fine_cli_placed_at_579_of_sat γ mmpl tp brkStart lim g W baseExt
-    hBase hG (fun hC => subsetA4PksmTryFromPlaced_of_codecHooks hC) hParse
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliMemcpyRowSat

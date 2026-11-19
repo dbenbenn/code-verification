@@ -9,18 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.AdaptersBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DoReserveBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.AdaptersBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DoReserveBudget
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.FinishGrowBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `RawVecInner::reserve::do_reserve_and_handle` (Block `13`)
@@ -30,7 +34,7 @@ Verifies relocatable `<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_
 `doReserveRawSpecX M A lim` and `doReserveSpecX M A lim` under `AllocContractsPlaced M A lim H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

@@ -9,12 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeStep
+import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeStep
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.Defs
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbState
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSession
+public import LibsignalBinary.Specifications.LibsignalSpqrV1.Assemble
+public import ProofLib
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,37 +51,33 @@ open CryptoVerification.SpqrV1.Top.StateSize (except_bind_eq_ok)
 
 /-- Canonical R3 2 MiB (`2,097,152` B) cap on serialized `SessionRecord` files
 (`Computational.Proofs.LibsignalCli.Entry.sessionCapBytes`). -/
-def sessionCapBytes : Nat := 2 ^ 21
+@[expose] def sessionCapBytes : Nat := 2 ^ 21
 
 /-- Tight serialized SPQR V1 ratchet state ceiling (`286,196` B, matching
 `reachPq_pqLength_le_286196`). -/
-def spqrStateTightCapBytes : Nat := 286196
+@[expose] def spqrStateTightCapBytes : Nat := 286196
 
 /-- Canonical 1 MiB (`1,048,576` B) cap on SPQR `PolyEncoder` point slices and bounded CLI payloads. -/
-def msgCapBytes : Nat := 2 ^ 20
+@[expose] def msgCapBytes : Nat := 2 ^ 20
 
 theorem spqrStateTightCapBytes_le_sessionCapBytes :
     spqrStateTightCapBytes ≤ sessionCapBytes := by
-  decide
-
-theorem sessionCapBytes_lt_2_31 :
-    sessionCapBytes < 2 ^ 31 := by
   decide
 
 /-! ## 2. SPQR V1 `PolyEncoder` Point-Slice Caps (`ValidEncoderPts`) -/
 
 /-- Point-slice byte cap on a protobuf `PolynomialEncoder` (`2 * 524288 = 1048576`, matching the
 maximum input byte length `(1 <<< 16) * NUM_POLYS` accepted by `PolyEncoder::encode_bytes`). -/
-def ValidEncPbPts (pb : PolynomialEncoder) : Prop :=
+@[expose] def ValidEncPbPts (pb : PolynomialEncoder) : Prop :=
   ∀ bs ∈ pb.pts, bs.length ≤ 1048576
 
 /-- Point-slice byte cap lifted to `Option PolynomialEncoder`. -/
-def ValidOptEncPbPts : Option PolynomialEncoder → Prop
+@[expose] def ValidOptEncPbPts : Option PolynomialEncoder → Prop
   | none => True
   | some pb => ValidEncPbPts pb
 
 /-- Point-slice byte cap across the encoder-carrying variants of `V1State`. -/
-def ValidV1Pts (v1 : V1State) : Prop :=
+@[expose] def ValidV1Pts (v1 : V1State) : Prop :=
   match v1.innerState with
   | none => True
   | some (.keysUnsampled _) => True
@@ -93,23 +93,23 @@ def ValidV1Pts (v1 : V1State) : Prop :=
   | some (.ct2Sampled s) => ValidOptEncPbPts s.sendingCt2
 
 /-- Point-slice byte cap on a decoded `PqRatchetState`. -/
-def ValidPqPts (pq : PqRatchetState) : Prop :=
+@[expose] def ValidPqPts (pq : PqRatchetState) : Prop :=
   match pq.inner with
   | none => True
   | some (.v1 v1) => ValidV1Pts v1
 
 /-- Point-slice byte cap on serialized SPQR state bytes `stBytes`. -/
-def ValidEncoderPts (stBytes : Bytes) : Prop :=
+@[expose] def ValidEncoderPts (stBytes : Bytes) : Prop :=
   match spqrDecodeState stBytes with
   | .error _ => True
   | .ok pq => ValidPqPts pq
 
 /-- Decoded `PolyEncoder` point-count cap (`≤ 524288` GF16 elements per polynomial). -/
-def EncPtsBounded (enc : PolyEncoder) : Prop :=
+@[expose] def EncPtsBounded (enc : PolyEncoder) : Prop :=
   ∀ pts, enc.s = .points pts → ∀ pt ∈ pts, pt.value.length ≤ 524288
 
 /-- Decoded `States` point-count cap across the encoder-carrying variants. -/
-def StatesPtsBounded {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → Prop
+@[expose] def StatesPtsBounded {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → Prop
   | .keysUnsampled _ => True
   | .keysSampled s => EncPtsBounded s.sending_hdr
   | .headerSent s => EncPtsBounded s.sending_ek

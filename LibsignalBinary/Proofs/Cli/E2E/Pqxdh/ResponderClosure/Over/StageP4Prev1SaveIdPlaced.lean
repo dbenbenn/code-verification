@@ -9,14 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1SaveId
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1SaveId
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Bin.Hooks
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveId
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveId -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.HeapDefs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveIdProof
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4SaveIdPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrAPlaced
+public import ProofLib.FsTrace
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34Defs
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 
 /-!
 # Placed Stage P4.1 (`save_identity`) on 1-Element `previous_sessions`
@@ -26,7 +39,7 @@ Proves `[LibsignalPlacement]` Substage P4.1 (`IdentityKeyStore::save_identity`,
 `lsProg_518 ext`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -62,7 +75,7 @@ attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_add_neg96_eq_hsp_592
 
 /-- Spatial resources preserved across placed Substage P4.1 over `prevVecAt [enc]`. -/
-def stageP4SaveIdPrev1SharedPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def stageP4SaveIdPrev1SharedPlaced [LibsignalPlacement] {A : RustAlloc}
     (ikit : IdentityStoreSpec A 0#64) (s0 s : State)
     (coroPtr msgPtr remoteAddrPtr remoteIkPtr idStorePtr
      kyberStorePtr kyberStoreVt ptCap ptPtr v_3d0 : BitVec 64)
@@ -80,7 +93,7 @@ def stageP4SaveIdPrev1SharedPlaced [LibsignalPlacement] {A : RustAlloc}
   (lsLogFilterAddr ↦₆₄ 0#64) ∗ A.pool ∗ stackAt s.sp (saveIdCallStack ikit)
 
 /-- Precondition of placed Substage P4.1 at `(blkPl_518).base + 0x34dc` over `prevVecAt [enc]`. -/
-def stageP4SaveIdPrev1PrePlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def stageP4SaveIdPrev1PrePlaced [LibsignalPlacement] {A : RustAlloc}
     (ikit : IdentityStoreSpec A 0#64) (s0 s : State)
     (coroPtr msgPtr outPtr remoteAddrPtr remoteIkPtr idStorePtr
      kyberStorePtr kyberStoreVt prevCap prevPtr ptCap ptPtr v_3d0 : BitVec 64)
@@ -101,7 +114,7 @@ def stageP4SaveIdPrev1PrePlaced [LibsignalPlacement] {A : RustAlloc}
   memRegion outPtr 48 ∗ ikit.identityAt idStorePtr ist0
 
 /-- Postcondition of placed Substage P4.1 on `Ok(c)` at `kyberMarkUsedShimAddr`. -/
-def stageP4SaveIdPrev1OkPostPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def stageP4SaveIdPrev1OkPostPlaced [LibsignalPlacement] {A : RustAlloc}
     (ikit : IdentityStoreSpec A 0#64) (s0 s : State)
     (coroPtr msgPtr outPtr remoteAddrPtr remoteIkPtr idStorePtr
      kyberStorePtr kyberStoreVt kyberMarkUsedShimAddr prevCap prevPtr ptCap ptPtr v_3d0 : BitVec 64)
@@ -127,7 +140,7 @@ def stageP4SaveIdPrev1OkPostPlaced [LibsignalPlacement] {A : RustAlloc}
   memRegion outPtr 48 ∗ ikit.identityAt idStorePtr (ikit.saveUpdate ist0 peer.val remoteIk (.ok c))
 
 /-- Postcondition of placed Substage P4.1 on `Err(())` at `s0.readReg64 .x30`. -/
-def stageP4SaveIdPrev1ErrPostPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def stageP4SaveIdPrev1ErrPostPlaced [LibsignalPlacement] {A : RustAlloc}
     (ikit : IdentityStoreSpec A 0#64) (s0 s : State)
     (coroPtr msgPtr outPtr remoteAddrPtr remoteIkPtr idStorePtr
      kyberStorePtr kyberStoreVt kyberMarkUsedShimAddr ptCap ptPtr v_3d0 : BitVec 64)

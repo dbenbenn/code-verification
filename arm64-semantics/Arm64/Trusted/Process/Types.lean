@@ -137,8 +137,10 @@ structure AuxvConfig where
   extra       : List (BitVec 64 × BitVec 64) := []
   deriving DecidableEq, Repr, Inhabited
 
-/-- Default top of the user stack (`0x0000_7fff_ffff_0000`, page-aligned, below the canonical
-    user limit and separate from fixed `ET_EXEC` load addresses). -/
+/-- Default exclusive upper bound (`vma->vm_end` in Linux `fs/exec.c` `setup_arg_pages`) of the
+    initial user stack VMA `[stackTop - stackSize, stackTop)` (`0x0000_7fff_ffff_0000`,
+    page-aligned, sitting above the `[sp, stackTop)` `execve` entry image, below the canonical
+    user limit, and separate from fixed `ET_EXEC` load addresses). -/
 def defaultStackTop : BitVec 64 := 0x00007fffffff0000#64
 
 /-- Default user stack mapping size (`8 MiB = 2048` 4 KiB pages; Linux `_STK_LIM` in
@@ -152,14 +154,20 @@ def defaultOracle : Oracle :=
   { mmap := fun n => 0x0000600000000000#64 + BitVec.ofNat 64 (n * (16 * Obj.pageSize)) }
 
 /-- Nondeterministic kernel, hardware, and environment choices made at Linux `execve(2)`
-    process-initialization time (`fs/exec.c` `bprm_mm_init`, `fs/binfmt_elf.c`
-    `setup_arg_pages` + `create_elf_tables`, `arch/arm64/include/asm/elf.h`
-    `randomize_stack_top`):
+    process-initialization time (`fs/exec.c` `bprm_mm_init` + `setup_arg_pages`,
+    `fs/binfmt_elf.c` `load_elf_binary` + `create_elf_tables`, `arch/arm64/include/asm/elf.h`
+    `randomize_stack_top`, `mm/vma.c` `acct_stack_growth`):
     - `auxv`: auxiliary-vector seed, credential, and CPU-feature configuration (`AT_RANDOM`
       16-byte buffer, `AT_HWCAP`/`AT_HWCAP2`, `AT_UID`/`AT_EUID`/`AT_GID`/`AT_EGID`,
       `AT_SECURE`, and optional arch tags),
-    - `stackTop`: page-aligned top of the initial user stack (`[stackTop - stackSize, stackTop)`),
-    - `stackSize`: byte size of the initial user stack mapping (`RLIMIT_STACK`),
+    - `stackTop`: page-aligned exclusive upper bound of the initial user stack VMA
+      `[stackTop - stackSize, stackTop)`, corresponding to Linux `vma->vm_end` *above* the
+      `[sp, stackTop)` `execve` entry image (`argc`/`argv`/`envp`/`auxv` table, `AT_RANDOM`,
+      `"aarch64\0"`, `argv`/`envp`/`execfn` strings, and top sentinel), not the initial `sp`,
+    - `stackSize`: byte size of the initial user stack mapping `[stackTop - stackSize, stackTop)`
+      (`RLIMIT_STACK` measured downward from `stackTop = vma->vm_end` as in `acct_stack_growth`,
+      charging the entire `[sp, stackTop)` `execve` entry image against `stackSize` and leaving
+      `[stackTop - stackSize, sp)` zero-mapped below `sp`),
     - `physMemAvail`: available physical RAM budget in bytes (`1 GiB = 2 ^ 30` by default) for
       dynamic writable anonymous mappings (`Perm.rw`) on top of initial `PT_LOAD` segments and
       the mapped user stack `[stackTop - stackSize, stackTop)`,
@@ -168,9 +176,14 @@ def defaultOracle : Oracle :=
 structure ProcessInit where
   /-- Auxiliary vector configuration (`AT_RANDOM`, `AT_HWCAP`, credentials, extra tags). -/
   auxv         : AuxvConfig := {}
-  /-- Page-aligned top of the initial user stack (`[stackTop - stackSize, stackTop)`). -/
+  /-- Page-aligned exclusive upper bound (`vma->vm_end`) of the initial user stack
+      `[stackTop - stackSize, stackTop)`, placed *above* the `[sp, stackTop)` `execve` entry
+      image (`buildInitialStack`), not at the initial `sp`. -/
   stackTop     : BitVec 64 := defaultStackTop
-  /-- Size in bytes of the mapped user stack (must be a page-aligned size in `[STK_LIM, STACK_SIZE_MAX]`). -/
+  /-- Size in bytes of the mapped user stack `[stackTop - stackSize, stackTop)` (`RLIMIT_STACK`
+      measured downward from `stackTop = vma->vm_end`, must be a page-aligned size in
+      `[STK_LIM, STACK_SIZE_MAX]`); `ElfImage.loadState` charges the `[sp, stackTop)` `execve`
+      entry image against `stackSize` and zero-maps `[stackTop - stackSize, sp)` below `sp`. -/
   stackSize    : Nat := defaultStackSize
   /-- Available physical memory budget in bytes (`2 ^ 30 = 1 GiB` by default) for dynamic
       writable (`Perm.rw`) page allocations after `PT_LOAD` segments and the user stack are

@@ -11,12 +11,12 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneChainsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneChainsPlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneChainsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneChainsPlacedBudgetAux
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -24,6 +24,8 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Placed Segment 2: `receiver_chains` (Block `518`)
@@ -33,7 +35,7 @@ Deterministic allocation-event trace `cloneChainsEvents` / `CloneChainsEnv` and 
 `+0x19b0 → +0x1a5c`, `genP3J1PlacedBudget → genP3J2PlacedBudget`) on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -102,7 +104,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.add_assoc BitVec.toNat_zero
     - `[]` when `st.receiverChains = []`;
     - `rustAllocEvents (st.receiverChains.length * 104) 8` followed by
       `(recG.chains.zip st.receiverChains).flatMap chainCloneEvents` when non-empty. -/
-def cloneChainsEvents (recG : SessionGhost) (st : SessionState (List (BitVec 8))) :
+@[expose] def cloneChainsEvents (recG : SessionGhost) (st : SessionState (List (BitVec 8))) :
     List AllocEvent :=
   if st.receiverChains = [] then []
   else rustAllocEvents (st.receiverChains.length * 104) 8 ++
@@ -110,7 +112,7 @@ def cloneChainsEvents (recG : SessionGhost) (st : SessionState (List (BitVec 8))
 
 /-- Exact allocation envelope for Segment 2 (`+0x19b0 → +0x1a5c`) of Stage P3
     `SessionState::clone`. -/
-def CloneChainsEnv (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
+@[expose] def CloneChainsEnv (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
     (evs : List AllocEvent) : Prop :=
   evs = cloneChainsEvents recG st
 
@@ -122,15 +124,6 @@ theorem fitsEvents_cloneChains_of_fitsEnv (M : AllocCostModel) (lim : BudgetLimi
     (h : FitsEnv M lim stB (CloneChainsEnv recG st)) :
     FitsEvents M lim stB (cloneChainsEvents recG st) :=
   h (cloneChainsEvents recG st) rfl
-
-private theorem sessionShimBudget_of_noAllocShimBudget {P : Program} {a : BitVec 64}
-    (h : subroutine_ok P a noAllocShimBudgetSpec) :
-    subroutine_ok P a sessionShimBudgetSpec := by
-  refine subroutine_ok_mono h (fun _ _ _ hp => hp) (fun _ _ _ _ hq => ?_)
-  dsimp only [noAllocShimBudgetSpec, sessionShimBudgetSpec, sessionShimSpec] at hq ⊢
-  rw [satisfies_pure_sepConj] at hq
-  rw [sepConj_assoc, satisfies_pure_sepConj, satisfies_pure_sepConj]
-  exact ⟨hq.1.2, hq.1.1, hq.2⟩
 
 /-! ## 2. Budget-Threaded `cloneChains_vregs_placed_ok` (`+0x19b0 → +0x1a5c`) -/
 
@@ -574,86 +567,5 @@ theorem cloneChains_vregs_placed_ok [LibsignalPlacement] {M : AllocCostModel}
   refine sepWPp_bind_frame_any hstep (sepConj_emp _).symm fun s1 P_f hpc1 hrun1 ⟨hent1, htr1, hcro1, hv1⟩ => ?_
   rw [sepConj_emp]
   exact sepWPp_done_any hpc1 hrun1 ⟨cloneChainsEvents recG st, rfl, hent1, htr1, hcro1, hv1⟩
-
-/-- Variant accepting `noAllocShimBudgetSpec` directly. -/
-theorem cloneChains_vregs_noAllocShim_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stB : M.σ}
-    {Qp : State → SepProp → Prop}
-    (ext : String → Option (State → State))
-    (hshim : subroutine_ok (lsProg_518 ext) (lsρ lsShimSym) noAllocShimBudgetSpec)
-    (halloc : subroutine_ok (lsProg_518 ext) (lsρ lsAllocSym)
-      (rustCliAllocBudgetSpec M A lim false))
-    (hcc : ChainClone3OkPlaced A lim ext)
-    (s0 s : State)
-    (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
-    (msgVer : BitVec 32) (rest : List (BitVec 8))
-    (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
-    (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
-    (hrc_len : st.receiverChains.length < 2 ^ 32)
-    (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    (hsp_root : rootStack ≤ sp.toNat)
-    (hfits : FitsEnv M lim stB (CloneChainsEnv recG st))
-    (hcro : LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryM3Placed + 0x19b0#64)
-    (hrun : s.status = .Running)
-    (htr : s.trace = s0.trace) :
-    SepWPp (lsProg_518 ext)
-      (dpClosureEntryM3Placed + 0x1a5c#64) s
-      (genP3J1PlacedBudget A lim stB sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur
-        msgVer rest recG st rem loc msgG msg s)
-      (fun s1 P_f =>
-        ∃ evs : List AllocEvent,
-          CloneChainsEnv recG st evs ∧
-          (P_f ⊢ genP3J2PlacedBudget A lim (M.stepEvents evs stB)
-            sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest
-            recG st rem loc msgG msg s1) ∧
-          s1.trace = s0.trace ∧
-          LibsignalCodeRoLoaded lsmpl s1.mem ∧
-          calleeSavedVRegs s1 = calleeSavedVRegs s)
-      Qp :=
-  cloneChains_vregs_placed_ok ext (sessionShimBudget_of_noAllocShimBudget hshim) halloc hcc
-    s0 s sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest
-    recG st rem loc msgG msg hrc_len hsp_align hsp_root hfits hcro hpc hrun htr
-
-/-- VM-hook entry variant accepting `rustAllocShimVmSpec` directly. -/
-theorem cloneChains_vregs_vmHooks_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stB : M.σ}
-    {Qp : State → SepProp → Prop}
-    (ext : String → Option (State → State))
-    (hshim : subroutine_ok (lsProg_518 ext) (lsρ lsShimSym) rustAllocShimVmSpec)
-    (halloc : subroutine_ok (lsProg_518 ext) (lsρ lsAllocSym)
-      (rustCliAllocBudgetSpec M A lim false))
-    (hcc : ChainClone3OkPlaced A lim ext)
-    (s0 s : State)
-    (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
-    (msgVer : BitVec 32) (rest : List (BitVec 8))
-    (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
-    (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
-    (hrc_len : st.receiverChains.length < 2 ^ 32)
-    (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    (hsp_root : rootStack ≤ sp.toNat)
-    (hfits : FitsEnv M lim stB (CloneChainsEnv recG st))
-    (hcro : LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryM3Placed + 0x19b0#64)
-    (hrun : s.status = .Running)
-    (htr : s.trace = s0.trace) :
-    SepWPp (lsProg_518 ext)
-      (dpClosureEntryM3Placed + 0x1a5c#64) s
-      (genP3J1PlacedBudget A lim stB sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur
-        msgVer rest recG st rem loc msgG msg s)
-      (fun s1 P_f =>
-        ∃ evs : List AllocEvent,
-          CloneChainsEnv recG st evs ∧
-          (P_f ⊢ genP3J2PlacedBudget A lim (M.stepEvents evs stB)
-            sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest
-            recG st rem loc msgG msg s1) ∧
-          s1.trace = s0.trace ∧
-          LibsignalCodeRoLoaded lsmpl s1.mem ∧
-          calleeSavedVRegs s1 = calleeSavedVRegs s)
-      Qp :=
-  cloneChains_vregs_placed_ok ext
-    (subroutine_ok_sessionShimBudget_of_rustAllocShimVm hshim) halloc hcc
-    s0 s sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest
-    recG st rem loc msgG msg hrc_len hsp_align hsp_root hfits hcro hpc hrun htr
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneChainsPlacedBudget

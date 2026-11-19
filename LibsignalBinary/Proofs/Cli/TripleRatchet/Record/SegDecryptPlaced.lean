@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Record.SegDecrypt
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegDecrypt
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosureFrozenPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatch
 
 /-!
 # Relocatable CLI `SegDecrypt` (`segDecrypt_placed_ok`)
@@ -23,7 +25,7 @@ Proves `SegDecryptPlacedSpec` (`+0x69c → +0x1e8c / +0x850`) under `[LibsignalP
 `[LibsignalFullPlacement]` on CLI Block `463`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

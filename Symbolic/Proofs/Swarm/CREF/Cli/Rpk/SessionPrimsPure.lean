@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.PinCoinsPure
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
-public import Symbolic.Proofs.Swarm.SHARED.HookAuthPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.PinCoinsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.SHARED.HookAuthPure -- proof-setup: allow-public-import
+public import Symbolic.Specifications.Concrete.MachineEvents
 
 /-!
 # Machine-Free Session and SPQR Primitives
@@ -21,7 +22,7 @@ Defines machine-free counterparts of `drawsCoins`, `DecryptCoinsOk`,
 projections.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +36,7 @@ open CryptoVerification.LibsignalSpqrV1
 open CryptoProofLib.Refinement (ExternInterpretation)
 
 /-- Coin-draw predicate for `tryDecryptWithStateW`. -/
-def pureDrawsCoins {PQ : Type} (C : Crypto) (st : SessionState PQ) (their : PublicKey) : Bool :=
+@[expose] def pureDrawsCoins {PQ : Type} (C : Crypto) (st : SessionState PQ) (their : PublicKey) : Bool :=
   st.remoteIdentity.isSome &&
     match RatchetState.findReceiverChainKey
         ⟨st.rootKey, st.senderChain, st.receiverChains, st.previousCounter, maxForwardJumps⟩
@@ -82,13 +83,13 @@ theorem pureDecryptCoinsOk_of_draws_false (C : Crypto) (st : SessionState HwByte
   Or.inl ⟨hdraws, rfl⟩
 
 /-- Maps a 32-byte key `some k` (`k.length = 32`) to `some ⟨k, h⟩` and any other option to `none`. -/
-def pureSaltOfKeyBytes? (k? : Option HwBytes) : Option (List.Vector (BitVec 8) 32) :=
+@[expose] def pureSaltOfKeyBytes? (k? : Option HwBytes) : Option (List.Vector (BitVec 8) 32) :=
   match k? with
   | some k => if h : k.length = 32 then some ⟨k, h⟩ else none
   | none => none
 
 /-- Constructs a `Spqr HwBytes HwBytes` directly from `D : SpqrApiDeps` and `hkdf : HkdfFn`. -/
-def pureSpqrFromDeps (D : SpqrApiDeps) (hkdf : HkdfFn) : Spqr HwBytes HwBytes where
+@[expose] def pureSpqrFromDeps (D : SpqrApiDeps) (hkdf : HkdfFn) : Spqr HwBytes HwBytes where
   init := fun _ _ => []
   send := fun stateBytes tape =>
     match (CryptoVerification.LibsignalSpqrV1.send D hkdf stateBytes tape).1 with
@@ -109,7 +110,7 @@ def pureSpqrFromDeps (D : SpqrApiDeps) (hkdf : HkdfFn) : Spqr HwBytes HwBytes wh
   recvPanics := fun stateBytes msgBytes => recvPanicsB D hkdf stateBytes msgBytes
 
 /-- Pure `Spqr HwBytes HwBytes` induced by `i : ExternInterpretation`. -/
-def pureSpqrOf (i : ExternInterpretation) : Spqr HwBytes HwBytes :=
+@[expose] def pureSpqrOf (i : ExternInterpretation) : Spqr HwBytes HwBytes :=
   pureSpqrFromDeps
     (Symbolic.Swarm.TRREF.SpqrSemOf.spqrDepsWithMac
       (sha256CompressFunction i)
@@ -118,7 +119,7 @@ def pureSpqrOf (i : ExternInterpretation) : Spqr HwBytes HwBytes :=
     (spqrHkdfWith (sha256CompressFunction i))
 
 /-- Pure `Spqr HwBytes HwBytes` mapping receive keys through `pureSaltOfKeyBytes?`. -/
-def pureSpqrEmptyAsNone (F : ShaCompress) (K : MlKem)
+@[expose] def pureSpqrEmptyAsNone (F : ShaCompress) (K : MlKem)
     (H : Symbolic.Swarm.SHARED.HookAuth.HmacFn) : Spqr HwBytes HwBytes where
   init := fun _ _ => []
   send := fun stateBytes tape =>

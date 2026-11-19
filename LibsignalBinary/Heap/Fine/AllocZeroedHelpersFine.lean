@@ -23,7 +23,7 @@ lemmas.
 
 set_option autoImplicit false
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 
@@ -192,9 +192,6 @@ def rdlAllocZeroedInstrs
     .addSubImm .W64 .ADD .sp .sp 0x30#12 false,
     .ret .x30 ]
 
-@[scoped simp] theorem rdlAllocZeroedInstrs_length (az ca pm ms : BitVec 64) :
-    (rdlAllocZeroedInstrs az ca pm ms).length = 36 := rfl
-
 private def rdlAllocZeroedRelocs : List Obj.RelocEntry :=
   [{ off := 56, kind := .jump26, sym := "calloc" },
    { off := 84, kind := .call26, sym := "posix_memalign" },
@@ -207,10 +204,6 @@ private def rdlAllocZeroedWords : List (BitVec 32) :=
    0x9a888021#32, 0xaa1303e2#32, 0xf90007ff#32, 0x97fffea4#32, 0x2a0003e8#32, 0xaa1f03e0#32,
    0x35000108#32, 0xf94007f4#32, 0xb40000d4#32, 0xaa1403e0#32, 0x2a1f03e1#32, 0xaa1303e2#32,
    0x97fff488#32, 0xaa1403e0#32, 0xa9424ff4#32, 0xa9417bfd#32, 0x9100c3ff#32, 0xd65f03c0#32]
-
-private theorem rdlAllocZeroedInstrs_template_eq :
-    (Obj.patchRelocs rdlAllocZeroedRelocs rdlAllocZeroedWords 0#64 (fun _ => 0#64)).map Arm64.decode =
-      (rdlAllocZeroedInstrs 0#64 0#64 0#64 0#64).map some := by decide +kernel
 
 /-- `WordTree` code validator for `__rustc::__rdl_alloc_zeroed` (36 instructions). -/
 def checkRdlAllocZeroedCode (imgBase : BitVec 64) (t : WordTree)
@@ -231,71 +224,12 @@ theorem rdlAllocZeroedCode_of_wordTree {P : Program} {t : WordTree}
     decide_eq_true_eq] at hok
   exact hasInstrs_of_wordTree n hcode hwf hok.1.1 hok.1.2 hext hovr hok.2
 
-/-- `WordTree` validator for the 1-instruction `B` thunk `__rust_alloc_zeroed → __rdl_alloc_zeroed`. -/
-def checkRdlAllocZeroedThunk (imgBase : BitVec 64) (t : WordTree)
-    (thunkAddr targetAddr : BitVec 64) : Bool :=
-  checkShimInstrsAt imgBase t thunkAddr [ .b (targetAddr - thunkAddr) ]
-
-/-- Discharge `hasInstrs P thunkAddr [ .b (targetAddr - thunkAddr) ]` via `decide +kernel` over `WordTree`. -/
-theorem rdlAllocZeroedThunk_of_wordTree {P : Program} {t : WordTree}
-    {thunkAddr targetAddr : BitVec 64}
-    (n : Nat) (hcode : P.code = t.toBytes) (hwf : t.checkSize? = some n)
-    (hext : ∀ sym, (P.externs sym).isNone = true := by intro _; rfl)
-    (hovr : ∀ sym, (P.overrides sym).isNone = true := by intro _; rfl)
-    (hok : checkRdlAllocZeroedThunk P.base t thunkAddr targetAddr = true) :
-    hasInstrs P thunkAddr [ .b (targetAddr - thunkAddr) ] := by
-  simp only [checkRdlAllocZeroedThunk, checkShimInstrsAt, Bool.and_eq_true, beq_iff_eq,
-    decide_eq_true_eq] at hok
-  exact hasInstrs_of_wordTree n hcode hwf hok.1.1 hok.1.2 hext hovr hok.2
-
 /-! ## Stack and Store Helpers -/
 
 namespace AllocZeroedHelpers
 
 attribute [local simp] Memory.perm_write8 Memory.perm_write16 Memory.perm_write32
   Memory.perm_write64 Memory.perm_writeBytes
-
-@[scoped simp] theorem physMemAvail_setPC (s : State) (pc : BitVec 64) :
-    (s.setPC pc).physMemAvail = s.physMemAvail := by cases s; rfl
-
-@[scoped simp] theorem physMemAvail_advancePC (s : State) :
-    s.advancePC.physMemAvail = s.physMemAvail := by cases s; rfl
-
-@[scoped simp] theorem physMemAvail_setPState (s : State) (ps : PState) :
-    (s.setPState ps).physMemAvail = s.physMemAvail := by cases s; rfl
-
-@[scoped simp] theorem physMemAvail_writeReg64 (s : State) (r : Reg) (v : BitVec 64) :
-    (s.writeReg64 r v).physMemAvail = s.physMemAvail := by cases s; cases r <;> rfl
-
-@[scoped simp] theorem physMemAvail_writeReg32 (s : State) (r : Reg) (v : BitVec 32) :
-    (s.writeReg32 r v).physMemAvail = s.physMemAvail := physMemAvail_writeReg64 s r _
-
-@[scoped simp] theorem physMemAvail_writeReg (s : State) (w : Width) (r : Reg) (v : BitVec 64) :
-    (s.writeReg w r v).physMemAvail = s.physMemAvail := physMemAvail_writeReg64 s r _
-
-@[scoped simp] theorem physMemAvail_setMem (s : State) (m : Memory) :
-    (s.setMem m).physMemAvail = s.physMemAvail := by cases s; rfl
-
-@[scoped simp] theorem perm_setPC (s : State) (pc : BitVec 64) :
-    (s.setPC pc).mem.perm = s.mem.perm := by cases s; rfl
-
-@[scoped simp] theorem perm_advancePC (s : State) :
-    s.advancePC.mem.perm = s.mem.perm := by cases s; rfl
-
-@[scoped simp] theorem perm_setPState (s : State) (ps : PState) :
-    (s.setPState ps).mem.perm = s.mem.perm := by cases s; rfl
-
-@[scoped simp] theorem perm_writeReg64 (s : State) (r : Reg) (v : BitVec 64) :
-    (s.writeReg64 r v).mem.perm = s.mem.perm := by cases s; cases r <;> rfl
-
-@[scoped simp] theorem perm_writeReg32 (s : State) (r : Reg) (v : BitVec 32) :
-    (s.writeReg32 r v).mem.perm = s.mem.perm := perm_writeReg64 s r _
-
-@[scoped simp] theorem perm_writeReg (s : State) (w : Width) (r : Reg) (v : BitVec 64) :
-    (s.writeReg w r v).mem.perm = s.mem.perm := perm_writeReg64 s r _
-
-@[scoped simp] theorem perm_setMem (s : State) (m : Memory) :
-    (s.setMem m).mem.perm = m.perm := by cases s; rfl
 
 theorem step_str64_perm {prog : Program} {target_pc : BitVec 64}
     {s s' : State} {P P' : SepProp} {post : State → SepProp → Prop} {oom : State → SepProp}

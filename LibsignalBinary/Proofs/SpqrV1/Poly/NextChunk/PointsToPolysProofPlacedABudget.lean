@@ -9,17 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
-public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProof
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProofPlacedA
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSumPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
+public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProof -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSumMult1Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProofPlacedA
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSumPlacedBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Budget-Threaded Placed Sum and Cleanup
@@ -29,7 +33,7 @@ Relocatable `[LibsignalPlacement]` verification of `lagrangeSumAndFree_placed_se
 `RustCliAllocBudget M`, `BudgetLimits`, `LagrangeSumStepEnv`, and `FreeOnlyEvs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -54,7 +58,7 @@ open CryptoVerification.SpqrV1.Poly.LagrangePrepare
 open CryptoVerification.SpqrV1.Poly.NextChunk
   (add_8_add_8_eq basisVecAt cmn_one_ne_zero completePointsBasisPure
    completePointsBasisPure_length completePointsBasisPure_mem_length newPolyBufAt
-   ofNat_pos_ne_zero pointToPolyPure polyOf_empty_unfold polyOf_of_newPolyBufAt
+   ofNat_pos_ne_zero onceScratch416 pointToPolyPure polyOf_empty_unfold polyOf_of_newPolyBufAt
    ptVecBufAt ptVecBufAt_pos_entails ptVecBufAt_zero_drop shl1_oldCap_eq shl2_len_eq)
 open LibsignalBinary.Heap
   (AllocCallPreserved AllocCostModel AllocEvent BudgetLimits FitsEnv FreeOnlyEvs
@@ -164,7 +168,7 @@ theorem lagrangeSumAndFree_placed_sepWPp [LibsignalPlacement]
          ((fsp + 664#64) ↦₆₄ u664') ∗
          ((fsp + 672#64) ↦₆₄ u672') ∗
          reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
-         stackAt fsp lagrangePrepareStack ∗ Frame)
+         onceScratch416 fsp ∗ stackAt fsp lagrangePrepareStack ∗ Frame)
         Q Q_panic) :
     SepWPp ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
       (s0.readReg64 (Reg.gpr 30#5)) s
@@ -182,7 +186,7 @@ theorem lagrangeSumAndFree_placed_sepWPp [LibsignalPlacement]
        ((fsp + 648#64) ↦₆₄ u648) ∗
        memRegion (fsp + 656#64) 24 ∗
        reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
-       stackAt fsp lagrangePrepareStack ∗ Frame)
+       onceScratch416 fsp ∗ stackAt fsp lagrangePrepareStack ∗ Frame)
       Q Q_panic := by
   refine SepWPp.weaken_pre (Entails.of_eq (by sep_ac_rfl))
     (lagrangeSumAndFree_gen_placed_sepWPp hA pts (completePointsBasisPure pts)

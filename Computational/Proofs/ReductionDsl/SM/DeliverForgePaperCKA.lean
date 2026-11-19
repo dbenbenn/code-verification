@@ -10,17 +10,16 @@ limitations under the License.
 module
 
 public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperDefs
-public import Computational.Proofs.ReductionDsl.SM.DeliverForge
+public import Computational.Proofs.ReductionDsl.SM.DeliverForge -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Notation
 
 /-!
 # Costed `implECDFPaper` Engine Dispatch and `redCKAAuthDFPaperProg` Reduction
 
 Deep-embedded `ReductionDsl` engine dispatcher `implECDFPaper` and `CostedReduction` formulation
-`redCKAAuthDFPaperProg` of `DeliverForge.redCKAAuthDFPaper`.
--/
+`redCKAAuthDFPaperProg` of `DeliverForge.redCKAAuthDFPaper`.-/
 
-@[expose] public section
+public section
 
 open ReductionDsl OracleSpec OracleComp
 open scoped Computational.Proofs.ReductionDsl.Notation
@@ -66,7 +65,7 @@ local notation "psTy" => ckaPsTy KC Γ CCoins T I KR RSt K SS RS M E
 local notation "rrTy" => ckaRrTy KC Γ CCoins T I KR RSt K SS RS M E
 
 /-- Costed `SM.GameState.corrAllowedPaper` expression with list-scan bound `L`. -/
-def cCorrAllowedPaperE
+@[expose] def cCorrAllowedPaperE
     {O' : Ops S} {vpT : Ty S} {Γ'} (L : ℕ) (s : Expr O' Γ' (cGsTy vpT))
     (p : Expr O' Γ' .bool) : Expr O' Γ' .bool :=
   rdslExpr =>
@@ -95,7 +94,7 @@ theorem cCorrAllowedPaperE_eval {O' : Ops S} {vpT : Ty S} {VPt : Type}
   simp [ρ₁, posSender, otherE, posEnc, ← partyEnc_other, partyEnc_beq, Expr.eval,
     Expr.v0, Expr.v1]
 
-def corrECPaper
+@[expose] def corrECPaper
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -122,7 +121,7 @@ def corrECPaper
         | none => return (none, esMk s0 h' true)
         | some st => return (some st, esMk s1 h' (esAbort es0))
 
-def implECPaper
+@[expose] def implECPaper
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -153,7 +152,7 @@ def implECPaper
       return (.inr r, es')
 
 /-- Six-oracle costed engine dispatcher for `DeliverForge.implEDFPaper`. -/
-def implECDFPaper
+@[expose] def implECDFPaper
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -753,7 +752,7 @@ theorem runCKADFPaper_eq_bind_initCKARaw
   · simp only [StateT.run_pure, pure_bind]; rfl
 
 /-- Costed `DeliverForge.redCKAAuthDFPaper` reduction over `SM.specDF`. -/
-def redCKAAuthDFPaperProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
+@[expose] def redCKAAuthDFPaperProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction OO II
       (SM.specDF (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (ckaSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E)
@@ -882,6 +881,193 @@ theorem redCKAAuthDFPaperProg_eval_vr
       (sampI := sampI) (sampK := sampK)
       L B Δcka qep maxSkip tL t).totalQueries (fun _ => 1) (fun _ => 0) q = q * 2 := by
   simp [CostedReduction.totalQueries, redCKAAuthDFPaperProg, Comp.queries]
+
+/-! ### Stage-2 `(tL, par)` Bucket `redCKAAuthDFPaperBucketProg` -/
+
+/-- Epoch admissibility predicate for `(tL, par)`-bucket paper authenticity (`Δbucket = 3 + Δcka`,
+i.e., `4` at `Δcka = 1` after `B1` + `B2`): `validGuessE Δbucket tL t0` and sender parity `par`. -/
+@[expose] def validGuessBucketParPaperE {S' : Sig} {O' : Ops S'} (Δbucket : ℕ) (tL : Option ℕ) (par : Bool)
+    {Γ'} (tE : Expr O' Γ' .nat) : Expr O' Γ' .bool :=
+  rdslExpr =>
+    validGuessE (raw Δbucket) (Engine.optNatLit (raw tL)) tE &&
+      (if bool par then senderOfE tE else !(senderOfE tE))
+
+/-- Pure `startRecv` answer expression for the Stage-2 `(tL, par)` bucket paper CKA hooks. -/
+@[expose] def ckaStartRecvBucketParPaperAnsE (Δbucket : ℕ) (tL : Option ℕ) (par : Bool) {Γ'}
+    (hE : Expr OO Γ' ckaHsTy)
+    (tE : Expr OO Γ' .nat)
+    (γvE : Expr OO Γ' (.opt (.base .γ)))
+    (σE : Expr OO Γ' (.base .sig))
+    (tnE : Expr OO Γ' (.base .t)) :
+    Expr OO Γ'
+      (.opt (.opt (.prod (.opt (.base .γ)) (.prod (.base .sig) (.base .rs))))) :=
+  rdslExpr =>
+    letE (hE, tE, γvE, σE, tnE) fun (h0, t0, γv0, σ0, tn0) =>
+      let honest :=
+        match tget h0 t0 with
+        | none => none
+        | some (tCached, ikCached) =>
+          if Expr.op (O := OO) CKAOp.eqT (tCached, tn0) then some ikCached else none
+      match honest with
+      | none =>
+        if validGuessBucketParPaperE (raw Δbucket) (raw tL) (raw par) t0 then
+          match γv0 with
+          | none => none
+          | some γ =>
+            let kOut := Expr.op (O := OO) CKAOp.ckaReceive (γ, tn0)
+            let pOut := Expr.op (O := OO) CKAOp.prngUp (σ0, kOut.2)
+            let rs := Expr.op (O := OO) CKAOp.fsInitReceiver pOut.2
+            some (some (some kOut.1, pOut.1, rs))
+        else
+          some none
+      | some ik =>
+        let pOut := Expr.op (O := OO) CKAOp.prngUp (σ0, ik)
+        let rs := Expr.op (O := OO) CKAOp.fsInitReceiver pOut.2
+        let γv' :=
+          match γv0 with
+          | none => none
+          | some γ => some (Expr.op (O := OO) CKAOp.ckaReceive (γ, tn0)).1
+        some (some (γv', pOut.1, rs))
+
+/-- Costed CKA hooks for the Stage-2 `(tL, par)` bucket (`DeliverForge.hooksCKABucket`). -/
+@[expose] def hooksCKABucketParPaperC (B Δcka Δbucket : ℕ) (tL : Option ℕ) (par : Bool) :
+    Engine.HooksC OO II (.opt (.base .γ)) (.base .sig) (.base .ss) (.base .rs) ckaHsTy where
+  startSend := ckaStartSendC Δcka ⟨true, tL, 0⟩
+  startRecv hE _ctxE _pE tE γvE σE tnE := rdsl do
+    return (ckaStartRecvBucketParPaperAnsE Δbucket tL par hE tE γvE σE tnE, hE)
+  fsSend := ckaFsSendC
+  fsRecv := ckaFsRecvC B
+  commit := ckaCommitC Δcka ⟨true, tL, 0⟩
+  reveal := ckaRevealC
+
+/-- Costed `ConfigEC` for the Stage-2 `(tL, par)` bucket (`DeliverForge.bucketAuthCfg`). -/
+@[expose] def bucketParPaperAuthCfgEC (Δbucket : ℕ) (tL : Option ℕ) (par : Bool) :
+    Engine.ConfigEC OO where
+  deliverWin := false
+  injectFullE {_} t' := validGuessBucketParPaperE Δbucket tL par t'
+  challOKE {_} _ := .bool false
+  challMsgE {_} _ b m0 m1 := .ite b m1 m0
+
+/-- Generalized Stage-2 `(tL, par)` bucket `redCKAAuthDFPaperBucket` program parameterized by
+explicit bucket healing threshold `Δbucket` (`3 + Δcka` = `4` at `Δcka = 1`). -/
+@[expose] def redCKAAuthDFPaperBucketProgGen (L B Δcka Δbucket qep maxSkip : ℕ) (tL : Option ℕ) (par : Bool) :
+    CostedReduction OO II
+      (SM.specDF (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
+      (ckaSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E)
+      .unit .unit .bool .bool where
+  σ := ckaBucketEsTy
+  init := rdsl [_] do
+    es ← initCKAEStateC (raw ⟨true, tL, 0⟩) false
+    return ((), (es, none))
+  handle := rdsl [st, q] do
+    (es0, winEp0, q0) ← return (st.1, st.2, q)
+    match q0 with
+    | .inl qBase =>
+      match qBase with
+      | .inl (.inl (.inl (.inl x))) =>
+        (p0, m0, r0) ← return x
+        if orE (Engine.esAbort es0) (Engine.cGsWin (Engine.esG es0)) then
+          return (.inl (inl (inl (inl (inl none)))), (es0, winEp0))
+        else
+          match Engine.cEpMgmtE (raw (2 + Δcka)) (raw qep) (Engine.esG es0) p0 (isSomeE r0) with
+          | none => return (.inl (inl (inl (inl (inl none)))), (es0, winEp0))
+          | some s1 =>
+            (res, h') ← Engine.vSendC (raw (hooksCKABucketParPaperC B Δcka Δbucket tL par))
+              (Engine.esH es0) s1 p0 (pGet (Engine.cGsSt s1) p0) m0 none r0
+            match res with
+            | none =>
+              return (.inl (inl (inl (inl (inl none)))),
+                (Engine.esMk (Engine.esG es0) h' true, winEp0))
+            | some (st', ct) =>
+              let recE := ((p0, pGet (Engine.cGsEpoch s1) p0, pGet (Engine.cGsIdx s1) p0 + 1), m0, ct)
+              let g' := Engine.cRecordE (raw L) (raw (2 + Δcka)) s1 p0 st' recE false
+              return (.inl (inl (inl (inl (inl (some ct))))),
+                (Engine.esMk g' h' (Engine.esAbort es0), winEp0))
+      | .inl (.inl (.inl (.inr _))) =>
+        return (.inl (inl (inl (inl (inr none)))), (es0, winEp0))
+      | .inl (.inl (.inr x)) =>
+        (out, es') ← Engine.deliverEC (raw (hooksCKABucketParPaperC B Δcka Δbucket tL par))
+          L maxSkip (raw (bucketParPaperAuthCfgEC Δbucket tL par)) es0 x
+        return (.inl (inl (inl (inr out))), (es', winEp0))
+      | .inl (.inr x) =>
+        let wasWin := Engine.cGsWin (Engine.esG es0)
+        (out, es') ← Engine.injectEC (raw (hooksCKABucketParPaperC B Δcka Δbucket tL par))
+          L (raw (2 + Δcka)) qep (raw (bucketParPaperAuthCfgEC Δbucket tL par)) es0 x
+        let winEp' := if !wasWin && Engine.cGsWin (Engine.esG es') then some x.2.1.1 else winEp0
+        return (.inl (inl (inr out)), (es', winEp'))
+      | .inr p0 =>
+        let s0 := Engine.esG es0
+        if orE (Engine.esAbort es0)
+            (orE (Engine.cGsWin s0) (!(Engine.cCorrAllowedPaperE (raw L) s0 p0))) then
+          return (.inl (inr none), (es0, winEp0))
+        else
+          let s1 := Engine.cAfterCorrE (raw L) s0 p0
+          (res, h') ← ckaRevealC (Engine.esH es0) s0 p0 (pGet (Engine.cGsSt s0) p0)
+          match res with
+          | none => return (.inl (inr none), (Engine.esMk s0 h' true, winEp0))
+          | some stOut =>
+            return (.inl (inr (some stOut)), (Engine.esMk s1 h' (Engine.esAbort es0), winEp0))
+    | .inr x =>
+      let wasWin := Engine.cGsWin (Engine.esG es0)
+      (out, es') ← Engine.deliverForgeEC (raw (hooksCKABucketParPaperC B Δcka Δbucket tL par))
+        L (raw (2 + Δcka)) qep (raw (bucketParPaperAuthCfgEC Δbucket tL par)) es0 x
+      let winEp' := if !wasWin && Engine.cGsWin (Engine.esG es') then some x.2.2.1.1 else winEp0
+      return (.inr out, (es', winEp'))
+  finish := rdsl [st, _] do
+    (es0, winEp0) ← return (st.1, st.2)
+    match winEp0 with
+    | none => return false
+    | some tWin =>
+      return ((!(Engine.esAbort es0) && Engine.cGsWin (Engine.esG es0)) &&
+        Engine.cAuthOKE (raw L) (raw (2 + Δcka)) (Engine.optNatLit (raw tL)) tWin (Engine.esG es0))
+
+/-- **Costed Stage-2 `(tL, par)` bucket `redCKAAuthDFPaperBucket` program (`B_cka_u` for paper
+authenticity over `SM.specDF`)** at `Δbucket := 3 + Δcka` (`4` when `Δcka = 1`). -/
+abbrev redCKAAuthDFPaperBucketProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (par : Bool) :=
+  redCKAAuthDFPaperBucketProgGen (ckaInitA := ckaInitA) (ckaInitB := ckaInitB) (ckaSend := ckaSend)
+    (ckaReceive := ckaReceive) (prngInit := prngInit) (prngUp := prngUp)
+    (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
+    (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
+    (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
+    (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+    (sampI := sampI) (sampK := sampK) L B Δcka (3 + Δcka) qep maxSkip tL par
+
+@[simp] theorem deliverForgeEC_hooksCKABucketParPaperC_queries (L B Δcka Δbucket qep : ℕ)
+    (tL : Option ℕ) (par : Bool) {Γ'}
+    (es : Expr OO Γ' ckaEsTy)
+    (arg : Expr OO Γ' (.prod .bool (.prod hdrCtTy hdrCtTy))) :
+    (Engine.deliverForgeEC (hooksCKABucketParPaperC (sampKR := sampKR) (sampKC := sampKC)
+        (sampCCoins := sampCCoins) (sampI := sampI) (sampK := sampK) B Δcka Δbucket tL par)
+      L (2 + Δcka) qep (bucketParPaperAuthCfgEC Δbucket tL par) es arg).queries
+      (fun _ => 1) (fun _ => 0) = 2 := by
+  simp [Engine.deliverForgeEC, Engine.vRecvC, Engine.vRecvStep1C, Engine.commitEC,
+    hooksCKABucketParPaperC, Comp.queries]
+
+@[simp] theorem redCKAAuthDFPaperBucketProgGen_totalQueries (L B Δcka Δbucket qep maxSkip : ℕ)
+    (tL : Option ℕ) (par : Bool) (q : ℕ) :
+    (redCKAAuthDFPaperBucketProgGen (ckaInitA := ckaInitA) (ckaInitB := ckaInitB)
+      (ckaSend := ckaSend) (ckaReceive := ckaReceive) (prngInit := prngInit) (prngUp := prngUp)
+      (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
+      (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
+      (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
+      (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK)
+      L B Δcka Δbucket qep maxSkip tL par).totalQueries (fun _ => 1) (fun _ => 0) q = q * 2 := by
+  simp [CostedReduction.totalQueries, redCKAAuthDFPaperBucketProgGen, Engine.deliverEC,
+    Engine.injectEC, Engine.deliverForgeEC, Engine.vSendC, Engine.vSendStep1C,
+    Engine.vRecvC, Engine.vRecvStep1C, Engine.commitEC, hooksCKABucketParPaperC, Comp.queries]
+
+@[simp] theorem redCKAAuthDFPaperBucketProg_totalQueries (L B Δcka qep maxSkip : ℕ)
+    (tL : Option ℕ) (par : Bool) (q : ℕ) :
+    (redCKAAuthDFPaperBucketProg (ckaInitA := ckaInitA) (ckaInitB := ckaInitB) (ckaSend := ckaSend)
+      (ckaReceive := ckaReceive) (prngInit := prngInit) (prngUp := prngUp)
+      (fsInitSender := fsInitSender) (fsInitReceiver := fsInitReceiver)
+      (fsSend := fsSend) (fsReceive := fsReceive) (eqT := eqT) (eqI := eqI)
+      (eqM := eqM) (eqE := eqE) (lam := lam) (defaultE := defaultE)
+      (sampKR := sampKR) (sampKC := sampKC) (sampCCoins := sampCCoins)
+      (sampI := sampI) (sampK := sampK)
+      L B Δcka qep maxSkip tL par).totalQueries (fun _ => 1) (fun _ => 0) q = q * 2 :=
+  redCKAAuthDFPaperBucketProgGen_totalQueries L B Δcka (3 + Δcka) qep maxSkip tL par q
 
 end HooksCKACDFPaper
 

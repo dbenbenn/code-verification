@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PlacedDefsBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.CommonPlaced
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PlacedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.CommonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Relocatable Tail Definitions and `SegExitPlaced` Bridges
@@ -20,7 +21,7 @@ Pairs `SeamBudget ... FreeOnlyEvs` with `Pf.TailCommon.EncTailVPlaced` over `A.a
 Block `198` (`lsProg_198 H`), and lifts `SepWP` proofs to `PlacedDefsBudget.SegExitPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -51,7 +52,7 @@ open CryptoVerification.LibsignalPublicApi.MessageEncrypt
 
 /-- Budget-threaded relocatable tail entry state on Block `198` (`lsProg_198 H`) with
 `FreeOnlyEvs` remaining until return. -/
-def EncTailVPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncTailVPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)

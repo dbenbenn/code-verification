@@ -9,8 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.GameHop.Advantage
-public import Computational.Proofs.GameHop.Rnd
+import Computational.Proofs.GameHop.Advantage
+import Computational.Proofs.GameHop.Rnd
+public import Mathlib.Algebra.BigOperators.Group.Finset.Defs
+public import Mathlib.Data.Finset.Defs
+public import Mathlib.Order.Disjoint
+public import Mathlib.Order.SetNotation
+public import PolyFun.Control.Monad.Support
+public import VCVio.EvalDist.Defs.Measure.Core
+public import VCVio.OracleComp.ProbComp.Basic
+public import VCVio.OracleComp.Constructions.SampleableType.Basic
 
 /-!
 # Multi-Instance Hybrids, Partition-Kill Hybrids, and Prefix Sandwiches
@@ -21,7 +29,7 @@ Protocol-agnostic multi-step `boolDist` and `boolBias` telescopes, partition-mas
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.GameHop.GlobalHybrid
 
@@ -34,28 +42,6 @@ open Computational.Proofs.GameHop.Advantage (boolBias_le_add_two_mul_boolDist
   boolDist_le_iSup_flip_of_beq_not_le evalDist_bind_mono_prob_of_support)
 
 section StandardTelescope
-
-theorem boolDist_hybrid_le_sum_range (H : ℕ → ProbComp Bool) (N : ℕ) :
-    𝒟[H 0].boolDist 𝒟[H N] ≤ ∑ k ∈ Finset.range N, 𝒟[H k].boolDist 𝒟[H (k + 1)] :=
-  Measure.boolDist_le_sum_range (fun k => 𝒟[H k]) N
-
-theorem boolDist_hybrid_rev_le_sum_range (H : ℕ → ProbComp Bool) (N : ℕ) :
-    𝒟[H N].boolDist 𝒟[H 0] ≤ ∑ k ∈ Finset.range N, 𝒟[H (k + 1)].boolDist 𝒟[H k] := by
-  rw [Measure.boolDist_comm]
-  refine (Measure.boolDist_le_sum_range (fun k => 𝒟[H k]) N).trans ?_
-  refine Finset.sum_le_sum fun k _ => ?_
-  rw [Measure.boolDist_comm]
-
-theorem boolBias_hybrid_le_add_two_mul_sum_range (H : ℕ → ProbComp Bool) (N : ℕ) :
-    𝒟[H 0].boolBias ≤
-      𝒟[H N].boolBias + 2 * ∑ k ∈ Finset.range N, 𝒟[H k].boolDist 𝒟[H (k + 1)] :=
-  (boolBias_le_add_two_mul_boolDist 𝒟[H 0] 𝒟[H N]).trans
-    (by gcongr; exact boolDist_hybrid_le_sum_range H N)
-
-theorem boolBias_hybrid_le_two_mul_sum_range_of_unbiased (H : ℕ → ProbComp Bool) (N : ℕ)
-    (hN : 𝒟[H N].boolBias = 0) :
-    𝒟[H 0].boolBias ≤ 2 * ∑ k ∈ Finset.range N, 𝒟[H k].boolDist 𝒟[H (k + 1)] := by
-  simpa [hN] using boolBias_hybrid_le_add_two_mul_sum_range H N
 
 end StandardTelescope
 
@@ -170,40 +156,23 @@ theorem gameKill_boolDist_union_le {α β τ : Type} [DecidableEq τ]
               𝒟[gameOnlyTag run₁ canon₁ out₁ t₀] := add_le_add hih le_rfl
       _ = _ := by ac_rfl
 
-/-- Bounds `boolDist` by summing single-tag `gameOnlyTag` distances when killing all tags in `T`
-equates the two games. -/
-theorem boolDist_le_sum_finset_of_gameKill {α β τ : Type} [DecidableEq τ]
-    (run₀ : ProbComp α) (canon₀ : α → τ) (out₀ : α → ProbComp Bool)
-    (run₁ : ProbComp β) (canon₁ : β → τ) (out₁ : β → ProbComp Bool)
-    (T : Finset τ)
-    (hkilled : 𝒟[gameKill run₀ canon₀ out₀ T] = 𝒟[gameKill run₁ canon₁ out₁ T]) :
-    𝒟[run₀ >>= out₀].boolDist 𝒟[run₁ >>= out₁] ≤
-      ∑ t₀ ∈ T,
-        𝒟[gameOnlyTag run₀ canon₀ out₀ t₀].boolDist
-          𝒟[gameOnlyTag run₁ canon₁ out₁ t₀] := by
-  have hunion := gameKill_boolDist_union_le run₀ canon₀ out₀ run₁ canon₁ out₁ T ∅
-    (Finset.disjoint_empty_left T)
-  rw [Finset.empty_union, gameKill_empty, gameKill_empty, hkilled, Measure.boolDist_self,
-    zero_add] at hunion
-  exact hunion
-
 end PartitionKillHybrid
 
 section PrefixHybrid
 
 /-- Priority-cascade output bit `if W1 then true else if W0 then false else b'` for two-stage
 prefix hybrids. -/
-def slotStepOut (W1 W0 b' : Bool) : Bool :=
+@[expose] def slotStepOut (W1 W0 b' : Bool) : Bool :=
   if W1 then true else if W0 then false else b'
 
-def slotStepY1 (C coin W1 W0 win b' : Bool) : Bool :=
+@[expose] def slotStepY1 (C coin W1 W0 win b' : Bool) : Bool :=
   if !C then coin else slotStepOut (W1 || win) W0 b'
 
-def slotStepY0 (C coin W1 W0 win b' : Bool) : Bool :=
+@[expose] def slotStepY0 (C coin W1 W0 win b' : Bool) : Bool :=
   if !C then coin else slotStepOut W1 (W0 || win) b'
 
 /-- Post-processed output bit emitted by a paused prefix reduction. -/
-def slotStepWRed (E C coin W1 W0 b' flip : Bool) : Bool :=
+@[expose] def slotStepWRed (E C coin W1 W0 b' flip : Bool) : Bool :=
   if !E then false else if !C then (coin ^^ flip) else (slotStepOut W1 W0 b' ^^ flip)
 
 theorem slotStep_bool_le_true (E C coin W1 W0 win b' flip : Bool) :
@@ -217,83 +186,6 @@ theorem slotStep_bool_le_false (E C coin W1 W0 win b' flip : Bool) :
       (E && (slotStepY0 C coin W1 W0 win b' == !flip)) := by
   cases E <;> cases C <;> cases coin <;> cases W1 <;> cases W0 <;>
     cases win <;> cases b' <;> cases flip <;> decide
-
-private theorem evalDist_map_pair_split (m : ProbComp (Bool × Bool)) (flip : Bool) :
-    𝒟[(fun p : Bool × Bool => p.2 == !flip) <$> m] {true} =
-      𝒟[(fun p : Bool × Bool => p.1 && (p.2 == !flip)) <$> m] {true} +
-        𝒟[(fun p : Bool × Bool => !p.1 && (p.2 == !flip)) <$> m] {true} := by
-  rw [evalDist_map_of_discrete, evalDist_map_of_discrete, evalDist_map_of_discrete,
-    Measure.map_apply Measurable.of_discrete (measurableSet_singleton true),
-    Measure.map_apply Measurable.of_discrete (measurableSet_singleton true),
-    Measure.map_apply Measurable.of_discrete (measurableSet_singleton true),
-    ← MeasureTheory.measure_union
-      (Set.disjoint_iff.mpr fun ⟨p₁, p₂⟩ ⟨h₁, h₂⟩ => by cases p₁ <;> simp_all)
-      MeasurableSet.of_discrete]
-  congr 1; ext ⟨p₁, p₂⟩; cases p₁ <;> simp
-
-/-- Two-stage prefix-sandwich bound reducing `boolDist` on `pairExp` to
-`⨆ flip, 𝒟[oa >>= redGame flip].boolBias` when unpaused branches agree and paused branches sandwich
-`redTrue` and `redFalse`. -/
-theorem boolDist_bind_pair_sandwich_le_iSup_flip {α : Type}
-    (oa : ProbComp α)
-    (pairExp : Bool → α → ProbComp (Bool × Bool))
-    (redTrue redFalse redGame : Bool → α → ProbComp Bool)
-    (h_unpaused : ∀ flip : Bool, ∀ pst ∈ support oa,
-      𝒟[(fun p : Bool × Bool => !p.1 && (p.2 == !flip)) <$> pairExp true pst] {true} =
-        𝒟[(fun p : Bool × Bool => !p.1 && (p.2 == !flip)) <$> pairExp false pst] {true})
-    (h_true_le : ∀ flip : Bool, ∀ pst ∈ support oa,
-      𝒟[(fun p : Bool × Bool => p.1 && (p.2 == !flip)) <$> pairExp true pst] {true} ≤
-        𝒟[redTrue flip pst] {true})
-    (h_false_ge : ∀ flip : Bool, ∀ pst ∈ support oa,
-      𝒟[redFalse flip pst] {true} ≤
-        𝒟[(fun p : Bool × Bool => p.1 && (p.2 == !flip)) <$> pairExp false pst] {true})
-    (h_bias : ∀ flip : Bool,
-      𝒟[oa >>= redTrue flip].boolDist 𝒟[oa >>= redFalse flip] ≤
-        𝒟[oa >>= redGame flip].boolBias) :
-    𝒟[oa >>= fun pst => Prod.snd <$> pairExp true pst].boolDist
-        𝒟[oa >>= fun pst => Prod.snd <$> pairExp false pst] ≤
-      ⨆ flip : Bool, 𝒟[oa >>= redGame flip].boolBias := by
-  refine boolDist_le_iSup_flip_of_beq_not_le _ _ _ fun flip => ?_
-  simp only [map_bind, Functor.map_map]
-  have hsplit : ∀ b : Bool,
-      𝒟[oa >>= fun pst => (fun p : Bool × Bool => p.2 == !flip) <$> pairExp b pst] {true} =
-        𝒟[oa >>= fun pst => (fun p : Bool × Bool => p.1 && (p.2 == !flip)) <$> pairExp b pst] {true} +
-          𝒟[oa >>= fun pst => (fun p : Bool × Bool => !p.1 && (p.2 == !flip)) <$> pairExp b pst] {true} := by
-    intro b
-    let : MeasurableSpace α := ⊤
-    simp only [evalDist_bind_of_discrete,
-      Measure.bind_apply (measurableSet_singleton true) Measurable.of_discrete.aemeasurable]
-    simp_rw [evalDist_map_pair_split _ flip]
-    exact MeasureTheory.lintegral_add_left Measurable.of_discrete _
-  have h0 :
-      𝒟[oa >>= fun pst => (fun p : Bool × Bool => !p.1 && (p.2 == !flip)) <$> pairExp true pst] {true} =
-        𝒟[oa >>= fun pst => (fun p : Bool × Bool => !p.1 && (p.2 == !flip)) <$> pairExp false pst] {true} :=
-    le_antisymm
-      (evalDist_bind_mono_prob_of_support oa _ _ (measurableSet_singleton true)
-        fun pst hp => (h_unpaused flip pst hp).le)
-      (evalDist_bind_mono_prob_of_support oa _ _ (measurableSet_singleton true)
-        fun pst hp => (h_unpaused flip pst hp).ge)
-  have h1 :
-      𝒟[oa >>= fun pst => (fun p : Bool × Bool => p.1 && (p.2 == !flip)) <$> pairExp true pst] {true} ≤
-        𝒟[oa >>= redTrue flip] {true} :=
-    evalDist_bind_mono_prob_of_support oa _ _ (measurableSet_singleton true) (h_true_le flip)
-  have h2 :
-      𝒟[oa >>= redFalse flip] {true} ≤
-        𝒟[oa >>= fun pst => (fun p : Bool × Bool => p.1 && (p.2 == !flip)) <$> pairExp false pst] {true} :=
-    evalDist_bind_mono_prob_of_support oa _ _ (measurableSet_singleton true) (h_false_ge flip)
-  have h3 := (Measure.apply_true_le_add_boolDist 𝒟[oa >>= redTrue flip] 𝒟[oa >>= redFalse flip]).trans
-    (add_le_add le_rfl (h_bias flip))
-  rw [hsplit true, hsplit false, h0]
-  calc 𝒟[oa >>= fun pst => (fun p : Bool × Bool => p.1 && (p.2 == !flip)) <$> pairExp true pst] {true} +
-        𝒟[oa >>= fun pst => (fun p : Bool × Bool => !p.1 && (p.2 == !flip)) <$> pairExp false pst] {true}
-      ≤ (𝒟[oa >>= redFalse flip] {true} + 𝒟[oa >>= redGame flip].boolBias) +
-          𝒟[oa >>= fun pst => (fun p : Bool × Bool => !p.1 && (p.2 == !flip)) <$> pairExp false pst] {true} :=
-        add_le_add (h1.trans h3) le_rfl
-    _ ≤ (𝒟[oa >>= fun pst => (fun p : Bool × Bool => p.1 && (p.2 == !flip)) <$> pairExp false pst] {true} +
-          𝒟[oa >>= redGame flip].boolBias) +
-          𝒟[oa >>= fun pst => (fun p : Bool × Bool => !p.1 && (p.2 == !flip)) <$> pairExp false pst] {true} :=
-        add_le_add (add_le_add h2 le_rfl) le_rfl
-    _ = _ := by ac_rfl
 
 end PrefixHybrid
 

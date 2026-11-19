@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.Defs
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDeps
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymD
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.RecordCodecs.SignedDeps
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymD
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop
 import LibsignalBinary.Proofs.RecordCodecs.Deps
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded `SignedPreKeyRecordStructure::decode` Callee Wrappers and State
@@ -24,7 +24,7 @@ import LibsignalBinary.Proofs.RecordCodecs.Deps
 state definitions for `SignedPreKeyRecordStructure::decode` (Block `562`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -95,7 +95,7 @@ theorem spk_dealloc_placed_ok [CryptoVerification.LibsignalPlacement] {M : Alloc
   subroutine_ok_withLsCodeRoLoaded_of_plain
     (ls_hook_ok_of_mem hH.dealloc (by decide) (by decide) (by decide))
 
-def noPanicQp (_s0 : State) : State → SepProp → Prop :=
+@[expose] def noPanicQp (_s0 : State) : State → SepProp → Prop :=
   fun _ _ => False
 
 theorem sepWPp_frame_noPanic {prog : Program} {ret : BitVec 64} {s0 s : State}
@@ -195,7 +195,7 @@ structure SpkConvergeStatePlaced [CryptoVerification.LibsignalPlacement] (s0 : S
   x19_eq : s.readReg64 .x19 = x19
   saved : SpkSavedRegs s0 s
 
-def spkBytesFieldToField : SpkBytesField → SpkField
+@[expose] def spkBytesFieldToField : SpkBytesField → SpkField
   | .pub => .pub
   | .priv => .priv
   | .sig => .sig
@@ -242,7 +242,7 @@ theorem spkBytesField_capsMatch_update {g : SpkGhost} {caps : SpkCaps}
   · exact ⟨hc.pub_eq, hcap', hc.sig_eq, hc.pub_lt, hv, hc.sig_lt⟩
   · exact ⟨hc.pub_eq, hc.priv_eq, hcap', hc.pub_lt, hc.priv_lt, hv⟩
 
-def spkStructLoopCapsOf (A : RustAlloc) (sp' : BitVec 64) (n : Nat)
+@[expose] def spkStructLoopCapsOf (A : RustAlloc) (sp' : BitVec 64) (n : Nat)
     (caps : SpkCaps) (m : SignedPreKeyRecordStructure) : SepProp :=
   ∃∗ g : SpkGhost, ⌜SpkGhostCapOk g n ∧ SpkGhostCapsMatch g caps⌝ ∗ spkStructAt A g sp' m
 
@@ -276,7 +276,7 @@ theorem spkStructLoopCapsOf_mono (A : RustAlloc) (sp' : BitVec 64) {m n : Nat}
     Entails.pure_left fun ⟨hg, hc⟩ =>
       spkStructAt_entails_loopCapsOf A g sp' m caps st (hg.mono hle) hc
 
-def spkLoopCapsMemAt (subStack : Nat) (A : RustAlloc) (sp' x19 ptr : BitVec 64)
+@[expose] def spkLoopCapsMemAt (subStack : Nat) (A : RustAlloc) (sp' x19 ptr : BitVec 64)
     (caps : SpkCaps) (bs : List (BitVec 8)) (m : SignedPreKeyRecordStructure) : SepProp :=
   sliceCursorAt sp' ptr bs ∗
     ((sp' + 104#64) ↦₆₄ sp') ∗
@@ -290,7 +290,7 @@ abbrev spkLoopCapsMem (A : RustAlloc) (sp' x19 ptr : BitVec 64)
     (caps : SpkCaps) (bs : List (BitVec 8)) (m : SignedPreKeyRecordStructure) : SepProp :=
   spkLoopCapsMemAt (SpqrV1.Varint.skipField3Stack 100) A sp' x19 ptr caps bs m
 
-def spkAfterVarintCapsMemAt (subStack : Nat) (A : RustAlloc) (sp' x19 ptr : BitVec 64)
+@[expose] def spkAfterVarintCapsMemAt (subStack : Nat) (A : RustAlloc) (sp' x19 ptr : BitVec 64)
     (caps : SpkCaps) (bs rest : List (BitVec 8)) (n : Nat)
     (m : SignedPreKeyRecordStructure) : SepProp :=
   sliceCursorAfter sp' ptr bs rest ∗
@@ -306,7 +306,7 @@ abbrev spkAfterVarintCapsMem (A : RustAlloc) (sp' x19 ptr : BitVec 64)
     (m : SignedPreKeyRecordStructure) : SepProp :=
   spkAfterVarintCapsMemAt (SpqrV1.Varint.skipField3Stack 100) A sp' x19 ptr caps bs rest n m
 
-def spkConvergePostPlaced [CryptoVerification.LibsignalPlacement] {M : AllocCostModel}
+@[expose] def spkConvergePostPlaced [CryptoVerification.LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (rem : Nat) (caps : SpkCaps)
     (s0 : State) (sp' x19 ptr : BitVec 64) (bs : List (BitVec 8))
     (out : Option SignedPreKeyRecordStructure) : State → SepProp → Prop :=

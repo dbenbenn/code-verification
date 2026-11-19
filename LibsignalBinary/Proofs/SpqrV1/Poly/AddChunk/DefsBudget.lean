@@ -19,7 +19,7 @@ Threads `RustCliAllocBudget M`, `BudgetLimits`, and `AddChunkEnv` through `addCh
 `addChunkSpec`, and `addChunkSpecX` for Block `419`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -28,7 +28,6 @@ namespace LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget
 open Arm64 ProofLib
 open CryptoVerification (LibsignalPlacement blkPC_419 blkPl_419)
 open CryptoVerification.LibsignalSpqrV1 (SortedSetPt)
-open CryptoVerification.LibsignalTripleRatchet (tripleRatchetProgAtExt)
 open CryptoVerification.SpqrV1.Poly (chunkAt polyDecoderAt)
 open CryptoVerification.SpqrV1.Poly.AddChunk (
   AddChunkGhost PolyDecoderStrictSorted addChunkBsearch addChunkName addChunkStack
@@ -45,7 +44,7 @@ open LibsignalBinary.Heap (
     when triggered at full buffer `cap = len`:
     `rustAllocEvents 16 2` when `len = 0`, else
     `rustReallocEvents (4 * len) (4 * max (2 * len) 4) 2`. -/
-def growOnePtEvents (len : Nat) : List AllocEvent :=
+@[expose] def growOnePtEvents (len : Nat) : List AllocEvent :=
   if len = 0 then
     rustAllocEvents 16 2
   else
@@ -54,16 +53,16 @@ def growOnePtEvents (len : Nat) : List AllocEvent :=
 /-- Per-slot allocation envelope for inserting/replacing one point in `s : SortedSetPt`:
     either `[]` (in-place overwrite or spare capacity `s.vec.length < cap`) or
     `growOnePtEvents s.vec.length` (when `s.vec.length = cap`). -/
-def AddChunkSlotEnv (s : SortedSetPt) (evs : List AllocEvent) : Prop :=
+@[expose] def AddChunkSlotEnv (s : SortedSetPt) (evs : List AllocEvent) : Prop :=
   evs = [] ∨ evs = growOnePtEvents s.vec.length
 
 /-- Sequential allocation envelope across a list of `SortedSetPt` slots in `add_chunk`. -/
-def AddChunkSlotsEnv : List SortedSetPt → List AllocEvent → Prop
+@[expose] def AddChunkSlotsEnv : List SortedSetPt → List AllocEvent → Prop
   | [], evs => evs = []
   | s :: rest, evs => SeqEnv (AddChunkSlotEnv s) (AddChunkSlotsEnv rest) evs
 
 /-- Allocation envelope of `<PolyDecoder as Decoder>::add_chunk` on `x : AddChunkGhost`. -/
-def AddChunkEnv (x : AddChunkGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def AddChunkEnv (x : AddChunkGhost) (evs : List AllocEvent) : Prop :=
   AddChunkSlotsEnv x.dec.pts evs
 
 theorem addChunkSlotsEnv_nil : ∀ (pts : List SortedSetPt), AddChunkSlotsEnv pts []
@@ -77,7 +76,7 @@ theorem addChunkEnv_nil (x : AddChunkGhost) : AddChunkEnv x [] :=
 
 /-- Budget-threaded hardware specification of `<PolyDecoder as Decoder>::add_chunk`
     without requiring `PolyDecoderStrictSorted` in the precondition (outputs `addChunkBsearch`). -/
-def addChunkBsearchSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def addChunkBsearchSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AddChunkGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.decA ∧ s.readReg64 .x1 = x.chunkA ∧
@@ -96,7 +95,7 @@ def addChunkBsearchSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : B
 /-- Budget-threaded specification of `<PolyDecoder as Decoder>::add_chunk` on a strictly sorted
     `PolyDecoder` (`PolyDecoderStrictSorted x.dec`), outputting `addChunkTotal x.dec x.chunk`
     and preserving `PolyDecoderStrictSorted`. -/
-def addChunkSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def addChunkSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AddChunkGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.decA ∧ s.readReg64 .x1 = x.chunkA ∧
@@ -114,7 +113,7 @@ def addChunkSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLi
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp addChunkStack
 
 /-- Extended-stack variant of `addChunkSpec` (`addChunkStackX = 96 + extHookStack`). -/
-def addChunkSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def addChunkSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AddChunkGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.decA ∧ s.readReg64 .x1 = x.chunkA ∧
@@ -131,26 +130,14 @@ def addChunkSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetL
       chunkAt x.chunkA x.chunk ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp addChunkStackX
 
-def AddChunkOkExt (b : BitVec 64) (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr addChunkName)
-    (addChunkSpec M A lim)
-
-def AddChunkOkX (img : Obj.Image) (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr addChunkName)
-    ((addChunkSpecX M A lim).inImage img)
-
-def AddChunkPlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def AddChunkPlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_419).rebase (blkPl_419).base (Rust.withPanics ext))
     (blkPl_419).base
     (addChunkSpec M A lim)
 
-def AddChunkPlacedOkX [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def AddChunkPlacedOkX [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_419).rebase (blkPl_419).base (Rust.withPanics ext))

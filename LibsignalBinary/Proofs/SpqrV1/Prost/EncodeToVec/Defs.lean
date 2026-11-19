@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1State
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1State -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
-public import LibsignalBinary.Proofs.CodeLayout
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
+public import ProofLib.GenDecodes
 
 /-!
 # `PqRatchetState::encode_to_vec`: Representation Predicates and Specifications
@@ -22,7 +22,7 @@ pure `encodedLen` characterizations, `.rodata` jump-table decomposition, stack-f
 Hoare specifications for `PqRatchetState::encode_to_vec` (`0x6d010`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.EncodeToVec
 
@@ -35,23 +35,15 @@ open CryptoVerification.LibsignalSpqrV1
 open CryptoVerification.SpqrV1.ProtoRepr
 open CryptoVerification.SpqrV1.ProtoRepr.EncodedLen
 
-noncomputable abbrev spqrProgAtExt (b : BitVec 64)
-    (ext : String → Option (State → State)) : Program :=
-  libsignalSessionCode.rebase b (Rust.withPanics ext)
-
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
 abbrev spqrEncodeToVecName : String :=
   "<spqr::proto::pq_ratchet::PqRatchetState as prost::message::Message>::encode_to_vec"
 
-@[simp, arm64_norm] theorem spqrEncodeToVec_fnOff :
-    libsignalSessionCode.fnOff spqrEncodeToVecName = 0x67c18 :=
-  libsignalSessionCode_fnOff_0x67c18
-
 /-- The 22-byte (`11 × u16`) jump table in `.rodata` at `0x82480` mapping `V1State.InnerState`
 discriminant index `0..10` to `(target - (entry + 0x768)) / 4`. -/
-def encodeToVecJumpTableBytes : List (BitVec 8) :=
+@[expose] def encodeToVecJumpTableBytes : List (BitVec 8) :=
   [0x00#8, 0x00#8, 0xd5#8, 0x00#8, 0x46#8, 0x00#8, 0x9c#8, 0x00#8,
    0x14#8, 0x00#8, 0xee#8, 0x00#8, 0xfd#8, 0x00#8, 0xb5#8, 0x00#8,
    0x25#8, 0x01#8, 0x2d#8, 0x00#8, 0x16#8, 0x01#8]
@@ -66,14 +58,14 @@ abbrev noneCap3 : BitVec 64 := 0xfffffffffffffffd#64
 at `a` (`224` bytes = `0xe0`, align `8`):
 - `none`: `(a ↦₆₄ noneCap3) ∗ memRegion (a + 8#64) 216`
 - `some (.v1 v1)`: `v1StatePBPinnedAt A g a v1` -/
-def optPqRatchetInnerPBPinnedAt (A : RustAlloc) (g : V1StatePBGhost) (a : BitVec 64) :
+@[expose] def optPqRatchetInnerPBPinnedAt (A : RustAlloc) (g : V1StatePBGhost) (a : BitVec 64) :
     Option PqRatchetState.Inner → SepProp
   | none => (a ↦₆₄ noneCap3) ∗ memRegion (a + 8#64) 216
   | some (.v1 v1) => v1StatePBPinnedAt A g a v1
 
 /-- Unpinned representation predicate for `Option<spqr::proto::pq_ratchet::pq_ratchet_state::Inner>`
 at `a` (`224` bytes = `0xe0`, align `8`). -/
-def optPqRatchetInnerPBAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optPqRatchetInnerPBAt (A : RustAlloc) (a : BitVec 64) :
     Option PqRatchetState.Inner → SepProp
   | none => (a ↦₆₄ noneCap3) ∗ memRegion (a + 8#64) 216
   | some (.v1 v1) => v1StatePBAt A a v1
@@ -92,7 +84,7 @@ structure PqRatchetStatePBGhost where
 - `a + 0x00` (`0..48`): `version_negotiation: Option<VersionNegotiation>` (tag 1, `48`B)
 - `a + 0x30` (`48..128`): `chain: Option<Chain>` (tag 2, `80`B)
 - `a + 0x80` (`128..352`): `inner: Option<pq_ratchet_state::Inner>` (tag 3, `224`B) -/
-def pqRatchetStatePBPinnedAt (A : RustAlloc) (g : PqRatchetStatePBGhost)
+@[expose] def pqRatchetStatePBPinnedAt (A : RustAlloc) (g : PqRatchetStatePBGhost)
     (a : BitVec 64) (st : PqRatchetState) : SepProp :=
   optVersionNegotiationPBPinnedAt A g.vn a st.versionNegotiation ∗
     optChainPBPinnedAt A g.chain (a + 48#64) st.chain ∗
@@ -100,7 +92,7 @@ def pqRatchetStatePBPinnedAt (A : RustAlloc) (g : PqRatchetStatePBGhost)
 
 /-- Unpinned representation predicate for `spqr::proto::pq_ratchet::PqRatchetState` at `a`
 (`352` bytes = `0x160`, align `8`). -/
-def pqRatchetStatePBAt (A : RustAlloc) (a : BitVec 64) (st : PqRatchetState) : SepProp :=
+@[expose] def pqRatchetStatePBAt (A : RustAlloc) (a : BitVec 64) (st : PqRatchetState) : SepProp :=
   optVersionNegotiationPBAt A a st.versionNegotiation ∗
     optChainPBAt A (a + 48#64) st.chain ∗
     optPqRatchetInnerPBAt A (a + 128#64) st.inner
@@ -170,7 +162,7 @@ private theorem protoEncodeKey_len_one (tag : BitVec 32) (wt : Proto.WireType)
   · contradiction
 
 /-- Encoded length of an optional `VersionNegotiation` field with a 1-byte tag (`tag = 1`). -/
-def optVersionNegotiationPBFieldEncodedLen : Option VersionNegotiationPB → Nat
+@[expose] def optVersionNegotiationPBFieldEncodedLen : Option VersionNegotiationPB → Nat
   | none => 0
   | some vn =>
     let len := versionNegotiationPBEncodedLen vn
@@ -189,7 +181,7 @@ theorem optVersionNegotiationPBFieldEncodedLen_eq_proto (tag : BitVec 32)
       ← protoEncodedLenVarint_eq_varintLen, Proto.encodedLenVarint]
 
 /-- Encoded length of an optional `Chain` field with a 1-byte tag (`tag = 2`). -/
-def optChainPBFieldEncodedLen : Option ChainPB → Nat
+@[expose] def optChainPBFieldEncodedLen : Option ChainPB → Nat
   | none => 0
   | some ch =>
     let len := chainPBEncodedLen ch
@@ -208,14 +200,14 @@ theorem optChainPBFieldEncodedLen_eq_proto (tag : BitVec 32)
       ← protoEncodedLenVarint_eq_varintLen, Proto.encodedLenVarint]
 
 /-- Encoded length of `Option<PqRatchetState.Inner>` (`tag = 3`). -/
-def optPqRatchetInnerPBFieldEncodedLen : Option PqRatchetState.Inner → Nat
+@[expose] def optPqRatchetInnerPBFieldEncodedLen : Option PqRatchetState.Inner → Nat
   | none => 0
   | some (.v1 v1) =>
     let len := v1StatePBEncodedLen v1
     1 + varintLen (BitVec.ofNat 64 len) + len
 
 /-- Total encoded length of `PqRatchetState`. -/
-def pqRatchetStatePBEncodedLen (st : PqRatchetState) : Nat :=
+@[expose] def pqRatchetStatePBEncodedLen (st : PqRatchetState) : Nat :=
   optVersionNegotiationPBFieldEncodedLen st.versionNegotiation +
     optChainPBFieldEncodedLen st.chain +
     optPqRatchetInnerPBFieldEncodedLen st.inner
@@ -241,7 +233,7 @@ theorem pqRatchetStatePBEncodedLen_eq_proto (st : PqRatchetState) :
 /-! ## `.rodata` Jump-Table Decomposition (`0x82480`) -/
 
 /-- Unpacked 11-entry (`22`-byte) `.rodata` half-word jump table at `roBase` (`b + 0xa1480#64`). -/
-def encodeToVecJumpTableBytesAt (roBase : BitVec 64) : SepProp :=
+@[expose] def encodeToVecJumpTableBytesAt (roBase : BitVec 64) : SepProp :=
   (roBase ↦₁₆ᵣ 0x0000#16) ∗ ((roBase + 2#64) ↦₁₆ᵣ 0x00d5#16) ∗
   ((roBase + 4#64) ↦₁₆ᵣ 0x0046#16) ∗ ((roBase + 6#64) ↦₁₆ᵣ 0x009c#16) ∗
   ((roBase + 8#64) ↦₁₆ᵣ 0x0014#16) ∗ ((roBase + 10#64) ↦₁₆ᵣ 0x00ee#16) ∗
@@ -299,11 +291,11 @@ theorem cap_add_three_bne_zero_true {cap : BitVec 64} (h : cap.toNat < 2 ^ 63) :
   rw [bne_iff_ne, ne_eq, ← beq_iff_eq, cap_add_three_beq_zero_false h]
   decide
 
-def optCt1SentCap (g : Unchunked5PBGhost) : Option V1State.Unchunked.Ct1Sent → BitVec 64
+@[expose] def optCt1SentCap (g : Unchunked5PBGhost) : Option V1State.Unchunked.Ct1Sent → BitVec 64
   | none => noneCap
   | some _ => g.f3.cap
 
-def optCt1SentRest (A : RustAlloc) (g : Unchunked5PBGhost) (p : BitVec 64) :
+@[expose] def optCt1SentRest (A : RustAlloc) (g : Unchunked5PBGhost) (p : BitVec 64) :
     Option V1State.Unchunked.Ct1Sent → SepProp
   | none => memRegion (p + 8#64) 120
   | some u =>
@@ -325,7 +317,7 @@ theorem optCt1SentPBPinnedAt_eq (A : RustAlloc) (g : Unchunked5PBGhost) (p : Bit
       optCt1SentCap, optCt1SentRest, vecU8At_eq_header_sep_buf A p, vecHeader, sepConj_assoc]
 
 /-- First word (`[a]`) of `v1StateInnerPBPinnedAt A g a is`. -/
-def v1StateInnerCap (g : V1StatePBGhost) : V1State.InnerState → BitVec 64
+@[expose] def v1StateInnerCap (g : V1StatePBGhost) : V1State.InnerState → BitVec 64
   | .keysUnsampled _ => 0x8000000000000000#64
   | .keysSampled _ => 0x8000000000000001#64
   | .headerSent _ => 0x8000000000000002#64
@@ -339,7 +331,7 @@ def v1StateInnerCap (g : V1StatePBGhost) : V1State.InnerState → BitVec 64
   | .ct2Sampled _ => 0x800000000000000a#64
 
 /-- Remainder of `v1StateInnerPBPinnedAt A g p is` after splitting off `(p ↦₆₄ v1StateInnerCap g is)`. -/
-def v1StateInnerRest (A : RustAlloc) (g : V1StatePBGhost) (p : BitVec 64) :
+@[expose] def v1StateInnerRest (A : RustAlloc) (g : V1StatePBGhost) (p : BitVec 64) :
     V1State.InnerState → SepProp
   | .keysUnsampled v =>
     optKeysUnsampledPBPinnedAt A g.a.gKeysUnsampled (p + 8#64) v.uc ∗ memRegion (p + 64#64) 160
@@ -398,7 +390,7 @@ theorem v1StateInnerPBPinnedAt_eq (A : RustAlloc) (g : V1StatePBGhost) (p : BitV
     simp only [sepConj_assoc]
 
 /-- First word (`[a + 128#64]`) of `optPqRatchetInnerPBPinnedAt A g (a + 128#64) opt`. -/
-def optPqRatchetInnerCap (g : V1StatePBGhost) : Option PqRatchetState.Inner → BitVec 64
+@[expose] def optPqRatchetInnerCap (g : V1StatePBGhost) : Option PqRatchetState.Inner → BitVec 64
   | none => noneCap3
   | some (.v1 v1) =>
     match v1.innerState with
@@ -407,7 +399,7 @@ def optPqRatchetInnerCap (g : V1StatePBGhost) : Option PqRatchetState.Inner → 
 
 /-- Remainder (`216` bytes at `p + 8#64`) of `optPqRatchetInnerPBPinnedAt A g p opt` after
 splitting off `(p ↦₆₄ optPqRatchetInnerCap g opt)`. -/
-def optPqRatchetInnerRest (A : RustAlloc) (g : V1StatePBGhost) (p : BitVec 64) :
+@[expose] def optPqRatchetInnerRest (A : RustAlloc) (g : V1StatePBGhost) (p : BitVec 64) :
     Option PqRatchetState.Inner → SepProp
   | none => memRegion (p + 8#64) 216
   | some (.v1 v1) =>
@@ -501,7 +493,7 @@ abbrev encodeToVecStack : Nat := encodeToVecStackOf 0x40
 abbrev encodeToVecStackX : Nat := encodeToVecStackOf doReserveStackX
 
 /-- Saved callee-saved registers (`fp, lr, x28..x19`) at `[sp - 96#64, sp)` (`[s.sp + 0x30, s.sp + 0x90)`). -/
-def encodeToVecSavedRegs (sp : BitVec 64) (s0 : State) : SepProp :=
+@[expose] def encodeToVecSavedRegs (sp : BitVec 64) (s0 : State) : SepProp :=
   ((sp - 96#64) ↦₆₄ s0.readReg64 .fp) ∗ ((sp - 88#64) ↦₆₄ s0.readReg64 .lr) ∗
   ((sp - 80#64) ↦₆₄ s0.readReg64 (Reg.gpr 28#5)) ∗ ((sp - 72#64) ↦₆₄ s0.readReg64 (Reg.gpr 27#5)) ∗
   ((sp - 64#64) ↦₆₄ s0.readReg64 (Reg.gpr 26#5)) ∗ ((sp - 56#64) ↦₆₄ s0.readReg64 (Reg.gpr 25#5)) ∗
@@ -526,34 +518,9 @@ structure PqRatchetStateEncodeToVecGhost where
   a : BitVec 64
   st : PqRatchetState
 
-/-- Pinned specification of `PqRatchetState::encode_to_vec` (`0x6d010`) with explicit `.rodata`
-jump tables at `b + 0xa145a` (11 bytes, for `V1State::encoded_len`) and `b + 0xa1480` (22 bytes,
-for `V1State` variant dispatch in `encode_to_vec`).
-Precondition bound `(PqRatchetState.encodeRaw x.st).length < 2 ^ 63`: discharged by callers
-`spqr::send` and `spqr::recv` via `send_state_len_lt` / `recv_state_len_lt` in `StateSize.lean`. -/
-def pqRatchetStateEncodeToVecRoPinnedSpecOf (resStack : Nat) (b : BitVec 64) (A : RustAlloc) :
-    Spec PqRatchetStateEncodeToVecPinnedGhost where
-  pre := fun x s =>
-    ⌜s.readReg64 .x0 = x.sret ∧
-      s.readReg64 .x1 = x.a ∧
-      (PqRatchetState.encodeRaw x.st).length < 2 ^ 63⌝ ∗
-      memRegion x.sret 24 ∗
-      pqRatchetStatePBPinnedAt A x.g x.a x.st ∗
-      ((b + bv% (ls_xref% 0x62a38 0x62a3c)) ↦ᵣ v1StateJumpTableBytes) ∗
-      ((b + bv% (ls_bytes% "0000d50046009c001400ee00fd00b50025012d001601")) ↦ᵣ encodeToVecJumpTableBytes) ∗
-      A.pool ∗ stackAt s.sp (encodeToVecStackOf resStack)
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      vecU8 A x.sret (PqRatchetState.encodeRaw x.st) ∗
-      pqRatchetStatePBPinnedAt A x.g x.a x.st ∗
-      ((b + bv% (ls_xref% 0x62a38 0x62a3c)) ↦ᵣ v1StateJumpTableBytes) ∗
-      ((b + bv% (ls_bytes% "0000d50046009c001400ee00fd00b50025012d001601")) ↦ᵣ encodeToVecJumpTableBytes) ∗
-      A.pool ∗ stackAt s0.sp (encodeToVecStackOf resStack)
-  onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
 /-- Pinned specification of `PqRatchetState::encode_to_vec` (`0x6d010`) without `.rodata`
 in the footprint (for `_ok_ext_x` after discharging `.rodata` via `of_rodata_loads`). -/
-def pqRatchetStateEncodeToVecPinnedSpecOf (resStack : Nat) (A : RustAlloc) :
+@[expose] def pqRatchetStateEncodeToVecPinnedSpecOf (resStack : Nat) (A : RustAlloc) :
     Spec PqRatchetStateEncodeToVecPinnedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.sret ∧
@@ -566,33 +533,12 @@ def pqRatchetStateEncodeToVecPinnedSpecOf (resStack : Nat) (A : RustAlloc) :
     ⌜sf.trace = s0.trace⌝ ∗
       vecU8 A x.sret (PqRatchetState.encodeRaw x.st) ∗
       pqRatchetStatePBPinnedAt A x.g x.a x.st ∗
-      A.pool ∗ stackAt s0.sp (encodeToVecStackOf resStack)
-  onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- Unpinned specification of `PqRatchetState::encode_to_vec` (`0x6d010`) with `.rodata`. -/
-def pqRatchetStateEncodeToVecRoSpecOf (resStack : Nat) (b : BitVec 64) (A : RustAlloc) :
-    Spec PqRatchetStateEncodeToVecGhost where
-  pre := fun x s =>
-    ⌜s.readReg64 .x0 = x.sret ∧
-      s.readReg64 .x1 = x.a ∧
-      (PqRatchetState.encodeRaw x.st).length < 2 ^ 63⌝ ∗
-      memRegion x.sret 24 ∗
-      pqRatchetStatePBAt A x.a x.st ∗
-      ((b + bv% (ls_xref% 0x62a38 0x62a3c)) ↦ᵣ v1StateJumpTableBytes) ∗
-      ((b + bv% (ls_bytes% "0000d50046009c001400ee00fd00b50025012d001601")) ↦ᵣ encodeToVecJumpTableBytes) ∗
-      A.pool ∗ stackAt s.sp (encodeToVecStackOf resStack)
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      vecU8 A x.sret (PqRatchetState.encodeRaw x.st) ∗
-      pqRatchetStatePBAt A x.a x.st ∗
-      ((b + bv% (ls_xref% 0x62a38 0x62a3c)) ↦ᵣ v1StateJumpTableBytes) ∗
-      ((b + bv% (ls_bytes% "0000d50046009c001400ee00fd00b50025012d001601")) ↦ᵣ encodeToVecJumpTableBytes) ∗
       A.pool ∗ stackAt s0.sp (encodeToVecStackOf resStack)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Unpinned specification of `PqRatchetState::encode_to_vec` (`0x6d010`) without `.rodata`
-(for `_ok_ext_x` in `inImage libsignalSessionCode`). -/
-def pqRatchetStateEncodeToVecSpecOf (resStack : Nat) (A : RustAlloc) :
+(without `.rodata` in the footprint). -/
+@[expose] def pqRatchetStateEncodeToVecSpecOf (resStack : Nat) (A : RustAlloc) :
     Spec PqRatchetStateEncodeToVecGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.sret ∧
@@ -607,59 +553,19 @@ def pqRatchetStateEncodeToVecSpecOf (resStack : Nat) (A : RustAlloc) :
       pqRatchetStatePBAt A x.a x.st ∗
       A.pool ∗ stackAt s0.sp (encodeToVecStackOf resStack)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-abbrev pqRatchetStateEncodeToVecRoPinnedSpec (b : BitVec 64) (A : RustAlloc) :
-    Spec PqRatchetStateEncodeToVecPinnedGhost :=
-  pqRatchetStateEncodeToVecRoPinnedSpecOf 0x40 b A
-
-abbrev pqRatchetStateEncodeToVecRoPinnedSpecX (b : BitVec 64) (A : RustAlloc) :
-    Spec PqRatchetStateEncodeToVecPinnedGhost :=
-  pqRatchetStateEncodeToVecRoPinnedSpecOf doReserveStackX b A
 
 abbrev pqRatchetStateEncodeToVecPinnedSpecX (A : RustAlloc) :
     Spec PqRatchetStateEncodeToVecPinnedGhost :=
   pqRatchetStateEncodeToVecPinnedSpecOf doReserveStackX A
 
-abbrev pqRatchetStateEncodeToVecRoSpec (b : BitVec 64) (A : RustAlloc) :
-    Spec PqRatchetStateEncodeToVecGhost :=
-  pqRatchetStateEncodeToVecRoSpecOf 0x40 b A
-
-abbrev pqRatchetStateEncodeToVecRoSpecX (b : BitVec 64) (A : RustAlloc) :
-    Spec PqRatchetStateEncodeToVecGhost :=
-  pqRatchetStateEncodeToVecRoSpecOf doReserveStackX b A
-
 abbrev pqRatchetStateEncodeToVecSpecX (A : RustAlloc) :
     Spec PqRatchetStateEncodeToVecGhost :=
   pqRatchetStateEncodeToVecSpecOf doReserveStackX A
 
-def PqRatchetStateEncodeToVecRoPinnedOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (spqrProgAtExt b ext)
-    ((spqrProgAtExt b ext).fnAddr spqrEncodeToVecName)
-    (pqRatchetStateEncodeToVecRoPinnedSpec b A)
-
-def PqRatchetStateEncodeToVecRoOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (spqrProgAtExt b ext)
-    ((spqrProgAtExt b ext).fnAddr spqrEncodeToVecName)
-    (pqRatchetStateEncodeToVecRoSpec b A)
-
-def PqRatchetStateEncodeToVecPinnedOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (spqrProgAtExt img.base ext)
-    ((spqrProgAtExt img.base ext).fnAddr spqrEncodeToVecName)
-    ((pqRatchetStateEncodeToVecPinnedSpecX A).inImage img)
-
-def PqRatchetStateEncodeToVecOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (spqrProgAtExt img.base ext)
-    ((spqrProgAtExt img.base ext).fnAddr spqrEncodeToVecName)
-    ((pqRatchetStateEncodeToVecSpecX A).inImage img)
-
 /-! ## Local Stack Slots and Frame Splitting Helpers -/
 
 /-- The 6 local 64-bit stack slots at `[sp - 144#64, sp - 96#64)` (`[s.sp, s.sp + 0x30)`). -/
-def encodeToVecLocalSlots (sp v0 v1 v2 v3 v4 v5 : BitVec 64) : SepProp :=
+@[expose] def encodeToVecLocalSlots (sp v0 v1 v2 v3 v4 v5 : BitVec 64) : SepProp :=
   ((sp - 144#64) ↦₆₄ v0) ∗ ((sp - 136#64) ↦₆₄ v1) ∗ ((sp - 128#64) ↦₆₄ v2) ∗
   ((sp - 120#64) ↦₆₄ v3) ∗ ((sp - 112#64) ↦₆₄ v4) ∗ ((sp - 104#64) ↦₆₄ v5)
 
@@ -979,19 +885,19 @@ theorem SepWP.done {prog : Program} {target_pc : BitVec 64} {s : State}
   ProofLib.SepWP.done hpc hrun (hd.toPost hpost)
 
 abbrev StepInv (s s' : State) : Prop :=
-  (∀ img : Obj.Image, img.FrozenLoaded s → img.FrozenLoaded s') ∧ s'.symtab = s.symtab ∧
+  s.mem.KeepsFrozen s'.mem ∧ s'.symtab = s.symtab ∧
     calleeSavedVRegs s' = calleeSavedVRegs s
 
 theorem StepInv.refl (s : State) : StepInv s s :=
-  ⟨fun _ h => h, rfl, rfl⟩
+  ⟨Memory.KeepsFrozen.refl s.mem, rfl, rfl⟩
 
 theorem StepInv.trans {s0 s1 s2 : State} (h1 : StepInv s0 s1) (h2 : StepInv s1 s2) :
     StepInv s0 s2 :=
-  ⟨fun img h => h2.1 img (h1.1 img h), h2.2.1.trans h1.2.1, h2.2.2.trans h1.2.2⟩
+  ⟨h1.1.trans h2.1, h2.2.1.trans h1.2.1, h2.2.2.trans h1.2.2⟩
 
 theorem StepInv.of_steps {prog : Program} {s s' : State} (hs : Steps prog s s')
     (hv : calleeSavedVRegs s' = calleeSavedVRegs s) : StepInv s s' :=
-  ⟨fun _ h => h.of_keepsFrozen hs.keepsFrozen, hs.symtab_eq, hv⟩
+  ⟨hs.keepsFrozen, hs.symtab_eq, hv⟩
 
 theorem SepWPp.of_sepWP_cs {prog : Program} {mid ret : BitVec 64}
     {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
@@ -1045,9 +951,8 @@ theorem allowPanic_not_exited {m : Memory} {R : SepProp}
   rw [satisfies_pure_sepConj] at hm
   exact hm.1
 
-/-- Wrap a `Spec α` with `⌜StepInv s0 s⌝` in the precondition so `_x` (`inImage img`) callers
-can discharge the image invariant at `s` from `s0` and `StepInv s0 s`. -/
-def withStepInv {α : Type} (s0 : State) (spec : Spec α) : Spec α :=
+/-- Wrap a `Spec α` with `⌜StepInv s0 s⌝` in the precondition so callers can discharge frozen-memory invariants at `s` from `s0` and `StepInv s0 s`. -/
+@[expose] def withStepInv {α : Type} (s0 : State) (spec : Spec α) : Spec α :=
   { spec with pre := fun x s => ⌜StepInv s0 s⌝ ∗ spec.pre x s }
 
 theorem subroutine_ok_withStepInv {α : Type} {prog : Program} {entry : BitVec 64} {spec : Spec α}
@@ -1058,36 +963,14 @@ theorem subroutine_ok_withStepInv {α : Type} {prog : Program} {entry : BitVec 6
   rw [withStepInv, sepConj_assoc, satisfies_pure_sepConj] at hpre
   exact (h.to_outcome x R s hpc hrun hpre.2 hsp).mono_outcome (fun _ hout => hout)
 
-theorem encodeToVec_chainEncodedLen_fnAddr_eq (b : BitVec 64)
-    (ext : String → Option (State → State))
-    {entry : BitVec 64} (hfn : (spqrProgAtExt b ext).fnAddr spqrEncodeToVecName = entry) :
-    entry + 18446744073709533056#64 =
-      (spqrProgAtExt b ext).fnAddr chainEncodedLenLocal2Name := by
-  subst hfn
-  have h1 := libsignalSessionCode_fnOff_0x67c18
-  have h2 := libsignalSessionCode_fnOff_0x63398
-  simp only [spqrProgAtExt, Program.fnAddr_rebase, spqrEncodeToVecName, chainEncodedLenLocal2Name, h1, h2]
-  bv_omega
-
-theorem encodeToVec_v1StateEncodedLen_fnAddr_eq (b : BitVec 64)
-    (ext : String → Option (State → State))
-    {entry : BitVec 64} (hfn : (spqrProgAtExt b ext).fnAddr spqrEncodeToVecName = entry) :
-    entry + 18446744073709530600#64 =
-      (spqrProgAtExt b ext).fnAddr v1StateEncodedLenLocal2Name := by
-  subst hfn
-  have h1 := libsignalSessionCode_fnOff_0x67c18
-  have h2 := libsignalSessionCode_fnOff_0x62a00
-  simp only [spqrProgAtExt, Program.fnAddr_rebase, spqrEncodeToVecName, v1StateEncodedLenLocal2Name, h1, h2]
-  bv_omega
-
 /-- First word (`[a]`) of `optVersionNegotiationPBPinnedAt A g a opt`. -/
-def optVersionNegCap (g : VersionNegotiationPBGhost) : Option VersionNegotiationPB → BitVec 64
+@[expose] def optVersionNegCap (g : VersionNegotiationPBGhost) : Option VersionNegotiationPB → BitVec 64
   | none => noneCap
   | some _ => g.authKey.cap
 
 /-- Remainder (`40` bytes at `a + 8#64`) of `versionNegotiationPBPinnedAt A g a vn` after
 splitting off `(a ↦₆₄ g.authKey.cap)`. -/
-def versionNegotiationRest (A : RustAlloc) (g : VersionNegotiationPBGhost) (a : BitVec 64)
+@[expose] def versionNegotiationRest (A : RustAlloc) (g : VersionNegotiationPBGhost) (a : BitVec 64)
     (vn : VersionNegotiationPB) : SepProp :=
   ((a + 8#64) ↦₆₄ g.authKey.ptr) ∗
     ((a + 16#64) ↦₆₄ BitVec.ofNat 64 vn.authKey.length) ∗
@@ -1098,7 +981,7 @@ def versionNegotiationRest (A : RustAlloc) (g : VersionNegotiationPBGhost) (a : 
     memRegion (a + 44#64) 4
 
 /-- Remainder of `optVersionNegotiationPBPinnedAt A g a opt` after splitting off `(a ↦₆₄ optVersionNegCap g opt)`. -/
-def optVersionNegRest (A : RustAlloc) (g : VersionNegotiationPBGhost) (a : BitVec 64) :
+@[expose] def optVersionNegRest (A : RustAlloc) (g : VersionNegotiationPBGhost) (a : BitVec 64) :
     Option VersionNegotiationPB → SepProp
   | none => memRegion (a + 8#64) 40
   | some vn => versionNegotiationRest A g a vn
@@ -1139,12 +1022,12 @@ theorem optVersionNegRest_cap_bounds {A : RustAlloc} {g : VersionNegotiationPBGh
     exact ⟨EncodedLen.cap_add_one_beq_zero_false hcap, EncodedLen.cap_add_one_bne_zero_true hcap⟩
 
 /-- First word (`[a]`) of `optChainPBPinnedAt A g a opt`. -/
-def optChainCap (g : ChainPBGhost) : Option ChainPB → BitVec 64
+@[expose] def optChainCap (g : ChainPBGhost) : Option ChainPB → BitVec 64
   | none => noneCap
   | some _ => g.links.cap
 
 /-- Heap buffer of `Vec<ChainEpochPB>` (element stride `112`, align `8`) detached from its 24-byte `vecHeader`. -/
-def vecEpochBuf (A : RustAlloc) (cap ptr : BitVec 64) (links : List ChainEpochPB) : SepProp :=
+@[expose] def vecEpochBuf (A : RustAlloc) (cap ptr : BitVec 64) (links : List ChainEpochPB) : SepProp :=
   vecBuf A chainEpochPBSize 8 (fun ep addr => chainEpochPBAt A addr ep) cap ptr links
 
 theorem vecEpochBuf_eq_of_ne_zero {A : RustAlloc} {cap ptr : BitVec 64} {links : List ChainEpochPB}
@@ -1159,14 +1042,14 @@ theorem vecEpochBuf_eq_of_ne_zero {A : RustAlloc} {cap ptr : BitVec 64} {links :
   ac_rfl
 
 /-- Remainder of `chainLinksVecPinnedAt A pin v links` after splitting off `(v ↦₆₄ pin.cap)`. -/
-def chainLinksVecBuf (A : RustAlloc) (pin : VecPin) (v : BitVec 64)
+@[expose] def chainLinksVecBuf (A : RustAlloc) (pin : VecPin) (v : BitVec 64)
     (links : List ChainEpochPB) : SepProp :=
   ((v + 8#64) ↦₆₄ pin.ptr) ∗
     ((v + 16#64) ↦₆₄ BitVec.ofNat 64 links.length) ∗
     vecEpochBuf A pin.cap pin.ptr links
 
 /-- Remainder (`72` bytes at `a + 8#64`) of `chainPBPinnedAt A g a ch` after splitting off `(a ↦₆₄ g.links.cap)`. -/
-def chainRest (A : RustAlloc) (g : ChainPBGhost) (a : BitVec 64) (ch : ChainPB) : SepProp :=
+@[expose] def chainRest (A : RustAlloc) (g : ChainPBGhost) (a : BitVec 64) (ch : ChainPB) : SepProp :=
   chainLinksVecBuf A g.links a ch.links ∗
     vecU8At A (a + 0x18#64) g.nextRoot.cap g.nextRoot.ptr ch.nextRoot ∗
     ((a + 0x30#64) ↦₆₄ ch.currentEpoch) ∗
@@ -1175,7 +1058,7 @@ def chainRest (A : RustAlloc) (g : ChainPBGhost) (a : BitVec 64) (ch : ChainPB) 
     ((a + 0x4c#64) ↦₃₂ ch.direction)
 
 /-- Remainder of `optChainPBPinnedAt A g a opt` after splitting off `(a ↦₆₄ optChainCap g opt)`. -/
-def optChainRest (A : RustAlloc) (g : ChainPBGhost) (a : BitVec 64) :
+@[expose] def optChainRest (A : RustAlloc) (g : ChainPBGhost) (a : BitVec 64) :
     Option ChainPB → SepProp
   | none => memRegion (a + 8#64) 72
   | some ch => chainRest A g a ch

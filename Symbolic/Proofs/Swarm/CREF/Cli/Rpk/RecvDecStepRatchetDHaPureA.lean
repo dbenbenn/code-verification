@@ -9,17 +9,17 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
-public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigmaReach
-public import Symbolic.Proofs.RngG.R3ModelInv
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.PinCoinsPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigmaReach -- proof-setup: allow-public-import
+public import Symbolic.Proofs.RngG.R3ModelInv -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.PinCoinsPure -- proof-setup: allow-public-import
 import Init.Data.String.Defs
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.Actions.ProtocolEvent
-public import Symbolic.Proofs.Hooks2.BridgeXPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA
+public import Symbolic.Proofs.Hooks2.BridgeXPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.LemmasPure
 import Symbolic.Proofs.Refinement.X25519Covered
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.DecCryptoAPure
@@ -40,7 +40,7 @@ trace invariants, and relates `RatchetState.dhRatchetStep` to symbolic `trDhRatc
 `gamma`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

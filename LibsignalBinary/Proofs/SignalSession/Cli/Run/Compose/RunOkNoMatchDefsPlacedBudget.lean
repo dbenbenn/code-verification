@@ -9,15 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.S_d2c
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.RunCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.S_d2c -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.RunCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
 import Arm64.Trusted.Spec.Hoare
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Musl.Spec
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Placed D2(c) Slot Predicates
@@ -28,7 +42,7 @@ Re-exports allocator-free D2(c) observation definitions and model-agreement lemm
 `cliGhostExterns g (cliExternsPlaced mmpl W)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -60,7 +74,7 @@ abbrev slotOkPlaced (callerProg : Program) (target : BitVec 64) (σ : CalleeSlot
     subroutine_ok callerProg target (σ.spec stk)
 
 /-- Extern-parametric D2(c) `decryptPrekey` slot contract on `lsProg_579 H` at fixed `(X, W)`. -/
-def DecPkD2cSlotOkPlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DecPkD2cSlotOkPlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (H : LibsignalHooks) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) : Prop :=
@@ -74,14 +88,14 @@ def DecPkD2cSlotOkPlacedAt [LibsignalPlacement] {M : AllocCostModel}
 
 /-- D2(c) `decryptPrekey` slot contract at `cliGhostExterns g (cliExternsPlaced mmpl W)`,
 quantified over `X : UnreachedPqxdhPrimitives`. -/
-def DecPkD2cSlotOkPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
+@[expose] def DecPkD2cSlotOkPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (g : CliGhostHooks) (W : CliHooks) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) : Prop :=
   ∀ (X : UnreachedPqxdhPrimitives),
     DecPkD2cSlotOkPlacedAt (cliGhostExterns g (cliExternsPlaced mmpl W)) X W A lim DecPkEnv
 
-def DecPkD2cSlotOkPlacedLinked [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
+@[expose] def DecPkD2cSlotOkPlacedLinked [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (W : CliHooks) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) : Prop :=
@@ -89,7 +103,7 @@ def DecPkD2cSlotOkPlacedLinked [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     DecPkD2cSlotOkPlacedAt (cliExternsPlaced mmpl W) X W A lim DecPkEnv
 
 /-- Extern-parametric D2(c) `PreKeySignalMessage::try_from` slot contract on `lsProg_579 H`. -/
-def PksmSlotOkPlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def PksmSlotOkPlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (H : LibsignalHooks)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PksmTryFromEnv : PksmGhost → List AllocEvent → Prop) : Prop :=
@@ -105,16 +119,10 @@ abbrev PksmSlotOkPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (PksmTryFromEnv : PksmGhost → List AllocEvent → Prop) : Prop :=
   PksmSlotOkPlacedAt (cliGhostExterns g (cliExternsPlaced mmpl W)) A lim PksmTryFromEnv
 
-abbrev PksmSlotOkPlacedLinked [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
-    (W : CliHooks) {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (PksmTryFromEnv : PksmGhost → List AllocEvent → Prop) : Prop :=
-  PksmSlotOkPlacedAt (cliExternsPlaced mmpl W) A lim PksmTryFromEnv
-
 
 /-- Extern-parametric `LibsignalFrozen` D2(c) `decryptPrekey` slot contract on `lsProg_579 H`
 at fixed `(X, W)` (`slotsOfSigPkFrozenPlaced`). -/
-def DecPkD2cSlotOkFrozenPlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DecPkD2cSlotOkFrozenPlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (H : LibsignalHooks) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) : Prop :=
@@ -130,14 +138,14 @@ def DecPkD2cSlotOkFrozenPlacedAt [LibsignalPlacement] {M : AllocCostModel}
 
 /-- `LibsignalFrozen` D2(c) `decryptPrekey` slot contract at
 `cliGhostExterns g (cliExternsPlaced mmpl W)`. -/
-def DecPkD2cSlotOkFrozenPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
+@[expose] def DecPkD2cSlotOkFrozenPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (g : CliGhostHooks) (W : CliHooks) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) : Prop :=
   ∀ (X : UnreachedPqxdhPrimitives),
     DecPkD2cSlotOkFrozenPlacedAt (cliGhostExterns g (cliExternsPlaced mmpl W)) X W A lim DecPkEnv
 
-def DecPkD2cSlotOkFrozenPlacedLinked [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
+@[expose] def DecPkD2cSlotOkFrozenPlacedLinked [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (W : CliHooks) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) : Prop :=
@@ -145,9 +153,5 @@ def DecPkD2cSlotOkFrozenPlacedLinked [LibsignalPlacement] (mmpl : Obj.MultiPlace
     DecPkD2cSlotOkFrozenPlacedAt (cliExternsPlaced mmpl W) X W A lim DecPkEnv
 
 abbrev DecPkD2cSlotOkFullPlacedAt := @DecPkD2cSlotOkFrozenPlacedAt
-
-abbrev DecPkD2cSlotOkFullPlaced := @DecPkD2cSlotOkFrozenPlaced
-
-abbrev DecPkD2cSlotOkFullPlacedLinked := @DecPkD2cSlotOkFrozenPlacedLinked
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchDefsPlacedBudget

@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Specifications.Security.Model
-public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.PQXDHAuthTraces
+public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.PQXDHAuthTraces -- proof-setup: allow-public-import
 
 /-!
 # Tightness of Composed PQXDH Authentication
@@ -22,7 +22,7 @@ requiring strict intended-peer agreement `b' = b` in `ResponderSessionAgreement`
 `SameDHKey`/`SameOPK` with byte equality on X25519 prekeys makes `Authentication` false.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -14,6 +14,7 @@ public import ProofLib.Hoare.MultiCodeROHook
 public import ProofLib.Process.Core
 public import VerifiedLibraries.Mallocng.Spec
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import Symbolic.BugInjection.Proofs.CliExec.RadixMemAux
 public import Symbolic.BugInjection.Proofs.CliExec.RadixMem
 public import Symbolic.BugInjection.Proofs.CliExec.FastHooksAux
@@ -45,9 +46,10 @@ namespace Symbolic.BugInjection.Proofs.CliExec.PlacedExecSound
 open Arm64 (Instr Memory Perm Program State Step Steps evalSvc)
 open Arm64.Obj (MultiPlacement)
 open Arm64.Process (ElfImage ProcessExitsWith ProcessOutcome ProcessRunsTo)
-open CryptoVerification.SignalSession (CliHooks Inputs Outcome OutcomeMatchesProcess
-  cliExternsPlacedSig cliProcessInputs filesOf)
-open CryptoVerification.SignalSession.Placed (cliProgPlacedSig cliRunPlacedSig cliTokenPatchPlaced)
+open CryptoVerification.SignalSession (CliHooks Inputs Outcome OutcomeMatchesProcess cliProcessInputs filesOf)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (cliExternsPlacedSig)
+open CryptoVerification.SignalSession.Placed (cliTokenPatchPlaced)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliProgPlacedSig cliRunPlacedSig)
 open Symbolic.BugInjection.Proofs.CliExec.RadixMemAux (BinTree Line64 btGet btGet_btSet_ne
   btGet_btSet_same btGet_empty rawCellAt withForcedBinTree_eq)
 open Symbolic.BugInjection.Proofs.CliExec.FastHooksAux (listUInt8Eq listUInt8IsPrefix lookupStrUtf8
@@ -86,65 +88,10 @@ export Symbolic.BugInjection.Proofs.CliExec.CliRunBridgePlaced (cliRunsToPlaced_
   cliRunPlacedSig_eq_some cliRunPlacedSig_eq_some_of_terminated cliRunPlacedSig_eq_some_of_steps
   cliRunPlacedSig_eq_some_of_signaled)
 
-theorem evalSound_fastEvalInst : EvalSound fastEvalInst :=
-  fun {_} hsvc {_ _ _ _} hag heval => fastEvalInst_sound hsvc hag heval
-
 theorem subStepSound_mallocng {E : Instr → FastState → Option FastState}
     (heval : EvalSound E) (mmpl : MultiPlacement) (m0 : Memory) :
     SubStepSound mmpl m0 (fastStepMem E) :=
   fastStepMem_subStepSound heval mmpl m0
-
-theorem subroutineRunnerSound_mallocng {E : Instr → FastState → Option FastState}
-    (heval : EvalSound E) (mmpl : MultiPlacement) (m0 : Memory) :
-    SubroutineRunnerSound mmpl m0 (mallocngCallAddrsOf mmpl) (fastStepMem E) :=
-  subroutineRunnerSound_of_subStepSound
-    (mallocngCallAddrsOf_matches mmpl) (subStepSound_mallocng heval mmpl m0)
-
-theorem subStepSound_mallocng_fastEvalInst (mmpl : MultiPlacement) (m0 : Memory) :
-    SubStepSound mmpl m0 (fastStepMem fastEvalInst) :=
-  subStepSound_mallocng evalSound_fastEvalInst mmpl m0
-
-theorem subroutineRunnerSound_mallocng_fastEvalInst (mmpl : MultiPlacement) (m0 : Memory) :
-    SubroutineRunnerSound mmpl m0 (mallocngCallAddrsOf mmpl) (fastStepMem fastEvalInst) :=
-  subroutineRunnerSound_mallocng evalSound_fastEvalInst mmpl m0
-
-theorem fastExecExternPlaced_mallocng_exists_sound {E : Instr → FastState → Option FastState}
-    (heval : EvalSound E) {mmpl : MultiPlacement} {m0 : Memory}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    {W : CliHooks} {name : String} {fs fs' : FastState} {s : State}
-    (hkf0 : m0.KeepsFrozen s.mem)
-    (hag : fs.Agrees s)
-    (hsome : fastExecExternPlaced (fastStepMem E) (mallocngCallAddrsOf mmpl) W name fs = some fs') :
-    ∃ h, cliExternsPlacedSig mmpl W name = some h ∧
-      fs'.Agrees (h s) ∧ s.mem.KeepsFrozen (h s).mem ∧ (h s).symtab = s.symtab :=
-  fastExecExternPlaced_exists_sound
-    (subroutineRunnerSound_mallocng heval mmpl m0) hcl0 hkf0 hag hsome
-
-theorem fastExecExternPlaced_mallocng_sound {E : Instr → FastState → Option FastState}
-    (heval : EvalSound E) {mmpl : MultiPlacement} {m0 : Memory}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    {W : CliHooks} {name : String} {fs fs' : FastState} {s : State} {h : State → State}
-    (hkf0 : m0.KeepsFrozen s.mem)
-    (hag : fs.Agrees s)
-    (hsome : fastExecExternPlaced (fastStepMem E) (mallocngCallAddrsOf mmpl) W name fs = some fs')
-    (hext : cliExternsPlacedSig mmpl W name = some h) :
-    fs'.Agrees (h s) ∧ s.mem.KeepsFrozen (h s).mem ∧ (h s).symtab = s.symtab :=
-  fastExecExternPlaced_sound
-    (subroutineRunnerSound_mallocng heval mmpl m0) hcl0 hkf0 hag hsome hext
-
-theorem fastExecExternPlaced_compHooks0_mallocng_exists_sound
-    {E : Instr → FastState → Option FastState}
-    (heval : EvalSound E) {mmpl : MultiPlacement} {m0 : Memory}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    {name : String} {fs fs' : FastState} {s : State}
-    (hkf0 : m0.KeepsFrozen s.mem)
-    (hag : fs.Agrees s)
-    (hsome : fastExecExternPlaced (fastStepMem E) (mallocngCallAddrsOf mmpl) compHooks0 name fs =
-      some fs') :
-    ∃ h, cliExternsPlacedSig mmpl compHooks0 name = some h ∧
-      fs'.Agrees (h s) ∧ s.mem.KeepsFrozen (h s).mem ∧ (h s).symtab = s.symtab :=
-  fastExecExternPlaced_compHooks0_exists_sound
-    (subroutineRunnerSound_mallocng heval mmpl m0) hcl0 hkf0 hag hsome
 
 /-- Soundness predicate for an `SVC #0` (`Instr.system false 0#16`) evaluator under
 `Arm64.Syscall.standard`. -/
@@ -152,13 +99,6 @@ def FastSysSound (sysF : FastState → Option FastState) : Prop :=
   ∀ {prog : Program}, prog.svc = Arm64.Syscall.standard →
     ∀ {fs fs' : FastState} {s : State},
       fs.Agrees s → sysF fs = some fs' → fs'.Agrees (prog.evalInst (.system false 0#16) s)
-
-theorem fastStepMemPlaced_eq (evalF : Instr → FastState → Option FastState) :
-    fastStepMemPlaced evalF = fastStepMem evalF :=
-  rfl
-
-theorem fastStepPlacedSub_eq : fastStepPlacedSub = fastStepMem fastEvalInstPlaced :=
-  rfl
 
 theorem fastEvalInstPlaced_sound_of_sys
     (hsys : FastSysSound fastExecSyscallPlaced)
@@ -195,16 +135,6 @@ theorem evalSound_fastEvalInstPlaced_of_sys
     (hsys : FastSysSound fastExecSyscallPlaced) : EvalSound fastEvalInstPlaced :=
   fun {_} hsvc {_ _ _ _} hag heval => fastEvalInstPlaced_sound_of_sys hsys hsvc hag heval
 
-theorem subStepSound_mallocng_fastEvalInstPlaced_of_sys
-    (hsys : FastSysSound fastExecSyscallPlaced) (mmpl : MultiPlacement) (m0 : Memory) :
-    SubStepSound mmpl m0 fastStepPlacedSub :=
-  subStepSound_mallocng (evalSound_fastEvalInstPlaced_of_sys hsys) mmpl m0
-
-theorem subroutineRunnerSound_mallocng_fastEvalInstPlaced_of_sys
-    (hsys : FastSysSound fastExecSyscallPlaced) (mmpl : MultiPlacement) (m0 : Memory) :
-    SubroutineRunnerSound mmpl m0 (mallocngCallAddrsOf mmpl) fastStepPlacedSub :=
-  subroutineRunnerSound_mallocng (evalSound_fastEvalInstPlaced_of_sys hsys) mmpl m0
-
 /-- Soundness of a placed program table `fp` against `cliProgPlacedSig mpl mmpl W` and initial
 memory `m0`: `fp.addrs` matches the `mallocng` placement `mmpl`, and every 4-byte-aligned lookup in
 `fp` agrees with `fetchMem` or `externAt?` across any `m` that preserves frozen cells of `m0`. -/
@@ -225,13 +155,6 @@ structure FastProgSoundPlaced (mpl mmpl : MultiPlacement) (W : CliHooks)
 private theorem cliProgPlacedSig_svc (mpl mmpl : MultiPlacement) (W : CliHooks) :
     (cliProgPlacedSig mpl mmpl W).svc = Arm64.Syscall.standard :=
   rfl
-
-private theorem pc_div4_lt_progPlacedWordBound (pc : BitVec 64) :
-    pc.toNat / 4 < progPlacedWordBound := by
-  have hlt : pc.toNat < 2 ^ 64 := pc.isLt
-  have hbound : progPlacedWordBound = 2 ^ 62 := rfl
-  rw [hbound]
-  omega
 
 private theorem cell_frozen_exec_read8_placed {m0 m : Memory} {a : BitVec 64}
     {p : Perm} {b : BitVec 8}
@@ -515,54 +438,6 @@ theorem fastStepPlacedCoreW_sound_of_hooks_eq
       exact ⟨h s, hsem, hag', hkf.trans hkeep⟩
   all_goals nomatch hstep
 
-theorem fastStepPlacedCoreW_sound
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {evalF : Instr → FastState → Option FastState}
-    {fp : FastProgPlaced} {m0 : Memory} {fs fs' : FastState} {s : State}
-    (heval : EvalSound evalF)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag : fs.Agrees s)
-    (hkf : m0.KeepsFrozen s.mem)
-    (hstep : fastStepPlacedCoreW W evalF (fastStepMem evalF) fp fs = some fs') :
-    ∃ s' : State,
-      Step (cliProgPlacedSig mpl mmpl W) s s' ∧
-      fs'.Agrees s' ∧
-      m0.KeepsFrozen s'.mem :=
-  fastStepPlacedCoreW_sound_of_hooks_eq heval hcl0 hfp (fun _ => rfl) hag hkf hstep
-
-theorem fastStepPlacedW_sound_of_sys
-    (hsys : FastSysSound fastExecSyscallPlaced)
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fp : FastProgPlaced} {m0 : Memory} {fs fs' : FastState} {s : State}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag : fs.Agrees s)
-    (hkf : m0.KeepsFrozen s.mem)
-    (hstep : fastStepPlacedW W fp fs = some fs') :
-    ∃ s' : State,
-      Step (cliProgPlacedSig mpl mmpl W) s s' ∧
-      fs'.Agrees s' ∧
-      m0.KeepsFrozen s'.mem :=
-  fastStepPlacedCoreW_sound (evalSound_fastEvalInstPlaced_of_sys hsys) hcl0 hfp hag hkf hstep
-
-theorem fastStepPlaced_sound_of_sys_hooks_eq
-    (hsys : FastSysSound fastExecSyscallPlaced)
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fp : FastProgPlaced} {m0 : Memory} {fs fs' : FastState} {s : State}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hW : ∀ name, cliExternsPlacedSig mmpl compHooks0 name = cliExternsPlacedSig mmpl W name)
-    (hag : fs.Agrees s)
-    (hkf : m0.KeepsFrozen s.mem)
-    (hstep : fastStepPlaced fp fs = some fs') :
-    ∃ s' : State,
-      Step (cliProgPlacedSig mpl mmpl W) s s' ∧
-      fs'.Agrees s' ∧
-      m0.KeepsFrozen s'.mem :=
-  fastStepPlacedCoreW_sound_of_hooks_eq
-    (evalSound_fastEvalInstPlaced_of_sys hsys) hcl0 hfp hW hag hkf hstep
-
 private theorem steps_trans_placed {prog : Program} {s1 s2 s3 : State}
     (h1 : Steps prog s1 s2) (h2 : Steps prog s2 s3) : Steps prog s1 s3 := by
   induction h1 with
@@ -606,22 +481,6 @@ theorem fastRunStepsPlacedCoreW_sound_of_hooks_eq
       subst hrun
       exact ⟨s, .refl s, hag, hkf⟩
 
-theorem fastRunStepsPlacedCoreW_sound
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {evalF : Instr → FastState → Option FastState}
-    {fuel : Nat} {fp : FastProgPlaced} {m0 : Memory} {fs fsf : FastState} {s : State}
-    (heval : EvalSound evalF)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag : fs.Agrees s)
-    (hkf : m0.KeepsFrozen s.mem)
-    (hrun : fastRunStepsPlacedCoreW W evalF (fastStepMem evalF) fuel fp fs = some fsf) :
-    ∃ sf : State,
-      Steps (cliProgPlacedSig mpl mmpl W) s sf ∧
-      fsf.Agrees sf ∧
-      m0.KeepsFrozen sf.mem :=
-  fastRunStepsPlacedCoreW_sound_of_hooks_eq heval hcl0 hfp (fun _ => rfl) hag hkf hrun
-
 theorem fastRunPow2PlacedCoreW_sound_of_hooks_eq
     {mpl mmpl : MultiPlacement} {Wexec W : CliHooks}
     {evalF : Instr → FastState → Option FastState}
@@ -664,63 +523,6 @@ theorem fastRunPow2PlacedCoreW_sound_of_hooks_eq
       subst hrun
       exact ⟨s, .refl s, hag, hkf⟩
 
-theorem fastRunPow2PlacedCoreW_sound
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {evalF : Instr → FastState → Option FastState}
-    {fp : FastProgPlaced} {k : Nat} {m0 : Memory} {fs fsf : FastState} {s : State}
-    (heval : EvalSound evalF)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag : fs.Agrees s)
-    (hkf : m0.KeepsFrozen s.mem)
-    (hrun : fastRunPow2PlacedCoreW W evalF (fastStepMem evalF) fp k fs = some fsf) :
-    ∃ sf : State,
-      Steps (cliProgPlacedSig mpl mmpl W) s sf ∧
-      fsf.Agrees sf ∧
-      m0.KeepsFrozen sf.mem :=
-  fastRunPow2PlacedCoreW_sound_of_hooks_eq heval hcl0 hfp (fun _ => rfl) hag hkf hrun
-
-theorem fastRunChunkCachedPlacedCoreW_sound_of_hooks_eq
-    {mpl mmpl : MultiPlacement} {Wexec W : CliHooks}
-    {evalF : Instr → FastState → Option FastState}
-    {fp : FastProgPlaced} {k : Nat} {m0 : Memory} {fs fsf : FastState} {s : State}
-    (heval : EvalSound evalF)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hW : ∀ name, cliExternsPlacedSig mmpl Wexec name = cliExternsPlacedSig mmpl W name)
-    (hag : fs.Agrees s)
-    (hkf : m0.KeepsFrozen s.mem)
-    (hrun : fastRunChunkCachedPlacedCoreW Wexec evalF (fastStepMem evalF) fp k fs = some fsf) :
-    ∃ sf : State,
-      Steps (cliProgPlacedSig mpl mmpl W) s sf ∧
-      fsf.Agrees sf ∧
-      m0.KeepsFrozen sf.mem :=
-  fastRunPow2PlacedCoreW_sound_of_hooks_eq
-    heval hcl0 hfp hW hag hkf (fastRunChunkCachedPlacedCoreW_eq hrun)
-
-theorem fastRunChunkCachedPlacedCoreW_sound
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {evalF : Instr → FastState → Option FastState}
-    {fp : FastProgPlaced} {k : Nat} {m0 : Memory} {fs fsf : FastState} {s : State}
-    (heval : EvalSound evalF)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag : fs.Agrees s)
-    (hkf : m0.KeepsFrozen s.mem)
-    (hrun : fastRunChunkCachedPlacedCoreW W evalF (fastStepMem evalF) fp k fs = some fsf) :
-    ∃ sf : State,
-      Steps (cliProgPlacedSig mpl mmpl W) s sf ∧
-      fsf.Agrees sf ∧
-      m0.KeepsFrozen sf.mem :=
-  fastRunChunkCachedPlacedCoreW_sound_of_hooks_eq heval hcl0 hfp (fun _ => rfl) hag hkf hrun
-
-theorem fastReachablePlacedCoreW_of_cachedPow2
-    {W : CliHooks} {evalF : Instr → FastState → Option FastState}
-    {subStep : FastState → Option FastState} {fp : FastProgPlaced} {fs1 fs2 : FastState}
-    (k : Nat) (h : fastRunChunkCachedPlacedCoreW W evalF subStep fp k fs1 = some fs2) :
-    FastReachablePlacedCoreW W evalF subStep fp fs1 fs2 :=
-  .pow2 k (fastRunChunkCachedPlacedCoreW_eq h)
-
 /-- Lift a `FastReachablePlacedCoreW` trace to semantic `Steps` on `cliProgPlacedSig mpl mmpl W`
 with `FastState.Agrees` and `m0.KeepsFrozen` preserved across pointwise-equal extern hooks. -/
 theorem fastReachablePlacedCoreW_sound_of_hooks_eq
@@ -749,160 +551,6 @@ theorem fastReachablePlacedCoreW_sound_of_hooks_eq
     obtain ⟨sf, hst2, hagf, hkff⟩ := ih2 hagm hkfm
     exact ⟨sf, steps_trans_placed hst1 hst2, hagf, hkff⟩
 
-theorem fastReachablePlacedCoreW_sound
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {evalF : Instr → FastState → Option FastState}
-    {fp : FastProgPlaced} {m0 : Memory} {fs0 fsf : FastState} {s0 : State}
-    (hreach : FastReachablePlacedCoreW W evalF (fastStepMem evalF) fp fs0 fsf)
-    (heval : EvalSound evalF)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag : fs0.Agrees s0)
-    (hkf : m0.KeepsFrozen s0.mem) :
-    ∃ sf : State,
-      Steps (cliProgPlacedSig mpl mmpl W) s0 sf ∧
-      fsf.Agrees sf ∧
-      m0.KeepsFrozen sf.mem :=
-  fastReachablePlacedCoreW_sound_of_hooks_eq hreach heval hcl0 hfp (fun _ => rfl) hag hkf
-
-theorem fastReachablePlacedW_sound_of_sys
-    (hsys : FastSysSound fastExecSyscallPlaced)
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fp : FastProgPlaced} {m0 : Memory} {fs0 fsf : FastState} {s0 : State}
-    (hreach : FastReachablePlacedW W fp fs0 fsf)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag : fs0.Agrees s0)
-    (hkf : m0.KeepsFrozen s0.mem) :
-    ∃ sf : State,
-      Steps (cliProgPlacedSig mpl mmpl W) s0 sf ∧
-      fsf.Agrees sf ∧
-      m0.KeepsFrozen sf.mem :=
-  fastReachablePlacedCoreW_sound hreach (evalSound_fastEvalInstPlaced_of_sys hsys) hcl0 hfp hag hkf
-
-theorem fastReachablePlaced_sound_of_sys_hooks_eq
-    (hsys : FastSysSound fastExecSyscallPlaced)
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fp : FastProgPlaced} {m0 : Memory} {fs0 fsf : FastState} {s0 : State}
-    (hreach : FastReachablePlaced fp fs0 fsf)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hW : ∀ name, cliExternsPlacedSig mmpl compHooks0 name = cliExternsPlacedSig mmpl W name)
-    (hag : fs0.Agrees s0)
-    (hkf : m0.KeepsFrozen s0.mem) :
-    ∃ sf : State,
-      Steps (cliProgPlacedSig mpl mmpl W) s0 sf ∧
-      fsf.Agrees sf ∧
-      m0.KeepsFrozen sf.mem :=
-  fastReachablePlacedCoreW_sound_of_hooks_eq
-    hreach (evalSound_fastEvalInstPlaced_of_sys hsys) hcl0 hfp hW hag hkf
-
-theorem processRunsTo_of_steps_exited
-    {mpl mmpl : MultiPlacement} {W : CliHooks} {s sf : State} {code : BitVec 64} {out : Outcome}
-    (hsteps : Steps (cliProgPlacedSig mpl mmpl W) s sf)
-    (hst : sf.status = .Exited code)
-    (hout : OutcomeMatchesProcess out (ProcessOutcome.ofState code sf)) :
-    ProcessRunsTo (cliProgPlacedSig mpl mmpl W) s (OutcomeMatchesProcess out) :=
-  have hexit : ProcessExitsWith (cliProgPlacedSig mpl mmpl W) s (ProcessOutcome.ofState code sf) :=
-    ⟨sf, hsteps, Or.inl ⟨code, hst, rfl⟩⟩
-  ProcessRunsTo.of_exitsWith hexit hout
-
-theorem processRunsTo_of_steps_signaled
-    {mpl mmpl : MultiPlacement} {W : CliHooks} {s sf : State} {sig : BitVec 7} {out : Outcome}
-    (hsteps : Steps (cliProgPlacedSig mpl mmpl W) s sf)
-    (hst : sf.status = .Signaled sig)
-    (hout : OutcomeMatchesProcess out (ProcessOutcome.ofSignal sig sf)) :
-    ProcessRunsTo (cliProgPlacedSig mpl mmpl W) s (OutcomeMatchesProcess out) :=
-  have hexit : ProcessExitsWith (cliProgPlacedSig mpl mmpl W) s (ProcessOutcome.ofSignal sig sf) :=
-    ⟨sf, hsteps, Or.inr ⟨sig, hst, rfl⟩⟩
-  ProcessRunsTo.of_exitsWith hexit hout
-
-theorem processRunsTo_of_fastReachablePlacedCoreW_exited_hooks_eq
-    {mpl mmpl : MultiPlacement} {Wexec W : CliHooks}
-    {evalF : Instr → FastState → Option FastState}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    {code : BitVec 64} {outStdout : List (BitVec 8)} {outFiles : List (String × List (BitVec 8))}
-    (heval : EvalSound evalF)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hW : ∀ name, cliExternsPlacedSig mmpl Wexec name = cliExternsPlacedSig mmpl W name)
-    (hag0 : fs0.Agrees s0)
-    (hkf0 : m0.KeepsFrozen s0.mem)
-    (hreach : FastReachablePlacedCoreW Wexec evalF (fastStepMem evalF) fp fs0 fsf)
-    (hchk : checkFastExited fsf code outStdout outFiles = true) :
-    ProcessRunsTo (cliProgPlacedSig mpl mmpl W) s0
-      (OutcomeMatchesProcess (.exited (code.toNat % 256) outStdout (filesOf outFiles))) := by
-  obtain ⟨sf, hsteps, hagf, _⟩ :=
-    fastReachablePlacedCoreW_sound_of_hooks_eq hreach heval hcl0 hfp hW hag0 hkf0
-  obtain ⟨hst, hout⟩ := checkFastExited_sound hagf hchk
-  exact processRunsTo_of_steps_exited hsteps hst hout
-
-theorem processRunsTo_of_fastReachablePlacedCoreW_exited
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {evalF : Instr → FastState → Option FastState}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    {code : BitVec 64} {outStdout : List (BitVec 8)} {outFiles : List (String × List (BitVec 8))}
-    (heval : EvalSound evalF)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag0 : fs0.Agrees s0)
-    (hkf0 : m0.KeepsFrozen s0.mem)
-    (hreach : FastReachablePlacedCoreW W evalF (fastStepMem evalF) fp fs0 fsf)
-    (hchk : checkFastExited fsf code outStdout outFiles = true) :
-    ProcessRunsTo (cliProgPlacedSig mpl mmpl W) s0
-      (OutcomeMatchesProcess (.exited (code.toNat % 256) outStdout (filesOf outFiles))) :=
-  processRunsTo_of_fastReachablePlacedCoreW_exited_hooks_eq
-    heval hcl0 hfp (fun _ => rfl) hag0 hkf0 hreach hchk
-
-theorem processRunsTo_of_fastReachablePlacedCoreW
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {evalF : Instr → FastState → Option FastState}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    {outStdout : List (BitVec 8)} {outFiles : List (String × List (BitVec 8))}
-    (heval : EvalSound evalF)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag0 : fs0.Agrees s0)
-    (hkf0 : m0.KeepsFrozen s0.mem)
-    (hreach : FastReachablePlacedCoreW W evalF (fastStepMem evalF) fp fs0 fsf)
-    (hchk : checkFastExited0 fsf outStdout outFiles = true) :
-    ProcessRunsTo (cliProgPlacedSig mpl mmpl W) s0
-      (OutcomeMatchesProcess (.exited 0 outStdout (filesOf outFiles))) :=
-  processRunsTo_of_fastReachablePlacedCoreW_exited heval hcl0 hfp hag0 hkf0 hreach hchk
-
-theorem processRunsTo_of_fastReachablePlacedCoreW_aborted_hooks_eq
-    {mpl mmpl : MultiPlacement} {Wexec W : CliHooks}
-    {evalF : Instr → FastState → Option FastState}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    (heval : EvalSound evalF)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hW : ∀ name, cliExternsPlacedSig mmpl Wexec name = cliExternsPlacedSig mmpl W name)
-    (hag0 : fs0.Agrees s0)
-    (hkf0 : m0.KeepsFrozen s0.mem)
-    (hreach : FastReachablePlacedCoreW Wexec evalF (fastStepMem evalF) fp fs0 fsf)
-    (hchk : checkFastAborted fsf = true) :
-    ProcessRunsTo (cliProgPlacedSig mpl mmpl W) s0 (OutcomeMatchesProcess .aborted) := by
-  obtain ⟨sf, hsteps, hagf, _⟩ :=
-    fastReachablePlacedCoreW_sound_of_hooks_eq hreach heval hcl0 hfp hW hag0 hkf0
-  obtain ⟨hst, hout⟩ := checkFastAborted_sound hagf hchk
-  exact processRunsTo_of_steps_signaled hsteps hst hout
-
-theorem processRunsTo_of_fastReachablePlacedCoreW_aborted
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {evalF : Instr → FastState → Option FastState}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    (heval : EvalSound evalF)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag0 : fs0.Agrees s0)
-    (hkf0 : m0.KeepsFrozen s0.mem)
-    (hreach : FastReachablePlacedCoreW W evalF (fastStepMem evalF) fp fs0 fsf)
-    (hchk : checkFastAborted fsf = true) :
-    ProcessRunsTo (cliProgPlacedSig mpl mmpl W) s0 (OutcomeMatchesProcess .aborted) :=
-  processRunsTo_of_fastReachablePlacedCoreW_aborted_hooks_eq
-    heval hcl0 hfp (fun _ => rfl) hag0 hkf0 hreach hchk
-
 theorem cliRunPlacedSig_of_fastReachablePlacedCoreW_exited_hooks_eq
     {mpl mmpl : MultiPlacement} {elf : ElfImage} {Wexec W : CliHooks} {inp : Inputs}
     {evalF : Instr → FastState → Option FastState}
@@ -924,41 +572,6 @@ theorem cliRunPlacedSig_of_fastReachablePlacedCoreW_exited_hooks_eq
   obtain ⟨hst, hout⟩ := checkFastExited_sound hagf hchk
   exact cliRunPlacedSig_eq_some_of_steps hload hsteps hst hout
 
-theorem cliRunPlacedSig_of_fastReachablePlacedCoreW_exited
-    {mpl mmpl : MultiPlacement} {elf : ElfImage} {W : CliHooks} {inp : Inputs}
-    {evalF : Instr → FastState → Option FastState}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    {code : BitVec 64} {outStdout : List (BitVec 8)} {outFiles : List (String × List (BitVec 8))}
-    (heval : EvalSound evalF)
-    (hload : elf.loadState (cliProcessInputs inp) = .ok s0)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag0 : fs0.Agrees (cliTokenPatchPlaced mpl s0))
-    (hkf0 : m0.KeepsFrozen (cliTokenPatchPlaced mpl s0).mem)
-    (hreach : FastReachablePlacedCoreW W evalF (fastStepMem evalF) fp fs0 fsf)
-    (hchk : checkFastExited fsf code outStdout outFiles = true) :
-    cliRunPlacedSig mpl mmpl elf W inp =
-      some (.exited (code.toNat % 256) outStdout (filesOf outFiles)) :=
-  cliRunPlacedSig_of_fastReachablePlacedCoreW_exited_hooks_eq
-    heval hload hcl0 hfp (fun _ => rfl) hag0 hkf0 hreach hchk
-
-theorem cliRunPlacedSig_of_fastReachablePlacedCoreW
-    {mpl mmpl : MultiPlacement} {elf : ElfImage} {W : CliHooks} {inp : Inputs}
-    {evalF : Instr → FastState → Option FastState}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    {outStdout : List (BitVec 8)} {outFiles : List (String × List (BitVec 8))}
-    (heval : EvalSound evalF)
-    (hload : elf.loadState (cliProcessInputs inp) = .ok s0)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag0 : fs0.Agrees (cliTokenPatchPlaced mpl s0))
-    (hkf0 : m0.KeepsFrozen (cliTokenPatchPlaced mpl s0).mem)
-    (hreach : FastReachablePlacedCoreW W evalF (fastStepMem evalF) fp fs0 fsf)
-    (hchk : checkFastExited0 fsf outStdout outFiles = true) :
-    cliRunPlacedSig mpl mmpl elf W inp =
-      some (.exited 0 outStdout (filesOf outFiles)) :=
-  cliRunPlacedSig_of_fastReachablePlacedCoreW_exited heval hload hcl0 hfp hag0 hkf0 hreach hchk
-
 theorem cliRunPlacedSig_of_fastReachablePlacedCoreW_aborted_hooks_eq
     {mpl mmpl : MultiPlacement} {elf : ElfImage} {Wexec W : CliHooks} {inp : Inputs}
     {evalF : Instr → FastState → Option FastState}
@@ -977,71 +590,6 @@ theorem cliRunPlacedSig_of_fastReachablePlacedCoreW_aborted_hooks_eq
     fastReachablePlacedCoreW_sound_of_hooks_eq hreach heval hcl0 hfp hW hag0 hkf0
   obtain ⟨hst, hout⟩ := checkFastAborted_sound hagf hchk
   exact cliRunPlacedSig_eq_some_of_signaled hload hsteps hst hout
-
-theorem cliRunPlacedSig_of_fastReachablePlacedCoreW_aborted
-    {mpl mmpl : MultiPlacement} {elf : ElfImage} {W : CliHooks} {inp : Inputs}
-    {evalF : Instr → FastState → Option FastState}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    (heval : EvalSound evalF)
-    (hload : elf.loadState (cliProcessInputs inp) = .ok s0)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag0 : fs0.Agrees (cliTokenPatchPlaced mpl s0))
-    (hkf0 : m0.KeepsFrozen (cliTokenPatchPlaced mpl s0).mem)
-    (hreach : FastReachablePlacedCoreW W evalF (fastStepMem evalF) fp fs0 fsf)
-    (hchk : checkFastAborted fsf = true) :
-    cliRunPlacedSig mpl mmpl elf W inp = some .aborted :=
-  cliRunPlacedSig_of_fastReachablePlacedCoreW_aborted_hooks_eq
-    heval hload hcl0 hfp (fun _ => rfl) hag0 hkf0 hreach hchk
-
-theorem cliRunPlacedSig_of_fastReachablePlacedW_exited_of_sys
-    (hsys : FastSysSound fastExecSyscallPlaced)
-    {mpl mmpl : MultiPlacement} {elf : ElfImage} {W : CliHooks} {inp : Inputs}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    {code : BitVec 64} {outStdout : List (BitVec 8)} {outFiles : List (String × List (BitVec 8))}
-    (hload : elf.loadState (cliProcessInputs inp) = .ok s0)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag0 : fs0.Agrees (cliTokenPatchPlaced mpl s0))
-    (hkf0 : m0.KeepsFrozen (cliTokenPatchPlaced mpl s0).mem)
-    (hreach : FastReachablePlacedW W fp fs0 fsf)
-    (hchk : checkFastExited fsf code outStdout outFiles = true) :
-    cliRunPlacedSig mpl mmpl elf W inp =
-      some (.exited (code.toNat % 256) outStdout (filesOf outFiles)) :=
-  cliRunPlacedSig_of_fastReachablePlacedCoreW_exited
-    (evalSound_fastEvalInstPlaced_of_sys hsys) hload hcl0 hfp hag0 hkf0 hreach hchk
-
-theorem cliRunPlacedSig_of_fastReachablePlacedW_of_sys
-    (hsys : FastSysSound fastExecSyscallPlaced)
-    {mpl mmpl : MultiPlacement} {elf : ElfImage} {W : CliHooks} {inp : Inputs}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    {outStdout : List (BitVec 8)} {outFiles : List (String × List (BitVec 8))}
-    (hload : elf.loadState (cliProcessInputs inp) = .ok s0)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag0 : fs0.Agrees (cliTokenPatchPlaced mpl s0))
-    (hkf0 : m0.KeepsFrozen (cliTokenPatchPlaced mpl s0).mem)
-    (hreach : FastReachablePlacedW W fp fs0 fsf)
-    (hchk : checkFastExited0 fsf outStdout outFiles = true) :
-    cliRunPlacedSig mpl mmpl elf W inp =
-      some (.exited 0 outStdout (filesOf outFiles)) :=
-  cliRunPlacedSig_of_fastReachablePlacedW_exited_of_sys
-    hsys hload hcl0 hfp hag0 hkf0 hreach hchk
-
-theorem cliRunPlacedSig_of_fastReachablePlacedW_aborted_of_sys
-    (hsys : FastSysSound fastExecSyscallPlaced)
-    {mpl mmpl : MultiPlacement} {elf : ElfImage} {W : CliHooks} {inp : Inputs}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    (hload : elf.loadState (cliProcessInputs inp) = .ok s0)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag0 : fs0.Agrees (cliTokenPatchPlaced mpl s0))
-    (hkf0 : m0.KeepsFrozen (cliTokenPatchPlaced mpl s0).mem)
-    (hreach : FastReachablePlacedW W fp fs0 fsf)
-    (hchk : checkFastAborted fsf = true) :
-    cliRunPlacedSig mpl mmpl elf W inp = some .aborted :=
-  cliRunPlacedSig_of_fastReachablePlacedCoreW_aborted
-    (evalSound_fastEvalInstPlaced_of_sys hsys) hload hcl0 hfp hag0 hkf0 hreach hchk
 
 theorem cliRunPlacedSig_of_fastReachablePlaced_exited_of_sys
     (hsys : FastSysSound fastExecSyscallPlaced)
@@ -1106,303 +654,6 @@ theorem fastEvalInstPlaced_sound
     (heval : fastEvalInstPlaced inst fs = some fs') :
     fs'.Agrees (prog.evalInst inst s) :=
   fastEvalInstPlaced_sound_of_sys fastSysSound_fastExecSyscallPlaced hsvc hag heval
-
-theorem evalSound_fastEvalInstPlaced : EvalSound fastEvalInstPlaced :=
-  evalSound_fastEvalInstPlaced_of_sys fastSysSound_fastExecSyscallPlaced
-
-theorem subStepSound_mallocng_fastEvalInstPlaced (mmpl : MultiPlacement) (m0 : Memory) :
-    SubStepSound mmpl m0 fastStepPlacedSub :=
-  subStepSound_mallocng_fastEvalInstPlaced_of_sys fastSysSound_fastExecSyscallPlaced mmpl m0
-
-theorem subroutineRunnerSound_mallocng_fastEvalInstPlaced (mmpl : MultiPlacement) (m0 : Memory) :
-    SubroutineRunnerSound mmpl m0 (mallocngCallAddrsOf mmpl) fastStepPlacedSub :=
-  subroutineRunnerSound_mallocng_fastEvalInstPlaced_of_sys
-    fastSysSound_fastExecSyscallPlaced mmpl m0
-
-theorem fastStepPlacedW_sound
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fp : FastProgPlaced} {m0 : Memory} {fs fs' : FastState} {s : State}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag : fs.Agrees s)
-    (hkf : m0.KeepsFrozen s.mem)
-    (hstep : fastStepPlacedW W fp fs = some fs') :
-    ∃ s' : State,
-      Step (cliProgPlacedSig mpl mmpl W) s s' ∧
-      fs'.Agrees s' ∧
-      m0.KeepsFrozen s'.mem :=
-  fastStepPlacedW_sound_of_sys fastSysSound_fastExecSyscallPlaced hcl0 hfp hag hkf hstep
-
-theorem fastStepPlaced_sound_hooks_eq
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fp : FastProgPlaced} {m0 : Memory} {fs fs' : FastState} {s : State}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hW : ∀ name, cliExternsPlacedSig mmpl compHooks0 name = cliExternsPlacedSig mmpl W name)
-    (hag : fs.Agrees s)
-    (hkf : m0.KeepsFrozen s.mem)
-    (hstep : fastStepPlaced fp fs = some fs') :
-    ∃ s' : State,
-      Step (cliProgPlacedSig mpl mmpl W) s s' ∧
-      fs'.Agrees s' ∧
-      m0.KeepsFrozen s'.mem :=
-  fastStepPlaced_sound_of_sys_hooks_eq
-    fastSysSound_fastExecSyscallPlaced hcl0 hfp hW hag hkf hstep
-
-theorem fastRunStepsPlacedW_sound
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fuel : Nat} {fp : FastProgPlaced} {m0 : Memory} {fs fsf : FastState} {s : State}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag : fs.Agrees s)
-    (hkf : m0.KeepsFrozen s.mem)
-    (hrun : fastRunStepsPlacedW W fuel fp fs = some fsf) :
-    ∃ sf : State,
-      Steps (cliProgPlacedSig mpl mmpl W) s sf ∧
-      fsf.Agrees sf ∧
-      m0.KeepsFrozen sf.mem :=
-  fastRunStepsPlacedCoreW_sound evalSound_fastEvalInstPlaced hcl0 hfp hag hkf hrun
-
-theorem fastRunStepsPlaced_sound_hooks_eq
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fuel : Nat} {fp : FastProgPlaced} {m0 : Memory} {fs fsf : FastState} {s : State}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hW : ∀ name, cliExternsPlacedSig mmpl compHooks0 name = cliExternsPlacedSig mmpl W name)
-    (hag : fs.Agrees s)
-    (hkf : m0.KeepsFrozen s.mem)
-    (hrun : fastRunStepsPlaced fuel fp fs = some fsf) :
-    ∃ sf : State,
-      Steps (cliProgPlacedSig mpl mmpl W) s sf ∧
-      fsf.Agrees sf ∧
-      m0.KeepsFrozen sf.mem :=
-  fastRunStepsPlacedCoreW_sound_of_hooks_eq
-    evalSound_fastEvalInstPlaced hcl0 hfp hW hag hkf hrun
-
-theorem fastRunPow2PlacedW_sound
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fp : FastProgPlaced} {k : Nat} {m0 : Memory} {fs fsf : FastState} {s : State}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag : fs.Agrees s)
-    (hkf : m0.KeepsFrozen s.mem)
-    (hrun : fastRunPow2PlacedW W fp k fs = some fsf) :
-    ∃ sf : State,
-      Steps (cliProgPlacedSig mpl mmpl W) s sf ∧
-      fsf.Agrees sf ∧
-      m0.KeepsFrozen sf.mem :=
-  fastRunPow2PlacedCoreW_sound evalSound_fastEvalInstPlaced hcl0 hfp hag hkf hrun
-
-theorem fastRunPow2Placed_sound_hooks_eq
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fp : FastProgPlaced} {k : Nat} {m0 : Memory} {fs fsf : FastState} {s : State}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hW : ∀ name, cliExternsPlacedSig mmpl compHooks0 name = cliExternsPlacedSig mmpl W name)
-    (hag : fs.Agrees s)
-    (hkf : m0.KeepsFrozen s.mem)
-    (hrun : fastRunPow2Placed fp k fs = some fsf) :
-    ∃ sf : State,
-      Steps (cliProgPlacedSig mpl mmpl W) s sf ∧
-      fsf.Agrees sf ∧
-      m0.KeepsFrozen sf.mem :=
-  fastRunPow2PlacedCoreW_sound_of_hooks_eq
-    evalSound_fastEvalInstPlaced hcl0 hfp hW hag hkf hrun
-
-theorem fastRunChunkCachedPlacedW_sound
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fp : FastProgPlaced} {k : Nat} {m0 : Memory} {fs fsf : FastState} {s : State}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag : fs.Agrees s)
-    (hkf : m0.KeepsFrozen s.mem)
-    (hrun : fastRunChunkCachedPlacedW W fp k fs = some fsf) :
-    ∃ sf : State,
-      Steps (cliProgPlacedSig mpl mmpl W) s sf ∧
-      fsf.Agrees sf ∧
-      m0.KeepsFrozen sf.mem :=
-  fastRunChunkCachedPlacedCoreW_sound evalSound_fastEvalInstPlaced hcl0 hfp hag hkf hrun
-
-theorem fastRunChunkCachedPlaced_sound_hooks_eq
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fp : FastProgPlaced} {k : Nat} {m0 : Memory} {fs fsf : FastState} {s : State}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hW : ∀ name, cliExternsPlacedSig mmpl compHooks0 name = cliExternsPlacedSig mmpl W name)
-    (hag : fs.Agrees s)
-    (hkf : m0.KeepsFrozen s.mem)
-    (hrun : fastRunChunkCachedPlaced fp k fs = some fsf) :
-    ∃ sf : State,
-      Steps (cliProgPlacedSig mpl mmpl W) s sf ∧
-      fsf.Agrees sf ∧
-      m0.KeepsFrozen sf.mem :=
-  fastRunChunkCachedPlacedCoreW_sound_of_hooks_eq
-    evalSound_fastEvalInstPlaced hcl0 hfp hW hag hkf hrun
-
-theorem fastReachablePlacedW_sound
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fp : FastProgPlaced} {m0 : Memory} {fs0 fsf : FastState} {s0 : State}
-    (hreach : FastReachablePlacedW W fp fs0 fsf)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag : fs0.Agrees s0)
-    (hkf : m0.KeepsFrozen s0.mem) :
-    ∃ sf : State,
-      Steps (cliProgPlacedSig mpl mmpl W) s0 sf ∧
-      fsf.Agrees sf ∧
-      m0.KeepsFrozen sf.mem :=
-  fastReachablePlacedW_sound_of_sys
-    fastSysSound_fastExecSyscallPlaced hreach hcl0 hfp hag hkf
-
-theorem fastReachablePlaced_sound_hooks_eq
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fp : FastProgPlaced} {m0 : Memory} {fs0 fsf : FastState} {s0 : State}
-    (hreach : FastReachablePlaced fp fs0 fsf)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hW : ∀ name, cliExternsPlacedSig mmpl compHooks0 name = cliExternsPlacedSig mmpl W name)
-    (hag : fs0.Agrees s0)
-    (hkf : m0.KeepsFrozen s0.mem) :
-    ∃ sf : State,
-      Steps (cliProgPlacedSig mpl mmpl W) s0 sf ∧
-      fsf.Agrees sf ∧
-      m0.KeepsFrozen sf.mem :=
-  fastReachablePlaced_sound_of_sys_hooks_eq
-    fastSysSound_fastExecSyscallPlaced hreach hcl0 hfp hW hag hkf
-
-theorem processRunsTo_of_fastReachablePlacedW_exited
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    {code : BitVec 64} {outStdout : List (BitVec 8)} {outFiles : List (String × List (BitVec 8))}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag0 : fs0.Agrees s0)
-    (hkf0 : m0.KeepsFrozen s0.mem)
-    (hreach : FastReachablePlacedW W fp fs0 fsf)
-    (hchk : checkFastExited fsf code outStdout outFiles = true) :
-    ProcessRunsTo (cliProgPlacedSig mpl mmpl W) s0
-      (OutcomeMatchesProcess (.exited (code.toNat % 256) outStdout (filesOf outFiles))) :=
-  processRunsTo_of_fastReachablePlacedCoreW_exited
-    evalSound_fastEvalInstPlaced hcl0 hfp hag0 hkf0 hreach hchk
-
-theorem processRunsTo_of_fastReachablePlacedW
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    {outStdout : List (BitVec 8)} {outFiles : List (String × List (BitVec 8))}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag0 : fs0.Agrees s0)
-    (hkf0 : m0.KeepsFrozen s0.mem)
-    (hreach : FastReachablePlacedW W fp fs0 fsf)
-    (hchk : checkFastExited0 fsf outStdout outFiles = true) :
-    ProcessRunsTo (cliProgPlacedSig mpl mmpl W) s0
-      (OutcomeMatchesProcess (.exited 0 outStdout (filesOf outFiles))) :=
-  processRunsTo_of_fastReachablePlacedCoreW
-    evalSound_fastEvalInstPlaced hcl0 hfp hag0 hkf0 hreach hchk
-
-theorem processRunsTo_of_fastReachablePlacedW_aborted
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag0 : fs0.Agrees s0)
-    (hkf0 : m0.KeepsFrozen s0.mem)
-    (hreach : FastReachablePlacedW W fp fs0 fsf)
-    (hchk : checkFastAborted fsf = true) :
-    ProcessRunsTo (cliProgPlacedSig mpl mmpl W) s0 (OutcomeMatchesProcess .aborted) :=
-  processRunsTo_of_fastReachablePlacedCoreW_aborted
-    evalSound_fastEvalInstPlaced hcl0 hfp hag0 hkf0 hreach hchk
-
-theorem processRunsTo_of_fastReachablePlaced_exited
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    {code : BitVec 64} {outStdout : List (BitVec 8)} {outFiles : List (String × List (BitVec 8))}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hW : ∀ name, cliExternsPlacedSig mmpl compHooks0 name = cliExternsPlacedSig mmpl W name)
-    (hag0 : fs0.Agrees s0)
-    (hkf0 : m0.KeepsFrozen s0.mem)
-    (hreach : FastReachablePlaced fp fs0 fsf)
-    (hchk : checkFastExited fsf code outStdout outFiles = true) :
-    ProcessRunsTo (cliProgPlacedSig mpl mmpl W) s0
-      (OutcomeMatchesProcess (.exited (code.toNat % 256) outStdout (filesOf outFiles))) :=
-  processRunsTo_of_fastReachablePlacedCoreW_exited_hooks_eq
-    evalSound_fastEvalInstPlaced hcl0 hfp hW hag0 hkf0 hreach hchk
-
-theorem processRunsTo_of_fastReachablePlaced
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    {outStdout : List (BitVec 8)} {outFiles : List (String × List (BitVec 8))}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hW : ∀ name, cliExternsPlacedSig mmpl compHooks0 name = cliExternsPlacedSig mmpl W name)
-    (hag0 : fs0.Agrees s0)
-    (hkf0 : m0.KeepsFrozen s0.mem)
-    (hreach : FastReachablePlaced fp fs0 fsf)
-    (hchk : checkFastExited0 fsf outStdout outFiles = true) :
-    ProcessRunsTo (cliProgPlacedSig mpl mmpl W) s0
-      (OutcomeMatchesProcess (.exited 0 outStdout (filesOf outFiles))) :=
-  processRunsTo_of_fastReachablePlaced_exited hcl0 hfp hW hag0 hkf0 hreach hchk
-
-theorem processRunsTo_of_fastReachablePlaced_aborted
-    {mpl mmpl : MultiPlacement} {W : CliHooks}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hW : ∀ name, cliExternsPlacedSig mmpl compHooks0 name = cliExternsPlacedSig mmpl W name)
-    (hag0 : fs0.Agrees s0)
-    (hkf0 : m0.KeepsFrozen s0.mem)
-    (hreach : FastReachablePlaced fp fs0 fsf)
-    (hchk : checkFastAborted fsf = true) :
-    ProcessRunsTo (cliProgPlacedSig mpl mmpl W) s0 (OutcomeMatchesProcess .aborted) :=
-  processRunsTo_of_fastReachablePlacedCoreW_aborted_hooks_eq
-    evalSound_fastEvalInstPlaced hcl0 hfp hW hag0 hkf0 hreach hchk
-
-theorem cliRunPlacedSig_of_fastReachablePlacedW_exited
-    {mpl mmpl : MultiPlacement} {elf : ElfImage} {W : CliHooks} {inp : Inputs}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    {code : BitVec 64} {outStdout : List (BitVec 8)} {outFiles : List (String × List (BitVec 8))}
-    (hload : elf.loadState (cliProcessInputs inp) = .ok s0)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag0 : fs0.Agrees (cliTokenPatchPlaced mpl s0))
-    (hkf0 : m0.KeepsFrozen (cliTokenPatchPlaced mpl s0).mem)
-    (hreach : FastReachablePlacedW W fp fs0 fsf)
-    (hchk : checkFastExited fsf code outStdout outFiles = true) :
-    cliRunPlacedSig mpl mmpl elf W inp =
-      some (.exited (code.toNat % 256) outStdout (filesOf outFiles)) :=
-  cliRunPlacedSig_of_fastReachablePlacedW_exited_of_sys
-    fastSysSound_fastExecSyscallPlaced hload hcl0 hfp hag0 hkf0 hreach hchk
-
-theorem cliRunPlacedSig_of_fastReachablePlacedW
-    {mpl mmpl : MultiPlacement} {elf : ElfImage} {W : CliHooks} {inp : Inputs}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    {outStdout : List (BitVec 8)} {outFiles : List (String × List (BitVec 8))}
-    (hload : elf.loadState (cliProcessInputs inp) = .ok s0)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag0 : fs0.Agrees (cliTokenPatchPlaced mpl s0))
-    (hkf0 : m0.KeepsFrozen (cliTokenPatchPlaced mpl s0).mem)
-    (hreach : FastReachablePlacedW W fp fs0 fsf)
-    (hchk : checkFastExited0 fsf outStdout outFiles = true) :
-    cliRunPlacedSig mpl mmpl elf W inp =
-      some (.exited 0 outStdout (filesOf outFiles)) :=
-  cliRunPlacedSig_of_fastReachablePlacedW_of_sys
-    fastSysSound_fastExecSyscallPlaced hload hcl0 hfp hag0 hkf0 hreach hchk
-
-theorem cliRunPlacedSig_of_fastReachablePlacedW_aborted
-    {mpl mmpl : MultiPlacement} {elf : ElfImage} {W : CliHooks} {inp : Inputs}
-    {fp : FastProgPlaced} {m0 : Memory} {s0 : State} {fs0 fsf : FastState}
-    (hload : elf.loadState (cliProcessInputs inp) = .ok s0)
-    (hcl0 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl m0)
-    (hfp : FastProgSoundPlaced mpl mmpl W fp m0)
-    (hag0 : fs0.Agrees (cliTokenPatchPlaced mpl s0))
-    (hkf0 : m0.KeepsFrozen (cliTokenPatchPlaced mpl s0).mem)
-    (hreach : FastReachablePlacedW W fp fs0 fsf)
-    (hchk : checkFastAborted fsf = true) :
-    cliRunPlacedSig mpl mmpl elf W inp = some .aborted :=
-  cliRunPlacedSig_of_fastReachablePlacedW_aborted_of_sys
-    fastSysSound_fastExecSyscallPlaced hload hcl0 hfp hag0 hkf0 hreach hchk
 
 /-- End-to-end exit soundness: a `FastReachablePlaced` trace (`compHooks0`) ending in
 `checkFastExited` determines `cliRunPlacedSig mpl mmpl elf W inp` for any `W` whose placed externs

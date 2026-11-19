@@ -10,12 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBase
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
@@ -28,7 +27,7 @@ import ProofLib.SepLogic.WPp
 lemmas (prologue, epilogue, and continuation stages 1..3) for `encode_varint` (block 10).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -36,18 +35,17 @@ set_option maxHeartbeats 400000
 
 namespace LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBaseBudget
 
+open CryptoVerification.LibsignalTripleRatchet (DoReserveCall doReserveStack doReserveStackX reserveCap)
+
+open CryptoVerification (LibsignalCodeLoaded LibsignalPlacement blkPC_10 blkPC_13 blkPl_10 blkPl_13 ls_subroutine_ok_of_block lsmpl withLsCodeLoaded)
+
 open Arm64 ProofLib SepProp
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FitsEnv FitsEvents RustCliAllocBudget VmPreserved
    rustAllocEvents rustReallocEvents)
-open CryptoVerification
-  (LibsignalPlacement LibsignalCodeLoaded libsignalSessionCode lsmpl
-   ls_subroutine_ok_of_block withLsCodeLoaded blkPC_10 blkPl_10 blkPC_13 blkPl_13)
 open CryptoVerification.RustHeap
   (vecU8At vecHeader)
 open CryptoVerification.LibsignalProtoCodec (encodeVarint encodeVarintAux)
-open CryptoVerification.LibsignalTripleRatchet
-  (DoReserveCall reserveCap tripleRatchetProgAtExt doReserveName doReserveStack doReserveStackX)
 open CryptoVerification.LibsignalTripleRatchet.Prost
   (EncodeVarintGhost encodeVarintName vecU8Buf vecU8At_eq_header_sep_buf
    vecU8Buf_eq_open_one vecU8Buf_snoc_eq
@@ -237,7 +235,7 @@ theorem sepWPp_call_cs_placed_noPanic {α : Type} {prog : Program} {entry ret re
 
 /-! ## Stack-parametric `doReserveSpecWith*` and `encodeVarintSpecOf` -/
 
-def doReserveSpecWith (resStack : Nat) (s0 : State) {M : AllocCostModel}
+@[expose] def doReserveSpecWith (resStack : Nat) (s0 : State) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (DoReserveCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜EncVarintCalleeSaved s0 s ∧
@@ -253,7 +251,7 @@ def doReserveSpecWith (resStack : Nat) (s0 : State) {M : AllocCostModel}
       vecU8At A.repAlloc x.v (BitVec.ofNat 64 (reserveCap x.cap.toNat x.bs.length x.additional)) p' x.bs) ∗
     A.pool lim (M.stepEvents (doReserveEvents x) st) sf ∗ stackAt s0'.sp resStack
 
-def doReserveSpecWithPlaced (resStack : Nat) (s0 : State) {M : AllocCostModel}
+@[expose] def doReserveSpecWithPlaced (resStack : Nat) (s0 : State) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (DoReserveCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜EncVarintCalleeSavedPlaced s0 s ∧
@@ -268,20 +266,6 @@ def doReserveSpecWithPlaced (resStack : Nat) (s0 : State) {M : AllocCostModel}
     (∃∗ p' : BitVec 64,
       vecU8At A.repAlloc x.v (BitVec.ofNat 64 (reserveCap x.cap.toNat x.bs.length x.additional)) p' x.bs) ∗
     A.pool lim (M.stepEvents (doReserveEvents x) st) sf ∗ stackAt s0'.sp resStack
-
-theorem doReserve_with_of_ok (b : BitVec 64) {M : AllocCostModel} (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (abs : String → Option (State → State)) (s0 : State)
-    (h : subroutine_ok (tripleRatchetProgAtExt b abs)
-      ((tripleRatchetProgAtExt b abs).fnAddr doReserveName) (doReserveSpec M A lim)) :
-    subroutine_ok (tripleRatchetProgAtExt b abs)
-      ((tripleRatchetProgAtExt b abs).fnAddr doReserveName)
-      (doReserveSpecWith doReserveStack s0 A lim) := by
-  refine subroutine_ok_outcome_intro fun x R s hpc hrun hpre hsp => ?_
-  simp only [doReserveSpecWith, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  refine (h.to_outcome x R s hpc hrun ?_ hsp).mono_outcome fun _ hout => hout
-  simp only [doReserveSpec, LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.doReserveSpecWithStack,
-    sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨hpre.1.2, hpre.2⟩
 
 theorem doReserve_with_placed_of_ok [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
@@ -321,7 +305,7 @@ theorem doReserve_with_placed_of_ok_x [LibsignalPlacement] {M : AllocCostModel}
     sepConj_assoc, satisfies_pure_sepConj]
   exact ⟨hpre.1.2, hpre.2⟩
 
-def encodeVarintSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodeVarintSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (EncodeVarintGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.val ∧ s.readReg64 .x1 = x.v ∧
@@ -412,43 +396,6 @@ theorem step_doReserve_call_gen {prog : Program} {resTarget : BitVec 64} {resSta
       (hcs_s.trans (EncVarintCalleeSaved.of_calleeSavedPreserved hcsm hinv_call))
       hnew_gt hnew_ge' hnew_toNat)
     exact Entails.of_eq (by sep_ac_rfl)
-
-theorem step_doReserve_call {resStack : Nat} (b : BitVec 64)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (abs : String → Option (State → State))
-    {s0 s : State}
-    (hdoReserve : subroutine_ok (tripleRatchetProgAtExt b abs)
-      ((tripleRatchetProgAtExt b abs).fnAddr doReserveName) (doReserveSpecWith resStack s0 A lim))
-    (v curCap curPtr sp ret_pc : BitVec 64) (curBs : List (BitVec 8)) (curSt : M.σ)
-    (hcap_eq : curCap.toNat = curBs.length)
-    (hlen_lt : curBs.length < 2 ^ 62)
-    (hfits : FitsEvents M lim curSt (doReserveEvents (DoReserveCall.mk v curCap curPtr curBs 1)))
-    {ret : BitVec 64} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAtExt b abs).fnAddr encodeVarintName + bv% (ls_off% "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#1]" - ls_off% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]"))
-    (hrun : s.status = .Running) (hsp : s.sp = sp - 48#64) (halign : sp &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace) (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = v) (hx1 : s.readReg64 .x1 = BitVec.ofNat 64 curBs.length)
-    (hx2 : s.readReg64 .x2 = 1#64) (hx3 : s.readReg64 .x3 = 1#64) (hx4 : s.readReg64 .x4 = 1#64)
-    (hcs_s : EncVarintCalleeSaved s0 s)
-    (hP : P = ((v ↦₆₄ curCap) ∗ ((v + 8#64) ↦₆₄ curPtr) ∗
-      ((v + 16#64) ↦₆₄ BitVec.ofNat 64 curBs.length) ∗
-      vecU8Buf A.repAlloc curCap curPtr curBs ∗ A.pool lim curSt s ∗ stackAt (sp - 48#64) resStack) ∗ F)
-    (hnext : ∀ (sm : State) (newCap p' : BitVec 64),
-      sm.pc = ret_pc → sm.status = .Running → sm.sp = sp - 48#64 → sm.trace = s0.trace →
-      sm.readReg64 .x19 = s.readReg64 .x19 → sm.readReg64 .x20 = s.readReg64 .x20 →
-      EncVarintCalleeSaved s0 sm →
-      curBs.length < newCap.toNat → curCap.toNat ≤ newCap.toNat →
-      newCap.toNat = (pushByteStep curCap.toNat curBs.length).1 →
-      SepWPp (tripleRatchetProgAtExt b abs) ret sm
-        (((v ↦₆₄ newCap) ∗ ((v + 8#64) ↦₆₄ p') ∗
-          ((v + 16#64) ↦₆₄ BitVec.ofNat 64 curBs.length) ∗
-          vecU8Buf A.repAlloc newCap p' curBs ∗
-          A.pool lim (M.stepEvents (pushByteStep curCap.toNat curBs.length).2 curSt) sm ∗
-          stackAt (sp - 48#64) resStack) ∗ F) Q Qp) :
-    SepWPp (tripleRatchetProgAtExt b abs) ret s P Q Qp := by
-  rw [doReserve_fnAddr_eq] at hpc
-  exact step_doReserve_call_gen A lim hdoReserve v curCap curPtr sp ret_pc curBs curSt
-    hcap_eq hlen_lt hfits hpc hrun hsp halign htr hlr hx0 hx1 hx2 hx3 hx4 hcs_s hP hnext
 
 theorem step_doReserve_call_gen_placed {prog : Program} {resTarget : BitVec 64} {resStack : Nat}
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)

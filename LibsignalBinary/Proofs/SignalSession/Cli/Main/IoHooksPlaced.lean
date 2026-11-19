@@ -9,14 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Placed
 import Arm64.Trusted.Spec.Hoare
 import all Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Process
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -252,45 +254,49 @@ theorem readStdinHook_ok_placed (stk : Nat) :
     HookOk readStdinHook (readStdinSpecPlaced cliIo E2E.HooksE.A0 stk) :=
   hookOk_of_on (readStdinHook_okOom_placed stk) (readStdinHook_okOn_placed stk)
 
-/-! ## `MainIoPlaced` Assembly on `cliExternsPlaced` and Ghost Overlays -/
+/-! ## `MainIoPlaced` Assembly on Ghost-Extended Hook Maps -/
 
-theorem cliExternsPlaced_writeFile (mmpl : Obj.MultiPlacement) (W : CliHooks) :
-    cliExternsPlaced mmpl W lsWriteFileSym = some writeFileHook :=
-  main_cliExternsPlaced_row mmpl W
-    (List.mem_append_right _ (List.mem_of_getElem? (i := 0) rfl))
+theorem writeFile_rocl_ok_of_hookSat [LibsignalPlacement] {H : LibsignalHooks}
+    {stk : Nat} (hSat : HookSat H lsWriteFileSym (writeFileSpecPlaced cliIo stk)) :
+    subroutine_ok (lsProg_617 H) (lsρ lsWriteFileSym)
+      (withLsRoCl lsmpl (writeFileSpecPlaced cliIo stk)) :=
+  subroutine_ok_rocl_of_plain <|
+    ls_hook_ok_ultra_of_mem (prog := lsProg_617 H) (i := 617) hSat (by decide)
 
-theorem cliExternsPlaced_writeStdout (mmpl : Obj.MultiPlacement) (W : CliHooks) :
-    cliExternsPlaced mmpl W lsWriteStdoutSym = some writeStdoutHook :=
-  main_cliExternsPlaced_row mmpl W
-    (List.mem_append_right _ (List.mem_of_getElem? (i := 1) rfl))
+theorem writeStdout_rocl_ok_of_hookSat [LibsignalPlacement] {H : LibsignalHooks}
+    {stk : Nat} (hSat : HookSat H lsWriteStdoutSym (writeStdoutSpecPlaced stk)) :
+    subroutine_ok (lsProg_617 H) (lsρ lsWriteStdoutSym)
+      (withLsRoCl lsmpl (writeStdoutSpecPlaced stk)) :=
+  subroutine_ok_rocl_of_plain <|
+    ls_hook_ok_ultra_of_mem (prog := lsProg_617 H) (i := 617) hSat (by decide)
+
+theorem writeFile_rocl_ok_of_fn_lookup [LibsignalPlacement] {H : LibsignalHooks}
+    {f : State → State} {stk : Nat}
+    (hLookup : H lsWriteFileSym = some f)
+    (hOk : HookOk f (writeFileSpecPlaced cliIo stk)) :
+    subroutine_ok (lsProg_617 H) (lsρ lsWriteFileSym)
+      (withLsRoCl lsmpl (writeFileSpecPlaced cliIo stk)) :=
+  writeFile_rocl_ok_of_hookSat ⟨f, hLookup, hOk⟩
+
+theorem writeStdout_rocl_ok_of_fn_lookup [LibsignalPlacement] {H : LibsignalHooks}
+    {f : State → State} {stk : Nat}
+    (hLookup : H lsWriteStdoutSym = some f)
+    (hOk : HookOk f (writeStdoutSpecPlaced stk)) :
+    subroutine_ok (lsProg_617 H) (lsρ lsWriteStdoutSym)
+      (withLsRoCl lsmpl (writeStdoutSpecPlaced stk)) :=
+  writeStdout_rocl_ok_of_hookSat ⟨f, hLookup, hOk⟩
 
 theorem writeFile_rocl_ok_of_lookup [LibsignalPlacement] {H : LibsignalHooks} (stk : Nat)
     (hLookup : H lsWriteFileSym = some writeFileHook) :
     subroutine_ok (lsProg_617 H) (lsρ lsWriteFileSym)
       (withLsRoCl lsmpl (writeFileSpecPlaced cliIo stk)) :=
-  subroutine_ok_rocl_of_plain <|
-    ls_hook_ok_ultra_of_mem (prog := lsProg_617 H) (i := 617)
-      ⟨writeFileHook, hLookup, writeFileHook_ok_placed stk⟩ (by decide)
+  writeFile_rocl_ok_of_fn_lookup hLookup (writeFileHook_ok_placed stk)
 
 theorem writeStdout_rocl_ok_of_lookup [LibsignalPlacement] {H : LibsignalHooks} (stk : Nat)
     (hLookup : H lsWriteStdoutSym = some writeStdoutHook) :
     subroutine_ok (lsProg_617 H) (lsρ lsWriteStdoutSym)
       (withLsRoCl lsmpl (writeStdoutSpecPlaced stk)) :=
-  subroutine_ok_rocl_of_plain <|
-    ls_hook_ok_ultra_of_mem (prog := lsProg_617 H) (i := 617)
-      ⟨writeStdoutHook, hLookup, writeStdoutHook_ok_placed stk⟩ (by decide)
-
-theorem writeFile_rocl_ok_placed [LibsignalPlacement] (mmpl : Obj.MultiPlacement) (W : CliHooks)
-    (stk : Nat) :
-    subroutine_ok (lsProg_617 (cliExternsPlaced mmpl W)) (lsρ lsWriteFileSym)
-      (withLsRoCl lsmpl (writeFileSpecPlaced cliIo stk)) :=
-  writeFile_rocl_ok_of_lookup stk (cliExternsPlaced_writeFile mmpl W)
-
-theorem writeStdout_rocl_ok_placed [LibsignalPlacement] (mmpl : Obj.MultiPlacement) (W : CliHooks)
-    (stk : Nat) :
-    subroutine_ok (lsProg_617 (cliExternsPlaced mmpl W)) (lsρ lsWriteStdoutSym)
-      (withLsRoCl lsmpl (writeStdoutSpecPlaced stk)) :=
-  writeStdout_rocl_ok_of_lookup stk (cliExternsPlaced_writeStdout mmpl W)
+  writeStdout_rocl_ok_of_fn_lookup hLookup (writeStdoutHook_ok_placed stk)
 
 theorem readStdin_rocl_ok_of_hookSat [LibsignalPlacement] {A : RustAlloc} {H : LibsignalHooks}
     {stk : Nat} (hSat : HookSat H lsReadStdinSym (readStdinSpecPlaced cliIo A stk)) :
@@ -323,6 +329,20 @@ theorem readFile_rocl_ok_of_lookup [LibsignalPlacement] {A : RustAlloc} {H : Lib
   readFile_rocl_ok_of_hookSat ⟨f, hLookup, hOk⟩
 
 /-- Assembles `MainIoPlaced` over a ghost-extended hook map `H` from `HookSat` witnesses for
+all four I/O callees (`read_stdin`, `read_file`, `write_file`, `write_stdout`). -/
+theorem mainIo_of_hookSat_placed [LibsignalPlacement] {A : RustAlloc} {H : LibsignalHooks}
+    (stk : Nat)
+    (hReadStdin : HookSat H lsReadStdinSym (readStdinSpecPlaced cliIo A stk))
+    (hReadFile : HookSat H lsReadFileSym (readFileLitSpecPlaced cliIo A stk))
+    (hWriteFile : HookSat H lsWriteFileSym (writeFileSpecPlaced cliIo stk))
+    (hWriteStdout : HookSat H lsWriteStdoutSym (writeStdoutSpecPlaced stk)) :
+    MainIoPlaced A H cliIo stk where
+  readStdin := readStdin_rocl_ok_of_hookSat hReadStdin
+  readFile := readFile_rocl_ok_of_hookSat hReadFile
+  writeFile := writeFile_rocl_ok_of_hookSat hWriteFile
+  writeStdout := writeStdout_rocl_ok_of_hookSat hWriteStdout
+
+/-- Assembles `MainIoPlaced` over a ghost-extended hook map `H` from `HookSat` witnesses for
 `read_stdin`/`read_file` and hook-table lookups for `write_file`/`write_stdout`. -/
 theorem mainIo_of_lookup_placed [LibsignalPlacement] {A : RustAlloc} {H : LibsignalHooks}
     (stk : Nat)
@@ -336,18 +356,22 @@ theorem mainIo_of_lookup_placed [LibsignalPlacement] {A : RustAlloc} {H : Libsig
   writeFile := writeFile_rocl_ok_of_lookup stk hWriteFile
   writeStdout := writeStdout_rocl_ok_of_lookup stk hWriteStdout
 
-/-- Assembles `MainIoPlaced` on `cliExternsPlaced mmpl W` given `subroutine_ok` for `read_stdin`
-and `read_file`. -/
-theorem mainIo_of_cliHooks_placed [LibsignalPlacement] {A : RustAlloc}
-    (mmpl : Obj.MultiPlacement) (W : CliHooks) (stk : Nat)
-    (hReadStdin : subroutine_ok (lsProg_617 (cliExternsPlaced mmpl W)) (lsρ lsReadStdinSym)
+/-- Assembles `MainIoPlaced` over any hook map `H` directly from `subroutine_ok` witnesses for
+`read_stdin`, `read_file`, `write_file`, and `write_stdout`. -/
+theorem mainIo_of_subroutine_ok_placed [LibsignalPlacement] {A : RustAlloc} {H : LibsignalHooks}
+    (stk : Nat)
+    (hReadStdin : subroutine_ok (lsProg_617 H) (lsρ lsReadStdinSym)
       (withLsRoCl lsmpl (readStdinSpecPlaced cliIo A stk)))
-    (hReadFile : subroutine_ok (lsProg_617 (cliExternsPlaced mmpl W)) (lsρ lsReadFileSym)
-      (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo A stk))) :
-    MainIoPlaced A (cliExternsPlaced mmpl W) cliIo stk where
+    (hReadFile : subroutine_ok (lsProg_617 H) (lsρ lsReadFileSym)
+      (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo A stk)))
+    (hWriteFile : subroutine_ok (lsProg_617 H) (lsρ lsWriteFileSym)
+      (withLsRoCl lsmpl (writeFileSpecPlaced cliIo stk)))
+    (hWriteStdout : subroutine_ok (lsProg_617 H) (lsρ lsWriteStdoutSym)
+      (withLsRoCl lsmpl (writeStdoutSpecPlaced stk))) :
+    MainIoPlaced A H cliIo stk where
   readStdin := hReadStdin
   readFile := hReadFile
-  writeFile := writeFile_rocl_ok_placed mmpl W stk
-  writeStdout := writeStdout_rocl_ok_placed mmpl W stk
+  writeFile := hWriteFile
+  writeStdout := hWriteStdout
 
 end CryptoVerification.SignalSession.Cli.MainHops

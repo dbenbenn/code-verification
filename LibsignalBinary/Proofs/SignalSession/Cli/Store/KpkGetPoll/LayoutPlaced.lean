@@ -9,13 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.Layout
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDeps
-public import LibsignalBinary.Proofs.SignalSession.Cli.Fs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.Layout -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDeps -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Fs
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable Callee Cell Wrappers & Outer Bridge for `get_kyber_pre_key::{closure#0}`
@@ -24,7 +28,7 @@ Bridges relocatable callee contracts to cell-decomposed `KpkGetPoll` specs and l
 poll spec to `kpkGetPollSpecPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -13,6 +13,7 @@ public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Allocation-budget specifications for `SessionRecord::serialize`
@@ -27,7 +28,7 @@ its callees:
   `serializeCanonSpec`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -62,7 +63,7 @@ open LibsignalBinary.Heap.RustStdAllocBudgetBridge (rustAllocShimVmSpec allocMem
 /-! ## Zero-allocation `VmPreserved` leaf specifications -/
 
 /-- VM-preserving specification of `<chain::MessageKey as Message>::encoded_len`. -/
-def msgKeyLenSpec (A : RustAlloc) : Spec MsgKeyLenGhost where
+@[expose] def msgKeyLenSpec (A : RustAlloc) : Spec MsgKeyLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗ messageKeyAt A x.gk x.a ∗ stackAt s.sp msgKeyLenStack
   post := fun x s0 sf =>
@@ -71,7 +72,7 @@ def msgKeyLenSpec (A : RustAlloc) : Spec MsgKeyLenGhost where
       messageKeyAt A x.gk x.a ∗ stackAt s0.sp msgKeyLenStack
 
 /-- VM-preserving specification of `<Chain as Message>::encoded_len`. -/
-def chainLenSpec (A : RustAlloc) : Spec ChainLenGhost where
+@[expose] def chainLenSpec (A : RustAlloc) : Spec ChainLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ (encChainMem x.gc).length < 2 ^ 32⌝ ∗
       protoChainAt A x.gc x.a ∗ stackAt s.sp chainLenStack
@@ -81,7 +82,7 @@ def chainLenSpec (A : RustAlloc) : Spec ChainLenGhost where
       protoChainAt A x.gc x.a ∗ stackAt s0.sp chainLenStack
 
 /-- VM-preserving specification of `<SessionStructure as Message>::encoded_len`. -/
-def sessionLenSpec (A : RustAlloc) : Spec SessionLenGhost where
+@[expose] def sessionLenSpec (A : RustAlloc) : Spec SessionLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ (encSessionMem x.G x.s).length < 2 ^ 32⌝ ∗
       sessionStateReprAt A x.ss x.G x.s ∗ stackAt s.sp sessionLenStack
@@ -91,7 +92,7 @@ def sessionLenSpec (A : RustAlloc) : Spec SessionLenGhost where
       sessionStateReprAt A x.ss x.G x.s ∗ stackAt s0.sp sessionLenStack
 
 /-- VM-preserving specification of `<Vec<Vec<u8>> as Clone>::clone` on `len = 0` (`0` allocations). -/
-def vecVecCloneEmptySpec : Spec VecVecCloneGhost where
+@[expose] def vecVecCloneEmptySpec : Spec VecVecCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src ∧ s.readReg64 .x2 = 0#64⌝ ∗
       memRegion x.dst 24 ∗ stackAt s.sp vecVecCloneStack
@@ -103,7 +104,7 @@ def vecVecCloneEmptySpec : Spec VecVecCloneGhost where
 
 /-- Alignment-bounded (`align ≤ 16`) `AllocEvent` list predicate bounded by `maxCount` events and
 per-event request size `maxReq`, closed under append. -/
-def BoundedRustEvs (maxCount maxReq : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def BoundedRustEvs (maxCount maxReq : Nat) (evs : List AllocEvent) : Prop :=
   evs.length ≤ maxCount ∧
   ∀ ev ∈ evs,
     ev.withinMaxAlloc ∧
@@ -134,23 +135,23 @@ theorem BoundedRustEvs.mono {c₁ c₂ r₁ r₂ : Nat} {evs : List AllocEvent}
     ⟨hw, Nat.le_trans hreq hr, ha, hre⟩⟩
 
 /-- Allocation event envelope for `prost::encoding::message::encode::<Chain, Vec<u8>>`. -/
-def EncodeChainEnv (x : EncodeChainGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def EncodeChainEnv (x : EncodeChainGhost) (evs : List AllocEvent) : Prop :=
   let outLen := x.bs.length + (lenField x.tag (encChainMem x.gc)).length
   BoundedRustEvs (4 * outLen + 16) (max (2 * x.cap.toNat) (2 * outLen + 16)) evs
 
 /-- Allocation envelope for `<SessionStructure as Message>::encode_raw::<Vec<u8>>`. -/
-def EncodeRawEnv (x : EncodeRawGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def EncodeRawEnv (x : EncodeRawGhost) (evs : List AllocEvent) : Prop :=
   let outLen := x.bs.length + (encSessionMem x.G x.s).length
   BoundedRustEvs (4 * outLen + 32) (max (2 * x.cap.toNat) (2 * outLen + 16)) evs
 
 /-- Allocation event envelope for `<SessionStructure as Clone>::clone`. -/
-def SessionCloneEnv (G : SessionGhost) (s : Session (List (BitVec 8)))
+@[expose] def SessionCloneEnv (G : SessionGhost) (s : Session (List (BitVec 8)))
     (evs : List AllocEvent) : Prop :=
   let encLen := (encSessionMem G s).length
   BoundedRustEvs (4 * encLen + 64) (256 * (encLen + 16)) evs
 
 /-- Allocation envelope for `<SessionRecord>::serialize`. -/
-def SerializeEnv (g : RecordGhost) (r : SessionRecord (List (BitVec 8)))
+@[expose] def SerializeEnv (g : RecordGhost) (r : SessionRecord (List (BitVec 8)))
     (evs : List AllocEvent) : Prop :=
   let encLen := (encRecordMem g r).length
   BoundedRustEvs (8 * encLen + 128) (256 * (encLen + 16)) evs
@@ -158,7 +159,7 @@ def SerializeEnv (g : RecordGhost) (r : SessionRecord (List (BitVec 8)))
 /-! ## Budget-threaded allocating specifications -/
 
 /-- Budget-threaded specification of `prost::encoding::message::encode::<Chain, Vec<u8>>`. -/
-def encodeChainSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def encodeChainSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (EncodeChainGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = BitVec.ofNat 64 x.tag ∧ s.readReg64 .x1 = x.a ∧ s.readReg64 .x2 = x.v ∧
@@ -177,7 +178,7 @@ def encodeChainSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp encodeChainStack
 
 /-- Budget-threaded specification of `<SessionStructure as Message>::encode_raw::<Vec<u8>>`. -/
-def encodeRawSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def encodeRawSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (EncodeRawGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ss ∧ s.readReg64 .x1 = x.v ∧
@@ -195,7 +196,7 @@ def encodeRawSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp encodeRawStack
 
 /-- Budget-threaded specification of `<SessionStructure as Clone>::clone`. -/
-def sessionCloneSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def sessionCloneSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SessionCloneGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src ∧
@@ -211,7 +212,7 @@ def sessionCloneSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp sessionCloneStack
 
 /-- Budget-threaded memory-level specification of `<SessionRecord>::serialize`. -/
-def serializeSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def serializeSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SerializeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.out ∧
@@ -227,7 +228,7 @@ def serializeSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp serializeStack
 
 /-- Budget-threaded canonical specification of `<SessionRecord>::serialize`. -/
-def serializeCanonSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def serializeCanonSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SerializeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.out ∧ CanonRecord x.g x.r ∧

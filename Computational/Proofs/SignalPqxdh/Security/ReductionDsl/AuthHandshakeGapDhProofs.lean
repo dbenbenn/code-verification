@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeGapDh
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeProofs
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeGapDh -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeProofs -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrProofs
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCr -- proof-setup: allow-public-import
 
 /-!
 # Cost and Query Bounds for `fgAuthGapDhProg`
@@ -20,7 +21,7 @@ Syntactic step-cost, AST-size, primitive-query, and DDH challenger-query bounds 
 `fgAuthGapDhProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,15 +36,15 @@ open SignalPqxdh SignalPqxdh.LegacyCosted SignalPqxdh.Security SignalPqxdh.Secur
 @[simp] theorem bits_160 : bits 160 = 8 := by decide
 @[simp] theorem bits_192 : bits 192 = 8 := by decide
 
-def gdhPrimW : pqGapDhIface.Tag → ℕ
+@[expose] def gdhPrimW : pqGapDhIface.Tag → ℕ
   | .inl _ => 1
   | .inr _ => 0
 
-def gdhChalW : pqGapDhIface.Tag → ℕ
+@[expose] def gdhChalW : pqGapDhIface.Tag → ℕ
   | .inl _ => 0
   | .inr _ => 1
 
-def gdhWS : pqGapDhIface.smp.Samp → ℕ := fun _ => 0
+@[expose] def gdhWS : pqGapDhIface.smp.Samp → ℕ := fun _ => 0
 
 @[simp] theorem queries_liftChal_gdhPrimW
     {Γ : List (Ty pqSig)} {t : Ty pqSig} (c : Comp pqxdhOps pqPrimIface Γ t) :
@@ -392,12 +393,6 @@ theorem fg_handle_cost_le_clamped (S : Setup) (K : Nat) :
     costUB_v, Comp.costUB, Expr.costUB]
   omega
 
-theorem fg_handle_cost_le (S : Setup) (K : Nat) :
-    (fgAuthGapDhProg S K).handle.cost ≤ 63000 + 25000 * K + 9000 * S.N_dh := by
-  have h := fg_handle_cost_le_clamped S K
-  have hm : min K S.N_dh ≤ S.N_dh := Nat.min_le_right K S.N_dh
-  omega
-
 theorem fg_finish_cost_le_clamped (S : Setup) (K : Nat) :
     (fgAuthGapDhProg S K).finish.cost ≤
       1000 + 1100 * K + 1000 * min K S.N_dh + 1000 * min K S.N_sess_tot +
@@ -424,18 +419,6 @@ theorem fg_finish_cost_le_clamped (S : Setup) (K : Nat) :
   generalize min K S.N_dh = md
   generalize min K S.N_sess_tot = ms
   ring_nf
-  omega
-
-theorem fg_finish_cost_le (S : Setup) (K : Nat) :
-    (fgAuthGapDhProg S K).finish.cost ≤
-      1000 + 1100 * K + 1000 * S.N_dh + 1000 * S.N_sess_tot +
-        200 * (K * S.N_dh) + 200 * (S.N_dh * S.N_dh) + 200 * (S.N_dh * S.N_sess_tot) := by
-  have h := fg_finish_cost_le_clamped S K
-  have hd : min K S.N_dh ≤ S.N_dh := Nat.min_le_right K S.N_dh
-  have hs : min K S.N_sess_tot ≤ S.N_sess_tot := Nat.min_le_right K S.N_sess_tot
-  have h1 : K * min K S.N_dh ≤ K * S.N_dh := Nat.mul_le_mul_left K hd
-  have h2 : min K S.N_dh * min K S.N_dh ≤ S.N_dh * S.N_dh := Nat.mul_le_mul hd hd
-  have h3 : min K S.N_dh * min K S.N_sess_tot ≤ S.N_dh * S.N_sess_tot := Nat.mul_le_mul hd hs
   omega
 
 private theorem fgSampleTargetC_costUB_le (S : Setup) {Γ : List (Ty pqSig)} :
@@ -543,12 +526,6 @@ theorem fg_init_cost_le_clamped (S : Setup) (K : Nat) :
   have hS := fgSampleSpkC_costUB_le S (Γ := [targetChoiceTy, .prod (B 32) (B 32)])
   simp only [fg2InitDsl, emptySimE, emptyAuthStE, fsMk, stMk,
     bindV, costUB_sampleBoolC, costUB_v, Comp.costUB, Expr.costUB]
-  omega
-
-theorem fg_init_cost_le (S : Setup) (K : Nat) :
-    (fgAuthGapDhProg S K).init.cost ≤ 200 + 4 * S.N_dh := by
-  have h := fg_init_cost_le_clamped S K
-  have hlog := two_mul_log2_le S.N_dh
   omega
 
 @[simp] theorem mkSecretPosC_prim {Δ : List (Ty pqSig)} (z : Expr pqxdhOps Δ (B 32)) :
@@ -938,53 +915,6 @@ theorem fg_init_chal (S : Setup) (K : Nat) :
     (fgAuthGapDhProg S K).init.queries gdhChalW gdhWS = 0 := by
   simp [fgAuthGapDhProg, fg2InitDsl, fgSampleTargetC_chal, fgSampleSpkC_chal, bindV,
     Comp.sampleBoolC, gdhWS, Comp.queries]
-
-theorem fgAuthGapDhProg_totalCost_le_security (S : Setup) (b : QueryBudget) :
-    (fgAuthGapDhProg S b.q_total).totalCost b.q_total ≤
-      _root_.SignalPqxdh.Security.stepCostBudget S b := by
-  have hH := fg_handle_cost_le_clamped S b.q_total
-  have hF := fg_finish_cost_le_clamped S b.q_total
-  have hI := fg_init_cost_le_clamped S b.q_total
-  change (fgAuthGapDhProg S b.q_total).init.cost +
-      b.q_total * max 1 ((fgAuthGapDhProg S b.q_total).handle.cost + 32) +
-      (fgAuthGapDhProg S b.q_total).finish.cost ≤
-      _root_.SignalPqxdh.Security.stepCostBudget S b
-  generalize (fgAuthGapDhProg S b.q_total).init.cost = cI at hI ⊢
-  generalize (fgAuthGapDhProg S b.q_total).handle.cost = cH at hH ⊢
-  generalize (fgAuthGapDhProg S b.q_total).finish.cost = cF at hF ⊢
-  have hMax : max 1 (cH + 32) = cH + 32 := by omega
-  rw [hMax]
-  unfold _root_.SignalPqxdh.Security.stepCostBudget
-  dsimp only
-  generalize min b.q_total S.N_dh = md at hH hF ⊢
-  generalize min b.q_total S.N_sess_tot = ms at hF ⊢
-  generalize Nat.log 2 S.N_dh = ld at hI ⊢
-  generalize Nat.log 2 S.N_sess_tot = ls at ⊢
-  generalize b.q_total = q at *
-  have hqH : q * (cH + 32) ≤ q * (63032 + 25000 * q + 9000 * md) :=
-    Nat.mul_le_mul_left q (by omega)
-  nlinarith [Nat.zero_le (q * md), Nat.zero_le (q * ms), Nat.zero_le (md * ms),
-    Nat.zero_le (q * ld), Nat.zero_le (q * ls)]
-
-theorem fgAuthGapDhProg_totalCost_le (S : Setup) (b : QueryBudget) :
-    (fgAuthGapDhProg S b.q_total).totalCost b.q_total ≤ stepCostBudget S b := by
-  have hH := fg_handle_cost_le S b.q_total
-  have hF := fg_finish_cost_le S b.q_total
-  have hI := fg_init_cost_le S b.q_total
-  change (fgAuthGapDhProg S b.q_total).init.cost +
-      b.q_total * max 1 ((fgAuthGapDhProg S b.q_total).handle.cost + 32) +
-      (fgAuthGapDhProg S b.q_total).finish.cost ≤ stepCostBudget S b
-  generalize (fgAuthGapDhProg S b.q_total).init.cost = cI at hI ⊢
-  generalize (fgAuthGapDhProg S b.q_total).handle.cost = cH at hH ⊢
-  generalize (fgAuthGapDhProg S b.q_total).finish.cost = cF at hF ⊢
-  have hMax : max 1 (cH + 32) = cH + 32 := by omega
-  rw [hMax]
-  unfold stepCostBudget
-  generalize b.q_total = q at *
-  have hqH : q * (cH + 32) ≤ q * (63032 + 25000 * q + 9000 * S.N_dh) :=
-    Nat.mul_le_mul_left q (by omega)
-  nlinarith [Nat.zero_le (q * S.N_dh), Nat.zero_le (q * S.N_sess_tot),
-    Nat.zero_le (S.N_dh * S.N_sess_tot)]
 
 theorem fgAuthGapDhProg_totalPrimQueries_le (S : Setup) (b : QueryBudget) :
     (fgAuthGapDhProg S b.q_total).totalQueries gdhPrimW gdhWS b.q_total ≤ primQueryBudget S b := by

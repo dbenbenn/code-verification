@@ -9,31 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.CodeLayout
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.CodeLayout -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
-
-/-!
-# Instruction Decode and Fetch Helpers for `SegRegionNone`
-
-Instruction decode lemmas and `messageDecryptRegionNone_fetches` tactic for the 69 instructions on
-the no-current-session path (`+0x1a8 → +0x1f50` of `session_message_decrypt_signal_with_stores`,
-`fnOff = 0x3a4a8`).
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageDecrypt.Pf.SegRegionNone
 
 open Arm64 ProofLib ProofLib.ProgramReflection
 open CryptoVerification.LibsignalTripleRatchet
-
-set_option maxRecDepth 200000 in
-/-- `session_message_decrypt_signal_with_stores` (`msgDecryptName`) starts at image offset `0x3a4a8`
-(= 238760). -/
-theorem libsignalSessionCode_fnOff_sym_3a4a8 :
-    libsignalSessionCode.fnOff msgDecryptName = num% (ls_off% "session_message_decrypt_signal") := by
-  exact (ls_lemma% fnOff "session_message_decrypt_signal")
 
 open Lean Elab Tactic in
 /-- `messageDecryptRegionNone_code_fetches_from <code> <decPrefix> b H hfn off k0 len` adds `<code>_fetch_fnAddr`
@@ -58,15 +41,5 @@ elab "messageDecryptRegionNone_code_fetches_from " codeId:ident decPrefix:ident 
     else
       evalTactic (← `(tactic|
         have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
-
-/-- Fetch hypotheses for `session_message_decrypt_signal_with_stores`
-(`hfn : fnOff msgDecryptName = 238760`), from fn-relative offset `k0`, `len` bytes. -/
-macro "messageDecryptRegionNone_fetches " b:term:max H:term:max hfn:term:max k0:num len:num : tactic =>
-  `(tactic| messageDecryptRegionNone_code_fetches_from CryptoVerification.libsignalSessionCode messageDecryptRegionNoneBin $b $H
-    $hfn (num% (ls_off% "session_message_decrypt_signal")) $k0 $len)
-
-gen_decodes libsignalSessionCode_tree messageDecryptRegionNoneBin [(ls_off% "session_message_decrypt_signal" + 424) → (ls_off% "session_message_decrypt_signal" + 504), (ls_off% "session_message_decrypt_signal" + 2140) → (ls_off% "session_message_decrypt_signal" + 2152), (ls_off% "session_message_decrypt_signal" + 5860) → (ls_off% "session_message_decrypt_signal" + 5872),
-    (ls_off% "session_message_decrypt_signal" + 6836) → (ls_off% "session_message_decrypt_signal" + 6852), (ls_off% "session_message_decrypt_signal" + 6912) → (ls_off% "session_message_decrypt_signal" + 6920), (ls_off% "session_message_decrypt_signal" + 7408) → (ls_off% "session_message_decrypt_signal" + 7412), (ls_off% "session_message_decrypt_signal" + 7636) → (ls_off% "session_message_decrypt_signal" + 7720), (ls_off% "session_message_decrypt_signal" + 9792) → (ls_off% "session_message_decrypt_signal" + 9800),
-    (ls_off% "session_message_decrypt_signal" + 7820) → (ls_off% "session_message_decrypt_signal" + 7828), (ls_off% "session_message_decrypt_signal" + 7988) → (ls_off% "session_message_decrypt_signal" + 7992)]
 
 end CryptoVerification.LibsignalPublicApi.MessageDecrypt.Pf.SegRegionNone

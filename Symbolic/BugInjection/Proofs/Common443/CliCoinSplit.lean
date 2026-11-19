@@ -562,12 +562,12 @@ theorem freshSafeTerm_draws_of_encVis_split {i : ExternInterpretation} {r : Reco
     (hcs : CoinSplit [.pt pt, .rng c, .send w] blk₂)
     (hm₁ : List.Forall₂ (EventMatchesEntry i r S g) blk₂
       (encVis tr₂ (encNextTr tr₂ me sIdx stA cl pq) (some wr) true))
-    (hpt : pt.length ≠ 64)
+    (hpt : pt.length < 48)
     (hc : ∀ c' ∈ List.inits c, ∀ t ∈ ([11, 16, 17] : List Nat),
       c' ≠ fillFresh t 64) :
     Symbolic.BugInjection.Proofs.Common443.CompFreshDistinct.FreshSafeTerm i S g
       (randTerm tr₂.length 32) ∧
-    (g.σ tr₂.length 32).length ≠ 64 ∧
+    (g.σ tr₂.length 32).length < 48 ∧
     Symbolic.BugInjection.Proofs.Common443.CompFreshDistinct.FreshSafeTerm i S g
       (randTerm (tr₂.length + 1) cl) ∧
     (∀ t ∈ ([11, 16, 17] : List Nat),

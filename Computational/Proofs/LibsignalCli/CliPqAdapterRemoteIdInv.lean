@@ -23,7 +23,7 @@ import VCVio.EvalDist.Monad.Basic
 `cliComposedAdapterImplWith`, together with `DEq` right-marginal support transport.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.constructorNameAsVariable false
@@ -41,7 +41,7 @@ open CryptoGames CryptoGames.LibsignalSM Ratchet LibsignalInst LibsignalSession
 
 /-- Every promoted model instance in `σ_e2e` keeps Alice's `remoteIdentity = some d.idB` and
 Bob's `remoteIdentity = some d.idA`. -/
-def CliE2ERemoteIdInv {S : SignalPqxdh.Setup} {ℓ : ℕ} (σ_e2e : BHE2EDrvState S ℓ) : Prop :=
+@[expose] def CliE2ERemoteIdInv {S : SignalPqxdh.Setup} {ℓ : ℕ} (σ_e2e : BHE2EDrvState S ℓ) : Prop :=
   ∀ d ∈ σ_e2e.insts, ∀ gs_m, d.gs = some gs_m →
     (gs_m.st .A).session.remoteIdentity = some d.idB ∧
     (gs_m.st .B).session.remoteIdentity = some d.idA

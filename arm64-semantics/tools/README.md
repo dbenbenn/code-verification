@@ -24,7 +24,7 @@ Shipped binary-translation, TCB-auditing, process-snapshot, and ISA differential
 | **Generate sorted Lean code-point range lists from vendored Unicode Character Database files (General_Category, `PropList.txt` properties), or `--check` that a committed table regenerates byte for byte** | `tools/dev/ucd-tables` | `[CASE-STUDIES TCB]` (trusted input generator for a campaign's `Spec/` data) | `cargo run --release --locked --manifest-path tools/dev/Cargo.toml -p ucd-tables -- --ucd-dir <dir> --out <File.lean> --namespace <Ns> --gc Lu ... --prop Other_ID_Start ... [--check]` |
 | **Run differential ISA validation of `Arm64/Trusted/` (`diff_eval`) against LLVM (`ld.lld`), Unicorn (`UC_ARCH_ARM64`), and Sail Armv9.4-A (`rems-project/sail-arm`)** | [`run-trusted-tests`](./run-trusted-tests/src/lib.rs) / [`sail-aarch64`](./sail-aarch64/README.md) | `[TEST ONLY]` | `cargo run --release --locked --manifest-path tools/Cargo.toml --bin run-trusted-tests` |
 | **Extract the official ARM A-Profile A64 XML & ASL 1.0 manual or query instructions, 32-bit words, and shared ASL helpers** | `tools/dev/arm-asl-extract` | `[AUDIT/LINTER]` | `cargo run --release --locked --manifest-path tools/dev/Cargo.toml --bin arm-asl-extract -- <extract\|query> ...` |
-| **Extract the official Linux `7.3` AArch64 syscall table (`unistd.h`), `SYSCALL_DEFINE*` C blocks, kernel helpers, and UAPI constants/structs** | `tools/dev/linux-syscall-extract` | `[AUDIT/LINTER]` | `cargo run --release --locked --manifest-path tools/dev/Cargo.toml --bin linux-syscall-extract -- <extract\|query> ...` |
+| **Extract the official Linux `7.3` AArch64 syscall table (`unistd.h`), `SYSCALL_DEFINE*` C blocks, kernel helpers, and UAPI constants/structs, or symbolically execute unmodified `linux-7.3/*.c` entry paths (`clang -emit-llvm` + Z3 `QF_BV` / CBMC) against `Arm64/Trusted/Syscalls/`** | `tools/dev/linux-syscall-extract` | `[AUDIT/LINTER]` | `cargo run --release --locked --manifest-path tools/dev/Cargo.toml --bin linux-syscall-extract -- <extract\|query\|symexec\|symcheck> ...` |
 | **Share Lean lexing/decl scanning, repo-root & campaign layout discovery, `translation.toml` / `<Target>Index.json` schemas, or the `#spec_audit_env` / `lake lean` runner across developer tools** | `tools/dev/repo-common` | `[AUDIT/LINTER]` (library) | `cargo test --locked --manifest-path tools/dev/Cargo.toml -p repo-common` |
 | **Generate the dynamic CI job matrix, human-readable CI plan summary, git-ref plan diff, fail-closed coverage verification, local touch-plan, affected-shards report, or precompiled-library glob check** | `tools/dev/ci-tools` | `[OUTSIDE TCB]` | `cargo run --release --locked --manifest-path tools/dev/Cargo.toml --bin ci-tools -- <plan\|completeness-guard\|touch-plan\|affected-shards\|prune-artifacts\|rebuild-guard\|lib-globs> ...` |
 | **Benchmark Lean files A/B: single core, interleaved runs, task-clock/cycles/real/user/sys, per-theorem kHB, proof size and kernel time** | `tools/dev/lean-bench` | `[OUTSIDE TCB]` | `cargo run --release --locked --manifest-path tools/dev/Cargo.toml -p lean-bench -- --per-decl --variant before=A.lean --variant after=B.lean` |
@@ -42,10 +42,9 @@ Every Rust source file under `tools/*/src/**/*.rs` (and `tools/dev/*/src/**/*.rs
   - The `trusted_*` modules parse in-memory relocatable ELF `.o` objects, check symbol collisions, and emit pre-link `<ObjName>ExtractedObj.lean` modules (`List Obj.ExtractedObj`). They contain **zero** subprocess invocations, static linking, archive unpacking, reachability pruning, instruction decoding, or theorem generation and never import `untrusted_*` modules.
 - **`[CASE-STUDIES TCB]` (Optional Process-Snapshot Dumper)**:
   - `tools/proc-snapshot/src/{rsp,elf,snapshot}.rs` (process snapshots under qemu-aarch64 user mode, trusted only by optional snapshot-based proofs and outside the core engine `[tcb]`; the pinned runner comes from `scripts/fetch-qemu-aarch64`).
-- **`[OUTSIDE TCB]` (Untrusted Build Driver, Placed Emitter, Legacy Linker, Kernel-Checked Proof & Advisor Tooling)**:
+- **`[OUTSIDE TCB]` (Untrusted Build Driver, Placed Emitter, Kernel-Checked Proof & Advisor Tooling)**:
   - `tools/rust-obj2lean/src/untrusted_driver/` (CLI/`translation.toml` loader, `cargo rustc`/`zig cc` build driver, `.rlib`/`.a` archive unpacking, and `root_section_closure` reachability selector)
   - `tools/rust-obj2lean/src/untrusted_placed/` (`<ObjName>PlacedObj.lean` / `PlacedCode` / `PlacedData` / `PlacedWitness` / `ElfFacts` emission)
-  - `tools/rust-obj2lean/src/untrusted_legacy_linker/` (deprecated `[OUTSIDE TCB]` legacy `LinkedImage` proof-cache exporter, gated behind `--legacy-linked-image` and classified `[proof]` by `tcb-map`)
   - `tools/rust-obj2lean/src/untrusted_lemmas/` (including `symexec/` and `dwarf/`, classified `[proof]` by `tcb-map`)
   - `tools/dev/lean-sig/` (`.agents/skills/lean-signatures/`)
   - `tools/dev/lean-bench/` (Lean A/B benchmark harness)
@@ -59,7 +58,7 @@ Every Rust source file under `tools/*/src/**/*.rs` (and `tools/dev/*/src/**/*.rs
   - `tools/sail-aarch64/`
   - `tools/isa-oracle/`, `tools/unicorn-aarch64/`
   - `tools/rust-obj2lean/src/test_infra/` (`#[cfg(test)]`)
-  - Unit tests of the `[TCB]` crates in separate files (`tools/rust-obj2lean/src/**/tests.rs`, `tools/proc-snapshot/tests/*.rs`; `#[cfg(test)]`). `tcb-map` classifies these as `[testing]`, classifies `untrusted_lemmas/` and `untrusted_legacy_linker/` as `[proof]` and other `untrusted_*` modules plus `src/main.rs` entry stubs of those crates as `[infra]`, and rejects references from `[tcb]` Rust files to non-`[tcb]` workspace crates, `tests`/`*_tests` modules, or `untrusted_*` / `test_infra` modules (`tcb-rust-import`); `repo-lints` also rejects inline test code (`#[test]`, `#[cfg(test)] mod tests { ... }`) in `[tcb]` Rust files (`inline-test-in-tcb`).
+  - Unit tests of the `[TCB]` crates in separate files (`tools/rust-obj2lean/src/**/tests.rs`, `tools/proc-snapshot/tests/*.rs`; `#[cfg(test)]`). `tcb-map` classifies these as `[testing]`, classifies `untrusted_lemmas/` as `[proof]` and other `untrusted_*` modules plus `src/main.rs` entry stubs of those crates as `[infra]`, and rejects references from `[tcb]` Rust files to non-`[tcb]` workspace crates, `tests`/`*_tests` modules, or `untrusted_*` / `test_infra` modules (`tcb-rust-import`); `repo-lints` also rejects inline test code (`#[test]`, `#[cfg(test)] mod tests { ... }`) in `[tcb]` Rust files (`inline-test-in-tcb`).
   - `tools/tcb-map/src/tests.rs` and `tools/dev/*/src/tests.rs` (`#[cfg(test)]`)
   - Validate the trusted Lean ISA semantics, placed-object loader (`Obj.PlacedLib`), static ELF loader, and untrusted symbolic executor against LLVM (`llvm-mc`, `ld.lld`), the Linux kernel ELF loader (`binfmt_elf`), Unicorn (`UC_ARCH_ARM64`), and the official Sail Armv9.4-A (`rems-project/sail-arm`) formal ISA semantics.
 
@@ -67,7 +66,7 @@ Every Rust source file under `tools/*/src/**/*.rs` (and `tools/dev/*/src/**/*.rs
 
 ## Shipped Workspace Crates (`tools/Cargo.toml`)
 
-1. **[`rust-obj2lean`](./rust-obj2lean/README.md)** — Object-level Rust/C -> Lean 4 exporter (`PlacedLib`), fetch-decode lemma generator, and `symexec` advisor (plus `[OUTSIDE TCB]` `--legacy-linked-image` proof-cache export).
+1. **[`rust-obj2lean`](./rust-obj2lean/README.md)** — Object-level Rust/C -> Lean 4 exporter (`PlacedLib` / `MultiPlacedLib` + `ExtractedObj`), fetch-decode lemma generator, and `symexec` advisor.
 2. **[`tcb-map`](./tcb-map/README.md)** — Self-contained auditor-facing TCB classification and soundness checker (`scripts/tcb-map`) with zero internal workspace dependencies: directory-hierarchy trust classification (`[tcb]`, `[case-studies-tcb]`, `[proof]`, `[testing]`, `[infra]`, `[doc]`; [`tree.rs`](./tcb-map/src/tree.rs)), `Arm64 < ProofLib < VerifiedLibraries < CaseStudies` and `Theorems`-sink layering, `Spec`/`Proof`/`Theorems` import isolation, pairwise standalone case-study package isolation, `[tcb]` Rust import isolation ([`tcb_rust_import.rs`](./tcb-map/src/tcb_rust_import.rs)), and core soundness/role-purity checks (`sorry`, `axiom`, `unsafe`, `native_decide`, `@[implemented_by]`, `@[extern]`, `@[csimp]`, `Spec` definition-only, `Theorems` `theorem`-only).
 3. **[`run-trusted-tests`](./run-trusted-tests/src/lib.rs)** — Dual-oracle differential test harness comparing Lean's `diff_eval` (`Arm64/Testing/Generators/TrustedSuite.lean`) against LLVM assembly, Unicorn AArch64 execution, and the authoritative Sail Armv9.4-A (`rems-project/sail-arm`) formal ISA semantics (via [`sail-aarch64`](./sail-aarch64/README.md)), plus standalone IEEE-754 floating-point differential testing (`--fp-only`) against Berkeley SoftFloat 3e, TestFloat 3e, and IBM FPgen.
 4. **[`sail-aarch64`](./sail-aarch64/README.md)** — Standalone safe Rust interface (`CpuState`, `Simulator`, `StopReason`, `SailError`, `run_batch`) wrapping the official Sail Armv9.4-A C simulator (`armv9.c` + Sail 0.17.1 runtime). Building `sail-aarch64` requires GNU MP headers and library (`libgmp-dev` on Debian/Ubuntu: `sudo apt install libgmp-dev`) for the Sail C runtime.
@@ -78,6 +77,23 @@ Every Rust source file under `tools/*/src/**/*.rs` (and `tools/dev/*/src/**/*.rs
 ### Developer & CI Workspace Crates (`tools/dev/Cargo.toml`)
 
 Internal contributor, audit-linting, and CI orchestration crates (`lean-sig`, `repo-lints` / `check-md-links` / `check-trust-guards`, `pr-audit-check`, `spec-coverage`, `spec-oracle`, `arm-asl-extract`, `linux-syscall-extract`, `repo-common`, `ci-tools`, `lean-bench`, `state-index-sweep`, and the UCD table generator `ucd-tables`) live in the standalone workspace `tools/dev/Cargo.toml`.
+
+#### `linux-syscall-extract symexec` (Literal Linux `7.3` Symbolic Execution)
+
+`linux-syscall-extract symexec` compiles unmodified `linux-7.3/*.c` kernel translation units directly to AArch64 LLVM IR (`clang --target=aarch64-linux-gnu -O1 -fno-inline -g -S -emit-llvm` against a cached minimal generated header tree, requiring zero `make`/`flex`/`bison`) and symbolically executes `@__arm64_sys_<name>` with persistent Z3 (`QF_BV`) dead-path pruning, pure scalar `ite` diamond merging, `noreturn` termination tracking, and UAPI constant/bitmask recovery:
+
+```sh
+# Emit UAPI-annotated Symbolic Decision Tree (Markdown or JSON) for a syscall:
+cargo run --release --locked --manifest-path tools/dev/Cargo.toml --bin linux-syscall-extract -- symexec mremap
+cargo run --release --locked --manifest-path tools/dev/Cargo.toml --bin linux-syscall-extract -- symexec --all-modeled
+
+# Emit standalone QF_BV SMT-LIB2 formula over X0..X5 for external SMT checks:
+cargo run --release --locked --manifest-path tools/dev/Cargo.toml --bin linux-syscall-extract -- symexec --format smt2 mremap
+
+# Cross-check literal Linux 7.3 LLVM-IR paths directly against Arm64/Trusted/Syscalls/ in Z3:
+cargo run --release --locked --manifest-path tools/dev/Cargo.toml --bin linux-syscall-extract -- symexec --verify-lean
+cargo run --release --locked --manifest-path tools/dev/Cargo.toml --bin linux-syscall-extract -- symexec --verify-lean --ablation
+```
 
 #### `ci-tools rebuild-guard` budget
 

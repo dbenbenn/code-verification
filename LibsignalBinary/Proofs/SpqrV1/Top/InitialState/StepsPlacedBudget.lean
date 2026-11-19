@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.ProofPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.StepsPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.ProofPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.StepsPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
@@ -28,6 +28,10 @@ import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeStep
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.Steps -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
 
 /-!
 # Budget-Threaded Relocatable Step Lemmas for `spqr::initial_state`
@@ -36,7 +40,7 @@ import ProofLib.SepLogic.WPp
 `.v1` body composition for `spqr::initial_state` (Block `327`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -48,7 +52,7 @@ namespace LibsignalBinary.Proofs.SpqrV1.Top.InitialState.StepsPlacedBudget
 open Arm64 Arm64.Obj ProofLib ProofLib.ProgramReflection
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification
-  (LibsignalCodeLoaded LibsignalPlacement blkPC_270 blkPl_270 libsignalSessionCode lsLogFilterAddr
+  (LibsignalCodeLoaded LibsignalPlacement blkPC_270 blkPl_270 lsLogFilterAddr
    lsLogFilterSym lsMemcpySym ls_subroutine_ok_cl_of_block lsmpl lsρ withLsCl withLsCodeLoaded)
 open CryptoVerification.RustHeap
   (RustAlloc allocHookStack vecHeader vecU8 vecU8At vecU8Buf)
@@ -104,7 +108,7 @@ open VerifiedLibraries.Mallocng (MallocngMaxAllocSize)
 private theorem bv_sub_add_lit (x a b : BitVec 64) : x - a + b = x - (a - b) := by
   bv_omega
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [local wp_norm] csel_maxJump_eq csel_maxOoo_eq
 attribute [local arm64_norm] bv_sub_add_lit
 
@@ -1313,7 +1317,7 @@ theorem call_dropPqRatchetState_placed [LibsignalPlacement]
 
 /-! ## 7. Full V1 Path Composition (`+0 -> ret`) on `Block 327` -/
 
-def InitialStateV1PlacedPost [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def InitialStateV1PlacedPost [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (s0 : State) (x : InitialStateGhost) (st0 : M.σ) : State → SepProp → Prop :=
   fun sf Pf =>

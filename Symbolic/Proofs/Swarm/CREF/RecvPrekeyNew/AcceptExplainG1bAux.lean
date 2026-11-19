@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.MacInv
+public import Symbolic.Proofs.Swarm.CREF.MacInv -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
-import Symbolic.Proofs.Swarm.CREF.TR.G1.CanonLocal
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.CanonLocal -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpineRk
 import Symbolic.Proofs.Swarm.CREF.TR.G1.RkSpine
 import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeAddr
@@ -24,7 +24,7 @@ available session state `st_s`, then `normalizeX25519Key x'.ek` is the public ke
 32-byte random draw.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -23,8 +23,8 @@ theorem DY.Bytes.AttackerKnows.baseKnowledge_eq_1 :
   @_root_.DY.Bytes.AttackerKnows.baseKnowledge.eq_1
 
 theorem DY.SubAttackerKnowledge.combine'_pred
-    [DY.BytesFunctor] {SubF : Type → Type} {t : Type}
-    (atts : t → DY.SubAttackerKnowledge SubF) :
+    [DY.BytesFunctor] {n : Nat} {SubF : Type → Type}
+    (atts : Fin n → DY.SubAttackerKnowledge SubF) :
     (DY.SubAttackerKnowledge.combine' atts).pred =
       DY.Fixpoint.combine fun id => (atts id).pred := by
   rfl

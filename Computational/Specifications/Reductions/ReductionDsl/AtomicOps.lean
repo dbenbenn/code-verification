@@ -199,8 +199,14 @@ inductive AtomicUnifBase where
 def AtomicUnifBase.sort : AtomicUnifBase → AtomicSort
   | .bv128 => .bv128 | .bv256 => .bv256 | .bv512 => .bv512 | .pt => .pt
 
+/-- Step cost of each `AtomicUnifBase` uniform draw: `1` per 256-bit block for bitvectors, and `12`
+for `.pt` so `(Comp.sample (.base .pt) .unit).cost = 13` matches the explicit exact-uniform
+`X25519Pt` sampler (`k ← $[0, (ℓ+1)/2); return u([k]B)`: `1` scalar draw + `8` fixed-base scalar
+multiplication + `4` `Comp` AST steps; checked in `X25519PtSamplerGuard.lean`). -/
 def AtomicUnifBase.cost : AtomicUnifBase → ℕ
-  | .bv128 | .bv256 | .pt => 1 | .bv512 => 2
+  | .bv128 | .bv256 => 1
+  | .bv512 => 2
+  | .pt => 12
 
 instance (ℓ : ℕ) (Pt : Type) [SampleableType Pt] (b : AtomicUnifBase) :
     SampleableType ((atomicSig ℓ Pt).den b.sort) := by

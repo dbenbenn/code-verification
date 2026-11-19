@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1Key -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyCD -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh1Key
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyCD
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveShallow -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveLengths -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveLengths
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveGapDhPre -- proof-setup: allow-public-import
 
 /-!
@@ -87,7 +87,7 @@ namespace Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveGapDhLeg4Alt
 public section
 /-! ## Pure evaluation of `fgKeyInd1KeyGapDhActiveAdvAtOpk` -/
 
-private noncomputable def fgGenSpkActivePure {S : Setup} (P : Primitives)
+private def fgGenSpkActivePure {S : Setup} (P : Primitives)
     (spkIdx : Nat) (V : Bytes) (u : Fin S.N_id) (j : Fin S.N_recv)
     (st : FgKeyIndSimState S) : ProbComp (KeyIndResponse × FgKeyIndSimState S) := do
   if st.base.spkBundles.any (fun (k, _) => k == (u.val, j.val)) then return (.noneResp, st)
@@ -109,7 +109,7 @@ private noncomputable def fgGenSpkActivePure {S : Setup} (P : Primitives)
       opkB? := none, pqspkId := UInt32.ofNat j.val, pqspkB := pqspkPk, pqspkSig := pqspkSig }
   return (.bundleResp bundleOut, { st with base := base' })
 
-private noncomputable def fgGenSPK1KeyActivePure {S : Setup} (P : Primitives) (uSk : Bytes)
+private def fgGenSPK1KeyActivePure {S : Setup} (P : Primitives) (uSk : Bytes)
     (spkIdx : Nat) (V : Bytes) (u : Fin S.N_id) (j : Fin S.N_recv)
     (stA : FgKeyInd1KeyActiveSimState S) :
     ProbComp (KeyIndResponse × FgKeyInd1KeyActiveSimState S) := do
@@ -140,7 +140,7 @@ private noncomputable def fgGenSPK1KeyActivePure {S : Setup} (P : Primitives) (u
     let (resp, sim') ← fgGenSpkActivePure P spkIdx V u j stA.st1.sim
     return (resp, { stA with st1 := { stA.st1 with sim := sim' } })
 
-private noncomputable def fgKeyInd1KeyActiveStepPureDh4 (ephOpkOrd opkOrd : Nat)
+private def fgKeyInd1KeyActiveStepPureDh4 (ephOpkOrd opkOrd : Nat)
     (P : Primitives) (uSk : Bytes) (ddh : Bytes → Bytes → Bytes → Bool)
     (S : Setup) (maxLen : Nat) (U V : Bytes) (q : KeyIndQuery S)
     (stA : FgKeyInd1KeyActiveSimState S) :
@@ -180,7 +180,7 @@ private noncomputable def fgKeyInd1KeyActiveStepPureDh4 (ephOpkOrd opkOrd : Nat)
       fgKeyIndStepPure P ddh false ephOpkOrd (maxLen + 1) S maxLen U V q_other stA.st1.sim
     return (resp, { stA with st1 := { stA.st1 with sim := sim' } })
 
-private noncomputable def fgKeyInd1KeyActiveSimImplDh4 (ephOpkOrd opkOrd : Nat)
+private def fgKeyInd1KeyActiveSimImplDh4 (ephOpkOrd opkOrd : Nat)
     (P : Primitives) (uSk : Bytes) (ddh : Bytes → Bytes → Bytes → Bool)
     (S : Setup) (maxLen : Nat) (U V : Bytes) :
     QueryImpl (keyIndSpec S) (StateT (FgKeyInd1KeyActiveSimState S) ProbComp) :=

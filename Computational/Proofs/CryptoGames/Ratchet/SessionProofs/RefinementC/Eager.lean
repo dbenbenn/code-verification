@@ -23,7 +23,7 @@ ambiguous stopping runs to `runSimCEager` from the initial joint state, and esta
 invariant `simInvCX_init`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

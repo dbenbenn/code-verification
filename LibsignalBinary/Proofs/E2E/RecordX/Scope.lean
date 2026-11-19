@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Defs
-public import LibsignalBinary.Proofs.E2E.RecordX.BridgeCommon
+public import LibsignalBinary.Proofs.E2E.RecordX.BridgeCommon -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Reach.BundleCommon
 
 /-!
@@ -22,7 +22,7 @@ import LibsignalBinary.Proofs.E2E.Reach.BundleCommon
 reachable state under `FixedIdRecordExtras` lies in `DeserializeScopeX`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.RecordX
 
@@ -30,7 +30,7 @@ open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification.LibsignalProtoCodec CryptoVerification.E2E CryptoVerification.E2E.Record
 
 /-- The current session of `toRecord (extrasOf E) g`. -/
-def sessionOfX (E : Party → RecordExtras) (g : GhostState Bytes) : Session Bytes :=
+@[expose] def sessionOfX (E : Party → RecordExtras) (g : GhostState Bytes) : Session Bytes :=
   { state := g.session
     pendingPreKey := if g.session.pendingPreKey then some (E g.party).pending else none
     pendingKyberPreKey := if g.session.pendingPreKey then (E g.party).kyber else none
@@ -47,7 +47,7 @@ theorem sessionOfX_wf (E : Party → RecordExtras) (g : GhostState Bytes) :
   cases g.session.pendingPreKey <;> rfl
 
 /-- Widened session scope allowing `aliceBaseKey` and a zero-ID pending Kyber ciphertext of length `< 2 ^ 16`. -/
-def SessionScopeX (s : Session Bytes) : Prop :=
+@[expose] def SessionScopeX (s : Session Bytes) : Prop :=
   s.state.receiverChains.length ≤ maxReceiverChains ∧
     s.localRegistrationId = 0 ∧ s.remoteRegistrationId = 0 ∧
     (∀ p, s.pendingPreKey = some p → p.preKeyId = none ∧ p.signedPreKeyId = 0 ∧ p.timestamp = 0) ∧
@@ -68,7 +68,7 @@ theorem sessionScope_iff (s : Session Bytes) :
     exact ⟨h1, hk, hl, hr, ha, hp⟩
 
 /-- Widened record scope combining `InScope` with `SessionScopeX` on the current session. -/
-def DeserializeScopeX (r : SessionRecord Bytes) : Prop :=
+@[expose] def DeserializeScopeX (r : SessionRecord Bytes) : Prop :=
   InScope r ∧ ∃ s, r.currentSession = some s ∧ SessionScopeX s
 
 theorem deserializeScope_iff (r : SessionRecord Bytes) :
@@ -91,56 +91,6 @@ theorem deserializeScope_iff (r : SessionRecord Bytes) :
 section Reach
 variable (Z : EParams) (E : Party → RecordExtras) (hE : ∀ P, FixedIdRecordExtras (E P))
 include hE
-
-theorem reach_sessionScopeX {g : GhostState Bytes} (hg : Reach Z.params g) :
-    SessionScopeX (sessionOfX E g) := by
-  obtain ⟨hr, hl, hpid, hspk, hts, hk, ha⟩ := hE g.party
-  refine ⟨Reach.reach_receiverChains_le Z hg, hl, hr, ?_, ?_, ha⟩
-  · intro p hp
-    unfold sessionOfX at hp
-    dsimp only at hp
-    split at hp
-    · injection hp with hp'
-      subst hp'
-      exact ⟨hpid, hspk, hts⟩
-    · cases hp
-  · intro k hk'
-    unfold sessionOfX at hk'
-    dsimp only at hk'
-    split at hk'
-    · exact hk k hk'
-    · cases hk'
-
-theorem reach_inScopeX {g : GhostState Bytes} (hg : Reach Z.params g) :
-    InScope (toRecord (extrasOf E) g) := by
-  rw [toRecord_extrasOf_eq]
-  obtain ⟨_, _, _, _, _, hk, ha⟩ := hE g.party
-  refine ⟨?_, ?_, ?_⟩
-  · intro s hs
-    injection hs with hs'
-    subst hs'
-    refine ⟨Reach.reach_remoteIdentity_ne_local Z hg, Reach.reach_seedsLen32 Z hg,
-      Reach.reach_receiverChains_lt Z hg, ?_⟩
-    intro k hk'
-    unfold sessionOfX at hk'
-    dsimp only at hk'
-    split at hk'
-    · exact Nat.lt_trans (hk k hk').2 (by decide)
-    · cases hk'
-  · intro s hs
-    injection hs with hs'
-    subst hs'
-    exact Reach.reach_pqRatchetState_eq_nil Z hg
-  · intro s hs
-    injection hs with hs'
-    subst hs'
-    exact ⟨Reach.reach_messageKeys_le Z hg, Reach.reach_senderKey_clamped Z hg,
-      sessionOfX_wf E g, Nat.lt_trans ha (by decide)⟩
-
-/-- Every reachable record under `FixedIdRecordExtras` lies in `DeserializeScopeX`. -/
-theorem reach_deserializeScopeX {g : GhostState Bytes} (hg : Reach Z.params g) :
-    DeserializeScopeX (toRecord (extrasOf E) g) :=
-  ⟨reach_inScopeX Z E hE hg, sessionOfX E g, rfl, reach_sessionScopeX Z E hE hg⟩
 
 end Reach
 

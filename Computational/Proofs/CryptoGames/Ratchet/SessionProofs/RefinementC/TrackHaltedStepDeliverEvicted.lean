@@ -21,6 +21,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.Base
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.HelpersC
 import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11Aux
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv
 
 /-!
 # Tracker-halted `deliver` step: evicted epochs
@@ -32,7 +33,7 @@ Proves the tracker-halted `deliver` cases for evicted epochs under salt match an
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace CryptoGames.LibsignalSM.Proofs.Refinement
 

@@ -12,19 +12,22 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCalleesBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.TopLevel.SessionInitiateACommon
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.HookDischarge.Libc.Common
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.SetUnackEpochPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCalleesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.TopLevel.SessionInitiateACommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.HookDischarge.Libc.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.SetUnackEpochPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `SessionState::set_unacknowledged_pre_key_message` at `UNIX_EPOCH` (Placed)
@@ -36,7 +39,7 @@ Verifies Block `33` (`<SessionState>::set_unacknowledged_pre_key_message`) at `n
 specializations.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -100,10 +103,10 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 
 /-- Exact binary allocator event sequence of `<SessionState>::set_unacknowledged_pre_key_message`
 (Block `33`): `[.alloc 33, .alloc 33, .free 1 33]`. -/
-def setUnackPreKeyMsgEpochEvents : List AllocEvent :=
+@[expose] def setUnackPreKeyMsgEpochEvents : List AllocEvent :=
   setUnackPreKeyMsgEvents
 
-def SetUnackPreKeyMsgEpochEnv (evs : List AllocEvent) : Prop :=
+@[expose] def SetUnackPreKeyMsgEpochEnv (evs : List AllocEvent) : Prop :=
   evs = setUnackPreKeyMsgEpochEvents
 
 theorem fitsEnv_setUnackPreKeyMsgEpochEnv_iff (M : AllocCostModel) (lim : BudgetLimits)
@@ -124,7 +127,7 @@ example :
 
 /-- `VmPreserved`-strengthened counterpart of `Slots.durationSinceEpochAllocSpec`
 (`allocHookStack = 4096`). -/
-def durationSinceEpochAllocBudgetSpec : Spec (BitVec 64 × BitVec 64) :=
+@[expose] def durationSinceEpochAllocBudgetSpec : Spec (BitVec 64 × BitVec 64) :=
   withVmPreserved durationSinceEpochAllocSpec
 
 /-- Strip `keepsFs` from `HookSat H sym (keepsFs spec)`. -/
@@ -154,7 +157,7 @@ theorem hookSat_withLsRet_drop_keepsFs [LibsignalPlacement] {α : Type}
 /-- Budget-threaded image-free inner `Spec` of `<SessionState>::set_unacknowledged_pre_key_message`
 (Block `33`) at `now = UNIX_EPOCH` (`x5 = 0`, `w6 = 0`), with `onPanic = ⌜False⌝` and
 `onOom = ⌜False⌝` under `FitsEvents M lim st setUnackPreKeyMsgEpochEvents`. -/
-def setUnackPreKeyMsgEpochInnerSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def setUnackPreKeyMsgEpochInnerSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SetUnackExactGhost × M.σ) where
   pre := fun (g, st) s =>
     ⌜s.readReg64 .x5 = 0#64 ∧ (s.readReg64 .x6).setWidth 32 = 0#32⌝ ∗
@@ -349,8 +352,8 @@ theorem setUnackPreKeyMsg_exact_stack_epoch_placed_cl_ok [LibsignalPlacement] {M
   let st2 := M.stepEvents (rustAllocEvents 33 1) st1
   have henc33 : (encodeEC baseKeyBytes).length = 33 := by
     change (0x05 :: baseKeyBytes).length = 33; simp [hlen_base]
-  have hlen_enc : (bytesToBv8 (encodeEC baseKeyBytes)).length = 33 := by
-    simp [bytesToBv8, henc33]
+  have hlen_enc : (bytesToBv8 (encodeEC baseKeyBytes)).length = 33 :=
+    (List.length_map _).trans henc33
   have hpow2 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
   have hpos33 : 0 < (33 : Nat) := by decide
   have hal1 : (1 : Nat) ≤ 2 ^ 31 := by decide

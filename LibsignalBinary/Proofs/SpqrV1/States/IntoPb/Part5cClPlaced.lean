@@ -9,15 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1ClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4ClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.NoHeaderReceivedClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbClPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1ClPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4ClPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aClPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.NoHeaderReceivedClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbClPlaced
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5bPlaced
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefs
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1Placed
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`) — Part 5c `withLsCodeLoaded`: Arm 9 (`States.ct1Acknowledged`)
@@ -26,7 +33,7 @@ Relocatable `[LibsignalPlacement]` verification of Arm 9 (`States.ct1Acknowledge
 with `withLsCodeLoaded` on `<PolyDecoder>::into_pb` (Block `377`) and Block `334`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -54,7 +61,7 @@ open CryptoVerification.SpqrV1.ProtoRepr
 open CryptoVerification.CodeLayout
 open CryptoVerification.SpqrV1.States.IntoPb.Placed
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
   bv_sub_sub_lit' bv_add_add_lit'
 attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero noneCap_add_two_beq_zero

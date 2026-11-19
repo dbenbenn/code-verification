@@ -9,12 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactPlacedA
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCSBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeated2Budget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactPlacedA
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCSBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeated2Budget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` `encode_repeated [local#2]` (`< 2 ^ 59`) and Call Wrappers
@@ -24,7 +27,7 @@ and `encodeRepeated59ExactSpecOf` under `[LibsignalPlacement]` (`Block 289`), an
 generic `Program` call and tailcall steppers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -112,18 +115,6 @@ theorem encodeRepeated59SpecOf_post_of_det {resStack : Nat}
     rw [sepConj_assoc, satisfies_pure_sepConj]
     exact ⟨⟨hge, hpres⟩, hq1⟩
   convert hq2 using 1; sep_ac_rfl
-
-theorem encodeRepeated59SpecOf_of_det {resStack : Nat} {prog : Program} {entry : BitVec 64}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hdet : subroutine_ok prog entry (encodeRepeated59DetSpecOf resStack A lim)) :
-    subroutine_ok prog entry (encodeRepeated59SpecOf resStack A lim) := by
-  refine subroutine_ok_outcome_intro fun ⟨x, st⟩ R s0 hpc hrun hpre hsp => ?_
-  have hpre' : s0.mem ⊨ (encodeRepeated59DetSpecOf resStack A lim).pre (x, st) s0 ∗ R := hpre
-  refine (hdet.to_outcome (x, st) R s0 hpc hrun hpre' hsp).mono_outcome ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | hrest)
-  · exact Or.inl ⟨hret, hcc, encodeRepeated59SpecOf_post_of_det hq⟩
-  · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-  · exact Or.inr (Or.inr hrest)
 
 theorem encodeRepeated59SpecOf_of_det_placed [LibsignalPlacement] {resStack : Nat}
     {prog : Program} {entry : BitVec 64}
@@ -251,30 +242,6 @@ theorem encode_repeated_2_59_placed_ok_x [LibsignalPlacement] {M : AllocCostMode
       (withLsCodeLoaded lsmpl (encodeRepeated59SpecOf doReserveStackX A lim)) :=
   encodeRepeated59SpecOf_of_det_placed
     (encode_repeated_2_59_det_placed_ok_x h_panic hshim halloc hrealloc hmc)
-
-theorem encode_repeated_2_59_exact_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (h_panic : H spqrHandleErrorSym = some Rust.panicked)
-    (hshim : HookSat H spqrRustNoAllocShimSym noAllocShimSpec)
-    (halloc : HookSat H spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmc : HookSat H spqrMemcpySym framelessMemcpySpec) :
-    subroutine_ok ((blkPC_289).rebase (blkPl_289).base H) (blkPl_289).base
-      (withLsCodeLoaded lsmpl (encodeRepeated59ExactSpecOf doReserveStack A lim)) :=
-  subroutine_ok_encodeRepeated59Exact_of_59_placed
-    (encode_repeated_2_59_placed_ok h_panic hshim halloc hrealloc hmc)
-
-theorem encode_repeated_2_59_exact_placed_ok_x [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (h_panic : H spqrHandleErrorSym = some Rust.panicked)
-    (hshim : HookSat H spqrRustNoAllocShimSym noAllocShimSpec)
-    (halloc : HookSat H spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmc : HookSat H spqrMemcpySym framelessMemcpySpec) :
-    subroutine_ok ((blkPC_289).rebase (blkPl_289).base H) (blkPl_289).base
-      (withLsCodeLoaded lsmpl (encodeRepeated59ExactSpecOf doReserveStackX A lim)) :=
-  subroutine_ok_encodeRepeated59Exact_of_59_placed
-    (encode_repeated_2_59_placed_ok_x h_panic hshim halloc hrealloc hmc)
 
 /-! ## 3. Generic `Program` Call & Tailcall Steppers for `encodeRepeated59SpecOf` & `encodeRepeated59ExactSpecOf` -/
 

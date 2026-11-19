@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.Callees
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.Chain3Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.Defs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.Chain3Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.DefsPlaced -- proof-setup: allow-public-import
 
 /-!
 # Placed `message::merge<Chain> [local#4]` Closure from `Chain3CalleePlacedKit`
@@ -21,7 +22,7 @@ import Arm64.Trusted.Spec.SepLogic
 `Chain3PlacedOkAtW` (`chainMerge5_placed_ok`) from `Chain3CalleePlacedKit`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Tail
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ErrK2Placed
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2Placed
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Tail
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ErrK2Placed
+import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2Placed
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3b
@@ -23,7 +23,10 @@ import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologue
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3b
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Defs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropSessionStructure3
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderStore.SessionRecordCallees
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSpe2Ext
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3GenVerNeBlocks
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
@@ -37,6 +40,14 @@ import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import all Init.Data.String.Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ConstsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.PrevBridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyBase
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+public import ProofLib.FsTrace
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 
 /-!
 # Relocatable Version-Mismatch Error Tail (`+0x2cfc → s0.readReg64 .x30`)
@@ -45,7 +56,7 @@ Relocatable (`[LibsignalPlacement]`) proof of the version-mismatch error tail
 (`(blkPl_518).base + 0x2cfc → s0.readReg64 .x30` with `errs.len = 2`) on `lsProg_518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -92,7 +103,7 @@ attribute [local arm64_norm, local wp_norm]
 
 /-- Relocatable `[LibsignalPlacement]` Stage P3/P4 `VerNe` tail
 (`(blkPl_518).base + 0x2cfc → s0.readReg64 .x30` with `errs.len = 2`) on `lsProg_518 ext`. -/
-def OverVerNeTail2cfcCliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverVerNeTail2cfcCliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {A : RustAlloc} (ext : String → Option (State → State))
     (s0 s s7 : State) (coroPtr ctxPtr outPtr errsPtr prevCap prevPtr : BitVec 64)
     (msgVer0 msgVer1 : BitVec 32) (b_2c0 : BitVec 8) (enc : List (BitVec 8))
@@ -845,7 +856,7 @@ private theorem over_ver_ne_tail_partA_cli_placed_ok [LibsignalPlacement] {A : R
 /-! ## Part B (`+0x3410 → s0.readReg64 .x30`) and combined tail theorem -/
 
 /-- Pointwise (`A`, `ext`) body of `OverK2SegCliPlacedStmt`. -/
-def OverK2SegCliPlacedAt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def OverK2SegCliPlacedAt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   ∀ (s : State) (coroPtr outPtr errTag prevCap prevPtr
       w_370 w_378 w_380 w_388

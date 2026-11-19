@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHEvict
-public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHPack
+public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHEvict -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHPack -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHStep12
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Sender-Chain Commit and `S4State` Staging Helpers for `S3CommitSpec`
@@ -21,7 +22,7 @@ Byte-packing, `memRegion` elimination, `vecAt` alignment, and `ReachesOrPanic` m
 for committing `sender_chain` and staging `S4State` at the end of `S3CommitSpec`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegBH
 
@@ -229,14 +230,6 @@ theorem vecAt_chains_eq (A : RustAlloc) (sp cap ptr : BitVec 64)
   rw [show sp + 0x38#64 + 8#64 = sp + 0x40#64 from add_assoc_const _ _ _ _,
       show sp + 0x38#64 + 16#64 = sp + 0x48#64 from add_assoc_const _ _ _ _]
   ac_rfl
-
-theorem reachesOrPanic_mono {prog : Program} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {img : Obj.Image}
-    {x : TryDecryptGhost} {R : SepProp} {s0 s : State} {P Q : State → Prop}
-    (h1 : ReachesOrPanic prog C A ctl uuidTryParse S img x R s0 s P)
-    (h2 : ∀ sf, s.mem.KeepsFrozen sf.mem → sf.symtab = s.symtab → P sf → Q sf) :
-    ReachesOrPanic prog C A ctl uuidTryParse S img x R s0 s Q :=
-  ReachesOrPanic.seq h1 (fun sf hkf hsym hP => ReachesOrPanic.done (h2 sf hkf hsym hP))
 
 end BS10
 

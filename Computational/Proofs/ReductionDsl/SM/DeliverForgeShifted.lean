@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.SM.DeliverForge
-public import Computational.Proofs.HeadlineV1.DeliverForgeShifted
+public import Computational.Proofs.ReductionDsl.SM.DeliverForge -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.DeliverForgeShifted -- proof-setup: allow-public-import
 import Computational.Proofs.GameHop.ReductionDsl.CostUB
 import Computational.Proofs.SessionCostedBase
 import ProofLib.SepLogic.WP.StepsCore
@@ -25,7 +25,7 @@ Defines the shifted engine dispatcher `implECDFShifted` and `CostedReduction` pr
 evaluation agreement, query, and cost bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -55,7 +55,7 @@ local notation "rrTy" => ckaRrTy KC Γ CCoins T I KR RSt K SS RS M E
 
 /-! ## Shifted engine dispatch -/
 
-def cAfterCorrShiftedE
+@[expose] def cAfterCorrShiftedE
     {O' : Ops S} {vpT : Ty S} {Γ'} (L l : ℕ) (s : Expr O' Γ' (cGsTy vpT))
     (p : Expr O' Γ' .bool) : Expr O' Γ' (cGsTy vpT) :=
   rdslExpr =>
@@ -173,7 +173,7 @@ local notation "OO" =>
   ckaOps ckaInitA ckaInitB ckaSend ckaReceive prngInit prngUp
     fsInitSender fsInitReceiver fsSend fsReceive eqT eqI eqM eqE lam defaultE
 
-def corrECShifted
+@[expose] def corrECShifted
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -202,7 +202,7 @@ def corrECShifted
           let s1_2 := cAfterCorrShiftedE L l (esG es0) p0
           return (some st, esMk s1_2 h' (esAbort es0))
 
-def implECShifted
+@[expose] def implECShifted
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -233,7 +233,7 @@ def implECShifted
       return (inr ans, es')
 
 /-- Six-oracle costed engine dispatcher for `DeliverForge.implEDFShifted`. -/
-def implECDFShifted
+@[expose] def implECDFShifted
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -491,7 +491,7 @@ local notation "II" =>
   prngIface KC Γ CCoins T I KR RSt K SS RS M E sampKR sampKC sampCCoins sampI sampK
 
 /-- Costed `DeliverForge.redPRNGAuthDFShifted` reduction over `SM.specDF`. -/
-def redPRNGAuthDFShiftedProg (L B Δcka qep maxSkip l tStar : ℕ) :
+@[expose] def redPRNGAuthDFShiftedProg (L B Δcka qep maxSkip l tStar : ℕ) :
     CostedReduction OO II
       (SM.specDF (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (prngSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E)
@@ -754,7 +754,7 @@ theorem implEDFShifted_fs_inv [DecidableEq T] [DecidableEq I] [DecidableEq M] [D
   · exact deliverForgeE_fs_inv cka prng fs cfg Δcka mo j es arg hInv
 
 /-- Costed `DeliverForge.redFSAuthDFShifted` reduction over `SM.specDF`. -/
-def redFSAuthDFShiftedProg (L B Δcka qep maxSkip j l tStar : ℕ) :
+@[expose] def redFSAuthDFShiftedProg (L B Δcka qep maxSkip j l tStar : ℕ) :
     CostedReduction OO II
       (SM.specDF (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (prngSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E)
@@ -813,14 +813,14 @@ end FromAEADPRGDFShifted
 
 /-! ### Shifted CKA hooks -/
 
-@[reducible] def ckaShiftedHsTy : Ty S :=
+@[expose, reducible] def ckaShiftedHsTy : Ty S :=
   .prod ckaHsTy (.prod (.opt (.base .γ)) (.opt (.base .γ)))
 
-def ckaShiftedHsEnc (s : DeliverForge.CKAStateShifted Γ T I) :
+@[expose] def ckaShiftedHsEnc (s : DeliverForge.CKAStateShifted Γ T I) :
     (@ckaShiftedHsTy KC Γ CCoins T I KR RSt K SS RS M E).denote :=
   (s.base.cache, s.γPre .A, s.γPre .B)
 
-@[reducible] def ckaShiftedEsTy : Ty S :=
+@[expose, reducible] def ckaShiftedEsTy : Ty S :=
   esTy ckaVpTy ckaShiftedHsTy
 
 section HooksCKACDFShifted
@@ -855,21 +855,21 @@ local notation "OO" =>
 local notation "II" =>
   ckaIface KC Γ CCoins T I KR RSt K SS RS M E sampKR sampKC sampCCoins sampI sampK
 
-def ckaShiftedSetCache {Γ'}
+@[expose] def ckaShiftedSetCache {Γ'}
     (hE : Expr OO Γ' ckaShiftedHsTy)
     (tE : Expr OO Γ' .nat)
     (vE : Expr OO Γ' (.opt (.prod (.base .t) (.base .i)))) :
     Expr OO Γ' ckaShiftedHsTy :=
   rdslExpr => (tset hE.1 tE vE, hE.2)
 
-def ckaShiftedSetΓPre {Γ'}
+@[expose] def ckaShiftedSetΓPre {Γ'}
     (hE : Expr OO Γ' ckaShiftedHsTy)
     (pE : Expr OO Γ' .bool)
     (γE : Expr OO Γ' (.opt (.base .γ))) :
     Expr OO Γ' ckaShiftedHsTy :=
   rdslExpr => (hE.1, pSet hE.2 pE γE)
 
-def ckaShiftedStartSendC (l : ℕ) {Γ'}
+@[expose] def ckaShiftedStartSendC (l : ℕ) {Γ'}
     (hE : Expr OO Γ' ckaShiftedHsTy)
     (_ctxE : Expr OO Γ' (cGsTy ckaVpTy))
     (pE : Expr OO Γ' .bool)
@@ -924,7 +924,7 @@ def ckaShiftedStartSendC (l : ℕ) {Γ'}
       let ss := Expr.op (O := OO) CKAOp.fsInitSender pOut.2
       return (some (some cOut.1, T', pOut.1, ss), h1)
 
-def ckaShiftedStartRecvC (tStar : ℕ) {Γ'}
+@[expose] def ckaShiftedStartRecvC (tStar : ℕ) {Γ'}
     (hE : Expr OO Γ' ckaShiftedHsTy)
     (_ctxE : Expr OO Γ' (cGsTy ckaVpTy))
     (_pE : Expr OO Γ' .bool)
@@ -938,7 +938,7 @@ def ckaShiftedStartRecvC (tStar : ℕ) {Γ'}
   rdsl do
     return (ckaStartRecvAnsE (raw ⟨true, none, tStar⟩) hE.1 tE γvE σE tnE, hE)
 
-def ckaShiftedFsSendC {Γ'}
+@[expose] def ckaShiftedFsSendC {Γ'}
     (hE : Expr OO Γ' ckaShiftedHsTy)
     (_ctxE : Expr OO Γ' (cGsTy ckaVpTy))
     (_pE : Expr OO Γ' .bool)
@@ -951,7 +951,7 @@ def ckaShiftedFsSendC {Γ'}
   rdsl do
     return (some (Expr.op (O := OO) CKAOp.fsSend (ssE, hdrE, mE)), hE)
 
-def ckaShiftedFsRecvC (B : ℕ) {Γ'}
+@[expose] def ckaShiftedFsRecvC (B : ℕ) {Γ'}
     (hE : Expr OO Γ' ckaShiftedHsTy)
     (_ctxE : Expr OO Γ' (cGsTy ckaVpTy))
     (_pE : Expr OO Γ' .bool)
@@ -965,7 +965,7 @@ def ckaShiftedFsRecvC (B : ℕ) {Γ'}
   rdsl do
     return (some (Expr.op (O := OO) (raw (CKAOp.fsReceive B)) (rsE, hdrE, eE)), hE)
 
-def ckaShiftedCommitC (l : ℕ) {Γ'}
+@[expose] def ckaShiftedCommitC (l : ℕ) {Γ'}
     (hE : Expr OO Γ' ckaShiftedHsTy)
     (_ctxE : Expr OO Γ' (cGsTy ckaVpTy))
     (pE : Expr OO Γ' .bool)
@@ -993,7 +993,7 @@ def ckaShiftedCommitC (l : ℕ) {Γ'}
     else
       return (some new0, h0)
 
-def ckaShiftedRevealC (l : ℕ) {Γ'}
+@[expose] def ckaShiftedRevealC (l : ℕ) {Γ'}
     (hE : Expr OO Γ' ckaShiftedHsTy)
     (_ctxE : Expr OO Γ' (cGsTy ckaVpTy))
     (pE : Expr OO Γ' .bool)
@@ -1015,7 +1015,7 @@ def ckaShiftedRevealC (l : ℕ) {Γ'}
     | some γ => return (some (realPartyE vp0 γ (vpRoot vp0) (vpVS vp0) (vpVR vp0)), h0)
 
 /-- Costed `HooksC` bundle for `redCKAAuthDFShifted`. -/
-def hooksCKAShiftedC (B l tStar : ℕ) :
+@[expose] def hooksCKAShiftedC (B l tStar : ℕ) :
     HooksC OO II (.opt (.base .γ)) (.base .sig) (.base .ss) (.base .rs) ckaShiftedHsTy where
   startSend := ckaShiftedStartSendC l
   startRecv := ckaShiftedStartRecvC tStar
@@ -1724,7 +1724,7 @@ theorem hooksCKAShiftedC_agrees_vr [DecidableEq T] [SampleableType CCoins]
   reveal_eval hE ctxE pE vpE ρ h ctx P vp _ hh _ hp hvp :=
     ckaShiftedRevealC_eval cka prng fs l tStar hE ctxE pE vpE ρ h ctx P vp hh hp hvp
 
-def initCKAShiftedEStateC (l : ℕ) {Γ'} (bE : Expr OO Γ' .bool) : Comp OO II Γ' ckaShiftedEsTy :=
+@[expose] def initCKAShiftedEStateC (l : ℕ) {Γ'} (bE : Expr OO Γ' .bool) : Comp OO II Γ' ckaShiftedEsTy :=
   rdsl do
     b0 ← return bE
     kr ← sample (I := II) CKASamp.kr ()
@@ -1744,7 +1744,7 @@ def initCKAShiftedEStateC (l : ℕ) {Γ'} (bE : Expr OO Γ' .bool) : Comp OO II 
     let h0 := (tconst none, γPreAB)
     return esMk g0 h0 false
 
-def initCKAShiftedRaw [SampleableType KR]
+@[expose] def initCKAShiftedRaw [SampleableType KR]
     (prng : PRFPRNG KR RSt I K)
     (fs : FSAEADScheme K SS RS (Header T) M E)
     (lam : I) (l : ℕ) (b : Bool) :
@@ -1907,7 +1907,7 @@ theorem initCKAShiftedRaw_vrInv [SampleableType KR]
   · cases hv
 
 /-- Costed `DeliverForge.redCKAAuthDFShifted` reduction over `SM.specDF`. -/
-def redCKAAuthDFShiftedProg (L B qep maxSkip l tStar : ℕ) :
+@[expose] def redCKAAuthDFShiftedProg (L B qep maxSkip l tStar : ℕ) :
     CostedReduction OO II
       (SM.specDF (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (ckaSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E)

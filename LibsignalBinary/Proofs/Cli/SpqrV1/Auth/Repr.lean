@@ -16,7 +16,7 @@ import VCVio.Prelude.Core
 # CLI SPQR V1 `Authenticator::encode [local#3]` Entry Symbol (`authEncodeLocal1Name`)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Auth
 

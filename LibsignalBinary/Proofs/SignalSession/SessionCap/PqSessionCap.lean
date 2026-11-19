@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.SessionCap.TopStateTight
-public import LibsignalBinary.Proofs.SignalSession.SessionCap.PqReachInv
+public import LibsignalBinary.Proofs.SignalSession.SessionCap.TopStateTight -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.SessionCap.PqReachInv -- proof-setup: allow-public-import
 
 /-!
 # `ReachablePqxdhSession` Session-Record Byte Bound (`≤ 1,209,331 < fileCapBytes`)
@@ -20,7 +20,7 @@ state) to bound every `ReachablePqxdhSession` encoding by `1,209,331` bytes (`< 
 and extends the bound to all non-`.base-keys` files in `encodeDir W st`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

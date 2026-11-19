@@ -20,7 +20,7 @@ sub-structures, `*PBAt ⊢ *PBCapAt 0` bridges for error paths, and the shared p
 `v1StateAfterTagPre` at `entry + 2700#64`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageMerge
 
@@ -46,7 +46,7 @@ set_option linter.unusedSimpArgs false
 
 /-! ## 1. Discriminant Extraction for `optProtoInnerStateCapAt` -/
 
-def InnerStateDiscr (bsLen : Nat) : Option V1State.InnerState → BitVec 64 → Prop
+@[expose] def InnerStateDiscr (bsLen : Nat) : Option V1State.InnerState → BitVec 64 → Prop
   | none, d => d = none2Cap
   | some (.keysUnsampled _), d => d = 0x8000000000000000#64
   | some (.keysSampled _), d => d = 0x8000000000000001#64
@@ -63,7 +63,7 @@ def InnerStateDiscr (bsLen : Nat) : Option V1State.InnerState → BitVec 64 → 
   | some (.ct1Acknowledged _), d => d = 0x8000000000000009#64
   | some (.ct2Sampled _), d => d = 0x800000000000000a#64
 
-def optProtoInnerStateCapTailAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
+@[expose] def optProtoInnerStateCapTailAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
     (is : Option V1State.InnerState) (d : BitVec 64) : SepProp :=
   match is with
   | none => memRegion (a + 8#64) 216
@@ -190,7 +190,7 @@ theorem discr_entails_optProtoInnerStateCapAt (A : RustAlloc) (a : BitVec 64) (b
 /-! ## 2. Word-Level Relocation Helpers for Stack-Temp Copies -/
 
 /-- Address-independent heap part of a capacity-bounded `Vec<u8>` with header words `(w0, w1, w2)`. -/
-def vecU8CapHeap (A : RustAlloc) (bsLen : Nat) (v : List (BitVec 8)) (w0 w1 w2 : BitVec 64) : SepProp :=
+@[expose] def vecU8CapHeap (A : RustAlloc) (bsLen : Nat) (v : List (BitVec 8)) (w0 w1 w2 : BitVec 64) : SepProp :=
   ⌜BytesMergeCapOk w0 bsLen ∧ w2 = BitVec.ofNat 64 v.length⌝ ∗ EncodedLen.vecU8Buf A w0 w1 v
 
 theorem vecU8CapAt_extract_words (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) (v : List (BitVec 8)) :
@@ -218,32 +218,32 @@ theorem vecU8CapAt_of_words (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) (v : L
   rw [EncodedLen.vecU8At_eq_header_sep_buf]; dsimp only [vecHeader]; simp only [sepConj_assoc]
   exact Entails.pure_right hcap (Entails.refl _)
 
-def words3At (a : BitVec 64) (w0 w1 w2 : BitVec 64) : SepProp :=
+@[expose] def words3At (a : BitVec 64) (w0 w1 w2 : BitVec 64) : SepProp :=
   (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) ∗ ((a + 16#64) ↦₆₄ w2)
 
-def words5At (a : BitVec 64) (w0 w1 w2 w3 w4 : BitVec 64) : SepProp :=
+@[expose] def words5At (a : BitVec 64) (w0 w1 w2 w3 w4 : BitVec 64) : SepProp :=
   (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) ∗ ((a + 16#64) ↦₆₄ w2) ∗
   ((a + 24#64) ↦₆₄ w3) ∗ ((a + 32#64) ↦₆₄ w4)
 
-def words6At (a : BitVec 64) (w0 w1 w2 w3 w4 w5 : BitVec 64) : SepProp :=
+@[expose] def words6At (a : BitVec 64) (w0 w1 w2 w3 w4 w5 : BitVec 64) : SepProp :=
   (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) ∗ ((a + 16#64) ↦₆₄ w2) ∗
   ((a + 24#64) ↦₆₄ w3) ∗ ((a + 32#64) ↦₆₄ w4) ∗ ((a + 40#64) ↦₆₄ w5)
 
-def words7At (a : BitVec 64) (w0 w1 w2 w3 w4 w5 w6 : BitVec 64) : SepProp :=
+@[expose] def words7At (a : BitVec 64) (w0 w1 w2 w3 w4 w5 w6 : BitVec 64) : SepProp :=
   (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) ∗ ((a + 16#64) ↦₆₄ w2) ∗
   ((a + 24#64) ↦₆₄ w3) ∗ ((a + 32#64) ↦₆₄ w4) ∗ ((a + 40#64) ↦₆₄ w5) ∗
   ((a + 48#64) ↦₆₄ w6)
 
-def words10At (a : BitVec 64) (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 : BitVec 64) : SepProp :=
+@[expose] def words10At (a : BitVec 64) (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 : BitVec 64) : SepProp :=
   words3At a w0 w1 w2 ∗ words7At (a + 24#64) w3 w4 w5 w6 w7 w8 w9
 
-def words13At (a : BitVec 64) (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 : BitVec 64) : SepProp :=
+@[expose] def words13At (a : BitVec 64) (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 : BitVec 64) : SepProp :=
   words3At a w0 w1 w2 ∗ words10At (a + 24#64) w3 w4 w5 w6 w7 w8 w9 w10 w11 w12
 
-def words16At (a : BitVec 64) (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 : BitVec 64) : SepProp :=
+@[expose] def words16At (a : BitVec 64) (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 : BitVec 64) : SepProp :=
   words3At a w0 w1 w2 ∗ words13At (a + 24#64) w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15
 
-def optAuthCapHeap (A : RustAlloc) (bsLen : Nat) :
+@[expose] def optAuthCapHeap (A : RustAlloc) (bsLen : Nat) :
     Option ProtoAuthenticator → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → SepProp
   | none, w0, _, _, _, _, _ => ⌜w0 = noneCap⌝
   | some auth, w0, w1, w2, w3, w4, w5 =>
@@ -318,7 +318,7 @@ theorem optAuthenticatorPBCapAt_of_words (A : RustAlloc) (a : BitVec 64) (bsLen 
     refine Entails.trans (Entails.of_eq (by ac_rfl))
       (sepConj_mono (vecU8CapAt_of_words A a bsLen auth.rootKey w0 w1 w2) hb)
 
-def vecVecU8Heap (A : RustAlloc) (v : List (List (BitVec 8))) (w0 w1 w2 : BitVec 64) : SepProp :=
+@[expose] def vecVecU8Heap (A : RustAlloc) (v : List (List (BitVec 8))) (w0 w1 w2 : BitVec 64) : SepProp :=
   ⌜w2 = BitVec.ofNat 64 v.length⌝ ∗ vecVecU8Buf A w0 w1 v
 
 theorem vecVecU8At_extract_words (A : RustAlloc) (a : BitVec 64) (v : List (List (BitVec 8))) :
@@ -387,7 +387,7 @@ theorem u32_pair_of_word (a : BitVec 64) (lo hi : BitVec 32) (w3 : BitVec 64) :
   have h28 : a + 24#64 + 4#64 = a + 28#64 := by bv_lin
   rw [h28] at hp; exact Entails.of_eq hp
 
-def optPolyDecoderHeap (A : RustAlloc) :
+@[expose] def optPolyDecoderHeap (A : RustAlloc) :
     Option PolynomialDecoder → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → SepProp
   | none, w0, _, _, _, _ => ⌜w0 = noneCap⌝
   | some d, w0, w1, w2, w3, w4 =>
@@ -485,7 +485,7 @@ theorem u32_pad4_of_word (a : BitVec 64) (lo : BitVec 32) (w6 : BitVec 64) :
   rw [hp, ProofLib.memRegion_four (a + 52#64)]
   exact sepConj_mono_right (Entails.sepExists_intro hi)
 
-def optPolyEncoderHeap (A : RustAlloc) :
+@[expose] def optPolyEncoderHeap (A : RustAlloc) :
     Option PolynomialEncoder → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → SepProp
   | none, w0, _, _, _, _, _, _ => ⌜w0 = noneCap⌝
   | some e, w0, w1, w2, w3, w4, w5, w6 =>
@@ -552,7 +552,7 @@ theorem optPolynomialEncoderPBAt_of_words (A : RustAlloc) (a : BitVec 64)
       (sepConj_mono (vecVecU8At_of_words A a e.pts w0 w1 w2)
         (sepConj_mono hpolys (u32_pad4_of_word a e.idx w6)))
 
-def unchunked2CapHeap (A : RustAlloc) (bsLen : Nat) (epoch : BitVec 64) (auth : Option ProtoAuthenticator)
+@[expose] def unchunked2CapHeap (A : RustAlloc) (bsLen : Nat) (epoch : BitVec 64) (auth : Option ProtoAuthenticator)
     (w0 w1 w2 w3 w4 w5 w6 : BitVec 64) : SepProp :=
   optAuthCapHeap A bsLen auth w0 w1 w2 w3 w4 w5 ∗ ⌜w6 = epoch⌝
 
@@ -672,12 +672,12 @@ theorem optCt1SentEkReceivedPBAt_entails_cap_zero (A : RustAlloc) (a : BitVec 64
   cases opt with | none => exact Entails.refl _ | some u => exact unchunked5At_entails_cap_zero A a u.epoch u.auth u.es u.ek u.ct1
 
 /-- Generic `Option` of `unchunked2CapAt` (`56` bytes = `7` words). -/
-def optUnchunked2CapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) :
+@[expose] def optUnchunked2CapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) :
     Option (BitVec 64 × Option ProtoAuthenticator) → SepProp
   | none => (a ↦₆₄ noneCap2) ∗ memRegion (a + 8#64) 48
   | some (epoch, auth) => unchunked2CapAt A a bsLen epoch auth
 
-def optUnchunked2CapHeap (A : RustAlloc) (bsLen : Nat) :
+@[expose] def optUnchunked2CapHeap (A : RustAlloc) (bsLen : Nat) :
     Option (BitVec 64 × Option ProtoAuthenticator) →
     BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → SepProp
   | none, w0, _, _, _, _, _, _ => ⌜w0 = noneCap2⌝
@@ -777,7 +777,7 @@ theorem unchunked3CapAt_eq_vec_unchunked2 (A : RustAlloc) (a : BitVec 64) (bsLen
   have h24 : a + 0x18#64 = a + 24#64 := rfl
   rw [h48, h24]
 
-def unchunked3CapHeap (A : RustAlloc) (bsLen : Nat)
+@[expose] def unchunked3CapHeap (A : RustAlloc) (bsLen : Nat)
     (epoch : BitVec 64) (auth : Option ProtoAuthenticator) (v3 : List (BitVec 8))
     (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 : BitVec 64) : SepProp :=
   vecU8CapHeap A bsLen v3 w0 w1 w2 ∗ unchunked2CapHeap A bsLen epoch auth w3 w4 w5 w6 w7 w8 w9
@@ -816,12 +816,12 @@ theorem unchunked3CapAt_of_words (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
     (sepConj_mono (vecU8CapAt_of_words A a bsLen v3 w0 w1 w2)
       (unchunked2CapAt_of_words A (a + 24#64) bsLen epoch auth w3 w4 w5 w6 w7 w8 w9))
 
-def optUnchunked3CapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) :
+@[expose] def optUnchunked3CapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) :
     Option (BitVec 64 × Option ProtoAuthenticator × List (BitVec 8)) → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 72
   | some (epoch, auth, v3) => unchunked3CapAt A a bsLen epoch auth v3
 
-def optUnchunked3CapHeap (A : RustAlloc) (bsLen : Nat) :
+@[expose] def optUnchunked3CapHeap (A : RustAlloc) (bsLen : Nat) :
     Option (BitVec 64 × Option ProtoAuthenticator × List (BitVec 8)) →
     BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 →
     BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → SepProp
@@ -899,7 +899,7 @@ theorem unchunked4CapAt_eq_vec_unchunked3 (A : RustAlloc) (a : BitVec 64) (bsLen
   have h96 : a + 24#64 + 0x48#64 = a + 0x60#64 := by bv_lin
   rw [h24, h48, h96]
 
-def unchunked4CapHeap (A : RustAlloc) (bsLen : Nat)
+@[expose] def unchunked4CapHeap (A : RustAlloc) (bsLen : Nat)
     (epoch : BitVec 64) (auth : Option ProtoAuthenticator) (v3 v4 : List (BitVec 8))
     (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 : BitVec 64) : SepProp :=
   vecU8CapHeap A bsLen v3 w0 w1 w2 ∗ unchunked3CapHeap A bsLen epoch auth v4 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12
@@ -943,12 +943,12 @@ theorem unchunked4CapAt_of_words (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
     (sepConj_mono (vecU8CapAt_of_words A a bsLen v3 w0 w1 w2)
       (unchunked3CapAt_of_words A (a + 24#64) bsLen epoch auth v4 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12))
 
-def optUnchunked4CapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) :
+@[expose] def optUnchunked4CapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) :
     Option (BitVec 64 × Option ProtoAuthenticator × List (BitVec 8) × List (BitVec 8)) → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 96
   | some (epoch, auth, v3, v4) => unchunked4CapAt A a bsLen epoch auth v3 v4
 
-def optUnchunked4CapHeap (A : RustAlloc) (bsLen : Nat) :
+@[expose] def optUnchunked4CapHeap (A : RustAlloc) (bsLen : Nat) :
     Option (BitVec 64 × Option ProtoAuthenticator × List (BitVec 8) × List (BitVec 8)) →
     BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 →
     BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → SepProp
@@ -1042,7 +1042,7 @@ theorem unchunked5CapAt_eq_vec_unchunked4 (A : RustAlloc) (a : BitVec 64) (bsLen
   have h120 : a + 24#64 + 0x60#64 = a + 0x78#64 := by bv_lin
   rw [h24, h48, h72, h120]
 
-def unchunked5CapHeap (A : RustAlloc) (bsLen : Nat)
+@[expose] def unchunked5CapHeap (A : RustAlloc) (bsLen : Nat)
     (epoch : BitVec 64) (auth : Option ProtoAuthenticator) (v3 v4 v5 : List (BitVec 8))
     (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 : BitVec 64) : SepProp :=
   vecU8CapHeap A bsLen v3 w0 w1 w2 ∗
@@ -1090,12 +1090,12 @@ theorem unchunked5CapAt_of_words (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
     (sepConj_mono (vecU8CapAt_of_words A a bsLen v3 w0 w1 w2)
       (unchunked4CapAt_of_words A (a + 24#64) bsLen epoch auth v4 v5 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15))
 
-def optUnchunked5CapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) :
+@[expose] def optUnchunked5CapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) :
     Option (BitVec 64 × Option ProtoAuthenticator × List (BitVec 8) × List (BitVec 8) × List (BitVec 8)) → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 120
   | some (epoch, auth, v3, v4, v5) => unchunked5CapAt A a bsLen epoch auth v3 v4 v5
 
-def optUnchunked5CapHeap (A : RustAlloc) (bsLen : Nat) :
+@[expose] def optUnchunked5CapHeap (A : RustAlloc) (bsLen : Nat) :
     Option (BitVec 64 × Option ProtoAuthenticator × List (BitVec 8) × List (BitVec 8) × List (BitVec 8)) →
     BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 →
     BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → BitVec 64 → SepProp
@@ -1186,7 +1186,7 @@ theorem optCt1SentEkReceivedPBCapAt_eq_optUnchunked5 (A : RustAlloc) (a : BitVec
       optUnchunked5CapAt A a bsLen (opt.map fun u => (u.epoch, u.auth, u.es, u.ek, u.ct1)) := by cases opt <;> rfl
 
 /-- Common post-tag state at `entry + 2700#64` (`0x4f274`, `CBNZ X21, +676`). -/
-def v1StateAfterTagPre (A : RustAlloc) (b : BitVec 64) (s0 : State)
+@[expose] def v1StateAfterTagPre (A : RustAlloc) (b : BitVec 64) (s0 : State)
     (x : V1StateMergeGhost) (m_res : Option (V1State × List (BitVec 8))) (s : State) : SepProp :=
   match m_res with
   | some (m', after) =>
@@ -1199,7 +1199,7 @@ def v1StateAfterTagPre (A : RustAlloc) (b : BitVec 64) (s0 : State)
       memRegion (s0.sp - 816#64) 720 ∗
       v1StateErrFrame A b s0 x.msgPtr x.bufRef x.slot x.ptr x.bs
 
-def v1StateAfterTagPrePlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
+@[expose] def v1StateAfterTagPrePlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
     (x : V1StateMergeGhost) (m_res : Option (V1State × List (BitVec 8))) (s : State) : SepProp :=
   match m_res with
   | some (m', after) =>

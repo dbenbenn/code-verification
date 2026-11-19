@@ -16,6 +16,7 @@ public import ProofLib.Process.FastParse
 public import VerifiedLibraries.Mallocng.Spec
 public import LibsignalBinary.Specifications.SignalSession.CliProcess
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import Symbolic.BugInjection.Proofs.CliExec.CompHooks0Placed
 public import Symbolic.BugInjection.Proofs.CliExec.RadixMemAux
 public import Symbolic.BugInjection.Proofs.CliExec.RadixMem
@@ -50,9 +51,10 @@ namespace Symbolic.BugInjection.Proofs.CliExec.InitPlacedSound
 
 open Arm64 Arm64.Memory Arm64.Obj Arm64.Process ProofLib
 open CryptoVerification.E2E (heapBase)
-open CryptoVerification.SignalSession (CliHooks Inputs cliExternsPlacedSig cliProcessInputs
-  libsignalSessionLib)
-open CryptoVerification.SignalSession.Placed (cliProgPlacedSig cliTokenPatchPlaced)
+open CryptoVerification.SignalSession (CliHooks Inputs cliProcessInputs libsignalSessionLib)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (cliExternsPlacedSig)
+open CryptoVerification.SignalSession.Placed (cliTokenPatchPlaced)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliProgPlacedSig)
 open Symbolic.BugInjection.Proofs.CliExec.CompHooks0Placed (compHooks0)
 open Symbolic.BugInjection.Proofs.CliExec.RadixMemAux (BinTree Cell FastRegs Line64 btGet
   linesEq_setCellsAt memory_writeBytes_cells_noWrap rawCellAt rawCellAt_foldSetRawCell_noWrap
@@ -91,7 +93,7 @@ theorem cliProgPlacedSig_congr_W
   unfold cliProgPlacedSig
   rw [funext hW]
 
-attribute [local irreducible] cliProgPlacedSig overlayHooksPlaced stubsOfMpl
+attribute [local irreducible] MultiPlacedLib.blockProgram overlayHooksPlaced stubsOfMpl
   compHooks0 mallocngCallAddrsPlaced
 
 theorem HooksAgreePlaced.congr_W
@@ -112,13 +114,6 @@ theorem HooksAgreePlaced.congr_W
     rw [← hprog]
     exact hpc h ((hW _).trans hext)
 
-theorem hooksAgreePlaced_congr_W
-    {mpl mmpl : MultiPlacement} {W₁ W₂ : CliHooks} {t : BinTree String}
-    (hW : ∀ name, cliExternsPlacedSig mmpl W₁ name = cliExternsPlacedSig mmpl W₂ name)
-    (hag : HooksAgreePlaced mpl mmpl W₁ t) :
-    HooksAgreePlaced mpl mmpl W₂ t :=
-  HooksAgreePlaced.congr_W hW hag
-
 theorem FastProgSoundPlaced.congr_W
     {mpl mmpl : MultiPlacement} {W₁ W₂ : CliHooks} {fp : FastProgPlaced} {m0 : Memory}
     (hW : ∀ name, cliExternsPlacedSig mmpl W₁ name = cliExternsPlacedSig mmpl W₂ name)
@@ -137,13 +132,6 @@ theorem FastProgSoundPlaced.congr_W
     rw [← hprog]
     exact hstep h ((hW _).trans hext)
   | unmapped => trivial
-
-theorem fastProgSoundPlaced_congr_W
-    {mpl mmpl : MultiPlacement} {W₁ W₂ : CliHooks} {fp : FastProgPlaced} {m0 : Memory}
-    (hW : ∀ name, cliExternsPlacedSig mmpl W₁ name = cliExternsPlacedSig mmpl W₂ name)
-    (hfp : FastProgSoundPlaced mpl mmpl W₁ fp m0) :
-    FastProgSoundPlaced mpl mmpl W₂ fp m0 :=
-  FastProgSoundPlaced.congr_W hW hfp
 
 /-- `Memory`-level counterpart of `cliTokenPatchPlaced` parameterized by `(tokS, tokO)`. -/
 def patchTokenMemPlaced (tokS tokO : BitVec 64) (m : Memory) : Memory :=
@@ -716,14 +704,6 @@ theorem initFastStateFromBasePlaced_sound
   initFastStateFromBasePlacedProcess_sound (mpl := mpl) (mmpl := mmpl) (W := W)
     hspec hmatch hagree hinit
 
-theorem initFastStateFromBasePlaced_eq_header
-    {mpl mmpl : MultiPlacement} {elf : ElfImage} {fs : ElfFullSpecPlaced} (inp : Inputs)
-    (hv : ElfFullValidPlaced mpl mmpl elf fs) :
-    initFastStateFromBasePlaced elf (prebuiltOfFullPlaced fs) inp =
-      initFastStateFromBasePlaced (headerElfOfFullPlaced fs) (prebuiltOfFullPlaced fs) inp :=
-  initFastStateFromBasePlaced_congr (prebuiltOfFullPlaced fs) inp
-    hv.entry_eq hv.phdrVaddr_eq hv.phent_eq hv.phnum_eq hv.brkStart_eq
-
 theorem initFastStateFromBasePlaced_sound_of_valid_with
     {mpl mmpl : MultiPlacement} {W : CliHooks} {elf : ElfImage}
     {fs : ElfFullSpecPlaced} {inp : Inputs} {fs0 : FastState}
@@ -765,34 +745,5 @@ theorem initFastStateFromBasePlaced_sound_of_valid
       VerifiedLibraries.mallocngLib.CodeLoaded mmpl (cliTokenPatchPlaced mpl s0).mem :=
   initFastStateFromBasePlaced_sound_of_valid_with
     (@hooksAgreePlaced_stubsOfMpl mpl mmpl) hv hW hinit
-
-theorem initFastStateFromBasePlaced_sound_of_valid_compHooks0
-    {mpl mmpl : MultiPlacement} {elf : ElfImage}
-    {fs : ElfFullSpecPlaced} {inp : Inputs} {fs0 : FastState}
-    (hv : ElfFullValidPlaced mpl mmpl elf fs)
-    (hinit : initFastStateFromBasePlaced elf (prebuiltOfFullPlaced fs) inp = some fs0) :
-    ∃ s0 : State,
-      elf.loadState (cliProcessInputs inp) = .ok s0 ∧
-      fs0.Agrees (cliTokenPatchPlaced mpl s0) ∧
-      FastProgSoundPlaced mpl mmpl compHooks0 (prebuiltOfFullPlaced fs).prog
-        (cliTokenPatchPlaced mpl s0).mem ∧
-      VerifiedLibraries.mallocngLib.CodeLoaded mmpl (cliTokenPatchPlaced mpl s0).mem :=
-  initFastStateFromBasePlaced_sound_of_valid hv (fun _ => rfl) hinit
-
-theorem initFastStateFromBasePlaced_sound_of_valid_header
-    {mpl mmpl : MultiPlacement} {W : CliHooks} {elf : ElfImage}
-    {fs : ElfFullSpecPlaced} {inp : Inputs} {fs0 : FastState}
-    (hv : ElfFullValidPlaced mpl mmpl elf fs)
-    (hW : ∀ name, cliExternsPlacedSig mmpl compHooks0 name = cliExternsPlacedSig mmpl W name)
-    (hinit : initFastStateFromBasePlaced (headerElfOfFullPlaced fs)
-      (prebuiltOfFullPlaced fs) inp = some fs0) :
-    ∃ s0 : State,
-      elf.loadState (cliProcessInputs inp) = .ok s0 ∧
-      fs0.Agrees (cliTokenPatchPlaced mpl s0) ∧
-      FastProgSoundPlaced mpl mmpl W (prebuiltOfFullPlaced fs).prog
-        (cliTokenPatchPlaced mpl s0).mem ∧
-      VerifiedLibraries.mallocngLib.CodeLoaded mmpl (cliTokenPatchPlaced mpl s0).mem :=
-  initFastStateFromBasePlaced_sound_of_valid hv hW
-    ((initFastStateFromBasePlaced_eq_header inp hv).trans hinit)
 
 end Symbolic.BugInjection.Proofs.CliExec.InitPlacedSound

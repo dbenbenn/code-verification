@@ -9,12 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecv
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvDefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.ArmChainPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecv -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvDefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.ArmChainPlaced
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.DecInterfacePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
 
 /-!
 # Placed Tag 7 (`receiver_chains`) Decode Arm (`+0x22e0 → +0x2160`)
@@ -23,14 +26,14 @@ Proves `[LibsignalPlacement]` tag-7 (`receiver_chains`) decode-arm specification
 from Segment B and `message::merge<Chain>` at `lsmpl.base 516`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec
 
-open Arm64 ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection SepProp
+open Arm64 ProofLib ProofLib.ProgramReflection SepProp
 open CryptoGames CryptoGames.LibsignalSession
 open CryptoVerification CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalProtoCodec
@@ -375,7 +378,7 @@ theorem overDecArm_recv_placed [LibsignalPlacement]
 
 /-- `LibsignalCodeLoaded` Segment B contract (`+0x2310 → +0x2160`) on
 `lsProg_518 (Rust.withPanics ext)`. -/
-def OverDecRecvSegBChain3PlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverDecRecvSegBChain3PlacedStmt [LibsignalPlacement] : Prop :=
   ∀ (ext : String → Option (State → State)),
     ∀ (s0 s : State) (g : VerNe.Chain3.OverDecG) (v : SSGQ) (c : ChainG) (rest : List (BitVec 8)),
     (GenFieldQ.base (.recv c)).Ok →
